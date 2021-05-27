@@ -740,6 +740,7 @@ pBPTree
 bptBulkLoad(char* fname, int num)
 	{
 	pBPTree tree = bptNew();
+    int tmp25;
     int i;
 	FILE* data = NULL;
 	data = fopen(fname, "r");
@@ -753,7 +754,8 @@ bptBulkLoad(char* fname, int num)
 		printf("Key: %s\nValue: %s\n",key,leaf);
 		key_val = key;
         info = leaf;
-		if (bptInsert(tree, key, strlen(key), leaf) != 0)
+        tmp25 = bptInsert(tree, key, strlen(key), leaf);
+		if (tmp25 != 0)
 			{
 			return NULL;
 			}
@@ -765,6 +767,27 @@ bptBulkLoad(char* fname, int num)
 
 
 /********************** TEST FUNCTIONS *******************************/
+void 
+printTree2(pBPTree tree, int level) {
+    if (tree == NULL) {
+        printf("Null");
+    }
+    pBPNode thisRoot = tree->root;
+
+    int i;
+    
+    if (thisRoot == NULL) {
+        printf("Null");
+    }
+    else {
+        printf("%sRoot Val: ");
+        for (i = 0; i < level; i++) {
+
+        }
+    }
+
+}
+
 void
 printTree(pBPNode tree, int level)
     {
@@ -773,7 +796,8 @@ printTree(pBPNode tree, int level)
         printf("Null");
     }
     else {
-    for (i=0; i<level; i++) printf("\t");
+    //for (i=0; i<level; i++) {}
+    printf("\t");
     printf("Node ");
     printPtr(tree);
     printf(": %sleaf, children: ", (tree->IsLeaf ? "" : "non"));
@@ -790,7 +814,7 @@ printTree(pBPNode tree, int level)
             if (i < tree->nKeys) printf("%s ", tree->Keys[i].Value);
             }
         printf("\n");
-        for (i=0; i<=tree->nKeys; i++) printTree(tree->Children[i].Child, level+1);
+        for (i=0; i<=tree->nKeys; i++) printTree(tree->Children[i].Child, level + 1);
         }
     if (level==0) printf("----------------------\n");
     }

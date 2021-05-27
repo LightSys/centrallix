@@ -90,6 +90,7 @@ pBPTree bptBulkLoad(char* fname, int num);
 /*int bptCreateTreeFromData(pBPNode * root, BPTData * entries, int num_entries );*/
 
 /** Temporary functions (should not exist in final version) **/
+void printTree2(pBPTree tree, int level);
 void printTree(pBPNode tree, int level);
 void printPtr(void* ptr);   // helper function for "naming" nodes
 int testTree(pBPTree tree);   // test that all nodes are in order, no dups except for in index nodes, vals match keys
