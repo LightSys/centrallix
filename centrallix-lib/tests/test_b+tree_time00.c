@@ -18,9 +18,9 @@ test(char** tname)
 	for(i=0;i<iter;i++)
 	 	{
 		pBPNode this = bptBulkLoad("tests/bpt_bl_10e1.dat", 10);
-		assert(this->)
+		assert(bptSize(this) == 10);
 		}
 	
     	return iter;
-    	}
+    }
 
