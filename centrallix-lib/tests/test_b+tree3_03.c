@@ -16,22 +16,18 @@ test(char** tname)
 
     *tname = "b+tree3_03 Test bptInit Function";
 
-    /*
-    pBPNode newNode; 
-    
-    newNode = nmMalloc(sizeof(BPNode));
-
-
-    y = bptInit(newNode);
-
-    assert(y == 0);
-    */
+   int *info1 = malloc(sizeof(int));
+    *info1 = 10;
 
    pBPTree newTree = bptNew();
 
    bptDeInit(newTree);
 
    y = bptInit(newTree);
+
+   assert(y == 0);
+
+   y = bptAdd(newTree, "001", 3, info1); //This is to make sure that the bptInit worked
 
    assert(y == 0);
 

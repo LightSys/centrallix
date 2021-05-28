@@ -146,10 +146,10 @@ bpt_i_Insert_Nonfull(pBPNode this, char* key, int key_len, void* data)
         }
     }
 
-BPTree*
+pBPTree
 bptNew()
     {
-    BPTree* this;
+    pBPTree this;
 
     this = nmMalloc(sizeof(BPTree));
     if (!this) return NULL;
@@ -550,29 +550,20 @@ bptInit(pBPTree this)
     /** Should not be passed NULL **/
     assert(this != NULL);
     memset(this, 0, sizeof(BPTree));
-
-    /*
-    pBPNode root = this->root;
-
-    bptInit_I_Node(root);
-
-    memset(root, 0, sizeof(BPNode));
-    */
-
+    this->root = bpt_i_new_BPNode();
+    if (!this->root) return NULL;
     /** Clear out the data structure **/
     this->size = 0;
-
     return 0;
     }
 
-/*** bptInit_I_Node() - initialize an already-allocated tree **/
+/*** bptInit_I_Node() - initialize an already-allocated node **/
 int
 bptInit_I_Node(pBPNode this)
     {
     /** Should not be passed NULL **/
     assert(this != NULL);
     memset(this, 0, sizeof(BPNode));
-
     /** Clear out the data structure **/
     this->Next = this->Prev = NULL;
     this->nKeys = 0;
