@@ -17,7 +17,7 @@ test(char** tname)
 	for(i=0;i<iter;i++)
 	 	{
 		tree = bpt_i_new_BPNode();
-		bptInit(tree);
+		bptInit_I_Node(tree);
 		tree->Keys[0].Length = 2;
 		tree->Keys[0].Value = nmSysMalloc(2); // don't assign double quoted string because deInit frees this
 		tree->Keys[1].Length = 5;

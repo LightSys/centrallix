@@ -43,7 +43,7 @@ bpt_i_new_BPNode()
     newNode = (pBPNode)nmMalloc(sizeof(BPNode));
     if (!newNode) return NULL;
 
-    if (bptInit(newNode) != 0)
+    if (bptInit_I_Node(newNode) != 0)
         {
         nmFree(newNode, sizeof(pBPNode));
         return NULL;
@@ -58,7 +58,6 @@ bpt_i_new_BPNode()
 int
 bpt_i_Split_Child(pBPNode this, int index)
     {
-    int i, oldChildPrevNKeys;
     pBPNode oldChild, newChild;
 
     assert (this->nKeys < MAX_KEYS(this));
@@ -168,11 +167,11 @@ int
 bptAdd(pBPTree this, char* key, int key_len, void* data)
     {
     pBPNode newRoot;
-    if(this == NULL || key == NULL || key_len == NULL || data == NULL) {
+    if(this == NULL || key == NULL || data == NULL) {
         return -1;
     }
 
-    if (bptLookup(this->root, key, key_len) != NULL)
+    if (bptLookup(this, key, key_len) != NULL)
         {
         /*** Key already exists; duplicate keys can't be inserted into a B+ Tree***/
         /*** without breaking the search structure                              ***/
@@ -236,13 +235,13 @@ int bpt_dummy_freeFn(void* arg, void* ptr) {
 
 */
 int
-bptRemove(BPTree* tree, char* key, int key_len, int (*free_fn)(), void* free_arg)
+bptRemove(pBPTree tree, char* key, int key_len, int (*free_fn)(), void* free_arg)
     {
     pBPNode this, parent, searchNext, prev, next, mergeThis;
     pBPNodeKey newKey, k;
     int i, j, thisIndex, nNIndex, cmp;
 
-    if (bptLookup(tree->root, key, key_len) == NULL) return -1;
+    if (bptLookup(tree, key, key_len) == NULL) return -1;
 
     this = tree->root;
     parent = NULL;
@@ -544,9 +543,30 @@ bpt_i_FindReplacementKey(pBPNode this, char* key, int key_len)
     }
 
 
-/*** bptInit() - initialize an already-allocated node **/
+/*** bptInit() - initialize an already-allocated tree **/
 int
-bptInit(pBPNode this)
+bptInit(pBPTree this)
+    {
+    /** Should not be passed NULL **/
+    assert(this != NULL);
+    memset(this, 0, sizeof(BPTree));
+
+    pBPNode root = this->root;
+
+    memset(root, 0, sizeof(BPNode));
+
+    /** Clear out the data structure **/
+    this->size = 0;
+    root->Next = root->Prev = NULL;
+    root->nKeys = 0;
+    root->IsLeaf = 1;
+
+    return 0;
+    }
+
+/*** bptInit_I_Node() - initialize an already-allocated tree **/
+int
+bptInit_I_Node(pBPNode this)
     {
     /** Should not be passed NULL **/
     assert(this != NULL);
@@ -560,7 +580,7 @@ bptInit(pBPNode this)
     return 0;
     }
 
-/*** bptFree() - deinit and deallocate a node and all its descendants
+/*** bpt_I_FreeNode() - deinit and deallocate a node and all its descendants
  ***/
 int
 bpt_I_FreeNode(pBPNode this)
@@ -694,21 +714,41 @@ bpt_i_Compare(char *key1, int key1_len, char *key2, int key2_len)
     return rval;
     }
 
-/*** bptSearch(k) - returns the leaf node where the key is found ***/
-pBPNode bptLookup(pBPNode this, char* key, int key_len) 
+/*** bptSearch(k) - returns the value stored for the key ***/
+void* bptLookup(pBPTree this, char* key, int key_len) 
+    {
+    int i, cmp;
+    pBPNode root = this->root;
+
+
+    if (root->IsLeaf) 
+        {
+        i = bpt_i_Find_Key_In_Node(root, key, key_len, &cmp);
+        return ((cmp == 0) ? root->Children[i].Ref : NULL);
+        }
+    else 
+        {
+        i = 0;
+        while (i < root->nKeys && bpt_i_Compare(key, key_len, root->Keys[i].Value, root->Keys[i].Length) >= 0) i++;
+        return bpt_I_Lookup(root->Children[i].Child, key, key_len);
+        }
+    }
+
+/*** recursive helper for bptLookup ***/
+void* bpt_I_Lookup(pBPNode this, char* key, int key_len) 
     {
     int i, cmp;
 
     if (this->IsLeaf) 
         {
         i = bpt_i_Find_Key_In_Node(this, key, key_len, &cmp);
-        return ((cmp == 0) ? this : NULL);
+        return ((cmp == 0) ? this->Children[i].Ref : NULL);
         }
     else 
         {
         i = 0;
         while (i < this->nKeys && bpt_i_Compare(key, key_len, this->Keys[i].Value, this->Keys[i].Length) >= 0) i++;
-        return bptLookup(this->Children[i].Child, key, key_len);
+        return bpt_I_Lookup(this->Children[i].Child, key, key_len);
         }
     }
 

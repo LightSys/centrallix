@@ -19,9 +19,9 @@ test(char** tname)
 		tree = bpt_i_new_BPNode();
 		left = bpt_i_new_BPNode();
 		right = bpt_i_new_BPNode();
-		bptInit(tree);
-		bptInit(left);
-		bptInit(right);
+		bptInit_I_Node(tree);
+		bptInit_I_Node(left);
+		bptInit_I_Node(right);
 
 		tree->nKeys = 1;
 		tree->IsLeaf = 0;
