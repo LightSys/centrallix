@@ -2472,3 +2472,28 @@ objDateAdd(pDateTime dt, int diff_sec, int diff_min, int diff_hr, int diff_day, 
 
     return 0;
     }
+
+/*** Convert the given MoneyType into the old representation with separate
+ *** whole/fraction parts, then put it into the given pointer parameters.
+ ***/
+void
+objGetOldRepresentationOfMoney(MoneyType money, long long* wholePart, unsigned short* fractionPart)
+{
+    /**
+     * In the old representation, whole = floor($amount) and fraction = $amount - floor($amount). This means that
+     * fraction is always positive and always counts towards the total $amount in a positive direction.
+     * So if there is a negative with a non-zero fraction part...
+     **/
+    if (money.Value < 0 && money.Value%10000 != 0)
+    {
+        /** Add negative 1 then truncate fraction. (essentially floor() )**/
+        *wholePart = (money.Value - 10000)/10000ll;
+        /** Since fraction always counts away from zero, it is inverted**/
+        *fractionPart = 10000ll - abs(money.Value%10000);
+    }
+    else
+    {
+        *wholePart = money.Value / 10000ll;
+        *fractionPart = money.Value % 10000ll;
+    }
+}

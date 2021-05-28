@@ -76,9 +76,10 @@ nht_i_RestWriteAttrValue(pNhtConn conn, pObject obj, char* attrname, int data_ty
     {
     ObjData od;
     int rval;
-    long long whole, fraction;
+    long long whole;
+    unsigned short fraction;
 
-	/** Get the data value **/
+    /** Get the data value **/
 	rval = objGetAttrValue(obj, attrname, data_type, &od);
 	if (rval != 0)
 	    {
@@ -114,32 +115,14 @@ nht_i_RestWriteAttrValue(pNhtConn conn, pObject obj, char* attrname, int data_ty
 			);
 		break;
 
-	    case DATA_T_MONEY:
-	        /** For the time being, 64-bit representation will mimic whole and fraction part handling of negatives
-	         ** with regards to JSON data.  It will use the new %LL specifier, but the JSON returned will
-	         ** contain an inverted fraction part that always counts in the positive direction.
-	         **/
-	        
-	        /** If there is a negative with a non-zero fraction part **/
-	        if (od.Money->Value < 0 && od.Money->Value%10000 != 0)
-                {
-	                /** Add negative 1 then truncate fraction. (essentially floor() )**/
-	                whole = (od.Money->Value - 10000)/10000ll;
-	                /** Since fraction always counts away from zero, it is inverted**/
-	                fraction = 10000ll - abs(od.Money->Value%10000);
-                    nht_i_QPrintfConn(conn, 0, "{ \"wholepart\":%LL, \"fractionpart\":%LL }",
-                                      whole,
-                                      fraction
-                    );
-                }
-	        else
-                {
-                    nht_i_QPrintfConn(conn, 0, "{ \"wholepart\":%LL, \"fractionpart\":%LL }",
-                                      od.Money->Value/10000ll,
-                                      od.Money->Value%10000ll
-                    );
-                }
-		break;
+        case DATA_T_MONEY:
+            /** For the time being, 64-bit representation will mimic whole and fraction part handling of negatives
+             ** with regards to JSON data.  It will use the new %LL specifier, but the JSON returned will
+             ** contain an inverted fraction part that always counts in the positive direction.
+             **/
+            objGetOldRepresentationOfMoney(*(od.Money), &whole, &fraction);
+            nht_i_QPrintfConn(conn, 0, "{ \"wholepart\":%LL, \"fractionpart\":%INT }", whole, fraction);
+        break;
 
 	    default:
 		/** Unknown or unimplemented data type **/
