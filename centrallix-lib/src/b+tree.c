@@ -165,14 +165,14 @@ bptNew()
 
 /*** bptInsert(T, k, v) - insert k,v into tree T in a single pass down the tree ***/
 int
-bptInsert(pBPTree this, char* key, int key_len, void* data)
+bptAdd(pBPTree this, char* key, int key_len, void* data)
     {
     pBPNode newRoot;
     if(this == NULL || key == NULL || key_len == NULL || data == NULL) {
         return -1;
     }
 
-    if (bptSearch(this->root, key, key_len) != NULL)
+    if (bptLookup(this->root, key, key_len) != NULL)
         {
         /*** Key already exists; duplicate keys can't be inserted into a B+ Tree***/
         /*** without breaking the search structure                              ***/
@@ -227,7 +227,7 @@ bptRemove(BPTree* tree, char* key, int key_len, int (*free_fn)(), void* free_arg
     pBPNodeKey newKey, k;
     int i, j, thisIndex, nNIndex, cmp;
 
-    if (bptSearch(tree->root, key, key_len) == NULL) return -1;
+    if (bptLookup(tree->root, key, key_len) == NULL) return -1;
 
     this = tree->root;
     parent = NULL;
@@ -548,11 +548,11 @@ bptInit(pBPNode this)
 /*** bptFree() - deinit and deallocate a node and all its descendants
  ***/
 int
-bptFreeNode(pBPNode this)
+bpt_I_FreeNode(pBPNode this)
     {
     int ret;
 
-    ret = bptDeInitNode(this);
+    ret = bpt_I_DeInitNode(this);
     if(ret == 0)
         {
         nmFree(this, sizeof(BPNode));
@@ -567,7 +567,7 @@ bptFreeNode(pBPNode this)
 /*** bptDeInit() - deinit a node and deinit/deallocate all descendants, but don't deallocate it
  ***/
 int
-bptDeInitNode(pBPNode this)
+bpt_I_DeInitNode(pBPNode this)
     {
     int i, ret;
 
@@ -579,7 +579,7 @@ bptDeInitNode(pBPNode this)
         {
         for (i = 0; i <= this->nKeys; i++)
             {
-            ret = bptFreeNode(this->Children[i].Child);
+            ret = bpt_I_FreeNode(this->Children[i].Child);
             }
 
         if(ret != 0)
@@ -617,7 +617,7 @@ bptDeInit(pBPTree this)
         {
         for (i = 0; i <= root->nKeys; i++)
             {
-            ret = bptFreeNode(root->Children[i].Child);
+            ret = bpt_I_FreeNode(root->Children[i].Child);
             }
 
         if(ret != 0)
@@ -645,7 +645,7 @@ bptFree(pBPTree this)
     int ret;
     pBPNode root = this->root;
 
-    ret = bptDeInitNode(root);
+    ret = bpt_I_DeInitNode(root);
     if(ret == 0)
         {
         nmFree(this, sizeof(BPTree));
@@ -680,7 +680,7 @@ bpt_i_Compare(char *key1, int key1_len, char *key2, int key2_len)
     }
 
 /*** bptSearch(k) - returns the leaf node where the key is found ***/
-pBPNode bptSearch(pBPNode this, char* key, int key_len) 
+pBPNode bptLookup(pBPNode this, char* key, int key_len) 
     {
     int i, cmp;
 
@@ -693,7 +693,7 @@ pBPNode bptSearch(pBPNode this, char* key, int key_len)
         {
         i = 0;
         while (i < this->nKeys && bpt_i_Compare(key, key_len, this->Keys[i].Value, this->Keys[i].Length) >= 0) i++;
-        return bptSearch(this->Children[i].Child, key, key_len);
+        return bptLookup(this->Children[i].Child, key, key_len);
         }
     }
 
@@ -754,7 +754,7 @@ bptBulkLoad(char* fname, int num)
 		printf("Key: %s\nValue: %s\n",key,leaf);
 		key_val = key;
         info = leaf;
-        tmp25 = bptInsert(tree, key, strlen(key), leaf);
+        tmp25 = bptAdd(tree, key, strlen(key), leaf);
 		if (tmp25 != 0)
 			{
 			return NULL;

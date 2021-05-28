@@ -28,7 +28,7 @@ test(char** tname)
 		tree->nKeys = 3;
 		tree->IsLeaf = 1;
 
-		val = bptDeInitNode(tree);
+		val = bpt_I_DeInitNode(tree);
 		assert (val == 0);
 		assert (tree->Next == NULL);
 		assert (tree->Prev == NULL);

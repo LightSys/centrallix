@@ -62,7 +62,7 @@ test(char** tname)
 	
 	for (i=0; i<iter; i++)
 		{
-		rnode1 = bptSearch(root, "Zebra", 5);
+		rnode1 = bptLookup(root, "Zebra", 5);
 		assert(rnode1 != NULL);
 		int i = 0;
 		while(strcmp(rnode1->Keys[i].Value, "Zebra") != 0){

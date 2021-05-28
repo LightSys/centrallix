@@ -20,7 +20,7 @@ test(char** tname)
 	for(i=0;i<iter;i++)
 	    {	
 		sprintf(key, "%d", i);
-		t = bptInsert(tree, key, 5, &i);
+		t = bptAdd(tree, key, 5, &i);
 		assert(t==0);
 		assert(bptSize(tree) == i+1);
 		}

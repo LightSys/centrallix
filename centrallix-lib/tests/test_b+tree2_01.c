@@ -53,7 +53,7 @@ test(char** tname)
         sprintf(k, FMT, val);
         d = malloc(sizeof(char)*(NUM_DIGITS+4));
         sprintf(d, VAL_FMT, val);
-        if (bptInsert(t, k, strlen(k)+1, d) < 0) free (d);  // free data if insert failed because that key already existed
+        if (bptAdd(t, k, strlen(k)+1, d) < 0) free (d);  // free data if insert failed because that key already existed
         
         if (testTree(t) < 0)
             {

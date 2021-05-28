@@ -75,7 +75,7 @@ test(char** tname)
 				}
 			}
 
-		val = bptDeInitNode(nodes[0]);
+		val = bpt_I_DeInitNode(nodes[0]);
 		assert (val == 0);
 		for (j=0; j<TOTNODES; j++)
 			{

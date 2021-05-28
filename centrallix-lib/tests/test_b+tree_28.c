@@ -44,7 +44,7 @@ test(char** tname)
 	 	{
 		this = bptBulkLoad(fname, 10);
 		assert (this != NULL);
-		ret_node = bptSearch(this->root, "00000001", 8);
+		ret_node = bptLookup(this->root, "00000001", 8);
 		int i = 0;
 		while(strcmp(ret_node->Keys[i].Value, "00000001") != 0){
 			i++;

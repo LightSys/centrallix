@@ -15,9 +15,9 @@ test(char **tname){
 	char* val = "hopeful\0";
 	int iter = 9000000, i, t;
 
-	t = bptInsert(tree, key, 5, val);
+	t = bptAdd(tree, key, 5, val);
 	assert (t == 0);
-        t = bptInsert(tree, key, 5, val);
+        t = bptAdd(tree, key, 5, val);
         assert (t == -1);
 
 	for(i = 0; i < iter; i++){

@@ -15,7 +15,7 @@ test(char **tname){
 	char* key = "2\0";
 	char* val = "second one\0";
 
-	int t = bptInsert(tree, key, 1, val);
+	int t = bptAdd(tree, key, 1, val);
 	int iter = 9000000, i;
 	for(i = 0; i < iter; i++){
 

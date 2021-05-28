@@ -46,7 +46,7 @@ test(char** tname)
 		right->Keys[1].Length = 2;
 		right->Keys[1].Value = nmSysMalloc(2);
 
-		bptFreeNode(tree);
+		bpt_I_FreeNode(tree);
 		assert (tree->Next == NULL);
 		assert (tree->Prev == NULL);
 		assert (tree->nKeys == 0);		

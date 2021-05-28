@@ -29,7 +29,7 @@ test(char** tname)
 		val = malloc(sizeof(int));
 		*val = i;
 		sprintf(key, "%d", *val);
-		bptInsert(tree, key, 5, val);
+		bptAdd(tree, key, 5, val);
 		}
 
 	assert(bptSize(tree)==20000);

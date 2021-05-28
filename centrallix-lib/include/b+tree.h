@@ -64,25 +64,24 @@ struct _BPN
 
 /** Public Functions **/
 pBPTree bptNew();
-int bptInsert(pBPTree this, char* key, int key_len, void* data);    // formerly bptAdd
 int bptInit(pBPNode this);
-int bptFreeNode(pBPNode this);
-int bptDeInitNode(pBPNode this);
-int bptFree(pBPTree this);
-int bptDeInit(pBPTree this);
-pBPNode bptSearch(pBPNode this, char* key, int key_len);            // formerly bptLookup
+int bptAdd(pBPTree this, char* key, int key_len, void* data);    // formerly bptAdd
 int bptRemove(pBPTree this, char* key, int key_len, int (*free_fn)(), void* free_arg);
+pBPNode bptLookup(pBPNode this, char* key, int key_len);            // formerly bptLookup
 int bptSize(pBPTree this);
 int bptIsEmpty(pBPTree this);
-
+int bptFree(pBPTree this);
+int bptDeInit(pBPTree this);
 
 /** These should probably be removed from this header in the long run; tests can individually declare***/
 pBPNode bpt_i_new_BPNode();  // allocate and init a new BPNode, return NULL if fails
-int bpt_i_Compare(char* key1, int key1_len, char* key2, int key2_len);
+int bpt_i_Compare(char* key1, int key1_len, char* key2, int key2_len);      // helper for several internal functions
 int bpt_i_Split_Child(pBPNode this, int index);                             // helper for bptRemove
 int bpt_i_Insert_Nonfull(pBPNode this, char* key, int key_len, void* data); // helper for bptRemove
 pBPNodeKey bpt_i_FindReplacementKey(pBPNode this, char* key, int key_len);  // helper for bptRemove
 int bpt_i_Clear(pBPNode this, int (*free_fn)(), void* free_arg);            // used in bptRemove to free descendants
+int bpt_I_FreeNode(pBPNode this);                                           // helper for bptFree and bptDeInit
+int bpt_I_DeInitNode(pBPNode this);                                         // helper for bptFree and bptDeInit
 
 // functions from orig file that haven't been rechecked/implemented
 //void bpt_i_ReplaceValue(pBPNode this, char* find, int find_len, char* replace, int replace_len);

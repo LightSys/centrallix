@@ -18,7 +18,7 @@ test(char **tname){
 
 	pBPNode root = tree->root;
 
-	int t = bptInsert(tree, key, 5, val);
+	int t = bptAdd(tree, key, 5, val);
 	int iter = 9000000, i;
 	char* str = (char*)root->Children[0].Ref;
 	for(i = 0; i < iter; i++){

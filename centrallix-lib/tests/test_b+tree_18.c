@@ -69,7 +69,7 @@ test(char** tname)
 				}
 			}
 
-		bptFreeNode(nodes[0]);
+		bpt_I_FreeNode(nodes[0]);
 		for (j=0; j<TOTNODES; j++)
 			{
 			assert (nodes[j]->Next == NULL);

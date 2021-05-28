@@ -15,17 +15,17 @@ test(char **tname){
 	
 	char* data = "data";
 
-	t = bptInsert(tree, "a", 1, data);
+	t = bptAdd(tree, "a", 1, data);
 		assert (t == 0);
-		t = bptInsert(tree, "b", 1, data);
+		t = bptAdd(tree, "b", 1, data);
                 assert (t == 0);
-		t = bptInsert(tree, "c", 1, data);
+		t = bptAdd(tree, "c", 1, data);
                 assert (t == 0);
-		t = bptInsert(tree, "d", 1, data);
+		t = bptAdd(tree, "d", 1, data);
                 assert (t == 0);
-		t = bptInsert(tree, "e", 1, data);
+		t = bptAdd(tree, "e", 1, data);
                 assert (t == 0);
-		t = bptInsert(tree, "f", 1, data);
+		t = bptAdd(tree, "f", 1, data);
                 assert (t == 0);
 	
 	for(i = 0; i < iter; i++)

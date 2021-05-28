@@ -33,33 +33,33 @@ test(char** tname)
 
 		/** Test that insert fails if input leaf_node is NULL **/
 		assert(leaf_node->nKeys == 0);
-		ret_val = bptInsert(NULL, key, sizeof( key ), &key_1_value);
+		ret_val = bptAdd(NULL, key, sizeof( key ), &key_1_value);
 		assert( ret_val != 0 );
 
 
 		/** Test that insert fails if key is NULL **/
 		assert(leaf_node->nKeys == 0);
-		ret_val = bptInsert(tree, NULL, sizeof( key ), &key_1_value);
+		ret_val = bptAdd(tree, NULL, sizeof( key ), &key_1_value);
 		assert( ret_val != 0 );
 
 		/** Test that insert fails if key size is 0 **/
 		assert(leaf_node->nKeys == 0);
-		ret_val = bptInsert(tree, key, 0, &key_1_value);
+		ret_val = bptAdd(tree, key, 0, &key_1_value);
 		assert( ret_val != 0 );
 
 		/** Test that insert fails if data is NULL **/
 		assert(leaf_node->nKeys == 0);
-		ret_val = bptInsert(tree, key, 0, NULL);
+		ret_val = bptAdd(tree, key, 0, NULL);
 		assert( ret_val != 0 );
 
 		/** Test that insert fails if indekey_1_value is out of bounds (less than 0) **/
 		assert(leaf_node->nKeys == 0);
-		ret_val = bptInsert(tree, key, 0, &key_1_value);
+		ret_val = bptAdd(tree, key, 0, &key_1_value);
 		assert( ret_val != 0 );
 
 		/** Test that insert fails if indekey_1_value is out of bounds (greater than nKeys) **/
 		assert(leaf_node->nKeys == 0);
-		ret_val = bptInsert(tree, key, 0, &key_1_value);
+		ret_val = bptAdd(tree, key, 0, &key_1_value);
 		assert( ret_val != 0 );
 
 		/** Dummy test stub for assuming nmSysMalloc failed **/
@@ -69,7 +69,7 @@ test(char** tname)
 
 		/** Test a successful insertion at 0 **/
 		assert(leaf_node->nKeys == 0);
-		ret_val = bptInsert(tree, key, sizeof(key), &key_1_value);
+		ret_val = bptAdd(tree, key, sizeof(key), &key_1_value);
 		assert(ret_val == 0);
 		assert(leaf_node->nKeys == 1);
 		assert(0 == memcmp(key, leaf_node->Keys[ 0 ].Value, sizeof(key)));
@@ -79,7 +79,7 @@ test(char** tname)
 		char second_key[] = "second_key";
 		int key_2_value = 0xBEEF;
 		assert(leaf_node->nKeys == 1); /** assumes that a value has been already added **/
-		ret_val = bptInsert(tree, second_key, sizeof(second_key), &key_2_value);
+		ret_val = bptAdd(tree, second_key, sizeof(second_key), &key_2_value);
 		assert(ret_val == 0);
 		assert(leaf_node->nKeys == 2);
 		assert(0 == memcmp(second_key, leaf_node->Keys[ 1 ].Value, sizeof(second_key)));
@@ -89,7 +89,7 @@ test(char** tname)
 		char mid_key[] = "mid_key";
 		int mid_key_value = 0xABC;
 		assert(leaf_node->nKeys == 2);
-		ret_val = bptInsert(tree, mid_key, sizeof(mid_key), &mid_key_value);
+		ret_val = bptAdd(tree, mid_key, sizeof(mid_key), &mid_key_value);
 		assert(ret_val == 0);
 		assert(leaf_node->nKeys == 3);
 		
