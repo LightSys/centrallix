@@ -18,10 +18,10 @@ test(char** tname)
 	for(i=0;i<iter;i++)
 	 	{
 		this = bptBulkLoad(fname, 100);
-		assert (strcmp((char*)bptLookup(this, "00000001", 8), "A") == 0);
+		assert (strcmp((char*)bptSearch(this, "00000001", 8), "A") == 0);
 		tmp = bptRemove(this, "00000001\0", 8);
 		assert (tmp == 0);
-		assert (bptLookup(this, "00000001", 8) == NULL);
+		assert (bptSearch(this, "00000001", 8) == NULL);
 		assert (strcmp(this->Children[0].Child->Keys[0].Value, "00000002") == 0);
 		tmp = bptRemove(this, "00000001\0", 8);
 		assert (tmp == -1);
