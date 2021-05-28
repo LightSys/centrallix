@@ -62,13 +62,8 @@ test(char** tname)
 	
 	for (i=0; i<iter; i++)
 		{
-		rnode1 = bptLookup(root, "Zebra", 5);
-		assert(rnode1 != NULL);
-		int i = 0;
-		while(strcmp(rnode1->Keys[i].Value, "Zebra") != 0){
-			i++;
-		}
-		rval1 = rnode1->Children[i].Ref;
+		rval1 = bptLookup(root, "Zebra", 5);
+		
 		assert (strcmp("REF VAL\0", rval1) == 0);
 		}
 

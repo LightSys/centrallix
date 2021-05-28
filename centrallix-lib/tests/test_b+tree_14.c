@@ -35,7 +35,7 @@ test(char** tname)
 			for (k=0; k<LEVELNNODES[j]; k++)
 				{
 				nodes[nodeIndex] = bpt_i_new_BPNode();
-				bptInit(nodes[nodeIndex]);
+				bptInit_I_Node(nodes[nodeIndex]);
 				nodes[nodeIndex]->nKeys = LEVELNKEYS[j];
 				nodes[nodeIndex]->IsLeaf = (j==NUMLEVELS-1);
 				for (m=0; m<LEVELNKEYS[j]; m++)

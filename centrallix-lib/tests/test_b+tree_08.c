@@ -10,7 +10,7 @@ test(char** tname)
 	pBPNode tree;
 	int val;
 
-	*tname = "b+tree-08 bptInit returns 0, clears ptrs, resets vars";
+	*tname = "b+tree-08 bptInit_I_Node returns 0, clears ptrs, resets vars";
 
 	iter = 800000;
 	for(i=0;i<iter;i++)
@@ -20,7 +20,7 @@ test(char** tname)
 		tree->Prev = tree;
 		tree->nKeys = 4;
 		tree->IsLeaf = 0;
-		val = bptInit(tree);
+		val = bptInit_I_Node(tree);
 		assert (val == 0);
 		assert (tree->Next == NULL);
 		assert (tree->Prev == NULL);

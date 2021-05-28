@@ -25,13 +25,13 @@ test(char** tname)
 		rl = bpt_i_new_BPNode();
 		rr = bpt_i_new_BPNode();
 
-		bptInit(tree);
-		bptInit(left);
-		bptInit(right);
-		bptInit(ll);
-		bptInit(lr);
-		bptInit(rl);
-		bptInit(rr);
+		bptInit_I_Node(tree);
+		bptInit_I_Node(left);
+		bptInit_I_Node(right);
+		bptInit_I_Node(ll);
+		bptInit_I_Node(lr);
+		bptInit_I_Node(rl);
+		bptInit_I_Node(rr);
 
 		tree->nKeys = 1;
 		tree->IsLeaf = 0;
