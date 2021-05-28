@@ -15,7 +15,7 @@ long long
 test(char** tname)
    	{
     
-    *tname = "b+tree3_22 Test bptDeInit Function when allocating values with nmMalloc";
+    *tname = "b+tree3_23 Test bptDeInit Function when allocating values with nmMalloc";
 
     int i;
     int iter = 20000;

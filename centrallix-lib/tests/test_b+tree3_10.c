@@ -6,6 +6,11 @@
 #include "b+tree.h"
 #include "newmalloc.h"
 
+int free_func(void* args, void* ref){
+    nmFree(ref, sizeof(int));
+    return 0;
+}
+
 long long
 test(char** tname)
    	{
@@ -17,7 +22,7 @@ test(char** tname)
 	*tname = "b+tree3_10 Test bptDeInit function on an empty tree";
     pBPTree tree = bptNew();
 
-    y = bptDeInit(tree);
+    y = bptDeInit(tree, free_func, NULL);
 
     assert(y == 0);
 

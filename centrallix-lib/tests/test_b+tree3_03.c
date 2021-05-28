@@ -6,6 +6,11 @@
 #include "b+tree.h"
 #include "newmalloc.h"
 
+int free_func(void* args, void* ref){
+    nmFree(ref, sizeof(int));
+    return 0;
+}
+
 long long
 test(char** tname)
    	{
@@ -21,7 +26,7 @@ test(char** tname)
 
    pBPTree newTree = bptNew();
 
-   bptDeInit(newTree);
+   bptDeInit(newTree, free_func, NULL);
 
    y = bptInit(newTree);
 
