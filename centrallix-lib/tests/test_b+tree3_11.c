@@ -6,6 +6,11 @@
 #include "b+tree.h"
 #include "newmalloc.h"
 
+int free_func(void* args, void* ref){
+    free(ref);
+    return 0;
+}
+
 long long
 test(char** tname)
    	{
@@ -31,7 +36,7 @@ test(char** tname)
     bptAdd(tree, "0002", 4, info2);
     bptAdd(tree, "0003", 4, info3);
 
-    y = bptDeInit(tree);
+    y = bptDeInit(tree, free_func, NULL);
 
     assert(y == 0);
 
