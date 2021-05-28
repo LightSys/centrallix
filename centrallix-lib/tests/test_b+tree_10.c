@@ -4,9 +4,6 @@
 #include "newmalloc.h"
 #include "b+tree.h"
 
-/** Declare internal function to test **/
-int bpt_i_Insert(pBPNode this, char* key, int key_len, void* data, int idx); //TODO: We NEED to either define this function or use a different function
-
 long long
 test(char** tname)
     {
@@ -16,7 +13,7 @@ test(char** tname)
 	pBPTree tree;
 	pBPNode leaf_node;
 
-	*tname = "b+tree-10: Test bpt_i_Insert";
+	*tname = "b+tree-10: Test bptInsert";
 
 	iter = 100000;
 	for(i=0;i<iter;i++)
