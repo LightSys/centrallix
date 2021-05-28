@@ -220,6 +220,21 @@ bpt_i_Find_Key_In_Node(BPNode * node, char * key, int key_len, int * cmp)
     return i;
 }
 
+/*
+bptRemove(T, K, L, free(), D)
+T: Tree that you will be removing a specific node from
+K: Key of the node that has the data you are hoping to remove
+L: Length of K
+free(): Some free function
+D: a pointer for the data; can be any data type
+
+For int (*free_fn), we understand it is difficult to know what to pass in there. Here's an example of a simple dummy free function:
+int bpt_dummy_freeFn(void* arg, void* ptr) {
+    free(ptr);
+    return 0;
+}
+
+*/
 int
 bptRemove(BPTree* tree, char* key, int key_len, int (*free_fn)(), void* free_arg)
     {
