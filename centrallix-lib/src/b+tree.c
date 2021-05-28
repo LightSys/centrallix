@@ -591,6 +591,7 @@ bptDeInit(pBPTree this, int (*free_fn)(), void* free_arg)
 
     /** Deallocate children **/
     ret = bpt_i_Clear(root, free_fn, free_arg);
+    printf("%d\n", ret);
     if(ret != 0) return -2;
 
     this->size = 0;
@@ -695,7 +696,7 @@ bpt_i_Clear(pBPNode this, int (*free_fn)(), void *free_arg)
         {
         for (i = 0; i <= this->nKeys; i++)
             {
-            ret |= bpt_i_Clear(this->Children[i].Child, free_fn, free_arg);
+            ret |= bpt_i_Clear(this->Children[i].Child, free_fn, free_arg); 
             nmFree(this->Children[i].Child, sizeof(BPNode));
             }
 
