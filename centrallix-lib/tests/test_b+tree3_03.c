@@ -16,7 +16,7 @@ test(char** tname)
 
     *tname = "b+tree3_03 Test bptInit Function";
 
-   int *info1 = malloc(sizeof(int));
+   int *info1 = nmMalloc(sizeof(int));
     *info1 = 10;
 
    pBPTree newTree = bptNew();

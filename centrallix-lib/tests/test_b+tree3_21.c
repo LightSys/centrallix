@@ -7,7 +7,7 @@
 #include "newmalloc.h"
 
 int free_func(void* args, void* ref){
-    free(ref);
+    nmFree(ref, sizeof(int));
     return 0;
 }
 
@@ -15,18 +15,18 @@ long long
 test(char** tname)
    	{
     
-    *tname = "b+tree3_21 Test bptDeInit Function when allocating values with malloc";
+    *tname = "b+tree3_21 Test bptDeInit Function when allocating values with nmMalloc";
 
     int i;
     int iter = 20000;
     for (i = 0; i < iter; i++) {
         pBPTree tree1 = bptNew();
     
-        int *info1 = malloc(sizeof(int));
-        int *info2 = malloc(sizeof(int));
-        int *info3 = malloc(sizeof(int));
-        int *info4 = malloc(sizeof(int));
-        int *info5 = malloc(sizeof(int));
+        int *info1 = nmMalloc(sizeof(int));
+        int *info2 = nmMalloc(sizeof(int));
+        int *info3 = nmMalloc(sizeof(int));
+        int *info4 = nmMalloc(sizeof(int));
+        int *info5 = nmMalloc(sizeof(int));
 
         bptAdd(tree1, "0001", 4, info1);
         bptAdd(tree1, "0002", 4, info2);

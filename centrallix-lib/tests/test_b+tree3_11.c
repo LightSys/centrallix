@@ -7,7 +7,7 @@
 #include "newmalloc.h"
 
 int free_func(void* args, void* ref){
-    free(ref);
+    nmFree(ref, sizeof(int));
     return 0;
 }
 

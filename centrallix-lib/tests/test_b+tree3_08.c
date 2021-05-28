@@ -16,19 +16,19 @@ test(char** tname)
     *tname = "b+tree3_08 Test bptLookup Function";
     pBPTree tree = bptNew();
 
-    int *info1 = malloc(sizeof(int));
+    int *info1 = nmMalloc(sizeof(int));
     *info1 = 10;
 
-    int *info2 = malloc(sizeof(int));
+    int *info2 = nmMalloc(sizeof(int));
     *info1 = 20;
 
-    int *info3 = malloc(sizeof(int));
+    int *info3 = nmMalloc(sizeof(int));
     *info1 = 30;
 
-    int *info4 = malloc(sizeof(int));
+    int *info4 = nmMalloc(sizeof(int));
     *info1 = 40;
 
-    int *info5 = malloc(sizeof(int));
+    int *info5 = nmMalloc(sizeof(int));
     *info1 = 50;
 
     bptAdd(tree, "0001", 4, info1);
