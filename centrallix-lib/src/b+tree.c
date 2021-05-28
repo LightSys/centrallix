@@ -553,13 +553,12 @@ bptInit(pBPTree this)
 
     pBPNode root = this->root;
 
+    bptInit_I_Node(root);
+
     memset(root, 0, sizeof(BPNode));
 
     /** Clear out the data structure **/
     this->size = 0;
-    root->Next = root->Prev = NULL;
-    root->nKeys = 0;
-    root->IsLeaf = 1;
 
     return 0;
     }
