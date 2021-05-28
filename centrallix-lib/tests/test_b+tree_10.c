@@ -13,7 +13,7 @@ test(char** tname)
 	pBPTree tree;
 	pBPNode leaf_node;
 
-	*tname = "b+tree-10: Test bptInsert";
+	*tname = "b+tree-10: Test bptAdd";
 
 	iter = 100000;
 	for(i=0;i<iter;i++)
