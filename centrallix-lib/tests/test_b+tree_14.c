@@ -19,7 +19,7 @@ test(char** tname)
 	int KEYLEN = 5;
 	int val;
 
-	*tname = "b+tree-14 bptDeInit works for large tree (configurable)";
+	*tname = "b+tree-14 bpt_I_DeInitNode works for large tree (configurable)";
 
 	iter = 80000;
 	for(i=0;i<iter;i++)

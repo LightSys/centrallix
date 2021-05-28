@@ -70,8 +70,8 @@ int bptRemove(pBPTree this, char* key, int key_len, int (*free_fn)(), void* free
 void* bptLookup(pBPTree this, char* key, int key_len);
 int bptSize(pBPTree this);
 int bptIsEmpty(pBPTree this);
-int bptFree(pBPTree this);
-int bptDeInit(pBPTree this);
+int bptFree(pBPTree this, int (*free_fn)(), void* free_arg);
+int bptDeInit(pBPTree this, int (*free_fn)(), void* free_arg);
 
 /** Internal Functions **/
 pBPNode bpt_i_new_BPNode();                                                 // allocate and init a new BPNode, return NULL if fails
@@ -82,8 +82,6 @@ pBPNodeKey bpt_i_FindReplacementKey(pBPNode this, char* key, int key_len);  // h
 void* bpt_I_Lookup(pBPNode this, char* key, int key_len);                   // helper for bptLookup
 int bpt_i_Clear(pBPNode this, int (*free_fn)(), void* free_arg);            // used in bptRemove to free descendants
 int bptInit_I_Node(pBPNode this);                                           // helper for bpt_i_new_BPNode
-int bpt_I_FreeNode(pBPNode this);                                           // helper for bptFree and bptDeInit
-int bpt_I_DeInitNode(pBPNode this);                                         // helper for bptFree and bptDeInit
 
 // functions from orig file that haven't been rechecked/implemented
 //void bpt_i_ReplaceValue(pBPNode this, char* find, int find_len, char* replace, int replace_len);

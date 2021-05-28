@@ -87,7 +87,7 @@ test(char** tname)
 		rl->Keys[1].Length = 2;
 		rl->Keys[1].Value = nmSysMalloc(2);
 
-		bpt_I_DeInitNode(tree);
+		bpt_I_FreeNode(tree);
 		assert (tree->Next == NULL);
 		assert (tree->Prev == NULL);
 		assert (tree->nKeys == 0);	

@@ -34,7 +34,7 @@
 /* Description:	B+ Tree implementation.					*/
 /************************************************************************/
 
-/*** Return pointer to newly allocated and initialized BPNode, or NULL if fails */
+/*** Return pointer to newly allocated and initialized BPNode, or NULL if fails ***/
 pBPNode 
 bpt_i_new_BPNode()
     {
@@ -117,7 +117,7 @@ bpt_i_Insert_Nonfull(pBPNode this, char* key, int key_len, void* data)
                 i--;
                 }
 
-            this->Keys[i+1].Value = malloc(key_len); //TODO: Change malloc to nmalloc
+            this->Keys[i+1].Value = nmMalloc(sizeof(BPNodeVal));
             if (!this->Keys[i+1].Value) return -1;
 
             memcpy(this->Keys[i+1].Value, key, key_len);
@@ -145,7 +145,7 @@ bpt_i_Insert_Nonfull(pBPNode this, char* key, int key_len, void* data)
             }
         }
     }
-
+/*** Creates a pointer to a new B+ Tree and creates its root node. No initialization occurs ***/
 pBPTree
 bptNew()
     {
@@ -200,6 +200,9 @@ bptAdd(pBPTree this, char* key, int key_len, void* data)
     return 0;
     }
 
+/***    bpt_i_Find_Key_In_Node(node, key, key_len, cmp)
+ * returns the index i that key is at in node and updates cmp to the result of the comparison.
+ * ***/
 int
 bpt_i_Find_Key_In_Node(BPNode * node, char * key, int key_len, int * cmp)
 {
@@ -509,18 +512,21 @@ bptRemove(pBPTree tree, char* key, int key_len, int (*free_fn)(), void* free_arg
         }
     }
 
+/*** returns the size of the tree ***/
 int
 bptSize(pBPTree this)
     {
     return this->size;
     }
 
+/*** returns zero iff the tree is empty ***/
 int
 bptIsEmpty(pBPTree this)
     {
     return (this->size == 0);
     }
 
+/*** helper function to find a key to replace when repairing the tree structure when removing ***/
 pBPNodeKey
 bpt_i_FindReplacementKey(pBPNode this, char* key, int key_len)
     {
@@ -549,10 +555,10 @@ bptInit(pBPTree this)
     {
     /** Should not be passed NULL **/
     assert(this != NULL);
+    /** Clear out the data structure **/
     memset(this, 0, sizeof(BPTree));
     this->root = bpt_i_new_BPNode();
     if (!this->root) return NULL;
-    /** Clear out the data structure **/
     this->size = 0;
     return 0;
     }
@@ -572,114 +578,41 @@ bptInit_I_Node(pBPNode this)
     return 0;
     }
 
-/*** bpt_I_FreeNode() - deinit and deallocate a node and all its descendants
+/*** bptDeInit() - deinit a tree and deinit/deallocate all nodes, but don't deallocate it.
+ *** Calls the provided free_fn for each data value, as:  free_fn(free_arg, value)
  ***/
 int
-bpt_I_FreeNode(pBPNode this)
-    {
-    int ret;
-
-    ret = bpt_I_DeInitNode(this);
-    if(ret == 0)
-        {
-        nmFree(this, sizeof(BPNode));
-        this->Next = NULL;
-        this->Prev = NULL;
-        return 0;
-        }
-    
-    return -1;
-    }
-
-/*** bptDeInit() - deinit a node and deinit/deallocate all descendants, but don't deallocate it
- ***/
-int
-bpt_I_DeInitNode(pBPNode this)
+bptDeInit(pBPTree this, int (*free_fn)(), void* free_arg)
     {
     int i, ret;
-
     /** Should not be passed NULL **/
     if(this==NULL) return -1;
-
-    /** Deallocate children **/
-    if (!this->IsLeaf)
-        {
-        for (i = 0; i <= this->nKeys; i++)
-            {
-            ret = bpt_I_FreeNode(this->Children[i].Child);
-            }
-
-        if(ret != 0)
-            {
-            return -2;
-            }
-        }
-
-    /** Deallocate key values **/
-    for (i = 0; i < this->nKeys; i++)
-        {
-        nmSysFree(this->Keys[i].Value);
-        }
-    this->Next = NULL;
-    this->Prev = NULL;
-    this->IsLeaf = 1;
-    this->nKeys = 0;
-
-    return 0;
-    }    
-
-/*** bptDeInit() - deinit a tree and deinit/deallocate all descendants, but don't deallocate it
- ***/
-int
-bptDeInit(pBPTree this)
-    {
-    int i, ret;
     pBPNode root = this->root;
 
-    /** Should not be passed NULL **/
-    if(this==NULL) return -1;
-
     /** Deallocate children **/
-    if (!root->IsLeaf)
-        {
-        for (i = 0; i <= root->nKeys; i++)
-            {
-            ret = bpt_I_FreeNode(root->Children[i].Child);
-            }
+    ret = bpt_i_Clear(root, free_fn, free_arg);
+    if(ret != 0) return -2;
 
-        if(ret != 0)
-            {
-            return -2;
-            }
-        }
-
-    /** Deallocate key values **/
-    for (i = 0; i < root->nKeys; i++)
-        {
-        nmSysFree(root->Keys[i].Value);
-        }
-    nmFree(root, sizeof(BPNode));
     this->size = 0;
     
     return 0;
     }
 
-/*** bptFree() - deinit and deallocate a tree and all its descendants
+/*** bptFree() - deinit and deallocate a tree and all its nodes
+ *** Calls the provided free_fn for each data value, as:  free_fn(free_arg, value)
  ***/
 int
-bptFree(pBPTree this)
+bptFree(pBPTree this, int (*free_fn)(), void* free_arg)
     {
     int ret;
     pBPNode root = this->root;
 
-    ret = bpt_I_DeInitNode(root);
-    if(ret == 0)
-        {
-        nmFree(this, sizeof(BPTree));
-        return 0;
-        }
+    ret = bpt_i_Clear(root, free_fn, free_arg);
+    if(ret != 0) return -1;
+        
+    nmFree(this, sizeof(BPTree));
     
-    return -1;
+    return 0;
     }
 
 /*** bpt_i_Compare() - compares two key values.  Return value is greater
@@ -706,7 +639,7 @@ bpt_i_Compare(char *key1, int key1_len, char *key2, int key2_len)
     return rval;
     }
 
-/*** bptSearch(k) - returns the value stored for the key ***/
+/*** bptLookup(tree, k, k_len) - returns the value stored for the key ***/
 void* bptLookup(pBPTree this, char* key, int key_len) 
     {
     int i, cmp;
@@ -744,7 +677,6 @@ void* bpt_I_Lookup(pBPNode this, char* key, int key_len)
         }
     }
 
-// TODO unused--determine if still need this
 /*** bpt_i_Clear() - Frees all keys of this node; if this is a leaf, frees all data values;
  *** if not leaf, calls bptClear on children and frees child nodes.
  *** Calls the provided free_fn for each data value, as:  free_fn(free_arg, value)
@@ -776,7 +708,7 @@ bpt_i_Clear(pBPNode this, int (*free_fn)(), void *free_arg)
     /** Clear key/value pairs */
     for (i = 0; i < this->nKeys; i++)
         {
-        nmSysFree(this->Keys[i].Value);
+        nmFree(this->Keys[i].Value, sizeof(BPNodeVal));
         }
 
     return 0;   // TODO handle nmFree, nmSysFree return nonzero

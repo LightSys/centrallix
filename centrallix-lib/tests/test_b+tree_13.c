@@ -12,7 +12,7 @@ test(char** tname)
 	pBPNode tree, left, right, ll, lr, rl, rr;
 	int val;
 
-	*tname = "b+tree-13 bptDeInit works for 3-level tree";
+	*tname = "b+tree-13 bpt_I_DeInitNode works for 3-level tree";
 
 	iter = 80000;
 	for(i=0;i<iter;i++)
