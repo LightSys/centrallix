@@ -551,11 +551,13 @@ bptInit(pBPTree this)
     assert(this != NULL);
     memset(this, 0, sizeof(BPTree));
 
+    /*
     pBPNode root = this->root;
 
     bptInit_I_Node(root);
 
     memset(root, 0, sizeof(BPNode));
+    */
 
     /** Clear out the data structure **/
     this->size = 0;
