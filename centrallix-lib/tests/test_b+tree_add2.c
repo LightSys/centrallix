@@ -8,7 +8,7 @@ long long
 test(char **tname){
 
 
-	*tname = "b+tree add test 3 - insert with bptInsert";
+	*tname = "b+tree add test 3 - insert with bptAdd";
 
 	pBPTree tree = bptNew();
 

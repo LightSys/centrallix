@@ -163,7 +163,7 @@ bptNew()
     return this;
     }
 
-/*** bptInsert(T, k, v) - insert k,v into tree T in a single pass down the tree ***/
+/*** bptAdd(T, k, v) - insert k,v into tree T in a single pass down the tree ***/
 int
 bptAdd(pBPTree this, char* key, int key_len, void* data)
     {

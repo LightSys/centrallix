@@ -67,7 +67,7 @@ pBPTree bptNew();
 int bptInit(pBPNode this);
 int bptAdd(pBPTree this, char* key, int key_len, void* data);    // formerly bptAdd
 int bptRemove(pBPTree this, char* key, int key_len, int (*free_fn)(), void* free_arg);
-pBPNode bptLookup(pBPNode this, char* key, int key_len);            // formerly bptLookup
+pBPNode bptLookup(pBPNode this, char* key, int key_len);            // formerly bptSearch
 int bptSize(pBPTree this);
 int bptIsEmpty(pBPTree this);
 int bptFree(pBPTree this);
