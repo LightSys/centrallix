@@ -58,7 +58,6 @@ bpt_i_new_BPNode()
 int
 bpt_i_Split_Child(pBPNode this, int index)
     {
-    int i, oldChildPrevNKeys;
     pBPNode oldChild, newChild;
 
     assert (this->nKeys < MAX_KEYS(this));
@@ -168,7 +167,7 @@ int
 bptAdd(pBPTree this, char* key, int key_len, void* data)
     {
     pBPNode newRoot;
-    if(this == NULL || key == NULL || key_len == NULL || data == NULL) {
+    if(this == NULL || key == NULL || data == NULL) {
         return -1;
     }
 
@@ -731,7 +730,25 @@ void* bptLookup(pBPTree this, char* key, int key_len)
         {
         i = 0;
         while (i < root->nKeys && bpt_i_Compare(key, key_len, root->Keys[i].Value, root->Keys[i].Length) >= 0) i++;
-        return bptLookup(root->Children[i].Child, key, key_len);
+        return bpt_I_Lookup(root->Children[i].Child, key, key_len);
+        }
+    }
+
+/*** recursive helper for bptLookup ***/
+void* bpt_I_Lookup(pBPNode this, char* key, int key_len) 
+    {
+    int i, cmp;
+
+    if (this->IsLeaf) 
+        {
+        i = bpt_i_Find_Key_In_Node(this, key, key_len, &cmp);
+        return ((cmp == 0) ? this->Children[i].Ref : NULL);
+        }
+    else 
+        {
+        i = 0;
+        while (i < this->nKeys && bpt_i_Compare(key, key_len, this->Keys[i].Value, this->Keys[i].Length) >= 0) i++;
+        return bpt_I_Lookup(this->Children[i].Child, key, key_len);
         }
     }
 
