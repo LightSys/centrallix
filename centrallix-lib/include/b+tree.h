@@ -26,6 +26,7 @@ typedef struct _BPK BPNodeKey, *pBPNodeKey;
 typedef union _BPV BPNodeVal, *pBPNodeVal;
 typedef struct _BPN BPNode, *pBPNode;
 typedef struct BPTree BPTree, *pBPTree;
+typedef struct _BPI BPIter, *pBPIter;
 
 //IMT: Temporary until we know data structure that will be passed to bulk load
 /*typedef struct BPTData
@@ -62,12 +63,23 @@ struct _BPN
     unsigned int		IsLeaf:1;
     };
 
+struct _BPI
+    {
+    pBPNode	Prev;
+    pBPNode	Next;
+    void*   Ref;
+    };
+
 /** Public Functions **/
 pBPTree bptNew();
 int bptInit(pBPTree this);
 int bptAdd(pBPTree this, char* key, int key_len, void* data);
 int bptRemove(pBPTree this, char* key, int key_len, int (*free_fn)(), void* free_arg);
 void* bptLookup(pBPTree this, char* key, int key_len);
+BPIter bptFront(pBPTree this);
+BPIter bptBack(pBPTree this);
+BPIter bptNext(BPIter this);
+BPIter bptPrev(BPIter this);
 int bptSize(pBPTree this);
 int bptIsEmpty(pBPTree this);
 int bptFree(pBPTree this, int (*free_fn)(), void* free_arg);
@@ -80,13 +92,12 @@ int bpt_i_Split_Child(pBPNode this, int index);                             // h
 int bpt_i_Insert_Nonfull(pBPNode this, char* key, int key_len, void* data); // helper for bptRemove
 pBPNodeKey bpt_i_FindReplacementKey(pBPNode this, char* key, int key_len);  // helper for bptRemove
 void* bpt_I_Lookup(pBPNode this, char* key, int key_len);                   // helper for bptLookup
-int bpt_i_Clear(pBPNode this, int (*free_fn)(), void* free_arg);            // used in bptRemove to free descendants
+int bpt_i_Clear(pBPNode this, int (*free_fn)(), void* free_arg);            // used in bptFree and bptDeInit
 int bptInit_I_Node(pBPNode this);                                           // helper for bpt_i_new_BPNode
 
 // functions from orig file that haven't been rechecked/implemented
 //void bpt_i_ReplaceValue(pBPNode this, char* find, int find_len, char* replace, int replace_len);
 pBPTree bptBulkLoad(char* fname, int num);
-/*int bptCreateTreeFromData(pBPNode * root, BPTData * entries, int num_entries );*/
 
 /** Temporary functions (should not exist in final version) **/
 void printTree2(pBPTree tree, int level);

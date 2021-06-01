@@ -4,6 +4,10 @@
 #include "b+tree.h"
 #include "newmalloc.h"
 
+int free_func(void* args, void* ref){
+    nmSysFree(ref);
+	return 0;
+}
 
 long long
 test(char** tname)
@@ -49,7 +53,7 @@ test(char** tname)
 		tree->size = 5;
 
 		assert (!bptIsEmpty(tree));
-		bptDeInit(tree);
+		bptDeInit(tree, free_func, NULL);
 		assert (bptIsEmpty(tree));
 		}
 
