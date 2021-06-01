@@ -65,9 +65,11 @@ struct _BPN
 
 struct _BPI
     {
-    pBPNode	Prev;
-    pBPNode	Next;
-    void*   Ref;
+    void* Ref;
+
+    pBPNode Curr;
+    int Index;
+    unsigned int Direction:1;   //0 is forward, 1 is reverse
     };
 
 /** Public Functions **/
@@ -76,10 +78,10 @@ int bptInit(pBPTree this);
 int bptAdd(pBPTree this, char* key, int key_len, void* data);
 int bptRemove(pBPTree this, char* key, int key_len, int (*free_fn)(), void* free_arg);
 void* bptLookup(pBPTree this, char* key, int key_len);
-BPIter bptFront(pBPTree this);
-BPIter bptBack(pBPTree this);
-BPIter bptNext(BPIter this);
-BPIter bptPrev(BPIter this);
+pBPIter bptFront(pBPTree this);
+pBPIter bptBack(pBPTree this);
+void bptNext(pBPIter this, int *status);
+void bptPrev(pBPIter this, int *status);
 int bptSize(pBPTree this);
 int bptIsEmpty(pBPTree this);
 int bptFree(pBPTree this, int (*free_fn)(), void* free_arg);
