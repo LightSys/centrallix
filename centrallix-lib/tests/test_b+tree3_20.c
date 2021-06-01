@@ -17,7 +17,7 @@ test(char** tname)
     *tname = "b+tree3_20 Test bptDeInit Function when allocating values automatically";
 
     int i;
-    int iter = 20000;
+    int iter = 20111;
     for (i = 0; i < iter; i++) {
         pBPTree tree1 = bptNew();
     

@@ -170,10 +170,12 @@ int
 bptAdd(pBPTree this, char* key, int key_len, void* data)
     {
     pBPNode newRoot;
-    if(this == NULL || key == NULL || data == NULL) {
+    if(this == NULL || key == NULL || data == NULL || key_len == NULL) {
         return -1;
     }
-
+    if (key_len == 0) { //If they input 0 for key_len, then set it to the length of the key
+        key_len = strlen(key);
+    }
     if (bptLookup(this, key, key_len) != NULL)
         {
         /*** Key already exists; duplicate keys can't be inserted into a B+ Tree***/
@@ -718,7 +720,11 @@ bptBack(pBPTree this)
     return iter;
     }
 
+<<<<<<< HEAD
 /*** Advances the iterator to the next leaf. Status is set to -1 if trying to advance past the end of the data ***/
+=======
+//Status is an error. If status comes back non-zero, then there is either a problem or it has reached the end
+>>>>>>> cac29630b6b384d8734f992e5c5268ab039d5381
 void
 bptNext(pBPIter this, int *status)
     {
