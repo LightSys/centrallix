@@ -82,6 +82,7 @@ pBPIter bptFront(pBPTree this);
 pBPIter bptBack(pBPTree this);
 void bptNext(pBPIter this, int *status);
 void bptPrev(pBPIter this, int *status);
+int bptIterFree(pBPIter this);
 int bptSize(pBPTree this);
 int bptIsEmpty(pBPTree this);
 int bptFree(pBPTree this, int (*free_fn)(), void* free_arg);

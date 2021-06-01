@@ -42,10 +42,13 @@ test(char** tname)
 
 	for(i=0;i<iter;i++)
 	 	{
+		printf("%08d", 0);
+
+
 		this = bptBulkLoad(fname, 10);
 		assert (this != NULL);
-		rval1 = bptLookup(this->root, "00000001", 8);
-		
+		rval1 = (char*) bptLookup(this, "00000001", 8);
+		printf("Return for \"00000001\": %s\n", rval1);
 		assert (strcmp("A", rval1) == 0);
         /*
 		rval2 = (char*) bptSearch(this, "00000009", 8);

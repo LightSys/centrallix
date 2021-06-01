@@ -720,7 +720,7 @@ bptBack(pBPTree this)
     return iter;
     }
 
-//Status is an error. If status comes back non-zero, then there is either a problem or it has reached the end
+/*** Advances the iterator to the next leaf. Status is set to -1 if trying to advance past the end of the data ***/
 void
 bptNext(pBPIter this, int *status)
     {
@@ -749,6 +749,7 @@ bptNext(pBPIter this, int *status)
     else this->Ref = this->Curr->Children[this->Index].Ref;
     }
 
+/*** Advances the iterator to the previous leaf. Status is set to -1 if trying to advance past the end of the data ***/
 void
 bptPrev(pBPIter this, int *status)
     {
@@ -774,6 +775,16 @@ bptPrev(pBPIter this, int *status)
         }
     if(this->Curr == NULL) *status = -1;
     else this->Ref = this->Curr->Children[this->Index].Ref;
+    }
+
+/*** Frees the iterator, but not any of its pointer members; those last the lifetime of the tree. ***/
+int
+bptIterFree(pBPIter this)
+    {
+    if(this == NULL) return -1;
+    
+    nmFree(this, sizeof(BPIter));
+    return 0;
     }
 
 /*** bpt_i_Clear() - Frees all keys of this node; if this is a leaf, frees all data values;
@@ -835,9 +846,11 @@ bptBulkLoad(char* fname, int num)
 		{
 		fscanf(data, "%s %[^\n]", key, leaf);
 		printf("Key: %s\nValue: %s\n",key,leaf);
-		key_val = key;
+		key_val = nmSysMalloc(10);
+        key_val = key;
+        info = nmSysMalloc(50);
         info = leaf;
-        tmp25 = bptAdd(tree, key, strlen(key), leaf);
+        tmp25 = bptAdd(tree, key_val, strlen(key_val), info);
 		if (tmp25 != 0)
 			{
 			return NULL;
