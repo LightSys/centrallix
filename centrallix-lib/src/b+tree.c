@@ -730,17 +730,22 @@ int
 bpt_i_Clear(pBPNode this, int (*free_fn)(), void *free_arg)
     {
     int i, ret;
+    ret = 0;
 
     /** Clear child subtrees first */
     if (this->IsLeaf)
         {
-        for (i = 0; i < this->nKeys; i++) free_fn(free_arg, this->Children[i].Ref);
+        for (i = 0; i < this->nKeys; i++) ret |= free_fn(free_arg, this->Children[i].Ref);
+        if(ret != 0)
+            {
+            return -2;
+            }
         }
     else
         {
         for (i = 0; i <= this->nKeys; i++)
             {
-            ret |= bpt_i_Clear(this->Children[i].Child, free_fn, free_arg); 
+            ret |= bpt_i_Clear(this->Children[i].Child, free_fn, free_arg);
             nmFree(this->Children[i].Child, sizeof(BPNode));
             }
 
