@@ -34,8 +34,8 @@ test(char** tname)
 
     int NUM_TESTS = rand() % (int)(KEY_MAX * 0.7);//20;
     printf("%d tests, numbers 0 to %d\n", NUM_TESTS, KEY_MAX-1);
-    char* FMT = malloc(10);
-    char* VAL_FMT = malloc(10);
+    char* FMT = nmMalloc(10);
+    char* VAL_FMT = nmMalloc(10);
     int NUM_DIGITS = 0;
     i=KEY_MAX;
     while (i >= 10) 
@@ -49,9 +49,9 @@ test(char** tname)
     for (i=0; i<NUM_TESTS; i++) 
         {
         val = rand() % KEY_MAX;
-        k = malloc(sizeof(char)*(NUM_DIGITS+1));
+        k = nmMalloc(sizeof(char)*(NUM_DIGITS+1));
         sprintf(k, FMT, val);
-        d = malloc(sizeof(char)*(NUM_DIGITS+4));
+        d = nmMalloc(sizeof(char)*(NUM_DIGITS+4));
         sprintf(d, VAL_FMT, val);
         if (bptAdd(t, k, strlen(k)+1, d) < 0) free (d);  // free data if insert failed because that key already existed
         
@@ -72,7 +72,7 @@ test(char** tname)
     while (t->root->nKeys > 0) //for (i=NUM_TESTS; i>0 && t->root->nKeys > 0; i--) 
         {
         val = rand() % KEY_MAX;
-        k = malloc(sizeof(char)*(NUM_DIGITS+1));
+        k = nmMalloc(sizeof(char)*(NUM_DIGITS+1));
         sprintf(k, FMT, val);
         bptRemove(t, k, strlen(k)+1, bpt_dummy_freeFn, NULL);
         

@@ -8,7 +8,7 @@
 
 // dummy free function
 int bpt_dummy_freeFn(void* arg, void* ptr) {
-    free(ptr);
+    nmFree(ptr, sizeof(int));
     return 0;
 }
 
@@ -20,10 +20,10 @@ test(char** tname)
    int y;
    pBPTree this = bptNew();
 
-   int *info1 = malloc(sizeof(int));
-   int *info2 = malloc(sizeof(int));
-   int *info3 = malloc(sizeof(int));
-   int *info4 = malloc(sizeof(int));
+   int *info1 = nmMalloc(sizeof(int));
+   int *info2 = nmMalloc(sizeof(int));
+   int *info3 = nmMalloc(sizeof(int));
+   int *info4 = nmMalloc(sizeof(int));
 
    *info1 = 10;
    *info2 = 20;

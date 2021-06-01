@@ -16,7 +16,7 @@ test(char** tname)
 	int t;
     int iter;
 	pBPTree tree = bptNew();
-	char* key = malloc(2);
+	char* key = nmMalloc(2);
 	int *val;
 
 
@@ -26,7 +26,7 @@ test(char** tname)
 	iter = 20000;
 	for(i=0;i<iter;i++)
 	    {	
-		val = malloc(sizeof(int));
+		val = nmMalloc(sizeof(int));
 		*val = i;
 		sprintf(key, "%d", *val);
 		bptAdd(tree, key, 5, val);

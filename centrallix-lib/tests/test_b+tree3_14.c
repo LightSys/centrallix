@@ -18,7 +18,7 @@ test(char** tname)
     int y;
 
 
-    *tname = "b+tree3_11 Test bptDeInit Function at 2 levels";
+    *tname = "b+tree3_14 Test bptDeInit Function at 3 levels";
     pBPTree tree = bptNew();
 
     
@@ -27,14 +27,27 @@ test(char** tname)
     *info1 = 10;
 
     int *info2 = nmMalloc(sizeof(int));
-    *info1 = 20;
+    *info2 = 20;
 
     int *info3 = nmMalloc(sizeof(int));
-    *info1 = 30;
+    *info3 = 30;
+
+    int *info4 = nmMalloc(sizeof(int));
+    *info4 = 40;
+
+    int *info5 = nmMalloc(sizeof(int));
+    *info5 = 50;
+
+    int *info6 = nmMalloc(sizeof(int));
+    *info6 = 60;
 
     bptAdd(tree, "0001", 4, info1);
     bptAdd(tree, "0002", 4, info2);
     bptAdd(tree, "0003", 4, info3);
+    bptAdd(tree, "0004", 4, info4);
+    bptAdd(tree, "0005", 4, info5);
+    bptAdd(tree, "0006", 4, info6);
+    
 
     y = bptDeInit(tree, free_func, NULL);
 
