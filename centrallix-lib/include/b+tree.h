@@ -80,6 +80,7 @@ int bptRemove(pBPTree this, char* key, int key_len, int (*free_fn)(), void* free
 void* bptLookup(pBPTree this, char* key, int key_len);
 pBPIter bptFront(pBPTree this);
 pBPIter bptBack(pBPTree this);
+pBPIter bptFromLookup(pBPTree this, int direction, char* key, int key_len);
 void bptNext(pBPIter this, int *status);
 void bptPrev(pBPIter this, int *status);
 int bptIterFree(pBPIter this);
@@ -95,6 +96,7 @@ int bpt_i_Split_Child(pBPNode this, int index);                             // h
 int bpt_i_Insert_Nonfull(pBPNode this, char* key, int key_len, void* data); // helper for bptRemove
 pBPNodeKey bpt_i_FindReplacementKey(pBPNode this, char* key, int key_len);  // helper for bptRemove
 void* bpt_I_Lookup(pBPNode this, char* key, int key_len);                   // helper for bptLookup
+pBPNode bpt_I_LookupNode(pBPNode this, char* key, int key_len);             // helper for bptFromLookup
 int bpt_i_Clear(pBPNode this, int (*free_fn)(), void* free_arg);            // used in bptFree and bptDeInit
 int bptInit_I_Node(pBPNode this);                                           // helper for bpt_i_new_BPNode
 

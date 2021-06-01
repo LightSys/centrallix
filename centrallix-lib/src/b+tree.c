@@ -682,6 +682,26 @@ void* bpt_I_Lookup(pBPNode this, char* key, int key_len)
         return bpt_I_Lookup(this->Children[i].Child, key, key_len);
         }
     }
+
+pBPNode
+bpt_I_LookupNode(pBPNode this, char* key, int key_len) 
+    {
+    int i, cmp;
+
+    if (this->IsLeaf) 
+        {
+        i = bpt_i_Find_Key_In_Node(this, key, key_len, &cmp);
+        return ((cmp == 0) ? this : NULL);
+        }
+    else 
+        {
+        i = 0;
+        while (i < this->nKeys && bpt_i_Compare(key, key_len, this->Keys[i].Value, this->Keys[i].Length) >= 0) i++;
+        return bpt_I_Lookup(this->Children[i].Child, key, key_len);
+        }
+    }
+
+
 /*** Creates a forward iterator for the leaves of the tree starting at the first leaf ***/
 pBPIter
 bptFront(pBPTree this)
@@ -718,6 +738,49 @@ bptBack(pBPTree this)
     iter->Index = curr->nKeys - 1;
     iter->Ref = curr->Children[iter->Index].Ref;
     return iter;
+    }
+
+pBPIter
+bptFromLookup(pBPTree this, int direction, char* key, int key_len)
+    {
+    int i, cmp;
+    pBPNode root = this->root;
+
+
+    if (root->IsLeaf) 
+        {
+        i = bpt_i_Find_Key_In_Node(root, key, key_len, &cmp);
+        if(cmp == 0)
+            {
+            pBPIter iter = nmMalloc(sizeof(BPIter));
+            if(!iter) return NULL;
+
+            iter->Curr = root;
+            iter->Direction = direction;
+            iter->Index = i;
+            iter->Ref = root->Children[iter->Index].Ref;
+            return iter;
+            }
+        else return NULL;
+        }
+    else
+        {
+        i = 0;
+        while (i < root->nKeys && bpt_i_Compare(key, key_len, root->Keys[i].Value, root->Keys[i].Length) >= 0) i++;
+        pBPNode curr = bpt_I_LookupNode(root->Children[i].Child, key, key_len);
+        if(curr != NULL)
+            {
+            pBPIter iter = nmMalloc(sizeof(BPIter));
+            if(!iter) return NULL;            
+
+            iter->Curr = curr;
+            iter->Direction = direction;
+            iter->Index = bpt_i_Find_Key_In_Node(curr, key, key_len, &cmp);
+            iter->Ref = curr->Children[iter->Index].Ref;
+            return iter;
+            }
+        else return NULL;
+        }
     }
 
 /*** Advances the iterator to the next leaf. Status is set to -1 if trying to advance past the end of the data ***/
@@ -782,7 +845,7 @@ int
 bptIterFree(pBPIter this)
     {
     if(this == NULL) return -1;
-    
+
     nmFree(this, sizeof(BPIter));
     return 0;
     }
