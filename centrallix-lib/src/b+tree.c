@@ -720,6 +720,7 @@ bptBack(pBPTree this)
     return iter;
     }
 
+//Status is an error. If status comes back non-zero, then there is either a problem or it has reached the end
 void
 bptNext(pBPIter this, int *status)
     {
