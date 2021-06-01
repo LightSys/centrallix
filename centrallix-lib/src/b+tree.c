@@ -718,6 +718,7 @@ bptBack(pBPTree this)
     return iter;
     }
 
+/*** Advances the iterator to the next leaf. Status is set to -1 if trying to advance past the end of the data ***/
 void
 bptNext(pBPIter this, int *status)
     {
@@ -746,6 +747,7 @@ bptNext(pBPIter this, int *status)
     else this->Ref = this->Curr->Children[this->Index].Ref;
     }
 
+/*** Advances the iterator to the previous leaf. Status is set to -1 if trying to advance past the end of the data ***/
 void
 bptPrev(pBPIter this, int *status)
     {
@@ -832,9 +834,11 @@ bptBulkLoad(char* fname, int num)
 		{
 		fscanf(data, "%s %[^\n]", key, leaf);
 		printf("Key: %s\nValue: %s\n",key,leaf);
-		key_val = key;
+		key_val = nmSysMalloc(10);
+        key_val = key;
+        info = nmSysMalloc(50);
         info = leaf;
-        tmp25 = bptAdd(tree, key, strlen(key), leaf);
+        tmp25 = bptAdd(tree, key_val, strlen(key_val), info);
 		if (tmp25 != 0)
 			{
 			return NULL;
