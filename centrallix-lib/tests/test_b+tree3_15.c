@@ -36,7 +36,6 @@ test(char** tname)
     //There has been an issue with bptDeInit. It seems to originate in bpt_i_clear, based on the error message
     y = bptDeInit(tree, free_func, NULL);
 
-    printf("%d\n", y);
 
     assert(y == 0);
 

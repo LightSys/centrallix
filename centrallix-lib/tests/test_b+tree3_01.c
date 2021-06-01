@@ -37,19 +37,8 @@ test(char** tname)
    }
 
 
-//This shows the tree printed out initially
-   printTree(this->root, 2);
-   printf("\n");
-
    ret = bptRemove(this, "Key1", 4, bpt_dummy_freeFn, NULL);
 
-//This shows the tree printed out after the leaf has been removed
-   printTree(this->root, 2);
-   printf("\n");
-
-//I added this in to debug, so I can see whether or 
-   printf("%d", ret);
-   printf("\n");
 
    assert(ret == 0);
 
