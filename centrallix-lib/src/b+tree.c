@@ -681,47 +681,99 @@ void* bpt_I_Lookup(pBPNode this, char* key, int key_len)
         return bpt_I_Lookup(this->Children[i].Child, key, key_len);
         }
     }
-
-BPIter
+/*** Creates a forward iterator for the leaves of the tree starting at the first leaf ***/
+pBPIter
 bptFront(pBPTree this)
     {
+    pBPIter iter = nmMalloc(sizeof(BPIter));
+    if(!iter) return NULL;
+    
     pBPNode curr = this->root;
     while(!curr->IsLeaf)
         {
         curr = curr->Children[0].Child;
         }
-    BPIter iter = {curr->Prev, curr->Next, curr->Children[0].Ref};
+    iter->Curr = curr;
+    iter->Direction = 0;
+    iter->Index = 0;
+    iter->Ref = curr->Children[iter->Index].Ref;
     return iter;
     }
 
-BPIter
+/*** Creates a reverse iterator for the leaves of the tree starting at the last leaf ***/
+pBPIter
 bptBack(pBPTree this)
     {
+    pBPIter iter = nmMalloc(sizeof(BPIter));
+    if(!iter) return NULL;
+    
     pBPNode curr = this->root;
     while(!curr->IsLeaf)
         {
         curr = curr->Children[curr->nKeys].Child;
         }
-    BPIter iter = {curr->Prev, curr->Next, curr->Children[curr->nKeys].Ref};
-    return iter;
-    }
-/*  TODO : finish functions
-BPIter
-bptNext(BPIter this)
-    {
-    pBPNode next = this.Next;
-    BPIter iter = {next->Prev, next->Next, next->Children[next->nKeys].Ref};
+    iter->Curr = curr;
+    iter->Direction = 1;
+    iter->Index = curr->nKeys - 1;
+    iter->Ref = curr->Children[iter->Index].Ref;
     return iter;
     }
 
-BPIter
-bptPrev(BPIter this)
+void
+bptNext(pBPIter this, int *status)
     {
-    pBPNode prev = this.Prev;
-    BPIter iter = {prev->Prev, prev->Next, prev->Children[prev->nKeys].Ref};
-    return iter;
+    //forward
+    if(this->Direction == 0)
+        {
+        if(this->Index + 1 == this->Curr->nKeys)
+            {
+            this->Index = 0;
+            this->Curr = this->Curr->Next;
+            }
+        else this->Index++;
+        }
+    //reverse
+    else
+        {
+        if(this->Index == 0)
+            {
+            this->Index = this->Curr->Prev->nKeys - 1;
+            this->Curr = this->Curr->Prev;
+            }
+        else this->Index--;
+        }
+
+    if(this->Curr == NULL) *status = -1;
+    else this->Ref = this->Curr->Children[this->Index].Ref;
     }
-*/
+
+void
+bptPrev(pBPIter this, int *status)
+    {
+    //reverse
+    if(this->Direction == 1)
+        {
+        if(this->Index + 1 == this->Curr->nKeys)
+            {
+            this->Index = 0;
+            this->Curr = this->Curr->Next;
+            }
+        else this->Index++;
+        }
+    //forward
+    else
+        {
+        if(this->Index == 0)
+            {
+            this->Index = this->Curr->Prev->nKeys - 1;
+            this->Curr = this->Curr->Prev;
+            }
+        else this->Index--;
+        }
+    if(this->Curr == NULL) *status = -1;
+    else this->Ref = this->Curr->Children[this->Index].Ref;
+    }
+
 /*** bpt_i_Clear() - Frees all keys of this node; if this is a leaf, frees all data values;
  *** if not leaf, calls bptClear on children and frees child nodes.
  *** Calls the provided free_fn for each data value, as:  free_fn(free_arg, value)
