@@ -15,7 +15,7 @@ int free_func(void* args, void* ref){
 long long
 test(char** tname)
    	{
-    *tname = "b+tree3_38 Test the status part of bptnext";
+    *tname = "b+tree3_39 Test that a new iterator will work when data is deleted";
 
     int i;
 
@@ -102,7 +102,7 @@ test(char** tname)
     pBPIter iterator = bptFront(tree);
 
     assert(iterator->Ref == info1);
-    
+
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0001") == 0);
     bptNext(iterator, &status);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0002") == 0);
@@ -138,8 +138,47 @@ test(char** tname)
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0017") == 0);
     bptNext(iterator, &status);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0018") == 0);
-    bptNext(iterator, &status);
-    assert(status != 0);
+
+    bptRemove(tree, "0009", 4, free_func, NULL);
+
+    pBPIter newIter = bptFront(tree);
+    status = 0;
+
+     assert(strcmp(newIter->Curr->Keys[newIter->Index].Value, "0001") == 0);
+    bptNext(newIter, &status);
+    assert(strcmp(newIter->Curr->Keys[newIter->Index].Value, "0002") == 0);
+    bptNext(newIter, &status);
+    assert(strcmp(newIter->Curr->Keys[newIter->Index].Value, "0003") == 0);
+    bptNext(newIter, &status);
+    assert(strcmp(newIter->Curr->Keys[newIter->Index].Value, "0004") == 0);
+    bptNext(newIter, &status);
+    assert(strcmp(newIter->Curr->Keys[newIter->Index].Value, "0005") == 0);
+    bptNext(newIter, &status);
+    assert(strcmp(newIter->Curr->Keys[newIter->Index].Value, "0006") == 0);
+    bptNext(newIter, &status);
+    assert(strcmp(newIter->Curr->Keys[newIter->Index].Value, "0007") == 0);
+    bptNext(newIter, &status);
+    assert(strcmp(newIter->Curr->Keys[newIter->Index].Value, "0008") == 0);
+    bptNext(newIter, &status);
+    assert(strcmp(newIter->Curr->Keys[newIter->Index].Value, "0010") == 0);
+    bptNext(newIter, &status);
+    assert(strcmp(newIter->Curr->Keys[newIter->Index].Value, "0011") == 0);
+    bptNext(newIter, &status);
+    assert(strcmp(newIter->Curr->Keys[newIter->Index].Value, "0012") == 0);
+    bptNext(newIter, &status);
+    assert(strcmp(newIter->Curr->Keys[newIter->Index].Value, "0013") == 0);
+    bptNext(newIter, &status);
+    assert(strcmp(newIter->Curr->Keys[newIter->Index].Value, "0014") == 0);
+    bptNext(newIter, &status);
+    assert(strcmp(newIter->Curr->Keys[newIter->Index].Value, "0015") == 0);
+    bptNext(newIter, &status);
+    assert(strcmp(newIter->Curr->Keys[newIter->Index].Value, "0016") == 0);
+    bptNext(newIter, &status);
+    assert(strcmp(newIter->Curr->Keys[newIter->Index].Value, "0017") == 0);
+    bptNext(newIter, &status);
+    assert(strcmp(newIter->Curr->Keys[newIter->Index].Value, "0018") == 0);
+
+
 
     //This next part is just to avoid a floating point error
     
