@@ -595,7 +595,6 @@ bptDeInit(pBPTree this, int (*free_fn)(), void* free_arg)
 
     /** Deallocate children **/
     ret = bpt_i_Clear(root, free_fn, free_arg);
-    printf("%d\n", ret);
     if(ret != 0) return -2;
 
     this->size = 0;
