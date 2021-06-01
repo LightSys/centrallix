@@ -8,13 +8,13 @@
 
 int free_func(void* args, void* ref){
     nmFree(ref, sizeof(int));
-    return 0;
+    return -1;
 }
 
 long long
 test(char** tname)
    	{
-    *tname = "b+tree3_15 Test bptDeInit Function at a lot of levels, as well as testing adding in a lot of nodes to the tree";
+    *tname = "b+tree3_24 test bptDeInit to see if bpt_i_Clear returns -1 if the free func returns -1 (which would make bptDeInit return -2)";
     pBPTree tree = bptNew();
     int y;
     int as;
@@ -37,7 +37,7 @@ test(char** tname)
     y = bptDeInit(tree, free_func, NULL);
 
 
-    assert(y == 0);
+    assert(y == -2);
 
     
     //This next part is just to avoid a floating point error
