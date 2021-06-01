@@ -170,10 +170,12 @@ int
 bptAdd(pBPTree this, char* key, int key_len, void* data)
     {
     pBPNode newRoot;
-    if(this == NULL || key == NULL || data == NULL) {
+    if(this == NULL || key == NULL || data == NULL || key_len == NULL) {
         return -1;
     }
-
+    if (key_len == 0) { //If they input 0 for key_len, then set it to the length of the key
+        key_len = strlen(key);
+    }
     if (bptLookup(this, key, key_len) != NULL)
         {
         /*** Key already exists; duplicate keys can't be inserted into a B+ Tree***/
