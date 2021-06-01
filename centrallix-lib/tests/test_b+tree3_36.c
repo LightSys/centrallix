@@ -55,6 +55,31 @@ test(char** tname)
     int *info10 = nmMalloc(sizeof(int));
     *info6 = 100;
 
+     int *info11 = nmMalloc(sizeof(int));
+    *info6 = 110;
+
+     int *info12 = nmMalloc(sizeof(int));
+    *info6 = 120;
+
+     int *info13 = nmMalloc(sizeof(int));
+    *info6 = 130;
+
+     int *info14 = nmMalloc(sizeof(int));
+    *info6 = 140;
+
+     int *info15 = nmMalloc(sizeof(int));
+    *info6 = 150;
+
+     int *info16 = nmMalloc(sizeof(int));
+    *info6 = 160;
+
+     int *info17 = nmMalloc(sizeof(int));
+    *info6 = 170;
+
+     int *info18 = nmMalloc(sizeof(int));
+    *info6 = 180;
+
+
     bptAdd(tree, "0001", 4, info1);
     bptAdd(tree, "0002", 4, info2);
     bptAdd(tree, "0003", 4, info3);
@@ -65,40 +90,54 @@ test(char** tname)
     bptAdd(tree, "0008", 4, info8);
     bptAdd(tree, "0009", 4, info9);
     bptAdd(tree, "0010", 4, info10);
+    bptAdd(tree, "0011", 4, info11);
+    bptAdd(tree, "0012", 4, info12);
+    bptAdd(tree, "0013", 4, info13);
+    bptAdd(tree, "0014", 4, info14);
+    bptAdd(tree, "0015", 4, info15);
+    bptAdd(tree, "0016", 4, info16);
+    bptAdd(tree, "0017", 4, info17);
+    bptAdd(tree, "0018", 4, info18);
     
     pBPIter iterator = bptFront(tree);
 
     assert(iterator->Ref == info1);
     
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0001") == 0);
-    printf("%d\n", iterator->Index);
     bptNext(iterator, status);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0002") == 0);
-    printf("%d\n", iterator->Index);
     bptNext(iterator, status);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0003") == 0);
-    printf("%d\n", iterator->Index);
     bptNext(iterator, status);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0004") == 0);
-    printf("%d\n", iterator->Index);
     bptNext(iterator, status);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0005") == 0);
-    printf("%d\n", iterator->Index);
     bptNext(iterator, status);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0006") == 0);
-    printf("%d\n", iterator->Index);
     bptNext(iterator, status);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0007") == 0);
-    printf("%d\n", iterator->Index);
     bptNext(iterator, status);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0008") == 0);
-    printf("%d\n", iterator->Index);
     bptNext(iterator, status);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0009") == 0);
-    printf("%d\n", iterator->Index);
     bptNext(iterator, status);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0010") == 0);
-    printf("%d\n", iterator->Index);
+    bptNext(iterator, status);
+    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0011") == 0);
+    bptNext(iterator, status);
+    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0012") == 0);
+    bptNext(iterator, status);
+    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0013") == 0);
+    bptNext(iterator, status);
+    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0014") == 0);
+    bptNext(iterator, status);
+    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0015") == 0);
+    bptNext(iterator, status);
+    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0016") == 0);
+    bptNext(iterator, status);
+    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0017") == 0);
+    bptNext(iterator, status);
+    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0018") == 0);
 
     //This next part is just to avoid a floating point error
     

@@ -47,7 +47,6 @@ test(char** tname)
     bptAdd(tree, "0006", 4, info6);
 
     pBPIter iterator = bptFront(tree);
-    printf("%s\n", iterator->Curr->Keys[0].Value);
     assert(strcmp(iterator->Curr->Keys[0].Value, "0001") == 0);
 
     
