@@ -78,6 +78,9 @@ bpt_i_Split_Child(pBPNode this, int index)
         {
         memmove(newChild->Keys, &oldChild->Keys[newChild->nKeys], newChild->nKeys * sizeof(newChild->Keys[0]));
         memmove(newChild->Children, &oldChild->Children[oldChild->nKeys], newChild->nKeys * sizeof(newChild->Children[0]));
+        newChild->Next = oldChild->Next;
+        newChild->Prev = oldChild;
+        oldChild->Next = newChild;
         }
     else 
         {
@@ -454,13 +457,11 @@ bptRemove(pBPTree tree, char* key, int key_len, int (*free_fn)(), void* free_arg
                             mergeThis = searchNext;
                             searchNext = prev;
                             nNIndex--;
-                            //searchNext->Next = mergeThis->Next;
                             }
                         else                
                             {
                             /* merge searchNext, successor */
                             mergeThis = next;
-                            //searchNext->Next = mergeThis->Next;
                             }
 
                         if (searchNext->IsLeaf)
@@ -468,6 +469,9 @@ bptRemove(pBPTree tree, char* key, int key_len, int (*free_fn)(), void* free_arg
                             memmove(&searchNext->Keys[searchNext->nKeys], mergeThis->Keys, sizeof(mergeThis->Keys[0]) * mergeThis->nKeys);
                             memmove(&searchNext->Children[searchNext->nKeys], mergeThis->Children, sizeof(mergeThis->Children[0]) * (mergeThis->nKeys+1));
                             searchNext->nKeys += mergeThis->nKeys;
+                            //fix next and prev pointers
+                            searchNext->Next = mergeThis->Next;
+                            mergeThis->Next->Prev=searchNext;
                             }
                         else 
                             {
@@ -490,14 +494,14 @@ bptRemove(pBPTree tree, char* key, int key_len, int (*free_fn)(), void* free_arg
                                 {
                                 tree->root = searchNext;
                                 //For adding sibs in
-                                //tree->root->Next = NULL;
-                                //tree->root->Prev = NULL;
+                                tree->root->Next = NULL;
+                                tree->root->Prev = NULL;
                                 }
                             else
                                 {
                                 //For adding sibs in
-                                //searchNext->Prev = this->Prev;
-                                //searchNext->Next = this->Next;
+                                searchNext->Prev = this->Prev;  //TODO: Could this->Prev be replaced with NULL?
+                                searchNext->Next = this->Next;  //      Could this->Next be replaced with NULL?
                                 parent->Children[thisIndex].Child = searchNext;
                                 }
                             nmFree(this, sizeof(BPNode));
@@ -678,6 +682,46 @@ void* bpt_I_Lookup(pBPNode this, char* key, int key_len)
         }
     }
 
+BPIter
+bptFront(pBPTree this)
+    {
+    pBPNode curr = this->root;
+    while(!curr->IsLeaf)
+        {
+        curr = curr->Children[0].Child;
+        }
+    BPIter iter = {curr->Prev, curr->Next, curr->Children[0].Ref};
+    return iter;
+    }
+
+BPIter
+bptBack(pBPTree this)
+    {
+    pBPNode curr = this->root;
+    while(!curr->IsLeaf)
+        {
+        curr = curr->Children[curr->nKeys].Child;
+        }
+    BPIter iter = {curr->Prev, curr->Next, curr->Children[curr->nKeys].Ref};
+    return iter;
+    }
+/*  TODO : finish functions
+BPIter
+bptNext(BPIter this)
+    {
+    pBPNode next = this.Next;
+    BPIter iter = {next->Prev, next->Next, next->Children[next->nKeys].Ref};
+    return iter;
+    }
+
+BPIter
+bptPrev(BPIter this)
+    {
+    pBPNode prev = this.Prev;
+    BPIter iter = {prev->Prev, prev->Next, prev->Children[prev->nKeys].Ref};
+    return iter;
+    }
+*/
 /*** bpt_i_Clear() - Frees all keys of this node; if this is a leaf, frees all data values;
  *** if not leaf, calls bptClear on children and frees child nodes.
  *** Calls the provided free_fn for each data value, as:  free_fn(free_arg, value)
@@ -686,17 +730,22 @@ int
 bpt_i_Clear(pBPNode this, int (*free_fn)(), void *free_arg)
     {
     int i, ret;
+    ret = 0;
 
     /** Clear child subtrees first */
     if (this->IsLeaf)
         {
-        for (i = 0; i < this->nKeys; i++) free_fn(free_arg, this->Children[i].Ref);
+        for (i = 0; i < this->nKeys; i++) ret |= free_fn(free_arg, this->Children[i].Ref);
+        if(ret != 0)
+            {
+            return -2;
+            }
         }
     else
         {
         for (i = 0; i <= this->nKeys; i++)
             {
-            ret |= bpt_i_Clear(this->Children[i].Child, free_fn, free_arg); 
+            ret |= bpt_i_Clear(this->Children[i].Child, free_fn, free_arg);
             nmFree(this->Children[i].Child, sizeof(BPNode));
             }
 
