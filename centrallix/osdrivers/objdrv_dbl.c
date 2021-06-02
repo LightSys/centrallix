@@ -1627,6 +1627,7 @@ dbl_internal_ParseColumn(pDblColInf column, pObjData pod, char* data, char* row_
     char dtbuf[32];
     unsigned long long v;
     int i,f;
+    double decimalOffsetValue = 10000;
 
 	switch(column->Type)
 	    {
@@ -1649,19 +1650,16 @@ dbl_internal_ParseColumn(pDblColInf column, pObjData pod, char* data, char* row_
 		if (column->DecimalOffset) pod->Double /= pow(10, column->DecimalOffset);
 		break;
 	    case DATA_T_MONEY:
-		if (dbl_internal_MappedCopy(ibuf, sizeof(ibuf), column, row_data) < 0) return -1;
-		v = strtoll(ibuf, NULL, 10);
-		f = 1;
-		for(i=0;i<column->DecimalOffset;i++) f *= 10;
-		pod->Money = (pMoneyType)data;
-		pod->Money->Value = (v/f) * 10000;
-		v = (v/f)*f;
-		if (column->DecimalOffset <= 4)
-		    for(i=column->DecimalOffset;i<4;i++) v *= 10;
-		else
-		    for(i=4;i<column->DecimalOffset;i++) v /= 10;
-		pod->Money->Value += v;
-		break;
+            //decimalOffsetValue is originally 10000 to convert v to 10000ths of a dollar
+            //decimalOffsetValue is divided by 10, column->DecimalOffset times,
+            //keeping the decimal as a double in case it drops below 0
+            //Finally, I multiple v by decimalOffsetValue to get my Money->Value
+            if (dbl_internal_MappedCopy(ibuf, sizeof(ibuf), column, row_data) < 0) return -1;
+            v = strtoll(ibuf, NULL, 10);
+            decimalOffsetValue /= pow(10, column->DecimalOffset);
+            pod->Money = (pMoneyType)data;
+            pod->Money->Value = (v*decimalOffsetValue)+ 0.1;
+            break;
 	    default:
 		mssError(1, "DBL", "Bark!  Unhandled data type for column '%s'", column->Name);
 		return -1;
