@@ -15,7 +15,7 @@ long long
 test(char** tname)
    	{
 
-    int* status = 0;
+    int status = 0;
     
     *tname = "b+tree3_34 Ensuring that Iterator's Next Function Always goes to the next (On front iterator)";
     pBPTree tree = bptNew();
@@ -49,15 +49,15 @@ test(char** tname)
 
     pBPIter iterator = bptFront(tree);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0001") == 0);
-    bptNext(iterator, status);
+    bptNext(iterator, &status);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0002") == 0);
-    bptNext(iterator, status);
+    bptNext(iterator, &status);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0003") == 0);
-    bptNext(iterator, status);
+    bptNext(iterator, &status);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0004") == 0);
-    bptNext(iterator, status);
+    bptNext(iterator, &status);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0005") == 0);
-    bptNext(iterator, status);
+    bptNext(iterator, &status);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0006") == 0);
 
     
