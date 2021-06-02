@@ -1,6 +1,4 @@
 // TODO figure out what we want bptSearch to return (other than NULL for not found)
-//I am Zac!
-
 
 #ifdef HAVE_CONFIG_H
 #include "cxlibconfig-internal.h"
@@ -13,25 +11,24 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
-
 #include "b+tree.h"
 #include "newmalloc.h"
 
-/************************************************************************/
-/* Centrallix Application Server System 				*/
-/* Centrallix Base Library						*/
-/* 									*/
-/* Copyright (C) 1998-2020 LightSys Technology Services, Inc.		*/
-/* 									*/
-/* You may use these files and this library under the terms of the	*/
-/* GNU Lesser General Public License, Version 2.1, contained in the	*/
-/* included file "COPYING".						*/
-/* 									*/
-/* Module: 	b+tree.c, b+tree.h  					*/
-/* Author:	Greg Beeley (GRB)					*/
-/* Creation:	September 11, 2019					*/
-/* Description:	B+ Tree implementation.					*/
-/************************************************************************/
+/************************************************************************\
+|* Centrallix Application Server System 				                *|
+|* Centrallix Base Library						                        *|
+|* 									                                    *|
+|* Copyright (C) 1998-2020 LightSys Technology Services, Inc.		    *|
+|* 									                                    *|
+|* You may use these files and this library under the terms of the	    *|
+|* GNU Lesser General Public License, Version 2.1, contained in the	    *|
+|* included file "COPYING".						                        *|
+|*                             									        *|
+|* Module: 	b+tree.c, b+tree.h  					                    *|
+|* Author:	Greg Beeley (GRB)					                        *|
+|* Creation:	September 11, 2019					                    *|
+|* Description:	B+ Tree implementation.					                *|
+\************************************************************************/
 
 /*** Return pointer to newly allocated and initialized BPNode, or NULL if fails ***/
 pBPNode 
