@@ -41,7 +41,7 @@ test(char** tname)
 
 
     int x = 1;
-	for(i=0;i<100000000;i++)
+	for(i=0;i<100001100;i++)
 	    {
         x++;
 		
