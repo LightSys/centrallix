@@ -23,8 +23,8 @@ test(char** tname)
 	assert (bptIsEmpty(tree));
 	iter = 2000;
 	for(i=0;i<iter;i++)
-	    {	
-		for(j = 0; j < 1000; j++)
+	    {
+		for(j = 0; j < 100; j++)
 			{
 			key = nmSysMalloc(len + 1);
 			int* data = nmMalloc(sizeof(int));
@@ -34,14 +34,15 @@ test(char** tname)
 			nmSysFree(key);
 			assert(ret == 0);
 			}
-		
-		for(j = 0; j < 1000; j++)
+		for(j = 0; j < 100; j++)
 			{
 			key = nmSysMalloc(len + 1);
 			sprintf(key, "%010d", j);
 			ret = bptRemove(tree, key, len, free_func, NULL);
+			
 			nmSysFree(key);
 			assert(ret == 0);
+			
 			}
 		}
     return iter * 2000;

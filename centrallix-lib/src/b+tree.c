@@ -469,7 +469,8 @@ bptRemove(pBPTree tree, char* key, int key_len, int (*free_fn)(), void* free_arg
                         searchNext->nKeys += mergeThis->nKeys;
                         //fix next and prev pointers
                         searchNext->Next = mergeThis->Next;
-                        mergeThis->Next->Prev=searchNext;
+                        if(mergeThis->Next) mergeThis->Next->Prev=searchNext;
+                        
                         }
                     else 
                         {
@@ -480,6 +481,7 @@ bptRemove(pBPTree tree, char* key, int key_len, int (*free_fn)(), void* free_arg
                         }
 
                     /* remove key and mergeThis from this */
+                    
                     memmove(&this->Keys[i], &this->Keys[i+1], sizeof(this->Keys[0]) * ((this->nKeys-1)-i));
                     memmove(&this->Children[i+1], &this->Children[i+2], sizeof(this->Children[0]) * (this->nKeys-(i+1)));
                     this->nKeys--;
