@@ -12,15 +12,16 @@ int free_func(void* args, void* ref){
 long long
 test(char** tname)
     {
-    int i, j, ret, count, err;
+    int i, j, ret, err;
     int iter;
 	pBPTree tree = bptNew();
-	char* key;
+	char *key;
 	int len = 10;
+	int *val, *prev_val;
 
 	pBPIter tree_iter;
 
-	*tname = "b+tree-58 test leaf linked list is always intact";
+	*tname = "b+tree-59 test leaf linked list is in order";
 
 	assert (bptIsEmpty(tree));
 	iter = 2000;
@@ -36,15 +37,17 @@ test(char** tname)
 			nmSysFree(key);
 			assert(ret == 0);
 
-			count = 0;
+			prev_val = nmMalloc(sizeof(int));
+			*prev_val = -1;
 			err = 0;
 			tree_iter = bptFront(tree);
 			while(!err)
 				{
+				val = tree_iter->Ref;
+				assert(*prev_val < *val);
+				prev_val = val;
 				bptNext(tree_iter, &err);
-				count++;
 				}
-				assert(count == j + 1);
 			}
 		for(j = 0; j < 100; j++)
 			{
@@ -55,15 +58,17 @@ test(char** tname)
 			nmSysFree(key);
 			assert(ret == 0);
 			
-			count = 0;
+			prev_val = nmMalloc(sizeof(int));
+			*prev_val = -1;
 			err = 0;
 			tree_iter = bptFront(tree);
 			while(tree_iter && !err)
 				{
+				val = tree_iter->Ref;
+				assert(*prev_val < *val);
+				prev_val = val;
 				bptNext(tree_iter, &err);
-				count++;
 				}
-				assert(count == 100 - j - 1);
 			}
 		}
     return iter * 2000;
