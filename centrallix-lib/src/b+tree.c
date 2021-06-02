@@ -1,5 +1,4 @@
 // TODO figure out what we want bptSearch to return (other than NULL for not found)
-// TODO set prev and next pointers
 //I am Zac!
 
 
@@ -165,17 +164,16 @@ bptNew()
     return this;
     }
 
-/*** bptAdd(T, k, v) - insert k,v into tree T in a single pass down the tree ***/
+/*** bptAdd(T, k, L, v) - insert k (of length L),v into tree T in a single pass down the tree ***/
 int
 bptAdd(pBPTree this, char* key, int key_len, void* data)
     {
     pBPNode newRoot;
-    if(this == NULL || key == NULL || data == NULL || key_len == NULL) {
-        return -1;
-    }
-    if (key_len == 0) { //If they input 0 for key_len, then set it to the length of the key
-        key_len = strlen(key);
-    }
+    if(this == NULL || key == NULL || data == NULL) return -1;
+    
+    //If they input 0 for key_len, then set it to the length of the key
+    if (key_len == 0) key_len = strlen(key);
+    
     if (bptLookup(this, key, key_len) != NULL)
         {
         /*** Key already exists; duplicate keys can't be inserted into a B+ Tree***/
@@ -209,7 +207,7 @@ bptAdd(pBPTree this, char* key, int key_len, void* data)
  * returns the index i that key is at in node and updates cmp to the result of the comparison.
  * ***/
 int
-bpt_i_Find_Key_In_Node(BPNode * node, char * key, int key_len, int * cmp)
+bpt_i_Find_Key_In_Node(pBPNode node, char * key, int key_len, int * cmp)
 {
     int i, curr_cmp;
 
@@ -235,7 +233,7 @@ L: Length of K
 free(): Some free function
 D: a pointer for the data; can be any data type
 
-For int (*free_fn), we understand it is difficult to know what to pass in there. Here's an example of a simple dummy free function:
+For int (*free_fn)(), we understand it is difficult to know what to pass in there. Here's an example of a simple dummy free function:
 int bpt_dummy_freeFn(void* arg, void* ptr) {
     free(ptr);
     return 0;
@@ -247,8 +245,8 @@ bptRemove(pBPTree tree, char* key, int key_len, int (*free_fn)(), void* free_arg
     {
     pBPNode this, parent, searchNext, prev, next, mergeThis;
     pBPNodeKey newKey, k;
-    int i, j, thisIndex, nNIndex, cmp;
-
+    int i, j, thisIndex, cmp;
+    
     if (bptLookup(tree, key, key_len) == NULL) return -1;
 
     this = tree->root;
@@ -392,128 +390,125 @@ bptRemove(pBPTree tree, char* key, int key_len, int (*free_fn)(), void* free_arg
         else
             {
             assert(this->IsLeaf);
+            searchNext = this->Children[i].Child;   
+            prev = (i <= 0 ? NULL : this->Children[i-1].Child);
+            next = (i >= this->nKeys ? NULL : this->Children[i+1].Child);
+            if (searchNext->nKeys < HALF_T_SLOTS)
                 {
-                nNIndex = i;
-                searchNext = this->Children[nNIndex].Child;   
-                prev = (nNIndex <= 0 ? NULL : this->Children[nNIndex-1].Child);
-                next = (nNIndex >= this->nKeys ? NULL : this->Children[nNIndex+1].Child);
-                if (searchNext->nKeys < HALF_T_SLOTS)
+                if (i > 0 && prev->nKeys >= HALF_T_SLOTS)
                     {
-                    if (nNIndex > 0 && prev->nKeys >= HALF_T_SLOTS)
+                    memmove(&searchNext->Keys[1], &searchNext->Keys[0], sizeof(searchNext->Keys[0]) * searchNext->nKeys);
+                    memmove(&searchNext->Children[1], &searchNext->Children[0], sizeof(searchNext->Children[0]) * (searchNext->nKeys + 1));
+                    searchNext->nKeys++;
+
+                    /* recap:
+                    * if searchNext is leaf, set 0th key of searchNext to rightmost key of prev
+                    * else, set 0th key of searchNext to key of this
+                    * set key of this to rightmost key of prev
+                    * set 0th child of searchNext to rightmost child of prev
+                    * decrement prev->nKeys
+                    */
+
+                    /* add to searchNext */
+                    if (searchNext->IsLeaf)
                         {
-                        memmove(&searchNext->Keys[1], &searchNext->Keys[0], sizeof(searchNext->Keys[0]) * searchNext->nKeys);
-                        memmove(&searchNext->Children[1], &searchNext->Children[0], sizeof(searchNext->Children[0]) * (searchNext->nKeys + 1));
-                        searchNext->nKeys++;
-
-                        /* recap:
-                        * if searchNext is leaf, set 0th key of searchNext to rightmost key of prev
-                        * else, set 0th key of searchNext to key of this
-                        * set key of this to rightmost key of prev
-                        * set 0th child of searchNext to rightmost child of prev
-                        * decrement prev->nKeys
-                        */
-
-                        /* add to searchNext */
-                        if (searchNext->IsLeaf)
-                            {
-                            searchNext->Keys[0] = prev->Keys[prev->nKeys-1];
-                            }
-                        else
-                            {
-                            searchNext->Keys[0] = this->Keys[nNIndex-1];
-                            }
-                        searchNext->Children[0].Child = prev->Children[prev->nKeys-(searchNext->IsLeaf ? 1 : 0)].Child;
-                        
-                        this->Keys[nNIndex-1] = prev->Keys[prev->nKeys-1];
-
-                        prev->nKeys--;
-                        }
-                    else if (nNIndex < this->nKeys && next->nKeys >= HALF_T_SLOTS)
-                        {
-                        /* recap:
-                        * if searchNext is leaf, set key of this to 1th key of next
-                        * else, set key of this to 0th key of next 
-                        * set searchNext->nKeysth key of searchNext to key of this
-                        * set searchNext->nKeysth child of searchNext to 0th child of next
-                        */
-                        
-                        /* add to searchNext */
-                        searchNext->Keys[searchNext->nKeys] = this->Keys[nNIndex];
-                        searchNext->Children[searchNext->nKeys+(searchNext->IsLeaf ? 0 : 1)].Child = next->Children[0].Child;
-                        searchNext->nKeys++;
-                        
-                        /* move key to this */
-                        this->Keys[nNIndex] = next->Keys[(searchNext->IsLeaf ? 1 : 0)];
-
-                        /* shift next->Keys and ->Children down by 1 */
-                        memmove(&next->Keys[0], &next->Keys[1], sizeof(next->Keys[0]) * (next->nKeys-1));
-                        memmove(&next->Children[0], &next->Children[1], sizeof(next->Children[0]) * (next->nKeys+1));
-                        next->nKeys--;
+                        searchNext->Keys[0] = prev->Keys[prev->nKeys-1];
                         }
                     else
                         {
-                        /* merge the nodes */
-                        if (nNIndex > 0)   
-                            {
-                            /* merge predecessor, searchNext */
-                            mergeThis = searchNext;
-                            searchNext = prev;
-                            nNIndex--;
-                            }
-                        else                
-                            {
-                            /* merge searchNext, successor */
-                            mergeThis = next;
-                            }
+                        searchNext->Keys[0] = this->Keys[i-1];
+                        }
+                    searchNext->Children[0].Child = prev->Children[prev->nKeys-(searchNext->IsLeaf ? 1 : 0)].Child;
+                    
+                    this->Keys[i-1] = prev->Keys[prev->nKeys-1];
 
-                        if (searchNext->IsLeaf)
-                            {
-                            memmove(&searchNext->Keys[searchNext->nKeys], mergeThis->Keys, sizeof(mergeThis->Keys[0]) * mergeThis->nKeys);
-                            memmove(&searchNext->Children[searchNext->nKeys], mergeThis->Children, sizeof(mergeThis->Children[0]) * (mergeThis->nKeys+1));
-                            searchNext->nKeys += mergeThis->nKeys;
-                            //fix next and prev pointers
-                            searchNext->Next = mergeThis->Next;
-                            mergeThis->Next->Prev=searchNext;
-                            }
-                        else 
-                            {
-                            searchNext->Keys[searchNext->nKeys] = this->Keys[nNIndex];
-                            memmove(&searchNext->Keys[searchNext->nKeys + 1], mergeThis->Keys, sizeof(mergeThis->Keys[0]) * mergeThis->nKeys);
-                            memmove(&searchNext->Children[searchNext->nKeys + 1], mergeThis->Children, sizeof(mergeThis->Children[0]) * (mergeThis->nKeys+1));
-                            searchNext->nKeys += mergeThis->nKeys + 1;
-                            }
+                    prev->nKeys--;
+                    }
+                else if (i < this->nKeys && next->nKeys >= HALF_T_SLOTS)
+                    {
+                    /* recap:
+                    * if searchNext is leaf, set key of this to 1th key of next
+                    * else, set key of this to 0th key of next 
+                    * set searchNext->nKeysth key of searchNext to key of this
+                    * set searchNext->nKeysth child of searchNext to 0th child of next
+                    */
+                    
+                    /* add to searchNext */
+                    searchNext->Keys[searchNext->nKeys] = this->Keys[i];
+                    searchNext->Children[searchNext->nKeys+(searchNext->IsLeaf ? 0 : 1)].Child = next->Children[0].Child;
+                    searchNext->nKeys++;
+                    
+                    /* move key to this */
+                    this->Keys[i] = next->Keys[(searchNext->IsLeaf ? 1 : 0)];
 
-                        /* remove key and mergeThis from this */
-                        memmove(&this->Keys[nNIndex], &this->Keys[nNIndex+1], sizeof(this->Keys[0]) * ((this->nKeys-1)-nNIndex));
-                        memmove(&this->Children[nNIndex+1], &this->Children[nNIndex+2], sizeof(this->Children[0]) * (this->nKeys-(nNIndex+1)));
-                        this->nKeys--;
-                        nmFree(mergeThis, sizeof(BPNode));
+                    /* shift next->Keys and ->Children down by 1 */
+                    memmove(&next->Keys[0], &next->Keys[1], sizeof(next->Keys[0]) * (next->nKeys-1));
+                    memmove(&next->Children[0], &next->Children[1], sizeof(next->Children[0]) * (next->nKeys+1));
+                    next->nKeys--;
+                    }
+                else
+                    {
+                    /* merge the nodes */
+                    if (i > 0)   
+                        {
+                        /* merge predecessor, searchNext */
+                        mergeThis = searchNext;
+                        searchNext = prev;
+                        i--;
+                        }
+                    else                
+                        {
+                        /* merge searchNext, successor */
+                        mergeThis = next;
+                        }
 
-                        /* if this->nKeys is now 0, replace this with searchNext */
-                        if (this->nKeys == 0)
+                    if (searchNext->IsLeaf)
+                        {
+                        memmove(&searchNext->Keys[searchNext->nKeys], mergeThis->Keys, sizeof(mergeThis->Keys[0]) * mergeThis->nKeys);
+                        memmove(&searchNext->Children[searchNext->nKeys], mergeThis->Children, sizeof(mergeThis->Children[0]) * (mergeThis->nKeys+1));
+                        searchNext->nKeys += mergeThis->nKeys;
+                        //fix next and prev pointers
+                        searchNext->Next = mergeThis->Next;
+                        mergeThis->Next->Prev=searchNext;
+                        }
+                    else 
+                        {
+                        searchNext->Keys[searchNext->nKeys] = this->Keys[i];
+                        memmove(&searchNext->Keys[searchNext->nKeys + 1], mergeThis->Keys, sizeof(mergeThis->Keys[0]) * mergeThis->nKeys);
+                        memmove(&searchNext->Children[searchNext->nKeys + 1], mergeThis->Children, sizeof(mergeThis->Children[0]) * (mergeThis->nKeys+1));
+                        searchNext->nKeys += mergeThis->nKeys + 1;
+                        }
+
+                    /* remove key and mergeThis from this */
+                    memmove(&this->Keys[i], &this->Keys[i+1], sizeof(this->Keys[0]) * ((this->nKeys-1)-i));
+                    memmove(&this->Children[i+1], &this->Children[i+2], sizeof(this->Children[0]) * (this->nKeys-(i+1)));
+                    this->nKeys--;
+                    nmFree(mergeThis, sizeof(BPNode));
+
+                    /* if this->nKeys is now 0, replace this with searchNext */
+                    if (this->nKeys == 0)
+                        {
+                        if (parent == NULL)
                             {
-                            if (parent == NULL)
-                                {
-                                tree->root = searchNext;
-                                //For adding sibs in
-                                tree->root->Next = NULL;
-                                tree->root->Prev = NULL;
-                                }
-                            else
-                                {
-                                //For adding sibs in
-                                searchNext->Prev = this->Prev;  //TODO: Could this->Prev be replaced with NULL?
-                                searchNext->Next = this->Next;  //      Could this->Next be replaced with NULL?
-                                parent->Children[thisIndex].Child = searchNext;
-                                }
-                            nmFree(this, sizeof(BPNode));
+                            tree->root = searchNext;
+                            //For adding sibs in
+                            tree->root->Next = NULL;
+                            tree->root->Prev = NULL;
                             }
+                        else
+                            {
+                            //For adding sibs in
+                            searchNext->Prev = this->Prev;  //TODO: Could this->Prev be replaced with NULL?
+                            searchNext->Next = this->Next;  //      Could this->Next be replaced with NULL?
+                            parent->Children[thisIndex].Child = searchNext;
+                            }
+                        nmFree(this, sizeof(BPNode));
                         }
                     }
-                parent = this;
-                thisIndex = nNIndex;    // TODO can replace nNIndex with i?
-                this = searchNext;
                 }
+            parent = this;
+            thisIndex = i;
+            this = searchNext;
             }
         }
     }
@@ -702,7 +697,9 @@ bpt_I_LookupNode(pBPNode this, char* key, int key_len)
     }
 
 
-/*** Creates a forward iterator for the leaves of the tree starting at the first leaf ***/
+/*** Creates a forward iterator for the leaves of the tree starting at the first leaf
+ *** *Note: if the tree is changed after an iterator has been issued, behavior is undefined*
+ ***/
 pBPIter
 bptFront(pBPTree this)
     {
@@ -721,7 +718,9 @@ bptFront(pBPTree this)
     return iter;
     }
 
-/*** Creates a reverse iterator for the leaves of the tree starting at the last leaf ***/
+/*** Creates a reverse iterator for the leaves of the tree starting at the last leaf
+ *** *Note: if the tree is changed after an iterator has been issued, behavior is undefined*
+ ***/
 pBPIter
 bptBack(pBPTree this)
     {
@@ -740,12 +739,15 @@ bptBack(pBPTree this)
     return iter;
     }
 
+/*** Creates an iterator for the leaves of the tree starting at the specified key going in the specified direction.
+ *** A direction of 0 indicates forward iteration, and a direction of 1 indicates reverse iteration.
+ *** *Note: if the tree is changed after an iterator has been issued, behavior is undefined*
+ ***/
 pBPIter
 bptFromLookup(pBPTree this, int direction, char* key, int key_len)
     {
     int i, cmp;
     pBPNode root = this->root;
-
 
     if (root->IsLeaf) 
         {
@@ -851,7 +853,7 @@ bptIterFree(pBPIter this)
     }
 
 /*** bpt_i_Clear() - Frees all keys of this node; if this is a leaf, frees all data values;
- *** if not leaf, calls bptClear on children and frees child nodes.
+ *** if not leaf, calls bpt_i_Clear on children and frees child nodes.
  *** Calls the provided free_fn for each data value, as:  free_fn(free_arg, value)
  ***/
 int
@@ -863,6 +865,7 @@ bpt_i_Clear(pBPNode this, int (*free_fn)(), void *free_arg)
     /** Clear child subtrees first */
     if (this->IsLeaf)
         {
+        /** Clear data values */
         for (i = 0; i < this->nKeys; i++) ret |= free_fn(free_arg, this->Children[i].Ref);
         if(ret != 0)
             {
@@ -871,6 +874,7 @@ bpt_i_Clear(pBPNode this, int (*free_fn)(), void *free_arg)
         }
     else
         {
+        /** Clear internal nodes recursively */
         for (i = 0; i <= this->nKeys; i++)
             {
             ret |= bpt_i_Clear(this->Children[i].Child, free_fn, free_arg);
@@ -883,13 +887,13 @@ bpt_i_Clear(pBPNode this, int (*free_fn)(), void *free_arg)
             }
         }
     
-    /** Clear key/value pairs */
+    /** Clear key nodes */
     for (i = 0; i < this->nKeys; i++)
         {
         nmFree(this->Keys[i].Value, sizeof(BPNodeVal));
         }
 
-    return 0;   // TODO handle nmFree, nmSysFree return nonzero
+    return 0;
     }
 
 //TODO : finish function
