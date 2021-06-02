@@ -17,15 +17,16 @@ test(char** tname)
 	pBPTree tree = bptNew();
 	char* key;
 	int len = 10;
-	int status = 0;
+	int innerIter;
 
 	*tname = "b+tree-58 add and remove many items from the tree";
 
 	assert (bptIsEmpty(tree));
 	iter = 2000;
+	innerIter = 10;
 	for(i=0;i<iter;i++)
-	    {	
-		for(j = 0; j < 100; j++)
+	    {
+		for(j = 0; j < innerIter; j++)
 			{
 			key = nmSysMalloc(len + 1);
 			int* data = nmMalloc(sizeof(int));
@@ -35,52 +36,15 @@ test(char** tname)
 			nmSysFree(key);
 			assert(ret == 0);
 			}
-	
-	pBPIter iterator = bptFront(tree);
-	printf("%s\n", iterator->Curr->Keys[iterator->Index].Value);
-	bptNext(iterator, &status);
-	printf("%s\n", iterator->Curr->Keys[iterator->Index].Value);
-	bptNext(iterator, &status);
-	printf("%s\n", iterator->Curr->Keys[iterator->Index].Value);
-	bptNext(iterator, &status);
-	printf("%s\n", iterator->Curr->Keys[iterator->Index].Value);
-	bptNext(iterator, &status);
-	printf("%s\n", iterator->Curr->Keys[iterator->Index].Value);
-	bptNext(iterator, &status);
-	printf("%s\n", iterator->Curr->Keys[iterator->Index].Value);
-	bptNext(iterator, &status);
-	printf("%s\n", iterator->Curr->Keys[iterator->Index].Value);
-	bptNext(iterator, &status);
-	printf("%s\n", iterator->Curr->Keys[iterator->Index].Value);
-	bptNext(iterator, &status);
-	printf("%s\n", iterator->Curr->Keys[iterator->Index].Value);
-	bptNext(iterator, &status);
-	printf("%s\n", iterator->Curr->Keys[iterator->Index].Value);
-	bptNext(iterator, &status);
-	printf("%s\n", iterator->Curr->Keys[iterator->Index].Value);
-	bptNext(iterator, &status);
-	printf("%s\n", iterator->Curr->Keys[iterator->Index].Value);
-	bptNext(iterator, &status);
-	printf("%s\n", iterator->Curr->Keys[iterator->Index].Value);
-
-
-		for(j = 0; j < 100; j++)
+		for(j = 0; j < innerIter; j++)
 			{
-			printf("Iteration %d\n", j);
 			key = nmSysMalloc(len + 1);
-			if (j == 86) {
-				printf("test1\n");
-			}
 			sprintf(key, "%03d", j);
-			if (j == 86) {
-				printf("test2\n");
-			}
 			ret = bptRemove(tree, key, len, free_func, NULL);
-			if (j == 86) {
-				printf("test3\n");
-			}
+			
 			nmSysFree(key);
 			assert(ret == 0);
+			
 			}
 		}
     return iter * 2000;
