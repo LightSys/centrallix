@@ -15,12 +15,12 @@ int free_func(void* args, void* ref){
 long long
 test(char** tname)
    	{
-    *tname = "b+tree3_36 Test bptFront on a big tree with multiple nodes";
+    *tname = "b+tree3_46 Test bptFromLookup iterator function with key 0006 going backwards";
 
     int i;
 
-    int status = 0;
-
+    int status = 0; 
+    
    pBPTree tree = bptNew();
 
     
@@ -99,45 +99,15 @@ test(char** tname)
     bptAdd(tree, "0017", 4, info17);
     bptAdd(tree, "0018", 4, info18);
     
-    pBPIter iterator = bptFront(tree);
+    pBPIter iterator = bptFromLookup(tree, 1, "0006", 4);
 
-    assert(iterator->Ref == info1);
-    
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0001") == 0);
-    bptNext(iterator, &status);
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0002") == 0);
-    bptNext(iterator, &status);
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0003") == 0);
-    bptNext(iterator, &status);
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0004") == 0);
-    bptNext(iterator, &status);
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0005") == 0);
-    bptNext(iterator, &status);
+    assert(iterator->Ref == info6);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0006") == 0);
     bptNext(iterator, &status);
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0007") == 0);
-    bptNext(iterator, &status);
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0008") == 0);
-    bptNext(iterator, &status);
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0009") == 0);
-    bptNext(iterator, &status);
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0010") == 0);
-    bptNext(iterator, &status);
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0011") == 0);
-    bptNext(iterator, &status);
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0012") == 0);
-    bptNext(iterator, &status);
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0013") == 0);
-    bptNext(iterator, &status);
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0014") == 0);
-    bptNext(iterator, &status);
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0015") == 0);
-    bptNext(iterator, &status);
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0016") == 0);
-    bptNext(iterator, &status);
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0017") == 0);
-    bptNext(iterator, &status);
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0018") == 0);
+    assert(iterator->Ref == info5);
+    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0005") == 0);
+
+
 
     //This next part is just to avoid a floating point error
     
