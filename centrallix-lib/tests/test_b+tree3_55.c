@@ -12,17 +12,15 @@ int free_func(void* args, void* ref){
 long long
 test(char** tname)
     {
-    int i, j, ret;
+    int i, ret;
     int iter;
 	pBPTree tree = bptNew();
-	char* key;
-	int len = 10;
-	int innerIter;
 
-	*tname = "b+tree3_55 add and remove many items from the tree";
+	*tname = "b+tree3_55 Automated mass add functionality";
 
 	assert (bptIsEmpty(tree));
 	iter = 2000;
+    /*
 	innerIter = 100;
     for(j = 0; j < innerIter; j++)
 			{
@@ -34,8 +32,12 @@ test(char** tname)
 			nmSysFree(key);
 			assert(ret == 0);
 			}
+            */
 
-            assert(bptSize(tree) == innerIter);
+           ret = automatedTree(tree, 100);
+           assert (ret == 0);
+
+            assert(bptSize(tree) == 100);
 
 
     int x = 1;

@@ -1084,3 +1084,25 @@ int testTree_inner(pBPNode tree, int* last, int* lastLeaf)
 
 	return 0;
     }
+
+    int automatedTree(pBPTree this, int amount) 
+    {
+        int i, ret;
+        char* key;
+	    int len = 10;
+
+        for (i = 0; i < amount; i++) 
+        {
+            key = nmSysMalloc(len + 1);
+			int* data = nmMalloc(sizeof(int));
+			*data = i;
+			sprintf(key, "%03d", i);
+			ret = bptAdd(this, key, len, data);
+			nmSysFree(key);
+            if (ret != 0) {
+                return -1;
+            }
+        }
+
+        return 0;
+    }
