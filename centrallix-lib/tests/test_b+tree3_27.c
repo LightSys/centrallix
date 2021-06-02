@@ -15,7 +15,7 @@ int bpt_dummy_freeFn(void* arg, void* ptr) {
 long long
 test(char** tname)
    	{
-	*tname = "b+tree3_026 Test that bptRemove Cannot Remove a Value Twice";
+	*tname = "b+tree3_27 Test that bptRemove Cannot Remove a Value Twice";
 	
    int ret;
    pBPTree this = bptNew();
