@@ -705,6 +705,9 @@ bpt_I_LookupNode(pBPNode this, char* key, int key_len)
 pBPIter
 bptFront(pBPTree this)
     {
+    //cannot get an iterator for an empty tree
+    if(bptIsEmpty(this)) return NULL;
+
     pBPIter iter = nmMalloc(sizeof(BPIter));
     if(!iter) return NULL;
     
@@ -726,6 +729,9 @@ bptFront(pBPTree this)
 pBPIter
 bptBack(pBPTree this)
     {
+    //cannot get an iterator for an empty tree
+    if(bptIsEmpty(this)) return NULL;
+
     pBPIter iter = nmMalloc(sizeof(BPIter));
     if(!iter) return NULL;
     
@@ -748,6 +754,9 @@ bptBack(pBPTree this)
 pBPIter
 bptFromLookup(pBPTree this, int direction, char* key, int key_len)
     {
+    //cannot get an iterator for an empty tree
+    if(bptIsEmpty(this)) return NULL;
+
     int i, cmp;
     pBPNode root = this->root;
 

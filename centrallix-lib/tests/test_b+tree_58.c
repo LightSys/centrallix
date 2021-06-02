@@ -12,11 +12,13 @@ int free_func(void* args, void* ref){
 long long
 test(char** tname)
     {
-    int i, j, ret;
+    int i, j, ret, count, err;
     int iter;
 	pBPTree tree = bptNew();
 	char* key;
 	int len = 10;
+
+	pBPIter tree_iter;
 
 	*tname = "b+tree-58 add and remove many items from the tree";
 
@@ -33,6 +35,16 @@ test(char** tname)
 			ret = bptAdd(tree, key, len, data);
 			nmSysFree(key);
 			assert(ret == 0);
+
+			count = 0;
+			err = 0;
+			tree_iter = bptFront(tree);
+			while(!err)
+				{
+				bptNext(tree_iter, &err);
+				count++;
+				}
+				assert(count == j + 1);
 			}
 		for(j = 0; j < 100; j++)
 			{
@@ -43,6 +55,15 @@ test(char** tname)
 			nmSysFree(key);
 			assert(ret == 0);
 			
+			count = 0;
+			err = 0;
+			tree_iter = bptFront(tree);
+			while(tree_iter && !err)
+				{
+				bptNext(tree_iter, &err);
+				count++;
+				}
+				assert(count == 100 - j - 1);
 			}
 		}
     return iter * 2000;
