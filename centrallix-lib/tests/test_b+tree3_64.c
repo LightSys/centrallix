@@ -16,20 +16,20 @@ test(char** tname)
     int i, ret;
 	pBPTree tree = bptNew();
 
-	*tname = "b+tree3_59 Testing bptFromLookup on a larger tree on the first key";
+	*tname = "b+tree3_64 Testing bptFromLookup on a larger tree";
     //int status = 0;
 
 
     ret = automatedTree(tree, 1000);
     assert (ret == 0);
 
-    char* str = "0000000000";
+    char* str = "0000000111";
     int len = strlen(str);
 
     pBPIter iterator = bptFromLookup(tree, 0, str, len);
 
 
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0000000000") == 0);
+    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0000000111") == 0);
 
 
     int x = 1;
@@ -40,6 +40,5 @@ test(char** tname)
 		}
     return 2000;
     }
-
 
 
