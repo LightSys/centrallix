@@ -107,9 +107,10 @@ bpt_i_Insert_Nonfull(pBPNode this, char* key, int key_len, void* data)
     {
     int i;
     char* newKey = NULL;
-
+    int count = 0;
     while (1)
         {
+        count++;
         assert (this->nKeys < MAX_KEYS(this));
 
         i = this->nKeys-1;
@@ -660,7 +661,8 @@ bptFree(pBPTree this, int (*free_fn)(), void* free_arg)
     pBPNode root = this->root;
 
     if(bpt_i_Clear(root, free_fn, free_arg) != 0) goto error;
-        
+    
+    nmFree(root, sizeof(BPNode));
     nmFree(this, sizeof(BPTree));
     
     return 0;
@@ -673,6 +675,7 @@ bptFree(pBPTree this, int (*free_fn)(), void* free_arg)
 /*** bpt_i_Compare() - compares two key values.  Return value is greater
  *** than 0 if key1 > key2, less than zero if key1 < key2, and equal to
  *** zero if key1 == key2.
+ *** *Note, will return as != if the strings are identical but are passed incorrect lengths
  ***/
 int
 bpt_i_Compare(char *key1, int key1_len, char *key2, int key2_len)
@@ -845,7 +848,7 @@ bptFromLookup(pBPTree this, int direction, char* key, int key_len)
         i = 0;
         while (i < root->nKeys && bpt_i_Compare(key, key_len, root->Keys[i].Value, root->Keys[i].Length) >= 0) i++;
         curr = bpt_I_LookupNode(root->Children[i].Child, key, key_len);
-        if(curr != NULL)
+        if(curr)
             {
             iter = nmMalloc(sizeof(BPIter));
             if(!iter) goto error;            
@@ -992,7 +995,7 @@ bptBulkLoad(char* fname, int num)
 	for (i=0; i<num; i++)
 		{
 		fscanf(data, "%s %[^\n]", key, leaf);
-		printf("Key: %s\nValue: %s\n",key,leaf);
+        printf("Key: %s\nValue: %s\n",key,leaf);
 		key_val = nmSysMalloc(10);
         key_val = key;
         info = nmSysMalloc(50);
@@ -1165,9 +1168,12 @@ int testTree_inner(pBPNode tree, int* last, int* lastLeaf)
             key = nmSysMalloc(len + 1);
 			int* data = nmMalloc(sizeof(int));
 			*data = i;
-			sprintf(key, "%d", i);
-			ret = bptAdd(this, key, len, data);
-			nmSysFree(key);
+			ret = sprintf(key, "%d", i);
+            assert(ret >= 0);
+			printf("KeyBefore: %s\n", key);
+            ret = bptAdd(this, key, len, data);
+			printf("KeyAfter: %s\n", key);
+            nmSysFree(key);
             if (ret != 0) {
                 return -1;
             }
