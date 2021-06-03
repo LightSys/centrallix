@@ -57,6 +57,8 @@ bpt_i_Split_Child(pBPNode this, int index)
     {
     pBPNode oldChild;
     pBPNode newChild = NULL;
+    char* newKey= NULL;
+    int newKey_len;
 
     assert (this->nKeys < MAX_KEYS(this));
 
@@ -90,7 +92,15 @@ bpt_i_Split_Child(pBPNode this, int index)
     this->Children[index+1].Child = newChild;
 
     memmove(&this->Keys[index+1], &this->Keys[index], (this->nKeys-index+1) * sizeof(this->Keys[0]));
-    this->Keys[index] = oldChild->Keys[HALF_T_SLOTS-(oldChild->IsLeaf ? 0 : 1)];
+    
+    //creates a copy of the key when adding to the parent
+    newKey_len = oldChild->Keys[HALF_T_SLOTS-(oldChild->IsLeaf ? 0 : 1)].Length;
+    newKey = nmSysMalloc(newKey_len + 1);
+    if(!newKey) goto error;
+    memmove(newKey, oldChild->Keys[HALF_T_SLOTS-(oldChild->IsLeaf ? 0 : 1)].Value, newKey_len);
+    this->Keys[index].Length = newKey_len;
+    this->Keys[index].Value = newKey;
+
 
     this->nKeys++;
     return 0;
@@ -1035,35 +1045,34 @@ printTree2(pBPTree tree, int level) {
 }
 
 void
-printTree(pBPNode tree, int level)
+printTree(pBPNode tree)
     {
     int i;
     if(tree == NULL) {
         printf("Null");
     }
-    else {
-    //for (i=0; i<level; i++) {}
-    printf("\t");
-    printf("Node ");
-    printPtr(tree);
-    printf(": %sleaf, children: ", (tree->IsLeaf ? "" : "non"));
-    if (tree->IsLeaf)
-        {
-        for (i=0; i<tree->nKeys; i++) printf("(%s, %s) ", tree->Keys[i].Value, (char*)tree->Children[i].Ref);
-        printf("\n");
-        }
     else
         {
-        for (i=0; i<=tree->nKeys; i++) 
+        printf("\t");
+        printf("Node ");
+        printPtr(tree);
+        printf(": %sleaf, children: ", (tree->IsLeaf ? "" : "non"));
+        if (tree->IsLeaf)
             {
-            printPtr(tree->Children[i].Child);
-            if (i < tree->nKeys) printf("%s ", tree->Keys[i].Value);
+            for (i=0; i<tree->nKeys; i++) printf("(%s, %d) ", tree->Keys[i].Value, *((int*) tree->Children[i].Ref));
+            printf("\n");
             }
-        printf("\n");
-        for (i=0; i<=tree->nKeys; i++) printTree(tree->Children[i].Child, level + 1);
+        else
+            {
+            for (i=0; i<=tree->nKeys; i++) 
+                {
+                printPtr(tree->Children[i].Child);
+                if (i < tree->nKeys) printf("%s ", tree->Keys[i].Value);
+                }
+            printf("\n");
+            for (i=0; i<=tree->nKeys; i++) printTree(tree->Children[i].Child);
+            }
         }
-    if (level==0) printf("----------------------\n");
-    }
     }
 
 void printPtr(void* ptr) {
