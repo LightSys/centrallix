@@ -1,6 +1,4 @@
 // TODO figure out what we want bptSearch to return (other than NULL for not found)
-//I am Zac!
-
 
 #ifdef HAVE_CONFIG_H
 #include "cxlibconfig-internal.h"
@@ -13,25 +11,24 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
-
 #include "b+tree.h"
 #include "newmalloc.h"
 
-/************************************************************************/
-/* Centrallix Application Server System 				*/
-/* Centrallix Base Library						*/
-/* 									*/
-/* Copyright (C) 1998-2020 LightSys Technology Services, Inc.		*/
-/* 									*/
-/* You may use these files and this library under the terms of the	*/
-/* GNU Lesser General Public License, Version 2.1, contained in the	*/
-/* included file "COPYING".						*/
-/* 									*/
-/* Module: 	b+tree.c, b+tree.h  					*/
-/* Author:	Greg Beeley (GRB)					*/
-/* Creation:	September 11, 2019					*/
-/* Description:	B+ Tree implementation.					*/
-/************************************************************************/
+/************************************************************************\
+|* Centrallix Application Server System 				                *|
+|* Centrallix Base Library						                        *|
+|* 									                                    *|
+|* Copyright (C) 1998-2020 LightSys Technology Services, Inc.		    *|
+|* 									                                    *|
+|* You may use these files and this library under the terms of the	    *|
+|* GNU Lesser General Public License, Version 2.1, contained in the	    *|
+|* included file "COPYING".						                        *|
+|*                             									        *|
+|* Module: 	b+tree.c, b+tree.h  					                    *|
+|* Author:	Greg Beeley (GRB)					                        *|
+|* Creation:	September 11, 2019					                    *|
+|* Description:	B+ Tree implementation.					                *|
+\************************************************************************/
 
 /*** Return pointer to newly allocated and initialized BPNode, or NULL if fails ***/
 pBPNode 
@@ -1158,4 +1155,26 @@ int testTree_inner(pBPNode tree, int* last, int* lastLeaf)
         }
 
 	return 0;
+    }
+
+    int automatedTree(pBPTree this, int amount) 
+    {
+        int i, ret;
+        char* key;
+	    int len = 10;
+
+        for (i = 0; i < amount; i++) 
+        {
+            key = nmSysMalloc(len + 1);
+			int* data = nmMalloc(sizeof(int));
+			*data = i;
+			sprintf(key, "%03d", i);
+			ret = bptAdd(this, key, len, data);
+			nmSysFree(key);
+            if (ret != 0) {
+                return -1;
+            }
+        }
+
+        return 0;
     }

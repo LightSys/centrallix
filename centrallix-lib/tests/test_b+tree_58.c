@@ -17,6 +17,7 @@ test(char** tname)
 	pBPTree tree = bptNew();
 	char* key;
 	int len = 10;
+	int innerIter;
 
 	pBPIter tree_iter;
 
@@ -24,14 +25,15 @@ test(char** tname)
 
 	assert (bptIsEmpty(tree));
 	iter = 2000;
+	innerIter = 10;
 	for(i=0;i<iter;i++)
 	    {
-		for(j = 0; j < 100; j++)
+		for(j = 0; j < innerIter; j++)
 			{
 			key = nmSysMalloc(len + 1);
 			int* data = nmMalloc(sizeof(int));
 			*data = j;
-			sprintf(key, "%010d", j);
+			sprintf(key, "%03d", j);
 			ret = bptAdd(tree, key, len, data);
 			nmSysFree(key);
 			assert(ret == 0);
@@ -46,10 +48,10 @@ test(char** tname)
 				}
 				assert(count == j + 1);
 			}
-		for(j = 0; j < 100; j++)
+		for(j = 0; j < innerIter; j++)
 			{
 			key = nmSysMalloc(len + 1);
-			sprintf(key, "%010d", j);
+			sprintf(key, "%03d", j);
 			ret = bptRemove(tree, key, len, free_func, NULL);
 			
 			nmSysFree(key);

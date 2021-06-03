@@ -111,5 +111,7 @@ void printPtr(void* ptr);   // helper function for "naming" nodes
 int testTree(pBPTree tree);   // test that all nodes are in order, no dups except for in index nodes, vals match keys
 int testTree_inner(pBPNode tree, int* last, int* lastLeaf);    // helper for testTree
 
+int automatedTree(pBPTree this, int amount); //Meant to be able to make an automated numerical tree; should be deleted by the end
+
 #endif /* _BPTREE_H */
 
