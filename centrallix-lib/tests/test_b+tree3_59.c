@@ -25,7 +25,7 @@ test(char** tname)
 
     pBPIter iterator = bptFront(tree);
 
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "00000000000"));
+    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0000000000") == 0);
 
 
     int x = 1;

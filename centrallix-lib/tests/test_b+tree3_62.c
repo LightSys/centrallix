@@ -25,11 +25,11 @@ test(char** tname)
     assert (ret == 0);
 
     pBPIter iterator = bptBack(tree);
-
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "00000000999"));
+    
+    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0000000999") == 0);
     bptNext(iterator, &status);
     assert(status ==0);
-    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "00000000998"));
+    assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0000000998") == 0);
 
     int x = 1;
 	for(i=0;i<100001100;i++)
