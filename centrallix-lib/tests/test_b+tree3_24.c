@@ -37,7 +37,7 @@ test(char** tname)
     y = bptDeInit(tree, free_func, NULL);
 
 
-    assert(y == -2);
+    assert(y == -1);
 
     
     //This next part is just to avoid a floating point error
