@@ -18,7 +18,7 @@ test(char** tname)
 	pBPTree tree;
 
 
-	*tname = "b+tree3_50 bptNew returns NULL on nmMalloc fail (Remake of original test 42, using the method in original test 39)";
+	*tname = "b+tree3_50 SHOULD FAIL unless run special; bptNew returns NULL on nmMalloc fail (Remake of original test 42, using the method in original test 39)";
     
     // NOTE: To make this test work, you must recompile to enable mem fail.
 	//

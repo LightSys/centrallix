@@ -1093,7 +1093,7 @@ int testTree_inner(pBPNode tree, int* last, int* lastLeaf)
             key = nmSysMalloc(len + 1);
 			int* data = nmMalloc(sizeof(int));
 			*data = i;
-			sprintf(key, "%03d", i);
+			sprintf(key, "%d", i);
 			ret = bptAdd(this, key, len, data);
 			nmSysFree(key);
             if (ret != 0) {
