@@ -8,7 +8,7 @@
 
 // dummy free function
 int bpt_dummy_freeFn(void* arg, void* ptr) {
-    free(ptr);
+    nmFree(ptr, sizeof(int));
     return 0;
 }
 

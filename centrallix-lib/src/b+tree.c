@@ -42,7 +42,7 @@ bpt_i_new_BPNode()
     if (bptInit_I_Node(newNode) != 0) goto error;
 
     return newNode;
-
+//
     error:
         if(newNode) nmFree(newNode, sizeof(BPNode));
 
@@ -62,12 +62,11 @@ bpt_i_Split_Child(pBPNode this, int index)
 
     oldChild = this->Children[index].Child;
     assert (oldChild->nKeys == MAX_KEYS(oldChild));
-
+    
     newChild = bpt_i_new_BPNode();
     if (!newChild) goto error;
 
     newChild->IsLeaf = oldChild->IsLeaf;
-
     /*** If had n keys in original node, only need n-1 keys with two nodes ***/
     newChild->nKeys = HALF_T_SLOTS - (oldChild->IsLeaf ? 0 : 1);
     oldChild->nKeys = HALF_T_SLOTS - (oldChild->IsLeaf ? 0 : 1);
@@ -188,10 +187,12 @@ bptNew()
 int
 bptAdd(pBPTree this, char* key, int key_len, void* data)
     {
-    pBPNode oldRoot = this->root;
     pBPNode newRoot = NULL;
+    
     if(this == NULL || key == NULL || data == NULL) goto error;
     
+    pBPNode oldRoot = this->root;
+
     //If they input 0 for key_len, then set it to the length of the key
     if (key_len == 0) key_len = strlen(key);
     
@@ -288,12 +289,11 @@ bptRemove(pBPTree tree, char* key, int key_len, int (*free_fn)(), void* free_arg
             {
             if (this->IsLeaf)
                 {
-                nmFree(this->Keys[i].Value, this->Keys[i].Length);
+                nmSysFree(this->Keys[i].Value);
                 free_fn(free_arg, this->Children[i].Ref);
                 memmove(&this->Keys[i], &this->Keys[i+1], ((this->nKeys-1)-i) * sizeof(this->Keys[0]));
                 memmove(&this->Children[i], &this->Children[i+1], ((this->nKeys-1)-i) * sizeof(this->Children[0]));
                 this->nKeys--;
-
                 tree->size--;
                 return 0;
                 }
@@ -637,12 +637,9 @@ bptDeInit(pBPTree this, int (*free_fn)(), void* free_arg)
     int i;
     
     if(!this) goto error;
-    
     pBPNode root = this->root;
-
     /** Deallocate children **/
     if(bpt_i_Clear(root, free_fn, free_arg) != 0) goto error;
-
     this->size = 0;
     
     return 0;
@@ -970,7 +967,7 @@ bpt_i_Clear(pBPNode this, int (*free_fn)(), void *free_arg)
         }
     
     /** Clear key nodes */
-    for (i = 0; i < this->nKeys; i++) nmFree(this->Keys[i].Value, sizeof(BPNodeVal));
+    for (i = 0; i < this->nKeys; i++) nmSysFree(this->Keys[i].Value);
 
     return 0;
 
