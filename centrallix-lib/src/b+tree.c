@@ -312,6 +312,7 @@ bptRemove(pBPTree tree, char* key, int key_len, int (*free_fn)(), void* free_arg
                 {
                 searchNext = this->Children[i+1].Child;
                 newKey = bpt_i_FindReplacementKey(this, key, key_len);
+                
                 if (searchNext->nKeys >= HALF_T_SLOTS)     
                     {
                     this->Keys[i].Value = newKey->Value;
@@ -888,9 +889,16 @@ bptNext(pBPIter this, int *status)
         {
         if(this->Index + 1 == this->Curr->nKeys)
             {
-            this->Index = 0;
-            this->Curr = this->Curr->Next;
-            }
+            if(this->Curr->Next == NULL) 
+                {
+                *status = -1;
+                }
+            else 
+                {
+                this->Index = 0;
+                this->Curr = this->Curr->Next;
+                }
+        }
         else this->Index++;
         }
     //reverse
@@ -898,8 +906,15 @@ bptNext(pBPIter this, int *status)
         {
         if(this->Index == 0)
             {
-            this->Index = this->Curr->Prev->nKeys - 1;
-            this->Curr = this->Curr->Prev;
+            if(this->Curr->Prev == NULL) 
+                {
+                *status = -1;
+                }
+            else 
+                {
+                this->Index = this->Curr->Prev->nKeys - 1;
+                this->Curr = this->Curr->Prev;
+                }
             }
         else this->Index--;
         }
@@ -917,8 +932,15 @@ bptPrev(pBPIter this, int *status)
         {
         if(this->Index + 1 == this->Curr->nKeys)
             {
-            this->Index = 0;
-            this->Curr = this->Curr->Next;
+            if(this->Curr->Next == NULL) 
+                {
+                *status = -1;
+                }
+            else 
+                {
+                this->Index = 0;
+                this->Curr = this->Curr->Next;
+                }
             }
         else this->Index++;
         }
@@ -927,8 +949,15 @@ bptPrev(pBPIter this, int *status)
         {
         if(this->Index == 0)
             {
-            this->Index = this->Curr->Prev->nKeys - 1;
-            this->Curr = this->Curr->Prev;
+            if(this->Curr->Prev == NULL) 
+                {
+                *status = -1;
+                }
+            else 
+                {
+                this->Index = this->Curr->Prev->nKeys - 1;
+                this->Curr = this->Curr->Prev;
+                }
             }
         else this->Index--;
         }
