@@ -164,6 +164,9 @@ install: all
 %.bin:	%.c tests/t_driver.c libCentrallix.a
 	$(CC) $(TCFLAGS) tests/t_driver.c $< libCentrallix.a -o $@ ${LIBS}
 
+asymp-test: tests/asymp-test.c libCentrallix.a
+	$(CC) $(TCFLAGS) $< libCentrallix.a -o $@ ${LIBS}
+
 .PHONY: test
 test:	$(TESTPROGS)
 	@printf "%-62.62s  %s\n" "Test Name" "Stat Ops/sec"
