@@ -59,7 +59,7 @@ test(char** tname)
             {
             printf("Inserting %s\t", k);
             printf("Failed tree:\n");
-            printTree(t->root, 0);
+            //printTree(t->root, 0);
             break;
             }
         //else printf("Passed\n");
@@ -80,7 +80,7 @@ test(char** tname)
             {
             printf("Removing %s\t", k);
             printf("Failed tree:\n");
-            printTree(t->root, 0);
+            //printTree(t->root, 0);
             printf("\nSeed: %d\n", seed);
             break;
             }
@@ -93,12 +93,19 @@ test(char** tname)
         }
     printf("Passed remove\n");
 
-    printTree(t->root, 0);  // tree should be empty
+    //printTree(t->root, 0);  // tree should be empty
 
     nmFree(t->root, sizeof(BPNode));
     free(t);
     free(FMT);
     free(VAL_FMT);
+
+    int x = 1;
+	for(i=0;i<100001100;i++)
+	    {
+        x++;
+		
+		}
 
 
 
