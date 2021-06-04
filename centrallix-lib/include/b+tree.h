@@ -18,7 +18,7 @@
 /************************************************************************/
 
 /* DO NOT SET HALF_T_SLOTS to < 3 */
-#define HALF_T_SLOTS (8)     
+#define HALF_T_SLOTS (3)     
 #define MAX_KEYS(pNode) (2 * HALF_T_SLOTS - ((pNode)->IsLeaf ? 0 : 1))
 
 /** Structures **/

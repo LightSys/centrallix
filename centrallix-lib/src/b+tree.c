@@ -84,8 +84,7 @@ bpt_i_Split_Child(pBPNode this, int index)
     else 
         {
         memmove(newChild->Keys, &oldChild->Keys[newChild->nKeys+1], newChild->nKeys * sizeof(newChild->Keys[0]));
-        memmove(newChild->Children, &oldChild->Children[oldChild->nKeys+1], newChild->nKeys * sizeof(newChild->Children[0]));
-        newChild->Children[newChild->nKeys].Child = oldChild->Children[newChild->nKeys+oldChild->nKeys+1].Child;
+        memmove(newChild->Children, &oldChild->Children[oldChild->nKeys+1], (newChild->nKeys + 1) * sizeof(newChild->Children[0]));
         }
 
     memmove(&this->Children[index+2], &this->Children[index+1], (this->nKeys-index) * sizeof(this->Children[0]));
@@ -97,6 +96,9 @@ bpt_i_Split_Child(pBPNode this, int index)
     newKey_len = oldChild->Keys[HALF_T_SLOTS-(oldChild->IsLeaf ? 0 : 1)].Length;
     newKey = nmSysMalloc(newKey_len + 1);
     if(!newKey) goto error;
+
+    if(!oldChild->IsLeaf && this->nKeys == 0) nmSysFree(oldChild->Keys[HALF_T_SLOTS-1].Value);
+    
     memmove(newKey, oldChild->Keys[HALF_T_SLOTS-(oldChild->IsLeaf ? 0 : 1)].Value, newKey_len);
     this->Keys[index].Length = newKey_len;
     this->Keys[index].Value = newKey;
@@ -117,10 +119,8 @@ bpt_i_Insert_Nonfull(pBPNode this, char* key, int key_len, void* data)
     {
     int i;
     char* newKey = NULL;
-    int count = 0;
     while (1)
         {
-        count++;
         assert (this->nKeys < MAX_KEYS(this));
 
         i = this->nKeys-1;
@@ -219,7 +219,6 @@ bptAdd(pBPTree this, char* key, int key_len, void* data)
     
     if (this->root->nKeys == MAX_KEYS(this->root))
         {
-        /*** Full ***/
         newRoot = bpt_i_new_BPNode();
         if (!newRoot) goto error;
 
@@ -1179,6 +1178,8 @@ int testTree_inner(pBPNode tree, int* last, int* lastLeaf)
 			*data = i;
 			sprintf(key, "%010d", i);
 			ret = bptAdd(this, key, strlen(key), data);
+            //printTree(this->root);
+            //printf("\n");
 			nmSysFree(key);
             if (ret != 0) {
                 return -1;
