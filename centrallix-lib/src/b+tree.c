@@ -57,6 +57,8 @@ bpt_i_Split_Child(pBPNode this, int index)
     {
     pBPNode oldChild;
     pBPNode newChild = NULL;
+    char* newKey= NULL;
+    int newKey_len;
 
     assert (this->nKeys < MAX_KEYS(this));
 
@@ -90,7 +92,15 @@ bpt_i_Split_Child(pBPNode this, int index)
     this->Children[index+1].Child = newChild;
 
     memmove(&this->Keys[index+1], &this->Keys[index], (this->nKeys-index+1) * sizeof(this->Keys[0]));
-    this->Keys[index] = oldChild->Keys[HALF_T_SLOTS-(oldChild->IsLeaf ? 0 : 1)];
+    
+    //creates a copy of the key when adding to the parent
+    newKey_len = oldChild->Keys[HALF_T_SLOTS-(oldChild->IsLeaf ? 0 : 1)].Length;
+    newKey = nmSysMalloc(newKey_len + 1);
+    if(!newKey) goto error;
+    memmove(newKey, oldChild->Keys[HALF_T_SLOTS-(oldChild->IsLeaf ? 0 : 1)].Value, newKey_len);
+    this->Keys[index].Length = newKey_len;
+    this->Keys[index].Value = newKey;
+
 
     this->nKeys++;
     return 0;
@@ -107,9 +117,10 @@ bpt_i_Insert_Nonfull(pBPNode this, char* key, int key_len, void* data)
     {
     int i;
     char* newKey = NULL;
-
+    int count = 0;
     while (1)
         {
+        count++;
         assert (this->nKeys < MAX_KEYS(this));
 
         i = this->nKeys-1;
@@ -660,7 +671,8 @@ bptFree(pBPTree this, int (*free_fn)(), void* free_arg)
     pBPNode root = this->root;
 
     if(bpt_i_Clear(root, free_fn, free_arg) != 0) goto error;
-        
+    
+    nmFree(root, sizeof(BPNode));
     nmFree(this, sizeof(BPTree));
     
     return 0;
@@ -673,6 +685,7 @@ bptFree(pBPTree this, int (*free_fn)(), void* free_arg)
 /*** bpt_i_Compare() - compares two key values.  Return value is greater
  *** than 0 if key1 > key2, less than zero if key1 < key2, and equal to
  *** zero if key1 == key2.
+ *** *Note, will return as != if the strings are identical but are passed incorrect lengths
  ***/
 int
 bpt_i_Compare(char *key1, int key1_len, char *key2, int key2_len)
@@ -845,7 +858,7 @@ bptFromLookup(pBPTree this, int direction, char* key, int key_len)
         i = 0;
         while (i < root->nKeys && bpt_i_Compare(key, key_len, root->Keys[i].Value, root->Keys[i].Length) >= 0) i++;
         curr = bpt_I_LookupNode(root->Children[i].Child, key, key_len);
-        if(curr != NULL)
+        if(curr)
             {
             iter = nmMalloc(sizeof(BPIter));
             if(!iter) goto error;            
@@ -992,7 +1005,7 @@ bptBulkLoad(char* fname, int num)
 	for (i=0; i<num; i++)
 		{
 		fscanf(data, "%s %[^\n]", key, leaf);
-		printf("Key: %s\nValue: %s\n",key,leaf);
+        printf("Key: %s\nValue: %s\n",key,leaf);
 		key_val = nmSysMalloc(10);
         key_val = key;
         info = nmSysMalloc(50);
@@ -1032,35 +1045,34 @@ printTree2(pBPTree tree, int level) {
 }
 
 void
-printTree(pBPNode tree, int level)
+printTree(pBPNode tree)
     {
     int i;
     if(tree == NULL) {
         printf("Null");
     }
-    else {
-    //for (i=0; i<level; i++) {}
-    printf("\t");
-    printf("Node ");
-    printPtr(tree);
-    printf(": %sleaf, children: ", (tree->IsLeaf ? "" : "non"));
-    if (tree->IsLeaf)
-        {
-        for (i=0; i<tree->nKeys; i++) printf("(%s, %s) ", tree->Keys[i].Value, (char*)tree->Children[i].Ref);
-        printf("\n");
-        }
     else
         {
-        for (i=0; i<=tree->nKeys; i++) 
+        printf("\t");
+        printf("Node ");
+        printPtr(tree);
+        printf(": %sleaf, children: ", (tree->IsLeaf ? "" : "non"));
+        if (tree->IsLeaf)
             {
-            printPtr(tree->Children[i].Child);
-            if (i < tree->nKeys) printf("%s ", tree->Keys[i].Value);
+            for (i=0; i<tree->nKeys; i++) printf("(%s, %d) ", tree->Keys[i].Value, *((int*) tree->Children[i].Ref));
+            printf("\n");
             }
-        printf("\n");
-        for (i=0; i<=tree->nKeys; i++) printTree(tree->Children[i].Child, level + 1);
+        else
+            {
+            for (i=0; i<=tree->nKeys; i++) 
+                {
+                printPtr(tree->Children[i].Child);
+                if (i < tree->nKeys) printf("%s ", tree->Keys[i].Value);
+                }
+            printf("\n");
+            for (i=0; i<=tree->nKeys; i++) printTree(tree->Children[i].Child);
+            }
         }
-    if (level==0) printf("----------------------\n");
-    }
     }
 
 void printPtr(void* ptr) {

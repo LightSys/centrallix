@@ -58,8 +58,9 @@ LIBS = @LIBS@
 ## stop working!!!
 ##
 PROFILE=@PROFILE@
-CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall $(PROFILE) -g
-MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall $(PROFILE) -g -O0
+COVERAGE=-fprofile-arcs -ftest-coverage
+CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall $(PROFILE) $(COVERAGE) -g
+MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall $(PROFILE) $(COVERAGE) -g -O0
 TCFLAGS=$(patsubst -DNDEBUG,,$(CFLAGS))
 
 XSTATICFILES=mtask.o mtlexer.o memstr.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o xhandle.o xringqueue.o cxsec.o smmalloc.o qprintf.o strtcpy.o util.o b+tree.o
@@ -191,6 +192,10 @@ valtest:	$(TESTPROGS)
 .PHONY: clean
 clean:
 	@rm -f src/*.o src/*.lo $(TESTPROGS) ${FINAL_TARGETS} 2>/dev/null
+	@rm -f *.gcov */*.gcov
+	@rm -f *.gcda */*.gcda
+	@rm -f *.gcno */*.gcno
+	@rm lcov.info
 
 distclean: clean
 	@rm -f config.status config.cache config.log
