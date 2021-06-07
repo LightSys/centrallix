@@ -15,18 +15,14 @@ test(char** tname)
     {
     int i, ret, iter;
 
-	*tname = "b+tree3_67 Testing memory leaks: add only";
+	*tname = "b+tree3_64 Testing memory leaks: add only";
 
-    iter = 1000;
+    iter = 1;
     for(i = 0; i < iter; i++)
         {
         pBPTree tree = bptNew();
-        ret = automatedTree(tree, 30);
+        ret = automatedTree(tree, 50);
         assert (ret == 0);
-        printTree(tree->root);
-        printf("\n");
-        ret = bptRemove(tree, "0000000009", 10, free_func, NULL);
-        assert(ret == 0);
         ret = bptFree(tree, free_func, NULL);
         assert(ret == 0);
         }
