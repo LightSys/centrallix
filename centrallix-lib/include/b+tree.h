@@ -36,10 +36,11 @@ typedef struct _BPI BPIter, *pBPIter;
     void * Value;
     } BPTData;*/
 
-struct BPTree {
+struct BPTree
+    {
 	pBPNode root;
     int size;
-};
+    };
 
 struct _BPK
     {

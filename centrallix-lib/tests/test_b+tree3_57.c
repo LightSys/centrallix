@@ -35,7 +35,6 @@ test(char** tname)
 			*data = j;
 			sprintf(key, "%03d", j);
 			ret = bptAdd(tree, key, len, data);
-			nmSysFree(key);
 			assert(ret == 0);
 
 			count = 0;
@@ -54,7 +53,6 @@ test(char** tname)
 			sprintf(key, "%03d", j);
 			ret = bptRemove(tree, key, len, free_func, NULL);
 			
-			nmSysFree(key);
 			assert(ret == 0);
 			
 			count = 0;

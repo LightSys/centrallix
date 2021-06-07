@@ -87,8 +87,6 @@ test(char** tname)
 
     ret2 = bptRemove(tree, "0000000025", 10, free_func, NULL);
 
-    printTree(tree->root);
-
     int x = 1;
 	for(i=0;i<100001100;i++)
 	    {

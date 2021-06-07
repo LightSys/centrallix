@@ -34,7 +34,6 @@ test(char** tname)
 			*data = j;
 			sprintf(key, "%010d", j);
 			ret = bptAdd(tree, key, len, data);
-			nmSysFree(key);
 			assert(ret == 0);
 
 			prev_val = nmMalloc(sizeof(int));
@@ -55,7 +54,6 @@ test(char** tname)
 			sprintf(key, "%010d", j);
 			ret = bptRemove(tree, key, len, free_func, NULL);
 			
-			nmSysFree(key);
 			assert(ret == 0);
 			
 			prev_val = nmMalloc(sizeof(int));

@@ -29,7 +29,7 @@ test(char** tname)
     {
     int i, ret, iter;
 
-	*tname = "b+tree3_64 Testing memory leaks: add only";
+	*tname = "b+tree3_75 Testing memory leaks: add and remove";
 
     iter = 100;
     for(i = 0; i < iter; i++)
@@ -42,7 +42,7 @@ test(char** tname)
 
         amount = 1000;
         for (j = 0; j < amount; j++) 
-        {
+            {
             key = nmSysMalloc(len + 1);
 			int* data = nmMalloc(sizeof(int));
 			*data = j;
@@ -53,13 +53,18 @@ test(char** tname)
             stored->Ref = data;
 
 			ret = bptAdd(tree, stored->Key, strlen(stored->Key), stored);
-            if (ret != 0)
-                {
-                printf("Error in adding\n");
-                }
-        }
+            assert(ret == 0);
+            }
 
-        assert (ret == 0);
+        for(j = 0; j < amount / 2; j++)
+            {
+            key = nmSysMalloc(len + 1);
+			sprintf(key, "%010d", j);
+            ret = bptRemove(tree, key, len, free_func, NULL);
+            assert(ret == 0);
+            nmSysFree(key);
+            }
+
         ret = bptFree(tree, free_func, NULL);
         assert(ret == 0);
         }

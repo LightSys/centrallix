@@ -23,11 +23,12 @@ test(char** tname)
     int size = 1000;
 
     int* info[size];
+    char* k;
 
     for(i = 0; i < size; i++) {
         info[i] = nmMalloc(sizeof(int));
         *info[i] = i + 10;
-        char k[12];
+        k = nmSysMalloc(12);
         sprintf(k, "%d", i);
         as = bptAdd(tree, k, strlen(k), info[i]);
         assert(as == 0);

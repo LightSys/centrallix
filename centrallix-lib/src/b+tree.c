@@ -106,7 +106,6 @@ int
 bpt_i_Insert_Nonfull(pBPNode this, char* key, int key_len, void* data)
     {
     int i;
-    char* newKey = NULL;
     int count = 0;
     while (1)
         {
@@ -124,12 +123,7 @@ bpt_i_Insert_Nonfull(pBPNode this, char* key, int key_len, void* data)
                 i--;
                 }
 
-            newKey = nmSysMalloc(key_len);
-            if (!newKey) goto error;
-
-            memcpy(newKey, key, key_len);
-            
-            this->Keys[i+1].Value = newKey;
+            this->Keys[i+1].Value = key;
             this->Keys[i+1].Length = key_len;
             this->Children[i+1].Ref = data;
 
@@ -155,7 +149,6 @@ bpt_i_Insert_Nonfull(pBPNode this, char* key, int key_len, void* data)
         }
 
     error:
-        if(newKey) nmSysFree(newKey);
 
         return -1;
     }
@@ -206,7 +199,7 @@ bptAdd(pBPTree this, char* key, int key_len, void* data)
         //If multiple values need to be stored, then might need a linked list
         goto error;
         }
-    
+
     if (this->root->nKeys == MAX_KEYS(this->root))
         {
         /*** Full ***/
@@ -264,6 +257,8 @@ L: Length of K
 free(): Some free function
 D: a pointer for the data; can be any data type
 
+Calls the provided free_fn for each data value, as:  free_fn(free_arg, value)
+
 For int (*free_fn)(), we understand it is difficult to know what to pass in there. Here's an example of a simple dummy free function:
 int bpt_dummy_freeFn(void* arg, void* ptr) {
     free(ptr);
@@ -290,7 +285,6 @@ bptRemove(pBPTree tree, char* key, int key_len, int (*free_fn)(), void* free_arg
             {
             if (this->IsLeaf)
                 {
-                nmSysFree(this->Keys[i].Value);
                 free_fn(free_arg, this->Children[i].Ref);
                 memmove(&this->Keys[i], &this->Keys[i+1], ((this->nKeys-1)-i) * sizeof(this->Keys[0]));
                 memmove(&this->Children[i], &this->Children[i+1], ((this->nKeys-1)-i) * sizeof(this->Children[0]));
@@ -997,9 +991,6 @@ bpt_i_Clear(pBPNode this, int (*free_fn)(), void *free_arg)
             }
         if(ret != 0) goto error;
         }
-    
-    /** Clear key nodes */
-    for (i = 0; i < this->nKeys; i++) nmSysFree(this->Keys[i].Value);
 
     return 0;
 
@@ -1198,7 +1189,6 @@ int testTree_inner(pBPNode tree, int* last, int* lastLeaf)
 			*data = i;
 			sprintf(key, "%010d", i);
 			ret = bptAdd(this, key, strlen(key), data);
-			nmSysFree(key);
             if (ret != 0) {
                 return -1;
             }
