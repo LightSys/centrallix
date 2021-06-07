@@ -1064,35 +1064,34 @@ printTree2(pBPTree tree, int level) {
 }
 
 void
-printTree(pBPNode tree, int level)
+printTree(pBPNode tree)
     {
     int i;
     if(tree == NULL) {
         printf("Null");
     }
-    else {
-    //for (i=0; i<level; i++) {}
-    printf("\t");
-    printf("Node ");
-    printPtr(tree);
-    printf(": %sleaf, children: ", (tree->IsLeaf ? "" : "non"));
-    if (tree->IsLeaf)
-        {
-        for (i=0; i<tree->nKeys; i++) printf("(%s, %s) ", tree->Keys[i].Value, (char*)tree->Children[i].Ref);
-        printf("\n");
-        }
     else
         {
-        for (i=0; i<=tree->nKeys; i++) 
+        printf("\t");
+        printf("Node ");
+        printPtr(tree);
+        printf(": %sleaf, children: ", (tree->IsLeaf ? "" : "non"));
+        if (tree->IsLeaf)
             {
-            printPtr(tree->Children[i].Child);
-            if (i < tree->nKeys) printf("%s ", tree->Keys[i].Value);
+            for (i=0; i<tree->nKeys; i++) printf("(%s, %d) ", tree->Keys[i].Value, *((int*) tree->Children[i].Ref));
+            printf("\n");
             }
-        printf("\n");
-        for (i=0; i<=tree->nKeys; i++) printTree(tree->Children[i].Child, level + 1);
+        else
+            {
+            for (i=0; i<=tree->nKeys; i++) 
+                {
+                printPtr(tree->Children[i].Child);
+                if (i < tree->nKeys) printf("%s ", tree->Keys[i].Value);
+                }
+            printf("\n");
+            for (i=0; i<=tree->nKeys; i++) printTree(tree->Children[i].Child);
+            }
         }
-    if (level==0) printf("----------------------\n");
-    }
     }
 
 void printPtr(void* ptr) {
