@@ -12,64 +12,66 @@ int free_func(void* args, void* ref){
 long long
 test(char** tname)
     {
-    int i, j, ret, count, err;
+    int i, j, ret, err;
     int iter;
 	pBPTree tree = bptNew();
-	char* key;
+	char *key;
 	int len = 10;
-	int innerIter;
+	int *val, *prev_val;
 
 	pBPIter tree_iter;
 
-	*tname = "b+tree-58 test leaf linked list is always intact";
+	*tname = "b+tree_58 test leaf linked list is in order (Taken from original test 59)";
 
 	assert (bptIsEmpty(tree));
 	iter = 2000;
-	innerIter = 10;
 	for(i=0;i<iter;i++)
 	    {
-		for(j = 0; j < innerIter; j++)
+		for(j = 0; j < 100; j++)
 			{
 			key = nmSysMalloc(len + 1);
 			int* data = nmMalloc(sizeof(int));
 			*data = j;
-			sprintf(key, "%03d", j);
+			sprintf(key, "%010d", j);
 			ret = bptAdd(tree, key, len, data);
-			nmSysFree(key);
 			assert(ret == 0);
 
-			count = 0;
+			prev_val = nmMalloc(sizeof(int));
+			*prev_val = -1;
 			err = 0;
 			tree_iter = bptFront(tree);
 			while(!err)
 				{
+				val = tree_iter->Ref;
+				assert(*prev_val < *val);
+				prev_val = val;
 				bptNext(tree_iter, &err);
-				count++;
 				}
-				assert(count == j + 1);
 			}
-		for(j = 0; j < innerIter; j++)
+		for(j = 0; j < 100; j++)
 			{
 			key = nmSysMalloc(len + 1);
-			sprintf(key, "%03d", j);
+			sprintf(key, "%010d", j);
 			ret = bptRemove(tree, key, len, free_func, NULL);
 			
-			nmSysFree(key);
 			assert(ret == 0);
 			
-			count = 0;
+			prev_val = nmMalloc(sizeof(int));
+			*prev_val = -1;
 			err = 0;
 			tree_iter = bptFront(tree);
 			while(tree_iter && !err)
 				{
+				val = tree_iter->Ref;
+				assert(*prev_val < *val);
+				prev_val = val;
 				bptNext(tree_iter, &err);
-				count++;
 				}
-				assert(count == 100 - j - 1);
 			}
 		}
     return iter * 2000;
     }
+
 
 
 

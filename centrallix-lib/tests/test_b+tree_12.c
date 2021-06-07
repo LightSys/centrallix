@@ -1,64 +1,58 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
+#include <time.h>
+#include <stdlib.h>
+#include <string.h>
 #include "b+tree.h"
 #include "newmalloc.h"
 
+// dummy free function
+int bpt_dummy_freeFn(void* arg, void* ptr) {
+    nmFree(ptr, sizeof(int));
+    return 0;
+}
+
 long long
 test(char** tname)
-    {
-    int i; 
-    int iter;
-	pBPNode tree, left, right;
-	int val;
+   	{
+	*tname = "b+tree_12 Removing then Adding what you Removed";
+	
+   int y;
+   pBPTree this = bptNew();
 
-	*tname = "b+tree-12 bpt_I_DeInitNode works for 2-level tree";
+   int *info1 = nmMalloc(sizeof(int));
+   int *info2 = nmMalloc(sizeof(int));
+   int *info3 = nmMalloc(sizeof(int));
 
-	iter = 80000;
-	for(i=0;i<iter;i++)
-	 	{
-		tree = bpt_i_new_BPNode();
-		left = bpt_i_new_BPNode();
-		right = bpt_i_new_BPNode();
-		bptInit_I_Node(tree);
-		bptInit_I_Node(left);
-		bptInit_I_Node(right);
+   *info1 = 10;
+   *info2 = 20;
+   *info3 = 30;
 
-		tree->nKeys = 1;
-		tree->IsLeaf = 0;
-		tree->Keys[0].Length = 2;
-		tree->Keys[0].Value = nmSysMalloc(2); // don't assign double quoted string because deInit frees this
-		tree->Children[0].Child = left;
-		tree->Children[1].Child = right;
+    bptAdd(this, "Key1", 4, info1);
+    bptAdd(this, "Key2", 4, info2);
+    bptAdd(this, "Key3", 4, info3);
+    
+    y = bptRemove(this, "Key1", 4, bpt_dummy_freeFn, NULL);
+    assert(y == 0);
 
-		left->nKeys = 2;
-		left->IsLeaf = 1;
-		left->Next = right;
-		left->Keys[0].Length = 5;
-		left->Keys[0].Value = nmSysMalloc(5);
-		left->Keys[1].Length = 4;
-		left->Keys[1].Value = nmSysMalloc(4);
+    y = bptAdd(this, "Key1", 4, info1);
+    assert(y == 0);
 
-		right->nKeys = 2;
-		right->IsLeaf = 1;
-		right->Prev = left;
-		right->Keys[0].Length = 7;
-		right->Keys[0].Value = nmSysMalloc(7);
-		right->Keys[1].Length = 2;
-		right->Keys[1].Value = nmSysMalloc(2);
 
-		val = bpt_I_DeInitNode(tree);
-		assert (val == 0);
-		assert (tree->Next == NULL);
-		assert (tree->Prev == NULL);
-		assert (tree->nKeys == 0);		
-		assert (left->Next == NULL);
-		assert (left->Prev == NULL);
-		assert (left->nKeys == 0);	
-		assert (right->Next == NULL);
-		assert ((right->Prev == NULL));
-		assert ((right->nKeys == 0));	
-		}
-    return iter;
+
+
+
+
+    //This next part is just to avoid a floating point error
+    int i;
+    int x;
+    x = 1;
+    for (i = 0; i < 10000000; i++) {
+        x++;
     }
+
+    return 10;
+   	}
+
+
 

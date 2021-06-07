@@ -1,66 +1,67 @@
 #include <stdio.h>
 #include <assert.h>
+#include <time.h>
+#include <stdlib.h>
 #include <string.h>
 #include "b+tree.h"
 #include "newmalloc.h"
+
+int free_func(void* args, void* ref){
+    nmFree(ref, sizeof(int));
+    return 0;
+}
+
 long long
 test(char** tname)
    	{
-	printf("\n");
-	int a, i;
-    	int iter;
-	char* rval1;
-	char* rval5;
-        char* rval6;
-        char* rval7;
-        char* rval8;
 
-	*tname = "b+tree-29 Bulk Loading: Size = 100";
-	iter = 800;
+    int* status = 0;
+    
+    *tname = "b+tree_29 Ensuring that Iterator's Next Function is on a leaf";
+    pBPTree tree = bptNew();
 
-	pBPTree this;
-	char* fname = "tests/bpt_bl_10e2.dat";
-	FILE* tree = NULL;
-	FILE* dict = NULL;
-	tree = fopen(fname, "w");
-	dict = fopen("tests/dictionary.txt", "r");
+    
 
-	if (dict == NULL)
-		perror("dict is null");
-	char str[50];
+    int *info1 = nmMalloc(sizeof(int));
+    *info1 = 10;
 
-	for (a=1; a<=100; a++)
-		{
-		fscanf(dict, "%s\n", str);
-		fprintf(tree, "%08d %s\n", a, str);
-		}
-	fclose(dict);
-	fclose(tree);
+    int *info2 = nmMalloc(sizeof(int));
+    *info2 = 20;
 
-	for(i=0;i<iter;i++)
-	 	{
-		this = bptBulkLoad(fname, 100);
-		assert (this != NULL);
-		rval1 = (char*) bptLookup(this, "00000001", 8);
-		assert (strcmp("A", rval1) == 0);
-                //rval2 = (char*) bptSearch(this, "00000009", 8);
-                //assert (strcmp("Aaron'srod", rval2) == 0);
-                //rval3 = (char*) bptSearch(this, "00000057", 8);
-                //assert (strcmp("Abashing", rval3) == 0);
-               // rval4 = (char*) bptSearch(this, "00000033", 8);
-               // assert (strcmp("Abalienation", rval4) == 0);	
-		rval5 = (char*) bptLookup(this, "00000070", 8);
-                assert (strcmp("Abator", rval5) == 0);
-                rval6 = (char*) bptLookup(this, "00000088", 8);
-                assert (strcmp("Abbey", rval6) == 0);
-                rval7 = (char*) bptLookup(this, "00000100", 8);
-		assert (strcmp("ABC", rval7) == 0);
-		rval8 = (char*) bptLookup(this, "00000101", 8);
-		assert (rval8 == NULL);
-		}
+    int *info3 = nmMalloc(sizeof(int));
+    *info3 = 30;
 
-	printf("\n");
-	
-    	return iter*4;
-    	}
+    int *info4 = nmMalloc(sizeof(int));
+    *info4 = 40;
+
+    int *info5 = nmMalloc(sizeof(int));
+    *info5 = 50;
+
+    int *info6 = nmMalloc(sizeof(int));
+    *info6 = 60;
+
+    bptAdd(tree, "0001", 4, info1);
+    bptAdd(tree, "0002", 4, info2);
+    bptAdd(tree, "0003", 4, info3);
+    bptAdd(tree, "0004", 4, info4);
+    bptAdd(tree, "0005", 4, info5);
+    bptAdd(tree, "0006", 4, info6);
+
+    pBPIter iterator = bptFront(tree);
+    bptNext(iterator, status);
+    assert(iterator->Curr->IsLeaf == 1);
+
+    
+    //This next part is just to avoid a floating point error
+    int i;
+    int x;
+    x = 1;
+    for (i = 0; i < 10000000; i++) {
+        x++;
+    }
+
+
+
+    return 10;
+   	}
 

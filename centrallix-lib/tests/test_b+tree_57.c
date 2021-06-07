@@ -5,59 +5,68 @@
 #include "newmalloc.h"
 
 int free_func(void* args, void* ref){
-    nmSysFree(ref);
+    nmFree(ref, sizeof(int));
 	return 0;
 }
 
 long long
 test(char** tname)
     {
-    int i;
+    int i, j, ret, count, err;
     int iter;
 	pBPTree tree = bptNew();
+	char* key;
+	int len = 10;
+	int innerIter;
 
+	pBPIter tree_iter;
 
-	*tname = "b+tree-57 bptIsEmpty updates when deInit-ing";
+	*tname = "b+tree_57 add and remove many items from the tree (Taken from original test 58)";
 
 	assert (bptIsEmpty(tree));
-	iter = 200000;
+	iter = 2000;
+	innerIter = 10;
 	for(i=0;i<iter;i++)
-	    {	
-		pBPNode root = bpt_i_new_BPNode();
-		pBPNode left = bpt_i_new_BPNode();
-		pBPNode right = bpt_i_new_BPNode();  
-        root->Keys[0].Length = 5;
-        root->Keys[0].Value = nmSysMalloc(2); 
-		root->nKeys++;	
-		left->Keys[0].Length = 26;
-		left->Keys[0].Value = nmSysMalloc(2);
-		left->nKeys++;
-		left->Children[0].Ref = NULL;
-		left->Children[1].Ref = NULL;
-		left->Keys[1].Length = 1;
-		left->Keys[1].Value = nmSysMalloc(2);
-		left->nKeys++;
-		right->Keys[0].Length = 10;
-		right->Keys[0].Value = nmSysMalloc(2);
-		right->nKeys++;
-		right->Keys[1].Length = 2;
-		right->Keys[1].Value = nmSysMalloc(2);
-		right->Children[0].Ref = NULL;
-		right->Children[1].Ref = NULL;
-		right->nKeys++;
-		root->Children[0].Child = left;
-		root->Children[1].Child = right;
-		left->Next = right;
-		root->IsLeaf = 0;
-		tree->root = root;
-		tree->size = 5;
+	    {
+		for(j = 0; j < innerIter; j++)
+			{
+			key = nmSysMalloc(len + 1);
+			int* data = nmMalloc(sizeof(int));
+			*data = j;
+			sprintf(key, "%03d", j);
+			ret = bptAdd(tree, key, len, data);
+			assert(ret == 0);
 
-		assert (!bptIsEmpty(tree));
-		bptDeInit(tree, free_func, NULL);
-		assert (bptIsEmpty(tree));
+			count = 0;
+			err = 0;
+			tree_iter = bptFront(tree);
+			while(!err)
+				{
+				bptNext(tree_iter, &err);
+				count++;
+				}
+				assert(count == j + 1);
+			}
+		for(j = 0; j < innerIter; j++)
+			{
+			key = nmSysMalloc(len + 1);
+			sprintf(key, "%03d", j);
+			ret = bptRemove(tree, key, len, free_func, NULL);
+			
+			assert(ret == 0);
+			
+			count = 0;
+			err = 0;
+			tree_iter = bptFront(tree);
+			while(tree_iter && !err)
+				{
+				bptNext(tree_iter, &err);
+				count++;
+				}
+				assert(count == innerIter - j - 1);
+			}
 		}
-
-    return iter;
+    return iter * 2000;
     }
 
 

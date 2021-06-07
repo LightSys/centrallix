@@ -18,7 +18,7 @@
 |* Centrallix Application Server System 				                *|
 |* Centrallix Base Library						                        *|
 |* 									                                    *|
-|* Copyright (C) 1998-2020 LightSys Technology Services, Inc.		    *|
+|* Copyright (C) 1998-2021 LightSys Technology Services, Inc.		    *|
 |* 									                                    *|
 |* You may use these files and this library under the terms of the	    *|
 |* GNU Lesser General Public License, Version 2.1, contained in the	    *|
@@ -1004,7 +1004,7 @@ pBPTree
 bptBulkLoad(char* fname, int num)
 	{
 	pBPTree tree = bptNew();
-    int tmp25;
+    int ret;
     int i;
 	FILE* data = NULL;
 	data = fopen(fname, "r");
@@ -1020,8 +1020,12 @@ bptBulkLoad(char* fname, int num)
         key_val = key;
         info = nmSysMalloc(50);
         info = leaf;
-        tmp25 = bptAdd(tree, key_val, strlen(key_val), info);
-		if (tmp25 != 0)
+
+
+        ret = bptAdd(tree, key_val, strlen(key_val), info);
+		
+        
+        if (ret != 0)
 			{
 			return NULL;
 			}
@@ -1055,32 +1059,32 @@ printTree2(pBPTree tree, int level) {
 }
 
 void
-printTree(pBPNode tree)
+printTree(pBPNode root)
     {
     int i;
-    if(tree == NULL) {
+    if(root == NULL) {
         printf("Null");
     }
     else
         {
         printf("\t");
         printf("Node ");
-        printPtr(tree);
-        printf(": %sleaf, children: ", (tree->IsLeaf ? "" : "non"));
-        if (tree->IsLeaf)
+        printPtr(root);
+        printf(": %d keys, %sleaf, children: ", root->nKeys, (root->IsLeaf ? "" : "non"));
+        if (root->IsLeaf)
             {
-            for (i=0; i<tree->nKeys; i++) printf("(%s, %d) ", tree->Keys[i].Value, *((int*) tree->Children[i].Ref));
+            for (i=0; i<root->nKeys; i++) printf("(%s, %d) ", root->Keys[i].Value, *((int*) root->Children[i].Ref));
             printf("\n");
             }
         else
             {
-            for (i=0; i<=tree->nKeys; i++) 
+            for (i=0; i<=root->nKeys; i++) 
                 {
-                printPtr(tree->Children[i].Child);
-                if (i < tree->nKeys) printf("%s ", tree->Keys[i].Value);
+                printPtr(root->Children[i].Child);
+                if (i < root->nKeys) printf("%s ", root->Keys[i].Value);
                 }
             printf("\n");
-            for (i=0; i<=tree->nKeys; i++) printTree(tree->Children[i].Child);
+            for (i=0; i<=root->nKeys; i++) printTree(root->Children[i].Child);
             }
         }
     }

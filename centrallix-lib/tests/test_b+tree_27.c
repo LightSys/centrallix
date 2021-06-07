@@ -1,74 +1,56 @@
 #include <stdio.h>
 #include <assert.h>
+#include <time.h>
+#include <stdlib.h>
 #include <string.h>
 #include "b+tree.h"
 #include "newmalloc.h"
+
+// dummy free function
+int bpt_dummy_freeFn(void* arg, void* ptr) {
+    free(ptr);
+    return 0;
+}
+
 long long
 test(char** tname)
    	{
-	int i, iter;
-	char* rval1;
-	char* rval2;
-	char* rval3;
-	char* rval4;
-	char* rval5;
-	char* rval6;
-	char* rval7;
-	pBPNode this;
-
-	pBPNode rnode1;
-
-	*tname = "b+tree-27 test of bptSearch";
-	iter = 800000;
-	printf("\n");
-
-	pBPNode root = bpt_i_new_BPNode();
-	pBPNode left = bpt_i_new_BPNode();
-	pBPNode mid = bpt_i_new_BPNode();
-	pBPNode right = bpt_i_new_BPNode();  
-        root->Keys[0].Length = 5;
-        root->Keys[0].Value = "Green\0"; 
-	root->nKeys++;	
-	root->Keys[1].Length = 8;
-        root->Keys[1].Value = "Hot dogs\0";
-        root->nKeys++;
-	left->Keys[0].Length = 26;
-	left->Keys[0].Value = "Abcdefghijklmnopqrstuvwxyz\0";
-	left->nKeys++;
-	left->Keys[1].Length = 2;
-	left->Keys[1].Value = "Az\0";
-	left->nKeys++;
-	left->Keys[2].Length = 7;
-        left->Keys[2].Value = "Bananas\0";
-	left->nKeys++;
-        left->Keys[3].Length = 2; 
-        left->Keys[3].Value = "Do\0";         
-	left->nKeys++;
-	mid->Keys[0].Length = 7;
-	mid->Keys[0].Value = "Happier\0";
-	mid->nKeys++;
-	right->Keys[0].Length = 10;
-	right->Keys[0].Value = "Watermelon\0";
-	right->nKeys++;
-	right->Keys[1].Length = 5;
-	right->Keys[1].Value = "Zebra\0";
-	right->Children[1].Ref = (void*) "REF VAL\0";
-	right->nKeys++;
-	root->Children[0].Child = left;
-	root->Children[1].Child = mid;
-	root->Children[2].Child = right;
-	left->Next = right;
-	root->IsLeaf = 0;
+	*tname = "b+tree_27 Test that bptRemove Cannot Remove a Value Twice";
 	
-	for (i=0; i<iter; i++)
-		{
-		rval1 = bptLookup(root, "Zebra", 5);
-		
-		assert (strcmp("REF VAL\0", rval1) == 0);
-		}
+   int ret;
+   pBPTree this = bptNew();
 
-	printf("\n");
-	
-    	return iter*4;
-    	}
+   int *info1 = nmMalloc(sizeof(int));
+   int *info2 = nmMalloc(sizeof(int));
+   int *info3 = nmMalloc(sizeof(int));
+
+   *info1 = 10;
+   *info2 = 20;
+   *info3 = 30;
+
+    bptAdd(this, "Key1", 4, info1);
+    bptAdd(this, "Key2", 4, info2);
+    bptAdd(this, "Key3", 4, info3);
+    
+    bptRemove(this, "Key1", 4, bpt_dummy_freeFn, NULL);
+    ret = bptRemove(this, "Key1", 4, bpt_dummy_freeFn, NULL);
+
+
+   assert(ret == -1);
+
+     //This next part is just to avoid a floating point error
+    int i;
+    int x;
+    x = 1;
+    for (i = 0; i < 10000000; i++) {
+        x++;
+    }
+
+    return x;
+
+   
+
+   	}
+
+
 

@@ -1,59 +1,57 @@
 #include <stdio.h>
 #include <assert.h>
+#include <time.h>
+#include <stdlib.h>
 #include <string.h>
 #include "b+tree.h"
 #include "newmalloc.h"
+
+int free_func(void* args, void* ref){
+    nmFree(ref, sizeof(int));
+    return -1;
+}
+
 long long
 test(char** tname)
    	{
-	int i, iter, tmp;
-	*tname = "b+tree-24 full test of bpt_i_Compare";
-	iter = 800000;
+    *tname = "b+tree_24 test bptDeInit to see if bpt_i_Clear returns -1 if the free func returns -1 (which would make bptDeInit return -2)";
+    pBPTree tree = bptNew();
+    int y;
+    int as;
 
-	for(i=0;i<iter;i++)
-	 	{
-		tmp = bpt_i_Compare("", 0, "", 0);
-		assert (tmp == 0);
-	        tmp = bpt_i_Compare("HELLO", 5, "HELLO", 5);
-                assert (tmp == 0);
-		tmp = bpt_i_Compare("Tommy O'Brien", 13, "Tommy O'Brien", 13);
-                assert (tmp == 0);
-	        tmp = bpt_i_Compare("2", 1, "2", 1);
-                assert (tmp == 0);
-	        tmp = bpt_i_Compare("!@#", 3, "!@#", 3);
-                assert (tmp == 0);
-	        tmp = bpt_i_Compare("peanut", 6, "peanut", 6);
-                assert (tmp == 0);
-	
-		tmp = bpt_i_Compare("123", 3, "abc", 3);  
-                assert (tmp < 0);
-		tmp = bpt_i_Compare("", 0, "abc", 3);
-                assert (tmp < 0);
-		tmp = bpt_i_Compare("Mango", 5, "mango", 5);
-                assert (tmp < 0);
-		tmp = bpt_i_Compare("Will", 4, "William", 7);
-                assert (tmp < 0); 
-		tmp = bpt_i_Compare("credit", 6, "debit", 5);
-                assert (tmp < 0); 
-		tmp = bpt_i_Compare("hijklmmopqrs", 12, "hijklmnopqrs", 12);
-                assert (tmp < 0); 
+    int i;
+    int size = 1000;
 
-		tmp = bpt_i_Compare("789", 3, "788", 3);
-                assert (tmp > 0);
-		tmp = bpt_i_Compare("A", 1, "", 0);
-                assert (tmp > 0); 
-		tmp = bpt_i_Compare("William", 7, "Will", 4);
-		assert (tmp > 0);
-		tmp = bpt_i_Compare("tommy", 5, "thomas", 6);
-		assert (tmp > 0);
-		tmp = bpt_i_Compare("!!!!", 4, "!!", 2); 
-		assert (tmp > 0); 
-		tmp = bpt_i_Compare("hijklmnopqrs", 12, "hijklmmopqrs", 12);
-		assert (tmp > 0); 
-		}
+    int* info[size];
+    char* k;
 
-	printf("\n");
-	
-    	return iter*4;
-    	}
+    for(i = 0; i < size; i++) {
+        info[i] = nmMalloc(sizeof(int));
+        *info[i] = i + 10;
+        k = nmSysMalloc(12);
+        
+        sprintf(k, "%d", i);
+        as = bptAdd(tree, k, strlen(k), info[i]);
+        assert(as == 0);
+    }
+
+    //There has been an issue with bptDeInit. It seems to originate in bpt_i_clear, based on the error message
+    y = bptDeInit(tree, free_func, NULL);
+
+
+    assert(y == -1);
+
+    
+    //This next part is just to avoid a floating point error
+    
+    int x;
+    x = 1;
+    for (i = 0; i < 10000000; i++) {
+        x++;
+    }
+
+
+
+    return 10;
+   	}
 

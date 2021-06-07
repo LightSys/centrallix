@@ -1,32 +1,68 @@
 #include <stdio.h>
 #include <assert.h>
+#include <time.h>
+#include <stdlib.h>
+#include <string.h>
 #include "b+tree.h"
+#include "newmalloc.h"
 
 long long
 test(char** tname)
-    {
+   	{
+    
+    int *y;
+
+
+    *tname = "b+tree_08 Test bptLookup Function";
+    pBPTree tree = bptNew();
+
+    int *info1 = nmMalloc(sizeof(int));
+    *info1 = 10;
+
+    int *info2 = nmMalloc(sizeof(int));
+    *info1 = 20;
+
+    int *info3 = nmMalloc(sizeof(int));
+    *info1 = 30;
+
+    int *info4 = nmMalloc(sizeof(int));
+    *info1 = 40;
+
+    int *info5 = nmMalloc(sizeof(int));
+    *info1 = 50;
+
+    bptAdd(tree, "0001", 4, info1);
+    bptAdd(tree, "0002", 4, info2);
+    bptAdd(tree, "0003", 4, info3);
+    bptAdd(tree, "0004", 4, info4);
+    bptAdd(tree, "0005", 4, info5);
+
+    y = bptLookup(tree, "0001", 4);
+    assert(y == info1);
+
+    y = bptLookup(tree, "0002", 4);
+    assert(y == info2);
+
+    y = bptLookup(tree, "0003", 4);
+    assert(y == info3);
+
+    y = bptLookup(tree, "0004", 4);
+    assert(y == info4);
+
+    y = bptLookup(tree, "0005", 4);
+    assert(y == info5);
+
+    
+    //This next part is just to avoid a floating point error
     int i;
-    int iter;
-	pBPNode tree;
-	int val;
-
-	*tname = "b+tree-08 bptInit_I_Node returns 0, clears ptrs, resets vars";
-
-	iter = 800000;
-	for(i=0;i<iter;i++)
-	 	{
-		tree = bpt_i_new_BPNode();
-		tree->Next = tree;
-		tree->Prev = tree;
-		tree->nKeys = 4;
-		tree->IsLeaf = 0;
-		val = bptInit_I_Node(tree);
-		assert (val == 0);
-		assert (tree->Next == NULL);
-		assert (tree->Prev == NULL);
-		assert (tree->nKeys == 0);
-		assert (tree->IsLeaf == 1);
-		}
-    return iter;
+    int x;
+    x = 1;
+    for (i = 0; i < 10000000; i++) {
+        x++;
     }
+
+
+
+    return 10;
+   	}
 

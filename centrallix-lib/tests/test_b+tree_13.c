@@ -1,120 +1,73 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
+#include <time.h>
+#include <stdlib.h>
+#include <string.h>
 #include "b+tree.h"
 #include "newmalloc.h"
 
+// dummy free function
+int bpt_dummy_freeFn(void* arg, void* ptr) {
+    nmFree(ptr, sizeof(int));
+    return 0;
+}
+
 long long
 test(char** tname)
-    {
-    int i; 
-    int iter;
-	pBPNode tree, left, right, ll, lr, rl, rr;
-	int val;
+   	{
+	*tname = "b+tree_13 Size Updates as you Remove and Add";
+	
+   int y;
+   pBPTree this = bptNew();
 
-	*tname = "b+tree-13 bpt_I_DeInitNode works for 3-level tree";
+   int *info1 = nmMalloc(sizeof(int));
+   int *info2 = nmMalloc(sizeof(int));
+   int *info3 = nmMalloc(sizeof(int));
+   int *info4 = nmMalloc(sizeof(int));
 
-	iter = 80000;
-	for(i=0;i<iter;i++)
-	 	{
-		tree = bpt_i_new_BPNode();
-		left = bpt_i_new_BPNode();
-		right = bpt_i_new_BPNode();
-		ll = bpt_i_new_BPNode();
-		lr = bpt_i_new_BPNode();
-		rl = bpt_i_new_BPNode();
-		rr = bpt_i_new_BPNode();
+   *info1 = 10;
+   *info2 = 20;
+   *info3 = 30;
+   *info4 = 40;
 
-		bptInit_I_Node(tree);
-		bptInit_I_Node(left);
-		bptInit_I_Node(right);
-		bptInit_I_Node(ll);
-		bptInit_I_Node(lr);
-		bptInit_I_Node(rl);
-		bptInit_I_Node(rr);
+    bptAdd(this, "Key1", 4, info1);
+    bptAdd(this, "Key2", 4, info2);
+    bptAdd(this, "Key3", 4, info3);
+    
+    y = bptRemove(this, "Key1", 4, bpt_dummy_freeFn, NULL);
+    assert(y == 0);
 
-		tree->nKeys = 1;
-		tree->IsLeaf = 0;
-		tree->Keys[0].Length = 2;
-		tree->Keys[0].Value = nmSysMalloc(2); // don't assign double quoted string because deInit frees this
-		tree->Children[0].Child = left;
-		tree->Children[1].Child = right;
+    y = bptSize(this);
+    assert(y == 2);
 
-		left->nKeys = 1;
-		left->IsLeaf = 0;
-		left->Next = right;
-		left->Children[0].Child = ll;
-		left->Children[1].Child = lr;
-		left->Keys[0].Length = 5;
-		left->Keys[0].Value = nmSysMalloc(5);
+    y = bptAdd(this, "Key4", 4, info4);
+    assert(y == 0);
 
-		right->nKeys = 1;
-		right->IsLeaf = 0;
-		right->Prev = left;
-		right->Children[0].Child = rl;
-		right->Children[1].Child = rr;
-		right->Keys[0].Length = 7;
-		right->Keys[0].Value = nmSysMalloc(7);
+     y = bptSize(this);
+    assert(y == 3);
 
-		ll->nKeys = 2;
-		ll->IsLeaf = 1;
-		ll->Next = lr;
-		ll->Keys[0].Length = 3;
-		ll->Keys[0].Value = nmSysMalloc(3);
-		ll->Keys[1].Length = 2;
-		ll->Keys[1].Value = nmSysMalloc(2);
 
-		lr->nKeys = 2;
-		lr->IsLeaf = 1;
-		lr->Prev = ll;
-		lr->Keys[0].Length = 3;
-		lr->Keys[0].Value = nmSysMalloc(3);
-		lr->Keys[1].Length = 2;
-		lr->Keys[1].Value = nmSysMalloc(2);
-		
-		rl->nKeys = 2;
-		rl->IsLeaf = 1;
-		rl->Next = rr;
-		rl->Keys[0].Length = 3;
-		rl->Keys[0].Value = nmSysMalloc(3);
-		rl->Keys[1].Length = 2;
-		rl->Keys[1].Value = nmSysMalloc(2);
+    y = bptRemove(this, "Key2", 4, bpt_dummy_freeFn, NULL);
+    assert(y == 0);
 
-		rl->nKeys = 2;
-		rl->IsLeaf = 1;
-		rl->Prev = rl;
-		rl->Keys[0].Length = 3;
-		rl->Keys[0].Value = nmSysMalloc(3);
-		rl->Keys[1].Length = 2;
-		rl->Keys[1].Value = nmSysMalloc(2);
+    y = bptSize(this);
+    assert(y == 2);
 
-		val = bpt_I_DeInitNode(tree);
-		assert (val == 0);
-		assert (tree->Next == NULL);
-		assert (tree->Prev == NULL);
-		assert (tree->nKeys == 0);	
 
-		assert (left->Next == NULL);
-		assert (left->Prev == NULL);
-		assert (left->nKeys == 0);	
-		assert (right->Next == NULL);
-		assert (right->Prev == NULL);
-		assert (right->nKeys == 0);	
 
-		assert (ll->Next == NULL);
-		assert (ll->Prev == NULL);
-		assert (ll->nKeys == 0);
-		assert (lr->Next == NULL);
-		assert (lr->Prev == NULL);
-		assert (lr->nKeys == 0);
-		assert (rl->Next == NULL);
-		assert (rl->Prev == NULL);
-		assert (rl->nKeys == 0);
-		assert (rr->Next == NULL);
-		assert (rr->Prev == NULL);
-		assert (rr->nKeys == 0);
-		}
-    return iter;
+
+
+
+    //This next part is just to avoid a floating point error
+    int i;
+    int x;
+    x = 1;
+    for (i = 0; i < 10000000; i++) {
+        x++;
     }
+
+    return 10;
+   	}
+
 
 

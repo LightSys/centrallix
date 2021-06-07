@@ -1,131 +1,71 @@
 #include <stdio.h>
 #include <assert.h>
+#include <time.h>
+#include <stdlib.h>
 #include <string.h>
 #include "b+tree.h"
 #include "newmalloc.h"
+
+int free_func(void* args, void* ref){
+    nmFree(ref, sizeof(int));
+    return 0;
+}
+
 long long
 test(char** tname)
    	{
-	printf("\n");
-	int iter, i, tmp;
-	int d1, d2, d3;
-	int idx;
-        pBPNode dummy;
+    
+    *tname = "b+tree_41 Testing bptIterFree on a front iterator with a next";
+    pBPTree tree = bptNew();
 
-	*tname = "b+tree-41 Analyze depth of tree";
-	iter = 8000000;
-	
-	pBPNode this1 = bptBulkLoad("tests/bpt_bl_10e1.dat", 10);
-	depthG = 0;
-	tmp = bpt_i_Find(this1, "00000001", 8, &dummy, &idx);
-	assert (tmp == 0);	
-	d1 = depthG;
-	depthG = 0;
-	tmp = bpt_i_Find(this1, "00000005", 8, &dummy, &idx); 
-	assert (tmp == 0);  
-	d2 = depthG; 
-	depthG = 0;   
-	tmp = bpt_i_Find(this1, "00000010", 8, &dummy, &idx);            
-	assert (tmp == 0);                   
-	d3 = depthG;
-	assert (d1 == d2);
-	assert (d2 == d3);
-	printf("n = 10\tdepth = %d\n", d2);
-	
-	pBPNode this2 = bptBulkLoad("tests/bpt_bl_10e2.dat", 100);
-	depthG = 0;
-	tmp = bpt_i_Find(this2, "00000001", 8, &dummy, &idx);
-	assert (tmp == 0);	
-	d1 = depthG;
-	depthG = 0;
-	tmp = bpt_i_Find(this2, "00000050", 8, &dummy, &idx); 
-	assert (tmp == 0);  
-	d2 = depthG; 
-	depthG = 0;   
-	tmp = bpt_i_Find(this2, "00000100", 8, &dummy, &idx);            
-	assert (tmp == 0);                   
-	d3 = depthG;
-	assert (d1 == d2);
-	assert (d2 == d3);
-	printf("n = 100\tdepth = %d\n", d2);
+    int status = 0;
+    int y;
+
+    
+
+    int *info1 = nmMalloc(sizeof(int));
+    *info1 = 10;
+
+    int *info2 = nmMalloc(sizeof(int));
+    *info2 = 20;
+
+    int *info3 = nmMalloc(sizeof(int));
+    *info3 = 30;
+
+    int *info4 = nmMalloc(sizeof(int));
+    *info4 = 40;
+
+    int *info5 = nmMalloc(sizeof(int));
+    *info5 = 50;
+
+    int *info6 = nmMalloc(sizeof(int));
+    *info6 = 60;
+
+    bptAdd(tree, "0001", 4, info1);
+    bptAdd(tree, "0002", 4, info2);
+    bptAdd(tree, "0003", 4, info3);
+    bptAdd(tree, "0004", 4, info4);
+    bptAdd(tree, "0005", 4, info5);
+    bptAdd(tree, "0006", 4, info6);
+
+    pBPIter iterator = bptFront(tree);
+    bptNext(iterator, &status);
+
+    y = bptIterFree(iterator);
+
+    assert(y == 0);
+
+    
+    //This next part is just to avoid a floating point error
+    int i;
+    int x;
+    x = 1;
+    for (i = 0; i < 10000000; i++) {
+        x++;
+    }
 
 
-	pBPNode this3 = bptBulkLoad("tests/bpt_bl_10e3.dat", 1000);
-	depthG = 0;
-	tmp = bpt_i_Find(this3, "00000001", 8, &dummy, &idx);
-	assert (tmp == 0);	
-	d1 = depthG;
-	depthG = 0;
-	tmp = bpt_i_Find(this3, "00000500", 8, &dummy, &idx); 
-	assert (tmp == 0);  
-	d2 = depthG; 
-	depthG = 0;   
-	tmp = bpt_i_Find(this3, "00001000", 8, &dummy, &idx);            
-	assert (tmp == 0);                   
-	d3 = depthG;
-	assert (d1 == d2);
-	assert (d2 == d3);
-	printf("n = 1000\tdepth = %d\n", d2);
 
-	pBPNode this4 = bptBulkLoad("tests/bpt_bl_10e4.dat", 10000);
-	depthG = 0;
-	tmp = bpt_i_Find(this4, "00000001", 8, &dummy, &idx);
-	assert (tmp == 0);	
-	d1 = depthG;
-	depthG = 0;
-	tmp = bpt_i_Find(this4, "00005000", 8, &dummy, &idx); 
-	assert (tmp == 0);  
-	d2 = depthG; 
-	depthG = 0;   
-	tmp = bpt_i_Find(this4, "00010000", 8, &dummy, &idx);            
-	assert (tmp == 0);                   
-	d3 = depthG;
-	assert (d1 == d2);
-	assert (d2 == d3);
-	printf("n = 10000\tdepth = %d\n", d2);
-
-	pBPNode this5 = bptBulkLoad("tests/bpt_bl_10e5.dat", 100000);
-	depthG = 0;
-	tmp = bpt_i_Find(this5, "00000001", 8, &dummy, &idx);
-	assert (tmp == 0);	
-	d1 = depthG;
-	depthG = 0;
-	tmp = bpt_i_Find(this5, "00050000", 8, &dummy, &idx); 
-	assert (tmp == 0);  
-	d2 = depthG; 
-	depthG = 0;   
-	tmp = bpt_i_Find(this5, "00100000", 8, &dummy, &idx);            
-	assert (tmp == 0);                   
-	d3 = depthG;
-	assert (d1 == d2);
-	assert (d2 == d3);
-	printf("n = 100000\tdepth = %d\n", d2);
-
-	pBPNode this6 = bptBulkLoad("tests/bpt_bl_10e6.dat", 1000000);
-	depthG = 0;
-	tmp = bpt_i_Find(this6, "00000001", 8, &dummy, &idx);
-	assert (tmp == 0);	
-	d1 = depthG;
-	depthG = 0;
-	tmp = bpt_i_Find(this6, "00500000", 8, &dummy, &idx); 
-	assert (tmp == 0);  
-	d2 = depthG; 
-	depthG = 0;   
-	tmp = bpt_i_Find(this6, "01000000", 8, &dummy, &idx);            
-	assert (tmp == 0);                   
-	d3 = depthG;
-	assert (d1 == d2);
-	assert (d2 == d3);
-	printf("n = 1000000\tdepth = %d\n", d2);
-	
-	
-	for(i=0;i<iter;i++)
-	 	{
-		assert (0 == 0);
-		}
-
-	printf("\n");
-	
-    	return iter*4;
-    	}
+    return 10;
+   	}
 

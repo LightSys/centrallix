@@ -1,49 +1,39 @@
 #include <stdio.h>
 #include <assert.h>
+#include <time.h>
+#include <stdlib.h>
 #include <string.h>
 #include "b+tree.h"
 #include "newmalloc.h"
+
 long long
 test(char** tname)
    	{
-	printf("\n");
-	int i;
-    	int iter;
-	int tmp;
+    
+    int y;
 
-	*tname = "b+tree-04 2 Children";
-	iter = 8000000;
-	
-	pBPNode root = bpt_i_new_BPNode();
-	pBPNode left = bpt_i_new_BPNode();
-	pBPNode right = bpt_i_new_BPNode();  
-        root->Keys[0].Length = 5;
-        root->Keys[0].Value = "Tommy\0"; 
-	root->nKeys++;	
-	left->Keys[0].Length = 26;
-	left->Keys[0].Value = "abcdefghijklmnopqrstuvwxyz\0";
-	left->nKeys++;
-	left->Keys[1].Length = 1;
-	left->Keys[1].Value = "a\0";
-	left->nKeys++;
-	right->Keys[0].Length = 10;
-	right->Keys[0].Value = "0123456789\0";
-	right->nKeys++;
-	right->Keys[1].Length = 2;
-	right->Keys[1].Value = "!?\0";
-	right->nKeys++;
-	root->Children[0].Child = left;
-	root->Children[1].Child = right;
-	left->Next = right;
-	root->IsLeaf = 0;
-	
-	tmp = 0;
-	for(i=0;i<iter;i++)
-	 	{
-		assert (tmp == 0);
-		}
 
-	
-    	return iter*4;
-    	}
+    *tname = "b+tree_04 Test bptAdd Function";
+
+    int *info1 = nmMalloc(sizeof(int));
+    *info1 = 10;
+
+    pBPTree tree = bptNew();
+
+    y = bptAdd(tree, "0001", 4, info1);
+
+    assert(y == 0);
+
+    //This next part is just to avoid a floating point error
+    int i;
+    int x;
+    x = 1;
+    for (i = 0; i < 10000000; i++) {
+        x++;
+    }
+
+
+
+    return 10;
+   	}
 

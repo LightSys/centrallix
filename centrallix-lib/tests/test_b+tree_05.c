@@ -1,67 +1,58 @@
 #include <stdio.h>
 #include <assert.h>
+#include <time.h>
+#include <stdlib.h>
 #include <string.h>
 #include "b+tree.h"
 #include "newmalloc.h"
+
 long long
 test(char** tname)
    	{
-	printf("\n");
-	int i;
-    	int iter;
-	int tmp;
-
-	*tname = "b+tree-05 3 Levels";
-	iter = 8000000;
-	
-	pBPNode root = bpt_i_new_BPNode();
-	pBPNode leftMid = bpt_i_new_BPNode();
-	pBPNode rightMid = bpt_i_new_BPNode();
-	pBPNode leftL = bpt_i_new_BPNode();
-	pBPNode leftR = bpt_i_new_BPNode();
-	pBPNode rightL = bpt_i_new_BPNode();
-	pBPNode rightR = bpt_i_new_BPNode();  
-        root->Keys[0].Length = 5;
-        root->Keys[0].Value = "Tommy\0"; 
-	root->nKeys++;	
-	leftMid->Keys[0].Length = 26;
-	leftMid->Keys[0].Value = "abcdefghijklmnopqrstuvwxyz\0";
-	leftMid->nKeys++;
-	leftL->Keys[0].Length = 1;
-	leftL->Keys[0].Value = "a\0";
-	leftL->nKeys++;
-	leftR->Keys[0].Length = 3;
-	leftR->Keys[0].Value = "HEY\0";
-	leftR->nKeys++;
-	rightMid->Keys[0].Length = 10;
-	rightMid->Keys[0].Value = "0123456789\0";
-	rightMid->nKeys++;
-	rightL->Keys[0].Length = 2;
-	rightL->Keys[0].Value = "!?\0";
-	rightL->nKeys++;
-	rightR->Keys[0].Length = 3;
-	rightR->Keys[0].Value = "*&#\0";
-	rightR->nKeys++;
-	root->Children[0].Child = leftMid;
-	root->Children[1].Child = rightMid;
-	leftMid->Children[0].Child = leftL;
-	leftMid->Children[1].Child = leftR;
-	rightMid->Children[0].Child = rightL;
-	rightMid->Children[1].Child = rightR;
-	root->IsLeaf = 0;
-	leftMid->IsLeaf = 0;
-	rightMid->IsLeaf = 0;
+    
+    int y;
 
 
-	tmp = 0;
-	printTree(&root, 3);
-	for(i=0;i<iter;i++)
-	 	{
-		assert (tmp == 0);
-		}
+    *tname = "b+tree_04 Test bptAdd Function's Inability to Add in Duplicates";
 
-	printf("\n");
-	
-    	return iter*4;
-    	}
+    int *info1 = nmMalloc(sizeof(int));
+    *info1 = 10;
+
+    int *info2 = nmMalloc(sizeof(int));
+    *info1 = 20;
+
+    int *info3 = nmMalloc(sizeof(int));
+    *info1 = 30;
+
+    int *info4 = nmMalloc(sizeof(int));
+    *info1 = 40;
+
+    int *info5 = nmMalloc(sizeof(int));
+    *info1 = 50;
+
+    pBPTree tree = bptNew();
+
+    bptAdd(tree, "0001", 4, info1);
+    bptAdd(tree, "0002", 4, info2);
+    bptAdd(tree, "0003", 4, info3);
+    bptAdd(tree, "0004", 4, info4);
+    bptAdd(tree, "0005", 4, info5);
+
+    y = bptAdd(tree, "0002", 4, info2);
+
+    assert(y != 0);
+
+
+    //This next part is just to avoid a floating point error
+    int i;
+    int x;
+    x = 1;
+    for (i = 0; i < 10000000; i++) {
+        x++;
+    }
+
+
+
+    return 10;
+   	}
 

@@ -1,64 +1,64 @@
 #include <stdio.h>
 #include <assert.h>
+#include <time.h>
+#include <stdlib.h>
 #include <string.h>
 #include "b+tree.h"
 #include "newmalloc.h"
+
+int free_func(void* args, void* ref){
+    nmFree(ref, sizeof(int));
+    return 0;
+}
+
 long long
 test(char** tname)
    	{
-	printf("\n");
-	int a, i;
-    	int iter;
-	char* rval1;
-	char* rval2;
-	char* rval3;
-	char* rval4;	
+    
+    *tname = "b+tree_28 Ensuring that Iterator starts on a leaf";
+    pBPTree tree = bptNew();
 
-	pBPNode ret_node;
+    
 
-	*tname = "b+tree-28 Bulk Loading: Size = 10";
-	iter = 8000;
-	
-	pBPTree this;
-	char* fname = "tests/bpt_bl_10e1.dat";
-	FILE* tree = NULL;
-	FILE* dict = NULL;
-	tree = fopen(fname, "w");
-	dict = fopen("tests/dictionary.txt", "r");
-	if (dict == NULL)
-		perror("dict is null");
-	char str[50];
-	
-	for (a=1; a<=10; a++)
-		{
-		fscanf(dict, "%s\n", str);
-		fprintf(tree, "%08d %s\n", a, str);
-		}
-	fclose(dict);
-	fclose(tree);
+    int *info1 = nmMalloc(sizeof(int));
+    *info1 = 10;
 
-//	this = bptBulkLoad(fname, --a);
-//	bpt_PrintTree(&this);
+    int *info2 = nmMalloc(sizeof(int));
+    *info2 = 20;
 
-	for(i=0;i<iter;i++)
-	 	{
-		printf("%08d", 0);
+    int *info3 = nmMalloc(sizeof(int));
+    *info3 = 30;
+
+    int *info4 = nmMalloc(sizeof(int));
+    *info4 = 40;
+
+    int *info5 = nmMalloc(sizeof(int));
+    *info5 = 50;
+
+    int *info6 = nmMalloc(sizeof(int));
+    *info6 = 60;
+
+    bptAdd(tree, "0001", 4, info1);
+    bptAdd(tree, "0002", 4, info2);
+    bptAdd(tree, "0003", 4, info3);
+    bptAdd(tree, "0004", 4, info4);
+    bptAdd(tree, "0005", 4, info5);
+    bptAdd(tree, "0006", 4, info6);
+
+    pBPIter iterator = bptFront(tree);
+    assert(iterator->Curr->IsLeaf == 1);
+
+    
+    //This next part is just to avoid a floating point error
+    int i;
+    int x;
+    x = 1;
+    for (i = 0; i < 10000000; i++) {
+        x++;
+    }
 
 
-		this = bptBulkLoad(fname, 10);
-		assert (this != NULL);
-		rval1 = (char*) bptLookup(this, "00000001", 8);
-		printf("Return for \"00000001\": %s\n", rval1);
-		assert (strcmp("A", rval1) == 0);
-        /*
-		rval2 = (char*) bptSearch(this, "00000009", 8);
-        assert (strcmp("Aaron'srod", rval2) == 0);
-		rval3 = (char*) bptSearch(this, "00000010", 8);
-        assert (strcmp("Ab", rval3) == 0);
-		rval4 = (char*) bptSearch(this, "00000011", 8);
-        assert (rval4 == NULL);*/
-		}
-	
-    	return iter*4;
-    	}
+
+    return 10;
+   	}
 

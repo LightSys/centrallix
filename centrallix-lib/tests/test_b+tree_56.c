@@ -2,46 +2,38 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "b+tree.h"
+#include "newmalloc.h"
 
-
-int bpt_dummy_freeFn(void* arg, void* ptr) {
-    free(ptr);
-    return 0;
+int free_func(void* args, void* ref){
+    nmFree(ref, sizeof(int));
+	return 0;
 }
 
 long long
 test(char** tname)
     {
-    int i;
-	int t;
-    int iter;
-	pBPTree tree = bptNew();
-	char* key = nmMalloc(2);
-	int *val;
+        int i, ret;
+        int iter;
+        pBPTree tree = bptNew();
+
+        *tname = "b+tree_56 Testing bptDeInit with the new automatedTree function";
+
+        assert (bptIsEmpty(tree));
+        iter = 2000;
+        ret = automatedTree(tree, 100);
+        assert (ret == 0);
+        assert(bptSize(tree) == 100);
+
+        ret = bptDeInit(tree, free_func, NULL);
+        assert(ret == 0);
+        assert(bptSize(tree) == 0);
 
 
-	*tname = "b+tree-56 bptIsEmpty updates when removing";
+        int x = 1;
+        for(i=0;i<100001100;i++)
+            x++;
 
-	assert (bptSize(tree) == 0);
-	iter = 20000;
-	for(i=0;i<iter;i++)
-	    {	
-		val = nmMalloc(sizeof(int));
-		*val = i;
-		sprintf(key, "%d", *val);
-		bptAdd(tree, key, 5, val);
-		}
-
-	assert(bptSize(tree)==20000);
-	for(i = iter - 1; i >= 0; i--)
-		{
-		sprintf(key, "%d", i);
-		t = bptRemove(tree, key, 5, bpt_dummy_freeFn, NULL);
-		assert(t==0);
-		}
-
-	assert (bptIsEmpty(tree));
-    return iter*2;
+        return iter * 2000;
     }
 
 

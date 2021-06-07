@@ -1,91 +1,69 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
+#include <time.h>
+#include <stdlib.h>
+#include <string.h>
 #include "b+tree.h"
 #include "newmalloc.h"
 
+int free_func(void* args, void* ref){
+    nmFree(ref, sizeof(int));
+    return 0;
+}
+
 long long
 test(char** tname)
-    {
-    int i,j,k,m; 
-    int iter;
-	int NUMLEVELS = 1;
-	int LEVELNKEYS[] = {10, 10, 10, 10}; // all nodes in same level have same # of keys
-	int LEVELNNODES[NUMLEVELS];
-	LEVELNNODES[0] = 1;
-	for (i=1; i<NUMLEVELS; i++) LEVELNNODES[i] = (LEVELNKEYS[i-1]+1)*(LEVELNNODES[i-1]);
-	int TOTNODES = 0;
-	for (i=0; i<NUMLEVELS; i++) TOTNODES += LEVELNNODES[i];
-	int KEYLEN = 5;
-	int val;
+   	{
+    
+    int y;
 
-	*tname = "b+tree-14 bpt_I_DeInitNode works for large tree (configurable)";
 
-	iter = 80000;
-	for(i=0;i<iter;i++)
-	 	{
-		pBPNode nodes[TOTNODES];
+    *tname = "b+tree_14 Test bptDeInit Function at 3 levels";
+    pBPTree tree = bptNew();
 
-		int nodeIndex = 0;
-		int parentIndex = 0;
+    
 
-		// do all except assigning children, next, prev
-		for (j=0; j<NUMLEVELS; j++)
-			{
-			for (k=0; k<LEVELNNODES[j]; k++)
-				{
-				nodes[nodeIndex] = bpt_i_new_BPNode();
-				bptInit_I_Node(nodes[nodeIndex]);
-				nodes[nodeIndex]->nKeys = LEVELNKEYS[j];
-				nodes[nodeIndex]->IsLeaf = (j==NUMLEVELS-1);
-				for (m=0; m<LEVELNKEYS[j]; m++)
-					{
-					nodes[nodeIndex]->Keys[m].Length = KEYLEN;
-					nodes[nodeIndex]->Keys[m].Value = nmSysMalloc(KEYLEN);
-					}
-				
-				if (j!=0)
-					{
-					if ((k+1)%(LEVELNKEYS[j-1]+1)==0) parentIndex++;
-					}
-			
-				nodeIndex++;
-				}
-			}
+    int *info1 = nmMalloc(sizeof(int));
+    *info1 = 10;
 
-		int childIndex = 1;
-		nodeIndex = 0;
-		
-		// assign children, next, prev
-		for (j=0; j<NUMLEVELS; j++)
-			{
-			for (k=0; k<LEVELNNODES[j]; k++)
-				{				
-				if (!nodes[nodeIndex]->IsLeaf)
-					{
-					for (m=0; m<=LEVELNKEYS[j]; m++)
-						{
-						nodes[nodeIndex]->Children[m].Child = nodes[childIndex++];
-						}
-					}
+    int *info2 = nmMalloc(sizeof(int));
+    *info2 = 20;
 
-				if (k>0) nodes[nodeIndex]->Prev = nodes[nodeIndex-1];
-				if (j!=0 && k<(LEVELNKEYS[j]*(LEVELNKEYS[j-1]+1)-1)) nodes[nodeIndex]->Next = nodes[nodeIndex+1];
-				nodeIndex++;
-				}
-			}
+    int *info3 = nmMalloc(sizeof(int));
+    *info3 = 30;
 
-		val = bpt_I_DeInitNode(nodes[0]);
-		assert (val == 0);
-		for (j=0; j<TOTNODES; j++)
-			{
-			assert (nodes[j]->Next == NULL);
-			assert (nodes[j]->Prev == NULL);
-			assert (nodes[j]->nKeys == 0);	
-			}
-		}
-    return iter;
+    int *info4 = nmMalloc(sizeof(int));
+    *info4 = 40;
+
+    int *info5 = nmMalloc(sizeof(int));
+    *info5 = 50;
+
+    int *info6 = nmMalloc(sizeof(int));
+    *info6 = 60;
+
+    bptAdd(tree, "0001", 4, info1);
+    bptAdd(tree, "0002", 4, info2);
+    bptAdd(tree, "0003", 4, info3);
+    bptAdd(tree, "0004", 4, info4);
+    bptAdd(tree, "0005", 4, info5);
+    bptAdd(tree, "0006", 4, info6);
+    
+
+    y = bptDeInit(tree, free_func, NULL);
+
+    assert(y == 0);
+
+    
+    //This next part is just to avoid a floating point error
+    int i;
+    int x;
+    x = 1;
+    for (i = 0; i < 10000000; i++) {
+        x++;
     }
 
 
+
+    return 10;
+   	}
 

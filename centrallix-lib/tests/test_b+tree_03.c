@@ -1,54 +1,51 @@
 #include <stdio.h>
 #include <assert.h>
+#include <time.h>
+#include <stdlib.h>
 #include <string.h>
 #include "b+tree.h"
 #include "newmalloc.h"
+
+int free_func(void* args, void* ref){
+    nmFree(ref, sizeof(int));
+    return 0;
+}
+
 long long
 test(char** tname)
    	{
-	printf("\n");
-	int i;
-    	int iter;
-	int tmp;
 
-	*tname = "b+tree-03 5 Keys in root";
-	iter = 8000000;
-	
-	pBPNode root = bpt_i_new_BPNode();
-	
-	/*void* copy;
-        copy = nmSysMalloc(5);
-        if (!copy) 
-		return -1; 
-	
-	memcpy(copy, "Tommy", 5);
-          */      
-        root->Keys[0].Length = 5;
-        root->Keys[0].Value = "Tommy\0"; 
-	root->nKeys++;	
-	root->Keys[1].Length = 26;
-	root->Keys[1].Value = "abcdefghijklmnopqrstuvwxyz\0";
-	root->nKeys++;
-	root->Keys[2].Length = 1;
-	root->Keys[2].Value = "a\0";
-	root->nKeys++;
-	root->Keys[3].Length = 10;
-	root->Keys[3].Value = "0123456789\0";
-	root->nKeys++;
-	root->Keys[4].Length = 2;
-	root->Keys[4].Value = "!?\0";
-	root->nKeys++;
+    int x;
+    int i;
+    int y;
 
-	
-	tmp = 0;
-	printTree(&root, 3);
-	for(i=0;i<iter;i++)
-	 	{
-		assert (tmp == 0);
-		}
+    *tname = "b+tree_03 Test bptInit Function";
 
-	printf("\n");
-	
-    	return iter*4;
-    	}
+   int *info1 = nmMalloc(sizeof(int));
+    *info1 = 10;
+
+   pBPTree newTree = bptNew();
+
+   bptDeInit(newTree, free_func, NULL);
+
+   y = bptInit(newTree);
+
+   assert(y == 0);
+
+   y = bptAdd(newTree, "001", 3, info1); //This is to make sure that the bptInit worked
+
+   assert(y == 0);
+
+
+
+
+    x = 1;
+    for (i = 0; i < 10000000; i++) {
+        x++;
+    }
+
+
+
+    return 10;
+   	}
 

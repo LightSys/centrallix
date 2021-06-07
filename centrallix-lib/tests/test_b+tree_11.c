@@ -1,38 +1,56 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
+#include <time.h>
+#include <stdlib.h>
+#include <string.h>
 #include "b+tree.h"
 #include "newmalloc.h"
 
+int free_func(void* args, void* ref){
+    nmFree(ref, sizeof(int));
+    return 0;
+}
+
 long long
 test(char** tname)
-    {
-    int i; 
-    int iter;
-	pBPNode tree;
-	int val;
+   	{
+    
+    int y;
 
-	*tname = "b+tree-11 bpt_I_DeInitNode works for leaf tree with 3 values";
 
-	iter = 800000;
-	for(i=0;i<iter;i++)
-	 	{
-		tree = bpt_i_new_BPNode();
-		bptInit_I_Node(tree);
-		tree->Keys[0].Length = 2;
-		tree->Keys[0].Value = nmSysMalloc(2); // don't assign double quoted string because deInit frees this
-		tree->Keys[1].Length = 5;
-		tree->Keys[1].Value = nmSysMalloc(5);
-		tree->Keys[2].Length = 3;
-		tree->Keys[2].Value = nmSysMalloc(3);
-		tree->nKeys = 3;
-		tree->IsLeaf = 1;
+    *tname = "b+tree_11 Test bptDeInit Function at 2 levels";
+    pBPTree tree = bptNew();
 
-		val = bpt_I_DeInitNode(tree);
-		assert (val == 0);
-		assert (tree->Next == NULL);
-		assert (tree->Prev == NULL);
-		assert (tree->nKeys == 0);		
-		}
-    return iter;
+    
+
+    int *info1 = nmMalloc(sizeof(int));
+    *info1 = 10;
+
+    int *info2 = nmMalloc(sizeof(int));
+    *info1 = 20;
+
+    int *info3 = nmMalloc(sizeof(int));
+    *info1 = 30;
+
+    bptAdd(tree, "0001", 4, info1);
+    bptAdd(tree, "0002", 4, info2);
+    bptAdd(tree, "0003", 4, info3);
+
+    y = bptDeInit(tree, free_func, NULL);
+
+    assert(y == 0);
+
+    
+    //This next part is just to avoid a floating point error
+    int i;
+    int x;
+    x = 1;
+    for (i = 0; i < 10000000; i++) {
+        x++;
     }
+
+
+
+    return 10;
+   	}
+

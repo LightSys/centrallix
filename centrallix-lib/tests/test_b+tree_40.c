@@ -1,45 +1,70 @@
 #include <stdio.h>
 #include <assert.h>
+#include <time.h>
+#include <stdlib.h>
 #include <string.h>
 #include "b+tree.h"
 #include "newmalloc.h"
+
+int free_func(void* args, void* ref){
+    nmFree(ref, sizeof(int));
+    return 0;
+}
+
 long long
 test(char** tname)
    	{
-	printf("\n");
-	int i, j, iter, tmp;
-	char str[10];
-	char trash[50];
-	*tname = "b+tree-40 Remove all keys from tree of size 1000";
-	iter = 50;
-	
-	pBPNode this;
-	char* fname = "tests/bpt_bl_10e2.dat";
-	FILE* f = NULL;
-	this = bptBulkLoad(fname, 100);
-	//bpt_PrintTreeSmall(this);
-	
-	for(i=0;i<iter;i++)
-		{
-		this = bptBulkLoad(fname, 100);
-		f = fopen(fname, "r");
-		if(f == NULL)
-			return 0;
-		for(j=0; j < 100; j++)
-			{
-			//printf("%d\n", j);
-			fscanf(f, " %s %s\n", str, trash);
-			//printf("%s\n", str);
-			//if (j == 900)
-			//	 bpt_PrintTreeSmall(this);
-			tmp = bptRemove(this, str, 8);
-			assert (tmp == 0);
-			}
-		fclose(f);
-		}
-	bpt_PrintTreeSmall(this);
-	printf("\n");
-	
-    	return iter*4;
-    	}
+    
+    *tname = "b+tree_40 Testing bptIterFree on a front iterator";
+    pBPTree tree = bptNew();
+
+    int status = 0;
+    int y;
+
+    
+
+    int *info1 = nmMalloc(sizeof(int));
+    *info1 = 10;
+
+    int *info2 = nmMalloc(sizeof(int));
+    *info2 = 20;
+
+    int *info3 = nmMalloc(sizeof(int));
+    *info3 = 30;
+
+    int *info4 = nmMalloc(sizeof(int));
+    *info4 = 40;
+
+    int *info5 = nmMalloc(sizeof(int));
+    *info5 = 50;
+
+    int *info6 = nmMalloc(sizeof(int));
+    *info6 = 60;
+
+    bptAdd(tree, "0001", 4, info1);
+    bptAdd(tree, "0002", 4, info2);
+    bptAdd(tree, "0003", 4, info3);
+    bptAdd(tree, "0004", 4, info4);
+    bptAdd(tree, "0005", 4, info5);
+    bptAdd(tree, "0006", 4, info6);
+
+    pBPIter iterator = bptFront(tree);
+
+    y = bptIterFree(iterator);
+
+    assert(y == 0);
+
+    
+    //This next part is just to avoid a floating point error
+    int i;
+    int x;
+    x = 1;
+    for (i = 0; i < 10000000; i++) {
+        x++;
+    }
+
+
+
+    return 10;
+   	}
 

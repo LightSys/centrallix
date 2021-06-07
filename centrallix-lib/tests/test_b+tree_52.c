@@ -1,48 +1,33 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
+#include <time.h>
+#include <stdlib.h>
+#include <string.h>
 #include "b+tree.h"
-
-
-int bpt_dummy_freeFn(void* arg, void* ptr) {
-    free(ptr);
-    return 0;
-}
+#include "newmalloc.h"
 
 long long
 test(char** tname)
     {
     int i;
-	int t;
     int iter;
-	pBPTree tree = bptNew();
-	char* key = nmMalloc(2);
-	int *val;
+	pBPTree tree;
 
 
-	*tname = "b+tree-52 bptSize updates when removing";
+	*tname = "b+tree_52 bptIsEmpty returns true after creation of tree (Based on original test 54)";
 
-	assert (bptSize(tree) == 0);
-	iter = 20000;
+        tree = bptNew();
+		
+		assert (bptIsEmpty(tree));
+
+        
+    int x = 1;
+	iter = 10000000;
 	for(i=0;i<iter;i++)
-	    {	
-		val = nmMalloc(sizeof(int));
-		*val = i;
-		sprintf(key, "%d", *val);
-		bptAdd(tree, key, 5, val);
-		}
-
-	assert(bptSize(tree)==20000);
-	for(i = iter - 1; i >= 0; i--)
-		{
-		sprintf(key, "%d", i);
-		t = bptRemove(tree, key, 5, bpt_dummy_freeFn, NULL);
-		assert(t==0);
-		assert (bptSize(tree) == i);
+	    {
+            x++;
 		}
 
     return iter;
     }
-
-
 

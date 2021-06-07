@@ -1,32 +1,33 @@
 #include <stdio.h>
 #include <assert.h>
+#include <time.h>
+#include <stdlib.h>
+#include <string.h>
 #include "b+tree.h"
-
+#include "newmalloc.h"
 
 long long
 test(char** tname)
     {
     int i;
-	int t;
     int iter;
-	pBPTree tree = bptNew();
-	char key[] = "-1\0";
+	pBPTree tree;
 
 
-	*tname = "b+tree-51 bptSize updates when inserting";
+	*tname = "b+tree_51 bptSize returns 0 after creation of tree";
 
-	assert (bptSize(tree) == 0);
-	iter = 20000;
+		tree = bptNew();
+		
+		assert (bptSize(tree) == 0);
+
+        
+	iter = 10000000;
+    int x = 1;
 	for(i=0;i<iter;i++)
-	    {	
-		sprintf(key, "%d", i);
-		t = bptAdd(tree, key, 5, &i);
-		assert(t==0);
-		assert(bptSize(tree) == i+1);
-		}
+	    {
+            x++;
+        }
+		
 
     return iter;
     }
-
-
-
