@@ -13,6 +13,29 @@ int free_func(void* args, void* ref){
 long long
 test(char** tname)
     {
+<<<<<<< HEAD
+    int i, ret, iter;
+
+	*tname = "b+tree3_64 Testing memory leaks: add only";
+
+    iter = 100;
+    for(i = 0; i < iter; i++)
+        {
+        pBPTree tree = bptNew();
+        ret = automatedTree(tree, 1000);
+        assert (ret == 0);
+        ret = bptFree(tree, free_func, NULL);
+        assert(ret == 0);
+        }
+
+    //pBPTree tree2 = bptNew();
+    //ret = automatedTree(tree2, 1000);
+    //assert(ret == 0);
+
+    return iter;
+    }
+
+=======
     int i, ret;
 	pBPTree tree = bptNew();
 
@@ -40,5 +63,6 @@ test(char** tname)
 		}
     return 2000;
     }
+>>>>>>> 1b95137a68b4d1b16555f1b8edc492442c04b48e
 
 
