@@ -15,7 +15,7 @@ long long
 test(char** tname)
    	{
     
-    *tname = "b+tree_16 Testing bptFree and iterators together";
+    *tname = "b+tree_17 Testing bptFree and iterators together";
     pBPTree tree = bptNew();
     int status = 0;
     int ret;
