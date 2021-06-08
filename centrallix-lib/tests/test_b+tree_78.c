@@ -21,7 +21,6 @@ test(char** tname)
 	//
 	int seed = time(0);
     srand(seed);
-    printf("\nSeed: %d\n", seed);
     pBPTree t = bptNew();
     //printTree(t->root, 0);
     int val;
@@ -33,7 +32,6 @@ test(char** tname)
     int KEY_MAX = 10000;
 
     int NUM_TESTS = rand() % (int)(KEY_MAX * 0.7);//20;
-    printf("%d tests, numbers 0 to %d\n", NUM_TESTS, KEY_MAX-1);
     char* FMT = nmSysMalloc(10);
     char* VAL_FMT = nmSysMalloc(10);
     int NUM_DIGITS = 0;
@@ -57,14 +55,11 @@ test(char** tname)
         
         if (testTree(t) < 0)
             {
-            printf("Inserting %s\t", k);
-            printf("Failed tree:\n");
             //printTree(t->root, 0);
             break;
             }
         //else printf("Passed\n");
         }
-    printf("Passed inserts\n");
     //printTree(t->root, 0);
     
     while (t->root->nKeys > 0) //for (i=NUM_TESTS; i>0 && t->root->nKeys > 0; i--) 
@@ -76,10 +71,7 @@ test(char** tname)
         
         if (testTree(t) < 0)
             {
-            printf("Removing %s\t", k);
-            printf("Failed tree:\n");
             //printTree(t->root, 0);
-            printf("\nSeed: %d\n", seed);
             break;
             }
         else 
@@ -88,7 +80,6 @@ test(char** tname)
             //printTree(t->root, 0);
             }
         }
-    printf("Passed remove\n");
 
     //printTree(t->root, 0);  // tree should be empty
 

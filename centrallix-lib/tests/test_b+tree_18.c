@@ -51,9 +51,7 @@ test(char** tname)
     ret = bptFree(tree, free_func, NULL);
     assert(ret == 0);
 
-    printf("test1\n");
     pBPIter iterator = bptFromLookup(tree, 0, "0004", 4);
-    printf("test2\n");
 
     assert(iterator == NULL);
 

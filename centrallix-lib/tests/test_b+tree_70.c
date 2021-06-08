@@ -103,8 +103,6 @@ test(char** tname)
     assert(iterator->Ref == info1);
     assert(strcmp(iterator->Curr->Keys[iterator->Index].Value, "0001") == 0);
 
-    printf("%d\n", iterator->Index);
-
     bptPrev(iterator, &status);
 
     assert(status == ITER_FINISHED);
