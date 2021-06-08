@@ -15,7 +15,7 @@ long long
 test(char** tname)
    	{
     
-    *tname = "b+tree_16 Testing bptFree and a back iterator together";
+    *tname = "b+tree_19 Testing bptFree and a back iterator together TESTING SITUATIONS THAT ARE NOT COVERED";
     pBPTree tree = bptNew();
     int status = 0;
     int ret;
@@ -53,7 +53,7 @@ test(char** tname)
     assert(ret == 0);
 
     bptNext(iterator, &status);
-    assert(status != 0);
+    assert(status == 0);
 
     
     //This next part is just to avoid a floating point error
