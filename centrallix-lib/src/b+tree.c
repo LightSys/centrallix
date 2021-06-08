@@ -490,6 +490,7 @@ void* bptLookup(pBPTree this, char* key, int key_len)
 
 /** Creates a forward iterator for the leaves of the tree starting at the first leaf
  ** If the tree is changed after an iterator has been issued, behavior is undefined
+ *** Add, Remove, Init, DeInit, and Free will all cause undefined behavior if the iterator is used after one of these operations
  **/
 pBPIter
 bptFront(pBPTree this)
@@ -520,6 +521,7 @@ bptFront(pBPTree this)
 
 /** Creates a reverse iterator for the leaves of the tree starting at the last leaf
  ** If the tree is changed after an iterator has been issued, behavior is undefined
+ *** Add, Remove, Init, DeInit, and Free will all cause undefined behavior if the iterator is used after one of these operations
  **/
 pBPIter
 bptBack(pBPTree this)
@@ -551,6 +553,7 @@ bptBack(pBPTree this)
 /** Creates an iterator for the leaves of the tree starting at the specified key going in the specified direction.
  ** A direction of 0 indicates forward iteration, and a direction of 1 indicates reverse iteration.
  ** If the tree is changed after an iterator has been issued, behavior is undefined
+ *** Add, Remove, Init, DeInit, and Free will all cause undefined behavior if the iterator is used after one of these operations
  **/
 pBPIter
 bptFromLookup(pBPTree this, int direction, char* key, int key_len)
@@ -609,7 +612,7 @@ void
 bptNext(pBPIter this, int *status)
     {
     if(this->Curr == NULL) goto error;
-    
+
     //forward
     if(this->Direction == 0)
         {
@@ -638,7 +641,11 @@ bptNext(pBPIter this, int *status)
             }
         else this->Index--;
         }
+
+    if(this->Curr == NULL) goto error;
     this->Ref = this->Curr->Children[this->Index].Ref;
+
+    return;
 
     error:
 
@@ -679,7 +686,11 @@ bptPrev(pBPIter this, int *status)
             }
         else this->Index--;
         }
+
+    if(this->Curr == NULL) goto error;
     this->Ref = this->Curr->Children[this->Index].Ref;
+
+    return;
 
     error:
 
