@@ -15,7 +15,7 @@ long long
 test(char** tname)
    	{
     
-    *tname = "b+tree_16 Testing bptDeInit and iterators together";
+    *tname = "b+tree_16 Testing bptFree and a back iterator together";
     pBPTree tree = bptNew();
     int status = 0;
     int ret;
@@ -47,14 +47,12 @@ test(char** tname)
     bptAdd(tree, "0005", 4, info5);
     bptAdd(tree, "0006", 4, info6);
 
-    pBPIter iterator = bptFront(tree);
+    pBPIter iterator = bptBack(tree);
 
-    ret = bptDeInit(tree, free_func, NULL);
+    ret = bptFree(tree, free_func, NULL);
     assert(ret == 0);
 
-
     bptNext(iterator, &status);
-
     assert(status != 0);
 
     

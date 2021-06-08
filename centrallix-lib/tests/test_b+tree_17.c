@@ -15,7 +15,7 @@ long long
 test(char** tname)
    	{
     
-    *tname = "b+tree_16 Iterator/bptDeInit kinda breaks when used in conjunction";
+    *tname = "b+tree_16 Testing bptFree and iterators together";
     pBPTree tree = bptNew();
     int status = 0;
     int ret;
@@ -52,21 +52,8 @@ test(char** tname)
     ret = bptFree(tree, free_func, NULL);
     assert(ret == 0);
 
-    printf("test1\n");
-    //printf("%s\n", iterator->Curr->Keys[iterator->Index].Value);
-    printf("test2\n");
-
     bptNext(iterator, &status);
-
-    /*
-    It seems like this is breaking because, while it has been technically deinitialized, the computer has yet to override the data stored there
-    , and so it is the same data stored in the memory. See test 17 for bptFree testing
-    */
-
-    printf("%d\n", status);
-    printf("%s\n", iterator->Curr->Keys[iterator->Index].Value);
-
-    assert(status == 0);
+    assert(status != 0);
 
     
     //This next part is just to avoid a floating point error

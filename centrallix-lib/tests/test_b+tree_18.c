@@ -15,9 +15,8 @@ long long
 test(char** tname)
    	{
     
-    *tname = "b+tree_16 Testing bptDeInit and iterators together";
+    *tname = "b+tree_16 Testing bptFree and iterators from bptFromLookup together";
     pBPTree tree = bptNew();
-    int status = 0;
     int ret;
 
     
@@ -47,17 +46,17 @@ test(char** tname)
     bptAdd(tree, "0005", 4, info5);
     bptAdd(tree, "0006", 4, info6);
 
-    pBPIter iterator = bptFront(tree);
+    
 
-    ret = bptDeInit(tree, free_func, NULL);
+    ret = bptFree(tree, free_func, NULL);
     assert(ret == 0);
 
+    printf("test1\n");
+    pBPIter iterator = bptFromLookup(tree, 0, "0004", 4);
+    printf("test2\n");
 
-    bptNext(iterator, &status);
+    assert(iterator == NULL);
 
-    assert(status != 0);
-
-    
     //This next part is just to avoid a floating point error
     int i;
     int x;
