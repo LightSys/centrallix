@@ -106,7 +106,7 @@ test(char** tname)
         int* data = nmMalloc(sizeof(int));
         *data = 3185+i;
         sprintf(key, "%010d", *data);
-        bpt_i_Insert_Nonfull(tree->root->Children[14].Child, key, 10, data);
+        bpt_i_InsertNonfull(tree->root->Children[14].Child, key, 10, data);
         }
 
     for(i = 0; i < 7; i++)
@@ -115,7 +115,7 @@ test(char** tname)
         int* data = nmMalloc(sizeof(int));
         *data = 3313+i;
         sprintf(key, "%010d", *data);
-        bpt_i_Insert_Nonfull(tree->root->Children[15].Child, key, 10, data);
+        bpt_i_InsertNonfull(tree->root->Children[15].Child, key, 10, data);
         }
     printf("Full 2-level Tree:\n");
     printTree(tree->root);

@@ -18,7 +18,7 @@ test(char** tname)
     *tname = "b+tree_33 Ensuring that Iterator Back starts on the Biggest leaf";
     pBPTree tree = bptNew();
 
-    //pBPNode node = bpt_i_new_BPNode();
+    //pBPNode node = bpt_i_NewBPNode();
     
 
     int *info1 = nmMalloc(sizeof(int));

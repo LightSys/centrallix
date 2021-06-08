@@ -18,7 +18,7 @@ test(char** tname)
     *tname = "b+tree_30 Ensuring that Iterator starts on the smallest leaf";
     pBPTree tree = bptNew();
 
-    //pBPNode node = bpt_i_new_BPNode();
+    //pBPNode node = bpt_i_NewBPNode();
     
 
     int *info1 = nmMalloc(sizeof(int));
