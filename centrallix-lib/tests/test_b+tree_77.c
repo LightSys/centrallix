@@ -117,9 +117,9 @@ test(char** tname)
         sprintf(key, "%010d", *data);
         bpt_i_InsertNonfull(tree->root->Children[15].Child, key, 10, data);
         }
-    printf("Full 2-level Tree:\n");
-    printTree(tree->root);
-    printf("\n");
+    //printf("Full 2-level Tree:\n");
+    //printTree(tree->root);
+    //printf("\n");
 
     key = nmSysMalloc(11);
     data = nmMalloc(sizeof(int));
@@ -128,9 +128,9 @@ test(char** tname)
     ret = bptAdd(tree, key, 10, data);
     assert (ret == 0);
     
-    printf("Fresh 3-level tree:\n");
-    printTree(tree->root);
-    printf("\n");
+    //printf("Fresh 3-level tree:\n");
+    //printTree(tree->root);
+    //printf("\n");
 
     /*
     ret2 = bptRemove(tree, "0000000048", 10, free_func, NULL);

@@ -608,15 +608,14 @@ bptFromLookup(pBPTree this, int direction, char* key, int key_len)
 void
 bptNext(pBPIter this, int *status)
     {
+    if(this->Curr == NULL) goto error;
+    
     //forward
     if(this->Direction == 0)
         {
         if(this->Index + 1 == this->Curr->nKeys)
             {
-            if(this->Curr->Next == NULL) 
-                {
-                *status = -1;
-                }
+            if(this->Curr->Next == NULL) goto error;
             else 
                 {
                 this->Index = 0;
@@ -630,10 +629,7 @@ bptNext(pBPIter this, int *status)
         {
         if(this->Index == 0)
             {
-            if(this->Curr->Prev == NULL) 
-                {
-                *status = -1;
-                }
+            if(this->Curr->Prev == NULL) goto error;
             else 
                 {
                 this->Index = this->Curr->Prev->nKeys - 1;
@@ -642,24 +638,25 @@ bptNext(pBPIter this, int *status)
             }
         else this->Index--;
         }
+    this->Ref = this->Curr->Children[this->Index].Ref;
 
-    if(this->Curr == NULL) *status = -1;
-    else this->Ref = this->Curr->Children[this->Index].Ref;
+    error:
+
+        *status = -1;
     }
 
 /** Advances the iterator to the previous leaf. Status is set to -1 if trying to advance past the end of the data */
 void
 bptPrev(pBPIter this, int *status)
     {
+    if(this->Curr == NULL) goto error;
+
     //reverse
     if(this->Direction == 1)
         {
         if(this->Index + 1 == this->Curr->nKeys)
             {
-            if(this->Curr->Next == NULL) 
-                {
-                *status = -1;
-                }
+            if(this->Curr->Next == NULL) goto error;
             else 
                 {
                 this->Index = 0;
@@ -673,10 +670,7 @@ bptPrev(pBPIter this, int *status)
         {
         if(this->Index == 0)
             {
-            if(this->Curr->Prev == NULL) 
-                {
-                *status = -1;
-                }
+            if(this->Curr->Prev == NULL) goto error;
             else 
                 {
                 this->Index = this->Curr->Prev->nKeys - 1;
@@ -685,8 +679,11 @@ bptPrev(pBPIter this, int *status)
             }
         else this->Index--;
         }
-    if(this->Curr == NULL) *status = -1;
-    else this->Ref = this->Curr->Children[this->Index].Ref;
+    this->Ref = this->Curr->Children[this->Index].Ref;
+
+    error:
+
+        *status = -1;
     }
 
 /** Frees the iterator, but not any of its pointer members; those last the lifetime of the tree. */
