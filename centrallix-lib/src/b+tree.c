@@ -609,7 +609,7 @@ void
 bptNext(pBPIter this, int *status)
     {
     if(this->Curr == NULL) goto error;
-    
+
     //forward
     if(this->Direction == 0)
         {
@@ -638,7 +638,11 @@ bptNext(pBPIter this, int *status)
             }
         else this->Index--;
         }
+
+    if(this->Curr == NULL) goto error;
     this->Ref = this->Curr->Children[this->Index].Ref;
+
+    return;
 
     error:
 
@@ -679,7 +683,11 @@ bptPrev(pBPIter this, int *status)
             }
         else this->Index--;
         }
+
+    if(this->Curr == NULL) goto error;
     this->Ref = this->Curr->Children[this->Index].Ref;
+
+    return;
 
     error:
 
