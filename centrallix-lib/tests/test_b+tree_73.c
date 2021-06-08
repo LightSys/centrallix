@@ -106,7 +106,7 @@ test(char** tname)
 
     bptPrev(iterator, &status);
 
-    assert(status == -1);
+    assert(status == ITER_FINISHED);
 
 
 

@@ -607,7 +607,7 @@ bptFromLookup(pBPTree this, int direction, char* key, int key_len)
         return NULL;
     }
 
-/** Advances the iterator to the next leaf. Status is set to -1 if trying to advance past the end of the data */
+/** Advances the iterator to the next leaf. Status is set to ITER_FINISHED if trying to advance past the end of the data */
 void
 bptNext(pBPIter this, int *status)
     {
@@ -618,7 +618,7 @@ bptNext(pBPIter this, int *status)
         {
         if(this->Index + 1 == this->Curr->nKeys)
             {
-            if(this->Curr->Next == NULL) goto error;
+            if(this->Curr->Next == NULL) *status = ITER_FINISHED;
             else 
                 {
                 this->Index = 0;
@@ -632,7 +632,7 @@ bptNext(pBPIter this, int *status)
         {
         if(this->Index == 0)
             {
-            if(this->Curr->Prev == NULL) goto error;
+            if(this->Curr->Prev == NULL) *status = ITER_FINISHED;
             else 
                 {
                 this->Index = this->Curr->Prev->nKeys - 1;
@@ -652,7 +652,7 @@ bptNext(pBPIter this, int *status)
         *status = -1;
     }
 
-/** Advances the iterator to the previous leaf. Status is set to -1 if trying to advance past the end of the data */
+/** Advances the iterator to the previous leaf. Status is set to ITER_FINISHED if trying to advance past the end of the data */
 void
 bptPrev(pBPIter this, int *status)
     {
@@ -663,7 +663,7 @@ bptPrev(pBPIter this, int *status)
         {
         if(this->Index + 1 == this->Curr->nKeys)
             {
-            if(this->Curr->Next == NULL) goto error;
+            if(this->Curr->Next == NULL) *status = ITER_FINISHED;
             else 
                 {
                 this->Index = 0;
@@ -677,7 +677,7 @@ bptPrev(pBPIter this, int *status)
         {
         if(this->Index == 0)
             {
-            if(this->Curr->Prev == NULL) goto error;
+            if(this->Curr->Prev == NULL) *status = ITER_FINISHED;
             else 
                 {
                 this->Index = this->Curr->Prev->nKeys - 1;
