@@ -17,7 +17,8 @@ window.tbld_touches = [];
 //
 function tbld_format_cell(cell, color)
     {
-    var txt,captxt,titletxt;
+    var txt = '', captxt = '', titletxt = '';
+    var imgsrc = '', imgstyle = '';
     var style = 'margin:0px; padding:0px; ';
     var capstyle = 'font-size:80%; margin:2px 0px 0px 0px; padding:0px; ';
     var titlestyle = 'font-size:120%; margin:0px 0px 2px 0px; padding:0px; ';
@@ -77,19 +78,21 @@ function tbld_format_cell(cell, color)
     else if (cell.subkind != 'headercell' && colinfo.type == 'image')
 	{
 	// Image
-	if (str.indexOf(':') >= 0 || str.indexOf('//') >= 0 || str.charAt(0) != '/')
-	    txt = '';
-	else
+	if (!(str.indexOf(':') >= 0 || str.indexOf('//') >= 0 || str.charAt(0) != '/'))
 	    {
-	    txt = '<img src="' + htutil_encode(String(cell.data),true) + '"';
-	    if (colinfo.image_maxwidth || colinfo.image_maxheight)
-		{
-		txt += ' style="';
-		if (colinfo.image_maxwidth) txt += 'max-width:' + colinfo.image_maxwidth + 'px; ';
-		if (colinfo.image_maxheight) txt += 'max-height:' + colinfo.image_maxheight + 'px; ';
-		txt += '"';
-		}
-	    txt += ">";
+	    imgsrc = cell.data;
+	    //txt = '<img src="' + htutil_encode(String(cell.data),true) + '"';
+	    //if (colinfo.image_maxwidth || colinfo.image_maxheight)
+		//{
+		//txt += ' style="';
+		//if (colinfo.image_maxwidth) txt += 'max-width:' + colinfo.image_maxwidth + 'px; ';
+		if (colinfo.image_maxwidth) imgstyle += 'max-width:' + colinfo.image_maxwidth + 'px; ';
+		//if (colinfo.image_maxheight) txt += 'max-height:' + colinfo.image_maxheight + 'px; ';
+		if (colinfo.image_maxheight) imgstyle += 'max-height:' + colinfo.image_maxheight + 'px; ';
+		//txt += '"';
+		//}
+	    //txt += ">";
+	    imgstyle += htutil_getstyle(wgtrFindDescendent(this, colinfo.name, colinfo.ns), 'image', {} );
 	    }
 	}
     else
@@ -115,7 +118,7 @@ function tbld_format_cell(cell, color)
 	}
 
     // If style or content has changed, then update it.
-    if (txt != cell.content || captxt != cell.capcontent || titletxt != cell.titlecontent || style != cell.cxstyle || capstyle != cell.cxcapstyle || titlestyle != cell.cxtitlestyle)
+    if (txt != cell.content || captxt != cell.capcontent || titletxt != cell.titlecontent || style != cell.cxstyle || capstyle != cell.cxcapstyle || titlestyle != cell.cxtitlestyle || imgsrc != cell.imgsrc || imgstyle != cell.imgstyle)
 	{
 	// Build the paragraph elements of the cell
 	var t_p = null;
@@ -130,7 +133,16 @@ function tbld_format_cell(cell, color)
 	var p = document.createElement('p');
 	$(p).attr("style", style);
 	$(p).css({'margin':'0px'});
-	$(p).append(txt);
+	if (txt)
+	    $(p).append(txt);
+	if (imgsrc)
+	    {
+	    var ie = document.createElement('img');
+	    $(ie).attr('src', imgsrc);
+	    if (imgstyle)
+		$(ie).attr('style', imgstyle);
+	    $(p).append(ie);
+	    }
 	if (captxt)
 	    {
 	    c_p = document.createElement('p');
@@ -157,6 +169,8 @@ function tbld_format_cell(cell, color)
 	cell.el_title = t_p;
 	cell.el_text = p;
 	cell.el_caption = c_p;
+	cell.imgsrc = imgsrc;
+	cell.imgstyle = imgstyle;
 
 	// If an image, then test for final image loading, and readjust row
 	// height once the image is loaded.
@@ -693,6 +707,16 @@ function tbld_bring_into_view(rownum)
     }
 
 
+function tbld_update_scrollbar()
+    {
+    $(this.scrollbar).stop(false, true);
+    if (this.thumb_height != this.thumb_avail)
+	htr_setvisibility(this.scrollbar, "inherit");
+    $(this.scrollbar).animate({"opacity": (this.thumb_height == this.thumb_avail)?0.0:(this.has_mouse?1.0:0.33)}, 150, "linear",
+	() => { if (this.thumb_height == this.thumb_avail) htr_setvisibility(this.scrollbar, "hidden"); } );
+    }
+
+
 function tbld_update_thumb(anim)
     {
     // Current offset of scroll area
@@ -741,8 +765,7 @@ function tbld_update_thumb(anim)
     // Set scrollbar visibility
     if (this.demand_scrollbar)
 	{
-	$(this.scrollbar).stop(false, true);
-	$(this.scrollbar).animate({"opacity": (this.thumb_height == this.thumb_avail)?0.0:(this.has_mouse?1.0:0.33)}, 150, "linear", null);
+	this.UpdateScrollbar();
 	}
 	//$(this.scrollbar).css({"opacity": (this.thumb_height == this.thumb_avail)?0.0:1.0});
 	//htr_setvisibility(this.scrollbar, (this.thumb_height == this.thumb_avail)?"hidden":"inherit");
@@ -783,7 +806,7 @@ function tbld_object_modified(current, dataobj)
     this.RedrawAll(null, true);
     }
 
-function tbld_replica_changed(dataobj, force_datafetch)
+function tbld_replica_changed(dataobj, force_datafetch, why)
     {
     //this.log.push("ReplicaMoved / ObjectAvailable from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
     this.osrc_busy = false;
@@ -847,10 +870,15 @@ function tbld_select()
 	{
 	this.mouseover();
 	}
+    this.showdetail(false);
+    }
+
+function tbld_showdetail(on_new)
+    {
     for(var i=0; i<this.table.detail_widgets.length; i++)
 	{
 	var dw = this.table.detail_widgets[i];
-	if (wgtrGetServerProperty(dw, 'display_for', 1) && this.table.initselect !== 2 /* 2 = noexpand */ )
+	if (wgtrGetServerProperty(dw, 'display_for', 1) && (this.table.initselect !== 2 || (this.table.initselect == 2 && on_new)) /* 2 = noexpand */ && (!on_new || wgtrGetServerProperty(dw, 'show_on_new', 0)))
 	    {
 	    var found=false;
 	    for(var j=0; j<this.detail.length; j++)
@@ -923,6 +951,11 @@ function tbld_deselect()
 	this.removeChild(this.ctr);
 	this.ctr = null;
 	}
+    this.hidedetail();
+    }
+
+function tbld_hidedetail()
+    {
     for(var i=0; i<this.detail.length; i++)
 	{
 	var dw = this.detail[i];
@@ -957,6 +990,7 @@ function tbld_newselect()
 	{
 	this.table.FormatCell(this.cols[i], wgtrGetServerProperty(this.table, 'textcolornew', this.table.textcolornew));
 	}
+    this.showdetail(true);
     }
 
 function tbld_setbackground(obj, widget, prefix)
@@ -1224,7 +1258,7 @@ function tbld_apply_row_geom(row, firstcol)
     for(var j=firstcol; j<this.colcount; j++)
 	{
 	var c=row.cols[j];
-	var new_w = this.cols[j].width - this.innerpadding*2;
+	var new_w = this.cols[j].width; // - this.innerpadding*2;
 	if (this.colsep > 0 || this.dragcols)
 	    new_w -= (this.bdr_width*2 + this.colsep);
 	$(c).width(new_w);
@@ -1485,6 +1519,16 @@ function tbld_is_row_visible(rowslot)
     }
 
 
+function tbld_show_selection()
+    {
+    if (this.initselect != 1)
+	{
+	this.initselect = 1;
+	this.RedrawAll(null, true);
+	}
+    }
+
+
 function tbld_instantiate_row(parentDiv, x, y)
     {
     // Check the cache
@@ -1540,6 +1584,8 @@ function tbld_instantiate_row(parentDiv, x, y)
     row.newselect=tbld_newselect;
     row.mouseover=tbld_domouseover;
     row.mouseout=tbld_domouseout;
+    row.showdetail=tbld_showdetail;
+    row.hidedetail=tbld_hidedetail;
     row.needs_redraw = false;
     row.detail = [];
 
@@ -1555,7 +1601,7 @@ function tbld_instantiate_row(parentDiv, x, y)
 	col.colnum = j;
 	col.xoffset = this.cols[j].xoffset;
 	col.subkind = "cell";
-	col.initwidth=this.cols[j].width-this.innerpadding*2;
+	col.initwidth=this.cols[j].width; //-this.innerpadding*2;
 	if (this.colsep > 0 || this.dragcols)
 	    col.initwidth -= (this.bdr_width*2 + this.colsep);
 	$(col).css
@@ -1759,6 +1805,7 @@ function tbld_init(param)
     t.RescanRowVisibility = tbld_rescan_row_visibility;
     t.RefreshRowVisibility = tbld_refresh_row_visibility;
     t.UpdateThumb = tbld_update_thumb;
+    t.UpdateScrollbar = tbld_update_scrollbar;
     t.FormatRow = tbld_format_row;
     t.FormatCell = tbld_format_cell;
     t.UpdateHeight = tbld_update_height;
@@ -1942,7 +1989,7 @@ function tbld_init(param)
     // Scrollbar styling
     //$(t.scrollbar).find('td:has(img),div').css({'background-color':'rgba(128,128,128,0.2)'});
     if (t.demand_scrollbar)
-	$(t.scrollbar).css({"opacity": 0.0, "visibility": "inherit"});
+	$(t.scrollbar).css({"opacity": 0.0, "visibility": "hidden"});
     if (window.tbld_mcurrent == undefined)
 	window.tbld_mcurrent = null;
     $(t.scrollbar).css(
@@ -1970,6 +2017,7 @@ function tbld_init(param)
     // Actions
     var ia = t.ifcProbeAdd(ifAction);
     ia.Add("Clear", tbld_clear_rows);
+    ia.Add("ShowSelection", tbld_show_selection);
 
     // Request reveal/obscure notifications
     t.Reveal = tbld_cb_reveal;
@@ -2092,15 +2140,13 @@ function tbld_mouseover(e)
 		tbld_mcurrent.has_mouse = false;
 		if (tbld_mcurrent.demand_scrollbar)
 		    {
-		    $(tbld_mcurrent.scrollbar).stop(false, true);
-		    $(tbld_mcurrent.scrollbar).animate({"opacity": (tbld_mcurrent.thumb_height == tbld_mcurrent.thumb_avail)?0.0:(tbld_mcurrent.has_mouse?1.0:0.33)}, 150, "linear", null);
+		    tbld_mcurrent.UpdateScrollbar();
 		    }
 		}
 	    tbld_mcurrent = t;
 	    if (t.demand_scrollbar)
 		{
-		$(t.scrollbar).stop(false, true);
-		$(t.scrollbar).animate({"opacity": (t.thumb_height == t.thumb_avail)?0.0:(t.has_mouse?1.0:0.33)}, 150, "linear", null);
+		t.UpdateScrollbar();
 		}
 	    }
         if(ly.subkind=='cellborder')
@@ -2358,6 +2404,8 @@ function tbld_contextmenu(e)
 function tbld_mousedown(e)
     {
     var ly = e.layer;
+    var toggle_row = false;
+    var moved = false;
     if(ly.kind && ly.kind=='tabledynamic')
         {
         if(ly.subkind=='cellborder')
@@ -2390,23 +2438,18 @@ function tbld_mousedown(e)
 		{
 		if(ly.table.osrc.CurrentRecord!=ly.rownum)
 		    {
-		    ly.table.initselect = 1;
+		    toggle_row = true;
+		    //ly.table.initselect = 1;
 		    if(ly.rownum && ly.disp_mode != 'newselect')
 			{
+			moved = true;
 			ly.crname = null;
 			ly.table.OsrcRequest('MoveToRecord', {rownum:ly.rownum});
 			}
 		    }
-		else if (ly.table.initselect !== 1)
+		else if (ly.table.initselect !== 1 || ly.table.initselect !== ly.table.initselect_orig)
 		    {
-		    ly.table.initselect = 1;
-		    ly.table.RedrawAll(null, true);
-		    }
-		else if (ly.table.initselect !== ly.table.initselect_orig)
-		    {
-		    if (ly.table.allowdeselect)
-			ly.table.initselect = ly.table.initselect_orig;
-		    ly.table.RedrawAll(null, true);
+		    toggle_row = true;
 		    }
 		}
 	    if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("Click"))
@@ -2431,7 +2474,8 @@ function tbld_mousedown(e)
 			}
 		    }
 		ly.table.dta=event.data;
-		cn_activate(ly.table,'Click', event);
+		if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Click', event)))
+		    toggle_row = false;
 		}
 	    if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("DblClick"))
 		{
@@ -2466,7 +2510,22 @@ function tbld_mousedown(e)
 			    }
 			}
 		    ly.table.dta=event.data;
-		    cn_activate(ly.table,'DblClick', event);
+		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('DblClick', event)))
+			toggle_row = false;
+		    }
+		}
+	    if (toggle_row)
+		{
+		if (ly.table.initselect !== 1 || moved)
+		    {
+		    ly.table.initselect = 1;
+		    ly.table.RedrawAll(null, true);
+		    }
+		else if (ly.table.initselect !== ly.table.initselect_orig)
+		    {
+		    if (ly.table.allowdeselect)
+			ly.table.initselect = ly.table.initselect_orig;
+		    ly.table.RedrawAll(null, true);
 		    }
 		}
 	    }
@@ -2476,8 +2535,10 @@ function tbld_mousedown(e)
             for(var i in ly.row.table.osrc.orderobject)
                 neworder[i]=ly.row.table.osrc.orderobject[i];
             
-            var colname=ly.row.table.cols[ly.colnum].fieldname;
-                /** check for the this field already in the sort criteria **/
+            var colname=ly.row.table.cols[ly.colnum].sort_fieldname;
+	    if (!colname)
+		colname=ly.row.table.cols[ly.colnum].fieldname;
+	    /** check for the this field already in the sort criteria **/
             if(':"'+colname+'" asc'==neworder[0])
                 neworder[0]=':"'+colname+'" desc';
             else if (':"'+colname+'" desc'==neworder[0])
@@ -2511,8 +2572,7 @@ function tbld_mousemove(e)
 	    t.has_mouse = false;
 	    if (t.demand_scrollbar)
 		{
-		$(t.scrollbar).stop(false, true);
-		$(t.scrollbar).animate({"opacity": (t.thumb_height == t.thumb_avail)?0.0:(t.has_mouse?1.0:0.33)}, 150, "linear", null);
+		t.UpdateScrollbar();
 		}
 	    }
 	}

@@ -3320,7 +3320,7 @@ sybdDelete(pObject obj, pObjTrxTree* oxt)
 CS_COMMAND*
 sybd_internal_PrepareText(pSybdData inf, pSybdConn conn, int maxtextsize)
     {
-    char* col;
+    char* col = NULL;
     int i;
     char buffer[1];
     char sbuf[160];

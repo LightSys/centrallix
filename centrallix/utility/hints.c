@@ -426,6 +426,7 @@ objInfToHints(pStructInf inf, int data_type)
 	while(stAttrValue(stLookup(inf,"style"),NULL,&ptr,cnt) >= 0)
 	    {
 	    hnt_internal_SetStyleItem(ph, ptr);
+	    cnt++;
 	    }
 
 	/** Check for group ID and Name **/

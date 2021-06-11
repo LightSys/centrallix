@@ -1578,10 +1578,10 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
     {
     pNhtSessionData nsess = conn->NhtSession;
     pStruct find_inf;
-    pFile file;
+    pFile file = NULL;
     pObject obj;
     pNhtPostPayload payload;
-    XString json;
+    pXString json = NULL;
     char buffer[2048];
     int length, wcnt, bytes_written;
     pNhtApp app = NULL;
@@ -1596,7 +1596,7 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	if (!find_inf || nht_i_VerifyAKey(find_inf->StrVal, nsess, &group, &app) != 0 || !group || !app)
 	    {
 	    nht_i_WriteErrResponse(conn, 403, "Forbidden", NULL);
-	    return -1;
+	    goto error;
 	    }
 
 	/** REST-type request vs. standard file upload POST? **/
@@ -1604,7 +1604,10 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	if (find_inf && !strcmp(find_inf->StrVal, "rest"))
 	    {
 	    conn->StrictSameSite = 0;
-	    return nht_i_RestPost(conn, url_inf, size, content);
+	    if (nht_i_RestPost(conn, url_inf, size, content) < 0)
+		goto error;
+	    else
+		return 0;
 	    }
 	   
 	/** Standard file upload POST request **/
@@ -1613,7 +1616,7 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	if(!find_inf)
 	    {
 	    nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
-	    return -1;
+	    goto error;
 	    }
 
 	/** Validate the target location **/
@@ -1629,11 +1632,11 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	if (!allowed)
 	    {
 	    nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
-	    return -1;
+	    goto error;
 	    }
 	
 	/** Keep parsing files until stream is empty. **/
-	xsInit(&json);
+	json = xsNew();
 	while(1)
 	    {
 	    payload = nht_i_ParsePostPayload(conn);
@@ -1646,17 +1649,16 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 		    {
 		    mssErrorErrno(1, "NHT", "POST request: could not open file %s", payload->full_new_path);
 		    nht_i_WriteErrResponse(conn, 500, "Internal Server Error", NULL);
-		    return -1;
+		    goto error;
 		    }
 		snprintf(buffer, sizeof buffer, "%s/%s", find_inf->StrVal, payload->newname);
-		xsConcatQPrintf(&json, ",{\"fn\":\"%STR&JSONSTR\",\"up\":\"%STR&JSONSTR\"}", payload->filename, buffer);
+		xsConcatQPrintf(json, ",{\"fn\":\"%STR&JSONSTR\",\"up\":\"%STR&JSONSTR\"}", payload->filename, buffer);
 		obj = objOpen(nsess->ObjSess, buffer, O_CREAT | O_RDWR | O_EXCL, 0660, "application/file");
 		if (!obj)
 		    {
 		    mssError(0, "NHT", "POST request: could not create object %s", buffer);
-		    fdClose(file, 0);
 		    nht_i_WriteErrResponse(conn, 403, "Forbidden", NULL);
-		    return -1;
+		    goto error;
 		    }
 		while(1)
 		    {
@@ -1674,6 +1676,7 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 		    }
 		objClose(obj);
 		fdClose(file, 0);
+		file = NULL;
 		unlink(payload->full_new_path);
 		n_uploaded_files++;
 		}
@@ -1682,20 +1685,30 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 		break;
 		}
 	    }
-	xsRTrim(&json);
+	xsRTrim(json);
 
 	/** Error if POST with no files **/
 	if (n_uploaded_files == 0)
 	    {
 	    nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
-	    return -1;
+	    goto error;
 	    }
 
 	/** Send out the response **/
 	nht_i_WriteResponse(conn, 202, "Accepted", NULL);
-	nht_i_QPrintfConn(conn, 0, "[%STR]", json.String+1);
+	nht_i_QPrintfConn(conn, 0, "[%STR]", json->String+1);
 
-    return 0;
+	/** Clean up **/
+	xsFree(json);
+
+	return 0;
+
+    error:
+	if (json)
+	    xsFree(json);
+	if (file)
+	    fdClose(file, 0);
+	return -1;
     }
 
 
