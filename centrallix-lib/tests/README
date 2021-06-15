@@ -1,0 +1,102 @@
+Running the test suite
+----------------------
+
+Use "make test" to run the test suite.
+
+You can tell the test suite to only run a subset of the tests by setting
+the $TONLY environment variable to the category in question.  For example,
+
+    $ export TONLY=00baseline
+    $ make test
+
+The test_00baseline_NN tests only validate that the test suite itself is
+operating correctly.  The tests in this category will pass, fail, crash, and
+lockup, just to ensure that the test suite is correctly reporting the test
+results.
+
+Understanding test suite output
+-------------------------------
+
+When a test passes, the name of the test and a "PASS" indication will display,
+followed by a number showing how many operations/iterations completed per
+second (based on the number of operations the test reported running) that you
+can use for performance testing.
+
+If a test fails, a "FAIL", "CRASH", or "LOCKUP" indication will display.
+
+Adding new tests
+----------------
+
+Create a new file named like this:
+
+    tests/test_{category}_{NN}.c
+
+NN is the subtest number, starting with 00 or 01, and {category} is a category
+name for the group of tests.
+
+The file should implement a function `long long test(**char name)`. This function
+should set the name parameter to the name of the test, for instance:
+    
+    *name = "moneytype_00 - Converting string to MoneyType"
+
+Do any setup you need to for your test. You can include and use any Centrallix-Lib
+libraries that you want to.
+
+Your actual test should run inside a loop, executing the same test hundreds or
+thousands of times so it can be tested for performance. If the full test takes too
+little time to execute, you may get a "Floating point exception" from the test
+driver dividing by zero as it tries to calculate operations / sec. So if you get
+a "Floating point exception", try increasing the number of iterations of your test.
+
+If your test is successful, return the number of iterations you ran of the test (so
+performance can be calculated). If the test fails, either abort using something
+like assert() or return a value less than 1.
+
+As you develop new test suite entires to cover new or existing functionality,
+see the discussion above about the $TONLY environment variable, as well, to
+help streamline your development.
+
+Code coverage
+-------------
+
+If you'd like to look at what specific code was run or not when you executed a test
+(code coverage), here's how.
+
+To begin a coverage session, first configure Centrallix-Lib to have coverage enabled
+by passing --enable-coverage to a ./configure command. For example:
+
+    ./configure --prefix=/usr/local --with-hardening=low --enable-debugging --enable-coverage
+
+Run make clean to make sure any old compiled versions of Centrallix-Lib without
+coverage are gone. Now when you run make test, gcov coverage files should be generated.
+
+You can use any tool you prefer to look at the gcov coverage information, but one
+convenient tool is lcov and a related VSCode extension to display lcov info. To install
+lcov:
+
+    sudo yum install lcov
+
+The VSCode extension to display lcov coverage info: 
+https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters
+
+You can do all sorts of things with lcov (such as generating HTML files with a coverage
+report), but here's how to use it with the VSCode extension. Once you've run make test
+and have generated gcov information, run:
+
+    lcov -c -d . -o lcov.info
+
+(If this command gives you an error "stamp mismatch with notes file", try running make
+clean and then make test again.)
+
+Now open up a file in VSCode and make sure you've clicked the "Watch" button in the
+lower left status bar (to tell Coverage Gutters to watch for lcov.info files). Now
+you should see green lines to the left side of code that was run, and red lines to
+the side of code which was not run.
+
+BE AWARE that coverage information will stick around until you run make clean to remove
+the gcov data. So if you run test 1, then test 2, then test 3, all the code run by ANY
+of those tests will be considered "covered".
+
+If you want to stop compiling with coverage instrumentation at some point, run
+./configure again without --enable coverage (or just recompile using kardia.sh, which
+does not enable coverage).
