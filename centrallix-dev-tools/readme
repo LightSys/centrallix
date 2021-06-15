@@ -63,3 +63,9 @@ https://github.com/sheesania/centrallix-syntax-highlighting
 
 The Marketplace extension is managed by a Microsoft account under Alison
 Blomenberg's LightSys email.
+
+Other
+-----
+Centrallix.g and Centrallix2.g are ANTLR grammars (https://www.antlr.org/) that
+were last worked on in 2011 (possibly for a NetBeans plugin?). Their current
+status and how well they work is unknown.
