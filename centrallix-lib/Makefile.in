@@ -58,7 +58,7 @@ LIBS = @LIBS@
 ## stop working!!!
 ##
 PROFILE=@PROFILE@
-COVERAGE=-fprofile-arcs -ftest-coverage
+COVERAGE=@COVERAGE@
 CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall $(PROFILE) $(COVERAGE) -g
 MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall $(PROFILE) $(COVERAGE) -g -O0
 TCFLAGS=$(patsubst -DNDEBUG,,$(CFLAGS))
@@ -189,8 +189,15 @@ valtest:	$(TESTPROGS)
 	    fi \
 	done 
 
+.PHONY: cov-clean
+cov-clean:
+	@rm -f *.gcov */*.gcov
+	@rm -f *.gcda */*.gcda
+	@rm -f *.gcno */*.gcno
+	@rm -f lcov.info
+
 .PHONY: clean
-clean:
+clean: cov-clean
 	@rm -f src/*.o src/*.lo $(TESTPROGS) ${FINAL_TARGETS} 2>/dev/null
 	@rm -f *.gcov */*.gcov
 	@rm -f *.gcda */*.gcda
