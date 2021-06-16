@@ -4,3 +4,4 @@ Attribute [round($1.50, 0)]:    money   $2.00
 Attribute [round($1.40, 0)]:    money   $1.00 
 Attribute [round($16.25, -1)]:    money   $20.00 
 Attribute [round($12.25, -1)]:    money   $10.00 
+Attribute [round($12.25)]:    money   $12.00 
