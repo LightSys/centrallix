@@ -1,0 +1,8 @@
+##NAME round() function on money type
+
+query select 'round($1.225, 2)' = round($1.225, 2)
+query select 'round($1.224, 2)' = round($1.224, 2)
+query select 'round($1.50, 0)' = round($1.50, 0)
+query select 'round($1.40, 0)' = round($1.40, 0)
+query select 'round($16.25, -1)' = round($16.25, -1)
+query select 'round($12.25, -1)' = round($12.25, -1)
