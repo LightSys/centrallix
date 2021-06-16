@@ -93,9 +93,9 @@ lower left status bar (to tell Coverage Gutters to watch for lcov.info files). N
 you should see green lines to the left side of code that was run, and red lines to
 the side of code which was not run.
 
-BE AWARE that coverage information will stick around until you run make clean to remove
-the gcov data. So if you run test 1, then test 2, then test 3, all the code run by ANY
-of those tests will be considered "covered".
+BE AWARE that coverage information will stick around until you run make cov-clean to
+remove the gcov data. So if you run test 1, then test 2, then test 3, all the code
+run by ANY of those tests will be considered "covered".
 
 If you want to stop compiling with coverage instrumentation at some point, run
 ./configure again without --enable coverage (or just recompile using kardia.sh, which
