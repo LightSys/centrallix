@@ -82,8 +82,10 @@ NN is the subtest number, starting with 00 or 01, and {category} is a category
 name for the group of tests.
 
 The file should implement a function `long long test(**char name)` that 
-returns 0 if it is successful; if it is not, it should either abort using
-something like assert() or return 1. 
+returns 0 if it is successful. If it is not, it should either abort using
+something like assert() or return a negative value. If the test is skipped
+(for instance, an integration test using the Sybase objectsystem driver that
+automatically skips when Sybase isn't enabled), return 1.
 
 This function should also set the name parameter to the name of the test,
 for instance:
