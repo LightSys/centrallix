@@ -365,7 +365,7 @@ CBTESTFILES=$(patsubst %.c,%.bin,$(CTESTFILES))
 ifeq ($TOTESTFILES,)
     TOTESTDEPS=
 else
-    TOTESTDEPS=test_install
+    TOTESTDEPS=test_obj
 endif
 CTESTHELPERS:=$(wildcard tests/helpers/*.c)
 TESTHELPERS:=$(patsubst %.c,%.o,$(CTESTHELPERS))
@@ -546,17 +546,17 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 		CBOLD=$$(/usr/bin/tput bold); \
 		CNORM=$$(/usr/bin/tput sgr0); \
 	    if [ "$${TOFILE%.to}" != "$${TOFILE}" ]; then \
-		    TOBASE="$${TOFILE%.to}"; \
-		    TONAME=$$(sed -n 's/^##NAME //p' < $$TOBASE.to); \
-		    TOUNDO=$$(sed -n 's/^##UNDO //p' < $$TOBASE.to); \
-		    TOUNDOBAK="$${TOUNDO}-$$RANDOM-$$RANDOM"; \
-		    TOSIMPLE="$${TOBASE#tests/test_}"; \
-		    /bin/rm -f "$$PWD/$$TOBASE.out"; \
-		    [ -f "$$CXOS/$$TOUNDO" ] && /bin/cp -a "$$CXOS/$$TOUNDO" "$$CXOS/$$TOUNDOBAK"; \
-		    echo -n "$$CBLUE"; \
-		    "$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 4 2>&1 | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
-		    RET="$${PIPESTATUS[0]}"; \
-		    [ -f "$$CXOS/$$TOUNDOBAK" ] && /bin/mv -f "$$CXOS/$$TOUNDOBAK" "$$CXOS/$$TOUNDO"; \
+		TOBASE="$${TOFILE%.to}"; \
+		TONAME=$$(sed -n 's/^##NAME //p' < $$TOBASE.to); \
+		TOUNDO=$$(sed -n 's/^##UNDO //p' < $$TOBASE.to); \
+		TOUNDOBAK="$${TOUNDO}-$$RANDOM-$$RANDOM"; \
+		TOSIMPLE="$${TOBASE#tests/test_}"; \
+		/bin/rm -f "$$PWD/$$TOBASE.out"; \
+		[ -f "$$CXOS/$$TOUNDO" ] && /bin/cp -a "$$CXOS/$$TOUNDO" "$$CXOS/$$TOUNDOBAK"; \
+		echo -n "$$CBLUE"; \
+		./test_obj -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 4 2>&1 | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
+		RET="$${PIPESTATUS[0]}"; \
+		[ -f "$$CXOS/$$TOUNDOBAK" ] && /bin/mv -f "$$CXOS/$$TOUNDOBAK" "$$CXOS/$$TOUNDO"; \
             if [ "$$RET" -eq 142 ]; then \
                 printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}LOCKUP$$CNORM"; \
             elif [ "$$RET" -gt 120 ]; then \

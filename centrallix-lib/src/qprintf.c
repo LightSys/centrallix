@@ -58,8 +58,8 @@
 #define QPF_SPEC_T_DBL		(4)
 #define QPF_SPEC_T_NSTR		(5)
 #define QPF_SPEC_T_CHR		(6)
+#define QPF_SPEC_T_LL     (7)
 #define QPF_SPEC_T_ENDSRC	(7)
-#define QPF_SPEC_T_LL       (7)
 
 /*** builtin filtering specifiers ***/
 #define QPF_SPEC_T_STARTFILT	(8)

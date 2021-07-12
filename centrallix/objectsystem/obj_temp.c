@@ -195,6 +195,19 @@ tmp_internal_IndexLookupFromInf(pObjTempIndex idx, pStructInf values)
     }
 
 
+/*** tmp_internal_FreeIndexNode() - release a node in the index
+ ***/
+int
+tmp_internal_FreeIndexNode(pObjTempIdxNode node)
+    {
+
+	nmSysFree(node->Key);
+	nmFree(node, sizeof(ObjTempIdxNode));
+
+    return 0;
+    }
+
+
 /*** tmp_internal_RemoveFromIndex() - remove an object from an index
  ***/
 int
@@ -220,8 +233,7 @@ tmp_internal_RemoveFromIndex(pObjTempIndex idx, pStructInf tuple)
 	xhRemove(&idx->Index,  key);
 
 	/** Free the node **/
-	nmSysFree(node->Key);
-	nmFree(node, sizeof(ObjTempIdxNode));
+	tmp_internal_FreeIndexNode(node);
 	nmSysFree(key);
 
     return 0;
@@ -350,9 +362,10 @@ tmp_internal_FreeIndex(pObjTempIndex idx)
 
 	expFreeParamList(idx->OneObjList);
 	xaClear(&idx->Fields, (void*)nmSysFree, NULL);
-	xhClear(&idx->Index, NULL, NULL);
+	xhClear(&idx->Index, (void*)tmp_internal_FreeIndexNode, NULL);
 	xaDeInit(&idx->Fields);
 	xhDeInit(&idx->Index);
+	nmFree(idx, sizeof(ObjTempIndex));
 
     return 0;
     }
