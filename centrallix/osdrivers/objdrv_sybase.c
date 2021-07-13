@@ -784,22 +784,12 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
 		/** normal 8-byte money **/
 		memcpy(&lsl, ptr+4, 4);
 		memcpy(&msl, ptr, 4);
-		minus = 0;
-		if (msl >= 0x80000000)
-		    {
-		    /** Negate **/
-		    minus = 1;
-		    msl = ~msl;
-		    lsl = ~lsl;
-		    if (lsl == 0xFFFFFFFF) msl++;
-		    lsl++;
-		    }
+
 		/** msl is the most significant 32-bit value and needs to come before lsl
 		** I do this by shifting msl left cast to a long long by 32 bits, and then OR it with lsl
 		**/
 		val->Money->Value = (((long long)msl)<<32) | (long long)lsl;
-		if (minus)
-            val->Money->Value = -val->Money->Value;
+
 		return 0;
 		}
 	    }
