@@ -660,6 +660,7 @@ pObject objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask
 int objQueryClose(pObjQuery this);
 int objGetQueryCoverageMask(pObjQuery this);
 int objGetQueryIdentityPath(pObjQuery this, char* buf, int maxlen);
+int objWildcardQuery(pXArray pathlist, pObjSession sess, char* path);
 
 /** objectsystem content functions **/
 int objRead(pObject this, char* buffer, int maxcnt, int offset, int flags);

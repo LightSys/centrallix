@@ -13,15 +13,15 @@ security "system/sec-policy"
     //
     anon "system/sec-policy-subjectlist"
 	{
-	identity_method = static;
-	authentication_method = none;
+	ident_method = static;
+	auth_method = none;
 	identity = "Anonymous";
 	use_as_default = yes;
 	}
     local "system/sec-policy-subjectlist"
 	{
-	identity_method = unix;
-	authentication_method = unix;
+	ident_method = unix;
+	auth_method = unix;
 	criteria = runserver(:uid == 0 or :uid >= 100);
 	add_endorsement = "system:authenticated";
 	}

@@ -2,6 +2,7 @@
 #define _CXSS_POLICY_H
 
 #include "cxss/cxss.h"
+#include <stdbool.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -56,30 +57,61 @@
 #define CXSS_MODE_T_WARN	2
 #define CXSS_MODE_T_ENFORCE	3
 
-/*** Actions for rules - mask ***/
+/*** Actions for rules ***/
 #define CXSS_ACT_T_ALLOW	1
 #define CXSS_ACT_T_DENY		2
-#define CXSS_ACT_T_ENDORSE	4
+#define CXSS_ACT_T_DEFALLOW	4
+#define CXSS_ACT_T_DEFDENY	8
+#define CXSS_ACT_T_LOG		16
 
 
 /*** Structure for one rule (or rule group) ***/
 typedef struct
     {
-    XArray		MatchPath;			/* strings */
-    XArray		MatchEndorsement;		/* strings */
-    int			MatchAction;			/* CXSS_ACC_T_xxx */
+    char		MatchObject[OBJSYS_MAX_PATH + 1];
+    char		MatchSubject[CXSS_IDENTIFIER_LENGTH];
+    char		MatchEndorsement[CXSS_IDENTIFIER_LENGTH];
+    int			MatchAccess;			/* mask of CXSS_ACC_T_xxx */
+    int			Action;				/* mask of CXSS_ACT_T_xxx */
     }
     CxssPolRule, *pCxssPolRule;
+
+
+/*** Subject Lists i.e. authentication methods ***/
+typedef struct
+    {
+    char		IdentMethod[CXSS_IDENTIFIER_LENGTH];
+    char		AuthMethod[CXSS_IDENTIFIER_LENGTH];
+    char		Identity[CXSS_IDENTIFIER_LENGTH];
+    bool		IsDefault;
+    void*		Criteria;			/* pExpression */
+    char		AddEndorsement[CXSS_IDENTIFIER_LENGTH];
+    }
+    CxssPolAuth, *pCxssPolAuth;
+
+
+/*** Policy inclusion rules ***/
+typedef struct
+    {
+    char		ProbeSQL[1024];
+    char		Path[OBJSYS_MAX_PATH + 1];
+    char		Domain[CXSS_IDENTIFIER_LENGTH];
+    bool		AllowInclusion;
+    bool		AllowSubjectlist;
+    bool		AllowRule;
+    bool		AllowMode;			/* disable/warn/enforce */
+    }
+    CxssPolInclude, *pCxssPolInclude;
 
 
 /*** Structure for overall security policy data ***/
 typedef struct _CXSSPOL
     {
+    struct _CXSSPOL *	Parent;
     char		PolicyPath[OBJSYS_MAX_PATH + 1];
     char		DomainPath[OBJSYS_MAX_PATH + 1];
     char		Domain[CXSS_IDENTIFIER_LENGTH];
     int			PolicyMode;			/* CXSS_MODE_T_xxx */
-    int			DefaultAction;			/* CXSS_ACT_T_xxx */
     DateTime		ModifyDate;
     XArray		SubPolicies;			/* pCxssPolicy */
     XArray		Authentications;		/* pCxssPolAuth */

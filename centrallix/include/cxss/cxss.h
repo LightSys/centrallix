@@ -40,6 +40,7 @@
 #include <openssl/evp.h>
 #include <openssl/err.h>
 #include "cxlib/xarray.h"
+#include "stparse.h"
 
 #define CXSS_ENTROPY_SIZE	1280
 #define CXSS_DEBUG_CONTEXTSTACK	1
@@ -157,9 +158,13 @@ int cxssKeystreamFree(pCxssKeystreamState kstate);
 /*** Credentials Manager API ***/
 #include "cxss/credentials_mgr.h"
 
-/*** Security Policy - Authorization API ***/
+/*** Security Policy ***/
+int cxssPolicyInit();
 int cxssAuthorizeSpec(char* objectspec, int access_type, int log_mode);
 int cxssAuthorize(char* domain, char* type, char* path, char* attr, int access_type, int log_mode);
+
+/*** Security Policy - Loader ***/
+int cxssLoadPolicy(char* os_path);
 
 #endif /* not defined _CXSS_H */
 

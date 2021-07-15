@@ -377,6 +377,9 @@ cxInitialize(void* v)
 	if (stAttrValue(stLookup(mss_conf,"log_all_errors"),NULL,&ptr,0) < 0 || !strcmp(ptr,"yes")) log_all_errors = 1;
 	mssInitialize(authmethod, authmethodfile, logmethod, log_all_errors, logprog);
 
+	/** Load security policy **/
+	cxssPolicyInit();
+
 	/** Initialize the various parts **/
 	expInitialize();			/* expression processor/compiler */
 	if (objInitialize() < 0) return -1;	/* OSML */
