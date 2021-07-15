@@ -118,6 +118,8 @@ start(void* v)
 
     if (rval < 0)
         print_result("FAIL", false);
+    else if (rval == 1)
+        print_result("Skipped", true);
     else
         print_result("Pass", true);
 
