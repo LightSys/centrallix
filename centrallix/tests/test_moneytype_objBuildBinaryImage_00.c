@@ -36,8 +36,8 @@ test(char** name)
     pObjData moneyDataPtrCmp = &moneyDataCmp;
 
     /** Positive Case **/
-    testExp = expPodToExpression(moneyDataPtr, 7, testExp);
-    testExpCmp = expPodToExpression(moneyDataPtrCmp, 7, testExpCmp);
+    testExp = expPodToExpression(moneyDataPtr, DATA_T_MONEY, testExp);
+    testExpCmp = expPodToExpression(moneyDataPtrCmp, DATA_T_MONEY, testExpCmp);
     objBuildBinaryImage(buf, buflen, &testExp, 1, testParamObjects, 0);
     objBuildBinaryImage(cmpBuf, buflen, &testExpCmp, 1, testParamObjects, 0);
     assert(memcmp(buf,cmpBuf,8) > 0);
@@ -45,11 +45,20 @@ test(char** name)
     /** Negative Case **/
     money.Value = -70000;
     moneyCmp.Value = -65000;
-    testExp = expPodToExpression(moneyDataPtr, 7, testExp);
-    testExpCmp = expPodToExpression(moneyDataPtrCmp, 7, testExpCmp);
+    testExp = expPodToExpression(moneyDataPtr, DATA_T_MONEY, testExp);
+    testExpCmp = expPodToExpression(moneyDataPtrCmp, DATA_T_MONEY, testExpCmp);
     objBuildBinaryImage(buf, buflen, &testExp, 1, testParamObjects, 0);
     objBuildBinaryImage(cmpBuf, buflen, &testExpCmp, 1, testParamObjects, 0);
     assert(memcmp(buf,cmpBuf,8) < 0);
+
+    /** Money > INT_MAX Case **/
+    money.Value = 18888888888888888;
+    moneyCmp.Value = 17777777777777777;
+    testExp = expPodToExpression(moneyDataPtr, DATA_T_MONEY, testExp);
+    testExpCmp = expPodToExpression(moneyDataPtrCmp, DATA_T_MONEY, testExpCmp);
+    objBuildBinaryImage(buf, buflen, &testExp, 1, testParamObjects, 0);
+    objBuildBinaryImage(cmpBuf, buflen, &testExpCmp, 1, testParamObjects, 0);
+    assert(memcmp(buf,cmpBuf,8) > 0);
     
     expFreeExpression(testExp);
     expFreeExpression(testExpCmp);
