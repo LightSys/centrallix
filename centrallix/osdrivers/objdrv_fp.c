@@ -1221,6 +1221,7 @@ fp_internal_ParseColumn(pFpColInf column, pObjData pod, char* data, char* row_da
     char dtbuf[32];
     unsigned long long v;
     int i,f;
+    double decimalOffsetValue = 10000;
 
 	switch(column->Type)
 	    {
@@ -1243,18 +1244,15 @@ fp_internal_ParseColumn(pFpColInf column, pObjData pod, char* data, char* row_da
 		if (column->DecimalOffset) pod->Double /= pow(10, column->DecimalOffset);
 		break;
 	    case DATA_T_MONEY:
+            //decimalOffsetValue is originally 10000 to convert v to 10000ths of a dollar
+            //decimalOffsetValue is divided by 10, column->DecimalOffset times,
+            //keeping the decimal as a double in case it drops below 0
+            //Finally, I multiple v by decimalOffsetValue to get my Money->Value
 		if (fp_internal_MappedCopy(ibuf, sizeof(ibuf), column, row_data) < 0) return -1;
 		v = strtoll(ibuf, NULL, 10);
-		f = 1;
-		for(i=0;i<column->DecimalOffset;i++) f *= 10;
+		decimalOffsetValue /= pow(10, column->DecimalOffset);
 		pod->Money = (pMoneyType)data;
-		pod->Money->WholePart = v/f;
-		v = (v/f)*f;
-		if (column->DecimalOffset <= 4)
-		    for(i=column->DecimalOffset;i<4;i++) v *= 10;
-		else
-		    for(i=4;i<column->DecimalOffset;i++) v /= 10;
-		pod->Money->FractionPart = v;
+		pod->Money->Value = (v*decimalOffsetValue)+ 0.1;
 		break;
 	    default:
 		mssError(1, "FP", "Bark!  Unhandled data type for column '%s'", column->Name);
