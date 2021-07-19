@@ -426,15 +426,15 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
     char* fmt;
     char* ptr;
     int n_whole_digits = 0;
-    int print_whole;
+    long long print_whole;
     int print_fract;
     int in_decimal_part = 0;
     int suppressing_zeros = 1;
     int automatic_sign = 1;
     int tens_multiplier = 1;
-    int d;
+    long long d;
     char* start_fmt;
-    int orig_print_whole;
+    long long orig_print_whole;
     char tmp[20];
     XString xs;
     /*int intl_format = 0;*/
@@ -544,7 +544,7 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 			}
 		    else
 		        {
-			sprintf(tmp,"%d",d);
+			sprintf(tmp,"%lld",d);
 			xsConcatenate(&xs,tmp,-1);
 			}
 		    break;
@@ -567,7 +567,7 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
                 case '.':
 		    if (print_whole != 0)
 		        {
-			sprintf(tmp,"%d",print_whole);
+			sprintf(tmp,"%lld",print_whole);
 			xsConcatenate(&xs,tmp,1);
 			}
                     in_decimal_part = 1;

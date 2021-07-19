@@ -25,6 +25,10 @@ test(char** name)
     /** Fractional Cent Case **/
     test.Value = -70001;
     assert(strcmp(objFormatMoneyTmp(&test, NULL), "-$7.00") == 0);
+
+    /** Whole Part > INT_MAX **/
+    test.Value = 1836475854449306500;
+    assert(strcmp(objFormatMoneyTmp(&test, NULL), "$183647585444930.65") == 0);
     
     return 0;
 }
