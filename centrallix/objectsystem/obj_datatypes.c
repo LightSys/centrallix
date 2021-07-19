@@ -1872,8 +1872,9 @@ objDataToWords(int data_type, void* data_ptr)
     static char* teens[9] = { "Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen" };
     static char* tens[9] = { "Ten","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety" };
     static char* multiples[] = { "", "Thousand","Million","Billion","Trillion","Quadrillion" };
-    unsigned long integer_part, fraction_part = 0;
-    int multiple_cnt, n, i;
+    unsigned long long integer_part, fraction_part = 0;
+    long long n;
+    int multiple_cnt, i;
     pMoneyType m;
     char nbuf[16];
     	
