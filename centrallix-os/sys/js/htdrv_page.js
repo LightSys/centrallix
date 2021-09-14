@@ -2036,17 +2036,17 @@ function pg_setkbdfocus(l, a, xo, yo)
 	if (v & 1)
 	    {
 	    // mk box for kbd focus
-	    if (prevArea != a)
-		{
-		if (cx__capabilities.Dom0NS)
-		    {
-		    pg_mkbox(l ,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
-		    }
-		else if (cx__capabilities.Dom1HTML)
-		    {		    
+	    //if (prevArea != a)
+	//	{
+	//	if (cx__capabilities.Dom0NS)
+	//	    {
+	//	    pg_mkbox(l ,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
+	//	    }
+	//	else if (cx__capabilities.Dom1HTML)
+	//	    {		    
 		    pg_mkbox(l ,x,y,w,h, 1, document.getElementById("pgktop"),document.getElementById("pgkbtm"),document.getElementById("pgkrgt"),document.getElementById("pgklft"), page.kbcolor1, page.kbcolor2, htr_getzindex(document.getElementById("pgtop"))+100);
-		    }
-		}
+	//	    }
+	//	}
 	    }
 	if (v & 2)
 	    {
