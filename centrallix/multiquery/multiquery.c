@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <syslog.h>
 #include "ptod.h"
 #include "obj.h"
 #include "cxlib/mtlexer.h"
@@ -403,6 +404,8 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 	/** Set up a declared object or collection? **/
 	if (dec)
 	    {
+	    stmt->Flags |= MQ_TF_IMMEDIATE;
+
 	    /** Lookup application scope data **/
 	    appdata = appLookupAppData("MQ:appdata");
 
@@ -1259,12 +1262,15 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
     int t,parenlevel,subtr,identity,inclsubtr,wildcard,fromobject,prunesubtr,expfrom,collfrom;
     int is_object;
     char* ptr;
+    char* str;
+    char cmd[10];
     pXString xs, param;
     pTObjData ptod;
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
     				   "crosstab","as","having","into","update","delete","insert",
 				   "values","with","limit","for","on","duplicate", "declare",
-				   "showplan", "multistatement", "if", "modified", "exec", NULL};
+				   "showplan", "multistatement", "if", "modified", "exec", 
+				   "log", "print", NULL};
 
     	/** Setup reserved words list for lexical analyzer **/
 	mlxSetReservedWords(lxs, reserved_wds);
@@ -1995,6 +2001,81 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 				mssError(1,"MQ","Expected path name after EXEC");
 				mlxNoteError(lxs);
 				break;
+				}
+			    }
+			else if (!strcmp("log", ptr) || !strcmp("print", ptr))
+			    {
+			    strtcpy(cmd, ptr, sizeof(cmd));
+			    xs = xsNew();
+			    param = xsNew();
+			    next_state = LookForClause;
+			    if (xs && param)
+				{
+				while(1)
+				    {
+				    t = mq_internal_CopyLiteral(lxs, param);
+
+				    if (t < 0)
+					{
+					next_state = ParseError;
+					mssError(1,"MQ","Error in %s statement parameter", cmd);
+					mlxNoteError(lxs);
+					xsFree(xs);
+					xsFree(param);
+					break;
+					}
+				    else
+					{
+					ptod = expCompileAndEval(param->String, stmt->Query->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+					if (!ptod)
+					    {
+					    next_state = ParseError;
+					    mssError(1,"MQ","Could not evaluate %s parameter", cmd);
+					    mlxNoteError(lxs);
+					    xsFree(xs);
+					    xsFree(param);
+					    break;
+					    }
+					str = ptodToStringTmp(ptod);
+					xsConcatenate(xs, str, -1);
+					}
+
+				    if (t == MLX_TOK_EOF || t == MLX_TOK_SEMICOLON)
+					{
+					mlxHoldToken(lxs);
+					next_state = ParseDone;
+					break;
+					}
+
+				    if (t != MLX_TOK_COMMA)
+					{
+					mlxHoldToken(lxs);
+					break;
+					}
+				    else
+					{
+					xsConcatenate(xs, " ", 1);
+					xsCopy(param, "", -1);
+					}
+				    }
+				if (next_state != ParseError)
+				    {
+				    if (!strcmp("log", cmd))
+					mssLog(LOG_INFO, xs->String);
+				    else
+					printf("%s\n", xs->String);
+				    xsFree(xs);
+				    xsFree(param);
+				    stmt->Flags |= MQ_TF_IMMEDIATE;
+				    }
+				}
+			    else
+				{
+				next_state = ParseError;
+				mssError(1,"MQ","Memory exhausted");
+				mlxNoteError(lxs);
+				if (xs) xsFree(xs);
+				if (param) xsFree(param);
 				}
 			    }
 			else
@@ -2736,18 +2817,12 @@ mq_internal_FinishStatement(pQueryStatement stmt)
     }
 
 
-/*** mq_internal_CloseStatement() - clean up after running one statement.
+
+/*** mq_internal_FreeStatement() - release memory/resources for a statement.
  ***/
 int
-mq_internal_CloseStatement(pQueryStatement stmt)
+mq_internal_FreeStatement(pQueryStatement stmt)
     {
-
-	/** Check link cnt - don't free the structure out from under someone... **/
-	stmt->LinkCnt--;
-	if (stmt->LinkCnt > 0) return 0;
-
-	/** Issue Finish() if last unlink **/
-	mq_internal_FinishStatement(stmt);
 
 	/** Free the expressions **/
 	if (stmt->WhereClause && !(stmt->WhereClause->Flags & EXPR_F_CVNODE)) 
@@ -2787,6 +2862,27 @@ mq_internal_CloseStatement(pQueryStatement stmt)
 
 
 
+/*** mq_internal_CloseStatement() - clean up after running one statement.
+ ***/
+int
+mq_internal_CloseStatement(pQueryStatement stmt)
+    {
+
+	/** Check link cnt - don't free the structure out from under someone... **/
+	stmt->LinkCnt--;
+	if (stmt->LinkCnt > 0) return 0;
+
+	/** Issue Finish() if last unlink **/
+	mq_internal_FinishStatement(stmt);
+
+	/** Release it **/
+	mq_internal_FreeStatement(stmt);
+
+    return 0;
+    }
+
+
+
 /*** mq_internal_NextStatement() - read the next SQL statement in from the
  *** query text, parse it, and start it.  Returns 1 on success, 0 if no
  *** more queries in the sql, and < 0 on an error condition.
@@ -2799,7 +2895,7 @@ mq_internal_NextStatement(pMultiQuery this)
     int i;
     int t;
     pQueryDriver qdrv;
-    pQueryStatement stmt;
+    pQueryStatement stmt = NULL;
 
 	/** End of statement? **/
 	if (this->Flags & MQ_F_ENDOFSQL)
@@ -2925,12 +3021,15 @@ mq_internal_NextStatement(pMultiQuery this)
 	    }
 	//mq_internal_DumpQEWithExpr(stmt->Tree, 0);
 
-	/** Just did a declaration? **/
-	if (!stmt->Tree && mq_internal_FindItem(stmt->QTree, MQ_T_DECLARECLAUSE, NULL))
+	/** Just did a declaration, print, or log? **/
+	if (!stmt->Tree && (stmt->Flags & MQ_TF_IMMEDIATE))
 	    {
 	    mq_internal_CloseStatement(stmt);
 	    this->CurStmt = NULL;
-	    return mq_internal_NextStatement(this);
+	    if (thExcessiveRecursion())
+		goto error;
+	    else
+		return mq_internal_NextStatement(this);
 	    }
 
 	/** General failure to parse... **/
@@ -2969,6 +3068,7 @@ mq_internal_NextStatement(pMultiQuery this)
 	return 1;
 
     error:
+	if (stmt) mq_internal_FreeStatement(stmt);
 	this->CurStmt = NULL;
 	return -1;
     }
