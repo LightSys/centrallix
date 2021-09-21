@@ -51,7 +51,7 @@
 #define	TMP_THRESHOLD	(32)	/* minimum collection size to index */
 #define	TMP_MIN_ORDER	(63)	/* min buckets in index hash table */
 #define TMP_MAX_ORDER	(1501)	/* max buckets in index hash table */
-#define	TMP_MAX_KEY	(256)	/* max internal key size for hash table */
+#define	TMP_MAX_KEY	(512)	/* max internal key size for hash table */
 
 typedef struct
     {
