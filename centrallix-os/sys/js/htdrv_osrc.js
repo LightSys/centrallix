@@ -716,7 +716,7 @@ function osrc_go_nogo(go_func, nogo_func, context)
 	{
 	if (this.child[i]._osrc_ready == false)
 	    {
-	    if (this.child[i].IsDiscardReady(this) == true)
+	    if (this.child[i].IsDiscardReady(this, this.doing_refresh?'refresh':'query') == true)
 		this._unsaved_cnt--;
 
 	    // Somebody already did a QueryCancel?
@@ -1038,6 +1038,8 @@ function osrc_refresh_object_handler(aparam)
     sql += " LIMIT 1";
 
     // Now issue the query
+    this.doing_refresh = true;
+    this.refresh_objname = null;
     this.DoRequest("multiquery", "/", 
 	    {
 	    ls__sql:sql,
