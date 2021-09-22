@@ -2168,6 +2168,8 @@ obj_internal_BuildBinaryItem(char** item, int* itemlen, pExpression exp, pParamO
 		break;
 
 	    case DATA_T_STRING:
+		if (!exp->String) /* FIXME */
+		    return 1;
 		*item = exp->String;
 		*itemlen = strlen(exp->String)+1;
 		break;

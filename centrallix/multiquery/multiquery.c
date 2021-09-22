@@ -621,7 +621,11 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		}
 	    for(j=0;j<stmt->Query->nProvidedObjects;j++)
 		{
-		expFreezeOne(subtree->Expr, stmt->Query->ObjList, j);
+		if (expFreezeOne(subtree->Expr, stmt->Query->ObjList, j) < 0)
+		    {
+		    mssError(0, "MQ", "Error evaluating query's ORDER BY expression <%s>", subtree->RawData.String);
+		    return -1;
+		    }
 		}
 	    subtree->ObjCnt = cnt;
 	    }
@@ -2960,7 +2964,11 @@ mq_internal_NextStatement(pMultiQuery this)
 	    }
 	for(i=0;i<this->nProvidedObjects;i++)
 	    {
-	    expFreezeOne(stmt->WhereClause, this->ObjList, i);
+	    if (expFreezeOne(stmt->WhereClause, this->ObjList, i) < 0)
+		{
+		mssError(0, "MQ", "Error evaluating query's WHERE clause");
+		goto error;
+		}
 	    }
 
 	if (qs)
