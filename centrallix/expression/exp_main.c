@@ -558,6 +558,7 @@ exp_internal_DumpExpression_r(pExpression this, int level)
 		}
 	    }
 	if (this->Flags & EXPR_F_NEW) printf(", NEW");
+	if (this->Flags & EXPR_F_INDETERMINATE) printf(", INDET");
 	if (this->Flags & EXPR_F_AGGREGATEFN) printf(", AGGFN");
 	if (this->Flags & EXPR_F_AGGLOCKED) printf(", AGGLK");
 	if (this->Flags & EXPR_F_FREEZEEVAL) printf(", FRZ");

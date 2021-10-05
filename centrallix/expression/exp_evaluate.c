@@ -956,7 +956,10 @@ expEvalAnd(pExpression tree, pParamObjects objlist)
 		    mssError(1,"EXP","The AND operator only works on valid integer/boolean values");
 		    return -1;
 		    }
-		if (child->Flags & EXPR_F_NULL) has_null = 1;
+		if (child->Flags & EXPR_F_NULL)
+		    has_null = 1;
+		if (child->Flags & EXPR_F_INDETERMINATE)
+		    tree->Flags |= EXPR_F_INDETERMINATE;
 		if (!(child->Flags & EXPR_F_INDETERMINATE) && !(child->Flags & EXPR_F_NULL) && child->Integer == 0)
 		    {
 		    tree->Integer = 0;
@@ -1011,7 +1014,10 @@ expEvalOr(pExpression tree, pParamObjects objlist)
 		    mssError(1,"EXP","The OR operator only works on valid integer/boolean values");
 		    return -1;
 		    }
-		if (child->Flags & EXPR_F_NULL) has_null = 1;
+		if (child->Flags & EXPR_F_NULL)
+		    has_null = 1;
+		if (child->Flags & EXPR_F_INDETERMINATE)
+		    tree->Flags |= EXPR_F_INDETERMINATE;
 		if (!(child->Flags & EXPR_F_INDETERMINATE) && !(child->Flags & EXPR_F_NULL) && child->Integer != 0)
 		    {
 		    tree->Integer = 1;
@@ -1920,13 +1926,19 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 	    objlist->ModCoverageMask = old_objmask;
 	tree->ObjDelayChangeMask = 0;
 
-	/** Indeterminate? **/
-	for(i=0; i<tree->Children.nItems; i++)
+	/** Indeterminate?  For AND and OR nodes, let the evaluator function set
+	 ** this flag due to short circuit evaluation.  Otherwise, we set the flag
+	 ** here.
+	 **/
+	if (tree->NodeType != EXPR_N_AND && tree->NodeType != EXPR_N_OR)
 	    {
-	    if (((pExpression)tree->Children.Items[i])->Flags & EXPR_F_INDETERMINATE)
+	    for(i=0; i<tree->Children.nItems; i++)
 		{
-		tree->Flags |= EXPR_F_INDETERMINATE;
-		break;
+		if (((pExpression)tree->Children.Items[i])->Flags & EXPR_F_INDETERMINATE)
+		    {
+		    tree->Flags |= EXPR_F_INDETERMINATE;
+		    break;
+		    }
 		}
 	    }
 
