@@ -33,38 +33,43 @@ function tbld_format_cell(cell, color)
 	{
 	// Progress Bar
 	var val = cell.data;
-	var roundto = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'round_to');
-	if (!roundto) roundto = 1.0;
-	var pad = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_padding');
-	if (!pad) pad = 0;
-	pad = parseInt(pad);
-	var barcolor = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_color');
-	if (!barcolor) barcolor = '#a0a0a0';
-	barcolor = String(barcolor).replace(/[^a-z0-9A-Z#]/g, "");
-	var bartext = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_textcolor');
-	if (!bartext) bartext = 'black';
-	bartext = String(bartext).replace(/[^a-z0-9A-Z#]/g, "");
-	var actpct = '' + (100 * ((val < 0)?0:((val > 1)?1:val))) + '%';
-	actpct = String(actpct).replace(/[^0-9.%]/g, "");
-	var pct = '' + (Math.round(val * 100 / roundto) * roundto) + '%';
-	if (val >= 0.5)
+	if (val !== null)
 	    {
-	    innertxt = pct + ' ';
-	    outertxt = '';
+	    var roundto = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'round_to');
+	    if (!roundto) roundto = 1.0;
+	    var pad = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_padding');
+	    if (!pad) pad = 0;
+	    pad = parseInt(pad);
+	    var barcolor = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_color');
+	    if (!barcolor) barcolor = '#a0a0a0';
+	    barcolor = String(barcolor).replace(/[^a-z0-9A-Z#]/g, "");
+	    var bartext = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_textcolor');
+	    if (!bartext) bartext = 'black';
+	    bartext = String(bartext).replace(/[^a-z0-9A-Z#]/g, "");
+	    var actpct = '' + (100 * ((val < 0)?0:((val > 1)?1:val))) + '%';
+	    actpct = String(actpct).replace(/[^0-9.%]/g, "");
+	    var pct = '' + (Math.round(val * 100 / roundto) * roundto) + '%';
+	    if (val >= 0.5)
+		{
+		innertxt = pct + ' ';
+		outertxt = '';
+		}
+	    else
+		{
+		innertxt = ' ';
+		outertxt = ' ' + pct;
+		}
+	    txt = '<div style="display:inline-block; width:100%;">' +
+		      '<div style="display:inline-block; color:' + bartext + '; background-color:' + barcolor + '; padding:' + pad + 'px; text-align:right; min-width:1px; width:' + actpct + ';">' +
+			  htutil_encode(innertxt) + 
+		      '</div>' +
+		      '<span style="padding:' + pad + 'px;">' +
+			  htutil_encode(outertxt) + 
+		      '</span>' + 
+		  '</div>';
 	    }
 	else
-	    {
-	    innertxt = ' ';
-	    outertxt = ' ' + pct;
-	    }
-	txt = '<div style="display:inline-block; width:100%;">' +
-		  '<div style="display:inline-block; color:' + bartext + '; background-color:' + barcolor + '; padding:' + pad + 'px; text-align:right; min-width:1px; width:' + actpct + ';">' +
-		      htutil_encode(innertxt) + 
-		  '</div>' +
-		  '<span style="padding:' + pad + 'px;">' +
-		      htutil_encode(outertxt) + 
-		  '</span>' + 
-	      '</div>';
+	    txt = '';
 	}
     else if (cell.subkind != 'headercell' && colinfo.type == 'check')
 	{
