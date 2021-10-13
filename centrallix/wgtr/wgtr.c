@@ -1276,8 +1276,9 @@ wgtrGetPropertyType(pWgtrNode widget, char* name)
 	ASSERTMAGIC(widget, MGK_WGTR);
 	if (!strcmp(name, "name")) return DATA_T_STRING;
 	else if (!strcmp(name, "outer_type")) return DATA_T_STRING;
-	else if (!strncmp(name, "r_",2) || !strncmp(name, "fl_", 3)) return DATA_T_INTEGER;
-	else if (!strcmp(name, "x") || !strcmp(name, "y") || !strcmp(name, "width") || !strcmp(name, "height"))
+	else if (!strcmp(name, "x") || !strcmp(name, "y") || !strcmp(name, "width") || !strcmp(name, "height") ||
+		 !strcmp(name, "r_x") || !strcmp(name, "r_y") || !strcmp(name, "r_width") || !strcmp(name, "r_height") ||
+		 !strcmp(name, "fl_x") || !strcmp(name, "fl_y") || !strcmp(name, "fl_width") || !strcmp(name, "fl_height"))
 	    return DATA_T_INTEGER;
 	count = xaCount(&(widget->Properties));
 	for (i=0;i<count;i++)
