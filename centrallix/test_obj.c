@@ -113,8 +113,11 @@ printExpression(pExpression exp)
     pWriteStruct dst;
     pParamObjects tmplist;
 
-	if(!exp)
+	if (!TESTOBJ.Output)
 	    return -1;
+	if (!exp)
+	    return -1;
+
 	dst = (pWriteStruct)nmMalloc(sizeof(WriteStruct));
 	dst->buffer=(char*)malloc(1);
 	dst->buflen=0;
@@ -139,6 +142,9 @@ testobj_show_hints(pObject obj, char* attrname)
     {
     pObjPresentationHints hints;
     int i;
+
+    if (!TESTOBJ.Output)
+	return -1;
 
     hints = objPresentationHints(obj, attrname);
     if(!hints)
@@ -197,6 +203,9 @@ testobj_show_attr(pObject obj, char* attrname)
     pIntVec iv;
     Binary bn;
     pObjPresentationHints hints;
+
+	if (!TESTOBJ.Output)
+	    return -1;
 
 	type = objGetAttrType(obj,attrname);
 	if (type < 0) 
@@ -1448,7 +1457,22 @@ start(void* v)
 	if (!TESTOBJ.Output)
 	    {
 	    strcpy(TESTOBJ.OutputFilename, "/dev/tty");
-	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR | O_CREAT | O_TRUNC, 0600);
+	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR, 0600);
+	    }
+	if (!TESTOBJ.Output)
+	    {
+	    strcpy(TESTOBJ.OutputFilename, "/dev/stdout");
+	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_WRONLY, 0600);
+	    }
+	if (!TESTOBJ.Output)
+	    {
+	    strcpy(TESTOBJ.OutputFilename, "/dev/null");
+	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR, 0600);
+	    }
+	if (!TESTOBJ.Output)
+	    {
+	    /** No ability to output anything - exit now **/
+	    thExit();
 	    }
 
 	/** Application context **/
