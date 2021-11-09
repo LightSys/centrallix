@@ -89,6 +89,13 @@ expEvalSubquery(pExpression tree, pParamObjects objlist)
 	    return 0;
 	    }
 
+	/** Not allowed? **/
+	if (objlist->MainFlags & EXPR_MO_NOSUBQUERY)
+	    {
+	    mssError(1,"EXP","Cannot run a subquery in this context");
+	    return -1;
+	    }
+
 	/** Run the query **/
 	qy = objMultiQuery(objlist->Session, tree->Name, objlist, OBJ_MQ_F_ONESTATEMENT | OBJ_MQ_F_NOUPDATE);
 	if (!qy)
@@ -1313,6 +1320,12 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 	    /** If unset, but direct objsys reference using pathname, look it up **/
 	    if (tree->Parent->Name[0] == '.' || tree->Parent->Name[0] == '/')
 		{
+		/** Not allowed? **/
+		if (objlist->MainFlags & EXPR_MO_NODIRECT)
+		    {
+		    mssError(1,"EXP","Cannot open object within expression in this context");
+		    return -1;
+		    }
 		if (!objlist->Session)
 		    {
 		    /** Null if no context to eval a filename obj yet **/
@@ -1338,6 +1351,22 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 	    }
 	else
 	    {
+	    /** Permission check **/
+	    if (tree->ObjID == EXPR_OBJID_CURRENT && (objlist->MainFlags & EXPR_MO_NOCURRENT))
+		{
+		mssError(1,"EXP","Cannot access current object in this context");
+		return -1;
+		}
+	    else if (tree->ObjID == EXPR_OBJID_PARENT && (objlist->MainFlags & EXPR_MO_NOPARENT))
+		{
+		mssError(1,"EXP","Cannot access parent object in this context");
+		return -1;
+		}
+	    else if (tree->ObjID != EXPR_OBJID_PARENT && tree->ObjID != EXPR_OBJID_CURRENT && (objlist->MainFlags & EXPR_MO_NOOBJECT))
+		{
+		mssError(1,"EXP","Cannot access named object in this context");
+		return -1;
+		}
 	    id = expObjID(tree,objlist);
 	    if (id == EXPR_CTL_CONSTANT)
 		return 0;

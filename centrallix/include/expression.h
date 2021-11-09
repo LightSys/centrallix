@@ -156,12 +156,12 @@ typedef struct _PO
     unsigned char	nObjects;
     char		CurrentID;
     char		ParentID;
-    unsigned int	MainFlags;		/* bitmask EXPR_MO_xxx */
+    unsigned int	MainFlags;			/* bitmask EXPR_MO_xxx */
     unsigned int 	PSeqID;
     int			ModCoverageMask;
     pExpControl		CurControl;
     int			RandomInit;
-    unsigned char	Random[SHA256_DIGEST_LENGTH];		/* current seed for rand() */
+    unsigned char	Random[SHA256_DIGEST_LENGTH];	/* current seed for rand() */
     }
     ParamObjects, *pParamObjects;
 
@@ -232,10 +232,21 @@ extern pParamObjects expNullObjlist;
 
 /*** Expression objlist MainFlags ***/
 #define EXPR_MO_RECALC		1	/* ignore EXPR_F_STALE; recalc */
+#define EXPR_MO_NOCURRENT	2	/* deny access via :attrname */
+#define EXPR_MO_NOPARENT	4	/* deny access via ::attrname */
+#define EXPR_MO_NOOBJECT	8	/* deny :objectname:attrname */
+#define EXPR_MO_NODIRECT	16	/* deny /path/to/object:attrname */
+#define EXPR_MO_NOSUBQUERY	32	/* deny (sql) */
+#define EXPR_MO_NOEVAL		64	/* deny eval() */
+#define EXPR_MO_PERMMASK	(EXPR_MO_NOCURRENT | EXPR_MO_NOPARENT | EXPR_MO_NOOBJECT | EXPR_MO_NODIRECT | EXPR_MO_NOSUBQUERY | EXPR_MO_NOEVAL)
+#define EXPR_MO_DEFPERMMASK	(EXPR_MO_NODIRECT | EXPR_MO_NOSUBQUERY | EXPR_MO_NOEVAL)
 #define EXPR_MO_RUNSTATIC	EXPR_F_RUNSTATIC
 #define EXPR_MO_RUNSERVER	EXPR_F_RUNSERVER
 #define EXPR_MO_RUNCLIENT	EXPR_F_RUNCLIENT
 #define EXPR_MO_DOMAINMASK	EXPR_F_DOMAINMASK
+#if (EXPR_MO_DOMAINMASK & EXPR_MO_PERMMASK)
+#error "Conflict in expression EXPR_MO_xxxx options, sorry!!!"
+#endif
 
 /*** Compiler flags ***/
 #define EXPR_CMP_ASCDESC	1	/* flag asc/desc for sort expr */

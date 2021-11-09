@@ -1584,27 +1584,117 @@ int exp_fn_substitute(pExpression tree, pParamObjects objlist, pExpression i0, p
 int exp_fn_eval(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression eval_exp, parent;
+    pExpression child;
+    int oldmainflags;
+    int oldcurrent, oldparent;
+    int newpermflags;
     int rval;
-    if (!objlist || (i0 && !i1 && i0->Flags & EXPR_F_NULL))
-	{
-	tree->Flags |= EXPR_F_NULL;
-	return 0;
-	}
-    if (!i0 || i0->DataType != DATA_T_STRING || i1)
-        {
-	mssError(1,"EXP","eval() requires one string parameter");
-	return -1;
-	}
-    for(parent=tree;parent->Parent;parent=parent->Parent);
-    eval_exp = expCompileExpression(i0->String, objlist, parent->LxFlags, parent->CmpFlags);
-    if (!eval_exp) return -1;
-    if ((rval=expEvalTree(eval_exp, objlist)) < 0)
-	{
+    int objid;
+
+	/** NULL result because 1st param is null? **/
+	if (!objlist || (i0 && i0->Flags & EXPR_F_NULL))
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	/** Not allowed? **/
+	if (objlist->MainFlags & EXPR_MO_NOEVAL)
+	    {
+	    mssError(1,"EXP","Cannot use eval() in this context");
+	    return -1;
+	    }
+
+	/** Usage **/
+	if (!i0 || i0->DataType != DATA_T_STRING)
+	    {
+	    mssError(1,"EXP","eval() first parameter must be a string");
+	    return -1;
+	    }
+	for(parent=tree;parent->Parent;parent=parent->Parent);
+
+	oldmainflags = objlist->MainFlags;
+	oldcurrent = objlist->CurrentID;
+	oldparent = objlist->ParentID;
+
+	/** Permission flags **/
+	if (i1 && !(i1->Flags & EXPR_F_NULL))
+	    {
+	    if (i1->DataType != DATA_T_STRING)
+		{
+		mssError(1,"EXP","eval() second parameter must be a string");
+		return -1;
+		}
+	    newpermflags = 0;
+	    if (strchr(i1->String, 'C') == NULL) newpermflags |= EXPR_MO_NOCURRENT;
+	    if (strchr(i1->String, 'P') == NULL) newpermflags |= EXPR_MO_NOPARENT;
+	    if (strchr(i1->String, 'O') == NULL) newpermflags |= EXPR_MO_NOOBJECT;
+	    if (strchr(i1->String, 'D') == NULL) newpermflags |= EXPR_MO_NODIRECT;
+	    if (strchr(i1->String, 'S') == NULL) newpermflags |= EXPR_MO_NOSUBQUERY;
+	    if (strchr(i1->String, 'E') == NULL) newpermflags |= EXPR_MO_NOEVAL;
+	    }
+	else
+	    {
+	    newpermflags = EXPR_MO_DEFPERMMASK;
+	    }
+	objlist->MainFlags |= newpermflags;
+
+	/** Current object name **/
+	if (i2 && !(i2->Flags & EXPR_F_NULL))
+	    {
+	    if (i2->DataType != DATA_T_STRING)
+		{
+		mssError(1,"EXP","eval() third parameter must be a string");
+		return -1;
+		}
+	    objid = expLookupParam(objlist, i2->String, 0);
+	    if (objid >= 0)
+		objlist->CurrentID = objid;
+	    else
+		{
+		mssError(1,"EXP","eval() no such object %s", i2->String);
+		return -1;
+		}
+	    }
+
+	/** Parent object name **/
+	if (tree->Children.nItems == 4)
+	    {
+	    child = tree->Children.Items[3];
+	    if (child && !(child->Flags & EXPR_F_NULL))
+		{
+		if (child->DataType != DATA_T_STRING)
+		    {
+		    mssError(1,"EXP","eval() fourth parameter must be a string");
+		    return -1;
+		    }
+		objid = expLookupParam(objlist, child->String, 0);
+		if (objid >= 0)
+		    objlist->ParentID = objid;
+		else
+		    {
+		    mssError(1,"EXP","eval() no such object %s", child->String);
+		    return -1;
+		    }
+		}
+	    }
+
+	/** Compile and evaluate **/
+	eval_exp = expCompileExpression(i0->String, objlist, parent->LxFlags, parent->CmpFlags);
+	if (!eval_exp) return -1;
+	rval = expEvalTree(eval_exp, objlist);
+	objlist->MainFlags = oldmainflags;
+	objlist->CurrentID = oldcurrent;
+	objlist->ParentID = oldparent;
+	if (rval < 0)
+	    {
+	    expFreeExpression(eval_exp);
+	    return -1;
+	    }
+	expCopyValue(eval_exp, tree, 1);
+
 	expFreeExpression(eval_exp);
-	return -1;
-	}
-    expCopyValue(eval_exp, tree, 1);
-    expFreeExpression(eval_exp);
+
     return rval;
     }
 
