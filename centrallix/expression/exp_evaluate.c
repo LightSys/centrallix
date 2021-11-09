@@ -1572,10 +1572,10 @@ expEvalFunction(pExpression tree, pParamObjects objlist)
 	if (tree->Children.nItems > 2) i2 = (pExpression)(tree->Children.Items[2]);
 
 	/** Evaluate all child items.
-	 ** The 'condition' function is special - give it control because 
+	 ** The 'condition' and 'first' functions are special - give them control because 
 	 ** of the need for short-circuit logic.
 	 **/
-	if (strcmp(tree->Name, "condition") != 0)
+	if (strcmp(tree->Name, "condition") != 0 && strcmp(tree->Name, "first") != 0)
 	    {
 	    for(i=0;i<tree->Children.nItems;i++) 
 		{
