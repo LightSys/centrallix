@@ -63,9 +63,9 @@ function tbld_format_cell(cell, color)
 		      '<div style="display:inline-block; color:' + bartext + '; background-color:' + barcolor + '; padding:' + pad + 'px; text-align:right; min-width:1px; width:' + actpct + ';">' +
 			  htutil_encode(innertxt) + 
 		      '</div>' +
-		      '<span style="padding:' + pad + 'px;">' +
+		      (outertxt?('<span style="padding:' + pad + 'px;">' +
 			  htutil_encode(outertxt) + 
-		      '</span>' + 
+		      '</span>'):'') + 
 		  '</div>';
 	    }
 	else
