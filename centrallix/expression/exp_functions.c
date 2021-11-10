@@ -3279,18 +3279,17 @@ int exp_fn_first(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 	mssError(1,"EXP","first() requires a parameter");
 	return -1;
 	}
-    if (!(tree->Flags & EXPR_F_AGGLOCKED) && tree->AggCount == 0)
+    if (tree->AggCount == 0)
+	rval = exp_internal_EvalTree(i0, objlist);
+    if (rval < 0)
+	return -1;
+    if (!(tree->Flags & EXPR_F_AGGLOCKED) && !(i0->Flags & EXPR_F_NULL))
 	{
-	if ((rval = exp_internal_EvalTree(i0, objlist)) == 0 && !(i0->Flags & EXPR_F_NULL))
+	if (tree->AggCount == 0)
 	    {
 	    expCopyValue(i0, tree, 1);
-	    tree->AggCount++;
 	    }
-	else
-	    {
-	    if (rval < 0) return -1;
-	    if (tree->AggCount == 0) tree->Flags |= EXPR_F_NULL;
-	    }
+	tree->AggCount++;
 	}
     else
 	{
