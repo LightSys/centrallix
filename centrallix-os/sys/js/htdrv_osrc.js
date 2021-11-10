@@ -1666,7 +1666,8 @@ function osrc_query_timeout()
 function osrc_end_query()
     {
     //this.initiating_client.OperationComplete(); /* don't need this...I think....*/
-    var qid=this.qid
+    var qid=this.qid;
+    var wasrefresh = this.doing_refresh;
     this.qid=null;
     /* return the last record as the current one if it was our target otherwise, don't */
     if (this.LastRecord >= this.FirstRecord && this.replica[this.LastRecord])
@@ -1685,7 +1686,7 @@ function osrc_end_query()
 	{
 	this.DoRequest('queryclose', '/', {ls__qid:qid}, osrc_close_query);
 	}
-    this.ifcProbe(ifEvent).Activate("EndQuery", {FinalRecord:this.FinalRecord, LastRecord:this.LastRecord, FirstRecord:this.FirstRecord, CurrentRecord:this.CurrentRecord, QueryRequestQueue:this.query_request_queue.length, Pending:(this.pending?1:0)});
+    this.ifcProbe(ifEvent).Activate("EndQuery", {FinalRecord:this.FinalRecord, LastRecord:this.LastRecord, FirstRecord:this.FirstRecord, CurrentRecord:this.CurrentRecord, QueryRequestQueue:this.query_request_queue.length, Pending:(this.pending?1:0), Refresh:(wasrefresh?1:0)});
     this.doing_refresh = false;
     this.Dispatch();
 
