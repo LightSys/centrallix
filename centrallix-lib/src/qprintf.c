@@ -512,7 +512,8 @@ int
 qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
     {
     static char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    const char* srcptr = src;
+    const unsigned char* srcptr = (const unsigned char*)src;
+    const unsigned char* origsrc = (const unsigned char*)src;
     char* dstptr;
     int req_size = ((src_size+2) / 3) * 4 + *dst_offset;
 
@@ -529,13 +530,13 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
 	dstptr = *dst + *dst_offset;
 	
 	/** Step through src 3 bytes at a time, generating 4 dst bytes for each 3 src **/
-	while(srcptr < src + src_size)
+	while(srcptr < origsrc + src_size)
 	    {
 	    /** First 6 bits of source[0] --> first byte dst. **/
 	    dstptr[0] = b64[srcptr[0]>>2];
 
 	    /** Second dst byte from last 2 bits of src[0] and first 4 of src[1] **/
-	    if (srcptr+1 < src + src_size)
+	    if (srcptr+1 < origsrc + src_size)
 		dstptr[1] = b64[((srcptr[0]&0x03)<<4) | (srcptr[1]>>4)];
 	    else
 		{
@@ -547,7 +548,7 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
 		}
 
 	    /** Third dst byte from second 4 bits of src[1] and first 2 of src[2] **/
-	    if (srcptr+2 < src + src_size)
+	    if (srcptr+2 < origsrc + src_size)
 		dstptr[2] = b64[((srcptr[1]&0x0F)<<2) | (srcptr[2]>>6)];
 	    else
 		{
