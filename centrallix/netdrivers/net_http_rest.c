@@ -199,8 +199,8 @@ nht_i_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtR
     char* path;
     char pathbuf[OBJSYS_MAX_PATH];
     char* attr;
-    char xfer_buf[256];
-    int rcnt;
+    char xfer_buf[255];
+    int rcnt, rcnt2, padcnt;
     char* sys_attrs[] = { "name", "annotation", "inner_type", "outer_type" };
     char sent_sys_attrs[sizeof(sys_attrs)/sizeof(char*)];
     int i;
@@ -250,7 +250,21 @@ nht_i_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtR
 		nht_i_WriteConn(conn, ",\r\n\"cx__objcontent\":\"", -1, 0);
 		while((rcnt = objRead(obj, xfer_buf, sizeof(xfer_buf), 0, 0)) > 0)
 		    {
-		    nht_i_QPrintfConn(conn, 0, "%*STR&JSONSTR", rcnt, xfer_buf);
+		    /** Base64 source data needs to be multiples of 3 bytes except
+		     ** at the tail end.
+		     **/
+		    padcnt = (3 - (rcnt%3))%3;
+		    while(padcnt > 0)
+			{
+			rcnt2 = objRead(obj, xfer_buf+rcnt, padcnt, 0, 0);
+			if (rcnt2 <= 0)
+			    break;
+			rcnt += rcnt2;
+			padcnt = (3 - (rcnt%3))%3;
+			}
+		    
+		    /** Encode it **/
+		    nht_i_QPrintfConn(conn, 0, "%*STR&B64", rcnt, xfer_buf);
 		    }
 		nht_i_WriteConn(conn, "\"", -1, 0);
 		}
