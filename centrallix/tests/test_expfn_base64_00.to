@@ -1,0 +1,12 @@
+##NAME to_base64() and from_base64 functions
+
+query select 'to_base64(null)' = to_base64(null)
+query select 'to_base64("")' = to_base64("")
+query select 'to_base64("a")' = to_base64("a")
+query select 'to_base64("abcdefghijklmnopqrstuvwxyz12345")' = to_base64("abcdefghijklmnopqrstuvwxyz12345")
+query select 'to_base64("abcdefghijklmnopqrstuvwxyz12345" * 9)' = to_base64("abcdefghijklmnopqrstuvwxyz12345" * 9)
+query select 'from_base64(null)' = from_base64(null)
+query select 'from_base64("")' = from_base64("")
+query select 'from_base64("YQ==")' = from_base64("YQ==")
+query select 'from_base64("YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NQ==")' = from_base64("YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NQ==")
+query select 'from_base64(to_base64("abcdefghijklmnopqrstuvwxyz12345" * 9))' = from_base64(to_base64("abcdefghijklmnopqrstuvwxyz12345" * 9))

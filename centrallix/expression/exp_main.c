@@ -722,20 +722,8 @@ expPodToExpression(pObjData pod, int type, pExpression provided_exp)
 		    exp->Integer = pod->Integer;
 		    break;
 		case DATA_T_STRING:
-		    if (exp->Alloc)
-			nmSysFree(exp->String);
-		    n = strlen(pod->String);
-		    if (n < sizeof(exp->Types.StringBuf))
-			{
-			exp->String = exp->Types.StringBuf;
-			exp->Alloc = 0;
-			}
-		    else
-			{
-			exp->String = nmSysMalloc(n+1);
-			exp->Alloc = 1;
-			}
-		    strcpy(exp->String, pod->String);
+		    if (expSetString(exp, pod->String) < 0)
+			goto error;
 		    break;
 		case DATA_T_DOUBLE:
 		    exp->Types.Double = pod->Double;
@@ -747,16 +735,19 @@ expPodToExpression(pObjData pod, int type, pExpression provided_exp)
 		    memcpy(&(exp->Types.Date), pod->DateTime, sizeof(DateTime));
 		    break;
 		default:
-		    if (!provided_exp)
-			expFreeExpression(exp);
-		    return NULL;
+		    goto error;
 		}
 	    }
 
 	exp->DataType = type;
 	/*expEvalTree(exp,expNullObjlist);*/
 
-    return exp;
+	return exp;
+
+    error:
+	if (exp && !provided_exp)
+	    expFreeExpression(exp);
+	return NULL;
     }
 
 
@@ -1052,6 +1043,38 @@ expCompileAndEval(char* text, pParamObjects objlist, int lxflags, int cmpflags)
 	expFreeExpression(exp);
 
     return ptod;
+    }
+
+
+/*** expSetString - set a string value in an expression node
+ ***/
+int
+expSetString(pExpression this, char* str)
+    {
+    int n;
+
+	if (this->Alloc)
+	    {
+	    this->Alloc = 0;
+	    nmSysFree(this->String);
+	    }
+
+	n = strlen(str);
+	if (n < sizeof(this->Types.StringBuf))
+	    {
+	    this->String = this->Types.StringBuf;
+	    }
+	else
+	    {
+	    this->String = nmSysMalloc(n+1);
+	    if (this->String)
+		this->Alloc = 1;
+	    else
+		return -1;
+	    }
+	strcpy(this->String, str);
+
+    return 0;
     }
 
 

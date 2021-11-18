@@ -2758,6 +2758,83 @@ int exp_fn_pbkdf2(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
     }
 
 
+int exp_fn_to_base64(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pXString dest = NULL;
+
+	if (!i0 || (!(i0->Flags & EXPR_F_NULL) && i0->DataType != DATA_T_STRING))
+	    {
+	    mssError(1, "EXP", "to_base64() expects one string parameter");
+	    goto error;
+	    }
+
+	tree->DataType = DATA_T_STRING;
+
+	if (i0->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	dest = xsNew();
+	if (!dest)
+	    goto error;
+
+	if (xsQPrintf(dest, "%STR&B64", i0->String) < 0)
+	    goto error;
+	expSetString(tree, dest->String);
+
+	xsFree(dest);
+
+	return 0;
+
+    error:
+	if (dest)
+	    xsFree(dest);
+	return -1;
+    }
+
+
+int exp_fn_from_base64(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pXString dest = NULL;
+
+	if (!i0 || (!(i0->Flags & EXPR_F_NULL) && i0->DataType != DATA_T_STRING))
+	    {
+	    mssError(1, "EXP", "from_base64() expects one string parameter");
+	    goto error;
+	    }
+
+	tree->DataType = DATA_T_STRING;
+
+	if (i0->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	dest = xsNew();
+	if (!dest)
+	    goto error;
+
+	if (xsQPrintf(dest, "%STR&DB64", i0->String) < 0)
+	    {
+	    mssError(1, "EXP", "from_base64(): invalid base64-encoded data");
+	    goto error;
+	    }
+	expSetString(tree, dest->String);
+
+	xsFree(dest);
+
+	return 0;
+
+    error:
+	if (dest)
+	    xsFree(dest);
+	return -1;
+    }
+
+
 int exp_fn_log10(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     double n;
@@ -3404,6 +3481,8 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "log10", (char*)exp_fn_log10);
 	xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
 	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
+	xhAdd(&EXP.Functions, "to_base64", (char*)exp_fn_to_base64);
+	xhAdd(&EXP.Functions, "from_base64", (char*)exp_fn_from_base64);
 
 	/** Windowing **/
 	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
