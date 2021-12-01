@@ -38,8 +38,90 @@ typedef enum { ResAttrsBasic, ResAttrsFull, ResAttrsNone } nhtResAttrs_t;
 
 int nht_i_RestGetElementContent(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, char* mime_type);
 int nht_i_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, char* mime_type);
-int nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int levels);
-int nht_i_RestGetBoth(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int res_levels, char* mime_type);
+int nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int levels, pStruct url_inf);
+int nht_i_RestGetBoth(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int res_levels, char* mime_type, pStruct url_inf);
+
+
+/*** nht_i_EncodeCriteria() - look for criteria in the url_inf and encode
+ *** them into a query criteria string.  Returns NULL if no criteria were
+ *** found.
+ ***/
+ pXString
+ nht_i_EncodeCriteria(pStruct url_inf)
+    {
+    pXString xs = NULL;
+    int i, n_criteria = 0, n, j;
+    pStruct criteria_inf;
+    char* val;
+    char* op;
+    char* ops[] = { "=", "!=", "<", "<=", ">", ">=", "*", "_*", "*_", NULL };
+
+
+	/** Loop through criteria looking for non-cx__xxyyzz params **/
+	for(i=0; i<url_inf->nSubInf; i++)
+	    {
+	    criteria_inf = url_inf->SubInf[i];
+	    if (criteria_inf->Type == ST_T_ATTRIB && strncmp(criteria_inf->Name, "cx__", 4) != 0)
+		{
+		if (stAttrValue_ne(criteria_inf, &val) == 0)
+		    {
+		    n_criteria++;
+		    if (!xs)
+			{
+			xs = xsNew();
+			if (!xs) return NULL;
+			}
+
+		    /** Comparison operator supplied? **/
+		    op = NULL;
+		    for(j=0; ops[j]; j++)
+			{
+			if (!strncmp(val, ops[j], strlen(ops[j])) && val[strlen(ops[j])] == ':')
+			    {
+			    op = ops[j];
+			    val += (strlen(ops[j]) + 1);
+			    break;
+			    }
+			}
+
+		    /** Build the criteria **/
+		    if (op && !strcmp(op, "*"))
+			{
+			xsConcatQPrintf(xs, "%STRcharindex(%STR&QUOT, :%STR&QUOT) > 0", (n_criteria > 1)?" and ":"", val, criteria_inf->Name);
+			}
+		    else if (op && !strcmp(op, "_*"))
+			{
+			xsConcatQPrintf(xs, "%STRcharindex(%STR&QUOT, :%STR&QUOT) == 1", (n_criteria > 1)?" and ":"", val, criteria_inf->Name);
+			}
+		    else if (op && !strcmp(op, "*_"))
+			{
+			xsConcatQPrintf(xs, "%STRcharindex(%STR&QUOT, :%STR&QUOT) == char_length(:%STR&QUOT) - char_length(%STR&QUOT) + 1", (n_criteria > 1)?" and ":"", val, criteria_inf->Name, criteria_inf->Name, val);
+			}
+		    else
+			{
+			xsConcatQPrintf(xs, "%STR:%STR&QUOT %STR ", (n_criteria > 1)?" and ":"", criteria_inf->Name, op?op:"=");
+
+			/** What type are we dealing with?  This duck-typing isn't ideal,
+			 ** but we don't currently have a better way of working this out.
+			 **/
+			if (strlen(val) == strspn(val, "-0123456789"))
+			    {
+			    /** integer **/
+			    n = strtol(val, NULL, 10);
+			    xsConcatQPrintf(xs, "%INT", n);
+			    }
+			else
+			    {
+			    /** string **/
+			    xsConcatQPrintf(xs, "%STR&QUOT", val);
+			    }
+			}
+		    }
+		}
+	    }
+
+    return xs;
+    }
 
 
 /*** nht_i_RestGetElementContent() - get a REST element's content.
@@ -220,31 +302,10 @@ nht_i_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtR
 	/** Write any attrs? **/
 	if (res_attrs != ResAttrsNone)
 	    {
-	    /** Keep track of any sys attrs that were sent with the main ones **/
-	    memset(sent_sys_attrs, 0, sizeof(sent_sys_attrs));
-
-	    /** We loop through the main attributes that are iterable **/
-	    for(attr=objGetFirstAttr(obj); attr; attr=objGetNextAttr(obj))
-		{
-		for(i=0; i<sizeof(sent_sys_attrs); i++)
-		    {
-		    if (!strcmp(attr, sys_attrs[i]))
-			{
-			sent_sys_attrs[i] = 1;
-			break;
-			}
-		    }
-		nht_i_RestWriteAttr(conn, obj, attr, res_attrs, 1);
-		}
-
-	    /** Next, we output some system (hidden) attributes **/
-	    for(i=0; i<sizeof(sent_sys_attrs); i++)
-		{
-		if (!sent_sys_attrs[i])
-		    nht_i_RestWriteAttr(conn, obj, sys_attrs[i], res_attrs, 1);
-		}
-
-	    /** Content? **/
+	    /** Content?  If so, we do content first in order to ensure metadata
+	     ** values are set; with some content the metadata values are generated
+	     ** during content generation.
+	     **/
 	    if (res_format == ResFormatBoth)
 		{
 		nht_i_WriteConn(conn, ",\r\n\"cx__objcontent\":\"", -1, 0);
@@ -268,6 +329,30 @@ nht_i_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtR
 		    }
 		nht_i_WriteConn(conn, "\"", -1, 0);
 		}
+
+	    /** Keep track of any sys attrs that were sent with the main ones **/
+	    memset(sent_sys_attrs, 0, sizeof(sent_sys_attrs));
+
+	    /** We loop through the main attributes that are iterable **/
+	    for(attr=objGetFirstAttr(obj); attr; attr=objGetNextAttr(obj))
+		{
+		for(i=0; i<sizeof(sent_sys_attrs); i++)
+		    {
+		    if (!strcmp(attr, sys_attrs[i]))
+			{
+			sent_sys_attrs[i] = 1;
+			break;
+			}
+		    }
+		nht_i_RestWriteAttr(conn, obj, attr, res_attrs, 1);
+		}
+
+	    /** Next, we output some system (hidden) attributes **/
+	    for(i=0; i<sizeof(sent_sys_attrs); i++)
+		{
+		if (!sent_sys_attrs[i])
+		    nht_i_RestWriteAttr(conn, obj, sys_attrs[i], res_attrs, 1);
+		}
 	    }
 
 	/** And end it with } **/
@@ -283,7 +368,7 @@ nht_i_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtR
  *** the attributes for each one.
  ***/
 int
-nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int levels)
+nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int levels, pStruct url_inf)
     {
     pObjQuery query;
     pObject subobj;
@@ -291,6 +376,7 @@ nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtRe
     char* objtype;
     char* path;
     char pathbuf[OBJSYS_MAX_PATH];
+    pXString criteria = NULL;
 
 	/** We open our list with just a { **/
 	nht_i_WriteConn(conn, "{\r\n", -1, 0);
@@ -305,8 +391,11 @@ nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtRe
 		(res_attrs == ResAttrsFull)?"full":"basic"
 		);
 
+	/** Check for query criteria **/
+	criteria = nht_i_EncodeCriteria(url_inf);
+
 	/** Open the query and loop through subobjects **/
-	query = objOpenQuery(obj, "", NULL, NULL, NULL);
+	query = objOpenQuery(obj, criteria?criteria->String:"", NULL, NULL, NULL);
 	if (query)
 	    {
 	    while((subobj = objQueryFetch(query, O_RDONLY)) != NULL)
@@ -329,9 +418,9 @@ nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtRe
 		    else
 			{
 			if (res_type == ResTypeBoth)
-			    nht_i_RestGetBoth(conn, subobj, res_format, res_attrs, levels-1, objtype);
+			    nht_i_RestGetBoth(conn, subobj, res_format, res_attrs, levels-1, objtype, url_inf);
 			else
-			    nht_i_RestGetCollection(conn, subobj, ResTypeCollection, res_format, res_attrs, levels-1);
+			    nht_i_RestGetCollection(conn, subobj, ResTypeCollection, res_format, res_attrs, levels-1, url_inf);
 			}
 		    objClose(subobj);
 		    }
@@ -342,6 +431,8 @@ nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtRe
 	/** And close it with } **/
 	nht_i_WriteConn(conn, "}\r\n", -1, 0);
 
+	if (criteria) xsFree(criteria);
+
     return 0;
     }
 
@@ -351,7 +442,7 @@ nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtRe
  *** into a two-part JSON document.
  ***/
 int
-nht_i_RestGetBoth(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int res_levels, char* mime_type)
+nht_i_RestGetBoth(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int res_levels, char* mime_type, pStruct url_inf)
     {
     char* path;
     char pathbuf[OBJSYS_MAX_PATH];
@@ -375,7 +466,7 @@ nht_i_RestGetBoth(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResA
 
 	/** Output the collection **/
 	nht_i_WriteConn(conn, ",\"cx__collection\":", -1, 0);
-	nht_i_RestGetCollection(conn, obj, ResTypeBoth, res_format, res_attrs, res_levels);
+	nht_i_RestGetCollection(conn, obj, ResTypeBoth, res_format, res_attrs, res_levels, url_inf);
 
 	/** Close the JSON container **/
 	nht_i_WriteConn(conn, "}\r\n", -1, 0);
@@ -511,7 +602,7 @@ nht_i_RestGet(pNhtConn conn, pStruct url_inf, pObject obj)
 	/** Ok, generate the document **/
 	if (res_type == ResTypeBoth)
 	    {
-	    rval = nht_i_RestGetBoth(conn, obj, res_format, res_attrs, res_levels, mime_type);
+	    rval = nht_i_RestGetBoth(conn, obj, res_format, res_attrs, res_levels, mime_type, url_inf);
 	    }
 	else if (res_type == ResTypeElement)
 	    {
@@ -522,7 +613,7 @@ nht_i_RestGet(pNhtConn conn, pStruct url_inf, pObject obj)
 	    }
 	else
 	    {
-	    rval = nht_i_RestGetCollection(conn, obj, ResTypeCollection, res_format, res_attrs, res_levels);
+	    rval = nht_i_RestGetCollection(conn, obj, ResTypeCollection, res_format, res_attrs, res_levels, url_inf);
 	    }
 
     return rval;
