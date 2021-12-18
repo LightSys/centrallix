@@ -287,7 +287,7 @@ cxRemovePidFile()
 
 
 int
-cxInitialize(void* v)
+cxInitialize()
     {
     pFile cxconf;
     pStructInf mss_conf;
@@ -377,9 +377,6 @@ cxInitialize(void* v)
 	if (stAttrValue(stLookup(mss_conf,"log_all_errors"),NULL,&ptr,0) < 0 || !strcmp(ptr,"yes")) log_all_errors = 1;
 	mssInitialize(authmethod, authmethodfile, logmethod, log_all_errors, logprog);
 
-	/** Load security policy **/
-	cxssPolicyInit();
-
 	/** Initialize the various parts **/
 	expInitialize();			/* expression processor/compiler */
 	if (objInitialize() < 0) return -1;	/* OSML */
@@ -444,6 +441,9 @@ cxInitialize(void* v)
 	audInitialize();			/* Audio file player driver */
 	lnkInitialize();			/* Symlink driver */
 	jsonInitialize();			/* JSON data driver */
+
+	/** Load security policy **/
+	cxssPolicyInit();
 
 	/** Init the reporting content drivers **/
 #if 0

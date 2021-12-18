@@ -214,7 +214,7 @@ cxss_i_ValidatePolicy(pCxssPolicy policy, pCxssPolInclude include)
  ***/
 pCxssPolicy
 cxss_i_LoadPolicyGeneric(void* read_from, int (*read_fn)(), pCxssPolicy parent, pCxssPolInclude incl)
-    {
+	{
     pStructInf policy_inf = NULL;
     pCxssPolicy policy = NULL;
 
@@ -521,7 +521,8 @@ cxss_i_LoadRules(pCxssPolicy policy, pStructInf policy_inf)
 		    for(j=0; ; j++)
 			{
 			str = NULL;
-			stAttrValue(subinf, NULL, &str, j);
+			if (stAttrValue(subinf, NULL, &str, j) < 0)
+			    break;
 			if (str)
 			    {
 			    if (!strcmp(str, "observe"))
@@ -559,7 +560,8 @@ cxss_i_LoadRules(pCxssPolicy policy, pStructInf policy_inf)
 		    for(j=0; ; j++)
 			{
 			str = NULL;
-			stAttrValue(subinf, NULL, &str, j);
+			if (stAttrValue(subinf, NULL, &str, j) < 0)
+			    break;
 			if (str)
 			    {
 			    if (!strcmp(str, "allow"))
@@ -577,6 +579,9 @@ cxss_i_LoadRules(pCxssPolicy policy, pStructInf policy_inf)
 				mssError(1, "CXSS", "Invalid action '%s' for rule '%s'", str, rule_inf->Name);
 				goto error;
 				}
+			    }
+			    else {
+				break;
 			    }
 			}
 		    }
@@ -784,9 +789,67 @@ cxssAuthorizeSpec(char* objectspec, int access_type, int log_mode)
 /*** cxssAuthorize - like cxssAuthorizeSpec, but the various parts of the
  *** object spec are provided independently.
  ***/
+ // - See SecurityModel_New.txt file for parm descriptions
+ // - The rule information is already loaded in the policy data structure
+ // (Inclusions / Subpolicies XArrays in policy.h)
+ // - Endorsement information in cxss.h cxssHasEndorsement() call to check if current
+ // subject has the specified endorsement
+ // - Call to get current user (Subject) use mssUserName() in mtsession.h
+
+ // check using usernames and endorsments only, not roles or groups
 int
-cxssAuthorize(char* domain, char* type, char* path, char* attr, int access_type, int log_mode)
+cxssAuthorize(char* domain, char* type, char* path, char* attr,
+              int access_type, int log_mode)
     {
     /** Just a stub right now **/
+
+	pCxssPolicy rootPolPtr = CXSS.Policy;
+
+	printf("\n\ncxssAuth CALLED!\n\n");
+
+	printf("Policy Mode:                  %d\n", rootPolPtr->PolicyMode);
+	printf("Policy Path:                  %s\n", rootPolPtr->PolicyPath);
+	printf("Domain Path:                  %s\n", rootPolPtr->DomainPath);
+	printf("Domain:                       %s\n", rootPolPtr->Domain);
+	printf("DateTime:                     %lld\n\n", rootPolPtr->ModifyDate.Value);
+
+	// Q. root has no subpolicies?
+	// A. 
+	printf("Num SubPolicies:              %d\n", rootPolPtr->SubPolicies.nItems);
+	printf("Num Inclusion Structs:        %d\n", rootPolPtr->Inclusions.nItems);
+	printf("Num Rules:                    %d\n\n", rootPolPtr->Rules.nItems);
+
+	pCxssPolRule rule_1_ptr = (pCxssPolRule) (xaGetItem(&(rootPolPtr->Rules), 0));
+	printf("Rule 1 Object to Match:       %s\n", rule_1_ptr->MatchObject );
+	printf("Rule 1 Subject to Match:      %s\n", rule_1_ptr->MatchSubject);
+	printf("Rule 1 Endorsement to Match:  %s\n", rule_1_ptr->MatchEndorsement);
+	printf("Rule 1 Access Type Mask:      %d\n", rule_1_ptr->MatchAccess );
+	// Q. i dont see a 0 in the defined ACC types
+	// A. 
+	printf("Rule 1 Action Type Mask:      %d\n\n", rule_1_ptr->Action);
+
+	pCxssPolInclude inclSpec_1_ptr = (pCxssPolInclude) (xaGetItem(&(rootPolPtr->Inclusions), 0));
+	printf("Incl Spec ProbeSQL:           %s\n", inclSpec_1_ptr->ProbeSQL);
+	printf("Incl Spec Path:               %s\n", inclSpec_1_ptr->Path);
+	printf("Incl Spec Domain:             %s\n", inclSpec_1_ptr->Domain);
+	printf("Incl Spec AllowInclusion:     %s\n", inclSpec_1_ptr->AllowInclusion ? "true" : "false");
+	printf("Incl Spec AllowSubjectlist:   %s\n", inclSpec_1_ptr->AllowSubjectlist ? "true" : "false");
+	printf("Incl Spec AllowRule:          %s\n", inclSpec_1_ptr->AllowRule ? "true" : "false");
+	printf("Incl Spec AllowMode:          %s\n\n", inclSpec_1_ptr->AllowMode ? "true" : "false");
+
+	pCxssPolRule rule_2_ptr = (pCxssPolRule) (xaGetItem(&(rootPolPtr->Rules), 1));
+	printf("Rule 2 Object to Match:       %s\n", rule_2_ptr->MatchObject );
+	printf("Rule 2 Subject to Match:      %s\n", rule_2_ptr->MatchSubject);
+	printf("Rule 2 Endorsement to Match:  %s\n", rule_2_ptr->MatchEndorsement);
+	printf("Rule 2 Access Type Mask:      %d\n", rule_2_ptr->MatchAccess );
+	printf("Rule 2 Action Type Mask:      %d\n\n", rule_2_ptr->Action);
+
+	// Q. why does this not break? there should only be 2 rules
+	// A. other spaces in array are empty Rule structs
+	pCxssPolRule rule_3_ptr = (pCxssPolRule) (xaGetItem(&(rootPolPtr->Rules), 2));
+	printf("Rule 3 Object to Match:       %s\n\n", rule_3_ptr->MatchObject);
+	
+
+	printf("\n\n");
     return 1;
     }

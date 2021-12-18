@@ -107,12 +107,17 @@ typedef struct
 /*** Structure for overall security policy data ***/
 typedef struct _CXSSPOL
     {
+    // i.e. if this policy is in a subpolicy, it points back to parent policy
+    // becomes a tree - each node in tree has list of rules to iterate through,
+    // have to iterate through each node in the tree path for that object
     struct _CXSSPOL *	Parent;
     char		PolicyPath[OBJSYS_MAX_PATH + 1];
     char		DomainPath[OBJSYS_MAX_PATH + 1];
     char		Domain[CXSS_IDENTIFIER_LENGTH];
     int			PolicyMode;			/* CXSS_MODE_T_xxx */
-    DateTime		ModifyDate;
+    DateTime	ModifyDate;
+    // go into SubPolicies (the result of Inclusions) to evaluate requests
+    // it's an array of this current data structure (recursive)
     XArray		SubPolicies;			/* pCxssPolicy */
     XArray		Authentications;		/* pCxssPolAuth */
     XArray		Inclusions;			/* pCxssPolInclude */
