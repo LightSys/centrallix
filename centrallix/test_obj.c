@@ -322,6 +322,103 @@ testobj_show_attr(pObject obj, char* attrname)
     return 0;
     }
 
+int
+testobj_show_info(pObject obj)
+    {
+    pObjectInfo info;
+
+	info = objInfo(obj);
+	if (info)
+	    {
+	    if (info->Flags)
+		{
+		fdPrintf(TESTOBJ.Output,"Flags: ");
+		if (info->Flags & OBJ_INFO_F_NO_SUBOBJ) fdPrintf(TESTOBJ.Output,"no_subobjects ");
+		if (info->Flags & OBJ_INFO_F_HAS_SUBOBJ) fdPrintf(TESTOBJ.Output,"has_subobjects ");
+		if (info->Flags & OBJ_INFO_F_CAN_HAVE_SUBOBJ) fdPrintf(TESTOBJ.Output,"can_have_subobjects ");
+		if (info->Flags & OBJ_INFO_F_CANT_HAVE_SUBOBJ) fdPrintf(TESTOBJ.Output,"cant_have_subobjects ");
+		if (info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN) fdPrintf(TESTOBJ.Output,"subobject_cnt_known ");
+		if (info->Flags & OBJ_INFO_F_CAN_ADD_ATTR) fdPrintf(TESTOBJ.Output,"can_add_attrs ");
+		if (info->Flags & OBJ_INFO_F_CANT_ADD_ATTR) fdPrintf(TESTOBJ.Output,"cant_add_attrs ");
+		if (info->Flags & OBJ_INFO_F_CAN_SEEK_FULL) fdPrintf(TESTOBJ.Output,"can_seek_full ");
+		if (info->Flags & OBJ_INFO_F_CAN_SEEK_REWIND) fdPrintf(TESTOBJ.Output,"can_seek_rewind ");
+		if (info->Flags & OBJ_INFO_F_CANT_SEEK) fdPrintf(TESTOBJ.Output,"cant_seek ");
+		if (info->Flags & OBJ_INFO_F_CAN_HAVE_CONTENT) fdPrintf(TESTOBJ.Output,"can_have_content ");
+		if (info->Flags & OBJ_INFO_F_CANT_HAVE_CONTENT) fdPrintf(TESTOBJ.Output,"cant_have_content ");
+		if (info->Flags & OBJ_INFO_F_HAS_CONTENT) fdPrintf(TESTOBJ.Output,"has_content ");
+		if (info->Flags & OBJ_INFO_F_NO_CONTENT) fdPrintf(TESTOBJ.Output,"no_content ");
+		if (info->Flags & OBJ_INFO_F_SUPPORTS_INHERITANCE) fdPrintf(TESTOBJ.Output,"supports_inheritance ");
+		fdPrintf(TESTOBJ.Output,"\n");
+		if (info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN)
+		    {
+		    fdPrintf(TESTOBJ.Output,"Subobject count: %d\n", info->nSubobjects);
+		    }
+		}
+	    }
+
+    return 0;
+    }
+
+int
+testobj_show_attrs(pObject obj)
+    {
+    char* attrname;
+
+	fdPrintf(TESTOBJ.Output,"Attributes:\n");
+	testobj_show_attr(obj,"outer_type");
+	testobj_show_attr(obj,"inner_type");
+	testobj_show_attr(obj,"content_type");
+	testobj_show_attr(obj,"name");
+	testobj_show_attr(obj,"annotation");
+	testobj_show_attr(obj,"last_modification");
+	attrname = objGetFirstAttr(obj);
+	while(attrname)
+	    {
+	    testobj_show_attr(obj,attrname);
+	    attrname = objGetNextAttr(obj);
+	    }
+
+    return 0;
+    }
+
+int
+testobj_show_methods(pObject obj)
+    {
+    char* methodname;
+
+	fdPrintf(TESTOBJ.Output,"Methods:\n");
+	methodname = objGetFirstMethod(obj);
+	if (methodname)
+	    {
+	    while(methodname)
+		{
+		fdPrintf(TESTOBJ.Output,"  %20.20s()\n",methodname);
+		methodname = objGetNextMethod(obj);
+		}
+	    }
+	else
+	    {
+	    fdPrintf(TESTOBJ.Output,"  (no methods)\n");
+	    }
+    
+    return 0;
+    }
+
+int
+testobj_show_content(pObject obj)
+    {
+    char sbuf[256];
+    int cnt;
+
+	while((cnt=objRead(obj, sbuf, sizeof(sbuf)-1, 0, 0)) > 0)
+	    {
+	    sbuf[cnt] = 0;
+	    fdWrite(TESTOBJ.Output, sbuf, cnt, 0, 0);
+	    }
+
+    return 0;
+    }
+
 int handle_tab(int unused_1, int unused_2)
     {
     pXString xstrInput;
@@ -540,7 +637,6 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
     char* fileannot;
     int cnt;
     char* attrname;
-    char* methodname;
     int type;
     DateTime dtval;
     pDateTime dt;
@@ -560,7 +656,6 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
     char mparam[256];
     char* mptr;
     int t,i;
-    pObjectInfo info;
     pFile try_file;
     char* attrnames[CSV_MAX_ATTRS];
     int attrtypes[CSV_MAX_ATTRS];
@@ -972,62 +1067,30 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    mlxCloseSession(ls);
 		    return -1;
 		    }
-		info = objInfo(obj);
-		if (info)
+		testobj_show_info(obj);
+		testobj_show_attrs(obj);
+		fdPrintf(TESTOBJ.Output,"\n");
+		testobj_show_methods(obj);
+		fdPrintf(TESTOBJ.Output,"\n");
+		objClose(obj);
+		}
+	    else if (!strcmp(cmdname,"printshow"))
+		{
+		if (!ptr) ptr = "";
+		obj = objOpen(s, ptr, O_RDONLY, 0600, "system/object");
+		if (!obj)
 		    {
-		    if (info->Flags)
-			{
-			fdPrintf(TESTOBJ.Output,"Flags: ");
-			if (info->Flags & OBJ_INFO_F_NO_SUBOBJ) fdPrintf(TESTOBJ.Output,"no_subobjects ");
-			if (info->Flags & OBJ_INFO_F_HAS_SUBOBJ) fdPrintf(TESTOBJ.Output,"has_subobjects ");
-			if (info->Flags & OBJ_INFO_F_CAN_HAVE_SUBOBJ) fdPrintf(TESTOBJ.Output,"can_have_subobjects ");
-			if (info->Flags & OBJ_INFO_F_CANT_HAVE_SUBOBJ) fdPrintf(TESTOBJ.Output,"cant_have_subobjects ");
-			if (info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN) fdPrintf(TESTOBJ.Output,"subobject_cnt_known ");
-			if (info->Flags & OBJ_INFO_F_CAN_ADD_ATTR) fdPrintf(TESTOBJ.Output,"can_add_attrs ");
-			if (info->Flags & OBJ_INFO_F_CANT_ADD_ATTR) fdPrintf(TESTOBJ.Output,"cant_add_attrs ");
-			if (info->Flags & OBJ_INFO_F_CAN_SEEK_FULL) fdPrintf(TESTOBJ.Output,"can_seek_full ");
-			if (info->Flags & OBJ_INFO_F_CAN_SEEK_REWIND) fdPrintf(TESTOBJ.Output,"can_seek_rewind ");
-			if (info->Flags & OBJ_INFO_F_CANT_SEEK) fdPrintf(TESTOBJ.Output,"cant_seek ");
-			if (info->Flags & OBJ_INFO_F_CAN_HAVE_CONTENT) fdPrintf(TESTOBJ.Output,"can_have_content ");
-			if (info->Flags & OBJ_INFO_F_CANT_HAVE_CONTENT) fdPrintf(TESTOBJ.Output,"cant_have_content ");
-			if (info->Flags & OBJ_INFO_F_HAS_CONTENT) fdPrintf(TESTOBJ.Output,"has_content ");
-			if (info->Flags & OBJ_INFO_F_NO_CONTENT) fdPrintf(TESTOBJ.Output,"no_content ");
-			if (info->Flags & OBJ_INFO_F_SUPPORTS_INHERITANCE) fdPrintf(TESTOBJ.Output,"supports_inheritance ");
-			fdPrintf(TESTOBJ.Output,"\n");
-			if (info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN)
-			    {
-			    fdPrintf(TESTOBJ.Output,"Subobject count: %d\n", info->nSubobjects);
-			    }
-			}
+		    printf("printshow: could not open object '%s'\n",ptr);
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
-		fdPrintf(TESTOBJ.Output,"Attributes:\n");
-		testobj_show_attr(obj,"outer_type");
-		testobj_show_attr(obj,"inner_type");
-		testobj_show_attr(obj,"content_type");
-		testobj_show_attr(obj,"name");
-		testobj_show_attr(obj,"annotation");
-		testobj_show_attr(obj,"last_modification");
-		attrname = objGetFirstAttr(obj);
-		while(attrname)
-		    {
-		    testobj_show_attr(obj,attrname);
-		    attrname = objGetNextAttr(obj);
-		    }
-		fdPrintf(TESTOBJ.Output,"\nMethods:\n");
-		methodname = objGetFirstMethod(obj);
-		if (methodname)
-		    {
-		    while(methodname)
-			{
-			fdPrintf(TESTOBJ.Output,"  %20.20s()\n",methodname);
-			methodname = objGetNextMethod(obj);
-			}
-		    }
-		else
-		    {
-		    fdPrintf(TESTOBJ.Output,"  (no methods)\n");
-		    }
-		puts("");
+		testobj_show_content(obj);
+		fdPrintf(TESTOBJ.Output,"\n");
+		testobj_show_info(obj);
+		testobj_show_attrs(obj);
+		fdPrintf(TESTOBJ.Output,"\n");
+		testobj_show_methods(obj);
+		fdPrintf(TESTOBJ.Output,"\n");
 		objClose(obj);
 		}
 	    else if (!strcmp(cmdname,"print"))
@@ -1040,11 +1103,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    mlxCloseSession(ls);
 		    return -1;
 		    }
-		while((cnt=objRead(obj, sbuf, 255, 0, 0)) >0)
-		    {
-		    sbuf[cnt] = 0;
-		    fdWrite(TESTOBJ.Output,sbuf,cnt,0,0);
-		    }
+		testobj_show_content(obj);
 		fdPrintf(TESTOBJ.Output,"\n");
 		objClose(obj);
 		}
@@ -1375,6 +1434,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		printf("  obfuscate - Begins obfuscation of CSV and query output, given an obfuscation key and optional rule file\n");
 		printf("  output    - Change where output goes.\n");
 		printf("  print     - Displays an object's content.\n");
+		printf("  printshow - Displays an object's content, followed by its attributes and methods.\n");
 		printf("  query     - Runs a SQL query.\n");
 		printf("  quit      - Exits this application.\n");
 		printf("  show      - Displays an object's attributes and methods.\n");

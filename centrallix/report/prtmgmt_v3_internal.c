@@ -284,13 +284,13 @@ prt_internal_GetStringWidth(pPrtObjStream obj, char* str, int n)
     
 	/** Add it up for each char in the string **/
 	l = strlen(str);
-	if (l > n)
+	if (l > n && n >= 0)
 	    {
 	    oldend = str[n];
 	    str[n] = '\0';
 	    }
 	PRTSESSION(obj)->Formatter->GetCharacterMetric(PRTSESSION(obj)->FormatterData, str, &(obj->TextStyle), &w, &h);
-	if (l > n)
+	if (l > n && n >= 0)
 	    {
 	    str[n] = oldend;
 	    }

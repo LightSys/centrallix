@@ -1500,7 +1500,7 @@ http_internal_LoadParams(pHttpData inf)
 			mssError(1, "HTTP", "Parameter %s must be string or integer", one_param->Name);
 			goto error;
 			}
-		    paramSetValue(one_param, &tod);
+		    paramSetValue(one_param, &tod, 1, inf->ObjList, inf->Obj->Session);
 		    }
 		}
 	    }
@@ -1522,7 +1522,7 @@ http_internal_LoadParams(pHttpData inf)
 			one_open_ctl = open_ctl->SubInf[j];
 			if (!strcmp(one_open_ctl->Name, one_param->Name))
 			    {
-			    paramSetValueFromInfNe(one_param, one_open_ctl);
+			    paramSetValueFromInfNe(one_param, one_open_ctl, 1, inf->ObjList, inf->Obj->Session);
 			    break;
 			    }
 			}
