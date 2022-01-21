@@ -329,7 +329,7 @@ rpt_internal_EvalParam(pRptParam rptparam, pParamObjects objlist, pObjSession se
 		}
 
 	    /** Only re-evaluate if there are active sources **/
-	    if ((EXPR(rptparam->Param->Hints->DefaultExpr)->ObjCoverageMask & active_mask) || EXPR(rptparam->Param->Hints->DefaultExpr)->ObjCoverageMask == 0)
+	    if ((EXPR(rptparam->Param->Hints->DefaultExpr)->ObjCoverageMask & active_mask) || (EXPR(rptparam->Param->Hints->DefaultExpr)->ObjCoverageMask & EXPR_MASK_ALLOBJECTS) == 0)
 		{
 		/** Re-evaluate **/
 		rptparam->Param->Value->Flags |= DATA_TF_NULL;
