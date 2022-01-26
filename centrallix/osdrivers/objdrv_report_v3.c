@@ -4088,7 +4088,7 @@ int
 rpt_internal_LoadParamsFromAttrs(pRptData inf)
     {
     pRptParam rptparam = NULL;
-    char* attr_params[] = { "document_format", "content_type", NULL };
+    char* attr_params[] = { "document_format", "content_type", "title", "resolution", "rpt__obkey", "rpt__obrulefile", NULL };
     char* attrname;
     int i, j;
     int t;
