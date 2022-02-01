@@ -328,6 +328,9 @@ nht_i_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtR
 		    nht_i_QPrintfConn(conn, 0, "%*STR&B64", rcnt, xfer_buf);
 		    }
 		nht_i_WriteConn(conn, "\"", -1, 0);
+
+		/** Filename? **/
+		nht_i_RestWriteAttr(conn, obj, "cx__download_as", res_attrs, 1);
 		}
 
 	    /** Keep track of any sys attrs that were sent with the main ones **/
@@ -595,6 +598,12 @@ nht_i_RestGet(pNhtConn conn, pStruct url_inf, pObject obj)
 	strtcpy(conn->ResponseContentType,
 		(res_type == ResTypeElement && res_format == ResFormatContent)?mime_type:"application/json",
 		sizeof(conn->ResponseContentType));
+
+	/** Remove content disposition header for a JSON response. **/
+	if (res_type != ResTypeElement || res_format != ResFormatContent)
+	    {
+	    nht_i_AddResponseHeader(conn, "Content-Disposition", NULL, 0);
+	    }
 
 	/** End of headers - we don't have anything else to add at this point. Send the HTTP response. **/
 	nht_i_WriteResponse(conn, 200, "OK", NULL);
