@@ -227,17 +227,14 @@ objWildcardQuery(pXArray pathlist, pObjSession sess, char* searchpath)
 	    slashptr = strchr(element+1, '/');
 	    qptr = strchr(element, '?');
 
-	    if (astptr && (!slashptr || astptr < slashptr) && (!qptr || astptr < qptr))
-		{
-		/** too many? **/
-		if (n_elements >= OBJSYS_MAX_ELEMENTS)
-		    {
-		    mssError(1, "OSML", "Pathname has too many elements in it.");
-		    goto error;
-		    }
+	    /** too many? **/
+	    if (n_elements >= OBJSYS_MAX_ELEMENTS)
+	    	{
+	    	mssError(1, "OSML", "Pathname has too many elements in it.");
+	    	goto error;
+	    	}
 
-		element_list[n_elements++] = element;
-		}
+	    element_list[n_elements++] = element;
 	    element = slashptr;
 	    }
 
