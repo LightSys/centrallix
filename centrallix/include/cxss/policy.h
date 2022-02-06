@@ -64,6 +64,10 @@
 #define CXSS_ACT_T_DEFDENY	8
 #define CXSS_ACT_T_LOG		16
 
+/*** Result of rule match check **/
+#define CXSS_MATCH_T_FALSE  0
+#define CXSS_MATCH_T_TRUE   1
+#define CXSS_MATCH_T_ERR   -1
 
 /*** Structure for one rule (or rule group) ***/
 typedef struct
@@ -124,6 +128,15 @@ typedef struct _CXSSPOL
     XArray		Rules;				/* pCxssPolRule */
     }
     CxssPolicy, *pCxssPolicy;
+
+    //This class is to implement the queue
+    typedef struct node {
+        pCxssPolicy Policy;
+        struct node *next;
+    } node_t;
+
+/*** Structure to store a policy into the xQueue for breadthfirst traversal ***/
+
 
 #endif /* defined _CXSS_POLICY_H */
 

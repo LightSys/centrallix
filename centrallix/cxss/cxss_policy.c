@@ -10,6 +10,7 @@
 #include "cxlib/xhash.h"
 #include "cxlib/mtlexer.h"
 #include "cxlib/mtask.h"
+#include "cxlib/mtsession.h"
 #include "cxss/cxss.h"
 #include "stparse.h"
 
@@ -849,7 +850,180 @@ cxssAuthorize(char* domain, char* type, char* path, char* attr,
 	pCxssPolRule rule_3_ptr = (pCxssPolRule) (xaGetItem(&(rootPolPtr->Rules), 2));
 	printf("Rule 3 Object to Match:       %s\n\n", rule_3_ptr->MatchObject);
 	
-
 	printf("\n\n");
+
+
+	//Start of actual program (Above is for debug, remove after)
+	//if security is dissabled, stop now; saves time
+	if(rootPolPtr == NULL) goto err;
+	if(rootPolPtr->PolicyMode == CXSS_MODE_T_DISABLE){
+		return CXSS_ACT_T_ALLOW;
+	}
+
+	//Assume default action, and let rules correct
+	int result = CXSS_ACT_T_ALLOW;	
+
+	//TODO: iterate through policies 
+	//TODO: iterate through inclusions 
+	//TODO: determine if should return result, or just warn. 
+
+	//Sample iteration
+	/*
+	pCxssPolicy queue q;
+	q.enqueue(root_pol);
+	while(!q.isEmpty()){
+		pCxssPolicy Pol = (may need typecasting)q.dequeue();
+		//iterate through all the rules.
+		numRules = rootPolPtr->Rules.nItems;
+		for(int i = 0; i<numRules; i++){
+			pCxssPolRule rule_ptr = (pCxssPolRule) (xaGetItem(&(rootPolPtr->Rules), i));
+			result = cxssIsRuleMatch(domain, type, path, attr, access_type, rule_ptr);
+			if(result == CXSS_MATCH_T_ERR){
+				goto err;
+			}
+			elseif(result == CXSS_MATCH_T_TRUE){
+				//if default, we have to do different handling.
+				return rule_ptr->Action;
+			}
+		}
+		
+		
+		//iterate through all the subpolicies and enqueue them.
+		subNum = rootPolPtr->SubPolicies.nItems;
+		for(int i = 0; i<subNum; i++){
+			pCxssPolRule subpol_ptr = (pCxssPolRule) (xaGetItem(&(rootPolPtr->SubPolicies), i));
+			q.enqueue(subpol_ptr);
+		}
+	}
+	*/
+    
     return 1;
+    err:
+	//TODO: add any cleanup that occurs. 
+	return CXSS_ACT_T_DENY;
     }
+
+/*** cxssIsRuleMatch - checks if a rule and the given object/attribute identifiers are a match
+ ***/
+// this function is doing the checking if a rule can give the appropriate allow or deny.
+ // TODO: checks using usernames and endorsments only, not roles or groups. Add in later
+ // TODO: endorsement checks are performed only with the full domain. 
+int
+cxssIsRuleMatch(char* domain, char* type, char* path, char* attr,
+              int access_type, pCxssPolRule rule)
+    {
+    bool isMatch = true;
+	/** make local copy of object id for editing **/
+	char tmpObj[OBJSYS_MAX_PATH + 256];
+    	char *appName = "", *objType = "", *objName = "", *attrName = "";
+    	char *colonptr;
+
+	if (strlen(rule->MatchObject) >= sizeof(tmpObj))
+	    {
+	    mssError(1,"CXSS","cxssRuleIsMatch(): object spec too long.");
+	    goto err;
+	    }
+	strtcpy(tmpObj, rule->MatchObject, sizeof(rule->MatchObject));
+
+	/** Break it up into its components. **/
+	appName = tmpObj;
+	colonptr = strchr(tmpObj, ':');
+	if (colonptr)
+	    {
+	    objType = colonptr+1;
+	    *colonptr = '\0';
+	    colonptr = strchr(objType, ':');
+	    if (colonptr)
+		{
+		objName = colonptr+1;
+		*colonptr = '\0';
+		colonptr = strchr(objName, ':');
+		if (colonptr)
+		    {
+		    attrName = colonptr+1;
+		    *colonptr = '\0';
+		    }
+		}
+	    }
+	/*    
+	printf("appname: %s, objType: %s, objName: %s, attrName: %s\n", 
+		appName, objType, objName, attrName);
+	*/
+
+	/** if blank, defaults to all, so match. Otherwise, compare **/
+	if(strlen(appName) != 0){
+		isMatch &= (strcmp(domain, appName) == 0);
+	}
+	if(strlen(objType) != 0){
+		isMatch &= (strcmp(type, objType) == 0);
+	}
+	if(strlen(objName) != 0){
+		isMatch &= (strcmp(path, objName) == 0);
+	}
+	if(strlen(attrName) != 0){
+		isMatch &= (strcmp(attr, attrName) == 0);
+	}
+
+	/** see if current subject matches the rule **/
+	// Note: currently based solely on the username
+	char* userName = mssUserName();
+	if(strlen(rule->MatchSubject) > 0){
+		isMatch &= (strcmp(rule->MatchSubject, userName) == 0);
+	}
+	
+	/** check to see if endorsements match **/
+	//NOTE: only checking based on full domain currently. Needs to deal with sub contexts.
+	if(strlen(rule->MatchEndorsement) != 0){
+		isMatch &= cxssHasEndorsement(rule->MatchEndorsement, domain) == 1;
+	}
+
+	/** If matchAccess is left blank, it matches all access types **/
+	//access type cannot be 0
+	if(access_type == 0){
+		goto err;
+	}
+	if(rule->MatchAccess != 0){
+		isMatch &= (access_type == rule->MatchAccess);
+	}
+	
+    return isMatch? CXSS_MATCH_T_TRUE : CXSS_MATCH_T_FALSE;
+    err:
+    	//cleanup and exit
+    	return CXSS_MATCH_T_ERR;
+    }
+/*
+void 
+enqueue(node_t **head, int val) {
+   node_t *new_node = malloc(sizeof(node_t));
+   if (!new_node) return;
+
+   new_node->val = val;
+   new_node->next = *head;
+
+   *head = new_node;
+}
+
+pCxssPolicy 
+dequeue(node_t **head) {
+   node_t *current, *prev = NULL;
+   int retval = -1;
+
+   if (*head == NULL) return -1;
+
+   current = *head;
+   while (current->next != NULL) {
+      prev = current;
+      current = current->next;
+   }
+
+   retval = current->val;
+   free(current);
+
+   if (prev)
+      prev->next = NULL;
+   else
+      *head = NULL;
+
+   return retval;
+}
+*/

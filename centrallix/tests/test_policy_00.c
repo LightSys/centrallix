@@ -8,7 +8,7 @@ test(char** name)
     //pApplication app;
     
     //This is just to make sure the code runs
-    *name = "policy_00 Basic csxx policy test";
+    *name = "policy_00 Basic cxss policy test";
     
     //make a dummy call with junk data
     char* domain = "dummy text";

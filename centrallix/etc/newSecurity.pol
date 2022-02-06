@@ -1,0 +1,135 @@
+$Version=2$
+security "system/sec-policy"
+    {
+    // Mode = disable, warn, or enforce
+    mode = enforce;
+
+    // Domain we're operating within.  The domain's path cannot be broader than
+    // the location of the policy file in the objectsystem.
+    domain = "system";
+    domain_path = "/";
+
+    // Subject identity definitions - can have multiple of these.
+    //
+    // Supported authentication_method:  'static', 'unix', 'altpasswd'
+    //
+    anon "system/sec-policy-subjectlist"
+	{
+	auth_method = static;
+
+    // addition
+	ident_method = static;
+
+	identity = "Anonymous";
+	use_as_default = yes;
+	}
+    local "system/sec-policy-subjectlist"
+	{
+	auth_method = unix;
+
+	// addition
+	ident_method = unix;
+
+	criteria = runserver(:uid == 0 or :uid >= 100);
+	add_endorsement = "system:authenticated";
+	}
+
+    // Policy inclusions.
+    //
+    // This is used to allow additional installed applications to specify
+    // their own security policy directives.
+    //
+    include_app_policies "system/sec-policy-inclusion"
+	{
+	path = "/apps/*/secpolicy.pol";
+	domain_transition = yes;	// included policies MUST declare a different domain
+
+	// addition
+	// probe_sql = 'select path = :cx__pathname, mask = :cx__pathpart2 + ":::" from object wildcard "/apps/*/secpolicy.pol" ';
+
+	allow_inclusion = yes;		// included policies may include other policies
+	allow_subjectlist = no;		// included policies may NOT specify additional subjects
+	allow_rule = yes;		// included policies may specify rules
+	allow_mode = no;		// included policies may NOT specify mode (enforce/warn/disable)
+	allow_type = yes;		// included policies may define new types
+	}
+
+    // Policy rules.
+    //
+    // object = "<objectspec>" (app:type:obj:attr)
+    // subject = "<subjectspec>" (subtype:subjectname)  (subtype: u,g,r,a,l,c,e)
+    // endorsement = "<endorsementspec>" (app:endorsement)
+    // access = one or more of create|delete|observe|read|write|exec|noexec|transit
+    // action = allow|deny|default_allow|default_deny  (default_xxx means it can be overridden)
+    //
+    // The default action specifies what happens if no rule takes action on
+    // a given form of access by a subject to a given object.
+    default=deny;
+   
+    // The below rule group denies all direct access to policy files, regardless of
+    // what an installed app might try to allow, unless operating from within the
+    // security kernel.
+    //
+    protect_pol_files "system/sec-policy-rule"
+	{
+	match_path = "/apps/*/secpolicy.pol";
+	action = deny;
+
+	exception_pol_system "system/sec-policy-rule"
+	    {
+	    match_endorsement = "system:seckernel";
+	    action = allow;
+	    }
+	}
+
+    // Allow exec of the root node of the objectsystem (needed for all access to
+    // anything)
+    allow_root_exec "system/sec-policy-rule"
+	{
+	match_path = "/";
+	match_access = read,observe,exec;
+	action = allow;
+	}
+
+    // Allow access to some basic resources
+    allow_resources "system/sec-policy-rule"
+	{
+	match_path = "/apps", "/apps/*", "/LICENSE.txt", "/sys", "/sys/cmp", "/sys/js", "/sys/js/**", "/sys/images/*.gif", "/sys/images/*.png";
+	match_access = read,observe;
+	action = allow;
+	}
+    allow_resources_cmp_exec "system/sec-policy-rule"
+	{
+	match_path = "/sys/cmp/*.cmp";
+	match_endorsement = "system:authenticated";
+	match_access = read,observe,exec,noexec;
+	action = allow;
+	}
+
+    // Allow access to the root app
+    allow_index_app "system/sec-policy-rule"
+	{
+	match_path = "/index.app";
+	match_endorsement = "system:authenticated";
+	match_access = read,observe,exec;
+	action = allow;
+	}
+
+    // Allow access to samples
+    allow_samples "system/sec-policy-rule"
+	{
+	match_path = "/samples", "/samples/*.app", "/samples/*.cmp", "/samples/*.xml", "/samples/*.csv", "/samples/*.csv/rows", "/samples/*.csv/columns", "/samples/*.csv/columns/*", "/samples/*.spec", "/samples/*.http", "/samples/*.rpt", "/samples/*.lnk", "/samples/*.gif", "/samples/*.qyp", "/samples/*.qyt", "/samples/*.msg", "/samples/mbox", "/samples/*.txt";
+	match_endorsement = "system:authenticated";
+	match_access = read,observe,exec,noexec;
+	action = allow;
+	}
+    allow_samples_csv_updates "system/sec-policy-rule"
+	{
+	match_path = "/samples/*.csv/rows/*";
+	match_endorsement = "system:authenticated";
+	match_access = read,observe,write,create,delete;
+	action = allow;
+	}
+    }
+
+

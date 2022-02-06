@@ -1,23 +1,35 @@
 #include <assert.h>
-#include "include/cxss/cxss.h"
-
+#include "centrallix.h"
+#include "application.h"
 long long
 test(char** name)
     {
-   *name = "policy_01 Empty dummy test";
-    /*
+   *name = "policy_01 Simple Rule Test";
+    
+    //This is just to make sure the code runs
+    *name = "policy_01 Basic csxx policy allow test";
+    
+    //make a dummy call with junk data
     char* domain = "dummy text";
     char* type = "dummy text";
+    // /usr/local/src/cx-git/centrallix-os/INSTALL.txt
     char* path = "dummy text";
     char* attr = "dummy text";
-    int access_type = CXSS_ACC_T_READ; 
-    int log_mode = CXSS_LOG_T_ALL;
+    int access_type = -1;
+    int log_mode = -1;
 
-    char* policyPath = "/usr/local/src/cx-git/centrallix/etc/security.pol";
-    char* altPolicyPath = "/usr/local/src/cx-git/centrallix-sysdoc/SecurityModel_SamplePolicy.pol";
+    /** Default global values **/
+	strcpy(CxGlobals.ConfigFileName, "/home/devel/cxinst/etc/centrallix.conf");
+	CxGlobals.QuietInit = 1;
+	CxGlobals.ParsedConfig = NULL;
+	CxGlobals.ModuleList = NULL;
+	CxGlobals.ArgV = NULL;
+	CxGlobals.Flags = 0;
 
     cxInitialize();
-    cxssAuthorize(domain, type, path, attr, access_type, log_mode);
-    */
+    cxssPushContext();
+
+    assert(cxssAuthorize(domain, type, path, attr, access_type, log_mode) == 1);
+
     return 0;
 }
