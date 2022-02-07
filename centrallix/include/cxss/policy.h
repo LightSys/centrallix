@@ -130,13 +130,14 @@ typedef struct _CXSSPOL
     CxssPolicy, *pCxssPolicy;
 
     //This class is to implement the queue
-    typedef struct node {
+    typedef struct _PolicyNode {
         pCxssPolicy Policy;
-        struct node *next;
-    } node_t;
+        struct _PolicyNode *Next;
+        struct _PolicyNode *Prev;
+        struct _PolicyNode *Head;
+    } PolicyNode_t, *pPolicyNode_t;
 
 /*** Structure to store a policy into the xQueue for breadthfirst traversal ***/
-
 
 #endif /* defined _CXSS_POLICY_H */
 

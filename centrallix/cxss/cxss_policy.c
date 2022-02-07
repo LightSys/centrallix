@@ -13,6 +13,7 @@
 #include "cxlib/mtsession.h"
 #include "cxss/cxss.h"
 #include "stparse.h"
+#include "cxlib/xqueue.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -803,31 +804,9 @@ cxssAuthorize(char* domain, char* type, char* path, char* attr,
               int access_type, int log_mode)
     {
     /** Just a stub right now **/
-
 	pCxssPolicy rootPolPtr = CXSS.Policy;
 
 	printf("\n\ncxssAuth CALLED!\n\n");
-
-	printf("Policy Mode:                  %d\n", rootPolPtr->PolicyMode);
-	printf("Policy Path:                  %s\n", rootPolPtr->PolicyPath);
-	printf("Domain Path:                  %s\n", rootPolPtr->DomainPath);
-	printf("Domain:                       %s\n", rootPolPtr->Domain);
-	printf("DateTime:                     %lld\n\n", rootPolPtr->ModifyDate.Value);
-
-	// Q. root has no subpolicies?
-	// A. 
-	printf("Num SubPolicies:              %d\n", rootPolPtr->SubPolicies.nItems);
-	printf("Num Inclusion Structs:        %d\n", rootPolPtr->Inclusions.nItems);
-	printf("Num Rules:                    %d\n\n", rootPolPtr->Rules.nItems);
-
-	pCxssPolRule rule_1_ptr = (pCxssPolRule) (xaGetItem(&(rootPolPtr->Rules), 0));
-	printf("Rule 1 Object to Match:       %s\n", rule_1_ptr->MatchObject );
-	printf("Rule 1 Subject to Match:      %s\n", rule_1_ptr->MatchSubject);
-	printf("Rule 1 Endorsement to Match:  %s\n", rule_1_ptr->MatchEndorsement);
-	printf("Rule 1 Access Type Mask:      %d\n", rule_1_ptr->MatchAccess );
-	// Q. i dont see a 0 in the defined ACC types
-	// A. 
-	printf("Rule 1 Action Type Mask:      %d\n\n", rule_1_ptr->Action);
 
 	pCxssPolInclude inclSpec_1_ptr = (pCxssPolInclude) (xaGetItem(&(rootPolPtr->Inclusions), 0));
 	printf("Incl Spec ProbeSQL:           %s\n", inclSpec_1_ptr->ProbeSQL);
@@ -837,69 +816,118 @@ cxssAuthorize(char* domain, char* type, char* path, char* attr,
 	printf("Incl Spec AllowSubjectlist:   %s\n", inclSpec_1_ptr->AllowSubjectlist ? "true" : "false");
 	printf("Incl Spec AllowRule:          %s\n", inclSpec_1_ptr->AllowRule ? "true" : "false");
 	printf("Incl Spec AllowMode:          %s\n\n", inclSpec_1_ptr->AllowMode ? "true" : "false");
-
-	pCxssPolRule rule_2_ptr = (pCxssPolRule) (xaGetItem(&(rootPolPtr->Rules), 1));
-	printf("Rule 2 Object to Match:       %s\n", rule_2_ptr->MatchObject );
-	printf("Rule 2 Subject to Match:      %s\n", rule_2_ptr->MatchSubject);
-	printf("Rule 2 Endorsement to Match:  %s\n", rule_2_ptr->MatchEndorsement);
-	printf("Rule 2 Access Type Mask:      %d\n", rule_2_ptr->MatchAccess );
-	printf("Rule 2 Action Type Mask:      %d\n\n", rule_2_ptr->Action);
-
-	// Q. why does this not break? there should only be 2 rules
-	// A. other spaces in array are empty Rule structs
-	pCxssPolRule rule_3_ptr = (pCxssPolRule) (xaGetItem(&(rootPolPtr->Rules), 2));
-	printf("Rule 3 Object to Match:       %s\n\n", rule_3_ptr->MatchObject);
-	
 	printf("\n\n");
-
 
 	//Start of actual program (Above is for debug, remove after)
 	//if security is dissabled, stop now; saves time
-	if(rootPolPtr == NULL) goto err;
-	if(rootPolPtr->PolicyMode == CXSS_MODE_T_DISABLE){
+	if(CXSS.Policy == NULL){
+		mssError(1,"CXSS","cxssAuthorize(): Policy not loaded, cannot authorize");
+		goto err;
+	}
+	if(CXSS.Policy->PolicyMode == CXSS_MODE_T_DISABLE){
 		return CXSS_ACT_T_ALLOW;
 	}
 
 	//Assume default action, and let rules correct
-	int result = CXSS_ACT_T_ALLOW;	
-
-	//TODO: iterate through policies 
-	//TODO: iterate through inclusions 
+	int result = CXSS_ACT_T_ALLOW;	//FIXME: currently, no matches triggers an error, then a deny
 	//TODO: determine if should return result, or just warn. 
 
-	//Sample iteration
-	/*
-	pCxssPolicy queue q;
-	q.enqueue(root_pol);
-	while(!q.isEmpty()){
-		pCxssPolicy Pol = (may need typecasting)q.dequeue();
-		//iterate through all the rules.
-		numRules = rootPolPtr->Rules.nItems;
-		for(int i = 0; i<numRules; i++){
-			pCxssPolRule rule_ptr = (pCxssPolRule) (xaGetItem(&(rootPolPtr->Rules), i));
-			result = cxssIsRuleMatch(domain, type, path, attr, access_type, rule_ptr);
-			if(result == CXSS_MATCH_T_ERR){
+	/** iterate through every rule in every policy until a match is found **/
+	
+	/** Set up queue with a sentinel Head**/
+	PolicyNode_t queue;
+	pPolicyNode_t headPtr;
+	xqInit(queue);
+
+	/**add first item**/
+	pPolicyNode_t firstNode = malloc(sizeof *firstNode);
+	firstNode->Policy = CXSS.Policy;
+	xqAddBefore(queue, *firstNode); //add before head, which is back of queue
+
+	/** use action to store result, and track if any matches were found **/
+	int action = -1; //set to -1 for not found
+
+	while((xqHead(queue) != NULL)){
+		/** queue and free struct**/
+		PolicyNode_t curStruct = *queue.Next;
+		pPolicyNode_t curStructPtr = queue.Next;
+		xqRemove((curStruct)); //this crashes if you do (*queue.next) instead. IDK why or how
+		pCxssPolicy curPol = curStruct.Policy;
+		free(curStructPtr);
+
+		//for debug: print policy stats
+		printf("Policy Mode:                  %d\n", curPol->PolicyMode);
+		printf("Policy Path:                  %s\n", curPol->PolicyPath);
+		printf("Domain Path:                  %s\n", curPol->DomainPath);
+		printf("Domain:                       %s\n", curPol->Domain);
+		printf("DateTime:                     %d\n", curPol->ModifyDate.Value);
+		printf("Num SubPolicies:              %d\n", curPol->SubPolicies.nItems);
+		printf("Num Inclusion Structs:        %d\n", curPol->Inclusions.nItems);
+		printf("Num Rules:                    %d\n\n", curPol->Rules.nItems);
+
+		/** check every rule **/
+		int i;
+		int numRules = curPol->Rules.nItems;
+		for(i = 0 ; i < numRules ; i++){
+			//print for debug
+			pCxssPolRule curRule = (pCxssPolRule) (xaGetItem(&(curPol->Rules), i));
+			printf("on rule %d of %d\n", i+1, numRules);
+			printf("Rule %d Object to Match:       %s\n", i, curRule->MatchObject );
+			printf("Rule %d Subject to Match:      %s\n", i, curRule->MatchSubject);
+			printf("Rule %d Endorsement to Match:  %s\n", i, curRule->MatchEndorsement);
+			printf("Rule %d Access Type Mask:      %d\n", i, curRule->MatchAccess);
+			printf("Rule %d Action Type Mask:      %d\n", i, curRule->Action);
+
+			/**check if rule is applicable**/
+			int isMatch = cxssIsRuleMatch(domain, type, path, attr, access_type, curRule);
+			printf("Rule %d is matched:            %d\n\n", i, isMatch); //for debug
+			if(isMatch == CXSS_MATCH_T_TRUE){
+				action = curRule->Action;
+				break; //comment out to visit all rules 
+			}else if(isMatch == CXSS_MATCH_T_ERR){
 				goto err;
 			}
-			elseif(result == CXSS_MATCH_T_TRUE){
-				//if default, we have to do different handling.
-				return rule_ptr->Action;
-			}
 		}
-		
-		
-		//iterate through all the subpolicies and enqueue them.
-		subNum = rootPolPtr->SubPolicies.nItems;
-		for(int i = 0; i<subNum; i++){
-			pCxssPolRule subpol_ptr = (pCxssPolRule) (xaGetItem(&(rootPolPtr->SubPolicies), i));
-			q.enqueue(subpol_ptr);
+		printf("___________________________\n\n\n");
+
+		/** stop iteration if got a match **/
+		if(action != -1){
+			break; //comment out to visit all policies
+		}
+
+		/** add every sub policy to the queue **/
+		int numSubPol = curPol->SubPolicies.nItems;
+		for(i = 0 ; i < numSubPol ; i++){
+			pPolicyNode_t node = malloc(sizeof *node);
+			node->Policy = xaGetItem(&(curPol->SubPolicies), i);
+			xqAddBefore(queue, *node); 
 		}
 	}
-	*/
-    
-    return 1;
+	
+	/** No matching rules found. Error **/
+	if(action == -1){
+		mssError(1,"CXSS","cxssAuthorize(): No policy match found");
+		goto err;
+	}
+
+	/** clear out anything left on the queue **/
+	while(xqHead(queue) != NULL){
+		PolicyNode_t curStruct = *queue.Next;
+		pPolicyNode_t curStructPtr = queue.Next;
+		xqRemove((curStruct)); //this crashes if you do (*queue.next) instead. IDK why or how
+		free(curStructPtr);
+	}
+
+    return action;
     err:
 	//TODO: add any cleanup that occurs. 
+	/** free any ptrs left on the queue **/
+	while(xqHead(queue) != NULL){
+		PolicyNode_t curStruct = *queue.Next;
+		pPolicyNode_t curStructPtr = queue.Next;
+		xqRemove((curStruct)); //this crashes if you do (*queue.next) instead. IDK why or how
+		free(curStructPtr);
+	}
 	return CXSS_ACT_T_DENY;
     }
 
@@ -980,6 +1008,7 @@ cxssIsRuleMatch(char* domain, char* type, char* path, char* attr,
 	/** If matchAccess is left blank, it matches all access types **/
 	//access type cannot be 0
 	if(access_type == 0){
+		mssError(1,"CXSS","cxssRuleIsMatch(): User access type cannot be 0.");
 		goto err;
 	}
 	if(rule->MatchAccess != 0){
@@ -991,39 +1020,3 @@ cxssIsRuleMatch(char* domain, char* type, char* path, char* attr,
     	//cleanup and exit
     	return CXSS_MATCH_T_ERR;
     }
-/*
-void 
-enqueue(node_t **head, int val) {
-   node_t *new_node = malloc(sizeof(node_t));
-   if (!new_node) return;
-
-   new_node->val = val;
-   new_node->next = *head;
-
-   *head = new_node;
-}
-
-pCxssPolicy 
-dequeue(node_t **head) {
-   node_t *current, *prev = NULL;
-   int retval = -1;
-
-   if (*head == NULL) return -1;
-
-   current = *head;
-   while (current->next != NULL) {
-      prev = current;
-      current = current->next;
-   }
-
-   retval = current->val;
-   free(current);
-
-   if (prev)
-      prev->next = NULL;
-   else
-      *head = NULL;
-
-   return retval;
-}
-*/
