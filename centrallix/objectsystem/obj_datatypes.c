@@ -2489,7 +2489,7 @@ objGetOldRepresentationOfMoney(MoneyType money, long long* wholePart, unsigned s
     {
         /** Add negative 1 then truncate fraction. (essentially floor() )**/
         *wholePart = (money.Value - 10000)/10000ll;
-        /** Since fraction always counts away from zero, it is inverted**/
+        /** Since fraction always counts in a positive direction, it is inverted**/
         *fractionPart = 10000ll - abs(money.Value%10000);
     }
     else
