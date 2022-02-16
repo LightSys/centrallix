@@ -58,7 +58,7 @@ It's theoretically possible to [set up your own Kardia VM](https://github.com/Li
 ### Intro to SSH
 [SSH](https://www.ssh.com/academy/ssh) is a classic Linux tool for securely connecting to another computer over a network. Typically, you use SSH from the command line to connect to a remote system and bring up a command line for it.
 
-<img src="screenshots/DeveloperTools/ssh.png" alt="alt text" width="400"/>
+<img src="screenshots/DeveloperTools/ssh.png" alt="Screenshot of Kardia VM SSH session" width="400"/>
 
 If you're completely new to SSH, [here's a basic guide for how to use SSH on Windows, Mac, or Linux](https://www.howtogeek.com/311287/how-to-connect-to-an-ssh-server-from-windows-macos-or-linux/).
 
@@ -105,7 +105,7 @@ You're welcome to work on Centrallix and Kardia just using a text editor in a te
 
 Here are some instructions for how I've set up VSCode for my Kardia development.
 
-<img src="screenshots/DeveloperTools/vscode.png" alt="alt text" width="600"/>
+<img src="screenshots/DeveloperTools/vscode.png" alt="Screenshot of VSCode connected to a Kardia VM remote, with a kardia.sh terminal up" width="600"/>
 
 In this screenshot, I'm on my laptop connected to a LightSys VM entirely through VSCode.
 
@@ -135,7 +135,7 @@ If you don't want to use this VSCode extension for some reason, another option f
   - Show indicators in the editor for different kinds of whitespace by selecting View > Render Whitespace
   - Adjust how you want to input tabs, and how you'd like to display tabs, with the "Adjust Indentation" button in the bottom right bar. For example, if I select "Spaces: 4", when I press Tab 4 spaces will be inserted, and the editor will display tab characters as 4 characters long.
 
-<img src="screenshots/DeveloperTools/indentation.png" alt="alt text" width="600"/>
+<img src="screenshots/DeveloperTools/indentation.png" alt="Screenshot of the VSCode adjust indentation button" width="600"/>
 
 VSCode also has an extension for Sourcegraph code search, which I'm about to tell you about...
 
@@ -163,17 +163,17 @@ Here's a [cheatsheet for keywords you can use in Sourcegraph search queries](htt
 ### Example: where do I need to update usage of this type?
 I once worked on a project to change the fundamental design of a very basic Centrallix struct. I needed to find all the places that struct was used so I could make them work with the new struct design. Here's how I did it with Sourcegraph using search + find references.
 
-<img src="screenshots/DeveloperTools/moneytype.gif" alt="alt text" width="600"/>
+<img src="screenshots/DeveloperTools/moneytype.gif" alt="GIF of searching Sourcegraph and then using 'Find references'" width="600"/>
 
 ### Example: how should I use this function?
 As part of this project, I had to write some logic that needed to log an error under particular conditions. But how should I use the error handling function I found in code nearby for my particular case? Here's how I used Sourcegraph's go to definition + find references to get an idea of how the error handling function works.
 
-<img src="screenshots/DeveloperTools/msserror.gif" alt="alt text" width="600"/>
+<img src="screenshots/DeveloperTools/msserror.gif" alt="GIF of using 'Go to definition' and 'Find references' in Sourcegraph to investigate a function" width="600"/>
 
 ### Example: how was someone previously able to implement this feature?
 "Test coverage" is a way to see what code actually got run (and thus what logic paths were actually tested) after you run automated tests. At one point, Centrallix was able to track coverage, but Centrallix-Lib was not and a few interns were adding some gnarly logic to it. So I needed to figure out how test coverage had been implemented in Centrallix so I could build it for the part that now also needed it. Here's how I used git blame in Sourcegraph to track that down.
 
-<img src="screenshots/DeveloperTools/coverage.gif" alt="alt text" width="600"/>
+<img src="screenshots/DeveloperTools/coverage.gif" alt="GIF of using git blame in Sourcegraph" width="600"/>
 
 ## Working with Git and GitHub
 
@@ -208,25 +208,25 @@ In GitHub parlance, a "pull request" is a request to merge one branch into anoth
 
 Here's how to create a basic pull request in GitHub. (If GitHub shows you the "X branch had recent pushes" banner, that's a nice shortcut; otherwise you can go to the regular "branches" page.)
 
-<img src="screenshots/DeveloperTools/pull request.gif" alt="alt text" width="600"/>
+<img src="screenshots/DeveloperTools/pull request.gif" alt="GIF of creating a pull request on GitHub" width="600"/>
 
 Once you've created a pull request, you can also leave comments on the changes or request review from someone else. This offers a centralized place to work through how to implement something that you can then look back at later.
 
-<img src="screenshots/DeveloperTools/review.gif" alt="alt text" width="600"/>
+<img src="screenshots/DeveloperTools/review.gif" alt="GIF of adding a reviewer and leaving comments on a GitHub pull request" width="600"/>
 
 You may also run into situations where you create a pull request that depends on another pull request. For example, I had a pull request for a barebones working version of the report emailing tool, then a pull request based on that one for adding filtering. In this case, you should:
 
 - Set the base branch of the child pull request to its parent pull request
 
-<img src="screenshots/DeveloperTools/base.png" alt="alt text" width="600"/>
+<img src="screenshots/DeveloperTools/base.png" alt="Screenshot of setting a pull request's base branch to something other than master" width="600"/>
 
 - In the description of the child pull request, add "Depends on #[ID of parent pull request]"
 
-<img src="screenshots/DeveloperTools/depends.gif" alt="alt text" width="600"/>
+<img src="screenshots/DeveloperTools/depends.gif" alt="Screenshot of adding dependent pull request in GitHub" width="600"/>
 
 - A friendly GitHub bot will tell you not to merge the child before the parent is merged.
 
-<img src="screenshots/DeveloperTools/checks failed.png" alt="alt text" width="600"/>
+<img src="screenshots/DeveloperTools/checks failed.png" alt="Screenshot of GitHub bot saying checks failed bc you need to merge the parent pull request first" width="600"/>
 
 ### Tips for organizing your work into commits + pull requests
 With Git and GitHub, you have two main "buckets" to organize your changes with: commits and pull requests.
