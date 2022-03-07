@@ -1,0 +1,3 @@
+##NAME Levenshtein String Comparison
+
+query select sw1 = levenshtein('hello', 'hello!')
