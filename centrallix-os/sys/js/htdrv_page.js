@@ -492,32 +492,16 @@ function pg_get(o,a)
 
 function pg_ping_init(l,i)
     {
-    if(cx__capabilities.Dom0IE)
-        {
-    	l.tid=setInterval(pg_ping_send, i);
-	}
-    else
-    	{
-    	l.tid=setInterval(pg_ping_send,i,l);    		
-    	}
+    l.tid=setInterval(pg_ping_send,i,l);    		
     }
 
 function pg_ping_recieve()
     {
-    var link;
-    //confirm("recieving");
-    if(cx__capabilities.Dom1HTML)
-	{
+    var link = null;
+    var links = this.contentDocument.getElementsByTagName("a");
+    if (links && links.length > 0)
 	link = this.contentDocument.getElementsByTagName("a")[0];
-	}
-    else if(cx__capabilities.Dom0NS)
-	{
-	link = this.document.links[0];
-	}
-    else
-	{
-	return false;
-	}
+
     if(!link || link.target==='ERR')
 	{
 	clearInterval(this.tid);
@@ -535,24 +519,7 @@ function pg_ping_recieve()
     
 function pg_ping_send(p)
     {
-    //confirm('sending');
-    if (cx__capabilities.Dom0IE)
-        {
-        p = document.getElementById('pgping');
-	}
-	        
-    //p.onload=pg_ping_recieve;
-   
     pg_serialized_load(p, '/INTERNAL/ping?cx__akey=' + window.akey, pg_ping_recieve);
-    /*if(cx__capabilities.Dom1HTML)
-	{
-	p.setAttribute('src','/INTERNAL/ping');
-	}
-    else if(cx__capabilities.Dom0NS)
-	{
-	//alert(p);
-	p.src='/INTERNAL/ping';
-	}*/
     }
 
 //END SECTION: pinging functions ---------------------------------------

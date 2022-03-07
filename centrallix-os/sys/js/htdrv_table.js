@@ -237,7 +237,7 @@ function tbld_redraw_all(dataobj, force_datafetch)
 
     // Creating a new record?  Give indication if so.
     this.was_new = this.is_new;
-    this.is_new = (dataobj && dataobj.length == 0 && this.row_bgndnew)?1:0;
+    this.is_new = ((this.was_new && dataobj == null) || (dataobj && dataobj.length == 0 && this.row_bgndnew))?1:0;
     if (this.was_new && !this.is_new && this.rows.last)
 	{
 	var recnum = this.rows.last;
@@ -253,8 +253,8 @@ function tbld_redraw_all(dataobj, force_datafetch)
     this.cr = this.osrc.CurrentRecord;
     if (this.is_new)
 	{
-	this.cr = this.rows.last + 1;
-	this.target_range = {start:this.rows.first, end:this.rows.last+1};
+	this.cr = this.rows.last + 1 - this.was_new;
+	this.target_range = {start:this.rows.first, end:this.rows.last + 1 - this.was_new};
 	}
 
     // Presentation mode -- rows or propsheet?
@@ -616,13 +616,22 @@ function tbld_format_row(id, selected, do_new)
     switch(new_disp_mode)
 	{
 	case 'newselect':
+	    this.selected_row = this.rows[id];
+	    this.selected = id;
 	    this.rows[id].newselect();
 	    break;
 	case 'select':
+	    this.selected_row = this.rows[id];
+	    this.selected = id;
 	    this.rows[id].select();
 	    break;
 	case 'deselect':
 	    this.rows[id].deselect();
+	    if (this.selected_row == this.rows[id])
+		{
+		this.selected_row = null;
+		this.selected = null;
+		}
 	    break;
 	}
     if (this.UpdateHeight(this.rows[id]) && this.rows[id].positioned)
@@ -878,68 +887,98 @@ function tbld_select()
     this.showdetail(false);
     }
 
+
 function tbld_showdetail(on_new)
     {
     for(var i=0; i<this.table.detail_widgets.length; i++)
 	{
 	var dw = this.table.detail_widgets[i];
-	if (wgtrGetServerProperty(dw, 'display_for', 1) && (this.table.initselect !== 2 || (this.table.initselect == 2 && on_new)) /* 2 = noexpand */ && (!on_new || wgtrGetServerProperty(dw, 'show_on_new', 0)))
+	dw.on_new = on_new;
+	this.updatedetail(dw);
+	}
+    }
+
+
+function tbld_update_detail(dw)
+    {
+    if (dw.display_for && (this.table.initselect !== 2 || (this.table.initselect == 2 && dw.on_new)) /* 2 = noexpand */ && (!dw.on_new || wgtrGetServerProperty(dw, 'show_on_new', 0)))
+	{
+	var found=false;
+	for(var j=0; j<this.detail.length; j++)
 	    {
-	    var found=false;
-	    for(var j=0; j<this.detail.length; j++)
+	    if (this.detail[j] == dw)
 		{
-		if (this.detail[j] == dw)
-		    {
-		    found=true;
-		    break;
-		    }
-		}
-
-	    if (!found)
-		{
-		// already a part of another row?
-		if ($(dw).css("visibility") == 'inherit' || $(dw).css("visibility") == 'visible')
-		    {
-		    pg_reveal_event(dw, dw, 'Obscure');
-		    dw.is_visible = 0;
-		    dw.ifcProbe(ifEvent).Activate('Close', {});
-		    }
-
-		// Add to this row and show it.
-		this.detail.push(dw);
-		this.appendChild(dw);
-		$(dw).css
-		    ({
-		    "visibility": "inherit",
-		    "left": "0px",
-		    "top": "0px",
-		    });
-		pg_reveal_event(dw, dw, 'Reveal');
-		dw.is_visible = 1;
-		dw.ifcProbe(ifEvent).Activate('Open', {});
+		found=true;
+		break;
 		}
 	    }
-	else
+
+	if (!found)
 	    {
-	    for(var j=0; j<this.detail.length; j++)
+	    // already a part of another row?
+	    if ($(dw).css("visibility") == 'inherit' || $(dw).css("visibility") == 'visible')
 		{
-		if (this.detail[j] == dw)
-		    {
-		    this.detail.splice(j, 1);
-		    pg_reveal_event(dw, dw, 'Obscure');
-		    $(dw).css
-			({
-			"visibility": "hidden",
-			});
-		    this.table.appendChild(dw);
-		    dw.is_visible = 0;
-		    dw.ifcProbe(ifEvent).Activate('Close', {});
-		    break;
-		    }
+		pg_reveal_event(dw, dw, 'Obscure');
+		dw.is_visible = 0;
+		dw.ifcProbe(ifEvent).Activate('Close', {});
+		}
+
+	    // Add to this row and show it.
+	    this.detail.push(dw);
+	    this.appendChild(dw);
+	    $(dw).css
+		({
+		"visibility": "inherit",
+		"left": "0px",
+		"top": "0px",
+		});
+	    pg_reveal_event(dw, dw, 'Reveal');
+	    dw.is_visible = 1;
+	    dw.ifcProbe(ifEvent).Activate('Open', {});
+	    }
+	}
+    else
+	{
+	for(var j=0; j<this.detail.length; j++)
+	    {
+	    if (this.detail[j] == dw)
+		{
+		this.detail.splice(j, 1);
+		pg_reveal_event(dw, dw, 'Obscure');
+		$(dw).css
+		    ({
+		    "visibility": "hidden",
+		    });
+		this.table.appendChild(dw);
+		dw.is_visible = 0;
+		dw.ifcProbe(ifEvent).Activate('Close', {});
+		break;
 		}
 	    }
 	}
     }
+
+
+function tbld_get_displayfor(attr)
+    {
+    return this.display_for;
+    }
+
+
+function tbld_set_displayfor(attr, val)
+    {
+    val = val?1:0;
+    if (val != this.display_for)
+	{
+	this.display_for = val;
+	if (this.table.selected_row)
+	    {
+	    this.table.selected_row.needs_redraw = true;
+	    this.table.RedrawAll(null, true);
+	    }
+	}
+    }
+
 
 function tbld_deselect()
     {
@@ -1366,6 +1405,11 @@ function tbld_remove_row(rowobj)
     {
     if (!rowobj)
 	return;
+    if (rowobj.table.selected_row == rowobj)
+	{
+	rowobj.table.selected_row = null;
+	rowobj.table.selected = null;
+	}
     var slot = rowobj.rownum;
     $(rowobj).css({visibility: "hidden"});
     delete this.rows[slot];
@@ -1591,6 +1635,7 @@ function tbld_instantiate_row(parentDiv, x, y)
     row.mouseout=tbld_domouseout;
     row.showdetail=tbld_showdetail;
     row.hidedetail=tbld_hidedetail;
+    row.updatedetail = tbld_update_detail;
     row.needs_redraw = false;
     row.detail = [];
 
@@ -1765,6 +1810,8 @@ function tbld_init(param)
     t.osrc_last_op = null;
     //t.log = [];
     t.ttf_string = '';
+    t.selected_row = null;
+    t.selected = null;
     
     t.rowheight=param.min_rowheight>0?param.min_rowheight:15;
     t.min_rowheight = param.min_rowheight;
@@ -2045,6 +2092,8 @@ function tbld_init(param)
 	var ie = dw.ifcProbeAdd(ifEvent);
 	ie.Add("Open");
 	ie.Add("Close");
+	var iv = dw.ifcProbeAdd(ifValue);
+	iv.Add("display_for", tbld_get_displayfor, tbld_set_displayfor);
 	}
 
     // Easing function for touch drag
@@ -2384,6 +2433,7 @@ function tbld_contextmenu(e)
 		    event.ColumnValue = orig_ly.data;
 		    }
 		event.recnum = ly.rownum;
+		event.selected = ly.table.selected;
 		event.data = new Object();
 		event.X = e.pageX;
 		event.Y = e.pageY;
@@ -2411,6 +2461,7 @@ function tbld_mousedown(e)
     var ly = e.layer;
     var toggle_row = false;
     var moved = false;
+    var selected = (ly.table?ly.table.selected:((ly.row && ly.row.table)?ly.row.table.selected:null));
     if(ly.kind && ly.kind=='tabledynamic')
         {
         if(ly.subkind=='cellborder')
@@ -2467,6 +2518,7 @@ function tbld_mousedown(e)
 		    }
 		event.Caller = ly.table;
 		event.recnum = ly.rownum;
+		event.selected = selected;
 		event.data = new Object();
 		var rec=ly.table.osrc.replica[ly.rownum];
 		if(rec)
@@ -2503,6 +2555,7 @@ function tbld_mousedown(e)
 			}
 		    event.Caller = ly.table;
 		    event.recnum = ly.rownum;
+		    event.selected = selected;
 		    event.data = new Object();
 		    var rec=ly.table.osrc.replica[ly.rownum];
 		    if(rec)
