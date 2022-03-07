@@ -234,10 +234,10 @@ testobj_show_attr(pObject obj, char* attrname)
 		    fdPrintf(TESTOBJ.Output,"  %20.20s: NULL", attrname);
 		else
 		    {
-		    fdPrintf(TESTOBJ.Output,"  %20.20s: %d bytes: ", attrname, bn.Size);
+		    fdPrintf(TESTOBJ.Output,"  %20.20s:  %d bytes: ", attrname, bn.Size);
 		    for(i=0;i<bn.Size;i++)
 			{
-			fdPrintf(TESTOBJ.Output,"%2.2x  ", bn.Data[i]);
+			fdPrintf(TESTOBJ.Output,"%2.2x ", bn.Data[i]);
 			}
 		    }
 		break;
@@ -870,10 +870,10 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 					break;
 
 				    case DATA_T_BINARY:
-					fdPrintf(TESTOBJ.Output,"%d bytes: ", od.Binary.Size);
+					fdPrintf(TESTOBJ.Output," %d bytes: ", od.Binary.Size);
 					for(i=0;i<od.Binary.Size;i++)
 					    {
-					    fdPrintf(TESTOBJ.Output,"%2.2x  ", od.Binary.Data[i]);
+					    fdPrintf(TESTOBJ.Output,"%2.2x ", od.Binary.Data[i]);
 					    }
 					break;
 

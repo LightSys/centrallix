@@ -102,10 +102,11 @@ typedef struct _ET
     char*		Name;
     int			Flags;			/* bitmask EXPR_F_xxx */
     int			Integer;
-    char*		String;
+    char*		String;			/* for string or binary */
+    int			Size;			/* for DATA_T_BINARY */
     union
         {
-        char		StringBuf[64];
+        char		StringBuf[64];		/* for string or binary */
         double		Double;
         MoneyType	Money;
         DateTime	Date;
@@ -204,6 +205,7 @@ extern pParamObjects expNullObjlist;
 #define EXPR_N_LIST		23
 #define EXPR_N_SUBQUERY		24	/* such as "i = (select ...)" */
 #define EXPR_N_ISNOTNULL	25
+#define EXPR_N_BINARY		26
 
 /*** Flags for expression nodes ***/
 #define EXPR_F_OPERATOR		1	/* node is an operator */
@@ -275,6 +277,7 @@ int expCompareExpressionValues(pExpression exp1, pExpression exp2);
 pTObjData expCompileAndEval(char* text, pParamObjects objlist, int lxflags, int cmpflags);
 pTObjData expExpressionToPtod(pExpression exp);
 int expSetString(pExpression this, char* str);
+int expSetBinary(pExpression this, unsigned char* str, int len);
 
 /*** Generator functions ***/
 int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char, char* language, int domain);

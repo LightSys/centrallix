@@ -21,6 +21,8 @@ Attributes:
                  count: 10 [Hints: ]
                   text: "test,,this is a longer test,,',100,/,short test,,test" [Hints: ]
        document_format: "text/plain" [Hints: ]
+                 title: "Datatypes Report" [Hints: ]
+            resolution: 300 [Hints: ]
 
 Methods:
   (no methods)

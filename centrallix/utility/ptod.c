@@ -196,6 +196,7 @@ ptodCopy(pTObjData src, pTObjData dst)
 		    case DATA_T_DATETIME:
 		    case DATA_T_INTVEC:
 		    case DATA_T_STRINGVEC:
+		    case DATA_T_BINARY:
 		    default:
 			dst->Data.Generic = ((char*)dst)+sizeof(TObjData);
 			break;
@@ -212,6 +213,11 @@ ptodCopy(pTObjData src, pTObjData dst)
 			break;
 		    case DATA_T_STRING:
 			dst->Data.String = nmSysStrdup(src->Data.String);
+			break;
+		    case DATA_T_BINARY:
+			dst->Data.Binary.Data = nmSysMalloc(src->Data.Binary.Size+1);
+			dst->Data.Binary.Size = src->Data.Binary.Size;
+			memcpy(dst->Data.Binary.Data, src->Data.Binary.Data, src->Data.Binary.Size+1);
 			break;
 		    case DATA_T_MONEY:
 			dst->Data.Money = nmMalloc(sizeof(MoneyType));

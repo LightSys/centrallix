@@ -94,6 +94,7 @@ int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     {
     void* vptr;
     char* ptr;
+    Binary b;
 
     if (!i0 || !i1 || i0->DataType != DATA_T_STRING || (i0->Flags & EXPR_F_NULL))
         {
@@ -104,6 +105,11 @@ int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExp
         {
 	case DATA_T_INTEGER: vptr = &(i1->Integer); break;
 	case DATA_T_STRING: vptr = i1->String; break;
+	case DATA_T_BINARY:
+	    b.Size = i1->Size;
+	    b.Data = (unsigned char*)i1->String;
+	    vptr = &b;
+	    break;
 	case DATA_T_DOUBLE: vptr = &(i1->Types.Double); break;
 	case DATA_T_DATETIME: vptr = &(i1->Types.Date); break;
 	case DATA_T_MONEY: vptr = &(i1->Types.Money); break;
@@ -516,6 +522,47 @@ int exp_fn_lower(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
         {
 	if (i0->String[i] >= 'A' && i0->String[i] <= 'Z') tree->String[i] = i0->String[i] + 32;
 	else tree->String[i] = i0->String[i];
+	}
+    return 0;
+    }
+
+
+int exp_fn_octet_length(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    tree->DataType = DATA_T_INTEGER;
+    if (i0 && i0->Flags & EXPR_F_NULL)
+        {
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (!i0 || i1)
+        {
+	mssError(1,"EXP","One parameter required for octet_length()");
+	return -1;
+	}
+    switch(i0->DataType)
+	{
+	case DATA_T_INTEGER:
+	    tree->Integer = sizeof(tree->Integer);
+	    break;
+	case DATA_T_DOUBLE:
+	    tree->Integer = sizeof(tree->Types.Double);
+	    break;
+	case DATA_T_STRING:
+	    tree->Integer = strlen(i0->String);
+	    break;
+	case DATA_T_BINARY:
+	    tree->Integer = i0->Size;
+	    break;
+	case DATA_T_DATETIME:
+	    tree->Integer = sizeof(tree->Types.Date);
+	    break;
+	case DATA_T_MONEY:
+	    tree->Integer = sizeof(tree->Types.Money);
+	    break;
+	default:
+	    mssError(1,"EXP","Unsupported data type for octet_length()");
+	    return -1;
 	}
     return 0;
     }
@@ -2492,7 +2539,7 @@ int exp_fn_rand(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
 	/** Get the 64-bit value and convert to double **/
 	memcpy(&val, objlist->Random, sizeof(val));
 	tree->DataType = DATA_T_DOUBLE;
-	tree->Types.Double = (double)val / (double)ULLONG_MAX;
+	tree->Types.Double = (double)((long double)val / ((long double)ULLONG_MAX + (long double)1.0));
 
     return 0;
     }
@@ -2758,6 +2805,88 @@ int exp_fn_pbkdf2(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
     }
 
 
+int exp_fn_to_hex(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pXString dest = NULL;
+    int len;
+
+	if (!i0 || (!(i0->Flags & EXPR_F_NULL) && i0->DataType != DATA_T_STRING && i0->DataType != DATA_T_BINARY))
+	    {
+	    mssError(1, "EXP", "to_hex() expects one string or binary parameter");
+	    goto error;
+	    }
+
+	tree->DataType = DATA_T_STRING;
+
+	if (i0->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	dest = xsNew();
+	if (!dest)
+	    goto error;
+	
+	if (i0->DataType == DATA_T_STRING)
+	    len = strlen(i0->String);
+	else
+	    len = i0->Size;
+	if (xsQPrintf(dest, "%*STR&HEX", len, i0->String) < 0)
+	    goto error;
+	expSetString(tree, dest->String);
+
+	xsFree(dest);
+
+	return 0;
+
+    error:
+	if (dest)
+	    xsFree(dest);
+	return -1;
+    }
+
+
+int exp_fn_from_hex(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pXString dest = NULL;
+
+	if (!i0 || (!(i0->Flags & EXPR_F_NULL) && i0->DataType != DATA_T_STRING))
+	    {
+	    mssError(1, "EXP", "from_hex() expects one string parameter");
+	    goto error;
+	    }
+
+	tree->DataType = DATA_T_BINARY;
+
+	if (i0->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	dest = xsNew();
+	if (!dest)
+	    goto error;
+
+	if (xsQPrintf(dest, "%*STR&DHEX", strlen(i0->String)/2, i0->String) < 0)
+	    {
+	    mssError(1, "EXP", "from_hex(): invalid hex-encoded data");
+	    goto error;
+	    }
+	expSetBinary(tree, (unsigned char*)xsString(dest), xsLength(dest));
+
+	xsFree(dest);
+
+	return 0;
+
+    error:
+	if (dest)
+	    xsFree(dest);
+	return -1;
+    }
+
+
 int exp_fn_to_base64(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pXString dest = NULL;
@@ -2805,7 +2934,7 @@ int exp_fn_from_base64(pExpression tree, pParamObjects objlist, pExpression i0, 
 	    goto error;
 	    }
 
-	tree->DataType = DATA_T_STRING;
+	tree->DataType = DATA_T_BINARY;
 
 	if (i0->Flags & EXPR_F_NULL)
 	    {
@@ -2822,7 +2951,7 @@ int exp_fn_from_base64(pExpression tree, pParamObjects objlist, pExpression i0, 
 	    mssError(1, "EXP", "from_base64(): invalid base64-encoded data");
 	    goto error;
 	    }
-	expSetString(tree, dest->String);
+	expSetBinary(tree, (unsigned char*)xsString(dest), xsLength(dest));
 
 	xsFree(dest);
 
@@ -3483,6 +3612,9 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
 	xhAdd(&EXP.Functions, "to_base64", (char*)exp_fn_to_base64);
 	xhAdd(&EXP.Functions, "from_base64", (char*)exp_fn_from_base64);
+	xhAdd(&EXP.Functions, "to_hex", (char*)exp_fn_to_hex);
+	xhAdd(&EXP.Functions, "from_hex", (char*)exp_fn_from_hex);
+	xhAdd(&EXP.Functions, "octet_length", (char*)exp_fn_octet_length);
 
 	/** Windowing **/
 	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
