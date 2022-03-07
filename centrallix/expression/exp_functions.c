@@ -3251,6 +3251,81 @@ int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
     return 0;
     }
 
+int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+
+    if (!i0 || !i1)
+	{
+		mssError(1,"EXP","levenshtein() requires two parameters");
+		return -1;
+	}
+
+    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+	{
+		tree->DataType = DATA_T_INTEGER;
+		tree->Flags |= EXPR_F_NULL;
+		return 0;
+	}
+
+    if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING))
+	{
+		mssError(1,"EXP","levenshtein() requires two string parameters");
+		return -1;
+	}
+
+	// for all i and j, d[i,j] will hold the Levenshtein distance between
+	// the first i characters of s and the first j characters of t
+	int length1 = strlen(i0->String);
+	int length2 = strlen(i1->String);
+	int levMatrix[length1+1][length2+1];
+	int i;
+	int j;
+    //set each element in d to zero
+    for (i = 0; i < length1; i++)
+    {
+        for (j = 0; j < length2; j++)
+        {
+            levMatrix[i][j] = 0;
+        }        
+    }
+    
+    // source prefixes can be transformed into empty string by
+    // dropping all characters
+    for (i = 0; i <= length1; i++)
+    {
+        levMatrix[i][0] = i;
+    }
+     
+    // target prefixes can be reached from empty source prefix
+    // by inserting every character
+    for (j = 0; j <= length2; j++)
+    {
+        levMatrix[0][j] = j;
+    }
+    
+	for (i = 1; i <= length1; i++)
+    {
+        for (j = 1; j <= length2; j++)
+        {
+            if (i0->String[i-1] == i1->String[j-1]) 
+            {
+                levMatrix[i][j] = levMatrix[i-1][j-1];
+            }
+            else 
+            {
+				int value1 = levMatrix[i - 1][j] + 1;
+				int value2 = levMatrix[i][j-1] + 1;
+				int value3 = levMatrix[i-1][j-1] + 1;
+                levMatrix[i][j] = (value1 < value2) ? 
+									  ((value1 < value3) ? value1 : value3) :
+									  (value2 < value3) ? value2 : value3;
+            }
+        }
+    }
+    tree->Integer = levMatrix[length1][length2];
+    return 0;
+    }
+
 
 int
 exp_internal_DefineFunctions()
@@ -3308,6 +3383,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "log10", (char*)exp_fn_log10);
 	xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
 	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
+	xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
 
 	/** Windowing **/
 	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
