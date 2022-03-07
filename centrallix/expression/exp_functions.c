@@ -3322,7 +3322,8 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
             }
         }
     }
-    tree->Integer = levMatrix[length1][length2];
+    tree->DataType = DATA_T_INTEGER;
+	tree->Integer = levMatrix[length1][length2];
     return 0;
     }
 
