@@ -447,24 +447,36 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		}
 	    else
 		{
-		/** Object **/
-		qdo = (pQueryDeclaredObject)nmMalloc(sizeof(QueryDeclaredObject));
-		if (qdo)
+		/** Check to see if the object already exists **/
+		exists = 0;
+		for(i=0; i<appdata->DeclaredObjects.nItems; i++)
 		    {
-		    /** Create it **/
-		    strtcpy(qdo->Name, dec->Name, sizeof(qdo->Name));
-		    qdo->Data = stAllocInf();
-		    if (mq_internal_AddDeclaredObject(stmt->Query, qdo) < 0)
-			{
-			mssError(1, "MQ", "DECLARE OBJECT: '%s' already exists in query or query parameter", qdo->Name);
-			return -1;
-			}
+		    qdo = (pQueryDeclaredObject)appdata->DeclaredObjects.Items[i];
+		    if (!strcmp(qdo->Name, dec->Name))
+			exists = 1;
+		    }
 
-		    /** Query vs App scope **/
-		    if (appdata && (dec->Flags & MQ_SF_APPSCOPE))
-			xaAddItem(&appdata->DeclaredObjects, (void*)qdo);
-		    else
-			xaAddItem(&stmt->Query->DeclaredObjects, (void*)qdo);
+		if (!exists)
+		    {
+		    /** New object **/
+		    qdo = (pQueryDeclaredObject)nmMalloc(sizeof(QueryDeclaredObject));
+		    if (qdo)
+			{
+			/** Create it **/
+			strtcpy(qdo->Name, dec->Name, sizeof(qdo->Name));
+			qdo->Data = stAllocInf();
+			if (mq_internal_AddDeclaredObject(stmt->Query, qdo) < 0)
+			    {
+			    mssError(1, "MQ", "DECLARE OBJECT: '%s' already exists in query or query parameter", qdo->Name);
+			    return -1;
+			    }
+
+			/** Query vs App scope **/
+			if (appdata && (dec->Flags & MQ_SF_APPSCOPE))
+			    xaAddItem(&appdata->DeclaredObjects, (void*)qdo);
+			else
+			    xaAddItem(&stmt->Query->DeclaredObjects, (void*)qdo);
+			}
 		    }
 		}
 	    }
@@ -1763,6 +1775,11 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs, NULL)) != NULL && !strcasecmp(ptr, "collection"))
 				{
 				insert_cls->Flags |= MQ_SF_COLLECTION;
+				t = mlxNextToken(lxs);
+				}
+			    else if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs, NULL)) != NULL && !strcasecmp(ptr, "object"))
+				{
+				insert_cls->Flags |= MQ_SF_FROMOBJECT;
 				t = mlxNextToken(lxs);
 				}
 			    if (t != MLX_TOK_FILENAME && t != MLX_TOK_STRING && (!(insert_cls->Flags & MQ_SF_COLLECTION) || t != MLX_TOK_KEYWORD))
@@ -4043,6 +4060,14 @@ mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTr
 	    case DATA_T_DOUBLE: *(double*)value = exp->Types.Double; break;
 	    case DATA_T_MONEY: *(pMoneyType*)value = &(exp->Types.Money); break;
 	    case DATA_T_DATETIME: *(pDateTime*)value = &(exp->Types.Date); break;
+	    case DATA_T_BINARY:
+		((pBinary)value)->Data = (unsigned char*)exp->String;
+		((pBinary)value)->Size = exp->Size;
+		break;
+	    default:
+		mssError(1,"MQ","Unsupported data type for attribute '%s' [%s]", 
+			attrname, obj_type_names[datatype]);
+		return -1;
 	    }
 
     return 0;
