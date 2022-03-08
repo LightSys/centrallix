@@ -3355,13 +3355,25 @@ double exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression
 	
 	int length1 = strlen(i0->String);
 	int length2 = strlen(i1->String);
-	int max_len = (length1 > length2) ? length1 : length2;
-	if (max_len <= 0) {
-		max_len = 1;
+
+	double clamped_dist = 1.0;
+
+	if (length1 == 0 || length2 == 0) //empty string
+	{
+		clamped_dist = 0.5;	
+	} 
+	else //normal case 
+	{
+		int max_len = (length1 > length2) ? length1 : length2;
+		clamped_dist = ((double) lev_dist) / max_len;
+	
+		if (abs(length1-length2) == lev_dist)  //only inserts. Maybe substring.
+		{
+			clamped_dist /= 2;
+		}
 	}
 	
-	double clamped_dist = ((double) lev_dist) / max_len;
-    
+	
 	tree->DataType = DATA_T_DOUBLE;
 	tree->Types.Double = clamped_dist;
 	return 0;
