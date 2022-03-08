@@ -3379,6 +3379,54 @@ double exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression
 	return 0;
 }
 
+int exp_fn_letter_frequency(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+	if (!i0)
+	{
+		mssError(1,"EXP","letter_frequency() requires one parameter.");
+		return -1;
+	}
+
+	if (i0->Flags & EXPR_F_NULL)
+	{
+		tree->DataType = DATA_T_INTEGER;
+		tree->Flags |= EXPR_F_NULL;
+		return 0;
+	}
+
+    if (i0->DataType != DATA_T_STRING)
+	{
+		mssError(1,"EXP","letter_frequency() requires one string parameter.");
+		return -1;
+	}
+
+	int i;
+	int length = strlen(i0->String);
+	char *document = i0->String;
+	const int MAX_ARRAY_SIZE = 1000;
+	int letterMatrix[MAX_ARRAY_SIZE]; // one location for each letter a-z, and each number 0-9
+	for (i = 0; i < length; i++) 
+	{
+		letterMatrix[toupper(document[i])]++;
+	}
+
+	char *buffer = malloc(sizeof(char) * 10 + 1);
+	char *output = malloc(sizeof(char) * 1000 + 1);
+
+	for (i = 65; i <= 90; i++)
+	{
+		snprintf(buffer, 10, "%c:%d", i, letterMatrix[i]);
+		strcat(output, buffer);
+		if (i < 90) {
+			strcat(output, ",");
+		}
+	}	
+
+	tree->DataType = DATA_T_STRING;
+	tree->String = output;
+	return 0;
+
+	}
 int
 exp_internal_DefineFunctions()
     {
@@ -3437,6 +3485,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
 	xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
 	xhAdd(&EXP.Functions, "fuzzy_compare", (char*)exp_fn_fuzzy_compare);
+	xhAdd(&EXP.Functions, "letter_frequency", (char*)exp_fn_letter_frequency);
 	/** Windowing **/
 	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
 
