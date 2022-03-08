@@ -3356,6 +3356,9 @@ double exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression
 	int length1 = strlen(i0->String);
 	int length2 = strlen(i1->String);
 	int max_len = (length1 > length2) ? length1 : length2;
+	if (max_len <= 0) {
+		max_len = 1;
+	}
 	
 	double clamped_dist = ((double) lev_dist) / max_len;
     
