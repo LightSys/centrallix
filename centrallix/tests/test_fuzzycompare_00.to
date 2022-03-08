@@ -1,5 +1,5 @@
 ##NAME Levenshtein String Comparison
-, 20
+
 query select sw1 = 1 where fuzzy_compare('hello', 'hello!', 20) >= 0 and fuzzy_compare("hello","hello!", 20) <= 1
 query select sw1 = 1 where fuzzy_compare('hello', 'asdfkh', 20) >= 0 and fuzzy_compare("hello","asdfkh", 20) <= 1
 query select sw1 = 1 where fuzzy_compare('hello', 'aaaaaaaaaaaaaaaaa', 20) >= 0 and fuzzy_compare("hello","aaaaaaaaaaaaaaaaa", 20) <= 1
