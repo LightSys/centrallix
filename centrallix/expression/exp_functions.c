@@ -3327,6 +3327,42 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
     return 0;
     }
 
+double exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+
+    if (!i0 || !i1 || !i2)
+	{
+		mssError(1,"EXP","fuzzy_compare() requires three parameters");
+		return -1;
+	}
+
+    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL) || (i2->Flags & EXPR_F_NULL))
+	{
+		tree->DataType = DATA_T_DOUBLE;
+		tree->Flags |= EXPR_F_NULL;
+		return 0;
+	}
+
+    if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING) || (i2->DataType != DATA_T_INTEGER))
+	{
+		mssError(1,"EXP","fuzzy_compare() requires two string and one integer parameters");
+		return -1;
+	}
+	
+	exp_fn_levenshtein(tree, objlist, i0, i1, i2);
+	//!!! I am not checking for errors here, because IN THEORY we have two strings... if we don't, big uh-oh.
+	int lev_dist = tree->Integer;
+	
+	int length1 = strlen(i0->String);
+	int length2 = strlen(i1->String);
+	int max_len = (length1 > length2) ? length1 : length2;
+	
+	double clamped_dist = ((double) lev_dist) / max_len;
+    
+	tree->DataType = DATA_T_DOUBLE;
+	tree->Types.Double = clamped_dist;
+	return 0;
+}
 
 int
 exp_internal_DefineFunctions()
@@ -3385,7 +3421,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
 	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
 	xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
-
+	xhAdd(&EXP.Functions, "fuzzy_compare", (char*)exp_fn_fuzzy_compare);
 	/** Windowing **/
 	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
 
