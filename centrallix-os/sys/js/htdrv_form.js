@@ -219,9 +219,15 @@ function form_cb_data_available(aparam)
     }
 
 /** Objectsource wants us to dump our data **/
-function form_cb_is_discard_ready()
+function form_cb_is_discard_ready(obj, why)
     {
     if(!this.IsUnsaved)
+	{
+	this.osrc.QueryContinue(this);
+	return false;
+	}
+
+    if (this.IsUnsaved && why == 'refresh' && this.allowmerge)
 	{
 	this.osrc.QueryContinue(this);
 	return false;
@@ -262,7 +268,7 @@ function form_cb_is_discard_ready()
     }
 
 
-function form_load_fields(data, no_clear, modify, onefield)
+function form_load_fields(data, no_clear, modify, onefield, do_merge)
     {
     var name_to_id = [];
 
@@ -318,11 +324,14 @@ function form_load_fields(data, no_clear, modify, onefield)
 	else if ((typeof name_to_id[this.elements[i].fieldname]) != 'undefined' && (typeof data[name_to_id[this.elements[i].fieldname]].value) != 'undefined')
 	    {
 	    var id = name_to_id[this.elements[i].fieldname];
-	    this.elements[i].setvalue(data[id].value);
-	    if (modify)
-		this.elements[i]._form_IsChanged = true;
-	    cx_set_hints(this.elements[i], data[id].hints, 'data');
-	    this.last_hints[this.elements[i].fieldname] = data[id].hints;
+	    if (!do_merge || !this.elements[i]._form_IsChanged)
+		{
+		this.elements[i].setvalue(data[id].value);
+		if (modify)
+		    this.elements[i]._form_IsChanged = true;
+		cx_set_hints(this.elements[i], data[id].hints, 'data');
+		this.last_hints[this.elements[i].fieldname] = data[id].hints;
+		}
 	    }
 	else if (!no_clear)
 	    {
@@ -337,6 +346,7 @@ function form_load_fields(data, no_clear, modify, onefield)
 function form_cb_object_available(data, osrc, why)
     {
     var go_view = false;
+    var do_merge = false;
 
     this.BeginTransaction();
 
@@ -350,7 +360,12 @@ function form_cb_object_available(data, osrc, why)
 	}
     if (data)
 	{
-	if(this.mode!='View')
+	if ((this.mode == 'Modify' || this.mode == 'New') && this.allowmerge && why == 'refresh')
+	    {
+	    go_view = true;
+	    do_merge = true;
+	    }
+	else if (this.mode != 'View')
 	    {
 	    if (this.ChangeMode('View', 'OSRC'))
 		go_view = true;
@@ -381,7 +396,8 @@ function form_cb_object_available(data, osrc, why)
 	{
 	if (data)
 	    {
-	    this.ClearAll(true);
+	    if (!do_merge)
+		this.ClearAll(true);
 	    for(var j in data)
 		{
 		if (!this.ifcProbe(ifValue).Exists(data[j].oid, true))
@@ -396,7 +412,7 @@ function form_cb_object_available(data, osrc, why)
 		this.lastrecid = data.id;
 	    this.recid = data.id;
 
-	    this.LoadFields(this.data);
+	    this.LoadFields(this.data, false, false, null, do_merge);
 
 	    this.SendEvent('DataLoaded', {why: why} );
 	    }
@@ -529,6 +545,8 @@ function form_action_discard(aparam)
 	aparam.FromOSRC = 0;
     if (!aparam.FromKeyboard)
 	aparam.FromKeyboard = 0;
+    this.ifcProbe(ifValue).Changing("form_prev_action", 'Discard', true);
+    this.prevaction = 'Discard';
     switch(this.mode)
 	{
 	case "Modify":
@@ -1219,6 +1237,8 @@ function form_build_dataobj()
 
 function form_action_save_success()
     {
+    this.ifcProbe(ifValue).Changing("form_prev_action", (this.mode=='New')?'Create':'Modify', true);
+    this.prevaction = (this.mode=='New')?'Create':'Modify';
     this.IsUnsaved=false;
     this.is_savable=false;
     this.Pending=false;
@@ -1544,6 +1564,7 @@ function form_init(form,param)
     form.mode = 'NoData';
     form.cobj = null; /* current 'object' (record) */
     form.oldmode = null;
+    form.prevaction = null;
     form.didsearchlast = false;
     form.didsearch = false;
     form.revealed_elements = 0;
@@ -1596,6 +1617,7 @@ function form_init(form,param)
     form.autofocus = param.af;
     form.confirm_delete = param.cd;
     form.confirm_discard = param.cdis;
+    form.allowmerge = param.amrg;
     form.tab_revealed_only = param.tro;
     form.enter_mode = param.em;
 
@@ -1723,6 +1745,7 @@ function form_init(form,param)
     iv.Add("lastrecid","lastrecid");
     iv.Add("form_mode","mode");
     iv.Add("form_prev_mode","oldmode");
+    iv.Add("form_prev_action","prevaction");
     iv.SetNonexistentCallback(form_cb_nonexistent);
 
     if(form.osrc)

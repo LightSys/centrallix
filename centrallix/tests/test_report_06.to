@@ -1,0 +1,2 @@
+##NAME Report with an "out" parameter
+printshow /tests/Datatypes_outparam.rpt?limit=10

@@ -758,7 +758,11 @@ mqjAnalyze(pQueryStatement stmt)
 		    src->DependencyMask,
 		    src->CoverageMask,
 		    src->OuterMask
-		    );*/
+		    );
+		if (src->Constraint)
+		    expDumpExpression(src->Constraint);
+		else
+		    printf("(no constraint)\n");*/
 		}
 
 	    /** Now link in to the query exec tree **/
@@ -1055,6 +1059,8 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 					checksrc->QE->Driver->Finish(checksrc->QE, stmt);
 					if (src->State == MqjStateOuter)
 					    mqj_internal_SetState(md, j, MqjStateOuter);
+					else
+					    mqj_internal_SetState(md, j, MqjStateFinished);
 					}
 				    else if (checksrc->State == MqjStateOuter)
 					{

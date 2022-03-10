@@ -716,7 +716,7 @@ function osrc_go_nogo(go_func, nogo_func, context)
 	{
 	if (this.child[i]._osrc_ready == false)
 	    {
-	    if (this.child[i].IsDiscardReady(this) == true)
+	    if (this.child[i].IsDiscardReady(this, this.doing_refresh?'refresh':'query') == true)
 		this._unsaved_cnt--;
 
 	    // Somebody already did a QueryCancel?
@@ -1038,6 +1038,8 @@ function osrc_refresh_object_handler(aparam)
     sql += " LIMIT 1";
 
     // Now issue the query
+    this.doing_refresh = true;
+    this.refresh_objname = null;
     this.DoRequest("multiquery", "/", 
 	    {
 	    ls__sql:sql,
@@ -1664,7 +1666,8 @@ function osrc_query_timeout()
 function osrc_end_query()
     {
     //this.initiating_client.OperationComplete(); /* don't need this...I think....*/
-    var qid=this.qid
+    var qid=this.qid;
+    var wasrefresh = this.doing_refresh;
     this.qid=null;
     /* return the last record as the current one if it was our target otherwise, don't */
     if (this.LastRecord >= this.FirstRecord && this.replica[this.LastRecord])
@@ -1683,7 +1686,7 @@ function osrc_end_query()
 	{
 	this.DoRequest('queryclose', '/', {ls__qid:qid}, osrc_close_query);
 	}
-    this.ifcProbe(ifEvent).Activate("EndQuery", {FinalRecord:this.FinalRecord, LastRecord:this.LastRecord, FirstRecord:this.FirstRecord, CurrentRecord:this.CurrentRecord, QueryRequestQueue:this.query_request_queue.length, Pending:(this.pending?1:0)});
+    this.ifcProbe(ifEvent).Activate("EndQuery", {FinalRecord:this.FinalRecord, LastRecord:this.LastRecord, FirstRecord:this.FirstRecord, CurrentRecord:this.CurrentRecord, QueryRequestQueue:this.query_request_queue.length, Pending:(this.pending?1:0), Refresh:(wasrefresh?1:0)});
     this.doing_refresh = false;
     this.Dispatch();
 

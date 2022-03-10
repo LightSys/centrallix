@@ -83,6 +83,7 @@ typedef struct
 #define HTTP_PUSAGE_T_URL	1	/* parameter is encoded into the url */
 #define HTTP_PUSAGE_T_POST	2	/* parameter is encoded into the post data */
 #define HTTP_PUSAGE_T_HEADER	3	/* parameter is encoded into an HTTP request header */
+#define HTTP_PUSAGE_T_NONE	4	/* parameter is not sent, but is available for use via :parameters:name */
 
 #define HTTP_PSOURCE_T_NONE	0	/* parameter has no source - only the provided default */
 #define HTTP_PSOURCE_T_PATH	1	/* parameter comes from pathname subpart */
@@ -1317,15 +1318,39 @@ char*
 http_internal_GetConfigString(pHttpData inf, char* configname, char* default_value)
     {
     char* ptr = NULL;
+    pExpression exp;
 
-	//if (stAttrValue(stLookup(inf->Node->Data,(configname)),NULL,&ptr,0) < 0)
-	//if (stGetObjAttrValue(inf->Node->Data, configname, DATA_T_STRING, POD(&ptr)) < 0 || !ptr)
-	if (stGetAttrValueOSML(stLookup(inf->Node->Data, configname), DATA_T_STRING, POD(&ptr), 0, inf->Obj->Session) < 0 || !ptr)
+	/** Normal string or expression? **/
+	if (stGetAttrType(stLookup(inf->Node->Data, configname), 0) == DATA_T_CODE)
+	    {
+	    /** Expression **/
+	    if ((exp = stGetExpression(stLookup(inf->Node->Data, configname), 0)) != NULL)
+		{
+		expBindExpression(exp, inf->ObjList, EXPR_F_RUNSERVER);
+		if (expEvalTree(exp, inf->ObjList) == 0)
+		    {
+		    if (exp->DataType == DATA_T_STRING && !(exp->Flags & EXPR_F_NULL))
+			ptr = exp->String;
+		    }
+		}
+	    }
+	else if (stGetAttrValueOSML(stLookup(inf->Node->Data, configname), DATA_T_STRING, POD(&ptr), 0, inf->Obj->Session) < 0 || !ptr)
+	    {
+	    /** Failed to get string **/
+	    ptr = NULL;
+	    }
+
+	/** Apply default? **/
+	if (!ptr)
 	    ptr = default_value;
-	if (ptr)
-	    ptr = nmSysStrdup(ptr);
+
+	/** Valid? **/
 	if (!ptr)
 	    return NULL;
+
+	/** Copy it **/
+	ptr = nmSysStrdup(ptr);
+
 	if (HTTP_OS_DEBUG) printf("%s: %s\n",configname,ptr);
 
     return ptr;
@@ -1397,15 +1422,17 @@ http_internal_LoadParams(pHttpData inf)
 			    one_new_http_param->Usage = HTTP_PUSAGE_T_POST;
 			else if (!strcmp(val, "header"))
 			    one_new_http_param->Usage = HTTP_PUSAGE_T_HEADER;
+			else if (!strcmp(val, "none"))
+			    one_new_http_param->Usage = HTTP_PUSAGE_T_NONE;
 			else
 			    {
-			    mssError(1, "HTTP", "Parameter %s usage must be 'url', 'post', or 'header'", param_inf->Name);
+			    mssError(1, "HTTP", "Parameter %s usage must be 'url', 'post', 'header', or 'none'", param_inf->Name);
 			    goto error;
 			    }
 			}
 		    else
 			{
-			mssError(1, "HTTP", "Parameter %s usage must be 'url', 'post', or 'header'", param_inf->Name);
+			mssError(1, "HTTP", "Parameter %s usage must be 'url', 'post', 'header', or 'none'", param_inf->Name);
 			goto error;
 			}
 		    }
@@ -1500,7 +1527,7 @@ http_internal_LoadParams(pHttpData inf)
 			mssError(1, "HTTP", "Parameter %s must be string or integer", one_param->Name);
 			goto error;
 			}
-		    paramSetValue(one_param, &tod);
+		    paramSetValue(one_param, &tod, 1, inf->ObjList, inf->Obj->Session);
 		    }
 		}
 	    }
@@ -1522,7 +1549,7 @@ http_internal_LoadParams(pHttpData inf)
 			one_open_ctl = open_ctl->SubInf[j];
 			if (!strcmp(one_open_ctl->Name, one_param->Name))
 			    {
-			    paramSetValueFromInfNe(one_param, one_open_ctl);
+			    paramSetValueFromInfNe(one_param, one_open_ctl, 1, inf->ObjList, inf->Obj->Session);
 			    break;
 			    }
 			}
@@ -1613,6 +1640,10 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	expAddParamToList(inf->ObjList, "parameters", (void*)inf, 0);
 	expSetParamFunctions(inf->ObjList, "parameters", http_internal_GetParamType, http_internal_GetParamValue, http_internal_SetParamValue);
 
+	/** Load parameters **/
+	if (http_internal_LoadParams(inf) < 0)
+	    goto error;
+
 	/** Configuration **/
 	inf->ProxyServer = http_internal_GetConfigString(inf, "proxyserver", "");
 	inf->ProxyPort = http_internal_GetConfigString(inf, "proxyport", "80");
@@ -1688,10 +1719,6 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    mssError(1, "HTTP", "Server name must be provided");
 	    goto error;
 	    }
-
-	/** Load parameters **/
-	if (http_internal_LoadParams(inf) < 0)
-	    goto error;
 
 	/** Adjust SubCnt based on parameter usage **/
 	if (!inf->AllowSubDirs)
@@ -1991,8 +2018,8 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    return 0;
 	    }
 
-	/** If content-type, return as appropriate **/
-	if (!strcmp(attrname,"content_type"))
+	/** If content-type / inner type, return as appropriate **/
+	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
 	    {
 	    if (datatype != DATA_T_STRING)
 		{
@@ -2000,7 +2027,12 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 			attrname, obj_type_names[datatype]);
 		return -1;
 		}
-	    val->String = inf->ContentType;
+
+	    if (inf->ContentType)
+		val->String = inf->ContentType;
+	    else
+		val->String = "application/octet-stream";
+
 	    return 0;
 	    }
 
@@ -2060,18 +2092,6 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		return -1;
 		}
 	    val->String = ptr;
-	    return 0;
-	    }
-
-	if(!strcmp(attrname,"inner_type"))
-	    {
-	    if (datatype != DATA_T_STRING)
-		{
-		mssError(1,"HTTP","Type mismatch getting attribute '%s' [requested=%s, actual=string]",
-			attrname, obj_type_names[datatype]);
-		return -1;
-		}
-	    val->String = inf->ContentType;
 	    return 0;
 	    }
 

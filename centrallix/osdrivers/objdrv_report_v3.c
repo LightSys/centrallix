@@ -26,6 +26,7 @@
 #include "cxlib/util.h"
 #include "cxss/cxss.h"
 #include "obfuscate.h"
+#include "param.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -86,6 +87,21 @@ typedef struct
     RptUserData, *pRptUserData;
 
 
+/*** Structure for representing a report parameter. ***/
+typedef struct
+    {
+    pParam	Param;			/* parameter config and data, from .rpt file */
+    int		Flags;			/* RPT_PARAM_F_xxx */
+    XArray	ValueObjs;		/* List of objects referenced in the Default value */
+    XArray	ValueAttrs;		/* List of attributes referenced in the Default value */
+    }
+    RptParam, *pRptParam;
+
+#define	RPT_PARAM_F_IN	    1		/* input param */
+#define RPT_PARAM_F_OUT	    2		/* output param - can be both in/out, flags=3 */
+#define RPT_PARAM_F_DEFAULT 4		/* value is from the parameter's default expression */
+
+
 /*** Structure used by this driver internally. ***/
 typedef struct 
     {
@@ -103,7 +119,6 @@ typedef struct
     pFile	MasterFD;
     pFile	SlaveFD;
     int		AttrID;
-    pStructInf	AttrOverride;
     StringVec	SVvalue;
     IntVec	IVvalue;
     void*	VecData;
@@ -117,6 +132,7 @@ typedef struct
     int		NextUserDataSlot;
     int		NameIndex;
     pObfSession	ObfuscationSess;
+    XArray	Params;
     }
     RptData, *pRptData;
 
@@ -157,16 +173,26 @@ typedef struct
     pObjQuery	Query;
     pObject	QueryItem;
     pParamObjects ObjList;
-    XArray	AggregateExpList;
-    XArray	AggregateWhereList;
-    XArray	AggregateDoReset;
+    XArray	Aggregates; /* of pRptSourceAgg */
     int		RecordCnt;
     int		InnerExecCnt;
     int		IsInnerOuter;
     char*	DataBuf;
     pRptData	Inf;
     }
-    QueryConn, *pQueryConn;
+    RptSource, *pRptSource;
+
+
+/*** Structure for query aggregate ***/
+typedef struct
+    {
+    char*	Name;
+    pRptSource	Query;
+    pExpression	Value;
+    pExpression	Where;
+    int		DoReset;
+    }
+    RptSourceAgg, *pRptSourceAgg;
 
 
 /*** Structure used for source activation within table/form ***/
@@ -176,7 +202,7 @@ typedef struct
     int		StackPtr;
     int		InnerMode[EXPR_MAX_PARAMS];
     int		OuterMode[EXPR_MAX_PARAMS];
-    pQueryConn	Queries[EXPR_MAX_PARAMS];
+    pRptSource	Queries[EXPR_MAX_PARAMS];
     int		Flags[EXPR_MAX_PARAMS];
     char*	Names[EXPR_MAX_PARAMS];
     int		MultiMode;
@@ -205,15 +231,15 @@ static char* attrnames[RPT_NUM_ATTR] = {"bold","expanded","compressed","center",
 #define RPT_FP_FUDGE	(0.00001)
 
 
+/*** Some needed forward function declarations **/
 int rpt_internal_DoTable(pRptData, pStructInf, pRptSession, int container_handle);
 int rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int numcols, int table_handle, double colsep);
 int rpt_internal_DoSection(pRptData, pStructInf, pRptSession, int container_handle);
-int rpt_internal_DoField(pRptData, pStructInf, pRptSession, pQueryConn);
-int rpt_internal_DoComment(pRptData, pStructInf, pRptSession);
 int rpt_internal_DoData(pRptData, pStructInf, pRptSession, int container_handle);
 int rpt_internal_DoForm(pRptData, pStructInf, pRptSession, int container_handle);
 int rpt_internal_WriteExpResult(pRptSession rs, pExpression exp, int container_handle, char* attrname, char* typename);
 int rpt_internal_SetMargins(pStructInf config, int prt_obj, double dt, double db, double dl, double dr);
+int rpt_internal_QyGetAttrType(void* qyobj, char* attrname);
 
 
 /*** rpt_internal_GetNULLstr - get the string to be substituted in place of
@@ -228,37 +254,187 @@ rpt_internal_GetNULLstr()
     }
 
 
-/*** rpt_internal_GetParam - retrieves a parameter value from either the
- *** structure file or from the parameter override structure.
+/*** rpt_internal_FreeParam - release a report parameter.
  ***/
-pStructInf
+int
+rpt_internal_FreeParam(pRptParam rptparam)
+    {
+
+	if (rptparam->Param)
+	    paramFree(rptparam->Param);
+	xaClear(&rptparam->ValueObjs, (void*)nmSysFree, NULL);
+	xaDeInit(&rptparam->ValueObjs);
+	xaClear(&rptparam->ValueAttrs, (void*)nmSysFree, NULL);
+	xaDeInit(&rptparam->ValueAttrs);
+	nmFree(rptparam, sizeof(RptParam));
+
+    return 0;
+    }
+
+
+/*** rpt_internal_GetParam - retrieves a parameter.
+ ***/
+pRptParam
 rpt_internal_GetParam(pRptData inf, char* paramname)
     {
-    pStructInf find_inf;
-    pStructInf attr_inf;
+    int i;
+    pRptParam rptparam;
 
-    	/** Look for it in the param override structure first **/
-	find_inf = stLookup(inf->AttrOverride, paramname);
-	
-	/** If not found, look in the structure file **/
-	if (!find_inf)
+	/** Scan for this param **/
+	for(i=0; i<inf->Params.nItems; i++)
 	    {
-	    if (inf->Version == 1)
-	        {
-		/** Version 1: top-level attr **/
-	        find_inf = stLookup(inf->Node->Data, paramname);
-	        }
-	    else
-	        {
-		/** Version 2: system/parameter, default attr **/
-		find_inf = stLookup(inf->Node->Data, paramname);
-		if (!find_inf) return NULL;
-		attr_inf = stLookup(find_inf,"default");
-		if (attr_inf) find_inf = attr_inf;
+	    rptparam = (pRptParam)inf->Params.Items[i];
+	    if (!strcmp(paramname, rptparam->Param->Name))
+		return rptparam;
+	    }
+
+    return NULL;
+    }
+
+
+/*** rpt_internal_EvalParam - evaluate a parameter's value by applying
+ *** presentation hints (default).
+ ***/
+int
+rpt_internal_EvalParam(pRptParam rptparam, pParamObjects objlist, pObjSession sess)
+    {
+    int use_default;
+    int rval = 0;
+    pRptSource src;
+    int i;
+    unsigned int active_mask = 0;
+
+	/** Was this param null or otherwise a default value **/
+	use_default = ((rptparam->Flags & RPT_PARAM_F_DEFAULT) || (rptparam->Param->Value->Flags & DATA_TF_NULL)) && rptparam->Param->Hints && rptparam->Param->Hints->DefaultExpr;
+
+	/** Re-evaluate hints **/
+	if (use_default)
+	    {
+	    /** Determine active sources mask **/
+	    for(i=0; i<objlist->nObjects; i++)
+		{
+		if (objlist->GetTypeFn[i] == rpt_internal_QyGetAttrType)
+		    {
+		    src = (pRptSource)objlist->Objects[i];
+
+		    /** Source exists and is active? **/
+		    if (src && src->Query != NULL)
+			active_mask |= (1<<i);
+		    }
+		else if (!(rptparam->Flags & RPT_PARAM_F_DEFAULT))
+		    {
+		    /** First time being evaluated? If so, non-rpt sources are "active" **/
+		    active_mask |= (1<<i);
+		    }
+		}
+
+	    /** Only re-evaluate if there are active sources **/
+	    if ((EXPR(rptparam->Param->Hints->DefaultExpr)->ObjCoverageMask & active_mask) || (EXPR(rptparam->Param->Hints->DefaultExpr)->ObjCoverageMask & EXPR_MASK_ALLOBJECTS) == 0)
+		{
+		/** Re-evaluate **/
+		rptparam->Param->Value->Flags |= DATA_TF_NULL;
+		rval = paramEvalHints(rptparam->Param, objlist, sess);
 		}
 	    }
 
-    return find_inf;
+	/** Re-set was-default flag if needed. **/
+	rptparam->Flags &= ~RPT_PARAM_F_DEFAULT;
+	if (use_default)
+	    rptparam->Flags |= RPT_PARAM_F_DEFAULT;
+
+    return rval;
+    }
+
+
+/*** rpt_internal_GetParamType - gets the value of a parameter
+ ***/
+int
+rpt_internal_GetParamType(pRptData inf, char* paramname, pParamObjects objlist, pObjSession sess)
+    {
+    pRptParam rptparam;
+
+	rptparam = rpt_internal_GetParam(inf, paramname);
+	if (!rptparam)
+	    return -1;
+
+	/** Evalute **/
+	rpt_internal_EvalParam(rptparam, objlist, sess);
+
+    return paramGetType(rptparam->Param);
+    }
+
+
+/*** rpt_internal_GetParamValue - gets the value of a parameter
+ ***/
+int
+rpt_internal_GetParamValue(pRptData inf, char* paramname, int datatype, pObjData value, pParamObjects objlist, pObjSession sess)
+    {
+    pRptParam rptparam;
+
+	rptparam = rpt_internal_GetParam(inf, paramname);
+	if (!rptparam)
+	    return -1;
+
+	/** Evalute **/
+	rpt_internal_EvalParam(rptparam, objlist, sess);
+
+    return paramGetValue(rptparam->Param, datatype, value);
+    }
+
+
+/*** rpt_internal_SetParamValue - set the value of a parameter
+ ***/
+int
+rpt_internal_SetParamValue(pRptParam rptparam, int datatype, pObjData value, pParamObjects objlist, pObjSession sess)
+    {
+    int rval;
+
+	rval = paramSetValueDirect(rptparam->Param, datatype, value, 0, objlist, sess);
+
+	/** If successful, we no longer invoke the default **/
+	if (rval >= 0)
+	    {
+	    rptparam->Flags &= ~RPT_PARAM_F_DEFAULT;
+	    }
+
+    return rval;
+    }
+
+
+/*** rpt_internal_CheckParamUpdate - scan the list of parameters for
+ *** params that are still in default mode, and which reference the
+ *** indicated object.  Update the default values on all of those
+ *** parameters.  Attribute name will also be matched unless null.
+ ***/
+int
+rpt_internal_CheckParamUpdate(pRptData inf, char* objname, char* attrname)
+    {
+    int i, j;
+    pRptParam rptparam;
+    char* param_objname;
+    char* param_attrname;
+
+	/** Scan through parameters **/
+	for(i=0; i<inf->Params.nItems; i++)
+	    {
+	    rptparam = (pRptParam)inf->Params.Items[i];
+
+	    /** See if this is a match based on object/attr names **/
+	    for(j=0; j<rptparam->ValueObjs.nItems; j++)
+		{
+		param_objname = (char*)rptparam->ValueObjs.Items[j];
+		param_attrname = (char*)rptparam->ValueAttrs.Items[j];
+
+		/** Re-evaluate default if names match **/
+		if (!strcmp(objname, param_objname) && (!attrname || !strcmp(attrname, param_attrname)))
+		    {
+		    rpt_internal_EvalParam(rptparam, inf->ObjList, inf->ObjList->Session);
+		    break;
+		    }
+		}
+	    }
+
+    return 0;
     }
 
 
@@ -273,14 +449,12 @@ rpt_internal_SubstParam(pRptData inf, char* src)
     char* ptr2;
     char paramname[64];
     int n;
-    pStructInf param_inf;
+    pRptParam rptparam;
     char* sptr;
-    int t;
 
     	/** Allocate our string. **/
-	dest = (pXString)nmMalloc(sizeof(XString));
+	dest = xsNew();
 	if (!dest) return NULL;
-	xsInit(dest);
 
 	/** Look for the param subst & sign... **/
 	while((ptr = strchr(src,'&')))
@@ -308,25 +482,25 @@ rpt_internal_SubstParam(pRptData inf, char* src)
 		}
 
 	    /** Ok, got the paramname.  Now look it up. **/
-	    param_inf = rpt_internal_GetParam(inf, paramname);
-	    if (!param_inf)
+	    rptparam = rpt_internal_GetParam(inf, paramname);
+	    if (!rptparam)
 	        {
 		xsConcatenate(dest, "&", 1);
 		src = ptr+1;
 		continue;
 		}
 
-	    /** If string, copy it.  If number, sprintf it then copy it. **/
-	    t = stGetAttrType(param_inf, 0);
-	    if (t == DATA_T_STRING)
+	    /** Convert value to a string. **/
+	    sptr = ptodToStringTmp(rptparam->Param->Value);
+	    if (sptr)
 		{
-		stGetAttrValue(param_inf, DATA_T_STRING, POD(&sptr), 0);
 		xsConcatenate(dest, sptr, -1);
 		}
-	    else if (t == DATA_T_INTEGER)
+	    else
 		{
-		stGetAttrValue(param_inf, DATA_T_INTEGER, POD(&n), 0);
-		xsConcatPrintf(dest, "%d", n);
+		xsConcatenate(dest, "&", 1);
+		src = ptr+1;
+		continue;
 		}
 	
 	    /** Ok, skip over the paramname so we don't copy it... **/
@@ -519,36 +693,36 @@ rpt_internal_CheckFont(pRptSession rs, pStructInf object, char** saved_font)
  *** the query, and calculates the current row into the aggregate functions.
  ***/
 int
-rpt_internal_ProcessAggregates(pQueryConn qy)
+rpt_internal_ProcessAggregates(pRptSource qy)
     {
     int i;
-    pExpression a_exp, wh_exp;
+    pRptSourceAgg aggregate;
 
     	/** Search through sub-objects of the report/query element **/
-	for(i=0;i<qy->AggregateExpList.nItems;i++)
+	for(i=0;i<qy->Aggregates.nItems;i++)
 	    {
-	    wh_exp = (pExpression)(qy->AggregateWhereList.Items[i]);
-	    a_exp = (pExpression)(qy->AggregateExpList.Items[i]);
-	    if (wh_exp)
+	    aggregate = (pRptSourceAgg)qy->Aggregates.Items[i];
+	    if (aggregate->Where)
 	        {
 	        expModifyParam(qy->ObjList, "this", (void*)qy);
-		if (expEvalTree(wh_exp, qy->ObjList) < 0)
+		if (expEvalTree(aggregate->Where, qy->ObjList) < 0)
 		    {
 		    mssError(0,"RPT","Error evaluating where= in aggregate");
 		    return -1;
 		    }
-		if ((wh_exp->Flags & EXPR_F_NULL) || wh_exp->DataType != DATA_T_INTEGER || wh_exp->Integer == 0)
+		if ((aggregate->Where->Flags & EXPR_F_NULL) || aggregate->Where->DataType != DATA_T_INTEGER || aggregate->Where->Integer == 0)
 		    {
 		    continue;
 		    }
 		}
 	    expModifyParam(qy->ObjList, "this", (void*)qy);
-	    expUnlockAggregates(a_exp,1);
-	    if (expEvalTree(a_exp, qy->ObjList) < 0)
+	    expUnlockAggregates(aggregate->Value, 1);
+	    if (expEvalTree(aggregate->Value, qy->ObjList) < 0)
 	        {
 		mssError(0,"RPT","Error evaluating compute= in aggregate");
 		return -1;
 		}
+	    rpt_internal_CheckParamUpdate(qy->Inf, qy->Name, aggregate->Name);
 	    }
 
     return 0;
@@ -562,26 +736,26 @@ rpt_internal_ProcessAggregates(pQueryConn qy)
 int
 rpt_internal_QyGetAttrType(void* qyobj, char* attrname)
     {
-    pObject obj = ((pQueryConn)qyobj)->QueryItem;
-    pQueryConn qy = (pQueryConn)qyobj;
-    int n,i;
-    pExpression exp;
-    pStructInf subitem;
+    pObject obj;
+    pRptSource qy;
+    int i;
+    pRptSourceAgg aggregate;
+
+	/** Query freed? **/
+	if (!qyobj)
+	    return -1;
+
+	qy = (pRptSource)qyobj;
+	obj = qy->QueryItem;
 
     	/** Search for aggregates first. **/
-	n = 0;
-	for(i=0;i<qy->UserInf->nSubInf;i++)
+	for(i=0;i<qy->Aggregates.nItems;i++)
 	    {
-	    subitem = qy->UserInf->SubInf[i];
-	    if (stStructType(subitem) == ST_T_SUBGROUP && !strcmp(subitem->UsrType,"report/aggregate"))
-	        {
-	    	if (!strcmp(subitem->Name, attrname))
-	            {
-		    exp = (pExpression)(qy->AggregateExpList.Items[n]);
-		    return exp->DataType;
-		    }
-	   	n++;
-	    	}
+	    aggregate = (pRptSourceAgg)qy->Aggregates.Items[i];
+	    if (!strcmp(aggregate->Name, attrname))
+		{
+		return aggregate->Value->DataType;
+		}
 	    }
 
 	/** Determine whether query is active? **/
@@ -601,79 +775,86 @@ rpt_internal_QyGetAttrType(void* qyobj, char* attrname)
 int
 rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData data_ptr)
     {
-    pObject obj = ((pQueryConn)qyobj)->QueryItem;
-    pQueryConn qy = (pQueryConn)qyobj;
-    int n,i,was_null;
+    pObject obj;
+    pRptSource qy;
+    int i, was_null;
     pExpression exp;
-    pStructInf subitem;
     int rval;
     void* data_buf = NULL;
+    pRptSourceAgg aggregate;
+
+	/** Query freed? **/
+	if (!qyobj)
+	    return -1;
+
+	qy = (pRptSource)qyobj;
+	obj = qy->QueryItem;
 
     	/** Search for aggregates first. **/
-	n = 0;
-	for(i=0;i<qy->UserInf->nSubInf;i++)
+	for(i=0;i<qy->Aggregates.nItems;i++)
 	    {
-	    subitem = qy->UserInf->SubInf[i];
-	    if (stStructType(subitem) == ST_T_SUBGROUP && !strcmp(subitem->UsrType,"report/aggregate"))
-	        {
-	    	if (!strcmp(subitem->Name, attrname))
-	            {
-		    exp = (pExpression)(qy->AggregateExpList.Items[n]);
-		    was_null = ((exp->Flags & EXPR_F_NULL) != 0);
-		    if (datatype != exp->DataType && !was_null)
-			{
-			mssError(1,"RPT","Type mismatch accessing query property '%s' [requested=%s, actual=%s]",
-				attrname, datatype, exp->DataType);
-			return -1;
-			}
-		    if (!was_null)
-			{
-			switch(exp->DataType)
-			    {
-			    case DATA_T_INTEGER:
-				data_ptr->Integer = exp->Integer;
-				break;
-			    case DATA_T_DOUBLE:
-				data_ptr->Double = exp->Types.Double;
-				break;
-			    case DATA_T_STRING: 
-				data_buf = (char*)nmSysMalloc(strlen(exp->String)+1);
-				data_ptr->String = data_buf;
-				strcpy(data_buf, exp->String);
-				break;
-			    case DATA_T_MONEY: 
-				data_buf = (char*)nmSysMalloc(sizeof(MoneyType));
-				memcpy(data_buf, &(exp->Types.Money), sizeof(MoneyType));
-				data_ptr->Money = (pMoneyType)(data_buf);
-				break;
-			    case DATA_T_DATETIME: 
-				data_buf = (char*)nmSysMalloc(sizeof(DateTime));
-				memcpy(data_buf, &(exp->Types.Date), sizeof(DateTime));
-				data_ptr->DateTime = (pDateTime)(data_buf);
-				break;
-			    default: return -1;
-			    }
-			}
-		    if (qy->AggregateDoReset.Items[n])
-		        {
-		        expResetAggregates(exp, -1,1);
-		        expEvalTree(exp,qy->ObjList);
-			}
+	    aggregate = (pRptSourceAgg)qy->Aggregates.Items[i];
 
-		    /** Free existing query conn data buf? **/
-		    if (qy->DataBuf)
-			{
-			nmSysFree(qy->DataBuf);
-			qy->DataBuf = NULL;
-			}
+	    if (!strcmp(aggregate->Name, attrname))
+		{
+		exp = aggregate->Value;
+		was_null = ((exp->Flags & EXPR_F_NULL) != 0);
 
-		    /** Return our new data buffer for string/money/datetime **/
-		    qy->DataBuf = data_buf;
-
-		    return was_null;
+		if (datatype != exp->DataType && !was_null)
+		    {
+		    mssError(1,"RPT","Type mismatch accessing query property '%s' [requested=%s, actual=%s]",
+			    attrname, datatype, exp->DataType);
+		    return -1;
 		    }
-	   	n++;
-	    	}
+
+		if (!was_null)
+		    {
+		    switch(exp->DataType)
+			{
+			case DATA_T_INTEGER:
+			    data_ptr->Integer = exp->Integer;
+			    break;
+			case DATA_T_DOUBLE:
+			    data_ptr->Double = exp->Types.Double;
+			    break;
+			case DATA_T_STRING: 
+			    data_buf = (char*)nmSysMalloc(strlen(exp->String)+1);
+			    data_ptr->String = data_buf;
+			    strcpy(data_buf, exp->String);
+			    break;
+			case DATA_T_MONEY: 
+			    data_buf = (char*)nmSysMalloc(sizeof(MoneyType));
+			    memcpy(data_buf, &(exp->Types.Money), sizeof(MoneyType));
+			    data_ptr->Money = (pMoneyType)(data_buf);
+			    break;
+			case DATA_T_DATETIME: 
+			    data_buf = (char*)nmSysMalloc(sizeof(DateTime));
+			    memcpy(data_buf, &(exp->Types.Date), sizeof(DateTime));
+			    data_ptr->DateTime = (pDateTime)(data_buf);
+			    break;
+			default: return -1;
+			}
+		    }
+
+		/** Reset it after being read **/
+		if (aggregate->DoReset)
+		    {
+		    expResetAggregates(exp, -1, 1);
+		    expEvalTree(exp, qy->ObjList);
+		    }
+
+		/** Free existing query conn data buf? **/
+		if (qy->DataBuf)
+		    {
+		    nmSysFree(qy->DataBuf);
+		    qy->DataBuf = NULL;
+		    }
+
+		/** Return our new data buffer for string/money/datetime **/
+		qy->DataBuf = data_buf;
+
+		return was_null;
+		}
 	    }
 
 	/** Determine whether query is active? **/
@@ -747,17 +928,17 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
  *** connection structure extracted from the hash table 'queryinf', with that
  *** structure set up with an open ObjectSystem query in ->Query.
  ***/
-pQueryConn
+pRptSource
 rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int index)
     {
-    pQueryConn qy;
+    pRptSource qy;
     /*char* newsql;*/
     int i,cnt,v;
     char* ptr;
     char* src=NULL;
     char* sql;
     XArray links;
-    pQueryConn lqy;
+    pRptSource lqy;
     pStructInf ui;
     char* lvalue;
     char* cname;
@@ -781,7 +962,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
             mssError(1,"RPT","Source required for table/form '%s'", object->Name);
 	    return NULL;
 	    }
-	qy = (pQueryConn)xhLookup(rs->Queries, src);
+	qy = (pRptSource)xhLookup(rs->Queries, src);
 	if (!qy)
 	    {
             mssError(1,"RPT","Source '%s' given for table/form '%s' is undefined", src, object->Name);
@@ -861,8 +1042,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 		if (i >= 32)
 		    {
 		    mssError(1,"RPT","Too many links in query '%s' (max 32)",src);
-		    xsDeInit(sql_str);
-		    nmFree(sql_str, sizeof(XString));
+		    xsFree(sql_str);
 	    	    return NULL;
 		    }
 		ptr=NULL;
@@ -870,40 +1050,35 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 		if (!ptr)
 		    {
             	    mssError(1,"RPT","Table/Form source query linkage type mismatch in query '%s'", src);
-		    xsDeInit(sql_str);
-		    nmFree(sql_str, sizeof(XString));
+		    xsFree(sql_str);
 	    	    return NULL;
 		    }
-		lqy=(pQueryConn)xhLookup(rs->Queries,ptr);
+		lqy=(pRptSource)xhLookup(rs->Queries,ptr);
 		if (!lqy)
 		    {
 		    mssError(1,"RPT","Undefined linkage in table/form source query '%s' (%s)",src, ptr);
-		    xsDeInit(sql_str);
-		    nmFree(sql_str, sizeof(XString));
+		    xsFree(sql_str);
 		    return NULL;
 		    }
 		stAttrValue(ui,NULL,&cname,1);
 		if (!cname)
 		    {
 		    mssError(1,"RPT","Column name in table/form source query '%s' linkage '%s' is undefined", src, ptr);
-		    xsDeInit(sql_str);
-		    nmFree(sql_str, sizeof(XString));
+		    xsFree(sql_str);
 		    return NULL;
 		    }
 		lvalue=NULL;
 		if (!lqy->QueryItem)
 		    {
 		    mssError(1,"RPT","Table/Form source query '%s' linkage '%s' not active", src,ptr);
-		    xsDeInit(sql_str);
-		    nmFree(sql_str, sizeof(XString));
+		    xsFree(sql_str);
 		    return NULL;
 		    }
 		t = objGetAttrType(lqy->QueryItem, cname);
 		if (t < 0)
 		    {
 		    mssError(1,"RPT","Unknown column '%s' in table/form source query '%s' linkage '%s'", cname, src, ptr);
-		    xsDeInit(sql_str);
-		    nmFree(sql_str, sizeof(XString));
+		    xsFree(sql_str);
 		    return NULL;
 		    }
 		switch(t)
@@ -958,8 +1133,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 	    }
 
 	/** Now that we've got the linkages & values, put the sql together. **/
-	newsql = (pXString)nmMalloc(sizeof(XString));
-	xsInit(newsql);
+	newsql = xsNew();
 	cnt=0;
 	while(*sql)
 	    {
@@ -971,8 +1145,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 		    {
 		    mssError(1,"RPT","Parameter error in table/form '%s' source '%s' sql", object->Name, src);
 		    nmSysFree(newsql);
-		    xsDeInit(sql_str);
-		    nmFree(sql_str, sizeof(XString));
+		    xsFree(sql_str);
 		    return NULL;
 		    }
 		xsConcatenate(newsql, links.Items[v-1], -1);
@@ -988,15 +1161,11 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 	        sql++;
 		}
 	    }
-	/*newsql[cnt] = 0;*/
-	xsDeInit(sql_str);
-	nmFree(sql_str, sizeof(XString));
+	xsFree(sql_str);
 
 	/** Ok, now issue the query. **/
 	qy->Query = objMultiQuery(rs->ObjSess, newsql->String, inf->ObjList, 0);
-        /*nmSysFree(newsql);*/
-	xsDeInit(newsql);
-	nmFree(newsql,sizeof(XString));
+	xsFree(newsql);
 	if (!qy->Query) 
 	    {
 	    mssError(0,"RPT","Could not open report/query '%s' SQL for form/table '%s'", src, object->Name);
@@ -1315,17 +1484,22 @@ rpt_internal_UseRecord(pRptActiveQueries this)
     int i;
     int err = 0;
 
-    	/** Run an update aggregates on those that are flagged as need update **/
+	/** Find queries that have updated data **/
 	for(i=0;i<this->Count;i++)
 	    {
 	    if (this->Flags[i] & RPT_A_F_NEEDUPDATE)
 	        {
 		this->Flags[i] &= ~RPT_A_F_NEEDUPDATE;
+
+		/** Update aggregates **/
 	        if (rpt_internal_ProcessAggregates(this->Queries[i]) < 0)
 		    {
 		    err = 1;
 		    break;
 		    }
+
+		/** Update any parameters depending on this data **/
+		rpt_internal_CheckParamUpdate(this->Queries[i]->Inf, this->Queries[i]->Name, NULL);
 		}
 	    }
 
@@ -2134,8 +2308,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 
 
 /*** rpt_internal_WriteExpResult - writes the result of an expression to the
- *** output.  Used by DoData, but also by DoField when printing an aggregate
- *** value.
+ *** output.  Used by DoData.
  ***/
 int
 rpt_internal_WriteExpResult(pRptSession rs, pExpression exp, int container_handle, char* attrname, char* typename)
@@ -2145,8 +2318,7 @@ rpt_internal_WriteExpResult(pRptSession rs, pExpression exp, int container_handl
     pRptData inf = (pRptData)rs->Inf;
 
 	/** Check the evaluated result value and output it in the report. **/
-	str_data = (pXString)nmMalloc(sizeof(XString));
-	xsInit(str_data);
+	str_data = xsNew();
 	xsCopy(str_data,"",-1);
 	if (!(exp->Flags & EXPR_F_NULL))
 	    {
@@ -2189,8 +2361,7 @@ rpt_internal_WriteExpResult(pRptSession rs, pExpression exp, int container_handl
 	    xsCopy(str_data,rpt_internal_GetNULLstr(),-1);
 	    }
 	prtWriteString(container_handle, str_data->String);
-	xsDeInit(str_data);
-	nmFree(str_data, sizeof(XString));
+	xsFree(str_data);
 
     return 0;
     }
@@ -2205,8 +2376,7 @@ rpt_internal_WritePOD(pRptSession rs, int t, pObjData pod, int container_handle)
     pXString str_data;
 
 	/** Init our output data xstring **/
-	str_data = (pXString)nmMalloc(sizeof(XString));
-	xsInit(str_data);
+	str_data = xsNew();
 	xsCopy(str_data,"",-1);
 	if (pod)
 	    {
@@ -2232,8 +2402,7 @@ rpt_internal_WritePOD(pRptSession rs, int t, pObjData pod, int container_handle)
 	    xsCopy(str_data,rpt_internal_GetNULLstr(),-1);
 	    }
 	prtWriteString(container_handle, str_data->String);
-	xsDeInit(str_data);
-	nmFree(str_data, sizeof(XString));
+	xsFree(str_data);
 
     return 0;
     }
@@ -2341,243 +2510,6 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	return -1;
     }
 
-#if 00
-
-/*** rpt_internal_DoComment - outputs a comment to the printer driver
- *** specified in the req structure.
- ***/
-int
-rpt_internal_DoComment(pRptData inf, pStructInf comment, pRptSession rs)
-    {
-    int attr=0,oldattr=0;
-    char* ptr=NULL;
-    int nl=1;
-    pXString text_str;
-    char oldmfmt[32],olddfmt[32],oldnfmt[32];
-    char* saved_font = NULL;
-
-	/** Get style information **/
-	attr = rpt_internal_GetStyle(comment);
-	rpt_internal_CheckFormats(comment, oldmfmt, olddfmt, oldnfmt, 0);
-	rpt_internal_CheckGoto(rs,comment);
-	rpt_internal_CheckFont(rs,comment,&saved_font);
-
-	/** Need to disable auto-newline? **/
-	ptr=NULL;
-	if (stAttrValue(stLookup(comment,"autonewline"),NULL,&ptr,0) >=0)
-	    {
-	    if (ptr && !strcmp(ptr,"no")) nl=0;
-	    }
-
-	/** Find the comment text **/
-	ptr=NULL;
-	stAttrValue(stLookup(comment,"text"),NULL,&ptr,0);
-	if (ptr)
-	    {
-	    text_str = rpt_internal_SubstParam(inf, ptr);
-	    ptr = text_str->String;
-	    if (attr >= 0)
-		{
-	        oldattr = prtGetAttr(rs->PSession);
-	        prtSetAttr(rs->PSession,attr);
-		}
-	    prtWriteString(rs->PSession,ptr,-1);
-	    if (nl) prtWriteNL(rs->PSession);
-	    if (attr >= 0) prtSetAttr(rs->PSession,oldattr);
-	    xsDeInit(text_str);
-	    nmFree(text_str,sizeof(XString));
-	    }
-	rpt_internal_CheckFont(rs,comment,&saved_font);
-	rpt_internal_CheckFormats(comment, oldmfmt, olddfmt, oldnfmt, 1);
-
-    return 0;
-    }
-
-
-
-/*** rpt_internal_DoField - insert a data-driven piece of text into the
- *** form, with a given style.
- ***/
-int
-rpt_internal_DoField(pRptData inf, pStructInf field, pRptSession rs, pQueryConn this_qy)
-    {
-    int style,oldstyle=0;
-    char* src;
-    char* tsrc;
-    int nl=1;
-    pQueryConn qy;
-    char* txt;
-    char* ptr;
-    int t,n,i;
-    char nbuf[16];
-    pStructInf subitem;
-    void* p;
-    double dbl;
-    char oldmfmt[32],olddfmt[32],oldnfmt[32];
-    char* saved_font = NULL;
-    pExpression exp;
-
-	/** Get style information **/
-	style = rpt_internal_GetStyle(field);
-	rpt_internal_CheckFormats(field, oldmfmt, olddfmt, oldnfmt, 0);
-	rpt_internal_CheckGoto(rs,field);
-	rpt_internal_CheckFont(rs,field,&saved_font);
-
-	/** Need to disable auto-newline? **/
-	ptr=NULL;
-	if (stAttrValue(stLookup(field,"autonewline"),NULL,&ptr,0) >=0)
-	    {
-	    if (ptr && !strcmp(ptr,"no")) nl=0;
-	    }
-
-	/** Set the style for the printer, if specified **/
-	if (style >= 0)
-	    {
-	    oldstyle = prtGetAttr(rs->PSession);
-	    prtSetAttr(rs->PSession, style);
-	    }
-
-	/** Get the source field.  This may also include source query. **/
-	tsrc=NULL;
-	stAttrValue(stLookup(field,"source"),NULL,&tsrc,0);
-	if (!tsrc)
-	    {
-	    mssError(1,"RPT","Invalid source for form field '%s' element", field->Name);
-	    rpt_internal_CheckFormats(field, oldmfmt, olddfmt, oldnfmt, 1);
-	    rpt_internal_CheckFont(rs,field,&saved_font);
-	    return -1;
-	    }
-	src=NULL;
-	stAttrValue(stLookup(field,"source"),NULL,&src,1);
-	if (!src)
-	    {
-	    src=tsrc;
-	    tsrc=NULL;
-	    }
-
-	/** If user specified source qy, look it up.  Otherwise use current one **/
-	if (tsrc)
-	    {
-	    /** Query source exists? **/
-	    qy = (pQueryConn)xhLookup(rs->Queries, tsrc);
-	    if (!qy)
-	        {
-                mssError(1,"RPT","Query source '%s' given for form field '%s' is undefined", tsrc, field->Name);
-	        rpt_internal_CheckFormats(field, oldmfmt, olddfmt, oldnfmt, 1);
-	        rpt_internal_CheckFont(rs,field,&saved_font);
-	        return -1;
-	        }
-
-	    /** If user is asking for an aggregate value, look for that **/
-	    n = 0;
-	    for(i=0;i<qy->UserInf->nSubInf;i++)
-	        {
-		subitem = qy->UserInf->SubInf[i];
-		if (stStructType(subitem) == ST_T_SUBGROUP && !strcmp(subitem->UsrType,"report/aggregate"))
-		    {
-		    if (!strcmp(subitem->Name, src))
-		        {
-		        exp = (pExpression)(qy->AggregateExpList.Items[n]);
-	    	        rpt_internal_WriteExpResult(rs, exp);
-		        expResetAggregates(exp, -1,1);
-			expEvalTree(exp,qy->ObjList);
-	                rpt_internal_CheckFormats(field, oldmfmt, olddfmt, oldnfmt, 1);
-	                rpt_internal_CheckFont(rs,field,&saved_font);
-		        if (style >= 0) prtSetAttr(rs->PSession, oldstyle);
-		        if (nl) prtWriteNL(rs->PSession);
-		        return 0;
-		        }
-		    n++;
-		    }
-		}
-	
-	    /** Otherwise, query must be active. **/
-	    if (qy->QueryItem == NULL)
-		{
-                mssError(1,"RPT","Query source '%s' given for form field '%s' is inactive", tsrc, field->Name);
-	        rpt_internal_CheckFormats(field, oldmfmt, olddfmt, oldnfmt, 1);
-	        rpt_internal_CheckFont(rs,field,&saved_font);
-	        return -1;
-		}
-	    }
-	else
-	    {
-	    if (this_qy == NULL)
-	        {
-		mssError(1,"RPT","Must specify query source for data field '%s'", field->Name);
-	        rpt_internal_CheckFormats(field, oldmfmt, olddfmt, oldnfmt, 1);
-	        rpt_internal_CheckFont(rs,field,&saved_font);
-		return -1;
-		}
-	    qy = this_qy;
-	    }
-
-	/** Lookup the field and get the value **/
-	txt=NULL;
-	t = objGetAttrType(qy->QueryItem, src);
-	if (t < 0)
-	    {
-            mssError(1,"RPT","Field source '%s' given for form field '%s' does not exist", src, field->Name);
-	    rpt_internal_CheckFormats(field, oldmfmt, olddfmt, oldnfmt, 1);
-	    rpt_internal_CheckFont(rs,field,&saved_font);
-	    return -1;
-	    }
-	switch(t)
-	    {
-	    case DATA_T_INTEGER:
-	        if (objGetAttrValue(qy->QueryItem, src, DATA_T_INTEGER, POD(&n)) == 1)
-	            {
-	            txt = rpt_internal_GetNULLstr();
-		    }
-	        else
-	            {
-		    sprintf(nbuf,"%d",n);
-	            txt = nbuf;
-		    }
-		break;
-
-	    case DATA_T_STRING:
-	        if (objGetAttrValue(qy->QueryItem, src, DATA_T_STRING, POD(&txt)) == 1) txt=rpt_internal_GetNULLstr();
-		break;
-
-	    case DATA_T_MONEY:
-	    case DATA_T_DATETIME:
-	        if (objGetAttrValue(qy->QueryItem, src, t, POD(&p)) == 1 || p == NULL) 
-		    txt = rpt_internal_GetNULLstr();
-		else 
-		    txt = objDataToStringTmp(t, p, 0);
-		break;
-
-	    case DATA_T_DOUBLE:
-	        if (objGetAttrValue(qy->QueryItem, src, DATA_T_DOUBLE, POD(&dbl)) == 1)
-		    {
-		    txt = rpt_internal_GetNULLstr();
-		    }
-		else
-		    {
-		    sprintf(nbuf,"%f",dbl);
-		    txt = nbuf;
-		    }
-		break;
-
-	    default:
-	        txt = "";
-		break;
-	    }
-
-	/** Output the value to the printer. **/
-	prtWriteString(rs->PSession,txt,-1);
-
-	/** Restore the printer style, if we changed it **/
-	if (style >= 0) prtSetAttr(rs->PSession, oldstyle);
-	if (nl) prtWriteNL(rs->PSession);
-	rpt_internal_CheckFormats(field, oldmfmt, olddfmt, oldnfmt, 1);
-	rpt_internal_CheckFont(rs,field,&saved_font);
-
-    return 0;
-    }
-#endif
-
 
 /*** rpt_internal_DoForm - creates a free-form style report element, 
  *** which can contain fields, comments, tables, and other forms.
@@ -2585,7 +2517,7 @@ rpt_internal_DoField(pRptData inf, pStructInf field, pRptSession rs, pQueryConn 
 int
 rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container_handle)
     {
-    pQueryConn qy;
+    pRptSource qy;
     int ffsep=0;
     char* ptr;
     int err=0;
@@ -3074,7 +3006,7 @@ rpt_internal_DoContainer(pRptData inf, pStructInf container, pRptSession rs, int
 /*** rpt_internal_DoImage - put a picture on the report.
  ***/
 int
-rpt_internal_DoImage(pRptData inf, pStructInf image, pRptSession rs, pQueryConn this_qy, int container_handle)
+rpt_internal_DoImage(pRptData inf, pStructInf image, pRptSession rs, pRptSource this_qy, int container_handle)
     {
     char* imgsrc;
     pPrtImage img;
@@ -3131,7 +3063,7 @@ rpt_internal_DoImage(pRptData inf, pStructInf image, pRptSession rs, pQueryConn 
 /*** rpt_internal_DoSvg - put an svg image on the report.
  ***/
 int
-rpt_internal_DoSvg(pRptData inf, pStructInf image, pRptSession rs, pQueryConn this_qy, int container_handle)
+rpt_internal_DoSvg(pRptData inf, pStructInf image, pRptSession rs, pRptSource this_qy, int container_handle)
     {
     char* svgsrc;
     pPrtSvg svg;
@@ -3189,7 +3121,7 @@ rpt_internal_DoSvg(pRptData inf, pStructInf image, pRptSession rs, pQueryConn th
  *** content can be placed.  V3 prtmgmt.
  ***/
 int
-rpt_internal_DoArea(pRptData inf, pStructInf area, pRptSession rs, pQueryConn this_qy, int container_handle)
+rpt_internal_DoArea(pRptData inf, pStructInf area, pRptSession rs, pRptSource this_qy, int container_handle)
     {
     int area_handle = -1;
     double x, y, w, h, bw;
@@ -3318,14 +3250,13 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
     pParamObjects use_objlist;
     int i;
     pXArray xa = NULL;
-    int err = 0;
     pStructInf expr_inf;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
 	    {
 	    mssError(1,"RPT","Could not generate report: resource exhaustion occurred");
-	    return -1;
+	    goto error;
 	    }
 
     	/** Need to allocate an object list? **/
@@ -3351,8 +3282,8 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 		{
 		if (!strcmp(object->UsrType,"report/data"))
 		    {
-		    err = 1;
 		    mssError(1,"RPT","report/data '%s' must have a value expression.", object->Name);
+		    goto error;
 		    }
 		else
 		    {
@@ -3362,43 +3293,36 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 	    }
 
 	/** If no errors, proceed... **/
-	if (!err)
+	for(i=0;i<object->nSubInf;i++) 
 	    {
-	    for(i=0;i<object->nSubInf;i++) 
-	        {
-		if (stStructType(object->SubInf[i]) == ST_T_SUBGROUP)
+	    if (stStructType(object->SubInf[i]) == ST_T_SUBGROUP)
+		{
+		if (rpt_internal_PreProcess(inf, object->SubInf[i], rs, use_objlist) < 0)
 		    {
-		    if (rpt_internal_PreProcess(inf, object->SubInf[i], rs, use_objlist) < 0)
-			{
-			err = 1;
-			break;
-			}
+		    goto error;
 		    }
-		else
+		}
+	    else
+		{
+		/** Attribute, condition exp.? **/
+		if (!strcmp(object->SubInf[i]->Name, "condition") || (!strcmp(object->UsrType,"report/table-row") && !strcmp(object->SubInf[i]->Name, "summarize_for")))
 		    {
-		    /** Attribute, condition exp.? **/
-		    if (!strcmp(object->SubInf[i]->Name, "condition") || (!strcmp(object->UsrType,"report/table-row") && !strcmp(object->SubInf[i]->Name, "summarize_for")))
+		    expr_inf = object->SubInf[i];
+		    if (rpt_internal_PreBuildExp(inf, expr_inf, use_objlist) < 0)
 			{
-			expr_inf = object->SubInf[i];
-			if (rpt_internal_PreBuildExp(inf, expr_inf, use_objlist) < 0)
-			    {
-			    err = 1;
-			    mssError(1,"RPT","%s on '%s' must have an expression.", object->SubInf[i]->Name, object->Name);
-			    }
+			mssError(1,"RPT","%s on '%s' must have an expression.", object->SubInf[i]->Name, object->Name);
+			goto error;
 			}
 		    }
 		}
 	    }
-	
-	/** Error? **/
-	if (err && object->UserData)
+
+	return 0;
+
+    error:
+	if (object->UserData)
 	    {
-	    /*if (!strcmp(object->UsrType,"report/data"))
-	        {
-		expFreeExpression((pExpression)(object->UserData));
-		object->UserData = NULL;
-		}
-	    else*/ if (!strcmp(object->UsrType,"report/table"))
+	    if (!strcmp(object->UsrType,"report/table"))
 	        {
 	        object->UserData = NULL;
 		if (xa)
@@ -3410,8 +3334,7 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 		    }
 		}
 	    }
-
-    return err?-1:0;
+	return -1;
     }
 
 
@@ -3469,31 +3392,33 @@ rpt_internal_UnPreProcess(pRptData inf, pStructInf object, pRptSession rs)
     }
 
 
-/*** rpt_internal_FreeQC - callback routine for xhClear to free a query
+/*** rpt_internal_FreeSource - callback routine for xhClear to free a query
  *** conn structure.
  ***/
 int
-rpt_internal_FreeQC(pQueryConn qc)
+rpt_internal_FreeSource(pRptSource src)
     {
     int i;
-   	
-	/** Release qc expressions (like aggregates) **/
-	for(i=0;i<qc->AggregateExpList.nItems;i++) 
-	    {
-	    if (qc->AggregateExpList.Items[i]) expFreeExpression((pExpression)(qc->AggregateExpList.Items[i]));
-	    }
-	for(i=0;i<qc->AggregateWhereList.nItems;i++) 
-	    {
-	    if (qc->AggregateWhereList.Items[i]) expFreeExpression((pExpression)(qc->AggregateWhereList.Items[i]));
-	    }
-	xaDeInit(&(qc->AggregateExpList));
-	xaDeInit(&(qc->AggregateWhereList));
-	xaDeInit(&(qc->AggregateDoReset));
+    pRptSourceAgg aggregate;
 
-	/** Release qc data, and qc structure. **/
-    	if (qc->DataBuf) nmSysFree(qc->DataBuf);
-    	if (qc->ObjList) expFreeParamList(qc->ObjList);
-    	nmFree(qc,sizeof(QueryConn));
+	/** Clear the reference in the object list **/
+	expModifyParam(src->Inf->ObjList, src->Name, NULL);
+   	
+	/** Release src aggregates **/
+	for(i=0;i<src->Aggregates.nItems;i++) 
+	    {
+	    aggregate = (pRptSourceAgg)src->Aggregates.Items[i];
+	    if (aggregate->Value) expFreeExpression(aggregate->Value);
+	    if (aggregate->Where) expFreeExpression(aggregate->Where);
+	    if (aggregate->Name) nmSysFree(aggregate->Name);
+	    nmFree(aggregate, sizeof(RptSourceAgg));
+	    }
+	xaDeInit(&(src->Aggregates));
+
+	/** Release src data, and src structure. **/
+    	if (src->DataBuf) nmSysFree(src->DataBuf);
+    	if (src->ObjList) expFreeParamList(src->ObjList);
+    	nmFree(src, sizeof(RptSource));
 
     return 0;
     }
@@ -3549,19 +3474,18 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
     pStructInf subreq,req = inf->Node->Data;
     pObjSession s = inf->Obj->Session;
     int i,j;
-    pQueryConn qc;
-    pRptSession rs;
+    pRptSource src;
+    pRptSession rsess;
     int err = 0;
     pXString title_str = NULL;
     pXString subst_str;
     pExpression exp;
     int resolution;
-    char* res_str;
     double pagewidth, pageheight;
-    int do_reset;
+    pRptSourceAgg aggregate = NULL;
 
 	/** Report has a title? **/
-        stAttrValue(rpt_internal_GetParam(inf,"title"),NULL,&title,0);
+	rpt_internal_GetParamValue(inf, "title", DATA_T_STRING, POD(&title), inf->ObjList, s);
 
 	/** If had a title, do param subst on it. **/
 	if (title) 
@@ -3571,10 +3495,8 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	    }
 
 	/** Resolution specified? **/
-	res_str = NULL;
-	if (stAttrValue(rpt_internal_GetParam(inf,"resolution"), &resolution, &res_str, 0) == 0)
+	if (rpt_internal_GetParamValue(inf, "resolution", DATA_T_INTEGER, POD(&resolution), inf->ObjList, s) == 0)
 	    {
-	    if (res_str) resolution = strtol(res_str, NULL, 10);
 	    prtSetResolution(ps, resolution);
 	    }
 
@@ -3623,18 +3545,18 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 
 	/** Ok, now look through the request for queries, comments, tables, forms **/
 	xhInit(&queries, 31, 0);
-	rs = (pRptSession)nmMalloc(sizeof(RptSession));
-	rs->Inf = (void*)inf;
-	rs->PSession = ps;
-	rs->FD = out_fd;
-	rs->Queries = &queries;
-	rs->ObjSess = s;
-	rs->HeaderInf = NULL;
-	rs->FooterInf = NULL;
-	inf->RSess = rs;
-	rs->PageHandle = prtGetPageRef(ps);
-	prtSetPageNumber(rs->PageHandle, 1);
-	rpt_internal_SetMargins(req, rs->PageHandle, 3.0, 3.0, 0, 0);
+	rsess = (pRptSession)nmMalloc(sizeof(RptSession));
+	rsess->Inf = (void*)inf;
+	rsess->PSession = ps;
+	rsess->FD = out_fd;
+	rsess->Queries = &queries;
+	rsess->ObjSess = s;
+	rsess->HeaderInf = NULL;
+	rsess->FooterInf = NULL;
+	inf->RSess = rsess;
+	rsess->PageHandle = prtGetPageRef(ps);
+	prtSetPageNumber(rsess->PageHandle, 1);
+	rpt_internal_SetMargins(req, rsess->PageHandle, 3.0, 3.0, 0, 0);
 
 	/** Build the object list. **/
 	for(i=0;i<req->nSubInf;i++) if (stStructType(req->SubInf[i]) == ST_T_SUBGROUP && !strcmp(req->SubInf[i]->UsrType,"report/query"))
@@ -3644,8 +3566,12 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	    	rpt_internal_QyGetAttrValue, NULL);
 	    }
 
+	/** Evaluate defaults on all parameters **/
+	if (rpt_internal_SetParamDefaults(inf) < 0)
+	    err = 1;
+
 	/** Preprocess the report structure, compile its expressions **/
-	if (rpt_internal_PreProcess(inf, req, rs, inf->ObjList) < 0) err = 1;
+	if (rpt_internal_PreProcess(inf, req, rsess, inf->ObjList) < 0) err = 1;
 
 	/** First, check for report/header and report/footer stuff **/
 #if 00
@@ -3709,29 +3635,37 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 		if (!strcmp(subreq->UsrType,"report/query"))
 		    {
 		    /** First, build the query information structure **/
-		    qc=(pQueryConn)nmMalloc(sizeof(QueryConn));
-		    if (!qc) break;
-		    qc->UserInf = subreq;
-		    qc->Inf = inf;
+		    src=(pRptSource)nmMalloc(sizeof(RptSource));
+		    if (!src) break;
+		    src->UserInf = subreq;
+		    src->Inf = inf;
 		    ptr=NULL;
 		    /*if (stAttrValue(stLookup(subreq,"name"),NULL,&ptr,0) < 0) continue;*/
-		    qc->Name = subreq->Name;
-		    qc->Query = NULL;
-		    qc->QueryItem = NULL;
-		    qc->DataBuf = NULL;
-		    qc->ObjList = expCreateParamList();
-		    xaInit(&(qc->AggregateExpList),16);
-		    xaInit(&(qc->AggregateWhereList),16);
-		    xaInit(&(qc->AggregateDoReset),16);
-		    expAddParamToList(qc->ObjList, "this", NULL, EXPR_O_CURRENT);
-		    expSetParamFunctions(qc->ObjList, "this", rpt_internal_QyGetAttrType, rpt_internal_QyGetAttrValue, NULL);
-		    xhAdd(&queries, qc->Name, (char*)qc);
+		    src->Name = subreq->Name;
+		    src->Query = NULL;
+		    src->QueryItem = NULL;
+		    src->DataBuf = NULL;
+		    src->ObjList = expCreateParamList();
+		    xaInit(&(src->Aggregates),16);
+		    expAddParamToList(src->ObjList, "this", NULL, EXPR_O_CURRENT);
+		    expSetParamFunctions(src->ObjList, "this", rpt_internal_QyGetAttrType, rpt_internal_QyGetAttrValue, NULL);
+		    xhAdd(&queries, src->Name, (char*)src);
 
 		    /** Now, check for any aggregate/summary elements **/
 		    for(j=0;j<subreq->nSubInf;j++)
 		        {
 			if (stStructType(subreq->SubInf[j]) == ST_T_SUBGROUP && !strcmp(subreq->SubInf[j]->UsrType,"report/aggregate"))
 			    {
+			    aggregate = (pRptSourceAgg)nmMalloc(sizeof(RptSourceAgg));
+			    if (!aggregate)
+				{
+				err = 1;
+				break;
+				}
+			    memset(aggregate, 0, sizeof(RptSourceAgg));
+			    aggregate->Name = nmSysStrdup(subreq->SubInf[j]->Name);
+
+			    /** Value of the aggregate itself **/
 			    stAttrValue(stLookup(subreq->SubInf[j], "compute"), NULL, &ptr, 0);
 			    if (!ptr)
 			        {
@@ -3740,9 +3674,8 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 				break;
 				}
 			    subst_str = rpt_internal_SubstParam(inf, ptr);
-	    		    exp = expCompileExpression(subst_str->String, qc->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
-			    xsDeInit(subst_str);
-			    nmFree(subst_str,sizeof(XString));
+	    		    exp = expCompileExpression(subst_str->String, src->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+			    xsFree(subst_str);
 			    if (!exp)
 			        {
 				mssError(0,"RPT","invalid compute expression in report/aggregate '%s'", subreq->SubInf[j]->Name);
@@ -3751,57 +3684,48 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 				}
 			    exp->DataType = DATA_T_UNAVAILABLE;
 		            expResetAggregates(exp, -1,1);
-			    expEvalTree(exp,qc->ObjList);
-			    xaAddItem(&(qc->AggregateExpList), (void*)exp);
+			    expEvalTree(exp,src->ObjList);
+			    aggregate->Value = exp;
 
-			    do_reset = 1;
-			    stAttrValue(stLookup(subreq->SubInf[j], "reset"), &do_reset, NULL, 0);
-			    xaAddItem(&(qc->AggregateDoReset), (void*)(intptr_t)do_reset);
+			    /** Whether to reset the value on each read **/
+			    aggregate->DoReset = 1;
+			    stAttrValue(stLookup(subreq->SubInf[j], "reset"), &aggregate->DoReset, NULL, 0);
 
+			    /** Where value - what objects this aggregate will summarize **/
 			    ptr = NULL;
 			    stAttrValue(stLookup(subreq->SubInf[j], "where"), NULL, &ptr, 0);
 			    if (ptr)
 			        {
 			        subst_str = rpt_internal_SubstParam(inf, ptr);
-				exp = expCompileExpression(subst_str->String, qc->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
-			        xsDeInit(subst_str);
-			        nmFree(subst_str,sizeof(XString));
+				exp = expCompileExpression(subst_str->String, src->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+				xsFree(subst_str);
 				if (!exp)
 				    {
 				    mssError(0,"RPT","invalid where expression in report/aggregate '%s'", subreq->SubInf[j]->Name);
 				    err = 1;
 				    break;
 				    }
-			        xaAddItem(&(qc->AggregateWhereList), (void*)exp);
+				aggregate->Where = exp;
 				}
-			    else
-			        {
-			        xaAddItem(&(qc->AggregateWhereList), (void*)NULL);
-				}
+
+			    xaAddItem(&(src->Aggregates), (void*)aggregate);
+			    aggregate = NULL;
 			    }
 			}
-		    }
-#if 00
-		else if (!strcmp(subreq->UsrType,"report/comment"))
-		    {
-		    if (rpt_internal_DoComment(inf, subreq, rs) <0)
-		        {
-			err = 1;
-			break;
+		    if (err && aggregate)
+			{
+			if (aggregate->Where)
+			    expFreeExpression(aggregate->Where);
+			if (aggregate->Value)
+			    expFreeExpression(aggregate->Value);
+			if (aggregate->Name)
+			    nmSysFree(aggregate->Name);
+			nmFree(aggregate, sizeof(RptSourceAgg));
 			}
 		    }
-		else if (!strcmp(subreq->UsrType,"report/column"))
-		    {
-		    if (rpt_internal_DoField(inf, subreq, rs, NULL) <0)
-		        {
-			err = 1;
-			break;
-			}
-		    }
-#endif
                 else if (!strcmp(subreq->UsrType,"report/section"))
                     {
-                    if (rpt_internal_DoSection(inf, subreq, rs, rs->PageHandle) <0)
+                    if (rpt_internal_DoSection(inf, subreq, rsess, rsess->PageHandle) <0)
                         {
                         err = 1;
                         break;
@@ -3809,7 +3733,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
                     }
 		else if (!strcmp(subreq->UsrType,"report/table"))
 		    {
-		    if (rpt_internal_DoTable(inf, subreq,rs,rs->PageHandle) <0)
+		    if (rpt_internal_DoTable(inf, subreq,rsess,rsess->PageHandle) <0)
 		        {
 			err = 1;
 			break;
@@ -3817,7 +3741,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 		    }
 		else if (!strcmp(subreq->UsrType,"report/area"))
 		    {
-		    if (rpt_internal_DoArea(inf, subreq, rs, NULL, rs->PageHandle) < 0)
+		    if (rpt_internal_DoArea(inf, subreq, rsess, NULL, rsess->PageHandle) < 0)
 			{
 			err = 1;
 			break;
@@ -3825,7 +3749,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 		    }
 		else if (!strcmp(subreq->UsrType,"report/image"))
 		    {
-		    if (rpt_internal_DoImage(inf, subreq, rs, NULL, rs->PageHandle) < 0)
+		    if (rpt_internal_DoImage(inf, subreq, rsess, NULL, rsess->PageHandle) < 0)
 			{
 			err = 1;
 			break;
@@ -3833,7 +3757,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 		    }
 		else if (!strcmp(subreq->UsrType, "report/svg"))
                     {
-                    if (rpt_internal_DoSvg(inf, subreq, rs, NULL, rs->PageHandle) < 0)
+                    if (rpt_internal_DoSvg(inf, subreq, rsess, NULL, rsess->PageHandle) < 0)
                         {
                         err = 1;
                         break;
@@ -3841,7 +3765,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
                     }
                 else if (!strcmp(subreq->UsrType,"report/data"))
 		    {
-		    if (rpt_internal_DoData(inf, subreq, rs, rs->PageHandle) <0)
+		    if (rpt_internal_DoData(inf, subreq, rsess, rsess->PageHandle) <0)
 		        {
 			err = 1;
 			break;
@@ -3849,7 +3773,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 		    }
 		else if (!strcmp(subreq->UsrType,"report/form"))
 		    {
-		    if (rpt_internal_DoForm(inf, subreq,rs, rs->PageHandle) <0)
+		    if (rpt_internal_DoForm(inf, subreq,rsess, rsess->PageHandle) <0)
 		        {
 			err = 1;
 			break;
@@ -3858,16 +3782,18 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 		}
 	    if (err) break;
 	    }
-	xhClear(&queries,rpt_internal_FreeQC, NULL);
+
+	/** Clean up queries **/
+	xhClear(&queries, rpt_internal_FreeSource, NULL);
 	xhDeInit(&queries);
 	inf->RSess = NULL;
-	nmFree(rs,sizeof(RptSession));
 
 	/** Undo formatting changes **/
 	cxssPopContext();
 
 	/** Undo the preprocessing - release the expression trees **/
-	rpt_internal_UnPreProcess(inf, req, rs);
+	rpt_internal_UnPreProcess(inf, req, rsess);
+	nmFree(rsess,sizeof(RptSession));
 
 	/** End with a form feed, close up and get out. **/
 	/*prtWriteFF(ps);*/
@@ -3875,8 +3801,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	/** Need to free up title string? **/
 	if (title_str)
 	    {
-	    xsDeInit(title_str);
-	    nmFree(title_str,sizeof(XString));
+	    xsFree(title_str);
 	    }
 
 	/** Error? **/
@@ -4069,169 +3994,290 @@ rpt_internal_SetAutoname(pRptData inf, char* strval)
     }
 
 
-/*** rptOpen - open a new report for report generation.
+/*** rpt_internal_SetParamDefaults - activate any default values on
+ *** parameters by triggering presentation hints.
  ***/
-void*
-rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
+int
+rpt_internal_SetParamDefaults(pRptData inf)
     {
-    pRptData inf;
-    int rval;
-    pSnNode node = NULL;
-    int i, t, n;
-    pStruct paramdata;
-    pStructInf newparam;
-    pStructInf ct_param;
-    pStructInf find_inf;
-    char* ptr;
-    char* endorsement_name;
-    int obfuscating = 0;
+    pRptParam rptparam = NULL;
+    int i;
 
-    	/** This driver doesn't support sub-nodes.  Yet.  Check for that. **/
-	/*if (obj->SubPtr != obj->Pathname->nElements)
+	/** Go through the parameter list and do an eval on each one. **/
+	for(i=0; i<inf->Params.nItems; i++)
 	    {
-	    return NULL;
-	    }*/
-
-	/** try to open it **/
-	node = snReadNode(obj->Prev);
-
-	/** If node access failed, quit out. **/
-	if (!node)
-	    {
-	    mssError(0,"RPT","Could not open report node object");
-	    return NULL;
+	    rptparam = (pRptParam)inf->Params.Items[i];
+	    if (rpt_internal_EvalParam(rptparam, inf->ObjList, inf->ObjList->Session) < 0)
+		return -1;
 	    }
 
-	/** Security check **/
-	if (endVerifyEndorsements(node->Data, stGetObjAttrValue, &endorsement_name) < 0)
+    return 0;
+    }
+
+
+/*** rpt_internal_LoadParamsFromOpen - go through the OpenCtl params
+ *** load them in.
+ ***/
+int
+rpt_internal_LoadParamsFromOpen(pRptData inf, pStruct openctl)
+    {
+    pRptParam rptparam = NULL;
+    pStruct openctl_param;
+    int i, j;
+
+	/** Scan through object open params **/
+	for(i=0;i<openctl->nSubInf;i++)
 	    {
-	    mssError(1,"RPT","Security check failed - endorsement '%s' required", endorsement_name);
-	    return NULL;
-	    }
+	    openctl_param = openctl->SubInf[i];
 
-	/** Allocate the structure **/
-	inf = (pRptData)nmMalloc(sizeof(RptData));
-	memset(inf, 0, sizeof(RptData));
-	strtcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname,0,obj->SubPtr), sizeof(inf->Pathname));
-	if (!inf) return NULL;
-	inf->Obj = obj;
-	inf->Mask = mask;
-	inf->LinkCnt = 1;
-	inf->AttrOverride = stCreateStruct(NULL,NULL);
-	if (usrtype)
-	    strtcpy(inf->DocumentFormat, usrtype, sizeof(inf->DocumentFormat));
-	else
-	    strcpy(inf->DocumentFormat, "text/plain");
-	xaInit(&(inf->UserDataSlots), 16);
-	inf->NextUserDataSlot = 1;
-
-	/** Content type must be application/octet-stream or more specific. **/
-	rval = objIsA(inf->DocumentFormat, "application/octet-stream");
-	if (rval == OBJSYS_NOT_ISA)
-	    {
-	    mssError(1,"RPT","Requested content type must be at least application/octet-stream");
-	    xaDeInit(&(inf->UserDataSlots));
-	    nmFree(inf,sizeof(RptData));
-	    return NULL;
-	    }
-	if (rval < 0)
-	    {
-	    strcpy(inf->DocumentFormat,"application/octet-stream");
-	    }
-
-	/** Set object params. **/
-	inf->Node = node;
-	inf->Node->OpenCnt++;
-	inf->StartSem = syCreateSem(0,0);
-	inf->IOSem = syCreateSem(0,0);
-
-	/** Create the parameter object list, adding the report object itself as 'this' **/
-	inf->ObjList = expCreateParamList();
-	expAddParamToList(inf->ObjList, "this", inf->Obj, EXPR_O_PARENT | EXPR_O_CURRENT);
-	inf->ObjList->Session = inf->Obj->Session;
-
-	/** create a unique object name? **/
-	if (obj->SubPtr < obj->Pathname->nElements && !strcmp(obj->Pathname->Elements[obj->SubPtr], "*") && (obj->Mode & OBJ_O_AUTONAME))
-	    obj->SubCnt = 2;
-	else
-	    obj->SubCnt = 1;
-	inf->NameIndex = obj->SubPtr - 1 + obj->SubCnt - 1;
-
-	/** Check format version **/
-	if (stAttrValue(stLookup(inf->Node->Data,"version"),&(inf->Version),NULL,0) < 0)
-	    inf->Version = 2;
-
-	/** Lookup attribute/param override data in the openctl **/
-	if (obj->Pathname->OpenCtl[inf->NameIndex])
-	    {
-	    paramdata = obj->Pathname->OpenCtl[inf->NameIndex];
-	    for(i=0;i<paramdata->nSubInf;i++)
+	    /** See if param is already created **/
+	    for(j=0; j<inf->Params.nItems; j++)
 		{
-		/** Determine type of attr **/
-		t = DATA_T_STRING;
-		if (inf->Version == 2)
+		rptparam = (pRptParam)inf->Params.Items[j];
+		if (!strcmp(rptparam->Param->Name, openctl_param->Name))
 		    {
-		    if (!strcmp(paramdata->SubInf[i]->Name, "rpt__obkey"))
-			{
-			obfuscating = 1;
-			strtcpy(inf->ObKey, paramdata->SubInf[i]->StrVal, sizeof(inf->ObKey));
-			}
-		    else if (!strcmp(paramdata->SubInf[i]->Name, "rpt__obrulefile"))
-			strtcpy(inf->ObRulefile, paramdata->SubInf[i]->StrVal, sizeof(inf->ObRulefile));
-		    find_inf = stLookup(inf->Node->Data, paramdata->SubInf[i]->Name);
-		    if (find_inf && stStructType(find_inf) == ST_T_SUBGROUP && !strcmp(find_inf->UsrType, "report/parameter"))
-			{
-			ptr = NULL;
-			stGetAttrValue(stLookup(find_inf, "type"), DATA_T_STRING, POD(&ptr), 0);
-			if (ptr)
-			    t = objTypeID(ptr);
-			if (t != DATA_T_INTEGER && t != DATA_T_STRING)
-			    t = DATA_T_STRING;
-			}
+		    break;
 		    }
-		newparam = stAddAttr(inf->AttrOverride, paramdata->SubInf[i]->Name);
-		if (t == DATA_T_INTEGER)
+		rptparam = NULL;
+		}
+
+	    /** If it already exists, try to set its value **/
+	    if (rptparam && (rptparam->Flags & RPT_PARAM_F_IN))
+		{
+		paramSetValueFromInfNe(rptparam->Param, openctl_param, 0, inf->ObjList, inf->ObjList->Session);
+		rptparam->Flags &= ~RPT_PARAM_F_DEFAULT;
+		}
+	    else if (!rptparam)
+		{
+		/** Otherwise, create a new "in" param **/
+		rptparam = (pRptParam)nmMalloc(sizeof(RptParam));
+		if (!rptparam)
+		    goto error;
+		rptparam->Param = NULL;
+		rptparam->Flags = RPT_PARAM_F_IN;
+		xaInit(&rptparam->ValueObjs, 16);
+		xaInit(&rptparam->ValueAttrs, 16);
+
+		/** Create the Param **/
+		rptparam->Param = paramCreate(openctl_param->Name);
+		if (!rptparam->Param)
+		    goto error;
+		xaAddItem(&inf->Params, (void*)rptparam);
+
+		/** Set value **/
+		rpt_internal_SetParamValue(rptparam, DATA_T_STRING, POD(&openctl_param->StrVal), inf->ObjList, inf->ObjList->Session);
+		}
+	    rptparam = NULL;
+	    }
+
+	return 0;
+
+    error:
+	if (rptparam)
+	    {
+	    rpt_internal_FreeParam(rptparam);
+	    }
+	return -1;
+    }
+
+
+/*** rpt_internal_LoadParamsFromAttrs - some top-level attributes are
+ *** treated as parameters, even in report format 2.
+ ***/
+int
+rpt_internal_LoadParamsFromAttrs(pRptData inf)
+    {
+    pRptParam rptparam = NULL;
+    char* attr_params[] = { "document_format", "content_type", "title", "resolution", "rpt__obkey", "rpt__obrulefile", NULL };
+    char* attrname;
+    int i, j;
+    int t;
+    ObjData od;
+
+	/** Scan through object open params **/
+	for(i=0; attr_params[i]; i++)
+	    {
+	    attrname = attr_params[i];
+
+	    /** Is this attribute provided? **/
+	    t = stGetAttrType(stLookup(inf->Node->Data, attrname), 0);
+	    if (t > 0)
+		{
+		if (stGetAttrValue(stLookup(inf->Node->Data, attrname), t, &od, 0) == 0)
 		    {
-		    n = objDataToInteger(DATA_T_STRING, paramdata->SubInf[i]->StrVal, NULL);
-		    stSetAttrValue(newparam, DATA_T_INTEGER, POD(&n), 0);
-		    }
-		else
-		    {
-		    stSetAttrValue(newparam, DATA_T_STRING, POD(&(paramdata->SubInf[i]->StrVal)), 0);
+		    /** See if param is already created **/
+		    for(j=0; j<inf->Params.nItems; j++)
+			{
+			rptparam = (pRptParam)inf->Params.Items[j];
+			if (!strcmp(rptparam->Param->Name, attr_params[i]))
+			    {
+			    break;
+			    }
+			rptparam = NULL;
+			}
+
+		    /** If it already exists, try to set its value **/
+		    if (rptparam && (rptparam->Flags & RPT_PARAM_F_IN))
+			{
+			rpt_internal_SetParamValue(rptparam, t, &od, inf->ObjList, inf->ObjList->Session);
+			}
+		    else if (!rptparam)
+			{
+			/** Otherwise, create a new "in" param **/
+			rptparam = (pRptParam)nmMalloc(sizeof(RptParam));
+			if (!rptparam)
+			    goto error;
+			rptparam->Param = NULL;
+			rptparam->Flags = RPT_PARAM_F_IN;
+			xaInit(&rptparam->ValueObjs, 16);
+			xaInit(&rptparam->ValueAttrs, 16);
+
+			/** Create the Param **/
+			rptparam->Param = paramCreate(attrname);
+			if (!rptparam->Param)
+			    goto error;
+			xaAddItem(&inf->Params, (void*)rptparam);
+
+			/** Set value **/
+			rpt_internal_SetParamValue(rptparam, t, &od, inf->ObjList, inf->ObjList->Session);
+			}
+		    rptparam = NULL;
 		    }
 		}
 	    }
 
-	/** Obfuscating data? (for test/demo purposes) **/
-	if (obfuscating)
-	    inf->ObfuscationSess = obfOpenSession(inf->Obj->Session, inf->ObRulefile, inf->ObKey);
+	return 0;
 
-	/** Lookup forced content type param **/
-	if ((ct_param = rpt_internal_GetParam(inf, "document_format")) != NULL)
+    error:
+	if (rptparam)
 	    {
-	    ptr = NULL;
-	    stGetAttrValue(ct_param, DATA_T_STRING, POD(&ptr), 0);
-	    if (ptr)
-		strtcpy(inf->DocumentFormat, ptr, sizeof(inf->DocumentFormat));
+	    rpt_internal_FreeParam(rptparam);
 	    }
-	strtcpy(inf->ContentType, inf->DocumentFormat, sizeof(inf->ContentType));
+	return -1;
+    }
 
-	/** Alternate content type? **/
-	if ((ct_param = rpt_internal_GetParam(inf, "content_type")) != NULL)
+
+/*** rpt_internal_LoadParamsFromReport - go through the report's
+ *** "report/parameter" objects and create parameters from them.
+ ***/
+int
+rpt_internal_LoadParamsFromReport(pRptData inf)
+    {
+    pStructInf report = inf->Node->Data;
+    pStructInf infparam  = NULL;
+    pRptParam rptparam = NULL;
+    int i;
+    char* dir;
+	
+	/** Find parameters **/
+	for(i=0; i<report->nSubInf; i++)
 	    {
-	    ptr = NULL;
-	    stGetAttrValue(ct_param, DATA_T_STRING, POD(&ptr), 0);
-	    if (ptr)
-		strtcpy(inf->ContentType, ptr, sizeof(inf->ContentType));
+	    infparam = (pStructInf)report->SubInf[i];
+	    if (stStructType(infparam) == ST_T_SUBGROUP && !strcmp(infparam->UsrType, "report/parameter"))
+		{
+		/** Create the RptParam **/
+		rptparam = (pRptParam)nmMalloc(sizeof(RptParam));
+		if (!rptparam)
+		    goto error;
+		rptparam->Flags = 0;
+		rptparam->Param = NULL;
+		xaInit(&rptparam->ValueObjs, 16);
+		xaInit(&rptparam->ValueAttrs, 16);
+
+		/** Create the Param **/
+		rptparam->Param = paramCreateFromInf(infparam);
+		if (!rptparam->Param)
+		    goto error;
+
+		/** Param direction **/
+		dir = NULL;
+		stAttrValue(stLookup(infparam, "direction"), NULL, &dir, 0);
+		if (dir)
+		    {
+		    if (!strcasecmp(dir, "in"))
+			rptparam->Flags |= RPT_PARAM_F_IN;
+		    else if (!strcasecmp(dir, "out"))
+			rptparam->Flags |= RPT_PARAM_F_OUT;
+		    else if (!strcasecmp(dir, "both"))
+			rptparam->Flags |= (RPT_PARAM_F_IN | RPT_PARAM_F_OUT);
+		    else
+			{
+			mssError(1, "RPT", "Invalid direction '%s' for parameter '%s", dir, rptparam->Param->Name);
+			goto error;
+			}
+		    }
+		else
+		    {
+		    rptparam->Flags |= RPT_PARAM_F_IN;
+		    }
+
+		/** Determine constituent properties supporting the Default, if
+		 ** this is an "out" parameter, so the query logic can update
+		 ** this param's value easily.
+		 **/
+		if ((rptparam->Flags & RPT_PARAM_F_OUT) && rptparam->Param->Hints && rptparam->Param->Hints->DefaultExpr)
+		    {
+		    if (expGetPropList((pExpression)rptparam->Param->Hints->DefaultExpr, &rptparam->ValueObjs, &rptparam->ValueAttrs) < 0)
+			{
+			mssError(1, "RPT", "Could not evaluate default expression dependencies for parameter '%s'", rptparam->Param->Name);
+			goto error;
+			}
+		    }
+
+		/** Add it. **/
+		xaAddItem(&inf->Params, (void*)rptparam);
+		rptparam = NULL;
+		}
 	    }
 
-	/** Hint to OSML to not automatically cascade the open operation **/
-	if (rpt_internal_GetBool(inf->Node->Data, "force_leaf", 1, 0) == 1)
+	return 0;
+
+    error:
+	if (rptparam)
 	    {
-	    inf->Flags |= RPT_F_FORCELEAF;
+	    rpt_internal_FreeParam(rptparam);
 	    }
+	return -1;
+    }
 
-    return (void*)inf;
+
+/*** rpt_internal_Close - clean up an RptData structure.
+ ***/
+int
+rpt_internal_Close(void* inf_v, pObjTrxTree* oxt)
+    {
+    pRptData inf = RPT(inf_v);
+    pRptParam rptparam;
+    int i;
+
+	inf->LinkCnt--;
+	if (inf->LinkCnt > 0) return 0;
+
+	/** Free the objlist **/
+	if (inf->ObjList)
+	    expFreeParamList(inf->ObjList);
+
+	/** Release the memory **/
+	if (inf->Node)
+	    inf->Node->OpenCnt --;
+	if (inf->StartSem)
+	    syDestroySem(inf->StartSem, SEM_U_HARDCLOSE);
+	if (inf->IOSem)
+	    syDestroySem(inf->IOSem, SEM_U_HARDCLOSE);
+	xaDeInit(&(inf->UserDataSlots));
+
+	/** Params **/
+	for(i=0; i<inf->Params.nItems; i++)
+	    {
+	    rptparam = (pRptParam)inf->Params.Items[i];
+	    rpt_internal_FreeParam(rptparam);
+	    }
+	xaDeInit(&inf->Params);
+
+	/** Release the main structure **/
+	nmFree(inf,sizeof(RptData));
+
+    return 0;
     }
 
 
@@ -4258,27 +4304,154 @@ rptClose(void* inf_v, pObjTrxTree* oxt)
     return 0;
     }
 
-int
-rpt_internal_Close(void* inf_v, pObjTrxTree* oxt)
+
+/*** rptOpen - open a new report for report generation.
+ ***/
+void*
+rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
-    pRptData inf = RPT(inf_v);
+    pRptData inf = NULL;
+    int rval;
+    pSnNode node = NULL;
+    pStruct paramdata;
+    char* ptr;
+    char* endorsement_name;
+    int obfuscating = 0;
 
-	inf->LinkCnt--;
-	if (inf->LinkCnt > 0) return 0;
+    	/** This driver doesn't support sub-nodes.  Yet.  Check for that. **/
+	/*if (obj->SubPtr != obj->Pathname->nElements)
+	    {
+	    return NULL;
+	    }*/
 
-	/** Free the objlist **/
-	if (inf->ObjList)
-	    expFreeParamList(inf->ObjList);
+	/** try to open it **/
+	node = snReadNode(obj->Prev);
 
-	/** Release the memory **/
-	inf->Node->OpenCnt --;
-	stFreeInf(inf->AttrOverride);
-	syDestroySem(inf->StartSem, SEM_U_HARDCLOSE);
-	syDestroySem(inf->IOSem, SEM_U_HARDCLOSE);
-	xaDeInit(&(inf->UserDataSlots));
-	nmFree(inf,sizeof(RptData));
+	/** If node access failed, quit out. **/
+	if (!node)
+	    {
+	    mssError(0,"RPT","Could not open report node object");
+	    goto error;
+	    }
 
-    return 0;
+	/** Security check **/
+	if (endVerifyEndorsements(node->Data, stGetObjAttrValue, &endorsement_name) < 0)
+	    {
+	    mssError(1,"RPT","Security check failed - endorsement '%s' required", endorsement_name);
+	    goto error;
+	    }
+
+	/** Allocate the structure **/
+	inf = (pRptData)nmMalloc(sizeof(RptData));
+	memset(inf, 0, sizeof(RptData));
+	strtcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname,0,obj->SubPtr), sizeof(inf->Pathname));
+	if (!inf)
+	    goto error;
+	inf->Obj = obj;
+	inf->Mask = mask;
+	inf->LinkCnt = 1;
+	if (usrtype)
+	    strtcpy(inf->DocumentFormat, usrtype, sizeof(inf->DocumentFormat));
+	else
+	    strcpy(inf->DocumentFormat, "text/plain");
+	xaInit(&(inf->UserDataSlots), 16);
+	xaInit(&inf->Params, 16);
+	inf->NextUserDataSlot = 1;
+
+	/** Content type must be application/octet-stream or more specific. **/
+	rval = objIsA(inf->DocumentFormat, "application/octet-stream");
+	if (rval == OBJSYS_NOT_ISA)
+	    {
+	    mssError(1,"RPT","Requested content type must be at least application/octet-stream");
+	    goto error;
+	    }
+	if (rval < 0)
+	    {
+	    strcpy(inf->DocumentFormat,"application/octet-stream");
+	    }
+
+	/** Check format version **/
+	if (stAttrValue(stLookup(node->Data,"version"),&(inf->Version),NULL,0) < 0)
+	    inf->Version = 2;
+	if (inf->Version < 2)
+	    {
+	    mssError(1, "RPT", "Report version %d not supported: must be greater than or equal to 2", inf->Version);
+	    goto error;
+	    }
+
+	/** Set object params. **/
+	inf->Node = node;
+	inf->Node->OpenCnt++;
+	inf->StartSem = syCreateSem(0,0);
+	inf->IOSem = syCreateSem(0,0);
+
+	/** Create the parameter object list, adding the report object itself as 'this' **/
+	inf->ObjList = expCreateParamList();
+	expAddParamToList(inf->ObjList, "this", inf->Obj, EXPR_O_PARENT | EXPR_O_CURRENT);
+	inf->ObjList->Session = inf->Obj->Session;
+
+	/** create a unique object name? **/
+	if (obj->SubPtr < obj->Pathname->nElements && !strcmp(obj->Pathname->Elements[obj->SubPtr], "*") && (obj->Mode & OBJ_O_AUTONAME))
+	    obj->SubCnt = 2;
+	else
+	    obj->SubCnt = 1;
+	inf->NameIndex = obj->SubPtr - 1 + obj->SubCnt - 1;
+
+	/** Load in parameters from node **/
+	if (rpt_internal_LoadParamsFromReport(inf) < 0)
+	    goto error;
+
+	/** Top level attribute based parameters **/
+	if (rpt_internal_LoadParamsFromAttrs(inf) < 0)
+	    goto error;
+
+	/** Lookup parameter/value data in the openctl **/
+	if (obj->Pathname->OpenCtl[inf->NameIndex])
+	    {
+	    paramdata = obj->Pathname->OpenCtl[inf->NameIndex];
+
+	    /** Load in parameters from open operation **/
+	    if (rpt_internal_LoadParamsFromOpen(inf, paramdata) < 0)
+		goto error;
+
+	    /** Obfuscation **/
+	    if (rpt_internal_GetParamValue(inf, "rpt__obkey", DATA_T_STRING, POD(&ptr), inf->ObjList, inf->ObjList->Session) == 0)
+		{
+		obfuscating = 1;
+		strtcpy(inf->ObKey, ptr, sizeof(inf->ObKey));
+		}
+	    if (rpt_internal_GetParamValue(inf, "rpt__obrulefile", DATA_T_STRING, POD(&ptr), inf->ObjList, inf->ObjList->Session) == 0)
+		{
+		strtcpy(inf->ObRulefile, ptr, sizeof(inf->ObRulefile));
+		}
+	    }
+
+	/** Obfuscating data? (for test/demo purposes) **/
+	if (obfuscating)
+	    inf->ObfuscationSess = obfOpenSession(inf->Obj->Session, inf->ObRulefile, inf->ObKey);
+
+	/** Lookup forced content type param **/
+	if (rpt_internal_GetParamValue(inf, "document_format", DATA_T_STRING, POD(&ptr), inf->ObjList, inf->ObjList->Session) == 0)
+	    strtcpy(inf->DocumentFormat, ptr, sizeof(inf->DocumentFormat));
+
+	/** Alternate content type? **/
+	if (rpt_internal_GetParamValue(inf, "content_type", DATA_T_STRING, POD(&ptr), inf->ObjList, inf->ObjList->Session) == 0)
+	    strtcpy(inf->ContentType, ptr, sizeof(inf->ContentType));
+	else
+	    strtcpy(inf->ContentType, inf->DocumentFormat, sizeof(inf->ContentType));
+
+	/** Hint to OSML to not automatically cascade the open operation **/
+	if (rpt_internal_GetBool(inf->Node->Data, "force_leaf", 1, 0) == 1)
+	    {
+	    inf->Flags |= RPT_F_FORCELEAF;
+	    }
+
+	return (void*)inf;
+
+    error:
+	if (inf)
+	    rptClose(inf, NULL);
+	return NULL;
     }
 
 
@@ -4420,8 +4593,6 @@ int
 rptGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     {
     pRptData inf = RPT(inf_v);
-    char* ptr;
-    pStructInf find_inf,value_inf,tmp_inf;
     int t;
 
     	/** If name, it's a string **/
@@ -4435,57 +4606,16 @@ rptGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	/** Current page number is a predefined one for reports **/
 	if (!strcmp(attrname,"page")) return DATA_T_INTEGER;
 
-	/** Look for a sub inf structure for attribute information **/
-	find_inf = stLookup(inf->Node->Data, attrname);
-	if (inf->Version == 1)
+	/** Report Attribute **/
+	if ((t = rpt_internal_GetParamType(inf, attrname, inf->ObjList, inf->ObjList->Session)) >= 0)
 	    {
-	    if (!find_inf || stStructType(find_inf) != ST_T_ATTRIB) 
-	        {
-	        mssError(1,"RPT","Could not find requested report attribute '%s'", attrname);
-	        return -1;
-		}
-
-	    /** Check override structure... **/
-	    tmp_inf = stLookup(inf->AttrOverride,attrname);
-	    if (tmp_inf) find_inf = tmp_inf;
-
-	    t = stGetAttrType(find_inf, 0);
-	    if (stAttrIsList(find_inf))
-		{
-		if (t == DATA_T_INTEGER) return DATA_T_INTVEC;
-		else return DATA_T_STRINGVEC;
-		}
-	    else
-		{
-		return t;
-		}
+	    return t;
 	    }
-	else
+
+	/** Report attribute valid but no type available? **/
+	if (rpt_internal_GetParam(inf, attrname))
 	    {
-	    if (!find_inf || stStructType(find_inf) != ST_T_SUBGROUP)
-	        {
-	        mssError(1,"RPT","Could not find requested report attribute '%s'", attrname);
-	        return -1;
-		}
-	    value_inf = stLookup(find_inf,"type");
-	    ptr="";
-	    stAttrValue(value_inf,NULL,&ptr,0);
-	    t = objTypeID(ptr);
-	    if (t >= 0) return t;
-
-	    value_inf = stLookup(find_inf,"default");
-	    if (!value_inf) return DATA_T_UNAVAILABLE;
-
-	    t = stGetAttrType(value_inf, 0);
-	    if (stAttrIsList(value_inf))
-		{
-		if (t == DATA_T_INTEGER) return DATA_T_INTVEC;
-		else return DATA_T_STRINGVEC;
-		}
-	    else
-		{
-		return t;
-		}
+	    return DATA_T_UNAVAILABLE;
 	    }
 
     return -1;
@@ -4499,10 +4629,7 @@ int
 rptGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pRptData inf = RPT(inf_v);
-    pStructInf find_inf, value_inf, tmp_inf;
-    char* ptr;
-    int i, rval;
-    pExpression exp;
+    int rval;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -4587,134 +4714,11 @@ rptGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    return 0;
 	    }
 
-	/** Look through attributes below this inf structure. **/
-	for(i=0;i<inf->Node->Data->nSubInf;i++)
+	/** Report Attribute? **/
+	if ((rval = rpt_internal_GetParamValue(inf, attrname, datatype, val, inf->ObjList, inf->ObjList->Session)) >= 0)
 	    {
-	    find_inf = inf->Node->Data->SubInf[i];
-	    if (!strcmp(attrname,find_inf->Name) && stStructType(find_inf) == ST_T_ATTRIB && inf->Version == 1)
-                {
-		tmp_inf = stLookup(inf->AttrOverride,attrname);
-		if (tmp_inf) find_inf = tmp_inf;
-		if (stGetAttrType(find_inf,0) == DATA_T_STRING && stAttrIsList(find_inf))
-		    {
-		    if (datatype != DATA_T_STRINGVEC)
-			{
-			mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be stringvec)", attrname);
-			return -1;
-			}
-		    inf->VecData = stGetValueList(find_inf, DATA_T_STRING, &(inf->SVvalue.nStrings));
-		    inf->SVvalue.Strings = (char**)(inf->VecData);
-                    val->StringVec = &(inf->SVvalue);
-		    }
-                else if (stGetAttrType(find_inf,0) == DATA_T_INTEGER && stAttrIsList(find_inf))
-                    {
-		    if (datatype != DATA_T_INTVEC)
-			{
-			mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be intvec)", attrname);
-			return -1;
-			}
-		    inf->VecData = stGetValueList(find_inf, DATA_T_INTEGER, &(inf->IVvalue.nIntegers));
-		    inf->IVvalue.Integers = (int*)(inf->VecData);
-                    val->IntVec = &(inf->IVvalue);
-                    }
-		else
-		    {
-		    stGetAttrValue(find_inf, datatype, val, 0);
-		    }
-                return 0;
-                }
-	    else if (!strcmp(attrname,find_inf->Name) && stStructType(find_inf) == ST_T_SUBGROUP && inf->Version >= 2)
-	        {
-		/** Check default= attr as well as override structure. **/
-		value_inf = stLookup(find_inf,"default");
-		tmp_inf = stLookup(inf->AttrOverride,attrname);
-		if (tmp_inf) value_inf = tmp_inf;
-
-		/** No default, and nothing set in override?  Null if so. **/
-		if (!value_inf) return 1;
-
-		/** runserver() expression? **/
-		if (stGetAttrType(value_inf, 0) == DATA_T_CODE && datatype != DATA_T_CODE)
-		    {
-		    if (stGetAttrValue(value_inf, DATA_T_CODE, POD(&exp), 0) != 0)
-			return -1;
-		    if ((rval = expEvalTree(exp, inf->ObjList)) >= 0)
-			{
-			if (exp->DataType != datatype)
-			    {
-			    mssError(1,"RPT","Type mismatch accessing value '%s'", attrname);
-			    return -1;
-			    }
-			if (exp->Flags & EXPR_F_NULL)
-			    return 1;
-			if (expExpressionToPod(exp, datatype, val) == 0)
-			    return 0;
-			}
-		    }
-
-		/** Return result based on type. **/
-	        tmp_inf = stLookup(find_inf,"type");
-	        ptr="";
-	        stAttrValue(tmp_inf,NULL,&ptr,0);
-		if (datatype != objTypeID(ptr))
-		    {
-		    mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be %s)", attrname, ptr);
-		    return -1;
-		    }
-
-		return stGetAttrValue(value_inf, datatype, POD(val), 0);
-#if 0
-	        if (!strcmp(ptr,"integer") && datatype == DATA_T_INTEGER)
-		    {
-		    return stGetAttrValue(value_inf, datatype, POD(val), 0);
-		    }
-	        else if (!strcmp(ptr,"string") && datatype == DATA_T_STRING)
-		    {
-		    return stGetAttrValue(value_inf, datatype, POD(val), 0);
-		    }
-	        else if (!strcmp(ptr,"datetime") && datatype == DATA_T_DATETIME)
-		    {
-		    return stGetAttrValue(value_inf, datatype, POD(val), 0);
-		    }
-	        else if (!strcmp(ptr,"double"))
-		    {
-		    }
-	        else if (!strcmp(ptr,"money"))
-		    {
-		    }
-	        else
-	            {
-		    /** Return the data of the appropriate type. **/
-		    if (stGetAttrType(value_inf,0) == DATA_T_STRING && stAttrIsList(value_inf))
-			{
-			if (datatype != DATA_T_STRINGVEC)
-			    {
-			    mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be stringvec)", attrname);
-			    return -1;
-			    }
-			inf->VecData = stGetValueList(value_inf, DATA_T_STRING, &(inf->SVvalue.nStrings));
-			inf->SVvalue.Strings = (char**)(inf->VecData);
-			*(pStringVec*)val = &(inf->SVvalue);
-			}
-		    else if (stGetAttrType(value_inf,0) == DATA_T_INTEGER && stAttrIsList(value_inf))
-			{
-			if (datatype != DATA_T_INTVEC)
-			    {
-			    mssError(1,"RPT","Type mismatch accessing attribute '%s' (should be intvec)", attrname);
-			    return -1;
-			    }
-			inf->VecData = stGetValueList(value_inf, DATA_T_INTEGER, &(inf->IVvalue.nIntegers));
-			inf->IVvalue.Integers = (int*)(inf->VecData);
-			*(pIntVec*)val = &(inf->IVvalue);
-			}
-		    else
-			{
-			stGetAttrValue(value_inf, datatype, POD(val), 0);
-			}
-		    }
-#endif
-		}
-            }
+	    return rval;
+	    }
 
 	/** If annotation, and not found, return "" **/
         if (!strcmp(attrname,"annotation"))
@@ -4740,36 +4744,15 @@ char*
 rptGetNextAttr(void* inf_v, pObjTrxTree *oxt)
     {
     pRptData inf = RPT(inf_v);
-    int i;
-    pStructInf subinf;
+    pRptParam rptparam;
 
-    	/** Loop through top-level attributes in the inf structure. **/
-	for(i=inf->AttrID;i<inf->Node->Data->nSubInf;i++)
+	/** Get the next one from the list of parameters **/
+	if (inf->AttrID < inf->Params.nItems)
 	    {
-	    subinf = (pStructInf)(inf->Node->Data->SubInf[i]);
-
-	    /** Version 1: top-level attribute inf **/
-	    if (inf->Version == 1)
-	        {
-	        if (stStructType(subinf) == ST_T_ATTRIB)
-	            {
-		    inf->AttrID = i+1;
-		    return subinf->Name;
-		    }
-		}
-	    else
-	        {
-		/** Version 2: top-level subgroup with default attr **/
-		if (stStructType(subinf) == ST_T_SUBGROUP && !strcmp(subinf->UsrType,"report/parameter"))
-		    {
-		    inf->AttrID = i+1;
-		    return subinf->Name;
-		    }
-		}
+	    rptparam = (pRptParam)inf->Params.Items[inf->AttrID];
+	    inf->AttrID += 1;
+	    return rptparam->Param->Name;
 	    }
-	
-	/** No find? **/
-	inf->AttrID = inf->Node->Data->nSubInf;
 
     return NULL;
     }
@@ -4796,8 +4779,7 @@ int
 rptSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree *oxt)
     {
     pRptData inf = RPT(inf_v);
-    pStructInf find_inf;
-    int type;
+    pRptParam rptparam;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -4807,6 +4789,7 @@ rptSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		mssError(1,"RPT","Type mismatch setting attribute '%s' (should be string)", attrname);
 		return -1;
 		}
+
 	    /** GRB - error out on this for now.  The stuff that is needed to rename
 	     ** a node like this isn't really in place.
 	     **/
@@ -4825,14 +4808,6 @@ rptSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	        strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
 	        strcpy(strrchr(inf->Pathname,'/')+1,val->String);
 
-		/** GRB - rpt may not be in a fs file.  It is not this driver's
-		 ** duty to call things like rename().
-		 **/
-	        /*if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0)
-		    {
-		    mssErrorErrno(1,"RPT","SetAttr 'name': could not rename report node object");
-		    return -1;
-		    }*/
 	        strcpy(inf->Obj->Pathname->Pathbuf, inf->Pathname);
 		}
 	    strcpy(inf->Node->Data->Name,val->String);
@@ -4851,31 +4826,20 @@ rptSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    return -1;
 	    }
 
-	/** Otherwise, try to set top-level attrib inf value in the override struct **/
-	/** First, see if the thing exists in the original inf struct. **/
-	type = rptGetAttrType(inf_v, attrname, oxt);
-	if (type < 0) return -1;
-	if (datatype != type)
+	/** Report Attribute? **/
+	rptparam = rpt_internal_GetParam(inf, attrname);
+	if (rptparam)
 	    {
-	    mssError(1,"RPT","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
-		    attrname, obj_type_names[datatype], obj_type_names[type]);
-	    return -1;
-	    }
-
-	/** Now, look for it in the override struct. **/
-	find_inf = stLookup(inf->AttrOverride, attrname);
-
-	/** If not found, add a new one **/
-	if (!find_inf)
-	    {
-	    find_inf = stAddAttr(inf->AttrOverride, attrname);
-	    }
-
-	/** Set the value. **/
-	if (find_inf)
-	    {
-	    stSetAttrValue(find_inf, type, val, 0);
-	    return 0;
+	    if (rptparam->Flags & RPT_PARAM_F_IN)
+		{
+		if (rpt_internal_SetParamValue(rptparam, datatype, val, inf->ObjList, inf->ObjList->Session) >= 0)
+		    return 0;
+		}
+	    else
+		{
+		mssError(1, "RPT", "Cannot set readonly attribute '%s'", attrname);
+		return -1;
+		}
 	    }
 
     return -1;
@@ -5000,7 +4964,8 @@ rptInitialize()
 
 	nmRegister(sizeof(RptData),"RptData");
 	nmRegister(sizeof(RptQuery),"RptQuery");
-	nmRegister(sizeof(QueryConn),"QueryConn");
+	nmRegister(sizeof(RptSource),"RptSource");
+	nmRegister(sizeof(RptSourceAgg),"RptSourceAgg");
 	nmRegister(sizeof(RptSession),"RptSession");
 	nmRegister(sizeof(PrintDriver),"PrintDriver");
 

@@ -94,6 +94,7 @@ int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     {
     void* vptr;
     char* ptr;
+    Binary b;
 
     if (!i0 || !i1 || i0->DataType != DATA_T_STRING || (i0->Flags & EXPR_F_NULL))
         {
@@ -104,6 +105,11 @@ int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExp
         {
 	case DATA_T_INTEGER: vptr = &(i1->Integer); break;
 	case DATA_T_STRING: vptr = i1->String; break;
+	case DATA_T_BINARY:
+	    b.Size = i1->Size;
+	    b.Data = (unsigned char*)i1->String;
+	    vptr = &b;
+	    break;
 	case DATA_T_DOUBLE: vptr = &(i1->Types.Double); break;
 	case DATA_T_DATETIME: vptr = &(i1->Types.Date); break;
 	case DATA_T_MONEY: vptr = &(i1->Types.Money); break;
@@ -516,6 +522,47 @@ int exp_fn_lower(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
         {
 	if (i0->String[i] >= 'A' && i0->String[i] <= 'Z') tree->String[i] = i0->String[i] + 32;
 	else tree->String[i] = i0->String[i];
+	}
+    return 0;
+    }
+
+
+int exp_fn_octet_length(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    tree->DataType = DATA_T_INTEGER;
+    if (i0 && i0->Flags & EXPR_F_NULL)
+        {
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (!i0 || i1)
+        {
+	mssError(1,"EXP","One parameter required for octet_length()");
+	return -1;
+	}
+    switch(i0->DataType)
+	{
+	case DATA_T_INTEGER:
+	    tree->Integer = sizeof(tree->Integer);
+	    break;
+	case DATA_T_DOUBLE:
+	    tree->Integer = sizeof(tree->Types.Double);
+	    break;
+	case DATA_T_STRING:
+	    tree->Integer = strlen(i0->String);
+	    break;
+	case DATA_T_BINARY:
+	    tree->Integer = i0->Size;
+	    break;
+	case DATA_T_DATETIME:
+	    tree->Integer = sizeof(tree->Types.Date);
+	    break;
+	case DATA_T_MONEY:
+	    tree->Integer = sizeof(tree->Types.Money);
+	    break;
+	default:
+	    mssError(1,"EXP","Unsupported data type for octet_length()");
+	    return -1;
 	}
     return 0;
     }
@@ -1584,27 +1631,117 @@ int exp_fn_substitute(pExpression tree, pParamObjects objlist, pExpression i0, p
 int exp_fn_eval(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression eval_exp, parent;
+    pExpression child;
+    int oldmainflags;
+    int oldcurrent, oldparent;
+    int newpermflags;
     int rval;
-    if (!objlist || (i0 && !i1 && i0->Flags & EXPR_F_NULL))
-	{
-	tree->Flags |= EXPR_F_NULL;
-	return 0;
-	}
-    if (!i0 || i0->DataType != DATA_T_STRING || i1)
-        {
-	mssError(1,"EXP","eval() requires one string parameter");
-	return -1;
-	}
-    for(parent=tree;parent->Parent;parent=parent->Parent);
-    eval_exp = expCompileExpression(i0->String, objlist, parent->LxFlags, parent->CmpFlags);
-    if (!eval_exp) return -1;
-    if ((rval=expEvalTree(eval_exp, objlist)) < 0)
-	{
+    int objid;
+
+	/** NULL result because 1st param is null? **/
+	if (!objlist || (i0 && i0->Flags & EXPR_F_NULL))
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	/** Not allowed? **/
+	if (objlist->MainFlags & EXPR_MO_NOEVAL)
+	    {
+	    mssError(1,"EXP","Cannot use eval() in this context");
+	    return -1;
+	    }
+
+	/** Usage **/
+	if (!i0 || i0->DataType != DATA_T_STRING)
+	    {
+	    mssError(1,"EXP","eval() first parameter must be a string");
+	    return -1;
+	    }
+	for(parent=tree;parent->Parent;parent=parent->Parent);
+
+	oldmainflags = objlist->MainFlags;
+	oldcurrent = objlist->CurrentID;
+	oldparent = objlist->ParentID;
+
+	/** Permission flags **/
+	if (i1 && !(i1->Flags & EXPR_F_NULL))
+	    {
+	    if (i1->DataType != DATA_T_STRING)
+		{
+		mssError(1,"EXP","eval() second parameter must be a string");
+		return -1;
+		}
+	    newpermflags = 0;
+	    if (strchr(i1->String, 'C') == NULL) newpermflags |= EXPR_MO_NOCURRENT;
+	    if (strchr(i1->String, 'P') == NULL) newpermflags |= EXPR_MO_NOPARENT;
+	    if (strchr(i1->String, 'O') == NULL) newpermflags |= EXPR_MO_NOOBJECT;
+	    if (strchr(i1->String, 'D') == NULL) newpermflags |= EXPR_MO_NODIRECT;
+	    if (strchr(i1->String, 'S') == NULL) newpermflags |= EXPR_MO_NOSUBQUERY;
+	    if (strchr(i1->String, 'E') == NULL) newpermflags |= EXPR_MO_NOEVAL;
+	    }
+	else
+	    {
+	    newpermflags = EXPR_MO_DEFPERMMASK;
+	    }
+	objlist->MainFlags |= newpermflags;
+
+	/** Current object name **/
+	if (i2 && !(i2->Flags & EXPR_F_NULL))
+	    {
+	    if (i2->DataType != DATA_T_STRING)
+		{
+		mssError(1,"EXP","eval() third parameter must be a string");
+		return -1;
+		}
+	    objid = expLookupParam(objlist, i2->String, 0);
+	    if (objid >= 0)
+		objlist->CurrentID = objid;
+	    else
+		{
+		mssError(1,"EXP","eval() no such object %s", i2->String);
+		return -1;
+		}
+	    }
+
+	/** Parent object name **/
+	if (tree->Children.nItems == 4)
+	    {
+	    child = tree->Children.Items[3];
+	    if (child && !(child->Flags & EXPR_F_NULL))
+		{
+		if (child->DataType != DATA_T_STRING)
+		    {
+		    mssError(1,"EXP","eval() fourth parameter must be a string");
+		    return -1;
+		    }
+		objid = expLookupParam(objlist, child->String, 0);
+		if (objid >= 0)
+		    objlist->ParentID = objid;
+		else
+		    {
+		    mssError(1,"EXP","eval() no such object %s", child->String);
+		    return -1;
+		    }
+		}
+	    }
+
+	/** Compile and evaluate **/
+	eval_exp = expCompileExpression(i0->String, objlist, parent->LxFlags, parent->CmpFlags);
+	if (!eval_exp) return -1;
+	rval = expEvalTree(eval_exp, objlist);
+	objlist->MainFlags = oldmainflags;
+	objlist->CurrentID = oldcurrent;
+	objlist->ParentID = oldparent;
+	if (rval < 0)
+	    {
+	    expFreeExpression(eval_exp);
+	    return -1;
+	    }
+	expCopyValue(eval_exp, tree, 1);
+
 	expFreeExpression(eval_exp);
-	return -1;
-	}
-    expCopyValue(eval_exp, tree, 1);
-    expFreeExpression(eval_exp);
+
     return rval;
     }
 
@@ -2402,7 +2539,7 @@ int exp_fn_rand(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
 	/** Get the 64-bit value and convert to double **/
 	memcpy(&val, objlist->Random, sizeof(val));
 	tree->DataType = DATA_T_DOUBLE;
-	tree->Types.Double = (double)val / (double)ULLONG_MAX;
+	tree->Types.Double = (double)((long double)val / ((long double)ULLONG_MAX + (long double)1.0));
 
     return 0;
     }
@@ -2668,6 +2805,165 @@ int exp_fn_pbkdf2(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
     }
 
 
+int exp_fn_to_hex(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pXString dest = NULL;
+    int len;
+
+	if (!i0 || (!(i0->Flags & EXPR_F_NULL) && i0->DataType != DATA_T_STRING && i0->DataType != DATA_T_BINARY))
+	    {
+	    mssError(1, "EXP", "to_hex() expects one string or binary parameter");
+	    goto error;
+	    }
+
+	tree->DataType = DATA_T_STRING;
+
+	if (i0->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	dest = xsNew();
+	if (!dest)
+	    goto error;
+	
+	if (i0->DataType == DATA_T_STRING)
+	    len = strlen(i0->String);
+	else
+	    len = i0->Size;
+	if (xsQPrintf(dest, "%*STR&HEX", len, i0->String) < 0)
+	    goto error;
+	expSetString(tree, dest->String);
+
+	xsFree(dest);
+
+	return 0;
+
+    error:
+	if (dest)
+	    xsFree(dest);
+	return -1;
+    }
+
+
+int exp_fn_from_hex(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pXString dest = NULL;
+
+	if (!i0 || (!(i0->Flags & EXPR_F_NULL) && i0->DataType != DATA_T_STRING))
+	    {
+	    mssError(1, "EXP", "from_hex() expects one string parameter");
+	    goto error;
+	    }
+
+	tree->DataType = DATA_T_BINARY;
+
+	if (i0->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	dest = xsNew();
+	if (!dest)
+	    goto error;
+
+	if (xsQPrintf(dest, "%*STR&DHEX", strlen(i0->String)/2, i0->String) < 0)
+	    {
+	    mssError(1, "EXP", "from_hex(): invalid hex-encoded data");
+	    goto error;
+	    }
+	expSetBinary(tree, (unsigned char*)xsString(dest), xsLength(dest));
+
+	xsFree(dest);
+
+	return 0;
+
+    error:
+	if (dest)
+	    xsFree(dest);
+	return -1;
+    }
+
+
+int exp_fn_to_base64(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pXString dest = NULL;
+
+	if (!i0 || (!(i0->Flags & EXPR_F_NULL) && i0->DataType != DATA_T_STRING))
+	    {
+	    mssError(1, "EXP", "to_base64() expects one string parameter");
+	    goto error;
+	    }
+
+	tree->DataType = DATA_T_STRING;
+
+	if (i0->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	dest = xsNew();
+	if (!dest)
+	    goto error;
+
+	if (xsQPrintf(dest, "%STR&B64", i0->String) < 0)
+	    goto error;
+	expSetString(tree, dest->String);
+
+	xsFree(dest);
+
+	return 0;
+
+    error:
+	if (dest)
+	    xsFree(dest);
+	return -1;
+    }
+
+
+int exp_fn_from_base64(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pXString dest = NULL;
+
+	if (!i0 || (!(i0->Flags & EXPR_F_NULL) && i0->DataType != DATA_T_STRING))
+	    {
+	    mssError(1, "EXP", "from_base64() expects one string parameter");
+	    goto error;
+	    }
+
+	tree->DataType = DATA_T_BINARY;
+
+	if (i0->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	dest = xsNew();
+	if (!dest)
+	    goto error;
+
+	if (xsQPrintf(dest, "%STR&DB64", i0->String) < 0)
+	    {
+	    mssError(1, "EXP", "from_base64(): invalid base64-encoded data");
+	    goto error;
+	    }
+	expSetBinary(tree, (unsigned char*)xsString(dest), xsLength(dest));
+
+	xsFree(dest);
+
+	return 0;
+
+    error:
+	if (dest)
+	    xsFree(dest);
+	return -1;
+    }
+
+
 int exp_fn_log10(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     double n;
@@ -2765,6 +3061,71 @@ int exp_fn_power(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 
 /*** Windowing Functions ***/
 
+int exp_fn_dense_rank(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pExpression new_exp;
+    char newbuf[512];
+
+    /** Init the Aggregate computation expression? **/
+    if (!tree->AggExp)
+        {
+	tree->AggCount = 0;
+	tree->PrivateData = nmSysMalloc(512);
+	if (!tree->PrivateData)
+	    return -ENOMEM;
+	memset(tree->PrivateData, 0, 512);
+	tree->AggExp = expAllocExpression();
+	tree->AggExp->NodeType = EXPR_N_PLUS;
+	tree->AggExp->DataType = DATA_T_INTEGER;
+	tree->AggExp->Integer = -1;
+	tree->AggExp->AggLevel = 1;
+	new_exp = expAllocExpression();
+	new_exp->NodeType = EXPR_N_INTEGER;
+	new_exp->DataType = DATA_T_INTEGER;
+	new_exp->Integer = 1;
+	new_exp->AggLevel = 1;
+	expAddNode(tree->AggExp, new_exp);
+	new_exp = expAllocExpression();
+	new_exp->NodeType = EXPR_N_INTEGER;
+	new_exp->AggLevel = 1;
+	expAddNode(tree->AggExp, new_exp);
+	expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[1]), 0);
+	exp_internal_EvalTree(tree->AggExp, objlist);
+	expCopyValue(tree->AggExp, tree, 0);
+	}
+
+    if (tree->Flags & EXPR_F_AGGLOCKED) return 0;
+
+    /** Changed? **/
+    if (tree->Children.nItems > 0)
+	{
+	memset(newbuf, 0, sizeof(newbuf));
+	if (objBuildBinaryImage(newbuf, sizeof(newbuf), tree->Children.Items, tree->Children.nItems, objlist, 0) < 0)
+	    return -1;
+	if (memcmp(newbuf, tree->PrivateData, sizeof(newbuf)) || tree->AggCount == 0)
+	    {
+	    /** Increment count **/
+	    memcpy(tree->PrivateData, newbuf, sizeof(newbuf));
+	    expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[1]), 0);
+	    exp_internal_EvalTree(tree->AggExp, objlist);
+	    expCopyValue(tree->AggExp, tree, 0);
+	    tree->AggCount++;
+	    }
+	}
+    else if (tree->AggCount == 0)
+	{
+	/** Single partition for entire result set **/
+	expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[1]), 0);
+	exp_internal_EvalTree(tree->AggExp, objlist);
+	expCopyValue(tree->AggExp, tree, 0);
+	tree->AggCount++;
+	}
+
+    tree->Flags |= EXPR_F_AGGLOCKED;
+    return 0;
+    }
+
+
 int exp_fn_row_number(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression new_exp;
@@ -2812,13 +3173,9 @@ int exp_fn_row_number(pExpression tree, pParamObjects objlist, pExpression i0, p
 	    }
 	}
 
-    /** Compute the possibly incremented value **/
-    //if (!(i0->Flags & EXPR_F_NULL))
-    //    {
-	expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[1]), 0);
-	exp_internal_EvalTree(tree->AggExp, objlist);
-	expCopyValue(tree->AggExp, tree, 0);
-	//}
+    expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[1]), 0);
+    exp_internal_EvalTree(tree->AggExp, objlist);
+    expCopyValue(tree->AggExp, tree, 0);
 
     tree->Flags |= EXPR_F_AGGLOCKED;
     return 0;
@@ -3182,14 +3539,20 @@ int exp_fn_min(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 
 int exp_fn_first(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
+    int rval;
+
     if (!i0)
 	{
 	mssError(1,"EXP","first() requires a parameter");
 	return -1;
 	}
+    if (tree->AggCount == 0)
+	rval = exp_internal_EvalTree(i0, objlist);
+    if (rval < 0)
+	return -1;
     if (!(tree->Flags & EXPR_F_AGGLOCKED) && !(i0->Flags & EXPR_F_NULL))
 	{
-	if (tree->AggCount == 0) 
+	if (tree->AggCount == 0)
 	    {
 	    expCopyValue(i0, tree, 1);
 	    }
@@ -3517,8 +3880,15 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
 	xhAdd(&EXP.Functions, "fuzzy_compare", (char*)exp_fn_fuzzy_compare);
 	xhAdd(&EXP.Functions, "letter_frequency", (char*)exp_fn_letter_frequency);
+	xhAdd(&EXP.Functions, "to_base64", (char*)exp_fn_to_base64);
+	xhAdd(&EXP.Functions, "from_base64", (char*)exp_fn_from_base64);
+	xhAdd(&EXP.Functions, "to_hex", (char*)exp_fn_to_hex);
+	xhAdd(&EXP.Functions, "from_hex", (char*)exp_fn_from_hex);
+	xhAdd(&EXP.Functions, "octet_length", (char*)exp_fn_octet_length);
+
 	/** Windowing **/
 	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
+	xhAdd(&EXP.Functions, "dense_rank", (char*)exp_fn_dense_rank);
 
 	/** Aggregate **/
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
