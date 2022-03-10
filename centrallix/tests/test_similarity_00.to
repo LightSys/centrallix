@@ -1,0 +1,6 @@
+##NAME Text Mining String Similarity
+
+query select sw1 = (similarity('hello', 'hello') >= 0.999) and (similarity('hello', 'hello') <= 1)
+query select sw1 = (similarity('hello', 'nancy') <= 0.001) and (similarity('hello', 'nancy') >= 0)
+query select sw1 = (similarity('hello', 'hello world') <= 0.891) and (similarity('hello', 'hello world') >= 0.890)
+query select sw1 = (similarity('hello', 'hellow') >= 0.935) and (similarity('hello', 'hellow') <= 0.936)
