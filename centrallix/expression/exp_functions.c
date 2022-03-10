@@ -3061,6 +3061,71 @@ int exp_fn_power(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 
 /*** Windowing Functions ***/
 
+int exp_fn_dense_rank(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pExpression new_exp;
+    char newbuf[512];
+
+    /** Init the Aggregate computation expression? **/
+    if (!tree->AggExp)
+        {
+	tree->AggCount = 0;
+	tree->PrivateData = nmSysMalloc(512);
+	if (!tree->PrivateData)
+	    return -ENOMEM;
+	memset(tree->PrivateData, 0, 512);
+	tree->AggExp = expAllocExpression();
+	tree->AggExp->NodeType = EXPR_N_PLUS;
+	tree->AggExp->DataType = DATA_T_INTEGER;
+	tree->AggExp->Integer = -1;
+	tree->AggExp->AggLevel = 1;
+	new_exp = expAllocExpression();
+	new_exp->NodeType = EXPR_N_INTEGER;
+	new_exp->DataType = DATA_T_INTEGER;
+	new_exp->Integer = 1;
+	new_exp->AggLevel = 1;
+	expAddNode(tree->AggExp, new_exp);
+	new_exp = expAllocExpression();
+	new_exp->NodeType = EXPR_N_INTEGER;
+	new_exp->AggLevel = 1;
+	expAddNode(tree->AggExp, new_exp);
+	expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[1]), 0);
+	exp_internal_EvalTree(tree->AggExp, objlist);
+	expCopyValue(tree->AggExp, tree, 0);
+	}
+
+    if (tree->Flags & EXPR_F_AGGLOCKED) return 0;
+
+    /** Changed? **/
+    if (tree->Children.nItems > 0)
+	{
+	memset(newbuf, 0, sizeof(newbuf));
+	if (objBuildBinaryImage(newbuf, sizeof(newbuf), tree->Children.Items, tree->Children.nItems, objlist, 0) < 0)
+	    return -1;
+	if (memcmp(newbuf, tree->PrivateData, sizeof(newbuf)) || tree->AggCount == 0)
+	    {
+	    /** Increment count **/
+	    memcpy(tree->PrivateData, newbuf, sizeof(newbuf));
+	    expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[1]), 0);
+	    exp_internal_EvalTree(tree->AggExp, objlist);
+	    expCopyValue(tree->AggExp, tree, 0);
+	    tree->AggCount++;
+	    }
+	}
+    else if (tree->AggCount == 0)
+	{
+	/** Single partition for entire result set **/
+	expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[1]), 0);
+	exp_internal_EvalTree(tree->AggExp, objlist);
+	expCopyValue(tree->AggExp, tree, 0);
+	tree->AggCount++;
+	}
+
+    tree->Flags |= EXPR_F_AGGLOCKED;
+    return 0;
+    }
+
+
 int exp_fn_row_number(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression new_exp;
@@ -3108,13 +3173,9 @@ int exp_fn_row_number(pExpression tree, pParamObjects objlist, pExpression i0, p
 	    }
 	}
 
-    /** Compute the possibly incremented value **/
-    //if (!(i0->Flags & EXPR_F_NULL))
-    //    {
-	expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[1]), 0);
-	exp_internal_EvalTree(tree->AggExp, objlist);
-	expCopyValue(tree->AggExp, tree, 0);
-	//}
+    expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[1]), 0);
+    exp_internal_EvalTree(tree->AggExp, objlist);
+    expCopyValue(tree->AggExp, tree, 0);
 
     tree->Flags |= EXPR_F_AGGLOCKED;
     return 0;
@@ -3618,6 +3679,7 @@ exp_internal_DefineFunctions()
 
 	/** Windowing **/
 	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
+	xhAdd(&EXP.Functions, "dense_rank", (char*)exp_fn_dense_rank);
 
 	/** Aggregate **/
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
