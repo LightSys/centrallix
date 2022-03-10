@@ -4016,15 +4016,12 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
 	xhAdd(&EXP.Functions, "fuzzy_compare", (char*)exp_fn_fuzzy_compare);
 	xhAdd(&EXP.Functions, "letter_frequency", (char*)exp_fn_letter_frequency);
-<<<<<<< HEAD
 	xhAdd(&EXP.Functions, "similarity", (char*)exp_fn_similarity);
-=======
 	xhAdd(&EXP.Functions, "to_base64", (char*)exp_fn_to_base64);
 	xhAdd(&EXP.Functions, "from_base64", (char*)exp_fn_from_base64);
 	xhAdd(&EXP.Functions, "to_hex", (char*)exp_fn_to_hex);
 	xhAdd(&EXP.Functions, "from_hex", (char*)exp_fn_from_hex);
 	xhAdd(&EXP.Functions, "octet_length", (char*)exp_fn_octet_length);
->>>>>>> 8903eb76784ed56ac9d58186baee10859084b15a
 
 	/** Windowing **/
 	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
