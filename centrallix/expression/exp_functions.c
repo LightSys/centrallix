@@ -3402,28 +3402,59 @@ int exp_fn_letter_frequency(pExpression tree, pParamObjects objlist, pExpression
 
 	int i;
 	int length = strlen(i0->String);
-	char *document = i0->String;
 	const int MAX_ARRAY_SIZE = 1000;
-	int letterMatrix[MAX_ARRAY_SIZE]; // one location for each letter a-z, and each number 0-9
-	for (i = 0; i < length; i++) 
-	{
-		letterMatrix[toupper(document[i])]++;
+	const int LETTER_A = (int)'A';
+	const int LETTER_Z = (int)'Z';
+	const int NUMBER_0 = (int)'0';
+	const int NUMBER_9 = (int)'9';
+	const int LETTER_TOTAL = LETTER_Z - LETTER_A;
+	const int NUMBER_TOTAL = NUMBER_9 - NUMBER_0;
+	int letterMatrix[MAX_ARRAY_SIZE]; // one location for each letter a-z
+	int numberMatrix[MAX_ARRAY_SIZE]; // one location for each number 0-9
+	// Initialize letterMatrix and numberMatrix to all 0's
+	for (i = 0; i < MAX_ARRAY_SIZE; i++) {
+		letterMatrix[i] = 0;
+		numberMatrix[i] = 0;
 	}
 
-	char *buffer = malloc(sizeof(char) * 10 + 1);
-	char *output = malloc(sizeof(char) * 1000 + 1);
-
-	for (i = 65; i <= 90; i++)
+	// Iterate through the i0 parameter, convert to upper case, and increment
+	// corresponding location in the array for each letter in the parameter value.
+	for (i = 0; i < length; i++) 
 	{
-		snprintf(buffer, 10, "%c:%d", i, letterMatrix[i]);
-		strcat(output, buffer);
-		if (i < 90) {
-			strcat(output, ",");
+		char character = toupper(i0->String[i]);
+		if ((int)character >= LETTER_A && (int)character <= LETTER_Z) {
+			letterMatrix[toupper(i0->String[i]) - LETTER_A]++;
+		} else if ((int)character >= NUMBER_0 && (int)character <= NUMBER_9) {
+			numberMatrix[toupper(i0->String[i]) - NUMBER_0]++;
+		}
+	}
+
+	// Setup term frequency vector. Will contain format A:0,B:1,C:0,D:2, etc. where
+	// the number after the letter is the frequency of the letter.
+	char *vector = malloc(1000 * sizeof(char));
+	vector[0] = '\0';
+	// Iterate through the letterMatrix to construct the frequency vector
+	for (i = 0; i <= LETTER_TOTAL; i++)
+	{
+		char *letterCount = malloc(10 * sizeof(char));
+		letterCount[0] = '\0';
+		sprintf(letterCount, "%c:%d", i + LETTER_A, letterMatrix[i]);
+		strcat(vector, letterCount);
+		strcat(vector, ",");
+	}	
+	for (i = 0; i <= NUMBER_TOTAL; i++)
+	{
+		char *numberCount = malloc(10 * sizeof(char));
+		numberCount[0] = '\0';
+		sprintf(numberCount, "%c:%d", i + NUMBER_0, numberMatrix[i]);
+		strcat(vector, numberCount);
+		if (i < NUMBER_TOTAL) {
+			strcat(vector, ",");
 		}
 	}	
 
 	tree->DataType = DATA_T_STRING;
-	tree->String = output;
+	tree->String = vector;
 	return 0;
 
 	}

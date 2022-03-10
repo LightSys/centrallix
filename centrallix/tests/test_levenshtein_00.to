@@ -1,3 +1,8 @@
 ##NAME Levenshtein String Comparison
 
 query select sw1 = levenshtein('hello', 'hello!')
+query select sw1 = levenshtein('kitten', 'mitten')
+query select sw1 = levenshtein('kitten', 'smitten')
+query select sw1 = levenshtein('lawn', 'flown')
+query select sw1 = levenshtein('kitten', 'itten')
+query select sw1 = levenshtein('kitten', 'skitten')
