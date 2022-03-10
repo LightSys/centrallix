@@ -390,14 +390,11 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 			one_open_ctl = open_ctl->SubInf[j];
 			if (!strcmp(one_open_ctl->Name, one_param->Name))
 			    {
-			    paramSetValueFromInfNe(one_param, one_open_ctl);
+			    paramSetValueFromInfNe(one_param, one_open_ctl, 0, NULL, obj->Session);
 			    break;
 			    }
 			}
 		    }
-
-		/** Apply hints **/
-		paramEvalHints(one_param, NULL, obj->Session);
 		}
 	    }
 

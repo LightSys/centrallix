@@ -699,6 +699,11 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 			fetch_rval = 1;
 			break;
 			}
+		    else if (rval < 0)
+			{
+			/** Error **/
+			return rval;
+			}
 
 		    /** Is this a group-end?  Return now if so. **/
 		    if (mqt_internal_CheckGroupBy(qe, stmt, md, &bptr) == 1 || qe->Children.nItems == 0 || !cld)

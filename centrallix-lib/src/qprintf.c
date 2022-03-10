@@ -512,7 +512,8 @@ int
 qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
     {
     static char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    const char* srcptr = src;
+    const unsigned char* srcptr = (const unsigned char*)src;
+    const unsigned char* origsrc = (const unsigned char*)src;
     char* dstptr;
     int req_size = ((src_size+2) / 3) * 4 + *dst_offset;
 
@@ -529,13 +530,13 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
 	dstptr = *dst + *dst_offset;
 	
 	/** Step through src 3 bytes at a time, generating 4 dst bytes for each 3 src **/
-	while(srcptr < src + src_size)
+	while(srcptr < origsrc + src_size)
 	    {
 	    /** First 6 bits of source[0] --> first byte dst. **/
 	    dstptr[0] = b64[srcptr[0]>>2];
 
 	    /** Second dst byte from last 2 bits of src[0] and first 4 of src[1] **/
-	    if (srcptr+1 < src + src_size)
+	    if (srcptr+1 < origsrc + src_size)
 		dstptr[1] = b64[((srcptr[0]&0x03)<<4) | (srcptr[1]>>4)];
 	    else
 		{
@@ -547,7 +548,7 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
 		}
 
 	    /** Third dst byte from second 4 bits of src[1] and first 2 of src[2] **/
-	    if (srcptr+2 < src + src_size)
+	    if (srcptr+2 < origsrc + src_size)
 		dstptr[2] = b64[((srcptr[1]&0x0F)<<2) | (srcptr[2]>>6)];
 	    else
 		{
@@ -649,6 +650,71 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 	    cursor[2] |= ix;
 	    src += 4;
 	    cursor += 3;
+	    }
+
+	*dst_offset = *dst_offset + cursor - *dst;
+
+    return cursor - *dst;
+    }
+
+
+/*** qpf_internal_hexdecode() - convert base 64 to a string representation
+ ***/
+static inline int
+qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
+    {
+    char hex[23] = "0123456789abcdefABCDEF";
+    int conv[22] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 10, 11, 12, 13, 14, 15 };
+    char* ptr;
+    char* cursor;
+    int ix;
+    int req_size;
+
+	/** Required size **/
+	if (src_size%2 == 1)
+	    {
+	    QPERR(QPF_ERR_T_BADLENGTH);
+	    return -1;
+	    }
+	req_size = src_size/2;
+
+	/** Grow dstbuf if necessary and possible, otherwise return error **/
+	if (req_size > *dst_size)
+	    {
+	    if(grow_fn == NULL || !grow_fn(dst, dst_size, 0, grow_arg, req_size))
+		{
+		QPERR(QPF_ERR_T_MEMORY);
+		return -1;
+		}
+	    }
+
+	cursor = *dst + *dst_offset;
+	
+	/** Step through src 2 bytes at a time. **/
+	while(*src)
+	    {
+	    /** First 4 bits. **/
+	    ptr = strchr(hex, src[0]);
+	    if (!ptr)
+	        {
+		QPERR(QPF_ERR_T_BADCHAR);
+		return -1;
+		}
+	    ix = conv[ptr-hex];
+	    cursor[0] = ix<<4;
+
+	    /** Second four bits  **/
+	    ptr = strchr(hex, src[1]);
+	    if (!ptr)
+	        {
+		QPERR(QPF_ERR_T_BADCHAR);
+		return -1;
+		}
+	    ix = conv[ptr-hex];
+	    cursor[0] |= ix;
+
+	    src += 2;
+	    cursor += 1;
 	    }
 
 	*dst_offset = *dst_offset + cursor - *dst;
@@ -1130,6 +1196,16 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 				
 				case QPF_SPEC_T_DB64:
 				    if((n=qpf_internal_base64decode(s, strval, cplen, str, size, &cpoffset, grow_fn, grow_arg))<0) 
+					{ rval = -EINVAL; goto error; } 
+				    else 
+					{
+					copied+=n;
+					cplen=0; 
+					}
+				    break;
+				
+				case QPF_SPEC_T_DHEX:
+				    if((n=qpf_internal_hexdecode(s, strval, cplen, str, size, &cpoffset, grow_fn, grow_arg))<0) 
 					{ rval = -EINVAL; goto error; } 
 				    else 
 					{

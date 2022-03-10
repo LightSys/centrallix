@@ -497,7 +497,10 @@ function eb_select(x,y,l,c,n,a,k)
     this.ContentLayer.focus();
     var got_focus = $(this.ContentLayer).is(':focus');
     if (!got_focus)
-	pg_addsched_fn(this.ContentLayer, function() { this.focus() }, {}, 200);
+	pg_addsched_fn(this.ContentLayer, function()
+	    {
+	    this.focus()
+	    }, {}, 200);
     if (k)
 	pg_addsched_fn(this, function()
 	    {
@@ -588,6 +591,8 @@ function eb_cb_reveal(e)
     switch (e.eventName) 
 	{
 	case 'Reveal':
+	    if (this.has_focus)
+		pg_setkbdfocus(this, null, null, null);
 	    this.form.Reveal(this,e);
 	    break;
 	case 'Obscure':

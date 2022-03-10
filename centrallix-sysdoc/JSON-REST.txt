@@ -285,6 +285,45 @@ REST INTERFACE URI PARAMETERS...
 	or "both".  The number of levels defaults to 1.
 
 
+COLLECTION SEARCH CRITERIA...
+
+    When requesting a collection resource, you can supply one or more criteria
+    to restrict the results in the collection.  To do so, simply include the
+    criteria name as a URI parameter.  For example, to search only for items
+    with a 'status' property of 'Active', include the following URI param:
+
+	status=Active
+
+    You can also use other comparison operators, including not equal, greater,
+    less, and substring matching.  To do so, include the operator followed by
+    a colon (:) before the parameter value.  Here is a list of supported
+    operators:
+
+	=	Exactly equal to
+	!=	Not equal to
+	>	Greater than
+	>=	Greater than or equal to
+	<	Less than
+	<=	Less than or equal to
+	*	Contains substring
+	_*	Begins with substring
+	*_	Ends with substring
+
+    For example, to search for items whose 'haystack' property contains the
+    string 'needle', use the following URI parameter:
+
+	haystack=*:needle
+
+    If your parameter value might begin with one of the above operators, and
+    you don't want it interpreted that way, it is always "safe" to put =: at
+    the beginning of the value.  For example:
+
+	status=%3D:Active
+
+    (in this case %3D is the URI code for the equals sign, which needs to be
+    escaped so it is not interpreted as a URI parameter delimiter.)
+
+
 AUTHENTICATION...
 
     Although future authentication mechanisms may be supported later, the

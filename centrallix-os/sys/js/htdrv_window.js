@@ -287,6 +287,7 @@ function wn_setvisibility_bh(v)
 	}
     else
 	{
+	$(this).css({display:"block"});
 	pg_reveal_event(this, v, 'Reveal');
 	if (!this.loaded)
 	    {
@@ -297,7 +298,6 @@ function wn_setvisibility_bh(v)
 	    moveBy(this, 16, 16);
 	wn_bring_top(this);
 	htr_setvisibility(this,'inherit');
-	$(this).css({display:"block"});
 	this.is_visible = 1;
 	if (this.is_modal) pg_setmodal(this, true);
 	this.ifcProbe(ifEvent).Activate("Open", this.open_params);
