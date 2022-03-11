@@ -3690,7 +3690,7 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
     return 0;
     }
 
-double exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+int exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
 
     if (!i0 || !i1 || !i2)
