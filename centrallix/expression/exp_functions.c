@@ -3742,91 +3742,10 @@ double exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression
 	return 0;
 }
 
-int exp_fn_letter_frequency(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
-    {
-	if (!i0)
-	{
-		mssError(1,"EXP","letter_frequency() requires one parameter.");
-		return -1;
-	}
-
-	if (i0->Flags & EXPR_F_NULL)
-	{
-		tree->DataType = DATA_T_INTEGER;
-		tree->Flags |= EXPR_F_NULL;
-		return 0;
-	}
-
-    if (i0->DataType != DATA_T_STRING)
-	{
-		mssError(1,"EXP","letter_frequency() requires one string parameter.");
-		return -1;
-	}
-
-	int i;
-	int length = strlen(i0->String);
-	const int MAX_ARRAY_SIZE = 1000;
-	const int LETTER_A = (int)'A';
-	const int LETTER_Z = (int)'Z';
-	const int NUMBER_0 = (int)'0';
-	const int NUMBER_9 = (int)'9';
-	const int LETTER_TOTAL = LETTER_Z - LETTER_A;
-	const int NUMBER_TOTAL = NUMBER_9 - NUMBER_0;
-	int letterMatrix[MAX_ARRAY_SIZE]; // one location for each letter a-z
-	int numberMatrix[MAX_ARRAY_SIZE]; // one location for each number 0-9
-	// Initialize letterMatrix and numberMatrix to all 0's
-	for (i = 0; i < MAX_ARRAY_SIZE; i++) {
-		letterMatrix[i] = 0;
-		numberMatrix[i] = 0;
-	}
-
-	// Iterate through the i0 parameter, convert to upper case, and increment
-	// corresponding location in the array for each letter in the parameter value.
-	for (i = 0; i < length; i++) 
-	{
-		char character = toupper(i0->String[i]);
-		if ((int)character >= LETTER_A && (int)character <= LETTER_Z) {
-			letterMatrix[toupper(i0->String[i]) - LETTER_A]++;
-		} else if ((int)character >= NUMBER_0 && (int)character <= NUMBER_9) {
-			numberMatrix[toupper(i0->String[i]) - NUMBER_0]++;
-		}
-	}
-
-	// Setup term frequency vector. Will contain format A:0,B:1,C:0,D:2, etc. where
-	// the number after the letter is the frequency of the letter.
-	char *vector = malloc(1000 * sizeof(char));
-	vector[0] = '\0';
-	// Iterate through the letterMatrix to construct the frequency vector
-	for (i = 0; i <= LETTER_TOTAL; i++)
-	{
-		char *letterCount = malloc(10 * sizeof(char));
-		letterCount[0] = '\0';
-		sprintf(letterCount, "%c:%d", i + LETTER_A, letterMatrix[i]);
-		strcat(vector, letterCount);
-		strcat(vector, ",");
-	}	
-	for (i = 0; i <= NUMBER_TOTAL; i++)
-	{
-		char *numberCount = malloc(10 * sizeof(char));
-		numberCount[0] = '\0';
-		sprintf(numberCount, "%c:%d", i + NUMBER_0, numberMatrix[i]);
-		strcat(vector, numberCount);
-		if (i < NUMBER_TOTAL) {
-			strcat(vector, ",");
-		}
-	}	
-
-	tree->DataType = DATA_T_STRING;
-	tree->String = vector;
-	return 0;
-
-	}
-
 const char *CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; 
 
 int exp_fn_i_frequency_table(double *table, char *term)
 	{
-
 		int i;
 		// Initialize hash table with complete character set and 0 values
 		for (i = 0; i < strlen(CHAR_SET); i++) {
@@ -3847,7 +3766,6 @@ int exp_fn_i_frequency_table(double *table, char *term)
 		return 0;
 	}
 
-// int exp_fn_i_relative_frequency_table(pXHashTable frequency_table)
 int exp_fn_i_relative_frequency_table(double *frequency_table)
 	{
 		int i;
@@ -3863,7 +3781,7 @@ int exp_fn_i_relative_frequency_table(double *frequency_table)
 		return 0;
 	}
 
-// int exp_fn_i_dot_product(double *dot_product, pXHashTable r_freq_table1, pXHashTable r_freq_table2)
+// Dot product is equal to the sum of the squared values from each relative frequency table
 int exp_fn_i_dot_product(double *dot_product, double *r_freq_table1, double *r_freq_table2)
 	{
 		int i;
@@ -3873,7 +3791,7 @@ int exp_fn_i_dot_product(double *dot_product, double *r_freq_table1, double *r_f
 		return 0;
 	}
 
-// int exp_fn_i_magnitude(double *magnitude, pXHashTable r_freq_table)
+// Magnitude is equal to the square root of the sum of the squared relative frequencies
 int exp_fn_i_magnitude(double *magnitude, double *r_freq_table)
 	{
 		int i;
@@ -3884,14 +3802,19 @@ int exp_fn_i_magnitude(double *magnitude, double *r_freq_table)
 		return 0;
 	}
 
+// This function calculates the cosine similarity between two strings passed in through i0 and i1 parameters
+// Cosine similarity is equal to the dot product between the relative frequency vectors of each term divided by 
+// the product of the magnitudes of each relative frequency vector.
 int exp_fn_similarity(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
+	// Ensure function receives two non-null parameters
 	if (!i0 || !i1)
 	{
 		mssError(1,"EXP","similarity() requires two parameter.");
 		return -1;
 	}
 
+	// Ensure value passed in both parameters is not null
 	if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
 	{
 		tree->DataType = DATA_T_INTEGER;
@@ -3899,25 +3822,29 @@ int exp_fn_similarity(pExpression tree, pParamObjects objlist, pExpression i0, p
 		return 0;
 	}
 
+	// Ensure both parameters contain string values
     if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING))
 	{
 		mssError(1,"EXP","similarity() requires two string parameters.");
 		return -1;
 	}
 
+	// Allocate frequency tables (arrays of doubles) for each term
 	double *table1 = nmMalloc(strlen(CHAR_SET) * sizeof(double));
 	double *table2 = nmMalloc(strlen(CHAR_SET) * sizeof(double));
 
-    exp_fn_i_frequency_table(table1, i0->String);
+    // Calculate frequency tables and relative frequency tables for each term
+	exp_fn_i_frequency_table(table1, i0->String);
     exp_fn_i_relative_frequency_table(table1);
 
     exp_fn_i_frequency_table(table2, i1->String);
     exp_fn_i_relative_frequency_table(table2);
 
+	// Calculate dot product
 	double dot_product = 0.0;
-
 	exp_fn_i_dot_product(&dot_product, table1, table2);
 
+	// Calculate magnitudes of each relative frequency vector
 	double magnitude1 = 0.0;
 	double magnitude2 = 0.0;
 	exp_fn_i_magnitude(&magnitude1, table1);
@@ -3930,7 +3857,7 @@ int exp_fn_similarity(pExpression tree, pParamObjects objlist, pExpression i0, p
 	nmFree(table2, strlen(CHAR_SET) * sizeof(double));
 	return 0;
 	}
-	
+
 int
 exp_internal_DefineFunctions()
     {
@@ -3989,7 +3916,6 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
 	xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
 	xhAdd(&EXP.Functions, "fuzzy_compare", (char*)exp_fn_fuzzy_compare);
-	xhAdd(&EXP.Functions, "letter_frequency", (char*)exp_fn_letter_frequency);
 	xhAdd(&EXP.Functions, "similarity", (char*)exp_fn_similarity);
 	xhAdd(&EXP.Functions, "to_base64", (char*)exp_fn_to_base64);
 	xhAdd(&EXP.Functions, "from_base64", (char*)exp_fn_from_base64);
