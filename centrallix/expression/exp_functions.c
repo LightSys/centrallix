@@ -3822,78 +3822,93 @@ int exp_fn_letter_frequency(pExpression tree, pParamObjects objlist, pExpression
 
 	}
 
-typedef struct d_freq_node { int key; double value; } freq_node;
-const char *CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+// typedef struct d_freq_node { int key; double value; } freq_node;
+const char *CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; 
 
-int exp_fn_i_frequency_table(pXHashTable table, char *term)
+int exp_fn_i_frequency_table(double *table, char *term)
 	{
-		xhInit(table, strlen(CHAR_SET), 0);
+		// xhInit(table, strlen(CHAR_SET), 0);
 
 		int i;
 		// Initialize hash table with complete character set and 0 values
 		for (i = 0; i < strlen(CHAR_SET); i++) {
-			freq_node *data_entry = nmMalloc(sizeof(freq_node));
-			data_entry->key = CHAR_SET[i];
-			data_entry->value = 0.0;
-			xhAdd(table, (char *)&data_entry->key, (char *)data_entry);
+			table[i] = 0.0;
+			// freq_node *data_entry = nmMalloc(sizeof(freq_node));
+			// data_entry->key = CHAR_SET[i];
+			// data_entry->value = 0.0;
+			// xhAdd(table, (char *)&data_entry->key, (char *)data_entry);
 		}
 		
 		// Iterate through term and update hash table data
 		for (i = 0; i < strlen(term); i++) {
-			int key = toupper(term[i]);
-			void *data = xhLookup(table, (char *)&key);
-			if (data) {
-				freq_node *data_entry = (freq_node *)data;
-				data_entry->value++;
+			// Locate index position based on where letter in term is inside the CHAR_SET
+			// Used so that CHAR_SET can be arbitrarily extended.
+			char *loc = strchr(CHAR_SET, toupper(term[i]));
+			if (loc) {
+				int index = (int)(loc - CHAR_SET);
+				table[index]++;
 			}
+			// int key = toupper(term[i]);
+			// void *data = xhLookup(table, (char *)&key);
+			// if (data) {
+			// 	freq_node *data_entry = (freq_node *)data;
+			// 	data_entry->value++;
+			// }
 		}
 
 		return 0;
 	}
 
-int exp_fn_i_relative_frequency_table(pXHashTable frequency_table)
+// int exp_fn_i_relative_frequency_table(pXHashTable frequency_table)
+int exp_fn_i_relative_frequency_table(double *frequency_table)
 	{
 		int i;
-		int sum = 0;
+		double sum = 0;
 		// Compute the total character frequency
 		for (i = 0; i < strlen(CHAR_SET); i++) {
-			int key = CHAR_SET[i];
-			void *data = xhLookup(frequency_table, (char *)&key);
-			freq_node *data_entry = (freq_node *)data;
-			sum += data_entry->value;
+			sum += frequency_table[i];
+			// int key = CHAR_SET[i];
+			// void *data = xhLookup(frequency_table, (char *)&key);
+			// freq_node *data_entry = (freq_node *)data;
+			// sum += data_entry->value;
 		}
 
 		for (i = 0; i < strlen(CHAR_SET); i++) {
-			int key = CHAR_SET[i];
-			void *data = xhLookup(frequency_table, (char *)&key);
-			freq_node *data_entry = (freq_node *)data;
-			data_entry->value = data_entry->value / sum;	
-		}
-		return 0;
-	}
-
-int exp_fn_i_dot_product(double *dot_product, pXHashTable r_freq_table1, pXHashTable r_freq_table2)
-	{
-		int i;
-		for (i = 0; i < strlen(CHAR_SET); i++) {
-			int key = CHAR_SET[i];
-			void *data1 = xhLookup(r_freq_table1, (char *)&key);
-			void *data2 = xhLookup(r_freq_table2, (char *)&key);
-			freq_node *entry1 = (freq_node *)data1;
-			freq_node *entry2 = (freq_node *)data2;
-			*dot_product = *dot_product + (entry1->value * entry2->value);
+			frequency_table[i] = frequency_table[i] / sum;
+			// int key = CHAR_SET[i];
+			// void *data = xhLookup(frequency_table, (char *)&key);
+			// freq_node *data_entry = (freq_node *)data;
+			// data_entry->value = data_entry->value / sum;	
 		}
 		return 0;
 	}
 
-int exp_fn_i_magnitude(double *magnitude, pXHashTable r_freq_table)
+// int exp_fn_i_dot_product(double *dot_product, pXHashTable r_freq_table1, pXHashTable r_freq_table2)
+int exp_fn_i_dot_product(double *dot_product, double *r_freq_table1, double *r_freq_table2)
 	{
 		int i;
 		for (i = 0; i < strlen(CHAR_SET); i++) {
-			int key = CHAR_SET[i];
-			void *data1 = xhLookup(r_freq_table, (char *)&key);
-			freq_node *entry1 = (freq_node *)data1;
-			*magnitude = *magnitude + (entry1->value * entry1->value);
+			*dot_product = *dot_product + (r_freq_table1[i] * r_freq_table2[i]);
+			// int key = CHAR_SET[i];
+			// void *data1 = xhLookup(r_freq_table1, (char *)&key);
+			// void *data2 = xhLookup(r_freq_table2, (char *)&key);
+			// freq_node *entry1 = (freq_node *)data1;
+			// freq_node *entry2 = (freq_node *)data2;
+			// *dot_product = *dot_product + (entry1->value * entry2->value);
+		}
+		return 0;
+	}
+
+// int exp_fn_i_magnitude(double *magnitude, pXHashTable r_freq_table)
+int exp_fn_i_magnitude(double *magnitude, double *r_freq_table)
+	{
+		int i;
+		for (i = 0; i < strlen(CHAR_SET); i++) {
+			*magnitude = *magnitude + (r_freq_table[i] * r_freq_table[i]);
+			// int key = CHAR_SET[i];
+			// void *data1 = xhLookup(r_freq_table, (char *)&key);
+			// freq_node *entry1 = (freq_node *)data1;
+			// *magnitude = *magnitude + (entry1->value * entry1->value);
 		}
 		*magnitude = sqrt(*magnitude);
 		return 0;
@@ -3920,8 +3935,11 @@ int exp_fn_similarity(pExpression tree, pParamObjects objlist, pExpression i0, p
 		return -1;
 	}
 
-	pXHashTable table1 = nmMalloc(sizeof(XHashTable));
-	pXHashTable table2 = nmMalloc(sizeof(XHashTable));
+	// pXHashTable table1 = nmMalloc(sizeof(XHashTable));
+	// pXHashTable table2 = nmMalloc(sizeof(XHashTable));
+
+	double *table1 = nmMalloc(strlen(CHAR_SET) * sizeof(double));
+	double *table2 = nmMalloc(strlen(CHAR_SET) * sizeof(double));
 
     exp_fn_i_frequency_table(table1, i0->String);
     exp_fn_i_relative_frequency_table(table1);
@@ -3941,18 +3959,20 @@ int exp_fn_similarity(pExpression tree, pParamObjects objlist, pExpression i0, p
 	tree->DataType = DATA_T_DOUBLE;
 	tree->Types.Double = dot_product / (magnitude1 * magnitude2);
 
-	int i;
-	for (i = 0; i < strlen(CHAR_SET); i++) {
-		int key = CHAR_SET[i];
-		void *data1 = xhLookup(table1, (char *)&key);
-		void *data2 = xhLookup(table2, (char *)&key);
-		nmFree(data1, sizeof(freq_node));
-		nmFree(data2, sizeof(freq_node));
-	}
-	xhDeInit(table1);
-	xhDeInit(table2);
-	nmFree(table1, sizeof(XHashTable));
-	nmFree(table2, sizeof(XHashTable));
+	// int i;
+	// for (i = 0; i < strlen(CHAR_SET); i++) {
+	// 	int key = CHAR_SET[i];
+	// 	void *data1 = xhLookup(table1, (char *)&key);
+	// 	void *data2 = xhLookup(table2, (char *)&key);
+	// 	nmFree(data1, sizeof(freq_node));
+	// 	nmFree(data2, sizeof(freq_node));
+	// }
+	// xhDeInit(table1);
+	// xhDeInit(table2);
+	// nmFree(table1, sizeof(XHashTable));
+	// nmFree(table2, sizeof(XHashTable));
+	nmFree(table1, strlen(CHAR_SET) * sizeof(double));
+	nmFree(table2, strlen(CHAR_SET) * sizeof(double));
 	return 0;
 
 
