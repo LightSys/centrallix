@@ -19,8 +19,6 @@ Some alterations to the calculation are as follows:
 - a string that only required insertions to become the other string has its (lev_dist)/(strlen) value halved before returning
 The parameter max_field_width is required, but not used.
 
-
-
 ## Cosine Similarity  
 
 The [Cosine Similarity](https://en.wikipedia.org/wiki/Cosine_similarity) function is defined as the dot product of two vectors divided by the product of the magnitude of the two vectors. We use the relative frequency of the individual characters within each term as the vectors in the calculation. The following functions are used to calculate cosine similarity.
@@ -68,3 +66,10 @@ The `magnitude` parameter should be initialized to 0 before calling the function
 int exp_fn_similarity(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
 ```
 Returns a value between 0.0 (completely different) and 1.0 (complete match) reflecting the similarity between the value passed in to i0 and the value passed in to i1.
+
+## Future Implementation Ideas
+
+### Inverse Document Frequency (IDF)
+In text mining, the most common metric to use in the cosine similarity function is the [TF x IDF](https://en.wikipedia.org/wiki/Tf%E2%80%93idf) metric. Our approach uses only TF (term frequency). Inverse document frequency calculates a weighting factor for each character. This could increase precision a small amount by weighting characters that appear on many records as less important in distinguishing matches, and weighting characters that appear on only certain records as more important. IDF could be calculated by iterating through the entire partner dataset each time. Alternatively, it might be interesting to use the relative frequency of each letter used in the English language on [Wikipedia](https://en.wikipedia.org/wiki/Letter_frequency).
+
+
