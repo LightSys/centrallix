@@ -3734,6 +3734,15 @@ double exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression
 		{
 			clamped_dist /= 2;
 		}
+		
+		//use max_field_width if it was provided as a sensible value. If not, don't use it.
+		double max_field_width = i2->Integer;
+		if (max_field_width >= max_len) {
+			double mod = (lev_dist + max_field_width * 3/4) / max_field_width; 
+			if (mod < 1) { //don't make clamped_dist bigger
+				clamped_dist *= mod;
+			}
+		}
 	}
 	
 	
