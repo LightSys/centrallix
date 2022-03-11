@@ -3752,6 +3752,7 @@ int exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression i0
 }
 
 const char *CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; 
+const double IDF[36] = { 0.918, 0.985, 0.973, 0.953, 0.87, 0.978, 0.98, 0.938, 0.931, 0.9986, 0.9922, 0.9590, 0.973, 0.933, 0.922, 0.981, 0.9989, 0.941, 0.938, 0.904, 0.973, 0.9903, 0.976, 0.9985, 0.98, 0.9992, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
 
 int exp_fn_i_frequency_table(double *table, char *term)
 	{
@@ -3786,6 +3787,21 @@ int exp_fn_i_relative_frequency_table(double *frequency_table)
 
 		for (i = 0; i < strlen(CHAR_SET); i++) {
 			frequency_table[i] = frequency_table[i] / sum;
+		}
+		return 0;
+	}
+
+int exp_fn_i_tf_idf_table(double *frequency_table)
+	{
+		int i;
+		double sum = 0;
+		// Compute the total character frequency
+		for (i = 0; i < strlen(CHAR_SET); i++) {
+			sum += frequency_table[i];
+		}
+
+		for (i = 0; i < strlen(CHAR_SET); i++) {
+			frequency_table[i] = (frequency_table[i] / sum) * IDF[i];
 		}
 		return 0;
 	}
@@ -3842,12 +3858,18 @@ int exp_fn_similarity(pExpression tree, pParamObjects objlist, pExpression i0, p
 	double *table1 = nmMalloc(strlen(CHAR_SET) * sizeof(double));
 	double *table2 = nmMalloc(strlen(CHAR_SET) * sizeof(double));
 
-    // Calculate frequency tables and relative frequency tables for each term
+    // Calculate frequency tables for each term
 	exp_fn_i_frequency_table(table1, i0->String);
-    exp_fn_i_relative_frequency_table(table1);
-
     exp_fn_i_frequency_table(table2, i1->String);
-    exp_fn_i_relative_frequency_table(table2);
+	
+	// Calculate relative frequencies or tf_idf values for each term depending on value of third parameter
+	if (i2 && !(i2->Flags & EXPR_F_NULL) && (i2->DataType != DATA_T_INTEGER) && (i2->Integer == 1)) {
+		exp_fn_i_tf_idf_table(table1);
+		exp_fn_i_tf_idf_table(table2);
+	} else {
+		exp_fn_i_relative_frequency_table(table1);
+		exp_fn_i_relative_frequency_table(table2);
+	}
 
 	// Calculate dot product
 	double dot_product = 0.0;

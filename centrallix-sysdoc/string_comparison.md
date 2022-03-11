@@ -1,4 +1,4 @@
-# Similarity Functions
+# String Comparison
 The following sections discuss the two approaches to calculating similarity between two strings. Both approaches use a SQL function to calculate a similarity metric (on a scale of 0 to 1) for two string parameters.
 
 ## Levenshtein Similarity
@@ -45,6 +45,14 @@ Helper function for similarity(). Converts a frequency table into a relative fre
 
 The `frequency_table` parameter must have been created using the `exp_fn_i_frequency_table` function above.
 
+### TF-IDF
+```c
+int exp_fn_i_tf_idf_table(double *frequency_table)
+```
+Helper function for similarity(). Creates a TF x IDF vector from a frequency table, where each value in the resulting table is created by multiplying the relative frequency of each letter by the corresponding coefficient in the IDF array.
+
+The `frequency_table` parameter must have been created using the `exp_fn_i_frequency_table` function above.
+
 ### Dot Product
 ```c
 int exp_fn_i_dot_product(double *dot_product, double *r_freq_table1, double *r_freq_table2)
@@ -65,11 +73,11 @@ The `magnitude` parameter should be initialized to 0 before calling the function
 ```c
 int exp_fn_similarity(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
 ```
-Returns a value between 0.0 (completely different) and 1.0 (complete match) reflecting the similarity between the value passed in to i0 and the value passed in to i1.
+Returns a value between 0.0 (completely different) and 1.0 (complete match) reflecting the similarity between the value passed in to i0 and the value passed in to i1. The first two parameters should contain strings that need to be compared. If the value 1 is passed in the third parameter, then the similarity function will rely on TF x IDF scores to determine similarity. If no third parameter is passed, then the function will rely only on relative frequency scores.
 
-## Future Implementation Ideas
+## Future Implementation
 
 ### Inverse Document Frequency (IDF)
-In text mining, the most common metric to use in the cosine similarity function is the [TF x IDF](https://en.wikipedia.org/wiki/Tf%E2%80%93idf) metric. Our approach uses only TF (term frequency). Inverse document frequency calculates a weighting factor for each character. This could increase precision a small amount by weighting characters that appear on many records as less important in distinguishing matches, and weighting characters that appear on only certain records as more important. IDF could be calculated by iterating through the entire partner dataset each time. Alternatively, it might be interesting to use the relative frequency of each letter used in the English language on [Wikipedia](https://en.wikipedia.org/wiki/Letter_frequency).
+In text mining, the most common metric to use in the cosine similarity function is the [TF x IDF](https://en.wikipedia.org/wiki/Tf%E2%80%93idf) metric. Our approach uses only TF (term frequency). Inverse document frequency calculates a weighting factor for each character. This could increase precision a small amount by weighting characters that appear on many records as less important in distinguishing matches, and weighting characters that appear on only certain records as more important. IDF could be calculated by iterating through the entire partner dataset each time. The current approach uses the relative frequency of each letter used in the English language on [Wikipedia](https://en.wikipedia.org/wiki/Letter_frequency), which may not be consistent with the data in the partner database.
 
 
