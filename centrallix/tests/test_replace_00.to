@@ -1,0 +1,83 @@
+##NAME Replace function with isnull causes crash
+
+mlquery -- Create a temporary collection containing partner data
+	    declare collection tmp_partner_data scope query;
+	    declare collection tmp_partner_condensed scope query;
+	    delete from collection tmp_partner_data;
+	    delete from collection tmp_partner_condensed;
+	    print 'Create tmp_partner_data at ' + dateformat(getdate(), 'hh:mm:ss');
+	    insert
+		collection tmp_partner_data
+	    select
+		-- One p_partner key is sufficient for all three tables invlolved
+		-- Start of p partner
+		p_partner_key = '1111',
+		p_given_name = 'John',
+		p_preferred_name = null,
+		p_surname = 'Doe',
+		p_contact_data_phone1 = '1234567890'
+	    ;
+	    insert
+		collection tmp_partner_data
+	    select
+		-- One p_partner key is sufficient for all three tables invlolved
+		-- Start of p partner
+		p_partner_key = '2222',
+		p_given_name = 'Mark',
+		p_preferred_name = '',
+		p_surname = 'Smith',
+		p_contact_data_phone1 = '123 456 7890'
+	    ;
+	    insert
+		collection tmp_partner_data
+	    select
+		-- One p_partner key is sufficient for all three tables invlolved
+		-- Start of p partner
+		p_partner_key = '3333',
+		p_given_name = 'Luke',
+		p_preferred_name = '',
+		p_surname = 'Miller',
+		p_contact_data_phone1 = '(123) 456-7890'
+	    ;
+	    insert
+		collection tmp_partner_data
+	    select
+		-- One p_partner key is sufficient for all three tables invlolved
+		-- Start of p partner
+		p_partner_key = '4444',
+		p_given_name = 'Matthew',
+		p_preferred_name = '',
+		p_surname = 'Collet',
+		p_contact_data_phone1 = '123-456-7890'
+	    ;
+	-- Creates and fills tmp_partner_condensed by concatenation
+	    print 'Create tmp_partner_condensed at ' + dateformat(getdate(), 'hh:mm:ss');		
+	    insert
+	    	collection tmp_partner_condensed
+	    select
+	    	p_partner_key = :p_partner_key,
+		p_data =	replace(replace(replace(replace(replace(
+				isnull(:p_given_name, '') +
+				isnull(:p_preferred_name, '') +
+				isnull(:p_surname, '') +
+				isnull(:p_contact_data_phone1, '') +
+				isnull(:p_given_name, '') +
+				isnull(:p_preferred_name, '') +
+				isnull(:p_surname, '') +
+				isnull(:p_contact_data_phone1, '') +
+				isnull(:p_given_name, '') +
+				isnull(:p_preferred_name, '') +
+				isnull(:p_surname, '') +
+				isnull(:p_contact_data_phone1, '') +
+				isnull(:p_given_name, '') +
+				isnull(:p_preferred_name, '') +
+				isnull(:p_surname, '') +
+				isnull(:p_contact_data_phone1, '')
+				, '(', ''), ')', ''), '-', ''), '.', ''), ' ', '')
+	    from
+	    	collection tmp_partner_data
+	    ;
+	    select
+		sw1 = 1
+	    from
+	    	collection tmp_partner_condensed
