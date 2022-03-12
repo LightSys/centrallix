@@ -840,7 +840,8 @@ int exp_fn_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     replen = strlen(repstr);
     searchlen = strlen(i1->String);
     if (replen > searchlen)
-	newsize = (newsize * replen) / searchlen + 1;
+	newsize = (newsize * replen) / searchlen;
+    newsize += 1;
     if (newsize >= 0x7FFFFFFFLL)
 	{
 	mssError(1,"EXP","replace(): out of memory");

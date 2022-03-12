@@ -81,3 +81,4 @@ mlquery -- Create a temporary collection containing partner data
 		sw1 = 1
 	    from
 	    	collection tmp_partner_condensed
+
