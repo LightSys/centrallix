@@ -203,6 +203,7 @@ typedef struct
     /*handle_t	InactivityTimer;*/
     pNhtSessionData Session;
     XArray	Apps;		/* array of pNhtApp */
+    int		LinkCnt;
     }
     NhtAppGroup, *pNhtAppGroup;
 
@@ -241,6 +242,7 @@ typedef struct
     XArray	Endorsements;
     XArray	Contexts;
     pApplication Application;
+    int		LinkCnt;
     }
     NhtApp, *pNhtApp;
 
@@ -281,7 +283,9 @@ typedef struct
     {
     pFile	ConnFD;
     pStruct	ReqURL;
-    pNhtSessionData NhtSession;
+    pNhtSessionData	NhtSession;
+    pNhtAppGroup	AppGroup;
+    pNhtApp		App;
     int		InBody;
     int		BytesWritten;
     int		ResultCode;
@@ -390,9 +394,11 @@ void nht_i_Watchdog(void* v);
 int nht_i_VerifyAKey(char* client_key, pNhtSessionData sess, pNhtAppGroup *group, pNhtApp *app);
 
 pNhtApp nht_i_AllocApp(char* path, pNhtAppGroup g);
-int nht_i_FreeApp(pNhtApp app);
+pNhtApp nht_i_LinkApp(pNhtApp app);
+int nht_i_UnlinkApp(pNhtApp app);
 pNhtAppGroup nht_i_AllocAppGroup(char* path, pNhtSessionData s);
-int nht_i_FreeAppGroup(pNhtAppGroup group);
+pNhtAppGroup nht_i_LinkAppGroup(pNhtAppGroup group);
+int nht_i_UnlinkAppGroup(pNhtAppGroup group);
 
 void nht_i_TLSHandler(void* v);
 void nht_i_Handler(void* v);

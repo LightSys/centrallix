@@ -231,6 +231,15 @@ typedef struct _OT
     }
     ObjTrxTree, *pObjTrxTree;
 
+#define OXT_S_PENDING	0
+#define OXT_S_VISITED	1
+#define OXT_S_COMPLETE	2
+#define OXT_S_FAILED	3
+
+#define OXT_OP_NONE	0
+#define OXT_OP_CREATE	1
+#define OXT_OP_SETATTR	2
+#define OXT_OP_DELETE	3
 
 
 /** objectsystem session **/
@@ -243,18 +252,11 @@ typedef struct _OSS
     pObjTrxTree		Trx;
     XHashQueue		DirectoryCache;		/* directory entry cache */
     handle_t		Handle;
+    int			Flags;
     }
     ObjSession, *pObjSession;
 
-#define OXT_S_PENDING	0
-#define OXT_S_VISITED	1
-#define OXT_S_COMPLETE	2
-#define OXT_S_FAILED	3
-
-#define OXT_OP_NONE	0
-#define OXT_OP_CREATE	1
-#define OXT_OP_SETATTR	2
-#define OXT_OP_DELETE	3
+#define OBJ_SESS_F_CLOSING	1
 
 
 /** Content type descriptor **/

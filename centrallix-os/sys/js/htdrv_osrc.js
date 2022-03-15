@@ -37,6 +37,7 @@ function osrc_criteria_from_aparam(aparam)
 	{
 	if (i == 'cx__enable_lists') continue;
 	if (i == 'cx__case_insensitive') continue;
+	if (i == 'cx__find_object') continue;
 	if (i == 'joinstring' && (new String(aparam[i])).toLowerCase() == 'or')
 	    {
 	    qo.joinstring = 'OR';
@@ -71,7 +72,7 @@ function osrc_action_query_param(aparam)
 	this.query_delay_schedid = null;
 	}
     var qo = osrc_criteria_from_aparam(aparam);
-    this.ifcProbe(ifAction).Invoke("QueryObject", {query:qo, client:null, ro:this.readonly});
+    this.ifcProbe(ifAction).Invoke("QueryObject", {query:qo, client:null, ro:this.readonly, find:aparam['cx__find_object'] });
     }
 
 
@@ -93,7 +94,11 @@ function osrc_action_refresh(aparam)
     this.doing_refresh = true;
 
     // Keep track of current object by name
-    if (this.replica[this.CurrentRecord])
+    if (aparam.find_object)
+	{
+	this.refresh_objname = aparam.find_object;
+	}
+    else if (this.replica[this.CurrentRecord])
 	{
 	for(var j=0; j<this.replica[this.CurrentRecord].length;j++)
 	    {
@@ -183,6 +188,7 @@ function osrc_query_text_handler(aparam)
 	var min_length = 2;
 
     this.move_target = aparam.targetrec;
+    this.find_target = null;
 
     if (!aparam.fromsync)
 	this.SyncID = osrc_syncid++;
@@ -315,6 +321,11 @@ function osrc_query_object_handler(aparam)
 	}
 
     this.move_target = aparam.targetrec;
+    if (aparam.find)
+	{
+	this.doing_refresh = true;
+	this.refresh_objname = aparam.find;
+	}
 
     if (typeof q != 'undefined' && q !== null) this.ApplyRelationships(q, false, false);
 
@@ -705,7 +716,7 @@ function osrc_go_nogo(go_func, nogo_func, context)
 	{
 	if (this.child[i]._osrc_ready == false)
 	    {
-	    if (this.child[i].IsDiscardReady(this) == true)
+	    if (this.child[i].IsDiscardReady(this, this.doing_refresh?'refresh':'query') == true)
 		this._unsaved_cnt--;
 
 	    // Somebody already did a QueryCancel?
@@ -1027,6 +1038,8 @@ function osrc_refresh_object_handler(aparam)
     sql += " LIMIT 1";
 
     // Now issue the query
+    this.doing_refresh = true;
+    this.refresh_objname = null;
     this.DoRequest("multiquery", "/", 
 	    {
 	    ls__sql:sql,
@@ -1426,7 +1439,19 @@ function osrc_open_query()
 	return 0;
 	}
     this.query_ended = false;
-    var reqobj = {ls__autoclose_sr:'1', ls__autofetch:'1', ls__objmode:'0', ls__notify:this.request_updates, ls__rowcount:this.replicasize, ls__sql:this.query, ls__sqlparam:this.EncodeParams()};
+    var oldoids = this.oldoids.join();
+    this.oldoids = [];
+    var reqobj =
+	{
+	ls__autoclose_sr:'1', 
+	ls__autofetch:'1', 
+	ls__objmode:'0', 
+	ls__notify:this.request_updates, 
+	ls__rowcount:this.replicasize, 
+	ls__sql:this.query, 
+	ls__sqlparam:this.EncodeParams(),
+	ls__closeobjs:oldoids
+	};
     if (!this.sid)
 	reqobj.ls__newsess = 'yes';
     this.ifcProbe(ifEvent).Activate("BeginQuery", {});
@@ -1455,6 +1480,7 @@ function osrc_get_qid()
 	{
 	/*this.pending=false;*/
 	this.move_target = null;
+	this.find_target = null;
 	this.GiveAllCurrentRecord('get_qid');
 	this.SetPending(false);
 	/*this.Dispatch();*/
@@ -1640,7 +1666,8 @@ function osrc_query_timeout()
 function osrc_end_query()
     {
     //this.initiating_client.OperationComplete(); /* don't need this...I think....*/
-    var qid=this.qid
+    var qid=this.qid;
+    var wasrefresh = this.doing_refresh;
     this.qid=null;
     /* return the last record as the current one if it was our target otherwise, don't */
     if (this.LastRecord >= this.FirstRecord && this.replica[this.LastRecord])
@@ -1659,9 +1686,9 @@ function osrc_end_query()
 	{
 	this.DoRequest('queryclose', '/', {ls__qid:qid}, osrc_close_query);
 	}
-    this.Dispatch();
-    this.ifcProbe(ifEvent).Activate("EndQuery", {FinalRecord:this.FinalRecord, LastRecord:this.LastRecord, FirstRecord:this.FirstRecord, CurrentRecord:this.CurrentRecord});
+    this.ifcProbe(ifEvent).Activate("EndQuery", {FinalRecord:this.FinalRecord, LastRecord:this.LastRecord, FirstRecord:this.FirstRecord, CurrentRecord:this.CurrentRecord, QueryRequestQueue:this.query_request_queue.length, Pending:(this.pending?1:0), Refresh:(wasrefresh?1:0)});
     this.doing_refresh = false;
+    this.Dispatch();
 
     // Handle auto-refresh timer
     if (this.refresh_schedid)
@@ -1796,9 +1823,13 @@ function osrc_fetch_next()
 	else
 	    {
 	    if (rowcnt < this.querysize)
+		{
 		this.EndQuery();
+		}
 	    else
+		{
 		this.FoundRecord();
+		}
 	    }
 	}
     }
@@ -2020,7 +2051,7 @@ function osrc_change_current_record()
 
 function osrc_give_one_current_record(id, why)
     {
-    this.child[id].ObjectAvailable(this.replica[this.CurrentRecord], this, (why=='create')?'create':(this.doing_refresh?'refresh':'change'));
+    this.child[id].ObjectAvailable(this.replica[this.CurrentRecord], this, (why=='create')?'create':(this.doing_refresh?'refresh':why));
     }
 
 function osrc_give_all_current_record(why)
@@ -2769,6 +2800,14 @@ function osrc_action_cancelcreate(aparam)
 	    if (this.child[i] != aparam.client)
 		this.child[i].ObjectAvailable(this.replica[this.CurrentRecord], this, 'cancelcreate');
 	}
+    }
+
+
+// Used to force a refresh on sync
+function osrc_action_invalidate(aparam)
+    {
+    this.SyncID = osrc_syncid++;
+    this.lastSync = [];
     }
 
 
@@ -4089,6 +4128,7 @@ function osrc_init(param)
     ia.Add("SeqBackward", osrc_seq_backward);
     ia.Add("SeqForward", osrc_seq_forward);
     ia.Add("ForEach", osrc_action_for_each);
+    ia.Add("Invalidate", osrc_action_invalidate);
 
     // Events
     var ie = loader.ifcProbeAdd(ifEvent);

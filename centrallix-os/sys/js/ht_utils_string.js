@@ -231,6 +231,11 @@ function htutil_getstyle(widget, prefix, defaults)
     var bcolor = wgtrGetServerProperty(widget, prefix + "border_color");
     if (!bcolor && defaults)
 	bcolor = defaults.border_color;
+    var bwidth = wgtrGetServerProperty(widget, prefix + "border_width");
+    if (!bwidth && bwidth !== 0 && defaults)
+	bwidth = defaults.border_width;
+    if (!bwidth && bwidth !== 0 && bcolor)
+	bwidth = 1;
 
     // shadow information
     var scolor = wgtrGetServerProperty(widget, prefix + "shadow_color");
@@ -280,7 +285,7 @@ function htutil_getstyle(widget, prefix, defaults)
     if (radius)
 	str += 'border-radius:' + htutil_escape_cssval(radius) + 'px; ';
     if (bcolor)
-	str += 'border: 1px solid ' + htutil_escape_cssval(bcolor) + '; ';
+	str += 'border: ' + htutil_escape_cssval(bwidth) + 'px solid ' + htutil_escape_cssval(bcolor) + '; ';
     if (wrap == 'no')
 	str += 'white-space:no-wrap; ';
     if (visib == 'no')

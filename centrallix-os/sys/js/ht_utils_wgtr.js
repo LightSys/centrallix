@@ -555,6 +555,23 @@ function wgtrGetParent(node)
     }
 
 
+// same as wgtrGetParent but traverses through components.
+function wgtrGetParentAll(node)
+    {
+
+	if (!node || !node.__WgtrName)
+	    {
+	    pg_debug("wgtrGetProperty - object passed as node was not a WgtrNode!\n"); 
+	    return null; 
+	    }
+
+	if (node.__WgtrType == 'widget/component-decl')
+	    return node.shell;
+	else
+	    return node.__WgtrParent;
+    }
+
+
 // wgtrGetPropertyValue - sets a property of a given node.
 // if the property does not already exist, the function fails.
 // returns true on success, false on failuer

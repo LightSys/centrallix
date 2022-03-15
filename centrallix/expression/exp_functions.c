@@ -98,6 +98,7 @@ int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     {
     void* vptr;
     char* ptr;
+    Binary b;
 
     if (!i0 || !i1 || i0->DataType != DATA_T_STRING || (i0->Flags & EXPR_F_NULL))
         {
@@ -108,6 +109,11 @@ int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExp
         {
 	case DATA_T_INTEGER: vptr = &(i1->Integer); break;
 	case DATA_T_STRING: vptr = i1->String; break;
+	case DATA_T_BINARY:
+	    b.Size = i1->Size;
+	    b.Data = (unsigned char*)i1->String;
+	    vptr = &b;
+	    break;
 	case DATA_T_DOUBLE: vptr = &(i1->Types.Double); break;
 	case DATA_T_DATETIME: vptr = &(i1->Types.Date); break;
 	case DATA_T_MONEY: vptr = &(i1->Types.Money); break;
@@ -525,6 +531,47 @@ int exp_fn_lower(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     }
 
 
+int exp_fn_octet_length(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    tree->DataType = DATA_T_INTEGER;
+    if (i0 && i0->Flags & EXPR_F_NULL)
+        {
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (!i0 || i1)
+        {
+	mssError(1,"EXP","One parameter required for octet_length()");
+	return -1;
+	}
+    switch(i0->DataType)
+	{
+	case DATA_T_INTEGER:
+	    tree->Integer = sizeof(tree->Integer);
+	    break;
+	case DATA_T_DOUBLE:
+	    tree->Integer = sizeof(tree->Types.Double);
+	    break;
+	case DATA_T_STRING:
+	    tree->Integer = strlen(i0->String);
+	    break;
+	case DATA_T_BINARY:
+	    tree->Integer = i0->Size;
+	    break;
+	case DATA_T_DATETIME:
+	    tree->Integer = sizeof(tree->Types.Date);
+	    break;
+	case DATA_T_MONEY:
+	    tree->Integer = sizeof(tree->Types.Money);
+	    break;
+	default:
+	    mssError(1,"EXP","Unsupported data type for octet_length()");
+	    return -1;
+	}
+    return 0;
+    }
+
+
 int exp_fn_char_length(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     tree->DataType = DATA_T_INTEGER;
@@ -797,7 +844,8 @@ int exp_fn_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     replen = strlen(repstr);
     searchlen = strlen(i1->String);
     if (replen > searchlen)
-	newsize = (newsize * replen) / searchlen + 1;//why * and / instead of + and -
+	newsize = (newsize * replen) / searchlen;
+    newsize += 1;
     if (newsize >= 0x7FFFFFFFLL)
 	{
 	mssError(1,"EXP","replace(): out of memory");
@@ -1589,27 +1637,117 @@ int exp_fn_substitute(pExpression tree, pParamObjects objlist, pExpression i0, p
 int exp_fn_eval(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression eval_exp, parent;
+    pExpression child;
+    int oldmainflags;
+    int oldcurrent, oldparent;
+    int newpermflags;
     int rval;
-    if (!objlist || (i0 && !i1 && i0->Flags & EXPR_F_NULL))
-	{
-	tree->Flags |= EXPR_F_NULL;
-	return 0;
-	}
-    if (!i0 || i0->DataType != DATA_T_STRING || i1)
-        {
-	mssError(1,"EXP","eval() requires one string parameter");
-	return -1;
-	}
-    for(parent=tree;parent->Parent;parent=parent->Parent);
-    eval_exp = expCompileExpression(i0->String, objlist, parent->LxFlags, parent->CmpFlags);
-    if (!eval_exp) return -1;
-    if ((rval=expEvalTree(eval_exp, objlist)) < 0)
-	{
+    int objid;
+
+	/** NULL result because 1st param is null? **/
+	if (!objlist || (i0 && i0->Flags & EXPR_F_NULL))
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	/** Not allowed? **/
+	if (objlist->MainFlags & EXPR_MO_NOEVAL)
+	    {
+	    mssError(1,"EXP","Cannot use eval() in this context");
+	    return -1;
+	    }
+
+	/** Usage **/
+	if (!i0 || i0->DataType != DATA_T_STRING)
+	    {
+	    mssError(1,"EXP","eval() first parameter must be a string");
+	    return -1;
+	    }
+	for(parent=tree;parent->Parent;parent=parent->Parent);
+
+	oldmainflags = objlist->MainFlags;
+	oldcurrent = objlist->CurrentID;
+	oldparent = objlist->ParentID;
+
+	/** Permission flags **/
+	if (i1 && !(i1->Flags & EXPR_F_NULL))
+	    {
+	    if (i1->DataType != DATA_T_STRING)
+		{
+		mssError(1,"EXP","eval() second parameter must be a string");
+		return -1;
+		}
+	    newpermflags = 0;
+	    if (strchr(i1->String, 'C') == NULL) newpermflags |= EXPR_MO_NOCURRENT;
+	    if (strchr(i1->String, 'P') == NULL) newpermflags |= EXPR_MO_NOPARENT;
+	    if (strchr(i1->String, 'O') == NULL) newpermflags |= EXPR_MO_NOOBJECT;
+	    if (strchr(i1->String, 'D') == NULL) newpermflags |= EXPR_MO_NODIRECT;
+	    if (strchr(i1->String, 'S') == NULL) newpermflags |= EXPR_MO_NOSUBQUERY;
+	    if (strchr(i1->String, 'E') == NULL) newpermflags |= EXPR_MO_NOEVAL;
+	    }
+	else
+	    {
+	    newpermflags = EXPR_MO_DEFPERMMASK;
+	    }
+	objlist->MainFlags |= newpermflags;
+
+	/** Current object name **/
+	if (i2 && !(i2->Flags & EXPR_F_NULL))
+	    {
+	    if (i2->DataType != DATA_T_STRING)
+		{
+		mssError(1,"EXP","eval() third parameter must be a string");
+		return -1;
+		}
+	    objid = expLookupParam(objlist, i2->String, 0);
+	    if (objid >= 0)
+		objlist->CurrentID = objid;
+	    else
+		{
+		mssError(1,"EXP","eval() no such object %s", i2->String);
+		return -1;
+		}
+	    }
+
+	/** Parent object name **/
+	if (tree->Children.nItems == 4)
+	    {
+	    child = tree->Children.Items[3];
+	    if (child && !(child->Flags & EXPR_F_NULL))
+		{
+		if (child->DataType != DATA_T_STRING)
+		    {
+		    mssError(1,"EXP","eval() fourth parameter must be a string");
+		    return -1;
+		    }
+		objid = expLookupParam(objlist, child->String, 0);
+		if (objid >= 0)
+		    objlist->ParentID = objid;
+		else
+		    {
+		    mssError(1,"EXP","eval() no such object %s", child->String);
+		    return -1;
+		    }
+		}
+	    }
+
+	/** Compile and evaluate **/
+	eval_exp = expCompileExpression(i0->String, objlist, parent->LxFlags, parent->CmpFlags);
+	if (!eval_exp) return -1;
+	rval = expEvalTree(eval_exp, objlist);
+	objlist->MainFlags = oldmainflags;
+	objlist->CurrentID = oldcurrent;
+	objlist->ParentID = oldparent;
+	if (rval < 0)
+	    {
+	    expFreeExpression(eval_exp);
+	    return -1;
+	    }
+	expCopyValue(eval_exp, tree, 1);
+
 	expFreeExpression(eval_exp);
-	return -1;
-	}
-    expCopyValue(eval_exp, tree, 1);
-    expFreeExpression(eval_exp);
+
     return rval;
     }
 
@@ -1754,16 +1892,16 @@ int exp_fn_datediff(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 	mssError(1, "EXP", "datediff() first parameter must be non-null string or keyword date part");
 	return -1;
 	}
-    if (!i1 || i1->DataType != DATA_T_DATETIME || !i2 || i2->DataType != DATA_T_DATETIME)
-	{
-	mssError(1, "EXP", "datediff() second and third parameters must be datetime types");
-	return -1;
-	}
     if ((i1 && (i1->Flags & EXPR_F_NULL)) || (i2 && (i2->Flags & EXPR_F_NULL)))
 	{
 	tree->DataType = DATA_T_INTEGER;
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
+	}
+    if (!i1 || i1->DataType != DATA_T_DATETIME || !i2 || i2->DataType != DATA_T_DATETIME)
+	{
+	mssError(1, "EXP", "datediff() second and third parameters must be datetime types");
+	return -1;
 	}
     tree->DataType = DATA_T_INTEGER;
 
@@ -1843,7 +1981,6 @@ int exp_fn_datediff(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 int exp_fn_dateadd(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     int diff_sec, diff_min, diff_hr, diff_day, diff_mo, diff_yr;
-    int carry;
 
     /** checks **/
     if (!i0 || (i0->Flags & EXPR_F_NULL) || i0->DataType != DATA_T_STRING)
@@ -2408,7 +2545,7 @@ int exp_fn_rand(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
 	/** Get the 64-bit value and convert to double **/
 	memcpy(&val, objlist->Random, sizeof(val));
 	tree->DataType = DATA_T_DOUBLE;
-	tree->Types.Double = (double)val / (double)ULLONG_MAX;
+	tree->Types.Double = (double)((long double)val / ((long double)ULLONG_MAX + (long double)1.0));
 
     return 0;
     }
@@ -2674,6 +2811,165 @@ int exp_fn_pbkdf2(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
     }
 
 
+int exp_fn_to_hex(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pXString dest = NULL;
+    int len;
+
+	if (!i0 || (!(i0->Flags & EXPR_F_NULL) && i0->DataType != DATA_T_STRING && i0->DataType != DATA_T_BINARY))
+	    {
+	    mssError(1, "EXP", "to_hex() expects one string or binary parameter");
+	    goto error;
+	    }
+
+	tree->DataType = DATA_T_STRING;
+
+	if (i0->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	dest = xsNew();
+	if (!dest)
+	    goto error;
+	
+	if (i0->DataType == DATA_T_STRING)
+	    len = strlen(i0->String);
+	else
+	    len = i0->Size;
+	if (xsQPrintf(dest, "%*STR&HEX", len, i0->String) < 0)
+	    goto error;
+	expSetString(tree, dest->String);
+
+	xsFree(dest);
+
+	return 0;
+
+    error:
+	if (dest)
+	    xsFree(dest);
+	return -1;
+    }
+
+
+int exp_fn_from_hex(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pXString dest = NULL;
+
+	if (!i0 || (!(i0->Flags & EXPR_F_NULL) && i0->DataType != DATA_T_STRING))
+	    {
+	    mssError(1, "EXP", "from_hex() expects one string parameter");
+	    goto error;
+	    }
+
+	tree->DataType = DATA_T_BINARY;
+
+	if (i0->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	dest = xsNew();
+	if (!dest)
+	    goto error;
+
+	if (xsQPrintf(dest, "%*STR&DHEX", strlen(i0->String)/2, i0->String) < 0)
+	    {
+	    mssError(1, "EXP", "from_hex(): invalid hex-encoded data");
+	    goto error;
+	    }
+	expSetBinary(tree, (unsigned char*)xsString(dest), xsLength(dest));
+
+	xsFree(dest);
+
+	return 0;
+
+    error:
+	if (dest)
+	    xsFree(dest);
+	return -1;
+    }
+
+
+int exp_fn_to_base64(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pXString dest = NULL;
+
+	if (!i0 || (!(i0->Flags & EXPR_F_NULL) && i0->DataType != DATA_T_STRING))
+	    {
+	    mssError(1, "EXP", "to_base64() expects one string parameter");
+	    goto error;
+	    }
+
+	tree->DataType = DATA_T_STRING;
+
+	if (i0->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	dest = xsNew();
+	if (!dest)
+	    goto error;
+
+	if (xsQPrintf(dest, "%STR&B64", i0->String) < 0)
+	    goto error;
+	expSetString(tree, dest->String);
+
+	xsFree(dest);
+
+	return 0;
+
+    error:
+	if (dest)
+	    xsFree(dest);
+	return -1;
+    }
+
+
+int exp_fn_from_base64(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pXString dest = NULL;
+
+	if (!i0 || (!(i0->Flags & EXPR_F_NULL) && i0->DataType != DATA_T_STRING))
+	    {
+	    mssError(1, "EXP", "from_base64() expects one string parameter");
+	    goto error;
+	    }
+
+	tree->DataType = DATA_T_BINARY;
+
+	if (i0->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	dest = xsNew();
+	if (!dest)
+	    goto error;
+
+	if (xsQPrintf(dest, "%STR&DB64", i0->String) < 0)
+	    {
+	    mssError(1, "EXP", "from_base64(): invalid base64-encoded data");
+	    goto error;
+	    }
+	expSetBinary(tree, (unsigned char*)xsString(dest), xsLength(dest));
+
+	xsFree(dest);
+
+	return 0;
+
+    error:
+	if (dest)
+	    xsFree(dest);
+	return -1;
+    }
+
+
 int exp_fn_log10(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     double n;
@@ -2771,6 +3067,71 @@ int exp_fn_power(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 
 /*** Windowing Functions ***/
 
+int exp_fn_dense_rank(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pExpression new_exp;
+    char newbuf[512];
+
+    /** Init the Aggregate computation expression? **/
+    if (!tree->AggExp)
+        {
+	tree->AggCount = 0;
+	tree->PrivateData = nmSysMalloc(512);
+	if (!tree->PrivateData)
+	    return -ENOMEM;
+	memset(tree->PrivateData, 0, 512);
+	tree->AggExp = expAllocExpression();
+	tree->AggExp->NodeType = EXPR_N_PLUS;
+	tree->AggExp->DataType = DATA_T_INTEGER;
+	tree->AggExp->Integer = -1;
+	tree->AggExp->AggLevel = 1;
+	new_exp = expAllocExpression();
+	new_exp->NodeType = EXPR_N_INTEGER;
+	new_exp->DataType = DATA_T_INTEGER;
+	new_exp->Integer = 1;
+	new_exp->AggLevel = 1;
+	expAddNode(tree->AggExp, new_exp);
+	new_exp = expAllocExpression();
+	new_exp->NodeType = EXPR_N_INTEGER;
+	new_exp->AggLevel = 1;
+	expAddNode(tree->AggExp, new_exp);
+	expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[1]), 0);
+	exp_internal_EvalTree(tree->AggExp, objlist);
+	expCopyValue(tree->AggExp, tree, 0);
+	}
+
+    if (tree->Flags & EXPR_F_AGGLOCKED) return 0;
+
+    /** Changed? **/
+    if (tree->Children.nItems > 0)
+	{
+	memset(newbuf, 0, sizeof(newbuf));
+	if (objBuildBinaryImage(newbuf, sizeof(newbuf), tree->Children.Items, tree->Children.nItems, objlist, 0) < 0)
+	    return -1;
+	if (memcmp(newbuf, tree->PrivateData, sizeof(newbuf)) || tree->AggCount == 0)
+	    {
+	    /** Increment count **/
+	    memcpy(tree->PrivateData, newbuf, sizeof(newbuf));
+	    expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[1]), 0);
+	    exp_internal_EvalTree(tree->AggExp, objlist);
+	    expCopyValue(tree->AggExp, tree, 0);
+	    tree->AggCount++;
+	    }
+	}
+    else if (tree->AggCount == 0)
+	{
+	/** Single partition for entire result set **/
+	expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[1]), 0);
+	exp_internal_EvalTree(tree->AggExp, objlist);
+	expCopyValue(tree->AggExp, tree, 0);
+	tree->AggCount++;
+	}
+
+    tree->Flags |= EXPR_F_AGGLOCKED;
+    return 0;
+    }
+
+
 int exp_fn_row_number(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression new_exp;
@@ -2808,23 +3169,19 @@ int exp_fn_row_number(pExpression tree, pParamObjects objlist, pExpression i0, p
 	memset(newbuf, 0, sizeof(newbuf));
 	if (objBuildBinaryImage(newbuf, sizeof(newbuf), tree->Children.Items, tree->Children.nItems, objlist, 0) < 0)
 	    return -1;
-	if (memcmp(newbuf, tree->PrivateData, 512))
+	if (memcmp(newbuf, tree->PrivateData, sizeof(newbuf)))
 	    {
 	    /** Reset count **/
-	    memcpy(tree->PrivateData, newbuf, 512);
+	    memcpy(tree->PrivateData, newbuf, sizeof(newbuf));
 	    tree->AggExp->Integer = 0;
 	    tree->AggCount = 0;
 	    tree->AggValue = 0;
 	    }
 	}
 
-    /** Compute the possibly incremented value **/
-    //if (!(i0->Flags & EXPR_F_NULL))
-    //    {
-	expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[1]), 0);
-	exp_internal_EvalTree(tree->AggExp, objlist);
-	expCopyValue(tree->AggExp, tree, 0);
-	//}
+    expCopyValue(tree->AggExp, (pExpression)(tree->AggExp->Children.Items[1]), 0);
+    exp_internal_EvalTree(tree->AggExp, objlist);
+    expCopyValue(tree->AggExp, tree, 0);
 
     tree->Flags |= EXPR_F_AGGLOCKED;
     return 0;
@@ -3188,14 +3545,20 @@ int exp_fn_min(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 
 int exp_fn_first(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
+    int rval;
+
     if (!i0)
 	{
 	mssError(1,"EXP","first() requires a parameter");
 	return -1;
 	}
+    if (tree->AggCount == 0)
+	rval = exp_internal_EvalTree(i0, objlist);
+    if (rval < 0)
+	return -1;
     if (!(tree->Flags & EXPR_F_AGGLOCKED) && !(i0->Flags & EXPR_F_NULL))
 	{
-	if (tree->AggCount == 0) 
+	if (tree->AggCount == 0)
 	    {
 	    expCopyValue(i0, tree, 1);
 	    }
@@ -3466,6 +3829,7 @@ int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
     return 0;
     }
 
+
 int exp_fn_utf8_substring(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     size_t bufferLength = 64;
@@ -3725,6 +4089,280 @@ int exp_fn_utf8_reverse(pExpression tree, pParamObjects objlist, pExpression i0,
 	//strcpy(tree->String, temp);
 	
     	return 0;
+
+int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+
+    if (!i0 || !i1)
+	{
+		mssError(1,"EXP","levenshtein() requires two parameters");
+		return -1;
+	}
+
+    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+	{
+		tree->DataType = DATA_T_INTEGER;
+		tree->Flags |= EXPR_F_NULL;
+		return 0;
+	}
+
+    if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING))
+	{
+		mssError(1,"EXP","levenshtein() requires two string parameters");
+		return -1;
+	}
+
+	// for all i and j, d[i,j] will hold the Levenshtein distance between
+	// the first i characters of s and the first j characters of t
+	int length1 = strlen(i0->String);
+	int length2 = strlen(i1->String);
+	int levMatrix[length1+1][length2+1];
+	int i;
+	int j;
+    //set each element in d to zero
+    for (i = 0; i < length1; i++)
+    {
+        for (j = 0; j < length2; j++)
+        {
+            levMatrix[i][j] = 0;
+        }        
+    }
+    
+    // source prefixes can be transformed into empty string by
+    // dropping all characters
+    for (i = 0; i <= length1; i++)
+    {
+        levMatrix[i][0] = i;
+    }
+     
+    // target prefixes can be reached from empty source prefix
+    // by inserting every character
+    for (j = 0; j <= length2; j++)
+    {
+        levMatrix[0][j] = j;
+    }
+    
+	for (i = 1; i <= length1; i++)
+    {
+        for (j = 1; j <= length2; j++)
+        {
+            if (i0->String[i-1] == i1->String[j-1]) 
+            {
+                levMatrix[i][j] = levMatrix[i-1][j-1];
+            }
+            else 
+            {
+				int value1 = levMatrix[i - 1][j] + 1;
+				int value2 = levMatrix[i][j-1] + 1;
+				int value3 = levMatrix[i-1][j-1] + 1;
+                levMatrix[i][j] = (value1 < value2) ? 
+									  ((value1 < value3) ? value1 : value3) :
+									  (value2 < value3) ? value2 : value3;
+            }
+        }
+    }
+    tree->DataType = DATA_T_INTEGER;
+	tree->Integer = levMatrix[length1][length2];
+    return 0;
+    }
+
+int exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+
+    if (!i0 || !i1 || !i2)
+	{
+		mssError(1,"EXP","fuzzy_compare() requires three parameters");
+		return -1;
+	}
+
+    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL) || (i2->Flags & EXPR_F_NULL))
+	{
+		tree->DataType = DATA_T_DOUBLE;
+		tree->Flags |= EXPR_F_NULL;
+		return 0;
+	}
+
+    if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING) || (i2->DataType != DATA_T_INTEGER))
+	{
+		mssError(1,"EXP","fuzzy_compare() requires two string and one integer parameters");
+		return -1;
+	}
+	
+	exp_fn_levenshtein(tree, objlist, i0, i1, i2);
+	//!!! I am not checking for errors here, because IN THEORY we have two strings... if we don't, big uh-oh.
+	int lev_dist = tree->Integer;
+	
+	int length1 = strlen(i0->String);
+	int length2 = strlen(i1->String);
+
+	double clamped_dist = 1.0;
+
+	if (length1 == 0 || length2 == 0) //empty string
+	{
+		clamped_dist = 0.5;	
+	} 
+	else //normal case 
+	{
+		int max_len = (length1 > length2) ? length1 : length2;
+		clamped_dist = ((double) lev_dist) / max_len;
+	
+		if (abs(length1-length2) == lev_dist)  //only inserts. Maybe substring.
+		{
+			clamped_dist /= 2;
+		}
+		
+		//use max_field_width if it was provided as a sensible value. If not, don't use it.
+		double max_field_width = i2->Integer;
+		if (max_field_width >= max_len) {
+			double mod = (lev_dist + max_field_width * 3/4) / max_field_width; 
+			if (mod < 1) { //don't make clamped_dist bigger
+				clamped_dist *= mod;
+			}
+		}
+	}
+	
+	
+	tree->DataType = DATA_T_DOUBLE;
+	tree->Types.Double = clamped_dist;
+	return 0;
+}
+
+const char *CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; 
+const double IDF[36] = { 0.918, 0.985, 0.973, 0.953, 0.87, 0.978, 0.98, 0.938, 0.931, 0.9986, 0.9922, 0.9590, 0.973, 0.933, 0.922, 0.981, 0.9989, 0.941, 0.938, 0.904, 0.973, 0.9903, 0.976, 0.9985, 0.98, 0.9992, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
+
+int exp_fn_i_frequency_table(double *table, char *term)
+	{
+		int i;
+		// Initialize hash table with complete character set and 0 values
+		for (i = 0; i < strlen(CHAR_SET); i++) {
+			table[i] = 0.0;
+		}
+		
+		// Iterate through term and update hash table data
+		for (i = 0; i < strlen(term); i++) {
+			// Locate index position based on where letter in term is inside the CHAR_SET
+			// Used so that CHAR_SET can be arbitrarily extended.
+			char *loc = strchr(CHAR_SET, toupper(term[i]));
+			if (loc) {
+				int index = (int)(loc - CHAR_SET);
+				table[index]++;
+			}
+		}
+
+		return 0;
+	}
+
+int exp_fn_i_relative_frequency_table(double *frequency_table)
+	{
+		int i;
+		double sum = 0;
+		// Compute the total character frequency
+		for (i = 0; i < strlen(CHAR_SET); i++) {
+			sum += frequency_table[i];
+		}
+
+		for (i = 0; i < strlen(CHAR_SET); i++) {
+			frequency_table[i] = frequency_table[i] / sum;
+		}
+		return 0;
+	}
+
+int exp_fn_i_tf_idf_table(double *frequency_table)
+	{
+		int i;
+		double sum = 0;
+		// Compute the total character frequency
+		for (i = 0; i < strlen(CHAR_SET); i++) {
+			sum += frequency_table[i];
+		}
+
+		for (i = 0; i < strlen(CHAR_SET); i++) {
+			frequency_table[i] = (frequency_table[i] / sum) * IDF[i];
+		}
+		return 0;
+	}
+
+// Dot product is equal to the sum of the squared values from each relative frequency table
+int exp_fn_i_dot_product(double *dot_product, double *r_freq_table1, double *r_freq_table2)
+	{
+		int i;
+		for (i = 0; i < strlen(CHAR_SET); i++) {
+			*dot_product = *dot_product + (r_freq_table1[i] * r_freq_table2[i]);
+		}
+		return 0;
+	}
+
+// Magnitude is equal to the square root of the sum of the squared relative frequencies
+int exp_fn_i_magnitude(double *magnitude, double *r_freq_table)
+	{
+		int i;
+		for (i = 0; i < strlen(CHAR_SET); i++) {
+			*magnitude = *magnitude + (r_freq_table[i] * r_freq_table[i]);
+		}
+		*magnitude = sqrt(*magnitude);
+		return 0;
+	}
+
+// This function calculates the cosine similarity between two strings passed in through i0 and i1 parameters
+// Cosine similarity is equal to the dot product between the relative frequency vectors of each term divided by 
+// the product of the magnitudes of each relative frequency vector.
+int exp_fn_similarity(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+	// Ensure function receives two non-null parameters
+	if (!i0 || !i1)
+	{
+		mssError(1,"EXP","similarity() requires two parameter.");
+		return -1;
+	}
+
+	// Ensure value passed in both parameters is not null
+	if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+	{
+		tree->DataType = DATA_T_INTEGER;
+		tree->Flags |= EXPR_F_NULL;
+		return 0;
+	}
+
+	// Ensure both parameters contain string values
+    if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING))
+	{
+		mssError(1,"EXP","similarity() requires two string parameters.");
+		return -1;
+	}
+
+	// Allocate frequency tables (arrays of doubles) for each term
+	double *table1 = nmMalloc(strlen(CHAR_SET) * sizeof(double));
+	double *table2 = nmMalloc(strlen(CHAR_SET) * sizeof(double));
+
+    // Calculate frequency tables for each term
+	exp_fn_i_frequency_table(table1, i0->String);
+    exp_fn_i_frequency_table(table2, i1->String);
+	
+	// Calculate relative frequencies or tf_idf values for each term depending on value of third parameter
+	if (i2 && !(i2->Flags & EXPR_F_NULL) && (i2->DataType != DATA_T_INTEGER) && (i2->Integer == 1)) {
+		exp_fn_i_tf_idf_table(table1);
+		exp_fn_i_tf_idf_table(table2);
+	} else {
+		exp_fn_i_relative_frequency_table(table1);
+		exp_fn_i_relative_frequency_table(table2);
+	}
+
+	// Calculate dot product
+	double dot_product = 0.0;
+	exp_fn_i_dot_product(&dot_product, table1, table2);
+
+	// Calculate magnitudes of each relative frequency vector
+	double magnitude1 = 0.0;
+	double magnitude2 = 0.0;
+	exp_fn_i_magnitude(&magnitude1, table1);
+	exp_fn_i_magnitude(&magnitude2, table2);
+    
+	tree->DataType = DATA_T_DOUBLE;
+	tree->Types.Double = dot_product / (magnitude1 * magnitude2);
+
+	nmFree(table1, strlen(CHAR_SET) * sizeof(double));
+	nmFree(table2, strlen(CHAR_SET) * sizeof(double));
+	return 0;
 	}
 
 int
@@ -3732,48 +4370,71 @@ exp_internal_DefineFunctions()
     {
 
 
-    /** Function list for EXPR_N_FUNCTION nodes **/
-    xhAdd(&EXP.Functions, "getdate", (char*) exp_fn_getdate);
-    xhAdd(&EXP.Functions, "user_name", (char*) exp_fn_user_name);
-    xhAdd(&EXP.Functions, "convert", (char*) exp_fn_convert);
-    xhAdd(&EXP.Functions, "wordify", (char*) exp_fn_wordify);
-    xhAdd(&EXP.Functions, "abs", (char*) exp_fn_abs);
-    xhAdd(&EXP.Functions, "condition", (char*) exp_fn_condition);
-    xhAdd(&EXP.Functions, "datepart", (char*) exp_fn_datepart);
-    xhAdd(&EXP.Functions, "isnull", (char*) exp_fn_isnull);
-    xhAdd(&EXP.Functions, "ltrim", (char*) exp_fn_ltrim);
-    xhAdd(&EXP.Functions, "lztrim", (char*) exp_fn_lztrim);
-    xhAdd(&EXP.Functions, "rtrim", (char*) exp_fn_rtrim);
-    xhAdd(&EXP.Functions, "replicate", (char*) exp_fn_replicate);
-    xhAdd(&EXP.Functions, "quote", (char*) exp_fn_quote);
-    xhAdd(&EXP.Functions, "eval", (char*) exp_fn_eval);
-    xhAdd(&EXP.Functions, "round", (char*) exp_fn_round);
-    xhAdd(&EXP.Functions, "dateadd", (char*) exp_fn_dateadd);
-    xhAdd(&EXP.Functions, "datediff", (char*) exp_fn_datediff);
-    xhAdd(&EXP.Functions, "truncate", (char*) exp_fn_truncate);
-    xhAdd(&EXP.Functions, "constrain", (char*) exp_fn_constrain);
-    xhAdd(&EXP.Functions, "sin", (char*) exp_fn_sin);
-    xhAdd(&EXP.Functions, "cos", (char*) exp_fn_cos);
-    xhAdd(&EXP.Functions, "tan", (char*) exp_fn_tan);
-    xhAdd(&EXP.Functions, "asin", (char*) exp_fn_asin);
-    xhAdd(&EXP.Functions, "acos", (char*) exp_fn_acos);
-    xhAdd(&EXP.Functions, "atan", (char*) exp_fn_atan);
-    xhAdd(&EXP.Functions, "atan2", (char*) exp_fn_atan2);
-    xhAdd(&EXP.Functions, "sqrt", (char*) exp_fn_sqrt);
-    xhAdd(&EXP.Functions, "square", (char*) exp_fn_square);
-    xhAdd(&EXP.Functions, "degrees", (char*) exp_fn_degrees);
-    xhAdd(&EXP.Functions, "radians", (char*) exp_fn_radians);
-    xhAdd(&EXP.Functions, "has_endorsement", (char*)exp_fn_has_endorsement);
-    xhAdd(&EXP.Functions, "rand", (char*)exp_fn_rand);
-    xhAdd(&EXP.Functions, "nullif", (char*)exp_fn_nullif);
-    xhAdd(&EXP.Functions, "dateformat", (char*)exp_fn_dateformat);
-    xhAdd(&EXP.Functions, "hash", (char*)exp_fn_hash);
-    xhAdd(&EXP.Functions, "hmac", (char*)exp_fn_hmac);
-    xhAdd(&EXP.Functions, "log10", (char*)exp_fn_log10);
-    xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
-    xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
-    xhAdd(&EXP.Functions, "replace", (char*) exp_fn_replace);
-    xhAdd(&EXP.Functions, "substitute", (char*) exp_fn_substitute);
+	/** Function list for EXPR_N_FUNCTION nodes **/
+	xhAdd(&EXP.Functions, "getdate", (char*)exp_fn_getdate);
+	xhAdd(&EXP.Functions, "user_name", (char*)exp_fn_user_name);
+	xhAdd(&EXP.Functions, "convert", (char*)exp_fn_convert);
+	xhAdd(&EXP.Functions, "wordify", (char*)exp_fn_wordify);
+	xhAdd(&EXP.Functions, "abs", (char*)exp_fn_abs);
+	xhAdd(&EXP.Functions, "ascii", (char*)exp_fn_ascii);
+	xhAdd(&EXP.Functions, "condition", (char*)exp_fn_condition);
+	xhAdd(&EXP.Functions, "charindex", (char*)exp_fn_charindex);
+	xhAdd(&EXP.Functions, "upper", (char*)exp_fn_upper);
+	xhAdd(&EXP.Functions, "lower", (char*)exp_fn_lower);
+	xhAdd(&EXP.Functions, "char_length", (char*)exp_fn_char_length);
+	xhAdd(&EXP.Functions, "datepart", (char*)exp_fn_datepart);
+	xhAdd(&EXP.Functions, "isnull", (char*)exp_fn_isnull);
+	xhAdd(&EXP.Functions, "ltrim", (char*)exp_fn_ltrim);
+	xhAdd(&EXP.Functions, "lztrim", (char*)exp_fn_lztrim);
+	xhAdd(&EXP.Functions, "rtrim", (char*)exp_fn_rtrim);
+	xhAdd(&EXP.Functions, "substring", (char*)exp_fn_substring);
+	xhAdd(&EXP.Functions, "right", (char*)exp_fn_right);
+	xhAdd(&EXP.Functions, "ralign", (char*)exp_fn_ralign);
+	xhAdd(&EXP.Functions, "replicate", (char*)exp_fn_replicate);
+	xhAdd(&EXP.Functions, "reverse", (char*)exp_fn_reverse);
+	xhAdd(&EXP.Functions, "replace", (char*)exp_fn_replace);
+	xhAdd(&EXP.Functions, "escape", (char*)exp_fn_escape);
+	xhAdd(&EXP.Functions, "quote", (char*)exp_fn_quote);
+	xhAdd(&EXP.Functions, "substitute", (char*)exp_fn_substitute);
+	xhAdd(&EXP.Functions, "eval", (char*)exp_fn_eval);
+	xhAdd(&EXP.Functions, "round", (char*)exp_fn_round);
+	xhAdd(&EXP.Functions, "dateadd", (char*)exp_fn_dateadd);
+	xhAdd(&EXP.Functions, "datediff", (char*)exp_fn_datediff);
+	xhAdd(&EXP.Functions, "truncate", (char*)exp_fn_truncate);
+	xhAdd(&EXP.Functions, "constrain", (char*)exp_fn_constrain);
+	xhAdd(&EXP.Functions, "sin", (char*)exp_fn_sin);
+	xhAdd(&EXP.Functions, "cos", (char*)exp_fn_cos);
+	xhAdd(&EXP.Functions, "tan", (char*)exp_fn_tan);
+	xhAdd(&EXP.Functions, "asin", (char*)exp_fn_asin);
+	xhAdd(&EXP.Functions, "acos", (char*)exp_fn_acos);
+	xhAdd(&EXP.Functions, "atan", (char*)exp_fn_atan);
+	xhAdd(&EXP.Functions, "atan2", (char*)exp_fn_atan2);
+	xhAdd(&EXP.Functions, "sqrt", (char*)exp_fn_sqrt);
+	xhAdd(&EXP.Functions, "square", (char*)exp_fn_square);
+	xhAdd(&EXP.Functions, "degrees", (char*)exp_fn_degrees);
+	xhAdd(&EXP.Functions, "radians", (char*)exp_fn_radians);
+	xhAdd(&EXP.Functions, "has_endorsement", (char*)exp_fn_has_endorsement);
+	xhAdd(&EXP.Functions, "rand", (char*)exp_fn_rand);
+	xhAdd(&EXP.Functions, "nullif", (char*)exp_fn_nullif);
+	xhAdd(&EXP.Functions, "dateformat", (char*)exp_fn_dateformat);
+	xhAdd(&EXP.Functions, "hash", (char*)exp_fn_hash);
+	xhAdd(&EXP.Functions, "hmac", (char*)exp_fn_hmac);
+	xhAdd(&EXP.Functions, "log10", (char*)exp_fn_log10);
+	xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
+	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
+	xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
+	xhAdd(&EXP.Functions, "fuzzy_compare", (char*)exp_fn_fuzzy_compare);
+	xhAdd(&EXP.Functions, "similarity", (char*)exp_fn_similarity);
+	xhAdd(&EXP.Functions, "to_base64", (char*)exp_fn_to_base64);
+	xhAdd(&EXP.Functions, "from_base64", (char*)exp_fn_from_base64);
+	xhAdd(&EXP.Functions, "to_hex", (char*)exp_fn_to_hex);
+	xhAdd(&EXP.Functions, "from_hex", (char*)exp_fn_from_hex);
+	xhAdd(&EXP.Functions, "octet_length", (char*)exp_fn_octet_length);
+
+	/** Windowing **/
+	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
+	xhAdd(&EXP.Functions, "dense_rank", (char*)exp_fn_dense_rank);
+
 
     /** Windowing **/
     xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);

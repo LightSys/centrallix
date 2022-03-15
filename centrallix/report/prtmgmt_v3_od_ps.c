@@ -677,12 +677,12 @@ prt_psod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle s
 	    else if (style->FontID == PRT_FONT_T_SANSSERIF)
 		{
 		/** metrics based on empirical analysis **/
-		n += hp_helvetica_font_metrics[(*str) - 0x20][style_code]/60.0;
+		n += hp_helvetica_font_metrics[(*str) - 0x20][style_code]/600.0;
 		}
 	    else if (style->FontID == PRT_FONT_T_SERIF)
 		{
 		/** metrics based on empirical analysis **/
-		n += hp_times_font_metrics[(*str) - 0x20][style_code]/60.0;
+		n += hp_times_font_metrics[(*str) - 0x20][style_code]/600.0;
 		}
 	    else
 		{

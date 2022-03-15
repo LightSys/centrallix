@@ -9,6 +9,7 @@
 #include "cxlib/xstring.h"
 #include "multiquery.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 
 /************************************************************************/
@@ -128,12 +129,19 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     handle_t collection;
 
 	/** Prepare for the inserts **/
-	if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 2 + 1 > sizeof(pathname))
+	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_FROMOBJECT)
 	    {
-	    mssError(1, "MQIS", "Pathname too long for INSERT destination");
-	    goto error;
+	    strtcpy(pathname, ((pQueryStructure)qe->QSLinkage)->Source, sizeof(pathname));
 	    }
-	snprintf(pathname, sizeof(pathname), "%s/*", ((pQueryStructure)qe->QSLinkage)->Source);
+	else
+	    {
+	    if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 2 + 1 > sizeof(pathname))
+		{
+		mssError(1, "MQIS", "Pathname too long for INSERT destination");
+		goto error;
+		}
+	    snprintf(pathname, sizeof(pathname), "%s/*", ((pQueryStructure)qe->QSLinkage)->Source);
+	    }
     
 	/** Replace the previous __inserted object with NULL, in case insert fails **/
 	old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted", 0);
@@ -232,19 +240,26 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 
 	    /** Commit and get new object name **/
 	    objCommitObject(new_obj);
-	    new_objname = NULL;
-	    objGetAttrValue(new_obj, "name", DATA_T_STRING, POD(&new_objname));
-	    if (!new_objname)
+	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_FROMOBJECT)
 		{
-		mssError(0, "MQIS", "Could not INSERT new object");
-		goto error;
+		new_objname = NULL;
+		objGetAttrValue(new_obj, "name", DATA_T_STRING, POD(&new_objname));
+		if (!new_objname)
+		    {
+		    mssError(0, "MQIS", "Could not INSERT new object");
+		    goto error;
+		    }
+		if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 1 + strlen(new_objname) + 1 > sizeof(new_pathname))
+		    {
+		    mssError(1, "MQIS", "Pathname too long for newly INSERTed object %s", new_objname);
+		    goto error;
+		    }
+		snprintf(new_pathname, sizeof(new_pathname), "%s/%s", ((pQueryStructure)qe->QSLinkage)->Source, new_objname);
 		}
-	    if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 1 + strlen(new_objname) + 1 > sizeof(new_pathname))
+	    else
 		{
-		mssError(1, "MQIS", "Pathname too long for newly INSERTed object %s", new_objname);
-		goto error;
+		strtcpy(new_pathname, pathname, sizeof(new_pathname));
 		}
-	    snprintf(new_pathname, sizeof(new_pathname), "%s/%s", ((pQueryStructure)qe->QSLinkage)->Source, new_objname);
 
 	    /** Link the new object as the __inserted object in the object list.**/
 	    if (!(stmt->Query->Flags & MQ_F_NOINSERTED))
@@ -279,6 +294,10 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 
 	    /** Yield, if necessary **/
 	    mq_internal_CheckYield(stmt->Query);
+
+	    /** Insert into object?  Only use the first row **/
+	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_FROMOBJECT)
+		break;
 	    }
 
 	if (sel_rval < 0)

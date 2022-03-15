@@ -241,7 +241,7 @@ int
 expIsConstant(pExpression this)
     {
     int t = this->NodeType;
-    return (t == EXPR_N_INTEGER || t == EXPR_N_STRING || t == EXPR_N_DOUBLE || t == EXPR_N_MONEY || t == EXPR_N_DATETIME);
+    return (t == EXPR_N_INTEGER || t == EXPR_N_STRING || t == EXPR_N_DOUBLE || t == EXPR_N_MONEY || t == EXPR_N_DATETIME || t == EXPR_N_BINARY);
     }
 
 
@@ -522,6 +522,12 @@ exp_internal_DumpExpression_r(pExpression this, int level)
 	    {
 	    case EXPR_N_INTEGER: printf("INTEGER = %d", this->Integer); break;
 	    case EXPR_N_STRING: printf("STRING = <%s>", this->String); break;
+	    case EXPR_N_BINARY:
+		printf("BINARY = <");
+		for(i=0; i<this->Size; i++)
+		    printf("%s%2.2x", i?" ":"", this->String[i]);
+		printf(">");
+		break;
 	    case EXPR_N_DOUBLE: printf("DOUBLE = %.2f", this->Types.Double); break;
 	    case EXPR_N_MONEY: printf("MONEY = %d.%4.4d", this->Types.Money.WholePart, this->Types.Money.FractionPart); break;
 	    case EXPR_N_DATETIME: printf("DATETIME = %s", objDataToStringTmp(DATA_T_DATETIME,&(this->Types.Date), 0)); break;
@@ -555,9 +561,16 @@ exp_internal_DumpExpression_r(pExpression this, int level)
 		case DATA_T_DOUBLE: printf(", double=%f",this->Types.Double); break;
 		case DATA_T_MONEY: ptr = objDataToStringTmp(DATA_T_MONEY, &(this->Types.Money), 0); printf(", money=%s", ptr); break;
 		case DATA_T_DATETIME: ptr = objDataToStringTmp(DATA_T_DATETIME, &(this->Types.Date), 0); printf(", datetime=%s", ptr); break;
+		case DATA_T_BINARY:
+		    printf("BINARY = <");
+		    for(i=0; i<this->Size; i++)
+			printf("%s%2.2x", i?" ":"", this->String[i]);
+		    printf(">");
+		    break;
 		}
 	    }
 	if (this->Flags & EXPR_F_NEW) printf(", NEW");
+	if (this->Flags & EXPR_F_INDETERMINATE) printf(", INDET");
 	if (this->Flags & EXPR_F_AGGREGATEFN) printf(", AGGFN");
 	if (this->Flags & EXPR_F_AGGLOCKED) printf(", AGGLK");
 	if (this->Flags & EXPR_F_FREEZEEVAL) printf(", FRZ");
@@ -643,20 +656,23 @@ expCopyValue(pExpression src, pExpression dst, int make_independent)
 	    case DATA_T_STRING: 
 	        if (make_independent)
 		    {
-		    if (src->String == src->Types.StringBuf)
-		        {
-			dst->String = dst->Types.StringBuf;
-			strcpy(dst->String, src->String);
-			}
-		    else
-		        {
-			dst->String = nmSysStrdup(src->String);
-			dst->Alloc = 1;
-			}
+		    expSetString(dst, src->String);
 		    }
 		else
 		    {
 		    dst->String = src->String;
+		    dst->Alloc = 0;
+		    }
+		break;
+	    case DATA_T_BINARY:
+		if (make_independent)
+		    {
+		    expSetBinary(dst, src->String, src->Size);
+		    }
+		else
+		    {
+		    dst->String = src->String;
+		    dst->Size = src->Size;
 		    dst->Alloc = 0;
 		    }
 		break;
@@ -721,20 +737,12 @@ expPodToExpression(pObjData pod, int type, pExpression provided_exp)
 		    exp->Integer = pod->Integer;
 		    break;
 		case DATA_T_STRING:
-		    if (exp->Alloc)
-			nmSysFree(exp->String);
-		    n = strlen(pod->String);
-		    if (n < sizeof(exp->Types.StringBuf))
-			{
-			exp->String = exp->Types.StringBuf;
-			exp->Alloc = 0;
-			}
-		    else
-			{
-			exp->String = nmSysMalloc(n+1);
-			exp->Alloc = 1;
-			}
-		    strcpy(exp->String, pod->String);
+		    if (expSetString(exp, pod->String) < 0)
+			goto error;
+		    break;
+		case DATA_T_BINARY:
+		    if (expSetBinary(exp, pod->Binary.Data, pod->Binary.Size) < 0)
+			goto error;
 		    break;
 		case DATA_T_DOUBLE:
 		    exp->Types.Double = pod->Double;
@@ -746,16 +754,19 @@ expPodToExpression(pObjData pod, int type, pExpression provided_exp)
 		    memcpy(&(exp->Types.Date), pod->DateTime, sizeof(DateTime));
 		    break;
 		default:
-		    if (!provided_exp)
-			expFreeExpression(exp);
-		    return NULL;
+		    goto error;
 		}
 	    }
 
 	exp->DataType = type;
 	/*expEvalTree(exp,expNullObjlist);*/
 
-    return exp;
+	return exp;
+
+    error:
+	if (exp && !provided_exp)
+	    expFreeExpression(exp);
+	return NULL;
     }
 
 
@@ -777,6 +788,10 @@ expExpressionToPod(pExpression this, int type, pObjData pod)
 		break;
 	    case DATA_T_STRING:
 		pod->String = this->String;
+		break;
+	    case DATA_T_BINARY:
+		pod->Binary.Data = this->String;
+		pod->Binary.Size = this->Size;
 		break;
 	    case DATA_T_MONEY:
 		pod->Money = &(this->Types.Money);
@@ -856,8 +871,10 @@ expCompareExpressionValues(pExpression exp1, pExpression exp2)
 	if ((exp1->Flags & EXPR_F_NULL) != (exp2->Flags & EXPR_F_NULL))
 	    return 0;
 
-	/** Supported data types differ. **/
+	/** Supported data types differ in how we compare. **/
 	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_STRING && exp1->String && exp2->String && strcmp(exp1->String, exp2->String) != 0)
+	    return 0;
+	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_BINARY && exp1->String && exp2->String && exp1->Size == exp2->Size && memcmp(exp1->String, exp2->String, exp1->Size) != 0)
 	    return 0;
 	if (!(exp1->Flags & EXPR_F_NULL) && exp1->DataType == DATA_T_INTEGER && exp1->Integer != exp2->Integer)
 	    return 0;
@@ -869,7 +886,7 @@ expCompareExpressionValues(pExpression exp1, pExpression exp2)
 	    return 0;
 
 	/** Unsupported data types **/
-	if (exp1->DataType != DATA_T_STRING && exp1->DataType != DATA_T_INTEGER && exp1->DataType != DATA_T_DOUBLE && exp1->DataType != DATA_T_MONEY && exp1->DataType != DATA_T_DATETIME)
+	if (exp1->DataType != DATA_T_STRING && exp1->DataType != DATA_T_INTEGER && exp1->DataType != DATA_T_DOUBLE && exp1->DataType != DATA_T_MONEY && exp1->DataType != DATA_T_DATETIME && exp1->DataType != DATA_T_BINARY)
 	    return -1;
 
     return 1;
@@ -888,7 +905,7 @@ expCompareExpressions(pExpression exp1, pExpression exp2)
 	/** Compare current node first **/
 	if (exp1->NodeType != exp2->NodeType)
 	    return 0;
-	if (exp1->NodeType == EXPR_N_STRING || exp1->NodeType == EXPR_N_INTEGER || exp1->NodeType == EXPR_N_DOUBLE || exp1->NodeType == EXPR_N_MONEY || exp1->NodeType == EXPR_N_DATETIME)
+	if (exp1->NodeType == EXPR_N_STRING || exp1->NodeType == EXPR_N_INTEGER || exp1->NodeType == EXPR_N_DOUBLE || exp1->NodeType == EXPR_N_MONEY || exp1->NodeType == EXPR_N_DATETIME || exp1->NodeType == EXPR_N_BINARY)
 	    {
 	    if (expCompareExpressionValues(exp1, exp2) <= 0)
 		return 0;
@@ -970,6 +987,155 @@ exp_internal_UnlinkControl(pExpControl ctl)
 	    nmFree(ctl,sizeof(ExpControl));
 	    }
 	}
+    return 0;
+    }
+
+
+/*** Build a PTOD structure with an expression's value
+ ***/
+pTObjData
+expExpressionToPtod(pExpression exp)
+    {
+    pTObjData ptod;
+
+	/** Create the ptod **/
+	ptod = ptodAllocate();
+	if (!ptod)
+	    return NULL;
+	ptod->DataType = exp->DataType;
+	if (exp->Flags & EXPR_F_NULL)
+	    {
+	    ptod->Flags |= DATA_TF_NULL;
+	    return ptod;
+	    }
+	else
+	    {
+	    ptod->Flags &= ~DATA_TF_NULL;
+	    }
+
+	/** Fill in the data value **/
+	switch(ptod->DataType)
+	    {
+	    case DATA_T_INTEGER:
+		ptod->Data.Integer = exp->Integer;
+		break;
+	    case DATA_T_STRING:
+		ptod->Data.String = nmSysStrdup(exp->String);
+		break;
+	    case DATA_T_BINARY:
+		ptod->Data.Binary.Data = nmSysMalloc(exp->Size);
+		memcpy(ptod->Data.Binary.Data, exp->String, exp->Size);
+		ptod->Data.Binary.Size = exp->Size;
+		break;
+	    case DATA_T_MONEY:
+		ptod->Data.Money = nmMalloc(sizeof(MoneyType));
+		memcpy(&ptod->Data.Money, &exp->Types.Money, sizeof(MoneyType));
+		break;
+	    case DATA_T_DATETIME:
+		ptod->Data.DateTime = nmMalloc(sizeof(DateTime));
+		memcpy(&ptod->Data.DateTime, &exp->Types.Date, sizeof(DateTime));
+		break;
+	    case DATA_T_DOUBLE:
+		ptod->Data.Double = exp->Types.Double;
+		break;
+	    default:
+		mssError(1, "PTOD", "Unhandled data type in expExpressionToPtod()");
+		ptodFree(ptod);
+		return NULL;
+	    }
+
+    return ptod;
+    }
+
+
+/*** Compile and evaluate an expression string
+ ***/
+pTObjData
+expCompileAndEval(char* text, pParamObjects objlist, int lxflags, int cmpflags)
+    {
+    pTObjData ptod;
+    pExpression exp;
+
+	/** First, compile it **/
+	exp = expCompileExpression(text, objlist, lxflags, cmpflags);
+	if (!exp)
+	    return NULL;
+
+	/** Evaluate **/
+	if (expEvalTree(exp, objlist) < 0)
+	    {
+	    expFreeExpression(exp);
+	    return NULL;
+	    }
+
+	/** Convert value to a PTOD **/
+	ptod = expExpressionToPtod(exp);
+	expFreeExpression(exp);
+
+    return ptod;
+    }
+
+
+/*** expSetString - set a string value in an expression node
+ ***/
+int
+expSetString(pExpression this, char* str)
+    {
+    int n;
+
+	if (this->Alloc)
+	    {
+	    this->Alloc = 0;
+	    nmSysFree(this->String);
+	    }
+
+	n = strlen(str);
+	if (n < sizeof(this->Types.StringBuf))
+	    {
+	    this->String = this->Types.StringBuf;
+	    }
+	else
+	    {
+	    this->String = nmSysMalloc(n+1);
+	    if (this->String)
+		this->Alloc = 1;
+	    else
+		return -1;
+	    }
+	strcpy(this->String, str);
+
+    return 0;
+    }
+
+
+/*** expSetBinary - set a string value in an expression node
+ ***/
+int
+expSetBinary(pExpression this, unsigned char* str, int len)
+    {
+
+	if (this->Alloc)
+	    {
+	    this->Alloc = 0;
+	    nmSysFree(this->String);
+	    }
+
+	if (len + 1 < sizeof(this->Types.StringBuf))
+	    {
+	    this->String = this->Types.StringBuf;
+	    }
+	else
+	    {
+	    this->String = nmSysMalloc(len+1);
+	    if (this->String)
+		this->Alloc = 1;
+	    else
+		return -1;
+	    }
+	memcpy(this->String, str, len);
+	this->String[len] = '\0';
+	this->Size = len;
+
     return 0;
     }
 

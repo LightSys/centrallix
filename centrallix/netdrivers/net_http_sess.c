@@ -188,7 +188,7 @@ nht_i_UnlinkSess(pNhtSessionData sess)
 	    /** Destroy any active app groups. **/
 	    while(sess->AppGroups.nItems)
 		{
-		nht_i_FreeAppGroup((pNhtAppGroup)(sess->AppGroups.Items[0]));
+		nht_i_UnlinkAppGroup((pNhtAppGroup)(sess->AppGroups.Items[0]));
 		}
 
 	    /** Close all open handles. **/
@@ -492,7 +492,7 @@ nht_i_WTimeoutApp(void* app_v)
     pNhtApp app = (pNhtApp)app_v;
 
 	/** Free the App. **/
-	nht_i_FreeApp(app);
+	nht_i_UnlinkApp(app);
 
     return 0;
     }
@@ -522,7 +522,7 @@ nht_i_WTimeoutAppGroup(void* group_v)
     pNhtAppGroup group = (pNhtAppGroup)group_v;
 
 	/** Free the App. **/
-	nht_i_FreeAppGroup(group);
+	nht_i_UnlinkAppGroup(group);
 
     return 0;
     }
@@ -579,6 +579,7 @@ nht_i_AllocApp(char* path, pNhtAppGroup group)
 	memset(app, 0, sizeof(NhtApp));
 
 	/** Set up the structure **/
+	app->LinkCnt = 1;
 	cxssGenerateKey((unsigned char*)akey, sizeof(akey));
 	sprintf(app->AKey, "%8.8x%8.8x", akey[0], akey[1]);
 	snprintf(akeybuf, sizeof(akeybuf), "%s-%s-%s", group->Session->SKey, group->GKey, app->AKey);
@@ -618,13 +619,32 @@ nht_i_AllocApp(char* path, pNhtAppGroup group)
     }
 
 
-/*** nht_i_FreeApp() - free and clean up an application structure
+/*** nht_i_LinkApp() - free and clean up an application structure
+ ***/
+pNhtApp
+nht_i_LinkApp(pNhtApp app)
+    {
+
+	app->LinkCnt += 1;
+
+    return app;
+    }
+
+
+/*** nht_i_UnlinkApp() - free and clean up an application structure
  ***/
 int
-nht_i_FreeApp(pNhtApp app)
+nht_i_UnlinkApp(pNhtApp app)
     {
     int i;
     pObjSession one_sess;
+
+	/** Reference check **/
+	app->LinkCnt -= 1;
+	if (app->LinkCnt > 0)
+	    return 0;
+
+	printf("NHT: Releasing app %s: %s\n", app->AKey, app->AppPathname);
 
 	/** Disconnect from the app group **/
 	xaRemoveItem(&(app->Group->Apps), xaFindItem(&(app->Group->Apps), (void*)app));
@@ -673,6 +693,7 @@ nht_i_AllocAppGroup(char* path, pNhtSessionData s)
 	memset(group, 0, sizeof(NhtAppGroup));
 
 	/** Set up the structure **/
+	group->LinkCnt = 1;
 	strtcpy(group->StartURL, path, sizeof(group->StartURL));
 	group->G_ID = NHT.G_ID_Count++;
 	cxssGenerateKey((unsigned char*)gkey, sizeof(gkey));
@@ -690,11 +711,30 @@ nht_i_AllocAppGroup(char* path, pNhtSessionData s)
     }
 
 
-/*** nht_i_FreeAppGroup() - free and clean up an application structure
+/*** nht_i_LinkAppGroup() - free and clean up an application structure
+ ***/
+pNhtAppGroup
+nht_i_LinkAppGroup(pNhtAppGroup group)
+    {
+
+	group->LinkCnt += 1;
+
+    return group;
+    }
+
+
+/*** nht_i_UnlinkAppGroup() - free and clean up an application structure
  ***/
 int
-nht_i_FreeAppGroup(pNhtAppGroup group)
+nht_i_UnlinkAppGroup(pNhtAppGroup group)
     {
+
+	/** Reference check **/
+	group->LinkCnt -= 1;
+	if (group->LinkCnt > 0)
+	    return 0;
+
+	printf("NHT: Releasing app group %s: %s\n", group->GKey, group->StartURL);
 
 	/** Disconnect from the session **/
 	xaRemoveItem(&(group->Session->AppGroups), xaFindItem(&(group->Session->AppGroups), (void*)group));
@@ -704,7 +744,7 @@ nht_i_FreeAppGroup(pNhtAppGroup group)
 	/** Destroy any apps still active **/
 	while(group->Apps.nItems)
 	    {
-	    nht_i_FreeApp((pNhtApp)(group->Apps.Items[0]));
+	    nht_i_UnlinkApp((pNhtApp)(group->Apps.Items[0]));
 	    }
 
 	/** Clean up... **/

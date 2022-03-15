@@ -619,6 +619,24 @@ sybd_internal_GetConn(pSybdNode db_node)
 	    sybd_internal_Close(cmd);
 	    }
 
+	/** Enable ANSI NULL option **/
+	snprintf(sbuf, 64, "set ansinull on");
+	cmd = sybd_internal_Exec(conn, sbuf);
+	while((rval=ct_results(cmd, (CS_INT*)&restype)))
+	    {
+	    if (rval == CS_FAIL)
+		{
+		mssError(0,"SYBD","Could not enable ansi null mode!");
+		sybd_internal_Close(cmd);
+		ct_close(conn->CsConn, CS_FORCE_CLOSE);
+		ct_con_drop(conn->CsConn);
+		nmFree(conn,sizeof(SybdConn));
+		return NULL;
+		}
+	    if (rval == CS_END_RESULTS || restype == CS_CMD_DONE) break;
+	    }
+	sybd_internal_Close(cmd);
+
 	/** Get the spid **/
 	conn->SPID = 0;
 	if ((cmd = sybd_internal_Exec(conn, "select convert(integer,@@spid)")) != NULL)
@@ -3320,7 +3338,7 @@ sybdDelete(pObject obj, pObjTrxTree* oxt)
 CS_COMMAND*
 sybd_internal_PrepareText(pSybdData inf, pSybdConn conn, int maxtextsize)
     {
-    char* col;
+    char* col = NULL;
     int i;
     char buffer[1];
     char sbuf[160];
@@ -4137,7 +4155,7 @@ sybdGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    if (!strcmp(attrname,"datatype")) return DATA_T_STRING;
 	    }
 
-	mssError(1,"SYBD","Invalid column for GetAttrType");
+	//mssError(1,"SYBD","Invalid column for GetAttrType");
 
     return -1;
     }
@@ -5046,7 +5064,7 @@ sybdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 		    }
 		else
 		    {
-		    mssError(1, "SYBD", "No attribute '%s'", attrname);
+		    //mssError(1, "SYBD", "No attribute '%s'", attrname);
 		    return NULL;
 		    }
 		break;
