@@ -4089,6 +4089,7 @@ int exp_fn_utf8_reverse(pExpression tree, pParamObjects objlist, pExpression i0,
 	//strcpy(tree->String, temp);
 	
     	return 0;
+}
 
 int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
