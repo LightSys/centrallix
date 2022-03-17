@@ -21,7 +21,6 @@
 #include <openssl/sha.h>
 #include <openssl/md5.h>
 #include <openssl/evp.h>
-#include <locale.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -4268,9 +4267,6 @@ int exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression i0
 	return 0;
 }
 
-// const char *CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; 
-// const double IDF[36] = { 0.918, 0.985, 0.973, 0.953, 0.87, 0.978, 0.98, 0.938, 0.931, 0.9986, 0.9922, 0.9590, 0.973, 0.933, 0.922, 0.981, 0.9989, 0.941, 0.938, 0.904, 0.973, 0.9903, 0.976, 0.9985, 0.98, 0.9992, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
-
 int exp_fn_i_frequency_table(double *table, char *term)
 	{
 		int i;
@@ -4284,13 +4280,6 @@ int exp_fn_i_frequency_table(double *table, char *term)
 		
 		// Iterate through term and update hash table data
 		for (i = 0; i < strlen(term); ) {
-			// Locate index position based on where letter in term is inside the CHAR_SET
-			// Used so that CHAR_SET can be arbitrarily extended.
-			// char *loc = strchr(CHAR_SET, toupper(term[i]));
-			// if (loc) {
-			// 	int index = (int)(loc - CHAR_SET);
-			// 	table[index]++;
-			// }
 			lenOfChar = utf8lenOfChr(term[i]);
 			c = term[i+lenOfChar-1];
 			c = (c & 0xF0) >> 4 | (c & 0x0F) << 4;
@@ -4323,21 +4312,6 @@ int exp_fn_i_relative_frequency_table(double *frequency_table)
 		}
 		return 0;
 	}
-
-// int exp_fn_i_tf_idf_table(double *frequency_table)
-// 	{
-// 		int i;
-// 		double sum = 0;
-// 		// Compute the total character frequency
-// 		for (i = 0; i < strlen(CHAR_SET); i++) {
-// 			sum += frequency_table[i];
-// 		}
-
-// 		for (i = 0; i < strlen(CHAR_SET); i++) {
-// 			frequency_table[i] = (frequency_table[i] / sum) * IDF[i];
-// 		}
-// 		return 0;
-// 	}
 
 // Dot product is equal to the sum of the squared values from each relative frequency table
 int exp_fn_i_dot_product(double *dot_product, double *r_freq_table1, double *r_freq_table2)
@@ -4396,13 +4370,8 @@ int exp_fn_similarity(pExpression tree, pParamObjects objlist, pExpression i0, p
 	exp_fn_i_frequency_table(table2, i1->String);
 	
 	// Calculate relative frequencies or tf_idf values for each term depending on value of third parameter
-	// if (i2 && !(i2->Flags & EXPR_F_NULL) && (i2->DataType != DATA_T_INTEGER) && (i2->Integer == 1)) {
-	// 	exp_fn_i_tf_idf_table(table1);
-	// 	exp_fn_i_tf_idf_table(table2);
-	// } else {
-		exp_fn_i_relative_frequency_table(table1);
-		exp_fn_i_relative_frequency_table(table2);
-	// }
+	exp_fn_i_relative_frequency_table(table1);
+	exp_fn_i_relative_frequency_table(table2);
 
 	// Calculate dot product
 	double dot_product = 0.0;
@@ -4481,7 +4450,6 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
 	xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
 	xhAdd(&EXP.Functions, "fuzzy_compare", (char*)exp_fn_fuzzy_compare);
-	xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
 	xhAdd(&EXP.Functions, "similarity", (char*)exp_fn_similarity);
 	xhAdd(&EXP.Functions, "to_base64", (char*)exp_fn_to_base64);
 	xhAdd(&EXP.Functions, "from_base64", (char*)exp_fn_from_base64);
@@ -4535,8 +4503,8 @@ exp_internal_DefineFunctions()
         xhAdd(&EXP.Functions, "right", (char*) exp_fn_utf8_right);
         xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_utf8_ralign);
         xhAdd(&EXP.Functions, "escape", (char*) exp_fn_utf8_escape);
-	xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_utf8_reverse);
-	xhAdd(&EXP.Functions, "overlong", (char*) exp_fn_utf8_overlong);
+		xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_utf8_reverse);
+		xhAdd(&EXP.Functions, "overlong", (char*) exp_fn_utf8_overlong);
 	}
     
     return 0;
