@@ -21,6 +21,7 @@
 #include <openssl/sha.h>
 #include <openssl/md5.h>
 #include <openssl/evp.h>
+#include <locale.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -4267,26 +4268,42 @@ int exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression i0
 	return 0;
 }
 
-const char *CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; 
-const double IDF[36] = { 0.918, 0.985, 0.973, 0.953, 0.87, 0.978, 0.98, 0.938, 0.931, 0.9986, 0.9922, 0.9590, 0.973, 0.933, 0.922, 0.981, 0.9989, 0.941, 0.938, 0.904, 0.973, 0.9903, 0.976, 0.9985, 0.98, 0.9992, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
+// const char *CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; 
+// const double IDF[36] = { 0.918, 0.985, 0.973, 0.953, 0.87, 0.978, 0.98, 0.938, 0.931, 0.9986, 0.9922, 0.9590, 0.973, 0.933, 0.922, 0.981, 0.9989, 0.941, 0.938, 0.904, 0.973, 0.9903, 0.976, 0.9985, 0.98, 0.9992, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
 
 int exp_fn_i_frequency_table(double *table, char *term)
 	{
 		int i;
+		unsigned char c;
+		int lenOfChar;
+		int byteInChar;
 		// Initialize hash table with complete character set and 0 values
-		for (i = 0; i < strlen(CHAR_SET); i++) {
+		for (i = 0; i < 256; i++) {
 			table[i] = 0.0;
 		}
 		
 		// Iterate through term and update hash table data
-		for (i = 0; i < strlen(term); i++) {
+		for (i = 0; i < strlen(term); ) {
 			// Locate index position based on where letter in term is inside the CHAR_SET
 			// Used so that CHAR_SET can be arbitrarily extended.
-			char *loc = strchr(CHAR_SET, toupper(term[i]));
-			if (loc) {
-				int index = (int)(loc - CHAR_SET);
-				table[index]++;
+			// char *loc = strchr(CHAR_SET, toupper(term[i]));
+			// if (loc) {
+			// 	int index = (int)(loc - CHAR_SET);
+			// 	table[index]++;
+			// }
+			lenOfChar = utf8lenOfChr(term[i]);
+			c = term[i+lenOfChar-1];
+			c = (c & 0xF0) >> 4 | (c & 0x0F) << 4;
+			c = (c & 0xCC) >> 2 | (c & 0x33) << 2;
+			c = (c & 0xAA) >> 1 | (c & 0x55) << 1;
+			byteInChar = lenOfChar-2;
+			while(byteInChar >= 0)
+			{
+				c^=term[i+byteInChar];
+				byteInChar--;
 			}
+			i+=lenOfChar;
+			table[c]++;
 		}
 
 		return 0;
@@ -4297,36 +4314,36 @@ int exp_fn_i_relative_frequency_table(double *frequency_table)
 		int i;
 		double sum = 0;
 		// Compute the total character frequency
-		for (i = 0; i < strlen(CHAR_SET); i++) {
+		for (i = 0; i < 256; i++) {
 			sum += frequency_table[i];
 		}
 
-		for (i = 0; i < strlen(CHAR_SET); i++) {
+		for (i = 0; i < 256; i++) {
 			frequency_table[i] = frequency_table[i] / sum;
 		}
 		return 0;
 	}
 
-int exp_fn_i_tf_idf_table(double *frequency_table)
-	{
-		int i;
-		double sum = 0;
-		// Compute the total character frequency
-		for (i = 0; i < strlen(CHAR_SET); i++) {
-			sum += frequency_table[i];
-		}
+// int exp_fn_i_tf_idf_table(double *frequency_table)
+// 	{
+// 		int i;
+// 		double sum = 0;
+// 		// Compute the total character frequency
+// 		for (i = 0; i < strlen(CHAR_SET); i++) {
+// 			sum += frequency_table[i];
+// 		}
 
-		for (i = 0; i < strlen(CHAR_SET); i++) {
-			frequency_table[i] = (frequency_table[i] / sum) * IDF[i];
-		}
-		return 0;
-	}
+// 		for (i = 0; i < strlen(CHAR_SET); i++) {
+// 			frequency_table[i] = (frequency_table[i] / sum) * IDF[i];
+// 		}
+// 		return 0;
+// 	}
 
 // Dot product is equal to the sum of the squared values from each relative frequency table
 int exp_fn_i_dot_product(double *dot_product, double *r_freq_table1, double *r_freq_table2)
 	{
 		int i;
-		for (i = 0; i < strlen(CHAR_SET); i++) {
+		for (i = 0; i < 256; i++) {
 			*dot_product = *dot_product + (r_freq_table1[i] * r_freq_table2[i]);
 		}
 		return 0;
@@ -4336,7 +4353,7 @@ int exp_fn_i_dot_product(double *dot_product, double *r_freq_table1, double *r_f
 int exp_fn_i_magnitude(double *magnitude, double *r_freq_table)
 	{
 		int i;
-		for (i = 0; i < strlen(CHAR_SET); i++) {
+		for (i = 0; i < 256; i++) {
 			*magnitude = *magnitude + (r_freq_table[i] * r_freq_table[i]);
 		}
 		*magnitude = sqrt(*magnitude);
@@ -4371,21 +4388,21 @@ int exp_fn_similarity(pExpression tree, pParamObjects objlist, pExpression i0, p
 	}
 
 	// Allocate frequency tables (arrays of doubles) for each term
-	double *table1 = nmMalloc(strlen(CHAR_SET) * sizeof(double));
-	double *table2 = nmMalloc(strlen(CHAR_SET) * sizeof(double));
+	double *table1 = nmMalloc(256 * sizeof(double));
+	double *table2 = nmMalloc(256 * sizeof(double));
 
     // Calculate frequency tables for each term
 	exp_fn_i_frequency_table(table1, i0->String);
-    exp_fn_i_frequency_table(table2, i1->String);
+	exp_fn_i_frequency_table(table2, i1->String);
 	
 	// Calculate relative frequencies or tf_idf values for each term depending on value of third parameter
-	if (i2 && !(i2->Flags & EXPR_F_NULL) && (i2->DataType != DATA_T_INTEGER) && (i2->Integer == 1)) {
-		exp_fn_i_tf_idf_table(table1);
-		exp_fn_i_tf_idf_table(table2);
-	} else {
+	// if (i2 && !(i2->Flags & EXPR_F_NULL) && (i2->DataType != DATA_T_INTEGER) && (i2->Integer == 1)) {
+	// 	exp_fn_i_tf_idf_table(table1);
+	// 	exp_fn_i_tf_idf_table(table2);
+	// } else {
 		exp_fn_i_relative_frequency_table(table1);
 		exp_fn_i_relative_frequency_table(table2);
-	}
+	// }
 
 	// Calculate dot product
 	double dot_product = 0.0;
@@ -4400,8 +4417,8 @@ int exp_fn_similarity(pExpression tree, pParamObjects objlist, pExpression i0, p
 	tree->DataType = DATA_T_DOUBLE;
 	tree->Types.Double = dot_product / (magnitude1 * magnitude2);
 
-	nmFree(table1, strlen(CHAR_SET) * sizeof(double));
-	nmFree(table2, strlen(CHAR_SET) * sizeof(double));
+	nmFree(table1, 256 * sizeof(double));
+	nmFree(table2, 256 * sizeof(double));
 	return 0;
 	}
 
@@ -4494,21 +4511,21 @@ exp_internal_DefineFunctions()
     xhAdd(&EXP.ReverseFunctions, "isnull", (char*) exp_fn_reverse_isnull);
     
     /** UTF-8/ASCII dependent **/
-    // if (CxGlobals.CharacterMode == CharModeSingleByte)
-    //     {
-    //     xhAdd(&EXP.Functions, "substring", (char*) exp_fn_substring);
-    //     xhAdd(&EXP.Functions, "ascii", (char*) exp_fn_ascii);
-    //     xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_charindex);
-    //     xhAdd(&EXP.Functions, "upper", (char*) exp_fn_upper);
-    //     xhAdd(&EXP.Functions, "lower", (char*) exp_fn_lower);
-    //     xhAdd(&EXP.Functions, "char_length", (char*) exp_fn_char_length);
-    //     xhAdd(&EXP.Functions, "right", (char*) exp_fn_right);
-    //     xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_ralign);
-    //     xhAdd(&EXP.Functions, "escape", (char*) exp_fn_escape);
-    //     xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_reverse);
-	// }
-    // else
-        // {
+    if (CxGlobals.CharacterMode == CharModeSingleByte)
+        {
+        xhAdd(&EXP.Functions, "substring", (char*) exp_fn_substring);
+        xhAdd(&EXP.Functions, "ascii", (char*) exp_fn_ascii);
+        xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_charindex);
+        xhAdd(&EXP.Functions, "upper", (char*) exp_fn_upper);
+        xhAdd(&EXP.Functions, "lower", (char*) exp_fn_lower);
+        xhAdd(&EXP.Functions, "char_length", (char*) exp_fn_char_length);
+        xhAdd(&EXP.Functions, "right", (char*) exp_fn_right);
+        xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_ralign);
+        xhAdd(&EXP.Functions, "escape", (char*) exp_fn_escape);
+        xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_reverse);
+	}
+    else
+        {
         xhAdd(&EXP.Functions, "substring", (char*) exp_fn_utf8_substring);
         xhAdd(&EXP.Functions, "ascii", (char*) exp_fn_utf8_ascii);
         xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_utf8_charindex);
@@ -4520,9 +4537,7 @@ exp_internal_DefineFunctions()
         xhAdd(&EXP.Functions, "escape", (char*) exp_fn_utf8_escape);
 	xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_utf8_reverse);
 	xhAdd(&EXP.Functions, "overlong", (char*) exp_fn_utf8_overlong);
-	// }
-
-	xhAdd(&EXP.Functions, "mbstowcs", (char*)exp_fn_mbstowcs);
+	}
     
     return 0;
     }
