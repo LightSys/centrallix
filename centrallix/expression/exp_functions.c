@@ -4107,6 +4107,15 @@ int utf8lenOfChr(char c){
 	return 7;
 }
 
+int exp_fn_mbstowcs(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+{
+	wchar_t* wstr = NULL;
+	int length = mbstowcs(wstr, i0->String, 0);
+	tree->DataType = DATA_T_INTEGER;
+	tree->Integer = length;
+	return 0;
+}
+
 int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
 
@@ -4135,11 +4144,16 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
 	int length2 = strlen(i1->String);
 	int charlen1 = chrCharLength(i0->String);
 	int charlen2 = chrCharLength(i1->String);
+	wchar_t wchrstr1[charlen1], wchrstr2[charlen2];
+	mbstowcs(wchrstr1, i0->String, length1);
+	mbstowcs(wchrstr2, i1->String, length2);
+	if(!wchrstr1 || !wchrstr2)
+	{
+		mmsError(1, "EXP", "levenshtein() unable to convert to wide character string");
+		return -1;
+	}
 	int levMatrix[charlen1+1][charlen2+1];
-	int i, j;
 	int ichar, jchar;
-	int byteInChar, lenOfChar1, lenOfChar2;
-	int equal;
     //set each element in d to zero
     for (ichar = 0; ichar < charlen1; ichar++)
     {
@@ -4163,28 +4177,11 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
         levMatrix[0][jchar] = jchar;
     }
     
-	i = 1;
-	ichar = 1;
-	while(i <= length1)
-	// for (i = 1; i <= length1; i++)
+	for (ichar = 1; ichar <= charlen1; ichar++)
     {
-		lenOfChar1 = utf8lenOfChr(i0->String[i-1]);
-		j = 1;
-		jchar = 1;
-		while(j <= length2)
-        // for (j = 1; j <= length2; j++)
+        for (jchar = 1; jchar <= charlen2; jchar++)
         {
-			lenOfChar2 = utf8lenOfChr(i1->String[j-1]);
-			equal = 1;
-			if(lenOfChar1 != lenOfChar2)
-			{
-				equal = 0;
-			}
-			for(byteInChar = 0; byteInChar < lenOfChar1 && equal; byteInChar++)
-			{
-				equal = (i0->String[i-1+byteInChar] == i1->String[j-1+byteInChar]);
-			}
-            if (equal) 
+            if (wchrstr1[ichar-1] == wchrstr2[jchar-1]) 
             {
                 levMatrix[ichar][jchar] = levMatrix[ichar-1][jchar-1];
             }
@@ -4197,11 +4194,7 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
 									  ((value1 < value3) ? value1 : value3) :
 									  (value2 < value3) ? value2 : value3;
             }
-			j+=lenOfChar2;
-			jchar++;
         }
-		i+=lenOfChar1;
-		ichar++;
     }
     tree->DataType = DATA_T_INTEGER;
 	tree->Integer = levMatrix[charlen1][charlen2];
@@ -4528,6 +4521,8 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_utf8_reverse);
 	xhAdd(&EXP.Functions, "overlong", (char*) exp_fn_utf8_overlong);
 	// }
+
+	xhAdd(&EXP.Functions, "mbstowcs", (char*)exp_fn_mbstowcs);
     
     return 0;
     }
