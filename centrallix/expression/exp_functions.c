@@ -4091,6 +4091,22 @@ int exp_fn_utf8_reverse(pExpression tree, pParamObjects objlist, pExpression i0,
     	return 0;
 }
 
+/**
+ * Returns the number of bytes in the character (ascii or utf8) given the first byte.
+ */
+int utf8lenOfChr(char c){
+	int lens[8] = {1, 1, 2, 3, 4, 5, 6, 7};
+	int i;
+	for(i = 0; i < 8; i++)
+	{
+		if(!((0b10000000 >> i) & c))
+		{
+			return lens[i];
+		}
+	}
+	return 7;
+}
+
 int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
 
@@ -4117,53 +4133,78 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
 	// the first i characters of s and the first j characters of t
 	int length1 = strlen(i0->String);
 	int length2 = strlen(i1->String);
-	int levMatrix[length1+1][length2+1];
-	int i;
-	int j;
+	int charlen1 = chrCharLength(i0->String);
+	int charlen2 = chrCharLength(i1->String);
+	int levMatrix[charlen1+1][charlen2+1];
+	int i, j;
+	int ichar, jchar;
+	int byteInChar, lenOfChar1, lenOfChar2;
+	int equal;
     //set each element in d to zero
-    for (i = 0; i < length1; i++)
+    for (ichar = 0; ichar < charlen1; ichar++)
     {
-        for (j = 0; j < length2; j++)
+        for (jchar = 0; jchar < charlen2; jchar++)
         {
-            levMatrix[i][j] = 0;
+            levMatrix[ichar][jchar] = 0;
         }        
     }
     
     // source prefixes can be transformed into empty string by
     // dropping all characters
-    for (i = 0; i <= length1; i++)
+    for (ichar = 0; ichar <= charlen1; ichar++)
     {
-        levMatrix[i][0] = i;
+        levMatrix[ichar][0] = ichar;
     }
      
     // target prefixes can be reached from empty source prefix
     // by inserting every character
-    for (j = 0; j <= length2; j++)
+    for (jchar = 0; jchar <= charlen2; jchar++)
     {
-        levMatrix[0][j] = j;
+        levMatrix[0][jchar] = jchar;
     }
     
-	for (i = 1; i <= length1; i++)
+	i = 1;
+	ichar = 1;
+	while(i <= length1)
+	// for (i = 1; i <= length1; i++)
     {
-        for (j = 1; j <= length2; j++)
+		lenOfChar1 = utf8lenOfChr(i0->String[i-1]);
+		j = 1;
+		jchar = 1;
+		while(j <= length2)
+        // for (j = 1; j <= length2; j++)
         {
-            if (i0->String[i-1] == i1->String[j-1]) 
+			lenOfChar2 = utf8lenOfChr(i1->String[j-1]);
+			equal = 1;
+			if(lenOfChar1 != lenOfChar2)
+			{
+				equal = 0;
+			}
+			for(byteInChar = 0; byteInChar < lenOfChar1 && equal; byteInChar++)
+			{
+				equal = (i0->String[i-1+byteInChar] == i1->String[j-1+byteInChar]);
+			}
+            if (equal) 
             {
-                levMatrix[i][j] = levMatrix[i-1][j-1];
+                levMatrix[ichar][jchar] = levMatrix[ichar-1][jchar-1];
             }
             else 
             {
-				int value1 = levMatrix[i - 1][j] + 1;
-				int value2 = levMatrix[i][j-1] + 1;
-				int value3 = levMatrix[i-1][j-1] + 1;
-                levMatrix[i][j] = (value1 < value2) ? 
+				int value1 = levMatrix[ichar - 1][jchar] + 1;
+				int value2 = levMatrix[ichar][jchar-1] + 1;
+				int value3 = levMatrix[ichar-1][jchar-1] + 1;
+                levMatrix[ichar][jchar] = (value1 < value2) ? 
 									  ((value1 < value3) ? value1 : value3) :
 									  (value2 < value3) ? value2 : value3;
             }
+			j+=lenOfChar2;
+			jchar++;
         }
+		i+=lenOfChar1;
+		ichar++;
     }
     tree->DataType = DATA_T_INTEGER;
-	tree->Integer = levMatrix[length1][length2];
+	tree->Integer = levMatrix[charlen1][charlen2];
     return 0;
     }
 
@@ -4188,13 +4229,18 @@ int exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression i0
 		mssError(1,"EXP","fuzzy_compare() requires two string and one integer parameters");
 		return -1;
 	}
+
+	int length1 = chrCharLength(i0->String);
+	int length2 = chrCharLength(i1->String);
+	if(length1 < 0 || length2 < 0)
+	{
+		mssError(1,"EXP","fuzzy_compare() invalid characters received");
+		return -1;
+	}
 	
 	exp_fn_levenshtein(tree, objlist, i0, i1, i2);
 	//!!! I am not checking for errors here, because IN THEORY we have two strings... if we don't, big uh-oh.
 	int lev_dist = tree->Integer;
-	
-	int length1 = strlen(i0->String);
-	int length2 = strlen(i1->String);
 
 	double clamped_dist = 1.0;
 
@@ -4425,6 +4471,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
 	xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
 	xhAdd(&EXP.Functions, "fuzzy_compare", (char*)exp_fn_fuzzy_compare);
+	xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
 	xhAdd(&EXP.Functions, "similarity", (char*)exp_fn_similarity);
 	xhAdd(&EXP.Functions, "to_base64", (char*)exp_fn_to_base64);
 	xhAdd(&EXP.Functions, "from_base64", (char*)exp_fn_from_base64);
@@ -4454,21 +4501,21 @@ exp_internal_DefineFunctions()
     xhAdd(&EXP.ReverseFunctions, "isnull", (char*) exp_fn_reverse_isnull);
     
     /** UTF-8/ASCII dependent **/
-    if (CxGlobals.CharacterMode == CharModeSingleByte)
-        {
-        xhAdd(&EXP.Functions, "substring", (char*) exp_fn_substring);
-        xhAdd(&EXP.Functions, "ascii", (char*) exp_fn_ascii);
-        xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_charindex);
-        xhAdd(&EXP.Functions, "upper", (char*) exp_fn_upper);
-        xhAdd(&EXP.Functions, "lower", (char*) exp_fn_lower);
-        xhAdd(&EXP.Functions, "char_length", (char*) exp_fn_char_length);
-        xhAdd(&EXP.Functions, "right", (char*) exp_fn_right);
-        xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_ralign);
-        xhAdd(&EXP.Functions, "escape", (char*) exp_fn_escape);
-        xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_reverse);
-	}
-    else
-        {
+    // if (CxGlobals.CharacterMode == CharModeSingleByte)
+    //     {
+    //     xhAdd(&EXP.Functions, "substring", (char*) exp_fn_substring);
+    //     xhAdd(&EXP.Functions, "ascii", (char*) exp_fn_ascii);
+    //     xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_charindex);
+    //     xhAdd(&EXP.Functions, "upper", (char*) exp_fn_upper);
+    //     xhAdd(&EXP.Functions, "lower", (char*) exp_fn_lower);
+    //     xhAdd(&EXP.Functions, "char_length", (char*) exp_fn_char_length);
+    //     xhAdd(&EXP.Functions, "right", (char*) exp_fn_right);
+    //     xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_ralign);
+    //     xhAdd(&EXP.Functions, "escape", (char*) exp_fn_escape);
+    //     xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_reverse);
+	// }
+    // else
+        // {
         xhAdd(&EXP.Functions, "substring", (char*) exp_fn_utf8_substring);
         xhAdd(&EXP.Functions, "ascii", (char*) exp_fn_utf8_ascii);
         xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_utf8_charindex);
@@ -4480,7 +4527,7 @@ exp_internal_DefineFunctions()
         xhAdd(&EXP.Functions, "escape", (char*) exp_fn_utf8_escape);
 	xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_utf8_reverse);
 	xhAdd(&EXP.Functions, "overlong", (char*) exp_fn_utf8_overlong);
-	}
+	// }
     
     return 0;
     }
