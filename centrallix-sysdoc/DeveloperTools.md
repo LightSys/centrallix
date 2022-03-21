@@ -122,9 +122,10 @@ If you start up VSCode one day and it has issues connecting to your VM, try SSHi
 If you don't want to use this VSCode extension for some reason, another option for interacting with files on the VM locally is sshfs.
 
 ### Language-specific extensions
-- Install this [Kardia language extension](https://marketplace.visualstudio.com/items?itemName=lightsys.centrallix-syntax-highlighting) for VSCode to do basic syntax highlighting of Kardia structure files. This is an in-house LightSys project, so if you have issues with it, you can always [contribute yourself](https://github.com/sheesania/centrallix-syntax-highlighting) :)
-- If you're working on Centrallix, consider installing this [C language extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools). Centrallix does not currently integrate very well with this extension (it doesn't know how to offer code hints/IntelliSense, for example), but it at least adds syntax highlighting.
-- TODO: style settings (insert final newline, ...)
+- If you're working on Kardia, install this [Kardia language extension](https://marketplace.visualstudio.com/items?itemName=lightsys.centrallix-syntax-highlighting) for VSCode to do basic syntax highlighting of Kardia structure files. This is an in-house LightSys project, so if you have issues with it, you can always [contribute yourself](https://github.com/sheesania/centrallix-syntax-highlighting) :)
+- If you're working on Centrallix, install this [C language extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools).
+  - Be careful about jumping to definition or references between Centrallix and Centrallix-Lib. If you try to jump to something defined in a Centrallix-Lib header file from a Centrallix code, for instance, VSCode will probably bring you to the header file installed in `/usr/local/include` - not the original source in the `centrallix-lib` folder. So just be careful that you're editing the original source and not installed headers.
+- If you're using VSCode to connect to a VM over SSH, you'll also need to tell VSCode to install language extensions in the VM. Click on the Extensions button in the left sidebar, find the extension, and click "Install in [name of your VM]", if the option is available. You may need to redo this after deleting your `~/.vscodeserver` directory if it's taking up too much space.
 
 ### Other VSCode tips
 - VSCode has an integrated terminal that's handy for running tests, kardia.sh, etc as you develop. Use Ctrl+` to open or close it. If you are connected to a remote with the Remote SSH extension, the opened terminal will be for the remote.
