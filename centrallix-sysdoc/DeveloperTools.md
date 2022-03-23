@@ -44,7 +44,10 @@ This document includes some orientation and tips for people who may be new to to
     - [Using GitHub pull requests](#using-github-pull-requests)
     - [Tips for organizing your work into commits + pull requests](#tips-for-organizing-your-work-into-commits--pull-requests)
     - [Basic Git cheatsheet](#basic-git-cheatsheet)
-  - [TODO: Working with gdb](#todo-working-with-gdb)
+  - [Debugging with gdb](#debugging-with-gdb)
+    - [What is gdb?](#what-is-gdb)
+    - [Basic gdb test debugging](#basic-gdb-test-debugging)
+    - [Using VSCode for test debugging](#using-vscode-for-test-debugging)
 
 *This table of contents was automatically generated using [this VSCode extension](https://marketplace.visualstudio.com/items?itemName=yzhang.markdown-all-in-one). If you modify this file, you may want to install it to help you update the TOC.*
 
@@ -293,9 +296,52 @@ git checkout [my branch name]
 git merge master
 ```
 
-## TODO: Working with gdb
-- gdb cheatsheet https://darkdust.net/files/GDB%20Cheat%20Sheet.pdf
-- to debug a test: gdb [local executable test file]
-- gdb with kardia.sh??
-- simple example of setting a breakpoint in a file and then inspecting a variable value
-- some way to attach VSCode debugging GUI to gdb?
+## Debugging with gdb
+
+### What is gdb?
+gdb is a command-line debugger. If you haven't used a debugger before, the basic idea is that it lets you poke around in a program as you're running it: telling the program to stop on a certain line of code, inspecting the current values of variables, stepping line by line through code and seeing what happens, and so forth.
+
+[Here's a cheatsheet for how to run gdb and what commands you can use once it's running.](https://darkdust.net/files/GDB%20Cheat%20Sheet.pdf)
+
+There are three ways you can use gdb with Centrallix:
+
+1. Use gdb to debug a C test file, using the regular gdb command line interface.
+2. Use VSCode to call gdb on a test file, then debug using VSCode's debugger interface instead of the gdb command line.
+3. Use gdb to debug the currently running Centrallix server. You can find this option by running `kardia.sh` and then navigating to Developer Tools > View Centrallix Console while Centrallix is running. I haven't yet found a way to attach VSCode to this gdb process.
+
+There is not currently a standard way to specifically debug Centrallix SQL tests (.to and .cmp files).
+
+### Basic gdb test debugging
+- The big gotcha is that by default, the Centrallix / Centrallix-Lib test driver will abort a test if the process has been running too long, assuming that it's locked up. This means that if you set a breakpoint in gdb and hang out for a while looking at variables or something, the test driver will decide it's locked up and abort the process.
+
+  So the first step to debug a test: open up `t_driver.c` in the tests folder you're working in (`centrallix/tests` or `centrallix-lib/tests`) and comment out the call to `alarm()`.
+- Next, run `make test` as you usually would to compile an executable test file.
+- Now run `gdb tests/[test name].bin`. For example, `gdb test_00baseline_04.bin`.
+- You should now be in a gdb console where you set breakpoints, run the test, inspect variables, and so forth.
+
+### Using VSCode for test debugging
+- Make sure you've installed the [VSCode extension for C development](#language-specific-extensions).
+- Find the `.vscode` folder in the root of the folder you've opened in VSCode, or create it if it doesn't already exist. Inside the folder, create a `launch.json` file.
+- Paste this in your `launch.json`. This tells VSCode that when you try to start debugging a file, it should look for an executable in the same directory called `[file name].bin` and launch it under gdb.
+  ```
+  {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "gdb debug active file",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${fileDirname}/${fileBasenameNoExtension}.bin",
+        "args": [],
+        "stopAtEntry": false,
+        "cwd": "${workspaceFolder}",
+        "environment": [],
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "miDebuggerPath": "/usr/bin/gdb"
+      }
+    ]
+  }
+  ```
+- Now when you want to debug a C test file, first make sure you've commented out the call to `alarm()` and run `make test` [as described above](#basic-gdb-test-debugging). Then in VSCode while you have the test source open, go to Run > Start Debugging or press F5.
+- If you try to "start debugging" some other kind of Centrallix file with this launch configuration, VSCode will get very confused! You are welcome to try to come up with your own launch configurations, however.
