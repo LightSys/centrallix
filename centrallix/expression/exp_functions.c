@@ -3641,7 +3641,8 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
 	// the first i characters of s and the first j characters of t
 	int length1 = strlen(i0->String);
 	int length2 = strlen(i1->String);
-	int levMatrix[length1+1][length2+1];
+	//int levMatrix[length1+1][length2+1];
+	int (*levMatrix)[length1+1][length2+1] = nmSysMalloc(sizeof(*levMatrix));
 	int i;
 	int j;
     //set each element in d to zero
@@ -3649,7 +3650,7 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
     {
         for (j = 0; j < length2; j++)
         {
-            levMatrix[i][j] = 0;
+            (*levMatrix)[i][j] = 0;
         }        
     }
     
@@ -3657,14 +3658,14 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
     // dropping all characters
     for (i = 0; i <= length1; i++)
     {
-        levMatrix[i][0] = i;
+        (*levMatrix)[i][0] = i;
     }
      
     // target prefixes can be reached from empty source prefix
     // by inserting every character
     for (j = 0; j <= length2; j++)
     {
-        levMatrix[0][j] = j;
+        (*levMatrix)[0][j] = j;
     }
     
 	for (i = 1; i <= length1; i++)
@@ -3673,21 +3674,22 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
         {
             if (i0->String[i-1] == i1->String[j-1]) 
             {
-                levMatrix[i][j] = levMatrix[i-1][j-1];
+                (*levMatrix)[i][j] = (*levMatrix)[i-1][j-1];
             }
             else 
             {
-				int value1 = levMatrix[i - 1][j] + 1;
-				int value2 = levMatrix[i][j-1] + 1;
-				int value3 = levMatrix[i-1][j-1] + 1;
-                levMatrix[i][j] = (value1 < value2) ? 
+				int value1 = (*levMatrix)[i - 1][j] + 1;
+				int value2 = (*levMatrix)[i][j-1] + 1;
+				int value3 = (*levMatrix)[i-1][j-1] + 1;
+                (*levMatrix)[i][j] = (value1 < value2) ? 
 									  ((value1 < value3) ? value1 : value3) :
 									  (value2 < value3) ? value2 : value3;
             }
         }
     }
     tree->DataType = DATA_T_INTEGER;
-	tree->Integer = levMatrix[length1][length2];
+	tree->Integer = (*levMatrix)[length1][length2];
+    nmSysFree(levMatrix);
     return 0;
     }
 
