@@ -4152,14 +4152,15 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
 		mmsError(1, "EXP", "levenshtein() unable to convert to wide character string");
 		return -1;
 	}
-	int levMatrix[charlen1+1][charlen2+1];
+	//int levMatrix[length1+1][length2+1];
+	int (*levMatrix)[charlen1+1][charlen2+1] = nmSysMalloc(sizeof(*levMatrix));
 	int ichar, jchar;
     //set each element in d to zero
     for (ichar = 0; ichar < charlen1; ichar++)
     {
         for (jchar = 0; jchar < charlen2; jchar++)
         {
-            levMatrix[ichar][jchar] = 0;
+            (*levMatrix)[ichar][jchar] = 0;
         }        
     }
     
@@ -4167,14 +4168,14 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
     // dropping all characters
     for (ichar = 0; ichar <= charlen1; ichar++)
     {
-        levMatrix[ichar][0] = ichar;
+        (*levMatrix)[ichar][0] = ichar;
     }
      
     // target prefixes can be reached from empty source prefix
     // by inserting every character
     for (jchar = 0; jchar <= charlen2; jchar++)
     {
-        levMatrix[0][jchar] = jchar;
+        (*levMatrix)[0][jchar] = jchar;
     }
     
 	for (ichar = 1; ichar <= charlen1; ichar++)
@@ -4183,21 +4184,22 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
         {
             if (wchrstr1[ichar-1] == wchrstr2[jchar-1]) 
             {
-                levMatrix[ichar][jchar] = levMatrix[ichar-1][jchar-1];
+                (*levMatrix)[ichar][jchar] = (*levMatrix)[ichar-1][jchar-1];
             }
             else 
             {
-				int value1 = levMatrix[ichar - 1][jchar] + 1;
-				int value2 = levMatrix[ichar][jchar-1] + 1;
-				int value3 = levMatrix[ichar-1][jchar-1] + 1;
-                levMatrix[ichar][jchar] = (value1 < value2) ? 
-									  ((value1 < value3) ? value1 : value3) :
-									  (value2 < value3) ? value2 : value3;
+				int value1 = (*levMatrix)[ichar - 1][jchar] + 1;
+				int value2 = (*levMatrix)[ichar][jchar-1] + 1;
+				int value3 = (*levMatrix)[ichar-1][jchar-1] + 1;
+				(*levMatrix)[ichar][jchar] = (value1 < value2) ? 
+								  ((value1 < value3) ? value1 : value3) :
+								  (value2 < value3) ? value2 : value3;
             }
         }
     }
     tree->DataType = DATA_T_INTEGER;
-	tree->Integer = levMatrix[charlen1][charlen2];
+	tree->Integer = (*levMatrix)[charlen1][charlen2];
+    nmSysFree(levMatrix);
     return 0;
     }
 
