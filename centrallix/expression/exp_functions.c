@@ -4144,12 +4144,13 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
 	int length2 = strlen(i1->String);
 	int charlen1 = chrCharLength(i0->String);
 	int charlen2 = chrCharLength(i1->String);
-	wchar_t wchrstr1[charlen1], wchrstr2[charlen2];
-	mbstowcs(wchrstr1, i0->String, length1);
-	mbstowcs(wchrstr2, i1->String, length2);
-	if(!wchrstr1 || !wchrstr2)
+	wchar_t (*wchrstr1)[charlen1] = nmSysMalloc(sizeof(*wchrstr1));
+	wchar_t (*wchrstr2)[charlen2] = nmSysMalloc(sizeof(*wchrstr2));
+	if (!wchrstr1 || !wchrstr2 || mbstowcs((*wchrstr1), i0->String, length1) < 0 || mbstowcs((*wchrstr2), i1->String, length2) < 0)
 	{
-		mmsError(1, "EXP", "levenshtein() unable to convert to wide character string");
+		mssError(1, "EXP", "levenshtein() unable to convert to wide character string");
+		if (wchrstr1) nmSysFree(wchrstr1);
+		if (wchrstr2) nmSysFree(wchrstr2);
 		return -1;
 	}
 	//int levMatrix[length1+1][length2+1];
@@ -4182,7 +4183,7 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
     {
         for (jchar = 1; jchar <= charlen2; jchar++)
         {
-            if (wchrstr1[ichar-1] == wchrstr2[jchar-1]) 
+            if ((*wchrstr1)[ichar-1] == (*wchrstr2)[jchar-1]) 
             {
                 (*levMatrix)[ichar][jchar] = (*levMatrix)[ichar-1][jchar-1];
             }
@@ -4200,6 +4201,8 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
     tree->DataType = DATA_T_INTEGER;
 	tree->Integer = (*levMatrix)[charlen1][charlen2];
     nmSysFree(levMatrix);
+    nmSysFree(wchrstr1);
+    nmSysFree(wchrstr2);
     return 0;
     }
 
