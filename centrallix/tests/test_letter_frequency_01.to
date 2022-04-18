@@ -1,3 +1,0 @@
-##NAME Levenshtein String Comparison
-
-query select sw1 = letter_frequency('John Q. Smith')
