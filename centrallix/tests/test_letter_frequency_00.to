@@ -1,0 +1,4 @@
+##NAME Levenshtein String Comparison
+
+query select sw1 = letter_frequency('kitten')
+query select sw1 = letter_frequency('123 Anywhere St.')

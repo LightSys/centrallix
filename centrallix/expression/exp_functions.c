@@ -840,7 +840,8 @@ int exp_fn_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     replen = strlen(repstr);
     searchlen = strlen(i1->String);
     if (replen > searchlen)
-	newsize = (newsize * replen) / searchlen + 1;
+	newsize = (newsize * replen) / searchlen;
+    newsize += 1;
     if (newsize >= 0x7FFFFFFFLL)
 	{
 	mssError(1,"EXP","replace(): out of memory");
@@ -3614,6 +3615,282 @@ int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
     return 0;
     }
 
+int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+
+    if (!i0 || !i1)
+	{
+		mssError(1,"EXP","levenshtein() requires two parameters");
+		return -1;
+	}
+
+    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+	{
+		tree->DataType = DATA_T_INTEGER;
+		tree->Flags |= EXPR_F_NULL;
+		return 0;
+	}
+
+    if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING))
+	{
+		mssError(1,"EXP","levenshtein() requires two string parameters");
+		return -1;
+	}
+
+	// for all i and j, d[i,j] will hold the Levenshtein distance between
+	// the first i characters of s and the first j characters of t
+	int length1 = strlen(i0->String);
+	int length2 = strlen(i1->String);
+	//int levMatrix[length1+1][length2+1];
+	int (*levMatrix)[length1+1][length2+1] = nmSysMalloc(sizeof(*levMatrix));
+	int i;
+	int j;
+    //set each element in d to zero
+    for (i = 0; i < length1; i++)
+    {
+        for (j = 0; j < length2; j++)
+        {
+            (*levMatrix)[i][j] = 0;
+        }        
+    }
+    
+    // source prefixes can be transformed into empty string by
+    // dropping all characters
+    for (i = 0; i <= length1; i++)
+    {
+        (*levMatrix)[i][0] = i;
+    }
+     
+    // target prefixes can be reached from empty source prefix
+    // by inserting every character
+    for (j = 0; j <= length2; j++)
+    {
+        (*levMatrix)[0][j] = j;
+    }
+    
+	for (i = 1; i <= length1; i++)
+    {
+        for (j = 1; j <= length2; j++)
+        {
+            if (i0->String[i-1] == i1->String[j-1]) 
+            {
+                (*levMatrix)[i][j] = (*levMatrix)[i-1][j-1];
+            }
+            else 
+            {
+				int value1 = (*levMatrix)[i - 1][j] + 1;
+				int value2 = (*levMatrix)[i][j-1] + 1;
+				int value3 = (*levMatrix)[i-1][j-1] + 1;
+                (*levMatrix)[i][j] = (value1 < value2) ? 
+									  ((value1 < value3) ? value1 : value3) :
+									  (value2 < value3) ? value2 : value3;
+            }
+        }
+    }
+    tree->DataType = DATA_T_INTEGER;
+	tree->Integer = (*levMatrix)[length1][length2];
+    nmSysFree(levMatrix);
+    return 0;
+    }
+
+int exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+
+    if (!i0 || !i1 || !i2)
+	{
+		mssError(1,"EXP","fuzzy_compare() requires three parameters");
+		return -1;
+	}
+
+    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL) || (i2->Flags & EXPR_F_NULL))
+	{
+		tree->DataType = DATA_T_DOUBLE;
+		tree->Flags |= EXPR_F_NULL;
+		return 0;
+	}
+
+    if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING) || (i2->DataType != DATA_T_INTEGER))
+	{
+		mssError(1,"EXP","fuzzy_compare() requires two string and one integer parameters");
+		return -1;
+	}
+	
+	exp_fn_levenshtein(tree, objlist, i0, i1, i2);
+	//!!! I am not checking for errors here, because IN THEORY we have two strings... if we don't, big uh-oh.
+	int lev_dist = tree->Integer;
+	
+	int length1 = strlen(i0->String);
+	int length2 = strlen(i1->String);
+
+	double clamped_dist = 1.0;
+
+	if (length1 == 0 || length2 == 0) //empty string
+	{
+		clamped_dist = 0.5;	
+	} 
+	else //normal case 
+	{
+		int max_len = (length1 > length2) ? length1 : length2;
+		clamped_dist = ((double) lev_dist) / max_len;
+	
+		if (abs(length1-length2) == lev_dist)  //only inserts. Maybe substring.
+		{
+			clamped_dist /= 2;
+		}
+		
+		//use max_field_width if it was provided as a sensible value. If not, don't use it.
+		double max_field_width = i2->Integer;
+		if (max_field_width >= max_len) {
+			double mod = (lev_dist + max_field_width * 3/4) / max_field_width; 
+			if (mod < 1) { //don't make clamped_dist bigger
+				clamped_dist *= mod;
+			}
+		}
+	}
+	
+	
+	tree->DataType = DATA_T_DOUBLE;
+	tree->Types.Double = clamped_dist;
+	return 0;
+}
+
+const char *CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; 
+const double IDF[36] = { 0.918, 0.985, 0.973, 0.953, 0.87, 0.978, 0.98, 0.938, 0.931, 0.9986, 0.9922, 0.9590, 0.973, 0.933, 0.922, 0.981, 0.9989, 0.941, 0.938, 0.904, 0.973, 0.9903, 0.976, 0.9985, 0.98, 0.9992, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
+
+int exp_fn_i_frequency_table(double *table, char *term)
+	{
+		int i;
+		// Initialize hash table with complete character set and 0 values
+		for (i = 0; i < strlen(CHAR_SET); i++) {
+			table[i] = 0.0;
+		}
+		
+		// Iterate through term and update hash table data
+		for (i = 0; i < strlen(term); i++) {
+			// Locate index position based on where letter in term is inside the CHAR_SET
+			// Used so that CHAR_SET can be arbitrarily extended.
+			char *loc = strchr(CHAR_SET, toupper(term[i]));
+			if (loc) {
+				int index = (int)(loc - CHAR_SET);
+				table[index]++;
+			}
+		}
+
+		return 0;
+	}
+
+int exp_fn_i_relative_frequency_table(double *frequency_table)
+	{
+		int i;
+		double sum = 0;
+		// Compute the total character frequency
+		for (i = 0; i < strlen(CHAR_SET); i++) {
+			sum += frequency_table[i];
+		}
+
+		for (i = 0; i < strlen(CHAR_SET); i++) {
+			frequency_table[i] = frequency_table[i] / sum;
+		}
+		return 0;
+	}
+
+int exp_fn_i_tf_idf_table(double *frequency_table)
+	{
+		int i;
+		double sum = 0;
+		// Compute the total character frequency
+		for (i = 0; i < strlen(CHAR_SET); i++) {
+			sum += frequency_table[i];
+		}
+
+		for (i = 0; i < strlen(CHAR_SET); i++) {
+			frequency_table[i] = (frequency_table[i] / sum) * IDF[i];
+		}
+		return 0;
+	}
+
+// Dot product is equal to the sum of the squared values from each relative frequency table
+int exp_fn_i_dot_product(double *dot_product, double *r_freq_table1, double *r_freq_table2)
+	{
+		int i;
+		for (i = 0; i < strlen(CHAR_SET); i++) {
+			*dot_product = *dot_product + (r_freq_table1[i] * r_freq_table2[i]);
+		}
+		return 0;
+	}
+
+// Magnitude is equal to the square root of the sum of the squared relative frequencies
+int exp_fn_i_magnitude(double *magnitude, double *r_freq_table)
+	{
+		int i;
+		for (i = 0; i < strlen(CHAR_SET); i++) {
+			*magnitude = *magnitude + (r_freq_table[i] * r_freq_table[i]);
+		}
+		*magnitude = sqrt(*magnitude);
+		return 0;
+	}
+
+// This function calculates the cosine similarity between two strings passed in through i0 and i1 parameters
+// Cosine similarity is equal to the dot product between the relative frequency vectors of each term divided by 
+// the product of the magnitudes of each relative frequency vector.
+int exp_fn_similarity(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+	// Ensure function receives two non-null parameters
+	if (!i0 || !i1)
+	{
+		mssError(1,"EXP","similarity() requires two parameter.");
+		return -1;
+	}
+
+	// Ensure value passed in both parameters is not null
+	if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+	{
+		tree->DataType = DATA_T_INTEGER;
+		tree->Flags |= EXPR_F_NULL;
+		return 0;
+	}
+
+	// Ensure both parameters contain string values
+    if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING))
+	{
+		mssError(1,"EXP","similarity() requires two string parameters.");
+		return -1;
+	}
+
+	// Allocate frequency tables (arrays of doubles) for each term
+	double *table1 = nmMalloc(strlen(CHAR_SET) * sizeof(double));
+	double *table2 = nmMalloc(strlen(CHAR_SET) * sizeof(double));
+
+    // Calculate frequency tables for each term
+	exp_fn_i_frequency_table(table1, i0->String);
+    exp_fn_i_frequency_table(table2, i1->String);
+	
+	// Calculate relative frequencies or tf_idf values for each term depending on value of third parameter
+	if (i2 && !(i2->Flags & EXPR_F_NULL) && (i2->DataType != DATA_T_INTEGER) && (i2->Integer == 1)) {
+		exp_fn_i_tf_idf_table(table1);
+		exp_fn_i_tf_idf_table(table2);
+	} else {
+		exp_fn_i_relative_frequency_table(table1);
+		exp_fn_i_relative_frequency_table(table2);
+	}
+
+	// Calculate dot product
+	double dot_product = 0.0;
+	exp_fn_i_dot_product(&dot_product, table1, table2);
+
+	// Calculate magnitudes of each relative frequency vector
+	double magnitude1 = 0.0;
+	double magnitude2 = 0.0;
+	exp_fn_i_magnitude(&magnitude1, table1);
+	exp_fn_i_magnitude(&magnitude2, table2);
+    
+	tree->DataType = DATA_T_DOUBLE;
+	tree->Types.Double = dot_product / (magnitude1 * magnitude2);
+
+	nmFree(table1, strlen(CHAR_SET) * sizeof(double));
+	nmFree(table2, strlen(CHAR_SET) * sizeof(double));
+	return 0;
+	}
 
 int
 exp_internal_DefineFunctions()
@@ -3671,6 +3948,9 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "log10", (char*)exp_fn_log10);
 	xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
 	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
+	xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
+	xhAdd(&EXP.Functions, "fuzzy_compare", (char*)exp_fn_fuzzy_compare);
+	xhAdd(&EXP.Functions, "similarity", (char*)exp_fn_similarity);
 	xhAdd(&EXP.Functions, "to_base64", (char*)exp_fn_to_base64);
 	xhAdd(&EXP.Functions, "from_base64", (char*)exp_fn_from_base64);
 	xhAdd(&EXP.Functions, "to_hex", (char*)exp_fn_to_hex);
