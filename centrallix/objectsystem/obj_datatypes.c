@@ -1524,6 +1524,7 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
     MoneyType m_v;
     double dblval;
     long long dt_cmp_value;
+    pBinary b1, b2;
 
     	/** Need to transpose v1 and v2 to simplify? **/
 	/*if ((data_type_1 != DATA_T_INTEGER && data_type_2 == DATA_T_INTEGER) ||
@@ -1832,6 +1833,24 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 		    }
 	        break;
 
+	    case DATA_T_BINARY:
+		if (data_type_2 != DATA_T_BINARY)
+		    {
+		    err = 1;
+		    break;
+		    }
+		b1 = (pBinary)data_ptr_1;
+		b2 = (pBinary)data_ptr_2;
+		cmp_value = memcmp(b1->Data, b2->Data, (b1->Size > b2->Size)?b2->Size:b1->Size);
+		if (!cmp_value)
+		    {
+		    if (b1->Size > b2->Size)
+			cmp_value = 1;
+		    else
+			cmp_value = -1;
+		    }
+		break;
+
 	    default:
 		err = 1;
 		break;
@@ -2029,6 +2048,10 @@ objCopyData(pObjData src, pObjData dst, int type)
 	    case DATA_T_DOUBLE:
 		dst->Double = src->Double;
 		break;
+	    case DATA_T_BINARY:
+		dst->Binary.Data = src->Binary.Data;
+		dst->Binary.Size = src->Binary.Size;
+		break;
 		
 	    default:
 		return -1;
@@ -2076,6 +2099,11 @@ objDataFromString(pObjData pod, int type, char* str)
 		pod->String = str;
 		break;
 
+	    case DATA_T_BINARY:
+		pod->Binary.Data = (unsigned char*)str;
+		pod->Binary.Size = strlen(str);
+		break;
+
 	    case DATA_T_DOUBLE:
 		pod->Double = objDataToDouble(DATA_T_STRING, str);
 		break;
@@ -2102,6 +2130,7 @@ objDataFromString(pObjData pod, int type, char* str)
 int
 objDataFromStringAlloc(pObjData pod, int type, char* str)
     {
+    unsigned char* bptr;
     
 	switch(type)
 	    {
@@ -2128,6 +2157,15 @@ objDataFromStringAlloc(pObjData pod, int type, char* str)
 
 	if (type == DATA_T_STRING)
 	    pod->String = nmSysStrdup(pod->String);
+
+	if (type == DATA_T_BINARY)
+	    {
+	    bptr = pod->Binary.Data;
+	    pod->Binary.Data = nmSysMalloc(pod->Binary.Size + 1);
+	    if (!pod->Binary.Data)
+		return -1;
+	    memcpy(pod->Binary.Data, bptr, pod->Binary.Size + 1);
+	    }
 
     return 0;
     }
@@ -2168,8 +2206,15 @@ obj_internal_BuildBinaryItem(char** item, int* itemlen, pExpression exp, pParamO
 		break;
 
 	    case DATA_T_STRING:
+		if (!exp->String) /* FIXME */
+		    return 1;
 		*item = exp->String;
 		*itemlen = strlen(exp->String)+1;
+		break;
+
+	    case DATA_T_BINARY:
+		*item = exp->String;
+		*itemlen = exp->Size+1;
 		break;
 
 	    case DATA_T_DATETIME:

@@ -1,0 +1,4 @@
+##NAME Levenshtein String Comparison
+
+query select sw1 = levenshtein(:t1:f_desc, :t1:f_desc) from /tests/Testdata1.csv/rows t1
+query select sw2 = levenshtein(:t1:f_desc, :t2:f_desc) from /tests/Testdata1.csv/rows t1, /tests/Testdata2.csv/rows t2

@@ -44,7 +44,7 @@
 
 #define MQ_MAX_ORDERBY		(25)
 
-#define MQ_MAX_SOURCELEN	(OBJSYS_MAX_PATH+1+1024)
+#define MQ_MAX_SOURCELEN	(OBJSYS_MAX_PATH+1+16384)
 
 
 /*** Structure for a query driver.  A query driver basically manages a type
@@ -227,6 +227,7 @@ struct _QST /* QueryStatement */
 #define MQ_TF_FINISHED		8		/* Finish() called on this statement */
 #define MQ_TF_ALLASSIGN		16		/* All select items are assignments */
 #define MQ_TF_ONEASSIGN		32		/* At least one select item assigns */
+#define MQ_TF_IMMEDIATE		64		/* command already executed */
 
 /*** Structure for managing the multiquery. ***/
 struct _MQ /* MultiQuery */

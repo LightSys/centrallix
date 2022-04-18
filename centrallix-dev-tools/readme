@@ -1,3 +1,12 @@
+Developer Toolchain Recommendations
+===================================
+See centrallix-sysdoc/DeveloperTools.md for suggestions on how to set up your Centrallix + Kardia development environment.
+
+Centrallix Syntax Highlighting
+==============================
+
+For gedit
+---------
 Place the centrallix.lang file in the following directory (in linux)
 
 /usr/share/gtksourceview-2.0/language-specs
@@ -23,23 +32,44 @@ To use this language file as a syntax highlighter, do one of the following
 The second option will cause any .cmp, .app, .struct, and .rpt files
 to be automatically assigned to the Centrallix type highlighting.
 
--------------
-
 For nano
+--------
 execute the following commands
 
 cd /usr/local/src/cx-git/centrallix-dev-tools
 sudo cp nanorc /etc
 sudo cp cx.nanorc /usr/share/nano
 
--------------
+(Please do check that you're not overwriting an existing nanorc and that these
+directories exist)
 
 For Vi/Vim
+----------
 execute the following commands
 
 cd /usr/local/src/cx-git/centrallix-dev-tools
 sudo cp .vimrc ~
 sudo cp cx.vim /usr/share/vim/vim70/syntax/cx.vim
 
-(Please do check that these directories exist)
--------------
+(Please do check that you're not overwriting an existing .vimrc and that these
+directories exist)
+
+For VSCode
+----------
+Install the Centrallix Syntax Highlighting extension from the VSCode Marketplace: 
+https://marketplace.visualstudio.com/items?itemName=lightsys.centrallix-syntax-highlighting
+
+Once installed, it should automatically syntax highlight any files with a .cmp,
+.qy, .qyt, .app, .rpt, .spec, or .struct extension.
+
+The source for the plugin is here:
+https://github.com/sheesania/centrallix-syntax-highlighting
+
+The Marketplace extension is managed by a Microsoft account under Alison
+Blomenberg's LightSys email.
+
+Other
+-----
+Centrallix.g and Centrallix2.g are ANTLR grammars (https://www.antlr.org/) that
+were last worked on in 2011 (possibly for a NetBeans plugin?). Their current
+status and how well they work is unknown.

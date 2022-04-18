@@ -62,10 +62,12 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
     char osrc[64];
     char link_next[64];
     char link_next_within[64];
+    char link_prev[64];
+    char link_prev_within[64];
     char interlock_with[256];
     int id, i, t;
     int allowquery, allownew, allowmodify, allowview, allownodata, multienter, allowdelete, confirmdelete;
-    int confirmdiscard;
+    int confirmdiscard, allowmerge;
     int allowobscure = 0;
     int autofocus;
     char _3bconfirmwindow[30];
@@ -89,6 +91,8 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	confirmdelete = htrGetBoolean(tree, "confirm_delete", 1);
 
 	confirmdiscard = htrGetBoolean(tree, "confirm_discard", 1);
+
+	allowmerge = htrGetBoolean(tree, "allow_merge", 0);
 
 	autofocus = htrGetBoolean(tree, "auto_focus", 1);
 
@@ -156,6 +160,16 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    strcpy(link_next_within,"");
 	
+	if (wgtrGetPropertyValue(tree,"prev_form",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(link_prev,ptr,sizeof(link_prev));
+	else
+	    strcpy(link_prev,"");
+	
+	if (wgtrGetPropertyValue(tree,"prev_form_within",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(link_prev_within,ptr,sizeof(link_prev_within));
+	else
+	    strcpy(link_prev_within,"");
+	
 	/*** 
 	 *** (03/01/02) Jonathan Rupp -- added two new paramters
 	 ***      basequery -- the part of the SQL statement that is never
@@ -216,8 +230,8 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	 **   the name of this instance was defined to be global up above
 	 **   and fm_current is defined in htdrv_page.c 
 	 **/
-	htrAddScriptInit_va(s,"    form_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {aq:%INT, an:%INT, am:%INT, av:%INT, and:%INT, ad:%INT, cd:%INT, cdis:%INT, me:%INT, name:'%STR&SYM', _3b:%[wgtrGetNodeRef(ns,\"%STR&SYM\")%]%[null%], ro:%INT, ao:%INT, af:%INT, osrc:%['%STR&SYM'%]%[null%], tro:%INT, em:%INT, nf:%['%STR&SYM'%]%[null%], nfw:%['%STR&SYM'%]%[null%], il:'%STR&JSSTR'});\n",
-		name,allowquery,allownew,allowmodify,allowview,allownodata,allowdelete,confirmdelete, confirmdiscard,
+	htrAddScriptInit_va(s,"    form_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {aq:%INT, an:%INT, am:%INT, av:%INT, and:%INT, ad:%INT, cd:%INT, cdis:%INT, amrg:%INT, me:%INT, name:'%STR&SYM', _3b:%[wgtrGetNodeRef(ns,\"%STR&SYM\")%]%[null%], ro:%INT, ao:%INT, af:%INT, osrc:%['%STR&SYM'%]%[null%], tro:%INT, em:%INT, nf:%['%STR&SYM'%]%[null%], nfw:%['%STR&SYM'%]%[null%], pf:%['%STR&SYM'%]%[null%], pfw:%['%STR&SYM'%]%[null%], il:'%STR&JSSTR'});\n",
+		name,allowquery,allownew,allowmodify,allowview,allownodata,allowdelete,confirmdelete, confirmdiscard, allowmerge,
 		multienter,name,
 		strcmp(_3bconfirmwindow,"null") != 0, _3bconfirmwindow, strcmp(_3bconfirmwindow,"null") == 0,
 		readonly,allowobscure,autofocus,
@@ -225,6 +239,8 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 		tro, enter_mode,
 		*link_next != '\0', link_next, *link_next == '\0',
 		*link_next_within != '\0', link_next_within, *link_next_within == '\0',
+		*link_prev != '\0', link_prev, *link_prev == '\0',
+		*link_prev_within != '\0', link_prev_within, *link_prev_within == '\0',
 		interlock_with
 		);
 	htrAddScriptInit_va(s,"    wgtrGetNodeRef(ns,\"%STR&SYM\").ChangeMode('NoData');\n",name);

@@ -38,7 +38,7 @@
 #include "cxlib/datatypes.h"
 
 /** typed POD structure, PTOD **/
-typedef struct _TPOD
+typedef struct _PTOD
     {
     ObjData		Data;
     unsigned char	DataType;
@@ -64,6 +64,7 @@ pTObjData ptodDuplicate(pTObjData ptod, int flags);
 int ptodTypeOf(pTObjData ptod);
 int ptodIsSet(pTObjData ptod, int flag);
 int ptodMakeIndependent(pTObjData ptod);
+char* ptodToStringTmp(pTObjData ptod);
 
 int ptodPrint(pTObjData ptod);
 

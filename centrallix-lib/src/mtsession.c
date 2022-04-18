@@ -69,6 +69,16 @@ mssMemoryErr(char* message)
     }
 
 
+/*** mssLog - write to syslog
+ ***/
+int
+mssLog(int level, char* msg)
+    {
+    syslog(level, "%s", msg);
+    return 0;
+    }
+
+
 /*** mssInitialize - init the globals, etc.
  ***/
 int 
@@ -86,10 +96,10 @@ mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, cha
 	MSS.AppName[31] = '\0';
 	MSS.LogAllErrors = logall;
 
-	/** Setup syslog, if requested. **/
+	/** Setup syslog **/
+	openlog(MSS.AppName, LOG_PID, LOG_USER);
 	if (!strcmp(MSS.LogMethod, "syslog"))
 	    {
-	    openlog(MSS.AppName, LOG_PID, LOG_USER);
 	    syslog(LOG_INFO, "%s initializing...", MSS.AppName);
 	    }
    

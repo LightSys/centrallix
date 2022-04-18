@@ -165,7 +165,7 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 					non_simple = 1;
 					break;
 					}
-				    if (search_qe->Parent && !strncmp(search_qe->Parent->Driver->Name, "MQJ", 3) && search_qe->Parent->SrcIndexSlave == src_idx)
+				    if (search_qe->Parent && !strncmp(search_qe->Parent->Driver->Name, "MQJ", 3) && search_qe->Parent->SrcIndex != src_idx)
 					{
 					non_primary = 1;
 					break;
@@ -186,7 +186,7 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 	/** Did we find any orderby items? **/
 	if (n_orderby)
 	    {
-	    printf("using MQ orderby module.\n");
+	    //printf("using MQ orderby module.\n");
 
 	    /** Link the qe into the multiquery **/
 	    qe->OrderBy[n_orderby] = NULL;
@@ -238,7 +238,7 @@ mqobAnalyzeAfterGroup(pQueryStatement stmt)
 	if (n_orderby)
 	    {
 	    qe->OrderBy[n_orderby] = NULL;
-	    printf("using MQ after-grouping orderby module.\n");
+	    //printf("using MQ after-grouping orderby module.\n");
 
 	    /** Set up the attribute list, since we may be the top-level node
 	     ** in the query execution tree.

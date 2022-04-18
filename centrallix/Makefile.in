@@ -362,6 +362,14 @@ CONFFILES=centrallix.conf \
 
 # testobj-driven test files
 TOTESTFILES:=$(wildcard tests/test_$(TONLY)*.to)
+CTESTFILES:=$(wildcard tests/test_$(TONLY)*.c)
+COTESTFILES=$(patsubst %.c,%.o,$(CTESTFILES))
+CBTESTFILES=$(patsubst %.c,%.bin,$(CTESTFILES))
+ifeq ($TOTESTFILES,)
+    TOTESTDEPS=
+else
+    TOTESTDEPS=test_obj
+endif
 
 # Some basic build parameters.
 PROFILE=@PROFILE@
@@ -521,40 +529,51 @@ tests/centrallix.conf-test: tests/centrallix.conf-test.in
 	RUNLIBDIR=$${LIBDIR#$(builddir)}; \
 	$(SED) -e "s|##SYSCONFDIR##|$$RUNSYSCONFDIR|g" -e "s|##LIBDIR##|$$RUNLIBDIR|g" -e "s|##LOGMETHOD##|@LOGMETHOD@|g" tests/centrallix.conf-test.in > tests/centrallix.conf-test
 
+tests/t_driver.o: tests/t_driver.c 
+	$(CC) $(CFLAGS) $< -c -o $@
 
-test: tests/centrallix.conf-test test_install $(TOTESTFILES)
+tests/test_%.bin: tests/test_%.o tests/t_driver.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
+	$(CC) $< tests/t_driver.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o $@ $(LIBS) @NCURSES_LIBS@
+
+test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 	@printf "%-62.62s  %s\n" "Test Name" "Stat"
 	@printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"
-	@for TOFILE in $$(ls $(TOTESTFILES) ); do \
+	@for TOFILE in $$(ls $(TOTESTFILES) $(CBTESTFILES) ); do \
 	    if [ "$$TONLY" = "" -o "$${TOFILE#tests/test_$$TONLY}" != "$$TOFILE" ]; then \
 		CXOS=$$(sed -n 's/^[ 	]*path *= *"\([^"]*\).*/\1/p' < "$(sysconfdir)/centrallix/rootnode"); \
-	    	TOBASE="$${TOFILE%.to}"; \
-		TONAME=$$(sed -n 's/^##NAME //p' < $$TOBASE.to); \
-		TOUNDO=$$(sed -n 's/^##UNDO //p' < $$TOBASE.to); \
-		TOUNDOBAK="$${TOUNDO}-$$RANDOM-$$RANDOM"; \
-		TOSIMPLE="$${TOBASE#tests/test_}"; \
 		CBLUE=$$(/usr/bin/tput setaf 4); \
 		CRED=$$(/usr/bin/tput setaf 1); \
 		CGREEN=$$(/usr/bin/tput setaf 2); \
 		CBOLD=$$(/usr/bin/tput bold); \
 		CNORM=$$(/usr/bin/tput sgr0); \
+	    if [ "$${TOFILE%.to}" != "$${TOFILE}" ]; then \
+		TOBASE="$${TOFILE%.to}"; \
+		TONAME=$$(sed -n 's/^##NAME //p' < $$TOBASE.to); \
+		TOUNDO=$$(sed -n 's/^##UNDO //p' < $$TOBASE.to); \
+		TOUNDOBAK="$${TOUNDO}-$$RANDOM-$$RANDOM"; \
+		TOSIMPLE="$${TOBASE#tests/test_}"; \
 		/bin/rm -f "$$PWD/$$TOBASE.out"; \
 		[ -f "$$CXOS/$$TOUNDO" ] && /bin/cp -a "$$CXOS/$$TOUNDO" "$$CXOS/$$TOUNDOBAK"; \
 		echo -n "$$CBLUE"; \
-	    	"$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 4 2>&1 | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
+		./test_obj -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 4 2>&1 | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
 		RET="$${PIPESTATUS[0]}"; \
 		[ -f "$$CXOS/$$TOUNDOBAK" ] && /bin/mv -f "$$CXOS/$$TOUNDOBAK" "$$CXOS/$$TOUNDO"; \
-		if [ "$$RET" -eq 142 ]; then \
-		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}LOCKUP$$CNORM"; \
-		elif [ "$$RET" -gt 120 ]; then \
-		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}CRASH$$CNORM"; \
-		elif cmp -s "$$TOBASE.out" "$$TOBASE.cmp"; then \
-		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CGREEN$${CBOLD}Pass$$CNORM"; \
-		    /bin/rm -f "$$PWD/$$TOBASE.out"; \
+            if [ "$$RET" -eq 142 ]; then \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}LOCKUP$$CNORM"; \
+            elif [ "$$RET" -gt 120 ]; then \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}CRASH$$CNORM"; \
+            elif cmp -s "$$TOBASE.out" "$$TOBASE.cmp"; then \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CGREEN$${CBOLD}Pass$$CNORM"; \
+                /bin/rm -f "$$PWD/$$TOBASE.out"; \
+            else \
+                echo -n "$$CRED"; \
+                diff --label EXPECTED -U0 -N "$$TOBASE.cmp" "$$TOBASE.out" | sed 's/^/    /'; \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}FAIL$$CNORM"; \
+            fi; \
 		else \
-		    echo -n "$$CRED"; \
-		    diff --label EXPECTED -U0 -N "$$TOBASE.cmp" "$$TOBASE.out" | sed 's/^/    /'; \
-		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}FAIL$$CNORM"; \
+		    TOBASE="$${TOFILE%.bin}"; \
+		    ulimit -s 16384; \
+		    ./$$TOBASE.bin 2>&1; \
 		fi; \
 	    fi \
 	done 
@@ -629,6 +648,7 @@ clean:
 	@rm -f etc/centrallix.init
 	@rm -f man/*.gz
 	@rm -f tests/*.to.tmp tests/*.out
+	@rm -f tests/*.o tests/*.bin
 	@rm -rf thirdparty/*-inst
 	@rm -f *.gcov */*.gcov
 	@rm -f *.gcda */*.gcda
@@ -689,7 +709,6 @@ netdrivers/net_ldap.so: netdrivers/net_ldap.c
 
 %.so: %.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
-	
+
 # Dependencies made by "make depend"
 include .depend
-

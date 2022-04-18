@@ -1,0 +1,29 @@
+0 1 test
+1 10 
+2 100 this is a longer test
+3 -1 
+4 -10 '
+5 -100 100
+6 0 /
+7 70000 short test
+8 -70000 
+9 700 test
+
+Flags: no_subobjects cant_have_subobjects cant_add_attrs cant_seek can_have_content has_content 
+Attributes:
+            outer_type: "system/report" [Hints: ]
+            inner_type: "system/report" [Hints: ]
+          content_type: "system/report" [Hints: ]
+                  name: "Datatypes_outparam.rpt" [Hints: ]
+            annotation: "" [Hints: ]
+     last_modification: (no such attribute)
+                 limit: 10 [Hints: ]
+                 count: 10 [Hints: ]
+                  text: "test,,this is a longer test,,',100,/,short test,,test" [Hints: ]
+       document_format: "text/plain" [Hints: ]
+                 title: "Datatypes Report" [Hints: ]
+            resolution: 300 [Hints: ]
+
+Methods:
+  (no methods)
+
