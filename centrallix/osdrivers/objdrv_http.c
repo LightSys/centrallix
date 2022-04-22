@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <regex.h>
 #include "obj.h"
@@ -123,6 +124,7 @@ typedef struct
     int		NetworkOffset;
     int		ReadOffset;
     char*	ContentType;
+    char*	RequestContentType;
     XArray	RequestHeaders;		/* of pHttpHeader */
     XArray	ResponseHeaders;	/* of pHttpHeader */
     int		ModDateAlwaysNow;
@@ -441,6 +443,8 @@ http_internal_Cleanup(pHttpData inf)
 	    inf->Path = NULL;
 	    if (inf->Method) nmSysFree(inf->Method);
 	    inf->Method = NULL;
+	    if (inf->RequestContentType) nmSysFree(inf->RequestContentType);
+	    inf->RequestContentType = NULL;
 	    if (inf->Protocol) nmSysFree(inf->Protocol);
 	    inf->Protocol = NULL;
 	    if (inf->Cipherlist) nmSysFree(inf->Cipherlist);
@@ -735,13 +739,24 @@ http_internal_ConnectHttp(pHttpData inf)
     }
 
 
+/*** http_internal_StrCmp - string compare for qsort()
+ ***/
+int
+http_internal_StrCmp(const void *v1, const void *v2)
+    {
+    pHttpParam *p1 = (pHttpParam*)v1;
+    pHttpParam *p2 = (pHttpParam*)v2;
+    return strcmp((*p1)->Parameter->Name, (*p2)->Parameter->Name);
+    }
+
+
 /*** http_internal_SendRequest - send a HTTP request
  ***/
 int
 http_internal_SendRequest(pHttpData inf, char* path)
     {
     int rval;
-    int i, n_output;
+    int i, j, n_output;
     pHttpHeader hdr;
     char* nonce;
     unsigned char* keydata;
@@ -753,6 +768,12 @@ http_internal_SendRequest(pHttpData inf, char* path)
     pXString url_params = NULL;
     pHttpParam one_http_param;
     char reqlen[24];
+    char cur_param[256];
+    char* param_part;
+    int param_part_cnt;
+    char* save_ptr;
+    char* cur_xml[16];
+    char* last_xml[16];
 
 	/** Compute header nonce.  This is used for functionally nothing, but
 	 ** it causes the content and offsets to values in the header to change
@@ -850,9 +871,10 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	    return rval;
 
 	/** POST parameters? **/
-	if (!strcmp(inf->Method, "POST"))
+	if (!strcmp(inf->Method, "POST") && !strcmp(inf->RequestContentType, "application/x-www-form-urlencoded"))
 	    {
-	    http_internal_AddRequestHeader(inf, "Content-Type", "application/x-www-form-urlencoded", 0, 0);
+	    /** Form URL Encoded request body **/
+	    http_internal_AddRequestHeader(inf, "Content-Type", inf->RequestContentType, 0, 0);
 
 	    post_params = xsNew();
 	    if (!post_params)
@@ -880,6 +902,109 @@ http_internal_SendRequest(pHttpData inf, char* path)
 
 			n_output++;
 			}
+		    }
+		}
+
+	    snprintf(reqlen, sizeof(reqlen), "%d", xsLength(post_params));
+	    http_internal_AddRequestHeader(inf, "Content-Length", nmSysStrdup(reqlen), 1, 0);
+	    }
+	else if (!strcmp(inf->Method, "POST") && (!strcmp(inf->RequestContentType, "text/xml") || !strcmp(inf->RequestContentType, "application/xml")))
+	    {
+	    /** XML request body **/
+	    http_internal_AddRequestHeader(inf, "Content-Type", inf->RequestContentType, 0, 0);
+
+	    post_params = xsNew();
+	    if (!post_params)
+		goto error;
+
+	    /** Need to sort them to get xml data organized right **/
+	    qsort(inf->Params.Items, inf->Params.nItems, sizeof(char*), http_internal_StrCmp);
+
+	    /** Encode them **/
+	    for(j=0; j<sizeof(cur_xml) / sizeof(char*); j++)
+		{
+		cur_xml[j] = NULL;
+		last_xml[j] = NULL;
+		}
+	    for(i=0; i<xaCount(&inf->Params); i++)
+		{
+		one_http_param = xaGetItem(&inf->Params, i);
+		if (one_http_param->Usage == HTTP_PUSAGE_T_POST)
+		    {
+		    if (!(one_http_param->Parameter->Value->Flags & DATA_TF_NULL))
+			{
+			strtcpy(cur_param, one_http_param->Parameter->Name, sizeof(cur_param));
+
+			/** Go through the . separated parts of the param name **/
+			param_part = strtok_r(cur_param, ".", &save_ptr);
+			param_part_cnt = 0;
+			while(param_part)
+			    {
+			    cur_xml[param_part_cnt] = param_part;
+			    param_part = strtok_r(NULL, ".", &save_ptr);
+			    param_part_cnt++;
+			    if (param_part_cnt >= sizeof(cur_xml) / sizeof(char*) - 1)
+				{
+				mssError(1, "HTTP", "Nesting too great for XML parameter %s", one_http_param->Parameter->Name);
+				goto error;
+				}
+			    }
+			for(j=param_part_cnt; j < sizeof(cur_xml) / sizeof(char*); j++)
+			    {
+			    cur_xml[j] = NULL;
+			    }
+
+			/** Emit closing tags (reverse order)? **/
+			for(j=sizeof(cur_xml) / sizeof(char*) - 1; j>=0; j--)
+			    {
+			    if (last_xml[j] && (!cur_xml[j] || strcmp(last_xml[j], cur_xml[j]) != 0))
+				xsConcatQPrintf(post_params, "</%STR&HTE>", last_xml[j]);
+			    }
+
+			/** Emit opening tags? **/
+			for(j=0; j < sizeof(cur_xml) / sizeof(char*); j++)
+			    {
+			    if (cur_xml[j] && (!last_xml[j] || strcmp(last_xml[j], cur_xml[j]) != 0))
+				xsConcatQPrintf(post_params, "<%STR&HTE>", cur_xml[j]);
+			    }
+
+			/** Emit value **/
+			if (one_http_param->Parameter->Value->DataType == DATA_T_STRING)
+			    xsConcatQPrintf(post_params, "%STR&HTE", one_http_param->Parameter->Value->Data.String);
+			else if (one_http_param->Parameter->Value->DataType == DATA_T_INTEGER)
+			    xsConcatQPrintf(post_params, "%INT", one_http_param->Parameter->Value->Data.Integer);
+			else
+			    {
+			    mssError(1, "HTTP", "Unsupported data type for post parameter %s", one_http_param->Parameter->Name);
+			    goto error;
+			    }
+
+			/** Save param parts for next param comparison if not done **/
+			for(j=0; j < sizeof(cur_xml) / sizeof(char*); j++)
+			    {
+			    if (last_xml[j])
+				{
+				nmSysFree(last_xml[j]);
+				last_xml[j] = NULL;
+				}
+			    if (cur_xml[j])
+				{
+				last_xml[j] = nmSysStrdup(cur_xml[j]);
+				}
+			    }
+			}
+		    }
+		}
+
+	    /** Close any open tags (in reverse order), and free memory **/
+	    for(j=sizeof(cur_xml) / sizeof(char*) - 1; j>=0; j--)
+		{
+		if (cur_xml[j])
+		    xsConcatQPrintf(post_params, "</%STR&HTE>", cur_xml[j]);
+		if (last_xml[j])
+		    {
+		    nmSysFree(last_xml[j]);
+		    last_xml[j] = NULL;
 		    }
 		}
 
@@ -926,6 +1051,11 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	    xsFree(post_params);
 	if (url_params)
 	    xsFree(url_params);
+	for(j=0; j < sizeof(cur_xml) / sizeof(char*); j++)
+	    {
+	    if (last_xml[j])
+		nmSysFree(last_xml[j]);
+	    }
 	return -1;
     }
 
@@ -1651,6 +1781,7 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	inf->Port = http_internal_GetConfigString(inf, "port", "");
 	inf->Path = http_internal_GetConfigString(inf, "path", "/");
 	inf->Method = http_internal_GetConfigString(inf, "method", "GET");
+	inf->RequestContentType = http_internal_GetConfigString(inf, "request_content_type", "application/x-www-form-urlencoded");
 	inf->Protocol = http_internal_GetConfigString(inf, "protocol", "http");
 	inf->Cipherlist = http_internal_GetConfigString(inf, "ssl_cipherlist", "");
 
