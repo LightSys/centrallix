@@ -530,10 +530,13 @@ int exp_fn_lower(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 
 int exp_fn_mixed(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-    int n,i,j,l,start;
+    int n,i,j,l;
     int is_boundary;
     char tmp;
     char* ptr;
+    char* save;
+    char* ast;
+    XArray wordlist;
 
     tree->DataType = DATA_T_STRING;
     if (i0 && i0->Flags & EXPR_F_NULL)
@@ -569,6 +572,20 @@ int exp_fn_mixed(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 	tree->String = (char*)nmSysMalloc(n+1);
 	tree->Alloc = 1;
 	}
+
+    /** Identify words in the i1 wordlist **/
+    if (i1)
+	{
+	xaInit(&wordlist, 16);
+	ptr = strtok_r(i1->String, ",", &save);
+	while (ptr)
+	    {
+	    xaAddItem(&wordlist, ptr);
+	    ptr = strtok_r(NULL, ",", &save);
+	    }
+	}
+
+    /** Convert the string. **/
     is_boundary = 1;
     for(i=0; i<n+1; i++) 
         {
@@ -594,25 +611,45 @@ int exp_fn_mixed(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 		    /** We have a "word".  Look it up. **/
 		    tmp = i0->String[i+l];
 		    i0->String[i+l] = '\0';
-		    start = 0;
-		    while(1)
+
+		    /** Look for a match in the wordlist **/
+		    for(j=0; j<wordlist.nItems; j++)
 			{
-			ptr = strcasestr(i1->String + start, i0->String + i);
-			if (!ptr)
+			ast = NULL;
+			ptr = (char*)wordlist.Items[j];
+			if (strcasecmp(ptr, i0->String + i) == 0)
+			    {
+			    i0->String[i+l] = tmp;
 			    break;
-			if ((ptr == i1->String || ptr[-1] == ',') && (ptr[l] == ',' || ptr[l] == '\0'))
-			    break;
-			start += strlen(ptr);
+			    }
+			else
+			    {
+			    ast = strchr(ptr, '*');
+			    if (ast && strncasecmp(ptr, i0->String + i, ast - ptr) == 0)
+				{
+				/** Reset length to force upcase of next char **/
+				i0->String[i+l] = tmp;
+				l = ast - ptr;
+				break;
+				}
+			    else
+				{
+				ptr = NULL;
+				}
+			    }
 			}
 		    if (ptr)
 			{
 			/** Replacement word specifies case **/
 			for(j=0; j<l; j++)
 			    tree->String[i+j] = ptr[j];
+			if (!ast)
+			    is_boundary = 0;
 			}
 		    else
 			{
 			/** No replacement word, upcase only first char **/
+			i0->String[i+l] = tmp;
 			for(j=0; j<l; j++)
 			    {
 			    if (j == 0 && i0->String[i+j] >= 'a' && i0->String[i+j] <= 'z')
@@ -622,11 +659,10 @@ int exp_fn_mixed(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 			    else
 				tree->String[i+j] = i0->String[i+j];
 			    }
+			is_boundary = 0;
 			}
 
-		    i0->String[i+l] = tmp;
 		    i += (l-1);
-		    is_boundary = 0;
 		    }
 		else
 		    {
@@ -644,6 +680,17 @@ int exp_fn_mixed(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 		    is_boundary = 0;
 		}
 	    }
+	}
+
+    if (i1)
+	{
+	for(i=1; i<wordlist.nItems; i++)
+	    {
+	    /** Reset delimiters **/
+	    ptr = wordlist.Items[i];
+	    ptr[-1] = ',';
+	    }
+	xaDeInit(&wordlist);
 	}
 
     return 0;
