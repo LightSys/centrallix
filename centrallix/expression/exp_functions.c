@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -523,6 +524,128 @@ int exp_fn_lower(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 	if (i0->String[i] >= 'A' && i0->String[i] <= 'Z') tree->String[i] = i0->String[i] + 32;
 	else tree->String[i] = i0->String[i];
 	}
+    return 0;
+    }
+
+
+int exp_fn_mixed(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    int n,i,j,l,start;
+    int is_boundary;
+    char tmp;
+    char* ptr;
+
+    tree->DataType = DATA_T_STRING;
+    if (i0 && i0->Flags & EXPR_F_NULL)
+        {
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    if (!i0 || i0->DataType != DATA_T_STRING)
+        {
+	mssError(1,"EXP","One or two string parameters required for mixed()");
+	return -1;
+	}
+    if (i1 && i1->Flags & EXPR_F_NULL)
+	i1 = NULL;
+    if (i1 && i1->DataType != DATA_T_STRING)
+	{
+	mssError(1,"EXP","Optional second parameter to mixed() must be a string");
+	return -1;
+	}
+    n = strlen(i0->String);
+    if (tree->Alloc && tree->String)
+	{
+	nmSysFree(tree->String);
+	tree->Alloc = 0;
+	}
+    if (n < 63)
+	{
+	tree->String = tree->Types.StringBuf;
+	tree->Alloc = 0;
+	}
+    else
+	{
+	tree->String = (char*)nmSysMalloc(n+1);
+	tree->Alloc = 1;
+	}
+    is_boundary = 1;
+    for(i=0; i<n+1; i++) 
+        {
+	if (!is_boundary)
+	    {
+	    /** If not at a boundary, lower() things. **/
+	    if (i0->String[i] >= 'A' && i0->String[i] <= 'Z')
+		tree->String[i] = i0->String[i] + 32;
+	    else
+		tree->String[i] = i0->String[i];
+	    if (!isalpha(tree->String[i]))
+		is_boundary = 1;
+	    }
+	else
+	    {
+	    /** At a boundary.  Either upper() or replace with provided capitalization. **/
+	    if (i1)
+		{
+		/** We're using a wordlist - check for a word. **/
+		l = strspn(i0->String + i, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
+		if (l > 0)
+		    {
+		    /** We have a "word".  Look it up. **/
+		    tmp = i0->String[i+l];
+		    i0->String[i+l] = '\0';
+		    start = 0;
+		    while(1)
+			{
+			ptr = strcasestr(i1->String + start, i0->String + i);
+			if (!ptr)
+			    break;
+			if ((ptr == i1->String || ptr[-1] == ',') && (ptr[l] == ',' || ptr[l] == '\0'))
+			    break;
+			start += strlen(ptr);
+			}
+		    if (ptr)
+			{
+			/** Replacement word specifies case **/
+			for(j=0; j<l; j++)
+			    tree->String[i+j] = ptr[j];
+			}
+		    else
+			{
+			/** No replacement word, upcase only first char **/
+			for(j=0; j<l; j++)
+			    {
+			    if (j == 0 && i0->String[i+j] >= 'a' && i0->String[i+j] <= 'z')
+				tree->String[i+j] = i0->String[i+j] - 32;
+			    else if (j > 0 && i0->String[i+j] >= 'A' && i0->String[i+j] <= 'Z')
+				tree->String[i+j] = i0->String[i+j] + 32;
+			    else
+				tree->String[i+j] = i0->String[i+j];
+			    }
+			}
+
+		    i0->String[i+l] = tmp;
+		    i += (l-1);
+		    is_boundary = 0;
+		    }
+		else
+		    {
+		    tree->String[i] = i0->String[i];
+		    }
+		}
+	    else
+		{
+		/** No wordlist, so just upper() **/
+		if (i0->String[i] >= 'a' && i0->String[i] <= 'z')
+		    tree->String[i] = i0->String[i] - 32;
+		else
+		    tree->String[i] = i0->String[i];
+		if (isalpha(tree->String[i]))
+		    is_boundary = 0;
+		}
+	    }
+	}
+
     return 0;
     }
 
@@ -3907,6 +4030,7 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "charindex", (char*)exp_fn_charindex);
 	xhAdd(&EXP.Functions, "upper", (char*)exp_fn_upper);
 	xhAdd(&EXP.Functions, "lower", (char*)exp_fn_lower);
+	xhAdd(&EXP.Functions, "mixed", (char*)exp_fn_mixed);
 	xhAdd(&EXP.Functions, "char_length", (char*)exp_fn_char_length);
 	xhAdd(&EXP.Functions, "datepart", (char*)exp_fn_datepart);
 	xhAdd(&EXP.Functions, "isnull", (char*)exp_fn_isnull);
