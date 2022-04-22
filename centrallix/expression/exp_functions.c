@@ -596,7 +596,12 @@ int exp_fn_mixed(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 		tree->String[i] = i0->String[i] + 32;
 	    else
 		tree->String[i] = i0->String[i];
-	    if (!isalpha(tree->String[i]))
+
+	    /** Transition from word to boundary if the char is non-alpha, but
+	     ** do not transition if the char is a single quote or a dash, since
+	     ** those can occur inside of a "word".
+	     **/
+	    if (!isalpha(tree->String[i]) && tree->String[i] != '\'' && tree->String[i] != '-')
 		is_boundary = 1;
 	    }
 	else
@@ -624,8 +629,14 @@ int exp_fn_mixed(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 			    }
 			else
 			    {
+			    /** Wildcard match, implies following capital.  However, do
+			     ** not apply this unless there are at least two characters
+			     ** (one to be uppercase and one to be lower) matched by the
+			     ** wildcard.  So, Mc* would not match McD, and Mac* would
+			     ** not match Mack or Macy.
+			     **/
 			    ast = strchr(ptr, '*');
-			    if (ast && strncasecmp(ptr, i0->String + i, ast - ptr) == 0)
+			    if (ast && strncasecmp(ptr, i0->String + i, ast - ptr) == 0 && l > ((ast - ptr) + 1))
 				{
 				/** Reset length to force upcase of next char **/
 				i0->String[i+l] = tmp;
