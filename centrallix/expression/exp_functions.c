@@ -3874,12 +3874,12 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
     return 0;
     }
 
-int exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+int exp_fn_lev_compare(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
 
     if (!i0 || !i1 || !i2)
 	{
-		mssError(1,"EXP","fuzzy_compare() requires three parameters");
+		mssError(1,"EXP","lev_compare() requires three parameters");
 		return -1;
 	}
 
@@ -3892,7 +3892,7 @@ int exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression i0
 
     if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING) || (i2->DataType != DATA_T_INTEGER))
 	{
-		mssError(1,"EXP","fuzzy_compare() requires two string and one integer parameters");
+		mssError(1,"EXP","lev_compare() requires two string and one integer parameters");
 		return -1;
 	}
 	
@@ -4014,12 +4014,12 @@ int exp_fn_i_magnitude(double *magnitude, double *r_freq_table)
 // This function calculates the cosine similarity between two strings passed in through i0 and i1 parameters
 // Cosine similarity is equal to the dot product between the relative frequency vectors of each term divided by 
 // the product of the magnitudes of each relative frequency vector.
-int exp_fn_similarity(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
 	// Ensure function receives two non-null parameters
 	if (!i0 || !i1)
 	{
-		mssError(1,"EXP","similarity() requires two parameter.");
+		mssError(1,"EXP","cos_compare() requires two parameter.");
 		return -1;
 	}
 
@@ -4034,7 +4034,7 @@ int exp_fn_similarity(pExpression tree, pParamObjects objlist, pExpression i0, p
 	// Ensure both parameters contain string values
     if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING))
 	{
-		mssError(1,"EXP","similarity() requires two string parameters.");
+		mssError(1,"EXP","cos_compare() requires two string parameters.");
 		return -1;
 	}
 
@@ -4131,8 +4131,8 @@ exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
 	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
 	xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
-	xhAdd(&EXP.Functions, "fuzzy_compare", (char*)exp_fn_fuzzy_compare);
-	xhAdd(&EXP.Functions, "similarity", (char*)exp_fn_similarity);
+	xhAdd(&EXP.Functions, "lev_compare", (char*)exp_fn_lev_compare);
+	xhAdd(&EXP.Functions, "cos_compare", (char*)exp_fn_cos_compare);
 	xhAdd(&EXP.Functions, "to_base64", (char*)exp_fn_to_base64);
 	xhAdd(&EXP.Functions, "from_base64", (char*)exp_fn_from_base64);
 	xhAdd(&EXP.Functions, "to_hex", (char*)exp_fn_to_hex);
