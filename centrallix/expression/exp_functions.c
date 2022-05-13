@@ -3877,22 +3877,22 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
 int exp_fn_lev_compare(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
 
-    if (!i0 || !i1 || !i2)
+    if (!i0 || !i1)
 	{
-		mssError(1,"EXP","lev_compare() requires three parameters");
+		mssError(1,"EXP","lev_compare() requires two or three parameters");
 		return -1;
 	}
 
-    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL) || (i2->Flags & EXPR_F_NULL))
+    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL) || (i2 && (i2->Flags & EXPR_F_NULL)))
 	{
 		tree->DataType = DATA_T_DOUBLE;
 		tree->Flags |= EXPR_F_NULL;
 		return 0;
 	}
 
-    if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING) || (i2->DataType != DATA_T_INTEGER))
+    if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING) || (i2 && i2->DataType != DATA_T_INTEGER))
 	{
-		mssError(1,"EXP","lev_compare() requires two string and one integer parameters");
+		mssError(1,"EXP","lev_compare() requires two string and one optional integer parameters");
 		return -1;
 	}
 	
@@ -3920,8 +3920,8 @@ int exp_fn_lev_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
 		}
 		
 		//use max_field_width if it was provided as a sensible value. If not, don't use it.
-		double max_field_width = i2->Integer;
-		if (max_field_width >= max_len) {
+		double max_field_width = i2?(i2->Integer):0;
+		if (max_field_width && max_field_width >= max_len) {
 			double mod = (lev_dist + max_field_width * 3/4) / max_field_width; 
 			if (mod < 1) { //don't make clamped_dist bigger
 				clamped_dist *= mod;
@@ -3931,7 +3931,7 @@ int exp_fn_lev_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
 	
 	
 	tree->DataType = DATA_T_DOUBLE;
-	tree->Types.Double = clamped_dist;
+	tree->Types.Double = 1.0 - clamped_dist;
 	return 0;
 }
 
