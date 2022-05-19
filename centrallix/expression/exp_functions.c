@@ -1465,6 +1465,7 @@ int exp_fn_quote(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     }
 
 
+/* See centrallix-sysdoc/SubstituteFunction.md for more information. */
 int exp_fn_substitute(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     char* subst_ptr;
@@ -3796,6 +3797,7 @@ int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
     return 0;
     }
 
+/* See centrallix-sysdoc/string_comparison.md for more information. */
 int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
 
@@ -3874,6 +3876,7 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
     return 0;
     }
 
+/* See centrallix-sysdoc/string_comparison.md for more information. */
 int exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
 
@@ -4014,6 +4017,7 @@ int exp_fn_i_magnitude(double *magnitude, double *r_freq_table)
 // This function calculates the cosine similarity between two strings passed in through i0 and i1 parameters
 // Cosine similarity is equal to the dot product between the relative frequency vectors of each term divided by 
 // the product of the magnitudes of each relative frequency vector.
+// See centrallix-sysdoc/string_comparison.md for more information.
 int exp_fn_similarity(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
 	// Ensure function receives two non-null parameters

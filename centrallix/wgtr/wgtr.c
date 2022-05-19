@@ -28,6 +28,7 @@
 /* Description:	Provides an interface for creating and manipulating  	*/
 /*		widget trees, primarily used in the process of rendering*/
 /*		a DHTML page from an application.                      	*/
+/* See centrallix-sysdoc/WidgetTree.md for more information. */
 /************************************************************************/
 
 
