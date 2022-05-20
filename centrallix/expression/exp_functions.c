@@ -18,6 +18,7 @@
 #include <openssl/sha.h>
 #include <openssl/md5.h>
 #include <openssl/evp.h>
+#include <ctype.h> 
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -3935,27 +3936,113 @@ int exp_fn_lev_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
 	return 0;
 }
 
-const char *CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; 
-const double IDF[36] = { 0.918, 0.985, 0.973, 0.953, 0.87, 0.978, 0.98, 0.938, 0.931, 0.9986, 0.9922, 0.9590, 0.973, 0.933, 0.922, 0.981, 0.9989, 0.941, 0.938, 0.904, 0.973, 0.9903, 0.976, 0.9985, 0.98, 0.9992, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
+const int VECTOR_TABLE_SIZE = 251;
+//const char *CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; 
+//const double IDF[36] = { 0.918, 0.985, 0.973, 0.953, 0.87, 0.978, 0.98, 0.938, 0.931, 0.9986, 0.9922, 0.9590, 0.973, 0.933, 0.922, 0.981, 0.9989, 0.941, 0.938, 0.904, 0.973, 0.9903, 0.976, 0.9985, 0.98, 0.9992, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
+
+int exp_fn_i_trim_term(char *term)
+	{
+	char trimmed_string[strlen(term)];
+    int i;
+    int j = 0;
+    for (i = 0; i < strlen(term); i++)
+    	{
+        char c = term[i];
+        if(ispunct(c) || isspace(c))
+        	{
+        	continue;
+        	}
+
+        else if (isalpha(c))
+        	{
+        	c = tolower(c);
+        	trimmed_string[j] = c;
+        	j++;
+        	}
+
+        else
+        	{
+        	trimmed_string[j] = c;
+        	j++;
+        	}
+    }
+    term = trimmed_string;
+    return 0;
+	}
+
+int hash_char_pair(int num1, int num2)
+{
+	return (num1 * num1 * num1 + num2 * num2 * num2) * (num1 / num2) % VECTOR_TABLE_SIZE;
+}
 
 int exp_fn_i_frequency_table(double *table, char *term)
 	{
 		int i;
-		// Initialize hash table with complete character set and 0 values
-		for (i = 0; i < strlen(CHAR_SET); i++) {
-			table[i] = 0.0;
-		}
-		
-		// Iterate through term and update hash table data
-		for (i = 0; i < strlen(term); i++) {
-			// Locate index position based on where letter in term is inside the CHAR_SET
-			// Used so that CHAR_SET can be arbitrarily extended.
-			char *loc = strchr(CHAR_SET, toupper(term[i]));
-			if (loc) {
-				int index = (int)(loc - CHAR_SET);
-				table[index]++;
+		// Initialize hash table with 0 values
+		for (i = 0; i < VECTOR_TABLE_SIZE; i++)
+			{
+			table[i] = 0;
 			}
-		}
+
+		// Trim out whitespace and punctuation and convert letters to lowercase
+		exp_fn_i_trim_term(term);
+
+		for(i = 0; i < strlen(term) + 1; i++)
+			{
+			if (i == 0)
+				{
+				int temp = (int)term[i];
+				if (temp >= 48 && temp <= 57)
+					{
+					temp += 75;
+					}
+					
+				int index = hash_char_pair(96, temp);
+				table[index] += (temp + 96) % 13;
+				}
+
+			else if (i < strlen(term))
+				{
+				int temp1 = (int)term[i-1];
+				int temp2 = (int)term[i];
+				if (temp1 >= 48 && temp1 <= 57)
+					{
+						temp1 += 75;
+					}
+				if (temp2 >= 48 && temp2 <= 57)
+					{
+					temp2 += 75;
+					}
+					
+				int index = hash_char_pair(temp1, temp2);
+				table[index] += (temp1 + temp2) % 13;
+				}
+
+			else
+				{
+				int temp = (int)term[i-1];
+				if (temp >= 48 && temp <= 57)
+					{
+					temp += 75;
+					}
+					
+				int index = hash_char_pair(temp, 96);
+				table[index] += (temp + 96) % 13;
+				}
+			}
+		
+		// // Iterate through term and update hash table data
+		// for (i = 0; i < strlen(term); i++)
+		// 	{
+		// 	// Locate index position based on where letter in term is inside the CHAR_SET
+		// 	// Used so that CHAR_SET can be arbitrarily extended.
+		// 	char *loc = strchr(CHAR_SET, toupper(term[i]));
+		// 	if (loc) 
+		// 		{
+		// 		int index = (int)(loc - CHAR_SET);
+		// 		table[index]++;
+		// 		}
+		// 	}
 
 		return 0;
 	}
@@ -4038,22 +4125,22 @@ int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
 		return -1;
 	}
 
-	// Allocate frequency tables (arrays of doubles) for each term
-	double *table1 = nmMalloc(strlen(CHAR_SET) * sizeof(double));
-	double *table2 = nmMalloc(strlen(CHAR_SET) * sizeof(double));
+	// Allocate frequency tables (arrays of integers) for each term
+	double *table1 = nmMalloc(VECTOR_TABLE_SIZE * sizeof(byte));
+	double *table2 = nmMalloc(VECTOR_TABLE_SIZE * sizeof(byte));
 
     // Calculate frequency tables for each term
 	exp_fn_i_frequency_table(table1, i0->String);
     exp_fn_i_frequency_table(table2, i1->String);
 	
 	// Calculate relative frequencies or tf_idf values for each term depending on value of third parameter
-	if (i2 && !(i2->Flags & EXPR_F_NULL) && (i2->DataType != DATA_T_INTEGER) && (i2->Integer == 1)) {
-		exp_fn_i_tf_idf_table(table1);
-		exp_fn_i_tf_idf_table(table2);
-	} else {
-		exp_fn_i_relative_frequency_table(table1);
-		exp_fn_i_relative_frequency_table(table2);
-	}
+	// if (i2 && !(i2->Flags & EXPR_F_NULL) && (i2->DataType != DATA_T_INTEGER) && (i2->Integer == 1)) {
+	// 	exp_fn_i_tf_idf_table(table1);
+	// 	exp_fn_i_tf_idf_table(table2);
+	// } else {
+	// 	exp_fn_i_relative_frequency_table(table1);
+	// 	exp_fn_i_relative_frequency_table(table2);
+	// }
 
 	// Calculate dot product
 	double dot_product = 0.0;
