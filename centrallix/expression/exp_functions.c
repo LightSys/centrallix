@@ -3937,35 +3937,7 @@ int exp_fn_lev_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
 }
 
 // This is the size of the vector table. It is also used in calculating the table indices.
-const int VECTOR_TABLE_SIZE = 251;
-
-
-/*
- * exp_fn_i_trim_term
- * This method removes the puncuation and whitespace from a given string
- *
- * Paramters:
- * 	src : unprocessed string
- * 	dest : target string
- *
- * Returns: 
- * 	0 
- */
-int exp_fn_i_trim_term(char *src, char* dest)
-    {	
-    int i;
-    int j = 0;
-    for (i = 0; i < strlen(src)+1; i++)
-	{
-	if(!ispunct(src[i]) && !isspace(src[i]))
-	    {
-	    dest[j] = tolower(src[i]);
-	    j++;
-	    }
-    	}
-    	return 0;
-    }
-
+const int EXP_VECTOR_TABLE_SIZE = 251;
 
 /*
  * hash_char_pair
@@ -3979,10 +3951,10 @@ int exp_fn_i_trim_term(char *src, char* dest)
  * Returns:
  * 	vector table index (integer)
  */
-int hash_char_pair(double num1, double num2)
+int exp_fn_i_hash_char_pair(double num1, double num2)
     {
     int func_result = round(((num1 * num1 * num1) + (num2 * num2 * num2)) * ((num1+1)/(num2+1))) -1;
-    return func_result % VECTOR_TABLE_SIZE;	
+    return func_result % EXP_VECTOR_TABLE_SIZE;	
     }
 
 
@@ -4001,61 +3973,71 @@ int exp_fn_i_frequency_table(unsigned char *table, char *term)
     {
     int i;
     // Initialize hash table with 0 values
-    for (i = 0; i < VECTOR_TABLE_SIZE; i++)
+    for (i = 0; i < EXP_VECTOR_TABLE_SIZE; i++)
 	{
 	table[i] = 0;
 	}
-	// Trim out whitespace and punctuation and convert letters to lowercase
-    char* src = term;
-    char* dest = nmMalloc(strlen(term) + 1);
-    exp_fn_i_trim_term(src, dest);
-    term = dest;	
 
+	int j = -1;
     for(i = 0; i < strlen(term) + 1; i++)
 	{
-	// This case is for the first character. It adds a leading null character
-	if (i == 0)
+	// If latter character is punctuation or whitespace, skip it
+	if (ispunct(term[i]) || isspace(term[i]))
 	    {
-	    double temp = (int)term[i];
-	    if (temp >= 48 && temp <= 57)
-		{
-		temp += 75;
-		} 
-					
-	    int index = hash_char_pair(96, temp);
-	    table[index] += ((unsigned char)temp + 96) % 13;
+	    continue;
 	    }
-	    // This case is for characters in the middle of the string. It adds no null character
-	    else if (i < strlen(term))
-		{
-		double temp1 = (int)term[i-1];
-		double temp2 = (int)term[i];
-		if (temp1 >= 48 && temp1 <= 57)
-		    {
-		    temp1 += 75;
-		    }
-		if (temp2 >= 48 && temp2 <= 57)
-		    {
-		    temp2 += 75;
-		    }
-		int index = hash_char_pair(temp1, temp2);
-		table[index] += ((unsigned char)temp1 +(unsigned char)temp2) % 13;	
-		}
-	    // This case is for the last character in the string. It adds a trailing null character
-	    else
-		{
-		double temp = (int)term[i-1];
-		if (temp >= 48 && temp <= 57)
-		    {
-		    temp += 75;
-		    }
-				
-		int index = hash_char_pair(temp, 96);
-		table[index] += ((unsigned char)temp + 96) % 13;	
-		}
+
+	double temp1 = 0.0;
+	double temp2 = 0.0;
+
+	// If previous character is null
+	if (j == -1)
+	    {
+	    temp1 = 96;
 	    }
-	nmFree(dest, strlen(term) + 1);
-	return 0;	
+
+	// Else character is not null
+	else
+	    {
+	    temp1 = (int)tolower(term[j]);
+	    }
+
+	// If latter character is null
+	if (i == strlen(term))
+	    {
+	    temp2 = 96;
+	    }
+
+	// Else character is not null
+	else
+	    {
+	    temp2 = (int)tolower(term[i]);
+	    }
+
+	// Else character is not null	// If either character is a number, reassign the code point
+	if (temp1 >= 48 && temp1 <= 57)
+	    {
+	    temp1 += 75;
+	    }
+
+	if (temp2 >= 48 && temp2 <= 57)
+	    {
+	    temp2 += 75;
+	    }
+
+	// Hash the character pair into an index
+	int index = exp_fn_i_hash_char_pair(temp1, temp2);
+
+	// Increment Frequency Table value by number from 0 to 13
+	table[index] += ((unsigned char)temp1 + (unsigned char)temp2) % 13;
+
+	// Move j up to latter character before incrementing i
+	j = i;
+
+	}
+
+    return 0;	
+
     }
 
 /*
@@ -4073,9 +4055,9 @@ int exp_fn_i_frequency_table(unsigned char *table, char *term)
 int exp_fn_i_dot_product(double *dot_product, unsigned char *r_freq_table1, unsigned char *r_freq_table2)
     {
     int i;
-    for (i = 0; i < VECTOR_TABLE_SIZE; i++) 
+    for (i = 0; i < EXP_VECTOR_TABLE_SIZE; i++) 
         {
-	*dot_product = *dot_product + (double)(r_freq_table1[i] * r_freq_table2[i]);
+	*dot_product = *dot_product + ((double)r_freq_table1[i] * (double)r_freq_table2[i]);
 	}
     return 0;
     }
@@ -4091,9 +4073,9 @@ int exp_fn_i_dot_product(double *dot_product, unsigned char *r_freq_table1, unsi
 int exp_fn_i_magnitude(double *magnitude, unsigned char *r_freq_table)
     {
     int i;
-    for (i = 0; i < VECTOR_TABLE_SIZE; i++)
+    for (i = 0; i < EXP_VECTOR_TABLE_SIZE; i++)
 	{
-	*magnitude = *magnitude + (double)(r_freq_table[i] * r_freq_table[i]);
+	*magnitude = *magnitude + ((double)r_freq_table[i] * (double)r_freq_table[i]);
 	}
     *magnitude = sqrt(*magnitude);
     return 0;
@@ -4146,8 +4128,14 @@ int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
 	}
 
     // Allocate frequency tables (arrays of integers) for each term
-    unsigned char *table1 = nmMalloc(VECTOR_TABLE_SIZE * sizeof(unsigned char));
-    unsigned char *table2 = nmMalloc(VECTOR_TABLE_SIZE * sizeof(unsigned char));
+    unsigned char *table1 = nmMalloc(EXP_VECTOR_TABLE_SIZE * sizeof(unsigned char));
+    unsigned char *table2 = nmMalloc(EXP_VECTOR_TABLE_SIZE * sizeof(unsigned char));
+
+    if (table1 == NULL || table2 == NULL)
+	{
+	mssError(1,"EXP","Memory allocation failed.");
+	return -1;
+	}
 
     // Calculate frequency tables for each term
     exp_fn_i_frequency_table(table1, i0->String);
@@ -4164,9 +4152,10 @@ int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
     exp_fn_i_magnitude(&magnitude2, table2);
     
     tree->DataType = DATA_T_DOUBLE;
-    tree->Types.Double = dot_product /(magnitude1 * magnitude2);
-    nmFree(table1, VECTOR_TABLE_SIZE * sizeof(unsigned char));
-    nmFree(table2, VECTOR_TABLE_SIZE * sizeof(unsigned char));
+    tree->Types.Double = dot_product / (magnitude1 * magnitude2);
+    nmFree(table1, EXP_VECTOR_TABLE_SIZE * sizeof(unsigned char));
+    nmFree(table2, EXP_VECTOR_TABLE_SIZE * sizeof(unsigned char));
+
     return 0;
     }
 
