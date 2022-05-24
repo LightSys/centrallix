@@ -3963,13 +3963,13 @@ int exp_fn_i_hash_char_pair(double num1, double num2)
  * This method creates a vector frequency table based on a string of characters.
  *
  * Parameters:
- * 	table : integer pointer to vector frequency table
- * 	term : the string of characters
+ * 	table : integer pointer to vector frequency table (unsigned short)
+ * 	term : the string of characters (char*)
  *
  * Returns:
  * 	0 	
  */
-int exp_fn_i_frequency_table(unsigned char *table, char *term)
+int exp_fn_i_frequency_table(unsigned short *table, char *term)
     {
     int i;
     // Initialize hash table with 0 values
@@ -4029,7 +4029,7 @@ int exp_fn_i_frequency_table(unsigned char *table, char *term)
 	int index = exp_fn_i_hash_char_pair(temp1, temp2);
 
 	// Increment Frequency Table value by number from 0 to 13
-	table[index] += ((unsigned char)temp1 + (unsigned char)temp2) % 13;
+	table[index] += ((unsigned short)temp1 + (unsigned short)temp2) % 13 + 1;
 
 	// Move j up to latter character before incrementing i
 	j = i;
@@ -4046,13 +4046,13 @@ int exp_fn_i_frequency_table(unsigned char *table, char *term)
  *
  * Parameters:
  * 	dot_product : the place where the result is stored (double)
- * 	r_freq_table1 : the first vector (int)
- * 	r_freq_table2 : the second vector (int)
+ * 	r_freq_table1 : the first vector (unsigned short)
+ * 	r_freq_table2 : the second vector (unsigned short)
  *
  * Returns:
  * 	0	
  */
-int exp_fn_i_dot_product(double *dot_product, unsigned char *r_freq_table1, unsigned char *r_freq_table2)
+int exp_fn_i_dot_product(double *dot_product, unsigned short *r_freq_table1, unsigned short *r_freq_table2)
     {
     int i;
     for (i = 0; i < EXP_VECTOR_TABLE_SIZE; i++) 
@@ -4068,9 +4068,9 @@ int exp_fn_i_dot_product(double *dot_product, unsigned char *r_freq_table1, unsi
  *
  * Parameters:
  * 	magnitude : the place where the result is stored (double)
- * 	r_freq_table : the vector (int)
+ * 	r_freq_table : the vector (unsigned short)
  */
-int exp_fn_i_magnitude(double *magnitude, unsigned char *r_freq_table)
+int exp_fn_i_magnitude(double *magnitude, unsigned short *r_freq_table)
     {
     int i;
     for (i = 0; i < EXP_VECTOR_TABLE_SIZE; i++)
@@ -4128,8 +4128,8 @@ int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
 	}
 
     // Allocate frequency tables (arrays of integers) for each term
-    unsigned char *table1 = nmMalloc(EXP_VECTOR_TABLE_SIZE * sizeof(unsigned char));
-    unsigned char *table2 = nmMalloc(EXP_VECTOR_TABLE_SIZE * sizeof(unsigned char));
+    unsigned short *table1 = nmMalloc(EXP_VECTOR_TABLE_SIZE * sizeof(unsigned short));
+    unsigned short *table2 = nmMalloc(EXP_VECTOR_TABLE_SIZE * sizeof(unsigned short));
 
     if (table1 == NULL || table2 == NULL)
 	{
@@ -4153,8 +4153,8 @@ int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
     
     tree->DataType = DATA_T_DOUBLE;
     tree->Types.Double = dot_product / (magnitude1 * magnitude2);
-    nmFree(table1, EXP_VECTOR_TABLE_SIZE * sizeof(unsigned char));
-    nmFree(table2, EXP_VECTOR_TABLE_SIZE * sizeof(unsigned char));
+    nmFree(table1, EXP_VECTOR_TABLE_SIZE * sizeof(unsigned short));
+    nmFree(table2, EXP_VECTOR_TABLE_SIZE * sizeof(unsigned short));
 
     return 0;
     }
