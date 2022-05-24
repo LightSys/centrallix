@@ -1,5 +1,7 @@
 ##NAME Text Mining String Similarity with Cosine Compare
 
+# All email addresses and phone numbers are imaginary and were fabricated for the purposes of this test
+
 query select case1 = (cos_compare("Cynthia Adams; cynthiaadams@gmail.com; 720-769-1293", "Timothy Adams; thetbear@gmail.com; 720-891-1470") >= 0.508) and (cos_compare("Cynthia Adams; cynthiaadams@gmail.com; 720-769-1293", "Timothy Adams; thetbear@gmail.com; 720-891-1470") <= 0.509)
 
 query select case2 = (cos_compare("Timothy Adams; thetbear@gmail.com; 720-891-1470", "Lance Freson; lancetheturtle@gmail.com; 720-111-8189") >= 0.458) and (cos_compare("Timothy Adams; thetbear@gmail.com; 720-891-1470", "Lance Freson; lancetheturtle@gmail.com; 720-111-8189") <= 0.459)
