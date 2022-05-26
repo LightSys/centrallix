@@ -18,6 +18,7 @@
 #include <openssl/sha.h>
 #include <openssl/md5.h>
 #include <openssl/evp.h>
+#include <ctype.h> 
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -3935,146 +3936,230 @@ int exp_fn_lev_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
 	return 0;
 }
 
-const char *CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; 
-const double IDF[36] = { 0.918, 0.985, 0.973, 0.953, 0.87, 0.978, 0.98, 0.938, 0.931, 0.9986, 0.9922, 0.9590, 0.973, 0.933, 0.922, 0.981, 0.9989, 0.941, 0.938, 0.904, 0.973, 0.9903, 0.976, 0.9985, 0.98, 0.9992, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
+// This is the size of the vector table. It is also used in calculating the table indices.
+const int EXP_VECTOR_TABLE_SIZE = 251;
 
-int exp_fn_i_frequency_table(double *table, char *term)
+/*
+ * hash_char_pair
+ * This method creates an vector table index based a given character pair. The characters are represented 
+ * as their ASCII code points.
+ *
+ * Parameters:
+ * 	num1 : first ASCII code point (double)
+ * 	num2 : second ASCII code point (double)
+ *
+ * Returns:
+ * 	vector table index (integer)
+ */
+int exp_fn_i_hash_char_pair(double num1, double num2)
+    {
+    int func_result = round(((num1 * num1 * num1) + (num2 * num2 * num2)) * ((num1+1)/(num2+1))) -1;
+    return func_result % EXP_VECTOR_TABLE_SIZE;	
+    }
+
+
+/*
+ * exp_fn_i_frequency_table
+ * This method creates a vector frequency table based on a string of characters.
+ *
+ * Parameters:
+ * 	table : integer pointer to vector frequency table (unsigned short)
+ * 	term : the string of characters (char*)
+ *
+ * Returns:
+ * 	0 	
+ */
+int exp_fn_i_frequency_table(unsigned short *table, char *term)
+    {
+    int i;
+    // Initialize hash table with 0 values
+    for (i = 0; i < EXP_VECTOR_TABLE_SIZE; i++)
 	{
-		int i;
-		// Initialize hash table with complete character set and 0 values
-		for (i = 0; i < strlen(CHAR_SET); i++) {
-			table[i] = 0.0;
-		}
-		
-		// Iterate through term and update hash table data
-		for (i = 0; i < strlen(term); i++) {
-			// Locate index position based on where letter in term is inside the CHAR_SET
-			// Used so that CHAR_SET can be arbitrarily extended.
-			char *loc = strchr(CHAR_SET, toupper(term[i]));
-			if (loc) {
-				int index = (int)(loc - CHAR_SET);
-				table[index]++;
-			}
-		}
-
-		return 0;
+	table[i] = 0;
 	}
 
-int exp_fn_i_relative_frequency_table(double *frequency_table)
+	int j = -1;
+    for(i = 0; i < strlen(term) + 1; i++)
 	{
-		int i;
-		double sum = 0;
-		// Compute the total character frequency
-		for (i = 0; i < strlen(CHAR_SET); i++) {
-			sum += frequency_table[i];
-		}
+	// If latter character is punctuation or whitespace, skip it
+	if (ispunct(term[i]) || isspace(term[i]))
+	    {
+	    continue;
+	    }
 
-		for (i = 0; i < strlen(CHAR_SET); i++) {
-			frequency_table[i] = frequency_table[i] / sum;
-		}
-		return 0;
+	double temp1 = 0.0;
+	double temp2 = 0.0;
+
+	// If previous character is null
+	if (j == -1)
+	    {
+	    temp1 = 96;
+	    }
+
+	// Else character is not null
+	else
+	    {
+	    temp1 = (int)tolower(term[j]);
+	    }
+
+	// If latter character is null
+	if (i == strlen(term))
+	    {
+	    temp2 = 96;
+	    }
+
+	// Else character is not null
+	else
+	    {
+	    temp2 = (int)tolower(term[i]);
+	    }
+
+	// Else character is not null	// If either character is a number, reassign the code point
+	if (temp1 >= 48 && temp1 <= 57)
+	    {
+	    temp1 += 75;
+	    }
+
+	if (temp2 >= 48 && temp2 <= 57)
+	    {
+	    temp2 += 75;
+	    }
+
+	// Hash the character pair into an index
+	int index = exp_fn_i_hash_char_pair(temp1, temp2);
+
+	// Increment Frequency Table value by number from 0 to 13
+	table[index] += ((unsigned short)temp1 + (unsigned short)temp2) % 13 + 1;
+
+	// Move j up to latter character before incrementing i
+	j = i;
+
 	}
 
-int exp_fn_i_tf_idf_table(double *frequency_table)
-	{
-		int i;
-		double sum = 0;
-		// Compute the total character frequency
-		for (i = 0; i < strlen(CHAR_SET); i++) {
-			sum += frequency_table[i];
-		}
+    return 0;	
 
-		for (i = 0; i < strlen(CHAR_SET); i++) {
-			frequency_table[i] = (frequency_table[i] / sum) * IDF[i];
-		}
-		return 0;
+    }
+
+/*
+ * exp_fn_i_dot_product
+ * This method calculautes the dot product of two vectors.
+ *
+ * Parameters:
+ * 	dot_product : the place where the result is stored (double)
+ * 	r_freq_table1 : the first vector (unsigned short)
+ * 	r_freq_table2 : the second vector (unsigned short)
+ *
+ * Returns:
+ * 	0	
+ */
+int exp_fn_i_dot_product(double *dot_product, unsigned short *r_freq_table1, unsigned short *r_freq_table2)
+    {
+    int i;
+    for (i = 0; i < EXP_VECTOR_TABLE_SIZE; i++) 
+        {
+	*dot_product = *dot_product + ((double)r_freq_table1[i] * (double)r_freq_table2[i]);
 	}
+    return 0;
+    }
 
-// Dot product is equal to the sum of the squared values from each relative frequency table
-int exp_fn_i_dot_product(double *dot_product, double *r_freq_table1, double *r_freq_table2)
+/*
+ * exp_fn_i_magnitude
+ * This method calculates the magnitude of a vector
+ *
+ * Parameters:
+ * 	magnitude : the place where the result is stored (double)
+ * 	r_freq_table : the vector (unsigned short)
+ */
+int exp_fn_i_magnitude(double *magnitude, unsigned short *r_freq_table)
+    {
+    int i;
+    for (i = 0; i < EXP_VECTOR_TABLE_SIZE; i++)
 	{
-		int i;
-		for (i = 0; i < strlen(CHAR_SET); i++) {
-			*dot_product = *dot_product + (r_freq_table1[i] * r_freq_table2[i]);
-		}
-		return 0;
+	*magnitude = *magnitude + ((double)r_freq_table[i] * (double)r_freq_table[i]);
 	}
+    *magnitude = sqrt(*magnitude);
+    return 0;
+    }
 
-// Magnitude is equal to the square root of the sum of the squared relative frequencies
-int exp_fn_i_magnitude(double *magnitude, double *r_freq_table)
-	{
-		int i;
-		for (i = 0; i < strlen(CHAR_SET); i++) {
-			*magnitude = *magnitude + (r_freq_table[i] * r_freq_table[i]);
-		}
-		*magnitude = sqrt(*magnitude);
-		return 0;
-	}
-
-// This function calculates the cosine similarity between two strings passed in through i0 and i1 parameters
-// Cosine similarity is equal to the dot product between the relative frequency vectors of each term divided by 
-// the product of the magnitudes of each relative frequency vector.
+/*
+ * exp_fn_cos_compare
+ * This method calculates the cosine similarity of two vector frequency tables
+ *
+ * Parameters:
+ * 	tree : structure where output is stored
+ *	objlist: 
+ *	i0 : first data entry (pExpression)
+ *	i1 : second data entry (pExpression)
+ *	i2 :
+ *
+ * Returns:
+ * 	0 	
+ */
 int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-	// Ensure function receives two non-null parameters
-	if (!i0 || !i1)
+    // Ensure function receives two non-null parameters
+    if (!i0 || !i1)
 	{
-		mssError(1,"EXP","cos_compare() requires two parameter.");
-		return -1;
+	mssError(1,"EXP","cos_compare() requires two parameter.");
+	return -1;
 	}
 
-	// Ensure value passed in both parameters is not null
-	if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+    // Ensure value passed in both parameters is not null
+    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
 	{
-		tree->DataType = DATA_T_INTEGER;
-		tree->Flags |= EXPR_F_NULL;
-		return 0;
-	}
-
-	// Ensure both parameters contain string values
-    if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING))
-	{
-		mssError(1,"EXP","cos_compare() requires two string parameters.");
-		return -1;
-	}
-
-	// Allocate frequency tables (arrays of doubles) for each term
-	double *table1 = nmMalloc(strlen(CHAR_SET) * sizeof(double));
-	double *table2 = nmMalloc(strlen(CHAR_SET) * sizeof(double));
-
-    // Calculate frequency tables for each term
-	exp_fn_i_frequency_table(table1, i0->String);
-    exp_fn_i_frequency_table(table2, i1->String);
-	
-	// Calculate relative frequencies or tf_idf values for each term depending on value of third parameter
-	if (i2 && !(i2->Flags & EXPR_F_NULL) && (i2->DataType != DATA_T_INTEGER) && (i2->Integer == 1)) {
-		exp_fn_i_tf_idf_table(table1);
-		exp_fn_i_tf_idf_table(table2);
-	} else {
-		exp_fn_i_relative_frequency_table(table1);
-		exp_fn_i_relative_frequency_table(table2);
-	}
-
-	// Calculate dot product
-	double dot_product = 0.0;
-	exp_fn_i_dot_product(&dot_product, table1, table2);
-
-	// Calculate magnitudes of each relative frequency vector
-	double magnitude1 = 0.0;
-	double magnitude2 = 0.0;
-	exp_fn_i_magnitude(&magnitude1, table1);
-	exp_fn_i_magnitude(&magnitude2, table2);
-    
-	tree->DataType = DATA_T_DOUBLE;
-	tree->Types.Double = dot_product / (magnitude1 * magnitude2);
-
-	nmFree(table1, strlen(CHAR_SET) * sizeof(double));
-	nmFree(table2, strlen(CHAR_SET) * sizeof(double));
+	tree->DataType = DATA_T_INTEGER;
+	tree->Flags |= EXPR_F_NULL;
 	return 0;
 	}
 
-int
-exp_internal_DefineFunctions()
+    // Ensure both parameters contain string values
+    if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING))
+	{
+	mssError(1,"EXP","cos_compare() requires two string parameters.");
+	return -1;
+	}
+
+    //If the two strings are identical, don't bother running cosine compare	
+    if (strcmp(i0->String, i1->String) == 0)
+	{
+	tree->DataType = DATA_T_DOUBLE;
+	tree->Types.Double = 1.0;
+	return 0;
+	}
+
+    // Allocate frequency tables (arrays of integers) for each term
+    unsigned short *table1 = nmMalloc(EXP_VECTOR_TABLE_SIZE * sizeof(unsigned short));
+    unsigned short *table2 = nmMalloc(EXP_VECTOR_TABLE_SIZE * sizeof(unsigned short));
+
+    if (table1 == NULL || table2 == NULL)
+	{
+	mssError(1,"EXP","Memory allocation failed.");
+	return -1;
+	}
+
+    // Calculate frequency tables for each term
+    exp_fn_i_frequency_table(table1, i0->String);
+    exp_fn_i_frequency_table(table2, i1->String);
+	
+    // Calculate dot product
+    double dot_product = 0;
+    exp_fn_i_dot_product(&dot_product, table1, table2);
+
+    // Calculate magnitudes of each relative frequency vector
+    double magnitude1 = 0;
+    double magnitude2 = 0;
+    exp_fn_i_magnitude(&magnitude1, table1);
+    exp_fn_i_magnitude(&magnitude2, table2);
+    
+    tree->DataType = DATA_T_DOUBLE;
+    tree->Types.Double = dot_product / (magnitude1 * magnitude2);
+    nmFree(table1, EXP_VECTOR_TABLE_SIZE * sizeof(unsigned short));
+    nmFree(table2, EXP_VECTOR_TABLE_SIZE * sizeof(unsigned short));
+
+    return 0;
+    }
+
+int exp_internal_DefineFunctions()
     {
 
 	/** Function list for EXPR_N_FUNCTION nodes **/
