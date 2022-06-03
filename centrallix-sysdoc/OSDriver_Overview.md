@@ -198,11 +198,13 @@ Queries at the driver level are only performed on open objects - in order for an
 
 There are several OSML->driver calls that are involved in a query operation:
 
-1.	Open - The Open call is used to open the object that is to be queried for subobjects.
-2.	OpenQuery - This routine requests that a query for subobjects be started.  It does not return any of the subobjects.
-3.	QueryFetch - This routine obtains the next item in the query results.  It should be completely indistin- guishable from an item opened by Open directly instead of querying.  In other words, querying /File.csv/rows and fetching row 0 should be exactly the same as opening /File.csv/rows/0.
-4.	QueryClose - Closes an open query, but does not close the objects fetched by the query.  Those will be closed with the Close routine, just like objects obtained with Open.
-5.	Close - Closes an object, whether obtained via Open or via QueryFetch.
+| Call          | Description
+| ------------- | ------------
+| 1. Open       | The Open call is used to open the object that is to be queried for subobjects.
+| 2. OpenQuery  | This routine requests that a query for subobjects be started.  It does not return any of the subobjects.
+| 3. QueryFetch | This routine obtains the next item in the query results.  It should be completely indistin- guishable from an item opened by Open directly instead of querying.  In other words, querying /File.csv/rows and fetching row 0 should be exactly the same as opening /File.csv/rows/0.
+| 4. QueryClose | Closes an open query, but does not close the objects fetched by the query.  Those will be closed with the Close routine, just like objects obtained with Open.
+| 5. Close      | Closes an object, whether obtained via Open or via QueryFetch.
 
 Next is an example of how a query might proceed for the three row objects in our CSV file example.  For this example, we'll assume that /DirectoryOne/FileTwo.csv/rows has already been opened as in the previous example.  We'll also use the same abbreviations.
 
@@ -251,11 +253,13 @@ Next is an example of how a query might proceed for the three row objects in our
 ### D.  Enumerating Attributes of an Object.
 The driver will need to allow the OSML to enumerate all of the object's attributes in addition to getting/setting their values.  This is done via the GetFirstAttr and GetNextAttr OSD calls.  GetFirstAttr is used to start the enumeration, and returns the name of the first attribute. GetNextAttr returns subsequent attributes.  Either can return NULL if no more attributes are found.  The following 'system' attributes should not be returned by the attribute enumeration functions as they must be present on all objects.
 
-- name - The name (or primary key value) of the object.
-- annotation - An object's annotation.
-- inner_type - (or content_type) - the type of the content of an object.
-- content_type - Same as above.
-- outer_type - The type of the object itself.
+| Attribute                    | Description
+| ---------------------------- | ------------
+| name                         | The name (or primary key value) of the object.
+| annotation                   | An object's annotation.
+| inner_type (or content_type) | the type of the content of an object.
+| content_type                 | Same as above.
+| outer_type                   | The type of the object itself.
 
 The system attribute 'last_modification' can be returned in the enumeration if desired, as not all objects will have this attribute, though it is important for letting the OSML know when an object has been modified.
 

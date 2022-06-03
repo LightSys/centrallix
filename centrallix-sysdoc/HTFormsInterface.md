@@ -11,9 +11,6 @@ Date: October 30, 2001
   - [II Form Elements](#ii-form-elements)
     - [A.  Types of Focus](#a--types-of-focus)
     - [B.  Interaction with the Page widget.](#b--interaction-with-the-page-widget)
-      - [keyhandler()](#keyhandler)
-      - [getfocushandler()](#getfocushandler)
-      - [losefocushandler()](#losefocushandler)
     - [C.	Interaction with the Form Widget.](#cinteraction-with-the-form-widget)
   - [IV The Form Widget](#iv-the-form-widget)
   - [V Objectsource Widgets](#v-objectsource-widgets)
@@ -48,14 +45,11 @@ Centrallix applications contain widgets which deal with three different kinds of
 ### B.  Interaction with the Page widget.
 The Page widget controls much of the top-level handling of events, including which controls have focus and where keypresses are directed. Widgets which wish to receive keyboard, mouse, or data focus.  In order to properly interact with the widgets on the page, the page widget requires that other widgets that need to receive focus and/or keystrokes implement up to three callback functions:
 
-#### keyhandler()
-this callback function on a widget is called when the page sends a keypress to the widget. If the widget uses the keypress, it should return true to prevent the keypress from being used by other widgets.
-
-#### getfocushandler()
-This function is called when a widget receives keyboard focus.  It should return the logical OR of zero or more of: 1 - set the keyboard focus to this area, and 2 - set the data focus to this area.
-
-#### losefocushandler()
-This function is called when a widget is about to lose keyboard focus.
+| Function              | Description
+| --------------------- | -----------
+| keyhandler()          | this callback function on a widget is called when the page sends a keypress to the widget. If the widget uses the keypress, it should return true to prevent the keypress from being used by other widgets.
+| getfocushandler()     | This function is called when a widget receives keyboard focus.  It should return the logical OR of zero or more of: 1 - set the keyboard focus to this area, and 2 - set the data focus to this area.
+| losefocushandler()    | This function is called when a widget is about to lose keyboard focus.
 
 Finally, in order to be able to receive focus, widgets must "register" "focusable areas" with the page.  This is done with the pg_addarea() function:
 
@@ -75,41 +69,34 @@ A form widget, of which there can be more than one on a page, controls data at t
 
 Forms can have one of several modes of operation, which can be shown onscreen via a "form-status" widget.
 
-- "View" -	Data is being viewed.  The data from the objectsource widget may contain several records, in which case the form widget is free to move among the records.
-
-- "Modify" -	Data is being modified for an existing object.  If the objectsource widget contains multiple object records, the form may NOT browse among them without going back to "View" mode by either 1) cancelling the changes it is making, or 2) saving the changes it has made.
-
-- "New" -	A new unsaved object is being created.  The record is not yet in the objectsource nonvisual widget, and is thus not in the server's objectsystem either.  A form in this mode can transition to "View" by saving the record.
-
-- "Query" -	The form is being used as a query form.  That is, the data elements on the form can be filled in to provide query criteria.  When the form performs the query, it loads the objectsource widget with resulting records and then transitions to "View" mode for the first of those records.  A forced transition from the "View" state to "New" after a query has been performed will automatically load the form fields with query criteria data, where possible.
-
-- "No Data" -	The form does not have any data loaded, and has not been told to create a new record.  This can be the result of no activity being performed on the form, or if no objects were returned by a query.  A trans- ition from this state to "New" will automatically fill in fields according to the state of the most recent query (if the query returned empty).  The "No Data" state can also result if the user just deleted the last record that was contained in an objectsource that the form is currently using.
+| Mode       | Description
+| ---------- | ------------
+| "View"     | Data is being viewed.  The data from the objectsource widget may contain several records, in which case the form widget is free to move among the records.
+| "Modify"   | Data is being modified for an existing object.  If the objectsource widget contains multiple object records, the form may NOT browse among them without going back to "View" mode by either 1) cancelling the changes it is making, or 2) saving the changes it has made.
+| "New"      | A new unsaved object is being created.  The record is not yet in the objectsource nonvisual widget, and is thus not in the server's objectsystem either.  A form in this mode can transition to "View" by saving the record.
+| "Query"    | The form is being used as a query form.  That is, the data elements on the form can be filled in to provide query criteria.  When the form performs the query, it loads the objectsource widget with resulting records and then transitions to "View" mode for the first of those records.  A forced transition from the "View" state to "New" after a query has been performed will automatically load the form fields with query criteria data, where possible.
+| "No Data"  | The form does not have any data loaded, and has not been told to create a new record.  This can be the result of no activity being performed on the form, or if no objects were returned by a query.  A trans- ition from this state to "New" will automatically fill in fields according to the state of the most recent query (if the query returned empty).  The "No Data" state can also result if the user just deleted the last record that was contained in an objectsource that the form is currently using.
 
 The form element widget (such as an editbox, checkbox, etc.) should have several callback methods that the form widget can use to manage the form element.
 
-- getvalue()	should return the current value of the form element.
-
-- setvalue()	is used to set the current value of the form element, triggering the 'Modified' and 'Changed' events on the widget.  A 'flags' parameter passed to this method can however override the triggering of one or both of the 'Modified' and 'Changed' events.  The 'Modified' event is supposed to indicate that the user changed the value, whereas the 'Changed' event indicates that the value simply changed, no matter what caused it.
-
-- clearvalue() is used to clear the current values.  In the case of an edit box, this would set it to the "" string. For a radio button, it would make no radio buttons selected.  Note that this is different than the resetvalue() function.
-
-- resetvalue() is used to reset the value of a widget to its original state (if any).  If no original state has been defined, this will have the same effect as clearvalue().
-
-- setoptions() is used to set the possible values for the widget. This is used, for instance, on dynamically-populated drop-down list boxes.
-
-- enable()	Enables the widget so that it can receive focus.
-
-- readonly()	Sets the widget so that it does not appear disabled, but cannot receive keyboard focus.
-
-- disable()	Disables the widget so that it cannot receive focus, and thus looks disabled.
+| Method          | Description
+| --------------- | ------------
+| getvalue()      | should return the current value of the form element.
+| setvalue()      | is used to set the current value of the form element, triggering the 'Modified' and 'Changed' events on the widget.  A 'flags' parameter passed to this method can however override the triggering of one or both of the 'Modified' and 'Changed' events.  The 'Modified' event is supposed to indicate that the user changed the value, whereas the 'Changed' event indicates that the value simply changed, no matter what caused it.
+| clearvalue()    | is used to clear the current values.  In the case of an edit box, this would set it to the "" string. For a radio button, it would make no radio buttons selected.  Note that this is different than the resetvalue() function.
+| resetvalue()    | is used to reset the value of a widget to its original state (if any).  If no original state has been defined, this will have the same effect as clearvalue().
+| setoptions()    | is used to set the possible values for the widget. This is used, for instance, on dynamically-populated drop-down list boxes.
+| enable()        | Enables the widget so that it can receive focus.
+| readonly()      | Sets the widget so that it does not appear disabled, but cannot receive keyboard focus.
+| disable()       | Disables the widget so that it cannot receive focus, and thus looks disabled.
 
 Finally, the form element widget needs to notify the form widget when changes occur in its value.  This is done via calls placed to form widget functions.
 
-- register()	Tells the form widget that the form element widget is a part of the form.
-
-- datanotify() Notifies the form widget that the value of a form element has changed.
-
-- focusnotify() Tells the form widget that one of the form elements just received focus.
+| Function        | Description
+| --------------- | ------------
+| register()      | Tells the form widget that the form element widget is a part of the form.
+| datanotify()    | Notifies the form widget that the value of a form element has changed.
+| focusnotify()   | Tells the form widget that one of the form elements just received focus.
 
 When a form element widget initializes, it can determine the form widget to which it is attached by examining the global javascript variable "fm_current".  
 
@@ -126,29 +113,24 @@ Form widgets can have one of five different modes of operation, and can transiti
 
 Forms can be commanded to transition from one mode to another either programmatically or as initiated by the end-user.  The following events or calls can occur to cause this to happen.
 
-- Save -	    Saving causes a form in Modify or New mode to send data to the server and then transition to View mode.
-
-- Edit -	    Requesting an Edit operation causes a form to transition from No Data to New or from View to Modify.  A form in View mode can have an implicit Edit command performed if the user clicks on a form element, causing it to receive focus. This implicit Edit can be disabled in the form's config- uration.  Forms in No Data mode need an explicit Edit command.  
-
-- New -	    Causes a form in View, Query, or No Data mode to clear its contents and then transition to New mode.  If the form was in Modify mode, the user will be prompted to either do a Save or Discard operation, or to Cancel the New request. If the form was in No Data or View mode as the result of a query, the fields can be auto-populated with the relevant query criteria.
-
-- Discard -   Causes a form in Modify mode to cancel its changes and then transition back to View mode.  Causes a form in New mode to cancel its changes and transition back to No Data mode. Causes a form in Query mode to be cleared and then remain in query mode.
-
-- Query -	    Causes a form in View, Query, or No Data mode to clear its contents and then transition to Query mode.  A form in Modify mode will prompt the user for Save or Discard first. If the form was in View or No Data mode as the result of a query, the query fields will be auto-populated with the original query criteria.
-
-- QueryExec - Causes a form in Query mode to send a data request to the objectsource, and then transition to View mode if data was returned, or to No Data mode if the query returned no objects.  If more than one form is attached to the given objectsource, the form in Query mode will stay in query mode if View mode is not allowed for the form.
-
-- Delete -    Causes a form in New mode to clear and remain in New mode. Causes a form in View mode to delete the record and then move to View mode on the next record or to No Data mode. Causes a form in Query mode to return to Query mode with no data in the query fields.
-
-- Clear -	    Causes a form to transition to No Data mode.  If the form had unsaved data resulting from a New or Modify mode, then the user is prompted to Save or Discard first.  This operation also clears any rows in the objectsource widget. (it does not delete them from the server, but rather just disconnects the replica).
+| Event      | Description
+| ---------- | ------------
+| Save       | Saving causes a form in Modify or New mode to send data to the server and then transition to View mode.
+| Edit       | Requesting an Edit operation causes a form to transition from No Data to New or from View to Modify.  A form in View mode can have an implicit Edit command performed if the user clicks on a form element, causing it to receive focus. This implicit Edit can be disabled in the form's config- uration.  Forms in No Data mode need an explicit Edit command.  
+| New        | Causes a form in View, Query, or No Data mode to clear its contents and then transition to New mode.  If the form was in Modify mode, the user will be prompted to either do a Save or Discard operation, or to Cancel the New request. If the form was in No Data or View mode as the result of a query, the fields can be auto-populated with the relevant query criteria.
+| Discard    | Causes a form in Modify mode to cancel its changes and then transition back to View mode.  Causes a form in New mode to cancel its changes and transition back to No Data mode. Causes a form in Query mode to be cleared and then remain in query mode.
+| Query      | Causes a form in View, Query, or No Data mode to clear its contents and then transition to Query mode.  A form in Modify mode will prompt the user for Save or Discard first. If the form was in View or No Data mode as the result of a query, the query fields will be auto-populated with the original query criteria.
+| QueryExec  | Causes a form in Query mode to send a data request to the objectsource, and then transition to View mode if data was returned, or to No Data mode if the query returned no objects.  If more than one form is attached to the given objectsource, the form in Query mode will stay in query mode if View mode is not allowed for the form.
+| Delete     | Causes a form in New mode to clear and remain in New mode. Causes a form in View mode to delete the record and then move to View mode on the next record or to No Data mode. Causes a form in Query mode to return to Query mode with no data in the query fields.
+| Clear      | Causes a form to transition to No Data mode.  If the form had unsaved data resulting from a New or Modify mode, then the user is prompted to Save or Discard first.  This operation also clears any rows in the objectsource widget. (it does not delete them from the server, but rather just disconnects the replica).
 
 All of the above can be accessed as Actions on the form widget, either via simple connectors or via scripts.  The below events that cause status changes are not generally initiated by the user.
 
-- ObjectNoLongerExists - This happens when for some reason the object- source nonvisual widget loses the record being viewed or edited in the form widget.  This can be because the record was deleted via another form or table attached to the objectsource, or because the objectsource received a data replication message from the server indicating that the object/record was deleted.  The form widget will respond by returning to View mode if other data is present in the objectsource, or to No Data, as appropriate.
-
-- ObjectChanged - This happens when some other form, table, or replication message causes the objectsource's copy of the data to be changed.  It will transition a form in Modify mode back to View mode with the updated information, or simply update a form already in View mode.
-
-- ObjectCreated - This happens when a form in No Data mode as a result of an empty query result set can transition to View mode because a replication message was received that inserted a row matching the criteria, or because some other form or table on the screen created a record in the object- source.
+| Event                 | Description
+| --------------------- | ------------
+| ObjectNoLongerExists  | This happens when for some reason the object- source nonvisual widget loses the record being viewed or edited in the form widget.  This can be because the record was deleted via another form or table attached to the objectsource, or because the objectsource received a data replication message from the server indicating that the object/record was deleted.  The form widget will respond by returning to View mode if other data is present in the objectsource, or to No Data, as appropriate.
+| ObjectChanged         | This happens when some other form, table, or replication message causes the objectsource's copy of the data to be changed.  It will transition a form in Modify mode back to View mode with the updated information, or simply update a form already in View mode.
+| ObjectCreated         | This happens when a form in No Data mode as a result of an empty query result set can transition to View mode because a replication message was received that inserted a row matching the criteria, or because some other form or table on the screen created a record in the object- source.
 
 There will be a special "form status" widget which can reflect the mode the form is in.  The form status widget is a special case in that it cannot receive focus, but the form will use the standard setvalue() callback in order to change the visual representation of the widget.  It is also possible to have more than one kind of form status widget; these widgets only need to have a property "isFormStatusWidget" that is set to true.
 

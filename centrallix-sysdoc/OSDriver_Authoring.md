@@ -172,30 +172,28 @@ To register with the OSML, the driver must first allocate an ObjDriver structure
 
 This involves setting a large number of fields to the appropriate entry points within the OS Driver, as well as telling the OSML what object type(s) are handled by the driver and giving the OSML a description of the driver.  A list of the required entry point functions / fields follows:
 
-- Open: Function that the OSML calls when the user opens an object managed by this driver.
-- Close: Close an open object.
-- Create: Create a new object.
-- Delete: Delete an existing object.
-
-- OpenQuery: Start a query for child objects.
-- QueryDelete: Delete all objects in the query result set.
-- QueryFetch: Open the next child object in the query's result set.
-- QueryClose: Close an open query.
-
-- Read: Read content from the object.
-- Write: Write content to the object.
-
-- GetAttrType: Get the type of an object's attribute.
-- GetAttrValue: Get the value of an object's attribute.
-- GetFirstAttr: Get the first attribute associated with the object.
-- GetNextAttr: Get the next attribute associated with the object.
-- SetAttrValue: Set the value of an attribute.
-- AddAttr: Add a new attribute to an object.
-- OpenAttr: Open an attribute as if it were an object with content.
-
-- GetFirstMethod: Get the first method of the object.
-- GetNextMethod: Get the next method of an object.
-- ExecuteMethod: Execute a method with an optional string parameter.
+| Function/Field       | Description
+| -------------------- | ------------
+| Open                 | Function that the OSML calls when the user opens an object managed by this driver.
+| Close                | Close an open object.
+| Create               | Create a new object.
+| Delete               | Delete an existing object.
+| OpenQuery            | Start a query for child objects.
+| QueryDelete          | Delete all objects in the query result set.
+| QueryFetch           | Open the next child object in the query's result set.
+| QueryClose           | Close an open query.
+| Read                 | Read content from the object.
+| Write                | Write content to the object.
+| GetAttrType          | Get the type of an object's attribute.
+| GetAttrValue         | Get the value of an object's attribute.
+| GetFirstAttr         | Get the first attribute associated with the object.
+| GetNextAttr          | Get the next attribute associated with the object.
+| SetAttrValue         | Set the value of an attribute.
+| AddAttr              | Add a new attribute to an object.
+| OpenAttr             | Open an attribute as if it were an object with content.
+| GetFirstMethod       | Get the first method of the object.
+| GetNextMethod        | Get the next method of an object.
+| ExecuteMethod        | Execute a method with an optional string parameter.
 
 The only method that can be set to NULL is the QueryDelete method, in which case the OSML will call QueryFetch() and Delete() in succession.  However, if the underlying network resource has the capability of intelligently deleting objects matching the query's criteria, this method should be implemented (as with a database server).
 
@@ -287,15 +285,18 @@ The Open routine should return its internal structure pointer on success, or NUL
 
 It is important to know what kinds of fields normally are placed in the allocated data structure returned by Open.  These fields are all determined by the driver author, but here are a few typical ones that are helpful to have ("inf" is the pointer to the structure here):
 
-- inf->Obj (pObject): This is a copy of the 'obj' pointer passed to the Open routine.
-- inf->Mask (int)	The 'mask' argument passed to Open.
-- inf->Node (pSnNode)	A pointer to the node object, as returned from snNewNode() or snReadNode(), or if structure files aren't being used as the node content type, a pointer to whatever structure contains information about the node object.
+| Field      | Type      | Description
+| ---------- | --------- | ------------
+| inf->Obj   | pObject   | This is a copy of the 'obj' pointer passed to the Open routine.
+| inf->Mask  | int       | The 'mask' argument passed to Open.
+| inf->Node  | pSnNode   | A pointer to the node object, as returned from snNewNode() or snReadNode(), or if structure files aren't being used as the node content type, a pointer to whatever structure contains information about the node object.
 
 The Close() routine is called with two parameters:
 
-- inf_v (void*)	This param is the pointer that the Open routine returned.  Normally the driver will cast the void* parameter to some other structure pointer to access the object's information.
-
-- oxt (pObjTrxTree*)	The transaction tree pointer.
+| Param  | Type         | Description
+| ------ | ------------ | ------------
+| inf_v  | void*        | This param is the pointer that the Open routine returned.  Normally the driver will cast the void* parameter to some other structure pointer to access the object's information.
+| oxt    | pObjTrxTree* | The transaction tree pointer.
 
 The Close routine should return 0 on success or -1 on failure.  The os driver must make sure it properly deallocates the memory used by originally opening the object, such as the internal structure returned by open and passed in as inf_v.
 
@@ -312,9 +313,10 @@ The Create routine has parameters identical to the Open routine.  It should retu
 
 The Delete routine is passed the following parameters:
 
-- obj (pObject)	The Object structure pointer, used in the same way as in Open and Delete.
-
-- oxt (pObjTrxTree*)	The transaction tree pointer.
+| Param  | Type          | Description
+| ------ | ------------- | ------------
+| obj    | pObject       | The Object structure pointer, used in the same way as in Open and Delete.
+| oxt    | pObjTrxTree*  | The transaction tree pointer.
 
 Delete should return 0 on success and -1 on failure.
 
@@ -325,17 +327,14 @@ Some, but not all, objects will have content.  If the object does or can have co
 
 The Read routine reads content from the object, as if  reading from a file.  The parameters passed are almost identical to those used in the fdRead command in MTASK: 
 
-- inf_v (void*)	The generic pointer to the structure returned from Open().
-
-- buffer (char*)	The destination buffer for the data being read in.
-
-- maxcnt (int)	The maximum number of bytes to read into the buffer.
-
-- flags (int)		Either 0 or FD_U_SEEK, in which case the user is specifying the seek offset for the read in the 5th argument.  Of course, not all objects will be seekable, and furthermore, some of the objects handled by the driver may have full or limited seek functionality, even though others may not.
-
-- arg (int)		Extra argument, currently only used to specify an optional seek offset.
-
-- oxt (pObjTrxTree*)	The transaction tree pointer.
+| Parameter | Type          | Description
+| --------- | ------------- | ------------
+| inf_v     | void*         | The generic pointer to the structure returned from Open().
+| buffer    | char*         | The destination buffer for the data being read in.
+| maxcnt    | int           | The maximum number of bytes to read into the buffer.
+| flags     | int           | Either 0 or FD_U_SEEK, in which case the user is specifying the seek offset for the read in the 5th argument.  Of course, not all objects will be seekable, and furthermore, some of the objects handled by the driver may have full or limited seek functionality, even though others may not.
+| arg       | int           | Extra argument, currently only used to specify an optional seek offset.
+| oxt       | pObjTrxTree*  | The transaction tree pointer.
 
 The Write routine is very similar, except that instead of 'maxcnt', the third argument is 'cnt', and specifies how much data is in the buffer waiting to be written.
 
@@ -370,13 +369,12 @@ Once the query is underway with OpenQuery, the user will either start fetching t
 
 The QueryFetch routine should return an inf_v pointer to the child object, or NULL if no more child objects are to be returned by the query.  Some drivers may be able to use their internal Open function to generate the newly opened object, although others will directly allocate the inf_v structure and fill it in based on the current queried child object.  QueryFetch will be passed these parameters:
 
-- qy_v (void*)	The value returned by OpenQuery.
-
-- obj (pObject)	The newly-created object structure that the OSML is using to track the newly queried child object.
-
-- mode (int)		The open mode for the new object, as with obj->Mode in Open().
-
-- oxt (pObjTrxTree*)	The transaction tree pointer.
+| Parameter  | Type           | Description
+| ---------- | -------------- | ------------
+| qy_v       | void*          | The value returned by OpenQuery.
+| obj        | pObject        | The newly-created object structure that the OSML is using to track the newly queried child object.
+| mode       | int            | The open mode for the new object, as with obj->Mode in Open().
+| oxt        | pObjTrxTree*   | The transaction tree pointer.
 
 All object drivers will need to add an element to the obj->Pathname structure to indicate the path to the child object being returned. This will involve a process somewhat like this: (given that new_name is the new object's name, qy is the current query structure, which contains a field 'Parent' that points to the inf_v originally returned by Open, and where the inf_v contains a field Obj that points to the Object structure containing a Pathname structure)
 
@@ -411,11 +409,13 @@ True/false or on/off attributes should be treated as DATA_T_INTEGER for the time
 
 Here is a description of the functionality of the five mandatory attributes:
 
-- 'name'		This attribute indicates the name of the object, just as it should appear in any directory listing.  The name of the object must be unique for the directory it is in.
-- 'content_type'	This is the type of the object's content, given as a MIME-type.
-- 'annotation'	This is an annotation for the object.  While users may not assign annotations to all objects, each object should be able to have an annotation.  Normally the annotation is a short description of what the object is.  For the Sybase driver, annotations for rows are created by assigning an 'expression' to the table in question, such as 'first_name + last_name' for a people table.
-- 'inner_type'	An alias for 'content_type'.  Both should be supported.
-- 'outer_type'	This is the type of the object itself (the container).
+| Attribute      | Description
+| -------------- | ------------
+| 'name'         | This attribute indicates the name of the object, just as it should appear in any directory listing.  The name of the object must be unique for the directory it is in.
+| 'content_type' | This is the type of the object's content, given as a MIME-type.
+| 'annotation'   | This is an annotation for the object.  While users may not assign annotations to all objects, each object should be able to have an annotation.  Normally the annotation is a short description of what the object is.  For the Sybase driver, annotations for rows are created by assigning an 'expression' to the table in question, such as 'first_name + last_name' for a people table.
+| 'inner_type'   | An alias for 'content_type'.  Both should be supported.
+| 'outer_type'   | This is the type of the object itself (the container).
 
 A sixth attribute is not mandatory, but is useful if the object might have content that could in turn be a node object (be interpreted by another driver).  This attribute is 'last_modification', of type DATA_T_DATETIME, and should indicate when the object's content was last updated or modified.
 
@@ -551,11 +551,11 @@ It is also common practice to bypass the stXxx() functions entirely and access t
 
     for(i=0;i<inf->nSubInf;i++)
         {
-    if (inf->SubInf[i]->Type == ST_T_ATTRIB)
-        {
-        /** do stuff with attribute... **/
+        if (inf->SubInf[i]->Type == ST_T_ATTRIB)
+            {
+            /** do stuff with attribute... **/
+            }
         }
-    }
 
 ## IV Memory Management in Centrallix
 Centrallix has its own memory manager that caches freshly-deallocated blocks of memory in lists according to size so that they can be quickly reallocated.  This memory manager also catches double-freeing of blocks, making debugging of memory problems a little easier.
@@ -741,22 +741,26 @@ This function compiles a textual expression into an expression tree.  The 'objli
 
 The 'lxflags' parameter gives a set of lexical analyzer flags for the compilation.  These flags alter the manner in which the input string is tokenized.  A bitmask; possible values are:
 
-- MLX_F_ICASEK:	automatically convert all keywords (non-quoted strings) to lowercase.
-- MLX_F_POUNDCOMM:	allow comment lines that begin with a # sign.
-- MLX_F_CCOMM:	allow c-style comments /* */
-- MLX_F_CPPCOMM:	allow c-plus-plus comments //
-- MLX_F_SEMICOMM:	allow semicolon comments ;this is a comment
-- MLX_F_DASHCOMM:	allow double-dash comments --this is a comment
-- MLX_F_DASHKW:	keywords can include the dash '-'.  Otherwise, the keyword is treated as two keywords with a minus sign between them.
-- MLX_F_FILENAMES:	Treat a non-quoted string beginning with a slash '/' or dot-slash './' as a filename, and allow slashes and dots in the string without quotes needed.
-- MLX_F_ICASER:	automatically convert all reserved words to lowercase.  The use of this flag is highly recommended, and in some cases, required.
-- MLX_F_ICASE:	same as MLX_F_ICASER | MLX_F_ICASEK.
+| Value            | Description
+| ---------------- | ------------
+| MLX_F_ICASEK     | automatically convert all keywords (non-quoted strings) to lowercase.
+| MLX_F_POUNDCOMM  | allow comment lines that begin with a # sign.
+| MLX_F_CCOMM      | allow c-style comments /* */
+| MLX_F_CPPCOMM    | allow c-plus-plus comments //
+| MLX_F_SEMICOMM   | allow semicolon comments ;this is a comment
+| MLX_F_DASHCOMM   | allow double-dash comments --this is a comment
+| MLX_F_DASHKW     | keywords can include the dash '-'.  Otherwise, the keyword is treated as two keywords with a minus sign between them.
+| MLX_F_FILENAMES  | Treat a non-quoted string beginning with a slash '/' or dot-slash './' as a filename, and allow slashes and dots in the string without quotes needed.
+| MLX_F_ICASER     | automatically convert all reserved words to lowercase.  The use of this flag is highly recommended, and in some cases, required.
+| MLX_F_ICASE      | same as MLX_F_ICASER | MLX_F_ICASEK.
 
 The 'cmpflags' is a bitmask parameter controlling the compilation of the expression.  It can contain the following values:
 
-- EXPR_CMP_WATCHLIST:	A list "value,value,value" is expected first in the expression.
-- EXPR_CMP_ASCDESC:	Recognize 'asc' and 'desc' following a value as flags to indicate sort order.
-- EXPR_CMP_OUTERJOIN:	Recognize the *= and =* syntax as outer joins.
+| Value               | Description
+| ------------------- | ------------
+| EXPR_CMP_WATCHLIST  | A list "value,value,value" is expected first in the expression.
+| EXPR_CMP_ASCDESC    | Recognize 'asc' and 'desc' following a value as flags to indicate sort order.
+| EXPR_CMP_OUTERJOIN  | Recognize the *= and =* syntax as outer joins.
 
 #### expFreeExpression(pExpression this)
 Frees an expression tree.
@@ -790,13 +794,15 @@ This function reverse-evaluates a tree.
 The results of an expression evaluation can be accessed by examining the
 top-level tree node.  The following properties are useful:
 
-- tree->DataType - The type of the final value, see 'Managing Object Attributes' above for types.
-- tree->Flags - Contains the bit EXPR_F_NULL if the expression evaluated to NULL.
-- tree->Integer - If DATA_T_INTEGER, this is the integer value.
-- tree->String - If DATA_T_STRING, this is the string value.
-- tree->Types.Double - If DATA_T_DOUBLE, this is the double value.
-- tree->Types.Date - If DATA_T_DATETIME, this is the date/time value
-- tree->Types.Money - If DATA_T_MONEY, this is the money value.
+| Property           | Description
+| ------------------ | ------------
+| tree->DataType     | The type of the final value, see 'Managing Object Attributes' above for types.
+| tree->Flags        | Contains the bit EXPR_F_NULL if the expression evaluated to NULL.
+| tree->Integer      | If DATA_T_INTEGER, this is the integer value.
+| tree->String       | If DATA_T_STRING, this is the string value.
+| tree->Types.Double | If DATA_T_DOUBLE, this is the double value.
+| tree->Types.Date   | If DATA_T_DATETIME, this is the date/time value
+| tree->Types.Money  | If DATA_T_MONEY, this is the money value.
 
 There are several other EXP functions used to deal with aggregates and a few other obscure features as well.  Aggregates are mostly handled internally by Centrallix so further explanation should not be necessary here.
 
@@ -893,11 +899,13 @@ Centrallix provides a lexical analyzer library that can be used for parsing many
 ### pLxSession mlxOpenSession(pFile fd, int flags)
 This function opens a lexer session from a file source.  See the 'expression' module description previous in this document for more information on the flags.  Some flags of use here but not mentioned in that section are:
 
-- MLX_F_EOL - Return end-of-line as a token.  Otherwise, the end of a line is just considered whitespace.
-- MLX_F_EOF - Return end-of-file as a token.  Otherwise,  if end of file is reached it is an error.
-- MLX_F_IFSONLY - Only return string values separated by tabs, spaces, newlines, and carriage returns.  For example, normally the brace in "this{brace" is a token and that string will result in three tokens, but in IFSONLY mode it is just one token.
-- MLX_F_NODISCARD - This flag indicates to the lexer that the calling function expects to be able to read data normally using fdRead() or another lexer session after the last token is read and the session is closed.  The lexer will then attempt to "unread" bytes that it buffered during the lexical analysis process (it does fdRead() operations in 2k or so chunks).  If this flag is not specified, up to 2k of information after the last token will be discarded and further fdRead()s on the file descriptor will start at an undefined place in the file.
-- MLX_F_ALLOWNUL - Allow NUL characters ('\0') in the input stream.  If this flag is not set, then NUL characters result in an error condition.  This prevents unwary callers from mis-reading a token returned by mlxStringVal if the token contains a NUL.  If ALLOWNUL is turned on, then the caller must ensure that it is safely handling values with NULs.  
+| Flag                | Description
+| ------------------- | ------------
+| MLX_F_EOL           | Return end-of-line as a token.  Otherwise, the end of a line is just considered whitespace.
+| MLX_F_EOF           | Return end-of-file as a token.  Otherwise,  if end of file is reached it is an error.
+| MLX_F_IFSONLY       | Only return string values separated by tabs, spaces, newlines, and carriage returns.  For example, normally the brace in "this{brace" is a token and that string will result in three tokens, but in IFSONLY mode it is just one token.
+| MLX_F_NODISCARD     | This flag indicates to the lexer that the calling function expects to be able to read data normally using fdRead() or another lexer session after the last token is read and the session is closed.  The lexer will then attempt to "unread" bytes that it buffered during the lexical analysis process (it does fdRead() operations in 2k or so chunks).  If this flag is not specified, up to 2k of information after the last token will be discarded and further fdRead()s on the file descriptor will start at an undefined place in the file.
+| MLX_F_ALLOWNUL      | Allow NUL characters ('\0') in the input stream.  If this flag is not set, then NUL characters result in an error condition.  This prevents unwary callers from mis-reading a token returned by mlxStringVal if the token contains a NUL.  If ALLOWNUL is turned on, then the caller must ensure that it is safely handling values with NULs.  
 
 ### pLxSession mlxStringSession(char* str, int flags)
 This function opens a lexer session from a text string.  Same as the above function except that the flag MLX_F_NODISCARD makes no sense for the string.

@@ -16,7 +16,7 @@ is the name of the command or option).
 
 ```
 " This sets "default" options for all C files you edit.
-    augroup C
+augroup C
     au!
     au BufNewFile *.c 0read ~/util/templates/C.c
     au FileType c set ai si sts=4 sw=4 et tw=78 fo=croq2 fenc=us-ascii
