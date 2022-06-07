@@ -810,21 +810,26 @@ cxssAuthorize(char* domain, char* type, char* path, char* attr,
               int access_type, int log_mode)
     {
 	/** make sure everything is intitalized **/
-	if(CXSS.Policy == NULL){
+	if(CXSS.Policy == NULL)
+		{
 		/** system is booting, allow if has the proper endorsement **/
-		if(cxssHasEndorsement("system:seckernel", "*") == 1){
+		if(cxssHasEndorsement("system:seckernel", "*") == 1)
+			{
 			return CXSS_ACT_T_ALLOW;
-		} else {
+			}
+		else 
+			{
 			return CXSS_ACT_T_DENY;
+			}
 		}
-	}
 	
 	pCxssPolicy rootPolPtr = CXSS.Policy;
 
 	/** if security is dissabled, stop now; saves time **/
-	if(CXSS.Policy->PolicyMode == CXSS_MODE_T_DISABLE){
+	if(CXSS.Policy->PolicyMode == CXSS_MODE_T_DISABLE)
+		{
 		return CXSS_ACT_T_ALLOW;
-	}
+		}
 
 	/** iterate through every rule in every policy until a match is found **/
 	
@@ -841,7 +846,8 @@ cxssAuthorize(char* domain, char* type, char* path, char* attr,
 	/** use action to store result, and track if any matches were found **/
 	int action = -1; /** set to -1 for not found **/
 
-	while((xqHead(queue) != NULL)){
+	while((xqHead(queue) != NULL))
+		{
 		/** dequeue and free struct **/
 		PolicyNode_t curStruct = *queue.Next;
 		pPolicyNode_t curStructPtr = queue.Next;
@@ -854,65 +860,80 @@ cxssAuthorize(char* domain, char* type, char* path, char* attr,
 		int numRules = curPol->Rules.nItems;
 
 		/** Only check rules if the policy is applicable **/
-		if(strlen(curPol->Domain) == 0 || strcmp(curPol->Domain, domain) == 0){
-			for(i = 0 ; i < numRules ; i++){
+		if(strlen(curPol->Domain) == 0 || strcmp(curPol->Domain, domain) == 0)
+			{
+			for(i = 0 ; i < numRules ; i++)
+				{
 				pCxssPolRule curRule = (pCxssPolRule) (xaGetItem(&(curPol->Rules), i));
 				/** check if rule is applicable **/
 				int isMatch = cxssIsRuleMatch(domain, type, path, attr, access_type, curRule);
-				if(isMatch == CXSS_MATCH_T_TRUE){
+				if(isMatch == CXSS_MATCH_T_TRUE)
+					{
 					/** FIXME: need to check rule exceptions **/
 					action = curRule->Action;
 					break; /* comment out to visit all rules */
-				}else if(isMatch == CXSS_MATCH_T_ERR){
+					}
+				else if(isMatch == CXSS_MATCH_T_ERR)
+					{
 					goto err;
+					}
 				}
 			}
-		}
 
 		/** stop iteration if got a match **/
-		if(action != -1){
+		if(action != -1)
+			{
 			break; /* comment out to visit all policies */
-		}
+			}
 
 		/** add every sub policy to the queue **/
 		int numSubPol = curPol->SubPolicies.nItems;
-		for(i = 0 ; i < numSubPol ; i++){
+		for(i = 0 ; i < numSubPol ; i++)
+			{
 			pPolicyNode_t node = nmMalloc(sizeof(PolicyNode_t)); 
 			node->Policy = xaGetItem(&(curPol->SubPolicies), i);
 			xqAddBefore(queue, *node); 
+			}
 		}
-	}
 	
 	/** No matching rules found. Set to default action **/
-	if(action == -1){
+	if(action == -1)
+		{
 		action = CXSS_ACT_T_DENY; /** FIXME: Need to get from policy struct, once that is possible **/
-	}
+		}
 
 	/** clear out anything left on the queue **/
-	while(xqHead(queue) != NULL){
+	while(xqHead(queue) != NULL)
+		{
 		PolicyNode_t curStruct = *queue.Next;
 		pPolicyNode_t curStructPtr = queue.Next;
 		xqRemove((curStruct)); 
 		nmFree(curStructPtr, sizeof(PolicyNode_t));
-	}
-    if(CXSS.Policy->PolicyMode == CXSS_MODE_T_WARN){
+		}
+    if(CXSS.Policy->PolicyMode == CXSS_MODE_T_WARN)
+		{
 	    //FIXME: how do we warn?
 	    return CXSS_ACT_T_ALLOW;
-    }else if(CXSS.Policy->PolicyMode == CXSS_MODE_T_ENFORCE){
+   		}
+	else if(CXSS.Policy->PolicyMode == CXSS_MODE_T_ENFORCE)
+		{
 	    return action;
-    }else{
+    	}
+	else
+		{
 	    mssError(1,"CXSS","cxssAuthorize(): Invalid operation mode");
 	    goto err;
-    }
+    	}
     
     err:
 	/** free any ptrs left on the queue **/
-	while(xqHead(queue) != NULL){
+	while(xqHead(queue) != NULL)
+		{
 		PolicyNode_t curStruct = *queue.Next;
 		pPolicyNode_t curStructPtr = queue.Next;
 		xqRemove((curStruct));
 		nmFree(curStructPtr, sizeof(PolicyNode_t));
-	}
+		}
 	return CXSS_ACT_T_DENY;
     }
 
@@ -921,8 +942,8 @@ cxssAuthorize(char* domain, char* type, char* path, char* attr,
  ***/ 
 
 regex_t*
-    genRegexFromObjName(char* objName)
-    	{
+genRegexFromObjName(char* objName)
+    {
 	regex_t* regex = nmMalloc(sizeof(regex_t)); /** store the created regex object **/
 	int genValue;
 	int objNameLength = strlen(objName);
@@ -934,15 +955,18 @@ regex_t*
 	int i, j;
 	int regInd = 0;
 	regexStr[regInd++] = '^';
-	for(i = 0 ; i < objNameLength && regInd < regLen ; i++){
+	for(i = 0 ; i < objNameLength && regInd < regLen ; i++)
+		{
 		/** check for special characters. If it is a *, replace with wildcard. 
 		 ** escape the following: ., +, ?, ^, $, (, ), [, ], {, }, |, \.
 		 **/
-		switch(objName[i]){
+		switch(objName[i])
+			{
 			case '*':
-				for(j = 0 ; j < wildcardLength && regInd < regLen; j++){
+				for(j = 0 ; j < wildcardLength && regInd < regLen; j++)
+					{
 					regexStr[regInd++] = wildcard[j];
-				}
+					}
 				break;
 			case '.':
 			case '+':
@@ -957,13 +981,16 @@ regex_t*
 			case '}':
 			case '|':
 			case '\\':
-				if(regInd + 1 < regLen){
+				if(regInd + 1 < regLen)
+					{
 					regexStr[regInd++] = '\\';
 					regexStr[regInd++] = objName[i];
-				}else {
+					}
+				else 
+					{
 					/** make sure will be an error **/
 					regInd = regLen;
-				}
+					}
 				break;
 			default:
 				regexStr[regInd++] = objName[i];
@@ -971,20 +998,24 @@ regex_t*
 		}		
 	}
 	regexStr[regInd++] = '$';
-	if(regInd >= regLen){
+	if(regInd >= regLen)
+		{
 		mssError(1,"CXSS","genRegexFromObjName(): Object name is too long to convert to regex.");
 		goto err;
-	} else {
+		} 
+	else 
+		{
 		/** make sure to terminate the string **/
 		regexStr[regInd++] = '\0';
-	}
+		}
 		/** Function call to create regex **/
 	genValue = regcomp(regex, regexStr, REG_EXTENDED|REG_NOSUB); 
 		/** If compilation is not successful, throw an error **/
-	if (genValue != 0) {
+	if (genValue != 0) 
+		{
 		mssError(1,"CXSS","genRegexFromObjName(): Regex compilation error.");
 		goto err;
-	}
+		}
 	
 	return regex;
 
@@ -1024,61 +1055,72 @@ cxssIsRuleMatch(char* domain, char* type, char* path, char* attr,
 	    *colonptr = '\0';
 	    colonptr = strchr(objType, ':');
 	    if (colonptr)
-		{
-		objName = colonptr+1;
-		*colonptr = '\0';
-		colonptr = strchr(objName, ':');
-		if (colonptr)
-		    {
-		    attrName = colonptr+1;
-		    *colonptr = '\0';
-		    }
-		}
+			{
+			objName = colonptr+1;
+			*colonptr = '\0';
+			colonptr = strchr(objName, ':');
+			if (colonptr)
+				{
+				attrName = colonptr+1;
+				*colonptr = '\0';
+				}
+			}
 	    }
 
 	/** if blank, defaults to all, so match. Otherwise, compare **/
-	if(strlen(appName) != 0){
+	if(strlen(appName) != 0)
+		{
 		isMatch &= (strcmp(domain, appName) == 0);
-	}
-	if(strlen(objType) != 0){
+		}
+	if(strlen(objType) != 0)
+		{
 		isMatch &= (strcmp(type, objType) == 0);
-	}
-	if(strlen(objName) != 0){
+		}
+	if(strlen(objName) != 0)
+		{
 		/* Use regex to check object against path */
 		regex_t* regexPtr = genRegexFromObjName(objName);
 		isMatch &= (regexec(regexPtr, path, 0, NULL, 0) == 0);
 		nmFree(regexPtr, sizeof(regex_t));
-	}
-	if(strlen(attrName) != 0){
+		}
+	if(strlen(attrName) != 0)
+		{
 		isMatch &= (strcmp(attr, attrName) == 0);
-	}
+		}
 
 	/** see if current subject matches the rule **/
 	/** FIXME: currently based solely on the username **/
 	char* userName = mssUserName();
-	if(strlen(rule->MatchSubject) > 0){
-		if(userName != NULL){
+	if(strlen(rule->MatchSubject) > 0)
+		{
+		if(userName != NULL)
+			{
 			isMatch &= (strcmp(rule->MatchSubject, userName) == 0);
-		}else {
+			}
+		else 
+			{
 			isMatch = false;
+			}
 		}
-	}
 	
 	/** check to see if endorsements match **/
 	/** FIXME: only checking based on full domain currently. Needs to deal with sub contexts. **/
-	if(strlen(rule->MatchEndorsement) != 0){
+	if(strlen(rule->MatchEndorsement) != 0)
+		{
 		isMatch &= cxssHasEndorsement(rule->MatchEndorsement, domain) == 1;
-	}
+		}
 
 	/** If matchAccess is left blank, it matches all access types **/
 	/** Note: access type cannot be 0 **/
-	if(access_type == 0){
+	if(access_type == 0)
+		{
 		mssError(1,"CXSS","cxssRuleIsMatch(): User access type cannot be 0.");
 		goto err;
-	}
-	if(rule->MatchAccess != 0){
+		}
+	if(rule->MatchAccess != 0)
+		{
 		isMatch &= (access_type == rule->MatchAccess);
-	}
+		}
 	
     return isMatch? CXSS_MATCH_T_TRUE : CXSS_MATCH_T_FALSE;
     err:
