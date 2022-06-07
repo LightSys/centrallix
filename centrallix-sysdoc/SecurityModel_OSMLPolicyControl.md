@@ -1,4 +1,4 @@
-# **Title:**	OSML Policy Control
+# OSML Policy Control
 Author:	Noah Board  
 Date: 06-Jun-2022  
   
