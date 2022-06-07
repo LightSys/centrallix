@@ -803,6 +803,7 @@ cxssAuthorizeSpec(char* objectspec, int access_type, int log_mode)
  *** roles or groups. 
  *** TODO: Does not handle rule exceptions
  *** TODO: Dynamically receive default action from policy rather than assuming it is a deny
+ *** TODO: Fix the warn functinality to do something
  ***/ 
 
 int
@@ -912,7 +913,7 @@ cxssAuthorize(char* domain, char* type, char* path, char* attr,
 		}
     if(CXSS.Policy->PolicyMode == CXSS_MODE_T_WARN)
 		{
-	    //FIXME: how do we warn?
+	    /** FIXME: how do we warn? **/
 	    return CXSS_ACT_T_ALLOW;
    		}
 	else if(CXSS.Policy->PolicyMode == CXSS_MODE_T_ENFORCE)

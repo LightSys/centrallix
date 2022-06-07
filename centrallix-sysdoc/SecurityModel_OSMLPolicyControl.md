@@ -70,4 +70,4 @@ Errors are generated if the resulting regex is too long, or if the `regcomp` fun
 
 
 # Testing
-Tests for the code described here can be found in centrallix/tests/. All of the tests are named in the following format: test_policy_XX.c. The tests provide some basic tests for all three functions. However, more tests against additional example rules and policies should be generated. Furthermore, tests besides C tests should be created. 
+Tests for the code described here can be found in centrallix/tests/. All of the tests are named in the following format: test_policy_XX.c. The tests provide some basic tests for all three functions. However, more tests against additional example rules and policies should be generated. Furthermore, tests besides C tests should be created.  
