@@ -435,7 +435,7 @@ AUTHENTICATION MAPPING AND TOKEN STORAGE
 
 OSML HOOKS (COVERAGE ENFORCEMENT)
 
-    In order to implement, and prevent the bypassing of, the security policy,
+    In order to implement and prevent the bypassing of the security policy,
     there needs to be a complete set of hooks in the OSML to call into the 
     security reference monitor for authorization.  These hooks are described
     below:

@@ -7,6 +7,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/magic.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -50,6 +51,16 @@
 int 
 objRead(pObject this, char* buffer, int maxcnt, int offset, int flags)
     {
+    //path pObject this
+    //access_type is read
+    //attr unset
+    //log_mode cxss_log_t_failure policy.h include header
+    //domain not supplied
+
+    if(cxssAuthorize(NULL, this->Type->Name, obj_internal_PathPart(this->Pathname, 0, 0), NULL, CXSS_ACC_T_READ, CXSS_LOG_T_FAILURE) ==  CXSS_ACT_T_DENY)
+    	{
+	return -1;
+    	}
     ASSERTMAGIC(this, MGK_OBJECT);
     /** Check recursion **/
     if (thExcessiveRecursion())

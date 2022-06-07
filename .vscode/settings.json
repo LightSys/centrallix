@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.js": "javascriptreact",
+        "cstdlib": "c",
+        "policy.h": "c"
+    }
+}

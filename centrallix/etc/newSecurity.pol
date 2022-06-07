@@ -72,7 +72,9 @@ security "system/sec-policy"
     //
     protect_pol_files "system/sec-policy-rule"
 	{
-	match_path = "/apps/*/secpolicy.pol";
+	//Paths do not work currently, so also add them to object
+	object = "::/apps/*/secpolicy.pol:";
+	path = "/apps/*/secpolicy.pol";
 	action = deny;
 
 	exception_pol_system "system/sec-policy-rule"
@@ -86,48 +88,48 @@ security "system/sec-policy"
     // anything)
     allow_root_exec "system/sec-policy-rule"
 	{
-	match_path = "/";
-	match_access = read,observe,exec;
+	path = "/";
+	access = read,observe,exec;
 	action = allow;
 	}
 
     // Allow access to some basic resources
     allow_resources "system/sec-policy-rule"
 	{
-	match_path = "/apps", "/apps/*", "/LICENSE.txt", "/sys", "/sys/cmp", "/sys/js", "/sys/js/**", "/sys/images/*.gif", "/sys/images/*.png";
-	match_access = read,observe;
+	path = "/apps", "/apps/*", "/LICENSE.txt", "/sys", "/sys/cmp", "/sys/js", "/sys/js/**", "/sys/images/*.gif", "/sys/images/*.png";
+	access = read,observe;
 	action = allow;
 	}
     allow_resources_cmp_exec "system/sec-policy-rule"
 	{
-	match_path = "/sys/cmp/*.cmp";
-	match_endorsement = "system:authenticated";
-	match_access = read,observe,exec,noexec;
+	path = "/sys/cmp/*.cmp";
+	endorsement = "system:authenticated";
+	access = read,observe,exec,noexec;
 	action = allow;
 	}
 
     // Allow access to the root app
     allow_index_app "system/sec-policy-rule"
 	{
-	match_path = "/index.app";
-	match_endorsement = "system:authenticated";
-	match_access = read,observe,exec;
+	path = "/index.app";
+	endorsement = "system:authenticated";
+	access = read,observe,exec;
 	action = allow;
 	}
 
     // Allow access to samples
     allow_samples "system/sec-policy-rule"
 	{
-	match_path = "/samples", "/samples/*.app", "/samples/*.cmp", "/samples/*.xml", "/samples/*.csv", "/samples/*.csv/rows", "/samples/*.csv/columns", "/samples/*.csv/columns/*", "/samples/*.spec", "/samples/*.http", "/samples/*.rpt", "/samples/*.lnk", "/samples/*.gif", "/samples/*.qyp", "/samples/*.qyt", "/samples/*.msg", "/samples/mbox", "/samples/*.txt";
-	match_endorsement = "system:authenticated";
-	match_access = read,observe,exec,noexec;
+	path = "/samples", "/samples/*.app", "/samples/*.cmp", "/samples/*.xml", "/samples/*.csv", "/samples/*.csv/rows", "/samples/*.csv/columns", "/samples/*.csv/columns/*", "/samples/*.spec", "/samples/*.http", "/samples/*.rpt", "/samples/*.lnk", "/samples/*.gif", "/samples/*.qyp", "/samples/*.qyt", "/samples/*.msg", "/samples/mbox", "/samples/*.txt";
+	endorsement = "system:authenticated";
+	access = read,observe,exec,noexec;
 	action = allow;
 	}
     allow_samples_csv_updates "system/sec-policy-rule"
 	{
-	match_path = "/samples/*.csv/rows/*";
-	match_endorsement = "system:authenticated";
-	match_access = read,observe,write,create,delete;
+	path = "/samples/*.csv/rows/*";
+	endorsement = "system:authenticated";
+	access = read,observe,write,create,delete;
 	action = allow;
 	}
     }

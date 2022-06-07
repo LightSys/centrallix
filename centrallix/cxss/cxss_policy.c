@@ -14,6 +14,7 @@
 #include "cxss/cxss.h"
 #include "stparse.h"
 #include "cxlib/xqueue.h"
+#include <regex.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -235,7 +236,8 @@ cxss_i_LoadPolicyGeneric(void* read_from, int (*read_fn)(), pCxssPolicy parent, 
 	/** Activate policy inclusions **/
 	if (cxss_i_ActivateIncludes(policy) < 0)
 	    goto error;
-
+	    
+	stFreeInf(policy_inf);
 	return policy;
 
     error:
@@ -725,18 +727,25 @@ int
 cxssPolicyInit()
     {
     char* path = NULL;
-
+	/** give intialization permission for any object system operations, and then remove after.
+	 **/
+	cxssPushContext();
+	cxssAddEndorsement("system:seckernel", "*");
+	
 	/** Lookup the specified path **/
 	if (stAttrValue(stLookup(CxGlobals.ParsedConfig, "security_policy_file"), NULL, &path, 0) < 0 || !path)
 	    {
 	    mssError(1, "CXSS", "security_policy_file not specified in server configuration");
+	    cxssPopContext();
 	    return -1;
 	    }
 
 	/** Load it **/
 	if (cxssLoadPolicy(path) < 0)
+	    cxssPopContext();
 	    return -1;
 
+    cxssPopContext();
     return 0;
     }
 
@@ -790,21 +799,26 @@ cxssAuthorizeSpec(char* objectspec, int access_type, int log_mode)
 
 /*** cxssAuthorize - like cxssAuthorizeSpec, but the various parts of the
  *** object spec are provided independently.
- ***/
- // - See SecurityModel_New.txt file for parm descriptions
- // - The rule information is already loaded in the policy data structure
- // (Inclusions / Subpolicies XArrays in policy.h)
- // - Endorsement information in cxss.h cxssHasEndorsement() call to check if current
- // subject has the specified endorsement
- // - Call to get current user (Subject) use mssUserName() in mtsession.h
+ *** Currently, the function checks usernames and endorsements, but NOT
+ *** roles or groups. 
+ ***/ 
 
- // check using usernames and endorsments only, not roles or groups
 int
 cxssAuthorize(char* domain, char* type, char* path, char* attr,
               int access_type, int log_mode)
     {
-    /** Just a stub right now **/
+	/*make sure everything is intitalized*/
+	if(CXSS.Policy == NULL){
+		//system is booting, allow if has the proper endorsement 
+		if(cxssHasEndorsement("system:seckernel", "*") == 1){
+			return CXSS_ACT_T_ALLOW;
+		} else {
+			return CXSS_ACT_T_DENY;
+		}
+	}
+	
 	pCxssPolicy rootPolPtr = CXSS.Policy;
+	
 
 	printf("\n\ncxssAuth CALLED!\n\n");
 
@@ -818,19 +832,10 @@ cxssAuthorize(char* domain, char* type, char* path, char* attr,
 	printf("Incl Spec AllowMode:          %s\n\n", inclSpec_1_ptr->AllowMode ? "true" : "false");
 	printf("\n\n");
 
-	//Start of actual program (Above is for debug, remove after)
 	//if security is dissabled, stop now; saves time
-	if(CXSS.Policy == NULL){
-		mssError(1,"CXSS","cxssAuthorize(): Policy not loaded, cannot authorize");
-		goto err;
-	}
 	if(CXSS.Policy->PolicyMode == CXSS_MODE_T_DISABLE){
 		return CXSS_ACT_T_ALLOW;
 	}
-
-	//Assume default action, and let rules correct
-	int result = CXSS_ACT_T_ALLOW;	//FIXME: currently, no matches triggers an error, then a deny
-	//TODO: determine if should return result, or just warn. 
 
 	/** iterate through every rule in every policy until a match is found **/
 	
@@ -840,7 +845,7 @@ cxssAuthorize(char* domain, char* type, char* path, char* attr,
 	xqInit(queue);
 
 	/**add first item**/
-	pPolicyNode_t firstNode = malloc(sizeof *firstNode);
+	pPolicyNode_t firstNode = nmMalloc(sizeof(PolicyNode_t));
 	firstNode->Policy = CXSS.Policy;
 	xqAddBefore(queue, *firstNode); //add before head, which is back of queue
 
@@ -851,9 +856,9 @@ cxssAuthorize(char* domain, char* type, char* path, char* attr,
 		/** queue and free struct**/
 		PolicyNode_t curStruct = *queue.Next;
 		pPolicyNode_t curStructPtr = queue.Next;
-		xqRemove((curStruct)); //this crashes if you do (*queue.next) instead. IDK why or how
+		xqRemove((curStruct));
 		pCxssPolicy curPol = curStruct.Policy;
-		free(curStructPtr);
+		nmFree(curStructPtr, sizeof(PolicyNode_t));
 
 		//for debug: print policy stats
 		printf("Policy Mode:                  %d\n", curPol->PolicyMode);
@@ -864,28 +869,36 @@ cxssAuthorize(char* domain, char* type, char* path, char* attr,
 		printf("Num SubPolicies:              %d\n", curPol->SubPolicies.nItems);
 		printf("Num Inclusion Structs:        %d\n", curPol->Inclusions.nItems);
 		printf("Num Rules:                    %d\n\n", curPol->Rules.nItems);
-
-		/** check every rule **/
+		
+		/** check every rule 
+		 **/
 		int i;
 		int numRules = curPol->Rules.nItems;
-		for(i = 0 ; i < numRules ; i++){
-			//print for debug
-			pCxssPolRule curRule = (pCxssPolRule) (xaGetItem(&(curPol->Rules), i));
-			printf("on rule %d of %d\n", i+1, numRules);
-			printf("Rule %d Object to Match:       %s\n", i, curRule->MatchObject );
-			printf("Rule %d Subject to Match:      %s\n", i, curRule->MatchSubject);
-			printf("Rule %d Endorsement to Match:  %s\n", i, curRule->MatchEndorsement);
-			printf("Rule %d Access Type Mask:      %d\n", i, curRule->MatchAccess);
-			printf("Rule %d Action Type Mask:      %d\n", i, curRule->Action);
 
-			/**check if rule is applicable**/
-			int isMatch = cxssIsRuleMatch(domain, type, path, attr, access_type, curRule);
-			printf("Rule %d is matched:            %d\n\n", i, isMatch); //for debug
-			if(isMatch == CXSS_MATCH_T_TRUE){
-				action = curRule->Action;
-				break; //comment out to visit all rules 
-			}else if(isMatch == CXSS_MATCH_T_ERR){
-				goto err;
+		/** Only check rules if the policy is applicable
+		**/
+		if(strlen(curPol->Domain) == 0 || strcmp(curPol->Domain, domain) == 0){
+			for(i = 0 ; i < numRules ; i++){
+				//print for debug
+				pCxssPolRule curRule = (pCxssPolRule) (xaGetItem(&(curPol->Rules), i));
+				printf("on rule %d of %d\n", i+1, numRules);
+				printf("Rule %d Object to Match:       %s\n", i, curRule->MatchObject );
+				printf("Rule %d Subject to Match:      %s\n", i, curRule->MatchSubject);
+				printf("Rule %d Endorsement to Match:  %s\n", i, curRule->MatchEndorsement);
+				printf("Rule %d Access Type Mask:      %d\n", i, curRule->MatchAccess);
+				printf("Rule %d Action Type Mask:      %d\n", i, curRule->Action);
+
+
+				/**check if rule is applicable**/
+				int isMatch = cxssIsRuleMatch(domain, type, path, attr, access_type, curRule);
+				printf("Rule %d is matched:            %d\n\n", i, isMatch); //for debug
+				if(isMatch == CXSS_MATCH_T_TRUE){
+					/** FIXME: need to check rule exception **/
+					action = curRule->Action;
+					break; //comment out to visit all rules 
+				}else if(isMatch == CXSS_MATCH_T_ERR){
+					goto err;
+				}
 			}
 		}
 		printf("___________________________\n\n\n");
@@ -898,16 +911,15 @@ cxssAuthorize(char* domain, char* type, char* path, char* attr,
 		/** add every sub policy to the queue **/
 		int numSubPol = curPol->SubPolicies.nItems;
 		for(i = 0 ; i < numSubPol ; i++){
-			pPolicyNode_t node = malloc(sizeof *node);
+			pPolicyNode_t node = nmMalloc(sizeof(PolicyNode_t)); 
 			node->Policy = xaGetItem(&(curPol->SubPolicies), i);
 			xqAddBefore(queue, *node); 
 		}
 	}
 	
-	/** No matching rules found. Error **/
+	/** No matching rules found. Set to default action **/
 	if(action == -1){
-		mssError(1,"CXSS","cxssAuthorize(): No policy match found");
-		goto err;
+		action = CXSS_ACT_T_DENY; /** Need to get from policy struct, once that is possible **/
 	}
 
 	/** clear out anything left on the queue **/
@@ -915,10 +927,18 @@ cxssAuthorize(char* domain, char* type, char* path, char* attr,
 		PolicyNode_t curStruct = *queue.Next;
 		pPolicyNode_t curStructPtr = queue.Next;
 		xqRemove((curStruct)); //this crashes if you do (*queue.next) instead. IDK why or how
-		free(curStructPtr);
+		nmFree(curStructPtr, sizeof(PolicyNode_t));
 	}
-
-    return action;
+    if(CXSS.Policy->PolicyMode == CXSS_MODE_T_WARN){
+	    //FIXME: how do we warn?
+	    return CXSS_ACT_T_ALLOW;
+    }else if(CXSS.Policy->PolicyMode == CXSS_MODE_T_ENFORCE){
+	    return action;
+    }else{
+	    mssError(1,"CXSS","cxssAuthorize(): Invalid operation mode");
+	    goto err;
+    }
+    
     err:
 	//TODO: add any cleanup that occurs. 
 	/** free any ptrs left on the queue **/
@@ -926,15 +946,90 @@ cxssAuthorize(char* domain, char* type, char* path, char* attr,
 		PolicyNode_t curStruct = *queue.Next;
 		pPolicyNode_t curStructPtr = queue.Next;
 		xqRemove((curStruct)); //this crashes if you do (*queue.next) instead. IDK why or how
-		free(curStructPtr);
+		nmFree(curStructPtr, sizeof(PolicyNode_t));
 	}
 	return CXSS_ACT_T_DENY;
     }
 
+regex_t*
+    genRegexFromObjName(char* objName)
+    	{
+	   // Variable to create regex
+	regex_t* regex = nmMalloc(sizeof(regex_t));
+	int genValue;
+	int objNameLength = strlen(objName);
+	char regexStr[OBJSYS_MAX_PATH + 256];
+	int regLen = OBJSYS_MAX_PATH + 256;
+	char* wildcard = ".*"; // this allows anything. Could restrict to valid path contents
+	int wildcardLength = strlen(wildcard);
+		//copy objName into regexStr, replacing all *'s wil wildcard
+		int i, j;
+		int regInd = 0;
+		regexStr[regInd++] = '^';
+		for(i = 0 ; i < objNameLength && regInd < regLen ; i++){
+			//check for special characters. If it is a *, replace with wildcard. If other special, escape it. 
+			//escape the following: ., +, ?, ^, $, (, ), [, ], {, }, |, \.
+			switch(objName[i]){
+				case '*':
+					for(j = 0 ; j < wildcardLength && regInd < regLen; j++){
+						regexStr[regInd++] = wildcard[j];
+					}
+					break;
+				case '.':
+				case '+':
+				case '?':
+				case '^':
+				case '$':
+				case '(':
+				case ')':
+				case '[':
+				case ']':
+				case '{':
+				case '}':
+				case '|':
+				case '\\':
+					if(regInd + 1 < regLen){
+						regexStr[regInd++] = '\\';
+						regexStr[regInd++] = objName[i];
+					}else {
+						//make sure will be an error
+						regInd = regLen;
+					}
+					break;
+				default:
+					regexStr[regInd++] = objName[i];
+					break;
+			}		
+		}
+		regexStr[regInd++] = '$';
+		if(regInd >= regLen){
+			mssError(1,"CXSS","genRegexFromObjName(): Object name is too long to convert to regex.");
+			goto err;
+		} else {
+			/* make sure to terminate the string */
+			regexStr[regInd++] = '\0';
+		}
+
+		// Function call to create regex
+		genValue = regcomp(regex, regexStr, REG_EXTENDED|REG_NOSUB); //regcomp( &regex, regexStr, REG_EXTENDED|REG_NOSUB);
+
+		// If compilation is not successful, throw an error
+		if (genValue != 0) {
+			mssError(1,"CXSS","genRegexFromObjName(): Regex compilation error.");
+			goto err;
+		}
+		
+		return regex;
+	err:
+		nmFree(regex, sizeof(regex_t));
+		return NULL;
+    }
+
+
 /*** cxssIsRuleMatch - checks if a rule and the given object/attribute identifiers are a match
  ***/
 // this function is doing the checking if a rule can give the appropriate allow or deny.
- // TODO: checks using usernames and endorsments only, not roles or groups. Add in later
+ // TODO: checks using usernames and endorsements only, not roles or groups. Add in later
  // TODO: endorsement checks are performed only with the full domain. 
 int
 cxssIsRuleMatch(char* domain, char* type, char* path, char* attr,
@@ -986,7 +1081,10 @@ cxssIsRuleMatch(char* domain, char* type, char* path, char* attr,
 		isMatch &= (strcmp(type, objType) == 0);
 	}
 	if(strlen(objName) != 0){
-		isMatch &= (strcmp(path, objName) == 0);
+		/* Use regex to check object against path */
+		regex_t* regexPtr = genRegexFromObjName(objName);
+		isMatch &= (regexec(regexPtr, path, 0, NULL, 0) == 0);
+		nmFree(regexPtr, sizeof(regex_t));
 	}
 	if(strlen(attrName) != 0){
 		isMatch &= (strcmp(attr, attrName) == 0);
@@ -996,17 +1094,21 @@ cxssIsRuleMatch(char* domain, char* type, char* path, char* attr,
 	// Note: currently based solely on the username
 	char* userName = mssUserName();
 	if(strlen(rule->MatchSubject) > 0){
-		isMatch &= (strcmp(rule->MatchSubject, userName) == 0);
+		if(userName != NULL){
+			isMatch &= (strcmp(rule->MatchSubject, userName) == 0);
+		}else {
+			isMatch = false;
+		}
 	}
 	
 	/** check to see if endorsements match **/
-	//NOTE: only checking based on full domain currently. Needs to deal with sub contexts.
+	/** FIXME: only checking based on full domain currently. Needs to deal with sub contexts. **/
 	if(strlen(rule->MatchEndorsement) != 0){
 		isMatch &= cxssHasEndorsement(rule->MatchEndorsement, domain) == 1;
 	}
 
 	/** If matchAccess is left blank, it matches all access types **/
-	//access type cannot be 0
+	/** Note: access type cannot be 0 **/
 	if(access_type == 0){
 		mssError(1,"CXSS","cxssRuleIsMatch(): User access type cannot be 0.");
 		goto err;
@@ -1017,6 +1119,6 @@ cxssIsRuleMatch(char* domain, char* type, char* path, char* attr,
 	
     return isMatch? CXSS_MATCH_T_TRUE : CXSS_MATCH_T_FALSE;
     err:
-    	//cleanup and exit
+    	/** cleanup and exit **/
     	return CXSS_MATCH_T_ERR;
     }

@@ -1,6 +1,6 @@
 gcc -g  -DNDEBUG -O2 -DHAVE_CONFIG_H -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall  -g tests/t_driver.c tests/test_00baseline.c libCentrallix.a -o tests/test_00baseline.bin
 gcc -g  -DNDEBUG -O2 -DHAVE_CONFIG_H -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall  -g tests/t_driver.c tests/test_smmalloc_01.c libCentrallix.a -o tests/test_smmalloc_01.bin
-gcc -g  -DNDEBUG -O2 -DHAVE_CONFIG_H -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall  -g tests/t_driver.c tests/test_smmalloc_02.c libCentrallix.a -o tests/test_smmalloc_02.bin
+gcc -g  -DNDEBUG -O2 -DHAVE_CONFIG_H -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall  -g tests/ tests/test_smmalloc_02.c libCentrallix.a -o tests/test_smmalloc_02.bin
 gcc -g  -DNDEBUG -O2 -DHAVE_CONFIG_H -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall  -g tests/t_driver.c tests/test_smmalloc_03.c libCentrallix.a -o tests/test_smmalloc_03.bin
 gcc -g  -DNDEBUG -O2 -DHAVE_CONFIG_H -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall  -g tests/t_driver.c tests/test_smmalloc_04.c libCentrallix.a -o tests/test_smmalloc_04.bin
 gcc -g  -DNDEBUG -O2 -DHAVE_CONFIG_H -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall  -g tests/t_driver.c tests/test_smmalloc_05.c libCentrallix.a -o tests/test_smmalloc_05.bin

@@ -1,10 +1,13 @@
 #include <assert.h>
 #include "centrallix.h"
 #include "application.h"
+#include "cxss/cxss.h"
+
 long long
 test(char** name)
     {
-   *name = "policy_01 Simple Rule Test";
+        
+    *name = "policy_01 Simple Rule Test";
     
     //This is just to make sure the code runs
     *name = "policy_01 Basic csxx policy allow test";
@@ -27,9 +30,13 @@ test(char** name)
 	CxGlobals.Flags = 0;
 
     cxInitialize();
+
     cxssPushContext();
 
-    assert(cxssAuthorize(domain, type, path, attr, access_type, log_mode) == 1);
+    assert(cxssAuthorize(domain, type, path, attr, access_type, log_mode) == 2);
+
+    //free everything that is leaking
+    //nmFree(CXSS.Policy, sizeof(pCxssPolicy));
 
     return 0;
 }
