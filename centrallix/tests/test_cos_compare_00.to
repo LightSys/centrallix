@@ -1,15 +1,17 @@
 ##NAME Text Mining String Similarity with Cosine Compare
 
-query select case1 = (cos_compare("Cynthia Adams; cynthiaadams@gmail.com; 720-769-1293", "Timothy Adams; thetbear@gmail.com; 720-891-1470") >= 0.508) and (cos_compare("Cynthia Adams; cynthiaadams@gmail.com; 720-769-1293", "Timothy Adams; thetbear@gmail.com; 720-891-1470") <= 0.509)
+# All email addresses and phone numbers are imaginary and were fabricated for the purposes of this test
 
-query select case2 = (cos_compare("Timothy Adams; thetbear@gmail.com; 720-891-1470", "Lance Freson; lancetheturtle@gmail.com; 720-111-8189") >= 0.458) and (cos_compare("Timothy Adams; thetbear@gmail.com; 720-891-1470", "Lance Freson; lancetheturtle@gmail.com; 720-111-8189") <= 0.459)
+query select case1 = (cos_compare("Cynthia Adams; cynthiaadams@gmail.com; 720-769-1293", "Timothy Adams; thetbear@gmail.com; 720-891-1470") >= 0.49) and (cos_compare("Cynthia Adams; cynthiaadams@gmail.com; 720-769-1293", "Timothy Adams; thetbear@gmail.com; 720-891-1470") <= 0.54)
 
-query select case3 = (cos_compare("Lance Freson; lancetheturtle@gmail.com; 720-111-8189", "Gregory Freson; greatgregory@gmail.com; 720-198-5791") >= 0.372) and (cos_compare("Lance Freson; lancetheturtle@gmail.com; 720-111-8189", "Gregory Freson; greatgregory@gmail.com; 720-198-5791") <= 0.373)
+query select case2 = (cos_compare("Timothy Adams; thetbear@gmail.com; 720-891-1470", "Lance Freson; lancetheturtle@gmail.com; 720-111-8189") >= 0.425) and (cos_compare("Timothy Adams; thetbear@gmail.com; 720-891-1470", "Lance Freson; lancetheturtle@gmail.com; 720-111-8189") <= 0.475)
 
-query select case4 = (cos_compare("Gregory Freson; greatgregory@gmail.com; 720-198-5791", "Gregory Freson; greatgregory@gmail.co; 720-198-5791") >= 0.970) and (cos_compare("Gregory Freson; greatgregory@gmail.com; 720-198-5791", "Gregory Freson; greatgregory@gmail.co; 720-198-5791") <= 0.971)
+query select case3 = (cos_compare("Lance Freson; lancetheturtle@gmail.com; 720-111-8189", "Gregory Freson; greatgregory@gmail.com; 720-198-5791") >= 0.35) and (cos_compare("Lance Freson; lancetheturtle@gmail.com; 720-111-8189", "Gregory Freson; greatgregory@gmail.com; 720-198-5791") <= 0.40)
 
-query select case5 = (cos_compare("Nathan Mayor; nmmayor@yahoo.com; +1-800-192-9128", "Mindy Mayor; nmmayor@yahoo.com; 720-981-9149") >=0.686) and (cos_compare("Nathan Mayor; nmmayor@yahoo.com; +1-800-192-9128", "Mindy Mayor; nmmayor@yahoo.com; 720-981-9149") <= 0.687)
+query select case4 = (cos_compare("Gregory Freson; greatgregory@gmail.com; 720-198-5791", "Gregory Freson; greatgregory@gmail.co; 720-198-5791") >= 0.94) and (cos_compare("Gregory Freson; greatgregory@gmail.com; 720-198-5791", "Gregory Freson; greatgregory@gmail.co; 720-198-5791") <= 0.99)
 
-query select case6 = (cos_compare("This is an identical case", "This is an identical case") >=0.999) and (cos_compare("This is an identical case", "This is an identical case") <=1.00)
+query select case5 = (cos_compare("Nathan Mayor; nmmayor@yahoo.com; +1-800-192-9128", "Mindy Mayor; nmmayor@yahoo.com; 720-981-9149") >=0.66) and (cos_compare("Nathan Mayor; nmmayor@yahoo.com; +1-800-192-9128", "Mindy Mayor; nmmayor@yahoo.com; 720-981-9149") <= 0.71)
 
-query select case7 = (cos_compare("Samuel", "Alex") >= 0.00) and (cos_compare("Samuel", "Alex") <= 0.001)
+query select case6 = (cos_compare("This is an identical case", "This is an identical case") >=0.975) and (cos_compare("This is an identical case", "This is an identical case") <=1.00)
+
+query select case7 = (cos_compare("Samuel", "Alex") >= 0.00) and (cos_compare("Samuel", "Alex") <= 0.025)
