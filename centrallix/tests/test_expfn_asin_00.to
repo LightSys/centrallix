@@ -1,0 +1,61 @@
+##NAME asin() function
+
+query select 'asin(sin(0.0))' = asin(sin(0.0))
+
+query select 'asin(sin(radians(30)))' = asin(sin(radians(30)))
+
+query select 'asin(sin(radians(60)))' = asin(sin(radians(60)))
+
+query select 'asin(sin(radians(90)))' = asin(sin(radians(90)))
+
+query select 'asin(sin(radians(180)))' = asin(sin(radians(180)))
+
+query select 'asin(sin(radians(270)))' = asin(sin(radians(270)))
+
+query select 'asin(sin(radians(360)))' = asin(sin(radians(360)))
+
+query select 'asin(sin(radians(720)))' = asin(sin(radians(720)))
+
+query select 'asin(sin(radians(-30)))' = asin(sin(radians(-30)))
+
+query select 'asin(sin(radians(-60)))' = asin(sin(radians(-60)))
+
+query select 'asin(sin(radians(-90)))' = asin(sin(radians(-90)))
+
+query select 'asin(sin(radians(-180)))' = asin(sin(radians(-180)))
+
+query select 'asin(sin(radians(-270)))' = asin(sin(radians(-270)))
+
+query select 'asin(sin(radians(-360)))' = asin(sin(radians(-360)))
+
+query select 'asin(sin(radians(-720)))' = asin(sin(radians(-720)))
+
+query select 'asin(sin(0))' = asin(sin(0))
+
+query select 'asin(sin(1))' = asin(sin(1))
+
+query select 'asin(sin(2))' = asin(sin(2))
+
+query select 'asin(sin(3))' = asin(sin(3))
+
+query select 'asin(sin(4))' = asin(sin(4))
+
+query select 'asin(sin(5))' = asin(sin(5))
+
+query select 'asin(sin(6))' = asin(sin(6))
+
+query select 'asin(sin(7))' = asin(sin(7))
+
+query select 'asin(sin(-1))' = asin(sin(-1))
+
+query select 'asin(sin(-2))' = asin(sin(-2))
+
+query select 'asin(sin(-3))' = asin(sin(-3))
+
+query select 'asin(sin(-4))' = asin(sin(-4))
+
+query select 'asin(sin(-5))' = asin(sin(-5))
+
+query select 'asin(sin(-6))' = asin(sin(-6))
+
+query select 'asin(sin(-7))' = asin(sin(-7))

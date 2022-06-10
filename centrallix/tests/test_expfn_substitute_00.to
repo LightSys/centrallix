@@ -1,0 +1,20 @@
+##NAME substitute function()
+
+# basic example
+query select substitute("Color: [:row:Color] | Group: [:row:ColorGroup]", "row=r") from /tests/TestLevel1.csv/rows/ r
+
+# without mapping string
+query select substitute("Color: [:r:Color]") from /tests/TestLevel1.csv/rows/ r
+
+# using objects multiple times
+query select substitute("[:row:Sheen] [:row:Sheen] [:row:Sheen] is [:row:Description] [:row:Description] [:row:Description]", "row=r") from /tests/TestLevel2.csv/rows/ r
+
+# using objects from multiple sources
+query select "Price\tColor\tSheen"
+query select substitute("$5\t[:t1:Color]\t[:t2:Sheen]", "t1=a,t2=b") from /tests/TestLevel1.csv/rows/ a, /tests/TestLevel2.csv/rows/ b where :a:ColorGroup="Color"
+
+# using objects with empty string fields
+query select substitute("[:row:f_string]", "row=r") from /tests/Datatypes.csv/rows/ r where :r:f_integer<-700
+
+query select 'substitute(null,null)' = substitute(null,null)
+

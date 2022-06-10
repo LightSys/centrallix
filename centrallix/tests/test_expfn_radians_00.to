@@ -1,0 +1,32 @@
+##NAME radians() function
+
+query select 'radians(0)' = radians(0)
+
+query select 'radians(30)' = radians(30)
+
+query select 'radians(60)' = radians(60)
+
+query select 'radians(90)' = radians(90)
+
+query select 'radians(180)' = radians(180)
+
+query select 'radians(270)' = radians(270)
+
+query select 'radians(360)' = radians(360)
+
+query select 'radians(720)' = radians(720)
+
+query select 'radians(-30)' = radians(-30)
+
+query select 'radians(-60)' = radians(-60)
+
+query select 'radians(-90)' = radians(-90)
+
+query select 'radians(-180)' = radians(-180)
+
+query select 'radians(-270)' = radians(-270)
+
+query select 'radians(-360)' = radians(-360)
+
+query select 'radians(-720)' = radians(-720)
+

@@ -1,0 +1,9 @@
+##NAME min() function
+
+query select min(:f_integer) from /tests/Datatypes.csv/rows 
+
+query select min(:f_money) from /tests/Datatypes.csv/rows 
+
+query select min(:f_datetime) from /tests/Datatypes.csv/rows 
+
+query select min(:f_double) from /tests/Datatypes.csv/rows 
