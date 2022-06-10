@@ -161,7 +161,7 @@ function eb_setdesc(txt)
 	"z-index":"-1",
 	"color":this.desc_fgcolor?this.desc_fgcolor:"#808080",
 	"top":($(this).height() - $(this.DescLayer).height())/2 + "px",
-	"left":(this.input_width() + (this.content?4:0) + 5) + "px",
+	"left":(this.input_width() + ((this.content || this.has_focus)?4:0) + 5) + "px",
 	"visibility":"inherit",
 	"white-space":"nowrap",
 	});
@@ -240,7 +240,8 @@ function eb_update(txt)
 
     // Value description field
     var descr = '';
-    if (this.descriptions[this.content] && (!this.has_focus || this.content))
+    //if (this.descriptions[this.content] && (!this.has_focus || this.content))
+    if (this.descriptions[this.content])
 	descr = this.descriptions[this.content];
     if (descr != this.description)
 	this.description = descr;

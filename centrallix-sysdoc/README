@@ -1,4 +1,4 @@
-# Intro
+# README
 Author: Seth Bird (Thr4wn)
 
 Date: August 2008
@@ -16,7 +16,7 @@ A function flow-chart for server-side functions is stored in function_flow-chart
 If someone wants to create one for client-side javsascript flow control, that would be wonderful.
 
 ## Table of Contents
-- [Intro](#intro)
+- [README](#readme)
   - [Table of Contents](#table-of-contents)
   - [Centrallix](#centrallix)
     - [The Object System Management Layer](#the-object-system-management-layer)

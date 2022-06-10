@@ -165,23 +165,23 @@ Here is a more detailed look at how a row in our CSV file from the previous exam
 
 In this view, the various pieces are abbreviated as follows to make things fit on the page:  U=user, O=OSML, R=rootnode driver, F=filesystem driver, D=datafile driver.
 
-    1.	U -> O			User requests that the object /DirectoryOne/FileTwo.csv/rows/0 be opened.
-    2.	     O -> R		Open an instance of the / object and
-            O <- R		use that as the first object in the 
-                chain of open objects needed to get 
-                at the object the user wants.
-    3.	     O			Discovers that rootnode points to a local filesystem tree.
-    4.	     O -> F		OSML tries to get local filesystem driver to open the given path, /DirectoryOne/FileTwo.csv/rows/0
-    5.	     O <- F		Filesystem driver reports that it can only open /DirectoryOne/FileTwo.csv, and returns a handle for it.
-    6.	     O			Adds an object to the chain of open objects for the open file, and figures out that the content of the FileTwo.csv is CSV data.
-    7.	     O -> D		OSML tries to get the datafile driver to open up FileTwo.csv/rows/0, the remainder of the path.
-    8.	          D -> O	datafile driver uses the OSML API to access the open object created in step 5 above (the file).
-    9.	               O -> F	OSML requests content for the file from the local filesystem driver.
-    1.                 O <- F	Local filesystem driver returns the needed content.
-    11.	          D <- O	content of the file is returned back to the datafile driver.
-    12.	     O <- D		datafile driver reports to the OSML that it could open the entire rest of the path, FileTwo.csv/rows/0, and returns a handle for that CSV row.
-    13.	     O			Adds a third object to the open object chain, for the CSV row, and realizes that entire path has been handled, thus completing the open operation.
-    14.  U <- O			An open object handle is returned to the user for the CSV row object, accessed via the filesystem file, and that accessed via the rootnode.
+    1. U -> O           User requests that the object /DirectoryOne/FileTwo.csv/rows/0 be opened.
+    2.      O -> R      Open an instance of the / object and
+            O <- R      use that as the first object in the 
+                        chain of open objects needed to get 
+                        at the object the user wants.
+    3.      O           Discovers that rootnode points to a local filesystem tree.
+    4.      O -> F      OSML tries to get local filesystem driver to open the given path, /DirectoryOne/FileTwo.csv/rows/0
+    5.      O <- F      Filesystem driver reports that it can only open /DirectoryOne/FileTwo.csv, and returns a handle for it.
+    6.      O           Adds an object to the chain of open objects for the open file, and figures out that the content of the FileTwo.csv is CSV data.
+    7.      O -> D      OSML tries to get the datafile driver to open up FileTwo.csv/rows/0, the remainder of the path.
+    8.           D -> O datafile driver uses the OSML API to access the open object created in step 5 above (the file).
+    9.                O -> F    OSML requests content for the file from the local filesystem driver.
+    10.               O <- F    Local filesystem driver returns the needed content.
+    11.          D <- O         content of the file is returned back to the datafile driver.
+    12.     O <- D      datafile driver reports to the OSML that it could open the entire rest of the path, FileTwo.csv/rows/0, and returns a handle for that CSV row.
+    13.     O           Adds a third object to the open object chain, for the CSV row, and realizes that entire path has been handled, thus completing the open operation.
+    14.   U <- O        An open object handle is returned to the user for the CSV row object, accessed via the filesystem file, and that accessed via the rootnode.
 
 In the end of this process, an open object chain has been created which contains the following three objects:
 
@@ -198,11 +198,13 @@ Queries at the driver level are only performed on open objects - in order for an
 
 There are several OSML->driver calls that are involved in a query operation:
 
-1.	Open - The Open call is used to open the object that is to be queried for subobjects.
-2.	OpenQuery - This routine requests that a query for subobjects be started.  It does not return any of the subobjects.
-3.	QueryFetch - This routine obtains the next item in the query results.  It should be completely indistin- guishable from an item opened by Open directly instead of querying.  In other words, querying /File.csv/rows and fetching row 0 should be exactly the same as opening /File.csv/rows/0.
-4.	QueryClose - Closes an open query, but does not close the objects fetched by the query.  Those will be closed with the Close routine, just like objects obtained with Open.
-5.	Close - Closes an object, whether obtained via Open or via QueryFetch.
+| Call          | Description
+| ------------- | ------------
+| 1. Open       | The Open call is used to open the object that is to be queried for subobjects.
+| 2. OpenQuery  | This routine requests that a query for subobjects be started.  It does not return any of the subobjects.
+| 3. QueryFetch | This routine obtains the next item in the query results.  It should be completely indistin- guishable from an item opened by Open directly instead of querying.  In other words, querying /File.csv/rows and fetching row 0 should be exactly the same as opening /File.csv/rows/0.
+| 4. QueryClose | Closes an open query, but does not close the objects fetched by the query.  Those will be closed with the Close routine, just like objects obtained with Open.
+| 5. Close      | Closes an object, whether obtained via Open or via QueryFetch.
 
 Next is an example of how a query might proceed for the three row objects in our CSV file example.  For this example, we'll assume that /DirectoryOne/FileTwo.csv/rows has already been opened as in the previous example.  We'll also use the same abbreviations.
 
@@ -251,11 +253,13 @@ Next is an example of how a query might proceed for the three row objects in our
 ### D.  Enumerating Attributes of an Object.
 The driver will need to allow the OSML to enumerate all of the object's attributes in addition to getting/setting their values.  This is done via the GetFirstAttr and GetNextAttr OSD calls.  GetFirstAttr is used to start the enumeration, and returns the name of the first attribute. GetNextAttr returns subsequent attributes.  Either can return NULL if no more attributes are found.  The following 'system' attributes should not be returned by the attribute enumeration functions as they must be present on all objects.
 
-- name - The name (or primary key value) of the object.
-- annotation - An object's annotation.
-- inner_type - (or content_type) - the type of the content of an object.
-- content_type - Same as above.
-- outer_type - The type of the object itself.
+| Attribute                    | Description
+| ---------------------------- | ------------
+| name                         | The name (or primary key value) of the object.
+| annotation                   | An object's annotation.
+| inner_type (or content_type) | the type of the content of an object.
+| content_type                 | Same as above.
+| outer_type                   | The type of the object itself.
 
 The system attribute 'last_modification' can be returned in the enumeration if desired, as not all objects will have this attribute, though it is important for letting the OSML know when an object has been modified.
 

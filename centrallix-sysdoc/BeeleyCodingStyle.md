@@ -23,9 +23,9 @@ For reference, here is some documentation on the core coding style used in Centr
 
 ```
 /*** myFunFunction - this is a function
-*** that does some fun stuff with its 
-*** parameters.
-***/
+ *** that does some fun stuff with its 
+ *** parameters.
+ ***/
 ```
 
 8.  The return statement is not treated as a function call.  Type it in as "return value;" instead of "return(value);".  Return isn't a function and doesn't return.  Well, I guess that depends on how you look at it, but I think you get the point :)
@@ -36,23 +36,23 @@ For reference, here is some documentation on the core coding style used in Centr
 
 ```
 /*** myFunFunction - this function does some fun stuff with its
-	*** parameters.  Returns 0 on success, -1 on error.  Makes a 
-	*** strange weighted total of the characters in the two string
-	*** params and places that total in the integer passed by ref.
-	***/
+ *** parameters.  Returns 0 on success, -1 on error.  Makes a 
+ *** strange weighted total of the characters in the two string
+ *** params and places that total in the integer passed by ref.
+ ***/
 int
 myFunFunction(char* param1, char* param2, int* total)
-		{
-		int cnt1, cnt2;
-		int cnt3;
-		char* tmpptr;
-		char* ptr;
+	{
+	int cnt1, cnt2;
+	int cnt3;
+	char* tmpptr;
+	char* ptr;
 
-				/** Do some error checking - params must be valid! **/
+	/** Do some error checking - params must be valid! **/
 	if (!param1 || !param2 || !total)
-			{
-			return -1; /* error */
-			}
+		{
+		return -1; /* error */
+		}
 
 	/** Ok, here's the work for param #1. **/
 	*total = 0;
@@ -60,28 +60,28 @@ myFunFunction(char* param1, char* param2, int* total)
 
 	/** And, for the second parameter. **/
 	while(*param2)
-			{
-			if (*param2 == ' ')
-					(*total) += 3;
-			else
-					(*total) += 2;
+		{
+		if (*param2 == ' ')
+			(*total) += 3;
+		else
+			(*total) += 2;
 
-			/** This is a really long comment, so I'm going to break it
-				** up into more than one line.  The following operation 
-				** takes the second parameter pointer and increments it 
-				** by one element.  In this case, it means param2 points 
-				** to the next character in its string.  We need to do 
-				** this or else the loop will keep going indefinitely 
-				** unless param2 was empty in which case we'd never get 
-				** to this location.  I know that wasn't particularly 
-				** obscure, but I needed a long comment for illustration 
-				** here :)
-				**/
-			param2++;
-			}
-
-		return 0; /* success */
+		/** This is a really long comment, so I'm going to break it
+		 ** up into more than one line.  The following operation 
+		 ** takes the second parameter pointer and increments it 
+		 ** by one element.  In this case, it means param2 points 
+		 ** to the next character in its string.  We need to do 
+		 ** this or else the loop will keep going indefinitely 
+		 ** unless param2 was empty in which case we'd never get 
+		 ** to this location.  I know that wasn't particularly 
+		 ** obscure, but I needed a long comment for illustration 
+		 ** here :)
+		 **/
+		param2++;
 		}
+
+	return 0; /* success */
+	}
 ```
 
 11.  Local variables and function parameters are all in lower-case with embedded underscores where needed to separate words.  All global variables are stored in a module-wide global structure.  That structure name is always in all caps for ease of identification.  Typedef names are always in mixed case with both the structure "XxxxYyy" and a pointer to the structure "pXxxxYyy" defined in the typedef declaration. Structure and union elements are in mixed case.

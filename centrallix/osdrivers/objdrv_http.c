@@ -750,6 +750,319 @@ http_internal_StrCmp(const void *v1, const void *v2)
     }
 
 
+/*** http_i_PostBodyUrlencode - create a POST body with form urlencoding
+ *** formatting.
+ ***/
+pXString
+http_i_PostBodyUrlencode(pHttpData inf)
+    {
+    pXString post_params = NULL;
+    pHttpParam one_http_param;
+    int n_output, i;
+
+	post_params = xsNew();
+	if (!post_params)
+	    goto error;
+	for(n_output=i=0; i<xaCount(&inf->Params); i++)
+	    {
+	    one_http_param = xaGetItem(&inf->Params, i);
+	    if (one_http_param->Usage == HTTP_PUSAGE_T_POST)
+		{
+		if (!(one_http_param->Parameter->Value->Flags & DATA_TF_NULL))
+		    {
+		    /** Encode one parameter into the post data **/
+		    if (n_output > 0)
+			xsConcatenate(post_params, "&", 1);
+		    xsConcatQPrintf(post_params, "%STR&URL=", one_http_param->Parameter->Name);
+		    if (one_http_param->Parameter->Value->DataType == DATA_T_STRING)
+			xsConcatQPrintf(post_params, "%STR&URL", one_http_param->Parameter->Value->Data.String);
+		    else if (one_http_param->Parameter->Value->DataType == DATA_T_INTEGER)
+			xsConcatQPrintf(post_params, "%INT", one_http_param->Parameter->Value->Data.Integer);
+		    else
+			{
+			mssError(1, "HTTP", "Unsupported data type for post parameter %s", one_http_param->Parameter->Name);
+			goto error;
+			}
+
+		    n_output++;
+		    }
+		}
+	    }
+
+	return post_params;
+
+    error:
+	if (post_params)
+	    xsFree(post_params);
+	return NULL;
+    }
+
+
+/*** http_i_PostBodyXML - create a POST body with XML formatting.
+ ***/
+pXString
+http_i_PostBodyXML(pHttpData inf)
+    {
+    pXString post_params = NULL;
+    pHttpParam one_http_param;
+    int i,j;
+    char* cur_xml[16];
+    char* last_xml[16];
+    char* param_part;
+    int param_part_cnt;
+    char* save_ptr;
+    char cur_param[256];
+
+	post_params = xsNew();
+	if (!post_params)
+	    goto error;
+
+	/** Need to sort them to get xml data organized right **/
+	qsort(inf->Params.Items, inf->Params.nItems, sizeof(char*), http_internal_StrCmp);
+
+	/** Encode them **/
+	for(j=0; j<sizeof(cur_xml) / sizeof(char*); j++)
+	    {
+	    cur_xml[j] = NULL;
+	    last_xml[j] = NULL;
+	    }
+	for(i=0; i<xaCount(&inf->Params); i++)
+	    {
+	    one_http_param = xaGetItem(&inf->Params, i);
+	    if (one_http_param->Usage == HTTP_PUSAGE_T_POST)
+		{
+		if (!(one_http_param->Parameter->Value->Flags & DATA_TF_NULL))
+		    {
+		    strtcpy(cur_param, one_http_param->Parameter->Name, sizeof(cur_param));
+
+		    /** Go through the . separated parts of the param name **/
+		    param_part = strtok_r(cur_param, ".", &save_ptr);
+		    param_part_cnt = 0;
+		    while(param_part)
+			{
+			cur_xml[param_part_cnt] = param_part;
+			param_part = strtok_r(NULL, ".", &save_ptr);
+			param_part_cnt++;
+			if (param_part_cnt >= sizeof(cur_xml) / sizeof(char*) - 1)
+			    {
+			    mssError(1, "HTTP", "Nesting too great for XML parameter %s", one_http_param->Parameter->Name);
+			    goto error;
+			    }
+			}
+		    for(j=param_part_cnt; j < sizeof(cur_xml) / sizeof(char*); j++)
+			{
+			cur_xml[j] = NULL;
+			}
+
+		    /** Emit closing tags (reverse order)? **/
+		    for(j=sizeof(cur_xml) / sizeof(char*) - 1; j>=0; j--)
+			{
+			if (last_xml[j] && (!cur_xml[j] || strcmp(last_xml[j], cur_xml[j]) != 0))
+			    xsConcatQPrintf(post_params, "</%STR&HTE>", last_xml[j]);
+			}
+
+		    /** Emit opening tags? **/
+		    for(j=0; j < sizeof(cur_xml) / sizeof(char*); j++)
+			{
+			if (cur_xml[j] && (!last_xml[j] || strcmp(last_xml[j], cur_xml[j]) != 0))
+			    xsConcatQPrintf(post_params, "<%STR&HTE>", cur_xml[j]);
+			}
+
+		    /** Emit value **/
+		    if (one_http_param->Parameter->Value->DataType == DATA_T_STRING)
+			xsConcatQPrintf(post_params, "%STR&HTE", one_http_param->Parameter->Value->Data.String);
+		    else if (one_http_param->Parameter->Value->DataType == DATA_T_INTEGER)
+			xsConcatQPrintf(post_params, "%INT", one_http_param->Parameter->Value->Data.Integer);
+		    else
+			{
+			mssError(1, "HTTP", "Unsupported data type for post parameter %s", one_http_param->Parameter->Name);
+			goto error;
+			}
+
+		    /** Save param parts for next param comparison if not done **/
+		    for(j=0; j < sizeof(cur_xml) / sizeof(char*); j++)
+			{
+			if (last_xml[j])
+			    {
+			    nmSysFree(last_xml[j]);
+			    last_xml[j] = NULL;
+			    }
+			if (cur_xml[j])
+			    {
+			    last_xml[j] = nmSysStrdup(cur_xml[j]);
+			    }
+			}
+		    }
+		}
+	    }
+
+	/** Close any open tags (in reverse order), and free memory **/
+	for(j=sizeof(cur_xml) / sizeof(char*) - 1; j>=0; j--)
+	    {
+	    if (cur_xml[j])
+		xsConcatQPrintf(post_params, "</%STR&HTE>", cur_xml[j]);
+	    if (last_xml[j])
+		{
+		nmSysFree(last_xml[j]);
+		last_xml[j] = NULL;
+		}
+	    }
+
+	return post_params;
+
+    error:
+	if (post_params)
+	    xsFree(post_params);
+	for(j=0; j < sizeof(cur_xml) / sizeof(char*); j++)
+	    {
+	    if (last_xml[j])
+		nmSysFree(last_xml[j]);
+	    }
+	return NULL;
+    }
+
+
+/*** http_i_PostBodyJSON - create a POST body with JSON formatting.
+ ***/
+pXString
+http_i_PostBodyJSON(pHttpData inf)
+    {
+    pXString post_params = NULL;
+    pHttpParam one_http_param;
+    int i, j, comma = 0, last;
+    char* cur_json[16];
+    char* last_json[16];
+    char* param_part;
+    int param_part_cnt;
+    char* save_ptr;
+    char cur_param[256];
+
+	post_params = xsNew();
+	if (!post_params)
+	    goto error;
+	xsConcatenate(post_params, "{ ", 2);
+
+	/** Need to sort them to get JSON data organized right **/
+	qsort(inf->Params.Items, inf->Params.nItems, sizeof(char*), http_internal_StrCmp);
+
+	/** Encode them **/
+	for(j=0; j<sizeof(cur_json) / sizeof(char*); j++)
+	    {
+	    cur_json[j] = NULL;
+	    last_json[j] = NULL;
+	    }
+	for(i=0; i<xaCount(&inf->Params); i++)
+	    {
+	    one_http_param = xaGetItem(&inf->Params, i);
+	    if (one_http_param->Usage == HTTP_PUSAGE_T_POST)
+		{
+		if (!(one_http_param->Parameter->Value->Flags & DATA_TF_NULL))
+		    {
+		    strtcpy(cur_param, one_http_param->Parameter->Name, sizeof(cur_param));
+
+		    /** Go through the . separated parts of the param name **/
+		    param_part = strtok_r(cur_param, ".", &save_ptr);
+		    param_part_cnt = 0;
+		    while(param_part)
+			{
+			cur_json[param_part_cnt] = param_part;
+			param_part = strtok_r(NULL, ".", &save_ptr);
+			param_part_cnt++;
+			if (param_part_cnt >= sizeof(cur_json) / sizeof(char*) - 1)
+			    {
+			    mssError(1, "HTTP", "Nesting too great for JSON parameter %s", one_http_param->Parameter->Name);
+			    goto error;
+			    }
+			}
+		    for(j=param_part_cnt; j < sizeof(cur_json) / sizeof(char*); j++)
+			{
+			cur_json[j] = NULL;
+			}
+
+		    /** Emit closing braces? **/
+		    last = 1;
+		    for(j=sizeof(cur_json) / sizeof(char*) - 1; j>=0; j--)
+			{
+			if (last_json[j] && (!cur_json[j] || strcmp(last_json[j], cur_json[j]) != 0))
+			    {
+			    if (!last)
+				xsConcatenate(post_params, " } ", 3);
+			    comma = 1;
+			    last = 0;
+			    }
+			}
+
+		    /** New JSON object? **/
+		    for(j=0; j < sizeof(cur_json) / sizeof(char*); j++)
+			{
+			if (cur_json[j] && (!last_json[j] || strcmp(last_json[j], cur_json[j]) != 0))
+			    {
+			    xsConcatQPrintf(post_params, " %[, %]\"%STR&JSONSTR\": %[{ %]", comma, cur_json[j], j != param_part_cnt - 1);
+			    comma = 0;
+			    }
+			}
+
+		    /** Emit value **/
+		    if (one_http_param->Parameter->Value->DataType == DATA_T_STRING)
+			xsConcatQPrintf(post_params, "\"%STR&JSONSTR\"", one_http_param->Parameter->Value->Data.String);
+		    else if (one_http_param->Parameter->Value->DataType == DATA_T_INTEGER)
+			xsConcatQPrintf(post_params, "%INT", one_http_param->Parameter->Value->Data.Integer);
+		    else
+			{
+			mssError(1, "HTTP", "Unsupported data type for post parameter %s", one_http_param->Parameter->Name);
+			goto error;
+			}
+
+		    /** Save param parts for next param comparison if not done **/
+		    for(j=0; j < sizeof(cur_json) / sizeof(char*); j++)
+			{
+			if (last_json[j])
+			    {
+			    nmSysFree(last_json[j]);
+			    last_json[j] = NULL;
+			    }
+			if (cur_json[j])
+			    {
+			    last_json[j] = nmSysStrdup(cur_json[j]);
+			    }
+			}
+		    }
+		}
+	    }
+
+	/** Close any open tags (in reverse order), and free memory **/
+	last = 1;
+	for(j=sizeof(cur_json) / sizeof(char*) - 1; j>=0; j--)
+	    {
+	    if (cur_json[j])
+		{
+		if (!last)
+		    xsConcatenate(post_params, " } ", 3);
+		last = 0;
+		}
+	    if (last_json[j])
+		{
+		nmSysFree(last_json[j]);
+		last_json[j] = NULL;
+		}
+	    }
+
+	xsConcatenate(post_params, " }", 2);
+
+	return post_params;
+
+    error:
+	if (post_params)
+	    xsFree(post_params);
+	for(j=0; j < sizeof(cur_json) / sizeof(char*); j++)
+	    {
+	    if (last_json[j])
+		nmSysFree(last_json[j]);
+	    }
+	return NULL;
+    }
+
+
 /*** http_internal_SendRequest - send a HTTP request
  ***/
 int
@@ -768,12 +1081,6 @@ http_internal_SendRequest(pHttpData inf, char* path)
     pXString url_params = NULL;
     pHttpParam one_http_param;
     char reqlen[24];
-    char cur_param[256];
-    char* param_part;
-    int param_part_cnt;
-    char* save_ptr;
-    char* cur_xml[16];
-    char* last_xml[16];
 
 	/** Compute header nonce.  This is used for functionally nothing, but
 	 ** it causes the content and offsets to values in the header to change
@@ -871,142 +1178,34 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	    return rval;
 
 	/** POST parameters? **/
-	if (!strcmp(inf->Method, "POST") && !strcmp(inf->RequestContentType, "application/x-www-form-urlencoded"))
+	if (!strcmp(inf->Method, "POST"))
 	    {
-	    /** Form URL Encoded request body **/
-	    http_internal_AddRequestHeader(inf, "Content-Type", inf->RequestContentType, 0, 0);
+	    if (!strcmp(inf->RequestContentType, "application/x-www-form-urlencoded"))
+		{
+		/** Form URL Encoded request body **/
+		http_internal_AddRequestHeader(inf, "Content-Type", inf->RequestContentType, 0, 0);
+		post_params = http_i_PostBodyUrlencode(inf);
+		}
+	    else if (!strcmp(inf->RequestContentType, "text/xml") || !strcmp(inf->RequestContentType, "application/xml"))
+		{
+		/** XML request body **/
+		http_internal_AddRequestHeader(inf, "Content-Type", inf->RequestContentType, 0, 0);
+		post_params = http_i_PostBodyXML(inf);
+		}
+	    else if (!strcmp(inf->RequestContentType, "application/json"))
+		{
+		/** JSON request body **/
+		http_internal_AddRequestHeader(inf, "Content-Type", inf->RequestContentType, 0, 0);
+		post_params = http_i_PostBodyJSON(inf);
+		}
+	    else
+		{
+		mssError(1, "HTTP", "Invalid request content type '%s'", inf->RequestContentType);
+		goto error;
+		}
 
-	    post_params = xsNew();
 	    if (!post_params)
 		goto error;
-	    for(n_output=i=0; i<xaCount(&inf->Params); i++)
-		{
-		one_http_param = xaGetItem(&inf->Params, i);
-		if (one_http_param->Usage == HTTP_PUSAGE_T_POST)
-		    {
-		    if (!(one_http_param->Parameter->Value->Flags & DATA_TF_NULL))
-			{
-			/** Encode one parameter into the post data **/
-			if (n_output > 0)
-			    xsConcatenate(post_params, "&", 1);
-			xsConcatQPrintf(post_params, "%STR&URL=", one_http_param->Parameter->Name);
-			if (one_http_param->Parameter->Value->DataType == DATA_T_STRING)
-			    xsConcatQPrintf(post_params, "%STR&URL", one_http_param->Parameter->Value->Data.String);
-			else if (one_http_param->Parameter->Value->DataType == DATA_T_INTEGER)
-			    xsConcatQPrintf(post_params, "%INT", one_http_param->Parameter->Value->Data.Integer);
-			else
-			    {
-			    mssError(1, "HTTP", "Unsupported data type for post parameter %s", one_http_param->Parameter->Name);
-			    goto error;
-			    }
-
-			n_output++;
-			}
-		    }
-		}
-
-	    snprintf(reqlen, sizeof(reqlen), "%d", xsLength(post_params));
-	    http_internal_AddRequestHeader(inf, "Content-Length", nmSysStrdup(reqlen), 1, 0);
-	    }
-	else if (!strcmp(inf->Method, "POST") && (!strcmp(inf->RequestContentType, "text/xml") || !strcmp(inf->RequestContentType, "application/xml")))
-	    {
-	    /** XML request body **/
-	    http_internal_AddRequestHeader(inf, "Content-Type", inf->RequestContentType, 0, 0);
-
-	    post_params = xsNew();
-	    if (!post_params)
-		goto error;
-
-	    /** Need to sort them to get xml data organized right **/
-	    qsort(inf->Params.Items, inf->Params.nItems, sizeof(char*), http_internal_StrCmp);
-
-	    /** Encode them **/
-	    for(j=0; j<sizeof(cur_xml) / sizeof(char*); j++)
-		{
-		cur_xml[j] = NULL;
-		last_xml[j] = NULL;
-		}
-	    for(i=0; i<xaCount(&inf->Params); i++)
-		{
-		one_http_param = xaGetItem(&inf->Params, i);
-		if (one_http_param->Usage == HTTP_PUSAGE_T_POST)
-		    {
-		    if (!(one_http_param->Parameter->Value->Flags & DATA_TF_NULL))
-			{
-			strtcpy(cur_param, one_http_param->Parameter->Name, sizeof(cur_param));
-
-			/** Go through the . separated parts of the param name **/
-			param_part = strtok_r(cur_param, ".", &save_ptr);
-			param_part_cnt = 0;
-			while(param_part)
-			    {
-			    cur_xml[param_part_cnt] = param_part;
-			    param_part = strtok_r(NULL, ".", &save_ptr);
-			    param_part_cnt++;
-			    if (param_part_cnt >= sizeof(cur_xml) / sizeof(char*) - 1)
-				{
-				mssError(1, "HTTP", "Nesting too great for XML parameter %s", one_http_param->Parameter->Name);
-				goto error;
-				}
-			    }
-			for(j=param_part_cnt; j < sizeof(cur_xml) / sizeof(char*); j++)
-			    {
-			    cur_xml[j] = NULL;
-			    }
-
-			/** Emit closing tags (reverse order)? **/
-			for(j=sizeof(cur_xml) / sizeof(char*) - 1; j>=0; j--)
-			    {
-			    if (last_xml[j] && (!cur_xml[j] || strcmp(last_xml[j], cur_xml[j]) != 0))
-				xsConcatQPrintf(post_params, "</%STR&HTE>", last_xml[j]);
-			    }
-
-			/** Emit opening tags? **/
-			for(j=0; j < sizeof(cur_xml) / sizeof(char*); j++)
-			    {
-			    if (cur_xml[j] && (!last_xml[j] || strcmp(last_xml[j], cur_xml[j]) != 0))
-				xsConcatQPrintf(post_params, "<%STR&HTE>", cur_xml[j]);
-			    }
-
-			/** Emit value **/
-			if (one_http_param->Parameter->Value->DataType == DATA_T_STRING)
-			    xsConcatQPrintf(post_params, "%STR&HTE", one_http_param->Parameter->Value->Data.String);
-			else if (one_http_param->Parameter->Value->DataType == DATA_T_INTEGER)
-			    xsConcatQPrintf(post_params, "%INT", one_http_param->Parameter->Value->Data.Integer);
-			else
-			    {
-			    mssError(1, "HTTP", "Unsupported data type for post parameter %s", one_http_param->Parameter->Name);
-			    goto error;
-			    }
-
-			/** Save param parts for next param comparison if not done **/
-			for(j=0; j < sizeof(cur_xml) / sizeof(char*); j++)
-			    {
-			    if (last_xml[j])
-				{
-				nmSysFree(last_xml[j]);
-				last_xml[j] = NULL;
-				}
-			    if (cur_xml[j])
-				{
-				last_xml[j] = nmSysStrdup(cur_xml[j]);
-				}
-			    }
-			}
-		    }
-		}
-
-	    /** Close any open tags (in reverse order), and free memory **/
-	    for(j=sizeof(cur_xml) / sizeof(char*) - 1; j>=0; j--)
-		{
-		if (cur_xml[j])
-		    xsConcatQPrintf(post_params, "</%STR&HTE>", cur_xml[j]);
-		if (last_xml[j])
-		    {
-		    nmSysFree(last_xml[j]);
-		    last_xml[j] = NULL;
-		    }
-		}
 
 	    snprintf(reqlen, sizeof(reqlen), "%d", xsLength(post_params));
 	    http_internal_AddRequestHeader(inf, "Content-Length", nmSysStrdup(reqlen), 1, 0);
@@ -1051,11 +1250,6 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	    xsFree(post_params);
 	if (url_params)
 	    xsFree(url_params);
-	for(j=0; j < sizeof(cur_xml) / sizeof(char*); j++)
-	    {
-	    if (last_xml[j])
-		nmSysFree(last_xml[j]);
-	    }
 	return -1;
     }
 

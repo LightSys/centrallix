@@ -160,11 +160,11 @@ In Netscape's implementation of Javascript, different objects are passed to the 
 
 This is not what we want, because most properties and attributes for layers and objects are set on the base of that object.  It would not be good to stick all properties on l.document.  To solve this inconsistancy and to standardize the events a little bit, we have created three attributes that should be on all visible objects.
 
-- layer: A reference to the containing layer of the current object. This is used to get access to all the attributes and the base object that an event occured on.
-
-- mainlayer: A reference to the base layer for a widget.  This is used so that we can reference a widget as a whole.  It is used in the page area functions to know what layer to draw the black box around.
-
-- kind: This is a tag used in the event handlers to check if a specific event is targeted at a specific widget.  This is explained in greater detail below.
+| Attribute   | Description
+| ----------- | ------------
+| layer       | A reference to the containing layer of the current object. This is used to get access to all the attributes and the base object that an event occured on.
+| mainlayer   | A reference to the base layer for a widget.  This is used so that we can reference a widget as a whole.  It is used in the page area functions to know what layer to draw the black box around.
+| kind        | This is a tag used in the event handlers to check if a specific event is targeted at a specific widget.  This is explained in greater detail below.
 
 The two most common objects that you will be attaching these properties to are the Image and the Layer objects.  Below are examples of how to properly assign these attributes for each of these objects.
 

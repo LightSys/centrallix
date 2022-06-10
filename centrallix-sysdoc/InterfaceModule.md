@@ -47,33 +47,43 @@ The client-side IFC sub-modules are meant to be roughly equivalent to each other
 ### External Interface
 
 #### int ifcContains(IfcHandle h, int category, char* member)
-* h:	    handle to the interface being polled
-* category:	    IFC_CAT_XXX
-* member:	    string representing the namem of the member being checked
+| Param     | Description
+| --------- | ------------
+| h         | handle to the interface being polled
+| category  | IFC_CAT_XXX
+| member    | string representing the name of the member being checked
 
 This function is meant to be used to check the validity of a member against an interface. Returns 1 if the member is a valid member of the given category, 0 if it isn't, and -1 on error.
 
 #### pObject ifcGetProperties(IfcHandle h, int category, char* member)
-* h:	    handle to the interface being polled
-* category:	    IFC_CAT_XXX
-* member:	    string containing the name of the member being checked.
+| Param     | Description
+| --------- | ------------
+| h         | handle to the interface being polled
+| category  | IFC_CAT_XXX
+| member    | string representing the name of the member being checked
 
 This function provides a way to retrieve the properties of a member of an interface definition as an open OSML object. Returns an open OSML object on success, NULL on failure.
 
 #### int ifcIsSubset(IfcHandle h1, IfcHandle h2)
-* h1:	    an interface handle
-* h2:	    another interface handle
+| Param     | Description
+| --------- | ------------
+| h1        | an interface handle
+| h2        | another interface handle
 
 This function encapsulates some of the versioning rules of the interface module. Based on the definition paths, and the major and minor version numbers, this function determines if h2 describes a subset of the functionality described by h1. In otherwords, this function returns true if h1 and h2 reference the same interface definition and have the same major version number, and if h2's minor version is less than or equal to h1's version number.
 
 #### IfcHandle ifcGetHandle(pObjSession s, char* path)
-* s:    	    the object session to use to open the interface definition
-* path:	    an OSML path to the interface definition, including major and minor version numbers
+| Param  | Description
+| ------ | -----------
+| s      | the object session to use to open the interface definition
+| path   | an OSML path to the interface definition, including major and minor version numbers
 
 This function returns a handle to the specified version of an interface definition, or returns NULL on failure.
 
 #### void ifcReleaseHandle(IfcHandle handle)
-* handle:	    the handle to be released
+| Param   | Description
+| ------- | ------------
+| handle  | the handle to be released
 
 This function releases an interface handle, freeing the resources associated with it if it is the last open handle to that particular version of its interface definition.
 
@@ -81,49 +91,63 @@ This function releases an interface handle, freeing the resources associated wit
 This function initializes the interface module. This is one of the places where additions must be made when adding a new interface type - the names of interface types and their categories are assigned here. This function also sets the base interface path, attempting to pull it out of centrallix.conf, and setting it to a default value if it cannot.
 
 #### int ifcToHtml(pFile file, pObjSession s, char* def_str)
-* file:	    the file to output the recieve the htmlified interface definition to
-* s:	    the object session to use to find the referenced interface definition
-* def_str:	    the path to the interface definition to convert
+| Param    | Description
+| -------- | ------------
+| file     | the file to output the recieve the htmlified interface definition to
+| s        | the object session to use to find the referenced interface definition
+| def_str  | the path to the interface definition to convert
 
 This function htmlifies an interface definition, generating HTML output that is designed to be easily parsible by the DHTML IFC sub-module. When a client DHTML app requests an interface definition from the server dynamically, the net driver calls this function to generate the requested output. This output is parsed on the client-side into a javascript representation of the interface definition.
 
 #### int ifcHtmlInit(pHtSession s, pWgtrNode tree)
-* s:	    the current rendering session
-* tree:	    the widget tree to use to determine which interface definitions to include on the client-side.
+| Param  | Description
+| ------ | ------------
+| s      | the current rendering session
+| tree   | the widget tree to use to determine which interface definitions to include on the client-side.
 
 This function is meant to provide the client-side IFC sub-module with all the interface definitions we think it might need. The widget tree is walked, and any interface definition implemented by a widget is included on the client-side. The goal is to make sure that 99.5% of the interface definitions that will be required on the client-side will be there when they're needed, to avoid having to load an interface definition dynamically.
 
 ### Other Functions
 #### int ifc_internal_HtmlInit_r(pHtSession s, pXString func, pWgtrNode tree, pXArray AlreadyProcessed)
-* s:		    Current rendering context
-* func:		    The function being generated
-* tree:		    The node in the tree being processed
-* AlreadyProcessed:	    A list of interface definitions that have already been included
+| Param             | Description
+| ----------------- | ------------
+| s                 | Current rendering context
+| func              | The function being generated
+| tree              | The node in the tree being processed
+| AlreadyProcessed  | A list of interface definitions that have already been included
 
 This function recursively walks a widget tree, generating inline object definitions for each interface definition referenced by a widget in the tree. It's called by ifcHtmlInit().
 
 #### int ifc_internal_ObjToJS(pXString str, pObject obj)
-* str:	    will contain the generated javascript code
-* obj:	    the OSML object to javascriptify
+| Param  | Description
+| ------ | ------------
+| str    | will contain the generated javascript code
+| obj    | the OSML object to javascriptify
 
 This function takes an open OSML object, and recursively generates a javascript inline object declaration, effectively building a javascript representation of the OSML object and its children, and their children, etc. The function is concious of the OSML object's properties and children, and creates a javascript object with the same properties, and sub-objects for each child. NOTE: As currently implemented, it's possible for collisions if an OSML object has a property with the same name as one of its children.
 
 #### IfcHandle ifc_internal_BuildHandle(pIfcDefinition def, int major, int minor)
-* def:	    the definition to build the handle out of
-* major:	    major version
-* minor:	    minor version
+| Param  | Description
+| ------ | ------------
+| def    | the definition to build the handle out of
+| major  | major version
+| minor  | minor version
 
 This function builds an interface handle out of an interface definition and a major and minor version number. An interface handle refers to a specific version of an interface definition, and only contains the information for that version; hence the reason for this function.
 
 #### pIfcDefinition ifc_internal_NewIfcDef(pObjSession s, char* path)
-* s:	    the OSML session to use to open the definition
-* path:	    the OSML path to the definition
+| Param  | Description
+| ------ | ------------
+| s      | the OSML session to use to open the definition
+| path   | the OSML path to the definition
 
 This function takes an OSML path, and parses the object it referers to into an interface definition. The interface definition includes the information for all versions of the interface. Users of the module never interact with IfcDefinitions - they only interact with the handles built out of them.
 
 #### pIfcMajorVersion ifc_internal_NewMajorVersion(pObject def, int type)
-* def:	    the OSML object representing the major version
-* type:	    the interface type for this major version
+| Param  | Description
+| ------ | ------------
+| def    | the OSML object representing the major version
+| type   | the interface type for this major version
 
 This function is arguably the most complicated in the module. It takes an open OSML object and parses it into the IFC module's internal representation of a major version of an interface definition. 
 
