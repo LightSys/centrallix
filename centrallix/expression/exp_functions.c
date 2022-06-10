@@ -18,7 +18,9 @@
 #include <openssl/sha.h>
 #include <openssl/md5.h>
 #include <openssl/evp.h>
-#include <ctype.h> 
+#include <ctype.h>
+#include <argon2.h>
+
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -4170,6 +4172,88 @@ int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
     return 0;
     }
 
+
+/*
+ * exp_fn_argon2id
+ * This method hashes a given password using the Argon2 algorithm (ID variant)
+ *
+ * Parameters:
+ * 	pExpression tree: 
+ * 	pParamObjects: 
+ * 	pExpression passowrd: The password, passed as a pExpression
+ * 	pExpression salt: The salt, passed as a pExpression
+ *
+ * returns:
+ *	 0 if successful
+ *	 -1 if error
+ */
+int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression password, pExpression salt)
+{   
+    // Set the parameters for the Argon function that are not passed in
+    int HASHLEN = 32;
+    unsigned int T_COST = 2;
+    unsigned int M_COST = (1 << 16);
+    unsigned int PARALLELISM = 1;
+ 
+    //check if parameters exist
+    if (!password || !salt)
+    	{
+	mssError(1, "EXP", "Invalid Parameters: function usage: exp_argon2id(password, salt)");
+	return -1;
+	}
+    tree->DataType = DATA_T_STRING;
+
+    //null check
+    if ((password->Flags | salt->Flags) & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+    
+    //datatype check
+    if (password->DataType != DATA_T_STRING || salt->DataType != DATA_T_STRING)
+	{
+	mssError(1, "EXP", "Invalid Datatype: function usage: exp_argon2id(password, salt)");
+	return -1;	
+	}
+    
+    // hashvalue is where the output is written 
+    unsigned char hashvalue[HASHLEN];
+
+    unsigned char *slt = (unsigned char *)strdup(salt->String);
+    unsigned char *pwd = (unsigned char *)strdup(password->String);
+    unsigned int pwdlen = strlen((char*)pwd);
+    unsigned int sltlen = strlen((char*)slt);
+
+    // salt length check
+    if (sltlen < 8)
+	{
+	mssError(1, "EXP", "Salt is too short: Salt must be at least 8 bytes (16 recommended)");
+	return -1;
+	}
+    // this call to the argon2id_hash_raw method is where the magic happens
+    // after this call, the hashed password is written in hashvalue   
+    argon2id_hash_raw(T_COST, M_COST, PARALLELISM, pwd, pwdlen, slt, sltlen, hashvalue, HASHLEN);
+    
+    // this is where we write the contents of hashvalue to tree using qpfPrintf
+    if (HASHLEN*2+1 > 63)
+	{
+	tree->Alloc = 1;
+	tree->String = nmSysMalloc(HASHLEN*2+1);
+	if (!tree->String)
+	    {
+	    mssError(1, "EXP", "argon2id(): out of memory");
+	    return -1; }
+	}
+    else
+	{
+	tree->Alloc = 0;
+	tree->String = tree->Types.StringBuf;
+	}
+    qpfPrintf(NULL, tree->String, HASHLEN*2+1, "%*STR&HEX", HASHLEN, hashvalue);
+    return 0;
+}
+
 int exp_internal_DefineFunctions()
     {
 
@@ -4234,7 +4318,7 @@ int exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "to_hex", (char*)exp_fn_to_hex);
 	xhAdd(&EXP.Functions, "from_hex", (char*)exp_fn_from_hex);
 	xhAdd(&EXP.Functions, "octet_length", (char*)exp_fn_octet_length);
-
+	xhAdd(&EXP.Functions, "argon2id",(char*)exp_fn_argon2id);
 	/** Windowing **/
 	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
 	xhAdd(&EXP.Functions, "dense_rank", (char*)exp_fn_dense_rank);

@@ -1,0 +1,12 @@
+##NAME argon2id() test
+
+query select 'case   1' = argon2id("password", "thisisasalt")
+query select 'case   2' = argon2id("password", "differentsalt")
+query select 'case   3' = argon2id("awayhaulaway", "wellhaulawayjoe")
+query select 'case   4' = argon2id("aaaaaaaaaaaaaaaa", "aaaaaaaaaaaaaaaa")
+query select 'case   5' = argon2id("P455w0rdW1th-D1ff3r3n5t!Ch@r@ct3r5??", "sodiumchloride")
+query select 'case   6' = argon2id("111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111", "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111")
+query select 'case   7' = argon2id(":^:#@)$!#@(*&!#)$", "!@)*#&!@(*#&)!(*@&#)(!*@&#)(*")
+query select 'case   8' = argon2id("", "thissalthasanemptypassword")
+query select 'case   9' = argon2id("        ", "spacethefinalfrontier")
+query select 'case  10' = argon2id("		", "putitonmytab")
