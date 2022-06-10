@@ -109,13 +109,15 @@ Subject identifiers must distinguish between a specific user, a group that a use
 
 There are four types of subject identifiers that don't identify a specific subject.  These are a:, l:, c:, and e:, and are described below.
 
-- u:username	- A user with logon 'username'
-- g:grpname	- A group with group name 'grpname'
-- r:rolename	- A role with role name 'rolename'
-- a:		- A user who has not authenticated ('anonymous')
-- l:		- A logged-in/authenticated user
-- c:		- The creator/author of a given object
-- e:		- Everyone
+| Identifier   | Description
+| ------------ | ------------
+| u:username   | A user with logon 'username'
+| g:grpname    | A group with group name 'grpname'
+| r:rolename   | A role with role name 'rolename'
+| a:           | A user who has not authenticated ('anonymous')
+| l:           | A logged-in/authenticated user
+| c:           | The creator/author of a given object
+| e:           | Everyone
 
 The c: subject identifier is context-dependent.  It is used to refer to the creator of a given object, and so is dependent on which object is being accessed.
 
@@ -169,18 +171,22 @@ Provides assurance that the current context was invoked from a running applicati
 ## Access Types
 There are seven primary access types that Centrallix uses:
 
-- create	- permission to create a new object of the type
-- delete	- permission to delete an object of the type
-- observe	- permission to observe that an object exists
-- read	- permission to read the content of an object or attribute
-- write	- permission to write to an object or attribute
-- exec	- permission to 'execute' an object, which usually means opening it using its associated objectsystem driver, instead of just opening the underlying object.
-- noexec	- permission to open an object without automatic 'execution', basically controlling the use of open-as (ls__type) processing and the EXEC/NOEXEC flags on queries and opens.
+| Access Type | Description
+| ----------- | ------------
+| create      | permission to create a new object of the type
+| delete      | permission to delete an object of the type
+| observe     | permission to observe that an object exists
+| read        | permission to read the content of an object or attribute
+| write       | permission to write to an object or attribute
+| exec        | permission to 'execute' an object, which usually means opening it using its associated objectsystem driver, instead of just opening the underlying object.
+| noexec      | permission to open an object without automatic 'execution', basically controlling the use of open-as (ls__type) processing and the EXEC/NOEXEC flags on queries and opens.
 
 These two access types are used specifically for controlling the applicability of a security policy file, and for controlling when an endorsement may be added to a user's session:
 
-- delegate	- permission for a particular .pol file to be used to modify the access permissions of a user or users.
-- endorse	- permission for a particular .app or .cmp (or similar) file to add a particular endorsement to a user's session.
+| Access Type | Description
+| ----------- | ------------
+| delegate    | permission for a particular .pol file to be used to modify the access permissions of a user or users.
+| endorse     | permission for a particular .app or .cmp (or similar) file to add a particular endorsement to a user's session.
 
 Access Type interactions:
 

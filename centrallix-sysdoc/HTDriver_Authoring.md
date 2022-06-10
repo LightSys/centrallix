@@ -27,10 +27,6 @@ License: Copyright (C) 2001 LightSys Technology Services.  See LICENSE.txt.
       - [Function: htrAddEvent(pHtDriver drv, char* event_name) returns int](#function-htraddeventphtdriver-drv-char-event_name-returns-int)
       - [Function: htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype) returns int](#function-htraddparamphtdriver-drv-char-eventaction-char-param_name-int-datatype-returns-int)
       - [Structure: HtDriver (pHtDriver is the pointer typedef)](#structure-htdriver-phtdriver-is-the-pointer-typedef)
-        - [Name](#name)
-        - [WidgetName](#widgetname)
-        - [Render](#render)
-        - [Verify](#verify)
     - [B.  Callback Methods](#b--callback-methods)
     - [C.	Page Generation API Methods](#cpage-generation-api-methods)
       - [htrAddStylesheetItem(pHtSession s, char* html_text) returns int](#htraddstylesheetitemphtsession-s-char-html_text-returns-int)
@@ -162,25 +158,12 @@ Adds a parameter (with a given data type) to an event or action.
 
 #### Structure: HtDriver (pHtDriver is the pointer typedef)
 
-##### Name
-char[64]
-
-A descriptive name of the driver.
-
-##### WidgetName
-char[64]
-
-A one-word name of the widget.  This name will be used in the structure file type name when declaring an instance of the widget, as in "widget/widgetname" where "widgetname" is this property.
-
-##### Render
-function ptr.
-
-The module's Initialize() function should set this function pointer to the module's Render() function.  See below for more information on Render().
-
-##### Verify
-function ptr.
-
-This function pointer should be set to the module's Verify() function, which is not yet used.  Verify() should simply return 0.
+| Attribute    | Type          | Description
+| ------------ | ------------- | -----------
+| Name         | char[64]      | A descriptive name of the driver.
+| WidgetName   | char[64]      | A one-word name of the widget.  This name will be used in the structure file type name when declaring an instance of the widget, as in "widget/widgetname" where "widgetname" is this property.
+| Render       | function ptr. | The module's Initialize() function should set this function pointer to the module's Render() function.  See below for more information on Render().
+| Verify       | function ptr. | This function pointer should be set to the module's Verify() function, which is not yet used.  Verify() should simply return 0.
 
 All other elements of this structure are "private" and should not be modified or accessed directly by the widget driver.  Instead, there are API functions which are used to set up these values.  If you look at the already-implemented drivers in the Centrallix distribution, many of them *do* access these directly, but only because the additional API functions were not written at that time. The additional API functions make the initialization process considerably simpler, so please do use them :)
 

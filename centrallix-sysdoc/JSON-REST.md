@@ -252,13 +252,12 @@ You should replace GRP and APP with strings of your choice which will become the
 
 The response from the server will be a JSON document containing the following attributes:
 
-- akey		- The enhanced access token
-
-- watchdogtimer	- An integer value expressing how long (in seconds) the session and token will remain valid in the absence of any network requests
-
-- servertime	- The current time on the server, including the server's timezone.
-
-- servertime_notz	- The current time on the server without the timezone included.
+| Attribute        | Description
+| ---------------- | ------------
+| akey             | The enhanced access token
+| watchdogtimer    | An integer value expressing how long (in seconds) the session and token will remain valid in the absence of any network requests
+| servertime       | The current time on the server, including the server's timezone.
+| servertime_notz  | The current time on the server without the timezone included.
 
 The token MUST be supplied on any requests that involve modification of data, via the cx__akey URL parameter.
 

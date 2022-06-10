@@ -6,6 +6,44 @@ Date: November 20, 2003
 
 Status: Design Specification and API Reference
 
+## Table of Contents
+- [HTML Generation Subsystem Obscure/Reveal Notification API](#html-generation-subsystem-obscurereveal-notification-api)
+  - [Table of Contents](#table-of-contents)
+  - [1. Introduction](#1-introduction)
+  - [2. Mechanism](#2-mechanism)
+    - [Events called on Listeners:](#events-called-on-listeners)
+    - [Events for Triggerers:](#events-for-triggerers)
+    - [Entities:](#entities)
+    - [Operation:](#operation)
+      - [A.  Triggerer or Page registers:](#a--triggerer-or-page-registers)
+        - [__pg_reveal:](#__pg_reveal)
+        - [__pg_reveal_visible:](#__pg_reveal_visible)
+        - [__pg_reveal_parent_visible:](#__pg_reveal_parent_visible)
+        - [__pg_reveal_listener_fn:](#__pg_reveal_listener_fn)
+        - [__pg_reveal_triggerer_fn:](#__pg_reveal_triggerer_fn)
+        - [__pg_reveal_busy:](#__pg_reveal_busy)
+      - [B.  Listener registers:](#b--listener-registers)
+      - [C.  Triggerer sends Obscure/Reveal/ObscureCheck/RevealCheck event.](#c--triggerer-sends-obscurerevealobscurecheckrevealcheck-event)
+        - [For Check events:](#for-check-events)
+        - [For non-Check events:](#for-non-check-events)
+      - [D.  Triggerer is itself receives Reveal/Obscure/RevealCheck/etc event](#d--triggerer-is-itself-receives-revealobscurerevealchecketc-event)
+      - [E.  RevealCheck or ObscureCheck event needs to be sent to listeners on a triggerer.](#e--revealcheck-or-obscurecheck-event-needs-to-be-sent-to-listeners-on-a-triggerer)
+      - [F.  Check OK callback occurs from a listener](#f--check-ok-callback-occurs-from-a-listener)
+      - [G.  Check VETO callback occurs from a listener](#g--check-veto-callback-occurs-from-a-listener)
+  - [3. API](#3-api)
+    - [ORS <-> Listener API](#ors---listener-api)
+      - [pg_reveal_register_listener(l)](#pg_reveal_register_listenerl)
+      - [pg_reveal_check_ok(e)](#pg_reveal_check_oke)
+      - [pg_reveal_check_veto(e)](#pg_reveal_check_vetoe)
+    - [ORS <-> Triggerer API](#ors---triggerer-api)
+      - [pg_reveal_register_triggerer(l)](#pg_reveal_register_triggererl)
+      - [pg_reveal_event(l,c,e_name)](#pg_reveal_eventlce_name)
+  - [4. Nonvisual and Related Widgets: Form, Table, OSRC...](#4-nonvisual-and-related-widgets-form-table-osrc)
+  - [5. Future Directions](#5-future-directions)
+    - [1.  Triggerer and Listener functionality in one object](#1--triggerer-and-listener-functionality-in-one-object)
+    - [2.  Generic messaging model](#2--generic-messaging-model)
+    - [3.  Stronger parent/child widget association](#3--stronger-parentchild-widget-association)
+
 ## 1. Introduction
 Many times, an onscreen widget needs to know when it is being revealed (or shown) to the user, and also when it is being obscured (or hidden) from the user.  In addition, the widget may need the opportunity to cancel the reveal or obscure action, for instance when a window is being closed which contains a form with unsaved modifications.
 
@@ -18,42 +56,29 @@ Much of this mechanism is required to be asynchronous, and thus callback- driven
 
 ### Events called on Listeners:
 
-#### Reveal
-A widget is 'revealing' a content area to the user, making it visible and thus accessible to the user.
-
-#### Obscure
-A widget is 'obscuring', or hiding, a content area from the user, making it potentially inaccessible.
-
-#### RevealCheck
-A widget desires to reveal a content area, and needs to give objects in that content area a chance to "veto" the reveal operation.
-
-#### ObscureCheck
-A widget desire to obscure a content area, and needs to give objects in that content area a chance to "veto" or cancel the obscure operation.
+| Event          | Description
+| -------------- | ------------
+| Reveal         | A widget is 'revealing' a content area to the user, making it visible and thus accessible to the user.
+| Obscure        | A widget is 'obscuring', or hiding, a content area from the user, making it potentially inaccessible.
+| RevealCheck    | A widget desires to reveal a content area, and needs to give objects in that content area a chance to "veto" the reveal operation.
+| ObscureCheck   | A widget desire to obscure a content area, and needs to give objects in that content area a chance to "veto" or cancel the obscure operation.
 
 ### Events for Triggerers:
 
-#### RevealFailed
-The reveal request has failed because some listener vetoed the operation.
-
-#### ObscureFailed
-The obscure request has failed because some listener vetoed the operation.
-
-#### RevealOK
-The reveal request has succeeded.  The triggerer should proceed with its reveal operation.
-
-#### ObscureOK
-The obscure request has been accepted, and the triggerer should proceed with the obscure operation.
+| Event           | Description
+| --------------- | ------------
+| RevealFailed    | The reveal request has failed because some listener vetoed the operation.
+| ObscureFailed   | The obscure request has failed because some listener vetoed the operation.
+| RevealOK        | The reveal request has succeeded.  The triggerer should proceed with its reveal operation.
+| ObscureOK       | The obscure request has been accepted, and the triggerer should proceed with the obscure operation.
 
 ### Entities:
 
-#### Listener
-A widget which is listening for new Reveal or Obscure events.  This widget will have the opportunity to cancel such events in the context of the RevealCheck or ObscureCheck events.  The listener must be a layer (or DIV).
-
-#### Triggerer
-A widget which has the capability of revealing or obscuring content areas.  Internally, a Triggerer is a Listener as well, though the Triggerer itself does not do any Listener processing.  The Triggerer must be a layer (or DIV) which physically contains the content that is being obscured or revealed.
-
-#### Page
-The page - top-level widget which has the ability to reveal or obscure the entire application - reveal on application load, and obscure on application termination or closure.  The Page is a Triggerer only without needing to listen for any events.
+| Name          | Description
+| ------------- | ------------
+| Listener      | A widget which is listening for new Reveal or Obscure events.  This widget will have the opportunity to cancel such events in the context of the RevealCheck or ObscureCheck events.  The listener must be a layer (or DIV).
+| Triggerer     | A widget which has the capability of revealing or obscuring content areas.  Internally, a Triggerer is a Listener as well, though the Triggerer itself does not do any Listener processing.  The Triggerer must be a layer (or DIV) which physically contains the content that is being obscured or revealed.
+| Page          | The page - top-level widget which has the ability to reveal or obscure the entire application - reveal on application load, and obscure on application termination or closure.  The Page is a Triggerer only without needing to listen for any events.
 
 ### Operation:
 

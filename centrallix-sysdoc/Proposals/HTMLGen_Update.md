@@ -117,11 +117,11 @@ This update introduces composite widget support, or the facility to embed one or
 
 Driver Interface Functions:
 
-- a.	Verify(): This method will be responsible for verifying the attributes on the widget, set the widget's container offsets, create any needed subwidgets (e.g., for composite widgets and so forth), and set geometries (and/or other properties) on subwidgets if appropriate.
-
-- b.	Render(): This method retains its traditional function of generating the DHTML page data for the widget.
-
-- c.	Initialize(): This method is not in the driver structure, but is the standard initialization call that modules must all have.
+| Function        | Description
+| --------------- | ------------
+| a. Verify()     | This method will be responsible for verifying the attributes on the widget, set the widget's container offsets, create any needed subwidgets (e.g., for composite widgets and so forth), and set geometries (and/or other properties) on subwidgets if appropriate.
+| b. Render()     | This method retains its traditional function of generating the DHTML page data for the widget.
+| c. Initialize() | This method is not in the driver structure, but is the standard initialization call that modules must all have.
 
 HTMLGen Interface Functions, page building:
 
@@ -135,18 +135,20 @@ HTMLGen Interface Functions, app structure access / modification:
 
 Format:
 
-- a.  int		Magic number
-- b.  void*		(reserved)
-- c.  int		Flags
-- d.  char[64]	Widget type (such as "widget/page")
-- e.  char[64]	Widget name
-- f.  int (4 ea)	Requested Geometry: x, y, width, height
-- g.  char (4 ea)	Flexibility: x, y, width, height (range 0-100)
-- h.	double (4 ea)	Internal flexibility computation, x/y/w/h
-- i.	int (4 ea)	Actual Geometry: x, y, width, height
-- j.	int (4 ea)	Container Offsets: top, bottom, left, right
-- k.  XArray		List of additional properties
-- l.  XArray		List of child widgets
+| Type             | Description
+| ---------------- | -----------
+| a. int           | Magic number
+| b. void*         | (reserved)
+| c. int           | Flags
+| d. char[64]      | Widget type (such as "widget/page")
+| e. char[64]      | Widget name
+| f. int (4 ea)    | Requested Geometry: x, y, width, height
+| g. char (4 ea)   | Flexibility: x, y, width, height (range 0-100)
+| h. double (4 ea) | Internal flexibility computation, x/y/w/h
+| i. int (4 ea)    | Actual Geometry: x, y, width, height
+| j. int (4 ea)    | Container Offsets: top, bottom, left, right
+| k. XArray        | List of additional properties
+| l. XArray        | List of child widgets
 
 Flags:
 
@@ -154,22 +156,26 @@ Flags:
 
 Additional property structure.  This structure is generic enough that it may be useful for other things as well, as an extension of ObjData perhaps - could be included in obj.h.
 
-- a.	int:		Magic number
-- b.	void*:		(reserved)
-- c.	char[64]:	Property name
-- d.	int:		Data type (DATA_T_xxx)
-- e.	ObjData:		Data value
-- f.	char[16]:	Small string buffer for string data, unioned with storage for money, datetime, stringvec, and intvec type values.
+| Type         | Description
+| ------------ | ------------
+| a. int       | Magic number
+| b. void*     | (reserved)
+| c. char[64]  | Property name
+| d. int       | Data type (DATA_T_xxx)
+| e. ObjData   | Data value
+| f. char[16]  | Small string buffer for string data, unioned with storage for money, datetime, stringvec, and intvec type values.
 
 ### 3.	Theme registry.
 Fields.  A theme consists of multiple records in the theme registry, so this field list builds only one record (a small part) of a theme. The implementation should also provide for a way to lookup theme registry values based on integer tags rather than string values, since the string values can consume much time to compare.  A widget driver would lookup the integer ID's during initialization, for instance.
 
 This means that the fields won't necessarily be implemented in a strictly tabular fashion - some kind of a tree structure will be needed, and it will be important to keep widget and property index numbers consistent across themes to preserve the performance benefit of integer ID lookup.
 
-- a.	char[8]		Theme name
-- b.	char[8]		Parent theme name (for inheriting values)
-- c.	char[64]	Widget type
-- d.	{struct}	Additional property structure, see above. This can include many aspects of a widget, not just properties.
+| Type         | Description
+| ------------ | ------------
+| a. char[8]   | Theme name
+| b. char[8]   | Parent theme name (for inheriting values)
+| c. char[64]  | Widget type
+| d. {struct}  | Additional property structure, see above. This can include many aspects of a widget, not just properties.
 
 ### 4.	Size determination.
 The application (or an individual container) will be able, potentially, to adapt to different sizes.  Thus, the sizing information will need to be passed to the main htmlgen render function.
@@ -208,23 +214,27 @@ The HTMLGen subsystem will continue to supply the remainder of Centrallix with o
 
 The new parameters are as follows:
 
-- a.	'w' (int)	The width, in pixels, of the area to be loaded
-- b.	'h' (int)	The height in pixels of the area to be loaded
-- c.	'parent' (char*) The parent document that the content is to be loaded into ("document" for most things, or something else for dynamic loading).
+| Parameter   | Type    | Description
+| ----------- | ------- | ------------
+| a. 'w'      | int     | The width, in pixels, of the area to be loaded
+| b. 'h'      | int     | The height in pixels of the area to be loaded
+| c. 'parent' | (char*) | The parent document that the content is to be loaded into ("document" for most things, or something else for dynamic loading).
 
 ### 8.	New widget properties.
 There will be a few new widget properties available due to the dynamic loading support and to the sizing support.
 
 The following properties are used to manage sizing; some of them are existing properties but are listed here for completeness.  These are only applicable on visual widgets, and in some cases not all may apply to a given widget.
 
-- 'x' (int)		The X coordinate of the widget in pixels
-- 'y' (int)		The Y coordinate of the widget in pixels
-- 'width' (int)	The width of the widget in pixels
-- 'height' (int)	The height of the widget in pixels
-- 'xflex' (int)	The flexibility of the X coordinate (0-100)
-- 'yflex' (int)	The flexibility of the Y coordinate (0-100)
-- 'widthflex' (int)	The flexibility of the width (0-100)
-- 'heightflex' (int)	The flexibility of the height (0-100)
+| Property     | Type    | Description
+| ------------ | ------- | ------------
+| 'x'          | int     | The X coordinate of the widget in pixels
+| 'y'          | int     | The Y coordinate of the widget in pixels
+| 'width'      | int     | The width of the widget in pixels
+| 'height'     | int     | The height of the widget in pixels
+| 'xflex'      | int     | The flexibility of the X coordinate (0-100)
+| 'yflex'      | int     | The flexibility of the Y coordinate (0-100)
+| 'widthflex'  | int     | The flexibility of the width (0-100)
+| 'heightflex' | int     | The flexibility of the height (0-100)
 
 Flexibilities determine the "exactness" needed for the given geometric parameter, and are always optional.  If omitted, they default to 0, complete precision, which is compatible with current Centrallix application behavior.  A value of 100 means complete flexibility to be resized and/or move if the application size is different from the page size.
 
@@ -232,19 +242,21 @@ The 'width' and 'height' are now valid on a page object or frameset object; the 
 
 The page widget will have the following five geometric properties now as well to control the size of the application.
 
-- 'autoadjust' (yes/no) Whether the system will automatically adjust the browser window size if the window is larger than the maximum size or smaller than the minimum size.  If set to 'no', the app will end up either being smaller than the visible area or will take up more room than is visible, resulting in scrollbars.
-- 'minwidth' (int)	The minimum width, in pixels, of the app
-- 'maxwidth' (int)	The maximum width, in pixels, of the app
-- 'minheight' (int)	The minimum height, in pixels, of the app
-- 'maxheight' (int)	The maximum height, in pixels, of the app
+| Property     | Type      | Description
+| ------------ | --------- | ------------
+| 'autoadjust' | (yes/no)  | Whether the system will automatically adjust the browser window size if the window is larger than the maximum size or smaller than the minimum size.  If set to 'no', the app will end up either being smaller than the visible area or will take up more room than is visible, resulting in scrollbars.
+| 'minwidth'   | int       | The minimum width, in pixels, of the app
+| 'maxwidth'   | int       | The maximum width, in pixels, of the app
+| 'minheight'  | int       | The minimum height, in pixels, of the app
+| 'maxheight'  | int       | The maximum height, in pixels, of the app
 
 In order to allow other layout methods to be used, the following properties are now valid on containers:
 
-- 'layouttype' (enum)	The method for arranging child objects within the current object.  Can be one of 'free' (the default), 'vertical', 'horizontal', or 'tabular'.
-
-- 'marginspacing' (int) The padding around the outer edges of the inside of the container.  Affects the position of the (0,0) origin within the container. Defaults to 0.
-
-- 'innerspacing' (int) The padding between widgets within the container.  Only meaningful for layout types other than 'free'.  Defaults to 0.
+| Property        | Type     | Description
+| --------------- | -------- | ------------
+| 'layouttype'    | enum     | The method for arranging child objects within the current object.  Can be one of 'free' (the default), 'vertical', 'horizontal', or 'tabular'.
+| 'marginspacing' | int      | The padding around the outer edges of the inside of the container.  Affects the position of the (0,0) origin within the container. Defaults to 0.
+| 'innerspacing'  | int      | The padding between widgets within the container.  Only meaningful for layout types other than 'free'.  Defaults to 0.
 
 The 'free' layout type indicates that objects are placed in the container according to their (x,y) positions relative to the upper left corner of the container.  With a 'vertical' layout type, the 'x' coordinate retains its traditional meaning, but the 'y' coordinate then becomes an ordered number (0 to n-1) indicating the order in which the widget is to appear, vertically, within the container.  Nonvisual widgets are ignored for this purpose.
 
