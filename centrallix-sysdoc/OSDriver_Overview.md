@@ -165,23 +165,23 @@ Here is a more detailed look at how a row in our CSV file from the previous exam
 
 In this view, the various pieces are abbreviated as follows to make things fit on the page:  U=user, O=OSML, R=rootnode driver, F=filesystem driver, D=datafile driver.
 
-    1.	U -> O			User requests that the object /DirectoryOne/FileTwo.csv/rows/0 be opened.
-    2.	     O -> R		Open an instance of the / object and
-            O <- R		use that as the first object in the 
-                chain of open objects needed to get 
-                at the object the user wants.
-    3.	     O			Discovers that rootnode points to a local filesystem tree.
-    4.	     O -> F		OSML tries to get local filesystem driver to open the given path, /DirectoryOne/FileTwo.csv/rows/0
-    5.	     O <- F		Filesystem driver reports that it can only open /DirectoryOne/FileTwo.csv, and returns a handle for it.
-    6.	     O			Adds an object to the chain of open objects for the open file, and figures out that the content of the FileTwo.csv is CSV data.
-    7.	     O -> D		OSML tries to get the datafile driver to open up FileTwo.csv/rows/0, the remainder of the path.
-    8.	          D -> O	datafile driver uses the OSML API to access the open object created in step 5 above (the file).
-    9.	               O -> F	OSML requests content for the file from the local filesystem driver.
-    1.                 O <- F	Local filesystem driver returns the needed content.
-    11.	          D <- O	content of the file is returned back to the datafile driver.
-    12.	     O <- D		datafile driver reports to the OSML that it could open the entire rest of the path, FileTwo.csv/rows/0, and returns a handle for that CSV row.
-    13.	     O			Adds a third object to the open object chain, for the CSV row, and realizes that entire path has been handled, thus completing the open operation.
-    14.  U <- O			An open object handle is returned to the user for the CSV row object, accessed via the filesystem file, and that accessed via the rootnode.
+    1. U -> O           User requests that the object /DirectoryOne/FileTwo.csv/rows/0 be opened.
+    2.      O -> R      Open an instance of the / object and
+            O <- R      use that as the first object in the 
+                        chain of open objects needed to get 
+                        at the object the user wants.
+    3.      O           Discovers that rootnode points to a local filesystem tree.
+    4.      O -> F      OSML tries to get local filesystem driver to open the given path, /DirectoryOne/FileTwo.csv/rows/0
+    5.      O <- F      Filesystem driver reports that it can only open /DirectoryOne/FileTwo.csv, and returns a handle for it.
+    6.      O           Adds an object to the chain of open objects for the open file, and figures out that the content of the FileTwo.csv is CSV data.
+    7.      O -> D      OSML tries to get the datafile driver to open up FileTwo.csv/rows/0, the remainder of the path.
+    8.           D -> O datafile driver uses the OSML API to access the open object created in step 5 above (the file).
+    9.                O -> F    OSML requests content for the file from the local filesystem driver.
+    10.               O <- F    Local filesystem driver returns the needed content.
+    11.          D <- O         content of the file is returned back to the datafile driver.
+    12.     O <- D      datafile driver reports to the OSML that it could open the entire rest of the path, FileTwo.csv/rows/0, and returns a handle for that CSV row.
+    13.     O           Adds a third object to the open object chain, for the CSV row, and realizes that entire path has been handled, thus completing the open operation.
+    14.   U <- O        An open object handle is returned to the user for the CSV row object, accessed via the filesystem file, and that accessed via the rootnode.
 
 In the end of this process, an open object chain has been created which contains the following three objects:
 
