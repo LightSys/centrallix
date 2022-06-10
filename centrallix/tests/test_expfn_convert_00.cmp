@@ -1,7 +1,7 @@
 Attribute [convert(integer, 100)]:  integer  100
 Attribute [convert(integer, " 2.9")]:  integer  2
 Attribute [convert(integer, -2.9)]:  integer  -2
-Attribute [convert(integer, $-2147483647.9]:  integer  2147483647
+Attribute [convert(integer, $-2147483647.9]:  integer  -2147483647
 Attribute [convert(integer, $-1.50)]:  integer  -1
 Attribute [convert(integer, "7Jesus")]:  integer  7
 Attribute [convert(integer, "Jesus7")]:  integer  0
