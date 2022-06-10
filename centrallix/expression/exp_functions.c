@@ -4177,14 +4177,18 @@ int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
  *	 -1 if error
  */
 int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression password, pExpression salt)
-{   
-    // Set the parameters for the Argon function that are not passed in
-    int HASHLEN = 32;
-    unsigned int T_COST = 2;
-    unsigned int M_COST = (1 << 16);
-    unsigned int PARALLELISM = 1;
- 
-    //check if parameters exist
+{
+    // Check for and set the optional parameters
+    // T_COST controls the time cost
+    // M_COST controls the memory cost
+    // PARALLELISM controls how many 'lanes' will be used
+    // HASHLEN is the size of the finished hash
+    unsigned int T_COST = (tree->Children.nItems >= 3)?((intptr_t)tree->Children.Items[2]):2;      // the default value should be changed according to system needs
+    unsigned int M_COST = (tree->Children.nItems >= 4)?((intptr_t)tree->Children.Items[3]):(1<<16);      // the default value should be changed according to system needs
+    unsigned int PARALLELISM = (tree->Children.nItems >= 5)?((intptr_t)tree->Children.Items[4]):1; // the default value should be changed according to system needs
+    unsigned int HASHLEN = (tree->Children.nItems >= 6)?((intptr_t)tree->Children.Items[5]):32;    // the default value should be changed according to system needs
+    
+    // check if required parameters exist
     if (!password || !salt)
     	{
 	mssError(1, "EXP", "Invalid Parameters: function usage: exp_argon2id(password, salt)");
@@ -4192,14 +4196,14 @@ int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression passwor
 	}
     tree->DataType = DATA_T_STRING;
 
-    //null check
+    // null check
     if ((password->Flags | salt->Flags) & EXPR_F_NULL)
 	{
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
 	}
     
-    //datatype check
+    // datatype check
     if (password->DataType != DATA_T_STRING || salt->DataType != DATA_T_STRING)
 	{
 	mssError(1, "EXP", "Invalid Datatype: function usage: exp_argon2id(password, salt)");
