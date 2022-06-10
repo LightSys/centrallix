@@ -1,5 +1,4 @@
 .depend
-.testdepend
 Makefile
 config.log
 config.status
@@ -56,5 +55,8 @@ centrallix/test-driver
 *.gcno
 *.gcov
 *.gcda
+lcov.info
 perf.data
 perf.data.old
+.idea/
+.vscode/

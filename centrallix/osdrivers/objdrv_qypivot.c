@@ -337,11 +337,6 @@ qyp_internal_ReadNode(char* nodepath, pSnNode nodestruct)
 	    mssError(1, "QYP", "attribute name field must be specified");
 	    goto error;
 	    }
-	if (node->nKeys == 0)
-	    {
-	    mssError(1, "QYP", "at least one entity key field must be specified");
-	    goto error;
-	    }
 	if (node->nValues == 0)
 	    {
 	    mssError(1, "QYP", "at least one value field must be specified");
@@ -621,26 +616,29 @@ qyp_internal_ProcessOpen(pQypData inf)
     pQypDatum one_datum = NULL;
     int rval = 0;
 
-	/** Break up the object name into separate concat key values **/
-	strtcpy(keybuf, inf->ObjName, sizeof(keybuf));
-	n_objname_keys = 0;
-	ptr = strtok(keybuf, "|");
-	while (ptr && n_objname_keys < QYP_MAX_KEYS)
+	if (inf->Node->nKeys > 0)
 	    {
-	    keyptrs[n_objname_keys] = ptr;
-	    n_objname_keys++;
-	    ptr = strtok(NULL,"|");
-	    }
+	    /** Break up the object name into separate concat key values **/
+	    strtcpy(keybuf, inf->ObjName, sizeof(keybuf));
+	    n_objname_keys = 0;
+	    ptr = strtok(keybuf, "|");
+	    while (ptr && n_objname_keys < QYP_MAX_KEYS)
+		{
+		keyptrs[n_objname_keys] = ptr;
+		n_objname_keys++;
+		ptr = strtok(NULL,"|");
+		}
 
-	/** Correct key count? **/
-	if (n_objname_keys != inf->Node->nKeys)
-	    {
-	    mssError(1, "QYP", "Invalid concat key count in object name");
-	    goto error;
-	    }
+	    /** Correct key count? **/
+	    if (n_objname_keys != inf->Node->nKeys)
+		{
+		mssError(1, "QYP", "Invalid concat key count in object name");
+		goto error;
+		}
 
-	/** Get the selection criteria from the name **/
-	criteria = qyp_internal_NameToExpression(inf->Node, keyptrs);
+	    /** Get the selection criteria from the name **/
+	    criteria = qyp_internal_NameToExpression(inf->Node, keyptrs);
+	    }
 
 	/** Open the source object using the criteria **/
 	source_obj = objOpen(inf->Obj->Session, inf->Node->SourcePath, O_RDONLY, 0600, "system/directory");
@@ -686,7 +684,8 @@ qyp_internal_ProcessOpen(pQypData inf)
 	    xaInsertBefore(&inf->PivotData, i, (void*)one_datum);
 	    }
 
-	expFreeExpression(criteria);
+	if (criteria)
+	    expFreeExpression(criteria);
 
 	return rval;
 
@@ -1051,10 +1050,10 @@ qypOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	inf->Node->BaseNode->OpenCnt++;
 
 	/** Read in the row data? **/
-	if (obj->SubPtr < obj->Pathname->nElements)
+	if (obj->SubPtr < obj->Pathname->nElements || inf->Node->nKeys == 0)
 	    {
 	    inf->Flags |= QYP_F_ISROW;
-	    strtcpy(inf->ObjName, obj_internal_PathPart(obj->Pathname, obj->SubPtr, 1), sizeof(inf->ObjName));
+	    strtcpy(inf->ObjName, obj_internal_PathPart(obj->Pathname, obj->SubPtr - ((inf->Node->nKeys == 0)?1:0), 1), sizeof(inf->ObjName));
 
 	    /** autoname requested? **/
 	    if (!strcmp(inf->ObjName,"*") && (obj->Mode & OBJ_O_AUTONAME))

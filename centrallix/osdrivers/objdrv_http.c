@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <regex.h>
 #include "obj.h"
@@ -83,6 +84,7 @@ typedef struct
 #define HTTP_PUSAGE_T_URL	1	/* parameter is encoded into the url */
 #define HTTP_PUSAGE_T_POST	2	/* parameter is encoded into the post data */
 #define HTTP_PUSAGE_T_HEADER	3	/* parameter is encoded into an HTTP request header */
+#define HTTP_PUSAGE_T_NONE	4	/* parameter is not sent, but is available for use via :parameters:name */
 
 #define HTTP_PSOURCE_T_NONE	0	/* parameter has no source - only the provided default */
 #define HTTP_PSOURCE_T_PATH	1	/* parameter comes from pathname subpart */
@@ -122,6 +124,7 @@ typedef struct
     int		NetworkOffset;
     int		ReadOffset;
     char*	ContentType;
+    char*	RequestContentType;
     XArray	RequestHeaders;		/* of pHttpHeader */
     XArray	ResponseHeaders;	/* of pHttpHeader */
     int		ModDateAlwaysNow;
@@ -440,6 +443,8 @@ http_internal_Cleanup(pHttpData inf)
 	    inf->Path = NULL;
 	    if (inf->Method) nmSysFree(inf->Method);
 	    inf->Method = NULL;
+	    if (inf->RequestContentType) nmSysFree(inf->RequestContentType);
+	    inf->RequestContentType = NULL;
 	    if (inf->Protocol) nmSysFree(inf->Protocol);
 	    inf->Protocol = NULL;
 	    if (inf->Cipherlist) nmSysFree(inf->Cipherlist);
@@ -734,13 +739,337 @@ http_internal_ConnectHttp(pHttpData inf)
     }
 
 
+/*** http_internal_StrCmp - string compare for qsort()
+ ***/
+int
+http_internal_StrCmp(const void *v1, const void *v2)
+    {
+    pHttpParam *p1 = (pHttpParam*)v1;
+    pHttpParam *p2 = (pHttpParam*)v2;
+    return strcmp((*p1)->Parameter->Name, (*p2)->Parameter->Name);
+    }
+
+
+/*** http_i_PostBodyUrlencode - create a POST body with form urlencoding
+ *** formatting.
+ ***/
+pXString
+http_i_PostBodyUrlencode(pHttpData inf)
+    {
+    pXString post_params = NULL;
+    pHttpParam one_http_param;
+    int n_output, i;
+
+	post_params = xsNew();
+	if (!post_params)
+	    goto error;
+	for(n_output=i=0; i<xaCount(&inf->Params); i++)
+	    {
+	    one_http_param = xaGetItem(&inf->Params, i);
+	    if (one_http_param->Usage == HTTP_PUSAGE_T_POST)
+		{
+		if (!(one_http_param->Parameter->Value->Flags & DATA_TF_NULL))
+		    {
+		    /** Encode one parameter into the post data **/
+		    if (n_output > 0)
+			xsConcatenate(post_params, "&", 1);
+		    xsConcatQPrintf(post_params, "%STR&URL=", one_http_param->Parameter->Name);
+		    if (one_http_param->Parameter->Value->DataType == DATA_T_STRING)
+			xsConcatQPrintf(post_params, "%STR&URL", one_http_param->Parameter->Value->Data.String);
+		    else if (one_http_param->Parameter->Value->DataType == DATA_T_INTEGER)
+			xsConcatQPrintf(post_params, "%INT", one_http_param->Parameter->Value->Data.Integer);
+		    else
+			{
+			mssError(1, "HTTP", "Unsupported data type for post parameter %s", one_http_param->Parameter->Name);
+			goto error;
+			}
+
+		    n_output++;
+		    }
+		}
+	    }
+
+	return post_params;
+
+    error:
+	if (post_params)
+	    xsFree(post_params);
+	return NULL;
+    }
+
+
+/*** http_i_PostBodyXML - create a POST body with XML formatting.
+ ***/
+pXString
+http_i_PostBodyXML(pHttpData inf)
+    {
+    pXString post_params = NULL;
+    pHttpParam one_http_param;
+    int i,j;
+    char* cur_xml[16];
+    char* last_xml[16];
+    char* param_part;
+    int param_part_cnt;
+    char* save_ptr;
+    char cur_param[256];
+
+	post_params = xsNew();
+	if (!post_params)
+	    goto error;
+
+	/** Need to sort them to get xml data organized right **/
+	qsort(inf->Params.Items, inf->Params.nItems, sizeof(char*), http_internal_StrCmp);
+
+	/** Encode them **/
+	for(j=0; j<sizeof(cur_xml) / sizeof(char*); j++)
+	    {
+	    cur_xml[j] = NULL;
+	    last_xml[j] = NULL;
+	    }
+	for(i=0; i<xaCount(&inf->Params); i++)
+	    {
+	    one_http_param = xaGetItem(&inf->Params, i);
+	    if (one_http_param->Usage == HTTP_PUSAGE_T_POST)
+		{
+		if (!(one_http_param->Parameter->Value->Flags & DATA_TF_NULL))
+		    {
+		    strtcpy(cur_param, one_http_param->Parameter->Name, sizeof(cur_param));
+
+		    /** Go through the . separated parts of the param name **/
+		    param_part = strtok_r(cur_param, ".", &save_ptr);
+		    param_part_cnt = 0;
+		    while(param_part)
+			{
+			cur_xml[param_part_cnt] = param_part;
+			param_part = strtok_r(NULL, ".", &save_ptr);
+			param_part_cnt++;
+			if (param_part_cnt >= sizeof(cur_xml) / sizeof(char*) - 1)
+			    {
+			    mssError(1, "HTTP", "Nesting too great for XML parameter %s", one_http_param->Parameter->Name);
+			    goto error;
+			    }
+			}
+		    for(j=param_part_cnt; j < sizeof(cur_xml) / sizeof(char*); j++)
+			{
+			cur_xml[j] = NULL;
+			}
+
+		    /** Emit closing tags (reverse order)? **/
+		    for(j=sizeof(cur_xml) / sizeof(char*) - 1; j>=0; j--)
+			{
+			if (last_xml[j] && (!cur_xml[j] || strcmp(last_xml[j], cur_xml[j]) != 0))
+			    xsConcatQPrintf(post_params, "</%STR&HTE>", last_xml[j]);
+			}
+
+		    /** Emit opening tags? **/
+		    for(j=0; j < sizeof(cur_xml) / sizeof(char*); j++)
+			{
+			if (cur_xml[j] && (!last_xml[j] || strcmp(last_xml[j], cur_xml[j]) != 0))
+			    xsConcatQPrintf(post_params, "<%STR&HTE>", cur_xml[j]);
+			}
+
+		    /** Emit value **/
+		    if (one_http_param->Parameter->Value->DataType == DATA_T_STRING)
+			xsConcatQPrintf(post_params, "%STR&HTE", one_http_param->Parameter->Value->Data.String);
+		    else if (one_http_param->Parameter->Value->DataType == DATA_T_INTEGER)
+			xsConcatQPrintf(post_params, "%INT", one_http_param->Parameter->Value->Data.Integer);
+		    else
+			{
+			mssError(1, "HTTP", "Unsupported data type for post parameter %s", one_http_param->Parameter->Name);
+			goto error;
+			}
+
+		    /** Save param parts for next param comparison if not done **/
+		    for(j=0; j < sizeof(cur_xml) / sizeof(char*); j++)
+			{
+			if (last_xml[j])
+			    {
+			    nmSysFree(last_xml[j]);
+			    last_xml[j] = NULL;
+			    }
+			if (cur_xml[j])
+			    {
+			    last_xml[j] = nmSysStrdup(cur_xml[j]);
+			    }
+			}
+		    }
+		}
+	    }
+
+	/** Close any open tags (in reverse order), and free memory **/
+	for(j=sizeof(cur_xml) / sizeof(char*) - 1; j>=0; j--)
+	    {
+	    if (cur_xml[j])
+		xsConcatQPrintf(post_params, "</%STR&HTE>", cur_xml[j]);
+	    if (last_xml[j])
+		{
+		nmSysFree(last_xml[j]);
+		last_xml[j] = NULL;
+		}
+	    }
+
+	return post_params;
+
+    error:
+	if (post_params)
+	    xsFree(post_params);
+	for(j=0; j < sizeof(cur_xml) / sizeof(char*); j++)
+	    {
+	    if (last_xml[j])
+		nmSysFree(last_xml[j]);
+	    }
+	return NULL;
+    }
+
+
+/*** http_i_PostBodyJSON - create a POST body with JSON formatting.
+ ***/
+pXString
+http_i_PostBodyJSON(pHttpData inf)
+    {
+    pXString post_params = NULL;
+    pHttpParam one_http_param;
+    int i, j, comma = 0, last;
+    char* cur_json[16];
+    char* last_json[16];
+    char* param_part;
+    int param_part_cnt;
+    char* save_ptr;
+    char cur_param[256];
+
+	post_params = xsNew();
+	if (!post_params)
+	    goto error;
+	xsConcatenate(post_params, "{ ", 2);
+
+	/** Need to sort them to get JSON data organized right **/
+	qsort(inf->Params.Items, inf->Params.nItems, sizeof(char*), http_internal_StrCmp);
+
+	/** Encode them **/
+	for(j=0; j<sizeof(cur_json) / sizeof(char*); j++)
+	    {
+	    cur_json[j] = NULL;
+	    last_json[j] = NULL;
+	    }
+	for(i=0; i<xaCount(&inf->Params); i++)
+	    {
+	    one_http_param = xaGetItem(&inf->Params, i);
+	    if (one_http_param->Usage == HTTP_PUSAGE_T_POST)
+		{
+		if (!(one_http_param->Parameter->Value->Flags & DATA_TF_NULL))
+		    {
+		    strtcpy(cur_param, one_http_param->Parameter->Name, sizeof(cur_param));
+
+		    /** Go through the . separated parts of the param name **/
+		    param_part = strtok_r(cur_param, ".", &save_ptr);
+		    param_part_cnt = 0;
+		    while(param_part)
+			{
+			cur_json[param_part_cnt] = param_part;
+			param_part = strtok_r(NULL, ".", &save_ptr);
+			param_part_cnt++;
+			if (param_part_cnt >= sizeof(cur_json) / sizeof(char*) - 1)
+			    {
+			    mssError(1, "HTTP", "Nesting too great for JSON parameter %s", one_http_param->Parameter->Name);
+			    goto error;
+			    }
+			}
+		    for(j=param_part_cnt; j < sizeof(cur_json) / sizeof(char*); j++)
+			{
+			cur_json[j] = NULL;
+			}
+
+		    /** Emit closing braces? **/
+		    last = 1;
+		    for(j=sizeof(cur_json) / sizeof(char*) - 1; j>=0; j--)
+			{
+			if (last_json[j] && (!cur_json[j] || strcmp(last_json[j], cur_json[j]) != 0))
+			    {
+			    if (!last)
+				xsConcatenate(post_params, " } ", 3);
+			    comma = 1;
+			    last = 0;
+			    }
+			}
+
+		    /** New JSON object? **/
+		    for(j=0; j < sizeof(cur_json) / sizeof(char*); j++)
+			{
+			if (cur_json[j] && (!last_json[j] || strcmp(last_json[j], cur_json[j]) != 0))
+			    {
+			    xsConcatQPrintf(post_params, " %[, %]\"%STR&JSONSTR\": %[{ %]", comma, cur_json[j], j != param_part_cnt - 1);
+			    comma = 0;
+			    }
+			}
+
+		    /** Emit value **/
+		    if (one_http_param->Parameter->Value->DataType == DATA_T_STRING)
+			xsConcatQPrintf(post_params, "\"%STR&JSONSTR\"", one_http_param->Parameter->Value->Data.String);
+		    else if (one_http_param->Parameter->Value->DataType == DATA_T_INTEGER)
+			xsConcatQPrintf(post_params, "%INT", one_http_param->Parameter->Value->Data.Integer);
+		    else
+			{
+			mssError(1, "HTTP", "Unsupported data type for post parameter %s", one_http_param->Parameter->Name);
+			goto error;
+			}
+
+		    /** Save param parts for next param comparison if not done **/
+		    for(j=0; j < sizeof(cur_json) / sizeof(char*); j++)
+			{
+			if (last_json[j])
+			    {
+			    nmSysFree(last_json[j]);
+			    last_json[j] = NULL;
+			    }
+			if (cur_json[j])
+			    {
+			    last_json[j] = nmSysStrdup(cur_json[j]);
+			    }
+			}
+		    }
+		}
+	    }
+
+	/** Close any open tags (in reverse order), and free memory **/
+	last = 1;
+	for(j=sizeof(cur_json) / sizeof(char*) - 1; j>=0; j--)
+	    {
+	    if (cur_json[j])
+		{
+		if (!last)
+		    xsConcatenate(post_params, " } ", 3);
+		last = 0;
+		}
+	    if (last_json[j])
+		{
+		nmSysFree(last_json[j]);
+		last_json[j] = NULL;
+		}
+	    }
+
+	xsConcatenate(post_params, " }", 2);
+
+	return post_params;
+
+    error:
+	if (post_params)
+	    xsFree(post_params);
+	for(j=0; j < sizeof(cur_json) / sizeof(char*); j++)
+	    {
+	    if (last_json[j])
+		nmSysFree(last_json[j]);
+	    }
+	return NULL;
+    }
+
+
 /*** http_internal_SendRequest - send a HTTP request
  ***/
 int
 http_internal_SendRequest(pHttpData inf, char* path)
     {
     int rval;
-    int i, n_output;
+    int i, j, n_output;
     pHttpHeader hdr;
     char* nonce;
     unsigned char* keydata;
@@ -851,36 +1180,32 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	/** POST parameters? **/
 	if (!strcmp(inf->Method, "POST"))
 	    {
-	    http_internal_AddRequestHeader(inf, "Content-Type", "application/x-www-form-urlencoded", 0, 0);
+	    if (!strcmp(inf->RequestContentType, "application/x-www-form-urlencoded"))
+		{
+		/** Form URL Encoded request body **/
+		http_internal_AddRequestHeader(inf, "Content-Type", inf->RequestContentType, 0, 0);
+		post_params = http_i_PostBodyUrlencode(inf);
+		}
+	    else if (!strcmp(inf->RequestContentType, "text/xml") || !strcmp(inf->RequestContentType, "application/xml"))
+		{
+		/** XML request body **/
+		http_internal_AddRequestHeader(inf, "Content-Type", inf->RequestContentType, 0, 0);
+		post_params = http_i_PostBodyXML(inf);
+		}
+	    else if (!strcmp(inf->RequestContentType, "application/json"))
+		{
+		/** JSON request body **/
+		http_internal_AddRequestHeader(inf, "Content-Type", inf->RequestContentType, 0, 0);
+		post_params = http_i_PostBodyJSON(inf);
+		}
+	    else
+		{
+		mssError(1, "HTTP", "Invalid request content type '%s'", inf->RequestContentType);
+		goto error;
+		}
 
-	    post_params = xsNew();
 	    if (!post_params)
 		goto error;
-	    for(n_output=i=0; i<xaCount(&inf->Params); i++)
-		{
-		one_http_param = xaGetItem(&inf->Params, i);
-		if (one_http_param->Usage == HTTP_PUSAGE_T_POST)
-		    {
-		    if (!(one_http_param->Parameter->Value->Flags & DATA_TF_NULL))
-			{
-			/** Encode one parameter into the post data **/
-			if (n_output > 0)
-			    xsConcatenate(post_params, "&", 1);
-			xsConcatQPrintf(post_params, "%STR&URL=", one_http_param->Parameter->Name);
-			if (one_http_param->Parameter->Value->DataType == DATA_T_STRING)
-			    xsConcatQPrintf(post_params, "%STR&URL", one_http_param->Parameter->Value->Data.String);
-			else if (one_http_param->Parameter->Value->DataType == DATA_T_INTEGER)
-			    xsConcatQPrintf(post_params, "%INT", one_http_param->Parameter->Value->Data.Integer);
-			else
-			    {
-			    mssError(1, "HTTP", "Unsupported data type for post parameter %s", one_http_param->Parameter->Name);
-			    goto error;
-			    }
-
-			n_output++;
-			}
-		    }
-		}
 
 	    snprintf(reqlen, sizeof(reqlen), "%d", xsLength(post_params));
 	    http_internal_AddRequestHeader(inf, "Content-Length", nmSysStrdup(reqlen), 1, 0);
@@ -1317,14 +1642,39 @@ char*
 http_internal_GetConfigString(pHttpData inf, char* configname, char* default_value)
     {
     char* ptr = NULL;
+    pExpression exp;
 
-	//if (stAttrValue(stLookup(inf->Node->Data,(configname)),NULL,&ptr,0) < 0)
-	//if (stGetObjAttrValue(inf->Node->Data, configname, DATA_T_STRING, POD(&ptr)) < 0 || !ptr)
-	if (stGetAttrValueOSML(stLookup(inf->Node->Data, configname), DATA_T_STRING, POD(&ptr), 0, inf->Obj->Session) < 0 || !ptr)
+	/** Normal string or expression? **/
+	if (stGetAttrType(stLookup(inf->Node->Data, configname), 0) == DATA_T_CODE)
+	    {
+	    /** Expression **/
+	    if ((exp = stGetExpression(stLookup(inf->Node->Data, configname), 0)) != NULL)
+		{
+		expBindExpression(exp, inf->ObjList, EXPR_F_RUNSERVER);
+		if (expEvalTree(exp, inf->ObjList) == 0)
+		    {
+		    if (exp->DataType == DATA_T_STRING && !(exp->Flags & EXPR_F_NULL))
+			ptr = exp->String;
+		    }
+		}
+	    }
+	else if (stGetAttrValueOSML(stLookup(inf->Node->Data, configname), DATA_T_STRING, POD(&ptr), 0, inf->Obj->Session) < 0 || !ptr)
+	    {
+	    /** Failed to get string **/
+	    ptr = NULL;
+	    }
+
+	/** Apply default? **/
+	if (!ptr)
 	    ptr = default_value;
-	ptr = nmSysStrdup(ptr);
+
+	/** Valid? **/
 	if (!ptr)
 	    return NULL;
+
+	/** Copy it **/
+	ptr = nmSysStrdup(ptr);
+
 	if (HTTP_OS_DEBUG) printf("%s: %s\n",configname,ptr);
 
     return ptr;
@@ -1396,15 +1746,17 @@ http_internal_LoadParams(pHttpData inf)
 			    one_new_http_param->Usage = HTTP_PUSAGE_T_POST;
 			else if (!strcmp(val, "header"))
 			    one_new_http_param->Usage = HTTP_PUSAGE_T_HEADER;
+			else if (!strcmp(val, "none"))
+			    one_new_http_param->Usage = HTTP_PUSAGE_T_NONE;
 			else
 			    {
-			    mssError(1, "HTTP", "Parameter %s usage must be 'url', 'post', or 'header'", param_inf->Name);
+			    mssError(1, "HTTP", "Parameter %s usage must be 'url', 'post', 'header', or 'none'", param_inf->Name);
 			    goto error;
 			    }
 			}
 		    else
 			{
-			mssError(1, "HTTP", "Parameter %s usage must be 'url', 'post', or 'header'", param_inf->Name);
+			mssError(1, "HTTP", "Parameter %s usage must be 'url', 'post', 'header', or 'none'", param_inf->Name);
 			goto error;
 			}
 		    }
@@ -1499,7 +1851,7 @@ http_internal_LoadParams(pHttpData inf)
 			mssError(1, "HTTP", "Parameter %s must be string or integer", one_param->Name);
 			goto error;
 			}
-		    paramSetValue(one_param, &tod);
+		    paramSetValue(one_param, &tod, 1, inf->ObjList, inf->Obj->Session);
 		    }
 		}
 	    }
@@ -1521,7 +1873,7 @@ http_internal_LoadParams(pHttpData inf)
 			one_open_ctl = open_ctl->SubInf[j];
 			if (!strcmp(one_open_ctl->Name, one_param->Name))
 			    {
-			    paramSetValueFromInfNe(one_param, one_open_ctl);
+			    paramSetValueFromInfNe(one_param, one_open_ctl, 1, inf->ObjList, inf->Obj->Session);
 			    break;
 			    }
 			}
@@ -1559,6 +1911,10 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     short rval;
     pSnNode node = NULL;
     char* ptr;
+    char* user;
+    char* pw;
+    char* authline;
+    int len;
     int redir_cnt;
 
 	/** Allocate the structure **/
@@ -1608,6 +1964,10 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	expAddParamToList(inf->ObjList, "parameters", (void*)inf, 0);
 	expSetParamFunctions(inf->ObjList, "parameters", http_internal_GetParamType, http_internal_GetParamValue, http_internal_SetParamValue);
 
+	/** Load parameters **/
+	if (http_internal_LoadParams(inf) < 0)
+	    goto error;
+
 	/** Configuration **/
 	inf->ProxyServer = http_internal_GetConfigString(inf, "proxyserver", "");
 	inf->ProxyPort = http_internal_GetConfigString(inf, "proxyport", "80");
@@ -1615,6 +1975,7 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	inf->Port = http_internal_GetConfigString(inf, "port", "");
 	inf->Path = http_internal_GetConfigString(inf, "path", "/");
 	inf->Method = http_internal_GetConfigString(inf, "method", "GET");
+	inf->RequestContentType = http_internal_GetConfigString(inf, "request_content_type", "application/x-www-form-urlencoded");
 	inf->Protocol = http_internal_GetConfigString(inf, "protocol", "http");
 	inf->Cipherlist = http_internal_GetConfigString(inf, "ssl_cipherlist", "");
 
@@ -1626,19 +1987,31 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    }
 
 	/** Authentication headers **/
-	if ((ptr = http_internal_GetConfigString(inf, "proxyauthline", "")))
+	if ((ptr = http_internal_GetConfigString(inf, "proxyauthline", NULL)))
 	    {
-	    if (ptr[0])
-		http_internal_AddRequestHeader(inf, "Proxy-Authorization", ptr, 1, 0);
-	    else
-		nmSysFree(ptr);
+	    http_internal_AddRequestHeader(inf, "Proxy-Authorization", ptr, 1, 0);
 	    }
-	if ((ptr = http_internal_GetConfigString(inf, "authline", "")))
+	if ((ptr = http_internal_GetConfigString(inf, "authline", NULL)))
 	    {
-	    if (ptr[0])
-		http_internal_AddRequestHeader(inf, "Authorization", ptr, 1, 0);
-	    else
+	    http_internal_AddRequestHeader(inf, "Authorization", ptr, 1, 0);
+	    }
+	else if ((user = http_internal_GetConfigString(inf, "username", NULL)))
+	    {
+	    pw = http_internal_GetConfigString(inf, "password", "");
+	    ptr = nmSysMalloc(strlen(user) + 1 + strlen(pw) + 1);
+	    if (!ptr)
+		goto error;
+	    sprintf(ptr, "%s:%s", user, pw);
+	    len = (strlen(user) + 1 + strlen(pw)) * 2 + 3 + 6;
+	    authline = nmSysMalloc(len);
+	    if (!authline)
+		{
 		nmSysFree(ptr);
+		goto error;
+		}
+	    qpfPrintf(NULL, authline, len, "Basic %STR&B64", ptr);
+	    nmSysFree(ptr);
+	    http_internal_AddRequestHeader(inf, "Authorization", authline, 1, 0);
 	    }
 
 	/** Control flags **/
@@ -1671,10 +2044,6 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    mssError(1, "HTTP", "Server name must be provided");
 	    goto error;
 	    }
-
-	/** Load parameters **/
-	if (http_internal_LoadParams(inf) < 0)
-	    goto error;
 
 	/** Adjust SubCnt based on parameter usage **/
 	if (!inf->AllowSubDirs)
@@ -1974,8 +2343,8 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    return 0;
 	    }
 
-	/** If content-type, return as appropriate **/
-	if (!strcmp(attrname,"content_type"))
+	/** If content-type / inner type, return as appropriate **/
+	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type"))
 	    {
 	    if (datatype != DATA_T_STRING)
 		{
@@ -1983,7 +2352,12 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 			attrname, obj_type_names[datatype]);
 		return -1;
 		}
-	    val->String = inf->ContentType;
+
+	    if (inf->ContentType)
+		val->String = inf->ContentType;
+	    else
+		val->String = "application/octet-stream";
+
 	    return 0;
 	    }
 
@@ -2043,18 +2417,6 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		return -1;
 		}
 	    val->String = ptr;
-	    return 0;
-	    }
-
-	if(!strcmp(attrname,"inner_type"))
-	    {
-	    if (datatype != DATA_T_STRING)
-		{
-		mssError(1,"HTTP","Type mismatch getting attribute '%s' [requested=%s, actual=string]",
-			attrname, obj_type_names[datatype]);
-		return -1;
-		}
-	    val->String = inf->ContentType;
 	    return 0;
 	    }
 

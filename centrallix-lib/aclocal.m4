@@ -150,6 +150,25 @@ AC_DEFUN(CHECK_HARDENING,
     ]
 )
 
+dnl check if test coverage metering is desired
+AC_DEFUN(CHECK_COVERAGE,
+    [
+    AC_MSG_CHECKING(if test coverage metering is desired)
+    AC_ARG_ENABLE(coverage,
+        AC_HELP_STRING([--enable-coverage],
+            [enable test coverage metering]
+        ),
+        COVERAGE="-fprofile-arcs -ftest-coverage",
+        COVERAGE=""
+    )
+    if test "$COVERAGE" = ""; then
+            AC_MSG_RESULT(no)
+    else
+            AC_MSG_RESULT(yes)
+    fi
+    ]
+)
+
 dnl check if optimization should be done
 dnl this check must follow the hardening check in configure.ac.
 dnl The USING_blahblah defines are to force a recompile if those options

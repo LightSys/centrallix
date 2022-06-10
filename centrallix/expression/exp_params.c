@@ -523,13 +523,18 @@ expReplaceVariableID(pExpression this, int newid)
 int
 expFreezeOne(pExpression this, pParamObjects objlist, int freeze_id)
     {
-    int i;
+    int i, oldflags;
 
     	/** Is this a PROPERTY object and does not match freeze_id?? **/
 	if ((this->NodeType == EXPR_N_PROPERTY || this->NodeType == EXPR_N_OBJECT) && this->ObjID == freeze_id)
 	    {
+	    oldflags = this->Flags;
 	    this->Flags &= ~EXPR_F_FREEZEEVAL;
-	    expEvalTree(this,objlist);
+	    if (expEvalTree(this,objlist) < 0)
+		{
+		this->Flags = oldflags;
+		return -1;
+		}
 	    this->Flags |= EXPR_F_FREEZEEVAL;
 	    return 0;
 	    }
@@ -537,7 +542,8 @@ expFreezeOne(pExpression this, pParamObjects objlist, int freeze_id)
 	/** Otherwise, check child items. **/
 	for(i=0;i<this->Children.nItems;i++)
 	    {
-	    expFreezeOne((pExpression)(this->Children.Items[i]), objlist, freeze_id);
+	    if (expFreezeOne((pExpression)(this->Children.Items[i]), objlist, freeze_id) < 0)
+		return -1;
 	    }
 
     return 0;
@@ -552,13 +558,18 @@ expFreezeOne(pExpression this, pParamObjects objlist, int freeze_id)
 int
 expFreezeEval(pExpression this, pParamObjects objlist, int freeze_id)
     {
-    int i;
+    int i, oldflags;
 
     	/** Is this a PROPERTY object and does not match freeze_id?? **/
 	if ((this->NodeType == EXPR_N_PROPERTY || this->NodeType == EXPR_N_OBJECT) && this->ObjID != -1 && this->ObjID != freeze_id)
 	    {
+	    oldflags = this->Flags;
 	    this->Flags &= ~EXPR_F_FREEZEEVAL;
-	    expEvalTree(this,objlist);
+	    if (expEvalTree(this,objlist) < 0)
+		{
+		this->Flags = oldflags;
+		return -1;
+		}
 	    this->Flags |= EXPR_F_FREEZEEVAL;
 	    return 0;
 	    }
@@ -566,7 +577,8 @@ expFreezeEval(pExpression this, pParamObjects objlist, int freeze_id)
 	/** Otherwise, check child items. **/
 	for(i=0;i<this->Children.nItems;i++)
 	    {
-	    expFreezeEval((pExpression)(this->Children.Items[i]), objlist, freeze_id);
+	    if (expFreezeEval((pExpression)(this->Children.Items[i]), objlist, freeze_id) < 0)
+		return -1;
 	    }
 
     return 0;

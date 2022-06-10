@@ -21,7 +21,8 @@
 var pg_msglist = '';
 var pg_init_ts = (new Date()).valueOf();
 
-var pg_waitlyr_id = null;
+var pg_spinner_id = null;
+var pg_spinner = null;
 
 var pg_layer = null;
 
@@ -492,32 +493,16 @@ function pg_get(o,a)
 
 function pg_ping_init(l,i)
     {
-    if(cx__capabilities.Dom0IE)
-        {
-    	l.tid=setInterval(pg_ping_send, i);
-	}
-    else
-    	{
-    	l.tid=setInterval(pg_ping_send,i,l);    		
-    	}
+    l.tid=setInterval(pg_ping_send,i,l);    		
     }
 
 function pg_ping_recieve()
     {
-    var link;
-    //confirm("recieving");
-    if(cx__capabilities.Dom1HTML)
-	{
+    var link = null;
+    var links = this.contentDocument.getElementsByTagName("a");
+    if (links && links.length > 0)
 	link = this.contentDocument.getElementsByTagName("a")[0];
-	}
-    else if(cx__capabilities.Dom0NS)
-	{
-	link = this.document.links[0];
-	}
-    else
-	{
-	return false;
-	}
+
     if(!link || link.target==='ERR')
 	{
 	clearInterval(this.tid);
@@ -535,24 +520,7 @@ function pg_ping_recieve()
     
 function pg_ping_send(p)
     {
-    //confirm('sending');
-    if (cx__capabilities.Dom0IE)
-        {
-        p = document.getElementById('pgping');
-	}
-	        
-    //p.onload=pg_ping_recieve;
-   
     pg_serialized_load(p, '/INTERNAL/ping?cx__akey=' + window.akey, pg_ping_recieve);
-    /*if(cx__capabilities.Dom1HTML)
-	{
-	p.setAttribute('src','/INTERNAL/ping');
-	}
-    else if(cx__capabilities.Dom0NS)
-	{
-	//alert(p);
-	p.src='/INTERNAL/ping';
-	}*/
     }
 
 //END SECTION: pinging functions ---------------------------------------
@@ -2036,17 +2004,17 @@ function pg_setkbdfocus(l, a, xo, yo)
 	if (v & 1)
 	    {
 	    // mk box for kbd focus
-	    if (prevArea != a)
-		{
-		if (cx__capabilities.Dom0NS)
-		    {
-		    pg_mkbox(l ,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
-		    }
-		else if (cx__capabilities.Dom1HTML)
-		    {		    
+	    //if (prevArea != a)
+	//	{
+	//	if (cx__capabilities.Dom0NS)
+	//	    {
+	//	    pg_mkbox(l ,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
+	//	    }
+	//	else if (cx__capabilities.Dom1HTML)
+	//	    {		    
 		    pg_mkbox(l ,x,y,w,h, 1, document.getElementById("pgktop"),document.getElementById("pgkbtm"),document.getElementById("pgkrgt"),document.getElementById("pgklft"), page.kbcolor1, page.kbcolor2, htr_getzindex(document.getElementById("pgtop"))+100);
-		    }
-		}
+	//	    }
+	//	}
 	    }
 	if (v & 2)
 	    {
@@ -2094,13 +2062,32 @@ function pg_loadqueue_additem(item)
     pg_loadqueue.splice(i, 0, item);
     }
 
+// Remove from the load queue
+function pg_loadqueue_remove(item)
+    {
+    for(var i=0; i<pg_loadqueue.length; i++)
+	{
+	if (pg_loadqueue[i] == item)
+	    {
+	    pg_loadqueue.splice(i,1);
+	    if (item.active)
+		{
+		item.active = false;
+		if (item.lyr) item.lyr.__load_busy = false;
+		pg_loadqueue_busy--;
+		}
+	    break;
+	    }
+	}
+    }
+
 // pg_serialized_write() - schedules the writing of content to a layer, so that
 // we don't have the document open while stuff is happening from the server.
 function pg_serialized_write(l, text, cb)
     {
     //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + ': ' + l.name + ' loads "' + text.substring(0,100) + '"\n');
     //pg_loadqueue.push({lyr:l, text:text, cb:cb});
-    pg_loadqueue_additem({level:1, type:'write', lyr:l, text:text, cb:cb, retry_cnt:0});
+    pg_loadqueue_additem({level:1, type:'write', lyr:l, text:text, cb:cb, retry_cnt:0, silent:true, active:false});
     //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + '\n');
     pg_serialized_load_doone();
     }
@@ -2111,7 +2098,7 @@ function pg_serialized_write(l, text, cb)
 // complete (even if scheduled later) before it runs.
 function pg_serialized_func(level, obj, func, params)
     {
-    pg_loadqueue_additem({level:level, type:'func', lyr:obj, cb:func, params:params, retry_cnt:0});
+    pg_loadqueue_additem({level:level, type:'func', lyr:obj, cb:func, params:params, retry_cnt:0, silent:true, active:false});
     //pg_serialized_load_doone();
     pg_loadqueue_check();
     }
@@ -2122,24 +2109,8 @@ function pg_serialized_func(level, obj, func, params)
 // manner that keeps things serialized so server loads don't overlap.
 function pg_serialized_load(l, newsrc, cb, silent)
     {
-    // pg_waitlyr says if the 'wait layer' should be used (the 'wait layer' is the layer that takes focus and says "please wait...")
-    if (!silent && (!pg_waitlyr || !pg_waitlyr.vis))
-	{
-	if (!pg_waitlyr)
-	    {
-	    pg_waitlyr = htr_new_layer(96);
-	    htr_write_content(pg_waitlyr, "<center><img src=\"/sys/images/wait_spinner.gif\"</img></center>");
-	    moveToAbsolute(pg_waitlyr, (pg_width-100)/2, (pg_height-24)/2);
-	    htr_setzindex(pg_waitlyr, 99999);
-	    }
-	if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
-	pg_waitlyr_id = null;
-	pg_waitlyr.vis = true;
-
-	htr_setvisibility(pg_waitlyr, "inherit");
-	}
     pg_debug('pg_serialized_load: ' + pg_loadqueue.length + ': ' + l.name + ' loads ' + newsrc + '\n');
-    pg_loadqueue_additem({level:1, type:'src', lyr:l, src:newsrc, cb:cb, retry_cnt:0});
+    pg_loadqueue_additem({level:1, type:'src', lyr:l, src:newsrc, cb:cb, retry_cnt:0, silent:silent, active:false});
     pg_debug('pg_serialized_load: ' + pg_loadqueue.length + '\n');
     pg_serialized_load_doone();
     }
@@ -2150,12 +2121,8 @@ function pg_serialized_load(l, newsrc, cb, silent)
 function pg_serialized_load_doone()
     {
     if (pg_loadqueue_busy >= pg_max_requests) return;
-    if (pg_loadqueue.length == 0) 
-	{
-	//pg_loadqueue_busy = 0;
-	pg_clear_waitlyr();
-	return;
-	}
+
+    pg_loadqueue_check_spinner();
 
     // Find an item from the load queue
     //var one_item = pg_loadqueue.shift(); 
@@ -2163,10 +2130,12 @@ function pg_serialized_load_doone()
     for(var i=0; i<pg_loadqueue.length; i++)
 	{
 	var item = pg_loadqueue[i];
-	if (!item.lyr.__load_busy)
+	if (!item.active && (!item.lyr || !item.lyr.__load_busy))
 	    {
-	    one_item = pg_loadqueue.splice(i,1)[0];
+	    // Activate
+	    one_item = item;
 	    one_item.lyr.__load_busy = true;
+	    one_item.active = true;
 	    pg_loadqueue_busy++;
 	    break;
 	    }
@@ -2178,8 +2147,8 @@ function pg_serialized_load_doone()
     switch(one_item.type)
 	{
 	case 'src':
-	    one_item.lyr.onload = pg_serialized_load_cb;
-	    one_item.lyr.onerror = pg_serialized_load_error_cb;
+	    one_item.lyr.onload = () => { pg_serialized_load_cb(one_item); };
+	    one_item.lyr.onerror = () => { pg_serialized_load_error_cb(one_item); };
 	    pg_set(one_item.lyr, 'src', one_item.src);
 	    break;
 
@@ -2191,47 +2160,43 @@ function pg_serialized_load_doone()
 	    if (one_item.lyr.__pg_onload) 
 		{
 		one_item.lyr.__pg_onload_cb = pg_serialized_load_cb;
-		pg_addsched_fn(one_item.lyr, '__pg_onload_cb', [], 0);
+		pg_addsched_fn(one_item.lyr, '__pg_onload_cb', [one_item], 0);
 		}
 	    else
 		{
 		pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.lyr.name + ' no cb\n');
-		one_item.lyr.__load_busy = false;
-		pg_loadqueue_busy--;
+		pg_loadqueue_remove(one_item);
 		}
 	    pg_loadqueue_check();
 	    break;
 
 	case 'func':
 	    one_item.cb.apply(one_item.lyr, one_item.params);
-	    one_item.lyr.__load_busy = false;
-	    pg_loadqueue_busy--;
+	    pg_loadqueue_remove(one_item);
 	    pg_loadqueue_check();
 	    break;
 	}
     }
 
 // pg_serialized_load_cb() - called when a load finishes
-function pg_serialized_load_cb()
+function pg_serialized_load_cb(item)
     {
-    this.__load_busy = false;
-    pg_loadqueue_busy--;
-    if (pg_loadqueue_busy < 0)
-	pg_loadqueue_busy = 0;
+    pg_loadqueue_remove(item);
+    //if (pg_loadqueue_busy < 0)
+//	pg_loadqueue_busy = 0;
 
-    if (this.__pg_onload) 
-	this.__pg_onload();
+    if (item.lyr && item.lyr.__pg_onload) 
+	item.lyr.__pg_onload();
 
     pg_loadqueue_check();
     }
 
 // need some specialized error handling here in the future.
-function pg_serialized_load_error_cb()
+function pg_serialized_load_error_cb(item)
     {
-    this.__load_busy = false;
-    pg_loadqueue_busy--;
-    if (pg_loadqueue_busy < 0)
-	pg_loadqueue_busy = 0;
+    pg_loadqueue_remove(item);
+    //if (pg_loadqueue_busy < 0)
+//	pg_loadqueue_busy = 0;
     pg_loadqueue_check();
     }
 
@@ -2239,17 +2204,53 @@ function pg_loadqueue_check()
     {
     if (pg_loadqueue.length > 0)
 	pg_addsched_fn(window, 'pg_serialized_load_doone', [], 0);
-    else
-	pg_clear_waitlyr();
+    pg_loadqueue_check_spinner();
     }
 
-function pg_clear_waitlyr()
+function pg_loadqueue_check_spinner()
     {
-    if (pg_waitlyr && !pg_loadqueue_busy)
+    // Do we need the busy spinner?
+    var spinner = false;
+    for(var i=0; i<pg_loadqueue.length; i++)
 	{
-	if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
-	pg_waitlyr.vis = false;
-	pg_waitlyr_id = pg_addsched_fn(window, function() { pg_waitlyr.vis || htr_setvisibility(pg_waitlyr, "hidden"); }, [], 150);
+	if (pg_loadqueue[i].silent === false)
+	    {
+	    spinner = true;
+	    break;
+	    }
+	}
+
+    if (spinner) 
+	{
+	// Create and/or make visible
+	if (!pg_spinner)
+	    {
+	    pg_spinner = htr_new_layer(96);
+	    htr_write_content(pg_spinner, "<center><img src=\"/sys/images/wait_spinner.gif\"</img></center>");
+	    moveToAbsolute(pg_spinner, (pg_width-100)/2, (pg_height-24)/2);
+	    htr_setzindex(pg_spinner, 99999);
+	    }
+	if (pg_spinner_id) pg_delsched(pg_spinner_id);
+	pg_spinner_id = null;
+	pg_spinner.vis = true;
+
+	htr_setvisibility(pg_spinner, "inherit");
+	}
+    else
+	{
+	// Clear the busy spinner
+	pg_clear_spinner();
+	return;
+	}
+    }
+
+function pg_clear_spinner()
+    {
+    if (pg_spinner)
+	{
+	if (pg_spinner_id) pg_delsched(pg_spinner_id);
+	pg_spinner.vis = false;
+	pg_spinner_id = pg_addsched_fn(window, function() { pg_spinner.vis || htr_setvisibility(pg_spinner, "hidden"); }, [], 150);
 	}
     }
 

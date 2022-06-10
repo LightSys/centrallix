@@ -626,6 +626,7 @@ ac_subst_vars='LTLIBOBJS
 LOGMETHOD
 COVERAGE
 PROFILE
+NCURSES_LIBS
 STATIC_LIBS
 STATIC_CFLAGS
 NETDRIVERS
@@ -5631,6 +5632,68 @@ fi
 
 
 
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for setupterm in -lncurses" >&5
+$as_echo_n "checking for setupterm in -lncurses... " >&6; }
+if ${ac_cv_lib_ncurses_setupterm+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lncurses  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char setupterm ();
+int
+main ()
+{
+return setupterm ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_ncurses_setupterm=yes
+else
+  ac_cv_lib_ncurses_setupterm=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ncurses_setupterm" >&5
+$as_echo "$ac_cv_lib_ncurses_setupterm" >&6; }
+if test "x$ac_cv_lib_ncurses_setupterm" = xyes; then :
+  ncurses_found="yes"
+fi
+
+    ac_fn_c_check_header_mongrel "$LINENO" "curses.h" "ac_cv_header_curses_h" "$ac_includes_default"
+if test "x$ac_cv_header_curses_h" = xyes; then :
+  curses_h_found="yes"
+fi
+
+
+    ac_fn_c_check_header_mongrel "$LINENO" "term.h" "ac_cv_header_term_h" "$ac_includes_default"
+if test "x$ac_cv_header_term_h" = xyes; then :
+  term_h_found="yes"
+fi
+
+
+    if test "$ncurses_found" = "yes" -a "$curses_h_found" = "yes" -a "$term_h_found" = "yes"; then
+
+$as_echo "#define HAVE_NCURSES 1" >>confdefs.h
+
+       NCURSES_LIBS="-lncurses"
+    fi
+
+
+
+
 
 	has_ctype_b="test"
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking if __ctype_b is present and usable" >&5
@@ -7204,6 +7267,7 @@ $as_echo "$as_me: WARNING: recent Cairo was not found -- svg support will be dis
             { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: librsvg was not found -- svg support will be disabled" >&5
 $as_echo "$as_me: WARNING: librsvg was not found -- svg support will be disabled" >&2;}
         fi
+
 
 
 

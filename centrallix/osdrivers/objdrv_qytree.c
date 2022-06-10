@@ -1007,7 +1007,8 @@ qyt_internal_StartQuery(pQytQuery qy)
 	    if (!item_query)
 		goto error;
 	    expRemapID(item_query, objlist->nObjects-1, 0);
-	    expFreezeEval(item_query, objlist, EXPR_OBJID_CURRENT);
+	    if (expFreezeEval(item_query, objlist, EXPR_OBJID_CURRENT) < 0)
+		goto error;
 	    /*expFreezeEval(item_query, objlist, objlist->nObjects-1);*/
 	    }
 

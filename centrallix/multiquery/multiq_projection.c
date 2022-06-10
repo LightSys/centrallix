@@ -1041,7 +1041,8 @@ mqpStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     pExpression source_exp;
 
 	if (additional_expr)
-	    expFreezeEval(additional_expr, stmt->Query->ObjList, qe->SrcIndex);
+	    if (expFreezeEval(additional_expr, stmt->Query->ObjList, qe->SrcIndex) < 0)
+		return -1;
 
 	mi->AddlExp = additional_expr;
 	mi->Flags &= ~(MQP_MI_F_USINGCACHE | MQP_MI_F_SOURCEOPEN);

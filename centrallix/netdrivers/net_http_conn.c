@@ -89,7 +89,9 @@ nht_i_FreeConn(pNhtConn conn)
 	if (conn->URL) nmSysFree(conn->URL);
 	if (conn->ReqURL) stFreeInf_ne(conn->ReqURL);
 
-	/** Unlink from the session. **/
+	/** Unlink from the app/group/session. **/
+	if (conn->App) nht_i_UnlinkApp(conn->App);
+	if (conn->AppGroup) nht_i_UnlinkAppGroup(conn->AppGroup);
 	if (conn->NhtSession) nht_i_UnlinkSess(conn->NhtSession);
 
 	/** Release the connection structure **/
@@ -323,8 +325,16 @@ nht_i_ConnHandler(void* conn_v)
 			if (nht_i_VerifyAKey(find_inf->StrVal, conn->NhtSession, &group, &app) == 0)
 			    {
 			    /** session key matched... now update app and group **/
-			    if (app) nht_i_ResetWatchdog(app->WatchdogTimer);
-			    if (group) nht_i_ResetWatchdog(group->WatchdogTimer);
+			    if (app)
+				{
+				conn->App = nht_i_LinkApp(app);
+				nht_i_ResetWatchdog(app->WatchdogTimer);
+				}
+			    if (group)
+				{
+				conn->AppGroup = nht_i_LinkAppGroup(group);
+				nht_i_ResetWatchdog(group->WatchdogTimer);
+				}
 			    }
 			}
 
@@ -409,6 +419,10 @@ nht_i_ConnHandler(void* conn_v)
 	    if (akey_inf && nht_i_VerifyAKey(akey_inf->StrVal, conn->NhtSession, &group, &app) == 0 && group && app)
 		{
 		appResume(app->Application);
+		if (!conn->App)
+		    conn->App = nht_i_LinkApp(app);
+		if (!conn->AppGroup)
+		    conn->AppGroup = nht_i_LinkAppGroup(group);
 		}
 	    else
 		{

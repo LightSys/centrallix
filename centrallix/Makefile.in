@@ -365,7 +365,7 @@ CBTESTFILES=$(patsubst %.c,%.bin,$(CTESTFILES))
 ifeq ($TOTESTFILES,)
     TOTESTDEPS=
 else
-    TOTESTDEPS=test_install
+    TOTESTDEPS=test_obj
 endif
 
 # Some basic build parameters.
@@ -526,8 +526,11 @@ tests/centrallix.conf-test: tests/centrallix.conf-test.in
 	RUNLIBDIR=$${LIBDIR#$(builddir)}; \
 	$(SED) -e "s|##SYSCONFDIR##|$$RUNSYSCONFDIR|g" -e "s|##LIBDIR##|$$RUNLIBDIR|g" -e "s|##LOGMETHOD##|@LOGMETHOD@|g" tests/centrallix.conf-test.in > tests/centrallix.conf-test
 
-tests/test_%.bin: tests/test_%.o .testdepend
-	$(CC) $< tests/t_driver.c $$(sed -n 's#^$@: ##p' < .testdepend) $(STATIC_LIBS) -o $@
+tests/t_driver.o: tests/t_driver.c 
+	$(CC) $(CFLAGS) $< -c -o $@
+
+tests/test_%.bin: tests/test_%.o tests/t_driver.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
+	$(CC) $< tests/t_driver.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o $@ $(LIBS) @NCURSES_LIBS@
 
 test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 	@printf "%-62.62s  %s\n" "Test Name" "Stat"
@@ -540,42 +543,34 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 		CGREEN=$$(/usr/bin/tput setaf 2); \
 		CBOLD=$$(/usr/bin/tput bold); \
 		CNORM=$$(/usr/bin/tput sgr0); \
-	    	if [ "$${TOFILE%.to}" != "$${TOFILE}" ]; then \
-		    TOBASE="$${TOFILE%.to}"; \
-		    TONAME=$$(sed -n 's/^##NAME //p' < $$TOBASE.to); \
-		    TOUNDO=$$(sed -n 's/^##UNDO //p' < $$TOBASE.to); \
-		    TOUNDOBAK="$${TOUNDO}-$$RANDOM-$$RANDOM"; \
-		    TOSIMPLE="$${TOBASE#tests/test_}"; \
-		    /bin/rm -f "$$PWD/$$TOBASE.out"; \
-		    [ -f "$$CXOS/$$TOUNDO" ] && /bin/cp -a "$$CXOS/$$TOUNDO" "$$CXOS/$$TOUNDOBAK"; \
-		    echo -n "$$CBLUE"; \
-		    "$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 4 2>&1 | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
-		    RET="$${PIPESTATUS[0]}"; \
+	    if [ "$${TOFILE%.to}" != "$${TOFILE}" ]; then \
+		TOBASE="$${TOFILE%.to}"; \
+		TONAME=$$(sed -n 's/^##NAME //p' < $$TOBASE.to); \
+		TOUNDO=$$(sed -n 's/^##UNDO //p' < $$TOBASE.to); \
+		TOUNDOBAK="$${TOUNDO}-$$RANDOM-$$RANDOM"; \
+		TOSIMPLE="$${TOBASE#tests/test_}"; \
+		/bin/rm -f "$$PWD/$$TOBASE.out"; \
+		[ -f "$$CXOS/$$TOUNDO" ] && /bin/cp -a "$$CXOS/$$TOUNDO" "$$CXOS/$$TOUNDOBAK"; \
+		echo -n "$$CBLUE"; \
+		./test_obj -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 4 2>&1 | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
+		RET="$${PIPESTATUS[0]}"; \
+		[ -f "$$CXOS/$$TOUNDOBAK" ] && /bin/mv -f "$$CXOS/$$TOUNDOBAK" "$$CXOS/$$TOUNDO"; \
+            if [ "$$RET" -eq 142 ]; then \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}LOCKUP$$CNORM"; \
+            elif [ "$$RET" -gt 120 ]; then \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}CRASH$$CNORM"; \
+            elif cmp -s "$$TOBASE.out" "$$TOBASE.cmp"; then \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CGREEN$${CBOLD}Pass$$CNORM"; \
+                /bin/rm -f "$$PWD/$$TOBASE.out"; \
+            else \
+                echo -n "$$CRED"; \
+                diff --label EXPECTED -U0 -N "$$TOBASE.cmp" "$$TOBASE.out" | sed 's/^/    /'; \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}FAIL$$CNORM"; \
+            fi; \
 		else \
 		    TOBASE="$${TOFILE%.bin}"; \
-		    TONAME=$$(sed -n 's/^\/\/NAME //p' < $$TOBASE.c); \
-		    TOUNDO=$$(sed -n 's/^\/\/UNDO //p' < $$TOBASE.c); \
-		    TOUNDOBAK="$${TOUNDO}-$$RANDOM-$$RANDOM"; \
-		    TOSIMPLE="$${TOBASE#tests/test_}"; \
-		    /bin/rm -f "$$PWD/$$TOBASE.out"; \
-		    [ -f "$$CXOS/$$TOUNDO" ] && /bin/cp -a "$$CXOS/$$TOUNDO" "$$CXOS/$$TOUNDOBAK"; \
-		    echo -n "$$CBLUE"; \
 		    ulimit -s 16384; \
-		    ./$$TOBASE.bin 2>&1 > $$TOBASE.out | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
-		    RET="$${PIPESTATUS[0]}"; \
-		fi; \
-		[ -f "$$CXOS/$$TOUNDOBAK" ] && /bin/mv -f "$$CXOS/$$TOUNDOBAK" "$$CXOS/$$TOUNDO"; \
-		if [ "$$RET" -eq 142 ]; then \
-		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}LOCKUP$$CNORM"; \
-		elif [ "$$RET" -gt 120 ]; then \
-		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}CRASH$$CNORM"; \
-		elif cmp -s "$$TOBASE.out" "$$TOBASE.cmp"; then \
-		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CGREEN$${CBOLD}Pass$$CNORM"; \
-		    /bin/rm -f "$$PWD/$$TOBASE.out"; \
-		else \
-		    echo -n "$$CRED"; \
-		    diff --label EXPECTED -U0 -N "$$TOBASE.cmp" "$$TOBASE.out" | sed 's/^/    /'; \
-		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}FAIL$$CNORM"; \
+		    ./$$TOBASE.bin 2>&1; \
 		fi; \
 	    fi \
 	done 
@@ -676,11 +671,6 @@ depend:	.depend
 	@makedepend -o.o -Yinclude -I . -I @CXINCDIR@ -f - *.c */*.c */*/*.c >.depend 2>/dev/null
 	@makedepend -o.so -Yinclude -I . -I @CXINCDIR@ -f - *.c */*.c */*/*.c >>.depend 2>/dev/null
 
-.testdepend: tests/test_*.deps
-	@echo "Rebuilding test dependencies..."
-	@echo > $@
-	@for FILE in $<; do echo -n "$${FILE/.deps/.bin}: " >> $@; echo $$(cat $$FILE) >> $@; done
-
 .subbuild:
 	@echo '1' >.subbuild
 
@@ -716,8 +706,6 @@ netdrivers/net_ldap.so: netdrivers/net_ldap.c
 
 %.so: %.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
-	
-include .testdepend
 
 # Dependencies made by "make depend"
 include .depend

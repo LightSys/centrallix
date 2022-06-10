@@ -51,7 +51,7 @@
 #define	TMP_THRESHOLD	(32)	/* minimum collection size to index */
 #define	TMP_MIN_ORDER	(63)	/* min buckets in index hash table */
 #define TMP_MAX_ORDER	(1501)	/* max buckets in index hash table */
-#define	TMP_MAX_KEY	(256)	/* max internal key size for hash table */
+#define	TMP_MAX_KEY	(512)	/* max internal key size for hash table */
 
 typedef struct
     {
@@ -195,6 +195,19 @@ tmp_internal_IndexLookupFromInf(pObjTempIndex idx, pStructInf values)
     }
 
 
+/*** tmp_internal_FreeIndexNode() - release a node in the index
+ ***/
+int
+tmp_internal_FreeIndexNode(pObjTempIdxNode node)
+    {
+
+	nmSysFree(node->Key);
+	nmFree(node, sizeof(ObjTempIdxNode));
+
+    return 0;
+    }
+
+
 /*** tmp_internal_RemoveFromIndex() - remove an object from an index
  ***/
 int
@@ -220,8 +233,7 @@ tmp_internal_RemoveFromIndex(pObjTempIndex idx, pStructInf tuple)
 	xhRemove(&idx->Index,  key);
 
 	/** Free the node **/
-	nmSysFree(node->Key);
-	nmFree(node, sizeof(ObjTempIdxNode));
+	tmp_internal_FreeIndexNode(node);
 	nmSysFree(key);
 
     return 0;
@@ -350,9 +362,10 @@ tmp_internal_FreeIndex(pObjTempIndex idx)
 
 	expFreeParamList(idx->OneObjList);
 	xaClear(&idx->Fields, (void*)nmSysFree, NULL);
-	xhClear(&idx->Index, NULL, NULL);
+	xhClear(&idx->Index, (void*)tmp_internal_FreeIndexNode, NULL);
 	xaDeInit(&idx->Fields);
 	xhDeInit(&idx->Index);
+	nmFree(idx, sizeof(ObjTempIndex));
 
     return 0;
     }
