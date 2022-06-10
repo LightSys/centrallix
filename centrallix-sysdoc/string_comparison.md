@@ -1,6 +1,22 @@
 # String Comparison
 The following sections discuss the two approaches to calculating similarity between two strings. Both approaches use a SQL function to calculate a similarity metric (on a scale of 0 to 1) for two string parameters.
 
+## Table of Contents
+- [String Comparison](#string-comparison)
+  - [Table of Contents](#table-of-contents)
+  - [Levenshtein Similarity](#levenshtein-similarity)
+    - [Levenshtein](#levenshtein)
+  - [Cosine Similarity](#cosine-similarity)
+    - [CHAR_SET](#char_set)
+    - [Frequency Table](#frequency-table)
+    - [Relative Frequency Table](#relative-frequency-table)
+    - [TF-IDF](#tf-idf)
+    - [Dot Product](#dot-product)
+    - [Magnitude](#magnitude)
+    - [Similarity](#similarity)
+  - [Future Implementation](#future-implementation)
+    - [Inverse Document Frequency (IDF)](#inverse-document-frequency-idf)
+
 ## Levenshtein Similarity
 The [Levenshtein](https://en.wikipedia.org/wiki/Levenshtein_distance) distance is defined as the number of insertions, deletions, or substitutions required to make one string exactly like another string.
 
