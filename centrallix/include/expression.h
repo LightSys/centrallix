@@ -275,6 +275,7 @@ pExpression expReducedDuplicate(pExpression this);
 int expCompareExpressions(pExpression exp1, pExpression exp2);
 int expCompareExpressionValues(pExpression exp1, pExpression exp2);
 pTObjData expCompileAndEval(char* text, pParamObjects objlist, int lxflags, int cmpflags);
+pExpression expPtodToExpression(pTObjData ptod, pExpression exp);
 pTObjData expExpressionToPtod(pExpression exp);
 int expSetString(pExpression this, char* str);
 int expSetBinary(pExpression this, unsigned char* str, int len);

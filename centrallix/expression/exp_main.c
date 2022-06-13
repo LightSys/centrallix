@@ -667,7 +667,7 @@ expCopyValue(pExpression src, pExpression dst, int make_independent)
 	    case DATA_T_BINARY:
 		if (make_independent)
 		    {
-		    expSetBinary(dst, src->String, src->Size);
+		    expSetBinary(dst, (unsigned char*)src->String, src->Size);
 		    }
 		else
 		    {
@@ -713,7 +713,6 @@ expDataTypeToNodeType(int data_type)
 pExpression
 expPodToExpression(pObjData pod, int type, pExpression provided_exp)
     {
-    int n;
     pExpression exp = provided_exp;
 
 	/** Create expression node. **/
@@ -790,7 +789,7 @@ expExpressionToPod(pExpression this, int type, pObjData pod)
 		pod->String = this->String;
 		break;
 	    case DATA_T_BINARY:
-		pod->Binary.Data = this->String;
+		pod->Binary.Data = (unsigned char*)this->String;
 		pod->Binary.Size = this->Size;
 		break;
 	    case DATA_T_MONEY:
@@ -988,6 +987,20 @@ exp_internal_UnlinkControl(pExpControl ctl)
 	    }
 	}
     return 0;
+    }
+
+
+/*** expPtodToExpression - takes a Pointer to Object Data (pod) and
+ *** builds an expression node from it.
+ ***/
+pExpression
+expPtodToExpression(pTObjData ptod, pExpression provided_exp)
+    {
+    pExpression exp;
+
+	exp = expPodToExpression((ptod->Flags & DATA_TF_NULL)?NULL:(&ptod->Data), ptod->DataType, provided_exp);
+
+    return exp;
     }
 
 
