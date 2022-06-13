@@ -19,9 +19,9 @@ Found in centrallix/cxss/cxss_policy
 
 ### Overview
 The function essentially loops through each policy until a relevant policy is found, and then checks each rule for a match.  
-In order to allow actions to be performed while the system is setting up and the main policy has not been loaded, if the main policy is NULL, which should only occur during setup, and the caller has the system:seckernel endorsement, any action will be allowed. Without this endorsement, all actions are denied when the main policy is NULL. 
+In order to allow actions to be performed while the system is setting up and the main policy has not been loaded, if the main policy is NULL, which should only occur during setup, and the caller has the system:seckernel endorsement, any action will be allowed. Note that this endoresement is used for the durration of the cxssPolicyInit function. Without this endorsement, all actions are denied when the main policy is NULL. 
 If the policy mode is set to disable, all actions will be allowed, provided that the main policy was loaded.   
-If none of the allow or deny conditions were met by the above descriptions, then iterate through rules found in the main and sub policies. The search is conducted in a breadth first manner using a queue of policies. To start, the main policy is placed on the queue. The code then repeatedly removes the policy from the front of the queue. If the policy is applicable, as determined by the domain of the policy, each rule is checked in the policy using `cxssIsRuleMatch`. The first rule to match has the corresponding action taken, and the function exits. If policy is not applicable or no applicable rules were found in the policy, each sub-policy is added to the back of the queue. The loops exits if a rule is matched or no more policies are found.   
+If none of the allow or deny conditions were met by the above descriptions, then iterate through rules found in the main and sub policies. The search is conducted in a breadth first manner using a queue of policies. The _PolicyNode found in policy.h was created for this purpose. To start, the main policy is placed on the queue. The code then repeatedly removes the policy from the front of the queue. If the policy is applicable, as determined by the domain of the policy, each rule is checked in the policy using `cxssIsRuleMatch`. The first rule to match has the corresponding action taken, and the function exits. If policy is not applicable or no applicable rules were found in the policy, each sub-policy is added to the back of the queue. The loops exits if a rule is matched or no more policies are found.   
 The function then performs some basic cleanup. If no match was found, the default action is set. If the policy mode is set to warn, the function will return allow. Note that currently no warnings are generated.   
 
 ### Limitations
@@ -69,3 +69,5 @@ Errors are generated if the resulting regex is too long, or if the `regcomp` fun
 
 ## Testing
 Tests for the code described here can be found in centrallix/tests/. All of the tests are named in the following format: test_policy_XX.c. The tests provide some basic tests for all three functions. However, more tests against additional example rules and policies should be generated. Furthermore, tests besides C tests should be created.  
+
+The tests that require a policy use the policy specified in /home/devel/cxinst/etc/centrallix.conf on the VM, namely the centrallix/etc/newSecurity.pol policy file. 
