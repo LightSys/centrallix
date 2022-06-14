@@ -4178,15 +4178,38 @@ int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
  */
 int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression password, pExpression salt)
 {
-    // Check for and set the optional parameters
-    // T_COST controls the time cost
-    // M_COST controls the memory cost
-    // PARALLELISM controls how many 'lanes' will be used
+
+    if ((password->Flags | salt->Flags) & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+
+//     evaluate the optional parameters from the tree
+//    int i=0;
+ //    for (i = 0; i < tree->Children.nItems; i++)
+ //	{
+ //	if (((pExpression)tree->Children.Items[i])->Flags & EXPR_F_NULL)
+ //	    {
+  //	    tree->Flags |= EXPR_F_NULL;
+//	    return 0;
+//	    }
+//	else if (((pExpression)tree->Children.Items[i])->DataType != DATA_T_INTEGER)
+//	    {
+//	    mssError(1, "EXP", "Invalid Datatype");
+//	    return -1;
+//	    }
+//	}
+
+    // The default values of the following four variables should be tuned for each specific system's needs
+    // T_COST determines the number of passes the algorithm makes
+    unsigned int T_COST = ((tree->Children.nItems >= 3) && ((tree->Children.Items[2]) != NULL) && ((pExpression)tree->Children.Items[2])->DataType == DATA_T_INTEGER && ((pExpression)tree->Children.Items[2])->Integer < 8 && ((pExpression)tree->Children.Items[2])->Integer > 0) ? ((pExpression)tree->Children.Items[2])->Integer:2;
+    // M_COST determines the amount of memory cost in kilobytes
+    unsigned int M_COST = ((tree->Children.nItems >= 4) &&  ((tree->Children.Items[3]) != NULL) && ((pExpression)tree->Children.Items[3])->DataType == DATA_T_INTEGER && ((pExpression)tree->Children.Items[3])->Integer < INT_MAX && ((pExpression)tree->Children.Items[3])->Integer >= 64) ? ((pExpression)tree->Children.Items[3])->Integer:(1<<16);
+    // PARALLELISM determines the number of threads or 'lanes' used by the algorithm
+    unsigned int PARALLELISM = ((tree->Children.nItems) >= 5 && ((tree->Children.Items[4]) != NULL) && ((pExpression)tree->Children.Items[4])->DataType == DATA_T_INTEGER &&((pExpression)tree->Children.Items[4])->Integer <= 8 && ((pExpression)tree->Children.Items[4])->Integer >=1) ? ((pExpression)tree->Children.Items[4])->Integer:1;
     // HASHLEN is the size of the finished hash
-    unsigned int T_COST = (tree->Children.nItems >= 3)?((intptr_t)tree->Children.Items[2]):2;      // the default value should be changed according to system needs
-    unsigned int M_COST = (tree->Children.nItems >= 4)?((intptr_t)tree->Children.Items[3]):(1<<16);      // the default value should be changed according to system needs
-    unsigned int PARALLELISM = (tree->Children.nItems >= 5)?((intptr_t)tree->Children.Items[4]):1; // the default value should be changed according to system needs
-    unsigned int HASHLEN = (tree->Children.nItems >= 6)?((intptr_t)tree->Children.Items[5]):32;    // the default value should be changed according to system needs
+    unsigned int HASHLEN = ((tree->Children.nItems >= 6) && ((tree->Children.Items[5]) != NULL) && ((pExpression)tree->Children.Items[5])->DataType == DATA_T_INTEGER && ((pExpression)tree->Children.Items[5])->Integer < 256 && ((pExpression)tree->Children.Items[5])->Integer >= 4) ? ((pExpression)tree->Children.Items[5])->Integer:32;
     
     // check if required parameters exist
     if (!password || !salt)
@@ -4197,18 +4220,18 @@ int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression passwor
     tree->DataType = DATA_T_STRING;
 
     // null check
-    if ((password->Flags | salt->Flags) & EXPR_F_NULL)
-	{
-	tree->Flags |= EXPR_F_NULL;
-	return 0;
-	}
+    //if ((password->Flags | salt->Flags) & EXPR_F_NULL)
+//	{
+//	tree->Flags |= EXPR_F_NULL;
+//	return 0;
+//	}
     
     // datatype check
-    if (password->DataType != DATA_T_STRING || salt->DataType != DATA_T_STRING)
-	{
-	mssError(1, "EXP", "Invalid Datatype: function usage: exp_argon2id(password, salt)");
-	return -1;	
-	}
+ //   if (password->DataType != DATA_T_STRING || salt->DataType != DATA_T_STRING)
+//	{
+//	mssError(1, "EXP", "Invalid Datatype: function usage: exp_argon2id(password, salt)");
+//	return -1;	
+//	}
     
     // hashvalue is where the output is written 
     unsigned char hashvalue[HASHLEN];
