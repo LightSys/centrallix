@@ -4179,27 +4179,17 @@ int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
 int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression password, pExpression salt)
 {
 
-    if ((password->Flags | salt->Flags) & EXPR_F_NULL)
+    //check password and salt
+    if (!password || !salt)
+	{
+	mssError(1, "EXP", "Invalid Parameters: Method requires two arguments");
+	return -1;
+	}
+    else if ((password->Flags | salt->Flags) & EXPR_F_NULL)
 	{
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
 	}
-
-//     evaluate the optional parameters from the tree
-//    int i=0;
- //    for (i = 0; i < tree->Children.nItems; i++)
- //	{
- //	if (((pExpression)tree->Children.Items[i])->Flags & EXPR_F_NULL)
- //	    {
-  //	    tree->Flags |= EXPR_F_NULL;
-//	    return 0;
-//	    }
-//	else if (((pExpression)tree->Children.Items[i])->DataType != DATA_T_INTEGER)
-//	    {
-//	    mssError(1, "EXP", "Invalid Datatype");
-//	    return -1;
-//	    }
-//	}
 
     // The default values of the following four variables should be tuned for each specific system's needs
     // T_COST determines the number of passes the algorithm makes
@@ -4218,20 +4208,6 @@ int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression passwor
 	return -1;
 	}
     tree->DataType = DATA_T_STRING;
-
-    // null check
-    //if ((password->Flags | salt->Flags) & EXPR_F_NULL)
-//	{
-//	tree->Flags |= EXPR_F_NULL;
-//	return 0;
-//	}
-    
-    // datatype check
- //   if (password->DataType != DATA_T_STRING || salt->DataType != DATA_T_STRING)
-//	{
-//	mssError(1, "EXP", "Invalid Datatype: function usage: exp_argon2id(password, salt)");
-//	return -1;	
-//	}
     
     // hashvalue is where the output is written 
     unsigned char hashvalue[HASHLEN];
