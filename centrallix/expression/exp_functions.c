@@ -4198,7 +4198,7 @@ int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression passwor
     if ((tree->Children.nItems >= 3) && 
 	((tree->Children.Items[2]) != NULL) && 
 	((pExpression)tree->Children.Items[2])->DataType == DATA_T_INTEGER && 
-	((pExpression)tree->Children.Items[2])->Integer < 8 && 
+	((pExpression)tree->Children.Items[2])->Integer < 24 && 
 	((pExpression)tree->Children.Items[2])->Integer > 0)
 	{
 	T_COST = ((pExpression)tree->Children.Items[2])->Integer;
@@ -4260,9 +4260,14 @@ int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression passwor
 	return -1;
 	}
     // this call to the argon2id_hash_raw method is where the magic happens
-    // after this call, the hashed password is written in hashvalue   
+    // after this call, the hashed password is written in hashvalue
+    clock_t t;
+    t = clock();
     argon2id_hash_raw(T_COST, M_COST, PARALLELISM, pwd, pwdlen, slt, sltlen, hashvalue, HASHLEN);
-    
+    t = clock() - t;
+    double time_taken = ((double)t)/CLOCKS_PER_SEC;
+    printf("Argon2id took %f seconds to run.\n", time_taken);
+ 
     // this is where we write the contents of hashvalue to tree using qpfPrintf
     if (HASHLEN*2+1 > sizeof(tree->Types.StringBuf))
 	{
