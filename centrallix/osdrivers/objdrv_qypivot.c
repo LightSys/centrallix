@@ -48,6 +48,7 @@
 /* Description:	Pivot Query object driver.  This driver provides a     	*/
 /*		"pivot" conversion of underlying EAV-structured data	*/
 /*		into a conventional object.				*/
+/* See centrallix-sysdoc/EAV_Pivot.md for more information. */
 /************************************************************************/
 
 

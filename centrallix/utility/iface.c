@@ -29,6 +29,7 @@
 /* Description:	Provies the functionality for handling interfaces in a  */
 /*		general way, to be used by any Centrallix module that   */
 /*		has need of support for interfaces.                    	*/
+/* See centrallix-sysdoc/InterfaceModule.md for more information. */
 /************************************************************************/
 
 
