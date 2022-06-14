@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <sqlite3.h>
+#include <cxlib/newmalloc.h>
 #include "cxss/credentials_db.h"
 #include "cxss/util.h"
 
@@ -24,7 +25,7 @@ CXSS_DB_Context_t
 cxssCredentialsDatabaseInit(const char *db_path)
 {
     /* Allocate context struct */
-    CXSS_DB_Context_t dbcontext = malloc(sizeof(struct _CXSS_DB_Context_t));
+    CXSS_DB_Context_t dbcontext = (CXSS_DB_Context_t)nmMalloc(sizeof(struct _CXSS_DB_Context_t));
     if (!dbcontext) {
         mssError(0, "CXSS", "Memory allocation error\n");
         goto error;
@@ -42,7 +43,7 @@ cxssCredentialsDatabaseInit(const char *db_path)
     return dbcontext;
 
 error:
-    free(dbcontext);
+    nmFree(dbcontext, sizeof(struct _CXSS_DB_Context_t));
     return NULL;
 }
 
@@ -60,7 +61,7 @@ cxssCredentialsDatabaseClose(CXSS_DB_Context_t dbcontext)
 {
     cxss_i_FinalizeSqliteStatements(dbcontext);
     sqlite3_close(dbcontext->db);
-    free(dbcontext);
+    nmFree(dbcontext, sizeof(struct _CXSS_DB_Context_t));
 }
 
 /** @brief Setup database tables/statements
@@ -489,14 +490,14 @@ cxssRetrieveUserAuthLL(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
     }
 
     /* Allocate head (dummy node) */
-    head = malloc(sizeof(CXSS_UserAuth_LLNode));
+    head = (CXSS_UserAuth_LLNode*)nmMalloc(sizeof(CXSS_UserAuth_LLNode));
     prev = head;
 
     /* Execute query */
     while (sqlite3_step(dbcontext->retrieve_user_auths_stmt) == SQLITE_ROW) { 
         
         /* Allocate and chain new node */
-        current = malloc(sizeof(CXSS_UserAuth_LLNode));       
+        current = (CXSS_UserAuth_LLNode*)nmMalloc(sizeof(CXSS_UserAuth_LLNode));       
         prev->next = current;
         
         /* Retrieve results */
@@ -845,13 +846,13 @@ cxssFreeUserAuthLL(CXSS_UserAuth_LLNode *start)
 {
     /* Free head (dummy node) */
     CXSS_UserAuth_LLNode *next = start->next;
-    free(start);
+    nmFree(start, sizeof(CXSS_UserAuth_LLNode));
     start = next;
 
     while (start != NULL) {
         next = start->next;
         cxssFreeUserAuth(&start->UserAuth);
-        free(start);
+        nmFree(start, sizeof(CXSS_UserAuth_LLNode));
         start = next;
     }
 }
@@ -968,10 +969,10 @@ cxssDbContainsResc(CXSS_DB_Context_t dbcontext, const char *resource_id)
 void
 cxssFreeUserData(CXSS_UserData *UserData)
 {
-    free((void*)UserData->CXSS_UserID);
-    free((void*)UserData->PublicKey);
-    free((void*)UserData->DateCreated);
-    free((void*)UserData->DateLastUpdated);
+    nmSysFree((void*)UserData->CXSS_UserID);
+    nmSysFree((void*)UserData->PublicKey);
+    nmSysFree((void*)UserData->DateCreated);
+    nmSysFree((void*)UserData->DateLastUpdated);
 }
 
 /** @brief Free dynamic CXSS_UserAuth struct members
@@ -985,12 +986,12 @@ cxssFreeUserData(CXSS_UserData *UserData)
 void
 cxssFreeUserAuth(CXSS_UserAuth *UserAuth)
 {
-    free((void*)UserAuth->CXSS_UserID);
-    free((void*)UserAuth->PrivateKey);
-    free((void*)UserAuth->Salt);
-    free((void*)UserAuth->PrivateKeyIV);
-    free((void*)UserAuth->DateCreated);
-    free((void*)UserAuth->DateLastUpdated);
+    nmSysFree((void*)UserAuth->CXSS_UserID);
+    nmSysFree((void*)UserAuth->PrivateKey);
+    nmSysFree((void*)UserAuth->Salt);
+    nmSysFree((void*)UserAuth->PrivateKeyIV);
+    nmSysFree((void*)UserAuth->DateCreated);
+    nmSysFree((void*)UserAuth->DateLastUpdated);
 }
 
 /** @brief Free dynamic CXSS_UserResc struct members
@@ -1004,16 +1005,16 @@ cxssFreeUserAuth(CXSS_UserAuth *UserAuth)
 void
 cxssFreeUserResc(CXSS_UserResc *UserResc)
 {
-    free((void*)UserResc->CXSS_UserID);
-    free((void*)UserResc->ResourceID);
-    free((void*)UserResc->AuthClass);
-    free((void*)UserResc->AESKey);
-    free((void*)UserResc->ResourceUsername);
-    free((void*)UserResc->ResourceAuthData);
-    free((void*)UserResc->UsernameIV);
-    free((void*)UserResc->AuthDataIV);
-    free((void*)UserResc->DateCreated);
-    free((void*)UserResc->DateLastUpdated);
+    nmSysFree((void*)UserResc->CXSS_UserID);
+    nmSysFree((void*)UserResc->ResourceID);
+    nmSysFree((void*)UserResc->AuthClass);
+    nmSysFree((void*)UserResc->AESKey);
+    nmSysFree((void*)UserResc->ResourceUsername);
+    nmSysFree((void*)UserResc->ResourceAuthData);
+    nmSysFree((void*)UserResc->UsernameIV);
+    nmSysFree((void*)UserResc->AuthDataIV);
+    nmSysFree((void*)UserResc->DateCreated);
+    nmSysFree((void*)UserResc->DateLastUpdated);
 }
 
 /** @brief Cleanup sqlite3 statements
