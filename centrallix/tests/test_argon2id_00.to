@@ -20,4 +20,3 @@ query select 'case  17' = argon2id("password", "thisisasalt", 2)
 query select 'case  18' = argon2id("password", "thisisasalt", 4)
 query select 'case  19' = argon2id("password", "thisisasalt", null)
 query select 'case  20' = argon2id("password", "thisisasalt", null, null, null, null)
-

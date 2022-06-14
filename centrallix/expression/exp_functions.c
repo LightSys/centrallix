@@ -4188,19 +4188,55 @@ int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression passwor
     else if ((password->Flags | salt->Flags) & EXPR_F_NULL)
 	{
 	tree->Flags |= EXPR_F_NULL;
+	tree->DataType = DATA_T_STRING;
 	return 0;
 	}
 
     // The default values of the following four variables should be tuned for each specific system's needs
     // T_COST determines the number of passes the algorithm makes
-    unsigned int T_COST = ((tree->Children.nItems >= 3) && ((tree->Children.Items[2]) != NULL) && ((pExpression)tree->Children.Items[2])->DataType == DATA_T_INTEGER && ((pExpression)tree->Children.Items[2])->Integer < 8 && ((pExpression)tree->Children.Items[2])->Integer > 0) ? ((pExpression)tree->Children.Items[2])->Integer:2;
+    unsigned int T_COST = 2; 
+    if ((tree->Children.nItems >= 3) && 
+	((tree->Children.Items[2]) != NULL) && 
+	((pExpression)tree->Children.Items[2])->DataType == DATA_T_INTEGER && 
+	((pExpression)tree->Children.Items[2])->Integer < 8 && 
+	((pExpression)tree->Children.Items[2])->Integer > 0)
+	{
+	T_COST = ((pExpression)tree->Children.Items[2])->Integer;
+	}
+
     // M_COST determines the amount of memory cost in kilobytes
-    unsigned int M_COST = ((tree->Children.nItems >= 4) &&  ((tree->Children.Items[3]) != NULL) && ((pExpression)tree->Children.Items[3])->DataType == DATA_T_INTEGER && ((pExpression)tree->Children.Items[3])->Integer < INT_MAX && ((pExpression)tree->Children.Items[3])->Integer >= 64) ? ((pExpression)tree->Children.Items[3])->Integer:(1<<16);
+    unsigned int M_COST = (1<<16);
+    if ((tree->Children.nItems >= 4) &&
+	((tree->Children.Items[3]) != NULL) && 
+	((pExpression)tree->Children.Items[3])->DataType == DATA_T_INTEGER && 
+	((pExpression)tree->Children.Items[3])->Integer < (2<<16) && 
+	((pExpression)tree->Children.Items[3])->Integer >= 64) 
+	{
+	M_COST = ((pExpression)tree->Children.Items[3])->Integer;
+	}
+
     // PARALLELISM determines the number of threads or 'lanes' used by the algorithm
-    unsigned int PARALLELISM = ((tree->Children.nItems) >= 5 && ((tree->Children.Items[4]) != NULL) && ((pExpression)tree->Children.Items[4])->DataType == DATA_T_INTEGER &&((pExpression)tree->Children.Items[4])->Integer <= 8 && ((pExpression)tree->Children.Items[4])->Integer >=1) ? ((pExpression)tree->Children.Items[4])->Integer:1;
+    unsigned int PARALLELISM = 1;
+    if ((tree->Children.nItems) >= 5 && 
+	((tree->Children.Items[4]) != NULL) && 
+	((pExpression)tree->Children.Items[4])->DataType == DATA_T_INTEGER &&
+	((pExpression)tree->Children.Items[4])->Integer <= 8 && 
+	((pExpression)tree->Children.Items[4])->Integer >=1)
+	{
+	PARALLELISM = ((pExpression)tree->Children.Items[4])->Integer;
+	}
+
     // HASHLEN is the size of the finished hash
-    unsigned int HASHLEN = ((tree->Children.nItems >= 6) && ((tree->Children.Items[5]) != NULL) && ((pExpression)tree->Children.Items[5])->DataType == DATA_T_INTEGER && ((pExpression)tree->Children.Items[5])->Integer < 256 && ((pExpression)tree->Children.Items[5])->Integer >= 4) ? ((pExpression)tree->Children.Items[5])->Integer:32;
-    
+    unsigned int HASHLEN = 32;
+    if ((tree->Children.nItems >= 6) && 
+	((tree->Children.Items[5]) != NULL) && 
+	((pExpression)tree->Children.Items[5])->DataType == DATA_T_INTEGER && 
+	((pExpression)tree->Children.Items[5])->Integer < 256 && 
+	((pExpression)tree->Children.Items[5])->Integer >= 4)
+	{
+	HASHLEN = ((pExpression)tree->Children.Items[5])->Integer;
+	}
+ 
     // check if required parameters exist
     if (!password || !salt)
     	{
@@ -4228,7 +4264,7 @@ int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression passwor
     argon2id_hash_raw(T_COST, M_COST, PARALLELISM, pwd, pwdlen, slt, sltlen, hashvalue, HASHLEN);
     
     // this is where we write the contents of hashvalue to tree using qpfPrintf
-    if (HASHLEN*2+1 > 63)
+    if (HASHLEN*2+1 > sizeof(tree->Types.StringBuf))
 	{
 	tree->Alloc = 1;
 	tree->String = nmSysMalloc(HASHLEN*2+1);
