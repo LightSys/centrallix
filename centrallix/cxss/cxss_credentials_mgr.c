@@ -127,13 +127,13 @@ cxssAddUser(const char *cxss_userid, const char *pb_userkey, size_t pb_userkey_l
         goto error;
     }
 
-    free(encrypted_privatekey);
+    nmSysFree(encrypted_privatekey);
     cxssDestroyKey(privatekey, privatekey_len);
     cxssShred(pb_userkey, pb_userkey_len);    
     return CXSS_MGR_SUCCESS;
 
 error:
-    free(encrypted_privatekey);
+    nmSysFree(encrypted_privatekey);
     cxssDestroyKey(privatekey, privatekey_len);
     cxssShred(pb_userkey, pb_userkey_len);
     return CXSS_MGR_INSERT_ERROR;
@@ -173,7 +173,7 @@ cxssRetrieveUserPrivateKey(const char *cxss_userid, const char *pb_userkey, size
     return CXSS_MGR_SUCCESS;
 
 error:
-    free(*privatekey);
+    nmSysFree(*privatekey);
     cxssFreeUserAuth(&UserAuth);
     cxssShred(pb_userkey, pb_userkey_len);
     return CXSS_MGR_RETRIEVE_ERROR;
@@ -198,7 +198,7 @@ cxssRetrieveUserPublicKey(const char *cxss_userid, char **publickey, int *public
     }
    
     /* Allocate buffer for public key */
-    *publickey = malloc(UserData.KeyLength);
+    *publickey = nmSysMalloc(UserData.KeyLength);
     if (!(*publickey)) {
         mssError(0, "CXSS", "Memory allocation error\n");
         goto error;
@@ -310,17 +310,17 @@ cxssAddResource(const char *cxss_userid, const char *resource_id, const char *au
         goto error;
     }
     
-    free(publickey);
-    free(encrypted_username);
-    free(encrypted_password);
+    nmSysFree(publickey);
+    nmSysFree(encrypted_username);
+    nmSysFree(encrypted_password);
     cxssShred(resource_username, username_len);
     cxssShred(resource_authdata, authdata_len);
     return CXSS_MGR_SUCCESS;
 
 error:
-    free(publickey);
-    free(encrypted_username);
-    free(encrypted_password);
+    nmSysFree(publickey);
+    nmSysFree(encrypted_username);
+    nmSysFree(encrypted_password);
     cxssShred(resource_username, username_len);
     cxssShred(resource_authdata, authdata_len);
     return CXSS_MGR_INSERT_ERROR;
