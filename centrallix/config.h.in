@@ -28,6 +28,12 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Define to 1 if you have the `argon2' library (-largon2). */
+#undef HAVE_LIBARGON2
+
+/* Define to 1 if you have the `argon2-devel' library (-largon2-devel). */
+#undef HAVE_LIBARGON2_DEVEL
+
 /* Define to 1 if you have the `Centrallix' library (-lCentrallix). */
 #undef HAVE_LIBCENTRALLIX
 

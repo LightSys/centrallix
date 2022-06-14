@@ -32,6 +32,9 @@ dnl Replace `main' with a function in -lm:
 AC_CHECK_LIB(m, main)
 dnl Replace `main' with a function in -lz:
 AC_CHECK_LIB(z, main)
+dnl Replace 'main with a function in -largon2 ADDED THIS EXPERIMENTALLY TRYING TO GET ARGON TO WORK
+AC_CHECK_LIB(argon2, main)
+
 dnl Check for libpng
 AC_CHECK_LIB(png, png_read_png)
 AC_CACHE_SAVE
