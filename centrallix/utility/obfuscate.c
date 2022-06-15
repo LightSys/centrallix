@@ -43,6 +43,7 @@
 /* Description:	This is the data obfuscation module, which provides	*/
 /*		repeatable and non-repeatable obfuscation of data for	*/
 /*		testing and demos.					*/
+/* See centrallix-sysdoc/DataObfuscation.md for more information. */
 /************************************************************************/
 
 #define OBF_KEY_SIZE		(64 / 8)

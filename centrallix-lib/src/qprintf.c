@@ -34,6 +34,7 @@
 /*		strings.  These functions do not support some of the	*/
 /*		more advanced (and dangerous) features of the normal	*/
 /*		printf() library calls.					*/
+/* See centrallix-sysdoc/QPrintf.md for more information. */
 /************************************************************************/
 
 
