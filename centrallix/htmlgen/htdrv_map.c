@@ -46,6 +46,13 @@ static struct
 	int idcnt;
 } HTMAP;
 
+
+int htmapSetup(pHtSession s)
+	{
+	htrAddStylesheetItem(s, "	div.wmap { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; }\n");
+	return 0;
+	}
+
 /*** htmapRender - generate the HTML code for the page.
  ***/
 int htmapRender(pHtSession s, pWgtrNode map_node, int z)
@@ -104,7 +111,7 @@ int htmapRender(pHtSession s, pWgtrNode map_node, int z)
 	strtcpy(name, ptr, sizeof(name));
 
 	/** Add css item for the layer **/
-	htrAddStylesheetItem_va(s, "\t#map%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; overflow: hidden; %STR}\n", id, x, y, w, h, z, main_bg);
+	htrAddStylesheetItem_va(s, "\t#map%POSbase { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; %STR}\n", id, x, y, w, h, z, main_bg);
 
 	htrAddWgtrObjLinkage_va(s, map_node, "map%POSbase", id);
 
@@ -128,7 +135,7 @@ int htmapRender(pHtSession s, pWgtrNode map_node, int z)
 						name, *osrc, osrc, !*osrc, allow_select, show_select, name);
 
 	/** HTML body <DIV> element to be used by the OpenLayers map. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"map%POSbase\">\n", id);
+	htrAddBodyItem_va(s, "<DIV ID=\"map%POSbase\">\n", id, "wmap");
 
 	/** Check for widgets within the map. **/
 	htrRenderSubwidgets(s, map_node, z + 2);
