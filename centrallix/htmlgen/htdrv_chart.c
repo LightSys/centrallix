@@ -51,6 +51,13 @@ static struct
     int idcnt;
 } HTCHT;
 
+
+int htchtSetup(pHtSession s)
+	{
+	htrAddStylesheetItem(s, "	div.wcht { POSITION:absolute; VISIBILITY:inherit; }\n");
+	}
+
+
 int
 htchtCheckBrowserSupport(pHtSession session)
     {
