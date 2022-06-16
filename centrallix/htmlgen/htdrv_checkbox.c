@@ -46,6 +46,12 @@ static struct {
    int     idcnt;
 } HTCB;
 
+int htcbSetup(pHtSession s)
+	{
+	htrAddStylesheetItem(s, "	cb.wcheckbox { VISIBILITY:inherit; POSITION:absolute; }\n");
+	return 0;
+	}
+
 
 int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    char fieldname[HT_FIELDNAME_SIZE];
@@ -92,7 +98,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddWgtrObjLinkage_va(s, tree, "cb%INTmain", id);
 
    /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,"\t#cb%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:13px; WIDTH:13px; Z-INDEX:%POS; }\n",id,x,y,z);
+   htrAddStylesheetItem_va(s,"\t#cb%POSmain { LEFT:%INTpx; TOP:%INTpx; HEIGHT:13px; WIDTH:13px; Z-INDEX:%POS; }\n",id,x,y,z);
    htrAddScriptInclude(s,"/sys/js/htdrv_checkbox.js",0);
    htrAddScriptInclude(s,"/sys/js/ht_utils_hints.js",0);
 
@@ -143,6 +149,7 @@ int htcbInitialize() {
    /** Fill in the structure. **/
    strcpy(drv->Name,"DHTML Checkbox Driver");
    strcpy(drv->WidgetName,"checkbox");
+   drv->Setup = htcbSetup;
    drv->Render = htcbRender;
 
    /** Events **/

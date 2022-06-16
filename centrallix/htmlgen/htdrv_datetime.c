@@ -48,6 +48,13 @@ static struct
     }
     HTDT;
 
+int htdtSetup(pHtSession s)
+	{
+	htrAddStylesheetItem(s, "	dt.btn { OVERFLOW:hidden; POSITTION:absolute; VISIBILITY:inherit; CURSOR: default; BORDER:1px outset #e0e0e0; }\n");
+	htrAddStylesheetItem(s, "	dt.con1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; }\n");
+	htrAddStylesheetItem(s, "	dt.con2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; }\n");
+	return 0;
+	}
 
 /*** htdtRender - generate the HTML code for the page.
  ***/
@@ -201,9 +208,9 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    strcpy(fgcolor,"black");
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#dt%POSbtn  { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; cursor:default; border:1px outset #e0e0e0; %STR }\n",id,x,y,w,h,z, bgcolor);
-	htrAddStylesheetItem_va(s,"\t#dt%POScon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
-	htrAddStylesheetItem_va(s,"\t#dt%POScon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
+	htrAddStylesheetItem_va(s,"\t#dt%POSbtn  { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; outset #e0e0e0; %STR }\n",id,x,y,w,h,z, bgcolor);
+	htrAddStylesheetItem_va(s,"\t#dt%POScon1 { WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
+	htrAddStylesheetItem_va(s,"\t#dt%POScon2 { WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
 
 	/** Write named global **/
 	htrAddScriptGlobal(s, "dt_current", "null", 0);
@@ -276,6 +283,7 @@ htdtInitialize()
 	/** Fill in the structure. **/
 	strcpy(drv->Name,"HTML Date/Time Widget Driver");
 	strcpy(drv->WidgetName,"datetime");
+	drv->Setup = htdtSetup;
 	drv->Render = htdtRender;
 
 	/** Register events **/

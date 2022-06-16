@@ -49,7 +49,12 @@ static struct
     }
     HTEB;
 
-
+int htebSetup(pHtSession s)
+	{
+	htrAddStylesheetItem(s, "	eb.base { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; }\n");
+	htrAddStylesheetItem(s, "	eb.con1 { VISIBILITY:inherit; border:none; }\n");
+	return 0;
+	}
 /*** htebRender - generate the HTML code for the editbox widget.
  ***/
 int
@@ -149,8 +154,8 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    box_offset = 0;
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#eb%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
-	htrAddStylesheetItem_va(s,"\t#eb%POScon1 { VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; border:none; }\n",id,5,0,w-10,z+1);
+	htrAddStylesheetItem_va(s,"\t#eb%POSbase { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,z);
+	htrAddStylesheetItem_va(s,"\t#eb%POScon1 { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,5,0,w-10,z+1);
 
 	/** Write named global **/
 	htrAddWgtrObjLinkage_va(s, tree, "eb%POSbase",id);
@@ -220,6 +225,7 @@ htebInitialize()
 	/** Fill in the structure. **/
 	strcpy(drv->Name,"DHTML Single-line Editbox Driver");
 	strcpy(drv->WidgetName,"editbox");
+	drv->Setup = htebSetup;
 	drv->Render = htebRender;
 
 	/** Events **/

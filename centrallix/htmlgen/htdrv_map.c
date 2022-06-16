@@ -160,6 +160,7 @@ int htmapInitialize()
 	/** Fill in the structure. **/
 	strcpy(drv->Name, "DHTML Map Driver");
 	strcpy(drv->WidgetName, "map");
+	drv->Setup = htmapSetup;
 	drv->Render = htmapRender;
 
 	htrAddEvent(drv, "MouseUp");

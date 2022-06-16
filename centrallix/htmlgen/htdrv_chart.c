@@ -55,6 +55,7 @@ static struct
 int htchtSetup(pHtSession s)
 	{
 	htrAddStylesheetItem(s, "	div.wcht { POSITION:absolute; VISIBILITY:inherit; }\n");
+	return 0;	
 	}
 
 
@@ -397,6 +398,7 @@ htchtInitialize()
         /** Fill in the structure. **/
         strcpy(drv->Name, "DHTML Chart Driver");
         strcpy(drv->WidgetName, "chart");
+	drv->Setup = htchtSetup;
         drv->Render = htchtRender;
         xaAddItem(&(drv->PseudoTypes), "chart-axis");
         xaAddItem(&(drv->PseudoTypes), "chart-series");
