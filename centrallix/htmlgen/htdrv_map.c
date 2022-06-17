@@ -133,7 +133,7 @@ int htmapRender(pHtSession s, pWgtrNode map_node, int z)
 						name, *osrc, osrc, !*osrc, allow_select, show_select, name);
 
 	/** HTML body <DIV> element to be used by the OpenLayers map. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"map%POSbase\" class=div.map>\n", id);
+	htrAddBodyItem_va(s, "<DIV ID=\"map%POSbase\" class=div.wmap>\n", id);
 
 	/** Check for widgets within the map. **/
 	htrRenderSubwidgets(s, map_node, z + 2);
