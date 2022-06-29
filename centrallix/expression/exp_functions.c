@@ -3926,6 +3926,91 @@ int exp_fn_utf8_lower(pExpression tree, pParamObjects objlist, pExpression i0, p
     }
     
 
+int exp_fn_utf8_mixed(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+	int * bufferLength;
+	char * result;
+	char * wordlist;
+	int returnVal;
+
+    tree->DataType = DATA_T_STRING;
+    if (i0 && i0->Flags & EXPR_F_NULL)
+        {
+		tree->Flags |= EXPR_F_NULL;
+		return 0;
+		}
+    if (!i0 || i0->DataType != DATA_T_STRING)
+        {
+		mssError(1,"EXP","One or two string parameters required for mixed()");
+		return -1;
+		}
+    if (i1 && i1->Flags & EXPR_F_NULL)
+		i1 = NULL;
+    if (i1 && i1->DataType != DATA_T_STRING)
+		{
+		mssError(1,"EXP","Optional second parameter to mixed() must be a string");
+		return -1;
+		}
+    if (tree->Alloc && tree->String)
+		{
+		nmSysFree(tree->String);
+		tree->Alloc = 0;
+		}
+
+	if(i1)
+		{
+		wordlist = i1->String;
+		}
+	else 
+		{
+		wordlist = NULL;
+		}
+
+	/** Assume buffer is the right size, and double if was after **/
+	bufferLength = nmSysMalloc(sizeof(int));
+	*bufferLength = 63;
+	
+	tree->String = tree->Types.StringBuf;
+
+    result = chrToMixed(i0->String, tree->String, bufferLength, wordlist);
+
+	if(result != tree->String)
+		{
+		tree->String = result;
+		tree->Alloc = 1;
+		}
+	else
+		{
+		tree->Alloc = 0;
+		}
+
+	/* Check for errors: */
+	if(*bufferLength == CHR_INVALID_ARGUMENT)
+		{
+		mssError(1,"EXP","Null string provided to utf8_mixed");
+		returnVal = -1;
+		}
+	else if(*bufferLength == CHR_INVALID_CHAR)
+		{
+		mssError(1,"EXP","Invalid character in wordlist or string provided to utf8_mixed");
+		returnVal = -1;
+		}
+	else if(*bufferLength == CHR_MEMORY_OUT)
+		{
+		mssError(1,"EXP","No memory available; utf8_mixed could not allocate memory");
+		returnVal = -1;
+		}
+	else 
+		{
+		returnVal = 0;
+		}
+		
+
+	nmSysFree(bufferLength);
+
+    return returnVal;
+    }
+
 int exp_fn_utf8_char_length(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     size_t wideLen;
@@ -4715,6 +4800,7 @@ int exp_internal_DefineFunctions()
         xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_charindex);
         xhAdd(&EXP.Functions, "upper", (char*) exp_fn_upper);
         xhAdd(&EXP.Functions, "lower", (char*) exp_fn_lower);
+		xhAdd(&EXP.Functions, "mixed", (char) exp_fn_mixed);
         xhAdd(&EXP.Functions, "char_length", (char*) exp_fn_char_length);
         xhAdd(&EXP.Functions, "right", (char*) exp_fn_right);
         xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_ralign);
@@ -4728,13 +4814,14 @@ int exp_internal_DefineFunctions()
         xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_utf8_charindex);
         xhAdd(&EXP.Functions, "upper", (char*) exp_fn_utf8_upper);
         xhAdd(&EXP.Functions, "lower", (char*) exp_fn_utf8_lower);
+		xhAdd(&EXP.Functions, "mixed", (char) exp_fn_utf8_mixed);
         xhAdd(&EXP.Functions, "char_length", (char*) exp_fn_utf8_char_length);
         xhAdd(&EXP.Functions, "right", (char*) exp_fn_utf8_right);
         xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_utf8_ralign);
         xhAdd(&EXP.Functions, "escape", (char*) exp_fn_utf8_escape);
-	xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_utf8_reverse);
-	xhAdd(&EXP.Functions, "overlong", (char*) exp_fn_utf8_overlong);
-	}
+		xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_utf8_reverse);
+		xhAdd(&EXP.Functions, "overlong", (char*) exp_fn_utf8_overlong);
+		}
     
     return 0;
     }
