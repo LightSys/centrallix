@@ -2082,7 +2082,9 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 				if (next_state != ParseError)
 				    {
 				    if (!strcmp("log", cmd))
-					mssLog(LOG_INFO, xs->String);
+					//FIXME: need to get this working...
+					xs = xs;
+					//mssLog(LOG_INFO, xs->String);
 				    else
 					printf("%s\n", xs->String);
 				    xsFree(xs);

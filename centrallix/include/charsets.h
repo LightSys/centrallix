@@ -156,6 +156,17 @@ char* chrToUpper(char* string, char* buffer, size_t* bufferLength);
  module description for more information.) */
 char* chrToLower(char* string, char* buffer, size_t* bufferLength);
 
+/** \brief Convert a (possibly multibyte) string to mixed case (title case). 
+ \param string The string to convert to mixed case.
+ \param buffer A preallocated buffer that you want this function to use or NULL.
+ \param bufferLength The length of the preallocated buffer.  This must never
+ be NULL even if buffer is!
+  \param wordlist The comma delimited wordlist to refernce when deciding what to capitalize. 
+ May be null. 
+ \return This returns the mixed case string or NULL on error. (See the extended 
+ module description for more information.) */
+char* chrToMixed(char* string, char* buffer, size_t* bufferLength, char* wordlist);
+
 /** \brief This function returns the number of characters (NOT BYTES) in a 
  given string.
  \param string The string to return the number of characters in. 

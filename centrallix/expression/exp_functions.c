@@ -531,8 +531,11 @@ int exp_fn_lower(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 	}
     return 0;
     }
-
-
+//FIXME: need to either full send on the comment below, or delete it. 
+/* i0: string to put in mixed case
+ * i1: wordlist (optional)
+ * i2: unused
+*/
 int exp_fn_mixed(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     int n,i,j,l;

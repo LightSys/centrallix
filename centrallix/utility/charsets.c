@@ -310,6 +310,202 @@ char* chrToLower(char* string,  char* buffer, size_t* bufferLength)
         return toReturn;
     }
 
+/* Convert a (possibly multibyte) string to mixed case (title case). */
+// TODO: This is a chimera of chrToLower (above) and exp_fn_mixed (in exp_functions.c)... might want to start over to make sure need all
+char* chrToMixed(char* string, char* buffer, size_t* bufferLength, char* wordlist)
+    {
+    size_t stringCharLength, listCharLength, currentPos, curWordLen, newStrByteLength;
+    int at_boundary, i;
+    char* toReturn;
+    wchar_t* longBuffer, *listBuffer, *wordPtr, *savePos, *starPos, *match;
+    wchar_t temp;
+    XArray xaWordlist;
+        longBuffer = 0;
+        listBuffer = 0;
+        /** Check arguments **/
+        if(!string || !bufferLength)
+            {
+                //FIXME: probably shouldn't go here when bufferLength is null; asking for a crash
+            *bufferLength = CHR_INVALID_ARGUMENT;
+            goto err;
+            }
+        stringCharLength = mbstowcs(NULL, string, 0);
+        if(stringCharLength == (size_t)-1)
+            {
+            *bufferLength = CHR_INVALID_CHAR;
+            goto err;
+            }
+ 
+        /** Create wchar_t buffer **/
+        longBuffer = nmSysMalloc(sizeof(wchar_t) * (stringCharLength + 1));
+        if(!longBuffer)
+            {
+            *bufferLength = CHR_MEMORY_OUT;
+            goto err;
+            }
+        mbstowcs(longBuffer, string, stringCharLength + 1);
+        
+        /** set up worlist **/
+        if(wordlist)
+            {
+            xaInit(&xaWordlist, 16);
+            /** Make a copy of the list with wide chars **/
+            listCharLength = mbstowcs(NULL, wordlist, 0);
+            if(listCharLength == (size_t)-1)
+                {
+                *bufferLength = CHR_INVALID_CHAR;
+                goto err;
+                }
+            listBuffer = nmSysMalloc(sizeof(wchar_t) * (listCharLength + 1));
+            listCharLength = mbstowcs(listBuffer, wordlist, listCharLength + 1);
+            if(!listBuffer)
+                {
+                *bufferLength = CHR_MEMORY_OUT;
+                goto err;
+                }
+
+            /** convert to XArray **/
+            wordPtr = wcstok(listBuffer, L",", &savePos);
+            while(wordPtr)
+                {
+                xaAddItem(&xaWordlist, wordPtr);
+                wordPtr = wcstok(NULL, L",", &savePos);
+                }
+            }
+
+        /** Convert to mixed case **/
+        at_boundary = 1; /* starts on boundary */
+        for(currentPos = 0 ; currentPos < stringCharLength ; currentPos++)
+            {
+            if(!at_boundary)
+                {
+                longBuffer[currentPos] = towlower(longBuffer[currentPos]);
+                /** check for boundary. If any non-aplhabetic char besides 
+                 ** ' and -, needs to become a boundary 
+                 **/
+                 //TODO: make sure locale will not be a problem for this
+                 if(!iswalpha(longBuffer[currentPos]) && longBuffer[currentPos] != '\'' 
+                    && longBuffer[currentPos] != '-') at_boundary = 1;
+                }
+            else 
+                {
+                /** If have a wordlist, change input to match the list **/
+                if(wordlist) 
+                    {
+                    /** Find length of next workd in input string **/
+                    curWordLen = 0;
+                    while(iswalpha(*(longBuffer + currentPos + curWordLen)) && currentPos + curWordLen < stringCharLength)
+                        {
+                        curWordLen++;
+                        }
+                    /** Compare word found against the word list
+                     ** If len == 0, then no alpha chars to upper/lower, so just let fall through. 
+                     **/
+                    if(curWordLen > 0)
+                        {
+                        /** null terminate to endable string compare **/
+                        temp = *(longBuffer + currentPos + curWordLen);
+                        *(longBuffer + currentPos + curWordLen) = L'\0';                    
+                        for(i = 0 ; i < xaWordlist.nItems ; i++)
+                            {
+                            starPos = NULL;
+                            match = xaWordlist.Items[i];
+                            if(wcscasecmp(match, longBuffer + currentPos) == 0)
+                                {
+                                *(longBuffer + currentPos + curWordLen) = temp;
+                                break;
+                                }
+                            else  /* No exact match, look for '*' */
+                                {
+                                /** Wildcard match, implies following capital.  However, do
+                                 ** not apply this unless there are at least two characters
+                                 ** (one to be uppercase and one to be lower) matched by the
+                                 ** wildcard.  So, Mc* would not match McD, and Mac* would
+                                 ** not match Mack or Macy.
+                                 **/
+                                 starPos = wcschr(match, L'*');
+                                 if(starPos && wcsncasecmp(match, longBuffer + currentPos, starPos - match) == 0 
+                                    && curWordLen > ((starPos - match) + 1)) 
+                                    {
+                                     *(longBuffer + currentPos + curWordLen) = temp;
+                                     curWordLen = starPos - match; /* change length so next part gets looked at again */
+                                     break;
+                                    } 
+                                else 
+                                    {
+                                    match = NULL;
+                                    }
+                                }
+                            } /* end for loop */
+                        /** Restore the temp value **/
+                        
+
+                        if(match) /* replace word */
+                            {
+                            for(i = 0 ; i < curWordLen ; i++)
+                                {
+                                longBuffer[currentPos + i] = *(match+i);
+                                }
+                            if(!starPos) at_boundary = 0;
+                            }
+                        else  /* No replacement. perfrom normal upper first, lower rest*/
+                            {
+                            *(longBuffer + currentPos + curWordLen) = temp; /* if here, never fixed it */
+                            longBuffer[currentPos] = towupper(longBuffer[currentPos]);
+                            for(i = 1 ; i < curWordLen ; i++)
+                                {
+                                longBuffer[currentPos + i] = towlower(longBuffer[currentPos + i]);
+                                }
+                            at_boundary = 0;
+                            }
+                        /** update current pos **/
+                        currentPos += (curWordLen - 1);                             
+                        }
+                    }  
+                else
+                    {
+                    /** There is no wordlist. Just set to uppercase and reset boundary if needed **/
+                    longBuffer[currentPos] = towupper(longBuffer[currentPos]);
+                    if(iswalpha(longBuffer[currentPos])) at_boundary = 0;
+                    }
+                }
+            }      
+        
+        /** prepare to convert back to a standard string **/
+        newStrByteLength = wcstombs(NULL, longBuffer, 0);
+        if(newStrByteLength == (size_t)-1)
+            {
+            *bufferLength = CHR_INVALID_CHAR;
+            goto err;
+            }
+        if(buffer && (newStrByteLength < *bufferLength))
+            {
+            toReturn = buffer;
+            *bufferLength = 0;
+            }
+        else
+            {
+            toReturn = (char *)nmSysMalloc(newStrByteLength + 1);
+            if(!toReturn)
+                {
+                *bufferLength = CHR_MEMORY_OUT;
+                goto err;
+                }
+            *bufferLength = newStrByteLength + 1;
+            }
+        
+        /** Copy over to output buffer **/
+        wcstombs(toReturn, longBuffer, newStrByteLength + 1);
+        nmSysFree(longBuffer);
+        if(listBuffer) nmSysFree(listBuffer);
+        return toReturn;
+
+    err:
+        if(longBuffer) nmSysFree(longBuffer);
+        if(listBuffer) nmSysFree(listBuffer);
+        return NULL;
+    }
+
 size_t chrCharLength(char* string)
     {
     size_t length; 
