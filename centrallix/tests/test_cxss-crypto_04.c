@@ -6,7 +6,7 @@
 long long
 test(char** name)
     {
-    *name = "CXSS Crypto 04: RSA Key Generaion";
+    *name = "CXSS Crypto 04: RSA Key Generation";
     
     int pubSize1 = 0;
     int priSize1 = 0;

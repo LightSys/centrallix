@@ -28,7 +28,7 @@ test(char** name)
     /** get n values **/ 
     for(int i = 0 ; i < n ; i++)
         {
-        int result = cxssGenerate64bitSalt(&salts[i][0]);
+        int result = cxssGenerate64bitSalt(salts[i]);
         assert(result == CXSS_CRYPTO_SUCCESS);
 
         /** update byte freq and store bytes **/
