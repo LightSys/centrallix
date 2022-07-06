@@ -11,7 +11,7 @@ test(char** name)
 
     const int n = 5000;
     const int b = 32;
-    unsigned char salts [n][b];
+    unsigned char keys [n][b];
     unsigned char bytes [n*b];
     int freq [256];
 
@@ -28,14 +28,14 @@ test(char** name)
     /** get n values **/ 
     for(int i = 0 ; i < n ; i++)
         {
-        int result = cxssGenerate256bitRandomKey(&salts[i][0]);
+        int result = cxssGenerate256bitRandomKey(&keys[i][0]);
         assert(result == CXSS_CRYPTO_SUCCESS);
 
         /** update byte freq and store bytes **/
         for(int j = 0 ; j < b ; j++)
             {
-            bytes[i*b + j] = salts[i][j];
-            freq[salts[i][j]]++; 
+            bytes[i*b + j] = keys[i][j];
+            freq[keys[i][j]]++; 
             }
         
 
@@ -45,7 +45,7 @@ test(char** name)
             int isMatch = 1;
             for(int k = 0 ; k < b ; k++)
                 {
-                isMatch &= salts[i][k] == salts[j][k];
+                isMatch &= keys[i][k] == keys[j][k];
                 }
             assert(!isMatch);
             } 
