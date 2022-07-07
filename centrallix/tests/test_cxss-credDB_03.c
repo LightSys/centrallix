@@ -43,7 +43,6 @@ test(char** name)
     CXSS_UserResc data;
     data.CXSS_UserID = "1";
     data.ResourceID = "1";
-    data.AuthClass = "something";
     data.AESKey = key; 
     data.UsernameIV = uNameIV;
     data.AuthDataIV = aDataIV;
@@ -70,7 +69,6 @@ test(char** name)
 
     assert(strcmp(data.CXSS_UserID, retData.CXSS_UserID) == 0);
     assert(strcmp(data.ResourceID, retData.ResourceID) == 0);    
-    assert(strcmp(data.AuthClass, retData.AuthClass) == 0);  
     assert(memcmp(data.AESKey, retData.AESKey, 32) == 0);  
     assert(memcmp(data.UsernameIV, retData.UsernameIV, 16) == 0);
     assert(memcmp(data.AuthDataIV, retData.AuthDataIV, 16) == 0);    
@@ -101,7 +99,6 @@ test(char** name)
     assert(result == CXSS_DB_SUCCESS);
     assert(strcmp(data.CXSS_UserID, retData.CXSS_UserID) == 0);
     assert(strcmp(data.ResourceID, retData.ResourceID) == 0);    
-    assert(strcmp(data.AuthClass, retData.AuthClass) == 0);  
     assert(memcmp(data.AESKey, retData.AESKey, 32) == 0);  
     assert(memcmp(data.UsernameIV, retData.UsernameIV, 16) == 0);
     assert(memcmp(data.AuthDataIV, retData.AuthDataIV, 16) == 0);    
@@ -118,7 +115,6 @@ test(char** name)
     /** update all fields **/
     data.CXSS_UserID = "1";
     data.ResourceID = "1";
-    data.AuthClass = "not something";
     key[0] = -key[0]; /* just chaninging one piece is enough */
     uNameIV[0] = -uNameIV[0];
     aDataIV[0] = -aDataIV[0];
@@ -139,7 +135,6 @@ test(char** name)
     assert(result == CXSS_DB_SUCCESS);
     assert(strcmp(data.CXSS_UserID, retData.CXSS_UserID) == 0);
     assert(strcmp(data.ResourceID, retData.ResourceID) == 0);    
-    assert(strcmp(data.AuthClass, retData.AuthClass) != 0);  /* cannot update auth class */ 
     assert(memcmp(data.AESKey, retData.AESKey, 32) == 0);  
     assert(memcmp(data.UsernameIV, retData.UsernameIV, 16) == 0);
     assert(memcmp(data.AuthDataIV, retData.AuthDataIV, 16) == 0);    
@@ -190,7 +185,6 @@ test(char** name)
     CXSS_UserResc data2;
     data2.CXSS_UserID = "1";
     data2.ResourceID = "2";
-    data2.AuthClass = "something else";
     data2.AESKey = key; 
     data2.UsernameIV = uNameIV;
     data2.AuthDataIV = aDataIV;

@@ -6,7 +6,7 @@
 long long
 test(char** name)
     {
-     *name = "CXSS Cred DB 02: Test auth table";
+     *name = "CXSS Cred DB 02: Basic auth table tests";
 
     /** Set up DB. **/
     char * PATH = "/home/devel/test.db";
@@ -25,19 +25,15 @@ test(char** name)
     /*** Insert ***/
 
     /** insert one entry **/
-    char* pubKey;
-    size_t pubLen;
+    char *pubKey, *privKey;
+    size_t pubLen, privLen;
     char saltBuf[8];
     char ivBuf[16];
-
-    CXSS_UserAuth data;
-    data.PrivateKeyIV = &ivBuf;
-    data.Salt = &saltBuf;
-
-    /** generate valid inputs for key, salt, iv, and their lengths **/
+    
+    /* generate valid inputs for key, salt, iv, and their lengths */
     cxss_internal_InitEntropy(1280); 
     cxssCryptoInit(); 
-    int result = cxssGenerateRSA4096bitKeypair(&data.PrivateKey, &data.KeyLength, &pubKey, &pubLen);
+    int result = cxssGenerateRSA4096bitKeypair(&privKey, &privLen, &pubKey, &pubLen);
     assert(result == CXSS_CRYPTO_SUCCESS);
     result = cxssGenerate64bitSalt(saltBuf);
     assert(result == CXSS_CRYPTO_SUCCESS);
@@ -45,10 +41,17 @@ test(char** name)
     assert(result == CXSS_CRYPTO_SUCCESS);
     cxssCryptoCleanup();
 
-    data.CXSS_UserID = "1";
-    data.DateCreated = "01/02/2003";
-    data.DateLastUpdated = "7/4/2022";
+    CXSS_UserAuth data;
+    data.PK_UserAuth = 1;
+    data.CXSS_UserID = "2";
+    data.AuthClass = "something";
+    data.Salt = saltBuf;
+    data.PrivateKey = privKey;
+    data.PrivateKeyIV = ivBuf;
+    data.DateCreated = "03/02/2001";
+    data.DateLastUpdated = "1/2/03";
     data.RemovalFlag = 0;
+    data.KeyLength = 512;
     data.SaltLength = 8;
     data.IVLength = 16;
 
@@ -60,10 +63,12 @@ test(char** name)
 
     /** retrieve: **/
     CXSS_UserAuth retData;
-    result = cxssRetrieveUserAuth(dbCon, data.CXSS_UserID, &retData);
+    result = cxssRetrieveUserAuth(dbCon, data.PK_UserAuth, &retData);
     assert(result == CXSS_DB_SUCCESS);
 
+    assert(data.PK_UserAuth == retData.PK_UserAuth);
     assert(strcmp(data.CXSS_UserID, retData.CXSS_UserID) == 0);
+    assert(strcmp(data.AuthClass, retData.AuthClass) == 0);
     assert(memcmp(data.Salt, retData.Salt, 8) == 0);
     assert(memcmp(data.PrivateKey, retData.PrivateKey, data.KeyLength) == 0);
     assert(memcmp(data.PrivateKeyIV, retData.PrivateKeyIV, 16) == 0);        
@@ -76,67 +81,60 @@ test(char** name)
 
     /** retrive item not in DB **/
     CXSS_UserAuth noData;
-    result = cxssRetrieveUserAuth(dbCon, "2", &noData);
+    result = cxssRetrieveUserAuth(dbCon, 2, &noData);
     assert(result == CXSS_DB_QUERY_ERROR);
 
-
-    /** NOTE: cannot perform updates on the auth table **/
-
-
-    /*** Delete ***/
-
-    /** delete entry (only way to do it is to delete all of the user's records) **/ 
-    result = cxssDeleteAllUserAuth(dbCon, "1");
-    assert(result == CXSS_DB_SUCCESS);
-
-    result = cxssRetrieveUserAuth(dbCon, "1", &noData); /* attempt to retrieve */
-    assert(result == CXSS_DB_QUERY_ERROR);
-
-    /** attempt to delete item not there **/
-    result = cxssDeleteAllUserAuth(dbCon, "2");
-    assert(result == CXSS_DB_NOENT_ERROR); 
-
-    /** create multiple entries for deleting **/
-    result = cxssInsertUserAuth(dbCon, &data);
-    assert(result == CXSS_DB_SUCCESS);
     
-    /** steal values from data **/
-    CXSS_UserAuth data2;
-    data2.PrivateKeyIV = &ivBuf;
-    data2.Salt = &saltBuf;
-    data2.PrivateKey = data.PrivateKey;
-    data2.KeyLength = data.KeyLength;
-    data2.CXSS_UserID = "1";
-    data2.DateCreated = "a diff value";
-    data2.DateLastUpdated = "a diff value";
-    data2.RemovalFlag = 1;
-    data2.SaltLength = 8;
-    data2.IVLength = 16;
+    /*** Update ***/
 
-    result = cxssInsertUserAuth(dbCon, &data2);
+    /** update the entry and test results **/
+    data.CXSS_UserID = "3";
+    data.AuthClass = "another thing";
+    saltBuf[0] = -saltBuf[0]; /* small change is enough here. */
+    privKey[0] = -privKey[0]; /* points to same mem, so this is ok */
+    ivBuf[0]   = -ivBuf[0];
+    data.DateCreated = "02/20/2002";
+    data.DateLastUpdated = "2/2/22";
+
+    result = cxssUpdateUserAuth(dbCon, &data);
     assert(result == CXSS_DB_SUCCESS);
 
-    /** check retreival (should just be data again) **/
-    result = cxssRetrieveUserAuth(dbCon, data.CXSS_UserID, &retData);
+    /* now retrieve and check output */
+    result = cxssRetrieveUserAuth(dbCon, data.PK_UserAuth, &retData);
     assert(result == CXSS_DB_SUCCESS);
 
+    assert(data.PK_UserAuth == retData.PK_UserAuth);
     assert(strcmp(data.CXSS_UserID, retData.CXSS_UserID) == 0);
+    assert(strcmp(data.AuthClass, retData.AuthClass) == 0);
     assert(memcmp(data.Salt, retData.Salt, 8) == 0);
     assert(memcmp(data.PrivateKey, retData.PrivateKey, data.KeyLength) == 0);
     assert(memcmp(data.PrivateKeyIV, retData.PrivateKeyIV, 16) == 0);        
-    assert(strcmp(data.DateCreated, retData.DateCreated) == 0);  
+    assert(strcmp(data.DateCreated, retData.DateCreated) != 0);  /* date created is never updated */ 
     assert(strcmp(data.DateLastUpdated, retData.DateLastUpdated) == 0);  
     assert(data.RemovalFlag == retData.RemovalFlag);  
     assert(data.KeyLength == retData.KeyLength); 
     assert(data.SaltLength == retData.SaltLength); 
     assert(data.IVLength == retData.IVLength); 
 
-    /** now delete both **/
-    result = cxssDeleteAllUserAuth(dbCon, "1");
+    /** attempt to update nonexistent entry **/
+    data.PK_UserAuth = 2;
+    result = cxssUpdateUserAuth(dbCon, &data);
+    assert(result == CXSS_DB_NOENT_ERROR);
+    data.PK_UserAuth = 1; /* fix before next test*/
+
+
+    /*** Delete ***/
+
+    /** delete the entry and confirm is gone **/
+    result = cxssDeleteUserAuth(dbCon, data.PK_UserAuth);
     assert(result == CXSS_DB_SUCCESS);
 
-    result = cxssRetrieveUserAuth(dbCon, "1", &noData); /* attempt to retrieve */
+    result = cxssRetrieveUserAuth(dbCon, data.PK_UserAuth, &retData);
     assert(result == CXSS_DB_QUERY_ERROR);
+
+    /** confirm duplicate delete fails **/
+    result = cxssDeleteUserAuth(dbCon, data.PK_UserAuth);
+    assert(result == CXSS_DB_NOENT_ERROR);
 
     cxssCredentialsDatabaseClose(dbCon);
 
