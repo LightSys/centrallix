@@ -237,7 +237,7 @@ function tbld_redraw_all(dataobj, force_datafetch)
 
     // Creating a new record?  Give indication if so.
     this.was_new = this.is_new;
-    this.is_new = ((this.was_new && dataobj == null) || (dataobj && dataobj.length == 0 && this.row_bgndnew))?1:0;
+    this.is_new = ((this.was_new && dataobj === null) || (dataobj && dataobj.length == 0 && this.row_bgndnew))?1:0;
     if (this.was_new && !this.is_new && this.rows.last)
 	{
 	var recnum = this.rows.last;
