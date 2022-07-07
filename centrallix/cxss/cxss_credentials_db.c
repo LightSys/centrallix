@@ -643,6 +643,11 @@ cxssUpdateUserData(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData)
         mssError(0, "CXSS", "Failed to update user\n");
         return CXSS_DB_QUERY_ERROR;
     }
+    if(sqlite3_changes(dbcontext->db) < 1) { /* Make sure an update occured */
+        mssError(0, "CXSS", "No user found to update\n");
+        return CXSS_DB_NOENT_ERROR;
+    }
+
     return CXSS_DB_SUCCESS;
 
 bind_error:
@@ -697,10 +702,15 @@ cxssUpdateUserResc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc)
     }
 
     /* Execute query */
-    if (sqlite3_step(dbcontext->update_user_stmt) != SQLITE_DONE) {
+    if (sqlite3_step(dbcontext->update_resc_stmt) != SQLITE_DONE) {
         mssError(0, "CXSS", "Failed to update resource\n");
         return CXSS_DB_QUERY_ERROR;
     }
+    if(sqlite3_changes(dbcontext->db) < 1) { /* Make sure an update occured */
+        mssError(0, "CXSS", "No resource found to update\n");
+        return CXSS_DB_NOENT_ERROR;
+    }
+
     return CXSS_DB_SUCCESS;
 
 bind_error:
@@ -730,6 +740,10 @@ cxssDeleteUserData(CXSS_DB_Context_t dbcontext, const char *cxss_userid)
     if (sqlite3_step(dbcontext->delete_user_stmt) != SQLITE_DONE) {
         mssError(0, "CXSS", "Failed to delete user\n");
         return CXSS_DB_QUERY_ERROR;
+    }
+    if(sqlite3_changes(dbcontext->db) < 1) { /* Make sure an update occured */
+        mssError(0, "CXSS", "No user found to delete\n");
+        return CXSS_DB_NOENT_ERROR;
     }
     return CXSS_DB_SUCCESS;
 
@@ -767,6 +781,10 @@ cxssDeleteUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
         mssError(0, "CXSS", "Failed to delete resource\n");
         return CXSS_DB_QUERY_ERROR;
     }
+    if(sqlite3_changes(dbcontext->db) < 1) { /* Make sure an update occured */
+        mssError(0, "CXSS", "No resource found to delete\n");
+        return CXSS_DB_NOENT_ERROR;
+    }
     return CXSS_DB_SUCCESS;
     
 bind_error:
@@ -794,8 +812,12 @@ cxssDeleteAllUserAuth(CXSS_DB_Context_t dbcontext, const char *cxss_userid)
     
     /* Execute query */
     if (sqlite3_step(dbcontext->delete_user_auths_stmt) != SQLITE_DONE) {
-        mssError(0, "CXSS", "Failed to delete resource\n");
+        mssError(0, "CXSS", "Failed to delete user auths\n");
         return CXSS_DB_QUERY_ERROR;
+    }
+    if(sqlite3_changes(dbcontext->db) < 1) { /* Make sure an update occured */
+        mssError(0, "CXSS", "No user auths found to delete\n");
+        return CXSS_DB_NOENT_ERROR;
     }
     return CXSS_DB_SUCCESS;
     
@@ -826,6 +848,10 @@ cxssDeleteAllUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid)
     if (sqlite3_step(dbcontext->delete_rescs_stmt) != SQLITE_DONE) {
         mssError(0, "CXSS", "Failed to delete resource\n");
         return CXSS_DB_QUERY_ERROR;
+    }
+    if(sqlite3_changes(dbcontext->db) < 1) { /* Make sure an update occured */
+        mssError(0, "CXSS", "No resources found to delete\n");
+        return CXSS_DB_NOENT_ERROR;
     }
     return CXSS_DB_SUCCESS;
     

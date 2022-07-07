@@ -3,6 +3,7 @@
 
 #include <sqlite3.h>
 #include <stdbool.h>
+#include <errno.h>
 
 /* DB Context struct */
 typedef struct _CXSS_DB_Context_t {
@@ -71,6 +72,7 @@ typedef struct _CXSS_LLNode {
 } CXSS_UserAuth_LLNode;
 
 typedef enum {
+    CXSS_DB_NOENT_ERROR = -ENOENT,
     CXSS_DB_SETUP_ERROR = -3,
     CXSS_DB_BIND_ERROR = -2,
     CXSS_DB_QUERY_ERROR = -1,
