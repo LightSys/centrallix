@@ -227,7 +227,7 @@ error:
  *  @return                     Status code
  */
 int
-cxssAddResource(const char *cxss_userid, const char *resource_id, const char *auth_class,
+cxssAddResource(const char *cxss_userid, const char *resource_id, 
                 const char *resource_username, size_t username_len,
                 const char *resource_authdata, size_t authdata_len)
 {
@@ -290,7 +290,6 @@ cxssAddResource(const char *cxss_userid, const char *resource_id, const char *au
     /* Build struct */
     UserResc.CXSS_UserID = cxss_userid;
     UserResc.ResourceID = resource_id;
-    UserResc.AuthClass = auth_class;
     UserResc.AESKey = encrypted_rand_key;
     UserResc.ResourceUsername = encrypted_username;
     UserResc.ResourceAuthData = encrypted_password;

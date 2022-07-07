@@ -17,8 +17,10 @@ typedef struct _CXSS_DB_Context_t {
     sqlite3_stmt *update_user_stmt;
     sqlite3_stmt *delete_user_stmt;
     sqlite3_stmt *insert_user_auth_stmt;
+    sqlite3_stmt *update_auth_stmt;
     sqlite3_stmt *retrieve_user_auth_stmt;
     sqlite3_stmt *retrieve_user_auths_stmt;
+    sqlite3_stmt *delete_user_auth_stmt;
     sqlite3_stmt *delete_user_auths_stmt;
     sqlite3_stmt *insert_resc_stmt;
     sqlite3_stmt *retrieve_resc_stmt;
@@ -36,7 +38,9 @@ typedef struct {
 } CXSS_UserData;
 
 typedef struct {
+     int PK_UserAuth;
     const char *CXSS_UserID;
+    const char *AuthClass;
     const char *Salt;
     const char *PrivateKey;
     const char *PrivateKeyIV;
@@ -51,7 +55,6 @@ typedef struct {
 typedef struct {
     const char *CXSS_UserID;
     const char *ResourceID;
-    const char *AuthClass;
     const char *AESKey;
     const char *UsernameIV;
     const char *AuthDataIV;
@@ -85,11 +88,13 @@ int cxssInsertUserData(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData);
 int cxssInsertUserAuth(CXSS_DB_Context_t dbcontext, CXSS_UserAuth *UserAuth);
 int cxssInsertUserResc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc);
 int cxssRetrieveUserData(CXSS_DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserData *UserData);
-int cxssRetrieveUserAuth(CXSS_DB_Context_t dbcontext, const char *cxss_userid, CXSS_UserAuth *UserAuth);
+int cxssRetrieveUserAuth(CXSS_DB_Context_t dbcontext, int pk_userAuth, CXSS_UserAuth *UserAuth);
 int cxssRetrieveUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid, const char *resource_id, CXSS_UserResc *UserResc);
 int cxssUpdateUserData(CXSS_DB_Context_t dbcontext, CXSS_UserData *UserData);
+int cxssUpdateUserAuth(CXSS_DB_Context_t dbcontext, CXSS_UserAuth *UserAuth);
 int cxssUpdateUserResc(CXSS_DB_Context_t dbcontext, CXSS_UserResc *UserResc);
 int cxssDeleteUserData(CXSS_DB_Context_t dbcontext, const char *cxss_userid);
+int cxssDeleteUserAuth(CXSS_DB_Context_t dbcontext, int pk_userAuth);
 int cxssDeleteUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid, const char *resource_id);
 int cxssDeleteAllUserAuth(CXSS_DB_Context_t dbcontext, const char *cxss_userid);
 int cxssDeleteAllUserResc(CXSS_DB_Context_t dbcontext, const char *cxss_userid);
