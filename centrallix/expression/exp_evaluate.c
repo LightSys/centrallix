@@ -404,6 +404,9 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 	/** If either is NULL, result is NULL. **/
 	if ((i0->Flags | i1->Flags) & EXPR_F_NULL)
 	    {
+	    // FIXME This needs to be further built out.
+	    if (i0->DataType == DATA_T_DOUBLE && i1->DataType == DATA_T_DOUBLE)
+		tree->DataType = DATA_T_DOUBLE;
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
 	    }
