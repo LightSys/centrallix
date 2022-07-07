@@ -4113,7 +4113,7 @@ int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
     // Ensure value passed in both parameters is not null
     if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
 	{
-	tree->DataType = DATA_T_INTEGER;
+	tree->DataType = DATA_T_DOUBLE;
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
 	}
