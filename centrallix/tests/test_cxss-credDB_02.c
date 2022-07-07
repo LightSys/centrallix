@@ -94,7 +94,7 @@ test(char** name)
 
     /** attempt to delete item not there **/
     result = cxssDeleteAllUserAuth(dbCon, "2");
-    assert(result == CXSS_DB_SUCCESS); /* deleting always works; does not check for change */
+    assert(result == CXSS_DB_NOENT_ERROR); 
 
     /** create multiple entries for deleting **/
     result = cxssInsertUserAuth(dbCon, &data);

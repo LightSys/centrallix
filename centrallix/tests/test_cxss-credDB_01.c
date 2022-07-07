@@ -104,7 +104,7 @@ test(char** name)
     data.DateLastUpdated = "this isn't either";
     data.KeyLength =  strlen(data.PublicKey);
     result = cxssUpdateUserData(dbCon, &data);
-    assert(result == CXSS_DB_SUCCESS);
+    assert(result == CXSS_DB_NOENT_ERROR);
 
     result = cxssRetrieveUserData(dbCon, data.CXSS_UserID, &noData);
     assert(result == CXSS_DB_QUERY_ERROR); /* Should not have created anything new*/
@@ -130,7 +130,7 @@ test(char** name)
 
     /** attempt to delete item not there **/
     result = cxssDeleteUserData(dbCon, "2");
-    assert(result == CXSS_DB_SUCCESS); /* deleting always works; does not check for change */
+    assert(result == CXSS_DB_NOENT_ERROR); /* deleting always works; does not check for change */
 
 
     cxssCredentialsDatabaseClose(dbCon);
