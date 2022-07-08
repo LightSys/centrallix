@@ -62,13 +62,10 @@ cxssCredentialsManagerClose(void)
  *  @param cxss_userid          Centrallix User ID
  *  @param pb_userk ey          Password-based user encryption key (used to encrypt private key)
  *  @param keylength            Length of password-based user encryption key
- *  @param salt                 User salt
- *  @param salt_len             Length of user salt
  *  @return                     Status code   
  */
 int
-cxssAddUser(const char *cxss_userid, const char *pb_userkey, size_t pb_userkey_len, 
-            const char *salt, size_t salt_len)
+cxssAddUser(const char *cxss_userid, const char *pb_userkey, size_t pb_userkey_len)
 {
     CXSS_UserData UserData = {};
     CXSS_UserAuth UserAuth = {};
@@ -110,11 +107,9 @@ cxssAddUser(const char *cxss_userid, const char *pb_userkey, size_t pb_userkey_l
     UserAuth.CXSS_UserID = cxss_userid;
     UserAuth.PrivateKey = encrypted_privatekey;
     UserAuth.PrivateKeyIV = iv;
-    UserAuth.Salt = salt;
     UserAuth.DateCreated = current_timestamp;
     UserAuth.DateLastUpdated = current_timestamp;
     UserAuth.RemovalFlag = false;
-    UserAuth.SaltLength = salt_len;
     UserAuth.KeyLength = encr_privatekey_len;
     UserAuth.IVLength = sizeof(iv);
 
@@ -415,7 +410,7 @@ cxss_deleteUser(const char *cxss_userid)
         mssError(0, "CXSS", "Failed to delete user data\n");
         return CXSS_MGR_DELETE_ERROR;
     }
-    if (cxssDeleteAllUserAuth(dbcontext, cxss_userid) < 0) {
+    if (cxssDeleteAllUserAuth(dbcontext, cxss_userid, NULL) < 0) {
         mssError(0, "CXSS", "Failed to delete user auth data\n");
         return CXSS_MGR_DELETE_ERROR;
     }
