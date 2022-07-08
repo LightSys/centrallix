@@ -147,10 +147,10 @@ cxss_i_SetupCredentialsDatabase(CXSS_DB_Context_t dbcontext)
                     "DELETE FROM UserData WHERE CXSS_UserID=?;",
                     -1, &dbcontext->delete_user_stmt, NULL);
     sqlite3_prepare_v2(dbcontext->db,
-                    "INSERT INTO UserAuth (PK_UserAuth, CXSS_UserID"
+                    "INSERT INTO UserAuth (CXSS_UserID"
                     ", AuthClass, UserPrivateKey, PrivateKeyIV"
                     ", DateCreated, DateLastUpdated, RemovalFlag)"
-                    "  VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+                    "  VALUES ( ?, ?, ?, ?, ?, ?, ?);",
                     -1, &dbcontext->insert_user_auth_stmt, NULL);
     sqlite3_prepare_v2(dbcontext->db,
                     "UPDATE UserAuth SET CXSS_UserID=?"
@@ -269,35 +269,31 @@ cxssInsertUserAuth(CXSS_DB_Context_t dbcontext, CXSS_UserAuth *UserAuth)
 {
     /* Bind data with sqlite3 stmts */    
     sqlite3_reset(dbcontext->insert_user_auth_stmt);
-    if (sqlite3_bind_int(dbcontext->insert_user_auth_stmt, 1,
-        UserAuth->PK_UserAuth) != SQLITE_OK) {
-        goto bind_error;
-    }
-    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 2,
+    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 1,
         UserAuth->CXSS_UserID, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
-    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 3,
+    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 2,
         UserAuth->AuthClass, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
-    if (sqlite3_bind_blob(dbcontext->insert_user_auth_stmt, 4,
+    if (sqlite3_bind_blob(dbcontext->insert_user_auth_stmt, 3,
         UserAuth->PrivateKey, UserAuth->KeyLength, NULL) != SQLITE_OK) {
         goto bind_error;
     }
-    if (sqlite3_bind_blob(dbcontext->insert_user_auth_stmt, 5,
+    if (sqlite3_bind_blob(dbcontext->insert_user_auth_stmt, 4,
         UserAuth->PrivateKeyIV, UserAuth->IVLength, NULL) != SQLITE_OK) {
         goto bind_error;
     }
-    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 6,
+    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 5,
         UserAuth->DateCreated, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
-    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 7,
+    if (sqlite3_bind_text(dbcontext->insert_user_auth_stmt, 6,
         UserAuth->DateLastUpdated, -1, NULL) != SQLITE_OK) {
         goto bind_error;
     }
-    if (sqlite3_bind_int(dbcontext->insert_user_auth_stmt, 8,
+    if (sqlite3_bind_int(dbcontext->insert_user_auth_stmt, 7,
         UserAuth->RemovalFlag) != SQLITE_OK) {
         goto bind_error;
     }
@@ -307,6 +303,10 @@ cxssInsertUserAuth(CXSS_DB_Context_t dbcontext, CXSS_UserAuth *UserAuth)
         mssError(0, "CXSS", "Failed to insert user auth\n");
         return CXSS_DB_QUERY_ERROR;
     }
+
+    /* set id to assigned value */
+    UserAuth->PK_UserAuth = sqlite3_last_insert_rowid(dbcontext->db);
+
     return CXSS_DB_SUCCESS;
 
 bind_error:
@@ -522,15 +522,19 @@ cxssRetrieveUserAuthLL(CXSS_DB_Context_t dbcontext, const char *cxss_userid, con
     /* Allocate head (dummy node) */
     head = (CXSS_UserAuth_LLNode*)nmMalloc(sizeof(CXSS_UserAuth_LLNode));
     prev = head;
+    head->next = NULL; /* need to detect if failed */
 
     /* Execute query */
-    while (sqlite3_step(stmt) == SQLITE_ROW) { 
+    int code = sqlite3_step(stmt);
+    while (code == SQLITE_ROW) { 
         
         /* Allocate and chain new node */
         current = (CXSS_UserAuth_LLNode*)nmMalloc(sizeof(CXSS_UserAuth_LLNode));       
         prev->next = current;
         
         /* Retrieve results */
+        char *tempUserid = nmSysMalloc(strlen(cxss_userid));
+        strcpy(tempUserid, cxss_userid);
         pk_userAuth = (int) sqlite3_column_int(stmt, 0);
         auth_class = (char*) sqlite3_column_text(stmt, 1);
         privatekey = (char*)sqlite3_column_blob(stmt, 2);
@@ -543,7 +547,7 @@ cxssRetrieveUserAuthLL(CXSS_DB_Context_t dbcontext, const char *cxss_userid, con
         
         /* Populate node */
         current->UserAuth.PK_UserAuth = pk_userAuth;
-        current->UserAuth.CXSS_UserID = cxss_userid;
+        current->UserAuth.CXSS_UserID = tempUserid;
         current->UserAuth.AuthClass = cxssStrdup(auth_class);
         current->UserAuth.PrivateKey = cxssBlobdup(privatekey, keylength);
         current->UserAuth.PrivateKeyIV = cxssBlobdup(iv, iv_length);
@@ -555,6 +559,12 @@ cxssRetrieveUserAuthLL(CXSS_DB_Context_t dbcontext, const char *cxss_userid, con
         
         /* Advance */ 
         prev = current;
+        code = sqlite3_step(stmt);
+    }
+
+    if(code != SQLITE_DONE || head->next == NULL){
+        return CXSS_DB_QUERY_ERROR;
+        nmFree(head, sizeof(CXSS_UserAuth_LLNode));
     }
 
     current->next = NULL;
@@ -563,6 +573,7 @@ cxssRetrieveUserAuthLL(CXSS_DB_Context_t dbcontext, const char *cxss_userid, con
 
 bind_error:
     mssError(0, "CXSS", "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
+    if(head != NULL) nmFree(head, sizeof(CXSS_UserAuth_LLNode));
     return CXSS_DB_BIND_ERROR;
 }
 
@@ -1008,7 +1019,7 @@ cxssFreeUserAuthLL(CXSS_UserAuth_LLNode *start)
 
     while (start != NULL) {
         next = start->next;
-        cxssFreeUserAuth(&start->UserAuth);
+        cxssFreeUserAuth(&start->UserAuth); 
         nmFree(start, sizeof(CXSS_UserAuth_LLNode));
         start = next;
     }
