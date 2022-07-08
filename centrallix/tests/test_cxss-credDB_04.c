@@ -48,7 +48,6 @@ test(char** name)
 
     for(int i = 0 ; i < n ; i++)
         {
-        data.PK_UserAuth = i;
         result = cxssInsertUserAuth(dbCon, &data);
         assert(result == CXSS_DB_SUCCESS);
         }
@@ -69,7 +68,6 @@ test(char** name)
     /** Delete by user **/
     for(int i = 0 ; i < n ; i++)
         {
-        data.PK_UserAuth = i;
         data.CXSS_UserID = (i < n/2)? "1":"2";
         result = cxssInsertUserAuth(dbCon, &data);
         assert(result == CXSS_DB_SUCCESS);
@@ -81,7 +79,7 @@ test(char** name)
 
     for(int i = 0 ; i < n ; i++)
         {
-        result = cxssRetrieveUserAuth(dbCon, i, &temp);
+        result = cxssRetrieveUserAuth(dbCon, i+1, &temp);
         assert(result == ((i < n/2)? CXSS_DB_QUERY_ERROR : CXSS_DB_SUCCESS));
         }
     /* test deleting nothing */
@@ -91,7 +89,6 @@ test(char** name)
     /** test delete by user and auth class **/
     for(int i = 0 ; i < n ; i++)
         {
-        data.PK_UserAuth = i+n;
         /* split users into 4 groups */
         data.CXSS_UserID = (i < n/2)? "1":"2";
         data.AuthClass = (i < n/4 || i > n*3/4)? "1":"2";
@@ -102,7 +99,7 @@ test(char** name)
     assert(result == CXSS_DB_SUCCESS);
     for(int i = 0 ; i < n ; i++)
         {
-        result = cxssRetrieveUserAuth(dbCon, i+n, &temp);
+        result = cxssRetrieveUserAuth(dbCon, i+n+1, &temp);
         assert(result == ((i < n/4)? CXSS_DB_QUERY_ERROR : CXSS_DB_SUCCESS));
         }
     /* test deleting nothing */

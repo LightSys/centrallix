@@ -39,7 +39,6 @@ test(char** name)
     cxssCryptoCleanup();
 
     CXSS_UserAuth data;
-    data.PK_UserAuth = 1;
     data.CXSS_UserID = "2";
     data.AuthClass = "something";
     data.PrivateKey = privKey;
@@ -52,7 +51,7 @@ test(char** name)
 
     result = cxssInsertUserAuth(dbCon, &data);
     assert(result == CXSS_DB_SUCCESS);
-
+    assert(data.PK_UserAuth == 1); /* should have been set by call */
 
     /*** Retrieve ***/
 

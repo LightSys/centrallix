@@ -130,10 +130,8 @@ test(char** name)
 
     /** attempt to delete item not there **/
     result = cxssDeleteUserData(dbCon, "2");
-    assert(result == CXSS_DB_NOENT_ERROR); /* deleting always works; does not check for change */
-
+    assert(result == CXSS_DB_NOENT_ERROR); 
 
     cxssCredentialsDatabaseClose(dbCon);
-
     return 0;
     }

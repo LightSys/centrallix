@@ -179,39 +179,6 @@ test(char** name)
     assert(result == CXSS_DB_NOENT_ERROR); 
 
 
-    /** test delete all **/
-
-    /** insert 2 entries **/
-    CXSS_UserResc data2;
-    data2.CXSS_UserID = "1";
-    data2.ResourceID = "2";
-    data2.AESKey = key; 
-    data2.UsernameIV = uNameIV;
-    data2.AuthDataIV = aDataIV;
-    data2.ResourceUsername = "anotherUsername";
-    data2.ResourceAuthData = "some other auth data.";
-    data2.DateCreated = "5/7/2022";
-    data2.DateLastUpdated = "4/7/2022";
-    data2.AESKeyLength = 32;
-    data2.UsernameIVLength = 16;
-    data2.AuthDataIVLength = 16;
-    data2.UsernameLength = strlen(data.ResourceUsername);
-    data2.AuthDataLength = strlen(data.ResourceAuthData);
-
-    result = cxssInsertUserResc(dbCon, &data);
-    assert(result == CXSS_DB_SUCCESS);
-    result = cxssInsertUserResc(dbCon, &data2);
-    assert(result == CXSS_DB_SUCCESS);
-
-    result = cxssDeleteAllUserResc(dbCon, data.CXSS_UserID);
-    assert(result == CXSS_DB_SUCCESS);
-    
-    result = cxssRetrieveUserResc(dbCon, data.CXSS_UserID, data.ResourceID, &noData); /* attempt to retrieve */
-    assert(result == CXSS_DB_QUERY_ERROR);
-    result = cxssRetrieveUserResc(dbCon,  data2.CXSS_UserID, data.ResourceID, &noData); /* attempt to retrieve */
-    assert(result == CXSS_DB_QUERY_ERROR);
-
     cxssCredentialsDatabaseClose(dbCon);
-
     return 0;
     }

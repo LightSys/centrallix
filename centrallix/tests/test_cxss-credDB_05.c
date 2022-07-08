@@ -36,7 +36,6 @@ test(char** name)
 
     char class[16], create[16], update[16], test[16];
     CXSS_UserAuth data, temp;
-    data.PK_UserAuth = 1;
     data.CXSS_UserID = "1";
     data.AuthClass = class;
     data.PrivateKey = privKey;
@@ -50,13 +49,13 @@ test(char** name)
     for(int i = 0 ; i < n ; i++)
         {
         /* provide unique, repeatable values */
-        data.PK_UserAuth = i;
         sprintf(class, "something%d",i);
         sprintf(create, "1/%d/2022",i);
         sprintf(update, "1/2/20%d",i);
 
         result = cxssInsertUserAuth(dbCon, &data);
         assert(result == CXSS_DB_SUCCESS);
+        assert(data.PK_UserAuth == i+1);
         }
 
     CXSS_UserAuth_LLNode *head, *cur;
@@ -73,7 +72,7 @@ test(char** name)
         sprintf(create, "1/%d/2022", count);
         sprintf(update, "1/2/20%d", count);
 
-        assert(count == cur->UserAuth.PK_UserAuth);
+        assert(count+1 == cur->UserAuth.PK_UserAuth);
         assert(strcmp(data.CXSS_UserID, cur->UserAuth.CXSS_UserID) == 0);
         assert(strcmp(class, cur->UserAuth.AuthClass) == 0);
         assert(memcmp(data.PrivateKey, cur->UserAuth.PrivateKey, data.KeyLength) == 0);
@@ -87,18 +86,20 @@ test(char** name)
         cur = cur->next;
         }
     assert(count == n);
+    /* clean up */
+    cxssFreeUserAuthLL(head);  
 
     /** test with user id **/
     data.CXSS_UserID = "2";
     for(int i = n ; i < 2*n ; i++)
         {
-        data.PK_UserAuth = i;
         sprintf(class, "something%d", i);
         sprintf(create, "1/%d/2022", i);
         sprintf(update, "1/2/20%d", i);
 
         result = cxssInsertUserAuth(dbCon, &data);
         assert(result == CXSS_DB_SUCCESS);
+        assert(data.PK_UserAuth == i+1);
         }
 
     result = cxssRetrieveUserAuthLL(dbCon, "2", NULL, &head);
@@ -113,7 +114,7 @@ test(char** name)
         sprintf(create, "1/%d/2022", count);
         sprintf(update, "1/2/20%d", count);
 
-        assert(count == cur->UserAuth.PK_UserAuth);
+        assert(count+1 == cur->UserAuth.PK_UserAuth);
         assert(strcmp(data.CXSS_UserID, cur->UserAuth.CXSS_UserID) == 0);
         assert(strcmp(class, cur->UserAuth.AuthClass) == 0);
         assert(memcmp(data.PrivateKey, cur->UserAuth.PrivateKey, data.KeyLength) == 0);
@@ -127,18 +128,20 @@ test(char** name)
         cur = cur->next;
         }
     assert(count == 2*n);
+    /* clean up */
+    cxssFreeUserAuthLL(head);  
 
     /** test with user id and class **/
     data.CXSS_UserID = "2";
     data.AuthClass = "something else";
     for(int i = 2*n ; i < 3*n ; i++)
         {
-        data.PK_UserAuth = i;
         sprintf(create, "1/%d/2022", i);
         sprintf(update, "1/2/20%d", i);
 
         result = cxssInsertUserAuth(dbCon, &data);
         assert(result == CXSS_DB_SUCCESS);
+        assert(data.PK_UserAuth == i+1);
         }
 
     result = cxssRetrieveUserAuthLL(dbCon, "2", "something else", &head);
@@ -152,7 +155,7 @@ test(char** name)
         sprintf(create, "1/%d/2022", count);
         sprintf(update, "1/2/20%d", count);
 
-        assert(count == cur->UserAuth.PK_UserAuth);
+        assert(count+1 == cur->UserAuth.PK_UserAuth);
         assert(strcmp(data.CXSS_UserID, cur->UserAuth.CXSS_UserID) == 0);
         assert(strcmp(data.AuthClass, cur->UserAuth.AuthClass) == 0);
         assert(memcmp(data.PrivateKey, cur->UserAuth.PrivateKey, data.KeyLength) == 0);
@@ -166,6 +169,18 @@ test(char** name)
         cur = cur->next;
         }
     assert(count == 3*n);
+    /* clean up */
+    cxssFreeUserAuthLL(head);    
+
+    /** test sets with no results **/
+    result = cxssRetrieveUserAuthLL(dbCon, "3", NULL, &head);
+    assert(result == CXSS_DB_QUERY_ERROR);
+    
+    result = cxssRetrieveUserAuthLL(dbCon, "1", "nothing", &head);
+    assert(result == CXSS_DB_QUERY_ERROR);
+
+    result = cxssRetrieveUserAuthLL(dbCon, "2", "something", &head);
+    assert(result == CXSS_DB_QUERY_ERROR);
 
     cxssCredentialsDatabaseClose(dbCon);
     return 0;
