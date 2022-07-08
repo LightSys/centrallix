@@ -27,15 +27,12 @@ test(char** name)
     /** insert one entry **/
     char *pubKey, *privKey;
     size_t pubLen, privLen;
-    char saltBuf[8];
     char ivBuf[16];
     
-    /* generate valid inputs for key, salt, iv, and their lengths */
+    /* generate valid inputs for key, iv, and their lengths */
     cxss_internal_InitEntropy(1280); 
     cxssCryptoInit(); 
     int result = cxssGenerateRSA4096bitKeypair(&privKey, &privLen, &pubKey, &pubLen);
-    assert(result == CXSS_CRYPTO_SUCCESS);
-    result = cxssGenerate64bitSalt(saltBuf);
     assert(result == CXSS_CRYPTO_SUCCESS);
     result = cxssGenerate128bitIV(ivBuf);
     assert(result == CXSS_CRYPTO_SUCCESS);
@@ -45,14 +42,12 @@ test(char** name)
     data.PK_UserAuth = 1;
     data.CXSS_UserID = "2";
     data.AuthClass = "something";
-    data.Salt = saltBuf;
     data.PrivateKey = privKey;
     data.PrivateKeyIV = ivBuf;
     data.DateCreated = "03/02/2001";
     data.DateLastUpdated = "1/2/03";
     data.RemovalFlag = 0;
-    data.KeyLength = 512;
-    data.SaltLength = 8;
+    data.KeyLength = strlen(data.PrivateKey);
     data.IVLength = 16;
 
     result = cxssInsertUserAuth(dbCon, &data);
@@ -69,14 +64,12 @@ test(char** name)
     assert(data.PK_UserAuth == retData.PK_UserAuth);
     assert(strcmp(data.CXSS_UserID, retData.CXSS_UserID) == 0);
     assert(strcmp(data.AuthClass, retData.AuthClass) == 0);
-    assert(memcmp(data.Salt, retData.Salt, 8) == 0);
     assert(memcmp(data.PrivateKey, retData.PrivateKey, data.KeyLength) == 0);
     assert(memcmp(data.PrivateKeyIV, retData.PrivateKeyIV, 16) == 0);        
     assert(strcmp(data.DateCreated, retData.DateCreated) == 0);  
     assert(strcmp(data.DateLastUpdated, retData.DateLastUpdated) == 0);  
     assert(data.RemovalFlag == retData.RemovalFlag);  
     assert(data.KeyLength == retData.KeyLength); 
-    assert(data.SaltLength == retData.SaltLength); 
     assert(data.IVLength == retData.IVLength); 
 
     /** retrive item not in DB **/
@@ -90,7 +83,6 @@ test(char** name)
     /** update the entry and test results **/
     data.CXSS_UserID = "3";
     data.AuthClass = "another thing";
-    saltBuf[0] = -saltBuf[0]; /* small change is enough here. */
     privKey[0] = -privKey[0]; /* points to same mem, so this is ok */
     ivBuf[0]   = -ivBuf[0];
     data.DateCreated = "02/20/2002";
@@ -106,14 +98,12 @@ test(char** name)
     assert(data.PK_UserAuth == retData.PK_UserAuth);
     assert(strcmp(data.CXSS_UserID, retData.CXSS_UserID) == 0);
     assert(strcmp(data.AuthClass, retData.AuthClass) == 0);
-    assert(memcmp(data.Salt, retData.Salt, 8) == 0);
     assert(memcmp(data.PrivateKey, retData.PrivateKey, data.KeyLength) == 0);
     assert(memcmp(data.PrivateKeyIV, retData.PrivateKeyIV, 16) == 0);        
     assert(strcmp(data.DateCreated, retData.DateCreated) != 0);  /* date created is never updated */ 
     assert(strcmp(data.DateLastUpdated, retData.DateLastUpdated) == 0);  
     assert(data.RemovalFlag == retData.RemovalFlag);  
     assert(data.KeyLength == retData.KeyLength); 
-    assert(data.SaltLength == retData.SaltLength); 
     assert(data.IVLength == retData.IVLength); 
 
     /** attempt to update nonexistent entry **/
