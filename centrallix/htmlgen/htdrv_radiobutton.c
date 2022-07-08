@@ -47,6 +47,13 @@ static struct {
    int   idcnt;
 } HTRB;
 
+int htrbSetup(pHtSession s)
+	{
+	htrAddStylesheetItem_va(s,"\t.posAbs\t{ POSITION:absolute; }\n");
+	htrAddStylesheetItem_va(s,"\t.visInh\t{ VISIBILITY:inherit; }\n");
+	htrAddStylesheetItem_va(s,"\t.visHid\t{ VISIBILITY:hidden; }\n");
+	return 0;	
+	}
 
 /** htrbRender - generate the HTML code for the page.  **/
 int htrbRender(pHtSession s, pWgtrNode tree, int z) {
@@ -141,13 +148,13 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    top_offset = s->ClientInfo->ParagraphHeight*3/4+1;
    cover_height = h-(top_offset+3+2);
    cover_width = w-(2*3 +2);
-   htrAddStylesheetItem_va(s,"\t#rb%POSparent    { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",
+   htrAddStylesheetItem_va(s,"\t#rb%POSparent    { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",
            id,x,y,w,h,z,w,h);
-   htrAddStylesheetItem_va(s,"\t#rb%POSborder    { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",
+   htrAddStylesheetItem_va(s,"\t#rb%POSborder    { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",
            id,3,top_offset,w-(2*3),h-(top_offset+3),z+1,w-(2*3),h-(top_offset+3));
-   htrAddStylesheetItem_va(s,"\t#rb%POScover     { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",
+   htrAddStylesheetItem_va(s,"\t#rb%POScover     { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",
            id,1,1,cover_width,cover_height,z+2,cover_width,cover_height);
-   htrAddStylesheetItem_va(s,"\t#rb%POStitle     { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",
+   htrAddStylesheetItem_va(s,"\t#rb%POStitle     { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",
            id,10,1,w/2,s->ClientInfo->ParagraphHeight,z+3);
    
    htrAddScriptGlobal(s, "radiobutton", "null", 0);
@@ -186,7 +193,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
 	wgtrGetPropertyValue(radiobutton_obj,"outer_type",DATA_T_STRING,POD(&ptr));
 	if (!strcmp(ptr,"widget/radiobutton"))
 	    {
-	    htrAddStylesheetItem_va(s,"\t#rb%POSoption%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px, %POSpx, %POSpx, 0px); }\n",
+	    htrAddStylesheetItem_va(s,"\t#rb%POSoption%POS { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px, %POSpx, %POSpx, 0px); }\n",
 		    id,i,7,cover_margin+((i-1)*item_spacing)+3,cover_width-7,item_spacing,z+2,cover_width-7,item_spacing);
 	    i++;
 	    }
@@ -253,9 +260,9 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    /*
       Do the HTML layers
    */
-   htrAddBodyItem_va(s,"   <DIV ID=\"rb%POSparent\">\n", id);
-   htrAddBodyItem_va(s,"      <DIV ID=\"rb%POSborder\">\n", id);
-   htrAddBodyItem_va(s,"         <DIV ID=\"rb%POScover\">\n", id);
+   htrAddBodyItem_va(s,"   <DIV ID=\"rb%POSparent\" class=\"visInh posAbs\">\n", id);
+   htrAddBodyItem_va(s,"      <DIV ID=\"rb%POSborder\" class=\"visInh posAbs\">\n", id);
+   htrAddBodyItem_va(s,"         <DIV ID=\"rb%POScover\" class=\"visInh posAbs\">\n", id);
 
    /* Loop through each radio button and do the option pane and sub layers */
     i = 1;
@@ -266,23 +273,19 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
         if (!strcmp(ptr,"widget/radiobutton")) 
 	    {
 	    /** CSS layers **/
-	    htrAddStylesheetItem_va(s,"\t#rb%POSbuttonset%POS   { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); CURSOR:pointer; }\n",
-		   id,i,5,2+(s->ClientInfo->ParagraphHeight-12)/2,12,12,z+2,12,12);
-	    htrAddStylesheetItem_va(s,"\t#rb%POSbuttonunset%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); CURSOR:pointer; }\n",
-		   id,i,5,2+(s->ClientInfo->ParagraphHeight-12)/2,12,12,z+2,12,12);
-	    htrAddStylesheetItem_va(s,"\t#rb%POSvalue%POS       { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",
-		   id,i,5,5,12,12,z+2,12,12);
-	    htrAddStylesheetItem_va(s,"\t#rb%POSlabel%POS       { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); CURSOR:pointer; }\n",
-		   id,i,27,2,cover_width-(27+1),item_spacing-1,z+2,cover_width-(27+1),item_spacing-1);
+	    htrAddStylesheetItem_va(s,"\t#rb%POSbuttonset%POS\t{ LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); CURSOR:pointer; }\n",id,i,5,2+(s->ClientInfo->ParagraphHeight-12)/2,12,12,z+2,12,12);
+	    htrAddStylesheetItem_va(s,"\t#rb%POSbuttonunset%POS { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); CURSOR:pointer; }\n",id,i,5,2+(s->ClientInfo->ParagraphHeight-12)/2,12,12,z+2,12,12);
+	    htrAddStylesheetItem_va(s,"\t#rb%POSvalue%POS\t{ LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",id,i,5,5,12,12,z+2,12,12);
+	    htrAddStylesheetItem_va(s,"\t#rb%POSlabel%POS\t{ LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); CURSOR:pointer; }\n",id,i,27,2,cover_width-(27+1),item_spacing-1,z+2,cover_width-(27+1),item_spacing-1);
 
 	    /** Body layers **/
-            htrAddBodyItem_va(s,"            <DIV ID=\"rb%POSoption%POS\">\n", id, i);
-            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSbuttonset%POS\"><IMG SRC=\"/sys/images/radiobutton_set.gif\"></DIV>\n", id, i);
-            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSbuttonunset%POS\"><IMG SRC=\"/sys/images/radiobutton_unset.gif\"></DIV>\n", id, i);
+            htrAddBodyItem_va(s,"            <DIV ID=\"rb%POSoption%POS\" class=\"posAbs visInh\">\n", id, i);
+            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSbuttonset%POS\" class=\"posAbs visHid\"><IMG SRC=\"/sys/images/radiobutton_set.gif\"></DIV>\n", id, i);
+            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSbuttonunset%POS\" class=\"posAbs visInh\"><IMG SRC=\"/sys/images/radiobutton_unset.gif\"></DIV>\n", id, i);
  
             wgtrGetPropertyValue(radiobutton_obj,"label",DATA_T_STRING,POD(&ptr));
 	    strtcpy(sbuf2,ptr,sizeof(sbuf2));
-            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSlabel%POS\" NOWRAP><FONT COLOR=\"%STR&HTE\">%STR&HTE</FONT></DIV>\n", 
+            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSlabel%POS\" class=\"posAbs visInh\" NOWRAP><FONT COLOR=\"%STR&HTE\">%STR&HTE</FONT></DIV>\n", 
 		    id, i, textcolor, sbuf2);
 
 	    /* use label (from above) as default value if no value given */
@@ -291,7 +294,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
 		strtcpy(sbuf2,ptr,sizeof(sbuf2));
 		}
 
-            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSvalue%POS\" VISIBILITY=\"hidden\"><A HREF=\".\">%STR&HTE</A></DIV>\n",
+            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSvalue%POS\" class=\"posAbs visHid\"><A HREF=\".\">%STR&HTE</A></DIV>\n",
 		    id, i, sbuf2);
             htrAddBodyItem(s,   "            </DIV>\n");
             i++;
@@ -300,7 +303,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    
    htrAddBodyItem(s,   "         </DIV>\n");
    htrAddBodyItem(s,   "      </DIV>\n");
-   htrAddBodyItem_va(s,"      <DIV ID=\"rb%POStitle\"><TABLE><TR><TD NOWRAP><FONT COLOR=\"%STR&HTE\">%STR&HTE</FONT></TD></TR></TABLE></DIV>\n", id, textcolor, title);
+   htrAddBodyItem_va(s,"      <DIV ID=\"rb%POStitle\" class=\"posAbs visInh\"><TABLE><TR><TD NOWRAP><FONT COLOR=\"%STR&HTE\">%STR&HTE</FONT></TD></TR></TABLE></DIV>\n", id, textcolor, title);
    htrAddBodyItem(s,   "   </DIV>\n");
 
    return 0;
@@ -319,6 +322,7 @@ int htrbInitialize() {
    strcpy(drv->Name,"DHTML RadioButton Driver");
    strcpy(drv->WidgetName,"radiobuttonpanel");
    drv->Render = htrbRender;
+   drv->Setup = htrbSetup;
 
    /** Events **/ 
    htrAddEvent(drv,"Click");

@@ -48,6 +48,14 @@ static struct
     }
     HTMN;
 
+int htmenuSetup(pHtSession s)
+	{
+	htrAddStylesheetItem_va(s,"\t.zeroLeftTop { LEFT:0px; TOP:0px; }\n");
+	htrAddStylesheetItem_va(s,"\t.menuMain { POSITION:absolute; }\n");
+	htrAddStylesheetItem_va(s,"\t.menuContent { POSITION:absolute; VISIBILITY: inherit; }\n");
+	htrAddStylesheetItem_va(s, "\t.menuHigh { POSITION:absolute; VISIBILITY: hidden; }\n");
+	return 0;
+	}
 
 int
 htmenu_internal_AddDot(pHtSession s, int mcnt, char* nptr, int is_horizontal, int row_height)
@@ -285,12 +293,12 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	if (is_popup < 0) is_popup = 0;
 
 	/** Write the main style header item. **/
-	htrAddStylesheetItem_va(s,"\t#mn%POSmain { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]%[WIDTH:%POSpx; %]Z-INDEX:%POS; }\n", id,is_popup?"hidden":"inherit", x, y, h != -1, h-2*bx, w != -1, w-2*bx, z);
+	htrAddStylesheetItem_va(s,"\t#mn%POSmain { VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]%[WIDTH:%POSpx; %]Z-INDEX:%POS; }\n", id,is_popup?"hidden":"inherit", x, y, h != -1, h-2*bx, w != -1, w-2*bx, z);
 	if (shadow_radius > 0)
 	    {
 	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_radius, shadow_color);
 	    }
-	htrAddStylesheetItem_va(s,"\t#mn%POScontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; %[HEIGHT:%POSpx; %]%[WIDTH:%POSpx; %]Z-INDEX:%POS; }\n", id, h != -1, h-2*bx, w != -1, w-2*bx, z+1);
+	htrAddStylesheetItem_va(s,"\t#mn%POScontent { %[HEIGHT:%POSpx; %]%[WIDTH:%POSpx; %]Z-INDEX:%POS; }\n", id, h != -1, h-2*bx, w != -1, w-2*bx, z+1);
 	if (s->Capabilities.CSS2)
 	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { overflow:hidden; border-style: solid; border-width: 1px; border-color: white gray gray white; color:%STR; %STR }\n", id, textcolor, bgstr);
 
@@ -299,7 +307,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	    htrAddStylesheetItem_va(s,"\t#mn%POScontent { overflow:hidden; cursor:default; }\n", id );
 
 	/** highlight bar **/
-	htrAddStylesheetItem_va(s, "\t#mn%POShigh { POSITION:absolute; VISIBILITY: hidden; LEFT:0px; TOP:0px; Z-INDEX:%POS; }\n", id, z);
+	htrAddStylesheetItem_va(s, "\t#mn%POShigh { Z-INDEX:%POS; }\n", id, z);
 	if (s->Capabilities.CSS2)
 	    htrAddStylesheetItem_va(s,"\t#mn%POShigh { overflow:hidden; }\n", id );
 
@@ -336,26 +344,26 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "mn", "mn_mousedown");
 
 	/** Beginning of code for menu **/
-	htrAddBodyItem_va(s,"<div id=\"mn%POSmain\">", id);
-	if (s->Capabilities.Dom0NS)
-	    htrAddBodyItem_va(s,"<body %STR>",bgstr);
-	htrAddBodyItem_va(s,"<div id=\"mn%POScontent\"><table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" %STR>\n", id, s->Capabilities.Dom0NS?"":"width=\"100%\" height=\"100%\"");
+	htrAddBodyItem_va(s,"<div id=\"mn%POSmain\" class=\"menuMain\">", id);
+	//if (s->Capabilities.Dom0NS)
+	 //   htrAddBodyItem_va(s,"<body %STR>",bgstr);
+	htrAddBodyItem_va(s,"<div id=\"mn%POScontent\" class=\"menuContent zeroLeftTop\"><table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" %STR>\n", id, s->Capabilities.Dom0NS?"":"width=\"100%\" height=\"100%\"");
 
 	/** Only draw border if it is NS4 **/
-	if (s->Capabilities.Dom0NS)
-	    {
-	    htrAddBodyItem(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
-	    if (w != -1)
-		htrAddBodyItem_va(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"%POS\"></td>", w-2);
-	    else
-		htrAddBodyItem(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
-	    htrAddBodyItem(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
-	    if (h != -1)
-		htrAddBodyItem_va(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"%POS\" width=\"1\"></td><td>", h-2);
-	    else
-		htrAddBodyItem(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td><td>");
-	    }
-	else
+//	if (s->Capabilities.Dom0NS)
+//	    {
+//	    htrAddBodyItem(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
+//	    if (w != -1)
+//		htrAddBodyItem_va(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"%POS\"></td>", w-2);
+//	    else
+//		htrAddBodyItem(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
+//	    htrAddBodyItem(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
+//	    if (h != -1)
+//		htrAddBodyItem_va(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"%POS\" width=\"1\"></td><td>", h-2);
+//	    else
+//		htrAddBodyItem(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td><td>");
+//	    }
+//	else
 	    htrAddBodyItem(s,"<tr><td valign=\"middle\">");
 
 	/** Add 'meat' of menu... **/
@@ -450,27 +458,27 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	htrAddBodyItem(s,"</tr></table>\n");
 
 	/** closing border for NS4 **/
-	if (s->Capabilities.Dom0NS)
-	    {
-	    if (h != -1)
-		htrAddBodyItem_va(s,"</td><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"%POS\" width=\"1\"></td></tr>\n", h-2);
-	    else
-		htrAddBodyItem(s,"</td><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
-	    htrAddBodyItem(s,"<tr><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
-	    if (w != -1)
-		htrAddBodyItem_va(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"%POS\"></td>", w-2);
-	    else
-		htrAddBodyItem(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
-	    htrAddBodyItem(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
-	    }
-	else
+//	if (s->Capabilities.Dom0NS)
+//	    {
+//	    if (h != -1)
+//		htrAddBodyItem_va(s,"</td><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"%POS\" width=\"1\"></td></tr>\n", h-2);
+//	    else
+//		htrAddBodyItem(s,"</td><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
+//	    htrAddBodyItem(s,"<tr><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
+//	    if (w != -1)
+//		htrAddBodyItem_va(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"%POS\"></td>", w-2);
+//	    else
+//		htrAddBodyItem(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
+//	    htrAddBodyItem(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
+//	    }
+//	else
 	    htrAddBodyItem(s,"</td></tr>");
 
 	/** Ending of layer **/
-	if (s->Capabilities.Dom0NS)
-	    htrAddBodyItem_va(s,"</table></div><div id=\"mn%POShigh\"></div></body></div>", id);
-	else
-	    htrAddBodyItem_va(s,"</table></div><div id=\"mn%POShigh\"></div></div>\n", id);
+//	if (s->Capabilities.Dom0NS)
+//	    htrAddBodyItem_va(s,"</table></div><div id=\"mn%POShigh\"></div></body></div>", id);
+//	else
+	    htrAddBodyItem_va(s,"</table></div><div id=\"mn%POShigh\" class=\"menuHigh zeroLeftTop\"></div></div>\n", id);
 
 	xsDeInit(xs);
 	nmFree(xs, sizeof(XString));
@@ -552,6 +560,7 @@ htmenuInitialize()
 	strcpy(drv->Name,"DHTML Menu Widget Driver");
 	strcpy(drv->WidgetName,"menu");
 	drv->Render = htmenuRender;
+	drv->Setup = htmenuSetup;
 
 	/** Register events **/
 	htrAddEvent(drv,"MouseUp");

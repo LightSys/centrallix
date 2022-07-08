@@ -46,6 +46,11 @@ static struct {
    int     idcnt;
 } HTFS;
 
+int htfsSetup(pHtSession s)
+	{
+		htrAddStylesheetItem_va(s,"\t.fsMain { POSITION:absolute; VISIBILITY:inherit; HEIGHT:13px; }\n");
+		return 0;
+	}
 
 /* 
    htfsRender - generate the HTML code for the page.
@@ -89,7 +94,7 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddWgtrObjLinkage_va(s, tree, "fs%POSmain", id);
 
    /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,"\t#fs%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:13px; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
+   htrAddStylesheetItem_va(s,"\t#fs%POSmain { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
 
    htrAddScriptInclude(s, "/sys/js/htdrv_formstatus.js", 0);
 
@@ -99,11 +104,11 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
 
    /** HTML body <DIV> element for the layers. **/
    if (!strcmp(style,"large"))
-       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\"><IMG SRC=/sys/images/formstatL05.png></DIV>\n", id);
+       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\" class=\"fsMain\"><IMG SRC=/sys/images/formstatL05.png></DIV>\n", id);
    else if (!strcmp(style,"largeflat"))
-       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\"><IMG SRC=/sys/images/formstatLF05.png></DIV>\n", id);
+       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\" class=\"fsMain\"><IMG SRC=/sys/images/formstatLF05.png></DIV>\n", id);
    else
-       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\"><IMG SRC=/sys/images/formstat05.gif></DIV>\n", id);
+       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\" class=\"fsMain\"><IMG SRC=/sys/images/formstat05.gif></DIV>\n", id);
 
    htrAddEventHandlerFunction(s,"document","MOUSEDOWN","fs","fs_mousedown");
    htrAddEventHandlerFunction(s,"document","MOUSEUP",  "fs","fs_mouseup");
@@ -133,6 +138,7 @@ int htfsInitialize() {
    strcpy(drv->Name,"DHTML Form Status Driver");
    strcpy(drv->WidgetName,"formstatus");
    drv->Render = htfsRender;
+   drv->Setup = htfsSetup;
 
    htrAddEvent(drv,"Click");
    htrAddEvent(drv,"MouseUp");

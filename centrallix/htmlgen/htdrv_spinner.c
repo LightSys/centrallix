@@ -51,6 +51,12 @@ static struct
     }
     HTSPNR;
 
+int htspnrSetup(pHtSession s)
+	{
+	htrAddStylesheetItem_va(s,"\t.posAbsVisInh{ POSITION:absolute; VISIBILITY:inherit; }\n");
+	htrAddStylesheetItem_va(s,"\t.posAbsVisHid{ POSITION:absolute; VISIBILITY:hidden; }\n");
+	return 0;
+	}
 
 /*** htspnrRender - generate the HTML code for the spinner widget.
  ***/
@@ -114,12 +120,12 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#spnr%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,x,y,w,z);
-	htrAddStylesheetItem_va(s,"\t#spnr%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,1,1,w-12,z);
-	htrAddStylesheetItem_va(s,"\t#spnr%POScon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,1,1,w-2-12,z+1);
-	htrAddStylesheetItem_va(s,"\t#spnr%POScon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,1,1,w-2-12,z+1);
-	htrAddStylesheetItem_va(s,"\t#spnr_button_up { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",1+w-12,1,w,z);
-	htrAddStylesheetItem_va(s,"\t#spnr_button_down { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",1+w-12,1+9,w,z);
+	htrAddStylesheetItem_va(s,"\t#spnr%POSmain { LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#spnr%POSbase { LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,1,1,w-12,z);
+	htrAddStylesheetItem_va(s,"\t#spnr%POScon1 { LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,1,1,w-2-12,z+1);
+	htrAddStylesheetItem_va(s,"\t#spnr%POScon2 { LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,1,1,w-2-12,z+1);
+	htrAddStylesheetItem_va(s,"\t#spnr_button_up { LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",1+w-12,1,w,z);
+	htrAddStylesheetItem_va(s,"\t#spnr_button_down { LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",1+w-12,1+9,w,z);
 
 	/** DOM Linkage **/
 	htrAddWgtrObjLinkage_va(s, tree, "spnr%POSmain",id);
@@ -143,8 +149,8 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
 		id, id);
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POSmain\">\n",id);
-	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POSbase\">\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POSmain\" class=\"posAbsVisInh\">\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POSbase\" class=\"posAbsVisInh\">\n",id);
 	htrAddBodyItem_va(s, "    <TABLE width=%POS cellspacing=0 cellpadding=0 border=0 %STR>\n",w-12,main_bg);
 	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c1);
 	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c1,w-2-12);
@@ -155,12 +161,12 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c2);
 	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c2,w-2-12);
 	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n    </TABLE>\n\n",c2);
-	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POScon1\"></DIV>\n",id);
-	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POScon2\"></DIV>\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POScon1\" class=\"posAbsVisInh\"></DIV>\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POScon2\" class=\"posAbsVisHid\"></DIV>\n",id);
 	htrAddBodyItem(s,    "</DIV>\n");
 	/*Add the spinner buttons*/
-	htrAddBodyItem(s,    "<DIV ID=\"spnr_button_up\"><IMG SRC=\"/sys/images/spnr_up.gif\"></DIV>\n");
-	htrAddBodyItem(s,    "<DIV ID=\"spnr_button_down\"><IMG SRC=\"/sys/images/spnr_down.gif\"></DIV>\n");
+	htrAddBodyItem(s,    "<DIV ID=\"spnr_button_up\" class=\"posAbsVisInh\"><IMG SRC=\"/sys/images/spnr_up.gif\"></DIV>\n");
+	htrAddBodyItem(s,    "<DIV ID=\"spnr_button_down\" class=\"posAbsVisInh\"><IMG SRC=\"/sys/images/spnr_down.gif\"></DIV>\n");
   	htrAddBodyItem(s,    "</DIV>\n"); 
 
 	return 0;
@@ -182,6 +188,7 @@ htspnrInitialize()
 	strcpy(drv->Name,"DHTML Spinner Box Driver");
 	strcpy(drv->WidgetName,"spinner");
 	drv->Render = htspnrRender;
+	drv->Setup = htspnrSetup;
 
 
 	/** Add a 'set value' action **/

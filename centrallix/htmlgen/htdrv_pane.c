@@ -48,6 +48,11 @@ static struct
     }
     HTPN;
 
+int htpnSetup(pHtSession s)
+	{
+	htrAddStylesheetItem_va(s,"\t.paneMain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; }\n");	
+	return 0;
+	}
 
 /*** htpnRender - generate the HTML code for the page.
  ***/
@@ -156,17 +161,17 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	if (style == 2) /* flat */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-radius: %INTpx; %STR}\n",id,border_radius,main_bg);
 	    }
 	else if (style == 0 || style == 1) /* lowered or raised */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);
 	    }
 	else if (style == 3) /* bordered */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { LEFTT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
 	    }
 	if (shadow_radius > 0)
@@ -194,7 +199,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** HTML body <DIV> element for the base layer. **/
 	//htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\"><table width=%POS height=%POS cellspacing=0 cellpadding=0 border=0><tr><td></td></tr></table>\n",id, w-2, h-2);
-	htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\">\n",id, w-2, h-2);
+	htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\" class=\"paneMain\">\n",id, w-2, h-2);
 
 	/** Check for objects within the pane. **/
 	htrRenderSubwidgets(s, tree, z+2);
@@ -221,6 +226,7 @@ htpnInitialize()
 	strcpy(drv->Name,"DHTML Pane Driver");
 	strcpy(drv->WidgetName,"pane");
 	drv->Render = htpnRender;
+	drv->Setup = htpnSetup;
 
 	htrAddEvent(drv,"Click");
 	htrAddEvent(drv,"MouseUp");

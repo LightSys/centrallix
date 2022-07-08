@@ -46,6 +46,12 @@ static struct {
    int     idcnt;
 } HTCB;
 
+int htcbSetup(pHtSession s)
+	{
+	htrAddStylesheetItem_va(s,"\t.cbMain { POSITION:absolute; VISIBILITY:inherit; HEIGHT:13px; WIDTH:13px; }\n");
+	return 0;
+	}
+
 
 int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    char fieldname[HT_FIELDNAME_SIZE];
@@ -92,7 +98,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddWgtrObjLinkage_va(s, tree, "cb%INTmain", id);
 
    /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,"\t#cb%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:13px; WIDTH:13px; Z-INDEX:%POS; }\n",id,x,y,z);
+   htrAddStylesheetItem_va(s,"\t#cb%POSmain { LEFT:%INTpx; TOP:%INTpx; Z-INDEX:%POS; }\n",id,x,y,z);
    htrAddScriptInclude(s,"/sys/js/htdrv_checkbox.js",0);
    htrAddScriptInclude(s,"/sys/js/ht_utils_hints.js",0);
 
@@ -106,7 +112,8 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddScriptInit_va(s,"    checkbox_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", checked:%INT, enabled:%INT, form:\"%STR&JSSTR\"});\n", name, fieldname,checked,enabled,form);
 
    /** HTML body <DIV> element for the layers. **/
-   htrAddBodyItemLayerStart(s, 0, "cb%POSmain", id, NULL);
+   htrAddBodyItemLayerStart(s, 0, "cb%POSmain", id, "cbMain");
+   //htrAddBodyItem_va(s, "<DIV id=\"cb%POSmain\" class=\"cbMain\">\n");
    switch(checked)
 	{
 	case 1:
@@ -144,6 +151,7 @@ int htcbInitialize() {
    strcpy(drv->Name,"DHTML Checkbox Driver");
    strcpy(drv->WidgetName,"checkbox");
    drv->Render = htcbRender;
+   drv->Setup = htcbSetup;
 
    /** Events **/
    htrAddEvent(drv,"Click");
