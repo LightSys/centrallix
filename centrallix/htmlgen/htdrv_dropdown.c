@@ -48,7 +48,7 @@ static struct {
 
 int htddSetup(pHtSession s)
 	{
-	htrAddStylesheetItem_va(s,"\t.hidAbs { OVERFLOW:hidden; POSITION:absolute; }\n:");
+	htrAddStylesheetItem_va(s,"\t.ddHidAbs { OVERFLOW:hidden; POSITION:absolute; }\n:");
 	htrAddStylesheetItem_va(s,"\t.ddBtn { VISIBILITY:inherit; cursor:default; border:1px outset #e0e0e0;}\n");
 	htrAddStylesheetItem_va(s,"\t.ddCon1 { VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n");
 	htrAddStylesheetItem_va(s,"\t.ddCon2 { VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n");
@@ -197,7 +197,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     htrAddScriptInit_va(s,"    dd_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), c1:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"dd%POScon1\"), c2:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"dd%POScon2\"), background:'%STR&JSSTR', highlight:'%STR&JSSTR', fieldname:'%STR&JSSTR', numDisplay:%INT, mode:%INT, sql:'%STR&JSSTR', width:%INT, height:%INT, form:'%STR&JSSTR', osrc:'%STR&JSSTR', qms:%INT, ivs:%INT, popup_width:%INT});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql?sql:"", w, h, form, osrc, query_multiselect, invalid_select_default, pop_w);
 
     /** HTML body <DIV> element for the layers. **/
-    htrAddBodyItem_va(s,"<DIV ID=\"dd%POSbtn\" class=\"ddBtn hidAbs\">\n"
+    htrAddBodyItem_va(s,"<DIV ID=\"dd%POSbtn\" class=\"ddBtn ddHidAbs\">\n"
 			"<IMG SRC=\"/sys/images/ico15b.gif\" style=\"float:right;\">\n", id);
     /*htrAddBodyItem_va(s,"<TABLE width=%POS cellspacing=0 cellpadding=0 border=0>\n",w);
     htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");

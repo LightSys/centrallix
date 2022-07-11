@@ -50,9 +50,10 @@ static struct
 
 int htdtSetup(pHtSession s)
 	{
-	htrAddStylesheetItem_va(s,"\t.absHidInh { OVERFLOW: hidden; POSITION:absolute; VISIBILITY:inherit;}\n");
-	htrAddStylesheetItem_va(s,"\t.dtBtn  { cursor:default; border:1px outset #e0e0e0;}\n");
-	htrAddStylesheetItem_va(s,"\t.dtCon { LEFT:1px; TOP:1px; }\n");
+	htrAddStylesheetItem_va(s,"\t.dtAbsHid { OVERFLOW: hidden; POSITION:absolute;}\n");
+	htrAddStylesheetItem_va(s,"\t.dtBtn  { VISIBILITY:inherit; cursor:default; border:1px outset #e0e0e0;}\n");
+	htrAddStylesheetItem_va(s,"\t.dtCon1 { VISIBILITY:inherit; LEFT:1px; TOP:1px; }\n");
+	htrAddStylesheetItem_va(s,"\t.dtCon2 { VISIBILITY:hidden; LEFT:1px; TOP:1px; }\n");
 	return 0;
 	}
 
@@ -204,8 +205,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	
 	if (wgtrGetPropertyValue(tree,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    strtcpy(fgcolor,ptr,sizeof(fgcolor));
-	else
-	    strcpy(fgcolor,"black");
+
 
 	/** Ok, write the style header items. **/
 	htrAddStylesheetItem_va(s,"\t#dt%POSbtn  { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; %STR }\n",id,x,y,w,h,z, bgcolor);
@@ -237,7 +237,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    date_only, default_time);
 
 	/** HTML body <DIV> elements for the layers. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"dt%POSbtn\" class=\"dtBtn\">\n"
+	htrAddBodyItem_va(s,"<DIV ID=\"dt%POSbtn\" class=\"dtBtn dtAbsHid\">\n"
 			    "<IMG SRC=\"/sys/images/ico17.gif\" style=\"float:right;\">\n", id);
 	/*htrAddBodyItem_va(s,"<TABLE width=%POS cellspacing=0 cellpadding=0 border=0>\n",w);
 	htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
@@ -250,8 +250,8 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%POS></TD>\n",w-2);
 	htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
 	htrAddBodyItem(s,   "</TABLE>\n");*/
-	htrAddBodyItem_va(s,"<DIV ID=\"dt%POScon1\" class =\"dtCon\"></DIV>\n",id);
-	htrAddBodyItem_va(s,"<DIV ID=\"dt%POScon2\" class=\"dtCon\"></DIV>\n",id);
+	htrAddBodyItem_va(s,"<DIV ID=\"dt%POScon1\" class=\"dtCon1 dtAbsHid\"></DIV>\n",id);
+	htrAddBodyItem_va(s,"<DIV ID=\"dt%POScon2\" class=\"dtCon2 dtAbsHid\"></DIV>\n",id);
 	htrAddBodyItem(s,   "</DIV>\n");
 
 	/** Add the event handling scripts **/

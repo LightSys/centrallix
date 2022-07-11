@@ -51,8 +51,8 @@ static struct
 
 int htsbSetup(pHtSession s)
 	{
-	htrAddStylesheetItem_va(s,"\t.posAbs { POSITION:absolute; }\n");
-	htrAddStylesheetItem_va(s,"\t.thum { VISIBILITY:inherit; WIDTH:18px; }\n");	
+	htrAddStylesheetItem_va(s,"\t.sbPosAbs { POSITION:absolute; }\n");
+	htrAddStylesheetItem_va(s,"\t.sbThum { VISIBILITY:inherit; WIDTH:18px; }\n");	
 	return 0;
 	}
 
@@ -195,7 +195,7 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInit_va(s,"    sb_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), tname:\"sb%POSthum\", isHorizontal:%INT, range:%INT});\n", name, id, is_horizontal, r);
 
 	/** HTML body <DIV> elements for the layers. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"sb%POSpane\" class=\"posAbs\"><TABLE %[bgcolor=\"%STR&HTE\"%] %[background=\"%STR&HTE\"%] border=0 cellspacing=0 cellpadding=0 width=%POS>", id, *bcolor, bcolor, *bimage, bimage, w);
+	htrAddBodyItem_va(s,"<DIV ID=\"sb%POSpane\" class=\"sbPosAbs\"><TABLE %[bgcolor=\"%STR&HTE\"%] %[background=\"%STR&HTE\"%] border=0 cellspacing=0 cellpadding=0 width=%POS>", id, *bcolor, bcolor, *bimage, bimage, w);
 	if (is_horizontal)
 	    {
 	    htrAddBodyItem(s,   "<TR><TD align=right><IMG SRC=/sys/images/ico19b.gif width=18 height=18 NAME=u></TD><TD align=right>");
@@ -208,7 +208,7 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddBodyItem_va(s,"<IMG SRC=/sys/images/trans_1.gif height=%POS width=18 name='b'>",h-36);
 	    htrAddBodyItem(s,   "</TD></TR><TR><TD align=right><IMG SRC=/sys/images/ico12b.gif width=18 height=18 NAME=d></TD></TR></TABLE>\n");
 	    }
-	htrAddBodyItem_va(s,"<DIV ID=\"sb%POSthum\" class=\"thum posAbs\"><IMG SRC=/sys/images/ico14b.gif NAME=t></DIV>",id);
+	htrAddBodyItem_va(s,"<DIV ID=\"sb%POSthum\" class=\"sbThum sbPosAbs\"><IMG SRC=/sys/images/ico14b.gif NAME=t></DIV>",id);
 
 	/** Add the event handling scripts **/
 

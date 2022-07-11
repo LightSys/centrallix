@@ -49,9 +49,9 @@ static struct {
 
 int htrbSetup(pHtSession s)
 	{
-	htrAddStylesheetItem_va(s,"\t.posAbs\t{ POSITION:absolute; }\n");
-	htrAddStylesheetItem_va(s,"\t.visInh\t{ VISIBILITY:inherit; }\n");
-	htrAddStylesheetItem_va(s,"\t.visHid\t{ VISIBILITY:hidden; }\n");
+	htrAddStylesheetItem_va(s,"\t.rbPosAbs\t{ POSITION:absolute; }\n");
+	htrAddStylesheetItem_va(s,"\t.rbVisInh\t{ VISIBILITY:inherit; }\n");
+	htrAddStylesheetItem_va(s,"\t.rbVisHid\t{ VISIBILITY:hidden; }\n");
 	return 0;	
 	}
 
@@ -260,9 +260,9 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    /*
       Do the HTML layers
    */
-   htrAddBodyItem_va(s,"   <DIV ID=\"rb%POSparent\" class=\"visInh posAbs\">\n", id);
-   htrAddBodyItem_va(s,"      <DIV ID=\"rb%POSborder\" class=\"visInh posAbs\">\n", id);
-   htrAddBodyItem_va(s,"         <DIV ID=\"rb%POScover\" class=\"visInh posAbs\">\n", id);
+   htrAddBodyItem_va(s,"   <DIV ID=\"rb%POSparent\" class=\"rbVisInh rbPosAbs\">\n", id);
+   htrAddBodyItem_va(s,"      <DIV ID=\"rb%POSborder\" class=\"rbVisInh rbPosAbs\">\n", id);
+   htrAddBodyItem_va(s,"         <DIV ID=\"rb%POScover\" class=\"rbVisInh rbPosAbs\">\n", id);
 
    /* Loop through each radio button and do the option pane and sub layers */
     i = 1;
@@ -279,13 +279,13 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
 	    htrAddStylesheetItem_va(s,"\t#rb%POSlabel%POS\t{ LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); CURSOR:pointer; }\n",id,i,27,2,cover_width-(27+1),item_spacing-1,z+2,cover_width-(27+1),item_spacing-1);
 
 	    /** Body layers **/
-            htrAddBodyItem_va(s,"            <DIV ID=\"rb%POSoption%POS\" class=\"posAbs visInh\">\n", id, i);
-            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSbuttonset%POS\" class=\"posAbs visHid\"><IMG SRC=\"/sys/images/radiobutton_set.gif\"></DIV>\n", id, i);
-            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSbuttonunset%POS\" class=\"posAbs visInh\"><IMG SRC=\"/sys/images/radiobutton_unset.gif\"></DIV>\n", id, i);
+            htrAddBodyItem_va(s,"            <DIV ID=\"rb%POSoption%POS\" class=\"rbPosAbs rbVisInh\">\n", id, i);
+            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSbuttonset%POS\" class=\"rbPosAbs rbVisHid\"><IMG SRC=\"/sys/images/radiobutton_set.gif\"></DIV>\n", id, i);
+            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSbuttonunset%POS\" class=\"rbPosAbs rbVisInh\"><IMG SRC=\"/sys/images/radiobutton_unset.gif\"></DIV>\n", id, i);
  
             wgtrGetPropertyValue(radiobutton_obj,"label",DATA_T_STRING,POD(&ptr));
 	    strtcpy(sbuf2,ptr,sizeof(sbuf2));
-            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSlabel%POS\" class=\"posAbs visInh\" NOWRAP><FONT COLOR=\"%STR&HTE\">%STR&HTE</FONT></DIV>\n", 
+            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSlabel%POS\" class=\"rbPosAbs rbVisInh\" NOWRAP><FONT COLOR=\"%STR&HTE\">%STR&HTE</FONT></DIV>\n", 
 		    id, i, textcolor, sbuf2);
 
 	    /* use label (from above) as default value if no value given */
@@ -294,7 +294,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
 		strtcpy(sbuf2,ptr,sizeof(sbuf2));
 		}
 
-            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSvalue%POS\" class=\"posAbs visHid\"><A HREF=\".\">%STR&HTE</A></DIV>\n",
+            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSvalue%POS\" class=\"rbPosAbs rbVisHid\"><A HREF=\".\">%STR&HTE</A></DIV>\n",
 		    id, i, sbuf2);
             htrAddBodyItem(s,   "            </DIV>\n");
             i++;
@@ -303,7 +303,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    
    htrAddBodyItem(s,   "         </DIV>\n");
    htrAddBodyItem(s,   "      </DIV>\n");
-   htrAddBodyItem_va(s,"      <DIV ID=\"rb%POStitle\" class=\"posAbs visInh\"><TABLE><TR><TD NOWRAP><FONT COLOR=\"%STR&HTE\">%STR&HTE</FONT></TD></TR></TABLE></DIV>\n", id, textcolor, title);
+   htrAddBodyItem_va(s,"      <DIV ID=\"rb%POStitle\" class=\"rbPosAbs rbVisInh\"><TABLE><TR><TD NOWRAP><FONT COLOR=\"%STR&HTE\">%STR&HTE</FONT></TD></TR></TABLE></DIV>\n", id, textcolor, title);
    htrAddBodyItem(s,   "   </DIV>\n");
 
    return 0;

@@ -48,7 +48,7 @@
 
 int htpageSetup(pHtSession s)
 	{
-	htrAddStylesheetItem_va(s,"\t.absHid { POSITION:absolute; VISIBILITY:hidden }\n");
+	htrAddStylesheetItem_va(s,"\t.pageAbsHid { POSITION:absolute; VISIBILITY:hidden }\n");
 	htrAddStylesheetItem_va(s,"\t.setZInd { Z-INDEX:1000 }\n");
 	return 0;
 	}
@@ -383,19 +383,19 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddStylesheetItem_va(s, "\tfont { %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
 		font_size > 0, font_size, *font_name, font_name);
 	    }
-	htrAddBodyItem(s, "<DIV ID=\"pgtop\" class=\"absHid setZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgbtm\" class=\"absHid setZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgrgt\" class=\"absHid setZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pglft\" class=\"absHid setZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgtvl\" class=\"absHid\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgktop\" class=\"absHid setZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgkbtm\" class=\"absHid setZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgkrgt\" class=\"absHid setZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgklft\" class=\"absHid setZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgtop\" class=\"pageAbsHid setZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgbtm\" class=\"pageAbsHid setZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgrgt\" class=\"pageAbsHid setZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pglft\" class=\"pageAbsHid setZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgtvl\" class=\"pageAbsHid\"></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgktop\" class=\"pageAbsHid setZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgkbtm\" class=\"pageAbsHid setZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgkrgt\" class=\"pageAbsHid setZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgklft\" class=\"pageAbsHid setZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
 
-	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgping",0, "absHid");
+	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgping",0, "pageAbsHid");
 	htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
-	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgmsg",0, "absHid");
+	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgmsg",0, "pageAbsHid");
 	htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
 	htrAddBodyItem(s, "\n");
 

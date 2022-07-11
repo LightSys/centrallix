@@ -53,8 +53,8 @@ static struct
 
 int htspnrSetup(pHtSession s)
 	{
-	htrAddStylesheetItem_va(s,"\t.posAbsVisInh{ POSITION:absolute; VISIBILITY:inherit; }\n");
-	htrAddStylesheetItem_va(s,"\t.posAbsVisHid{ POSITION:absolute; VISIBILITY:hidden; }\n");
+	htrAddStylesheetItem_va(s,"\t.spnrAbsInh{ POSITION:absolute; VISIBILITY:inherit; }\n");
+	htrAddStylesheetItem_va(s,"\t.spnrAbsHid{ POSITION:absolute; VISIBILITY:hidden; }\n");
 	return 0;
 	}
 
@@ -149,8 +149,8 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
 		id, id);
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POSmain\" class=\"posAbsVisInh\">\n",id);
-	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POSbase\" class=\"posAbsVisInh\">\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POSmain\" class=\"spnrAbsInh\">\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POSbase\" class=\"spnrAbsInh\">\n",id);
 	htrAddBodyItem_va(s, "    <TABLE width=%POS cellspacing=0 cellpadding=0 border=0 %STR>\n",w-12,main_bg);
 	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c1);
 	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c1,w-2-12);
@@ -161,12 +161,12 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItem_va(s, "        <TR><TD><IMG SRC=/sys/images/%STR></TD>\n",c2);
 	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR height=1 width=%POS></TD>\n",c2,w-2-12);
 	htrAddBodyItem_va(s, "            <TD><IMG SRC=/sys/images/%STR></TD></TR>\n    </TABLE>\n\n",c2);
-	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POScon1\" class=\"posAbsVisInh\"></DIV>\n",id);
-	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POScon2\" class=\"posAbsVisHid\"></DIV>\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POScon1\" class=\"spnrAbsInh\"></DIV>\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POScon2\" class=\"spnrAbsHid\"></DIV>\n",id);
 	htrAddBodyItem(s,    "</DIV>\n");
 	/*Add the spinner buttons*/
-	htrAddBodyItem(s,    "<DIV ID=\"spnr_button_up\" class=\"posAbsVisInh\"><IMG SRC=\"/sys/images/spnr_up.gif\"></DIV>\n");
-	htrAddBodyItem(s,    "<DIV ID=\"spnr_button_down\" class=\"posAbsVisInh\"><IMG SRC=\"/sys/images/spnr_down.gif\"></DIV>\n");
+	htrAddBodyItem(s,    "<DIV ID=\"spnr_button_up\" class=\"spnrAbsInh\"><IMG SRC=\"/sys/images/spnr_up.gif\"></DIV>\n");
+	htrAddBodyItem(s,    "<DIV ID=\"spnr_button_down\" class=\"spnrAbsInh\"><IMG SRC=\"/sys/images/spnr_down.gif\"></DIV>\n");
   	htrAddBodyItem(s,    "</DIV>\n"); 
 
 	return 0;
