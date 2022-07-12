@@ -445,7 +445,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	htrAddBodyItem(s,"</td></tr>");
 
 	/** Ending of layer **/
-	htrAddBodyItem_va(s,"</table></div><div id=\"mn%POShigh\" class=\"menuHigh zeroLeftTop\"></div></div>\n", id);
+	htrAddBodyItem_va(s,"</table></div><div id=\"mn%POShigh\" class=\"menuHigh menuZeroLeftTop\"></div></div>\n", id);
 
 	xsDeInit(xs);
 	nmFree(xs, sizeof(XString));
