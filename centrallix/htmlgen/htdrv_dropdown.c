@@ -210,8 +210,8 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%POS></TD>\n",w-2);
     htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
     htrAddBodyItem(s,   "</TABLE>\n");*/
-    htrAddBodyItem_va(s,"<DIV ID=\"dd%POScon1\" class=\"ddCon1\"></DIV>\n",id);
-    htrAddBodyItem_va(s,"<DIV ID=\"dd%POScon2\" class=\"ddCon2\"></DIV>\n",id);
+    htrAddBodyItem_va(s,"<DIV ID=\"dd%POScon1\" class=\"ddCon1 ddAbsHid\"></DIV>\n",id);
+    htrAddBodyItem_va(s,"<DIV ID=\"dd%POScon2\" class=\"ddCon2 ddAbsHid\"></DIV>\n",id);
     htrAddBodyItem(s,   "</DIV>\n");
     
     /* Read and initialize the dropdown items */

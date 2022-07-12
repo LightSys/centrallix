@@ -51,8 +51,10 @@ static struct
 
 int httabSetup(pHtSession s)
 	{
-	htrAddStylesheetItem_va(s,"\t.tcBase { background-position: 0px -24px; }\n");
-	htrAddStylesheetItem_va(s, "\t.tcTab { position:absolute; visibility:inherit; overflow:hidden; cursor:default; font-weight:bold; }\n");
+	htrAddStylesheetItem_va(s,"\t.tcPosAbs {POSITION:absolute; }\n");
+	htrAddStylesheetItem_va(s,"\t.tcBase { background-position: 0px -24px; OVERFLOW:hidden; border-width: 1px; }\n");
+	htrAddStylesheetItem_va(s, "\t.tcTab { VISIBILITY:inherit; OVERFLOW:hidden; cursor:default; font-weight:bold; }\n");
+	htrAddStylesheetItem_va(s, "\t.tcPane { LEFT:0px; TOP:0px;} \n");
 	return 0;
 	}
 
@@ -292,7 +294,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			tab_txt, bg
 			);
 
-		htrAddBodyItem_va(s, "<div id=\"tc%POStab%POS\" class=\"tcTab\"><p style=\"white-space:nowrap; margin:0px; padding:0px;\">%[<span>&nbsp;%STR&HTE&nbsp;</span>%]<img src=\"/sys/images/tab_lft%POS.gif\" style=\"width:5px; height:24px; vertical-align:middle;\">%[<span>&nbsp;%STR&HTE&nbsp;</span>%]</p></div>\n",
+		htrAddBodyItem_va(s, "<div id=\"tc%POStab%POS\" class=\"tcTab tcPosAbs\"><p style=\"white-space:nowrap; margin:0px; padding:0px;\">%[<span>&nbsp;%STR&HTE&nbsp;</span>%]<img src=\"/sys/images/tab_lft%POS.gif\" style=\"width:5px; height:24px; vertical-align:middle;\">%[<span>&nbsp;%STR&HTE&nbsp;</span>%]</p></div>\n",
 			id, i+1,
 			tloc == Right, tabname,
 			is_selected?2:3,
@@ -302,7 +304,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** h-2 and w-2 because w3c dom borders add to actual width **/
-	htrAddBodyItem_va(s,"<div id=\"tc%POSbase\" class=\"tcBase\" style=\"position:absolute; overflow:hidden; height:%POSpx; width:%POSpx; left:%INTpx; top:%INTpx; z-index:%POS; border-width: 1px; border-style:%STR&CSSVAL; border-color: %STR&CSSVAL; border-radius:%POSpx %POSpx %POSpx %POSpx; box-shadow: %DBLpx %DBLpx %POSpx %STR&CSSVAL;\">\n",
+	htrAddBodyItem_va(s,"<div id=\"tc%POSbase\" class=\"tcBase tcPosAbs\" style=\"height:%POSpx; width:%POSpx; left:%INTpx; top:%INTpx; z-index:%POS; border-style:%STR&CSSVAL; border-color: %STR&CSSVAL; border-radius:%POSpx %POSpx %POSpx %POSpx; box-shadow: %DBLpx %DBLpx %POSpx %STR&CSSVAL;\">\n",
 		id, h-border_width*2, w-border_width*2, x+xoffset, y+yoffset, z+1,
 		border_style, border_color,
 		(tloc==Top || tloc==Left)?0:border_radius, (tloc==Right)?0:border_radius, border_radius, (tloc==Bottom)?0:border_radius,
@@ -349,7 +351,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddWgtrCtrLinkage_va(s, tabpage_obj, "htr_subel(_parentobj, \"tc%POSpane%POS\")", id, i+1);
 
 	    /** Add DIV section for the tabpage. **/
-	    htrAddBodyItem_va(s,"<div id=\"tc%POSpane%POS\" class=\"tcPane\" style=\"POSITION:absolute; VISIBILITY:%STR&CSSVAL; LEFT:0px; TOP:0px; WIDTH:%POSpx; Z-INDEX:%POS;\">\n",
+	    htrAddBodyItem_va(s,"<div id=\"tc%POSpane%POS\" class=\"tcPane tcPosAbs\" style=\"VISIBILITY:%STR&CSSVAL; WIDTH:%POSpx; Z-INDEX:%POS;\">\n",
 		    id,i+1,is_selected?"inherit":"hidden",w-2,z+2);
 
 	    /** Now look for sub-items within the tabpage. **/

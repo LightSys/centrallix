@@ -171,7 +171,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	else if (style == 3) /* bordered */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { LEFTT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
 	    }
 	if (shadow_radius > 0)

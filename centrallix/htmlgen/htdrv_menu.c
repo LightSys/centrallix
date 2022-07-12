@@ -50,7 +50,7 @@ static struct
 
 int htmenuSetup(pHtSession s)
 	{
-	htrAddStylesheetItem_va(s,"\t.zeroLeftTop { LEFT:0px; TOP:0px; }\n");
+	htrAddStylesheetItem_va(s,"\t.menuZeroLeftTop { LEFT:0px; TOP:0px; }\n");
 	htrAddStylesheetItem_va(s,"\t.menuMain { POSITION:absolute; }\n");
 	htrAddStylesheetItem_va(s,"\t.menuContent { POSITION:absolute; VISIBILITY: inherit; }\n");
 	htrAddStylesheetItem_va(s, "\t.menuHigh { POSITION:absolute; VISIBILITY: hidden; }\n");
@@ -345,26 +345,10 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 
 	/** Beginning of code for menu **/
 	htrAddBodyItem_va(s,"<div id=\"mn%POSmain\" class=\"menuMain\">", id);
-	//if (s->Capabilities.Dom0NS)
-	 //   htrAddBodyItem_va(s,"<body %STR>",bgstr);
-	htrAddBodyItem_va(s,"<div id=\"mn%POScontent\" class=\"menuContent zeroLeftTop\"><table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" %STR>\n", id, s->Capabilities.Dom0NS?"":"width=\"100%\" height=\"100%\"");
+	htrAddBodyItem_va(s,"<div id=\"mn%POScontent\" class=\"menuContent menuZeroLeftTop\"><table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" %STR>\n", id, s->Capabilities.Dom0NS?"":"width=\"100%\" height=\"100%\"");
 
 	/** Only draw border if it is NS4 **/
-//	if (s->Capabilities.Dom0NS)
-//	    {
-//	    htrAddBodyItem(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
-//	    if (w != -1)
-//		htrAddBodyItem_va(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"%POS\"></td>", w-2);
-//	    else
-//		htrAddBodyItem(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
-//	    htrAddBodyItem(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
-//	    if (h != -1)
-//		htrAddBodyItem_va(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"%POS\" width=\"1\"></td><td>", h-2);
-//	    else
-//		htrAddBodyItem(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td><td>");
-//	    }
-//	else
-	    htrAddBodyItem(s,"<tr><td valign=\"middle\">");
+	htrAddBodyItem(s,"<tr><td valign=\"middle\">");
 
 	/** Add 'meat' of menu... **/
 	xs = (pXString)nmMalloc(sizeof(XString));
@@ -458,27 +442,10 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	htrAddBodyItem(s,"</tr></table>\n");
 
 	/** closing border for NS4 **/
-//	if (s->Capabilities.Dom0NS)
-//	    {
-//	    if (h != -1)
-//		htrAddBodyItem_va(s,"</td><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"%POS\" width=\"1\"></td></tr>\n", h-2);
-//	    else
-//		htrAddBodyItem(s,"</td><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
-//	    htrAddBodyItem(s,"<tr><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
-//	    if (w != -1)
-//		htrAddBodyItem_va(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"%POS\"></td>", w-2);
-//	    else
-//		htrAddBodyItem(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
-//	    htrAddBodyItem(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
-//	    }
-//	else
-	    htrAddBodyItem(s,"</td></tr>");
+	htrAddBodyItem(s,"</td></tr>");
 
 	/** Ending of layer **/
-//	if (s->Capabilities.Dom0NS)
-//	    htrAddBodyItem_va(s,"</table></div><div id=\"mn%POShigh\"></div></body></div>", id);
-//	else
-	    htrAddBodyItem_va(s,"</table></div><div id=\"mn%POShigh\" class=\"menuHigh zeroLeftTop\"></div></div>\n", id);
+	htrAddBodyItem_va(s,"</table></div><div id=\"mn%POShigh\" class=\"menuHigh zeroLeftTop\"></div></div>\n", id);
 
 	xsDeInit(xs);
 	nmFree(xs, sizeof(XString));
