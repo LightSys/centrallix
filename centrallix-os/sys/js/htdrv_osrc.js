@@ -113,7 +113,7 @@ function osrc_action_refresh(aparam)
 	this.refresh_objname = null;
 
     if (this.querytext)
-	this.ifcProbe(ifAction).Invoke("QueryText", {query:this.querytext, client:null, ro:this.readonly, field_list:this.querytext_fields, cx__case_insensitive:this.querytext_icase, targetrec:tr});
+	this.ifcProbe(ifAction).Invoke("QueryText", {query:this.querytext, client:null, ro:this.readonly, field_list:this.querytext_fields, cx__case_insensitive:this.querytext_icase, targetrec:tr, use_having:this.querytext_use_having});
     else
 	this.ifcProbe(ifAction).Invoke("QueryObject", {query:this.queryobject, client:null, ro:this.readonly, targetrec:tr});
     }
@@ -285,6 +285,7 @@ function osrc_query_text_handler(aparam)
     this.querytext = aparam.query;
     this.querytext_fields = aparam.field_list;
     this.querytext_icase = case_insensitive;
+    this.querytext_use_having = aparam.use_having;
     this.queryobject = null;
 
     this.ifcProbe(ifAction).Invoke("Query", {query:statement, client:initiating_client, appendrows:appendrows});
