@@ -9,7 +9,7 @@ test(char** name)
 
     
     /** Basic test of init and release */
-    char * PATH = "/home/devel/test.db";
+    char * PATH = "./tests/tempFiles/test.db";
     CXSS_DB_Context_t dbCon = cxssCredentialsDatabaseInit(PATH);
 
     assert(dbCon != NULL);

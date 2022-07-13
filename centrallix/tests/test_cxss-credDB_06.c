@@ -13,7 +13,7 @@ test(char** name)
     int n = 100; /* WARNING: if set to higher than 255, things will break */
 
     /** Set up DB. **/
-    char * PATH = "/home/devel/test.db";
+    char * PATH = "./tests/tempFiles/test.db";
     /* Reset DB file if needed */
     if(access(PATH, 0) == 0)
         {

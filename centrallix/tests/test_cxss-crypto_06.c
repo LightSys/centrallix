@@ -30,7 +30,7 @@ test(char** name)
 
     result = cxssEncryptAES256(data, strlen(data)+1, key1, iv1, &ciphertext1, &cipherLen1);
     assert(result == CXSS_CRYPTO_SUCCESS);
-    assert(strcmp(data, ciphertext1) != 0);
+    assert(memcmp(data, ciphertext1, strlen(data)) != 0);
 
     /** test decrpty restores data **/
     char* plaintext1 = NULL;
@@ -47,7 +47,8 @@ test(char** name)
 
     result = cxssEncryptAES256(data, strlen(data)+1, key1, iv1, &ciphertext2, &cipherLen2);
     assert(result == CXSS_CRYPTO_SUCCESS);
-    assert(strcmp(ciphertext2, ciphertext1) == 0);
+    int len = cxssAES256CiphertextLength(strlen(data));
+    assert(memcmp(ciphertext2, ciphertext1, len) == 0);
     assert(cipherLen1 == cipherLen2);
 
     /** make sure same key, iv with idfferent text is different. **/
@@ -55,7 +56,8 @@ test(char** name)
     assert(result == CXSS_CRYPTO_SUCCESS);
     result = cxssEncryptAES256(short2, strlen(short2)+1, key1, iv1, &ciphertext2, &cipherLen2);
     assert(result == CXSS_CRYPTO_SUCCESS);
-    assert(strcmp(ciphertext2, ciphertext1) != 0);
+    len = cxssAES256CiphertextLength(strlen(short1));
+    assert(memcmp(ciphertext2, ciphertext1, len) != 0);
 
     /** make sure changing the IV changes it **/
     char iv2 [16];
@@ -63,7 +65,8 @@ test(char** name)
     assert(result == CXSS_CRYPTO_SUCCESS);
     result = cxssEncryptAES256(short1, strlen(short1)+1, key1, iv2, &ciphertext2, &cipherLen2);
     assert(result == CXSS_CRYPTO_SUCCESS);
-    assert(strcmp(ciphertext2, ciphertext1) != 0);
+    len = cxssAES256CiphertextLength(strlen(short1));
+    assert(memcmp(ciphertext2, ciphertext1, len) != 0);
     
     /** make sure key changes it **/
     char key2 [32];
@@ -71,7 +74,8 @@ test(char** name)
     assert(result == CXSS_CRYPTO_SUCCESS);
     result = cxssEncryptAES256(short1, strlen(short1)+1, key2, iv1, &ciphertext2, &cipherLen2);
     assert(result == CXSS_CRYPTO_SUCCESS);
-    assert(strcmp(ciphertext2, ciphertext1) != 0);
+    len = cxssAES256CiphertextLength(strlen(short1));
+    assert(memcmp(ciphertext2, ciphertext1, len) != 0);
 
     cxssCryptoCleanup();
 
