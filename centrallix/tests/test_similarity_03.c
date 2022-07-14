@@ -9,7 +9,7 @@ test(char** name)
 
     double *table = nmMalloc(36 * sizeof(double));
     exp_fn_i_frequency_table(table, "Hello World");
-    exp_fn_i_relative_frequency_table(table);
+    //exp_fn_i_relative_frequency_table(table);
 
     assert(table[11] == 0.3);
 
