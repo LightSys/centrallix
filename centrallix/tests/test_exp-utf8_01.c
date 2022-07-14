@@ -13,7 +13,7 @@ test(char** name)
     *name = "Exp UTF-8: charsets mixed"; /* provides tests for the internal function found in charsets */
 
     len = nmMalloc(sizeof(int));
-    setlocale(0, "en_US.UTF-8"); //this isn't right, but it works, I guess
+    setlocale(0, "en_US.UTF-8"); /* the 0 may not be the propper setting */
     
     /** basic test **/
     chrToMixed(NULL, NULL, len, NULL);
@@ -26,6 +26,7 @@ test(char** name)
     in = "test";
     out = chrToMixed(in, NULL, len, NULL);
     printf("%s >> %s \n", in, out);
+    assert(*len > 0);
     assert(strcmp("Test", out) == 0);
     nmSysFree(out);
 
@@ -33,6 +34,7 @@ test(char** name)
     in = "a longer test";
     out = chrToMixed(in, NULL, len, NULL);
     printf("%s >> %s \n", in, out);
+    assert(*len > 0);
     assert(strcmp("A Longer Test", out) == 0);
     nmSysFree(out);
  
@@ -40,6 +42,7 @@ test(char** name)
     in = "a test with dash-in it";
     out = chrToMixed(in, NULL, len, NULL);
     printf("%s >> %s \n", in, out);
+    assert(*len > 0);
     assert(strcmp("A Test With Dash-in It", out) == 0);
     nmSysFree(out);
 
@@ -47,6 +50,7 @@ test(char** name)
     in = "a test with quote'in it";
     out = chrToMixed(in, NULL, len, NULL);
     printf("%s >> %s \n", in, out);
+    assert(*len > 0);
     assert(strcmp("A Test With Quote'in It", out) == 0);
     nmSysFree(out);
 
@@ -54,6 +58,7 @@ test(char** name)
     in = "a test with underscore_in it";
     out = chrToMixed(in, NULL, len, NULL);
     printf("%s >> %s \n", in, out);
+    assert(*len > 0);
     assert(strcmp("A Test With Underscore_In It", out) == 0);
     nmSysFree(out);
 
@@ -61,6 +66,7 @@ test(char** name)
     in = "a tEst With MIXED cAsEs";
     out = chrToMixed(in, NULL, len, NULL);
     printf("%s >> %s \n", in, out);
+    assert(*len > 0);
     assert(strcmp("A Test With Mixed Cases", out) == 0);
     nmSysFree(out);
 
@@ -69,6 +75,7 @@ test(char** name)
     in = "à sèntence that ábÙsés latìn-Líkê chãräctërs";
     out = chrToMixed(in, NULL, len, NULL);
     printf("%s >> %s\n", in, out);
+    assert(*len > 0);
     assert(strcmp("À Sèntence That Ábùsés Latìn-líkê Chãräctërs", out) == 0);
     nmSysFree(out);
     
@@ -79,6 +86,7 @@ test(char** name)
     in = "old mcdonald had a farm";
     out = chrToMixed(in, NULL, len, wordlist);
     printf("%s >> %s\n", in, out);
+    assert(*len > 0);
     assert(strcmp("Old McDonald Had a fArM", out) == 0);
     nmSysFree(out);
 
@@ -87,6 +95,7 @@ test(char** name)
     in = "old mcdonald had a farm";
     out = chrToMixed(in, NULL, len, wordlist);
     printf("%s >> %s\n", in, out);
+    assert(*len > 0);
     assert(strcmp("Old McDonald Had a fArM", out) == 0);
     nmSysFree(out);
 
@@ -95,6 +104,7 @@ test(char** name)
     in = "in THE BeGinNiNg goD CREATED the heavEns and the EARTH";
     out = chrToMixed(in, NULL, len, wordlist);
     printf("%s >> %s\n", in, out);
+    assert(*len > 0);
     assert(strcmp("In the beginning God created the Heavens aNd the Earth", out) == 0);
     nmSysFree(out);
 
@@ -103,6 +113,7 @@ test(char** name)
     in = "in THE BeGinNiNg goD CREATED the heavEns and the EARTH";
     out = chrToMixed(in, NULL, len, wordlist);
     printf("%s >> %s\n", in, out);
+    assert(*len > 0);
     assert(strcmp("In The Beginning God Created The Heavens And The Earth", out) == 0);
     nmSysFree(out);
 
@@ -111,6 +122,7 @@ test(char** name)
     in = "В начале сотворил Бог небо и землю.";
     out = chrToMixed(in, NULL, len, wordlist);
     printf("%s >> %s\n", in, out);
+    assert(*len > 0);
     assert(strcmp("В Начале Сотворил Бог Небо И Землю.", out) == 0);
     nmSysFree(out);
 
@@ -119,6 +131,7 @@ test(char** name)
     in = "В начале сотворил Бог небо и землю.";
     out = chrToMixed(in, NULL, len, wordlist);
     printf("%s >> %s\n", in, out);
+    assert(*len > 0);
     assert(strcmp("В НАЧАле сотворил БОГ Небо И Землю.", out) == 0);
     nmSysFree(out);
 
@@ -173,7 +186,7 @@ test(char** name)
     /** too small **/
     *len = 5;
     buffer = nmMalloc(5);
-    in = "more than five chars"; /* with null terminator */
+    in = "more than five chars";
     out = chrToMixed(in, buffer, len, NULL);
     assert(strcmp(out, "More Than Five Chars") == 0);
     assert(buffer != out);
