@@ -58,8 +58,8 @@ test(char** name)
     /** make sure different messages with same key are not the same **/
     int cipherLen2 = 4096;
     char ciphertext2[4096];
-    clearBuff(ciphertext, 4096);
-    clearBuff(ciphertext2, 4096);
+    bzero(ciphertext, 4096);
+    bzero(ciphertext2, 4096);
 
     result = cxssEncryptRSA(short1, strlen(short1), pubKey1, pubSize1, ciphertext, &cipherLen);
     assert(result == CXSS_CRYPTO_SUCCESS);
@@ -68,8 +68,8 @@ test(char** name)
     assert(memcmp(ciphertext, ciphertext2, 4096) != 0);
 
     /** make sure same data and same key do not match (padding) but decrypt correctly **/
-    clearBuff(ciphertext, 4096);
-    clearBuff(ciphertext2, 4096);
+    bzero(ciphertext, 4096);
+    bzero(ciphertext2, 4096);
     result = cxssEncryptRSA(short1, strlen(short1)+1, pubKey1, pubSize1, ciphertext, &cipherLen);
     assert(result == CXSS_CRYPTO_SUCCESS);
     result = cxssEncryptRSA(short1, strlen(short1)+1, pubKey1, pubSize1, ciphertext2, &cipherLen2);
@@ -87,8 +87,8 @@ test(char** name)
 
 
     /** make sure same data and different key are not the same, but match on decrypt **/
-    clearBuff(ciphertext, 4096);
-    clearBuff(ciphertext2, 4096);
+    bzero(ciphertext, 4096);
+    bzero(ciphertext2, 4096);
     result = cxssEncryptRSA(short1, strlen(short1)+1, pubKey1, pubSize1, ciphertext, &cipherLen);
     assert(result == CXSS_CRYPTO_SUCCESS);
     result = cxssEncryptRSA(short1, strlen(short1)+1, pubKey2, pubSize2, ciphertext2, &cipherLen2);;
@@ -106,12 +106,4 @@ test(char** name)
     cxssCryptoCleanup();
 
     return 0;
-    }
-
-void clearBuff(char* array, int length)
-    {
-    for(int i = 0 ; i < length ; i ++)
-        {
-        array[i] = 0;
-        }
     }
