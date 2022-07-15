@@ -527,13 +527,27 @@ char* chrNoOverlong(char* string)
         /** Check arguments **/
 	if(!string)
         	return CHR_INVALID_ARGUMENT;
+
+    /* ensure no overly large characters are included */
+    int i;
+    for(i = 0 ; i < strlen(string) ; i++)
+        {
+        if((unsigned char) string[i] == (unsigned char) 0xF4)
+            {
+            /* make sure is less than F4 90 */
+            /* this is safe since it would only hit the null byte */
+            if((unsigned char) string[i+1] >= (unsigned char)0x90) return NULL; 
+            }
+        /* if true, must be a header for more than 4 bytes */
+        else if( (unsigned char) string[i] > (unsigned char) 0xF4) return NULL; 
+        }
 	
 	stringCharLength = mbstowcs(NULL, string, 0);
 	if(stringCharLength == (size_t)-1)
             	{
         	return NULL;
        		}	
-	
+
 	/** Create wchar_t buffer */
         longBuffer = nmSysMalloc(sizeof(wchar_t) * (stringCharLength + 1));
         if(!longBuffer)
