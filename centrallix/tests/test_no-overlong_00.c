@@ -4,23 +4,22 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <locale.h>
 #include "charsets.h"
 
 long long
 test (char** tname)
 	{
-	char* rStr1;
-	char* rStr2;
-	char* rStr3;
+	int i, j, k, l;
 	
-	*tname = "No Overlong";
+	*tname = "Overlong 00: Ensure valid characters pass";
 
-	setlocale(0, "en_US.UTF-8");
+	setlocale(LC_ALL, "en_US.utf8");
 
 	/** make sure works with all ascii characters **/
-	char strBuf[257]; /* 256+1 */
+	char strBuf[257]; /* room for 64 4-byte characters and a null byte */
 	char * result;
-	int i;
+
 	for(i = 0 ; i < 128 ; i++)
 		{
 		/* test one char and build up string */
@@ -30,6 +29,10 @@ test (char** tname)
 		cur[1] = '\0';
 
 		result = chrNoOverlong(cur);
+		if(result == 0){
+			result = chrNoOverlong(cur);
+		}
+		assert(result != 0);
 		assert(strcmp(cur, result) == 0);
 		nmSysFree(result);
 		}
@@ -37,13 +40,12 @@ test (char** tname)
 	assert(strcmp(strBuf, result) == 0);
 	nmSysFree(result);
 
+
 	/** test all 2 character utf8 chars  **/
-	for(i = 0xC0 ; i < 0xDF ; i++) /* of the form  110xxxxx */
+	for(i = 0xC2 ; i <= 0xDF ; i++) /* of the form  110xxxxx, but C0 and C1 are overlongs, so skip */
 		{
-		int j;
 		/* there are 64 values, each with two bytes = 128 bytes, Plus a null. Will fit in str buf */
-		printf("\xC0\x80\n");
-		for(j = 0x80 ; j < 0xBF ; j++) /* of the form 10xxxxxx */
+		for(j = 0x80 ; j <= 0xBF ; j++) /* of the form 10xxxxxx */
 			{
 			strBuf[(j-0x80)*2]   = i;
 			strBuf[(j-0x80)*2+1] = j;
@@ -51,101 +53,95 @@ test (char** tname)
 
 			char *cur = strBuf+((j-0x80)*2);
 			result = chrNoOverlong(cur);
-			printf("|%s| ", cur);
 			assert(result != NULL);
 			assert(strcmp(cur, result) == 0);
 			nmSysFree(result);
 			}
 			
-			printf("\n%s\n", strBuf);
-			result = chrNoOverlong(strBuf);
-			assert(strcmp(strBuf, result) == 0);
-			nmSysFree(result);
+		result = chrNoOverlong(strBuf);
+		assert(strcmp(strBuf, result) == 0);
+		nmSysFree(result);
 		}
+
 
 	/** test 3 byte chars **/
 	/*E0-EF, 80-BF, 80-BF*/
-	for(i = 0xE0 ; i < 0xEF ; i++) /* of the form  1110xxxx */
+	for(i = 0xE0 ; i <= 0xEF ; i++) /* of the form  1110xxxx */
 		{
-		int j;
 		
-		for(j = 0x80 ; j < 0xBF ; j++) /* of the form 10xxxxxx */
+		for(j = 0x80 ; j <= 0xBF ; j++) /* of the form 10xxxxxx */
 			{
-			int k;
+			if(i == 0xE0 && j <= 0x9F) j = 0xA0; /* E0 8x - E0 9x is overlong */
+			if(i == 0xED && j >= 0xA0) /* ED A0 80 - ED BF BF is invalid */
+				{
+				i = 0xEE;
+				j = 0x80;
+				}
 
 			/* there are 64 values, each with 3 bytes = 192 bytes, Plus a null. Will fit in str buf */
 			/* NOTE: there are too many 3 byte chars to test them all at once, so do in sets of 63 */
-			for(k = 0x80 ; k < 0xBF ; k++) /* of the form 10xxxxxx */
+			for(k = 0x80 ; k <= 0xBF ; k++) /* of the form 10xxxxxx */
 				{
+				
 				strBuf[(k-0x80)*3]   = i;
 				strBuf[(k-0x80)*3+1] = j;
 				strBuf[(k-0x80)*3+2] = k;
 				strBuf[(k-0x80)*3+3] = '\0'; /* endable single char test */
 
-				char *cur = strBuf+((j-0x80)*3);
+				char *cur = strBuf+((k-0x80)*3);
+				
 				result = chrNoOverlong(cur);
-				printf("|%s| ", cur);
 				assert(result != NULL);
 				assert(strcmp(cur, result) == 0);
 				nmSysFree(result);
 				}
 				
-			printf("\n%s\n", strBuf);
 			result = chrNoOverlong(strBuf);
 			assert(strcmp(strBuf, result) == 0);
 			nmSysFree(result);
 			}
 		}
 
+
 	/** test 4 byte chars **/
 	/*F0-F7, 80-BF, 80-BF, 80-BF*/
-	for(i = 0xE0 ; i < 0xEF ; i++) /* of the form  11110xxx */
-		{
-		int j;
-		
-		for(j = 0x80 ; j < 0xBF ; j++) /* of the form 10xxxxxx */
+	for(i = 0xF0 ; i <= 0xF4 ; i++) /* of the form  11110xxx */
+		{		
+		for(j = 0x80 ; j <= 0xBF ; j++) /* of the form 10xxxxxx */
 			{
-			int k;
+			if(i == 0xF0 && j == 0x80) j = 0x90; /** all of F08x is overlong **/
+			if(i == 0xF4 && j == 0x90)
+				{
+				i = 0xF5; /* largest unicode character is F4 8F BF BF in utf8 (u+10FFFF) */
+				break;
+				}
 
 			/* there are 64 values, each with 4 bytes = 256 bytes, Plus a null. Will fit in str buf */
-			for(k = 0x80 ; k < 0xBF ; k++) /* of the form 10xxxxxx */
+			for(k = 0x80 ; k <= 0xBF ; k++) /* of the form 10xxxxxx */
 				{
-				int l;
 
-				for(l = 0x80 ; l < 0xBF ; l++)
+				for(l = 0x80 ; l <= 0xBF ; l++)
 					{
-					strBuf[(k-0x80)*4]   = i;
-					strBuf[(k-0x80)*4+1] = j;
-					strBuf[(k-0x80)*4+2] = k;
-					strBuf[(k-0x80)*4+3] = l;
-					strBuf[(k-0x80)*4+4] = '\0'; /* endable single char test */
+					strBuf[(l-0x80)*4]   = i;
+					strBuf[(l-0x80)*4+1] = j;
+					strBuf[(l-0x80)*4+2] = k;
+					strBuf[(l-0x80)*4+3] = l;
+					strBuf[(l-0x80)*4+4] = '\0'; /* endable single char test */
 
-					char *cur = strBuf+((j-0x80)*3);
+					char *cur = strBuf+((l-0x80)*4);
 					result = chrNoOverlong(cur);
-					printf("|%s| ", cur);
+					if(result == 0) printf("%x %x %x %x\n", i, j, k, l);
 					assert(result != NULL);
 					assert(strcmp(cur, result) == 0);
 					nmSysFree(result);
 					}
-				
-				printf("\n%s\n", strBuf);
 				result = chrNoOverlong(strBuf);
+				assert(result != NULL);
 				assert(strcmp(strBuf, result) == 0);
 				nmSysFree(result);
 				}
 			}
 		}
-
-    char* euroReg = "\xE2\x82\xAC";
-    char* euroLong = "\xF0\x82\x82\xAC";
-
-	
-	rStr3 = chrNoOverlong(euroReg); 
-	printf("str3: %s.\n", rStr3);
-	
-	printf("reg: %s, over: %s.\n", euroReg, euroLong);
-	fflush(stdout);
-
 
 	return 0;
 	}
