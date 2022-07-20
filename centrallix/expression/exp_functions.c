@@ -4722,6 +4722,233 @@ int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
     return 0;
     }
 
+/*
+ * exp_fn_utf8_i_hash_char_pair
+ * This method creates an vector table index based a given character pair's code points.
+ * UTF-8 aware version.
+ *
+ * Parameters:
+ * 	num1 : first code point (double)
+ * 	num2 : second code point (double)
+ *
+ * Returns:
+ * 	vector table index (long long)
+ */
+long long exp_fn_utf8_i_hash_char_pair(double num1, double num2)
+    {
+    long long func_result = round(((num1 * num1 * num1) + (num2 * num2 * num2)) * ((num1+1)/(num2+1))) -1;
+    return func_result % EXP_VECTOR_TABLE_SIZE;	
+    }
+
+/*
+ * exp_fn_utf8_i_frequency_table
+ * This method creates a vector frequency table based on a string of characters.
+ * UTF-8 aware version.
+ *
+ * Parameters:
+ * 	table : integer pointer to vector frequency table (int)
+ * 	term : the string of characters (wchar_t*)
+ *
+ * Returns:
+ * 	0 	
+ */
+int exp_fn_utf8_i_frequency_table(int *table, wchar_t *term)
+    {
+    int i;
+    // Initialize hash table with 0 values
+    for (i = 0; i < EXP_VECTOR_TABLE_SIZE; i++)
+	{
+	table[i] = 0;
+	}
+
+    int j = -1;
+    for(i = 0; i < wcslen(term) + 1; i++)
+	{
+	// If latter character is punctuation or whitespace, skip it
+	if (iswpunct(term[i]) || iswspace(term[i]))
+	    {
+	    continue;
+	    }
+
+	wchar_t temp1;
+	wchar_t temp2;
+
+	// Add a null character to the beginning of the term
+        if (j == -1)
+            {
+            temp1 = L'\0';
+            }
+	// Convert the characters in term to code points
+        else
+            {
+            temp1 = term[j];
+            }
+
+	temp2 = term[i];
+
+        temp1 = towlower(temp1);
+        temp2 = towlower(temp2);
+
+	// Hash the character pair into an index
+	int index = exp_fn_utf8_i_hash_char_pair(temp1, temp2);
+
+	// Increment Frequency Table value by number from 0 to 13
+	table[index] += ((int)temp1 + (int)temp2) % 13 + 1;
+
+	// Move j up to latter character before incrementing i
+	j = i;
+
+	}
+
+    return 0;	
+
+    }
+
+/*
+ * exp_fn_utf8_i_dot_product
+ * This method calculautes the dot product of two vectors.
+ * UTF-8 aware version.
+ *
+ * Parameters:
+ * 	dot_product : the place where the result is stored (double)
+ * 	r_freq_table1 : the first vector (int)
+ * 	r_freq_table2 : the second vector (int)
+ *
+ * Returns:
+ * 	0	
+ */
+int exp_fn_utf8_i_dot_product(double *dot_product, int *r_freq_table1, int *r_freq_table2)
+    {
+    int i;
+    for (i = 0; i < EXP_VECTOR_TABLE_SIZE; i++) 
+        {
+	*dot_product = *dot_product + ((double)r_freq_table1[i] * (double)r_freq_table2[i]);
+	}
+    return 0;
+    }
+
+/*
+ * exp_fn_utf8_i_magnitude
+ * This method calculates the magnitude of a vector
+ * UTF-8 aware version.
+ *
+ * Parameters:
+ * 	magnitude : the place where the result is stored (double)
+ * 	r_freq_table : the vector (int)
+ */
+int exp_fn_utf8_i_magnitude(double *magnitude, int *r_freq_table)
+    {
+    int i;
+    for (i = 0; i < EXP_VECTOR_TABLE_SIZE; i++)
+	{
+	*magnitude = *magnitude + ((double)r_freq_table[i] * (double)r_freq_table[i]);
+	}
+    *magnitude = sqrt(*magnitude);
+    return 0;
+    }
+
+/*
+ * exp_fn_utf8_cos_compare
+ * This method calculates the cosine similarity of two vector frequency tables in a UTF8-friendly manner
+ * UTF-8 aware version.
+ *
+ * Parameters:
+ * 	tree : structure where output is stored
+ *	objlist: 
+ *	i0 : first data entry (pExpression)
+ *	i1 : second data entry (pExpression)
+ *	i2 :
+ *
+ * Returns:
+ * 	0 	
+ */
+int exp_fn_utf8_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {    
+    // Ensure function receives two non-null parameters
+    if (!i0 || !i1)
+	{
+	mssError(1,"EXP","cos_compare() requires two parameter.");
+	return -1;
+	}
+
+    // Ensure value passed in both parameters is not null
+    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+	{
+	tree->DataType = DATA_T_INTEGER;
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+
+    // Ensure both parameters contain string values
+    if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING))
+	{
+	mssError(1,"EXP","cos_compare() requires two string parameters.");
+	return -1;
+	}
+
+    //If the two strings are identical, don't bother running cosine compare	
+    if (strcmp(i0->String, i1->String) == 0)
+	{
+	tree->DataType = DATA_T_DOUBLE;
+	tree->Types.Double = 1.0;
+	return 0;
+	}
+
+    // Allocate memory for the wide character arrays
+    size_t len0 = mbstowcs(NULL, i0->String, 0) + 1;
+    size_t len1 = mbstowcs(NULL, i1->String, 0) + 1;
+
+    wchar_t* longBufferi0 = nmMalloc(sizeof(wchar_t) * len0);
+    wchar_t* longBufferi1 = nmMalloc(sizeof(wchar_t) * len1);
+
+    if (longBufferi0 == NULL || longBufferi1 == NULL)
+	{
+	mssError(1,"EXP","Memory allocation failed.");
+	return -1;
+	}
+
+    // Copy character strings to wide character buffers
+    mbstowcs(longBufferi0, i0->String, len0);
+    mbstowcs(longBufferi1, i1->String, len1);
+
+    // Allocate frequency tables (arrays of integers) for each term
+    int *table1 = nmMalloc(EXP_VECTOR_TABLE_SIZE * sizeof(int));
+    int *table2 = nmMalloc(EXP_VECTOR_TABLE_SIZE * sizeof(int));
+
+    if (table1 == NULL || table2 == NULL)
+	{
+	mssError(1,"EXP","Memory allocation failed.");
+	return -1;
+	}
+
+    // Calculate frequency tables for each term
+    exp_fn_utf8_i_frequency_table(table1, longBufferi0);
+    exp_fn_utf8_i_frequency_table(table2, longBufferi1);
+
+    // Free the wide character memory buffers
+    nmFree(longBufferi0, sizeof(wchar_t) * len0);
+    nmFree(longBufferi1, sizeof(wchar_t) * len1);
+	
+    // Calculate dot product
+    double dot_product = 0;
+    exp_fn_utf8_i_dot_product(&dot_product, table1, table2);
+
+    // Calculate magnitudes of each relative frequency vector
+    double magnitude1 = 0;
+    double magnitude2 = 0;
+    exp_fn_utf8_i_magnitude(&magnitude1, table1);
+    exp_fn_utf8_i_magnitude(&magnitude2, table2);
+
+    // Return result and free remaining memory
+    tree->DataType = DATA_T_DOUBLE;
+    tree->Types.Double = dot_product / (magnitude1 * magnitude2);
+    nmFree(table1, EXP_VECTOR_TABLE_SIZE * sizeof(int));
+    nmFree(table2, EXP_VECTOR_TABLE_SIZE * sizeof(int));
+
+    return 0;
+
+    }
+
 int exp_internal_DefineFunctions()
     {
     /** Function list for EXPR_N_FUNCTION nodes **/
@@ -4766,9 +4993,9 @@ int exp_internal_DefineFunctions()
     xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
     xhAdd(&EXP.Functions, "replace", (char*) exp_fn_replace);
     xhAdd(&EXP.Functions, "substitute", (char*) exp_fn_substitute);
-    xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
+    
     xhAdd(&EXP.Functions, "lev_compare", (char*)exp_fn_lev_compare);
-    xhAdd(&EXP.Functions, "cos_compare", (char*)exp_fn_cos_compare);
+    xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
     xhAdd(&EXP.Functions, "to_base64", (char*)exp_fn_to_base64);
     xhAdd(&EXP.Functions, "from_base64", (char*)exp_fn_from_base64);
     xhAdd(&EXP.Functions, "to_hex", (char*)exp_fn_to_hex);
@@ -4806,6 +5033,7 @@ int exp_internal_DefineFunctions()
         xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_ralign);
         xhAdd(&EXP.Functions, "escape", (char*) exp_fn_escape);
         xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_reverse);
+        xhAdd(&EXP.Functions, "cos_compare", (char*)exp_fn_cos_compare);
 	}
     else
         {
@@ -4821,6 +5049,8 @@ int exp_internal_DefineFunctions()
         xhAdd(&EXP.Functions, "escape", (char*) exp_fn_utf8_escape);
 		xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_utf8_reverse);
 		xhAdd(&EXP.Functions, "overlong", (char*) exp_fn_utf8_overlong);
+        xhAdd(&EXP.Functions, "cos_compare", (char*)exp_fn_utf8_cos_compare);
+
 		}
     
     return 0;
