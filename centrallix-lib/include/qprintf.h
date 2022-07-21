@@ -70,6 +70,6 @@ void qpfRegisterExt(char* ext_spec, int (*ext_fn)(), int is_source);
 int qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, void* grow_arg, const char* format, va_list ap);
 
 /*** Utility function ***/
-char* chrNoOverlong(char* string);
+int chrNoOverlong(char* string);
 
 #endif /* _QPRINTF_H */

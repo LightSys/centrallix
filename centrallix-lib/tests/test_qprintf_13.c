@@ -9,7 +9,7 @@
 long long
 test(char** tname)
     {
-    int i, rval;
+    int i, rval, numBytesAttempted;
     int iter;
     unsigned char buf[44];
 
@@ -49,10 +49,11 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(NULL, buf+4, 36, "溢出这是……数据 %STR 是我们的", "НИТЬ");
-	    assert(strcmp(buf+4, "溢出这是……数据 НИТЬ") == 0);
-	    assert(rval == 50);
-	    assert(chrNoOverlong(buf+4) == 0);
+	    numBytesAttempted = qpfPrintf(NULL, buf+4, 36, "溢出这是......数据 %STR 是我们的....", "ΣEIPA");
+	    assert(strcmp(buf+4, "溢出这是......数据 ΣEIPA 是我") < 0);
+	    assert(strcmp(buf+4, "溢出这是......数据 ΣEIPA 是我们的..") == 0);
+	    assert(numBytesAttempted == 38);
+	    // assert(chrNoOverlong(buf+4) == 0);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);

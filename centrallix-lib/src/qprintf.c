@@ -252,7 +252,7 @@ qpfInitialize()
 	QPF.quote_ws_matrix.Matrix['\r'] = "\\r";
 	qpf_internal_SetupTable(&QPF.quote_ws_matrix);
 
-	memset(&QPF.jsstr_matrix, 0, sizeof(QPF.jsstr_matrix));
+	memset(&QPF.jsstr_matrix, 0, sizeof(QPF.jsstr_matrix)); /* javascript */
 	QPF.jsstr_matrix.Matrix['\''] = "\\'";
 	QPF.jsstr_matrix.Matrix['"'] = "\\\"";
 	QPF.jsstr_matrix.Matrix['\\'] = "\\\\";
@@ -1439,56 +1439,62 @@ qpfRegisterExt(char* ext_spec, int (*ext_fn)(), int is_source)
     return;
     }
 
-char* chrNoOverlong(char* string)
+int chrNoOverlong(char* string)
 	{
 	size_t stringCharLength, newStrByteLength;
-	char* toReturn;
+	char* result;
 	wchar_t* longBuffer;
 
-	/** Check arguments **/
+        /** Check arguments **/
 	if(!string)
-        	{
-		printf("Null 1\n");
-		return NULL;
-		}
+        	return -1;
+
+    /* ensure no overly large characters are included */
+    int i;
+    for(i = 0 ; i < strlen(string) ; i++)
+        {
+        if((unsigned char) string[i] == (unsigned char) 0xF4)
+            {
+            /* make sure is less than F4 90 */
+            /* this is safe since it would only hit the null byte */
+            if((unsigned char) string[i+1] >= (unsigned char)0x90) return -1; 
+            }
+        /* if true, must be a header for more than 4 bytes */
+        else if( (unsigned char) string[i] > (unsigned char) 0xF4) return -1; 
+        }
 	
 	stringCharLength = mbstowcs(NULL, string, 0);
 	if(stringCharLength == (size_t)-1)
             	{
-		printf("Null 2\n");
-        	return NULL;
-       		}
+        	return -1;
+       		}	
 
 	/** Create wchar_t buffer */
         longBuffer = nmSysMalloc(sizeof(wchar_t) * (stringCharLength + 1));
         if(!longBuffer)
-		{
-		printf("Null 3\n");
-        	return NULL;
-		}
-        mbstowcs(longBuffer, string, stringCharLength + 1);
-
+        	return -1;
+        mbstowcs(longBuffer, string, stringCharLength + 1);	
+	
 	/** Convert back to MBS **/
 	newStrByteLength = wcstombs(NULL, longBuffer, 0);
         if(newStrByteLength == (size_t)-1)
             	{
-		printf("Null 4\n");
             	nmSysFree(longBuffer);
-        	return NULL;
+        	return -1;
             	}
-
-	toReturn = (char *)nmSysMalloc(newStrByteLength + 1);
-        if(!toReturn)
+	
+	result = (char *)nmSysMalloc(newStrByteLength + 1);
+        if(!result)
             	{
-		printf("Null 5\n");
                 nmSysFree(longBuffer);
-                return NULL;
+                return -1;
             	}
             
-        wcstombs(toReturn, longBuffer, newStrByteLength + 1);
-
+        wcstombs(result, longBuffer, newStrByteLength + 1);
+        
 	nmSysFree(longBuffer);
-	//free string if that was allocated
-	printf("NOT Null\n");
-	return toReturn;
+    if(strcmp(result, string) != 0 ) return -1; 
+    nmSysFree(result); 
+	
+	return  0;
 	}
