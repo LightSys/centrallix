@@ -12,7 +12,7 @@ test (char** tname)
 	{
 	int i, j, k, l, m;
 	char strBuf[10]; 
-	char * result;
+	int result;
 	
 	*tname = "Overlong 02: Ensure broken chars fail";
 
@@ -30,12 +30,12 @@ test (char** tname)
 
 		char *cur = strBuf+3;
 		result = chrNoOverlong(cur);
-		assert(result == NULL);
+		assert(result != 0);
 
 		/* now test in the middle of a string */
 		strBuf[4] = 'A';
 		result = chrNoOverlong(strBuf);
-		assert(result == 0);
+		assert(result != 0);
 
 		for(j = 0x80 ; j < 0x9F ; j++) 
 			{
@@ -48,12 +48,12 @@ test (char** tname)
 
 				char *cur = strBuf+3;
 				result = chrNoOverlong(cur);
-				assert(result == NULL);
+				assert(result != 0);
 
 				/* now test in the middle of a string */
 				strBuf[5] = 'A';
 				result = chrNoOverlong(strBuf);
-				assert(result == 0);
+				assert(result != 0);
 				}
 
 			for(k = 0x80 ; k < 0xBF ; k++) /* of the form 10xxxxxx */
@@ -68,12 +68,12 @@ test (char** tname)
 
 					char *cur = strBuf+3;
 					result = chrNoOverlong(cur);
-					assert(result == NULL);
+					assert(result != 0);
 					
 					/* now test in the middle of a string */
 					strBuf[6] = 'A';
 					result = chrNoOverlong(strBuf);
-					assert(result == 0);
+					assert(result != 0);
 					}	
 				}
 			}
@@ -96,12 +96,12 @@ test (char** tname)
 
 				char *cur = strBuf+3;
 				result = chrNoOverlong(cur);
-				assert(result == NULL);
+				assert(result != 0);
 					
 				/* now test in the middle of a string */
 				strBuf[5] = 'A';
 				result = chrNoOverlong(strBuf);
-				assert(result == 0);
+				assert(result != 0);
 				}
 
 			for(k = 0x80 ; k < 0x90 ; k++) /* of the form 10xxxxxx */
@@ -116,12 +116,12 @@ test (char** tname)
 
 					char *cur = strBuf+3;
 					result = chrNoOverlong(cur);
-					assert(result == NULL);
+					assert(result != 0);
 					
 					/* now test in the middle of a string */
 					strBuf[6] = 'A';
 					result = chrNoOverlong(strBuf);
-					assert(result == 0);
+					assert(result != 0);
 					}
 
 				for(l = 0x80 ; l < 0x90 ; l++)
@@ -137,12 +137,12 @@ test (char** tname)
 
 						char *cur = strBuf+3;
 						result = chrNoOverlong(cur);
-						assert(result == NULL);
+						assert(result != 0);
 						
 						/* now test in the middle of a string */
 						strBuf[7] = 'A';
 						result = chrNoOverlong(strBuf);
-						assert(result == 0);
+						assert(result != 0);
 						}
 					
 					for(m = 0x80 ; m < 0x90 ; m++)
@@ -157,12 +157,12 @@ test (char** tname)
 
 						char *cur = strBuf+3;
 						result = chrNoOverlong(cur);
-						assert(result == NULL);
+						assert(result != 0);
 						
 						/* now test in the middle of a string */
 						strBuf[8] = 'A';
 						result = chrNoOverlong(strBuf);
-						assert(result == 0);
+						assert(result != 0);
 						}
 					}
 				}

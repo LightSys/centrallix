@@ -518,10 +518,13 @@ size_t chrCharLength(char* string)
             return length;
     }
 
-char* chrNoOverlong(char* string)
+/*** chrNoOverlong: validates a utf8 string and ensures no invalid characters 
+ *** are present. Returns 0 on a valid string, or an error code otherwise
+ ***/
+int chrNoOverlong(char* string)
 	{
 	size_t stringCharLength, newStrByteLength;
-	char* toReturn;
+	char* result;
 	wchar_t* longBuffer;
 
         /** Check arguments **/
@@ -536,22 +539,22 @@ char* chrNoOverlong(char* string)
             {
             /* make sure is less than F4 90 */
             /* this is safe since it would only hit the null byte */
-            if((unsigned char) string[i+1] >= (unsigned char)0x90) return NULL; 
+            if((unsigned char) string[i+1] >= (unsigned char)0x90) return CHR_INVALID_CHAR; 
             }
         /* if true, must be a header for more than 4 bytes */
-        else if( (unsigned char) string[i] > (unsigned char) 0xF4) return NULL; 
+        else if( (unsigned char) string[i] > (unsigned char) 0xF4) return CHR_INVALID_CHAR; 
         }
 	
 	stringCharLength = mbstowcs(NULL, string, 0);
 	if(stringCharLength == (size_t)-1)
             	{
-        	return NULL;
+        	return CHR_INVALID_CHAR;
        		}	
 
 	/** Create wchar_t buffer */
         longBuffer = nmSysMalloc(sizeof(wchar_t) * (stringCharLength + 1));
         if(!longBuffer)
-        	return NULL;
+        	return CHR_INVALID_CHAR;
         mbstowcs(longBuffer, string, stringCharLength + 1);	
 	
 	/** Convert back to MBS **/
@@ -559,21 +562,23 @@ char* chrNoOverlong(char* string)
         if(newStrByteLength == (size_t)-1)
             	{
             	nmSysFree(longBuffer);
-        	return NULL;
+        	return CHR_INVALID_CHAR;
             	}
 	
-	toReturn = (char *)nmSysMalloc(newStrByteLength + 1);
-        if(!toReturn)
+	result = (char *)nmSysMalloc(newStrByteLength + 1);
+        if(!result)
             	{
                 nmSysFree(longBuffer);
-                return NULL;
+                return CHR_INVALID_CHAR;
             	}
             
-        wcstombs(toReturn, longBuffer, newStrByteLength + 1);
+        wcstombs(result, longBuffer, newStrByteLength + 1);
         
 	nmSysFree(longBuffer);
+    if(strcmp(result, string) != 0 ) return CHR_INVALID_CHAR; 
+    nmSysFree(result); 
 	
-	return toReturn;
+	return  0;
 	}
 
 char* chrRight(char* string, size_t offsetFromEnd, size_t* returnCode)

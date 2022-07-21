@@ -12,7 +12,7 @@ test (char** tname)
 	{
 	int i, j, k, l;
 	char strBuf[10]; 
-	char * result;
+	int result;
 	
 	*tname = "Overlong 01: Ensure invalid chars fail";
 
@@ -34,12 +34,12 @@ test (char** tname)
 
 			char *cur = strBuf+3;
 			result = chrNoOverlong(cur);
-			assert(result == NULL);
+			assert(result != 0);
 			
 			/* now test in the middle of a string */
 			strBuf[5] = 'A';
 			result = chrNoOverlong(strBuf);
-			assert(result == 0);
+			assert(result != 0);
 			}
 		}
 
@@ -66,12 +66,12 @@ test (char** tname)
 
 				char *cur = strBuf+3;
 				result = chrNoOverlong(cur);
-				assert(result == NULL);
+				assert(result != 0);
 				
 				/* now test in the middle of a string */
 				strBuf[6] = 'A';
 				result = chrNoOverlong(strBuf);
-				assert(result == 0);
+				assert(result != 0);
 				}
 			}
 		}
@@ -101,12 +101,12 @@ test (char** tname)
 
 					char *cur = strBuf+3;
 					result = chrNoOverlong(cur);
-					assert(result == NULL);
+					assert(result != 0);
 					
 					/* now test in the middle of a string */
 					strBuf[7] = 'A';
 					result = chrNoOverlong(strBuf);
-					assert(result == 0);
+					assert(result != 0);
 					}
 				}
 			}

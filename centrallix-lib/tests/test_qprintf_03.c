@@ -54,7 +54,7 @@ test(char** tname)
 	    buf[0] = '\0';
 	    qpfPrintf(NULL, buf+4, 36, "В Начале Сотворил  Бог Небо И Землю."); /* extra space truncatest second byte of the 'Б' char */
 	    assert(!strcmp(buf+4, "В Начале Сотворил  \xD0\0"));
-		assert(chrNoOverlong(buf+4) != 0);
+		assert(chrNoOverlong(buf+4) == 0);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);

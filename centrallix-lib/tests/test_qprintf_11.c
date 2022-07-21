@@ -52,7 +52,7 @@ test(char** tname)
 	    buf[0] = '\0';
 	    rval = qpfPrintf(NULL, buf+4, 36, "起 %STR 地 。 आदि में परमेश्वर ने आकाश और पृथ्वी को बनाया", "Сотворил");
 	    assert(!strcmp(buf+4, "起 Сотворил 地 。 आद"));
-		assert(chrNoOverlong(buf+4) != 0);
+		assert(chrNoOverlong(buf+4) == 0);
 	    assert(rval == 142);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');

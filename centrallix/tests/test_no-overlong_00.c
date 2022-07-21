@@ -18,7 +18,7 @@ test (char** tname)
 
 	/** make sure works with all ascii characters **/
 	char strBuf[257]; /* room for 64 4-byte characters and a null byte */
-	char * result;
+	int result;
 
 	for(i = 0 ; i < 128 ; i++)
 		{
@@ -29,16 +29,10 @@ test (char** tname)
 		cur[1] = '\0';
 
 		result = chrNoOverlong(cur);
-		if(result == 0){
-			result = chrNoOverlong(cur);
-		}
-		assert(result != 0);
-		assert(strcmp(cur, result) == 0);
-		nmSysFree(result);
+		assert(result == 0);
 		}
 	result = chrNoOverlong(strBuf);
-	assert(strcmp(strBuf, result) == 0);
-	nmSysFree(result);
+	assert(result == 0);
 
 
 	/** test all 2 character utf8 chars  **/
@@ -53,14 +47,11 @@ test (char** tname)
 
 			char *cur = strBuf+((j-0x80)*2);
 			result = chrNoOverlong(cur);
-			assert(result != NULL);
-			assert(strcmp(cur, result) == 0);
-			nmSysFree(result);
+			assert(result == 0);
 			}
 			
 		result = chrNoOverlong(strBuf);
-		assert(strcmp(strBuf, result) == 0);
-		nmSysFree(result);
+		assert(result == 0);
 		}
 
 
@@ -91,14 +82,11 @@ test (char** tname)
 				char *cur = strBuf+((k-0x80)*3);
 				
 				result = chrNoOverlong(cur);
-				assert(result != NULL);
-				assert(strcmp(cur, result) == 0);
-				nmSysFree(result);
+				assert(result == 0);
 				}
 				
 			result = chrNoOverlong(strBuf);
-			assert(strcmp(strBuf, result) == 0);
-			nmSysFree(result);
+			assert(result == 0);
 			}
 		}
 
@@ -130,15 +118,10 @@ test (char** tname)
 
 					char *cur = strBuf+((l-0x80)*4);
 					result = chrNoOverlong(cur);
-					if(result == 0) printf("%x %x %x %x\n", i, j, k, l);
-					assert(result != NULL);
-					assert(strcmp(cur, result) == 0);
-					nmSysFree(result);
+					assert(result == 0);
 					}
 				result = chrNoOverlong(strBuf);
-				assert(result != NULL);
-				assert(strcmp(strBuf, result) == 0);
-				nmSysFree(result);
+				assert(result == 0);
 				}
 			}
 		}

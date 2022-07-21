@@ -3777,19 +3777,21 @@ int exp_fn_last(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
     tree->Flags |= EXPR_F_AGGLOCKED;
     return 0;
     }
-
+/** FIXME: needs tested **/
 int exp_fn_utf8_overlong(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
 	{
-	//printf("EXP\nRecieved String: %s\n", i0->String);
-	char* str = chrNoOverlong(i0->String);
-	//printf("A");
-	//fflush(stdout);
-	//printf("Final str: %s\n", str);
-	//printf("B");
-	//fflush(stdout);
-	tree->String = str;
-	//printf("C");
-        //fflush(stdout);
+	int result = chrNoOverlong(i0->String);
+
+	if(result == 0)
+		{
+		tree->String = nmSysMalloc(strlen(i0->String));
+		strcpy(tree->String, i0->String);
+		}
+	else
+		{
+		tree->String = NULL;
+		}
+	
 	return 0;
 	}
 

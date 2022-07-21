@@ -52,7 +52,7 @@ test(char** tname)
 	    qpfPrintf(NULL, buf+4, 36, "起 地 。%STR", "Сотворил");
 	    rval = qpfPrintf(NULL, buf+4, 36, "起 地 。%STR", "Сотворил");
 	    assert(!strcmp(buf+4, "起 地 。Сотворил"));
-		assert(chrNoOverlong(buf+4) != 0);
+		assert(chrNoOverlong(buf+4) == 0);
 	    assert(rval == 27);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');

@@ -39,6 +39,9 @@ test(char** tname)
 	    assert(buf[2] == '\0');
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
+
+	    /* UTF-8 test not required; no characters involved */
+	    
 	    }
 
     return iter*4;

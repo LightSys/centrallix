@@ -39,6 +39,28 @@ test(char** tname)
 	    assert(buf[2] == '\0');
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
+
+	    /* UTF-8 */
+	    buf[43] = '\n';
+	    buf[42] = '\0';
+	    buf[41] = 0xff;
+	    buf[40] = '\0';
+	    buf[3] = '\n';
+	    buf[2] = '\0';
+	    buf[1] = 0xff;
+	    buf[0] = '\0';
+	    rval = qpfPrintf(NULL, buf+4, 36, "溢出这是……数据 %STR 是我们的", "НИТЬ");
+	    assert(strcmp(buf+4, "溢出这是……数据 НИТЬ") == 0);
+	    assert(rval == 50);
+	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(buf[43] == '\n');
+	    assert(buf[42] == '\0');
+	    assert(buf[41] == 0xff);
+	    assert(buf[40] == '\0');
+	    assert(buf[3] == '\n');
+	    assert(buf[2] == '\0');
+	    assert(buf[1] == 0xff);
+	    assert(buf[0] == '\0');
 	    }
 
     return iter*4;
