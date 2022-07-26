@@ -249,6 +249,7 @@ function wgtrRepeatNode(nodename, nodelist)
     this.wgtr_rn_ValueChanging = wgtr_rn_ValueChanging;
     ifc_init_widget(this);
     var ie = this.ifcProbeAdd(ifEvent);
+    ie.EnableLateConnectBinding();
     ie.SetNewEventCallback(wgtr_rn_NewEvent);
     var ia = this.ifcProbeAdd(ifAction);
     ia.SetUndefinedAction(wgtr_rn_Action);
