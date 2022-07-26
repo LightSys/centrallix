@@ -287,6 +287,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
     {
     pWgtrNode sub_tree;
     char* ptr;
+    char* nptr;
     int n, i;
     httbl_struct* t;
     int rval;
@@ -433,6 +434,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    sub_tree = children[i];
 	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING,POD(&ptr));
+	    wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING,POD(&nptr));
 	    if (!strcmp(ptr,"widget/table-column") != 0)
 		{
 		col = (httbl_col*)nmMalloc(sizeof(httbl_col));
@@ -460,6 +462,8 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		    strtcpy(col->title, ptr, sizeof(col->title));
 		else
 		    strtcpy(col->title, col->fieldname, sizeof(col->title));
+		htrCheckAddExpression(s, sub_tree, nptr, "title");
+		htrCheckAddExpression(s, sub_tree, nptr, "visible");
 		if (wgtrGetPropertyValue(sub_tree, "align", DATA_T_STRING,POD(&ptr)) == 0)
 		    strtcpy(col->align, ptr, sizeof(col->align));
 		else
