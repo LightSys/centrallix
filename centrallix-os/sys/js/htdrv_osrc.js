@@ -3151,7 +3151,13 @@ function osrc_cb_reveal(child)
     if ((this.autoquery == this.AQonFirstReveal || this.autoquery == this.AQonEachReveal) && !this.init)
 	pg_addsched_fn(this,'InitQuery', [], 0);
     else if (this.autoquery == this.AQonEachReveal)
-	this.ifcProbe(ifAction).SchedInvoke('QueryObject', {query:[], client:null, ro:this.readonly}, 0);
+	{
+	var method = wgtrGetServerProperty(this, "autoquery_method", "query");
+	if (method == "query")
+	    this.ifcProbe(ifAction).SchedInvoke('QueryObject', {query:[], client:null, ro:this.readonly}, 0);
+	else if (method == "refresh")
+	    this.ifcProbe(ifAction).SchedInvoke('Refresh', {}, 0);
+	}
     else
 	{
 	did_query = false;
