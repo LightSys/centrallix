@@ -1,0 +1,3 @@
+##NAME lag() windowing function
+
+query select :f_string, lag(:f_string, 1), lag(:f_string, 2) from /tests/Datatypes.csv/rows
