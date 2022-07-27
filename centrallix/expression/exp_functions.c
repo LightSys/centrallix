@@ -3247,6 +3247,109 @@ int exp_fn_power(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 
 /*** Windowing Functions ***/
 
+typedef struct
+    {
+    int		MaxLookback;
+    int		CurLookback;
+    pTObjData	Items[1];
+    }
+    ExpLagVector, *pExpLagVector;
+
+int exp_fn_lag_finalize(void* lv_v)
+    {
+    pExpLagVector lv = (pExpLagVector)lv_v;
+    int i;
+    for (i=0; i<lv->CurLookback; i++)
+	ptodFree(lv->Items[i]);
+    nmSysFree(lv);
+    return 0;
+    }
+
+int exp_fn_lag(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    int n;
+    pExpLagVector lv;
+    pTObjData ptod;
+
+    if (!i0)
+	{
+	mssError(1,"EXP","lag() requires a parameter");
+	return -1;
+	}
+    if (i1 && ((i1->Flags & EXPR_F_NULL) || i1->DataType != DATA_T_INTEGER || i1->Integer <= 0))
+	{
+	mssError(1,"EXP","lag() second parameter, if supplied, must be a non-null positive integer");
+	return -1;
+	}
+
+    /** Private data is where we store a chain of previous values **/
+    if (!tree->PrivateData)
+	{
+	/** If the offset is constant, use it as the max lookback, otherwise set the max lookback (n) to
+	 ** the greater of 100 or the current value.  Our hard ceiling is 4096.  If not specified, we
+	 ** just look at the previous row (offset 1).
+	 **/
+	if (i1 && i1->NodeType == EXPR_N_INTEGER)
+	    n = i1->Integer;
+	else if (i1)
+	    n = i1->Integer < 100 ? 100 : i1->Integer;
+	else
+	    n = 1;
+	if (n > 4096)
+	    n = 4096;
+
+	lv = (pExpLagVector)nmSysMalloc(sizeof(ExpLagVector) + (sizeof(pTObjData) * (n - 1)));
+	if (!lv)
+	    return -ENOMEM;
+	tree->PrivateData = lv;
+	tree->PrivateDataFinalize = exp_fn_lag_finalize;
+	memset(tree->PrivateData, 0, sizeof(ExpLagVector) + (sizeof(pTObjData) * (n - 1)));
+	lv->MaxLookback = n;
+	lv->CurLookback = 0;
+	}
+    else
+	{
+	lv = (pExpLagVector)tree->PrivateData;
+	}
+
+    /** No actual new value?  Exit now. **/
+    if (tree->Flags & EXPR_F_AGGLOCKED)
+	return 0;
+
+    /** Set the right value from our lookback list **/
+    if (i1)
+	n = i1->Integer;
+    else
+	n = 1;
+    if (n > lv->CurLookback)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	tree->DataType = i0->DataType;
+	}
+    else
+	{
+	if (expPtodToExpression(lv->Items[lv->CurLookback - n], tree) < 0)
+	    return -1;
+	}
+
+    /** New value; add to our item list **/
+    ptod = expExpressionToPtod(i0);
+    if (lv->MaxLookback == lv->CurLookback)
+	{
+	ptodFree(lv->Items[0]);
+	if (lv->MaxLookback > 1)
+	    memmove(&(lv->Items[0]), &(lv->Items[1]), sizeof(pTObjData) * (lv->MaxLookback - 1));
+	lv->CurLookback -= 1;
+	}
+    lv->Items[lv->CurLookback] = ptod;
+    lv->CurLookback += 1;
+    tree->AggCount += 1;
+
+    tree->Flags |= EXPR_F_AGGLOCKED;
+    return 0;
+    }
+
+
 int exp_fn_dense_rank(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression new_exp;
@@ -4351,9 +4454,11 @@ int exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "from_hex", (char*)exp_fn_from_hex);
 	xhAdd(&EXP.Functions, "octet_length", (char*)exp_fn_octet_length);
 	xhAdd(&EXP.Functions, "argon2id",(char*)exp_fn_argon2id);
+
 	/** Windowing **/
 	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
 	xhAdd(&EXP.Functions, "dense_rank", (char*)exp_fn_dense_rank);
+	xhAdd(&EXP.Functions, "lag", (char*)exp_fn_lag);
 
 	/** Aggregate **/
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);

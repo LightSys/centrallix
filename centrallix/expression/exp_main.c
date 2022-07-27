@@ -85,6 +85,7 @@ expAllocExpression()
 	expr->LinkCnt = 1;
 	expr->DataType = DATA_T_UNAVAILABLE;
 	expr->PrivateData = NULL;
+	expr->PrivateDataFinalize = NULL;
 
     return expr;
     }
@@ -123,7 +124,10 @@ expFreeExpression(pExpression this)
 
 	/** Free this itself. **/
 	xaDeInit(&(this->Children));
-	if (this->PrivateData) nmSysFree(this->PrivateData);
+	if (this->PrivateDataFinalize)
+	    this->PrivateDataFinalize(this->PrivateData);
+	else if (this->PrivateData)
+	    nmSysFree(this->PrivateData);
 	if (this->Alloc && this->String) nmSysFree(this->String);
 	if (this->NameAlloc && this->Name) nmSysFree(this->Name);
 	if (this->AggExp) expFreeExpression(this->AggExp);
@@ -718,16 +722,21 @@ expPodToExpression(pObjData pod, int type, pExpression provided_exp)
 	/** Create expression node. **/
 	if (!exp)
 	    exp = expAllocExpression();
-	exp->NodeType = expDataTypeToNodeType(type);
+	if (!provided_exp)
+	    exp->NodeType = expDataTypeToNodeType(type);
 
 	/** Null value **/
 	if (!pod)
 	    {
-	    exp->Flags |= (EXPR_F_NULL | EXPR_F_PERMNULL);
+	    exp->Flags |= EXPR_F_NULL;
+	    if (!provided_exp)
+		exp->Flags |= EXPR_F_PERMNULL;
 	    }
 	else
 	    {
-	    exp->Flags &= ~(EXPR_F_NULL | EXPR_F_PERMNULL);
+	    exp->Flags &= ~EXPR_F_NULL;
+	    if (!provided_exp)
+		exp->Flags &= ~EXPR_F_PERMNULL;
 
 	    /** Based on type. **/
 	    switch(type)

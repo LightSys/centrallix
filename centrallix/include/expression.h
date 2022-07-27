@@ -127,6 +127,7 @@ typedef struct _ET
     unsigned int	LxFlags;
     unsigned int	CmpFlags;
     void*		PrivateData;		/* allocated with nmSysMalloc() */
+    int			(*PrivateDataFinalize)(void*);
     }
     Expression, *pExpression;
 
