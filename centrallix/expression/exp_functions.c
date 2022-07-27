@@ -366,7 +366,7 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
 		return -1;
 		}
 	    }
-	if (i2->AggLevel > 0)
+	if (i2->AggLevel > 0 || (i2->Flags & EXPR_F_HASWINDOWFN))
 	    {
 	    if (exp_internal_EvalAggregates(i2,objlist) < 0)
 		return -1;
@@ -395,7 +395,7 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
 		return -1;
 		}
 	    }
-	if (i1->AggLevel > 0)
+	if (i1->AggLevel > 0 || (i1->Flags & EXPR_F_HASWINDOWFN))
 	    {
 	    if (exp_internal_EvalAggregates(i1,objlist) < 0)
 		return -1;
@@ -3276,7 +3276,7 @@ int exp_fn_lag(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 	mssError(1,"EXP","lag() requires a parameter");
 	return -1;
 	}
-    if (i1 && ((i1->Flags & EXPR_F_NULL) || i1->DataType != DATA_T_INTEGER || i1->Integer <= 0))
+    if (i1 && !(i1->Flags & EXPR_F_NULL) && (i1->DataType != DATA_T_INTEGER || i1->Integer <= 0))
 	{
 	mssError(1,"EXP","lag() second parameter, if supplied, must be a non-null positive integer");
 	return -1;
@@ -3321,7 +3321,7 @@ int exp_fn_lag(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 	n = i1->Integer;
     else
 	n = 1;
-    if (n > lv->CurLookback)
+    if (n > lv->CurLookback || (i1->Flags & EXPR_F_NULL))
 	{
 	tree->Flags |= EXPR_F_NULL;
 	tree->DataType = i0->DataType;

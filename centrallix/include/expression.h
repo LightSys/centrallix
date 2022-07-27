@@ -230,8 +230,9 @@ extern pParamObjects expNullObjlist;
 #define EXPR_F_RUNDEFAULT	(EXPR_F_RUNSTATIC)
 
 #define EXPR_F_INDETERMINATE	32768	/* Value cannot yet be known */
-
 #define EXPR_F_HASRUNSERVER	65536	/* Expression contains runserver() */
+#define EXPR_F_WINDOWFN		131072	/* node is a windowing function */
+#define EXPR_F_HASWINDOWFN	262144	/* subtree has a windowing function */
 
 /*** Expression objlist MainFlags ***/
 #define EXPR_MO_RECALC		1	/* ignore EXPR_F_STALE; recalc */

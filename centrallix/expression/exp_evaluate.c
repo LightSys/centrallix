@@ -949,7 +949,7 @@ expEvalAnd(pExpression tree, pParamObjects objlist)
 	    child = (pExpression)(tree->Children.Items[i]);
 	    if (short_circuiting)
 		{
-		if (child->AggLevel > 0)
+		if (child->AggLevel > 0 || (child->Flags & EXPR_F_HASWINDOWFN))
 		    {
 		    if (exp_internal_EvalAggregates(child, objlist) < 0)
 			return -1;
@@ -1007,7 +1007,7 @@ expEvalOr(pExpression tree, pParamObjects objlist)
 	    child = (pExpression)(tree->Children.Items[i]);
 	    if (short_circuiting)
 		{
-		if (child->AggLevel > 0)
+		if (child->AggLevel > 0 || (child->Flags & EXPR_F_HASWINDOWFN))
 		    {
 		    if (exp_internal_EvalAggregates(child, objlist) < 0)
 			return -1;
@@ -2025,7 +2025,7 @@ exp_internal_EvalAggregates(pExpression tree, pParamObjects objlist)
     pExpression child;
 
 	/** Is this an aggregate function?  Call normal eval if so **/
-	if (tree->Flags & EXPR_F_AGGREGATEFN)
+	if (tree->Flags & (EXPR_F_AGGREGATEFN | EXPR_F_WINDOWFN))
 	    {
 	    return exp_internal_EvalTree(tree, objlist);
 	    }
