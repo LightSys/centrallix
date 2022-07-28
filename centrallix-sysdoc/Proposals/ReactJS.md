@@ -3,13 +3,25 @@ Author: Alison Blomenberg
 
 Date: July 2022
 
+## Table of Contents
+- [Potential options for using React in Centrallix](#potential-options-for-using-react-in-centrallix)
+  - [Table of Contents](#table-of-contents)
+  - [Why use React?](#why-use-react)
+    - [Pros](#pros)
+    - [Cons](#cons)
+  - [Standard client-side rendering](#standard-client-side-rendering)
+  - [Server-side rendering](#server-side-rendering)
+    - [Directly invoking a Node process](#directly-invoking-a-node-process)
+    - [Intercommunication with a separate Node server](#intercommunication-with-a-separate-node-server)
+    - [Embedding Node and using C APIs](#embedding-node-and-using-c-apis)
+
 ## Why use React?
-Pros:
+### Pros
 - React is one of the most popular modern JavaScript frameworks, which means there's a vibrant ecosystem of tools and tutorials around it, many people have had some experience with React, and further experience with React is generally desirable. This could potentially help with the roadblocks Centrallix and Kardia often face in recruiting and onboarding new developers. 
 - React's fundamental model is JavaScript taking in a JSON-style data model and spitting out HTML, which then dynamically responds to changes in the data model (triggered by UI interactions, AJAX requests, etc). This means it's naturally good at interactivity, data-driven UIs, and separating data logic from display logic to make both clearer. Kardia is very data-driven, and sometimes struggles with the kind of speedy interactivity that React does well with its client-side dynamic rerendering model.
 - React is naturally very modular, so it would lend itself to gradually building (or converting) small components and composing them.
 
-Cons:
+### Cons
 - React is typically used with a whole complex toolchain including npm, Babel, etc. This can be a lot to learn for a developer unfamiliar with the modern JS ecosystem, and is also a lot to integrate well into Centrallix (including security considerations with tools like npm).
 - As with many tools in the JavaScript ecosystem, React best practices change quickly. It's also not "opinionated" about many details like how to manage state, styling, routing, etc, so while it is flexible, the ecosystem is fragmented with lots of different options and opinions on offer.
 - Adding a new framework like this to Centrallix would make the existing system more complex and add more techologies that a Centrallix developer has to be familiar with to understand and work with the whole system.
