@@ -205,7 +205,8 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	
 	if (wgtrGetPropertyValue(tree,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    strtcpy(fgcolor,ptr,sizeof(fgcolor));
-
+	else
+	    strcpy(fgcolor,"black");
 
 	/** Ok, write the style header items. **/
 	htrAddStylesheetItem_va(s,"\t#dt%POSbtn  { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; %STR }\n",id,x,y,w,h,z, bgcolor);

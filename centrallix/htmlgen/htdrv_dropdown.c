@@ -48,7 +48,7 @@ static struct {
 
 int htddSetup(pHtSession s)
 	{
-	htrAddStylesheetItem_va(s,"\t.ddHidAbs { OVERFLOW:hidden; POSITION:absolute; }\n:");
+	htrAddStylesheetItem_va(s,"\t.ddHidAbs { OVERFLOW:hidden; POSITION:absolute; }\n");
 	htrAddStylesheetItem_va(s,"\t.ddBtn { VISIBILITY:inherit; cursor:default; border:1px outset #e0e0e0;}\n");
 	htrAddStylesheetItem_va(s,"\t.ddCon1 { VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n");
 	htrAddStylesheetItem_va(s,"\t.ddCon2 { VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n");
