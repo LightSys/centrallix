@@ -921,7 +921,7 @@ mqp_internal_SetupWildcard_r(pQueryElement qe, pQueryStatement stmt, char* orig_
 	    info = objInfo(obj);
 	    if (info && (info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)))
 		goto finished;
-	    qy = objOpenQuery(obj, NULL, NULL, NULL, NULL);
+	    qy = objOpenQuery(obj, NULL, ":name", NULL, NULL);
 	    if (!qy)
 		goto finished;
 	    while ((subobj = objQueryFetch(qy, O_RDONLY)) != NULL)
