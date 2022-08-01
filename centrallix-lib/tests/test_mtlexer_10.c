@@ -31,6 +31,8 @@ test(char** tname)
 
 	for(i=0;i<iter;i++)
 	    {
+		if(i == iter/2) setlocale(0, "C"); /* switch half way */
+		
 	    lxs = mlxStringSession(teststr, MLX_F_EOF);
 	    assert(lxs != NULL);
 	    for(j=0;j<sizeof(integers)/sizeof(integers[0]);j++)

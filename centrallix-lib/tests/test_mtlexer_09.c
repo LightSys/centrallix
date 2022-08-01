@@ -40,6 +40,8 @@ test(char** tname)
 
 	for(i=0;i<iter-20;i++)
 	    {
+		if(i == iter/2) setlocale(0, "C"); /* switch half way */
+
 	    str[i+1] = '\r';
 	    str[i+2] = '\n';
 	    tokstr[0][i] = '\r';

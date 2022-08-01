@@ -39,6 +39,8 @@ test(char** tname)
 	iter = 100000;
 	for(i=0;i<iter;i++)
 	    {
+		if(i == iter/2) setlocale(0, "C"); /* switch half way */
+
 	    flags = flagtype[i%n_flagtype];
 	    lxs = mlxStringSession(str, flags | MLX_F_LINEONLY);
 	    assert(lxs != NULL);

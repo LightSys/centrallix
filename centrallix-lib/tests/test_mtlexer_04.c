@@ -26,6 +26,7 @@ test(char** tname)
 
 	for(i=0;i<iter;i++)
 	    {
+		if(i == iter/2) setlocale(0, "C"); /* switch half way */
 	    lxs = mlxStringSession(str, MLX_F_EOL | MLX_F_EOF | MLX_F_IFSONLY);
 	    assert(lxs != NULL);
 	    mlxCloseSession(lxs);

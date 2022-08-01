@@ -26,6 +26,8 @@ test(char** tname)
 	iter = 20000;
 	for(i=0;i<iter;i++)
 	    {
+		if(i == iter/2) setlocale(0, "C"); /* switch half way */
+
 	    str[i] = '1';
 	    str[i+1] = '.';
 	    str[i+2] = '1';

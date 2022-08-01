@@ -37,19 +37,10 @@ test(char** tname)
 	memset(tokstr[0], 'a', iter+1);
 	tokstr[1] = "nextline";
 	tokstr[2] = "thirdline";
-	/*tokstr[0] = malloc(2046);
-	memset(tokstr[0], 'a', 2045);
-	tokstr[0][2045] = '\0';
-	tokstr[1] = malloc(2045);
-	memset(tokstr[1], 'b', 2044);
-	tokstr[1][2044] = '\0';
-	tokstr[2] = malloc(2047);
-	memset(tokstr[2], 'c', 2046);
-	tokstr[2][2046] = '\0';
-	sprintf(str, "%s\r\n%s\r\n%s\r\n", tokstr[0], tokstr[1], tokstr[2]);*/
 
 	for(i=0;i<iter;i++)
 	    {
+		if(i == iter/2) setlocale(0, "C"); /* switch half way */
 	    strcpy(str+i, "a\r\nnextline\r\nthirdline");
 	    tokstr[0][i] = 'a';
 	    tokstr[0][i+1] = '\0';
@@ -72,6 +63,8 @@ test(char** tname)
 		    }
 		}
 	    mlxCloseSession(lxs);
+
+		/* test in non utf-8 locale */
 	    }
 
     return iter;

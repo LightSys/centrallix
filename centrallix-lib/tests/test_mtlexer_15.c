@@ -37,6 +37,8 @@ test(char** tname)
 
 	for(i=0;i<iter;i++)
 	    {
+		if(i == iter/2) setlocale(0, "C"); /* switch half way */
+
 	    fd = fdOpen("tests/test_mtlexer_15.txt", O_RDONLY, 0600);
 	    assert(fd != NULL);
 	    lxs = mlxOpenSession(fd, flags | MLX_F_EOF);
