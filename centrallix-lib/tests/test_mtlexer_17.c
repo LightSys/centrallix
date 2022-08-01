@@ -6,6 +6,7 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -31,6 +32,7 @@ test(char** tname)
     char* tokstr[8] = {	"\n", "\n", "'string one' 'string two'\n", "'string three' 'string four'\r\n", "'string five'\r\n", "\r\n", "String Six", NULL };
 
 	*tname = "mtlexer-17 LINEONLY mode test";
+	setlocale(0, "en_US.UTF-8");
 
 	mssInitialize("system", "", "", 0, "test");
 

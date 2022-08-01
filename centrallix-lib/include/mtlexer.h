@@ -55,6 +55,8 @@ typedef struct _LX
     char**		ReservedWords;	/* reserved words */
     int			LineNumber;
     int			(*ReadFn)();
+    int         (*ValidateFn)(char *); /* pointer to a validate function */
+    int         (*IsCharSplit)(char, int, int); /* pointer to see if a multibyte char will be split */
     void*		ReadArg;
     }
     LxSession, *pLxSession;

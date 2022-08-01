@@ -7,6 +7,7 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -22,6 +23,7 @@ test(char** tname)
     pLxSession lxs;
 
 	*tname = "mtlexer-10 integer and double parsing";
+	setlocale(0, "en_US.UTF-8");
 
 	mssInitialize("system", "", "", 0, "test");
 

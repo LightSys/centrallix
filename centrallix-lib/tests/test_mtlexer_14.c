@@ -7,6 +7,7 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -18,6 +19,7 @@ test(char** tname)
     char str[65536] = "";
 
 	*tname = "mtlexer-14 normal/oversized double floating point";
+	setlocale(0, "en_US.UTF-8");
 
 	mssInitialize("system", "", "", 0, "test");
 

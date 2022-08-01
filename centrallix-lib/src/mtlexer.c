@@ -7,12 +7,14 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <locale.h>
 #include "newmalloc.h"
 #include "mtask.h"
 #include "mtlexer.h"
 #include "mtsession.h"
 #include "magic.h"
 #include "util.h"
+#include "qprintf.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -43,6 +45,7 @@
 int mlxReadLine(pLxSession s, char* buf, int maxlen);
 int mlxSkipChars(pLxSession s, int n_chars);
 int mlxPeekChar(pLxSession s, int offset);
+int mlx_internal_WillSplitUTF8(char c, int ind, int max);
 
 
 /*** mlxOpenSession - start a new lexer session on a given file 
@@ -66,6 +69,19 @@ mlxOpenSession(pFile fd, int flags)
 	this->InpPtr = this->InpBuf;
 	this->ReservedWords = NULL;
 	this->Flags = flags & MLX_F_PUBLIC;
+	/* determine which validate to set */
+	/** FIXME: should probably just pass this in or manually set after... **/
+	char * locale = setlocale(LC_CTYPE, NULL);
+	if(strstr(locale, "UTF-8") || strstr(locale, "UTF8") || strstr(locale, "utf-8") || strstr(locale, "utf8"))
+		{
+		this->ValidateFn = & chrNoOverlong; 
+		this->IsCharSplit = & mlx_internal_WillSplitUTF8;
+		}
+	else 
+		{
+		this->ValidateFn = NULL;
+		this->IsCharSplit = NULL;
+		}
 
 	/** Preload the buffer with the first line **/
 	this->Buffer[0] = 0;
@@ -105,6 +121,18 @@ mlxStringSession(char* str, int flags)
 	this->Flags = (flags & MLX_F_PUBLIC) & ~MLX_F_NODISCARD;
 	this->Flags |= MLX_F_NOFILE;
 	this->Magic = MGK_LXSESSION;
+	/* determine which validate to set */
+	char * locale = setlocale(LC_CTYPE, NULL);
+	if(locale != NULL && (strstr(locale, "utf8") || strstr(locale, "UTF8") || strstr(locale, "utf-8") || strstr(locale, "UTF-8")))
+		{
+		this->ValidateFn = & chrNoOverlong; 
+		this->IsCharSplit = & mlx_internal_WillSplitUTF8;
+		}
+	else 
+		{
+		this->ValidateFn = NULL;
+		this->IsCharSplit = NULL;
+		}
 
 	/** Read the first line. **/
 	this->BufPtr = this->Buffer;
@@ -138,6 +166,18 @@ mlxGenericSession(void* src, int (*read_fn)(), int flags)
 	this->InpPtr = this->InpBuf;
 	this->ReservedWords = NULL;
 	this->Flags = (flags & MLX_F_PUBLIC) & ~MLX_F_NODISCARD;
+	/* determine which validate to set */
+	char * locale = setlocale(LC_CTYPE, NULL);
+	if(strstr(locale, "utf8") || strstr(locale, "UTF8") || strstr(locale, "utf-8") || strstr(locale, "UTF-8"))
+		{
+		this->ValidateFn = & chrNoOverlong; 
+		this->IsCharSplit = & mlx_internal_WillSplitUTF8;
+		}
+	else 
+		{
+		this->ValidateFn = NULL;
+		this->IsCharSplit = NULL;
+		}
 
 	/** Preload the buffer with the first line **/
 	this->Buffer[0] = 0;
@@ -388,6 +428,11 @@ mlx_internal_Copy(pLxSession this, char* buf, int bufsize, int* found_end)
 		    *found_end = 1;
 		    break;
 		    }
+		else if(this->IsCharSplit && this->IsCharSplit(ch, len, bufsize-1))
+			{
+			*found_end = 0;
+			break;
+			}
 		mlxSkipChars(this,1);
 		ch = mlxPeekChar(this,0);
 		}
@@ -399,7 +444,7 @@ mlx_internal_Copy(pLxSession this, char* buf, int bufsize, int* found_end)
 	    *found_end = 1;
 	    while(ch >= 0 && ch != ' ' && ch != '\t' && ch != '\r' && ch != '\n')
 		{
-		if (len >= bufsize-1)
+		if (len >= bufsize-1 || (this->IsCharSplit && this->IsCharSplit(ch, len, bufsize-1)))
 		    {
 		    *found_end = 0;
 		    break;
@@ -416,7 +461,7 @@ mlx_internal_Copy(pLxSession this, char* buf, int bufsize, int* found_end)
 	    *found_end = 1;
 	    while((ch = mlxPeekChar(this,0)) >= 0 && ch != this->Delimiter)
 		{
-		if (len >= bufsize-1)
+		if (len >= bufsize-1 || (this->IsCharSplit && this->IsCharSplit(ch, len, bufsize-1)))
 		    {
 		    *found_end = 0;
 		    break;
@@ -461,7 +506,7 @@ mlx_internal_Copy(pLxSession this, char* buf, int bufsize, int* found_end)
 	    *found_end = 1;
 	    while(ch >= 0 && ch != ' ' && ch != '\t' && ch != '\r' && ch != '\n' && ch != ':')
 		{
-		if (len >= bufsize-1)
+		if (len >= bufsize-1 || (this->IsCharSplit && this->IsCharSplit(ch, len, bufsize-1)))
 		    {
 		    *found_end = 0;
 		    break;
@@ -946,6 +991,17 @@ mlxNextToken(pLxSession this)
 		}
 	    }
 
+	/** check string is valid, if applicable **/
+	if(this->ValidateFn != NULL && (this->TokType == MLX_TOK_SSTRING || 
+		this->TokType == MLX_TOK_STRING || this->TokType == MLX_TOK_KEYWORD )) /* keywords can only be ascii, but can't hurt to check */
+		{
+		if(this->ValidateFn(this->TokString) != 0)
+			{
+			mssError(1,"MLX","String token contained invalid characters");
+		    this->TokType = MLX_TOK_ERROR;
+			}
+		}
+
     return this->TokType;
     }
 
@@ -1026,6 +1082,16 @@ mlxStringVal(pLxSession this, int* alloc)
 	    if (alloc) *alloc = 0;
 	    ptr = this->TokString;
 	    }
+
+		/** validate again; could have more copied from buffer **/
+		if(this->ValidateFn != NULL && this->ValidateFn(ptr) != 0)
+			{
+			mssError(1,"MLX","String token contained invalid characters");
+			this->TokType = MLX_TOK_ERROR;
+			*alloc = 0;
+		    nmSysFree(ptr);
+			return NULL;
+			}
 
     return ptr;
     }
@@ -1112,6 +1178,13 @@ mlxCopyToken(pLxSession this, char* buffer, int maxlen)
 	    mssError(1,"MLX","Unterminated string value");
 	    this->TokType = MLX_TOK_ERROR;
 	    }
+	
+	/** validate buffer; could have copied more from input, thereby avoiding next token's check **/
+	if(this->ValidateFn && this->ValidateFn(buffer) != 0)
+		{
+		mssError(1,"MLX","Invalid characters in string");
+		this->TokType = MLX_TOK_ERROR;
+		}
 
     return len;
     }
@@ -1177,6 +1250,17 @@ mlxSetReservedWords(pLxSession this, char** res_words)
     {
 
     	ASSERTMAGIC(this,MGK_LXSESSION);
+	
+	/** make sure words are valid **/
+	if(this->ValidateFn)
+		{
+		int i = 0;
+		while(res_words[i] != NULL)
+			{
+			if(this->ValidateFn(res_words[i]) != 0) return -1;
+			i++;
+			}
+		}
 
     	/** Set the words **/
 	this->ReservedWords = res_words;
@@ -1306,3 +1390,20 @@ mlxSetOffset(pLxSession this, unsigned long new_offset)
     return 0;
     }
 
+
+/*** mlx_internal_WillSplitChar() - Given the current character, index, and maximum
+ *** length, returns 1 if a utf-8 character would be split, and 0 if the character fits,
+ *** of -1 if the chracter does not fit at all (i.e. buffer is full)
+ ***
+ *** NOTE: in cases where there is room on the buffer, this returns T/F as the name indicates
+ *** If the buffer may be fll, it behaves more like it should be named "isRoomOnBuff" (-1 --> true)
+ ***/
+int 
+mlx_internal_WillSplitUTF8(char c, int ind, int max)
+	{
+	if((unsigned char) c >= (unsigned char) 0xF0 && ind > max-4) return 1; /* cuts 4 byte */
+	else if ((unsigned char) c >= (unsigned char) 0xE0 && ind > max-3) return 1; /* cuts 3 byte */
+	else if ((unsigned char) c >= (unsigned char) 0xC0 && ind > max-2) return 1; /* cuts 2 byte */
+	else if (ind < max ) return 0; /* fits */
+	else return -1; /* buffer is full */
+	}

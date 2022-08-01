@@ -7,6 +7,7 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -20,6 +21,7 @@ test(char** tname)
     pFile fd;
 
 	*tname = "mtlexer-06 integer data, all on one line with eol/eof";
+	setlocale(0, "en_US.UTF-8");
 
 	mssInitialize("system", "", "", 0, "test");
 

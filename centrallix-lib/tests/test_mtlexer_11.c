@@ -6,6 +6,7 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -37,6 +38,7 @@ test(char** tname)
 			};
 
 	*tname = "mtlexer-11 case (in)sensitive keywords and reserved words";
+	setlocale(0, "en_US.UTF-8");
 
 	mssInitialize("system", "", "", 0, "test");
 

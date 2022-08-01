@@ -6,6 +6,7 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -27,6 +28,7 @@ test(char** tname)
 	*tname = "mtlexer-19 enabling/disabling LINEONLY/IFSONLY during parsing";
 
 	mssInitialize("system", "", "", 0, "test");
+	setlocale(0, "en_US.UTF-8");
 
 	iter = 100000;
 	for(i=0;i<iter;i++)

@@ -7,6 +7,7 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -25,6 +26,7 @@ test(char** tname)
     char* tokstr[6];
 
 	*tname = "mtlexer-03 BID#156 - line length based failure";
+	setlocale(0, "en_US.UTF-8");
 
 	mssInitialize("system", "", "", 0, "test");
 

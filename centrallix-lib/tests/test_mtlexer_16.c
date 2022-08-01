@@ -7,6 +7,7 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -24,6 +25,7 @@ test(char** tname)
     pFile fd;
 
 	*tname = "mtlexer-16 comments // # ; -- /**/ short only";
+	setlocale(0, "en_US.UTF-8");
 
 	mssInitialize("system", "", "none", 0, "test");
 

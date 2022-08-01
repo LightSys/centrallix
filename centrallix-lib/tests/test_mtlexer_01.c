@@ -6,6 +6,7 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -18,6 +19,7 @@ test(char** tname)
     char* strval;
     int j;
     char str[65536] = "'hello world'";
+	char str2[65536] = "'Привет мир'";
     int n_flagtype = 4;
     int n_tok = 4;
     int flagtype[4] = {MLX_F_EOF, MLX_F_EOF | MLX_F_EOL, MLX_F_EOL, 0};
@@ -26,6 +28,8 @@ test(char** tname)
 			    {MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_ERROR, MLX_TOK_ERROR},
 			    {MLX_TOK_STRING, MLX_TOK_ERROR, MLX_TOK_ERROR, MLX_TOK_ERROR} };
     char* tokstr[4] = {	"hello world", NULL, NULL, NULL };
+	char* tokstr2[4] = { "Привет мир", NULL, NULL, NULL };
+
 
 	*tname = "mtlexer-01 string token and eol/eof/error test";
 
@@ -49,6 +53,24 @@ test(char** tname)
 		    }
 		}
 	    mlxCloseSession(lxs);
+
+		/** now test utf-8 **/
+		setlocale(0, "en_US.UTF-8");
+		lxs = mlxStringSession(str2, flags);
+	    assert(lxs != NULL);
+	    for(j=0;j<n_tok;j++)
+		{
+		t = mlxNextToken(lxs);
+		assert(t == toktype[i%n_flagtype][j]);
+		if (t == MLX_TOK_STRING)
+		    {
+		    strval = mlxStringVal(lxs, NULL);
+		    assert(strval != NULL);
+		    assert(strcmp(strval,tokstr2[j]) == 0);
+		    }
+		}
+	    mlxCloseSession(lxs);
+		setlocale(0, "C"); /* revert back before next test */
 	    }
 
     return iter;

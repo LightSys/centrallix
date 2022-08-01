@@ -7,6 +7,7 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -23,6 +24,7 @@ test(char** tname)
 	*tname = "mtlexer-20 NODISCARD flag test";
 
 	mssInitialize("system", "", "", 0, "test");
+	setlocale(0, "en_US.UTF-8");
 
 	iter = 60000;
 

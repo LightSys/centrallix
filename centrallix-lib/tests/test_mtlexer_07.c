@@ -7,6 +7,7 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -26,6 +27,7 @@ test(char** tname)
     char* reswds[] = { "reserved", NULL };
 
 	*tname = "mtlexer-07 all tokens, space/tab/noifs with eol";
+	setlocale(0, "en_US.UTF-8");
 
 	mssInitialize("system", "", "", 0, "test");
 
