@@ -50,7 +50,6 @@ static struct
     }
     HTTBTN;
 
-
 /*** httbtnRender - generate the HTML code for the page.
  ***/
 int
@@ -206,11 +205,11 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 
 	/** Initial CSS styles **/
-	htrAddStylesheetItem_va(s,"\t#tb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]WIDTH:%POSpx; Z-INDEX:%POS; OVERFLOW:hidden; display:table; }\n",
+	htrAddStylesheetItem_va(s,"\t#tb%POSpane { POSITION:absolute; VISIBILITY:inherit; OVERFLOW:hidden; display:table; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]WIDTH:%POSpx; Z-INDEX:%POS; }\n",
 		id,
 		x, y, h>=0, h-1-2*box_offset, w-1-2*box_offset, z
 		);
-	htrAddStylesheetItem_va(s, "\t#tb%POSpane .cell { height:100%%; width:100%%; vertical-align:middle; display:table-cell; padding:1px; font-weight:bold; cursor:default; text-align:%STR; border-width:1px; border-style:%STR&CSSVAL; border-color:%STR&CSSVAL; border-radius:%INTpx; color:%STR&CSSVAL; %[text-shadow:1px 1px %STR&CSSVAL; %]%STR }\n",
+	htrAddStylesheetItem_va(s, "\t#tb%POSpane .cell {  height:100%%; width:100%%; vertical-align:middle; display:table-cell; padding:1px; font-weight:bold; cursor:default; border-width:1px; text-align:%STR; border-style:%STR&CSSVAL; border-color:%STR&CSSVAL; border-radius:%INTpx; color:%STR&CSSVAL; %[text-shadow:1px 1px %STR&CSSVAL; %]%STR }\n",
 		/* clipping no longer needed:  0, w-1-2*box_offset+2*clip_offset, h-1-2*box_offset+2*clip_offset, 0, */
 		id,
 		h_align,

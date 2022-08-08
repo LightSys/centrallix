@@ -49,6 +49,12 @@ static struct
     }
     HTEB;
 
+int htebSetup(pHtSession s)
+	{
+	htrAddStylesheetItem_va(s,"\t.ebBase { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; border-style:solid; border-width:1px; }\n");
+	htrAddStylesheetItem_va(s,"\t.ebCon1 { VISIBILITY:inherit; border:none; }\n");
+	return 0;
+	}
 
 /*** htebRender - generate the HTML code for the editbox widget.
  ***/
@@ -149,8 +155,8 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    box_offset = 0;
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#eb%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
-	htrAddStylesheetItem_va(s,"\t#eb%POScon1 { VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; border:none; }\n",id,5,0,w-10,z+1);
+	htrAddStylesheetItem_va(s,"\t#eb%POSbase { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,z);
+	htrAddStylesheetItem_va(s,"\t#eb%POScon1 { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,5,0,w-10,z+1);
 
 	/** Write named global **/
 	htrAddWgtrObjLinkage_va(s, tree, "eb%POSbase",id);
@@ -179,19 +185,19 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    tooltip, descfg, descr);
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"eb%POSbase\">\n",id);
+	htrAddBodyItem_va(s, "<DIV ID=\"eb%POSbase\" class=\"ebBase\">\n",id);
 
 	/** Use CSS border for drawing **/
 	if (is_raised)
-	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: white gray gray white; %STR }\n",id, main_bg);
+	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-color: white gray gray white; %STR }\n",id, main_bg);
 	else
-	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n",id, main_bg);
+	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-color: gray white white gray; %STR }\n",id, main_bg);
 	if (h >= 0)
 	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { height:%POSpx; }\n\t#eb%POScon1 { height:%POSpx; }\n", id, h-2*box_offset, id, h-2*box_offset-2);
 
 	//htrAddBodyItem_va(s, "<table border='0' cellspacing='0' cellpadding='0' width='%POS'><tr><td align='left' valign='middle' height='%POS'><img name='l' src='/sys/images/eb_edg.gif'></td><td>&nbsp;</td><td align='right' valign='middle'><img name='r' src='/sys/images/eb_edg.gif'></td></tr></table>\n", w-2, h-2);
 	//htrAddBodyItem_va(s, "<DIV ID=\"eb%POScon1\"></DIV>\n",id);
-	htrAddBodyItem_va(s, "<img name=\"l\" src=\"/sys/images/eb_edg.gif\" style=\"vertical-align:10%%\" /><input id=\"eb%POScon1\" /><img name=\"r\" src=\"/sys/images/eb_edg.gif\" style=\"vertical-align:10%%\" />\n",id);
+	htrAddBodyItem_va(s, "<img name=\"l\" src=\"/sys/images/eb_edg.gif\" style=\"vertical-align:10%%\" /><input id=\"eb%POScon1\" class=\"ebCon1\" /><img name=\"r\" src=\"/sys/images/eb_edg.gif\" style=\"vertical-align:10%%\" />\n",id);
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
@@ -221,6 +227,7 @@ htebInitialize()
 	strcpy(drv->Name,"DHTML Single-line Editbox Driver");
 	strcpy(drv->WidgetName,"editbox");
 	drv->Render = htebRender;
+	drv->Setup = htebSetup;
 
 	/** Events **/
 	htrAddEvent(drv,"Click");

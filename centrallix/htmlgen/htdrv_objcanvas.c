@@ -48,6 +48,12 @@ static struct
     }
     HTOC;
 
+int htocSetup(pHtSession s)
+	{
+	htrAddStylesheetItem_va(s,"\t.ocBase { POSITION:absolute; VISIBILITY:inherit; }\n");
+
+	return 0;
+	}
 
 /*** htocRender - generate the HTML code for the page.
  ***/
@@ -106,9 +112,9 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 
 	/** Add css item for the layer **/
 	if (s->Capabilities.CSS2)
-	    htrAddStylesheetItem_va(s,"\t#oc%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; overflow: hidden; %STR}\n",id,x,y,w,h,z,main_bg);
+	    htrAddStylesheetItem_va(s,"\t#oc%POSbase { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; overflow: hidden; %STR}\n",id,x,y,w,h,z,main_bg);
 	else
-	    htrAddStylesheetItem_va(s,"\t#oc%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; HEIGHT:%POS; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
+	    htrAddStylesheetItem_va(s,"\t#oc%POSbase { LEFT:%INT; TOP:%INT; WIDTH:%POS; HEIGHT:%POS; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
 
 	htrAddWgtrObjLinkage_va(s, oc_node, "oc%POSbase",id);
 
@@ -128,7 +134,7 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 		name, *osrc, osrc, !*osrc, allow_select, show_select, name);
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"oc%POSbase\">\n",id);
+	htrAddBodyItem_va(s,"<DIV ID=\"oc%POSbase\" class=\"ocBase\">\n",id);
 	if (!s->Capabilities.CSS2) 
 	    htrAddBodyItem_va(s,"<BODY %STR><table width=%POS><tr><td>&nbsp;</td></tr></table>\n",main_bg,w);
 
@@ -158,6 +164,7 @@ htocInitialize()
 	strcpy(drv->Name,"DHTML Pane Driver");
 	strcpy(drv->WidgetName,"objcanvas");
 	drv->Render = htocRender;
+	drv->Setup = htocSetup;
 
 	htrAddEvent(drv,"Click");
 	htrAddEvent(drv,"MouseUp");

@@ -49,6 +49,11 @@ static struct
     }
     HTLBL;
 
+int htlblSetup(pHtSession s)
+	{
+	htrAddStylesheetItem_va(s,"\t.lbl { POSITION:absolute; VISIBILITY:inherit; cursor:default; }\n");
+	return 0;
+	}
 
 /*** htlblRender - generate the HTML code for the label widget.
  ***/
@@ -197,7 +202,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    form[0]='\0';
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; %[font-weight:bold; %]%[color:%STR&CSSVAL; %]%[font-size:%POSpx; %]text-align:%STR&CSSVAL; vertical-align:%STR&CSSVAL; %[white-space:nowrap; %]%[text-overflow:ellipsis; overflow:hidden; %]%[font-style:italic; %]}\n",
+	htrAddStylesheetItem_va(s,"\t#lbl%POS { LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]WIDTH:%POSpx; Z-INDEX:%POS; %[font-weight:bold; %]%[color:%STR&CSSVAL; %]%[font-size:%POSpx; %]text-align:%STR&CSSVAL; vertical-align:%STR&CSSVAL; %[white-space:nowrap; %]%[text-overflow:ellipsis; overflow:hidden; %]%[font-style:italic; %]}\n",
 		id,x,y,
 		!auto_height, h,
 		w,z, 
@@ -225,7 +230,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "lbl", "lbl_mousemove");
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, NULL, "<p><span>%STR&HTENLBR</span></p>", text);
+	htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, "lbl", "<p><span>%STR&HTENLBR</span></p>", text);
 
 	/** Check for more sub-widgets **/
 	htrRenderSubwidgets(s, tree, z+1);
@@ -252,6 +257,7 @@ htlblInitialize()
 	strcpy(drv->Name,"DHTML Single-line Label Driver");
 	strcpy(drv->WidgetName,"label");
 	drv->Render = htlblRender;
+	drv->Setup = htlblSetup;
 
 	/** Events **/ 
 	htrAddEvent(drv,"Click");

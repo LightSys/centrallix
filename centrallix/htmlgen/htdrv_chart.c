@@ -51,6 +51,12 @@ static struct
     int idcnt;
 } HTCHT;
 
+int htchtSetup(pHtSession s)
+	{
+	htrAddStylesheetItem_va(s, "\t.chtChart { POSITION:absolute; VISIBILITY:inherit; }\n");
+	return 0;	
+	}
+
 int
 htchtCheckBrowserSupport(pHtSession session)
     {
@@ -328,7 +334,7 @@ htchtGenHTML(pHtSession session, pWgtrNode tree, int z)
 
         htchtGetCanvasId(tree, buf, sizeof(buf));
 
-        htrAddBodyItem_va(session,"<DIV ID=\"%STR&SYMdiv\"><CANVAS ID=\"%STR&SYM\" width=\"%POS\" height=\"%POS\">\n",
+        htrAddBodyItem_va(session,"<DIV ID=\"%STR&SYMdiv\" class=\"chtChart\"><CANVAS ID=\"%STR&SYM\" width=\"%POS\" height=\"%POS\">\n",
 		buf,
 		buf,
 		htchtGetWidth(tree),
@@ -338,7 +344,7 @@ htchtGenHTML(pHtSession session, pWgtrNode tree, int z)
         htrAddBodyItem(session,"<P>CHART HERE</P>\n");
         htrAddBodyItem(session,"</CANVAS></DIV>\n");
 
-	htrAddStylesheetItem_va(session, "\t#%STR&SYMdiv { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; } \n",
+	htrAddStylesheetItem_va(session, "\t#%STR&SYMdiv { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; } \n",
 		buf,
 		htchtGetX(tree),
 		htchtGetY(tree),
@@ -391,6 +397,7 @@ htchtInitialize()
         strcpy(drv->Name, "DHTML Chart Driver");
         strcpy(drv->WidgetName, "chart");
         drv->Render = htchtRender;
+	drv->Setup = htchtSetup;
         xaAddItem(&(drv->PseudoTypes), "chart-axis");
         xaAddItem(&(drv->PseudoTypes), "chart-series");
 

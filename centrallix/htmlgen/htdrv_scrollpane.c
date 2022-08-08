@@ -50,6 +50,13 @@ static struct
     }
     HTSPANE;
 
+int htspaneSetup(pHtSession s)
+	{
+	htrAddStylesheetItem_va(s,"\t.spThum { POSITION:absolute; VISIBILITY:inherit; TOP:18px; WIDTH:18px; }\n");
+	htrAddStylesheetItem_va(s,"\t.spArea { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; }\n");
+	htrAddStylesheetItem_va(s,"\t.spPane { POSITION:absolute; }\n");
+	return 0;	
+	}
 
 /*** htspaneRender - generate the HTML code for the page.
  ***/
@@ -115,14 +122,6 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	    if (!strcmp(ptr,"false")) visible = 0;
 	    }
 
-	/** Ok, write the style header items. **/
-	if (s->Capabilities.Dom0NS)
-	    {
-	    htrAddStylesheetItem_va(s,"\t#sp%POSpane { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; clip:rect(0px,%POSpx,%POSpx,0px); Z-INDEX:%POS; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
-	    htrAddStylesheetItem_va(s,"\t#sp%POSarea { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,w-18,z+1);
-	    htrAddStylesheetItem_va(s,"\t#sp%POSthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:18px; WIDTH:18px; Z-INDEX:%POS; }\n",id,w-18,z+1);
-	    }
-
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "sp_target_img", "null", 0);
 	htrAddScriptGlobal(s, "sp_click_x","0",0);
@@ -142,31 +141,20 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInit_va(s,"    sp_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), aname:\"sp%POSarea\", tname:\"sp%POSthum\"});\n", name,id,id);
 
 	/** HTML body <DIV> elements for the layers. **/
-	if(s->Capabilities.Dom0NS)
+	if(s->Capabilities.Dom1HTML)
 	    {
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSpane\"><TABLE %[bgcolor=\"%STR&HTE\"%] %[background=\"%STR&HTE\"%] border='0' cellspacing='0' cellpadding='0' width='%POS'>", id, *bcolor, bcolor, *bimage, bimage, w);
-	    htrAddBodyItem(s,   "<TR><TD align=right><IMG SRC='/sys/images/ico13b.gif' NAME='u'></TD></TR><TR><TD align=right>");
-	    htrAddBodyItem_va(s,"<IMG SRC='/sys/images/trans_1.gif' height='%POSpx' width='18px' name='b'>",h-36);
-	    htrAddBodyItem(s,   "</TD></TR><TR><TD align=right><IMG SRC='/sys/images/ico12b.gif' NAME='d'></TD></TR></TABLE>\n");
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSthum\"><IMG SRC='/sys/images/ico14b.gif' NAME='t'></DIV>\n<DIV ID=\"sp%POSarea\"><table border='0' cellpadding='0' cellspacing='0' width='%POSpx' height='%POSpx'><tr><td>",id,id,w-2,h-2);
-	    }
-	else if(s->Capabilities.Dom1HTML)
-	    {
-	    //htrAddStylesheetItem_va(s,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(0px,%dpx,%dpx,0px); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
-	    //htrAddStylesheetItem_va(s,"\t#sp%darea { HEIGHT: %dpx; WIDTH:%dpx; }\n",id, h, w-18);
-	    //htrAddStylesheetItem_va(s,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:18px; WIDTH:18px; Z-INDEX:%dpx; }\n",id,w-18,z+1);
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSpane\" style=\"POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; clip:rect(0px,%POSpx,%POSpx,0px); Z-INDEX:%POS;\">\n",id,visible?"inherit":"hidden",x,y,w,h,w,h,z);
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSpane\" class=\"spPane\" style=\"VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; clip:rect(0px, %POSpx, %POSpx, 0px); Z-INDEX:%POS;\">\n",id,visible?"inherit":"hidden",x,y,w,h,w,h,z);
 	    htrAddBodyItem_va(s,"<IMG ID=\"sp%POSup\" SRC='/sys/images/ico13b.gif' NAME='u'/>", id);
 	    htrAddBodyItem_va(s,"<IMG ID=\"sp%POSbar\" SRC='/sys/images/trans_1.gif' NAME='b'/>", id);
 	    htrAddBodyItem_va(s,"<IMG ID=\"sp%POSdown\" SRC='/sys/images/ico12b.gif' NAME='d'/>", id);
-	    htrAddStylesheetItem_va(s,"\t#sp%POSup { POSITION: absolute; LEFT: %INTpx; TOP: 0px; }\n",id, w-18);
-	    htrAddStylesheetItem_va(s,"\t#sp%POSbar { POSITION: absolute; LEFT: %INTpx; TOP: 18px; WIDTH: 18px; HEIGHT: %POSpx;}\n",id, w-18, h-36);
-	    htrAddStylesheetItem_va(s,"\t#sp%POSdown { POSITION: absolute; LEFT: %INTpx; TOP: %INTpx; }\n",id, w-18, h-18);
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSthum\" style=\"POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:18px; WIDTH:18px; Z-INDEX:%POS;\"><IMG SRC='/sys/images/ico14b.gif' NAME='t'></DIV>\n", id,w-18,z+1);
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSarea\" style=\"HEIGHT: %POSpx; POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; WIDTH:%POSpx; Z-INDEX:%POS;\">",id,h,w-18,z+1);
+	    htrAddStylesheetItem_va(s,"\t#sp%POSup { POSITION:absolute; LEFT: %INTpx; TOP: 0px; }\n",id, w-18);
+	    htrAddStylesheetItem_va(s,"\t#sp%POSbar { POSITION:absolute; LEFT: %INTpx; TOP: 18px; WIDTH: 18px; HEIGHT: %POSpx;}\n",id, w-18, h-36);
+	    htrAddStylesheetItem_va(s,"\t#sp%POSdown { POSITION:absolute; LEFT: %INTpx; TOP: %INTpx; }\n",id, w-18, h-18);
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSthum\" class=\"spThum\" style=\"LEFT:%INTpx; Z-INDEX:%POS;\"><IMG SRC='/sys/images/ico14b.gif' NAME='t'></DIV>\n", id,w-18,z+1);
+	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSarea\" class=\"spArea\" style=\"HEIGHT: %POSpx; WIDTH:%POSpx; Z-INDEX:%POS;\">",id,h,w-18,z+1);
 	    }
 	else
-	    {
+            {
 	    mssError(1,"HTSPNE","Browser not supported");
 	    }
 
@@ -181,11 +169,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2);
 
 	/** Finish off the last <DIV> **/
-	if(s->Capabilities.Dom0NS)
-	    {
-	    htrAddBodyItem(s,"</td></tr></table></DIV></DIV>\n");
-	    }
-	else if(s->Capabilities.Dom1HTML)
+	if(s->Capabilities.Dom1HTML)
 	    {
 	    htrAddBodyItem(s,"</DIV></DIV>\n");
 	    }
@@ -213,6 +197,7 @@ htspaneInitialize()
 	strcpy(drv->Name,"HTML ScrollPane Widget Driver");
 	strcpy(drv->WidgetName,"scrollpane");
 	drv->Render = htspaneRender;
+	drv->Setup = htspaneSetup;
 
 	/** Events **/ 
 	htrAddEvent(drv,"Click");
