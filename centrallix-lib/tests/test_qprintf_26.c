@@ -12,6 +12,7 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
+    setlocale(0, "en_US.UTF-8");
 
 	*tname = "qprintf-26 %STR&SYM in middle with illegal symbol";
 	iter = 200000;
@@ -29,6 +30,18 @@ test(char** tname)
 	    qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&SYM...", "00identifier");
 	    qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&SYM...", "00identifier");
 	    rval = qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&SYM...", "00identifier");
+	    assert(rval < 0);
+	    assert(buf[43] == '\n');
+	    assert(buf[42] == '\0');
+	    assert(buf[41] == 0xff);
+	    assert(buf[40] == '\0');
+	    assert(buf[3] == '\n');
+	    assert(buf[2] == '\0');
+	    assert(buf[1] == 0xff);
+	    assert(buf[0] == '\0');
+
+	    /* UTF-8 */
+	    rval = qpfPrintf(NULL, buf+4, 36, "εδώ οδός: %STR&SYM...", "ід");
 	    assert(rval < 0);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');

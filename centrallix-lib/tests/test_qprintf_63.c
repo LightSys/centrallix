@@ -12,6 +12,7 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
+    setlocale(0, "en_US.UTF-8");
 
 	*tname = "qprintf-63 %STR&DB64 overflow test";
 	iter = 200000;
@@ -29,6 +30,22 @@ test(char** tname)
 	    assert(rval == 9);
 	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5eg");
 	    assert(rval < 0);
+	    assert(buf[43] == '\n');
+	    assert(buf[42] == '\0');
+	    assert(buf[41] == 0xff);
+	    assert(buf[40] == '\0');
+	    assert(buf[3] == '\n');
+	    assert(buf[2] == '\0');
+	    assert(buf[1] == 0xff);
+	    assert(buf[0] == '\0');
+
+            assert(chrNoOverlong(buf+4) == 0);
+
+            rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "4K6a4K+L4K6k4K6p4K+I");
+	    assert(rval == 15);
+	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "4K6H4K6k4K+BIOCukuCusOCvgSDgrqjgr4DgrqPgr43grp8g4K6J4K6k4K6+4K6w4K6j4K6u4K+N");
+	    assert(rval < 0);
+            assert(chrNoOverlong(buf+4) == 0);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);

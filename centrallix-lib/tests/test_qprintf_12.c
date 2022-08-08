@@ -49,9 +49,15 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(NULL, buf+4, 36, "起 地 。 आदि: %STR में परमेश्वर ने आकाश और पृथ्वी को बनाया", "Сотворил");
+
+	    rval = qpfPrintf(NULL, buf+4, 36, "起 地 。 आदि: %STR में परमेश्वर ने आकाश और पृथ्वी को बनाया", "Сотворил"); /* last char fits */
 	    assert(!strcmp(buf+4, "起 地 。 आदि: Сотвор"));
 	    assert(rval == 143);
+
+		rval = qpfPrintf(NULL, buf+4, 36, "起 地 。 आदि:  %STR में परमेश्वर ने आकाश और पृथ्वी को बनाया", "Сотворил"); /* cut off р */
+	    assert(!strcmp(buf+4, "起 地 。 आदि:  Сотво"));
+	    assert(rval == 144);
+
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);

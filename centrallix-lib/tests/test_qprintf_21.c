@@ -12,6 +12,7 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
+    setlocale(0, "en_US.UTF-8");
 
 	*tname = "qprintf-21 %DBL insertion in middle without overflow";
 	iter = 200000;
@@ -39,6 +40,11 @@ test(char** tname)
 	    assert(buf[2] == '\0');
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
+	    
+	    assert(chrNoOverlong(buf+4) == 0);
+
+	    /* UTF-8 test not required; no characters involved */
+	    
 	    }
 
     return iter*4;

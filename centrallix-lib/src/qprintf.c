@@ -186,6 +186,15 @@ typedef struct
     
 static QPF_t QPF = { n_ext:0, is_init:0 };
 
+/*** qprInitialize() - used to initialize the global flags like a 
+ *** driver would. However, qpf is NOT an os driver.
+ ***/
+void
+qprInitialize(unsigned int flags)
+    {
+	
+	}
+
 int
 qpf_internal_FindStr(const char* haystack, size_t haystacklen, const char* needle, size_t needlelen)
     {
@@ -419,6 +428,8 @@ qpfInitialize()
 /*** qpfOpenSession() - open a new qprintf session.  The session is used for
  *** storing cumulative error information, to make error handling much cleaner
  *** for any caller that wants to do so.
+ ***
+ *** Assumes default values for all flags based on global context (currently just the one flag)
  ***/
 pQPSession
 qpfOpenSession()
@@ -433,6 +444,29 @@ qpfOpenSession()
 	s = (pQPSession)nmMalloc(sizeof(QPSession));
 	if (!s) return NULL;
 	s->Errors = 0;
+	s->Flags = 0;
+/** FIXME: add flag setting here once done */
+    //s->Flags |= some-gobal-struct->the-relivant-field;
+    return s;
+    }
+
+/*** qpfOpenSessionFlags() - Same as qpfOpenSession, but enables session flags to be set directly, 
+ *** trumping global flags
+ ***/
+pQPSession
+qpfOpenSessionFlags(unsigned int flags)
+    {
+    pQPSession s = NULL;
+
+	if (!QPF.is_init) 
+	    {
+	    if (qpfInitialize() < 0) return NULL;
+	    }
+
+	s = (pQPSession)nmMalloc(sizeof(QPSession));
+	if (!s) return NULL;
+	s->Errors = 0;
+	s->Flags = flags;
 
     return s;
     }
@@ -809,6 +843,14 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
 		/** Hard route - may or may not be enough space! **/
 		for(i=0;i<srcsize;i++)
 		    {
+			/* end early if going to split a utf-8 char */
+			if(limit < 2 && (unsigned char)srcbuf[i] >= (unsigned char) 0xC0) limit -= 1;
+			else if(limit >= INT_MAX - 2 && srcsize - i < 2 && (unsigned char)srcbuf[i] >= (unsigned char) 0xC0) break;
+			else if(limit < 3 && (unsigned char)srcbuf[i] >= (unsigned char) 0xE0) limit -= 2;
+			else if(limit >= INT_MAX - 2 && srcsize - i < 3 && (unsigned char)srcbuf[i] >= (unsigned char) 0xE0) break;
+			else if(limit < 4 && (unsigned char)srcbuf[i]  >= (unsigned char) 0xF0) limit -= 3;
+			else if(limit >= INT_MAX - 2 && srcsize - i < 4 && (unsigned char)srcbuf[i] >= (unsigned char) 0xF0) break;
+
 		    if (__builtin_expect(((trans = table->Matrix[(unsigned char)(srcbuf[i])]) != NULL), 0))
 			{
 			tlen = table->MatrixLen[(unsigned char)(srcbuf[i])];
@@ -1393,6 +1435,19 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 				cplen = (*size) - cpoffset - 1;
 				nogrow = 1;
 				}
+				/** adjust bounds to ensure no utf-8 characters are chopped **/
+				if((unsigned char)strval[cplen-1] >= (unsigned char) 0xC0 && cplen >= 1) /* check for any header */
+					{
+					cplen -= 1;
+					}
+				else if((unsigned char)strval[cplen-2] >= (unsigned char) 0xE0 && cplen >= 2) /* check for cut off 3/4 byte */
+					{
+					cplen -= 2;
+					}
+				else if((unsigned char)strval[cplen-3] >= (unsigned char) 0xF0 && cplen >= 3) /* check for cut off 4 byte */
+					{
+					cplen -= 3;
+					}
 			    memcpy((*str)+cpoffset, strval, cplen);
 			    }
 
@@ -1406,7 +1461,24 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 
 	rval = copied;
 
-    error:
+    
+	/** check for possible utf-8 characters split at end. Only a possible problem if in last 3 chracters **/
+	if((unsigned char)(*str)[cpoffset-1] >= (unsigned char) 0xC0 && cpoffset >= 1) /* check for any header */
+		{
+		cpoffset -= 1;
+		}
+	else if((unsigned char)(*str)[cpoffset-2] >= (unsigned char) 0xE0 && cpoffset >= 2) /* check for cut off 3/4 byte */
+		{
+		cpoffset -= 2;
+		}
+	else if((unsigned char)(*str)[cpoffset-3] >= (unsigned char) 0xF0 && cpoffset >= 3) /* check for cut off 4 byte */
+		{
+		cpoffset -= 3;
+		}
+	
+	/* if 3rd to last character is header for 4 bytes (>= 0xF0) then is truncated or invalid byte */
+
+	error:
 	/** Null terminate.  Only case where this does not happen is
 	 ** if size == 0 on the initial call.  Terminator is not counted
 	 ** in the return value.

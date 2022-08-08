@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 #include "qprintf.h"
 #include <assert.h>
 
@@ -58,15 +59,15 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(NULL, buf+4, 1, "起 初 ， 神 創 造 天 地 。");
-		assert(rval == 35);
+	    rval = qpfPrintf(NULL, buf+4, 0, "起 初 ， 神 創 造 天 地 。");
+		assert(rval == -EINVAL);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);
 	    assert(buf[40] == '\0');
 	    assert(buf[39] == 0xff);
 	    assert(buf[5] == 0x7f);
-	    assert(buf[4] == 0x00); /* only byte over written */
+	    assert(buf[4] == 0xFF);
 	    assert(buf[3] == '\n');
 	    assert(buf[2] == '\0');
 	    assert(buf[1] == 0xff);

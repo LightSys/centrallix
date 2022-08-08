@@ -12,6 +12,7 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
+    setlocale(0, "en_US.UTF-8");
 
 	*tname = "qprintf-28 %STR&ESCQ in middle with overflow";
 	iter = 200000;
@@ -31,6 +32,29 @@ test(char** tname)
 	    rval = qpfPrintf(NULL, buf+4, 36, "Here is the str:        '%STR&ESCQ'...", "\"ain't\"");
 	    assert(!strcmp(buf+4, "Here is the str:        '\\\"ain\\'t\\\""));
 	    assert(rval == 39);
+	    assert(buf[43] == '\n');
+	    assert(buf[42] == '\0');
+	    assert(buf[41] == 0xff);
+	    assert(buf[40] == '\0');
+	    assert(buf[3] == '\n');
+	    assert(buf[2] == '\0');
+	    assert(buf[1] == 0xff);
+	    assert(buf[0] == '\0');
+
+	    assert(chrNoOverlong(buf+4) == 0);
+
+	    /* UTF-8*/
+	    rval = qpfPrintf(NULL, buf+4, 36, "εδώ οδός: ....'%STR&ESCQ'...", "\"є'ні\"");
+	    assert(strcmp(buf+4, "εδώ οδός: ....'\\\"є\\'ні\\\"'") == 0);
+	    assert(rval == 38);
+	    assert(chrNoOverlong(buf+4) == 0);
+
+		/** test splitting char **/
+		rval = qpfPrintf(NULL, buf+4, 36, "εδώ οδός: ...'%STR&ESCQ'ώ...", "\"є'ні\"");
+	    assert(strcmp(buf+4, "εδώ οδός: ...'\\\"є\\'ні\\\"'") == 0);
+	    assert(rval == 39);
+	    assert(chrNoOverlong(buf+4) == 0);
+
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);

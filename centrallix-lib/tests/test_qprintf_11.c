@@ -50,10 +50,16 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(NULL, buf+4, 36, "起 %STR 地 。 आदि में परमेश्वर ने आकाश और पृथ्वी को बनाया", "Сотворил");
+
+		rval = qpfPrintf(NULL, buf+4, 36, "起 %STR 地 。 आदि में प", "Сотворил"); /* last char fits off next char */
 	    assert(!strcmp(buf+4, "起 Сотворил 地 。 आद"));
 		assert(chrNoOverlong(buf+4) == 0);
-	    assert(rval == 142);
+	    assert(rval == 52);
+
+	    rval = qpfPrintf(NULL, buf+4, 36, "起 %STR 地 。  आदि में प", "Сотворил"); /* cuts off next char */
+	    assert(!strcmp(buf+4, "起 Сотворил 地 。  आ"));
+		assert(chrNoOverlong(buf+4) == 0);
+	    assert(rval == 53);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);

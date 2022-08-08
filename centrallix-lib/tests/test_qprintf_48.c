@@ -12,6 +12,7 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
+    setlocale(0, "en_US.UTF-8");
 
 	*tname = "qprintf-48 %STR&QUOT in middle without overflow";
 	iter = 200000;
@@ -39,7 +40,24 @@ test(char** tname)
 	    assert(buf[2] == '\0');
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
-	    }
+	    
+        assert(chrNoOverlong(buf+4) == 0);
+
+        qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&QUOT...", "\"சோத\"");
+	    rval = qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&QUOT...", "\"சோத\"");
+	    assert(strcmp(buf+4, "Here is the str: '\\\"சோத\\\"'...") == 0);
+	    assert(rval == 35);
+        assert(chrNoOverlong(buf+4) == 0);
+	    assert(buf[43] == '\n');
+	    assert(buf[42] == '\0');
+	    assert(buf[41] == 0xff);
+	    assert(buf[40] == '\0');
+	    assert(buf[3] == '\n');
+	    assert(buf[2] == '\0');
+	    assert(buf[1] == 0xff);
+	    assert(buf[0] == '\0');
+            
+            }
 
     return iter*4;
     }

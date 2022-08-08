@@ -37,8 +37,11 @@ typedef int (*qpf_grow_fn_t)(char**, size_t*, size_t, void*, size_t);
 typedef struct _QPS
     {
     unsigned int	Errors;		/* QPF_ERR_T_xxx */
+    unsigned int    Flags;
     }
     QPSession, *pQPSession;
+
+#define QPF_F_ENFORCE_UTF8  1 /* use UTF-8 validation */
 
 #define QPF_ERR_T_NOTIMPL	1	/* unimplemented feature */
 #define QPF_ERR_T_BUFOVERFLOW	2	/* dest buffer too small */
@@ -58,7 +61,9 @@ typedef struct _QPS
 #define QPERR(x) (s->Errors |= (x))
 
 /*** QPrintf methods ***/
+void qprInitialize();
 pQPSession qpfOpenSession();
+pQPSession qpfOpenSessionFlags(unsigned int flags);
 int qpfCloseSession(pQPSession s);
 int qpfClearErrors(pQPSession s);
 unsigned int qpfErrors(pQPSession s);
