@@ -268,6 +268,17 @@ nht_i_ConnHandler(void* conn_v)
 		w_timer = conn->NhtSession->WatchdogTimer;
 		i_timer = conn->NhtSession->InactivityTimer;
 		}
+	    else
+		{
+		if (strncmp(conn->Cookie, (conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie, strlen((conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie)) == 0 && conn->Cookie[strlen((conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie)] == '=' && strspn(strchr(conn->Cookie, '=') + 1, "abcdef0123456789") == 32)
+		    {
+		    /** Valid Authorization header but cookie expired.  Force re-login. **/
+		    nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
+		    nht_i_AddResponseHeaderQPrintf(conn, "Set-Cookie", "%STR=%STR&32LEN; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT", (conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie, strchr(conn->Cookie, '=') + 1);
+		    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
+		    goto out;
+		    }
+		}
 	    }
 	else
 	    {
