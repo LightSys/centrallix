@@ -163,15 +163,19 @@ nht_i_ConnHandler(void* conn_v)
     time_t t;
     struct tm* timeptr;
     char timestr[80];
-    pNhtApp app;
-    pNhtAppGroup group;
+    pNhtApp app = NULL;
+    pNhtAppGroup group = NULL;
     int context_started = 0;
     pApplication tmp_app = NULL;
     unsigned char* keydata;
     char* nonce;
     unsigned char noncelen;
     int cnt, i;
+    long long n;
     char hexval[17] = "0123456789abcdef";
+    char* cookie_prefix;
+    int cred_valid = 0;
+    int akey_valid = 0;
 
 	/** Set the thread's name **/
 	thSetName(NULL,"HTTP Connection Handler");
@@ -246,18 +250,47 @@ nht_i_ConnHandler(void* conn_v)
 	/** Check for a cookie -- if one, try to resume a session. **/
 	if (*(conn->Cookie))
 	    {
+	    /** Lookup the cookie in our session list **/
 	    if (conn->Cookie[strlen(conn->Cookie)-1] == ';') conn->Cookie[strlen(conn->Cookie)-1] = '\0';
 	    conn->NhtSession = (pNhtSessionData)xhLookup(&(NHT.CookieSessions), conn->Cookie);
 	    if (conn->NhtSession)
 	        {
 		nht_i_LinkSess(conn->NhtSession);
+
+		/** Active session - compare credentials with session data **/
 		if (strcmp(conn->NhtSession->Username,usrname) || strcmp(passwd,conn->NhtSession->Password))
 		    {
 		    nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
-		    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
 		    mssError(1,"NHT","Bark! User supplied valid cookie %s but cred mismatch (sesslink %d, provided %s, stored %s)", conn->Cookie, conn->NhtSession->LinkCnt, usrname, conn->NhtSession->Username);
+
+		    /** Insert a synthetic delay to deter brute forcing in a
+		     ** cookie theft situation.  Yield occasionally, to mitigate
+		     ** against DoS.  Alternative:  destroy the session right
+		     ** away, but that has the disadvantage of affecting the
+		     ** real user.  We may switch our tactic on this in the
+		     ** future.
+		     **/
+		    for(n=i=0; i<25000000; i++)
+			{
+			if (i % 2500000 == 0)
+			    thYield();
+			n += i;
+			}
+
+		    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
+
 		    goto out;
 		    }
+		else
+		    {
+		    /** Remember that we already checked the credentials
+		     ** via comparing with the session data.  This is redundant,
+		     ** as it is invariant with a valid NhtSession, but we do
+		     ** it this way for maximum clarity.
+		     **/
+		    cred_valid = 1;
+		    }
+
 		if (conn->NhtSession->Session)
 		    {
 		    thSetParam(NULL,"mss",conn->NhtSession->Session);
@@ -268,31 +301,49 @@ nht_i_ConnHandler(void* conn_v)
 		w_timer = conn->NhtSession->WatchdogTimer;
 		i_timer = conn->NhtSession->InactivityTimer;
 		}
-	    else
-		{
-		if (strncmp(conn->Cookie, (conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie, strlen((conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie)) == 0 && conn->Cookie[strlen((conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie)] == '=' && strspn(strchr(conn->Cookie, '=') + 1, "abcdef0123456789") == 32)
-		    {
-		    /** Valid Authorization header but cookie expired.  Force re-login. **/
-		    nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
-		    nht_i_AddResponseHeaderQPrintf(conn, "Set-Cookie", "%STR=%STR&32LEN; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT", (conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie, strchr(conn->Cookie, '=') + 1);
-		    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
-		    goto out;
-		    }
-		}
 	    }
 	else
 	    {
+	    /** No cookie supplied, thus no session. **/
 	    conn->NhtSession = NULL;
 	    }
 
+	/** Attempt authentication.  If we already checked the credentials,
+	 ** then we just set up a session here without checking again, since
+	 ** checking against the auth database is inherently a slow process.
+	 **/
+	if (mssAuthenticate(usrname, passwd, cred_valid) < 0)
+	    {
+	    nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
+	    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
+	    mssError(1, "NHT", "Failed login attempt for user '%s'", usrname);
+	    goto out;
+	    }
+	else
+	    {
+	    cred_valid = 1;
+	    }
+
 	/** Parse out the requested url **/
-	/*printf("debug: %s\n",urlptr);*/
 	url_inf = conn->ReqURL = htsParseURL(conn->URL);
 	if (!url_inf)
 	    {
 	    nht_i_WriteErrResponse(conn, 500, "Internal Server Error", "<h1>500 Internal Server Error</h1>\r\n");
 	    mssError(1,"NHT","Failed to handle HTTP request, exiting thread (could not parse URL).");
 	    goto out;
+	    }
+
+	/** Validate akey (CSRF token / app linking token), if supplied **/
+	if (conn->NhtSession)
+	    {
+	    akey_inf = stLookup_ne(url_inf, "cx__akey");
+	    if (akey_inf)
+		{
+		if (nht_i_VerifyAKey(akey_inf->StrVal, conn->NhtSession, &group, &app) == 0)
+		    {
+		    akey_valid = 1;
+		    }
+		}
 	    }
 
 	/** If there is a date code, strip the code off **/
@@ -330,22 +381,18 @@ nht_i_ConnHandler(void* conn_v)
 		else
 		    {
 		    /** Update watchdogs on app and group, if specified **/
-		    find_inf = stLookup_ne(url_inf,"cx__akey");
-		    if (find_inf)
+		    if (akey_valid)
 			{
-			if (nht_i_VerifyAKey(find_inf->StrVal, conn->NhtSession, &group, &app) == 0)
+			/** session key matched... now update app and group **/
+			if (app)
 			    {
-			    /** session key matched... now update app and group **/
-			    if (app)
-				{
-				conn->App = nht_i_LinkApp(app);
-				nht_i_ResetWatchdog(app->WatchdogTimer);
-				}
-			    if (group)
-				{
-				conn->AppGroup = nht_i_LinkAppGroup(group);
-				nht_i_ResetWatchdog(group->WatchdogTimer);
-				}
+			    conn->App = nht_i_LinkApp(app);
+			    nht_i_ResetWatchdog(app->WatchdogTimer);
+			    }
+			if (group)
+			    {
+			    conn->AppGroup = nht_i_LinkAppGroup(group);
+			    nht_i_ResetWatchdog(group->WatchdogTimer);
 			    }
 			}
 
@@ -361,7 +408,8 @@ nht_i_ConnHandler(void* conn_v)
 			    }
 			}
 		    nht_i_WriteResponse(conn, 200, "OK", NULL);
-		    nht_i_QPrintfConn(conn, 0, "<A HREF=/ TARGET='%STR&HTE'></A>\r\n", timestr);
+		    i = nht_i_WatchdogTime(i_timer);
+		    nht_i_QPrintfConn(conn, 0, "<A HREF=\"%INT\" TARGET='%STR&HTE'></A>\r\n", i, timestr);
 		    goto out;
 		    }
 		}
@@ -397,19 +445,21 @@ nht_i_ConnHandler(void* conn_v)
 	/** No cookie or no session for the given cookie? **/
 	if (!conn->NhtSession)
 	    {
+	    /** Expired cookie?  Force logout. **/
+	    cookie_prefix = (conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie;
+	    if (strncmp(conn->Cookie, cookie_prefix, strlen(cookie_prefix)) == 0 && conn->Cookie[strlen(cookie_prefix)] == '=' && strspn(strchr(conn->Cookie, '=') + 1, "abcdef0123456789") == 32)
+		{
+		nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
+		nht_i_AddResponseHeaderQPrintf(conn, "Set-Cookie", "%STR=%STR&32LEN; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT", (conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie, strchr(conn->Cookie, '=') + 1);
+		nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
+		goto out;
+		}
+
 	    /** No session, and the connection is a 'non-activity' request? **/
 	    if (conn->NotActivity)
 		{
 		conn->NoCache = 1;
 		nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR></A>\r\n");
-		goto out;
-		}
-
-	    /** Attempt authentication **/
-	    if (mssAuthenticate(usrname, passwd) < 0)
-	        {
-		nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
-		nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
 		goto out;
 		}
 
@@ -420,14 +470,13 @@ nht_i_ConnHandler(void* conn_v)
 	    }
 
 	/** Start the application security context **/
-	akey_inf = stLookup_ne(url_inf,"cx__akey");
 	if (conn->NhtSession && conn->NhtSession->Session)
 	    {
 	    cxssPushContext();
 	    context_started = 1;
 
 	    /** If a valid akey was specified, resume the application **/
-	    if (akey_inf && nht_i_VerifyAKey(akey_inf->StrVal, conn->NhtSession, &group, &app) == 0 && group && app)
+	    if (akey_valid && group && app)
 		{
 		appResume(app->Application);
 		if (!conn->App)

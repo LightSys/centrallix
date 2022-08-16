@@ -1511,7 +1511,7 @@ start(void* v)
 	else
 	    pwd = TESTOBJ.Password;
 
-	if (mssAuthenticate(user,pwd) < 0)
+	if (mssAuthenticate(user, pwd, 0) < 0)
 	    puts("Warning: auth failed, running outside session context.");
 	TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR | O_CREAT | O_TRUNC, 0600);
 	if (!TESTOBJ.Output)

@@ -388,6 +388,7 @@ pNhtSessionData nht_i_AllocSession(char* usrname, int using_tls);
 handle_t nht_i_AddWatchdog(int timer_msec, int (*expire_fn)(), void* expire_arg);
 int nht_i_RemoveWatchdog(handle_t th);
 void nht_i_Watchdog(void* v);
+int nht_i_WatchdogTime(handle_t th);
 
 int nht_i_VerifyAKey(char* client_key, pNhtSessionData sess, pNhtAppGroup *group, pNhtApp *app);
 
