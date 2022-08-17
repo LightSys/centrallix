@@ -584,6 +584,13 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
     int ix;
     int req_size = (.75 * src_size) + *dst_offset + 1; /** fmul could truncate when cast to int hence +1 **/
 
+	/** Verify source data is correct length for base 64 **/
+	if (src_size % 4 != 0)
+	    {
+	    QPERR(QPF_ERR_T_BADCHAR);
+	    return -1;
+	    }
+
 	/** Grow dstbuf if necessary and possible, otherwise return error **/
 	if (req_size > *dst_size)
 	    {
@@ -601,7 +608,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 	    {
 	    /** First 6 bits. **/
 	    ptr = strchr(b64,src[0]);
-	    if (!ptr) 
+	    if (!ptr || !*ptr)
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -611,7 +618,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 
 	    /** Second six bits are split between cursor[0] and cursor[1] **/
 	    ptr = strchr(b64,src[1]);
-	    if (!ptr)
+	    if (!ptr || !*ptr)
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -627,7 +634,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 		break;
 		}
 	    ptr = strchr(b64,src[2]);
-	    if (!ptr)
+	    if (!ptr || !*ptr)
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -643,8 +650,9 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 		break;
 		}
 	    ptr = strchr(b64,src[3]);
-	    if (!ptr)
+	    if (!ptr || !*ptr)
 	        {
+		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
 		}
 	    ix = ptr-b64;
