@@ -298,6 +298,7 @@ typedef struct
     char	Method[16];
     char	HTTPVer[16];
     char	Cookie[160];
+    char	AllCookies[640];
     char	Auth[160];
     char	Destination[256];
     char	IfModifiedSince[64];
@@ -365,6 +366,7 @@ typedef struct
     pSemaphore	CollectedConns;
     pSemaphore	CollectedTLSConns;
     pCxssKeystreamState NonceData;
+    unsigned char   LoginKey[32];	/* 256-bit hash secret for Basic auth logins */
     }
     NHT_t;
 

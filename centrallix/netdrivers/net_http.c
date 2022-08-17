@@ -1,6 +1,7 @@
 #include "net_http.h"
 #include "cxss/cxss.h"
 #include "cxlib/memstr.h"
+#include "cxlib/strtcpy.h"
 #include "json/json.h"
 
 /************************************************************************/
@@ -564,6 +565,7 @@ nht_i_AddHeader(pXArray hdrlist, char* hdrname, char* hdrvalue, int hdralloc)
     pHttpHeader hdr;
     int i;
 
+#if 00
 	/** Already present? **/
 	for(i=0;i<hdrlist->nItems;i++)
 	    {
@@ -587,6 +589,7 @@ nht_i_AddHeader(pXArray hdrlist, char* hdrname, char* hdrvalue, int hdralloc)
 		return 0;
 		}
 	    }
+#endif
 
 	/** Don't add a NULL header **/
 	if (!hdrvalue) return 0;
@@ -2936,9 +2939,11 @@ nht_i_ParseHeaders(pNhtConn conn)
 	    else if (!strcmp(hdr,"cookie"))
 	        {
 		/** Copy whole thing. **/
+		conn->AllCookies[0] = '\0';
 		mlxSetOptions(s,MLX_F_IFSONLY);
 		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected str after Cookie:"; goto error; }
 		mlxCopyToken(s,conn->Cookie,sizeof(conn->Cookie));
+		strtcpy(conn->AllCookies + strlen(conn->AllCookies), conn->Cookie, sizeof(conn->AllCookies) - strlen(conn->AllCookies));
 		while((toktype = mlxNextToken(s)))
 		    {
 		    if (toktype == MLX_TOK_EOL || toktype == MLX_TOK_ERROR) break;
@@ -2946,10 +2951,16 @@ nht_i_ParseHeaders(pNhtConn conn)
 		    if (!conn->UsingTLS && toktype == MLX_TOK_STRING && (strncmp(conn->Cookie,NHT.SessionCookie,strlen(NHT.SessionCookie)) || conn->Cookie[strlen(NHT.SessionCookie)] != '='))
 			{
 			mlxCopyToken(s,conn->Cookie,sizeof(conn->Cookie));
+			strtcpy(conn->AllCookies + strlen(conn->AllCookies), conn->Cookie, sizeof(conn->AllCookies) - strlen(conn->AllCookies));
 			}
 		    else if (conn->UsingTLS && toktype == MLX_TOK_STRING && (strncmp(conn->Cookie,NHT.TlsSessionCookie,strlen(NHT.TlsSessionCookie)) || conn->Cookie[strlen(NHT.TlsSessionCookie)] != '='))
 			{
 			mlxCopyToken(s,conn->Cookie,sizeof(conn->Cookie));
+			strtcpy(conn->AllCookies + strlen(conn->AllCookies), conn->Cookie, sizeof(conn->AllCookies) - strlen(conn->AllCookies));
+			}
+		    else
+			{
+			mlxCopyToken(s, conn->AllCookies + strlen(conn->AllCookies), sizeof(conn->AllCookies) - strlen(conn->AllCookies));
 			}
 		    }
 		mlxUnsetOptions(s,MLX_F_IFSONLY);
@@ -3179,6 +3190,9 @@ nhtInitialize()
 	NHT.NonceData = cxssKeystreamNew(NULL, 0);
 	if (!NHT.NonceData)
 	    mssError(1, "NHT", "Warning: X-Nonce headers will not be emitted");
+
+	/** Set up secret for login cookie hash **/
+	cxssGenerateKey(NHT.LoginKey, 32);
 
 	/* intialize the regex for netscape 4.7 -- it has a broken gzip implimentation */
 	NHT.reNet47=(regex_t *)nmMalloc(sizeof(regex_t));

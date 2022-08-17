@@ -1,6 +1,8 @@
 #include "net_http.h"
 #include "cxss/cxss.h"
 #include "application.h"
+#include <openssl/sha.h>
+#include <cxlib/qprintf.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -142,6 +144,94 @@ nht_i_Log(pNhtConn conn)
     }
 
 
+/*** nht_i_AddLoginHashCookie - send a response header setting a time-limited
+ *** cookie used for allowing a login.  If the browser does not send a valid
+ *** login hash cookie, authentication will be rejected even if the username
+ *** and password are valid.  This is used to help ensure a browser's cached
+ *** credentials cannot be used to log in.
+ ***/
+int
+nht_i_AddLoginHashCookie(pNhtConn conn)
+    {
+    SHA256_CTX hashctx;
+    long long timestamp;
+    unsigned char nonce[8];
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+
+	/** Get timestamp and nonce **/
+	timestamp = mtLastTick() * 1000LL / NHT.ClkTck;
+	cxssKeystreamGenerate(NHT.NonceData, nonce, sizeof(nonce));
+
+	/** Generate our secure hash **/
+	SHA256_Init(&hashctx);
+	SHA256_Update(&hashctx, nonce, sizeof(nonce));
+	SHA256_Update(&hashctx, NHT.LoginKey, sizeof(NHT.LoginKey));
+	SHA256_Update(&hashctx, (unsigned char*)&timestamp, sizeof(timestamp));
+	SHA256_Update(&hashctx, nonce, sizeof(nonce));
+	SHA256_Update(&hashctx, NHT.LoginKey, sizeof(NHT.LoginKey));
+	SHA256_Update(&hashctx, (unsigned char*)&timestamp, sizeof(timestamp));
+	SHA256_Final(hash, &hashctx);
+
+	/** Send the header **/
+	nht_i_AddResponseHeaderQPrintf(conn, "Set-Cookie", "CXLH=%8STR&HEX%8STR&HEX%*STR&HEX; Max-Age=60; HttpOnly; SameSite=Strict; Path=/",
+		nonce,
+		(unsigned char*)&timestamp,
+		SHA256_DIGEST_LENGTH,
+		hash
+		);
+
+    return 0;
+    }
+
+
+/*** nht_i_CheckLoginHashCookie - check whether a valid login hash cookie was
+ *** provided with the request.
+ ***/
+int
+nht_i_CheckLoginHashCookie(pNhtConn conn)
+    {
+    char hex[] = "0123456789abcdef";
+    SHA256_CTX hashctx;
+    long long timestamp, cur_timestamp;
+    unsigned char nonce[8];
+    unsigned char decode[256];
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    char* cookieptr;
+
+	cur_timestamp = mtLastTick() * 1000LL / NHT.ClkTck;
+	cookieptr = conn->AllCookies;
+	while((cookieptr = strstr(cookieptr, "CXLH=")) != NULL)
+	    {
+	    if (strspn(cookieptr + 5, hex) == (SHA256_DIGEST_LENGTH + sizeof(nonce) + sizeof(timestamp)) * 2)
+		{
+		/** Extract the pieces **/
+		qpfPrintf(NULL, (char*)decode, sizeof(decode), "%16STR&DHEX", cookieptr + 5);
+		memcpy(nonce, decode, sizeof(nonce));
+		qpfPrintf(NULL, (char*)decode, sizeof(decode), "%16STR&DHEX", cookieptr + 5 + (sizeof(nonce) * 2));
+		memcpy((char*)&timestamp, decode, sizeof(timestamp));
+		qpfPrintf(NULL, (char*)decode, sizeof(decode), "%16STR&DHEX", cookieptr + 5 + (sizeof(nonce) * 2) + (sizeof(timestamp) * 2));
+
+		/** Recompute the hash **/
+		SHA256_Init(&hashctx);
+		SHA256_Update(&hashctx, nonce, sizeof(nonce));
+		SHA256_Update(&hashctx, NHT.LoginKey, sizeof(NHT.LoginKey));
+		SHA256_Update(&hashctx, (unsigned char*)&timestamp, sizeof(timestamp));
+		SHA256_Update(&hashctx, nonce, sizeof(nonce));
+		SHA256_Update(&hashctx, NHT.LoginKey, sizeof(NHT.LoginKey));
+		SHA256_Update(&hashctx, (unsigned char*)&timestamp, sizeof(timestamp));
+		SHA256_Final(hash, &hashctx);
+
+		/** Does it match, and is it within the last minute? **/
+		if (memcmp(hash, decode, sizeof(hash)) == 0 && cur_timestamp >= timestamp && (cur_timestamp - timestamp) <= 60000)
+		    return 0;
+		}
+	    cookieptr++;
+	    }
+
+    return -1;
+    }
+
+
 /*** nht_i_ConnHandler - manages a single incoming HTTP connection
  *** and processes the connection's request.
  ***/
@@ -233,6 +323,7 @@ nht_i_ConnHandler(void* conn_v)
 	if (!*(conn->Auth))
 	    {
 	    nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
+	    nht_i_AddLoginHashCookie(conn);
 	    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
 	    goto out;
 	    }
@@ -306,6 +397,24 @@ nht_i_ConnHandler(void* conn_v)
 	    {
 	    /** No cookie supplied, thus no session. **/
 	    conn->NhtSession = NULL;
+	    }
+
+	/** If the user is logging in initially, ensure they are doing so
+	 ** with a valid login hash cookie (CXLH).
+	 **/
+	if (!cred_valid && nht_i_CheckLoginHashCookie(conn) < 0)
+	    {
+	    nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
+
+	    /** Also deal with expired session cookie? **/
+	    cookie_prefix = (conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie;
+	    if (!conn->NhtSession && strncmp(conn->Cookie, cookie_prefix, strlen(cookie_prefix)) == 0 && conn->Cookie[strlen(cookie_prefix)] == '=' && strspn(strchr(conn->Cookie, '=') + 1, "abcdef0123456789") == 32)
+		{
+		nht_i_AddResponseHeaderQPrintf(conn, "Set-Cookie", "%STR=%STR&32LEN; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT", (conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie, strchr(conn->Cookie, '=') + 1);
+		}
+	    nht_i_AddLoginHashCookie(conn);
+	    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
+	    goto out;
 	    }
 
 	/** Attempt authentication.  If we already checked the credentials,
@@ -451,6 +560,7 @@ nht_i_ConnHandler(void* conn_v)
 		{
 		nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
 		nht_i_AddResponseHeaderQPrintf(conn, "Set-Cookie", "%STR=%STR&32LEN; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT", (conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie, strchr(conn->Cookie, '=') + 1);
+		nht_i_AddLoginHashCookie(conn);
 		nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
 		goto out;
 		}
@@ -547,9 +657,13 @@ nht_i_ConnHandler(void* conn_v)
 	/** If the method was GET and an ls__method was specified, use that method **/
 	if (!strcmp(conn->Method,"get") && (find_inf=stLookup_ne(url_inf,"ls__method")))
 	    {
-	    if (!akey_inf || strncmp(akey_inf->StrVal, conn->NhtSession->SKey, strlen(conn->NhtSession->SKey)))
+	    /** We require a valid CSRF token for use of these other-methods-
+	     ** via-get mechanisms.
+	     **/
+	    if (!akey_valid)
 		{
 		nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR></A>\r\n");
+		mssError(1, "NHT", "Invalid use of ls__method without akey");
 		goto out;
 		}
 	    if (!strcasecmp(find_inf->StrVal,"get"))
