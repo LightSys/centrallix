@@ -523,7 +523,7 @@ function pg_ping_receive()
 	// Inactivity timeout imminent?  We catch this a bit early so the user
 	// doesn't get a 401 on a normal data request.
 	//
-	if (parseInt(link.href) > 0 && parseInt(link.href) < pg_interval + 2000)
+	if (parseInt(link.text) > 0 && parseInt(link.text) < pg_interval + 2000)
 	    {
 	    clearInterval(this.tid);
 	    if (!window.pg_disconnected)

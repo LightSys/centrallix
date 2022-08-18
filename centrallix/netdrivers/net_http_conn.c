@@ -424,6 +424,7 @@ nht_i_ConnHandler(void* conn_v)
 	if (mssAuthenticate(usrname, passwd, cred_valid) < 0)
 	    {
 	    nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
+	    nht_i_AddLoginHashCookie(conn);
 	    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
 	    mssError(1, "NHT", "Failed login attempt for user '%s'", usrname);
 	    goto out;
@@ -518,7 +519,7 @@ nht_i_ConnHandler(void* conn_v)
 			}
 		    nht_i_WriteResponse(conn, 200, "OK", NULL);
 		    i = nht_i_WatchdogTime(i_timer);
-		    nht_i_QPrintfConn(conn, 0, "<A HREF=\"%INT\" TARGET='%STR&HTE'></A>\r\n", i, timestr);
+		    nht_i_QPrintfConn(conn, 0, "<A HREF=\"/\" TARGET='%STR&HTE'>%INT</A>\r\n", timestr, i);
 		    goto out;
 		    }
 		}
