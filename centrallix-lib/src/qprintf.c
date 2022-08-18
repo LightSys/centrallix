@@ -190,9 +190,11 @@ static QPF_t QPF = { n_ext:0, is_init:0 };
  *** driver would. However, qpf is NOT an os driver.
  ***/
 void
-qprInitialize(unsigned int flags)
+qprInitialize(int isUTF8)
     {
-	
+	if(isUTF8) QPF_FLAGS.Flags = QPF_F_ENFORCE_UTF8;
+	else QPF_FLAGS.Flags = 0;
+	return;
 	}
 
 int
@@ -444,9 +446,7 @@ qpfOpenSession()
 	s = (pQPSession)nmMalloc(sizeof(QPSession));
 	if (!s) return NULL;
 	s->Errors = 0;
-	s->Flags = 0;
-/** FIXME: add flag setting here once done */
-    //s->Flags |= some-gobal-struct->the-relivant-field;
+	s->Flags = QPF_FLAGS.Flags;
     return s;
     }
 
@@ -541,6 +541,7 @@ qpf_internal_itoa(char* dst, size_t dstlen, int i)
 
 
 /*** qpf_internal_base64encode() - convert string to base 64 representation
+ *** returns the number of characters added to destination, and modifies dst_offset
  ***/
 int
 qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
@@ -549,7 +550,8 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
     const unsigned char* srcptr = (const unsigned char*)src;
     const unsigned char* origsrc = (const unsigned char*)src;
     char* dstptr;
-    int req_size = ((src_size+2) / 3) * 4 + *dst_offset;
+    int req_size = ((src_size+2) / 3) * 4 + *dst_offset + 1; /* make sure to leave room for null */ 
+	int oldOff = *dst_offset;
 
 	/** Grow dstbuf if necessary and possible, otherwise return error **/
 	if (req_size > *dst_size)
@@ -564,7 +566,7 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
 	dstptr = *dst + *dst_offset;
 	
 	/** Step through src 3 bytes at a time, generating 4 dst bytes for each 3 src **/
-	while(srcptr < origsrc + src_size)
+	while(srcptr < origsrc + src_size) 
 	    {
 	    /** First 6 bits of source[0] --> first byte dst. **/
 	    dstptr[0] = b64[srcptr[0]>>2];
@@ -600,9 +602,9 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
 	    srcptr += 3;
 	    }
 
-	*dst_offset = *dst_offset + (dstptr - *dst);
+	*dst_offset = (dstptr - *dst); //*dst_offset + (dstptr - *dst);
 
-    return dstptr - *dst;
+    return dstptr - *dst - oldOff; //dstptr - *dst;
     }
 
 
@@ -611,11 +613,18 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
 static inline int
 qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
     {
-    char b64[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    char b64[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"; /** FIXME: don't allow \0 in the string... **/
     char* ptr;
     char* cursor;
     int ix;
-    int req_size = (.75 * src_size) + *dst_offset + 1; /** fmul could truncate when cast to int hence +1 **/
+    int req_size = (.75 * src_size) + *dst_offset + 1; /** +1 for null. Valid B64 must be a multiple of 4, so no truncation **/
+    int oldOffset = *dst_offset;
+
+	if(src_size % 4 != 0) /* confirm assumption above is correct. */
+	    {
+	    QPERR(QPF_ERR_T_BADCHAR); 
+	    return -1;
+	    } 
 
 	/** Grow dstbuf if necessary and possible, otherwise return error **/
 	if (req_size > *dst_size)
@@ -634,7 +643,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 	    {
 	    /** First 6 bits. **/
 	    ptr = strchr(b64,src[0]);
-	    if (!ptr) 
+	    if (!ptr || !*ptr) 
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -644,7 +653,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 
 	    /** Second six bits are split between cursor[0] and cursor[1] **/
 	    ptr = strchr(b64,src[1]);
-	    if (!ptr)
+	    if (!ptr || !*ptr)
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -660,7 +669,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 		break;
 		}
 	    ptr = strchr(b64,src[2]);
-	    if (!ptr)
+	    if (!ptr || !*ptr)
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -676,8 +685,9 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 		break;
 		}
 	    ptr = strchr(b64,src[3]);
-	    if (!ptr)
+	    if (!ptr || !*ptr)
 	        {
+		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
 		}
 	    ix = ptr-b64;
@@ -686,13 +696,19 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 	    cursor += 3;
 	    }
 
-	*dst_offset = *dst_offset + cursor - *dst;
+    /* make sure data decoded is valid, if applicable */
+    if(s->Flags & QPF_F_ENFORCE_UTF8 && chrNoOverlong(*dst) != 0)
+	{
+	QPERR(QPF_ERR_T_BADCHAR);
+	return -1;
+	}
 
-    return cursor - *dst;
+    *dst_offset = cursor - *dst; //*dst_offset + cursor - *dst;
+    return *dst_offset - oldOffset; //cursor - *dst;
     }
 
 
-/*** qpf_internal_hexdecode() - convert base 64 to a string representation
+/*** qpf_internal_hexdecode() - convert base 16 to a string representation
  ***/
 static inline int
 qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
@@ -703,6 +719,7 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
     char* cursor;
     int ix;
     int req_size;
+    int oldOffset = *dst_offset;
 
 	/** Required size **/
 	if (src_size%2 == 1)
@@ -710,10 +727,10 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
 	    QPERR(QPF_ERR_T_BADLENGTH);
 	    return -1;
 	    }
-	req_size = src_size/2;
+	req_size = src_size/2 + *dst_offset + 1; /* need to fit decoded data and null */
 
 	/** Grow dstbuf if necessary and possible, otherwise return error **/
-	if (req_size > *dst_size)
+	if (req_size > *dst_size) 
 	    {
 	    if(grow_fn == NULL || !grow_fn(dst, dst_size, 0, grow_arg, req_size))
 		{
@@ -729,7 +746,7 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
 	    {
 	    /** First 4 bits. **/
 	    ptr = strchr(hex, src[0]);
-	    if (!ptr)
+	    if (!ptr || !*ptr) /* make sure null's are not counted */
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -739,7 +756,7 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
 
 	    /** Second four bits  **/
 	    ptr = strchr(hex, src[1]);
-	    if (!ptr)
+	    if (!ptr || !*ptr)
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -750,10 +767,35 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
 	    src += 2;
 	    cursor += 1;
 	    }
+    
+        /* make sure data decoded is valid, if applicable */
+        if(s->Flags & QPF_F_ENFORCE_UTF8 && chrNoOverlong(*dst) != 0)
+    	    {
+    	    QPERR(QPF_ERR_T_BADCHAR);
+    	    return -1;
+    	    }
+    
+        *dst_offset = cursor - *dst;  //*dst_offset + cursor - *dst;
 
-	*dst_offset = *dst_offset + cursor - *dst;
+    return *dst_offset - oldOffset; //cursor - *dst;
+    }
 
-    return cursor - *dst;
+/*** numBytesInChar_internal() - computes the number of bytes in a utf-8 char based on 
+ *** the first byte of the character. Returns -1 for a byte which does not indicate the 
+ *** legth of the byte (i.e., anything of the form 10XX XXXX or 1111 10XX would be invalid)
+ *** 
+ *** NOTE: this should not be used to validate characters; overlong forms, UTF-16 surrogate
+ *** halves, and overly large characters starting with 0xF4-0xF7 are not handled
+ ***/
+int
+numBytesInChar_internal(char byte)
+    {
+    if      (!(byte&0x80)) return  1; /* of the form 0XXX XXXX */ 
+    else if (!(byte&0x40)) return -1; /* of the form 10XX XXXX */
+    else if (!(byte&0x20)) return  2; /* of the form 110X XXXX */
+    else if (!(byte&0x10)) return  3; /* of the form 1110 XXXX */
+    else if (!(byte&0x08)) return  4; /* of the form 1111 0XXX */
+    else                   return -1; /* of the form 1111 1XXX */
     }
 
 
@@ -811,9 +853,10 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
     {
     int rval = 0;
     unsigned int tlen;
-    int i;
+    int i, j;
     char* trans;
     int nogrow = (grow_fn == NULL);
+	int charBytes;
 
 	if (srcsize >= SIZE_MAX/2/table->MaxExpand)
 	    return -1;
@@ -843,14 +886,6 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
 		/** Hard route - may or may not be enough space! **/
 		for(i=0;i<srcsize;i++)
 		    {
-			/* end early if going to split a utf-8 char */
-			if(limit < 2 && (unsigned char)srcbuf[i] >= (unsigned char) 0xC0) limit -= 1;
-			else if(limit >= INT_MAX - 2 && srcsize - i < 2 && (unsigned char)srcbuf[i] >= (unsigned char) 0xC0) break;
-			else if(limit < 3 && (unsigned char)srcbuf[i] >= (unsigned char) 0xE0) limit -= 2;
-			else if(limit >= INT_MAX - 2 && srcsize - i < 3 && (unsigned char)srcbuf[i] >= (unsigned char) 0xE0) break;
-			else if(limit < 4 && (unsigned char)srcbuf[i]  >= (unsigned char) 0xF0) limit -= 3;
-			else if(limit >= INT_MAX - 2 && srcsize - i < 4 && (unsigned char)srcbuf[i] >= (unsigned char) 0xF0) break;
-
 		    if (__builtin_expect(((trans = table->Matrix[(unsigned char)(srcbuf[i])]) != NULL), 0))
 			{
 			tlen = table->MatrixLen[(unsigned char)(srcbuf[i])];
@@ -877,18 +912,45 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
 			}
 		    else
 			{
-			if (__builtin_expect(limit > 0, 1))
+			if (__builtin_expect(limit > 0, 1)) 
 			    {
-			    if (__builtin_expect(!nogrow,1) && (__builtin_expect((*dstoffs)+1+min_room <= (*dstsize), 1) || 
-				  (grow_fn(dstbuf, dstsize, *dstoffs, grow_arg, (*dstoffs)+1+min_room))))
+				/** check for UTF-8 **/
+				if(s->Flags & QPF_F_ENFORCE_UTF8)
+				    {
+				    charBytes = numBytesInChar_internal(srcbuf[i]);
+				    if(charBytes == -1)
+				        { 
+				        QPERR(QPF_ERR_T_BADCHAR); /* let caller handle */
+				        charBytes = 1; 
+				        }
+				    }
+				else charBytes = 1;
+
+			    if ((__builtin_expect(!nogrow,1) && (__builtin_expect((*dstoffs)+charBytes+min_room <= (*dstsize), 1)) || 
+				  (grow_fn(dstbuf, dstsize, *dstoffs, grow_arg, (*dstoffs)+charBytes+min_room))))
 				{
-				(*dstbuf)[(*dstoffs)++] = srcbuf[i];
-				limit--;
+				/** make sure the whole chracter fits **/
+				if(charBytes > limit)
+				    {
+				    QPERR(QPF_ERR_T_TRUNC);
+				    limit = 0; /* prevent any other chars from filling in the space */
+				    rval--;
+				    continue;
+				    }
+
+				/* copy over all bytes of char at once */ 
+				for(j = 0 ; j < charBytes ; j++)
+				    {
+			 	    (*dstbuf)[(*dstoffs)++] = srcbuf[i+j];
+				    }
+				i+=j-1;
+				limit -= charBytes;
 				}
 			    else
 				{
 				QPERR(QPF_ERR_T_BUFOVERFLOW);
-				nogrow = 1;
+				/* fix rval to reflect correct value? */
+				break;
 				}
 			    }
 			else
@@ -1436,18 +1498,21 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 				nogrow = 1;
 				}
 				/** adjust bounds to ensure no utf-8 characters are chopped **/
-				if((unsigned char)strval[cplen-1] >= (unsigned char) 0xC0 && cplen >= 1) /* check for any header */
-					{
-					cplen -= 1;
-					}
-				else if((unsigned char)strval[cplen-2] >= (unsigned char) 0xE0 && cplen >= 2) /* check for cut off 3/4 byte */
-					{
-					cplen -= 2;
-					}
-				else if((unsigned char)strval[cplen-3] >= (unsigned char) 0xF0 && cplen >= 3) /* check for cut off 4 byte */
-					{
-					cplen -= 3;
-					}
+				if(s->Flags & QPF_F_ENFORCE_UTF8)
+				    {
+				    if((unsigned char)strval[cplen-1] >= (unsigned char) 0xC0 && cplen >= 1) /* check for any header */
+				        {
+				    	cplen -= 1;
+				    	}
+				    else if((unsigned char)strval[cplen-2] >= (unsigned char) 0xE0 && cplen >= 2) /* check for cut off 3/4 byte */
+				    	{
+				    	cplen -= 2;
+				    	}
+				    else if((unsigned char)strval[cplen-3] >= (unsigned char) 0xF0 && cplen >= 3) /* check for cut off 4 byte */
+				    	{
+				    	cplen -= 3;
+				    	}
+				    }
 			    memcpy((*str)+cpoffset, strval, cplen);
 			    }
 
@@ -1463,18 +1528,21 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 
     
 	/** check for possible utf-8 characters split at end. Only a possible problem if in last 3 chracters **/
-	if((unsigned char)(*str)[cpoffset-1] >= (unsigned char) 0xC0 && cpoffset >= 1) /* check for any header */
-		{
-		cpoffset -= 1;
-		}
-	else if((unsigned char)(*str)[cpoffset-2] >= (unsigned char) 0xE0 && cpoffset >= 2) /* check for cut off 3/4 byte */
-		{
-		cpoffset -= 2;
-		}
-	else if((unsigned char)(*str)[cpoffset-3] >= (unsigned char) 0xF0 && cpoffset >= 3) /* check for cut off 4 byte */
-		{
-		cpoffset -= 3;
-		}
+	if(s->Flags & QPF_F_ENFORCE_UTF8)
+	    {
+	    if((unsigned char)(*str)[cpoffset-1] >= (unsigned char) 0xC0 && cpoffset >= 1) /* check for any header */
+	        {
+	        cpoffset -= 1;
+	        }
+	    else if((unsigned char)(*str)[cpoffset-2] >= (unsigned char) 0xE0 && cpoffset >= 2) /* check for cut off 3/4 byte */
+	    	{
+	    	cpoffset -= 2;
+	    	}
+	    else if((unsigned char)(*str)[cpoffset-3] >= (unsigned char) 0xF0 && cpoffset >= 3) /* check for cut off 4 byte */
+	    	{
+	    	cpoffset -= 3;
+	    	}
+	    }
 	
 	/* if 3rd to last character is header for 4 bytes (>= 0xF0) then is truncated or invalid byte */
 

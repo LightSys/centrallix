@@ -41,6 +41,12 @@ typedef struct _QPS
     }
     QPSession, *pQPSession;
 
+typedef struct _QPS_GLOBAL
+    {
+    unsigned int    Flags;
+    }
+    QPGlobal, *pQPGlobal;
+
 #define QPF_F_ENFORCE_UTF8  1 /* use UTF-8 validation */
 
 #define QPF_ERR_T_NOTIMPL	1	/* unimplemented feature */
@@ -57,11 +63,15 @@ typedef struct _QPS
 #define QPF_ERR_T_BADFILE	2048	/* Bad filename for &FILE filter */
 #define QPF_ERR_T_BADPATH	4096	/* Bad pathname for &PATH filter */
 #define QPF_ERR_T_BADCHAR	8192	/* Bad character for filter (e.g. an octothorpe for &DB64) */
+#define QPF_ERR_T_TRUNC	    16384	/* To avoid splitting a utf-8 char, not all of the space was used */
 
 #define QPERR(x) (s->Errors |= (x))
 
+/*** Global struct ***/
+QPGlobal QPF_FLAGS;
+
 /*** QPrintf methods ***/
-void qprInitialize();
+void qprInitialize(int isUTF8);
 pQPSession qpfOpenSession();
 pQPSession qpfOpenSessionFlags(unsigned int flags);
 int qpfCloseSession(pQPSession s);
