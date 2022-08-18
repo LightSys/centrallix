@@ -12,6 +12,9 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
+    pQPSession session;
+    session = nmSysMalloc(sizeof(QPSession));
+    session->Flags = QPF_F_ENFORCE_UTF8;
     setlocale(0, "en_US.UTF-8");
 
 	*tname = "qprintf-45 %STR&HEX&NLEN in middle, no overflow";
@@ -47,8 +50,9 @@ test(char** tname)
 
 	    assert(chrNoOverlong(buf+4) == 0);
 
-            qpfPrintf(NULL, buf+4, 27, "编: %STR&HEX&18LEN...", "<b c=\"w\">");	    
-            rval = qpfPrintf(NULL, buf+4, 27, "编: %STR&HEX&18LEN...", "<b c=\"w\">");
+	    /** UTF-8 **/
+            qpfPrintf(session, buf+4, 27, "编: %STR&HEX&18LEN...", "<b c=\"w\">");	    
+            rval = qpfPrintf(session, buf+4, 27, "编: %STR&HEX&18LEN...", "<b c=\"w\">");
 	    assert(strcmp(buf+4, "编: 3c6220633d2277223e...") == 0);
 	    assert(chrNoOverlong(buf+4) == 0);
             assert(rval == 26);
@@ -64,6 +68,7 @@ test(char** tname)
 	    assert(buf[0] == '\0');
 	    }
 
+	nmSysFree(session);
     return iter*4;
     }
 

@@ -12,6 +12,9 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
+    pQPSession session;
+    session = nmSysMalloc(sizeof(QPSession));
+    session->Flags = QPF_F_ENFORCE_UTF8;
     setlocale(0, "en_US.UTF-8");
 
 	*tname = "qprintf-29 %STR&ESCQ in middle with overflow of insert";
@@ -44,14 +47,14 @@ test(char** tname)
 	    assert(chrNoOverlong(buf+4) == 0);
 
 	    /* UTF-8 */
-	    rval = qpfPrintf(NULL, buf+4, 36, "εδώ οδός: ......'%STR&ESCQ'...", "\"є'ні\"");
+	    rval = qpfPrintf(session, buf+4, 36, "εδώ οδός: ......'%STR&ESCQ'...", "\"є'ні\"");
 	    assert(strcmp(buf+4, "εδώ οδός: ......'\\\"є\\'ні") == 0);
 	    assert(rval == 40);
 	    assert(chrNoOverlong(buf+4) == 0);
-		/*char split*/
-		rval = qpfPrintf(NULL, buf+4, 36, "εδώ οδός: ......'%STR&ESCQ'...", "\"є'нi.δ\"");
+	    /*char split*/
+	    rval = qpfPrintf(session, buf+4, 36, "εδώ οδός: ......'%STR&ESCQ'...", "\"є'нi.δ\"");
 	    assert(strcmp(buf+4, "εδώ οδός: ......'\\\"є\\'нi.") == 0);
-	    assert(rval == 42);
+	    assert(rval == 41);
 	    assert(chrNoOverlong(buf+4) == 0);
 		
 	    assert(buf[43] == '\n');
@@ -64,6 +67,7 @@ test(char** tname)
 	    assert(buf[0] == '\0');
 	    }
 
+	nmSysFree(session);
     return iter*4;
     }
 

@@ -12,9 +12,12 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
+    pQPSession session;
+    session = nmSysMalloc(sizeof(QPSession));
+    session->Flags = QPF_F_ENFORCE_UTF8;
     setlocale(0, "en_US.UTF-8");
-
 	*tname = "qprintf-34 %STR&ESCQ&NLEN in middle 2 greater than LEN";
+
 	iter = 100000;
 	for(i=0;i<iter;i++)
 	    {
@@ -44,11 +47,11 @@ test(char** tname)
 	    assert(chrNoOverlong(buf+4) == 0);
 
 	    /* UTF-8 */
-		rval = qpfPrintf(NULL, buf+4, 36, "εδώ οδός: '%STR&ESCQ&8LEN'...", "\"є'н\""); /* no char split */
-	    assert(strcmp(buf+4, "εδώ οδός: '\\\"є\\'.'...") == 0);
+	    rval = qpfPrintf(NULL, buf+4, 36, "εδώ οδός: '%STR&ESCQ&8LEN'...", "\"є'н\""); /* no char split */
+	    assert(strcmp(buf+4, "εδώ οδός: '\\\"є\\'н'...") == 0);
 	    assert(rval == 30);
 	    assert(chrNoOverlong(buf+4) == 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "εδώ οδός: '%STR&ESCQ&8LEN'...", "\"є'.н\""); /* char is split */
+	    rval = qpfPrintf(session, buf+4, 36, "εδώ οδός: '%STR&ESCQ&8LEN'...", "\"є'.н\""); /* char is split */
 	    assert(strcmp(buf+4, "εδώ οδός: '\\\"є\\'.'...") == 0);
 	    assert(rval == 29);
 	    assert(chrNoOverlong(buf+4) == 0);
@@ -62,6 +65,7 @@ test(char** tname)
 	    assert(buf[0] == '\0');
 	    }
 
+	nmSysFree(session);
     return iter*4;
     }
 

@@ -12,6 +12,9 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
+    pQPSession session;
+    session = nmSysMalloc(sizeof(QPSession));
+    session->Flags = QPF_F_ENFORCE_UTF8;
     setlocale(0, "en_US.UTF-8");
 
 	*tname = "qprintf-53 Bugtest: &nbsp; following %STR&HTE";
@@ -43,8 +46,9 @@ test(char** tname)
 
             assert(chrNoOverlong(buf+4) == 0);
 
-	    qpfPrintf(NULL, buf+4, 35, "Str: %STR&HTE&nbsp;", "<சோத>");
-	    rval = qpfPrintf(NULL, buf+4, 35, "Str: %STR&HTE&nbsp;", "<சோத>");
+	    /** UTF-8 **/
+	    qpfPrintf(session, buf+4, 35, "Str: %STR&HTE&nbsp;", "<சோத>");
+	    rval = qpfPrintf(session, buf+4, 35, "Str: %STR&HTE&nbsp;", "<சோத>");
 	    assert(strcmp(buf+4, "Str: &lt;சோத&gt;&nbsp;") == 0);
 	    assert(rval == 28);
             
@@ -60,6 +64,7 @@ test(char** tname)
 	    assert(buf[0] == '\0');
 	    }
 
+	nmSysFree(session);
     return iter*4;
     }
 

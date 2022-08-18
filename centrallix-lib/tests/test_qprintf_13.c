@@ -13,6 +13,9 @@ test(char** tname)
     int iter;
     unsigned char buf[44];
     setlocale(0, "en_US.UTF-8");
+    pQPSession session;
+    session = nmSysMalloc(sizeof(QPSession));
+    session->Flags = QPF_F_ENFORCE_UTF8;
 
 	*tname = "qprintf-13 %STR insertion in middle with overflow before STR";
 	iter = 200000;
@@ -44,11 +47,11 @@ test(char** tname)
 	    assert(chrNoOverlong(buf+4) == 0);
 
 	    /* UTF-8 */
-	    rval = qpfPrintf(NULL, buf+4, 36, "溢出这是.......数据 是我们 %STR....", "ΣEIPA");
+	    rval = qpfPrintf(session, buf+4, 36, "溢出这是.......数据 是我们 %STR....", "ΣEIPA");
 	    assert(strcmp(buf+4, "溢出这是.......数据 是我们") == 0);  /* full char fits */
 	    assert(rval == 46);
 
-		rval = qpfPrintf(NULL, buf+4, 36, "溢出这是........数据 是我们 %STR....", "ΣEIPA");
+	    rval = qpfPrintf(session, buf+4, 36, "溢出这是........数据 是我们 %STR....", "ΣEIPA");
 	    assert(strcmp(buf+4, "溢出这是........数据 是我") == 0); /* cut off '们' */
 	    assert(rval == 47);
 
@@ -63,6 +66,7 @@ test(char** tname)
 	    assert(buf[0] == '\0');
 	    }
 
+	nmSysFree(session);
     return iter*4;
     }
 

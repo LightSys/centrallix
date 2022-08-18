@@ -12,6 +12,9 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
+    pQPSession session;
+    session = nmSysMalloc(sizeof(QPSession));
+    session->Flags = QPF_F_ENFORCE_UTF8;
     setlocale(0, "en_US.UTF-8");
 
 	*tname = "qprintf-18 %NSTR insertion in middle with insert overflow";
@@ -44,7 +47,7 @@ test(char** tname)
 	    assert(chrNoOverlong(buf+4) == 0);
 
 	    /* UTF-8 */
-	    rval = qpfPrintf(NULL, buf+4, 36, "ជខ្សែអក្សរ: %8STR....", "ΣEIPA");	    
+	    rval = qpfPrintf(session, buf+4, 36, "ជខ្សែអក្សរ: %8STR....", "ΣEIPA");	    
 	    assert(strcmp(buf+4, "ជខ្សែអក្សរ: ΣE") == 0);
 	    assert(rval == 44);
 	    assert(chrNoOverlong(buf+4) == 0);
@@ -58,6 +61,7 @@ test(char** tname)
 	    assert(buf[0] == '\0');
 	    }
 
+	nmSysFree(session);
     return iter*4;
     }
 

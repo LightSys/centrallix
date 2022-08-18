@@ -12,6 +12,9 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
+    pQPSession session;
+    session = nmSysMalloc(sizeof(QPSession));
+    session->Flags = QPF_F_ENFORCE_UTF8;
     setlocale(0, "en_US.UTF-8");
 
 	*tname = "qprintf-39 %STR&HTE&NLEN in middle, len 1 less";
@@ -44,11 +47,11 @@ test(char** tname)
 	    assert(chrNoOverlong(buf+4) == 0);
 
 	    /* UTF-8 */
-	    rval = qpfPrintf(NULL, buf+4, 36, "超: '%STR&HTE&26LEN'.", "<b c=\"€\">"); /* no char split */
+	    rval = qpfPrintf(session, buf+4, 36, "超: '%STR&HTE&26LEN'.", "<b c=\"€\">"); /* no char split */
 	    assert(strcmp(buf+4, "超: '&lt;b c=&quot;€&quot;'.") == 0);
 	    assert(rval == 31);
 	    assert(chrNoOverlong(buf+4) == 0);
-		rval = qpfPrintf(NULL, buf+4, 36, "超: '%STR&HTE&26LEN'.", "<b c=\"€\".超>"); /* char split */
+	    rval = qpfPrintf(session, buf+4, 36, "超: '%STR&HTE&26LEN'.", "<b c=\"€\".超>"); /* char split */
 	    assert(strcmp(buf+4, "超: '&lt;b c=&quot;€&quot;.'.") == 0);
 	    assert(rval == 32);
 	    assert(chrNoOverlong(buf+4) == 0);
@@ -63,6 +66,7 @@ test(char** tname)
 	    assert(buf[0] == '\0');
 	    }
 
+	nmSysFree(session);
     return iter*4;
     }
 

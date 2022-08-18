@@ -12,6 +12,9 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
+    pQPSession session;
+    session = nmSysMalloc(sizeof(QPSession));
+    session->Flags = QPF_F_ENFORCE_UTF8;
     setlocale(0, "en_US.UTF-8");
 
 	*tname = "qprintf-26 %STR&SYM in middle with illegal symbol";
@@ -41,7 +44,7 @@ test(char** tname)
 	    assert(buf[0] == '\0');
 
 	    /* UTF-8 */
-	    rval = qpfPrintf(NULL, buf+4, 36, "εδώ οδός: %STR&SYM...", "ід");
+	    rval = qpfPrintf(session, buf+4, 36, "εδώ οδός: %STR&SYM...", "ід");
 	    assert(rval < 0);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
@@ -53,6 +56,7 @@ test(char** tname)
 	    assert(buf[0] == '\0');
 	    }
 
+	nmSysFree(session);
     return iter*4;
     }
 

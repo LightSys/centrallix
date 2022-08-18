@@ -41,7 +41,7 @@ test(char** tname)
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
 
-		buf[43] = '\n';
+	    buf[43] = '\n';
 	    buf[42] = '\0';
 	    buf[41] = 0xff;
 	    buf[40] = '\0';
@@ -51,7 +51,7 @@ test(char** tname)
 	    buf[0] = '\0';
 	    rval = snprintf(buf+4, 36, "起 %s 地 。", "Сот");
 	    assert(!strcmp(buf+4,"起 Сот 地 。"));
-		assert(chrNoOverlong(buf+4) == 0);
+	    assert(chrNoOverlong(buf+4) == 0);
 	    assert(rval == 18);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');

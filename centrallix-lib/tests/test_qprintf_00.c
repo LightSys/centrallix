@@ -11,6 +11,9 @@ test(char** tname)
     {
     int i;
     int iter;
+    pQPSession session;
+    session = nmSysMalloc(sizeof(QPSession));
+    session->Flags = QPF_F_ENFORCE_UTF8;
     unsigned char buf[44];
 
 	*tname = "qprintf-00 constant string using snprintf()";
@@ -65,6 +68,7 @@ test(char** tname)
 	    assert(buf[0] == '\0');
 	    }
 
+        nmSysFree(session);
     return iter*4;
     }
 

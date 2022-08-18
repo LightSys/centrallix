@@ -12,6 +12,9 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
+    pQPSession session;
+    session = nmSysMalloc(sizeof(QPSession));
+    session->Flags = QPF_F_ENFORCE_UTF8;
     setlocale(0, "en_US.UTF-8");
 
 	*tname = "qprintf-52 %STR&QUOT at end with overflow(2)";
@@ -47,8 +50,8 @@ test(char** tname)
 
             assert(chrNoOverlong(buf+4) == 0);
 
-	    qpfPrintf(NULL, buf+4, 31, "Str...: %STR&QUOT", "சோத");
-	    rval = qpfPrintf(NULL, buf+4, 31, "Str...: %STR&QUOT", "சோத");
+	    qpfPrintf(session, buf+4, 31, "Str...: %STR&QUOT", "சோத");
+	    rval = qpfPrintf(session, buf+4, 31, "Str...: %STR&QUOT", "சோத");
 	    assert(strcmp(buf+4, "Str...: 'சோத'") == 0);
 	    assert(rval == 19);
             assert(chrNoOverlong(buf+4) == 0);
@@ -65,6 +68,7 @@ test(char** tname)
 	    assert(buf[0] == '\0');
 	    }
 
+	nmSysFree(session);
     return iter*4;
     }
 

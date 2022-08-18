@@ -11,6 +11,9 @@ test(char** tname)
     {
     int i, rval;
     int iter;
+    pQPSession session;
+    session = nmSysMalloc(sizeof(QPSession));
+    session->Flags = QPF_F_ENFORCE_UTF8;
     unsigned char buf[44];
 
 	*tname = "qprintf-55 %STR&FILE valid filename";

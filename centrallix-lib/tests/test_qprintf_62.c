@@ -12,6 +12,9 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
+    pQPSession session;
+    session = nmSysMalloc(sizeof(QPSession));
+    session->Flags = QPF_F_ENFORCE_UTF8;
 	setlocale(0, "en_US.UTF-8");
 	*tname = "qprintf-62 %STR&DB64 integrity test";
 	iter = 200000;

@@ -12,6 +12,9 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
+    pQPSession session;
+    session = nmSysMalloc(sizeof(QPSession));
+    session->Flags = QPF_F_ENFORCE_UTF8;
     setlocale(0, "en_US.UTF-8");
 
 	*tname = "qprintf-65 %STR&B64 overflow test";
@@ -29,6 +32,9 @@ test(char** tname)
 	    rval = qpfPrintf(NULL, (char*)(buf+4), 36, "%STR&B64", "test data");
 	    assert(rval == strlen("dGVzdCBkYXRh"));
 	    rval = qpfPrintf(NULL, (char*)(buf+4), 36, "%STR&B64", "the quick brown fox jumps ov");
+	    assert(rval < 0);
+	    /* has enough room for some chars, but not the next 4 */
+	    rval = qpfPrintf(NULL, (char*)(buf+4), 36, "%STR&B64", "the quick brown fox jumps o");
 	    assert(rval < 0);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');

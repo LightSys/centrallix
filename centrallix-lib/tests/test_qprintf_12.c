@@ -12,6 +12,9 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
+    pQPSession session;
+    session = nmSysMalloc(sizeof(QPSession));
+    session->Flags = QPF_F_ENFORCE_UTF8;
 
 	*tname = "qprintf-12 %STR insertion in middle with overflow in STR";
 	setlocale(0, "en_US.UTF-8");
@@ -41,7 +44,7 @@ test(char** tname)
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
 
-		buf[43] = '\n';
+	    buf[43] = '\n';
 	    buf[42] = '\0';
 	    buf[41] = 0xff;
 	    buf[40] = '\0';
@@ -50,11 +53,11 @@ test(char** tname)
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
 
-	    rval = qpfPrintf(NULL, buf+4, 36, "起 地 。 आदि: %STR में परमेश्वर ने आकाश और पृथ्वी को बनाया", "Сотворил"); /* last char fits */
+	    rval = qpfPrintf(session, buf+4, 36, "起 地 。 आदि: %STR में परमेश्वर ने आकाश और पृथ्वी को बनाया", "Сотворил"); /* last char fits */
 	    assert(!strcmp(buf+4, "起 地 。 आदि: Сотвор"));
 	    assert(rval == 143);
 
-		rval = qpfPrintf(NULL, buf+4, 36, "起 地 。 आदि:  %STR में परमेश्वर ने आकाश और पृथ्वी को बनाया", "Сотворил"); /* cut off р */
+	    rval = qpfPrintf(session, buf+4, 36, "起 地 。 आदि:  %STR में परमेश्वर ने आकाश और पृथ्वी को बनाया", "Сотворил"); /* cut off р */
 	    assert(!strcmp(buf+4, "起 地 。 आदि:  Сотво"));
 	    assert(rval == 144);
 
@@ -68,6 +71,7 @@ test(char** tname)
 	    assert(buf[0] == '\0');
 	    }
 
+	nmSysFree(session);
     return iter*4;
     }
 
