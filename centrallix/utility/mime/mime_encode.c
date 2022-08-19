@@ -119,7 +119,7 @@ libmime_DecodeBase64(char* dst, char* src, int maxdst)
 	    return -1;
 	    }
 	ptr = strchr(b64,src[0]);
-	if (!ptr) 
+	if (!ptr || !*ptr) 
 	    {
 	    mssError(1,"NHT","Illegal protocol character in HTTP encoded data field");
 	    return -1;
@@ -129,7 +129,7 @@ libmime_DecodeBase64(char* dst, char* src, int maxdst)
 
 	/** Second six bits are split between dst[0] and dst[1] **/
 	ptr = strchr(b64,src[1]);
-	if (!ptr)
+	if (!ptr || !*ptr)
 	    {
 	    mssError(1,"NHT","Illegal protocol character in HTTP encoded data field");
 	    return -1;
@@ -148,7 +148,7 @@ libmime_DecodeBase64(char* dst, char* src, int maxdst)
 	    break;
 	    }
 	ptr = strchr(b64,src[2]);
-	if (!ptr)
+	if (!ptr || !*ptr)
 	    {
 	    mssError(1,"NHT","Illegal protocol character in HTTP encoded data field");
 	    return -1;
@@ -167,7 +167,7 @@ libmime_DecodeBase64(char* dst, char* src, int maxdst)
 	    break;
 	    }
 	ptr = strchr(b64,src[3]);
-	if (!ptr)
+	if (!ptr || !*ptr)
 	    {
 	    mssError(1,"NHT","Illegal protocol character in HTTP encoded data field");
 	    return -1;
