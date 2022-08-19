@@ -1286,7 +1286,8 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 					    (cplen == 2 && strval[0] == '.' && strval[1] == '.') ||
 					    memchr(strval, '/', cplen) || 
 					    memchr(strval, '\0', cplen) ||
-					    cplen == 0)
+					    cplen == 0 ||
+					    (s->Flags & QPF_F_ENFORCE_UTF8 && chrNoOverlong(strval) != 0))
 					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADFILE); goto error; }
 				    break;
 
@@ -1298,7 +1299,8 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 					    memchr(strval, '\0', cplen) ||
 					    cplen == 0 ||
 					    (cplen > 2 && strval[cplen-1] == '.' && strval[cplen-2] == '.' && strval[cplen-3] == '/') ||
-					    qpf_internal_FindStr(strval, cplen, "/../", 4) >= 0)
+					    qpf_internal_FindStr(strval, cplen, "/../", 4) >= 0 || 
+					    (s->Flags & QPF_F_ENFORCE_UTF8 && chrNoOverlong(strval) != 0))
 					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADPATH); goto error; }
 				    break;
 

@@ -15,6 +15,7 @@ test(char** tname)
     session = nmSysMalloc(sizeof(QPSession));
     session->Flags = QPF_F_ENFORCE_UTF8;
     unsigned char buf[44];
+    setlocale(0, "en_US.UTF-8");
 
 	*tname = "qprintf-56 %STR&FILE various invalid filenames";
 	iter = 100000;
@@ -50,6 +51,21 @@ test(char** tname)
 	    assert(buf[2] == '\0');
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
+
+	    /** utf-8 **/
+	    rval = qpfPrintf(session, buf+4, 31, "/path/to/%STR&FILE/file", "イル\xFF名.文書");
+	    assert(rval < 0);
+	    rval = qpfPrintf(session, buf+4, 31, "/path/to/%STR&FILE/file", "イル名.文\xe6\x9b");
+	    assert(rval < 0);
+	    rval = qpfPrintf(NULL, buf+4, 31, "/path/to/%STR&FILE/file", "イル名.文\xe6\x9b"); /* without flag, will pass */
+	    assert(rval > 0);
+            
+	    assert(buf[35] == '\n');
+	    assert(buf[3] == '\n');
+	    assert(buf[2] == '\0');
+	    assert(buf[1] == 0xff);
+	    assert(buf[0] == '\0');
+	    
 	    }
 
     return iter*7;

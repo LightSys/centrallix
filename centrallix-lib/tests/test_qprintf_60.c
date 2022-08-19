@@ -15,8 +15,9 @@ test(char** tname)
     session = nmSysMalloc(sizeof(QPSession));
     session->Flags = QPF_F_ENFORCE_UTF8;
     unsigned char buf[44];
-
+    setlocale(0, "en_US.UTF-8");
 	*tname = "qprintf-60 %nSTR&PATH fixed-length insert tests";
+	
 	iter = 200000;
 	for(i=0;i<iter;i++)
 	    {
@@ -47,6 +48,30 @@ test(char** tname)
 	    assert(buf[2] == '\0');
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
+	    
+	    /** UTF-8 **/
+	    rval = qpfPrintf(NULL, buf+4, 31, "/path/to/%8STR&PATH/file", "וק\0ד.");
+	    assert(rval < 0);
+	    rval = qpfPrintf(NULL, buf+4, 31, "/path/to/%8STR&PATH/file", "דוק\0");
+	    assert(rval < 0);
+	    rval = qpfPrintf(NULL, buf+4, 31, "/path/to/%8STR&PATH/file", "\0דוק");
+	    assert(rval < 0);
+	    rval = qpfPrintf(session, buf+4, 31, "/path/to/%8STR&PATH/f", "𓂥_𓅘"); /** chops first char, cut short **/
+	    assert(strcmp( "/path/to/𓂥_/f", buf+4) == 0);
+	    assert(rval == 19);
+	    rval = qpfPrintf(session, buf+4, 31, "/path/to/%8STR&PATH/f", "𓂥𓅘");
+	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(rval == 19);
+
+	    assert(buf[26] == '\n');
+	    assert(buf[25] == '\0');
+	    assert(buf[24] == 0xff);
+	    assert(buf[23] == '\0');
+	    assert(buf[3] == '\n');
+	    assert(buf[2] == '\0');
+	    assert(buf[1] == 0xff);
+	    assert(buf[0] == '\0');
+
 	    }
 
     return iter*5;

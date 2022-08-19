@@ -15,6 +15,7 @@ test(char** tname)
     session = nmSysMalloc(sizeof(QPSession));
     session->Flags = QPF_F_ENFORCE_UTF8;
     unsigned char buf[44];
+    setlocale(0, "en_US.UTF-8");
 
 	*tname = "qprintf-59 %STR&PATH various invalid pathnames";
 	iter = 100000;
@@ -41,6 +42,11 @@ test(char** tname)
 	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH/name", "../");
 	    assert(rval < 0);
 	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH/name", "/../");
+	    assert(rval < 0);
+	    /** utf-8 **/
+	    rval = qpfPrintf(session, buf+4, 31, "/path/%STR&PATH/name", "test\xFF");
+	    assert(rval < 0);
+	    rval = qpfPrintf(session, buf+4, 31, "/path/%STR&PATH/name", "Γειά σο\xCF");
 	    assert(rval < 0);
 	    assert(buf[25] == '\n');
 	    assert(buf[24] == '\0');
