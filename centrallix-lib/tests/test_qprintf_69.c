@@ -30,8 +30,9 @@ test(char** tname)
 	buf[1] = 0xff;
 	buf[0] = '\0';
 	/* TODO: modify these to use &LEN */
-	rval = qpfPrintf(NULL, (char*)(buf+4), 36, "||%STR&B64", "the quick brown fox jump"); /* max len that fits in 36 */
-	assert(0 == strcmp(buf+4, "||dGhlIHF1aWNrIGJyb3duIGZveCBqdW1w"));
+	rval = qpfPrintf(NULL, (char*)(buf+4), 36, "||%STR&8LEN&DB64||", "dGhlIHF1aWNrIGJyb3duIGZveCBqdW1w"); /* max len that fits in 36 */
+printf("%s, %d\n", buf+4, rval);
+	assert(0 == strcmp(buf+4, "||dGhlIHF1aWNrIGJyb3duIGZveCBqdW1w||"));
 
 	rval = qpfPrintf(NULL, (char*)(buf+4), 36, "%STR&B64", "the quick brown fox jumps over the fence");
 	assert(rval < 0);

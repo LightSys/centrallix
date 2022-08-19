@@ -602,9 +602,9 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
 	    srcptr += 3;
 	    }
 
-	*dst_offset = (dstptr - *dst); //*dst_offset + (dstptr - *dst);
+	*dst_offset = (dstptr - *dst); 
 
-    return dstptr - *dst - oldOff; //dstptr - *dst;
+    return dstptr - *dst - oldOff; 
     }
 
 
@@ -856,7 +856,7 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
     int i, j;
     char* trans;
     int nogrow = (grow_fn == NULL);
-	int charBytes;
+    int charBytes, totalBytes;
 
 	if (srcsize >= SIZE_MAX/2/table->MaxExpand)
 	    return -1;
@@ -889,14 +889,28 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
 		    if (__builtin_expect(((trans = table->Matrix[(unsigned char)(srcbuf[i])]) != NULL), 0))
 			{
 			tlen = table->MatrixLen[(unsigned char)(srcbuf[i])];
-			if (__builtin_expect(limit >= tlen, 1))
+			/** if enforcing utf-8, then must make sure full byte will fit. **/
+			/* Determine if full char will fit. If is 1 byte, stays tlen. If middle byte (i.e. 10XX XXXX) was checked before */
+			charBytes = numBytesInChar_internal(srcbuf[i]);
+			totalBytes = tlen; 
+			if(s->Flags & QPF_F_ENFORCE_UTF8 && charBytes >= 2) 
+			    {
+			    for(j = 1 ; j < charBytes ; j++ )
+			        {
+				/** if will sub, need to count on larger size. If not, just needs 1 byte.  **/
+				totalBytes += ((table->Matrix[(unsigned char)(srcbuf[i+j])]) != NULL)?  
+				    table->MatrixLen[(unsigned char)(srcbuf[i+j])] : 1;
+				}
+			    }
+
+			if (__builtin_expect(limit >= totalBytes, 1))
 			    {
 			    rval += (tlen-1);
-			    if (__builtin_expect(!nogrow,1) && (__builtin_expect((*dstoffs)+tlen+min_room <= (*dstsize), 1) || 
-				  (grow_fn(dstbuf, dstsize, *dstoffs, grow_arg, (*dstoffs)+tlen+min_room))))
+			    if (__builtin_expect(!nogrow,1) && (__builtin_expect((*dstoffs)+totalBytes+min_room <= (*dstsize), 1) || 
+				  (grow_fn(dstbuf, dstsize, *dstoffs, grow_arg, (*dstoffs)+totalBytes+min_room))))
 				{
 				while(*trans) (*dstbuf)[(*dstoffs)++] = *(trans++);
-				limit -= tlen;
+				limit -= tlen; /* although room is ensured for totalBytes, only used up tlen so far */
 				}
 			    else
 				{

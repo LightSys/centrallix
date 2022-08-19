@@ -42,6 +42,25 @@ test(char** tname)
 	    assert(buf[2] == '\0');
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
+ 
+            /** test utf-8 overflow **/
+ 	    rval = qpfPrintf(session, buf+4, 31, "Conditional: test=%[utf8: %STR%]", 0, "ジー・ウィズ・ポップス");
+	    assert(!strcmp(buf+4, "Conditional: test="));
+	    assert(rval == 18);
+
+	    rval = qpfPrintf(session, buf+4, 31, "Conditional: test =%[utf8: %STR%]", 1, "ジー・ウィズ・ポップス");
+	    assert(!strcmp(buf+4, "Conditional: test =utf8: ジ"));
+	    assert(rval == 58);
+
+	    assert(buf[38] == '\n');
+	    assert(buf[37] == '\0');
+	    assert(buf[36] == 0xff);
+	    assert(buf[35] == '\0');
+	    assert(buf[3] == '\n');
+	    assert(buf[2] == '\0');
+	    assert(buf[1] == 0xff);
+	    assert(buf[0] == '\0');
+
 	    }
 
     return iter*4;

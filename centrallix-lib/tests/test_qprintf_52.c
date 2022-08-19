@@ -51,9 +51,9 @@ test(char** tname)
             assert(chrNoOverlong(buf+4) == 0);
 
 	    qpfPrintf(session, buf+4, 31, "Str...: %STR&QUOT", "சோத");
-	    rval = qpfPrintf(session, buf+4, 31, "Str...: %STR&QUOT", "சோத");
-	    assert(strcmp(buf+4, "Str...: 'சோத'") == 0);
-	    assert(rval == 19);
+	    rval = qpfPrintf(session, buf+4, 31, "Str...: %STR&QUOT", "............コード");
+	    assert(strcmp(buf+4, "Str...: '............コー'") == 0);
+	    assert(rval == 31);
             assert(chrNoOverlong(buf+4) == 0);
 
 	    assert(buf[39] == '\n');

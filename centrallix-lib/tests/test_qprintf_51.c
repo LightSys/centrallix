@@ -57,7 +57,7 @@ test(char** tname)
 	    rval = qpfPrintf(session, buf+4, 32, "Str...: %STR&QUOT", "\"சோத..சோத\"");
 	    assert(strcmp(buf+4, "Str...: '\\\"சோத..சோ'") == 0);
             assert(rval == 33);
-	    assert(strlen(buf+4) == 29); /* cut off 3 bytes (to not split char) so 2 shorter */
+	    assert(strlen(buf+4) == 29); /*added 1 char, which cut off 3 bytes (to not split char) so 2 shorter */
 
 	    assert(buf[39] == '\n');
 	    assert(buf[38] == '\0');
