@@ -15,7 +15,7 @@ test(char** tname)
     pQPSession session;
     session = nmSysMalloc(sizeof(QPSession));
     session->Flags = QPF_F_ENFORCE_UTF8;
-	setlocale(0, "en_US.UTF-8");
+    setlocale(0, "en_US.UTF-8");
 	*tname = "qprintf-62 %STR&DB64 integrity test";
 	iter = 200000;
 	for(i=0;i<iter;i++)
@@ -58,6 +58,10 @@ test(char** tname)
 	    assert(rval < 0);
 	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "4K6a4K+L4K6k4K6p#4K+I");
 	    assert(rval < 0);
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DB64", "4K6a4K+L4K6k4K6p4K+="); /* valid B64, invalid UTF-8 */
+	    assert(rval < 0);
+	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "4K6a4K+L4K6k4K6p4K+="); /* valid B64, invalid UTF-8 */
+	    assert(rval > 0); /* passes when there is no utf-8 session flag */
 	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "4K6a4K+L4K6k4K6p4K+I");
 	    assert(strcmp(buf+4,"சோதனை") == 0);
 	    assert(rval == 15);

@@ -15,7 +15,8 @@ test(char** tname)
     pQPSession session;
     session = nmSysMalloc(sizeof(QPSession));
     session->Flags = QPF_F_ENFORCE_UTF8;
-
+    setlocale(0, "en_US.UTF-8");
+    
 	*tname = "qprintf-68 %STR&DHEX overflow test";
 	iter = 200000;
 	for(i=0;i<iter;i++)
@@ -31,6 +32,10 @@ test(char** tname)
 	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "414243444546");
 	    assert(rval == 6);
 	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "4142434445464748494A4B4C4D4E4F505152535455565758595A5B5C5D5E5F60616263646566676869");
+	    assert(rval < 0);
+	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "4142434445464142434445464142434445464142434445464142434445464142434445"); /* exact fit */
+	    assert(rval == 35);
+	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "414243444546414243444546414243444546414243444546414243444546414243444546"); /* exact fit */
 	    assert(rval < 0);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');

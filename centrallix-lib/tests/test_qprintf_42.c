@@ -114,6 +114,13 @@ test(char** tname)
 	    session->Errors = 0;
             assert(chrNoOverlong(buf+4) == 0);
 
+	    /** can split if no session **/
+	    rval = qpfPrintf(NULL, buf+4, 36, "код: %STR&HEX", "Test: тест"); /* cuts off 1 byte */
+	    assert(strcmp(buf+4, "код: 546573743a20d182d0b5d181d1") == 0);
+	    assert(rval == 36);
+	    assert(session->Errors == 0);
+            assert(chrNoOverlong(buf+4) == 0); /* invalid char is hex encoded, so passes */
+
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);

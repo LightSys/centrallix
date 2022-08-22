@@ -619,6 +619,11 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
     int ix;
     int req_size = (.75 * src_size) + *dst_offset + 1; /** +1 for null. Valid B64 must be a multiple of 4, so no truncation **/
     int oldOffset = *dst_offset;
+    char * oldSrc = src;
+
+        /* adjust esitmate; only accurate to nearest 3 bytes otherwise */
+	if(src[src_size - 2] == '=' && src[src_size - 1] == '=') req_size -= 2;
+	else if(src[src_size - 1] == '=') req_size -= 1;
 
 	if(src_size % 4 != 0) /* confirm assumption above is correct. */
 	    {
@@ -639,7 +644,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 	cursor = *dst + *dst_offset;
 	
 	/** Step through src 4 bytes at a time. **/
-	while(*src)
+	while(*src && src - oldSrc < src_size)
 	    {
 	    /** First 6 bits. **/
 	    ptr = strchr(b64,src[0]);
@@ -697,7 +702,8 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 	    }
 
     /* make sure data decoded is valid, if applicable */
-    if(s->Flags & QPF_F_ENFORCE_UTF8 && chrNoOverlong(*dst) != 0)
+    *cursor = 0; /* only check what just added */
+    if(s->Flags & QPF_F_ENFORCE_UTF8 && chrNoOverlong((*dst + oldOffset)) != 0)
 	{
 	QPERR(QPF_ERR_T_BADCHAR);
 	return -1;
@@ -720,6 +726,7 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
     int ix;
     int req_size;
     int oldOffset = *dst_offset;
+    char* oldSrc = src;
 
 	/** Required size **/
 	if (src_size%2 == 1)
@@ -742,7 +749,7 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
 	cursor = *dst + *dst_offset;
 	
 	/** Step through src 2 bytes at a time. **/
-	while(*src)
+	while(*src && src - oldSrc < src_size)
 	    {
 	    /** First 4 bits. **/
 	    ptr = strchr(hex, src[0]);
@@ -768,12 +775,12 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
 	    cursor += 1;
 	    }
     
-        /* make sure data decoded is valid, if applicable */
-        if(s->Flags & QPF_F_ENFORCE_UTF8 && chrNoOverlong(*dst) != 0)
-    	    {
-    	    QPERR(QPF_ERR_T_BADCHAR);
-    	    return -1;
-    	    }
+	    *cursor = 0; /* only check what just added */
+	    if(s->Flags & QPF_F_ENFORCE_UTF8 && chrNoOverlong((*dst + oldOffset)) != 0)
+		{
+		QPERR(QPF_ERR_T_BADCHAR);
+		return -1;
+		}
     
         *dst_offset = cursor - *dst;  //*dst_offset + cursor - *dst;
 
@@ -922,6 +929,7 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
 			    {
 			    QPERR(QPF_ERR_T_INSOVERFLOW);
 			    rval--;
+			    limit = 0;
 			    }
 			}
 		    else

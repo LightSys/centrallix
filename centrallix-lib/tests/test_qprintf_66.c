@@ -8,7 +8,7 @@
 
 long long
 test(char** tname)
-{
+    {
     int i, rval;
     int iter;
     unsigned char buf[39];

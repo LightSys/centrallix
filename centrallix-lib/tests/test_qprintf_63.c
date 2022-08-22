@@ -57,6 +57,18 @@ test(char** tname)
 	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "4K6H4K6k4K+BIOCukuCusOCvgSDgrqjgr4DgrqPgr43grp8g4K6J4K6k4K6+4K6w4K6j4K6u4K+N");
 	    assert(rval < 0);
             assert(chrNoOverlong(buf+4) == 0);
+	    
+	    /** test cutting off utf-8 chars **/
+	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "0JLQtdC00Ywg0JHQvtCzINGC0LDQutC/0L7Qu9GO0LHQuNC7"); /* 1 byte too long */
+	    assert(rval < 0);
+            assert(chrNoOverlong(buf+4) == 0);
+
+	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "0JLQtdC00Ywg0JHQvtCz0YLQsNC60L/QvtC70Y7QsdC40Ls="); /*fits */
+	    assert(rval == 35);
+            assert(chrNoOverlong(buf+4) == 0);
+	    assert(strcmp("Ведь Богтакполюбил", buf+4) == 0);
+	    
+
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);

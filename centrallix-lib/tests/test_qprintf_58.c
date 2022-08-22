@@ -50,7 +50,8 @@ test(char** tname)
 	    assert(rval == 18);
 	    /** overflow with and without session **/
 	    rval = qpfPrintf(session, buf+4, 19, "/path/%STR&PATH/name", "Γειά/σου");
-	    assert(rval < 0);
+	    assert(strcmp(buf+4,"/path/Γειά/σ") == 0);
+	    assert(rval == 26);
 	    rval = qpfPrintf(NULL, buf+4, 19, "/path/%STR&PATH/name", "Γειά/σου");
 	    assert(strcmp(buf+4,"/path/Γειά/σ\xce") == 0);
 	    assert(rval == 26);
