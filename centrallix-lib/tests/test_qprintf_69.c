@@ -17,7 +17,7 @@ test(char** tname)
     session->Flags = QPF_F_ENFORCE_UTF8;
     setlocale(0, "en_US.UTF-8");
 
-    *tname = "qprintf-69 Test Len with B64 and HEX encode and decode.";
+    *tname = "qprintf-69 Test Len with HEX encode and decode.";
     iter = 200000;
     for(i=0;i<iter;i++)
 	{
@@ -43,13 +43,37 @@ test(char** tname)
 	rval = qpfPrintf(NULL, (char*)(buf+4), 36, "||%STR&HEX&8LEN||", "你好呀"); /* allows invalid if no utf9 flag */
 	assert(0 == strcmp(buf+4, "||e4bda0e5||")); 
 	assert(rval == 12);
-	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&HEX&8LEN||", "你好呀"); /* chop utf-8 */
+	/** UTF-8 **/
+	/* 2 bytes */
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&HEX&8LEN||", "пр"); /** fits **/
+	assert(0 == strcmp(buf+4, "||d0bfd180||")); 
+	assert(rval == 12);
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&HEX&6LEN||", "пр"); /** 1 byte cut off **/
+	assert(0 == strcmp(buf+4, "||d0bf||")); 
+	assert(rval == 8);
+	/* 3 bytes */
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&HEX&12LEN||", "你好"); /** fits **/
+	assert(0 == strcmp(buf+4, "||e4bda0e5a5bd||")); 
+	assert(rval == 16);
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&HEX&10LEN||", "你好"); /** 1 byte cut off **/
 	assert(0 == strcmp(buf+4, "||e4bda0||")); 
 	assert(rval == 10);
-	
-	/** B64 trucnate after encode **/
-	rval = qpfPrintf(NULL, (char*)(buf+4), 36, "||%STR&B64&7LEN||", "hello there"); 
-	assert(0 == strcmp(buf+4, "||aGVsbG8gdGhlcmU=||")); /* does not truncate at all */
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&HEX&8LEN||", "你好"); /** 2 bytes cut off **/
+	assert(0 == strcmp(buf+4, "||e4bda0||")); 
+	assert(rval == 10);
+	/* 4 bytes */ //
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&HEX&16LEN||", "𓂥𓅘"); /** fits **/
+	assert(0 == strcmp(buf+4, "||f09382a5f0938598||")); 
+	assert(rval == 20);
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&HEX&14LEN||", "𓂥𓅘"); /** 1 byte cut off **/
+	assert(0 == strcmp(buf+4, "||f09382a5||")); 
+	assert(rval == 12);
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&HEX&12LEN||", "𓂥𓅘"); /** 2 bytes cut off **/
+	assert(0 == strcmp(buf+4, "||f09382a5||")); 
+	assert(rval == 12);
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&HEX&10LEN||", "𓂥𓅘"); /** 3 bytes cut off **/
+	assert(0 == strcmp(buf+4, "||f09382a5||")); 
+	assert(rval == 12);
 
 	/** HEX trucnate before decode **/
 	rval = qpfPrintf(NULL, (char*)(buf+4), 36, "||%STR&5LEN&DHEX||", "68656C6C6F207468657265"); /* invalid len */
@@ -60,16 +84,37 @@ test(char** tname)
 	rval = qpfPrintf(NULL, (char*)(buf+4), 36, "||%STR&100LEN&DHEX||", "68656C6C6F207468657265"); /* too long */
 	assert(0 == strcmp(buf+4, "||hello there||")); 
 	assert(rval == 15);
-
-	/** B64 trucnate before decode **/
-	rval = qpfPrintf(NULL, (char*)(buf+4), 36, "||%STR&7LEN&DB64||", "aGVsbG8gdGhlcmU="); /* invalid len */
-	assert(rval < 0);
-	rval = qpfPrintf(NULL, (char*)(buf+4), 36, "||%STR&8LEN&DB64||", "aGVsbG8gdGhlcmU="); /* proper truncate */
-	assert(0 == strcmp(buf+4, "||hello ||")); 
+	/** cut off utf-8 **/
+	/* 2 bytes */
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&8LEN&DHEX||", "d0bfd180"); /** fits **/
+	assert(0 == strcmp(buf+4, "||пр||")); 
+	assert(rval == 8);
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&6LEN&DHEX||", "d0bfd180"); /** 1 byte cut off **/
+	assert(0 == strcmp(buf+4, "||п||")); 
+	assert(rval == 6);
+	/* 3 bytes */
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&12LEN&DHEX||", "e4bda0e5a5bde59180"); /** fits **/
+	assert(0 == strcmp(buf+4, "||你好||")); 
 	assert(rval == 10);
-	rval = qpfPrintf(NULL, (char*)(buf+4), 36, "||%STR&100LEN&DB64||", "aGVsbG8gdGhlcmU="); /* too long */
-	assert(0 == strcmp(buf+4, "||hello there||")); 
-	assert(rval == 15);
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&10LEN&DHEX||", "e4bda0e5a5bde59180"); /** 1 byte cut off **/
+	assert(0 == strcmp(buf+4, "||你||")); 
+	assert(rval == 7);
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&8LEN&DHEX||", "e4bda0e5a5bde59180"); /** 2 bytes cut off **/
+	assert(0 == strcmp(buf+4, "||你||")); 
+	assert(rval == 7);
+	/* 4 bytes */ //
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&16LEN&DHEX||", "f09382a5f0938598"); /** fits **/
+	assert(0 == strcmp(buf+4, "||𓂥𓅘||")); 
+	assert(rval == 12);
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&14LEN&DHEX||", "f09382a5f0938598"); /** 1 byte cut off **/
+	assert(0 == strcmp(buf+4, "||𓂥||")); 
+	assert(rval == 8);
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&12LEN&DHEX||", "f09382a5f0938598"); /** 2 bytes cut off **/
+	assert(0 == strcmp(buf+4, "||𓂥||")); 
+	assert(rval == 8);
+	rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&10LEN&DHEX||", "f09382a5f0938598"); /** 3 bytes cut off **/
+	assert(0 == strcmp(buf+4, "||𓂥||")); 
+	assert(rval == 8);
 
 	assert(buf[43] == '\n');
 	assert(buf[42] == '\0');

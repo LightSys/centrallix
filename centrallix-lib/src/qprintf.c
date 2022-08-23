@@ -540,6 +540,25 @@ qpf_internal_itoa(char* dst, size_t dstlen, int i)
     }
 
 
+/*** numBytesInChar_internal() - computes the number of bytes in a utf-8 char based on 
+ *** the first byte of the character. Returns -1 for a byte which does not indicate the 
+ *** legth of the byte (i.e., anything of the form 10XX XXXX or 1111 10XX would be invalid)
+ *** 
+ *** NOTE: this should not be used to validate characters; overlong forms, UTF-16 surrogate
+ *** halves, and overly large characters starting with 0xF4-0xF7 are not handled
+ ***/
+int
+numBytesInChar_internal(char byte)
+    {
+    if      (!(byte&0x80)) return  1; /* of the form 0XXX XXXX */ 
+    else if (!(byte&0x40)) return -1; /* of the form 10XX XXXX */
+    else if (!(byte&0x20)) return  2; /* of the form 110X XXXX */
+    else if (!(byte&0x10)) return  3; /* of the form 1110 XXXX */
+    else if (!(byte&0x08)) return  4; /* of the form 1111 0XXX */
+    else                   return -1; /* of the form 1111 1XXX */
+    }
+
+
 /*** qpf_internal_base64encode() - convert string to base 64 representation
  *** returns the number of characters added to destination, and modifies dst_offset
  ***/
@@ -613,10 +632,11 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
 static inline int
 qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
     {
-    char b64[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"; /** FIXME: don't allow \0 in the string... **/
+    char b64[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     char* ptr;
     char* cursor;
     int ix;
+    int bytes_left;
     int req_size = (.75 * src_size) + *dst_offset + 1; /** +1 for null. Valid B64 must be a multiple of 4, so no truncation **/
     int oldOffset = *dst_offset;
     char * oldSrc = src;
@@ -667,6 +687,11 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 	    cursor[0] |= ix>>4;
 	    cursor[1] = (ix<<4)&0xF0;
 
+	    /** make sure have enough room for the full character just started. **/
+	    bytes_left = src_size - (int) (src + 4 - oldSrc); /* source bytes after this iteration */
+	    /** only 4 byte chars could be a problem here **/
+	    if(s->Flags & QPF_F_ENFORCE_UTF8 && numBytesInChar_internal((char)(cursor[0])) >= 4 && bytes_left < 4 ) break;
+
 	    /** Third six bits are nonmandatory and split between cursor[1] and [2] **/
 	    if (src[2] == '=' && src[3] == '=')
 	        {
@@ -683,6 +708,13 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 	    cursor[1] |= ix>>2;
 	    cursor[2] = (ix<<6)&0xC0;
 
+	    /** a 3 or 4 byte char could be a problem **/
+	    if(s->Flags & QPF_F_ENFORCE_UTF8 && numBytesInChar_internal((char)(cursor[1])) >= 3 && bytes_left < 4 )
+		{
+		cursor += 1;
+		break;
+		}
+
 	    /** Fourth six bits are nonmandatory and a part of cursor[2]. **/
 	    if (src[3] == '=')
 	        {
@@ -697,6 +729,14 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 		}
 	    ix = ptr-b64;
 	    cursor[2] |= ix;
+	    
+	    /** a 2, 3, or 4 byte char could be a problem **/
+	    if(s->Flags & QPF_F_ENFORCE_UTF8 && numBytesInChar_internal((char)(cursor[2])) >= 2 && bytes_left < 4 )
+	        {
+		cursor += 2;
+		break;
+		}
+
 	    src += 4;
 	    cursor += 3;
 	    }
@@ -709,8 +749,8 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 	return -1;
 	}
 
-    *dst_offset = cursor - *dst; //*dst_offset + cursor - *dst;
-    return *dst_offset - oldOffset; //cursor - *dst;
+    *dst_offset = cursor - *dst;
+    return *dst_offset - oldOffset;
     }
 
 
@@ -724,7 +764,7 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
     char* ptr;
     char* cursor;
     int ix;
-    int req_size;
+    int req_size, bytes_left;
     int oldOffset = *dst_offset;
     char* oldSrc = src;
 
@@ -771,10 +811,14 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
 	    ix = conv[ptr-hex];
 	    cursor[0] |= ix;
 
+            /** make sure have enough room for the full character just started. **/
+	    bytes_left = src_size - (int) (src + 2 - oldSrc); /* source bytes after this iteration */
+	    if(s->Flags & QPF_F_ENFORCE_UTF8 && (numBytesInChar_internal((char)*(cursor)) - 1)*2 > bytes_left ) break;
+
 	    src += 2;
 	    cursor += 1;
 	    }
-    
+
 	    *cursor = 0; /* only check what just added */
 	    if(s->Flags & QPF_F_ENFORCE_UTF8 && chrNoOverlong((*dst + oldOffset)) != 0)
 		{
@@ -782,27 +826,9 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
 		return -1;
 		}
     
-        *dst_offset = cursor - *dst;  //*dst_offset + cursor - *dst;
+        *dst_offset = cursor - *dst; 
 
-    return *dst_offset - oldOffset; //cursor - *dst;
-    }
-
-/*** numBytesInChar_internal() - computes the number of bytes in a utf-8 char based on 
- *** the first byte of the character. Returns -1 for a byte which does not indicate the 
- *** legth of the byte (i.e., anything of the form 10XX XXXX or 1111 10XX would be invalid)
- *** 
- *** NOTE: this should not be used to validate characters; overlong forms, UTF-16 surrogate
- *** halves, and overly large characters starting with 0xF4-0xF7 are not handled
- ***/
-int
-numBytesInChar_internal(char byte)
-    {
-    if      (!(byte&0x80)) return  1; /* of the form 0XXX XXXX */ 
-    else if (!(byte&0x40)) return -1; /* of the form 10XX XXXX */
-    else if (!(byte&0x20)) return  2; /* of the form 110X XXXX */
-    else if (!(byte&0x10)) return  3; /* of the form 1110 XXXX */
-    else if (!(byte&0x08)) return  4; /* of the form 1111 0XXX */
-    else                   return -1; /* of the form 1111 1XXX */
+    return *dst_offset - oldOffset;
     }
 
 
@@ -971,7 +997,6 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
 			    else
 				{
 				QPERR(QPF_ERR_T_BUFOVERFLOW);
-				/* fix rval to reflect correct value? */
 				break;
 				}
 			    }

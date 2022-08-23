@@ -17,7 +17,7 @@ test(char** tname)
     session->Flags = QPF_F_ENFORCE_UTF8;
     setlocale(0, "en_US.UTF-8");
 
-    *tname = "qprintf-71 test b64 and hex decode with invalid UTF-8 bytes";
+    *tname = "qprintf-71 %STR&HEXD overflow test decode hex";
     iter = 200000;
     for(i=0;i<iter;i++)
         {
@@ -30,27 +30,32 @@ test(char** tname)
         buf[1] = 0xff;
         buf[0] = '\0';
 
-        /** no session **/
-        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "their, %STR&DHEX, and they're", "7468657265FF"); 
-        assert(rval == 26);
-        assert(0 == strcmp(buf+4, "their, there\xFF, and they're"));
-
-        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "their, %STR&DB64, and they're", "dGhlcmX/"); 
-        assert(rval == 26);
-        assert(0 == strcmp(buf+4, "their, there\xFF, and they're"));
-
-        /** with session **/
-        rval = qpfPrintf(session, (char*)(buf+4), 36, "their, %STR&DHEX, and they're", "7468657265FF"); 
+        /** short test **/
+        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "their, %STR&DHEX, and they're", 
+            "7468657265"); 
+        assert(rval == 25);
+        assert(0 == strcmp(buf+4, "their, there, and they're"));
+        /** max len that fits in 36 **/
+        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "|%STR&DHEX|",  
+            "41206C6F6E672074696D652061676F20696E20612067616C617879206661722066"); 
+        assert(rval == 35);
+        assert(0 == strcmp(buf+4, "|A long time ago in a galaxy far f|"));
+        /** too long **/
+        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "||%STR&DHEX", 
+            "41206C6F6E672074696D652061676F20696E20612067616C61787920666172206661"); 
         assert(rval < 0);
-        assert(strcmp(buf+4, "their, ") == 0); /* confirm failed in decode **/
-        assert(session->Errors == QPF_ERR_T_BADCHAR);
-        session->Errors = 0;
-
-        rval = qpfPrintf(session, (char*)(buf+4), 36, "their, %STR&DB64, and they're", "dGhlcmX/"); 
+        /** make sure NULL's are caught **/
+        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "||%STR&DHEX", 
+            "41206C6F6E6\000A72074696D652061676F20696E20612067616C617879"); 
         assert(rval < 0);
-        assert(strcmp(buf+4, "their, ") == 0); /* confirm failed in decode **/
-        assert(session->Errors == QPF_ERR_T_BADCHAR);
-        session->Errors = 0;
+        /** odd number of characters **/
+        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "||%STR&DHEX", 
+            "41206C6F6E672074696D652061676F20696E20612067616C617879A"); 
+        assert(rval < 0);
+        /** non-hex char  **/
+        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "||%STR&DHEX", 
+            "41206C6F6E672074696D652061H76F20696E20612067616C617879A"); 
+        assert(rval < 0);
 
         assert(buf[43] == '\n');
         assert(buf[42] == '\0');
@@ -61,29 +66,19 @@ test(char** tname)
         assert(buf[1] == 0xff);
         assert(buf[0] == '\0');
 
-        /** test again with more utf8 **/
-        /** no session **/
-        /* ជខ្សែអក្សរ இது ΣEIPA */
-        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "អក្សរ %STR&DHEX ΣEIPA", "e0ae87e0aea4e0af81ff"); 
-        assert(rval == 33);
-        assert(0 == strcmp(buf+4, "អក្សរ இது\xFF ΣEIPA"));
-
-        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "អក្សរ %STR&DB64 ΣEIPA", "4K6H4K6k4K+B/w=="); 
-        assert(rval == 33);
-        assert(0 == strcmp(buf+4, "អក្សរ இது\xFF ΣEIPA"));
-
-        /** with session **/
-        rval = qpfPrintf(session, (char*)(buf+4), 36, "អក្សរ %STR&DHEX ΣEIPA", "e0ae87e0aea4e0af81ff"); 
-        assert(rval < 0);
-        assert(strcmp(buf+4, "អក្សរ ") == 0); /* confirm failed in decode **/
-        assert(session->Errors == QPF_ERR_T_BADCHAR);
-        session->Errors = 0;
-
-        rval = qpfPrintf(session, (char*)(buf+4), 36, "អក្សរ %STR&DB64 ΣEIPA", "4K6H4K6k4K+B/w=="); 
-        assert(rval < 0);
-        assert(strcmp(buf+4, "អក្សរ ") == 0); /* confirm failed in decode **/
-        assert(session->Errors == QPF_ERR_T_BADCHAR);
-        session->Errors = 0;
+        /* basic UTF-8 */
+        rval = qpfPrintf(session, (char*)(buf+4), 36, "%STR&DHEX", "e0ae9ae0af8be0aea4e0aea9e0af88");
+        assert(rval == 15);
+        assert(strcmp(buf+4, "சோதனை") == 0);
+        assert(session->Errors == 0);
+        assert(chrNoOverlong(buf+4) == 0);
+        /** more complex **/
+        rval = qpfPrintf(session, (char*)(buf+4), 36, "இது %STR&DHEX உதாரணம்", 
+            "e0ae92e0aeb0e0af8120e0aea8e0af80e0aea3e0af8de0ae9f" );
+        assert(rval < 67);
+        assert(strcmp(buf+4, "இது ஒரு நீண்ட") == 0);
+        assert(session->Errors == QPF_ERR_T_BUFOVERFLOW);
+        assert(chrNoOverlong(buf+4) == 0);
 
         assert(buf[43] == '\n');
         assert(buf[42] == '\0');
@@ -93,6 +88,8 @@ test(char** tname)
         assert(buf[2] == '\0');
         assert(buf[1] == 0xff);
         assert(buf[0] == '\0');
+
+        session->Errors = 0;
         }
 
     nmSysFree(session);
