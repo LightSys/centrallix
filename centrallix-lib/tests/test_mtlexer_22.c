@@ -39,21 +39,21 @@ test(char** tname)
 
 		/** check each token **/
 	    for(j=0;j<n_tok;j++)
-			{
-			t = mlxNextToken(lxs);
-			assert(t == toktype[j]);
-			if (t == MLX_TOK_STRING)
-				{
-				strval = mlxStringVal(lxs, NULL);
-				assert(strval != NULL);
-				assert(strcmp(strval,tokstr[strcnt++]) == 0);
-				}
-			}
+		{
+		t = mlxNextToken(lxs);
+		assert(t == toktype[j]);
+		if (t == MLX_TOK_STRING)
+		    {
+		    strval = mlxStringVal(lxs, NULL);
+		    assert(strval != NULL);
+		    assert(strcmp(strval,tokstr[strcnt++]) == 0);
+		    }
+		}
 	    mlxCloseSession(lxs);
 
-		/** test without utf-8 locale; should pass all junk **/ 
-		setlocale(0, "C");
-		lxs = mlxStringSession(str, flags);
+	    /** test without utf-8 locale; should pass all junk **/ 
+	     setlocale(0, "C");
+	    lxs = mlxStringSession(str, flags);
 	    assert(lxs != NULL);
 	    strcnt = 0;
 

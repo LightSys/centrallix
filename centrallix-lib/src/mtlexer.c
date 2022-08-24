@@ -879,7 +879,7 @@ mlxNextToken(pLxSession this)
 		this->TokString[this->TokStrCnt] = '\0';
 		break;
 		}
-	    else if (ch == '-' && !strchr("0123456789.",mlxPeekChar(this,1)))
+	    else if (ch == '-' && (!strchr("0123456789.",mlxPeekChar(this,1)) || ch == '\0')) /* if ends, is still a - */
 	        {
 		/** only a MLX_TOK_PLUS if the next char is not a digit or period (that would make it part of a number) **/
 		this->TokString[0] = ch;
@@ -888,7 +888,7 @@ mlxNextToken(pLxSession this)
 		mlxSkipChars(this,1);
 		break;
 		}
-	    else if (strchr("0123456789+-.",ch))
+	    else if (strchr("0123456789+-.",ch) && ch != '\0') 
 		{
 		got_dot = (ch == '.')?1:0;
 		this->TokType = MLX_TOK_INTEGER;
@@ -896,7 +896,7 @@ mlxNextToken(pLxSession this)
 		this->TokString[0] = ch;
 		mlxSkipChars(this,1);
 		found_end=1;
-		while((ch = mlxPeekChar(this,0)) >= 0 && (strchr("0123456789xabcdefABCDEF",ch) || (!got_dot && ch == '.')))
+		while((ch = mlxPeekChar(this,0)) >= 0 && (strchr("0123456789xabcdefABCDEF",ch) && ch != '\0' || (!got_dot && ch == '.')))
 		    {
 		    if (this->TokStrCnt >= 255)
 			{
@@ -993,12 +993,12 @@ mlxNextToken(pLxSession this)
 
 	/** check string is valid, if applicable **/
 	if(this->ValidateFn != NULL && (this->TokType == MLX_TOK_SSTRING || 
-		this->TokType == MLX_TOK_STRING || this->TokType == MLX_TOK_KEYWORD )) /* keywords can only be ascii, but can't hurt to check */
+		this->TokType == MLX_TOK_STRING || this->TokType == MLX_TOK_FILENAME))
 		{
 		if(this->ValidateFn(this->TokString) != 0)
 			{
 			mssError(1,"MLX","String token contained invalid characters");
-		    this->TokType = MLX_TOK_ERROR;
+		        this->TokType = MLX_TOK_ERROR;
 			}
 		}
 
@@ -1251,17 +1251,6 @@ mlxSetReservedWords(pLxSession this, char** res_words)
 
     	ASSERTMAGIC(this,MGK_LXSESSION);
 	
-	/** make sure words are valid **/
-	if(this->ValidateFn)
-		{
-		int i = 0;
-		while(res_words[i] != NULL)
-			{
-			if(this->ValidateFn(res_words[i]) != 0) return -1;
-			i++;
-			}
-		}
-
     	/** Set the words **/
 	this->ReservedWords = res_words;
 

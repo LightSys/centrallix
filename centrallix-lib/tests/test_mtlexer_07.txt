@@ -3,3 +3,4 @@
 "string" 12345 = { } keyword , <> : ( ) / . + * reserved /file/name 12.345 $ - {{ }} ; 'string'
 "string"	12345	=	{	}	keyword	,	<>	:	(	)	/	.	+	*	reserved	/file/name	12.345	$	-	{{	}}	;	'string'
 "string"12345={}keyword,<>:()/ .+*reserved /file/name 12.345$-{{}};'string'
+"आदि में' 'परमेश्वर ने" 12345 = { } keyword , <> : ( ) / . + * reserved /आदि में' 'परमेश्वर ने/name 12.345 $ - {{ }} ; 'आदि में' 'परमेश्वर ने'
