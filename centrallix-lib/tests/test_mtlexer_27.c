@@ -15,8 +15,8 @@ test(char** tname)
     {
     int i;
     int iter;
-	int ind, max;
-	char cur;
+    int ind, max;
+    char cur;
 
 	srand(time(NULL));
 

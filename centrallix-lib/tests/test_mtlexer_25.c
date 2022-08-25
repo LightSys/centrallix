@@ -15,7 +15,7 @@ test(char** tname)
     int iter;
     int flags;
     pLxSession lxs;
-	int alloc = 0;
+    int alloc = 0;
     int t;
     char* strval;
     char str[65536] = "'นปฐมกาล พระเจ้าทรงสร้างทุกสิ่งในฟ้าสวรรค์และโลก ขณะนั้นโลกยังไม่มีรูปทรงและว่างเปล่า " /* one really long line (398 UTF-8 chars). Each one is 3 bytes (but not the spaces)*/

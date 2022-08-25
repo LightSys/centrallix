@@ -22,7 +22,7 @@ test(char** tname)
     char str[65536] = "'하나님이' '세상을' '무척' '사랑하셔서' '하나밖에' '\xFF없는' '외아들마저' '보내'";  
     int n_tok = 8;
     char* tokstr[8] = {"하나님이", "세상을", "무척", "사랑하셔서", "하나밖에", "\xFF없는", "외아들마저", "보내"};
-	int toktype[8] = {MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_ERROR, MLX_TOK_ERROR, MLX_TOK_ERROR};
+    int toktype[8] = {MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_ERROR, MLX_TOK_ERROR, MLX_TOK_ERROR};
 
 	*tname = "mtlexer-22 test strings with invalid utf-8 characters";
 
@@ -30,14 +30,14 @@ test(char** tname)
 	iter = 200000;
 	for(i=0;i<iter;i++)
 	    {
-		/** setup **/
-		setlocale(0, "en_US.UTF-8");
+	    /** setup **/
+	    setlocale(0, "en_US.UTF-8");
 	    flags = 0;
 	    lxs = mlxStringSession(str, flags);
 	    assert(lxs != NULL);
 	    strcnt = 0;
 
-		/** check each token **/
+	    /** check each token **/
 	    for(j=0;j<n_tok;j++)
 		{
 		t = mlxNextToken(lxs);
@@ -57,15 +57,15 @@ test(char** tname)
 	    assert(lxs != NULL);
 	    strcnt = 0;
 
-		/** check each token **/
+	    /** check each token **/
 	    for(j=0;j<n_tok;j++)
-			{
-			t = mlxNextToken(lxs);
-			assert(t ==  MLX_TOK_STRING);
-			strval = mlxStringVal(lxs, NULL);
-			assert(strval != NULL);
-			assert(strcmp(strval,tokstr[strcnt++]) == 0);
-			}
+		{
+		t = mlxNextToken(lxs);
+		assert(t ==  MLX_TOK_STRING);
+		strval = mlxStringVal(lxs, NULL);
+		assert(strval != NULL);
+		assert(strcmp(strval,tokstr[strcnt++]) == 0);
+		}
 	    mlxCloseSession(lxs);
 	    }
 
