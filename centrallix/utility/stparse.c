@@ -986,6 +986,7 @@ st_internal_IsDblOpen(char* str)
 
 	/** Double open? **/
 	if (str[0] != '{' || str[1] != '{') return 0;
+	str += 2; 
 
 	/** Skip whitespace **/
 	while(*str == ' ' || *str == '\t' || *str == '\r' || *str == '\n') str++;
@@ -1007,9 +1008,10 @@ st_internal_IsDblClose(char* str)
 	/** Skip whitespace **/
 	while(*str == ' ' || *str == '\t' || *str == '\r' || *str == '\n') str++;
 
-	/** Double open? **/
+	/** Double close? **/
 	if (str[0] != '}' || str[1] != '}') return 0;
-
+	str += 2; 
+	
 	/** Skip whitespace **/
 	while(*str == ' ' || *str == '\t' || *str == '\r' || *str == '\n') str++;
 
