@@ -14,7 +14,7 @@
 $Version=2$
 Page1 "widget/page"
     {
-    title="Test UTF-8 #00 -ÿInvalid UTF-8";
+    title="Test UTF-8 #01 -ï¿½Invalid UTF-8";
 
     TestField1 "widget/textbutton"
 	{

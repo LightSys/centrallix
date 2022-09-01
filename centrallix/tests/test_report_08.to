@@ -1,0 +1,3 @@
+##NAME Test invlaid UTF-8 in CSV (WILL FAIL, fix later)
+##NOTE: currently fails. Appears that CSV is handled by another driver
+print /tests/UTF8_test_invalid1.rpt

@@ -1,0 +1,2 @@
+##NAME report_07 Test can use UTF-8 characters
+print /tests/UTF8_test_valid.rpt
