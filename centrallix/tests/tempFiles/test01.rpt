@@ -1,0 +1,49 @@
+$Version=2$
+test "system/report"
+   {
+   title = "This is my title";
+   locationtypes "report/query"
+       {
+       sql = "select :location_code, :description from /datasources/OMSS_DB/_LocationCode/rows";
+       }
+   mycomment "report/comment"
+       {
+       text = "This is my comment's text, in BOLD and UNDERLINED.\n";
+       autonewline=no;
+       style=bold,underline;
+       }
+   codelist "report/form"
+       {
+       source = locationtypes;
+       rulesep = yes;
+       t1 "report/comment" { text = "Code: "; autonewline=no; }
+       c1 "report/column" { source = location_code; }
+       t2 "report/comment" { text = "Desc.: "; autonewline=no; }
+       c2 "report/column" { source = description; }
+       }
+   codelist2 "report/table"
+       {
+       source = locationtypes;
+       columns = location_code,description;
+       widths = 10,40;
+       style = italic;
+       titlebar = yes;
+       }
+   mycol "report/column"
+       {
+       source = location_code;
+       style = bold;
+       }
+   section1 "report/section"
+       {
+       title="My First Section";
+       columns=2;
+       colsep=4;
+       margins=4,4;
+       style=plain;
+       }
+   script "system/script"
+       {{
+       code="var test = 12;"
+    ÿ   }}
+    }
