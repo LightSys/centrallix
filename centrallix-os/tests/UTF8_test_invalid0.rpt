@@ -1,23 +1,22 @@
 //
+//
 //  Centrallix Test Suite
 //
-//  "UTF8_test_valid.app"
+//  "UTF8_test_valid.rpt"
 //  By Noah Board - August 31, 2022
 //
-//  This app tests the objdrv_struct driver's interactions
+//  This app tests the objdrv_report_v3 driver's interactions
 //  with invalid UTF-8 characters. 
-//  This does not reflect a typical .app file, but does 
-//  prove that the objdrv handles invalid chracters properly
-//  (the errors being found by mtlexer)
+//  This file has invalid items within the internal struct
 //
 // WARNING: Saving this file in text mode (at least in vs code)
 // will vonvert the invalid 0xFF character into the unicode sybol 
 // ï¿½. If this happens, use a hex editor to convert it back into 0xFF
 
 $Version=2$
-Page1 "widget/page"
+Datatypes "system/report"
     {
-    title="Test UTF-8 #01 -ÿInvalid UTF-8";
+    title="Test UTF-8 #01 -ÿInvalid UTF-8. Oh look, a change";
 
     TestField1 "widget/textbutton"
 	{

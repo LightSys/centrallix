@@ -1,0 +1,2 @@
+##NAME Test invalid UTF-8 in .csv
+query select * from /tests/UTF8_invalid.csv/rows

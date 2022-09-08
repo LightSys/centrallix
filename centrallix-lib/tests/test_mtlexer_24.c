@@ -17,7 +17,16 @@ test(char** tname)
     int flags;
     pLxSession lxs;
     int t;
-    char* str = ""; 
+    char* strval;
+    char str[65536] = "'นปฐมกาล พระเจ้าทรงสร้างทุกสิ่งในฟ้าสวรรค์และโลก ขณะนั้นโลกยังไม่มีรูปทรงและว่างเปล่า " /* one really long line (398 UTF-8 chars). Each one is 3 bytes (but not the spaces)*/
+		      "ความมืดปกคลุมอยู่เหนือพื้นผิวของห้วงน้ำ \xFFพระวิญญาณของพระเจ้าทรงเคลื่อนไหวอยู่เหนือน้ำนั้น " /* contains 1165 btes */
+		      "และพระเจ้าตรัสว่า “จงเกิดความสว่าง” ความสว่างก็เกิดขึ้น พระเจ้าทรงเห็นว่าความสว่างนั้นดี "
+		      "และทรงแยกความสว่างออกจากความมืด พระเจ้าทรงเรียกความสว่างว่า “วัน” และเรียกความมืดว่า "
+		      "“คืน” เวลาเย็นและเวลาเช้าผ่านไป นี่เป็นวันที่หนึ่ง'"; 
+    char tokstr[MLX_STRVAL];
+    memcpy(tokstr, str+1, MLX_STRVAL-1);
+    tokstr[MLX_STRVAL-1] = '\0';
+    char buf[BUF_SIZE];  
 
 	*tname = "mtlexer-24 test Copy Token with invalid utf-8 characters";
 

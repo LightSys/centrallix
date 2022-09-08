@@ -1,0 +1,2 @@
+##NAME Test invalid UTF-8 in .spec
+query select * from /tests/UTF8_invalid2.csv/rows

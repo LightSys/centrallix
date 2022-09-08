@@ -30,7 +30,7 @@ test(char** tname)
 
 	*tname = "mtlexer-28 test interactions between strchr and NULL";
 
-	iter = 50000;
+	iter = 5000;
 	for(i=0;i<iter;i++)
 	    {
 	    for(j = 0 ; j < numTok ; j++)
@@ -46,7 +46,6 @@ test(char** tname)
 		assert(lxs->TokType == tokenTypes[j]);
 		assert(strcmp(lxs->TokString, strings[j]) == 0); 
 		}
-		assert(0);
 	    }
 
     return iter;
