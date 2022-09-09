@@ -2316,9 +2316,9 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__orderdesc"),&ptr) >= 0 && !strcmp(ptr,"1"))
 		order_desc = 1;
 	    if (order_desc)
-		query = objOpenQuery(target_obj,"",":name desc",NULL,NULL);
+		query = objOpenQuery(target_obj,"",":name desc",NULL,NULL,0);
 	    else
-		query = objOpenQuery(target_obj,"",NULL,NULL,NULL);
+		query = objOpenQuery(target_obj,"",NULL,NULL,NULL,0);
 	    if (query)
 	        {
 		nht_i_WriteResponse(conn, 200, "OK", NULL);

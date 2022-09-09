@@ -679,7 +679,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		orderby=NULL;
 		stAttrValue_ne(stLookup_ne(req_inf,"ls__where"),&where);
 		stAttrValue_ne(stLookup_ne(req_inf,"ls__orderby"),&orderby);
-		qy = objOpenQuery(obj,where,orderby,NULL,NULL);
+		qy = objOpenQuery(obj,where,orderby,NULL,NULL,0);
 		if (!qy)
 		    query_handle = XHN_INVALID_HANDLE;
 		else

@@ -398,7 +398,7 @@ nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtRe
 	criteria = nht_i_EncodeCriteria(url_inf);
 
 	/** Open the query and loop through subobjects **/
-	query = objOpenQuery(obj, criteria?criteria->String:"", NULL, NULL, NULL);
+	query = objOpenQuery(obj, criteria?criteria->String:"", NULL, NULL, NULL, 0);
 	if (query)
 	    {
 	    while((subobj = objQueryFetch(query, O_RDONLY)) != NULL)

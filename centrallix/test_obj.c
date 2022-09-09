@@ -500,7 +500,7 @@ int handle_tab(int unused_1, int unused_2)
     /** open the query **/
     info = objInfo(obj);
     if (!info || !(info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)))
-	qry = objOpenQuery(obj,xstrQueryString->String,NULL,NULL,NULL);
+	qry = objOpenQuery(obj,xstrQueryString->String,NULL,NULL,NULL,0);
     else
 	qry = NULL;
 
@@ -570,7 +570,7 @@ int handle_tab(int unused_1, int unused_2)
 	    /** see if there are any subobjects -- only need to fetch 1 to check **/
 	    info = objInfo(obj2);
 	    if (!info || !(info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)))
-		qry=objOpenQuery(obj2,NULL,NULL,NULL,NULL);
+		qry=objOpenQuery(obj2,NULL,NULL,NULL,NULL,0);
 	    else
 		qry=NULL;
 	    if(qry && (qobj=objQueryFetch(qry,O_RDONLY)))
@@ -1008,7 +1008,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		        {
 			orderby[0] = 0;
 			}
-		    qy = objOpenQuery(obj,where,orderby[0]?orderby:NULL,NULL,NULL);
+		    qy = objOpenQuery(obj,where,orderby[0]?orderby:NULL,NULL,NULL,0);
 		    }
 		else if (is_orderby)
 		    {
@@ -1020,11 +1020,11 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 			return -1;
 			}
 		    strcpy(orderby, mlxStringVal(ls,NULL));
-		    qy = objOpenQuery(obj,NULL,orderby,NULL,NULL);
+		    qy = objOpenQuery(obj,NULL,orderby,NULL,NULL,0);
 		    }
 		else
 		    {
-		    qy = objOpenQuery(obj,"",NULL,NULL,NULL);
+		    qy = objOpenQuery(obj,"",NULL,NULL,NULL,0);
 		    }
 		if (!qy)
 		    {

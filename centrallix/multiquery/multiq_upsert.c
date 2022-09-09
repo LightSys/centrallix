@@ -364,7 +364,7 @@ mqusNextItem(pQueryElement qe, pQueryStatement stmt)
 	    objlist = NULL;
 
 	    /** Search for existing duplicate rows in the insert source **/
-	    find_dups_qy = objOpenQuery(pdata->InsertPathObj, NULL, NULL, pdata->AllCriteria, NULL);
+	    find_dups_qy = objOpenQuery(pdata->InsertPathObj, NULL, NULL, pdata->AllCriteria, NULL, 0);
 	    if (!find_dups_qy)
 		goto error;
 

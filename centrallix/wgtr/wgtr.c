@@ -694,7 +694,7 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[
 	/** loop through subobjects, and call ourselves recursively to add
 	 ** child nodes.
 	 **/
-	if ( (qy = objOpenQuery(obj, "", NULL, NULL, NULL)) != NULL)
+	if ( (qy = objOpenQuery(obj, "", NULL, NULL, NULL, 0)) != NULL)
 	    {
 	    while ( (child_obj = objQueryFetch(qy, O_RDONLY)))
 		{
@@ -974,7 +974,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 	    expSetParamFunctions(context_objlist, "this", wgtr_param_GetAttrType, wgtr_param_GetAttrValue, NULL);
 
 	    /** Query for any parameters that are listed. **/
-	    if ( (qy = objOpenQuery(obj, ":outer_type = 'widget/parameter'", NULL, NULL, NULL)) != NULL)
+	    if ( (qy = objOpenQuery(obj, ":outer_type = 'widget/parameter'", NULL, NULL, NULL, 0)) != NULL)
 		{
 		while ( (child_obj = objQueryFetch(qy, O_RDONLY)) != NULL)
 		    {

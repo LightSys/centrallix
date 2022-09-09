@@ -645,7 +645,7 @@ qyp_internal_ProcessOpen(pQypData inf)
 	source_obj = objOpen(inf->Obj->Session, inf->Node->SourcePath, O_RDONLY, 0600, "system/directory");
 	if (!source_obj)
 	    goto error;
-	source_qy = objOpenQuery(source_obj, NULL, NULL, criteria, NULL);
+	source_qy = objOpenQuery(source_obj, NULL, NULL, criteria, NULL, 0);
 	if (!source_qy)
 	    goto error;
 
@@ -1254,7 +1254,7 @@ qypOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    return NULL;
 	    }
 	objUnmanageObject(inf->Obj->Session, qy->LLQueryObj);
-	qy->LLQuery = objOpenQuery(qy->LLQueryObj, NULL, orderby.String, NULL, NULL);
+	qy->LLQuery = objOpenQuery(qy->LLQueryObj, NULL, orderby.String, NULL, NULL, 0);
 	if (!qy->LLQuery)
 	    {
 	    objClose(qy->LLQueryObj);

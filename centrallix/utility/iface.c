@@ -178,7 +178,7 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 	
 	/********* initial processing of each minor version **********/
 
-	if ( (MinorQy = objOpenQuery(def, ":outer_type = 'iface/minorversion'", NULL, NULL, NULL)) == NULL)
+	if ( (MinorQy = objOpenQuery(def, ":outer_type = 'iface/minorversion'", NULL, NULL, NULL, 0)) == NULL)
 	    {
 	    mssError(0, "IFC", "Couldn't retrieve minor versions of major version '%s'", def->Pathname->Pathbuf+1);
 	    goto error;
@@ -217,7 +217,7 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 	MajorVersion->NumMinorVersions = NumMinorVersions;
 	
 	/******* Second pass through minor versions, filling out major version struct **********/
-	if ( (MinorQy = objOpenQuery(def, ":outer_type = 'iface/minorversion'", ":name desc", NULL, NULL)) == NULL)
+	if ( (MinorQy = objOpenQuery(def, ":outer_type = 'iface/minorversion'", ":name desc", NULL, NULL, 0)) == NULL)
 	    {
 	    mssError(0, "IFC", "Couldn't retrieve minor versions of major version '%s'", def->Pathname->Pathbuf+1);
 	    goto error;
@@ -251,7 +251,7 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 	    for (i=0;i<IFC.NumCategories[type];i++)
 		xaSetItem(&(MajorVersion->Offsets[i]), ThisMinorVersion, (void*)(intptr_t)xaCount(&(MajorVersion->Members[i])));
 	    /** Process the members **/
-	    if ( (MemberQy = objOpenQuery(MinorObj, NULL, NULL, NULL, NULL)) == NULL)
+	    if ( (MemberQy = objOpenQuery(MinorObj, NULL, NULL, NULL, NULL, 0)) == NULL)
 		{
 		mssError(0, "IFC", "Could not retrieve the members of '%s'", MinorObj->Pathname->Pathbuf+1);
 		goto error;
@@ -428,7 +428,7 @@ ifc_internal_NewIfcDef(pObjSession s, char* path)
 	xaInit(&(def->MajorVersions), 4);
 
 	/** parse all major versions **/
-	qy = objOpenQuery(def->Obj, ":outer_type='iface/majorversion'", NULL, NULL, NULL);
+	qy = objOpenQuery(def->Obj, ":outer_type='iface/majorversion'", NULL, NULL, NULL, 0);
 	while ( (obj = objQueryFetch(qy, O_RDONLY)) != NULL)
 	    {
 	    /** get name, and from it the version number **/
