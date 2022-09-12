@@ -563,7 +563,7 @@ int
 nht_i_AddHeader(pXArray hdrlist, char* hdrname, char* hdrvalue, int hdralloc)
     {
     pHttpHeader hdr;
-    int i;
+    //int i;
 
 #if 00
 	/** Already present? **/
@@ -3173,6 +3173,7 @@ nhtInitialize()
 	xaInit(&NHT.AllowedUploadExts, 16);
 	NHT.CollectedConns = syCreateSem(0, 0);
 	NHT.CollectedTLSConns = syCreateSem(0, 0);
+	NHT.AuthMethods = NHT_AUTH_HTTPSTRICT;
 
 #ifdef _SC_CLK_TCK
         NHT.ClkTck = sysconf(_SC_CLK_TCK);
@@ -3224,6 +3225,30 @@ nhtInitialize()
 	    else
 		{
 		snprintf(NHT.Realm, 80, "Centrallix");
+		}
+
+	    /** Auth methods **/
+	    for(i=0; i<4; i++)
+		{
+		if (stAttrValue(stLookup(my_config, "auth_methods"), NULL, &strval, i) >= 0)
+		    {
+		    if (i == 0)
+			NHT.AuthMethods = 0;
+		    if (!strcasecmp(strval, "http"))
+			NHT.AuthMethods |= NHT_AUTH_HTTP;
+		    else if (!strcasecmp(strval, "http-strict"))
+			NHT.AuthMethods |= NHT_AUTH_HTTPSTRICT;
+		    else if (!strcasecmp(strval, "http-bearer"))
+			NHT.AuthMethods |= NHT_AUTH_HTTPBEARER;
+		    else if (!strcasecmp(strval, "web-form"))
+			NHT.AuthMethods |= NHT_AUTH_WEBFORM;
+		    else
+			mssError(1, "NHT", "Warning: invalid auth method '%s'", strval);
+		    }
+		else
+		    {
+		    break;
+		    }
 		}
 
 	    /** Directory indexing? **/
