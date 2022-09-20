@@ -56,12 +56,12 @@ test(char** tname)
 
 	    rval = qpfPrintf(session, buf+4, 36, "起 %STR 地 。 आदि में प", "Сотворил"); /* last char fits off next char */
 	    assert(!strcmp(buf+4, "起 Сотворил 地 。 आद"));
-	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == 0);
 	    assert(rval == 52);
 
 	    rval = qpfPrintf(session, buf+4, 36, "起 %STR 地 。  आदि में प", "Сотворил"); /* cuts off next char */
 	    assert(!strcmp(buf+4, "起 Сотворил 地 。  आ"));
-	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == 0);
 	    assert(rval == 53);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');

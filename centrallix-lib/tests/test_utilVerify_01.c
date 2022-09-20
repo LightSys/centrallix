@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <locale.h>
-#include "charsets.h"
+#include "util.h"
 
 long long
 test (char** tname)
@@ -33,12 +33,12 @@ test (char** tname)
 			strBuf[5] = '\0'; /* endable single char test */
 
 			char *cur = strBuf+3;
-			result = chrNoOverlong(cur);
+			result = verifyUTF8(cur);
 			assert(result != 0);
 			
 			/* now test in the middle of a string */
 			strBuf[5] = 'A';
-			result = chrNoOverlong(strBuf);
+			result = verifyUTF8(strBuf);
 			assert(result != 0);
 			}
 		}
@@ -65,12 +65,12 @@ test (char** tname)
 				strBuf[6] = '\0';
 
 				char *cur = strBuf+3;
-				result = chrNoOverlong(cur);
+				result = verifyUTF8(cur);
 				assert(result != 0);
 				
 				/* now test in the middle of a string */
 				strBuf[6] = 'A';
-				result = chrNoOverlong(strBuf);
+				result = verifyUTF8(strBuf);
 				assert(result != 0);
 				}
 			}
@@ -100,12 +100,12 @@ test (char** tname)
 					strBuf[7] = '\0';
 
 					char *cur = strBuf+3;
-					result = chrNoOverlong(cur);
+					result = verifyUTF8(cur);
 					assert(result != 0);
 					
 					/* now test in the middle of a string */
 					strBuf[7] = 'A';
-					result = chrNoOverlong(strBuf);
+					result = verifyUTF8(strBuf);
 					assert(result != 0);
 					}
 				}

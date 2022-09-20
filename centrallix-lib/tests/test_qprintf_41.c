@@ -44,13 +44,13 @@ test(char** tname)
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
 	    
-	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == 0);
 
 	    /* UTF-8 */
 	    rval = qpfPrintf(session, buf+4, 36, "编码 %STR&HEX.", "<编=\"w\">"); // €
 	    assert(strcmp(buf+4, "编码 3ce7bc963d2277223e.") == 0); // 3c62205c22e282ac5c223e
 	    assert(rval == 26);
-	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == 0);
 	    assert(buf[36] == '\n');
 	    assert(buf[35] == '\0');
 	    assert(buf[34] == 0xff);

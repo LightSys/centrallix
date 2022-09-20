@@ -32,3 +32,12 @@ extern "C" {
 
 #endif	/* UTILITY_H */
 
+#define UTIL_INVALID_CHAR (size_t)-2
+#define UTIL_INVALID_ARGUMENT (size_t)-3
+
+/** \brief This function ensures that a multibyte string will be in simplest form.
+ \param string The string to simplify.
+ \return This returns the same string but with the minimum amount of bytes used
+ or NULL on error. */
+int verifyUTF8(char* string);
+

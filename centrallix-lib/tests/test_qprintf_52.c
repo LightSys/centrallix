@@ -48,13 +48,13 @@ test(char** tname)
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
 
-            assert(chrNoOverlong(buf+4) == 0);
+            assert(verifyUTF8(buf+4) == 0);
 
 	    qpfPrintf(session, buf+4, 31, "Str...: %STR&QUOT", "சோத");
 	    rval = qpfPrintf(session, buf+4, 31, "Str...: %STR&QUOT", "............コード");
 	    assert(strcmp(buf+4, "Str...: '............コー'") == 0);
 	    assert(rval == 31);
-            assert(chrNoOverlong(buf+4) == 0);
+            assert(verifyUTF8(buf+4) == 0);
 
 	    assert(buf[39] == '\n');
 	    assert(buf[38] == '\0');

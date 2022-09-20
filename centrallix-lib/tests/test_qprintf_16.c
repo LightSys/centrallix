@@ -42,7 +42,7 @@ test(char** tname)
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
 
-	    assert(chrNoOverlong((char *) buf+4) == 0);
+	    assert(verifyUTF8((char *) buf+4) == 0);
 
 	    /* UTF-8 test not required for number insertion */
 	    

@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <locale.h>
-#include "charsets.h"
+#include "util.h"
 
 long long
 test (char** tname)
@@ -28,10 +28,10 @@ test (char** tname)
 		cur[0] = (char) i;
 		cur[1] = '\0';
 
-		result = chrNoOverlong(cur);
+		result = verifyUTF8(cur);
 		assert(result == 0);
 		}
-	result = chrNoOverlong(strBuf);
+	result = verifyUTF8(strBuf);
 	assert(result == 0);
 
 
@@ -46,11 +46,11 @@ test (char** tname)
 			strBuf[(j-0x80)*2+2] = '\0'; /* endable single char test */
 
 			char *cur = strBuf+((j-0x80)*2);
-			result = chrNoOverlong(cur);
+			result = verifyUTF8(cur);
 			assert(result == 0);
 			}
 			
-		result = chrNoOverlong(strBuf);
+		result = verifyUTF8(strBuf);
 		assert(result == 0);
 		}
 
@@ -81,11 +81,11 @@ test (char** tname)
 
 				char *cur = strBuf+((k-0x80)*3);
 				
-				result = chrNoOverlong(cur);
+				result = verifyUTF8(cur);
 				assert(result == 0);
 				}
 				
-			result = chrNoOverlong(strBuf);
+			result = verifyUTF8(strBuf);
 			assert(result == 0);
 			}
 		}
@@ -117,10 +117,10 @@ test (char** tname)
 					strBuf[(l-0x80)*4+4] = '\0'; /* endable single char test */
 
 					char *cur = strBuf+((l-0x80)*4);
-					result = chrNoOverlong(cur);
+					result = verifyUTF8(cur);
 					assert(result == 0);
 					}
-				result = chrNoOverlong(strBuf);
+				result = verifyUTF8(strBuf);
 				assert(result == 0);
 				}
 			}

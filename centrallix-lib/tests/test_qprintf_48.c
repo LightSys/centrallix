@@ -44,7 +44,7 @@ test(char** tname)
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
 	    
-            assert(chrNoOverlong(buf+4) == 0);
+            assert(verifyUTF8(buf+4) == 0);
 
 	    /** UTF-8 **/
 
@@ -52,7 +52,7 @@ test(char** tname)
 	    rval = qpfPrintf(session, buf+4, 36, "Here is the str: %STR&QUOT...", "\"சோத\"");
 	    assert(strcmp(buf+4, "Here is the str: '\\\"சோத\\\"'...") == 0);
 	    assert(rval == 35);
-            assert(chrNoOverlong(buf+4) == 0);
+            assert(verifyUTF8(buf+4) == 0);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);

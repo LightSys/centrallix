@@ -48,13 +48,13 @@ test(char** tname)
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
 
-	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == 0);
 
 	    /** UTF-8 **/
 	    rval = qpfPrintf(session, buf+4, 25, "编码: %STR&HEX", "<b c=\"w\">");
 	    assert(strcmp(buf+4, "编码: <b c=\"w\">"));
 	    assert(rval == 26);
-	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == 0);
 	    assert(buf[32] == '\n');
 	    assert(buf[31] == '\0');
 	    assert(buf[30] == 0xff);

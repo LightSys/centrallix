@@ -63,7 +63,7 @@ test(char** tname)
 	    buf[0] = '\0';
 	    qpfPrintf(session, buf+4, 1, "起 初 ， 神 創 造 天 地 。");
 	    assert(!strcmp(buf+4, ""));
-	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == 0);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);

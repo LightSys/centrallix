@@ -58,7 +58,7 @@ test(char** tname)
 	    assert(strcmp( "/path/to/𓂥./file", buf+4) == 0);
 	    assert(rval == 22);
 	    rval = qpfPrintf(session, buf+4, 31, "/path/to/%8STR&FILE/file", "𓂥𓅘");
-	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == 0);
 	    assert(rval == 22);
 	    assert(buf[35] == '\n');
 	    assert(buf[34] == '\0');

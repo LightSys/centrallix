@@ -174,12 +174,6 @@ char* chrToMixed(char* string, char* buffer, size_t* bufferLength, char* wordlis
  CHR_INVALID_CHAR on error. */
 size_t chrCharLength(char* string);
 
-/** \brief This function ensures that a multibyte string will be in simplest form.
- \param string The string to simplify.
- \return This returns the same string but with the minimum amount of bytes used
- or NULL on error. */
-int chrNoOverlong(char* string);
-
 /** \brief Get a specific number of the rightmost characters in the string.
  
  This function always returns an offset into the original string since no

@@ -14,7 +14,6 @@
 #include "mtsession.h"
 #include "magic.h"
 #include "util.h"
-#include "qprintf.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -70,12 +69,12 @@ mlxOpenSession(pFile fd, int flags)
 	this->ReservedWords = NULL;
 	this->Flags = flags & MLX_F_PUBLIC;
 	/* determine which validate to set */
-	/** FIXME: should probably just pass this in or manually set after... **/
+	/** FIXME: change this to depend on a flag... **/
 	char * locale = setlocale(LC_CTYPE, NULL);
 	if(strstr(locale, "UTF-8") || strstr(locale, "UTF8") || strstr(locale, "utf-8") || strstr(locale, "utf8"))
 	    {
-	    this->ValidateFn = & chrNoOverlong; 
-	    this->IsCharSplit = & mlx_internal_WillSplitUTF8;
+	    this->ValidateFn = verifyUTF8; 
+	    this->IsCharSplit = mlx_internal_WillSplitUTF8;
 	    }
 	else 
 	    {
@@ -125,8 +124,8 @@ mlxStringSession(char* str, int flags)
 	char * locale = setlocale(LC_CTYPE, NULL);
 	if(locale != NULL && (strstr(locale, "utf8") || strstr(locale, "UTF8") || strstr(locale, "utf-8") || strstr(locale, "UTF-8")))
 	    {
-	    this->ValidateFn = & chrNoOverlong; 
-	    this->IsCharSplit = & mlx_internal_WillSplitUTF8;
+	    this->ValidateFn = verifyUTF8; 
+	    this->IsCharSplit = mlx_internal_WillSplitUTF8;
 	    }
 	else 
 	    {
@@ -170,10 +169,10 @@ mlxGenericSession(void* src, int (*read_fn)(), int flags)
 	char * locale = setlocale(LC_CTYPE, NULL);
 	if(strstr(locale, "utf8") || strstr(locale, "UTF8") || strstr(locale, "utf-8") || strstr(locale, "UTF-8"))
 	    {
-	    this->ValidateFn = & chrNoOverlong; 
-	    this->IsCharSplit = & mlx_internal_WillSplitUTF8;
+	    this->ValidateFn = verifyUTF8; 
+	    this->IsCharSplit = mlx_internal_WillSplitUTF8;
 	    }
-	else 
+	    	else 
 	    {
 	    this->ValidateFn = NULL;
 	    this->IsCharSplit = NULL;
@@ -1180,10 +1179,10 @@ mlxCopyToken(pLxSession this, char* buffer, int maxlen)
 	
 	/** validate buffer; could have copied more from input, thereby avoiding next token's check **/
 	if(this->ValidateFn && this->ValidateFn(buffer) != 0)
-		{
-		mssError(1,"MLX","Invalid characters in string");
-		this->TokType = MLX_TOK_ERROR;
-		}
+	    {
+	    mssError(1,"MLX","Invalid characters in string");
+	    this->TokType = MLX_TOK_ERROR;
+	    }
 
     return len;
     }

@@ -743,7 +743,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 
     /* make sure data decoded is valid, if applicable */
     *cursor = 0; /* only check what just added */
-    if(s->Flags & QPF_F_ENFORCE_UTF8 && chrNoOverlong((*dst + oldOffset)) != 0)
+    if(s->Flags & QPF_F_ENFORCE_UTF8 && verifyUTF8((*dst + oldOffset)) != 0)
 	{
 	QPERR(QPF_ERR_T_BADCHAR);
 	return -1;
@@ -820,7 +820,7 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
 	    }
 
 	    *cursor = 0; /* only check what just added */
-	    if(s->Flags & QPF_F_ENFORCE_UTF8 && chrNoOverlong((*dst + oldOffset)) != 0)
+	    if(s->Flags & QPF_F_ENFORCE_UTF8 && verifyUTF8((*dst + oldOffset)) != 0)
 		{
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -1320,7 +1320,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 					    memchr(strval, '/', cplen) || 
 					    memchr(strval, '\0', cplen) ||
 					    cplen == 0 ||
-					    (s->Flags & QPF_F_ENFORCE_UTF8 && chrNoOverlong(strval) != 0))
+					    (s->Flags & QPF_F_ENFORCE_UTF8 && verifyUTF8(strval) != 0))
 					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADFILE); goto error; }
 				    break;
 
@@ -1333,7 +1333,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 					    cplen == 0 ||
 					    (cplen > 2 && strval[cplen-1] == '.' && strval[cplen-2] == '.' && strval[cplen-3] == '/') ||
 					    qpf_internal_FindStr(strval, cplen, "/../", 4) >= 0 || 
-					    (s->Flags & QPF_F_ENFORCE_UTF8 && chrNoOverlong(strval) != 0))
+					    (s->Flags & QPF_F_ENFORCE_UTF8 && verifyUTF8(strval) != 0))
 					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADPATH); goto error; }
 				    break;
 
@@ -1627,63 +1627,3 @@ qpfRegisterExt(char* ext_spec, int (*ext_fn)(), int is_source)
 
     return;
     }
-
-int chrNoOverlong(char* string)
-	{
-	size_t stringCharLength, newStrByteLength;
-	char* result;
-	wchar_t* longBuffer;
-
-        /** Check arguments **/
-	if(!string)
-        	return -1;
-
-    /* ensure no overly large characters are included */
-    int i;
-    for(i = 0 ; i < strlen(string) ; i++)
-        {
-        if((unsigned char) string[i] == (unsigned char) 0xF4)
-            {
-            /* make sure is less than F4 90 */
-            /* this is safe since it would only hit the null byte */
-            if((unsigned char) string[i+1] >= (unsigned char)0x90) return -1; 
-            }
-        /* if true, must be a header for more than 4 bytes */
-        else if( (unsigned char) string[i] > (unsigned char) 0xF4) return -1; 
-        }
-	
-	stringCharLength = mbstowcs(NULL, string, 0);
-	if(stringCharLength == (size_t)-1)
-            	{
-        	return -1;
-       		}	
-
-	/** Create wchar_t buffer */
-        longBuffer = nmSysMalloc(sizeof(wchar_t) * (stringCharLength + 1));
-        if(!longBuffer)
-        	return -1;
-        mbstowcs(longBuffer, string, stringCharLength + 1);	
-	
-	/** Convert back to MBS **/
-	newStrByteLength = wcstombs(NULL, longBuffer, 0);
-        if(newStrByteLength == (size_t)-1)
-            	{
-            	nmSysFree(longBuffer);
-        	return -1;
-            	}
-	
-	result = (char *)nmSysMalloc(newStrByteLength + 1);
-        if(!result)
-            	{
-                nmSysFree(longBuffer);
-                return -1;
-            	}
-            
-        wcstombs(result, longBuffer, newStrByteLength + 1);
-        
-	nmSysFree(longBuffer);
-    if(strcmp(result, string) != 0 ) return -1; 
-    nmSysFree(result); 
-	
-	return  0;
-	}

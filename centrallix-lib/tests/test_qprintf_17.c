@@ -44,13 +44,13 @@ test(char** tname)
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
 
-	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == 0);
 
 	    /* UTF-8 */
 	    rval = qpfPrintf(session, buf+4, 36, "Энд мөр байна %6STR", "끈");
 	    assert(strcmp(buf+4, "Энд мөр байна 끈") == 0);
 	    assert(rval == 31);
-	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == 0);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);

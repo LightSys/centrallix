@@ -44,17 +44,17 @@ test(char** tname)
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
 
-	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == 0);
 
 	    /* UTF-8 */
 	    rval = qpfPrintf(session, buf+4, 36, "超: '%STR&HTE&25LEN'.", "<b c=\"€\">");
 	    assert(strcmp(buf+4, "超: '&lt;b c=&quot;€&quot;'.") == 0); /* no char split */
 	    assert(rval == 31);
-	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == 0);
 	    rval = qpfPrintf(session, buf+4, 36, "超: '%STR&HTE&25LEN'.", "<b c=\"€\"超>");
 	    assert(strcmp(buf+4, "超: '&lt;b c=&quot;€&quot;'.") == 0); /* char split */
 	    assert(rval == 31);
-	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == 0);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);

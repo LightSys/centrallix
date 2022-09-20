@@ -55,7 +55,7 @@ test(char** tname)
 	    buf[0] = '\0';
 	    rval = qpfPrintf(session, buf+4, 36, "%STR起 地 。", "Сотворил");
 	    assert(!strcmp(buf+4, "Сотворил起 地 。"));
-	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == 0);
 	    assert(rval == 27);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');

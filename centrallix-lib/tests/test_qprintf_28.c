@@ -44,19 +44,19 @@ test(char** tname)
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
 
-	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == 0);
 
 	    /* UTF-8*/
 	    rval = qpfPrintf(session, buf+4, 36, "εδώ οδός: ....'%STR&ESCQ'...", "\"є'ні\"");
 	    assert(strcmp(buf+4, "εδώ οδός: ....'\\\"є\\'ні\\\"'") == 0);
 	    assert(rval == 38);
-	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == 0);
 
 	    /** test splitting char **/
 	    rval = qpfPrintf(session, buf+4, 36, "εδώ οδός: ...'%STR&ESCQ'ώ...", "\"є'ні\"");
 	    assert(strcmp(buf+4, "εδώ οδός: ...'\\\"є\\'ні\\\"'") == 0);
 	    assert(rval == 39);
-	    assert(chrNoOverlong(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == 0);
 
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');

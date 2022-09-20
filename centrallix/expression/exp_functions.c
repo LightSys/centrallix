@@ -14,6 +14,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtlexer.h"
+#include "cxlib/util.h"
 #include "expression.h"
 #include "cxlib/mtsession.h"
 #include "centrallix.h"
@@ -3780,7 +3781,7 @@ int exp_fn_last(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
 /** FIXME: needs tested **/
 int exp_fn_utf8_overlong(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
 	{
-	int result = chrNoOverlong(i0->String);
+	int result = verifyUTF8(i0->String);
 
 	if(result == 0)
 		{
