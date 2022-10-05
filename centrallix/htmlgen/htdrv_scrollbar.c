@@ -180,13 +180,13 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "sb_cur_mainlayer","null",0);
 
 	/** DOM Linkage **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"sb%POSpane\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "sb%POSpane",id);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_scrollbar.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    sb_init({layer:nodes[\"%STR&SYM\"], tname:\"sb%POSthum\", isHorizontal:%INT, range:%INT});\n", name, id, is_horizontal, r);
+	htrAddScriptInit_va(s,"    sb_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), tname:\"sb%POSthum\", isHorizontal:%INT, range:%INT});\n", name, id, is_horizontal, r);
 
 	/** HTML body <DIV> elements for the layers. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"sb%POSpane\"><TABLE %[bgcolor=\"%STR&HTE\"%] %[background=\"%STR&HTE\"%] border=0 cellspacing=0 cellpadding=0 width=%POS>", id, *bcolor, bcolor, *bimage, bimage, w);

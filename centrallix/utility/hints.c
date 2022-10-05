@@ -281,7 +281,6 @@ pObjPresentationHints
 objInfToHints(pStructInf inf, int data_type)
     {
     pObjPresentationHints ph;
-    pParamObjects tmplist;
     char* ptr;
     char* newptr;
     int n,cnt;
@@ -292,13 +291,21 @@ objInfToHints(pStructInf inf, int data_type)
 	xaInit(&(ph->EnumList),16);
 
 	/** Check for constraint, default, min, and max expressions. **/
-	stAttrValue(stLookup(inf,"constraint"),NULL,(char**)&(ph->Constraint),0);
+	/*stAttrValue(stLookup(inf,"constraint"),NULL,(char**)&(ph->Constraint),0);
 	stAttrValue(stLookup(inf,"default"),NULL,(char**)&(ph->DefaultExpr),0);
 	stAttrValue(stLookup(inf,"min"),NULL,(char**)&(ph->MinValue),0);
-	stAttrValue(stLookup(inf,"max"),NULL,(char**)&(ph->MaxValue),0);
+	stAttrValue(stLookup(inf,"max"),NULL,(char**)&(ph->MaxValue),0);*/
+	ph->Constraint = stGetExpression(stLookup(inf,"constraint"), 0);
+	if (ph->Constraint) ph->Constraint = expDuplicateExpression(ph->Constraint);
+	ph->DefaultExpr = stGetExpression(stLookup(inf,"default"), 0);
+	if (ph->DefaultExpr) ph->DefaultExpr = expDuplicateExpression(ph->DefaultExpr);
+	ph->MinValue = stGetExpression(stLookup(inf,"min"), 0);
+	if (ph->MinValue) ph->MinValue = expDuplicateExpression(ph->MinValue);
+	ph->MaxValue = stGetExpression(stLookup(inf,"max"), 0);
+	if (ph->MaxValue) ph->MaxValue = expDuplicateExpression(ph->MaxValue);
 
 	/** Compile expressions, if any **/
-	if (ph->Constraint || ph->DefaultExpr || ph->MinValue || ph->MaxValue)
+	/*if (ph->Constraint || ph->DefaultExpr || ph->MinValue || ph->MaxValue)
 	    {
 	    tmplist = expCreateParamList();
 	    expAddParamToList(tmplist,"this",NULL,EXPR_O_CURRENT);
@@ -338,7 +345,7 @@ objInfToHints(pStructInf inf, int data_type)
 		    }
 		}
 	    expFreeParamList(tmplist);
-	    }
+	    }*/
 
 	/** Enumerated values list, given explicitly? **/
 	ptr = NULL;
@@ -419,6 +426,7 @@ objInfToHints(pStructInf inf, int data_type)
 	while(stAttrValue(stLookup(inf,"style"),NULL,&ptr,cnt) >= 0)
 	    {
 	    hnt_internal_SetStyleItem(ph, ptr);
+	    cnt++;
 	    }
 
 	/** Check for group ID and Name **/
@@ -511,6 +519,7 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 	/** Check default **/
 	if (rval == 0 && (ptod->Flags & DATA_TF_NULL) && ph->DefaultExpr)
 	    {
+	    expBindExpression(ph->DefaultExpr, our_objlist, 0);
 	    if (expEvalTree(ph->DefaultExpr, our_objlist) < 0)
 		{
 		rval = -1;
@@ -518,39 +527,42 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 		}
 	    else
 		{
-		if (EXPR(ph->DefaultExpr)->DataType != ptod->DataType && ptod->DataType != DATA_T_UNAVAILABLE)
+		if (EXPR(ph->DefaultExpr)->Flags & EXPR_F_NULL)
 		    {
+		    /** Null **/
+		    ptod->Flags |= DATA_TF_NULL;
+		    if (ptod->DataType == DATA_T_UNAVAILABLE)
+			ptod->DataType = EXPR(ph->DefaultExpr)->DataType;
+		    }
+		else if (EXPR(ph->DefaultExpr)->DataType != ptod->DataType && ptod->DataType != DATA_T_UNAVAILABLE)
+		    {
+		    /** Type mismatch **/
 		    rval = -1;
 		    *msg = "ERR: type mismatch on default value expression";
 		    }
 		else
 		    {
+		    /** Valid value **/
 		    ptod->DataType = EXPR(ph->DefaultExpr)->DataType;
 		    ptod->Flags &= ~DATA_TF_NULL;
-		    if (EXPR(ph->DefaultExpr)->Flags & EXPR_F_NULL) 
+
+		    /** Copy expr data to ptod **/
+		    switch(ptod->DataType)
 			{
-			ptod->Flags |= DATA_TF_NULL;
-			}
-		    else
-			{
-			/** Copy expr data to ptod **/
-			switch(ptod->DataType)
-			    {
-			    case DATA_T_INTEGER:
-				ptod->Data.Integer = EXPR(ph->DefaultExpr)->Integer;
-				break;
-			    case DATA_T_DOUBLE:
-				ptod->Data.Double = EXPR(ph->DefaultExpr)->Types.Double;
-				break;
-			    case DATA_T_STRING:
-				/** FIXME: dangerous to set string ptr directly like this **/
-				ptod->Data.String = nmSysStrdup(EXPR(ph->DefaultExpr)->String);
-				break;
-			    default:
-				rval = -1;
-				*msg = "ERR: unsupported type for default value";
-				break;
-			    }
+			case DATA_T_INTEGER:
+			    ptod->Data.Integer = EXPR(ph->DefaultExpr)->Integer;
+			    break;
+			case DATA_T_DOUBLE:
+			    ptod->Data.Double = EXPR(ph->DefaultExpr)->Types.Double;
+			    break;
+			case DATA_T_STRING:
+			    /** FIXME: dangerous to set string ptr directly like this **/
+			    ptod->Data.String = nmSysStrdup(EXPR(ph->DefaultExpr)->String);
+			    break;
+			default:
+			    rval = -1;
+			    *msg = "ERR: unsupported type for default value";
+			    break;
 			}
 		    }
 		}
@@ -575,6 +587,7 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 	/** Test constraint **/
 	if (ph->Constraint)
 	    {
+	    expBindExpression(ph->Constraint, our_objlist, 0);
 	    if (expEvalTree(ph->Constraint, our_objlist) < 0)
 		{
 		rval = -1;
@@ -601,6 +614,7 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 	/** Max/Min expression **/
 	if (ph->MinValue)
 	    {
+	    expBindExpression(ph->MinValue, our_objlist, 0);
 	    if (expEvalTree(ph->MinValue, our_objlist) < 0)
 		{
 		rval = -1;
@@ -622,6 +636,7 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 	    }
 	if (ph->MaxValue)
 	    {
+	    expBindExpression(ph->MaxValue, our_objlist, 0);
 	    if (expEvalTree(ph->MaxValue, our_objlist) < 0)
 		{
 		rval = -1;

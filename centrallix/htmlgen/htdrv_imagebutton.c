@@ -140,7 +140,7 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddStylesheetItem_va(s,"\t#ib%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:pointer; }\n",id,x,y,w,z);
 
 	htrAddScriptGlobal(s, "ib_cur_img", "null", 0);
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr,\"ib%POSpane\")", id);
+	htrAddWgtrObjLinkage_va(s, tree, "ib%POSpane", id);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_imagebutton.js", 0);
 
@@ -152,7 +152,7 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddExpression(s, name, "enabled", code);
 	    }
 
-	htrAddScriptInit_va(s,"    ib_init({layer:nodes[\"%STR&SYM\"], n:'%STR&JSSTR', p:'%STR&JSSTR', c:'%STR&JSSTR', d:'%STR&JSSTR', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, tooltip:'%STR&JSSTR', repeat:%INT});\n",
+	htrAddScriptInit_va(s,"    ib_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), n:'%STR&JSSTR', p:'%STR&JSSTR', c:'%STR&JSSTR', d:'%STR&JSSTR', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, tooltip:'%STR&JSSTR', repeat:%INT});\n",
 	        name, n_img, p_img, c_img, d_img, w, h, name,is_enabled, tooltip, button_repeat);
 
 	/** HTML body <DIV> elements for the layers. **/

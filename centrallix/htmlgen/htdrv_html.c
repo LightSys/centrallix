@@ -122,8 +122,7 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 		}
 
             /** Write named global **/
-	    htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"ht%POSpane\")",id);
-	    htrAddWgtrCtrLinkage(s, tree, "_obj");
+	    htrAddWgtrObjLinkage_va(s, tree, "ht%POSpane",id);
 
             htrAddScriptGlobal(s, "ht_fadeobj", "null", 0);
     
@@ -140,20 +139,20 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 
             /** Script initialization call. **/
 	    if (s->Capabilities.Dom0NS)
-		htrAddScriptInit_va(s,"    ht_init({layer:nodes[\"%STR&SYM\"], layer2:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"ht%POSpane2\"), faderLayer:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"ht%POSfader\"), source:\"%STR&JSSTR\", width:%INT, height:%INT, loader:null});\n",
+		htrAddScriptInit_va(s,"    ht_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), layer2:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"ht%POSpane2\"), faderLayer:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"ht%POSfader\"), source:\"%STR&JSSTR\", width:%INT, height:%INT, loader:null});\n",
                     name, name, id, name, id, 
 		    src, w,h);
 	    else
-		htrAddScriptInit_va(s,"    ht_init({layer:nodes[\"%STR&SYM\"], layer2:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"ht%POSpane2\"), faderLayer:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"ht%POSfader\"), source:\"%STR&JSSTR\", width:%INT, height:%INT, loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])), \"ht%POSloader\")});\n",
+		htrAddScriptInit_va(s,"    ht_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), layer2:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"ht%POSpane2\"), faderLayer:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"ht%POSfader\"), source:\"%STR&JSSTR\", width:%INT, height:%INT, loader:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")), \"ht%POSloader\")});\n",
                     name, name, id, name, id, 
 		    src, w,h, name, id);
     
             /** HTML body <DIV> element for the layer. **/
             htrAddBodyItem_va(s,"<DIV background=\"/sys/images/fade_lrwipe_01.gif\" ID=\"ht%POSfader\"></DIV>",id);
-	    htrAddBodyItemLayer_va(s, 0, "ht%POSpane2", id, "");
+	    htrAddBodyItemLayer_va(s, 0, "ht%POSpane2", id, NULL, "");
 	    if (!s->Capabilities.Dom0NS)
-		htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "ht%POSloader", id, "");
-	    htrAddBodyItemLayerStart(s, 0, "ht%POSpane", id);
+		htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "ht%POSloader", id, NULL, "");
+	    htrAddBodyItemLayerStart(s, 0, "ht%POSpane", id, NULL);
 	    }
 	else
 	    {

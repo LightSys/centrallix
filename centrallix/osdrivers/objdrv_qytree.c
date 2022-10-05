@@ -90,6 +90,7 @@ typedef struct
     char*	ItemText;
     char*	ItemSrc;
     char*	ItemWhere;
+    char*	ItemOrder;
     char*	ItemSql;
     pExpression	ItemSqlExpr;
     XHashTable	StructTable;
@@ -255,6 +256,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
     XHashTable struct_table;
     XString sql;
     pObjQuery test_qy;
+    char createpath[OBJSYS_MAX_PATH+1];
 
     	/** Setup the pathname into its subparts **/
 	for(i=1;i<path->nElements;i++) path->Elements[i][-1] = 0;
@@ -363,13 +365,27 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 			test_qy = objMultiQuery(s, sql.String, objlist, 0);
 			if (test_qy)
 			    {
+			    /** sizeof(createpath)-2 to leave room for two chars **/
+			    if (objGetQueryIdentityPath(test_qy, createpath, sizeof(createpath) - 2) < 0)
+				createpath[0] = '\0';
+
 			    /** query open succeeded, try to fetch a result **/
 			    test_obj = objQueryFetch(test_qy, O_RDONLY);
+
+			    /** are we creating a new object? **/
+			    if (!test_obj && subref == path->nElements - 1 && (openflags & O_CREAT) && createpath[0])
+				{
+				/** We left room for these two chars in the
+				 ** above call to objGetQueryIdentityPath().
+				 **/
+				strcat(createpath, "/*");
+				test_obj = objOpen(s, createpath, O_RDWR | O_TRUNC | (openflags & (O_CREAT | OBJ_O_AUTONAME)), 0600, "system/file");
+				}
 			    objQueryClose(test_qy);
 			    }
 			xsDeInit(&sql);
 			if (!test_obj)
-			    break;
+			    continue;
 
 			/** ok, found the object **/
 			expModifyParam(objlist,NULL,test_obj);
@@ -426,7 +442,8 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
                         if (!test_obj && subref == path->nElements - 1 && (openflags & O_CREAT))
                             {
                             test_obj = objOpen(s, inf->Pathname, O_RDWR | O_TRUNC | (openflags & (O_CREAT | OBJ_O_AUTONAME)), 0600, "system/file");
-                            if (!test_obj) break;
+                            if (!test_obj)
+				continue;
 			    expModifyParam(objlist, NULL, test_obj);
 			    objUnmanageObject(test_obj->Session, test_obj);
 			    objlist->Flags[(signed char)(objlist->CurrentID)] |= EXPR_O_UPDATE;
@@ -445,7 +462,8 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 				    }
                                 }
                             }
-                        else if (!test_obj) break;
+                        else if (!test_obj)
+			    continue;
     
                         /** Validate the where clause expression if need be. **/
 			objlist->Session = s;
@@ -520,9 +538,13 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 	/** Ok, close up the structure table. **/
 	xhClear(&struct_table, NULL, NULL);
 	xhDeInit(&struct_table);
-	for(i=0;i<objlist->nObjects-1;i++)
-	    if (objlist->Objects[i])
-		objClose(objlist->Objects[i]);
+	if (objlist)
+	    {
+	    for(i=0;i<objlist->nObjects-1;i++)
+		if (objlist->Objects[i])
+		    objClose(objlist->Objects[i]);
+	    expFreeParamList(objlist);
+	    }
 	nmFree(inf,sizeof(QytData));
 
 	return NULL;
@@ -535,12 +557,8 @@ void*
 qytOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     pQytData inf;
-    char* node_path;
     pSnNode node = NULL;
     char buf[1];
-
-	/** Determine node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 
 	/** If CREAT and EXCL, we only create, failing if already exists. **/
 	if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))
@@ -590,26 +608,40 @@ qytOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     }
 
 
-/*** qytClose - close an open file or directory.
- ***/
 int
-qytClose(void* inf_v, pObjTrxTree* oxt)
+qyt_internal_Close(pQytData inf)
     {
-    pQytData inf = QYT(inf_v);
     int i;
-
-    	/** Write the node first **/
-	snWriteNode(inf->Obj->Prev, inf->BaseNode);
 
 	/** Close the lowlevel-object **/
 	if (inf->LLObj) objClose(inf->LLObj);
 	
 	/** Release the memory **/
 	inf->BaseNode->OpenCnt --;
-	for(i=0;i<inf->ObjList->nObjects-1;i++)
-	    if (inf->ObjList->Objects[i])
-		objClose(inf->ObjList->Objects[i]);
+	if (inf->ObjList)
+	    {
+	    for(i=0;i<inf->ObjList->nObjects;i++)
+		if (inf->ObjList->Objects[i])
+		    objClose(inf->ObjList->Objects[i]);
+	    expFreeParamList(inf->ObjList);
+	    }
 	nmFree(inf,sizeof(QytData));
+
+    return 0;
+    }
+
+
+/*** qytClose - close an open file or directory.
+ ***/
+int
+qytClose(void* inf_v, pObjTrxTree* oxt)
+    {
+    pQytData inf = QYT(inf_v);
+
+    	/** Write the node first **/
+	snWriteNode(inf->Obj->Prev, inf->BaseNode);
+
+	qyt_internal_Close(inf);
 
     return 0;
     }
@@ -639,13 +671,10 @@ int
 qytDelete(pObject obj, pObjTrxTree* oxt)
     {
     pQytData inf = NULL;
-    char* node_path;
     pSnNode node;
     int rval = 0;
-    int i;
 
 	/** Determine node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 	node = snReadNode(obj->Prev);
 	if (!node) 
 	    {
@@ -657,6 +686,7 @@ qytDelete(pObject obj, pObjTrxTree* oxt)
 	/** Process path to determine actual path of object. **/
 	inf = qyt_internal_ProcessPath(obj->Session, obj->Pathname, node, obj->SubPtr, node->Data, 0, 0);
 	if (inf->LLObj) objClose(inf->LLObj);
+	inf->LLObj = NULL;
 	obj_internal_PathPart(obj->Pathname, 0,0);
 
 	/** Call delete on it, using the actual path determined by process_path. **/
@@ -681,10 +711,7 @@ qytDelete(pObject obj, pObjTrxTree* oxt)
 	/** Release, don't call close because that might write data to a deleted object **/
 	if (inf)
 	    {
-	    for(i=0;i<inf->ObjList->nObjects-1;i++)
-		if (inf->ObjList->Objects[i])
-		    objClose(inf->ObjList->Objects[i]);
-	    nmFree(inf,sizeof(QytData));
+	    qyt_internal_Close(inf);
 	    }
 
     return rval;
@@ -698,7 +725,6 @@ qytDeleteObj(void* inf_v, pObjTrxTree* oxt)
     {
     pQytData inf = QYT(inf_v);
     int rval = 0;
-    int i;
 
     	/** Write the node first **/
 	snWriteNode(inf->Obj->Prev, inf->BaseNode);
@@ -711,13 +737,11 @@ qytDeleteObj(void* inf_v, pObjTrxTree* oxt)
 	    rval = -1;
 	    mssError(1,"QYT","Could not delete object not having an underlying data source");
 	    }
+	inf->LLObj = NULL;
 	
 	/** Release the memory **/
 	inf->BaseNode->OpenCnt --;
-	for(i=0;i<inf->ObjList->nObjects-1;i++)
-	    if (inf->ObjList->Objects[i])
-		objClose(inf->ObjList->Objects[i]);
-	nmFree(inf,sizeof(QytData));
+	qyt_internal_Close(inf);
 
     return rval;
     }
@@ -862,7 +886,10 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 	    qy->ItemText = NULL;
 	    qy->ItemSrc = NULL;
 	    qy->ItemWhere = NULL;
+	    qy->ItemOrder = NULL;
 	    qy->ItemSql = NULL;
+	    if (qy->ItemSqlExpr)
+		expFreeExpression(qy->ItemSqlExpr);
 	    qy->ItemSqlExpr = NULL;
 	    if (stStructType(find_inf) == ST_T_SUBGROUP)
 	        {
@@ -879,6 +906,7 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 		    {
 		    qy->ItemSrc = val;
 		    stAttrValue(stLookup(find_inf,"where"),NULL,&(qy->ItemWhere),0);
+		    stAttrValue(stLookup(find_inf,"order"),NULL,&(qy->ItemOrder),0);
 		    return qy->NextSubInfID - 1;
 		    }
 		t = stGetAttrType(stLookup(find_inf,"sql"), 0);
@@ -979,7 +1007,8 @@ qyt_internal_StartQuery(pQytQuery qy)
 	    if (!item_query)
 		goto error;
 	    expRemapID(item_query, objlist->nObjects-1, 0);
-	    expFreezeEval(item_query, objlist, EXPR_OBJID_CURRENT);
+	    if (expFreezeEval(item_query, objlist, EXPR_OBJID_CURRENT) < 0)
+		goto error;
 	    /*expFreezeEval(item_query, objlist, objlist->nObjects-1);*/
 	    }
 
@@ -1009,7 +1038,7 @@ qyt_internal_StartQuery(pQytQuery qy)
 	if (qy->LLQueryObj) 
 	    {
 	    objUnmanageObject(qy->LLQueryObj->Session, qy->LLQueryObj);
-	    qyinf = objOpenQuery(qy->LLQueryObj, NULL, NULL, expr, NULL);
+	    qyinf = objOpenQuery(qy->LLQueryObj, NULL, qy->ItemOrder, expr, NULL, 0);
 	    if (!qyinf)
 		{
 		objClose(qy->LLQueryObj);
@@ -1057,6 +1086,7 @@ qytOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	qy->Query = query;
 	qy->ObjInf = inf;
 	qy->Constraint = NULL;
+	qy->ItemSqlExpr = NULL;
 	xhInit(&qy->StructTable,17,0);
 
 	/** Get the next subinf ready for retrieval. **/
@@ -1126,7 +1156,16 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		else
 		    {
 		    objGetAttrValue(llobj, "name", DATA_T_STRING,POD(&objname));
-		    objUnmanageObject(llobj->Session, llobj);
+		    if (!objname)
+			{
+			/** Object is somehow invalid -- force a go-around to next fetch **/
+			objClose(llobj);
+			llobj = NULL;
+			}
+		    else
+			{
+			objUnmanageObject(llobj->Session, llobj);
+			}
 		    }
 	        }
 	    }
@@ -1167,9 +1206,11 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	obj_internal_PathPart(obj->Pathname,0,0);
 
 	/** Set up the param objects list for this fetched object. **/
+	if (inf->ObjList)
+	    expFreeParamList(inf->ObjList);
 	inf->ObjList = expCreateParamList();
 	expCopyList(qy->ObjInf->ObjList, inf->ObjList, -1);
-	expAddParamToList(inf->ObjList, objname, obj, EXPR_O_CURRENT);
+	expAddParamToList(inf->ObjList, objname, llobj, EXPR_O_CURRENT);
 	expLinkParams(inf->ObjList, 0, -1);
 
     return (void*)inf;
@@ -1186,6 +1227,9 @@ qytQueryClose(void* qy_v, pObjTrxTree* oxt)
     	/** Close any pending low-level query **/
 	if (qy->LLQuery) objQueryClose(qy->LLQuery);
 	if (qy->LLQueryObj) objClose(qy->LLQueryObj);
+
+	if (qy->ItemSqlExpr)
+	    expFreeExpression(qy->ItemSqlExpr);
 
 	/** Free the structure **/
 	if (qy->Constraint) expFreeExpression(qy->Constraint);
@@ -1210,6 +1254,10 @@ qytGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	/** If 'content-type', it's also a string. **/
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname, "inner_type") ||
 	    !strcmp(attrname,"outer_type")) return DATA_T_STRING;
+
+	/** Last modification is a datetime **/
+	if (!strcmp(attrname,"last_modification"))
+	    return DATA_T_DATETIME;
 
 	/** If there is a low-level object, lookup within it **/
 	if (inf->LLObj) return objGetAttrType(inf->LLObj, attrname);
@@ -1320,6 +1368,8 @@ qytGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		val->String = "system/object";
 		return 0;
 		}
+	    if (rval < 0 && !strcmp(attrname,"last_modification"))
+		return 1;
 	    return rval;
 	    }
 
@@ -1562,6 +1612,21 @@ qytPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
     return hints;
     }
 
+
+/*** qytCommit - commit changes to the underlying object.
+ ***/
+int
+qytCommit(void* inf_v, pObjTrxTree* oxt)
+    {
+    pQytData inf = QYT(inf_v);
+
+	if (inf->LLObj)
+	    return objCommitObject(inf->LLObj);
+    
+    return -1;
+    }
+
+
 /*** qytInitialize - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.
  ***/
@@ -1610,6 +1675,7 @@ qytInitialize()
 	drv->ExecuteMethod = qytExecuteMethod;
 	drv->Info = qytInfo;
 	drv->PresentationHints = qytPresentationHints;
+	drv->Commit = qytCommit;
 
 	/** Register some structures **/
 	nmRegister(sizeof(QytData),"QytData");

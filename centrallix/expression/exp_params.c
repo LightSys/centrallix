@@ -10,6 +10,8 @@
 #include "cxlib/mtlexer.h"
 #include "expression.h"
 #include "cxlib/mtsession.h"
+#include <openssl/sha.h>
+#include <openssl/md5.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -64,6 +66,10 @@ expCreateParamList()
 	objlist->MainFlags = 0;
 	objlist->PSeqID = (EXP.PSeqID++);
 	objlist->Session = NULL;
+	objlist->CurControl = NULL;
+
+	/** Initialize the per-objlist random seed **/
+	objlist->RandomInit = 0;
 
     return objlist;
     }
@@ -101,6 +107,9 @@ expFreeParamList(pParamObjects this)
 	    nmSysFree(this->Names[i]);
 	    this->Names[i] = NULL;
 	    }
+
+	if (this->CurControl)
+	    exp_internal_UnlinkControl(this->CurControl);
 
 	/** Free the structure. **/
 	nmFree(this, sizeof(ParamObjects));
@@ -166,7 +175,51 @@ expLinkParams(pParamObjects objlist, int start, int end)
     }
 
 
-/*** expCopyList - make a copy of a param objects list
+/*** expCopyParams - copy just certain objects from one param list
+ *** to another.  This is different from expCopyList, since this function
+ *** copies just certain objects, rather than copying the entire list's metadata
+ *** like expCopyList does.
+ ***
+ *** Neither function *Links* to the copied objects.
+ ***/
+int
+expCopyParams(pParamObjects src, pParamObjects dst, int start, int n_objects)
+    {
+    int i;
+
+	/** Copy all? **/
+	if (n_objects == -1)
+	    n_objects = EXPR_MAX_PARAMS - start;
+
+	/** Do the copy **/
+	for(i=start; i<start+n_objects; i++)
+	    {
+	    dst->SeqIDs[i] = src->SeqIDs[i];
+	    dst->GetTypeFn[i] = src->GetTypeFn[i];
+	    dst->GetAttrFn[i] = src->GetAttrFn[i];
+	    dst->SetAttrFn[i] = src->SetAttrFn[i];
+	    if (dst->Names[i]) dst->nObjects--;
+	    if (src->Names[i]) dst->nObjects++;
+	    if (dst->Names[i] != NULL && (dst->Flags[i] & EXPR_O_ALLOCNAME))
+		nmSysFree(dst->Names[i]);
+	    dst->Flags[i] = src->Flags[i];
+	    dst->Names[i] = NULL;
+	    dst->Flags[i] &= ~EXPR_O_ALLOCNAME;
+	    if (src->Names[i])
+		{
+		dst->Names[i] = nmSysStrdup(src->Names[i]);
+		dst->Flags[i] |= EXPR_O_ALLOCNAME;
+		}
+	    dst->Objects[i] = src->Objects[i];
+	    }
+
+    return 0;
+    }
+
+
+/*** expCopyList - make a copy of a param objects list, in its entirety,
+ *** possibly only including the first N objects (set n_objects to -1 to
+ *** include all objects)
  ***/
 int
 expCopyList(pParamObjects src, pParamObjects dst, int n_objects)
@@ -179,7 +232,7 @@ expCopyList(pParamObjects src, pParamObjects dst, int n_objects)
 
 	/** Might need to deallocate strings in dst **/
 	for(i=0;i<EXPR_MAX_PARAMS;i++)
-	    if (dst->Names[i] != NULL && dst->Flags[i] & EXPR_O_ALLOCNAME)
+	    if (dst->Names[i] != NULL && (dst->Flags[i] & EXPR_O_ALLOCNAME))
 		nmSysFree(dst->Names[i]);
 
 	/** For most things, just a straight memcpy will do **/
@@ -216,14 +269,20 @@ expCopyList(pParamObjects src, pParamObjects dst, int n_objects)
  *** we find it, or -1 if not found.
  ***/
 int
-expLookupParam(pParamObjects this, char* name)
+expLookupParam(pParamObjects this, char* name, int flags)
     {
-    int i;
+    int i, idx;
 
 	/** Search for it **/
 	for(i=0;i<EXPR_MAX_PARAMS;i++)
-	    if (this->Names[i] != NULL && !strcmp(name, this->Names[i]))
-		return i;
+	    {
+	    if (flags & EXPR_F_REVERSE)
+		idx = (EXPR_MAX_PARAMS-1) - i;
+	    else
+		idx = i;
+	    if (this->Names[idx] != NULL && !strcmp(name, this->Names[idx]))
+		return idx;
+	    }
 
     return -1;
     }
@@ -247,7 +306,7 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 	    }
 
 	/** Already exists? **/
-	exist = expLookupParam(this, name);
+	exist = expLookupParam(this, name, flags);
 	if (exist >= 0 && !(flags & (EXPR_O_ALLOWDUPS | EXPR_O_REPLACE)))
 	    {
 	    mssError(1,"EXP","Parameter Object name %s already exists", name);
@@ -264,13 +323,13 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 		/** Setup the entry for this parameter. **/
 		this->SeqIDs[i] = EXP.ModSeqID++;
 		this->Objects[i] = obj;
-		this->Flags[i] = flags | EXPR_O_CHANGED;
 		this->GetTypeFn[i] = objGetAttrType;
 		this->GetAttrFn[i] = objGetAttrValue;
 		this->SetAttrFn[i] = objSetAttrValue;
 		if (i != exist) this->nObjects++;
 		if (this->Names[i] && (this->Flags[i] & EXPR_O_ALLOCNAME))
 		    nmSysFree(this->Names[i]);
+		this->Flags[i] = flags | EXPR_O_CHANGED;
 		if (flags & EXPR_O_ALLOCNAME)
 		    {
 		    this->Names[i] = nmSysStrdup(name);
@@ -291,11 +350,11 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 		/** Set modified. **/
 		this->ModCoverageMask |= (1<<i);
 
-		break;
+		return i;
 		}
 	    }
 
-    return 0;
+    return -1;
     }
 
 
@@ -308,9 +367,17 @@ expRemoveParamFromList(pParamObjects this, char* name)
     int i;
 
     	/** Find the thing and delete it **/
-	i = expLookupParam(this, name);
+	i = expLookupParam(this, name, 0);
 	if (i < 0) return -1;
 
+    return expRemoveParamFromListById(this, i);
+    }
+
+int
+expRemoveParamFromListById(pParamObjects this, int i)
+    {
+
+	/** Remove it **/
 	if (this->Flags[i] & EXPR_O_ALLOCNAME) nmSysFree(this->Names[i]);
 	this->Flags[i] = 0;
 	this->Objects[i] = NULL;
@@ -348,7 +415,7 @@ expModifyParam(pParamObjects this, char* name, pObject replace_obj)
 	    }
 	else
 	    {
-	    slot_id = expLookupParam(this, name);
+	    slot_id = expLookupParam(this, name, 0);
 	    }
 	if (slot_id < 0) return -1;
 
@@ -456,13 +523,18 @@ expReplaceVariableID(pExpression this, int newid)
 int
 expFreezeOne(pExpression this, pParamObjects objlist, int freeze_id)
     {
-    int i;
+    int i, oldflags;
 
     	/** Is this a PROPERTY object and does not match freeze_id?? **/
 	if ((this->NodeType == EXPR_N_PROPERTY || this->NodeType == EXPR_N_OBJECT) && this->ObjID == freeze_id)
 	    {
+	    oldflags = this->Flags;
 	    this->Flags &= ~EXPR_F_FREEZEEVAL;
-	    expEvalTree(this,objlist);
+	    if (expEvalTree(this,objlist) < 0)
+		{
+		this->Flags = oldflags;
+		return -1;
+		}
 	    this->Flags |= EXPR_F_FREEZEEVAL;
 	    return 0;
 	    }
@@ -470,7 +542,8 @@ expFreezeOne(pExpression this, pParamObjects objlist, int freeze_id)
 	/** Otherwise, check child items. **/
 	for(i=0;i<this->Children.nItems;i++)
 	    {
-	    expFreezeOne((pExpression)(this->Children.Items[i]), objlist, freeze_id);
+	    if (expFreezeOne((pExpression)(this->Children.Items[i]), objlist, freeze_id) < 0)
+		return -1;
 	    }
 
     return 0;
@@ -485,13 +558,18 @@ expFreezeOne(pExpression this, pParamObjects objlist, int freeze_id)
 int
 expFreezeEval(pExpression this, pParamObjects objlist, int freeze_id)
     {
-    int i;
+    int i, oldflags;
 
     	/** Is this a PROPERTY object and does not match freeze_id?? **/
 	if ((this->NodeType == EXPR_N_PROPERTY || this->NodeType == EXPR_N_OBJECT) && this->ObjID != -1 && this->ObjID != freeze_id)
 	    {
+	    oldflags = this->Flags;
 	    this->Flags &= ~EXPR_F_FREEZEEVAL;
-	    expEvalTree(this,objlist);
+	    if (expEvalTree(this,objlist) < 0)
+		{
+		this->Flags = oldflags;
+		return -1;
+		}
 	    this->Flags |= EXPR_F_FREEZEEVAL;
 	    return 0;
 	    }
@@ -499,7 +577,8 @@ expFreezeEval(pExpression this, pParamObjects objlist, int freeze_id)
 	/** Otherwise, check child items. **/
 	for(i=0;i<this->Children.nItems;i++)
 	    {
-	    expFreezeEval((pExpression)(this->Children.Items[i]), objlist, freeze_id);
+	    if (expFreezeEval((pExpression)(this->Children.Items[i]), objlist, freeze_id) < 0)
+		return -1;
 	    }
 
     return 0;
@@ -604,7 +683,7 @@ expSetParamFunctions(pParamObjects this, char* name, int (*type_fn)(), int (*get
 	    }
 	else
 	    {
-	    slot_id = expLookupParam(this, name);
+	    slot_id = expLookupParam(this, name, 0);
 	    }
 	if (slot_id < 0) return -1;
 

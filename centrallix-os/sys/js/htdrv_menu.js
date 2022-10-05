@@ -20,6 +20,7 @@ function mn_additem(param)
     item.label = param.label;
     item.check = param.check;
     item.submenu = param.submenu;
+    item.submenu_ns = param.submenu_ns;
     item.icon = param.icon;
     item.enabled = param.enabled;
     item.onright = param.onright;
@@ -146,7 +147,12 @@ function mn_popup(aparam)
 function mn_activate(x,y,p)
     {
     if (!this.popup) return false;
+    if (x + getClipWidth(this) > getInnerWidth())
+	x = getInnerWidth() - getClipWidth(this);
+    if (y + getClipHeight(this) > getInnerHeight())
+	y = getInnerHeight() - getClipHeight(this);
     moveTo(this, x, y);
+    //pg_positionpopup(this, x, y, getClipHeight(p), getClipWidth(p));
     pg_stackpopup(this, p);
     this.nextActive = null;
     if (p.kind == "mn") p.nextActive = this;
@@ -168,7 +174,7 @@ function mn_activate_item(item)
 	item.ifcProbe(ifEvent).Activate('Select', {Value:item.value, Label:item.label});
 	this.ifcProbe(ifEvent).Activate('SelectItem', {Value:item.value, Label:item.label});
 	//if (this.VChildren[item.submenu])
-	if (wgtrGetNode(this,item.submenu))
+	if (wgtrGetNode(item.submenu_ns,item.submenu))
 	    {
 	    if (this.horiz)
 		{
@@ -181,7 +187,7 @@ function mn_activate_item(item)
 		var y = getPageY(this) + item.y;
 		}
 	    //this.VChildren[item.submenu].Activate(x, y, this);
-	    wgtrGetNode(this,item.submenu).Activate(x, y, this);
+	    wgtrGetNode(item.submenu_ns,item.submenu).Activate(x, y, this);
 	    }
 	}
     else if (item.check != null)
@@ -404,7 +410,7 @@ function mn_init(param)
 	}
     menu.act_w = getClipWidth(menu.clayer);
     menu.act_h = getClipHeight(menu.clayer);
-    if (htr_getvisibility(menu) == 'hidden')
+    if ($(menu).css('visibility') == 'hidden' && (!menu.__WgtrParent.style || $(menu.__WgtrParent).css('visibility') == 'inherit'))
 	moveTo(menu, 0, -menu.act_h);
     if (cx__capabilities.CSSBox) menu.act_h += 2;
     htutil_tag_images(menu.clayer, "mn", menu.clayer, menu);
@@ -419,14 +425,16 @@ function mn_init(param)
 	{
 	if (imgs[i].name.substr(0,nmstr.length) == nmstr)
 	    {
-	    var x = getRelativeX(imgs[i]);
+	    var x = $(imgs[i]).position().left;
+	    var y = $(imgs[i]).position().top;
+	    /*var x = getRelativeX(imgs[i]);
 	    if (isNaN(x))
 		for(x=0,search=imgs[i];search.nodeName != 'DIV'; search = search.offsetParent)
 		    x += search.offsetLeft;
 	    var y = getRelativeY(imgs[i]);
 	    if (isNaN(y))
 		for(y=0,search=imgs[i];search.nodeName != 'DIV'; search = search.offsetParent)
-		    y += search.offsetTop;
+		    y += search.offsetTop;*/
 	    menu.coords.push(new Object());
 	    menu.coords[parseInt(imgs[i].name.substr(nmstr.length,255))].x = x;
 	    menu.coords[parseInt(imgs[i].name.substr(nmstr.length,255))].y = y;

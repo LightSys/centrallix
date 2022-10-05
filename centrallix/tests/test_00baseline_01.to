@@ -1,0 +1,2 @@
+##NAME ** SHOULD FAIL **
+query select 0

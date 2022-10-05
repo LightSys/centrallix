@@ -78,6 +78,7 @@ function wn_init(param)
 	    l.has_titlebar = 1;
 	}
 
+    l.open_params = {};
     l.orig_parent = null;
     l.is_toplevel = false;
     if (param.toplevel == 1)
@@ -98,11 +99,15 @@ function wn_init(param)
     wn_bring_top(l);
 
     // Actions
-    l.ifcProbeAdd(ifAction).Add("SetVisibility", wn_setvisibility);
-    l.ifcProbe(ifAction).Add("ToggleVisibility", wn_togglevisibility);
-    l.ifcProbe(ifAction).Add("Open", wn_openwin);
-    l.ifcProbe(ifAction).Add("Close", wn_closewin);
-    l.ifcProbe(ifAction).Add("Popup", wn_popup);
+    var ia = l.ifcProbeAdd(ifAction);
+    ia.Add("SetVisibility", wn_setvisibility);
+    ia.Add("ToggleVisibility", wn_togglevisibility);
+    ia.Add("Open", wn_openwin);
+    ia.Add("Close", wn_closewin);
+    ia.Add("Popup", wn_popup);
+    ia.Add("Shade", wn_action_shade);
+    ia.Add("Unshade", wn_action_unshade);
+    ia.Add("Point", wn_action_point);
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
@@ -131,12 +136,25 @@ function wn_init(param)
 	pg_addsched_fn(window, "pg_reveal_event", [l,l,'Reveal'], 0);
 	}
 
+    // force on page...
+    if (getPageY(l) + l.orig_height > getInnerHeight())
+	{
+	moveToAbsolute(l, getPageX(l), getInnerHeight() - l.orig_height - 2);
+	}
+
     // Show container API
     l.showcontainer = wn_showcontainer;
 
-    if (l.is_modal && l.is_visible) pg_setmodal(l);
+    if (l.is_modal && l.is_visible) pg_setmodal(l, true);
 
     return l;
+    }
+
+function wn_action_point(aparam)
+    {
+    var divs = htutil_point(this, aparam.X, aparam.Y, aparam.AtWidget, aparam.BorderColor, aparam.FillColor, this.point1, this.point2);
+    this.point1 = divs.p1;
+    this.point2 = divs.p2;
     }
 
 // Popup - pops up a window in the way that a menu might pop up.
@@ -214,6 +232,18 @@ function wn_showcontainer()
     return true;
     }
 
+function wn_action_shade()
+    {
+    if (!this.shaded)
+	wn_windowshade(this);
+    }
+
+function wn_action_unshade()
+    {
+    if (this.shaded)
+	wn_windowshade(this);
+    }
+
 // Called when our reveal/obscure request has been acted upon.
 // context 'c' == whether to be visible (true) or not (false).
 function wn_cb_reveal(e)
@@ -227,7 +257,7 @@ function wn_cb_reveal(e)
 	    this.loaded = true;
 	    this.ifcProbe(ifEvent).Activate("Load", {});
 	    }
-	this.ifcProbe(ifEvent).Activate("Open", {});
+	this.ifcProbe(ifEvent).Activate("Open", this.open_params);
 	}
     return true;
     }
@@ -257,6 +287,7 @@ function wn_setvisibility_bh(v)
 	}
     else
 	{
+	$(this).css({display:"block"});
 	pg_reveal_event(this, v, 'Reveal');
 	if (!this.loaded)
 	    {
@@ -268,8 +299,119 @@ function wn_setvisibility_bh(v)
 	wn_bring_top(this);
 	htr_setvisibility(this,'inherit');
 	this.is_visible = 1;
-	if (this.is_modal) pg_setmodal(this);
-	this.ifcProbe(ifEvent).Activate("Open", {});
+	if (this.is_modal) pg_setmodal(this, true);
+	this.ifcProbe(ifEvent).Activate("Open", this.open_params);
+
+	// Point logic
+	if (this.point_at)
+	    {
+	    // Border radius of this window
+	    var brtxt = $(this).css('border-radius');
+	    if (!brtxt) brtxt = $(this).css('border-bottom-left-radius'); // grrr firefox
+	    var br = parseInt(brtxt);
+	    var min_offset = br + 20;
+
+	    // Geometry of widget we're pointing at...
+	    if (this.point_at.GetSelectedGeom)
+		var geom = this.point_at.GetSelectedGeom();
+	    else
+		var geom = wgtrGetGeom(this.point_at);
+	    var using_offset = (this.point_offset != undefined && this.point_offset != null);
+
+	    // Compute based on which side of the window the point will be on
+	    switch(this.point_side)
+		{
+		case 'bottom':
+		    // Allowable point positions
+		    var pt_y = $(this).outerHeight() + 15;
+		    var min_pt_x = min_offset;
+		    var max_pt_x = $(this).outerWidth() - min_offset;
+		    if (min_pt_x > max_pt_x) return;
+
+		    // Allowable window positions
+		    var win_y = geom.y - $(this).outerHeight() - 15;
+		    var min_win_x = Math.max(geom.x + (using_offset?this.point_offset:0) - max_pt_x, 0);
+		    var max_win_x = Math.min(geom.x + (using_offset?this.point_offset:geom.width) - min_pt_x, pg_width - $(this).outerWidth());;
+		    if (min_win_x > max_win_x) return;
+
+		    // Go with midpoint of min/max win x
+		    win_x = (min_win_x + max_win_x)/2;
+
+		    // Compute point x from there
+		    pt_x = geom.x + (using_offset?this.point_offset:(geom.width/2)) - win_x;
+		    pt_x = Math.min(Math.max(pt_x, min_pt_x), max_pt_x);
+		    break;
+
+		case 'top':
+		    // Allowable point positions
+		    var pt_y = -15;
+		    var min_pt_x = min_offset;
+		    var max_pt_x = $(this).outerWidth() - min_offset;
+		    if (min_pt_x > max_pt_x) return;
+
+		    // Allowable window positions
+		    var win_y = geom.y + geom.height + 15;
+		    var min_win_x = Math.max(geom.x + (using_offset?this.point_offset:0) - max_pt_x, 0);
+		    var max_win_x = Math.min(geom.x + (using_offset?this.point_offset:geom.width) - min_pt_x, pg_width - $(this).outerWidth());;
+		    if (min_win_x > max_win_x) return;
+
+		    // Go with midpoint of min/max win x
+		    win_x = (min_win_x + max_win_x)/2;
+
+		    // Compute point x from there
+		    pt_x = geom.x + (using_offset?this.point_offset:(geom.width/2)) - win_x;
+		    pt_x = Math.min(Math.max(pt_x, min_pt_x), max_pt_x);
+		    break;
+
+		case 'left':
+		    // Allowable point positions
+		    var pt_x = -15;
+		    var min_pt_y = min_offset;
+		    var max_pt_y = $(this).outerHeight() - min_offset;
+		    if (min_pt_y > max_pt_y) return;
+
+		    // Allowable window positions
+		    var win_x = geom.x + geom.width + 15;
+		    var min_win_y = Math.max(geom.y + (using_offset?this.point_offset:0) - max_pt_y, 0);
+		    var max_win_y = Math.min(geom.y + (using_offset?this.point_offset:geom.height) - min_pt_y, pg_height - $(this).outerHeight());;
+		    if (min_win_y > max_win_y) return;
+
+		    // Go with midpoint of min/max win y
+		    win_y = (min_win_y + max_win_y)/2;
+
+		    // Compute point y from there
+		    pt_y = geom.y + (using_offset?this.point_offset:(geom.height/2)) - win_y;
+		    pt_y = Math.min(Math.max(pt_y, min_pt_y), max_pt_y);
+		    break;
+
+		case 'right':
+		    // Allowable point positions
+		    var pt_x = $(this).outerWidth() + 15;
+		    var min_pt_y = min_offset;
+		    var max_pt_y = $(this).outerHeight() - min_offset;
+		    if (min_pt_y > max_pt_y) return;
+
+		    // Allowable window positions
+		    var win_x = geom.x - $(this).outerWidth() - 15;
+		    var min_win_y = Math.max(geom.y + (using_offset?this.point_offset:0) - max_pt_y, 0);
+		    var max_win_y = Math.min(geom.y + (using_offset?this.point_offset:geom.height) - min_pt_y, pg_height - $(this).outerHeight());;
+		    if (min_win_y > max_win_y) return;
+
+		    // Go with midpoint of min/max win y
+		    win_y = (min_win_y + max_win_y)/2;
+
+		    // Compute point y from there
+		    pt_y = geom.y + (using_offset?this.point_offset:(geom.height/2)) - win_y;
+		    pt_y = Math.min(Math.max(pt_y, min_pt_y), max_pt_y);
+		    break;
+		}
+
+	    // Do the move and point
+	    moveTo(this, win_x, win_y);
+	    var divs = htutil_point(this, pt_x, pt_y, null, null, null, this.point1, this.point2);
+	    this.point1 = divs.p1;
+	    this.point2 = divs.p2;
+	    }
 	}
     }
 
@@ -386,7 +528,7 @@ function wn_graphical_shade(l,to,speed,size)
 
 function wn_close(l)
     {
-    if (l.is_modal) pg_setmodal(null);
+    if (l.is_modal) pg_setmodal(l, false);
     if (wn_popped[l.id]) delete wn_popped[l.id];
     //l.is_modal = false;
     l.no_close = false;
@@ -403,6 +545,9 @@ function wn_close(l)
     if (l.closetype == 0 || !cx__capabilities.Dom0NS)
 	{
 	htr_setvisibility(l,'hidden');
+	$(l).css({display:"none"});
+	if (l.point1) htr_setvisibility(l.point1,'hidden');
+	if (l.point2) htr_setvisibility(l.point2,'hidden');
 	l.is_visible = 0;
 	}
     else
@@ -469,7 +614,8 @@ function wn_togglevisibility(aparam)
     var vis = htr_getvisibility(this);
     if (vis != 'inherit' && vis != 'visible')
 	{
-	this.SetVisibilityTH(true);
+	//this.SetVisibilityTH(true);
+	wn_openwin.call(this, aparam);
 	}
     else
 	{
@@ -485,7 +631,17 @@ function wn_closewin(aparam)
 
 function wn_openwin(aparam)
     {
+    this.open_params = aparam;
+    this.point_at = aparam.PointAt;
+    if (this.point_at && (typeof this.point_at != 'object' || !wgtrIsNode(this.point_at)))
+	this.point_at = wgtrGetNode(this, this.point_at);
+    this.point_offset = aparam.PointOffset;
+    this.point_side = aparam.PointSide;
     aparam.IsVisible = 1;
+    if (aparam.X !== undefined && aparam.Y !== undefined)
+	moveToAbsolute(this, aparam.X, aparam.Y);
+    else if (aparam.Center && aparam.Center != 'no')
+	moveToAbsolute(this, (pg_width - $(this).width())/2, (pg_height - $(this).height())/2);
     return this.ifcProbe(ifAction).Invoke('SetVisibility',aparam);
     }
 
@@ -541,6 +697,10 @@ function wn_adjust_z(l,zi)
 	{
 	cur_z += zi;
 	htr_setzindex(l,cur_z);
+	if (l.point1)
+	    htr_setzindex(l.point1,cur_z+1);
+	if (l.point2)
+	    htr_setzindex(l.point2,cur_z+2);
 	}
     if (cur_z > wn_top_z) wn_top_z = cur_z;
     return true;

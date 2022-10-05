@@ -33,6 +33,9 @@
 /************************************************************************/
 
 
+#ifndef __builtin_expect
+#define __builtin_expect(e,c) (e)
+#endif
 
 #define MLX_EOF		(-1)
 #define MLX_ERROR	(-2)
@@ -168,6 +171,9 @@ mlxCloseSession(pLxSession this)
     	/** Need to do an 'unread' on the buffer? **/
 	if (this->Flags & MLX_F_NODISCARD && this->InpCnt > 0)
 	    {
+	    /** Incomplete processing on a line that needs to be wrapped up? **/
+	    if ((this->Flags & MLX_F_PROCLINE) && !(this->Flags & MLX_F_EOL) && mlxPeekChar(this,0) == '\n')
+		mlxSkipChars(this,1);
 	    fdUnRead((pFile)(this->ReadArg), this->InpPtr, this->InpCnt, 0,0);
 	    }
 
@@ -188,7 +194,7 @@ mlx_internal_CheckBuffer(pLxSession s, int offset)
     int newcnt;
 
 	/** no data in input? **/
-	if (s->InpCnt <= offset)
+	if (__builtin_expect(s->InpCnt <= offset, 0))
 	    {
 	    if (!(s->Flags & MLX_F_NOFILE))
 		{
@@ -278,12 +284,12 @@ mlxPeekChar(pLxSession s, int offset)
     int v, ch;
 
 	v = mlx_internal_CheckBuffer(s, offset);
-	if (v < 0) return MLX_ERROR;
-	if (v <= offset) return MLX_EOF;
+	if (__builtin_expect(v < 0, 0)) return MLX_ERROR;
+	if (__builtin_expect(v <= offset, 0)) return MLX_EOF;
 
 	ch = (int)((unsigned char)(s->InpPtr[offset]));
 
-	if (!(s->Flags & MLX_F_ALLOWNUL) && ch == 0)
+	if (__builtin_expect(!(s->Flags & MLX_F_ALLOWNUL) && ch == 0, 0))
 	    {
 	    mssError(1,"MLX","Invalid NUL character in input data stream");
 	    return MLX_ERROR;
@@ -1259,7 +1265,7 @@ mlxSetOffset(pLxSession this, unsigned long new_offset)
 	/** Ok, if this is a string session, just reset the bufptr. **/
 	if (!this->ReadFn)
 	    {
-	    if (new_offset < 0 || new_offset > strlen(this->InpStartPtr)) return -1;
+	    if (new_offset > strlen(this->InpStartPtr)) return -1;
 
 	    /** Set up the session structure **/
 	    this->TokType = MLX_TOK_BEGIN;
@@ -1278,10 +1284,8 @@ mlxSetOffset(pLxSession this, unsigned long new_offset)
 	    }
 	else
 	    {
-	    /** Ok, either fd or generic session.  Seek and you shall find :) **/
-	    if (new_offset < 0) return -1;
-
-	    /** Do an empty read to force the seek offset to what we need. 
+	    /** Ok, either fd or generic session.  Seek and you shall find :)
+	     ** Do an empty read to force the seek offset to what we need. 
 	     ** We use FD_U_SEEK here, but OBJ_U_SEEK is the same thing.
 	     **/
 	    if (this->ReadFn(this->ReadArg, nullbuf, 0, new_offset, FD_U_SEEK) < 0) return -1;

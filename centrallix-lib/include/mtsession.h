@@ -46,6 +46,7 @@ typedef struct
     char	Password[32];
     XArray	ErrList;
     XHashTable	Params;
+    int		LinkCnt;
     }
     MtSession, *pMtSession;
 
@@ -64,19 +65,23 @@ typedef struct
 int mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, char* log_progname);
 char* mssUserName();
 char* mssPassword();
-int mssAuthenticate(char* username, char* password);
+int mssAuthenticate(char* username, char* password, int bypass_crypt);
 int mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_maxlen);
-int mssEndSession();
+int mssEndSession(pMtSession s);
+int mssLinkSession(pMtSession s);
+int mssUnlinkSession(pMtSession s);
 int mssSetParam(char* paramname, void* param);
 int mssSetParamPtr(char* paramname, void* ptr);
 void* mssGetParam(char* paramname);
 
 /** Error handling functions **/
+int mssLog(int level, char* msg);
 int mssError(int clr, char* module, char* message, ...);
 int mssErrorErrno(int clr, char* module, char* message, ...);
 int mssClearError();
 int mssPrintError(pFile fd);
 int mssStringError(pXString str);
+int mssUserError(pXString str);
 
 
 #endif

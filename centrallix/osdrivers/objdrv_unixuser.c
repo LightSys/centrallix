@@ -172,7 +172,6 @@ void*
 uxuOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     pUxuData inf;
-    char* node_path;
     pSnNode node = NULL;
     char* name;
     struct passwd* pwent;
@@ -183,9 +182,6 @@ uxuOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	memset(inf,0,sizeof(UxuData));
 	inf->Obj = obj;
 	inf->Mask = mask;
-
-	/** Determine the node path **/
-	node_path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 
 	/** If CREAT and EXCL, we only create, failing if already exists. **/
 	if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))
@@ -415,7 +411,7 @@ uxuOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    if (!pwd_data) break;
 	    xaAddItem(&(qy->PasswdEntries), (void*)pwd_data);
 	    }
-	setpwent();
+	endpwent();
     
     return (void*)qy;
     }

@@ -9,6 +9,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <limits.h>
+#include <stdint.h>
 #include "qprintf.h"
 #include "mtask.h"
 #include "newmalloc.h"
@@ -33,6 +34,7 @@
 /*		strings.  These functions do not support some of the	*/
 /*		more advanced (and dangerous) features of the normal	*/
 /*		printf() library calls.					*/
+/* See centrallix-sysdoc/QPrintf.md for more information. */
 /************************************************************************/
 
 
@@ -57,46 +59,48 @@
 #define QPF_SPEC_T_DBL		(4)
 #define QPF_SPEC_T_NSTR		(5)
 #define QPF_SPEC_T_CHR		(6)
-#define QPF_SPEC_T_ENDSRC	(6)
+#define QPF_SPEC_T_LL     (7)
+#define QPF_SPEC_T_ENDSRC	(7)
 
 /*** builtin filtering specifiers ***/
-#define QPF_SPEC_T_STARTFILT	(7)
-#define QPF_SPEC_T_QUOT		(7)
-#define QPF_SPEC_T_DQUOT	(8)
-#define QPF_SPEC_T_SYM		(9)
-#define QPF_SPEC_T_JSSTR	(10)
-#define QPF_SPEC_T_NLEN		(11)
-#define QPF_SPEC_T_WS		(12)
-#define QPF_SPEC_T_ESCWS	(13)
-#define QPF_SPEC_T_ESCSP	(14)
-#define QPF_SPEC_T_UNESC	(15)
-#define QPF_SPEC_T_SSYB		(16)
-#define QPF_SPEC_T_DSYB		(17)
-#define QPF_SPEC_T_FILE		(18)
-#define QPF_SPEC_T_PATH		(19)
-#define QPF_SPEC_T_HEX		(20)
-#define QPF_SPEC_T_DHEX		(21)
-#define QPF_SPEC_T_B64		(22)
-#define QPF_SPEC_T_DB64		(23)
-#define QPF_SPEC_T_RF		(24)
-#define QPF_SPEC_T_RR		(25)
-#define	QPF_SPEC_T_HTENLBR	(26)
-#define QPF_SPEC_T_DHTE		(27)
-#define QPF_SPEC_T_URL		(28)
-#define QPF_SPEC_T_DURL		(29)
-#define QPF_SPEC_T_NLSET	(30)
-#define QPF_SPEC_T_NRSET	(31)
-#define QPF_SPEC_T_NZRSET	(32)
-#define QPF_SPEC_T_SQLARG	(33)
-#define QPF_SPEC_T_SQLSYM	(34)
-#define QPF_SPEC_T_HTDATA	(35)
-#define QPF_SPEC_T_HTE		(36)
-#define QPF_SPEC_T_ESCQWS	(37)
-#define QPF_SPEC_T_ESCQ		(38)
-#define QPF_SPEC_T_CSSVAL	(39)
-#define QPF_SPEC_T_CSSURL	(40)
-#define QPF_SPEC_T_ENDFILT	(40)
-#define QPF_SPEC_T_MAXSPEC	(40)
+#define QPF_SPEC_T_STARTFILT	(8)
+#define QPF_SPEC_T_QUOT		(8)
+#define QPF_SPEC_T_DQUOT	(9)
+#define QPF_SPEC_T_SYM		(10)
+#define QPF_SPEC_T_JSSTR	(11)
+#define QPF_SPEC_T_NLEN		(12)
+#define QPF_SPEC_T_WS		(13)
+#define QPF_SPEC_T_ESCWS	(14)
+#define QPF_SPEC_T_ESCSP	(15)
+#define QPF_SPEC_T_UNESC	(16)
+#define QPF_SPEC_T_SSYB		(17)
+#define QPF_SPEC_T_DSYB		(18)
+#define QPF_SPEC_T_FILE		(19)
+#define QPF_SPEC_T_PATH		(20)
+#define QPF_SPEC_T_HEX		(21)
+#define QPF_SPEC_T_DHEX		(22)
+#define QPF_SPEC_T_B64		(23)
+#define QPF_SPEC_T_DB64		(24)
+#define QPF_SPEC_T_RF		(25)
+#define QPF_SPEC_T_RR		(26)
+#define	QPF_SPEC_T_HTENLBR	(27)
+#define QPF_SPEC_T_DHTE		(28)
+#define QPF_SPEC_T_URL		(29)
+#define QPF_SPEC_T_DURL		(30)
+#define QPF_SPEC_T_NLSET	(31)
+#define QPF_SPEC_T_NRSET	(32)
+#define QPF_SPEC_T_NZRSET	(33)
+#define QPF_SPEC_T_SQLARG	(34)
+#define QPF_SPEC_T_SQLSYM	(35)
+#define QPF_SPEC_T_HTDATA	(36)
+#define QPF_SPEC_T_HTE		(37)
+#define QPF_SPEC_T_ESCQWS	(38)
+#define QPF_SPEC_T_ESCQ		(39)
+#define QPF_SPEC_T_CSSVAL	(40)
+#define QPF_SPEC_T_CSSURL	(41)
+#define QPF_SPEC_T_JSONSTR	(42)
+#define QPF_SPEC_T_ENDFILT	(42)
+#define QPF_SPEC_T_MAXSPEC	(42)
 
 /** Names for specifiers as used in format string - must match the above. **/
 const char*
@@ -109,6 +113,7 @@ qpf_spec_names[] =
     "DBL",
     "nSTR",
     "CHR",
+    "LL",
     "QUOT",
     "DQUOT",
     "SYM",
@@ -137,12 +142,13 @@ qpf_spec_names[] =
     "nZRSET",
     "SQLARG",
     "SQLSYM",
-    "HTDATA",	/* 35 */
+    "HTDATA",	/* 36 */
     "HTE",
-    "ESCQWS",	/* 37 */
-    "ESCQ",	/* 38 */
-    "CSSVAL",	/* 39 */
-    "CSSURL",	/* 40 */
+    "ESCQWS",	/* 38 */
+    "ESCQ",	/* 39 */
+    "CSSVAL",	/* 40 */
+    "CSSURL",	/* 41 */
+    "JSONSTR",	/* 42 */
     NULL
     };
 
@@ -171,6 +177,7 @@ typedef struct
     QPConvTable	hex_matrix;
     QPConvTable	url_matrix;
     QPConvTable	jsstr_matrix;
+    QPConvTable	jsonstr_matrix;
     QPConvTable	cssval_matrix;
     QPConvTable	cssurl_matrix;
     QPConvTable	dsyb_matrix;
@@ -254,7 +261,35 @@ qpfInitialize()
 	QPF.jsstr_matrix.Matrix['\n'] = "\\n";
 	QPF.jsstr_matrix.Matrix['\t'] = "\\t";
 	QPF.jsstr_matrix.Matrix['\r'] = "\\r";
+	QPF.jsstr_matrix.Matrix['\b'] = "\\b";
+	QPF.jsstr_matrix.Matrix['\f'] = "\\f";
+	for(i=0;i<=31;i++)
+	    {
+	    if (!QPF.jsstr_matrix.Matrix[i])
+		{
+		QPF.jsstr_matrix.Matrix[i] = nmSysMalloc(7);
+		snprintf(QPF.jsstr_matrix.Matrix[i], 7, "\\u%4.4X", i);
+		}
+	    }
 	qpf_internal_SetupTable(&QPF.jsstr_matrix);
+
+	memset(&QPF.jsonstr_matrix, 0, sizeof(QPF.jsonstr_matrix));
+	QPF.jsonstr_matrix.Matrix['"'] = "\\\"";
+	QPF.jsonstr_matrix.Matrix['\\'] = "\\\\";
+	QPF.jsonstr_matrix.Matrix['\n'] = "\\n";
+	QPF.jsonstr_matrix.Matrix['\t'] = "\\t";
+	QPF.jsonstr_matrix.Matrix['\r'] = "\\r";
+	QPF.jsonstr_matrix.Matrix['\b'] = "\\b";
+	QPF.jsonstr_matrix.Matrix['\f'] = "\\f";
+	for(i=0;i<=31;i++)
+	    {
+	    if (!QPF.jsonstr_matrix.Matrix[i])
+		{
+		QPF.jsonstr_matrix.Matrix[i] = nmSysMalloc(7);
+		snprintf(QPF.jsonstr_matrix.Matrix[i], 7, "\\u%4.4X", i);
+		}
+	    }
+	qpf_internal_SetupTable(&QPF.jsonstr_matrix);
 
 	memset(&QPF.ws_matrix, 0, sizeof(QPF.ws_matrix));
 	QPF.ws_matrix.Matrix['\n'] = "\\n";
@@ -334,6 +369,7 @@ qpfInitialize()
 	qpf_internal_SetupTable(&QPF.hex_matrix);
 
 	/* set up table for url encoding everything except 0-9, A-Z, and a-z */
+	memset(&QPF.url_matrix, 0, sizeof(QPF.url_matrix));
 	for(i=0;i<48;i++) /* escape until 0-9 */
 	    {
 	    buf[0] = '%';
@@ -471,16 +507,89 @@ qpf_internal_itoa(char* dst, size_t dstlen, int i)
     }
 
 
+/*** qpf_internal_base64encode() - convert string to base 64 representation
+ ***/
+int
+qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
+    {
+    static char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    const unsigned char* srcptr = (const unsigned char*)src;
+    const unsigned char* origsrc = (const unsigned char*)src;
+    char* dstptr;
+    int req_size = ((src_size+2) / 3) * 4 + *dst_offset;
+
+	/** Grow dstbuf if necessary and possible, otherwise return error **/
+	if (req_size > *dst_size)
+	    {
+	    if(grow_fn == NULL || !grow_fn(dst, dst_size, 0, grow_arg, req_size))
+		{
+		QPERR(QPF_ERR_T_MEMORY);
+		return -1;
+		}
+	    }
+
+	dstptr = *dst + *dst_offset;
+	
+	/** Step through src 3 bytes at a time, generating 4 dst bytes for each 3 src **/
+	while(srcptr < origsrc + src_size)
+	    {
+	    /** First 6 bits of source[0] --> first byte dst. **/
+	    dstptr[0] = b64[srcptr[0]>>2];
+
+	    /** Second dst byte from last 2 bits of src[0] and first 4 of src[1] **/
+	    if (srcptr+1 < origsrc + src_size)
+		dstptr[1] = b64[((srcptr[0]&0x03)<<4) | (srcptr[1]>>4)];
+	    else
+		{
+		dstptr[1] = b64[(srcptr[0]&0x03)<<4];
+		dstptr[2] = '=';
+		dstptr[3] = '=';
+		dstptr += 4;
+		break;
+		}
+
+	    /** Third dst byte from second 4 bits of src[1] and first 2 of src[2] **/
+	    if (srcptr+2 < origsrc + src_size)
+		dstptr[2] = b64[((srcptr[1]&0x0F)<<2) | (srcptr[2]>>6)];
+	    else
+		{
+		dstptr[2] = b64[(srcptr[1]&0x0F)<<2];
+		dstptr[3] = '=';
+		dstptr += 4;
+		break;
+		}
+
+	    /** Last dst byte from last 6 bits of src[2] **/
+	    dstptr[3] = b64[(srcptr[2]&0x3F)];
+
+	    /** Increment pointers **/
+	    dstptr += 4;
+	    srcptr += 3;
+	    }
+
+	*dst_offset = *dst_offset + (dstptr - *dst);
+
+    return dstptr - *dst;
+    }
+
+
 /*** qpf_internal_base64decode() - convert base 64 to a string representation
  ***/
 static inline int
-qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
+qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
     {
     char b64[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     char* ptr;
     char* cursor;
     int ix;
     int req_size = (.75 * src_size) + *dst_offset + 1; /** fmul could truncate when cast to int hence +1 **/
+
+	/** Verify source data is correct length for base 64 **/
+	if (src_size % 4 != 0)
+	    {
+	    QPERR(QPF_ERR_T_BADCHAR);
+	    return -1;
+	    }
 
 	/** Grow dstbuf if necessary and possible, otherwise return error **/
 	if (req_size > *dst_size)
@@ -499,7 +608,7 @@ qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** 
 	    {
 	    /** First 6 bits. **/
 	    ptr = strchr(b64,src[0]);
-	    if (!ptr) 
+	    if (!ptr || !*ptr)
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -509,7 +618,7 @@ qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** 
 
 	    /** Second six bits are split between cursor[0] and cursor[1] **/
 	    ptr = strchr(b64,src[1]);
-	    if (!ptr)
+	    if (!ptr || !*ptr)
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -522,11 +631,10 @@ qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** 
 	    if (src[2] == '=' && src[3] == '=')
 	        {
 		cursor += 1;
-		src += 4;
 		break;
 		}
 	    ptr = strchr(b64,src[2]);
-	    if (!ptr)
+	    if (!ptr || !*ptr)
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -539,12 +647,12 @@ qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** 
 	    if (src[3] == '=')
 	        {
 		cursor += 2;
-		src += 4;
 		break;
 		}
 	    ptr = strchr(b64,src[3]);
-	    if (!ptr)
+	    if (!ptr || !*ptr)
 	        {
+		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
 		}
 	    ix = ptr-b64;
@@ -552,7 +660,73 @@ qpf_internal_base64decode(pQPSession s,const char* src, size_t src_size, char** 
 	    src += 4;
 	    cursor += 3;
 	    }
-	    *dst_offset = *dst_offset + cursor - *dst;
+
+	*dst_offset = *dst_offset + cursor - *dst;
+
+    return cursor - *dst;
+    }
+
+
+/*** qpf_internal_hexdecode() - convert base 64 to a string representation
+ ***/
+static inline int
+qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
+    {
+    char hex[23] = "0123456789abcdefABCDEF";
+    int conv[22] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 10, 11, 12, 13, 14, 15 };
+    char* ptr;
+    char* cursor;
+    int ix;
+    int req_size;
+
+	/** Required size **/
+	if (src_size%2 == 1)
+	    {
+	    QPERR(QPF_ERR_T_BADLENGTH);
+	    return -1;
+	    }
+	req_size = src_size/2;
+
+	/** Grow dstbuf if necessary and possible, otherwise return error **/
+	if (req_size > *dst_size)
+	    {
+	    if(grow_fn == NULL || !grow_fn(dst, dst_size, 0, grow_arg, req_size))
+		{
+		QPERR(QPF_ERR_T_MEMORY);
+		return -1;
+		}
+	    }
+
+	cursor = *dst + *dst_offset;
+	
+	/** Step through src 2 bytes at a time. **/
+	while(*src)
+	    {
+	    /** First 4 bits. **/
+	    ptr = strchr(hex, src[0]);
+	    if (!ptr)
+	        {
+		QPERR(QPF_ERR_T_BADCHAR);
+		return -1;
+		}
+	    ix = conv[ptr-hex];
+	    cursor[0] = ix<<4;
+
+	    /** Second four bits  **/
+	    ptr = strchr(hex, src[1]);
+	    if (!ptr)
+	        {
+		QPERR(QPF_ERR_T_BADCHAR);
+		return -1;
+		}
+	    ix = conv[ptr-hex];
+	    cursor[0] |= ix;
+
+	    src += 2;
+	    cursor += 1;
+	    }
+
+	*dst_offset = *dst_offset + cursor - *dst;
 
     return cursor - *dst;
     }
@@ -722,6 +896,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
     int n;
     int found;
     int intval;
+    long long llval;
     const char* strval;
     double dblval;
     char tmpbuf[64];
@@ -938,6 +1113,12 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 			    strval = tmpbuf;
 			    break;
 
+            case QPF_SPEC_T_LL:
+                llval = va_arg(ap, long long);
+                cplen = snprintf(tmpbuf, sizeof(tmpbuf), "%lld", llval);
+                strval = tmpbuf;
+                break;
+                
 			case QPF_SPEC_T_DBL:
 			    dblval = va_arg(ap, double);
 			    cplen = snprintf(tmpbuf, sizeof(tmpbuf), "%lf", dblval);
@@ -1011,6 +1192,16 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 					    qpf_internal_FindStr(strval, cplen, "/../", 4) >= 0)
 					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADPATH); goto error; }
 				    break;
+
+				case QPF_SPEC_T_B64:
+				    if((n=qpf_internal_base64encode(s, strval, cplen, str, size, &cpoffset, grow_fn, grow_arg))<0) 
+					{ rval = -EINVAL; goto error; } 
+				    else 
+					{
+					copied+=n;
+					cplen=0; 
+					}
+				    break;
 				
 				case QPF_SPEC_T_DB64:
 				    if((n=qpf_internal_base64decode(s, strval, cplen, str, size, &cpoffset, grow_fn, grow_arg))<0) 
@@ -1022,9 +1213,20 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 					}
 				    break;
 				
+				case QPF_SPEC_T_DHEX:
+				    if((n=qpf_internal_hexdecode(s, strval, cplen, str, size, &cpoffset, grow_fn, grow_arg))<0) 
+					{ rval = -EINVAL; goto error; } 
+				    else 
+					{
+					copied+=n;
+					cplen=0; 
+					}
+				    break;
+				
 				case QPF_SPEC_T_ESCQ:
 				case QPF_SPEC_T_ESCQWS:
 				case QPF_SPEC_T_JSSTR:
+				case QPF_SPEC_T_JSONSTR:
 				case QPF_SPEC_T_DSYB:
 				case QPF_SPEC_T_CSSVAL:
 				case QPF_SPEC_T_CSSURL:
@@ -1052,6 +1254,10 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 									quote = 0;
 									break;
 					    case QPF_SPEC_T_JSSTR:	table = &QPF.jsstr_matrix;
+									min_room = 1;
+									quote = 0;
+									break;
+					    case QPF_SPEC_T_JSONSTR:	table = &QPF.jsonstr_matrix;
 									min_room = 1;
 									quote = 0;
 									break;
@@ -1115,12 +1321,15 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 						}
 					    break;
 					    }
-					if (quote) maxdst -= 2;
-					if (maxdst < 0)
+					if (quote)
 					    {
-					    QPERR(QPF_ERR_T_BADFORMAT);
-					    rval = -EINVAL;
-					    goto error;
+					    if (maxdst < 2)
+						{
+						QPERR(QPF_ERR_T_BADFORMAT);
+						rval = -EINVAL;
+						goto error;
+						}
+					    maxdst -= 2;
 					    }
 					if (quote)
 					    {

@@ -168,6 +168,15 @@ htruleRender(pHtSession s, pWgtrNode tree, int z)
 			    ptr = objDataToStringTmp(t, (void*)(od.Generic), 0);
 			    xsConcatQPrintf(xs, "\"%STR&JSSTR\"", ptr);
 			    }
+			else if (t == DATA_T_STRINGVEC)
+			    {
+			    xsConcatenate(xs, "[", 1);
+			    for(i=0; i<od.StringVec->nStrings; i++)
+				{
+				xsConcatQPrintf(xs, "%[,%]\"%STR&JSSTR\"", (i>0), od.StringVec->Strings[i]);
+				}
+			    xsConcatenate(xs, "]", 1);
+			    }
 			else
 			    {
 			    ptr = objDataToStringTmp(t, (void*)(od.Generic), DATA_F_QUOTED);
@@ -187,8 +196,8 @@ htruleRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 
 	/** Script Init **/
-	htrAddScriptInit_va(s, "    rl_init(nodes[\"%STR&SYM\"], \"%STR&JSSTR\", %STR);\n", nptr, ruletype, xs->String);
-	htrAddScriptInit_va(s, "    wgtrGetParent(nodes[\"%STR&SYM\"]).addRule(nodes[\"%STR&SYM\"]);\n", nptr, nptr);
+	htrAddScriptInit_va(s, "    rl_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"%STR&JSSTR\", %STR);\n", nptr, ruletype, xs->String);
+	htrAddScriptInit_va(s, "    wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")).addRule(wgtrGetNodeRef(ns,\"%STR&SYM\"));\n", nptr, nptr);
 
 	/** mark this node as not being associated with a DHTML object **/
 	tree->RenderFlags |= HT_WGTF_NOOBJECT;

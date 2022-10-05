@@ -69,6 +69,16 @@ mssMemoryErr(char* message)
     }
 
 
+/*** mssLog - write to syslog
+ ***/
+int
+mssLog(int level, char* msg)
+    {
+    syslog(level, "%s", msg);
+    return 0;
+    }
+
+
 /*** mssInitialize - init the globals, etc.
  ***/
 int 
@@ -86,10 +96,10 @@ mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, cha
 	MSS.AppName[31] = '\0';
 	MSS.LogAllErrors = logall;
 
-	/** Setup syslog, if requested. **/
+	/** Setup syslog **/
+	openlog(MSS.AppName, LOG_PID, LOG_USER);
 	if (!strcmp(MSS.LogMethod, "syslog"))
 	    {
-	    openlog(MSS.AppName, LOG_PID, LOG_USER);
 	    syslog(LOG_INFO, "%s initializing...", MSS.AppName);
 	    }
    
@@ -206,11 +216,37 @@ mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_
     }
 
 
+/*** mssLinkSess -- keep track of how many threads are using this
+ *** session structure.
+ ***/
+int
+mssLinkSession(pMtSession s)
+    {
+    s->LinkCnt++;
+    return 0;
+    }
+
+
+/*** mssUnlinkSess -- on final unlink, we end the session.
+ ***/
+int
+mssUnlinkSession(pMtSession s)
+    {
+    s->LinkCnt--;
+    if (s->LinkCnt <= 0)
+	mssEndSession(s);
+    return 0;
+    }
+
+
 /*** mssAuthenticate - start a new session, overwriting previous
  *** (inherited) session information.
+ ***
+ *** bypass_crypt: set to 1 if we already know the credentials are
+ *** correct and we just need to set up a new session.
  ***/
 int 
-mssAuthenticate(char* username, char* password)
+mssAuthenticate(char* username, char* password, int bypass_crypt)
     {
     pMtSession s;
     char* encrypted_pwd;
@@ -231,10 +267,20 @@ mssAuthenticate(char* username, char* password)
 	/** Allocate a new session structure. **/
 	s = (pMtSession)nmMalloc(sizeof(MtSession));
 	if (!s) return -1;
+	s->LinkCnt = 1;
 	strncpy(s->UserName, username, 31);
 	s->UserName[31]=0;
 	strncpy(s->Password, password, 31);
 	s->Password[31]=0;
+
+	/** Sanity checking. **/
+	if (strchr(username,':'))
+	    {
+	    mssError(1, "MSS", "Attempt to use invalid username '%s'", username);
+	    memset(s, 0, sizeof(MtSession));
+	    nmFree(s,sizeof(MtSession));
+	    return -1;
+	    }
 
 	/** Attempt to authenticate. **/
 	if (!strcmp(MSS.AuthMethod,"system"))
@@ -262,25 +308,20 @@ mssAuthenticate(char* username, char* password)
 #endif
 	    strncpy(salt,pwd,2);
 	    salt[2]=0;
-	    encrypted_pwd = (char*)crypt(s->Password,pwd);
-	    if (strcmp(encrypted_pwd,pwd))
+
+	    if (!bypass_crypt)
 		{
-		memset(s, 0, sizeof(MtSession));
-		nmFree(s,sizeof(MtSession));
-		return -1;
+		encrypted_pwd = (char*)crypt(s->Password,pwd);
+		if (!encrypted_pwd || strcmp(encrypted_pwd,pwd))
+		    {
+		    memset(s, 0, sizeof(MtSession));
+		    nmFree(s,sizeof(MtSession));
+		    return -1;
+		    }
 		}
 	    }
 	else if (!strcmp(MSS.AuthMethod, "altpasswd"))
 	    {
-	    /** Sanity checking. **/
-	    if (strchr(username,':'))
-		{
-		mssError(1, "MSS", "Attempt to use invalid username '%s'", username);
-		memset(s, 0, sizeof(MtSession));
-		nmFree(s,sizeof(MtSession));
-		return -1;
-		}
-
 	    /** Open the alternate password file **/
 	    altpass_fd = fdOpen(MSS.AuthFile, O_RDONLY, 0600);
 	    if (!altpass_fd)
@@ -323,12 +364,16 @@ mssAuthenticate(char* username, char* password)
 		if (pwline[strlen(pwline)-1] == '\n')
 		    pwline[strlen(pwline)-1] = '\0';
 		pwd = pwline + strlen(username) + 1;
-		encrypted_pwd = (char*)crypt(s->Password,pwd);
-		if (strcmp(encrypted_pwd,pwd))
+
+		if (!bypass_crypt)
 		    {
-		    memset(s, 0, sizeof(MtSession));
-		    nmFree(s,sizeof(MtSession));
-		    return -1;
+		    encrypted_pwd = (char*)crypt(s->Password,pwd);
+		    if (strcmp(encrypted_pwd,pwd))
+			{
+			memset(s, 0, sizeof(MtSession));
+			nmFree(s,sizeof(MtSession));
+			return -1;
+			}
 		    }
 		}
 	    else
@@ -360,6 +405,7 @@ mssAuthenticate(char* username, char* password)
 	if (n_grps < 0 || n_grps > sizeof(grps) / sizeof(gid_t))
 	    n_grps = 0;
 	thSetParam(NULL,"mss",(void*)s);
+	thSetParamFunctions(NULL, mssLinkSession, mssUnlinkSession);
 	thSetSupplementalGroups(NULL, n_grps, grps);
 	thSetGroupID(NULL,s->GroupID);
 	thSetUserID(NULL,s->UserID);
@@ -378,18 +424,27 @@ mssAuthenticate(char* username, char* password)
 /*** mssEndSession - end a session and free the session information.
  ***/
 int 
-mssEndSession()
+mssEndSession(pMtSession s)
     {
-    pMtSession s;
     int i;
+    pMtSession cur_s;
 
 	/** Get session info. **/
-	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s) return -1;
+	cur_s = thGetParam(NULL, "mss");
+	if (!s)
+	    {
+	    s = cur_s;
+	    if (!s) return -1;
+	    }
+
+	/** Unlink from thread if this is the current thread's session **/
+	if (s == cur_s)
+	    {
+	    thSetParam(NULL,"mss",NULL);
+	    thSetUserID(NULL,0);
+	    }
 
 	/** Free the session info and error list **/
-	thSetParam(NULL,"mss",NULL);
-	thSetUserID(NULL,0);
 	for(i=0;i<s->ErrList.nItems;i++) nmSysFree(s->ErrList.Items[i]);
 	xhClear(&s->Params, NULL, NULL);
 	xhDeInit(&s->Params);
@@ -650,7 +705,6 @@ mssPrintError(pFile fd)
 int
 mssStringError(pXString str)
     {
-    char sbuf[200];
     int i;
     pMtSession s;
 
@@ -659,14 +713,46 @@ mssStringError(pXString str)
 	if (!s) return -1;
 
 	/** Print the error stack. **/
-	snprintf(sbuf,200,"ERROR - Session By Username [%s]\r\n",s->UserName);
-	xsConcatenate(str,sbuf,-1);
+	xsConcatPrintf(str, "ERROR - Session By Username [%s]\r\n", s->UserName);
 	for(i=s->ErrList.nItems-1;i>=0;i--)
 	    {
-	    snprintf(sbuf,200,"--- %s\r\n",(char*)(s->ErrList.Items[i]));
-	    xsConcatenate(str,sbuf, -1);
+	    xsConcatPrintf(str, "--- %s\r\n", (char*)(s->ErrList.Items[i]));
 	    }
     	
+    return 0;
+    }
+
+
+/*** mssUserError() - returns a user-friendly version of the error message
+ *** stack (i.e., without the module codes).
+ ***/
+int
+mssUserError(pXString str)
+    {
+    int i;
+    pMtSession s;
+    char* item;
+    char* colon;
+
+	/** Get session. **/
+	s = (pMtSession)thGetParam(NULL,"mss");
+	if (!s) return -1;
+
+	/** Create a space-separated string of the messages, without module codes **/
+	for(i=s->ErrList.nItems-1;i>=0;i--)
+	    {
+	    item = (char*)(s->ErrList.Items[i]);
+	    if (item)
+		{
+		colon = strchr(item, ':');
+		if (colon)
+		    item = colon + 2;
+		xsConcatenate(str, item, -1);
+		if (i > 0)
+		    xsConcatenate(str, " ", 1);
+		}
+	    }
+
     return 0;
     }
 

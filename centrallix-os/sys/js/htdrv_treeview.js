@@ -262,6 +262,9 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
     else if(cx__capabilities.Dom1HTML)
 	{
 	var c;
+
+	$(l).css({'white-space': 'nowrap'});
+
 	/** remove all current children of this node **/
 	while(c = l.firstChild)
 	    {
@@ -467,7 +470,8 @@ function tv_BuildNewLayers(l, linkcnt)
 	    {
 	    link_txt = cx_info_extract_str(links[i].text);
 	    link_href = links[i].href;
-	    one_link = link_href.substring(link_href.lastIndexOf('/')+1,link_href.length);
+	    //one_link = link_href.substring(link_href.lastIndexOf('/')+1,link_href.length);
+	    one_link = links[i].target;
 	    if (one_link[0] == ' ') one_link = one_link.substring(1,one_link.length);
 	    one_layer.objn = one_link;
 	    im = l.root.imgnames.ico_file;
@@ -798,7 +802,7 @@ function tv_init(param)
 	l.img.layer = l;
 	l.img.kind = 'tv';
 	}
-    l.pdoc = wgtrGetContainer(wgtrGetParent(l));
+    l.pdoc = wgtrGetParentContainer(l);
     //l.pdoc = pdoc;
     l.ld = param.loader;
     l.ld.mainlayer = l;

@@ -145,6 +145,7 @@ exp_internal_GenerateText_cxsql(pExpression exp, pExpGen eg)
     {
     int i;
     int nodetype;
+    int id;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -373,16 +374,17 @@ exp_internal_GenerateText_cxsql(pExpression exp, pExpGen eg)
 		break;
 
 	    case EXPR_N_PROPERTY:
-	        switch(exp->ObjID)
+		id = expObjID(exp, eg->Objlist);
+	        switch(id)
 		    {
 		    case -1: break;
 		    case EXPR_OBJID_CURRENT: break;
 		    case EXPR_OBJID_PARENT: exp_internal_WriteText(eg, ":"); break;
 		    default: 
-		        if (exp->ObjID >= 0) 
+		        if (id >= 0) 
 			    {
 			    exp_internal_WriteText(eg, ":");
-		            exp_internal_WriteText(eg, eg->Objlist->Names[expObjID(exp,eg->Objlist)]);
+		            exp_internal_WriteText(eg, eg->Objlist->Names[id]);
 			    }
 			break;
 		    }
@@ -422,6 +424,7 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
     int i;
     int prop_func;
     int nodetype;
+    int id;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -513,13 +516,13 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		break;
 
 	    case EXPR_N_MINUS:
-		if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
-		    exp_internal_WriteText(eg, "(");
+		//if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
+		exp_internal_WriteText(eg, "cxjs_minus(");
 	        if (exp_internal_GenerateText_js((pExpression)(exp->Children.Items[0]), eg) < 0) return -1;
-		exp_internal_WriteText(eg, " - ");
+		exp_internal_WriteText(eg, ", ");
 	        if (exp_internal_GenerateText_js((pExpression)(exp->Children.Items[1]), eg) < 0) return -1;
-		if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
-		    exp_internal_WriteText(eg, ")");
+		//if (exp->Parent && EXP.Precedence[exp->Parent->NodeType] < EXP.Precedence[exp->NodeType])
+		exp_internal_WriteText(eg, ")");
 		break;
 
 	    case EXPR_N_COMPARE:
@@ -628,26 +631,40 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		break;
 
 	    case EXPR_N_INTEGER:
-	        exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_INTEGER, &(exp->Integer), 0));
+		if (exp->Flags & EXPR_F_NULL)
+		    exp_internal_WriteText(eg, "null");
+		else
+		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_INTEGER, &(exp->Integer), 0));
 		break;
 
 	    case EXPR_N_STRING:
-	        if (eg->EscChar == '"')
+		if (!exp->String || exp->Flags & EXPR_F_NULL)
+		    exp_internal_WriteText(eg, "null");
+	        else if (eg->EscChar == '"')
 		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_STRING, exp->String, DATA_F_QUOTED | DATA_F_SINGLE | DATA_F_CONVSPECIAL));
 		else
 		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_STRING, exp->String, DATA_F_QUOTED | DATA_F_CONVSPECIAL));
 		break;
 
 	    case EXPR_N_DOUBLE:
-	        exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_DOUBLE, &(exp->Types.Double), 0));
+		if (exp->Flags & EXPR_F_NULL)
+		    exp_internal_WriteText(eg, "null");
+		else
+		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_DOUBLE, &(exp->Types.Double), 0));
 		break;
 
 	    case EXPR_N_DATETIME:
-	        exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_DATETIME, &(exp->Types.Date), DATA_F_QUOTED));
+		if (exp->Flags & EXPR_F_NULL)
+		    exp_internal_WriteText(eg, "null");
+		else
+		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_DATETIME, &(exp->Types.Date), DATA_F_QUOTED));
 		break;
 
 	    case EXPR_N_MONEY:
-	        exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_MONEY, &(exp->Types.Money), 0));
+		if (exp->Flags & EXPR_F_NULL)
+		    exp_internal_WriteText(eg, "null");
+		else
+		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_MONEY, &(exp->Types.Money), 0));
 		break;
 	    
 	    case EXPR_N_OBJECT:
@@ -673,16 +690,17 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		break;
 
 	    case EXPR_N_PROPERTY:
-	        switch(exp->ObjID)
+		id = expObjID(exp,eg->Objlist);
+	        switch(id)
 		    {
 		    case -1: break;
 		    case EXPR_OBJID_CURRENT: break;
 		    case EXPR_OBJID_PARENT: exp_internal_WriteText(eg, "this."); break;
 		    default: 
-		        if (exp->ObjID >= 0)
+		        if (id)
 			    {
 			    if (eg->Objlist) 
-				exp_internal_WriteText(eg, eg->Objlist->Names[expObjID(exp,eg->Objlist)]);
+				exp_internal_WriteText(eg, eg->Objlist->Names[id]);
 			    else
 				exp_internal_WriteText(eg, exp->Name);
 			    }
@@ -745,6 +763,8 @@ expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void*
 	eg->WriteArg = write_arg;
 	eg->EscChar = quote_char;
 	eg->Domain = domain;
+	if (objlist && !objlist->CurControl && exp->Control)
+	    objlist->CurControl = exp_internal_LinkControl(exp->Control);
 
 	/** Call the internal recursive version of this function **/
 	if (!strcasecmp(language,"cxsql"))
@@ -755,7 +775,7 @@ expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void*
 		return -1;
 		}
 	    }
-	else if (!strcmp(language,"javascript"))
+	else if (!strcasecmp(language,"javascript"))
 	    {
 	    if (exp_internal_GenerateText_js(exp, eg) < 0)
 		{
@@ -852,3 +872,109 @@ expGetPropList(pExpression exp, pXArray objs_xa, pXArray props_xa)
     return objs_xa->nItems;
     }
 
+
+int
+exp_internal_AddPropForIDToList(pXArray proplist, int obj_id, char* propname, int flags)
+    {
+    pExpProperty prop;
+
+	prop = (pExpProperty)nmMalloc(sizeof(ExpProperty));
+	if (!prop)
+	    return -1;
+	prop->ObjName = NULL;
+	prop->ObjID = obj_id;
+	prop->PropName = propname?nmSysStrdup(propname):NULL;
+	prop->Flags = flags;
+
+	xaAddItem(proplist, prop);
+
+    return 0;
+    }
+
+
+int
+expGetPropsForObject_r(pExpression root, pExpression exp, int obj_id, pXArray proplist)
+    {
+    pExpression subexp;
+    char* propn;
+    int i, exp_objid;;
+
+	/** Check this node **/
+	if (exp->NodeType == EXPR_N_OBJECT)
+	    {
+	    subexp = (pExpression)(exp->Children.Items[0]);
+	    if (subexp && subexp->NodeType == EXPR_N_PROPERTY)
+		propn = subexp->Name;
+	    else
+		propn = NULL;
+	    exp_objid = expObjID(subexp, NULL);
+	    if (root->Control && root->Control->Remapped && exp_objid >= 0)
+		exp_objid = root->Control->ObjMap[exp_objid];
+	    if (obj_id == -1 || exp_objid == obj_id)
+		exp_internal_AddPropForIDToList(proplist, exp_objid, propn, subexp->Flags & (EXPR_F_FREEZEEVAL));
+	    }
+	else if (exp->NodeType == EXPR_N_FUNCTION && !strcmp(exp->Name, "substitute"))
+	    {
+	    /** This one could reference almost anything in the namespace **/
+	    exp_internal_AddPropForIDToList(proplist, -1, "*", 0);
+	    }
+	else if (exp->NodeType == EXPR_N_PROPERTY)
+	    {
+	    exp_objid = expObjID(exp, NULL);
+	    if (root->Control && root->Control->Remapped && exp_objid >= 0)
+		exp_objid = root->Control->ObjMap[exp_objid];
+	    if (obj_id == -1 || exp_objid == obj_id)
+		exp_internal_AddPropForIDToList(proplist, exp_objid, exp->Name, exp->Flags & (EXPR_F_FREEZEEVAL));
+	    }
+	else
+	    {
+	    for(i=0;i<exp->Children.nItems;i++)
+		expGetPropsForObject_r(root, (pExpression)(exp->Children.Items[i]), obj_id, proplist);
+	    }
+
+    return 0;
+    }
+
+
+/*** expGetPropsForObject - get the property list from an expression tree for
+ *** just one specific object ID.  Returns an XArray of ExpProperty.
+ ***/
+pXArray
+expGetPropsForObject(pExpression exp, int obj_id, pXArray proplist)
+    {
+
+	/** Allocate the new property list **/
+	if (!proplist)
+	    {
+	    proplist = xaNew(16);
+	    if (!proplist)
+		return NULL;
+	    }
+
+	if (expGetPropsForObject_r(exp, exp, obj_id, proplist) == 0)
+	    return proplist;
+
+    return NULL;
+    }
+
+
+void
+expFreeProps(pXArray proplist)
+    {
+    int i;
+    pExpProperty prop;
+
+	for(i=0; i<proplist->nItems; i++)
+	    {
+	    prop = (pExpProperty)xaGetItem(proplist, i);
+	    if (prop->ObjName)
+		nmSysFree(prop->ObjName);
+	    if (prop->PropName)
+		nmSysFree(prop->PropName);
+	    nmFree(prop, sizeof(ExpProperty));
+	    }
+
+	xaFree(proplist);
+
+    return;
+    }

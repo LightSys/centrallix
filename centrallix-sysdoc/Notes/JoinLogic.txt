@@ -1,0 +1,25 @@
+Current equijoin / nested iteration join logic:
+
+    - determine master and slave sequencing
+    - break WHERE clause into AND-separated parts
+    - attach WHERE clause items (constraint expressions) to appropriate sources
+        - some items directly attached (single-source expression)
+	- some passed in as AddlExp (multi-source expression)
+
+Merge join logic:
+
+    - determine whether to use a merge join or nested iteration for the sources
+    
+
+(X or Y or Z) AND (A or B or C)
+
+==>
+
+(X and A) or (X and B) or (X and C) or (Y and A) or (Y and B) or (Y and C) or (Z and A) or (Z and B) or (Z and C)
+
+Assuming X,Y and A,B are in the same data source, and Z,C are in a second one:
+
+    1            1            3            1            1            3            3            3            2
+ 1     1      1     1      1     2      1     1      1     1      1     2      2     1      2     1      2     2
+(X and A) or (X and B) or (X and C) or (Y and A) or (Y and B) or (Y and C) or (Z and A) or (Z and B) or (Z and C)
+((X or Y) and (A or B)) or ((X or Y) and C) or (Z and (A or B)) or (Z and C)

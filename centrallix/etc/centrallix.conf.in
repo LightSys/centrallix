@@ -11,9 +11,13 @@ centrallix "system/config"
     useragent_config = "##SYSCONFDIR##/centrallix/useragent.cfg";
     rootnode_type = "system/uxfile";
     rootnode_file = "##SYSCONFDIR##/centrallix/rootnode";
+    credentials_db = "##SYSCONFDIR##/centrallix/cxss.db";
+    debug_log_file = "/var/log/cx_debug_log";
+    cache_dir = "/var/cache/centrallix";
     iface_dir = "/sys/ifc";	    // this is an OSML path
     theme_dir = "/sys/themes";	    // OSML path
     transaction_log_file = "/var/log/cx_transaction_log";
+    ssl_cipherlist = "DEFAULT";
 
     // Set this to 1 to allow Centrallix to send a user's login credentials
     // to another server, as a part of "single sign on" type authentication.
@@ -27,6 +31,10 @@ centrallix "system/config"
     net_http "system/config"
         {
 	listen_port = 800;
+	ssl_listen_port = 843;
+	ssl_key = "##SYSCONFDIR##/centrallix/snakeoil.key";
+	ssl_cert = "##SYSCONFDIR##/centrallix/snakeoil.crt";
+	ssl_cipherlist = "HIGH:MEDIUM:!ADH:!AECDH:!SSLv2:!RC4";
 
 	// Set this to 0 to allow connections from anywhere.  Note:  this
 	// is a development release and it is recommended to restrict access
@@ -37,6 +45,7 @@ centrallix "system/config"
 	server_string = "Centrallix/0.9.1";
 	auth_realm = "Centrallix";
 	session_cookie = "CXID";
+	ssl_session_cookie = "SCXID";
 	session_watchdog_timer = 180; //seconds
 	session_inactivity_timer = 1800; //seconds
 	enable_gzip = 0; // false - NS4 fails on this

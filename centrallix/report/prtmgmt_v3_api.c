@@ -180,6 +180,8 @@ prtSetLineHeight(int handle_id, double line_height)
 	    set_obj = prt_internal_CreateEmptyObj(obj);
 	else
 	    set_obj = prt_internal_AddEmptyObj(obj);
+	if (!set_obj)
+	    return -1;
 
 	obj->LineHeight = prtUnitY(PRTSESSION(obj),line_height);
 	set_obj->LineHeight = prtUnitY(PRTSESSION(obj),line_height);
@@ -231,6 +233,8 @@ prtSetTextStyle(int handle_id, pPrtTextStyle style)
 	    set_obj = prt_internal_CreateEmptyObj(obj);
 	else
 	    set_obj = prt_internal_AddEmptyObj(obj);
+	if (!set_obj)
+	    return -1;
 
 	/** Set the style. **/
 	memcpy(&(set_obj->TextStyle), style, sizeof(PrtTextStyle));
@@ -299,6 +303,8 @@ prtSetAttr(int handle_id, int attrs)
 
 	/** Add an empty string object to contain the attr change. **/
 	set_obj = prt_internal_AddEmptyObj(obj);
+	if (!set_obj)
+	    return -1;
 	set_obj->TextStyle.Attr = attrs;
 
 	prt_internal_DispatchEvents(s);
@@ -349,10 +355,16 @@ prtSetFont(int handle_id, char* fontname)
 	    set_obj = prt_internal_CreateEmptyObj(obj);
 	else
 	    set_obj = prt_internal_AddEmptyObj(obj);
+	if (!set_obj)
+	    return -1;
 
 	/** Set the font id, and recalc the height/baseline **/
 	newid = prtLookupFont(fontname);
-	if (newid < 0) return -1;
+	if (newid < 0)
+	    {
+	    mssError(1,"PRT","Invalid font name: %s", fontname);
+	    return -1;
+	    }
 	set_obj->TextStyle.FontID = newid; 
 	if (obj->ObjType->TypeID == PRT_OBJ_T_STRING)
 	    {
@@ -413,6 +425,8 @@ prtSetFontSize(int handle_id, int fontsize)
 	    set_obj = prt_internal_CreateEmptyObj(obj);
 	else
 	    set_obj = prt_internal_AddEmptyObj(obj);
+	if (!set_obj)
+	    return -1;
 
 	/** Set the size and recalc the height/baseline **/
 	set_obj->TextStyle.FontSize = s->Formatter->GetNearestFontSize(s->FormatterData, fontsize);
@@ -474,6 +488,8 @@ prtSetColor(int handle_id, int color)
 
 	/** Add an empty string object to contain the attr change. **/
 	set_obj = prt_internal_AddEmptyObj(obj);
+	if (!set_obj)
+	    return -1;
 	set_obj->TextStyle.Color = color;
 
 	prt_internal_DispatchEvents(s);

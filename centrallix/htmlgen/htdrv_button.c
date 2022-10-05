@@ -154,8 +154,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 
 		htrAddScriptGlobal(s, "gb_cur_img", "null", 0);
 		htrAddScriptGlobal(s, "gb_current", "null", 0);
-		htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr,\"gb%POSpane\")", id);
-		htrAddWgtrCtrLinkage(s, tree, "_obj");
+		htrAddWgtrObjLinkage_va(s, tree, "gb%POSpane", id);
 
 		/** User requesting expression for enabled? **/
 		if (wgtrGetPropertyType(tree,"enabled") == DATA_T_CODE)
@@ -166,11 +165,11 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    }
 		/** Widget Tree Stuff **/
 		dptr = wgtrGetDName(tree);
-		htrAddScriptInit_va(s, "    %STR&SYM = nodes['%STR&SYM'];\n", dptr, name);
+		htrAddScriptInit_va(s, "    %STR&SYM = wgtrGetNodeRef(ns,'%STR&SYM');\n", dptr, name);
 
-		if(!strcmp(type,"image")) htrAddScriptInit_va(s,"    gb_init({layer:nodes[\"%STR&SYM\"], n:'%STR&JSSTR', p:'%STR&JSSTR', c:'%STR&JSSTR', d:'%STR&JSSTR', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, type:'%STR&JSSTR', text:'%STR&JSSTR'});\n", name, n_img, p_img, c_img, d_img, w, h, name,is_enabled,type,text);
+		if(!strcmp(type,"image")) htrAddScriptInit_va(s,"    gb_init({layer:%STR&SYM, n:'%STR&JSSTR', p:'%STR&JSSTR', c:'%STR&JSSTR', d:'%STR&JSSTR', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, type:'%STR&JSSTR', text:'%STR&JSSTR'});\n", dptr, n_img, p_img, c_img, d_img, w, h, name,is_enabled,type,text);
 		/* text over image needs second layer */
-		else htrAddScriptInit_va(s,"    gb_init({layer:nodes[\"%STR&SYM\"], layer2:htr_subel(%STR&SYM, \"gb%POSpane2\"), n:'%STR&JSSTR', p:'%STR&JSSTR', c:'%STR&JSSTR', d:'%STR&JSSTR', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, type:'%STR&JSSTR', text:'%STR&JSSTR'});\n", name, dptr, id, n_img, p_img, c_img, d_img, w, h, name,is_enabled,type,text);
+		else htrAddScriptInit_va(s,"    gb_init({layer:\"%STR&SYM\", layer2:htr_subel(%STR&SYM, \"gb%POSpane2\"), n:'%STR&JSSTR', p:'%STR&JSSTR', c:'%STR&JSSTR', d:'%STR&JSSTR', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, type:'%STR&JSSTR', text:'%STR&JSSTR'});\n", dptr, dptr, id, n_img, p_img, c_img, d_img, w, h, name,is_enabled,type,text);
 
 		/** Include the javascript code for the button **/
 		htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
@@ -215,15 +214,14 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		htrAddScriptGlobal(s, "gb_current", "null", 0);
 
 		/** DOM Linkages **/
-		htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"gb%POSpane\")",id);
-		htrAddWgtrCtrLinkage(s, tree, "_obj");
+		htrAddWgtrObjLinkage_va(s, tree, "gb%POSpane",id);
 		
 		/** Include the javascript code for the button **/
 		htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 		htrAddScriptInclude(s, "/sys/js/htdrv_button.js", 0);
 
 		dptr = wgtrGetDName(tree);
-		htrAddScriptInit_va(s, "    %STR&SYM = nodes['%STR&SYM'];\n", dptr, name);
+		htrAddScriptInit_va(s, "    %STR&SYM = wgtrGetNodeRef(ns,'%STR&SYM');\n", dptr, name);
 
 		if(s->Capabilities.Dom0NS)
 		    {

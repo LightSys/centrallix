@@ -186,11 +186,10 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "tv_cache_cnt","0",0);
 
 	/** DOM Linkage on client **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"tv%POSroot\")",id);
-	htrAddWgtrCtrLinkage(s, tree, "_obj");
+	htrAddWgtrObjLinkage_va(s, tree, "tv%POSroot",id);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    tv_init({layer:nodes[\"%STR&SYM\"], fname:\"%STR&JSSTR\", loader:htr_subel(wgtrGetContainer(wgtrGetParent(nodes[\"%STR&SYM\"])),\"tv%POSload\"), width:%INT, newroot:null, branches:%INT, use3d:%INT, showrb:%INT, icon:\"%STR&JSSTR\", divclass:\"tv%POS\", sbg:\"%STR&JSSTR\", desc:%INT});\n",
+	htrAddScriptInit_va(s,"    tv_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fname:\"%STR&JSSTR\", loader:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"tv%POSload\"), width:%INT, newroot:null, branches:%INT, use3d:%INT, showrb:%INT, icon:\"%STR&JSSTR\", divclass:\"tv%POS\", sbg:\"%STR&JSSTR\", desc:%INT});\n",
 		name, src, name, id, w, show_branches, use_3d_lines, show_root_branch, icon, id, selected_bg, order_desc);
 
 	/** Script includes **/
@@ -207,7 +206,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    {
 	    htrAddBodyItem_va(s, "<DIV class=\"tv%POS\" ID=\"tv%POSroot\" style=\"POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS;\"><IMG SRC=\"%STR&HTE\" align=left>&nbsp;%STR&HTE</DIV>\n",id,id,show_root?"inherit":"hidden",x,y,w,z,(*icon)?icon:"/sys/images/ico02b.gif", src);
-	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "tv%POSload", id, "");
+	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "tv%POSload", id, NULL, "");
 	    /*htrAddBodyItem_va(s, "<DIV ID=\"tv%dload\" style=\"POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0;\"></DIV>\n",id);*/
 	    }
 

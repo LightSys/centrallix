@@ -372,7 +372,7 @@ function terminal_init(param)
     //term.writer = parent.getElementById('term'+param.id+'writer');
     //term.writer.term = term;
     term = param.layer;
-    term.rootname = param.root;
+    term.rootname = wgtrGetNamespace(term);
     term.readername = param.rdr;
     term.reader = htr_subel(term, param.rdr);
     term.reader.term = term;

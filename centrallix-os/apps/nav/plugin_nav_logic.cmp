@@ -23,8 +23,8 @@ plugin_nav_logic "widget/component-decl"
 		";
 
 	baseobj = "/apps/nav/index.app";
-	replicasize=35;
-	readahead=35;
+	replicasize=100;
+	readahead=100;
 	autoquery = never;
 
 	update_logic_osrc "widget/connector"

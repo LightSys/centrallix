@@ -201,7 +201,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    strcpy(fgcolor,"black");
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#dt%POSbtn  { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; cursor:default; %STR }\n",id,x,y,w,h,z, bgcolor);
+	htrAddStylesheetItem_va(s,"\t#dt%POSbtn  { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; cursor:default; border:1px outset #e0e0e0; %STR }\n",id,x,y,w,h,z, bgcolor);
 	htrAddStylesheetItem_va(s,"\t#dt%POScon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
 	htrAddStylesheetItem_va(s,"\t#dt%POScon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
 
@@ -211,8 +211,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "dt_timeout_fn", "null", 0);
 	htrAddScriptGlobal(s, "dt_img_y", "0", 0);
 
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"dt%POSbtn\")",id);
-	htrAddWgtrCtrLinkage(s, tree, "_obj");
+	htrAddWgtrObjLinkage_va(s, tree, "dt%POSbtn",id);
 
 	/** Script includes **/
 	htrAddScriptInclude(s, "/sys/js/ht_utils_date.js", 0);
@@ -221,7 +220,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    dt_init({layer:nodes[\"%STR&SYM\"],c1:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon1\"),c2:htr_subel(nodes[\"%STR&SYM\"],\"dt%POScon2\"),id:\"%STR&JSSTR\", background:\"%STR&JSSTR\", foreground:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", width:%INT, height:%INT, width2:%INT, height2:%INT, sbr:%INT, donly:%INT, dtime:\"%STR&JSSTR\"})\n",
+	htrAddScriptInit_va(s, "    dt_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"),c1:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"dt%POScon1\"),c2:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"dt%POScon2\"),id:\"%STR&JSSTR\", background:\"%STR&JSSTR\", foreground:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", width:%INT, height:%INT, width2:%INT, height2:%INT, sbr:%INT, donly:%INT, dtime:\"%STR&JSSTR\"})\n",
 	    name,
 	    name,id, 
 	    name,id, 
@@ -231,8 +230,9 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    date_only, default_time);
 
 	/** HTML body <DIV> elements for the layers. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"dt%POSbtn\">\n", id);
-	htrAddBodyItem_va(s,"<TABLE width=%POS cellspacing=0 cellpadding=0 border=0>\n",w);
+	htrAddBodyItem_va(s,"<DIV ID=\"dt%POSbtn\">\n"
+			    "<IMG SRC=\"/sys/images/ico17.gif\" style=\"float:right;\">\n", id);
+	/*htrAddBodyItem_va(s,"<TABLE width=%POS cellspacing=0 cellpadding=0 border=0>\n",w);
 	htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
 	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%POS></TD>\n",w-2);
 	htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
@@ -242,7 +242,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD>\n");
 	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%POS></TD>\n",w-2);
 	htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
-	htrAddBodyItem(s,   "</TABLE>\n");
+	htrAddBodyItem(s,   "</TABLE>\n");*/
 	htrAddBodyItem_va(s,"<DIV ID=\"dt%POScon1\"></DIV>\n",id);
 	htrAddBodyItem_va(s,"<DIV ID=\"dt%POScon2\"></DIV>\n",id);
 	htrAddBodyItem(s,   "</DIV>\n");

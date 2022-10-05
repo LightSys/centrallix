@@ -78,6 +78,7 @@ function form_cb_getvalue(v)
     else if (v == 'is_discardable') return this.is_discardable;
     else if (v == 'is_queryable') return this.is_queryable;
     else if (v == 'is_queryexecutable') return this.is_queryexecutable;
+    else if (v == 'is_focusable') return this.is_focusable;
     var dv = null;
     var found = false;
     if (this.data)
@@ -120,8 +121,8 @@ function form_cb_data_notify(control, user_modify)
 	    this.IsUnsaved=true;
 	    this.is_savable = true;
 	    this.SendEvent('StatusChange');
-	    this.SendEvent('DataChange');
 	    }
+	this.SendEvent('DataChange');
 	}
     }
 
@@ -130,21 +131,21 @@ function form_cb_focus_notify(control)
     {
     if(this.mode=='View')
 	{
-	if (this.allowmodify)
-	    return this.ChangeMode('Modify');
-	else if (this.allownew)
-	    return this.ChangeMode('New');
-	else if (this.allowquery)
-	    return this.ChangeMode('Query');
+	if (htr_boolean(wgtrGetServerProperty(this,'allow_modify',1)))
+	    return this.ChangeMode('Modify', 'Focus');
+	else if (htr_boolean(wgtrGetServerProperty(this,'allow_new')))
+	    return this.ChangeMode('New', 'Focus');
+	else if (htr_boolean(wgtrGetServerProperty(this,'allow_query',1)))
+	    return this.ChangeMode('Query', 'Focus');
 	else
 	    return false;
 	}
     if(this.mode=='NoData')
 	{
-	if (this.allownew)
-	    return this.ChangeMode('New');
-	else if (this.allowquery)
-	    return this.ChangeMode('Query');
+	if (htr_boolean(wgtrGetServerProperty(this,'allow_new')))
+	    return this.ChangeMode('New', 'Focus');
+	else if (htr_boolean(wgtrGetServerProperty(this,'allow_query',1)))
+	    return this.ChangeMode('Query', 'Focus');
 	else
 	    return false;
 	}
@@ -173,7 +174,7 @@ function form_cb_esc_notify(control)
     {
     /** Do a discard **/
     if (control == pg_curkbdlayer && pg_removekbdfocus({nodatachange:true}))
-	this.ifcProbe(ifAction).Invoke("Discard", {});
+	this.ifcProbe(ifAction).Invoke("Discard", {FromOSRC:0, FromKeyboard:1});
     }
 
 function form_default_action()
@@ -189,7 +190,7 @@ function form_default_action()
 	if (this.is_savable)
 	    return this.ifcProbe(ifAction).Invoke("Save", {});
 	else
-	    return this.ifcProbe(ifAction).Invoke("Discard", {});
+	    return this.ifcProbe(ifAction).Invoke("Discard", {FromOSRC:0, FromKeyboard:1});
 	}
     }
 
@@ -218,9 +219,15 @@ function form_cb_data_available(aparam)
     }
 
 /** Objectsource wants us to dump our data **/
-function form_cb_is_discard_ready()
+function form_cb_is_discard_ready(obj, why)
     {
     if(!this.IsUnsaved)
+	{
+	this.osrc.QueryContinue(this);
+	return false;
+	}
+
+    if (this.IsUnsaved && why == 'refresh' && this.allowmerge)
 	{
 	this.osrc.QueryContinue(this);
 	return false;
@@ -261,7 +268,7 @@ function form_cb_is_discard_ready()
     }
 
 
-function form_load_fields(data, no_clear, modify, onefield)
+function form_load_fields(data, no_clear, modify, onefield, do_merge)
     {
     var name_to_id = [];
 
@@ -283,10 +290,15 @@ function form_load_fields(data, no_clear, modify, onefield)
 	    }
 	}
 
+    this.BeginTransaction();
+
     for(var i in this.elements)
 	{
 	if (onefield && onefield != this.elements[i].fieldname) continue;
-	if (!this.elements[i]._form_type && (typeof name_to_id[this.elements[i].fieldname]) != 'undefined')
+
+	if (!this.elements[i]._form_type &&
+		    (typeof name_to_id[this.elements[i].fieldname]) != 'undefined' &&
+		    (typeof data[name_to_id[this.elements[i].fieldname]].type) != 'undefined')
 	    this.elements[i]._form_type = data[name_to_id[this.elements[i].fieldname]].type;
 
 	if (this.elements[i].fieldname == '__position')
@@ -312,23 +324,32 @@ function form_load_fields(data, no_clear, modify, onefield)
 	else if ((typeof name_to_id[this.elements[i].fieldname]) != 'undefined' && (typeof data[name_to_id[this.elements[i].fieldname]].value) != 'undefined')
 	    {
 	    var id = name_to_id[this.elements[i].fieldname];
-	    this.elements[i].setvalue(data[id].value);
-	    if (modify)
-		this.elements[i]._form_IsChanged = true;
-	    cx_set_hints(this.elements[i], data[id].hints, 'data');
-	    this.last_hints[this.elements[i].fieldname] = data[id].hints;
+	    if (!do_merge || !this.elements[i]._form_IsChanged)
+		{
+		this.elements[i].setvalue(data[id].value);
+		if (modify)
+		    this.elements[i]._form_IsChanged = true;
+		cx_set_hints(this.elements[i], data[id].hints, 'data');
+		this.last_hints[this.elements[i].fieldname] = data[id].hints;
+		}
 	    }
 	else if (!no_clear)
 	    {
 	    this.elements[i].clearvalue();
 	    }
 	}
+
+    this.CommitTransaction();
     }
 
 /** Objectsource says our object is available **/
-function form_cb_object_available(data)
+function form_cb_object_available(data, osrc, why)
     {
     var go_view = false;
+    var do_merge = false;
+
+    this.BeginTransaction();
+
     if (this.mode == 'Query')
 	{
 	// reset form status widgets when query done
@@ -339,9 +360,14 @@ function form_cb_object_available(data)
 	}
     if (data)
 	{
-	if(this.mode!='View')
+	if ((this.mode == 'Modify' || this.mode == 'New') && this.allowmerge && why == 'refresh')
 	    {
-	    if (this.ChangeMode('View'))
+	    go_view = true;
+	    do_merge = true;
+	    }
+	else if (this.mode != 'View')
+	    {
+	    if (this.ChangeMode('View', 'OSRC'))
 		go_view = true;
 	    }
 	else
@@ -356,7 +382,7 @@ function form_cb_object_available(data)
 	{
 	if(this.mode!='NoData') 
 	    {
-	    if (this.ChangeMode('NoData'))
+	    if (this.ChangeMode('NoData', 'OSRC'))
 		go_view = true;
 	    }
 	else
@@ -370,7 +396,8 @@ function form_cb_object_available(data)
 	{
 	if (data)
 	    {
-	    this.ClearAll(true);
+	    if (!do_merge)
+		this.ClearAll(true);
 	    for(var j in data)
 		{
 		if (!this.ifcProbe(ifValue).Exists(data[j].oid, true))
@@ -381,13 +408,13 @@ function form_cb_object_available(data)
 		this.ifcProbe(ifValue).Changing(data[j].oid, data[j].value, true);
 		}
 	    this.data=data;
-	    if (this.didsearch && (data.__osrc_is_last || data.id == this.recid))
+	    if (data.__osrc_is_last || (this.didsearch && data.id == this.recid))
 		this.lastrecid = data.id;
 	    this.recid = data.id;
 
-	    this.LoadFields(this.data);
+	    this.LoadFields(this.data, false, false, null, do_merge);
 
-	    this.SendEvent('DataLoaded');
+	    this.SendEvent('DataLoaded', {why: why} );
 	    }
 	else
 	    {
@@ -400,6 +427,7 @@ function form_cb_object_available(data)
     this.didsearch = false;
     this.didsearchlast = false;
     this.__created = false;
+    this.CommitTransaction();
     }
 
 /** Objectsource says the operation is complete **/
@@ -431,6 +459,20 @@ function form_cb_object_modified(recnum, dataobj)
     this.ObjectAvailable(dataobj);
     }
 
+// Set value - pass through to the appropriate field, and this also throws
+// the form into a new or modify or search mode, as appropriate.
+function form_action_setvalue(aparam)
+    {
+    if (!aparam.Field)
+	return;
+
+    // Switch the form into the appropriate data modification mode
+    this.FocusNotify(null);
+
+    // Load the field
+    this.LoadFields([{oid:aparam.Field, value:aparam.Value}], true, true, aparam.Field);
+    }
+
 /** Moves form to "NoData" mode **/
 /**   If unsaved data exists (New or Modify mode), prompt for Save/Discard **/
 /** Clears any rows in osrc replica (doesn't delete from DB) **/
@@ -438,7 +480,7 @@ function form_action_clear(aparam)
     {
     if(this.mode=="NoData")
 	return; /* Already in NoData Mode */
-    if(this.IsUnsaved && (this.mode=="New" || this.mode=="Modify"))
+    if(this.IsUnsaved && (this.mode=="New" || this.mode=="Modify") && !aparam.force)
 	{
 	if(confirm("OK to save or discard changes, CANCEL to stay here"))
 	    {
@@ -499,26 +541,32 @@ function form_action_delete_success()
 /** in Query, clear, remain in query mode **/
 function form_action_discard(aparam)
     {
+    if (!aparam.FromOSRC)
+	aparam.FromOSRC = 0;
+    if (!aparam.FromKeyboard)
+	aparam.FromKeyboard = 0;
+    this.ifcProbe(ifValue).Changing("form_prev_action", 'Discard', true);
+    this.prevaction = 'Discard';
     switch(this.mode)
 	{
 	case "Modify":
 	    this.ClearAll(true);
 	    //if (this.osrc) this.osrc.MoveToRecord(this.recid);
-	    this.ChangeMode("View");
+	    this.ChangeMode("View", 'Discard');
 	    this.LoadFields(this.data);
-	    this.SendEvent('Discard');
+	    this.SendEvent('Discard', aparam);
 	    break;
 	case "Query":
 	case "New":
 	    this.ClearAll();
-	    if (this.data && this.ChangeMode("View"))
+	    if (this.data && this.ChangeMode("View", 'Discard'))
 		this.LoadFields(this.data);
-	    else if (!this.data && this.ChangeMode("NoData"))
+	    else if (!this.data && this.ChangeMode("NoData", 'Discard'))
 		this.LoadFields(null);
-	    this.SendEvent('Discard');
+	    this.SendEvent('Discard', aparam);
 	    // failed to change mode? re-init the query or new status if so.
 	    if (this.mode == "Query" || this.mode == "New")
-		this.ChangeMode(this.mode);
+		this.ChangeMode(this.mode, 'Discard');
 	    break;
 //	case "Query":
 //	    this.ClearAll();
@@ -534,10 +582,10 @@ function form_action_edit(aparam)
     switch(this.mode)
 	{
 	case "NoData":
-	    this.ChangeMode("New");
+	    this.ChangeMode("New", 'Edit');
 	    break;
 	case "View":
-	    this.ChangeMode("Modify");
+	    this.ChangeMode("Modify", 'Edit');
 	    break;
 	}
     }
@@ -582,7 +630,7 @@ function form_show_3bconfirm()
     //cancel.EventClick=this._3bconfirm_cancel;
     
     var funclate=new Function("this.cb['_3bConfirmCancel'].clear();this.cb['_3bConfirmDiscard'].clear();this.cb['_3bConfirmSave'].clear();");
-    var func=new Function("pg_setmodal(null);var v=new Object();v.IsVisible=0;this._3bconfirmwindow.ifcProbe(ifAction).Invoke(\"Close\", {});");
+    var func=new Function("pg_setmodal(null,false);var v=new Object();v.IsVisible=0;this._3bconfirmwindow.ifcProbe(ifAction).Invoke(\"Close\", {});");
     
 /** funclate will fire last (or very close, with a level of 1000) **/
     this.cb['_3bConfirmCancel'].add(this,funclate,null,1000);
@@ -640,7 +688,7 @@ function form_action_new(aparam)
 	case "View":
 	case "Modify":
 	    this.is_multienter = ((typeof aparam.Multi != 'undefined') && aparam.Multi);
-	    this.ChangeMode("New");
+	    this.ChangeMode("New", 'New');
 	    //this.ClearAll(); -- GRB this is done in change_mode now because of pres hints stuff
 	    /* if there was a query run, fill in it's values... */
 	    break;
@@ -649,7 +697,7 @@ function form_action_new(aparam)
 
 function form_action_view(aparam)
     {
-    this.ChangeMode("View");
+    this.ChangeMode("View", 'View');
     }
 
 /** tell osrc to go to first record **/
@@ -688,6 +736,8 @@ function form_select_element(current, save_if_last, reverse)
     {
     var incr = reverse?(-1):1;
     var ctrlnum = (this.elements.length - incr)%this.elements.length;
+    if (!current && reverse)
+	ctrlnum = 0;
     var origctrl;
     var found_one = false;
 
@@ -727,11 +777,19 @@ function form_select_element(current, save_if_last, reverse)
     for(var i = 1; i <= this.elements.length; i++)
 	{
 	ctrlnum = (origctrl + this.elements.length + incr*i) % this.elements.length;
-	if (!reverse && ctrlnum == 0 && this.nextform && current)
+	if (!reverse && ctrlnum == 0 && this.nextform && current && this.nextform.is_enabled)
 	    {
 	    if (pg_removekbdfocus())
 		{
 		this.nextform.SelectElement(null);
+		return;
+		}
+	    }
+	if (reverse && origctrl == 0 && this.prevform && current && this.prevform.is_enabled)
+	    {
+	    if (pg_removekbdfocus())
+		{
+		this.prevform.SelectElement(null, false, true);
 		return;
 		}
 	    }
@@ -785,22 +843,31 @@ function form_remove_focus()
     }
 
 /** Helper function -- called from other mode change functions **/
-function form_change_mode(newmode)
+function form_change_mode(newmode, reason)
     {
     var templ = null;
 
-    if (newmode == 'Modify' && !this.allowmodify)
+    if (newmode == 'Modify' && !htr_boolean(wgtrGetServerProperty(this,'allow_modify',1)))
 	return false;
-    else if (newmode == 'View' && !this.allowview)
+    else if (newmode == 'View' && !htr_boolean(wgtrGetServerProperty(this,'allow_view',1)))
 	return false;
-    else if (newmode == 'Query' && !this.allowquery)
+    else if (newmode == 'Query' && !htr_boolean(wgtrGetServerProperty(this,'allow_query',1)))
 	return false;
-    else if (newmode == 'New' && !this.allownew)
+    else if (newmode == 'New' && !htr_boolean(wgtrGetServerProperty(this,'allow_new')))
 	return false;
-    else if (newmode == 'NoData' && !this.allownodata)
+    else if (newmode == 'NoData' && !htr_boolean(wgtrGetServerProperty(this,'allow_nodata')))
 	return false;
 
     if (newmode == this.mode && newmode != 'Query' && newmode != 'New' && newmode != 'Modify') return true;
+
+    // Interlock check -- autodiscard interlock is the only method supported right now.
+    if (newmode == 'New' || newmode == 'Modify')
+	{
+	for(var i=0; i<this.interlock_forms.length; i++)
+	    {
+	    this.interlock_forms[i].ifcProbe(ifAction).Invoke('Discard', {});
+	    }
+	}
 
     // Exiting 'New' mode?
     if (this.mode == 'New')
@@ -823,17 +890,18 @@ function form_change_mode(newmode)
 
     // Control button behavior
     this.is_discardable = (newmode == 'Query' || newmode == 'New' || newmode == 'Modify');
-    this.is_editable = (newmode == 'View') && this.allowmodify;
-    this.is_newable = (newmode == 'View' || newmode == 'NoData') && this.allownew;
-    this.is_queryable = (newmode == 'View' || newmode == 'NoData') && this.allowquery;
+    this.is_editable = (newmode == 'View') && htr_boolean(wgtrGetServerProperty(this,'allow_modify',1));
+    this.is_newable = (newmode == 'View' || newmode == 'NoData') && htr_boolean(wgtrGetServerProperty(this,'allow_new'));
+    this.is_queryable = (newmode == 'View' || newmode == 'NoData') && htr_boolean(wgtrGetServerProperty(this,'allow_query',1));
     this.is_queryexecutable = (newmode == 'Query');
     this.is_multienter = (this.is_multienter && (newmode == 'New'));
+    this.is_focusable = this.is_newable || this.is_editable || this.is_queryable || newmode == 'New' || newmode == 'Modify' || newmode == 'Query';
 
     // Confirm if transitioning out of Modify with unsaved data
     if(this.mode=='Modify' && this.IsUnsaved)
 	{
 	var savefunc=new Function("this.cb['OperationCompleteSuccess'].add(this,new Function('this.ifcProbe(ifAction).Invoke(\""+newmode+"\", {});'));this.ifcProbe(ifAction).Invoke(\"Save\", {});");
-	var discardfunc=new Function("this.IsUnsaved=false;this.is_savable=false;this.ChangeMode('"+newmode+"');");
+	var discardfunc=new Function("this.IsUnsaved=false;this.is_savable=false;this.ChangeMode('"+newmode+"', 'Discard');");
 	this.cb['_3bConfirmDiscard'].add(this,discardfunc);
 	this.cb['_3bConfirmSave'].add(this,savefunc);
 	this.show3bconfirm();
@@ -890,6 +958,7 @@ function form_change_mode(newmode)
     // on New or Modify, call appropriate hints routines
     if (newmode == 'New')
 	{
+	this.BeginTransaction();
 	for(var e in this.elements)
 	    {
 	    if (this.elements[e].cx_hints) cx_hints_setup(this.elements[e]);
@@ -902,6 +971,7 @@ function form_change_mode(newmode)
 	    {
 	    this.LoadFields(templ, true, true);
 	    }
+	this.CommitTransaction();
 	}
     else if (newmode == 'Modify')
 	{
@@ -919,23 +989,90 @@ function form_change_mode(newmode)
 	}
 
     this.SendEvent('StatusChange');
-    this.SendEvent(this.mode);
+    this.SendEvent('ModeChange', {OldMode:this.oldmode, NewMode:this.mode, Reason:reason});
+    this.SendEvent(this.mode, {Reason:reason, OldMode:this.oldmode});
     return true;
     }
 
-function form_send_event(event)
+function form_send_event(event, eparam)
     {
     //confirm(eval('this.Event'+event));
     if (!this.ifcProbe(ifEvent).Exists(event)) return 1;
     //if(!eval('this.Event'+event)) return 1;
     var evobj = new Object();
+    if (eparam)
+	{
+	for(var ep in eparam)
+	    evobj[ep] = eparam[ep];
+	}
     evobj.Caller = this;
     evobj.Status = this.mode;
     evobj.PrevStatus = this.oldmode;
     evobj.IsUnsaved = this.IsUnsaved;
     evobj.is_savable = this.is_savable;
-    cn_activate(this, event, evobj);
-    delete evobj;
+    if (this.in_transaction)
+	this.trx_events.push({event: event, evobj: evobj});
+    else
+	cn_activate(this, event, evobj);
+    }
+
+function form_begin_transaction()
+    {
+    this.trx_events = [];
+    if (!this.in_transaction)
+	{
+	for(var i in this.elements)
+	    if (this.elements[i].begintransaction)
+		this.elements[i].begintransaction();
+	}
+    this.in_transaction++;
+    }
+
+function form_commit_transaction()
+    {
+    this.in_transaction--;
+    if (!this.in_transaction)
+	{
+	// scan for duplicate data change events
+	var found_datachange = false;
+	for(var i=0; i<this.trx_events.length; i++)
+	    {
+	    var e = this.trx_events[i];
+	    if (e.event == 'DataChange')
+		{
+		if (found_datachange)
+		    continue;
+		found_datachange = true;
+		}
+	    cn_activate(this, e.event, e.evobj);
+	    }
+
+	for(var i in this.elements)
+	    if (this.elements[i].endtransaction)
+		this.elements[i].endtransaction();
+	}
+    }
+
+// Disables the entire form.
+function form_action_disable(ap)
+    {
+    if (!ap || !ap.Enabled || ap.Enabled == 'no')
+	this.DisableAll();
+    else if (this.mode == 'View' || this.mode == 'NoData' || this.mode == 'Modify')
+	this.EnableModifyAll();
+    else if (this.mode == 'New' || this.mode == 'Query')
+	this.EnableNewAll();
+    }
+
+// Re-enables the entire form.
+function form_action_enable(ap)
+    {
+    if (ap && (ap.Enabled === 0 || ap.Enabled == 'no'))
+	this.DisableAll();
+    else if (this.mode == 'View' || this.mode == 'NoData' || this.mode == 'Modify')
+	this.EnableModifyAll();
+    else if (this.mode == 'New' || this.mode == 'Query')
+	this.EnableNewAll();
     }
 
 /** Clears all children, also resets IsChanged/IsUnsaved flag to false **/
@@ -943,11 +1080,13 @@ function form_clear_all(internal_only)
     {
     if (!internal_only)
 	{
+	this.BeginTransaction();
 	for(var i in this.elements)
 	    {
 	    this.elements[i].clearvalue();
 	    this.elements[i]._form_IsChanged=false;
 	    }
+	this.CommitTransaction();
 	}
     this.IsUnsaved=false;
     this.is_savable = false;
@@ -957,6 +1096,7 @@ function form_clear_all(internal_only)
 /** Disables all children **/
 function form_disable_all()
     {
+    this.is_enabled = false;
     for(var i in this.elements)
 	{
 	if (this.elements[i] == pg_curkbdlayer) pg_removekbdfocus();
@@ -967,6 +1107,7 @@ function form_disable_all()
 /** Enables all children (for modify) **/
 function form_enable_modify_all()
     {
+    this.is_enabled = true;
     for(var i in this.elements)
 	{
 	if(this.elements[i].enablemodify)
@@ -979,6 +1120,7 @@ function form_enable_modify_all()
 /** Enables all children (for modify) **/
 function form_enable_new_all()
     {
+    this.is_enabled = true;
     for(var i in this.elements)
 	{
 	if(this.elements[i].enablenew)
@@ -1001,8 +1143,8 @@ function form_readonly_all()
 /** Change to query mode **/
 function form_action_query()
     {
-    if(!this.allowquery) {alert('Query mode not allowed');return 0;}
-    return this.ChangeMode('Query');
+    if(!htr_boolean(wgtrGetServerProperty(this,'allow_query',1))) {alert('Query mode not allowed');return 0;}
+    return this.ChangeMode('Query', 'Action');
     }
 
 /** go to query mode, or exec query **/
@@ -1027,7 +1169,7 @@ function isArray()
 /** Execute query **/
 function form_action_queryexec()
     {
-    if(!this.allowquery) {alert('Query not allowed');return 0;}
+    if(!htr_boolean(wgtrGetServerProperty(this,'allow_query',1))) {alert('Query not allowed');return 0;}
     if(!(this.mode=='Query')) {alert("You can't execute a query if you're not in Query mode.");return 0;}
 /** build an query object to give the osrc **/
     var query=new Array();
@@ -1095,19 +1237,21 @@ function form_build_dataobj()
 
 function form_action_save_success()
     {
+    this.ifcProbe(ifValue).Changing("form_prev_action", (this.mode=='New')?'Create':'Modify', true);
+    this.prevaction = (this.mode=='New')?'Create':'Modify';
     this.IsUnsaved=false;
     this.is_savable=false;
     this.Pending=false;
     this.EnableModifyAll();
     if (this.is_multienter && this.mode == 'New')
 	pg_serialized_func(2, this, form_action_save_success_2, []);
-    else if (this.allowview)
+    else if (htr_boolean(wgtrGetServerProperty(this,'allow_view',1)))
 	this.ifcProbe(ifAction).Invoke("View", {});
-    else if (this.allowmodify && this.mode == 'Modify')
+    else if (htr_boolean(wgtrGetServerProperty(this,'allow_modify',1)) && this.mode == 'Modify')
 	this.ifcProbe(ifAction).Invoke("Modify", {});
-    else if (this.allownodata)
-	this.ChangeMode('NoData');
-    else if (this.allownew && this.mode == 'New')
+    else if (htr_boolean(wgtrGetServerProperty(this,'allow_nodata')))
+	this.ChangeMode('NoData','Save');
+    else if (htr_boolean(wgtrGetServerProperty(this,'allow_new')) && this.mode == 'New')
     	this.ifcProbe(ifAction).Invoke("New", {});
     for(var i in this.elements)
 	this.elements[i]._form_IsChanged=false;
@@ -1128,6 +1272,10 @@ function form_action_save()
 	}
 
     this.Pending=true;
+    for(var e in this.elements)
+	{
+	if (this.elements[e].cx_hints) cx_hints_completenew(this.elements[e]);
+	}
     this.DisableAll();
 
     pg_serialized_func(2, this, form_action_save_2, []);
@@ -1168,7 +1316,7 @@ function form_action_save_3()
     else
 	{
 	this.Pending=false;
-	this.ChangeMode('View');
+	this.ChangeMode('View', 'Save');
 	}
     }
 
@@ -1182,11 +1330,6 @@ function form_action_submit(aparam)
 	node = wgtrFindContainer(this, "widget/page");
     if (!node) return false;
     var param = new Object;
-    for(var ap in aparam)
-	{
-	if (ap != 'Target' && ap != 'NewPage')
-	    param[ap] = aparam[ap];
-	}
     for(var i in this.elements)
 	{
 	var v = this.elements[i].getvalue();
@@ -1195,9 +1338,16 @@ function form_action_submit(aparam)
 	    param[this.elements[i].fieldname] = v;
 	    }
 	}
+    for(var ap in aparam)
+	{
+	if (ap != 'Target' && ap != 'NewPage')
+	    param[ap] = aparam[ap];
+	}
     var nodetype = wgtrGetType(node);
     if (nodetype == "widget/component")
 	node.ifcProbe(ifAction).Invoke("Instantiate", param);
+    else if (nodetype == "widget/osrc")
+	node.ifcProbe(ifAction).Invoke("QueryParam", param);
     else if (nodetype == "widget/image")
 	node.ifcProbe(ifAction).Invoke("LoadImage", param);
     else if ((nodetype == "widget/page" || nodetype == "widget/component-decl") && aparam.NewPage)
@@ -1309,33 +1459,38 @@ function form_cb_reveal(element,event)
 	{
 	case 'Reveal':
 	    this.revealed_elements++;
+	    if (this.checked_elements < this.revealed_elements)
+		this.checked_elements = this.revealed_elements;
 	    if (this.revealed_elements != 1) return 0;
 	    if (this.osrc) this.osrc.Reveal(this);
 	    break;
 	case 'Obscure':
 	    this.revealed_elements--;
+	    if (this.checked_elements > this.revealed_elements)
+		this.checked_elements = this.revealed_elements;
 	    if (this.revealed_elements != 0) return 0;
 	    if (this.osrc) this.osrc.Obscure(this);
 	    break;
 	case 'RevealCheck':
 	    pg_reveal_check_ok(event);
+	    this.checked_elements++;
 	    break;
 	case 'ObscureCheck':
 	    // unsaved data?
-	    if (!this.allowobscure)
+	    if (!this.allowobscure && this.checked_elements == 1)
 		{
 		if (this.IsUnsaved)
 		    {
 		    this._orsevent = event;
 		    var savefunc=new Function("this.cb['OperationCompleteSuccess'].add(this,new Function('pg_reveal_check_ok(this._orsevent);'));this.cb['OperationCompleteFail'].add(this,new Function('pg_reveal_check_veto(this._orsevent);'));this.ifcProbe(ifAction).Invoke(\"Save\", {});");
 		    this.cb['_3bConfirmSave'].add(this,savefunc);
-		    this.cb['_3bConfirmDiscard'].add(this,new Function('this.ifcProbe(ifAction).Invoke("Discard", {});pg_reveal_check_ok(this._orsevent);'));
-		    this.cb['_3bConfirmCancel'].add(this,new Function('pg_reveal_check_veto(this._orsevent);'));
+		    this.cb['_3bConfirmDiscard'].add(this,new Function('this.ifcProbe(ifAction).Invoke("Discard", {FromOSRC:0, FromKeyboard:0});pg_reveal_check_ok(this._orsevent);'));
+		    this.cb['_3bConfirmCancel'].add(this,new Function('pg_reveal_check_veto(this._orsevent); this.checked_elements = this.revealed_elements;'));
 		    this.show3bconfirm();
 		    }
 		else
 		    {
-		    this.ifcProbe(ifAction).Invoke("Discard", {});
+		    this.ifcProbe(ifAction).Invoke("Discard", {FromOSRC:0, FromKeyboard:0});
 		    pg_reveal_check_ok(event);
 		    }
 		}
@@ -1343,15 +1498,46 @@ function form_cb_reveal(element,event)
 		{
 		pg_reveal_check_ok(event);
 		}
+	    this.checked_elements--;
 	    break;
 	}
     return 0;
+    }
+
+function form_add_interlock(node)
+    {
+    if ($.inArray(node, this.interlock_forms) >= 0)
+	return;
+    this.interlock_forms.push(node);
     }
 
 function form_init_bh()
     {
     if (this.nextformwithin)
 	this.nextform = wgtrFindInSubtree(this.nextformwithin, this, "widget/form");
+    if (this.interlock)
+	{
+	for(var i=0; i<this.interlock.length; i++)
+	    {
+	    if (this.interlock[i])
+		{
+		var node = wgtrGetNode(this, this.interlock[i]);
+		if (node)
+		    {
+		    this.AddInterlock(node);
+		    node.AddInterlock(this);
+		    }
+		}
+	    }
+	for(var i=0; i<this.interlock_forms.length; i++)
+	    {
+	    for(var j=0; j<this.interlock_forms.length; j++)
+		{
+		if (i != j)
+		    this.interlock_forms[i].AddInterlock(this.interlock_forms[j]);
+		}
+	    }
+	}
     }
 
 /** Form initializer
@@ -1370,15 +1556,19 @@ function form_init(form,param)
     //var form = new Object();
     ifc_init_widget(form);
     form.readonly=param.ro;
+    form.interlock=param.il.split(',');
+    form.interlock_forms=[];
     form.elements = [];
     form.statuswidgets = [];
     form.last_hints = [];
     form.mode = 'NoData';
     form.cobj = null; /* current 'object' (record) */
     form.oldmode = null;
+    form.prevaction = null;
     form.didsearchlast = false;
     form.didsearch = false;
     form.revealed_elements = 0;
+    form.checked_elements = 0;
     form.is_multienter = false;
     form.valuelist = [];
     if (param.osrc)
@@ -1393,6 +1583,9 @@ function form_init(form,param)
     else if (param.nfw)
 	form.nextformwithin = wgtrGetNode(form, param.nfw);
 	//form.nextform = wgtrFindInSubtree(wgtrGetNode(form, param.nfw), form, "widget/form");
+    form.prevform = null;
+    if (param.pf)
+	form.prevform = wgtrGetNode(form, param.pf);
 
     //if (!form.osrc) alert('no osrc container!');
     form.IsUnsaved = false;
@@ -1424,6 +1617,7 @@ function form_init(form,param)
     form.autofocus = param.af;
     form.confirm_delete = param.cd;
     form.confirm_discard = param.cdis;
+    form.allowmerge = param.amrg;
     form.tab_revealed_only = param.tro;
     form.enter_mode = param.em;
 
@@ -1434,9 +1628,13 @@ function form_init(form,param)
     form.is_newable = form.allownew?true:false;
     form.is_queryable = form.allowquery?true:false;
     form.is_queryexecutable = false;
+    form.is_focusable = form.is_newable || form.is_editable || form.is_queryable;
+    form.is_enabled = true;
     form.recid = 1;
     form.lastrecid = null;
     form.data = null;
+    form.in_transaction = 0;
+    form.trx_events = [];
 
 /** initialize actions and callbacks **/
     form.form_cb_getvalue = form_cb_getvalue;
@@ -1478,6 +1676,12 @@ function form_init(form,param)
     //form.InitQuery = form_init_query;
     form.ActionSaveSuccessCB = form_action_save_success;
     form.ActionDeleteSuccessCB = form_action_delete_success;
+    form.AddInterlock = form_add_interlock;
+
+    // Used for making a series of related changes and generating only
+    // one set of events.
+    form.BeginTransaction = form_begin_transaction;
+    form.CommitTransaction = form_commit_transaction;
 
     // Actions
     var ia = form.ifcProbeAdd(ifAction);
@@ -1497,10 +1701,14 @@ function form_init(form,param)
     ia.Add("QueryToggle", form_action_querytoggle);
     ia.Add("Save", form_action_save);
     ia.Add("Submit", form_action_submit);
+    ia.Add("SetValue", form_action_setvalue);
+    ia.Add("Disable", form_action_disable);
+    ia.Add("Enable", form_action_enable);
 
     // Events
     var ie = form.ifcProbeAdd(ifEvent);
     ie.Add("StatusChange");
+    ie.Add("ModeChange");
     ie.Add("DataChange");
     ie.Add("DataLoaded");
     ie.Add("DataSaved");
@@ -1529,12 +1737,15 @@ function form_init(form,param)
     iv.Add("is_editable","is_editable");
     iv.Add("is_queryable","is_queryable");
     iv.Add("is_queryexecutable","is_queryexecutable");
+    iv.Add("is_focusable","is_focusable");
     iv.Add("is_multienter","is_multienter");
+    iv.Add("is_enabled","is_enabled");
     iv.Add("confirm_delete","confirm_delete");
     iv.Add("recid","recid");
     iv.Add("lastrecid","lastrecid");
     iv.Add("form_mode","mode");
     iv.Add("form_prev_mode","oldmode");
+    iv.Add("form_prev_action","prevaction");
     iv.SetNonexistentCallback(form_cb_nonexistent);
 
     if(form.osrc)

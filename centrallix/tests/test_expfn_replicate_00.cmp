@@ -1,0 +1,7 @@
+Attribute [replicate(Hello,10)]:   string   "HelloHelloHelloHelloHelloHelloHelloHelloHelloHello" 
+Attribute [replicate("Are we there yet?",5]:   string   "Are we there yet? Are we there yet? Are we there yet? Are we there yet? Are we there yet? " 
+Attribute [replicate("a", 300)]:   string   "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" 
+Attribute [replicate("God is good, all the]:   string   "God is good, all the time! God is good, all the time! God is good, all the time! God is good, all the time! God is good, all the time! " 
+Attribute [replicate(null, 5)]:   string  NULL
+Attribute [replicate("",255)]:   string   "" 
+Attribute [replicate(Hi, 2.5)]:   string   "HiHi" 

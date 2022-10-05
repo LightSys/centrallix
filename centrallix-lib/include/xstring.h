@@ -53,6 +53,7 @@ int xsConcatenate(pXString this, char* text, int len);
 int xsCopy(pXString this, char* text, int len);
 char* xsString(pXString this);
 char* xsStringEnd(pXString this);
+int xsLength(pXString this);
 int xsPrintf(pXString this, char* fmt, ...);
 int xsConcatPrintf(pXString this, char* fmt, ...);
 int xsWrite(pXString this, char* buf, int len, int offset, int flags);
@@ -67,7 +68,10 @@ int xsInsertAfter(pXString this, char* ins, int inslen, int offset);
 int xsGenPrintf(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, const char* fmt, ...);
 int xsGenPrintf_va(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, const char* fmt, va_list va);
 int xsQPrintf(pXString this, char* fmt, ...);
+int xsQPrintf_va(pXString this, char* fmt, va_list va);
 int xsConcatQPrintf(pXString this, char* fmt, ...);
+pXString xsNew();
+void xsFree(pXString this);
 
 #define XS_U_SEEK	2
 

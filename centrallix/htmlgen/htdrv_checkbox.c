@@ -89,8 +89,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    enabled = htrGetBoolean(tree, "enabled", 1);
 
    /** Write named global **/
-   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"cb%INTmain\")", id);
-   htrAddWgtrCtrLinkage(s, tree, "_obj");
+   htrAddWgtrObjLinkage_va(s, tree, "cb%INTmain", id);
 
    /** Ok, write the style header items. **/
    htrAddStylesheetItem_va(s,"\t#cb%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:13px; WIDTH:13px; Z-INDEX:%POS; }\n",id,x,y,z);
@@ -104,10 +103,10 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "checkbox", "checkbox_mousemove");
    
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    checkbox_init({layer:nodes[\"%STR&SYM\"], fieldname:\"%STR&JSSTR\", checked:%INT, enabled:%INT, form:\"%STR&JSSTR\"});\n", name, fieldname,checked,enabled,form);
+   htrAddScriptInit_va(s,"    checkbox_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", checked:%INT, enabled:%INT, form:\"%STR&JSSTR\"});\n", name, fieldname,checked,enabled,form);
 
    /** HTML body <DIV> element for the layers. **/
-   htrAddBodyItemLayerStart(s, 0, "cb%POSmain", id);
+   htrAddBodyItemLayerStart(s, 0, "cb%POSmain", id, NULL);
    switch(checked)
 	{
 	case 1:

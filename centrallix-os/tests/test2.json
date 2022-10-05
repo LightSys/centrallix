@@ -1,0 +1,11 @@
+{
+    "description":"Seven Colors",
+
+    "Green":{ "rowid":1, "color":"green" },
+    "Yellow":{ "rowid":2, "color":"yellow" },
+    "Blue":{ "rowid":3, "color":"blue" },
+    "Red":{ "rowid":4, "color":"red" },
+    "Orange":{ "rowid":5, "color":"orange" },
+    "Purple":{ "rowid":6, "color":"purple" },
+    "Violet":{ "rowid":7, "color":"violet" }
+}

@@ -26,6 +26,8 @@
 #ifndef CENTRALLIX_CONFIG
 #define CENTRALLIX_CONFIG /usr/local/etc/centrallix.conf
 #endif
+#include "obfuscate.h"
+#include "application.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -72,17 +74,22 @@ pObjSession s;
 
 struct
     {
-    char    UserName[32];
-    char    Password[32];
-    char    CmdFile[256];
-    pFile   Output;
-    char    OutputFilename[256];
-    char    Command[1024];
-    unsigned int WaitSecs;
+    char		UserName[32];
+    char		Password[32];
+    char		CmdFile[256];
+    pFile		Output;
+    char		OutputFilename[256];
+    char		Command[1024];
+    unsigned int	WaitSecs;
+    pObfSession		ObfuscationSession;
+    char		ObfRuleFile[256];
+    char		ObfKey[256];
     }
     TESTOBJ;
 
 #define BUFF_SIZE 1024
+
+#define CSV_MAX_ATTRS	640
 
 typedef struct
     {
@@ -106,8 +113,11 @@ printExpression(pExpression exp)
     pWriteStruct dst;
     pParamObjects tmplist;
 
-	if(!exp)
+	if (!TESTOBJ.Output)
 	    return -1;
+	if (!exp)
+	    return -1;
+
 	dst = (pWriteStruct)nmMalloc(sizeof(WriteStruct));
 	dst->buffer=(char*)malloc(1);
 	dst->buflen=0;
@@ -132,6 +142,9 @@ testobj_show_hints(pObject obj, char* attrname)
     {
     pObjPresentationHints hints;
     int i;
+
+    if (!TESTOBJ.Output)
+	return -1;
 
     hints = objPresentationHints(obj, attrname);
     if(!hints)
@@ -191,6 +204,9 @@ testobj_show_attr(pObject obj, char* attrname)
     Binary bn;
     pObjPresentationHints hints;
 
+	if (!TESTOBJ.Output)
+	    return -1;
+
 	type = objGetAttrType(obj,attrname);
 	if (type < 0) 
 	    {
@@ -218,10 +234,10 @@ testobj_show_attr(pObject obj, char* attrname)
 		    fdPrintf(TESTOBJ.Output,"  %20.20s: NULL", attrname);
 		else
 		    {
-		    fdPrintf(TESTOBJ.Output,"  %20.20s: %d bytes: ", attrname, bn.Size);
+		    fdPrintf(TESTOBJ.Output,"  %20.20s:  %d bytes: ", attrname, bn.Size);
 		    for(i=0;i<bn.Size;i++)
 			{
-			fdPrintf(TESTOBJ.Output,"%2.2x  ", bn.Data[i]);
+			fdPrintf(TESTOBJ.Output,"%2.2x ", bn.Data[i]);
 			}
 		    }
 		break;
@@ -301,6 +317,103 @@ testobj_show_attr(pObject obj, char* attrname)
 	    if (hints->MaxValue != NULL) { fdPrintf(TESTOBJ.Output,"MaxValue="); printExpression(hints->MaxValue); }
 	    objFreeHints(hints);
 	    fdPrintf(TESTOBJ.Output,"]\n");
+	    }
+
+    return 0;
+    }
+
+int
+testobj_show_info(pObject obj)
+    {
+    pObjectInfo info;
+
+	info = objInfo(obj);
+	if (info)
+	    {
+	    if (info->Flags)
+		{
+		fdPrintf(TESTOBJ.Output,"Flags: ");
+		if (info->Flags & OBJ_INFO_F_NO_SUBOBJ) fdPrintf(TESTOBJ.Output,"no_subobjects ");
+		if (info->Flags & OBJ_INFO_F_HAS_SUBOBJ) fdPrintf(TESTOBJ.Output,"has_subobjects ");
+		if (info->Flags & OBJ_INFO_F_CAN_HAVE_SUBOBJ) fdPrintf(TESTOBJ.Output,"can_have_subobjects ");
+		if (info->Flags & OBJ_INFO_F_CANT_HAVE_SUBOBJ) fdPrintf(TESTOBJ.Output,"cant_have_subobjects ");
+		if (info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN) fdPrintf(TESTOBJ.Output,"subobject_cnt_known ");
+		if (info->Flags & OBJ_INFO_F_CAN_ADD_ATTR) fdPrintf(TESTOBJ.Output,"can_add_attrs ");
+		if (info->Flags & OBJ_INFO_F_CANT_ADD_ATTR) fdPrintf(TESTOBJ.Output,"cant_add_attrs ");
+		if (info->Flags & OBJ_INFO_F_CAN_SEEK_FULL) fdPrintf(TESTOBJ.Output,"can_seek_full ");
+		if (info->Flags & OBJ_INFO_F_CAN_SEEK_REWIND) fdPrintf(TESTOBJ.Output,"can_seek_rewind ");
+		if (info->Flags & OBJ_INFO_F_CANT_SEEK) fdPrintf(TESTOBJ.Output,"cant_seek ");
+		if (info->Flags & OBJ_INFO_F_CAN_HAVE_CONTENT) fdPrintf(TESTOBJ.Output,"can_have_content ");
+		if (info->Flags & OBJ_INFO_F_CANT_HAVE_CONTENT) fdPrintf(TESTOBJ.Output,"cant_have_content ");
+		if (info->Flags & OBJ_INFO_F_HAS_CONTENT) fdPrintf(TESTOBJ.Output,"has_content ");
+		if (info->Flags & OBJ_INFO_F_NO_CONTENT) fdPrintf(TESTOBJ.Output,"no_content ");
+		if (info->Flags & OBJ_INFO_F_SUPPORTS_INHERITANCE) fdPrintf(TESTOBJ.Output,"supports_inheritance ");
+		fdPrintf(TESTOBJ.Output,"\n");
+		if (info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN)
+		    {
+		    fdPrintf(TESTOBJ.Output,"Subobject count: %d\n", info->nSubobjects);
+		    }
+		}
+	    }
+
+    return 0;
+    }
+
+int
+testobj_show_attrs(pObject obj)
+    {
+    char* attrname;
+
+	fdPrintf(TESTOBJ.Output,"Attributes:\n");
+	testobj_show_attr(obj,"outer_type");
+	testobj_show_attr(obj,"inner_type");
+	testobj_show_attr(obj,"content_type");
+	testobj_show_attr(obj,"name");
+	testobj_show_attr(obj,"annotation");
+	testobj_show_attr(obj,"last_modification");
+	attrname = objGetFirstAttr(obj);
+	while(attrname)
+	    {
+	    testobj_show_attr(obj,attrname);
+	    attrname = objGetNextAttr(obj);
+	    }
+
+    return 0;
+    }
+
+int
+testobj_show_methods(pObject obj)
+    {
+    char* methodname;
+
+	fdPrintf(TESTOBJ.Output,"Methods:\n");
+	methodname = objGetFirstMethod(obj);
+	if (methodname)
+	    {
+	    while(methodname)
+		{
+		fdPrintf(TESTOBJ.Output,"  %20.20s()\n",methodname);
+		methodname = objGetNextMethod(obj);
+		}
+	    }
+	else
+	    {
+	    fdPrintf(TESTOBJ.Output,"  (no methods)\n");
+	    }
+    
+    return 0;
+    }
+
+int
+testobj_show_content(pObject obj)
+    {
+    char sbuf[256];
+    int cnt;
+
+	while((cnt=objRead(obj, sbuf, sizeof(sbuf)-1, 0, 0)) > 0)
+	    {
+	    sbuf[cnt] = 0;
+	    fdWrite(TESTOBJ.Output, sbuf, cnt, 0, 0);
 	    }
 
     return 0;
@@ -387,7 +500,7 @@ int handle_tab(int unused_1, int unused_2)
     /** open the query **/
     info = objInfo(obj);
     if (!info || !(info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)))
-	qry = objOpenQuery(obj,xstrQueryString->String,NULL,NULL,NULL);
+	qry = objOpenQuery(obj,xstrQueryString->String,NULL,NULL,NULL,0);
     else
 	qry = NULL;
 
@@ -457,7 +570,7 @@ int handle_tab(int unused_1, int unused_2)
 	    /** see if there are any subobjects -- only need to fetch 1 to check **/
 	    info = objInfo(obj2);
 	    if (!info || !(info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)))
-		qry=objOpenQuery(obj2,NULL,NULL,NULL,NULL);
+		qry=objOpenQuery(obj2,NULL,NULL,NULL,NULL,0);
 	    else
 		qry=NULL;
 	    if(qry && (qobj=objQueryFetch(qry,O_RDONLY)))
@@ -524,7 +637,6 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
     char* fileannot;
     int cnt;
     char* attrname;
-    char* methodname;
     int type;
     DateTime dtval;
     pDateTime dt;
@@ -538,21 +650,20 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
     pMoneyType m;
     MoneyType mval;
     pObjData pod;
-    ObjData od;
+    ObjData od, od2;
     int use_srctype;
     char mname[64];
     char mparam[256];
     char* mptr;
     int t,i;
-    pObjectInfo info;
-    Binary bn;
     pFile try_file;
-    char* attrnames[640];
-    int attrtypes[640];
+    char* attrnames[CSV_MAX_ATTRS];
+    int attrtypes[CSV_MAX_ATTRS];
     int n_attrs;
     int name_was_null;
     XString xs;
     int did_alloc;
+    int rval;
 
 	    /** Just a comment? **/
 	    if (cmd[0] == '#')
@@ -633,9 +744,13 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    for(i=0;i<n_attrs;i++)
 			{
 			attrtypes[i] = objGetAttrType(obj,attrnames[i]);
-			if (objGetAttrValue(obj, attrnames[i], attrtypes[i], &od) == 0)
+			if (attrtypes[i] >= 0 && objGetAttrValue(obj, attrnames[i], attrtypes[i], &od2) == 0)
 			    {
-			    if (attrtypes [i] == DATA_T_CODE)
+			    if (TESTOBJ.ObfuscationSession)
+				obfObfuscateDataSess(TESTOBJ.ObfuscationSession, &od2, &od, attrtypes[i], attrnames[i], NULL, NULL);
+			    else
+				memcpy(&od, &od2, sizeof(ObjData));
+			    if (attrtypes[i] == DATA_T_CODE)
 				ptr = NULL;
 			    else if (attrtypes[i] == DATA_T_INTEGER || attrtypes[i] == DATA_T_DOUBLE)
 				ptr = objDataToStringTmp(attrtypes[i], &od, 0);
@@ -655,9 +770,14 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 			    while (strpbrk(ptr, "\r\n")) *(strpbrk(ptr, "\r\n")) = ' ';
 			    fdQPrintf(TESTOBJ.Output, "%[,%]\"%STR&DSYB\"", i!=0, ptr);
 			    }
+
 			}
 		    fdPrintf(TESTOBJ.Output, "\n");
 		    objClose(obj);
+		    }
+		for(i=0;i<n_attrs;i++)
+		    {
+		    nmSysFree(attrnames[i]);
 		    }
 		objQueryClose(qy);
 		}
@@ -722,6 +842,49 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    for(attrname=objGetFirstAttr(obj);attrname;attrname=objGetNextAttr(obj))
 		        {
 			type = objGetAttrType(obj,attrname);
+			if (type > 0)
+			    {
+			    rval = objGetAttrValue(obj, attrname, type, &od2);
+			    if (TESTOBJ.ObfuscationSession)
+				obfObfuscateDataSess(TESTOBJ.ObfuscationSession, &od2, &od, type, attrname, NULL, NULL);
+			    else
+				memcpy(&od, &od2, sizeof(ObjData));
+			    fdPrintf(TESTOBJ.Output, "Attribute [%s]: %8.8s  ", attrname, obj_type_names[type]);
+			    if (rval == 1)
+				{
+				fdPrintf(TESTOBJ.Output, "NULL");
+				}
+			    else
+				{
+				switch(type)
+				    {
+				    case DATA_T_INTEGER:
+				    case DATA_T_DOUBLE:
+					fdPrintf(TESTOBJ.Output,"%s", objDataToStringTmp(type, &od, 0));
+					break;
+
+				    case DATA_T_STRING:
+				    case DATA_T_DATETIME:
+				    case DATA_T_MONEY:
+					fdPrintf(TESTOBJ.Output,"%s", objDataToStringTmp(type, od.Generic, DATA_F_QUOTED));
+					break;
+
+				    case DATA_T_BINARY:
+					fdPrintf(TESTOBJ.Output," %d bytes: ", od.Binary.Size);
+					for(i=0;i<od.Binary.Size;i++)
+					    {
+					    fdPrintf(TESTOBJ.Output,"%2.2x ", od.Binary.Data[i]);
+					    }
+					break;
+
+				    default:
+					fdPrintf(TESTOBJ.Output, "<unsupported type>");
+					break;
+				    }
+				}
+			    fdPrintf(TESTOBJ.Output, "\n");
+			    }
+#if 00
 			switch(type)
 			    {
 			    case DATA_T_INTEGER:
@@ -768,6 +931,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 				    fdPrintf(TESTOBJ.Output,"Attribute: [%s]  MONEY  %s\n", attrname, objDataToStringTmp(type, m, 0));
 				break;
 			    }
+#endif
 			}
 		    objClose(obj);
 		    }
@@ -844,7 +1008,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		        {
 			orderby[0] = 0;
 			}
-		    qy = objOpenQuery(obj,where,orderby[0]?orderby:NULL,NULL,NULL);
+		    qy = objOpenQuery(obj,where,orderby[0]?orderby:NULL,NULL,NULL,0);
 		    }
 		else if (is_orderby)
 		    {
@@ -856,11 +1020,11 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 			return -1;
 			}
 		    strcpy(orderby, mlxStringVal(ls,NULL));
-		    qy = objOpenQuery(obj,NULL,orderby,NULL,NULL);
+		    qy = objOpenQuery(obj,NULL,orderby,NULL,NULL,0);
 		    }
 		else
 		    {
-		    qy = objOpenQuery(obj,"",NULL,NULL,NULL);
+		    qy = objOpenQuery(obj,"",NULL,NULL,NULL,0);
 		    }
 		if (!qy)
 		    {
@@ -903,62 +1067,30 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    mlxCloseSession(ls);
 		    return -1;
 		    }
-		info = objInfo(obj);
-		if (info)
+		testobj_show_info(obj);
+		testobj_show_attrs(obj);
+		fdPrintf(TESTOBJ.Output,"\n");
+		testobj_show_methods(obj);
+		fdPrintf(TESTOBJ.Output,"\n");
+		objClose(obj);
+		}
+	    else if (!strcmp(cmdname,"printshow"))
+		{
+		if (!ptr) ptr = "";
+		obj = objOpen(s, ptr, O_RDONLY, 0600, "system/object");
+		if (!obj)
 		    {
-		    if (info->Flags)
-			{
-			fdPrintf(TESTOBJ.Output,"Flags: ");
-			if (info->Flags & OBJ_INFO_F_NO_SUBOBJ) fdPrintf(TESTOBJ.Output,"no_subobjects ");
-			if (info->Flags & OBJ_INFO_F_HAS_SUBOBJ) fdPrintf(TESTOBJ.Output,"has_subobjects ");
-			if (info->Flags & OBJ_INFO_F_CAN_HAVE_SUBOBJ) fdPrintf(TESTOBJ.Output,"can_have_subobjects ");
-			if (info->Flags & OBJ_INFO_F_CANT_HAVE_SUBOBJ) fdPrintf(TESTOBJ.Output,"cant_have_subobjects ");
-			if (info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN) fdPrintf(TESTOBJ.Output,"subobject_cnt_known ");
-			if (info->Flags & OBJ_INFO_F_CAN_ADD_ATTR) fdPrintf(TESTOBJ.Output,"can_add_attrs ");
-			if (info->Flags & OBJ_INFO_F_CANT_ADD_ATTR) fdPrintf(TESTOBJ.Output,"cant_add_attrs ");
-			if (info->Flags & OBJ_INFO_F_CAN_SEEK_FULL) fdPrintf(TESTOBJ.Output,"can_seek_full ");
-			if (info->Flags & OBJ_INFO_F_CAN_SEEK_REWIND) fdPrintf(TESTOBJ.Output,"can_seek_rewind ");
-			if (info->Flags & OBJ_INFO_F_CANT_SEEK) fdPrintf(TESTOBJ.Output,"cant_seek ");
-			if (info->Flags & OBJ_INFO_F_CAN_HAVE_CONTENT) fdPrintf(TESTOBJ.Output,"can_have_content ");
-			if (info->Flags & OBJ_INFO_F_CANT_HAVE_CONTENT) fdPrintf(TESTOBJ.Output,"cant_have_content ");
-			if (info->Flags & OBJ_INFO_F_HAS_CONTENT) fdPrintf(TESTOBJ.Output,"has_content ");
-			if (info->Flags & OBJ_INFO_F_NO_CONTENT) fdPrintf(TESTOBJ.Output,"no_content ");
-			if (info->Flags & OBJ_INFO_F_SUPPORTS_INHERITANCE) fdPrintf(TESTOBJ.Output,"supports_inheritance ");
-			fdPrintf(TESTOBJ.Output,"\n");
-			if (info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN)
-			    {
-			    fdPrintf(TESTOBJ.Output,"Subobject count: %d\n", info->nSubobjects);
-			    }
-			}
+		    printf("printshow: could not open object '%s'\n",ptr);
+		    mlxCloseSession(ls);
+		    return -1;
 		    }
-		fdPrintf(TESTOBJ.Output,"Attributes:\n");
-		testobj_show_attr(obj,"outer_type");
-		testobj_show_attr(obj,"inner_type");
-		testobj_show_attr(obj,"content_type");
-		testobj_show_attr(obj,"name");
-		testobj_show_attr(obj,"annotation");
-		testobj_show_attr(obj,"last_modification");
-		attrname = objGetFirstAttr(obj);
-		while(attrname)
-		    {
-		    testobj_show_attr(obj,attrname);
-		    attrname = objGetNextAttr(obj);
-		    }
-		fdPrintf(TESTOBJ.Output,"\nMethods:\n");
-		methodname = objGetFirstMethod(obj);
-		if (methodname)
-		    {
-		    while(methodname)
-			{
-			fdPrintf(TESTOBJ.Output,"  %20.20s()\n",methodname);
-			methodname = objGetNextMethod(obj);
-			}
-		    }
-		else
-		    {
-		    fdPrintf(TESTOBJ.Output,"  (no methods)\n");
-		    }
-		puts("");
+		testobj_show_content(obj);
+		fdPrintf(TESTOBJ.Output,"\n");
+		testobj_show_info(obj);
+		testobj_show_attrs(obj);
+		fdPrintf(TESTOBJ.Output,"\n");
+		testobj_show_methods(obj);
+		fdPrintf(TESTOBJ.Output,"\n");
 		objClose(obj);
 		}
 	    else if (!strcmp(cmdname,"print"))
@@ -971,11 +1103,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    mlxCloseSession(ls);
 		    return -1;
 		    }
-		while((cnt=objRead(obj, sbuf, 255, 0, 0)) >0)
-		    {
-		    sbuf[cnt] = 0;
-		    fdWrite(TESTOBJ.Output,sbuf,cnt,0,0);
-		    }
+		testobj_show_content(obj);
 		fdPrintf(TESTOBJ.Output,"\n");
 		objClose(obj);
 		}
@@ -1227,6 +1355,26 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    strtcpy(TESTOBJ.OutputFilename, ptr, sizeof(TESTOBJ.OutputFilename));
 		    }
 		}
+	    else if (!strcmp(cmdname,"obfuscate"))
+		{
+		if (!ptr) ptr = "";
+		if (TESTOBJ.ObfuscationSession)
+		    {
+		    obfCloseSession(TESTOBJ.ObfuscationSession);
+		    TESTOBJ.ObfuscationSession = NULL;
+		    }
+		strtcpy(TESTOBJ.ObfKey, ptr, sizeof(TESTOBJ.ObfKey));
+		ptr = strchr(TESTOBJ.ObfKey, ',');
+		if (ptr)
+		    {
+		    strtcpy(TESTOBJ.ObfRuleFile, ptr+1, sizeof(TESTOBJ.ObfRuleFile));
+		    *ptr = '\0';
+		    }
+		if (*TESTOBJ.ObfKey)
+		    {
+		    TESTOBJ.ObfuscationSession = obfOpenSession(s, TESTOBJ.ObfRuleFile, TESTOBJ.ObfKey);
+		    }
+		}
 	    else if (!strcmp(cmdname,"crash"))
 		{
 		raise(SIGSEGV);
@@ -1243,25 +1391,54 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    sleep(intval);
 		    }
 		}
+	    else if (!strcmp(cmdname,"trunc"))
+		{
+		if (!ptr)
+		    {
+		    mssError(1,"CX","Usage: trunc <filename> <offset>");
+		    }
+		else
+		    {
+		    obj = objOpen(s, ptr, O_RDWR, 0600, "system/object");
+		    if (obj)
+			{
+			if (mlxNextToken(ls) != MLX_TOK_INTEGER)
+			    {
+			    mssError(1,"CX","Usage: trunc <filename> <offset>");
+			    }
+			else
+			    {
+			    if (objWrite(obj, sbuf, 0, mlxIntVal(ls), OBJ_U_SEEK | OBJ_U_TRUNCATE) < 0)
+				{
+				mssError(0,"CX","Could not write/truncate object");
+				}
+			    }
+			objClose(obj);
+			}
+		    }
+		}
 	    else if (!strcmp(cmdname,"help"))
 		{
 		printf("Available Commands:\n");
-		printf("  annot    - Add or change the annotation on an object.\n");
-		printf("  cd       - Change the current working \"directory\" in the objectsystem.\n");
-		printf("  copy     - Copy one object's content to another.\n");
-		printf("  create   - Create a new object.\n");
-		printf("  csv      - Run a SQL query and print the results in CSV format.\n");
-		printf("  delete   - Delete an object.\n");
-		printf("  exec     - Call a method on an object.\n");
-		printf("  hints    - Show the presentation hints of an attribute (or object)\n");
-		printf("  help     - Displays this help screen.\n");
-		printf("  list, ls - Lists the objects in the current \"directory\" in the objectsystem.\n");
-		printf("  mlquery  - Runs a SQL query, reading in multiple lines until a blank line.\n");
-		printf("  output   - Change where output goes.\n");
-		printf("  print    - Displays an object's content.\n");
-		printf("  query    - Runs a SQL query.\n");
-		printf("  quit     - Exits this application.\n");
-		printf("  show     - Displays an object's attributes and methods.\n");
+		printf("  annot     - Add or change the annotation on an object.\n");
+		printf("  cd        - Change the current working \"directory\" in the objectsystem.\n");
+		printf("  copy      - Copy one object's content to another.\n");
+		printf("  create    - Create a new object.\n");
+		printf("  csv       - Run a SQL query and print the results in CSV format.\n");
+		printf("  delete    - Delete an object.\n");
+		printf("  exec      - Call a method on an object.\n");
+		printf("  hints     - Show the presentation hints of an attribute (or object)\n");
+		printf("  help      - Displays this help screen.\n");
+		printf("  list, ls  - Lists the objects in the current \"directory\" in the objectsystem.\n");
+		printf("  mlquery   - Runs a SQL query, reading in multiple lines until a blank line.\n");
+		printf("  obfuscate - Begins obfuscation of CSV and query output, given an obfuscation key and optional rule file\n");
+		printf("  output    - Change where output goes.\n");
+		printf("  print     - Displays an object's content.\n");
+		printf("  printshow - Displays an object's content, followed by its attributes and methods.\n");
+		printf("  query     - Runs a SQL query.\n");
+		printf("  quit      - Exits this application.\n");
+		printf("  show      - Displays an object's attributes and methods.\n");
+		printf("  trunc     - Truncates an object's content to a given point.\n");
 		}
 	    else
 		{
@@ -1290,6 +1467,7 @@ start(void* v)
     pLxSession input_lx;
     char* ptr;
     int alloc;
+    pApplication app;
 
 	/** Initialize. **/
 	cxInitialize();
@@ -1333,14 +1511,33 @@ start(void* v)
 	else
 	    pwd = TESTOBJ.Password;
 
-	if (mssAuthenticate(user,pwd) < 0)
+	if (mssAuthenticate(user, pwd, 0) < 0)
 	    puts("Warning: auth failed, running outside session context.");
 	TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR | O_CREAT | O_TRUNC, 0600);
 	if (!TESTOBJ.Output)
 	    {
 	    strcpy(TESTOBJ.OutputFilename, "/dev/tty");
-	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR | O_CREAT | O_TRUNC, 0600);
+	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR, 0600);
 	    }
+	if (!TESTOBJ.Output)
+	    {
+	    strcpy(TESTOBJ.OutputFilename, "/dev/stdout");
+	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_WRONLY, 0600);
+	    }
+	if (!TESTOBJ.Output)
+	    {
+	    strcpy(TESTOBJ.OutputFilename, "/dev/null");
+	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR, 0600);
+	    }
+	if (!TESTOBJ.Output)
+	    {
+	    /** No ability to output anything - exit now **/
+	    thExit();
+	    }
+
+	/** Application context **/
+	cxssPushContext();
+	app = appCreate("test_obj");
 
 	/** Open a session **/
 	s = objOpenSession("/");
@@ -1407,6 +1604,9 @@ start(void* v)
 	    if (!inbuf)
 	        {
 		printf("quit\n");
+		appDestroy(app);
+		cxssPopContext();
+		objCloseSession(s);
 		thExit();
 		}
 
@@ -1414,6 +1614,8 @@ start(void* v)
 	    if (rval == 1) break;
 	    }
 
+	appDestroy(app);
+	cxssPopContext();
 	objCloseSession(s);
 
     thExit();
@@ -1425,16 +1627,18 @@ show_usage()
     {
     printf("Usage:  test_obj [-c <config-file>] [-f <command-file>] [-C <command>]\n"
 	   "                 [-u <user>] [-p <password>] [-q] [-o <output file>] \n"
+	   "                 [-O obfkey[,obfrulefile] ]\n"
 	   "                 [-i <wait-seconds>] [-h]\n"
-	   "        -h         Show this message\n"
-	   "        -q         Initialize quietly\n"
-	   "        -c file    Specify configuration file\n"
-	   "        -C command Run a single command\n"
-	   "        -f file    Run commands from a file\n"
-	   "        -u user    Login as user\n"
-	   "        -p pass    Specify password\n"
-	   "        -o file    Send output to specified file\n"
-	   "        -i secs    Terminate test_obj after secs with SIGALRM\n"
+	   "        -h            Show this message\n"
+	   "        -q            Initialize quietly\n"
+	   "        -c file       Specify configuration file\n"
+	   "        -C command    Run a single command\n"
+	   "        -f file       Run commands from a file\n"
+	   "        -u user       Login as user\n"
+	   "        -p pass       Specify password\n"
+	   "        -o file       Send output to specified file\n"
+	   "        -i secs       Terminate test_obj after secs with SIGALRM\n"
+	   "	    -O key[,file] Obfuscate CSV and query output data with a given key and optional rule file\n"
 	   "\n");
     return;
     }
@@ -1444,18 +1648,21 @@ int
 main(int argc, char* argv[])
     {
     int ch;
+    char* ptr;
 
 	/** Default global values **/
 	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
 	CxGlobals.QuietInit = 0;
 	CxGlobals.ParsedConfig = NULL;
 	CxGlobals.ModuleList = NULL;
+	CxGlobals.ArgV = argv;
+	CxGlobals.Flags = 0;
 	memset(&TESTOBJ,0,sizeof(TESTOBJ));
 	strcpy(TESTOBJ.OutputFilename, "/dev/tty");
 	TESTOBJ.WaitSecs = 0;
     
 	/** Check for config file options on the command line **/
-	while ((ch=getopt(argc,argv,"ho:c:qu:p:f:C:i:")) > 0)
+	while ((ch=getopt(argc,argv,"ho:c:qu:p:f:C:i:O:")) > 0)
 	    {
 	    switch (ch)
 	        {
@@ -1481,6 +1688,15 @@ main(int argc, char* argv[])
 				break;
 
 		case 'o':	strtcpy(TESTOBJ.OutputFilename, optarg, sizeof(TESTOBJ.OutputFilename));
+				break;
+
+		case 'O':	strtcpy(TESTOBJ.ObfKey, optarg, sizeof(TESTOBJ.ObfKey));
+				ptr = strchr(TESTOBJ.ObfKey, ',');
+				if (ptr)
+				    {
+				    strtcpy(TESTOBJ.ObfRuleFile, ptr+1, sizeof(TESTOBJ.ObfRuleFile));
+				    *ptr = '\0';
+				    }
 				break;
 
 		case 'h':	show_usage();

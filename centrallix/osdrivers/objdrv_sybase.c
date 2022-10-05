@@ -81,13 +81,13 @@ const unsigned short int* __ctype_b;
 
 /*** Module Controls ***/
 #define SYBD_USE_CURSORS	1	/* use cursors for all multirow SELECTs */
-#define SYBD_CURSOR_ROWCOUNT	20	/* # of rows to fetch at a time */
-#define SYBD_SHOW_SQL		0	/* debug printout SQL issued to Sybase */
+#define SYBD_CURSOR_ROWCOUNT	50	/* # of rows to fetch at a time */
+#define SYBD_SHOW_SQL		1	/* debug printout SQL issued to Sybase */
 #define SYBD_RESULTSET_CACHE	64	/* number of rows to hold in cache */
 #define SYBD_RESULTSET_PERTBL	48	/* max rows to cache per table */
 
 /*** compiled in limit - max total syb connections per CX server ***/
-#define SYBD_MAX_CONNECTIONS	256	/* per CX instance, not per db node! */
+#define SYBD_MAX_CONNECTIONS	1024	/* per CX instance, not per db node! */
 
 
 /*** This is a hack.  Couldn't get -D__USE_GNU to work.  ***/
@@ -173,19 +173,20 @@ typedef struct
 typedef struct
     {
     /*int		SessionID;*/
-    CS_CONNECTION* SessionID;
+    CS_CONNECTION* CsConn;
     char	Username[32];
     char	Password[32];
     int		Busy;
+    int		SPID;			/* sybase server-side process ID */
     }
     SybdConn, *pSybdConn;
 
 /*** Structure used by this driver internally for open objects ***/
 typedef struct 
     {
-    CS_CONNECTION* SessionID;
-    CS_CONNECTION* ReadSessID;
-    CS_CONNECTION* WriteSessID;
+    pSybdConn	SessionID;
+    pSybdConn	ReadSessID;
+    pSybdConn	WriteSessID;
     CS_COMMAND*	RWCmd;
     CS_IODESC	ContentIODesc;
     int		LinkCnt;
@@ -238,8 +239,8 @@ typedef struct
 typedef struct
     {
     pSybdData	ObjInf;
-    CS_CONNECTION* SessionID;
-    CS_CONNECTION* ObjSession;
+    pSybdConn	SessionID;
+    pSybdConn	ObjSession;
     int		RowCnt;
     char	SQLbuf[65536];
     pSybdTableInf TableInf;
@@ -250,6 +251,7 @@ typedef struct
     SybdQuery, *pSybdQuery;
 
 #define SYBD_QF_USECURSOR	1
+#define	SYBD_QF_CURSOROPEN	2
 
 
 /*** Structure for one table in a passthru query ***/
@@ -350,24 +352,37 @@ sybd_internal_AttrType(pSybdTableInf tdata, int colid)
  *** structure.
  ***/
 CS_COMMAND*
-sybd_internal_Exec(CS_CONNECTION* s, char* cmdtext)
+sybd_internal_Exec(pSybdConn s, char* cmdtext)
     {
-    CS_COMMAND* cmd;
+    CS_COMMAND* cmd = NULL;
+    int rval;
 
     	/** Alloc the cmd **/
-	ct_cmd_alloc(s, &cmd);
-	
-	/** Setup the cmd text **/
-	ct_command(cmd, CS_LANG_CMD, cmdtext, CS_NULLTERM, CS_UNUSED);
-
-	/** Send it to the server. **/
-	if (SYBD_INF.SqlLog) fdPrintf(SYBD_INF.SqlLog, "EXEC (time=%ld conn=%8.8x): %s\n", mtRealTicks(), s, cmdtext);
-	if (ct_send(cmd) != CS_SUCCEED)
+	if ((rval = ct_cmd_alloc(s->CsConn, &cmd)) != CS_SUCCEED)
 	    {
-	    ct_cmd_drop(cmd);
-	    mssError(1,"SYBD","Could not send SQL command to server");
+	    mssError(1,"SYBD","ct_cmd_alloc() failed: %d", rval);
 	    return NULL;
 	    }
+	
+	/** Setup the cmd text **/
+	if ((rval = ct_command(cmd, CS_LANG_CMD, cmdtext, CS_NULLTERM, CS_UNUSED)) != CS_SUCCEED)
+	    {
+	    ct_cmd_drop(cmd);
+	    mssError(1,"SYBD","ct_cmd_alloc() failed: %d", rval);
+	    return NULL;
+	    }
+
+	/** Send it to the server. **/
+	thLock();
+	if (SYBD_INF.SqlLog) fdPrintf(SYBD_INF.SqlLog, "EXEC (time=%ld spid=%d conn=%8.8x cmd=%8.8x): %s\n", mtRealTicks(), s->SPID, s->CsConn, cmd, cmdtext);
+	if ((rval = ct_send(cmd)) != CS_SUCCEED)
+	    {
+	    thUnlock();
+	    ct_cmd_drop(cmd);
+	    mssError(1,"SYBD","Could not send SQL command to server: %d", rval);
+	    return NULL;
+	    }
+	thUnlock();
 
     return cmd;
     }
@@ -386,6 +401,25 @@ sybd_internal_Close(CS_COMMAND* cmd)
 	/** Release the memory **/
 	ct_cmd_drop(cmd);
 
+	thLock();
+	if (SYBD_INF.SqlLog) fdPrintf(SYBD_INF.SqlLog, "CLOSE (time=%ld cmd=%8.8x)\n", mtRealTicks(), cmd);
+	thUnlock();
+
+    return 0;
+    }
+
+
+/*** sybd_internal_GetError() - gets the error message that the server
+ *** or client library returned for a given connection.
+ ***/
+int
+sybd_internal_GetError(CS_CONNECTION* s, int* errcode, char* errtxt, int maxlen)
+    {
+    CS_RETCODE rval;
+    CS_SERVERMSG smsg;
+    CS_CLIENTMSG cmsg;
+    
+
     return 0;
     }
 
@@ -393,12 +427,13 @@ sybd_internal_Close(CS_COMMAND* cmd)
 /*** sybd_internal_GetConn - obtains a database connection within a 
  *** given database node.
  ***/
-CS_CONNECTION*
+pSybdConn
 sybd_internal_GetConn(pSybdNode db_node)
     {
     int i,found_one,rval;
     pSybdConn conn;
     CS_COMMAND* cmd;
+    CS_INT restype = 0;
     char sbuf[64];
     char* user;
     char* pwd;
@@ -441,7 +476,7 @@ sybd_internal_GetConn(pSybdNode db_node)
 	    if (conn->Busy == 0 && !strcmp(user,conn->Username) && !strcmp(pwd,conn->Password))
 	        {
 		conn->Busy = 1;
-		return conn->SessionID;
+		return conn;
 		}
 	    }
 
@@ -452,10 +487,10 @@ sybd_internal_GetConn(pSybdNode db_node)
 	    for(found_one=i=0;i<db_node->Conns.nItems;i++)
 	        {
 	        conn = (pSybdConn)(db_node->Conns.Items[i]);
-		if (conn->Busy == 0 && conn->SessionID != NULL)
+		if (conn->Busy == 0 && conn->CsConn != NULL)
 		    {
 		    xaRemoveItem(&(db_node->Conns),xaFindItem(&(db_node->Conns),(void*)conn));
-		    ct_close(conn->SessionID, CS_FORCE_CLOSE);
+		    ct_close(conn->CsConn, CS_FORCE_CLOSE);
 		    found_one = 1;
 		    break;
 		    }
@@ -471,38 +506,45 @@ sybd_internal_GetConn(pSybdNode db_node)
 	else
 	    {
 	    conn = (pSybdConn)nmMalloc(sizeof(SybdConn));
-	    conn->SessionID = NULL;
 	    if (!conn)
 	        {
 		mssError(0,"SYBD","Could not allocate new connection structure");
 		return NULL;
 		}
+	    conn->CsConn = NULL;
 	    }
 
 	/** Make the new connection using the conn structure. **/
-	if (!conn->SessionID)
+	if (!conn->CsConn)
 	    {
-	    ct_con_alloc(SYBD_INF.Context, &(conn->SessionID));
+	    ct_con_alloc(SYBD_INF.Context, &(conn->CsConn));
 	    }
-	if (conn->SessionID == NULL)
+	if (conn->CsConn == NULL)
 	    {
 	    mssError(0,"SYBD","Could not alloc new database connection");
 	    nmFree(conn,sizeof(SybdConn));
 	    return NULL;
 	    }
-	ct_con_props(conn->SessionID, CS_SET, CS_USERNAME, user, CS_NULLTERM, NULL);
-	ct_con_props(conn->SessionID, CS_SET, CS_PASSWORD, pwd, CS_NULLTERM, NULL);
-	ct_con_props(conn->SessionID, CS_SET, CS_APPNAME, "Centrallix", CS_NULLTERM, NULL);
+	ct_con_props(conn->CsConn, CS_SET, CS_USERNAME, user, CS_NULLTERM, NULL);
+	ct_con_props(conn->CsConn, CS_SET, CS_PASSWORD, pwd, CS_NULLTERM, NULL);
+	ct_con_props(conn->CsConn, CS_SET, CS_APPNAME, "Centrallix", CS_NULLTERM, NULL);
 	gethostname(sbuf,63);
 	sbuf[63]=0;
-	ct_con_props(conn->SessionID, CS_SET, CS_HOSTNAME, sbuf, CS_NULLTERM, NULL);
-	if (ct_connect(conn->SessionID, db_node->Server, CS_NULLTERM) != CS_SUCCEED)
+	ct_con_props(conn->CsConn, CS_SET, CS_HOSTNAME, sbuf, CS_NULLTERM, NULL);
+#if 00 /* locking */
+	ct_diag(conn->CsConn, CS_INIT, CS_UNUSED, CS_UNUSED, NULL);
+	i = 24;
+	ct_diag(conn->CsConn, CS_MSGLIMIT, CS_ALLMSG_TYPE, CS_UNUSED, &i);
+#endif
+	if (ct_connect(conn->CsConn, db_node->Server, CS_NULLTERM) != CS_SUCCEED)
 	    {
 	    /** attempt to connect with default password, and then set password **/
-	    ct_con_props(conn->SessionID, CS_SET, CS_PASSWORD, db_node->DefaultPassword, CS_NULLTERM, NULL);
-	    if (ct_connect(conn->SessionID, db_node->Server, CS_NULLTERM) != CS_SUCCEED)
+	    ct_con_props(conn->CsConn, CS_SET, CS_PASSWORD, db_node->DefaultPassword, CS_NULLTERM, NULL);
+	    if (ct_connect(conn->CsConn, db_node->Server, CS_NULLTERM) != CS_SUCCEED)
 		{
 		mssError(0,"SYBD","Could not connect to database!");
+		ct_con_drop(conn->CsConn);
+		nmFree(conn,sizeof(SybdConn));
 		return NULL;
 		}
 
@@ -510,21 +552,43 @@ sybd_internal_GetConn(pSybdNode db_node)
 	    if ((db_node->Flags & SYBD_NODE_F_USECXAUTH) && (db_node->Flags & SYBD_NODE_F_SETCXAUTH))
 		{
 		if (strchr(pwd, '"') || strchr(db_node->DefaultPassword, '"'))
+		    {
+		    mssError(1,"SYBD","Warning: could not update password for user '%s': password contains invalid character(s).", user);
+		    ct_close(conn->CsConn, CS_FORCE_CLOSE);
+		    ct_con_drop(conn->CsConn);
+		    nmFree(conn,sizeof(SybdConn));
 		    return NULL;
+		    }
 		snprintf(sbuf,sizeof(sbuf),"sp_password \"%s\", \"%s\"", db_node->DefaultPassword, pwd);
-		cmd = sybd_internal_Exec(conn->SessionID, sbuf);
-		while((rval=ct_results(cmd, (CS_INT*)&i)))
+		cmd = sybd_internal_Exec(conn, sbuf);
+		while((rval=ct_results(cmd, (CS_INT*)&restype)))
 		    {
 		    if (rval == CS_FAIL)
 			{
 			mssError(0,"SYBD","Warning: could not change default password for user '%s'", user);
 			break;
 			}
-		    if (rval == CS_END_RESULTS || i == CS_CMD_DONE) break;
+		    if (rval == CS_END_RESULTS || restype == CS_CMD_DONE) break;
 		    }
 		sybd_internal_Close(cmd);
 		}
 	    }
+
+#if 00 /* locking */
+	/** Set lock wait to 1 second so we can retry on our side and avoid deadlocks **/
+	cmd = sybd_internal_Exec(conn, "set lock wait 1");
+	while((rval=ct_results(cmd, (CS_INT*)&restype)))
+	    {
+	    if (rval == CS_FAIL)
+		{
+		mssError(1,"SYBD","Warning: could not set lock wait timer; deadlock protection will be disabled", db_node->Database);
+		break;
+		}
+	    if (rval == CS_END_RESULTS || restype == CS_CMD_DONE)
+		break;
+	    }
+	sybd_internal_Close(cmd);
+#endif
 
 	/** Do a USE DATABASE only if database was specified in the node. **/
 	if (db_node->Database[0])
@@ -532,28 +596,65 @@ sybd_internal_GetConn(pSybdNode db_node)
 	    if (strpbrk(db_node->Database," \t\r\n"))
 		{
 		mssError(1,"SYBD","Invalid database name '%s'",db_node->Database);
+		ct_close(conn->CsConn, CS_FORCE_CLOSE);
+		ct_con_drop(conn->CsConn);
+		nmFree(conn,sizeof(SybdConn));
 		return NULL;
 		}
 	    snprintf(sbuf,64,"use %s",db_node->Database);
-	    cmd = sybd_internal_Exec(conn->SessionID, sbuf);
-	    while((rval=ct_results(cmd, (CS_INT*)&i)))
+	    cmd = sybd_internal_Exec(conn, sbuf);
+	    while((rval=ct_results(cmd, (CS_INT*)&restype)))
 	        {
 	        if (rval == CS_FAIL)
 	            {
 		    mssError(0,"SYBD","Could not 'use' database '%s'!", db_node->Database);
 		    sybd_internal_Close(cmd);
+		    ct_close(conn->CsConn, CS_FORCE_CLOSE);
+		    ct_con_drop(conn->CsConn);
+		    nmFree(conn,sizeof(SybdConn));
 		    return NULL;
 		    }
-	        if (rval == CS_END_RESULTS || i == CS_CMD_DONE) break;
+	        if (rval == CS_END_RESULTS || restype == CS_CMD_DONE) break;
 	        }
 	    sybd_internal_Close(cmd);
 	    }
+
+	/** Enable ANSI NULL option **/
+	snprintf(sbuf, 64, "set ansinull on");
+	cmd = sybd_internal_Exec(conn, sbuf);
+	while((rval=ct_results(cmd, (CS_INT*)&restype)))
+	    {
+	    if (rval == CS_FAIL)
+		{
+		mssError(0,"SYBD","Could not enable ansi null mode!");
+		sybd_internal_Close(cmd);
+		ct_close(conn->CsConn, CS_FORCE_CLOSE);
+		ct_con_drop(conn->CsConn);
+		nmFree(conn,sizeof(SybdConn));
+		return NULL;
+		}
+	    if (rval == CS_END_RESULTS || restype == CS_CMD_DONE) break;
+	    }
+	sybd_internal_Close(cmd);
+
+	/** Get the spid **/
+	conn->SPID = 0;
+	if ((cmd = sybd_internal_Exec(conn, "select convert(integer,@@spid)")) != NULL)
+	    {
+	    while(ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
+	      while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&i) == CS_SUCCEED)
+	        {
+		ct_get_data(cmd, 1, &conn->SPID, sizeof(int), (CS_INT*)&i);
+		}
+	    sybd_internal_Close(cmd);
+	    }
+
 	strcpy(conn->Username, user);
 	strcpy(conn->Password, pwd);
 	conn->Busy = 1;
 	xaAddItem(&(db_node->Conns),(void*)conn);
 
-    return conn->SessionID;
+    return conn;
     }
 
 
@@ -561,20 +662,14 @@ sybd_internal_GetConn(pSybdNode db_node)
  *** pool for this database node.
  ***/
 int
-sybd_internal_ReleaseConn(pSybdNode db_node, CS_CONNECTION* session)
+sybd_internal_ReleaseConn(pSybdNode db_node, pSybdConn conn)
     {
     int i;
-    pSybdConn conn;
 
-    	/** Scan through the list looking for this session **/
-	for(i=0;i<db_node->Conns.nItems;i++)
+	if (conn->Busy)
 	    {
-	    conn = (pSybdConn)(db_node->Conns.Items[i]);
-	    if (conn->SessionID == session && conn->Busy)
-	        {
-		conn->Busy = 0;
-		return 0;
-		}
+	    conn->Busy = 0;
+	    return 0;
 	    }
 
 	mssError(1,"SYBD","Bark! Critical internal error - releasing released connection!");
@@ -980,9 +1075,9 @@ sybd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
     pSybdNode db_node;
     int type,i;
     int* TypeNum;
-    CS_CONNECTION* s;
+    pSybdConn conn;
     CS_COMMAND* cmd;
-    CS_INT restype;
+    CS_INT restype = 0;
     char* ptr,* TypeName;
     pSnNode snnode;
     pObjPresentationHints hints;
@@ -1094,10 +1189,10 @@ sybd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
 	type_hints = stLookup(snnode->Data, "typehints");
 
 	/** Get a connection and get the version and types list. **/
-	s = sybd_internal_GetConn(db_node);
-	if (s)
+	conn = sybd_internal_GetConn(db_node);
+	if (conn)
 	    {
-	    if ((cmd=sybd_internal_Exec(s,"select @@version")))
+	    if ((cmd=sybd_internal_Exec(conn, "select @@version")))
 		{
 		while(ct_results(cmd, &restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
 		    {
@@ -1117,7 +1212,7 @@ sybd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
 		    }
 		sybd_internal_Close(cmd);
 		}
-	    if ((cmd=sybd_internal_Exec(s,"select usertype,name,length,variable from systypes")))
+	    if ((cmd=sybd_internal_Exec(conn, "select usertype,name,length,variable from systypes")))
 	        {
 		while(ct_results(cmd, &restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
 		    {
@@ -1166,7 +1261,7 @@ sybd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
 		    }
 		sybd_internal_Close(cmd);
 		}
-	    sybd_internal_ReleaseConn(db_node, s);
+	    sybd_internal_ReleaseConn(db_node, conn);
 	    }
 	else
 	    {
@@ -1186,14 +1281,15 @@ sybd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
  *** information is either obtained from the cache or read from the database.
  ***/
 pSybdTableInf
-sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
+sybd_internal_GetTableInf(pSybdNode node, pSybdConn conn, char* table)
     {
     pSybdTableInf tdata;
     pSybdRef fkeydata;
     char sbuf[480];
     char* ptr;
     char* tmpptr;
-    int l,i,col,find_col,restype;
+    int l,i,col,find_col;
+    CS_INT restype = 0;
     int n, t;
     CS_COMMAND* cmd;
 
@@ -1232,7 +1328,7 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 
 	/** Build the query to get the cols. **/
 	snprintf(sbuf,sizeof(sbuf),"SELECT c.name,c.colid,c.status,c.usertype,c.length FROM syscolumns c,sysobjects o WHERE c.id=o.id AND o.name='%s' ORDER BY c.colid",table);
-	if (!(cmd=sybd_internal_Exec(session,sbuf)))
+	if (!(cmd=sybd_internal_Exec(conn, sbuf)))
 	    {
 	    nmSysFree(tdata->ColBuf);
 	    nmFree(tdata,sizeof(SybdTableInf));
@@ -1319,7 +1415,7 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 
 	/** Ok, done with that query.  Now load the primary key. **/
 	snprintf(sbuf,sizeof(sbuf),"SELECT keycnt,key1,key2,key3,key4,key5,key6,key7,key8 FROM syskeys k, sysobjects o where k.id=o.id and o.name='%s' and k.type=1",table);
-	if ((cmd=sybd_internal_Exec(session,sbuf)))
+	if ((cmd=sybd_internal_Exec(conn, sbuf)))
 	    {
 	    while(ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
 	      while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&i) == CS_SUCCEED)
@@ -1353,7 +1449,7 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 	if (tdata->nKeys == 0)
 	    {
 	    snprintf(sbuf, sizeof(sbuf), "SELECT char_length(convert(varchar(255),keys1)), keys1 FROM sysindexes i, sysobjects o where i.id = o.id and o.name='%s' and (i.status & 2048) = 2048", table);
-	    if ((cmd = sybd_internal_Exec(session, sbuf)))
+	    if ((cmd = sybd_internal_Exec(conn, sbuf)))
 		{
 		while(ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
 		    {
@@ -1408,7 +1504,7 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 	if (*(node->AnnotTable))
 	    {
 	    snprintf(sbuf, sizeof(sbuf), "SELECT a,b,c FROM %s WHERE a = '%s'", node->AnnotTable, table);
-	    if ((cmd=sybd_internal_Exec(session,sbuf)))
+	    if ((cmd=sybd_internal_Exec(conn, sbuf)))
 	        {
 		while(ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
 		    {
@@ -1445,7 +1541,7 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 
 	/** Finally, get the foreign key information for the table **/
 	snprintf(sbuf, sizeof(sbuf), "select o2.name,keycnt,fokey1,fokey2,fokey3,fokey4,fokey5,fokey6,fokey7,fokey8,fokey9,fokey10,fokey11,fokey12,fokey13,fokey14,fokey15,fokey16,refkey1,refkey2,refkey3,refkey4,refkey5,refkey6,refkey7,refkey8,refkey9,refkey10,refkey11,refkey12,refkey13,refkey14,refkey15,refkey16 from sysobjects o1,sysobjects o2,sysreferences where o1.name='%s' and o1.id=tableid and o2.id=reftabid", table);
-	if ((cmd=sybd_internal_Exec(session,sbuf)))
+	if ((cmd=sybd_internal_Exec(conn, sbuf)))
 	    {
 	    while(ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
 	      while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&i) == CS_SUCCEED)
@@ -1497,7 +1593,7 @@ sybd_internal_GetTableInf(pSybdNode node, CS_CONNECTION* session, char* table)
 
 	/** Get the row count for the table **/
 	snprintf(sbuf, sizeof(sbuf), "select count(1) from %s", table);
-	if ((cmd=sybd_internal_Exec(session,sbuf)))
+	if ((cmd=sybd_internal_Exec(conn, sbuf)))
 	    {
 	    while(ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
 	      while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&i) == CS_SUCCEED)
@@ -1530,6 +1626,9 @@ sybd_internal_KeyToFilename(pSybdTableInf tdata, pSybdData inf)
     int n_left;
     int n;
     unsigned long long col64;
+    ObjData val;
+    MoneyType m;
+    char* mstr;
 
     	/** Get pointers to the key data. **/
 	ptr = fbuf;
@@ -1547,13 +1646,22 @@ sybd_internal_KeyToFilename(pSybdTableInf tdata, pSybdData inf)
 		{
 		switch(tdata->ColTypes[tdata->KeyCols[i]])
 		    {
-		    case 21: /** 8 byte money **/
+		    case 11: /** 8 byte money **/
+			memcpy(&col64, inf->ColPtrs[tdata->KeyCols[i]], 8);
+			val.Money = &m;
+			if (sybd_internal_GetCxValue(&col64, 11, &val, DATA_T_MONEY) < 0)
+			    return NULL;
+			mstr = objFormatMoneyTmp(val.Money, "0.0000");
+			if (mstr) snprintf(ptr, n_left, "%s", mstr);
+			break;
+		    case 21: /** 4 byte money **/
+			memcpy(&col, inf->ColPtrs[tdata->KeyCols[i]], 4);
+			break;
 		    case 22: /** date value **/
 		    case 12: /** date value **/
 			memcpy(&col64, inf->ColPtrs[tdata->KeyCols[i]], 8);
 			snprintf(ptr,n_left,"%8.8llX",col64);
 			break;
-		    case 11: /** 4 byte money **/
 		    case 7: /** INT **/
 			memcpy(&col, inf->ColPtrs[tdata->KeyCols[i]], 4);
 			snprintf(ptr,n_left,"%d",col);
@@ -1602,7 +1710,7 @@ sybd_internal_KeyToFilename(pSybdTableInf tdata, pSybdData inf)
  *** must be copied from that place before allowing a context switch....
  ***/
 char*
-sybd_internal_FilenameToKey(pSybdNode node, CS_CONNECTION* session, char* table, char* filename)
+sybd_internal_FilenameToKey(pSybdNode node, pSybdConn conn, char* table, char* filename)
     {
     static char wbuf[256];
     static char fbuf[120];
@@ -1620,7 +1728,7 @@ sybd_internal_FilenameToKey(pSybdNode node, CS_CONNECTION* session, char* table,
     unsigned int i32;
 
 	/** Lookup the key data **/
-	key = sybd_internal_GetTableInf(node,session,table);
+	key = sybd_internal_GetTableInf(node, conn, table);
 	if (!key) return NULL;
 
 	/** Build the where clause condition **/
@@ -1648,7 +1756,7 @@ sybd_internal_FilenameToKey(pSybdNode node, CS_CONNECTION* session, char* table,
 		}
 	    is_string = 1;
 	    t = sybd_internal_GetCxType(key->ColTypes[key->KeyCols[i]]);
-	    if (t == DATA_T_INTEGER || t == DATA_T_DOUBLE) is_string = 0;
+	    if (t == DATA_T_INTEGER || t == DATA_T_DOUBLE || t == DATA_T_MONEY) is_string = 0;
 	    if (wbuf[0]) 
 	        {
 		strcpy(wptr," AND ");
@@ -1687,17 +1795,26 @@ sybd_internal_FilenameToKey(pSybdNode node, CS_CONNECTION* session, char* table,
 		strcpy(wptr,sptr);
 		wptr += strlen(sptr);
 		}
-	    else if (t == DATA_T_MONEY && key->ColTypes[key->KeyCols[i]] == 21)
+	    else if (t == DATA_T_MONEY && (key->ColTypes[key->KeyCols[i]] == 11 || key->ColTypes[key->KeyCols[i]] == 21))
 		{
-		/** 8-byte raw value at ptr **/
+		/** String representation at full precision 0.0000 **/
 		val.Money = &m;
+		if (objDataToMoney(DATA_T_STRING, ptr, &m) < 0)
+		    {
+		    mssError(1,"SYBD","Invalid money value in object name");
+		    return NULL;
+		    }
+		sptr = objFormatMoneyTmp(val.Money,"0.0000");
+
+		/** 8-byte raw value at ptr **/
+		/*val.Money = &m;
 		i64 = strtoull(ptr, NULL, 16);
 		if (sybd_internal_GetCxValue(&i64, key->ColTypes[key->KeyCols[i]], &val, t) < 0)
 		    {
 		    mssError(1,"SYBD","Invalid money value in object name");
 		    return NULL;
 		    }
-		sptr = objFormatMoneyTmp(val.Money,"0.00");
+		sptr = objFormatMoneyTmp(val.Money,"0.00");*/
 		if ((wbuf + 255) - wptr <= strlen(sptr) + 1)
 		    {
 		    mssError(1,"SYBD","Bark! Internal row selection buffer too small for prikey query");
@@ -1706,7 +1823,8 @@ sybd_internal_FilenameToKey(pSybdNode node, CS_CONNECTION* session, char* table,
 		strcpy(wptr,sptr);
 		wptr += strlen(sptr);
 		}
-	    else if (t == DATA_T_MONEY && key->ColTypes[key->KeyCols[i]] == 11)
+#if 00
+	    else if (t == DATA_T_MONEY && key->ColTypes[key->KeyCols[i]] == 21)
 		{
 		/** 4-byte raw value at ptr **/
 		val.Money = &m;
@@ -1725,6 +1843,7 @@ sybd_internal_FilenameToKey(pSybdNode node, CS_CONNECTION* session, char* table,
 		strcpy(wptr,sptr);
 		wptr += strlen(sptr);
 		}
+#endif
 	    else
 		{
 		strcpy(wptr,ptr);
@@ -1835,7 +1954,9 @@ sybd_internal_TreeToClauseConstant(pExpression tree, int data_type, pSybdTableIn
 	        break;
 
 	    case DATA_T_MONEY:
-		objDataToString(clause, DATA_T_MONEY, &(tree->Types.Money), DATA_F_QUOTED);
+		ptr = objFormatMoneyTmp(&(tree->Types.Money), "0.0000");
+		xsConcatPrintf(clause, " %s ", ptr);
+		/*objDataToString(clause, DATA_T_MONEY, &(tree->Types.Money), DATA_F_QUOTED);*/
 	        break;
 
 	    case DATA_T_DOUBLE:
@@ -1859,7 +1980,7 @@ sybd_internal_TreeToClauseConstant(pExpression tree, int data_type, pSybdTableIn
 
 	    case DATA_T_STRING:
 		if (tree->Parent && tree->Parent->NodeType == EXPR_N_FUNCTION && 
-		    (!strcmp(tree->Parent->Name,"convert") || !strcmp(tree->Parent->Name,"datepart") || !strcmp(tree->Parent->Name,"dateadd")) &&
+		    (!strcmp(tree->Parent->Name,"convert") || !strcmp(tree->Parent->Name,"datepart") || !strcmp(tree->Parent->Name,"dateadd") || !strcmp(tree->Parent->Name,"datediff")) &&
 		    (void*)tree == (void*)(tree->Parent->Children.Items[0]))
 		    {
 		    if (!strcmp(tree->Parent->Name,"convert"))
@@ -1872,9 +1993,9 @@ sybd_internal_TreeToClauseConstant(pExpression tree, int data_type, pSybdTableIn
 			}
 		    else
 			{
-			if (strpbrk(tree->String,"\"' \t\r\n"))
+			if (tree->String[strspn(tree->String,"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")] != '\0')
 			    {
-			    mssError(1,"SYBD","Invalid datepart()/dateadd() parameters in Expression Tree");
+			    mssError(1,"SYBD","Invalid datepart()/dateadd()/convert()/datediff() parameters in Expression Tree");
 			    }
 			else
 			    {
@@ -1943,7 +2064,7 @@ sybd_internal_TreeToClauseConstant(pExpression tree, int data_type, pSybdTableIn
  *** the mqsyb multiquery sybase passthrough component.
  ***/
 int
-sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess, pSybdTableInf *tdata, int n_tdata, pXString where_clause)
+sybd_internal_TreeToClause(pExpression tree, pSybdNode node, pSybdConn conn, pSybdTableInf *tdata, int n_tdata, pXString where_clause)
     {
     pExpression subtree, subtree2;
     char* ptr;
@@ -1972,7 +2093,7 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess
 
 	    case EXPR_N_OBJECT:
 	        subtree = (pExpression)(tree->Children.Items[0]);
-	        sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
+	        sybd_internal_TreeToClause(subtree,node,conn,tdata,n_tdata,where_clause);
 		break;
 
 	    case EXPR_N_PROPERTY:
@@ -2051,7 +2172,7 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess
 			if (!tdata[id]->RowAnnotExpr)
 			    xsConcatenate(where_clause, " 1 ", 3);
 			else
-			    sybd_internal_TreeToClause(tdata[id]->RowAnnotExpr, node,sess,tdata, n_tdata, where_clause);
+			    sybd_internal_TreeToClause(tdata[id]->RowAnnotExpr, node,conn,tdata, n_tdata, where_clause);
 			xsConcatenate(where_clause, ") ",2);
 			}
 		    else
@@ -2075,7 +2196,7 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess
 		    ( (subtree->NodeType == EXPR_N_PROPERTY && !strcmp(subtree->Name, "name") && subtree2->NodeType == EXPR_N_STRING && !(subtree2->Flags & EXPR_F_NULL)) ||
 		      (subtree2->NodeType == EXPR_N_PROPERTY && !strcmp(subtree2->Name, "name") && subtree->NodeType == EXPR_N_STRING && !(subtree->Flags & EXPR_F_NULL)) ))
 		    {
-		    ptr = sybd_internal_FilenameToKey(node, sess, tdata[id]->Table, (subtree->NodeType==EXPR_N_PROPERTY)?(subtree2->String):(subtree->String));
+		    ptr = sybd_internal_FilenameToKey(node, conn, tdata[id]->Table, (subtree->NodeType==EXPR_N_PROPERTY)?(subtree2->String):(subtree->String));
 		    if (ptr)
 			{
 			/** Use special case only if FilenameToKey generated a valid clause **/
@@ -2088,54 +2209,54 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess
 
 		/** Normal case **/
 	        xsConcatenate(where_clause, " (", 2);
-		sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
+		sybd_internal_TreeToClause(subtree,node,conn,tdata,n_tdata,where_clause);
 	        xsConcatenate(where_clause, " ", 1);
 		if (tree->CompareType & MLX_CMP_LESS) xsConcatenate(where_clause,"<",1);
 		if (tree->CompareType & MLX_CMP_GREATER) xsConcatenate(where_clause,">",1);
 		if (tree->CompareType & MLX_CMP_EQUALS) xsConcatenate(where_clause,"=",1);
 	        xsConcatenate(where_clause, " ", 1);
-		sybd_internal_TreeToClause(subtree2,node,sess,tdata,n_tdata,where_clause);
+		sybd_internal_TreeToClause(subtree2,node,conn,tdata,n_tdata,where_clause);
 	        xsConcatenate(where_clause, ") ", 2);
 	        break;
 
 	    case EXPR_N_AND:
 	        xsConcatenate(where_clause, " (",2);
 	        subtree = (pExpression)(tree->Children.Items[0]);
-		sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
+		sybd_internal_TreeToClause(subtree,node,conn,tdata,n_tdata,where_clause);
 	        xsConcatenate(where_clause, " AND ",5);
 	        subtree = (pExpression)(tree->Children.Items[1]);
-		sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
+		sybd_internal_TreeToClause(subtree,node,conn,tdata,n_tdata,where_clause);
 	        xsConcatenate(where_clause, ") ",2);
 	        break;
 
 	    case EXPR_N_OR:
                 xsConcatenate(where_clause, " (",2);
                 subtree = (pExpression)(tree->Children.Items[0]);
-                sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
+                sybd_internal_TreeToClause(subtree,node,conn,tdata,n_tdata,where_clause);
                 xsConcatenate(where_clause, " OR ",4);
                 subtree = (pExpression)(tree->Children.Items[1]);
-                sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
+                sybd_internal_TreeToClause(subtree,node,conn,tdata,n_tdata,where_clause);
                 xsConcatenate(where_clause, ") ",2);
                 break;
 
 	    case EXPR_N_ISNOTNULL:
 	        xsConcatenate(where_clause, " (",2);
 	        subtree = (pExpression)(tree->Children.Items[0]);
-		sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
+		sybd_internal_TreeToClause(subtree,node,conn,tdata,n_tdata,where_clause);
 		xsConcatenate(where_clause, " IS NOT NULL) ",14);
 		break;
 
 	    case EXPR_N_ISNULL:
 	        xsConcatenate(where_clause, " (",2);
 	        subtree = (pExpression)(tree->Children.Items[0]);
-		sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
+		sybd_internal_TreeToClause(subtree,node,conn,tdata,n_tdata,where_clause);
 		xsConcatenate(where_clause, " IS NULL) ",10);
 		break;
 
 	    case EXPR_N_NOT:
 	        xsConcatenate(where_clause, " ( NOT ( ",9);
 		subtree = (pExpression)(tree->Children.Items[0]);
-		sybd_internal_TreeToClause(subtree,node,sess,tdata,n_tdata,where_clause);
+		sybd_internal_TreeToClause(subtree,node,conn,tdata,n_tdata,where_clause);
 		xsConcatenate(where_clause, " ) ) ",5);
 		break;
 
@@ -2143,21 +2264,28 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess
 	        /** Special case 'condition()' and 'ralign()' which Sybase doesn't have. **/
 		if (!strcmp(tree->Name,"condition") && tree->Children.nItems == 3)
 		    {
-		    xsConcatenate(where_clause, " isnull((select substring(", -1);
-		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
+		    /*xsConcatenate(where_clause, " isnull((select substring(", -1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,conn,tdata, n_tdata, where_clause);
 		    xsConcatenate(where_clause, ",max(1),255) where ", -1);
-		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,conn,tdata, n_tdata, where_clause);
 		    xsConcatenate(where_clause, "), ", 3);
-		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), node,sess,tdata, n_tdata, where_clause);
-		    xsConcatenate(where_clause, ") ", 2);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), node,conn,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ") ", 2);*/
+		    xsConcatenate(where_clause, " (case when (", -1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,conn,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ") then (", -1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,conn,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ") else (", -1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), node,conn,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ") end) ", -1);
 		    }
 		else if (!strcmp(tree->Name,"atan2") && tree->Children.nItems == 2)
 		    {
 		    /** Sybase calls this function atn2() instead of atan2() **/
 		    xsConcatenate(where_clause, " atn2(", 6);
-		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,conn,tdata, n_tdata, where_clause);
 		    xsConcatenate(where_clause, ",", 1);
-		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,conn,tdata, n_tdata, where_clause);
 		    xsConcatenate(where_clause, ") ", 2);
 		    }
 		else if (!strcmp(tree->Name,"ralign") && tree->Children.nItems == 2)
@@ -2166,17 +2294,51 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess
 		    for(i=0;i<255 && i<((pExpression)(tree->Children.Items[1]))->Integer;i++)
 		        xsConcatenate(where_clause, " ", 1);
 		    xsConcatenate(where_clause, "',1,", 4);
-		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,conn,tdata, n_tdata, where_clause);
 		    xsConcatenate(where_clause, " - char_length(", -1);
-		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,conn,tdata, n_tdata, where_clause);
 		    xsConcatenate(where_clause, ")) ", 3);
 		    }
 		else if (!strcmp(tree->Name,"eval"))
 		    {
 		    mssError(1,"SYBD","Sybase does not support eval() CXSQL function");
 		    /* just put silly thing as text instead of evaluated */
-		    if (tree->Children.nItems == 1) sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
+		    if (tree->Children.nItems == 1) sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,conn,tdata, n_tdata, where_clause);
 		    return -1;
+		    }
+		else if (!strcmp(tree->Name, "replace"))
+		    {
+		    xsConcatenate(where_clause, " str_replace(", -1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,conn,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ",", 1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,conn,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ",", 1);
+		    subtree = (pExpression)tree->Children.Items[2];
+
+		    /** Sybase by default treats "" as " ", but str_replace() accepts NULL for "" **/
+		    if (subtree && subtree->NodeType == EXPR_N_STRING && !(subtree->Flags & EXPR_F_NULL) && !strcmp(subtree->String,""))
+			xsConcatenate(where_clause, "NULL) ", 6);
+		    else
+			{
+			sybd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), node,conn,tdata, n_tdata, where_clause);
+			xsConcatenate(where_clause, ") ", 2);
+			}
+		    }
+		else if (!strcmp(tree->Name, "hash"))
+		    {
+		    /** Sybase ASE uses hashbytes() instead of hash(), but the param order is the same. **/
+		    xsConcatenate(where_clause, " hashbytes(", -1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,conn,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ",", 1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,conn,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ") ", 2);
+		    }
+		else if (!strcmp(tree->Name,"round") && tree->Children.nItems == 1)
+		    {
+		    /** Centrallix accepts single-argument round() but Sybase does not **/
+		    xsConcatenate(where_clause, " round(", -1);
+		    sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,conn,tdata, n_tdata, where_clause);
+		    xsConcatenate(where_clause, ", 0) ", -1);
 		    }
 		else
 		    {
@@ -2190,7 +2352,7 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess
 			    xsConcatenate(where_clause, "rtrim(", 6);
 		        if (i != 0) xsConcatenate(where_clause,",",1);
 		        subtree = (pExpression)(tree->Children.Items[i]);
-		        sybd_internal_TreeToClause(subtree, node,sess,tdata, n_tdata, where_clause);
+		        sybd_internal_TreeToClause(subtree, node,conn,tdata, n_tdata, where_clause);
 			if (i == 0 && add_rtrim)
 			    xsConcatenate(where_clause, ")", 1);
 		        }
@@ -2200,39 +2362,39 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess
 
 	    case EXPR_N_PLUS:
 	        xsConcatenate(where_clause, " (", 2);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,conn,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, " + ", 3);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,conn,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, ") ", 2);
 		break;
 
 	    case EXPR_N_MINUS:
 	        xsConcatenate(where_clause, " (", 2);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,conn,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, " - ", 3);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,conn,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, ") ", 2);
 		break;
 
 	    case EXPR_N_DIVIDE:
 	        xsConcatenate(where_clause, " (", 2);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,conn,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, " / ", 3);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,conn,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, ") ", 2);
 		break;
 
 	    case EXPR_N_MULTIPLY:
 	        xsConcatenate(where_clause, " (", 2);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,conn,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, " * ", 3);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,sess,tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), node,conn,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, ") ", 2);
 		break;
 
 	    case EXPR_N_IN:
 	        xsConcatenate(where_clause, " (", 2);
-	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,sess,tdata, n_tdata, where_clause);
+	        sybd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), node,conn,tdata, n_tdata, where_clause);
 	        xsConcatenate(where_clause, " IN (", 5);
 		subtree = (pExpression)(tree->Children.Items[1]);
 		if (subtree->NodeType == EXPR_N_LIST)
@@ -2240,12 +2402,12 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, CS_CONNECTION* sess
 		    for(i=0;i<subtree->Children.nItems;i++)
 		        {
 			if (i != 0) xsConcatenate(where_clause, ",", 1);
-			sybd_internal_TreeToClause((pExpression)(subtree->Children.Items[i]), node,sess,tdata, n_tdata, where_clause);
+			sybd_internal_TreeToClause((pExpression)(subtree->Children.Items[i]), node,conn,tdata, n_tdata, where_clause);
 			}
 		    }
 		else
 		    {
-	            sybd_internal_TreeToClause(subtree, node,sess,tdata, n_tdata, where_clause);
+	            sybd_internal_TreeToClause(subtree, node,conn,tdata, n_tdata, where_clause);
 		    }
 	        xsConcatenate(where_clause, ") ) ", 4);
 		break;
@@ -2272,7 +2434,7 @@ sybd_internal_GetRow(pSybdData inf, CS_COMMAND* s, int cnt)
 	for(i=0;i<cnt;i++)
 	    {
 	    ptr = NULL;
-	    maxlen = 255;
+	    maxlen = 1536;
 	    if (((inf->RowBuf + 2048) - endptr) - 2 < maxlen) 
 		maxlen = ((inf->RowBuf + 2048) - endptr) - 2;
 	    if (maxlen <= 0)
@@ -2306,43 +2468,65 @@ sybd_internal_GetRow(pSybdData inf, CS_COMMAND* s, int cnt)
  *** retrieve the row from the database.
  ***/
 int
-sybd_internal_LookupRow(CS_CONNECTION* sess, pSybdData inf)
+sybd_internal_LookupRow(pSybdConn conn, pSybdData inf)
     {
     char* ptr;
     int cnt;
     char sbuf[256];
     CS_COMMAND* cmd;
-    int ncols, i, n, restype;
+    int ncols, i, n;
+    CS_INT restype = 0;
+    CS_USHORT msgid;
 
 	/** Find a WHERE clause that will retrieve this row, given the row name **/
-	ptr = sybd_internal_FilenameToKey(inf->Node,sess,inf->TablePtr,inf->RowColPtr);
+	ptr = sybd_internal_FilenameToKey(inf->Node, conn, inf->TablePtr, inf->RowColPtr);
 	if (!ptr)
 	    return -1;
 
 	/** Run the SQL query **/
-	snprintf(sbuf,sizeof(sbuf),"SELECT * from %s WHERE %s",inf->TablePtr, ptr);
-	if ((cmd=sybd_internal_Exec(sess, sbuf)) == NULL)
+#if 00 /* locking */
+	while(1)
 	    {
-	    mssError(0,"SYBD","Could not retrieve row object [%s] from database table [%s]",
-		    inf->RowColPtr, inf->TablePtr);
-	    return -1;
-	    }
-	cnt = 0;
-	while (ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
-	    {
-	    ct_res_info(cmd, CS_NUMDATA, (CS_INT*)&ncols, CS_UNUSED, NULL);
-	    for(i=0; i < ncols && i < inf->TData->nCols; i++)
-		inf->ColNum[i] = (unsigned char)i;
-	    while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&n) == CS_SUCCEED)
+#endif
+	    snprintf(sbuf,sizeof(sbuf),"SELECT * from %s WHERE %s",inf->TablePtr, ptr);
+	    if ((cmd=sybd_internal_Exec(conn, sbuf)) == NULL)
 		{
-		cnt++;
-
-		/** Good, found the row, let's load it **/
-		if (sybd_internal_GetRow(inf,cmd,ncols) < 0)
-		    return -1;
+		mssError(0,"SYBD","Could not retrieve row object [%s] from database table [%s]",
+			inf->RowColPtr, inf->TablePtr);
+		return -1;
 		}
+	    cnt = 0;
+
+	    /** Fetch result info **/
+	    while (ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED)
+		{
+		if (restype == CS_ROW_RESULT)
+		    {
+		    ct_res_info(cmd, CS_NUMDATA, (CS_INT*)&ncols, CS_UNUSED, NULL);
+		    for(i=0; i < ncols && i < inf->TData->nCols; i++)
+			inf->ColNum[i] = (unsigned char)i;
+		    while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&n) == CS_SUCCEED)
+			{
+			cnt++;
+
+			/** Good, found the row, let's load it **/
+			if (sybd_internal_GetRow(inf,cmd,ncols) < 0)
+			    return -1;
+			}
+		    }
+#if 00 /* locking */
+		else if (restype == CS_MSG_RESULT)
+		    {
+		    msgid = 0;
+		    ct_res_info(cmd, CS_MSGTYPE, (CS_VOID*)&msgid, CS_UNUSED, NULL);
+		    if (msgid == 12205)
+		    }
+#endif
+		}
+	    sybd_internal_Close(cmd);
+#if 00 /* locking */
 	    }
-	sybd_internal_Close(cmd);
+#endif
 
     return cnt;
     }
@@ -2569,7 +2753,7 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
  *** released after the successful insertion of the new row.
  ***/
 int
-sybd_internal_BuildAutoname(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
+sybd_internal_BuildAutoname(pSybdData inf, pSybdConn conn, pObjTrxTree oxt)
     {
     pObjTrxTree keys_provided[8];
     int n_keys_provided = 0;
@@ -2582,7 +2766,7 @@ sybd_internal_BuildAutoname(pSybdData inf, CS_CONNECTION* session, pObjTrxTree o
     int first_clause = 1;
     int t;
     CS_COMMAND* cmd = NULL;
-    int restype;
+    CS_INT restype = 0;
     int intval;
     int len;
 
@@ -2610,11 +2794,18 @@ sybd_internal_BuildAutoname(pSybdData inf, CS_CONNECTION* session, pObjTrxTree o
 			}
 		    }
 		}
-	    if (find_oxt) 
+	    if (find_oxt && find_oxt->AttrValue != NULL) 
 		{
 		n_keys_provided++;
 		keys_provided[j] = find_oxt;
-		ptr = objDataToStringTmp(find_oxt->AttrType, find_oxt->AttrValue, 0);
+		if (find_oxt->AttrType == DATA_T_MONEY)
+		    {
+		    ptr = objFormatMoneyTmp(find_oxt->AttrValue, "0.0000");
+		    }
+		else
+		    {
+		    ptr = objDataToStringTmp(find_oxt->AttrType, find_oxt->AttrValue, 0);
+		    }
 		key_values[j] = nmSysStrdup(ptr);
 		if (!key_values[j])
 		    {
@@ -2666,7 +2857,7 @@ sybd_internal_BuildAutoname(pSybdData inf, CS_CONNECTION* session, pObjTrxTree o
 		    }
 
 		/** Now that sql is built, send to server **/
-		if ((cmd=sybd_internal_Exec(session,sql->String)))
+		if ((cmd=sybd_internal_Exec(conn, sql->String)))
 		    {
 		    while(ct_results(cmd,(CS_INT*)&restype) == CS_SUCCEED) if (restype == CS_ROW_RESULT)
 			{
@@ -2740,11 +2931,12 @@ sybd_internal_BuildAutoname(pSybdData inf, CS_CONNECTION* session, pObjTrxTree o
  *** does not allow nulls.
  ***/
 int
-sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
+sybd_internal_InsertRow(pSybdData inf, pSybdConn conn, pObjTrxTree oxt)
     {
     char* kptr;
     char* kendptr;
-    int i,j,len,ctype,restype;
+    int i,j,len,ctype;
+    CS_INT restype = 0;
     pObjTrxTree attr_oxt, find_oxt;
     CS_COMMAND* cmd;
     pXString insbuf;
@@ -2752,6 +2944,7 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
     char tmpch;
     int colid;
     int holding_sem = 0;
+    MoneyType m;
 
         /** Allocate a buffer for our insert statement. **/
 	insbuf = (pXString)nmMalloc(sizeof(XString));
@@ -2767,7 +2960,7 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
 	/** If we are using an autoname-based create, here is where we build the name. **/
 	if (inf->Obj->Mode & OBJ_O_AUTONAME && inf->TData->nKeys)
 	    {
-	    if (sybd_internal_BuildAutoname(inf, session, oxt) < 0) return -1;
+	    if (sybd_internal_BuildAutoname(inf, conn, oxt) < 0) return -1;
 	    inf->RowColPtr = inf->Autoname;
 	    holding_sem = 1; /* we hold the semaphore on successful BuildAutoname return */
 	    }
@@ -2796,18 +2989,31 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
 		if (!kendptr) len = strlen(kptr); else len = kendptr-kptr;
 
 		/** Copy it to the INSERT statement buffer **/
-		ctype = inf->TData->ColTypes[j];
-		if (ctype == 5 || ctype == 6 || ctype == 7 || ctype == 16)
+		ctype = sybd_internal_AttrType(inf->TData, j);
+		if (ctype == DATA_T_INTEGER)
 		    {
 		    xsConcatenate(insbuf, kptr, len);
 		    }
-		else if (ctype == 1 || ctype == 2 || ctype == 18 || ctype == 19)
+		else if (ctype == DATA_T_STRING)
 		    {
 		    tmpch = kptr[len];
 		    kptr[len] = 0;
 		    tmpptr = objDataToStringTmp(DATA_T_STRING, kptr, DATA_F_QUOTED | DATA_F_SYBQUOTE);
 		    kptr[len] = tmpch;
 		    xsConcatenate(insbuf, tmpptr, -1);
+		    }
+		else if (ctype == DATA_T_MONEY)
+		    {
+		    tmpch = kptr[len];
+		    kptr[len] = 0;
+		    if (objDataToMoney(DATA_T_STRING, kptr, &m) == 0)
+			{
+			tmpptr = objFormatMoneyTmp(&m, "0.0000");
+			if (!tmpptr)
+			    tmpptr = " NULL ";
+			xsConcatenate(insbuf, tmpptr, -1);
+			}
+		    kptr[len] = tmpch;
 		    }
 		}
 	    else
@@ -2831,7 +3037,7 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
 		if (j!=0) xsConcatenate(insbuf,",",1);
 
                 /** Print the appropriate type. **/
-                if (!find_oxt)
+                if (!find_oxt || find_oxt->AttrValue == NULL)
                     {
                     if (inf->TData->ColFlags[j] & SYBD_CF_ALLOWNULL)
                         {
@@ -2854,6 +3060,8 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
 		    {
 		    if (find_oxt->AttrType == DATA_T_DATETIME)
 			xsConcatPrintf(insbuf, " \"%s\" ", objFormatDateTmp(find_oxt->AttrValue, obj_default_date_fmt));
+		    else if (find_oxt->AttrType == DATA_T_MONEY)
+			xsConcatPrintf(insbuf, " %s ", objFormatMoneyTmp(find_oxt->AttrValue, "0.0000"));
 		    else
 			objDataToString(insbuf, find_oxt->AttrType, find_oxt->AttrValue, DATA_F_QUOTED | DATA_F_SYBQUOTE);
 		    }
@@ -2862,7 +3070,7 @@ sybd_internal_InsertRow(pSybdData inf, CS_CONNECTION* session, pObjTrxTree oxt)
 
         /** Add the trailing ')' and issue the query. **/
 	xsConcatenate(insbuf,")", 1);
-        if ((cmd = sybd_internal_Exec(session,insbuf->String))==NULL)
+        if ((cmd = sybd_internal_Exec(conn, insbuf->String))==NULL)
             {
 	    xsDeInit(insbuf);
             nmFree(insbuf,sizeof(XString));
@@ -2890,6 +3098,7 @@ sybdCommit(void* inf_v, pObjTrxTree* oxt)
     pSybdData inf = SYBD(inf_v);
     struct stat fileinfo;
     int i;
+    CS_INT restype = 0;
     char sbuf[160];
 
 	/** Write session is a bit complex.  IF needed, complete the write. **/
@@ -2919,7 +3128,7 @@ sybdCommit(void* inf_v, pObjTrxTree* oxt)
 		    fdClose(inf->TmpFD,0);
 		    unlink(inf->TmpFile);
 		    }
-		while(ct_results(inf->RWCmd, (CS_INT*)&i) == CS_SUCCEED);
+		while(ct_results(inf->RWCmd, (CS_INT*)&restype) == CS_SUCCEED);
 		sybd_internal_Close(inf->RWCmd);
 		}
 	    inf->RWCmd = NULL;
@@ -3037,6 +3246,7 @@ sybdDeleteObj(void* inf_v, pObjTrxTree* oxt)
     pSybdData inf = SYBD(inf_v);
     CS_COMMAND* cmd;
     int rval;
+    CS_INT restype = 0;
     char* ptr;
 
 	/** Grab a database connection **/
@@ -3066,7 +3276,7 @@ sybdDeleteObj(void* inf_v, pObjTrxTree* oxt)
 	    nmFree(inf,sizeof(SybdData));
 	    return -1;
 	    }
-	while(ct_results(cmd, (CS_INT*)&rval) == CS_SUCCEED);
+	while(ct_results(cmd, (CS_INT*)&restype) == CS_SUCCEED);
 	sybd_internal_Close(cmd);
 	sybd_internal_ReleaseConn(inf->Node,inf->SessionID);
 
@@ -3126,14 +3336,14 @@ sybdDelete(pObject obj, pObjTrxTree* oxt)
  *** the returned CS_COMMAND*.
  ***/
 CS_COMMAND*
-sybd_internal_PrepareText(pSybdData inf, CS_CONNECTION* session, int maxtextsize)
+sybd_internal_PrepareText(pSybdData inf, pSybdConn conn, int maxtextsize)
     {
-    CS_COMMAND* cmd;
-    char* col;
+    char* col = NULL;
     int i;
     char buffer[1];
     char sbuf[160];
-    int rcnt,rval;
+    int rcnt;
+    CS_INT restype = 0;
     char* ptr;
 
 	/** Determine column to use. **/
@@ -3154,38 +3364,38 @@ sybd_internal_PrepareText(pSybdData inf, CS_CONNECTION* session, int maxtextsize
 	/** If writing, make sure we have a textptr **/
 	if (inf->WriteSessID != NULL)
 	    {
-	    ptr = sybd_internal_FilenameToKey(inf->Node, session,inf->TablePtr,inf->RowColPtr);
+	    ptr = sybd_internal_FilenameToKey(inf->Node, conn, inf->TablePtr, inf->RowColPtr);
 	    if (!ptr)
 		{
 		return NULL;
 		}
 	    snprintf(sbuf,160,"UPDATE %s SET %s='' where %s", inf->TablePtr,col, ptr);
-	    if ((inf->RWCmd = sybd_internal_Exec(session, sbuf)) == NULL) 
+	    if ((inf->RWCmd = sybd_internal_Exec(conn, sbuf)) == NULL) 
 	        {
 		mssError(0,"SYBD","Could not run update to initialize textptr for content BLOB");
 		return NULL;
 		}
-	    while (ct_results(inf->RWCmd,(CS_INT*)&rval)==CS_SUCCEED);
+	    while (ct_results(inf->RWCmd,(CS_INT*)&restype)==CS_SUCCEED);
 	    sybd_internal_Close(inf->RWCmd);
 	    }
 
 	/** Build the command. **/
-	ptr = sybd_internal_FilenameToKey(inf->Node, session,inf->TablePtr,inf->RowColPtr);
+	ptr = sybd_internal_FilenameToKey(inf->Node, conn, inf->TablePtr, inf->RowColPtr);
 	if (!ptr)
 	    {
 	    return NULL;
 	    }
 	snprintf(sbuf,160,"set textsize %d select %s from %s where %s set textsize 255",
 	    maxtextsize,col,inf->TablePtr,ptr);
-	if ((inf->RWCmd = sybd_internal_Exec(session, sbuf)) == NULL) 
+	if ((inf->RWCmd = sybd_internal_Exec(conn, sbuf)) == NULL) 
 	    {
 	    mssError(0,"SYBD","Could not run SQL to retrieve content BLOB from database");
 	    return NULL;
 	    }
 
 	/** Wait for the actual result row to come back. **/
-	while (ct_results(inf->RWCmd,(CS_INT*)&rval)==CS_SUCCEED && rval!=CS_ROW_RESULT);
-	if (rval != CS_ROW_RESULT)
+	while (ct_results(inf->RWCmd,(CS_INT*)&restype)==CS_SUCCEED && restype!=CS_ROW_RESULT);
+	if (restype != CS_ROW_RESULT)
 	    {
 	    sybd_internal_Close(inf->RWCmd);
 	    mssError(1,"SYBD","SQL query to retrieve content BLOB failed");
@@ -3207,7 +3417,7 @@ sybd_internal_PrepareText(pSybdData inf, CS_CONNECTION* session, int maxtextsize
 	    return NULL;
 	    }
 
-    return cmd;
+    return inf->RWCmd;
     }
 
 
@@ -3398,7 +3608,7 @@ sybdWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 
 	    /** Initiate the send data. **/
 	    sybd_internal_Close(inf->RWCmd);
-	    ct_cmd_alloc(inf->WriteSessID, &(inf->RWCmd));
+	    ct_cmd_alloc(inf->WriteSessID->CsConn, &(inf->RWCmd));
 	    ct_command(inf->RWCmd, CS_SEND_DATA_CMD, NULL, CS_UNUSED, CS_COLUMN_DATA);
 
 	    /** IF size specified, tell Sybase about it now. **/
@@ -3454,7 +3664,8 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
     pSybdData inf = SYBD(inf_v);
     pSybdQuery qy;
-    int i,restype;
+    int i;
+    CS_INT restype = 0;
     XString sql;
     pExpression exp;
 
@@ -3573,7 +3784,11 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		if (strcmp(sql.String, SYBD_INF.LastSQL.String) || 1)
 		    {
 		    if (SYBD_INF.SqlLog)
+			{
+			thLock();
 			fdPrintf(SYBD_INF.SqlLog, "SQL:  %s\n",sql.String);
+			thUnlock();
+			}
 		    xsCopy(&SYBD_INF.LastSQL, sql.String, -1);
 		    }
 		if ((qy->Cmd = sybd_internal_Exec(qy->SessionID, sql.String))==NULL)
@@ -3608,11 +3823,44 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		mssError(0,"SYBD","Could not open cursor for query result set retrieval");
 		return NULL;
 		}
+	    qy->Flags |= SYBD_QF_CURSOROPEN;
 	    snprintf(qy->SQLbuf,sizeof(qy->SQLbuf),"FETCH _c");
 	    qy->RowsSinceFetch = 0;
 	    }
 
     return (void*)qy;
+    }
+
+
+/*** sybd_internal_CloseCursor - shut down an open cursor
+ ***/
+int
+sybd_internal_CloseCursor(pSybdQuery qy)
+    {
+    int rid;
+    CS_INT restype = 0;
+
+	/** Close any existing command **/
+	if (qy->Cmd)
+	    {
+	    sybd_internal_Close(qy->Cmd);
+	    qy->Cmd = NULL;
+	    }
+
+	/** Shut down the cursor **/
+	snprintf(qy->SQLbuf,sizeof(qy->SQLbuf),"CLOSE _c DEALLOCATE CURSOR _c");
+	qy->Cmd = sybd_internal_Exec(qy->SessionID, qy->SQLbuf);
+	if (qy->Cmd)
+	    {
+	    while((rid=ct_results(qy->Cmd,(CS_INT*)&restype))==CS_SUCCEED && restype != CS_CMD_DONE)
+		{
+		}
+	    sybd_internal_Close(qy->Cmd);
+	    qy->Cmd = NULL;
+	    }
+	qy->Flags &= ~SYBD_QF_CURSOROPEN;
+
+    return 0;
     }
 
 
@@ -3622,20 +3870,21 @@ void*
 sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
     pSybdQuery qy = ((pSybdQuery)(qy_v));
-    pSybdData inf;
+    pSybdData inf = NULL;
     char filename[120];
     char* ptr;
     int new_type;
     int i,cnt;
     pSybdTableInf tdata = qy->ObjInf->TData;
-    CS_CONNECTION* s2;
-    int restype;
+    pSybdConn conn2;
+    CS_INT restype = 0;
+    int rid;
 
     	/** Fetch the row. **/
 	if (qy->SessionID != NULL)
 	    {
 	    cnt=0;
-	    while(1)
+	    while(qy->Cmd != NULL)
 	        {
 	        if (qy->RowsSinceFetch == 0)
 	            {
@@ -3647,7 +3896,8 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 			    break;
 			    }
 		        }
-	            if (cnt == 0) return NULL;
+	            if (cnt == 0) 
+			goto end_results;
 		    }
 	        cnt = 0;
 	        while(ct_fetch(qy->Cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&i) == CS_SUCCEED)
@@ -3669,7 +3919,7 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    if (qy->Cmd) sybd_internal_Close(qy->Cmd);
 		    qy->Cmd = NULL;
 
-		    return NULL;
+		    goto end_results;
 		    }
 		else
 		    {
@@ -3679,19 +3929,21 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    	    if (!qy->Cmd)
 	        	{
 			mssError(0,"SYBD","Could not fetch next part of query results");
-			return NULL;
+			goto error;
 			}
 	    	    qy->RowsSinceFetch = 0;
 		    }
 		}
-	    if (cnt == 0) return NULL;
+	    if (cnt == 0)
+		goto end_results;
 	    }
 	qy->RowCnt++;
 	qy->RowsSinceFetch++;
 
 	/** Allocate the structure **/
 	inf = (pSybdData)nmMalloc(sizeof(SybdData));
-	if (!inf) return NULL;
+	if (!inf)
+	    goto error;
 	memset(inf,0,sizeof(SybdData));
 	inf->TData = tdata;
 
@@ -3703,16 +3955,15 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		new_type = SYBD_T_TABLE;
 		ct_get_data(qy->Cmd, 1, filename, 119, (CS_INT*)&i);
 		filename[i] = 0;
-		s2 = sybd_internal_GetConn(qy->ObjInf->Node);
-		if (!s2)
+		conn2 = sybd_internal_GetConn(qy->ObjInf->Node);
+		if (!conn2)
 		    {
 		    mssError(0,"SYBD","Database connection failed");
-		    nmFree(inf, sizeof(SybdData));
-		    return NULL;
+		    goto error;
 		    }
-		tdata = sybd_internal_GetTableInf(qy->ObjInf->Node,s2,filename);
+		tdata = sybd_internal_GetTableInf(qy->ObjInf->Node,conn2,filename);
 		inf->TData = tdata;
-		sybd_internal_ReleaseConn(qy->ObjInf->Node,s2);
+		sybd_internal_ReleaseConn(qy->ObjInf->Node,conn2);
 	        break;
 
 	    case SYBD_T_TABLE:
@@ -3729,9 +3980,7 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    }
 		else 
 		    {
-		    nmFree(inf,sizeof(SybdData));
-		    /*mssError(1,"SYBD","Table object has only two subobjects: 'rows' and 'columns'");*/
-		    return NULL;
+		    goto end_results;
 		    }
 	        break;
 
@@ -3739,15 +3988,13 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	        /** Get the filename from the primary key of the row. **/
 		if (sybd_internal_GetRow(inf,qy->Cmd,qy->TableInf->nCols) < 0)
 		    {
-		    nmFree(inf,sizeof(SybdData));
-		    return NULL;
+		    goto error;
 		    }
 		new_type = SYBD_T_ROW;
 		ptr = sybd_internal_KeyToFilename(qy->TableInf,inf);
 		if (!ptr)
 		    {
-		    nmFree(inf,sizeof(SybdData));
-		    return NULL;
+		    goto error;
 		    }
 	        strcpy(filename,ptr);
 	        break;
@@ -3762,8 +4009,7 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    }
 		else
 		    {
-		    nmFree(inf,sizeof(SybdData));
-		    return NULL;
+		    goto end_results;
 		    }
 	        break;
 	    }
@@ -3773,8 +4019,7 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	if ((ptr - obj->Pathname->Pathbuf) + 1 + strlen(filename) >= 255)
 	    {
 	    mssError(1,"SYBD","Pathname too long for internal representation");
-	    nmFree(inf,sizeof(SybdData));
-	    return NULL;
+	    goto error;
 	    }
 	*(ptr++) = '/';
 	strcpy(ptr,filename);
@@ -3789,7 +4034,29 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	obj->SubPtr = qy->ObjInf->Obj->SubPtr;
 	sybd_internal_DetermineType(obj,inf);
 
-    return (void*)inf;
+	return (void*)inf;
+
+    error:
+    end_results:
+	/** Release the new object structure **/
+	if (inf)
+	    nmFree(inf, sizeof(SybdData));
+
+	/** Close any pending command **/
+	if (qy->Cmd)
+	    {
+	    sybd_internal_Close(qy->Cmd);
+	    qy->Cmd = NULL;
+	    }
+
+	/** Shutdown the cursor **/
+	if (qy->Flags & SYBD_QF_CURSOROPEN)
+	    {
+	    sybd_internal_CloseCursor(qy);
+	    }
+
+	/** No more results. **/
+	return NULL;
     }
 
 
@@ -3809,26 +4076,20 @@ int
 sybdQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
     pSybdQuery qy = ((pSybdQuery)(qy_v));
-    int restype,rid;
+    CS_INT restype = 0;
+    int rid;
 
     	/** Release the command structure. **/
-	if (qy->Cmd) sybd_internal_Close(qy->Cmd);
+	if (qy->Cmd)
+	    {
+	    sybd_internal_Close(qy->Cmd);
+	    qy->Cmd = NULL;
+	    }
 
 	/** Deallocate the cursor? **/
-	if ((qy->Flags & SYBD_QF_USECURSOR) && (qy->ObjInf->Type == SYBD_T_DATABASE || qy->ObjInf->Type == SYBD_T_ROWSOBJ))
+	if (qy->Flags & SYBD_QF_CURSOROPEN)
 	    {
-	    snprintf(qy->SQLbuf,sizeof(qy->SQLbuf),"CLOSE _c DEALLOCATE CURSOR _c");
-	    qy->Cmd = sybd_internal_Exec(qy->SessionID, qy->SQLbuf);
-	    if (qy->Cmd)
-	        {
-	        while((rid=ct_results(qy->Cmd,(CS_INT*)&restype))==CS_SUCCEED && restype != CS_CMD_DONE)
-		    {
-		    /*printf("ctr=%d, typ=%d;  ",rid,restype);*/
-		    }
-		/*printf("ctr=%d, typ=%d.\n",rid,restype);*/
-		sybd_internal_Close(qy->Cmd);
-		qy->Cmd = NULL;
-		}
+	    sybd_internal_CloseCursor(qy);
 	    }
 
 	/** Release the session id back to the object, or just release it. **/
@@ -3894,7 +4155,7 @@ sybdGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    if (!strcmp(attrname,"datatype")) return DATA_T_STRING;
 	    }
 
-	mssError(1,"SYBD","Invalid column for GetAttrType");
+	//mssError(1,"SYBD","Invalid column for GetAttrType");
 
     return -1;
     }
@@ -4158,11 +4419,14 @@ int
 sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pSybdData inf = SYBD(inf_v);
-    int type,rval;
+    int type;
+    int i, is_key = 0;
     CS_COMMAND* cmd;
-    CS_CONNECTION* sess;
+    pSybdConn conn;
     char sbuf[320];
+    pXString xs;
     char* ptr;
+    CS_INT restype = 0;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -4208,21 +4472,28 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		    while(strchr(inf->TData->Annotation,'"')) *(strchr(inf->TData->Annotation,'"')) = '\'';
 		    if (inf->Node->AnnotTable[0])
 		        {
-		        /** Get a session. **/
-		        sess = inf->SessionID;
-		        if (!sess) sess=sybd_internal_GetConn(inf->Node);
-		        if (!sess) return -1;
+		        /** Get a database server connection. **/
+		        conn = inf->SessionID;
+		        if (!conn) conn=sybd_internal_GetConn(inf->Node);
+		        if (!conn) return -1;
 
 			/** Build the SQL to update the annotation table **/
-			snprintf(sbuf, sizeof(sbuf), "UPDATE %s set b = \"%s\" WHERE a = '%s'", inf->Node->AnnotTable,
+			xs = xsNew();
+			if (!xs)
+			    {
+			    sybd_internal_ReleaseConn(inf->Node, conn);
+			    return -1;
+			    }
+			xsPrintf(xs, "UPDATE %s set b = \"%s\" WHERE a = '%s'", inf->Node->AnnotTable,
 				inf->TData->Annotation, inf->TData->Table);
-			cmd = sybd_internal_Exec(sess,sbuf);
+			cmd = sybd_internal_Exec(conn, xs->String);
 			if (cmd)
 			    {
-		    	    while(ct_results(cmd, (CS_INT*)&rval) == CS_SUCCEED);
+		    	    while(ct_results(cmd, (CS_INT*)&restype) == CS_SUCCEED);
 			    sybd_internal_Close(cmd);
 			    }
-		        if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,sess);
+		        if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node, conn);
+			xsFree(xs);
 			}
 		    break;
 
@@ -4284,14 +4555,26 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		    }
 	        else
 	            {
-		    /** Get a session. **/
-		    sess = inf->SessionID;
-		    if (!sess) sess=sybd_internal_GetConn(inf->Node);
-		    if (!sess) return -1;
+		    /** Get a db server connection. **/
+		    conn = inf->SessionID;
+		    if (!conn) conn=sybd_internal_GetConn(inf->Node);
+		    if (!conn) return -1;
 
 		    /** Bypass system names? **/
 		    if (!strncmp(attrname, "__cx_literal_", 13))
 			attrname = attrname + 13;
+
+		    /** Primary key being set? **/
+		    i = sybd_internal_ColNameToID(inf->TData, attrname);
+		    if (i >= 0)
+			{
+			/** Remember that this is a primary key field, as it
+			 ** will interfere with the retrieval of the updated
+			 ** object data afterward.
+			 **/
+			if (inf->TData->ColFlags[i] & SYBD_CF_PRIKEY)
+			    is_key = 1;
+			}
 
 		    /** No transaction.  Simply do an update. **/
 		    type = sybdGetAttrType(inf_v, attrname, oxt);
@@ -4300,68 +4583,82 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 			{
 			mssError(1,"SYBD","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
 				attrname, obj_type_names[datatype], obj_type_names[type]);
-			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,sess);
+			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,conn);
 			return -1;
 			}
-		    ptr = sybd_internal_FilenameToKey(inf->Node, sess,inf->TablePtr,inf->RowColPtr);
+		    ptr = sybd_internal_FilenameToKey(inf->Node, conn,inf->TablePtr,inf->RowColPtr);
 		    if (!ptr)
 			{
-			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,sess);
+			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,conn);
+			return -1;
+			}
+		    xs = xsNew();
+		    if (!xs)
+			{
+			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,conn);
 			return -1;
 			}
 		    if (!val)
 			{
 			/** Handle NULLs **/
-	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=NULL WHERE %s",inf->TablePtr, attrname, ptr);
+	                xsPrintf(xs,"UPDATE %s SET %s=NULL WHERE %s",inf->TablePtr, attrname, ptr);
 			}
 		    else if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE)
 		        {
-	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr,
+	                xsPrintf(xs,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr,
 	                    attrname,objDataToStringTmp(type,val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
 			}
 		    else if (type == DATA_T_STRING)
 		        {   /** objDataToString quotes strings **/
-	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
+	                xsPrintf(xs,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
 			    objDataToStringTmp(type,*(void**)val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
 			}
 		    else if (type == DATA_T_MONEY)
 		        {
-	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
-			    objDataToStringTmp(type,*(void**)val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
+	                xsPrintf(xs,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
+			    objFormatMoneyTmp(*(void**)val, "0.0000"), ptr);
 			}
 		    else if (type == DATA_T_DATETIME)
 			{
-	                snprintf(sbuf,sizeof(sbuf),"UPDATE %s SET %s=\"%s\" WHERE %s",inf->TablePtr, attrname,
+	                xsPrintf(xs,"UPDATE %s SET %s=\"%s\" WHERE %s",inf->TablePtr, attrname,
 			    objFormatDateTmp(*(void**)val, obj_default_date_fmt), ptr);
 			}
 
 		    /** Start the update. **/
-		    cmd = sybd_internal_Exec(sess,sbuf);
+		    cmd = sybd_internal_Exec(conn, xs->String);
 		    if (!cmd) 
 		        {
-			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,sess);
+			xsFree(xs);
+			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,conn);
 			mssError(1,"SYBD","Could not execute SQL to update attribute value");
 			return -1;
 			}
 
 		    /** Read the results **/
-		    rval = CS_FAIL;
-		    while(ct_results(cmd, (CS_INT*)&rval) == CS_SUCCEED);
+		    while(ct_results(cmd, (CS_INT*)&restype) == CS_SUCCEED);
 		    sybd_internal_Close(cmd);
+		    xsFree(xs);
 
 		    /** Re-read the row from the db since it has changed, and we
 		     ** need to give feedback to the user on what other effects
 		     ** the update operation may have had.
 		     **/
-		    if (sybd_internal_LookupRow(sess, inf) <= 0)
+		    if (sybd_internal_LookupRow(conn, inf) <= 0)
 			{
-			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,sess);
-			mssError(1,"SYBD","Could not retrieve updated record");
-			return -1;
+			if (is_key)
+			    {
+			    mssError(1,"SYBD","Warning: could not retrieve primary key updated record");
+			    }
+			else
+			    {
+			    if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,conn);
+			    mssError(1,"SYBD","Could not retrieve updated record");
+			    return -1;
+			    }
 			}
 
 		    /** Release the session **/
-		    if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,sess);
+		    if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,conn);
 		    }
 		}
 	    }
@@ -4787,7 +5084,7 @@ sybdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 		    }
 		else
 		    {
-		    mssError(1, "SYBD", "No attribute '%s'", attrname);
+		    //mssError(1, "SYBD", "No attribute '%s'", attrname);
 		    return NULL;
 		    }
 		break;
@@ -4868,7 +5165,15 @@ sybdInitialize()
 	maxconn = SYBD_MAX_CONNECTIONS;
 	if (ct_config(SYBD_INF.Context, CS_SET, CS_MAX_CONNECT, &maxconn, CS_UNUSED, NULL) == CS_FAIL)
 	    {
-	    mssError(1, "SYBD", "Warning: could not increase connection limit to %d", maxconn);
+	    maxconn = 256;
+	    if (ct_config(SYBD_INF.Context, CS_SET, CS_MAX_CONNECT, &maxconn, CS_UNUSED, NULL) == CS_FAIL)
+		{
+		mssError(1, "SYBD", "Warning: could not increase connection limit to %d", SYBD_MAX_CONNECTIONS);
+		}
+	    else
+		{
+		mssError(1, "SYBD", "Warning: could only increase connection limit to %d instead of %d", maxconn, SYBD_MAX_CONNECTIONS);
+		}
 	    }
 
 	nmRegister(sizeof(SybdTableInf),"SybdTableInf");

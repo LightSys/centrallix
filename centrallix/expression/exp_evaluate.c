@@ -81,12 +81,19 @@ expEvalSubquery(pExpression tree, pParamObjects objlist)
     int rval;
 
 	/** Can't eval? **/
-	if (!objlist->Session)
+	if (!objlist || !objlist->Session)
 	    {
 	    /** Null if no context to eval a filename obj yet **/
 	    tree->Flags |= EXPR_F_NULL;
 	    tree->DataType = DATA_T_INTEGER;
 	    return 0;
+	    }
+
+	/** Not allowed? **/
+	if (objlist->MainFlags & EXPR_MO_NOSUBQUERY)
+	    {
+	    mssError(1,"EXP","Cannot run a subquery in this context");
+	    return -1;
 	    }
 
 	/** Run the query **/
@@ -190,10 +197,9 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
     {
     pExpression i0,i1;
     MoneyType m;
-    void* dptr;
     int i;
     int is_negative = 0;
-    long long mv;
+    long long mv, mv2;
     double md;
 
 	/** Verify item cnt **/
@@ -218,15 +224,11 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 	    return 0;
 	    }
 
-	/** Get a data ptr to the 2nd data type value **/
-	switch(i1->DataType)
+	/** Check data type **/
+	if (i1->DataType != DATA_T_INTEGER && i1->DataType != DATA_T_DOUBLE && i1->DataType != DATA_T_MONEY)
 	    {
-	    case DATA_T_INTEGER: dptr = &(i1->Integer); break;
-	    case DATA_T_DOUBLE: dptr = &(i1->Types.Double); break;
-	    case DATA_T_MONEY: dptr = &(i1->Types.Money); break;
-	    default:
-	        mssError(1,"EXP","Only integer,double,money types allowed for '/'");
-		return -1;
+	    mssError(1,"EXP","Only integer,double,money types allowed for '/'");
+	    return -1;
 	    }
 
 	/** Check for divide by zero **/
@@ -340,9 +342,23 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 			tree->Types.Money.FractionPart = mv;
 			break;
 		    case DATA_T_MONEY:
-		        tree->DataType = DATA_T_MONEY;
-			mssError(1,"EXP","Unimplemented money <divide> x operation");
-			return -1;
+			mv = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
+			mv2 = ((long long)(i1->Types.Money.WholePart)) * 10000 + i1->Types.Money.FractionPart;
+			if (mv2 == 0)
+			    {
+			    mssError(1,"EXP","Attempted divide by zero");
+			    return -1;
+			    }
+			if ((mv % mv2) == 0 && (mv / mv2) <= 0x7FFFFFFFLL && (mv / mv2) >= -0x80000000LL)
+			    {
+			    tree->DataType = DATA_T_INTEGER;
+			    tree->Integer = mv / mv2;
+			    }
+			else
+			    {
+			    tree->DataType = DATA_T_DOUBLE;
+			    tree->Types.Double = (double)mv / (double)mv2;
+			    }
 		        break;
 		    }
 	        break;
@@ -364,8 +380,9 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
     {
     pExpression i0,i1;
     void* dptr;
-    int n, i;
+    int n, i, j;
     char* ptr;
+    char* str;
     long long mv;
     double md;
 
@@ -387,6 +404,9 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 	/** If either is NULL, result is NULL. **/
 	if ((i0->Flags | i1->Flags) & EXPR_F_NULL)
 	    {
+	    // FIXME This needs to be further built out.
+	    if (i0->DataType == DATA_T_DOUBLE && i1->DataType == DATA_T_DOUBLE)
+		tree->DataType = DATA_T_DOUBLE;
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
 	    }
@@ -410,13 +430,47 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 	switch(i0->DataType)
 	    {
 	    case DATA_T_INTEGER: 
-	        tree->Integer = i0->Integer * objDataToInteger(i1->DataType, dptr, NULL);
-		tree->DataType = DATA_T_INTEGER;
+		switch(i1->DataType)
+		    {
+		    case DATA_T_DOUBLE:
+			tree->DataType = DATA_T_DOUBLE;
+			tree->Types.Double = i0->Integer * i1->Types.Double;
+			break;
+		    case DATA_T_MONEY:
+			tree->DataType = DATA_T_MONEY;
+			mv = ((long long)(i1->Types.Money.WholePart)) * 10000 + i1->Types.Money.FractionPart;
+			mv *= i0->Integer;
+			break;
+		    case DATA_T_STRING:
+			tree->DataType = DATA_T_STRING;
+			if (i0->Integer < 0)
+			    {
+			    mssError(1,"EXP","Strings can only be multiplied by a non-negative integer");
+			    return -1;
+			    }
+			i = i0->Integer;
+			str = i1->String;
+			break;
+		    default:
+			tree->Integer = i0->Integer * objDataToInteger(i1->DataType, dptr, NULL);
+			tree->DataType = DATA_T_INTEGER;
+			break;
+		    }
 		break;
 
 	    case DATA_T_DOUBLE:
-	        tree->Types.Double = i0->Types.Double * objDataToDouble(i1->DataType, dptr);
-		tree->DataType = DATA_T_DOUBLE;
+		switch(i1->DataType)
+		    {
+		    case DATA_T_MONEY:
+			tree->DataType = DATA_T_MONEY;
+			mv = ((long long)(i1->Types.Money.WholePart)) * 10000 + i1->Types.Money.FractionPart;
+			mv *= i0->Types.Double;
+			break;
+		    default:
+			tree->Types.Double = i0->Types.Double * objDataToDouble(i1->DataType, dptr);
+			tree->DataType = DATA_T_DOUBLE;
+			break;
+		    }
 		break;
 
 	    case DATA_T_MONEY:
@@ -440,14 +494,6 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 			mssError(1,"EXP","Can only multiply a money data type by an integer or double");
 			return -1;
 		    }
-		tree->Types.Money.WholePart = mv/10000;
-		mv = mv % 10000;
-		if (mv < 0)
-		    {
-		    mv += 10000;
-		    tree->Types.Money.WholePart -= 1;
-		    }
-		tree->Types.Money.FractionPart = mv;
 		break;
 
 	    case DATA_T_STRING:
@@ -457,32 +503,50 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 		    return -1;
 		    }
 		tree->DataType = DATA_T_STRING;
-		n = strlen(i0->String);
-	        if (tree->Alloc && tree->String)
-	            {
-		    nmSysFree(tree->String);
-		    tree->String = NULL;
-		    }
-		tree->Alloc = 0;
-		if (n*i1->Integer >= 64)
-		    {
-		    tree->String = (char*)nmSysMalloc(n*i1->Integer+1);
-		    tree->Alloc = 1;
-		    }
-		else
-		    tree->String = tree->Types.StringBuf;
-		ptr = tree->String;
-		for(i=0;i<i1->Integer;i++)
-		    {
-		    memcpy(ptr, i0->String, n);
-		    ptr += n;
-		    }
-		*ptr = '\0';
+		i = i1->Integer;
+		str = i0->String;
 		break;
 
 	    default:
 	        mssError(1,"EXP","Only integer, double, and money types supported by *");
 		return -1;
+	    }
+
+	/** Common processing **/
+	if (tree->DataType == DATA_T_MONEY)
+	    {
+	    tree->Types.Money.WholePart = mv/10000;
+	    mv = mv % 10000;
+	    if (mv < 0)
+		{
+		mv += 10000;
+		tree->Types.Money.WholePart -= 1;
+		}
+	    tree->Types.Money.FractionPart = mv;
+	    }
+	else if (tree->DataType == DATA_T_STRING)
+	    {
+	    n = strlen(str);
+	    if (tree->Alloc && tree->String)
+		{
+		nmSysFree(tree->String);
+		tree->String = NULL;
+		}
+	    tree->Alloc = 0;
+	    if (n*i >= 64)
+		{
+		tree->String = (char*)nmSysMalloc(n*i+1);
+		tree->Alloc = 1;
+		}
+	    else
+		tree->String = tree->Types.StringBuf;
+	    ptr = tree->String;
+	    for(j=0;j<i;j++)
+		{
+		memcpy(ptr, str, n);
+		ptr += n;
+		}
+	    *ptr = '\0';
 	    }
 
     return 0;
@@ -499,6 +563,7 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
     void* dptr;
     char* ptr;
     int n;
+    MoneyType m;
 
 	/** Verify item cnt **/
 	if (tree->Children.nItems != 2) 
@@ -520,6 +585,18 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
+	    }
+
+	switch(i1->DataType)
+	    {
+	    case DATA_T_INTEGER: dptr = &(i1->Integer); break;
+	    case DATA_T_STRING: dptr = i1->String; break;
+	    case DATA_T_DOUBLE: dptr = &(i1->Types.Double); break;
+	    case DATA_T_MONEY: dptr = &(i1->Types.Money); break;
+	    case DATA_T_DATETIME: dptr = &(i1->Types.Date); break;
+	    default:
+		mssError(1,"EXP","Unexpected data type for operand #2 of '-': %d",i1->DataType);
+		return -1;
 	    }
 
 	/** Perform the operation depending on data type **/
@@ -549,6 +626,9 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 			    tree->Types.Money.FractionPart = 10000 - i1->Types.Money.FractionPart;
 			    }
 			break;
+		    default:
+			tree->Integer = i0->Integer - objDataToInteger(i1->DataType, dptr, NULL);
+			break;
 		    }
 		break;
 
@@ -566,6 +646,10 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 		    case DATA_T_MONEY:
 		        tree->DataType = DATA_T_DOUBLE;
 			tree->Types.Double = i0->Types.Double - (i1->Types.Money.WholePart + i1->Types.Money.FractionPart/10000.0);
+			break;
+		    default:
+		        tree->DataType = DATA_T_DOUBLE;
+			tree->Types.Double = i0->Types.Double - objDataToDouble(i1->DataType, dptr);
 			break;
 		    }
 		break;
@@ -595,22 +679,25 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 			    tree->Types.Money.WholePart--;
 			    }
 		        break;
+		    default:
+			if (objDataToMoney(i1->DataType, dptr, &m) < 0)
+			    {
+			    mssError(1,"EXP","Invalid conversion for subtraction from 'money' data type");
+			    return -1;
+			    }
+		        tree->DataType = DATA_T_MONEY;
+			tree->Types.Money.WholePart = i0->Types.Money.WholePart - m.WholePart;
+			tree->Types.Money.FractionPart = 10000 + i0->Types.Money.FractionPart - m.FractionPart;
+			if (tree->Types.Money.FractionPart >= 10000)
+			    tree->Types.Money.FractionPart -= 10000;
+			else
+			    tree->Types.Money.WholePart--;
+			break;
 		    }
 		break;
 
 	    case DATA_T_STRING:
 		/** subtracting from a string -- remove the tail -- reverse of string concat with +  **/
-		switch(i1->DataType)
-		    {
-		    case DATA_T_INTEGER: dptr = &(i1->Integer); break;
-		    case DATA_T_STRING: dptr = i1->String; break;
-		    case DATA_T_DOUBLE: dptr = &(i1->Types.Double); break;
-		    case DATA_T_MONEY: dptr = &(i1->Types.Money); break;
-		    case DATA_T_DATETIME: dptr = &(i1->Types.Date); break;
-		    default:
-			mssError(1,"EXP","Unexpected data type for operand #2 of '-': %d",i1->DataType);
-			return -1;
-		    }
 		ptr = objDataToStringTmp(i1->DataType, dptr, 0);
 		tree->DataType = DATA_T_STRING;
 		if (strlen(ptr) > strlen(i0->String) || strcmp(ptr, i0->String + (strlen(i0->String) - strlen(ptr))) != 0)
@@ -715,11 +802,28 @@ expEvalPlus(pExpression tree, pParamObjects objlist)
 		return -1;
 	    }
 
-	/** If first is an Integer, do integer addition. **/
+	/** Select how to do this based on the data type **/
 	switch(i0->DataType)
 	    {
+	    /** Integer - promote to Double or Money if that is 2nd arg **/
 	    case DATA_T_INTEGER:
-	        tree->Integer = i0->Integer + objDataToInteger(i1->DataType, dptr, NULL);
+		switch (i1->DataType)
+		    {
+		    case DATA_T_DOUBLE:
+			tree->DataType = DATA_T_DOUBLE;
+			tree->Types.Double = i1->Types.Double + i0->Integer;
+			break;
+
+		    case DATA_T_MONEY:
+			tree->DataType = DATA_T_MONEY;
+			tree->Types.Money.WholePart = i1->Types.Money.WholePart + i0->Integer;
+			tree->Types.Money.FractionPart = i1->Types.Money.FractionPart;
+			break;
+
+		    default:
+			tree->Integer = i0->Integer + objDataToInteger(i1->DataType, dptr, NULL);
+			break;
+		    }
 		break;
 
 	    case DATA_T_STRING:
@@ -738,7 +842,9 @@ expEvalPlus(pExpression tree, pParamObjects objlist)
 		    }
 		tree->String = (char*)nmSysMalloc(i + strlen(ptr) + 1);
 		tree->Alloc = 1;
-		sprintf(tree->String,"%*.*s%s",i,i, i0->String, ptr);
+		strtcpy(tree->String, i0->String, i+1);
+		strcat(tree->String, ptr);
+		/*sprintf(tree->String,"%*.*s%s",i,i, i0->String, ptr);*/
 		break;
 
 	    case DATA_T_DOUBLE:
@@ -758,6 +864,10 @@ expEvalPlus(pExpression tree, pParamObjects objlist)
 
 	    case DATA_T_DATETIME:
 	        mssError(1,"EXP","Cannot add DATETIME values together");
+	        return -1;
+
+	    default:
+	        mssError(1,"EXP","Unsupported data type for first operand to +");
 	        return -1;
 	    }
 
@@ -828,32 +938,51 @@ expEvalAnd(pExpression tree, pParamObjects objlist)
     int i,t;
     int short_circuiting = 0;
     pExpression child;
+    int has_null;
 
 	/** Loop through items... **/
 	tree->DataType = DATA_T_INTEGER;
 	tree->Integer = 1;
+	has_null = 0;
 	for(i=0;i<tree->Children.nItems;i++) 
 	    {
 	    child = (pExpression)(tree->Children.Items[i]);
 	    if (short_circuiting)
 		{
-		child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		if (child->AggLevel > 0 || (child->Flags & EXPR_F_HASWINDOWFN))
+		    {
+		    if (exp_internal_EvalAggregates(child, objlist) < 0)
+			return -1;
+		    }
+		else
+		    {
+		    if (objlist)
+			child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		    }
 		}
 	    else
 		{
 		t=exp_internal_EvalTree(child,objlist);
-		if (t < 0 || child->DataType != DATA_T_INTEGER) 
+		if (t < 0)
+		    return -1;
+		if (!(child->Flags & EXPR_F_NULL) && child->DataType != DATA_T_INTEGER) 
 		    {
 		    mssError(1,"EXP","The AND operator only works on valid integer/boolean values");
 		    return -1;
 		    }
-		if (child->Integer == 0) 
+		if (child->Flags & EXPR_F_NULL)
+		    has_null = 1;
+		if (child->Flags & EXPR_F_INDETERMINATE)
+		    tree->Flags |= EXPR_F_INDETERMINATE;
+		if (!(child->Flags & EXPR_F_INDETERMINATE) && !(child->Flags & EXPR_F_NULL) && child->Integer == 0)
 		    {
 		    tree->Integer = 0;
 		    short_circuiting = 1;
 		    }
 		}
 	    }
+	if (tree->Integer == 1 && has_null)
+	    tree->Flags |= EXPR_F_NULL;
 
     return tree->Integer;
     }
@@ -867,32 +996,51 @@ expEvalOr(pExpression tree, pParamObjects objlist)
     int i,t;
     int short_circuiting = 0;
     pExpression child;
+    int has_null;
 
     	/** Loop through items **/
 	tree->DataType = DATA_T_INTEGER;
 	tree->Integer = 0;
+	has_null = 0;
 	for(i=0;i<tree->Children.nItems;i++) 
 	    {
 	    child = (pExpression)(tree->Children.Items[i]);
 	    if (short_circuiting)
 		{
-		child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		if (child->AggLevel > 0 || (child->Flags & EXPR_F_HASWINDOWFN))
+		    {
+		    if (exp_internal_EvalAggregates(child, objlist) < 0)
+			return -1;
+		    }
+		else
+		    {
+		    if (objlist)
+			child->ObjDelayChangeMask |= (objlist->ModCoverageMask & child->ObjCoverageMask);
+		    }
 		}
 	    else
 		{
 		t=exp_internal_EvalTree(child,objlist);
-		if (t < 0 || child->DataType != DATA_T_INTEGER) 
+		if (t < 0)
+		    return -1;
+		if (!(child->Flags & EXPR_F_NULL) && child->DataType != DATA_T_INTEGER)
 		    {
 		    mssError(1,"EXP","The OR operator only works on valid integer/boolean values");
 		    return -1;
 		    }
-		if (child->Integer == 1) 
+		if (child->Flags & EXPR_F_NULL)
+		    has_null = 1;
+		if (child->Flags & EXPR_F_INDETERMINATE)
+		    tree->Flags |= EXPR_F_INDETERMINATE;
+		if (!(child->Flags & EXPR_F_INDETERMINATE) && !(child->Flags & EXPR_F_NULL) && child->Integer != 0)
 		    {
 		    tree->Integer = 1;
 		    short_circuiting = 1;
 		    }
 		}
 	    }
+	if (tree->Integer == 0 && has_null)
+	    tree->Flags |= EXPR_F_NULL;
 
     return tree->Integer;;
     }
@@ -961,6 +1109,7 @@ expEvalCompare(pExpression tree, pParamObjects objlist)
     pExpression i0, i1;
     void* dptr0;
     void* dptr1;
+    Binary b0, b1;
 
 	/** Verify item cnt **/
 	if (tree->Children.nItems != 2) 
@@ -987,6 +1136,11 @@ expEvalCompare(pExpression tree, pParamObjects objlist)
 	    case DATA_T_DATETIME: dptr0 = &(i0->Types.Date); break;
 	    case DATA_T_INTVEC: dptr0 = &(i0->Types.IntVec); break;
 	    case DATA_T_STRINGVEC: dptr0 = &(i0->Types.StrVec); break;
+	    case DATA_T_BINARY:
+		b0.Data = (unsigned char*)i0->String;
+		b0.Size = i0->Size;
+		dptr0 = &b0;
+		break;
 	    default:
 		mssError(1,"EXP","Unexpected data type in LHS of comparison: %d", i0->DataType);
 		return -1;
@@ -1002,6 +1156,11 @@ expEvalCompare(pExpression tree, pParamObjects objlist)
 	    case DATA_T_DATETIME: dptr1 = &(i1->Types.Date); break;
 	    case DATA_T_INTVEC: dptr1 = &(i1->Types.IntVec); break;
 	    case DATA_T_STRINGVEC: dptr1 = &(i1->Types.StrVec); break;
+	    case DATA_T_BINARY:
+		b1.Data = (unsigned char*)i1->String;
+		b1.Size = i1->Size;
+		dptr1 = &b1;
+		break;
 	    default:
 		mssError(1,"EXP","Unexpected data type in RHS of comparison: %d", i1->DataType);
 		return -1;
@@ -1100,17 +1259,19 @@ expEvalObject(pExpression tree, pParamObjects objlist)
 	if (i0->Flags & EXPR_F_NULL) tree->Flags |= EXPR_F_NULL;
 	switch(i0->DataType)
 	    {
-	    case DATA_T_INTEGER: tree->Integer = i0->Integer; break;
-	    case DATA_T_STRING: tree->String = i0->String; tree->Alloc = 0; break;
-	    default: memcpy(&(tree->Types), &(i0->Types), sizeof(tree->Types)); break;
+	    case DATA_T_INTEGER:
+		tree->Integer = i0->Integer;
+		break;
+	    case DATA_T_BINARY:
+	    case DATA_T_STRING:
+		tree->String = i0->String;
+		tree->Size = i0->Size;
+		tree->Alloc = 0;
+		break;
+	    default:
+		memcpy(&(tree->Types), &(i0->Types), sizeof(tree->Types));
+		break;
 	    }
-		/*if (i0->DataType == DATA_T_MONEY && CxGlobals.Flags & CX_F_DEBUG)
-		    {
-		    if (tree->Flags & EXPR_F_NULL)
-			printf("O: null\n");
-		    else
-			printf("O: $ %d %2.2d\n", tree->Types.Money.WholePart, tree->Types.Money.FractionPart);
-		    }*/
 
     return 0;
     }
@@ -1135,16 +1296,22 @@ expRevEvalObject(pExpression tree, pParamObjects objlist)
 	    subtree->Flags &= ~EXPR_F_NULL;
 	    switch(tree->DataType)
 		{
-		case DATA_T_INTEGER: subtree->Integer = tree->Integer; break;
+		case DATA_T_INTEGER:
+		    subtree->Integer = tree->Integer;
+		    break;
 		case DATA_T_STRING:
+		case DATA_T_BINARY:
 		    if (subtree->Alloc && subtree->String)
 			{
 			nmSysFree(subtree->String);
 			}
 		    subtree->Alloc = 0;
 		    subtree->String = tree->String;
+		    subtree->Size = tree->Size;
 		    break;
-		default: memcpy(&(subtree->Types), &(tree->Types), sizeof(tree->Types)); break;
+		default:
+		    memcpy(&(subtree->Types), &(tree->Types), sizeof(tree->Types));
+		    break;
 		}
 	    }
 	subtree->DataType = tree->DataType;
@@ -1164,6 +1331,15 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
     char* ptr;
     void* vptr;
     int (*getfn)();
+    Binary b;
+
+	/** If no object list, set result to NULL. **/
+	if (!objlist)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_INTEGER;
+	    return 0;
+	    }
 
     	/** Which object are we getting at? **/
 	if (tree->ObjID == -1)
@@ -1171,6 +1347,12 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 	    /** If unset, but direct objsys reference using pathname, look it up **/
 	    if (tree->Parent->Name[0] == '.' || tree->Parent->Name[0] == '/')
 		{
+		/** Not allowed? **/
+		if (objlist->MainFlags & EXPR_MO_NODIRECT)
+		    {
+		    mssError(1,"EXP","Cannot open object within expression in this context");
+		    return -1;
+		    }
 		if (!objlist->Session)
 		    {
 		    /** Null if no context to eval a filename obj yet **/
@@ -1189,13 +1371,29 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 	    else
 		{
 		/** if unset because unbound to a real object, evaluate to NULL **/
-		tree->Flags |= EXPR_F_NULL;
+		tree->Flags |= (EXPR_F_NULL | EXPR_F_INDETERMINATE);
 		tree->DataType = DATA_T_INTEGER;
 		return 0;
 		}
 	    }
 	else
 	    {
+	    /** Permission check **/
+	    if (tree->ObjID == EXPR_OBJID_CURRENT && (objlist->MainFlags & EXPR_MO_NOCURRENT))
+		{
+		mssError(1,"EXP","Cannot access current object in this context");
+		return -1;
+		}
+	    else if (tree->ObjID == EXPR_OBJID_PARENT && (objlist->MainFlags & EXPR_MO_NOPARENT))
+		{
+		mssError(1,"EXP","Cannot access parent object in this context");
+		return -1;
+		}
+	    else if (tree->ObjID != EXPR_OBJID_PARENT && tree->ObjID != EXPR_OBJID_CURRENT && (objlist->MainFlags & EXPR_MO_NOOBJECT))
+		{
+		mssError(1,"EXP","Cannot access named object in this context");
+		return -1;
+		}
 	    id = expObjID(tree,objlist);
 	    if (id == EXPR_CTL_CONSTANT)
 		return 0;
@@ -1240,22 +1438,15 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 		break;
 
 	    case DATA_T_STRING: 
-	        v = getfn(obj,tree->Name,DATA_T_STRING,&(tree->String));
+	        v = getfn(obj,tree->Name,DATA_T_STRING,&ptr);
 		if (v != 0) break;
-		n = strlen(tree->String);
-		if (n < 64) 
-		    {
-		    strcpy(tree->Types.StringBuf, tree->String);
-		    tree->String = tree->Types.StringBuf;
-		    tree->Alloc=0; 
-		    }
-		else
-		    {
-		    tree->Alloc=1;
-		    ptr = tree->String;
-		    tree->String = (char*)nmSysMalloc(n+1);
-		    strcpy(tree->String,ptr);
-		    }
+		expSetString(tree, ptr);
+		break;
+
+	    case DATA_T_BINARY:
+	        v = getfn(obj,tree->Name,DATA_T_STRING,POD(&b));
+		if (v != 0) break;
+		expSetBinary(tree, b.Data, b.Size);
 		break;
 
 	    case DATA_T_DOUBLE:
@@ -1324,6 +1515,7 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
     DateTime dt;
     pMoneyType mptr;
     MoneyType m;
+    Binary b;
     int (*setfn)();
     int id;
     int rval;
@@ -1334,19 +1526,25 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 	obj = objlist->Objects[id];
 	setfn = objlist->SetAttrFn[id];
 
+	if (!obj)
+	    {
+	    mssError(1,"EXP","Reverse eval property: no such object");
+	    return -1;
+	    }
+
 	/** Set it as modified -- so it gets a new serial # **/
 	expModifyParamByID(objlist, id, obj);
 
 	/** Setting to NULL is simple... **/
+	attr_type = objlist->GetTypeFn[id](obj,tree->Name);
+	if (attr_type == DATA_T_UNAVAILABLE)
+	    attr_type = tree->DataType;
 	if (tree->Flags & EXPR_F_NULL)
-	    return setfn(obj, tree->Name, tree->DataType, NULL);
+	    return setfn(obj, tree->Name, attr_type, NULL);
 
     	/** Verify data type match. **/
 	dtptr = &(tree->Types.Date);
 	mptr = &(tree->Types.Money);
-	attr_type = objlist->GetTypeFn[id](obj,tree->Name);
-	if (attr_type == DATA_T_UNAVAILABLE)
-	    attr_type = tree->DataType;
 	if (tree->DataType != attr_type)
 	    {
 	    if (tree->DataType == DATA_T_STRING && attr_type == DATA_T_DATETIME)
@@ -1387,6 +1585,12 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 	        rval = setfn(obj,tree->Name,DATA_T_STRING,&(tree->String));
 	        break;
 
+	    case DATA_T_BINARY:
+		b.Data = (unsigned char*)tree->String;
+		b.Size = tree->Size;
+	        rval = setfn(obj,tree->Name,DATA_T_BINARY,&b);
+	        break;
+
 	    case DATA_T_DATETIME:
 	        rval = setfn(obj,tree->Name,DATA_T_DATETIME,&dtptr);
 		break;
@@ -1424,10 +1628,10 @@ expEvalFunction(pExpression tree, pParamObjects objlist)
 	if (tree->Children.nItems > 2) i2 = (pExpression)(tree->Children.Items[2]);
 
 	/** Evaluate all child items.
-	 ** The 'condition' function is special - give it control because 
+	 ** The 'condition' and 'first' functions are special - give them control because 
 	 ** of the need for short-circuit logic.
 	 **/
-	if (strcmp(tree->Name, "condition") != 0)
+	if (strcmp(tree->Name, "condition") != 0 && strcmp(tree->Name, "first") != 0)
 	    {
 	    for(i=0;i<tree->Children.nItems;i++) 
 		{
@@ -1531,6 +1735,7 @@ expEvalIn(pExpression tree, pParamObjects objlist)
     void* dptr0;
     void* dptr1;
     int i,v;
+    Binary b0, b1;
 
     	/** Is this just a straight compare with one item? **/
 	i1 = (pExpression)(tree->Children.Items[1]);
@@ -1561,6 +1766,11 @@ expEvalIn(pExpression tree, pParamObjects objlist)
 	    case DATA_T_DATETIME: dptr0 = &(i0->Types.Date); break;
 	    case DATA_T_INTVEC: dptr0 = &(i0->Types.IntVec); break;
 	    case DATA_T_STRINGVEC: dptr0 = &(i0->Types.StrVec); break;
+	    case DATA_T_BINARY:
+		b0.Data = (unsigned char*)i0->String;
+		b0.Size = i0->Size;
+		dptr0 = &b0;
+		break;
 	    default:
 		mssError(1,"EXP","Unexpected data type in LHS of IN operator: %d", i0->DataType);
 		return -1;
@@ -1580,6 +1790,11 @@ expEvalIn(pExpression tree, pParamObjects objlist)
 	        case DATA_T_DATETIME: dptr1 = &(itmp->Types.Date); break;
 	        case DATA_T_INTVEC: dptr1 = &(itmp->Types.IntVec); break;
 	        case DATA_T_STRINGVEC: dptr1 = &(itmp->Types.StrVec); break;
+		case DATA_T_BINARY:
+		    b1.Data = (unsigned char*)i1->String;
+		    b1.Size = i1->Size;
+		    dptr1 = &b1;
+		    break;
 		default:
 		    mssError(1,"EXP","Unexpected data type in list item #%d of IN operator: %d", i, itmp->DataType);
 		    return -1;
@@ -1659,7 +1874,9 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 	    {
 	    old_cm = objlist->ModCoverageMask;
 	    if (objlist == expNullObjlist) objlist->MainFlags |= EXPR_MO_RECALC;
-	    objlist->CurControl = tree->Control;
+	    if (objlist->CurControl)
+		exp_internal_UnlinkControl(objlist->CurControl);
+	    objlist->CurControl = exp_internal_LinkControl(tree->Control);
 	    objlist->ModCoverageMask = EXPR_MASK_EXTREF;
 	    if (tree->Control->PSeqID != objlist->PSeqID) 
 		{
@@ -1706,6 +1923,7 @@ expEvalTree(pExpression tree, pParamObjects objlist)
 		memcpy(tree->Control->ObjSeqID, objlist->SeqIDs, sizeof(tree->Control->ObjSeqID));
 		objlist->MainFlags &= ~EXPR_MO_RECALC;
 		}
+	    exp_internal_UnlinkControl(objlist->CurControl);
 	    objlist->CurControl = NULL;
 	    }
 
@@ -1723,6 +1941,7 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
     int (*fn)();
     int old_objmask;
     int rval;
+    int i;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -1740,34 +1959,89 @@ exp_internal_EvalTree(pExpression tree, pParamObjects objlist)
 	tree->Flags &= ~EXPR_F_NEW;
 #endif
 
-	old_objmask = objlist->ModCoverageMask;
-	objlist->ModCoverageMask |= tree->ObjDelayChangeMask;
-	
-	/** If node is NOT stale and NOT in modified cov mask, return now. **/
-	if (!(tree->Flags & (EXPR_F_NEW)) && objlist && !(tree->ObjCoverageMask & objlist->ModCoverageMask) && tree->AggLevel==0 && !(objlist->MainFlags & EXPR_MO_RECALC)) 
+	/** We only check the objlist coverage and changed flags if we have an objlist **/
+	if (objlist)
 	    {
-	    /*if (CxGlobals.Flags & CX_F_DEBUG && objlist->nObjects == 12) printf("not reevaluating node: %8.8X %8.8X\n", tree->ObjCoverageMask, objlist->ModCoverageMask);*/
-	    objlist->ModCoverageMask = old_objmask;
-	    return 0;
+	    old_objmask = objlist->ModCoverageMask;
+	    objlist->ModCoverageMask |= tree->ObjDelayChangeMask;
+	
+	    /** If node is NOT stale and NOT in modified cov mask, return now. **/
+	    if (!(tree->Flags & (EXPR_F_NEW)) && !(tree->ObjCoverageMask & objlist->ModCoverageMask) && tree->AggLevel==0 && !(objlist->MainFlags & EXPR_MO_RECALC)) 
+		{
+		/*if (CxGlobals.Flags & CX_F_DEBUG && objlist->nObjects == 12) printf("not reevaluating node: %8.8X %8.8X\n", tree->ObjCoverageMask, objlist->ModCoverageMask);*/
+		objlist->ModCoverageMask = old_objmask;
+		return 0;
+		}
 	    }
 
 	/** Call the appropriate evaluator fn based on type **/
 	if (!(tree->Flags & EXPR_F_PERMNULL)) tree->Flags &= ~EXPR_F_NULL;
+	tree->Flags &= ~EXPR_F_INDETERMINATE;
 	/*if (tree->NodeType == EXPR_N_LIST) return -1;*/
 	fn = EXP.EvalFunctions[tree->NodeType];
 	if (!fn)
 	    {
 	    tree->Flags &= ~EXPR_F_NEW;
-	    objlist->ModCoverageMask = old_objmask;
+	    if (objlist)
+		objlist->ModCoverageMask = old_objmask;
 	    return 0;
 	    }
 	rval = fn(tree,objlist);
 	if (rval >= 0)
 	    tree->Flags &= ~EXPR_F_NEW;
-	objlist->ModCoverageMask = old_objmask;
+	if (objlist)
+	    objlist->ModCoverageMask = old_objmask;
 	tree->ObjDelayChangeMask = 0;
 
+	/** Indeterminate?  For AND and OR nodes, let the evaluator function set
+	 ** this flag due to short circuit evaluation.  Otherwise, we set the flag
+	 ** here.
+	 **/
+	if (tree->NodeType != EXPR_N_AND && tree->NodeType != EXPR_N_OR)
+	    {
+	    for(i=0; i<tree->Children.nItems; i++)
+		{
+		if (((pExpression)tree->Children.Items[i])->Flags & EXPR_F_INDETERMINATE)
+		    {
+		    tree->Flags |= EXPR_F_INDETERMINATE;
+		    break;
+		    }
+		}
+	    }
+
     return rval;
+    }
+
+
+/*** exp_internal_EvalAggregates() - scan the tree, looking for aggregate
+ *** functions, and ensure that we evaluate those aggregate functions.  This
+ *** function is needed so that short-circuit evaluation works and we can
+ *** still update aggregate subtrees that need to be updated.
+ ***/
+int
+exp_internal_EvalAggregates(pExpression tree, pParamObjects objlist)
+    {
+    int i;
+    pExpression child;
+
+	/** Is this an aggregate function?  Call normal eval if so **/
+	if (tree->Flags & (EXPR_F_AGGREGATEFN | EXPR_F_WINDOWFN))
+	    {
+	    return exp_internal_EvalTree(tree, objlist);
+	    }
+	else
+	    {
+	    if (objlist)
+		tree->ObjDelayChangeMask |= (objlist->ModCoverageMask & tree->ObjCoverageMask);
+	    for(i=0; i<tree->Children.nItems; i++)
+		{
+		child = (pExpression)tree->Children.Items[i];
+		if (exp_internal_EvalAggregates(child, objlist) < 0)
+		    return -1;
+		}
+	    }
+
+    return 0;
     }
 
 

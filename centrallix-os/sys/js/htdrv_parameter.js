@@ -74,6 +74,8 @@ function pa_setvalue(v)
 	cx_hints_startnew(this);
 	this.in_startnew = false;
 	}
+
+    this.ifcProbe(ifEvent).Activate('DataChange', {Value:this.value});
     }
 
 function pa_verify()

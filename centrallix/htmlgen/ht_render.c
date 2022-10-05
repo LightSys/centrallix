@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <regex.h>
 #include <stdarg.h>
+#include <math.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -194,14 +195,14 @@ htr_internal_ProcessUserAgent(const pStructInf node, const pHtCapabilities paren
  ***     as the cx__capabilities object (for javascript)
  ***/
 void
-htr_internal_writeCxCapabilities(pHtSession s, pFile out)
+htr_internal_writeCxCapabilities(pHtSession s)
     {
-    fdWrite(out,"    cx__capabilities = new Object();\n",37,0,FD_U_PACKET);
+    htrWrite(s,"    cx__capabilities = {};\n",27);
 #define PROCESS_CAP_OUT(attr) \
-    fdWrite(out,"    cx__capabilities.",21,0,FD_U_PACKET); \
-    fdWrite(out, # attr ,strlen( # attr ),0,FD_U_PACKET); \
-    fdWrite(out," = ",3,0,FD_U_PACKET); \
-    fdWrite(out,(s->Capabilities.attr?"1;\n":"0;\n"),3,0,FD_U_PACKET);
+    htrWrite(s,"    cx__capabilities.",21); \
+    htrWrite(s, # attr ,strlen( # attr )); \
+    htrWrite(s," = ",3); \
+    htrWrite(s,(s->Capabilities.attr?"1;\n":"0;\n"),3);
 
     PROCESS_CAP_OUT(Dom0NS); //true when navigator is netscape navigator
     PROCESS_CAP_OUT(Dom0IE); //true when navigator is IE
@@ -454,10 +455,61 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 	    return -1;
 	    }
 
+	/** Has this driver been used this session yet? **/
+	if (xhLookup(&session->UsedDrivers, drv->WidgetName) == NULL)
+	    {
+	    xhAdd(&session->UsedDrivers, drv->WidgetName, (void*)drv);
+	    if (drv->Setup)
+		{
+		if (drv->Setup(session) < 0)
+		    return -1;
+		}
+	    }
+
+	/** Crossing a namespace boundary? **/
+	htrCheckNSTransition(session, widget->Parent, widget);
+
 	/** will be a *Render function found in a htmlgen/htdrv_*.c file (eg htpageRender) **/
 	rval = drv->Render(session, widget, z);
 
+	/** Going back to previous namespace? **/
+	htrCheckNSTransitionReturn(session, widget->Parent, widget);
+
     return rval;
+    }
+
+
+/*** htrCheckNSTransition -- check to see if we are transitioning between
+ *** namespaces, and if so, emit the code to switch the context.
+ ***/
+int
+htrCheckNSTransition(pHtSession s, pWgtrNode parent, pWgtrNode child)
+    {
+
+	/** Crossing a namespace boundary? **/
+	if (child && parent && strcmp(child->Namespace, parent->Namespace) != 0)
+	    {
+	    htrAddNamespace(s, NULL, child->Namespace, 1);
+	    }
+
+    return 0;
+    }
+
+
+/*** htrCheckNSTransitionReturn -- check to see if we are transitioning between
+ *** namespaces, and if so, emit the code to switch the context.
+ ***/
+int
+htrCheckNSTransitionReturn(pHtSession s, pWgtrNode parent, pWgtrNode child)
+    {
+
+	/** Crossing a namespace boundary? **/
+	if (child && parent && strcmp(child->Namespace, parent->Namespace) != 0)
+	    {
+	    htrLeaveNamespace(s);
+	    }
+
+    return 0;
     }
 
 
@@ -741,12 +793,23 @@ htrAddScriptInit_va(pHtSession s, char* fmt, ... )
     {
     va_list va;
 
+	if (!s->Namespace->HasScriptInits)
+	    {
+	    /** No script inits for this namespace yet?  Issue the context
+	     ** switch if no inits yet.
+	     **/
+	    s->Namespace->HasScriptInits = 1;
+	    /*htrAddScriptInit_va(s, "\n    nodes = wgtrNodeList(%STR&SYM);\n", s->Namespace->DName);*/
+	    htrAddScriptInit_va(s, "\n    ns = \"%STR&SYM\";\n", s->Namespace->DName);
+	    }
+
 	va_start(va, fmt);
 	htr_internal_QPAddText(s, htrAddScriptInit, fmt, va);
 	va_end(va);
 
     return 0;
     }
+
 
 /*** htrAddScriptCleanup_va() - use a vararg list (like sprintf, etc) to add a
  *** formatted string to cleanup function of the document.
@@ -1025,12 +1088,12 @@ htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype)
  *** in a number of different ways in the actual user agent itself.
  ***/
 int
-htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, const char* fmt, ...)
+htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, char* cls, const char* fmt, ...)
     {
     va_list va;
 
 	/** Add the opening tag **/
-	htrAddBodyItemLayerStart(s, flags, id, cnt);
+	htrAddBodyItemLayerStart(s, flags, id, cnt, cls);
 
 	/** Add the content **/
 	va_start(va, fmt);
@@ -1052,7 +1115,7 @@ htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, const char* f
  *** PARAMETER WHICH IS A FORMAT STRING FOR THE LAYER'S ID!!!
  ***/
 int
-htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt)
+htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* cls)
     {
     char* starttag;
     char id_sbuf[64];
@@ -1071,7 +1134,7 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt)
 
 	/** Add it. **/
 	qpfPrintf(NULL, id_sbuf,sizeof(id_sbuf),id,cnt);
-	htrAddBodyItem_va(s, "<%STR id=\"%STR&HTE\">", starttag, id_sbuf);
+	htrAddBodyItem_va(s, "<%STR %[class=\"%STR&HTE\" %]id=\"%STR&HTE\">", starttag, cls != NULL, cls, id_sbuf);
 
     return 0;
     }
@@ -1099,6 +1162,52 @@ htrAddBodyItemLayerEnd(pHtSession s, int flags)
 
 	/** Add it. **/
 	htrAddBodyItem_va(s, "</%STR>", endtag);
+
+    return 0;
+    }
+
+
+/*** htrGetExpParams - retrieve the list of values used in an expression
+ *** and put them in a javascript array.
+ ***/
+int
+htrGetExpParams(pExpression exp, pXString xs)
+    {
+    int i, first;
+    XArray objs, props;
+    char* obj;
+    char* prop;
+
+	/** setup **/
+	xaInit(&objs, 16);
+	xaInit(&props, 16);
+
+	/** Find the properties accessed by the expression **/
+	expGetPropList(exp, &objs, &props);
+
+	/** Build the list **/
+	xsCopy(xs,"[",-1);
+	first=1;
+	for(i=0;i<objs.nItems;i++)
+	    {
+	    obj = (char*)(objs.Items[i]);
+	    prop = (char*)(props.Items[i]);
+	    if (obj && prop)
+		{
+		xsConcatQPrintf(xs,"%[,%]{obj:'%STR&JSSTR',attr:'%STR&JSSTR'}", !first, obj, prop);
+		first = 0;
+		}
+	    }
+	xsConcatenate(xs,"]",1);
+
+	/** cleanup **/
+	for(i=0;i<objs.nItems;i++)
+	    {
+	    if (objs.Items[i]) nmSysFree(objs.Items[i]);
+	    if (props.Items[i]) nmSysFree(props.Items[i]);
+	    }
+	xaDeInit(&objs);
+	xaDeInit(&props);
 
     return 0;
     }
@@ -1140,7 +1249,7 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 	    }
 	xsConcatenate(&xs,"]",1);
 	expGenerateText(exp, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT);
-	htrAddExpressionItem_va(s, "    pg_expression('%STR&SYM','%STR&SYM','%STR&JSSTR',%STR,'%STR&SYM');\n", objname, property, exptxt.String, xs.String, s->Namespace->DName);
+	htrAddExpressionItem_va(s, "    pg_expression('%STR&SYM','%STR&SYM',function (_context, _this) { return %STR; },%STR,'%STR&SYM');\n", objname, property, exptxt.String, xs.String, s->Namespace->DName);
 
 	for(i=0;i<objs.nItems;i++)
 	    {
@@ -1190,7 +1299,7 @@ htrRenderSubwidgets(pHtSession s, pWgtrNode widget, int zlevel)
 
 	/** Open the query for subwidgets **/
 	/*
-	qy = objOpenQuery(widget_obj, "", NULL, NULL, NULL);
+	qy = objOpenQuery(widget_obj, "", NULL, NULL, NULL, 0);
 	if (qy)
 	    {
 	    while((sub_widget_obj = objQueryFetch(qy, O_RDONLY)))
@@ -1215,12 +1324,15 @@ htrRenderSubwidgets(pHtSession s, pWgtrNode widget, int zlevel)
  *** then an include statement is generated in any event.
  ***/
 int
-htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
+htr_internal_GenInclude(pHtSession s, char* filename)
     {
     pStruct c_param;
     pObject include_file;
     char buf[256];
+    char path[256];
+    char* slash;
     int rcnt;
+    ObjData pod;
 
 	/** Insert file directly? **/
 	c_param = stLookup_ne(s->Params, "ls__collapse_includes");
@@ -1229,19 +1341,87 @@ htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
 	    include_file = objOpen(s->ObjSession, filename, O_RDONLY, 0600, "application/x-javascript");
 	    if (include_file)
 		{
-		fdPrintf(output, "<SCRIPT language=\"javascript\">\n// Included from: %s\n\n", filename);
+		htrQPrintf(s, "<script language=\"javascript\">\n// Included from: %STR&HTE\n\n", filename);
 		while((rcnt = objRead(include_file, buf, sizeof(buf), 0, 0)) > 0)
 		    {
-		    fdWrite(output, buf, rcnt, 0, FD_U_PACKET);
+		    htrWrite(s, buf, rcnt);
 		    }
 		objClose(include_file);
-		fdPrintf(output, "\n</SCRIPT>\n");
+		htrQPrintf(s, "\n</script>\n");
 		return 0;
 		}
 	    }
 
 	/** Otherwise, just generate an include statement **/
-	fdPrintf(output, "\n<SCRIPT language=\"javascript\" src=\"%s\"></SCRIPT>\n", filename);
+	buf[0] = '\0';
+	include_file = objOpen(s->ObjSession, filename, O_RDONLY, 0600, "application/x-javascript");
+	if (include_file)
+	    {
+	    if (objGetAttrValue(include_file, "last_modification", DATA_T_DATETIME, &pod) == 0)
+		{
+		snprintf(buf, sizeof(buf), "%lld", pod.DateTime->Value);
+		}
+	    objClose(include_file);
+	    }
+	strtcpy(path, filename, sizeof(path));
+	slash = strrchr(path, '/');
+	if (slash)
+	    {
+	    *slash = '\0';
+	    htrQPrintf(s, "\n<script language=\"javascript\" src=\"%STR%[/CXDC:%STR%]/%STR\"></script>\n", path, buf[0], buf, slash+1);
+	    }
+
+    return 0;
+    }
+
+
+/*** htr_internal_WriteWgtrProperty - write one widget property in javascript
+ *** as a part of the widget tree
+ ***/
+int
+htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
+    {
+    int t;
+    ObjData od;
+    int rval;
+    pExpression code;
+    XString exptxt;
+    XString proptxt;
+
+	t = wgtrGetPropertyType(tree, propname);
+	if (t > 0)
+	    {
+	    rval = wgtrGetPropertyValue(tree, propname, t, &od);
+	    if (rval == 1)
+		{
+		/** null **/
+		htrAddScriptWgtr_va(s, "%STR&SYM:null, ", propname);
+		}
+	    else if (rval == 0)
+		{
+		switch(t)
+		    {
+		    case DATA_T_INTEGER:
+			htrAddScriptWgtr_va(s, "%STR&SYM:%INT, ", propname, od.Integer);
+			break;
+
+		    case DATA_T_STRING:
+			htrAddScriptWgtr_va(s, "%STR&SYM:'%STR&JSSTR', ", propname, od.String);
+			break;
+
+		    case DATA_T_CODE:
+			wgtrGetPropertyValue(tree,propname,DATA_T_CODE,POD(&code));
+			xsInit(&exptxt);
+			xsInit(&proptxt);
+			htrGetExpParams(code, &proptxt);
+			expGenerateText(code, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT);
+			htrAddScriptWgtr_va(s, "%STR&SYM:{val:null, exp:function(_this,_context){return ( %STR );}, props:%STR, revexp:null}, ", propname, exptxt.String, proptxt.String);
+			xsDeInit(&proptxt);
+			xsDeInit(&exptxt);
+			break;
+		    }
+		}
+	    }
 
     return 0;
     }
@@ -1262,6 +1442,7 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
     int rendercnt;
     char* scope = NULL;
     char* scopename = NULL;
+    char* propname;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -1282,14 +1463,39 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	objinit = inf?(inf->ObjectLinkage):NULL;
 	ctrinit = inf?(inf->ContainerLinkage):NULL;
 	htrAddScriptWgtr_va(s, 
-		"        %STR&*LEN{name:'%STR&SYM'%[, obj:%STR%]%[, cobj:%STR%]%[, scope:'%STR&JSSTR'%]%[, sn:'%STR&JSSTR'%], type:'%STR&JSSTR', vis:%STR", 
+		"        %STR&*LEN{name:'%STR&SYM'%[, obj:%STR%]%[, cobj:%STR%]%[, scope:'%STR&JSSTR'%]%[, sn:'%STR&JSSTR'%], type:'%STR&JSSTR', vis:%STR, ctl:%STR%[, namespace:'%STR&SYM'%]", 
 		indent*4, "                                        ",
 		tree->Name,
 		objinit, objinit,
 		ctrinit, ctrinit,
 		scope, scope,
 		scopename, scopename,
-		tree->Type, (tree->Flags & WGTR_F_NONVISUAL)?"false":"true");
+		tree->Type, 
+		(tree->Flags & WGTR_F_NONVISUAL)?"false":"true",
+		(tree->Flags & WGTR_F_CONTROL)?"true":"false",
+		(!tree->Parent || strcmp(tree->Parent->Namespace, tree->Namespace)),
+		tree->Namespace);
+
+	/** Parameters **/
+	htrAddScriptWgtr_va(s, ", param:{");
+	if (!(tree->Flags & WGTR_F_NONVISUAL))
+	    {
+	    htr_internal_WriteWgtrProperty(s, tree, "x");
+	    htr_internal_WriteWgtrProperty(s, tree, "y");
+	    htr_internal_WriteWgtrProperty(s, tree, "width");
+	    htr_internal_WriteWgtrProperty(s, tree, "height");
+	    htr_internal_WriteWgtrProperty(s, tree, "r_x");
+	    htr_internal_WriteWgtrProperty(s, tree, "r_y");
+	    htr_internal_WriteWgtrProperty(s, tree, "r_width");
+	    htr_internal_WriteWgtrProperty(s, tree, "r_height");
+	    }
+	propname = wgtrFirstPropertyName(tree);
+	while(propname)
+	    {
+	    htr_internal_WriteWgtrProperty(s, tree, propname);
+	    propname = wgtrNextPropertyName(tree);
+	    }
+	htrAddScriptWgtr_va(s, "}");
 
 	/** ... and any subwidgets **/ //TODO: there's a glitch in this section in which a comma is placed after the last element of an array.
 	for(rendercnt=i=0;i<childcnt;i++)
@@ -1351,14 +1557,17 @@ htr_internal_InitNamespace(pHtSession s, pHtNamespace ns)
 	 ** init by setting 'cobj', otherwise leave the parent linkage totally
 	 ** empty.
 	 **/
-	if (ns->ParentCtr[0] && ns->Parent)
-	    htrAddScriptWgtr_va(s, "    %STR&SYM = wgtrSetupTree(pre_%STR&SYM, \"%STR&SYM\", {cobj:wgtrGetContainer(wgtrGetNode(%STR&SYM,\"%STR&SYM\"))});\n",
-		    ns->DName, ns->DName, ns->DName, ns->Parent->DName, ns->ParentCtr);
-	else
-	    htrAddScriptWgtr_va(s, "    %STR&SYM = wgtrSetupTree(pre_%STR&SYM, \"%STR&SYM\", null);\n", 
-		    ns->DName, ns->DName, ns->DName);
-	htrAddScriptWgtr_va(s, "    pg_namespaces[\"%STR&SYM\"] = %STR&SYM;\n",
-		ns->DName, ns->DName);
+	if (!ns->IsSubnamespace)
+	    {
+	    if (ns->ParentCtr[0] && ns->Parent)
+		htrAddScriptWgtr_va(s, "    %STR&SYM = wgtrSetupTree(pre_%STR&SYM, \"%STR&SYM\", {cobj:wgtrGetContainer(wgtrGetNode(\"%STR&SYM\",\"%STR&SYM\"))});\n",
+			ns->DName, ns->DName, ns->DName, ns->Parent->DName, ns->ParentCtr);
+	    else
+		htrAddScriptWgtr_va(s, "    %STR&SYM = wgtrSetupTree(pre_%STR&SYM, \"%STR&SYM\", null);\n", 
+			ns->DName, ns->DName, ns->DName);
+	    /*htrAddScriptWgtr_va(s, "    pg_namespaces[\"%STR&SYM\"] = %STR&SYM;\n",
+		    ns->DName, ns->DName);*/
+	    }
 
 	/** Init child namespaces too **/
 	for(child = ns->FirstChild; child; child=child->NextSibling)
@@ -1393,6 +1602,40 @@ htr_internal_FreeNamespace(pHtNamespace ns)
     }
 
 
+/*** htrWrite - write data to the output stream
+ ***/
+int
+htrWrite(pHtSession s, char* buf, int len)
+    {
+    if (len < 0)
+	len = strlen(buf);
+    return s->StreamWrite(s->Stream, buf, len, 0, 0);
+    }
+
+
+/*** htrQPrintf - write formatted data to output stream
+ ***/
+int
+htrQPrintf(pHtSession s, char* fmt, ...)
+    {
+    pXString xs;
+    va_list va;
+    int rval;
+   
+	/** print to xstring first, then output via htrWrite() **/
+	xs = xsNew();
+	if (!xs)
+	    return -1;
+	va_start(va, fmt);
+	xsQPrintf_va(xs, fmt, va);
+	va_end(va);
+	rval = htrWrite(s, xsString(xs), -1);
+	xsFree(xs);
+
+    return rval;
+    }
+
+
 /*** htrRender - generate an HTML document given the app structure subtree
  *** as an open ObjectSystem object.
  ***/
@@ -1402,19 +1645,20 @@ htr_internal_FreeNamespace(pHtNamespace ns)
     understanding of returned infrastructure is needed first.
  **/
 int
-htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info)
+htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info)
     {
     pHtSession s;
     int i,n,j,k,cnt,cnt2;
     pStrValue tmp;
     char* ptr;
     pStrValue sv;
-    char sbuf[HT_SBUF_SIZE];
+    char sbuf[HT_SBUF_SIZE*2];
     char ename[40];
     pHtDomEvent e;
     char* agent = NULL;
     char* classname = NULL;
     int rval;
+    pXString err_xs;
 
 	/** What UA is on the other end of the connection? **/
 	agent = (char*)mssGetParam("User-Agent");
@@ -1432,8 +1676,13 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	s->ObjSession = obj_s;
 	s->ClientInfo = c_info;
 	s->Namespace = &(s->Page.RootNamespace);
+	s->Namespace->IsSubnamespace = 0;
+	s->Namespace->HasScriptInits = 1;
 	strtcpy(s->Namespace->DName, wgtrGetRootDName(tree), sizeof(s->Namespace->DName));
 	s->IsDynamic = 1;
+	s->Stream = stream;
+	s->StreamWrite = stream_write;
+	xhInit(&s->UsedDrivers, 257, 0);
 
 	/** Parent container name specified? I (Seth) think that this
 	    GET parameter is only used when a component is
@@ -1539,9 +1788,10 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	/** first thing in the startup() function should be calling build_wgtr **/
 	htrAddScriptInit_va(s, "    build_wgtr_%STR&SYM();\n",
 		s->Namespace->DName);
-	htrAddScriptInit_va(s, "    var nodes = wgtrNodeList(%STR&SYM);\n"
-			       "    var rootname = \"%STR&SYM\";\n",
-		s->Namespace->DName, s->Namespace->DName);
+	/*htrAddScriptInit_va(s, "\n    var nodes = wgtrNodeList(%STR&SYM);\n",*/
+	htrAddScriptInit_va(s, "\n    var ns = \"%STR&SYM\";\n",
+			       /*"    var rootname = \"%STR&SYM\";\n", */
+		s->Namespace->DName /*, s->Namespace->DName */);
 	/*htrAddStylesheetItem(s, "\tdiv {position:absolute; visibility:inherit; overflow:hidden; }\n");*/
 
 	/** Render the top-level widget -- the function that's run
@@ -1569,53 +1819,60 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 #endif
 
 
+	/** Could not render? **/
 	if (rval < 0)
 	    {
-	    fdPrintf(output, "<HTML><HEAD><TITLE>Error</TITLE></HEAD><BODY bgcolor=\"white\"><h1>An Error occured while attempting to render this document</h1><br><pre>");
-	    mssPrintError(output);
+	    err_xs = xsNew();
+	    if (err_xs)
+		{
+		mssStringError(err_xs);
+		htrQPrintf(s, "<html><head><title>Error</title></head><body bgcolor=\"white\"><h1>An Error occured while attempting to render this document</h1><br><pre>%STR&HTE</pre></body></html>\r\n", xsString(err_xs));
+		xsFree(err_xs);
+		}
 	    }
 	
 	/** Output the DOCTYPE for browsers supporting HTML 4.0 -- this will make them use HTML 4.0 Strict **/
 	/** FIXME: should probably specify the DTD.... **/
 	if(s->Capabilities.HTML40 && !s->Capabilities.Dom0IE)
-	    fdWrite(output, "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">\n",91,0,FD_U_PACKET);
+	    htrWrite(s, "<!doctype html>\n\n", -1);
 
 	/** Write the HTML out... **/
-	snprintf(sbuf, HT_SBUF_SIZE, "<!--\nGenerated by Centrallix v%s (http://www.centrallix.org)\n"
-				     "(c) 1998-2006 by LightSys Technology Services, Inc.\n\n", PACKAGE_VERSION);
-	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
-	snprintf(sbuf, HT_SBUF_SIZE, "This DHTML document contains Javascript and other DHTML\n"
-				     "generated from Centrallix which is licensed under the\n"
-				     "GNU GPL (http://www.gnu.org/licenses/gpl.txt).  Any copying\n");
-	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
-	snprintf(sbuf, HT_SBUF_SIZE, "modifying, or redistributing of this generated code falls\n"
-				     "under the restrictions of the GPL.\n"
-				     "-->\n");
-	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
-	fdWrite(output, "<HTML>\n<HEAD>\n",14,0,FD_U_PACKET);
-	snprintf(sbuf, HT_SBUF_SIZE, "    <META NAME=\"Generator\" CONTENT=\"Centrallix v%s\">\n", cx__version);
-	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
-	fdPrintf(output, "    <META NAME=\"Pragma\" CONTENT=\"no-cache\">\n");
+	htrQPrintf(s,	"<!--\n"
+			"Generated by Centrallix/%STR (http://www.centrallix.org)\n"
+			"Centrallix is (c) 1998-2017 by LightSys Technology Services, Inc.\n"
+			"and is free software, licensed under the GNU GPL version 2, or\n"
+			"at your option any later version.  This software is provided\n"
+			"with ABSOLUTELY NO WARRANTY, NOT EVEN THE IMPLIED WARRANTIES\n"
+			"OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.\n"
+			"-->\n\n"
+			, cx__version);
 
-	fdWrite(output, "    <STYLE TYPE=\"text/css\">\n", 28, 0, FD_U_PACKET);
+	htrQPrintf(s,	"<html>\n"
+			"<head>\n"
+			"    <meta name=\"generator\" content=\"Centrallix/%STR\">\n"
+			"    <meta name=\"pragma\" content=\"no-cache\">\n"
+			"    <meta name=\"referrer\" content=\"same-origin\">\n"
+			, cx__version);
+
+	htrWrite(s, "    <style type=\"text/css\">\n", -1);
 	/** Write the HTML stylesheet items. **/
 	for(i=0;i<s->Page.HtmlStylesheet.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.HtmlStylesheet.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
-	fdWrite(output, "    </STYLE>\n", 13, 0, FD_U_PACKET);
+	htrWrite(s, "    </style>\n", -1);
 	/** Write the HTML header items. **/
 	for(i=0;i<s->Page.HtmlHeader.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.HtmlHeader.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
 
 	/** Write the script globals **/
-	fdWrite(output, "<SCRIPT language=\"javascript\">\n\n\n", 33,0,FD_U_PACKET);
+	htrWrite(s, "<script language=\"javascript\">\n\n\n", -1);
 	for(i=0;i<s->Page.Globals.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Globals.Items[i]);
@@ -1623,27 +1880,27 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 		qpfPrintf(NULL, sbuf,HT_SBUF_SIZE,"if (typeof %STR&SYM == 'undefined') var %STR&SYM = %STR;\n", sv->Name, sv->Name, sv->Value);
 	    else
 		qpfPrintf(NULL, sbuf,HT_SBUF_SIZE,"var %STR&SYM;\n", sv->Name);
-	    fdWrite(output, sbuf, strlen(sbuf),0,FD_U_PACKET);
+	    htrWrite(s, sbuf, -1);
 	    }
 
 	/** Write the includes **/
-	fdWrite(output, "\n</SCRIPT>\n\n", 12,0,FD_U_PACKET);
+	htrWrite(s, "\n</script>\n\n", -1);
 
 	/** include ht_render.js **/
-	htr_internal_GenInclude(output, s, "/sys/js/ht_render.js");
+	htr_internal_GenInclude(s, "/sys/js/ht_render.js");
 
 	/** include browser-specific geometry js **/
 	if(s->Capabilities.Dom0IE)
 	    {
-	    htr_internal_GenInclude(output, s, "/sys/js/ht_geom_dom0ie.js");
+	    htr_internal_GenInclude(s, "/sys/js/ht_geom_dom0ie.js");
 	    }
 	else if (s->Capabilities.Dom0NS)
 	    {
-	    htr_internal_GenInclude(output, s, "/sys/js/ht_geom_dom0ns.js");
+	    htr_internal_GenInclude(s, "/sys/js/ht_geom_dom0ns.js");
 	    }
 	else if (s->Capabilities.Dom1HTML)
 	    {
-	    htr_internal_GenInclude(output, s, "/sys/js/ht_geom_dom1html.js");
+	    htr_internal_GenInclude(s, "/sys/js/ht_geom_dom1html.js");
 	    }
 	else
 	    {
@@ -1653,20 +1910,20 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	for(i=0;i<s->Page.Includes.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Includes.Items[i]);
-	    htr_internal_GenInclude(output, s, sv->Name);
+	    htr_internal_GenInclude(s, sv->Name);
 	    }
-	fdWrite(output, "<SCRIPT language=\"javascript\">\n\n", 32,0,FD_U_PACKET);
+	htrWrite(s, "<script language=\"javascript\">\n\n", -1);
 
 	/** Write the script functions **/
 	for(i=0;i<s->Page.Functions.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Functions.Items[i]);
-	    fdWrite(output, sv->Value, strlen(sv->Value),0,FD_U_PACKET);
+	    htrWrite(s, sv->Value, -1);
 	    }
 
 
 	/** Write the event capture lines **/
-	fdPrintf(output,"\nfunction events_%s()\n    {\n",s->Namespace->DName);
+	htrQPrintf(s,"\nfunction events_%STR()\n    {\n",s->Namespace->DName);
 	cnt = xaCount(&s->Page.EventHandlers);
 	strcpy(sbuf,"    if(window.Event)\n        htr_captureevents(");
 	for(i=0;i<cnt;i++)
@@ -1677,7 +1934,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    strcat(sbuf,e->DomEvent);
 	    }
 	strcat(sbuf,");\n");
-	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
+	htrWrite(s, sbuf, -1);
 	for(i=0;i<cnt;i++)
 	    {
 	    e = (pHtDomEvent)xaGetItem(&s->Page.EventHandlers,i);
@@ -1688,88 +1945,87 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    cnt2 = xaCount(&e->Handlers);
 	    for(j=0;j<cnt2;j++)
 		{
-		fdPrintf(output, "    htr_addeventhandler(\"%s\",\"%s\");\n",
+		htrQPrintf(s, "    htr_addeventhandler(%STR&DQUOT,%STR&DQUOT);\n",
 			ename, xaGetItem(&e->Handlers, j));
 		}
 	    if (!strcmp(ename,"mousemove"))
-		fdPrintf(output, "    htr_addeventlistener('%s', document, htr_mousemovehandler);\n",
+		htrQPrintf(s, "    htr_addeventlistener(%STR&DQUOT, document, htr_mousemovehandler);\n",
 			ename);
 	    else
-		fdPrintf(output, "    htr_addeventlistener('%s', document, htr_eventhandler);\n",
+		htrQPrintf(s, "    htr_addeventlistener(%STR&DQUOT, document, htr_eventhandler);\n",
 			ename);
 	    }
 
-	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
+	htrWrite(s,"    }\n",-1);
 
 	/** Write the expression initializations **/
-	fdPrintf(output,"\nfunction expinit_%s()\n    {\n",s->Namespace->DName);
+	htrQPrintf(s,"\nfunction expinit_%STR()\n    {\n",s->Namespace->DName);
 	for(i=0;i<s->Page.HtmlExpressionInit.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.HtmlExpressionInit.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
-	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
+	htrWrite(s,"    }\n",-1);
 
 	/** Write the wgtr declaration **/
-	fdPrintf(output, "\nfunction build_wgtr_%s()\n    {\n",
+	htrQPrintf(s, "\nfunction build_wgtr_%STR()\n    {\n",
 		s->Namespace->DName);
 	for (i=0;i<s->Page.Wgtr.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.Wgtr.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n, 0, FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
-	fdWrite(output, "    }\n", 6, 0, FD_U_PACKET);
+	htrWrite(s, "    }\n", -1);
 
 	/** Write the initialization lines **/
-	fdPrintf(output,"\nfunction startup_%s()\n    {\n", s->Namespace->DName);
-	htr_internal_writeCxCapabilities(s,output); //TODO: (by Seth) this really only needs to happen during first-load.
+	htrQPrintf(s,"\nfunction startup_%STR()\n    {\n", s->Namespace->DName);
+	htr_internal_writeCxCapabilities(s); //TODO: (by Seth) this really only needs to happen during first-load.
 
 	for(i=0;i<s->Page.Inits.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.Inits.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
-	fdPrintf(output,"    events_%s();\n", s->Namespace->DName);
-	fdPrintf(output,"    expinit_%s();\n", s->Namespace->DName);
-	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
+	htrQPrintf(s,"    events_%STR();\n", s->Namespace->DName);
+	htrQPrintf(s,"    expinit_%STR();\n", s->Namespace->DName);
+	htrWrite(s,"    }\n",-1);
 
 	/** Write the cleanup lines **/
-	fdWrite(output,"\nfunction cleanup()\n    {\n",26,0,FD_U_PACKET);
+	htrWrite(s,"\nfunction cleanup()\n    {\n",-1);
 	for(i=0;i<s->Page.Cleanups.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.Cleanups.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
-	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
+	htrWrite(s,"    }\n",-1);
 
 
 	/** If the body part is disabled, skip over body section generation **/
 	if (s->DisableBody == 0)
 	    {
 	    /** Write the HTML body params **/
-	    fdWrite(output, "\n</SCRIPT>\n</HEAD>",18,0,FD_U_PACKET);
-	    fdWrite(output, "\n<BODY", 6,0,FD_U_PACKET);
+	    htrWrite(s, "\n</script>\n</head>",-1);
+	    htrWrite(s, "\n<body", -1);
 	    for(i=0;i<s->Page.HtmlBodyParams.nItems;i++)
 	        {
 	        ptr = (char*)(s->Page.HtmlBodyParams.Items[i]);
 	        n = *(int*)ptr;
-	        fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	        htrWrite(s, ptr+8, n);
 	        }
 	    /** work around the Netscape 4.x bug regarding page resizing **/
 	    if(s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
 		{
-		fdWrite(output, " onResize=\"location.reload()\"",29,0,FD_U_PACKET);
+		htrWrite(s, " onResize=\"location.reload()\"",-1);
 		}
-	    /*fdPrintf(output, " onLoad=\"startup();\" onUnload=\"cleanup();\"");*/
-	    fdPrintf(output, ">\n");
+	    htrWrite(s, ">\n", -1);
 	    }
 	else
 	    {
-	    fdWrite(output, "\n</SCRIPT>\n",11,0,FD_U_PACKET);
+	    htrWrite(s, "\n</script>\n",-1);
 	    }
 
 	/** Write the HTML body. **/
@@ -1777,16 +2033,16 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    {
 	    ptr = (char*)(s->Page.HtmlBody.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
 
 	if (s->DisableBody == 0)
 	    {
-	    fdWrite(output, "</BODY>\n</HTML>\n",16,0,FD_U_PACKET);
+	    htrWrite(s, "</body>\n</html>\n",-1);
 	    }
 	else
 	    {
-	    fdWrite(output, "\n</HTML>\n",9,0,FD_U_PACKET);
+	    htrWrite(s, "\n</HTML>\n",-1);
 	    }
 
 	/** Deinitialize the session and page structures **/
@@ -1836,46 +2092,11 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	for(i=0;i<s->Page.HtmlExpressionInit.nItems;i++) nmFree(s->Page.HtmlExpressionInit.Items[i],2048);
 	xaDeInit(&(s->Page.HtmlExpressionInit));
 
-	/** Clean up the event script structure, which is multi-level. **/
-	/*for(i=0;i<s->Page.EventScripts.Array.nItems;i++)
-	    {
-	    tmp_a = (pHtNameArray)(s->Page.EventScripts.Array.Items[i]);
-	    for(j=0;j<tmp_a->Array.nItems;j++)
-	        {
-	        tmp_a2 = (pHtNameArray)(tmp_a->Array.Items[j]);
-		for(k=0;k<tmp_a2->Array.nItems;k++)
-		    {
-		    tmp_a3 = (pHtNameArray)(tmp_a2->Array.Items[k]);
-		    for(l=0;l<tmp_a3->Array.nItems;l++)
-		        {
-			nmFree(tmp_a3->Array.Items[l],2048);
-			}
-	            xaDeInit(&(tmp_a3->Array));
-	            xhRemove(&(tmp_a2->HashTable),tmp_a3->Name);
-		    nmFree(tmp_a3,sizeof(HtNameArray));
-		    }
-	        xaDeInit(&(tmp_a2->Array));
-		xhDeInit(&(tmp_a2->HashTable));
-	        xhRemove(&(tmp_a->HashTable),tmp_a2->Name);
-	        nmFree(tmp_a2,sizeof(HtNameArray));
-		}
-	    xaDeInit(&(tmp_a->Array));
-	    xhDeInit(&(tmp_a->HashTable));
-	    xhRemove(&(s->Page.EventScripts.HashTable),tmp_a->Name);
-	    nmFree(tmp_a,sizeof(HtNameArray));
-	    }
-	xhDeInit(&(s->Page.EventScripts.HashTable));
-	xaDeInit(&(s->Page.EventScripts.Array));*/
 	cnt = xaCount(&s->Page.EventHandlers);
 	for(i=0;i<cnt;i++)
 	    {
 	    e = (pHtDomEvent)xaGetItem(&s->Page.EventHandlers,i);
 	    /** these must all be string constants; no need to free **/
-	    /*cnt2 = xaCount(&e->Handlers);
-	    for(j=0;j<cnt2;j++)
-		{
-		nmSysFree((char*)xaGetItem(&e->Handlers, j));
-		}*/
 	    xaDeInit(&e->Handlers);
 	    nmFree(e, sizeof(HtDomEvent));
 	    }
@@ -1887,6 +2108,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 
 	htr_internal_FreeDMPrivateData(tree);
 
+	xhDeInit(&s->UsedDrivers);
 	nmFree(s,sizeof(HtSession));
 
     return 0;
@@ -1904,6 +2126,7 @@ htrAllocDriver()
 	/** Allocate the driver structure **/
 	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
 	if (!drv) return NULL;
+	memset(drv, 0, sizeof(HtDriver));
 
 	/** Init some of the basic array structures **/
 	xaInit(&(drv->PosParams),16);
@@ -1911,6 +2134,7 @@ htrAllocDriver()
 	xaInit(&(drv->Events),16);
 	xaInit(&(drv->Actions),16);
 	xaInit(&(drv->PseudoTypes), 4);
+
     return drv;
     }
 
@@ -2256,7 +2480,7 @@ htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...)
  *** et al.
  ***/
 int
-htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace)
+htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace, int is_subns)
     {
     pHtNamespace new_ns;
     char* ptr;
@@ -2266,7 +2490,12 @@ htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace)
 	if (!new_ns) return -1;
 	new_ns->Parent = s->Namespace;
 	strtcpy(new_ns->DName, nspace, sizeof(new_ns->DName));
-	wgtrGetPropertyValue(container, "name", DATA_T_STRING, POD(&ptr));
+
+	new_ns->IsSubnamespace = is_subns;
+	if (is_subns)
+	    ptr = s->Namespace->ParentCtr;
+	else
+	    wgtrGetPropertyValue(container, "name", DATA_T_STRING, POD(&ptr));
 	strtcpy(new_ns->ParentCtr, ptr, sizeof(new_ns->ParentCtr));
 
 	/** Link it in **/
@@ -2274,11 +2503,14 @@ htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace)
 	new_ns->NextSibling = s->Namespace->FirstChild;
 	s->Namespace->FirstChild = new_ns;
 	s->Namespace = new_ns;
+	s->Namespace->HasScriptInits = 0;
 
 	/** Add script inits **/
-	htrAddScriptInit_va(s, "    nodes = wgtrNodeList(%STR&SYM);\n"
-			       "    rootname = \"%STR&SYM\";\n",
-		nspace, nspace);
+#if 00
+	htrAddScriptInit_va(s, "\n    nodes = wgtrNodeList(%STR&SYM);\n"
+			       /*"    rootname = \"%STR&SYM\";\n" */ ,
+		nspace /*, nspace */);
+#endif
 
     return 0;
     }
@@ -2292,12 +2524,178 @@ htrLeaveNamespace(pHtSession s)
     {
 
 	s->Namespace = s->Namespace->Parent;
+	s->Namespace->HasScriptInits = 0;
 
 	/** Add script inits **/
-	htrAddScriptInit_va(s, "    nodes = wgtrNodeList(%STR&SYM);\n"
-			       "    rootname = \"%STR&SYM\";\n",
-		s->Namespace->DName, s->Namespace->DName);
+#if 00
+	htrAddScriptInit_va(s, "\n    nodes = wgtrNodeList(%STR&SYM);\n"
+			       /*"    rootname = \"%STR&SYM\";\n" */ ,
+		s->Namespace->DName /*, s->Namespace->DName */);
+#endif
 
     return 0;
     }
+
+
+/*** htrFormatElement() - add a CSS line to format a DIV based on some basic
+ *** style information.
+ ***
+ *** Styled properties: textcolor, style, font_size, font, bgcolor, padding,
+ ***     border_color, border_radius, border_style, align, wrap, shadow_color,
+ ***     shadow_radius, shadow_offset, shadow_location, shadow_angle
+ ***/
+int
+htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y, int w, int h, int z, char* style_prefix, char* defaults[], char* addl)
+    {
+    char textcolor[32] = "";
+    char style[32] = "";
+    char font[32] = "";
+    double font_size = 0;
+    char bgcolor[32] = "";
+    char background[128] = "";
+    double padding = 0;
+    char border_color[32] = "";
+    double border_radius = 0;
+    char border_style[32] = "";
+    char align[32] = "";
+    int wrap = 0;
+    char shadow_color[32] = "";
+    double shadow_radius = 0;
+    double shadow_offset = 0;
+    char shadow_location[32] = "";
+    double shadow_angle = 135;
+    char propname[64];
+    char* propptr;
+    char* strval;
+    int i;
+
+	/** Copy in defaults **/
+	if (defaults)
+	    {
+	    for(i=0;defaults[i] && defaults[i+1];i+=2)
+		{
+		if (!strcmp(defaults[i], "textcolor"))
+		    strtcpy(textcolor, defaults[i+1], sizeof(textcolor));
+		else if (!strcmp(defaults[i], "style"))
+		    strtcpy(style, defaults[i+1], sizeof(style));
+		else if (!strcmp(defaults[i], "font"))
+		    strtcpy(font, defaults[i+1], sizeof(font));
+		else if (!strcmp(defaults[i], "font_size"))
+		    font_size = strtod(defaults[i+1], NULL);
+		else if (!strcmp(defaults[i], "bgcolor"))
+		    strtcpy(bgcolor, defaults[i+1], sizeof(bgcolor));
+		else if (!strcmp(defaults[i], "background"))
+		    strtcpy(background, defaults[i+1], sizeof(background));
+		else if (!strcmp(defaults[i], "padding"))
+		    padding = strtod(defaults[i+1], NULL);
+		else if (!strcmp(defaults[i], "border_color"))
+		    strtcpy(border_color, defaults[i+1], sizeof(border_color));
+		else if (!strcmp(defaults[i], "border_radius"))
+		    border_radius = strtod(defaults[i+1], NULL);
+		else if (!strcmp(defaults[i], "border_style"))
+		    strtcpy(border_style, defaults[i+1], sizeof(border_style));
+		else if (!strcmp(defaults[i], "align"))
+		    strtcpy(align, defaults[i+1], sizeof(align));
+		else if (!strcmp(defaults[i], "wrap") && !strcasecmp(defaults[i+1], "yes"))
+		    wrap = 1;
+		else if (!strcmp(defaults[i], "shadow_color"))
+		    strtcpy(shadow_color, defaults[i+1], sizeof(shadow_color));
+		else if (!strcmp(defaults[i], "shadow_radius"))
+		    shadow_radius = strtod(defaults[i+1], NULL);
+		else if (!strcmp(defaults[i], "shadow_offset"))
+		    shadow_offset = strtod(defaults[i+1], NULL);
+		else if (!strcmp(defaults[i], "shadow_location"))
+		    strtcpy(shadow_location, defaults[i+1], sizeof(shadow_location));
+		else if (!strcmp(defaults[i], "shadow_angle"))
+		    shadow_angle = strtod(defaults[i+1], NULL);
+		}
+	    }
+
+	/** Set up property name prefixes **/
+	strtcpy(propname, style_prefix?style_prefix:"", sizeof(propname));
+	strtcat(propname, style_prefix?"_":"", sizeof(propname));
+	if (strlen(propname) >= 48)
+	    {
+	    mssError(1,"HTR","htrFormatDiv() - style prefix too long");
+	    return -1;
+	    }
+	propptr = propname + strlen(propname);
+
+	/** Get text styling information **/
+	strcpy(propptr, "textcolor");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(textcolor, strval, sizeof(textcolor));
+	strcpy(propptr, "fgcolor"); /* for legacy support -- deprecated */
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(textcolor, strval, sizeof(textcolor));
+	strcpy(propptr, "style");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(style, strval, sizeof(style));
+	strcpy(propptr, "font");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(font, strval, sizeof(font));
+	strcpy(propptr, "font_size");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    font_size = strtod(strval, NULL);
+	strcpy(propptr, "bgcolor");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(bgcolor, strval, sizeof(bgcolor));
+	strcpy(propptr, "background");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(background, strval, sizeof(background));
+	strcpy(propptr, "padding");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    padding = strtod(strval, NULL);
+	strcpy(propptr, "border_color");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(border_color, strval, sizeof(border_color));
+	strcpy(propptr, "border_radius");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    border_radius = strtod(strval, NULL);
+	strcpy(propptr, "border_style");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(border_style, strval, sizeof(border_style));
+	strcpy(propptr, "align");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(align, strval, sizeof(align));
+	strcpy(propptr, "wrap");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    {
+	    if (!strcasecmp(strval, "yes")) wrap = 1;
+	    }
+	strcpy(propptr, "shadow_color");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(shadow_color, strval, sizeof(shadow_color));
+	strcpy(propptr, "shadow_radius");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    shadow_radius = strtod(strval, NULL);
+	strcpy(propptr, "shadow_offset");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    shadow_offset = strtod(strval, NULL);
+	strcpy(propptr, "shadow_location");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    strtcpy(shadow_location, strval, sizeof(shadow_location));
+	strcpy(propptr, "shadow_angle");
+	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
+	    shadow_angle = strtod(strval, NULL);
+
+	/** Generate the style CSS **/
+	htrAddStylesheetItem_va(s, "\t%STR { left:%POSpx; top:%POSpx; %[width:%POSpx; %]%[height:%POSpx; %]%[z-index:%POS; %]%[color:%STR&CSSVAL; %]%[font-weight:bold; %]%[text-decoration:underline; %]%[font-style:italic; %]%[font:%STR&CSSVAL; %]%[font-size:%DBLpx; %]%[background-color:%STR&CSSVAL; %]%[background-image:url('%STR&CSSURL'); %]%[padding:%DBLpx; %]%[border:1px %STR&CSSVAL %STR&CSSVAL; %]%[border-radius:%DBLpx; %]%[text-align:%STR&CSSVAL; %]%[white-space:nowrap; %]%[box-shadow:%DBLpx %DBLpx %DBLpx %STR&CSSVAL%STR&CSSVAL; %]%[%STR %]}\n",
+		id,
+		x, y, w > 0, w, h > 0, h, z > 0, z,
+		*textcolor, textcolor,
+		!strcmp(style, "bold"), !strcmp(style, "underline"), !strcmp(style, "italic"),
+		*font, font, font_size > 0, font_size,
+		*bgcolor, bgcolor, *background, background,
+		padding > 0, padding,
+		*border_color, (*border_style)?border_style:"solid", border_color, border_radius > 0, border_radius,
+		*align, align,
+		!wrap,
+		(*shadow_color && shadow_radius > 0), sin(shadow_angle*M_PI/180)*shadow_offset, cos(shadow_angle*M_PI/180)*(-shadow_offset), shadow_radius, shadow_color, (!strcasecmp(shadow_location,"inside"))?" inset":"",
+		addl && *addl, addl
+		);
+
+    return 0;
+    }
+
 

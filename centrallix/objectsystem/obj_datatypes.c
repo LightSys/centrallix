@@ -16,6 +16,7 @@
 #include "cxlib/xstring.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -132,9 +133,9 @@ int
 obj_internal_ParseDateLang(char *dest_array[], int dest_array_len, char* srcptr, char* searchstart, char* searchend)
     {
     char* ptr;
-    char* endptr;
+    /*char* endptr;*/
     char* enditemptr;
-    int n_items;
+    /*int n_items;*/
 
 	/** No format string? **/
 	if (!srcptr)
@@ -147,9 +148,9 @@ obj_internal_ParseDateLang(char *dest_array[], int dest_array_len, char* srcptr,
 	if (!ptr || !strstr(ptr+strlen(searchstart),searchend)) return -1;
 
 	/** Ok, got it.  Now start parsing 'em **/
-	n_items = 0;
+	/*n_items = 0;*/
 	ptr = ptr + strlen(searchstart);
-	endptr = strstr(ptr,searchend);
+	/*endptr = strstr(ptr,searchend);*/
 	while(1)
 	    {
 	    /** Find the end of the current item. **/
@@ -210,8 +211,10 @@ obj_internal_FormatDate(pDateTime dt, char* str, char* format, int length)
 	xsInit(&xs);
     
     	/** Get the current date format. **/
-	if(format) fmt=format; else fmt = mssGetParam("dfmt");
-	if (!fmt) fmt = obj_default_date_fmt;
+	if (format)
+	    fmt = format;
+	else
+	    cxssGetVariable("dfmt", &fmt, obj_default_date_fmt);
 	myfmt = nmSysStrdup(fmt);
 
 	/** Lookup language internationalization in the format. **/
@@ -433,16 +436,17 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
     int orig_print_whole;
     char tmp[20];
     XString xs;
-    int intl_format = 0;
+    /*int intl_format = 0;*/
     int zero_type = 0; /* 0=normal, 1='-0-', 2='0', 3='' */
     char* zero_strings[] = {NULL, "-0-", "0", ""};
     char decimal = '.';
     char comma = ',';
     
 	/** Get the format **/
-	if(format) fmt = format;
-	else fmt = mssGetParam("mfmt");
-	if (!fmt) fmt = obj_default_money_fmt;
+	if (format)
+	    fmt = format;
+	else
+	    cxssGetVariable("mfmt", &fmt, obj_default_money_fmt);
 	start_fmt = fmt;
 
 	/** Determine number of explicitly-specified whole part digits **/
@@ -456,7 +460,7 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 		}
 	    else if (*ptr == 'I')
 		{
-		intl_format = 1;
+		/*intl_format = 1;*/
 		decimal = ',';
 		comma = '.';
 		}
@@ -702,9 +706,11 @@ objDataToString(pXString dest, int data_type, void* data_ptr, int flags)
 	    case DATA_T_DATETIME:
 	        d = (pDateTime)data_ptr;
 		sbuf[0] = '\0';
-	        if (flags & DATA_F_QUOTED) strcat(sbuf, " '");
+	        if (flags & DATA_F_DATECONV) strcat(sbuf, " convert(datetime,");
+	        if (flags & (DATA_F_QUOTED | DATA_F_DATECONV)) strcat(sbuf, " '");
 		obj_internal_FormatDate(d, sbuf + strlen(sbuf),NULL,80-strlen(sbuf));
-	        if (flags & DATA_F_QUOTED) strcat(sbuf, "' ");
+	        if (flags & (DATA_F_QUOTED | DATA_F_DATECONV)) strcat(sbuf, "' ");
+	        if (flags & DATA_F_DATECONV) strcat(sbuf, ") ");
 		xsConcatenate(dest, sbuf, -1);
 		break;
 
@@ -721,13 +727,14 @@ objDataToString(pXString dest, int data_type, void* data_ptr, int flags)
 	        
 	    case DATA_T_STRINGVEC:
 	        sv = (pStringVec)data_ptr;
-	        if (flags & DATA_F_QUOTED) xsConcatenate(dest," (",2);
+	        if (flags & DATA_F_QUOTED) xsConcatenate(dest, (flags & DATA_F_BRACKETS)?" [":" (", 2);
 		for(i=0;i<sv->nStrings;i++)
 		    {
-		    sprintf(sbuf,"%s\"%s\"", (i==0)?"":",", sv->Strings[i]);
-		    xsConcatenate(dest, sbuf, -1);
+		    xsConcatQPrintf(dest, (flags & DATA_F_SINGLE)?"%[,%]%STR&QUOT":"%[,%]%STR&DQUOT", i!=0, sv->Strings[i]);
+		    /*sprintf(sbuf,"%s\"%s\"", (i==0)?"":",", sv->Strings[i]);
+		    xsConcatenate(dest, sbuf, -1);*/
 		    }
-	        if (flags & DATA_F_QUOTED) xsConcatenate(dest,") ",2);
+	        if (flags & DATA_F_QUOTED) xsConcatenate(dest, (flags & DATA_F_BRACKETS)?"] ":") ", 2);
 		break;
 	    }
 
@@ -798,7 +805,7 @@ objDataToInteger(int data_type, void* data_ptr, char* format)
                 if (m->FractionPart==0 || m->WholePart>=0)
 		    v = m->WholePart;
 		else
-		    v = m->WholePart - 1;
+		    v = m->WholePart + 1;
 		break;
 
 	    case DATA_T_INTVEC:
@@ -852,7 +859,7 @@ objDataToDouble(int data_type, void* data_ptr)
 char* 
 objDataToStringTmp(int data_type, void* data_ptr, int flags)
     {
-    static char sbuf[80];
+    static char sbuf[160];
     static char* alloc_str = NULL;
     static int alloc_len = 0;
     pDateTime d;
@@ -871,9 +878,9 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 	if (data_ptr == NULL)
 	    {
 	    if (flags & DATA_F_QUOTED)
-	        strcpy(sbuf, " NULL ");
+		strcpy(sbuf, " NULL ");
 	    else
-	        strcpy(sbuf, "NULL");
+		strcpy(sbuf, "NULL");
 	    return sbuf;
 	    }
 
@@ -882,9 +889,9 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 	    {
 	    case DATA_T_INTEGER:
 	        if (flags & DATA_F_QUOTED)
-	            sprintf(sbuf," %d ",*(int*)data_ptr);
+		    sprintf(sbuf, " %d ", *(int*)data_ptr);
 		else
-	            sprintf(sbuf,"%d",*(int*)data_ptr);
+		    sprintf(sbuf, "%d", *(int*)data_ptr);
 		break;
 
 	    case DATA_T_BINARY:
@@ -974,7 +981,7 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 		break;
 
 	    case DATA_T_DOUBLE:
-	        /** sbuf is 80 chars, plenty for our purposes here. **/
+	        /** sbuf is 160 chars, plenty for our purposes here. **/
 	        if (flags & DATA_F_QUOTED)
 	            sprintf(sbuf," %.15g ", *(double*)data_ptr);
 		else
@@ -1002,7 +1009,7 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 	        m = (pMoneyType)data_ptr;
 		sbuf[0] = '\0';
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " ");
-		obj_internal_FormatMoney(m, sbuf + strlen(sbuf),NULL,80-strlen(sbuf));
+		obj_internal_FormatMoney(m, sbuf + strlen(sbuf),NULL, sizeof(sbuf)-strlen(sbuf));
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " ");
 		break;
 
@@ -1010,7 +1017,7 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 	        d = (pDateTime)data_ptr;
 		sbuf[0] = '\0';
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, " '");
-		obj_internal_FormatDate(d, sbuf + strlen(sbuf),NULL,80-strlen(sbuf));
+		obj_internal_FormatDate(d, sbuf + strlen(sbuf),NULL, sizeof(sbuf)-strlen(sbuf));
 	        if (flags & DATA_F_QUOTED) strcat(sbuf, "' ");
 		break;
 
@@ -1023,7 +1030,7 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 		    }
 		for(i=0;i<iv->nIntegers;i++)
 		    {
-		    sprintf(ptr,"%s%d", (i==0)?"":",", iv->Integers[i]);
+		    snprintf(ptr, sizeof(sbuf) - (ptr - sbuf) - 2, "%s%d", (i==0)?"":",", iv->Integers[i]);
 		    ptr += strlen(ptr);
 		    }
 	        if (flags & DATA_F_QUOTED) 
@@ -1038,17 +1045,17 @@ objDataToStringTmp(int data_type, void* data_ptr, int flags)
 	        sv = (pStringVec)data_ptr;
 	        if (flags & DATA_F_QUOTED) 
 		    {
-		    strcpy(ptr," (");
+		    strcpy(ptr, (flags & DATA_F_BRACKETS)?" [":" (");
 		    ptr += 2;
 		    }
 		for(i=0;i<sv->nStrings;i++)
 		    {
-		    sprintf(ptr,"%s\"%s\"", (i==0)?"":",", sv->Strings[i]);
+		    snprintf(ptr, sizeof(sbuf) - (ptr - sbuf) - 2, "%s\"%s\"", (i==0)?"":",", sv->Strings[i]);
 		    ptr += strlen(ptr);
 		    }
 	        if (flags & DATA_F_QUOTED) 
 		    {
-		    strcpy(ptr,") ");
+		    strcpy(ptr, (flags & DATA_F_BRACKETS)?"] ":") ");
 		    ptr += 2;
 		    }
 		ptr = sbuf;
@@ -1067,7 +1074,9 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
     {
     int got_hr=-1, got_min=-1, got_sec=-1;
     int got_day=-1, got_yr=-1, got_mo=-1;
+    int got_hroffset=9999, got_minoffset=9999;
     int last_num;
+    char* prev_startptr;
     char* startptr;
     char* endptr;
     char* origptr;
@@ -1076,7 +1085,14 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
     time_t int_time;
     int reversed_day=0;
     int iso = 0;
+    time_t z_time, loc_time;
+    int ouroffset;
+    int timediff;
 
+    	/** Only accept string, datetime, integer... **/
+	if (data_type != DATA_T_STRING && data_type != DATA_T_DATETIME) return -1;
+
+	/** Integer conversion **/
 	if (data_type == DATA_T_INTEGER)
 	    {
 	    memset(dt, 0, sizeof(DateTime));
@@ -1084,8 +1100,12 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 	    return 0;
 	    }
 
-    	/** Only accept string... **/
-	if (data_type != DATA_T_STRING) return -1;
+	/** "Conversion" of dt->dt? **/
+	if (data_type == DATA_T_DATETIME)
+	    {
+	    memcpy(dt, data_ptr, sizeof(DateTime));
+	    return 0;
+	    }
 
 	/** Default is to interpret as mm-dd-yyyy (U.S. format)
 	 ** "II" uses the more common non-U.S. format, dd-mm-yyyy
@@ -1099,6 +1119,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 	    if (!strncmp(format,"ISO",5)) iso = 1;
 	    }
 
+	prev_startptr = NULL;
 	startptr = (char*)data_ptr;
 	origptr = startptr;
 	while(*startptr)
@@ -1114,15 +1135,36 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		/** Got a number **/
 		if (*endptr == ':')
 		    {
-		    /** time field.  Check which ones we have. **/
-		    if (got_hr == -1) got_hr = last_num;
-		    else if (got_min == -1) got_min = last_num;
+		    /** If the number starts with + or - and ends with :, it may be a timezone offset **/
+		    if (startptr == origptr || (startptr[0] != '-' && startptr[0] != '+'))
+			{
+			/** time field.  Check which ones we have. **/
+			if (got_hr == -1)
+			    got_hr = last_num;
+			else if (got_min == -1)
+			    got_min = last_num;
+			}
+		    else
+			{
+			/** timezone offset hours field **/
+			if (got_hroffset == 9999)
+			    {
+			    got_hroffset = last_num;
+			    if (startptr != origptr && startptr[0] == '-')
+				got_hroffset = -got_hroffset;
+			    }
+			}
 		    endptr++;
 		    }
-		else if (*endptr == '/' || *endptr == '-')
+		else if (*endptr == '/' || (*endptr == '-' && (got_day == -1 || got_mo == -1 || got_yr == -1)))
 		    {
 		    /** Date field.  Check. **/
-		    if (reversed_day)
+		    if (last_num > 99)
+			{
+			reversed_day = 0;
+			got_yr = last_num;
+			}
+		    else if (reversed_day)
 		        {
 		        if (got_day == -1) got_day = last_num-1;
 		        else if (got_mo == -1) got_mo = last_num-1;
@@ -1145,9 +1187,21 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		    /** End-of-string -or- space-separated date/time **/
 		    if (startptr != origptr && startptr[-1] == ':')
 		        {
-			/** For seconds in '12:00:01' or minutes in '12:00' **/
-			if (got_min == -1) got_min = last_num;
-			if (got_sec == -1) got_sec = last_num;
+			/** If we have a tz hr offset but no min offset, and the previous
+			 ** number had a + or - right before it, this is a TZ minute
+			 ** offset.
+			 **/
+			if (got_hroffset != 9999 && got_minoffset == 9999 && prev_startptr && prev_startptr != origptr && (prev_startptr[0] == '-' || prev_startptr[0] == '+'))
+			    {
+			    got_minoffset = last_num;
+			    if (prev_startptr[0] == '-')
+				got_minoffset = -got_minoffset;
+			    }
+			/** Otherwise, seconds in '12:00:01' or minutes in '12:00' **/
+			else if (got_min == -1)
+			    got_min = last_num;
+			else if (got_sec == -1)
+			    got_sec = last_num;
 			}
 		    else if (startptr != origptr && (startptr[-1] == '/' || startptr[-1] == '-'))
 		        {
@@ -1169,6 +1223,13 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		    else if (startptr != origptr && startptr[-1] == '.')
 		        {
 			/** Milliseconds as in 12:00:01.000 -- just ignore them **/
+			}
+		    else if (startptr != origptr && (startptr[0] == '+' || startptr[0] == '-') && got_day != -1 && got_yr != -1 && got_mo != -1)
+			{
+			/** Timezone offset, hours **/
+			got_hroffset = last_num;
+			if (startptr[0] == '-')
+			    got_hroffset = -got_hroffset;
 			}
 		    else if (got_mo != -1 && got_day != -1 && got_yr == -1)
 		        {
@@ -1252,6 +1313,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		}
 
 	    /** Next item. **/
+	    prev_startptr = startptr;
 	    startptr = endptr;
 	    }
 
@@ -1292,6 +1354,39 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 	dt->Part.Minute = got_min;
 	dt->Part.Second = got_sec;
 
+	/** Adjust for timezone, if necessary.  If no offset was
+	 ** given in the date/time, then we assume the date/time is
+	 ** local time and no more work needs to be done.  IF an
+	 ** offset however was supplied, then we need to convert
+	 ** to local time.
+	 **/
+	if (got_hroffset != 9999)
+	    {
+	    /** Get offset in the date string **/
+	    if (got_minoffset == 9999)
+		{
+		/** ISO form, +XXXX **/
+		got_minoffset = got_hroffset/100*60 + got_hroffset%100;
+		got_hroffset = 0;
+		}
+	    else
+		{
+		/** MySQL form, +XX:XX **/
+		got_minoffset = got_minoffset + got_hroffset*60;
+		got_hroffset = 0;
+		}
+
+	    /** Determine local offset, in minutes **/
+	    loc_time = time(NULL);
+	    t = gmtime(&loc_time);
+	    z_time = mktime(t);
+	    ouroffset = difftime(loc_time, z_time)/60;
+	    timediff = ouroffset - got_minoffset;
+
+	    /** Adjust the date/time **/
+	    objDateAdd(dt, 0, timediff, 0, 0, 0, 0);
+	    }
+
     return 0;
     }
 
@@ -1317,8 +1412,7 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 	switch(data_type)
 	    {
 	    case DATA_T_STRING:
-		fmt = mssGetParam("mfmt");
-		if (!fmt) fmt = obj_default_money_fmt;
+		cxssGetVariable("mfmt", &fmt, obj_default_money_fmt);
 		intl_format = strchr(fmt,'I')?1:0;
 
 	        ptr = (char*)data_ptr;
@@ -1355,8 +1449,10 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		    return -1;
 		if ((endptr - ptr) != strspn(ptr, "0123456789"))
 		    return -1;
-		m->WholePart = intval;
-		if (is_neg) m->WholePart = -m->WholePart;
+		if (is_neg)
+		    m->WholePart = -intval;
+		else
+		    m->WholePart = intval;
 		if (*endptr == (intl_format?',':'.'))
 		    {
 		    intval = strtoul(endptr+1, &endptr2, 10);
@@ -1367,6 +1463,10 @@ objDataToMoney(int data_type, void* data_ptr, pMoneyType m)
 		    while(scale > 4) { scale--; intval /= 10; }
 		    m->FractionPart = intval;
 		    endptr = endptr2;
+		    }
+		if (endptr == ptr)
+		    {
+		    return -1;
 		    }
 		if (*endptr == '-')
 		    {
@@ -1424,6 +1524,7 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
     MoneyType m_v;
     double dblval;
     long long dt_cmp_value;
+    pBinary b1, b2;
 
     	/** Need to transpose v1 and v2 to simplify? **/
 	/*if ((data_type_1 != DATA_T_INTEGER && data_type_2 == DATA_T_INTEGER) ||
@@ -1732,6 +1833,24 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 		    }
 	        break;
 
+	    case DATA_T_BINARY:
+		if (data_type_2 != DATA_T_BINARY)
+		    {
+		    err = 1;
+		    break;
+		    }
+		b1 = (pBinary)data_ptr_1;
+		b2 = (pBinary)data_ptr_2;
+		cmp_value = memcmp(b1->Data, b2->Data, (b1->Size > b2->Size)?b2->Size:b1->Size);
+		if (!cmp_value)
+		    {
+		    if (b1->Size > b2->Size)
+			cmp_value = 1;
+		    else
+			cmp_value = -1;
+		    }
+		break;
+
 	    default:
 		err = 1;
 		break;
@@ -1929,6 +2048,10 @@ objCopyData(pObjData src, pObjData dst, int type)
 	    case DATA_T_DOUBLE:
 		dst->Double = src->Double;
 		break;
+	    case DATA_T_BINARY:
+		dst->Binary.Data = src->Binary.Data;
+		dst->Binary.Size = src->Binary.Size;
+		break;
 		
 	    default:
 		return -1;
@@ -1976,6 +2099,11 @@ objDataFromString(pObjData pod, int type, char* str)
 		pod->String = str;
 		break;
 
+	    case DATA_T_BINARY:
+		pod->Binary.Data = (unsigned char*)str;
+		pod->Binary.Size = strlen(str);
+		break;
+
 	    case DATA_T_DOUBLE:
 		pod->Double = objDataToDouble(DATA_T_STRING, str);
 		break;
@@ -2002,6 +2130,7 @@ objDataFromString(pObjData pod, int type, char* str)
 int
 objDataFromStringAlloc(pObjData pod, int type, char* str)
     {
+    unsigned char* bptr;
     
 	switch(type)
 	    {
@@ -2028,6 +2157,15 @@ objDataFromStringAlloc(pObjData pod, int type, char* str)
 
 	if (type == DATA_T_STRING)
 	    pod->String = nmSysStrdup(pod->String);
+
+	if (type == DATA_T_BINARY)
+	    {
+	    bptr = pod->Binary.Data;
+	    pod->Binary.Data = nmSysMalloc(pod->Binary.Size + 1);
+	    if (!pod->Binary.Data)
+		return -1;
+	    memcpy(pod->Binary.Data, bptr, pod->Binary.Size + 1);
+	    }
 
     return 0;
     }
@@ -2068,8 +2206,15 @@ obj_internal_BuildBinaryItem(char** item, int* itemlen, pExpression exp, pParamO
 		break;
 
 	    case DATA_T_STRING:
+		if (!exp->String) /* FIXME */
+		    return 1;
 		*item = exp->String;
 		*itemlen = strlen(exp->String)+1;
+		break;
+
+	    case DATA_T_BINARY:
+		*item = exp->String;
+		*itemlen = exp->Size+1;
 		break;
 
 	    case DATA_T_DATETIME:
@@ -2135,7 +2280,7 @@ obj_internal_BuildBinaryItem(char** item, int* itemlen, pExpression exp, pParamO
  *** ordering comparisons.
  ***/
 int
-objBuildBinaryImage(char* buf, int buflen, void* fields_v, int n_fields, void* objlist_v)
+objBuildBinaryImage(char* buf, int buflen, void* fields_v, int n_fields, void* objlist_v, int asciz)
     {
     pExpression* fields = (pExpression*)fields_v;
     pParamObjects objlist = (pParamObjects)objlist_v;
@@ -2147,6 +2292,16 @@ objBuildBinaryImage(char* buf, int buflen, void* fields_v, int n_fields, void* o
     char* fieldstart;
     int clen;
     unsigned char tmp_data[12];
+    char hex[] = "0123456789abcdef";
+    char val;
+
+	if (asciz)
+	    {
+	    if (buflen < 1)
+		return -1;
+	    else
+		buflen--;
+	    }
 
 	ptr = buf;
 	for(i=0;i<n_fields;i++)
@@ -2155,7 +2310,10 @@ objBuildBinaryImage(char* buf, int buflen, void* fields_v, int n_fields, void* o
 
 	    /** Evaluate the item **/
 	    exp = fields[i];
-	    rval = obj_internal_BuildBinaryItem(&cptr, &clen, exp, objlist, tmp_data);
+	    if (!exp)
+		rval = 1;
+	    else
+		rval = obj_internal_BuildBinaryItem(&cptr, &clen, exp, objlist, tmp_data);
 	    if (rval < 0) return -1;
 
 	    /** NULL indication **/
@@ -2169,20 +2327,49 @@ objBuildBinaryImage(char* buf, int buflen, void* fields_v, int n_fields, void* o
 		/** Not null.  Copy null indication and data **/
 		*(ptr++) = '1';
 
-		/** Won't fit in buffer? **/
-		if (ptr+clen >= buf+buflen) return -1;
-
 		/** Copy the data to the binary image buffer **/
-		memcpy(ptr, cptr, clen);
-		ptr += clen;
-
-		/** If sorting in DESC order for this item... **/
-		if (exp->Flags & EXPR_F_DESC)
+		if (asciz)
 		    {
-		    /** Start at the null ind. to pick up the null value flag too **/
-		    for(j=0;j<(ptr - fieldstart);j++) fieldstart[j] = ~fieldstart[j];
+		    /** Won't fit in buffer? **/
+		    if (ptr+clen*2 >= buf+buflen) return -1;
+
+		    /** Swap the null indication **/
+		    if (exp->Flags & EXPR_F_DESC)
+			ptr[-1] = ('1' + '0') - ptr[-1];
+
+		    /** Copy it, transforming it to a hex string */
+		    for(j=0; j<clen; j++)
+			{
+			val = cptr[j];
+			if (exp->Flags & EXPR_F_DESC)
+			    val = ~val;
+			ptr[j*2] = hex[(cptr[j]>>4)&0xf];
+			ptr[j*2+1] = hex[cptr[j]&0xf];
+			}
+		    ptr += clen*2;
 		    }
+		else
+		    {
+		    /** Won't fit in buffer? **/
+		    if (ptr+clen >= buf+buflen) return -1;
+
+		    memcpy(ptr, cptr, clen);
+		    ptr += clen;
+
+		    /** If sorting in DESC order for this item... **/
+		    if (exp->Flags & EXPR_F_DESC)
+			{
+			/** Start at the null ind. to pick up the null value flag too **/
+			for(j=0;j<(ptr - fieldstart);j++) fieldstart[j] = ~fieldstart[j];
+			}
+		    }
+
 		}
+	    }
+
+	if (asciz)
+	    {
+	    *(ptr++) = '\0';
 	    }
 
     return (ptr - buf);
@@ -2192,7 +2379,7 @@ objBuildBinaryImage(char* buf, int buflen, void* fields_v, int n_fields, void* o
 /*** Same as above, just to an xstring instead of a c-string
  ***/
 int
-objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* objlist_v)
+objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* objlist_v, int asciz)
     {
     pExpression* fields = (pExpression*)fields_v;
     pParamObjects objlist = (pParamObjects)objlist_v;
@@ -2204,6 +2391,8 @@ objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* obj
     unsigned char tmp_data[12];
     int rval;
     pExpression exp;
+    char hex[] = "0123456789abcdef";
+    char val, hval;
 
 	startoffset = str->Length;
 	for(i=0;i<n_fields;i++)
@@ -2212,7 +2401,10 @@ objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* obj
 
 	    /** Evaluate the item **/
 	    exp = fields[i];
-	    rval = obj_internal_BuildBinaryItem(&cptr, &clen, exp, objlist, tmp_data);
+	    if (!exp)
+		rval = 1;
+	    else
+		rval = obj_internal_BuildBinaryItem(&cptr, &clen, exp, objlist, tmp_data);
 	    if (rval < 0) return -1;
 
 	    if (rval == 1)
@@ -2222,13 +2414,35 @@ objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* obj
 	    else
 		{
 		xsConcatenate(str, "1", 1);
-		xsConcatenate(str, cptr, clen);
 
-		/** If sorting in DESC order for this item... **/
-		if (exp->Flags & EXPR_F_DESC)
+		if (asciz)
 		    {
-		    /** Start at null ind. to pick up the null value flag too **/
-		    for(j=fieldoffset;j<str->Length;j++) str->String[j] = ~str->String[j];
+		    /** Swap the null indication **/
+		    if (exp->Flags & EXPR_F_DESC)
+			str->String[str->Length-1] = ('1' + '0') - str->String[str->Length-1];
+
+		    /** Copy it, transforming it to a hex string */
+		    for(j=0; j<clen; j++)
+			{
+			val = cptr[j];
+			if (exp->Flags & EXPR_F_DESC)
+			    val = ~val;
+			hval = hex[(cptr[j]>>4)&0xf];
+			xsConcatenate(str, &hval, 1);
+			hval = hex[cptr[j]&0xf];
+			xsConcatenate(str, &hval, 1);
+			}
+		    }
+		else
+		    {
+		    xsConcatenate(str, cptr, clen);
+
+		    /** If sorting in DESC order for this item... **/
+		    if (exp->Flags & EXPR_F_DESC)
+			{
+			/** Start at null ind. to pick up the null value flag too **/
+			for(j=fieldoffset;j<str->Length;j++) str->String[j] = ~str->String[j];
+			}
 		    }
 		}
 	    }
@@ -2236,3 +2450,72 @@ objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* obj
     return str->Length - startoffset;
     }
 
+
+int
+obj_internal_DateAddModAdd(int v1, int v2, int mod, int* overflow)
+    {
+    int rv;
+    rv = (v1 + v2)%mod;
+    *overflow = (v1 + v2)/mod;
+    if (rv < 0)
+	{
+	*overflow -= 1;
+	rv += mod;
+	}
+    return rv;
+    }
+
+
+int
+objDateAdd(pDateTime dt, int diff_sec, int diff_min, int diff_hr, int diff_day, int diff_mo, int diff_yr)
+    {
+    int carry;
+
+    /** Do the add **/
+    dt->Part.Second = obj_internal_DateAddModAdd(dt->Part.Second, diff_sec, 60, &carry);
+    diff_min += carry;
+    dt->Part.Minute = obj_internal_DateAddModAdd(dt->Part.Minute, diff_min, 60, &carry);
+    diff_hr += carry;
+    dt->Part.Hour = obj_internal_DateAddModAdd(dt->Part.Hour, diff_hr, 24, &carry);
+    diff_day += carry;
+
+    /** Now add months and years **/
+    dt->Part.Month = obj_internal_DateAddModAdd(dt->Part.Month, diff_mo, 12, &carry);
+    diff_yr += carry;
+    dt->Part.Year += diff_yr;
+
+    /** Correct for jumping to a month with fewer days **/
+    if (dt->Part.Day >= (obj_month_days[dt->Part.Month] + ((dt->Part.Month==1 && IS_LEAP_YEAR(dt->Part.Year+1900))?1:0)))
+	{
+	dt->Part.Day = (obj_month_days[dt->Part.Month] + ((dt->Part.Month==1 && IS_LEAP_YEAR(dt->Part.Year+1900))?1:0)) - 1;
+	}
+
+    /** Adding days is more complicated **/
+    while (diff_day > 0)
+	{
+	dt->Part.Day++;
+	if (dt->Part.Day >= (obj_month_days[dt->Part.Month] + ((dt->Part.Month==1 && IS_LEAP_YEAR(dt->Part.Year+1900))?1:0)))
+	    {
+	    dt->Part.Day = 0;
+	    dt->Part.Month = obj_internal_DateAddModAdd(dt->Part.Month, 1, 12, &carry);
+	    dt->Part.Year += carry;
+	    }
+	diff_day--;
+	}
+    while (diff_day < 0)
+	{
+	if (dt->Part.Day == 0)
+	    {
+	    dt->Part.Day = (obj_month_days[obj_internal_DateAddModAdd(dt->Part.Month, -1, 12, &carry)] + ((dt->Part.Month==2 && IS_LEAP_YEAR(dt->Part.Year+1900))?1:0)) - 1;
+	    dt->Part.Month = obj_internal_DateAddModAdd(dt->Part.Month, -1, 12, &carry);
+	    dt->Part.Year += carry;
+	    }
+	else
+	    {
+	    dt->Part.Day--;
+	    }
+	diff_day++;
+	}
+
+    return 0;
+    }

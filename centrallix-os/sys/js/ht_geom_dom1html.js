@@ -210,7 +210,9 @@ function getpageYOffset()
 function getRelativeX(l)
     {
     if (l.__pg_left != null) return l.__pg_left;
-    return (l.__pg_left = parseInt(pg_get_style(l,'left')));
+    var left = parseInt(pg_get_style(l,'left'));
+    l.__pg_left = isNaN(left)?0:left;
+    return l.__pg_left;
     }
 
 function setRelativeX(l, value)
@@ -340,7 +342,8 @@ function ClipObject_GetPart(n)
 	{
 	var clip = this.obj.style.clip;
 	if(!clip)
-	    clip = getComputedStyle(this.obj,null).getPropertyCSSValue('clip').cssText;
+	    //clip = getComputedStyle(this.obj,null).getPropertyCSSValue('clip').cssText;
+	    clip = getComputedStyle(this.obj,null).clip;
 	a = this.arr = ClipRegexp.exec(clip);
 	}
     if (!a)

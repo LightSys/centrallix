@@ -31,9 +31,11 @@
 #ifndef __NO_LONGLONG
 typedef unsigned long long int handle_t;
 #define XHN_HANDLE_PRT "%16.16llX"
+#define XHN_HANDLE_DPRT "%llu"
 #else
 typedef unsigned long int handle_t;
 #define XHN_HANDLE_PRT "%8.8X"
+#define XHN_HANDLE_DPRT "%u"
 #endif
 
 #define XHN_INVALID_HANDLE ((handle_t)(0))

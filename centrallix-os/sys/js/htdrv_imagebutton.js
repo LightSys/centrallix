@@ -97,10 +97,14 @@ function ib_mouseup(e)
     if (ib_cur_img)
         {
 	var ly = ib_cur_img.layer;
-        if (e.pageX >= getPageX(ly) &&
+        if (e.pageX >= $(ly).offset().left &&
+            e.pageX < $(ly).offset().left + $(ly).width() &&
+            e.pageY >= $(ly).offset().top &&
+            e.pageY < $(ly).offset().top + $(ly).height())
+        /*if (e.pageX >= getPageX(ly) &&
             e.pageX < getPageX(ly) + getClipWidth(ly) &&
             e.pageY >= getPageY(ly) &&
-            e.pageY < getPageY(ly) + getClipHeight(ly))
+            e.pageY < getPageY(ly) + getClipHeight(ly))*/
             {
             cn_activate(e.mainlayer, 'Click');
             cn_activate(e.mainlayer, 'MouseUp');
@@ -248,6 +252,10 @@ function ib_init(param)
 	l.curmode = 'n';
     else
 	l.curmode = 'd';
+
+    // Properties
+    //var iv = l.ifcProbeAdd(ifValue);
+    //iv.Add("enabled", "enabled");
     }
 
 

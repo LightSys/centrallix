@@ -62,10 +62,14 @@
 int
 prt_tablm_Break(pPrtObjStream this, pPrtObjStream *new_this)
     {
-    pPrtObjStream new_parent, cur_parent, new_obj;
+    pPrtObjStream new_parent, cur_parent, new_obj, search_obj;
     pPrtTabLMData lm_inf = (pPrtTabLMData)(this->LMData);
     pPrtTabLMData new_lm_inf;
+    pPrtObjStream new_cells[PRT_TABLM_MAXCOLS];
+    int n_cells = 0;
+    int err,i;
 
+	PRT_DEBUG("prt_tablm_Break() %s %8.8x\n", this->ObjType->TypeName, this);
 	/** Check recursion **/
 	if (thExcessiveRecursion())
 	    {
@@ -85,48 +89,124 @@ prt_tablm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 	    }
 
 	/** If this is a cell, it only breaks with its row. **/
-	if (this->ObjType->TypeID == PRT_OBJ_T_TABLECELL || this->ObjType->TypeID == PRT_OBJ_T_TABLEROW)
+	switch(this->ObjType->TypeID)
 	    {
-	    new_obj = prt_internal_Duplicate(this,0);
-	    cur_parent = this->Parent;
-	    prtUpdateHandleByPtr(this, new_obj);
-	    if (cur_parent->LayoutMgr->ChildBreakReq(cur_parent, this, &new_parent) < 0)
-		{
-		/** Row won't break, so neither will the cell. **/
-		prtUpdateHandleByPtr(new_obj, this);
-		new_obj->LayoutMgr->DeinitContainer(new_obj);
-		prt_internal_FreeObj(new_obj);
+	    case PRT_OBJ_T_TABLECELL:
+		/** For cells, we need to prepare to replicate all cells in the row, 
+		 ** so that our new cell is in the right position in the new row
+		 ** on the following page.
+		 **/
+		search_obj = this;
+		while (search_obj->Prev) search_obj = search_obj->Prev;
+		n_cells = 0;
+		while (search_obj)
+		    {
+		    if (n_cells >= PRT_TABLM_MAXCOLS)
+			break;
+		    new_cells[n_cells] = prt_internal_Duplicate(search_obj, 0);
+		    if (search_obj == this)
+			new_obj = new_cells[n_cells];
+		    search_obj->LinkNext = new_cells[n_cells];
+		    new_cells[n_cells]->LinkPrev = search_obj;
+		    n_cells++;
+		    search_obj = search_obj->Next;
+		    }
+		cur_parent = this->Parent;
+		prtUpdateHandleByPtr(this, new_obj);
+		if (cur_parent->LayoutMgr->ChildBreakReq(cur_parent, this, &new_parent) < 0)
+		    {
+		    /** Row won't break, so neither will this cell. **/
+		    prtUpdateHandleByPtr(new_obj, this);
+		    for(i=0;i<n_cells;i++)
+			{
+			new_cells[i]->LinkPrev->LinkNext = NULL;
+			new_obj->LayoutMgr->DeinitContainer(new_cells[i]);
+			prt_internal_FreeObj(new_cells[i]);
+			}
+		    return -1;
+		    }
+
+		/** Add our duplicated (continuation) objects to the new page **/
+		err = 0;
+		for(i=0;i<n_cells;i++)
+		    {
+		    if (new_parent->LayoutMgr->AddObject(new_parent, new_cells[i]) < 0)
+			{
+			/** Argh.  We're in a bad state if we leave new_obj
+			 ** dangling.  Lesser of evils is to force-add it.
+			 **/
+			prt_internal_Add(new_parent, new_cells[i]);
+			err = 1;
+			}
+		    }
+		if (err)
+		    {
+		    *new_this = new_obj;
+		    return -1;
+		    }
+		break;
+
+	    case PRT_OBJ_T_TABLEROW:
+		new_obj = prt_internal_Duplicate(this,0);
+		cur_parent = this->Parent;
+		prtUpdateHandleByPtr(this, new_obj);
+		if (cur_parent->LayoutMgr->ChildBreakReq(cur_parent, this, &new_parent) < 0)
+		    {
+		    /** Table won't break, so neither will this row. **/
+		    prtUpdateHandleByPtr(new_obj, this);
+		    new_obj->LayoutMgr->DeinitContainer(new_obj);
+		    prt_internal_FreeObj(new_obj);
+		    return -1;
+		    }
+
+		/** Add our duplicated (continuation) object to the new page **/
+		if (new_parent->LayoutMgr->AddObject(new_parent, new_obj) < 0)
+		    {
+		    /** Argh.  We're in a bad state if we leave new_obj
+		     ** dangling.  Lesser of evils is to force-add it.
+		     **/
+		    prt_internal_Add(new_parent, new_obj);
+		    *new_this = new_obj;
+		    return -1;
+		    }
+		break;
+
+	    case PRT_OBJ_T_TABLE:
+		/** Table.  We need to break it, but also include the header if there is one. **/
+		new_obj = prt_internal_Duplicate(this,0);
+		new_lm_inf = (pPrtTabLMData)(new_obj->LMData);
+		cur_parent = this->Parent;
+		prtUpdateHandleByPtr(this, new_obj);
+		if (lm_inf->HeaderRow)
+		    {
+		    new_lm_inf->HeaderRow = prt_internal_Duplicate(lm_inf->HeaderRow, 1);
+		    prt_internal_Add(new_obj, new_lm_inf->HeaderRow);
+		    }
+		if (cur_parent->LayoutMgr->ChildBreakReq(cur_parent, this, &new_parent) < 0)
+		    {
+		    /** Row won't break, so neither will the cell. **/
+		    prtUpdateHandleByPtr(new_obj, this);
+		    prt_internal_FreeTree(new_obj);
+		    return -1;
+		    }
+
+		/** Add our duplicated (continuation) object to the new page **/
+		if (new_parent->LayoutMgr->AddObject(new_parent, new_obj) < 0)
+		    {
+		    /** Argh.  We're in a bad state if we leave new_obj
+		     ** dangling.  Lesser of evils is to force-add it.
+		     **/
+		    prt_internal_Add(new_parent, new_obj);
+		    *new_this = new_obj;
+		    return -1;
+		    }
+		break;
+
+	    default:
+		/** What kind of object is this? **/
 		return -1;
-		}
-	    }
-	else if (this->ObjType->TypeID == PRT_OBJ_T_TABLE)
-	    {
-	    /** Table.  We need to break it, but also include the header if there is one. **/
-	    new_obj = prt_internal_Duplicate(this,0);
-	    new_lm_inf = (pPrtTabLMData)(new_obj->LMData);
-	    cur_parent = this->Parent;
-	    prtUpdateHandleByPtr(this, new_obj);
-	    if (lm_inf->HeaderRow)
-		{
-		new_lm_inf->HeaderRow = prt_internal_Duplicate(lm_inf->HeaderRow, 1);
-		prt_internal_Add(new_obj, new_lm_inf->HeaderRow);
-		}
-	    if (cur_parent->LayoutMgr->ChildBreakReq(cur_parent, this, &new_parent) < 0)
-		{
-		/** Row won't break, so neither will the cell. **/
-		prtUpdateHandleByPtr(new_obj, this);
-		prt_internal_FreeTree(new_obj);
-		return -1;
-		}
-	    }
-	else
-	    {
-	    /** What kind of object is this? **/
-	    return -1;
 	    }
 
-	/** Add our duplicated (continuation) cell object to the row on the new page **/
-	new_parent->LayoutMgr->AddObject(new_parent, new_obj);
 	*new_this = new_obj;
 
 	/** Link to previous/next containers if the page was not ejected yet **/
@@ -146,6 +226,7 @@ prt_tablm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 int
 prt_tablm_ChildBreakReq(pPrtObjStream this, pPrtObjStream child, pPrtObjStream *new_this)
     {
+	PRT_DEBUG("prt_tablm_ChildBreakReq() %s %8.8x %s %8.8x\n", this->ObjType->TypeName, this, child->ObjType->TypeName, child);
     return this->LayoutMgr->Break(this, new_this);
     }
 
@@ -159,9 +240,10 @@ prt_tablm_ChildBreakReq(pPrtObjStream this, pPrtObjStream child, pPrtObjStream *
 int
 prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_width, double req_height)
     {
-    pPrtObjStream table_obj, new_parent, old_parent;
+    pPrtObjStream table_obj, new_parent, old_parent = NULL;
     double new_height;
 
+	PRT_DEBUG("prt_tablm_ChildResizeReq() %s %8.8x %s %8.8x\n", this->ObjType->TypeName, this, child->ObjType->TypeName, child);
 	/** Check recursion **/
 	if (thExcessiveRecursion())
 	    {
@@ -202,7 +284,7 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 		if (!this->Prev || (((pPrtTabLMData)(this->Prev->LMData))->Flags & PRT_TABLM_F_ISHEADER))
 		    {
 		    table_obj = this->Parent;
-		    new_parent = NULL;
+		    new_parent = old_parent;
 		    old_parent = table_obj->Parent;
 		    prt_internal_MakeOrphan(table_obj);
 
@@ -213,17 +295,27 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 		    if (old_parent->LayoutMgr->Break(old_parent, &new_parent) >= 0)
 			{
 			/** break succeeded, now re-add table to new parent. **/
-			new_parent->LayoutMgr->AddObject(new_parent, table_obj);
+			if (new_parent->LayoutMgr->AddObject(new_parent, table_obj) >= 0)
+			    {
+			    /** Object added - try to resize once again. **/
+			    return this->LayoutMgr->Resize(this, this->Width, new_height);
+			    }
+			else
+			    {
+			    prt_internal_Add(new_parent, table_obj);
+			    return -1;
+			    }
+			}
 
-			/** Try to resize once again. **/
-			return this->LayoutMgr->Resize(this, this->Width, new_height);
-			}
-		    else
-			{
-			/** break failed, re-add to old container.  Bad news though. **/
-			old_parent->LayoutMgr->AddObject(old_parent, table_obj);
-			return -1;
-			}
+		    /** break failed, re-add to old container.  Bad news though.  If
+		     ** the new_parent got set to NULL, we no longer have an old_parent
+		     ** or a new_parent.  Exit without doing anything.
+		     **/
+		    if (new_parent)
+			prt_internal_Add(new_parent, table_obj);
+		    /*if (new_parent == old_parent)
+			old_parent->LayoutMgr->AddObject(old_parent, table_obj);*/
+		    return -1;
 		    }
 		}
 
@@ -234,18 +326,29 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 		{
 		table_obj = this->Parent;
 		prt_internal_MakeOrphan(this);
+		new_parent = table_obj;
 		if (table_obj->LayoutMgr->Break(table_obj, &new_parent) >= 0)
 		    {
 		    /** Break worked.  Re-add row to new table and attempt to resize. **/
-		    new_parent->LayoutMgr->AddObject(new_parent, this);
-		    return this->LayoutMgr->Resize(this, this->Width, new_height);
+		    if (new_parent->LayoutMgr->AddObject(new_parent, this) >= 0)
+			{
+			return this->LayoutMgr->Resize(this, this->Width, new_height);
+			}
+		    else
+			{
+			prt_internal_Add(new_parent, this);
+			return -1;
+			}
 		    }
-		else
-		    {
-		    /** break failed, re-add to old container.  Bad news though. **/
-		    table_obj->LayoutMgr->AddObject(table_obj, this);
-		    return -1;
-		    }
+
+		/** break failed, re-add to old container.  Bad news though.  If
+		 ** the new_parent got set to NULL, we no longer have a table_obj
+		 ** or a new_parent.  Exit without doing anything.
+		 **/
+		prt_internal_Add(new_parent, this);
+		/*if (new_parent == table_obj)
+		    table_obj->LayoutMgr->AddObject(table_obj, this);*/
+		return -1;
 		}
 
 	    /** Failed **/
@@ -284,6 +387,7 @@ prt_tablm_Resize(pPrtObjStream this, double new_width, double new_height)
     double ow, oh;
     pPrtObjStream peers;
 
+	PRT_DEBUG("prt_tablm_Resize() %s %8.8x %.2lf %.2lf\n", this->ObjType->TypeName, this, new_width, new_height);
 	/** Check recursion **/
 	if (thExcessiveRecursion())
 	    {
@@ -360,11 +464,12 @@ prt_tablm_SetWidths(pPrtObjStream this)
 	    totalwidth += lm_inf->ColWidths[i];
 	    }
 
-	/** Check total of column widths. **/
-	if (totalwidth > (prtInnerWidth(this) + PRT_FP_FUDGE))
+	/** Check total of column widths.  If too wide, we always scale it back
+	 ** to fit.  If too narrow, we only scale it to fill if AUTOWIDTH is
+	 ** enabled.
+	 **/
+	if (totalwidth > (prtInnerWidth(this) + PRT_FP_FUDGE) || (lm_inf->Flags & PRT_TABLM_F_AUTOWIDTH))
 	    {
-	    /*mssError(1,"TABLM","Total of column widths and separations exceeds available table width");
-	    return -EINVAL;*/
 	    for(i=0;i<lm_inf->nColumns;i++)
 		{
 		lm_inf->ColWidths[i] *= (prtInnerWidth(this)/totalwidth);
@@ -605,6 +710,13 @@ prt_tablm_InitTable(pPrtObjStream this, pPrtTabLMData old_lm_data, va_list va)
 		    {
 		    lm_inf->ColWidths[i] = prtUnitX(this->Session, widths[i]);
 		    }
+		}
+	    else if (!strcmp(attrname, "autowidth"))
+		{
+		if (va_arg(va, int) != 0)
+		    lm_inf->Flags |= PRT_TABLM_F_AUTOWIDTH;
+		else
+		    lm_inf->Flags &= ~PRT_TABLM_F_AUTOWIDTH;
 		}
 	    else if (!strcmp(attrname, "colsep"))
 		{

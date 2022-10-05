@@ -71,6 +71,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
     time_t t;
     struct tm* timeptr;
     char timestr[80];
+    XArray endorsements;
+    XArray contexts;
+    int max_requests = 1;
 
 	if(!((s->Capabilities.Dom0NS || s->Capabilities.Dom0IE || (s->Capabilities.Dom1HTML && s->Capabilities.Dom2Events)) && s->Capabilities.CSS1) )
 	    {
@@ -92,6 +95,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	/** These are always set for a page widget **/
 	wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w));
 	wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h));
+
+	/** Max active server requests at one time **/
+	wgtrGetPropertyValue(tree,"max_requests",DATA_T_INTEGER,POD(&max_requests));
 
 	/** Page icon? **/
 	if (wgtrGetPropertyValue(tree, "icon", DATA_T_STRING, POD(&ptr)) == 0)
@@ -181,7 +187,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    strcpy(font_name, "");
 
 	/** Add global for page metadata **/
-	htrAddScriptGlobal(s, "page", "new Object()", 0);
+	htrAddScriptGlobal(s, "page", "{}", 0);
 
 	/** Add a list of highlightable areas **/
 	/** These are javascript global variables**/
@@ -210,7 +216,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "ibeam_current", "null", 0);
 	htrAddScriptGlobal(s, "util_cur_mainlayer", "null", 0);
 	htrAddScriptGlobal(s, "pg_loadqueue", "[]", 0);
-	htrAddScriptGlobal(s, "pg_loadqueue_busy", "true", 0);
+	htrAddScriptGlobal(s, "pg_loadqueue_busy", "999999", 0);
 	htrAddScriptGlobal(s, "pg_debug_log", "null", 0);
 	htrAddScriptGlobal(s, "pg_isloaded", "false", 0);
 	htrAddScriptGlobal(s, "pg_username", "null", 0);
@@ -235,6 +241,8 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "pg_appglobals", "[]", 0);
 	htrAddScriptGlobal(s, "pg_sessglobals", "[]", 0);
 	htrAddScriptGlobal(s, "pg_scripts", "[]", 0);
+	htrAddScriptGlobal(s, "pg_endorsements", "[]", 0);
+	htrAddScriptGlobal(s, "pg_max_requests", "1", 0);
 
 	/** Add script include to get function declarations **/
 	if(s->Capabilities.JS15 && s->Capabilities.Dom1HTML)
@@ -244,6 +252,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_page.js", 0);
 	htrAddScriptInclude(s, "/sys/js/htdrv_connector.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
+	htrAddScriptInclude(s, "/sys/js/jquery/jquery-1.11.1.js", 0);
 
 	/** Write named global **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -272,10 +281,11 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Page init **/
 	htrAddScriptInit(s,    "    if(typeof(pg_status_init)=='function')pg_status_init();\n");
-	htrAddScriptInit_va(s, "    pg_init(nodes['%STR&SYM'],%INT);\n", name, attract);
+	htrAddScriptInit_va(s, "    pg_init(wgtrGetNodeRef(ns,'%STR&SYM'),%INT);\n", name, attract);
 	htrAddScriptInit_va(s, "    pg_username = '%STR&JSSTR';\n", mssUserName());
 	htrAddScriptInit_va(s, "    pg_width = %INT;\n", w);
 	htrAddScriptInit_va(s, "    pg_height = %INT;\n", h);
+	htrAddScriptInit_va(s, "    pg_max_requests = %INT;\n", max_requests);
 	htrAddScriptInit_va(s, "    pg_charw = %INT;\n", s->ClientInfo->CharWidth);
 	htrAddScriptInit_va(s, "    pg_charh = %INT;\n", s->ClientInfo->CharHeight);
 	htrAddScriptInit_va(s, "    pg_parah = %INT;\n", s->ClientInfo->ParagraphHeight);
@@ -290,9 +300,23 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 	    {
 	    if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
-		htrAddScriptInit_va(s, "    nodes['%STR&SYM'].templates.push('%STR&JSSTR');\n",
+		htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,'%STR&SYM').templates.push('%STR&JSSTR');\n",
 		    name, path);
 	    }
+
+	/** Endorsements **/
+	xaInit(&endorsements,16);
+	xaInit(&contexts,16);
+	cxssGetEndorsementList(&endorsements, &contexts);
+	for(i=0;i<endorsements.nItems;i++)
+	    {
+	    htrAddScriptInit_va(s, "    pg_endorsements.push({e:'%STR&JSSTR', ctx:'%STR&JSSTR'});\n",
+		    (char*)endorsements.Items[i], (char*)contexts.Items[i]);
+	    nmSysFree((char*)endorsements.Items[i]);
+	    nmSysFree((char*)contexts.Items[i]);
+	    }
+	xaDeInit(&endorsements);
+	xaDeInit(&contexts);
 
 	/** Shutdown **/
 	htrAddScriptCleanup_va(s, "    pg_cleanup();\n");
@@ -335,12 +359,13 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	if (show == 1)
 	    {
 	    htrAddStylesheetItem(s, "\t#pgstat { POSITION:absolute; VISIBILITY:visible; LEFT:0;TOP:0;WIDTH:100%;HEIGHT:99%; Z-INDEX:100000;}\n");
-	    htrAddBodyItemLayerStart(s,0,"pgstat",0);
+	    htrAddBodyItemLayerStart(s,0,"pgstat",0, NULL);
 	    htrAddBodyItem_va(s, "<BODY %STR>", bgstr);
 	    htrAddBodyItem   (s, "<TABLE width=\"100\%\" height=\"100\%\" cellpadding=20><TR><TD valign=top><IMG src=\"/sys/images/loading.gif\"></TD></TR></TABLE></BODY>\n");
 	    htrAddBodyItemLayerEnd(s,0);
 	    }
 
+	htrAddStylesheetItem_va(s, "\thtml { overflow:hidden; }\n");
 	htrAddStylesheetItem_va(s, "\tbody { overflow:hidden; %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
 		font_size > 0, font_size, *font_name, font_name);
 	htrAddStylesheetItem(s, "\tpre { font-size:90%; }\n");
@@ -363,14 +388,14 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItem(s, "<DIV ID=\"pgkrgt\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
 	htrAddBodyItem(s, "<DIV ID=\"pgklft\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
 
-	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgping",0);
+	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgping",0, NULL);
 	htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
-	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgmsg",0);
+	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgmsg",0, NULL);
 	htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
 	htrAddBodyItem(s, "\n");
 
 	stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "net_http"),"session_watchdog_timer"),&watchdogtimer,NULL,0);
-	htrAddScriptInit_va(s,"    pg_ping_init(htr_subel(nodes[\"%STR&SYM\"],\"pgping\"),%INT);\n",name,watchdogtimer/2*1000);
+	htrAddScriptInit_va(s,"    pg_ping_init(htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"pgping\"),%INT);\n",name,watchdogtimer/2*1000);
 
 	/** Add event code to handle mouse in/out of the area.... **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "pg", "pg_mousemove");
@@ -378,6 +403,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "pg", "pg_mouseover");
 	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "pg", "pg_mousedown");
 	htrAddEventHandlerFunction(s, "document", "MOUSEUP", "pg", "pg_mouseup");
+	htrAddEventHandlerFunction(s, "document", "SCROLL", "pg", "pg_scroll");
 	if (s->Capabilities.Dom1HTML)
 	    htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "pg", "pg_contextmenu");
 

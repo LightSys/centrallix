@@ -153,7 +153,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddScriptGlobal(s, "radiobutton", "null", 0);
 
    /** DOM linkages **/
-   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr,\"rb%POSparent\")",id);
+   htrAddWgtrObjLinkage_va(s, tree, "rb%POSparent",id);
    htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(htr_subel(_obj,\"rb%POSborder\"),\"rb%POScover\")",id,id);
 
     /** Loop through each radiobutton and flag it NOOBJECT **/
@@ -194,15 +194,17 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
 
    /** Script initialization call. **/
    if (strlen(main_background) > 0) {
-      htrAddScriptInit_va(s,"    radiobuttonpanel_init({\n"
-        "    parentPane:nodes[\"%STR&SYM\"], fieldname:\"%STR&JSSTR\",\n"
-        "    borderPane:htr_subel(nodes[\"%STR&SYM\"],\"rb%POSborder\"),\n"
-        "    coverPane:htr_subel(htr_subel(nodes[\"%STR&SYM\"],\"rb%POSborder\"),\"rb%POScover\"),\n"
-        "    titlePane:htr_subel(nodes[\"%STR&SYM\"],\"rb%POStitle\"),\n"
-	"    mainBackground:\"%STR&JSSTR\", outlineBackground:\"%STR&JSSTR\", form:\"%STR&JSSTR\"});\n",
-	    name, fieldname, name,id, name,id,id, name,id, main_background, outline_background, form);
+      htrAddScriptInit_va(s,
+        "    var rb = wgtrGetNodeRef(ns, \"%STR&SYM\");\n"
+        "    radiobuttonpanel_init({\n"
+        "	parentPane:rb, fieldname:\"%STR&JSSTR\",\n"
+        "	borderPane:htr_subel(rb,\"rb%POSborder\"),\n"
+        "	coverPane:htr_subel(htr_subel(rb,\"rb%POSborder\"),\"rb%POScover\"),\n"
+        "	titlePane:htr_subel(rb,\"rb%POStitle\"),\n"
+	"	mainBackground:\"%STR&JSSTR\", outlineBackground:\"%STR&JSSTR\", form:\"%STR&JSSTR\"});\n",
+	    name, fieldname, id, id,id, id, main_background, outline_background, form);
    } else {
-      htrAddScriptInit_va(s,"    radiobuttonpanel_init({parentPane:nodes[\"%STR&SYM\"], fieldname:\"%STR&JSSTR\", borderPane:0, coverPane:0, titlePane:0, mainBackground:0, outlineBackground:0, form:\"%STR&JSSTR\"});\n", name, fieldname, form);
+      htrAddScriptInit_va(s,"    radiobuttonpanel_init({parentPane:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", borderPane:0, coverPane:0, titlePane:0, mainBackground:0, outlineBackground:0, form:\"%STR&JSSTR\"});\n", name, fieldname, form);
    }
 
    htrAddEventHandlerFunction(s, "document", "MOUSEUP", "radiobutton", "radiobutton_mouseup");
@@ -230,12 +232,15 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
 		label[0] = '\0';
 	    is_selected = htrGetBoolean(sub_tree, "selected", 0);
 	    if (is_selected < 0) is_selected = 0;
-	    htrAddWgtrObjLinkage_va(s,sub_tree,"htr_subel(_parentctr,\"rb%POSoption%POS\")",id,i);
+	    htrAddWgtrObjLinkage_va(s,sub_tree,"rb%POSoption%POS",id,i);
 	    wgtrGetPropertyValue(sub_tree,"name",DATA_T_STRING,POD(&ptr));
-            htrAddScriptInit_va(s,"    add_radiobutton(nodes[\"%STR&SYM\"], {selected:%INT, buttonset:htr_subel(nodes[\"%STR&SYM\"], \"rb%POSbuttonset%POS\"), buttonunset:htr_subel(nodes[\"%STR&SYM\"], \"rb%POSbuttonunset%POS\"), value:htr_subel(nodes[\"%STR&SYM\"], \"rb%POSvalue%POS\"), label:htr_subel(nodes[\"%STR&SYM\"], \"rb%POSlabel%POS\"), valuestr:\"%STR&JSSTR\", labelstr:\"%STR&JSSTR\"});\n", 
-		    ptr, is_selected,
-		    ptr, id, i, ptr, id, i,
-		    ptr, id, i, ptr, id, i,
+            htrAddScriptInit_va(s,
+		    "    var rbitem = wgtrGetNodeRef('%STR&SYM', '%STR&SYM');\n"
+		    "    add_radiobutton(rbitem, {selected:%INT, buttonset:htr_subel(rbitem, \"rb%POSbuttonset%POS\"), buttonunset:htr_subel(rbitem, \"rb%POSbuttonunset%POS\"), value:htr_subel(rbitem, \"rb%POSvalue%POS\"), label:htr_subel(rbitem, \"rb%POSlabel%POS\"), valuestr:\"%STR&JSSTR\", labelstr:\"%STR&JSSTR\"});\n", 
+		    wgtrGetNamespace(sub_tree), ptr,
+		    is_selected,
+		    id, i, id, i,
+		    id, i, id, i,
 		    value, label);
             i++;
 	    }

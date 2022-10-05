@@ -103,11 +103,12 @@ typedef struct _MPI
     pMqpSubtrees    Subtrees;
     pMqpRowCache    RowCache;
     int		    ObjMode;	/* O_xxx mode to open objects with */
-    char	    CurrentSource[OBJSYS_MAX_PATH];
+    char	    CurrentSource[OBJSYS_MAX_PATH+1+1024];
     XArray	    SourceList;
     int		    SourceIndex;
     pExpression	    AddlExp;
     int		    Flags;
+    pQueryStatement Statement;
     }
     MqpInf, *pMqpInf;
 
@@ -255,7 +256,7 @@ mqp_internal_Recurse(pQueryElement qe, pQueryStatement stmt, pObject obj)
 	if (oi && (oi->Flags & OBJ_INFO_F_NO_SUBOBJ)) return NULL;
 
 	/** Try running the query. **/
-	newqy = objOpenQuery(obj, NULL, NULL, (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
+	newqy = objOpenQuery(obj, NULL, NULL, (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL), 0);
 	if (!newqy) return NULL;
 	objUnmanageQuery(stmt->Query->SessionID, newqy);
 	newobj = objQueryFetch(newqy, ((pMqpInf)(qe->PrivateData))->ObjMode);
@@ -366,6 +367,7 @@ mqpAnalyze(pQueryStatement stmt)
     int src_idx,i,j;
     pExpression new_exp;
     pMqpInf mi;
+    int found;
 
     	/** Search for FROM clauses for this driver... **/
 	while((from_qs = mq_internal_FindItem(stmt->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
@@ -378,8 +380,11 @@ mqpAnalyze(pQueryStatement stmt)
 	    qe->QSLinkage = (void*)from_qs;
 	    qe->OrderPrio = 999;
 
-	    /** Find the index of the object for this FROM clause **/
-	    src_idx = expLookupParam(stmt->Query->ObjList, from_qs->Presentation[0]?(from_qs->Presentation):(from_qs->Source));
+	    /** Find the index of the object for this FROM clause.
+	     ** If this is an expression, Presentation has a forced value
+	     ** if not otherwise supplied by the SQL coder.
+	     **/
+	    src_idx = expLookupParam(stmt->Query->ObjList, from_qs->Presentation[0]?(from_qs->Presentation):(from_qs->Source), 0);
 	    if (src_idx == -1)
 	        {
 		mq_internal_FreeQE(qe);
@@ -437,6 +442,8 @@ mqpAnalyze(pQueryStatement stmt)
 			    from_qs->Specificity += 3;
 			else if (where_item->Expr->NodeType == EXPR_N_COMPARE && where_item->Expr->CompareType == MLX_CMP_EQUALS)
 			    from_qs->Specificity += 2;
+			else if (where_item->Expr->NodeType == EXPR_N_ISNULL)
+			    from_qs->Specificity += 2;
 			else
 			    from_qs->Specificity += 1;
 
@@ -482,13 +489,36 @@ mqpAnalyze(pQueryStatement stmt)
 		    item = (pQueryStructure)(orderby_qs->Children.Items[i]);
 		    if (item->ObjCnt == 1 && (item->ObjFlags[src_idx] & EXPR_O_REFERENCED) && item->Expr && item->Expr->AggLevel == 0)
 		        {
+			new_exp = exp_internal_CopyTree(item->Expr);
+			expRemapID(new_exp, src_idx, 0);
+
+			/** Check to see if it is already in the list **/
+			found = 0;
+			for(j=0;qe->OrderBy[j];j++)
+			    {
+			    if (expCompareExpressions(new_exp, qe->OrderBy[j]))
+				{
+				found = 1;
+				break;
+				}
+			    }
+			if (found)
+			    {
+			    expFreeExpression(new_exp);
+			    continue;
+			    }
+
+			/** Add it **/
 			j=0;
 			while(qe->OrderBy[j]) j++;
-			if ((j+1) >= sizeof(qe->OrderBy) / sizeof(*(qe->OrderBy))) break;
+			if ((j+1) >= sizeof(qe->OrderBy) / sizeof(*(qe->OrderBy)))
+			    {
+			    expFreeExpression(new_exp);
+			    break;
+			    }
 			if (qe->OrderPrio == 999 || qe->OrderPrio > i) qe->OrderPrio = i;
-			qe->OrderBy[j] = exp_internal_CopyTree(item->Expr);
+			qe->OrderBy[j] = new_exp;
 			qe->OrderBy[j+1] = NULL;
-			expRemapID(qe->OrderBy[j], src_idx, 0);
 			}
 		    }
 		}
@@ -521,6 +551,7 @@ mqpAnalyze(pQueryStatement stmt)
 		}
 	    xaInit(&mi->SourceList, 16);
 	    mi->SourceIndex = 0;
+	    mi->Statement = stmt;
 
 	    /** Mode to open new objects with **/
 	    if (stmt->Flags & MQ_TF_ALLOWUPDATE)
@@ -620,7 +651,8 @@ mqp_internal_CacheRow(pQueryStatement stmt, pQueryElement qe, pExpression criter
 	row->LastMatch = rc->LastMatch++;
 	row->nMatches = 0;
 	row->Obj = obj;
-	xsCopy(&rc->CriteriaBuf, "", 0);
+	xsCopy(&rc->CriteriaBuf, mi->CurrentSource, -1);
+	xsConcatenate(&rc->CriteriaBuf, " :: ", 4);
 	if (criteria) expGenerateText(criteria, stmt->Query->ObjList, xsWrite, &rc->CriteriaBuf, '\0', "cxsql", 0);
 	row->Criteria = nmSysStrdup(rc->CriteriaBuf.String);
 	xaAddItem(&rc->Cache, row);
@@ -635,12 +667,13 @@ mqp_internal_CacheRow(pQueryStatement stmt, pQueryElement qe, pExpression criter
  *** found in the cache, and the cache id otherwise.
  ***/
 int
-mqp_internal_CheckCache(pQueryStatement stmt, pMqpRowCache rc, pExpression criteria)
+mqp_internal_CheckCache(pQueryStatement stmt, pMqpRowCache rc, char* source, pExpression criteria)
     {
     int i;
     pMqpOneRow row;
 
-	xsCopy(&rc->CriteriaBuf, "", 0);
+	xsCopy(&rc->CriteriaBuf, source, -1);
+	xsConcatenate(&rc->CriteriaBuf, " :: ", 4);
 	if (criteria) expGenerateText(criteria, stmt->Query->ObjList, xsWrite, &rc->CriteriaBuf, '\0', "cxsql", 0);
 	for(i=0;i<rc->Cache.nItems;i++)
 	    {
@@ -667,6 +700,18 @@ int
 mqp_internal_CloseSource(pQueryElement qe)
     {
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
+    pMqpSubtrees ms = ((pMqpInf)(qe->PrivateData))->Subtrees;
+    pObject obj;
+
+	/** Return from any subtrees **/
+	while (ms && ms->nStacked > 0)
+	    {
+	    obj = mqp_internal_Return(qe, mi->Statement, NULL);
+	    if (obj)
+		objClose(obj);
+	    else
+		break;
+	    }
 
     	/** Close the source object and the query. **/
 	if (qe->LLQuery) objQueryClose(qe->LLQuery);
@@ -689,6 +734,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
     pMqpRowCache rc;
     char* src;
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
+    handle_t collection;
 
 	mi->Flags &= ~MQP_MI_F_USINGCACHE;
 
@@ -699,13 +745,42 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    src = xaGetItem(&(mi->SourceList), mi->SourceIndex++);
 	    strtcpy(mi->CurrentSource, src, sizeof(mi->CurrentSource));
 
+	    /** Check for cached single row result set **/
+	    if (mi->RowCache)
+		{
+		rc = mi->RowCache;
+		rc->CurCached = mqp_internal_CheckCache(stmt, rc, mi->CurrentSource, qe->Constraint);
+		if (rc->CurCached >= 0)
+		    {
+		    /** We're going from the cache this time **/
+		    /*objClose(qe->LLSource);*/
+		    qe->LLSource = NULL;
+		    qe->LLQuery = NULL;
+		    mi->Flags |= MQP_MI_F_USINGCACHE;
+		    break;
+		    }
+		}
+
 	    /** Open the data source in the objectsystem **/
-	    qe->LLSource = objOpen(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, "system/directory");
+	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
+		{
+		collection = mq_internal_FindCollection(stmt->Query, ((pQueryStructure)qe->QSLinkage)->Source);
+		if (collection == XHN_INVALID_HANDLE)
+		    {
+		    mssError(0,"MQP","Could not find source collection '%s' for SQL projection", ((pQueryStructure)qe->QSLinkage)->Source);
+		    return -1;
+		    }
+		qe->LLSource = objOpenTempObject(stmt->Query->SessionID, collection, mi->ObjMode);
+		}
+	    else
+		{
+		qe->LLSource = objOpen(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, (qe->Flags & MQ_EF_FROMOBJECT)?"system/object":"system/directory");
+		}
 	    if (!qe->LLSource) 
 		{
-		if (qe->Flags & MQ_EF_WILDCARD)
+		if ((qe->Flags & MQ_EF_WILDCARD) || (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION))
 		    {
-		    /** with wildcarding, it is ok for a source to not exist, we just ignore it. **/
+		    /** with wildcarding and/or expressions, it is ok for a source to not exist, we just ignore it. **/
 		    continue;
 		    }
 		else
@@ -718,21 +793,6 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    break;
 	    }
 
-	/** Check for cached single row result set **/
-	if (mi->RowCache)
-	    {
-	    rc = mi->RowCache;
-	    rc->CurCached = mqp_internal_CheckCache(stmt, rc, qe->Constraint);
-	    if (rc->CurCached >= 0)
-		{
-		/** We're going from the cache this time **/
-		objClose(qe->LLSource);
-		qe->LLSource = NULL;
-		qe->LLQuery = NULL;
-		mi->Flags |= MQP_MI_F_USINGCACHE;
-		}
-	    }
-
     	/** Open the query with the objectsystem. **/
 	if (((qe->Flags & MQ_EF_FROMSUBTREE) && (qe->Flags & MQ_EF_INCLSUBTREE)) || (qe->Flags & MQ_EF_FROMOBJECT))
 	    {
@@ -740,7 +800,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    }
 	else if (!(mi->Flags & MQP_MI_F_USINGCACHE))
 	    {
-	    qe->LLQuery = objOpenQuery(qe->LLSource, NULL, NULL, (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
+	    qe->LLQuery = objOpenQuery(qe->LLSource, NULL, NULL, (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL), 0);
 	    if (!qe->LLQuery) 
 		{
 		mqpFinish(qe,stmt);
@@ -850,16 +910,18 @@ mqp_internal_SetupWildcard_r(pQueryElement qe, pQueryStatement stmt, char* orig_
 	    slashptr = strchr(element_list[0]+1, '/');
 	    if (!slashptr) slashptr = strchr(element_list[0], '\0');
 	    qptr = strchr(element_list[0], '?');
+	    if (qptr > slashptr)
+		qptr = NULL;
 	    orig_len = cur_len;
 
 	    /** Open path so far and query for matching objects **/
-	    obj = objOpen(stmt->Query->SessionID, pathbuf, O_RDONLY, 0600, "system/directory");
+	    obj = objOpen(stmt->Query->SessionID, pathbuf, mi->ObjMode, 0600, "system/directory");
 	    if (!obj)
 		goto finished;
 	    info = objInfo(obj);
 	    if (info && (info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)))
 		goto finished;
-	    qy = objOpenQuery(obj, NULL, NULL, NULL, NULL);
+	    qy = objOpenQuery(obj, NULL, ":name", NULL, NULL, OBJ_QY_F_NOREOPEN);
 	    if (!qy)
 		goto finished;
 	    while ((subobj = objQueryFetch(qy, O_RDONLY)) != NULL)
@@ -976,9 +1038,11 @@ mqpStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     {
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
     pExpression new_exp;
+    pExpression source_exp;
 
 	if (additional_expr)
-	    expFreezeEval(additional_expr, stmt->Query->ObjList, qe->SrcIndex);
+	    if (expFreezeEval(additional_expr, stmt->Query->ObjList, qe->SrcIndex) < 0)
+		return -1;
 
 	mi->AddlExp = additional_expr;
 	mi->Flags &= ~(MQP_MI_F_USINGCACHE | MQP_MI_F_SOURCEOPEN);
@@ -996,10 +1060,59 @@ mqpStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    qe->Constraint = new_exp;
 	    }
 	if (!qe->Constraint) qe->Constraint = mi->AddlExp;
-        if (qe->Constraint && !(qe->Flags & MQ_EF_FROMSUBTREE)) expRemapID(qe->Constraint, qe->SrcIndex, 0);
+        if (qe->Constraint && !(qe->Flags & MQ_EF_FROMSUBTREE) && !(qe->Flags & MQ_EF_FROMOBJECT))
+	    expRemapID(qe->Constraint, qe->SrcIndex, 0);
 
 	qe->LLSource = NULL;
 	qe->LLQuery = NULL;
+
+	/** Evaluate source expression? **/
+	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION)
+	    {
+	    /** Remove previous source list if necessary, since it will likely
+	     ** be different this time.
+	     **/
+	    if (mi->Flags & MQP_MI_F_SOURCELIST)
+		{
+		while(mi->SourceList.nItems)
+		    {
+		    nmSysFree(mi->SourceList.Items[0]);
+		    xaRemoveItem(&(mi->SourceList), 0);
+		    }
+		mi->Flags &= ~MQP_MI_F_SOURCELIST;
+		}
+
+	    /** Evalute **/
+	    source_exp = ((pQueryStructure)qe->QSLinkage)->Expr;
+	    if (expEvalTree(source_exp, stmt->Query->ObjList) < 0)
+		{
+		mssError(0, "MQP", "Error in expression for FROM clause item");
+		return -1;
+		}
+
+	    /** If NULL, this source is valid but returns no rows **/
+	    if (source_exp->Flags & EXPR_F_NULL)
+		{
+		mi->Flags |= MQP_MI_F_SOURCELIST;
+		return 0;
+		}
+
+	    /** If non-string, error. **/
+	    if (source_exp->DataType != DATA_T_STRING)
+		{
+		mssError(1, "MQP", "Expression for FROM clause item must be a string");
+		return -1;
+		}
+
+	    /** If too long, error **/
+	    if (strlen(source_exp->String) >= sizeof(((pQueryStructure)qe->QSLinkage)->Source))
+		{
+		mssError(1, "MQP", "Expression for FROM clause item resulted in an over-long string");
+		return -1;
+		}
+
+	    strtcpy(((pQueryStructure)qe->QSLinkage)->Source, source_exp->String, sizeof(((pQueryStructure)qe->QSLinkage)->Source));
+	    }
 
 	/** Wildcard processing needed? **/
 	if (!(mi->Flags & MQP_MI_F_SOURCELIST))
@@ -1303,6 +1416,12 @@ mqpInitialize()
 	drv = (pQueryDriver)nmMalloc(sizeof(QueryDriver));
 	if (!drv) return -1;
 	memset(drv,0,sizeof(QueryDriver));
+
+	nmRegister(sizeof(MqpSbtInf), "MqpSbtInf");
+	nmRegister(sizeof(MqpSubtrees), "MqpSubtrees");
+	nmRegister(sizeof(MqpOneRow), "MqpOneRow");
+	nmRegister(sizeof(MqpRowCache), "MqpRowCache");
+	nmRegister(sizeof(MqpInf), "MqpInf");
 
 	/** Fill in the structure elements **/
 	strcpy(drv->Name, "MQP - MultiQuery Projection Module");

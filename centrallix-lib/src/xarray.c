@@ -32,6 +32,39 @@
 #define BLK_INCR	16
 
 
+/*** xaNew - allocate a new xarray and init it.
+ ***/
+pXArray
+xaNew(int init_size)
+    {
+    pXArray this;
+
+	this = (pXArray)nmMalloc(sizeof(XArray));
+	if (!this)
+	    return NULL;
+	if (xaInit(this, init_size) < 0)
+	    {
+	    nmFree(this, sizeof(XArray));
+	    return NULL;
+	    }
+
+    return this;
+    }
+
+
+/*** xaFree - deinits and frees an xarray
+ ***/
+int
+xaFree(pXArray this)
+    {
+
+	xaDeInit(this);
+	nmFree(this, sizeof(XArray));
+
+    return 0;
+    }
+
+
 /*** xaInit - initialize an xarray structure
  ***/
 int 
@@ -42,6 +75,8 @@ xaInit(pXArray this, int init_size)
 	this->nAlloc = BLK_INCR;
 	if (this->nAlloc < init_size) this->nAlloc = init_size;
 	this->Items = (void**)nmSysMalloc(this->nAlloc*sizeof(void*));
+	if (!this->Items)
+	    return -1;
 	this->nItems = 0;
 
     return 0;
@@ -188,6 +223,26 @@ xaFindItem(pXArray this, void* item)
     }
 
 
+/*** xaFindItemR - lookup an item by its value, and return the index if
+ *** found, or -1 if not found.  Optimized to find an item closer to the
+ *** end of the array.
+ ***/
+int 
+xaFindItemR(pXArray this, void* item)
+    {
+    int i,k=-1;
+
+	/** Search for it **/
+	for(i=this->nItems-1;i>=0;i--) if (item==this->Items[i])
+	    {
+	    k=i;
+	    break;
+	    }
+
+    return k;
+    }
+
+
 /*** xaRemoveItem - removes an item at a specific index from the array.
  *** To remove an item of a specific value, use this function in 
  *** conjunction with xaFindItem.
@@ -195,16 +250,17 @@ xaFindItem(pXArray this, void* item)
 int 
 xaRemoveItem(pXArray this, int index)
     {
-    int i;
+    /*int i;*/
 
 	if (index>=this->nItems || index==-1) return -1;
 
 	/** Move everything back to remove it **/
 	this->nItems--;
-	for(i=index;i<this->nItems;i++)
+	memmove(this->Items+index, this->Items+index+1, (this->nItems - index) * sizeof(void*));
+	/*for(i=index;i<this->nItems;i++)
 	    {
 	    this->Items[i] = this->Items[i+1];
-	    }
+	    }*/
 
     return 0;
     }
@@ -213,9 +269,40 @@ xaRemoveItem(pXArray this, int index)
 /*** xaClear - remove all items from the array.
  ***/
 int 
-xaClear(pXArray this)
+xaClear(pXArray this, int (*free_fn)(), void* free_arg)
     {
-    this->nItems=0;
+    int i;
+
+	if (free_fn)
+	    {
+	    for(i=0; i<this->nItems; i++)
+		{
+		free_fn((void*)this->Items[i], free_arg);
+		}
+	    }
+	this->nItems=0;
+
+    return 0;
+    }
+
+
+/*** xaClearR - remove all items from the array.  Optimized to remove them
+ *** in reverse order.
+ ***/
+int 
+xaClearR(pXArray this, int (*free_fn)(), void* free_arg)
+    {
+    int i;
+
+	if (free_fn)
+	    {
+	    for(i=this->nItems-1; i>=0; i--)
+		{
+		free_fn((void*)this->Items[i], free_arg);
+		}
+	    }
+	this->nItems=0;
+
     return 0;
     }
 
@@ -235,7 +322,7 @@ int
 xaSetItem(pXArray this, int index, void* item)
     {
     int new_alloc;
-    void* ptr;
+    void** ptr;
     int i, oldend;
 
 	if (index < 0) return -1;
@@ -265,7 +352,7 @@ xaSetItem(pXArray this, int index, void* item)
 int
 xaInsertBefore(pXArray this, int index, void* item)
     {
-    void* ptr;
+    void** ptr;
     int i;
 
 	/** sanity check on args **/
@@ -280,6 +367,7 @@ xaInsertBefore(pXArray this, int index, void* item)
 	    this->Items = ptr;
 	    memset(ptr+this->nItems, 0, BLK_INCR*sizeof(void*));
 	    }
+
 	/** Move from index on inclusive ahead one slot **/
 	for (i=this->nItems-1;i>=index;i--) this->Items[i+1] = this->Items[i];
 
@@ -287,14 +375,14 @@ xaInsertBefore(pXArray this, int index, void* item)
 	this->Items[index] = item;
 	this->nItems++;
 
-	return index;
+    return index;
     }
 
 /*** xaInsertAfter - insert after index
  ***/
 int xaInsertAfter(pXArray this, int index, void* item)
     {
-    void* ptr;
+    void** ptr;
     int i;
 
 	/** sanity check on args **/
@@ -309,6 +397,7 @@ int xaInsertAfter(pXArray this, int index, void* item)
 	    this->Items = ptr;
 	    memset(ptr+this->nItems, 0, BLK_INCR*sizeof(void*));
 	    }
+
 	/** Move from index on inclusive ahead one slot **/
 	for (i=this->nItems-1;i>index;i--) this->Items[i+1] = this->Items[i];
 
@@ -316,7 +405,7 @@ int xaInsertAfter(pXArray this, int index, void* item)
 	this->Items[index+1] = item;
 	this->nItems++;
 
-	return index+1;
+    return index+1;
     }
 
 

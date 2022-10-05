@@ -76,6 +76,8 @@ typedef struct _MSEC
     pThrExt	ThrParam[16];			/* Structure extension */
 #else
     void*	ThrParam;
+    int		(*ThrParamLink)(void* thr_param);
+    int		(*ThrParamUnLink)(void* thr_param);
 #endif
     void*	SecParam;			/* Security data handled by application */
     int		(*SecParamCopyConstructor)(void* src, void** dst);
@@ -180,6 +182,7 @@ typedef struct _FD
 #define FD_F_CONNECTED	1024		/* is a 'connected' UDP socket */
 #define FD_F_PIPE	2048		/* is a pipe */
 #define FD_UF_BLOCKINGIO 4096		/* use blocking IO only */
+#define FD_F_RDEOF	8192		/* FD cannot be read due to eof */
 
 
 #define FD_S_OPENING	0		/* FD is opening or connecting */
@@ -193,6 +196,7 @@ typedef struct _FD
 #define FD_U_IMMEDIATE	4		/* for fdClose, error all pending */
 #define FD_XU_NODST	8		/* fdClose, INTERNAL USE ONLY! */
 #define FD_U_PACKET	16		/* r/w: do _only_whole_packet_ */
+#define FD_U_TRUNCATE	32		/* on write, truncate file to offset */
 
 #define NET_U_NOBLOCK	1		/* User: net call can't block. */
 #define NET_U_KEEPALIVE	32		/* User: keep net connection alive */
@@ -315,7 +319,7 @@ int mtRemoveSignalHandler(int signum, void(*start_fn)());
 /** MTASK Threading functions. **/
 pThread thCreate(void (*start_fn)(), int priority, void* start_param);
 int thYield();
-int thExit();
+void thExit() __attribute__ ((noreturn));
 int thKill(pThread thr);
 int thWait(pMTObject obj, int obj_type, int event_type, int arg_count);
 int thWaitTimed(pMTObject obj, int obj_type, int event_type, int arg_count, int msec);
@@ -331,6 +335,7 @@ int thLock();
 int thUnlock();
 int thSleep(int msec);
 int thSetParam(pThread thr, const char* name, void* param);
+int thSetParamFunctions(pThread thr, int (*link_fn)(), int (*unlink_fn)());
 void* thGetParam(pThread thr, const char* name);
 int thSetFlags(pThread thr, int flags);
 int thClearFlags(pThread thr, int flags);

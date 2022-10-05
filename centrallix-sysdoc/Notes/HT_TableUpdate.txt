@@ -1,0 +1,33 @@
+On load:
+    1. Place header row outside scroll area
+    2. Render header row
+
+On data:
+    1. View range will have been decided (e.g., rows 1-30)
+    2. Begin at first visible record
+	a. Fetch an unused visual row from row cache, or create a new one if we haven't reached our create limit
+	b. If visual row not available, scan for one to discard from hidden top or bottom of visible rows
+	c. Populate the row with data and with the correct colors, etc.
+
+On event:
+    1. Determine needed visual window range
+	a. If on load, this will be rows 1 through ceil(vis_scroll_area_height / max_rowheight)
+	b. If on down sb click, this will be (last_row_fully_displayed + 1) through that plus the above.
+	c. If on up sb click, adjust similarly in reverse based on first row fully displayed
+	d. If on down button, bring one more record into view at the bottom
+	e. If on up button, bring one more record into view at the top
+    2. Display records that can be displayed now
+    3. Determine needed data to fill in remaining rows
+    4. Request additional data, if possible
+    5. On data delivery, go back to step 2
+
+Row list:
+    this.rows = {}
+    this.rows.first
+    this.rows.last
+    this.rows.firstvis
+    this.rows.lastvis
+    this.rows[rowslot]
+
+scroll page up (bar up click)
+    1. 

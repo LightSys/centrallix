@@ -284,13 +284,13 @@ prt_internal_GetStringWidth(pPrtObjStream obj, char* str, int n)
     
 	/** Add it up for each char in the string **/
 	l = strlen(str);
-	if (l > n)
+	if (l > n && n >= 0)
 	    {
 	    oldend = str[n];
 	    str[n] = '\0';
 	    }
 	PRTSESSION(obj)->Formatter->GetCharacterMetric(PRTSESSION(obj)->FormatterData, str, &(obj->TextStyle), &w, &h);
-	if (l > n)
+	if (l > n && n >= 0)
 	    {
 	    str[n] = oldend;
 	    }
@@ -718,8 +718,12 @@ prt_internal_FreeTree(pPrtObjStream obj)
 	    }
 
 	/** Now, free any content, if need be **/
-	if (obj->Content) nmSysFree(obj->Content);
-	obj->Content = NULL;
+	if (obj->Content)
+        {
+            if (obj->Finalize) obj->Finalize(obj->Content);
+            else nmSysFree(obj->Content);
+	}
+        obj->Content = NULL;
 
 	/** Disconnect from linknext/linkprev **/
 	if (obj->LinkNext) 
@@ -868,7 +872,11 @@ prt_internal_AddEmptyObj(pPrtObjStream container)
 	    {
 	    /** yes - add an empty string object. **/
 	    obj = prt_internal_CreateEmptyObj(container);
-	    container->LayoutMgr->AddObject(container, obj);
+	    if (container->LayoutMgr->AddObject(container, obj) < 0)
+		{
+		prt_internal_FreeTree(obj);
+		return NULL;
+		}
 	    }
 	else
 	    {

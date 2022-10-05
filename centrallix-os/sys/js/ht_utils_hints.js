@@ -332,6 +332,23 @@ function cx_hints_endnew(e)
     return;
     }
 
+// cx_hints_completenew() - just prior to a save operation
+function cx_hints_completenew(e)
+    {
+
+	// Set default again, if unchanged since startnew.  This allows
+	// create/modify dates to function more as expected.
+	if (e.cx_hints && e.cx_hints['all'].DefaultExpr)
+	    {
+	    if (cx_hints_datavalue(e) === e.cx_hints.__startnewvalue)
+		{
+		cx_hints_setdefault(e);
+		}
+	    }
+
+    return;
+    }
+
 // cx_hints_startnew() - when creation of a record is beginning.
 function cx_hints_startnew(e)
     {
@@ -346,6 +363,7 @@ function cx_hints_startnew(e)
 	if (e.cx_hints && e.cx_hints['all'].DefaultExpr) 
 	    {
 	    cx_hints_setdefault(e);
+	    e.cx_hints.__startnewvalue = cx_hints_datavalue(e);
 	    }
 
     return;
@@ -403,12 +421,34 @@ function cx_hints_checkmodify(e, ov, nv, type, onchange)
 	// badchars/allowchars
 	if (h.AllowChars && nv)
 	    {
-	    for(var i = 0; i<(''+nv).length; i++) if (h.AllowChars.indexOf((''+nv).charAt(i)) < 0) return ov;
+	    var nv2 = '';
+	    for(var i = 0; i<(''+nv).length; i++)
+		{
+		if (h.AllowChars.indexOf((''+nv).charAt(i)) >= 0) 
+		    {
+		    nv2 = nv2 + (''+nv).charAt(i);
+		    //return ov;
+		    }
+		}
+	    nv = nv2;
 	    }
 	if (h.BadChars && nv)
 	    {
-	    for(var i = 0; i<h.BadChars.length; i++) if ((''+nv).indexOf(h.BadChars.charAt(i)) >= 0) return ov;
+	    var nv2 = '';
+	    for(var i = 0; i<(''+nv).length; i++)
+		{
+		if (h.BadChars.indexOf((''+nv).charAt(i)) < 0)
+		    {
+		    nv2 = nv2 + (''+nv).charAt(i);
+		    }
+		    //return ov;
+		}
+	    nv = nv2;
 	    }
+
+	// Empty string is null?
+	if ((h.Style & cx_hints_style.strnull) && ((typeof nv == 'string') || (typeof nv == 'object' && nv != null && nv.constructor == String)) && nv == '')
+	    return null;
 
     return nv;
     }

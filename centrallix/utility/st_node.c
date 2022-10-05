@@ -209,7 +209,6 @@ snNewNode(pObject obj, char* content_type)
     pSnNode new_node;
     char* ptr;
     char* path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr + obj->SubCnt - 1);
-    pExpression exp;
 
     	/** Allocate the node. **/
 	new_node = (pSnNode)nmMalloc(sizeof(SnNode));
@@ -227,10 +226,7 @@ snNewNode(pObject obj, char* content_type)
 	obj_internal_PathPart(obj->Pathname,0,0);
 
 	/** Set the initial modification time **/
-	exp = expCompileExpression("getdate()", NULL, 0, 0);
-	expEvalTree(exp, NULL);
-	memcpy(&(new_node->LastModification), &(exp->Types.Date), sizeof(DateTime));
-	expFreeExpression(exp);
+	objCurrentDate(&(new_node->LastModification));
 
     return new_node;
     }

@@ -128,6 +128,7 @@ testprt_process_cmd(pObjSession s, char* cmd)
     int color;
     pPrtBorder bdr,bdr2;
     pPrtImage img;
+    pPrtSvg svg;
     char sbuf[256];
     pFile fd;
 
@@ -151,7 +152,8 @@ testprt_process_cmd(pObjSession s, char* cmd)
 		   "  fonts       - writes text in three fonts and five sizes\n"
 		   "  help        - show this help message\n"
 		   "  image       - tests a bitmap image\n"
-		   "  justify     - writes text in each of four justification modes\n"
+		   "  svg         - tests an SVG image\n"
+                   "  justify     - writes text in each of four justification modes\n"
 		   "  output      - redirects output to a file/device instead of screen\n"
 		   "  printfile   - output contents of a file into a whole-page area\n"
 		   "  rectangle   - draws a rectangle\n"
@@ -259,6 +261,105 @@ testprt_process_cmd(pObjSession s, char* cmd)
 	    printf("image: prtWriteImage() returned %d\n", rval);
 	    rval = prtCloseSession(prtsession);
 	    printf("image: prtCloseSession returned %d\n", rval);
+	    }
+        else if (!strcmp(cmdname,"svg"))
+	    {
+	    if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		{
+		printf("test_prt: usage: svg <mime type> <imagefile> <x> <y> <width> <height>\n");
+		mlxCloseSession(ls);
+		return;
+		}
+	    ptr = mlxStringVal(ls,NULL);
+	    prtsession= prtOpenSession(ptr, outputfn, outputarg, PRT_OBJ_U_ALLOWBREAK);
+	    printf("svg: prtOpenSession returned %8.8X\n", (int)prtsession);
+	    rval = prtSetImageStore(prtsession, "/tmp/", "/tmp/", (void*)s, objOpen, objWrite, objClose);
+	    printf("svg: prtSetImageStore returned %d\n", rval);
+	    rval = prtSetResolution(prtsession, 300);
+	    printf("svg: prtSetResolution(300) returned %d\n", rval);
+	    pagehandle = prtGetPageRef(prtsession);
+	    printf("svg: prtGetPageRef returned page handle %d\n", pagehandle);
+	    if (mlxNextToken(ls) != MLX_TOK_STRING) 
+		{
+		printf("test_prt: usage: svg <mime type> <imagefile> <x> <y> <width> <height>\n");
+		prtCloseSession(prtsession);
+		mlxCloseSession(ls);
+		return;
+		}
+	    ptr = mlxStringVal(ls,NULL);
+	    fd = fdOpen(ptr, O_RDONLY, 0600);
+	    if (!fd)
+		{
+		printf("svg: %s: could not access file\n", ptr);
+		prtCloseSession(prtsession);
+		mlxCloseSession(ls);
+		return;
+		}
+	    svg = prtReadSvg(fdRead, fd);
+	    if (!svg)
+		{
+		printf("svg: %s: could not read SVG data\n", ptr);
+		prtCloseSession(prtsession);
+		mlxCloseSession(ls);
+		return;
+		}
+	    if (mlxNextToken(ls) != MLX_TOK_DOUBLE)
+		{
+		printf("test_prt: usage: svg <mime type> <imagefile> <x> <y> <width> <height>\n");
+		prtCloseSession(prtsession);
+		mlxCloseSession(ls);
+		return;
+		}
+	    x = mlxDoubleVal(ls);
+	    if (mlxNextToken(ls) != MLX_TOK_DOUBLE)
+		{
+		printf("test_prt: usage: svg <mime type> <imagefile> <x> <y> <width> <height>\n");
+		prtCloseSession(prtsession);
+		mlxCloseSession(ls);
+		return;
+		}
+	    y = mlxDoubleVal(ls);
+	    if (mlxNextToken(ls) != MLX_TOK_DOUBLE)
+		{
+		printf("test_prt: usage: svg <mime type> <imagefile> <x> <y> <width> <height>\n");
+		prtCloseSession(prtsession);
+		mlxCloseSession(ls);
+		return;
+		}
+	    w = mlxDoubleVal(ls);
+	    if (mlxNextToken(ls) != MLX_TOK_DOUBLE)
+		{
+		printf("test_prt: usage: svg <mime type> <imagefile> <x> <y> <width> <height>\n");
+		prtCloseSession(prtsession);
+		mlxCloseSession(ls);
+		return;
+		}
+	    h = mlxDoubleVal(ls);
+	    if (mlxNextToken(ls) == MLX_TOK_STRING)
+		{
+		ptr = nmSysStrdup(mlxStringVal(ls,NULL));
+		if (mlxNextToken(ls) == MLX_TOK_KEYWORD && !strcmp(mlxStringVal(ls,NULL),"border"))
+		    {
+		    bdr = prtAllocBorder(2,0.2,0.0, 0.2,0x0000FF, 0.05,0x00FFFF);
+		    areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, x+w+10, y, 80-(x+w+10), h, PRT_OBJ_U_XSET | PRT_OBJ_U_YSET, "border", bdr, NULL);
+		    prtSetMargins(areahandle,1.0,1.0,1.0,1.0);
+		    prtFreeBorder(bdr);
+		    }
+		else
+		    {
+		    areahandle = prtAddObject(pagehandle, PRT_OBJ_T_AREA, x+w+10, y, 80-(x+w+10), h, PRT_OBJ_U_XSET | PRT_OBJ_U_YSET, NULL);
+		    }
+		printf("text: prtAddObject(PRT_OBJ_T_AREA) returned area handle %d\n", 
+			areahandle);
+		rval = prtWriteString(areahandle, ptr);
+		printf("text: prtWriteString returned %d\n", rval);
+		rval = prtEndObject(areahandle);
+		printf("text: prtEndObject(area) returned %d\n", rval);
+		}
+	    rval = prtWriteSvgToContainer(pagehandle, svg, x,y,w,h, PRT_OBJ_U_XSET | PRT_OBJ_U_YSET);
+	    printf("svg: prtWriteSvgToContainer() returned %d\n", rval);
+	    rval = prtCloseSession(prtsession);
+	    printf("svg: prtCloseSession returned %d\n", rval);
 	    }
 	else if (!strcmp(cmdname,"table"))
 	    {
@@ -893,6 +994,9 @@ start(void* v)
     int alloc;
     int t;
 
+        /** Initialize security subsystem **/
+        cxssInitialize();
+
 	/** Load the configuration file **/
 	cxconf = fdOpen(CxGlobals.ConfigFileName, O_RDONLY, 0600);
 	if (!cxconf)
@@ -955,7 +1059,7 @@ start(void* v)
 	/** Authenticate **/
 	user = readline("Username: ");
 	pwd = getpass("Password: ");
-	if (mssAuthenticate(user,pwd) < 0)
+	if (mssAuthenticate(user, pwd, 0) < 0)
 	    puts("Warning: auth failed, running outside session context.");
 	StdOut = fdOpen("/dev/tty", O_RDWR, 0600);
 	free( user);
@@ -1057,6 +1161,7 @@ main(int argc, char* argv[])
 	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
 	CxGlobals.QuietInit = 0;
 	CxGlobals.ParsedConfig = NULL;
+	CxGlobals.Flags = 0;
 	TESTPRT.OutputFile[0] = 0;
 	TESTPRT.CmdFile[0] = 0;
     

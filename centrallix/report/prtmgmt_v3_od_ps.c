@@ -92,7 +92,7 @@ void* prt_psod_OpenPDF(pPrtSession);
 static PrtPsodFormat PsFormats[] =
     {
 	{ "png",	"image/png",		prt_psod_OpenPDF,	1,	"/usr/bin/gs -q -dSAFER -dNOPAUSE -dBATCH -dFirstPage=1 -dLastPage=1 -sDEVICE=png16m -dTextAlphaBits=4 -dGraphicsAlphaBits=4 -sOutputFile=- -" },
-	{ "pdf",	"application/pdf",	prt_psod_OpenPDF,	999999,	"/usr/bin/ps2pdf -dCompatibilityLevel=1.4 -dPDFSETTINGS=/prepress - -" },
+	{ "pdf",	"application/pdf",	prt_psod_OpenPDF,	999999,	"cat | /usr/bin/ps2pdf -dCompatibilityLevel=1.4 -dPDFSETTINGS=/prepress /dev/stdin - | sed 's/^<<\\/Type \\/Catalog \\/Pages \\([0-9R ]*\\)$/<<\\/Type \\/Catalog \\/Pages \\1 \\/Type\\/Catalog\\/ViewerPreferences<<\\/PrintScaling\\/None>>/'" },
 	{ NULL,		NULL,			NULL,			0,	NULL }
     };
 
@@ -314,9 +314,16 @@ prt_psod_WriteTrans(pPrtPsodInf context, char* buf, int buflen, int offset, int 
     int rval;
 
 	/** try to send it to the subprocess **/
-	rval = fdWrite(context->TransWPipe, buf, buflen, offset, flags);
-	if (rval <= 0)
-	    mssError(1, "PRT", "Translator subprocess died unexpectedly!");
+	if (context->TransWPipe)
+	    {
+	    rval = fdWrite(context->TransWPipe, buf, buflen, offset, flags);
+	    if (rval <= 0)
+		mssError(1, "PRT", "Translator subprocess died unexpectedly!");
+	    }
+	else
+	    {
+	    return -1;
+	    }
 
     return rval;
     }
@@ -648,12 +655,12 @@ prt_psod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle s
 	    else if (style->FontID == PRT_FONT_T_SANSSERIF)
 		{
 		/** metrics based on empirical analysis **/
-		n += hp_helvetica_font_metrics[(*str) - 0x20][style_code]/60.0;
+		n += hp_helvetica_font_metrics[(*str) - 0x20][style_code]/600.0;
 		}
 	    else if (style->FontID == PRT_FONT_T_SERIF)
 		{
 		/** metrics based on empirical analysis **/
-		n += hp_times_font_metrics[(*str) - 0x20][style_code]/60.0;
+		n += hp_times_font_metrics[(*str) - 0x20][style_code]/600.0;
 		}
 	    else
 		{
@@ -844,6 +851,9 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
     int rows,cols,x,y,pix;
+    int direct_map = 0;
+    unsigned char* imgrow;
+    char* hexdigit = "0123456789abcdef";
 
 	if (context->PageNum >= context->MaxPages) return 0;
 
@@ -859,16 +869,26 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 	if (img->Hdr.Width <= cols/2) cols = img->Hdr.Width;
 	if (img->Hdr.Height <= rows/2) rows = img->Hdr.Height;
 
+	/** Use direct pixel mapping to speed things up? **/
+	if (cols == img->Hdr.Width && rows == img->Hdr.Height && img->Hdr.ColorMode == PRT_COLOR_T_FULL)
+	    direct_map = 1;
+
+	/** Allocate image data row **/
+	imgrow = (unsigned char*)nmSysMalloc(cols*6 + 1 + 1);
+	if (!imgrow)
+	    return -1;
+
 	/** save graphics context before beginning, 
 	 ** then emit the image header.
 	 **/
 	prt_psod_Output_va(context,	"gsave\n"
-					"/rasterdata %d string def\n"
+					"/getrasterdata %d string def\n"
 					"%.1f %.1f translate\n"
 					"%.1f %.1f scale\n"
 					"%d %d 8\n"
 					"[ %d %d %d %d %d %d ]\n"
-					"{ currentfile rasterdata readhexstring pop }\n"
+					"{ currentfile getrasterdata readhexstring pop }\n"
+					/*"{ currentfile rasterdata readhexstring pop }\n"*/
 					"false 3\n"
 					"%%%%BeginData: %d ASCII Bytes\n"
 					"colorimage\n"
@@ -880,7 +900,7 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 				height*12.0 + 0.000001,
 				cols, rows,
 				cols, 0, 0, -rows, 0, rows,
-				cols*rows*6+strlen("colorimage\n")+rows
+				((cols*6)+1)*rows+strlen("colorimage\n")
 				);
 
 	/** Output the data, in hexadecimal **/
@@ -888,16 +908,77 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 	    {
 	    for(x=0;x<cols;x++)
 		{
-		pix = prt_internal_GetPixel(img, ((double)x)/(cols), ((double)y)/(rows));
-		prt_psod_Output_va(context, "%6.6X", pix);
+		/** We're doing the hex-number-to-ascii conversion manually because
+		 ** it is 4 times faster, and this loop is a bottleneck for reports
+		 ** with images, especially large images.
+		 **/
+		if (direct_map)
+		    pix = img->Data.Word[y*img->Hdr.Width + x] & 0x00FFFFFF;
+		    /*pix = prt_internal_GetPixelDirect(img, x, y);*/
+		else
+		    pix = prt_internal_GetPixel(img, ((double)x)/(cols), ((double)y)/(rows));
+		imgrow[x*6+0] = hexdigit[pix >> 20];
+		imgrow[x*6+1] = hexdigit[(pix >> 16) & 0xF];
+		imgrow[x*6+2] = hexdigit[(pix >> 12) & 0xF];
+		imgrow[x*6+3] = hexdigit[(pix >> 8) & 0xF];
+		imgrow[x*6+4] = hexdigit[(pix >> 4) & 0xF];
+		imgrow[x*6+5] = hexdigit[pix & 0xF];
 		}
-	    prt_psod_Output(context, "\n", 1);
+	    imgrow[cols*6] = '\n';
+	    imgrow[cols*6+1] = '\0';
+	    prt_psod_Output(context, (char*)imgrow, cols*6+1);
 	    }
 
 	/** Restore graphics context when done **/
 	prt_psod_Output_va(context,	"%%%%EndData\n"
 					"grestore\n");
 
+	nmSysFree(imgrow);
+
+    return context->CurVPos + height;
+    }
+
+
+/*** prt_psod_WriteSvgData() - outputs an svg image at the current
+ *** printing position on the page, given the selected pixel and 
+ *** color resolution. 
+ ***/
+double
+prt_psod_WriteSvgData(void* context_v, pPrtSvg svg, double width, double height, double next_y)
+    {
+    pPrtPsodInf context;
+    pXString epsXString;
+    double dx, dy;    
+
+    context = (pPrtPsodInf)context_v;
+    if (context->PageNum >= context->MaxPages) {
+        return 0;
+    }
+
+    /* Distance (x, y) from lower-left corner */ 
+    dx = context->CurHPos * 7.2 + 0.000001;
+    dy = context->PageHeight - (context->CurVPos * 12.0 +
+                               height * 12.0 + 0.000001);
+
+    /* Width and height in pt (1/72th of an inch) */
+    width = width/10.0 * 72;
+    height = height/6.0 * 72;
+
+    /* Convert SVG data to postscript */
+    epsXString = prtConvertSvgToEps(svg, width, height);
+    if (!epsXString) return -1;
+    
+    /** Save state and embed EPS data **/
+    prt_psod_Output_va(context, "save\n"
+                                "%.1f %.1f translate\n"
+                                "/showpage {} def\n",
+                                dx, dy);
+    prt_psod_Output(context, epsXString->String, epsXString->Length);   
+
+    /** Restore state and free xstring **/
+    prt_psod_Output_va(context, "restore\n");
+    xsFree(epsXString);
+        
     return context->CurVPos + height;
     }
 
@@ -1006,7 +1087,8 @@ prt_psod_Initialize()
 	    drv->SetVPos = prt_psod_SetVPos;
 	    drv->WriteText = prt_psod_WriteText;
 	    drv->WriteRasterData = prt_psod_WriteRasterData;
-	    drv->WriteFF = prt_psod_WriteFF;
+	    drv->WriteSvgData = prt_psod_WriteSvgData;
+            drv->WriteFF = prt_psod_WriteFF;
 	    drv->WriteRect = prt_psod_WriteRect;
 	    prt_strictfm_RegisterDriver(drv);
 	    }

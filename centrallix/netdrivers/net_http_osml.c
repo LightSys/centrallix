@@ -33,13 +33,13 @@
 
  
  
-/*** nht_internal_ConstructPathname - constructs the proper OSML pathname
+/*** nht_i_ConstructPathname - constructs the proper OSML pathname
  *** for the open-object operation, given the apparent pathname and url
  *** parameters.  This primarily involves recovering the 'ls__type' setting
  *** and putting it back in the path.
  ***/
 int
-nht_internal_ConstructPathname(pStruct url_inf)
+nht_i_ConstructPathname(pStruct url_inf)
     {
     pStruct param_inf;
     char* oldpath;
@@ -82,11 +82,12 @@ nht_internal_ConstructPathname(pStruct url_inf)
     }
 
 
-/*** nht_internal_StartTrigger - starts a page that has trigger information
+#if 00
+/*** nht_i_StartTrigger - starts a page that has trigger information
  *** on it
  ***/
 int
-nht_internal_StartTrigger(pNhtSessionData sess, int t_id)
+nht_i_StartTrigger(pNhtSessionData sess, int t_id)
     {
     pNhtConnTrigger trg;
 
@@ -101,10 +102,10 @@ nht_internal_StartTrigger(pNhtSessionData sess, int t_id)
     }
 
 
-/*** nht_internal_EndTrigger - releases a wait on a page completion.
+/*** nht_i_EndTrigger - releases a wait on a page completion.
  ***/
 int
-nht_internal_EndTrigger(pNhtSessionData sess, int t_id)
+nht_i_EndTrigger(pNhtSessionData sess, int t_id)
     {
     pNhtConnTrigger trg;
     int i;
@@ -131,10 +132,10 @@ nht_internal_EndTrigger(pNhtSessionData sess, int t_id)
     }
 
 
-/*** nht_internal_WaitTrigger - waits on a trigger on a page.
+/*** nht_i_WaitTrigger - waits on a trigger on a page.
  ***/
 int
-nht_internal_WaitTrigger(pNhtSessionData sess, int t_id)
+nht_i_WaitTrigger(pNhtSessionData sess, int t_id)
     {
     pNhtConnTrigger trg;
     int i;
@@ -165,13 +166,14 @@ nht_internal_WaitTrigger(pNhtSessionData sess, int t_id)
 
     return 0;
     }
+#endif
 
 
-/*** nht_internal_WriteOneAttr - put one attribute's information into the
+/*** nht_i_WriteOneAttr - put one attribute's information into the
  *** outbound data connection stream.
  ***/
 int
-nht_internal_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrname)
+nht_i_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrname)
     {
     ObjData od;
     char* dptr;
@@ -209,13 +211,13 @@ nht_internal_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrna
 	    conn->LastHandle = tgt;
 	    xsPrintf(&xs, "<A TARGET=X" XHN_HANDLE_PRT " HREF='http://", tgt);
 	    }
-	xsConcatQPrintf(&xs, "%STR&HEX/?%STR#%STR'>%STR:", 
+	xsConcatQPrintf(&xs, "X%STR&HEX/?%STR#%STR'>%STR:", 
 		attrname, hints.String, coltypenames[type], (rval==0)?"V":((rval==1)?"N":"E"));
 
 	xsQPrintf(&xs,"%STR%STR&URL",xs.String,dptr);
 
 	xsConcatenate(&xs,"</A><br>\n",9);
-	fdWrite(conn->ConnFD,xs.String,strlen(xs.String),0,0);
+	nht_i_WriteConn(conn, xs.String, strlen(xs.String), 0);
 	xsDeInit(&xs);
 	xsDeInit(&hints);
 
@@ -223,11 +225,11 @@ nht_internal_WriteOneAttr(pObject obj, pNhtConn conn, handle_t tgt, char* attrna
     }
 
 
-/*** nht_internal_WriteAttrs - write an HTML-encoded attribute list for the
+/*** nht_i_WriteAttrs - write an HTML-encoded attribute list for the
  *** object to the connection, given an object and a connection.
  ***/
 int
-nht_internal_WriteAttrs(pObject obj, pNhtConn conn, handle_t tgt, int put_meta)
+nht_i_WriteAttrs(pObject obj, pNhtConn conn, handle_t tgt, int put_meta)
     {
     char* attr;
 
@@ -236,26 +238,26 @@ nht_internal_WriteAttrs(pObject obj, pNhtConn conn, handle_t tgt, int put_meta)
 	/** Loop throught the attributes. **/
 	if (put_meta)
 	    {
-	    nht_internal_WriteOneAttr(obj, conn, tgt, "name");
-	    nht_internal_WriteOneAttr(obj, conn, tgt, "inner_type");
-	    nht_internal_WriteOneAttr(obj, conn, tgt, "outer_type");
-	    nht_internal_WriteOneAttr(obj, conn, tgt, "annotation");
+	    nht_i_WriteOneAttr(obj, conn, tgt, "name");
+	    nht_i_WriteOneAttr(obj, conn, tgt, "inner_type");
+	    nht_i_WriteOneAttr(obj, conn, tgt, "outer_type");
+	    nht_i_WriteOneAttr(obj, conn, tgt, "annotation");
 	    }
 	for(attr = objGetFirstAttr(obj); attr; attr = objGetNextAttr(obj))
 	    {
-	    nht_internal_WriteOneAttr(obj, conn, tgt, attr);
+	    nht_i_WriteOneAttr(obj, conn, tgt, attr);
 	    }
 
     return 0;
     }
 
 
-/*** nht_internal_UpdateNotify() - this routine is called if the UI requested
+/*** nht_i_UpdateNotify() - this routine is called if the UI requested
  *** notifications on an object modification, and such a modification has
  *** indeed occurred.
  ***/
 int
-nht_internal_UpdateNotify(void* v)
+nht_i_UpdateNotify(void* v)
     {
     pObjNotification n = (pObjNotification)v;
     pNhtSessionData sess = (pNhtSessionData)(n->Context);
@@ -312,11 +314,11 @@ nht_internal_UpdateNotify(void* v)
     }
 
 
-/*** nht_internal_OSML_GetAttrType - get an attribute type from parameters
+/*** nht_i_OSML_GetAttrType - get an attribute type from parameters
  *** supplied to the query
  ***/
 int
-nht_internal_OSML_GetAttrType(void* nhtqy_v, char* attrname)
+nht_i_OSML_GetAttrType(void* nhtqy_v, char* attrname)
     {
     pNhtQuery nhtqy = (pNhtQuery)nhtqy_v;
     pStruct find_inf;
@@ -336,15 +338,17 @@ nht_internal_OSML_GetAttrType(void* nhtqy_v, char* attrname)
     }
 
 
-/*** nht_internal_OSML_GetAttrValue - get the value of an attribute from the
+/*** nht_i_OSML_GetAttrValue - get the value of an attribute from the
  *** query parameters.
  ***/
 int
-nht_internal_OSML_GetAttrValue(void* nhtqy_v, char* attrname, int datatype, pObjData val)
+nht_i_OSML_GetAttrValue(void* nhtqy_v, char* attrname, int datatype, pObjData val)
     {
     pNhtQuery nhtqy = (pNhtQuery)nhtqy_v;
     pStruct find_inf;
     char* ptr;
+    static DateTime dt;
+    static MoneyType m;
 
 	/** search through the list of params **/
 	find_inf = stLookup_ne(nhtqy->ParamData, attrname);
@@ -360,15 +364,21 @@ nht_internal_OSML_GetAttrValue(void* nhtqy_v, char* attrname, int datatype, pObj
 	if (!ptr) return -1;
 	ptr++;
 
+	/** Memory for date and money types **/
+	if (datatype == DATA_T_DATETIME)
+	    val->DateTime = &dt;
+	else if (datatype == DATA_T_MONEY)
+	    val->Money = &m;
+
     return objDataFromString(val, datatype, ptr);
     }
 
 
-/*** nht_internal_CreateQuery() - create a NhtQuery object, filled in from the
+/*** nht_i_CreateQuery() - create a NhtQuery object, filled in from the
  *** request data.
  ***/
 pNhtQuery
-nht_internal_CreateQuery(pStruct req_inf)
+nht_i_CreateQuery(pStruct req_inf)
     {
     pNhtQuery nht_query;
     char* ptr;
@@ -384,7 +394,7 @@ nht_internal_CreateQuery(pStruct req_inf)
 		    {
 		    nht_query->ParamList = expCreateParamList();
 		    expAddParamToList(nht_query->ParamList, "parameters", (void*)nht_query, 0);
-		    expSetParamFunctions(nht_query->ParamList, "parameters", nht_internal_OSML_GetAttrType, nht_internal_OSML_GetAttrValue, NULL);
+		    expSetParamFunctions(nht_query->ParamList, "parameters", nht_i_OSML_GetAttrType, nht_i_OSML_GetAttrValue, NULL);
 		    }
 		}
 	    }
@@ -393,10 +403,10 @@ nht_internal_CreateQuery(pStruct req_inf)
     }
 
 
-/*** nht_internal_FreeQuery() - deinit and release an NhtQuery object
+/*** nht_i_FreeQuery() - deinit and release an NhtQuery object
  ***/
 int
-nht_internal_FreeQuery(pNhtQuery nht_query)
+nht_i_FreeQuery(pNhtQuery nht_query)
     {
 
 	if (nht_query->ParamData) stFreeInf_ne(nht_query->ParamData);
@@ -407,13 +417,24 @@ nht_internal_FreeQuery(pNhtQuery nht_query)
     }
 
 
-/*** nht_internal_OSML - direct OSML access from the client.  This will take
+/*** nht_i_WriteHandle - writes a handle link to the http connection
+ ***/
+int
+nht_i_WriteHandle(pNhtConn conn, handle_t handle)
+    {
+    char sbuf[256];
+    snprintf(sbuf, 256, "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n", handle);
+    return nht_i_WriteConn(conn, sbuf, strlen(sbuf), 0);
+    }
+
+
+/*** nht_i_OSML - direct OSML access from the client.  This will take
  *** the form of a number of different OSML operations available seemingly
  *** seamlessly (hopefully) from within the JavaScript functionality in an
  *** DHTML document.
  ***/
 int
-nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf)
+nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pNhtApp app)
     {
     pNhtSessionData sess = conn->NhtSession;
     char* ptr;
@@ -422,13 +443,13 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
     pObject obj = NULL;
     pObjQuery qy = NULL;
     char* sid = NULL;
+    int auto_session = 0;
     char sbuf[256];
-    char sbuf2[256];
     char hexbuf[3];
     int mode,mask;
     char* usrtype;
     int i,t,n,o,cnt,start,flags,len,rval;
-    pStruct subinf;
+    pStruct subinf, find_inf;
     MoneyType m;
     DateTime dt;
     pDateTime pdt;
@@ -446,6 +467,9 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
     int reopen_success;
     pNhtQuery nht_query;
     char* strval;
+    XArray tail_buffer;
+    int n_skipped;
+    int ws;
     
     handle_t session_handle;
     handle_t query_handle;
@@ -453,53 +477,78 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 
 	if (DEBUG_OSML) stPrint_ne(req_inf);
 
+	/** Disable all caching of OSML responses **/
+	conn->NoCache = 1;
+
     	/** Choose the request to perform **/
 	if (!strcmp(request,"opensession"))
 	    {
 	    objsess = objOpenSession(req_inf->StrVal);
 	    if (!objsess) 
+		{
 		session_handle = XHN_INVALID_HANDLE;
+		}
 	    else
+		{
+		if (app) xaAddItem(&app->AppOSMLSessions, objsess);
 		session_handle = xhnAllocHandle(&(sess->Hctx), objsess);
-	    snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			 "Pragma: no-cache\r\n"
-	    		 "\r\n"
-			 "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n",
-		    session_handle);
+		}
+	    nht_i_WriteResponse(conn, 200, "OK", NULL);
+	    nht_i_WriteHandle(conn, session_handle);
 	    if (DEBUG_OSML) printf("ls__mode=opensession X" XHN_HANDLE_PRT "\n", session_handle);
-	    fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
 	    }
 	else 
 	    {
 	    /** Get the session data **/
+	    ptr = NULL;
+	    stAttrValue_ne(stLookup_ne(req_inf,"ls__newsess"),&ptr);
+	    if (ptr && !strcasecmp(ptr,"yes"))
+		auto_session = 1;
 	    stAttrValue_ne(stLookup_ne(req_inf,"ls__sid"),&sid);
-	    if (!sid) 
+	    if (!sid)
 		{
-	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			 "Pragma: no-cache\r\n"
-	    		 "\r\n"
-			 "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
-	        fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
-		mssError(1,"NHT","Session ID required for OSML request '%s'",request);
-		return -1;
-		}
-	    if (!strcmp(sid,"XDEFAULT"))
-		{
-		session_handle = XHN_INVALID_HANDLE;
-		objsess = sess->ObjSess;
+		if (!auto_session) 
+		    {
+		    nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+		    mssError(1,"NHT","Session ID required for OSML request '%s'",request);
+		    return -1;
+		    }
+		else
+		    {
+		    objsess = objOpenSession(req_inf->StrVal);
+		    if (!objsess) 
+			{
+			nht_i_WriteResponse(conn, 200, "OK", NULL);
+			session_handle = XHN_INVALID_HANDLE;
+			nht_i_WriteHandle(conn, session_handle);
+			mssError(1,"NHT","Failed to open new OSML session");
+			return -1;
+			}
+		    else
+			{
+			if (app) xaAddItem(&app->AppOSMLSessions, objsess);
+			session_handle = xhnAllocHandle(&(sess->Hctx), objsess);
+			}
+		    }
 		}
 	    else
 		{
-		session_handle = xhnStringToHandle(sid+1,NULL,16);
-		objsess = (pObjSession)xhnHandlePtr(&(sess->Hctx), session_handle);
+		auto_session = 0;
+		if (!strcmp(sid,"XDEFAULT"))
+		    {
+		    session_handle = XHN_INVALID_HANDLE;
+		    objsess = sess->ObjSess;
+		    }
+		else
+		    {
+		    session_handle = xhnStringToHandle(sid+1,NULL,16);
+		    objsess = (pObjSession)xhnHandlePtr(&(sess->Hctx), session_handle);
+		    }
 		}
+
 	    if (!objsess || !ISMAGIC(objsess, MGK_OBJSESSION))
 		{
-	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			 "Pragma: no-cache\r\n"
-	    		 "\r\n"
-			 "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
-	        fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+		nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 		mssError(1,"NHT","Invalid Session ID in OSML request");
 		return -1;
 		}
@@ -517,11 +566,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		obj = (pObject)xhnHandlePtr(&(sess->Hctx), obj_handle);
 		if (!obj || !ISMAGIC(obj, MGK_OBJECT))
 		    {
-		    snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			     "Pragma: no-cache\r\n"
-			     "\r\n"
-			     "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
-		    fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+		    nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 		    mssError(1,"NHT","Invalid Object ID in OSML request");
 		    return -1;
 		    }
@@ -541,11 +586,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		qy = (pObjQuery)xhnHandlePtr(&(sess->Hctx), query_handle);
 		if (!qy || !ISMAGIC(qy, MGK_OBJQUERY))
 		    {
-		    snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			     "Pragma: no-cache\r\n"
-			     "\r\n"
-			     "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
-		    fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+		    nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 		    mssError(1,"NHT","Invalid Query ID in OSML request");
 		    return -1;
 		    }
@@ -556,11 +597,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		!strcmp(request,"read") || !strcmp(request,"write") || !strcmp(request,"attrs") || 
 		!strcmp(request, "setattrs") || !strcmp(request,"delete")))
 		{
-		snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			 "Pragma: no-cache\r\n"
-			 "\r\n"
-			 "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
-		fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+		nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 		mssError(1,"NHT","Object ID required for OSML '%s' request", request);
 		return -1;
 		}
@@ -568,11 +605,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 	    /** Does this request require a query handle? **/
 	    if (query_handle == XHN_INVALID_HANDLE && (!strcmp(request,"queryfetch") || !strcmp(request,"queryclose")))
 		{
-		snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			 "Pragma: no-cache\r\n"
-			 "\r\n"
-			 "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
-		fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+		nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 		mssError(1,"NHT","Query ID required for OSML '%s' request", request);
 		return -1;
 		}
@@ -582,22 +615,16 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 	        {
 		if (session_handle == XHN_INVALID_HANDLE)
 		    {
-		    snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			     "Pragma: no-cache\r\n"
-			     "\r\n"
-			     "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
-		    fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+		    nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 		    mssError(1,"NHT","Illegal attempt to close the default OSML session.");
 		    return -1;
 		    }
 		xhnFreeHandle(&(sess->Hctx), session_handle);
+		if (app)
+		    xaRemoveItem(&app->AppOSMLSessions, xaFindItem(&app->AppOSMLSessions, objsess));
 	        objCloseSession(objsess);
-	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			 "Pragma: no-cache\r\n"
-	    		 "\r\n"
-			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
-		    0);
-	        fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+		nht_i_WriteResponse(conn, 200, "OK", NULL);
+		nht_i_WriteHandle(conn, (handle_t)0);
 	        }
 	    else if (!strcmp(request,"open"))
 	        {
@@ -612,19 +639,15 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    obj_handle = XHN_INVALID_HANDLE;
 		else
 		    obj_handle = xhnAllocHandle(&(sess->Hctx), obj);
-	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			 "Pragma: no-cache\r\n"
-	    		 "\r\n"
-			 "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n",
-		    obj_handle);
+		nht_i_WriteResponse(conn, 200, "OK", NULL);
+		nht_i_WriteHandle(conn, obj_handle);
 		if (DEBUG_OSML) printf("ls__mode=open X" XHN_HANDLE_PRT "\n", obj_handle);
-	        fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
 
 		if (obj && stAttrValue_ne(stLookup_ne(req_inf,"ls__notify"),&ptr) >= 0 && !strcmp(ptr,"1"))
-		    objRequestNotify(obj, nht_internal_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
+		    objRequestNotify(obj, nht_i_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
 
 		/** Include an attribute listing **/
-		nht_internal_WriteAttrs(obj,conn,obj_handle,1);
+		nht_i_WriteAttrs(obj,conn,obj_handle,1);
 	        }
 	    else if (!strcmp(request,"close"))
 	        {
@@ -647,12 +670,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    xhnFreeHandle(&(sess->Hctx), obj_handle);
 		    objClose(obj);
 		    }
-	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			 "Pragma: no-cache\r\n"
-	    		 "\r\n"
-			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
-		    0);
-	        fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+		nht_i_WriteResponse(conn, 200, "OK", NULL);
+		nht_i_WriteHandle(conn, (handle_t)0);
 	        }
 	    else if (!strcmp(request,"objquery"))
 	        {
@@ -660,32 +679,49 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		orderby=NULL;
 		stAttrValue_ne(stLookup_ne(req_inf,"ls__where"),&where);
 		stAttrValue_ne(stLookup_ne(req_inf,"ls__orderby"),&orderby);
-		qy = objOpenQuery(obj,where,orderby,NULL,NULL);
+		qy = objOpenQuery(obj,where,orderby,NULL,NULL,0);
 		if (!qy)
 		    query_handle = XHN_INVALID_HANDLE;
 		else
 		    query_handle = xhnAllocHandle(&(sess->Hctx), qy);
-	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			 "Pragma: no-cache\r\n"
-	    		 "\r\n"
-			 "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n",
-		    query_handle);
+		nht_i_WriteResponse(conn, 200, "OK", NULL);
+		nht_i_WriteHandle(conn, query_handle);
 		if (DEBUG_OSML) printf("ls__mode=objquery X" XHN_HANDLE_PRT "\n", query_handle);
-	        fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
 		}
 	    else if (!strcmp(request,"queryfetch") || !strcmp(request,"multiquery"))
 	        {
-		fdQPrintf(conn->ConnFD,
-			"Content-Type: text/html\r\n"
-			"Pragma: no-cache\r\n"
-			"\r\n");
+		nht_i_WriteResponse(conn, 200, "OK", NULL);
 		nht_query = NULL;
 		if (!strcmp(request,"multiquery"))
 		    {
+		    if (auto_session)
+			{
+			nht_i_WriteHandle(conn, session_handle);
+			}
 		    qy = NULL;
 
+		    /** Close old objects **/
+		    ptr = NULL;
+		    stAttrValue_ne(stLookup_ne(req_inf,"ls__closeobjs"),&ptr);
+		    while(ptr && *ptr)
+			{
+			obj_handle = xhnStringToHandle(ptr+1, &newptr, 16);
+			if (newptr <= ptr+1) break;
+			ptr = newptr;
+			if (*ptr == ',') ptr++;
+			obj = (pObject)xhnHandlePtr(&(sess->Hctx), obj_handle);
+			if (!obj || !ISMAGIC(obj, MGK_OBJECT)) 
+			    {
+			    mssError(1,"NHT","Invalid object id(s) in OSML multiquery 'ls__closeobjs' request");
+			    continue;
+			    }
+			xhnFreeHandle(&(sess->Hctx), obj_handle);
+			objClose(obj);
+			obj = NULL;
+			}
+
 		    /** check for query parameters **/
-		    nht_query = nht_internal_CreateQuery(req_inf);
+		    nht_query = nht_i_CreateQuery(req_inf);
 		    if (nht_query)
 			{
 			if (stAttrValue_ne(stLookup_ne(req_inf,"ls__autoclose"),&ptr) == 0 && strtol(ptr,NULL,0))
@@ -707,17 +743,11 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			qy = NULL;
 			query_handle = XHN_INVALID_HANDLE;
 			}
-		    if (autoclose)
-			snprintf(sbuf, sizeof(sbuf), "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n",
-			    XHN_INVALID_HANDLE);
-		    else
-			snprintf(sbuf, sizeof(sbuf), "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n",
-			    query_handle);
+		    nht_i_WriteHandle(conn, autoclose?XHN_INVALID_HANDLE:query_handle);
 		    if (DEBUG_OSML) printf("ls__mode=multiquery X" XHN_HANDLE_PRT "\n", query_handle);
-		    fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
 		    if (!qy && nht_query)
 			{
-			nht_internal_FreeQuery(nht_query);
+			nht_i_FreeQuery(nht_query);
 			}
 		    else
 			{
@@ -750,30 +780,81 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    if (start < 0) start = 0;
 		    if (!strcmp(request,"queryfetch"))
 			{
-			snprintf(sbuf, sizeof(sbuf), "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n", 0);
-			fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+			nht_i_WriteHandle(conn, (handle_t)0);
 			}
+
+		    /** Skip over objects at the beginning? **/
 		    while(start > 0 && (obj = objQueryFetch(qy,mode)))
 			{
 			objClose(obj);
 			start--;
 			}
-		    while(n > 0 && (obj = objQueryFetch(qy,mode)))
+
+		    /** Skip-to-tail mode?  If so, we need to go through the results,
+		     ** storing N results in a FIFO, so that when we hit the end, we
+		     ** have the last N results for the query.
+		     **/
+		    if (stAttrValue_ne(stLookup_ne(req_inf, "ls__tail"), &ptr) == 0 && strtol(ptr,NULL,0))
 			{
-			if (!autoclose)
-			    obj_handle = xhnAllocHandle(&(sess->Hctx), obj);
-			else
-			    obj_handle = n;
-			if (DEBUG_OSML) printf("ls__mode=queryfetch X" XHN_HANDLE_PRT "\n", obj_handle);
-			if (stAttrValue_ne(stLookup_ne(req_inf,"ls__notify"),&ptr) >= 0 && !strcmp(ptr,"1"))
-			    objRequestNotify(obj, nht_internal_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
-			nht_internal_WriteAttrs(obj,conn,obj_handle,1);
-			n--;
-			if (autoclose) objClose(obj);
+			xaInit(&tail_buffer, n);
+			n_skipped = 0;
+
+			/** Get the object listing **/
+			while((obj = objQueryFetch(qy, mode)) != NULL)
+			    {
+			    xaAddItem(&tail_buffer, obj);
+			    if (tail_buffer.nItems > n)
+				{
+				objClose((pObject)tail_buffer.Items[0]);
+				xaRemoveItem(&tail_buffer, 0);
+				n_skipped++;
+				}
+			    }
+
+			/** Send the data to the client **/
+			nht_i_QPrintfConn(conn, 0, "<A HREF=\"/\" TARGET=\"SKIPPED\">%INT</A>\r\n", n_skipped);
+			for(i=0; i<tail_buffer.nItems; i++)
+			    {
+			    obj = (pObject)tail_buffer.Items[i];
+			    if (!autoclose)
+				obj_handle = xhnAllocHandle(&(sess->Hctx), obj);
+			    else
+				obj_handle = n;
+			    if (DEBUG_OSML) printf("ls__mode=queryfetch X" XHN_HANDLE_PRT "\n", obj_handle);
+			    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__notify"),&ptr) >= 0 && !strcmp(ptr,"1"))
+				objRequestNotify(obj, nht_i_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
+			    nht_i_WriteAttrs(obj,conn,obj_handle,1);
+			    n--;
+			    if (autoclose) objClose(obj);
+			    }
+			xaDeInit(&tail_buffer);
+
+			/** We set n to 1 to indicate to the below code that we
+			 ** reached the end of the actual result set.
+			 **/
+			n = 1;
 			}
+		    else
+			{
+			/** Here's the main fetch loop **/
+			while(n > 0 && (obj = objQueryFetch(qy,mode)))
+			    {
+			    if (!autoclose)
+				obj_handle = xhnAllocHandle(&(sess->Hctx), obj);
+			    else
+				obj_handle = n;
+			    if (DEBUG_OSML) printf("ls__mode=queryfetch X" XHN_HANDLE_PRT "\n", obj_handle);
+			    if (stAttrValue_ne(stLookup_ne(req_inf,"ls__notify"),&ptr) >= 0 && !strcmp(ptr,"1"))
+				objRequestNotify(obj, nht_i_UpdateNotify, sess, OBJ_RN_F_ATTRIB);
+			    nht_i_WriteAttrs(obj,conn,obj_handle,1);
+			    n--;
+			    if (autoclose) objClose(obj);
+			    }
+			}
+
+		    /** if end of result set was reached before rowlimit ran out **/
 		    if (autoclose_shortres && n > 0)
 			{
-			/** if end of result set was reached before rowlimit ran out **/
 			xhnFreeHandle(&(sess->Hctx), query_handle);
 			for(i=0;i<sess->OsmlQueryList.nItems;i++)
 			    {
@@ -781,13 +862,13 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			    if (nht_query->OsmlQuery == qy)
 				{
 				xaRemoveItem(&sess->OsmlQueryList, i);
-				nht_internal_FreeQuery(nht_query);
+				nht_i_FreeQuery(nht_query);
 				break;
 				}
 			    }
 			objQueryClose(qy);
 			qy = NULL;
-			fdPrintf(conn->ConnFD, "<A HREF=/ TARGET=QUERYCLOSED>&nbsp;</A>\r\n");
+			nht_i_WriteConn(conn, "<A HREF=/ TARGET=QUERYCLOSED>&nbsp;</A>\r\n", -1, 0);
 			}
 		    else if (autoclose)
 			{
@@ -798,7 +879,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			    if (nht_query->OsmlQuery == qy)
 				{
 				xaRemoveItem(&sess->OsmlQueryList, i);
-				nht_internal_FreeQuery(nht_query);
+				nht_i_FreeQuery(nht_query);
 				break;
 				}
 			    }
@@ -816,17 +897,13 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    if (nht_query->OsmlQuery == qy)
 			{
 			xaRemoveItem(&sess->OsmlQueryList, i);
-			nht_internal_FreeQuery(nht_query);
+			nht_i_FreeQuery(nht_query);
 			break;
 			}
 		    }
 		objQueryClose(qy);
-	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			 "Pragma: no-cache\r\n"
-	    		 "\r\n"
-			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
-		    0);
-	        fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+		nht_i_WriteResponse(conn, 200, "OK", NULL);
+		nht_i_WriteHandle(conn, (handle_t)0);
 		}
 	    else if (!strcmp(request,"read"))
 	        {
@@ -847,46 +924,34 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    {
 		    if(start)
 			{
-			snprintf(sbuf2,256,"Content-Type: text/html\r\n"
-				 "Pragma: no-cache\r\n"
-				 "\r\n"
-				 "<A HREF=/ TARGET=X%8.8X>",
-			    0);
-			fdWrite(conn->ConnFD, sbuf2, strlen(sbuf2), 0,0);
+			nht_i_WriteResponse(conn, 200, "OK", NULL);
+			nht_i_WriteHandle(conn, (handle_t)0);
 			start = 0;
 			}
 		    for(i=0;i<cnt;i++)
 		        {
 		        sprintf(hexbuf,"%2.2X",((unsigned char*)sbuf)[i]);
-			fdWrite(conn->ConnFD,hexbuf,2,0,0);
+			nht_i_WriteConn(conn, hexbuf, 2, 0);
 			}
 		    n -= cnt;
 		    o = -1;
 		    }
 		if(start)
 		    {
-		    snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			     "Pragma: no-cache\r\n"
-			     "\r\n"
-			     "<A HREF=/ TARGET=X%8.8X>",
-			cnt);
-		    fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+		    nht_i_WriteResponse(conn, 200, "OK", NULL);
+		    nht_i_WriteHandle(conn, (handle_t)cnt);
 		    start = 0;
 		    }
-		fdWrite(conn->ConnFD, "</A>\r\n", 6,0,0);
+		nht_i_WriteConn(conn, "</A>\r\n", 6,0);
 		}
 	    else if (!strcmp(request,"write"))
 	        {
 		}
 	    else if (!strcmp(request,"attrs"))
 	        {
-	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			 "Pragma: no-cache\r\n"
-	    		 "\r\n"
-			 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
-		         0);
-	        fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
-		nht_internal_WriteAttrs(obj,conn,obj_handle,1);
+		nht_i_WriteResponse(conn, 200, "OK", NULL);
+		nht_i_WriteHandle(conn, (handle_t)0);
+		nht_i_WriteAttrs(obj,conn,obj_handle,1);
 		}
 	    else if (!strcmp(request,"setattrs") || !strcmp(request,"create"))
 	        {
@@ -903,11 +968,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			obj = objOpen(objsess, req_inf->StrVal, OBJ_O_AUTONAME | O_CREAT | O_RDWR, 0600, "system/object");
 		    if (!obj)
 			{
-			snprintf(sbuf,256,"Content-Type: text/html\r\n"
-				 "Pragma: no-cache\r\n"
-				 "\r\n"
-				 "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
-			fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+			nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 			mssError(0,"NHT","Could not create object");
 			return -1;
 			}
@@ -951,6 +1012,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 					n = objDataToInteger(DATA_T_STRING, strval, NULL);
 					retval=objSetAttrValue(obj,subinf->Name,DATA_T_INTEGER,POD(&n));
 					}
+				    else
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_INTEGER,NULL);
 				    break;
 
 				case DATA_T_DOUBLE:
@@ -959,6 +1022,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 					dbl = objDataToDouble(DATA_T_STRING, strval);
 					retval=objSetAttrValue(obj,subinf->Name,DATA_T_DOUBLE,POD(&dbl));
 					}
+				    else
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_DOUBLE,NULL);
 				    break;
 
 				case DATA_T_STRING:
@@ -972,6 +1037,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 					pdt = &dt;
 					retval=objSetAttrValue(obj,subinf->Name,DATA_T_DATETIME,POD(&pdt));
 					}
+				    else
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_DATETIME,NULL);
 				    break;
 
 				case DATA_T_MONEY:
@@ -981,6 +1048,8 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 					objDataToMoney(DATA_T_STRING, strval, &m);
 					retval=objSetAttrValue(obj,subinf->Name,DATA_T_MONEY,POD(&pm));
 					}
+				    else
+					retval=objSetAttrValue(obj,subinf->Name,DATA_T_MONEY,NULL);
 				    break;
 
 				case DATA_T_UNAVAILABLE: 
@@ -1006,11 +1075,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			if (retval < 0)
 			    {
 			    mssError(0, "NHT", "Failed to set attribute <%s> on object <%s>", subinf->Name, obj->Pathname->Pathbuf + 1);
-			    snprintf(sbuf,256,"Content-Type: text/html\r\n"
-				     "Pragma: no-cache\r\n"
-				     "\r\n"
-				     "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
-			    fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+			    nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 			    if (!strcmp(request, "create"))
 				{
 				xhnFreeHandle(&(sess->Hctx), obj_handle);
@@ -1022,14 +1087,11 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    }
 
 		/** Commit the change. **/
-		rval = objCommit(objsess);
+		//rval = objCommit(objsess);
+		rval = objCommitObject(obj);
 		if (rval < 0)
 		    {
-		    snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			     "Pragma: no-cache\r\n"
-			     "\r\n"
-			     "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
-		    fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+		    nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 		    objClose(obj);
 		    }
 		else
@@ -1044,7 +1106,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			if (reopen_str)
 			    {
 			    xsInit(reopen_str);
-			    nht_query = nht_internal_CreateQuery(req_inf);
+			    nht_query = nht_i_CreateQuery(req_inf);
 
 			    /** note - it is possible for autoname to fail, thus name == NULL.  IT
 			     ** is also possible for a poorly constructed SQL query to result in
@@ -1054,7 +1116,20 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 			    if (objGetAttrValue(obj, "name", DATA_T_STRING, POD(&ptr)) == 0)
 				{
 				reopen_having = stLookup_ne(req_inf,"ls__reopen_having")?1:0;
-				xsQPrintf(reopen_str, "%STR %[WHERE%]%[HAVING%] :name = %STR&QUOT", reopen_sql, !reopen_having, reopen_having, ptr);
+				find_inf = stLookup_ne(nht_query->ParamData, "name");
+				if (find_inf)
+				    {
+				    /** Method #1: by parameter **/
+				    xsQPrintf(reopen_str, "string:V:%STR", ptr);
+				    stAddValue_ne(find_inf, xsString(reopen_str));
+				    ws = strspn(reopen_sql, " \t\r\n");
+				    xsQPrintf(reopen_str, "%STR%STR", reopen_sql, (strncasecmp(reopen_sql+ws, "exec", 4) == 0)?"":" FOR UPDATE");
+				    }
+				else
+				    {
+				    /** Method #2: by SQL clause **/
+				    xsQPrintf(reopen_str, "%STR %[WHERE%]%[HAVING%] :name = %STR&QUOT FOR UPDATE", reopen_sql, !reopen_having, reopen_having, ptr);
+				    }
 				qy = objMultiQuery(objsess, reopen_str->String, nht_query?nht_query->ParamList:NULL, 0);
 				if (qy)
 				    {
@@ -1103,38 +1178,28 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    if (!strcmp(request,"create"))
 			{
 			if (DEBUG_OSML) printf("ls__mode=create X" XHN_HANDLE_PRT "\n", obj_handle);
+			nht_i_WriteResponse(conn, 200, "OK", NULL);
 			if (obj)
 			    {
-			    fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n"
-				     "Pragma: no-cache\r\n"
-				     "\r\n"
-				     "<A HREF=/ TARGET=X" XHN_HANDLE_PRT ">&nbsp;</A>\r\n",
-				     obj_handle);
+			    nht_i_WriteHandle(conn, obj_handle);
 			    }
 			else
 			    {
-			    fdPrintf(conn->ConnFD,"Content-Type: text/html\r\n"
-				     "Pragma: no-cache\r\n"
-				     "\r\n"
-				     "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
+			    nht_i_WriteConn(conn, "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n", -1, 0);
 			    }
 			}
 		    else
 			{
-			snprintf(sbuf,256,"Content-Type: text/html\r\n"
-				 "Pragma: no-cache\r\n"
-				 "\r\n"
-				 "<A HREF=/ TARGET=X%8.8X>&nbsp;</A>\r\n",
-				 0);
-			fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+			nht_i_WriteResponse(conn, 200, "OK", NULL);
+			nht_i_WriteHandle(conn, (handle_t)0);
 			}
 
 		    /** Write the (possibly updated) attrs to the connection **/
 		    if (obj)
-			nht_internal_WriteAttrs(obj,conn,obj_handle,1);
+			nht_i_WriteAttrs(obj,conn,obj_handle,1);
 		    }
 
-		if (nht_query) nht_internal_FreeQuery(nht_query);
+		if (nht_query) nht_i_FreeQuery(nht_query);
 		}
 	    else if (!strcmp(request,"delete"))
 		{
@@ -1158,12 +1223,7 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
 		    rval = objDeleteObj(obj);
 		    if (rval < 0) break;
 		    }
-	        snprintf(sbuf,256,"Content-Type: text/html\r\n"
-			 "Pragma: no-cache\r\n"
-	    		 "\r\n"
-			 "<A HREF=/ TARGET=%s>&nbsp;</A>\r\n",
-		    (rval==0)?"X00000000":"ERR");
-	        fdWrite(conn->ConnFD, sbuf, strlen(sbuf), 0,0);
+		nht_i_WriteResponse(conn, 200, "OK", (rval==0)?"<A HREF=/ TARGET=X00000000>&nbsp;</A>\r\n":"<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
 		}
 	    }
 	
@@ -1171,12 +1231,12 @@ nht_internal_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_
     }
 
 
-/*** nht_internal_CkParams - check to see if we need to set parameters as
+/*** nht_i_CkParams - check to see if we need to set parameters as
  *** a part of the object open process.  This is for opening objects for
  *** read access.
  ***/
 int
-nht_internal_CkParams(pStruct url_inf, pObject obj)
+nht_i_CkParams(pStruct url_inf, pObject obj)
     {
     pStruct find_inf, search_inf;
     int i,t,n;

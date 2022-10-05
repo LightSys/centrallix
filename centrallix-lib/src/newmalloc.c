@@ -313,8 +313,14 @@ nmMalloc(size)
 	    tmp = (void*)nmDebugMalloc(size);
 	    }
 
-	if (!tmp && err_fn) err_fn("Insufficient system memory for operation.");
-	else OVERLAY(tmp)->Magic = MGK_ALLOCMEM;
+	if (!tmp)
+	    {
+	    if (err_fn) err_fn("Insufficient system memory for operation.");
+	    }
+	else
+	    {
+	    OVERLAY(tmp)->Magic = MGK_ALLOCMEM;
+	    }
 
 #ifdef BUFFER_OVERFLOW_CHECKING
 	nmCheckAll();
@@ -386,7 +392,7 @@ nmFree(ptr,size)
 		ASSERTMAGIC(OVERLAY(tmp),MGK_FREEMEM);
 		if (OVERLAY(tmp) == OVERLAY(ptr))
 		    {
-		    printf("Duplicate nmFree()!!!  Size = %d, Address = %8.8x\n",size,(unsigned int)ptr);
+		    printf("Duplicate nmFree()!!!  Size = %d, Address = %p\n",size,ptr);
 		    if (err_fn) err_fn("Internal error - duplicate nmFree() occurred.");
 		    return;
 		    }
@@ -554,9 +560,9 @@ void
 nmSysFree(void* ptr)
     {
 #ifdef NM_USE_SYSMALLOC
+#ifdef SIZED_BLK_COUNTING
     int size;
     size = *(int*)(((char*)ptr)-sizeof(int));
-#ifdef SIZED_BLK_COUNTING
     if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]--;
 #endif
     nmDebugFree(((char*)ptr)-sizeof(int));
@@ -570,10 +576,14 @@ void*
 nmSysRealloc(void* ptr, int newsize)
     {
 #ifdef NM_USE_SYSMALLOC
+#ifdef SIZED_BLK_COUNTING
     int size;
+#endif
     char* newptr;
     if (!ptr) return nmSysMalloc(newsize);
+#ifdef SIZED_BLK_COUNTING
     size = *(int*)(((char*)ptr)-sizeof(int));
+#endif
     newptr = (char*)nmDebugRealloc((((char*)ptr)-sizeof(int)), newsize+sizeof(int));
     if (!newptr) return NULL;
 #ifdef SIZED_BLK_COUNTING

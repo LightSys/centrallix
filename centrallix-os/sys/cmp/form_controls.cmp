@@ -289,7 +289,7 @@ form_controls "widget/component-decl"
 		pointimage="/sys/images/ico25b.gif";
 		clickimage="/sys/images/ico25c.gif";
 		disabledimage="/sys/images/ico25d.gif";
-		tooltip = runserver("Create a New " + :this:object_name);
+		tooltip = runserver("Add a New " + :this:object_name);
 		enabled = runclient(:form:is_newable);
 		cnNew "widget/connector" { event="Click"; target=form; action="New"; }
 		}
@@ -303,7 +303,7 @@ form_controls "widget/component-decl"
 		pointimage="/sys/images/ico29b.gif";
 		clickimage="/sys/images/ico29c.gif";
 		disabledimage="/sys/images/ico29d.gif";
-		tooltip = runserver("Create Multiple New " + :this:object_name + "(s)");
+		tooltip = runserver("Add Multiple New " + :this:object_name + "(s)");
 		enabled = runclient(:form:is_newable);
 		cnMNew "widget/connector" { event="Click"; target=form; action="New"; Multi=runclient(1); }
 		}

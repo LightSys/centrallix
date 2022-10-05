@@ -12,6 +12,7 @@
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
 #include "stparse_ne.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -49,7 +50,7 @@
 
 
 
-/*** obj_internal_IsA - determines the possible relationship between two
+/*** objIsA - determines the possible relationship between two
  *** datatypes, from types.cfg, and returns a value indicating the 
  *** relationship between the two:
  ***
@@ -61,7 +62,7 @@
  ***    return OBJSYS_NOT_ISA (0x80000000) if the types are not related.
  ***/
 int
-obj_internal_IsA(char* type1, char* type2)
+objIsA(char* type1, char* type2)
     {
     int i,l = OBJSYS_NOT_ISA;
     pContentType t1, t2;
@@ -272,6 +273,7 @@ obj_internal_AllocObj()
     	/** Allocate the thing **/
 	this = (pObject)nmMalloc(sizeof(Object));
 	if (!this) return NULL;
+	memset(this, 0, sizeof(Object));
 
 	/** Initialize it **/
 	this->Magic = MGK_OBJECT;
@@ -292,7 +294,7 @@ obj_internal_AllocObj()
 	this->AttrExp = NULL;
 	this->AttrExpName = NULL;
 	this->LinkCnt = 1;
-	memset(&(this->AdditionalInfo), 0, sizeof(ObjectInfo));
+	this->RowID = -1;
 	xaInit(&(this->Attrs),16);
 
     return this;
@@ -342,6 +344,82 @@ obj_internal_FreeObj(pObject this)
     }
 
 
+/*** obj_internal_GetDCHash - assemble the hash key (a string) that we will use
+ *** for the directory cache.  The string has this form:
+ ***
+ *** "NNNNNNNN<pathname><paramstring>"
+ ***
+ *** where NNNNNNNN is the open mode (read only vs read/write vs write-only
+ ***     <pathname> is the object path
+ ***     <paramstring> is a serialized parameter string in URL-param format.
+ ***/
+int
+obj_internal_GetDCHash(pPathname pathinfo, int mode, char* hash, int hashmaxlen, int pathcnt)
+    {
+    pXString url_params = NULL;
+    char* paramstr = "";
+    pStruct one_open_ctl, open_ctl;
+    int i;
+
+	url_params = xsNew();
+	if (url_params)
+	    {
+	    paramstr = xsString(url_params);
+	    open_ctl = pathinfo->OpenCtl[pathcnt - 1];
+	    if (open_ctl)
+		{
+		for(i=0; i<open_ctl->nSubInf; i++)
+		    {
+		    one_open_ctl = open_ctl->SubInf[i];
+		    xsConcatQPrintf(url_params, "%STR%STR&URL=%STR&URL",
+			    (xsString(url_params)[0])?"&":"?",
+			    one_open_ctl->Name,
+			    one_open_ctl->StrVal);
+		    }
+		paramstr = xsString(url_params);
+		}
+	    }
+
+	snprintf(hash, hashmaxlen, "%8.8x%s%s", mode, obj_internal_PathPart(pathinfo, 0, pathcnt), paramstr);
+
+	if (url_params)
+	    xsFree(url_params);
+
+    return 0;
+    }
+
+
+/*** obj_internal_AllocDC - allocate a new directory cache entry and set it up
+ *** based on the provided object.
+ ***/
+pDirectoryCache
+obj_internal_AllocDC(pObject obj, int cachemode, int pathcnt)
+    {
+    pDirectoryCache dc;
+
+	dc = (pDirectoryCache)nmMalloc(sizeof(DirectoryCache));
+	dc->NodeObj = obj;
+	objLinkTo(obj);
+	strcpy(dc->Pathname, obj_internal_PathPart(obj->Pathname, 0, pathcnt));
+	obj_internal_GetDCHash(obj->Pathname, cachemode, dc->Hashname, sizeof(dc->Hashname), pathcnt);
+
+    return dc;
+    }
+
+
+/*** obj_internal_FreeDC - free a directory cache entry
+ ***/
+int
+obj_internal_FreeDC(pDirectoryCache dc)
+    {
+
+	objClose(dc->NodeObj);
+	nmFree(dc, sizeof(DirectoryCache));
+
+    return 0;
+    }
+
+
 /*** obj_internal_DiscardDC - this is the XHQ callback routine for the
  *** DirectoryCache when a cached item is being discarded via the LRU
  *** discard algorithm.  We need to clean up after the thing by closing
@@ -354,8 +432,7 @@ obj_internal_DiscardDC(pXHashQueue xhq, pXHQElement xe, int locked)
 
     	/** Close the object **/
 	dc = (pDirectoryCache)xhqGetData(xhq, xe, XHQ_UF_PRELOCKED);
-	objClose(dc->NodeObj);
-	nmFree(dc, sizeof(DirectoryCache));
+	obj_internal_FreeDC(dc);
 
     return 0;
     }
@@ -406,7 +483,7 @@ obj_internal_TypeFromSfHeader(pObject obj)
 	    return NULL;
 
 	/** Is the type a subtype of system/structure? **/
-	rval = obj_internal_IsA(type->Name, "system/structure");
+	rval = objIsA(type->Name, "system/structure");
 	if (rval == OBJSYS_NOT_ISA || rval < 0)
 	    return NULL;
 
@@ -414,11 +491,11 @@ obj_internal_TypeFromSfHeader(pObject obj)
     }
 
 
-/*** obj_internal_TypeFromName - determine the apparent content type of
+/*** objTypeFromName - determine the apparent content type of
  *** an object given its name.
  ***/
 pContentType
-obj_internal_TypeFromName(char* name)
+objTypeFromName(char* name)
     {
     pContentType apparent_type = NULL, ck_type;
     char* dot_ptr;
@@ -455,6 +532,30 @@ obj_internal_TypeFromName(char* name)
     }
 
 
+/*** obj_internal_OpenPermission - does the caller have permission to open
+ *** the object with the given permissions (read, write, or read+write)?
+ ***/
+int
+obj_internal_OpenPermission(pPathname pathinfo, int pathcnt, int mode, char* outer_type)
+    {
+    char* path;
+    int acctype = 0;
+    int rval;
+
+	/** Get our path and access type mask **/
+	path = obj_internal_PathPart(pathinfo, 0, pathcnt);
+	if ((mode & OBJ_O_ACCMODE) == OBJ_O_RDONLY || (mode & OBJ_O_ACCMODE) == OBJ_O_RDWR)
+	    acctype |= CXSS_ACC_T_READ;
+	if ((mode & OBJ_O_ACCMODE) == OBJ_O_WRONLY || (mode & OBJ_O_ACCMODE) == OBJ_O_RDWR)
+	    acctype |= CXSS_ACC_T_WRITE;
+
+	/** Check the permission **/
+	rval = cxssAuthorize("", path, outer_type, "", acctype, CXSS_LOG_T_FAILURE);
+
+    return rval;
+    }
+
+
 /*** obj_internal_ProcessOpen - take the given pathname and open params
  *** and process it into an open pObject pointer, with Prev and Next 
  *** links set to build a driver-chain and the various Driver fields set
@@ -466,7 +567,6 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
     {
     pObject this,first_obj;
     pPathname pathinfo;
-    int element_id;
     int i,j,v;
     pStruct inf;
     char* name;
@@ -475,10 +575,11 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
     pObjDriver drv;
     pDirectoryCache dc = NULL;
     pXHQElement xe;
-    char prevname[256];
+    char prevname[OBJSYS_MAX_PATH];
     int used_openas;
     pObject cached_obj = NULL;
     pObjectInfo obj_info;
+    char testhash[4 + OBJSYS_MAX_PATH*2];
 
     	/** First, create the pathname structure and parse the ctl information **/
 	pathinfo = (pPathname)nmMalloc(sizeof(Pathname));
@@ -537,21 +638,24 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		}
 	    }
 
-	/** Alrighty then!  The pathname is parsed.  Now start doing opens. **/
-	/** First, we check the directory cache for a better starting point. **/
-	/** If nothing found there, start with opening the root node. **/
-	/** BUG! -- this doesn't take into account opening objects with open-as. **/
+	/** Alrighty then!  The pathname is parsed.  Now start doing opens.
+	 ** First, we check the directory cache for a better starting point.
+	 ** If nothing found there, start with opening the root node.
+	 ** BUG! -- this doesn't take into account opening objects with open-as.
+	 **/
 	this = NULL;
 	for(j=pathinfo->nElements-1;j>=2;j--)
 	    {
 	    /** Try a prefix of the pathname. **/
-	    xe = xhqLookup(&(s->DirectoryCache), obj_internal_PathPart(pathinfo, 0, j));
+	    obj_internal_GetDCHash(pathinfo, mode, testhash, sizeof(testhash), j);
+	    xe = xhqLookup(&(s->DirectoryCache), testhash);
 	    if (xe)
 	        {
 		/** Lookup was successful - get the data for it **/
 		dc = (pDirectoryCache)xhqGetData(&(s->DirectoryCache), xe, 0);
 		this = dc->NodeObj;
 
+#if 00 /* now taken care of in how we hash */
 		/** Make sure the access mode is what we need **/
 		if (((this->Mode & O_ACCMODE) == O_RDONLY && ((mode & O_ACCMODE) == O_RDWR || (mode & O_ACCMODE) == O_WRONLY)) ||
 			((this->Mode & O_ACCMODE) == O_WRONLY && ((mode & O_ACCMODE) == O_RDWR || (mode & O_ACCMODE) == O_RDONLY)))
@@ -562,6 +666,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		    dc = NULL;
 		    break;
 		    }
+#endif
 
 		/** Link to the intermediate object to lock it open. **/
 		objLinkTo(this);
@@ -578,7 +683,6 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	/** Nothing found?  Open root node and start there. **/
 	if (!this)
 	    {
-	    element_id = 0;
 	    this = obj_internal_AllocObj();
 	    this->Data = OSYS.RootDriver->Open(this, 0, NULL, NULL, NULL);
 	    this->Pathname = pathinfo;
@@ -607,7 +711,12 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		/** Name might be NULL if Autoname in progress **/
 		name = "*";
 		}
-	    objGetAttrValue(this,"inner_type",DATA_T_STRING,POD(&type));
+	    if (objGetAttrValue(this,"inner_type",DATA_T_STRING,POD(&type)) < 0)
+		{
+		mssError(1,"OSML","Object access failed - could not determine content type");
+		obj_internal_FreeObj(this);
+		return NULL;
+		}
 
 	    /** If the driver "claimed" the last path element, we're done. **/
 	    if (this->SubPtr + this->SubCnt - 1 > this->Pathname->nElements) break;
@@ -620,11 +729,11 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    if (!this || this->SubCnt != 1 || strcmp(name, prevname))
 	        {
 		/** Check for forced-leaf condition -- in that case we don't use the apparent type **/
-		obj_info = objInfo(this);
+		/*obj_info = objInfo(this);
 		if (!obj_info || !(obj_info->Flags & OBJ_INFO_F_FORCED_LEAF))
-		    {
-		    apparent_type = obj_internal_TypeFromName(name);
-		    }
+		    {*/
+		    apparent_type = objTypeFromName(name);
+		    /*}*/
 		}
 
 	    strcpy(prevname, name);
@@ -642,7 +751,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		}
 
 	    /** Ok, got reported type and apparent type.  See which is more specific. **/
-	    v = obj_internal_IsA(type, apparent_type->Name);
+	    v = objIsA(type, apparent_type->Name);
 	    if (v < 0 || v == OBJSYS_NOT_ISA) ck_type = apparent_type;
 	    else ck_type = (pContentType)xhLookup(&OSYS.Types, (void*)type);
 
@@ -668,7 +777,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	        {
 		if (stAttrValue_ne(stLookup_ne(inf,"ls__type"),&type) >= 0 && type)
 		    {
-		    if (obj_internal_IsA(type, ck_type->Name) != OBJSYS_NOT_ISA)
+		    if (objIsA(type, ck_type->Name) != OBJSYS_NOT_ISA)
 		        {
 			ck_type = (pContentType)xhLookup(&OSYS.Types, (void*)type);
 			used_openas = 1;
@@ -676,33 +785,45 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		    }
 		}
 
-	    /** Find out what driver handles this type.   Since type was determined from
-	     ** name, inner_type of Prev object, and/or ls__type open-as param, ignore
-	     ** drivers for now that key off of the outer type. 
+	    /** Force leaf: here we prevent the automatic driver cascade under the
+	     ** following conditions:
+	     **
+	     **   - objInfo reports OBJ_INFO_F_FORCED_LEAF
+	     **   - the entire path has been consumed (subptr + subcnt >= elements)
+	     **   - ls__type "open as" processing was not used
 	     **/
 	    orig_ck_type = ck_type;
-	    do  {
-	        drv = (pObjDriver)xhLookup(&OSYS.DriverTypes, (void*)ck_type->Name);
-		if (!drv || (drv->Capabilities & OBJDRV_C_OUTERTYPE) || (!used_openas && (drv->Capabilities & OBJDRV_C_NOAUTO)))
-		    {
-		    if (ck_type->IsA.nItems > 0)
-		        {
-			ck_type = (pContentType)(ck_type->IsA.Items[0]);
-			}
-		    else
-		        {
-			/** If the entire path has been used, this is a successful return. **/
-			if (this->SubPtr + this->SubCnt > this->Pathname->nElements) break;
+	    obj_info = objInfo(this);
+	    drv = NULL;
+	    if (!obj_info || !(obj_info->Flags & OBJ_INFO_F_FORCED_LEAF) || used_openas || this->SubPtr + this->SubCnt < this->Pathname->nElements)
+		{
+		/** Find out what driver handles this type.   Since type was determined from
+		 ** name, inner_type of Prev object, and/or ls__type open-as param, ignore
+		 ** drivers for now that key off of the outer type. 
+		 **/
+		do  {
+		    drv = (pObjDriver)xhLookup(&OSYS.DriverTypes, (void*)ck_type->Name);
+		    if (!drv || (drv->Capabilities & OBJDRV_C_OUTERTYPE) || (!used_openas && (drv->Capabilities & OBJDRV_C_NOAUTO)))
+			{
+			if (ck_type->IsA.nItems > 0)
+			    {
+			    ck_type = (pContentType)(ck_type->IsA.Items[0]);
+			    }
+			else
+			    {
+			    /** If the entire path has been used, this is a successful return. **/
+			    if (this->SubPtr + this->SubCnt > this->Pathname->nElements) break;
 
-			/** Otherwise, error out **/
-			obj_internal_PathPart(this->Pathname,0,0);
-		        mssError(1,"OSML","Object '%s' access failed - no driver found",this->Pathname->Pathbuf+1);
-		        obj_internal_FreeObj(this);
-			return NULL;
+			    /** Otherwise, error out **/
+			    obj_internal_PathPart(this->Pathname,0,0);
+			    mssError(1,"OSML","Object '%s' access failed - no driver found",this->Pathname->Pathbuf+1);
+			    obj_internal_FreeObj(this);
+			    return NULL;
+			    }
 			}
 		    }
-	        }
-		while (!drv);
+		    while (!drv);
+		}
 
 	    /** If entire path has been used but no driver, successful exit. **/
 	    if (!drv && this->SubPtr + this->SubCnt >= this->Pathname->nElements) 
@@ -757,7 +878,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    }
 
 	/** Set object type **/
-	if (name && !this->Type) this->Type = obj_internal_TypeFromName(name);
+	if (name && !this->Type) this->Type = objTypeFromName(name);
 
 	/** Cache the upper-level node for this object? **/
 	if (this->Prev && this->Prev->Driver != OSYS.RootDriver && 
@@ -768,19 +889,20 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    /** Only cache if not already cached. **/
 	    if (cached_obj != this->Prev)
 	        {
-		dc = (pDirectoryCache)nmMalloc(sizeof(DirectoryCache));
-		dc->NodeObj = this->Prev;
-		objLinkTo(this->Prev);
-		strcpy(dc->Pathname, obj_internal_PathPart(this->Prev->Pathname, 0, this->SubPtr));
-		xe = xhqAdd(&(s->DirectoryCache), dc->Pathname, dc);
+		/** We use the caller 'mode' instead of this->Prev->Mode because
+		 ** that is how we will do the lookup when searching for the dc
+		 ** item later on.
+		 **/
+		dc = obj_internal_AllocDC(this->Prev, mode, this->SubPtr);
+		xe = xhqAdd(&(s->DirectoryCache), dc->Hashname, dc, 1);
 		if (!xe)
 		    {
 		    /** Already cached -- oops!  Probably bug! **/
-		    objClose(this->Prev);
-		    nmFree(dc, sizeof(DirectoryCache));
+		    obj_internal_FreeDC(dc);
 		    }
 		else
 		    {
+		    /** Release our "hold" on the entry **/
 		    xhqUnlink(&(s->DirectoryCache), xe, 0);
 		    }
 		}
@@ -972,11 +1094,14 @@ int
 obj_internal_CopyPath(pPathname dest, pPathname src)
     {
     int i,j;
+    int old_linkcnt;
     pStruct new_inf;
 
     	/** Copy the raw data. **/
 	if (dest->OpenCtlBuf) nmSysFree(dest->OpenCtlBuf);
+	old_linkcnt = dest->LinkCnt;
 	memcpy(dest,src,sizeof(Pathname));
+	dest->LinkCnt = old_linkcnt;
 
 	/** Alloc a new ctlbuf **/
 	if (src->OpenCtlBuf)
@@ -1134,7 +1259,7 @@ objClose(pObject this)
 
 	    /** Remove from open objects this session. **/
 	    xaRemoveItem(&(this->Session->OpenObjects),
-	        xaFindItem(&(this->Session->OpenObjects),(void*)this));
+	        xaFindItemR(&(this->Session->OpenObjects),(void*)this));
 
 	    /** Any notify requests open on this? **/
 	    while (this->NotifyItem)
@@ -1159,6 +1284,7 @@ objClose(pObject this)
 	    this->VAttrs = NULL;
 	    }
 	obj_internal_FreeObj(this);
+
 
     return 0;
     }
@@ -1198,7 +1324,7 @@ objCreate(pObjSession session, char* path, int permission_mask, char* type)
     pObject tmp;
 
 	/** Lookup the directory path. **/
-	tmp = obj_internal_ProcessOpen(session, path, O_CREAT | O_EXCL, permission_mask, type);
+	tmp = obj_internal_ProcessOpen(session, path, O_WRONLY | O_CREAT | O_EXCL, permission_mask, type);
 	if (!tmp) 
 	    {
 	    mssError(0,"OSML","Failed to create object - pathname invalid");
@@ -1270,6 +1396,7 @@ objDelete(pObjSession session, char* path)
 pObjectInfo
 objInfo(pObject this)
     {
+    memset(&(this->AdditionalInfo), 0, sizeof(ObjectInfo));
     if (this->Driver->Info)
 	if (this->Driver->Info(this->Data, &(this->AdditionalInfo)) < 0)
 	    return NULL;
@@ -1329,4 +1456,183 @@ obj_internal_DumpDC(pObjSession session)
     return;
     }
 
+void
+obj_internal_DumpSession(pObjSession session)
+    {
+    int i;
+    pObject obj;
 
+	printf("*** DirectoryCache:\n");
+	obj_internal_DumpDC(session);
+
+	printf("\n*** Open Objects:\n");
+	for(i=0;i<session->OpenObjects.nItems;i++)
+	    {
+	    obj = (pObject)session->OpenObjects.Items[i];
+	    printf("%d.  %s%s\n", i, obj_internal_PathPart(obj->Pathname,0,0), (obj->Flags & OBJ_F_UNMANAGED)?"  (unmanaged)":"");
+	    }
+
+	printf("\n");
+
+    return;
+    }
+
+
+/*** objImportFile() - given an operating system file, such as a file in a /tmp
+ *** directory, import (move) that file into the ObjectSystem so that it can be
+ *** accessed via the OSML API.
+ ***
+ *** source_filename: the pathname to the file in the operating system.
+ *** dest_osml_dir:   the target OSML directory into which to move the file.
+ *** new_osml_name:   a buffer which will contain the new name of the file.  If
+ ***                  possible, the original name of the file will be
+ ***                  preserved, but if not possible, the name will be changed
+ ***                  so that the file's name doesn't conflict with other files
+ ***                  in the destination.
+ *** new_osml_name_len: the size of the buffer pointed to by new_osml_name.
+ ***
+ *** Returns: 0 on success, 1 if the file was renamed, and < 0 on error.
+ ***/
+int
+objImportFile(pObjSession sess, char* source_filename, char* dest_osml_dir, char* new_osml_name, int new_osml_name_len)
+    {
+    pFile source_fd;
+    pObject dest_obj;
+    /*char buf[256];
+    int rcnt;
+    int wcnt;*/
+    char* sourcename;
+    int sourcelen;
+
+	/** Find the source's basename (filename without directory location) **/
+	sourcelen = strlen(source_filename);
+	if (!sourcelen)
+	    {
+	    mssError(1,"OSML","Source file for objImportFile cannot be blank");
+	    goto error;
+	    }
+	if (source_filename[sourcelen-1] == '/')
+	    {
+	    mssError(1,"OSML","Source file for objImportFile cannot be a directory");
+	    goto error;
+	    }
+	sourcename = strrchr(source_filename, '/');
+	if (!sourcename)
+	    sourcename = source_filename;
+	else
+	    sourcename = sourcename + 1;
+
+	/** Destination name buffer too small? **/
+	if (new_osml_name_len < strlen(dest_osml_dir) + 1 + strlen(sourcename) + 1)
+	    {
+	    mssError(1,"OSML","Name buffer for objImportFile is too small");
+	    goto error;
+	    }
+
+	/** Open the source **/
+	source_fd = fdOpen(source_filename, O_RDONLY, 0600);
+	if (!source_fd)
+	    goto error;
+
+	/** Build the new destination name **/
+	snprintf(new_osml_name, new_osml_name_len, "%s/%s", dest_osml_dir, sourcename);
+
+	/** Try to create the new object **/
+	dest_obj = objOpen(sess, new_osml_name, O_WRONLY | O_CREAT | O_EXCL, 0600, "system/file");
+	if (!dest_obj)
+	    {
+	    /** Munge the dest name **/
+	    if (new_osml_name_len < strlen(dest_osml_dir) + 1 + strlen(sourcename) + 1 + 5)
+		{
+		mssError(1,"OSML","Name buffer for objImportFile is too small");
+		goto error;
+		}
+	    while(!dest_obj)
+		{
+		}
+	    }
+
+	return 0;
+
+    error:
+	if (source_fd)
+	    fdClose(source_fd, 0);
+	return -1;
+    }
+
+
+/*** objCommitObject - commit changes made during a transaction.  Only partly
+ *** implemented at present, and only if supported by the underlying
+ *** driver.
+ ***/
+int
+objCommitObject(pObject this)
+    {
+    int rval = 0;
+    pObjTrxTree trx = NULL;
+
+	if (this && this->Driver->Commit)
+	    rval = this->Driver->Commit(this->Data, &trx);
+
+    return rval;
+    }
+
+
+/*** objOpenChild - open a child object for access to its content, attributes, and
+ *** methods.  Optionally create a new object.  Open 'mode' uses flags like the
+ *** UNIX open() call.
+ ***/
+pObject 
+objOpenChild(pObject parent, char* childname, int mode, int permission_mask, char* type)
+    {
+    pObject this = NULL;
+    void* obj_data;
+    pContentType typeinfo;
+
+	ASSERTMAGIC(parent, MGK_OBJECT);
+
+	/** Ensure driver support.  FIXME this can be processed using a query
+	 ** instead of open-child for drivers that do not support OpenChild
+	 **/
+	if (!parent->Driver->OpenChild)
+	    goto error;
+
+	/** Allocate the new object **/
+	this = obj_internal_AllocObj();
+	if (!this)
+	    goto error;
+
+	/** Set up basic info **/
+	this->EvalContext = parent->EvalContext;	/* inherit from parent */
+	this->Driver = parent->Driver;
+	this->ILowLevelDriver = parent->ILowLevelDriver;
+	this->TLowLevelDriver = parent->TLowLevelDriver;
+	this->Mode = mode;
+	this->Session = parent->Session;
+	this->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
+	memset(this->Pathname, 0, sizeof(Pathname));
+	this->Pathname->OpenCtlBuf = NULL;
+	if (parent->Prev)
+	    objLinkTo(parent->Prev);
+	this->Prev = parent->Prev;
+	obj_internal_CopyPath(this->Pathname, parent->Pathname);
+	this->Pathname->LinkCnt = 1;
+	this->SubPtr = parent->SubPtr;
+	this->SubCnt = parent->SubCnt+1;
+
+	/** Call the driver **/
+	typeinfo = (pContentType)xhLookup(&OSYS.Types, (void*)"system/object");
+	if (!typeinfo)
+	    goto error;
+	obj_data = parent->Driver->OpenChild(parent->Data, this, childname, mode, typeinfo, type, &(this->Session->Trx));
+	if (!obj_data)
+	    goto error;
+	this->Data = obj_data;
+
+	return this;
+
+    error:
+	if (this)
+	    obj_internal_FreeObj(this);
+	return NULL;
+    }

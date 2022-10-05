@@ -26,6 +26,7 @@
 /* Author:	Nathaniel Colson					*/
 /* Creation:	August 9, 2005						*/
 /* Description:	Applies layout logic to the widgets of an application.	*/
+/* See centrallix-sysdoc/Auto-Positioning.md for more information. */
 /************************************************************************/
 
 
@@ -683,22 +684,22 @@ pXArray FirstCross, LastCross;
 	{
 	    FirstCross = &(((pAposLine)xaGetItem(HLines, 0))->CWidgets);
 	    LastCross  = &(((pAposLine)xaGetItem(HLines, (xaCount(HLines)-1)))->CWidgets);
-	    if(xaCount(FirstCross))
+	    /*if(xaCount(FirstCross))
 		mssError(1, "APOS", "%d widget(s) crossed the top borderline, including %s '%s'", xaCount(FirstCross),
 		    ((pWgtrNode)xaGetItem(FirstCross, 0))->Type, ((pWgtrNode)xaGetItem(FirstCross, 0))->Name);
 	    if(xaCount(LastCross))
 		mssError(1, "APOS", "%d widget(s) crossed the bottom borderline, including %s '%s'", xaCount(LastCross),
-		    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);
+		    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);*/
 	}
 	
     FirstCross = &(((pAposLine)xaGetItem(VLines, 0))->CWidgets);
     LastCross  = &(((pAposLine)xaGetItem(VLines, (xaCount(VLines)-1)))->CWidgets);
-    if(xaCount(FirstCross))
+    /*if(xaCount(FirstCross))
 	mssError(1, "APOS", "%d widget(s) crossed the left borderline, including %s '%s'", xaCount(FirstCross), 
 	    ((pWgtrNode)xaGetItem(FirstCross, 0))->Type, ((pWgtrNode)xaGetItem(FirstCross, 0))->Name);
     if(xaCount(LastCross))
 	mssError(1, "APOS", "%d widget(s) crossed the right borderline, including %s '%s'", xaCount(LastCross), 
-	    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);
+	    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);*/
 
     return 0;
     

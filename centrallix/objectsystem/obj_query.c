@@ -217,7 +217,7 @@ obj_internal_ParseCriteria(pObjQuery this, char* query, pExpression tree)
 /*** objOpenQuery - issue a query against just one object, with no joins.
  ***/
 pObjQuery 
-objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orderby_exp_v)
+objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orderby_exp_v, int flags)
     {
     pObjQuery this = NULL;
     pExpression tree = (pExpression)tree_v;
@@ -230,6 +230,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
     char* ptr;
     char* start_ptr;
     pObject linked_obj = NULL;
+    pObjectInfo info;
 
     	ASSERTMAGIC(obj,MGK_OBJECT);
 
@@ -319,120 +320,52 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    {
 	    /** Ok, first item of business is to read entire result set.  Init the sort structure **/
 	    this->SortInf = (pObjQuerySort)nmMalloc(sizeof(ObjQuerySort));
+	    if (!this->SortInf)
+		goto error_return;
 	    xaInit(this->SortInf->SortPtr+0,4096);
 	    xaInit(this->SortInf->SortPtrLen+0,4096);
 	    xaInit(this->SortInf->SortNames+0,4096);
 	    xsInit(&this->SortInf->SortDataBuf);
 	    xsInit(&this->SortInf->SortNamesBuf);
+	    this->SortInf->Reopen = 1;
+
+	    /** Temp object or caller requested no-reopen behavior? **/
+	    info = objInfo(obj);
+	    if ((flags & OBJ_QY_F_NOREOPEN) || (info && (info->Flags & OBJ_INFO_F_TEMPORARY)))
+		this->SortInf->Reopen = 0;
 
 	    /** Read result set **/
 	    while((tmp_obj = objQueryFetch(this, 0400)))
 	        {
-		xaAddItem(this->SortInf->SortNames+0, (void*)(xsStringEnd(&this->SortInf->SortNamesBuf) - this->SortInf->SortNamesBuf.String));
+		/** We keep temp objects open, for others we squirrel away the name instead and re-open later **/
+		if (this->SortInf->Reopen)
+		    xaAddItem(this->SortInf->SortNames+0, (void*)(xsStringEnd(&this->SortInf->SortNamesBuf) - this->SortInf->SortNamesBuf.String));
+		else
+		    xaAddItem(this->SortInf->SortNames+0, (void*)tmp_obj);
 		objGetAttrValue(tmp_obj,"name",DATA_T_STRING,POD(&ptr));
 		xsConcatenate(&this->SortInf->SortNamesBuf, ptr, strlen(ptr)+1);
 		expModifyParam(this->ObjList, NULL, tmp_obj);
 		start_ptr = xsStringEnd(&this->SortInf->SortDataBuf);
 		xaAddItem(this->SortInf->SortPtr+0, (void*)(start_ptr - this->SortInf->SortDataBuf.String));
 
-		len = objBuildBinaryImageXString(&this->SortInf->SortDataBuf, this->SortBy, n_sortby, this->ObjList);
+		len = objBuildBinaryImageXString(&this->SortInf->SortDataBuf, this->SortBy, n_sortby, this->ObjList, 0);
 		if (len < 0)
 		    {
 		    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "null\n");
 		    goto error_return;
 		    }
-#if 00
-		len = 0;
-		for(i=0;this->SortBy[i];i++)
-		    {
-		    sort_item = this->SortBy[i];
-		    if (expEvalTree(sort_item, this->ObjList) < 0)
-		        {
-			len++;
-			xsConcatenate(&this->SortInf->SortDataBuf, "0", 1);
-			}
-		    else if (sort_item->Flags & EXPR_F_NULL)
-		        {
-			len++;
-			xsConcatenate(&this->SortInf->SortDataBuf, "0", 1);
-			}
-		    else
-		        {
-			len++;
-			xsConcatenate(&this->SortInf->SortDataBuf, "1", 1);
-			switch(sort_item->DataType)
-			    {
-			    case DATA_T_INTEGER:
-			        n = htonl(sort_item->Integer + 0x80000000);
-			        if (sort_item->Flags & EXPR_F_DESC) n = ~n;
-			        xsConcatenate(&this->SortInf->SortDataBuf, (char*)&n, 4);
-			        len+=4;
-				break;
 
-			    case DATA_T_DOUBLE:
-			        if (sort_item->Flags & EXPR_F_DESC) sort_item->Types.Double = -sort_item->Types.Double;
-				xsConcatenate(&this->SortInf->SortDataBuf, (char*)&(sort_item->Types.Double), 8);
-			        if (sort_item->Flags & EXPR_F_DESC) sort_item->Types.Double = -sort_item->Types.Double;
-				len+=8;
-				break;
-
-			    case DATA_T_MONEY:
-				n = htonl(sort_item->Types.Money.WholePart + 0x80000000);
-				sn = htons(sort_item->Types.Money.FractionPart);
-			        if (sort_item->Flags & EXPR_F_DESC)
-				    {
-				    n = ~n;
-				    sn = ~sn;
-				    }
-			        xsConcatenate(&this->SortInf->SortDataBuf, (char*)&n, 4);
-			        xsConcatenate(&this->SortInf->SortDataBuf, (char*)&sn, 2);
-				len+=6;
-				break;
-
-			    case DATA_T_DATETIME:
-			        if (sort_item->Flags & EXPR_F_DESC) 
-				    {
-				    sort_item->Types.Date.Value = ~sort_item->Types.Date.Value;
-				    sort_item->Types.Date.Part.Second = ~sort_item->Types.Date.Part.Second;
-				    }
-				dbuf[0] = sort_item->Types.Date.Part.Year>>8;
-				dbuf[1] = sort_item->Types.Date.Part.Year & 0xFF;
-				dbuf[2] = sort_item->Types.Date.Part.Month;
-				dbuf[3] = sort_item->Types.Date.Part.Day;
-				dbuf[4] = sort_item->Types.Date.Part.Hour;
-				dbuf[5] = sort_item->Types.Date.Part.Minute;
-				dbuf[6] = sort_item->Types.Date.Part.Second;
-				xsConcatenate(&this->SortInf->SortDataBuf, dbuf, 7);
-			        if (sort_item->Flags & EXPR_F_DESC) 
-				    {
-				    sort_item->Types.Date.Value = ~sort_item->Types.Date.Value;
-				    sort_item->Types.Date.Part.Second = ~sort_item->Types.Date.Part.Second;
-				    }
-				len+=7;
-				break;
-			    
-			    case DATA_T_STRING:
-			        n = strlen(sort_item->String);
-			        len += (n+1);
-			        if (sort_item->Flags & EXPR_F_DESC)
-			            {
-				    for(j=0;j<n;j++) sort_item->String[j] = ~(sort_item->String[j]);
-				    }
-			        xsConcatenate(&this->SortInf->SortDataBuf, sort_item->String, n+1);
-				break;
-			    }
-			}
-		    }
-#endif /* 00 */
 		xaAddItem(this->SortInf->SortPtrLen+0, (void*)(intptr_t)len);
-		objClose(tmp_obj);
+		if (this->SortInf->Reopen)
+		    objClose(tmp_obj);
 		}
 
 	    /** Absolute-reference the string offsets. **/
 	    n = this->SortInf->SortPtr[0].nItems;
 	    for(i=0;i<n;i++)
 	        {
-		this->SortInf->SortNames[0].Items[i] = this->SortInf->SortNamesBuf.String + (intptr_t)(this->SortInf->SortNames[0].Items[i]);
+		if (this->SortInf->Reopen)
+		    this->SortInf->SortNames[0].Items[i] = this->SortInf->SortNamesBuf.String + (intptr_t)(this->SortInf->SortNames[0].Items[i]);
 		this->SortInf->SortPtr[0].Items[i] = this->SortInf->SortDataBuf.String + (intptr_t)(this->SortInf->SortPtr[0].Items[i]);
 		}
 
@@ -444,9 +377,10 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    xaInit(this->SortInf->SortNames+1, n);
 	    memcpy(this->SortInf->SortNames[1].Items, this->SortInf->SortNames[0].Items, n*sizeof(void *));
 	    obj_internal_MergeSort(this->SortInf, 1, 0, n - 1);
-	    this->RowID = 0;
 	    this->Flags |= OBJ_QY_F_FROMSORT;
 	    }
+
+	this->RowID = 0;
 
 	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "%8.8lX\n", (long)this);
 
@@ -457,9 +391,13 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	if (lxs) mlxCloseSession(lxs);
 	if (this && order_by && !orderbyexp) for(i=0;this->SortBy[i];i++) expFreeExpression(this->SortBy[i]);
 	if (linked_obj) objClose(linked_obj); /* unlink */
-	if (this && this->Flags & OBJ_QY_F_ALLOCTREE) expFreeExpression((pExpression)(this->Tree));
-	if (this && this->ObjList) expFreeParamList((pParamObjects)(this->ObjList));
-	if (this) nmFree(this,sizeof(ObjQuery));
+	if (this)
+	    {
+	    xaRemoveItem(&(linked_obj->Session->OpenQueries), xaFindItem(&(linked_obj->Session->OpenQueries), (void*)this));
+	    if (this->Flags & OBJ_QY_F_ALLOCTREE) expFreeExpression((pExpression)(this->Tree));
+	    if (this->ObjList) expFreeParamList((pParamObjects)(this->ObjList));
+	    nmFree(this,sizeof(ObjQuery));
+	    }
 
     return NULL;
     }
@@ -481,9 +419,11 @@ objQueryDelete(pObjQuery this)
 	if (this->Drv) return this->Drv->QueryDelete(this->Data);
 
 	/** Intelligent query support in driver? **/
-	if ((this->Obj->Driver->Capabilities & OBJDRV_C_FULLQUERY) ||
+	if (((this->Obj->Driver->Capabilities & OBJDRV_C_FULLQUERY) ||
 	    ((this->Obj->Driver->Capabilities & OBJDRV_C_LLQUERY) &&
-	     (this->Obj->TLowLevelDriver->Capabilities & OBJDRV_C_FULLQUERY)))
+	     (this->Obj->TLowLevelDriver->Capabilities & OBJDRV_C_FULLQUERY))) &&
+	    this->Obj->Driver->QueryDelete != NULL && 
+	    (!this->Obj->TLowLevelDriver || this->Obj->TLowLevelDriver->QueryDelete != NULL))
 	    {
 	    rval = this->Obj->Driver->QueryDelete(this->Data, &(this->Obj->Session->Trx));
 	    }
@@ -523,7 +463,6 @@ objQueryFetch(pObjQuery this, int mode)
 	    if (!obj) return NULL;
 	    if ((obj->Data = this->Drv->QueryFetch(this->Data, obj, mode, NULL)) == NULL)
 	        {
-		/*nmFree(obj,sizeof(Object));*/
 		obj_internal_FreeObj(obj);
 		OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " null\n");
 		return NULL;
@@ -547,9 +486,21 @@ objQueryFetch(pObjQuery this, int mode)
 	if (this->Flags & OBJ_QY_F_FROMSORT)
 	    {
 	    if (this->RowID >= this->SortInf->SortNames[0].nItems) return NULL;
-	    obj_internal_PathPart(this->Obj->Pathname, 0, 0);
-	    snprintf(buf,sizeof(buf),"%s/%s?ls__type=system%%2fobject",this->Obj->Pathname->Pathbuf+1,(char*)(this->SortInf->SortNames[0].Items[this->RowID++]));
-	    obj = objOpen(this->Obj->Session, buf, mode, 0400, "");
+
+	    /** Temp objects we kept open; others we reopen by name **/
+	    if (!this->SortInf->Reopen)
+		{
+		obj = (pObject)this->SortInf->SortNames[0].Items[this->RowID++];
+		this->SortInf->SortNames[0].Items[this->RowID - 1] = NULL;
+		}
+	    else
+		{
+		obj_internal_PathPart(this->Obj->Pathname, 0, 0);
+		snprintf(buf,sizeof(buf),"%s/%s?ls__type=system%%2fobject",this->Obj->Pathname->Pathbuf+1,(char*)(this->SortInf->SortNames[0].Items[this->RowID++]));
+		obj = objOpen(this->Obj->Session, buf, mode, 0400, "");
+		}
+	    if (obj)
+		obj->RowID = this->RowID;
 	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8lX:%3.3s:%s\n", (long)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
 	    return obj;
 	    }
@@ -564,20 +515,23 @@ objQueryFetch(pObjQuery this, int mode)
 	obj->TLowLevelDriver = this->Obj->TLowLevelDriver;
 	obj->Mode = mode;
 	obj->Session = this->Obj->Session;
-	obj->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
-	obj->Pathname->LinkCnt = 1;
-	obj->Pathname->OpenCtlBuf = NULL;
-	objLinkTo(this->Obj->Prev);
+	obj->Pathname = NULL;
+	if (this->Obj->Prev)
+	    objLinkTo(this->Obj->Prev);
 	obj->Prev = this->Obj->Prev;
 
 	/** Scan objects til we find one matching the query. **/
 	while(1)
 	    {
 	    /** setup the new pathname. **/
-	    obj_internal_CopyPath(obj->Pathname,this->Obj->Pathname);
+	    if (obj->Pathname)
+		obj_internal_FreePath(obj->Pathname);
+	    obj->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
+	    obj->Pathname->OpenCtlBuf = NULL;
 	    obj->Pathname->LinkCnt = 1;
-	    obj->SubPtr = this->Obj->SubPtr;
+	    obj_internal_CopyPath(obj->Pathname, this->Obj->Pathname);
 	    obj->SubCnt = this->Obj->SubCnt+1;
+	    obj->SubPtr = this->Obj->SubPtr;
 
 	    /** Fetch next from driver. **/
             obj_data = this->Obj->Driver->QueryFetch(this->Data, obj, mode, &(obj->Session->Trx));
@@ -627,6 +581,12 @@ objQueryFetch(pObjQuery this, int mode)
 	    /** Ok, add item to opens and return to caller **/
             xaAddItem(&(this->Obj->Session->OpenObjects),(void*)obj);
 	    break;
+	    }
+    
+	if (obj)
+	    {
+	    this->RowID++;
+	    obj->RowID = this->RowID;
 	    }
 
 	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8lX:%3.3s:%s\n", (long)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
@@ -742,6 +702,8 @@ objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* 
 int 
 objQueryClose(pObjQuery this)
     {
+    int i;
+    pObject obj;
 
     	ASSERTMAGIC(this,MGK_OBJQUERY);
 
@@ -750,6 +712,15 @@ objQueryClose(pObjQuery this)
     	/** Release sort information? **/
 	if (this->SortInf)
 	    {
+	    /** Close temp objects? **/
+	    if (!this->SortInf->Reopen)
+		{
+		for(i = this->SortInf->SortNames[0].nItems - 1; i >= this->RowID; i--)
+		    {
+		    obj = (pObject)this->SortInf->SortNames[0].Items[i];
+		    if (obj) objClose(obj);
+		    }
+		}
 	    xaDeInit(this->SortInf->SortPtr+0);
 	    xaDeInit(this->SortInf->SortPtrLen+0);
 	    xaDeInit(this->SortInf->SortNames+0);
@@ -803,5 +774,37 @@ objGetQueryCoverageMask(pObjQuery this)
 	return this->Obj->Driver->GetQueryCoverageMask(this->Data);
     else
 	return -1;
+    }
+
+
+/*** objGetQueryIdentityPath() - get the pathname to the "identity" object
+ *** underlying a given query.  If the query is a normal query (from the
+ *** objOpenQuery() call), this returns the path to the object that was
+ *** passed to objOpenQuery().  Otherwise, for a multiquery, this returns
+ *** the path to the "identity" query source (or to the only source, if the
+ *** query only has one source).
+ ***/
+int
+objGetQueryIdentityPath(pObjQuery this, char* pathbuf, int maxlen)
+    {
+    char* ptr;
+
+	/** Driver can handle this?  (i.e., MultiQuery module) **/
+	if (this->Drv->GetQueryIdentityPath)
+	    return this->Drv->GetQueryIdentityPath(this->Data, pathbuf, maxlen);
+
+	/** Get the pathname **/
+	if (!this->Obj)
+	    return -1;
+	ptr = obj_internal_PathPart(this->Obj->Pathname, 0, 0);
+	if (!ptr)
+	    return -1;
+	if (strlen(ptr) >= maxlen-1)
+	    return -1;
+
+	/** Copy it **/
+	strtcpy(pathbuf, ptr, maxlen);
+
+    return 0;
     }
 

@@ -1,0 +1,3 @@
+##NAME Expression join
+#
+query select camt = :c:amount, cdate = :c:create_date, cid = :c:"@id", rid = :r:"@id", rdate = :r:create_date from /tests/multilevel1.json c, expression ('/tests/multilevel1.json/' + :c:name) r where :r:name = 'q'

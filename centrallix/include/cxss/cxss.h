@@ -35,9 +35,18 @@
 
 
 #include <openssl/sha.h>
+#include <openssl/ssl.h>
+#include <openssl/conf.h>
+#include <openssl/evp.h>
+#include <openssl/err.h>
 #include "cxlib/xarray.h"
 
 #define CXSS_ENTROPY_SIZE	1280
+#define CXSS_DEBUG_CONTEXTSTACK	1
+#define CXSS_IDENTIFIER_LENGTH	64
+#define CXSS_CIPHER_STRENGTH	(256 / 8)
+
+#include "cxss/policy.h"
 
 /*** CXSS data structures ***/
 typedef struct _EP
@@ -59,26 +68,52 @@ typedef struct _EP
 /*** Auth/Endorsement stack data structure ***/
 typedef struct _AS
     {
-    XArray		Endorsements;
+    XArray		Endorsements;		/* array of pCxssEndorsement */
+    XArray		SessionVariables;	/* array of pCxssVariable */
     struct _AS*		Prev;
     int			CopyCnt;		/* COW semantics */
+#if CXSS_DEBUG_CONTEXTSTACK
+    void*		CallerReturnAddr;	/* Used for warning of mismatched pop/push */
+#endif
     }
-    CxssAuthStack, *pCxssAuthStack;
+    CxssCtxStack, *pCxssCtxStack;
+
+
+/*** Session Variable ***/
+typedef struct _CXSV
+    {
+    char		Name[CXSS_IDENTIFIER_LENGTH];
+    char*		Value;			/* allocated with nmSysMalloc/nmSysStrdup */
+    }
+    CxssVariable, *pCxssVariable;
 
 
 /*** Endorsement info ***/
 typedef struct _EN
     {
-    char		Endorsement[32];
-    char		Context[64];
+    char		Endorsement[CXSS_IDENTIFIER_LENGTH];
+    char		Context[CXSS_IDENTIFIER_LENGTH];
     }
     CxssEndorsement, *pCxssEndorsement;
+
+
+/*** Keystream generation state ***/
+typedef struct _KSS
+    {
+    EVP_CIPHER_CTX*	Context;
+    unsigned char	Key[32];	/* AES256 key size */
+    unsigned char	IV[16];		/* AES256 IV size */
+    unsigned char	Data[CXSS_CIPHER_STRENGTH];
+    int			DataIndex;
+    }
+    CxssKeystreamState, *pCxssKeystreamState;
 
 
 /*** CXSS module-wide data structure ***/
 typedef struct _CXSS
     {
     CxssEntropyPool	Entropy;
+    pCxssPolicy		Policy;
     }
     CXSS_t;
 
@@ -90,20 +125,41 @@ int cxssInitialize();
 
 /*** Utility functions ***/
 int cxssGenerateKey(unsigned char* key, size_t n_bytes);
+int cxssGenerateHexKey(char* hexkey, size_t len);
 int cxssShred(unsigned char* data, size_t n_bytes);
 int cxssAddEntropy(unsigned char* data, size_t n_bytes, int entropy_bits_estimate);
 
-/*** Authentication/Endorsement stack functions ***/
+/*** Context/Authentication/Endorsement stack functions ***/
 int cxssPopContext();
 int cxssPushContext();
 int cxssAddEndorsement(char* endorsement, char* context);
 int cxssHasEndorsement(char* endorsement, char* context);
+int cxssSetVariable(char* name, char* value, int valuealloc);
+int cxssGetVariable(char* vblname, char** value, char* default_value);
+int cxssGetEndorsementList(pXArray endorsements, pXArray contexts);
 
 /*** Entropy functions - internal ***/
 int cxss_internal_InitEntropy(int pool_size);
 int cxss_internal_AddToPool(unsigned char* data, size_t n_bytes, int entropy_bits_estimate);
 int cxss_internal_StirPool();
 int cxss_internal_GetBytes(unsigned char* data, size_t n_bytes);
+
+/*** TLS helper functions ***/
+int cxssStartTLS(SSL_CTX* context, pFile* ext_conn, pFile* reporting_stream, int as_server, char* remotename);
+int cxssFinishTLS(int childpid, pFile ext_conn, pFile reporting_stream);
+int cxssStatTLS(pFile reporting_stream, char* status, int maxlen);
+
+/*** Keystream sequence functions ***/
+pCxssKeystreamState cxssKeystreamNew(unsigned char* key, int keylen);
+int cxssKeystreamGenerate(pCxssKeystreamState kstate, unsigned char* data, int datalen);
+int cxssKeystreamFree(pCxssKeystreamState kstate);
+
+/*** Credentials Manager API ***/
+#include "cxss/credentials_mgr.h"
+
+/*** Security Policy - Authorization API ***/
+int cxssAuthorizeSpec(char* objectspec, int access_type, int log_mode);
+int cxssAuthorize(char* domain, char* type, char* path, char* attr, int access_type, int log_mode);
 
 #endif /* not defined _CXSS_H */
 

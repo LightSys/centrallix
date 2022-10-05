@@ -1,0 +1,9 @@
+##NAME JSON objectsystem driver
+query select :name, * from object /tests/test1.json
+query select :name, * from /tests/test1.json
+query select :name, * from object /tests/test2.json
+query select :name, * from /tests/test2.json
+query select :name, * from object /tests/test2.json/Yellow
+query select :name, * from object /tests/test3.json
+query select :name, * from /tests/test3.json
+query select :name, * from object /tests/test3.json/3

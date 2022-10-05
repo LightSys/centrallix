@@ -120,8 +120,7 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** DOM linkages **/
-	htrAddWgtrObjLinkage_va(s, tree, 
-		"htr_subel(_parentctr, \"ms%POSmain\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "ms%POSmain",id);
 
 	/** Script include call **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_multiscroll.js", 0);
@@ -135,7 +134,7 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "ms", "ms_mousemove");
 
 	/** Script init **/
-	htrAddScriptInit_va(s, "    ms_init(nodes['%STR&SYM'], {});\n", 
+	htrAddScriptInit_va(s, "    ms_init(wgtrGetNodeRef(ns,'%STR&SYM'), {});\n", 
 		name);
 
 	/** div for the main body of this widget **/
@@ -155,8 +154,7 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 	for(i=0;i<cnt;i++)
 	    {
 	    child = childlist[i];
-	    htrAddWgtrObjLinkage_va(s, child, 
-		    "htr_subel(_parentctr, \"ms%POSpart%POS\")",id,i);
+	    htrAddWgtrObjLinkage_va(s, child, "ms%POSpart%POS",id,i);
 	    htrAddBodyItem_va(s,"<DIV ID=\"ms%POSpart%POS\">\n",id,i);
 	    always_visible = htrGetBoolean(child, "always_visible", 0);
 	    if (wgtrGetPropertyValue(child,"height",DATA_T_INTEGER,POD(&ch)) != 0 || ch < 0) ch = 0;
@@ -172,8 +170,8 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 		mssError(1, "HTMS", "MultiScroll part '%s' of '%s' set to always_visible=true must have a height", ptr, name);
 		return -1;
 		}
-	    htrAddScriptInit_va(s, "    nodes['%STR&SYM'].addPart(nodes['%STR&SYM'], {av:%INT, h:%INT, y:%INT});\n",
-		    name, ptr, always_visible, ch, cy);
+	    htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,'%STR&SYM').addPart(wgtrGetNodeRef('%STR&SYM','%STR&SYM'), {av:%INT, h:%INT, y:%INT});\n",
+		    name, wgtrGetNamespace(child), ptr, always_visible, ch, cy);
 	    htrRenderSubwidgets(s, child, z+2);
 	    htrAddBodyItem(s, "</DIV>\n");
 	    }

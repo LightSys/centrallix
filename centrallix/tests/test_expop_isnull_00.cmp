@@ -1,0 +1,6 @@
+Attribute [1 is null]:  integer  0
+Attribute [1 is not null]:  integer  1
+Attribute ["a" is null]:  integer  0
+Attribute ["a" is not null]:  integer  1
+Attribute [null is null]:  integer  1
+Attribute [null is not null]:  integer  0

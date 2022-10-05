@@ -140,6 +140,9 @@ objGetAttrType(pObject this, char* attrname)
 	    return DATA_T_STRING;
 	    }
 
+	/*if (!strcmp(attrname, "cx__rowid"))
+	    return DATA_T_INTEGER;*/
+
 	/** download-as attribute **/
 	if (!strcmp(attrname, "cx__download_as"))
 	    {
@@ -241,6 +244,24 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 		}
 	    }
 
+	/*if (!strcmp(attrname, "cx__rowid"))
+	    {
+	    if (data_type != DATA_T_INTEGER)
+		{
+		mssError(1,"OSML","Type mismatch in accessing 'cx__rowid' attribute");
+		return -1;
+		}
+	    if (this->RowID >= 0)
+		{
+		val->Integer = this->RowID;
+		return 0;
+		}
+	    else
+		{
+		return 1;
+		}
+	    }*/
+
 	/** Full pathname **/
 	if (!strcmp(attrname,"cx__pathname"))
 	    {
@@ -327,7 +348,7 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 
 	/** Get the type from the lowlevel driver **/
 	used_expr = 0;
-	if (!strcmp(attrname,"name") || !strcmp(attrname,"inner_type") || !strcmp(attrname,"outer_type") || !strcmp(attrname, "content_type") || !strcmp(attrname, "annotation"))
+	if (!strcmp(attrname,"name") || !strcmp(attrname,"inner_type") || !strcmp(attrname,"outer_type") || !strcmp(attrname, "content_type") || !strcmp(attrname, "annotation") || !strcmp(attrname,"objcontent"))
 	    osmltype = DATA_T_STRING;
 	else
 	    osmltype = this->Driver->GetAttrType(this->Data,attrname,&(this->Session->Trx));
@@ -396,10 +417,17 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
     	/** Inner/content type, and OSML has a better idea than driver? **/
 	if ((!strcmp(attrname,"inner_type") || !strcmp(attrname,"content_type")) && rval==0 && this->Type)
 	    {
-	    if (obj_internal_IsA(this->Type->Name, val->String) > 0)
+	    if (objIsA(this->Type->Name, val->String) > 0)
 	        {
 	        val->String = this->Type->Name;
 		}
+	    }
+
+	/** Ensure annotation is valid **/
+	if (rval != 0 && !strcmp(attrname, "annotation"))
+	    {
+	    rval = 0;
+	    val->String = "";
 	    }
  
     return rval;
@@ -461,6 +489,34 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    {
 	    mssError(1, "OSML", "'%s' attribute cannot be set to NULL", attrname);
 	    return -1;
+	    }
+
+    	/** How about content? **/
+	if (!strcmp(attrname,"objcontent"))
+	    {
+	    if (data_type == DATA_T_STRING) 
+		{
+		/** String value **/
+		if (!val)
+		    rval = this->Driver->Write(this->Data, "", 0, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		else
+		    rval = this->Driver->Write(this->Data, val->String, strlen(val->String), 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		}
+	    else if (data_type == DATA_T_BINARY)
+		{
+		/** Binary value **/
+		if (!val || !val->Binary.Data)
+		    rval = this->Driver->Write(this->Data, "", 0, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		else
+		    rval = this->Driver->Write(this->Data, val->Binary.Data, val->Binary.Size, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		}
+	    else
+		{
+		mssError(1,"OSML","Type mismatch in setting 'objcontent' attribute");
+		return -1;
+		}
+
+	    return rval;
 	    }
 
 	/** Virtual attrs **/

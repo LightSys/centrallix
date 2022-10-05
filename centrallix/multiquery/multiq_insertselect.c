@@ -9,6 +9,7 @@
 #include "cxlib/xstring.h"
 #include "multiquery.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 
 /************************************************************************/
@@ -59,7 +60,6 @@ mqisAnalyze(pQueryStatement stmt)
     {
     pQueryStructure select_qs, insert_qs;
     pQueryElement qe;
-    int n;
     int i;
 
     	/** Search for an INSERT and a SELECT statement... **/
@@ -91,7 +91,6 @@ mqisAnalyze(pQueryStatement stmt)
 	    }
 
 	/** Link the qe into the multiquery **/
-	n=0;
 	xaAddItem(&stmt->Trees, qe);
 	xaAddItem(&qe->Children, stmt->Tree);
 	stmt->Tree->Parent = qe;
@@ -113,46 +112,94 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     int exp_rval;
     int sel_rval = 0;
     char pathname[OBJSYS_MAX_PATH];
+    char new_pathname[OBJSYS_MAX_PATH];
+    char* new_objname;
     pObject new_obj = NULL;
+    pObject reopen_obj;
+    pObject old_newobj;
+    pObject parent_obj = NULL;
+    int old_newobj_id;
     int is_started = 0;
     int attrid, astobjid;
     char* attrname;
     ObjData od;
     int t;
     int use_attrid;
-    pPseudoObject p;
     int hc_rval;
+    handle_t collection;
 
 	/** Prepare for the inserts **/
-	if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 2 >= sizeof(pathname))
+	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_FROMOBJECT)
 	    {
-	    mssError(1, "MQIS", "Pathname too long for INSERT destination");
-	    goto error;
+	    strtcpy(pathname, ((pQueryStructure)qe->QSLinkage)->Source, sizeof(pathname));
 	    }
-	snprintf(pathname, sizeof(pathname), "%s/*", ((pQueryStructure)qe->QSLinkage)->Source);
-	    
+	else
+	    {
+	    if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 2 + 1 > sizeof(pathname))
+		{
+		mssError(1, "MQIS", "Pathname too long for INSERT destination");
+		goto error;
+		}
+	    snprintf(pathname, sizeof(pathname), "%s/*", ((pQueryStructure)qe->QSLinkage)->Source);
+	    }
+    
+	/** Replace the previous __inserted object with NULL, in case insert fails **/
+	old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted", 0);
+	if (old_newobj_id >= 0)
+	    {
+	    old_newobj = stmt->Query->ObjList->Objects[old_newobj_id];
+	    if (old_newobj)
+		objClose(old_newobj);
+	    expModifyParam(stmt->Query->ObjList, "__inserted", NULL);
+	    }
+
 	/** Start the SELECT query **/
 	sel = (pQueryElement)(qe->Children.Items[0]);
 	if (sel->Driver->Start(sel, stmt, NULL) < 0)
 	    goto error;
 	is_started = 1;
 
+	/** If we're working with a collection, open its parent so we can
+	 ** later do objOpenChild() calls to create the child objects.
+	 **/
+	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
+	    {
+	    collection = mq_internal_FindCollection(stmt->Query, ((pQueryStructure)qe->QSLinkage)->Source);
+	    if (collection == XHN_INVALID_HANDLE)
+		{
+		mssError(1,"MQIS","Could not find destination collection '%s' for SQL insert", ((pQueryStructure)qe->QSLinkage)->Source);
+		goto error;
+		}
+	    parent_obj = objOpenTempObject(stmt->Query->SessionID, collection, OBJ_O_RDONLY);
+	    if (!parent_obj)
+		{
+		mssError(1,"MQIS","Could not open destination collection '%s' for SQL insert", ((pQueryStructure)qe->QSLinkage)->Source);
+		goto error;
+		}
+	    }
+
 	/** Select all items in the result set **/
 	while((sel_rval = sel->Driver->NextItem(sel, stmt)) == 1)
 	    {
 	    /** check HAVING clause **/
-	    p = mq_internal_CreatePseudoObject(stmt->Query, NULL);
-	    hc_rval = mq_internal_EvalHavingClause(stmt, p);
-	    mq_internal_FreePseudoObject(p);
+	    hc_rval = mq_internal_EvalHavingClause(stmt, NULL);
 	    if (hc_rval < 0)
 		goto error;
 	    else if (hc_rval == 0)
 		continue;
 
 	    /** open a new object **/
-	    new_obj = objOpen(stmt->Query->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
+		{
+		new_obj = objOpenChild(parent_obj, "*", OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+		}
+	    else
+		{
+		new_obj = objOpen(stmt->Query->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+		}
 	    if (!new_obj)
 		goto error;
+	    objUnmanageObject(stmt->Query->SessionID, new_obj);
 	   
 	    /** Set all of the SELECTed attributes **/
 	    attrid = 0;
@@ -190,8 +237,67 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		if (objSetAttrValue(new_obj, attrname, t, &od) < 0)
 		    goto error;
 		}
+
+	    /** Commit and get new object name **/
+	    objCommitObject(new_obj);
+	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_FROMOBJECT)
+		{
+		strtcpy(new_pathname, pathname, sizeof(new_pathname));
+		}
+	    else
+		{
+		new_objname = NULL;
+		objGetAttrValue(new_obj, "name", DATA_T_STRING, POD(&new_objname));
+		if (!new_objname)
+		    {
+		    mssError(0, "MQIS", "Could not INSERT new object");
+		    goto error;
+		    }
+		if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 1 + strlen(new_objname) + 1 > sizeof(new_pathname))
+		    {
+		    mssError(1, "MQIS", "Pathname too long for newly INSERTed object %s", new_objname);
+		    goto error;
+		    }
+		snprintf(new_pathname, sizeof(new_pathname), "%s/%s", ((pQueryStructure)qe->QSLinkage)->Source, new_objname);
+		}
+
+	    /** Link the new object as the __inserted object in the object list.**/
+	    if (!(stmt->Query->Flags & MQ_F_NOINSERTED))
+		{
+		/** Don't reopen for inserts into collections (won't find it) **/
+		if (!(((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION))
+		    {
+		    reopen_obj = objOpen(stmt->Query->SessionID, new_pathname, OBJ_O_RDONLY, 0600, "system/object");
+		    if (reopen_obj)
+			{
+			objUnmanageObject(stmt->Query->SessionID, reopen_obj);
+			objClose(new_obj);
+			new_obj = reopen_obj;
+			ASSERTMAGIC(new_obj, MGK_OBJECT);
+			}
+		    }
+
+		/** Replace the previous __inserted object with our newly created one **/
+		old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted", 0);
+		if (old_newobj_id >= 0)
+		    {
+		    old_newobj = stmt->Query->ObjList->Objects[old_newobj_id];
+		    if (old_newobj)
+			objClose(old_newobj);
+		    expModifyParam(stmt->Query->ObjList, "__inserted", objLinkTo(new_obj));
+		    }
+		}
+
+	    /** Close up and go on to next object to be inserted. **/
 	    objClose(new_obj);
 	    new_obj = NULL;
+
+	    /** Yield, if necessary **/
+	    mq_internal_CheckYield(stmt->Query);
+
+	    /** Insert into object?  Only use the first row **/
+	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_FROMOBJECT)
+		break;
 	    }
 
 	if (sel_rval < 0)
@@ -200,6 +306,9 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	rval = 0;
 
     error:
+	if (parent_obj)
+	    objClose(parent_obj);
+
 	/** Close the SELECT **/
 	if (is_started)
 	    if (sel->Driver->Finish(sel, stmt) < 0)

@@ -15,7 +15,7 @@ AC_DEFUN(SHARED_LIBCENTRALLIX,
 	    AC_MSG_CHECKING(if a shared libCentrallix is possible)
 	    temp="$CFLAGS"
 	    CFLAGS="$CFLAGS -shared"
-	    if test "x`$CC -shared 2>&1 | $GREP '-shared'`" = "x"; then
+	    if test "x`$CC -shared 2>&1 | $GREP -- '-shared'`" = "x"; then
 		FINAL_TARGETS="$FINAL_TARGETS libCentrallix.so.$CXLIBVER libStParse.so.$CXLIBVER libCentrallix.so.$CXLIBVER_GEN libStParse.so.$CXLIBVER_GEN libCentrallix.so libStParse.so"
 		AC_MSG_RESULT(yes)
 	    else
@@ -150,6 +150,25 @@ AC_DEFUN(CHECK_HARDENING,
     ]
 )
 
+dnl check if test coverage metering is desired
+AC_DEFUN(CHECK_COVERAGE,
+    [
+    AC_MSG_CHECKING(if test coverage metering is desired)
+    AC_ARG_ENABLE(coverage,
+        AC_HELP_STRING([--enable-coverage],
+            [enable test coverage metering]
+        ),
+        COVERAGE="-fprofile-arcs -ftest-coverage",
+        COVERAGE=""
+    )
+    if test "$COVERAGE" = ""; then
+            AC_MSG_RESULT(no)
+    else
+            AC_MSG_RESULT(yes)
+    fi
+    ]
+)
+
 dnl check if optimization should be done
 dnl this check must follow the hardening check in configure.ac.
 dnl The USING_blahblah defines are to force a recompile if those options
@@ -208,4 +227,14 @@ AC_DEFUN(CHECK_VALGRIND,
     ]
 )
 	    
-	    
+	   
+dnl Check for SIOCOUTQ ioctl (linux-specific)
+AC_DEFUN(CHECK_SIOCOUTQ,
+    [
+    AC_MSG_CHECKING(if SIOCOUTQ ioctl is usable)
+	AC_CHECK_HEADER([linux/sockios.h],
+	    AC_DEFINE(HAVE_SIOCOUTQ,1,[defined to 1 if SIOCOUTQ is available]),
+	    AC_DEFINE(HAVE_SIOCOUTQ,0,[defined to 1 if SIOCOUTQ is available])
+	)
+    ]
+)

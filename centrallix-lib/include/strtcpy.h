@@ -25,5 +25,6 @@
 
 
 int strtcpy(char* dst, const char* src, size_t dstlen);
+int strtcat(char* dst, const char* src, size_t dstlen);
 
 #endif /* not defined _STRTCPY_H */

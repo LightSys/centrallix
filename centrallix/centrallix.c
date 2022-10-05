@@ -21,6 +21,9 @@
 #include "wgtr.h"
 #include "iface.h"
 #include "cxss/cxss.h"
+#include <openssl/ssl.h>
+#include <openssl/rand.h>
+#include <openssl/err.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -241,6 +244,48 @@ int cxAddShutdownHandler(ShutdownHandlerFunc handler)
     return xaAddItem(&CxGlobals.ShutdownHandlers,handler);
     }
 
+
+void
+cxRemovePidFile()
+    {
+    char pidbuf[16];
+    int pidbuf_id;
+    int fd;
+    int cnt;
+	
+
+	if (CxGlobals.PidFile[0] && (CxGlobals.Flags & CX_F_SERVICE))
+	    {
+	    /** Double-check to see if we own it.  Another centrallix
+	     ** process might have overwritten it.  Leave the file alone
+	     ** in that case.
+	     **
+	     ** There is technically a race condition here -- but the
+	     ** consequences are minor and we're doing a courtesy. :)
+	     **/
+	    fd = open(CxGlobals.PidFile, O_RDONLY, 0600);
+	    if (fd >= 0)
+		{
+		cnt = read(fd, pidbuf, sizeof(pidbuf));
+		if (cnt > 1 && cnt < sizeof(pidbuf))
+		    {
+		    pidbuf[cnt] = '\0';
+		    pidbuf_id = strtol(pidbuf, NULL, 10);
+
+		    /** Unlink it if the pids match **/
+		    if (pidbuf_id == getpid())
+			unlink(CxGlobals.PidFile);
+		    }
+		close(fd);
+		}
+	    
+	    CxGlobals.PidFile[0] = '\0';
+	    }
+
+    return;
+    }
+
+
 int
 cxInitialize(void* v)
     {
@@ -253,12 +298,27 @@ cxInitialize(void* v)
     int log_all_errors;
     char* ptr;
     int n;
+    int fd;
+    time_t tm;
+    int pid;
+    char rbuf[16];
+    char* debugfile;
 
-	CxGlobals.Flags = 0;
 	xaInit(&CxGlobals.ShutdownHandlers,4);
 
 	/** set up the interrupt handler so we can shutdown properly **/
 	mtAddSignalHandler(SIGINT,cxShutdownThread);
+	mtAddSignalHandler(SIGTERM,cxShutdownThread);
+
+	/** Add a shutdown handler to delete the pid file **/
+	if (CxGlobals.PidFile[0])
+	    cxAddShutdownHandler(cxRemovePidFile);
+
+#ifdef _SC_CLK_TCK
+        CxGlobals.ClkTck = sysconf(_SC_CLK_TCK);
+#else
+        CxGlobals.ClkTck = CLK_TCK;
+#endif
 
 	/** Startup message **/
 	if (!CxGlobals.QuietInit)
@@ -285,6 +345,14 @@ cxInitialize(void* v)
 	    thExit();
 	    }
 	fdClose(cxconf, 0);
+
+	/** Debug log **/
+	if (stAttrValue(stLookup(CxGlobals.ParsedConfig, "debug_log_file"), NULL, &debugfile, 0) < 0)
+	    debugfile = "/var/log/cx_debug_log";
+	CxGlobals.DebugFile = fdOpen(debugfile, O_WRONLY | O_APPEND | O_CREAT, 0600);
+	if (!CxGlobals.DebugFile)
+	    perror("centrallix: warning: could not open debug log file");
+	cxDebugLog("centrallix initializing...", getpid());
 
 	/** This setting can be dangerous apart from the RBAC security subsystem.
 	 ** We default to Enabled here, but this is turned off in the default config.
@@ -327,6 +395,21 @@ cxInitialize(void* v)
 	nmRegister(sizeof(Thread),"Thread");
 	nmRegister(sizeof(WgtrNode), "WgtrNode");
 
+	/** Init the openssl library **/
+	SSL_library_init();
+	SSL_load_error_strings();
+	fd = open("/dev/urandom", O_RDONLY | O_NOCTTY);
+	if (fd >= 0)
+	    {
+	    read(fd, rbuf, 16);
+	    RAND_add(rbuf, 16, (double)16.0);
+	    close(fd);
+	    }
+	pid = getpid();
+	RAND_add(&pid, 4, (double)0.25);
+	tm = time(NULL);
+	RAND_add(&tm, 4, (double)0.125);
+
 	/** Init the multiquery system and drivers **/
 	mqInitialize();				/* MultiQuery system */
 	mqtInitialize();			/* tablegen query module */
@@ -334,6 +417,7 @@ cxInitialize(void* v)
 	mqjInitialize();			/* join query module */
 	mqisInitialize();			/* insert-select query mod */
 	mquInitialize();			/* update statement query mod */
+	mqusInitialize();			/* upsert statement query mod */
 	mqdInitialize();			/* delete statement query mod */
 	mqobInitialize();			/* orderby module */
 
@@ -356,6 +440,7 @@ cxInitialize(void* v)
 	uxuInitialize();			/* UNIX users list driver */
 	audInitialize();			/* Audio file player driver */
 	lnkInitialize();			/* Symlink driver */
+	jsonInitialize();			/* JSON data driver */
 
 	/** Init the reporting content drivers **/
 #if 0
@@ -379,6 +464,9 @@ cxInitialize(void* v)
 
 	/** Initialize the Interface module **/
 	ifcInitialize();
+
+	/** Application management layer **/
+	appInitialize();
 
 	/** Init the modules being used if dynamic loading is disabled **/
 	
@@ -427,7 +515,7 @@ cxHtInit()
 	htrInitialize();			/* HTML generator */
 	htruleInitialize();			/* rule module */
 	htpageInitialize();			/* DHTML page generator */
-	htspaneInitialize();			/* scrollable pane module */
+	htspaneInitialize();		/* scrollable pane module */
 	httreeInitialize();			/* treeview module */
 	hthtmlInitialize();			/* html pane module */
 	htconnInitialize();			/* connector nonvisual module */
@@ -440,6 +528,7 @@ cxHtInit()
 	httabInitialize();			/* tab control / tab page module */
 	htpnInitialize();			/* pane module */
 	httblInitialize();			/* tabular data module */
+	htchtInitialize();			/* chart module */
 	htwinInitialize();			/* draggable window module */
 	htcbInitialize();			/* checkbox module */
 	htrbInitialize();			/* radiobutton module */
@@ -458,6 +547,7 @@ cxHtInit()
 	htfbInitialize();			/* form bar composite widget test */
 	htocInitialize();			/* object canvas widget */
 	htmapInitialize();			/* object canvas widget */
+	htfuInitialize();			/* file upload widget */
 
 	htformInitialize();			/* forms module */
 	htosrcInitialize();			/* osrc module */
@@ -493,6 +583,14 @@ cxNetworkInit()
 	cgiInitialize();			/* CGI "listener" */
 #endif
 
+#ifndef WITH_DYNAMIC_LOAD
+
+#ifdef USE_NETLDAP
+	nldapInitialize();			/* LDAP network interface */
+#endif
+
+#endif
+
 	bnetInitialize();			/* BDQS network listener */
 
 	/** Load any network driver modules **/
@@ -501,3 +599,41 @@ cxNetworkInit()
     return 0;
     }
 #endif
+
+int
+cxDebugLog(char* fmt, ...)
+    {
+    va_list va;
+    int rval;
+    long long msec;
+    char* our_fmt;
+
+	if (!CxGlobals.DebugFile)
+	    return -1;
+
+	msec = mtRealTicks() * 1000LL / CxGlobals.ClkTck;
+
+	our_fmt = nmSysMalloc(strlen(fmt) + 256);
+	if (!our_fmt)
+	    return -ENOMEM;
+	sprintf(our_fmt, "T%lld.%3.3lld P%5.5d %s\n", msec/1000, msec%1000, getpid(), fmt);
+
+	/** Alloc a printf buf? **/
+	if (!CxGlobals.DebugFile->PrintfBuf)
+	    {
+	    CxGlobals.DebugFile->PrintfBufSize = FD_PRINTF_BUFSIZ;
+	    CxGlobals.DebugFile->PrintfBuf = (char*)nmSysMalloc(CxGlobals.DebugFile->PrintfBufSize);
+	    if (!CxGlobals.DebugFile->PrintfBuf)
+		return -ENOMEM;
+	    }
+
+	/** Print it. **/
+	va_start(va,fmt);
+	rval=xsGenPrintf_va(fdWrite, CxGlobals.DebugFile, &(CxGlobals.DebugFile->PrintfBuf), &(CxGlobals.DebugFile->PrintfBufSize), our_fmt, va);
+	va_end(va);
+
+	nmSysFree(our_fmt);
+
+    return rval;
+    }
+

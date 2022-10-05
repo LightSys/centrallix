@@ -55,6 +55,21 @@ xsInit(pXString this)
     }
 
 
+/*** xsNew - allocate and initialize an XString
+ ***/
+pXString
+xsNew()
+    {
+    pXString this;
+
+	this=(pXString)nmMalloc(sizeof(XString));
+	if (!this) return NULL;
+	xsInit(this);
+
+    return this;
+    }
+
+
 /*** xsDeInit - deinitialize the XString structure, freeing any added
  *** memory occupied by the string data.
  ***/
@@ -73,6 +88,19 @@ xsDeInit(pXString this)
 
     CXSEC_EXIT(XS_FN_KEY);
     return 0;
+    }
+
+
+/*** xsFree - deinit and free an XString
+ ***/
+void
+xsFree(pXString this)
+    {
+
+	xsDeInit(this);
+	nmFree(this, sizeof(XString));
+
+    return;
     }
 
 
@@ -831,6 +859,17 @@ xsString(pXString this)
     }
 
 
+int
+xsLength(pXString this)
+    {
+    CXSEC_ENTRY(XS_FN_KEY);
+    ASSERTMAGIC(this, MGK_XSTRING);
+    CXSEC_VERIFY(*this);
+    CXSEC_EXIT(XS_FN_KEY);
+    return this->Length;
+    }
+
+
 /*** xs_internal_Grow - grow function needed by QPrintf
  ***/
 int
@@ -877,6 +916,15 @@ xs_internal_QPrintf(pXString this, char* fmt, va_list vl)
 
     CXSEC_EXIT(XS_FN_KEY);
     return rval;
+    }
+
+
+/*** xsQPrintf_va - do a quoting printf into an xstring
+ ***/
+int
+xsQPrintf_va(pXString this, char* fmt, va_list va)
+    {
+    return xs_internal_QPrintf(this, fmt, va);
     }
 
 

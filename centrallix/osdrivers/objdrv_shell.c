@@ -198,22 +198,42 @@ shl_internal_Launch(pShlData inf)
     pty=getpt();
     if(pty<0)
 	{
-	mssError(0,"SHL","getpy() failed");
+	mssErrorErrno(0,"SHL","getpy() failed");
 	inf->shell_pid=0;
 	return -1;
 	}
-    if(grantpt(pty)<0 || unlockpt(pty)<0)
+
+    /** grantpt() uses the effective uid for permission checks and the real
+     ** uid for what to chown the device to.  So we need to swap our
+     ** uids here, then swap em back.
+     **/
+    setreuid(geteuid(), getuid());
+    if(grantpt(pty)<0)
 	{
-	mssError(0,"SHL","granpt() or unlockpt() failed");
+        setreuid(geteuid(), getuid());
+	mssErrorErrno(0,"SHL","grantpt() failed");
+	inf->shell_pid=0;
+	return -1;
+	}
+    setreuid(geteuid(), getuid());
+
+    if (unlockpt(pty)<0)
+	{
+	mssErrorErrno(0,"SHL","unlockpt() failed");
+	inf->shell_pid=0;
+	return -1;
+	}
+
+    if (ptsname_r(pty, tty_name, sizeof(tty_name)) != 0)
+	{
+	mssErrorErrno(0,"SHL","ptsname_r() failed");
 	inf->shell_pid=0;
 	return -1;
 	}
 
     if(SHELL_DEBUG & SHELL_DEBUG_OPEN)
-	printf("shell got tty: %s\n",(const char*)ptsname(pty));
+	printf("shell got tty: %s\n",(const char*)tty_name);
 
-    strtcpy(tty_name,(const char*)ptsname(pty),sizeof(tty_name));
-    
     inf->shell_pid=fork();
     if(inf->shell_pid < 0)
 	{
@@ -516,7 +536,7 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		int i;
 		pXArray values;
 		pEnvVar pEV=NULL;
-		values = &argStruct->Value->Children;
+		values = &changeStruct->Value->Children;
 		for(i=0;i<values->nItems;i++)
 		    {
 		    pEV=(pEnvVar)xhLookup(&inf->envHash,((pExpression)(values->Items[i]))->String);

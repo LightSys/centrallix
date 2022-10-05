@@ -70,6 +70,7 @@ typedef struct
     {
     XString		OrderBuf;
     pParamObjects	ObjList;
+    Expression		*SavedValues;
     }
     MqobOrderable, *pMqobOrderable;
 
@@ -80,6 +81,7 @@ typedef struct
     XArray		Objects;
     int			IterCnt;
     int			nOrderBy;
+    XArray		AggregateFieldIDs;
     }
     MQOData, *pMQOData;
 
@@ -95,12 +97,12 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
     pQueryElement qe, search_qe;
     int i,j,k;
     int src_idx;
-    int mask;
+    unsigned int mask;
     int n_orderby = 0;
-    int total_mask = 0;
+    unsigned int total_mask = 0;
     int n_sources;
     int n_sources_total;
-    int non_simple;
+    int non_simple, non_primary;
     int clauses[2] = {MQ_T_GROUPBYCLAUSE, MQ_T_ORDERBYCLAUSE};
 
 	/** Allocate a new query-element **/
@@ -139,10 +141,12 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 			for(n_sources = 0; mask; mask >>= 1)
 			    n_sources += (mask & 0x01);
 			non_simple = 0;
+			non_primary = 0;
 			if (n_sources == 1)
 			    {
 			    /** One source.  However, we'll still grab this one if it 
-			     ** uses WILDCARD or SUBTREE (i.e., a "non-simple" source)
+			     ** uses WILDCARD or SUBTREE (i.e., a "non-simple" source), or
+			     ** if the source is not connected to the primary side of a join.
 			     **/
 			    mask = item->Expr->ObjCoverageMask;
 			    src_idx = 0;
@@ -161,10 +165,15 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 					non_simple = 1;
 					break;
 					}
+				    if (search_qe->Parent && !strncmp(search_qe->Parent->Driver->Name, "MQJ", 3) && search_qe->Parent->SrcIndex != src_idx)
+					{
+					non_primary = 1;
+					break;
+					}
 				    }
 				}
 			    }
-			if ((n_sources > 1 || non_simple || n_sources_total > 1) && n_orderby < 24)
+			if ((n_sources > 1 || non_primary || non_simple || n_sources_total > 1) && n_orderby < 24)
 			    {
 			    /** Grab this one **/
 			    qe->OrderBy[n_orderby++] = exp_internal_CopyTree(item->Expr);
@@ -177,7 +186,7 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 	/** Did we find any orderby items? **/
 	if (n_orderby)
 	    {
-	    printf("using MQ orderby module.\n");
+	    //printf("using MQ orderby module.\n");
 
 	    /** Link the qe into the multiquery **/
 	    qe->OrderBy[n_orderby] = NULL;
@@ -229,7 +238,7 @@ mqobAnalyzeAfterGroup(pQueryStatement stmt)
 	if (n_orderby)
 	    {
 	    qe->OrderBy[n_orderby] = NULL;
-	    printf("using MQ after-grouping orderby module.\n");
+	    //printf("using MQ after-grouping orderby module.\n");
 
 	    /** Set up the attribute list, since we may be the top-level node
 	     ** in the query execution tree.
@@ -320,8 +329,9 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
     pMQOData context;
     pMqobOrderable item;
     pParamObjects objlist;
-    int n;
+    int n,i;
     int rval = -1;
+    pExpression exp;
 
 	cld = (pQueryElement)(qe->Children.Items[0]);
 
@@ -332,7 +342,8 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
 	    context = (pMQOData)nmMalloc(sizeof(MQOData));
 	    qe->PrivateData = context;
 	    xaInit(&context->Objects, 16);
-	    for(n=0;n<25;n++)
+	    xaInit(&context->AggregateFieldIDs, 16);
+	    for(n=0;n<MQ_MAX_ORDERBY;n++)
 		{
 		if (!qe->OrderBy[n])
 		    {
@@ -342,19 +353,43 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
 		}
 	    context->IterCnt = 0;
 
+	    /** Determine SELECTed aggregate fields we need to save/restore **/
+	    for(i=0; i<qe->AttrCompiledExpr.nItems; i++)
+		{
+		exp = (pExpression)qe->AttrCompiledExpr.Items[i];
+		if (exp && exp->AggLevel == 1)
+		    {
+		    /** Got a level-1 aggregate, e.g. sum(x) but not sum(sum(x)) **/
+		    xaAddItem(&context->AggregateFieldIDs, (void*)(long)i);
+		    }
+		}
+
 	    /** Loop through the child QE's results and build our unsorted list **/
 	    while ((rval = cld->Driver->NextItem(cld, stmt)) == 1)
 		{
 		item = (pMqobOrderable)nmMalloc(sizeof(MqobOrderable));
 		objlist = expCreateParamList();
 		if (!objlist || !item) goto error;
+		item->SavedValues = NULL;
 		expCopyList(stmt->Query->ObjList, objlist, -1);
+		objlist->PSeqID = stmt->Query->ObjList->PSeqID;
 		item->ObjList = objlist;
 		expLinkParams(objlist, stmt->Query->nProvidedObjects, -1);
 		xsInit(&item->OrderBuf);
 		xaAddItem(&context->Objects, item);
-		if (objBuildBinaryImageXString(&item->OrderBuf, qe->OrderBy, context->nOrderBy, item->ObjList) < 0)
+		if (objBuildBinaryImageXString(&item->OrderBuf, qe->OrderBy, context->nOrderBy, item->ObjList, 0) < 0)
 		    goto error;
+		item->SavedValues = (Expression *)nmMalloc(sizeof(Expression) * context->AggregateFieldIDs.nItems);
+		if (!item->SavedValues)
+		    goto error;
+		memset(item->SavedValues, 0, sizeof(Expression) * context->AggregateFieldIDs.nItems);
+		for(i=0; i<context->AggregateFieldIDs.nItems; i++)
+		    {
+		    n = (long)context->AggregateFieldIDs.Items[i];
+		    exp = (pExpression)qe->AttrCompiledExpr.Items[n];
+		    expEvalTree(exp, stmt->Query->ObjList);
+		    expCopyValue(exp, item->SavedValues + i, 1);
+		    }
 		}
 	    if (rval < 0) goto error;
 
@@ -376,7 +411,19 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
 	/** Copy in the next item **/
 	item = context->Objects.Items[context->IterCnt];
 	objlist = item->ObjList;
-	expCopyList(objlist, stmt->Query->ObjList, -1);
+	for(i=0; i<context->AggregateFieldIDs.nItems; i++)
+	    {
+	    n = (long)context->AggregateFieldIDs.Items[i];
+	    exp = (pExpression)qe->AttrCompiledExpr.Items[n];
+	    expCopyValue(item->SavedValues + i, exp, 0);
+	    exp->Alloc = (item->SavedValues + i)->Alloc;
+	    exp->Flags |= EXPR_F_FREEZEEVAL;
+	    }
+	for(i=stmt->Query->nProvidedObjects;i<stmt->Query->ObjList->nObjects;i++)
+	    {
+	    stmt->Query->ObjList->Objects[i] = objlist->Objects[i];
+	    stmt->Query->ObjList->SeqIDs[i] = objlist->SeqIDs[i];
+	    }
 	expFreeParamList(objlist);
 	item->ObjList = NULL;
 	rval = 1;
@@ -396,7 +443,13 @@ mqobFinish(pQueryElement qe, pQueryStatement stmt)
     pMQOData context = (pMQOData)(qe->PrivateData);
     pMqobOrderable item;
     pParamObjects objlist;
+    pQueryElement cld;
     int i;
+
+	cld = (pQueryElement)(qe->Children.Items[0]);
+
+	/** Close the previous item **/
+	expUnlinkParams(stmt->Query->ObjList, stmt->Query->nProvidedObjects, -1);
 
 	if (context)
 	    {
@@ -413,13 +466,18 @@ mqobFinish(pQueryElement qe, pQueryStatement stmt)
 			expFreeParamList(objlist);
 			}
 		    xsDeInit(&item->OrderBuf);
+		    if (item->SavedValues)
+			nmFree(item->SavedValues, sizeof(Expression) * context->AggregateFieldIDs.nItems);
 		    nmFree(item, sizeof(MqobOrderable));
 		    }
 		}
 	    xaDeInit(&context->Objects);
+	    xaDeInit(&context->AggregateFieldIDs);
 	    nmFree(context, sizeof(MQOData));
 	    qe->PrivateData = NULL;
 	    }
+
+	cld->Driver->Finish(cld, stmt);
 
     return 0;
     }
@@ -458,6 +516,9 @@ mqobInitialize()
 	drv->NextItem = mqobNextItem;
 	drv->Finish = mqobFinish;
 	drv->Release = mqobRelease;
+
+	nmRegister(sizeof(MQOData), "MQOData");
+	nmRegister(sizeof(MqobOrderable), "MqobOrderable");
 
 	/** Register with the multiquery system. **/
 	if (mqRegisterQueryDriver(drv) < 0) return -1;

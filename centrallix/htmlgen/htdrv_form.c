@@ -40,6 +40,7 @@
 /* Creation:	February 20, 2002 					*/
 /* Description:	This is the non-visual widget that interfaces the 	*/
 /*		objectsource widget and the visual sub-widgets		*/
+/* See centrallix-sysdoc/HTFormsInterface.md for more information. */
 /************************************************************************/
 
 
@@ -62,15 +63,19 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
     char osrc[64];
     char link_next[64];
     char link_next_within[64];
-    int id, i;
+    char link_prev[64];
+    char link_prev_within[64];
+    char interlock_with[256];
+    int id, i, t;
     int allowquery, allownew, allowmodify, allowview, allownodata, multienter, allowdelete, confirmdelete;
-    int confirmdiscard;
+    int confirmdiscard, allowmerge;
     int allowobscure = 0;
     int autofocus;
     char _3bconfirmwindow[30];
     int readonly;
     int tro;
     int enter_mode;
+    pStringVec sv;
 
 	/** form widget should work on any browser **/
     
@@ -87,6 +92,8 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	confirmdelete = htrGetBoolean(tree, "confirm_delete", 1);
 
 	confirmdiscard = htrGetBoolean(tree, "confirm_discard", 1);
+
+	allowmerge = htrGetBoolean(tree, "allow_merge", 0);
 
 	autofocus = htrGetBoolean(tree, "auto_focus", 1);
 
@@ -154,6 +161,16 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    strcpy(link_next_within,"");
 	
+	if (wgtrGetPropertyValue(tree,"prev_form",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(link_prev,ptr,sizeof(link_prev));
+	else
+	    strcpy(link_prev,"");
+	
+	if (wgtrGetPropertyValue(tree,"prev_form_within",DATA_T_STRING,POD(&ptr)) == 0)
+	    strtcpy(link_prev_within,ptr,sizeof(link_prev_within));
+	else
+	    strcpy(link_prev_within,"");
+	
 	/*** 
 	 *** (03/01/02) Jonathan Rupp -- added two new paramters
 	 ***      basequery -- the part of the SQL statement that is never
@@ -179,6 +196,26 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	/** Should we allow obscures for this form? **/
 	allowobscure = htrGetBoolean(tree, "allow_obscure", 0);
 
+	/** Interlocked forms (only one in interlock group allowed to edit/create **/
+	interlock_with[0] = '\0';
+	if ((t = wgtrGetPropertyType(tree,"interlock_with")) == DATA_T_STRING)
+	    {
+	    if (wgtrGetPropertyValue(tree,"interlock_with",DATA_T_STRING, POD(&ptr)) == 0)
+		strtcpy(interlock_with, ptr, sizeof(interlock_with));
+	    }
+	else if (t == DATA_T_STRINGVEC)
+	    {
+	    if (wgtrGetPropertyValue(tree,"interlock_with",DATA_T_STRINGVEC, POD(&sv)) == 0)
+		{
+		for(i=0;i<sv->nStrings;i++)
+		    {
+		    if(i)
+			strtcat(interlock_with, ",", sizeof(interlock_with));
+		    strtcat(interlock_with, sv->Strings[i], sizeof(interlock_with));
+		    }
+		}
+	    }
+
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	strtcpy(name,ptr,sizeof(name));
@@ -194,15 +231,20 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	 **   the name of this instance was defined to be global up above
 	 **   and fm_current is defined in htdrv_page.c 
 	 **/
-	htrAddScriptInit_va(s,"\n    form_init(nodes[\"%STR&SYM\"], {aq:%INT, an:%INT, am:%INT, av:%INT, and:%INT, ad:%INT, cd:%INT, cdis:%INT, me:%INT, name:'%STR&SYM', _3b:nodes[\"%STR&SYM\"], ro:%INT, ao:%INT, af:%INT, osrc:%['%STR&SYM'%]%[null%], tro:%INT, em:%INT, nf:%['%STR&SYM'%]%[null%], nfw:%['%STR&SYM'%]%[null%]});\n",
-		name,allowquery,allownew,allowmodify,allowview,allownodata,allowdelete,confirmdelete, confirmdiscard,
-		multienter,name,_3bconfirmwindow,readonly,allowobscure,autofocus,
+	htrAddScriptInit_va(s,"    form_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {aq:%INT, an:%INT, am:%INT, av:%INT, and:%INT, ad:%INT, cd:%INT, cdis:%INT, amrg:%INT, me:%INT, name:'%STR&SYM', _3b:%[wgtrGetNodeRef(ns,\"%STR&SYM\")%]%[null%], ro:%INT, ao:%INT, af:%INT, osrc:%['%STR&SYM'%]%[null%], tro:%INT, em:%INT, nf:%['%STR&SYM'%]%[null%], nfw:%['%STR&SYM'%]%[null%], pf:%['%STR&SYM'%]%[null%], pfw:%['%STR&SYM'%]%[null%], il:'%STR&JSSTR'});\n",
+		name,allowquery,allownew,allowmodify,allowview,allownodata,allowdelete,confirmdelete, confirmdiscard, allowmerge,
+		multienter,name,
+		strcmp(_3bconfirmwindow,"null") != 0, _3bconfirmwindow, strcmp(_3bconfirmwindow,"null") == 0,
+		readonly,allowobscure,autofocus,
 		*osrc != '\0', osrc, *osrc == '\0',
 		tro, enter_mode,
 		*link_next != '\0', link_next, *link_next == '\0',
-		*link_next_within != '\0', link_next_within, *link_next_within == '\0'
+		*link_next_within != '\0', link_next_within, *link_next_within == '\0',
+		*link_prev != '\0', link_prev, *link_prev == '\0',
+		*link_prev_within != '\0', link_prev_within, *link_prev_within == '\0',
+		interlock_with
 		);
-	htrAddScriptInit_va(s,"    nodes[\"%STR&SYM\"].ChangeMode('NoData');\n",name);
+	htrAddScriptInit_va(s,"    wgtrGetNodeRef(ns,\"%STR&SYM\").ChangeMode('NoData');\n",name);
 
 	/** Check for and render all subobjects. **/
 	/** non-visual, don't consume a z level **/

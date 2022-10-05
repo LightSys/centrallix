@@ -108,6 +108,7 @@ function checkbox_keyhandler(l,e,k)
 	{
 	if (this.form) this.form.EscNotify(this);
 	}
+    return true;
     }
 
 
@@ -252,10 +253,6 @@ function checkbox_toggleMode(l, from_kbd)
     {
     if (!l.enabled) 
 	return;
-    if (l.form) 
-	{
-	l.form.DataNotify(l);
-	}
 
     // update the value
     l.is_checked++;
@@ -266,6 +263,11 @@ function checkbox_toggleMode(l, from_kbd)
     this.is_checked_initial = null;
 
     l.value = (l.is_checked == -1)?null:l.is_checked;
+
+    if (l.form) 
+	{
+	l.form.DataNotify(l);
+	}
 
     // update the image
     pg_set(l.img, 'src', l.imgfiles[l.enabled][l.is_checked+1]);

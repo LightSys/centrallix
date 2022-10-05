@@ -1,0 +1,16 @@
+Three Modes:
+    Normal
+    Inner
+    Outer
+
+Two Nesting Modes:
+    Nested
+    Multinested
+
+Multiple levels of nested queries:
+    0
+    1
+    2
+    ...
+
+

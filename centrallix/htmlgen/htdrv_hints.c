@@ -59,7 +59,6 @@ hthintRender(pHtSession s, pWgtrNode tree, int z)
     int id;
     pObjPresentationHints hints;
     XString xs;
-    char* nptr;
 
     	/** Get an id for this. **/
 	id = (HTHINT.idcnt++);
@@ -75,9 +74,8 @@ hthintRender(pHtSession s, pWgtrNode tree, int z)
 	/** Serialize the hints data and add the script init for it **/
 	xsInit(&xs);
 	hntEncodeHints(hints, &xs);
-	wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&nptr));
-	htrAddScriptInit_va(s, "    cx_set_hints(wgtrGetParent(nodes[\"%STR&SYM\"]), '%STR&JSSTR', 'app');\n",
-		nptr, xs.String);
+	htrAddScriptInit_va(s, "    cx_set_hints(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")), '%STR&JSSTR', 'app');\n",
+		wgtrGetName(tree), xs.String);
 	xsDeInit(&xs);
 
 	/** mark this node as not being associated with a DHTML object **/

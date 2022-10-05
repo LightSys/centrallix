@@ -48,8 +48,8 @@
 
 
 
-#define PRT_TEXTOD_MAXROWS	256	/* maximum lines per page */
-#define PRT_TEXTOD_MAXCOLS	256	/* maximum columns per page */
+#define PRT_TEXTOD_MAXROWS	1024	/* maximum lines per page */
+#define PRT_TEXTOD_MAXCOLS	1024	/* maximum columns per page */
 
 /*** our list of resolutions ***/
 PrtResolution prt_text_resolutions[] =
@@ -172,7 +172,8 @@ prt_textod_OutputPage(pPrtTextodInf context)
 	    }
 
 	/** form feed **/
-	prt_textod_Output(context, "\14", 1);
+	if (!strcmp(prtGetSessionParam(context->Session, "text_pagebreak", "yes"), "yes"))
+	    prt_textod_Output(context, "\14", 1);
 
 	/** Clear the page **/
 	context->MaxLine = -1;

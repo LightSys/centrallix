@@ -166,7 +166,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddStylesheetItem_va(s,"\t#cl%POScon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,0,0,w,z+2);
 
 	/** Write named global **/
-	htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr,\"cl%POSbase\")",id);
+	htrAddWgtrObjLinkage_va(s, tree, "cl%POSbase",id);
 
 	/** Other global variables **/
 	htrAddScriptGlobal(s, "cl_move", "false", 0);
@@ -185,7 +185,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "cl", "cl_mousemove");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    cl_init({layer:nodes[\"%STR&SYM\"], c1:htr_subel(nodes[\"%STR&SYM\"],\"cl%POScon1\"), c2:htr_subel(nodes[\"%STR&SYM\"],\"cl%POScon2\"), fieldname:\"%STR&JSSTR\", background:\"%STR&JSSTR\", shadowed:%POS, foreground1:\"%STR&JSSTR\", foreground2:\"%STR&JSSTR\", fontsize:%INT, moveable:%INT, bold:%INT, sox:%INT, soy:%INT, showSecs:%INT, showAmPm:%INT, milTime:%INT});\n",
+	htrAddScriptInit_va(s, "    cl_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), c1:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"cl%POScon1\"), c2:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"cl%POScon2\"), fieldname:\"%STR&JSSTR\", background:\"%STR&JSSTR\", shadowed:%POS, foreground1:\"%STR&JSSTR\", foreground2:\"%STR&JSSTR\", fontsize:%INT, moveable:%INT, bold:%INT, sox:%INT, soy:%INT, showSecs:%INT, showAmPm:%INT, milTime:%INT});\n",
 	    name,
 	    name, id,
 	    name, id,

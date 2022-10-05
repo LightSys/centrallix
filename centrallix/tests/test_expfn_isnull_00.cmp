@@ -1,0 +1,28 @@
+Attribute [column_000]:   string   "test" 
+Attribute [column_000]:   string   "" 
+Attribute [column_000]:   string   "this is a longer test" 
+Attribute [column_000]:   string   "" 
+Attribute [column_000]:   string   "'" 
+Attribute [column_000]:   string   "100" 
+Attribute [column_000]:   string   "/" 
+Attribute [column_000]:   string   "short test" 
+Attribute [column_000]:   string   "" 
+Attribute [column_000]:   string   "test" 
+Attribute [column_000]:   string   "this is a much longer test string" 
+Attribute [column_000]:   string   "test" 
+Attribute [column_000]:   string   "" 
+Attribute [column_000]:   string   "this is a longer test" 
+Attribute [column_000]:   string   "short test" 
+Attribute [column_000]:   string   "a medium test" 
+Attribute [isnull("Another test","The inpu]:   string   "Another test" 
+Attribute [isnull("1","The input string wa]:   string   "1" 
+Attribute [isnull("$50.00","The input stri]:   string   "$50.00" 
+Attribute [isnull(null,"The input string w]:   string   "The input string was null" 
+Attribute [isnull(1, 0)]:  integer  1
+Attribute [isnull(null, 0)]:  integer  0
+Attribute [isnull(1.5, 0.0)]:   double  1.5
+Attribute [isnull(null, 0.0)]:   double  0.0
+Attribute [isnull($20, 0)]:    money   $20.00 
+Attribute [isnull(null, $0)]:    money   $0.00 
+Attribute [isnull(convert(datetime, "5/31/]: datetime   '31 May 2020 00:00' 
+Attribute [isnull(abs(null), convert(datet]: datetime   '01 Jan 2020 00:00' 

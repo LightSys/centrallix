@@ -66,6 +66,7 @@ objOpenSession(char* current_dir)
 	this->Magic = MGK_OBJSESSION;
 	xhqInit(&(this->DirectoryCache), 256, 0, 509, obj_internal_DiscardDC, 0);
 	this->Handle = xhnAllocHandle(&(OSYS.SessionHandleCtx), this);
+	this->Flags = 0;
 
 	/** Add to the sessions list **/
 	xaAddItem(&(OSYS.OpenSessions),(void*)this);
@@ -80,8 +81,19 @@ objOpenSession(char* current_dir)
 int 
 objCloseSession(pObjSession this)
     {
+    int i;
+    int closed;
+    pObject obj;
 
 	ASSERTMAGIC(this, MGK_OBJSESSION);
+
+	/** Close session being re-entered? **/
+	if (this->Flags & OBJ_SESS_F_CLOSING)
+	    {
+	    mssError(1,"OSML","Bark! Session close was re-entered");
+	    return 0;
+	    }
+	this->Flags |= OBJ_SESS_F_CLOSING;
 
 	xhnFreeHandle(&(OSYS.SessionHandleCtx), this->Handle);
 
@@ -97,7 +109,29 @@ objCloseSession(pObjSession this)
 	/** Close any open objects **/
 	while(this->OpenObjects.nItems)
 	    {
-	    objClose((pObject)(this->OpenObjects.Items[0]));
+	    i = 0;
+	    closed = 0;
+	    while(i < this->OpenObjects.nItems)
+		{
+		obj = (pObject)this->OpenObjects.Items[i];
+		if (obj->Flags & OBJ_F_UNMANAGED)
+		    {
+		    i++;
+		    continue;
+		    }
+		objClose(obj);
+		closed++;
+		}
+	    if (!closed)
+		{
+		mssError(1,"OSML","Bark! %d unmanaged object(s) remained unclosed at session destroy", this->OpenObjects.nItems);
+		for(i=0;i<this->OpenObjects.nItems;i++)
+		    {
+		    obj = (pObject)this->OpenObjects.Items[i];
+		    printf("Unclosed: %s\n", obj_internal_PathPart(obj->Pathname, 0, 0));
+		    }
+		break;
+		}
 	    }
 
 	/** Remove from the session list **/
@@ -146,7 +180,8 @@ objGetWD(pObjSession this)
 int
 objUnmanageObject(pObjSession this, pObject obj)
     {
-    xaRemoveItem(&(this->OpenObjects), xaFindItem(&(this->OpenObjects), (void*)obj));
+    /*xaRemoveItem(&(this->OpenObjects), xaFindItem(&(this->OpenObjects), (void*)obj));*/
+    obj->Flags |= OBJ_F_UNMANAGED;
     return 0;
     }
 

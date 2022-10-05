@@ -86,7 +86,7 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
        form[0] = '\0';
    else
        strtcpy(form,ptr,sizeof(form));
-   htrAddWgtrObjLinkage_va(s, tree, "htr_subel(_parentctr, \"fs%POSmain\")", id);
+   htrAddWgtrObjLinkage_va(s, tree, "fs%POSmain", id);
 
    /** Ok, write the style header items. **/
    htrAddStylesheetItem_va(s,"\t#fs%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:13px; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
@@ -94,7 +94,7 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddScriptInclude(s, "/sys/js/htdrv_formstatus.js", 0);
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    fs_init({layer:nodes[\"%STR&SYM\"],form:\"%STR&JSSTR\",style:\"%STR&JSSTR\"});\n",
+   htrAddScriptInit_va(s,"    fs_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"),form:\"%STR&JSSTR\",style:\"%STR&JSSTR\"});\n",
 	    name, form, style);
 
    /** HTML body <DIV> element for the layers. **/

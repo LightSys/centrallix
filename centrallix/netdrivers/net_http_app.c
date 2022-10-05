@@ -36,11 +36,11 @@
 /* 11:38 AM 6/25/2008 jncraton */
 
 
-/*** nht_internal_GetGeom() - deploy a snippet of javascript to the browser
+/*** nht_i_GetGeom() - deploy a snippet of javascript to the browser
  *** to fetch the window geometry and reload the application.
  ***/
 int
-nht_internal_GetGeom(pObject target_obj, pFile output)
+nht_i_GetGeom(pObject target_obj, pNhtConn output)
     {
     char bgnd[128];
     char* ptr;
@@ -70,7 +70,7 @@ nht_internal_GetGeom(pObject target_obj, pFile output)
 	    }
 
 	/** Generate the snippet **/
-	fdQPrintf(output,"<html>\n"
+	nht_i_QPrintfConn(output, 0, "<html>\n"
 			 "<head>\n"
 			 "    <meta http-equiv=\"Pragma\" CONTENT=\"no-cache\">\n"
 			 "    <style type=\"text/css\">\n"
@@ -90,8 +90,19 @@ nht_internal_GetGeom(pObject target_obj, pFile output)
     return 0;
     }
 
+
+/*** Function used for lambda Write callback from wgtrRender/htrRender
+ ***/
 int
-nhtRenderApp(pFile output, pObjSession s, pObject obj, pStruct url_inf, pWgtrClientInfo client_info, char* method, pNhtSessionData nsess)
+nhtRenderAppWrite(void* conn_v, char* buf, int len, int offset, int flags)
+    {
+    pNhtConn conn = (pNhtConn)conn_v;
+    return nht_i_WriteConn(conn, buf, len, 0);
+    }
+
+
+int
+nhtRenderApp(pNhtConn conn, pObjSession s, pObject obj, pStruct url_inf, pWgtrClientInfo client_info, char* method, pNhtSessionData nsess)
     {
     pWgtrNode tree;
     int rval;
@@ -100,7 +111,7 @@ nhtRenderApp(pFile output, pObjSession s, pObject obj, pStruct url_inf, pWgtrCli
     if (strncmp(url_inf->StrVal, "/INTERNAL/cache", 15))
 	{
 #endif
-	if(! (tree = wgtrParseOpenObject(obj, url_inf, client_info->Templates, 0)))
+	if(! (tree = wgtrParseOpenObject(obj, url_inf, client_info, 0)))
 	    {
 	    if(tree) wgtrFree(tree);
 	    return -1;
@@ -131,7 +142,7 @@ nhtRenderApp(pFile output, pObjSession s, pObject obj, pStruct url_inf, pWgtrCli
 	return -1;
 	}
 
-    rval = wgtrRender(output, s, tree, url_inf, client_info, method);
+    rval = wgtrRender((void*)conn, nhtRenderAppWrite, s, tree, url_inf, client_info, method);
 
     if(tree) wgtrFree(tree);
     //if(tree) wgtrFree(tree); //by Seth: because all trees are being cached, the trees must be freed somewhere else. Probably at the closing of the session. //SETH: ?? is that already taken care of?

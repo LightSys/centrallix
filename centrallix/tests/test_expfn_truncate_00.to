@@ -1,0 +1,96 @@
+##NAME truncate() function
+
+# integer
+query select 'truncate(123,0)' = truncate(123,0)
+
+query select 'truncate(123)' = truncate(123)
+
+query select 'truncate(-123)' = truncate(-123)
+
+query select 'truncate(123,2)' = truncate(123,2)
+
+query select 'truncate(-123,2)' = truncate(-123,2)
+
+query select 'truncate(123,-2)' = truncate(123,-2)
+
+query select 'truncate(-123,-2)' = truncate(-123,-2)
+
+
+# double
+query select 'truncate(123.123,0)' = truncate(123.123,0)
+
+query select 'truncate(123.123)' = truncate(123.123)
+
+query select 'truncate(-123.123)' = truncate(-123.123)
+
+query select 'truncate(123.123,2)' = truncate(123.123,2)
+
+query select 'truncate(123.123,-2)'= truncate(123.123,-2)
+
+query select 'truncate(123.123,3)' = truncate(123.123,3)
+
+query select 'truncate(123.123,-3)'= truncate(123.123,-3)
+
+query select 'truncate(123.123,4)' = truncate(123.123,4)
+
+query select 'truncate(123.123,-4)'= truncate(123.123,-4)
+
+query select 'truncate(-123.123,2)' = truncate(-123.123,2)
+
+query select 'truncate(-123.123,-2)' = truncate(-123.123,-2)
+
+query select 'truncate(-123.123,3)' = truncate(-123.123,3)
+
+query select 'truncate(-123.123,-3)' = truncate(-123.123,-3)
+
+query select 'truncate(-123.123,4)' = truncate(-123.123,4)
+
+query select 'truncate(-123.123,-4)' = truncate(-123.123,-4)
+
+
+# MONEY integer
+query select 'truncate($123,0)' = truncate($123,0)
+
+query select 'truncate($123)' = truncate($123)
+
+query select 'truncate($-123)' = truncate($-123)
+
+query select 'truncate($123,2)' = truncate($123,2)
+
+query select 'truncate($-123,2)' = truncate($-123,2)
+
+query select 'truncate($123,-2)' = truncate($123,-2)
+
+query select 'truncate($-123,-2)' = truncate($-123,-2)
+
+# MONEY double
+query select 'truncate($123.123,0)' = truncate($123.123,0)
+
+query select 'truncate($123.123)' = truncate($123.123)
+
+query select 'truncate($-123.123)' = truncate($-123.123)
+
+query select 'truncate($123.123,2)' = truncate($123.123,2)
+
+query select 'truncate($123.123,-2)'= truncate($123.123,-2)
+
+query select 'truncate($123.123,3)' = truncate($123.123,3)
+
+query select 'truncate($123.123,-3)'= truncate($123.123,-3)
+
+query select 'truncate($123.123,4)' = truncate($123.123,4)
+
+query select 'truncate($123.123,-4)'= truncate($123.123,-4)
+
+query select 'truncate($-123.123,2)' = truncate($-123.123,2)
+
+query select 'truncate($-123.123,-2)' = truncate($-123.123,-2)
+
+query select 'truncate($-123.123,3)' = truncate($-123.123,3)
+
+query select 'truncate($-123.123,-3)' = truncate($-123.123,-3)
+
+query select 'truncate($-123.123,4)' = truncate($-123.123,4)
+
+query select 'truncate($-123.123,-4)' = truncate($-123.123,-4)
+

@@ -68,6 +68,8 @@ typedef struct _HTN
     {
     char	DName[64];		/* deployment name for subtree root */
     char	ParentCtr[64];		/* name of parent container */
+    int		IsSubnamespace;
+    int		HasScriptInits;
     struct _HTN* Parent;
     struct _HTN* FirstChild;
     struct _HTN* NextSibling;
@@ -103,6 +105,7 @@ typedef struct
     {
     char	Name[64];		/* Driver name */
     char	WidgetName[64];		/* Name of widget. */
+    int		(*Setup)();
     int		(*Render)();		/* Function to render the page */
     XArray	PosParams;		/* Positioning parameter listing. */
     XArray	Properties;		/* Properties this thing will have. */
@@ -265,6 +268,9 @@ typedef struct
     pWgtrClientInfo ClientInfo;
     pHtNamespace Namespace;		/* current namespace */
     int		IsDynamic;
+    void*	Stream;
+    int		(*StreamWrite)(void*, char*, int, int, int);
+    XHashTable	UsedDrivers;
     }
     HtSession, *pHtSession;
 
@@ -277,6 +283,10 @@ typedef struct
 #ifndef __GNUC__
 #define __attribute__(a) /* hide function attributes from non-GCC compilers */
 #endif
+
+/** Flags for div formatting/styling **/
+#define HTR_DIV_F_VISIBLE	1	/* set if div is visible */
+#define HTR_DIV_F_OVERFLOW	2	/* set if overflow is visible */
 
 /** Rendering engine functions **/
 int htrAddHeaderItem(pHtSession s, char* html_text);
@@ -302,12 +312,15 @@ int htrAddScriptInclude(pHtSession s, char* filename, int flags);
 int htrAddStylesheetItem(pHtSession s, char* html_text);
 /*int htrAddStylesheetItem_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));*/
 int htrAddStylesheetItem_va(pHtSession s, char* fmt, ... );
+int htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y, int w, int h, int z, char* style_prefix, char* defaults[], char* addl);
 
 int htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp);
 int htrCheckAddExpression(pHtSession s, pWgtrNode tree, char* w_name, char* property);
 int htrDisableBody(pHtSession s);
 int htrRenderWidget(pHtSession session, pWgtrNode widget, int z);
 int htrRenderSubwidgets(pHtSession s, pWgtrNode widget, int zlevel);
+int htrCheckNSTransition(pHtSession s, pWgtrNode parent, pWgtrNode child);
+int htrCheckNSTransitionReturn(pHtSession s, pWgtrNode parent, pWgtrNode child);
 
 int htrAddScriptWgtr(pHtSession s, char* wgtr_text);
 /*int htrAddScriptWgtr_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3))); */
@@ -319,7 +332,7 @@ int htrAddWgtrCtrLinkage(pHtSession s, pWgtrNode widget, char* linkage);
 /*int htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...) __attribute__((format(printf, 3, 4)));*/
 int htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...);
 int htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...);
-int htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace);
+int htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace, int is_subns);
 int htrLeaveNamespace(pHtSession s);
 
 /** Utility routines **/
@@ -327,14 +340,16 @@ int htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int 
 int htrGetBoolean(pWgtrNode obj, char* attr, int default_value);
 
 /** Content-intelligent (useragent-sensitive) rendering engine functions **/
-int htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, const char* fmt, ...);
-int htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt);
+int htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, char* cls, const char* fmt, ...);
+int htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* cls);
 int htrAddBodyItemLayerEnd(pHtSession s, int flags);
 
 /** Administrative functions **/
 int htrRegisterDriver(pHtDriver drv);
 int htrInitialize();
-int htrRender(pFile output, pObjSession s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info);
+int htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSession s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info);
+int htrWrite(pHtSession s, char* buf, int len);
+int htrQPrintf(pHtSession s, char* fmt, ...);
 int htrAddAction(pHtDriver drv, char* action_name);
 int htrAddEvent(pHtDriver drv, char* event_name);
 int htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype);
