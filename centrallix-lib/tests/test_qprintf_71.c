@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "qprintf.h"
 #include <assert.h>
+#include "util.h"
 
 long long
 test(char** tname)
@@ -71,14 +72,14 @@ test(char** tname)
         assert(rval == 15);
         assert(strcmp(buf+4, "சோதனை") == 0);
         assert(session->Errors == 0);
-        assert(verifyUTF8(buf+4) == 0);
+        assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
         /** more complex **/
         rval = qpfPrintf(session, (char*)(buf+4), 36, "இது %STR&DHEX உதாரணம்", 
             "e0ae92e0aeb0e0af8120e0aea8e0af80e0aea3e0af8de0ae9f" );
         assert(rval < 67);
         assert(strcmp(buf+4, "இது ஒரு நீண்ட") == 0);
         assert(session->Errors == QPF_ERR_T_BUFOVERFLOW);
-        assert(verifyUTF8(buf+4) == 0);
+        assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 
         assert(buf[43] == '\n');
         assert(buf[42] == '\0');

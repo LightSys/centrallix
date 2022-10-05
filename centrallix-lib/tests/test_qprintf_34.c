@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "qprintf.h"
 #include <assert.h>
+#include "util.h"
 
 long long
 test(char** tname)
@@ -44,17 +45,17 @@ test(char** tname)
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
 
-	    assert(verifyUTF8(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 
 	    /* UTF-8 */
 	    rval = qpfPrintf(NULL, buf+4, 36, "εδώ οδός: '%STR&ESCQ&8LEN'...", "\"є'н\""); /* no char split */
 	    assert(strcmp(buf+4, "εδώ οδός: '\\\"є\\'н'...") == 0);
 	    assert(rval == 30);
-	    assert(verifyUTF8(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 	    rval = qpfPrintf(session, buf+4, 36, "εδώ οδός: '%STR&ESCQ&8LEN'...", "\"є'.н\""); /* char is split */
 	    assert(strcmp(buf+4, "εδώ οδός: '\\\"є\\'.'...") == 0);
 	    assert(rval == 29);
-	    assert(verifyUTF8(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);

@@ -3783,7 +3783,7 @@ int exp_fn_utf8_overlong(pExpression tree, pParamObjects objlist, pExpression i0
 	{
 	int result = verifyUTF8(i0->String);
 
-	if(result == 0)
+	if(result == UTIL_VALID_CHAR)
 		{
 		tree->String = nmSysMalloc(strlen(i0->String));
 		strcpy(tree->String, i0->String);

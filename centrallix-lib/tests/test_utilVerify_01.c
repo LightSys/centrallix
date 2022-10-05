@@ -30,16 +30,16 @@ test (char** tname)
 			{
 			strBuf[3] = i;
 			strBuf[4] = j;
-			strBuf[5] = '\0'; /* endable single char test */
+			strBuf[5] = '\0'; /* enable single char test */
 
 			char *cur = strBuf+3;
 			result = verifyUTF8(cur);
-			assert(result != 0);
+			assert(result == 0);
 			
 			/* now test in the middle of a string */
 			strBuf[5] = 'A';
 			result = verifyUTF8(strBuf);
-			assert(result != 0);
+			assert(result == 3);
 			}
 		}
 
@@ -66,12 +66,12 @@ test (char** tname)
 
 				char *cur = strBuf+3;
 				result = verifyUTF8(cur);
-				assert(result != 0);
+				assert(result == 0);
 				
 				/* now test in the middle of a string */
 				strBuf[6] = 'A';
 				result = verifyUTF8(strBuf);
-				assert(result != 0);
+				assert(result == 3);
 				}
 			}
 		}
@@ -101,12 +101,12 @@ test (char** tname)
 
 					char *cur = strBuf+3;
 					result = verifyUTF8(cur);
-					assert(result != 0);
+					assert(result == 0);
 					
 					/* now test in the middle of a string */
 					strBuf[7] = 'A';
 					result = verifyUTF8(strBuf);
-					assert(result != 0);
+					assert(result == 3);
 					}
 				}
 			}

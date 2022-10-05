@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "qprintf.h"
 #include <assert.h>
+#include "util.h"
 
 long long
 test(char** tname)
@@ -41,7 +42,7 @@ test(char** tname)
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
 	    
-	    assert(verifyUTF8(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 
 	    /* UTF-8 test not required; no characters involved */
 	    

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "qprintf.h"
 #include <assert.h>
+#include "util.h"
 
 long long
 test(char** tname)
@@ -48,13 +49,13 @@ test(char** tname)
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
 
-	    assert(verifyUTF8(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 
 	    /** UTF-8 **/
             qpfPrintf(session, buf+4, 27, "编: %STR&HEX&18LEN...", "<b c=\"w\">");	    
             rval = qpfPrintf(session, buf+4, 27, "编: %STR&HEX&18LEN...", "<b c=\"w\">");
 	    assert(strcmp(buf+4, "编: 3c6220633d2277223e...") == 0);
-	    assert(verifyUTF8(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
             assert(rval == 26);
 	    assert(buf[33] == '\n');
 	    assert(buf[32] == '\0');

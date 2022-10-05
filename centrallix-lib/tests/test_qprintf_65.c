@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "qprintf.h"
 #include <assert.h>
+#include "util.h"
 
 long long
 test(char** tname)
@@ -45,13 +46,13 @@ test(char** tname)
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
 
-            assert(verifyUTF8(buf+4) == 0);
+            assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 
             rval = qpfPrintf(NULL, (char*)(buf+4), 36, "%STR&B64", "சோதனை");
 	    assert(rval == strlen("4K6a4K+L4K6k4K6p4K+I"));
 	    rval = qpfPrintf(NULL, (char*)(buf+4), 36, "%STR&B64", "இது ஒரு நீண்ட உதாரணம்");
 	    assert(rval < 0);
-            assert(verifyUTF8(buf+4) == 0);
+            assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);

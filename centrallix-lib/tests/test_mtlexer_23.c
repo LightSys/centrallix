@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <locale.h>
 #include <limits.h>
+#include "util.h"
 
 long long
 test(char** tname)
@@ -42,7 +43,7 @@ test(char** tname)
 		assert(result == MLX_TOK_FILENAME);
 		assert(lxs->TokType == MLX_TOK_FILENAME);
 		assert(memcmp(valid_fileNames+offset, lxs->TokString, strlen(lxs->TokString)) == 0);
-		assert(verifyUTF8(lxs->TokString) == 0);
+		assert(verifyUTF8(lxs->TokString) == UTIL_VALID_CHAR);
 		offset += strlen(lxs->TokString) + 1; /* move past the space as well */
 		}
 	    result = mlxNextToken(lxs);

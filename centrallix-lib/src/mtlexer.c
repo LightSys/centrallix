@@ -993,7 +993,7 @@ mlxNextToken(pLxSession this)
 	if(this->ValidateFn != NULL && (this->TokType == MLX_TOK_SSTRING || 
 	    this->TokType == MLX_TOK_STRING || this->TokType == MLX_TOK_FILENAME))
 	    {
-	    if(this->ValidateFn(this->TokString) != 0)
+	    if(this->ValidateFn(this->TokString) != UTIL_VALID_CHAR)
 	        {
 	        mssError(1,"MLX","String token contained invalid characters");
 	        this->TokType = MLX_TOK_ERROR;
@@ -1082,7 +1082,7 @@ mlxStringVal(pLxSession this, int* alloc)
 	    }
 
 		/** validate again; could have more copied from buffer **/
-		if(this->ValidateFn != NULL && this->ValidateFn(ptr) != 0)
+		if(this->ValidateFn != NULL && this->ValidateFn(ptr) != UTIL_VALID_CHAR)
 		    {
 		    mssError(1,"MLX","String token contained invalid characters");
 		    this->TokType = MLX_TOK_ERROR;
@@ -1178,7 +1178,7 @@ mlxCopyToken(pLxSession this, char* buffer, int maxlen)
 	    }
 	
 	/** validate buffer; could have copied more from input, thereby avoiding next token's check **/
-	if(this->ValidateFn && this->ValidateFn(buffer) != 0)
+	if(this->ValidateFn && this->ValidateFn(buffer) != UTIL_VALID_CHAR)
 	    {
 	    mssError(1,"MLX","Invalid characters in string");
 	    this->TokType = MLX_TOK_ERROR;

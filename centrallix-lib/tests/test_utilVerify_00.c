@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <locale.h>
 #include "util.h"
+#include "util.h"
 
 long long
 test (char** tname)
@@ -29,10 +30,10 @@ test (char** tname)
 		cur[1] = '\0';
 
 		result = verifyUTF8(cur);
-		assert(result == 0);
+		assert(result == UTIL_VALID_CHAR);
 		}
 	result = verifyUTF8(strBuf);
-	assert(result == 0);
+	assert(result == UTIL_VALID_CHAR);
 
 
 	/** test all 2 character utf8 chars  **/
@@ -47,11 +48,11 @@ test (char** tname)
 
 			char *cur = strBuf+((j-0x80)*2);
 			result = verifyUTF8(cur);
-			assert(result == 0);
+			assert(result == UTIL_VALID_CHAR);
 			}
 			
 		result = verifyUTF8(strBuf);
-		assert(result == 0);
+		assert(result == UTIL_VALID_CHAR);
 		}
 
 
@@ -82,11 +83,11 @@ test (char** tname)
 				char *cur = strBuf+((k-0x80)*3);
 				
 				result = verifyUTF8(cur);
-				assert(result == 0);
+				assert(result == UTIL_VALID_CHAR);
 				}
 				
 			result = verifyUTF8(strBuf);
-			assert(result == 0);
+			assert(result == UTIL_VALID_CHAR);
 			}
 		}
 
@@ -118,10 +119,10 @@ test (char** tname)
 
 					char *cur = strBuf+((l-0x80)*4);
 					result = verifyUTF8(cur);
-					assert(result == 0);
+					assert(result == UTIL_VALID_CHAR);
 					}
 				result = verifyUTF8(strBuf);
-				assert(result == 0);
+				assert(result == UTIL_VALID_CHAR);
 				}
 			}
 		}

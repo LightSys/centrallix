@@ -743,7 +743,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 
     /* make sure data decoded is valid, if applicable */
     *cursor = 0; /* only check what just added */
-    if(s->Flags & QPF_F_ENFORCE_UTF8 && verifyUTF8((*dst + oldOffset)) != 0)
+    if(s->Flags & QPF_F_ENFORCE_UTF8 && verifyUTF8((*dst + oldOffset)) != UTIL_VALID_CHAR)
 	{
 	QPERR(QPF_ERR_T_BADCHAR);
 	return -1;
@@ -820,7 +820,7 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
 	    }
 
 	    *cursor = 0; /* only check what just added */
-	    if(s->Flags & QPF_F_ENFORCE_UTF8 && verifyUTF8((*dst + oldOffset)) != 0)
+	    if(s->Flags & QPF_F_ENFORCE_UTF8 && verifyUTF8((*dst + oldOffset)) != UTIL_VALID_CHAR)
 		{
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -1320,7 +1320,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 					    memchr(strval, '/', cplen) || 
 					    memchr(strval, '\0', cplen) ||
 					    cplen == 0 ||
-					    (s->Flags & QPF_F_ENFORCE_UTF8 && verifyUTF8(strval) != 0))
+					    (s->Flags & QPF_F_ENFORCE_UTF8 && verifyUTF8(strval) != UTIL_VALID_CHAR))
 					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADFILE); goto error; }
 				    break;
 
@@ -1333,7 +1333,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 					    cplen == 0 ||
 					    (cplen > 2 && strval[cplen-1] == '.' && strval[cplen-2] == '.' && strval[cplen-3] == '/') ||
 					    qpf_internal_FindStr(strval, cplen, "/../", 4) >= 0 || 
-					    (s->Flags & QPF_F_ENFORCE_UTF8 && verifyUTF8(strval) != 0))
+					    (s->Flags & QPF_F_ENFORCE_UTF8 && verifyUTF8(strval) != UTIL_VALID_CHAR))
 					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADPATH); goto error; }
 				    break;
 

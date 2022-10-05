@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <locale.h>
 #include "qprintf.h"
+#include "util.h"
 
 void runTest(char** inputs, int ind, char* in, char* buf,  pLxSession* plxs);
 void runNoUTF8Test(char** inputs, int ind, char* in, char* buf,  pLxSession* plxs);
@@ -106,7 +107,7 @@ runTest(char** inputs, int ind, char* in, char* buf,  pLxSession* plxs)
 	assert((*plxs)->Flags & MLX_F_INSTRING);
 	assert((*plxs)->TokString != NULL);
 	assert(memcmp((*plxs)->TokString, in+1, 255-(ind%4)) == 0);
-	assert((*plxs)->ValidateFn((*plxs)->TokString) == 0);
+	assert((*plxs)->ValidateFn((*plxs)->TokString) == UTIL_VALID_CHAR);
 	
 	/* now copy to buffer */
 	len = mlxCopyToken((*plxs), buf, 300);
@@ -155,7 +156,7 @@ runNoUTF8Test(char** inputs, int ind, char* in, char* buf,  pLxSession* plxs)
 	assert((*plxs)->Flags & MLX_F_INSTRING);
 	assert((*plxs)->TokString != NULL);
 	assert(memcmp((*plxs)->TokString, in+1, 255) == 0); /* leaves partial */
-	if(ind%4 != 0) assert(verifyUTF8((*plxs)->TokString) != 0);
+	if(ind%4 != 0) assert(verifyUTF8((*plxs)->TokString) != UTIL_VALID_CHAR);
 	
 	/* now copy to buffer */
 	int len = mlxCopyToken((*plxs), buf, 300);

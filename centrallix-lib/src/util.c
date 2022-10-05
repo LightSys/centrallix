@@ -78,66 +78,92 @@ unsigned int strtoui(const char *nptr, char **endptr, int base){
     return (unsigned int)tmp;
 }
 
-/*** verifyUTF8: validates a utf8 string and ensures no invalid characters 
- *** are present. Returns 0 on a valid string, or an error code otherwise
- ***/
-int verifyUTF8(char* string)
+/**
+ * Validates a utf8 string and ensures no invalid characters are present. 
+ * @param str the string to be verified 
+ * @return the index of first byte of the first invalid character, or 
+ *   UTIL_VALID_CHAR or UTIL_INVALID_ARGUMENT when applicable 
+ */
+int verifyUTF8(char* str)
 	{
-	size_t stringCharLength, newStrByteLength;
-	char* result;
-	wchar_t* longBuffer;
-
-        /** Check arguments **/
-	if(!string)
+    typedef unsigned char CHAR;
+	int state = UTIL_STATE_START;
+    int off = 0;
+    int lastStart = -1; /** need start of invalid chars **/
+    /** Check arguments **/
+	if(!str)
         	return UTIL_INVALID_ARGUMENT;
-
-    /* ensure no overly large characters are included */
-    int i;
-    for(i = 0 ; i < strlen(string) ; i++)
+    
+    while(str[off] != '\0')
         {
-        if((unsigned char) string[i] == (unsigned char) 0xF4)
+        switch(state)
             {
-            /* make sure is less than F4 90 */
-            /* this is safe since it would only hit the null byte */
-            if((unsigned char) string[i+1] >= (unsigned char)0x90) return UTIL_INVALID_CHAR; 
-            }
-        /* if true, must be a header for more than 4 bytes */
-        else if( (unsigned char) string[i] > (unsigned char) 0xF4) return UTIL_INVALID_CHAR; 
-        }
-	
-	stringCharLength = mbstowcs(NULL, string, 0);
-	if(stringCharLength == (size_t)-1)
-            	{
-        	return UTIL_INVALID_CHAR;
-       		}	
+            case UTIL_STATE_START:
+                if((CHAR) str[off] <= (CHAR) 0x7F) state = UTIL_STATE_START;        /** of the form 0XXX XXXX **/
+                else if ((CHAR) str[off] <= (CHAR) 0xBF) state = UTIL_STATE_ERROR;  /** not a header **/
+                else if ((CHAR) str[off] <= (CHAR) 0xC1) state = UTIL_STATE_ERROR;  /** overlong form **/
+                else if ((CHAR) str[off] <= (CHAR) 0xDF) state = UTIL_STATE_1_BYTE; /** of the form 110X XXXX **/
+                else if ((CHAR) str[off] == (CHAR) 0xE0) state = UTIL_STATE_E_OVERLONG; /** check for overlong **/
+                else if ((CHAR) str[off] == (CHAR) 0xED) state = UTIL_STATE_E_SURROGATE;
+                else if ((CHAR) str[off] <= (CHAR) 0xEF) state = UTIL_STATE_2_BYTE; /** of the form 1110 XXXX **/
+                else if ((CHAR) str[off] == (CHAR) 0xF0) state = UTIL_STATE_F_OVERLONG; /** check for overlong **/
+                else if ((CHAR) str[off] <= (CHAR) 0xF3) state = UTIL_STATE_3_BYTE; 
+                else if ((CHAR) str[off] == (CHAR) 0xF4) state = UTIL_STATE_TOO_LARGE;
+                else state = UTIL_STATE_ERROR; /** header must be too big **/
 
-	/** Create wchar_t buffer */
-        longBuffer = nmSysMalloc(sizeof(wchar_t) * (stringCharLength + 1));
-        if(!longBuffer)
-        	return UTIL_INVALID_CHAR;
-        mbstowcs(longBuffer, string, stringCharLength + 1);	
-	
-	/** Convert back to MBS **/
-	newStrByteLength = wcstombs(NULL, longBuffer, 0);
-        if(newStrByteLength == (size_t)-1)
-            	{
-            	nmSysFree(longBuffer);
-        	return UTIL_INVALID_CHAR;
-            	}
-	
-	result = (char *)nmSysMalloc(newStrByteLength + 1);
-        if(!result)
-            	{
-                nmSysFree(longBuffer);
-                return UTIL_INVALID_CHAR;
-            	}
+                lastStart = off;
+                if(state != UTIL_STATE_ERROR) off++;
+                break;
+
+            case UTIL_STATE_3_BYTE:
+                if((CHAR) str[off] > (CHAR) 0xBF || (CHAR) str[off] < (CHAR) 0x80) state = UTIL_STATE_ERROR;
+                else state = UTIL_STATE_2_BYTE;
+
+                if(state != UTIL_STATE_ERROR) off++;
+                break;
+
+            case UTIL_STATE_2_BYTE:
+                if((CHAR) str[off] > (CHAR) 0xBF || (CHAR) str[off] < (CHAR) 0x80) state = UTIL_STATE_ERROR;
+                else state = UTIL_STATE_1_BYTE;
+                
+                if(state != UTIL_STATE_ERROR) off++;
+                break;
+
+            case UTIL_STATE_1_BYTE:
+                if((CHAR) str[off] > (CHAR) 0xBF || (CHAR) str[off] < (CHAR) 0x80) state = UTIL_STATE_ERROR;
+                else state = UTIL_STATE_START;
+
+                if(state != UTIL_STATE_ERROR) off++;
+                break; 
+
+            case UTIL_STATE_E_OVERLONG:
+                if((CHAR) str[off] <= (CHAR) 0x9F ) state = UTIL_STATE_ERROR;
+                else state = UTIL_STATE_2_BYTE; /** jump back in **/
+                break;
             
-        wcstombs(result, longBuffer, newStrByteLength + 1);
-        
-	nmSysFree(longBuffer);
-    if(strcmp(result, string) != 0 ) return UTIL_INVALID_CHAR; 
-    nmSysFree(result); 
-	
-	return  0;
+            case UTIL_STATE_E_SURROGATE:
+                if((CHAR) str[off] >= (CHAR) 0xA0 ) state = UTIL_STATE_ERROR;
+                else state = UTIL_STATE_2_BYTE; /** jump back in **/
+                break;
+
+            case UTIL_STATE_F_OVERLONG:
+                if((CHAR) str[off] <= (CHAR) 0x8F ) state = UTIL_STATE_ERROR;
+                else state = UTIL_STATE_3_BYTE; /** jump back in **/
+                break;
+
+            case UTIL_STATE_TOO_LARGE: 
+                if((CHAR) str[off] > (CHAR) 0x8F) state = UTIL_STATE_ERROR;
+                else state = UTIL_STATE_3_BYTE; /** jump back in **/
+                break; 
+
+            case UTIL_STATE_ERROR:
+                return lastStart;
+                break;
+            }
+        }
+    if(state != UTIL_STATE_START) return lastStart; /** end of string splits char **/
+
+    /** TODO: return an invalid index (say, -1) on a valid string **/   
+	return  UTIL_VALID_CHAR;
 	}
 

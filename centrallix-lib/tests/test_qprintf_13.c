@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "qprintf.h"
 #include <assert.h>
+#include "util.h"
 
 long long
 test(char** tname)
@@ -44,7 +45,7 @@ test(char** tname)
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
 
-	    assert(verifyUTF8(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 
 	    /* UTF-8 */
 	    rval = qpfPrintf(session, buf+4, 36, "溢出这是.......数据 是我们 %STR....", "ΣEIPA");
@@ -55,7 +56,7 @@ test(char** tname)
 	    assert(strcmp(buf+4, "溢出这是........数据 是我") == 0); /* cut off '们' */
 	    assert(rval == 47);
 
-	    assert(verifyUTF8(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);

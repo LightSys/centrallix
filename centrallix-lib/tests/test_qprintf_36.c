@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "qprintf.h"
 #include <assert.h>
+#include "util.h"
 
 long long
 test(char** tname)
@@ -46,13 +47,13 @@ test(char** tname)
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
 
-	    assert(verifyUTF8(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 
 	    /* UTF-8 */
 	    rval = qpfPrintf(session, buf+4, 36, "超文: '%STR&HTE'.", "<b c=\"€\">"); /* no split */
 	    assert(strcmp(buf+4, "超文: '&lt;b c=&quot;€&quot;") == 0);
 	    assert(rval == 38);
-	    assert(verifyUTF8(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 	    assert(buf[39] == '\n');
 	    assert(buf[38] == '\0');
 	    assert(buf[37] == 0xff);
@@ -65,7 +66,7 @@ test(char** tname)
 	    rval = qpfPrintf(session, buf+4, 36, "超文: '%STR&HTE'.", "<b c=\"€\".超>"); /* split */
 	    assert(strcmp(buf+4, "超文: '&lt;b c=&quot;€&quot;.") == 0);
 	    assert(rval == 39);
-	    assert(verifyUTF8(buf+4) == 0);
+	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 		
 	    }
 
