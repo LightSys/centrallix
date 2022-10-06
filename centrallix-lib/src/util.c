@@ -92,7 +92,7 @@ int verifyUTF8(char* str)
     int lastStart = -1; /** need start of invalid chars **/
     /** Check arguments **/
 	if(!str)
-        	return UTIL_INVALID_ARGUMENT;
+        return UTIL_INVALID_ARGUMENT;
     
     while(str[off] != '\0')
         {
@@ -162,8 +162,27 @@ int verifyUTF8(char* str)
             }
         }
     if(state != UTIL_STATE_START) return lastStart; /** end of string splits char **/
-
-    /** TODO: return an invalid index (say, -1) on a valid string **/   
+  
 	return  UTIL_VALID_CHAR;
 	}
 
+/**
+ * Validates an ASCII string and ensures no invalid characters are present. 
+ * @param str the string to be verified 
+ * @return the index of first invalid character, or UTIL_VALID_CHAR or 
+ * UTIL_INVALID_ARGUMENT when applicable 
+ */
+int 
+verifyASCII(char * str)
+    {
+    typedef unsigned char CHAR;
+    int off = 0;
+    if(!str) return UTIL_INVALID_ARGUMENT;
+    
+    while(str[off] != '\0')
+        {
+        if((unsigned) str[off] > 127) return off;
+        off++;
+        }
+    return UTIL_VALID_CHAR;
+    }

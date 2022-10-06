@@ -6,7 +6,6 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
-#include <locale.h>
 
 long long
 test(char** tname)
@@ -35,9 +34,8 @@ test(char** tname)
 	for(i=0;i<iter;i++)
 	    {
 		/** setup **/
-		setlocale(0, "en_US.UTF-8");
 	    flags = 0;
-	    lxs = mlxStringSession(str, flags);
+	    lxs = mlxStringSession(str, flags | MLX_F_ENFORCEUTF8);
 	    assert(lxs != NULL);
 		/* read in the first token. This should read the first 256 bytes */
 		t = mlxNextToken(lxs);
@@ -55,8 +53,7 @@ test(char** tname)
 		mlxCloseSession(lxs);
 
 
-		/** trying again without utf8 results in a normal token **/
-		setlocale(0, "C");
+		/** trying again without utf8 flags results in a normal token **/
 	    flags = 0;
 	    lxs = mlxStringSession(str, flags);
 	    assert(lxs != NULL);

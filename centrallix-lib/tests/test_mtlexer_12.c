@@ -7,7 +7,6 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
-#include <locale.h>
 
 long long
 test(char** tname)
@@ -20,20 +19,65 @@ test(char** tname)
     char str[65536] = "";
 
 	*tname = "mtlexer-12 normal/oversized keywords";
-	setlocale(0, "en_US.UTF-8");
 
 	mssInitialize("system", "", "", 0, "test");
 
 	iter = 20000;
 	for(i=0;i<iter;i++)
 	    {
-		if(i == iter/2) setlocale(0, "C"); /* switch half way */
-		
 	    str[i] = 'a';
 	    str[i+1] = ' ';
 	    str[i+2] = 'b';
 	    str[i+3] = '\0';
+
+	    /** normal **/
 	    lxs = mlxStringSession(str, 0);
+	    assert(lxs != NULL);
+	    if ((i+1) <= 255)
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_KEYWORD);
+		alloc = 0;
+		strval = mlxStringVal(lxs, &alloc);
+		assert(strlen(strval) == i+1);
+		assert(memcmp(strval, str, i+1) == 0);
+		if (alloc) nmSysFree(strval);
+		assert(mlxNextToken(lxs) == MLX_TOK_KEYWORD);
+		strval = mlxStringVal(lxs, NULL);
+		assert(strval != NULL);
+		assert(strcmp(strval, "b") == 0);
+		assert(mlxNextToken(lxs) == MLX_TOK_ERROR);
+		}
+	    else
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_ERROR); /* keyword too long */
+		}
+	    mlxCloseSession(lxs);
+
+	    /** utf-8 **/
+	    lxs = mlxStringSession(str, MLX_F_ENFORCEUTF8);
+	    assert(lxs != NULL);
+	    if ((i+1) <= 255)
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_KEYWORD);
+		alloc = 0;
+		strval = mlxStringVal(lxs, &alloc);
+		assert(strlen(strval) == i+1);
+		assert(memcmp(strval, str, i+1) == 0);
+		if (alloc) nmSysFree(strval);
+		assert(mlxNextToken(lxs) == MLX_TOK_KEYWORD);
+		strval = mlxStringVal(lxs, NULL);
+		assert(strval != NULL);
+		assert(strcmp(strval, "b") == 0);
+		assert(mlxNextToken(lxs) == MLX_TOK_ERROR);
+		}
+	    else
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_ERROR); /* keyword too long */
+		}
+	    mlxCloseSession(lxs);
+
+	    /** normal **/
+	    lxs = mlxStringSession(str, MLX_F_ENFORCEASCII);
 	    assert(lxs != NULL);
 	    if ((i+1) <= 255)
 		{

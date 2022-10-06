@@ -6,8 +6,6 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
-#include <locale.h>
-#include "qprintf.h"
 #include "util.h"
 
 void runTest(char** inputs, int ind, char* in, char* buf,  pLxSession* plxs);
@@ -26,7 +24,7 @@ test(char** tname)
 		      "12345678901234567890123456789012345678901234567890"
 		      "12345678901234567890123456789012345678901234567890"; /* 250 bytes (ignore the starting ' and NULL), 5 left*/	
 /* bytes in TokString */ /* none */      /* 1 byte */   /* 2 byte */    /* 3 byte */     /* all */
-    char* twoByte[]   = {"12345рас'",   "1234рас'",     "",             "",              "123рас'"};  /* splits the 'р' */
+	char* twoByte[]   = {"12345рас'",   "1234рас'",     "",             "",              "123рас'"};  /* splits the 'р' */
 	char* threeByte[] = {"12345分裂'",   "1234分裂'",    "123分裂'",     "",              "12分裂'"};   /* splits the '分' */
 	char* fourByte[]  = {"12345𝄞𝅘𝅥𝅘𝅥𝅮'",    "1234𝄞𝅘𝅥𝅘𝅥𝅮'",     "123𝄞𝅘𝅥𝅘𝅥𝅮'",      "12𝄞𝅘𝅥𝅘𝅥𝅮'",        "1𝄞𝅘𝅥𝅘𝅥𝅮'"}; /* splits the '𝄞' */
 	char in[300];
@@ -39,7 +37,6 @@ test(char** tname)
 	iter = 20000;
 	for(i=0;i<iter;i++)
 	    {
-		setlocale(0, "en_US.UTF-8");
 		/* test with character landing after split*/
 		runTest(twoByte, 0, in, buf, &lxs);
 		runTest(threeByte, 0, in, buf, &lxs);
@@ -64,7 +61,6 @@ test(char** tname)
 
 
 		/** test without utf-8; will split chars **/
-		setlocale(0, "C");
 		runNoUTF8Test(twoByte, 0, in, buf, &lxs);
 		runNoUTF8Test(threeByte, 0, in, buf, &lxs);
 		runNoUTF8Test(fourByte, 0, in, buf, &lxs);
@@ -99,7 +95,7 @@ runTest(char** inputs, int ind, char* in, char* buf,  pLxSession* plxs)
 	/** setup **/
 	flags = 0;
 	memcpy(in+251, inputs[ind], strlen(inputs[ind]));
-	*plxs = mlxStringSession(in, flags);
+	*plxs = mlxStringSession(in, flags | MLX_F_ENFORCEUTF8);
 	assert(*plxs != NULL);
 	/* read in the first token. This should read the first 255 bytes */
 	t = mlxNextToken(*plxs);

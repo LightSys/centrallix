@@ -6,7 +6,6 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
-#include <locale.h>
 
 long long
 test(char** tname)
@@ -43,9 +42,8 @@ test(char** tname)
 		}
 	    mlxCloseSession(lxs);
 		
-		/* now with utf-8 locale */
-		setlocale(0, "en_US.UTF-8");
-		flags = flagtype[i%n_flagtype];
+	    /* with utf-8 flags */
+	    flags = flagtype[i%n_flagtype] | MLX_F_ENFORCEUTF8;
 	    lxs = mlxStringSession(str, flags);
 	    assert(lxs != NULL);
 	    for(j=0;j<n_tok;j++)
@@ -54,7 +52,17 @@ test(char** tname)
 		assert(t == toktype[i%n_flagtype][j]);
 		}
 	    mlxCloseSession(lxs);
-		setlocale(0, "C");
+
+	    /* with ascii flags */
+	    flags = flagtype[i%n_flagtype] | MLX_F_ENFORCEASCII;
+	    lxs = mlxStringSession(str, flags);
+	    assert(lxs != NULL);
+	    for(j=0;j<n_tok;j++)
+		{
+		t = mlxNextToken(lxs);
+		assert(t == toktype[i%n_flagtype][j]);
+		}
+	    mlxCloseSession(lxs);
 	    }
 
     return iter;

@@ -7,7 +7,6 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
-#include <locale.h>
 
 long long
 test(char** tname)
@@ -22,7 +21,6 @@ test(char** tname)
     pLxSession lxs;
 
 	*tname = "mtlexer-08 string quoting";
-	setlocale(0, "en_US.UTF-8");
 
 	mssInitialize("system", "", "", 0, "test");
 
@@ -30,7 +28,39 @@ test(char** tname)
 
 	for(i=0;i<iter;i++)
 	    {
+	    
+	    /** normal **/
 	    lxs = mlxStringSession(teststr, MLX_F_EOF);
+	    assert(lxs != NULL);
+	    cnt = 0;
+	    while(1)
+		{
+		t = mlxNextToken(lxs);
+		if (t == MLX_TOK_EOF) break;
+		assert(t == MLX_TOK_STRING);
+		str = mlxStringVal(lxs, NULL);
+		assert(strcmp(str, strs[cnt++]) == 0);
+		}
+	    assert(strs[cnt] == NULL);
+	    mlxCloseSession(lxs);
+
+	    /** utf-8 **/
+	    lxs = mlxStringSession(teststr, MLX_F_EOF | MLX_F_ENFORCEUTF8);
+	    assert(lxs != NULL);
+	    cnt = 0;
+	    while(1)
+		{
+		t = mlxNextToken(lxs);
+		if (t == MLX_TOK_EOF) break;
+		assert(t == MLX_TOK_STRING);
+		str = mlxStringVal(lxs, NULL);
+		assert(strcmp(str, strs[cnt++]) == 0);
+		}
+	    assert(strs[cnt] == NULL);
+	    mlxCloseSession(lxs); 
+
+	    /**  **/
+	    lxs = mlxStringSession(teststr, MLX_F_EOF | MLX_F_ENFORCEASCII);
 	    assert(lxs != NULL);
 	    cnt = 0;
 	    while(1)

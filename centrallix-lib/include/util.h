@@ -46,9 +46,15 @@ extern "C" {
 #define UTIL_STATE_F_OVERLONG 7 /** starts with F0, check for overlong **/
 #define UTIL_STATE_TOO_LARGE 8  /** starts with F4, check for too long **/
 
-/** \brief This function ensures that a multibyte string will be in simplest form.
- \param string The string to simplify.
- \return This returns the same string but with the minimum amount of bytes used
- or NULL on error. */
-int verifyUTF8(char* string);
+/** \brief This function ensures that a string contains valid UTF-8.
+ \param string The string to verify.
+ \return The index of the first byte of the first invald char, or a 
+  code if not applicable  */
+int verifyUTF8(char* str);
 
+/** \brief This function ensures that all of the bytes of a string are 
+     valid ASCII.
+ \param string The string to verify.
+ \return returns index of the first invalid string, or a code if not 
+  applicable */
+int verifyASCII(char * str);

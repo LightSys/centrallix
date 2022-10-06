@@ -55,6 +55,9 @@ mlxOpenSession(pFile fd, int flags)
     {
     pLxSession this;
 
+        /** ensure flags are valid **/
+	if((MLX_F_ENFORCEUTF8 & flags) && (MLX_F_ENFORCEASCII & flags)) return NULL;
+
 	/** Allocate the session **/
 	this = (pLxSession)nmMalloc(sizeof(LxSession));
 	if (!this) return NULL;
@@ -69,12 +72,15 @@ mlxOpenSession(pFile fd, int flags)
 	this->ReservedWords = NULL;
 	this->Flags = flags & MLX_F_PUBLIC;
 	/* determine which validate to set */
-	/** FIXME: change this to depend on a flag... **/
-	char * locale = setlocale(LC_CTYPE, NULL);
-	if(strstr(locale, "UTF-8") || strstr(locale, "UTF8") || strstr(locale, "utf-8") || strstr(locale, "utf8"))
+	if(MLX_F_ENFORCEUTF8 & flags)
 	    {
 	    this->ValidateFn = verifyUTF8; 
 	    this->IsCharSplit = mlx_internal_WillSplitUTF8;
+	    }
+	else if(MLX_F_ENFORCEASCII & flags)
+	    {
+	    this->ValidateFn = verifyASCII; 
+	    this->IsCharSplit = NULL;
 	    }
 	else 
 	    {
@@ -104,6 +110,9 @@ mlxStringSession(char* str, int flags)
     {
     pLxSession this;
 
+	/** ensure flags are valid **/
+	if((MLX_F_ENFORCEUTF8 & flags) && (MLX_F_ENFORCEASCII & flags)) return NULL;
+
 	/** Allocate the session **/
 	this = (pLxSession)nmMalloc(sizeof(LxSession));
 	if (!this) return NULL;
@@ -122,10 +131,15 @@ mlxStringSession(char* str, int flags)
 	this->Magic = MGK_LXSESSION;
 	/* determine which validate to set */
 	char * locale = setlocale(LC_CTYPE, NULL);
-	if(locale != NULL && (strstr(locale, "utf8") || strstr(locale, "UTF8") || strstr(locale, "utf-8") || strstr(locale, "UTF-8")))
+	if(MLX_F_ENFORCEUTF8 & flags)
 	    {
 	    this->ValidateFn = verifyUTF8; 
 	    this->IsCharSplit = mlx_internal_WillSplitUTF8;
+	    }
+	else if(MLX_F_ENFORCEASCII & flags)
+	    {
+	    this->ValidateFn = verifyASCII; 
+	    this->IsCharSplit = NULL;
 	    }
 	else 
 	    {
@@ -152,6 +166,9 @@ mlxGenericSession(void* src, int (*read_fn)(), int flags)
     {
     pLxSession this;
 
+	/** ensure flags are valid **/
+	if((MLX_F_ENFORCEUTF8 & flags) && (MLX_F_ENFORCEASCII & flags)) return NULL;
+
 	/** Allocate the session **/
 	this = (pLxSession)nmMalloc(sizeof(LxSession));
 	if (!this) return NULL;
@@ -167,12 +184,17 @@ mlxGenericSession(void* src, int (*read_fn)(), int flags)
 	this->Flags = (flags & MLX_F_PUBLIC) & ~MLX_F_NODISCARD;
 	/* determine which validate to set */
 	char * locale = setlocale(LC_CTYPE, NULL);
-	if(strstr(locale, "utf8") || strstr(locale, "UTF8") || strstr(locale, "utf-8") || strstr(locale, "UTF-8"))
+	if(MLX_F_ENFORCEUTF8 & flags)
 	    {
 	    this->ValidateFn = verifyUTF8; 
 	    this->IsCharSplit = mlx_internal_WillSplitUTF8;
 	    }
-	    	else 
+	else if(MLX_F_ENFORCEASCII & flags)
+	    {
+	    this->ValidateFn = verifyASCII; 
+	    this->IsCharSplit = NULL;
+	    }
+	else 
 	    {
 	    this->ValidateFn = NULL;
 	    this->IsCharSplit = NULL;
@@ -1014,7 +1036,7 @@ char*
 mlxStringVal(pLxSession this, int* alloc)
     {
     char* ptr;
-    int len,cnt,ccnt;
+    int len,cnt,ccnt,ind;
     char* nptr;
 
     	ASSERTMAGIC(this,MGK_LXSESSION);
@@ -1082,10 +1104,11 @@ mlxStringVal(pLxSession this, int* alloc)
 	    }
 
 		/** validate again; could have more copied from buffer **/
-		if(this->ValidateFn != NULL && this->ValidateFn(ptr) != UTIL_VALID_CHAR)
+		if(this->ValidateFn != NULL && (ind = this->ValidateFn(ptr)) != UTIL_VALID_CHAR)
 		    {
 		    mssError(1,"MLX","String token contained invalid characters");
 		    this->TokType = MLX_TOK_ERROR;
+		    this->TokString[ind] = '\0'; /** cut off invalid **/
 		    *alloc = 0;
 		    nmSysFree(ptr);
 		    return NULL;
@@ -1141,6 +1164,7 @@ mlxCopyToken(pLxSession this, char* buffer, int maxlen)
     int cnt;
     int len;
     int found_end;
+    int ind;
 
     	ASSERTMAGIC(this,MGK_LXSESSION);
 
@@ -1178,8 +1202,9 @@ mlxCopyToken(pLxSession this, char* buffer, int maxlen)
 	    }
 	
 	/** validate buffer; could have copied more from input, thereby avoiding next token's check **/
-	if(this->ValidateFn && this->ValidateFn(buffer) != UTIL_VALID_CHAR)
+	if(this->ValidateFn && (ind = this->ValidateFn(buffer)) != UTIL_VALID_CHAR)
 	    {
+	    this->TokString[ind] = '\0'; /** end string just before bad character **/
 	    mssError(1,"MLX","Invalid characters in string");
 	    this->TokType = MLX_TOK_ERROR;
 	    }

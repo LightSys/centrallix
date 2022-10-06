@@ -17,25 +17,41 @@ test(char** tname)
     pLxSession lxs;
     int t;
     char* strval;
-    char str[65536] = "'นปฐมกาล พระเจ้าทรงสร้างทุกสิ่งในฟ้าสวรรค์และโลก ขณะนั้นโลกยังไม่มีรูปทรงและว่างเปล่า " /* one really long line (398 UTF-8 chars). Each one is 3 bytes (but not the spaces)*/
-		      "ความมืดปกคลุมอยู่เหนือพื้นผิวของห้วงน้ำ \xFFพระวิญญาณของพระเจ้าทรงเคลื่อนไหวอยู่เหนือน้ำนั้น " /* contains 1165 btes */
-		      "และพระเจ้าตรัสว่า “จงเกิดความสว่าง” ความสว่างก็เกิดขึ้น พระเจ้าทรงเห็นว่าความสว่างนั้นดี "
-		      "และทรงแยกความสว่างออกจากความมืด พระเจ้าทรงเรียกความสว่างว่า “วัน” และเรียกความมืดว่า "
-		      "“คืน” เวลาเย็นและเวลาเช้าผ่านไป นี่เป็นวันที่หนึ่ง'"; 
+    /* one really long line (1165 btyes). */
+    char str[65536] = "'orem ipsum dolor sit amet, consectetur adipiscing elit. "
+                      "Morbi ac vestibulum lectus. Quisque at felis sit amet augue "
+		      "luctus dictum eget eu justo. Nulla facilisi. In gravida, "
+		      "mauris quis ullamcorper pulvinar, leo turpis gravida diam, "
+		      "quis dapibus nisl dui ac libero. Cras a accumsan odi\xFF. "
+		      "Maecenas pharetra turpis egestas lectus efficitur fringilla. "
+		      "Nunc quis interdum odio, non rutrum magna. Maecenas nisi "
+		      "odio, rutrum vel sem non, blandit ultrices dolor. Proin et "
+		      "pharetra justo. Vestibulum risus nunc, fermentum a ex eu, "
+		      "tristique posuere erat. Phasellus semper tempus lobortis. "
+		      "Suspendisse rhoncus, turpis in cursus finibus, lectus quam "
+		      "ornare ante, sed scelerisque elit nisl eget elit. Integer id "
+		      "molestie leo. Ut in tortor risus. Suspendisse nec elit erat. "
+		      "Praesent sapien dui, venenatis at dignissim et, finibus vel "
+		      "enim. Quisque aliquam ultricies metus, id consectetur lorem. "
+		      "Pellentesque habitant morbi tristique senectus et netus et "
+		      "malesuada fames ac turpis egestas. Nam commodo faucibus massa, "
+		      "id mollis nisl feugiat fringilla. Maecenas pretium tristique "
+		      "ligula, aliquet dignissim orci laoreet ac. Quisque turpis tortor,"
+		      "pretium in sem eu, sagittis morbi. '"; 
     char tokstr[MLX_STRVAL];
     memcpy(tokstr, str+1, MLX_STRVAL-1);
     tokstr[MLX_STRVAL-1] = '\0';
     char buf[BUF_SIZE];  
 
-	*tname = "mtlexer-24 test Copy Token with invalid utf-8 characters";
-
+	*tname = "mtlexer-31 test Copy Token with invalid ascii characters";
+/************************** FIXME: make ascii ********/
 	mssInitialize("system", "", "", 0, "test");
 	iter = 50000;
 	for(i=0;i<iter;i++)
 	    {
 	    /** setup **/
 	    flags = 0;
-	    lxs = mlxStringSession(str, flags | MLX_F_ENFORCEUTF8);
+	    lxs = mlxStringSession(str, flags | MLX_F_ENFORCEASCII);
 	    assert(lxs != NULL);
 	    /* read in the first token. This should read the first 256 bytes */
 	    t = mlxNextToken(lxs);
@@ -43,7 +59,7 @@ test(char** tname)
 	    strval = lxs->TokString;
 	    assert(strval != NULL);
 	    assert(strcmp(strval,tokstr) == 0);
-	    /* now peform a copy into a buffer twice the size. Should enable invalid UTF8 to bypass the 
+	    /* now peform a copy into a buffer twice the size. Should enable invalid ascii to bypass the 
 	     * checks in next token, but should be caught by the check at the end of copy
 	     */
 	    int result = mlxCopyToken(lxs, buf, BUF_SIZE);
@@ -55,7 +71,7 @@ test(char** tname)
 	    mlxCloseSession(lxs);
 
 
-	    /** trying again without utf8 flag results in a normal token **/
+	    /** trying again without ascii flag results in a normal token **/
 	    flags = 0;
 	    lxs = mlxStringSession(str, flags);
 	    assert(lxs != NULL);

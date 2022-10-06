@@ -6,7 +6,6 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
-#include <locale.h>
 #include <time.h>
 #include <stdlib.h>
 

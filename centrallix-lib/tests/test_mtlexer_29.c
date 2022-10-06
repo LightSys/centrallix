@@ -18,12 +18,12 @@ test(char** tname)
     char* strval;
     int j;
     int strcnt;
-    char str[65536] = "'하나님이' '세상을' '무척' '사랑하셔서' '하나밖에' '\xFF없는' '외아들마저' '보내'";  
+    char str[65536] = "'these' 'are' 'some' 'mostly' 'valid' '\xFFwords' 'for' 'testing'";  
     int n_tok = 8;
-    char* tokstr[8] = {"하나님이", "세상을", "무척", "사랑하셔서", "하나밖에", "\xFF없는", "외아들마저", "보내"};
+    char* tokstr[8] = {"these", "are", "some", "mostly", "valid", "\xFFwords", "for", "testing"};
     int toktype[8] = {MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_ERROR, MLX_TOK_ERROR, MLX_TOK_ERROR};
 
-	*tname = "mtlexer-22 test strings with invalid utf-8 characters";
+	*tname = "mtlexer-29 test strings with invalid ascii characters";
 
 	mssInitialize("system", "", "", 0, "test");
 	iter = 200000;
@@ -31,7 +31,7 @@ test(char** tname)
 	    {
 	    /** setup **/
 	    flags = 0;
-	    lxs = mlxStringSession(str, flags | MLX_F_ENFORCEUTF8);
+	    lxs = mlxStringSession(str, flags | MLX_F_ENFORCEASCII);
 	    assert(lxs != NULL);
 	    strcnt = 0;
 

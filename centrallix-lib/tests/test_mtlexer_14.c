@@ -7,7 +7,6 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
-#include <locale.h>
 
 long long
 test(char** tname)
@@ -19,15 +18,12 @@ test(char** tname)
     char str[65536] = "";
 
 	*tname = "mtlexer-14 normal/oversized double floating point";
-	setlocale(0, "en_US.UTF-8");
 
 	mssInitialize("system", "", "", 0, "test");
 
 	iter = 20000;
 	for(i=0;i<iter;i++)
 	    {
-		if(i == iter/2) setlocale(0, "C"); /* switch half way */
-
 	    str[i] = '1';
 	    str[i+1] = '.';
 	    str[i+2] = '1';
@@ -36,7 +32,45 @@ test(char** tname)
 	    str[i+5] = '.';
 	    str[i+6] = '2';
 	    str[i+7] = '\0';
+
+	    /** normal **/
 	    lxs = mlxStringSession(str, 0);
+	    assert(lxs != NULL);
+	    if ((i+1) <= 253)
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_DOUBLE);
+		d = mlxDoubleVal(lxs);
+		assert(mlxNextToken(lxs) == MLX_TOK_DOUBLE);
+		d = mlxDoubleVal(lxs);
+		assert(d == 2.2);
+		assert(mlxNextToken(lxs) == MLX_TOK_ERROR);
+		}
+	    else
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_ERROR); /* number too big */
+		}
+	    mlxCloseSession(lxs);
+
+	    /** utf-8 **/
+	    lxs = mlxStringSession(str, MLX_F_ENFORCEUTF8);
+	    assert(lxs != NULL);
+	    if ((i+1) <= 253)
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_DOUBLE);
+		d = mlxDoubleVal(lxs);
+		assert(mlxNextToken(lxs) == MLX_TOK_DOUBLE);
+		d = mlxDoubleVal(lxs);
+		assert(d == 2.2);
+		assert(mlxNextToken(lxs) == MLX_TOK_ERROR);
+		}
+	    else
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_ERROR); /* number too big */
+		}
+	    mlxCloseSession(lxs);
+
+	    /** ascii **/
+	    lxs = mlxStringSession(str, MLX_F_ENFORCEASCII);
 	    assert(lxs != NULL);
 	    if ((i+1) <= 253)
 		{

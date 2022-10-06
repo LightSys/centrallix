@@ -16,7 +16,7 @@ test(char** tname)
     char * ptr;
 
 	*tname = "memstr-00 correct null ptr";
-	iter = 4000;
+	iter = 40000;
 	for(i=0;i<iter;i++)
 	    {
 	    strcpy(buffer1, "this tests the boundary conditions.");

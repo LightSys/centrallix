@@ -7,7 +7,6 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
-#include <locale.h>
 
 long long
 test(char** tname)
@@ -23,7 +22,6 @@ test(char** tname)
     pLxSession lxs;
 
 	*tname = "mtlexer-10 integer and double parsing";
-	setlocale(0, "en_US.UTF-8");
 
 	mssInitialize("system", "", "", 0, "test");
 
@@ -31,9 +29,45 @@ test(char** tname)
 
 	for(i=0;i<iter;i++)
 	    {
-		if(i == iter/2) setlocale(0, "C"); /* switch half way */
 		
+	    /** normal **/
 	    lxs = mlxStringSession(teststr, MLX_F_EOF);
+	    assert(lxs != NULL);
+	    for(j=0;j<sizeof(integers)/sizeof(integers[0]);j++)
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_INTEGER);
+		n = mlxIntVal(lxs);
+		assert(n == integers[j]);
+		}
+	    for(j=0;j<sizeof(doubles)/sizeof(doubles[0]);j++)
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_DOUBLE);
+		d = mlxDoubleVal(lxs);
+		assert(d == doubles[j]);
+		}
+	    assert(mlxNextToken(lxs) == MLX_TOK_EOF);
+	    mlxCloseSession(lxs);
+
+	    /** utf-8 **/
+	    lxs = mlxStringSession(teststr, MLX_F_EOF | MLX_F_ENFORCEUTF8);
+	    assert(lxs != NULL);
+	    for(j=0;j<sizeof(integers)/sizeof(integers[0]);j++)
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_INTEGER);
+		n = mlxIntVal(lxs);
+		assert(n == integers[j]);
+		}
+	    for(j=0;j<sizeof(doubles)/sizeof(doubles[0]);j++)
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_DOUBLE);
+		d = mlxDoubleVal(lxs);
+		assert(d == doubles[j]);
+		}
+	    assert(mlxNextToken(lxs) == MLX_TOK_EOF);
+	    mlxCloseSession(lxs);
+
+	    /** ascii **/
+	    lxs = mlxStringSession(teststr, MLX_F_EOF | MLX_F_ENFORCEASCII);
 	    assert(lxs != NULL);
 	    for(j=0;j<sizeof(integers)/sizeof(integers[0]);j++)
 		{
