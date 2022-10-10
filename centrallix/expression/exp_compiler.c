@@ -10,6 +10,7 @@
 #include "cxlib/mtlexer.h"
 #include "expression.h"
 #include "cxlib/mtsession.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -983,6 +984,7 @@ expCompileExpression(char* text, pParamObjects objlist, int lxflags, int cmpflag
     pExpression e = NULL;
     pLxSession lxs;
     pParamObjects my_objlist;
+    int mlxFlags;
 
 	/** Create a temporary objlist? **/
 	if (objlist)
@@ -994,7 +996,9 @@ expCompileExpression(char* text, pParamObjects objlist, int lxflags, int cmpflag
 	    }
 
 	/** Open the lexer on the input text. **/
-	lxs = mlxStringSession(text, MLX_F_EOF | lxflags);
+	mlxFlags = MLX_F_EOF | lxflags;
+	if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+	lxs = mlxStringSession(text, mlxFlags);
 	if (!lxs) 
 	    {
 	    mssError(0,"EXP","Could not begin analysis of expression");

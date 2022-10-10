@@ -1423,7 +1423,7 @@ http_internal_GetPageStream(pHttpData inf)
 #endif
 
 	if(HTTP_OS_DEBUG) printf("Opening lexer session\n");
-	lex=mlxOpenSession(inf->Socket,MLX_F_LINEONLY | MLX_F_NODISCARD);
+	lex=mlxOpenSession(inf->Socket,MLX_F_LINEONLY | MLX_F_NODISCARD| MLX_F_ENFORCEASCII);
 	if(!lex)
 	    {
 	    mssError(0,"HTTP","Could not open lexer session");

@@ -12,6 +12,7 @@
 #include "obj.h"
 #include "cxss/cxss.h"
 #include "obfuscate.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -127,12 +128,15 @@ obf_internal_ParseWordList(pObjSession sess, pLxSession lexer, char* pathname)
     pLxSession words_lexer;
     int t;
     char* ptr;
+    int mlxFlags;
 
 	/** Open the word list **/
 	words_obj = objOpen(sess, pathname, O_RDONLY, 0600, "system/file");
 	if (!words_obj)
 	    goto error;
-	words_lexer = mlxGenericSession(words_obj, objRead, MLX_F_EOL | MLX_F_EOF | MLX_F_POUNDCOMM);
+	mlxFlags = MLX_F_EOL | MLX_F_EOF | MLX_F_POUNDCOMM;
+	if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+	words_lexer = mlxGenericSession(words_obj, objRead, mlxFlags);
 	if (!words_lexer)
 	    goto error;
 
@@ -410,6 +414,7 @@ obfOpenSession(pObjSession objsess, char* rule_file_osml_path, char* key)
     pLxSession lexer = NULL;
     pObfRule rule, *ruletail;
     int t;
+    int mlxFlags;
 
 	/** Allocate the session and set it up **/
 	s = (pObfSession)nmMalloc(sizeof(ObfSession));
@@ -446,7 +451,9 @@ obfOpenSession(pObjSession objsess, char* rule_file_osml_path, char* key)
 	    rules_obj = objOpen(objsess, s->RuleFilePath, O_RDONLY, 0600, "system/file");
 	    if (!rules_obj)
 		goto error;
-	    lexer = mlxGenericSession(rules_obj, objRead, MLX_F_IFSONLY | MLX_F_EOL | MLX_F_EOF | MLX_F_POUNDCOMM);
+	    mlxFlags =  MLX_F_IFSONLY | MLX_F_EOL | MLX_F_EOF | MLX_F_POUNDCOMM;
+	    if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+	    lexer = mlxGenericSession(rules_obj, objRead, mlxFlags);
 	    if (!lexer)
 		goto error;
 	    ruletail = &(s->RuleList);

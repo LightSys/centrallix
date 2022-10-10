@@ -3146,6 +3146,7 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
     pMultiQuery this;
     pQueryAppData appdata;
     int i;
+    int mlxFlags;
 
 	/** Ensure the application-scope data is initialized **/
 	appdata = appLookupAppData("MQ:appdata");
@@ -3189,8 +3190,9 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	    this->Flags |= MQ_F_NOUPDATE;
 
 	/** Parse the text of the query, building the syntax structure **/
-	this->LexerSession = mlxStringSession(this->QueryText, 
-		MLX_F_CCOMM | MLX_F_DASHCOMM | MLX_F_ICASER | MLX_F_FILENAMES | MLX_F_EOF);
+	mlxFlags = MLX_F_CCOMM | MLX_F_DASHCOMM | MLX_F_ICASER | MLX_F_FILENAMES | MLX_F_EOF;
+	if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+	this->LexerSession = mlxStringSession(this->QueryText, mlxFlags);
 	if (!this->LexerSession)
 	    {
 	    mssError(0,"MQ","Could not begin analysis of query text");

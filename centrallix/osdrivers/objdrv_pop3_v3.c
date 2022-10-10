@@ -155,8 +155,11 @@ pop_internal_GetResponse(pFile Conn, char* buf, int maxlen)
     {
 	pLxSession s;
 	char* line;
+	int mlxFLags;
 
-	if ( (s=mlxOpenSession(Conn, MLX_F_LINEONLY | MLX_F_NODISCARD)) == NULL) return -1;
+	mlxFlags = MLX_F_LINEONLY | MLX_F_NODISCARD;
+	if (CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+	if ( (s=mlxOpenSession(Conn, mlxFlags)) == NULL) return -1;
 	
 	if (mlxNextToken(s) == MLX_TOK_ERROR) 
 	    {
@@ -293,6 +296,7 @@ pop_internal_UpdateMaildrop(pPopMaildrop drop)
     int i, maildrop_size, num_messages;    /** size of the maildrop, and the number of messages **/
     char buf[80];
     pLxSession s;
+    int mlxFlags;
 
 
 	/** Make sure we actually have a connection **/
@@ -339,7 +343,9 @@ pop_internal_UpdateMaildrop(pPopMaildrop drop)
 		}
     
 	    /** Open a lexer session to read stuff in **/
-	    if ( (s  = mlxOpenSession(drop->Session, MLX_F_LINEONLY | MLX_F_NODISCARD)) == NULL)
+	    mlxFlags = MLX_F_LINEONLY | MLX_F_NODISCARD;
+	    if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+	    if ( (s  = mlxOpenSession(drop->Session, mlxFlags)) == NULL)
 		{
 		mssError(1, "POP", "Couldn't open Lexer Session");
 		goto piUM_Error;
@@ -753,7 +759,7 @@ int pop_internal_OpenMessage(pPopData inf, char* usrtype)
     char buf[64];
     char* tok, * line, *start;
     pLxSession s;
-
+    int mlxFlags;
 
 	/** Get a pointer to the maildrop (opening it if necessary), check
 	 ** to make sure this is a legit UID, and store some values we'll need later
@@ -813,7 +819,9 @@ int pop_internal_OpenMessage(pPopData inf, char* usrtype)
 	 ** that's part of the message starts with a '.', it's byte-stuffed with
 	 ** another one. We need to strip those extras off if need-be
 	 **/
-	if ( (s = mlxOpenSession(inf->Drop->Session, MLX_F_LINEONLY | MLX_F_NODISCARD)) == NULL)
+	mlxFlags = MLX_F_LINEONLY | MLX_F_NODISCARD;
+	if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+	if ( (s = mlxOpenSession(inf->Drop->Session, mlxFlags)) == NULL)
 	    {
 	    mssError(1, "POP", "popRead() - Couldn't start a lexer session");
 	    nmSysFree(inf->Content);

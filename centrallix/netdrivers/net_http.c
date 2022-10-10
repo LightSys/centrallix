@@ -2878,7 +2878,7 @@ nht_i_ParseHeaders(pNhtConn conn)
 
     	/** Initialize a lexical analyzer session... **/
 	s = mlxOpenSession(conn->ConnFD, MLX_F_NODISCARD | MLX_F_DASHKW | MLX_F_ICASE |
-		MLX_F_EOL | MLX_F_EOF);
+		MLX_F_EOL | MLX_F_EOF | MLX_F_ENFORCEASCII);
 
 	/** Read in the main request header.  Note - error handler is at function
 	 ** tail, as in standard goto-based error handling.

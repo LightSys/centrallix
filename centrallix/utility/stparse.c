@@ -13,6 +13,7 @@
 #include "cxlib/newmalloc.h"
 #include "cxlib/magic.h"
 #include "expression.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -1194,9 +1195,12 @@ stParseMsg(pFile inp_fd, int flags)
     {
     pStructInf info;
     pLxSession s;
+    int mlxFlags;
 
 	/** Open a session with the lexical analyzer **/
-	s = mlxOpenSession(inp_fd, MLX_F_CPPCOMM | MLX_F_DBLBRACE | MLX_F_FILENAMES);
+	mlxFlags = MLX_F_CPPCOMM | MLX_F_DBLBRACE | MLX_F_FILENAMES;
+	if (CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+	s = mlxOpenSession(inp_fd, mlxFlags);
 	if (!s) 
 	    {
 	    mssError(0,"ST","Could not begin analysis of structure file");
@@ -1221,9 +1225,12 @@ stParseMsgGeneric(void* src, int (*read_fn)(), int flags)
     {
     pStructInf info;
     pLxSession s;
+    int mlxFlags;
 
 	/** Open a session with the lexical analyzer **/
-	s = mlxGenericSession(src,read_fn, MLX_F_CPPCOMM | MLX_F_DBLBRACE | MLX_F_FILENAMES);
+	mlxFlags = MLX_F_CPPCOMM | MLX_F_DBLBRACE | MLX_F_FILENAMES;
+	if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+	s = mlxGenericSession(src,read_fn, mlxFlags);
 	if (!s) 
 	    {
 	    mssError(0,"ST","Could not begin analysis of structure file");
@@ -1249,9 +1256,12 @@ stProbeTypeGeneric(void* read_src, int (*read_fn)(), char* type, int type_maxlen
     pLxSession s = NULL;
     int t;
     char* str;
+    int mlxFlags;
 
 	/** Open a session with the lexical analyzer **/
-	s = mlxGenericSession(read_src,read_fn, MLX_F_CPPCOMM | MLX_F_DBLBRACE | MLX_F_FILENAMES);
+	mlxFlags = MLX_F_CPPCOMM | MLX_F_DBLBRACE | MLX_F_FILENAMES;
+	if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+	s = mlxGenericSession(read_src,read_fn, mlxFlags);
 	if (!s) 
 	    {
 	    mssError(0,"ST","Could not begin analysis of structure file");
