@@ -44,7 +44,7 @@ test(char** tname)
     char buf[BUF_SIZE];  
 
 	*tname = "mtlexer-31 test Copy Token with invalid ascii characters";
-/************************** FIXME: make ascii ********/
+
 	mssInitialize("system", "", "", 0, "test");
 	iter = 50000;
 	for(i=0;i<iter;i++)
@@ -63,10 +63,10 @@ test(char** tname)
 	     * checks in next token, but should be caught by the check at the end of copy
 	     */
 	    int result = mlxCopyToken(lxs, buf, BUF_SIZE);
-	    assert(result == strlen(str)-2); /* -2 since ' is not included */
-	    str[strlen(str)-1] = '\0';  /* change for test */
+	    str[result+1] = '\0'; /* change for test */
+	    assert(result == strlen(str)-1); /* -1 since ' is not included */
 	    assert(strcmp(buf, str+1) == 0);
-	    str[strlen(str)] = '\'';  /* revert back. Note string is 1 shorter now */
+	    str[result+1] = '\xFF';  /* revert back */
 	    assert(lxs->TokType == MLX_TOK_ERROR);
 	    mlxCloseSession(lxs);
 

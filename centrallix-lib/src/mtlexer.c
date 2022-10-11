@@ -1103,16 +1103,16 @@ mlxStringVal(pLxSession this, int* alloc)
 	    ptr = this->TokString;
 	    }
 
-		/** validate again; could have more copied from buffer **/
-		if(this->ValidateFn != NULL && (ind = this->ValidateFn(ptr)) != UTIL_VALID_CHAR)
-		    {
-		    mssError(1,"MLX","String token contained invalid characters");
-		    this->TokType = MLX_TOK_ERROR;
-		    this->TokString[ind] = '\0'; /** cut off invalid **/
-		    *alloc = 0;
-		    nmSysFree(ptr);
-		    return NULL;
-		    }
+	/** validate again; could have more copied from buffer **/
+	if(this->ValidateFn != NULL && (ind = this->ValidateFn(ptr)) != UTIL_VALID_CHAR
+		|| this->TokType == MLX_TOK_ERROR) /** mlxCopyToken would set TokType **/
+	    {
+	    mssError(1,"MLX","String token contained invalid characters");
+	    this->TokType = MLX_TOK_ERROR;
+	    *alloc = 0;
+	    nmSysFree(ptr);
+	    return NULL;
+	    }
 
     return ptr;
     }
@@ -1204,7 +1204,8 @@ mlxCopyToken(pLxSession this, char* buffer, int maxlen)
 	/** validate buffer; could have copied more from input, thereby avoiding next token's check **/
 	if(this->ValidateFn && (ind = this->ValidateFn(buffer)) != UTIL_VALID_CHAR)
 	    {
-	    this->TokString[ind] = '\0'; /** end string just before bad character **/
+	    buffer[ind] = '\0'; /** end string just before bad character **/
+	    len = ind; 
 	    mssError(1,"MLX","Invalid characters in string");
 	    this->TokType = MLX_TOK_ERROR;
 	    }

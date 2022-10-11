@@ -18,7 +18,7 @@ test(char** tname)
     int t;
     char* strval;
     char str[65536] = "'นปฐมกาล พระเจ้าทรงสร้างทุกสิ่งในฟ้าสวรรค์และโลก ขณะนั้นโลกยังไม่มีรูปทรงและว่างเปล่า " /* one really long line (398 UTF-8 chars). Each one is 3 bytes (but not the spaces)*/
-		      "ความมืดปกคลุมอยู่เหนือพื้นผิวของห้วงน้ำ \xFFพระวิญญาณของพระเจ้าทรงเคลื่อนไหวอยู่เหนือน้ำนั้น " /* contains 1165 btes */
+		      "ความมืดปกคลุมอยู่เหนือพื้นผิวของห้วงน้ำ \xFFพระวิญญาณของพระเจ้าทรงเคลื่อนไหวอยู่เหนือน้ำนั้น " /* contains 1168 btes (including NULL) */
 		      "และพระเจ้าตรัสว่า “จงเกิดความสว่าง” ความสว่างก็เกิดขึ้น พระเจ้าทรงเห็นว่าความสว่างนั้นดี "
 		      "และทรงแยกความสว่างออกจากความมืด พระเจ้าทรงเรียกความสว่างว่า “วัน” และเรียกความมืดว่า "
 		      "“คืน” เวลาเย็นและเวลาเช้าผ่านไป นี่เป็นวันที่หนึ่ง'"; 
@@ -47,10 +47,10 @@ test(char** tname)
 	     * checks in next token, but should be caught by the check at the end of copy
 	     */
 	    int result = mlxCopyToken(lxs, buf, BUF_SIZE);
-	    assert(result == strlen(str)-2); /* -2 since ' is not included */
-	    str[strlen(str)-1] = '\0';  /* change for test */
+	    str[367+1] = '\0';  /* change for test. Index of bad byte */
+	    assert(result == strlen(str)-1); /* -1 since ' is not included */
 	    assert(strcmp(buf, str+1) == 0);
-	    str[strlen(str)] = '\'';  /* revert back. Note string is 1 shorter now */
+	    str[367+1] = '\xFF';  /* revert back */
 	    assert(lxs->TokType == MLX_TOK_ERROR);
 	    mlxCloseSession(lxs);
 
