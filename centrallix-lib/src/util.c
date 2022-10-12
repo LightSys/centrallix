@@ -186,3 +186,24 @@ verifyASCII(char * str)
         }
     return UTIL_VALID_CHAR;
     }
+
+/** 
+ * Computes the number of bytes in a utf-8 char based on 
+ * the first byte of the character. Returns -1 for a byte which does not indicate the 
+ * legth of the byte (i.e., anything of the form 10XX XXXX or 1111 10XX would be invalid)
+ * @param byte the character to be checked
+ * @return the number of bytes in the character, or -1 on error.
+ *
+ * NOTE: this should NOT be used to validate characters; overlong forms, UTF-16 surrogate
+ * halves, and overly large characters starting with 0xF4-0xF7 are not handled
+ */
+int
+numBytesInChar(char byte)
+    {
+    if      (!(byte&0x80)) return  1; /* of the form 0XXX XXXX */ 
+    else if (!(byte&0x40)) return -1; /* of the form 10XX XXXX */
+    else if (!(byte&0x20)) return  2; /* of the form 110X XXXX */
+    else if (!(byte&0x10)) return  3; /* of the form 1110 XXXX */
+    else if (!(byte&0x08)) return  4; /* of the form 1111 0XXX */
+    else                   return -1; /* of the form 1111 1XXX */
+    }

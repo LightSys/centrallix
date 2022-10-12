@@ -58,3 +58,8 @@ int verifyUTF8(char* str);
  \return returns index of the first invalid string, or a code if not 
   applicable */
 int verifyASCII(char * str);
+
+/** \brief Computes the number of bytes in a utf-8 char based on the first byte.
+ * \param byte the character to be checked
+ * \return the number of bytes in the character, or -1 on error. */
+ int numBytesInChar(char byte);

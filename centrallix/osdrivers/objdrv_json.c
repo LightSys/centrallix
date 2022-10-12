@@ -168,10 +168,14 @@ json_internal_ReadDoc(pObject obj)
     pDateTime dt = NULL;
     struct json_tokener* jtok = NULL;
     enum json_tokener_error jerr;
-    char rbuf[256];
+    char rbuf[257];
     int rcnt;
     int first_read;
-
+    int ind;
+    char checkBuf[5] = "\0\0\0\0\0";
+    int vOff = 0;
+    int i;
+        rbuf[256] = '\0';
 	/** Already cached? **/
 	path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
 	if ((cache_obj = (pJsonCacheObj)xhLookup(&JSON_INF.Cache, path)))
@@ -221,16 +225,44 @@ json_internal_ReadDoc(pObject obj)
 	    /** Parse it one chunk at a time **/
 	    first_read = 1;
 	    do  {
-		rcnt = objRead(obj->Prev, rbuf, sizeof(rbuf), 0, first_read?OBJ_U_SEEK:0);
+		rcnt = objRead(obj->Prev, rbuf, sizeof(rbuf)-1, 0, first_read?OBJ_U_SEEK:0);
 		if (rcnt < 0 || (rcnt == 0 && first_read))
 		    {
 		    mssError(0,"JSON","Could not read JSON document");
 		    goto error;
 		    }
+		if(rcnt < 256) rbuf[rcnt] = '\0'; /** if buf not full, adjust end for verify **/
+		if(checkBuf[0] != '\0')
+		    {
+		    int charSize = numBytesInChar(checkBuf[0]);
+		    int bufLen = strlen(checkBuf);
+		    int bytesLeft = charSize - bufLen;
+		    memcpy(checkBuf+bufLen, rbuf, bytesLeft);
+		    if(verifyUTF8(checkBuf) != UTIL_VALID_CHAR || rcnt == 0) /** was valid error? **/
+			{
+			mssError(0,"JSON","JSON document contained invalud UTF-8 characters");
+			goto error;
+			}
+		    vOff = bytesLeft; /** don't let end of split byte affect **/
+		    for(i = 0 ; i < 5 ; i++) checkBuf[i] = '\0'; 
+		    }
 		if (rcnt == 0)
 		    break;
+		if((ind = verifyUTF8(rbuf+vOff)) != UTIL_VALID_CHAR)
+		    {
+		    ind += vOff;
+		    /** make sure it was not just a character split accross buffer boundry **/
+		    if(256 - ind >= numBytesInChar(rbuf[ind]))
+			{
+			mssError(0,"JSON","JSON document contained invalud UTF-8");
+			goto error;
+			}
+		    /** need to see if was cut at buffer's edge, or coincidence; save for next loop **/
+		    memcpy(checkBuf, rbuf+ind, 256 - ind);
+		    }
 		cache_obj->JObj = json_tokener_parse_ex(jtok, rbuf, rcnt);
 		first_read = 0;
+		vOff = 0;
 		} while((jerr = json_tokener_get_error(jtok)) == json_tokener_continue);
 	    //if (cache_obj->JObj)
 		//fprintf(stderr, "NEW JOBJ %8.8llx ref %d\n", cache_obj->JObj, ((int*)(cache_obj->JObj))[6]);
@@ -249,7 +281,7 @@ json_internal_ReadDoc(pObject obj)
 	    json_tokener_free(jtok);
 	    jtok = NULL;
 	    }
-
+	/** TODO: see if can have invalid chars in JSON. May need to check before parse (like if invalid in strings or something) **/
 	/** Return the parsed JSON document **/
 	json_internal_CacheLink(cache_obj);
 	return cache_obj;

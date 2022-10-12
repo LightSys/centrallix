@@ -1,0 +1,7 @@
+##NAME JSON driver UTF-8 tests
+query select :name, * from object /tests/test4.json 
+query select :name, * from object /tests/test5.json
+query select :name, * from object /tests/test6.json
+query select :name, * from object /tests/test7.json
+query select :name, * from object /tests/test8.json
+query select :name, * from object /tests/test9.json 
