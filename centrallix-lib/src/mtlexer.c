@@ -44,7 +44,7 @@
 int mlxReadLine(pLxSession s, char* buf, int maxlen);
 int mlxSkipChars(pLxSession s, int n_chars);
 int mlxPeekChar(pLxSession s, int offset);
-int mlx_internal_WillSplitUTF8(char c, int ind, int max);
+int mlx_internal_willCharFitUTF8(char c, int ind, int max);
 
 
 /*** mlxOpenSession - start a new lexer session on a given file 
@@ -75,17 +75,17 @@ mlxOpenSession(pFile fd, int flags)
 	if(MLX_F_ENFORCEUTF8 & flags)
 	    {
 	    this->ValidateFn = verifyUTF8; 
-	    this->IsCharSplit = mlx_internal_WillSplitUTF8;
+	    this->CharFit = mlx_internal_willCharFitUTF8;
 	    }
 	else if(MLX_F_ENFORCEASCII & flags)
 	    {
 	    this->ValidateFn = verifyASCII; 
-	    this->IsCharSplit = NULL;
+	    this->CharFit = NULL;
 	    }
 	else 
 	    {
 	    this->ValidateFn = NULL;
-	    this->IsCharSplit = NULL;
+	    this->CharFit = NULL;
 	    }
 
 	/** Preload the buffer with the first line **/
@@ -134,17 +134,17 @@ mlxStringSession(char* str, int flags)
 	if(MLX_F_ENFORCEUTF8 & flags)
 	    {
 	    this->ValidateFn = verifyUTF8; 
-	    this->IsCharSplit = mlx_internal_WillSplitUTF8;
+	    this->CharFit = mlx_internal_willCharFitUTF8;
 	    }
 	else if(MLX_F_ENFORCEASCII & flags)
 	    {
 	    this->ValidateFn = verifyASCII; 
-	    this->IsCharSplit = NULL;
+	    this->CharFit = NULL;
 	    }
 	else 
 	    {
 	    this->ValidateFn = NULL;
-	    this->IsCharSplit = NULL;
+	    this->CharFit = NULL;
 	    }
 
 	/** Read the first line. **/
@@ -187,17 +187,17 @@ mlxGenericSession(void* src, int (*read_fn)(), int flags)
 	if(MLX_F_ENFORCEUTF8 & flags)
 	    {
 	    this->ValidateFn = verifyUTF8; 
-	    this->IsCharSplit = mlx_internal_WillSplitUTF8;
+	    this->CharFit = mlx_internal_willCharFitUTF8;
 	    }
 	else if(MLX_F_ENFORCEASCII & flags)
 	    {
 	    this->ValidateFn = verifyASCII; 
-	    this->IsCharSplit = NULL;
+	    this->CharFit = NULL;
 	    }
 	else 
 	    {
 	    this->ValidateFn = NULL;
-	    this->IsCharSplit = NULL;
+	    this->CharFit = NULL;
 	    }
 
 	/** Preload the buffer with the first line **/
@@ -442,15 +442,16 @@ mlx_internal_Copy(pLxSession this, char* buf, int bufsize, int* found_end)
 	    *found_end = 0;
 	    while(ch >= 0 && len < bufsize-1)
 		{
+		if(this->CharFit != NULL && !this->CharFit(ch, len, bufsize-1))
+		    {
+		    *found_end = 0;
+		    break;
+		    }
+
 		buf[len++] = ch;
 		if (ch == '\n')
 		    {
 		    *found_end = 1;
-		    break;
-		    }
-		else if(this->IsCharSplit && this->IsCharSplit(ch, len, bufsize-1))
-		    {
-		    *found_end = 0;
 		    break;
 		    }
 		mlxSkipChars(this,1);
@@ -464,7 +465,7 @@ mlx_internal_Copy(pLxSession this, char* buf, int bufsize, int* found_end)
 	    *found_end = 1;
 	    while(ch >= 0 && ch != ' ' && ch != '\t' && ch != '\r' && ch != '\n')
 		{
-		if (len >= bufsize-1 || (this->IsCharSplit && this->IsCharSplit(ch, len, bufsize-1)))
+		if (len >= bufsize-1 || (this->CharFit && !this->CharFit(ch, len, bufsize-1)))
 		    {
 		    *found_end = 0;
 		    break;
@@ -481,7 +482,7 @@ mlx_internal_Copy(pLxSession this, char* buf, int bufsize, int* found_end)
 	    *found_end = 1;
 	    while((ch = mlxPeekChar(this,0)) >= 0 && ch != this->Delimiter)
 		{
-		if (len >= bufsize-1 || (this->IsCharSplit && this->IsCharSplit(ch, len, bufsize-1)))
+		if (len >= bufsize-1 || (this->CharFit && !this->CharFit(ch, len, bufsize-1)))
 		    {
 		    *found_end = 0;
 		    break;
@@ -526,7 +527,7 @@ mlx_internal_Copy(pLxSession this, char* buf, int bufsize, int* found_end)
 	    *found_end = 1;
 	    while(ch >= 0 && ch != ' ' && ch != '\t' && ch != '\r' && ch != '\n' && ch != ':')
 		{
-		if (len >= bufsize-1 || (this->IsCharSplit && this->IsCharSplit(ch, len, bufsize-1)))
+		if (len >= bufsize-1 || (this->CharFit && !this->CharFit(ch, len, bufsize-1)))
 		    {
 		    *found_end = 0;
 		    break;
@@ -617,6 +618,7 @@ mlxNextToken(pLxSession this)
 	    {
 	    while((ch = mlxNextChar(this)) >= 0 && ch != '\n') ;
 	    this->Flags &= ~MLX_F_INSTRING;
+	    this->Flags &= ~MLX_F_PROCLINE; /* treat as new line */
 	    }
 	else if ((this->Flags & MLX_F_INSTRING) && ((this->Flags & MLX_F_IFSONLY) || this->Delimiter == ' '))
 	    {
@@ -1404,19 +1406,20 @@ mlxSetOffset(pLxSession this, unsigned long new_offset)
     }
 
 
-/*** mlx_internal_WillSplitChar() - Given the current character, index, and maximum
- *** length, returns 1 if a utf-8 character would be split, and 0 if the character fits,
- *** of -1 if the chracter does not fit at all (i.e. buffer is full)
+/*** mlx_internal_willCharFitUTF8() - Given the current character, index (next open slot),
+ *** and maximum length, returns 1 if all bytes of a UTF-8 char will fit in a buffer, and
+ *** returns 0 in all other cases. Index refers to the next slot to be filled
  ***
- *** NOTE: in cases where there is room on the buffer, this returns T/F as the name indicates
- *** If the buffer may be fll, it behaves more like it should be named "isRoomOnBuff" (-1 --> true)
+ *** NOTE: a 0 is returned even on an error; getting a char which is NOT a utf-8 
+ *** header indicates the decision was made in a previous step.
  ***/
 int 
-mlx_internal_WillSplitUTF8(char c, int ind, int max)
+mlx_internal_willCharFitUTF8(char c, int ind, int len)
     {
-    if((unsigned char) c >= (unsigned char) 0xF0 && ind > max-4) return 1; /* cuts 4 byte */
-    else if ((unsigned char) c >= (unsigned char) 0xE0 && ind > max-3) return 1; /* cuts 3 byte */
-    else if ((unsigned char) c >= (unsigned char) 0xC0 && ind > max-2) return 1; /* cuts 2 byte */
-    else if (ind < max ) return 0; /* fits */
-    else return -1; /* buffer is full */
+    int bytes = numBytesInChar(c);
+    if(bytes < 0 ) bytes = 1;             /* treat as a single byte */
+
+    if(ind >= len) return 0;        /* buf is full */
+    else if(ind > len - bytes) return 0; /* cuts off char*/
+    else  return 1;                      /* fits */
     }

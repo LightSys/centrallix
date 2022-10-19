@@ -207,3 +207,4 @@ numBytesInChar(char byte)
     else if (!(byte&0x08)) return  4; /* of the form 1111 0XXX */
     else                   return -1; /* of the form 1111 1XXX */
     }
+
