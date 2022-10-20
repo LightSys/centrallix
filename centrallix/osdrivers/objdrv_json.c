@@ -233,7 +233,11 @@ json_internal_ReadDoc(pObject obj)
 		    {
 		    tempRC = objRead(obj->Prev, rbuf+rcnt, 256-rcnt, 0, 0);
 		    if(tempRC == 0) break; /** done reading, can let go.  **/
-		    else if(tempRC <= 0)  rcnt = tempRC; break; /** error, let if below handle **/
+		    else if(tempRC <= 0) /** error **/
+			{
+			mssError(0,"JSON","Could not read JSON document");
+		        goto error;
+			}
 		    rcnt += tempRC;
 		    }
 		if (rcnt < 0 || (rcnt == 0 && first_read))
@@ -487,6 +491,7 @@ jsonRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
     int len;
     char* str;
     int rcnt;
+    int bytes;
 
 	/** Cannot read if this is not a string **/
 	if (!json_object_is_type(inf->CurNode, json_type_string))
@@ -512,7 +517,16 @@ jsonRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	rcnt = maxcnt;
 	if (rcnt > len - inf->Offset)
 	    rcnt = len - inf->Offset;
-	if (rcnt)
+
+	/** do not let copy split UTF-8 chars **/
+	if(strlen(str + inf->Offset) > rcnt)
+	    {
+	    if(numBytesInChar(*(str+inf->Offset + rcnt - 1)) >= 2) rcnt -= 1;
+	    else if(numBytesInChar(*(str+inf->Offset + rcnt - 2)) >= 3) rcnt -= 2;
+	    else if(numBytesInChar(*(str+inf->Offset + rcnt - 3)) >= 4) rcnt -= 3;
+	    }
+	
+	if (rcnt > 0)
 	    {
 	    memcpy(buffer, str + inf->Offset, rcnt);
 	    inf->Offset += rcnt;
