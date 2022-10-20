@@ -1,0 +1,20 @@
+##NAME JSON driver test UTF-8 splitting with Read
+print tests/test12.json/ascii_1
+
+#test 2 byte with various split points 
+print tests/test12.json/2Byte_1
+print tests/test12.json/2Byte_2
+print tests/test12.json/2Byte_3
+
+#test 3 byte with various splits
+print tests/test12.json/3Byte_1
+print tests/test12.json/3Byte_2
+print tests/test12.json/3Byte_3
+print tests/test12.json/3Byte_4
+
+#test 4 byte with various splits
+print tests/test12.json/4Byte_1
+print tests/test12.json/4Byte_2
+print tests/test12.json/4Byte_3
+print tests/test12.json/4Byte_4
+print tests/test12.json/4Byte_5

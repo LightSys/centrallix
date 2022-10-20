@@ -1,7 +1,26 @@
 ##NAME JSON driver UTF-8 tests
+# valid
 query select :name, * from object /tests/test4.json 
+query select :name, * from /tests/test4.json 
+
+# invalid byte in name or data
 query select :name, * from object /tests/test5.json
+query select :name, * from /tests/test5.json
 query select :name, * from object /tests/test6.json
+query select :name, * from /tests/test6.json
 query select :name, * from object /tests/test7.json
+query select :name, * from /tests/test7.json
 query select :name, * from object /tests/test8.json
+query select :name, * from /tests/test8.json
+
+#invalid byte on boundry 
 query select :name, * from object /tests/test9.json 
+query select :name, * from /tests/test9.json 
+
+#invalid byte at start
+query select :name, * from object /tests/test10.json
+query select :name, * from /tests/test10.json 
+
+#invalid byte at end
+query select :name, * from object /tests/test11.json
+query select :name, * from /tests/test11.json 
