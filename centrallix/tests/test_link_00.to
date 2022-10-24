@@ -1,0 +1,7 @@
+##NAME Test valid and invalid chars in .lnk file
+
+#valid: should print out linked file contents
+query select * from  object/tests/test_1.lnk
+
+#invalid: should throw invalid char (NOT file not found)
+query select * from  object/tests/test_2.lnk

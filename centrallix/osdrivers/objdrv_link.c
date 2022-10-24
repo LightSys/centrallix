@@ -9,6 +9,7 @@
 #include "stparse.h"
 #include "st_node.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
 /** module definintions **/
 #include "centrallix.h"
 
@@ -101,6 +102,12 @@ lnkOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	inf->LinkPathname[rval] = '\0';
 
 	/** Next, do some sanity checks **/
+	if (verifyUTF8(inf->LinkPathname) != UTIL_VALID_CHAR)
+	    {
+	    /** contains invalid character **/
+	    mssError(1,"LNK","Malformed symbolic link - contains an invalid or partial character");
+	    goto error;
+	    }
 	if (rval != strlen(inf->LinkPathname))
 	    {
 	    /** Whoops - contains a \0.  Bad. **/
