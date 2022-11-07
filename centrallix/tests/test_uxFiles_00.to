@@ -1,0 +1,3 @@
+##NAME Test printing valid and invalid file names
+ls
+ls tests/invalidFileName

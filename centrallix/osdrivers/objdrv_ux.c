@@ -19,6 +19,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
 #include "stparse.h"
 #include "st_node.h"
 
@@ -219,6 +220,14 @@ uxd_internal_DirType(char* filepath)
 	    }
 	dt->Type[cnt] = 0;
 	if (strchr(dt->Type,'\n')) *(strchr(dt->Type,'\n')) = '\0';
+
+	if(verifyUTF8(dt->Type) != UTIL_VALID_CHAR)
+	    {
+	    mssError(1,"UXD","Cannot get dir type; type contains invalid UTF-8");
+	    fdClose(fd,0);
+	    nmFree(dt, sizeof(UxdDirTypes));
+	    return NULL;
+	    }
 	xhAdd(&UXD_INF.DirTypes, dt->DirName, (void*)dt);
 	fdClose(fd,0);
 
@@ -255,6 +264,13 @@ uxd_internal_LoadAnnot(char* dirpath)
 	    memmove(ua->Filename + strlen(dirpath)+1, ua->Filename, strlen(ua->Filename)+1);
 	    memcpy(ua->Filename, dirpath, strlen(dirpath));
 	    ua->Filename[strlen(dirpath)] = '/';
+	    
+	    /** Make sure data was valid ***/
+	    if(verifyUTF8(ua->Filename) != UTIL_VALID_CHAR || verifyUTF8(ua->Annotation) != UTIL_VALID_CHAR)
+		{
+		mssError(1,"UXD","Annotation entry or file name contains invalid characters");
+		continue; /* struct reused on next loop */
+		}
 
 	    /** And add to the cache... **/
 	    xhAdd(&UXD_INF.Annotations, ua->Filename, (void*)ua);
@@ -264,8 +280,16 @@ uxd_internal_LoadAnnot(char* dirpath)
 	/** Now add an entry for this directory. **/
 	/** The way that loop worked, we have a leftover unused 'ua' struct **/
 	snprintf(ua->Filename, 256, "%s", sbuf);
-	strcpy(ua->Annotation, "");
-	xhAdd(&UXD_INF.LoadedAnnot, ua->Filename, (void*)ua);
+	if(verifyUTF8(ua->Filename) != UTIL_VALID_CHAR)
+	    {
+	    mssError(1,"UXD","Dir name contains invalid characters");
+	    nmFree(ua, sizeof(UxdAnnotation));
+	    }
+	else
+	    {
+	    strcpy(ua->Annotation, "");
+	    xhAdd(&UXD_INF.LoadedAnnot, ua->Filename, (void*)ua);
+	    }
 
 	/** Close the file and tail on outta here... **/
 	fdClose(fd,0);
@@ -793,6 +817,8 @@ uxdDelete(pObject obj, pObjTrxTree* oxt)
 
 
 /*** uxdRead - read from a file.  Fails on a directory.
+ *** NOTE: unlike many drivers, the content read is NOT
+ *** UTF-8 validated
  ***/
 int
 uxdRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
@@ -903,6 +929,12 @@ uxdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
       GET_NEXT_DIRITEM:
 	d = readdir(qy->File->Direc);
 	if (!d) return NULL;
+
+	if (verifyUTF8(d->d_name) != UTIL_VALID_CHAR) /** verify dir name **/
+	    {
+	    mssError(1,"UXD","File name contained invalid UTF-8 characters");
+	    goto GET_NEXT_DIRITEM; /* skip invalid item*/
+	    }
 
 	/** If we're at root and just read '..', get another. **/
 	/*if (!strcmp(d->d_name,"..") && !strcmp(qy->File->Obj->Pathname->Pathbuf,".")) 
@@ -1070,7 +1102,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		{
 		stat(inf->RealPathname, &(inf->Fileinfo));
 		pw = getpwuid(inf->Fileinfo.st_uid);
-		if (!pw) snprintf(inf->UsrName,16,"%d",inf->Fileinfo.st_uid);
+		if (!pw || verifyASCII(pw->pw_name) != UTIL_VALID_CHAR) snprintf(inf->UsrName,16,"%d",inf->Fileinfo.st_uid);
 		else snprintf(inf->UsrName,16,"%s",pw->pw_name);
 		}
 	    val->String = inf->UsrName;
@@ -1086,7 +1118,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		{
 		stat(inf->RealPathname, &(inf->Fileinfo));
 		gr = getgrgid(inf->Fileinfo.st_gid);
-		if (!gr) snprintf(inf->GrpName,16,"%d",inf->Fileinfo.st_gid);
+		if (!gr || verifyASCII(gr->gr_name) != UTIL_VALID_CHAR) snprintf(inf->GrpName,16,"%d",inf->Fileinfo.st_gid);
 		else snprintf(inf->GrpName,16,"%s",gr->gr_name);
 		}
 	    val->String = inf->GrpName;
