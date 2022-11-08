@@ -431,8 +431,7 @@ cxInitialize(void* v)
 	char * locale = setlocale(LC_CTYPE, NULL); 
 	int isUTF8 = (locale != NULL && (strstr(locale, "utf8") || strstr(locale, "UTF8") || strstr(locale, "utf-8") 
 					|| strstr(locale, "UTF-8")));
-	qpfInitialize(isUTF8); /** FIXME: how to tell what to set utf-8 support to? suposed to default to false? 
-	                      ** locale probably isn't a bad idea to base it on **/
+	qpfInitialize(isUTF8); 
 
 	/** Init the session handler.  We have to extract the config data for this 
 	 ** module ourselves, because mtsession is in the centrallix-lib, and thus can't

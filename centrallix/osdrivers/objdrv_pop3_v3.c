@@ -155,7 +155,7 @@ pop_internal_GetResponse(pFile Conn, char* buf, int maxlen)
     {
 	pLxSession s;
 	char* line;
-	int mlxFLags;
+	int mlxFlags;
 
 	mlxFlags = MLX_F_LINEONLY | MLX_F_NODISCARD;
 	if (CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
