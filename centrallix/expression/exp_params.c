@@ -667,6 +667,32 @@ expUnlockAggregates(pExpression this, int level)
     }
 
 
+/*** expSetParamFunctionsByID - set the functions that will be used to get/set
+ *** paramobjects attribute values and types.  Used for "custom" objects and
+ *** such.
+ ***/
+int
+expSetParamFunctionsByID(pParamObjects this, int id, int (*type_fn)(), int (*get_fn)(), int (*set_fn)())
+    {
+
+	/** Set the functions. **/
+	if (type_fn == NULL && get_fn == NULL && set_fn == NULL)
+	    {
+	    this->GetTypeFn[id] = objGetAttrType;
+	    this->GetAttrFn[id] = objGetAttrValue;
+	    this->SetAttrFn[id] = objSetAttrValue;
+	    }
+	else
+	    {
+	    this->GetTypeFn[id] = type_fn;
+	    this->GetAttrFn[id] = get_fn;
+	    this->SetAttrFn[id] = set_fn;
+	    }
+
+    return 0;
+    }
+
+
 /*** expSetParamFunctions - set the functions that will be used to get/set
  *** paramobjects attribute values and types.  Used for "custom" objects and
  *** such.
@@ -687,12 +713,8 @@ expSetParamFunctions(pParamObjects this, char* name, int (*type_fn)(), int (*get
 	    }
 	if (slot_id < 0) return -1;
 
-	/** Set the functions. **/
-	this->GetTypeFn[slot_id] = type_fn;
-	this->GetAttrFn[slot_id] = get_fn;
-	this->SetAttrFn[slot_id] = set_fn;
 
-    return 0;
+    return expSetParamFunctionsByID(this, slot_id, type_fn, get_fn, set_fn);
     }
 
 

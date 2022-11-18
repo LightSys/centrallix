@@ -1275,7 +1275,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
     pQueryStructure declare_cls = NULL;
     ParserState state = LookForClause;
     ParserState next_state = ParseError;
-    int t,parenlevel,subtr,identity,inclsubtr,wildcard,fromobject,prunesubtr,expfrom,collfrom;
+    int t,parenlevel,subtr,identity,inclsubtr,wildcard,fromobject,prunesubtr,expfrom,collfrom,nonempty,paged;
     int is_object;
     char* ptr;
     char* str;
@@ -2304,10 +2304,17 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 		    fromobject = 0;
 		    expfrom = 0;
 		    collfrom = 0;
+		    nonempty = 0;
+		    paged = 0;
 		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("identity", ptr))
 			{
 			t = mlxNextToken(lxs);
 			identity = 1;
+			}
+		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("nonempty", ptr))
+			{
+			t = mlxNextToken(lxs);
+			nonempty = 1;
 			}
 		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("object", ptr))
 			{
@@ -2333,6 +2340,11 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 			{
 			t = mlxNextToken(lxs);
 			wildcard = 1;
+			}
+		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("paged", ptr))
+			{
+			t = mlxNextToken(lxs);
+			paged = 1;
 			}
 		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("expression", ptr))
 			{
@@ -2405,6 +2417,8 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 		    if (fromobject) new_qs->Flags |= MQ_SF_FROMOBJECT;
 		    if (expfrom) new_qs->Flags |= MQ_SF_EXPRESSION;
 		    if (collfrom) new_qs->Flags |= MQ_SF_COLLECTION;
+		    if (nonempty) new_qs->Flags |= MQ_SF_NONEMPTY;
+		    if (paged) new_qs->Flags |= MQ_SF_PAGED;
 		    xaAddItem(&from_cls->Children, (void*)new_qs);
 		    new_qs->Parent = from_cls;
 		    parenlevel = 0;

@@ -116,6 +116,7 @@ typedef struct
     int			ReturnIterCnt;
     MqjJoinExecState	State;
     pQueryElement	QE;
+    int			NonEmpty;
     }
     MqjJoinExec, *pMqjJoinExec;
 
@@ -639,6 +640,7 @@ mqjAnalyze(pQueryStatement stmt)
 		src->ReverseDependencyMask = ordered_sources[i]->ReverseDependencyMask;
 		src->CoverageMask = 1<<src->SrcIndex;
 		src->OuterMask = 0;
+		src->NonEmpty = (ordered_sources[i]->FromItem->Flags & MQ_SF_NONEMPTY)?1:0;
 		src->QE = source;
 		if (i == 0)
 		    {
@@ -1084,8 +1086,19 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 			}
 		    else if (rval == 0)
 			{
+			if (nextsrc->ReturnIterCnt == 0 && nextsrc->NonEmpty)
+			    {
+			    /** Required non-empty sequential join, finish now. **/
+			    if (src->State == MqjStateStarted)
+				{
+				src->QE->Driver->Finish(src->QE, stmt);
+				}
+			    mqj_internal_SetState(md, source_id, MqjStateFinished);
+			    return 0;
+			    }
 			if (src->State == MqjStateOuter && nextsrc->ReturnIterCnt == 0)
 			    {
+			    /** Outer Join **/
 			    src->ReturnIterCnt += 1;
 			    return 1;
 			    }

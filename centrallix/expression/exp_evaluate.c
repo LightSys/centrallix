@@ -1326,7 +1326,7 @@ expRevEvalObject(pExpression tree, pParamObjects objlist)
 int
 expEvalProperty(pExpression tree, pParamObjects objlist)
     {
-    int t,v=-1,n, id = 0;
+    int t, v=-1, id = 0;
     pObject obj = NULL;
     char* ptr;
     void* vptr;
