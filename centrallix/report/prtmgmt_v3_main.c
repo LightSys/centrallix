@@ -216,6 +216,91 @@ prtRegisterColor(char* color, int rgb)
     }
 
 
+/*** prt_internal_LoadColors - load the list of named colors from rgb.txt
+ ***/
+int
+prt_internal_LoadColors()
+    {
+    pFile rgbtxt = NULL;
+    pStructInf colorconfig = NULL;
+    char* rgbtxtname = NULL;
+    char* colorname;
+    int colorval;
+    int n_colors = 0;
+    pLxSession lxs;
+
+	/** Open rgb.txt **/
+	n_colors = 0;
+	colorconfig = stLookup(CxGlobals.ParsedConfig,"colors_config");
+	if (colorconfig)
+	    {
+	    if (stGetAttrValue(colorconfig, DATA_T_STRING, POD(&rgbtxtname), 0) >= 0 && rgbtxtname)
+		{
+		rgbtxt = fdOpen(rgbtxtname, O_RDONLY, 0600);
+		if (rgbtxt)
+		    {
+		    lxs = mlxOpenSession(rgbtxt, MLX_F_POUNDCOMM | MLX_F_EOF);
+		    if (lxs)
+			{
+			while(mlxNextToken(lxs) == MLX_TOK_INTEGER)
+			    {
+			    colorval = (mlxIntVal(lxs) & 0xFF) << 16;
+			    if (mlxNextToken(lxs) == MLX_TOK_INTEGER)
+				colorval |= ((mlxIntVal(lxs) & 0xFF) << 8);
+			    else
+				break;
+			    if (mlxNextToken(lxs) == MLX_TOK_INTEGER)
+				colorval |= (mlxIntVal(lxs) & 0xFF);
+			    else
+				break;
+			    mlxSetOptions(lxs, MLX_F_LINEONLY);
+			    if (mlxNextToken(lxs) == MLX_TOK_STRING)
+				{
+				colorname = mlxStringVal(lxs, NULL);
+				if (colorname)
+				    {
+				    while(*colorname == ' ' || *colorname == '\t')
+					colorname++;
+				    if (*colorname && colorname[strlen(colorname) - 1] == '\n')
+					colorname[strlen(colorname) - 1] = '\0';
+				    prtRegisterColor(colorname, colorval);
+				    n_colors++;
+				    }
+				}
+			    mlxUnsetOptions(lxs, MLX_F_LINEONLY);
+			    }
+			mlxCloseSession(lxs);
+			}
+		    fdClose(rgbtxt, 0);
+		    }
+		}
+	    }
+
+	if (n_colors == 0)
+	    {
+	    /** A few basic colors, for fallback in case we don't have
+	     ** a valid rgb.txt color database.
+	     **/
+	    prtRegisterColor("red", 0xff0000);
+	    prtRegisterColor("green", 0x00ff00);
+	    prtRegisterColor("blue", 0x0000ff);
+	    prtRegisterColor("yellow", 0xffff00);
+	    prtRegisterColor("white", 0xffffff);
+	    prtRegisterColor("black", 0x000000);
+	    prtRegisterColor("orange", 0xffa500);
+	    prtRegisterColor("purple", 0xa020f0);
+	    prtRegisterColor("cyan", 0x00ffff);
+	    prtRegisterColor("magenta", 0xff00ff);
+	    prtRegisterColor("gray", 0xbebebe);
+	    prtRegisterColor("grey", 0xbebebe);
+
+	    mssError(1, "PRT", "Warning: did not load any color names from rgb.txt; using builtin defaults.");
+	    }
+
+    return 0;
+    }
+
+
 /*** prtLookupColor() - looks up a named color and returns the 0x00RRGGBB
  *** value corresponding to it.  Also accepts hex strings when prefixed
  *** with a # sign, in either #RGB or #RRGGBB format.  Returns -1 on error.
@@ -228,6 +313,12 @@ prtLookupColor(char* color)
     pPrtColor pc;
     char lowercolor[24];
     int i;
+
+	/** Load color database (on demand)? **/
+	if (PRTMGMT.Colors.nItems == 0)
+	    {
+	    prt_internal_LoadColors();
+	    }
 
 	/** Not provided? **/
 	if (!color)
@@ -481,91 +572,6 @@ prtRegisterFormatter(pPrtFormatter fmt)
     }
 
 
-/*** prt_internal_LoadColors - load the list of named colors from rgb.txt
- ***/
-int
-prt_internal_LoadColors()
-    {
-    pFile rgbtxt = NULL;
-    pStructInf colorconfig = NULL;
-    char* rgbtxtname = NULL;
-    char* colorname;
-    int colorval;
-    int n_colors = 0;
-    pLxSession lxs;
-
-	/** Open rgb.txt **/
-	n_colors = 0;
-	colorconfig = stLookup(CxGlobals.ParsedConfig,"colors_config");
-	if (colorconfig)
-	    {
-	    if (stGetAttrValue(colorconfig, DATA_T_STRING, POD(&rgbtxtname), 0) >= 0 && rgbtxtname)
-		{
-		rgbtxt = fdOpen(rgbtxtname, O_RDONLY, 0600);
-		if (rgbtxt)
-		    {
-		    lxs = mlxOpenSession(rgbtxt, MLX_F_POUNDCOMM | MLX_F_EOF);
-		    if (lxs)
-			{
-			while(mlxNextToken(lxs) == MLX_TOK_INTEGER)
-			    {
-			    colorval = (mlxIntVal(lxs) & 0xFF) << 16;
-			    if (mlxNextToken(lxs) == MLX_TOK_INTEGER)
-				colorval |= ((mlxIntVal(lxs) & 0xFF) << 8);
-			    else
-				break;
-			    if (mlxNextToken(lxs) == MLX_TOK_INTEGER)
-				colorval |= (mlxIntVal(lxs) & 0xFF);
-			    else
-				break;
-			    mlxSetOptions(lxs, MLX_F_LINEONLY);
-			    if (mlxNextToken(lxs) == MLX_TOK_STRING)
-				{
-				colorname = mlxStringVal(lxs, NULL);
-				if (colorname)
-				    {
-				    while(*colorname == ' ' || *colorname == '\t')
-					colorname++;
-				    if (*colorname && colorname[strlen(colorname) - 1] == '\n')
-					colorname[strlen(colorname) - 1] = '\0';
-				    prtRegisterColor(colorname, colorval);
-				    n_colors++;
-				    }
-				}
-			    mlxUnsetOptions(lxs, MLX_F_LINEONLY);
-			    }
-			mlxCloseSession(lxs);
-			}
-		    fdClose(rgbtxt, 0);
-		    }
-		}
-	    }
-
-	if (n_colors == 0)
-	    {
-	    /** A few basic colors, for fallback in case we don't have
-	     ** a valid rgb.txt color database.
-	     **/
-	    prtRegisterColor("red", 0xff0000);
-	    prtRegisterColor("green", 0x00ff00);
-	    prtRegisterColor("blue", 0x0000ff);
-	    prtRegisterColor("yellow", 0xffff00);
-	    prtRegisterColor("white", 0xffffff);
-	    prtRegisterColor("black", 0x000000);
-	    prtRegisterColor("orange", 0xffa500);
-	    prtRegisterColor("purple", 0xa020f0);
-	    prtRegisterColor("cyan", 0x00ffff);
-	    prtRegisterColor("magenta", 0xff00ff);
-	    prtRegisterColor("gray", 0xbebebe);
-	    prtRegisterColor("grey", 0xbebebe);
-
-	    mssError(1, "PRT", "Warning: did not load any color names from rgb.txt; using builtin defaults.");
-	    }
-
-    return 0;
-    }
-
-
 /*** prtInitialize() - init the print management system, set up globals, and
  *** build our lists of types, layout managers, and such.
  ***/
@@ -614,9 +620,6 @@ prtInitialize()
 	prtRegisterFont("times", 3);
 	prtRegisterFont("cg times", 3);
 	prtRegisterFont("serif", 3);
-
-	/** Setup named colors **/
-	prt_internal_LoadColors();
 
 	/** Setup list of layout managers **/
 	prt_textlm_Initialize();
