@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -309,21 +310,6 @@ mysd_internal_GetConn(pMysdNode node)
                 return NULL;
                 }
 
-		int ret, err;
-                char csname [] = "utf8";
-                ret = mysql_set_character_set(&conn, csname);
-                if(ret != 0){
-                	//  failure
-                         perror("character set not set to utf8");
-                        //needs an argument 
-			//err = mysql_errno();
-                }
-
-
-		//mysql_query(conn, "ALTER DATABASE Kardia_DB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
-
-
-
             if (mysql_real_connect(&conn->Handle, node->Server, username, password, node->Database, 0, NULL, 0) == NULL)
                 {
 		if (node->Flags & MYSD_NODE_F_SETCXAUTH)
@@ -368,7 +354,7 @@ mysd_internal_GetConn(pMysdNode node)
             /** Set up current character set **/
             /** Please note that this assumes that if it is a one byte character encoding, that ASCII will be **/
             /** a valid subset so that the commands still get through OK. **/
-            if(mysql_set_character_set(&conn->Handle, chrGetEquivalentName(CHR_MODULE_MYSQL)) != 0)
+            if(mysql_set_character_set(&conn->Handle, chrGetEquivalentName(CHR_MODULE_MYSQL)) != 0) /* CHR_MODULE_MYSQL maps to utf8mb4 */
                 {
                 mysql_get_character_set_info(&conn->Handle, &currentCharsetInfo);
                 mssError(1, "MYSD", "Could not set character set of MySQL connection to '%s'!  Using '%s' instead!",
@@ -795,7 +781,7 @@ mysd_internal_GetTData(pMysdNode node, char* tablename)
 
         /** sanatize the table name and build the query**/
         length = strlen(tablename);
-        /** this next bit will break any charset not ASCII **/ 
+        /** this next bit will break any charset not ASCII compatible **/ 
         /** throw an error if some joker tries to throw in a backtick **/
         if(strchr(tablename,'`')) goto error; 
         result = mysd_internal_RunQuery(node, "SHOW COLUMNS FROM `?`",tablename);

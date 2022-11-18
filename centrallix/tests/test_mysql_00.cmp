@@ -1,0 +1,40 @@
+Attribute [id]:  integer  1
+Attribute [string]:   string   "ascii" 
+Attribute [longString]:   string   "more ascii" 
+Attribute [raw]:   string   "string as blob" 
+Attribute [text]:   string   "Some text" 
+Attribute [id]:  integer  2
+Attribute [string]:   string   "more standard ascii text aproaching the limit..." 
+Attribute [longString]:   string   "The Lord is my shepherd; I shall not want. He maketh me to lie down in green pastures: he leadeth me beside the still waters. He restoreth my soul: he leadeth me in the paths of righteousness for his name's sake. Yea, though I walk through the" 
+Attribute [raw]:   string   " valley of the shadow of death, I will fear no evil: for thou art with me; thy rod and thy staff they comfort me. Thou preparest a table before me in the presence of mine enemies: thou anointest my head with oil; my cup runneth over." 
+Attribute [text]:   string   "Surely goodness and mercy shall follow me all the days of my life: and I will dwell in the house of the Lord for ever." 
+Attribute [id]:  integer  3
+Attribute [string]:   string   "Unicode Translation" 
+Attribute [longString]:   string   "¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÍÎÏÐÑÒÓÔÕÖÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ" 
+Attribute [raw]:   string   "¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿" 
+Attribute [text]:   string   "¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÍÎÏÐÑÒÓÔÕÖÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ" 
+Attribute [id]:  integer  4
+Attribute [string]:   string   "short 2 byte utf-8" 
+Attribute [longString]:   string   "????" 
+Attribute [raw]:   string   "Псалом Давида." 
+Attribute [text]:   string   "?????? ???, ?????? ??? ?? ?? ????" 
+Attribute [id]:  integer  5
+Attribute [string]:   string   "short 3 byte utf-8" 
+Attribute [longString]:   string   "??" 
+Attribute [raw]:   string   "実に神はひとり子をさえ惜しまず与し" 
+Attribute [text]:   string   "??????????????" 
+Attribute [id]:  integer  6
+Attribute [string]:   string   "short 4 byte utf-8" 
+Attribute [longString]:   string   "?????????" 
+Attribute [raw]:   string   "𓁊𓁋𓁌𓁍𓁎𓁏𓁐𓁑𓁒𓁓𓁔𓁕𓁖" 
+Attribute [text]:   string   "???????" 
+Attribute [id]:  integer  7
+Attribute [string]:   string   "test of utf-8 planes" 
+Attribute [longString]:   string   "|??|??|??|??|" 
+Attribute [raw]:   string   "|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|" 
+Attribute [text]:   string   "|??|??|??|??|" 
+Attribute [id]:  integer  8
+Attribute [string]:   string   "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" 
+Attribute [longString]:   string   "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" 
+Attribute [raw]:   string   "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBB" 
+Attribute [text]:   string  NULL

@@ -1,0 +1,85 @@
+Attribute [id]:  integer  1
+Attribute [string]:   string   "ascii" 
+Attribute [longString]:   string   "more ascii" 
+Attribute [raw]:   string   "string as blob" 
+Attribute [text]:   string   "Some text" 
+Attribute [id]:  integer  2
+Attribute [string]:   string   "more standard ascii text aproaching the limit..." 
+Attribute [longString]:   string   "The Lord is my shepherd; I shall not want. He maketh me to lie down in green pastures: he leadeth me beside the still waters. He restoreth my soul: he leadeth me in the paths of righteousness for his name's sake. Yea, though I walk through the" 
+Attribute [raw]:   string   " valley of the shadow of death, I will fear no evil: for thou art with me; thy rod and thy staff they comfort me. Thou preparest a table before me in the presence of mine enemies: thou anointest my head with oil; my cup runneth over." 
+Attribute [text]:   string   "Surely goodness and mercy shall follow me all the days of my life: and I will dwell in the house of the Lord for ever." 
+Attribute [id]:  integer  3
+Attribute [string]:   string   "short 2 byte utf-8" 
+Attribute [longString]:   string   "Ведь" 
+Attribute [raw]:   string   "Псалом Давида." 
+Attribute [text]:   string   "убоюсь зла, потому что Ты со мной" 
+Attribute [id]:  integer  4
+Attribute [string]:   string   "short 3 byte utf-8" 
+Attribute [longString]:   string   "実に" 
+Attribute [raw]:   string   "実に神はひとり子をさえ惜しまず与し" 
+Attribute [text]:   string   "ず永遠のいのちを得るためです" 
+Attribute [id]:  integer  5
+Attribute [string]:   string   "long 3 byte utf-8" 
+Attribute [longString]:   string   "実に神はひとり子をさえ惜しまず与えるほどにこの世界を愛してくださいました。それは神の御子を信じる者がだれ一人滅びず永遠のいのちを得るためです。" 
+Attribute [raw]:   string   "実に神はひとり子をさえ惜しまず与えるほどにこの世界を愛してくださいました。それは神の御子を信じる者がだれ一人滅びず永遠のいのちを得るためです。" 
+Attribute [text]:   string   "実に神はひとり子をさえ惜しまず与えるほどにこの世界を愛してくださいました。それは神の御子を信じる者がだれ一人滅びず永遠のいのちを得るためです。" 
+Attribute [id]:  integer  6
+Attribute [string]:   string   "short 4 byte utf-8" 
+Attribute [longString]:   string   "𓀀𓀁𓀂𓀃𓀄𓀅𓀆𓀇𓀈" 
+Attribute [raw]:   string   "𓁊𓁋𓁌𓁍𓁎𓁏𓁐𓁑𓁒𓁓𓁔𓁕𓁖" 
+Attribute [text]:   string   "𓁹𓁺𓁻𓁼𓁽𓁾𓁿" 
+Attribute [id]:  integer  7
+Attribute [string]:   string   "short 4 byte utf-8" 
+Attribute [longString]:   string   "𓀀𓀁𓀂𓀃𓀄𓀅𓀆𓀇𓀈𓀉𓀊𓀋𓀌𓀍𓀎𓀏𓀐𓀑𓀒𓀓𓀔𓀕𓀖𓀗𓀘𓀙𓀚𓀛𓀜𓀝𓀞𓀟𓀠𓀡𓀢𓀣𓀤𓀥𓀦𓀧𓀨𓀩𓀪𓀫𓀬𓀭𓀮𓀯𓀰𓀱𓀲𓀳𓀴𓀵𓀶𓀷𓀸𓀹𓀺𓀻𓀼𓀽𓀾" 
+Attribute [raw]:   string   "𓀀𓀁𓀂𓀃𓀄𓀅𓀆𓀇𓀈𓀉𓀊𓀋𓀌𓀍𓀎𓀏𓀐𓀑𓀒𓀓𓀔𓀕𓀖𓀗𓀘𓀙𓀚𓀛𓀜𓀝𓀞𓀟𓀠𓀡𓀢𓀣𓀤𓀥𓀦𓀧𓀨𓀩𓀪𓀫𓀬𓀭𓀮𓀯𓀰𓀱𓀲𓀳𓀴𓀵𓀶𓀷𓀸𓀹𓀺𓀻𓀼𓀽𓀾" 
+Attribute [text]:   string   "𓀀𓀁𓀂𓀃𓀄𓀅𓀆𓀇𓀈𓀉𓀊𓀋𓀌𓀍𓀎𓀏𓀐𓀑𓀒𓀓𓀔𓀕𓀖𓀗𓀘𓀙𓀚𓀛𓀜𓀝𓀞𓀟𓀠𓀡𓀢𓀣𓀤𓀥𓀦𓀧𓀨𓀩𓀪𓀫𓀬𓀭𓀮𓀯𓀰𓀱𓀲𓀳𓀴𓀵𓀶𓀷𓀸𓀹𓀺𓀻𓀼𓀽𓀾" 
+Attribute [id]:  integer  8
+Attribute [string]:   string   "test of utf-8 planes" 
+Attribute [longString]:   string   "|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|" 
+Attribute [raw]:   string   "|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|" 
+Attribute [text]:   string   "|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|" 
+Attribute [id]:  integer  9
+Attribute [string]:   string   "ииииииииииииииииииииииииииииииииииииииииииииииииии" 
+Attribute [longString]:   string   "2 byte test, no offset" 
+Attribute [raw]:   string  NULL
+Attribute [text]:   string  NULL
+Attribute [id]:  integer  10
+Attribute [string]:   string   "1иииииииииииииииииииииииииииииииииииииииииииииииии" 
+Attribute [longString]:   string   "2 byte test, 1 offset" 
+Attribute [raw]:   string  NULL
+Attribute [text]:   string  NULL
+Attribute [id]:  integer  11
+Attribute [string]:   string   "実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実" 
+Attribute [longString]:   string   "3 byte test, no offset" 
+Attribute [raw]:   string  NULL
+Attribute [text]:   string  NULL
+Attribute [id]:  integer  12
+Attribute [string]:   string   "1実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実" 
+Attribute [longString]:   string   "3 byte test, 1 offset" 
+Attribute [raw]:   string  NULL
+Attribute [text]:   string  NULL
+Attribute [id]:  integer  13
+Attribute [string]:   string   "12実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実" 
+Attribute [longString]:   string   "3 byte test, 2 offset" 
+Attribute [raw]:   string  NULL
+Attribute [text]:   string  NULL
+Attribute [id]:  integer  14
+Attribute [string]:   string   "𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘" 
+Attribute [longString]:   string   "4 byte test, no offset" 
+Attribute [raw]:   string  NULL
+Attribute [text]:   string  NULL
+Attribute [id]:  integer  15
+Attribute [string]:   string   "1𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘" 
+Attribute [longString]:   string   "4 byte test, 1 offset" 
+Attribute [raw]:   string  NULL
+Attribute [text]:   string  NULL
+Attribute [id]:  integer  16
+Attribute [string]:   string   "12𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘" 
+Attribute [longString]:   string   "4 byte test, 2 offset" 
+Attribute [raw]:   string  NULL
+Attribute [text]:   string  NULL
+Attribute [id]:  integer  17
+Attribute [string]:   string   "123𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘" 
+Attribute [longString]:   string   "4 byte test, 3 offset" 
+Attribute [raw]:   string  NULL
+Attribute [text]:   string  NULL

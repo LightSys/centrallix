@@ -1,0 +1,24 @@
+##NAME Test mysql driver with queries that attempt to perform SQL inject
+
+# clear out any left over entries
+query delete from /tests/Centrallix_DB/utf8/rows
+
+
+# insert simple data
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="short 2 byte utf-8", longString="Ведь", raw="Псалом Давида.", text="убоюсь зла, потому что Ты со мной"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="short 3 byte utf-8", longString="実に", raw="実に神はひとり子をさえ惜しまず与し", text="ず永遠のいのちを得るためです"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="short 4 byte utf-8", longString="𓀀𓀁𓀂𓀃𓀄𓀅𓀆𓀇𓀈", raw="𓁊𓁋𓁌𓁍𓁎𓁏𓁐𓁑𓁒𓁓𓁔𓁕𓁖", text="𓁹𓁺𓁻𓁼𓁽𓁾𓁿"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="test of utf-8 planes", longString="|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|", raw="|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|", text="|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|"
+
+# "bad" inserts
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="short 3 byte utf-8`; DRIP TABLE utf8; --", longString="実に", raw="実に神はひとり子をさえ惜しまず与し", text="ず永遠のいのちを得るためです"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="short 3 byte utf-8'; DRIP TABLE utf8; --", longString="実に", raw="実に神はひとり子をさえ惜しまず与し", text="ず永遠のいのちを得るためです"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="short 3 byte utf-8"; DRIP TABLE utf8; --", longString="実に", raw="実に神はひとり子をさえ惜しまず与し", text="ず永遠のいのちを得るためです"
+
+# 'bad' reads
+query select :id', :string, :longString, :raw, :text from /tests/Centrallix_DB/utf8/rows
+query select :id`, :string, :longString, :raw, :text from /tests/Centrallix_DB/utf8/rows
+query select :id", :string, :longString, :raw, :text from /tests/Centrallix_DB/utf8/rows
+
+# print out results 
+query select :id, :string, :longString, :raw, :text from /tests/Centrallix_DB/utf8/rows
