@@ -318,6 +318,15 @@ typedef struct _PSVG
     PrtSvg, *pPrtSvg;
 
 
+/*** Named colors ***/
+typedef struct _PC
+    {
+    char		Name[24];
+    int			RGB;		/* 0x00RRGGBB */
+    }
+    PrtColor, *pPrtColor;
+
+
 /*** Print management global structure ***/
 typedef struct _PG
     {
@@ -330,6 +339,8 @@ typedef struct _PG
     XHashTable		HandleTable;
     XHashTable		HandleTableByPtr;
     int			NextHandleID;
+    XArray		Colors;
+    XHashTable		ColorsByName;
     }
     PrtGlobals, *pPrtGlobals;
 
@@ -512,12 +523,14 @@ int prtSetFontSize(int handle_id, int pt_size);
 int prtGetFontSize(int handle_id);
 int prtSetColor(int handle_id, int font_color);
 int prtGetColor(int handle_id);
+int prtLookupColor(char* color);
 int prtSetHPos(int handle_id, double x);
 int prtSetVPos(int handle_id, double y);
 int prtSetValue(int handle_id, char* attrname, ...);
 int prtSetMargins(int handle_id, double t, double b, double l, double r);
 pPrtBorder prtAllocBorder(int n_lines, double sep, double pad, ...);
 int prtFreeBorder(pPrtBorder b);
+pPrtImage prtAllocImage(int width, int height, int color_type);
 pPrtImage prtCreateImageFromPNG(int (*read_fn)(), void* read_arg);
 int prt_internal_WriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, int w, int h);
 int prtFreeImage(pPrtImage i);

@@ -355,7 +355,8 @@ MODULES=$(OBJDRIVERMODULES) $(HTDRIVERMODULES) $(QYDRIVERMODULES) $(NETDRIVERMOD
 CONFFILES=centrallix.conf \
    	  rootnode \
 	  types.cfg \
-	  useragent.cfg
+	  useragent.cfg \
+	  rgb.txt
 
 # testobj-driven test files
 TOTESTFILES:=$(wildcard tests/test_$(TONLY)*.to)

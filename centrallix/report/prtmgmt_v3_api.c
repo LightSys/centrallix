@@ -11,6 +11,7 @@
 #include "cxlib/magic.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
+#include "cxlib/util.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
