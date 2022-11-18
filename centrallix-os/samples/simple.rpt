@@ -9,7 +9,7 @@ simple "system/report"
 	{
 	default = 0;
 	type = integer;
-	allowchars="0123456789";
+	//allowchars="0123456789";
 	}
     
     pagewidth=85;
