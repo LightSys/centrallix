@@ -1,0 +1,188 @@
+Flags: can_have_subobjects cant_add_attrs cant_have_content no_content 
+Attributes:
+            outer_type: "application/x-json-node" [Hints: ]
+            inner_type: "system/void" [Hints: ]
+          content_type: "system/void" [Hints: ]
+                  name: "" [Hints: ]
+            annotation: "" [Hints: ]
+     last_modification: 11-23-2022 10:37:53 [Hints: ]
+
+Methods:
+  (no methods)
+
+0                                                                     application/x-json-node
+1                                                                     application/x-json-node
+2                                                                     application/x-json-node
+3                                                                     application/x-json-node
+4                                                                     application/x-json-node
+5                                                                     application/x-json-node
+6                                                                     application/x-json-node
+7                                                                     application/x-json-node
+8                                                                     application/x-json-node
+9                                                                     application/x-json-node
+10                                                                    application/x-json-node
+Attribute [@id]:   string   "1" 
+Attribute [amount]:   string   "47.50" 
+Attribute [create_date]:   string   "2015-07-25" 
+Attribute [@id]:   string   "2" 
+Attribute [amount]:   string   "27.50" 
+Attribute [create_date]:   string   "2015-07-25" 
+Attribute [@id]:   string   "3" 
+Attribute [amount]:   string   "10.00" 
+Attribute [create_date]:   string   "2015-09-21" 
+Attribute [@id]:   string   "4" 
+Attribute [amount]:   string   "10.20" 
+Attribute [create_date]:   string   "2015-09-22" 
+Attribute [@id]:   string   "5" 
+Attribute [amount]:   string   "30.60" 
+Attribute [create_date]:   string   "2015-09-22" 
+Attribute [@id]:   string   "6" 
+Attribute [amount]:   string   "10.00" 
+Attribute [create_date]:   string   "2015-09-28" 
+Attribute [@id]:   string   "7" 
+Attribute [amount]:   string   "20.00" 
+Attribute [create_date]:   string   "2015-09-28" 
+Attribute [@id]:   string   "8" 
+Attribute [amount]:   string   "20.00" 
+Attribute [create_date]:   string   "2015-09-28" 
+Attribute [@id]:   string   "9" 
+Attribute [amount]:   string   "20.00" 
+Attribute [create_date]:   string   "2015-09-28" 
+Attribute [@id]:   string   "10" 
+Attribute [amount]:   string   "20.00" 
+Attribute [create_date]:   string   "2015-10-03" 
+Attribute [@id]:   string   "11" 
+Attribute [amount]:   string   "20.00" 
+Attribute [create_date]:   string   "2015-10-04" 
+Attribute [@id]:   string   "1" 
+Attribute [@id]:   string   "1" 
+Attribute [@id]:   string   "11" 
+Attribute [create_date]:   string   "2015-01-08" 
+Attribute [@id]:   string   "1" 
+Attribute [create_date]:   string   "2015-07-25" 
+Attribute [column_000]:   string   "----------------- ↑↑↑ zip1 ↑↑↑ ----------------- ↓↓↓ zip2 ↓↓↓ -----------------" 
+Flags: can_have_subobjects cant_add_attrs cant_have_content no_content 
+Attributes:
+            outer_type: "application/x-json-node" [Hints: ]
+            inner_type: "system/void" [Hints: ]
+          content_type: "system/void" [Hints: ]
+                  name: "" [Hints: ]
+            annotation: "" [Hints: ]
+     last_modification: 11-23-2022 10:37:53 [Hints: ]
+
+Methods:
+  (no methods)
+
+0                                                                     application/x-json-node
+1                                                                     application/x-json-node
+2                                                                     application/x-json-node
+3                                                                     application/x-json-node
+4                                                                     application/x-json-node
+5                                                                     application/x-json-node
+6                                                                     application/x-json-node
+7                                                                     application/x-json-node
+8                                                                     application/x-json-node
+9                                                                     application/x-json-node
+10                                                                    application/x-json-node
+Attribute [@id]:   string   "1" 
+Attribute [amount]:   string   "47.50" 
+Attribute [create_date]:   string   "2015-07-25" 
+Attribute [@id]:   string   "2" 
+Attribute [amount]:   string   "27.50" 
+Attribute [create_date]:   string   "2015-07-25" 
+Attribute [@id]:   string   "3" 
+Attribute [amount]:   string   "10.00" 
+Attribute [create_date]:   string   "2015-09-21" 
+Attribute [@id]:   string   "4" 
+Attribute [amount]:   string   "10.20" 
+Attribute [create_date]:   string   "2015-09-22" 
+Attribute [@id]:   string   "5" 
+Attribute [amount]:   string   "30.60" 
+Attribute [create_date]:   string   "2015-09-22" 
+Attribute [@id]:   string   "6" 
+Attribute [amount]:   string   "10.00" 
+Attribute [create_date]:   string   "2015-09-28" 
+Attribute [@id]:   string   "7" 
+Attribute [amount]:   string   "20.00" 
+Attribute [create_date]:   string   "2015-09-28" 
+Attribute [@id]:   string   "8" 
+Attribute [amount]:   string   "20.00" 
+Attribute [create_date]:   string   "2015-09-28" 
+Attribute [@id]:   string   "9" 
+Attribute [amount]:   string   "20.00" 
+Attribute [create_date]:   string   "2015-09-28" 
+Attribute [@id]:   string   "10" 
+Attribute [amount]:   string   "20.00" 
+Attribute [create_date]:   string   "2015-10-03" 
+Attribute [@id]:   string   "11" 
+Attribute [amount]:   string   "20.00" 
+Attribute [create_date]:   string   "2015-10-04" 
+Attribute [@id]:   string   "1" 
+Attribute [@id]:   string   "1" 
+Attribute [@id]:   string   "11" 
+Attribute [create_date]:   string   "2015-01-08" 
+Attribute [@id]:   string   "1" 
+Attribute [create_date]:   string   "2015-07-25" 
+Attribute [column_000]:   string   "----------------- ↑↑↑ zip2 ↑↑↑ ----------------- ↓↓↓ zip3 ↓↓↓ -----------------" 
+Flags: can_have_subobjects cant_add_attrs cant_have_content no_content 
+Attributes:
+            outer_type: "application/x-json-node" [Hints: ]
+            inner_type: "system/void" [Hints: ]
+          content_type: "system/void" [Hints: ]
+                  name: "" [Hints: ]
+            annotation: "" [Hints: ]
+     last_modification: 11-23-2022 10:37:53 [Hints: ]
+
+Methods:
+  (no methods)
+
+0                                                                     application/x-json-node
+1                                                                     application/x-json-node
+2                                                                     application/x-json-node
+3                                                                     application/x-json-node
+4                                                                     application/x-json-node
+5                                                                     application/x-json-node
+6                                                                     application/x-json-node
+7                                                                     application/x-json-node
+8                                                                     application/x-json-node
+9                                                                     application/x-json-node
+10                                                                    application/x-json-node
+Attribute [@id]:   string   "1" 
+Attribute [amount]:   string   "47.50" 
+Attribute [create_date]:   string   "2015-07-25" 
+Attribute [@id]:   string   "2" 
+Attribute [amount]:   string   "27.50" 
+Attribute [create_date]:   string   "2015-07-25" 
+Attribute [@id]:   string   "3" 
+Attribute [amount]:   string   "10.00" 
+Attribute [create_date]:   string   "2015-09-21" 
+Attribute [@id]:   string   "4" 
+Attribute [amount]:   string   "10.20" 
+Attribute [create_date]:   string   "2015-09-22" 
+Attribute [@id]:   string   "5" 
+Attribute [amount]:   string   "30.60" 
+Attribute [create_date]:   string   "2015-09-22" 
+Attribute [@id]:   string   "6" 
+Attribute [amount]:   string   "10.00" 
+Attribute [create_date]:   string   "2015-09-28" 
+Attribute [@id]:   string   "7" 
+Attribute [amount]:   string   "20.00" 
+Attribute [create_date]:   string   "2015-09-28" 
+Attribute [@id]:   string   "8" 
+Attribute [amount]:   string   "20.00" 
+Attribute [create_date]:   string   "2015-09-28" 
+Attribute [@id]:   string   "9" 
+Attribute [amount]:   string   "20.00" 
+Attribute [create_date]:   string   "2015-09-28" 
+Attribute [@id]:   string   "10" 
+Attribute [amount]:   string   "20.00" 
+Attribute [create_date]:   string   "2015-10-03" 
+Attribute [@id]:   string   "11" 
+Attribute [amount]:   string   "20.00" 
+Attribute [create_date]:   string   "2015-10-04" 
+Attribute [@id]:   string   "1" 
+Attribute [@id]:   string   "1" 
+Attribute [@id]:   string   "11" 
+Attribute [create_date]:   string   "2015-01-08" 
+Attribute [@id]:   string   "1" 
+Attribute [create_date]:   string   "2015-07-25" 

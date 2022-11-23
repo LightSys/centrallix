@@ -10,6 +10,7 @@
 #include "stparse.h"
 #include "st_node.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
 #include <zlib.h>
 #include <time.h>
 /** module definintions **/
@@ -260,23 +261,20 @@ gzip_internal_ParseHeaders(pGzipData inf)
 	    {
 	    buf[i++]=gzipGetByte(inf);
 	    } while(i<GZIP_BUFFER_SIZE && buf[i-1]!='\0');
-	inf->Filename=(unsigned char*)nmSysMalloc(i);
-	memcpy(inf->Filename,buf,i);
+	/** verify file name **/
+	if(verifyUTF8(buf) != UTIL_VALID_CHAR)
+	    {
+	    mssError(0,"GZIP","Original file name contained invalid characters; ignoring it.");
+	    }
+	else
+	    {
+	    inf->Filename=(unsigned char*)nmSysMalloc(i);
+	    memcpy(inf->Filename,buf,i);
+	    }
 	}
     
-    /** Read file comment if present **/
-    if(inf->Header[3] & GZIP_FLAG_COMMENT)
-	{
-	char buf[GZIP_BUFFER_SIZE];
-	int i;
-	i=0;
-	do
-	    {
-	    buf[i++]=gzipGetByte(inf);
-	    } while(i<GZIP_BUFFER_SIZE && buf[i-1]!='\0');
-	inf->Comment=(unsigned char*)nmSysMalloc(i);
-	memcpy(inf->Comment,buf,i);
-	}
+    /** Ignore comments; not of use to the OSML **/
+    inf->Comment = NULL;
 
     /** Read header CRC if present **/
     /** note: not processing it right now **/
@@ -360,6 +358,7 @@ gzipClose(void* inf_v, pObjTrxTree* oxt)
     {
     pGzipData inf = GZIP(inf_v);
 
+	if(inf->Filename) nmSysFree(inf->Filename);
 	nmFree(inf,sizeof(GzipData));
 
     return 0;
@@ -566,6 +565,9 @@ int
 gzipGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pGzipData inf = GZIP(inf_v);
+    pObject cur;
+    int len, pathPos;
+    char * temp;
 
 	if(gzip_internal_ParseHeaders(inf)<0)
 	    return -1;
@@ -587,12 +589,31 @@ gzipGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    if(inf->Filename)
 		val->String=(char*)inf->Filename;
 	    else
-		/** TODO: need to examine the current filename
-		 **   if it ends in .gz, strip that off and return it
-		 **   if it ends in .tgz, change it to .tar and return it (special case)
-		 **   otherwise, return as is
+		{
+		/** get copy of file name **/
+		/** use prev ptrs to figure out how many steps in **/
+		pathPos = 0;
+		cur = inf->Obj;
+		while(cur->Prev != NULL)
+		    {
+		    pathPos++; 
+		    cur = cur->Prev;
+		    }
+		temp = obj_internal_PathPart(inf->Obj->Pathname, pathPos, 1);
+		inf->Filename = nmSysMalloc(strlen(temp)+1);
+		strcpy(inf->Filename, temp);
+		val->String = inf->Filename;
+
+		/** need to examine the current filename:
+		 ** - if it ends in .gz, strip that off and return it
+		 ** - if it ends in .tgz, change it to .tar and return it (special case)
+		 ** - otherwise, return as is
 		 **/
-		val->String = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
+		//val->String = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
+		len = strlen(val->String);
+		if(!strcmp(".gz", val->String+len-3)) val->String[len-3] = '\0';
+		else if(!strcmp(".tgz", val->String+len-4)) strcpy(val->String+len-3, "tar");
+		}
 	    return 0;
 	    }
 
