@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -233,10 +234,58 @@ typedef struct
     RptChartValues, *pRptChartValues;
 
 
+/*** Chart context ***/
+typedef struct
+    {
+    pXArray	series;
+    pXArray	values;
+    pStructInf	x_axis;
+    pStructInf	y_axis;
+    HMDT	chart_data;
+    HMGL	gr;
+    int		xres;
+    int		yres;
+    double	stand_w;
+    double	stand_h;
+    int		x_pixels;
+    int		y_pixels;
+    double	font_scale_factor;
+    int		fontsize;
+    double	min;
+    double	max;
+    int		scale;
+    char*	color;
+    char**	x_labels;
+    pRptData	inf;
+    struct
+	{
+	double	left;
+	double	top;
+	double	right;
+	double	bottom;
+	}
+	trim;
+    int		rend_x_pixels;
+    int		rend_y_pixels;
+    }
+    RptChartContext, *pRptChartContext;
+
+
+/*** Chart type driver ***/
+typedef struct
+    {
+    char	Type[32];		/* chart type: bar, line, graph */
+    int		(*PreProcessData)();	/* preprocess chart data */
+    int		(*SetupFormat)();	/* setup output formatting */
+    int		(*Generate)();		/* generate the chart */
+    }
+    RptChartDriver, *pRptChartDriver;
+
+
 /*** Globals. ***/
 struct
     {
-    XArray	Printers;
+    XArray	ChartDrivers;
     }
     RPT_INF;
 
@@ -324,6 +373,27 @@ int rpt_internal_DoForm(pRptData, pStructInf, pRptSession, int container_handle)
 int rpt_internal_WriteExpResult(pRptSession rs, pExpression exp, int container_handle, char* attrname, char* typename);
 int rpt_internal_SetMargins(pRptData inf, pStructInf config, int prt_obj, double dt, double db, double dl, double dr);
 int rpt_internal_QyGetAttrType(void* qyobj, char* attrname);
+
+
+/*** rpt_internal_RegisterChartDriver() - register a new chart driver
+ ***/
+int
+rpt_internal_RegisterChartDriver(char* name, int (*preprocess_fn)(), int (*setup_fn)(), int (*generate_fn)())
+    {
+    pRptChartDriver drv;
+
+	/** Allocate and register **/
+	drv = (pRptChartDriver)nmMalloc(sizeof(RptChartDriver));
+	if (!drv)
+	    return -1;
+	strtcpy(drv->Type, name, sizeof(drv->Type));
+	drv->PreProcessData = preprocess_fn;
+	drv->SetupFormat = setup_fn;
+	drv->Generate = generate_fn;
+	xaAddItem(&RPT_INF.ChartDrivers, (void*)drv);
+
+    return 0;
+    }
 
 
 /*** rpt_internal_GetNULLstr - get the string to be substituted in place of
@@ -2874,34 +2944,41 @@ rpt_internal_MglColor(int hexcolor)
 /*** rpt_internal_GraphToImage - convert a MathGL graph to a PrtImage.
  ***/
 pPrtImage
-rpt_internal_GraphToImage(HMGL gr)
+rpt_internal_GraphToImage(pRptChartContext ctx)
     {
     pPrtImage img = NULL;
     unsigned char* rawdata = NULL;
-    int w,h,i;
+    int xstart, ystart;
+    int x, y;
+    int src, dst;
 
 	/** Get the raw raster data from MathGL **/
-	rawdata = (unsigned char*)mgl_get_rgba(gr);
+	rawdata = (unsigned char*)mgl_get_rgba(ctx->gr);
 	if (!rawdata)
 	    {
 	    mssError(1, "RPT", "Could not convert chart to raster data");
 	    goto error;
 	    }
-	w = mgl_get_width(gr);
-	h = mgl_get_height(gr);
 
 	/** Create the image **/
-	img = prtAllocImage(w, h, PRT_COLOR_T_FULL);
+	img = prtAllocImage(ctx->x_pixels, ctx->y_pixels, PRT_COLOR_T_FULL);
 	if (!img)
 	    goto error;
 
 	/** Copy the image data **/
-	for(i=0; i<img->Hdr.DataLength; i+=4)
+	xstart = round(ctx->rend_x_pixels * ctx->trim.left);
+	ystart = round(ctx->rend_y_pixels * ctx->trim.top);
+	for(y=0; y<ctx->y_pixels; y++)
 	    {
-	    img->Data.Byte[i] = rawdata[i+2];
-	    img->Data.Byte[i+1] = rawdata[i+1];
-	    img->Data.Byte[i+2] = rawdata[i];
-	    img->Data.Byte[i+3] = rawdata[i+3];
+	    for(x=0; x<ctx->x_pixels; x++)
+		{
+		src = (x + xstart + (y + ystart) * ctx->rend_x_pixels) * 4;
+		dst = (x + y * ctx->x_pixels) * 4;
+		img->Data.Byte[dst] = rawdata[src+2];
+		img->Data.Byte[dst+1] = rawdata[src+1];
+		img->Data.Byte[dst+2] = rawdata[src];
+		img->Data.Byte[dst+3] = rawdata[src+3];
+		}
 	    }
 
 	return img;
@@ -2976,7 +3053,7 @@ rpt_internal_GetTickDist(double maxBar)
 	if(maxBar/tickDist < 5)
 	    {
 	    tickDist /= 2;
-	    if(maxBar/tickDist < 4) tickDist /= 2.5;
+	    
 	    }
 	if(tickDist == 0) tickDist = 1;
 
@@ -2984,54 +3061,312 @@ rpt_internal_GetTickDist(double maxBar)
     }
 
 
+/*** Get an Mgl color based on report config
+ ***/
+char*
+rpt_internal_GetMglColor(pRptChartContext ctx, pStructInf obj, char* attrname, char* defval, int nval)
+    {
+    int colorcode;
+    char* color = NULL;
+
+	rpt_internal_GetString(ctx->inf, obj, attrname, &color, NULL, nval);
+	if (color && (colorcode = prtLookupColor(color)) != -1)
+	    color = rpt_internal_MglColor(colorcode);
+	else
+	    color = defval;
+
+    return color;
+    }
+
+
+/*** Get decimal precision of Y values.  n and ser indicate which point and
+ *** series to work with; if they are set to -1 then we return the greatest
+ *** decimal precision of the matching values.  Maximum precision returned
+ *** is 8.
+ ***/
+int
+rpt_internal_GetYDecimalPrecision(pRptChartContext ctx, int n, int ser)
+    {
+    int i,j,k;
+    int nstart, nlen;
+    int serstart, serlen;
+    double val;
+    int prec = 0;
+
+	/** Evaluation range **/
+	if (n == -1)
+	    {
+	    nstart = 0;
+	    nlen = ctx->values->nItems;
+	    }
+	else
+	    {
+	    nstart = n;
+	    nlen = 1;
+	    }
+	if (ser == -1)
+	    {
+	    serstart = 0;
+	    serlen = ctx->series->nItems;
+	    }
+	else
+	    {
+	    serstart = ser;
+	    serlen = 1;
+	    }
+
+	/** Iterate **/
+	for(i=nstart; i<nstart+nlen; i++)
+	    {
+	    for(j=serstart; j<serstart+serlen; j++)
+		{
+		val = ((pRptChartValues)ctx->values->Items[i])->Values[j];
+		for(k=0; k<8; k++)
+		    {
+		    if (val == 0 || ceil(abs(val)*exp10(k)*0.99999999999999) != ceil(abs(val)*exp10(k)*1.00000000000001))
+			break;
+		    }
+		if (k > prec)
+		    prec = k;
+		}
+	    }
+
+    return prec;
+    }
+
+
+/*** Generate value strings
+ ***/
+pXArray
+rpt_internal_GetValueStrings(pRptChartContext ctx, int startval, int n_vals, int show_pct, int ser)
+    {
+    pXArray labels;
+    char str[32];
+    int i;
+    double val;
+    int prec;
+
+	labels = xaNew(n_vals);
+	if (!labels)
+	    return NULL;
+
+	/** Format the label strings **/
+	for(i=startval; i<startval+n_vals; i++)
+	    {
+	    val = ((pRptChartValues)ctx->values->Items[i])->Values[ser];
+	    prec = rpt_internal_GetYDecimalPrecision(ctx, i, ser);
+
+	    if (prec == 0)
+		{
+		/** Integer **/
+		snprintf(str, sizeof(str), "%d%s", (int)round(val), show_pct?"%":"");
+		}
+	    else
+		{
+		/** Double **/
+		snprintf(str, sizeof(str), "%.*f%s", prec, val, show_pct?"%":"");
+		}
+	    xaAddItem(labels, nmSysStrdup(str));
+	    }
+
+    return labels;
+    }
+
+
+/*** Free value strings
+ ***/
+int
+rpt_internal_FreeValueStrings(pXArray labels)
+    {
+    int i;
+
+	for(i=0; i<labels->nItems; i++)
+	    if (labels->Items[i])
+		nmSysFree(labels->Items[i]);
+	xaFree(labels);
+
+    return 0;
+    }
+
+
+/*** Line/Bar Labels
+ ***/
+int
+rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int total_n_vals, int ser, int n_ser, int bar, double fontsize, int show_pct)
+    {
+    int i;
+    double val;
+    pXArray labels;
+    int maxstrlen;
+    double fs;
+
+	labels = rpt_internal_GetValueStrings(ctx, startval, n_vals, show_pct, ser);
+	if (!labels)
+	    return -1;
+
+	/** Font size - scale for longer labels / smaller bars **/
+	maxstrlen = 0;
+	for(i=0; i<n_vals; i++)
+	    {
+	    if (maxstrlen < strlen(labels->Items[i]))
+		maxstrlen = strlen(labels->Items[i]);
+	    }
+	fs = ctx->stand_w * ctx->rend_x_pixels / ctx->x_pixels * 7.1 / (maxstrlen * total_n_vals * (bar?n_ser:1));
+	if (fs > fontsize) fs = fontsize;
+	if (fs < 2) fs = 2;
+
+	/** Add the labels **/
+	for(i=startval; i<startval+n_vals; i++)
+	    {
+	    val = ((pRptChartValues)ctx->values->Items[i])->Values[ser];
+	    mgl_puts_ext(ctx->gr, i*2 + (bar?(-0.7 + (0.5 + ser) * (1.4 / n_ser)):0.0), val + ctx->max*0.02, 0.0, (char*)labels->Items[i - startval], "", fs * ctx->font_scale_factor, '\0');
+	    }
+
+	rpt_internal_FreeValueStrings(labels);
+
+    return 0;
+    }
+
+
+/*** Draws X tick labels
+ ***/
+int
+rpt_internal_DrawXTickLabels(pRptChartContext ctx, int startval, int n_vals, int total_n_vals)
+    {
+    int i;
+    float b[n_vals];
+    char* blank[n_vals];
+    int axis_fontsize;
+    double fs, cfs;
+    int maxstrlen = 0;
+
+	rpt_internal_GetInteger(ctx->inf, ctx->x_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
+	fs = axis_fontsize;
+
+	for(i=0; i<n_vals-1; i++)
+	    {
+	    if (maxstrlen < (strlen(ctx->x_labels[i+startval]) + strlen(ctx->x_labels[i+startval+1]))/2)
+		maxstrlen = (strlen(ctx->x_labels[i+startval]) + strlen(ctx->x_labels[i+startval+1]))/2;
+	    }
+	if (n_vals == 1)
+	    {
+	    if (maxstrlen < strlen(ctx->x_labels[startval]))
+		maxstrlen = strlen(ctx->x_labels[startval]);
+	    }
+	cfs = ctx->stand_w * ctx->rend_x_pixels / ctx->x_pixels * 12.0 / (maxstrlen * total_n_vals);
+	if (cfs < 2)
+	    cfs = 2;
+	else if (cfs > fs)
+	    cfs = fs;
+
+	for(i=0; i<n_vals; i++)
+	    {
+	    b[i] = (i + startval) * 2.0;
+	    //mgl_puts_dir(ctx->gr, b[i], 0.0, 0.0, b[i] + 1, 0.0, 0.0, ctx->x_labels[i], 8);
+	    mgl_puts_ext(ctx->gr, b[i], 0.0, 0.0, ctx->x_labels[i+startval], "", cfs * ctx->font_scale_factor, 'x');
+	    blank[i] = "";
+	    }
+	mgl_set_ticks_vals(ctx->gr, 'x', n_vals, b, (const char**)blank);
+
+    return 0;
+    }
+
+
 /*** Bar chart
  ***/
 int
-rpt_internal_DrawBarChart(HMGL gr, HMDT dat, pXArray series, pXArray values, char** x_labels, int tickDist, int min, int max, int scale, char* color)
+rpt_internal_BarChart_PreProcess(pRptChartContext ctx)
     {
-    int reccnt = values->nItems;
-    int i,j;
-    float b[reccnt];
-    char pc[10];
-    char pcs[6];
-    double val;
+    pRptChartValues value;
+
+	/** Add blank one at beginning and end to make chart more readable **/
+	value = rpt_internal_NewChartValues(" ", ctx->series->nItems);
+	if (!value)
+	    return -1;
+	xaAddItem(ctx->values, value);
+	value = rpt_internal_NewChartValues(" ", ctx->series->nItems);
+	if (!value)
+	    return -1;
+	xaInsertBefore(ctx->values, 0, value);
+
+	/** Trim factors **/
+	ctx->trim.left = 0.12;
+	ctx->trim.right = 0.12;
+
+    return 0;    
+    }
+
+int
+rpt_internal_BarChart_Setup(pRptChartContext ctx)
+    {
+
+	mgl_set_zoom(ctx->gr, -0.05, 0, 0.95, 1.0);
+
+    return 0;
+    }
+
+int
+rpt_internal_BarChart_Generate(pRptChartContext ctx)
+    {
+    int reccnt = ctx->values->nItems;
+    int tickDist;
+    pStructInf one_series;
+    int series_fontsize;
+    int axis_fontsize;
+    double fs;
+    char* color;
+    int show_value;
+    int show_percent;
+    char* ptr;
+    char barcolors[256] = "";
+    int i;
     
+	tickDist = rpt_internal_GetTickDist(ctx->max);
+
 	/** Draw the chart **/
 	//mgl_set_alpha(gr, 1);
 	//mgl_set_alpha_default(gr, 1.0);
-	//mgl_set_axis_2d(gr,0,0,(reccnt-1)*2, max+tickDist);
-	mgl_set_axis_3d(gr, 0, 0, 0.0, (reccnt-1)*2, max+tickDist, 0.0);
-	mgl_set_origin(gr, 0.0, 0.0, NAN);
+	//mgl_set_axis_2d(gr,0,0,(reccnt-1)*2, ctx->max+tickDist);
+	mgl_set_axis_3d(ctx->gr, 0, 0, 0.0, (reccnt-1)*2, ctx->max+tickDist, 0.0);
+	mgl_set_origin(ctx->gr, 0.0, 0.0, NAN);
 	//mgl_set_tick_origin(gr, 0.0, 0.0, 1.0);
-	for(i=0; i<reccnt; i++)
-	    {
-	    b[i] = i*2.0;
-	    }
-	mgl_set_ticks(gr, -((reccnt-1)*2+1), tickDist, 1);
 
-	/** Generate the numeric bar labels **/
-	for(i=1;i<(reccnt-1);i++)
+	/** Handle each data series **/
+	for(i=0; i<ctx->series->nItems; i++)
 	    {
-	    val = ((pRptChartValues)values->Items[i])->Values[0];
-	    snprintf(pc, sizeof(pc), "%f", val);
-	    for(j=0;j<5;j++)
-		{
-		pcs[j]=pc[j];
-		}
-	    pcs[5]='\0';
-	    mgl_puts(gr, i*2, val+0.5, 0.0, pcs);
+	    /** Bar color **/
+	    one_series = (pStructInf)ctx->series->Items[i];
+	    color = rpt_internal_GetMglColor(ctx, one_series, "color", ctx->color, 0);
+	    if (strlen(barcolors) + strlen(color) >= sizeof(barcolors))
+		break;
+	    strcat(barcolors, color);
+
+	    /** Value label **/
+	    rpt_internal_GetInteger(ctx->inf, one_series, "fontsize", &series_fontsize, ctx->fontsize, 0);
+	    rpt_internal_GetString(ctx->inf, one_series, "show_value", &ptr, "yes", 0);
+	    show_value = (!strcmp(ptr, "no"))?0:1;
+	    rpt_internal_GetString(ctx->inf, one_series, "show_percent", &ptr, "no", 0);
+	    show_percent = (!strcmp(ptr, "no"))?0:1;
+
+	    /** Generate the numeric bar labels **/
+	    if (show_value || show_percent)
+		rpt_internal_DrawValueLabels(ctx, 1, reccnt-2, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_percent);
 	    }
 
-	mgl_set_font_size(gr, 8);
-	mgl_set_ticks_vals(gr, 'x', reccnt, b, (const char**)x_labels);
-	mgl_adjust_ticks(gr, "y");
-	mgl_tune_ticks(gr, scale, 1.15);
-	//mgl_set_axis_3d(gr, 0, 0, 3000, 0, 0, 4000);
-	mgl_axis(gr, "xy");
-	mgl_axis_grid(gr, "y", "W-");
-	//mgl_set_axis_3d(gr, 0, 0, -2, 0, 0, -1);
-	//mgl_set_axis_3d(gr, 0, 0, -2, 0, 0, -1);
-	mgl_bars(gr, dat, color);
+	/** Font size for y axis **/
+	rpt_internal_GetInteger(ctx->inf, ctx->y_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
+	fs = ctx->stand_w * ctx->rend_x_pixels / ctx->x_pixels * 6.0 / 50.0;
+	if (fs > axis_fontsize) fs = axis_fontsize;
+	if (fs < 2) fs = 2;
+	mgl_set_font_size(ctx->gr, fs * ctx->font_scale_factor);
+
+	rpt_internal_DrawXTickLabels(ctx, 1, reccnt-2, reccnt);
+	mgl_adjust_ticks(ctx->gr, "y");
+	//mgl_set_ticks(ctx->gr, -((reccnt-1)*2+1), tickDist, 1);
+	mgl_tune_ticks(ctx->gr, ctx->scale, 1.15);
+	mgl_axis(ctx->gr, "xy");
+	mgl_axis_grid(ctx->gr, "y", "W-");
+	mgl_bars(ctx->gr, ctx->chart_data, barcolors);
 
     return 0;
     }
@@ -3040,38 +3375,83 @@ rpt_internal_DrawBarChart(HMGL gr, HMDT dat, pXArray series, pXArray values, cha
 /*** Line chart
  ***/
 int
-rpt_internal_DrawLineChart(HMGL gr, HMDT dat, pXArray series, pXArray values, char** x_labels, int tickDist, int min, int max, int scale, char* color)
+rpt_internal_LineChart_PreProcess(pRptChartContext ctx)
     {
-    int reccnt = values->nItems;
-    int i,j;
-    float b[reccnt];
-    char pc[10];
-    char pcs[6];
-    double val;
+
+	/** Trim factors **/
+	ctx->trim.left = 0.12;
+	ctx->trim.right = 0.09;
+
+    return 0;
+    }
+
+int
+rpt_internal_LineChart_Setup(pRptChartContext ctx)
+    {
+
+	mgl_set_zoom(ctx->gr, -0.05, 0, 0.95, 1.0);
+
+    return 0;
+    }
+
+int
+rpt_internal_LineChart_Generate(pRptChartContext ctx)
+    {
+    int reccnt = ctx->values->nItems;
+    pStructInf one_series = (pStructInf)ctx->series->Items[0];
+    int tickDist;
+    int series_fontsize, axis_fontsize;
+    double fs;
+    char lineStyle[8];
+    char linecolors[256] = "";
+    int i;
+    char* ptr;
+    int show_value, show_percent;
+    char* color;
     
-	mgl_set_axis_2d(gr, 0, 0, (reccnt-1)*2, max+tickDist);
-	mgl_set_origin(gr, 0.0, 0.0, 0.0);
-	for(i=0;i<reccnt;i++)
+	tickDist = rpt_internal_GetTickDist(ctx->max);
+	rpt_internal_GetInteger(ctx->inf, one_series, "fontsize", &series_fontsize, ctx->fontsize, 0);
+        
+	mgl_set_axis_2d(ctx->gr, 0, 0, (reccnt-1)*2, ctx->max+tickDist);
+	mgl_set_origin(ctx->gr, 0.0, 0.0, 0.0);
+	//mgl_set_ticks(ctx->gr, -((reccnt-1)*2+1), tickDist, 1);
+
+	/** Handle each data series **/
+	for(i=0; i<ctx->series->nItems; i++)
 	    {
-	    b[i]=i*2.0;
+	    /** Bar color **/
+	    one_series = (pStructInf)ctx->series->Items[i];
+	    color = rpt_internal_GetMglColor(ctx, one_series, "color", ctx->color, 0);
+	    snprintf(lineStyle, sizeof(lineStyle), "%s-4#d", color);
+	    if (strlen(linecolors) + strlen(lineStyle) >= sizeof(linecolors))
+		break;
+	    strcat(linecolors, lineStyle);
+
+	    /** Value label **/
+	    rpt_internal_GetInteger(ctx->inf, one_series, "fontsize", &series_fontsize, ctx->fontsize, 0);
+	    rpt_internal_GetString(ctx->inf, one_series, "show_value", &ptr, "yes", 0);
+	    show_value = (!strcmp(ptr, "no"))?0:1;
+	    rpt_internal_GetString(ctx->inf, one_series, "show_percent", &ptr, "no", 0);
+	    show_percent = (!strcmp(ptr, "no"))?0:1;
+
+	    /** Generate the numeric bar labels **/
+	    if (show_value || show_percent)
+		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, 1, 0, series_fontsize, show_percent);
 	    }
-	mgl_set_ticks(gr, -((reccnt-1)*2+1), tickDist, 1);
-	for(i=0;i<reccnt;i++)
-	    {
-	    val = ((pRptChartValues)values->Items[i])->Values[0];
-	    snprintf(pc, sizeof(pc), "%f", val);
-	    for(j=0;j<5;j++)
-		{
-		pcs[j]=pc[j];
-		}
-	    pcs[5]='\0';
-	    mgl_puts(gr, i*2, val+0.5, 0.0, pcs);
-	    }
-	mgl_set_font_size(gr, 3);
-	mgl_set_ticks_vals(gr, 'x', reccnt, b, (const char**)x_labels);
-	mgl_tune_ticks(gr, scale, 1.15);
-	mgl_axis(gr, "xy");
-	mgl_plot(gr, dat, color);
+        
+	/** Font size for y axis **/
+	rpt_internal_GetInteger(ctx->inf, ctx->y_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
+	fs = ctx->stand_w * ctx->rend_x_pixels / ctx->x_pixels * 6.0 / 50.0;
+	if (fs > axis_fontsize) fs = axis_fontsize;
+	if (fs < 2) fs = 2;
+	mgl_set_font_size(ctx->gr, fs * ctx->font_scale_factor);
+
+	rpt_internal_DrawXTickLabels(ctx, 0, reccnt, reccnt);
+	mgl_adjust_ticks(ctx->gr, "y");
+	mgl_tune_ticks(ctx->gr, ctx->scale, 1.15);
+	mgl_axis(ctx->gr, "xy");
+	mgl_axis_grid(ctx->gr, "y", "W-");
+	mgl_plot(ctx->gr, ctx->chart_data, linecolors);
 
     return 0;
     }
@@ -3080,58 +3460,115 @@ rpt_internal_DrawLineChart(HMGL gr, HMDT dat, pXArray series, pXArray values, ch
 /*** Pie chart
  ***/
 int
-rpt_internal_DrawPieChart(HMGL gr, HMDT dat, pXArray series, pXArray values, char** x_labels, int tickDist, int min, int max, int scale, char* color)
+rpt_internal_PieChart_PreProcess(pRptChartContext ctx)
     {
-    int reccnt = values->nItems;
-    int i,j;
+
+	if (ctx->series->nItems > 1)
+	    {
+	    mssError(1, "RPT", "Pie charts can only have one series; %d provided", ctx->series->nItems);
+	    return -1;
+	    }
+
+	if (ctx->values->nItems > 28)
+	    {
+	    mssError(1, "RPT", "Pie charts can show a maximum of 28 values; %d provided", ctx->values->nItems);
+	    return -1; /* There are only 28 colors for the pie chart*/
+	    }
+
+	/** Trim factors **/
+	ctx->trim.left = 0.09;
+	ctx->trim.right = 0.0;
+
+    return 0;
+    }
+
+int
+rpt_internal_PieChart_Setup(pRptChartContext ctx)
+    {
+
+	mgl_set_zoom(ctx->gr, -0.1, 0, 0.9, 1.0);
+
+    return 0;
+    }
+
+int
+rpt_internal_PieChart_Generate(pRptChartContext ctx)
+    {
+    int reccnt = ctx->values->nItems;
+    pStructInf series = (pStructInf)ctx->series->Items[0];
+    int i;
     double t,r=1.3;
     double sumValues=0.0;
     double sumPreviousAngles = 0.0;
-    double angles[reccnt];
-    char string[50];
-    char* pcolor;
-    char pc[10];
-    char pcs[6];
+    double angle;
+    char string[256];
     char colorString[3];
+    char* pcolor;
     double val;
-    
-	mgl_set_func(gr, "(y+1)/2*cos(pi*x)", "(y+1)/2*sin(pi*x)", 0);   //make it to a cylinder 
-	mgl_tune_ticks(gr, scale, 1.15);
+    int axis_fontsize;
+    int series_fontsize;
+    char* show_percent;
+    char* show_value;
+    int pct;
+    pXArray labels;
+   
+	/** Setup **/
+	rpt_internal_GetInteger(ctx->inf, ctx->x_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
+	rpt_internal_GetInteger(ctx->inf, series, "fontsize", &series_fontsize, ctx->fontsize, 0);
+	rpt_internal_GetString(ctx->inf, series, "show_percent", &show_percent, "pie", 0);
+	rpt_internal_GetString(ctx->inf, series, "show_value", &show_value, "legend", 0);
+	mgl_set_func(ctx->gr, "(y+1)/2*cos(pi*x)", "(y+1)/2*sin(pi*x)", 0);   //make it to a cylinder 
+	mgl_tune_ticks(ctx->gr, ctx->scale, 1.15);
 	pcolor = ":bgrhBGRHWcmywpCMYkPlenuqLENUQ"; 
+	for(i=0; i<reccnt; i++)
+	    sumValues += ((pRptChartValues)ctx->values->Items[i])->Values[0];
+	labels = rpt_internal_GetValueStrings(ctx, 0, reccnt, 0, 0);
+	if (!labels)
+	    return -1;
+
+	/** Generate the legend **/
 	for(i=0;i<reccnt;i++)
 	    {
-	    char legend[strlen(x_labels[i]) + 3];
-
-	    val = ((pRptChartValues)values->Items[i])->Values[0];
-	    snprintf(pc, sizeof(pc), "%f", val);
-	    for(j=0;j<5;j++)
-		{
-		pcs[j]=pc[j];
-		}
-	    pcs[5]='\0';
-	    snprintf(legend, sizeof(legend), "%s: ", x_labels[i]);
-	    snprintf(colorString, sizeof(colorString) - 1, "%c", pcolor[i+1]);
-	    strncat(colorString, "7", 1);
-	    mgl_add_legend(gr, legend, colorString);
+	    val = ((pRptChartValues)ctx->values->Items[i])->Values[0];
+	    pct = (int)(val/sumValues*100+0.5);
+	    if (!strcmp(show_percent, "legend") && !strcmp(show_value, "legend"))
+		snprintf(string, sizeof(string), "%s: %s (%d%%)", ctx->x_labels[i], (char*)labels->Items[i], pct);
+	    else if (!strcmp(show_percent, "legend"))
+		snprintf(string, sizeof(string), "%s: %d%%", ctx->x_labels[i], pct);
+	    else if (!strcmp(show_value, "legend"))
+		snprintf(string, sizeof(string), "%s: %s", ctx->x_labels[i], (char*)labels->Items[i]);
+	    else
+		snprintf(string, sizeof(string), "%s", ctx->x_labels[i]);
+	    snprintf(colorString, sizeof(colorString), "%c%c", pcolor[i+1], '7');
+	    mgl_add_legend(ctx->gr, string, colorString);
 	    }
+	mgl_legend_xy(ctx->gr, -0.28, 0.0, "", axis_fontsize * ctx->font_scale_factor, 0.1);
 
-	mgl_legend_xy(gr, -0.28, 0.0, "", 4, 0.1);
-	mgl_chart(gr, dat, pcolor);
+	/** Generate the pie chart itself **/
+	mgl_chart(ctx->gr, ctx->chart_data, pcolor);
 
-	/* Correctly position percentages around the chart */
-	for(i=0; i<reccnt; i++)
-	    sumValues += ((pRptChartValues)values->Items[i])->Values[0];
+	/** Correctly position percentages/values around the chart **/
 	for(i=0; i<reccnt; i++)
 	    {
-	    val = ((pRptChartValues)values->Items[i])->Values[0];
-	    angles[i] = val / sumValues * 2*M_PI;
-	    t = sumPreviousAngles + angles[i] / 2.0 - M_PI;
+	    val = ((pRptChartValues)ctx->values->Items[i])->Values[0];
+	    pct = (int)(val/sumValues*100+0.5);
+	    angle = val / sumValues * 2*M_PI;
+	    t = sumPreviousAngles + angle / 2.0 - M_PI;
 	    t /= 3; /* We don't know how this works, but this line fixed the shifting problem. */
-	    snprintf(string, sizeof(string), "%d%%", (int)(val/sumValues*100+0.5));
-	    mgl_puts(gr, t, r, 0, string);
-	    sumPreviousAngles += angles[i];
+	    if (!strcmp(show_percent, "pie") && !strcmp(show_value, "pie"))
+		snprintf(string, sizeof(string), "%s (%d%%)", (char*)labels->Items[i], pct);
+	    else if (!strcmp(show_percent, "pie"))
+		snprintf(string, sizeof(string), "%d%%", pct);
+	    else if (!strcmp(show_value, "pie"))
+		snprintf(string, sizeof(string), "%s", (char*)labels->Items[i]);
+	    else
+		strtcpy(string, "", sizeof(string));
+	    mgl_puts_ext(ctx->gr, t, r, 0, string, "", series_fontsize * ctx->font_scale_factor, '\0');
+	    sumPreviousAngles += angle;
 	    }
 	
+	rpt_internal_FreeValueStrings(labels);
+
     return 0;
     }
 
@@ -3142,6 +3579,7 @@ rpt_internal_DrawPieChart(HMGL gr, HMDT dat, pXArray series, pXArray values, cha
 int
 rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int container_handle)
     {
+    int errval = -1; /* default */
     pRptSource qy;
     pRptActiveQueries ac = NULL;
     int rval;
@@ -3149,35 +3587,25 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
     pPrtImage img = NULL;;
     int flags;
     double x,y,w,h;
-    double stand_w,stand_h;
-    int xres,yres;
-    int x_pixels,y_pixels;
     char* chart_type;
     char* series_type;
     char* title;
     char* x_axis_label;
     char* y_axis_label;
-    char* color;
     char* ptr;
-    int colorcode;
-    //char hexcolor[16];
-    int scale = 0;
     int box = 0;
     int text_rotation = 0;
     int stacked = 0;
-    int fontsize = 10;
-    pStructInf x_axis = NULL, y_axis = NULL;
+    int axis_fontsize;
     pStructInf subobj;
     pStructInf one_series;
-    pXArray series = NULL;
-    pXArray values = NULL;
-    HMDT chart_data = NULL;
-    HMGL gr = NULL;
     pRptChartValues value = NULL;
-    double min, max;
-    int tickDist;
-    char** x_labels = NULL;
-    int errval = -1; /* default */
+    pRptChartDriver drv;
+    pRptChartContext ctx = NULL;
+    double xoffset, yoffset;
+    char color[8];
+    int prec;
+    char precstr[32];
     
         /** Conditional rendering of the chart **/
 	rval = rpt_internal_CheckCondition(inf, chart);
@@ -3190,15 +3618,29 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
             mssError(0, "RPT", "Chart type required for chart '%s'", chart->Name);
 	    goto error;
             }
-	if (strcmp(chart_type, "bar") && strcmp(chart_type, "line") && strcmp(chart_type, "pie"))
+	for(i=0; i<RPT_INF.ChartDrivers.nItems; i++)
+	    {
+	    drv = (pRptChartDriver)RPT_INF.ChartDrivers.Items[i];
+	    if (!strcmp(drv->Type, chart_type))
+		break;
+	    drv = NULL;
+	    }
+	if (!drv)
 	    {
             mssError(0, "RPT", "Invalid chart type '%s' for chart '%s'", chart_type, chart->Name);
             goto error;
 	    }
 
+	/** Set up rendering context **/
+	ctx = (pRptChartContext)nmMalloc(sizeof(RptChartContext));
+	if (!ctx)
+	    goto error;
+	memset(ctx, 0, sizeof(RptChartContext));
+	ctx->inf = inf;
+
 	/** Determine axis/series counts **/
-	series = xaNew(4);
-	if (!series)
+	ctx->series = xaNew(4);
+	if (!ctx->series)
 	    goto error;
 	for(i=0; i<chart->nSubInf; i++)
 	    {
@@ -3216,7 +3658,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 			mssError(1, "RPT", "Chart types cannot be intermixed (chart '%s', series '%s')", chart->Name, subobj->Name);
 			goto error;
 			}
-		    xaAddItem(series, subobj);
+		    xaAddItem(ctx->series, subobj);
 		    }
 		else if (!strcmp(subobj->UsrType, "report/chart-axis"))
 		    {
@@ -3227,21 +3669,21 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 			}
 		    if (!strcmp(ptr, "x"))
 			{
-			if (x_axis)
+			if (ctx->x_axis)
 			    {
 			    mssError(1, "RPT", "Chart '%s' must have only one x axis", chart->Name);
 			    goto error;
 			    }
-			x_axis = subobj;
+			ctx->x_axis = subobj;
 			}
 		    else if (!strcmp(ptr, "y"))
 			{
-			if (y_axis)
+			if (ctx->y_axis)
 			    {
 			    mssError(1, "RPT", "Chart '%s' must have only one y axis", chart->Name);
 			    goto error;
 			    }
-			y_axis = subobj;
+			ctx->y_axis = subobj;
 			}
 		    else
 			{
@@ -3253,11 +3695,16 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	    }
 
 	/** Verify at least one series and two axes **/
-	if (series->nItems == 0 || !x_axis || !y_axis)
+	if (ctx->series->nItems == 0 || !ctx->x_axis || !ctx->y_axis)
 	    {
 	    mssError(1, "RPT", "chart '%s' must have x and y axes and at least one series", chart->Name);
 	    goto error;
 	    }
+
+	/** Title and labels **/
+	rpt_internal_GetString(inf, chart, "title", &title, "", 0);
+	rpt_internal_GetString(inf, ctx->x_axis, "label", &x_axis_label, "", 0);
+	rpt_internal_GetString(inf, ctx->y_axis, "label", &y_axis_label, "", 0);
 
 	/** Start the query to get the chart values. **/
 	if ((ac = rpt_internal_Activate(inf, chart, rs)) == NULL)
@@ -3268,24 +3715,24 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	    goto error;
 
 	/** Enter the row retrieval loop. **/
-	values = xaNew(16);
-	if (!values)
+	ctx->values = xaNew(16);
+	if (!ctx->values)
 	    goto error;
 	qy = ac->Queries[ac->Count-1];
 	while(rval == 0)
             {
             /** Get the labels for the x-axis **/
-	    rpt_internal_GetString(inf, (pStructInf)(series->Items[0]), "x_value", &ptr, "", 0);
+	    rpt_internal_GetString(inf, (pStructInf)(ctx->series->Items[0]), "x_value", &ptr, "", 0);
 
 	    /** Allocate the tuple **/
-	    value = rpt_internal_NewChartValues(ptr, series->nItems);
+	    value = rpt_internal_NewChartValues(ptr, ctx->series->nItems);
 	    if (!value)
 		goto error;
             
             /** Get the y values **/
-	    for(i=0; i<series->nItems; i++)
+	    for(i=0; i<ctx->series->nItems; i++)
 		{
-		one_series = (pStructInf)xaGetItem(series, i);
+		one_series = (pStructInf)xaGetItem(ctx->series, i);
 		if (rpt_internal_GetDouble(inf, one_series, "y_value", &(value->Values[i]), 0.0, 0) < 0)
 		    {
 		    mssError(0, "RPT", "Could not get y_value for series '%s'", one_series->Name);
@@ -3294,7 +3741,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 		}
 
 	    /** Next record **/
-	    xaAddItem(values, value);
+	    xaAddItem(ctx->values, value);
 	    value = NULL;
 	    rval = rpt_internal_NextRecord(ac, inf, chart, rs, 0);
 	    }
@@ -3304,132 +3751,133 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	ac = NULL;
 
 	/** Bar chart?  Add empty space on each end. **/
-	if (!strcmp(chart_type, "bar"))
-	    {
-	    value = rpt_internal_NewChartValues(" ", series->nItems);
-	    if (!value)
-		goto error;
-	    xaAddItem(values, value);
-	    value = rpt_internal_NewChartValues(" ", series->nItems);
-	    if (!value)
-		goto error;
-	    xaInsertBefore(values, 0, value);
-	    value = NULL;
-	    }
-        
-	/** Allocate the chart data **/
-	chart_data = mgl_create_data_size(values->nItems, series->nItems, 1);
-	if (!chart_data)
+	if (drv->PreProcessData(ctx) < 0)
 	    goto error;
-	x_labels = nmSysMalloc(sizeof(char*) * values->nItems);
-	if (!x_labels)
+
+	/** Allocate the chart data **/
+	ctx->chart_data = mgl_create_data_size(ctx->values->nItems, ctx->series->nItems, 1);
+	if (!ctx->chart_data)
+	    goto error;
+	ctx->x_labels = nmSysMalloc(sizeof(char*) * ctx->values->nItems);
+	if (!ctx->x_labels)
 	    goto error;
 
 	/** Transfer our chart values to the MGL data and while we're at
 	 ** it, determine min/max data values too.
 	 **/
-	for(i=0; i<values->nItems; i++)
+	ctx->min = 0;
+	ctx->max = 0;
+	for(i=0; i<ctx->values->nItems; i++)
 	    {
-	    value = (pRptChartValues)values->Items[i];
-	    x_labels[i] = value->Label;
-	    for(j=0; j<series->nItems; j++)
+	    value = (pRptChartValues)ctx->values->Items[i];
+	    ctx->x_labels[i] = value->Label;
+	    for(j=0; j<ctx->series->nItems; j++)
 		{
-		mgl_data_set_value(chart_data, (float)value->Values[j], i, j, 0);
-		if (min > value->Values[j]) min = value->Values[j];
-		if (max < value->Values[j]) max = value->Values[j];
+		mgl_data_set_value(ctx->chart_data, (float)value->Values[j], i, j, 0);
+		if (ctx->min > value->Values[j]) ctx->min = value->Values[j];
+		if (ctx->max < value->Values[j]) ctx->max = value->Values[j];
 		}
 	    }
 	value = NULL;
-	tickDist = rpt_internal_GetTickDist(max);
-        
+
         /** Get area geometry in given units **/
         rpt_internal_GetDouble(inf, chart, "x", &x, -1.0, 0);
 	rpt_internal_GetDouble(inf, chart, "y", &y, -1.0, 0);
-	if (rpt_internal_GetDouble(inf, chart, "width", &w, NAN, 0) < 0) goto error;
-	if (rpt_internal_GetDouble(inf, chart, "height", &h, NAN, 0) < 0) goto error;
+	if (rpt_internal_GetDouble(inf, chart, "width", &w, NAN, 0) < 0 || w == 0) goto error;
+	if (rpt_internal_GetDouble(inf, chart, "height", &h, NAN, 0) < 0 || h == 0) goto error;
 
 	/** Chart configuration **/
 	box = rpt_internal_GetBool(inf, chart, "box", 0, 0);
-	scale = rpt_internal_GetBool(inf, chart, "scale", 0, 0);
+	ctx->scale = rpt_internal_GetBool(inf, chart, "scale", 0, 0);
 	stacked = rpt_internal_GetBool(inf, chart, "stacked", 0, 0);
 	text_rotation = rpt_internal_GetBool(inf, chart, "text_rotation", 0, 0);
-	rpt_internal_GetInteger(inf, chart, "fontsize", &fontsize, prtGetFontSize(container_handle), 0);
+	rpt_internal_GetInteger(inf, chart, "fontsize", &ctx->fontsize, prtGetFontSize(container_handle), 0);
+	if (ctx->fontsize < 1)
+	    goto error;
 
         /* Convert to standard units */
-        stand_w = prtUnitX(rs->PSession, w);
-        stand_h = prtUnitY(rs->PSession, h);
+        ctx->stand_w = prtUnitX(rs->PSession, w);
+        ctx->stand_h = prtUnitY(rs->PSession, h);
         
         /* Get the resolution */
-        prtGetResolution(rs->PSession, &xres, &yres);
+        prtGetResolution(rs->PSession, &ctx->xres, &ctx->yres);
         
         /* Get Actual pixel dimensions */
-        x_pixels = stand_w * (double)xres / 10;
-        y_pixels = stand_h * (double)yres / 6;
-        
-        /* Check for title and axis labels */
-	rpt_internal_GetString(inf, chart, "title", &title, "", 0);
-	rpt_internal_GetString(inf, x_axis, "label", &x_axis_label, "", 0);
-	rpt_internal_GetString(inf, y_axis, "label", &y_axis_label, "", 0);
+        ctx->x_pixels = ctx->stand_w * (double)ctx->xres / 10;
+        ctx->y_pixels = ctx->stand_h * (double)ctx->yres / 6;
 
-	/** Chart color **/
-	rpt_internal_GetString(inf, chart, "color", &color, "blue", 0);
-	if ((colorcode = prtLookupColor(color)) != -1)
-	    {
-	    color = rpt_internal_MglColor(colorcode);
-	    }
+	/** Trim for absence of title / label **/
+	if (!*title)
+	    ctx->trim.top = 0.14 + (ctx->stand_h - 8) / 42.0 * 0.025;
 	else
-	    {
-	    color = "b";
-	    }
+	    ctx->trim.top = (ctx->stand_h - 8) / 42.0 * 0.03;
+	if (!*x_axis_label)
+	    ctx->trim.bottom = 0.075 + (ctx->stand_h - 8) / 42.0 * 0.08;
+	else
+	    ctx->trim.bottom = (ctx->stand_h - 8) / 42.0 * 0.13;
+
+	/** Rendering dimensions **/
+	ctx->rend_x_pixels = round(ctx->x_pixels / (1.0 - ctx->trim.left - ctx->trim.right));
+	ctx->rend_y_pixels = round(ctx->y_pixels / (1.0 - ctx->trim.top - ctx->trim.bottom));
+
+	/** Font scaling **/
+	ctx->font_scale_factor = 8.0 / ctx->stand_h * ctx->y_pixels / ctx->rend_y_pixels;
+        
+	/** Chart color **/
+	strtcpy(color, rpt_internal_GetMglColor(ctx, chart, "color", "b", 0), sizeof(color));
+	ctx->color = color;
 
 	/** Create the chart **/
-	gr = mgl_create_graph_zb(x_pixels, y_pixels);
-	if (!gr)
+	ctx->gr = mgl_create_graph_zb(ctx->rend_x_pixels, ctx->rend_y_pixels);
+	if (!ctx->gr)
 	    goto error;
-	mgl_set_rotated_text(gr, text_rotation?1:0);
-	if (*title)
-	    mgl_title(gr, title, "", 8);
+	mgl_set_rotated_text(ctx->gr, text_rotation?1:0);
+
+	/** Decimal precision **/
+	prec = rpt_internal_GetYDecimalPrecision(ctx, -1, -1);
+	snprintf(precstr, sizeof(precstr), "%%.%df", prec);
+	mgl_set_ytt(ctx->gr, precstr);
+        
+	/** Graphics setup for chart type **/
+	if (drv->SetupFormat(ctx) < 0)
+	    goto error;
 
         /** Draw the chart, depending on type **/
-        if(!strcmp(chart_type, "bar"))
-            {
-            rpt_internal_DrawBarChart(gr, chart_data, series, values, x_labels, tickDist, min, max, scale, color);
-            }
-        else if(!strcmp(chart_type, "line"))
-            {
-            rpt_internal_DrawLineChart(gr, chart_data, series, values, x_labels, tickDist, min, max, scale, color);
-            }
-        else if(!strcmp(chart_type, "pie"))
-            {
-            if (values->nItems > 28)
-		{
-		mssError(1, "RPT", "Pie charts can show a maximum of 28 values; %d provided", values->nItems);
-		return -1; /* There are only 28 colors for the pie chart*/
-		}
-            rpt_internal_DrawPieChart(gr, chart_data, series, values, x_labels, tickDist, min, max, scale, color);
-            }
+	if (drv->Generate(ctx) < 0)
+	    goto error;
       
-	/** Axis labels **/
+	/** Title and axis labels **/
+	if (*title)
+	    mgl_title(ctx->gr, title, "", ctx->fontsize * ctx->font_scale_factor);
 	if (*x_axis_label)
-	    mgl_label_ext(gr, 'x', x_axis_label, 0, 8, -0.0);
+	    {
+	    rpt_internal_GetInteger(inf, ctx->x_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
+	    mgl_label_ext(ctx->gr, 'x', x_axis_label, 0, axis_fontsize * ctx->font_scale_factor, -0.0);
+	    }
 	if (*y_axis_label)
-	    mgl_label_ext(gr, 'y', y_axis_label, 0, 8, -0.0);
+	    {
+	    rpt_internal_GetInteger(inf, ctx->y_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
+	    //mgl_label_ext(ctx->gr, 'y', y_axis_label, 0, axis_fontsize * ctx->font_scale_factor, -0.0);
+	    yoffset = (ctx->max - ctx->min)/2.0 - (strlen(y_axis_label) * axis_fontsize) * (ctx->max - ctx->min) / 520.0 * ctx->font_scale_factor;
+	    xoffset = (ctx->values->nItems - 0.8) / -4.2;
+	    mgl_puts_dir(ctx->gr, xoffset, yoffset, 0.0, 0.0, 1.0, 0.0, y_axis_label, axis_fontsize * ctx->font_scale_factor);
+	    }
 
 	/** Chart box **/
 	if (box)
-	    mgl_box(gr, 1);
+	    mgl_box(ctx->gr, 1);
 
 	/** Render the chart **/
-	img = rpt_internal_GraphToImage(gr);
+	img = rpt_internal_GraphToImage(ctx);
 	if (!img)
 	    {
 	    mssError(0, "RPT", "Could not create chart");
 	    goto error;
 	    }
-	mgl_delete_data(chart_data);
-	chart_data = NULL;
-	mgl_delete_graph(gr);
-	gr = NULL;
+	mgl_delete_data(ctx->chart_data);
+	ctx->chart_data = NULL;
+	mgl_delete_graph(ctx->gr);
+	ctx->gr = NULL;
 
 	/** Check flags **/
 	flags = 0;
@@ -3441,32 +3889,36 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	    goto error;
 	img = NULL;
 
-	/** Fall through to error handler but return success **/
+	/** Fall through to error handler, to cleanup our resources,
+	 ** but return success.
+	 **/
 	errval = 0;
 
     error:
-	if (x_labels)
-	    nmSysFree(x_labels);
-	if (series)
-	    xaFree(series);
+	if (ctx->x_labels)
+	    nmSysFree(ctx->x_labels);
+	if (ctx->series)
+	    xaFree(ctx->series);
 	if (value)
 	    rpt_internal_FreeChartValues(value);
-	if (values)
+	if (ctx->values)
 	    {
-	    for(i=0; i<values->nItems; i++)
+	    for(i=0; i<ctx->values->nItems; i++)
 		{
-		rpt_internal_FreeChartValues((pRptChartValues)xaGetItem(values, i));
+		rpt_internal_FreeChartValues((pRptChartValues)xaGetItem(ctx->values, i));
 		}
-	    xaFree(values);
+	    xaFree(ctx->values);
 	    }
 	if (ac)
 	    rpt_internal_Deactivate(inf, ac);
-	if (chart_data)
-	    mgl_delete_data(chart_data);
-	if (gr)
-	    mgl_delete_graph(gr);
+	if (ctx->chart_data)
+	    mgl_delete_data(ctx->chart_data);
+	if (ctx->gr)
+	    mgl_delete_graph(ctx->gr);
 	if (img)
 	    prtFreeImage(img);
+	if (ctx)
+	    nmFree(ctx, sizeof(RptChartContext));
 	return errval;
     }
 
@@ -5617,7 +6069,12 @@ rptInitialize()
 
 	/** Initialize globals **/
 	memset(&RPT_INF,0,sizeof(RPT_INF));
-	xaInit(&RPT_INF.Printers,16);
+	xaInit(&RPT_INF.ChartDrivers,16);
+
+	/** Chart drivers **/
+	rpt_internal_RegisterChartDriver("bar", rpt_internal_BarChart_PreProcess, rpt_internal_BarChart_Setup, rpt_internal_BarChart_Generate);
+	rpt_internal_RegisterChartDriver("line", rpt_internal_LineChart_PreProcess, rpt_internal_LineChart_Setup, rpt_internal_LineChart_Generate);
+	rpt_internal_RegisterChartDriver("pie", rpt_internal_PieChart_PreProcess, rpt_internal_PieChart_Setup, rpt_internal_PieChart_Generate);
 
 	/** Setup the structure **/
 	strcpy(drv->Name,"RPT - Reporting Translation Driver");
