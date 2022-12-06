@@ -456,7 +456,7 @@ prt_textod_WriteFF(void* context_v)
  *** page which will be printed after the current row of objects.
  ***/
 double
-prt_textod_WriteRect(void* context_v, double width, double height, double next_y)
+prt_textod_WriteRect(void* context_v, double width, double height, double next_y, int color)
     {
     pPrtTextodInf context = (pPrtTextodInf)context_v;
     double new_y;

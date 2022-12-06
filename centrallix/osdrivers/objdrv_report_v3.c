@@ -434,8 +434,12 @@ rpt_internal_GetValue(pRptData inf, pStructInf config, char* attrname, int datat
     pStructInf attr;
     pRptUserData ud;
     pExpression exp = NULL;
-    pExpression our_exp = NULL;
+    static pExpression our_exp = NULL;
     char* str;
+
+	if (our_exp)
+	    expFreeExpression(our_exp);
+	our_exp = NULL;
 
 	/** Find the attr **/
 	attr = stLookup(config, attrname);
@@ -539,14 +543,10 @@ rpt_internal_GetValue(pRptData inf, pStructInf config, char* attrname, int datat
 	    mssError(1, "RPT", "Type mismatch accessing attribute '%s' of object '%s'", attr->Name, config->Name);
 	    goto error;
 	    }
-	if (our_exp)
-	    expFreeExpression(our_exp);
 
 	return exp->DataType;
 
     error:
-	if (our_exp)	
-	    expFreeExpression(our_exp);
 	return -1;
     }
 
@@ -3814,7 +3814,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	if (!*x_axis_label)
 	    ctx->trim.bottom = 0.075 + (ctx->stand_h - 8) / 42.0 * 0.08;
 	else
-	    ctx->trim.bottom = (ctx->stand_h - 8) / 42.0 * 0.13;
+	    ctx->trim.bottom = (ctx->stand_h < 12)?0.0:((ctx->stand_h - 12) / 42.0 * 0.13);
 
 	/** Rendering dimensions **/
 	ctx->rend_x_pixels = round(ctx->x_pixels / (1.0 - ctx->trim.left - ctx->trim.right));
@@ -3852,7 +3852,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	if (*x_axis_label)
 	    {
 	    rpt_internal_GetInteger(inf, ctx->x_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
-	    mgl_label_ext(ctx->gr, 'x', x_axis_label, 0, axis_fontsize * ctx->font_scale_factor, -0.0);
+	    mgl_label_ext(ctx->gr, 'x', x_axis_label, 0, axis_fontsize * ctx->font_scale_factor, axis_fontsize * ctx->font_scale_factor / 50.0 + ctx->stand_h / 50.0);
 	    }
 	if (*y_axis_label)
 	    {
@@ -4054,6 +4054,15 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
 		{
 		n = strtoi(ptr+1, NULL, 16);
 		if (prtSetColor(prt_obj, n) < 0)
+		    return -1;
+		}
+	    }
+	if (rpt_internal_GetString(inf, config, "bgcolor", &ptr, NULL, 0) >= 0)
+	    {
+	    if (ptr[0] == '#')
+		{
+		n = strtoi(ptr+1, NULL, 16);
+		if (prtSetBGColor(prt_obj, n) < 0)
 		    return -1;
 		}
 	    }

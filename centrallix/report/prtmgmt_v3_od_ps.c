@@ -1009,7 +1009,7 @@ prt_psod_WriteFF(void* context_v)
  *** on the page that will be printed after this row of objects.
  ***/
 double
-prt_psod_WriteRect(void* context_v, double width, double height, double next_y)
+prt_psod_WriteRect(void* context_v, double width, double height, double next_y, int color)
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
     double x1,x2,y1,y2;
@@ -1027,12 +1027,30 @@ prt_psod_WriteRect(void* context_v, double width, double height, double next_y)
 	y1 = context->CurVPos*12.0 + 0.000001;
 	y2 = y1 + height*12.0;
 
+	/** Color change? **/
+	if (color != -1 && color != context->SelectedStyle.Color)
+	    {
+	    prt_psod_Output_va(context, "%.3f %.3f %.3f RGB\n", 
+		    ((color>>16) & 0xFF) / 255.0,
+		    ((color>>8) & 0xFF) / 255.0,
+		    ((color) & 0xFF) / 255.0);
+	    }
+
 	/** Output the rectangle **/
 	prt_psod_Output_va(context,	"%.1f %.1f NXY %.1f %.1f LXY %.1f %.1f LXY %.1f %.1f LXY fill\n",
 		x1,y1,
 		x2,y1,
 		x2,y2,
 		x1,y2);
+
+	/** Color change? **/
+	if (color != -1 && color != context->SelectedStyle.Color)
+	    {
+	    prt_psod_Output_va(context, "%.3f %.3f %.3f RGB\n", 
+		    ((context->SelectedStyle.Color>>16) & 0xFF) / 255.0,
+		    ((context->SelectedStyle.Color>>8) & 0xFF) / 255.0,
+		    ((context->SelectedStyle.Color) & 0xFF) / 255.0);
+	    }
 
     return context->CurVPos + height;
     }

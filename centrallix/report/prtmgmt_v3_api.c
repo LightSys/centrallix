@@ -521,6 +521,43 @@ prtGetColor(int handle_id)
     }
 
 
+/*** prtSetBGColor() - sets the current background color.  Colors are
+ *** expressed as 0x00RRGGBB.
+ ***/
+int
+prtSetBGColor(int handle_id, int bgcolor)
+    {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+    pPrtSession s = PRTSESSION(obj);
+
+	/** Check the obj **/
+	if (!obj) return -1;
+	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
+
+	/** Set background color. **/
+	obj->BGColor = bgcolor;
+
+	prt_internal_DispatchEvents(s);
+
+    return 0;
+    }
+
+
+/*** prtGetBGColor() - returns the current bg color as 0x00RRGGBB.
+ ***/
+int
+prtGetBGColor(int handle_id)
+    {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+
+	/** Check the obj **/
+	if (!obj) return -1;
+	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
+
+    return obj->BGColor;
+    }
+
+
 /*** prtSetHPos() - sets the horizontal position on the current line.  This
  *** is NOT used for setting the position of a container - to do that, include
  *** the position in the prtAddObject() call.

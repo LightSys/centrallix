@@ -155,6 +155,7 @@ prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, in
 	    offset_dir = -1;
 	else
 	    offset_dir = 0;
+	if (flags & PRT_MKBDR_F_OUTSIDE) offset_dir = -offset_dir;
 
 	/** Which 'orientation' (vertical vs. horizontal) **/
 	if (flags & (PRT_MKBDR_F_TOP | PRT_MKBDR_F_BOTTOM))
@@ -225,6 +226,7 @@ prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, in
 
 	    /** Add the rectangle **/
 	    prt_internal_Add(parent, rect_obj);
+	    rect_obj->Z = parent->Z + 0x100; /* above the object and its children */
 
 	    /** Account for our own line thickness **/
 	    thickness += (b->Sep + b->Width[selected_line]);

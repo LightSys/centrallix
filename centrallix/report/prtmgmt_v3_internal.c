@@ -161,6 +161,7 @@ prt_internal_Add(pPrtObjStream parent, pPrtObjStream new_child)
 	    new_child->Parent = parent;
 	    }
 	new_child->Session = parent->Session;
+	new_child->Z = parent->Z + 1;
 
     return 0;
     }
@@ -235,6 +236,7 @@ prt_internal_CopyGeom(pPrtObjStream src, pPrtObjStream dst)
 	dst->ConfigWidth = src->ConfigWidth;
 	dst->X = src->X;
 	dst->Y = src->Y;
+	dst->Z = src->Z;
 	dst->MarginLeft = src->MarginLeft;
 	dst->MarginRight = src->MarginRight;
 	dst->MarginTop = src->MarginTop;
@@ -320,9 +322,9 @@ prt_internal_FreeObj(pPrtObjStream obj)
 int
 prt_internal_YCompare(pPrtObjStream first, pPrtObjStream second)
     {
-    if (first->PageY > second->PageY || (first->PageY == second->PageY && first->PageX > second->PageX))
+    if (first->Z > second->Z || (first->Z == second->Z && (first->PageY > second->PageY || (first->PageY == second->PageY && first->PageX > second->PageX))))
 	return 1;
-    else if (first->PageY == second->PageY && first->PageX == second->PageX)
+    else if (first->Z == second->Z && first->PageY == second->PageY && first->PageX == second->PageX)
 	return 0;
     else
 	return -1;
@@ -912,8 +914,8 @@ prt_internal_Dump_r(pPrtObjStream obj, int level)
 	    case PRT_OBJ_T_RECT: printf("RECT: "); break;
 	    case PRT_OBJ_T_IMAGE: printf("IMG:  "); break;
 	    }
-	printf("x=%.3g y=%.3g w=%.3g h=%.3g px=%.3g py=%.3g bl=%.3g fs=%d y+bl=%.3g flg=%d id=%d\n",
-		obj->X, obj->Y, obj->Width, obj->Height,
+	printf("x=%.3g y=%.3g z=%d w=%.3g h=%.3g px=%.3g py=%.3g bl=%.3g fs=%d y+bl=%.3g flg=%d id=%d\n",
+		obj->X, obj->Y, obj->Z, obj->Width, obj->Height,
 		obj->PageX, obj->PageY, obj->YBase, obj->TextStyle.FontSize,
 		obj->Y + obj->YBase, obj->Flags, obj->ObjID);
 	for(subobj=obj->ContentHead;subobj;subobj=subobj->Next)

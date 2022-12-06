@@ -655,7 +655,7 @@ prt_pclod_WriteFF(void* context_v)
  *** on the page that will be printed after this row of objects.
  ***/
 double
-prt_pclod_WriteRect(void* context_v, double width, double height, double next_y)
+prt_pclod_WriteRect(void* context_v, double width, double height, double next_y, int color)
     {
     pPrtPclodInf context = (pPrtPclodInf)context_v;
     char pclbuf[80];

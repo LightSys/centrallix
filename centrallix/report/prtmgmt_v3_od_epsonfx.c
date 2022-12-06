@@ -570,7 +570,7 @@ prt_fxod_WriteFF(void* context_v)
  *** on the page that will be printed after this row of objects.
  ***/
 double
-prt_fxod_WriteRect(void* context_v, double width, double height, double next_y)
+prt_fxod_WriteRect(void* context_v, double width, double height, double next_y, int color)
     {
     pPrtFXodInf context = (pPrtFXodInf)context_v;
 

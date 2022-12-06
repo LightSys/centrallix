@@ -121,6 +121,7 @@ typedef struct _POS
     double		X;			/* Relative X position to container origin */
     double		Y;			/* Relative Y position to container origin */
     double		YBase;			/* Relative Y baseline to the object's Y position */
+    int			Z;			/* Z value (layering order, higher values are above) */
     double		Width;			/* Width of object */
     double		Height;			/* Height of object */
     double		ConfigWidth;		/* initially configured width of object */
@@ -424,6 +425,7 @@ extern PrtGlobals PRTMGMT;
 #define PRT_MKBDR_F_RIGHT	    8
 #define PRT_MKBDR_DIRFLAGS	    (PRT_MKBDR_F_TOP | PRT_MKBDR_F_BOTTOM | PRT_MKBDR_F_LEFT | PRT_MKBDR_F_RIGHT)
 #define PRT_MKBDR_F_MARGINRELEASE   16
+#define PRT_MKBDR_F_OUTSIDE	    32
 
 
 /*** System functions ***/
@@ -523,6 +525,8 @@ int prtSetFontSize(int handle_id, int pt_size);
 int prtGetFontSize(int handle_id);
 int prtSetColor(int handle_id, int font_color);
 int prtGetColor(int handle_id);
+int prtSetBGColor(int handle_id, int bgcolor);
+int prtGetBGColor(int handle_id);
 int prtLookupColor(char* color);
 int prtSetHPos(int handle_id, double x);
 int prtSetVPos(int handle_id, double y);

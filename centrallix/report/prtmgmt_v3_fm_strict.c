@@ -323,6 +323,10 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    if (*(cur_obj->Content)) drv->WriteText(drvdata, cur_obj->Content);
 		    break;
 
+		case PRT_OBJ_T_AREA:
+		case PRT_OBJ_T_TABLE:
+		case PRT_OBJ_T_TABLEROW:
+		case PRT_OBJ_T_TABLECELL:
 		case PRT_OBJ_T_IMAGE:
 		case PRT_OBJ_T_SVG:
                 case PRT_OBJ_T_RECT:
@@ -331,8 +335,12 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 			end_y = drv->WriteRasterData(drvdata, cur_obj->Content, cur_obj->Width, cur_obj->Height, next_y);
                     else if (cur_obj->ObjType->TypeID == PRT_OBJ_T_SVG)
                         end_y = drv->WriteSvgData(drvdata, cur_obj->Content, cur_obj->Width, cur_obj->Height, next_y);
+		    else if (cur_obj->ObjType->TypeID == PRT_OBJ_T_RECT)
+			end_y = drv->WriteRect(drvdata, cur_obj->Width, cur_obj->Height, next_y, -1);
+		    else if (cur_obj->BGColor != cur_obj->Parent->BGColor)
+			end_y = drv->WriteRect(drvdata, cur_obj->Width, cur_obj->Height, next_y, cur_obj->BGColor);
 		    else
-			end_y = drv->WriteRect(drvdata, cur_obj->Width, cur_obj->Height, next_y);
+			break;
 
 		    /** Adjust the rectangle to remove what was already printed **/
 		    if (end_y < (cur_obj->PageY + cur_obj->Height - PRT_FP_FUDGE) && end_y > (cur_obj->PageY - PRT_FP_FUDGE))
