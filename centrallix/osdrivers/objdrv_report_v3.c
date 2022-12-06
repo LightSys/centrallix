@@ -924,6 +924,7 @@ rpt_internal_CheckFormats(pRptData data, pStructInf inf)
     char* newmfmt=NULL;
     char* newdfmt=NULL;
     char* newnfmt=NULL;
+    char* neg_fc=NULL;
 
 	    /** Lookup possible 'dateformat','moneyformat' **/
 	    rpt_internal_GetString(data, inf, "dateformat", &newdfmt, NULL, 0);
@@ -940,6 +941,13 @@ rpt_internal_CheckFormats(pRptData data, pStructInf inf)
 	    if (newnfmt)
 	        {
 		cxssSetVariable("nfmt", newnfmt, 0);
+		}
+
+	    /** Negative font color **/
+	    rpt_internal_GetString(data, inf, "negative_fontcolor", &neg_fc, NULL, 0);
+	    if (neg_fc)
+	        {
+		cxssSetVariable("rpt:neg_fc", neg_fc, 0);
 		}
 
     return 0;
@@ -2667,6 +2675,8 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
     pStructInf value_inf;
     pRptUserData ud;
     int context_pushed = 0;
+    int negative_fontcolor = -1;
+    char* ptr;
 
 	/** Conditional rendering **/
 	rval = rpt_internal_CheckCondition(inf,data);
@@ -2681,6 +2691,11 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	rpt_internal_CheckGoto(rs,data,container_handle);
 	if (rpt_internal_SetStyle(inf, data, rs, container_handle) < 0)
 	    goto error;
+
+	/** Negative font color? **/
+	cxssGetVariable("rpt:neg_fc", &ptr, "");
+	if (ptr[0] == '#')
+	    negative_fontcolor = strtoi(ptr+1, NULL, 16);
 
 	/** Need to enable auto-newline? **/
 	nl = rpt_internal_GetBool(inf, data, "autonewline", 0, 0);
@@ -2711,8 +2726,16 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 		    goto error;
 		    }
 
+		/** Use negative fontcolor? **/
+		t = ud->Exp->DataType;
+		if (negative_fontcolor >= 0 && ((t == DATA_T_INTEGER && ud->Exp->Integer < 0) || (t == DATA_T_MONEY && ud->Exp->Types.Money.WholePart < 0) || (t == DATA_T_DOUBLE && ud->Exp->Types.Double < 0)))
+		    {
+		    if (prtSetColor(container_handle, negative_fontcolor) < 0)
+			return -1;
+		    }
+
 		/** Output the result **/
-		prtSetDataHints(container_handle, ud->Exp->DataType, 0);
+		prtSetDataHints(container_handle, t, 0);
 		rpt_internal_WriteExpResult(rs, ud->Exp, container_handle, data->Name, NULL);
 		}
 	    else
@@ -2722,6 +2745,13 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	    }
 	else if (t == DATA_T_STRING || t == DATA_T_DOUBLE || t == DATA_T_INTEGER || t == DATA_T_MONEY)
 	    {
+	    /** Use negative fontcolor? **/
+	    if (negative_fontcolor >= 0 && ((t == DATA_T_INTEGER && od.Integer < 0) || (t == DATA_T_MONEY && od.Money->WholePart < 0) || (t == DATA_T_DOUBLE && od.Double < 0)))
+		{
+		if (prtSetColor(container_handle, negative_fontcolor) < 0)
+		    return -1;
+		}
+
 	    rval = stGetAttrValue(stLookup(data,"value"), t, POD(&od), 0);
 	    if (rval == 0) rpt_internal_WritePOD(rs, t, &od, container_handle);
 	    else if (rval == 1) rpt_internal_WritePOD(rs, t, NULL, container_handle);
