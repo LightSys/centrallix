@@ -1,0 +1,6 @@
+##NAME xml_01: test various encodings 
+query select * from /tests/xml/utf_8.xml
+query select "------------↑  UTF-8  ↑------------↓UTF-16(BE)↓------------"
+query select * from /tests/xml/utf_16_BE.xml
+query select "------------↑UTF-16(BE)↑------------↓UTF-16(LE)↓------------"
+query select * from /tests/xml/utf_16_LE.xml

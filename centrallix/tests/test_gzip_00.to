@@ -21,21 +21,3 @@ show /tests/zip3.json.gz
 ls /tests/zip3.json.gz
 query select * from  /tests/zip3.json.gz
 query select * from  /tests/zip3.json.gz/1
-
-#query select "----------------- ↑↑↑ zip3 ↑↑↑ ----------------- ↓↓↓ zip4 ↓↓↓ -----------------"
-#
-## no file name + ends in .tgz 
-## NOTE: .tgz is not recognized by centrallix, and neither is .tar; so this cannot be tested
-#show /tests/zip4.json.tgz
-#ls /tests/zip4.json.tgz
-#query select * from  /tests/zip2.json.tgz
-#query select * from  /tests/zip2.json.tgz/1
-#
-#query select "----------------- ↑↑↑ zip4 ↑↑↑ ----------------- ↓↓↓ zip5 ↓↓↓ -----------------"
-#
-## no file name + unknown extension
-## NOTE: whatever extension I pick either is given to the wrong driver, or no driver at all; cannot test
-#show /tests/zip5.json
-#ls /tests/zip5.json
-#query select * from  /tests/zip5.json
-#query select * from  /tests/zip5.json/1

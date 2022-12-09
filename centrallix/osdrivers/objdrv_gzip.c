@@ -609,7 +609,7 @@ gzipGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		 ** - if it ends in .tgz, change it to .tar and return it (special case)
 		 ** - otherwise, return as is
 		 **/
-		//val->String = inf->Obj->Pathname->Elements[inf->Obj->Pathname->nElements-1];
+
 		len = strlen(val->String);
 		if(!strcmp(".gz", val->String+len-3)) val->String[len-3] = '\0';
 		else if(!strcmp(".tgz", val->String+len-4)) strcpy(val->String+len-3, "tar");

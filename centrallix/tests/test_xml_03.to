@@ -1,0 +1,4 @@
+##NAME xml_03: test invalid utf-16 file content
+query select * from /tests/xml/invalid_utf_16_BE.xml
+query select "------------↑ UTF-16 BE ↑------------↓ UTF-16 LE ↓------------"
+#query select * from /tests/xml/invalid_utf_16_LE.xml

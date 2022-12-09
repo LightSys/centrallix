@@ -1,0 +1,162 @@
+tagA|0                                                                text/xml-node
+tagA|1                                                                text/xml-node
+tagC                                                                  text/xml-node
+ВедьБогтакпол                                            text/xml-node
+Attribute [prop]:   string   "bob" 
+Attribute [propF]:   string   "billy" 
+Attribute [tagB]:   string   "Hello there" 
+Attribute [tagC]:   string   "Harry" 
+Attribute [prop]:   string   "house" 
+Attribute [propF]:   string   "thekid" 
+Attribute [text]:   string   "" 
+Attribute [propQ]:   string   "Quincy" 
+Attribute [text]:   string   "" 
+Attribute [神はひとり子をさえ惜]:   string   "𓀎𓀏𓀐𓀑𓀒𓀓𓀔𓀕𓀖𓀗𓀘𓀙" 
+Attribute [акпол]:   string   "|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|" 
+Attribute [text]:   string   "" 
+Flags: can_have_subobjects cant_add_attrs can_seek_full can_seek_rewind 
+Attributes:
+            outer_type: "text/xml-node" [Hints: ]
+            inner_type: "text/plain" [Hints: ]
+          content_type: "text/plain" [Hints: ]
+                  name: "tagA|0" [Hints: ]
+            annotation: "" [Hints: ]
+     last_modification: 12-07-2022 16:53:55 [Hints: ]
+                  prop: "bob" [Hints: ]
+                 propF: "billy" [Hints: ]
+                  tagB: "Hello there" [Hints: ]
+                  tagC: "Harry" [Hints: ]
+
+Methods:
+  (no methods)
+
+
+Flags: can_have_subobjects cant_add_attrs can_seek_full can_seek_rewind 
+Attributes:
+            outer_type: "text/xml-node" [Hints: ]
+            inner_type: "text/plain" [Hints: ]
+          content_type: "text/plain" [Hints: ]
+                  name: "tagB" [Hints: ]
+            annotation: "" [Hints: ]
+     last_modification: 12-07-2022 16:53:55 [Hints: ]
+                  text: "" [Hints: ]
+
+Methods:
+  (no methods)
+
+Flags: can_have_subobjects cant_add_attrs can_seek_full can_seek_rewind 
+Attributes:
+            outer_type: "text/xml-node" [Hints: ]
+            inner_type: "text/plain" [Hints: ]
+          content_type: "text/plain" [Hints: ]
+                  name: "tagB|0" [Hints: ]
+            annotation: "" [Hints: ]
+     last_modification: 12-07-2022 16:53:55 [Hints: ]
+                  text: "" [Hints: ]
+
+Methods:
+  (no methods)
+
+Hello there
+Flags: can_have_subobjects cant_add_attrs can_seek_full can_seek_rewind 
+Attributes:
+            outer_type: "text/xml-node" [Hints: ]
+            inner_type: "text/plain" [Hints: ]
+          content_type: "text/plain" [Hints: ]
+                  name: "tagC" [Hints: ]
+            annotation: "" [Hints: ]
+     last_modification: 12-07-2022 16:53:55 [Hints: ]
+                 propC: "bob" [Hints: ]
+                  text: "" [Hints: ]
+
+Methods:
+  (no methods)
+
+Flags: can_have_subobjects cant_add_attrs can_seek_full can_seek_rewind 
+Attributes:
+            outer_type: "text/xml-node" [Hints: ]
+            inner_type: "text/plain" [Hints: ]
+          content_type: "text/plain" [Hints: ]
+                  name: "tagC|0" [Hints: ]
+            annotation: "" [Hints: ]
+     last_modification: 12-07-2022 16:53:55 [Hints: ]
+                 propC: "bob" [Hints: ]
+                  text: "" [Hints: ]
+
+Methods:
+  (no methods)
+
+Harry
+Flags: can_have_subobjects cant_add_attrs can_seek_full can_seek_rewind 
+Attributes:
+            outer_type: "text/xml-node" [Hints: ]
+            inner_type: "text/plain" [Hints: ]
+          content_type: "text/plain" [Hints: ]
+                  name: "tagA|1" [Hints: ]
+            annotation: "" [Hints: ]
+     last_modification: 12-07-2022 16:53:55 [Hints: ]
+                  prop: "house" [Hints: ]
+                 propF: "thekid" [Hints: ]
+                  text: "" [Hints: ]
+
+Methods:
+  (no methods)
+
+
+	
+Flags: can_have_subobjects cant_add_attrs can_seek_full can_seek_rewind 
+Attributes:
+            outer_type: "text/xml-node" [Hints: ]
+            inner_type: "text/plain" [Hints: ]
+          content_type: "text/plain" [Hints: ]
+                  name: "tagB|0" [Hints: ]
+            annotation: "" [Hints: ]
+     last_modification: 12-07-2022 16:53:55 [Hints: ]
+                  text: "" [Hints: ]
+
+Methods:
+  (no methods)
+
+Flags: can_have_subobjects cant_add_attrs can_seek_full can_seek_rewind 
+Attributes:
+            outer_type: "text/xml-node" [Hints: ]
+            inner_type: "text/plain" [Hints: ]
+          content_type: "text/plain" [Hints: ]
+                  name: "tagB|0" [Hints: ]
+            annotation: "" [Hints: ]
+     last_modification: 12-07-2022 16:53:55 [Hints: ]
+                  text: "" [Hints: ]
+
+Methods:
+  (no methods)
+
+Harry
+Flags: can_have_subobjects cant_add_attrs can_seek_full can_seek_rewind 
+Attributes:
+            outer_type: "text/xml-node" [Hints: ]
+            inner_type: "text/plain" [Hints: ]
+          content_type: "text/plain" [Hints: ]
+                  name: "tagC" [Hints: ]
+            annotation: "" [Hints: ]
+     last_modification: 12-07-2022 16:53:55 [Hints: ]
+                 propQ: "Quincy" [Hints: ]
+                  text: "" [Hints: ]
+
+Methods:
+  (no methods)
+
+Flags: can_have_subobjects cant_add_attrs can_seek_full can_seek_rewind 
+Attributes:
+            outer_type: "text/xml-node" [Hints: ]
+            inner_type: "text/plain" [Hints: ]
+          content_type: "text/plain" [Hints: ]
+                  name: "tagC|0" [Hints: ]
+            annotation: "" [Hints: ]
+     last_modification: 12-07-2022 16:53:55 [Hints: ]
+                 propQ: "Quincy" [Hints: ]
+                  text: "" [Hints: ]
+
+Methods:
+  (no methods)
+
+Tom

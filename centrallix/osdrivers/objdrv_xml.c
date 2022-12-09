@@ -491,6 +491,7 @@ xml_internal_ReadDoc(pObject obj)
 	    ptr=(char*)malloc(XML_BLOCK_SIZE);
 	    ctxt=xmlCreatePushParserCtxt(NULL,NULL,NULL,0,"unknown");
 	    objRead(obj->Prev,ptr,0,0,FD_U_SEEK);
+
 	    while((bytes=objRead(obj->Prev,ptr,XML_BLOCK_SIZE,0,0))>0)
 		{
 		if(XML_DEBUG) printf("giving parser a chunk\n");
@@ -498,7 +499,14 @@ xml_internal_ReadDoc(pObject obj)
 		if(XML_DEBUG) printf("parser done with the chunk\n");
 		}
 	    free(ptr);
-	    xmlParseChunk(ctxt,NULL,0,1);
+ 
+	    int res = xmlParseChunk(ctxt,NULL,0,1);
+	    if(res != 0)
+		{
+		mssError(0,"XML","parser error # %d received. Document cannot be parsed.", res);
+		xmlFreeParserCtxt(ctxt);
+		return NULL;
+		}
 
 	    /** get the document reference **/
 	    if(!ctxt->myDoc)
