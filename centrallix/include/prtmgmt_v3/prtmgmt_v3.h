@@ -137,6 +137,7 @@ typedef struct _POS
     double		LineHeight;		/* Height of lines... */
     double		ConfigLineHeight;	/* Configured height of lines, negative if unset. */
     unsigned char*	Content;		/* Text content or image bitmap */
+    char*		URL;			/* Hyperlink for the content */
     int			ContentSize;		/* total memory allocated for the content */
     char		DataType;		/* type of data displayed in this object (Hints) */
     int                 (*Finalize)();          /* cleanup when destroying object */
@@ -545,6 +546,7 @@ int prtFreeSvg(pPrtSvg svg);
 int prtSvgSize(pPrtSvg svg);
 pXString prtConvertSvgToEps(pPrtSvg svg, double w, double h);
 int prtSetDataHints(int handle_id, int data_type, int flags);
+int prtSetURL(int handle_id, char* url);
 
 /*** Printing content functions ***/
 int prtWriteImage(int handle_id, pPrtImage imgdata, double x, double y, double width, double height, int flags);

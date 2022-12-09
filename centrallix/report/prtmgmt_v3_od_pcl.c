@@ -483,7 +483,7 @@ prt_pclod_WriteScreen(pPrtPclodInf context, int color_id, int intensity, char* t
 /*** prt_pclod_WriteText() - sends a string of text to the printer.
  ***/
 int
-prt_pclod_WriteText(void* context_v, char* str)
+prt_pclod_WriteText(void* context_v, char* str, char* url, double width, double height)
     {
     pPrtPclodInf context = (pPrtPclodInf)context_v;
     char pclbuf[64];

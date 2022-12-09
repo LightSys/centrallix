@@ -320,7 +320,7 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    switch(cur_obj->ObjType->TypeID)
 		{
 		case PRT_OBJ_T_STRING:
-		    if (*(cur_obj->Content)) drv->WriteText(drvdata, cur_obj->Content);
+		    if (*(cur_obj->Content)) drv->WriteText(drvdata, cur_obj->Content, cur_obj->URL, cur_obj->Width, cur_obj->Height);
 		    break;
 
 		case PRT_OBJ_T_AREA:

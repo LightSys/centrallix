@@ -200,6 +200,7 @@ prt_internal_CopyAttrs(pPrtObjStream src, pPrtObjStream dst)
 	memcpy(&(dst->TextStyle), &(src->TextStyle), sizeof(PrtTextStyle));
 	dst->LineHeight = src->LineHeight;
 	dst->ConfigLineHeight = src->ConfigLineHeight;
+	dst->URL = (src->URL)?nmSysStrdup(src->URL):NULL;
 
     return 0;
     }
@@ -308,6 +309,8 @@ prt_internal_FreeObj(pPrtObjStream obj)
     {
 
 	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
+	if (obj->URL)
+	    nmSysFree(obj->URL);
 	nmFree(obj, sizeof(PrtObjStream));
 
     return 0;

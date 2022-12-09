@@ -76,7 +76,7 @@ simple "system/report"
 	    marginleft=0.2;
 	    bgcolor=runserver(condition((:files:rowid / 2) * 2 == :files:rowid, "#f0f0f0", "#e0e0e0"));
 	    //bgcolor=runserver("#f0f0f0");
-	    rdr1 "report/table-cell" { font=helvetica; value=runserver(:files:thename); align=left; }
+	    rdr1 "report/table-cell" { font=helvetica; value=runserver(:files:thename); align=left; url=runserver("/sys/images/" + :files:thename); }
 	    rdr2 "report/table-cell" { value=runserver(:files:size); align=right; fontcolor=runserver(condition(:files:size > 10000, '#ff0000', '#000000')); }
 	    rdr3 "report/table-cell" { value=runserver(:files:last_modification); dateformat="dd-MMM-yyyy"; align=left; }
 	    }

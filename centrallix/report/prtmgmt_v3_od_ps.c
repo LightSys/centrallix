@@ -178,12 +178,13 @@ prt_psod_OutputHeader(pPrtPsodInf context)
     {
 
 	prt_psod_Output(context,"%!PS-Adobe-3.0\n"
-				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3 $Revision: 1.9 $ \n"
+				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3\n"
 				"%%Title: Centrallix/" PACKAGE_VERSION " Generated Document\n"
 				"%%Pages: (atend)\n"
 				"%%DocumentData: Clean7Bit\n"
 				"%%LanguageLevel: 2\n"
 				"%%EndComments\n"
+				"/pdfmark where {pop} {userdict /pdfmark /cleartomark load put} ifelse\n"
 				, -1);
 
     return 0;
@@ -803,7 +804,7 @@ prt_psod_SetVPos(void* context_v, double y)
 /*** prt_psod_WriteText() - sends a string of text to the printer.
  ***/
 int
-prt_psod_WriteText(void* context_v, char* str)
+prt_psod_WriteText(void* context_v, char* str, char* url, double width, double height)
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
     double bl;
@@ -836,6 +837,18 @@ prt_psod_WriteText(void* context_v, char* str)
 	if (psbuflen)
 	    {
 	    prt_psod_Output_va(context, "<%s> show\n", context->Buffer);
+	    }
+
+	/** URL? **/
+	if (url)
+	    {
+	    prt_psod_Output_va(context, "[ /Rect [ %.1f %.1f %.1f %.1f ] /Action << /Subtype /URI /URI (%s) >> /Border [0 0 0] /Color [0 0 .7] /Subtype /Link /ANN pdfmark\n",
+		    (context->CurHPos)*7.2 + 0.000001,
+		    context->PageHeight - ((context->CurVPos)*12.0 + bl*12.0 - 0.000001 - height*12.0),
+		    (context->CurHPos)*7.2 + 0.000001 + width*7.2,
+		    context->PageHeight - ((context->CurVPos)*12.0 + bl*12.0 - 0.000001),
+		    url
+		    );
 	    }
 
     return 0;

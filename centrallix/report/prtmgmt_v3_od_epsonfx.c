@@ -515,7 +515,7 @@ prt_fxod_WriteScreen(pPrtFXodInf context, int color_id, int intensity, char* tex
 /*** prt_fxod_WriteText() - sends a string of text to the printer.
  ***/
 int
-prt_fxod_WriteText(void* context_v, char* str)
+prt_fxod_WriteText(void* context_v, char* str, char* url, double width, double height)
     {
     pPrtFXodInf context = (pPrtFXodInf)context_v;
 

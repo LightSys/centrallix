@@ -32,6 +32,7 @@ chart "system/report"
 	height=2;
 	fontsize=8;
 	font=times;
+	url="https://lightsys.org";
 	value=runserver("Test text\n");
 	}
 

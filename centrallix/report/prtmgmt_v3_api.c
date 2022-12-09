@@ -633,6 +633,37 @@ prtSetVPos(int handle_id, double y)
     }
 
 
+/*** prtSetURL - set the url / hyperlink for the content.  After writing
+ *** content to use a hyperlink, then call this again with url set to null.
+ ***/
+int
+prtSetURL(int handle_id, char* url)
+    {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+    pPrtObjStream set_obj;
+    pPrtSession s = PRTSESSION(obj);
+
+	/** Check the obj **/
+	if (!obj) return -1;
+	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
+
+	/** Add an empty string object to contain the attr change. **/
+	set_obj = prt_internal_AddEmptyObj(obj);
+	if (!set_obj)
+	    return -1;
+	if (set_obj->URL)
+	    nmSysFree(set_obj->URL);
+	if (url)
+	    set_obj->URL = nmSysStrdup(url);
+	else
+	    set_obj->URL = NULL;
+
+	prt_internal_DispatchEvents(s);
+
+    return 0;
+    }
+
+
 /*** prtWriteString - put a string of text into the document.
  ***/
 int

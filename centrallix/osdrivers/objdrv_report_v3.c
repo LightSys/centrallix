@@ -2677,6 +2677,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
     int context_pushed = 0;
     int negative_fontcolor = -1;
     char* ptr;
+    char* url = NULL;
 
 	/** Conditional rendering **/
 	rval = rpt_internal_CheckCondition(inf,data);
@@ -2692,6 +2693,11 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	if (rpt_internal_SetStyle(inf, data, rs, container_handle) < 0)
 	    goto error;
 
+	/** URL **/
+	rpt_internal_GetString(inf, data, "url", &url, NULL, 0);
+	if (url)
+	    prtSetURL(container_handle, url);
+
 	/** Negative font color? **/
 	cxssGetVariable("rpt:neg_fc", &ptr, "");
 	if (ptr[0] == '#')
@@ -2705,7 +2711,6 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	if (!value_inf)
 	    {
 	    mssError(0,"RPT","%s '%s' must have a value expression", data->UsrType, data->Name);
-	    prtSetTextStyle(container_handle, &oldstyle);
 	    goto error;
 	    }
 	t = stGetAttrType(value_inf, 0);
@@ -2722,7 +2727,6 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 		if (rval < 0)
 		    {
 		    mssError(0,"RPT","Could not evaluate %s '%s' value expression", data->UsrType, data->Name);
-		    prtSetTextStyle(container_handle, &oldstyle);
 		    goto error;
 		    }
 
@@ -2731,7 +2735,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 		if (negative_fontcolor >= 0 && ((t == DATA_T_INTEGER && ud->Exp->Integer < 0) || (t == DATA_T_MONEY && ud->Exp->Types.Money.WholePart < 0) || (t == DATA_T_DOUBLE && ud->Exp->Types.Double < 0)))
 		    {
 		    if (prtSetColor(container_handle, negative_fontcolor) < 0)
-			return -1;
+			goto error;
 		    }
 
 		/** Output the result **/
@@ -2749,7 +2753,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	    if (negative_fontcolor >= 0 && ((t == DATA_T_INTEGER && od.Integer < 0) || (t == DATA_T_MONEY && od.Money->WholePart < 0) || (t == DATA_T_DOUBLE && od.Double < 0)))
 		{
 		if (prtSetColor(container_handle, negative_fontcolor) < 0)
-		    return -1;
+		    goto error;
 		}
 
 	    rval = stGetAttrValue(stLookup(data,"value"), t, POD(&od), 0);
@@ -2760,7 +2764,6 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	else
 	    {
 	    mssError(1,"RPT","Unknown data value for %s '%s' element", data->UsrType, data->Name);
-	    prtSetTextStyle(container_handle, &oldstyle);
 	    goto error;
 	    }
 
@@ -2774,6 +2777,9 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	return 0;
 
     error:
+	prtSetTextStyle(container_handle, &oldstyle);
+	if (url)
+	    prtSetURL(container_handle, NULL);
 	if (context_pushed)
 	    cxssPopContext();
 	return -1;

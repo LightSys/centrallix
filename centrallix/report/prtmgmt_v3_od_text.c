@@ -396,7 +396,7 @@ prt_textod_SetVPos(void* context_v, double y)
 /*** prt_textod_WriteText() - sends a string of text to the printer.
  ***/
 int
-prt_textod_WriteText(void* context_v, char* str)
+prt_textod_WriteText(void* context_v, char* str, char* url, double width, double height)
     {
     pPrtTextodInf context = (pPrtTextodInf)context_v;
     int n;

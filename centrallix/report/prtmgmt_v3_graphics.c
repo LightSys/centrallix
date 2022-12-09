@@ -247,7 +247,6 @@ pPrtImage
 prtAllocImage(int width, int height, int color_type)
     {
     pPrtImage img;
-    int i;
     int bytes_per_row;
 
 	/** Determine bytes per row **/
