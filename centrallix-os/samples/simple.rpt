@@ -36,7 +36,7 @@ simple "system/report"
     cx "report/image"
 	{
 	x=32.5; y=0; width=1.5; height=0.9;
-	source="/lightsys/CX.png";
+	source="/sys/images/CX.png";
 	}
 
     file_data "report/table"
