@@ -21,7 +21,7 @@ chart "system/report"
 		from
 		    /samples
 		limit
-		    3
+		    8
 		";
 	}
 
@@ -51,6 +51,7 @@ chart "system/report"
 	    text_rotation=no;
 	    title="File Sizes";
 	    color="dark green";
+	    zoom=1.0;
 
 	    chart_x "report/chart-axis" { axis=x; label="Files"; }
 
