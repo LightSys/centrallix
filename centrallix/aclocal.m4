@@ -1551,3 +1551,19 @@ AC_DEFUN(CENTRALLIX_CHECK_RSVG,
     ]
 )
 
+dnl Check for MathGL versions
+AC_DEFUN(CENTRALLIX_CHECK_MATHGL,
+    [
+	AC_CHECK_HEADER(mgl/mgl_c.h,
+	    AC_DEFINE([HAVE_MGL1], [1], [Define to 1 if MathGL 1.x is present.]),
+	    WITH_MGL1="no"
+	)
+	AC_CHECK_HEADER(mgl2/mgl.h,
+	    AC_DEFINE([HAVE_MGL2], [1], [Define to 1 if MathGL 2.x is present.]),
+	    WITH_MGL2="no",
+	    [#include <stdbool.h>
+	    #include <complex.h>
+	    ]
+	)
+    ]
+)

@@ -6,9 +6,7 @@
 #include <math.h>
 #include <stdarg.h>
 #include <errno.h>
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 #ifdef HAVE_PNG_H
 #include <png.h>
 #endif

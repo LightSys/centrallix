@@ -4301,44 +4301,6 @@ _ACEOF
 
 fi
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for main in -largon2-devel" >&5
-$as_echo_n "checking for main in -largon2-devel... " >&6; }
-if ${ac_cv_lib_argon2_devel_main+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-largon2-devel  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-int
-main ()
-{
-return main ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_argon2_devel_main=yes
-else
-  ac_cv_lib_argon2_devel_main=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_argon2_devel_main" >&5
-$as_echo "$ac_cv_lib_argon2_devel_main" >&6; }
-if test "x$ac_cv_lib_argon2_devel_main" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBARGON2_DEVEL 1
-_ACEOF
-
-  LIBS="-largon2-devel $LIBS"
-
-fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for png_read_png in -lpng" >&5
 $as_echo_n "checking for png_read_png in -lpng... " >&6; }
@@ -4385,72 +4347,43 @@ _ACEOF
 
 fi
 
-
-echo "$as_me:$LINENO: checking for mgl_create_data_size in -lmgl" >&5
-echo $ECHO_N "checking for mgl_create_data_size in -lmgl... $ECHO_C" >&6
-if test "${ac_cv_lib_mgl_mgl_create_data_size+set}" = set; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for mgl_create_data_size in -lmgl" >&5
+$as_echo_n "checking for mgl_create_data_size in -lmgl... " >&6; }
+if ${ac_cv_lib_mgl_mgl_create_data_size+:} false; then :
+  $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
 LIBS="-lmgl  $LIBS"
-cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-/* Override any gcc2 internal prototype to avoid an error.  */
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
 #ifdef __cplusplus
 extern "C"
 #endif
-/* We use char because int might match the return type of a gcc2
-   builtin and then its argument prototype would still apply.  */
 char mgl_create_data_size ();
 int
 main ()
 {
-mgl_create_data_size ();
+return mgl_create_data_size ();
   ;
   return 0;
 }
 _ACEOF
-rm -f conftest.$ac_objext conftest$ac_exeext
-if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
-  (eval $ac_link) 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } &&
-	 { ac_try='test -z "$ac_c_werror_flag"
-			 || test ! -s conftest.err'
-  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; } &&
-	 { ac_try='test -s conftest$ac_exeext'
-  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; }; then
+if ac_fn_c_try_link "$LINENO"; then :
   ac_cv_lib_mgl_mgl_create_data_size=yes
 else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-ac_cv_lib_mgl_mgl_create_data_size=no
+  ac_cv_lib_mgl_mgl_create_data_size=no
 fi
-rm -f conftest.err conftest.$ac_objext \
-      conftest$ac_exeext conftest.$ac_ext
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-echo "$as_me:$LINENO: result: $ac_cv_lib_mgl_mgl_create_data_size" >&5
-echo "${ECHO_T}$ac_cv_lib_mgl_mgl_create_data_size" >&6
-if test $ac_cv_lib_mgl_mgl_create_data_size = yes; then
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_mgl_mgl_create_data_size" >&5
+$as_echo "$ac_cv_lib_mgl_mgl_create_data_size" >&6; }
+if test "x$ac_cv_lib_mgl_mgl_create_data_size" = xyes; then :
   cat >>confdefs.h <<_ACEOF
 #define HAVE_LIBMGL 1
 _ACEOF
@@ -4458,6 +4391,34 @@ _ACEOF
   LIBS="-lmgl $LIBS"
 
 fi
+
+
+	ac_fn_c_check_header_mongrel "$LINENO" "mgl/mgl_c.h" "ac_cv_header_mgl_mgl_c_h" "$ac_includes_default"
+if test "x$ac_cv_header_mgl_mgl_c_h" = xyes; then :
+
+$as_echo "#define HAVE_MGL1 1" >>confdefs.h
+
+else
+  WITH_MGL1="no"
+
+fi
+
+
+	ac_fn_c_check_header_compile "$LINENO" "mgl2/mgl.h" "ac_cv_header_mgl2_mgl_h" "#include <stdbool.h>
+	    #include <complex.h>
+
+
+"
+if test "x$ac_cv_header_mgl2_mgl_h" = xyes; then :
+
+$as_echo "#define HAVE_MGL2 1" >>confdefs.h
+
+else
+  WITH_MGL2="no"
+fi
+
+
+
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
