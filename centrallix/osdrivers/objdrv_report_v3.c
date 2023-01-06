@@ -3369,14 +3369,16 @@ rpt_internal_BarChart_PreProcess(pRptChartContext ctx)
     pRptChartValues value;
 
 	/** Add blank one at beginning and end to make chart more readable **/
+#ifndef HAVE_MGL2
 	value = rpt_internal_NewChartValues(" ", ctx->series->nItems);
 	if (!value)
 	    return -1;
-	//xaAddItem(ctx->values, value);
+	xaAddItem(ctx->values, value);
 	value = rpt_internal_NewChartValues(" ", ctx->series->nItems);
 	if (!value)
 	    return -1;
-	//xaInsertBefore(ctx->values, 0, value);
+	xaInsertBefore(ctx->values, 0, value);
+#endif
 
 	/** Trim factors **/
 	ctx->trim.left = 0.07;
@@ -3445,11 +3447,10 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
 
 	    /** Generate the numeric bar labels **/
 	    if (show_value || show_percent)
-		//rpt_internal_DrawValueLabels(ctx, 1, reccnt-2, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_percent);
 #ifdef HAVE_MGL2
 		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_percent, 1.0);
 #else
-		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_percent, 0.0);
+		rpt_internal_DrawValueLabels(ctx, 1, reccnt-2, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_percent, 0.0);
 #endif
 	    }
 
