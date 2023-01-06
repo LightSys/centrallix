@@ -39,6 +39,7 @@ dnl Check for libpng
 AC_CHECK_LIB(png, png_read_png)
 dnl Check for MathGL
 AC_CHECK_LIB(mgl, mgl_create_data_size)
+CENTRALLIX_CHECK_MATHGL
 AC_CACHE_SAVE
 
 dnl Checks for header files.

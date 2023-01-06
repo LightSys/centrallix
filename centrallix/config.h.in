@@ -31,9 +31,6 @@
 /* Define to 1 if you have the `argon2' library (-largon2). */
 #undef HAVE_LIBARGON2
 
-/* Define to 1 if you have the `argon2-devel' library (-largon2-devel). */
-#undef HAVE_LIBARGON2_DEVEL
-
 /* Define to 1 if you have the `Centrallix' library (-lCentrallix). */
 #undef HAVE_LIBCENTRALLIX
 
@@ -63,6 +60,12 @@
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
+
+/* Define to 1 if MathGL 1.x is present. */
+#undef HAVE_MGL1
+
+/* Define to 1 if MathGL 2.x is present. */
+#undef HAVE_MGL2
 
 /* Define to 1 if you have the `mkdir' function. */
 #undef HAVE_MKDIR

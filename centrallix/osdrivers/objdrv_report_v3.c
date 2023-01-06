@@ -11,9 +11,17 @@
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
-#include <mgl/mgl_c.h>
 #include <ctype.h>
 #include <math.h>
+#include "config.h"
+#ifdef HAVE_MGL1
+#include <mgl/mgl_c.h>
+#endif
+#ifdef HAVE_MGL2
+#include <stdbool.h>
+#include <complex.h>
+#include <mgl2/mgl_cf.h>
+#endif
 #include "obj.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
@@ -267,6 +275,8 @@ typedef struct
 	trim;
     int		rend_x_pixels;
     int		rend_y_pixels;
+    int		rotation;
+    double	zoom;
     }
     RptChartContext, *pRptChartContext;
 
@@ -3228,7 +3238,7 @@ rpt_internal_FreeValueStrings(pXArray labels)
 /*** Line/Bar Labels
  ***/
 int
-rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int total_n_vals, int ser, int n_ser, int bar, double fontsize, int show_pct)
+rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int total_n_vals, int ser, int n_ser, int bar, double fontsize, int show_pct, double offset)
     {
     int i;
     double val;
@@ -3247,7 +3257,7 @@ rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int
 	    if (maxstrlen < strlen(labels->Items[i]))
 		maxstrlen = strlen(labels->Items[i]);
 	    }
-	fs = ctx->stand_w * ctx->rend_x_pixels / ctx->x_pixels * 7.1 / (maxstrlen * total_n_vals * (bar?n_ser:1));
+	fs = ctx->stand_w * ctx->rend_x_pixels / ctx->x_pixels * 6.8 / (maxstrlen * total_n_vals * (bar?n_ser:1));
 	if (fs > fontsize) fs = fontsize;
 	if (fs < 2) fs = 2;
 
@@ -3255,7 +3265,11 @@ rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int
 	for(i=startval; i<startval+n_vals; i++)
 	    {
 	    val = ((pRptChartValues)ctx->values->Items[i])->Values[ser];
-	    mgl_puts_ext(ctx->gr, i*2 + (bar?(-0.7 + (0.5 + ser) * (1.4 / n_ser)):0.0), val + ctx->max*0.02, 0.0, (char*)labels->Items[i - startval], "", fs * ctx->font_scale_factor, '\0');
+#ifdef HAVE_MGL2
+	    mgl_puts(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + ser) * (1.4 / n_ser)):0.0), val + ctx->max*0.02, 0.0, (char*)labels->Items[i - startval], "", fs * ctx->font_scale_factor);
+#else
+	    mgl_puts_ext(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + ser) * (1.4 / n_ser)):0.0), val + ctx->max*0.02, 0.0, (char*)labels->Items[i - startval], "", fs * ctx->font_scale_factor, '\0');
+#endif
 	    }
 
 	rpt_internal_FreeValueStrings(labels);
@@ -3267,14 +3281,20 @@ rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int
 /*** Draws X tick labels
  ***/
 int
-rpt_internal_DrawXTickLabels(pRptChartContext ctx, int startval, int n_vals, int total_n_vals)
+rpt_internal_DrawXTickLabels(pRptChartContext ctx, int startval, int n_vals, int total_n_vals, int offset)
     {
     int i;
     float b[n_vals];
+#ifdef HAVE_MGL2
+    char blank[64];
+    int n_labels;
+#else
     char* blank[n_vals];
+#endif
     int axis_fontsize;
     double fs, cfs;
     int maxstrlen = 0;
+    pXString labels;
 
 	rpt_internal_GetInteger(ctx->inf, ctx->x_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
 	fs = axis_fontsize;
@@ -3290,6 +3310,27 @@ rpt_internal_DrawXTickLabels(pRptChartContext ctx, int startval, int n_vals, int
 		maxstrlen = strlen(ctx->x_labels[startval]);
 	    }
 	cfs = ctx->stand_w * ctx->rend_x_pixels / ctx->x_pixels * 12.0 / (maxstrlen * total_n_vals);
+
+#ifdef HAVE_MGL2
+	labels = xsNew();
+	cfs = cfs * 0.8;
+	n_labels = total_n_vals*2 - 1;
+	if (n_labels > sizeof(blank))
+	    n_labels = sizeof(blank);
+	memset(blank, '\n', n_labels - 1);
+	blank[n_labels - 1] = '\0';
+	mgl_set_ticks_str(ctx->gr, 'x', blank, 0);
+	if (ctx->rotation)
+	    {
+	    for(i=0; i<n_vals; i++)
+		{
+		xsConcatPrintf(labels, "\n%s\n", ctx->x_labels[i+startval]);
+		}
+	    xsConcatenate(labels, "\n", 1);
+	    mgl_set_ticks_str(ctx->gr, 'x', xsString(labels), 0);
+	    }
+#endif
+
 	if (cfs < 2)
 	    cfs = 2;
 	else if (cfs > fs)
@@ -3299,10 +3340,22 @@ rpt_internal_DrawXTickLabels(pRptChartContext ctx, int startval, int n_vals, int
 	    {
 	    b[i] = (i + startval) * 2.0;
 	    //mgl_puts_dir(ctx->gr, b[i], 0.0, 0.0, b[i] + 1, 0.0, 0.0, ctx->x_labels[i], 8);
-	    mgl_puts_ext(ctx->gr, b[i], 0.0, 0.0, ctx->x_labels[i+startval], "", cfs * ctx->font_scale_factor, 'x');
+#ifdef HAVE_MGL2
+	    if (!ctx->rotation)
+		{
+		mgl_puts(ctx->gr, b[i] + offset, ctx->min - (ctx->max - ctx->min)*0.023 * cfs * ctx->font_scale_factor, 0.0, ctx->x_labels[i+startval], "", cfs * ctx->font_scale_factor);
+		}
+#else
+	    mgl_puts_ext(ctx->gr, b[i] + offset, 0.0, 0.0, ctx->x_labels[i+startval], "", cfs * ctx->font_scale_factor, 'x');
 	    blank[i] = "";
+#endif
 	    }
+
+#ifdef HAVE_MGL2
+	xsFree(labels);
+#else
 	mgl_set_ticks_vals(ctx->gr, 'x', n_vals, b, (const char**)blank);
+#endif
 
     return 0;
     }
@@ -3319,15 +3372,15 @@ rpt_internal_BarChart_PreProcess(pRptChartContext ctx)
 	value = rpt_internal_NewChartValues(" ", ctx->series->nItems);
 	if (!value)
 	    return -1;
-	xaAddItem(ctx->values, value);
+	//xaAddItem(ctx->values, value);
 	value = rpt_internal_NewChartValues(" ", ctx->series->nItems);
 	if (!value)
 	    return -1;
-	xaInsertBefore(ctx->values, 0, value);
+	//xaInsertBefore(ctx->values, 0, value);
 
 	/** Trim factors **/
-	ctx->trim.left = 0.12;
-	ctx->trim.right = 0.12;
+	ctx->trim.left = 0.07;
+	ctx->trim.right = 0.17;
 
     return 0;    
     }
@@ -3336,7 +3389,7 @@ int
 rpt_internal_BarChart_Setup(pRptChartContext ctx)
     {
 
-	mgl_set_zoom(ctx->gr, -0.05, 0, 0.95, 1.0);
+	//mgl_set_zoom(ctx->gr, -0.05, 0, 0.95, 1.0);
 
     return 0;
     }
@@ -3348,8 +3401,8 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
     int tickDist;
     pStructInf one_series;
     int series_fontsize;
-    int axis_fontsize;
-    double fs;
+    int axis_fontsize, xaxis_fontsize;
+    double fs, xfs;
     char* color;
     int show_value;
     int show_percent;
@@ -3362,8 +3415,14 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
 	/** Draw the chart **/
 	//mgl_set_alpha(gr, 1);
 	//mgl_set_alpha_default(gr, 1.0);
-	//mgl_set_axis_2d(gr,0,0,(reccnt-1)*2, ctx->max+tickDist);
-	mgl_set_axis_3d(ctx->gr, 0, 0, 0.0, (reccnt-1)*2, ctx->max+tickDist, 0.0);
+#ifdef HAVE_MGL2
+	//mgl_set_range_val(ctx->gr, 'x', 0, (reccnt-1)*2);
+	mgl_set_range_val(ctx->gr, 'x', 0, reccnt*2);
+	mgl_set_range_val(ctx->gr, 'y', 0, ctx->max+tickDist);
+#else
+	mgl_set_axis_2d(ctx->gr, 0, 0, (reccnt-1)*2, ctx->max+tickDist);
+#endif
+	//mgl_set_axis_3d(ctx->gr, 0, 0, 0.0, (reccnt-1)*2, ctx->max+tickDist, 0.0);
 	mgl_set_origin(ctx->gr, 0.0, 0.0, NAN);
 	//mgl_set_tick_origin(gr, 0.0, 0.0, 1.0);
 
@@ -3386,7 +3445,12 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
 
 	    /** Generate the numeric bar labels **/
 	    if (show_value || show_percent)
-		rpt_internal_DrawValueLabels(ctx, 1, reccnt-2, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_percent);
+		//rpt_internal_DrawValueLabels(ctx, 1, reccnt-2, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_percent);
+#ifdef HAVE_MGL2
+		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_percent, 1.0);
+#else
+		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_percent, 0.0);
+#endif
 	    }
 
 	/** Font size for y axis **/
@@ -3395,14 +3459,36 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
 	if (fs > axis_fontsize) fs = axis_fontsize;
 	if (fs < 2) fs = 2;
 	mgl_set_font_size(ctx->gr, fs * ctx->font_scale_factor);
+#ifdef HAVE_MGL2
+	rpt_internal_GetInteger(ctx->inf, ctx->x_axis, "fontsize", &xaxis_fontsize, ctx->fontsize, 0);
+	xfs = ctx->stand_w * ctx->rend_x_pixels / ctx->x_pixels * 6.0 / 50.0;
+	if (xfs > xaxis_fontsize) xfs = xaxis_fontsize;
+	if (xfs < 2) xfs = 2;
+#endif
 
-	rpt_internal_DrawXTickLabels(ctx, 1, reccnt-2, reccnt);
+#ifdef HAVE_MGL2
+	rpt_internal_DrawXTickLabels(ctx, 0, reccnt, reccnt, 1);
+#else
+	rpt_internal_DrawXTickLabels(ctx, 1, reccnt-2, reccnt, 0);
+#endif
 	mgl_adjust_ticks(ctx->gr, "y");
 	//mgl_set_ticks(ctx->gr, -((reccnt-1)*2+1), tickDist, 1);
 	mgl_tune_ticks(ctx->gr, ctx->scale, 1.15);
+#ifdef HAVE_MGL2
+	mgl_set_ticks(ctx->gr, 'x', 1000.0, 0, 1000.0);
+	mgl_set_flag(ctx->gr, 1, MGL_NO_ORIGIN);
+	char opt[32];
+	snprintf(opt, sizeof(opt), "size %.1f", xfs * ctx->font_scale_factor);
+	mgl_axis(ctx->gr, "x", "", opt);
+	snprintf(opt, sizeof(opt), "size %.1f", fs * ctx->font_scale_factor);
+	mgl_axis(ctx->gr, "y", "", opt);
+	mgl_axis_grid(ctx->gr, "y", "W-", "");
+	mgl_bars(ctx->gr, ctx->chart_data, barcolors, "");
+#else
 	mgl_axis(ctx->gr, "xy");
 	mgl_axis_grid(ctx->gr, "y", "W-");
 	mgl_bars(ctx->gr, ctx->chart_data, barcolors);
+#endif
 
     return 0;
     }
@@ -3415,8 +3501,8 @@ rpt_internal_LineChart_PreProcess(pRptChartContext ctx)
     {
 
 	/** Trim factors **/
-	ctx->trim.left = 0.12;
-	ctx->trim.right = 0.09;
+	ctx->trim.left = 0.07;
+	ctx->trim.right = 0.14;
 
     return 0;
     }
@@ -3425,7 +3511,7 @@ int
 rpt_internal_LineChart_Setup(pRptChartContext ctx)
     {
 
-	mgl_set_zoom(ctx->gr, -0.05, 0, 0.95, 1.0);
+	//mgl_set_zoom(ctx->gr, -0.05, 0, 0.95, 1.0);
 
     return 0;
     }
@@ -3448,7 +3534,12 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
 	tickDist = rpt_internal_GetTickDist(ctx->max);
 	rpt_internal_GetInteger(ctx->inf, one_series, "fontsize", &series_fontsize, ctx->fontsize, 0);
         
+#ifdef HAVE_MGL2
+	mgl_set_range_val(ctx->gr, 'x', 0, (reccnt-1)*2);
+	mgl_set_range_val(ctx->gr, 'y', 0, ctx->max+tickDist);
+#else
 	mgl_set_axis_2d(ctx->gr, 0, 0, (reccnt-1)*2, ctx->max+tickDist);
+#endif
 	mgl_set_origin(ctx->gr, 0.0, 0.0, 0.0);
 	//mgl_set_ticks(ctx->gr, -((reccnt-1)*2+1), tickDist, 1);
 
@@ -3472,7 +3563,7 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
 
 	    /** Generate the numeric bar labels **/
 	    if (show_value || show_percent)
-		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, 1, 0, series_fontsize, show_percent);
+		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, 1, 0, series_fontsize, show_percent, 0.0);
 	    }
         
 	/** Font size for y axis **/
@@ -3482,12 +3573,20 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
 	if (fs < 2) fs = 2;
 	mgl_set_font_size(ctx->gr, fs * ctx->font_scale_factor);
 
-	rpt_internal_DrawXTickLabels(ctx, 0, reccnt, reccnt);
+	rpt_internal_DrawXTickLabels(ctx, 0, reccnt, reccnt, 0);
 	mgl_adjust_ticks(ctx->gr, "y");
 	mgl_tune_ticks(ctx->gr, ctx->scale, 1.15);
+#ifdef HAVE_MGL2
+	mgl_set_ticks(ctx->gr, 'x', 1000.0, 0, 1000.0);
+	mgl_set_flag(ctx->gr, 1, MGL_NO_ORIGIN);
+	mgl_axis(ctx->gr, "xy", "", "");
+	mgl_axis_grid(ctx->gr, "y", "W-", "");
+	mgl_plot(ctx->gr, ctx->chart_data, linecolors, "");
+#else
 	mgl_axis(ctx->gr, "xy");
 	mgl_axis_grid(ctx->gr, "y", "W-");
 	mgl_plot(ctx->gr, ctx->chart_data, linecolors);
+#endif
 
     return 0;
     }
@@ -3512,8 +3611,8 @@ rpt_internal_PieChart_PreProcess(pRptChartContext ctx)
 	    }
 
 	/** Trim factors **/
-	ctx->trim.left = 0.09;
-	ctx->trim.right = 0.0;
+	ctx->trim.left = 0.0;
+	ctx->trim.right = 0.1;
 
     return 0;
     }
@@ -3522,7 +3621,7 @@ int
 rpt_internal_PieChart_Setup(pRptChartContext ctx)
     {
 
-	mgl_set_zoom(ctx->gr, -0.1, 0, 0.9, 1.0);
+	//mgl_set_zoom(ctx->gr, -0.1, 0, 0.9, 1.0);
 
     return 0;
     }
@@ -3553,7 +3652,11 @@ rpt_internal_PieChart_Generate(pRptChartContext ctx)
 	rpt_internal_GetInteger(ctx->inf, series, "fontsize", &series_fontsize, ctx->fontsize, 0);
 	rpt_internal_GetString(ctx->inf, series, "show_percent", &show_percent, "pie", 0);
 	rpt_internal_GetString(ctx->inf, series, "show_value", &show_value, "legend", 0);
+#ifdef HAVE_MGL2
+	mgl_set_func(ctx->gr, "(y+1)/2*cos(pi*x)", "(y+1)/2*sin(pi*x)", NULL, NULL);   //make it to a cylinder 
+#else
 	mgl_set_func(ctx->gr, "(y+1)/2*cos(pi*x)", "(y+1)/2*sin(pi*x)", 0);   //make it to a cylinder 
+#endif
 	mgl_tune_ticks(ctx->gr, ctx->scale, 1.15);
 	pcolor = ":bgrhBGRHWcmywpCMYkPlenuqLENUQ"; 
 	for(i=0; i<reccnt; i++)
@@ -3578,10 +3681,20 @@ rpt_internal_PieChart_Generate(pRptChartContext ctx)
 	    snprintf(colorString, sizeof(colorString), "%c%c", pcolor[i+1], '7');
 	    mgl_add_legend(ctx->gr, string, colorString);
 	    }
+#ifdef HAVE_MGL2
+	char opt[32];
+	snprintf(opt, sizeof(opt), "size %.1f; value 0.1", axis_fontsize * ctx->font_scale_factor);
+	mgl_legend_pos(ctx->gr, -0.04, 0.0, "A", opt);
+#else
 	mgl_legend_xy(ctx->gr, -0.28, 0.0, "", axis_fontsize * ctx->font_scale_factor, 0.1);
+#endif
 
 	/** Generate the pie chart itself **/
+#ifdef HAVE_MGL2
+	mgl_chart(ctx->gr, ctx->chart_data, pcolor, "");
+#else
 	mgl_chart(ctx->gr, ctx->chart_data, pcolor);
+#endif
 
 	/** Correctly position percentages/values around the chart **/
 	for(i=0; i<reccnt; i++)
@@ -3599,7 +3712,11 @@ rpt_internal_PieChart_Generate(pRptChartContext ctx)
 		snprintf(string, sizeof(string), "%s", (char*)labels->Items[i]);
 	    else
 		strtcpy(string, "", sizeof(string));
+#ifdef HAVE_MGL2
+	    mgl_puts(ctx->gr, t, r, 0, string, "", series_fontsize * ctx->font_scale_factor);
+#else
 	    mgl_puts_ext(ctx->gr, t, r, 0, string, "", series_fontsize * ctx->font_scale_factor, '\0');
+#endif
 	    sumPreviousAngles += angle;
 	    }
 	
@@ -3616,7 +3733,6 @@ int
 rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int container_handle)
     {
     int errval = -1; /* default */
-    pRptSource qy;
     pRptActiveQueries ac = NULL;
     int rval;
     int i,j;
@@ -3630,8 +3746,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
     char* y_axis_label;
     char* ptr;
     int box = 0;
-    int text_rotation = 0;
-    int stacked = 0;
+    int stacked;
     int axis_fontsize;
     pStructInf subobj;
     pStructInf one_series;
@@ -3754,7 +3869,6 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	ctx->values = xaNew(16);
 	if (!ctx->values)
 	    goto error;
-	qy = ac->Queries[ac->Count-1];
 	while(rval == 0)
             {
             /** Get the labels for the x-axis **/
@@ -3826,7 +3940,8 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	box = rpt_internal_GetBool(inf, chart, "box", 0, 0);
 	ctx->scale = rpt_internal_GetBool(inf, chart, "scale", 0, 0);
 	stacked = rpt_internal_GetBool(inf, chart, "stacked", 0, 0);
-	text_rotation = rpt_internal_GetBool(inf, chart, "text_rotation", 0, 0);
+	ctx->rotation = rpt_internal_GetBool(inf, chart, "text_rotation", 0, 0);
+	rpt_internal_GetDouble(inf, chart, "zoom", &ctx->zoom, 1.0, 0);
 	rpt_internal_GetInteger(inf, chart, "fontsize", &ctx->fontsize, prtGetFontSize(container_handle), 0);
 	if (ctx->fontsize < 1)
 	    goto error;
@@ -3846,8 +3961,12 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	if (!*title)
 	    ctx->trim.top = 0.14 + (ctx->stand_h - 8) / 42.0 * 0.025;
 	else
+//#ifdef HAVE_MGL2
+//	    ctx->trim.top = (ctx->stand_h - 8) / 42.0 * 0.01;
+//#else
 	    ctx->trim.top = (ctx->stand_h - 8) / 42.0 * 0.03;
-	if (!*x_axis_label)
+//#endif
+	if (!*x_axis_label && !ctx->rotation)
 	    ctx->trim.bottom = 0.075 + (ctx->stand_h - 8) / 42.0 * 0.08;
 	else
 	    ctx->trim.bottom = (ctx->stand_h < 12)?0.0:((ctx->stand_h - 12) / 42.0 * 0.13);
@@ -3857,23 +3976,37 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	ctx->rend_y_pixels = round(ctx->y_pixels / (1.0 - ctx->trim.top - ctx->trim.bottom));
 
 	/** Font scaling **/
-	ctx->font_scale_factor = 8.0 / ctx->stand_h * ctx->y_pixels / ctx->rend_y_pixels;
+#ifdef HAVE_MGL2
+	ctx->font_scale_factor = 6.4 / ctx->stand_h * ctx->y_pixels / ctx->rend_y_pixels * ctx->zoom;
+#else
+	ctx->font_scale_factor = 8.0 / ctx->stand_h * ctx->y_pixels / ctx->rend_y_pixels * ctx->zoom;
+#endif
         
 	/** Chart color **/
 	strtcpy(color, rpt_internal_GetMglColor(ctx, chart, "color", "b", 0), sizeof(color));
 	ctx->color = color;
 
 	/** Create the chart **/
+#ifdef HAVE_MGL2
+	ctx->gr = mgl_create_graph(ctx->rend_x_pixels, ctx->rend_y_pixels);
+#else
 	ctx->gr = mgl_create_graph_zb(ctx->rend_x_pixels, ctx->rend_y_pixels);
+#endif
 	if (!ctx->gr)
 	    goto error;
-	mgl_set_rotated_text(ctx->gr, text_rotation?1:0);
+	mgl_set_rotated_text(ctx->gr, ctx->rotation?1:0);
+	if (ctx->zoom < 0.999 || ctx->zoom > 1.001)
+	    mgl_set_plotfactor(ctx->gr, 1.55*ctx->zoom);
 
 	/** Decimal precision **/
 	prec = rpt_internal_GetYDecimalPrecision(ctx, -1, -1);
 	snprintf(precstr, sizeof(precstr), "%%.%df", prec);
+#ifdef HAVE_MGL2
+	mgl_set_tick_templ(ctx->gr, 'y', precstr);
+#else
 	mgl_set_ytt(ctx->gr, precstr);
-        
+#endif
+
 	/** Graphics setup for chart type **/
 	if (drv->SetupFormat(ctx) < 0)
 	    goto error;
@@ -3884,24 +4017,46 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
       
 	/** Title and axis labels **/
 	if (*title)
+#ifdef HAVE_MGL2
+	    mgl_puts(ctx->gr, 0.5, 0.9, 0.0, title, "A", ctx->fontsize * ctx->font_scale_factor);
+#else
 	    mgl_title(ctx->gr, title, "", ctx->fontsize * ctx->font_scale_factor);
+#endif
 	if (*x_axis_label)
 	    {
 	    rpt_internal_GetInteger(inf, ctx->x_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
+#ifdef HAVE_MGL2
+	    char opt[32];
+	    snprintf(opt, sizeof(opt), "size %.1f; value %.2f", axis_fontsize * ctx->font_scale_factor, axis_fontsize * ctx->font_scale_factor / 50.0 + ctx->stand_h / 100.0);
+	    mgl_puts(ctx->gr, 0.5, 0.04, 0.0, x_axis_label, "A", ctx->fontsize * ctx->font_scale_factor);
+	    //mgl_label(ctx->gr, 'x', x_axis_label, 0, opt);
+#else
 	    mgl_label_ext(ctx->gr, 'x', x_axis_label, 0, axis_fontsize * ctx->font_scale_factor, axis_fontsize * ctx->font_scale_factor / 50.0 + ctx->stand_h / 50.0);
+#endif
 	    }
 	if (*y_axis_label)
 	    {
 	    rpt_internal_GetInteger(inf, ctx->y_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
 	    //mgl_label_ext(ctx->gr, 'y', y_axis_label, 0, axis_fontsize * ctx->font_scale_factor, -0.0);
-	    yoffset = (ctx->max - ctx->min)/2.0 - (strlen(y_axis_label) * axis_fontsize) * (ctx->max - ctx->min) / 520.0 * ctx->font_scale_factor;
 	    xoffset = (ctx->values->nItems - 0.8) / -4.2;
+#ifdef HAVE_MGL2
+	    yoffset = (ctx->max - ctx->min)/2.0;
+	    mgl_set_rotated_text(ctx->gr, 1);
+	    mgl_puts_dir(ctx->gr, xoffset, yoffset, 0.0, xoffset, yoffset+1.0, 0.0, y_axis_label, "", axis_fontsize * ctx->font_scale_factor);
+	    mgl_set_rotated_text(ctx->gr, ctx->rotation?1:0);
+#else
+	    yoffset = (ctx->max - ctx->min)/2.0 - (strlen(y_axis_label) * axis_fontsize) * (ctx->max - ctx->min) / 520.0 * ctx->font_scale_factor;
 	    mgl_puts_dir(ctx->gr, xoffset, yoffset, 0.0, 0.0, 1.0, 0.0, y_axis_label, axis_fontsize * ctx->font_scale_factor);
+#endif
 	    }
 
 	/** Chart box **/
 	if (box)
+#ifdef HAVE_MGL2
+	    mgl_box(ctx->gr);
+#else
 	    mgl_box(ctx->gr, 1);
+#endif
 
 	/** Render the chart **/
 	img = rpt_internal_GraphToImage(ctx);
