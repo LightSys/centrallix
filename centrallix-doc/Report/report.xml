@@ -14,6 +14,7 @@
 		</usage>
 		<properties>
 			<property name="align" type="string">The text alignment to use - either "left" (default), "center", "right", or "full".  Available on all objects except image, query, and parameter.</property>
+			<property name="bgcolor" type="string">The background color of a table, table row, table cell, or area.</property>
 			<property name="bottomborder" type="double">Width of the outside border at the bottom of the table, table-row, or area.</property>
 			<property name="condition" type="integer">Typically an expression that evaluates to an integer/boolean type.  If true, the area, table, table-row, image, or data element is displayed, otherwise the object (and any contents) are ignored.</property>
 			<property name="dateformat" type="string">If the field has a date/time data type, this allows the format to be specified.  See the introduction to the reporting system documentation for date/time format information.  Available on all objects except image, query, and parameter.</property>
@@ -289,7 +290,7 @@ outerForm "report/form"
 			<property name="reclimit" type="integer">Sets a limit on the number of records the table is to print.</property>
 			<property name="shadow" type="double">Width of the drop-shadow to the right and bottom of the table.</property>
 			<property name="source" type="stringvec">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.</property>
-			<property name="widths" type="intvec">A list of numbers giving the widths of the columns.  This MUST match the number of columns specified with the 'columns' setting.</property>
+			<property name="widths" type="intvec">A list of numbers giving the widths of the columns.  This MUST match the number of columns specified with the 'columns' setting.  As an alternative, widths may be specified in the column header cells, see below.</property>
 		</properties>
 		<children>
 			<child type="report/table-row">
@@ -302,7 +303,9 @@ outerForm "report/form"
 				<childproperty name="summarize_for" type="expression">An expression whose value uniquely defines the desired group of rows.  The summary row is printed at the end of each group of consecutive rows having the same value for this expression.</childproperty>
 			</child>
 			<child type="report/table-cell">
+				<childproperty name="colspan" type="integer">The number of columns that this cell should span.  Default 1.</childproperty>
 				<childproperty name="value" type="expression">The text to be printed inside the cell.  Can reference report/query objects using :queryname:fieldname syntax.  When the expression references queries, it should be enclosed in the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</childproperty>
+				<childproperty name="width" type="double">The width of the column.  Specifying widths in the column header cells is an alternative to specifying a list (intvec) of widths at the table level.</childproperty>
 			</child>
 		</children>
 		<sample>
@@ -322,6 +325,66 @@ myTable "report/table"
 	    {
 	    t_name "report/table-cell" { align=center; style=bold; value=runserver(:myQuery:name); }
 	    t_size "report/table-cell" { align=center; style=bold; value=runserver(:myQuery:size); }
+	    }
+	}
+		]]>
+		</sample>
+	</component>
+	<component name="chart" type="report/chart" description="A chart or graph presentation of report data" visual="yes" container="no">
+		<overview>
+			<p>The chart component is used to display data in a bar, line, or pie chart.  The chart creates an image which is embedded into the report.</p>
+			<p>Charts, like forms and tables, can have more than one data mode.  Like tables, charts only support 'normal' and 'inner'; 'outer' is not supported since charts do not contain other components.  See the form documentation for more on the data mode.</p>
+			<p>Charts also can handle multiple queries using a 'multimode' - see the form for more information.</p>
+		</overview>
+		<usage>
+			<p>Charts can be used inside any visual container or inside forms.  Charts can contain "report/chart-axis" and "report/chart-series" objects, and must contain both an X and a Y axis and at least one data series.  Charts cannot contain any other report components.</p>
+			<p>All chart elements also typically support the common property "fontsize".</p>
+		</usage>
+		<properties>
+			<property name="box" type="yes/no">Whether to draw a box around the chart's data area (the box is drawn just around the graph or chart itself, not around the axis and tick labels and titles).  Default "no".</property>
+			<property name="chart_type" type="string">The type of chart:  bar, line, or pie.</property>
+			<property name="color" type="string">The default color to be used for the chart.</property>
+			<property name="mode" type="string">The mode of the chart (see overview).  'normal' is the default.</property>
+			<property name="multimode" type="string">How the chart handles multiple queries (see overview).  'nested' is the default.</property>
+			<property name="scale" type="yes/no">Whether to automatically scale axis tick labels using scientific notation and a multiplier (default "no").</property>
+			<property name="source" type="stringvec">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.</property>
+			<property name="text_rotation" type="yes/no">Whether to rotate tick labels to allow them to better fit on the chart.  Default "no".</property>
+			<property name="title" type="string">The chart's title, to be printed above the chart.</property>
+			<property name="zoom" type="double">The chart zoom; use values less than 1.0 to give the chart more whitespace, and values greater than 1.0 to eliminate whitespace.  Default 1.0.</property>
+		</properties>
+		<children>
+			<child type="report/chart-axis">
+				<childproperty name="axis" type="string">Which axis to configure; must be "x" or "y".</childproperty>
+				<childproperty name="label" type="string">A label for the X or Y axis.</childproperty>
+			</child>
+			<child type="report/chart-series">
+				<childproperty name="color" type="string">The color to be used for the series.</childproperty>
+				<childproperty name="show_percent" type="yes/no">Whether to show the series value as a percentage above the bar or line point.  Default "no".</childproperty>
+				<childproperty name="show_value" type="yes/no">Whether to show the series value above the bar or line point.  Default "yes".</childproperty>
+				<childproperty name="x_value" type="expression">The X value for the series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</childproperty>
+				<childproperty name="y_value" type="expression">The Y value for the series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</childproperty>
+			</child>
+		</children>
+		<sample>
+		<![CDATA[
+myChart "report/chart"
+	{
+	source=myQuery;
+	x=0; y=0; height=20; width=65;
+	chart_type=bar;
+	scale=no;
+	text_rotation=no;
+	title="My Chart Title";
+
+	x_axis "report/chart-axis" { axis=x; label="X Label"; }
+	y_axis "report/chart-axis" { axis=y; label="Y Label"; }
+
+	series "report/chart-series"
+	    {
+	    x_value=runserver(:myQuery:month);
+	    y_value=runserver(:myQuery:revenue);
+	    show_value=yes;
+	    color="dark green";
 	    }
 	}
 		]]>
