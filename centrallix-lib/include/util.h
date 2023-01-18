@@ -59,6 +59,14 @@ int verifyUTF8(char* str);
   applicable */
 int verifyASCII(char * str);
 
+/** \brief This function ensures that all of the bytes of a string are 
+     valid ASCII. Does not require a NULL terminator.
+ \param str The string to verify.
+ \param len the length of the suplied string
+ \return returns index of the first invalid string, or a code if not 
+  applicable */
+int nVerifyUTF8(char* str, int len);
+
 /** \brief Computes the number of bytes in a utf-8 char based on the first byte.
  * \param byte the character to be checked
  * \return the number of bytes in the character, or -1 on error. */

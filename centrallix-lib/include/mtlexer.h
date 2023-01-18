@@ -145,8 +145,8 @@ int mlxSetOffset(pLxSession this, unsigned long new_offset);
 #define MLX_F_SSTRING		(1<<22)	/* Differentiate "" and '' strings */
 #define MLX_F_PROCLINE		(1<<23)	/* (int) Line has been processed. */
 #define MLX_F_ALLOWNUL		(1<<24)	/* Allow nul (\0) bytes in input. */
-#define MLX_F_ENFORCEUTF8   (1<<25) /* validate all strings as UTF-8. Incompatable with MLX_F_ENFORCEASCII */
-#define MLX_F_ENFORCEASCII  (1<<26) /* validcate all strings as ASCII. Incompatable with MLX_F_ENFORCEUTF8 */
+#define MLX_F_ENFORCEUTF8	(1<<25) /* validate all strings as UTF-8. Incompatable with MLX_F_ENFORCEASCII */
+#define MLX_F_ENFORCEASCII	(1<<26) /* validate all strings as ASCII. Incompatable with MLX_F_ENFORCEUTF8 */
 
 #define MLX_F_PUBLIC		(MLX_F_ICASE | MLX_F_POUNDCOMM | MLX_F_CCOMM | MLX_F_CPPCOMM | MLX_F_SEMICOMM | MLX_F_DASHCOMM | MLX_F_EOL | MLX_F_EOF | MLX_F_IFSONLY | MLX_F_DASHKW | MLX_F_NODISCARD | MLX_F_FILENAMES | MLX_F_DBLBRACE | MLX_F_LINEONLY | MLX_F_SYMBOLMODE | MLX_F_TOKCOMM | MLX_F_NOUNESC | MLX_F_SSTRING | MLX_F_ALLOWNUL)
 #define	MLX_F_PRIVATE		(MLX_F_INSTRING | MLX_F_NOFILE | MLX_F_FOUNDEOL | MLX_F_INCOMM | MLX_F_PROCLINE)

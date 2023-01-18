@@ -1,3 +1,2 @@
 ##NAME Test annotations
-show tests/annotTest
-show tests/annotTest2
+ls tests/ux/

@@ -1,15 +1,3 @@
-Flags: can_have_subobjects cant_add_attrs cant_have_content no_content 
-Attributes:
-            outer_type: "application/x-json-node" [Hints: ]
-            inner_type: "system/void" [Hints: ]
-          content_type: "system/void" [Hints: ]
-                  name: "" [Hints: ]
-            annotation: "" [Hints: ]
-     last_modification: 11-23-2022 10:37:53 [Hints: ]
-
-Methods:
-  (no methods)
-
 0                                                                     application/x-json-node
 1                                                                     application/x-json-node
 2                                                                     application/x-json-node
@@ -61,18 +49,6 @@ Attribute [create_date]:   string   "2015-01-08"
 Attribute [@id]:   string   "1" 
 Attribute [create_date]:   string   "2015-07-25" 
 Attribute [column_000]:   string   "----------------- ↑↑↑ zip1 ↑↑↑ ----------------- ↓↓↓ zip2 ↓↓↓ -----------------" 
-Flags: can_have_subobjects cant_add_attrs cant_have_content no_content 
-Attributes:
-            outer_type: "application/x-json-node" [Hints: ]
-            inner_type: "system/void" [Hints: ]
-          content_type: "system/void" [Hints: ]
-                  name: "" [Hints: ]
-            annotation: "" [Hints: ]
-     last_modification: 11-23-2022 10:37:53 [Hints: ]
-
-Methods:
-  (no methods)
-
 0                                                                     application/x-json-node
 1                                                                     application/x-json-node
 2                                                                     application/x-json-node
@@ -124,18 +100,6 @@ Attribute [create_date]:   string   "2015-01-08"
 Attribute [@id]:   string   "1" 
 Attribute [create_date]:   string   "2015-07-25" 
 Attribute [column_000]:   string   "----------------- ↑↑↑ zip2 ↑↑↑ ----------------- ↓↓↓ zip3 ↓↓↓ -----------------" 
-Flags: can_have_subobjects cant_add_attrs cant_have_content no_content 
-Attributes:
-            outer_type: "application/x-json-node" [Hints: ]
-            inner_type: "system/void" [Hints: ]
-          content_type: "system/void" [Hints: ]
-                  name: "" [Hints: ]
-            annotation: "" [Hints: ]
-     last_modification: 11-23-2022 10:37:53 [Hints: ]
-
-Methods:
-  (no methods)
-
 0                                                                     application/x-json-node
 1                                                                     application/x-json-node
 2                                                                     application/x-json-node
