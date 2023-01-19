@@ -512,6 +512,8 @@ prt_textod_Initialize()
 	drv = prt_strictfm_AllocDriver();
 	strcpy(drv->Name,"text");
 	strcpy(drv->ContentType,"text/plain");
+	drv->Flags = PRT_DRV_F_NOZ;
+
 	drv->Open = prt_textod_Open;
 	drv->Close = prt_textod_Close;
 	drv->GetResolutions = prt_textod_GetResolutions;

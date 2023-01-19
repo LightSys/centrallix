@@ -64,6 +64,7 @@ prtOpenSession(char* output_type, int (*write_fn)(), void* write_arg, int page_f
 	this = (pPrtSession)nmMalloc(sizeof(PrtSession));
 	if (!this) return NULL;
 	SETMAGIC(this, MGK_PRTOBJSSN);
+	this->Flags = 0;
 	this->WriteFn = write_fn;
 	this->WriteArg = write_arg;
 	this->Units = prtLookupUnits("default");

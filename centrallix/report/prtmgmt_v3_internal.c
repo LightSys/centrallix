@@ -317,6 +317,16 @@ prt_internal_FreeObj(pPrtObjStream obj)
     }
 
 
+/*** prt_internal_NoZ() - disable z-layering
+ ***/
+int
+prt_internal_NoZ(pPrtSession s)
+    {
+    s->Flags |= PRT_SESS_F_NOZ;
+    return 0;
+    }
+
+
 /*** prt_internal_YCompare() - compares two objects to see which one comes
  *** first in the Y order.  Returns 0 if they are the same, -1 if the first
  *** object comes first, and 1 if the second object comes first (and thus
@@ -325,12 +335,24 @@ prt_internal_FreeObj(pPrtObjStream obj)
 int
 prt_internal_YCompare(pPrtObjStream first, pPrtObjStream second)
     {
-    if (first->Z > second->Z || (first->Z == second->Z && (first->PageY > second->PageY || (first->PageY == second->PageY && first->PageX > second->PageX))))
-	return 1;
-    else if (first->Z == second->Z && first->PageY == second->PageY && first->PageX == second->PageX)
-	return 0;
+    if (((pPrtSession)first->Session)->Flags & PRT_SESS_F_NOZ)
+	{
+	if (first->PageY > second->PageY || (first->PageY == second->PageY && first->PageX > second->PageX))
+	    return 1;
+	else if (first->PageY == second->PageY && first->PageX == second->PageX)
+	    return 0;
+	else
+	    return -1;
+	}
     else
-	return -1;
+	{
+	if (first->Z > second->Z || (first->Z == second->Z && (first->PageY > second->PageY || (first->PageY == second->PageY && first->PageX > second->PageX))))
+	    return 1;
+	else if (first->Z == second->Z && first->PageY == second->PageY && first->PageX == second->PageX)
+	    return 0;
+	else
+	    return -1;
+	}
     }
 
 
@@ -896,12 +918,9 @@ prt_internal_AddEmptyObj(pPrtObjStream container)
     }
 
 
-/*** prt_internal_Dump() - debugging printout of an entire subtree.
- ***/
 int
-prt_internal_Dump_r(pPrtObjStream obj, int level)
+prt_internal_DumpOne(pPrtObjStream obj, int level)
     {
-    pPrtObjStream subobj;
 
 	printf("%*.*s", level*4, level*4, "");
 	switch(obj->ObjType->TypeID)
@@ -921,6 +940,20 @@ prt_internal_Dump_r(pPrtObjStream obj, int level)
 		obj->X, obj->Y, obj->Z, obj->Width, obj->Height,
 		obj->PageX, obj->PageY, obj->YBase, obj->TextStyle.FontSize,
 		obj->Y + obj->YBase, obj->Flags, obj->ObjID);
+
+    return 0;
+    }
+
+
+/*** prt_internal_Dump() - debugging printout of an entire subtree.
+ ***/
+int
+prt_internal_Dump_r(pPrtObjStream obj, int level)
+    {
+    pPrtObjStream subobj;
+
+	prt_internal_DumpOne(obj, level);
+
 	for(subobj=obj->ContentHead;subobj;subobj=subobj->Next)
 	    {
 	    prt_internal_Dump_r(subobj, level+1);
@@ -933,6 +966,17 @@ int
 prt_internal_Dump(pPrtObjStream obj)
     {
     return prt_internal_Dump_r(obj,0);
+    }
+
+int
+prt_internal_DumpY(pPrtObjStream obj)
+    {
+    while(obj)
+	{
+	prt_internal_DumpOne(obj, 0);
+	obj = obj->YNext;
+	}
+    return 0;
     }
 
 

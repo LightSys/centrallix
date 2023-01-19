@@ -855,6 +855,7 @@ prtAddObject(int handle_id, int obj_type, double x, double y, double width, doub
 	    new_obj->Y = y;
 	else
 	    new_obj->Y = 0.0;
+	new_obj->Z = obj->Z + 1;
 
 	/** Init container... including optional params **/
 	prt_internal_CopyAttrs(obj, new_obj);

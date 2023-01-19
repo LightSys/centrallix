@@ -198,6 +198,7 @@ typedef struct _PD
     int			Magic;
     char		Name[32];
     char		ContentType[64];
+    int			Flags;
     void*		(*Open)();
     int			(*Close)();
     pXArray		(*GetResolutions)();
@@ -233,6 +234,7 @@ typedef struct _PE
 typedef struct _PS
     {
     int			Magic;
+    int			Flags;
     pPrtObjStream	StreamHead;
     double		PageWidth;
     double		PageHeight;
@@ -418,6 +420,10 @@ extern PrtGlobals PRTMGMT;
 
 #define PRT_EVENT_T_REFLOW	    0		/* reflow the contents of a container */
 
+#define PRT_DRV_F_NOZ		    1		/* driver does not support Z-layering */
+
+#define PRT_SESS_F_NOZ		    1		/* disable Z-layering */
+
 
 /*** MakeBorder flags ***/
 #define PRT_MKBDR_F_TOP		    1		/* border is 'top' */
@@ -463,6 +469,7 @@ int prtGetResolution(pPrtSession s, int* xres, int* yres);
 int prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void* (*open_fn)(), int (*write_fn)(), int (*close_fn)());
 int prtSetSessionParam(pPrtSession s, char* paramname, char* value);
 char* prtGetSessionParam(pPrtSession s, char* paramname, char* defaultvalue);
+int prt_internal_NoZ(pPrtSession s);
 
 /** Internal management functions **/
 pPrtObjStream prt_internal_AllocObj(char* type);
