@@ -688,9 +688,16 @@ rpt_internal_EvalParam(pRptParam rptparam, pParamObjects objlist, pObjSession se
 		    active_mask |= (1<<i);
 		    }
 		}
+	    if (!(rptparam->Flags & RPT_PARAM_F_DEFAULT))
+		{
+		/** Add ext references to eval if first time **/
+		active_mask |= (EXPR_MASK_EXTREF | EXPR_MASK_INDETERMINATE);
+		}
 
-	    /** Only re-evaluate if there are active sources **/
-	    if ((EXPR(rptparam->Param->Hints->DefaultExpr)->ObjCoverageMask & active_mask) || (EXPR(rptparam->Param->Hints->DefaultExpr)->ObjCoverageMask & EXPR_MASK_ALLOBJECTS) == 0)
+	    /** Only re-evaluate if there are active sources in the expression,
+	     ** or if it's the first evaluation and no sources are referenced.
+	     **/
+	    if ((EXPR(rptparam->Param->Hints->DefaultExpr)->ObjCoverageMask & active_mask) || ((EXPR(rptparam->Param->Hints->DefaultExpr)->ObjCoverageMask & EXPR_MASK_ALLOBJECTS) == 0 && !(rptparam->Flags & RPT_PARAM_F_DEFAULT)))
 		{
 		/** Re-evaluate **/
 		rptparam->Param->Value->Flags |= DATA_TF_NULL;
