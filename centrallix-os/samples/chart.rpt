@@ -60,7 +60,7 @@ chart "system/report"
 	    chart_series "report/chart-series"
 		{
 		x_value=runserver(:files_qy:name);
-		y_value=runserver(:files_qy:size * 10);
+		y_value=runserver(0 - :files_qy:size * 10);
 		show_value=yes;
 		color="dark red";
 		}
@@ -68,7 +68,7 @@ chart "system/report"
 	    chart_series_2 "report/chart-series"
 		{
 		x_value=runserver(:files_qy:name);
-		y_value=runserver(:files_qy:double * 10);
+		y_value=runserver(0 + :files_qy:double * 10);
 		}
 	    }
 	}
