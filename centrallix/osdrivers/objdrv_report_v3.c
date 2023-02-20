@@ -3356,7 +3356,7 @@ rpt_internal_DrawXTickLabels(pRptChartContext ctx, int startval, int n_vals, int
 #ifdef HAVE_MGL2
 	    if (!ctx->rotation)
 		{
-		mgl_puts(ctx->gr, b[i] + offset, ctx->min - (ctx->max - ctx->min)*0.023 * cfs * ctx->font_scale_factor, 0.0, ctx->x_labels[i+startval], "", cfs * ctx->font_scale_factor);
+		mgl_puts(ctx->gr, b[i] + offset, ctx->minaxis - (ctx->max - ctx->min)*0.015 * cfs * ctx->font_scale_factor, 0.0, ctx->x_labels[i+startval], "", cfs * ctx->font_scale_factor);
 		}
 #else
 	    mgl_puts_ext(ctx->gr, b[i] + offset, ctx->minaxis - ((ctx->max - ctx->min)*0.015 * cfs * ctx->font_scale_factor), 0.0, ctx->x_labels[i+startval], "", cfs * ctx->font_scale_factor, 'x');
@@ -4058,7 +4058,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	    //mgl_label_ext(ctx->gr, 'y', y_axis_label, 0, axis_fontsize * ctx->font_scale_factor, -0.0);
 	    xoffset = (ctx->values->nItems - 0.8) / -4.2;
 #ifdef HAVE_MGL2
-	    yoffset = (ctx->max - ctx->min)/2.0;
+	    yoffset = (ctx->maxaxis + ctx->minaxis)/2.0;
 	    mgl_set_rotated_text(ctx->gr, 1);
 	    mgl_puts_dir(ctx->gr, xoffset, yoffset, 0.0, xoffset, yoffset+1.0, 0.0, y_axis_label, "", axis_fontsize * ctx->font_scale_factor);
 	    mgl_set_rotated_text(ctx->gr, ctx->rotation?1:0);
