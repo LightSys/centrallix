@@ -1,6 +1,7 @@
 #include "net_http.h"
 #include "cxss/cxss.h"
 #include "cxlib/memstr.h"
+#include "cxlib/util.h"
 #include "json/json.h"
 
 /************************************************************************/
@@ -1254,6 +1255,13 @@ nht_i_ParsePostPayload(pNhtConn conn)
 	payload->filename[i] = ptr[i];
 	}
     payload->filename[i] = '\0';
+    if(verifyUTF8(payload->filename) != UTIL_VALID_CHAR)
+	{
+	mssError(1,"NHT","Invalid filename in file upload POST request");
+	payload->status = -1;
+	memset(payload->filename, 0, strlen(payload->filename)); /* prevent invalid char from speading */
+	return payload; //Error
+	}
     
     /* Copy the extension to payload */
     if (extStart >= 0)
@@ -1281,10 +1289,11 @@ nht_i_ParsePostPayload(pNhtConn conn)
 		break;
 		}
 	    }
-	if (!allowed)
+	if (!allowed) /* handles case of invalid UTF-8 */
 	    {
 	    mssError(1,"NHT","Uploaded file extension not allowed on this server");
 	    payload->status = -1;
+	    memset(payload->extension, 0, strlen(payload->extension)); /* prevent possible invalid char from speading */
 	    return payload;
 	    }
 	}
@@ -1345,10 +1354,11 @@ nht_i_ParsePostPayload(pNhtConn conn)
      ** about the file type).
      **/
     rval = objIsA(payload->mime_type, "application/octet-stream");
-    if (rval == OBJSYS_NOT_ISA)
+    if (rval == OBJSYS_NOT_ISA) /* catches any invalid chars */
 	{
 	mssError(1,"NHT","Disallowed file MIME type for upload POST request");
 	payload->status = -1;
+	memset(payload->mime_type, 0, strlen(payload->mime_type)); /* prevent possible invalid char from speading */
 	return payload;
 	}
     if (rval < 0)
@@ -1430,7 +1440,7 @@ nht_i_ParsePostPayload(pNhtConn conn)
     /** Data transfer loop **/
     if (length)
 	fdWrite(file, token, length, 0, 0);
-    length = fdRead(conn->ConnFD, buffer, sizeof buffer, 0, 0);
+    length = fdRead(conn->ConnFD, buffer, sizeof buffer, 0, 0); /* data is just stored; no need to check */
     half = buffer + offset;
     while(length > 0)
 	{
@@ -1507,6 +1517,8 @@ nht_i_ParsePostPayload(pNhtConn conn)
  *** Ignores leading newlines.  Returns the length of data in the buffer.
  *** Size is the size of token.  If the buffer is too small, returns -1
  *** and leaves token empty.  Token is always null terminated.
+ *** NOTE: data read is not verified; check when it is called.
+ *** This makes it easier to tell how the data should be handled
  ***/
 int
 nht_i_NextLine(char * token, pNhtConn conn, int size)
@@ -1574,6 +1586,8 @@ nht_i_NextLine(char * token, pNhtConn conn, int size)
 
 
 /*** nht_i_POST - handle the HTTP POST method.
+ *** NOTE: posted files are not verified before writting. Validation
+ *** should be handled by the driver reading/processing the file.
  ***/
 int
 nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
@@ -1670,6 +1684,7 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 		    bytes_written = 0;
 		    while (bytes_written < length)
 			{
+			/** shouldn't write to object attributes, so is safe to allow unchecked **/
 			wcnt = objWrite(obj, buffer+bytes_written, length-bytes_written, 0, 0);
 			if (wcnt <= 0)
 			    break;
@@ -2537,6 +2552,9 @@ nht_i_PATCH(pNhtConn conn, pStruct url_inf, char* content)
     pObject target_obj = NULL;
     pNhtApp app = NULL;
     pNhtAppGroup group = NULL;
+    char vbuf [3];
+    int vlen;
+    int vind;
 
 	/** Check akey **/
 	find_inf = stLookup_ne(url_inf,"cx__akey");
@@ -2579,8 +2597,11 @@ nht_i_PATCH(pNhtConn conn, pStruct url_inf, char* content)
 	    {
 	    /** Read it in via the network connection **/
 	    total_rcnt = 0;
+	    vlen = 0;
 	    do  {
-		rcnt = fdRead(conn->ConnFD, rbuf, sizeof(rbuf), 0, 0);
+		/** if vlen > 0, sneak into buffer first */
+		if(vlen > 0) memcpy(rbuf, vbuf, vlen);
+		rcnt = fdRead(conn->ConnFD, rbuf+vlen, sizeof(rbuf)-vlen, 0, 0);
 		if (rcnt <= 0)
 		    {
 		    mssError(1,"NHT","Could not read JSON object from HTTP connection");
@@ -2588,6 +2609,8 @@ nht_i_PATCH(pNhtConn conn, pStruct url_inf, char* content)
 		    code = 400;
 		    goto error;
 		    }
+		rcnt += vlen; /* correct the length */
+		vlen = 0;
 		total_rcnt += rcnt;
 		if (total_rcnt > NHT_PAYLOAD_MAX)
 		    {
@@ -2596,8 +2619,35 @@ nht_i_PATCH(pNhtConn conn, pStruct url_inf, char* content)
 		    code = 400;
 		    goto error;
 		    }
+		/** verify read **/
+		if((vind = nVerifyUTF8(rbuf, rcnt)) != UTIL_VALID_CHAR)
+		    {
+		    if(rcnt - vind <= 3) /* stow for next time */
+			{
+			vlen = rcnt - vind;
+			memcpy(vbuf, rbuf + vind, vlen);
+			rcnt -= vlen;
+			total_rcnt -= vlen;
+			}
+		    else /* was an error */
+			{
+			mssError(1,"NHT","JSON object in PATCH request contained invalid char");
+			msg = "Bad Request";
+			code = 400;
+			goto error;
+			}
+		    }
+
 		j_obj = json_tokener_parse_ex(jtok, rbuf, rcnt);
 		} while((jerr = json_tokener_get_error(jtok)) == json_tokener_continue);
+
+		if(vlen > 0) /* catch errors at end */
+		    {
+		    mssError(1,"NHT","JSON object in PATCH request contained invalid char");
+		    msg = "Bad Request";
+		    code = 400;
+		    goto error;
+		    }
 	    }
 
 	/** Success? **/
@@ -2653,6 +2703,8 @@ nht_i_PATCH(pNhtConn conn, pStruct url_inf, char* content)
 /*** nht_i_PUT - implements the PUT HTTP method.  Set content_buf to
  *** data to write, otherwise it will be read from the connection if content_buf
  *** is NULL.
+ *** NOTE: Header attributes, including content_buf, are not verified here as they
+ *** would have already been checked by mtlexer. 
  ***/
 int
 nht_i_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
@@ -2690,7 +2742,8 @@ nht_i_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
 	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_WRONLY | O_CREAT | O_TRUNC, 0600, "text/html");
 	if (!target_obj)
 	    {
-	    if (url_inf) stFreeInf_ne(url_inf);
+	    /** prevent double free **/
+	    if (url_inf != conn->ReqURL) stFreeInf_ne(url_inf);
 	    nht_i_ErrorExit(conn, 404, "Not Found"); /* does not return */
 	    }
 
@@ -2720,7 +2773,7 @@ nht_i_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
 	    }
 
 	/** If content_buf, write that else write from the connection. **/
-	if (content_buf)
+	if (content_buf) /** verified by the header parser*/
 	    {
 	    while(size != 0)
 	        {
@@ -2744,7 +2797,8 @@ nht_i_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
 		        size = 0;
 			}
 		    }
-	        if (objWrite(target_obj, sbuf, rcnt, 0,0) < 0) break;
+		/** should not need to verify before write; read should check **/
+		if (objWrite(target_obj, sbuf, rcnt, 0,0) < 0) break; 
 		}
 	    }
 

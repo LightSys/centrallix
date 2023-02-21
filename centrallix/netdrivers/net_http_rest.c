@@ -776,6 +776,9 @@ nht_i_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
     struct json_object_iter iter;
     struct json_object* j_attr_obj;
     char* attrname;
+    char vbuf[3]; /* verify buf: stores broken utf-8 for json parser until can check full */
+    int vlen;   /* length of vbuf */
+    int vind;   /* index of errors for verify */
 
 	/** Open the target object **/
 	if (strlen(url_inf->StrVal) + 2 + 1 >= OBJSYS_MAX_PATH)
@@ -808,6 +811,7 @@ nht_i_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
 	/** Supplied as a URL parameter? **/
 	if (content)
 	    {
+	    /** content is verified when the headers are parsed via mtlexer, so no need to verify **/
 	    j_obj = json_tokener_parse_ex(jtok, content, strlen(content));
 	    jerr = json_tokener_get_error(jtok);
 	    }
@@ -815,8 +819,11 @@ nht_i_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
 	    {
 	    /** Read the document from the connection **/
 	    total_rcnt = 0;
+	    vlen = 0;
 	    do  {
-		rcnt = fdRead(conn->ConnFD, rbuf, sizeof(rbuf), 0, 0);
+		/** if vlen > 0, sneak into buffer first */
+		if(vlen > 0) memcpy(rbuf, vbuf, vlen);
+		rcnt = fdRead(conn->ConnFD, rbuf + vlen, sizeof(rbuf)-vlen, 0, 0);
 		if (rcnt <= 0)
 		    {
 		    mssError(1,"NHT","Could not read JSON object from HTTP connection");
@@ -824,6 +831,8 @@ nht_i_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
 		    code = 400;
 		    goto error;
 		    }
+		rcnt += vlen; /** correct length **/
+		vlen = 0;
 		total_rcnt += rcnt;
 		if (total_rcnt > NHT_PAYLOAD_MAX)
 		    {
@@ -832,8 +841,34 @@ nht_i_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
 		    code = 400;
 		    goto error;
 		    }
+		/** verify results **/
+		if((vind = nVerifyUTF8(rbuf, rcnt)) != UTIL_VALID_CHAR)
+		    {
+		    if(rcnt - vind <= 3) /* if at end, store for next loop */
+			{
+			vlen = rcnt - vind;
+			memcpy(vbuf, rbuf+vind, vlen);
+			rcnt -= vlen;
+			total_rcnt -= vlen;
+			}
+		    else /* is an error */
+			{
+			mssError(1,"NHT","JSON object contained an invalid character");
+			msg = "Bad Request";
+			code = 400;
+			goto error;
+			}
+		    }
 		j_obj = json_tokener_parse_ex(jtok, rbuf, rcnt);
 		} while((jerr = json_tokener_get_error(jtok)) == json_tokener_continue);
+		
+		if(vlen > 0) /* catch errors at the end of strings */
+		    {
+		    mssError(1,"NHT","JSON object contained an invalid character");
+		    msg = "Bad Request";
+		    code = 400;
+		    goto error;
+		    }
 	    }
 
 	/** Success? **/
