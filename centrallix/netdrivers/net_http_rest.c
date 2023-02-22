@@ -689,6 +689,12 @@ nht_i_RestSetOneAttr(pObject obj, char* attrname, struct json_object* j_attr_obj
 		rval = objSetAttrValue(obj, attrname, DATA_T_DATETIME, &od);
 		}
 	    }
+	else if (json_object_is_type(j_attr_obj, json_type_boolean))
+	    {
+	    /** json_bool is "typedef int", 0=false, 1=true **/
+	    n = (int)json_object_get_boolean(j_attr_obj);
+	    rval = objSetAttrValue(obj, attrname, DATA_T_INTEGER, POD(&n));
+	    }
 
     return rval;
     }
@@ -736,7 +742,10 @@ nht_i_RestPatch(pNhtConn conn, pStruct url_inf, pObject obj, struct json_object*
 	    j_attr_obj = iter.val;
 	    attrname = iter.key;
 	    if (nht_i_RestSetOneAttr(obj, attrname, j_attr_obj) < 0)
+		{
+		mssError(1, "NHT", "JSON PATCH: could not set attribute %s", attrname);
 		return -1;
+		}
 	    }
 
 	/** Ok, issue the HTTP header for this one. **/
@@ -880,7 +889,12 @@ nht_i_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
 	    j_attr_obj = iter.val;
 	    attrname = iter.key;
 	    if (nht_i_RestSetOneAttr(target_obj, attrname, j_attr_obj) < 0)
-		return -1;
+		{
+		mssError(1, "NHT", "JSON POST: could not set attribute %s", attrname);
+		msg = "Bad Request";
+		code = 400;
+		goto error;
+		}
 	    }
 	//objCommit(conn->NhtSession->ObjSess);
 	objCommitObject(target_obj);
