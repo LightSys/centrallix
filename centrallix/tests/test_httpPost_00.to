@@ -1,0 +1,5 @@
+##httpPost_00 Test post with content = app/form
+
+cd /tests/http/httpPostAppForm
+query select * from ./ where :varname != "X-Nonce" AND :varname != "Date"
+cd /

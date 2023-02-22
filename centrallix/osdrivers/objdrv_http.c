@@ -1183,19 +1183,25 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	    if (!strcmp(inf->RequestContentType, "application/x-www-form-urlencoded"))
 		{
 		/** Form URL Encoded request body **/
-		http_internal_AddRequestHeader(inf, "Content-Type", inf->RequestContentType, 0, 0);
+		http_internal_AddRequestHeader(inf, "Content-Type", "application/x-www-form-urlencoded; charset=US-ASCII", 0, 0); /* url encoding is in ascii */
 		post_params = http_i_PostBodyUrlencode(inf);
 		}
-	    else if (!strcmp(inf->RequestContentType, "text/xml") || !strcmp(inf->RequestContentType, "application/xml"))
+	    else if (!strcmp(inf->RequestContentType, "text/xml")) 
 		{
 		/** XML request body **/
-		http_internal_AddRequestHeader(inf, "Content-Type", inf->RequestContentType, 0, 0);
+		http_internal_AddRequestHeader(inf, "Content-Type", "text/xml; charset=utf-8", 0, 0); /* xml standard specifies utf-8 */
+		post_params = http_i_PostBodyXML(inf);
+		}
+	    else if (!strcmp(inf->RequestContentType, "application/xml"))
+		{
+		/** XML request body **/
+		http_internal_AddRequestHeader(inf, "Content-Type", "application/xml; charset=utf-8", 0, 0); /* xml standard specifies utf-8 */
 		post_params = http_i_PostBodyXML(inf);
 		}
 	    else if (!strcmp(inf->RequestContentType, "application/json"))
 		{
 		/** JSON request body **/
-		http_internal_AddRequestHeader(inf, "Content-Type", inf->RequestContentType, 0, 0);
+		http_internal_AddRequestHeader(inf, "Content-Type", "application/json; charset=utf-8", 0, 0); /* json standard specifies utf-8 */
 		post_params = http_i_PostBodyJSON(inf);
 		}
 	    else
