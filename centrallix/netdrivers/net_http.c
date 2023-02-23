@@ -1176,6 +1176,37 @@ nht_i_Hex16ToInt(char* hex)
     }
 
 
+/*** nht_i_Logout - log the current session out.
+ ***/
+int
+nht_i_Logout(pNhtConn conn, pNhtAppGroup group, pNhtApp app, int do_all)
+    {
+    pNhtSessionData nsess = conn->NhtSession;
+    int do_logout = (app != NULL);
+
+	/** Send the answer to the user **/
+	conn->NoCache = 1;
+	strtcpy(conn->ResponseContentType, "application/json", sizeof(conn->ResponseContentType));
+	nht_i_WriteResponse(conn, 200, "OK", NULL);
+	nht_i_QPrintfConn(conn, 0,
+		"{\"logout\":%STR, \"all\":%STR}\r\n",
+		do_logout?"true":"false",
+		do_all?"true":"false"
+		);
+
+	/** Do the logout by unlinking the session **/
+	if (do_logout)
+	    {
+	    if (do_all)
+		nht_i_LogoutUser(nsess->User->Username);
+	    else
+		nht_i_UnlinkSess(nsess);
+	    }
+
+    return 0;
+    }
+
+
 /*** nht_i_ParsePostPayload - parses the payload of a post request.
  *** The request includes one or more files.  This function needs to be
  *** called once for each file recieved and -not- per request.  Payload
@@ -1809,6 +1840,16 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    cxssAddEndorsement("system:from_appgroup", "*");
 		    }
 		}
+	    }
+
+	/** Logout? **/
+	if (!strncmp(url_inf->StrVal, "/INTERNAL/logoutall", 19))
+	    {
+	    return nht_i_Logout(conn, group, app, 1);
+	    }
+	if (!strncmp(url_inf->StrVal, "/INTERNAL/logout", 16))
+	    {
+	    return nht_i_Logout(conn, group, app, 0);
 	    }
 
 	/** Indicate activity... **/
@@ -3278,10 +3319,31 @@ nhtInitialize()
 
 	    /** Get the timer settings **/
 	    stAttrValue(stLookup(my_config, "session_watchdog_timer"), &(NHT.WatchdogTime), NULL, 0);
+	    if (NHT.WatchdogTime <= 0 || NHT.WatchdogTime > 200000)
+		{
+		mssError(1, "NHT", "Warning: session_watchdog_timer (%d) must be > 0 and <= 200000, reverting to default (180).", NHT.WatchdogTime);
+		NHT.WatchdogTime = 180;
+		}
 	    stAttrValue(stLookup(my_config, "session_inactivity_timer"), &(NHT.InactivityTime), NULL, 0);
+	    if (NHT.InactivityTime <= NHT.WatchdogTime || NHT.InactivityTime > 200000)
+		{
+		i = (NHT.WatchdogTime >= 1800)?(NHT.WatchdogTime + 1):1800;
+		if (i > 200000)
+		    {
+		    i = 200000;
+		    NHT.WatchdogTime = 199999;
+		    }
+		mssError(1, "NHT", "Warning: session_inactivity_timer (%d) must be > watchdog (%d) and <= 200000, reverting to %d.", NHT.InactivityTime, NHT.WatchdogTime, i);
+		NHT.InactivityTime = i;
+		}
 
 	    /** Session limits **/
 	    stAttrValue(stLookup(my_config, "user_session_limit"), &(NHT.UserSessionLimit), NULL, 0);
+	    if (NHT.UserSessionLimit > 1000 || NHT.UserSessionLimit < 1)
+		{
+		mssError(1, "NHT", "Warning: user_session_limit (%d) must be > 0 and <= 1000, reverting to default (100).", NHT.UserSessionLimit);
+		NHT.UserSessionLimit = 100;
+		}
 
 	    /** Cookie name **/
 	    if (stAttrValue(stLookup(my_config, "session_cookie"), NULL, &strval, 0) < 0)
