@@ -3596,7 +3596,7 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
 	mgl_set_flag(ctx->gr, 1, MGL_NO_ORIGIN);
 	mgl_axis(ctx->gr, "xy", "", "");
 	mgl_axis_grid(ctx->gr, "y", "W-", "");
-	mgl_puts(ctx->gr, 0.0 - reccnt / 35.0, 0.0 - fs * ctx->font_scale_factor * (ctx->maxaxis - ctx->minaxis) / 130.0, 0.0, "0", "", fs * ctx->font_scale_factor);
+	mgl_puts(ctx->gr, 0.0 - (reccnt - 1) / 35.0, 0.0 - fs * ctx->font_scale_factor * (ctx->maxaxis - ctx->minaxis) / 130.0, 0.0, "0", "", fs * ctx->font_scale_factor);
 	mgl_plot(ctx->gr, ctx->chart_data, linecolors, "");
 #else
 	mgl_axis(ctx->gr, "xy");
