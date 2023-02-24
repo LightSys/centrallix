@@ -3484,6 +3484,7 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
 #else
 	rpt_internal_DrawXTickLabels(ctx, 1, reccnt-2, reccnt, 0);
 #endif
+	mgl_add_tick(ctx->gr, 'y', 0.0000000000000001, "0");
 	mgl_adjust_ticks(ctx->gr, "y");
 	//mgl_set_ticks(ctx->gr, -((reccnt-1)*2+1), tickDist, 1);
 	mgl_tune_ticks(ctx->gr, ctx->scale, 1.15);
@@ -3496,6 +3497,7 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
 	snprintf(opt, sizeof(opt), "size %.1f", fs * ctx->font_scale_factor);
 	mgl_axis(ctx->gr, "y", "", opt);
 	mgl_axis_grid(ctx->gr, "y", "W-", "");
+	//mgl_puts(ctx->gr, -0.5, 0.00, 0.0, "0", "", fs * ctx->font_scale_factor);
 	mgl_bars(ctx->gr, ctx->chart_data, barcolors, "");
 #else
 	mgl_axis(ctx->gr, "xy");
