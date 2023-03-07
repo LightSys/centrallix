@@ -3778,14 +3778,37 @@ int exp_fn_last(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
     tree->Flags |= EXPR_F_AGGLOCKED;
     return 0;
     }
-/** FIXME: needs tested **/
+
 int exp_fn_utf8_overlong(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
 	{
+	int len;
+
+	if (!i0)
+	    {
+	    mssError(1,"EXP","overlong() requires one parameter");
+	    return -1;
+	    }
+	if (i0->DataType != DATA_T_STRING)
+	    {
+	    mssError(1, "EXP", "overlong() function takes a string parameter.");
+	    return -1;
+	    }
+
 	int result = verifyUTF8(i0->String);
 
 	if(result == UTIL_VALID_CHAR)
 		{
-		tree->String = nmSysMalloc(strlen(i0->String));
+		len = strlen(i0->String) + 1;
+		if(len > 64)
+		    {
+		    tree->String = nmSysMalloc(len);
+		    tree->Alloc = 1;
+		    }
+		else
+		    {
+		    tree->Alloc = 0;
+		    tree->String = tree->Types.StringBuf;
+		    }
 		strcpy(tree->String, i0->String);
 		}
 	else

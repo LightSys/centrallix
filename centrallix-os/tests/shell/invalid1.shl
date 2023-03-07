@@ -2,5 +2,5 @@ $Version=2$
 myshell "system/shell"
 {
     program = "/bin/cat";
-    arg="cat","/home/devel/2utf/centrallix/centrallix-os/tests/shell/invalid_short.txt";
+    arg="cat","/usr/local/src/cx-git/centrallix-os/tests/shell/invalid_short.txt";
 }

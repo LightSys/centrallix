@@ -1,8 +1,10 @@
 # Set Up for MySQL Tests
 The mysql tests require that a new database and a pair of tables be added to the main centrallix mysql server. This assumes that a mysql database is being used and that the default sign in for root had not been changed (that is, no password). 
+Make sure the mysql driver is enabled in .../centrallix/tests/centrallix.conf-test.in and /usr/local/etc/centrallix.conf
 
 
 ## Database Schema
+These tests require the creation of a database named "driver_test", which must contain the tables described below. 
 Note that both the latin1 and the UTF-8 tables both contain the same schema. They only differ by encoding.
 +------------+--------------+------+-----+---------+----------------+
 | Field      | Type         | Null | Key | Default | Extra          |
@@ -36,3 +38,11 @@ WHERE CCSA.collation_name = T.table_collation
 
 SELECT table_name, column_name, character_set_name FROM information_schema.`COLUMNS` 
 WHERE table_schema = "driver_test";
+
+## To connect to the database: 
+The following shell commands should be helpful with conecting with the database to run commands without going through centrallix. This assumes the server is running locally. 
+
+ - **Running:** .../bin/mysqld_safe &
+ - **Stopping:** .../bin/mysqladmin -u root -p shutdown
+ - **Connect:** mysql -u root -p 
+ - **Connect (utf-8 support):**  mysql -u root --default-character-set=utf8mb4

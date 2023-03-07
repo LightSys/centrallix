@@ -11,9 +11,9 @@ query insert into object /tests/Centrallix_DB/utf8/rows/* select string="short 4
 query insert into object /tests/Centrallix_DB/utf8/rows/* select string="test of utf-8 planes", longString="|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|", raw="|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|", text="|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|"
 
 # "bad" inserts
-query insert into object /tests/Centrallix_DB/utf8/rows/* select string="short 3 byte utf-8`; DRIP TABLE utf8; --", longString="実に", raw="実に神はひとり子をさえ惜しまず与し", text="ず永遠のいのちを得るためです"
-query insert into object /tests/Centrallix_DB/utf8/rows/* select string="short 3 byte utf-8'; DRIP TABLE utf8; --", longString="実に", raw="実に神はひとり子をさえ惜しまず与し", text="ず永遠のいのちを得るためです"
-query insert into object /tests/Centrallix_DB/utf8/rows/* select string="short 3 byte utf-8"; DRIP TABLE utf8; --", longString="実に", raw="実に神はひとり子をさえ惜しまず与し", text="ず永遠のいのちを得るためです"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="short 3 byte utf-8`; DROP TABLE utf8; --", longString="実に", raw="実に神はひとり子をさえ惜しまず与し", text="ず永遠のいのちを得るためです"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="short 3 byte utf-8'; DROP TABLE utf8; --", longString="実に", raw="実に神はひとり子をさえ惜しまず与し", text="ず永遠のいのちを得るためです"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="short 3 byte utf-8"; DROP TABLE utf8; --", longString="実に", raw="実に神はひとり子をさえ惜しまず与し", text="ず永遠のいのちを得るためです"
 
 # 'bad' reads
 query select :id', :string, :longString, :raw, :text from /tests/Centrallix_DB/utf8/rows
