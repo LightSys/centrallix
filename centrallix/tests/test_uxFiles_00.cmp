@@ -9,6 +9,5 @@ samples                                                               system/dir
 sys                                                                   system/directory
 tests                                                                 system/directory
 password.uxu                                                          system/file
-*                                                                     system/file
 dir1                                                                  system/directory
 test.txt                                                              system/file
