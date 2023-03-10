@@ -1,0 +1,16 @@
+##NAME UTF-8 compatible upper() function
+
+query select mixed(:f_string) from /tests/Datatypes.csv/rows 
+query select mixed(:Color) from /tests/TestLevel1.csv/rows 
+query select mixed(null)
+query select mixed("\t")
+query select mixed("ESPAÑOLA")
+query select mixed("română")
+query select mixed("日本人")
+query select mixed("српски")
+query select mixed("монгол")
+query select mixed("ΕΛΛΗΝΙΚΆ")
+query select mixed("ΕΛΛΗΝΙΚΑ")
+query select mixed("français")
+query select mixed("ر")
+

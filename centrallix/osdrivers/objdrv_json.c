@@ -264,7 +264,12 @@ json_internal_ReadDoc(pObject obj)
 		if((ind = verifyUTF8(checkBuf+offset)) != UTIL_VALID_CHAR)
 		    {
 		    /** first 3 bytes verified previously so allow to skip up to 3 bytes **/
-		    if(!first_read && ind == 0) while(++offset <= 3 && (ind = verifyUTF8(checkBuf+offset)) == 0){}
+		    if(!first_read && ind == 0)
+			{
+			while(++offset < 3 && (ind = verifyUTF8(checkBuf+offset)) == 0){}
+			ind = verifyUTF8(checkBuf+offset); /* run after end to make sure have most updated index*/
+			}
+		     
 		    /** last 3 bytes will be verified next loop or after end, so ignore **/
 		    if((6+rcnt) - (ind+offset) > 3 && ind != UTIL_VALID_CHAR)
 			{

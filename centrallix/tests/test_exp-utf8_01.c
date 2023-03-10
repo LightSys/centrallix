@@ -9,6 +9,7 @@ test(char** name)
     char* wordlist;
     char* buffer;
     int i;
+    int debug = 0;
     
     *name = "Exp UTF-8: charsets mixed"; /* provides tests for the internal function found in charsets */
 
@@ -18,14 +19,12 @@ test(char** name)
     /** basic test **/
     chrToMixed(NULL, NULL, len, NULL);
     assert(*len == CHR_INVALID_ARGUMENT);
-
-
+    assert(0 == chrToMixed(NULL, NULL, NULL, NULL));
     /*** Test simple c style strings examples with no buffer ***/
 
     *len = 0;
     in = "test";
     out = chrToMixed(in, NULL, len, NULL);
-    printf("%s >> %s \n", in, out);
     assert(*len > 0);
     assert(strcmp("Test", out) == 0);
     nmSysFree(out);
@@ -33,7 +32,6 @@ test(char** name)
     *len = 0;
     in = "a longer test";
     out = chrToMixed(in, NULL, len, NULL);
-    printf("%s >> %s \n", in, out);
     assert(*len > 0);
     assert(strcmp("A Longer Test", out) == 0);
     nmSysFree(out);
@@ -41,7 +39,6 @@ test(char** name)
     *len = 0;
     in = "a test with dash-in it";
     out = chrToMixed(in, NULL, len, NULL);
-    printf("%s >> %s \n", in, out);
     assert(*len > 0);
     assert(strcmp("A Test With Dash-in It", out) == 0);
     nmSysFree(out);
@@ -49,7 +46,6 @@ test(char** name)
     *len = 0;
     in = "a test with quote'in it";
     out = chrToMixed(in, NULL, len, NULL);
-    printf("%s >> %s \n", in, out);
     assert(*len > 0);
     assert(strcmp("A Test With Quote'in It", out) == 0);
     nmSysFree(out);
@@ -57,7 +53,6 @@ test(char** name)
     *len = 0;
     in = "a test with underscore_in it";
     out = chrToMixed(in, NULL, len, NULL);
-    printf("%s >> %s \n", in, out);
     assert(*len > 0);
     assert(strcmp("A Test With Underscore_In It", out) == 0);
     nmSysFree(out);
@@ -65,7 +60,6 @@ test(char** name)
     *len = 0;
     in = "a tEst With MIXED cAsEs";
     out = chrToMixed(in, NULL, len, NULL);
-    printf("%s >> %s \n", in, out);
     assert(*len > 0);
     assert(strcmp("A Test With Mixed Cases", out) == 0);
     nmSysFree(out);
@@ -74,7 +68,6 @@ test(char** name)
     *len = 0;
     in = "à sèntence that ábÙsés latìn-Líkê chãräctërs";
     out = chrToMixed(in, NULL, len, NULL);
-    printf("%s >> %s\n", in, out);
     assert(*len > 0);
     assert(strcmp("À Sèntence That Ábùsés Latìn-líkê Chãräctërs", out) == 0);
     nmSysFree(out);
@@ -85,7 +78,6 @@ test(char** name)
     wordlist = "test,McDonald,a,fArM";
     in = "old mcdonald had a farm";
     out = chrToMixed(in, NULL, len, wordlist);
-    printf("%s >> %s\n", in, out);
     assert(*len > 0);
     assert(strcmp("Old McDonald Had a fArM", out) == 0);
     nmSysFree(out);
@@ -94,7 +86,6 @@ test(char** name)
     wordlist = "test,Mc*,a,fArM";
     in = "old mcdonald had a farm";
     out = chrToMixed(in, NULL, len, wordlist);
-    printf("%s >> %s\n", in, out);
     assert(*len > 0);
     assert(strcmp("Old McDonald Had a fArM", out) == 0);
     nmSysFree(out);
@@ -160,8 +151,6 @@ test(char** name)
     out = chrToMixed(in, NULL, len, wordlist);
     assert(*len == CHR_INVALID_CHAR);
 
-    //TODO: find a way to test out of memory errors. 
-
     
     /*** Tests with buffer ***/
 
@@ -192,6 +181,10 @@ test(char** name)
     assert(buffer != out);
     nmFree(buffer, 5);
     nmSysFree(out);
+
+    /** no buffer size **/
+    out = chrToMixed(in, buffer, NULL, NULL);
+    assert(out == 0);
 
     nmFree(len, sizeof(int));
     

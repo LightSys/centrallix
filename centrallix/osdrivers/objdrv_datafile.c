@@ -3059,8 +3059,9 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	inf->Node = qy->ObjInf->Node;
 	obj->SubPtr = qy->ObjInf->Obj->SubPtr;
 	dat_internal_DetermineType(obj,inf);
-/** FIXME:  qy (passed in as qy_v) has waaay to much data; like at least the first page of rows... Some could be invalid, have to make sure is never used... Ask greg...?
- ** the only thing that should need verified is the qy->Row.Pages[0]->Data, since that is what the read is assigned to. Index may change...? **/
+	/** NOTE:  qy (passed in as qy_v) could potnetially contain a substantial ammount of verified data.
+	 ** However, the concerning field, qy->Row.Pages[0]->Data, should only be read in this driver, and 
+	 ** therefore should be okay **/
 	return (void*)inf;
 
     done:

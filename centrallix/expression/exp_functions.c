@@ -532,11 +532,9 @@ int exp_fn_lower(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 	}
     return 0;
     }
-//FIXME: need to either full send on the comment below, or delete it. 
-/* i0: string to put in mixed case
- * i1: wordlist (optional)
- * i2: unused
-*/
+
+
+// i0 = string to put in mixed case, i1 = wordlist (optional), i2 = unused 
 int exp_fn_mixed(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     int n,i,j,l;
@@ -5053,7 +5051,7 @@ int exp_internal_DefineFunctions()
         xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_charindex);
         xhAdd(&EXP.Functions, "upper", (char*) exp_fn_upper);
         xhAdd(&EXP.Functions, "lower", (char*) exp_fn_lower);
-		xhAdd(&EXP.Functions, "mixed", (char) exp_fn_mixed);
+	xhAdd(&EXP.Functions, "mixed", (char) exp_fn_mixed);
         xhAdd(&EXP.Functions, "char_length", (char*) exp_fn_char_length);
         xhAdd(&EXP.Functions, "right", (char*) exp_fn_right);
         xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_ralign);
@@ -5068,16 +5066,15 @@ int exp_internal_DefineFunctions()
         xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_utf8_charindex);
         xhAdd(&EXP.Functions, "upper", (char*) exp_fn_utf8_upper);
         xhAdd(&EXP.Functions, "lower", (char*) exp_fn_utf8_lower);
-		xhAdd(&EXP.Functions, "mixed", (char) exp_fn_utf8_mixed);
+	xhAdd(&EXP.Functions, "mixed", (char*) exp_fn_utf8_mixed);
         xhAdd(&EXP.Functions, "char_length", (char*) exp_fn_utf8_char_length);
         xhAdd(&EXP.Functions, "right", (char*) exp_fn_utf8_right);
         xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_utf8_ralign);
         xhAdd(&EXP.Functions, "escape", (char*) exp_fn_utf8_escape);
-		xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_utf8_reverse);
-		xhAdd(&EXP.Functions, "overlong", (char*) exp_fn_utf8_overlong);
+	xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_utf8_reverse);
+	xhAdd(&EXP.Functions, "overlong", (char*) exp_fn_utf8_overlong);
         xhAdd(&EXP.Functions, "cos_compare", (char*)exp_fn_utf8_cos_compare);
-
-		}
+	}
     
     return 0;
     }

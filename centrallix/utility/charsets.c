@@ -311,7 +311,6 @@ char* chrToLower(char* string,  char* buffer, size_t* bufferLength)
     }
 
 /* Convert a (possibly multibyte) string to mixed case (title case). */
-// TODO: This is a chimera of chrToLower (above) and exp_fn_mixed (in exp_functions.c)... might want to start over to make sure need all
 char* chrToMixed(char* string, char* buffer, size_t* bufferLength, char* wordlist)
     {
     size_t stringCharLength, listCharLength, currentPos, curWordLen, newStrByteLength;
@@ -323,9 +322,13 @@ char* chrToMixed(char* string, char* buffer, size_t* bufferLength, char* wordlis
         longBuffer = 0;
         listBuffer = 0;
         /** Check arguments **/
-        if(!string || !bufferLength)
+        if (!bufferLength)
+	    {
+	    /** cannot indicate error through bufferLength **/
+	    goto err;
+	    }
+	else if(!string)
             {
-                //FIXME: probably shouldn't go here when bufferLength is null; asking for a crash
             *bufferLength = CHR_INVALID_ARGUMENT;
             goto err;
             }
@@ -357,12 +360,12 @@ char* chrToMixed(char* string, char* buffer, size_t* bufferLength, char* wordlis
                 goto err;
                 }
             listBuffer = nmSysMalloc(sizeof(wchar_t) * (listCharLength + 1));
-            listCharLength = mbstowcs(listBuffer, wordlist, listCharLength + 1);
-            if(!listBuffer)
+	    if(!listBuffer)
                 {
                 *bufferLength = CHR_MEMORY_OUT;
                 goto err;
                 }
+            listCharLength = mbstowcs(listBuffer, wordlist, listCharLength + 1);
 
             /** convert to XArray **/
             wordPtr = wcstok(listBuffer, L",", &savePos);
@@ -384,15 +387,15 @@ char* chrToMixed(char* string, char* buffer, size_t* bufferLength, char* wordlis
                  ** ' and -, needs to become a boundary 
                  **/
                  //TODO: make sure locale will not be a problem for this
-                 if(!iswalpha(longBuffer[currentPos]) && longBuffer[currentPos] != '\'' 
-                    && longBuffer[currentPos] != '-') at_boundary = 1;
+                 if(!iswalpha(longBuffer[currentPos]) && longBuffer[currentPos] != L'\'' 
+                    && longBuffer[currentPos] != L'-') at_boundary = 1;
                 }
             else 
                 {
                 /** If have a wordlist, change input to match the list **/
                 if(wordlist) 
                     {
-                    /** Find length of next workd in input string **/
+                    /** Find length of next word in input string **/
                     curWordLen = 0;
                     while(iswalpha(*(longBuffer + currentPos + curWordLen)) && currentPos + curWordLen < stringCharLength)
                         {
