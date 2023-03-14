@@ -958,6 +958,9 @@ http_i_PostBodyJSON(pHttpData inf)
     int param_part_cnt;
     char* save_ptr;
     char cur_param[256];
+    int is_array[16];	/* 0 = object, 1 = array */
+    int last_is_array[16];
+    int changed[16];
 
 	post_params = xsNew();
 	if (!post_params)
@@ -972,6 +975,8 @@ http_i_PostBodyJSON(pHttpData inf)
 	    {
 	    cur_json[j] = NULL;
 	    last_json[j] = NULL;
+	    is_array[j] = 0;
+	    last_is_array[j] = 0;
 	    }
 	for(i=0; i<xaCount(&inf->Params); i++)
 	    {
@@ -988,6 +993,7 @@ http_i_PostBodyJSON(pHttpData inf)
 		    while(param_part)
 			{
 			cur_json[param_part_cnt] = param_part;
+			is_array[param_part_cnt] = (cur_json[param_part_cnt][0] >= '0' && cur_json[param_part_cnt][0] <= '9');
 			param_part = strtok_r(NULL, ".", &save_ptr);
 			param_part_cnt++;
 			if (param_part_cnt >= sizeof(cur_json) / sizeof(char*) - 1)
@@ -1001,14 +1007,28 @@ http_i_PostBodyJSON(pHttpData inf)
 			cur_json[j] = NULL;
 			}
 
+		    /** What has changed? **/
+		    for(j=0; j<sizeof(cur_json) / sizeof(char*); j++)
+			{
+			if (j > 0 && changed[j-1])
+			    changed[j] = 1;
+			else
+			    changed[j] = (last_json[j] && !cur_json[j]) || (!last_json[j] && cur_json[j]) || (last_json[j] && cur_json[j] && strcmp(last_json[j], cur_json[j]) != 0);
+			}
+
 		    /** Emit closing braces? **/
 		    last = 1;
 		    for(j=sizeof(cur_json) / sizeof(char*) - 1; j>=0; j--)
 			{
-			if (last_json[j] && (!cur_json[j] || strcmp(last_json[j], cur_json[j]) != 0))
+			if (last_json[j] && changed[j])
 			    {
 			    if (!last)
-				xsConcatenate(post_params, " } ", 3);
+				{
+				if (last_is_array[j+1])
+				    xsConcatenate(post_params, " ] ", 3);
+				else
+				    xsConcatenate(post_params, " } ", 3);
+				}
 			    comma = 1;
 			    last = 0;
 			    }
@@ -1017,9 +1037,17 @@ http_i_PostBodyJSON(pHttpData inf)
 		    /** New JSON object? **/
 		    for(j=0; j < sizeof(cur_json) / sizeof(char*); j++)
 			{
-			if (cur_json[j] && (!last_json[j] || strcmp(last_json[j], cur_json[j]) != 0))
+			last = (j == param_part_cnt - 1);
+			if (cur_json[j] && changed[j])
 			    {
-			    xsConcatQPrintf(post_params, " %[, %]\"%STR&JSONSTR\": %[{ %]", comma, cur_json[j], j != param_part_cnt - 1);
+			    xsConcatQPrintf(post_params, 
+				    " %[, %]%[\"%STR&JSONSTR\":%] %[%STR %]", 
+				    comma, 
+				    !is_array[j],
+				    cur_json[j], 
+				    !last, 
+				    (!last && is_array[j+1])?"[":"{"
+				    );
 			    comma = 0;
 			    }
 			}
@@ -1046,6 +1074,7 @@ http_i_PostBodyJSON(pHttpData inf)
 			if (cur_json[j])
 			    {
 			    last_json[j] = nmSysStrdup(cur_json[j]);
+			    last_is_array[j] = is_array[j];
 			    }
 			}
 		    }
@@ -1059,7 +1088,12 @@ http_i_PostBodyJSON(pHttpData inf)
 	    if (cur_json[j])
 		{
 		if (!last)
-		    xsConcatenate(post_params, " } ", 3);
+		    {
+		    if (last_is_array[j+1])
+			xsConcatenate(post_params, " ] ", 3);
+		    else
+			xsConcatenate(post_params, " } ", 3);
+		    }
 		last = 0;
 		}
 	    if (last_json[j])

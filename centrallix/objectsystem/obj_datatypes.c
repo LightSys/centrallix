@@ -72,11 +72,13 @@ char* obj_long_week[] = {"Sunday","Monday","Tuesday","Wednesday","Thursday",
 /*** date format:
  ***   DDDD = long day-of-week name	NOT YET IMPL.
  ***   DDD = short day-of-week abbrev.	NOT YET IMPL.
- ***   dd = 2-digit day of month
+ ***   dd = 2-digit day of month (zero padded to two digits)
+ ***   d = day of month, not zero padded
  ***   ddd = day of month plus cardinality '1st','2nd','3rd', etc.
  ***   MMMM = full (long) month name
  ***   MMM = short month abbreviation
- ***   MM = 2-digit month of year
+ ***   MM = 2-digit month of year (zero-padded to two digits)
+ ***   M = month of year, not zero padded
  ***   yy = 2-digit year (bad)
  ***   yyyy = 4-digit year (good)
  ***   HH = hour in 24-hour format
@@ -260,6 +262,11 @@ obj_internal_FormatDate(pDateTime dt, char* str, char* format, int length)
 		    xsConcatenate(&xs, tmp, -1);
 		    fmt++;
 		    }
+		else
+		    {
+		    sprintf(tmp,"%d",dt->Part.Day+1);
+		    xsConcatenate(&xs, tmp, -1);
+		    }
 		fmt++;
 		break;
 
@@ -280,6 +287,11 @@ obj_internal_FormatDate(pDateTime dt, char* str, char* format, int length)
 		    sprintf(tmp,"%2.2d",dt->Part.Month+1);
 		    xsConcatenate(&xs, tmp, -1);
 		    fmt++;
+		    }
+		else
+		    {
+		    sprintf(tmp,"%d",dt->Part.Month+1);
+		    xsConcatenate(&xs, tmp, -1);
 		    }
 		fmt++;
 		break;
