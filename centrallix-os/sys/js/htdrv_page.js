@@ -1473,7 +1473,10 @@ function pg_load_page(aparam) //SETH: ??
 	    newurl += '&';
 	else
 	    newurl += '?';
-	newurl += "cx__akey=" + window.akey.substr(0,49);
+	if (aparam.LinkApp !== null && (aparam.LinkApp == 'yes' || aparam.LinkApp == 1))
+	    newurl += "cx__akey=" + window.akey;
+	else
+	    newurl += "cx__akey=" + window.akey.substr(0,49);
 	}
 
     window.location.href = newurl;
@@ -2175,7 +2178,7 @@ function pg_serialized_load(l, newsrc, cb, silent)
 // actually made.
 function pg_serialized_load_doone()
     {
-    if (pg_loadqueue_busy >= pg_max_requests) return;
+    if (pg_loadqueue_busy >= pg_max_requests || window.pg_disconnected) return;
 
     pg_loadqueue_check_spinner();
 
