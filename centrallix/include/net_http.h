@@ -182,6 +182,7 @@ typedef struct
     char	LastIPAddr[20];
     XArray	OsmlQueryList;	/* array of pNhtQuery */
     XArray	AppGroups;	/* array of pNhtAppGroup */
+    int		Closed;		/* Set to 1 if session no longer available */
     }
     NhtSessionData, *pNhtSessionData;
 

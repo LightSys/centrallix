@@ -1198,9 +1198,14 @@ nht_i_Logout(pNhtConn conn, pNhtAppGroup group, pNhtApp app, int do_all)
 	if (do_logout)
 	    {
 	    if (do_all)
+		{
 		nht_i_LogoutUser(nsess->User->Username);
+		}
 	    else
+		{
+		nsess->Closed = 1;
 		nht_i_UnlinkSess(nsess);
+		}
 	    }
 
     return 0;
