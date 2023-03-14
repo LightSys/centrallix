@@ -112,6 +112,7 @@ nht_i_AllocSession(char* usrname, int using_tls)
 
 	/** Create the session. **/
 	nsess = (pNhtSessionData)nmMalloc(sizeof(NhtSessionData));
+	memset(nsess, 0, sizeof(NhtSessionData));
 	strtcpy(nsess->Username, mssUserName(), sizeof(nsess->Username));
 	strtcpy(nsess->Password, mssPassword(), sizeof(nsess->Password));
 	thGetSecContext(NULL, &(nsess->SecurityContext));
@@ -264,6 +265,7 @@ nht_i_UnlinkSess(pNhtSessionData sess)
 	    xhDeInit(sess->CachedApps);
 	    nmFree(sess->CachedApps, sizeof(XHashTable));
 	    xhnDeInitContext(&(sess->Hctx));
+	    memset(sess, 0, sizeof(NhtSessionData));
 	    nmFree(sess, sizeof(NhtSessionData));
 	    }
 
@@ -586,6 +588,7 @@ nht_i_LogoutUser(char* username)
 	for(i=0;i<xaCount(&usr->Sessions);i++)
 	    {
 	    search_s = xaGetItem(&usr->Sessions, i);
+	    search_s->Closed = 1;
 	    nht_i_UnlinkSess(search_s);
 	    }
 

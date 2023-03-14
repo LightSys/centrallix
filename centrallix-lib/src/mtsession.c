@@ -267,6 +267,7 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 	/** Allocate a new session structure. **/
 	s = (pMtSession)nmMalloc(sizeof(MtSession));
 	if (!s) return -1;
+	memset(s, 0, sizeof(MtSession));
 	s->LinkCnt = 1;
 	strncpy(s->UserName, username, 31);
 	s->UserName[31]=0;
