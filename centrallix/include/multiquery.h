@@ -222,7 +222,6 @@ struct _QST /* QueryStatement */
     pQueryElement	Tree;			/* query exec main tree ptr */
     pQueryStructure	QTree;			/* query syntax tree head ptr */
     pParamObjects	OneObjList;		/* objlist used for query as a whole - e.g., HAVING clause */
-    int			Offset;			/* objcontent read offset */
     };
 
 #define MQ_TF_ALLOWUPDATE	1
@@ -284,6 +283,7 @@ typedef struct
     int			RowIDAllQuery;
     int			RowIDThisQuery;
     int			RowIDBeforeLimit;
+    int			Offset;			/* objcontent read offset */
     }
     PseudoObject, *pPseudoObject;
 

@@ -2957,7 +2957,6 @@ mq_internal_NextStatement(pMultiQuery this)
 	stmt->IterCnt = -1;
 	stmt->UserIterCnt = 0;
 	stmt->Flags = MQ_TF_FINISHED;
-	stmt->Offset = 0;
 
 	this->QueryCnt++;
 
@@ -3372,6 +3371,7 @@ mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj)
 	qy->LinkCnt++;
 	qy->CurStmt->LinkCnt++;
 	p->ObjList = expCreateParamList();
+	p->Offset = 0;
 
 	/** Record the Counters **/
 	p->QueryID = qy->QueryCnt - 1;
@@ -3871,19 +3871,19 @@ mqRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree
 	    if (mqGetAttrValue(inf_v, "objcontent", DATA_T_STRING, POD(&content), NULL) == 0)
 		{
 		if (flags & OBJ_U_SEEK)
-		    p->Stmt->Offset = offset;
-		if (strlen(content) <= p->Stmt->Offset)
+		    p->Offset = offset;
+		if (strlen(content) <= p->Offset)
 		    {
 		    n = 0;
 		    }
 		else
 		    {
-		    n = strlen(content) - p->Stmt->Offset;
+		    n = strlen(content) - p->Offset;
 		    }
 		if (n > maxcnt)
 		    n = maxcnt;
-		memcpy(buffer, content, n);
-		p->Stmt->Offset += n;
+		memcpy(buffer, content + p->Offset, n);
+		p->Offset += n;
 		return n;
 		}
 	    else
