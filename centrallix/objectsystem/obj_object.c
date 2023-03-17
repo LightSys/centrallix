@@ -359,24 +359,27 @@ obj_internal_GetDCHash(pPathname pathinfo, int mode, char* hash, int hashmaxlen,
     pXString url_params = NULL;
     char* paramstr = "";
     pStruct one_open_ctl, open_ctl;
-    int i;
+    int i,j;
 
 	url_params = xsNew();
 	if (url_params)
 	    {
 	    paramstr = xsString(url_params);
-	    open_ctl = pathinfo->OpenCtl[pathcnt - 1];
-	    if (open_ctl)
+	    for(j=0; j<pathcnt; j++)
 		{
-		for(i=0; i<open_ctl->nSubInf; i++)
+		open_ctl = pathinfo->OpenCtl[j];
+		if (open_ctl)
 		    {
-		    one_open_ctl = open_ctl->SubInf[i];
-		    xsConcatQPrintf(url_params, "%STR%STR&URL=%STR&URL",
-			    (xsString(url_params)[0])?"&":"?",
-			    one_open_ctl->Name,
-			    one_open_ctl->StrVal);
+		    for(i=0; i<open_ctl->nSubInf; i++)
+			{
+			one_open_ctl = open_ctl->SubInf[i];
+			xsConcatQPrintf(url_params, "%STR%STR&URL=%STR&URL",
+				(xsString(url_params)[0])?"&":"?",
+				one_open_ctl->Name,
+				one_open_ctl->StrVal);
+			}
+		    paramstr = xsString(url_params);
 		    }
-		paramstr = xsString(url_params);
 		}
 	    }
 
