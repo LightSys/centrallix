@@ -1,0 +1,14 @@
+##NAME Sybase 05: Non string test 
+
+# data should already be in the table
+
+# print out results:
+
+# this won't show img
+query select * from  /tests/Test_DB.sybdb/noText/rows 
+
+# show print out img values
+print /tests/Test_DB.sybdb/noText/rows/1
+print /tests/Test_DB.sybdb/noText/rows/2
+print /tests/Test_DB.sybdb/noText/rows/3
+print /tests/Test_DB.sybdb/noText/rows/4

@@ -1,0 +1,17 @@
+$Version=2$
+Test_DB "application/sybase"
+    {
+    server = "SYBTEST";
+    database = "Test_DB";
+    max_connections = 200;
+    annot_table = "ra";
+
+    //Use centrallix login credentials.
+    use_system_auth = "no";
+    username = <username>;
+    password = <password>;
+
+    // Migrate centrallix password to mysql password.
+    //default_password = "newuserpass";
+    set_passwords = "no";
+    }

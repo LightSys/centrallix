@@ -1,0 +1,24 @@
+##NAME Sybase 03: Test large prints
+
+# clear out any old data 
+query delete from /tests/Test_DB.sybdb/long/rows
+
+# upload new data 
+query insert into /tests/Test_DB.sybdb/long/rows  select :id, :text from object /tests/long_utf8.json/data/0
+query insert into /tests/Test_DB.sybdb/long/rows  select :id, :text from object /tests/long_utf8.json/data/1
+query insert into /tests/Test_DB.sybdb/long/rows  select :id, :text from object /tests/long_utf8.json/data/2
+query insert into /tests/Test_DB.sybdb/long/rows  select :id, :text from object /tests/long_utf8.json/data/3
+query insert into /tests/Test_DB.sybdb/long/rows  select :id, :text from object /tests/long_utf8.json/data/4
+query insert into /tests/Test_DB.sybdb/long/rows  select :id, :text from object /tests/long_utf8.json/data/5
+query insert into /tests/Test_DB.sybdb/long/rows  select :id, :text from object /tests/long_utf8.json/data/6
+
+# print out results
+query select * from /tests/Test_DB.sybdb/long/rows
+print /tests/Test_DB.sybdb/long/rows/1
+print /tests/Test_DB.sybdb/long/rows/2
+print /tests/Test_DB.sybdb/long/rows/3
+print /tests/Test_DB.sybdb/long/rows/4
+print /tests/Test_DB.sybdb/long/rows/5
+print /tests/Test_DB.sybdb/long/rows/6
+print /tests/Test_DB.sybdb/long/rows/7
+query select * from /tests/Test_DB.sybdb/long/rows 
