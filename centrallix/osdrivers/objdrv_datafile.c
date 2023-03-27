@@ -3059,7 +3059,7 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	inf->Node = qy->ObjInf->Node;
 	obj->SubPtr = qy->ObjInf->Obj->SubPtr;
 	dat_internal_DetermineType(obj,inf);
-	/** NOTE:  qy (passed in as qy_v) could potnetially contain a substantial ammount of verified data.
+	/** NOTE:  qy (passed in as qy_v) could potnetially contain a substantial ammount of unverified data.
 	 ** However, the concerning field, qy->Row.Pages[0]->Data, should only be read in this driver, and 
 	 ** therefore should be okay **/
 	return (void*)inf;
