@@ -1582,7 +1582,6 @@ sybd_internal_GetTableInf(pSybdNode node, pSybdConn conn, char* table)
 		/** get referenced table name **/
 		ct_get_data(cmd, 1, fkeydata->PrimaryKeyTable, sizeof(fkeydata->PrimaryKeyTable)-1, (CS_INT*)&i);
 		fkeydata->PrimaryKeyTable[i] = 0;
-/** FIXME: how do I get this to run...? looks like needs a complex table set up. Is there an examle in the Kardia DB?**/
 		if((vind = nVerifyUTF8(fkeydata->PrimaryKeyTable, i)) != UTIL_VALID_CHAR)
 		    {
 		    mssError(1, "sybd", "Primary key table name contained invalid characters. Truncating");

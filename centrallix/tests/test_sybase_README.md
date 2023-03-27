@@ -149,6 +149,8 @@ The tests will occasionally break for various reasons that are not caused by the
 - If the sybase driver is not enabled, run the configure script with `--enable-sybase`, and make sure the centrallix.conf file has received the correct setting. 
 	- it is likely that it might fail to find the path. If so, also include `--with-sybase=<path to ocs-16_0/lib>`
 - If both the tests and the isql command will not work, try changing the LANG envirement variable to a value that sybase excepts
+- If the commands work in test_obj but not with make test, make sure both centrallix.conf-test and centrallix.conf-test.in are enabling sybase. 
+	- you may have to set charsetmap_file = "##SYSCONFDIR##/centrallix/charsetmap.cfg";, or whatever path works for the local repo.
 
 ## To connect to the database: 
 The following shell commands should be helpful with conecting with the database to run commands without going through centrallix. This assumes the sybase server and/or client is set up properly.  
