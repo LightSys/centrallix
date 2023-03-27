@@ -1267,7 +1267,7 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	    http_internal_AddRequestHeader(inf, "Content-Length", nmSysStrdup(reqlen), 1, 0);
 	    }
 
-	printf("Web client sending request: %s - %s%s - %s\n", inf->Server, path, xsString(url_params), post_params?xsString(post_params):"");
+	printf("Web client sending request, server:%s path:%s%s post:%s headers:", inf->Server, path, xsString(url_params), post_params?xsString(post_params):"");
 
 	xsFree(url_params);
 	url_params = NULL;
@@ -1286,8 +1286,10 @@ http_internal_SendRequest(pHttpData inf, char* path)
 		rval = fdQPrintf(inf->Socket, "%STR: %STR\r\n", hdr->Name, hdr->Value);
 		if (rval < 0)
 		    return rval;
+		printf("%s%s=%s", (i==0)?"":",", hdr->Name, hdr->Value);
 		}
 	    }
+	printf("\n");
 
 	/** End-of-headers **/
 	fdQPrintf(inf->Socket, "\r\n");
