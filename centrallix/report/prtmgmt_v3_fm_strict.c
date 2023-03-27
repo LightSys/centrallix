@@ -170,8 +170,8 @@ prt_strictfm_Probe(pPrtSession s, char* output_type)
  *** driver supports.  In this case, this just queries the underlying output
  *** driver for the information.
  ***/
-int
-prt_strictfm_GetNearestFontSize(void* context_v, int req_size)
+double
+prt_strictfm_GetNearestFontSize(void* context_v, double req_size)
     {
     pPrtStrictfmInf context = (pPrtStrictfmInf)context_v;
     return context->OutputDriver->GetNearestFontSize(context->OutputDriverData, req_size);

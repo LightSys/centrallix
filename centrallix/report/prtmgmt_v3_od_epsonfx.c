@@ -306,8 +306,8 @@ prt_fxod_SetPageGeom(void* context_v, double width, double height, double t, dou
 /*** prt_fxod_GetNearestFontSize() - return the nearest font size to the
  *** requested one.  Right now, we just support a few sizes.
  ***/
-int
-prt_fxod_GetNearestFontSize(void* context_v, int req_size)
+double
+prt_fxod_GetNearestFontSize(void* context_v, double req_size)
     {
     /*pPrtFXodInf context = (pPrtFXodInf)context_v;*/
     if (req_size >= 11)

@@ -3958,7 +3958,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	stacked = rpt_internal_GetBool(inf, chart, "stacked", 0, 0);
 	ctx->rotation = rpt_internal_GetBool(inf, chart, "text_rotation", 0, 0);
 	rpt_internal_GetDouble(inf, chart, "zoom", &ctx->zoom, 1.0, 0);
-	rpt_internal_GetInteger(inf, chart, "fontsize", &ctx->fontsize, prtGetFontSize(container_handle), 0);
+	rpt_internal_GetInteger(inf, chart, "fontsize", &ctx->fontsize, (int)round(prtGetFontSize(container_handle)), 0);
 	if (ctx->fontsize < 1)
 	    goto error;
 
@@ -4248,7 +4248,7 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
     int n;
     int attr = 0;
     int i;
-    double lh;
+    double d;
     int j;
 
 	/** Check for font, size, color **/
@@ -4257,9 +4257,14 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
 	    if (prtSetFont(prt_obj, ptr) < 0)
 		return -1;
 	    }
-	if (rpt_internal_GetInteger(inf, config, "fontsize", &n, RPT_INT_UNSPEC, 0) >= 0)
+	if (rpt_internal_GetDouble(inf, config, "fontsize", &d, NAN, 0) >= 0)
 	    {
-	    if (prtSetFontSize(prt_obj, n) < 0)
+	    if (prtSetFontSize(prt_obj, d) < 0)
+		return -1;
+	    }
+	if (rpt_internal_GetDouble(inf, config, "min_fontsize", &d, NAN, 0) >= 0)
+	    {
+	    if (prtSetMinFontSize(prt_obj, d) < 0)
 		return -1;
 	    }
 	if (rpt_internal_GetString(inf, config, "fontcolor", &ptr, NULL, 0) >= 0)
@@ -4280,9 +4285,9 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
 		    return -1;
 		}
 	    }
-	if (rpt_internal_GetDouble(inf, config, "lineheight", &lh, NAN, 0) >= 0)
+	if (rpt_internal_GetDouble(inf, config, "lineheight", &d, NAN, 0) >= 0)
 	    {
-	    if (prtSetLineHeight(prt_obj, lh) < 0)
+	    if (prtSetLineHeight(prt_obj, d) < 0)
 		return -1;
 	    }
 

@@ -85,7 +85,8 @@ typedef struct _POT
 typedef struct _PTS
     {
     int			FontID;			/* ID from PRTMGMT.FontList mapping */
-    int			FontSize;		/* point size of font */
+    double		FontSize;		/* point size of font */
+    double		MinFontSize;		/* size of font if down-scaling to fit */
     int			Attr;			/* PRT_OBJ_A_xxx */
     int			Color;			/* 0x00RRGGBB */
     }
@@ -184,7 +185,7 @@ typedef struct _PFM
     int			Priority;
     void*		(*Probe)();
     int			(*Generate)();
-    int			(*GetNearestFontSize)();
+    double		(*GetNearestFontSize)();
     void		(*GetCharacterMetric)();
     double		(*GetCharacterBaseline)();
     int			(*Close)();
@@ -205,7 +206,7 @@ typedef struct _PD
     int			(*SetResolution)();
     int			(*SetPageGeom)();
     int			(*SetTextStyle)();
-    int			(*GetNearestFontSize)();
+    double		(*GetNearestFontSize)();
     void		(*GetCharacterMetric)();
     double		(*GetCharacterBaseline)();
     int			(*SetHPos)();
@@ -529,8 +530,10 @@ int prtSetAttr(int handle_id, int attrs);		/* PRT_OBJ_A_xxx */
 int prtGetAttr(int handle_id);
 int prtSetFont(int handle_id, char* fontname);
 char* prtGetFont(int handle_id);
-int prtSetFontSize(int handle_id, int pt_size);
-int prtGetFontSize(int handle_id);
+int prtSetFontSize(int handle_id, double pt_size);
+double prtGetFontSize(int handle_id);
+int prtSetMinFontSize(int handle_id, double pt_size);
+double prtGetMinFontSize(int handle_id);
 int prtSetColor(int handle_id, int font_color);
 int prtGetColor(int handle_id);
 int prtSetBGColor(int handle_id, int bgcolor);

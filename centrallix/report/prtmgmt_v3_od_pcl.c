@@ -268,8 +268,8 @@ prt_pclod_SetPageGeom(void* context_v, double width, double height, double t, do
  *** requested one.  Most PCL printers can scale fonts without any problem,
  *** so we'll allow any font size greater than zero.
  ***/
-int
-prt_pclod_GetNearestFontSize(void* context_v, int req_size)
+double
+prt_pclod_GetNearestFontSize(void* context_v, double req_size)
     {
     /*pPrtPclodInf context = (pPrtPclodInf)context_v;*/
     return (req_size<=0)?1:req_size;

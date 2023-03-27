@@ -411,7 +411,7 @@ prtGetFont(int handle_id)
  *** adjusts the line height accordingly.
  ***/
 int
-prtSetFontSize(int handle_id, int fontsize)
+prtSetFontSize(int handle_id, double fontsize)
     {
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
     pPrtObjStream set_obj;
@@ -452,7 +452,7 @@ prtSetFontSize(int handle_id, int fontsize)
 
 /*** prtGetFontSize() - returns the current font size in points.
  ***/
-int
+double
 prtGetFontSize(int handle_id)
     {
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
@@ -469,6 +469,63 @@ prtGetFontSize(int handle_id)
 	    tgt_obj = obj;
 
     return tgt_obj->TextStyle.FontSize;
+    }
+
+
+/*** prtSetMinFontSize() - sets the minimum allowed font size, in points.  This
+ *** is used by the textflow layout to fit a block of text into a container if
+ *** needed.  Set to zero to disable automatically resizing the font to fit.
+ ***/
+int
+prtSetMinFontSize(int handle_id, double fontsize)
+    {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+    pPrtObjStream set_obj;
+    pPrtSession s = PRTSESSION(obj);
+
+	/** Check the obj **/
+	if (!obj) return -1;
+	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
+
+	/** Add an empty string object to contain the attr change. **/
+	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
+	    set_obj = prt_internal_CreateEmptyObj(obj);
+	else
+	    set_obj = prt_internal_AddEmptyObj(obj);
+	if (!set_obj)
+	    return -1;
+
+	/** Set the size and recalc the height/baseline **/
+	if (fontsize == 0)
+	    set_obj->TextStyle.MinFontSize = 0;
+	else
+	    set_obj->TextStyle.MinFontSize = s->Formatter->GetNearestFontSize(s->FormatterData, fontsize);
+
+	prt_internal_DispatchEvents(s);
+
+    return 0;
+    }
+
+
+/*** prtGetMinFontSize() - returns the minimum font size in points.
+ ***/
+double
+prtGetMinFontSize(int handle_id)
+    {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+    pPrtObjStream tgt_obj;
+
+	/** Check the obj **/
+	if (!obj) return -1;
+	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
+
+	/** Check for a child object **/
+	if (obj->ContentTail != NULL)
+	    tgt_obj = obj->ContentTail;
+	else
+	    tgt_obj = obj;
+
+    return tgt_obj->TextStyle.MinFontSize;
     }
 
 

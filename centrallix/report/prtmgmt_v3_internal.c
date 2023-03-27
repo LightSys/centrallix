@@ -936,7 +936,7 @@ prt_internal_DumpOne(pPrtObjStream obj, int level)
 	    case PRT_OBJ_T_RECT: printf("RECT: "); break;
 	    case PRT_OBJ_T_IMAGE: printf("IMG:  "); break;
 	    }
-	printf("x=%.3g y=%.3g z=%d w=%.3g h=%.3g px=%.3g py=%.3g bl=%.3g fs=%d y+bl=%.3g flg=%d id=%d\n",
+	printf("x=%.3g y=%.3g z=%d w=%.3g h=%.3g px=%.3g py=%.3g bl=%.3g fs=%.1f y+bl=%.3g flg=%d id=%d\n",
 		obj->X, obj->Y, obj->Z, obj->Width, obj->Height,
 		obj->PageX, obj->PageY, obj->YBase, obj->TextStyle.FontSize,
 		obj->Y + obj->YBase, obj->Flags, obj->ObjID);
