@@ -265,6 +265,11 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				    etmp->Flags |= (EXPR_F_AGGREGATEFN | EXPR_F_AGGLOCKED);
 				    /*etmp->AggExp = expAllocExpression();*/
 				    }
+				if (!strcasecmp(etmp->Name,"row_number") || !strcasecmp(etmp->Name,"dense_rank") ||
+				    !strcasecmp(etmp->Name,"lag"))
+				    {
+				    etmp->Flags |= (EXPR_F_WINDOWFN | EXPR_F_HASWINDOWFN);
+				    }
 
 				/** Pseudo-functions declaring domain of exec of the expression **/
 				if (!strcasecmp(etmp->Name,"runserver"))
@@ -872,6 +877,8 @@ exp_internal_SetAggLevel(pExpression exp)
 	    child = (pExpression)(exp->Children.Items[i]);
 	    rval = exp_internal_SetAggLevel(child);
 	    if (rval > max_level) max_level = rval;
+	    if (child->Flags & EXPR_F_HASWINDOWFN)
+		exp->Flags |= EXPR_F_HASWINDOWFN;
 	    }
 
 	/** Is this an aggregate function?  If so, set level one higher **/

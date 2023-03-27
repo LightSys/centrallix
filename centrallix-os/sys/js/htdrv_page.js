@@ -37,6 +37,8 @@ pg_msg.MSG_EVENT=16;
 
 var pg_explog = [];
 
+var pg_interval = 60000; /* milliseconds */
+
 
 function pg_scriptavailable(s)
     {
@@ -487,16 +489,18 @@ function pg_get(o,a)
 //END SECTION: DOM/CSS helper functions -----------------------------------
 
 //START SECTION: pinging functions ---------------------------------------
-/* these functions deal with pinging the server. The client pings the
- * server because ...? //SETH:
- */
+// These are used for keepalives to let the server know the application
+// is still running in the user's browser.  In the absence of keepalives
+// the application is destroyed with a very short time interval, otherwise
+// the session times out after a much longer period of inactivity.
 
 function pg_ping_init(l,i)
     {
-    l.tid=setInterval(pg_ping_send,i,l);    		
+    l.tid=setInterval(pg_ping_send,i,l);
+    pg_interval = i;
     }
 
-function pg_ping_recieve()
+function pg_ping_receive()
     {
     var link = null;
     var links = this.contentDocument.getElementsByTagName("a");
@@ -515,12 +519,23 @@ function pg_ping_recieve()
 	pg_servertime_notz = new Date(link.target);
 	pg_clienttime = new Date();
 	pg_clockoffset = pg_clienttime - pg_servertime_notz;
+
+	// Inactivity timeout imminent?  We catch this a bit early so the user
+	// doesn't get a 401 on a normal data request.
+	//
+	if (parseInt(link.text) > 0 && parseInt(link.text) < pg_interval + 2000)
+	    {
+	    clearInterval(this.tid);
+	    if (!window.pg_disconnected)
+		confirm('you have been disconnected from the server');
+	    window.pg_disconnected = true;
+	    }
 	}
     }
     
 function pg_ping_send(p)
     {
-    pg_serialized_load(p, '/INTERNAL/ping?cx__akey=' + window.akey, pg_ping_recieve);
+    pg_serialized_load(p, '/INTERNAL/ping?cx__akey=' + window.akey, pg_ping_receive);
     }
 
 //END SECTION: pinging functions ---------------------------------------
@@ -2109,10 +2124,13 @@ function pg_serialized_func(level, obj, func, params)
 // manner that keeps things serialized so server loads don't overlap.
 function pg_serialized_load(l, newsrc, cb, silent)
     {
-    pg_debug('pg_serialized_load: ' + pg_loadqueue.length + ': ' + l.name + ' loads ' + newsrc + '\n');
-    pg_loadqueue_additem({level:1, type:'src', lyr:l, src:newsrc, cb:cb, retry_cnt:0, silent:silent, active:false});
-    pg_debug('pg_serialized_load: ' + pg_loadqueue.length + '\n');
-    pg_serialized_load_doone();
+    if (!window.pg_disconnected)
+	{
+	pg_debug('pg_serialized_load: ' + pg_loadqueue.length + ': ' + l.name + ' loads ' + newsrc + '\n');
+	pg_loadqueue_additem({level:1, type:'src', lyr:l, src:newsrc, cb:cb, retry_cnt:0, silent:silent, active:false});
+	pg_debug('pg_serialized_load: ' + pg_loadqueue.length + '\n');
+	pg_serialized_load_doone();
+	}
     }
 
 // pg_serialized_load_doone() - loads the next item off of the

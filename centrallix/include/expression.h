@@ -127,6 +127,7 @@ typedef struct _ET
     unsigned int	LxFlags;
     unsigned int	CmpFlags;
     void*		PrivateData;		/* allocated with nmSysMalloc() */
+    int			(*PrivateDataFinalize)(void*);
     }
     Expression, *pExpression;
 
@@ -229,8 +230,9 @@ extern pParamObjects expNullObjlist;
 #define EXPR_F_RUNDEFAULT	(EXPR_F_RUNSTATIC)
 
 #define EXPR_F_INDETERMINATE	32768	/* Value cannot yet be known */
-
 #define EXPR_F_HASRUNSERVER	65536	/* Expression contains runserver() */
+#define EXPR_F_WINDOWFN		131072	/* node is a windowing function */
+#define EXPR_F_HASWINDOWFN	262144	/* subtree has a windowing function */
 
 /*** Expression objlist MainFlags ***/
 #define EXPR_MO_RECALC		1	/* ignore EXPR_F_STALE; recalc */
@@ -275,6 +277,7 @@ pExpression expReducedDuplicate(pExpression this);
 int expCompareExpressions(pExpression exp1, pExpression exp2);
 int expCompareExpressionValues(pExpression exp1, pExpression exp2);
 pTObjData expCompileAndEval(char* text, pParamObjects objlist, int lxflags, int cmpflags);
+pExpression expPtodToExpression(pTObjData ptod, pExpression exp);
 pTObjData expExpressionToPtod(pExpression exp);
 int expSetString(pExpression this, char* str);
 int expSetBinary(pExpression this, unsigned char* str, int len);
@@ -346,6 +349,7 @@ int expUnlockAggregates(pExpression tree, int level);
 int expRemoveParamFromList(pParamObjects this, char* name);
 int expRemoveParamFromListById(pParamObjects this, int i);
 int expSetParamFunctions(pParamObjects this, char* name, int (*type_fn)(), int (*get_fn)(), int (*set_fn)());
+int expSetParamFunctionsByID(pParamObjects this, int id, int (*type_fn)(), int (*get_fn)(), int (*set_fn)());
 int expRemapID(pExpression tree, int exp_obj_id, int objlist_obj_id);
 int expClearRemapping(pExpression tree);
 int expObjChanged(pParamObjects this, pObject obj);

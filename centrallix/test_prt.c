@@ -1064,7 +1064,7 @@ start(void* v)
 	/** Authenticate **/
 	user = readline("Username: ");
 	pwd = getpass("Password: ");
-	if (mssAuthenticate(user,pwd) < 0)
+	if (mssAuthenticate(user, pwd, 0) < 0)
 	    puts("Warning: auth failed, running outside session context.");
 	StdOut = fdOpen("/dev/tty", O_RDWR, 0600);
 	free( user);

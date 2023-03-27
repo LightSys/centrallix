@@ -396,7 +396,7 @@ typedef struct _SRT
     XArray	SortNames[2];	/* names of objects */
     XString	SortDataBuf;	/* buffer for sort key data */
     XString	SortNamesBuf;	/* buffer for object names */
-    int		IsTemp;
+    int		Reopen;
     }
     ObjQuerySort, *pObjQuerySort;
 
@@ -423,6 +423,7 @@ typedef struct _OQ
 #define OBJ_QY_F_FULLQUERY	2
 #define OBJ_QY_F_FULLSORT	4
 #define OBJ_QY_F_FROMSORT	8
+#define OBJ_QY_F_NOREOPEN	16
 
 
 /*** Event and EventHandler structures ***/
@@ -653,7 +654,7 @@ int objIsA(char* type1, char* type2);
 
 /** objectsystem directory/query functions **/
 pObjQuery objMultiQuery(pObjSession session, char* query, void* objlist, int flags);
-pObjQuery objOpenQuery(pObject obj, char* query, char* order_by, void* tree, void** orderby_exp);
+pObjQuery objOpenQuery(pObject obj, char* query, char* order_by, void* tree, void** orderby_exp, int flags);
 int objQueryDelete(pObjQuery this);
 pObject objQueryFetch(pObjQuery this, int mode);
 pObject objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* type);

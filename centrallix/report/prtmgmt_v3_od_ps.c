@@ -185,12 +185,13 @@ prt_psod_OutputHeader(pPrtPsodInf context)
     {
 
 	prt_psod_Output(context,"%!PS-Adobe-3.0\n"
-				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3 $Revision: 1.9 $ \n"
+				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3\n"
 				"%%Title: Centrallix/" PACKAGE_VERSION " Generated Document\n"
 				"%%Pages: (atend)\n"
 				"%%DocumentData: Clean7Bit\n"
 				"%%LanguageLevel: 2\n"
 				"%%EndComments\n"
+				"/pdfmark where {pop} {userdict /pdfmark /cleartomark load put} ifelse\n"
 				, -1);
 
     return 0;
@@ -825,7 +826,7 @@ prt_psod_SetVPos(void* context_v, double y)
 /*** prt_psod_WriteText() - sends a string of text to the printer.
  ***/
 int
-prt_psod_WriteText(void* context_v, char* str)
+prt_psod_WriteText(void* context_v, char* str, char* url, double width, double height)
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
     double bl;
@@ -903,6 +904,18 @@ prt_psod_WriteText(void* context_v, char* str)
 	if (psbuflen)
 	    {
 	    prt_psod_Output_va(context, "<%s> show\n", context->Buffer);
+	    }
+
+	/** URL? **/
+	if (url)
+	    {
+	    prt_psod_Output_va(context, "[ /Rect [ %.1f %.1f %.1f %.1f ] /Action << /Subtype /URI /URI (%s) >> /Border [0 0 0] /Color [0 0 .7] /Subtype /Link /ANN pdfmark\n",
+		    (context->CurHPos)*7.2 + 0.000001,
+		    context->PageHeight - ((context->CurVPos)*12.0 + bl*12.0 - 0.000001 - height*12.0),
+		    (context->CurHPos)*7.2 + 0.000001 + width*7.2,
+		    context->PageHeight - ((context->CurVPos)*12.0 + bl*12.0 - 0.000001),
+		    url
+		    );
 	    }
 
     return 0;
@@ -1076,7 +1089,7 @@ prt_psod_WriteFF(void* context_v)
  *** on the page that will be printed after this row of objects.
  ***/
 double
-prt_psod_WriteRect(void* context_v, double width, double height, double next_y)
+prt_psod_WriteRect(void* context_v, double width, double height, double next_y, int color)
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
     double x1,x2,y1,y2;
@@ -1094,12 +1107,30 @@ prt_psod_WriteRect(void* context_v, double width, double height, double next_y)
 	y1 = context->CurVPos*12.0 + 0.000001;
 	y2 = y1 + height*12.0;
 
+	/** Color change? **/
+	if (color != -1 && color != context->SelectedStyle.Color)
+	    {
+	    prt_psod_Output_va(context, "%.3f %.3f %.3f RGB\n", 
+		    ((color>>16) & 0xFF) / 255.0,
+		    ((color>>8) & 0xFF) / 255.0,
+		    ((color) & 0xFF) / 255.0);
+	    }
+
 	/** Output the rectangle **/
 	prt_psod_Output_va(context,	"%.1f %.1f NXY %.1f %.1f LXY %.1f %.1f LXY %.1f %.1f LXY fill\n",
 		x1,y1,
 		x2,y1,
 		x2,y2,
 		x1,y2);
+
+	/** Color change? **/
+	if (color != -1 && color != context->SelectedStyle.Color)
+	    {
+	    prt_psod_Output_va(context, "%.3f %.3f %.3f RGB\n", 
+		    ((context->SelectedStyle.Color>>16) & 0xFF) / 255.0,
+		    ((context->SelectedStyle.Color>>8) & 0xFF) / 255.0,
+		    ((context->SelectedStyle.Color) & 0xFF) / 255.0);
+	    }
 
     return context->CurVPos + height;
     }

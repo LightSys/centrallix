@@ -218,7 +218,7 @@ obj_internal_ParseCriteria(pObjQuery this, char* query, pExpression tree)
 /*** objOpenQuery - issue a query against just one object, with no joins.
  ***/
 pObjQuery 
-objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orderby_exp_v)
+objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orderby_exp_v, int flags)
     {
     pObjQuery this = NULL;
     pExpression tree = (pExpression)tree_v;
@@ -331,21 +331,21 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    xaInit(this->SortInf->SortNames+0,4096);
 	    xsInit(&this->SortInf->SortDataBuf);
 	    xsInit(&this->SortInf->SortNamesBuf);
-	    this->SortInf->IsTemp = 0;
+	    this->SortInf->Reopen = 1;
 
-	    /** Temp object? **/
+	    /** Temp object or caller requested no-reopen behavior? **/
 	    info = objInfo(obj);
-	    if (info && (info->Flags & OBJ_INFO_F_TEMPORARY))
-		this->SortInf->IsTemp = 1;
+	    if ((flags & OBJ_QY_F_NOREOPEN) || (info && (info->Flags & OBJ_INFO_F_TEMPORARY)))
+		this->SortInf->Reopen = 0;
 
 	    /** Read result set **/
 	    while((tmp_obj = objQueryFetch(this, 0400)))
 	        {
 		/** We keep temp objects open, for others we squirrel away the name instead and re-open later **/
-		if (this->SortInf->IsTemp)
-		    xaAddItem(this->SortInf->SortNames+0, (void*)tmp_obj);
-		else
+		if (this->SortInf->Reopen)
 		    xaAddItem(this->SortInf->SortNames+0, (void*)(xsStringEnd(&this->SortInf->SortNamesBuf) - this->SortInf->SortNamesBuf.String));
+		else
+		    xaAddItem(this->SortInf->SortNames+0, (void*)tmp_obj);
 		objGetAttrValue(tmp_obj,"name",DATA_T_STRING,POD(&ptr));
 		xsConcatenate(&this->SortInf->SortNamesBuf, ptr, strlen(ptr)+1);
 		expModifyParam(this->ObjList, NULL, tmp_obj);
@@ -360,7 +360,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 		    }
 
 		xaAddItem(this->SortInf->SortPtrLen+0, (void*)(intptr_t)len);
-		if (!this->SortInf->IsTemp)
+		if (this->SortInf->Reopen)
 		    objClose(tmp_obj);
 		}
 
@@ -368,7 +368,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    n = this->SortInf->SortPtr[0].nItems;
 	    for(i=0;i<n;i++)
 	        {
-		if (!this->SortInf->IsTemp)
+		if (this->SortInf->Reopen)
 		    this->SortInf->SortNames[0].Items[i] = this->SortInf->SortNamesBuf.String + (intptr_t)(this->SortInf->SortNames[0].Items[i]);
 		this->SortInf->SortPtr[0].Items[i] = this->SortInf->SortDataBuf.String + (intptr_t)(this->SortInf->SortPtr[0].Items[i]);
 		}
@@ -492,7 +492,7 @@ objQueryFetch(pObjQuery this, int mode)
 	    if (this->RowID >= this->SortInf->SortNames[0].nItems) return NULL;
 
 	    /** Temp objects we kept open; others we reopen by name **/
-	    if (this->SortInf->IsTemp)
+	    if (!this->SortInf->Reopen)
 		{
 		obj = (pObject)this->SortInf->SortNames[0].Items[this->RowID++];
 		this->SortInf->SortNames[0].Items[this->RowID - 1] = NULL;
@@ -717,7 +717,7 @@ objQueryClose(pObjQuery this)
 	if (this->SortInf)
 	    {
 	    /** Close temp objects? **/
-	    if (this->SortInf->IsTemp)
+	    if (!this->SortInf->Reopen)
 		{
 		for(i = this->SortInf->SortNames[0].nItems - 1; i >= this->RowID; i--)
 		    {

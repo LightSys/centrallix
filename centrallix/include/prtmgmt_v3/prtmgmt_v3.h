@@ -121,6 +121,7 @@ typedef struct _POS
     double		X;			/* Relative X position to container origin */
     double		Y;			/* Relative Y position to container origin */
     double		YBase;			/* Relative Y baseline to the object's Y position */
+    int			Z;			/* Z value (layering order, higher values are above) */
     double		Width;			/* Width of object */
     double		Height;			/* Height of object */
     double		ConfigWidth;		/* initially configured width of object */
@@ -136,6 +137,7 @@ typedef struct _POS
     double		LineHeight;		/* Height of lines... */
     double		ConfigLineHeight;	/* Configured height of lines, negative if unset. */
     unsigned char*	Content;		/* Text content or image bitmap */
+    char*		URL;			/* Hyperlink for the content */
     int			ContentSize;		/* total memory allocated for the content */
     char		DataType;		/* type of data displayed in this object (Hints) */
     int                 (*Finalize)();          /* cleanup when destroying object */
@@ -196,6 +198,7 @@ typedef struct _PD
     int			Magic;
     char		Name[32];
     char		ContentType[64];
+    int			Flags;
     void*		(*Open)();
     int			(*Close)();
     pXArray		(*GetResolutions)();
@@ -231,6 +234,7 @@ typedef struct _PE
 typedef struct _PS
     {
     int			Magic;
+    int			Flags;
     pPrtObjStream	StreamHead;
     double		PageWidth;
     double		PageHeight;
@@ -318,6 +322,15 @@ typedef struct _PSVG
     PrtSvg, *pPrtSvg;
 
 
+/*** Named colors ***/
+typedef struct _PC
+    {
+    char		Name[24];
+    int			RGB;		/* 0x00RRGGBB */
+    }
+    PrtColor, *pPrtColor;
+
+
 /*** Print management global structure ***/
 typedef struct _PG
     {
@@ -330,6 +343,8 @@ typedef struct _PG
     XHashTable		HandleTable;
     XHashTable		HandleTableByPtr;
     int			NextHandleID;
+    XArray		Colors;
+    XHashTable		ColorsByName;
     }
     PrtGlobals, *pPrtGlobals;
 
@@ -405,6 +420,10 @@ extern PrtGlobals PRTMGMT;
 
 #define PRT_EVENT_T_REFLOW	    0		/* reflow the contents of a container */
 
+#define PRT_DRV_F_NOZ		    1		/* driver does not support Z-layering */
+
+#define PRT_SESS_F_NOZ		    1		/* disable Z-layering */
+
 
 /*** MakeBorder flags ***/
 #define PRT_MKBDR_F_TOP		    1		/* border is 'top' */
@@ -413,6 +432,7 @@ extern PrtGlobals PRTMGMT;
 #define PRT_MKBDR_F_RIGHT	    8
 #define PRT_MKBDR_DIRFLAGS	    (PRT_MKBDR_F_TOP | PRT_MKBDR_F_BOTTOM | PRT_MKBDR_F_LEFT | PRT_MKBDR_F_RIGHT)
 #define PRT_MKBDR_F_MARGINRELEASE   16
+#define PRT_MKBDR_F_OUTSIDE	    32
 
 
 /*** System functions ***/
@@ -445,9 +465,11 @@ int prtSetUnits(pPrtSession s, char* units_name);
 char* prtGetUnits(pPrtSession s);
 double prtGetUnitsRatio(pPrtSession s);
 int prtSetResolution(pPrtSession s, int dpi);
+int prtGetResolution(pPrtSession s, int* xres, int* yres);
 int prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void* (*open_fn)(), int (*write_fn)(), int (*close_fn)());
 int prtSetSessionParam(pPrtSession s, char* paramname, char* value);
 char* prtGetSessionParam(pPrtSession s, char* paramname, char* defaultvalue);
+int prt_internal_NoZ(pPrtSession s);
 
 /** Internal management functions **/
 pPrtObjStream prt_internal_AllocObj(char* type);
@@ -511,12 +533,16 @@ int prtSetFontSize(int handle_id, int pt_size);
 int prtGetFontSize(int handle_id);
 int prtSetColor(int handle_id, int font_color);
 int prtGetColor(int handle_id);
+int prtSetBGColor(int handle_id, int bgcolor);
+int prtGetBGColor(int handle_id);
+int prtLookupColor(char* color);
 int prtSetHPos(int handle_id, double x);
 int prtSetVPos(int handle_id, double y);
 int prtSetValue(int handle_id, char* attrname, ...);
 int prtSetMargins(int handle_id, double t, double b, double l, double r);
 pPrtBorder prtAllocBorder(int n_lines, double sep, double pad, ...);
 int prtFreeBorder(pPrtBorder b);
+pPrtImage prtAllocImage(int width, int height, int color_type);
 pPrtImage prtCreateImageFromPNG(int (*read_fn)(), void* read_arg);
 int prt_internal_WriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, int w, int h);
 int prtFreeImage(pPrtImage i);
@@ -527,6 +553,7 @@ int prtFreeSvg(pPrtSvg svg);
 int prtSvgSize(pPrtSvg svg);
 pXString prtConvertSvgToEps(pPrtSvg svg, double w, double h);
 int prtSetDataHints(int handle_id, int data_type, int flags);
+int prtSetURL(int handle_id, char* url);
 
 /*** Printing content functions ***/
 int prtWriteImage(int handle_id, pPrtImage imgdata, double x, double y, double width, double height, int flags);

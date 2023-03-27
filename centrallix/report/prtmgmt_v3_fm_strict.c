@@ -117,6 +117,7 @@ prt_strictfm_AllocDriver()
 
 	drv = (pPrtOutputDriver)nmMalloc(sizeof(PrtOutputDriver));
 	if (!drv) return NULL;
+	memset(drv, 0, sizeof(PrtOutputDriver));
 	SETMAGIC(drv,MGK_PRTOUTDRV);
 
     return drv;
@@ -158,6 +159,8 @@ prt_strictfm_Probe(pPrtSession s, char* output_type)
 	    nmFree(context,sizeof(PrtStrictfmInf));
 	    return NULL;
 	    }
+	
+	if (drv->Flags & PRT_DRV_F_NOZ) prt_internal_NoZ(s);
 
     return (void*)context;
     }
@@ -320,19 +323,27 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    switch(cur_obj->ObjType->TypeID)
 		{
 		case PRT_OBJ_T_STRING:
-		    if (*(cur_obj->Content)) drv->WriteText(drvdata, cur_obj->Content);
+		    if (*(cur_obj->Content)) drv->WriteText(drvdata, cur_obj->Content, cur_obj->URL, cur_obj->Width, cur_obj->Height);
 		    break;
 
+		case PRT_OBJ_T_AREA:
+		case PRT_OBJ_T_TABLE:
+		case PRT_OBJ_T_TABLEROW:
+		case PRT_OBJ_T_TABLECELL:
 		case PRT_OBJ_T_IMAGE:
 		case PRT_OBJ_T_SVG:
-                case PRT_OBJ_T_RECT:
+		case PRT_OBJ_T_RECT:
 		    /** Ask output driver to print as much of the rectangle/image as it can **/
-		    if (cur_obj->ObjType->TypeID == PRT_OBJ_T_IMAGE)
+		    if (cur_obj->ObjType->TypeID == PRT_OBJ_T_IMAGE && drv->WriteRasterData)
 			end_y = drv->WriteRasterData(drvdata, cur_obj->Content, cur_obj->Width, cur_obj->Height, next_y);
-                    else if (cur_obj->ObjType->TypeID == PRT_OBJ_T_SVG)
-                        end_y = drv->WriteSvgData(drvdata, cur_obj->Content, cur_obj->Width, cur_obj->Height, next_y);
+		    else if (cur_obj->ObjType->TypeID == PRT_OBJ_T_SVG && drv->WriteSvgData)
+			end_y = drv->WriteSvgData(drvdata, cur_obj->Content, cur_obj->Width, cur_obj->Height, next_y);
+		    else if (cur_obj->ObjType->TypeID == PRT_OBJ_T_RECT && drv->WriteRect)
+			end_y = drv->WriteRect(drvdata, cur_obj->Width, cur_obj->Height, next_y, -1);
+		    else if (cur_obj->BGColor != cur_obj->Parent->BGColor && drv->WriteRect)
+			end_y = drv->WriteRect(drvdata, cur_obj->Width, cur_obj->Height, next_y, cur_obj->BGColor);
 		    else
-			end_y = drv->WriteRect(drvdata, cur_obj->Width, cur_obj->Height, next_y);
+			break;
 
 		    /** Adjust the rectangle to remove what was already printed **/
 		    if (end_y < (cur_obj->PageY + cur_obj->Height - PRT_FP_FUDGE) && end_y > (cur_obj->PageY - PRT_FP_FUDGE))

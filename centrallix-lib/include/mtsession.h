@@ -65,7 +65,7 @@ typedef struct
 int mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, char* log_progname);
 char* mssUserName();
 char* mssPassword();
-int mssAuthenticate(char* username, char* password);
+int mssAuthenticate(char* username, char* password, int bypass_crypt);
 int mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_maxlen);
 int mssEndSession(pMtSession s);
 int mssLinkSession(pMtSession s);

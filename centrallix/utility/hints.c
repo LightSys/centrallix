@@ -699,20 +699,23 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 	    rval = -1;
 	    *msg = "ERR: badchars/allowchars set but type is not a string";
 	    }
-	if (ph->BadChars)
+	else
 	    {
-	    if (!(ptod->Flags & DATA_TF_NULL) && strpbrk(ptod->Data.String, ph->BadChars))
+	    if (ph->BadChars)
 		{
-		rval = -1;
-		*msg = "String value contains an excluded character";
+		if (!(ptod->Flags & DATA_TF_NULL) && strpbrk(ptod->Data.String, ph->BadChars))
+		    {
+		    rval = -1;
+		    *msg = "String value contains an excluded character";
+		    }
 		}
-	    }
-	if (ph->AllowChars)
-	    {
-	    if (!(ptod->Flags & DATA_TF_NULL) && strspn(ptod->Data.String, ph->AllowChars) < strlen(ptod->Data.String))
+	    if (ph->AllowChars)
 		{
-		rval = -1;
-		*msg = "String value contains a non-allowed character";
+		if (!(ptod->Flags & DATA_TF_NULL) && strspn(ptod->Data.String, ph->AllowChars) < strlen(ptod->Data.String))
+		    {
+		    rval = -1;
+		    *msg = "String value contains a non-allowed character";
+		    }
 		}
 	    }
 

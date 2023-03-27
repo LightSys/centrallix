@@ -523,7 +523,15 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	for(va=this->VAttrs; va; va=va->Next)
 	    {
 	    if (!strcmp(attrname, va->Name))
-		return va->SetFn(this->Session, this, attrname, va->Context, data_type, val);
+		{
+		if (va->SetFn)
+		    return va->SetFn(this->Session, this, attrname, va->Context, data_type, val);
+		else
+		    {
+		    mssError(1,"OSML","Set Value: Attribute '%s' is readonly", attrname);
+		    return -1;
+		    }
+		}
 	    }
 
 	rval = this->Driver->SetAttrValue(this->Data, attrname, data_type, val, &(this->Session->Trx));

@@ -113,7 +113,7 @@ function osrc_action_refresh(aparam)
 	this.refresh_objname = null;
 
     if (this.querytext)
-	this.ifcProbe(ifAction).Invoke("QueryText", {query:this.querytext, client:null, ro:this.readonly, field_list:this.querytext_fields, cx__case_insensitive:this.querytext_icase, targetrec:tr});
+	this.ifcProbe(ifAction).Invoke("QueryText", {query:this.querytext, client:null, ro:this.readonly, field_list:this.querytext_fields, cx__case_insensitive:this.querytext_icase, targetrec:tr, use_having:this.querytext_use_having});
     else
 	this.ifcProbe(ifAction).Invoke("QueryObject", {query:this.queryobject, client:null, ro:this.readonly, targetrec:tr});
     }
@@ -285,6 +285,7 @@ function osrc_query_text_handler(aparam)
     this.querytext = aparam.query;
     this.querytext_fields = aparam.field_list;
     this.querytext_icase = case_insensitive;
+    this.querytext_use_having = aparam.use_having;
     this.queryobject = null;
 
     this.ifcProbe(ifAction).Invoke("Query", {query:statement, client:initiating_client, appendrows:appendrows});
@@ -775,9 +776,15 @@ function osrc_action_delete(aparam) //up,initiating_client)
 
     //Delete an object through OSML
     //var src = this.baseobj + '?cx__akey='+akey+'&ls__mode=osml&ls__req=delete&ls__sid=' + this.sid + '&ls__oid=' + up.oid;
-    this.initiating_client = initiating_client;
-    this.deleteddata=up;
-    this.DoRequest('delete', this.baseobj, {ls__oid:up.oid}, osrc_action_delete_cb);
+    if (this.send_updates)
+	{
+	this.initiating_client = initiating_client;
+	this.DoRequest('delete', this.baseobj, {ls__oid:up.oid}, osrc_action_delete_cb);
+	}
+    else
+	{
+	this.DeleteRecord(this.CurrentRecord, initiating_client);
+	}
     //this.initiating_client.ObjectDeleted();
     //this.initiating_client.OperationComplete();
     return 0;
@@ -789,51 +796,56 @@ function osrc_action_delete_cb()
     var initiating_client = this.initiating_client;
     if(links && links[0] && links[0].target != 'ERR')
 	{
-	var recnum=this.CurrentRecord;
-	var cr=this.replica[recnum];
-	if(cr)
-	    {
-	    // Remove the deleted row
-	    delete this.replica[recnum];
-
-	    // Adjust replica row id's to fill up the 'hole'
-	    for(var i=recnum; i<this.LastRecord; i++)
-		{
-		this.replica[i] = this.replica[i+1];
-		this.replica[i].id = i;
-		}
-	    delete this.replica[this.LastRecord];
-	    if (this.FinalRecord == this.LastRecord)
-		this.FinalRecord--;
-	    this.LastRecord--;
-	    if (this.OSMLRecord > 0) this.OSMLRecord--;
-
-	    // Notify osrc clients (forms/tables/etc)
-	    for(var i in this.child)
-		this.child[i].ObjectDeleted(recnum, this);
-
-	    // Need to fetch another record (delete was on last one in replica)?
-	    this.SyncID = osrc_syncid++; // force any client osrc's to resync
-	    if (this.CurrentRecord > this.LastRecord)
-		{
-		this.CurrentRecord--;
-		this.MoveToRecord(this.CurrentRecord+1, true);
-		}
-	    else
-		{
-		this.MoveToRecord(this.CurrentRecord, true);
-		}
-	    }
-	if (initiating_client) initiating_client.OperationComplete(true, this);
+	this.DeleteRecord(this.CurrentRecord, initiating_client);
 	}
     else
 	{
 	// delete failed
-	if (initiating_client) initiating_client.OperationComplete(false, this);
+	if (initiating_client)
+	    initiating_client.OperationComplete(false, this);
 	}
     this.initiating_client=null;
-    delete this.deleteddata;
     return 0;
+    }
+
+function osrc_delete_record(recnum, client)
+    {
+    var cr=this.replica[recnum];
+    if(cr)
+	{
+	// Remove the deleted row
+	delete this.replica[recnum];
+
+	// Adjust replica row id's to fill up the 'hole'
+	for(var i=recnum; i<this.LastRecord; i++)
+	    {
+	    this.replica[i] = this.replica[i+1];
+	    this.replica[i].id = i;
+	    }
+	delete this.replica[this.LastRecord];
+	if (this.FinalRecord == this.LastRecord)
+	    this.FinalRecord--;
+	this.LastRecord--;
+	if (this.OSMLRecord > 0) this.OSMLRecord--;
+
+	// Notify osrc clients (forms/tables/etc)
+	for(var i in this.child)
+	    this.child[i].ObjectDeleted(recnum, this);
+
+	// Need to fetch another record (delete was on last one in replica)?
+	this.SyncID = osrc_syncid++; // force any client osrc's to resync
+	if (this.CurrentRecord > this.LastRecord)
+	    {
+	    this.CurrentRecord--;
+	    this.MoveToRecord(this.CurrentRecord+1, true);
+	    }
+	else
+	    {
+	    this.MoveToRecord(this.CurrentRecord, true);
+	    }
+	}
+    if (client)
+	client.OperationComplete(true, this);
     }
 
 function osrc_action_create(aparam)
@@ -3139,7 +3151,13 @@ function osrc_cb_reveal(child)
     if ((this.autoquery == this.AQonFirstReveal || this.autoquery == this.AQonEachReveal) && !this.init)
 	pg_addsched_fn(this,'InitQuery', [], 0);
     else if (this.autoquery == this.AQonEachReveal)
-	this.ifcProbe(ifAction).SchedInvoke('QueryObject', {query:[], client:null, ro:this.readonly}, 0);
+	{
+	var method = wgtrGetServerProperty(this, "autoquery_method", "query");
+	if (method == "query")
+	    this.ifcProbe(ifAction).SchedInvoke('QueryObject', {query:[], client:null, ro:this.readonly}, 0);
+	else if (method == "refresh")
+	    this.ifcProbe(ifAction).SchedInvoke('Refresh', {}, 0);
+	}
     else
 	{
 	did_query = false;
@@ -4050,6 +4068,7 @@ function osrc_init(param)
     loader.MoveToRecord=osrc_move_to_record;
     loader.MoveToRecordCB=osrc_move_to_record_cb;
     loader.Clear = osrc_action_clear;
+    loader.DeleteRecord = osrc_delete_record;
     loader.child =  [];
     loader.oldoids =  [];
     loader.sid = null;

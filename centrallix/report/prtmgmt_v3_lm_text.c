@@ -585,6 +585,7 @@ prt_textlm_SplitString(pPrtObjStream stringobj, int splitpt, int splitlen, doubl
 	split_obj->Height = stringobj->Height;
 	split_obj->YBase = stringobj->YBase;
 	split_obj->Width = prt_internal_GetStringWidth(split_obj, (char*)split_obj->Content, -1);
+	split_obj->Z = stringobj->Z;
 
     return split_obj;
     }

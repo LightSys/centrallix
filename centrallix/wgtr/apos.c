@@ -26,6 +26,7 @@
 /* Author:	Nathaniel Colson					*/
 /* Creation:	August 9, 2005						*/
 /* Description:	Applies layout logic to the widgets of an application.	*/
+/* See centrallix-sysdoc/Auto-Positioning.md for more information. */
 /************************************************************************/
 
 

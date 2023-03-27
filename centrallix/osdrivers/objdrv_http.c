@@ -1986,7 +1986,7 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	inf->Cipherlist = http_internal_GetConfigString(inf, "ssl_cipherlist", "");
 
 	/** Valid method? **/
-	if (strcmp(inf->Method, "GET") && strcmp(inf->Method, "POST"))
+	if (strcmp(inf->Method, "GET") && strcmp(inf->Method, "POST") && strcmp(inf->Method, "DELETE"))
 	    {
 	    mssError(1, "HTTP", "Invalid method '%s'", inf->Method);
 	    goto error;

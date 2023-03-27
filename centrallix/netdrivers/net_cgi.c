@@ -522,7 +522,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	/** GET DIRECTORY LISTING mode. **/
 	else if (!strcmp(find_inf->StrVal,"list"))
 	    {
-	    query = objOpenQuery(target_obj,"",NULL,NULL,NULL);
+	    query = objOpenQuery(target_obj,"",NULL,NULL,NULL,0);
 	    if (query)
 	        {
 		sprintf(sbuf,"<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=%s/..>..</A><BR>\n",url_inf->StrVal);

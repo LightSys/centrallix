@@ -795,8 +795,8 @@ prt_tablm_InitTable(pPrtObjStream this, pPrtTabLMData old_lm_data, va_list va)
 	/** Compute border widths for object **/
 	this->BorderTop = lm_inf->TopBorder.TotalWidth;
 	this->BorderLeft = lm_inf->LeftBorder.TotalWidth;
-	this->BorderBottom = lm_inf->BottomBorder.TotalWidth + lm_inf->Shadow.TotalWidth;
-	this->BorderRight = lm_inf->RightBorder.TotalWidth + lm_inf->Shadow.TotalWidth;
+	this->BorderBottom = lm_inf->BottomBorder.TotalWidth; // + lm_inf->Shadow.TotalWidth;
+	this->BorderRight = lm_inf->RightBorder.TotalWidth; // + lm_inf->Shadow.TotalWidth;
 
     return 0;
     }
@@ -1121,32 +1121,32 @@ prt_tablm_Finalize(pPrtObjStream this)
 	if (lm_inf->Shadow.nLines > 0)
 	    {
 	    prt_internal_MakeBorder(this, lm_inf->ShadowWidth, this->Height,
-		    this->Width - lm_inf->ShadowWidth, 
-		    PRT_MKBDR_F_BOTTOM | PRT_MKBDR_F_MARGINRELEASE,
+		    this->Width, // - lm_inf->ShadowWidth, 
+		    PRT_MKBDR_F_BOTTOM | PRT_MKBDR_F_MARGINRELEASE | PRT_MKBDR_F_OUTSIDE,
 		    &(lm_inf->Shadow), NULL, &(lm_inf->Shadow));
-	    prt_internal_MakeBorder(this, this->Width, lm_inf->ShadowWidth,
-		    this->Height - lm_inf->ShadowWidth, 
-		    PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_MARGINRELEASE,
+	    prt_internal_MakeBorder(this, this->Width, lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
+		    this->Height, //- lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR, 
+		    PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_MARGINRELEASE | PRT_MKBDR_F_OUTSIDE,
 		    &(lm_inf->Shadow), NULL, &(lm_inf->Shadow));
 	    }
 
 	/** Draw main table borders **/
 	if (lm_inf->TopBorder.nLines > 0)
-	    prt_internal_MakeBorder(this, 0.0, 0.0, this->Width - lm_inf->ShadowWidth,
+	    prt_internal_MakeBorder(this, 0.0, 0.0, this->Width, // - lm_inf->ShadowWidth,
 		    PRT_MKBDR_F_TOP | PRT_MKBDR_F_MARGINRELEASE,
 		    &(lm_inf->TopBorder), &(lm_inf->LeftBorder), &(lm_inf->RightBorder));
 	if (lm_inf->BottomBorder.nLines > 0)
-	    prt_internal_MakeBorder(this, 0.0, this->Height - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR, 
-		    this->Width - lm_inf->ShadowWidth,
+	    prt_internal_MakeBorder(this, 0.0, this->Height, // - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR, 
+		    this->Width, // - lm_inf->ShadowWidth,
 		    PRT_MKBDR_F_BOTTOM | PRT_MKBDR_F_MARGINRELEASE,
 		    &(lm_inf->BottomBorder), &(lm_inf->LeftBorder), &(lm_inf->RightBorder));
 	if (lm_inf->LeftBorder.nLines > 0)
-	    prt_internal_MakeBorder(this, 0.0, 0.0, this->Height - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
+	    prt_internal_MakeBorder(this, 0.0, 0.0, this->Height, // - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
 		    PRT_MKBDR_F_LEFT | PRT_MKBDR_F_MARGINRELEASE,
 		    &(lm_inf->LeftBorder), &(lm_inf->TopBorder), &(lm_inf->BottomBorder));
 	if (lm_inf->RightBorder.nLines > 0)
-	    prt_internal_MakeBorder(this, this->Width - lm_inf->ShadowWidth, 0.0,
-		    this->Height - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
+	    prt_internal_MakeBorder(this, this->Width, 0.0, // - lm_inf->ShadowWidth, 0.0,
+		    this->Height, // - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
 		    PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_MARGINRELEASE,
 		    &(lm_inf->RightBorder), &(lm_inf->TopBorder), &(lm_inf->BottomBorder));
 
@@ -1156,7 +1156,7 @@ prt_tablm_Finalize(pPrtObjStream this)
 	    for(i=0;i<lm_inf->nColumns-1;i++)
 		{
 		prt_internal_MakeBorder(this, this->MarginLeft + this->BorderLeft + lm_inf->ColX[i+1] - 0.5*lm_inf->ColSep, 0.0,
-			this->Height - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
+			this->Height, // - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
 			PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_LEFT | PRT_MKBDR_F_MARGINRELEASE,
 			&(lm_inf->InnerBorder), &(lm_inf->TopBorder), &(lm_inf->BottomBorder));
 		}
@@ -1208,7 +1208,7 @@ prt_tablm_Finalize(pPrtObjStream this)
 		    rowright = NULL;
 		if (!row->Next || row->Next->ObjType->TypeID == PRT_OBJ_T_RECT)
 		    {
-		    if (lm_inf->BottomBorder.nLines > 0 && this->MarginBottom <= lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR)
+		    if (lm_inf->BottomBorder.nLines > 0 && this->MarginBottom <= 0.0) // lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR)
 			rowbottom = &(lm_inf->BottomBorder);
 		    else
 			rowbottom = NULL;

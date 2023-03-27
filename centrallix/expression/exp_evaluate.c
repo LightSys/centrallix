@@ -404,6 +404,9 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 	/** If either is NULL, result is NULL. **/
 	if ((i0->Flags | i1->Flags) & EXPR_F_NULL)
 	    {
+	    // FIXME This needs to be further built out.
+	    if (i0->DataType == DATA_T_DOUBLE && i1->DataType == DATA_T_DOUBLE)
+		tree->DataType = DATA_T_DOUBLE;
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
 	    }
@@ -946,7 +949,7 @@ expEvalAnd(pExpression tree, pParamObjects objlist)
 	    child = (pExpression)(tree->Children.Items[i]);
 	    if (short_circuiting)
 		{
-		if (child->AggLevel > 0)
+		if (child->AggLevel > 0 || (child->Flags & EXPR_F_HASWINDOWFN))
 		    {
 		    if (exp_internal_EvalAggregates(child, objlist) < 0)
 			return -1;
@@ -1004,7 +1007,7 @@ expEvalOr(pExpression tree, pParamObjects objlist)
 	    child = (pExpression)(tree->Children.Items[i]);
 	    if (short_circuiting)
 		{
-		if (child->AggLevel > 0)
+		if (child->AggLevel > 0 || (child->Flags & EXPR_F_HASWINDOWFN))
 		    {
 		    if (exp_internal_EvalAggregates(child, objlist) < 0)
 			return -1;
@@ -1323,7 +1326,7 @@ expRevEvalObject(pExpression tree, pParamObjects objlist)
 int
 expEvalProperty(pExpression tree, pParamObjects objlist)
     {
-    int t,v=-1,n, id = 0;
+    int t, v=-1, id = 0;
     pObject obj = NULL;
     char* ptr;
     void* vptr;
@@ -2022,7 +2025,7 @@ exp_internal_EvalAggregates(pExpression tree, pParamObjects objlist)
     pExpression child;
 
 	/** Is this an aggregate function?  Call normal eval if so **/
-	if (tree->Flags & EXPR_F_AGGREGATEFN)
+	if (tree->Flags & (EXPR_F_AGGREGATEFN | EXPR_F_WINDOWFN))
 	    {
 	    return exp_internal_EvalTree(tree, objlist);
 	    }

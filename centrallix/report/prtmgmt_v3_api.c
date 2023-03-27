@@ -11,6 +11,7 @@
 #include "cxlib/magic.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
+#include "cxlib/util.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
@@ -520,6 +521,43 @@ prtGetColor(int handle_id)
     }
 
 
+/*** prtSetBGColor() - sets the current background color.  Colors are
+ *** expressed as 0x00RRGGBB.
+ ***/
+int
+prtSetBGColor(int handle_id, int bgcolor)
+    {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+    pPrtSession s = PRTSESSION(obj);
+
+	/** Check the obj **/
+	if (!obj) return -1;
+	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
+
+	/** Set background color. **/
+	obj->BGColor = bgcolor;
+
+	prt_internal_DispatchEvents(s);
+
+    return 0;
+    }
+
+
+/*** prtGetBGColor() - returns the current bg color as 0x00RRGGBB.
+ ***/
+int
+prtGetBGColor(int handle_id)
+    {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+
+	/** Check the obj **/
+	if (!obj) return -1;
+	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
+
+    return obj->BGColor;
+    }
+
+
 /*** prtSetHPos() - sets the horizontal position on the current line.  This
  *** is NOT used for setting the position of a container - to do that, include
  *** the position in the prtAddObject() call.
@@ -588,6 +626,37 @@ prtSetVPos(int handle_id, double y)
 	    {
 	    return -1;
 	    }
+
+	prt_internal_DispatchEvents(s);
+
+    return 0;
+    }
+
+
+/*** prtSetURL - set the url / hyperlink for the content.  After writing
+ *** content to use a hyperlink, then call this again with url set to null.
+ ***/
+int
+prtSetURL(int handle_id, char* url)
+    {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+    pPrtObjStream set_obj;
+    pPrtSession s = PRTSESSION(obj);
+
+	/** Check the obj **/
+	if (!obj) return -1;
+	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
+
+	/** Add an empty string object to contain the attr change. **/
+	set_obj = prt_internal_AddEmptyObj(obj);
+	if (!set_obj)
+	    return -1;
+	if (set_obj->URL)
+	    nmSysFree(set_obj->URL);
+	if (url)
+	    set_obj->URL = nmSysStrdup(url);
+	else
+	    set_obj->URL = NULL;
 
 	prt_internal_DispatchEvents(s);
 
@@ -786,6 +855,7 @@ prtAddObject(int handle_id, int obj_type, double x, double y, double width, doub
 	    new_obj->Y = y;
 	else
 	    new_obj->Y = 0.0;
+	new_obj->Z = obj->Z + 1;
 
 	/** Init container... including optional params **/
 	prt_internal_CopyAttrs(obj, new_obj);

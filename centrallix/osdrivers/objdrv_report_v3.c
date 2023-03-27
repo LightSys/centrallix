@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -10,6 +11,17 @@
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
+#include <ctype.h>
+#include <math.h>
+#include "config.h"
+#ifdef HAVE_MGL1
+#include <mgl/mgl_c.h>
+#endif
+#ifdef HAVE_MGL2
+#include <stdbool.h>
+#include <complex.h>
+#include <mgl2/mgl_cf.h>
+#endif
 #include "obj.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
@@ -94,12 +106,14 @@ typedef struct
     int		Flags;			/* RPT_PARAM_F_xxx */
     XArray	ValueObjs;		/* List of objects referenced in the Default value */
     XArray	ValueAttrs;		/* List of attributes referenced in the Default value */
+    void*	Inf;			/* pRptData */
     }
     RptParam, *pRptParam;
 
-#define	RPT_PARAM_F_IN	    1		/* input param */
-#define RPT_PARAM_F_OUT	    2		/* output param - can be both in/out, flags=3 */
-#define RPT_PARAM_F_DEFAULT 4		/* value is from the parameter's default expression */
+#define	RPT_PARAM_F_IN		1	/* input param */
+#define RPT_PARAM_F_OUT		2	/* output param - can be both in/out, flags=3 */
+#define RPT_PARAM_F_DEFAULT	4	/* value is from the parameter's default expression */
+#define RPT_PARAM_F_EXPR	8	/* value is an expression that needs to be evaluated */
 
 
 /*** Structure used by this driver internally. ***/
@@ -218,10 +232,70 @@ typedef struct
 #define RPT_MM_MULTINESTED	4
 
 
+/*** Structure used for chart values ***/
+typedef struct
+    {
+    char*	Label;		/* label for x axis */
+    double*	Values;		/* array of n doubles, where n = number of series */
+    char*	Types;		/* array of n 8-bit ints for data types */
+    }
+    RptChartValues, *pRptChartValues;
+
+
+/*** Chart context ***/
+typedef struct
+    {
+    pXArray	series;
+    pXArray	values;
+    pStructInf	x_axis;
+    pStructInf	y_axis;
+    HMDT	chart_data;
+    HMGL	gr;
+    int		xres;
+    int		yres;
+    double	stand_w;
+    double	stand_h;
+    int		x_pixels;
+    int		y_pixels;
+    double	font_scale_factor;
+    int		fontsize;
+    double	min;
+    double	max;
+    int		scale;
+    char*	color;
+    char**	x_labels;
+    pRptData	inf;
+    struct
+	{
+	double	left;
+	double	top;
+	double	right;
+	double	bottom;
+	}
+	trim;
+    int		rend_x_pixels;
+    int		rend_y_pixels;
+    int		rotation;
+    double	zoom;
+    }
+    RptChartContext, *pRptChartContext;
+
+
+/*** Chart type driver ***/
+typedef struct
+    {
+    char	Type[32];		/* chart type: bar, line, graph */
+    int		(*PreProcessData)();	/* preprocess chart data */
+    int		(*SetupFormat)();	/* setup output formatting */
+    int		(*Generate)();		/* generate the chart */
+    }
+    RptChartDriver, *pRptChartDriver;
+
+
 /*** Globals. ***/
 struct
     {
-    XArray	Printers;
+    XArray	ChartDrivers;
     }
     RPT_INF;
 
@@ -231,6 +305,75 @@ static char* attrnames[RPT_NUM_ATTR] = {"bold","expanded","compressed","center",
 #define RPT_FP_FUDGE	(0.00001)
 
 
+/*** MathGL color definitions ***/
+char rpt_mgl_colors[30] = "krRgGbBwWcCmMyYhHlLeEnNuUqQpP";
+int rpt_mgl_color_hex[29] =
+    {
+    0x000000,
+    0xff0000, 0x800000,
+    0x00ff00, 0x008000,
+    0x0000ff, 0x000080,
+    0xffffff, 0xb2b2b2,
+    0x00ffff, 0x008080,
+    0xff00ff, 0x800080,
+    0xffff00, 0x808000,
+    0x808080, 0x4c4c4c,
+    0x00ff80, 0x008040,
+    0x80ff00, 0x408000,
+    0x0080ff, 0x004080,
+    0x8000ff, 0x400080,
+    0xff8000, 0x804000,
+    0xff0080, 0x800040
+    };
+
+
+/*** A list of properties that use the UserData mechanism for value tracking
+ *** and performance reasons.  Other values support expressions, too, but these
+ *** are the main ones.
+ ***/
+typedef struct
+    {
+    char*	Object;
+    char*	Attr;
+    int		Required;
+    }
+    RptUDItem;
+
+RptUDItem rpt_ud_list[] =
+    {
+	{ "report/area",	"condition",	0 },
+	{ "report/area",	"value",	0 },
+
+	{ "report/chart",	"condition",	0 },
+	{ "report/chart-series","x_value",	0 },
+	{ "report/chart-series","y_value",	0 },
+
+	{ "report/data",	"condition",	0 },
+	{ "report/data",	"value",	1 },
+
+	{ "report/form",	"condition",	0 },
+
+	{ "report/image",	"condition",	0 },
+
+	{ "report/section",	"condition",	0 },
+
+	{ "report/svg",		"condition",	0 },
+
+	{ "report/table",	"condition",	0 },
+	{ "report/table-row",	"condition",	0 },
+	{ "report/table-row",	"summarize_for",0 },
+	{ "report/table-row",	"value",	0 },
+	{ "report/table-cell",	"condition",	0 },
+	{ "report/table-cell",	"value",	0 },
+
+	{ NULL,			NULL,		0 }
+    };
+
+
+/*** "unspecified" integer value ***/
+#define RPT_INT_UNSPEC		(0x7FFFFFFF)
+
+
 /*** Some needed forward function declarations **/
 int rpt_internal_DoTable(pRptData, pStructInf, pRptSession, int container_handle);
 int rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int numcols, int table_handle, double colsep);
@@ -238,8 +381,29 @@ int rpt_internal_DoSection(pRptData, pStructInf, pRptSession, int container_hand
 int rpt_internal_DoData(pRptData, pStructInf, pRptSession, int container_handle);
 int rpt_internal_DoForm(pRptData, pStructInf, pRptSession, int container_handle);
 int rpt_internal_WriteExpResult(pRptSession rs, pExpression exp, int container_handle, char* attrname, char* typename);
-int rpt_internal_SetMargins(pStructInf config, int prt_obj, double dt, double db, double dl, double dr);
+int rpt_internal_SetMargins(pRptData inf, pStructInf config, int prt_obj, double dt, double db, double dl, double dr);
 int rpt_internal_QyGetAttrType(void* qyobj, char* attrname);
+
+
+/*** rpt_internal_RegisterChartDriver() - register a new chart driver
+ ***/
+int
+rpt_internal_RegisterChartDriver(char* name, int (*preprocess_fn)(), int (*setup_fn)(), int (*generate_fn)())
+    {
+    pRptChartDriver drv;
+
+	/** Allocate and register **/
+	drv = (pRptChartDriver)nmMalloc(sizeof(RptChartDriver));
+	if (!drv)
+	    return -1;
+	strtcpy(drv->Type, name, sizeof(drv->Type));
+	drv->PreProcessData = preprocess_fn;
+	drv->SetupFormat = setup_fn;
+	drv->Generate = generate_fn;
+	xaAddItem(&RPT_INF.ChartDrivers, (void*)drv);
+
+    return 0;
+    }
 
 
 /*** rpt_internal_GetNULLstr - get the string to be substituted in place of
@@ -269,6 +433,203 @@ rpt_internal_FreeParam(pRptParam rptparam)
 	nmFree(rptparam, sizeof(RptParam));
 
     return 0;
+    }
+
+
+/*** rpt_internal_GetValue - gets a value from the rpt configuration.
+ ***/
+int
+rpt_internal_GetValue(pRptData inf, pStructInf config, char* attrname, int datatype, pObjData value, pObjData def, int nval)
+    {
+    pStructInf attr;
+    pRptUserData ud;
+    pExpression exp = NULL;
+    static pExpression our_exp = NULL;
+    char* str;
+
+	if (our_exp)
+	    expFreeExpression(our_exp);
+	our_exp = NULL;
+
+	/** Find the attr **/
+	attr = stLookup(config, attrname);
+
+	/** No such attr?  Use default if it is available. **/
+	if (!attr)
+	    {
+	    if (def)
+		{
+		objCopyData(def, value, datatype);
+		return 0;
+		}
+	    else
+		{
+		return -1;
+		}
+	    }
+
+	/** Look in UserData first of all **/
+	if (attr->UserData)
+	    {
+	    ud = (pRptUserData)xaGetItem(&(inf->UserDataSlots), (intptr_t)(attr->UserData));
+	    exp = ud->Exp;
+	    if (expEvalTree(exp, inf->ObjList) < 0)
+		{
+		mssError(0,"RPT","Could not evaluate property '%s' on object '%s'", attr->Name, config->Name);
+		goto error;
+		}
+	    }
+
+	/** No user data; evaluate it directly. **/
+	if (!exp)
+	    {
+	    exp = stGetExpression(attr, nval);
+	    if (!exp)
+		goto error;
+	    if (!expIsConstant(exp))
+		{
+		exp = our_exp = expDuplicateExpression(exp);
+		if (!our_exp)
+		    goto error;
+		expBindExpression(our_exp, inf->ObjList, EXPR_F_RUNSERVER);
+		if (expEvalTree(our_exp, inf->ObjList) < 0)
+		    {
+		    mssError(0,"RPT","Could not evaluate property '%s' on object '%s'", attr->Name, config->Name);
+		    goto error;
+		    }
+		}
+	    }
+
+	/** Null? **/
+	if (exp->Flags & EXPR_F_NULL)
+	    {
+	    if (def)
+		{
+		objCopyData(def, value, datatype);
+		return 0;
+		}
+	    else
+		{
+		goto error;
+		}
+	    }
+
+	/** Return the expression's value, optionally converting. **/
+	if (exp->DataType == datatype || datatype == DATA_T_CODE)
+	    expExpressionToPod(exp, exp->DataType, value);
+	else if (exp->DataType == DATA_T_INTEGER && datatype == DATA_T_DOUBLE)
+	    value->Double = exp->Integer;
+	else if (exp->DataType == DATA_T_INTEGER && datatype == DATA_T_MONEY)
+	    objDataToMoney(DATA_T_INTEGER, &exp->Integer, value->Money);
+	else if (exp->DataType == DATA_T_MONEY && datatype == DATA_T_DOUBLE)
+	    value->Double = objDataToDouble(DATA_T_MONEY, &(exp->Types.Money));
+	else if (exp->DataType == DATA_T_STRING && datatype == DATA_T_INTEGER)
+	    {
+	    /** Support both string-based integers and boolean names **/
+	    str = exp->String;
+	    if (str[0] == '-' || str[0] == '+' || isdigit(str[0]))
+		value->Integer = objDataToInteger(DATA_T_STRING, str, NULL);
+	    else if (!strcmp(str,"yes") || !strcmp(str,"true") || !strcmp(str,"on"))
+		value->Integer = 1;
+	    else if (!strcmp(str,"no") || !strcmp(str,"false") || !strcmp(str,"off"))
+		value->Integer = 0;
+	    else if (def)
+		value->Integer = def->Integer;
+	    else
+		{
+		mssError(1, "RPT", "Type mismatch accessing attribute '%s' of object '%s'", attr->Name, config->Name);
+		goto error;
+		}
+	    }
+	else if (exp->DataType == DATA_T_STRING && datatype == DATA_T_DOUBLE)
+	    {
+	    str = exp->String;
+	    if (str[0] == ' ' || str[0] == '$')
+		str++;
+	    value->Double = objDataToDouble(DATA_T_STRING, str);
+	    }
+	else
+	    {
+	    mssError(1, "RPT", "Type mismatch accessing attribute '%s' of object '%s'", attr->Name, config->Name);
+	    goto error;
+	    }
+
+	return exp->DataType;
+
+    error:
+	return -1;
+    }
+
+
+/*** rpt_internal_GetDouble - gets a double precision floating point value from
+ *** the rpt config, automatically translating any integers into doubles
+ ***/
+int
+rpt_internal_GetDouble(pRptData inf, pStructInf config, char* attr, double* val, double def, int nval)
+    {
+    int rval;
+
+	/** Get the value, and set default on error. **/
+	rval = rpt_internal_GetValue(inf, config, attr, DATA_T_DOUBLE, POD(val), isnan(def)?NULL:(POD(&def)), nval);
+	if (rval < 0 && !isnan(def))
+	    {
+	    mssError(0,"RPT","Warning: invalid data for number '%s' on object '%s'; using default value.", attr, config->Name);
+	    *val = def;
+	    }
+
+    return rval;
+    }
+
+
+/*** rpt_internal_GetBool - gets a boolean value, in the form of 0/1, true/false,
+ *** on/off, or yes/no.
+ ***/
+int
+rpt_internal_GetBool(pRptData inf, pStructInf config, char* attr, int def, int nval)
+    {
+    int val;
+    if (rpt_internal_GetValue(inf, config, attr, DATA_T_INTEGER, POD(&val), POD(&def), nval) < 0)
+	{
+	mssError(0,"RPT","Warning: invalid data for boolean '%s' on object '%s'; using default value.", attr, config->Name);
+	val = def;
+	}
+    return val;
+    }
+
+
+/*** rpt_internal_GetString - get a string value.
+ ***/
+int
+rpt_internal_GetString(pRptData inf, pStructInf config, char* attr, char** val, char* def, int nval)
+    {
+    int rval;
+	
+	rval = rpt_internal_GetValue(inf, config, attr, DATA_T_STRING, POD(val), def?(POD(&def)):NULL, nval);
+	if (rval < 0 && def)
+	    {
+	    mssError(0,"RPT","Warning: invalid data for string '%s' on object '%s'; using default value.", attr, config->Name);
+	    *val = def;
+	    }
+
+    return rval;
+    }
+
+
+/*** rpt_internal_GetInteger - get a string value.
+ ***/
+int
+rpt_internal_GetInteger(pRptData inf, pStructInf config, char* attr, int* val, int def, int nval)
+    {
+    int rval;
+	
+	rval = rpt_internal_GetValue(inf, config, attr, DATA_T_INTEGER, POD(val), (def != RPT_INT_UNSPEC)?(POD(&def)):NULL, nval);
+	if (rval < 0 && def != RPT_INT_UNSPEC)
+	    {
+	    mssError(0,"RPT","Warning: invalid data for string '%s' on object '%s'; using default value.", attr, config->Name);
+	    *val = def;
+	    }
+
+    return rval;
     }
 
 
@@ -327,9 +688,16 @@ rpt_internal_EvalParam(pRptParam rptparam, pParamObjects objlist, pObjSession se
 		    active_mask |= (1<<i);
 		    }
 		}
+	    if (!(rptparam->Flags & RPT_PARAM_F_DEFAULT))
+		{
+		/** Add ext references to eval if first time **/
+		active_mask |= (EXPR_MASK_EXTREF | EXPR_MASK_INDETERMINATE);
+		}
 
-	    /** Only re-evaluate if there are active sources **/
-	    if ((EXPR(rptparam->Param->Hints->DefaultExpr)->ObjCoverageMask & active_mask) || (EXPR(rptparam->Param->Hints->DefaultExpr)->ObjCoverageMask & EXPR_MASK_ALLOBJECTS) == 0)
+	    /** Only re-evaluate if there are active sources in the expression,
+	     ** or if it's the first evaluation and no sources are referenced.
+	     **/
+	    if ((EXPR(rptparam->Param->Hints->DefaultExpr)->ObjCoverageMask & active_mask) || ((EXPR(rptparam->Param->Hints->DefaultExpr)->ObjCoverageMask & EXPR_MASK_ALLOBJECTS) == 0 && !(rptparam->Flags & RPT_PARAM_F_DEFAULT)))
 		{
 		/** Re-evaluate **/
 		rptparam->Param->Value->Flags |= DATA_TF_NULL;
@@ -568,63 +936,36 @@ rpt_internal_GetStyle(pStructInf element)
  *** one null terminator.
  ***/
 int
-rpt_internal_CheckFormats(pStructInf inf)
-/*rpt_internal_CheckFormats(pStructInf inf, char* savedmfmt, char* saveddfmt, char* savednfmt, int restore)*/
+rpt_internal_CheckFormats(pRptData data, pStructInf inf)
     {
     char* newmfmt=NULL;
     char* newdfmt=NULL;
     char* newnfmt=NULL;
-
-#if 00
-    char* oldfmt;
-
-    	/** Restoring or saving? **/
-	if (restore)
-	    {
-	    if (*savedmfmt) mssSetParam("mfmt",savedmfmt);
-	    if (*saveddfmt) mssSetParam("dfmt",saveddfmt);
-	    if (*savednfmt) mssSetParam("nfmt",savednfmt);
-	    }
-	else
-	    { 
-	    /** Default - no new, so no saved **/
-	    *savedmfmt = 0;
-	    *saveddfmt = 0;
-	    *savednfmt = 0;
-#endif
+    char* neg_fc=NULL;
 
 	    /** Lookup possible 'dateformat','moneyformat' **/
-	    stAttrValue(stLookup(inf,"dateformat"),NULL,&newdfmt,0);
-	    stAttrValue(stLookup(inf,"moneyformat"),NULL,&newmfmt,0);
-	    stAttrValue(stLookup(inf,"nullformat"),NULL,&newnfmt,0);
+	    rpt_internal_GetString(data, inf, "dateformat", &newdfmt, NULL, 0);
+	    rpt_internal_GetString(data, inf, "moneyformat", &newmfmt, NULL, 0);
+	    rpt_internal_GetString(data, inf, "nullformat", &newnfmt, NULL, 0);
 	    if (newdfmt) 
 	        {
-		/*oldfmt = (char*)mssGetParam("dfmt");
-		if (!oldfmt) oldfmt = obj_default_date_fmt;
-		memccpy(saveddfmt, oldfmt, 0, 31);
-		saveddfmt[31] = 0;
-		mssSetParam("dfmt",newdfmt);*/
 		cxssSetVariable("dfmt", newdfmt, 0);
 		}
 	    if (newmfmt) 
 	        {
-		/*oldfmt = (char*)mssGetParam("mfmt");
-		if (!oldfmt) oldfmt = obj_default_money_fmt;
-		memccpy(savedmfmt, oldfmt, 0, 31);
-		savedmfmt[31] = 0;
-		mssSetParam("mfmt",newmfmt);*/
 		cxssSetVariable("mfmt", newmfmt, 0);
 		}
 	    if (newnfmt)
 	        {
-		/*oldfmt = (char*)mssGetParam("nfmt");
-		if (!oldfmt) oldfmt = obj_default_null_fmt;
-		memccpy(savednfmt, oldfmt, 0, 31);
-		savednfmt[31] = 0;
-		mssSetParam("nfmt",newnfmt);*/
 		cxssSetVariable("nfmt", newnfmt, 0);
 		}
-	    /*}*/
+
+	    /** Negative font color **/
+	    rpt_internal_GetString(data, inf, "negative_fontcolor", &neg_fc, NULL, 0);
+	    if (neg_fc)
+	        {
+		cxssSetVariable("rpt:neg_fc", neg_fc, 0);
+		}
 
     return 0;
     }
@@ -636,25 +977,19 @@ rpt_internal_CheckFormats(pStructInf inf)
 int
 rpt_internal_CheckGoto(pRptSession rs, pStructInf object, int container_handle)
     {
+    pRptData inf = (pRptData)rs->Inf;
     double xpos = -1.1;
     double ypos = -1.1;
-    /*int relypos = -1;*/
 
     	/** Check for ypos and xpos **/
-	rpt_internal_GetDouble(object, "xpos", &xpos, 0);
-	rpt_internal_GetDouble(object, "ypos", &ypos, 0);
-	/*stAttrValue(stLookup(object, "ypos"),&ypos,NULL,0);
-	stAttrValue(stLookup(object, "xpos"),&xpos,NULL,0);
-	stAttrValue(stLookup(object, "relypos"),&relypos,NULL,0);*/
+	rpt_internal_GetDouble(inf, object, "xpos", &xpos, -1.1, 0);
+	rpt_internal_GetDouble(inf, object, "ypos", &ypos, -1.1, 0);
 
 	/** If ypos is set, do it first **/
 	if (ypos > -1) prtSetVPos(container_handle, (double)ypos);
 
 	/** Next check xpos **/
 	if (xpos > -1) prtSetHPos(container_handle, (double)xpos);
-
-	/** Relative y position? **/
-	/*if (relypos != -1) prtSetRelVPos(rs->PSession, (double)relypos);*/
 
     return 0;
     }
@@ -956,8 +1291,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
     pExpression exp = NULL;
 
 	/** Lookup the database query information **/
-	stAttrValue(stLookup(object,"source"),NULL,&src,index);
-	if (!src)
+	if (rpt_internal_GetString(inf, object, "source", &src, NULL, index) < 0)
 	    {
             mssError(1,"RPT","Source required for table/form '%s'", object->Name);
 	    return NULL;
@@ -970,7 +1304,7 @@ rpt_internal_PrepareQuery(pRptData inf, pStructInf object, pRptSession rs, int i
 	    }
 
 	/** Check for a mode entry **/
-	if (stAttrValue(stLookup(object,"mode"),NULL,&ptr,index) >= 0)
+	if (rpt_internal_GetString(inf, object, "mode", &ptr, NULL, index) >= 0)
 	    {
 	    if (!strcmp(ptr,"outer")) outer_mode = 1;
 	    if (!strcmp(ptr,"inner")) inner_mode = 1;
@@ -1203,13 +1537,13 @@ rpt_internal_DoSection(pRptData inf, pStructInf section, pRptSession rs, int con
 	    return 0;
 
 	/** Get section geometry **/
-	if (rpt_internal_GetDouble(section, "x", &x, 0) < 0) x = -1;
-	if (rpt_internal_GetDouble(section, "y", &y, 0) < 0) y = -1;
-	if (rpt_internal_GetDouble(section, "width", &w, 0) < 0) w = -1;
-	if (rpt_internal_GetDouble(section, "height", &h, 0) < 0) h = -1;
-	if (rpt_internal_GetDouble(section, "colsep", &sepw, 0) < 0) sepw = 0;
+	rpt_internal_GetDouble(inf, section, "x", &x, -1.0, 0);
+	rpt_internal_GetDouble(inf, section, "y", &y, -1.0, 0);
+	rpt_internal_GetDouble(inf, section, "width", &w, -1.0, 0);
+	rpt_internal_GetDouble(inf, section, "height", &h, -1.0, 0);
+	rpt_internal_GetDouble(inf, section, "colsep", &sepw, 0.0, 0);
 	n_cols = -1;
-	stAttrValue(stLookup(section,"columns"), &n_cols, NULL, 0);
+	rpt_internal_GetInteger(inf, section, "columns", &n_cols, 0, 0);
 	if (n_cols <= 0)
 	    {
 	    mssError(1,"RPT","The 'columns' attribute must specify a valid number of columns");
@@ -1220,12 +1554,12 @@ rpt_internal_DoSection(pRptData inf, pStructInf section, pRptSession rs, int con
 	flags = 0;
 	if (x >= 0.0) flags |= PRT_OBJ_U_XSET;
 	if (y >= 0.0) flags |= PRT_OBJ_U_YSET;
-	if (rpt_internal_GetBool(section, "allowbreak", 1, 0)) flags |= PRT_OBJ_U_ALLOWBREAK;
-	if (rpt_internal_GetBool(section, "fixedsize", 0, 0)) flags |= PRT_OBJ_U_FIXEDSIZE;
-	is_balanced = rpt_internal_GetBool(section, "balanced", 0, 0);
+	if (rpt_internal_GetBool(inf, section, "allowbreak", 1, 0)) flags |= PRT_OBJ_U_ALLOWBREAK;
+	if (rpt_internal_GetBool(inf, section, "fixedsize", 0, 0)) flags |= PRT_OBJ_U_FIXEDSIZE;
+	is_balanced = rpt_internal_GetBool(inf, section, "balanced", 0, 0);
 
 	/** Check for border **/
-	if (stGetAttrValue(stLookup(section, "border"), DATA_T_DOUBLE, POD(&bw), 0) == 0)
+	if (rpt_internal_GetDouble(inf, section, "border", &bw, NAN, 0) >= 0)
 	    {
 	    bdr = prtAllocBorder(1, 0.0, 0.0, bw, 0x000000);
 	    }
@@ -1250,7 +1584,7 @@ rpt_internal_DoSection(pRptData inf, pStructInf section, pRptSession rs, int con
 	/** Set the style for the section **/
 	if (rpt_internal_SetStyle(inf, section, rs, area_handle) < 0)
 	    goto error;
-	if (rpt_internal_SetMargins(section, area_handle, 0, 0, 0, 0) < 0)
+	if (rpt_internal_SetMargins(inf, section, area_handle, 0, 0, 0, 0) < 0)
 	    goto error;
 
 	/** Now do sub-components. **/
@@ -1523,17 +1857,17 @@ rpt_internal_Activate(pRptData inf, pStructInf object, pRptSession rs)
 	if (!ac) return NULL;
 
 	/** Is this a parallel query? **/
-	ac->MultiMode = RPT_MM_NESTED;
-	if (stAttrValue(stLookup(object, "multimode"), NULL, &ptr, 0) >= 0)
+	rpt_internal_GetString(inf, object, "multimode", &ptr, "nested", 0);
+	if (!strcmp(ptr,"parallel"))
+	    ac->MultiMode = RPT_MM_PARALLEL;
+	else if (!strcmp(ptr,"nested"))
+	    ac->MultiMode = RPT_MM_NESTED;
+	else if (!strcmp(ptr,"multinested"))
+	    ac->MultiMode = RPT_MM_MULTINESTED;
+	else
 	    {
-	    if (!strcmp(ptr,"parallel")) ac->MultiMode = RPT_MM_PARALLEL;
-	    else if (!strcmp(ptr,"nested")) ac->MultiMode = RPT_MM_NESTED;
-	    else if (!strcmp(ptr,"multinested")) ac->MultiMode = RPT_MM_MULTINESTED;
-	    else
-	        {
-		mssError(1,"RPT","Invalid multimode <%s>.  Valid types = nested,parallel,multinested", ptr);
-		return NULL;
-		}
+	    mssError(1,"RPT","Invalid multimode <%s>.  Valid types = nested,parallel,multinested", ptr);
+	    return NULL;
 	    }
 
 	/** Scan through the object's inf looking for source, etc **/
@@ -1542,8 +1876,8 @@ rpt_internal_Activate(pRptData inf, pStructInf object, pRptSession rs)
 	    {
 	    /** Find a source to activate... **/
 	    ptr = NULL;
-	    stAttrValue(stLookup(object, "source"), NULL, &ptr, ac->Count);
-	    if (!ptr) break;
+	    if (rpt_internal_GetString(inf, object, "source", &ptr, NULL, ac->Count) < 0)
+		break;
 	    if (ac->Count >= EXPR_MAX_PARAMS)
 		{
 		mssError(1,"RPT","Too many queries for object '%s'", object->Name);
@@ -1555,7 +1889,7 @@ rpt_internal_Activate(pRptData inf, pStructInf object, pRptSession rs)
 	    /** Get inner/outer mode information **/
 	    ac->InnerMode[ac->Count] = 0;
 	    ac->OuterMode[ac->Count] = 0;
-	    if (stAttrValue(stLookup(object, "mode"), NULL, &ptr, ac->Count) >= 0)
+	    if (rpt_internal_GetString(inf, object, "mode", &ptr, NULL, ac->Count) >= 0)
 	        {
 		if (!strcmp(ptr,"inner")) ac->InnerMode[ac->Count] = 1;
 		if (!strcmp(ptr,"outer")) 
@@ -1573,37 +1907,8 @@ rpt_internal_Activate(pRptData inf, pStructInf object, pRptSession rs)
 	    /** If not inner mode, try to activate and fetch first row **/
 	    if (!ac->InnerMode[ac->Count]) 
 	        {
-		/*expAddParamToList(inf->ObjList, ac->Names[ac->Count], NULL, EXPR_O_CURRENT);
-		expSetParamFunctions(inf->ObjList, ac->Names[ac->Count], rpt_internal_QyGetAttrType, rpt_internal_QyGetAttrValue, NULL);*/
 		}
 	    ac->Queries[ac->Count] = NULL;
-#if 00
-	    ac->Queries[ac->Count] = rpt_internal_PrepareQuery(inf, object, rs, ac->Count);
-	    if (!ac->Queries[ac->Count])
-		{
-		err = 1;
-		break;
-		}
-	
-	    /** Now fetch the first item... **/
-	    if (!ac->InnerMode[ac->Count]) 
-	        {
-		/** Add an object-list item for this datasource/query **/
-		expAddParamToList(inf->ObjList, ac->Names[ac->Count], NULL, EXPR_O_CURRENT);
-		expSetParamFunctions(inf->ObjList, ac->Names[ac->Count], rpt_internal_QyGetAttrType, rpt_internal_QyGetAttrValue, NULL);
-
-		/** Fetch the first row. **/
-		ac->Queries[ac->Count]->QueryItem = NULL;
-	        /*ac->Queries[ac->Count]->QueryItem = objQueryFetch(ac->Queries[ac->Count]->Query, 0400);
-		expModifyParam(inf->ObjList, ac->Queries[ac->Count]->Name, ac->Queries[ac->Count]->QueryItem);*/
-		if (ac->OuterMode[ac->Count]) ac->Queries[ac->Count]->InnerExecCnt = 0;
-		}
-	    else
-	        {
-		/** Let any outer query know the inner form/table got run **/
-	        ac->Queries[ac->Count]->InnerExecCnt++;
-		}
-#endif
 	    ac->Count++;
 	    }
 
@@ -1640,7 +1945,6 @@ rpt_internal_Deactivate(pRptData inf, pRptActiveQueries ac)
 		objClose(ac->Queries[i]->QueryItem);
 	        ac->Queries[i]->QueryItem = NULL;
 		}
-	    /*expRemoveParamFromList(inf->ObjList, ac->Names[i]);*/
 	    if (ac->Queries[i] && ac->Queries[i]->Query)
 	        {
 		objQueryClose(ac->Queries[i]->Query);
@@ -1679,25 +1983,25 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 	    return 0;
 
 	/** Get table row object flags **/
-	is_header = rpt_internal_GetBool(tablerow,"header",0,0);
-	is_footer = rpt_internal_GetBool(tablerow,"footer",0,0);
+	is_header = rpt_internal_GetBool(inf, tablerow,"header",0,0);
+	is_footer = rpt_internal_GetBool(inf, tablerow,"footer",0,0);
 	flags = 0;
-	if (rpt_internal_GetBool(tablerow, "allowbreak", 1, 0)) flags |= PRT_OBJ_U_ALLOWBREAK;
-	if (rpt_internal_GetBool(tablerow, "fixedsize", 0, 0)) flags |= PRT_OBJ_U_FIXEDSIZE;
+	if (rpt_internal_GetBool(inf, tablerow, "allowbreak", 1, 0)) flags |= PRT_OBJ_U_ALLOWBREAK;
+	if (rpt_internal_GetBool(inf, tablerow, "fixedsize", 0, 0)) flags |= PRT_OBJ_U_FIXEDSIZE;
 
 	/** Border settings? **/
 	tb=bb=lb=rb=ib=ob=NULL;
-	if (rpt_internal_GetDouble(tablerow, "outerborder", &dbl, 0) == 0)
+	if (rpt_internal_GetDouble(inf, tablerow, "outerborder", &dbl, NAN, 0) >= 0)
 	    ob = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(tablerow, "innerborder", &dbl, 0) == 0)
+	if (rpt_internal_GetDouble(inf, tablerow, "innerborder", &dbl, NAN, 0) >= 0)
 	    ib = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(tablerow, "topborder", &dbl, 0) == 0)
+	if (rpt_internal_GetDouble(inf, tablerow, "topborder", &dbl, NAN, 0) >= 0)
 	    tb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(tablerow, "bottomborder", &dbl, 0) == 0)
+	if (rpt_internal_GetDouble(inf, tablerow, "bottomborder", &dbl, NAN, 0) >= 0)
 	    bb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(tablerow, "leftborder", &dbl, 0) == 0)
+	if (rpt_internal_GetDouble(inf, tablerow, "leftborder", &dbl, NAN, 0) >= 0)
 	    lb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(tablerow, "rightborder", &dbl, 0) == 0)
+	if (rpt_internal_GetDouble(inf, tablerow, "rightborder", &dbl, NAN, 0) >= 0)
 	    rb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
 
 	/** Create the table row **/
@@ -1718,13 +2022,13 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 	/** Set the style for the table **/
 	if (rpt_internal_SetStyle(inf, tablerow, rs, tablerow_handle) < 0)
 	    goto error;
-	if (rpt_internal_SetMargins(tablerow, tablerow_handle, colsep/2/prtGetUnitsRatio(rs->PSession), colsep/2/prtGetUnitsRatio(rs->PSession), 0, 0) < 0)
+	if (rpt_internal_SetMargins(inf, tablerow, tablerow_handle, colsep/2/prtGetUnitsRatio(rs->PSession), colsep/2/prtGetUnitsRatio(rs->PSession), 0, 0) < 0)
 	    goto error;
 
 	/** Output data formats **/
 	cxssPushContext();
 	context_pushed = 1;
-	rpt_internal_CheckFormats(tablerow);
+	rpt_internal_CheckFormats(inf, tablerow);
 
 	/** Loop through subobjects **/
 	is_cellrow = is_generalrow = 0;
@@ -1749,7 +2053,7 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 
 		/** Init the cell **/
 		colspan = 1;
-		stAttrValue(stLookup(subinf,"colspan"),&colspan, NULL, 0);
+		rpt_internal_GetInteger(inf, subinf, "colspan", &colspan, 1, 0);
 		if (colspan <= 0) colspan=1;
 		tablecell_handle = prtAddObject(tablerow_handle, PRT_OBJ_T_TABLECELL, -1,-1,-1,-1, flags, "colspan", colspan, NULL);
 		if (tablecell_handle < 0)
@@ -1774,7 +2078,7 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 			goto error;
 			}
 		    /*rpt_internal_SetStyle(inf, subinf, rs, area_handle);*/
-		    rpt_internal_SetMargins(subinf, area_handle, 0, 0, 0, 0);
+		    rpt_internal_SetMargins(inf, subinf, area_handle, 0, 0, 0, 0);
 		    if (rpt_internal_DoData(inf, subinf, rs, area_handle) < 0)
 			{
 			mssError(0,"RPT","problem constructing cell object '%s' (error doing area content)", subinf->Name);
@@ -1821,7 +2125,7 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 			goto error;
 			}
 		    /*rpt_internal_SetStyle(inf, subinf, rs, area_handle);*/
-		    rpt_internal_SetMargins(tablerow, area_handle, 0, 0, 0, 0);
+		    rpt_internal_SetMargins(inf, tablerow, area_handle, 0, 0, 0, 0);
 		    if (rpt_internal_DoData(inf, tablerow, rs, area_handle) < 0)
 			{
 			mssError(0,"RPT","problem constructing row object '%s' (error doing area content)", tablerow->Name);
@@ -1897,25 +2201,24 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	if (rval == 0) return 0;
 
 	/** Get table outer geometry **/
-	if (rpt_internal_GetDouble(table, "x", &x, 0) < 0) x = -1;
-	if (rpt_internal_GetDouble(table, "y", &y, 0) < 0) y = -1;
-	if (rpt_internal_GetDouble(table, "width", &w, 0) < 0) w = -1;
-	if (rpt_internal_GetDouble(table, "height", &h, 0) < 0) h = -1;
+	rpt_internal_GetDouble(inf, table, "x", &x, -1.0, 0);
+	rpt_internal_GetDouble(inf, table, "y", &y, -1.0, 0);
+	rpt_internal_GetDouble(inf, table, "width", &w, -1.0, 0);
+	rpt_internal_GetDouble(inf, table, "height", &h, -1.0, 0);
 
 	/** Check for flags **/
 	flags = 0;
 	if (x >= 0.0) flags |= PRT_OBJ_U_XSET;
 	if (y >= 0.0) flags |= PRT_OBJ_U_YSET;
-	if (rpt_internal_GetBool(table, "allowbreak", 1, 0)) flags |= PRT_OBJ_U_ALLOWBREAK;
-	if (rpt_internal_GetBool(table, "fixedsize", 0, 0)) flags |= PRT_OBJ_U_FIXEDSIZE;
-	is_autowidth = rpt_internal_GetBool(table, "autowidth", 0, 0);
+	if (rpt_internal_GetBool(inf, table, "allowbreak", 1, 0)) flags |= PRT_OBJ_U_ALLOWBREAK;
+	if (rpt_internal_GetBool(inf, table, "fixedsize", 0, 0)) flags |= PRT_OBJ_U_FIXEDSIZE;
+	is_autowidth = rpt_internal_GetBool(inf, table, "autowidth", 0, 0);
 
 	/** Get column count and widths. **/
 	numcols = 0;
-	while(numcols < 64 && rpt_internal_GetDouble(table, "widths", &(cwidths[numcols]), numcols) == 0) 
+	while(numcols < 64 && rpt_internal_GetDouble(inf, table, "widths", &(cwidths[numcols]), NAN, numcols) >= 0) 
 	    numcols++;
-	n = 0;
-	stAttrValue(stLookup(table,"columns"),&n, NULL, 0);
+	rpt_internal_GetInteger(inf, table, "columns", &n, 0, 0);
 	if (n != numcols)
 	    {
 	    mssError(1,"RPT","Table '%s' column count %d not specified or does not match number of column widths (%d).", table->Name, n, numcols);
@@ -1931,7 +2234,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 		rowinf = table->SubInf[i];
 		if (!strcmp(rowinf->UsrType,"report/table-row"))
 		    {
-		    if (rpt_internal_GetBool(rowinf,"header",0,0))
+		    if (rpt_internal_GetBool(inf, rowinf,"header",0,0))
 			{
 			if (rpt_internal_CheckCondition(inf,rowinf) == 1)
 			    {
@@ -1941,15 +2244,14 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 				cellinf = rowinf->SubInf[j];
 				if (rpt_internal_CheckCondition(inf,cellinf) == 1)
 				    {
-				    colspan=1;
-				    stAttrValue(stLookup(cellinf,"colspan"),&colspan, NULL, 0);
+				    rpt_internal_GetInteger(inf, cellinf, "colspan", &colspan, 1, 0);
 				    if (colspan != 1)
 					{
 					/** unsuitable header row to get widths -- cell spans more than one column **/
 					numcols = 0;
 					break;
 					}
-				    if (rpt_internal_GetDouble(cellinf, "width", &cellwidth, 0) != 0)
+				    if (rpt_internal_GetDouble(inf, cellinf, "width", &cellwidth, NAN, 0) < 0)
 					{
 					/** unsuitable header row for widths - width not specified on a valid header cell **/
 					numcols = 0;
@@ -1975,23 +2277,23 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	    }
 
 	/** Check for column separation amount **/
-	if (rpt_internal_GetDouble(table, "colsep", &colsep, 0) != 0) colsep = 1.0;
+	rpt_internal_GetDouble(inf, table, "colsep", &colsep, 1.0, 0);
 
 	/** Check for borders / shadow **/
 	outerborder = innerborder = shadow = tb = bb = lb = rb = NULL;
-	if (rpt_internal_GetDouble(table, "outerborder", &dbl, 0) == 0 && dbl > RPT_FP_FUDGE)
+	if (rpt_internal_GetDouble(inf, table, "outerborder", &dbl, NAN, 0) >= 0 && dbl > RPT_FP_FUDGE)
 	    outerborder = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(table, "innerborder", &dbl, 0) == 0 && dbl > RPT_FP_FUDGE)
+	if (rpt_internal_GetDouble(inf, table, "innerborder", &dbl, NAN, 0) >= 0 && dbl > RPT_FP_FUDGE)
 	    innerborder = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(table, "shadow", &dbl, 0) == 0 && dbl > RPT_FP_FUDGE)
+	if (rpt_internal_GetDouble(inf, table, "shadow", &dbl, NAN, 0) >= 0 && dbl > RPT_FP_FUDGE)
 	    shadow = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(table, "topborder", &dbl, 0) == 0 && dbl > RPT_FP_FUDGE)
+	if (rpt_internal_GetDouble(inf, table, "topborder", &dbl, NAN, 0) >= 0 && dbl > RPT_FP_FUDGE)
 	    tb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(table, "bottomborder", &dbl, 0) == 0 && dbl > RPT_FP_FUDGE)
+	if (rpt_internal_GetDouble(inf, table, "bottomborder", &dbl, NAN, 0) >= 0 && dbl > RPT_FP_FUDGE)
 	    bb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(table, "leftborder", &dbl, 0) == 0 && dbl > RPT_FP_FUDGE)
+	if (rpt_internal_GetDouble(inf, table, "leftborder", &dbl, NAN, 0) >= 0 && dbl > RPT_FP_FUDGE)
 	    lb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(table, "rightborder", &dbl, 0) == 0 && dbl > RPT_FP_FUDGE)
+	if (rpt_internal_GetDouble(inf, table, "rightborder", &dbl, NAN, 0) >= 0 && dbl > RPT_FP_FUDGE)
 	    rb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
 
 	/** Create the table **/
@@ -2015,19 +2317,19 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	/** Output data formats **/
 	cxssPushContext();
 	context_pushed = 1;
-	rpt_internal_CheckFormats(table);
+	rpt_internal_CheckFormats(inf, table);
 
 	/** Record-count limiter? **/
-	stAttrValue(stLookup(table,"reclimit"),&reclimit,NULL,0);
+	rpt_internal_GetInteger(inf, table, "reclimit", &reclimit, -1, 0);
 
 	/** Set the style for the table **/
 	if (rpt_internal_SetStyle(inf, table, rs, table_handle) < 0)
 	    goto error;
-	if (rpt_internal_SetMargins(table, table_handle, 0, 0, 0, 0) < 0)
+	if (rpt_internal_SetMargins(inf, table, table_handle, 0, 0, 0, 0) < 0)
 	    goto error;
 
 	/** Suppress "no data returned" message on 0 rows? **/
-	no_data_msg = rpt_internal_GetBool(table, "nodatamsg", 1, 0);
+	no_data_msg = rpt_internal_GetBool(inf, table, "nodatamsg", 1, 0);
 
 	/** Check to see if table has sources specified. **/
 	if (stLookup(table,"source")) has_source = 1;
@@ -2066,42 +2368,8 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	    }
 	else
 	    {
-	    /*if (!table->UserData)
-	        {
-		mssError(1,"Table '%s' has no source, and no 'expressions=yes'", table->Name);
-		prtEndObject(table_handle);
-	        return -1;
-		}*/
 	    ac = NULL;
 	    }
-#if 00
-	/** Decide which columns of the result set to use **/
-	colmask = 0x7FFFFFFF;
-	if (ac)
-	    {
-	    /** Determine which source to use. **/
-	    if (ac->MultiMode == RPT_MM_MULTINESTED)
-		qy = ac->Queries[0];
-	    else
-		qy = ac->Queries[ac->Count-1];
-
-	    if ((ui=stLookup(table,"columns")))
-	        {
-	        colmask=0;
-	        for(v=0,cname=objGetFirstAttr(qy->QueryItem);cname;v++,cname=objGetNextAttr(qy->QueryItem))
-	            {
-	            for(cnt=0;stAttrValue(ui,NULL,&cname2,cnt) >=0 && cname2;cnt++)
-		        {
-		        if (!strcmp(cname,cname2)) 
-		            {
-			    colmask |= (1<<v);
-			    break;
-			    }
-			}
-		    }
-		}
-	    }
-#endif
 
 	/** First, scan for any header rows in the table **/
 	for(i=0;i<table->nSubInf;i++) if (stStructType(table->SubInf[i]) == ST_T_SUBGROUP)
@@ -2109,7 +2377,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	    rowinf = table->SubInf[i];
 	    if (!strcmp(rowinf->UsrType,"report/table-row"))
 		{
-		if (rpt_internal_GetBool(rowinf,"header",0,0))
+		if (rpt_internal_GetBool(inf, rowinf,"header",0,0))
 		    {
 		    if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle, colsep) < 0)
 			{
@@ -2124,7 +2392,6 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	reccnt = 0;
 	if (!err) do  
 	    {
-	    /*if (ac) for(i=0;i<ac->Count;i++) if (ac->Queries[i]) qy = ac->Queries[i];*/
 	    if (reclimit != -1 && reccnt >= reclimit) break;
 	    if (ac && rpt_internal_UseRecord(ac) < 0)
 	        {
@@ -2140,7 +2407,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 		    rowinf = table->SubInf[i];
 		    if (!strcmp(rowinf->UsrType,"report/table-row"))
 			{
-			if (rpt_internal_GetBool(rowinf,"summary",0,0))
+			if (rpt_internal_GetBool(inf, rowinf,"summary",0,0))
 			    {
 			    summarize_for_inf = stLookup(rowinf, "summarize_for");
 			    if (summarize_for_inf)
@@ -2165,14 +2432,14 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 			}
 		    }
 		}
-
+            
 	    /** Search for 'normal' rows **/
 	    for(i=0;i<table->nSubInf;i++) if (stStructType(table->SubInf[i]) == ST_T_SUBGROUP)
 		{
 		rowinf = table->SubInf[i];
 		if (!strcmp(rowinf->UsrType,"report/table-row"))
 		    {
-		    if (!rpt_internal_GetBool(rowinf,"header",0,0) && !rpt_internal_GetBool(rowinf,"summary",0,0))
+		    if (!rpt_internal_GetBool(inf, rowinf,"header",0,0) && !rpt_internal_GetBool(inf, rowinf,"summary",0,0))
 			{
 			if (rpt_internal_DoTableRow(inf, rowinf, rs, numcols, table_handle, colsep) < 0)
 			    {
@@ -2182,6 +2449,8 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 			}
 		    }
 		}
+            
+
 
 	    if (err) break;
 	    if (ac) rval = rpt_internal_NextRecord(ac, inf, table, rs, 0);
@@ -2193,7 +2462,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 		rowinf = table->SubInf[i];
 		if (!strcmp(rowinf->UsrType,"report/table-row"))
 		    {
-		    if (rpt_internal_GetBool(rowinf,"summary",0,0))
+		    if (rpt_internal_GetBool(inf, rowinf,"summary",0,0))
 			{
 			if (rval != 0) 
 			    {
@@ -2415,7 +2684,6 @@ rpt_internal_WritePOD(pRptSession rs, int t, pObjData pod, int container_handle)
 int
 rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container_handle)
     {
-    char* ptr = NULL;
     int nl = 0;
     PrtTextStyle oldstyle;
     pPrtTextStyle oldstyleptr = &oldstyle;
@@ -2424,6 +2692,9 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
     pStructInf value_inf;
     pRptUserData ud;
     int context_pushed = 0;
+    int negative_fontcolor = -1;
+    char* ptr;
+    char* url = NULL;
 
 	/** Conditional rendering **/
 	rval = rpt_internal_CheckCondition(inf,data);
@@ -2434,24 +2705,29 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	prtGetTextStyle(container_handle, &oldstyleptr);
 	cxssPushContext();
 	context_pushed = 1;
-	rpt_internal_CheckFormats(data);
+	rpt_internal_CheckFormats(inf, data);
 	rpt_internal_CheckGoto(rs,data,container_handle);
 	if (rpt_internal_SetStyle(inf, data, rs, container_handle) < 0)
 	    goto error;
 
-	/** Need to enable auto-newline? **/
-	ptr=NULL;
-	if (stAttrValue(stLookup(data,"autonewline"),NULL,&ptr,0) >=0)
-	    {
-	    if (ptr && !strcmp(ptr,"yes")) nl=1;
-	    }
+	/** URL **/
+	rpt_internal_GetString(inf, data, "url", &url, NULL, 0);
+	if (url)
+	    prtSetURL(container_handle, url);
 
+	/** Negative font color? **/
+	cxssGetVariable("rpt:neg_fc", &ptr, "");
+	if (ptr[0] == '#')
+	    negative_fontcolor = strtoi(ptr+1, NULL, 16);
+
+	/** Need to enable auto-newline? **/
+	nl = rpt_internal_GetBool(inf, data, "autonewline", 0, 0);
+        
 	/** Get the expression itself **/
 	value_inf = stLookup(data,"value");
 	if (!value_inf)
 	    {
 	    mssError(0,"RPT","%s '%s' must have a value expression", data->UsrType, data->Name);
-	    prtSetTextStyle(container_handle, &oldstyle);
 	    goto error;
 	    }
 	t = stGetAttrType(value_inf, 0);
@@ -2468,12 +2744,19 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 		if (rval < 0)
 		    {
 		    mssError(0,"RPT","Could not evaluate %s '%s' value expression", data->UsrType, data->Name);
-		    prtSetTextStyle(container_handle, &oldstyle);
 		    goto error;
 		    }
 
+		/** Use negative fontcolor? **/
+		t = ud->Exp->DataType;
+		if (negative_fontcolor >= 0 && ((t == DATA_T_INTEGER && ud->Exp->Integer < 0) || (t == DATA_T_MONEY && ud->Exp->Types.Money.WholePart < 0) || (t == DATA_T_DOUBLE && ud->Exp->Types.Double < 0)))
+		    {
+		    if (prtSetColor(container_handle, negative_fontcolor) < 0)
+			goto error;
+		    }
+
 		/** Output the result **/
-		prtSetDataHints(container_handle, ud->Exp->DataType, 0);
+		prtSetDataHints(container_handle, t, 0);
 		rpt_internal_WriteExpResult(rs, ud->Exp, container_handle, data->Name, NULL);
 		}
 	    else
@@ -2483,6 +2766,13 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	    }
 	else if (t == DATA_T_STRING || t == DATA_T_DOUBLE || t == DATA_T_INTEGER || t == DATA_T_MONEY)
 	    {
+	    /** Use negative fontcolor? **/
+	    if (negative_fontcolor >= 0 && ((t == DATA_T_INTEGER && od.Integer < 0) || (t == DATA_T_MONEY && od.Money->WholePart < 0) || (t == DATA_T_DOUBLE && od.Double < 0)))
+		{
+		if (prtSetColor(container_handle, negative_fontcolor) < 0)
+		    goto error;
+		}
+
 	    rval = stGetAttrValue(stLookup(data,"value"), t, POD(&od), 0);
 	    if (rval == 0) rpt_internal_WritePOD(rs, t, &od, container_handle);
 	    else if (rval == 1) rpt_internal_WritePOD(rs, t, NULL, container_handle);
@@ -2491,7 +2781,6 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	else
 	    {
 	    mssError(1,"RPT","Unknown data value for %s '%s' element", data->UsrType, data->Name);
-	    prtSetTextStyle(container_handle, &oldstyle);
 	    goto error;
 	    }
 
@@ -2505,6 +2794,9 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 	return 0;
 
     error:
+	prtSetTextStyle(container_handle, &oldstyle);
+	if (url)
+	    prtSetURL(container_handle, NULL);
 	if (context_pushed)
 	    cxssPopContext();
 	return -1;
@@ -2546,20 +2838,17 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 	    }*/
 
 	/** Issue form feed (page break) between records? **/
-	if (stAttrValue(stLookup(form,"ffsep"),NULL,&ptr,0) >= 0 && ptr && !strcmp(ptr,"yes"))
-	    {
-	    ffsep=1;
-	    }
+	ffsep = rpt_internal_GetBool(inf, form, "ffsep", 0, 0);
 
 	/** Check for set-page-number? **/
-	if (stAttrValue(stLookup(form,"page"),&n,NULL,0) >= 0) prtSetPageNumber(rs->PageHandle, n);
+	if (rpt_internal_GetInteger(inf, form, "page", &n, RPT_INT_UNSPEC, 0) >= 0)
+	    prtSetPageNumber(rs->PageHandle, n);
 
 	/** Check for a mode entry **/
 	n = 0;
-	while (stAttrValue(stLookup(form,"mode"),NULL,&ptr,n) >= 0)
+	while (rpt_internal_GetString(inf, form, "mode", &ptr, NULL, n) >= 0)
 	    {
 	    if (!strcmp(ptr,"outer")) outer_mode = 1;
-	    /*if (!strcmp(ptr,"inner")) inner_mode = 1;*/
 	    n++;
 	    }
 
@@ -2580,7 +2869,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 	    }*/
 
 	/** Record-count limiter? **/
-	if (stAttrValue(stLookup(form,"reclimit"),&reclimit,NULL,0) >= 0)
+	if (rpt_internal_GetInteger(inf, form, "reclimit", &reclimit, RPT_INT_UNSPEC, 0) >= 0)
 	    {
 	    if (outer_mode)
 	        {
@@ -2593,7 +2882,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 	prtGetTextStyle(container_handle, &oldstyleptr);
 	cxssPushContext();
 	context_pushed = 1;
-	rpt_internal_CheckFormats(form);
+	rpt_internal_CheckFormats(inf, form);
 	rpt_internal_CheckGoto(rs,form,container_handle);
 	if (rpt_internal_SetStyle(inf, form, rs, container_handle) < 0)
 	    goto error;
@@ -2623,7 +2912,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 		err = 1;
 		break;
 		}
-
+            
 	    /** Print out the contents of the form **/
 	    rval = rpt_internal_DoContainer(inf, form, rs, container_handle);
 	    if (rval < 0) err = 1;
@@ -2669,6 +2958,1167 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 	if (context_pushed)
 	    cxssPopContext();
 	return -1;
+    }
+
+
+/*** rpt_internal_MglColor() takes a color hex value and finds the nearest MathGL
+ *** color that matches it.
+ ***/
+char*
+rpt_internal_MglColor(int hexcolor)
+    {
+    static char mglcolor[8];
+    int i;
+    int found = -1;
+    int found_dist = 1024;
+    int dist;
+
+	/** Search the hex list **/
+	for(i=0; i<sizeof(rpt_mgl_color_hex)/sizeof(int); i++)
+	    {
+	    dist = abs((hexcolor & 0xff0000) - (rpt_mgl_color_hex[i] & 0xff0000)) >> 16;
+	    dist += (abs((hexcolor & 0x00ff00) - (rpt_mgl_color_hex[i] & 0x00ff00)) >> 8);
+	    dist += abs((hexcolor & 0x0000ff) - (rpt_mgl_color_hex[i] & 0x0000ff));
+	    if (dist < found_dist)
+		{
+		found_dist = dist;
+		found = i;
+		}
+	    }
+	
+	/** Build the color spec **/
+	mglcolor[0] = rpt_mgl_colors[found];
+	mglcolor[1] = '\0';
+
+    return mglcolor;
+    }
+
+
+/*** rpt_internal_GraphToImage - convert a MathGL graph to a PrtImage.
+ ***/
+pPrtImage
+rpt_internal_GraphToImage(pRptChartContext ctx)
+    {
+    pPrtImage img = NULL;
+    unsigned char* rawdata = NULL;
+    int xstart, ystart;
+    int x, y;
+    int src, dst;
+
+	/** Get the raw raster data from MathGL **/
+	rawdata = (unsigned char*)mgl_get_rgba(ctx->gr);
+	if (!rawdata)
+	    {
+	    mssError(1, "RPT", "Could not convert chart to raster data");
+	    goto error;
+	    }
+
+	/** Create the image **/
+	img = prtAllocImage(ctx->x_pixels, ctx->y_pixels, PRT_COLOR_T_FULL);
+	if (!img)
+	    goto error;
+
+	/** Copy the image data **/
+	xstart = round(ctx->rend_x_pixels * ctx->trim.left);
+	ystart = round(ctx->rend_y_pixels * ctx->trim.top);
+	for(y=0; y<ctx->y_pixels; y++)
+	    {
+	    for(x=0; x<ctx->x_pixels; x++)
+		{
+		src = (x + xstart + (y + ystart) * ctx->rend_x_pixels) * 4;
+		dst = (x + y * ctx->x_pixels) * 4;
+		img->Data.Byte[dst] = rawdata[src+2];
+		img->Data.Byte[dst+1] = rawdata[src+1];
+		img->Data.Byte[dst+2] = rawdata[src];
+		img->Data.Byte[dst+3] = rawdata[src+3];
+		}
+	    }
+
+	return img;
+
+    error:
+	if (img)
+	    prtFreeImage(img);
+	if (rawdata)
+	    free(rawdata);
+	return NULL;
+    }
+
+
+/*** rpt_internal_FreeChartValues() - free memory for a chart tuple
+ ***/
+int
+rpt_internal_FreeChartValues(pRptChartValues value)
+    {
+	if (value->Label)
+	    nmSysFree(value->Label);
+	if (value->Values)
+	    nmSysFree(value->Values);
+	if (value->Types)
+	    nmSysFree(value->Types);
+	nmFree(value, sizeof(RptChartValues));
+
+    return 0;
+    }
+
+
+/*** rpt_internal_NewChartValues() - allocate a tuple for a chart
+ ***/
+pRptChartValues
+rpt_internal_NewChartValues(char* label, int n_values)
+    {
+    pRptChartValues value;
+
+	value = (pRptChartValues)nmMalloc(sizeof(RptChartValues));
+	if (!value)
+	    goto error;
+	value->Values = NULL;
+	value->Types = NULL;
+	value->Label = nmSysStrdup(label);
+	if (!value->Label)
+	    goto error;
+	value->Values = (double*)nmSysMalloc(sizeof(double) * n_values);
+	if (!value->Values)
+	    goto error;
+	memset(value->Values, 0, sizeof(double) * n_values);
+	value->Types = (char*)nmSysMalloc(sizeof(char) * n_values);
+	if (!value->Types)
+	    goto error;
+
+	return value;
+
+    error:
+	if (value)
+	    rpt_internal_FreeChartValues(value);
+	return NULL;
+    }
+
+
+/*** Returns the tick distance that is 1x10^n, 2x10^n, or 5x10^n.
+ *** The number of tick marks is between 4 and 10
+ ***/
+int
+rpt_internal_GetTickDist(double maxBar)
+    {
+    int tickDist;
+
+	tickDist = pow(10,floor(log10(maxBar)));
+	if(maxBar/tickDist < 5)
+	    {
+	    tickDist /= 2;
+	    
+	    }
+	if(tickDist == 0) tickDist = 1;
+
+    return tickDist;
+    }
+
+
+/*** Get an Mgl color based on report config
+ ***/
+char*
+rpt_internal_GetMglColor(pRptChartContext ctx, pStructInf obj, char* attrname, char* defval, int nval)
+    {
+    int colorcode;
+    char* color = NULL;
+
+	rpt_internal_GetString(ctx->inf, obj, attrname, &color, NULL, nval);
+	if (color && (colorcode = prtLookupColor(color)) != -1)
+	    color = rpt_internal_MglColor(colorcode);
+	else
+	    color = defval;
+
+    return color;
+    }
+
+
+/*** Get decimal precision of Y values.  n and ser indicate which point and
+ *** series to work with; if they are set to -1 then we return the greatest
+ *** decimal precision of the matching values.  Maximum precision returned
+ *** is 8.
+ ***/
+int
+rpt_internal_GetYDecimalPrecision(pRptChartContext ctx, int n, int ser)
+    {
+    int i,j,k;
+    int nstart, nlen;
+    int serstart, serlen;
+    double val;
+    int prec = 0;
+
+	/** Evaluation range **/
+	if (n == -1)
+	    {
+	    nstart = 0;
+	    nlen = ctx->values->nItems;
+	    }
+	else
+	    {
+	    nstart = n;
+	    nlen = 1;
+	    }
+	if (ser == -1)
+	    {
+	    serstart = 0;
+	    serlen = ctx->series->nItems;
+	    }
+	else
+	    {
+	    serstart = ser;
+	    serlen = 1;
+	    }
+
+	/** Iterate **/
+	for(i=nstart; i<nstart+nlen; i++)
+	    {
+	    for(j=serstart; j<serstart+serlen; j++)
+		{
+		val = ((pRptChartValues)ctx->values->Items[i])->Values[j];
+		for(k=0; k<8; k++)
+		    {
+		    if (val == 0 || ceil(abs(val)*exp10(k)*0.99999999999999) != ceil(abs(val)*exp10(k)*1.00000000000001))
+			break;
+		    }
+		if (k > prec)
+		    prec = k;
+		}
+	    }
+
+    return prec;
+    }
+
+
+/*** Generate value strings
+ ***/
+pXArray
+rpt_internal_GetValueStrings(pRptChartContext ctx, int startval, int n_vals, int show_pct, int ser)
+    {
+    pXArray labels;
+    char str[32];
+    int i;
+    double val;
+    int prec;
+
+	labels = xaNew(n_vals);
+	if (!labels)
+	    return NULL;
+
+	/** Format the label strings **/
+	for(i=startval; i<startval+n_vals; i++)
+	    {
+	    val = ((pRptChartValues)ctx->values->Items[i])->Values[ser];
+	    prec = rpt_internal_GetYDecimalPrecision(ctx, i, ser);
+
+	    if (prec == 0)
+		{
+		/** Integer **/
+		snprintf(str, sizeof(str), "%d%s", (int)round(val), show_pct?"%":"");
+		}
+	    else
+		{
+		/** Double **/
+		snprintf(str, sizeof(str), "%.*f%s", prec, val, show_pct?"%":"");
+		}
+	    xaAddItem(labels, nmSysStrdup(str));
+	    }
+
+    return labels;
+    }
+
+
+/*** Free value strings
+ ***/
+int
+rpt_internal_FreeValueStrings(pXArray labels)
+    {
+    int i;
+
+	for(i=0; i<labels->nItems; i++)
+	    if (labels->Items[i])
+		nmSysFree(labels->Items[i]);
+	xaFree(labels);
+
+    return 0;
+    }
+
+
+/*** Line/Bar Labels
+ ***/
+int
+rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int total_n_vals, int ser, int n_ser, int bar, double fontsize, int show_pct, double offset)
+    {
+    int i;
+    double val;
+    pXArray labels;
+    int maxstrlen;
+    double fs;
+
+	labels = rpt_internal_GetValueStrings(ctx, startval, n_vals, show_pct, ser);
+	if (!labels)
+	    return -1;
+
+	/** Font size - scale for longer labels / smaller bars **/
+	maxstrlen = 0;
+	for(i=0; i<n_vals; i++)
+	    {
+	    if (maxstrlen < strlen(labels->Items[i]))
+		maxstrlen = strlen(labels->Items[i]);
+	    }
+	fs = ctx->stand_w * ctx->rend_x_pixels / ctx->x_pixels * 6.8 / (maxstrlen * total_n_vals * (bar?n_ser:1));
+	if (fs > fontsize) fs = fontsize;
+	if (fs < 2) fs = 2;
+
+	/** Add the labels **/
+	for(i=startval; i<startval+n_vals; i++)
+	    {
+	    val = ((pRptChartValues)ctx->values->Items[i])->Values[ser];
+#ifdef HAVE_MGL2
+	    mgl_puts(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + ser) * (1.4 / n_ser)):0.0), val + ctx->max*0.02, 0.0, (char*)labels->Items[i - startval], "", fs * ctx->font_scale_factor);
+#else
+	    mgl_puts_ext(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + ser) * (1.4 / n_ser)):0.0), val + ctx->max*0.02, 0.0, (char*)labels->Items[i - startval], "", fs * ctx->font_scale_factor, '\0');
+#endif
+	    }
+
+	rpt_internal_FreeValueStrings(labels);
+
+    return 0;
+    }
+
+
+/*** Draws X tick labels
+ ***/
+int
+rpt_internal_DrawXTickLabels(pRptChartContext ctx, int startval, int n_vals, int total_n_vals, int offset)
+    {
+    int i;
+    float b[n_vals];
+#ifdef HAVE_MGL2
+    char blank[64];
+    int n_labels;
+#else
+    char* blank[n_vals];
+#endif
+    int axis_fontsize;
+    double fs, cfs;
+    int maxstrlen = 0;
+    pXString labels;
+
+	rpt_internal_GetInteger(ctx->inf, ctx->x_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
+	fs = axis_fontsize;
+
+	for(i=0; i<n_vals-1; i++)
+	    {
+	    if (maxstrlen < (strlen(ctx->x_labels[i+startval]) + strlen(ctx->x_labels[i+startval+1]))/2)
+		maxstrlen = (strlen(ctx->x_labels[i+startval]) + strlen(ctx->x_labels[i+startval+1]))/2;
+	    }
+	if (n_vals == 1)
+	    {
+	    if (maxstrlen < strlen(ctx->x_labels[startval]))
+		maxstrlen = strlen(ctx->x_labels[startval]);
+	    }
+	cfs = ctx->stand_w * ctx->rend_x_pixels / ctx->x_pixels * 12.0 / (maxstrlen * total_n_vals);
+
+#ifdef HAVE_MGL2
+	labels = xsNew();
+	cfs = cfs * 0.8;
+	n_labels = total_n_vals*2 - 1;
+	if (n_labels > sizeof(blank))
+	    n_labels = sizeof(blank);
+	memset(blank, '\n', n_labels - 1);
+	blank[n_labels - 1] = '\0';
+	mgl_set_ticks_str(ctx->gr, 'x', blank, 0);
+	if (ctx->rotation)
+	    {
+	    for(i=0; i<n_vals; i++)
+		{
+		xsConcatPrintf(labels, "\n%s\n", ctx->x_labels[i+startval]);
+		}
+	    xsConcatenate(labels, "\n", 1);
+	    mgl_set_ticks_str(ctx->gr, 'x', xsString(labels), 0);
+	    }
+#endif
+
+	if (cfs < 2)
+	    cfs = 2;
+	else if (cfs > fs)
+	    cfs = fs;
+
+	for(i=0; i<n_vals; i++)
+	    {
+	    b[i] = (i + startval) * 2.0;
+	    //mgl_puts_dir(ctx->gr, b[i], 0.0, 0.0, b[i] + 1, 0.0, 0.0, ctx->x_labels[i], 8);
+#ifdef HAVE_MGL2
+	    if (!ctx->rotation)
+		{
+		mgl_puts(ctx->gr, b[i] + offset, ctx->min - (ctx->max - ctx->min)*0.023 * cfs * ctx->font_scale_factor, 0.0, ctx->x_labels[i+startval], "", cfs * ctx->font_scale_factor);
+		}
+#else
+	    mgl_puts_ext(ctx->gr, b[i] + offset, 0.0, 0.0, ctx->x_labels[i+startval], "", cfs * ctx->font_scale_factor, 'x');
+	    blank[i] = "";
+#endif
+	    }
+
+#ifdef HAVE_MGL2
+	xsFree(labels);
+#else
+	mgl_set_ticks_vals(ctx->gr, 'x', n_vals, b, (const char**)blank);
+#endif
+
+    return 0;
+    }
+
+
+/*** Bar chart
+ ***/
+int
+rpt_internal_BarChart_PreProcess(pRptChartContext ctx)
+    {
+    pRptChartValues value;
+
+	/** Add blank one at beginning and end to make chart more readable **/
+#ifndef HAVE_MGL2
+	value = rpt_internal_NewChartValues(" ", ctx->series->nItems);
+	if (!value)
+	    return -1;
+	xaAddItem(ctx->values, value);
+	value = rpt_internal_NewChartValues(" ", ctx->series->nItems);
+	if (!value)
+	    return -1;
+	xaInsertBefore(ctx->values, 0, value);
+#endif
+
+	/** Trim factors **/
+	ctx->trim.left = 0.07;
+	ctx->trim.right = 0.17;
+
+    return 0;    
+    }
+
+int
+rpt_internal_BarChart_Setup(pRptChartContext ctx)
+    {
+
+	//mgl_set_zoom(ctx->gr, -0.05, 0, 0.95, 1.0);
+
+    return 0;
+    }
+
+int
+rpt_internal_BarChart_Generate(pRptChartContext ctx)
+    {
+    int reccnt = ctx->values->nItems;
+    int tickDist;
+    pStructInf one_series;
+    int series_fontsize;
+    int axis_fontsize, xaxis_fontsize;
+    double fs, xfs;
+    char* color;
+    int show_value;
+    int show_percent;
+    char* ptr;
+    char barcolors[256] = "";
+    int i;
+    
+	tickDist = rpt_internal_GetTickDist(ctx->max);
+
+	/** Draw the chart **/
+	//mgl_set_alpha(gr, 1);
+	//mgl_set_alpha_default(gr, 1.0);
+#ifdef HAVE_MGL2
+	//mgl_set_range_val(ctx->gr, 'x', 0, (reccnt-1)*2);
+	mgl_set_range_val(ctx->gr, 'x', 0, reccnt*2);
+	mgl_set_range_val(ctx->gr, 'y', 0, ctx->max+tickDist);
+#else
+	mgl_set_axis_2d(ctx->gr, 0, 0, (reccnt-1)*2, ctx->max+tickDist);
+#endif
+	//mgl_set_axis_3d(ctx->gr, 0, 0, 0.0, (reccnt-1)*2, ctx->max+tickDist, 0.0);
+	mgl_set_origin(ctx->gr, 0.0, 0.0, NAN);
+	//mgl_set_tick_origin(gr, 0.0, 0.0, 1.0);
+
+	/** Handle each data series **/
+	for(i=0; i<ctx->series->nItems; i++)
+	    {
+	    /** Bar color **/
+	    one_series = (pStructInf)ctx->series->Items[i];
+	    color = rpt_internal_GetMglColor(ctx, one_series, "color", ctx->color, 0);
+	    if (strlen(barcolors) + strlen(color) >= sizeof(barcolors))
+		break;
+	    strcat(barcolors, color);
+
+	    /** Value label **/
+	    rpt_internal_GetInteger(ctx->inf, one_series, "fontsize", &series_fontsize, ctx->fontsize, 0);
+	    rpt_internal_GetString(ctx->inf, one_series, "show_value", &ptr, "yes", 0);
+	    show_value = (!strcmp(ptr, "no"))?0:1;
+	    rpt_internal_GetString(ctx->inf, one_series, "show_percent", &ptr, "no", 0);
+	    show_percent = (!strcmp(ptr, "no"))?0:1;
+
+	    /** Generate the numeric bar labels **/
+	    if (show_value || show_percent)
+#ifdef HAVE_MGL2
+		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_percent, 1.0);
+#else
+		rpt_internal_DrawValueLabels(ctx, 1, reccnt-2, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_percent, 0.0);
+#endif
+	    }
+
+	/** Font size for y axis **/
+	rpt_internal_GetInteger(ctx->inf, ctx->y_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
+	fs = ctx->stand_w * ctx->rend_x_pixels / ctx->x_pixels * 6.0 / 50.0;
+	if (fs > axis_fontsize) fs = axis_fontsize;
+	if (fs < 2) fs = 2;
+	mgl_set_font_size(ctx->gr, fs * ctx->font_scale_factor);
+#ifdef HAVE_MGL2
+	rpt_internal_GetInteger(ctx->inf, ctx->x_axis, "fontsize", &xaxis_fontsize, ctx->fontsize, 0);
+	xfs = ctx->stand_w * ctx->rend_x_pixels / ctx->x_pixels * 6.0 / 50.0;
+	if (xfs > xaxis_fontsize) xfs = xaxis_fontsize;
+	if (xfs < 2) xfs = 2;
+#endif
+
+#ifdef HAVE_MGL2
+	rpt_internal_DrawXTickLabels(ctx, 0, reccnt, reccnt, 1);
+#else
+	rpt_internal_DrawXTickLabels(ctx, 1, reccnt-2, reccnt, 0);
+#endif
+	mgl_adjust_ticks(ctx->gr, "y");
+	//mgl_set_ticks(ctx->gr, -((reccnt-1)*2+1), tickDist, 1);
+	mgl_tune_ticks(ctx->gr, ctx->scale, 1.15);
+#ifdef HAVE_MGL2
+	mgl_set_ticks(ctx->gr, 'x', 1000.0, 0, 1000.0);
+	mgl_set_flag(ctx->gr, 1, MGL_NO_ORIGIN);
+	char opt[32];
+	snprintf(opt, sizeof(opt), "size %.1f", xfs * ctx->font_scale_factor);
+	mgl_axis(ctx->gr, "x", "", opt);
+	snprintf(opt, sizeof(opt), "size %.1f", fs * ctx->font_scale_factor);
+	mgl_axis(ctx->gr, "y", "", opt);
+	mgl_axis_grid(ctx->gr, "y", "W-", "");
+	mgl_bars(ctx->gr, ctx->chart_data, barcolors, "");
+#else
+	mgl_axis(ctx->gr, "xy");
+	mgl_axis_grid(ctx->gr, "y", "W-");
+	mgl_bars(ctx->gr, ctx->chart_data, barcolors);
+#endif
+
+    return 0;
+    }
+
+
+/*** Line chart
+ ***/
+int
+rpt_internal_LineChart_PreProcess(pRptChartContext ctx)
+    {
+
+	/** Trim factors **/
+	ctx->trim.left = 0.07;
+	ctx->trim.right = 0.14;
+
+    return 0;
+    }
+
+int
+rpt_internal_LineChart_Setup(pRptChartContext ctx)
+    {
+
+	//mgl_set_zoom(ctx->gr, -0.05, 0, 0.95, 1.0);
+
+    return 0;
+    }
+
+int
+rpt_internal_LineChart_Generate(pRptChartContext ctx)
+    {
+    int reccnt = ctx->values->nItems;
+    pStructInf one_series = (pStructInf)ctx->series->Items[0];
+    int tickDist;
+    int series_fontsize, axis_fontsize;
+    double fs;
+    char lineStyle[8];
+    char linecolors[256] = "";
+    int i;
+    char* ptr;
+    int show_value, show_percent;
+    char* color;
+    
+	tickDist = rpt_internal_GetTickDist(ctx->max);
+	rpt_internal_GetInteger(ctx->inf, one_series, "fontsize", &series_fontsize, ctx->fontsize, 0);
+        
+#ifdef HAVE_MGL2
+	mgl_set_range_val(ctx->gr, 'x', 0, (reccnt-1)*2);
+	mgl_set_range_val(ctx->gr, 'y', 0, ctx->max+tickDist);
+#else
+	mgl_set_axis_2d(ctx->gr, 0, 0, (reccnt-1)*2, ctx->max+tickDist);
+#endif
+	mgl_set_origin(ctx->gr, 0.0, 0.0, 0.0);
+	//mgl_set_ticks(ctx->gr, -((reccnt-1)*2+1), tickDist, 1);
+
+	/** Handle each data series **/
+	for(i=0; i<ctx->series->nItems; i++)
+	    {
+	    /** Bar color **/
+	    one_series = (pStructInf)ctx->series->Items[i];
+	    color = rpt_internal_GetMglColor(ctx, one_series, "color", ctx->color, 0);
+	    snprintf(lineStyle, sizeof(lineStyle), "%s-4#d", color);
+	    if (strlen(linecolors) + strlen(lineStyle) >= sizeof(linecolors))
+		break;
+	    strcat(linecolors, lineStyle);
+
+	    /** Value label **/
+	    rpt_internal_GetInteger(ctx->inf, one_series, "fontsize", &series_fontsize, ctx->fontsize, 0);
+	    rpt_internal_GetString(ctx->inf, one_series, "show_value", &ptr, "yes", 0);
+	    show_value = (!strcmp(ptr, "no"))?0:1;
+	    rpt_internal_GetString(ctx->inf, one_series, "show_percent", &ptr, "no", 0);
+	    show_percent = (!strcmp(ptr, "no"))?0:1;
+
+	    /** Generate the numeric bar labels **/
+	    if (show_value || show_percent)
+		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, 1, 0, series_fontsize, show_percent, 0.0);
+	    }
+        
+	/** Font size for y axis **/
+	rpt_internal_GetInteger(ctx->inf, ctx->y_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
+	fs = ctx->stand_w * ctx->rend_x_pixels / ctx->x_pixels * 6.0 / 50.0;
+	if (fs > axis_fontsize) fs = axis_fontsize;
+	if (fs < 2) fs = 2;
+	mgl_set_font_size(ctx->gr, fs * ctx->font_scale_factor);
+
+	rpt_internal_DrawXTickLabels(ctx, 0, reccnt, reccnt, 0);
+	mgl_adjust_ticks(ctx->gr, "y");
+	mgl_tune_ticks(ctx->gr, ctx->scale, 1.15);
+#ifdef HAVE_MGL2
+	mgl_set_ticks(ctx->gr, 'x', 1000.0, 0, 1000.0);
+	mgl_set_flag(ctx->gr, 1, MGL_NO_ORIGIN);
+	mgl_axis(ctx->gr, "xy", "", "");
+	mgl_axis_grid(ctx->gr, "y", "W-", "");
+	mgl_plot(ctx->gr, ctx->chart_data, linecolors, "");
+#else
+	mgl_axis(ctx->gr, "xy");
+	mgl_axis_grid(ctx->gr, "y", "W-");
+	mgl_plot(ctx->gr, ctx->chart_data, linecolors);
+#endif
+
+    return 0;
+    }
+
+
+/*** Pie chart
+ ***/
+int
+rpt_internal_PieChart_PreProcess(pRptChartContext ctx)
+    {
+
+	if (ctx->series->nItems > 1)
+	    {
+	    mssError(1, "RPT", "Pie charts can only have one series; %d provided", ctx->series->nItems);
+	    return -1;
+	    }
+
+	if (ctx->values->nItems > 28)
+	    {
+	    mssError(1, "RPT", "Pie charts can show a maximum of 28 values; %d provided", ctx->values->nItems);
+	    return -1; /* There are only 28 colors for the pie chart*/
+	    }
+
+	/** Trim factors **/
+	ctx->trim.left = 0.0;
+	ctx->trim.right = 0.1;
+
+    return 0;
+    }
+
+int
+rpt_internal_PieChart_Setup(pRptChartContext ctx)
+    {
+
+	//mgl_set_zoom(ctx->gr, -0.1, 0, 0.9, 1.0);
+
+    return 0;
+    }
+
+int
+rpt_internal_PieChart_Generate(pRptChartContext ctx)
+    {
+    int reccnt = ctx->values->nItems;
+    pStructInf series = (pStructInf)ctx->series->Items[0];
+    int i;
+    double t,r=1.3;
+    double sumValues=0.0;
+    double sumPreviousAngles = 0.0;
+    double angle;
+    char string[256];
+    char colorString[3];
+    char* pcolor;
+    double val;
+    int axis_fontsize;
+    int series_fontsize;
+    char* show_percent;
+    char* show_value;
+    int pct;
+    pXArray labels;
+   
+	/** Setup **/
+	rpt_internal_GetInteger(ctx->inf, ctx->x_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
+	rpt_internal_GetInteger(ctx->inf, series, "fontsize", &series_fontsize, ctx->fontsize, 0);
+	rpt_internal_GetString(ctx->inf, series, "show_percent", &show_percent, "pie", 0);
+	rpt_internal_GetString(ctx->inf, series, "show_value", &show_value, "legend", 0);
+#ifdef HAVE_MGL2
+	mgl_set_func(ctx->gr, "(y+1)/2*cos(pi*x)", "(y+1)/2*sin(pi*x)", NULL, NULL);   //make it to a cylinder 
+#else
+	mgl_set_func(ctx->gr, "(y+1)/2*cos(pi*x)", "(y+1)/2*sin(pi*x)", 0);   //make it to a cylinder 
+#endif
+	mgl_tune_ticks(ctx->gr, ctx->scale, 1.15);
+	pcolor = ":bgrhBGRHWcmywpCMYkPlenuqLENUQ"; 
+	for(i=0; i<reccnt; i++)
+	    sumValues += ((pRptChartValues)ctx->values->Items[i])->Values[0];
+	labels = rpt_internal_GetValueStrings(ctx, 0, reccnt, 0, 0);
+	if (!labels)
+	    return -1;
+
+	/** Generate the legend **/
+	for(i=0;i<reccnt;i++)
+	    {
+	    val = ((pRptChartValues)ctx->values->Items[i])->Values[0];
+	    pct = (int)(val/sumValues*100+0.5);
+	    if (!strcmp(show_percent, "legend") && !strcmp(show_value, "legend"))
+		snprintf(string, sizeof(string), "%s: %s (%d%%)", ctx->x_labels[i], (char*)labels->Items[i], pct);
+	    else if (!strcmp(show_percent, "legend"))
+		snprintf(string, sizeof(string), "%s: %d%%", ctx->x_labels[i], pct);
+	    else if (!strcmp(show_value, "legend"))
+		snprintf(string, sizeof(string), "%s: %s", ctx->x_labels[i], (char*)labels->Items[i]);
+	    else
+		snprintf(string, sizeof(string), "%s", ctx->x_labels[i]);
+	    snprintf(colorString, sizeof(colorString), "%c%c", pcolor[i+1], '7');
+	    mgl_add_legend(ctx->gr, string, colorString);
+	    }
+#ifdef HAVE_MGL2
+	char opt[32];
+	snprintf(opt, sizeof(opt), "size %.1f; value 0.1", axis_fontsize * ctx->font_scale_factor);
+	mgl_legend_pos(ctx->gr, -0.04, 0.0, "A", opt);
+#else
+	mgl_legend_xy(ctx->gr, -0.28, 0.0, "", axis_fontsize * ctx->font_scale_factor, 0.1);
+#endif
+
+	/** Generate the pie chart itself **/
+#ifdef HAVE_MGL2
+	mgl_chart(ctx->gr, ctx->chart_data, pcolor, "");
+#else
+	mgl_chart(ctx->gr, ctx->chart_data, pcolor);
+#endif
+
+	/** Correctly position percentages/values around the chart **/
+	for(i=0; i<reccnt; i++)
+	    {
+	    val = ((pRptChartValues)ctx->values->Items[i])->Values[0];
+	    pct = (int)(val/sumValues*100+0.5);
+	    angle = val / sumValues * 2*M_PI;
+	    t = sumPreviousAngles + angle / 2.0 - M_PI;
+	    t /= 3; /* We don't know how this works, but this line fixed the shifting problem. */
+	    if (!strcmp(show_percent, "pie") && !strcmp(show_value, "pie"))
+		snprintf(string, sizeof(string), "%s (%d%%)", (char*)labels->Items[i], pct);
+	    else if (!strcmp(show_percent, "pie"))
+		snprintf(string, sizeof(string), "%d%%", pct);
+	    else if (!strcmp(show_value, "pie"))
+		snprintf(string, sizeof(string), "%s", (char*)labels->Items[i]);
+	    else
+		strtcpy(string, "", sizeof(string));
+#ifdef HAVE_MGL2
+	    mgl_puts(ctx->gr, t, r, 0, string, "", series_fontsize * ctx->font_scale_factor);
+#else
+	    mgl_puts_ext(ctx->gr, t, r, 0, string, "", series_fontsize * ctx->font_scale_factor, '\0');
+#endif
+	    sumPreviousAngles += angle;
+	    }
+	
+	rpt_internal_FreeValueStrings(labels);
+
+    return 0;
+    }
+
+
+/*** rpt_internal_DoChart prints a bar, line, or pie chart on the report based on the
+ *** information provided by the user.  MathGL is used for the rendering.
+ ***/
+int
+rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int container_handle)
+    {
+    int errval = -1; /* default */
+    pRptActiveQueries ac = NULL;
+    int rval;
+    int i,j;
+    pPrtImage img = NULL;;
+    int flags;
+    double x,y,w,h;
+    char* chart_type;
+    char* series_type;
+    char* title;
+    char* x_axis_label;
+    char* y_axis_label;
+    char* ptr;
+    int box = 0;
+    int stacked;
+    int axis_fontsize;
+    pStructInf subobj;
+    pStructInf one_series;
+    pRptChartValues value = NULL;
+    pRptChartDriver drv;
+    pRptChartContext ctx = NULL;
+    double xoffset, yoffset;
+    char color[8];
+    int prec;
+    char precstr[32];
+    
+        /** Conditional rendering of the chart **/
+	rval = rpt_internal_CheckCondition(inf, chart);
+	if (rval < 0) return rval;
+	if (rval == 0) return 0;
+
+        /** Determine chart type **/
+	if (rpt_internal_GetString(inf, chart, "chart_type", &chart_type, NULL, 0) < 0)
+            {
+            mssError(0, "RPT", "Chart type required for chart '%s'", chart->Name);
+	    goto error;
+            }
+	for(i=0; i<RPT_INF.ChartDrivers.nItems; i++)
+	    {
+	    drv = (pRptChartDriver)RPT_INF.ChartDrivers.Items[i];
+	    if (!strcmp(drv->Type, chart_type))
+		break;
+	    drv = NULL;
+	    }
+	if (!drv)
+	    {
+            mssError(0, "RPT", "Invalid chart type '%s' for chart '%s'", chart_type, chart->Name);
+            goto error;
+	    }
+
+	/** Set up rendering context **/
+	ctx = (pRptChartContext)nmMalloc(sizeof(RptChartContext));
+	if (!ctx)
+	    goto error;
+	memset(ctx, 0, sizeof(RptChartContext));
+	ctx->inf = inf;
+
+	/** Determine axis/series counts **/
+	ctx->series = xaNew(4);
+	if (!ctx->series)
+	    goto error;
+	for(i=0; i<chart->nSubInf; i++)
+	    {
+	    subobj = chart->SubInf[i];
+	    if (stStructType(subobj) == ST_T_SUBGROUP)
+		{
+		if (!strcmp(subobj->UsrType, "report/chart-series"))
+		    {
+		    /** Get chart type - eventually we should be able to combine line
+		     ** and bar charts, but not right now.
+		     **/
+		    rpt_internal_GetString(inf, subobj, "chart_type", &series_type, chart_type, 0);
+		    if (strcmp(series_type, chart_type) != 0)
+			{
+			mssError(1, "RPT", "Chart types cannot be intermixed (chart '%s', series '%s')", chart->Name, subobj->Name);
+			goto error;
+			}
+		    xaAddItem(ctx->series, subobj);
+		    }
+		else if (!strcmp(subobj->UsrType, "report/chart-axis"))
+		    {
+		    if (rpt_internal_GetString(inf, subobj, "axis", &ptr, NULL, 0) < 0 || !ptr)
+			{
+			mssError(1, "RPT", "Chart axis '%s' must have an 'axis' property", subobj->Name);
+			goto error;
+			}
+		    if (!strcmp(ptr, "x"))
+			{
+			if (ctx->x_axis)
+			    {
+			    mssError(1, "RPT", "Chart '%s' must have only one x axis", chart->Name);
+			    goto error;
+			    }
+			ctx->x_axis = subobj;
+			}
+		    else if (!strcmp(ptr, "y"))
+			{
+			if (ctx->y_axis)
+			    {
+			    mssError(1, "RPT", "Chart '%s' must have only one y axis", chart->Name);
+			    goto error;
+			    }
+			ctx->y_axis = subobj;
+			}
+		    else
+			{
+			mssError(1, "RPT", "Chart axis '%s' must have an 'axis' property of 'x' or 'y'", subobj->Name);
+			goto error;
+			}
+		    }
+		}
+	    }
+
+	/** Verify at least one series and two axes **/
+	if (ctx->series->nItems == 0 || !ctx->x_axis || !ctx->y_axis)
+	    {
+	    mssError(1, "RPT", "chart '%s' must have x and y axes and at least one series", chart->Name);
+	    goto error;
+	    }
+
+	/** Title and labels **/
+	rpt_internal_GetString(inf, chart, "title", &title, "", 0);
+	rpt_internal_GetString(inf, ctx->x_axis, "label", &x_axis_label, "", 0);
+	rpt_internal_GetString(inf, ctx->y_axis, "label", &y_axis_label, "", 0);
+
+	/** Start the query to get the chart values. **/
+	if ((ac = rpt_internal_Activate(inf, chart, rs)) == NULL)
+	    goto error;
+
+	/** Fetch the first row. **/
+	if ((rval = rpt_internal_NextRecord(ac, inf, chart, rs, 1)) < 0)
+	    goto error;
+
+	/** Enter the row retrieval loop. **/
+	ctx->values = xaNew(16);
+	if (!ctx->values)
+	    goto error;
+	while(rval == 0)
+            {
+            /** Get the labels for the x-axis **/
+	    rpt_internal_GetString(inf, (pStructInf)(ctx->series->Items[0]), "x_value", &ptr, "", 0);
+
+	    /** Allocate the tuple **/
+	    value = rpt_internal_NewChartValues(ptr, ctx->series->nItems);
+	    if (!value)
+		goto error;
+            
+            /** Get the y values **/
+	    for(i=0; i<ctx->series->nItems; i++)
+		{
+		one_series = (pStructInf)xaGetItem(ctx->series, i);
+		if (rpt_internal_GetDouble(inf, one_series, "y_value", &(value->Values[i]), 0.0, 0) < 0)
+		    {
+		    mssError(0, "RPT", "Could not get y_value for series '%s'", one_series->Name);
+		    goto error;
+		    }
+		}
+
+	    /** Next record **/
+	    xaAddItem(ctx->values, value);
+	    value = NULL;
+	    rval = rpt_internal_NextRecord(ac, inf, chart, rs, 0);
+	    }
+
+	/** We're finished with the query **/
+	rpt_internal_Deactivate(inf, ac);
+	ac = NULL;
+
+	/** Bar chart?  Add empty space on each end. **/
+	if (drv->PreProcessData(ctx) < 0)
+	    goto error;
+
+	/** Allocate the chart data **/
+	ctx->chart_data = mgl_create_data_size(ctx->values->nItems, ctx->series->nItems, 1);
+	if (!ctx->chart_data)
+	    goto error;
+	ctx->x_labels = nmSysMalloc(sizeof(char*) * ctx->values->nItems);
+	if (!ctx->x_labels)
+	    goto error;
+
+	/** Transfer our chart values to the MGL data and while we're at
+	 ** it, determine min/max data values too.
+	 **/
+	ctx->min = 0;
+	ctx->max = 0;
+	for(i=0; i<ctx->values->nItems; i++)
+	    {
+	    value = (pRptChartValues)ctx->values->Items[i];
+	    ctx->x_labels[i] = value->Label;
+	    for(j=0; j<ctx->series->nItems; j++)
+		{
+		mgl_data_set_value(ctx->chart_data, (float)value->Values[j], i, j, 0);
+		if (ctx->min > value->Values[j]) ctx->min = value->Values[j];
+		if (ctx->max < value->Values[j]) ctx->max = value->Values[j];
+		}
+	    }
+	value = NULL;
+
+        /** Get area geometry in given units **/
+        rpt_internal_GetDouble(inf, chart, "x", &x, -1.0, 0);
+	rpt_internal_GetDouble(inf, chart, "y", &y, -1.0, 0);
+	if (rpt_internal_GetDouble(inf, chart, "width", &w, NAN, 0) < 0 || w == 0) goto error;
+	if (rpt_internal_GetDouble(inf, chart, "height", &h, NAN, 0) < 0 || h == 0) goto error;
+
+	/** Chart configuration **/
+	box = rpt_internal_GetBool(inf, chart, "box", 0, 0);
+	ctx->scale = rpt_internal_GetBool(inf, chart, "scale", 0, 0);
+	stacked = rpt_internal_GetBool(inf, chart, "stacked", 0, 0);
+	ctx->rotation = rpt_internal_GetBool(inf, chart, "text_rotation", 0, 0);
+	rpt_internal_GetDouble(inf, chart, "zoom", &ctx->zoom, 1.0, 0);
+	rpt_internal_GetInteger(inf, chart, "fontsize", &ctx->fontsize, prtGetFontSize(container_handle), 0);
+	if (ctx->fontsize < 1)
+	    goto error;
+
+        /* Convert to standard units */
+        ctx->stand_w = prtUnitX(rs->PSession, w);
+        ctx->stand_h = prtUnitY(rs->PSession, h);
+        
+        /* Get the resolution */
+        prtGetResolution(rs->PSession, &ctx->xres, &ctx->yres);
+        
+        /* Get Actual pixel dimensions */
+        ctx->x_pixels = ctx->stand_w * (double)ctx->xres / 10;
+        ctx->y_pixels = ctx->stand_h * (double)ctx->yres / 6;
+
+	/** Trim for absence of title / label **/
+	if (!*title)
+	    ctx->trim.top = 0.14 + (ctx->stand_h - 8) / 42.0 * 0.025;
+	else
+//#ifdef HAVE_MGL2
+//	    ctx->trim.top = (ctx->stand_h - 8) / 42.0 * 0.01;
+//#else
+	    ctx->trim.top = (ctx->stand_h - 8) / 42.0 * 0.03;
+//#endif
+	if (!*x_axis_label && !ctx->rotation)
+	    ctx->trim.bottom = 0.075 + (ctx->stand_h - 8) / 42.0 * 0.08;
+	else
+	    ctx->trim.bottom = (ctx->stand_h < 12)?0.0:((ctx->stand_h - 12) / 42.0 * 0.13);
+
+	/** Rendering dimensions **/
+	ctx->rend_x_pixels = round(ctx->x_pixels / (1.0 - ctx->trim.left - ctx->trim.right));
+	ctx->rend_y_pixels = round(ctx->y_pixels / (1.0 - ctx->trim.top - ctx->trim.bottom));
+
+	/** Font scaling **/
+#ifdef HAVE_MGL2
+	ctx->font_scale_factor = 6.4 / ctx->stand_h * ctx->y_pixels / ctx->rend_y_pixels * ctx->zoom;
+#else
+	ctx->font_scale_factor = 8.0 / ctx->stand_h * ctx->y_pixels / ctx->rend_y_pixels * ctx->zoom;
+#endif
+        
+	/** Chart color **/
+	strtcpy(color, rpt_internal_GetMglColor(ctx, chart, "color", "b", 0), sizeof(color));
+	ctx->color = color;
+
+	/** Create the chart **/
+#ifdef HAVE_MGL2
+	ctx->gr = mgl_create_graph(ctx->rend_x_pixels, ctx->rend_y_pixels);
+#else
+	ctx->gr = mgl_create_graph_zb(ctx->rend_x_pixels, ctx->rend_y_pixels);
+#endif
+	if (!ctx->gr)
+	    goto error;
+	mgl_set_rotated_text(ctx->gr, ctx->rotation?1:0);
+	if (ctx->zoom < 0.999 || ctx->zoom > 1.001)
+	    mgl_set_plotfactor(ctx->gr, 1.55*ctx->zoom);
+
+	/** Decimal precision **/
+	prec = rpt_internal_GetYDecimalPrecision(ctx, -1, -1);
+	snprintf(precstr, sizeof(precstr), "%%.%df", prec);
+#ifdef HAVE_MGL2
+	mgl_set_tick_templ(ctx->gr, 'y', precstr);
+#else
+	mgl_set_ytt(ctx->gr, precstr);
+#endif
+
+	/** Graphics setup for chart type **/
+	if (drv->SetupFormat(ctx) < 0)
+	    goto error;
+
+        /** Draw the chart, depending on type **/
+	if (drv->Generate(ctx) < 0)
+	    goto error;
+      
+	/** Title and axis labels **/
+	if (*title)
+#ifdef HAVE_MGL2
+	    mgl_puts(ctx->gr, 0.5, 0.9, 0.0, title, "A", ctx->fontsize * ctx->font_scale_factor);
+#else
+	    mgl_title(ctx->gr, title, "", ctx->fontsize * ctx->font_scale_factor);
+#endif
+	if (*x_axis_label)
+	    {
+	    rpt_internal_GetInteger(inf, ctx->x_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
+#ifdef HAVE_MGL2
+	    char opt[32];
+	    snprintf(opt, sizeof(opt), "size %.1f; value %.2f", axis_fontsize * ctx->font_scale_factor, axis_fontsize * ctx->font_scale_factor / 50.0 + ctx->stand_h / 100.0);
+	    mgl_puts(ctx->gr, 0.5, 0.04, 0.0, x_axis_label, "A", ctx->fontsize * ctx->font_scale_factor);
+	    //mgl_label(ctx->gr, 'x', x_axis_label, 0, opt);
+#else
+	    mgl_label_ext(ctx->gr, 'x', x_axis_label, 0, axis_fontsize * ctx->font_scale_factor, axis_fontsize * ctx->font_scale_factor / 50.0 + ctx->stand_h / 50.0);
+#endif
+	    }
+	if (*y_axis_label)
+	    {
+	    rpt_internal_GetInteger(inf, ctx->y_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
+	    //mgl_label_ext(ctx->gr, 'y', y_axis_label, 0, axis_fontsize * ctx->font_scale_factor, -0.0);
+	    xoffset = (ctx->values->nItems - 0.8) / -4.2;
+#ifdef HAVE_MGL2
+	    yoffset = (ctx->max - ctx->min)/2.0;
+	    mgl_set_rotated_text(ctx->gr, 1);
+	    mgl_puts_dir(ctx->gr, xoffset, yoffset, 0.0, xoffset, yoffset+1.0, 0.0, y_axis_label, "", axis_fontsize * ctx->font_scale_factor);
+	    mgl_set_rotated_text(ctx->gr, ctx->rotation?1:0);
+#else
+	    yoffset = (ctx->max - ctx->min)/2.0 - (strlen(y_axis_label) * axis_fontsize) * (ctx->max - ctx->min) / 520.0 * ctx->font_scale_factor;
+	    mgl_puts_dir(ctx->gr, xoffset, yoffset, 0.0, 0.0, 1.0, 0.0, y_axis_label, axis_fontsize * ctx->font_scale_factor);
+#endif
+	    }
+
+	/** Chart box **/
+	if (box)
+#ifdef HAVE_MGL2
+	    mgl_box(ctx->gr);
+#else
+	    mgl_box(ctx->gr, 1);
+#endif
+
+	/** Render the chart **/
+	img = rpt_internal_GraphToImage(ctx);
+	if (!img)
+	    {
+	    mssError(0, "RPT", "Could not create chart");
+	    goto error;
+	    }
+	mgl_delete_data(ctx->chart_data);
+	ctx->chart_data = NULL;
+	mgl_delete_graph(ctx->gr);
+	ctx->gr = NULL;
+
+	/** Check flags **/
+	flags = 0;
+	if (x >= 0.0) flags |= PRT_OBJ_U_XSET;
+	if (y >= 0.0) flags |= PRT_OBJ_U_YSET;
+
+	/** Add it to its container **/
+	if (prtWriteImage(container_handle, img, x,y,w,h, flags) < 0)
+	    goto error;
+	img = NULL;
+
+	/** Fall through to error handler, to cleanup our resources,
+	 ** but return success.
+	 **/
+	errval = 0;
+
+    error:
+	if (ctx->x_labels)
+	    nmSysFree(ctx->x_labels);
+	if (ctx->series)
+	    xaFree(ctx->series);
+	if (value)
+	    rpt_internal_FreeChartValues(value);
+	if (ctx->values)
+	    {
+	    for(i=0; i<ctx->values->nItems; i++)
+		{
+		rpt_internal_FreeChartValues((pRptChartValues)xaGetItem(ctx->values, i));
+		}
+	    xaFree(ctx->values);
+	    }
+	if (ac)
+	    rpt_internal_Deactivate(inf, ac);
+	if (ctx->chart_data)
+	    mgl_delete_data(ctx->chart_data);
+	if (ctx->gr)
+	    mgl_delete_graph(ctx->gr);
+	if (img)
+	    prtFreeImage(img);
+	if (ctx)
+	    nmFree(ctx, sizeof(RptChartContext));
+	return errval;
     }
 
 
@@ -2757,7 +4207,7 @@ rpt_internal_CheckCondition(pRptData inf, pStructInf config)
 	    }
 	else if (t == DATA_T_STRING || t == DATA_T_DOUBLE || t == DATA_T_INTEGER || t == DATA_T_MONEY)
 	    {
-	    if (rpt_internal_GetBool(config,"condition",1,0))
+	    if (rpt_internal_GetBool(inf, config,"condition",1,0))
 		return 1;
 	    else
 		return 0;
@@ -2787,17 +4237,17 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
     int j;
 
 	/** Check for font, size, color **/
-	if (stAttrValue(stLookup(config,"font"), NULL, &ptr, 0) == 0)
+	if (rpt_internal_GetString(inf, config, "font", &ptr, NULL, 0) >= 0)
 	    {
 	    if (prtSetFont(prt_obj, ptr) < 0)
 		return -1;
 	    }
-	if (stAttrValue(stLookup(config,"fontsize"), &n, NULL, 0) == 0)
+	if (rpt_internal_GetInteger(inf, config, "fontsize", &n, RPT_INT_UNSPEC, 0) >= 0)
 	    {
 	    if (prtSetFontSize(prt_obj, n) < 0)
 		return -1;
 	    }
-	if (stAttrValue(stLookup(config,"fontcolor"), NULL, &ptr, 0) == 0)
+	if (rpt_internal_GetString(inf, config, "fontcolor", &ptr, NULL, 0) >= 0)
 	    {
 	    if (ptr[0] == '#')
 		{
@@ -2806,14 +4256,23 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
 		    return -1;
 		}
 	    }
-	if (rpt_internal_GetDouble(config, "lineheight", &lh, 0) == 0)
+	if (rpt_internal_GetString(inf, config, "bgcolor", &ptr, NULL, 0) >= 0)
+	    {
+	    if (ptr[0] == '#')
+		{
+		n = strtoi(ptr+1, NULL, 16);
+		if (prtSetBGColor(prt_obj, n) < 0)
+		    return -1;
+		}
+	    }
+	if (rpt_internal_GetDouble(inf, config, "lineheight", &lh, NAN, 0) >= 0)
 	    {
 	    if (prtSetLineHeight(prt_obj, lh) < 0)
 		return -1;
 	    }
 
 	/** Check justification **/
-	if (stAttrValue(stLookup(config,"align"), NULL, &ptr, 0) == 0)
+	if (rpt_internal_GetString(inf, config, "align", &ptr, NULL, 0) >= 0)
 	    {
 	    if (!strcmp(ptr,"left"))
 		j = PRT_JUST_T_LEFT;
@@ -2833,7 +4292,7 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
 	attr = prtGetAttr(prt_obj);
 	for(i=0;i<16;i++)
 	    {
-	    if (stAttrValue(stLookup(config,"style"), NULL, &ptr, i) != 0) break;
+	    if (rpt_internal_GetString(inf, config, "style", &ptr, NULL, i) < 0) break;
 	    if (!strcmp(ptr,"bold")) attr |= PRT_OBJ_A_BOLD;
 	    else if (!strcmp(ptr,"italic")) attr |= PRT_OBJ_A_ITALIC;
 	    else if (!strcmp(ptr,"underline")) attr |= PRT_OBJ_A_UNDERLINE;
@@ -2849,15 +4308,15 @@ rpt_internal_SetStyle(pRptData inf, pStructInf config, pRptSession rs, int prt_o
 /*** rpt_internal_SetMargins - sets the margins for a print object
  ***/
 int
-rpt_internal_SetMargins(pStructInf config, int prt_obj, double dt, double db, double dl, double dr)
+rpt_internal_SetMargins(pRptData inf, pStructInf config, int prt_obj, double dt, double db, double dl, double dr)
     {
     double ml, mr, mt, mb;
 
 	/** Set the margins **/
-	if (rpt_internal_GetDouble(config, "margintop", &mt, 0) < 0) mt = dt;
-	if (rpt_internal_GetDouble(config, "marginbottom", &mb, 0) < 0) mb = db;
-	if (rpt_internal_GetDouble(config, "marginleft", &ml, 0) < 0) ml = dl;
-	if (rpt_internal_GetDouble(config, "marginright", &mr, 0) < 0) mr = dr;
+	rpt_internal_GetDouble(inf, config, "margintop", &mt, dt, 0);
+	rpt_internal_GetDouble(inf, config, "marginbottom", &mb, db, 0);
+	rpt_internal_GetDouble(inf, config, "marginleft", &ml, dl, 0);
+	rpt_internal_GetDouble(inf, config, "marginright", &mr, dr, 0);
 	if (mt >= 0.0 || mb >= 0.0 || ml >= 0.0 || mr >= 0.0) 
 	    {
 	    if (prtSetMargins(prt_obj, mt, mb, ml, mr) < 0)
@@ -2865,76 +4324,6 @@ rpt_internal_SetMargins(pStructInf config, int prt_obj, double dt, double db, do
 	    }
 
     return 0;
-    }
-
-
-/*** rpt_internal_GetDouble - gets a double precision floating point value from
- *** the rpt config, automatically translating any integers into doubles
- ***/
-int
-rpt_internal_GetDouble(pStructInf config, char* attr, double* val, int nval)
-    {
-    int t,n;
-    pStructInf attr_inf;
-
-	attr_inf = stLookup(config, attr);
-	if (!attr_inf) return -1;
-	t = stGetAttrType(attr_inf, nval);
-	if (t == DATA_T_INTEGER)
-	    {
-	    if (stGetAttrValue(attr_inf, t, POD(&n), nval) != 0) return -1;
-	    *val = (double)n;
-	    }
-	else if (t == DATA_T_DOUBLE)
-	    {
-	    if (stGetAttrValue(attr_inf, t, POD(val), nval) != 0) return -1;
-	    }
-	else
-	    {
-	    return -1;
-	    }
-
-    return 0;
-    }
-
-
-/*** rpt_internal_GetBool - gets a boolean value, in the form of 0/1, true/false,
- *** on/off, or yes/no.
- ***/
-int
-rpt_internal_GetBool(pStructInf config, char* attr, int def, int nval)
-    {
-    int t;
-    pStructInf attr_inf;
-    int n;
-    char* ptr;
-
-	attr_inf = stLookup(config, attr);
-	if (!attr_inf) return def;
-	t = stGetAttrType(attr_inf, nval);
-	switch(t)
-	    {
-	    case DATA_T_INTEGER:
-		if (stGetAttrValue(attr_inf, t, POD(&n), nval) != 0)
-		    n = def;
-		break;
-	    case DATA_T_STRING:
-		if (stGetAttrValue(attr_inf, t, POD(&ptr), nval) != 0)
-		    n = def;
-		if (!strcmp(ptr,"yes") || !strcmp(ptr,"true") || !strcmp(ptr,"on"))
-		    n = 1;
-		else if (!strcmp(ptr,"no") || !strcmp(ptr,"false") || !strcmp(ptr,"off"))
-		    n = 0;
-		else 
-		    n = def;
-		break;
-	    default:
-		mssError(1,"RPT","Warning: invalid data type for boolean '%s'; using default value.",attr);
-		n = def;
-		break;
-	    }
-
-    return n;
     }
 
 
@@ -2996,6 +4385,11 @@ rpt_internal_DoContainer(pRptData inf, pStructInf container, pRptSession rs, int
                     rval = rpt_internal_DoSection(inf, subobj, rs, container_handle);
 		    if (rval < 0) break;
                     }
+                else if (!strcmp(subobj->UsrType, "report/chart"))
+                    {
+                    rval = rpt_internal_DoChart(inf, subobj, rs, container_handle);
+		    if (rval < 0) break;
+                    }
 		}
 	    }
 
@@ -3020,14 +4414,14 @@ rpt_internal_DoImage(pRptData inf, pStructInf image, pRptSession rs, pRptSource 
 	if (rval == 0) return 0;
 
 	/** Get area geometry **/
-	if (rpt_internal_GetDouble(image, "x", &x, 0) < 0) x = -1;
-	if (rpt_internal_GetDouble(image, "y", &y, 0) < 0) y = -1;
-	if (rpt_internal_GetDouble(image, "width", &w, 0) < 0)
+	rpt_internal_GetDouble(inf, image, "x", &x, -1.0, 0);
+	rpt_internal_GetDouble(inf, image, "y", &y, -1.0, 0);
+	if (rpt_internal_GetDouble(inf, image, "width", &w, NAN, 0) < 0)
 	    {
 	    mssError(1,"RPT","report/image must have a valid 'width' attribute");
 	    return -1;
 	    }
-	if (rpt_internal_GetDouble(image, "height", &h, 0) < 0)
+	if (rpt_internal_GetDouble(inf, image, "height", &h, NAN, 0) < 0)
 	    {
 	    mssError(1,"RPT","report/image must have a valid 'height' attribute");
 	    return -1;
@@ -3077,14 +4471,14 @@ rpt_internal_DoSvg(pRptData inf, pStructInf image, pRptSession rs, pRptSource th
 	if (rval == 0) return 0;
 
 	/** Get area geometry **/
-	if (rpt_internal_GetDouble(image, "x", &x, 0) < 0) x = -1;
-	if (rpt_internal_GetDouble(image, "y", &y, 0) < 0) y = -1;
-	if (rpt_internal_GetDouble(image, "width", &w, 0) < 0)
+	rpt_internal_GetDouble(inf, image, "x", &x, -1.0, 0);
+	rpt_internal_GetDouble(inf, image, "y", &y, -1.0, 0);
+	if (rpt_internal_GetDouble(inf, image, "width", &w, NAN, 0) < 0)
 	    {
 	    mssError(1,"RPT","report/svg must have a valid 'width' attribute");
 	    return -1;
 	    }
-	if (rpt_internal_GetDouble(image, "height", &h, 0) < 0)
+	if (rpt_internal_GetDouble(inf, image, "height", &h, NAN, 0) < 0)
 	    {
 	    mssError(1,"RPT","report/svg must have a valid 'height' attribute");
 	    return -1;
@@ -3134,17 +4528,17 @@ rpt_internal_DoArea(pRptData inf, pStructInf area, pRptSession rs, pRptSource th
 	if (rval == 0) return 0;
 
 	/** Get area geometry **/
-	if (rpt_internal_GetDouble(area, "x", &x, 0) < 0) x = -1;
-	if (rpt_internal_GetDouble(area, "y", &y, 0) < 0) y = -1;
-	if (rpt_internal_GetDouble(area, "width", &w, 0) < 0) w = -1;
-	if (rpt_internal_GetDouble(area, "height", &h, 0) < 0) h = -1;
+	rpt_internal_GetDouble(inf, area, "x", &x, -1.0, 0);
+	rpt_internal_GetDouble(inf, area, "y", &y, -1.0, 0);
+	rpt_internal_GetDouble(inf, area, "width", &w, -1.0, 0);
+	rpt_internal_GetDouble(inf, area, "height", &h, -1.0, 0);
 
 	/** Check for flags **/
 	flags = 0;
 	if (x >= 0.0) flags |= PRT_OBJ_U_XSET;
 	if (y >= 0.0) flags |= PRT_OBJ_U_YSET;
-	if (rpt_internal_GetBool(area, "allowbreak", 1, 0)) flags |= PRT_OBJ_U_ALLOWBREAK;
-	if (rpt_internal_GetBool(area, "fixedsize", 0, 0)) flags |= PRT_OBJ_U_FIXEDSIZE;
+	if (rpt_internal_GetBool(inf, area, "allowbreak", 1, 0)) flags |= PRT_OBJ_U_ALLOWBREAK;
+	if (rpt_internal_GetBool(inf, area, "fixedsize", 0, 0)) flags |= PRT_OBJ_U_FIXEDSIZE;
 
 	/** Check for border **/
 	if (stGetAttrValue(stLookup(area, "border"), DATA_T_DOUBLE, POD(&bw), 0) == 0)
@@ -3164,7 +4558,7 @@ rpt_internal_DoArea(pRptData inf, pStructInf area, pRptSession rs, pRptSource th
 	/** Set the style for the area **/
 	if (rpt_internal_SetStyle(inf, area, rs, area_handle) < 0)
 	    goto error;
-	if (rpt_internal_SetMargins(area, area_handle, 0, 0, 0, 0) < 0)
+	if (rpt_internal_SetMargins(inf, area, area_handle, 0, 0, 0, 0) < 0)
 	    goto error;
 
 	/** Do stuff that is contained in the area **/
@@ -3198,16 +4592,18 @@ rpt_internal_DoArea(pRptData inf, pStructInf area, pRptSession rs, pRptSource th
 int
 rpt_internal_PreBuildExp(pRptData inf, pStructInf obj, pParamObjects objlist)
     {
-    int t, rval;
+    //int t, rval;
     pRptUserData ud;
     pExpression exp;
 
 	/** See if we have a real expression here **/
-	t = stGetAttrType(obj, 0);
-	if (t == DATA_T_CODE)
-	    {
-	    rval = stGetAttrValue(obj, t, POD(&exp), 0);
-	    if (rval == 0)
+	exp = stGetExpression(obj, 0);
+	if (exp)
+	//t = stGetAttrType(obj, 0);
+	//if (t == DATA_T_CODE)
+	//    {
+	//    rval = stGetAttrValue(obj, t, POD(&exp), 0);
+	//    if (rval == 0)
 		{
 		/** Okay, got an expression.  Bind it to the current objlist **/
 		ud = (pRptUserData)nmMalloc(sizeof(RptUserData));
@@ -3228,12 +4624,12 @@ rpt_internal_PreBuildExp(pRptData inf, pStructInf obj, pParamObjects objlist)
 		/** Fail if couldn't get the expression **/
 		return -1;
 		}
-	    }
-	else if (t < 0)
-	    {
-	    /** Fail if couldn't determine type, or obj is invalid **/
-	    return -1;
-	    }
+	//    }
+	//else if (t < 0)
+	//    {
+	//    /** Fail if couldn't determine type, or obj is invalid **/
+	//    return -1;
+	//    }
 
     return 0;
     }
@@ -3248,9 +4644,11 @@ int
 rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamObjects objlist)
     {
     pParamObjects use_objlist;
-    int i;
-    pXArray xa = NULL;
-    pStructInf expr_inf;
+    int i, j;
+    //pXArray xa = NULL;
+    //pStructInf expr_inf;
+    //pStructInf x_labels;
+    pStructInf attr;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -3273,30 +4671,12 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 	/** Default userdata is NULL **/
 	object->UserData = NULL;
 
-	/** IF this is a report/data or report/table-cell, compile its one expression **/
-	if (!strcmp(object->UsrType,"report/data") || !strcmp(object->UsrType,"report/table-cell") || !strcmp(object->UsrType, "report/area") || !strcmp(object->UsrType, "report/table-row"))
-	    {
-	    /** Get the expression itself **/
-	    expr_inf = stLookup(object,"value");
-	    if (expr_inf && rpt_internal_PreBuildExp(inf, expr_inf, use_objlist) < 0)
-		{
-		if (!strcmp(object->UsrType,"report/data"))
-		    {
-		    mssError(1,"RPT","report/data '%s' must have a value expression.", object->Name);
-		    goto error;
-		    }
-		else
-		    {
-		    expr_inf->UserData = NULL;
-		    }
-		}
-	    }
-
-	/** If no errors, proceed... **/
+	/** Handle attributes and subobjects **/
 	for(i=0;i<object->nSubInf;i++) 
 	    {
 	    if (stStructType(object->SubInf[i]) == ST_T_SUBGROUP)
 		{
+		/** Process subobject **/
 		if (rpt_internal_PreProcess(inf, object->SubInf[i], rs, use_objlist) < 0)
 		    {
 		    goto error;
@@ -3304,14 +4684,20 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 		}
 	    else
 		{
-		/** Attribute, condition exp.? **/
-		if (!strcmp(object->SubInf[i]->Name, "condition") || (!strcmp(object->UsrType,"report/table-row") && !strcmp(object->SubInf[i]->Name, "summarize_for")))
+		/** Process an attribute **/
+		attr = object->SubInf[i];
+		attr->UserData = NULL;
+
+		/** Search the list of objects/attrs we set up UserData for. **/
+		for(j=0; j<sizeof(rpt_ud_list) / sizeof(RptUDItem) - 1; j++)
 		    {
-		    expr_inf = object->SubInf[i];
-		    if (rpt_internal_PreBuildExp(inf, expr_inf, use_objlist) < 0)
+		    if (!strcmp(object->UsrType, rpt_ud_list[j].Object) && !strcmp(attr->Name, rpt_ud_list[j].Attr))
 			{
-			mssError(1,"RPT","%s on '%s' must have an expression.", object->SubInf[i]->Name, object->Name);
-			goto error;
+			if (rpt_internal_PreBuildExp(inf, attr, use_objlist) < 0)
+			    {
+			    mssError(1,"RPT","%s on '%s' must have a valid expression.", attr->Name, object->Name);
+			    goto error;
+			    }
 			}
 		    }
 		}
@@ -3320,20 +4706,6 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
 	return 0;
 
     error:
-	if (object->UserData)
-	    {
-	    if (!strcmp(object->UsrType,"report/table"))
-	        {
-	        object->UserData = NULL;
-		if (xa)
-		    {
-		    for(i=0;i<xa->nItems;i++) if (xa->Items[i]) expFreeExpression((pExpression)(xa->Items[i]));
-		    xaDeInit(xa);
-		    nmFree(xa,sizeof(XArray));
-		    xa = NULL;
-		    }
-		}
-	    }
 	return -1;
     }
 
@@ -3360,26 +4732,7 @@ rpt_internal_UnPreProcess(pRptData inf, pStructInf object, pRptSession rs)
 	    rpt_internal_UnPreProcess(inf, object->SubInf[i], rs);
 	    }
 
-#if 00
-	/** If userdata alloc'd, free it **/
-	if (object->UserData)
-	    {
-	    /** IF report/table, free up the xarray of expressions **/
-	    if (!strcmp(object->UsrType,"report/table"))
-	        {
-		xa = (pXArray)(object->UserData);
-		for(i=0;i<xa->nItems;i++) expFreeExpression((pExpression)(xa->Items[i]));
-		xaDeInit(xa);
-		nmFree(xa,sizeof(XArray));
-		}
-	    else if (!strcmp(object->UsrType,"report/data"))
-	        {
-		/*expFreeExpression((pExpression)(object->UserData));*/
-		}
-	    object->UserData = NULL;
-	    }
-#endif
-
+	/** Free our copy of report expressions in the UserData **/
 	for(i=1;i<inf->UserDataSlots.nItems;i++) if (inf->UserDataSlots.Items[i])
 	    {
 	    ud = (pRptUserData)(inf->UserDataSlots.Items[i]);
@@ -3436,7 +4789,7 @@ rpt_internal_LoadEndorsements(pRptData inf, pStructInf req)
     char* one_context;
 
 	/** Check for endorsements to load **/
-	if (stAttrValue(stLookup(req, "add_endorsements_sql"), NULL, &endorsement_sql, 0) == 0 && endorsement_sql)
+	if (rpt_internal_GetString(inf, req, "add_endorsements_sql", &endorsement_sql, NULL, 0) >= 0 && endorsement_sql)
 	    {
 	    /** Run the SQL to fetch the endorsements **/
 	    eqy = objMultiQuery(inf->Obj->Session, endorsement_sql, NULL, 0);
@@ -3502,8 +4855,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 
 	/** Units of measure? **/
 	ptr = NULL;
-	stAttrValue(stLookup(req,"units"), NULL, &ptr, 0);
-	if (ptr) 
+	if (rpt_internal_GetString(inf, req, "units", &ptr, NULL, 0) >= 0)
 	    {
 	    if (prtSetUnits(ps, ptr) < 0)
 		{
@@ -3517,31 +4869,9 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 
 	/** Page geometry? **/
 	prtGetPageGeometry(ps, &pagewidth, &pageheight);
-	rpt_internal_GetDouble(req,"pagewidth",&pagewidth,0);
-	rpt_internal_GetDouble(req,"pageheight",&pageheight,0);
+	rpt_internal_GetDouble(inf, req, "pagewidth", &pagewidth, pagewidth, 0);
+	rpt_internal_GetDouble(inf, req, "pageheight", &pageheight, pageheight, 0);
 	prtSetPageGeometry(ps, pagewidth, pageheight);
-
-	/** Output the title, unless instructed otherwise. **/
-	/*if (!no_title_bar)
-	    {
-	    prtWriteLine(ps);
-	    prtSetAttr(ps, RS_TX_BOLD | RS_TX_CENTER);
-	    if (title)
-	        {
-	        prtWriteString(ps,title,-1);
-	        }
-	    else
-	        {
-	        sprintf(sbuf,"UNTITLED REPORT");
-	        prtWriteString(ps,sbuf,-1);
-	        }
-	    prtWriteNL(ps);
-	    cur_time = time(NULL);
-	    snprintf(sbuf,128,"REQUESTED BY USER %s AT %s",mssUserName(),ctime(&cur_time));
-	    prtWriteString(ps,sbuf,-1);
-	    prtSetAttr(ps,0);
-	    prtWriteLine(ps);
-	    }*/
 
 	/** Ok, now look through the request for queries, comments, tables, forms **/
 	xhInit(&queries, 31, 0);
@@ -3556,7 +4886,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	inf->RSess = rsess;
 	rsess->PageHandle = prtGetPageRef(ps);
 	prtSetPageNumber(rsess->PageHandle, 1);
-	rpt_internal_SetMargins(req, rsess->PageHandle, 3.0, 3.0, 0, 0);
+	rpt_internal_SetMargins(inf, req, rsess->PageHandle, 3.0, 3.0, 0, 0);
 
 	/** Build the object list. **/
 	for(i=0;i<req->nSubInf;i++) if (stStructType(req->SubInf[i]) == ST_T_SUBGROUP && !strcmp(req->SubInf[i]->UsrType,"report/query"))
@@ -3624,7 +4954,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	cxssSetVariable("dfmt", obj_default_date_fmt, 0);
 	cxssSetVariable("mfmt", obj_default_money_fmt, 0);
 	cxssSetVariable("nfmt", obj_default_null_fmt, 0);
-	rpt_internal_CheckFormats(req);
+	rpt_internal_CheckFormats(inf, req);
 
 	/** Now do the 'normal' report stuff **/
 	for(i=0;i<req->nSubInf;i++)
@@ -3779,6 +5109,14 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 			break;
 			}
 		    }
+                else if (!strcmp(subreq->UsrType,"report/chart"))
+		    {
+		    if (rpt_internal_DoChart(inf, subreq,rsess, rsess->PageHandle) <0)
+		        {
+			err = 1;
+			break;
+			}
+		    }
 		}
 	    if (err) break;
 	    }
@@ -3850,7 +5188,7 @@ rpt_internal_Generator(void* v)
 	prtSetImageStore(ps, "/tmp/", "/tmp/", inf->Obj->Session, (void*(*)())objOpen, objWrite, objClose);
 
 	/** Some output specific options **/
-	if (rpt_internal_GetBool(inf->Node->Data, "text_pagebreak", 1, 0) == 0)
+	if (rpt_internal_GetBool(inf, inf->Node->Data, "text_pagebreak", 1, 0) == 0)
 	    prtSetSessionParam(ps, "text_pagebreak", "no");
 
 	/** Indicate that we've started up here... **/
@@ -4053,6 +5391,7 @@ rpt_internal_LoadParamsFromOpen(pRptData inf, pStruct openctl)
 		rptparam = (pRptParam)nmMalloc(sizeof(RptParam));
 		if (!rptparam)
 		    goto error;
+		rptparam->Inf = inf;
 		rptparam->Param = NULL;
 		rptparam->Flags = RPT_PARAM_F_IN;
 		xaInit(&rptparam->ValueObjs, 16);
@@ -4116,6 +5455,12 @@ rpt_internal_LoadParamsFromAttrs(pRptData inf)
 			rptparam = NULL;
 			}
 
+		    /** Expression?  Eval if so **/
+		    if (t == DATA_T_CODE)
+			{
+			t = rpt_internal_GetValue(inf, inf->Node->Data, attrname, DATA_T_CODE, &od, NULL, 0);
+			}
+
 		    /** If it already exists, try to set its value **/
 		    if (rptparam && (rptparam->Flags & RPT_PARAM_F_IN))
 			{
@@ -4127,6 +5472,7 @@ rpt_internal_LoadParamsFromAttrs(pRptData inf)
 			rptparam = (pRptParam)nmMalloc(sizeof(RptParam));
 			if (!rptparam)
 			    goto error;
+			rptparam->Inf = inf;
 			rptparam->Param = NULL;
 			rptparam->Flags = RPT_PARAM_F_IN;
 			xaInit(&rptparam->ValueObjs, 16);
@@ -4179,6 +5525,7 @@ rpt_internal_LoadParamsFromReport(pRptData inf)
 		rptparam = (pRptParam)nmMalloc(sizeof(RptParam));
 		if (!rptparam)
 		    goto error;
+		rptparam->Inf = inf;
 		rptparam->Flags = 0;
 		rptparam->Param = NULL;
 		xaInit(&rptparam->ValueObjs, 16);
@@ -4441,7 +5788,7 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    strtcpy(inf->ContentType, inf->DocumentFormat, sizeof(inf->ContentType));
 
 	/** Hint to OSML to not automatically cascade the open operation **/
-	if (rpt_internal_GetBool(inf->Node->Data, "force_leaf", 1, 0) == 1)
+	if (rpt_internal_GetBool(inf, inf->Node->Data, "force_leaf", 1, 0) == 1)
 	    {
 	    inf->Flags |= RPT_F_FORCELEAF;
 	    }
@@ -4930,7 +6277,12 @@ rptInitialize()
 
 	/** Initialize globals **/
 	memset(&RPT_INF,0,sizeof(RPT_INF));
-	xaInit(&RPT_INF.Printers,16);
+	xaInit(&RPT_INF.ChartDrivers,16);
+
+	/** Chart drivers **/
+	rpt_internal_RegisterChartDriver("bar", rpt_internal_BarChart_PreProcess, rpt_internal_BarChart_Setup, rpt_internal_BarChart_Generate);
+	rpt_internal_RegisterChartDriver("line", rpt_internal_LineChart_PreProcess, rpt_internal_LineChart_Setup, rpt_internal_LineChart_Generate);
+	rpt_internal_RegisterChartDriver("pie", rpt_internal_PieChart_PreProcess, rpt_internal_PieChart_Setup, rpt_internal_PieChart_Generate);
 
 	/** Setup the structure **/
 	strcpy(drv->Name,"RPT - Reporting Translation Driver");

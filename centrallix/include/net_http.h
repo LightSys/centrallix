@@ -299,6 +299,7 @@ typedef struct
     char	Method[16];
     char	HTTPVer[16];
     char	Cookie[160];
+    char	AllCookies[640];
     char	Auth[160];
     char	Destination[256];
     char	IfModifiedSince[64];
@@ -367,6 +368,8 @@ typedef struct
     pSemaphore	CollectedConns;
     pSemaphore	CollectedTLSConns;
     pCxssKeystreamState NonceData;
+    unsigned char   LoginKey[32];	/* 256-bit hash secret for Basic auth logins */
+    int		AuthMethods;		/* allowed authentication methods */
     }
     NHT_t;
 
@@ -375,6 +378,11 @@ extern NHT_t NHT;
 #define NHT_XFO_T_NONE		0
 #define NHT_XFO_T_DENY		1
 #define NHT_XFO_T_SAMEORIGIN	2
+
+#define NHT_AUTH_HTTP		1	/* HTTP Basic auth */
+#define NHT_AUTH_HTTPSTRICT	2	/* HTTP Basic auth with strict logout management */
+#define NHT_AUTH_HTTPBEARER	4	/* HTTP Bearer token auth (future) */
+#define NHT_AUTH_WEBFORM	8	/* Web form based auth (future) */
 
 typedef struct
     {
@@ -390,6 +398,7 @@ pNhtSessionData nht_i_AllocSession(char* usrname, int using_tls);
 handle_t nht_i_AddWatchdog(int timer_msec, int (*expire_fn)(), void* expire_arg);
 int nht_i_RemoveWatchdog(handle_t th);
 void nht_i_Watchdog(void* v);
+int nht_i_WatchdogTime(handle_t th);
 
 int nht_i_VerifyAKey(char* client_key, pNhtSessionData sess, pNhtAppGroup *group, pNhtApp *app);
 

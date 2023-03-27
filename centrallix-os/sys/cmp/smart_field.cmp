@@ -72,6 +72,7 @@ smart_field "widget/component-decl"
 	x=24;y=0;height=20;width=196;
 	text=runserver(:this:text); 
 	align=left; 
+	valign=middle;
 	}
     ctl "widget/checkbox" 
 	{

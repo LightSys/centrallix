@@ -359,6 +359,7 @@ CONFFILES=centrallix.conf \
 	  types.cfg \
 	  useragent.cfg \
 	  charsetmap.cfg
+	  rgb.txt
 
 # testobj-driven test files
 TOTESTFILES:=$(wildcard tests/test_$(TONLY)*.to)
@@ -505,11 +506,11 @@ config_install: config
 	@for CFILE in $(CONFFILES) ; do \
 		if ! [ -a "$(sysconfdir)/centrallix/$${CFILE}" ] ; then \
 			echo "Installing default version of $${CFILE}" ; \
-			$(INSTALL) -m 644 "etc/$${CFILE}" "$(sysconfdir)/centrallix/$${CFILE}" ; \
+			$(INSTALL) -m 644 "etc/$${CFILE}" "$(sysconfdir)/centrallix/$${CFILE}" || true; \
 		fi \
 	done ; \
 	if [ ! -a "$(sysconfdir)/centrallix.conf" ]; then \
-	    mv "$(sysconfdir)/centrallix/centrallix.conf" "$(sysconfdir)/centrallix.conf" ; \
+	    mv "$(sysconfdir)/centrallix/centrallix.conf" "$(sysconfdir)/centrallix.conf" || true; \
 	fi
 
 rhinit_install: config

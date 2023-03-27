@@ -417,7 +417,7 @@ prt_textod_SetVPos(void* context_v, double y)
 /*** prt_textod_WriteText() - sends a string of text to the printer.
  ***/
 int
-prt_textod_WriteText(void* context_v, char* str)
+prt_textod_WriteText(void* context_v, char* str, char* url, double width, double height)
     {
     pPrtTextodInf context = (pPrtTextodInf)context_v;
     int n;
@@ -477,7 +477,7 @@ prt_textod_WriteFF(void* context_v)
  *** page which will be printed after the current row of objects.
  ***/
 double
-prt_textod_WriteRect(void* context_v, double width, double height, double next_y)
+prt_textod_WriteRect(void* context_v, double width, double height, double next_y, int color)
     {
     pPrtTextodInf context = (pPrtTextodInf)context_v;
     double new_y;
@@ -533,6 +533,8 @@ prt_textod_Initialize()
 	drv = prt_strictfm_AllocDriver();
 	strcpy(drv->Name,"text");
 	strcpy(drv->ContentType,"text/plain");
+	drv->Flags = PRT_DRV_F_NOZ;
+
 	drv->Open = prt_textod_Open;
 	drv->Close = prt_textod_Close;
 	drv->GetResolutions = prt_textod_GetResolutions;

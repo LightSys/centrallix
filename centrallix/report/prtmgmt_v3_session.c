@@ -64,6 +64,7 @@ prtOpenSession(char* output_type, int (*write_fn)(), void* write_arg, int page_f
 	this = (pPrtSession)nmMalloc(sizeof(PrtSession));
 	if (!this) return NULL;
 	SETMAGIC(this, MGK_PRTOBJSSN);
+	this->Flags = 0;
 	this->WriteFn = write_fn;
 	this->WriteArg = write_arg;
 	this->Units = prtLookupUnits("default");
@@ -262,6 +263,18 @@ prtSetResolution(pPrtSession s, int dpi)
     {
     s->ResolutionX = dpi;
     s->ResolutionY = dpi;
+    return 0;
+    }
+
+
+/*** prtGetResolution() - return the x and y resolution, in dpi, via the
+ *** given integer pointers.
+ ***/
+int
+prtGetResolution(pPrtSession s, int* xres, int* yres)
+    {
+    if (xres) *xres = s->ResolutionX;
+    if (yres) *yres = s->ResolutionY;
     return 0;
     }
 

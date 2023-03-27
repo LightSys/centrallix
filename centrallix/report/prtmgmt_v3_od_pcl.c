@@ -483,7 +483,7 @@ prt_pclod_WriteScreen(pPrtPclodInf context, int color_id, int intensity, char* t
 /*** prt_pclod_WriteText() - sends a string of text to the printer.
  ***/
 int
-prt_pclod_WriteText(void* context_v, char* str)
+prt_pclod_WriteText(void* context_v, char* str, char* url, double width, double height)
     {
     pPrtPclodInf context = (pPrtPclodInf)context_v;
     char pclbuf[64];
@@ -655,7 +655,7 @@ prt_pclod_WriteFF(void* context_v)
  *** on the page that will be printed after this row of objects.
  ***/
 double
-prt_pclod_WriteRect(void* context_v, double width, double height, double next_y)
+prt_pclod_WriteRect(void* context_v, double width, double height, double next_y, int color)
     {
     pPrtPclodInf context = (pPrtPclodInf)context_v;
     char pclbuf[80];

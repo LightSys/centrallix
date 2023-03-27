@@ -103,6 +103,7 @@ typedef struct _QE
 #define MQ_EF_FROMOBJECT	64		/* SELECT ... FROM OBJECT */
 #define MQ_EF_WILDCARD		128		/* SELECT ... FROM WILDCARD /path/name*.txt */
 #define MQ_EF_PRUNESUBTREE	256		/* SELECT ... FROM PRUNED SUBTREE /path */
+#define MQ_EF_PAGED		512		/* SELECT ... FROM PAGED ... */
 
 
 /*** Structure for the syntactical analysis of the query text. ***/
@@ -142,6 +143,8 @@ typedef struct _QS
 #define MQ_SF_IFMODIFIED	2048		/* UPDATE ... SET ... IF MODIFIED */
 #define MQ_SF_APPSCOPE		4096		/* DECLARE ... SCOPE APPLICATION */
 #define MQ_SF_COLLECTION	8192		/* DECLARE COLLECTION ... */
+#define MQ_SF_NONEMPTY		16384		/* SELECT ... FROM NONEMPTY ... */
+#define MQ_SF_PAGED		32768		/* SELECT ... FROM PAGED ... */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1

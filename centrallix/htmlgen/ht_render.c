@@ -1299,7 +1299,7 @@ htrRenderSubwidgets(pHtSession s, pWgtrNode widget, int zlevel)
 
 	/** Open the query for subwidgets **/
 	/*
-	qy = objOpenQuery(widget_obj, "", NULL, NULL, NULL);
+	qy = objOpenQuery(widget_obj, "", NULL, NULL, NULL, 0);
 	if (qy)
 	    {
 	    while((sub_widget_obj = objQueryFetch(qy, O_RDONLY)))

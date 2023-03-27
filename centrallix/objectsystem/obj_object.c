@@ -1278,7 +1278,8 @@ objClose(pObject this)
 		{
 		del = va;
 		va = va->Next;
-		del->FinalizeFn(this->Session, this, del->Name, del->Context);
+		if (del->FinalizeFn)
+		    del->FinalizeFn(this->Session, this, del->Name, del->Context);
 		nmFree(del, sizeof(ObjVirtualAttr));
 		}
 	    this->VAttrs = NULL;

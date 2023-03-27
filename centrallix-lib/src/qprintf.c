@@ -34,6 +34,7 @@
 /*		strings.  These functions do not support some of the	*/
 /*		more advanced (and dangerous) features of the normal	*/
 /*		printf() library calls.					*/
+/* See centrallix-sysdoc/QPrintf.md for more information. */
 /************************************************************************/
 
 
@@ -631,6 +632,13 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 	    return -1;
 	    } 
 
+	/** Verify source data is correct length for base 64 **/
+	if (src_size % 4 != 0)
+	    {
+	    QPERR(QPF_ERR_T_BADCHAR);
+	    return -1;
+	    }
+
 	/** Grow dstbuf if necessary and possible, otherwise return error **/
 	if (req_size > *dst_size)
 	    {
@@ -648,7 +656,8 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 	    {
 	    /** First 6 bits. **/
 	    ptr = strchr(b64,src[0]);
-	    if (!ptr || !*ptr) 
+
+	    if (!ptr || !*ptr)
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;

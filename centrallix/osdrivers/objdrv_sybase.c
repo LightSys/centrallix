@@ -4508,6 +4508,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     {
     pSybdData inf = SYBD(inf_v);
     int type;
+    int i, is_key = 0;
     CS_COMMAND* cmd;
     pSybdConn conn;
     char sbuf[320];
@@ -4651,6 +4652,18 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		    if (!strncmp(attrname, "__cx_literal_", 13))
 			attrname = attrname + 13;
 
+		    /** Primary key being set? **/
+		    i = sybd_internal_ColNameToID(inf->TData, attrname);
+		    if (i >= 0)
+			{
+			/** Remember that this is a primary key field, as it
+			 ** will interfere with the retrieval of the updated
+			 ** object data afterward.
+			 **/
+			if (inf->TData->ColFlags[i] & SYBD_CF_PRIKEY)
+			    is_key = 1;
+			}
+
 		    /** No transaction.  Simply do an update. **/
 		    type = sybdGetAttrType(inf_v, attrname, oxt);
 		    if (type < 0) return -1;
@@ -4720,9 +4733,16 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		     **/
 		    if (sybd_internal_LookupRow(conn, inf) <= 0)
 			{
-			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,conn);
-			mssError(1,"SYBD","Could not retrieve updated record");
-			return -1;
+			if (is_key)
+			    {
+			    mssError(1,"SYBD","Warning: could not retrieve primary key updated record");
+			    }
+			else
+			    {
+			    if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,conn);
+			    mssError(1,"SYBD","Could not retrieve updated record");
+			    return -1;
+			    }
 			}
 
 		    /** Release the session **/

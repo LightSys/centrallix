@@ -23,103 +23,98 @@ function tbld_format_cell(cell, color)
     var capstyle = 'font-size:80%; margin:2px 0px 0px 0px; padding:0px; ';
     var titlestyle = 'font-size:120%; margin:0px 0px 2px 0px; padding:0px; ';
     var colinfo = this.cols[cell.colnum];
-    if (cell.subkind != 'headercell' && colinfo.type != 'check' && colinfo.type != 'image')
-	var str = htutil_encode(String(htutil_obscure(cell.data)), colinfo.wrap != 'no');
-    else
-	var str = htutil_encode(String(cell.data));
-    if (colinfo.wrap != 'no')
-	str = htutil_nlbr(str);
-    if (cell.subkind != 'headercell' && colinfo.type == 'progress')
+
+    if (!colinfo.widget || colinfo.widget.visible)
 	{
-	// Progress Bar
-	var val = cell.data;
-	if (val !== null)
+	if (cell.subkind != 'headercell' && colinfo.type != 'check' && colinfo.type != 'image')
+	    var str = htutil_encode(String(htutil_obscure(cell.data)), colinfo.wrap != 'no');
+	else
+	    var str = htutil_encode(String(cell.data), colinfo.wrap != 'no');
+	if (colinfo.wrap != 'no')
+	    str = htutil_nlbr(str);
+	if (cell.subkind != 'headercell' && colinfo.type == 'progress')
 	    {
-	    var roundto = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'round_to');
-	    if (!roundto) roundto = 1.0;
-	    var pad = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_padding');
-	    if (!pad) pad = 0;
-	    pad = parseInt(pad);
-	    var barcolor = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_color');
-	    if (!barcolor) barcolor = '#a0a0a0';
-	    barcolor = String(barcolor).replace(/[^a-z0-9A-Z#]/g, "");
-	    var bartext = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_textcolor');
-	    if (!bartext) bartext = 'black';
-	    bartext = String(bartext).replace(/[^a-z0-9A-Z#]/g, "");
-	    var actpct = '' + (100 * ((val < 0)?0:((val > 1)?1:val))) + '%';
-	    actpct = String(actpct).replace(/[^0-9.%]/g, "");
-	    var pct = '' + (Math.round(val * 100 / roundto) * roundto) + '%';
-	    if (val >= 0.5)
+	    // Progress Bar
+	    var val = cell.data;
+	    if (val !== null)
 		{
-		innertxt = pct + ' ';
-		outertxt = '';
+		var roundto = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'round_to');
+		if (!roundto) roundto = 1.0;
+		var pad = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_padding');
+		if (!pad) pad = 0;
+		pad = parseInt(pad);
+		var barcolor = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_color');
+		if (!barcolor) barcolor = '#a0a0a0';
+		barcolor = String(barcolor).replace(/[^a-z0-9A-Z#]/g, "");
+		var bartext = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_textcolor');
+		if (!bartext) bartext = 'black';
+		bartext = String(bartext).replace(/[^a-z0-9A-Z#]/g, "");
+		var actpct = '' + (100 * ((val < 0)?0:((val > 1)?1:val))) + '%';
+		actpct = String(actpct).replace(/[^0-9.%]/g, "");
+		var pct = '' + (Math.round(val * 100 / roundto) * roundto) + '%';
+		if (val >= 0.5)
+		    {
+		    innertxt = pct + ' ';
+		    outertxt = '';
+		    }
+		else
+		    {
+		    innertxt = ' ';
+		    outertxt = ' ' + pct;
+		    }
+		txt = '<div style="display:inline-block; width:100%;">' +
+			  '<div style="display:inline-block; color:' + bartext + '; background-color:' + barcolor + '; padding:' + pad + 'px; text-align:right; min-width:1px; width:' + actpct + ';">' +
+			      htutil_encode(innertxt) + 
+			  '</div>' +
+			  (outertxt?('<span style="padding:' + pad + 'px;">' +
+			      htutil_encode(outertxt) + 
+			  '</span>'):'') + 
+		      '</div>';
 		}
 	    else
-		{
-		innertxt = ' ';
-		outertxt = ' ' + pct;
-		}
-	    txt = '<div style="display:inline-block; width:100%;">' +
-		      '<div style="display:inline-block; color:' + bartext + '; background-color:' + barcolor + '; padding:' + pad + 'px; text-align:right; min-width:1px; width:' + actpct + ';">' +
-			  htutil_encode(innertxt) + 
-		      '</div>' +
-		      (outertxt?('<span style="padding:' + pad + 'px;">' +
-			  htutil_encode(outertxt) + 
-		      '</span>'):'') + 
-		  '</div>';
+		txt = '';
 	    }
-	else
-	    txt = '';
-	}
-    else if (cell.subkind != 'headercell' && colinfo.type == 'check')
-	{
-	// Checkmark
-	var sl = str.toLowerCase();
-	if (sl == 'n' || sl == 'no' || sl == 'off' || sl == 'false' || str == '0' || str == '' || str == 'null')
-	    txt = '<img width="16" height="16" src="/sys/images/tbl_dash.gif">';
-	else
-	    txt = '<img width="16" height="16" src="/sys/images/tbl_check.gif">';
-	}
-    else if (cell.subkind != 'headercell' && colinfo.type == 'image')
-	{
-	// Image
-	if (!(str.indexOf(':') >= 0 || str.indexOf('//') >= 0 || str.charAt(0) != '/'))
+	else if (cell.subkind != 'headercell' && colinfo.type == 'check')
 	    {
-	    imgsrc = cell.data;
-	    //txt = '<img src="' + htutil_encode(String(cell.data),true) + '"';
-	    //if (colinfo.image_maxwidth || colinfo.image_maxheight)
-		//{
-		//txt += ' style="';
-		//if (colinfo.image_maxwidth) txt += 'max-width:' + colinfo.image_maxwidth + 'px; ';
-		if (colinfo.image_maxwidth) imgstyle += 'max-width:' + colinfo.image_maxwidth + 'px; ';
-		//if (colinfo.image_maxheight) txt += 'max-height:' + colinfo.image_maxheight + 'px; ';
-		if (colinfo.image_maxheight) imgstyle += 'max-height:' + colinfo.image_maxheight + 'px; ';
-		//txt += '"';
-		//}
-	    //txt += ">";
-	    imgstyle += htutil_getstyle(wgtrFindDescendent(this, colinfo.name, colinfo.ns), 'image', {} );
+	    // Checkmark
+	    var sl = str.toLowerCase();
+	    if (sl == 'n' || sl == 'no' || sl == 'off' || sl == 'false' || str == '0' || str == '' || str == 'null')
+		txt = '<img width="16" height="16" src="/sys/images/tbl_dash.gif">';
+	    else
+		txt = '<img width="16" height="16" src="/sys/images/tbl_check.gif">';
 	    }
-	}
-    else
-	{
-	// Text
-	txt = '<span onclick="function() {}">' + str + '</span>';
-	}
-    style += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), null, {textcolor: color});
-    if (cell.capdata)
-	{
-	// Caption (added to any of the above types)
-	captxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no') + '</span>';
-	if (colinfo.wrap != 'no')
-	    captxt = htutil_nlbr(captxt);
-	capstyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "caption", {textcolor: color});
-	}
-    if (cell.titledata)
-	{
-	titletxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.titledata), colinfo.wrap != 'no') + '</span>';
-	if (colinfo.wrap != 'no')
-	    titletxt = htutil_nlbr(titletxt);
-	titlestyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "title", {textcolor: color});
+	else if (cell.subkind != 'headercell' && colinfo.type == 'image')
+	    {
+	    // Image
+	    if (!(str.indexOf(':') >= 0 || str.indexOf('//') >= 0 || str.charAt(0) != '/'))
+		{
+		imgsrc = cell.data;
+		if (colinfo.image_maxwidth) imgstyle += 'max-width:' + colinfo.image_maxwidth + 'px; ';
+		if (colinfo.image_maxheight) imgstyle += 'max-height:' + colinfo.image_maxheight + 'px; ';
+		imgstyle += htutil_getstyle(wgtrFindDescendent(this, colinfo.name, colinfo.ns), 'image', {} );
+		}
+	    }
+	else
+	    {
+	    // Text
+	    txt = '<span onclick="function() {}">' + str + '</span>';
+	    }
+	style += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), null, {textcolor: color});
+	if (cell.capdata)
+	    {
+	    // Caption (added to any of the above types)
+	    captxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no') + '</span>';
+	    if (colinfo.wrap != 'no')
+		captxt = htutil_nlbr(captxt);
+	    capstyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "caption", {textcolor: color});
+	    }
+	if (cell.titledata)
+	    {
+	    titletxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.titledata), colinfo.wrap != 'no') + '</span>';
+	    if (colinfo.wrap != 'no')
+		titletxt = htutil_nlbr(titletxt);
+	    titlestyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "title", {textcolor: color});
+	    }
 	}
 
     // If style or content has changed, then update it.
@@ -237,7 +232,7 @@ function tbld_redraw_all(dataobj, force_datafetch)
 
     // Creating a new record?  Give indication if so.
     this.was_new = this.is_new;
-    this.is_new = ((this.was_new && dataobj == null) || (dataobj && dataobj.length == 0 && this.row_bgndnew))?1:0;
+    this.is_new = ((this.was_new && dataobj === null) || (dataobj && dataobj.length == 0 && this.row_bgndnew))?1:0;
     if (this.was_new && !this.is_new && this.rows.last)
 	{
 	var recnum = this.rows.last;
@@ -980,6 +975,51 @@ function tbld_set_displayfor(attr, val)
     }
 
 
+function tbld_set_coltitle(attr, val)
+    {
+    this.col.data = val;
+    this.table.FormatCell(this.col, this.table.titlecolor);
+    this.table.UpdateHeight(this.hdrrow);
+    this.table.DisplayRow(this.hdrrow, 0);
+    this.table.UpdateGeom();
+    }
+
+
+function tbld_get_coltitle(attr)
+    {
+    return this.col.data;
+    }
+
+
+function tbld_set_visible(attr, val)
+    {
+    var newvis = val?1:0;
+    if (newvis != this.visible)
+	{
+	if (newvis == 1)
+	    {
+	    // Show column
+	    this.visible = 1;
+	    this.col.ChangeWidth(this.visible_width, true);
+	    }
+	else
+	    {
+	    // Hide column
+	    this.visible_width = this.table.cols[this.colnum].width;
+	    this.visible = 0;
+	    this.col.ChangeWidth(-this.visible_width, true);
+	    }
+	this.table.ReflowWidth();
+	}
+    }
+
+
+function tbld_get_visible(attr)
+    {
+    return this.visible;
+    }
+
+
 function tbld_deselect()
     {
     var txt;
@@ -1205,7 +1245,7 @@ function tbld_bar_click(e)
     }
 
 
-function tbld_change_width(move)
+function tbld_change_width(move, compensate)
     {
     var l=this;
     var t=l.row.table;
@@ -1213,16 +1253,16 @@ function tbld_change_width(move)
     var colinfo = t.cols[l.colnum];
 
     // Sanity checks on column resizing...
-    if(colinfo.xoffset+colinfo.width+move+rw>l.row.w)
-	move = l.row.w - rw - colinfo.xoffset - colinfo.width;
+    //if(colinfo.xoffset+colinfo.width+move+rw>l.row.w)
+    //	move = l.row.w - rw - colinfo.xoffset - colinfo.width;
     if(colinfo.xoffset+colinfo.width+rw+move<0)
 	move=0-colinfo.xoffset-rw;
     if (colinfo.width + move < 3)
 	move = 3-colinfo.width;
     if(l.resizebdr.xoffset+move<0)
 	move=0-l.resizebdr.xoffset;
-    if(getPageX(l.resizebdr) + t.colsep + t.bdr_width*2 + move >= getPageX(t) + t.param_width)
-	move = getPageX(t) + t.param_width - getPageX(l.resizebdr) - t.colsep - t.bdr_width*2;
+    //if(getPageX(l.resizebdr) + t.colsep + t.bdr_width*2 + move >= getPageX(t) + t.param_width)
+    //	move = getPageX(t) + t.param_width - getPageX(l.resizebdr) - t.colsep - t.bdr_width*2;
 
     // Figure how much space on the right of this resize handle we're adjusting, too...
     var cols_right = t.colcount - l.colnum - 1;
@@ -1243,7 +1283,10 @@ function tbld_change_width(move)
 	else
 	    {
 	    // Columns to the right of adjustment
-	    adj[j] = t.cols[j].width/total_right_width*move;
+	    if (compensate)
+		adj[j] = t.cols[j].width/total_right_width*move;
+	    else
+		adj[j] = 0;
 	    t.cols[j].width -= adj[j];
 	    t.cols[j].xoffset += total_move;
 	    total_move -= adj[j];
@@ -1287,7 +1330,48 @@ function tbld_change_width(move)
 	t.CheckBottom();
 	}
 
+    // Update overall table geometry based on header size changes
+    t.UpdateGeom();
+
     return move;
+    }
+
+
+function tbld_reflow_width()
+    {
+    if (this.hdrrow)
+	{
+	var logstr = 'Before reflow widths:';
+	var ttl = 0;
+	for(var i=0; i<this.colcount; i++)
+	    {
+	    logstr += ' ' + this.cols[i].width;
+	    ttl += this.cols[i].width;
+	    }
+	console.log(logstr + ' (total ' + ttl + ')');
+
+	// What's our space excess or deficit?
+	var colinfo = this.cols[this.colcount - 1];
+	var total = this.hdrrow.w;
+	var curtotal = (colinfo.xoffset + colinfo.width);
+	var adj = total - curtotal;
+	console.log('Reflowing total ' + total + ', curtotal ' + curtotal + ', adj ' + adj);
+
+	// Go through the columns and proportion the excess/deficit to them
+	for(var i=0; i<this.colcount; i++)
+	    {
+	    this.hdrrow.cols[i].ChangeWidth(adj * this.cols[i].width / curtotal, false);
+	    }
+
+	var logstr = 'After reflow widths:';
+	var ttl = 0;
+	for(var i=0; i<this.colcount; i++)
+	    {
+	    logstr += ' ' + this.cols[i].width;
+	    ttl += this.cols[i].width;
+	    }
+	console.log(logstr + ' (total ' + ttl + ')');
+	}
     }
 
 
@@ -1750,6 +1834,39 @@ function tbld_request(dclass, data, callback, completion)
     }*/
 
 
+// Update the overall geometry of the table visual area based on the
+// available height and header row height.
+function tbld_update_geom()
+    {
+    this.vis_offset = (this.hdrrow)?($(this.hdrrow).height() + this.cellvspacing*2):0;
+    this.vis_height = this.param_height - this.vis_offset;
+    if (this.max_rowheight == this.param_height)
+	this.max_rowheight = this.vis_height;
+    this.max_display = Math.ceil(this.vis_height / this.min_rowheight);
+    if (this.rowcache_size < this.max_display*2)
+	this.rowcache_size = this.max_display*2;
+    this.target_range = {start:1, end:this.rowcache_size};
+    $(this.scrollctr).css
+	({
+	"visibility": "inherit",
+	"top": this.vis_offset + "px",
+	"left": "0px",
+	"overflow": "hidden",
+	"height": (this.param_height - this.vis_offset) + "px",
+	"width": this.param_width + "px"
+	});
+    $(this.scrollbar).css(
+	{
+	//"top": (((this.has_header)?($(this.hdrrow).height() + this.cellvspacing):0) + $(this).position().top) + "px",
+	"top": (((this.has_header)?(this.hdrrow.offsetHeight + this.cellvspacing):0) + $(this).position().top) + "px",
+	});
+    $($(this.scrollbar).find('td')[1]).css(
+	{
+	"height": (this.vis_height - 2*18 - 1) + "px"
+	});
+    }
+
+
 function tbld_init(param)
     {
     var t = param.table;
@@ -1879,6 +1996,8 @@ function tbld_init(param)
     t.OsrcRequest = tbld_osrc_request;
     t.EndTTF = tbld_end_ttf;
     t.CheckHighlight = tbld_check_highlight;
+    t.UpdateGeom = tbld_update_geom;
+    t.ReflowWidth = tbld_reflow_width;
 
     // ObjectSource integration
     t.IsDiscardReady = new Function('return true;');
@@ -2006,32 +2125,37 @@ function tbld_init(param)
 	    }
 	t.UpdateHeight(t.hdrrow);
 	t.DisplayRow(t.hdrrow, 0);
+
+	t.column_widgets = wgtrFindMatchingDescendents(t, 'widget/table-column');
+	for(var i=0; i<t.column_widgets.length; i++)
+	    {
+	    var cw = t.column_widgets[i];
+	    ifc_init_widget(cw);
+	    t.cols[i].widget = cw;
+	    cw.hdrrow = t.hdrrow;
+	    cw.table = t;
+	    cw.colnum = i;
+	    cw.col = t.hdrrow.cols[i];
+	    cw.visible = 1;
+	    cw.visible_width = t.cols[i].width;
+	    var iv = cw.ifcProbeAdd(ifValue);
+	    iv.Add("title", tbld_get_coltitle, tbld_set_coltitle);
+	    iv.Add("visible", tbld_get_visible, tbld_set_visible);
+	    }
 	}
-    t.vis_offset = (t.hdrrow)?($(t.hdrrow).height() + t.cellvspacing*2):0;
-    t.vis_height = param.height - t.vis_offset;
-    if (t.max_rowheight == param.height)
-	t.max_rowheight = t.vis_height;
+
     t.scroll_maxheight = null;
     t.scroll_maxrec = null;
     t.scroll_minheight = null;
     t.scroll_minrec = null;
-    t.max_display = Math.ceil(t.vis_height / t.min_rowheight);
-    if (t.rowcache_size < t.max_display*2)
-	t.rowcache_size = t.max_display*2;
-    t.target_range = {start:1, end:t.rowcache_size};
 
     // Create scroll div
     t.scrollctr = htr_new_layer(t.param_width, t);
     htr_init_layer(t.scrollctr, t, "tabledynamic");
-    $(t.scrollctr).css
-	({
-	"visibility": "inherit",
-	"top": t.vis_offset + "px",
-	"left": "0px",
-	"overflow": "hidden",
-	"height": (param.height - t.vis_offset) + "px",
-	"width": t.param_width + "px"
-	});
+
+    // set working area height and scrollbar size
+    t.UpdateGeom();
+
     t.scrolldiv = htr_new_layer(t.param_width, t.scrollctr);
     htr_init_layer(t.scrolldiv, t, "tabledynamic");
     t.scrolldiv.subkind = "scrolldiv";
@@ -2049,15 +2173,6 @@ function tbld_init(param)
 	$(t.scrollbar).css({"opacity": 0.0, "visibility": "hidden"});
     if (window.tbld_mcurrent == undefined)
 	window.tbld_mcurrent = null;
-    $(t.scrollbar).css(
-	{
-	"top": (((t.has_header)?($(t.hdrrow).height() + t.cellvspacing):0) + $(t).position().top) + "px",
-	//(t.vis_height - $(t).height()) + "px",
-	});
-    $($(t.scrollbar).find('td')[1]).css(
-	{
-	"height": (t.vis_height - 2*18 - 1) + "px"
-	});
 
     // No data message
     var ndm = document.createElement("div");
@@ -2645,7 +2760,7 @@ function tbld_mousemove(e)
         var t=l.row.table;
         var move = e.pageX - tbldb_start;
         tbldb_start += move;
-        var realmove = l.ChangeWidth(move);
+        var realmove = l.ChangeWidth(move, true);
 	tbldb_start += (realmove-move);
 	return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         }
@@ -2701,7 +2816,8 @@ function tbld_mouseup(e)
 		maxw += t.innerpadding*2;
 		if (t.colsep > 0 || t.dragcols)
 		    maxw += (t.bdr_width*2 + t.colsep);
-                l.ChangeWidth(maxw-t.cols[l.colnum].width);
+                l.ChangeWidth(maxw-t.cols[l.colnum].width, true);
+		t.ReflowWidth();
                 }
             else
                 {

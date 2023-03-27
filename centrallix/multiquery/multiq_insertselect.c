@@ -242,6 +242,10 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    objCommitObject(new_obj);
 	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_FROMOBJECT)
 		{
+		strtcpy(new_pathname, pathname, sizeof(new_pathname));
+		}
+	    else
+		{
 		new_objname = NULL;
 		objGetAttrValue(new_obj, "name", DATA_T_STRING, POD(&new_objname));
 		if (!new_objname)
@@ -255,10 +259,6 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		    goto error;
 		    }
 		snprintf(new_pathname, sizeof(new_pathname), "%s/%s", ((pQueryStructure)qe->QSLinkage)->Source, new_objname);
-		}
-	    else
-		{
-		strtcpy(new_pathname, pathname, sizeof(new_pathname));
 		}
 
 	    /** Link the new object as the __inserted object in the object list.**/

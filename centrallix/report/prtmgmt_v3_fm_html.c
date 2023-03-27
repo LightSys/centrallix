@@ -565,7 +565,17 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 	    {
 	    case PRT_OBJ_T_STRING:
 		prt_htmlfm_SetStyle(context, &(obj->TextStyle));
+		if (obj->URL && !strchr(obj->URL, '"'))
+		    {
+		    prt_htmlfm_Output(context, "<a href=\"", 9);
+		    prt_htmlfm_OutputEncoded(context, obj->URL, -1);
+		    prt_htmlfm_Output(context, "\">", 2);
+		    }
 		prt_htmlfm_OutputEncoded(context, (char*)obj->Content, -1);
+		if (obj->URL && !strchr(obj->URL, '"'))
+		    {
+		    prt_htmlfm_Output(context, "</a>", 4);
+		    }
 		break;
 
 	    case PRT_OBJ_T_AREA:
@@ -616,8 +626,18 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    prt_internal_WriteImageToPNG(context->Session->ImageWriteFn, arg, (pPrtImage)(obj->Content), w, h);
 		    context->Session->ImageCloseFn(arg);
 		    nmFree(path,256);
+		    if (obj->URL && !strchr(obj->URL, '"'))
+			{
+			prt_htmlfm_Output(context, "<a href=\"", 9);
+			prt_htmlfm_OutputEncoded(context, obj->URL, -1);
+			prt_htmlfm_Output(context, "\">", 2);
+			}
 		    prt_htmlfm_OutputPrintf(context, "<img src=\"%sprt_htmlfm_%8.8X.png\" border=\"0\" width=\"%d\" height=\"%d\">", 
 			    context->Session->ImageExtDir, id, w, h);
+		    if (obj->URL && !strchr(obj->URL, '"'))
+			{
+			prt_htmlfm_Output(context, "</a>", 4);
+			}
 		    }
 		break;
 
@@ -647,8 +667,18 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    prt_internal_WriteSvgToFile(context->Session->ImageWriteFn, arg, (pPrtSvg)(obj->Content), w, h);
 		    context->Session->ImageCloseFn(arg);
 		    nmFree(path,256);
+		    if (obj->URL && !strchr(obj->URL, '"'))
+			{
+			prt_htmlfm_Output(context, "<a href=\"", 9);
+			prt_htmlfm_OutputEncoded(context, obj->URL, -1);
+			prt_htmlfm_Output(context, "\">", 2);
+			}
 		    prt_htmlfm_OutputPrintf(context, "<img src=\"%sprt_htmlfm_%8.8X.svg\" border=\"0\" width=\"%d\" height=\"%d\">", 
 			    context->Session->ImageExtDir, id, w, h);
+		    if (obj->URL && !strchr(obj->URL, '"'))
+			{
+			prt_htmlfm_Output(context, "</a>", 4);
+			}
 		    }
 		break;
 

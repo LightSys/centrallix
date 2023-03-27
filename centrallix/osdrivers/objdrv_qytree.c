@@ -1038,7 +1038,7 @@ qyt_internal_StartQuery(pQytQuery qy)
 	if (qy->LLQueryObj) 
 	    {
 	    objUnmanageObject(qy->LLQueryObj->Session, qy->LLQueryObj);
-	    qyinf = objOpenQuery(qy->LLQueryObj, NULL, qy->ItemOrder, expr, NULL);
+	    qyinf = objOpenQuery(qy->LLQueryObj, NULL, qy->ItemOrder, expr, NULL, 0);
 	    if (!qyinf)
 		{
 		objClose(qy->LLQueryObj);

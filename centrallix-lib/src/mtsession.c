@@ -242,9 +242,12 @@ mssUnlinkSession(pMtSession s)
 
 /*** mssAuthenticate - start a new session, overwriting previous
  *** (inherited) session information.
+ ***
+ *** bypass_crypt: set to 1 if we already know the credentials are
+ *** correct and we just need to set up a new session.
  ***/
 int 
-mssAuthenticate(char* username, char* password)
+mssAuthenticate(char* username, char* password, int bypass_crypt)
     {
     pMtSession s;
     char* encrypted_pwd;
@@ -273,6 +276,15 @@ mssAuthenticate(char* username, char* password)
 	strncpy(s->Password, password, 31);
 	s->Password[31]=0;
 
+	/** Sanity checking. **/
+	if (strchr(username,':'))
+	    {
+	    mssError(1, "MSS", "Attempt to use invalid username '%s'", username);
+	    memset(s, 0, sizeof(MtSession));
+	    nmFree(s,sizeof(MtSession));
+	    return -1;
+	    }
+
 	/** Attempt to authenticate. **/
 	if (!strcmp(MSS.AuthMethod,"system"))
 	    {
@@ -299,25 +311,20 @@ mssAuthenticate(char* username, char* password)
 #endif
 	    strncpy(salt,pwd,2);
 	    salt[2]=0;
-	    encrypted_pwd = (char*)crypt(s->Password,pwd);
-	    if (!encrypted_pwd || strcmp(encrypted_pwd,pwd))
+
+	    if (!bypass_crypt)
 		{
-		memset(s, 0, sizeof(MtSession));
-		nmFree(s,sizeof(MtSession));
-		return -1;
+		encrypted_pwd = (char*)crypt(s->Password,pwd);
+		if (!encrypted_pwd || strcmp(encrypted_pwd,pwd))
+		    {
+		    memset(s, 0, sizeof(MtSession));
+		    nmFree(s,sizeof(MtSession));
+		    return -1;
+		    }
 		}
 	    }
 	else if (!strcmp(MSS.AuthMethod, "altpasswd"))
 	    {
-	    /** Sanity checking. **/
-	    if (strchr(username,':'))
-		{
-		mssError(1, "MSS", "Attempt to use invalid username '%s'", username);
-		memset(s, 0, sizeof(MtSession));
-		nmFree(s,sizeof(MtSession));
-		return -1;
-		}
-
 	    /** Open the alternate password file **/
 	    altpass_fd = fdOpen(MSS.AuthFile, O_RDONLY, 0600);
 	    if (!altpass_fd)
@@ -364,12 +371,16 @@ mssAuthenticate(char* username, char* password)
 		if (pwline[strlen(pwline)-1] == '\n')
 		    pwline[strlen(pwline)-1] = '\0';
 		pwd = pwline + strlen(username) + 1;
-		encrypted_pwd = (char*)crypt(s->Password,pwd);
-		if (strcmp(encrypted_pwd,pwd))
+
+		if (!bypass_crypt)
 		    {
-		    memset(s, 0, sizeof(MtSession));
-		    nmFree(s,sizeof(MtSession));
-		    return -1;
+		    encrypted_pwd = (char*)crypt(s->Password,pwd);
+		    if (strcmp(encrypted_pwd,pwd))
+			{
+			memset(s, 0, sizeof(MtSession));
+			nmFree(s,sizeof(MtSession));
+			return -1;
+			}
 		    }
 		}
 	    else

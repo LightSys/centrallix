@@ -23,7 +23,9 @@
 #include <openssl/sha.h>
 #include <openssl/md5.h>
 #include <openssl/evp.h>
-#include <ctype.h> 
+#include <ctype.h>
+#include <argon2.h>
+
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -369,7 +371,7 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
 		return -1;
 		}
 	    }
-	if (i2->AggLevel > 0)
+	if (i2->AggLevel > 0 || (i2->Flags & EXPR_F_HASWINDOWFN))
 	    {
 	    if (exp_internal_EvalAggregates(i2,objlist) < 0)
 		return -1;
@@ -398,7 +400,7 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
 		return -1;
 		}
 	    }
-	if (i1->AggLevel > 0)
+	if (i1->AggLevel > 0 || (i1->Flags & EXPR_F_HASWINDOWFN))
 	    {
 	    if (exp_internal_EvalAggregates(i1,objlist) < 0)
 		return -1;
@@ -1473,6 +1475,7 @@ int exp_fn_quote(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     }
 
 
+/* See centrallix-sysdoc/SubstituteFunction.md for more information. */
 int exp_fn_substitute(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     char* subst_ptr;
@@ -3251,6 +3254,109 @@ int exp_fn_power(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 
 /*** Windowing Functions ***/
 
+typedef struct
+    {
+    int		MaxLookback;
+    int		CurLookback;
+    pTObjData	Items[1];
+    }
+    ExpLagVector, *pExpLagVector;
+
+int exp_fn_lag_finalize(void* lv_v)
+    {
+    pExpLagVector lv = (pExpLagVector)lv_v;
+    int i;
+    for (i=0; i<lv->CurLookback; i++)
+	ptodFree(lv->Items[i]);
+    nmSysFree(lv);
+    return 0;
+    }
+
+int exp_fn_lag(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    int n;
+    pExpLagVector lv;
+    pTObjData ptod;
+
+    if (!i0)
+	{
+	mssError(1,"EXP","lag() requires a parameter");
+	return -1;
+	}
+    if (i1 && !(i1->Flags & EXPR_F_NULL) && (i1->DataType != DATA_T_INTEGER || i1->Integer <= 0))
+	{
+	mssError(1,"EXP","lag() second parameter, if supplied, must be a non-null positive integer");
+	return -1;
+	}
+
+    /** Private data is where we store a chain of previous values **/
+    if (!tree->PrivateData)
+	{
+	/** If the offset is constant, use it as the max lookback, otherwise set the max lookback (n) to
+	 ** the greater of 100 or the current value.  Our hard ceiling is 4096.  If not specified, we
+	 ** just look at the previous row (offset 1).
+	 **/
+	if (i1 && i1->NodeType == EXPR_N_INTEGER)
+	    n = i1->Integer;
+	else if (i1)
+	    n = i1->Integer < 100 ? 100 : i1->Integer;
+	else
+	    n = 1;
+	if (n > 4096)
+	    n = 4096;
+
+	lv = (pExpLagVector)nmSysMalloc(sizeof(ExpLagVector) + (sizeof(pTObjData) * (n - 1)));
+	if (!lv)
+	    return -ENOMEM;
+	tree->PrivateData = lv;
+	tree->PrivateDataFinalize = exp_fn_lag_finalize;
+	memset(tree->PrivateData, 0, sizeof(ExpLagVector) + (sizeof(pTObjData) * (n - 1)));
+	lv->MaxLookback = n;
+	lv->CurLookback = 0;
+	}
+    else
+	{
+	lv = (pExpLagVector)tree->PrivateData;
+	}
+
+    /** No actual new value?  Exit now. **/
+    if (tree->Flags & EXPR_F_AGGLOCKED)
+	return 0;
+
+    /** Set the right value from our lookback list **/
+    if (i1)
+	n = i1->Integer;
+    else
+	n = 1;
+    if (n > lv->CurLookback || (i1->Flags & EXPR_F_NULL))
+	{
+	tree->Flags |= EXPR_F_NULL;
+	tree->DataType = i0->DataType;
+	}
+    else
+	{
+	if (expPtodToExpression(lv->Items[lv->CurLookback - n], tree) < 0)
+	    return -1;
+	}
+
+    /** New value; add to our item list **/
+    ptod = expExpressionToPtod(i0);
+    if (lv->MaxLookback == lv->CurLookback)
+	{
+	ptodFree(lv->Items[0]);
+	if (lv->MaxLookback > 1)
+	    memmove(&(lv->Items[0]), &(lv->Items[1]), sizeof(pTObjData) * (lv->MaxLookback - 1));
+	lv->CurLookback -= 1;
+	}
+    lv->Items[lv->CurLookback] = ptod;
+    lv->CurLookback += 1;
+    tree->AggCount += 1;
+
+    tree->Flags |= EXPR_F_AGGLOCKED;
+    return 0;
+    }
+
+
 int exp_fn_dense_rank(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     pExpression new_exp;
@@ -4384,6 +4490,7 @@ int exp_fn_utf8_reverse(pExpression tree, pParamObjects objlist, pExpression i0,
     	return 0;
     }
 
+/* See centrallix-sysdoc/string_comparison.md for more information. */
 int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
 
@@ -4462,6 +4569,7 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, 
     return 0;
     }
 
+/* See centrallix-sysdoc/string_comparison.md for more information. */
 int exp_fn_lev_compare(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
 
@@ -4671,6 +4779,7 @@ int exp_fn_i_magnitude(double *magnitude, unsigned short *r_freq_table)
 /*
  * exp_fn_cos_compare
  * This method calculates the cosine similarity of two vector frequency tables
+ * See centrallix-sysdoc/string_comparison.md for more information.
  *
  * Parameters:
  * 	tree : structure where output is stored
@@ -4694,7 +4803,7 @@ int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
     // Ensure value passed in both parameters is not null
     if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
 	{
-	tree->DataType = DATA_T_INTEGER;
+	tree->DataType = DATA_T_DOUBLE;
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
 	}
@@ -4872,6 +4981,128 @@ int exp_fn_utf8_i_magnitude(double *magnitude, int *r_freq_table)
     }
 
 /*
+ * exp_fn_argon2id
+ * This method hashes a given password using the Argon2 algorithm (ID variant)
+ *
+ * Parameters:
+ * 	pExpression tree: 
+ * 	pParamObjects: 
+ * 	pExpression passowrd: The password, passed as a pExpression
+ * 	pExpression salt: The salt, passed as a pExpression
+ *
+ * returns:
+ *	 0 if successful
+ *	 -1 if error
+ */
+int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression password, pExpression salt)
+{
+
+    //check password and salt
+    if (!password || !salt)
+	{
+	mssError(1, "EXP", "Invalid Parameters: Method requires two arguments");
+	return -1;
+	}
+    else if ((password->Flags | salt->Flags) & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	tree->DataType = DATA_T_STRING;
+	return 0;
+	}
+
+    // The default values of the following four variables should be tuned for each specific system's needs
+    // T_COST determines the number of passes the algorithm makes
+    unsigned int T_COST = 2; 
+    if ((tree->Children.nItems >= 3) && 
+	((tree->Children.Items[2]) != NULL) && 
+	((pExpression)tree->Children.Items[2])->DataType == DATA_T_INTEGER && 
+	((pExpression)tree->Children.Items[2])->Integer < 24 && 
+	((pExpression)tree->Children.Items[2])->Integer > 0)
+	{
+	T_COST = ((pExpression)tree->Children.Items[2])->Integer;
+	}
+
+    // M_COST determines the amount of memory cost in kilobytes
+    unsigned int M_COST = (1<<16);
+    if ((tree->Children.nItems >= 4) &&
+	((tree->Children.Items[3]) != NULL) && 
+	((pExpression)tree->Children.Items[3])->DataType == DATA_T_INTEGER && 
+	((pExpression)tree->Children.Items[3])->Integer < (2<<16) && 
+	((pExpression)tree->Children.Items[3])->Integer >= 64) 
+	{
+	M_COST = ((pExpression)tree->Children.Items[3])->Integer;
+	}
+
+    // PARALLELISM determines the number of threads or 'lanes' used by the algorithm
+    unsigned int PARALLELISM = 1;
+    if ((tree->Children.nItems) >= 5 && 
+	((tree->Children.Items[4]) != NULL) && 
+	((pExpression)tree->Children.Items[4])->DataType == DATA_T_INTEGER &&
+	((pExpression)tree->Children.Items[4])->Integer <= 8 && 
+	((pExpression)tree->Children.Items[4])->Integer >=1)
+	{
+	PARALLELISM = ((pExpression)tree->Children.Items[4])->Integer;
+	}
+
+    // HASHLEN is the size of the finished hash
+    unsigned int HASHLEN = 32;
+    if ((tree->Children.nItems >= 6) && 
+	((tree->Children.Items[5]) != NULL) && 
+	((pExpression)tree->Children.Items[5])->DataType == DATA_T_INTEGER && 
+	((pExpression)tree->Children.Items[5])->Integer < 256 && 
+	((pExpression)tree->Children.Items[5])->Integer >= 4)
+	{
+	HASHLEN = ((pExpression)tree->Children.Items[5])->Integer;
+	}
+ 
+    // check if required parameters exist
+    if (!password || !salt)
+    	{
+	mssError(1, "EXP", "Invalid Parameters: function usage: exp_argon2id(password, salt)");
+	return -1;
+	}
+    tree->DataType = DATA_T_STRING;
+    
+    // hashvalue is where the output is written 
+    unsigned char hashvalue[HASHLEN];
+
+    unsigned char *slt = (unsigned char *)strdup(salt->String);
+    unsigned char *pwd = (unsigned char *)strdup(password->String);
+    unsigned int pwdlen = strlen((char*)pwd);
+    unsigned int sltlen = strlen((char*)slt);
+
+    // salt length check
+    if (sltlen < 8)
+	{
+	mssError(1, "EXP", "Salt is too short: Salt must be at least 8 bytes (16 recommended)");
+	return -1;
+	}
+    // this call to the argon2id_hash_raw method is where the magic happens
+    // after this call, the hashed password is written in hashvalue
+    argon2id_hash_raw(T_COST, M_COST, PARALLELISM, pwd, pwdlen, slt, sltlen, hashvalue, HASHLEN);
+ 
+    // this is where we write the contents of hashvalue to tree using qpfPrintf
+    if (HASHLEN*2+1 > sizeof(tree->Types.StringBuf))
+	{
+	tree->Alloc = 1;
+	tree->String = nmSysMalloc(HASHLEN*2+1);
+	if (!tree->String)
+	    {
+	    mssError(1, "EXP", "argon2id(): out of memory");
+	    return -1; }
+	}
+    else
+	{
+	tree->Alloc = 0;
+	tree->String = tree->Types.StringBuf;
+	}
+    qpfPrintf(NULL, tree->String, HASHLEN*2+1, "%*STR&HEX", HASHLEN, hashvalue);
+    return 0;
+}
+
+
+
+/*
  * exp_fn_utf8_cos_compare
  * This method calculates the cosine similarity of two vector frequency tables in a UTF8-friendly manner
  * UTF-8 aware version.
@@ -4921,7 +5152,6 @@ int exp_fn_utf8_cos_compare(pExpression tree, pParamObjects objlist, pExpression
     // Allocate memory for the wide character arrays
     size_t len0 = mbstowcs(NULL, i0->String, 0) + 1;
     size_t len1 = mbstowcs(NULL, i1->String, 0) + 1;
-
     wchar_t* longBufferi0 = nmMalloc(sizeof(wchar_t) * len0);
     wchar_t* longBufferi1 = nmMalloc(sizeof(wchar_t) * len1);
 
@@ -5017,6 +5247,7 @@ int exp_internal_DefineFunctions()
     xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
     xhAdd(&EXP.Functions, "replace", (char*) exp_fn_replace);
     xhAdd(&EXP.Functions, "substitute", (char*) exp_fn_substitute);
+    xhAdd(&EXP.Functions, "argon2id",(char*)exp_fn_argon2id);
     
     xhAdd(&EXP.Functions, "lev_compare", (char*)exp_fn_lev_compare);
     xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
@@ -5029,6 +5260,7 @@ int exp_internal_DefineFunctions()
     /** Windowing **/
     xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
     xhAdd(&EXP.Functions, "dense_rank", (char*)exp_fn_dense_rank);
+    xhAdd(&EXP.Functions, "lag", (char*)exp_fn_lag);
 
     /** Aggregate **/
     xhAdd(&EXP.Functions, "count", (char*) exp_fn_count);

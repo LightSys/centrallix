@@ -85,6 +85,7 @@ expAllocExpression()
 	expr->LinkCnt = 1;
 	expr->DataType = DATA_T_UNAVAILABLE;
 	expr->PrivateData = NULL;
+	expr->PrivateDataFinalize = NULL;
 
     return expr;
     }
@@ -123,7 +124,10 @@ expFreeExpression(pExpression this)
 
 	/** Free this itself. **/
 	xaDeInit(&(this->Children));
-	if (this->PrivateData) nmSysFree(this->PrivateData);
+	if (this->PrivateDataFinalize)
+	    this->PrivateDataFinalize(this->PrivateData);
+	else if (this->PrivateData)
+	    nmSysFree(this->PrivateData);
 	if (this->Alloc && this->String) nmSysFree(this->String);
 	if (this->NameAlloc && this->Name) nmSysFree(this->Name);
 	if (this->AggExp) expFreeExpression(this->AggExp);
@@ -572,6 +576,7 @@ exp_internal_DumpExpression_r(pExpression this, int level)
 	if (this->Flags & EXPR_F_NEW) printf(", NEW");
 	if (this->Flags & EXPR_F_INDETERMINATE) printf(", INDET");
 	if (this->Flags & EXPR_F_AGGREGATEFN) printf(", AGGFN");
+	if (this->Flags & EXPR_F_WINDOWFN) printf(", WINFN");
 	if (this->Flags & EXPR_F_AGGLOCKED) printf(", AGGLK");
 	if (this->Flags & EXPR_F_FREEZEEVAL) printf(", FRZ");
 	if (this->AggLevel) printf(", AGGLVL=%d", this->AggLevel);
@@ -667,7 +672,7 @@ expCopyValue(pExpression src, pExpression dst, int make_independent)
 	    case DATA_T_BINARY:
 		if (make_independent)
 		    {
-		    expSetBinary(dst, src->String, src->Size);
+		    expSetBinary(dst, (unsigned char*)src->String, src->Size);
 		    }
 		else
 		    {
@@ -713,22 +718,26 @@ expDataTypeToNodeType(int data_type)
 pExpression
 expPodToExpression(pObjData pod, int type, pExpression provided_exp)
     {
-    int n;
     pExpression exp = provided_exp;
 
 	/** Create expression node. **/
 	if (!exp)
 	    exp = expAllocExpression();
-	exp->NodeType = expDataTypeToNodeType(type);
+	if (!provided_exp)
+	    exp->NodeType = expDataTypeToNodeType(type);
 
 	/** Null value **/
 	if (!pod)
 	    {
-	    exp->Flags |= (EXPR_F_NULL | EXPR_F_PERMNULL);
+	    exp->Flags |= EXPR_F_NULL;
+	    if (!provided_exp)
+		exp->Flags |= EXPR_F_PERMNULL;
 	    }
 	else
 	    {
-	    exp->Flags &= ~(EXPR_F_NULL | EXPR_F_PERMNULL);
+	    exp->Flags &= ~EXPR_F_NULL;
+	    if (!provided_exp)
+		exp->Flags &= ~EXPR_F_PERMNULL;
 
 	    /** Based on type. **/
 	    switch(type)
@@ -790,7 +799,7 @@ expExpressionToPod(pExpression this, int type, pObjData pod)
 		pod->String = this->String;
 		break;
 	    case DATA_T_BINARY:
-		pod->Binary.Data = this->String;
+		pod->Binary.Data = (unsigned char*)this->String;
 		pod->Binary.Size = this->Size;
 		break;
 	    case DATA_T_MONEY:
@@ -988,6 +997,20 @@ exp_internal_UnlinkControl(pExpControl ctl)
 	    }
 	}
     return 0;
+    }
+
+
+/*** expPtodToExpression - takes a Pointer to Object Data (pod) and
+ *** builds an expression node from it.
+ ***/
+pExpression
+expPtodToExpression(pTObjData ptod, pExpression provided_exp)
+    {
+    pExpression exp;
+
+	exp = expPodToExpression((ptod->Flags & DATA_TF_NULL)?NULL:(&ptod->Data), ptod->DataType, provided_exp);
+
+    return exp;
     }
 
 

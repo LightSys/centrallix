@@ -100,9 +100,21 @@ function tb_init(param)
     var ia = l.ifcProbeAdd(ifAction);
     ia.Add("SetText", tb_action_settext);
     ia.Add("Click", tb_action_click);
+    ia.Add("Enable", tb_enable);
+    ia.Add("Disable", tb_disable);
 
     // Mobile Safari workaround
     $(l).find("span").on("click", function() {});
+    }
+
+function tb_enable()
+    {
+    this.enabled = true;
+    }
+
+function tb_disable()
+    {
+    this.enabled = false;
     }
 
 function tb_action_settext(aparam)
