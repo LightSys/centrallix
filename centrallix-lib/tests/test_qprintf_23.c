@@ -6,6 +6,7 @@
 #include "qprintf.h"
 #include <assert.h>
 #include "util.h"
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -15,9 +16,11 @@ test(char** tname)
     unsigned char buf[44];
     pQPSession session;
     session = nmSysMalloc(sizeof(QPSession));
-    session->Flags = QPF_F_ENFORCE_UTF8;
-    setlocale(0, "en_US.UTF-8");
+    session->Flags = 0;
 
+	setlocale(0, "en_US.UTF-8");
+	qpfInitialize(); 
+	
 	*tname = "qprintf-23 %STR&NLEN in middle without overflow";
 	iter = 200000;
 	for(i=0;i<iter;i++)
@@ -30,9 +33,9 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&6LEN...", "STR");
-	    qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&6LEN...", "STR");
-	    qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&6LEN...", "STR");
+	    qpfPrintf(session, buf+4, 36, "Here is the str: %STR&6LEN...", "STR");
+	    qpfPrintf(session, buf+4, 36, "Here is the str: %STR&6LEN...", "STR");
+	    qpfPrintf(session, buf+4, 36, "Here is the str: %STR&6LEN...", "STR");
 	    rval = qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&6LEN...", "STR");
 	    assert(!strcmp(buf+4, "Here is the str: STR..."));
 	    assert(rval == 23);
@@ -48,7 +51,7 @@ test(char** tname)
 	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 
 	    /* UTF-8 */
-	    rval = qpfPrintf(session, buf+4, 36, "εδώ οδός: %STR&6LEN...", "яr");
+	    rval = qpfPrintf(NULL, buf+4, 36, "εδώ οδός: %STR&6LEN...", "яr");
 	    assert(strcmp(buf+4, "εδώ οδός: яr...") == 0);
 	    assert(rval == 23);
 	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);

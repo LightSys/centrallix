@@ -6,6 +6,7 @@
 #include "qprintf.h"
 #include <assert.h>
 #include "util.h"
+#include <locale.h>
 
 long long
 test(char** tname)

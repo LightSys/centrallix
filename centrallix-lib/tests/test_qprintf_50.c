@@ -6,6 +6,7 @@
 #include "qprintf.h"
 #include <assert.h>
 #include "util.h"
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -16,8 +17,10 @@ test(char** tname)
     pQPSession session;
     session = nmSysMalloc(sizeof(QPSession));
     session->Flags = QPF_F_ENFORCE_UTF8;
-    setlocale(0, "en_US.UTF-8");
 
+	setlocale(0, "en_US.UTF-8");
+	qpfInitialize(); 
+	
 	*tname = "qprintf-50 %STR&QUOT at end without overflow";
 	iter = 200000;
 	for(i=0;i<iter;i++)
@@ -30,10 +33,10 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 33, "Here is the str...: %STR&QUOT", "\"ain't\"");
-	    qpfPrintf(NULL, buf+4, 33, "Here is the str...: %STR&QUOT", "\"ain't\"");
-	    qpfPrintf(NULL, buf+4, 33, "Here is the str...: %STR&QUOT", "\"ain't\"");
-	    rval = qpfPrintf(NULL, buf+4, 33, "Here is the str...: %STR&QUOT", "\"ain't\"");
+	    qpfPrintf(session, buf+4, 33, "Here is the str...: %STR&QUOT", "\"ain't\"");
+	    qpfPrintf(session, buf+4, 33, "Here is the str...: %STR&QUOT", "\"ain't\"");
+	    qpfPrintf(session, buf+4, 33, "Here is the str...: %STR&QUOT", "\"ain't\"");
+	    rval = qpfPrintf(session, buf+4, 33, "Here is the str...: %STR&QUOT", "\"ain't\"");
 	    assert(!strcmp(buf+4, "Here is the str...: '\\\"ain\\'t\\\"'"));
 	    assert(rval == 32);
 	    assert(buf[39] == '\n');
@@ -49,8 +52,8 @@ test(char** tname)
 
 	    /** UTF-8 **/
 
-            qpfPrintf(session, buf+4, 33, "Str...: %STR&QUOT", "\"சோத\"");
-	    rval = qpfPrintf(session, buf+4, 33, "Str...: %STR&QUOT", "\"சோத\"");
+            qpfPrintf(NULL, buf+4, 33, "Str...: %STR&QUOT", "\"சோத\"");
+	    rval = qpfPrintf(NULL, buf+4, 33, "Str...: %STR&QUOT", "\"சோத\"");
 	    assert(strcmp(buf+4, "Str...: '\\\"சோத\\\"'") == 0);
             assert(rval == 23);
             assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);

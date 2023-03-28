@@ -6,6 +6,7 @@
 #include "qprintf.h"
 #include <assert.h>
 #include "util.h"
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -13,11 +14,15 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
-    pQPSession session;
-    session = nmSysMalloc(sizeof(QPSession));
-    session->Flags = QPF_F_ENFORCE_UTF8;
-    setlocale(0, "en_US.UTF-8");
+    pQPSession asciiSes, utf8Ses;
+    utf8Ses = nmSysMalloc(sizeof(QPSession));
+    utf8Ses->Flags = QPF_F_ENFORCE_UTF8;
+    asciiSes = nmSysMalloc(sizeof(QPSession));
+    asciiSes->Flags = 0;
 
+	setlocale(0, "en_US.UTF-8");
+	qpfInitialize(); 
+	
 	*tname = "qprintf-42 %STR&HEX at end, overflow(1) in insert";
 	iter = 100000;
 	for(i=0;i<iter;i++)
@@ -32,10 +37,10 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 26, "Encode: %STR&HEX", "<b c=\"w\">");
-	    qpfPrintf(NULL, buf+4, 26, "Encode: %STR&HEX", "<b c=\"w\">");
-	    qpfPrintf(NULL, buf+4, 26, "Encode: %STR&HEX", "<b c=\"w\">");
-	    rval = qpfPrintf(NULL, buf+4, 26, "Encode: %STR&HEX", "<b c=\"w\">");
+	    qpfPrintf(asciiSes, buf+4, 26, "Encode: %STR&HEX", "<b c=\"w\">");
+	    qpfPrintf(asciiSes, buf+4, 26, "Encode: %STR&HEX", "<b c=\"w\">");
+	    qpfPrintf(asciiSes, buf+4, 26, "Encode: %STR&HEX", "<b c=\"w\">");
+	    rval = qpfPrintf(asciiSes, buf+4, 26, "Encode: %STR&HEX", "<b c=\"w\">");
 	    assert(!strcmp(buf+4, "Encode: 3c6220633d227722"));
 	    assert(rval == 26);
 	    assert(buf[32] == '\n');
@@ -59,67 +64,67 @@ test(char** tname)
 
 	    /** should chop off last full char despite being able to fit the first byte **/
 	    /** 2 byte chars **/
-	    rval = qpfPrintf(session, buf+4, 36, "код: %STR&HEX", "Test тест"); /* fits */
+	    rval = qpfPrintf(NULL, buf+4, 36, "код: %STR&HEX", "Test тест"); /* fits */
 	    assert(strcmp(buf+4, "код: 5465737420d182d0b5d181d182") == 0);
 	    assert(rval == 34);
-	    assert(session->Errors == 0);
+	    assert(utf8Ses->Errors == 0);
             assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
-	    rval = qpfPrintf(session, buf+4, 36, "код: %STR&HEX", "Test: тест"); /* 1 byte over */
+	    rval = qpfPrintf(utf8Ses, buf+4, 36, "код: %STR&HEX", "Test: тест"); /* 1 byte over */
 	    assert(strcmp(buf+4, "код: 546573743a20d182d0b5d181") == 0);
 	    assert(rval == 36);
-	    assert(session->Errors == QPF_ERR_T_BUFOVERFLOW);
-	    session->Errors = 0;
+	    assert(utf8Ses->Errors == QPF_ERR_T_BUFOVERFLOW);
+	    utf8Ses->Errors = 0;
             assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 	    
 	    /** 3 byte chars **/
-	    rval = qpfPrintf(session, buf+4, 36, "编码: %STR&HEX", "Testing测试"); /* fits */
+	    rval = qpfPrintf(utf8Ses, buf+4, 36, "编码: %STR&HEX", "Testing测试"); /* fits */
 	    assert(strcmp(buf+4, "编码: 54657374696e67e6b58be8af95") == 0);
 	    assert(rval == 34);
-	    assert(session->Errors == 0);
+	    assert(utf8Ses->Errors == 0);
             assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
-	    rval = qpfPrintf(session, buf+4, 36, "编码: %STR&HEX", "Testing:测试"); /* 1 byte over */
+	    rval = qpfPrintf(utf8Ses, buf+4, 36, "编码: %STR&HEX", "Testing:测试"); /* 1 byte over */
 	    assert(strcmp(buf+4, "编码: 54657374696e673ae6b58b") == 0);
 	    assert(rval == 36);
-	    assert(session->Errors == QPF_ERR_T_BUFOVERFLOW);
-	    session->Errors = 0;
+	    assert(utf8Ses->Errors == QPF_ERR_T_BUFOVERFLOW);
+	    utf8Ses->Errors = 0;
             assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
-	    rval = qpfPrintf(session, buf+4, 36, "编码: %STR&HEX", "Testing: 测试"); /* 2 bytes over */
+	    rval = qpfPrintf(utf8Ses, buf+4, 36, "编码: %STR&HEX", "Testing: 测试"); /* 2 bytes over */
 	    assert(strcmp(buf+4, "编码: 54657374696e673a20e6b58b") == 0);
 	    assert(rval == 38);
-	    assert(session->Errors == QPF_ERR_T_BUFOVERFLOW);
-	    session->Errors = 0;
+	    assert(utf8Ses->Errors == QPF_ERR_T_BUFOVERFLOW);
+	    utf8Ses->Errors = 0;
             assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 
 	    /** 4 byte chars **/
-	    rval = qpfPrintf(session, buf+4, 36, "𓅅𓂀 %STR&HEX", "Test 𓁳𓀒"); /* fits */
+	    rval = qpfPrintf(utf8Ses, buf+4, 36, "𓅅𓂀 %STR&HEX", "Test 𓁳𓀒"); /* fits */
 	    assert(strcmp(buf+4, "𓅅𓂀 5465737420f09381b3f0938092") == 0);
 	    assert(rval == 35);
-	    assert(session->Errors == 0);
+	    assert(utf8Ses->Errors == 0);
             assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
-	    rval = qpfPrintf(session, buf+4, 36, "𓅅𓂀: %STR&HEX", "Test 𓁳𓀒"); /* 1 byte over */
+	    rval = qpfPrintf(utf8Ses, buf+4, 36, "𓅅𓂀: %STR&HEX", "Test 𓁳𓀒"); /* 1 byte over */
 	    assert(strcmp(buf+4, "𓅅𓂀: 5465737420f09381b3") == 0);
 	    assert(rval == 36);
-	    assert(session->Errors == QPF_ERR_T_BUFOVERFLOW);
-	    session->Errors = 0;
+	    assert(utf8Ses->Errors == QPF_ERR_T_BUFOVERFLOW);
+	    utf8Ses->Errors = 0;
             assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
-	    rval = qpfPrintf(session, buf+4, 36, "𓅅𓂀 %STR&HEX", "Test: 𓁳𓀒"); /* 2 bytes over */
+	    rval = qpfPrintf(utf8Ses, buf+4, 36, "𓅅𓂀 %STR&HEX", "Test: 𓁳𓀒"); /* 2 bytes over */
 	    assert(strcmp(buf+4, "𓅅𓂀 546573743a20f09381b3") == 0);
 	    assert(rval == 37);
-	    assert(session->Errors == QPF_ERR_T_BUFOVERFLOW);
-	    session->Errors = 0;
+	    assert(utf8Ses->Errors == QPF_ERR_T_BUFOVERFLOW);
+	    utf8Ses->Errors = 0;
             assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
-	    rval = qpfPrintf(session, buf+4, 36, "𓅅𓂀: %STR&HEX", "Test: 𓁳𓀒"); /* 3 bytes over */
+	    rval = qpfPrintf(utf8Ses, buf+4, 36, "𓅅𓂀: %STR&HEX", "Test: 𓁳𓀒"); /* 3 bytes over */
 	    assert(strcmp(buf+4, "𓅅𓂀: 546573743a20f09381b3") == 0);
 	    assert(rval == 38);
-	    assert(session->Errors == QPF_ERR_T_BUFOVERFLOW);
-	    session->Errors = 0;
+	    assert(utf8Ses->Errors == QPF_ERR_T_BUFOVERFLOW);
+	    utf8Ses->Errors = 0;
             assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 
-	    /** can split if no session **/
-	    rval = qpfPrintf(NULL, buf+4, 36, "код: %STR&HEX", "Test: тест"); /* cuts off 1 byte */
+	    /** can split if no enforce **/
+	    rval = qpfPrintf(asciiSes, buf+4, 36, "код: %STR&HEX", "Test: тест"); /* cuts off 1 byte */
 	    assert(strcmp(buf+4, "код: 546573743a20d182d0b5d181d1") == 0);
 	    assert(rval == 36);
-	    assert(session->Errors == 0);
+	    assert(asciiSes->Errors == QPF_ERR_T_BUFOVERFLOW); /* detects overflow, but allows split */
             assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR); /* invalid char is hex encoded, so passes */
 
 	    assert(buf[43] == '\n');
@@ -131,8 +136,8 @@ test(char** tname)
 	    assert(buf[1] == 0xff);
 	    assert(buf[0] == '\0');
 	    }
-
-	nmSysFree(session);
+	nmSysFree(asciiSes);
+	nmSysFree(utf8Ses);
     return iter*4;
     }
 

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "qprintf.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -14,8 +15,11 @@ test(char** tname)
     unsigned char buf[44];
     pQPSession session;
     session = nmSysMalloc(sizeof(QPSession));
-    session->Flags = QPF_F_ENFORCE_UTF8;
+    session->Flags = 0;
 
+	setlocale(0, "en_US.UTF-8");
+	qpfInitialize(); 
+	
 	*tname = "qprintf-12 %STR insertion in middle with overflow in STR";
 	setlocale(0, "en_US.UTF-8");
 	iter = 200000;
@@ -29,10 +33,10 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 36, "The overflow this is data word %STR is our......", "STRING");
-	    qpfPrintf(NULL, buf+4, 36, "The overflow this is data word %STR is our......", "STRING");
-	    qpfPrintf(NULL, buf+4, 36, "The overflow this is data word %STR is our......", "STRING");
-	    rval = qpfPrintf(NULL, buf+4, 36, "The overflow this is data word %STR is our......", "STRING");
+	    qpfPrintf(session, buf+4, 36, "The overflow this is data word %STR is our......", "STRING");
+	    qpfPrintf(session, buf+4, 36, "The overflow this is data word %STR is our......", "STRING");
+	    qpfPrintf(session, buf+4, 36, "The overflow this is data word %STR is our......", "STRING");
+	    rval = qpfPrintf(session, buf+4, 36, "The overflow this is data word %STR is our......", "STRING");
 	    assert(!strcmp(buf+4, "The overflow this is data word STRI"));
 	    assert(rval == 50);
 	    assert(buf[43] == '\n');
@@ -53,11 +57,11 @@ test(char** tname)
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
 
-	    rval = qpfPrintf(session, buf+4, 36, "起 地 。 आदि: %STR में परमेश्वर ने आकाश और पृथ्वी को बनाया", "Сотворил"); /* last char fits */
+	    rval = qpfPrintf(NULL, buf+4, 36, "起 地 。 आदि: %STR में परमेश्वर ने आकाश और पृथ्वी को बनाया", "Сотворил"); /* last char fits */
 	    assert(!strcmp(buf+4, "起 地 。 आदि: Сотвор"));
 	    assert(rval == 143);
 
-	    rval = qpfPrintf(session, buf+4, 36, "起 地 。 आदि:  %STR में परमेश्वर ने आकाश और पृथ्वी को बनाया", "Сотворил"); /* cut off р */
+	    rval = qpfPrintf(NULL, buf+4, 36, "起 地 。 आदि:  %STR में परमेश्वर ने आकाश और पृथ्वी को बनाया", "Сотворил"); /* cut off р */
 	    assert(!strcmp(buf+4, "起 地 。 आदि:  Сотво"));
 	    assert(rval == 144);
 

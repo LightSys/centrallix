@@ -6,6 +6,7 @@
 #include "qprintf.h"
 #include <assert.h>
 #include "util.h"
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -15,9 +16,11 @@ test(char** tname)
     unsigned char buf[44];
 	pQPSession session;
 	session = nmSysMalloc(sizeof(QPSession));
-	session->Flags = QPF_F_ENFORCE_UTF8;
-    setlocale(0, "en_US.UTF-8");
+	session->Flags = 0;
 
+	setlocale(0, "en_US.UTF-8");
+	qpfInitialize(); 
+	
 	*tname = "qprintf-46 %STR&HEX&NLEN in middle, insert overflow(1)";
 	iter = 100000;
 	for(i=0;i<iter;i++)
@@ -32,10 +35,10 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 27, "Enc: %STR&HEX&17LEN...", "<b c=\"w\">");
-	    qpfPrintf(NULL, buf+4, 27, "Enc: %STR&HEX&17LEN...", "<b c=\"w\">");
-	    qpfPrintf(NULL, buf+4, 27, "Enc: %STR&HEX&17LEN...", "<b c=\"w\">");
-	    rval = qpfPrintf(NULL, buf+4, 27, "Enc: %STR&HEX&17LEN...", "<b c=\"w\">");
+	    qpfPrintf(session, buf+4, 27, "Enc: %STR&HEX&17LEN...", "<b c=\"w\">");
+	    qpfPrintf(session, buf+4, 27, "Enc: %STR&HEX&17LEN...", "<b c=\"w\">");
+	    qpfPrintf(session, buf+4, 27, "Enc: %STR&HEX&17LEN...", "<b c=\"w\">");
+	    rval = qpfPrintf(session, buf+4, 27, "Enc: %STR&HEX&17LEN...", "<b c=\"w\">");
 	    assert(!strcmp(buf+4, "Enc: 3c6220633d227722..."));
 	    assert(rval == 24);
 	    assert(buf[31] == '\n');
@@ -53,8 +56,8 @@ test(char** tname)
 
 		/** UTF-8 **/
             
-            qpfPrintf(session, buf+4, 27, "编: %STR&HEX&17LEN...", "<b c=\"w\">");
-	    rval = qpfPrintf(session, buf+4, 27, "编: %STR&HEX&17LEN...", "<b c=\"w\">");
+            qpfPrintf(NULL, buf+4, 27, "编: %STR&HEX&17LEN...", "<b c=\"w\">");
+	    rval = qpfPrintf(NULL, buf+4, 27, "编: %STR&HEX&17LEN...", "<b c=\"w\">");
 	    assert(strcmp(buf+4, "编: 3c6220633d227722...") == 0);
 	    assert(rval == 24);
 

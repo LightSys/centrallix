@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "qprintf.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -13,9 +14,12 @@ test(char** tname)
     int iter;
     pQPSession session;
     session = nmSysMalloc(sizeof(QPSession));
-    session->Flags = QPF_F_ENFORCE_UTF8;
+    session->Flags = 0;
     unsigned char buf[44];
-    setlocale(0, "en_US.UTF-8");
+
+	setlocale(0, "en_US.UTF-8");
+	qpfInitialize(); 
+	
 
 	*tname = "qprintf-59 %STR&PATH various invalid pathnames";
 	iter = 100000;
@@ -29,24 +33,24 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH/name", "one/../two");
+	    rval = qpfPrintf(session, buf+4, 31, "/path/%STR&PATH/name", "one/../two");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH/name", "..");
+	    rval = qpfPrintf(session, buf+4, 31, "/path/%STR&PATH/name", "..");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH/name", "../one");
+	    rval = qpfPrintf(session, buf+4, 31, "/path/%STR&PATH/name", "../one");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH/name", "one/..");
+	    rval = qpfPrintf(session, buf+4, 31, "/path/%STR&PATH/name", "one/..");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH/name", "/..");
+	    rval = qpfPrintf(session, buf+4, 31, "/path/%STR&PATH/name", "/..");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH/name", "../");
+	    rval = qpfPrintf(session, buf+4, 31, "/path/%STR&PATH/name", "../");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH/name", "/../");
+	    rval = qpfPrintf(session, buf+4, 31, "/path/%STR&PATH/name", "/../");
 	    assert(rval < 0);
 	    /** utf-8 **/
-	    rval = qpfPrintf(session, buf+4, 31, "/path/%STR&PATH/name", "test\xFF");
+	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH/name", "test\xFF");
 	    assert(rval < 0);
-	    rval = qpfPrintf(session, buf+4, 31, "/path/%STR&PATH/name", "Γειά σο\xCF");
+	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH/name", "Γειά σο\xCF");
 	    assert(rval < 0);
 	    assert(buf[25] == '\n');
 	    assert(buf[24] == '\0');

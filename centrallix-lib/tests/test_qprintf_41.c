@@ -6,6 +6,7 @@
 #include "qprintf.h"
 #include <assert.h>
 #include "util.h"
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -15,9 +16,11 @@ test(char** tname)
     unsigned char buf[44];
     pQPSession session;
     session = nmSysMalloc(sizeof(QPSession));
-    session->Flags = QPF_F_ENFORCE_UTF8;
-    setlocale(0, "en_US.UTF-8");
+    session->Flags = 0;
 
+	setlocale(0, "en_US.UTF-8");
+	qpfInitialize(); 
+	
 	*tname = "qprintf-41 %STR&HEX in middle, no overflows";
 	iter = 100000;
 	for(i=0;i<iter;i++)
@@ -30,10 +33,10 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 36, "Encode: '%STR&HEX'.", "<b c=\"w\">");
-	    qpfPrintf(NULL, buf+4, 36, "Encode: '%STR&HEX'.", "<b c=\"w\">");
-	    qpfPrintf(NULL, buf+4, 36, "Encode: '%STR&HEX'.", "<b c=\"w\">");
-	    rval = qpfPrintf(NULL, buf+4, 36, "Encode: '%STR&HEX'.", "<b c=\"w\">");
+	    qpfPrintf(session, buf+4, 36, "Encode: '%STR&HEX'.", "<b c=\"w\">");
+	    qpfPrintf(session, buf+4, 36, "Encode: '%STR&HEX'.", "<b c=\"w\">");
+	    qpfPrintf(session, buf+4, 36, "Encode: '%STR&HEX'.", "<b c=\"w\">");
+	    rval = qpfPrintf(session, buf+4, 36, "Encode: '%STR&HEX'.", "<b c=\"w\">");
 	    assert(!strcmp(buf+4, "Encode: '3c6220633d2277223e'."));
 	    assert(rval == 29);
 	    assert(buf[36] == '\n');
@@ -48,7 +51,7 @@ test(char** tname)
 	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 
 	    /* UTF-8 */
-	    rval = qpfPrintf(session, buf+4, 36, "编码 %STR&HEX.", "<编=\"w\">"); // €
+	    rval = qpfPrintf(NULL, buf+4, 36, "编码 %STR&HEX.", "<编=\"w\">"); // €
 	    assert(strcmp(buf+4, "编码 3ce7bc963d2277223e.") == 0); // 3c62205c22e282ac5c223e
 	    assert(rval == 26);
 	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);

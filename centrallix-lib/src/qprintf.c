@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdint.h>
+#include <locale.h>
 #include "qprintf.h"
 #include "mtask.h"
 #include "newmalloc.h"
@@ -182,21 +183,12 @@ typedef struct
     QPConvTable	cssurl_matrix;
     QPConvTable	dsyb_matrix;
     QPConvTable	ssyb_matrix;
+    int default_flags;
     }
     QPF_t;
     
 static QPF_t QPF = { n_ext:0, is_init:0 };
 
-/*** qprInitialize() - used to initialize the global flags like a 
- *** driver would. However, qpf is NOT an os driver.
- ***/
-void
-qprInitialize(int isUTF8)
-    {
-	if(isUTF8) QPF_FLAGS.Flags = QPF_F_ENFORCE_UTF8;
-	else QPF_FLAGS.Flags = 0;
-	return;
-	}
 
 int
 qpf_internal_FindStr(const char* haystack, size_t haystacklen, const char* needle, size_t needlelen)
@@ -241,6 +233,8 @@ qpf_internal_SetupTable(pQPConvTable table)
 
 
 /*** qpfInitialize() - inits the QPF suite.
+ *** The parameter determines if the global default is to assume UTF-8
+ *** or not. This can be overwritten with a session. 
  ***/
 int
 qpfInitialize()
@@ -248,6 +242,20 @@ qpfInitialize()
     int i;
     char buf[4];
     char hex[] = "0123456789abcdef";
+    char * locale;
+    int isUTF8;
+
+	/** set up default flags **/
+	QPF.default_flags = 0;
+
+	/** init UTF-8 flag **/
+	locale = setlocale(LC_CTYPE, NULL); 
+	isUTF8 = (locale != NULL && (strstr(locale, "utf8") || strstr(locale, "UTF8") || strstr(locale, "utf-8") 
+					|| strstr(locale, "UTF-8")));
+	if(isUTF8) QPF.default_flags |= QPF_F_ENFORCE_UTF8;
+
+
+	/** init tables */
 
 	memset(&QPF.quote_matrix, 0, sizeof(QPF.quote_matrix));
 	QPF.quote_matrix.Matrix['\''] = "\\'";
@@ -447,7 +455,7 @@ qpfOpenSession()
 	s = (pQPSession)nmMalloc(sizeof(QPSession));
 	if (!s) return NULL;
 	s->Errors = 0;
-	s->Flags = QPF_FLAGS.Flags;
+	s->Flags = QPF.default_flags;
     return s;
     }
 
@@ -1052,6 +1060,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 	if (!s)
 	    {
 	    null_session.Errors = 0;
+	    null_session.Flags = QPF.default_flags;
 	    s=&null_session;
 	    }
 

@@ -6,6 +6,7 @@
 #include "qprintf.h"
 #include <assert.h>
 #include "util.h"
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -15,9 +16,11 @@ test(char** tname)
     unsigned char buf[44];
     pQPSession session;
     session = nmSysMalloc(sizeof(QPSession));
-    session->Flags = QPF_F_ENFORCE_UTF8;
-    setlocale(0, "en_US.UTF-8");
+    session->Flags = 0;
 
+	setlocale(0, "en_US.UTF-8");
+	qpfInitialize(); 
+	
 	*tname = "qprintf-39 %STR&HTE&NLEN in middle, len 1 less";
 	iter = 100000;
 	for(i=0;i<iter;i++)
@@ -30,9 +33,9 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 36, "HTML: '%STR&HTE&24LEN'.", "<b c=\"w\">");
-	    qpfPrintf(NULL, buf+4, 36, "HTML: '%STR&HTE&24LEN'.", "<b c=\"w\">");
-	    qpfPrintf(NULL, buf+4, 36, "HTML: '%STR&HTE&24LEN'.", "<b c=\"w\">");
+	    qpfPrintf(session, buf+4, 36, "HTML: '%STR&HTE&24LEN'.", "<b c=\"w\">");
+	    qpfPrintf(session, buf+4, 36, "HTML: '%STR&HTE&24LEN'.", "<b c=\"w\">");
+	    qpfPrintf(session, buf+4, 36, "HTML: '%STR&HTE&24LEN'.", "<b c=\"w\">");
 	    rval = qpfPrintf(NULL, buf+4, 36, "HTML: '%STR&HTE&24LEN'.", "<b c=\"w\">");
 	    assert(!strcmp(buf+4, "HTML: '&lt;b c=&quot;w&quot;'."));
 	    assert(rval == 30);
@@ -48,11 +51,11 @@ test(char** tname)
 	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 
 	    /* UTF-8 */
-	    rval = qpfPrintf(session, buf+4, 36, "超: '%STR&HTE&26LEN'.", "<b c=\"€\">"); /* no char split */
+	    rval = qpfPrintf(NULL, buf+4, 36, "超: '%STR&HTE&26LEN'.", "<b c=\"€\">"); /* no char split */
 	    assert(strcmp(buf+4, "超: '&lt;b c=&quot;€&quot;'.") == 0);
 	    assert(rval == 31);
 	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
-	    rval = qpfPrintf(session, buf+4, 36, "超: '%STR&HTE&26LEN'.", "<b c=\"€\".超>"); /* char split */
+	    rval = qpfPrintf(NULL, buf+4, 36, "超: '%STR&HTE&26LEN'.", "<b c=\"€\".超>"); /* char split */
 	    assert(strcmp(buf+4, "超: '&lt;b c=&quot;€&quot;.'.") == 0);
 	    assert(rval == 32);
 	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);

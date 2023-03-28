@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <errno.h>
 #include "util.h"
+#include <locale.h>
 
 long long
 test(char** tname)

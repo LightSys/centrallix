@@ -41,11 +41,6 @@ typedef struct _QPS
     }
     QPSession, *pQPSession;
 
-typedef struct _QPS_GLOBAL
-    {
-    unsigned int    Flags;
-    }
-    QPGlobal, *pQPGlobal;
 
 #define QPF_F_ENFORCE_UTF8  1 /* use UTF-8 validation */
 
@@ -67,11 +62,9 @@ typedef struct _QPS_GLOBAL
 
 #define QPERR(x) (s->Errors |= (x))
 
-/*** Global struct ***/
-QPGlobal QPF_FLAGS;
 
 /*** QPrintf methods ***/
-void qprInitialize(int isUTF8);
+void qpfInitializeDefaultFlags(int isUTF8);
 pQPSession qpfOpenSession();
 pQPSession qpfOpenSessionFlags(unsigned int flags);
 int qpfCloseSession(pQPSession s);

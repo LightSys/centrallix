@@ -4,7 +4,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include "qprintf.h"
+#include "util.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -14,8 +16,10 @@ test(char** tname)
     unsigned char buf[44];
     pQPSession session;
     session = nmSysMalloc(sizeof(QPSession));
-    session->Flags = QPF_F_ENFORCE_UTF8;
+    session->Flags = 0;
+    
     setlocale(0, "en_US.UTF-8");
+    qpfInitialize(); 
 
     *tname = "qprintf-72 test b64 and hex decode with invalid UTF-8 bytes";
     iter = 200000;
@@ -31,15 +35,17 @@ test(char** tname)
         buf[0] = '\0';
 
         /** no session **/
-        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "their, %STR&DHEX, and they're", "7468657265FF"); 
+        rval = qpfPrintf(session, (char*)(buf+4), 36, "their, %STR&DHEX, and they're", "7468657265FF"); 
         assert(rval == 26);
         assert(0 == strcmp(buf+4, "their, there\xFF, and they're"));
 
-        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "their, %STR&DB64, and they're", "dGhlcmX/"); 
+        rval = qpfPrintf(session, (char*)(buf+4), 36, "their, %STR&DB64, and they're", "dGhlcmX/"); 
         assert(rval == 26);
         assert(0 == strcmp(buf+4, "their, there\xFF, and they're"));
 
         /** with session **/
+	session->Flags = QPF_F_ENFORCE_UTF8;
+	
         rval = qpfPrintf(session, (char*)(buf+4), 36, "their, %STR&DHEX, and they're", "7468657265FF"); 
         assert(rval < 0);
         assert(strcmp(buf+4, "their, ") == 0); /* confirm failed in decode **/
@@ -62,17 +68,19 @@ test(char** tname)
         assert(buf[0] == '\0');
 
         /** test again with more utf8 **/
-        /** no session **/
+        /** no enforce utf8 check **/
         /* ជខ្សែអក្សរ இது ΣEIPA */
-        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "អក្សរ %STR&DHEX ΣEIPA", "e0ae87e0aea4e0af81ff"); 
+	session->Flags = 0;
+        rval = qpfPrintf(session, (char*)(buf+4), 36, "អក្សរ %STR&DHEX ΣEIPA", "e0ae87e0aea4e0af81ff"); 
         assert(rval == 33);
         assert(0 == strcmp(buf+4, "អក្សរ இது\xFF ΣEIPA"));
 
-        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "អក្សរ %STR&DB64 ΣEIPA", "4K6H4K6k4K+B/w=="); 
+        rval = qpfPrintf(session, (char*)(buf+4), 36, "អក្សរ %STR&DB64 ΣEIPA", "4K6H4K6k4K+B/w=="); 
         assert(rval == 33);
         assert(0 == strcmp(buf+4, "អក្សរ இது\xFF ΣEIPA"));
 
-        /** with session **/
+        /** with uf8 check **/
+	session->Flags = QPF_F_ENFORCE_UTF8;
         rval = qpfPrintf(session, (char*)(buf+4), 36, "អក្សរ %STR&DHEX ΣEIPA", "e0ae87e0aea4e0af81ff"); 
         assert(rval < 0);
         assert(strcmp(buf+4, "អក្សរ ") == 0); /* confirm failed in decode **/
@@ -93,6 +101,8 @@ test(char** tname)
         assert(buf[2] == '\0');
         assert(buf[1] == 0xff);
         assert(buf[0] == '\0');
+
+	session->Flags = 0;
         }
 
     nmSysFree(session);

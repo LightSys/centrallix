@@ -428,10 +428,7 @@ cxInitialize(void* v)
 	cxssInitialize();
 
 	/** init qprintf **/
-	char * locale = setlocale(LC_CTYPE, NULL); 
-	int isUTF8 = (locale != NULL && (strstr(locale, "utf8") || strstr(locale, "UTF8") || strstr(locale, "utf-8") 
-					|| strstr(locale, "UTF-8")));
-	qpfInitialize(isUTF8); 
+	qpfInitialize(); 
 
 	/** Init the session handler.  We have to extract the config data for this 
 	 ** module ourselves, because mtsession is in the centrallix-lib, and thus can't

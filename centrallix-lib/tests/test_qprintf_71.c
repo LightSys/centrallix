@@ -6,6 +6,7 @@
 #include "qprintf.h"
 #include <assert.h>
 #include "util.h"
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -15,8 +16,10 @@ test(char** tname)
     unsigned char buf[44];
     pQPSession session;
     session = nmSysMalloc(sizeof(QPSession));
-    session->Flags = QPF_F_ENFORCE_UTF8;
+    session->Flags = 0;
+    
     setlocale(0, "en_US.UTF-8");
+    qpfInitialize(); 
 
     *tname = "qprintf-71 %STR&HEXD overflow test decode hex";
     iter = 200000;
@@ -32,29 +35,29 @@ test(char** tname)
         buf[0] = '\0';
 
         /** short test **/
-        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "their, %STR&DHEX, and they're", 
+        rval = qpfPrintf(session, (char*)(buf+4), 36, "their, %STR&DHEX, and they're", 
             "7468657265"); 
         assert(rval == 25);
         assert(0 == strcmp(buf+4, "their, there, and they're"));
         /** max len that fits in 36 **/
-        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "|%STR&DHEX|",  
+        rval = qpfPrintf(session, (char*)(buf+4), 36, "|%STR&DHEX|",  
             "41206C6F6E672074696D652061676F20696E20612067616C617879206661722066"); 
         assert(rval == 35);
         assert(0 == strcmp(buf+4, "|A long time ago in a galaxy far f|"));
         /** too long **/
-        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "||%STR&DHEX", 
+        rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&DHEX", 
             "41206C6F6E672074696D652061676F20696E20612067616C61787920666172206661"); 
         assert(rval < 0);
         /** make sure NULL's are caught **/
-        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "||%STR&DHEX", 
+        rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&DHEX", 
             "41206C6F6E6\000A72074696D652061676F20696E20612067616C617879"); 
         assert(rval < 0);
         /** odd number of characters **/
-        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "||%STR&DHEX", 
+        rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&DHEX", 
             "41206C6F6E672074696D652061676F20696E20612067616C617879A"); 
         assert(rval < 0);
         /** non-hex char  **/
-        rval = qpfPrintf(NULL, (char*)(buf+4), 36, "||%STR&DHEX", 
+        rval = qpfPrintf(session, (char*)(buf+4), 36, "||%STR&DHEX", 
             "41206C6F6E672074696D652061H76F20696E20612067616C617879A"); 
         assert(rval < 0);
 
@@ -68,6 +71,8 @@ test(char** tname)
         assert(buf[0] == '\0');
 
         /* basic UTF-8 */
+	session->Flags = QPF_F_ENFORCE_UTF8;
+	session->Errors = 0;
         rval = qpfPrintf(session, (char*)(buf+4), 36, "%STR&DHEX", "e0ae9ae0af8be0aea4e0aea9e0af88");
         assert(rval == 15);
         assert(strcmp(buf+4, "சோதனை") == 0);
@@ -91,6 +96,7 @@ test(char** tname)
         assert(buf[0] == '\0');
 
         session->Errors = 0;
+	session->Flags = 0;
         }
 
     nmSysFree(session);

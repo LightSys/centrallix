@@ -6,6 +6,7 @@
 #include "qprintf.h"
 #include <assert.h>
 #include "util.h"
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -15,8 +16,11 @@ test(char** tname)
     unsigned char buf[44];
     pQPSession session;
     session = nmSysMalloc(sizeof(QPSession));
-    session->Flags = QPF_F_ENFORCE_UTF8;
+    session->Flags = 0;
 
+	setlocale(0, "en_US.UTF-8");
+	qpfInitialize(); 
+	
 	*tname = "qprintf-02 constant string with truncation, qpfPrintf()";
 	setlocale(0, "en_US.UTF-8");
 	iter = 200000;
@@ -31,10 +35,10 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 36, "this is a string non-overflow test.... NOT!");
-	    qpfPrintf(NULL, buf+4, 36, "this is a string non-overflow test.... NOT!");
-	    qpfPrintf(NULL, buf+4, 36, "this is a string non-overflow test.... NOT!");
-	    qpfPrintf(NULL, buf+4, 36, "this is a string non-overflow test.... NOT!");
+	    qpfPrintf(session, buf+4, 36, "this is a string non-overflow test.... NOT!");
+	    qpfPrintf(session, buf+4, 36, "this is a string non-overflow test.... NOT!");
+	    qpfPrintf(session, buf+4, 36, "this is a string non-overflow test.... NOT!");
+	    qpfPrintf(session, buf+4, 36, "this is a string non-overflow test.... NOT!");
 	    assert(!strcmp(buf+4,"this is a string non-overflow test."));
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
@@ -56,7 +60,7 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(session, buf+4, 36, "В Начале Сотворил Бог Небо И Землю.");
+	    qpfPrintf(NULL, buf+4, 36, "В Начале Сотворил Бог Небо И Землю.");
 	    assert(!strcmp(buf+4,"В Начале Сотворил Б"));
 	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
 	    assert(buf[43] == '\n');

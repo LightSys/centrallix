@@ -6,6 +6,7 @@
 #include <errno.h>
 #include "qprintf.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -16,8 +17,11 @@ test(char** tname)
     unsigned char buf[44];
     pQPSession session;
     session = nmSysMalloc(sizeof(QPSession));
-    session->Flags = QPF_F_ENFORCE_UTF8;
+    session->Flags = 0;
 
+	setlocale(0, "en_US.UTF-8");
+	qpfInitialize(); 
+	
 	*tname = "qprintf-05 constant string into 0-sized buf using qpfPrintf()";
 	setlocale(0, "en_US.UTF-8");
 	iter = 200000;
@@ -34,10 +38,10 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 0, "this is a string overflow test.");
-	    qpfPrintf(NULL, buf+4, 0, "this is a string overflow test.");
-	    qpfPrintf(NULL, buf+4, 0, "this is a string overflow test.");
-	    qpfPrintf(NULL, buf+4, 0, "this is a string overflow test.");
+	    qpfPrintf(session, buf+4, 0, "this is a string overflow test.");
+	    qpfPrintf(session, buf+4, 0, "this is a string overflow test.");
+	    qpfPrintf(session, buf+4, 0, "this is a string overflow test.");
+	    qpfPrintf(session, buf+4, 0, "this is a string overflow test.");
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);
@@ -62,7 +66,7 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(session, buf+4, 0, "起 初 ， 神 創 造 天 地 。");
+	    rval = qpfPrintf(NULL, buf+4, 0, "起 初 ， 神 創 造 天 地 。");
 	    assert(rval == -EINVAL);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');

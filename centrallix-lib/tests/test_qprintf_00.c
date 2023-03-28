@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "qprintf.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -15,7 +16,10 @@ test(char** tname)
     session = nmSysMalloc(sizeof(QPSession));
     session->Flags = QPF_F_ENFORCE_UTF8;
     unsigned char buf[44];
-
+    
+	setlocale(0, "en_US.UTF-8");
+	qpfInitialize(); 
+	
 	*tname = "qprintf-00 constant string using snprintf()";
 	setlocale(0, "en_US.UTF-8");
 	iter = 2000000;

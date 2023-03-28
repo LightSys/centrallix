@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "qprintf.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -14,8 +15,11 @@ test(char** tname)
     unsigned char buf[39];
     pQPSession session;
 	session = nmSysMalloc(sizeof(QPSession));
-	session->Flags = QPF_F_ENFORCE_UTF8;
+	session->Flags = 0;
 
+	setlocale(0, "en_US.UTF-8");
+	qpfInitialize(); 
+	
     *tname = "qprintf-66 %LL insertion in middle without overflow";
     iter = 200000;
     for(i=0;i<iter;i++)
@@ -33,10 +37,10 @@ test(char** tname)
         //Test value > INT_MAX
         long long testNum = 2200000000ll;
 
-        qpfPrintf(NULL, buf + 4, 36, "Here is the ll: %LL...", testNum);
-        qpfPrintf(NULL, buf+4, 36, "Here is the ll: %LL...", testNum);
-        qpfPrintf(NULL, buf+4, 36, "Here is the ll: %LL...", testNum);
-        rval = qpfPrintf(NULL, buf+4, 36, "Here is the ll: %LL...", testNum);
+        qpfPrintf(session, buf + 4, 36, "Here is the ll: %LL...", testNum);
+        qpfPrintf(session, buf+4, 36, "Here is the ll: %LL...", testNum);
+        qpfPrintf(session, buf+4, 36, "Here is the ll: %LL...", testNum);
+        rval = qpfPrintf(session, buf+4, 36, "Here is the ll: %LL...", testNum);
 
         assert(!strcmp(buf+4, "Here is the ll: 2200000000..."));
         //For the long long case, rval will be set to the return value of snprintf, i.e. length of string

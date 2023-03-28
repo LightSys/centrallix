@@ -6,6 +6,7 @@
 #include "qprintf.h"
 #include <assert.h>
 #include "util.h"
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -15,8 +16,11 @@ test(char** tname)
     unsigned char buf[44];
     pQPSession session;
     session = nmSysMalloc(sizeof(QPSession));
-    session->Flags = QPF_F_ENFORCE_UTF8;
+    session->Flags = 0;
 
+	setlocale(0, "en_US.UTF-8");
+	qpfInitialize(); 
+	
 	*tname = "qprintf-08 %STR insertion at end without overflow";
 	setlocale(0, "en_US.UTF-8");
 	iter = 200000;
@@ -30,7 +34,7 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(NULL, buf+4, 36, "This is our data: %STR", "STRING");
+	    rval = qpfPrintf(session, buf+4, 36, "This is our data: %STR", "STRING");
 	    assert(!strcmp(buf+4, "This is our data: STRING"));
 	    assert(rval == 24);
 	    assert(buf[43] == '\n');
@@ -51,9 +55,9 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(session, buf+4, 36, "起 地 。%STR", "Сотворил");
-	    qpfPrintf(session, buf+4, 36, "起 地 。%STR", "Сотворил");
-	    qpfPrintf(session, buf+4, 36, "起 地 。%STR", "Сотворил");
+	    qpfPrintf(NULL, buf+4, 36, "起 地 。%STR", "Сотворил");
+	    qpfPrintf(NULL, buf+4, 36, "起 地 。%STR", "Сотворил");
+	    qpfPrintf(NULL, buf+4, 36, "起 地 。%STR", "Сотворил");
 	    rval = qpfPrintf(NULL, buf+4, 36, "起 地 。%STR", "Сотворил");
 	    assert(!strcmp(buf+4, "起 地 。Сотворил"));
 	    assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);

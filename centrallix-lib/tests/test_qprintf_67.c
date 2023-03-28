@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "qprintf.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -14,8 +15,11 @@ test(char** tname)
     unsigned char buf[44];
     pQPSession session;
     session = nmSysMalloc(sizeof(QPSession));
-    session->Flags = QPF_F_ENFORCE_UTF8;
-    setlocale(0, "en_US.UTF-8");
+    session->Flags = 0;
+
+	setlocale(0, "en_US.UTF-8");
+	qpfInitialize(); 
+	
     
 	*tname = "qprintf-67 %STR&DHEX integrity test";
 	iter = 200000;
@@ -29,32 +33,32 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "4142434D4E4F#");
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DHEX", "4142434D4E4F#");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "414243#4D4E4F");
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DHEX", "414243#4D4E4F");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "41424#34D4E4F");
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DHEX", "41424#34D4E4F");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "#4142434D4E4F");
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DHEX", "#4142434D4E4F");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "4142434D4E4");
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DHEX", "4142434D4E4");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "4142434D4E4F");
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DHEX", "4142434D4E4F");
 	    assert(strcmp(buf+4,"ABCMNO") == 0);
 	    assert(rval == 6);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "4142434d4e4f");
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DHEX", "4142434d4e4f");
 	    assert(strcmp(buf+4,"ABCMNO") == 0);
 	    assert(rval == 6);
 
 	    /** make sure valid utf-8 with invalid chars fails **/
-	    rval = qpfPrintf(session, buf+4, 36, "%STR&DHEX", "4142434d4e4fff");
-	    assert(rval < 0);
-	    rval = qpfPrintf(session, buf+4, 36, "%STR&DHEX", "4142ff434d4e4f");
-	    assert(rval < 0);
-	    /** without session, will pass **/
 	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "4142434d4e4fff");
-	    assert(rval == 7);
+	    assert(rval < 0);
 	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "4142ff434d4e4f");
+	    assert(rval < 0);
+	    /** without session flag set, will pass **/
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DHEX", "4142434d4e4fff");
+	    assert(rval == 7);
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DHEX", "4142ff434d4e4f");
 	    assert(rval == 7);
 
 	    assert(buf[43] == '\n');
