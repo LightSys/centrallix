@@ -708,7 +708,26 @@ prt_textlm_WordWrap(pPrtObjStream area, pPrtObjStream* curobj)
 int
 prt_textlm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_width, double req_height, pPrtObjStream *new_container)
     {
-    /** For now, do not allow any resizing. **/
+    double delta;
+    double container_room;
+
+	/** Width resize?  Not yet supported. **/
+	if (req_width != child->Width)
+	    return -1;
+
+	/** Fits already? **/
+	delta = req_height - child->Height;
+	container_room = prtInnerHeight(this) - (this->ContentTail->Height + this->ContentTail->Y + delta);
+	if (container_room >= 0.0)
+	    return 0;
+
+	/** Can we resize ourselves? **/
+	if (this->LayoutMgr->Resize(this, this->Width, this->Height + (0.0 - container_room)) >= 0)
+	    {
+	    /** Our resize succeeded - allow child resize. **/
+	    return 0;
+	    }
+	
     return -1;
     }
 
@@ -721,7 +740,20 @@ prt_textlm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wi
 int
 prt_textlm_ChildResized(pPrtObjStream this, pPrtObjStream child, double old_width, double old_height)
     {
-    return -1;
+    pPrtObjStream nextchild;
+    double delta;
+
+	/** Update Y values for all items after resized child **/
+	delta = child->Height - old_height;
+	nextchild = child->Next;
+	while (nextchild)
+	    {
+	    if (nextchild->Y > child->Y)
+		nextchild->Y += delta;
+	    nextchild = nextchild->Next;
+	    }
+
+    return 0;
     }
 
 
