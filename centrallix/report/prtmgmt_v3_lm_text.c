@@ -89,16 +89,7 @@ prt_textlm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 	    {
 	    /** Duplicate the object... without the content. **/
 	    new_object = prt_internal_AllocObjByID(this->ObjType->TypeID);
-	    /*prt_internal_CopyAttrs(this, new_object);
-	    prt_internal_CopyGeom(this, new_object);
-	    new_object->Height = this->ConfigHeight;
-	    new_object->Width = this->ConfigWidth;
-	    new_object->Session = this->Session;
-	    new_object->Flags = this->Flags;*/
 	    new_object = prt_internal_Duplicate(this,0);
-
-	    /** Init the new object. **/
-	    /*new_object->LayoutMgr->InitContainer(new_object, this->LMData, NULL);*/
 
 	    /** Update the handle so that later adds go to the correct place. **/
 	    prtUpdateHandleByPtr(this, new_object);
@@ -890,7 +881,6 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		y = this->ContentTail->Y;
 		if (objptr->YBase > 0)
 		    {
-		    //y = this->ContentTail->Y + this->ContentTail->YBase - objptr->YBase;
 		    for(search=this->ContentTail; search; search=search->Prev)
 			{
 			if (search->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE))
