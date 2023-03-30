@@ -39,7 +39,10 @@ and data wherever it may occur.  This is provided as a separate
 package since it has dependencies on particular versions of the
 libxml library.  This way, more users can make use of the prebuilt
 RPM files (albeit without XML support if their XML version does
-not match).
+not match). Note that versions of the library prior to 2.9.13 have 
+trouble parsing UTF-16 text when characters are split by read boundaries. 
+See this issue for a detailed look at the bug: 
+https://gitlab.gnome.org/GNOME/libxml2/-/issues/458
 
 %package mysql
 Summary: The MySQL ObjectSystem Driver

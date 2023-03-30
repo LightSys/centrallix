@@ -817,8 +817,9 @@ uxdDelete(pObject obj, pObjTrxTree* oxt)
 
 
 /*** uxdRead - read from a file.  Fails on a directory.
- *** NOTE: unlike many drivers, the content read is NOT
- *** UTF-8 validated
+ *** WARNING: unlike many drivers, the content read is NOT
+ *** UTF-8 validated. It is too low level to know if it 
+ *** is text. 
  ***/
 int
 uxdRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
@@ -917,6 +918,8 @@ uxdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 
 
 /*** uxdQueryFetch - get the next directory entry as an open object.
+ *** NOTE: because invalid UTF-8 is not returned, files with invalid
+ *** UTF-8 in their names are hidden
  ***/
 void*
 uxdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)

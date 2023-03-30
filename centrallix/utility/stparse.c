@@ -1696,7 +1696,7 @@ stFreeInf_ne(pStruct this)
 		{
 		if (this == this->Parent->SubInf[i])
 		    {
-		    for(j=0;j<this->Parent->nSubInf-1;j++)
+		    for(j=i;j<this->Parent->nSubInf-1;j++)
 			{
 			this->Parent->SubInf[j] = this->Parent->SubInf[j+1];
 			}

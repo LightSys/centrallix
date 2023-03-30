@@ -484,7 +484,10 @@ xml_internal_ReadDoc(pObject obj)
 	if(!pCache->document)
 	    {
 #ifndef USE_LIBXML1
-	    xmlKeepBlanksDefault (0);
+	    /** FIXME: this xmlKeepBlanksDefault can be problematic depending on where read boundaries land. 
+	     ** See this issue: https://gitlab.gnome.org/GNOME/libxml2/-/issues/459 
+	     **/
+	    xmlKeepBlanksDefault (0); 
 	    xmlLineNumbersDefault(1);
 #endif
 	    /** parse the document **/

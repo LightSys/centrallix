@@ -877,7 +877,7 @@ shlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
     i+= inf->vLen; /* update i to be correct */
 
     /** check the new input to make sure everything is in a valid state **/
-    if((ind = nVerifyUTF8(buffer, i)) != UTIL_VALID_CHAR)
+    if((ind = nVerifyUTF8(buffer, i)) != UTIL_VALID_CHAR) /** TODO: this may not be needed; could be something besides text **/
         {
         if(i - ind <= 3) /* if error is in last 3 bytes, store for later */
 	    {

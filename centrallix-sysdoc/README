@@ -56,6 +56,9 @@ The API for interacting with Object Sessions has two fundemental protocols for i
 ### Traversing Object System like a filesystem
 The only difference between using the OS and using a filesystem is that the OSML can 'change directories' into an actual file (unlike a filesystem). For example, if the current directory is a file on the HDD that contains the file 'records.csv', one can change the 'current directory' to be records.csv -- where there user can then 'cd' into either 'rows' or 'columns', and from there the user can 'ls' in order to view all the rows/columns.
 
+It is also worth noting that because most input coming into the object system is validated, files or file sub-objects containing invalid 
+UTF-8 in their names will be hidden. 
+
 The C API for how developers use the Object System is currently found in centrallix/include/obj.h (and there might be another file somewhere that also contains C functions for interacting with the ObjSys).
 
 #### ObjSys-path (ObjSys-pathname)
