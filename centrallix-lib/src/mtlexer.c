@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <locale.h>
 #include "newmalloc.h"
 #include "mtask.h"
 #include "mtlexer.h"
@@ -43,6 +44,7 @@
 int mlxReadLine(pLxSession s, char* buf, int maxlen);
 int mlxSkipChars(pLxSession s, int n_chars);
 int mlxPeekChar(pLxSession s, int offset);
+int mlx_internal_willCharFitUTF8(char c, int ind, int max);
 
 
 /*** mlxOpenSession - start a new lexer session on a given file 
@@ -52,6 +54,9 @@ pLxSession
 mlxOpenSession(pFile fd, int flags)
     {
     pLxSession this;
+
+        /** ensure flags are valid **/
+	if((MLX_F_ENFORCEUTF8 & flags) && (MLX_F_ENFORCEASCII & flags)) return NULL;
 
 	/** Allocate the session **/
 	this = (pLxSession)nmMalloc(sizeof(LxSession));
@@ -66,6 +71,22 @@ mlxOpenSession(pFile fd, int flags)
 	this->InpPtr = this->InpBuf;
 	this->ReservedWords = NULL;
 	this->Flags = flags & MLX_F_PUBLIC;
+	/* determine which validate to set */
+	if(MLX_F_ENFORCEUTF8 & flags)
+	    {
+	    this->ValidateFn = verifyUTF8; 
+	    this->CharFit = mlx_internal_willCharFitUTF8;
+	    }
+	else if(MLX_F_ENFORCEASCII & flags)
+	    {
+	    this->ValidateFn = verifyASCII; 
+	    this->CharFit = NULL;
+	    }
+	else 
+	    {
+	    this->ValidateFn = NULL;
+	    this->CharFit = NULL;
+	    }
 
 	/** Preload the buffer with the first line **/
 	this->Buffer[0] = 0;
@@ -89,6 +110,9 @@ mlxStringSession(char* str, int flags)
     {
     pLxSession this;
 
+	/** ensure flags are valid **/
+	if((MLX_F_ENFORCEUTF8 & flags) && (MLX_F_ENFORCEASCII & flags)) return NULL;
+
 	/** Allocate the session **/
 	this = (pLxSession)nmMalloc(sizeof(LxSession));
 	if (!this) return NULL;
@@ -105,6 +129,23 @@ mlxStringSession(char* str, int flags)
 	this->Flags = (flags & MLX_F_PUBLIC) & ~MLX_F_NODISCARD;
 	this->Flags |= MLX_F_NOFILE;
 	this->Magic = MGK_LXSESSION;
+	/* determine which validate to set */
+	char * locale = setlocale(LC_CTYPE, NULL);
+	if(MLX_F_ENFORCEUTF8 & flags)
+	    {
+	    this->ValidateFn = verifyUTF8; 
+	    this->CharFit = mlx_internal_willCharFitUTF8;
+	    }
+	else if(MLX_F_ENFORCEASCII & flags)
+	    {
+	    this->ValidateFn = verifyASCII; 
+	    this->CharFit = NULL;
+	    }
+	else 
+	    {
+	    this->ValidateFn = NULL;
+	    this->CharFit = NULL;
+	    }
 
 	/** Read the first line. **/
 	this->BufPtr = this->Buffer;
@@ -125,6 +166,9 @@ mlxGenericSession(void* src, int (*read_fn)(), int flags)
     {
     pLxSession this;
 
+	/** ensure flags are valid **/
+	if((MLX_F_ENFORCEUTF8 & flags) && (MLX_F_ENFORCEASCII & flags)) return NULL;
+
 	/** Allocate the session **/
 	this = (pLxSession)nmMalloc(sizeof(LxSession));
 	if (!this) return NULL;
@@ -138,6 +182,23 @@ mlxGenericSession(void* src, int (*read_fn)(), int flags)
 	this->InpPtr = this->InpBuf;
 	this->ReservedWords = NULL;
 	this->Flags = (flags & MLX_F_PUBLIC) & ~MLX_F_NODISCARD;
+	/* determine which validate to set */
+	char * locale = setlocale(LC_CTYPE, NULL);
+	if(MLX_F_ENFORCEUTF8 & flags)
+	    {
+	    this->ValidateFn = verifyUTF8; 
+	    this->CharFit = mlx_internal_willCharFitUTF8;
+	    }
+	else if(MLX_F_ENFORCEASCII & flags)
+	    {
+	    this->ValidateFn = verifyASCII; 
+	    this->CharFit = NULL;
+	    }
+	else 
+	    {
+	    this->ValidateFn = NULL;
+	    this->CharFit = NULL;
+	    }
 
 	/** Preload the buffer with the first line **/
 	this->Buffer[0] = 0;
@@ -282,7 +343,6 @@ int
 mlxPeekChar(pLxSession s, int offset)
     {
     int v, ch;
-
 	v = mlx_internal_CheckBuffer(s, offset);
 	if (__builtin_expect(v < 0, 0)) return MLX_ERROR;
 	if (__builtin_expect(v <= offset, 0)) return MLX_EOF;
@@ -382,6 +442,12 @@ mlx_internal_Copy(pLxSession this, char* buf, int bufsize, int* found_end)
 	    *found_end = 0;
 	    while(ch >= 0 && len < bufsize-1)
 		{
+		if(this->CharFit != NULL && !this->CharFit(ch, len, bufsize-1))
+		    {
+		    *found_end = 0;
+		    break;
+		    }
+
 		buf[len++] = ch;
 		if (ch == '\n')
 		    {
@@ -399,7 +465,7 @@ mlx_internal_Copy(pLxSession this, char* buf, int bufsize, int* found_end)
 	    *found_end = 1;
 	    while(ch >= 0 && ch != ' ' && ch != '\t' && ch != '\r' && ch != '\n')
 		{
-		if (len >= bufsize-1)
+		if (len >= bufsize-1 || (this->CharFit && !this->CharFit(ch, len, bufsize-1)))
 		    {
 		    *found_end = 0;
 		    break;
@@ -416,7 +482,7 @@ mlx_internal_Copy(pLxSession this, char* buf, int bufsize, int* found_end)
 	    *found_end = 1;
 	    while((ch = mlxPeekChar(this,0)) >= 0 && ch != this->Delimiter)
 		{
-		if (len >= bufsize-1)
+		if (len >= bufsize-1 || (this->CharFit && !this->CharFit(ch, len, bufsize-1)))
 		    {
 		    *found_end = 0;
 		    break;
@@ -461,7 +527,7 @@ mlx_internal_Copy(pLxSession this, char* buf, int bufsize, int* found_end)
 	    *found_end = 1;
 	    while(ch >= 0 && ch != ' ' && ch != '\t' && ch != '\r' && ch != '\n' && ch != ':')
 		{
-		if (len >= bufsize-1)
+		if (len >= bufsize-1 || (this->CharFit && !this->CharFit(ch, len, bufsize-1)))
 		    {
 		    *found_end = 0;
 		    break;
@@ -552,6 +618,7 @@ mlxNextToken(pLxSession this)
 	    {
 	    while((ch = mlxNextChar(this)) >= 0 && ch != '\n') ;
 	    this->Flags &= ~MLX_F_INSTRING;
+	    this->Flags &= ~MLX_F_PROCLINE; /* treat as new line */
 	    }
 	else if ((this->Flags & MLX_F_INSTRING) && ((this->Flags & MLX_F_IFSONLY) || this->Delimiter == ' '))
 	    {
@@ -769,7 +836,7 @@ mlxNextToken(pLxSession this)
 		this->TokString[this->TokStrCnt] = '\0';
 		break;
 		}
-	    else if (ch >= 0 && ch <= 255 && (ptr = strchr(s_tokens, (char)((unsigned char)ch))) != NULL && *ptr)
+	    else if (ch >= 0 && ch <= 255 && (ptr = strchr(s_tokens, (char)((unsigned char)ch))) != NULL)
 		{
 		/** single-char token that isn't dependent on what the next character is **/
 		this->TokString[0] = ch;
@@ -834,7 +901,7 @@ mlxNextToken(pLxSession this)
 		this->TokString[this->TokStrCnt] = '\0';
 		break;
 		}
-	    else if (ch == '-' && !strchr("0123456789.",mlxPeekChar(this,1)))
+	    else if (ch == '-' && !strchr("0123456789.",mlxPeekChar(this,1))) 
 	        {
 		/** only a MLX_TOK_PLUS if the next char is not a digit or period (that would make it part of a number) **/
 		this->TokString[0] = ch;
@@ -843,7 +910,7 @@ mlxNextToken(pLxSession this)
 		mlxSkipChars(this,1);
 		break;
 		}
-	    else if (strchr("0123456789+-.",ch))
+	    else if (strchr("0123456789+-.",ch)) 
 		{
 		got_dot = (ch == '.')?1:0;
 		this->TokType = MLX_TOK_INTEGER;
@@ -851,7 +918,7 @@ mlxNextToken(pLxSession this)
 		this->TokString[0] = ch;
 		mlxSkipChars(this,1);
 		found_end=1;
-		while((ch = mlxPeekChar(this,0)) >= 0 && (strchr("0123456789xabcdefABCDEF",ch) || (!got_dot && ch == '.')))
+		while((ch = mlxPeekChar(this,0)) >= 0 && (strchr("0123456789xabcdefABCDEF",ch) && ch != '\0' || (!got_dot && ch == '.')))
 		    {
 		    if (this->TokStrCnt >= 255)
 			{
@@ -946,6 +1013,17 @@ mlxNextToken(pLxSession this)
 		}
 	    }
 
+	/** check string is valid, if applicable **/
+	if(this->ValidateFn != NULL && (this->TokType == MLX_TOK_SSTRING || 
+	    this->TokType == MLX_TOK_STRING || this->TokType == MLX_TOK_FILENAME))
+	    {
+	    if(this->ValidateFn(this->TokString) != UTIL_VALID_CHAR)
+	        {
+	        mssError(1,"MLX","String token contained invalid characters");
+	        this->TokType = MLX_TOK_ERROR;
+	        }
+	    }
+
     return this->TokType;
     }
 
@@ -960,7 +1038,7 @@ char*
 mlxStringVal(pLxSession this, int* alloc)
     {
     char* ptr;
-    int len,cnt,ccnt;
+    int len,cnt,ccnt,ind;
     char* nptr;
 
     	ASSERTMAGIC(this,MGK_LXSESSION);
@@ -1027,6 +1105,17 @@ mlxStringVal(pLxSession this, int* alloc)
 	    ptr = this->TokString;
 	    }
 
+	/** validate again; could have more copied from buffer **/
+	if(this->ValidateFn != NULL && (ind = this->ValidateFn(ptr)) != UTIL_VALID_CHAR
+		|| this->TokType == MLX_TOK_ERROR) /** mlxCopyToken would set TokType **/
+	    {
+	    mssError(1,"MLX","String token contained invalid characters");
+	    this->TokType = MLX_TOK_ERROR;
+	    *alloc = 0;
+	    nmSysFree(ptr);
+	    return NULL;
+	    }
+
     return ptr;
     }
 
@@ -1077,6 +1166,7 @@ mlxCopyToken(pLxSession this, char* buffer, int maxlen)
     int cnt;
     int len;
     int found_end;
+    int ind;
 
     	ASSERTMAGIC(this,MGK_LXSESSION);
 
@@ -1110,6 +1200,15 @@ mlxCopyToken(pLxSession this, char* buffer, int maxlen)
 	if (!found_end && !(this->Flags & (MLX_F_IFSONLY | MLX_F_LINEONLY)) && this->TokType == MLX_TOK_STRING && mlxPeekChar(this,0) < 0)
 	    {
 	    mssError(1,"MLX","Unterminated string value");
+	    this->TokType = MLX_TOK_ERROR;
+	    }
+	
+	/** validate buffer; could have copied more from input, thereby avoiding next token's check **/
+	if(this->ValidateFn && (ind = this->ValidateFn(buffer)) != UTIL_VALID_CHAR)
+	    {
+	    buffer[ind] = '\0'; /** end string just before bad character **/
+	    len = ind; 
+	    mssError(1,"MLX","Invalid characters in string");
 	    this->TokType = MLX_TOK_ERROR;
 	    }
 
@@ -1177,7 +1276,7 @@ mlxSetReservedWords(pLxSession this, char** res_words)
     {
 
     	ASSERTMAGIC(this,MGK_LXSESSION);
-
+	
     	/** Set the words **/
 	this->ReservedWords = res_words;
 
@@ -1306,3 +1405,21 @@ mlxSetOffset(pLxSession this, unsigned long new_offset)
     return 0;
     }
 
+
+/*** mlx_internal_willCharFitUTF8() - Given the current character, index (next open slot),
+ *** and maximum length, returns 1 if all bytes of a UTF-8 char will fit in a buffer, and
+ *** returns 0 in all other cases. Index refers to the next slot to be filled
+ ***
+ *** NOTE: a 0 is returned even on an error; getting a char which is NOT a utf-8 
+ *** header indicates the decision was made in a previous step.
+ ***/
+int 
+mlx_internal_willCharFitUTF8(char c, int ind, int len)
+    {
+    int bytes = numBytesInChar(c);
+    if(bytes < 0 ) bytes = 1;             /* treat as a single byte */
+
+    if(ind >= len) return 0;        /* buf is full */
+    else if(ind > len - bytes) return 0; /* cuts off char*/
+    else  return 1;                      /* fits */
+    }

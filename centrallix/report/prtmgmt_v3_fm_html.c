@@ -288,7 +288,14 @@ prt_htmlfm_GetCharacterMetric(void* context_v, char* str, pPrtTextStyle style, d
 	n = 0.0;
 	while(*str)
 	    {
-	    if (*str < 0x20 || *str > 0x7E)
+	    if (((unsigned char*)str)[0] > 0x7F && CxGlobals.CharacterMode == CharModeUTF8)
+		{
+		/** UTF-8 encoded character, skip entire encoded char. **/
+		n += 1.0;
+		while ((((unsigned char*)str)[1] & 0xC0) == 0x80)
+		    str++;
+		}
+	    else if (*str < 0x20 || *str > 0x7E)
 		n += 1.0;
 	    else if (style->FontID == PRT_FONT_T_SANSSERIF)
 		n += prt_htmlfm_helvetica_font_metrics[(*str) - 0x20][a]/60.0;

@@ -1,0 +1,9 @@
+##NAME Sybase 02: InvalidChar test
+
+# Table is preloaded with invalid data
+
+# print out results
+query select * from /tests/Test_DB.sybdb/invalid/rows
+print /tests/Test_DB.sybdb/invalid/rows/1
+print /tests/Test_DB.sybdb/invalid/rows/2
+ 

@@ -31,6 +31,12 @@
 /* Description:	Provides declarations for the MIME parser		*/
 /************************************************************************/
 
+#include "cxlib/xarray.h"
+#include "cxlib/datatypes.h"
+#include "cxlib/mtlexer.h"
+#include "cxlib/xstring.h"
+#include "cxlib/stparse.h"
+
 #define MIME_DEBUG            0
 #define MIME_DEBUG_ADDR       0
 

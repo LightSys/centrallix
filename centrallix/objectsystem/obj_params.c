@@ -7,6 +7,7 @@
 #include "cxlib/mtlexer.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -53,12 +54,15 @@ objParamsRead(pFile fd)
     pLxSession s;
     pObjParam op;
     int t;
+    int mlxFlags;
 
 	/** Allocate the array **/
 	xa = (pXArray)nmMalloc(sizeof(XArray));
 	xaInit(xa,16);
 
 	/** Open the lexer session **/
+	mlxFlags = MLX_F_EOF | MLX_F_POUNDCOMM;
+	if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
 	s = mlxOpenSession(fd, MLX_F_EOF | MLX_F_POUNDCOMM);
 
 	/** Read through the file, gathering the params **/

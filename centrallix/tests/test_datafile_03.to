@@ -1,0 +1,4 @@
+##NAME Test invalid UTF-8 in col name, w/ and w/out spec 
+# name is read from spec if can, ignored otherwise
+query select * from /tests/UTF8_invalid3.csv/rows 
+query select * from /tests/UTF8_invalid4.csv/rows

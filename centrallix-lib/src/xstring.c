@@ -596,7 +596,7 @@ xsTrim(pXString this)
     return 0;
     }
 
-/*** xsFind - searches an xString for a string from an offset and returns the offset it was found at
+/*** xsFind - searches an xString for a string from a byte offset and returns the byte offset it was found at
  ***   returns -1 if not found
  ***/
 int
@@ -605,7 +605,10 @@ xsFind(pXString this,char* find,int findlen, int offset)
     CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
-    if(findlen==-1) findlen=strlen(find);
+    if ((this == NULL) || (find == NULL))
+	return -1; 
+    if(offset<0) offset = 0;
+    if(findlen==-1) findlen = strlen(find);
     for(;offset<this->Length;offset++)
 	{
 	if(this->String[offset]==find[0])
@@ -627,6 +630,53 @@ xsFind(pXString this,char* find,int findlen, int offset)
     return -1;
     }
 
+/*** xsFindWithCharOffset - searches an xString for a string from a char offset and returns the char offset it was found at
+ *** findlen is length in bytes
+ *** returns -1 if not found
+ ***/
+int 
+xsFindWithCharOffset(pXString this, char* find, int findlen, int offset)
+	{
+	CXSEC_ENTRY(XS_FN_KEY);
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
+	if ((this == NULL) || (find == NULL))
+        	return -1;
+	int chars, byte, i;
+	if (offset < 0) offset = 0;
+	if (findlen == -1) findlen = strlen(find);
+	byte = -1;
+	chars = -1;
+	while (chars < offset)
+		{
+		byte++;
+		if ((this->String[byte] & 0xC0) != 0x80)
+			chars++;
+		}
+	if (byte == -1) byte = 0;
+	if (chars == offset) chars--;
+	for (; byte < this->Length; byte ++)
+		{
+		if ((this->String[byte] & 0xC0) != 0x80) 
+			chars++; 
+		if (this->String[byte]==find[0])
+            		{
+            		for(i=1;i<findlen;i++)
+                		if(this->String[byte+i]!=find[i])
+					break;
+            		if(i==findlen)
+                		{
+				CXSEC_EXIT(XS_FN_KEY);
+				return chars;
+                		}
+            		}
+        	}
+    	CXSEC_EXIT(XS_FN_KEY);
+    	return -1;
+    	}
+
+
+
 /*** xsFindReverse - searches an xString for a string from an offset (from the end) and returns the offset it was found at
  ***   returns -1 if not found
  ***/
@@ -636,7 +686,9 @@ xsFindRev(pXString this,char* find,int findlen, int offset)
     CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
-    if(findlen==-1) findlen=strlen(find);
+    if ((this == NULL) || (find == NULL))
+        return -1;
+    if(findlen==-1) findlen = strlen(find);
     offset=this->Length-offset-1;
     for(;offset>=0;offset--)
 	{
@@ -659,6 +711,58 @@ xsFindRev(pXString this,char* find,int findlen, int offset)
     return -1;
     }
 
+/*** xsFindRevWithCharOffset - searches an xString for a string from a char offset (from the end) and returns the char offset it was found at
+ *  *** findlen is length in bytes
+ *   *** returns -1 if not found
+ *    ***/
+int 
+xsFindRevWithCharOffset(pXString this, char* find, int findlen, int offset)
+	{
+	CXSEC_ENTRY(XS_FN_KEY);
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
+	if ((this == NULL) || (find == NULL))
+        	return -1;
+	int chars, byte, i, cnt;
+	if (offset < 0) offset = 0;
+	if (findlen == -1) findlen = strlen(find);
+	byte = this->Length - 1;
+	chars = (int) chrCharLength(this->String);
+	if ((chars == -1) || (offset > chars))
+		{
+		CXSEC_EXIT(XS_FN_KEY);                                                                       return -1;
+		}
+	cnt = 0;
+	while ((cnt < offset) && (offset != 0))
+		{
+		if ((this->String[byte] & 0xC0) != 0x80)
+			{
+			chars--;
+			cnt++;
+			}
+		byte--;
+		}
+	
+	for (; byte >= 0; byte--)
+		{
+		if ((this->String[byte] & 0xC0) != 0x80) 
+			chars--; 
+		if (this->String[byte]==find[0])
+            		{
+            		for(i=1;i<findlen;i++)
+                		if(this->String[byte+i]!=find[i])
+					break;
+            		if(i==findlen)
+                		{
+				CXSEC_EXIT(XS_FN_KEY);
+				return chars;
+                		}
+            		}
+        	}
+    	CXSEC_EXIT(XS_FN_KEY);
+    	return -1;
+    	}
+
 
 /*** xsSubst - substitutes a string in a given position in an xstring.  does not
  *** search for matches like xsreplace does - you have to tell it the position
@@ -666,12 +770,16 @@ xsFindRev(pXString this,char* find,int findlen, int offset)
  ***/
 int
 xsSubst(pXString this, int offset, int len, char* rep, int replen)
-    {
-    CXSEC_ENTRY(XS_FN_KEY);
-
+    	{
+    	CXSEC_ENTRY(XS_FN_KEY);
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
+	
+	if ((this == NULL) || (rep == NULL))
+		return -1;
 
+	int i;
+	
 	/** Figure some default lengths **/
 	if (offset > this->Length || offset < 0) 
 	    {
@@ -680,10 +788,24 @@ xsSubst(pXString this, int offset, int len, char* rep, int replen)
 	    }
 	if (len == -1) len = strlen(this->String + offset);
 	if (replen == -1) replen = strlen(rep);
-
+	
 	/** Make sure we have enough room **/
 	if (len < replen) xsCheckAlloc(this, replen - len);
-
+	
+	/** Make sure we do not end up with a partial UTF-8 character **/
+	for (i = 0; i < 4; i++)                                                                              {
+                if((this->String[offset + i] & 0xC0) != 0x80)
+			break;
+                }
+        offset += i;
+		
+	for (i = 0; i < 4; i++)
+		{
+		if((this->String[offset + len + i] & 0xC0) != 0x80)
+			break;
+		}
+	len += i;
+	
 	/** Move the tail of the string, and plop the replacement in there **/
 	memmove(this->String+offset+replen, this->String+offset+len, this->Length + 1 - (offset+len));
 	memcpy(this->String+offset, rep, replen);
@@ -693,6 +815,74 @@ xsSubst(pXString this, int offset, int len, char* rep, int replen)
     CXSEC_EXIT(XS_FN_KEY);
     return 0;
     }
+
+/*** xsSubstWithCharOffset - substitutes a string in a given position in an xstring.  
+ *** does not search for matches like xsreplace does - you have to tell it the 
+ *** position and length to replace.  Length of -1 indicates length is unknown.
+ ***/
+int
+xsSubstWithCharOffset(pXString this, int offsetChars, int lenChars, char* rep, int replen)
+    	{
+    	CXSEC_ENTRY(XS_FN_KEY);
+	ASSERTMAGIC(this, MGK_XSTRING);
+	CXSEC_VERIFY(*this);
+	
+	if ((this == NULL) || (rep == NULL))                                                                 return -1;
+
+	int i, cnt, len, offset;
+	
+	/** Figure some default lengths **/
+	if (offsetChars > chrCharLength(this->String) || offsetChars < 0) 
+	    {
+	    CXSEC_EXIT(XS_FN_KEY);
+	    return -1;
+	    }
+	
+	if (replen == -1) replen = strlen(rep);
+
+	offset = 0;
+	cnt = 0;
+	while (cnt < offsetChars)
+		{
+		if ((this->String[offset] & 0xC0) != 0x80)
+			cnt++;
+		offset++;
+		}
+	for (i = 0; i < 4; i++)                                                                              {
+                if((this->String[offset + i] & 0xC0) != 0x80)
+                        break;
+                }
+        offset += i;
+
+	if (lenChars == -1) lenChars = chrCharLength(this->String + offset);	
+
+	len = 0;
+	cnt = 0;
+        while (cnt < lenChars)
+                {
+                if ((this->String[offset+len] & 0xC0) != 0x80)
+			cnt++;
+		len++;
+		}
+	for (i = 0; i < 4; i++)                                                                              {
+                if((this->String[offset + len + i] & 0xC0) != 0x80)
+                        break;
+                }
+        len += i;        
+	
+	/** Make sure we have enough room **/
+	if (len < replen) xsCheckAlloc(this, replen - len);
+
+	/** Move the tail of the string, and plop the replacement in there **/
+	memmove(this->String+offset+replen, this->String+offset+len, this->Length + 1 - (offset+len));
+	memcpy(this->String+offset, rep, replen);
+	this->Length += (replen - len);
+	CXSEC_UPDATE(*this);
+
+    	CXSEC_EXIT(XS_FN_KEY);
+    	return 0;
+    	}
+
 
 
 /*** xsReplace - searches an xString for a string and replaces that string with another
@@ -704,8 +894,8 @@ xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int rep
     CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
-    if(findlen==-1) findlen=strlen(find);
-    if(replen==-1) replen=strlen(rep);
+    if(findlen==-1) findlen = strlen(find);
+    if(replen==-1) replen = strlen(rep);
     offset=xsFind(this,find,findlen,offset);
     if(offset < 0) 
 	{
@@ -735,6 +925,57 @@ xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int rep
     return offset;
     }
 
+/*** xsReplace - searches an xString for a string from a character offset and 
+ *** replaces that string with another returns the starting character offset of 
+ *** the replace if successful, and -1 if not found
+ ***/
+int
+xsReplaceWithCharOffset(pXString this, char* find, int findlen, int offset, char* rep, int replen)
+    {
+    CXSEC_ENTRY(XS_FN_KEY);
+    ASSERTMAGIC(this, MGK_XSTRING);
+    CXSEC_VERIFY(*this);
+    int offsetBytes = 0, cnt = 0;
+    if(findlen==-1) findlen = strlen(find);
+    if(replen==-1) replen = strlen(rep);
+    offset=xsFindWithCharOffset(this,find,findlen,offset);
+    if(offset < 0) 
+	{
+	CXSEC_EXIT(XS_FN_KEY);
+	return -1;
+	}
+    while(cnt<=offset)
+    	{
+	if ((this->String[offsetBytes] & 0xC0) != 0x80)
+			cnt++;
+	offsetBytes++;
+	}
+    if(offsetBytes!=0)
+	offsetBytes--;
+	
+    if(findlen>=replen)
+	{
+	memcpy(&(this->String[offsetBytes]),rep,replen);
+	if(replen!=findlen)
+	    {
+	    memmove(this->String+offsetBytes+replen,this->String+offsetBytes+findlen,this->Length-offsetBytes-findlen+1);
+	    this->Length-=findlen-replen;
+	    }
+	}
+    else
+	{
+	/** warning: untested code :) **/
+	xsCheckAlloc(this,replen-findlen);
+	memmove(this->String+offsetBytes+replen,this->String+offsetBytes+findlen,this->Length-offsetBytes-findlen+1);
+	memcpy(&(this->String[offsetBytes]),rep,replen);
+	this->Length+=replen-findlen;
+	}
+    this->String[this->Length] = '\0';
+    CXSEC_UPDATE(*this);
+    CXSEC_EXIT(XS_FN_KEY);
+    return offset;
+    }
+
 /*** xsInsertAfter - inserts the supplied string at offset -- returns new offset
  ***/
 int
@@ -743,7 +984,7 @@ xsInsertAfter(pXString this, char* ins, int inslen, int offset)
     CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
-    if(inslen==-1) inslen=strlen(ins);
+    if(inslen==-1) inslen = strlen(ins);
     if(xsCheckAlloc(this,inslen)==-1) 
 	{
 	CXSEC_EXIT(XS_FN_KEY);
@@ -756,6 +997,37 @@ xsInsertAfter(pXString this, char* ins, int inslen, int offset)
     CXSEC_EXIT(XS_FN_KEY);
     return offset+inslen;
     }
+
+/*** xsInsertAfterWithCharOffset - inserts the supplied string at character offset -- returns new character offset
+ ***/
+int
+xsInsertAfterWithCharOffset(pXString this, char* ins, int inslen, int offset)
+    {
+    CXSEC_ENTRY(XS_FN_KEY);
+    ASSERTMAGIC(this, MGK_XSTRING);
+    CXSEC_VERIFY(*this);
+    int cnt = 0, offsetBytes = 0;
+    if(inslen==-1) inslen = strlen(ins);
+    if(xsCheckAlloc(this,inslen)==-1) 
+	{
+	CXSEC_EXIT(XS_FN_KEY);
+	return -1;
+	}
+    
+    while(cnt<=offset)
+	{
+	if ((this->String[offsetBytes] & 0xC0) != 0x80)      
+		cnt++;
+	offsetBytes++;                                                                               }                                                                                        if(offsetBytes!=0)                                                                               offsetBytes--;
+
+    memmove(this->String+offsetBytes+inslen,this->String+offsetBytes,this->Length-offsetBytes+1);
+    memcpy(this->String+offsetBytes,ins,inslen);
+    this->Length+=inslen;
+    CXSEC_UPDATE(*this);
+    CXSEC_EXIT(XS_FN_KEY);
+    return offset+chrCharLength(ins);
+    }
+
 
 
 /*** xsGenPrintf - generic printf() operation to a xxxWrite() style function.
@@ -971,3 +1243,14 @@ xsConcatQPrintf(pXString this, char* fmt, ...)
     return rval;
     }
 
+/*** chrCharLength - get number of characters in string
+ *** returns -1 if string is NULL or mbstowcs fails
+ ***/
+size_t chrCharLength(char* string)
+    	{
+    	size_t length; 
+        if(!string)
+        	return -1;
+        length = mbstowcs(NULL, string, 0);
+        return length;
+    	}

@@ -1,0 +1,23 @@
+##NAME Valid UTF-8 Form
+## read title
+query select  /tests/UTF8_test_valid.app:title
+
+## 2 byte UTF-8
+query select  /tests/UTF8_test_valid.app/TestField1:text
+query select  /tests/UTF8_test_valid.app/TestField1/Child1:text
+query select  /tests/UTF8_test_valid.app/TestField1/Child2:text
+query select  /tests/UTF8_test_valid.app/TestField1/Child3/Grandchild1:text
+query select  /tests/UTF8_test_valid.app/TestField1/Child3/Grandchild1/GreatGrandchild1:text
+query select  /tests/UTF8_test_valid.app/TestField1/Child3/Grandchild1/GreatGrandchild1:moreText
+
+## 3 byte UTF-8
+query select  /tests/UTF8_test_valid.app/TestField2/Child1/Grandchild1:text
+query select  /tests/UTF8_test_valid.app/TestField2/Child1/Grandchild1/GreatGrandchild1:text
+query select  /tests/UTF8_test_valid.app/TestField2/Child1/Grandchild1/GreatGrandchild1:moreText
+query select  /tests/UTF8_test_valid.app/TestField2/Child2:text
+query select  /tests/UTF8_test_valid.app/TestField2/Child3:text
+
+## 4 byte UTF-8
+query select  /tests/UTF8_test_valid.app/TestField3:text
+query select  /tests/UTF8_test_valid.app/TestField3/Child1:text
+query select  /tests/UTF8_test_valid.app/TestField3/Child2:text

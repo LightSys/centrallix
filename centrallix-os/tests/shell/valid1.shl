@@ -1,0 +1,6 @@
+$Version=2$
+myshell "system/shell"
+{
+    program = "/bin/cat";
+    arg="cat","/usr/local/src/cx-git/centrallix-os/tests/shell/valid_short.txt";
+}

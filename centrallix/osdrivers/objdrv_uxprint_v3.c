@@ -22,6 +22,7 @@
 #include "prtmgmt.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -140,7 +141,7 @@ uxp_internal_LoadPrintQueue(char* nodepath, pSnNode nodeinfo)
     int jobid;
     int cnt;
     pLprQueueEntry e;
-
+    int mlxFlags;
     	/** Find out if this print queue is already hashed. **/
 	pq = (pLprPrintQueue)xhLookup(&UXP_INF.PrintQueues, nodepath);
 
@@ -168,7 +169,9 @@ uxp_internal_LoadPrintQueue(char* nodepath, pSnNode nodeinfo)
 	    fd = fdOpenFD(pipefd[0],O_RDONLY);
 
 	    /** Open an mtlexer session **/
-	    lxs = mlxOpenSession(fd, MLX_F_EOL | MLX_F_EOF | MLX_F_IFSONLY);
+	    mlxFlags = MLX_F_EOL | MLX_F_EOF | MLX_F_IFSONLY;
+	    if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+	    lxs = mlxOpenSession(fd, mlxFlags);
 
 	    /** Read until we get "Rank" at the beginning of a line. **/
 	    while(1)

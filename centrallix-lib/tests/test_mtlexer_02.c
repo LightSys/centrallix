@@ -18,7 +18,8 @@ test(char** tname)
     char* strval;
     int j;
     int strcnt;
-    char str[65536] = "'string one' 'string two'\n'string three' 'string four'\r\n'string five'";
+    char str[65536] = "'string one' 'string two'\n'string three' 'string four'\r\n'string five'";  
+	char str2[65536] = "'आदि में' 'परमेश्वर ने'\n'आकाश और' 'पृथ्वी को'\r\n'बनाया।'";
     int n_flagtype = 4;
     int n_tok = 9;
     int flagtype[4] = {MLX_F_EOF, MLX_F_EOF | MLX_F_EOL, MLX_F_EOL, 0};
@@ -29,6 +30,7 @@ test(char** tname)
 			    {MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_ERROR, MLX_TOK_ERROR, MLX_TOK_ERROR, MLX_TOK_ERROR},
 			};
     char* tokstr[6] = {	"string one", "string two", "string three", "string four", "string five", NULL };
+	char* tokstr2[6] = {	"आदि में", "परमेश्वर ने", "आकाश और", "पृथ्वी को", "बनाया।", NULL };
 
 	*tname = "mtlexer-02 three lines of strings and eol/eof/error test";
 
@@ -39,6 +41,44 @@ test(char** tname)
 	    {
 	    flags = flagtype[i%n_flagtype];
 	    lxs = mlxStringSession(str, flags);
+	    assert(lxs != NULL);
+	    strcnt = 0;
+	    for(j=0;j<n_tok;j++)
+		{
+		t = mlxNextToken(lxs);
+		assert(t == toktype[i%n_flagtype][j]);
+		if (t == MLX_TOK_STRING)
+		    {
+		    strval = mlxStringVal(lxs, NULL);
+		    assert(strval != NULL);
+		    assert(strcnt < 5);
+		    assert(strcmp(strval,tokstr[strcnt++]) == 0);
+		    }
+		}
+	    mlxCloseSession(lxs);
+
+		/** Test with utf8 **/
+		flags = flagtype[i%n_flagtype] | MLX_F_ENFORCEUTF8;
+		lxs = mlxStringSession(str2, flags);
+	    assert(lxs != NULL);
+	    strcnt = 0;
+	    for(j=0;j<n_tok;j++)
+		{
+		t = mlxNextToken(lxs);
+		assert(t == toktype[i%n_flagtype][j]);
+		if (t == MLX_TOK_STRING)
+		    {
+		    strval = mlxStringVal(lxs, NULL);
+		    assert(strval != NULL);
+		    assert(strcnt < 5);
+		    assert(strcmp(strval,tokstr2[strcnt++]) == 0);
+		    }
+		}
+	    mlxCloseSession(lxs);
+
+		/** Test with ascii **/
+		flags = flagtype[i%n_flagtype] | MLX_F_ENFORCEASCII;
+		lxs = mlxStringSession(str, flags);
 	    assert(lxs != NULL);
 	    strcnt = 0;
 	    for(j=0;j<n_tok;j++)

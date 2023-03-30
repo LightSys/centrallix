@@ -16,6 +16,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
 #include "expression.h"
 #include "cxlib/xstring.h"
 #include "stparse.h"
@@ -89,6 +90,8 @@ const unsigned short int* __ctype_b;
 /*** compiled in limit - max total syb connections per CX server ***/
 #define SYBD_MAX_CONNECTIONS	1024	/* per CX instance, not per db node! */
 
+/*** Numeric Constants ***/
+#define SYBD_TEXTSIZE 		1536	/* The max size for text returned by the server*/
 
 /*** This is a hack.  Couldn't get -D__USE_GNU to work.  ***/
 #ifndef O_NOFOLLOW
@@ -218,6 +221,8 @@ typedef struct
     unsigned char ColNum[256];
     char	RowBuf[2048];
     char	Autoname[256];
+    char	VerBuf[3];	/* verify buffer to store partial UTF-8 chars reads */
+    int		VerCnt;		/* number of bytes in VerBuf current in use*/
     }
     SybdData, *pSybdData;
 
@@ -648,6 +653,24 @@ sybd_internal_GetConn(pSybdNode db_node)
 		}
 	    sybd_internal_Close(cmd);
 	    }
+
+	/** set the textsize */
+	snprintf(sbuf, 64, "set textsize %d", SYBD_TEXTSIZE);
+	cmd = sybd_internal_Exec(conn, sbuf);
+	while((rval=ct_results(cmd, (CS_INT*)&restype)))
+	    {
+	    if (rval == CS_FAIL)
+		{
+		mssError(0,"SYBD","Could not set textsize!");
+		sybd_internal_Close(cmd);
+		ct_close(conn->CsConn, CS_FORCE_CLOSE);
+		ct_con_drop(conn->CsConn);
+		nmFree(conn,sizeof(SybdConn));
+		return NULL;
+		}
+	    if (rval == CS_END_RESULTS || restype == CS_CMD_DONE) break;
+	    }
+	sybd_internal_Close(cmd);
 
 	strcpy(conn->Username, user);
 	strcpy(conn->Password, pwd);
@@ -1227,7 +1250,7 @@ sybd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
 			    { free(TypeNum); continue; }
 			TypeName = (char*)malloc(SYBD_MAX_TYPE_LEN);
 			ct_get_data(cmd, 2, TypeName, SYBD_MAX_TYPE_LEN-1, (CS_INT*)&i);
-			if (i <= 0 || i > SYBD_MAX_TYPE_LEN-1)
+			if (i <= 0 || i > SYBD_MAX_TYPE_LEN-1 || nVerifyUTF8(TypeName, i) != UTIL_VALID_CHAR)
 			    { free(TypeName); free(TypeNum); continue; }
 			TypeName[i]='\0';
 			memcpy(db_node->Types[*TypeNum], TypeName, strlen(TypeName)+1);
@@ -1290,7 +1313,7 @@ sybd_internal_GetTableInf(pSybdNode node, pSybdConn conn, char* table)
     char* tmpptr;
     int l,i,col,find_col;
     CS_INT restype = 0;
-    int n, t;
+    int n, t, vind;
     CS_COMMAND* cmd;
 
 	/** Valid table name check. **/
@@ -1344,7 +1367,7 @@ sybd_internal_GetTableInf(pSybdNode node, pSybdConn conn, char* table)
 	    /** Get the col name. **/
 	    ct_get_data(cmd, 1, sbuf, sizeof(sbuf)-1, (CS_INT*)&i);
 	    sbuf[i] = 0;
-	    if (strpbrk(sbuf,"'\"\t\r\n "))
+	    if (strpbrk(sbuf,"'\"\t\r\n ") || verifyUTF8(sbuf) != UTIL_VALID_CHAR) /* make sure all chars are valid */
 		{
 		sybd_internal_Close(cmd);
 		nmSysFree(tdata->ColBuf);
@@ -1513,9 +1536,15 @@ sybd_internal_GetTableInf(pSybdNode node, pSybdConn conn, char* table)
 			/** Get the table's annotation **/
 			ct_get_data(cmd, 2, tdata->Annotation, 255, (CS_INT*)&i);
 			tdata->Annotation[i] = 0;
+			/** clear out invalid data **/
+			if((vind = verifyUTF8(tdata->Annotation)) != UTIL_VALID_CHAR)
+			    {
+			    memset(tdata->Annotation+vind, '\0', i - vind);
+			    mssError(1, "SYBD", "Annotation for table %s contained an invalid character", table);
+			    } 
 
 			/** Get the annotation expression and compile it **/
-			ct_get_data(cmd, 3, sbuf, sizeof(sbuf)-1, (CS_INT*)&i);
+			ct_get_data(cmd, 3, sbuf, sizeof(sbuf)-1, (CS_INT*)&i); /* compile below will verify if data is good */
 			sbuf[i] = 0;
 			tdata->ObjList = expCreateParamList();
 			expAddParamToList(tdata->ObjList, NULL, NULL, 0);
@@ -1553,6 +1582,12 @@ sybd_internal_GetTableInf(pSybdNode node, pSybdConn conn, char* table)
 		/** get referenced table name **/
 		ct_get_data(cmd, 1, fkeydata->PrimaryKeyTable, sizeof(fkeydata->PrimaryKeyTable)-1, (CS_INT*)&i);
 		fkeydata->PrimaryKeyTable[i] = 0;
+		if((vind = nVerifyUTF8(fkeydata->PrimaryKeyTable, i)) != UTIL_VALID_CHAR)
+		    {
+		    mssError(1, "sybd", "Primary key table name contained invalid characters. Truncating");
+		    memset(fkeydata->PrimaryKeyTable+vind, '\0', i - vind);
+		    i = vind;
+		    }
 
 		/** Get column count for key **/
 		ct_get_data(cmd, 2, &(fkeydata->nKeys), 4, (CS_INT*)&i);
@@ -2424,7 +2459,7 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, pSybdConn conn, pSy
 int
 sybd_internal_GetRow(pSybdData inf, CS_COMMAND* s, int cnt)
     {
-    int i,n;
+    int i,n, vind;
     char* ptr;
     char* endptr;
     int maxlen;
@@ -2454,9 +2489,16 @@ sybd_internal_GetRow(pSybdData inf, CS_COMMAND* s, int cnt)
 		    /* rtrim char() fields */
 		    while (n && endptr[n-1] == ' ') n--;
 		    }
+		/** if is a string type, verify it */
+		if(sybd_internal_AttrType(inf->TData, i) == DATA_T_STRING && (vind = nVerifyUTF8(endptr, n)) != UTIL_VALID_CHAR)
+		    {
+		    memset(endptr+vind, '\0', n - vind);
+		    n = vind;
+		    mssError(1, "SYBD", "Invalid string found while retrieving record. Skipping from error onwards");
+		    }
 		inf->ColPtrs[i] = endptr;
 		endptr[n] = 0;
-		endptr+=(n+1);
+		endptr+=(n+1);	
 		}
 	    }
 
@@ -2569,6 +2611,7 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	memset(inf,0,sizeof(SybdData));
 	inf->Obj = obj;
 	inf->Mask = mask;
+	inf->VerCnt = 0;
 
 	/** Determine type and set pointers. **/
 	sybd_internal_DetermineType(obj,inf);
@@ -2892,6 +2935,13 @@ sybd_internal_BuildAutoname(pSybdData inf, pSybdConn conn, pObjTrxTree oxt)
 	inf->Autoname[0] = '\0';
 	for(len=j=0;j<inf->TData->nKeys;j++)
 	    {
+	    if(!key_values[j]) /* may not have value if don't have permission for table/row */
+		{
+		mssError(1,"SYBD","Could not get value for key '%s' on table '%s': may not have required permission",
+		inf->TData->Cols[colid], inf->TData->Table);
+		rval = -1;
+		goto exit_BuildAutoname;
+		}
 	    if (j) len += 1; /* for | separator */
 	    len += strlen(key_values[j]);
 	    }
@@ -3300,6 +3350,7 @@ sybdDelete(pObject obj, pObjTrxTree* oxt)
 	if (!inf) return -1;
 	memset(inf,0,sizeof(SybdData));
 	inf->Obj = obj;
+	inf->VerCnt = 0;
 
 	/** Determine type and set pointers. **/
 	sybd_internal_DetermineType(obj,inf);
@@ -3385,8 +3436,8 @@ sybd_internal_PrepareText(pSybdData inf, pSybdConn conn, int maxtextsize)
 	    {
 	    return NULL;
 	    }
-	snprintf(sbuf,160,"set textsize %d select %s from %s where %s set textsize 255",
-	    maxtextsize,col,inf->TablePtr,ptr);
+	snprintf(sbuf,160,"set textsize %d select %s from %s where %s set textsize %d",
+	    maxtextsize,col,inf->TablePtr,ptr,SYBD_TEXTSIZE);
 	if ((inf->RWCmd = sybd_internal_Exec(conn, sbuf)) == NULL) 
 	    {
 	    mssError(0,"SYBD","Could not run SQL to retrieve content BLOB from database");
@@ -3410,7 +3461,7 @@ sybd_internal_PrepareText(pSybdData inf, pSybdConn conn, int maxtextsize)
 
 	/** Get the i/o descriptor for the content BLOB **/
 	ct_get_data(inf->RWCmd,1,buffer,0,(CS_INT*)&rcnt);
-	if (ct_data_info(inf->RWCmd,CS_GET,1,&(inf->ContentIODesc)) != CS_SUCCEED)
+	if (ct_data_info(inf->RWCmd,CS_GET,1,&(inf->ContentIODesc)) != CS_SUCCEED) /* data does not need verfied; only used internally  */
 	    {
 	    sybd_internal_Close(inf->RWCmd);
 	    mssError(1,"SYBD","Could not retrieve descriptor for content BLOB");
@@ -3430,7 +3481,7 @@ int
 sybdRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pSybdData inf = SYBD(inf_v);
-    int rcnt,rval;
+    int rcnt,rval,tempCnt,vind;
 
     	/** Only for row objects. **/
 	if (inf->Type != SYBD_T_ROW) 
@@ -3452,6 +3503,7 @@ sybdRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
     	/** Need to get a session first?  If so, get it and start the query. **/
 	if (inf->ReadSessID == NULL)
 	    {
+	    inf->VerCnt = 0;
 	    /** Get the session. **/
 	    if (inf->SessionID != NULL)
 	        {
@@ -3484,21 +3536,50 @@ sybdRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	rcnt = 0;
 	if (inf->RWCmd)
 	    {
-	    rval = ct_get_data(inf->RWCmd,1,buffer,maxcnt,(CS_INT*)&rcnt);
-	    if (rval == CS_END_ITEM || rval == CS_END_DATA)
-	        {
-	        sybd_internal_Close(inf->RWCmd);
-	        inf->RWCmd = NULL;
-	        }
+	    if(inf->VerCnt > 0) memcpy(buffer, inf->VerBuf, inf->VerCnt); /* add prev invalid to start of buffer */
+	    /** need either 4 bytes or end of read for verify to work properly */
+	    while(rcnt < 4)
+		{
+		rval = ct_get_data(inf->RWCmd, 1, buffer+inf->VerCnt+rcnt, maxcnt-inf->VerCnt-rcnt, (CS_INT*)&tempCnt);
+		if(tempCnt < 0) rcnt = tempCnt;
+		else rcnt += tempCnt;
+
+		rcnt += inf->VerCnt;
+		inf->VerCnt = 0;
+		if (rval == CS_END_ITEM || rval == CS_END_DATA)
+		    {
+		    sybd_internal_Close(inf->RWCmd);
+		    inf->RWCmd = NULL;
+		    }
+		else 
+		    {
+		    if (rval != CS_SUCCEED) rcnt = -1;
+		    }
+		if(rval != CS_SUCCEED || tempCnt <= 0) break;
+		}
+	    }
+
+	/** Verify data only if is of type text and NOT image **/
+	if(rcnt > 0 && inf->ContentIODesc.usertype == 19 && (vind = nVerifyUTF8(buffer, rcnt)) != UTIL_VALID_CHAR)
+	    {
+	    if(rcnt - vind <= 3) /* store for later */
+		{
+		inf->VerCnt = rcnt - vind;
+		memcpy(inf->VerBuf, buffer+vind, inf->VerCnt);
+		rcnt -= inf->VerCnt;
+		}
 	    else 
-	        {
-	        if (rval != CS_SUCCEED) rcnt = -1;
+		{
+		memset(buffer, '\0', rcnt); /* clear out data */
+		mssError(1, "SYBD", "Read returned invalid characters. Clearing buffer and finishing");
+		rcnt = -1; 
 		}
 	    }
 
 	/** End of data? **/
 	if (rcnt <= 0)
 	    {
+	    if(inf->VerCnt > 0) mssError(1, "SYBD", "Read ended with invalid characters. Witholding remaining bytes");
 	    if (inf->RWCmd) sybd_internal_Close(inf->RWCmd);
 	    inf->RWCmd = NULL;
 	    if (inf->Flags & SYBD_F_TFRRW) inf->SessionID = inf->ReadSessID;
@@ -3946,6 +4027,7 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    goto error;
 	memset(inf,0,sizeof(SybdData));
 	inf->TData = tdata;
+	inf->VerCnt = 0;
 
     	/** Get the next name based on the query type. **/
 	switch(qy->ObjInf->Type)
@@ -3959,6 +4041,11 @@ sybdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		if (!conn2)
 		    {
 		    mssError(0,"SYBD","Database connection failed");
+		    goto error;
+		    }
+		if(verifyUTF8(filename) != UTIL_VALID_CHAR)
+		    {
+		    mssError(1, "SYBD", "Filename from database contained invalid characters");
 		    goto error;
 		    }
 		tdata = sybd_internal_GetTableInf(qy->ObjInf->Node,conn2,filename);

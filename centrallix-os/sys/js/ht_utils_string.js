@@ -98,7 +98,7 @@ function tohex16(n)
 
 function htutil_escape(s)
     {
-    var new_s = String(escape(s));
+    var new_s = String(encodeURIComponent(s));
     var re = /\//g;
     var re2 = /\+/g;
     return new_s.replace(re, "%2f").replace(re2, "%2b");

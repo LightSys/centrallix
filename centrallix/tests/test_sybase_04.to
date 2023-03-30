@@ -1,0 +1,11 @@
+##NAME Sybase 01: access denial test
+
+# clear out old data
+query delete from /tests/Test_DB.sybdb/block/rows
+
+# insert new values 
+
+query insert into object /tests/Test_DB.sybdb/block/rows/* select num=2
+
+# print out results
+query select * from /tests/Test_DB.sybdb/block/rows

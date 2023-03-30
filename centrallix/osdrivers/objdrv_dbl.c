@@ -1101,9 +1101,12 @@ dbl_internal_ScanDef(pDblData inf, pDblTableInf tdata, pObject obj)
     int t;
     char* ptr;
     int rval = -1;
+    int mlxFlags;
 
 	/** Open a lexer session on the .def file **/
-	lxs = mlxGenericSession(obj, objRead, MLX_F_LINEONLY | MLX_F_EOF);
+	mlxFlags = MLX_F_LINEONLY | MLX_F_EOF;
+	if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+	lxs = mlxGenericSession(obj, objRead, mlxFlags);
 	if (!lxs) return -1;
 
 	/** setup the match pattern. **/

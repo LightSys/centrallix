@@ -1,0 +1,25 @@
+Attribute [id]:  integer  1
+Attribute [string]:   string   "1 byte ascii" 
+Attribute [longString]:   string   "A longer exampe of ascii" 
+Attribute [number]:  integer  1
+Attribute [text]:   string   "even more ascii text" 
+Attribute [id]:  integer  2
+Attribute [string]:   string   "2 byte UTF-8: Своего" 
+Attribute [longString]:   string   "ΆΈΉΊΌΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικ" 
+Attribute [number]:  integer  2
+Attribute [text]:   string   "ͰͱͲͳʹ͵Ͷͷͺͻͼͽ;΄" 
+Attribute [id]:  integer  3
+Attribute [string]:   string   "3 byte UTF-8: 実に神は" 
+Attribute [longString]:   string   "え惜しまず与えるほどにこの世界を愛してくださいました。それは" 
+Attribute [number]:  integer  3
+Attribute [text]:   string   "実に神はひとり子" 
+Attribute [id]:  integer  4
+Attribute [string]:   string   "4 byte UTF-8: 𓀀𓀁𓀂" 
+Attribute [longString]:   string   "𓀐𓀑𓀒𓀓𓀔𓀕𓀖𓀗𓀘𓀙𓀚𓀛𓀜𓀝𓀞𓀟𓀠𓀡𓀢𓀣𓀤𓀥𓀦" 
+Attribute [number]:  integer  4
+Attribute [text]:   string   "𓀀𓀁𓀂𓀃𓀄𓀅𓀆𓀇𓀈𓀉𓀊𓀋𓀌" 
+Attribute [id]:  integer  5
+Attribute [string]:   string   "test of utf-8 planes" 
+Attribute [longString]:   string   "|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|" 
+Attribute [number]:  integer  5
+Attribute [text]:   string   "|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|" 

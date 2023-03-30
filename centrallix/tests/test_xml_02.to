@@ -1,0 +1,8 @@
+##NAME xml_02: test invalid file content
+query select * from /tests/xml/splitChars.xml
+query select "------------↑ success ↑------------↓ no output ↓------------"
+query select * from /tests/xml/invalidBlockEnd.xml
+query select * from /tests/xml/invalidBlockStart.xml
+query select * from /tests/xml/invalidEnd.xml
+query select * from /tests/xml/invalidMiddle.xml
+query select * from /tests/xml/invalidStart.xml

@@ -1,0 +1,26 @@
+tagA|0                                                                text/xml-node
+tagA|1                                                                text/xml-node
+tagC                                                                  text/xml-node
+ВедьБогтакпол                                            text/xml-node
+Attribute [prop]:   string   "bob" 
+Attribute [propF]:   string   "billy" 
+Attribute [tagB]:   string   "Hello there" 
+Attribute [tagC]:   string   "Harry" 
+Attribute [prop]:   string   "house" 
+Attribute [propF]:   string   "thekid" 
+Attribute [text]:   string   "" 
+Attribute [propQ]:   string   "Quincy" 
+Attribute [text]:   string   "" 
+Attribute [神はひとり子をさえ惜]:   string   "𓀎𓀏𓀐𓀑𓀒𓀓𓀔𓀕𓀖𓀗𓀘𓀙" 
+Attribute [акпол]:   string   "|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|" 
+Attribute [text]:   string   "" 
+
+Hello there
+Hello there
+Harry
+Harry
+
+	
+Harry
+Tom
+Tom

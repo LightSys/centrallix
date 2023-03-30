@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "obj.h"
+#include "cxlib/util.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
@@ -74,6 +75,8 @@ typedef struct
     int		curWrite;
     pid_t	shell_pid;
     int		done;
+    char	vBuf[3];     // a verification buffer used to hold potentially valid split chars 
+    int		vLen;
     }
     ShlData, *pShlData;
 
@@ -414,6 +417,7 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	memset(inf,0,sizeof(ShlData));
 	inf->Obj = obj;
 	inf->Mask = mask;
+	inf->vLen = 0;
 
 	obj->SubCnt=1;
 	if(SHELL_DEBUG & SHELL_DEBUG_INIT) printf("%s was offered: (%i,%i,%i) %s\n",__FILE__,obj->SubPtr,
@@ -758,8 +762,16 @@ shlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
     {
     pShlData inf = SHL(inf_v);
     int i=-1;
+    int temp;
     int waitret;
     int retval;
+    int ind;
+
+    if(maxcnt < 4) /* cannot verify properly witout a larger buffer size */
+	{
+	mssError(1,"SHL","Shell requires a buffer size of at least 4 to verify properly");
+	return -1;
+	}
 
     if(SHELL_DEBUG & SHELL_DEBUG_IO)
 	printf("%s -- %p, %p, %i, %i, %i, %p\n",__FUNCTION__,inf_v,buffer,maxcnt,offset,flags,oxt);
@@ -793,25 +805,56 @@ shlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 	    return -1;
 	}
 
+    /** check if vBuf has data to insert **/
+    if(inf->vLen > 0)
+	memcpy(buffer, inf->vBuf, inf->vLen);
+
     while(i < 0)
 	{
-	i=fdRead(inf->shell_fd,buffer,maxcnt,0,flags & ~FD_U_SEEK);
+
+	i=fdRead(inf->shell_fd,(buffer+inf->vLen),(maxcnt-inf->vLen),0,flags & ~FD_U_SEEK);
 	if(i < 0)
 	    {
 	    /** if we get EIO, set the done flag **/
 	    if(errno == EIO)
 		{
 		inf->done = 1;
+		if(inf->vLen != 0)
+		    {
+		    mssError(1,"SHL","Shell returned an invalid character");
+		    if(SHELL_DEBUG & SHELL_DEBUG_IO)
+			printf("Recived EIO with %d bytes in vBuf. char(s) = %02x %02x %02x\n", inf->vLen, 
+			(unsigned char) inf->vBuf[0], (unsigned char) inf->vBuf[1], (unsigned char) inf->vBuf[2]);
+		    }
 		return -1;
 		}
 
 	    /** user doesn't want us to block **/
 	    if(flags & FD_U_NOBLOCK)
+		{
+		if(inf->vLen != 0)
+		    {
+		    /** stopped early because couldn't block, but still lost some data that may be invalid, so report **/
+		    mssError(1,"SHL","Shell returned an invalid character");
+		    if(SHELL_DEBUG & SHELL_DEBUG_IO)
+			printf("Cannot block with %d bytes in vBuf. char(s) = %02x %02x %02x\n ", inf->vLen, 
+			(unsigned char) inf->vBuf[0], (unsigned char) inf->vBuf[1], (unsigned char) inf->vBuf[2]);
+		    }
 		return -1;
+		}
 
 	    /** if there is no more child process, that's probably why we can't read :) **/
 	    if(inf->shell_pid==0)
+		{
+		if(inf->vLen != 0)
+		    {
+		    mssError(1,"SHL","Shell returned an invalid character");
+		    if(SHELL_DEBUG & SHELL_DEBUG_IO) 
+			printf("No more child process with %d bytes in vBuf. char(s) = %02x %02x %02x\n", inf->vLen, 
+			(unsigned char) inf->vBuf[0], (unsigned char) inf->vBuf[1], (unsigned char) inf->vBuf[2]);
+		    }
 		return -1;
+		}
 
 	    shl_internal_UpdateStatus(inf);
 
@@ -825,7 +868,45 @@ shlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 		/** child just died -- retry the read **/
 		}
 	    }
+	if(i > 0 && i + inf->vLen <= 3) /* verification needs at least 3 bytes to work consistently, unless at end */
+	    {
+	    inf->vLen += i; /* up offset */
+	    i = -1;         /* make sure the read runs again */
+	    }
 	}
+    i+= inf->vLen; /* update i to be correct */
+
+    /** check the new input to make sure everything is in a valid state **/
+    if((ind = nVerifyUTF8(buffer, i)) != UTIL_VALID_CHAR) /** TODO: this may not be needed; could be something besides text **/
+        {
+        if(i - ind <= 3) /* if error is in last 3 bytes, store for later */
+	    {
+	    inf->vLen = i - ind;
+	    memcpy(inf->vBuf, buffer+ind, inf->vLen);
+	    i = ind;
+	    memset(buffer+i, '\0', inf->vLen); /* overwrite bad value */
+	    }
+	else /* is definently an error, end read */
+	    {
+	    mssError(1,"SHL","Shell returned an invalid character");
+	    if(SHELL_DEBUG & SHELL_DEBUG_IO)
+		printf("Invalid char in buffer: ind = %d, char = %02x\n", ind, (unsigned char) buffer[ind]);
+	    return -1;
+	    }
+        }
+    else /*everything is valid, reset vLen*/
+	inf->vLen = 0;
+
+    /** if read returned nothing, vBuf should be empty **/
+    if(inf->vLen != 0 && i == 0)
+	    {
+	    mssError(1,"SHL","Shell returned an invalid character");
+	    if(SHELL_DEBUG & SHELL_DEBUG_IO)
+	    	printf("Read 0 bytes, but still had %d byte(s) in vBuf. char(s): %02x %02x %02x\n", inf->vLen, 
+	    	(unsigned char) inf->vBuf[0], (unsigned char) inf->vBuf[1], (unsigned char) inf->vBuf[2]);
+	    return -1;
+	    }
+
     inf->curRead+=i;
     return i;
     }

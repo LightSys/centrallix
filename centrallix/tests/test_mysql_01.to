@@ -1,0 +1,40 @@
+##NAME Test mysql driver with utfmb4 (standard UTF-8) 
+
+# clear out any left over entries
+query delete from /tests/Centrallix_DB/utf8/rows
+
+
+# insert basic Ascii
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="ascii", longString="more ascii", raw="string as blob", text="Some text"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="more standard ascii text aproaching the limit...", longString="The Lord is my shepherd; I shall not want. He maketh me to lie down in green pastures: he leadeth me beside the still waters. He restoreth my soul: he leadeth me in the paths of righteousness for his name's sake. Yea, though I walk through the", raw=" valley of the shadow of death, I will fear no evil: for thou art with me; thy rod and thy staff they comfort me. Thou preparest a table before me in the presence of mine enemies: thou anointest my head with oil; my cup runneth over.", text="Surely goodness and mercy shall follow me all the days of my life: and I will dwell in the house of the Lord for ever."
+
+# insert test of unicode planes. Each character (NOT byte) produces one '?'
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="short 2 byte utf-8", longString="Ведь", raw="Псалом Давида.", text="убоюсь зла, потому что Ты со мной"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="long 2 byte utf-8", longString="Ведь Бог так полюбил этот мир, что отдал Своего единственного Сына, чтобы каждый верующий в Него не погиб, но имел вечную жизнь.", raw="Псалом Давида. Господь--Пастырь мой; я ни в чем не буду нуждаться: Он покоит меня на злачных пажитях и водит меня к водам тихим, подкрепляет душу мою, направляет меня на стези правды ради имени Своего. Если я пойду и долиною смертной тени, не ", text="убоюсь зла, потому что Ты со мной; Твой жезл и Твой посох--они успокаивают меня. Ты приготовил предо мною трапезу в виду врагов моих; умастил елеем голову мою; чаша моя преисполнена. Так, благость и милость да сопровождают меня во все дни жизни моей, и я пребуду в доме Господнем многие дни."
+
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="short 3 byte utf-8", longString="実に", raw="実に神はひとり子をさえ惜しまず与し", text="ず永遠のいのちを得るためです"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="long 3 byte utf-8", longString="実に神はひとり子をさえ惜しまず与えるほどにこの世界を愛してくださいました。それは神の御子を信じる者がだれ一人滅びず永遠のいのちを得るためです。", raw="実に神はひとり子をさえ惜しまず与えるほどにこの世界を愛してくださいました。それは神の御子を信じる者がだれ一人滅びず永遠のいのちを得るためです。", text="実に神はひとり子をさえ惜しまず与えるほどにこの世界を愛してくださいました。それは神の御子を信じる者がだれ一人滅びず永遠のいのちを得るためです。"
+
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="short 4 byte utf-8", longString="𓀀𓀁𓀂𓀃𓀄𓀅𓀆𓀇𓀈", raw="𓁊𓁋𓁌𓁍𓁎𓁏𓁐𓁑𓁒𓁓𓁔𓁕𓁖", text="𓁹𓁺𓁻𓁼𓁽𓁾𓁿"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="short 4 byte utf-8", longString="𓀀𓀁𓀂𓀃𓀄𓀅𓀆𓀇𓀈𓀉𓀊𓀋𓀌𓀍𓀎𓀏𓀐𓀑𓀒𓀓𓀔𓀕𓀖𓀗𓀘𓀙𓀚𓀛𓀜𓀝𓀞𓀟𓀠𓀡𓀢𓀣𓀤𓀥𓀦𓀧𓀨𓀩𓀪𓀫𓀬𓀭𓀮𓀯𓀰𓀱𓀲𓀳𓀴𓀵𓀶𓀷𓀸𓀹𓀺𓀻𓀼𓀽𓀾", raw="𓀀𓀁𓀂𓀃𓀄𓀅𓀆𓀇𓀈𓀉𓀊𓀋𓀌𓀍𓀎𓀏𓀐𓀑𓀒𓀓𓀔𓀕𓀖𓀗𓀘𓀙𓀚𓀛𓀜𓀝𓀞𓀟𓀠𓀡𓀢𓀣𓀤𓀥𓀦𓀧𓀨𓀩𓀪𓀫𓀬𓀭𓀮𓀯𓀰𓀱𓀲𓀳𓀴𓀵𓀶𓀷𓀸𓀹𓀺𓀻𓀼𓀽𓀾", text="𓀀𓀁𓀂𓀃𓀄𓀅𓀆𓀇𓀈𓀉𓀊𓀋𓀌𓀍𓀎𓀏𓀐𓀑𓀒𓀓𓀔𓀕𓀖𓀗𓀘𓀙𓀚𓀛𓀜𓀝𓀞𓀟𓀠𓀡𓀢𓀣𓀤𓀥𓀦𓀧𓀨𓀩𓀪𓀫𓀬𓀭𓀮𓀯𓀰𓀱𓀲𓀳𓀴𓀵𓀶𓀷𓀸𓀹𓀺𓀻𓀼𓀽𓀾"
+
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="test of utf-8 planes", longString="|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|", raw="|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|", text="|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|"
+
+
+# test overflows (can only fit in enoug in centralix's buffers to overflow the small field; mysql sizes are by character, NOT by byte)
+query insert into object /tests/Centrallix_DB/latin1/rows/* select string="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBB", longString="1 byte test, no offset"
+
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="ииииииииииииииииииииииииииииииииииииииииииииииииииллллл", longString="2 byte test, no offset"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="1иииииииииииииииииииииииииииииииииииииииииииииииииллллл", longString="2 byte test, 1 offset"
+
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実ににににに", longString="3 byte test, no offset"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="1実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実ににににに", longString="3 byte test, 1 offset"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="12実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実実ににににに", longString="3 byte test, 2 offset"
+
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓁿𓁿𓁿𓁿𓁿", longString="4 byte test, no offset"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="1𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓁿𓁿𓁿𓁿𓁿", longString="4 byte test, 1 offset"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="12𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓁿𓁿𓁿𓁿𓁿", longString="4 byte test, 2 offset"
+query insert into object /tests/Centrallix_DB/utf8/rows/* select string="123𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓀘𓁿𓁿𓁿𓁿𓁿", longString="4 byte test, 3 offset"
+
+# print out results 
+query select :id, :string, :longString, :raw, :text from /tests/Centrallix_DB/utf8/rows

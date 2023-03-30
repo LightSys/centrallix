@@ -204,6 +204,7 @@ objInitialize()
     char* filename;
     char sysbuf[64];
     pSysInfoData si;
+    int mlxFlags;
 
 	/** Zero the globals **/
 	memset(&OSYS, 0, sizeof(OSYS));
@@ -248,7 +249,9 @@ objInitialize()
 	    perror(filename);
 	    exit(1);
 	    }
-	s = mlxOpenSession(fd, MLX_F_EOF | MLX_F_EOL | MLX_F_POUNDCOMM);
+	mlxFlags = MLX_F_EOF | MLX_F_EOL | MLX_F_POUNDCOMM;
+	if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+	s = mlxOpenSession(fd, mlxFlags);
 	if (!s)
 	    {
 	    printf("could not open lexer session on '%s'", filename);
@@ -574,7 +577,7 @@ obj_internal_ReadEventFile()
     int t;
     XString code, path, where, xdata;
     char* ptr;
-
+    int mlxFlags;
     	/** Open the file **/
 	uid = geteuid();
 	seteuid(0);
@@ -583,7 +586,9 @@ obj_internal_ReadEventFile()
 	if (!fd) return -1;
 
 	/** Open a lexer/tokenizer session on the file **/
-	lxs = mlxOpenSession(fd, MLX_F_EOF | MLX_F_EOL);
+	mlxFlags = MLX_F_EOF | MLX_F_EOL;
+	if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+	lxs = mlxOpenSession(fd, mlxFlags);
 	if (!lxs) return -1;
 
 	/** Initialize the string buffers **/

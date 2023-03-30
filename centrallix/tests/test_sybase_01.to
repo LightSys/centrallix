@@ -1,0 +1,15 @@
+##NAME Sybase 01: overflow test
+
+# clear out old data
+query delete from /tests/Test_DB.sybdb/basic/rows
+
+# insert new values 
+
+query insert into object /tests/Test_DB.sybdb/basic/rows/* select string="1 byte ascii", longString="A longer exampe of ascii which is actually too long", number=1, text="even more ascii text, but text does not have a reasonable size cap to test"
+query insert into object /tests/Test_DB.sybdb/basic/rows/* select string="2 byte UTF-8: Своего", longString="ͰͱͲͳʹ͵Ͷͷͺͻͼͽ;΄΅ΆΈΉΊΌΎΏΐΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώϏϐϑϒϓϔϕϖϗϘϙϚϛϜϝϞϟϠϡϢϣϤϥϦϧϨϩϪϫϬϭϮϯϰϱϲϳϴϵ϶ϷϸϾϿ", number=2, text="ͰͱͲͳʹ͵Ͷͷͺͻͼͽ;΄"
+query insert into object /tests/Test_DB.sybdb/basic/rows/* select string="3 byte UTF-8: 実に神は", longString="実に神はひとり子をさえ惜しまず与えるほどにこの世界を愛してくださいました。それは神の御子を信じる者がだれ一人滅びず永遠のいのちを得るためです。", number=3, text="実に神はひとり子"
+query insert into object /tests/Test_DB.sybdb/basic/rows/* select string="4 byte UTF-8: 𓀀𓀁𓀂", longString="𓀀𓀁𓀂𓀃𓀄𓀅𓀆𓀇𓀈𓀉𓀊𓀋𓀌𓀍𓀎𓀏𓀐𓀑𓀒𓀓𓀔𓀕𓀖𓀗𓀘𓀙𓀚𓀛𓀜𓀝𓀞𓀟𓀠𓀡𓀢𓀣𓀤𓀥𓀦𓀧𓀨𓀩𓀪𓀫𓀬𓀭𓀮𓀯𓀰𓀱𓀲𓀳𓀴𓀵𓀶𓀷𓀸𓀹𓀺𓀻𓀼𓀽𓀾", number=4, text="𓀀𓀁𓀂𓀃𓀄𓀅𓀆𓀇𓀈𓀉𓀊𓀋𓀌"
+query insert into object /tests/Test_DB.sybdb/basic/rows/* select string="test of utf-8 planes", longString="|�￦|𐊌🫖|𠀀蜨|𰀀𲎯||�￦|𐊌🫖|𠀀蜨|𰀀𲎯||�￦|𐊌🫖|𠀀蜨|𰀀𲎯||�￦|𐊌🫖|𠀀蜨|𰀀𲎯||�￦|𐊌🫖|𠀀蜨|𰀀𲎯||�￦|𐊌🫖|𠀀蜨|𰀀𲎯||�￦|𐊌🫖|𠀀蜨|𰀀𲎯|", number=5, text="|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|"
+
+# print out results
+query select * from /tests/Test_DB.sybdb/basic/rows

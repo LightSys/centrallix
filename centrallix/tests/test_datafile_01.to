@@ -1,0 +1,3 @@
+##NAME Test invalid UTF-8 in .csv fields, with and without .spec
+query select * from /tests/UTF8_invalid.csv/rows
+query select * from /tests/UTF8_invalid0.csv/rows

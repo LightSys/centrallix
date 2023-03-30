@@ -1,0 +1,35 @@
+Attribute [id]:  integer  1
+Attribute [string]:   string   "short 2 byte utf-8" 
+Attribute [longString]:   string   "Ведь" 
+Attribute [raw]:   string   "Псалом Давида." 
+Attribute [text]:   string   "убоюсь зла, потому что Ты со мной" 
+Attribute [id]:  integer  2
+Attribute [string]:   string   "short 3 byte utf-8" 
+Attribute [longString]:   string   "実に" 
+Attribute [raw]:   string   "実に神はひとり子をさえ惜しまず与し" 
+Attribute [text]:   string   "ず永遠のいのちを得るためです" 
+Attribute [id]:  integer  3
+Attribute [string]:   string   "short 4 byte utf-8" 
+Attribute [longString]:   string   "𓀀𓀁𓀂𓀃𓀄𓀅𓀆𓀇𓀈" 
+Attribute [raw]:   string   "𓁊𓁋𓁌𓁍𓁎𓁏𓁐𓁑𓁒𓁓𓁔𓁕𓁖" 
+Attribute [text]:   string   "𓁹𓁺𓁻𓁼𓁽𓁾𓁿" 
+Attribute [id]:  integer  4
+Attribute [string]:   string   "test of utf-8 planes" 
+Attribute [longString]:   string   "|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|" 
+Attribute [raw]:   string   "|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|" 
+Attribute [text]:   string   "|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|" 
+Attribute [id]:  integer  5
+Attribute [string]:   string   "short 3 byte utf-8`; DROP TABLE utf8; --" 
+Attribute [longString]:   string   "実に" 
+Attribute [raw]:   string   "実に神はひとり子をさえ惜しまず与し" 
+Attribute [text]:   string   "ず永遠のいのちを得るためです" 
+Attribute [id]:  integer  6
+Attribute [string]:   string   "short 3 byte utf-8'; DROP TABLE utf8; --" 
+Attribute [longString]:   string   "実に" 
+Attribute [raw]:   string   "実に神はひとり子をさえ惜しまず与し" 
+Attribute [text]:   string   "ず永遠のいのちを得るためです" 
+Attribute [id]:  integer  7
+Attribute [string]:   string   "short 3 byte utf-8" 
+Attribute [longString]:   string  NULL
+Attribute [raw]:   string  NULL
+Attribute [text]:   string  NULL

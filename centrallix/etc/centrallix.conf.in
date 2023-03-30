@@ -12,6 +12,7 @@ centrallix "system/config"
     colors_config = "##SYSCONFDIR##/centrallix/rgb.txt";
     rootnode_type = "system/uxfile";
     rootnode_file = "##SYSCONFDIR##/centrallix/rootnode";
+    charsetmap_file = "##SYSCONFDIR##/centrallix/charsetmap.cfg";
     credentials_db = "##SYSCONFDIR##/centrallix/cxss.db";
     debug_log_file = "/var/log/cx_debug_log";
     cache_dir = "/var/cache/centrallix";

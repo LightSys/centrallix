@@ -1,0 +1,12 @@
+Attribute [id]:  integer  1
+Attribute [string]:   string   "1 byte ascii" 
+Attribute [longString]:   string   "A longer" 
+Attribute [number]:  integer  1
+Attribute [text]:   string   "even more ascii text" 
+Attribute [id]:  integer  2
+Attribute [string]:   string   "1 byte ascii" 
+Attribute [longString]:   string   "A longer example of ascii" 
+Attribute [number]:  integer  1
+Attribute [text]:   string   "even more" 
+even more ascii text
+

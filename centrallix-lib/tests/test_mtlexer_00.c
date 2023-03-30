@@ -41,6 +41,28 @@ test(char** tname)
 		assert(t == toktype[i%n_flagtype][j]);
 		}
 	    mlxCloseSession(lxs);
+		
+	    /* with utf-8 flags */
+	    flags = flagtype[i%n_flagtype] | MLX_F_ENFORCEUTF8;
+	    lxs = mlxStringSession(str, flags);
+	    assert(lxs != NULL);
+	    for(j=0;j<n_tok;j++)
+		{
+		t = mlxNextToken(lxs);
+		assert(t == toktype[i%n_flagtype][j]);
+		}
+	    mlxCloseSession(lxs);
+
+	    /* with ascii flags */
+	    flags = flagtype[i%n_flagtype] | MLX_F_ENFORCEASCII;
+	    lxs = mlxStringSession(str, flags);
+	    assert(lxs != NULL);
+	    for(j=0;j<n_tok;j++)
+		{
+		t = mlxNextToken(lxs);
+		assert(t == toktype[i%n_flagtype][j]);
+		}
+	    mlxCloseSession(lxs);
 	    }
 
     return iter;

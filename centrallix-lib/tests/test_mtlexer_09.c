@@ -7,6 +7,7 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -44,6 +45,8 @@ test(char** tname)
 	    tokstr[0][i+1] = '\n';
 	    str[i+20] = '\n';
 	    tokstr[0][i+19] = '\n';
+
+	    /** normal **/
 	    lxs = mlxStringSession(str, MLX_F_EOL | MLX_F_EOF);
 	    assert(lxs != NULL);
 	    strcnt = 0;
@@ -63,6 +66,51 @@ test(char** tname)
 		    }
 		}
 	    mlxCloseSession(lxs);
+
+	    /** utf8 **/
+	    lxs = mlxStringSession(str, MLX_F_EOL | MLX_F_EOF | MLX_F_ENFORCEUTF8);
+	    assert(lxs != NULL);
+	    strcnt = 0;
+	    for(j=0;j<n_tok;j++)
+		{
+		t = mlxNextToken(lxs);
+		if (t != toktype[j]) printf("Error at iter=%d\n", i);
+		assert(t == toktype[j]);
+		if (t == MLX_TOK_STRING || t == MLX_TOK_KEYWORD)
+		    {
+		    alloc = 0;
+		    strval = mlxStringVal(lxs, &alloc);
+		    assert(strval != NULL);
+		    assert(strcnt < 1);
+		    assert(strcmp(strval,tokstr[strcnt++]) == 0);
+		    if (alloc) nmSysFree(strval);
+		    }
+		}
+	    mlxCloseSession(lxs);
+
+	    /** ascii **/
+	    lxs = mlxStringSession(str, MLX_F_EOL | MLX_F_EOF | MLX_F_ENFORCEUTF8);
+	    assert(lxs != NULL);
+	    strcnt = 0;
+	    for(j=0;j<n_tok;j++)
+		{
+		t = mlxNextToken(lxs);
+		if (t != toktype[j]) printf("Error at iter=%d\n", i);
+		assert(t == toktype[j]);
+		if (t == MLX_TOK_STRING || t == MLX_TOK_KEYWORD)
+		    {
+		    alloc = 0;
+		    strval = mlxStringVal(lxs, &alloc);
+		    assert(strval != NULL);
+		    assert(strcnt < 1);
+		    assert(strcmp(strval,tokstr[strcnt++]) == 0);
+		    if (alloc) nmSysFree(strval);
+		    }
+		}
+	    mlxCloseSession(lxs);
+	    
+
+
 	    str[i+1] = 'a';
 	    str[i+2] = 'a';
 	    tokstr[0][i] = 'a';

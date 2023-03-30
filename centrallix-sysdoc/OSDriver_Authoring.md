@@ -13,12 +13,12 @@ License:  Copyright (C) 2001-2011 LightSys Technology Services. See LICENSE.txt 
   - [I Introduction](#i-introduction)
   - [II Interface](#ii-interface)
     - [A.  Initialization](#a--initialization)
-    - [B.  Opening And Closing Objects](#b--opening-and-closing-objects)
-    - [C.  Creating and Deleting Objects.](#c--creating-and-deleting-objects)
-    - [D.  Reading and Writing Object Content.](#d--reading-and-writing-object-content)
-    - [E.  Querying for Child Objects.](#e--querying-for-child-objects)
-    - [F.  Managing Object Attributes](#f--managing-object-attributes)
-    - [G.  Managing Object Methods](#g--managing-object-methods)
+    - [B.  Opening And Closing Objects](#b-opening-and-closing-objects)
+    - [C.  Creating and Deleting Objects.](#c-creating-and-deleting-objects)
+    - [D.  Reading and Writing Object Content.](#d-reading-and-writing-object-content)
+    - [E.  Querying for Child Objects.](#e-querying-for-child-objects)
+    - [F.  Managing Object Attributes](#f-managing-object-attributes)
+    - [G.  Managing Object Methods](#g-managing-object-methods)
   - [III Reading the Node Object](#iii-reading-the-node-object)
     - [pSnNode snReadNode(pObject obj)](#psnnode-snreadnodepobject-obj)
     - [pSnNode snNewNode(pObject obj, char* content_type)](#psnnode-snnewnodepobject-obj-char-content_type)
@@ -48,27 +48,27 @@ License:  Copyright (C) 2001-2011 LightSys Technology Services. See LICENSE.txt 
     - [void* nmSysRealloc(void* ptr, int newsize)](#void-nmsysreallocvoid-ptr-int-newsize)
     - [char* nmSysStrdup(const char* str)](#char-nmsysstrdupconst-char-str)
   - [V Other Utility Modules](#v-other-utility-modules)
-    - [A.	XArray (XA) - Arrays](#axarray-xa---arrays)
+    - [A.	XArray (XA) - Arrays](#a-xarray-xa---arrays)
       - [xaInit(pXArray this, int init_size)](#xainitpxarray-this-int-init_size)
       - [xaDeInit(pXArray this)](#xadeinitpxarray-this)
       - [xaAddItem(pXArray this, void* item)](#xaadditempxarray-this-void-item)
       - [xaAddItemSorted(pXArray this, void* item, int keyoffset, int keylen)](#xaadditemsortedpxarray-this-void-item-int-keyoffset-int-keylen)
       - [xaFindItem(pXArray this, void* item)](#xafinditempxarray-this-void-item)
       - [xaRemoveItem(pXArray this, int index)](#xaremoveitempxarray-this-int-index)
-    - [B.	XHash (XH) - Hash Tables](#bxhash-xh---hash-tables)
+    - [B.	XHash (XH) - Hash Tables](#b-xhash-xh---hash-tables)
     - [int xhInit(pXHashTable this, int rows, int keylen)](#int-xhinitpxhashtable-this-int-rows-int-keylen)
       - [int xhDeInit(pXHashTable this)](#int-xhdeinitpxhashtable-this)
       - [int xhAdd(pXHashTable this, char* key, char* data)](#int-xhaddpxhashtable-this-char-key-char-data)
       - [int xhRemove(pXHashTable this, char* key)](#int-xhremovepxhashtable-this-char-key)
       - [char* xhLookup(pXHashTable this, char* key)](#char-xhlookuppxhashtable-this-char-key)
       - [int xhClear(pXHashTable this, int free_blk)](#int-xhclearpxhashtable-this-int-free_blk)
-    - [C.	XString (XS) - Strings](#cxstring-xs---strings)
+    - [C.	XString (XS) - Strings](#c-xstring-xs---strings)
       - [int xsInit(pXString this)](#int-xsinitpxstring-this)
       - [int xsDeInit(pXString this)](#int-xsdeinitpxstring-this)
       - [int xsConcatenate(pXString this, char* text, int len)](#int-xsconcatenatepxstring-this-char-text-int-len)
       - [int xsCopy(pXString this, char* text, int len)](#int-xscopypxstring-this-char-text-int-len)
       - [char* xsStringEnd(pXString this)](#char-xsstringendpxstring-this)
-    - [D.	Expression (EXP) - Expression Trees](#dexpression-exp---expression-trees)
+    - [D.	Expression (EXP) - Expression Trees](#d-expression-exp---expression-trees)
       - [pExpression expCompileExpression(char* text, pParamObjects objlist, int lxflags, int cmpflags)](#pexpression-expcompileexpressionchar-text-pparamobjects-objlist-int-lxflags-int-cmpflags)
       - [expFreeExpression(pExpression this)](#expfreeexpressionpexpression-this)
       - [int expEvalTree(pExpression this, pParamObjects objlist)](#int-expevaltreepexpression-this-pparamobjects-objlist)
@@ -78,14 +78,14 @@ License:  Copyright (C) 2001-2011 LightSys Technology Services. See LICENSE.txt 
       - [int expModifyParam(pParamObjects this, char* name, pObject replace_obj)](#int-expmodifyparampparamobjects-this-char-name-pobject-replace_obj)
       - [int expRemoveParamFromList(pParamObjects this, char* name)](#int-expremoveparamfromlistpparamobjects-this-char-name)
       - [int expReverseEvalTree(pExpression tree, pParamObjects objlist)](#int-expreverseevaltreepexpression-tree-pparamobjects-objlist)
-    - [E.	MTSession (MSS) - Basic Session Management](#emtsession-mss---basic-session-management)
+    - [E.	MTSession (MSS) - Basic Session Management](#e-mtsession-mss---basic-session-management)
       - [char* mssUserName()](#char-mssusername)
       - [char* mssPassword()](#char-msspassword)
       - [int mssSetParam(char* paramname, char* param)](#int-msssetparamchar-paramname-char-param)
       - [char* mssGetParam(char* paramname)](#char-mssgetparamchar-paramname)
       - [int mssError(int clr, char* module, char* message, ...)](#int-msserrorint-clr-char-module-char-message-)
       - [int mssErrorErrno(int clr, char* module, char* message, ...)](#int-msserrorerrnoint-clr-char-module-char-message-)
-    - [F.	OSML Utility Functions](#fosml-utility-functions)
+    - [F.	OSML Utility Functions](#f-osml-utility-functions)
       - [char* obj_internal_PathPart(pPathname path, int start, int length)](#char-obj_internal_pathpartppathname-path-int-start-int-length)
       - [int obj_internal_AddToPath(pPathname path, char* new_element)](#int-obj_internal_addtopathppathname-path-char-new_element)
       - [int obj_internal_CopyPath(pPathname dest, pPathname src)](#int-obj_internal_copypathppathname-dest-ppathname-src)
@@ -114,6 +114,9 @@ License:  Copyright (C) 2001-2011 LightSys Technology Services. See LICENSE.txt 
     - [A.	Object opening, closing, creation, and deletion](#aobject-opening-closing-creation-and-deletion)
     - [B.	Object attribute enumeration, getting, and setting.](#bobject-attribute-enumeration-getting-and-setting)
     - [C.	Object querying (for subobjects)](#cobject-querying-for-subobjects)
+  - [IX String Verification](#ix-string-verification)
+    - [A. Available Functions](#a-available-functions)
+    - [B. Unverified External Drivers](#b-unverified-external-drivers)
 
 ## I Introduction
 An objectsystem driver's purpose is to provide access to a particular type of local or network data/resource, and to organize that data in a tree- structured heirarchy that can be integrated into the Centrallix's ObjectSystem.  This tree structure will vary based on the data being presented, but will fit the basic ObjectSystem model of a heirarchy of objects, each having attributes, perhaps some methods, and possibly content.  
@@ -906,6 +909,8 @@ This function opens a lexer session from a file source.  See the 'expression' mo
 | MLX_F_IFSONLY       | Only return string values separated by tabs, spaces, newlines, and carriage returns.  For example, normally the brace in "this{brace" is a token and that string will result in three tokens, but in IFSONLY mode it is just one token.
 | MLX_F_NODISCARD     | This flag indicates to the lexer that the calling function expects to be able to read data normally using fdRead() or another lexer session after the last token is read and the session is closed.  The lexer will then attempt to "unread" bytes that it buffered during the lexical analysis process (it does fdRead() operations in 2k or so chunks).  If this flag is not specified, up to 2k of information after the last token will be discarded and further fdRead()s on the file descriptor will start at an undefined place in the file.
 | MLX_F_ALLOWNUL      | Allow NUL characters ('\0') in the input stream.  If this flag is not set, then NUL characters result in an error condition.  This prevents unwary callers from mis-reading a token returned by mlxStringVal if the token contains a NUL.  If ALLOWNUL is turned on, then the caller must ensure that it is safely handling values with NULs.  
+| MLX_F_ENFORCEUTF8   | Ensures that all lexed text conforms to UTF-8 encoding standards. If any invalid characters are found, an error token is returned. Must NOT be set at the same time as the MLX_F_ENFORCEASCII flag, described below. 
+| MLX_F_ENFORCEASCII  | Ensures that all lexed text conforms to standard 7 bit ascii. If any invalid bytes are found, an error token is returned. Must NOT be set at the same time as the MLX_F_ENFORCEUTF8 flag, described above. 
 
 ### pLxSession mlxStringSession(char* str, int flags)
 This function opens a lexer session from a text string.  Same as the above function except that the flag MLX_F_NODISCARD makes no sense for the string.
@@ -1079,3 +1084,26 @@ The term "MAY" refers to optional, but permissible, behavior.
 9.  Testing of query functionality can be done via test_obj's "query", "csv", and "ls" (or "list") commands.  To test for nested querying of objects returned from QueryFetch, a SUBTREE select can be used with the "query" or "csv" commands.
 
 10. Drivers which support full sorting or full querying MUST be able to handle the attribute "name" in the expression tree for the sort or query criteria.  The "name" attribute SHOULD be mapped to an expression which reflects how "name" is constructed for objects, such as changing "name" to "convert(varchar, prikeyfield1) + '|' + convert(varchar, prikeyfield2)" or whatever is appropriate.
+
+
+## IX String Verification
+Centrallix-lib's util library provides a few functions which are useful for verifying that incoming text is properly encoded. This is particularly crucial for drivers which both read external data (e.g. from the filesystem, internet connections, or database connections) and can reasonably expect to encounter UTF-8 encoded characters. Most external drivers attempt to validate all incoming data before it is entered into the object system so that all of the other modules can trust the object system. 
+
+### A. Available Functions
+#### int nVerifyUTF8(char* str, int len)
+Given the string to be verified and the number of characters to check, returns the index of the start of the first invalid character found, the constant UTIL_VALID_CHAR if the string is valid, or UTIL_INVALID_ARGUMENT if the string pointer was NULL. 
+
+This function detects any bytes which are not valid UTF-8 encodings. In the case of multi-byte characters which are invalid, like overlong encodings, the index of the first byte is returned. This makes truncating data to remove invalid characters simple. 
+
+#### int verifyUTF8(char* str)
+This function works exactly nVerifyUTF8, except that it takes a NULL terminated string as a parameter instead of the string and length. This is useful when the data is formatted as a string. If you wish to validate a string that is not NULL terminated or to verify only part of a string, use nVerifyUTF8 instead. 
+
+#### int verifyASCII(char * str)
+Given a NULL terminating string, returns the index of the first non 7-bit ASCII character, UTIL_VALID_CHAR if the string is valid ASCII, or UTIL_INVALID_ARGUMENT if the string pointer was NULL. Note that extended ASCII characters (128 and above) are considered invalid. 
+
+### B. Unverified External Drivers
+The following is a list of the drivers which do not currently (as of March 2023) feature UTF-8 verification. These were not updated with the rest of the drivers because they were not in active use at the time. 
+- mbox
+- mime
+- pop_v3
+- All net drivers, excluding net_http

@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <locale.h>
+#include <langinfo.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -17,10 +19,12 @@
 #include "cxlib/xhash.h"
 #include "stparse.h"
 #include "cxlib/mtlexer.h"
+#include "cxlib/qprintf.h"
 #include <signal.h>
 #include "wgtr.h"
 #include "iface.h"
 #include "cxss/cxss.h"
+#include "charsets.h"
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
 #include <openssl/err.h>
@@ -290,7 +294,10 @@ int
 cxInitialize(void* v)
     {
     pFile cxconf;
+    pFile cxcharsetmap;
     pStructInf mss_conf;
+    pStructInf thisCharsetPtr;
+    char* charsetmapFileName;
     char* authmethod;
     char* authmethodfile;
     char* logmethod;
@@ -305,6 +312,9 @@ cxInitialize(void* v)
     char* debugfile;
 
 	xaInit(&CxGlobals.ShutdownHandlers,4);
+
+        /** Set the current locale to user's locale for chars **/
+	setlocale(LC_CTYPE, "");
 
 	/** set up the interrupt handler so we can shutdown properly **/
 	mtAddSignalHandler(SIGINT,cxShutdownThread);
@@ -346,7 +356,60 @@ cxInitialize(void* v)
 	    }
 	fdClose(cxconf, 0);
 
-	/** Debug log **/
+	/** Force the server locale? **/
+	if (stAttrValue(stLookup(CxGlobals.ParsedConfig, "locale"), NULL, &ptr, 0) == 0)
+	    {
+	    if (setlocale(LC_CTYPE, ptr) == NULL)
+		setlocale(LC_CTYPE, "");
+	    }
+
+	/** Check if UTF-8 or single byte encoding **/
+	if(MB_CUR_MAX == 1)
+            CxGlobals.CharacterMode = CharModeSingleByte;
+        else if(strcmp(nl_langinfo(CODESET), "UTF-8") == 0)
+            CxGlobals.CharacterMode = CharModeUTF8;
+        else
+            {
+            fprintf(stderr, "Current locale is not single byte encoding or UTF-8! Using C locale.\n");
+            setlocale(LC_CTYPE, "C");
+            }
+
+        /** Load the charsetmap file **/
+        if(stAttrValue(stLookup(CxGlobals.ParsedConfig, CHR_CHARSETMAP_FILE_KEY), NULL, &charsetmapFileName, 0) != 0)
+	    {
+            printf("centrallix: did not find required key '%s' in config file '%s'\n", CHR_CHARSETMAP_FILE_KEY, CxGlobals.ConfigFileName);
+            thExit();
+	    }
+        cxcharsetmap = fdOpen(charsetmapFileName, O_RDONLY, 0600);
+        if(!cxcharsetmap)
+	    {
+            printf("centrallix: could not open charsetmap file '%s'\n", charsetmapFileName);
+            thExit();
+	    }
+        CxGlobals.CharsetMap = stParseMsg(cxcharsetmap, 0);
+	if (!CxGlobals.CharsetMap)
+	    {
+	    printf("centrallix: error parsing charsetmap file '%s'\n", charsetmapFileName);
+	    thExit();
+	    }
+        fdClose(cxcharsetmap, 0);
+        
+        /** Now pull out the current charset and free the
+         rest **/
+        thisCharsetPtr = stLookup(CxGlobals.CharsetMap, nl_langinfo(CODESET));
+        if(thisCharsetPtr)
+	    {
+            stLinkInf(thisCharsetPtr);
+            stFreeInf(CxGlobals.CharsetMap);
+            CxGlobals.CharsetMap = thisCharsetPtr;
+	    }
+        else
+	    {
+            printf("centrallix: could not find current charset '%s' in '%s'\n", nl_langinfo(CODESET), charsetmapFileName);
+            thExit();
+	    }
+        
+        /** Debug log **/
 	if (stAttrValue(stLookup(CxGlobals.ParsedConfig, "debug_log_file"), NULL, &debugfile, 0) < 0)
 	    debugfile = "/var/log/cx_debug_log";
 	CxGlobals.DebugFile = fdOpen(debugfile, O_WRONLY | O_APPEND | O_CREAT, 0600);
@@ -363,6 +426,9 @@ cxInitialize(void* v)
 	/** Init the security subsystem.
 	 **/
 	cxssInitialize();
+
+	/** init qprintf **/
+	qpfInitialize(); 
 
 	/** Init the session handler.  We have to extract the config data for this 
 	 ** module ourselves, because mtsession is in the centrallix-lib, and thus can't

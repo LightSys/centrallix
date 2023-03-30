@@ -10,6 +10,7 @@
 #include "expression.h"
 #include "cxlib/magic.h"
 #include "cxlib/mtsession.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -231,6 +232,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
     char* start_ptr;
     pObject linked_obj = NULL;
     pObjectInfo info;
+    int mlxFlags;
 
     	ASSERTMAGIC(obj,MGK_OBJECT);
 
@@ -273,7 +275,9 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    }
 	else if (order_by)
 	    {
-	    lxs = mlxStringSession(order_by, MLX_F_EOF | MLX_F_FILENAMES | MLX_F_ICASER);
+	    mlxFlags = MLX_F_EOF | MLX_F_FILENAMES | MLX_F_ICASER;
+	    if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+	    lxs = mlxStringSession(order_by, mlxFlags);
 	    for(i=0;i < sizeof(this->SortBy)/sizeof(void*);i++)
 	        {
 		sort_item = exp_internal_CompileExpression_r(lxs, 0, this->ObjList, EXPR_CMP_ASCDESC);

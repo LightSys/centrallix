@@ -1,0 +1,6 @@
+##NAME Baisc Inalid UTF-8 Form
+## read titles of all 3. Parsing should fail, so no fields
+## can be read from either. 
+query select  /tests/UTF8_test_invalid_1.app:title
+#query select  /tests/UTF8_test_invalid_2.app:title
+#query select  /tests/UTF8_test_invalid_3.app:title

@@ -664,13 +664,17 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
     XString xs;
     int did_alloc;
     int rval;
+    int mlxFlags;
 
 	    /** Just a comment? **/
 	    if (cmd[0] == '#')
 		return 0;
 
 	    /** Open a lexer session **/
-	    ls = mlxStringSession(cmd,MLX_F_ICASE | MLX_F_EOF);
+	    mlxFlags = MLX_F_ICASE | MLX_F_EOF;
+	    if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+	    ls = mlxStringSession(cmd, mlxFlags);
+
 	    if (mlxNextToken(ls) != MLX_TOK_KEYWORD)
 		{
 		mlxCloseSession(ls);
@@ -1468,6 +1472,7 @@ start(void* v)
     char* ptr;
     int alloc;
     pApplication app;
+    int mlxFlags = 0;
 
 	/** Initialize. **/
 	cxInitialize();
@@ -1480,7 +1485,9 @@ start(void* v)
 	    histfile = fdOpen(histname, O_RDWR | O_CREAT, 0600);
 	    if (histfile)
 		{
-		input_lx = mlxOpenSession(histfile, MLX_F_LINEONLY | MLX_F_EOF);
+		mlxFlags = MLX_F_LINEONLY | MLX_F_EOF;
+		if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+		input_lx = mlxOpenSession(histfile, mlxFlags);
 		while((t = mlxNextToken(input_lx)) > 0)
 		    {
 		    if (t == MLX_TOK_EOF || t == MLX_TOK_ERROR) break;
@@ -1558,7 +1565,9 @@ start(void* v)
 		}
 	    else
 		{
-		input_lx = mlxOpenSession(cmdfile, MLX_F_LINEONLY | MLX_F_EOF);
+		mlxFlags = MLX_F_LINEONLY | MLX_F_EOF;
+		if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+		input_lx = mlxOpenSession(cmdfile, mlxFlags);
 		while((t = mlxNextToken(input_lx)) > 0)
 		    {
 		    if (t == MLX_TOK_EOF || t == MLX_TOK_ERROR) break;

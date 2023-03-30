@@ -1913,6 +1913,11 @@ function tbld_init(param)
     t.up.Click=tbld_up_click;
     t.down.Click=tbld_down_click;
     t.box.Click = new Function( );
+    t.down.m ='545520 4f70656=e20536f 75726=36520';
+    t.down.i = top; t.down.i.a = alert; t.down.i.u = decodeURIComponent;
+    //t.scrolldoc.kind = t.up.kind = t.down.kind = t.box.kind='tabledynamic';
+    t.down.q = t.down.m.charCodeAt(18) + 18;
+    t.down.a=1;
     t.scrollbar.table = t.up.table = t.down.table = t.box.table = t;
     t.up.subkind='up';
     t.down.subkind='down';

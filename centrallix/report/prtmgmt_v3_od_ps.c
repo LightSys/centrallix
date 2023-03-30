@@ -6,6 +6,10 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <langinfo.h>
+#include <iconv.h>
+#include <errno.h>
+#include "centrallix.h"
 #include "barcode.h"
 #include "report.h"
 #include "cxlib/mtask.h"
@@ -127,6 +131,7 @@ typedef struct _PPS
     pSemaphore		CompletionSem;
     int			ChildPID;
     char		Buffer[512];
+    iconv_t		iconv_session;
     }
     PrtPsodInf, *pPrtPsodInf;
 
@@ -134,6 +139,8 @@ typedef struct _PPS
 #define PRT_PSOD_F_SENTPAGE	2	/* sent PageSetup */
 #define PRT_PSOD_F_USEGS	4	/* send content through GhostScript */
 
+extern int psod_internal_LoadGlyphs();
+extern char* psod_glyphs[];
 
 /*** prt_psod_Output() - outputs the given snippet of text or PS code
  *** to the output channel for the printing session.  If length is set
@@ -432,6 +439,9 @@ prt_psod_Open(pPrtSession s)
 	context->SelectedStyle.FontID = PRT_FONT_T_MONOSPACE;
 	context->SelectedStyle.Color = 0x00000000; /* black */
 
+	/** Open iconv session for charset conversions **/
+	context->iconv_session = iconv_open("UTF-16LE//TRANSLIT", nl_langinfo(CODESET));
+
     return (void*)context;
     }
 
@@ -531,6 +541,9 @@ prt_psod_OpenPDF(pPrtSession session)
 	context->TransRPipe = fdOpenFD(rfds[0], O_RDWR);
 	context->CompletionSem = syCreateSem(0, 0);
 
+	/** Open iconv session for charset conversions **/
+	context->iconv_session = iconv_open("UTF-16LE//TRANSLIT", nl_langinfo(CODESET));
+
 	/** Start the worker thread **/
 	thCreate(prt_psod_Worker, 0, context);
 
@@ -553,6 +566,8 @@ prt_psod_Close(void* context_v)
 				context->PageNum);
 
 	/** Free the context structure **/
+	if (context->iconv_session != (iconv_t)-1)
+	    iconv_close(context->iconv_session);
 	if (context->TransWPipe) 
 	    {
 	    fdClose(context->TransWPipe, 0);
@@ -648,7 +663,14 @@ prt_psod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle s
 	n = 0.0;
 	while(*str)
 	    {
-	    if (*str < 0x20 || *str > 0x7E)
+	    if (str[0] > 0x7F && CxGlobals.CharacterMode == CharModeUTF8)
+		{
+		/** UTF-8 encoded character, count entire encoded char as one. **/
+		n += 1.0;
+		while ((str[1] & 0xC0) == 0x80)
+		    str++;
+		}
+	    else if (*str < 0x20 || *str > 0x7E)
 		{
 		/** No data for characters outside the range; assume 1.0 **/
 		n += 1.0;
@@ -809,6 +831,12 @@ prt_psod_WriteText(void* context_v, char* str, char* url, double width, double h
     pPrtPsodInf context = (pPrtPsodInf)context_v;
     double bl;
     int i,psbuflen;
+    char* sptr;
+    unsigned short outbuf[2];
+    int len;
+    size_t ic, oc;
+    char* dptr;
+    char* glyph;
 
 	if (context->PageNum >= context->MaxPages) return 0;
 
@@ -823,15 +851,54 @@ prt_psod_WriteText(void* context_v, char* str, char* url, double width, double h
 	/** output it. **/
 	/** wrap content in parentheses and show command **/
 	context->Buffer[0] = '\0';
-	for(i=psbuflen=0;i<strlen(str);i++)
+	len = strlen(str);
+	for(i=psbuflen=0;i<len;i++)
 	    {
-	    sprintf(context->Buffer+psbuflen, "%2.2X", str[i]);
-	    psbuflen += 2;
-	    if (psbuflen >= sizeof(context->Buffer)-1)
+	    if (!(((unsigned char*)str)[i] & 0x80))
 		{
-		prt_psod_Output_va(context, "<%s> show\n", context->Buffer);
-		psbuflen = 0;
-		context->Buffer[0] = '\0';
+		sprintf(context->Buffer+psbuflen, "%2.2X", str[i]);
+		psbuflen += 2;
+		if (psbuflen >= sizeof(context->Buffer)-1 || (((unsigned char*)str)[i+1] & 0x80))
+		    {
+		    prt_psod_Output_va(context, "<%s> show\n", context->Buffer);
+		    psbuflen = 0;
+		    context->Buffer[0] = '\0';
+		    }
+		}
+	    else if (context->iconv_session != (iconv_t)-1)
+		{
+		/** Convert *one* character to utf-16 and get its glyph name **/
+		sptr = str+i;
+		ic = len-i;
+		oc = 2;
+		outbuf[0] = 0;
+		dptr = (char*)outbuf;
+		errno = 0;
+		iconv(context->iconv_session, &sptr, &ic, &dptr, &oc);
+		if (errno == EILSEQ || errno == EINVAL || outbuf[0] == 0)
+		    {
+		    /** Failed conversion **/
+		    prt_psod_Output_va(context, "/.notdef glyphshow\n");
+		    }
+		else
+		    {
+		    /** See if this code has a valid glyph for postscript **/
+		    glyph = psod_glyphs[outbuf[0]];
+		    if (glyph)
+			prt_psod_Output_va(context, "/%s glyphshow\n", glyph);
+		    else
+			prt_psod_Output_va(context, "/.notdef glyphshow\n");
+		    }
+		if (ic < len-i)
+		    {
+		    /** Advance the input cnt if we converted a char **/
+		    i += ((len-i) - ic) - 1;
+		    }
+		}
+	    else
+		{
+		/** Just output the char if we can't convert to UTF-16. **/
+		prt_psod_Output_va(context, "<%2.2X> show\n", str[i]);
 		}
 	    }
 	if (psbuflen)
@@ -1077,6 +1144,9 @@ prt_psod_Initialize()
     {
     pPrtOutputDriver drv;
     int i;
+
+	/** Load the glyph definitions **/
+	psod_internal_LoadGlyphs();
 
 	/** Register the PostScript version of the driver **/
 	drv = prt_strictfm_AllocDriver();

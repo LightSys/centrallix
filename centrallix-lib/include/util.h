@@ -32,3 +32,42 @@ extern "C" {
 
 #endif	/* UTILITY_H */
 
+#define UTIL_VALID_CHAR (size_t)-1 /** for use with verifyUTF8 **/
+#define UTIL_INVALID_CHAR (size_t)-2
+#define UTIL_INVALID_ARGUMENT (size_t)-3
+/** states for validate **/
+#define UTIL_STATE_START  0
+#define UTIL_STATE_3_BYTE 1 /** 3 bytes left; was 4 total **/
+#define UTIL_STATE_2_BYTE 2 /** 2 bytes left; a leats 3 total **/
+#define UTIL_STATE_1_BYTE 3 /** 1 byte left; was at least 2 total **/
+#define UTIL_STATE_ERROR  4
+#define UTIL_STATE_E_SURROGATE 5
+#define UTIL_STATE_E_OVERLONG 6 /** starts with E0, check for overlong **/
+#define UTIL_STATE_F_OVERLONG 7 /** starts with F0, check for overlong **/
+#define UTIL_STATE_TOO_LARGE 8  /** starts with F4, check for too long **/
+
+/** \brief This function ensures that a string contains valid UTF-8.
+ \param string The string to verify.
+ \return The index of the first byte of the first invald char, or a 
+  code if not applicable  */
+int verifyUTF8(char* str);
+
+/** \brief This function ensures that all of the bytes of a string are 
+     valid ASCII.
+ \param string The string to verify.
+ \return returns index of the first invalid string, or a code if not 
+  applicable */
+int verifyASCII(char * str);
+
+/** \brief This function ensures that all of the bytes of a string are 
+     valid ASCII. Does not require a NULL terminator.
+ \param str The string to verify.
+ \param len the length of the suplied string
+ \return returns index of the first invalid string, or a code if not 
+  applicable */
+int nVerifyUTF8(char* str, int len);
+
+/** \brief Computes the number of bytes in a utf-8 char based on the first byte.
+ * \param byte the character to be checked
+ * \return the number of bytes in the character, or -1 on error. */
+ int numBytesInChar(char byte);

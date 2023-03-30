@@ -168,9 +168,13 @@ json_internal_ReadDoc(pObject obj)
     pDateTime dt = NULL;
     struct json_tokener* jtok = NULL;
     enum json_tokener_error jerr;
-    char rbuf[256];
-    int rcnt;
+    int rcnt = 6;
+    int tempRC = 0;
     int first_read;
+    int ind;
+    char checkBuf[263] = {0}; /** 6 bytes from prev (fix split errs) + rbuf + null **/
+    char* rbuf = checkBuf+6; /** skip past start. Will also ignore null at end. Treat as a 256 byte buf **/
+    int offset;
 
 	/** Already cached? **/
 	path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr);
@@ -221,7 +225,21 @@ json_internal_ReadDoc(pObject obj)
 	    /** Parse it one chunk at a time **/
 	    first_read = 1;
 	    do  {
-		rcnt = objRead(obj->Prev, rbuf, sizeof(rbuf), 0, first_read?OBJ_U_SEEK:0);
+		/** copy old to weed out char split errors. Note prev rcnt **/
+		memcpy(checkBuf, checkBuf+rcnt, 6); /* copy old. If first loop, no harm */
+		rcnt = objRead(obj->Prev, rbuf, 256, 0, first_read?OBJ_U_SEEK:0);
+		/** need at least 6 bytes to continue **/
+		while(rcnt < 6 && rcnt > 0)
+		    {
+		    tempRC = objRead(obj->Prev, rbuf+rcnt, 256-rcnt, 0, 0);
+		    if(tempRC == 0) break; /** done reading, can let go.  **/
+		    else if(tempRC <= 0) /** error **/
+			{
+			mssError(0,"JSON","Could not read JSON document");
+		        goto error;
+			}
+		    rcnt += tempRC;
+		    }
 		if (rcnt < 0 || (rcnt == 0 && first_read))
 		    {
 		    mssError(0,"JSON","Could not read JSON document");
@@ -229,11 +247,49 @@ json_internal_ReadDoc(pObject obj)
 		    }
 		if (rcnt == 0)
 		    break;
+
+		/** set up for verify **/
+		checkBuf[6+rcnt] = 0;
+		if(first_read)
+		    {
+		     /* make sure handles case of partially full rbuf */
+		    offset = 6;
+		    }
+		else 
+		    {
+		    offset = 0;
+		    }
+
+		/** verify text **/
+		if((ind = verifyUTF8(checkBuf+offset)) != UTIL_VALID_CHAR)
+		    {
+		    /** first 3 bytes verified previously so allow to skip up to 3 bytes **/
+		    if(!first_read && ind == 0)
+			{
+			while(++offset < 3 && (ind = verifyUTF8(checkBuf+offset)) == 0){}
+			ind = verifyUTF8(checkBuf+offset); /* run after end to make sure have most updated index*/
+			}
+		     
+		    /** last 3 bytes will be verified next loop or after end, so ignore **/
+		    if((6+rcnt) - (ind+offset) > 3 && ind != UTIL_VALID_CHAR)
+			{
+			mssError(0,"JSON","JSON document contained invalud UTF-8");
+			goto error;
+			}
+		    }
+
 		cache_obj->JObj = json_tokener_parse_ex(jtok, rbuf, rcnt);
 		first_read = 0;
 		} while((jerr = json_tokener_get_error(jtok)) == json_tokener_continue);
 	    //if (cache_obj->JObj)
 		//fprintf(stderr, "NEW JOBJ %8.8llx ref %d\n", cache_obj->JObj, ((int*)(cache_obj->JObj))[6]);
+	   
+	    /** final check to ensure that was no error at the end **/
+	    if(verifyUTF8(checkBuf+offset) != UTIL_VALID_CHAR)/* offset already gets past any errors at the start */
+		{
+		mssError(0,"JSON","JSON document contained invalud UTF-8");
+		goto error;
+		}
 
 	    /** Got it? **/
 	    if (jerr == json_tokener_continue)
@@ -250,7 +306,6 @@ json_internal_ReadDoc(pObject obj)
 	    jtok = NULL;
 	    }
 
-	/** Return the parsed JSON document **/
 	json_internal_CacheLink(cache_obj);
 	return cache_obj;
 
@@ -441,6 +496,7 @@ jsonRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
     int len;
     char* str;
     int rcnt;
+    int bytes;
 
 	/** Cannot read if this is not a string **/
 	if (!json_object_is_type(inf->CurNode, json_type_string))
@@ -466,7 +522,16 @@ jsonRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	rcnt = maxcnt;
 	if (rcnt > len - inf->Offset)
 	    rcnt = len - inf->Offset;
-	if (rcnt)
+
+	/** do not let copy split UTF-8 chars **/
+	if(strlen(str + inf->Offset) > rcnt)
+	    {
+	    if(numBytesInChar(*(str+inf->Offset + rcnt - 1)) >= 2) rcnt -= 1;
+	    else if(numBytesInChar(*(str+inf->Offset + rcnt - 2)) >= 3) rcnt -= 2;
+	    else if(numBytesInChar(*(str+inf->Offset + rcnt - 3)) >= 4) rcnt -= 3;
+	    }
+	
+	if (rcnt > 0)
 	    {
 	    memcpy(buffer, str + inf->Offset, rcnt);
 	    inf->Offset += rcnt;

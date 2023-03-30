@@ -25,7 +25,7 @@ test(char** tname)
     int n_iter;
     char* reswds[] = { "reserved", NULL };
 
-	*tname = "mtlexer-07 all tokens, space/tab/noifs with eol";
+	*tname = "mtlexer-07 all tokens, space/tab/noifs with eol";;
 
 	mssInitialize("system", "", "", 0, "test");
 
@@ -33,9 +33,67 @@ test(char** tname)
 
 	for(i=0;i<iter;i++)
 	    {
+
+	    /** normal **/
 	    fd = fdOpen("tests/test_mtlexer_07.txt", O_RDONLY, 0600);
 	    assert(fd != NULL);
 	    flags = MLX_F_EOL | MLX_F_FILENAMES | MLX_F_DBLBRACE | MLX_F_SSTRING;
+	    lxs = mlxOpenSession(fd, flags);
+	    assert(lxs != NULL);
+	    mlxSetReservedWords(lxs, reswds);
+	    t = mlxNextToken(lxs);
+	    assert(t == MLX_TOK_INTEGER);
+	    n_iter = mlxIntVal(lxs);
+	    assert(mlxNextToken(lxs) == MLX_TOK_EOL);
+	    n_tokens = 0;
+	    while((t = mlxNextToken(lxs)) == MLX_TOK_INTEGER)
+		{
+		assert(n_tokens < 256);
+		tokens[n_tokens++] = mlxIntVal(lxs);
+		assert(tokens[n_tokens-1] > 0 && tokens[n_tokens-1] <= MLX_TOK_MAX);
+		}
+	    assert(t == MLX_TOK_EOL);
+	    for(j=0;j<n_iter;j++)
+		{
+		for(k=0;k<n_tokens;k++)
+		    assert(mlxNextToken(lxs) == tokens[k]);
+		assert(mlxNextToken(lxs) == MLX_TOK_EOL);
+		}
+	    mlxCloseSession(lxs);
+	    fdClose(fd, 0);
+
+	    /** utf-8 **/
+	    fd = fdOpen("tests/test_mtlexer_07.txt", O_RDONLY, 0600);
+	    assert(fd != NULL);
+	    flags = MLX_F_EOL | MLX_F_FILENAMES | MLX_F_DBLBRACE | MLX_F_SSTRING | MLX_F_ENFORCEUTF8;
+	    lxs = mlxOpenSession(fd, flags);
+	    assert(lxs != NULL);
+	    mlxSetReservedWords(lxs, reswds);
+	    t = mlxNextToken(lxs);
+	    assert(t == MLX_TOK_INTEGER);
+	    n_iter = mlxIntVal(lxs);
+	    assert(mlxNextToken(lxs) == MLX_TOK_EOL);
+	    n_tokens = 0;
+	    while((t = mlxNextToken(lxs)) == MLX_TOK_INTEGER)
+		{
+		assert(n_tokens < 256);
+		tokens[n_tokens++] = mlxIntVal(lxs);
+		assert(tokens[n_tokens-1] > 0 && tokens[n_tokens-1] <= MLX_TOK_MAX);
+		}
+	    assert(t == MLX_TOK_EOL);
+	    for(j=0;j<n_iter;j++)
+		{
+		for(k=0;k<n_tokens;k++)
+		    assert(mlxNextToken(lxs) == tokens[k]);
+		assert(mlxNextToken(lxs) == MLX_TOK_EOL);
+		}
+	    mlxCloseSession(lxs);
+	    fdClose(fd, 0);
+
+	    /** ascii **/
+	    fd = fdOpen("tests/test_mtlexer_07.txt", O_RDONLY, 0600);
+	    assert(fd != NULL);
+	    flags = MLX_F_EOL | MLX_F_FILENAMES | MLX_F_DBLBRACE | MLX_F_SSTRING | MLX_F_ENFORCEASCII;
 	    lxs = mlxOpenSession(fd, flags);
 	    assert(lxs != NULL);
 	    mlxSetReservedWords(lxs, reswds);

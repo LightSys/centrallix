@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <assert.h>
+#include "centrallix.h"
 #include "barcode.h"
 #include "report.h"
 #include "cxlib/mtask.h"
@@ -408,6 +409,30 @@ prt_textlm_JustifyLine(pPrtObjStream starting_point, int jtype)
     }
 
 
+/*** prt_textlm_BytesForChar() - determine the number of bytes the given
+ *** character uses.  In UTF-8 mode, this is variable.  Otherwise, it is
+ *** just 1 byte (we do not support UTF-16 or UCS-2).
+ ***/
+int
+prt_textlm_BytesForChar(unsigned char* str)
+    {
+    int n;
+
+	if (str[0] > 0x7F && CxGlobals.CharacterMode == CharModeUTF8)
+	    {
+	    n = 1;
+	    while ((str[n] & 0xC0) == 0x80)
+		n++;
+	    }
+	else
+	    {
+	    n = 1;
+	    }
+
+    return n;
+    }
+
+
 /*** prt_textlm_FindWrapPoint() - finds a suitable location within a given
  *** string object to break it in order to do word wrapping.  Basically,
  *** a hyphen or a space makes a wrap point.  This function will find the
@@ -422,6 +447,7 @@ prt_textlm_FindWrapPoint(pPrtObjStream stringobj, double maxwidth, int* brkpoint
     {
     int sl,n,last_sep,sw;
     double lastw, w, ckw;
+    int n_bytes;
 
 	/** If empty, we can't wrap it!! **/
 	if (stringobj->Content[0] == '\0') 
@@ -436,7 +462,8 @@ prt_textlm_FindWrapPoint(pPrtObjStream stringobj, double maxwidth, int* brkpoint
 	sl = strlen((char*)stringobj->Content);
 	last_sep = -1;
 	lastw = 0.0;
-	for(n=0;n<sl;n++)
+	n=0;
+	while (n < sl)
 	    {
 	    /** Note a separation point (space, hyphen)? **/
 	    if (stringobj->Content[n] == ' ' || (n > 1 && stringobj->Content[n-1] == '-' && stringobj->Content[n] >= 'A' && stringobj->Content[n-2] >= 'A'))
@@ -457,7 +484,8 @@ prt_textlm_FindWrapPoint(pPrtObjStream stringobj, double maxwidth, int* brkpoint
 		}
 
 	    /** Is that all that will fit? **/
-	    ckw = prt_internal_GetStringWidth(stringobj, (char*)stringobj->Content+n, 1);
+	    n_bytes = prt_textlm_BytesForChar(stringobj->Content+n);
+	    ckw = prt_internal_GetStringWidth(stringobj, (char*)stringobj->Content+n, n_bytes);
 	    if (w + ckw > maxwidth)
 		{
 		if (last_sep == -1)
@@ -477,6 +505,8 @@ prt_textlm_FindWrapPoint(pPrtObjStream stringobj, double maxwidth, int* brkpoint
 		{
 		w += ckw;
 		}
+
+	    n += n_bytes;
 	    }
 
 	/** It all fits.  Return most reasonable split pt anyhow **/

@@ -23,6 +23,7 @@
 #include "stparse_ne.h"
 #include "hints.h"
 #include "cxlib/util.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -977,6 +978,7 @@ dat_internal_GetRow(pDatData context, pDatNode node, int rowid)
 
 /*** dat_csv_ParseRow - generate pointers to the various data items within a
  *** row of data, and parse out the integer/money/etc values.
+ *** returns a 0 on success, and -1 on error
  ***/
 int
 dat_csv_ParseRow(pDatData inf, pDatTableInf td)
@@ -993,6 +995,7 @@ dat_csv_ParseRow(pDatData inf, pDatTableInf td)
     double dtmp;
     DateTime dt;
     MoneyType m;
+    int ind;
 
     	/** Set all columns to NULL first **/
 	for(i=0;i<td->nCols;i++) inf->ColPtrs[i] = NULL;
@@ -1075,6 +1078,14 @@ dat_csv_ParseRow(pDatData inf, pDatTableInf td)
 				inf->RowBufSize--;
 			    }
 		        inf->RowBuf[inf->RowBufSize++] = '\0';
+			
+			/** make sure data is valid **/
+			if((ind = verifyUTF8(field_ptr)) != UTIL_VALID_CHAR)
+			    {
+			    mssError(1,"DAT","Row with id '%d' in file '%s' contained invalid character", inf->RowID, inf->Node->DataPath);
+			    field_ptr[ind] = '\0'; /** chop off buffer at invalid char **/
+			    return -1; 
+			    }
 			break;
 
 		    case DATA_T_INTEGER:
@@ -2230,7 +2241,13 @@ datOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    if (inf->Row)
 	        {
 		inf->Flags |= DAT_F_ROWPRESENT;
-		dat_csv_ParseRow(inf, &(inf->Node->HeaderCols));
+		if(dat_csv_ParseRow(inf, &(inf->Node->HeaderCols)) < 0)
+		    {
+		    mssError(0,"DAT","Open failed: file contained invalid characters", inf->RowID);
+		    obj_internal_FreePathStruct(&inf->Pathname);
+		    nmFree(inf,sizeof(DatData));
+		    return NULL;
+		    }
 		inf->Flags |= DAT_F_ROWPARSED;
 		dat_internal_ReleaseRow(inf->Row);
 		inf->Row = NULL;
@@ -2289,7 +2306,14 @@ datOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		    return inf;
 		    }
 		inf->Flags |= DAT_F_ROWPRESENT;
-		dat_csv_ParseRow(inf, inf->TData);
+		if(dat_csv_ParseRow(inf, inf->TData) < 0) 
+		    {
+		    mssError(0,"DAT","Open failed: file contains invalid characters", inf->RowColPtr);
+		    dat_internal_ReleaseRow(inf->Row);
+		    obj_internal_FreePathStruct(&inf->Pathname);
+		    nmFree(inf,sizeof(DatData));
+		    return NULL;
+		    }
 		inf->Flags |= DAT_F_ROWPARSED;
 		dat_internal_ReleaseRow(inf->Row);
 		inf->Row = NULL;
@@ -2988,9 +3012,13 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		qy->RowID++;
 		inf->Row = &(qy->Row);
 		inf->Flags |= DAT_F_ROWPRESENT;
-		dat_csv_ParseRow(inf, inf->TData);
-		inf->Flags |= DAT_F_ROWPARSED;
 		for(i=0;i<qy->Row.nPages;i++) dat_internal_UnlockPage(qy->Row.Pages[i]);
+		if(dat_csv_ParseRow(inf, inf->TData) < 0)
+		    {
+		    mssError(0,"DAT","Query fetch failed: results contained invalid characters", inf->RowID);
+		    goto done;
+		    }
+		inf->Flags |= DAT_F_ROWPARSED;
 		inf->Row = NULL;
 		inf->Flags &= DAT_F_ROWPRESENT;
 
@@ -3031,7 +3059,9 @@ datQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	inf->Node = qy->ObjInf->Node;
 	obj->SubPtr = qy->ObjInf->Obj->SubPtr;
 	dat_internal_DetermineType(obj,inf);
-
+	/** NOTE:  qy (passed in as qy_v) could potnetially contain a substantial ammount of unverified data.
+	 ** However, the concerning field, qy->Row.Pages[0]->Data, should only be read in this driver, and 
+	 ** therefore should be okay **/
 	return (void*)inf;
 
     done:
@@ -3781,6 +3811,7 @@ dat_internal_FillTdata(pDatNode dn, pObject obj, char* filename)
     char* ptr;
     int colsSoFar = 0;
     unsigned int withinQuote = 0;
+    char* colStart;
 
 
     /** Copy the filename over excluding the extension **/
@@ -3854,6 +3885,7 @@ dat_internal_FillTdata(pDatNode dn, pObject obj, char* filename)
     withinQuote = 0;
     tdata->Cols[colsSoFar] = tdata->ColBuf;
     colsSoFar++;
+    colStart = tdata->ColBuf;
     for (i = 0; i < len && text[i] != '\n' && text[i] != '\r'; i++)
 	{
 	if (!withinQuote)
@@ -3873,6 +3905,14 @@ dat_internal_FillTdata(pDatNode dn, pObject obj, char* filename)
 		tdata->ColBuf[tdata->ColBufLen] = '\0';
 		tdata->ColBufLen++;
 
+		/** verify column name **/
+		if(verifyUTF8(colStart) != UTIL_VALID_CHAR)
+		    {
+		    tdata->ColBuf[0] = '\0';
+		    mssError(1, "DAT", "Invalid column name found in file %s", obj->Prev->Pathname->Pathbuf);
+		    return 0;
+		    }
+		colStart = tdata->ColBuf + tdata->ColBufLen;
 		tdata->Cols[colsSoFar] = tdata->ColBuf + tdata->ColBufLen;
 		colsSoFar++;
 		}
@@ -3900,6 +3940,14 @@ dat_internal_FillTdata(pDatNode dn, pObject obj, char* filename)
 	    }
 	}
     tdata->ColBuf[tdata->ColBufLen] = '\0';
+    /** verify final column name **/
+    if(verifyUTF8(colStart) != UTIL_VALID_CHAR)
+        {
+        tdata->ColBuf[0] = '\0';
+        mssError(1, "DAT", "Invalid column name found in file %s", obj->Prev->Pathname->Pathbuf);
+        return 0;
+        }
+
     for (i = 0; i < tdata->nCols; i++)
 	{
 	/** This is some intelligence to make a guess at the proper type for the column. (Currently Disabled)

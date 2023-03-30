@@ -1,0 +1,15 @@
+##NAME Sybase 06: Test with foreign keys
+
+# insert new values 
+
+# will work: 
+query insert into object /tests/Test_DB.sybdb/link/rows/* select basic_ID=1, invalid_ID=1
+# will fail: 
+query insert into object /tests/Test_DB.sybdb/link/rows/* select basic_ID=123, invalid_ID=456
+
+# print out values
+
+query select * from /tests/Test_DB.sybdb/link/rows
+
+# clear out values; need to remove constraints on the data in the rows.
+query delete from /tests/Test_DB.sybdb/link/rows

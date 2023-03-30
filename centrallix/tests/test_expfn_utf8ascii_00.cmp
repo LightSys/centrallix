@@ -1,0 +1,26 @@
+Attribute [ascii("A")]:  integer  65
+Attribute [ascii("Ab")]:  integer  65
+Attribute [ascii("1")]:  integer  49
+Attribute [ascii("10")]:  integer  49
+Attribute [ascii(null)]:  integer  NULL
+Attribute [ascii("")]:  integer  NULL
+Attribute [ascii("a", "b", "c", "d")]:  integer  97
+Attribute [ascii("God")]:  integer  71
+Attribute [ascii("-3")]:  integer  45
+Attribute [ascii("È")]:  integer  200
+Attribute [ascii("À")]:  integer  192
+Attribute [ascii("Ç")]:  integer  199
+Attribute [ascii("Ô")]:  integer  212
+Attribute [ascii("0")]:  integer  48
+Attribute [ascii("\")]:  integer  92
+Attribute [ascii("本")]:  integer  26412
+Attribute [ascii("日")]:  integer  26085
+Attribute [ascii("人")]:  integer  20154
+Attribute [ascii("Λ")]:  integer  923
+Attribute [ascii("Ñ")]:  integer  209
+Attribute [ascii("ﻡ")]:  integer  65249
+Attribute [ascii("ﺢ")]:  integer  65186
+Attribute [ascii("ρ")]:  integer  961
+Attribute [ascii("χ")]:  integer  967
+Attribute [ascii("М")]:  integer  1052
+Attribute [ascii("МОНГОЛ            ]:  integer  1052

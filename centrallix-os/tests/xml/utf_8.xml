@@ -1,0 +1,12 @@
+﻿<?xml version='1.0'?>
+    <roottag>
+	<tagA prop="bob" propF="billy">
+	    <tagB>Hello there</tagB>
+	    <tagC propC="bob">Harry</tagC>
+	</tagA>
+	<tagA prop="house" propF="thekid">
+	</tagA>
+	<tagB>Harry</tagB>
+	<tagC propQ="Quincy">Tom</tagC>
+	<ВедьБогтакпол 神はひとり子をさえ惜="𓀎𓀏𓀐𓀑𓀒𓀓𓀔𓀕𓀖𓀗𓀘𓀙" акпол="|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|">|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|</ВедьБогтакпол>
+    </roottag>

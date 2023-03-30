@@ -1,0 +1,6 @@
+# prints the ivalid '\xFF' character (should NOT be contents of invalid.shl; should run cat in invalid.txt)
+# if shell will not compile: change /home/devel/2utf/centrallix/centrallix/tests/centrallix.conf-test (or the .in version...?) to enable
+# then run './configure --enable-shell-os', and build what need
+# how on earth to get test_obj to enable it is still a mystery to me
+print tests/shell/invalid1.shl
+print tests/shell/invalid2.shl

@@ -7,13 +7,18 @@
 #include <math.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <wchar.h>
+#include <wctype.h>
 #include "obj.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtlexer.h"
+#include "cxlib/util.h"
 #include "expression.h"
 #include "cxlib/mtsession.h"
+#include "centrallix.h"
+#include "charsets.h"
 #include "cxss/cxss.h"
 #include <openssl/sha.h>
 #include <openssl/md5.h>
@@ -531,6 +536,7 @@ int exp_fn_lower(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     }
 
 
+// i0 = string to put in mixed case, i1 = wordlist (optional), i2 = unused 
 int exp_fn_mixed(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     int n,i,j,l;
@@ -985,7 +991,7 @@ int exp_fn_replicate(pExpression tree, pParamObjects objlist, pExpression i0, pE
     return 0;
     }
 
-
+//i0 is haystack, i1 is needle, i2 is replacement
 int exp_fn_replace(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     char* repstr;
@@ -1271,11 +1277,12 @@ int exp_fn_substring(pExpression tree, pParamObjects objlist, pExpression i0, pE
 	mssError(1,"EXP","Invalid datatypes in substring() - takes (string,integer,[integer])");
 	return -1;
 	}
+
     n = strlen(i0->String);
     i = i1->Integer-1;
     if (i<0) i = 0;
     if (i > n) i = n;
-    ptr = i0->String + i;
+    ptr = i0->String + i;	
     i = i2?(i2->Integer):(strlen(ptr));
     if (i < 0) i = 0;
     if (i > strlen(ptr)) i = strlen(ptr);
@@ -3876,6 +3883,325 @@ int exp_fn_last(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
     return 0;
     }
 
+int exp_fn_utf8_overlong(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+	{
+	int len;
+
+	if (!i0)
+	    {
+	    mssError(1,"EXP","overlong() requires one parameter");
+	    return -1;
+	    }
+	if (i0->DataType != DATA_T_STRING)
+	    {
+	    mssError(1, "EXP", "overlong() function takes a string parameter.");
+	    return -1;
+	    }
+
+	int result = verifyUTF8(i0->String);
+
+	if(result == UTIL_VALID_CHAR)
+		{
+		len = strlen(i0->String) + 1;
+		if(len > 64)
+		    {
+		    tree->String = nmSysMalloc(len);
+		    tree->Alloc = 1;
+		    }
+		else
+		    {
+		    tree->Alloc = 0;
+		    tree->String = tree->Types.StringBuf;
+		    }
+		strcpy(tree->String, i0->String);
+		}
+	else
+		{
+		tree->String = NULL;
+		}
+	
+	return 0;
+	}
+
+int exp_fn_utf8_ascii(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    size_t charValue;
+    
+    tree->DataType = DATA_T_INTEGER;
+    if (!i0)
+        {
+        mssError(1, "EXP", "Parameter required for ascii() function.");
+        return -1;
+        }
+    if (i0->DataType != DATA_T_STRING)
+        {
+        mssError(1, "EXP", "ascii() function takes a string parameter.");
+        return -1;
+        }
+    if ((i0->Flags & EXPR_F_NULL) || i0->String[0] == '\0')
+        tree->Flags |= EXPR_F_NULL;
+    
+    charValue = chrGetCharNumber(i0->String);
+    if (charValue == CHR_INVALID_CHAR)
+        {
+        mssError(1, "EXP", "String contains invalid UTF-8 character");
+        return -1;
+        }
+    else
+        tree->Integer = charValue;
+    return 0;
+    }
+
+int exp_fn_utf8_charindex(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    size_t position;
+    
+    tree->DataType = DATA_T_INTEGER;
+    if (!i0 || !i1)
+        {
+        mssError(1, "EXP", "Two string parameters required for charindex()");
+        return -1;
+        }
+    if ((i0->Flags | i1->Flags) & EXPR_F_NULL)
+        {
+        tree->Flags |= EXPR_F_NULL;
+        return 0;
+        }
+    if (i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_STRING)
+        {
+        mssError(1, "EXP", "Two string parameters required for charindex()");
+        return -1;
+        }
+    position = chrSubstringIndex(i1->String, i0->String);
+    if(position == CHR_INVALID_CHAR)
+        {
+        mssError(1, "EXP", "String contains invalid UTF-8 character");
+        return -1;
+        }
+    else if(position == CHR_NOT_FOUND)
+        tree->Integer = 0;
+    else
+        tree->Integer = position + 1;
+    return 0;
+    }
+
+int exp_fn_utf8_upper(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+        char * result;
+        size_t bufferLength = 64;
+        
+        tree->DataType = DATA_T_STRING;
+        if (!i0 || i0->DataType != DATA_T_STRING)
+        {
+            mssError(1, "EXP", "One string parameter required for upper()");
+            return -1;
+        }
+        if (i0->Flags & EXPR_F_NULL)
+        {
+            tree->Flags |= EXPR_F_NULL;
+            return 0;
+        }
+        if (tree->Alloc && tree->String)
+            nmSysFree(tree->String);
+        
+        /** Get the lower case string **/
+        result = chrToUpper(i0->String, tree->Types.StringBuf, &bufferLength);
+        
+        if(result)
+        {
+            tree->String = result;
+            tree->Alloc = bufferLength ? 1 : 0;
+            return 0;
+        }
+        else
+        {
+            mssError(1, "EXP", "String contains invalid UTF-8 character"); /* Also assumed if invalid conversion */
+            return -1;
+        }
+    }
+
+int exp_fn_utf8_lower(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    char * result;
+    size_t bufferLength = 64;
+    
+    tree->DataType = DATA_T_STRING;
+    if (!i0 || i0->DataType != DATA_T_STRING)
+        {
+        mssError(1, "EXP", "One string parameter required for lower()");
+        return -1;
+        }
+    if (i0->Flags & EXPR_F_NULL)
+        {
+        tree->Flags |= EXPR_F_NULL;
+        return 0;
+        }
+    if (tree->Alloc && tree->String)
+        nmSysFree(tree->String);
+    
+    /** Get the lower case string **/
+    result = chrToLower(i0->String, tree->Types.StringBuf, &bufferLength);
+        
+    if(result)
+        {
+        tree->String = result;
+        tree->Alloc = bufferLength ? 1 : 0;
+        return 0;
+        }
+    else
+        {
+        mssError(1, "EXP", "String contains invalid UTF-8 character"); /* Also assumed if invalid conversion */
+        return -1;
+        }
+    }
+    
+
+int exp_fn_utf8_mixed(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+	int * bufferLength;
+	char * result;
+	char * wordlist;
+	int returnVal;
+
+    tree->DataType = DATA_T_STRING;
+    if (i0 && i0->Flags & EXPR_F_NULL)
+        {
+		tree->Flags |= EXPR_F_NULL;
+		return 0;
+		}
+    if (!i0 || i0->DataType != DATA_T_STRING)
+        {
+		mssError(1,"EXP","One or two string parameters required for mixed()");
+		return -1;
+		}
+    if (i1 && i1->Flags & EXPR_F_NULL)
+		i1 = NULL;
+    if (i1 && i1->DataType != DATA_T_STRING)
+		{
+		mssError(1,"EXP","Optional second parameter to mixed() must be a string");
+		return -1;
+		}
+    if (tree->Alloc && tree->String)
+		{
+		nmSysFree(tree->String);
+		tree->Alloc = 0;
+		}
+
+	if(i1)
+		{
+		wordlist = i1->String;
+		}
+	else 
+		{
+		wordlist = NULL;
+		}
+
+	/** Assume buffer is the right size, and double if was after **/
+	bufferLength = nmSysMalloc(sizeof(int));
+	*bufferLength = 63;
+	
+	tree->String = tree->Types.StringBuf;
+
+    result = chrToMixed(i0->String, tree->String, bufferLength, wordlist);
+
+	if(result != tree->String)
+		{
+		tree->String = result;
+		tree->Alloc = 1;
+		}
+	else
+		{
+		tree->Alloc = 0;
+		}
+
+	/* Check for errors: */
+	if(*bufferLength == CHR_INVALID_ARGUMENT)
+		{
+		mssError(1,"EXP","Null string provided to utf8_mixed");
+		returnVal = -1;
+		}
+	else if(*bufferLength == CHR_INVALID_CHAR)
+		{
+		mssError(1,"EXP","Invalid character in wordlist or string provided to utf8_mixed");
+		returnVal = -1;
+		}
+	else if(*bufferLength == CHR_MEMORY_OUT)
+		{
+		mssError(1,"EXP","No memory available; utf8_mixed could not allocate memory");
+		returnVal = -1;
+		}
+	else 
+		{
+		returnVal = 0;
+		}
+		
+
+	nmSysFree(bufferLength);
+
+    return returnVal;
+    }
+
+int exp_fn_utf8_char_length(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    size_t wideLen;
+    
+    tree->DataType = DATA_T_INTEGER;
+    if (i0 && i0->Flags & EXPR_F_NULL)
+        {
+        tree->Flags |= EXPR_F_NULL;
+        return 0;
+        }
+    if (!i0 || i0->DataType != DATA_T_STRING) {
+        mssError(1, "EXP", "One string parameter required for char_length()");
+        return -1;
+        }
+        
+    wideLen = chrCharLength(i0->String);
+        
+    if(wideLen == CHR_INVALID_CHAR)
+        {
+        mssError(1, "EXP", "String contains invalid UTF-8 character");
+        return -1;
+        }
+    tree->Integer = wideLen;
+    return 0;
+    }
+
+int exp_fn_utf8_right(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    size_t returnCode;
+    
+    if (!i0 || !i1 || i0->Flags & EXPR_F_NULL || i1->Flags & EXPR_F_NULL)
+        {
+        tree->Flags |= EXPR_F_NULL;
+        tree->DataType = DATA_T_STRING;
+        return 0;
+        }
+    if (i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_INTEGER)
+        {
+        mssError(1, "EXP", "Invalid datatypes in right() function - takes (string,integer)");
+        return -1;
+        }
+    if (tree->Alloc && tree->String)
+        {
+        nmSysFree(tree->String);
+        }
+        
+    tree->DataType = DATA_T_STRING;
+    tree->Alloc = 0;
+    tree->String = chrRight(i0->String, i1->Integer < 0 ? 0 : i1->Integer, &returnCode);
+    if(!tree->String)
+        {
+        mssError(1, "EXP", "String contains invalid UTF-8 character"); /* Assumed invalid UTF-8 char */
+        return -1;
+        }
+    return 0;
+    }
+
+/*int exp_fn_utf8_substring(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+{
+	return 0;
+}*/
 
 int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
@@ -3901,6 +4227,267 @@ int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 	}
     tree->Flags |= EXPR_F_AGGLOCKED;
     return 0;
+    }
+
+int exp_fn_utf8_substring(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    size_t bufferLength = 64;
+    size_t initialPosition, substringLength;
+    char * output;
+    
+    if (!i0 || !i1 || i0->Flags & EXPR_F_NULL || i1->Flags & EXPR_F_NULL)
+        {
+        tree->Flags |= EXPR_F_NULL;
+        tree->DataType = DATA_T_STRING;
+        return 0;
+        }
+    if (i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_INTEGER)
+        {
+        mssError(1, "EXP", "Invalid datatypes in substring() - takes (string,integer,[integer])");
+        return -1;
+        }
+    if (i2 && i2->DataType != DATA_T_INTEGER)
+        {
+        mssError(1, "EXP", "Invalid datatypes in substring() - takes (string,integer,[integer])");
+        return -1;
+        }
+    	
+    /** Free any previous string in preparation for these results **/
+    if (tree->Alloc && tree->String)
+        {
+	nmSysFree(tree->String);
+        tree->Alloc = 0;
+        }
+	
+    	tree->DataType = DATA_T_STRING;
+    
+    	initialPosition = i1->Integer < 1 ? 0 : i1->Integer - 1;
+    	if (i2)
+		substringLength = i2->Integer < 0 ? 0 : i2->Integer + initialPosition;
+	else
+		substringLength = strlen(i0->String);
+		
+	output = chrSubstring(i0->String, initialPosition, substringLength, tree->Types.StringBuf, &bufferLength);
+        
+    if(output)
+        {
+        tree->String = output;
+        tree->Alloc = bufferLength ? 1 : 0;
+        return 0;
+        }
+    else
+        {
+        if(bufferLength == CHR_MEMORY_OUT)
+            {
+            mssError(1, "EXP", "Memory exhausted!");
+            return -1;
+            }
+        else
+            {
+            mssError(1, "EXP", "String contains invalid UTF-8 character");
+            return -1;   
+            }
+        }
+    }
+
+
+/*** Pad string expression i0 with integer expression i1 number of spaces ***/
+int exp_fn_utf8_ralign(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    char * returned;
+    size_t bufferLength = 64;
+    
+    if (!i0 || !i1 || i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_INTEGER)
+        {
+        mssError(1, "EXP", "ralign() requires string parameter #1 and integer parameter #2");
+        return -1;
+        }
+    tree->DataType = DATA_T_STRING;
+    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+        {
+        tree->Flags |= EXPR_F_NULL;
+        return 0;
+        }
+    
+    if (tree->Alloc && tree->String)
+        nmSysFree(tree->String);
+    
+    returned = chrRightAlign(i0->String, i1->Integer, tree->Types.StringBuf, &bufferLength);
+    
+    if(returned)
+        {
+        tree->String = returned;
+        tree->Alloc = bufferLength ? 1 : 0;
+        return 0;
+        }
+    else
+        {
+        mssError(1, "EXP", "String contains invalid UTF-8 character");
+        return -1; 
+        }    
+    }
+	
+/** escape(string, escchars, badchars) **/
+int exp_fn_utf8_escape(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    char* output, *esc, *bad;
+    size_t bufferLength = 64;
+        
+    tree->DataType = DATA_T_STRING;
+    if (!i0 || !i1 || i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_STRING) 
+        {
+        mssError(1, "EXP", "escape() requires two or three string parameters");
+        return -1;
+        }
+    if (i2 && i2->DataType != DATA_T_STRING) {
+        mssError(1, "EXP", "the optional third escape() parameter must be a string");
+        return -1;
+        }
+    if ((i0->Flags & EXPR_F_NULL))
+        {
+        tree->Flags |= EXPR_F_NULL;
+        return 0;
+        }
+    if (tree->Alloc && tree->String)
+        {
+        nmSysFree(tree->String);
+        tree->Alloc = 0;
+        }
+        
+    /** Set the bad and escape strings. */
+    esc = i1->Flags & EXPR_F_NULL ? "" : i1->String;
+    bad = (i2 && !(i2->Flags & EXPR_F_NULL)) ? i2->String : "";
+    
+    /** Get the escaped string **/
+    output = chrEscape(i0->String, esc, bad, tree->Types.StringBuf, &bufferLength);
+        
+    if(output)
+        {
+        tree->String = output;
+        tree->Alloc = bufferLength? 1: 0;
+        return 0;
+        }
+    else
+        {
+        if(bufferLength == CHR_BAD_CHAR)
+            {
+            mssError(1, "EXP", "WARNING!! String contains invalid character!");
+            return -1;
+            }
+        else /* Should be an invalid UTF-8 char */
+            {
+            mssError(1, "EXP", "String contains invalid UTF-8 character");
+            return -1;
+            }
+        }
+    }
+
+int exp_fn_utf8_reverse(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+	{
+	int charLen, byteLen, a, i, end;
+	char* temp;
+    	char ch1, ch2, ch3, ch4;
+    	
+	if (i0 && (i0->Flags & EXPR_F_NULL))
+        	{
+        	tree->Flags |= EXPR_F_NULL;
+        	tree->DataType = DATA_T_STRING;
+        	return 0;
+        	}
+    	if (!i0 || i0->DataType != DATA_T_STRING)
+        	{
+	        mssError(1,"EXP","reverse() expects one string parameter");
+        	return -1;
+        	}
+    	if (tree->Alloc && tree->String)
+        	nmSysFree(tree->String);
+   	tree->DataType = DATA_T_STRING;
+    	byteLen = strlen(i0->String);
+    	if (byteLen >= 64)
+        	{
+        	tree->String = nmSysMalloc(byteLen+1);
+        	tree->Alloc = 1;
+        	}
+    	else
+        	{
+        	tree->Alloc = 0;
+        	tree->String = tree->Types.StringBuf;
+        	}
+    	strcpy(tree->String, i0->String);
+    		
+	/** Reversing string **/
+	char    *scanl, *scanr, *scanr2, c;
+
+	/* first reverse the string */
+   	for (scanl= tree->String, scanr= tree->String + strlen(tree->String); scanl < scanr;)
+        	c= *scanl, *scanl++= *--scanr, *scanr= c;
+
+	/* then scan all bytes and reverse each multibyte character */
+    	for (scanl= scanr= tree->String; c= *scanr++;) 
+		{
+        	if ( (c & 0x80) == 0) // ASCII char
+            		scanl= scanr;
+        	else if ( (c & 0xc0) == 0xc0 ) // start of multibyte
+			{
+            		scanr2= scanr;
+            		switch (scanr - scanl) 
+				{
+                		case 4: c= *scanl, *scanl++= *--scanr, *scanr= c; // fallthrough
+                		case 3: // fallthrough
+                		case 2: c= *scanl, *scanl++= *--scanr, *scanr= c;
+            			}
+            		scanr= scanl= scanr2;
+        		}
+    		}
+
+
+
+/*	i = 0;
+	end = byteLen-1;
+	temp = (char*)nmSysMalloc(sizeof(char) * byteLen+1);
+	temp[byteLen] = '\0';
+	charLen = chrCharLength(i0->String);
+	for(a = 0; a < charLen; a++)
+        	{
+		ch1 = tree->String[i];
+		if (ch1 < 0xC0)//maybe add helper functions instead of masks and validate following continuation bytes
+			{
+			printf("1\n");
+			temp[end--] = ch1;
+			i++;
+			}
+		else if (ch1 < 0xE0)
+			{
+			printf("2\n");
+			ch2 = tree->String[++i];
+			temp[end--] = ch2;
+			temp[end--] = ch1;
+        		i++;
+			}
+		else if (ch1 < 0xF0)
+			{
+			ch2 = tree->String[++i];
+			ch3 = tree->String[++i];
+			temp[end--] = ch3;
+			temp[end--] = ch2;
+                        temp[end--] = ch1;
+			i++;
+			}
+		else// if ((ch1 & mask4) == 0xF0)
+        		{
+                        ch2 = tree->String[++i];    
+			ch3 = tree->String[++i];
+			ch4 = tree->String[++i];
+			temp[end--] = ch4;
+			temp[end--] = ch3;
+			temp[end--] = ch2;
+                        temp[end--] = ch1;
+                        i++;                                                                                                                                                                                                               }
+	       	}
+*/
+	//strcpy(tree->String, temp);
+	
+    	return 0;
     }
 
 /* See centrallix-sysdoc/string_comparison.md for more information. */
@@ -4268,6 +4855,130 @@ int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
     return 0;
     }
 
+/*
+ * exp_fn_utf8_i_hash_char_pair
+ * This method creates an vector table index based a given character pair's code points.
+ * UTF-8 aware version.
+ *
+ * Parameters:
+ * 	num1 : first code point (double)
+ * 	num2 : second code point (double)
+ *
+ * Returns:
+ * 	vector table index (long long)
+ */
+long long exp_fn_utf8_i_hash_char_pair(double num1, double num2)
+    {
+    long long func_result = round(((num1 * num1 * num1) + (num2 * num2 * num2)) * ((num1+1)/(num2+1))) -1;
+    return func_result % EXP_VECTOR_TABLE_SIZE;	
+    }
+
+/*
+ * exp_fn_utf8_i_frequency_table
+ * This method creates a vector frequency table based on a string of characters.
+ * UTF-8 aware version.
+ *
+ * Parameters:
+ * 	table : integer pointer to vector frequency table (int)
+ * 	term : the string of characters (wchar_t*)
+ *
+ * Returns:
+ * 	0 	
+ */
+int exp_fn_utf8_i_frequency_table(int *table, wchar_t *term)
+    {
+    int i;
+    // Initialize hash table with 0 values
+    for (i = 0; i < EXP_VECTOR_TABLE_SIZE; i++)
+	{
+	table[i] = 0;
+	}
+
+    int j = -1;
+    for(i = 0; i < wcslen(term) + 1; i++)
+	{
+	// If latter character is punctuation or whitespace, skip it
+	if (iswpunct(term[i]) || iswspace(term[i]))
+	    {
+	    continue;
+	    }
+
+	wchar_t temp1;
+	wchar_t temp2;
+
+	// Add a null character to the beginning of the term
+        if (j == -1)
+            {
+            temp1 = L'\0';
+            }
+	// Convert the characters in term to code points
+        else
+            {
+            temp1 = term[j];
+            }
+
+	temp2 = term[i];
+
+        temp1 = towlower(temp1);
+        temp2 = towlower(temp2);
+
+	// Hash the character pair into an index
+	int index = exp_fn_utf8_i_hash_char_pair(temp1, temp2);
+
+	// Increment Frequency Table value by number from 0 to 13
+	table[index] += ((int)temp1 + (int)temp2) % 13 + 1;
+
+	// Move j up to latter character before incrementing i
+	j = i;
+
+	}
+
+    return 0;	
+
+    }
+
+/*
+ * exp_fn_utf8_i_dot_product
+ * This method calculautes the dot product of two vectors.
+ * UTF-8 aware version.
+ *
+ * Parameters:
+ * 	dot_product : the place where the result is stored (double)
+ * 	r_freq_table1 : the first vector (int)
+ * 	r_freq_table2 : the second vector (int)
+ *
+ * Returns:
+ * 	0	
+ */
+int exp_fn_utf8_i_dot_product(double *dot_product, int *r_freq_table1, int *r_freq_table2)
+    {
+    int i;
+    for (i = 0; i < EXP_VECTOR_TABLE_SIZE; i++) 
+        {
+	*dot_product = *dot_product + ((double)r_freq_table1[i] * (double)r_freq_table2[i]);
+	}
+    return 0;
+    }
+
+/*
+ * exp_fn_utf8_i_magnitude
+ * This method calculates the magnitude of a vector
+ * UTF-8 aware version.
+ *
+ * Parameters:
+ * 	magnitude : the place where the result is stored (double)
+ * 	r_freq_table : the vector (int)
+ */
+int exp_fn_utf8_i_magnitude(double *magnitude, int *r_freq_table)
+    {
+    int i;
+    for (i = 0; i < EXP_VECTOR_TABLE_SIZE; i++)
+	{
+	*magnitude = *magnitude + ((double)r_freq_table[i] * (double)r_freq_table[i]);
+	}
+    *magnitude = sqrt(*magnitude);
+    return 0;
+    }
 
 /*
  * exp_fn_argon2id
@@ -4389,89 +5100,213 @@ int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression passwor
     return 0;
 }
 
+
+
+/*
+ * exp_fn_utf8_cos_compare
+ * This method calculates the cosine similarity of two vector frequency tables in a UTF8-friendly manner
+ * UTF-8 aware version.
+ *
+ * Parameters:
+ * 	tree : structure where output is stored
+ *	objlist: 
+ *	i0 : first data entry (pExpression)
+ *	i1 : second data entry (pExpression)
+ *	i2 :
+ *
+ * Returns:
+ * 	0 	
+ */
+int exp_fn_utf8_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {    
+    // Ensure function receives two non-null parameters
+    if (!i0 || !i1)
+	{
+	mssError(1,"EXP","cos_compare() requires two parameter.");
+	return -1;
+	}
+
+    // Ensure value passed in both parameters is not null
+    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+	{
+	tree->DataType = DATA_T_INTEGER;
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+
+    // Ensure both parameters contain string values
+    if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING))
+	{
+	mssError(1,"EXP","cos_compare() requires two string parameters.");
+	return -1;
+	}
+
+    //If the two strings are identical, don't bother running cosine compare	
+    if (strcmp(i0->String, i1->String) == 0)
+	{
+	tree->DataType = DATA_T_DOUBLE;
+	tree->Types.Double = 1.0;
+	return 0;
+	}
+
+    // Allocate memory for the wide character arrays
+    size_t len0 = mbstowcs(NULL, i0->String, 0) + 1;
+    size_t len1 = mbstowcs(NULL, i1->String, 0) + 1;
+    wchar_t* longBufferi0 = nmMalloc(sizeof(wchar_t) * len0);
+    wchar_t* longBufferi1 = nmMalloc(sizeof(wchar_t) * len1);
+
+    if (longBufferi0 == NULL || longBufferi1 == NULL)
+	{
+	mssError(1,"EXP","Memory allocation failed.");
+	return -1;
+	}
+
+    // Copy character strings to wide character buffers
+    mbstowcs(longBufferi0, i0->String, len0);
+    mbstowcs(longBufferi1, i1->String, len1);
+
+    // Allocate frequency tables (arrays of integers) for each term
+    int *table1 = nmMalloc(EXP_VECTOR_TABLE_SIZE * sizeof(int));
+    int *table2 = nmMalloc(EXP_VECTOR_TABLE_SIZE * sizeof(int));
+
+    if (table1 == NULL || table2 == NULL)
+	{
+	mssError(1,"EXP","Memory allocation failed.");
+	return -1;
+	}
+
+    // Calculate frequency tables for each term
+    exp_fn_utf8_i_frequency_table(table1, longBufferi0);
+    exp_fn_utf8_i_frequency_table(table2, longBufferi1);
+
+    // Free the wide character memory buffers
+    nmFree(longBufferi0, sizeof(wchar_t) * len0);
+    nmFree(longBufferi1, sizeof(wchar_t) * len1);
+	
+    // Calculate dot product
+    double dot_product = 0;
+    exp_fn_utf8_i_dot_product(&dot_product, table1, table2);
+
+    // Calculate magnitudes of each relative frequency vector
+    double magnitude1 = 0;
+    double magnitude2 = 0;
+    exp_fn_utf8_i_magnitude(&magnitude1, table1);
+    exp_fn_utf8_i_magnitude(&magnitude2, table2);
+
+    // Return result and free remaining memory
+    tree->DataType = DATA_T_DOUBLE;
+    tree->Types.Double = dot_product / (magnitude1 * magnitude2);
+    nmFree(table1, EXP_VECTOR_TABLE_SIZE * sizeof(int));
+    nmFree(table2, EXP_VECTOR_TABLE_SIZE * sizeof(int));
+
+    return 0;
+
+    }
+
 int exp_internal_DefineFunctions()
     {
+    /** Function list for EXPR_N_FUNCTION nodes **/
+    xhAdd(&EXP.Functions, "getdate", (char*) exp_fn_getdate);
+    xhAdd(&EXP.Functions, "user_name", (char*) exp_fn_user_name);
+    xhAdd(&EXP.Functions, "convert", (char*) exp_fn_convert);
+    xhAdd(&EXP.Functions, "wordify", (char*) exp_fn_wordify);
+    xhAdd(&EXP.Functions, "abs", (char*) exp_fn_abs);
+    xhAdd(&EXP.Functions, "condition", (char*) exp_fn_condition);
+    xhAdd(&EXP.Functions, "datepart", (char*) exp_fn_datepart);
+    xhAdd(&EXP.Functions, "isnull", (char*) exp_fn_isnull);
+    xhAdd(&EXP.Functions, "ltrim", (char*) exp_fn_ltrim);
+    xhAdd(&EXP.Functions, "lztrim", (char*) exp_fn_lztrim);
+    xhAdd(&EXP.Functions, "rtrim", (char*) exp_fn_rtrim);
+    xhAdd(&EXP.Functions, "replicate", (char*) exp_fn_replicate);
+    xhAdd(&EXP.Functions, "quote", (char*) exp_fn_quote);
+    xhAdd(&EXP.Functions, "eval", (char*) exp_fn_eval);
+    xhAdd(&EXP.Functions, "round", (char*) exp_fn_round);
+    xhAdd(&EXP.Functions, "dateadd", (char*) exp_fn_dateadd);
+    xhAdd(&EXP.Functions, "datediff", (char*) exp_fn_datediff);
+    xhAdd(&EXP.Functions, "truncate", (char*) exp_fn_truncate);
+    xhAdd(&EXP.Functions, "constrain", (char*) exp_fn_constrain);
+    xhAdd(&EXP.Functions, "sin", (char*) exp_fn_sin);
+    xhAdd(&EXP.Functions, "cos", (char*) exp_fn_cos);
+    xhAdd(&EXP.Functions, "tan", (char*) exp_fn_tan);
+    xhAdd(&EXP.Functions, "asin", (char*) exp_fn_asin);
+    xhAdd(&EXP.Functions, "acos", (char*) exp_fn_acos);
+    xhAdd(&EXP.Functions, "atan", (char*) exp_fn_atan);
+    xhAdd(&EXP.Functions, "atan2", (char*) exp_fn_atan2);
+    xhAdd(&EXP.Functions, "sqrt", (char*) exp_fn_sqrt);
+    xhAdd(&EXP.Functions, "square", (char*) exp_fn_square);
+    xhAdd(&EXP.Functions, "degrees", (char*) exp_fn_degrees);
+    xhAdd(&EXP.Functions, "radians", (char*) exp_fn_radians);
+    xhAdd(&EXP.Functions, "has_endorsement", (char*)exp_fn_has_endorsement);
+    xhAdd(&EXP.Functions, "rand", (char*)exp_fn_rand);
+    xhAdd(&EXP.Functions, "nullif", (char*)exp_fn_nullif);
+    xhAdd(&EXP.Functions, "dateformat", (char*)exp_fn_dateformat);
+    xhAdd(&EXP.Functions, "hash", (char*)exp_fn_hash);
+    xhAdd(&EXP.Functions, "hmac", (char*)exp_fn_hmac);
+    xhAdd(&EXP.Functions, "log10", (char*)exp_fn_log10);
+    xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
+    xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
+    xhAdd(&EXP.Functions, "replace", (char*) exp_fn_replace);
+    xhAdd(&EXP.Functions, "substitute", (char*) exp_fn_substitute);
+    xhAdd(&EXP.Functions, "argon2id",(char*)exp_fn_argon2id);
+    
+    xhAdd(&EXP.Functions, "lev_compare", (char*)exp_fn_lev_compare);
+    xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
+    xhAdd(&EXP.Functions, "to_base64", (char*)exp_fn_to_base64);
+    xhAdd(&EXP.Functions, "from_base64", (char*)exp_fn_from_base64);
+    xhAdd(&EXP.Functions, "to_hex", (char*)exp_fn_to_hex);
+    xhAdd(&EXP.Functions, "from_hex", (char*)exp_fn_from_hex);
+    xhAdd(&EXP.Functions, "octet_length", (char*)exp_fn_octet_length);
 
-	/** Function list for EXPR_N_FUNCTION nodes **/
-	xhAdd(&EXP.Functions, "getdate", (char*)exp_fn_getdate);
-	xhAdd(&EXP.Functions, "user_name", (char*)exp_fn_user_name);
-	xhAdd(&EXP.Functions, "convert", (char*)exp_fn_convert);
-	xhAdd(&EXP.Functions, "wordify", (char*)exp_fn_wordify);
-	xhAdd(&EXP.Functions, "abs", (char*)exp_fn_abs);
-	xhAdd(&EXP.Functions, "ascii", (char*)exp_fn_ascii);
-	xhAdd(&EXP.Functions, "condition", (char*)exp_fn_condition);
-	xhAdd(&EXP.Functions, "charindex", (char*)exp_fn_charindex);
-	xhAdd(&EXP.Functions, "upper", (char*)exp_fn_upper);
-	xhAdd(&EXP.Functions, "lower", (char*)exp_fn_lower);
-	xhAdd(&EXP.Functions, "mixed", (char*)exp_fn_mixed);
-	xhAdd(&EXP.Functions, "char_length", (char*)exp_fn_char_length);
-	xhAdd(&EXP.Functions, "datepart", (char*)exp_fn_datepart);
-	xhAdd(&EXP.Functions, "isnull", (char*)exp_fn_isnull);
-	xhAdd(&EXP.Functions, "ltrim", (char*)exp_fn_ltrim);
-	xhAdd(&EXP.Functions, "lztrim", (char*)exp_fn_lztrim);
-	xhAdd(&EXP.Functions, "rtrim", (char*)exp_fn_rtrim);
-	xhAdd(&EXP.Functions, "substring", (char*)exp_fn_substring);
-	xhAdd(&EXP.Functions, "right", (char*)exp_fn_right);
-	xhAdd(&EXP.Functions, "ralign", (char*)exp_fn_ralign);
-	xhAdd(&EXP.Functions, "replicate", (char*)exp_fn_replicate);
-	xhAdd(&EXP.Functions, "reverse", (char*)exp_fn_reverse);
-	xhAdd(&EXP.Functions, "replace", (char*)exp_fn_replace);
-	xhAdd(&EXP.Functions, "escape", (char*)exp_fn_escape);
-	xhAdd(&EXP.Functions, "quote", (char*)exp_fn_quote);
-	xhAdd(&EXP.Functions, "substitute", (char*)exp_fn_substitute);
-	xhAdd(&EXP.Functions, "eval", (char*)exp_fn_eval);
-	xhAdd(&EXP.Functions, "round", (char*)exp_fn_round);
-	xhAdd(&EXP.Functions, "dateadd", (char*)exp_fn_dateadd);
-	xhAdd(&EXP.Functions, "datediff", (char*)exp_fn_datediff);
-	xhAdd(&EXP.Functions, "truncate", (char*)exp_fn_truncate);
-	xhAdd(&EXP.Functions, "constrain", (char*)exp_fn_constrain);
-	xhAdd(&EXP.Functions, "sin", (char*)exp_fn_sin);
-	xhAdd(&EXP.Functions, "cos", (char*)exp_fn_cos);
-	xhAdd(&EXP.Functions, "tan", (char*)exp_fn_tan);
-	xhAdd(&EXP.Functions, "asin", (char*)exp_fn_asin);
-	xhAdd(&EXP.Functions, "acos", (char*)exp_fn_acos);
-	xhAdd(&EXP.Functions, "atan", (char*)exp_fn_atan);
-	xhAdd(&EXP.Functions, "atan2", (char*)exp_fn_atan2);
-	xhAdd(&EXP.Functions, "sqrt", (char*)exp_fn_sqrt);
-	xhAdd(&EXP.Functions, "square", (char*)exp_fn_square);
-	xhAdd(&EXP.Functions, "degrees", (char*)exp_fn_degrees);
-	xhAdd(&EXP.Functions, "radians", (char*)exp_fn_radians);
-	xhAdd(&EXP.Functions, "has_endorsement", (char*)exp_fn_has_endorsement);
-	xhAdd(&EXP.Functions, "rand", (char*)exp_fn_rand);
-	xhAdd(&EXP.Functions, "nullif", (char*)exp_fn_nullif);
-	xhAdd(&EXP.Functions, "dateformat", (char*)exp_fn_dateformat);
-	xhAdd(&EXP.Functions, "hash", (char*)exp_fn_hash);
-	xhAdd(&EXP.Functions, "hmac", (char*)exp_fn_hmac);
-	xhAdd(&EXP.Functions, "log10", (char*)exp_fn_log10);
-	xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
-	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
-	xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
-	xhAdd(&EXP.Functions, "lev_compare", (char*)exp_fn_lev_compare);
-	xhAdd(&EXP.Functions, "cos_compare", (char*)exp_fn_cos_compare);
-	xhAdd(&EXP.Functions, "to_base64", (char*)exp_fn_to_base64);
-	xhAdd(&EXP.Functions, "from_base64", (char*)exp_fn_from_base64);
-	xhAdd(&EXP.Functions, "to_hex", (char*)exp_fn_to_hex);
-	xhAdd(&EXP.Functions, "from_hex", (char*)exp_fn_from_hex);
-	xhAdd(&EXP.Functions, "octet_length", (char*)exp_fn_octet_length);
-	xhAdd(&EXP.Functions, "argon2id",(char*)exp_fn_argon2id);
+    /** Windowing **/
+    xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
+    xhAdd(&EXP.Functions, "dense_rank", (char*)exp_fn_dense_rank);
+    xhAdd(&EXP.Functions, "lag", (char*)exp_fn_lag);
 
-	/** Windowing **/
-	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
-	xhAdd(&EXP.Functions, "dense_rank", (char*)exp_fn_dense_rank);
-	xhAdd(&EXP.Functions, "lag", (char*)exp_fn_lag);
-
-	/** Aggregate **/
-	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
-	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);
-	xhAdd(&EXP.Functions, "sum", (char*)exp_fn_sum);
-	xhAdd(&EXP.Functions, "max", (char*)exp_fn_max);
-	xhAdd(&EXP.Functions, "min", (char*)exp_fn_min);
-	xhAdd(&EXP.Functions, "first", (char*)exp_fn_first);
-	xhAdd(&EXP.Functions, "last", (char*)exp_fn_last);
-	xhAdd(&EXP.Functions, "nth", (char*)exp_fn_nth);
-
-	/** Reverse functions **/
-	xhAdd(&EXP.ReverseFunctions, "isnull", (char*)exp_fn_reverse_isnull);
-
+    /** Aggregate **/
+    xhAdd(&EXP.Functions, "count", (char*) exp_fn_count);
+    xhAdd(&EXP.Functions, "avg", (char*) exp_fn_avg);
+    xhAdd(&EXP.Functions, "sum", (char*) exp_fn_sum);
+    xhAdd(&EXP.Functions, "max", (char*) exp_fn_max);
+    xhAdd(&EXP.Functions, "min", (char*) exp_fn_min);
+    xhAdd(&EXP.Functions, "first", (char*) exp_fn_first);
+    xhAdd(&EXP.Functions, "last", (char*) exp_fn_last);
+    xhAdd(&EXP.Functions, "nth", (char*) exp_fn_nth);
+ 
+    /** Reverse functions **/
+    xhAdd(&EXP.ReverseFunctions, "isnull", (char*) exp_fn_reverse_isnull);
+    
+    /** UTF-8/ASCII dependent **/
+    if (CxGlobals.CharacterMode == CharModeSingleByte)
+        {
+        xhAdd(&EXP.Functions, "substring", (char*) exp_fn_substring);
+        xhAdd(&EXP.Functions, "ascii", (char*) exp_fn_ascii);
+        xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_charindex);
+        xhAdd(&EXP.Functions, "upper", (char*) exp_fn_upper);
+        xhAdd(&EXP.Functions, "lower", (char*) exp_fn_lower);
+	xhAdd(&EXP.Functions, "mixed", (char) exp_fn_mixed);
+        xhAdd(&EXP.Functions, "char_length", (char*) exp_fn_char_length);
+        xhAdd(&EXP.Functions, "right", (char*) exp_fn_right);
+        xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_ralign);
+        xhAdd(&EXP.Functions, "escape", (char*) exp_fn_escape);
+        xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_reverse);
+        xhAdd(&EXP.Functions, "cos_compare", (char*)exp_fn_cos_compare);
+	}
+    else
+        {
+        xhAdd(&EXP.Functions, "substring", (char*) exp_fn_utf8_substring);
+        xhAdd(&EXP.Functions, "ascii", (char*) exp_fn_utf8_ascii);
+        xhAdd(&EXP.Functions, "charindex", (char*) exp_fn_utf8_charindex);
+        xhAdd(&EXP.Functions, "upper", (char*) exp_fn_utf8_upper);
+        xhAdd(&EXP.Functions, "lower", (char*) exp_fn_utf8_lower);
+	xhAdd(&EXP.Functions, "mixed", (char*) exp_fn_utf8_mixed);
+        xhAdd(&EXP.Functions, "char_length", (char*) exp_fn_utf8_char_length);
+        xhAdd(&EXP.Functions, "right", (char*) exp_fn_utf8_right);
+        xhAdd(&EXP.Functions, "ralign", (char*) exp_fn_utf8_ralign);
+        xhAdd(&EXP.Functions, "escape", (char*) exp_fn_utf8_escape);
+	xhAdd(&EXP.Functions, "reverse", (char*) exp_fn_utf8_reverse);
+	xhAdd(&EXP.Functions, "overlong", (char*) exp_fn_utf8_overlong);
+        xhAdd(&EXP.Functions, "cos_compare", (char*)exp_fn_utf8_cos_compare);
+	}
+    
     return 0;
     }

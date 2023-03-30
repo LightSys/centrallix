@@ -32,7 +32,45 @@ test(char** tname)
 	    str[i+5] = '.';
 	    str[i+6] = '2';
 	    str[i+7] = '\0';
+
+	    /** normal **/
 	    lxs = mlxStringSession(str, 0);
+	    assert(lxs != NULL);
+	    if ((i+1) <= 253)
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_DOUBLE);
+		d = mlxDoubleVal(lxs);
+		assert(mlxNextToken(lxs) == MLX_TOK_DOUBLE);
+		d = mlxDoubleVal(lxs);
+		assert(d == 2.2);
+		assert(mlxNextToken(lxs) == MLX_TOK_ERROR);
+		}
+	    else
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_ERROR); /* number too big */
+		}
+	    mlxCloseSession(lxs);
+
+	    /** utf-8 **/
+	    lxs = mlxStringSession(str, MLX_F_ENFORCEUTF8);
+	    assert(lxs != NULL);
+	    if ((i+1) <= 253)
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_DOUBLE);
+		d = mlxDoubleVal(lxs);
+		assert(mlxNextToken(lxs) == MLX_TOK_DOUBLE);
+		d = mlxDoubleVal(lxs);
+		assert(d == 2.2);
+		assert(mlxNextToken(lxs) == MLX_TOK_ERROR);
+		}
+	    else
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_ERROR); /* number too big */
+		}
+	    mlxCloseSession(lxs);
+
+	    /** ascii **/
+	    lxs = mlxStringSession(str, MLX_F_ENFORCEASCII);
 	    assert(lxs != NULL);
 	    if ((i+1) <= 253)
 		{

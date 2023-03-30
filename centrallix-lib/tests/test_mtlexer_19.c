@@ -31,7 +31,48 @@ test(char** tname)
 	iter = 100000;
 	for(i=0;i<iter;i++)
 	    {
+	    /** normal **/
 	    lxs = mlxStringSession(str, MLX_F_EOL | MLX_F_EOF | MLX_F_DASHKW);
+	    assert(lxs != NULL);
+	    strcnt = 0;
+	    for(j=0;j<n_tok;j++)
+		{
+		if (setflags[j]) mlxSetOptions(lxs, setflags[j]);
+		if (unsetflags[j]) mlxUnsetOptions(lxs, unsetflags[j]);
+		t = mlxNextToken(lxs);
+		assert(t == toktype[j]);
+		if (t == MLX_TOK_STRING || t == MLX_TOK_KEYWORD)
+		    {
+		    strval = mlxStringVal(lxs, NULL);
+		    assert(strval != NULL);
+		    assert(strcnt < 9);
+		    assert(strcmp(strval,tokstr[strcnt++]) == 0);
+		    }
+		}
+	    mlxCloseSession(lxs);
+
+	    /** utf-8 **/
+	    lxs = mlxStringSession(str, MLX_F_EOL | MLX_F_EOF | MLX_F_DASHKW | MLX_F_ENFORCEUTF8);
+	    assert(lxs != NULL);
+	    strcnt = 0;
+	    for(j=0;j<n_tok;j++)
+		{
+		if (setflags[j]) mlxSetOptions(lxs, setflags[j]);
+		if (unsetflags[j]) mlxUnsetOptions(lxs, unsetflags[j]);
+		t = mlxNextToken(lxs);
+		assert(t == toktype[j]);
+		if (t == MLX_TOK_STRING || t == MLX_TOK_KEYWORD)
+		    {
+		    strval = mlxStringVal(lxs, NULL);
+		    assert(strval != NULL);
+		    assert(strcnt < 9);
+		    assert(strcmp(strval,tokstr[strcnt++]) == 0);
+		    }
+		}
+	    mlxCloseSession(lxs);
+
+	    /** ascii **/
+	    lxs = mlxStringSession(str, MLX_F_EOL | MLX_F_EOF | MLX_F_DASHKW | MLX_F_ENFORCEASCII);
 	    assert(lxs != NULL);
 	    strcnt = 0;
 	    for(j=0;j<n_tok;j++)

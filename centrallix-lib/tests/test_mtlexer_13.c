@@ -7,6 +7,7 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -31,7 +32,47 @@ test(char** tname)
 	    str[i+2] = '2';
 	    str[i+3] = '\0';
 	    iv = iv*10 + 1;
+
+	    /** normal **/
 	    lxs = mlxStringSession(str, 0);
+	    assert(lxs != NULL);
+	    if ((i+1) <= 10)
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_INTEGER);
+		n = mlxIntVal(lxs);
+		assert(n == iv);
+		assert(mlxNextToken(lxs) == MLX_TOK_INTEGER);
+		n = mlxIntVal(lxs);
+		assert(n == 2);
+		assert(mlxNextToken(lxs) == MLX_TOK_ERROR);
+		}
+	    else
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_ERROR); /* integer too big */
+		}
+	    mlxCloseSession(lxs);
+
+	    /** utf-8 **/
+	    lxs = mlxStringSession(str, MLX_F_ENFORCEUTF8);
+	    assert(lxs != NULL);
+	    if ((i+1) <= 10)
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_INTEGER);
+		n = mlxIntVal(lxs);
+		assert(n == iv);
+		assert(mlxNextToken(lxs) == MLX_TOK_INTEGER);
+		n = mlxIntVal(lxs);
+		assert(n == 2);
+		assert(mlxNextToken(lxs) == MLX_TOK_ERROR);
+		}
+	    else
+		{
+		assert(mlxNextToken(lxs) == MLX_TOK_ERROR); /* integer too big */
+		}
+	    mlxCloseSession(lxs);
+
+	    /** normal **/
+	    lxs = mlxStringSession(str, MLX_F_ENFORCEASCII);
 	    assert(lxs != NULL);
 	    if ((i+1) <= 10)
 		{

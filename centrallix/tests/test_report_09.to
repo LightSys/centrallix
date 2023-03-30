@@ -1,0 +1,3 @@
+##NAME Test invalid UTF-8 in rpt and .spec files
+print /tests/UTF8_test_invalid2.rpt
+print /tests/UTF8_test_invalid3.rpt

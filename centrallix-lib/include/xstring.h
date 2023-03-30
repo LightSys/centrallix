@@ -26,7 +26,7 @@
 /*		realloc'ing string data structure.			*/
 /************************************************************************/
 
-
+#include <stdlib.h>
 #include <stdarg.h>
 
 #define XS_BLK_SIZ	256
@@ -61,10 +61,15 @@ int xsRTrim(pXString this);
 int xsLTrim(pXString this);
 int xsTrim(pXString this);
 int xsFind(pXString this,char* find,int findlen, int offset);
+int xsFindWithCharOffset(pXString this, char* find, int findlen, int offset);
 int xsFindRev(pXString this,char* find,int findlen, int offset);
+int xsFindRevWithCharOffset(pXString this, char* find, int findlen, int offset);
 int xsSubst(pXString this, int offset, int len, char* rep, int replen);
+int xsSubstWithCharOffset(pXString this, int offset, int len, char* rep, int replen);
 int xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int replen);
+int xsReplaceWithCharOffset(pXString this, char* find, int findlen, int offset, char* rep, int replen);
 int xsInsertAfter(pXString this, char* ins, int inslen, int offset);
+int xsInsertAfterWithCharOffset(pXString this, char* ins, int inslen, int offset);
 int xsGenPrintf(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, const char* fmt, ...);
 int xsGenPrintf_va(int (*write_fn)(), void* write_arg, char** buf, int* buf_size, const char* fmt, va_list va);
 int xsQPrintf(pXString this, char* fmt, ...);
@@ -72,6 +77,9 @@ int xsQPrintf_va(pXString this, char* fmt, va_list va);
 int xsConcatQPrintf(pXString this, char* fmt, ...);
 pXString xsNew();
 void xsFree(pXString this);
+
+/** Needed utiliy function **/
+size_t chrCharLength(char* string);
 
 #define XS_U_SEEK	2
 

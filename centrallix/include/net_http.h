@@ -38,6 +38,7 @@
 #include "cxlib/strtcpy.h"
 #include "cxlib/qprintf.h"
 #include "cxss/cxss.h"
+#include "charsets.h"
 #include "json/json.h"
 #include "application.h"
 
@@ -317,6 +318,7 @@ typedef struct
     int		UsingChunkedEncoding:1;
     int		StrictSameSite:1;
     char	ResponseContentType[128];
+    char	ResponseCharset[64];
     int		ResponseContentLength;
     XArray	RequestHeaders;		/* of pHttpHeader */
     XArray	ResponseHeaders;	/* of pHttpHeader */

@@ -1,0 +1,47 @@
+//
+//
+//  Centrallix Test Suite
+//
+//  "UTF8_test_valid.rpt"
+//  By Noah Board - August 31, 2022
+//
+//  This app tests the objdrv_report_v3 driver's interactions
+//  with invalid UTF-8 characters. 
+//  This file has invalid items within the internal struct
+//
+
+$Version=2$
+Datatypes "system/report"
+    {
+    title = "Test UTF-8 report #03 - Invalid UTF-8";
+
+    document_format="text/plain";
+    text="Вед Бог так полюбил этот";
+    
+    four_byte="𓅀𓅁𓅂𓅃𓅄𓅅𓅆𓅇𓅈";
+    three_byte="世界を愛";
+    two_byte="жизнь";
+    
+    resolution = 300;
+    pagewidth=85;
+    pageheight=66;
+    marginleft=2.5;
+    marginright=2.5;
+    margintop=3;
+    marginbottom=3;
+
+    dt_qy "report/query"
+	{
+	sql = "select * from /tests/UTF8_invalid2.csv/rows";
+	}
+
+    dt_form "report/form"
+	{
+	source = dt_qy;
+
+	dt_item "report/data"
+	    {
+	    value = runserver(:dt_qy:name + ' ' + :dt_qy:descripton + ' ' + :dt_qy:UTF8);
+	    }
+	}
+    }

@@ -1,0 +1,2 @@
+##NAME Test invlaid UTF-8 in CSV
+print /tests/UTF8_test_invalid1.rpt

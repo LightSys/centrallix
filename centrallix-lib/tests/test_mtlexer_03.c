@@ -35,23 +35,57 @@ test(char** tname)
 	memset(tokstr[0], 'a', iter+1);
 	tokstr[1] = "nextline";
 	tokstr[2] = "thirdline";
-	/*tokstr[0] = malloc(2046);
-	memset(tokstr[0], 'a', 2045);
-	tokstr[0][2045] = '\0';
-	tokstr[1] = malloc(2045);
-	memset(tokstr[1], 'b', 2044);
-	tokstr[1][2044] = '\0';
-	tokstr[2] = malloc(2047);
-	memset(tokstr[2], 'c', 2046);
-	tokstr[2][2046] = '\0';
-	sprintf(str, "%s\r\n%s\r\n%s\r\n", tokstr[0], tokstr[1], tokstr[2]);*/
 
 	for(i=0;i<iter;i++)
 	    {
 	    strcpy(str+i, "a\r\nnextline\r\nthirdline");
 	    tokstr[0][i] = 'a';
 	    tokstr[0][i+1] = '\0';
+
+	    /** normal **/
 	    lxs = mlxStringSession(str, MLX_F_EOL | MLX_F_EOF | MLX_F_IFSONLY);
+	    assert(lxs != NULL);
+	    strcnt = 0;
+	    for(j=0;j<n_tok;j++)
+		{
+		t = mlxNextToken(lxs);
+		if (t != toktype[j]) printf("Error at token length %d, line length %d\n", i+1, i+3);
+		assert(t == toktype[j]);
+		if (t == MLX_TOK_STRING || t == MLX_TOK_KEYWORD)
+		    {
+		    alloc = 0;
+		    strval = mlxStringVal(lxs, &alloc);
+		    assert(strval != NULL);
+		    assert(strcnt < 3);
+		    assert(strcmp(strval,tokstr[strcnt++]) == 0);
+		    if (alloc) nmSysFree(strval);
+		    }
+		}
+	    mlxCloseSession(lxs);
+
+	    /** utf-8 **/
+	    lxs = mlxStringSession(str, MLX_F_EOL | MLX_F_EOF | MLX_F_IFSONLY | MLX_F_ENFORCEUTF8);
+	    assert(lxs != NULL);
+	    strcnt = 0;
+	    for(j=0;j<n_tok;j++)
+		{
+		t = mlxNextToken(lxs);
+		if (t != toktype[j]) printf("Error at token length %d, line length %d\n", i+1, i+3);
+		assert(t == toktype[j]);
+		if (t == MLX_TOK_STRING || t == MLX_TOK_KEYWORD)
+		    {
+		    alloc = 0;
+		    strval = mlxStringVal(lxs, &alloc);
+		    assert(strval != NULL);
+		    assert(strcnt < 3);
+		    assert(strcmp(strval,tokstr[strcnt++]) == 0);
+		    if (alloc) nmSysFree(strval);
+		    }
+		}
+	    mlxCloseSession(lxs);
+
+	    /** ascii **/
+	    lxs = mlxStringSession(str, MLX_F_EOL | MLX_F_EOF | MLX_F_IFSONLY | MLX_F_ENFORCEASCII);
 	    assert(lxs != NULL);
 	    strcnt = 0;
 	    for(j=0;j<n_tok;j++)

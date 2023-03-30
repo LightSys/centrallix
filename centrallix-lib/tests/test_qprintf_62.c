@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include "qprintf.h"
 #include <assert.h>
+#include "util.h"
+#include <locale.h>
 
 long long
 test(char** tname)
@@ -12,7 +14,13 @@ test(char** tname)
     int i, rval;
     int iter;
     unsigned char buf[44];
+    pQPSession session;
+    session = nmSysMalloc(sizeof(QPSession));
+    session->Flags = 0;
 
+	setlocale(0, "en_US.UTF-8");
+	qpfInitialize(); 
+	
 	*tname = "qprintf-62 %STR&DB64 integrity test";
 	iter = 200000;
 	for(i=0;i<iter;i++)
@@ -25,17 +33,45 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "dGVzdC#BkYXRh");
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DB64", "dGVzdC#BkYXRh");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "#dGVzdCBkYXRh");
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DB64", "#dGVzdCBkYXRh");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "dGVzdCBkYXRh#");
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DB64", "dGVzdCBkYXRh#");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "dGVzdCBkY#XRh");
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DB64", "dGVzdCBkY#XRh");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "dGVzdCBkYXRh");
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DB64", "dGVzdCBkYXRh");
 	    assert(strcmp(buf+4,"test data") == 0);
 	    assert(rval == 9);
+	    assert(buf[43] == '\n');
+	    assert(buf[42] == '\0');
+	    assert(buf[41] == 0xff);
+	    assert(buf[40] == '\0');
+	    assert(buf[3] == '\n');
+	    assert(buf[2] == '\0');
+	    assert(buf[1] == 0xff);
+	    assert(buf[0] == '\0');
+
+            assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
+
+            rval = qpfPrintf(session, buf+4, 36, "%STR&DB64", "#4K6a4K+L4K6k4K6p4K+I");
+	    assert(rval < 0);
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DB64", "4K6a4K+L4K6k4K6p4K+I#");
+	    assert(rval < 0);
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DB64", "4K6a4K+L4#K6k4K6p4K+I");
+	    assert(rval < 0);
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DB64", "4K6a4K+L4K6k4K6p#4K+I");
+	    assert(rval < 0);
+	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "4K6a4K+L4K6k4K6p4K+="); /* valid B64, invalid UTF-8 */
+	    assert(rval < 0);
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DB64", "4K6a4K+L4K6k4K6p4K+="); /* valid B64, invalid UTF-8 */
+	    assert(rval > 0); /* passes when there is no utf-8 session flag */
+	    rval = qpfPrintf(session, buf+4, 36, "%STR&DB64", "4K6a4K+L4K6k4K6p4K+I");
+	    assert(strcmp(buf+4,"சோதனை") == 0);
+	    assert(rval == 15);
+            assert(verifyUTF8(buf+4) == UTIL_VALID_CHAR);
+
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);

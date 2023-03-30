@@ -1,0 +1,20 @@
+##gzip_00 Ensure UTF-8 checking in gzip is correct
+
+# valid contents
+ls /tests/zip1.json.gz                     
+query select * from  /tests/zip1.json.gz   
+query select * from  /tests/zip1.json.gz/1 
+
+query select "----------------- ↑↑↑ zip1 ↑↑↑ ----------------- ↓↓↓ zip2 ↓↓↓ -----------------"
+
+# invalid file name
+ls /tests/zip2.json.gz
+query select * from  /tests/zip2.json.gz
+query select * from  /tests/zip2.json.gz/1
+
+query select "----------------- ↑↑↑ zip2 ↑↑↑ ----------------- ↓↓↓ zip3 ↓↓↓ -----------------"
+
+# no file name
+ls /tests/zip3.json.gz
+query select * from  /tests/zip3.json.gz
+query select * from  /tests/zip3.json.gz/1

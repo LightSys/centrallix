@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <syslog.h>
+#include <locale.h>
 #include "mtask.h"
 #include "mtlexer.h"
 #include "newmalloc.h"
@@ -263,6 +264,8 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
     int found_user;
     gid_t grps[16];
     int n_grps;
+    int mlxFlags;
+    char * locale;
 
 	/** Allocate a new session structure. **/
 	s = (pMtSession)nmMalloc(sizeof(MtSession));
@@ -332,7 +335,11 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 		nmFree(s,sizeof(MtSession));
 		return -1;
 		}
-	    altpass_lxs = mlxOpenSession(altpass_fd, MLX_F_LINEONLY | MLX_F_EOF);
+	    mlxFlags = MLX_F_LINEONLY | MLX_F_EOF;
+	    locale = setlocale(LC_CTYPE, NULL);
+	    if(strstr(locale, "UTF-8") || strstr(locale, "UTF8") || strstr(locale, "utf-8") || strstr(locale, "utf8"))
+		mlxFlags |= MLX_F_ENFORCEUTF8;
+	    altpass_lxs = mlxOpenSession(altpass_fd, mlxFlags);
 
 	    /** Scan it for the user name **/
 	    found_user = 0;

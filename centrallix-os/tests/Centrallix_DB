@@ -1,0 +1,16 @@
+$Version=2$
+Centrallix_DB "application/mysql"
+    {
+    server = "localhost";
+    database = "driver_test";
+    max_connections = 200;
+    // annot_table = "ra";
+
+    // Use centrallix login credentials.
+    use_system_auth = "no";
+
+    // Migrate centrallix password to mysql password.
+    username="root";
+    password = "";
+    //set_passwords = "yes";
+    }

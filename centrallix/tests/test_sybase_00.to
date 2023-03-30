@@ -1,0 +1,15 @@
+##NAME Sybase 00: basic test
+
+# clear out old data
+query delete from /tests/Test_DB.sybdb/basic/rows
+
+# insert new values
+
+query insert into object /tests/Test_DB.sybdb/basic/rows/* select string="1 byte ascii", longString="A longer exampe of ascii", number=1, text="even more ascii text"
+query insert into object /tests/Test_DB.sybdb/basic/rows/* select string="2 byte UTF-8: Своего", longString="ΆΈΉΊΌΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικ", number=2, text="ͰͱͲͳʹ͵Ͷͷͺͻͼͽ;΄"
+query insert into object /tests/Test_DB.sybdb/basic/rows/* select string="3 byte UTF-8: 実に神は", longString="え惜しまず与えるほどにこの世界を愛してくださいました。それは", number=3, text="実に神はひとり子"
+query insert into object /tests/Test_DB.sybdb/basic/rows/* select string="4 byte UTF-8: 𓀀𓀁𓀂", longString="𓀐𓀑𓀒𓀓𓀔𓀕𓀖𓀗𓀘𓀙𓀚𓀛𓀜𓀝𓀞𓀟𓀠𓀡𓀢𓀣𓀤𓀥𓀦", number=4, text="𓀀𓀁𓀂𓀃𓀄𓀅𓀆𓀇𓀈𓀉𓀊𓀋𓀌"
+query insert into object /tests/Test_DB.sybdb/basic/rows/* select string="test of utf-8 planes", longString="|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|", number=5, text="|�￦|𐊌🫖|𠀀蜨|𰀀𲎯|"
+
+# print out results
+query select * from /tests/Test_DB.sybdb/basic/rows

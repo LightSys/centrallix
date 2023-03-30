@@ -1,0 +1,19 @@
+##NAME xml_00: test a simple valid xml file
+ls /tests/xml/basic.xml
+query select * from /tests/xml/basic.xml
+
+# test accessing sub objects
+print /tests/xml/basic.xml/tagA|0
+
+print  /tests/xml/basic.xml/tagA|0/tagB|0
+print /tests/xml/basic.xml/tagA|0/tagB
+
+print  /tests/xml/basic.xml/tagA|0/tagC|0
+print /tests/xml/basic.xml/tagA|0/tagC
+
+print /tests/xml/basic.xml/tagA|1
+
+print /tests/xml/basic.xml/tagB|0
+
+print  /tests/xml/basic.xml/tagC|0
+print /tests/xml/basic.xml/tagC

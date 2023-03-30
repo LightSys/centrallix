@@ -37,8 +37,47 @@ test(char** tname)
 	iter = 100000;
 	for(i=0;i<iter;i++)
 	    {
+	    /** normal **/
 	    flags = flagtype[i%n_flagtype];
 	    lxs = mlxStringSession(str, flags | MLX_F_LINEONLY);
+	    assert(lxs != NULL);
+	    strcnt = 0;
+	    for(j=0;j<n_tok;j++)
+		{
+		t = mlxNextToken(lxs);
+		assert(t == toktype[i%n_flagtype][j]);
+		if (t == MLX_TOK_STRING)
+		    {
+		    strval = mlxStringVal(lxs, NULL);
+		    assert(strval != NULL);
+		    assert(strcnt < 7);
+		    assert(strcmp(strval,tokstr[strcnt++]) == 0);
+		    }
+		}
+	    mlxCloseSession(lxs);
+
+	    /** utf-8 **/
+	    flags = flagtype[i%n_flagtype];
+	    lxs = mlxStringSession(str, flags | MLX_F_LINEONLY | MLX_F_ENFORCEUTF8);
+	    assert(lxs != NULL);
+	    strcnt = 0;
+	    for(j=0;j<n_tok;j++)
+		{
+		t = mlxNextToken(lxs);
+		assert(t == toktype[i%n_flagtype][j]);
+		if (t == MLX_TOK_STRING)
+		    {
+		    strval = mlxStringVal(lxs, NULL);
+		    assert(strval != NULL);
+		    assert(strcnt < 7);
+		    assert(strcmp(strval,tokstr[strcnt++]) == 0);
+		    }
+		}
+	    mlxCloseSession(lxs);
+
+	    /** ascii **/
+	    flags = flagtype[i%n_flagtype];
+	    lxs = mlxStringSession(str, flags | MLX_F_LINEONLY | MLX_F_ENFORCEASCII);
 	    assert(lxs != NULL);
 	    strcnt = 0;
 	    for(j=0;j<n_tok;j++)

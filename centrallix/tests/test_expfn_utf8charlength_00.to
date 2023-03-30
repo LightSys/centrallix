@@ -1,0 +1,9 @@
+##NAME UTF-8 compatible char_length() function
+
+query select 'char_length("abc")' = char_length("abc")
+query select 'char_length("a")' = char_length("a")
+query select 'char_length("")' = char_length("")
+query select 'char_length(null)' = char_length(null)
+query select 'char_length("abcde"*999999)' = char_length("abcde" * 999999)
+query select 'char_length("كتاب")' = char_length("كتاب")
+query select 'char_length(:String) from /tests/Foreign.csv/rows' = char_length(:String) from /tests/Foreign.csv/rows

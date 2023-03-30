@@ -8,6 +8,7 @@
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
+#include "cxlib/util.h"
 #include "stparse.h"
 #include "st_node.h"
 #include "cxlib/mtsession.h"
@@ -409,6 +410,12 @@ uxuOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    {
 	    pwd_data = uxu_internal_CopyPwEnt(pwent);
 	    if (!pwd_data) break;
+	    /** validate entry before add **/
+	    if(verifyUTF8(pwd_data->Name) != UTIL_VALID_CHAR 
+		|| verifyUTF8(pwd_data->Passwd) != UTIL_VALID_CHAR
+		|| verifyUTF8(pwd_data->Description) != UTIL_VALID_CHAR 
+		|| verifyUTF8(pwd_data->Dir) != UTIL_VALID_CHAR
+		|| verifyUTF8(pwd_data->Shell) != UTIL_VALID_CHAR) continue;
 	    xaAddItem(&(qy->PasswdEntries), (void*)pwd_data);
 	    }
 	endpwent();

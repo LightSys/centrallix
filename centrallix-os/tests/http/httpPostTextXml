@@ -1,0 +1,12 @@
+$Version=2$
+google "application/http"
+    {
+    server = "lightsys.org";
+    path = "/testpost.php";
+    protocol = "https";
+    method = "POST";
+    autosubdirs = 0;
+    cache_min_ttl = 3600000; // one hour
+    cache_max_ttl = 86400000; // one day
+    request_content_type = "text/xml";
+    }

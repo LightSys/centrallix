@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -15,6 +16,7 @@
 #include "cxlib/strtcpy.h"
 #include "cxlib/qprintf.h"
 #include "cxlib/util.h"
+#include "charsets.h"
 #include <assert.h>
 #include <mysql.h>
 
@@ -199,6 +201,7 @@ pMysdConn
 mysd_internal_GetConn(pMysdNode node)
     {
     MYSQL_RES * result;
+    MY_CHARSET_INFO currentCharsetInfo;
     pMysdConn conn;
     int i, conn_cnt, found;
     int min_access;
@@ -306,6 +309,7 @@ mysd_internal_GetConn(pMysdNode node)
                 nmFree(conn, sizeof(MysdConn));
                 return NULL;
                 }
+
             if (mysql_real_connect(&conn->Handle, node->Server, username, password, node->Database, 0, NULL, 0) == NULL)
                 {
 		if (node->Flags & MYSD_NODE_F_SETCXAUTH)
@@ -319,9 +323,13 @@ mysd_internal_GetConn(pMysdNode node)
 			return NULL;
 			}
 
+
 		    /** Successfully connected using user default password.
+
+
 		     ** Now try to change the password.
 		     **/
+
 		    result = mysd_internal_RunQuery_conn(conn, node, "SET PASSWORD = PASSWORD('?')", password);
 
 		    if (result == MYSD_RUNQUERY_ERROR)
@@ -342,6 +350,20 @@ mysd_internal_GetConn(pMysdNode node)
             strtcpy(conn->Username, username, sizeof(conn->Username));
             strtcpy(conn->Password, password, sizeof(conn->Password));
             xaAddItem(&node->Conns, conn);
+                            
+            /** Set up current character set **/
+            /** Please note that this assumes that if it is a one byte character encoding, that ASCII will be **/
+            /** a valid subset so that the commands still get through OK. **/
+            if(mysql_set_character_set(&conn->Handle, chrGetEquivalentName(CHR_MODULE_MYSQL)) != 0) /* CHR_MODULE_MYSQL maps to utf8mb4 */
+                {
+                mysql_get_character_set_info(&conn->Handle, &currentCharsetInfo);
+                mssError(1, "MYSD", "Could not set character set of MySQL connection to '%s'!  Using '%s' instead!",
+                        chrGetEquivalentName(CHR_MODULE_MYSQL), currentCharsetInfo.name);
+                }
+            else
+                {
+                /** Not quite fatal enough not to return a connection... **/
+                }
             }
 
         /** Make it busy **/
@@ -350,6 +372,7 @@ mysd_internal_GetConn(pMysdNode node)
 
     return conn;
     }
+ 
 
 
 /*** mysd_internal_ReleaseConn() - release a connection back to the connection
@@ -758,7 +781,7 @@ mysd_internal_GetTData(pMysdNode node, char* tablename)
 
         /** sanatize the table name and build the query**/
         length = strlen(tablename);
-        /** this next bit will break any charset not ASCII **/ 
+        /** this next bit will break any charset not ASCII compatible **/ 
         /** throw an error if some joker tries to throw in a backtick **/
         if(strchr(tablename,'`')) goto error; 
         result = mysd_internal_RunQuery(node, "SHOW COLUMNS FROM `?`",tablename);
@@ -2081,8 +2104,9 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		     ** the first subexpression we find out that it is a string.  After all,
 		     ** this needs to work, but it doesn't need to look pretty.
 		     **/
+
 		    i = strlen(where_clause->String);
-		    xsConcatenate(where_clause, "       (", -1);
+                    xsConcatenate(where_clause, "       (", -1);
 		    mysd_internal_TreeToClause(subtree, tdata,  where_clause,conn);
 		    if (subtree->DataType == DATA_T_STRING)
 			{

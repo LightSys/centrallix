@@ -131,8 +131,12 @@ testprt_process_cmd(pObjSession s, char* cmd)
     pPrtSvg svg;
     char sbuf[256];
     pFile fd;
+    int mlxFlags;
 
-	ls = mlxStringSession(cmd,MLX_F_ICASE | MLX_F_EOF);
+	mlxFlags = MLX_F_ICASE | MLX_F_EOF;
+	if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+	ls = mlxStringSession(cmd, mlxFlags);
+	
 	if (mlxNextToken(ls) != MLX_TOK_KEYWORD) return;
 	ptr = mlxStringVal(ls,NULL);
 	if (!ptr) 
@@ -993,6 +997,7 @@ start(void* v)
     pLxSession cmdfile;
     int alloc;
     int t;
+    int mlxFlags;
 
         /** Initialize security subsystem **/
         cxssInitialize();
@@ -1084,7 +1089,9 @@ start(void* v)
 		}
 	    else
 		{
-		cmdfile = mlxOpenSession(fd, MLX_F_LINEONLY | MLX_F_EOF);
+		mlxFlags = MLX_F_LINEONLY | MLX_F_EOF;
+		if(CxGlobals.CharacterMode == CharModeUTF8) mlxFlags |= MLX_F_ENFORCEUTF8;
+		cmdfile = mlxOpenSession(fd, mlxFlags);
 		if (!cmdfile)
 		    {
 		    fdClose(fd, 0);

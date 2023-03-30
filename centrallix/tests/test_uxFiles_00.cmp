@@ -1,0 +1,13 @@
+INSTALL.txt                                                           system/file
+LICENSE.txt                                                           system/file
+apps                                                                  system/directory
+centrallix-os.spec                                                    system/file
+favicon.ico                                                           system/file
+index.app                                                             system/file
+mkrpm                                                                 system/file
+samples                                                               system/directory
+sys                                                                   system/directory
+tests                                                                 system/directory
+password.uxu                                                          system/file
+dir1                                                                  system/directory
+test.txt                                                              system/file
