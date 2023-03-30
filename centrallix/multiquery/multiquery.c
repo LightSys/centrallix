@@ -241,6 +241,11 @@ mq_internal_SetChainedReferences(pQueryStructure qs, pQueryStructure clause)
     }
 
 
+/*** mq_internal_ExprToPresentation - see if we can determine the name of this
+ *** data field based on the expression tree - a top level object or property
+ *** node can yield the name for us.  However, don't do this if the name is
+ *** "objcontent" since that is a special reserved value.
+ ***/
 int
 mq_internal_ExprToPresentation(pExpression exp, char* pres, int maxlen)
     {
@@ -591,6 +596,11 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 			{
 			snprintf(subtree->Presentation, sizeof(subtree->Presentation), "column_%3.3d", i);
 			}
+		    }
+		else if (!strcmp(subtree->Presentation, "objcontent"))
+		    {
+		    /** Explicitly labeled "objcontent" **/
+		    stmt->Flags |= MQ_TF_OBJCONTENT;
 		    }
 		}
 	    }
@@ -3363,6 +3373,7 @@ mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj)
 	qy->LinkCnt++;
 	qy->CurStmt->LinkCnt++;
 	p->ObjList = expCreateParamList();
+	p->Offset = 0;
 
 	/** Record the Counters **/
 	p->QueryID = qy->QueryCnt - 1;
@@ -3852,7 +3863,38 @@ mqRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree
     {
     pPseudoObject p = (pPseudoObject)inf_v;
     int objid;
+    char* content;
+    int n;
 
+	/** If an "objcontent" attribute is explicitly SELECTed... **/
+	if (p->Stmt->Flags & MQ_TF_OBJCONTENT)
+	    {
+	    /** "Read" the content from an attribute **/
+	    if (mqGetAttrValue(inf_v, "objcontent", DATA_T_STRING, POD(&content), NULL) == 0)
+		{
+		if (flags & OBJ_U_SEEK)
+		    p->Offset = offset;
+		if (strlen(content) <= p->Offset)
+		    {
+		    n = 0;
+		    }
+		else
+		    {
+		    n = strlen(content) - p->Offset;
+		    }
+		if (n > maxcnt)
+		    n = maxcnt;
+		memcpy(buffer, content + p->Offset, n);
+		p->Offset += n;
+		return n;
+		}
+	    else
+		{
+		return -1;
+		}
+	    }
+	
+	/** Read the content from a FROM source **/
 	objid = mq_internal_GetIdentObjId(p);
 	if (objid < 0)
 	    {

@@ -231,6 +231,7 @@ struct _QST /* QueryStatement */
 #define MQ_TF_ALLASSIGN		16		/* All select items are assignments */
 #define MQ_TF_ONEASSIGN		32		/* At least one select item assigns */
 #define MQ_TF_IMMEDIATE		64		/* command already executed */
+#define MQ_TF_OBJCONTENT	128		/* "objcontent" is being explicitly named - mqRead from attr instead of content. */
 
 /*** Structure for managing the multiquery. ***/
 struct _MQ /* MultiQuery */
@@ -282,6 +283,7 @@ typedef struct
     int			RowIDAllQuery;
     int			RowIDThisQuery;
     int			RowIDBeforeLimit;
+    int			Offset;			/* objcontent read offset */
     }
     PseudoObject, *pPseudoObject;
 

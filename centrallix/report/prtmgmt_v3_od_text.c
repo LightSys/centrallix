@@ -280,8 +280,8 @@ prt_textod_SetPageGeom(void* context_v, double width, double height, double tm, 
 /*** prt_textod_GetNearestFontSize() - return the nearest font size to the
  *** requested one.  We only support one font size - 12 point (10cpi).
  ***/
-int
-prt_textod_GetNearestFontSize(void* context_v, int req_size)
+double
+prt_textod_GetNearestFontSize(void* context_v, double req_size)
     {
     /*pPrtTextodInf context = (pPrtTextodInf)context_v;*/
     return 12;

@@ -632,8 +632,8 @@ prt_psod_SetPageGeom(void* context_v, double width, double height, double t, dou
  *** requested one.  Most PS printers can scale fonts without any problem,
  *** so we'll allow any font size greater than zero.
  ***/
-int
-prt_psod_GetNearestFontSize(void* context_v, int req_size)
+double
+prt_psod_GetNearestFontSize(void* context_v, double req_size)
     {
     /*pPrtPsodInf context = (pPrtPsodInf)context_v;*/
     return (req_size<=0)?1:req_size;
@@ -777,7 +777,7 @@ prt_psod_SetTextStyle(void* context_v, pPrtTextStyle style)
 		fontattr = "";
 
 	    /** Output our FS command (see %%BeginProlog for FS macro def'n) **/
-	    prt_psod_Output_va(context,	"%d /%s%s FS\n", style->FontSize, fontname, fontattr);
+	    prt_psod_Output_va(context,	"%.1f /%s%s FS\n", style->FontSize, fontname, fontattr);
 	    }
 
 	/** Color change? **/

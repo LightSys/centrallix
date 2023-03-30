@@ -59,7 +59,7 @@
 /************************************************************************/
 
 
-#define HTTBL_MAX_COLS		(32)
+#define HTTBL_MAX_COLS		(64)
 
 /** globals **/
 static struct 

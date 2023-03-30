@@ -345,7 +345,7 @@ nht_i_ConnHandler(void* conn_v)
 	    /** Lookup the cookie in our session list **/
 	    if (conn->Cookie[strlen(conn->Cookie)-1] == ';') conn->Cookie[strlen(conn->Cookie)-1] = '\0';
 	    conn->NhtSession = (pNhtSessionData)xhLookup(&(NHT.CookieSessions), conn->Cookie);
-	    if (conn->NhtSession)
+	    if (conn->NhtSession && !conn->NhtSession->Closed)
 	        {
 		nht_i_LinkSess(conn->NhtSession);
 
@@ -392,6 +392,10 @@ nht_i_ConnHandler(void* conn_v)
 		thSetSecContext(NULL, &(conn->NhtSession->SecurityContext));
 		w_timer = conn->NhtSession->WatchdogTimer;
 		i_timer = conn->NhtSession->InactivityTimer;
+		}
+	    else
+		{
+		conn->NhtSession = NULL;
 		}
 	    }
 	else
@@ -579,7 +583,6 @@ nht_i_ConnHandler(void* conn_v)
 	    /** Authentication succeeded - start a new session **/
 	    conn->NhtSession = nht_i_AllocSession(usrname, conn->UsingTLS);
 	    printf("NHT: new session for username [%s], cookie [%s]\n", conn->NhtSession->Username, conn->NhtSession->Cookie);
-	    nht_i_LinkSess(conn->NhtSession);
 	    }
 
 	/** Start the application security context **/

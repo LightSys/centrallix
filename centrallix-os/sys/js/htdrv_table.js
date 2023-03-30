@@ -2129,6 +2129,7 @@ function tbld_init(param)
 	t.column_widgets = wgtrFindMatchingDescendents(t, 'widget/table-column');
 	for(var i=0; i<t.column_widgets.length; i++)
 	    {
+	    if (i >= t.cols.length - 1) continue;
 	    var cw = t.column_widgets[i];
 	    ifc_init_widget(cw);
 	    t.cols[i].widget = cw;

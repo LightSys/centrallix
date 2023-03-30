@@ -127,6 +127,7 @@ prtOpenSession(char* output_type, int (*write_fn)(), void* write_arg, int page_f
 	prtSetAttr(this->FocusHandle, 0);
 	prtSetFont(this->FocusHandle, "monospace");
 	prtSetFontSize(this->FocusHandle, 12);
+	prtSetMinFontSize(this->FocusHandle, 0);
 
     return this;
     }

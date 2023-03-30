@@ -16,6 +16,7 @@
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
 #include "centrallix.h"
+#include "double.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -237,8 +238,8 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
  *** driver supports.  In this case, this just queries the underlying output
  *** driver for the information.
  ***/
-int
-prt_htmlfm_GetNearestFontSize(void* context_v, int req_size)
+double
+prt_htmlfm_GetNearestFontSize(void* context_v, double req_size)
     {
     /*pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;*/
     int i;
@@ -356,7 +357,7 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 	/** Figure the size **/
 	for(i=PRT_HTMLFM_MINFONTSIZE;i<=PRT_HTMLFM_MAXFONTSIZE;i++)
 	    {
-	    if (prt_htmlfm_fontsize_to_htmlsize[i] == style->FontSize)
+	    if (realComparePrecision(prt_htmlfm_fontsize_to_htmlsize[i], style->FontSize, 0.5) == 0)
 		{
 		htmlfontsize = i;
 		break;
@@ -371,7 +372,7 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 	italicchanged = (style->Attr ^ context->CurStyle.Attr) & PRT_OBJ_A_ITALIC;
 	underlinechanged = (style->Attr ^ context->CurStyle.Attr) & PRT_OBJ_A_UNDERLINE;
 	fontchanged = (style->FontID != context->CurStyle.FontID || 
-		style->FontSize != context->CurStyle.FontSize || 
+		realComparePrecision(style->FontSize, context->CurStyle.FontSize, 0.5) != 0 || 
 		style->Color != context->CurStyle.Color);
 	if ((!context->InitStyle) && (context->ExitStyle || boldchanged || italicchanged || underlinechanged || fontchanged))
 	    {

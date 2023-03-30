@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <string.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -14,6 +14,7 @@
 #include "cxlib/mtlexer.h"
 #include "cxlib/strtcpy.h"
 #include "cxlib/qprintf.h"
+#include "cxlib/xhash.h"
 #include "cxss/cxss.h"
 #include "param.h"
 #include <openssl/ssl.h>
@@ -113,6 +114,8 @@ typedef struct
     int		AllowSubDirs;
     int		AllowRedirects;
     int		AllowBadCert;
+    int		AllowCookies;
+    int		SuccessCodes[8];
     int		NextAttr;
     pFile	Socket;
     pFile	SSLReporting;
@@ -156,6 +159,24 @@ typedef struct
     HttpQuery, *pHttpQuery;
 
 
+/*** Structure for one cookie ***/
+typedef struct
+    {
+    char*	Name;
+    char*	Value;
+    }
+    HttpCookie, *pHttpCookie;
+
+
+/*** Structure used to store data about a server. ***/
+typedef struct
+    {
+    char	URI[256];	/* name of user and website, form http(s)://username@host:port */
+    XArray	Cookies;	/* of pHttpCookie */
+    }
+    HttpServerData, *pHttpServerData;
+
+
 /*** GLOBALS ***/
 struct
     {
@@ -163,6 +184,7 @@ struct
     regex_t	httpheader;
     SSL_CTX*	SSL_ctx;
     pCxssKeystreamState NonceData;
+    XHashTable	ServerData;
     }
     HTTP_INF;
 
@@ -936,6 +958,9 @@ http_i_PostBodyJSON(pHttpData inf)
     int param_part_cnt;
     char* save_ptr;
     char cur_param[256];
+    int is_array[16];	/* 0 = object, 1 = array */
+    int last_is_array[16];
+    int changed[16];
 
 	post_params = xsNew();
 	if (!post_params)
@@ -950,6 +975,8 @@ http_i_PostBodyJSON(pHttpData inf)
 	    {
 	    cur_json[j] = NULL;
 	    last_json[j] = NULL;
+	    is_array[j] = 0;
+	    last_is_array[j] = 0;
 	    }
 	for(i=0; i<xaCount(&inf->Params); i++)
 	    {
@@ -966,6 +993,7 @@ http_i_PostBodyJSON(pHttpData inf)
 		    while(param_part)
 			{
 			cur_json[param_part_cnt] = param_part;
+			is_array[param_part_cnt] = (cur_json[param_part_cnt][0] >= '0' && cur_json[param_part_cnt][0] <= '9');
 			param_part = strtok_r(NULL, ".", &save_ptr);
 			param_part_cnt++;
 			if (param_part_cnt >= sizeof(cur_json) / sizeof(char*) - 1)
@@ -979,14 +1007,28 @@ http_i_PostBodyJSON(pHttpData inf)
 			cur_json[j] = NULL;
 			}
 
+		    /** What has changed? **/
+		    for(j=0; j<sizeof(cur_json) / sizeof(char*); j++)
+			{
+			if (j > 0 && changed[j-1])
+			    changed[j] = 1;
+			else
+			    changed[j] = (last_json[j] && !cur_json[j]) || (!last_json[j] && cur_json[j]) || (last_json[j] && cur_json[j] && strcmp(last_json[j], cur_json[j]) != 0);
+			}
+
 		    /** Emit closing braces? **/
 		    last = 1;
 		    for(j=sizeof(cur_json) / sizeof(char*) - 1; j>=0; j--)
 			{
-			if (last_json[j] && (!cur_json[j] || strcmp(last_json[j], cur_json[j]) != 0))
+			if (last_json[j] && changed[j])
 			    {
 			    if (!last)
-				xsConcatenate(post_params, " } ", 3);
+				{
+				if (last_is_array[j+1])
+				    xsConcatenate(post_params, " ] ", 3);
+				else
+				    xsConcatenate(post_params, " } ", 3);
+				}
 			    comma = 1;
 			    last = 0;
 			    }
@@ -995,9 +1037,17 @@ http_i_PostBodyJSON(pHttpData inf)
 		    /** New JSON object? **/
 		    for(j=0; j < sizeof(cur_json) / sizeof(char*); j++)
 			{
-			if (cur_json[j] && (!last_json[j] || strcmp(last_json[j], cur_json[j]) != 0))
+			last = (j == param_part_cnt - 1);
+			if (cur_json[j] && changed[j])
 			    {
-			    xsConcatQPrintf(post_params, " %[, %]\"%STR&JSONSTR\": %[{ %]", comma, cur_json[j], j != param_part_cnt - 1);
+			    xsConcatQPrintf(post_params, 
+				    " %[, %]%[\"%STR&JSONSTR\":%] %[%STR %]", 
+				    comma, 
+				    !is_array[j],
+				    cur_json[j], 
+				    !last, 
+				    (!last && is_array[j+1])?"[":"{"
+				    );
 			    comma = 0;
 			    }
 			}
@@ -1024,6 +1074,7 @@ http_i_PostBodyJSON(pHttpData inf)
 			if (cur_json[j])
 			    {
 			    last_json[j] = nmSysStrdup(cur_json[j]);
+			    last_is_array[j] = is_array[j];
 			    }
 			}
 		    }
@@ -1037,7 +1088,12 @@ http_i_PostBodyJSON(pHttpData inf)
 	    if (cur_json[j])
 		{
 		if (!last)
-		    xsConcatenate(post_params, " } ", 3);
+		    {
+		    if (last_is_array[j+1])
+			xsConcatenate(post_params, " ] ", 3);
+		    else
+			xsConcatenate(post_params, " } ", 3);
+		    }
 		last = 0;
 		}
 	    if (last_json[j])
@@ -1217,7 +1273,7 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	    http_internal_AddRequestHeader(inf, "Content-Length", nmSysStrdup(reqlen), 1, 0);
 	    }
 
-	printf("Web client sending request: %s - %s%s - %s\n", inf->Server, path, xsString(url_params), post_params?xsString(post_params):"");
+	printf("Web client sending request, server:%s path:%s%s post:%s headers:", inf->Server, path, xsString(url_params), post_params?xsString(post_params):"");
 
 	xsFree(url_params);
 	url_params = NULL;
@@ -1236,8 +1292,10 @@ http_internal_SendRequest(pHttpData inf, char* path)
 		rval = fdQPrintf(inf->Socket, "%STR: %STR\r\n", hdr->Name, hdr->Value);
 		if (rval < 0)
 		    return rval;
+		printf("%s%s=%s", (i==0)?"":",", hdr->Name, hdr->Value);
 		}
 	    }
+	printf("\n");
 
 	/** End-of-headers **/
 	fdQPrintf(inf->Socket, "\r\n");
@@ -1285,6 +1343,24 @@ http_internal_GetPageStream(pHttpData inf)
     pHttpParam one_http_param = NULL;
     time_t tval;
     struct tm* thetime;
+    pHttpCookie cookie = NULL;
+    pHttpCookie old_cookie;
+    pHttpServerData sd = NULL;
+    char uri[256];
+
+	/** Data about this server? **/
+	snprintf(uri, sizeof(uri), "%s://%s@%s:%s", inf->Protocol, mssUserName(), inf->Server, inf->Port);
+	sd = (pHttpServerData)xhLookup(&HTTP_INF.ServerData, uri);
+	if (!sd)
+	    {
+	    sd = (pHttpServerData)nmMalloc(sizeof(HttpServerData));
+	    if (!sd)
+		goto error;
+	    memset(sd, 0, sizeof(HttpServerData));
+	    strtcpy(sd->URI, uri, sizeof(sd->URI));
+	    xaInit(&sd->Cookies, 16);
+	    xhAdd(&HTTP_INF.ServerData, sd->URI, (void*)sd);
+	    }
 
 	/** Reset ContentLength and Offset **/
 	inf->ContentLength = inf->NetworkOffset = inf->ReadOffset = 0;
@@ -1364,6 +1440,20 @@ http_internal_GetPageStream(pHttpData inf)
 	http_internal_AddRequestHeader(inf, "User-Agent", nmSysStrdup(buf), 1, 0);
 	http_internal_AddRequestHeader(inf, "Accept", "*/*;q=1.0", 0, 0);
 	http_internal_AddRequestHeader(inf, "Connection", "close", 0, 0);
+
+	/** Add cookies **/
+	if (inf->AllowCookies)
+	    {
+	    for(i=0; i<sd->Cookies.nItems; i++)
+		{
+		old_cookie = (pHttpCookie)sd->Cookies.Items[i];
+		ptr = nmSysMalloc(strlen(old_cookie->Name) + 1 + strlen(old_cookie->Value) + 1);
+		if (!ptr)
+		    goto error;
+		sprintf(ptr, "%s=%s", old_cookie->Name, old_cookie->Value);
+		http_internal_AddRequestHeader(inf, "Cookie", ptr, 1, 0);
+		}
+	    }
 
 	/** Send the request **/
 	if (http_internal_SendRequest(inf, fullpath) < 0)
@@ -1477,6 +1567,15 @@ http_internal_GetPageStream(pHttpData inf)
 			goto error;
 		    p1++;
 		    status=atoi(p1);
+
+		    for(i=0; i<8; i++)
+			{
+			if (inf->SuccessCodes[i] != 0 && inf->SuccessCodes[i] == status)
+			    {
+			    status = 200;
+			    break;
+			    }
+			}
 		   
 		    if(status/100==2)
 			{
@@ -1620,6 +1719,50 @@ http_internal_GetPageStream(pHttpData inf)
 		{
 		inf->ContentType = nmSysStrdup("application/octet-stream");
 		}
+
+	    /** Look for cookies coming from the server.  Right now we only
+	     ** allow one cookie.
+	     **/
+	    if (inf->AllowCookies && (hdr_val = http_internal_GetHeader(&inf->ResponseHeaders, "Set-Cookie")) != NULL)
+		{
+		ptr = strchr(hdr_val, '=');
+		if (ptr)
+		    {
+		    /** Found a valid cookie of the form Name=Value **/
+		    *ptr = '\0';
+		    cookie = (pHttpCookie)nmMalloc(sizeof(HttpCookie));
+		    if (!cookie)
+			goto error;
+		    memset(cookie, 0, sizeof(HttpCookie));
+		    cookie->Name = nmSysStrdup(hdr_val);
+		    cookie->Value = nmSysStrdup(ptr + 1);
+		    ptr2 = strchr(cookie->Value, ';');
+		    if (ptr2)
+			*ptr2 = '\0';
+		    if (!cookie->Name || !cookie->Value)
+			goto error;
+		    *ptr = '=';
+
+		    /** Remove any duplicates **/
+		    for(i=0; i<sd->Cookies.nItems; i++)
+			{
+			old_cookie = (pHttpCookie)sd->Cookies.Items[i];
+			if (!strcmp(old_cookie->Name, cookie->Name))
+			    {
+			    xaRemoveItem(&sd->Cookies, i);
+			    nmSysFree(old_cookie->Name);
+			    nmSysFree(old_cookie->Value);
+			    nmFree(old_cookie, sizeof(HttpCookie));
+			    break;
+			    }
+			}
+
+		    /** Add the new cookie **/
+		    printf("Received cookie: %s=%s\n", cookie->Name, cookie->Value);
+		    xaAddItem(&sd->Cookies, cookie);
+		    cookie = NULL;
+		    }
+		}
 	    }
 
 	mlxCloseSession(lex);
@@ -1632,6 +1775,12 @@ http_internal_GetPageStream(pHttpData inf)
 	if (alloc) nmSysFree(ptr);
 	if (lex) mlxCloseSession(lex);
 	if (fullpath) nmSysFree(fullpath);
+	if (cookie)
+	    {
+	    if (cookie->Name) nmSysFree(cookie->Name);
+	    if (cookie->Value) nmSysFree(cookie->Value);
+	    nmFree(cookie, sizeof(HttpCookie));
+	    }
 	return -1;
 
     try_up:
@@ -1922,6 +2071,7 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     char* authline;
     int len;
     int redir_cnt;
+    int i;
 
 	/** Allocate the structure **/
 	inf = (pHttpData)nmMalloc(sizeof(HttpData));
@@ -1992,6 +2142,13 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    goto error;
 	    }
 
+	/** Which result codes (other than 2XX) are treated as successful? **/
+	for(i=0; i<8; i++)
+	    {
+	    if (stAttrValue(stLookup(node->Data, "success_codes"), &inf->SuccessCodes[i], NULL, i) < 0)
+		inf->SuccessCodes[i] = 0;
+	    }
+
 	/** Authentication headers **/
 	if ((ptr = http_internal_GetConfigString(inf, "proxyauthline", NULL)))
 	    {
@@ -2027,6 +2184,8 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    inf->AllowSubDirs=1;
 	if (stAttrValue(stLookup(node->Data, "allowredirects"), &inf->AllowRedirects, NULL, 0) < 0)
 	    inf->AllowRedirects=1;
+	if (stAttrValue(stLookup(node->Data, "allowcookies"), &inf->AllowCookies, NULL, 0) < 0)
+	    inf->AllowCookies=0;
 	if (!inf->AllowSubDirs)
 	    inf->Obj->SubCnt=1;
 
@@ -2611,6 +2770,7 @@ httpInitialize()
 	    regerror(retval,&HTTP_INF.httpheader,temp,sizeof(temp));
 	    mssError(0,"HTTP","Error while building regex: %s",temp);
 	    }
+	xhInit(&HTTP_INF.ServerData, 255, 0);
 
 	/** Set up header nonce **/
 	HTTP_INF.NonceData = cxssKeystreamNew(NULL, 0);

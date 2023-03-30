@@ -511,8 +511,10 @@ function pg_ping_receive()
 	{
 	clearInterval(this.tid);
 	if (!window.pg_disconnected)
+	    {
+	    window.pg_disconnected = true;
 	    confirm('you have been disconnected from the server');
-	window.pg_disconnected = true;
+	    }
 	}
     else if (link && link.target !== 'OK')
 	{
@@ -527,8 +529,10 @@ function pg_ping_receive()
 	    {
 	    clearInterval(this.tid);
 	    if (!window.pg_disconnected)
+		{
+		window.pg_disconnected = true;
 		confirm('you have been disconnected from the server');
-	    window.pg_disconnected = true;
+		}
 	    }
 	}
     }
@@ -540,6 +544,22 @@ function pg_ping_send(p)
 
 //END SECTION: pinging functions ---------------------------------------
 
+
+function pg_logout(all)
+    {
+    if (!window.pg_disconnected)
+	{
+	$.ajax
+	    ({
+	    url: '/INTERNAL/' + (all?'logoutall':'logout') + '?cx__akey=' + window.akey,
+	    cache: false,
+	    complete: function(xhr, stat)
+		{
+		window.pg_disconnected = true;
+		}
+	    });
+	}
+    }
 
 function pg_get_computed_clip(o) //SETH: ??
     {
@@ -1369,8 +1389,25 @@ function pg_init(l,a,gs,ct) //SETH: ??
 	});
     document.body.appendChild(window.paste_input);
     //window.paste_input.focus();
-
+    
+    // Check logout
+    pg_addsched_fn(window, pg_checklogout, [], 150);
+    
     return window;
+    }
+
+function pg_checklogout()
+    {
+    // Is this a logout page?
+    var lo = wgtrGetServerProperty(window, "logout");
+    if (lo == 1 || lo == "true" || lo == "yes")
+	{
+	pg_logout(false);
+	}
+    else if (lo == "all")
+	{
+	pg_logout(true);
+	}
     }
 
 function pg_cleanup()
@@ -1436,7 +1473,10 @@ function pg_load_page(aparam) //SETH: ??
 	    newurl += '&';
 	else
 	    newurl += '?';
-	newurl += "cx__akey=" + window.akey.substr(0,49);
+	if (aparam.LinkApp !== null && (aparam.LinkApp == 'yes' || aparam.LinkApp == 1))
+	    newurl += "cx__akey=" + window.akey;
+	else
+	    newurl += "cx__akey=" + window.akey.substr(0,49);
 	}
 
     window.location.href = newurl;
@@ -2138,7 +2178,7 @@ function pg_serialized_load(l, newsrc, cb, silent)
 // actually made.
 function pg_serialized_load_doone()
     {
-    if (pg_loadqueue_busy >= pg_max_requests) return;
+    if (pg_loadqueue_busy >= pg_max_requests || window.pg_disconnected) return;
 
     pg_loadqueue_check_spinner();
 

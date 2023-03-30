@@ -90,16 +90,7 @@ prt_textlm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 	    {
 	    /** Duplicate the object... without the content. **/
 	    new_object = prt_internal_AllocObjByID(this->ObjType->TypeID);
-	    /*prt_internal_CopyAttrs(this, new_object);
-	    prt_internal_CopyGeom(this, new_object);
-	    new_object->Height = this->ConfigHeight;
-	    new_object->Width = this->ConfigWidth;
-	    new_object->Session = this->Session;
-	    new_object->Flags = this->Flags;*/
 	    new_object = prt_internal_Duplicate(this,0);
-
-	    /** Init the new object. **/
-	    /*new_object->LayoutMgr->InitContainer(new_object, this->LMData, NULL);*/
 
 	    /** Update the handle so that later adds go to the correct place. **/
 	    prtUpdateHandleByPtr(this, new_object);
@@ -747,7 +738,26 @@ prt_textlm_WordWrap(pPrtObjStream area, pPrtObjStream* curobj)
 int
 prt_textlm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_width, double req_height, pPrtObjStream *new_container)
     {
-    /** For now, do not allow any resizing. **/
+    double delta;
+    double container_room;
+
+	/** Width resize?  Not yet supported. **/
+	if (req_width != child->Width)
+	    return -1;
+
+	/** Fits already? **/
+	delta = req_height - child->Height;
+	container_room = prtInnerHeight(this) - (this->ContentTail->Height + this->ContentTail->Y + delta);
+	if (container_room >= 0.0)
+	    return 0;
+
+	/** Can we resize ourselves? **/
+	if (this->LayoutMgr->Resize(this, this->Width, this->Height + (0.0 - container_room)) >= 0)
+	    {
+	    /** Our resize succeeded - allow child resize. **/
+	    return 0;
+	    }
+	
     return -1;
     }
 
@@ -760,7 +770,20 @@ prt_textlm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wi
 int
 prt_textlm_ChildResized(pPrtObjStream this, pPrtObjStream child, double old_width, double old_height)
     {
-    return -1;
+    pPrtObjStream nextchild;
+    double delta;
+
+	/** Update Y values for all items after resized child **/
+	delta = child->Height - old_height;
+	nextchild = child->Next;
+	while (nextchild)
+	    {
+	    if (nextchild->Y > child->Y)
+		nextchild->Y += delta;
+	    nextchild = nextchild->Next;
+	    }
+
+    return 0;
     }
 
 
@@ -920,7 +943,6 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		y = this->ContentTail->Y;
 		if (objptr->YBase > 0)
 		    {
-		    //y = this->ContentTail->Y + this->ContentTail->YBase - objptr->YBase;
 		    for(search=this->ContentTail; search; search=search->Prev)
 			{
 			if (search->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE))

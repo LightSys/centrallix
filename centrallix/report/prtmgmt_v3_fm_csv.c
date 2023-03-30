@@ -132,8 +132,8 @@ prt_csvfm_Probe(pPrtSession s, char* output_type)
  *** driver supports.  We're creating a CSV file, so we don't care about font
  *** sizes.
  ***/
-int
-prt_csvfm_GetNearestFontSize(void* context_v, int req_size)
+double
+prt_csvfm_GetNearestFontSize(void* context_v, double req_size)
     {
     /*pPrtCSVfmInf context = (pPrtCSVfmInf)context_v;*/
 
