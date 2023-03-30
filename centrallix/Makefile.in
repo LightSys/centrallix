@@ -359,7 +359,7 @@ CONFFILES=centrallix.conf \
    	  rootnode \
 	  types.cfg \
 	  useragent.cfg \
-	  charsetmap.cfg
+	  charsetmap.cfg \
 	  rgb.txt
 
 # testobj-driven test files
