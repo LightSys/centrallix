@@ -804,6 +804,28 @@ prt_textlm_GetSplitObj(pPrtObjStream* split_obj_list)
     return tmpobj;
     }
 
+
+/*** prt_textlm_FreeObjects() - free a list of objects including their text
+ *** content.
+ ***/
+int
+prt_textlm_FreeObjects(pPrtObjStream objects)
+    {
+    pPrtObjStream del;
+
+	while(objects)
+	    {
+	    del = objects;
+	    objects = objects->Next;
+	    if (del->Content)
+		nmSysFree(del->Content);
+	    prt_internal_FreeObj(del);
+	    }
+
+    return 0;
+    }
+
+
 /*** prt_textlm_Setup() - adds an empty object to a freshly created area
  *** container to be the 'start' of the content.
  ***/
@@ -1003,26 +1025,16 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    /** Resize denied.  If container is empty, we can't continue on, so error out here. **/
 		    if (!this->ContentHead || (this->ContentHead->X + this->ContentHead->Width == 0.0 && !this->ContentHead->Next))
 			{
-			while ((split_obj = prt_textlm_GetSplitObj(&split_obj_list)) != NULL) 
-			    {
-			    if (split_obj->Content) nmSysFree(split_obj->Content);
-			    prt_internal_FreeObj(split_obj);
-			    }
 			mssError(1,"PRT","Could not fit new object into layout area");
-			return -1;
+			goto error;
 			}
 
 		    /** Try a break operation. **/
 		    if (!(this->Flags & PRT_OBJ_F_ALLOWSOFTBREAK) || this->LayoutMgr->Break(this, &new_parent) < 0)
 			{
 			/** Break also denied?  Fail if so. **/
-			while ((split_obj = prt_textlm_GetSplitObj(&split_obj_list)) != NULL) 
-			    {
-			    if (split_obj->Content) nmSysFree(split_obj->Content);
-			    prt_internal_FreeObj(split_obj);
-			    }
 			mssError(1,"PRT","Could not fit new object into layout area, and automatic page break failed");
-			return -1;
+			goto error;
 			}
 		    }
 
@@ -1045,7 +1057,11 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    objptr = prt_textlm_GetSplitObj(&split_obj_list);
 	    }
 
-    return 0;
+	return 0;
+
+    error:
+	prt_textlm_FreeObjects(split_obj_list);
+	return -1;
     }
 
 

@@ -210,6 +210,7 @@ prt_psod_OutputSetup(pPrtPsodInf context)
 					"/XY { %d exch sub moveto } bind def\n"
 					"/NXY { newpath XY } bind def\n"
 					"/LXY { %d exch sub lineto } bind def\n"
+					"/UL { dup show stringwidth pop neg gsave 0 currentfont dup /FontInfo get /UnderlineThickness get exch /FontMatrix get dtransform setlinewidth 0 currentfont dup /FontInfo get /UnderlinePosition get exch /FontMatrix get dtransform rmoveto rlineto stroke grestore } bind def\n"
 					"12 /Courier FS\n"
 					"%%%%EndProlog\n",
 				context->PageHeight,
@@ -809,10 +810,13 @@ prt_psod_WriteText(void* context_v, char* str, char* url, double width, double h
     pPrtPsodInf context = (pPrtPsodInf)context_v;
     double bl;
     int i,psbuflen;
+    int do_underline;
 
 	if (context->PageNum >= context->MaxPages) return 0;
 
 	prt_psod_BeforeDraw(context);
+
+	do_underline = (context->SelectedStyle.Attr & PRT_OBJ_A_UNDERLINE);
 
 	/** Move the starting point and adjust for the baseline before outputting the text. **/
 	bl = prt_psod_GetCharacterBaseline(context_v, NULL);
@@ -829,14 +833,14 @@ prt_psod_WriteText(void* context_v, char* str, char* url, double width, double h
 	    psbuflen += 2;
 	    if (psbuflen >= sizeof(context->Buffer)-1)
 		{
-		prt_psod_Output_va(context, "<%s> show\n", context->Buffer);
+		prt_psod_Output_va(context, "<%s> %s\n", context->Buffer, do_underline?"UL":"show");
 		psbuflen = 0;
 		context->Buffer[0] = '\0';
 		}
 	    }
 	if (psbuflen)
 	    {
-	    prt_psod_Output_va(context, "<%s> show\n", context->Buffer);
+	    prt_psod_Output_va(context, "<%s> %s\n", context->Buffer, do_underline?"UL":"show");
 	    }
 
 	/** URL? **/
