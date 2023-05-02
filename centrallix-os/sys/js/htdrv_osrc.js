@@ -1957,7 +1957,7 @@ function osrc_find_object_handler(aparam)
 		    }
 		if (!matched) break;
 		}
-	    if (matched)
+	    if (matched) // && i != this.CurrentRecord)
 		{
 		this.MoveToRecord(i, from_internal);
 		break;

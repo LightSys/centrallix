@@ -802,13 +802,13 @@ function dd_add_items(l,ary)
 	if (!l.form)
 	    dd_select_item(l, sel, l.init_items?'additems':'init');
 	if (typeof ary[sel].value == 'number')
-	    cx_set_hints(this, "d=" + ary[sel].value, "widget");
+	    cx_set_hints(this, "d=" + ary[sel].value, "widget", true);
 	else
-	    cx_set_hints(this, "d=" + escape(cxjs_quote(ary[sel].value)), "widget");
+	    cx_set_hints(this, "d=" + escape(cxjs_quote(ary[sel].value)), "widget", true);
 	}
     else
 	{
-	cx_set_hints(this, "", "widget");
+	cx_set_hints(this, "", "widget", true);
 	}
     if (ary.length == 0 && l.value != null)
 	{

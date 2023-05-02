@@ -276,9 +276,9 @@ function form_load_fields(data, no_clear, modify, onefield, do_merge)
 	{
 	for(var i in this.elements)
 	    if (this.last_hints[this.elements[i].fieldname])
-		cx_set_hints(this.elements[i], this.last_hints[this.elements[i].fieldname], 'data');
+		cx_set_hints(this.elements[i], this.last_hints[this.elements[i].fieldname], 'data', true);
 	    else
-		cx_set_hints(this.elements[i], '', 'data');
+		cx_set_hints(this.elements[i], '', 'data', true);
 	//return;
 	}
     else
@@ -329,7 +329,7 @@ function form_load_fields(data, no_clear, modify, onefield, do_merge)
 		this.elements[i].setvalue(data[id].value);
 		if (modify)
 		    this.elements[i]._form_IsChanged = true;
-		cx_set_hints(this.elements[i], data[id].hints, 'data');
+		cx_set_hints(this.elements[i], data[id].hints, 'data', !do_merge);
 		this.last_hints[this.elements[i].fieldname] = data[id].hints;
 		}
 	    }

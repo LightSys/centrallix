@@ -38,7 +38,7 @@ cx_hints_style.applyonchange = 524288;
 
 // cx_set_hints() - initializes hints information for a given
 // form field.
-function cx_set_hints(element, hstr, hinttype)
+function cx_set_hints(element, hstr, hinttype, applydef)
     {
     if (!element.cx_hints) element.cx_hints = {};
     if (element.cx_hints.hstr == hstr) 
@@ -53,8 +53,8 @@ function cx_set_hints(element, hstr, hinttype)
     cx_merge_hints(element);
     if (element.hintschanged) element.hintschanged(hinttype);
     if (element.cx_hints_applyto)
-	cx_set_hints(element.cx_hints_applyto, hstr, hinttype);
-    if (element.form && element.form.mode == 'New' && old_default != element.cx_hints['all'].DefaultExpr)
+	cx_set_hints(element.cx_hints_applyto, hstr, hinttype, applydef);
+    if (element.form && element.form.mode == 'New' && applydef && old_default != element.cx_hints['all'].DefaultExpr)
 	cx_hints_startnew(element);
     }
 
@@ -68,7 +68,7 @@ function cx_copy_hints(src, dst)
 	for(var h in src.cx_hints)
 	    {
 	    if ((h == 'app' || h == 'data' || h == 'widget') && src.cx_hints[h].hstr)
-		cx_set_hints(dst, src.cx_hints[h].hstr, h);
+		cx_set_hints(dst, src.cx_hints[h].hstr, h, true);
 	    }
 	}
     }
