@@ -503,9 +503,12 @@ function pg_ping_init(l,i)
 function pg_ping_receive()
     {
     var link = null;
-    var links = this.contentDocument.getElementsByTagName("a");
+    var links = null;
+
+    if (this.contentDocument)
+	links = this.contentDocument.getElementsByTagName("a");
     if (links && links.length > 0)
-	link = this.contentDocument.getElementsByTagName("a")[0];
+	link = links[0];
 
     if(!link || link.target==='ERR')
 	{
