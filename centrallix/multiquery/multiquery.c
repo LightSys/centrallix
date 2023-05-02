@@ -1274,8 +1274,8 @@ mq_internal_CopyLiteral(pLxSession lxs, pXString xs)
 /*** mq_internal_SyntaxParse - parse the syntax of the SQL used for this
  *** query.
  ***/
-pQueryStructure
-mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
+int
+mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, pQueryStructure * qs_return)
     {
     pQueryStructure qs, new_qs, select_cls=NULL, from_cls=NULL, where_cls=NULL, orderby_cls=NULL, groupby_cls=NULL, crosstab_cls=NULL, having_cls=NULL;
     pQueryStructure insert_cls=NULL, update_cls=NULL, delete_cls=NULL;
@@ -1297,6 +1297,8 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 				   "values","with","limit","for","on","duplicate", "declare",
 				   "showplan", "multistatement", "if", "modified", "exec", 
 				   "log", "print", NULL};
+
+	*qs_return = NULL;
 
     	/** Setup reserved words list for lexical analyzer **/
 	mlxSetReservedWords(lxs, reserved_wds);
@@ -1320,6 +1322,16 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 		        {
 			if ((t == MLX_TOK_EOF || t == MLX_TOK_SEMICOLON) && (select_cls || update_cls || delete_cls || declare_cls))
 			    {
+			    /** End of statement **/
+			    mlxHoldToken(lxs);
+			    next_state = ParseDone;
+			    break;
+			    }
+			if (t == MLX_TOK_EOF && !select_cls && !update_cls && !delete_cls && !declare_cls && allow_empty)
+			    {
+			    /** Empty statement **/
+			    mq_internal_FreeQS(qs);
+			    qs = NULL;
 			    mlxHoldToken(lxs);
 			    next_state = ParseDone;
 			    break;
@@ -2604,18 +2616,20 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt)
 	    {
 	    mq_internal_FreeQS(qs);
 	    mssError(0,"MQ","Could not parse multiquery");
-	    return NULL;
+	    return -1;
 	    }
 
 	/** Ok, postprocess the expression trees, etc. **/
-	if (mq_internal_PostProcess(stmt, qs, select_cls, from_cls, where_cls, orderby_cls, groupby_cls, crosstab_cls, update_cls, delete_cls, ondup_cls, declare_cls) < 0)
+	if (qs && mq_internal_PostProcess(stmt, qs, select_cls, from_cls, where_cls, orderby_cls, groupby_cls, crosstab_cls, update_cls, delete_cls, ondup_cls, declare_cls) < 0)
 	    {
 	    mq_internal_FreeQS(qs);
 	    mssError(0,"MQ","Could not postprocess multiquery");
-	    return NULL;
+	    return -1;
 	    }
 
-    return qs;
+	*qs_return = qs;
+
+    return 0;
     }
 
 
@@ -2941,6 +2955,7 @@ mq_internal_NextStatement(pMultiQuery this)
     int t;
     pQueryDriver qdrv;
     pQueryStatement stmt = NULL;
+    int rval;
 
 	/** End of statement? **/
 	if (this->Flags & MQ_F_ENDOFSQL)
@@ -2968,8 +2983,15 @@ mq_internal_NextStatement(pMultiQuery this)
 	expSetParamFunctions(stmt->OneObjList, "this", mqGetAttrType, mqGetAttrValue, mqSetAttrValue);
 
 	/** Parse the query **/
-	stmt->QTree = mq_internal_SyntaxParse(this->LexerSession, stmt);
-	if (!stmt->QTree)
+	rval = mq_internal_SyntaxParse(this->LexerSession, stmt, !(this->Flags & MQ_F_FIRSTSTATEMENT), &stmt->QTree);
+	if (rval == 0 && !stmt->QTree)
+	    {
+	    this->Flags |= MQ_F_ENDOFSQL;
+	    mq_internal_FreeStatement(stmt);
+	    this->CurStmt = NULL;
+	    return 0;
+	    }
+	else if (rval < 0 || !stmt->QTree)
 	    {
 	    mssError(0,"MQ","Could not analyze query text");
 	    goto error;
@@ -3069,8 +3091,9 @@ mq_internal_NextStatement(pMultiQuery this)
 		}
 	    }
 	//mq_internal_DumpQEWithExpr(stmt->Tree, 0);
-
+	
 	/** Just did a declaration, print, or log? **/
+	this->Flags &= ~MQ_F_FIRSTSTATEMENT;
 	if (!stmt->Tree && (stmt->Flags & MQ_TF_IMMEDIATE))
 	    {
 	    mq_internal_CloseStatement(stmt);
@@ -3211,6 +3234,7 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	    }
 	if (flags & OBJ_MQ_F_NOUPDATE)
 	    this->Flags |= MQ_F_NOUPDATE;
+	this->Flags |= MQ_F_FIRSTSTATEMENT;
 
 	/** Parse the text of the query, building the syntax structure **/
 	this->LexerSession = mlxStringSession(this->QueryText, 

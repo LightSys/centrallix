@@ -268,6 +268,7 @@ struct _MQ /* MultiQuery */
 #define MQ_F_NOUPDATE		8		/* disallow changes to any data with this query. */
 #define MQ_F_NOINSERTED		16		/* did not create __inserted object. **/
 #define MQ_F_SHOWPLAN		32		/* print diagnostics for SQL statement **/
+#define MQ_F_FIRSTSTATEMENT	64		/* parsing the first statement in the query */
 
 
 /*** Pseudo-object structure. ***/
