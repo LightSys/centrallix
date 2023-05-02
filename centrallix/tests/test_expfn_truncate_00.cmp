@@ -32,13 +32,13 @@ Attribute [truncate($123.123)]:    money   $123.00
 Attribute [truncate($-123.123)]:    money   -$123.00 
 Attribute [truncate($123.123,2)]:    money   $123.12 
 Attribute [truncate($123.123,-2)]:    money   $100.00 
-Attribute [truncate($123.123,3)]:    money   $123.12 
+Attribute [truncate($123.123,3)]:    money   $123.123 
 Attribute [truncate($123.123,-3)]:    money   $0.00 
-Attribute [truncate($123.123,4)]:    money   $123.12 
+Attribute [truncate($123.123,4)]:    money   $123.123 
 Attribute [truncate($123.123,-4)]:    money   $0.00 
 Attribute [truncate($-123.123,2)]:    money   -$123.12 
 Attribute [truncate($-123.123,-2)]:    money   -$100.00 
-Attribute [truncate($-123.123,3)]:    money   -$123.12 
+Attribute [truncate($-123.123,3)]:    money   -$123.123 
 Attribute [truncate($-123.123,-3)]:    money   $0.00 
-Attribute [truncate($-123.123,4)]:    money   -$123.12 
+Attribute [truncate($-123.123,4)]:    money   -$123.123 
 Attribute [truncate($-123.123,-4)]:    money   $0.00 

@@ -537,6 +537,8 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
                 case '0':
                 case '^':
                 case '#':
+		    if (!tens_multiplier)
+			break;
 		    if (in_decimal_part)
 		        {
 			d = (print_fract/tens_multiplier)%10;
@@ -624,17 +626,30 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
 	    fmt++;
 	    }
 
-	if(strlen(xs.String) < length)
+	/** Don't hide decimal values past the format spec **/
+	if (print_fract && !in_decimal_part)
+	    {
+	    in_decimal_part = 1;
+	    tens_multiplier = 1000;
+	    xsConcatenate(&xs, &decimal, 1);
+	    }
+	while (print_fract && in_decimal_part && tens_multiplier && (print_fract%(tens_multiplier?(tens_multiplier*10):1)) != 0)
+	    {
+	    d = (print_fract/tens_multiplier)%10;
+	    tens_multiplier /= 10;
+	    xsConcatPrintf(&xs, "%d", d);
+	    }
+
+	if (strlen(xs.String) < length)
 	    {
 	    strcpy(str,xs.String);
 	    xsDeInit(&xs);
 	    return 0;
 	    }
-	else
-	    {
-	    xsDeInit(&xs);
-	    return -1;
-	    }
+
+	xsDeInit(&xs);
+
+    return -1;
     }
 
 
