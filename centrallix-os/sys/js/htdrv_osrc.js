@@ -979,6 +979,7 @@ function osrc_action_create_cb()
 	    this.child[i].ObjectCreated(recnum, this);
 	this.GiveAllCurrentRecord('create');
 	this.ifcProbe(ifEvent).Activate("Created", {});
+	this.ifcProbe(ifEvent).Activate("DataSaved", {});
 	//if (this.create_focus)
 	//    this.MoveToRecord(this.LastRecord, true);
 	}
@@ -1228,7 +1229,10 @@ function osrc_action_modify_cb_2(diff)
     if (diff)
 	this.GiveAllCurrentRecord('modify');
     if (!this.initiating_client)
+	{
 	this.ifcProbe(ifEvent).Activate('Modified', {});
+	this.ifcProbe(ifEvent).Activate('DataSaved', {});
+	}
     this.initiating_client=null;
     delete this.modifieddata;
     }
@@ -3719,21 +3723,89 @@ function osrc_action_save_clients(aparam)
     {
     if (!this.is_client_savable) return;
 
-    // Do this in two steps - save our immediate clients first, then pass the word
-    // on to clients of clients.  This minimizes the chance of failures due to
-    // relational integrity constraints.
+    var to_save = [];
+    var to_saveclients = [];
+
+    var next_client = (cld, mystat) =>
+	{
+	// Failed? -- notify and don't continue.
+	if (!mystat)
+	    {
+	    if (aparam.completion)
+		{
+		aparam.completion(false);
+		}
+	    return false;
+	    }
+
+	// Remove it -- we do this separately (instead of using shift() below)
+	// so this process can eventually be parallelized where appropriate.
+	var idx = to_save.indexOf(cld);
+	if (idx >= 0)
+	    {
+	    to_save.splice(idx, 1);
+	    }
+	else
+	    {
+	    var idx = to_saveclients.indexOf(cld);
+	    if (idx >= 0)
+		{
+		to_saveclients.splice(idx, 1);
+		}
+	    }
+
+	// Fire off next one, in series right now.  Support for parallel save should
+	// be added later, likely as an action parameter (aparam) option.
+	if (to_save.length)
+	    {
+	    // Next client to save
+	    let ts = to_save[0];
+	    ts.ifcProbe(ifAction).Invoke('Save', {completion: (stat) => next_client(ts, stat)});
+	    }
+	else if (to_saveclients.length)
+	    {
+	    // Next osrc client to saveclients
+	    let ts = to_saveclients[0];
+	    ts.ifcProbe(ifAction).Invoke('SaveClients', {completion: (stat) => next_client(ts, stat)});
+	    }
+	else
+	    {
+	    // Done
+	    if (aparam.completion)
+		{
+		aparam.completion(true);
+		}
+	    else
+		{
+		this.ifcProbe(ifEvent).Activate("ClientsSaved", {});
+		}
+	    }
+
+	return true;
+	}
+
+    // Scan for clients available to be saved
     for (var c in this.child)
 	{
 	var cld = this.child[c];
 	if (typeof cld.is_savable != 'undefined' && cld.is_savable)
-	    cld.ifcProbe(ifAction).Invoke('Save', {});
+	    to_save.push(cld);
+	else if (typeof cld.is_client_savable != 'undefined' && cld.is_client_savable)
+	    to_saveclients.push(cld);
 	}
-    for (var c in this.child)
+
+    // Do this in two steps - save our immediate clients first, then pass the word
+    // on to clients of clients.  This minimizes the chance of failures due to
+    // relational integrity constraints.
+    /*to_save.forEach(cld =>
 	{
-	var cld = this.child[c];
-	if (typeof cld.is_client_savable != 'undefined' && cld.is_client_savable)
-	    cld.ifcProbe(ifAction).Invoke('SaveClients', {});
-	}
+	cld.ifcProbe(ifAction).Invoke('Save', {});
+	});
+    to_saveclients.forEach(cld =>
+	{
+	cld.ifcProbe(ifAction).Invoke('SaveClients', {});
+	});*/
+    next_client(null, true);
     }
 
 
@@ -4157,6 +4229,8 @@ function osrc_init(param)
     ie.Add("BeginQuery");
     ie.Add("Created");
     ie.Add("Modified");
+    ie.Add("DataSaved");
+    ie.Add("ClientsSaved");
     ie.Add("Sequenced");
 
     // Data Values

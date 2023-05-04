@@ -1235,7 +1235,7 @@ function form_build_dataobj()
     return dataobj;
     }
 
-function form_action_save_success()
+function form_action_save_success(completion)
     {
     this.ifcProbe(ifValue).Changing("form_prev_action", (this.mode=='New')?'Create':'Modify', true);
     this.prevaction = (this.mode=='New')?'Create':'Modify';
@@ -1257,6 +1257,7 @@ function form_action_save_success()
 	this.elements[i]._form_IsChanged=false;
     this.cb['OperationCompleteFail'].clear();
     this.SendEvent("DataSaved");
+    completion(true);
     }
 
 function form_action_save_success_2()
@@ -1264,10 +1265,84 @@ function form_action_save_success_2()
     this.ifcProbe(ifAction).Invoke("New", {Multi:1});
     }
 
-function form_action_save()
+function form_action_save_fail(completion)
     {
+    this.Pending = false;
+    this.EnableModifyAll();
+    this.cb['OperationCompleteSuccess'].clear();
+    completion(false);
+    alert('Data Save Failed');
+    }
+
+function form_action_save(aparam)
+    {
+    // We're not quite ready to convert this logic to promises because of the
+    // way the osrc updates us on the success or failure of our request.
+    /*
+    // Set up and check whether we need to do a save.
+    var p = new Promise((resolve, reject) =>
+	{
+	if (!this.IsUnsaved)
+	    {
+	    resolve(0);
+	    }
+	else
+	    {
+	    this.Pending = true;
+	    for(var e in this.elements)
+		{
+		if (this.elements[e].cx_hints) cx_hints_completenew(this.elements[e]);
+		}
+	    this.DisableAll();
+	    resolve(1);
+	    }
+	})
+    // Check the BeforeSave event for cancellation.
+    .then(stat => new Promise((resolve, reject) =>
+	{
+	if (!stat)
+	    {
+	    resolve(0);
+	    }
+	else
+	    {
+	    if (isCancel(this.ifcProbe(ifEvent).Activate('BeforeSave', {})))
+		{
+		this.Pending=false;
+		this.EnableModifyAll();
+		reject('Save canceled by BeforeSave event');
+		}
+	    else
+		{
+		resolve(1);
+		}
+	    }
+	}))
+    // Perform the save operation by calling out to the objectsource.
+    .then(stat => new Promise((resolve, reject) =>
+	{
+	if (!stat)
+	    {
+	    resolve(0);
+	    }
+	else
+	    {
+	    }
+	}));
+
+    return p;
+    */
+
+    var completion = null;
+
+    if (aparam.completion)
+	completion = aparam.completion;
+    else
+	completion = () => 0;
+
     if(!this.IsUnsaved)
 	{
+	completion(true);
 	return 0;
 	}
 
@@ -1278,31 +1353,32 @@ function form_action_save()
 	}
     this.DisableAll();
 
-    pg_serialized_func(2, this, form_action_save_2, []);
+    pg_serialized_func(2, this, form_action_save_2, [completion]);
     }
 
-function form_action_save_2()
+function form_action_save_2(completion)
     {
     if (isCancel(this.ifcProbe(ifEvent).Activate('BeforeSave', {})))
 	{
 	this.Pending=false;
 	this.EnableModifyAll();
+	completion(false);
 	return false;
 	}
 
     //this.cb['OperationCompleteSuccess'].add(this,
     //	   new Function("this.IsUnsaved=false;this.is_savable=false;this.Pending=false;this.EnableModifyAll();this.ifcProbe(ifAction).Invoke(\"View\");this.cb['OperationCompleteFail'].clear();"),null,-100);
-    this.cb['OperationCompleteSuccess'].add(this, new Function("this.ActionSaveSuccessCB();"), null, -100);
-    this.cb['OperationCompleteFail'].add(this,
-	   new Function("this.Pending=false;this.EnableModifyAll();confirm('Data Save Failed');this.cb['OperationCompleteSuccess'].clear();"),null,-100);
+    this.cb['OperationCompleteSuccess'].add(this, () => this.ActionSaveSuccessCB(completion), null, -100);
+    this.cb['OperationCompleteFail'].add(this, () => this.ActionSaveFailCB(completion), null, -100);
+	   //new Function("this.Pending=false;this.EnableModifyAll();confirm('Data Save Failed');this.cb['OperationCompleteSuccess'].clear();"),null,-100);
     
     // Wait for everything to settle down in the app, then proceed with the save.  This
     // runs the bottom half of 'save' at level '2', which means that all level '1'
     // activity is done (osrc loads, etc.)
-    pg_serialized_func(2, this, form_action_save_3, []);
+    pg_serialized_func(2, this, form_action_save_3, [completion]);
     }
 
-function form_action_save_3()
+function form_action_save_3(completion)
     {
     // build the object to pass to objectsource
     var dataobj = this.BuildDataObj();
@@ -1317,6 +1393,9 @@ function form_action_save_3()
 	{
 	this.Pending=false;
 	this.ChangeMode('View', 'Save');
+	this.cb['OperationCompleteSuccess'].clear();
+	this.cb['OperationCompleteFail'].clear();
+	completion(true);
 	}
     }
 
@@ -1675,6 +1754,7 @@ function form_init(form,param)
     form.RemoveFocus = form_remove_focus;
     //form.InitQuery = form_init_query;
     form.ActionSaveSuccessCB = form_action_save_success;
+    form.ActionSaveFailCB = form_action_save_fail;
     form.ActionDeleteSuccessCB = form_action_delete_success;
     form.AddInterlock = form_add_interlock;
 
