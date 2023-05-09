@@ -2906,6 +2906,9 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     int length;
     int i,j;
     int type;
+    DateTime dt;
+    ObjData od;
+
         type = mysdGetAttrType(inf, attrname, oxt);
         /** Choose the attr name **/
         /** Changing name of node object? **/
@@ -2963,8 +2966,17 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
                 {
                 if (!strcmp(inf->TData->Cols[i],attrname))
                     {
-                    if (*oxt) /** Check if this is part of a larger transaction **/
+		    if (datatype == DATA_T_STRING && type == DATA_T_DATETIME)
+			{
+			/** Promote string to date time **/
+			objDataToDateTime(DATA_T_STRING, val->String, &dt, NULL);
+			od.DateTime = &dt;
+			val = &od;
+			datatype = DATA_T_DATETIME;
+			}
+                    if (*oxt)
                         {
+			/** This is part of a larger transaction, such as during an INSERT **/
                         if (type < 0) return -1;
                         if (datatype != type)
                             {
@@ -3183,7 +3195,7 @@ mysdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
                                 else
                                     {
                                     hints->MinValue = expCompileExpression("-32768", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
-                                    hints->MaxValue = expCompileExpression("-32767", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    hints->MaxValue = expCompileExpression("32767", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
                                     }
                                 }
                             if(!strcmp(inf->TData->ColTypes[i], "mediumint"))

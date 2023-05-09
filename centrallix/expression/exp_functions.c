@@ -2015,6 +2015,7 @@ int exp_fn_round(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
 int exp_fn_dateformat(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     char* ptr;
+    pDateTime dt;
 
     /** checks **/
     if (!i0 || !i1)
@@ -2028,9 +2029,9 @@ int exp_fn_dateformat(pExpression tree, pParamObjects objlist, pExpression i0, p
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
 	}
-    if (!i0 || i0->DataType != DATA_T_DATETIME)
+    if (!i0 || (i0->DataType != DATA_T_DATETIME && i0->DataType != DATA_T_STRING))
 	{
-	mssError(1, "EXP", "dateformat() first parameter must be a date");
+	mssError(1, "EXP", "dateformat() first parameter must be a date or string");
 	return -1;
 	}
     if (!i1 || i1->DataType != DATA_T_STRING)
@@ -2039,7 +2040,8 @@ int exp_fn_dateformat(pExpression tree, pParamObjects objlist, pExpression i0, p
 	return -1;
 	}
 
-    ptr = objFormatDateTmp(&i0->Types.Date, i1->String);
+    dt = expPromoteDate(i0);
+    ptr = objFormatDateTmp(dt, i1->String);
     if (!ptr)
 	return -1;
 
@@ -2064,7 +2066,8 @@ int exp_fn_datediff(pExpression tree, pParamObjects objlist, pExpression i0, pEx
     {
     int yr, mo;
     int sign = 1;
-    pExpression tmp;
+    DateTime dt1, dt2, tmpdt;
+    pDateTime dt;
 
     /** checks **/
     if (!i0 || (i0->Flags & EXPR_F_NULL) || i0->DataType != DATA_T_STRING)
@@ -2078,20 +2081,28 @@ int exp_fn_datediff(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
 	}
-    if (!i1 || i1->DataType != DATA_T_DATETIME || !i2 || i2->DataType != DATA_T_DATETIME)
+    if (!i1 || (i1->DataType != DATA_T_DATETIME && i1->DataType != DATA_T_STRING) || !i2 || (i2->DataType != DATA_T_DATETIME && i2->DataType != DATA_T_STRING))
 	{
 	mssError(1, "EXP", "datediff() second and third parameters must be datetime types");
 	return -1;
 	}
     tree->DataType = DATA_T_INTEGER;
+    dt = expPromoteDate(i1);
+    if (!dt)
+	return -1;
+    memcpy(&dt1, dt, sizeof(DateTime));
+    dt = expPromoteDate(i2);
+    if (!dt)
+	return -1;
+    memcpy(&dt2, dt, sizeof(DateTime));
 
     /** Swap operands if we're diffing backwards **/
-    if (i2->Types.Date.Value < i1->Types.Date.Value)
+    if (dt2.Value < dt1.Value)
 	{
 	sign = -1;
-	tmp = i2;
-	i2 = i1;
-	i1 = tmp;
+	tmpdt = dt2;
+	dt2 = dt1;
+	dt1 = tmpdt;
 	}
 
     /** choose which date part.  Typecasts are to make sure we're working
@@ -2099,22 +2110,22 @@ int exp_fn_datediff(pExpression tree, pParamObjects objlist, pExpression i0, pEx
      **/
     if (strcmp(i0->String, "year") == 0)
 	{
-	tree->Integer = i2->Types.Date.Part.Year - (int)i1->Types.Date.Part.Year;
+	tree->Integer = dt2.Part.Year - (int)dt1.Part.Year;
 	}
     else if (strcmp(i0->String, "month") == 0)
 	{
-	tree->Integer = i2->Types.Date.Part.Year - (int)i1->Types.Date.Part.Year;
-	tree->Integer = tree->Integer*12 + i2->Types.Date.Part.Month - (int)i1->Types.Date.Part.Month;
+	tree->Integer = dt2.Part.Year - (int)dt1.Part.Year;
+	tree->Integer = tree->Integer*12 + dt2.Part.Month - (int)dt1.Part.Month;
 	}
     else
 	{
 	/** fun.  working with the day part of stuff gets tricky -- leap
 	 ** years and all that stuff.  Count the days up manually.
 	 **/
-	tree->Integer = - i1->Types.Date.Part.Day;
-	yr = i1->Types.Date.Part.Year;
-	mo = i1->Types.Date.Part.Month;
-	while (yr < i2->Types.Date.Part.Year || (yr == i2->Types.Date.Part.Year &&  mo < i2->Types.Date.Part.Month))
+	tree->Integer = - dt1.Part.Day;
+	yr = dt1.Part.Year;
+	mo = dt1.Part.Month;
+	while (yr < dt2.Part.Year || (yr == dt2.Part.Year &&  mo < dt2.Part.Month))
 	    {
 	    tree->Integer += obj_month_days[mo];
 	    if (IS_LEAP_YEAR(yr+1900) && mo == 1) /* Feb of a leap year */
@@ -2126,17 +2137,17 @@ int exp_fn_datediff(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 		yr++;
 		}
 	    }
-	tree->Integer += i2->Types.Date.Part.Day;
+	tree->Integer += dt2.Part.Day;
 
 	/** Hours, minutes, seconds? **/
 	if (strcmp(i0->String, "day") != 0)
 	    {
 	    /** has to be H, M, or S **/
-	    tree->Integer = tree->Integer*24 + i2->Types.Date.Part.Hour - (int)i1->Types.Date.Part.Hour;
+	    tree->Integer = tree->Integer*24 + dt2.Part.Hour - (int)dt1.Part.Hour;
 	    if (strcmp(i0->String, "hour") != 0)
 		{
 		/** has to be M or S **/
-		tree->Integer = tree->Integer*60 + i2->Types.Date.Part.Minute - (int)i1->Types.Date.Part.Minute;
+		tree->Integer = tree->Integer*60 + dt2.Part.Minute - (int)dt1.Part.Minute;
 		if (strcmp(i0->String, "minute") != 0)
 		    {
 		    /** has to be S **/
@@ -2145,7 +2156,7 @@ int exp_fn_datediff(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 			mssError(1,"EXP","Invalid date part '%s' for datediff()", i0->String);
 			return -1;
 			}
-		    tree->Integer = tree->Integer*60 + i2->Types.Date.Part.Second - (int)i1->Types.Date.Part.Second;
+		    tree->Integer = tree->Integer*60 + dt2.Part.Second - (int)dt1.Part.Second;
 		    }
 		}
 	    }
@@ -2161,6 +2172,7 @@ int exp_fn_datediff(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 int exp_fn_dateadd(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     int diff_sec, diff_min, diff_hr, diff_day, diff_mo, diff_yr;
+    pDateTime dt;
 
     /** checks **/
     if (!i0 || (i0->Flags & EXPR_F_NULL) || i0->DataType != DATA_T_STRING)
@@ -2179,15 +2191,16 @@ int exp_fn_dateadd(pExpression tree, pParamObjects objlist, pExpression i0, pExp
 	mssError(1, "EXP", "dateadd() second parameter must be an integer (amount to add/subtract)");
 	return -1;
 	}
-    if (!i2 || i2->DataType != DATA_T_DATETIME)
+    if (!i2 || (i2->DataType != DATA_T_DATETIME && i2->DataType != DATA_T_STRING))
 	{
 	mssError(1, "EXP", "dateadd() third parameter must be a datetime type");
 	return -1;
 	}
+    dt = expPromoteDate(i2);
 
     /** ok, we're good.  set up for returning the value **/
     tree->DataType = DATA_T_DATETIME;
-    memcpy(&tree->Types.Date, &i2->Types.Date, sizeof(DateTime));
+    memcpy(&tree->Types.Date, dt, sizeof(DateTime));
     diff_sec = diff_min = diff_hr = diff_day = diff_mo = diff_yr = 0;
     if (!strcmp(i0->String, "second"))
 	diff_sec = i1->Integer;

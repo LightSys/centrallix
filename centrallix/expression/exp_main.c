@@ -1163,6 +1163,30 @@ expSetBinary(pExpression this, unsigned char* str, int len)
     }
 
 
+/*** expPromoteDate() - given an expression, return a date/time
+ *** value.  If the expression is a string, convert it to date/time.
+ ***/
+pDateTime
+expPromoteDate(pExpression exp)
+    {
+    static DateTime dt;
+
+	if (exp->DataType == DATA_T_DATETIME)
+	    {
+	    return &exp->Types.Date;
+	    }
+	else if (exp->DataType == DATA_T_STRING)
+	    {
+	    if (objDataToDateTime(DATA_T_STRING, exp->String, &dt, NULL) < 0)
+		return NULL;
+	    else
+		return &dt;
+	    }
+
+    return NULL;
+    }
+
+
 /*** expInitialize - initialize the expression evaluator subsystem.
  ***/
 int

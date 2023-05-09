@@ -281,6 +281,7 @@ pExpression expPtodToExpression(pTObjData ptod, pExpression exp);
 pTObjData expExpressionToPtod(pExpression exp);
 int expSetString(pExpression this, char* str);
 int expSetBinary(pExpression this, unsigned char* str, int len);
+pDateTime expPromoteDate(pExpression exp);
 
 /*** Generator functions ***/
 int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char, char* language, int domain);
