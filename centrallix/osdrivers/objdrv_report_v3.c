@@ -3309,7 +3309,6 @@ rpt_internal_DrawXTickLabels(pRptChartContext ctx, int startval, int n_vals, int
     int axis_fontsize;
     double fs, cfs;
     int maxstrlen = 0;
-    pXString labels;
 
 	rpt_internal_GetInteger(ctx->inf, ctx->x_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
 	fs = axis_fontsize;
@@ -3417,8 +3416,8 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
     int reccnt = ctx->values->nItems;
     pStructInf one_series;
     int series_fontsize;
-    int axis_fontsize, xaxis_fontsize;
-    double fs, xfs;
+    int axis_fontsize;
+    double fs;
     char* color;
     int show_value;
     int show_percent;
