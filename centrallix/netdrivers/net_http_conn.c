@@ -458,6 +458,10 @@ nht_i_ConnHandler(void* conn_v)
 		if (nht_i_VerifyAKey(akey_inf->StrVal, conn->NhtSession, &group, &app) == 0)
 		    {
 		    akey_valid = 1;
+		    if (app)
+			conn->App = nht_i_LinkApp(app);
+		    if (group)
+			conn->AppGroup = nht_i_LinkAppGroup(group);
 		    }
 		}
 	    }
@@ -500,16 +504,10 @@ nht_i_ConnHandler(void* conn_v)
 		    if (akey_valid)
 			{
 			/** session key matched... now update app and group **/
-			if (app)
-			    {
-			    conn->App = nht_i_LinkApp(app);
-			    nht_i_ResetWatchdog(app->WatchdogTimer);
-			    }
-			if (group)
-			    {
-			    conn->AppGroup = nht_i_LinkAppGroup(group);
-			    nht_i_ResetWatchdog(group->WatchdogTimer);
-			    }
+			if (conn->App)
+			    nht_i_ResetWatchdog(conn->App->WatchdogTimer);
+			if (conn->AppGroup)
+			    nht_i_ResetWatchdog(conn->AppGroup->WatchdogTimer);
 			}
 
 		    /** Report current time to client as a part of ping response **/
@@ -592,13 +590,9 @@ nht_i_ConnHandler(void* conn_v)
 	    context_started = 1;
 
 	    /** If a valid akey was specified, resume the application **/
-	    if (akey_valid && group && app)
+	    if (akey_valid && conn->AppGroup && conn->App)
 		{
-		appResume(app->Application);
-		if (!conn->App)
-		    conn->App = nht_i_LinkApp(app);
-		if (!conn->AppGroup)
-		    conn->AppGroup = nht_i_LinkAppGroup(group);
+		appResume(conn->App->Application);
 		}
 	    else
 		{

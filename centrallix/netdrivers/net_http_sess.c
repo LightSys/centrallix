@@ -632,8 +632,11 @@ nht_i_AllocApp(char* path, pNhtAppGroup group)
 	if (!app) return NULL;
 	memset(app, 0, sizeof(NhtApp));
 
-	/** Set up the structure **/
-	app->LinkCnt = 1;
+	/** Reference count:
+	 ** - one for the caller (connection)
+	 ** - one for the watchdog manager (session persistence)
+	 **/
+	app->LinkCnt = 2;
 	cxssGenerateKey((unsigned char*)akey, sizeof(akey));
 	sprintf(app->AKey, "%8.8x%8.8x", akey[0], akey[1]);
 	snprintf(akeybuf, sizeof(akeybuf), "%s-%s-%s", group->Session->SKey, group->GKey, app->AKey);
@@ -746,8 +749,11 @@ nht_i_AllocAppGroup(char* path, pNhtSessionData s)
 	if (!group) return NULL;
 	memset(group, 0, sizeof(NhtAppGroup));
 
-	/** Set up the structure **/
-	group->LinkCnt = 1;
+	/** Reference count:
+	 ** - one for the caller (connection)
+	 ** - one for the watchdog manager (session persistence)
+	 **/
+	group->LinkCnt = 2;
 	strtcpy(group->StartURL, path, sizeof(group->StartURL));
 	group->G_ID = NHT.G_ID_Count++;
 	cxssGenerateKey((unsigned char*)gkey, sizeof(gkey));

@@ -1637,6 +1637,10 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	    nht_i_WriteErrResponse(conn, 403, "Forbidden", NULL);
 	    goto error;
 	    }
+	if (group && !conn->AppGroup)
+	    conn->AppGroup = nht_i_LinkAppGroup(group);
+	if (app && !conn->App)
+	    conn->App = nht_i_LinkApp(app);
 
 	/** REST-type request vs. standard file upload POST? **/
 	find_inf = stLookup_ne(url_inf,"cx__mode");
@@ -1839,10 +1843,16 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    {
 		    cxssAddEndorsement("system:from_application", "*");
 		    akey_match = 1;
+		    if (!conn->App)
+			conn->App = nht_i_LinkApp(app);
+		    if (!conn->AppGroup)
+			conn->AppGroup = nht_i_LinkAppGroup(group);
 		    }
 		if (group)
 		    {
 		    cxssAddEndorsement("system:from_appgroup", "*");
+		    if (!conn->AppGroup)
+			conn->AppGroup = nht_i_LinkAppGroup(group);
 		    }
 		}
 	    }
@@ -2169,9 +2179,9 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		if (!strcmp(ptr, "widget/page"))
 		    {
 		    if (!group)
-			group = nht_i_AllocAppGroup(url_inf->StrVal, nsess);
+			conn->AppGroup = group = nht_i_AllocAppGroup(url_inf->StrVal, nsess);
 		    if (group && !app)
-			app = nht_i_AllocApp(url_inf->StrVal, group);
+			conn->App = app = nht_i_AllocApp(url_inf->StrVal, group);
 		    }
 
 		/** Build the akey - CSRF prevention **/
@@ -2313,7 +2323,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 
 	    /** Try to join an existing app group, if specified **/
 	    if (!group)
-		group = nht_i_AllocAppGroup(kname, nsess);
+		conn->AppGroup = group = nht_i_AllocAppGroup(kname, nsess);
 	    if (group)
 		{
 		find_inf = stLookup_ne(url_inf, "cx__appname");
@@ -2323,7 +2333,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    kname = find_inf->StrVal;
 
 		/** Set up a new active app **/
-		app = nht_i_AllocApp(kname, group);
+		conn->App = app = nht_i_AllocApp(kname, group);
 		if (app)
 		    {
 		    /** We want to give the api client information about our
@@ -2515,6 +2525,10 @@ nht_i_DELETE(pNhtConn conn, pStruct url_inf)
 	    code = 401;
 	    goto error;
 	    }
+	if (group && !conn->AppGroup)
+	    conn->AppGroup = nht_i_LinkAppGroup(group);
+	if (app && !conn->App)
+	    conn->App = nht_i_LinkApp(app);
 
 	/** Open the target object **/
 	target_obj = objOpen(conn->NhtSession->ObjSess, url_inf->StrVal, OBJ_O_RDWR, 0600, "application/octet-stream");
@@ -2590,6 +2604,10 @@ nht_i_PATCH(pNhtConn conn, pStruct url_inf, char* content)
 	    code = 401;
 	    goto error;
 	    }
+	if (group && !conn->AppGroup)
+	    conn->AppGroup = nht_i_LinkAppGroup(group);
+	if (app && !conn->App)
+	    conn->App = nht_i_LinkApp(app);
 
 	/** Open the target object **/
 	target_obj = objOpen(conn->NhtSession->ObjSess, url_inf->StrVal, OBJ_O_RDWR, 0600, "application/octet-stream");
@@ -2720,6 +2738,10 @@ nht_i_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
 	    nht_i_WriteErrResponse(conn, 403, "Forbidden", NULL);
 	    return -1;
 	    }
+	if (group && !conn->AppGroup)
+	    conn->AppGroup = nht_i_LinkAppGroup(group);
+	if (app && !conn->App)
+	    conn->App = nht_i_LinkApp(app);
 
     	/** See if the object already exists. **/
 	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, "text/html");
