@@ -242,7 +242,7 @@ qyt_internal_AttrValue(pQytObjAttr objattr, char* attrname)
  *** and so forth.
  ***/
 pQytData
-qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref, pStructInf dptr, int openflags, int no_open)
+qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref, pStructInf dptr, int openflags, pParamObjects parent_objlist)
     {
     pQytData inf;
     pStructInf lookup_inf, find_inf, next_inf;
@@ -250,6 +250,8 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
     char* exprval;
     char* ptr;
     int i,v,t;
+    int did_param;
+    int no_open = (parent_objlist != NULL);
     pExpression expr;
     pParamObjects objlist;
     pObject test_obj;
@@ -268,6 +270,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 	inf->BaseNode = node;
 	inf->LLObj = NULL;
 	inf->Offset = 0;
+	inf->ObjList = NULL;
 
 	/** Create the object parameter list... **/
         objlist = expCreateParamList();
@@ -280,6 +283,14 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 	    {
 	    /** Add a slot to the param object list for this tree level **/
 	    objlist->ParentID = objlist->CurrentID;
+	    did_param = 0;
+
+	    /** Get object from parent's object list? **/
+	    if (parent_objlist && parent_objlist->nObjects > objlist->nObjects)
+		{
+		did_param = 1;
+		expCopyParams(parent_objlist, objlist, objlist->nObjects, 1);
+		}
 
 	    /** Look for text and source items in the querytree definition. **/
 	    next_inf = NULL;
@@ -297,7 +308,8 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
                         stAttrValue(lookup_inf,NULL,&strval,0);
                         if (!strcmp(path->Elements[subref],strval))
                             {
-			    expAddParamToList(objlist,strval,NULL,EXPR_O_CURRENT | EXPR_O_ALLOWDUPS);
+			    if (!did_param)
+				expAddParamToList(objlist,strval,NULL,EXPR_O_CURRENT | EXPR_O_ALLOWDUPS);
                             next_inf = find_inf;
                             break;
                             }
@@ -307,13 +319,6 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
                     else if ((lookup_inf = stLookup(find_inf, "sql")))
 			{
 			xhAdd(&struct_table, find_inf->Name, (void*)find_inf);
-
-			/** not opening objects? skip sql query if so **/
-			if (no_open)
-			    {
-			    next_inf = find_inf;
-			    break;
-			    }
 
 			/** forced leaf flag and having clause flag **/
 			strval = NULL;
@@ -325,8 +330,17 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 			if (strval && !strcasecmp(strval,"yes"))
 			    inf->Flags |= QYT_F_USEHAVING;
 
+			if (!did_param)
+			    expAddParamToList(objlist,find_inf->Name,NULL,EXPR_O_CURRENT | EXPR_O_ALLOWDUPS);
+
+			/** not opening objects? skip sql query if so **/
+			if (no_open)
+			    {
+			    next_inf = find_inf;
+			    break;
+			    }
+
 			/** build and run the sql query to find the object **/
-			expAddParamToList(objlist,find_inf->Name,NULL,EXPR_O_CURRENT | EXPR_O_ALLOWDUPS);
 			xsInit(&sql);
 			strval = "";
 			expr = NULL;
@@ -423,7 +437,8 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 
 			/** Setup this querytree struct entry for lookups **/
 			xhAdd(&struct_table, find_inf->Name, (void*)find_inf);
-			expAddParamToList(objlist,find_inf->Name,NULL,EXPR_O_CURRENT | EXPR_O_ALLOWDUPS);
+			if (!did_param)
+			    expAddParamToList(objlist,find_inf->Name,NULL,EXPR_O_CURRENT | EXPR_O_ALLOWDUPS);
 
 			/** Not opening any objects?  Skip open attempt if so. **/
 			if (no_open)
@@ -592,7 +607,7 @@ qytOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    }
 
 	/** Allocate the structure **/
-	inf = qyt_internal_ProcessPath(obj->Session, obj->Pathname, node, obj->SubPtr, node->Data, obj->Mode & (O_CREAT | OBJ_O_AUTONAME), 0);
+	inf = qyt_internal_ProcessPath(obj->Session, obj->Pathname, node, obj->SubPtr, node->Data, obj->Mode & (O_CREAT | OBJ_O_AUTONAME), NULL);
 	obj_internal_PathPart(obj->Pathname,0,0);
 	if (!inf) return NULL;
 	inf->Obj = obj;
@@ -611,7 +626,6 @@ qytOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 int
 qyt_internal_Close(pQytData inf)
     {
-    int i;
 
 	/** Close the lowlevel-object **/
 	if (inf->LLObj) objClose(inf->LLObj);
@@ -620,9 +634,10 @@ qyt_internal_Close(pQytData inf)
 	inf->BaseNode->OpenCnt --;
 	if (inf->ObjList)
 	    {
-	    for(i=0;i<inf->ObjList->nObjects;i++)
+	    expUnlinkParams(inf->ObjList, 0, -1);
+	    /*for(i=0;i<inf->ObjList->nObjects;i++)
 		if (inf->ObjList->Objects[i])
-		    objClose(inf->ObjList->Objects[i]);
+		    objClose(inf->ObjList->Objects[i]);*/
 	    expFreeParamList(inf->ObjList);
 	    }
 	nmFree(inf,sizeof(QytData));
@@ -684,7 +699,7 @@ qytDelete(pObject obj, pObjTrxTree* oxt)
 	    }
 
 	/** Process path to determine actual path of object. **/
-	inf = qyt_internal_ProcessPath(obj->Session, obj->Pathname, node, obj->SubPtr, node->Data, 0, 0);
+	inf = qyt_internal_ProcessPath(obj->Session, obj->Pathname, node, obj->SubPtr, node->Data, 0, NULL);
 	if (inf->LLObj) objClose(inf->LLObj);
 	inf->LLObj = NULL;
 	obj_internal_PathPart(obj->Pathname, 0,0);
@@ -1182,10 +1197,10 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
 	/** Alloc the structure **/
 	inf = qyt_internal_ProcessPath(obj->Session, obj->Pathname, qy->ObjInf->BaseNode, 
-		qy->ObjInf->Obj->SubPtr, qy->ObjInf->BaseNode->Data, 0, 1);
+		qy->ObjInf->Obj->SubPtr, qy->ObjInf->BaseNode->Data, 0, qy->ObjInf->ObjList);
 	if (!inf)
 	    return NULL;
-	strcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname, 0, 0));
+	strtcpy(inf->Pathname, obj_internal_PathPart(obj->Pathname, 0, 0), sizeof(inf->Pathname));
 	if (inf->LLObj)
 	    objClose(inf->LLObj);
 	inf->LLObj = llobj;
@@ -1206,11 +1221,12 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	obj_internal_PathPart(obj->Pathname,0,0);
 
 	/** Set up the param objects list for this fetched object. **/
-	if (inf->ObjList)
+	/*if (inf->ObjList)
 	    expFreeParamList(inf->ObjList);
 	inf->ObjList = expCreateParamList();
-	expCopyList(qy->ObjInf->ObjList, inf->ObjList, -1);
-	expAddParamToList(inf->ObjList, objname, llobj, EXPR_O_CURRENT);
+	expCopyList(qy->ObjInf->ObjList, inf->ObjList, -1);*/
+	expModifyParam(inf->ObjList, NULL, llobj);
+	//expAddParamToList(inf->ObjList, objname, llobj, EXPR_O_CURRENT);
 	expLinkParams(inf->ObjList, 0, -1);
 
     return (void*)inf;
