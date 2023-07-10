@@ -1977,6 +1977,7 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
     double dbl;
     int colspan;
     int context_pushed = 0;
+    double h = -1;
 
 	/** conditional rendering **/
 	rval = rpt_internal_CheckCondition(inf,tablerow);
@@ -2007,8 +2008,11 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 	if (rpt_internal_GetDouble(inf, tablerow, "rightborder", &dbl, NAN, 0) >= 0)
 	    rb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
 
+	/** Row geometry? **/
+	rpt_internal_GetDouble(inf, tablerow, "height", &h, -1.0, 0);
+
 	/** Create the table row **/
-	tablerow_handle = prtAddObject(table_handle, PRT_OBJ_T_TABLEROW, -1,-1,-1,-1, flags, "header", is_header, "footer", is_footer, 
+	tablerow_handle = prtAddObject(table_handle, PRT_OBJ_T_TABLEROW, -1,-1,-1,h, flags, "header", is_header, "footer", is_footer, 
 		"outerborder", ob, "innerborder", ib, "topborder", tb, "bottomborder", bb, "leftborder", lb, "rightborder", rb, NULL);
 	if (ob) prtFreeBorder(ob);
 	if (ib) prtFreeBorder(ib);

@@ -757,6 +757,23 @@ prt_textlm_ChildResized(pPrtObjStream this, pPrtObjStream child, double old_widt
     }
 
 
+/*** prt_textlm_UndoWrapWidth() - returns the width an object will have
+ *** if wrapping is undone.
+ ***/
+double
+prt_textlm_UndoWrapWidth(pPrtObjStream obj)
+    {
+
+	/** Space removed during wrapping? **/
+	if (obj->Flags & PRT_TEXTLM_F_RMSPACE)
+	    {
+	    return obj->Width + prt_internal_GetStringWidth(obj, " ", 1);
+	    }
+
+    return obj->Width;
+    }
+
+
 /*** prt_textlm_UndoWrap() - undoes the effects of word wrapping on two
  *** given objects by restoring the space to one of them as needed.
  ***/
@@ -855,6 +872,80 @@ prt_textlm_Setup(pPrtObjStream this)
     }
 
 
+/*** prt_textlm_Rescale() - try to downscale the font size to make the
+ *** content fit within the container.  This is somewhat expensive due to
+ *** multiple steps of refitting, which may be multiplied by additional
+ *** content being added.
+ ***/
+int
+prt_textlm_Rescale(pPrtObjStream container, pPrtObjStream newobj)
+    {
+    pPrtObjStream search;
+    int has_wrap = 0;
+    double target_scale, available_scale;
+
+	/** Safety catch **/
+	if (prtInnerHeight(container) <= 0.0)
+	    return -1;
+
+	/** Any word wrapping? **/
+	for(search=container->ContentTail; search; search=search->Prev)
+	    {
+	    if ((search->Flags & PRT_OBJ_F_SOFTNEWLINE) && search->Next)
+		{
+		has_wrap = 1;
+		break;
+		}
+	    }
+
+	/** If it has wrapping, we just error out at this time (TODO) **/
+	if (has_wrap)
+	    return -1;
+
+	/** If no wrapping, rescaling is purely mathematical **/
+	if (!has_wrap)
+	    {
+	    if (container->ContentTail->Flags & PRT_OBJ_F_SOFTNEWLINE)
+		target_scale = prtInnerWidth(container) / (prt_textlm_UndoWrapWidth(container->ContentTail) + newobj->Width);
+	    else
+		target_scale = prtInnerHeight(container) / (newobj->Height + newobj->Y);
+	    }
+	if (target_scale >= 1.0 || target_scale <= 0.0)
+	    return -1;
+
+	/** Does the current min fontsize permit us to scale as needed? **/
+	if (newobj->TextStyle.MinFontSize > 0.0)
+	    available_scale = newobj->TextStyle.MinFontSize / newobj->TextStyle.FontSize;
+	else
+	    available_scale = 1.0;
+	if (available_scale > target_scale)
+	    return -1;
+
+	/** Rescale the container to the target scale **/
+	for(search=container->ContentHead; search; search=search->Next)
+	    {
+	    search->TextStyle.FontSize *= target_scale;
+	    search->Width *= target_scale;
+	    search->Height *= target_scale;
+	    search->X *= target_scale;
+	    search->Y *= target_scale;
+	    }
+	newobj->TextStyle.FontSize *= target_scale;
+	newobj->Width *= target_scale;
+	newobj->Height *= target_scale;
+	newobj->X *= target_scale;
+	newobj->Y *= target_scale;
+
+	/** Move the wrapped item back where it was **/
+	if (container->ContentTail->Flags & PRT_OBJ_F_SOFTNEWLINE)
+	    {
+	    prt_textlm_UndoWrap(container->ContentTail);
+	    }
+
+    return 0;
+    }
+
+
 /*** prt_textlm_AddObject() - used to add a new object to this one, using
  *** textflow layout semantics.  This can, in some cases, result in a
  *** resize request / resized event being placed to the layout manager
@@ -915,9 +1006,15 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	     **/
 	    if ((this->ContentTail && this->ContentTail->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)))
 		{
-		/** Justify previous line? **/
+		/** New line needed.
+		 ** Justify previous line?
+		 **/
 		prt_textlm_JustifyLine(this->ContentTail, this->ContentTail->Justification);
+
+		/** Start a new line at the left edge **/
 		objptr->X = 0.0;
+
+		/** Start a new line just below the previous line **/
 		if (this->ContentTail->LineHeight > bottom - top)
 		    objptr->Y = top + this->ContentTail->LineHeight;
 		else
@@ -925,10 +1022,13 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		}
 	    else
 		{
-		/** Where will this go, by default?  X is pretty easy... **/
+		/** Add the object on the same line.
+		 ** Where will this go, by default?  For X, it goes at the end of the
+		 ** last object on the line.
+		 **/
 		x = this->ContentTail->X + this->ContentTail->Width;
 
-		/** for the Y location, we have to look at the baseline for text.  If
+		/** For the Y location, we have to look at the baseline for text.  If
 		 ** the baseline for the new object is unset (0), we ignore the previous
 		 ** baseline.
 		 **/
@@ -1032,9 +1132,18 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    /** Try a break operation. **/
 		    if (!(this->Flags & PRT_OBJ_F_ALLOWSOFTBREAK) || this->LayoutMgr->Break(this, &new_parent) < 0)
 			{
-			/** Break also denied?  Fail if so. **/
-			mssError(1,"PRT","Could not fit new object into layout area, and automatic page break failed");
-			goto error;
+			/** Unable to break.  Try rescale if possible. **/
+			if (prt_textlm_Rescale(this, objptr) < 0)
+			    {
+			    /** Resize, Break and Rescale all denied?  Fail if so. **/
+			    mssError(1,"PRT","Could not fit new object into layout area, and automatic page break failed");
+			    goto error;
+			    }
+			else
+			    {
+			    /** Reposition wrapped item **/
+			    continue;
+			    }
 			}
 		    }
 
