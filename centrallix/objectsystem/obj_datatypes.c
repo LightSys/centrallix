@@ -624,20 +624,23 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
                     break;
                 }
 	    fmt++;
-	    }
 
-	/** Don't hide decimal values past the format spec **/
-	if (print_fract && !in_decimal_part)
-	    {
-	    in_decimal_part = 1;
-	    tens_multiplier = 1000;
-	    xsConcatenate(&xs, &decimal, 1);
-	    }
-	while (print_fract && in_decimal_part && tens_multiplier && (print_fract%(tens_multiplier?(tens_multiplier*10):1)) != 0)
-	    {
-	    d = (print_fract/tens_multiplier)%10;
-	    tens_multiplier /= 10;
-	    xsConcatPrintf(&xs, "%d", d);
+	    if ((*fmt == '\0' || *fmt == ']' || *fmt == ')') || ((*fmt == '+' || *fmt == '-') && (fmt[-1] == ' ' || fmt[-1] == '*' || fmt[-1] == '#' || fmt[-1] == '0' || fmt[-1] == '^')))
+		{
+		/** Don't hide decimal values past the format spec **/
+		if (print_fract && !in_decimal_part)
+		    {
+		    in_decimal_part = 1;
+		    tens_multiplier = 1000;
+		    xsConcatenate(&xs, &decimal, 1);
+		    }
+		while (print_fract && in_decimal_part && tens_multiplier && (print_fract%(tens_multiplier?(tens_multiplier*10):1)) != 0)
+		    {
+		    d = (print_fract/tens_multiplier)%10;
+		    tens_multiplier /= 10;
+		    xsConcatPrintf(&xs, "%d", d);
+		    }
+		}
 	    }
 
 	if (strlen(xs.String) < length)
