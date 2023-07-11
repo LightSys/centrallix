@@ -490,43 +490,14 @@ prt_tablm_SetWidths(pPrtObjStream this)
     }
 
 
-/*** prt_tablm_AddObject() - used to add a new object to the table, row, or
- *** cell.  We need to mainly make sure that the added object is valid in its
- *** container, as well as make any final settings.  The object will have
- *** been initialized (via InitContainer), if appropriate, *before* this 
- *** routine is called.
+/*** prt_tablm_DetermineGeometry() - set geometry for the object we're adding.
  ***/
 int
-prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
+prt_tablm_DetermineGeometry(pPrtObjStream this, pPrtObjStream new_child_obj)
     {
     pPrtTabLMData lm_inf = (pPrtTabLMData)(new_child_obj->LMData);
     pPrtTabLMData parent_lm_inf = (pPrtTabLMData)(this->LMData);
-    pPrtObjStream new_parent;
-    int i,rval;
-
-	/** Make sure the types are OK **/
-	if (this->ObjType->TypeID == PRT_OBJ_T_TABLE && new_child_obj->ObjType->TypeID != PRT_OBJ_T_TABLEROW)
-	    {
-	    mssError(1,"TABLM","Tables may only contain table-row objects");
-	    return -1;
-	    }
-	if (new_child_obj->ObjType->TypeID == PRT_OBJ_T_TABLEROW && this->ObjType->TypeID != PRT_OBJ_T_TABLE)
-	    {
-	    mssError(1,"TABLM","Table-row objects may only be contained within a table");
-	    return -1;
-	    }
-	if (new_child_obj->ObjType->TypeID == PRT_OBJ_T_TABLECELL && this->ObjType->TypeID != PRT_OBJ_T_TABLEROW)
-	    {
-	    mssError(1,"TABLM","Table-cell objects may only be contained within a table-row");
-	    return -1;
-	    }
-
-	/** Init the column widths? **/
-	if (!this->ContentHead && this->ObjType->TypeID == PRT_OBJ_T_TABLE)
-	    {
-	    rval = prt_tablm_SetWidths(this);
-	    if (rval < 0) return rval;
-	    }
+    int i;
 
 	/** Determine geometries and propagate config data. **/
 	if (this->ObjType->TypeID == PRT_OBJ_T_TABLE)
@@ -584,9 +555,6 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    new_child_obj->Height = prtInnerHeight(this);
 		new_child_obj->Y = 0.0;
 		new_child_obj->ObjID = parent_lm_inf->CurColID;
-		parent_lm_inf->CurColID += lm_inf->ColSpan;
-		if (parent_lm_inf->CurColID > parent_lm_inf->nColumns)
-		    parent_lm_inf->CurColID = parent_lm_inf->nColumns;
 		}
 	    else
 		{
@@ -609,6 +577,60 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		new_child_obj->Width = prtInnerWidth(this) - new_child_obj->X;
 	    if (new_child_obj->Height < 0) 
 		new_child_obj->Height = prtInnerHeight(this) - new_child_obj->Y;
+	    }
+
+    return 0;
+    }
+
+
+/*** prt_tablm_AddObject() - used to add a new object to the table, row, or
+ *** cell.  We need to mainly make sure that the added object is valid in its
+ *** container, as well as make any final settings.  The object will have
+ *** been initialized (via InitContainer), if appropriate, *before* this 
+ *** routine is called.
+ ***/
+int
+prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
+    {
+    pPrtObjStream new_parent;
+    pPrtTabLMData lm_inf = (pPrtTabLMData)(new_child_obj->LMData);
+    pPrtTabLMData parent_lm_inf = (pPrtTabLMData)(this->LMData);
+    int rval;
+
+	/** Make sure the types are OK **/
+	if (this->ObjType->TypeID == PRT_OBJ_T_TABLE && new_child_obj->ObjType->TypeID != PRT_OBJ_T_TABLEROW)
+	    {
+	    mssError(1,"TABLM","Tables may only contain table-row objects");
+	    return -1;
+	    }
+	if (new_child_obj->ObjType->TypeID == PRT_OBJ_T_TABLEROW && this->ObjType->TypeID != PRT_OBJ_T_TABLE)
+	    {
+	    mssError(1,"TABLM","Table-row objects may only be contained within a table");
+	    return -1;
+	    }
+	if (new_child_obj->ObjType->TypeID == PRT_OBJ_T_TABLECELL && this->ObjType->TypeID != PRT_OBJ_T_TABLEROW)
+	    {
+	    mssError(1,"TABLM","Table-cell objects may only be contained within a table-row");
+	    return -1;
+	    }
+
+	/** Init the column widths? **/
+	if (!this->ContentHead && this->ObjType->TypeID == PRT_OBJ_T_TABLE)
+	    {
+	    rval = prt_tablm_SetWidths(this);
+	    if (rval < 0) return rval;
+	    }
+
+	/** Determine geometry and config of new child **/
+	if (prt_tablm_DetermineGeometry(this, new_child_obj) < 0)
+	    return -1;
+
+	/** Update parent to count table cells **/
+	if (this->ObjType->TypeID == PRT_OBJ_T_TABLEROW && new_child_obj->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
+	    {
+	    parent_lm_inf->CurColID += lm_inf->ColSpan;
+	    if (parent_lm_inf->CurColID > parent_lm_inf->nColumns)
+		parent_lm_inf->CurColID = parent_lm_inf->nColumns;
 	    }
 
 	/** Ok, geometry now set.  Now see if the thing will actually fit. **/
@@ -637,6 +659,10 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		{
 		/** Point to new container **/
 		this = new_parent;
+
+		/** Recompute new child object geometries **/
+		if (prt_tablm_DetermineGeometry(this, new_child_obj) < 0)
+		    return -1;
 
 		/** Re-check height sizing; new parent may need to be resized. **/
 		if (new_child_obj->Height + new_child_obj->Y - PRT_FP_FUDGE > prtInnerHeight(this))
