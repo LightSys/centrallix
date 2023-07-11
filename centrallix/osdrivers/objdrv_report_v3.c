@@ -3307,6 +3307,7 @@ rpt_internal_DrawXTickLabels(pRptChartContext ctx, int startval, int n_vals, int
 #ifdef HAVE_MGL2
     char blank[64];
     int n_labels;
+    pXString labels;
 #else
     char* blank[n_vals];
 #endif
@@ -3421,6 +3422,10 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
     pStructInf one_series;
     int series_fontsize;
     int axis_fontsize;
+#ifdef HAVE_MGL2
+    int xaxis_fontsize;
+    double xfs;
+#endif
     double fs;
     char* color;
     int show_value;
