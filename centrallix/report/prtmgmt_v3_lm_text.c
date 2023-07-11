@@ -906,7 +906,7 @@ prt_textlm_Rescale(pPrtObjStream container, pPrtObjStream newobj)
 	if (!has_wrap)
 	    {
 	    if (container->ContentTail->Flags & PRT_OBJ_F_SOFTNEWLINE)
-		target_scale = prtInnerWidth(container) / (prt_textlm_UndoWrapWidth(container->ContentTail) + newobj->Width);
+		target_scale = prtInnerWidth(container) / (container->ContentTail->X + prt_textlm_UndoWrapWidth(container->ContentTail) + newobj->Width);
 	    else
 		target_scale = prtInnerHeight(container) / (newobj->Height + newobj->Y);
 	    }
