@@ -1122,11 +1122,21 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		/** Request the additional space, if allowed **/
 		if (this->LayoutMgr->Resize(this, this->Width, objptr->Y + objptr->Height + this->MarginTop + this->MarginBottom + this->BorderTop + this->BorderBottom) < 0)
 		    {
-		    /** Resize denied.  If container is empty, we can't continue on, so error out here. **/
+		    /** Resize denied.  If container is empty, we can't do a Break. **/
 		    if (!this->ContentHead || (this->ContentHead->X + this->ContentHead->Width == 0.0 && !this->ContentHead->Next))
 			{
-			mssError(1,"PRT","Could not fit new object into layout area");
-			goto error;
+			/** Try rescale if possible. **/
+			if (prt_textlm_Rescale(this, objptr) < 0)
+			    {
+			    /** Resize and Rescale denied?  Fail if so. **/
+			    mssError(1,"PRT","Could not fit new object into layout area");
+			    goto error;
+			    }
+			else
+			    {
+			    /** Reposition wrapped item **/
+			    continue;
+			    }
 			}
 
 		    /** Try a break operation. **/
