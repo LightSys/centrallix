@@ -126,8 +126,9 @@ typedef struct
     int		ContentLength;
     int		NetworkOffset;
     int		ReadOffset;
-    char*	ContentType;
-    char*	RequestContentType;
+    char*	ContentType;		/* actual content type provided by remote http server */
+    char*	RequestContentType;	/* content type of request sent to the server */
+    char*	RestrictContentType;	/* restriction on content type allowed in the response */
     XArray	RequestHeaders;		/* of pHttpHeader */
     XArray	ResponseHeaders;	/* of pHttpHeader */
     int		ModDateAlwaysNow;
@@ -467,6 +468,8 @@ http_internal_Cleanup(pHttpData inf)
 	    inf->Method = NULL;
 	    if (inf->RequestContentType) nmSysFree(inf->RequestContentType);
 	    inf->RequestContentType = NULL;
+	    if (inf->RestrictContentType) nmSysFree(inf->RestrictContentType);
+	    inf->RestrictContentType = NULL;
 	    if (inf->Protocol) nmSysFree(inf->Protocol);
 	    inf->Protocol = NULL;
 	    if (inf->Cipherlist) nmSysFree(inf->Cipherlist);
@@ -1341,6 +1344,7 @@ http_internal_GetPageStream(pHttpData inf)
     pHttpCookie old_cookie;
     pHttpServerData sd = NULL;
     char uri[256];
+    int rval;
 
 	/** Data about this server? **/
 	snprintf(uri, sizeof(uri), "%s://%s@%s:%s", inf->Protocol, mssUserName(), inf->Server, inf->Port);
@@ -1711,7 +1715,15 @@ http_internal_GetPageStream(pHttpData inf)
 		}
 	    else
 		{
-		inf->ContentType = nmSysStrdup("application/octet-stream");
+		inf->ContentType = nmSysStrdup(inf->RestrictContentType);
+		}
+
+	    /** Make sure the content type is allowed **/
+	    rval = objIsA(inf->ContentType, inf->RestrictContentType);
+	    if (rval < 0 || rval == OBJSYS_NOT_ISA)
+		{
+		mssError(1, "HTTP", "Content type '%s' returned by server is not allowed (only '%s' and descendent types allowed)", inf->ContentType, inf->RestrictContentType);
+		goto error;
 		}
 
 	    /** Look for cookies coming from the server.  Right now we only
@@ -2126,6 +2138,7 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	inf->Path = http_internal_GetConfigString(inf, "path", "/");
 	inf->Method = http_internal_GetConfigString(inf, "method", "GET");
 	inf->RequestContentType = http_internal_GetConfigString(inf, "request_content_type", "application/x-www-form-urlencoded");
+	inf->RestrictContentType = http_internal_GetConfigString(inf, "restrict_content_type", "application/octet-stream");
 	inf->Protocol = http_internal_GetConfigString(inf, "protocol", "http");
 	inf->Cipherlist = http_internal_GetConfigString(inf, "ssl_cipherlist", "");
 
