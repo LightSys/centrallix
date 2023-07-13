@@ -1358,6 +1358,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 	    else if (!strcmp(cmdname,"obfuscate"))
 		{
 		if (!ptr) ptr = "";
+
 		if (TESTOBJ.ObfuscationSession)
 		    {
 		    obfCloseSession(TESTOBJ.ObfuscationSession);
@@ -1541,6 +1542,12 @@ start(void* v)
 
 	/** Open a session **/
 	s = objOpenSession("/");
+
+	/** Set up obfuscation from command line arg? **/
+	if (*TESTOBJ.ObfKey)
+	    {
+	    TESTOBJ.ObfuscationSession = obfOpenSession(s, TESTOBJ.ObfRuleFile, TESTOBJ.ObfKey);
+	    }
 
 	/** -C cmd provided on command line? **/
 	if (TESTOBJ.Command[0])
