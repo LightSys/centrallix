@@ -919,6 +919,7 @@ function osrc_action_create_cb()
     var links = pg_links(this);
     if(links && links[0] && links[0].target != 'ERR')
 	{
+	var oldcur = this.CurrentRecord;
 	if (this.FinalRecord == this.LastRecord)
 	    this.FinalRecord++;
 	this.LastRecord++;
@@ -968,6 +969,27 @@ function osrc_action_create_cb()
 		cr[max_j].id = max_j;
 		cr[max_j].hints = server_rec[i].hints;
 		}
+	    }
+
+	// Mark values as changing
+	for (var j in cr)
+	    {
+	    if (j == 'oid') continue;
+	    var oldrec = this.replica[this.oldcur];
+	    var oldval = null;
+	    if (oldrec)
+		{
+		for(var i in oldrec)
+		    {
+		    if (i == 'oid') continue;
+		    if (oldrec[i].oid == cr[j].oid)
+			{
+			oldval = oldrec[i].value;
+			break;
+			}
+		    }
+		}
+	    this.ifcProbe(ifValue).Changing(cr[j].oid, cr[j].value, true, oldval, true);
 	    }
 
 	//alert(this.replica[this.CurrentRecord].oid);
@@ -1285,7 +1307,7 @@ function osrc_cb_query_continue_2()
 	     this.child[i]._osrc_ready=false;
 	     }*/
 
-	if (!this.do_append) this.ClearReplica();
+	//if (!this.do_append) this.ClearReplica();
 	this.moveop=true;
 
 	this.OpenSession(this.OpenQuery);
@@ -2087,7 +2109,7 @@ function osrc_give_all_current_record(why)
 	}
     for(var i in this.child)
 	this.GiveOneCurrentRecord(i, why);
-    this.ifcProbe(ifEvent).Activate("DataFocusChanged", {});
+    this.ifcProbe(ifEvent).Activate("DataFocusChanged", { Refresh:(this.doing_refresh?1:0) });
     this.doing_refresh = false;
     //confirm('give_all_current_record done');
     }
@@ -2287,6 +2309,7 @@ function osrc_get_qid_startat()
 	{
 	this.DoFetch(this.TargetRecord - this.startat + 1);
 	}*/
+    if (!this.do_append) this.ClearReplica();
     if (lnk.length > 1)
 	{
 	// did an autofetch - we have the data already
