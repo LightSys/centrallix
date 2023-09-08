@@ -394,7 +394,7 @@ mq_internal_AddDeclaredObject(pMultiQuery query, pQueryDeclaredObject qdo)
  ***/
 int
 mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructure sel, pQueryStructure from, pQueryStructure where, 
-		 	pQueryStructure ob, pQueryStructure gb, pQueryStructure ct, pQueryStructure up, pQueryStructure dc,
+		 	pQueryStructure ob, pQueryStructure gb, pQueryStructure ct, pQueryStructure ins, pQueryStructure up, pQueryStructure dc,
 			pQueryStructure odc, pQueryStructure dec)
     {
     int i,j,cnt,n_assign,exists;
@@ -483,6 +483,17 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 			    xaAddItem(&stmt->Query->DeclaredObjects, (void*)qdo);
 			}
 		    }
+		}
+	    }
+
+	/** INSERT clause expression? **/
+	if (ins && (ins->Flags & MQ_SF_EXPRESSION))
+	    {
+	    ins->Expr = expCompileExpression(ins->RawData.String, stmt->Query->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+	    if (!ins->Expr)
+		{
+		mssError(0, "MQ", "Error in INSERT expression <%s>", ins->RawData.String);
+		return -1;
 		}
 	    }
 
@@ -1271,6 +1282,39 @@ mq_internal_CopyLiteral(pLxSession lxs, pXString xs)
     }
 
 
+/*** mq_internal_ParseExpressionSource() - handle an expression in a FROM or
+ *** INSERT clause.  Must be called with a lexer token of open parenthesis.
+ ***/
+int
+mq_internal_ParseExpressionSource(pLxSession lxs, pQueryStructure new_qs)
+    {
+    int parenlevel = 0;
+    int t = MLX_TOK_OPENPAREN;
+    char* ptr;
+
+	do /* while (parenlevel > 0) */
+	    {
+	    if (t == MLX_TOK_OPENPAREN) parenlevel++;
+	    if (t == MLX_TOK_CLOSEPAREN) parenlevel--;
+	    if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
+		break;
+	    if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
+		break;
+	    ptr = mlxStringVal(lxs, NULL);
+	    if (!ptr) break;
+	    if (t == MLX_TOK_STRING)
+		xsConcatQPrintf(&new_qs->RawData, "%STR&DQUOT", ptr);
+	    else
+		xsConcatenate(&new_qs->RawData, ptr, -1);
+	    xsConcatenate(&new_qs->RawData," ",1);
+	    t = mlxNextToken(lxs);
+	    }
+	    while (parenlevel > 0);
+
+    return t;
+    }
+
+
 /*** mq_internal_SyntaxParse - parse the syntax of the SQL used for this
  *** query.
  ***/
@@ -1292,6 +1336,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
     char cmd[10];
     pXString xs, param;
     pTObjData ptod;
+    char sourcetype[64];
     static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
     				   "crosstab","as","having","into","update","delete","insert",
 				   "values","with","limit","for","on","duplicate", "declare",
@@ -1789,10 +1834,27 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 
 			    /** Check for optional "INTO" and then table name **/
 			    collfrom = 0;
+			    sourcetype[0] = '\0';
 			    t = mlxNextToken(lxs);
 		    	    if (t == MLX_TOK_RESERVEDWD && (ptr = mlxStringVal(lxs,NULL)) != NULL && !strcasecmp(ptr, "into"))
 			        {
 				t = mlxNextToken(lxs);
+				}
+			    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("type", ptr))
+				{
+				t = mlxNextToken(lxs);
+				if (t == MLX_TOK_STRING)
+				    {
+				    mlxCopyToken(lxs, sourcetype, sizeof(sourcetype));
+				    t = mlxNextToken(lxs);
+				    }
+				else
+				    {
+				    next_state = ParseError;
+				    mssError(1,"MQ","In INSERT clause: TYPE keyword must be followed by object type string");
+				    mlxNoteError(lxs);
+				    break;
+				    }
 				}
 			    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs, NULL)) != NULL && !strcasecmp(ptr, "collection"))
 				{
@@ -1804,16 +1866,35 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 				insert_cls->Flags |= MQ_SF_FROMOBJECT;
 				t = mlxNextToken(lxs);
 				}
-			    if (t != MLX_TOK_FILENAME && t != MLX_TOK_STRING && (!(insert_cls->Flags & MQ_SF_COLLECTION) || t != MLX_TOK_KEYWORD))
-			        {
-				next_state = ParseError;
-				mssError(1,"MQ","Expected pathname after INSERT [INTO]");
-				mlxNoteError(lxs);
-				break;
+			    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("expression", ptr))
+				{
+				if (insert_cls->Flags & MQ_SF_COLLECTION)
+				    {
+				    next_state = ParseError;
+				    mssError(1,"MQ","INSERT: cannot use both COLLECTION and EXPRESSION");
+				    mlxNoteError(lxs);
+				    break;
+				    }
+				insert_cls->Flags |= MQ_SF_EXPRESSION;
+				t = mlxNextToken(lxs);
 				}
-		    	    mlxCopyToken(lxs, insert_cls->Source, 256);
-
-			    t = mlxNextToken(lxs);
+			    if (insert_cls->Flags & MQ_SF_EXPRESSION)
+				{
+				t = mq_internal_ParseExpressionSource(lxs, insert_cls);
+				}
+			    else
+				{
+				if (t != MLX_TOK_FILENAME && t != MLX_TOK_STRING && (!(insert_cls->Flags & MQ_SF_COLLECTION) || t != MLX_TOK_KEYWORD))
+				    {
+				    next_state = ParseError;
+				    mssError(1,"MQ","Expected pathname after INSERT [INTO]");
+				    mlxNoteError(lxs);
+				    break;
+				    }
+				mlxCopyToken(lxs, insert_cls->Source, 256);
+				t = mlxNextToken(lxs);
+				}
+			    strtcpy(insert_cls->SourceType, sourcetype, sizeof(insert_cls->SourceType));
 
 			    /** Check for a keyword, which provides an identifier for the insert path **/
 			    if (t == MLX_TOK_KEYWORD || t == MLX_TOK_STRING)
@@ -2328,6 +2409,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 		    collfrom = 0;
 		    nonempty = 0;
 		    paged = 0;
+		    sourcetype[0] = '\0';
 		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("identity", ptr))
 			{
 			t = mlxNextToken(lxs);
@@ -2367,6 +2449,22 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 			{
 			t = mlxNextToken(lxs);
 			paged = 1;
+			}
+		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("type", ptr))
+			{
+			t = mlxNextToken(lxs);
+			if (t == MLX_TOK_STRING)
+			    {
+			    mlxCopyToken(lxs, sourcetype, sizeof(sourcetype));
+			    t = mlxNextToken(lxs);
+			    }
+			else
+			    {
+			    next_state = ParseError;
+			    mssError(1,"MQ","In FROM clause: TYPE keyword must be followed by object type string");
+			    mlxNoteError(lxs);
+			    break;
+			    }
 			}
 		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("expression", ptr))
 			{
@@ -2431,6 +2529,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 		    new_qs->Presentation[0] = 0;
 		    new_qs->Name[0] = 0;
 		    new_qs->Source[0] = 0;
+		    strtcpy(new_qs->SourceType, sourcetype, sizeof(new_qs->SourceType));
 		    if (subtr) new_qs->Flags |= MQ_SF_FROMSUBTREE;
 		    if (inclsubtr) new_qs->Flags |= MQ_SF_INCLSUBTREE;
 		    if (prunesubtr) new_qs->Flags |= MQ_SF_PRUNESUBTREE;
@@ -2446,24 +2545,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 		    parenlevel = 0;
 		    if (expfrom)
 			{
-			do /* while (parenlevel > 0) */
-			    {
-			    if (t == MLX_TOK_OPENPAREN) parenlevel++;
-			    if (t == MLX_TOK_CLOSEPAREN) parenlevel--;
-			    if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
-				break;
-			    if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
-				break;
-			    ptr = mlxStringVal(lxs, NULL);
-			    if (!ptr) break;
-			    if (t == MLX_TOK_STRING)
-				xsConcatQPrintf(&new_qs->RawData, "%STR&DQUOT", ptr);
-			    else
-				xsConcatenate(&new_qs->RawData, ptr, -1);
-			    xsConcatenate(&new_qs->RawData," ",1);
-			    t = mlxNextToken(lxs);
-			    }
-			    while (parenlevel > 0);
+			t = mq_internal_ParseExpressionSource(lxs, new_qs);
 			}
 		    else
 			{
@@ -2620,7 +2702,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 	    }
 
 	/** Ok, postprocess the expression trees, etc. **/
-	if (qs && mq_internal_PostProcess(stmt, qs, select_cls, from_cls, where_cls, orderby_cls, groupby_cls, crosstab_cls, update_cls, delete_cls, ondup_cls, declare_cls) < 0)
+	if (qs && mq_internal_PostProcess(stmt, qs, select_cls, from_cls, where_cls, orderby_cls, groupby_cls, crosstab_cls, insert_cls, update_cls, delete_cls, ondup_cls, declare_cls) < 0)
 	    {
 	    mq_internal_FreeQS(qs);
 	    mssError(0,"MQ","Could not postprocess multiquery");

@@ -115,6 +115,7 @@ typedef struct _QS
     int			ObjID;
     char		Presentation[32];
     char		Source[MQ_MAX_SOURCELEN];
+    char		SourceType[64];
     char		Name[32];
     int			ObjFlags[EXPR_MAX_PARAMS];
     int			ObjCnt;
