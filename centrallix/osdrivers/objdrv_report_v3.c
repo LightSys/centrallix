@@ -5734,8 +5734,8 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	inf->NextUserDataSlot = 1;
 
 	/** Content type must be application/octet-stream or more specific. **/
-	rval = objIsA(inf->DocumentFormat, "application/octet-stream");
-	if (rval == OBJSYS_NOT_ISA)
+	rval = objIsRelatedType(inf->DocumentFormat, "application/octet-stream");
+	if (rval == OBJSYS_NOT_RELATED)
 	    {
 	    mssError(1,"RPT","Requested content type must be at least application/octet-stream");
 	    goto error;
