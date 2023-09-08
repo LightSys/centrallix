@@ -1246,6 +1246,22 @@ uxdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		    mssError(1, "UXD", "Improperly formatted autoname pathname");
 		    return -1;
 		    }
+
+		if (inf->Flags & UXD_F_ISDIR)
+		    {
+		    /** Create directory at this point.  Since it is a directory, we look
+		     ** at the read permissions in the Mask and also interpret those as
+		     ** directory exec (traverse) permissions.
+		     **/
+		    if (mkdir(inf->RealPathname, inf->Mask | ((inf->Mask & 0444)>>2)) < 0)
+			{
+			if (errno != EEXIST || (inf->Mode & OBJ_O_EXCL))
+			    {
+			    mssErrorErrno(1, "UXD", "Could not create directory");
+			    return -1;
+			    }
+			}
+		    }
 		}
 	    /*if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
 	    if (strlen(inf->Obj->Pathname->Pathbuf) - 
