@@ -434,11 +434,10 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    }
 	
 	/** Avoid any errors from drivers that do not suport content_charset **/
-	/** TODO: make sure this is properly handling this error neutrally **/ 
 	if(rval < 0 && !strcmp(attrname, "content_charset"))
 	    {
 	    rval = 0;
-	    val->String = "wouldn't you like to know"; //NULL;
+	    val->String = NULL;
 	    }
 
     return rval;
@@ -562,7 +561,6 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    }
 
 	/** Avoid any errors from drivers that do not suport content_charset **/
-	/** TODO: make sure this is properly handling this error neutrally **/ 
 	if(rval < 0 && !strcmp(attrname, "content_charset"))
 	    rval = 0;
 

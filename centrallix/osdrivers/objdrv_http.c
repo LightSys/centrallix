@@ -1729,13 +1729,11 @@ http_internal_GetPageStream(pHttpData inf)
 		    }
 		else if(inf->ExpectedContentCharset)
 		    inf->ContentCharset = nmSysStrdup(inf->ExpectedContentCharset);
-printf("******** HTTP: set content based on header: %s\n\n", inf->ContentCharset);
 		}
 	    else
 		{
 		inf->ContentType = nmSysStrdup(inf->RestrictContentType);
 		inf->ContentCharset = nmSysStrdup(inf->ExpectedContentCharset);
-printf("******** HTTP: no content type in header; set based on expected: %s\n\n", inf->ContentCharset);
 		}
 
 	    /** Make sure the content type is allowed **/
@@ -2163,7 +2161,6 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	inf->OverrideContentCharset = strcmp(http_internal_GetConfigString(inf, "override_content_charset", "false"), "true") == 0;
 	inf->Protocol = http_internal_GetConfigString(inf, "protocol", "http");
 	inf->Cipherlist = http_internal_GetConfigString(inf, "ssl_cipherlist", "");
-printf("\n******** HTTP: reading config - %s, %d\n\n", inf->ExpectedContentCharset, inf->OverrideContentCharset);
 
 	/** Valid method? **/
 	if (strcmp(inf->Method, "GET") && strcmp(inf->Method, "POST") && strcmp(inf->Method, "DELETE"))
@@ -2555,10 +2552,8 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 	    return 0;
 	    }
-/** FIXME: this does not appear to go through. Check if test obj compiled, if chain of internal storgae matches, etc... */
 	if (!strcmp(attrname,"content_charset"))
 	    {
-printf("\n******** HTTP: someone is checking for content_charset\n\n");
 	    if (datatype != DATA_T_STRING)
 		{
 		mssError(1,"HTTP","Type mismatch getting attribute '%s' [requested=%s, actual=string]",
