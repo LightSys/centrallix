@@ -65,7 +65,8 @@ objAddVirtualAttr(pObject this, char* attrname, void* context, int (*type_fn)(),
 	/** Must not already exist **/
 	if (!strcmp(attrname, "objcontent") || !strcmp(attrname,"name") || !strcmp(attrname,"cx__pathname") ||
 		!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type") ||
-		!strcmp(attrname,"outer_type") || !strcmp(attrname,"annotation") || !strncmp(attrname,"cx__pathpart",12))
+		!strcmp(attrname,"outer_type") || !strcmp(attrname,"annotation") || !strncmp(attrname,"cx__pathpart",12) || 
+		!strncmp(attrname,"content_charset",12))
 	    {
 	    mssError(1, "OSML", "Virtual Attribute '%s' already exists in object.", attrname);
 	    return -1;
@@ -126,7 +127,7 @@ objGetAttrType(pObject this, char* attrname)
 	if (!strcmp(attrname,"name") || !strcmp(attrname,"cx__pathname")) return DATA_T_STRING;
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type") ||
 		!strcmp(attrname,"outer_type")) return DATA_T_STRING;
-	if (!strcmp(attrname,"annotation")) return DATA_T_STRING;
+	if (!strcmp(attrname,"annotation") || !strcmp(attrname,"content_charset")) return DATA_T_STRING;
 
 	if (!strncmp(attrname,"cx__pathpart", 12))
 	    {
@@ -348,7 +349,9 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 
 	/** Get the type from the lowlevel driver **/
 	used_expr = 0;
-	if (!strcmp(attrname,"name") || !strcmp(attrname,"inner_type") || !strcmp(attrname,"outer_type") || !strcmp(attrname, "content_type") || !strcmp(attrname, "annotation") || !strcmp(attrname,"objcontent"))
+	if (!strcmp(attrname,"name") || !strcmp(attrname,"inner_type") || !strcmp(attrname,"outer_type") ||
+		!strcmp(attrname, "content_type") || !strcmp(attrname, "annotation") || !strcmp(attrname,"objcontent") ||
+		!strcmp(attrname, "content_charset"))
 	    osmltype = DATA_T_STRING;
 	else
 	    osmltype = this->Driver->GetAttrType(this->Data,attrname,&(this->Session->Trx));
@@ -429,7 +432,15 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    rval = 0;
 	    val->String = "";
 	    }
- 
+	
+	/** Avoid any errors from drivers that do not suport content_charset **/
+	/** TODO: make sure this is properly handling this error neutrally **/ 
+	if(rval < 0 && !strcmp(attrname, "content_charset"))
+	    {
+	    rval = 0;
+	    val->String = "wouldn't you like to know"; //NULL;
+	    }
+
     return rval;
     }
 
@@ -485,6 +496,7 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 #endif
 
 	/** Nulls not allowed on system attributes **/
+	/** NOTE: for now, since content_charset is not widely supported, let it be set to NULL **/
 	if (!val && (!strcmp(attrname,"name") || !strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type") || !strcmp(attrname,"outer_type")))
 	    {
 	    mssError(1, "OSML", "'%s' attribute cannot be set to NULL", attrname);
@@ -548,6 +560,11 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    if (!str) str = "";
 	    obj_internal_TrxLog(this, "setattr", "%STR&DQUOT,%INT,%STR&DQUOT", attrname, data_type, str);*/
 	    }
+
+	/** Avoid any errors from drivers that do not suport content_charset **/
+	/** TODO: make sure this is properly handling this error neutrally **/ 
+	if(rval < 0 && !strcmp(attrname, "content_charset"))
+	    rval = 0;
 
     return rval;
     }

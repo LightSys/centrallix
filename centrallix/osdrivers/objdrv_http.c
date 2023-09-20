@@ -129,6 +129,9 @@ typedef struct
     char*	ContentType;		/* actual content type provided by remote http server */
     char*	RequestContentType;	/* content type of request sent to the server */
     char*	RestrictContentType;	/* restriction on content type allowed in the response */
+    char *	ContentCharset;		/* the charset provided by the remote http server */
+    char *	ExpectedContentCharset; /* provide the ability to force an expected charset */
+    int		OverrideContentCharset;	/* when true, the actual charset withh be overwritten with the specifiied*/
     XArray	RequestHeaders;		/* of pHttpHeader */
     XArray	ResponseHeaders;	/* of pHttpHeader */
     int		ModDateAlwaysNow;
@@ -480,6 +483,10 @@ http_internal_Cleanup(pHttpData inf)
 	    inf->ProxyPort = NULL;
 	    if (inf->ContentType) nmSysFree(inf->ContentType);
 	    inf->ContentType = NULL;
+	    if (inf->ContentCharset) nmSysFree(inf->ContentCharset);
+	    inf->ContentCharset = NULL;
+	    if (inf->ExpectedContentCharset) nmSysFree(inf->ExpectedContentCharset);
+	    inf->ExpectedContentCharset = NULL;
 
 	    /** Close socket, if needed **/
 	    http_internal_CloseConnection(inf);
@@ -1712,10 +1719,23 @@ http_internal_GetPageStream(pHttpData inf)
 		inf->ContentType = nmSysStrdup(hdr_val);
 		if (strchr(inf->ContentType, ';'))
 		    *(strchr(inf->ContentType, ';')) = '\0';
+		/* add charset if present */
+		char * charsetStart = NULL;
+		if((charsetStart = strchr(hdr_val, "charset=")) != NULL && !inf->OverrideContentCharset)
+		    {
+		    inf->ContentCharset = nmSysStrdup(charsetStart+8);
+		    if (strchr(inf->ContentCharset, ';'))
+			*(strchr(inf->ContentCharset, ';')) = '\0';
+		    }
+		else if(inf->ExpectedContentCharset)
+		    inf->ContentCharset = nmSysStrdup(inf->ExpectedContentCharset);
+printf("******** HTTP: set content based on header: %s\n\n", inf->ContentCharset);
 		}
 	    else
 		{
 		inf->ContentType = nmSysStrdup(inf->RestrictContentType);
+		inf->ContentCharset = nmSysStrdup(inf->ExpectedContentCharset);
+printf("******** HTTP: no content type in header; set based on expected: %s\n\n", inf->ContentCharset);
 		}
 
 	    /** Make sure the content type is allowed **/
@@ -2139,8 +2159,11 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	inf->Method = http_internal_GetConfigString(inf, "method", "GET");
 	inf->RequestContentType = http_internal_GetConfigString(inf, "request_content_type", "application/x-www-form-urlencoded");
 	inf->RestrictContentType = http_internal_GetConfigString(inf, "restrict_content_type", "application/octet-stream");
+	inf->ExpectedContentCharset = http_internal_GetConfigString(inf, "expected_content_charset", NULL);
+	inf->OverrideContentCharset = strcmp(http_internal_GetConfigString(inf, "override_content_charset", "false"), "true") == 0;
 	inf->Protocol = http_internal_GetConfigString(inf, "protocol", "http");
 	inf->Cipherlist = http_internal_GetConfigString(inf, "ssl_cipherlist", "");
+printf("\n******** HTTP: reading config - %s, %d\n\n", inf->ExpectedContentCharset, inf->OverrideContentCharset);
 
 	/** Valid method? **/
 	if (strcmp(inf->Method, "GET") && strcmp(inf->Method, "POST") && strcmp(inf->Method, "DELETE"))
@@ -2529,6 +2552,25 @@ httpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		val->String = inf->ContentType;
 	    else
 		val->String = "application/octet-stream";
+
+	    return 0;
+	    }
+/** FIXME: this does not appear to go through. Check if test obj compiled, if chain of internal storgae matches, etc... */
+	if (!strcmp(attrname,"content_charset"))
+	    {
+printf("\n******** HTTP: someone is checking for content_charset\n\n");
+	    if (datatype != DATA_T_STRING)
+		{
+		mssError(1,"HTTP","Type mismatch getting attribute '%s' [requested=%s, actual=string]",
+			attrname, obj_type_names[datatype]);
+		return -1;
+		}
+
+	    if (inf->ContentCharset)
+		val->String = inf->ContentCharset;
+	    else
+		/* there is no standard expected charset for now */
+		val->String = NULL;
 
 	    return 0;
 	    }

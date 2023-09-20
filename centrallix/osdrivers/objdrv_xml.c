@@ -434,6 +434,20 @@ xml_internal_CloseCachedDocument(pXmlCacheObj document)
     return 0;
     }
 
+/** used for call to xmlCreateIOParserContext*/
+int
+xml_read_wrapper (void * context, char * buffer, int len)
+    {
+    printf("\n*********** XML: Yay, we read! \n\n");
+    return objRead(context,buffer,XML_BLOCK_SIZE,0,0);
+    }
+
+int
+xml_close_wrapper (void * context)
+    {
+    printf("\n*********** XML: Yay, we closed! \n\n");
+    return 0;
+    }
 
 pXmlCacheObj
 xml_internal_ReadDoc(pObject obj)
@@ -487,18 +501,37 @@ xml_internal_ReadDoc(pObject obj)
 	    xmlKeepBlanksDefault (0);
 	    xmlLineNumbersDefault(1);
 #endif
+	    /** find the character set to translate from **/
+	    ObjData contentCharset;
+	    objGetAttrValue(obj->Prev, "content_charset", DATA_T_STRING, &contentCharset);
+	    /** TODO: make sure handle case of NULL well.*/
+printf("\n*********** XML: suggessted charset: %s\n\n", contentCharset.String);
+
 	    /** parse the document **/
 	    ptr=(char*)malloc(XML_BLOCK_SIZE);
-	    ctxt=xmlCreatePushParserCtxt(NULL,NULL,NULL,0,"unknown");
+	    /** TODO: switch to xmlCreateIOParserCtxt */
+	    /** open the file **/
 	    objRead(obj->Prev,ptr,0,0,FD_U_SEEK);
-	    while((bytes=objRead(obj->Prev,ptr,XML_BLOCK_SIZE,0,0))>0)
+	    ctxt=xmlCreateIOParserCtxt(NULL,  NULL,  (xmlInputReadCallback) xml_read_wrapper, 
+	    	(xmlInputCloseCallback) xml_close_wrapper, obj->Prev, xmlParseCharEncoding(NULL));//contentCharset.String));
+	    if(ctxt == NULL)
 		{
-		if(XML_DEBUG) printf("giving parser a chunk\n");
-		xmlParseChunk(ctxt,ptr,bytes,0);
-		if(XML_DEBUG) printf("parser done with the chunk\n");
+		mssError(0,"XML","Document failed to parse!");
+		return NULL;
 		}
-	    free(ptr);
-	    xmlParseChunk(ctxt,NULL,0,1);
+	    ctxt->myDoc = xmlCtxtReadIO(ctxt, (xmlInputReadCallback) xml_read_wrapper, 
+	    	(xmlInputCloseCallback) xml_close_wrapper, obj->Prev, NULL, "utf-8", NULL);
+printf("**************** huh, still here...?\n");
+//	    ctxt=xmlCreatePushParserCtxt(NULL,NULL,NULL,0,"unknown");
+//	    objRead(obj->Prev,ptr,0,0,FD_U_SEEK);
+//	    while((bytes=objRead(obj->Prev,ptr,XML_BLOCK_SIZE,0,0))>0)
+//		{
+//		if(XML_DEBUG) printf("giving parser a chunk\n");
+//		xmlParseChunk(ctxt,ptr,bytes,0);
+//		if(XML_DEBUG) printf("parser done with the chunk\n");
+//		}
+//	    free(ptr);
+//	    xmlParseChunk(ctxt,NULL,0,1);
 
 	    /** get the document reference **/
 	    if(!ctxt->myDoc)
