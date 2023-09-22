@@ -1721,7 +1721,7 @@ http_internal_GetPageStream(pHttpData inf)
 		    *(strchr(inf->ContentType, ';')) = '\0';
 		/* add charset if present */
 		char * charsetStart = NULL;
-		if((charsetStart = strchr(hdr_val, "charset=")) != NULL && !inf->OverrideContentCharset)
+		if((charsetStart = strstr(hdr_val, "charset=")) != NULL && !inf->OverrideContentCharset)
 		    {
 		    inf->ContentCharset = nmSysStrdup(charsetStart+8);
 		    if (strchr(inf->ContentCharset, ';'))
@@ -1733,7 +1733,8 @@ http_internal_GetPageStream(pHttpData inf)
 	    else
 		{
 		inf->ContentType = nmSysStrdup(inf->RestrictContentType);
-		inf->ContentCharset = nmSysStrdup(inf->ExpectedContentCharset);
+		if(inf->ExpectedContentCharset)
+			inf->ContentCharset = nmSysStrdup(inf->ExpectedContentCharset);
 		}
 
 	    /** Make sure the content type is allowed **/
