@@ -836,16 +836,28 @@ function osrc_delete_record(recnum, client)
 	this.SyncID = osrc_syncid++; // force any client osrc's to resync
 	if (this.CurrentRecord > this.LastRecord)
 	    {
+	    // Force fetch of records after current last one, if available.
 	    this.CurrentRecord--;
 	    this.MoveToRecord(this.CurrentRecord+1, true);
 	    }
+	else if (this.FirstRecord <= this.LastRecord)
+	    {
+	    // At least one record left
+	    this.MoveToRecord(this.CurrentRecord, true);
+	    }
 	else
 	    {
-	    this.MoveToRecord(this.CurrentRecord, true);
+	    // No more records, mark values as changing to null.
+	    for (var j in cr)
+		{
+		if (j == 'oid') continue;
+		this.ifcProbe(ifValue).Changing(cr[j].oid, null, true, cr[j].value, true);
+		}
 	    }
 	}
     if (client)
 	client.OperationComplete(true, this);
+    this.ifcProbe(ifEvent).Activate("Deleted", {});
     }
 
 function osrc_action_create(aparam)
@@ -2109,7 +2121,7 @@ function osrc_give_all_current_record(why)
 	}
     for(var i in this.child)
 	this.GiveOneCurrentRecord(i, why);
-    this.ifcProbe(ifEvent).Activate("DataFocusChanged", { Refresh:(this.doing_refresh?1:0) });
+    this.ifcProbe(ifEvent).Activate("DataFocusChanged", { Refresh:(this.doing_refresh?1:0), Reason:why });
     this.doing_refresh = false;
     //confirm('give_all_current_record done');
     }
@@ -4251,6 +4263,7 @@ function osrc_init(param)
     ie.Add("Results");
     ie.Add("BeginQuery");
     ie.Add("Created");
+    ie.Add("Deleted");
     ie.Add("Modified");
     ie.Add("DataSaved");
     ie.Add("ClientsSaved");
