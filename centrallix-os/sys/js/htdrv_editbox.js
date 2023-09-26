@@ -39,6 +39,8 @@ function eb_actionsetvalue(aparam)
 	this.changed=true;
 	cn_activate(this,"DataModify", {Value:aparam.Value, FromKeyboard:0, FromOSRC:0, OldValue:oldval});
 	}
+    // also check description
+    this.ifcProbe(ifAction).Invoke('SetValueDescription', aparam);
     }
 
 function eb_actionsetvaldesc(aparam)
