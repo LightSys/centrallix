@@ -1956,6 +1956,7 @@ function osrc_find_object_handler(aparam)
 	var id = parseInt(aparam.ID);
 	if (!id) id = 1;
 	this.MoveToRecord(id, from_internal);
+	this.ifcProbe(ifEvent).Activate('Found', {ID:id, Name:null, Column:null, Value:null});
 	}
     else if (typeof aparam.Name != 'undefined')
 	{
@@ -1969,7 +1970,10 @@ function osrc_find_object_handler(aparam)
 		if (col.oid == 'name')
 		    {
 		    if (col.value == aparam.Name)
+			{
 			this.MoveToRecord(i, from_internal);
+			this.ifcProbe(ifEvent).Activate('Found', {ID:null, Name:aparam.Name, Column:null, Value:null});
+			}
 		    break;
 		    }
 		}
@@ -1984,6 +1988,7 @@ function osrc_find_object_handler(aparam)
 	    {
 	    var rec = this.replica[i];
 	    var matched = true;
+	    var eparam = {ID:null, Name:null};
 	    for(var j in rec)
 		{
 		var col = rec[j];
@@ -1992,12 +1997,15 @@ function osrc_find_object_handler(aparam)
 		    {
 		    if (col.oid == k && col.value != aparam[k])
 			matched = false;
+		    else
+			eparam[k] = aparam[k];
 		    }
 		if (!matched) break;
 		}
 	    if (matched) // && i != this.CurrentRecord)
 		{
 		this.MoveToRecord(i, from_internal);
+		this.ifcProbe(ifEvent).Activate('Found', eparam);
 		break;
 		}
 	    }
@@ -4268,6 +4276,7 @@ function osrc_init(param)
     ie.Add("DataSaved");
     ie.Add("ClientsSaved");
     ie.Add("Sequenced");
+    ie.Add("Found");
 
     // Data Values
     var iv = loader.ifcProbeAdd(ifValue);
