@@ -1784,6 +1784,7 @@ function osrc_found_record()
 function osrc_fetch_next()
     {
     pg_debug(this.id + ": FetchNext() ==> " + pg_links(this).length + "\n");
+    var found = false;
     //alert('fetching....');
     if(!this.qid)
 	{
@@ -1829,7 +1830,10 @@ function osrc_fetch_next()
 	    {
 	    this.replica[this.OSMLRecord][j] = row[j];
 	    if (this.doing_refresh && this.refresh_objname && row[j].oid == 'name' && this.refresh_objname == row[j].value)
+		{
+		found = true;
 		this.CurrentRecord = this.OSMLRecord;
+		}
 	    }
 	}
     this.data_start = 1; // reset it
@@ -1879,6 +1883,10 @@ function osrc_fetch_next()
 	    else
 		{
 		this.FoundRecord();
+		}
+	    if (found)
+		{
+		this.ifcProbe(ifEvent).Activate('Found', {ID:null, Name:this.refresh_objname, Column:null, Value:null});
 		}
 	    }
 	}
@@ -1950,13 +1958,18 @@ function osrc_action_find_object(aparam)
 function osrc_find_object_handler(aparam)
     {
     var from_internal = (aparam.from_internal)?true:false;
+    var found = false;
     if (typeof aparam.ID != 'undefined')
 	{
 	// Find by record #
 	var id = parseInt(aparam.ID);
 	if (!id) id = 1;
 	this.MoveToRecord(id, from_internal);
-	this.ifcProbe(ifEvent).Activate('Found', {ID:id, Name:null, Column:null, Value:null});
+	if (this.replica[id] && this.replica[id].oid)
+	    {
+	    found = true;
+	    this.ifcProbe(ifEvent).Activate('Found', {ID:id, Name:null, Column:null, Value:null});
+	    }
 	}
     else if (typeof aparam.Name != 'undefined')
 	{
@@ -1972,6 +1985,7 @@ function osrc_find_object_handler(aparam)
 		    if (col.value == aparam.Name)
 			{
 			this.MoveToRecord(i, from_internal);
+			found = true;
 			this.ifcProbe(ifEvent).Activate('Found', {ID:null, Name:aparam.Name, Column:null, Value:null});
 			}
 		    break;
@@ -2005,10 +2019,15 @@ function osrc_find_object_handler(aparam)
 	    if (matched) // && i != this.CurrentRecord)
 		{
 		this.MoveToRecord(i, from_internal);
+		found = true;
 		this.ifcProbe(ifEvent).Activate('Found', eparam);
 		break;
 		}
 	    }
+	}
+    if (!found)
+	{
+	this.ifcProbe(ifEvent).Activate('NotFound', aparam);
 	}
     }
 
@@ -4277,6 +4296,7 @@ function osrc_init(param)
     ie.Add("ClientsSaved");
     ie.Add("Sequenced");
     ie.Add("Found");
+    ie.Add("NotFound");
 
     // Data Values
     var iv = loader.ifcProbeAdd(ifValue);
