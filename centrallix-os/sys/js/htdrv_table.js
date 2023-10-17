@@ -894,6 +894,15 @@ function tbld_showdetail(on_new)
     }
 
 
+function tbld_detail_showcontainer()
+    {
+    if (this.table.selected_row)
+	{
+	this.table.ShowSelection();
+	}
+    }
+
+
 function tbld_update_detail(dw)
     {
     if (dw.display_for && (this.table.initselect !== 2 || (this.table.initselect == 2 && dw.on_new)) /* 2 = noexpand */ && (!dw.on_new || wgtrGetServerProperty(dw, 'show_on_new', 0)))
@@ -1993,6 +2002,7 @@ function tbld_init(param)
     t.CheckHighlight = tbld_check_highlight;
     t.UpdateGeom = tbld_update_geom;
     t.ReflowWidth = tbld_reflow_width;
+    t.ShowSelection = tbld_show_selection;
 
     // ObjectSource integration
     t.IsDiscardReady = new Function('return true;');
@@ -2210,6 +2220,7 @@ function tbld_init(param)
 	ie.Add("Close");
 	var iv = dw.ifcProbeAdd(ifValue);
 	iv.Add("display_for", tbld_get_displayfor, tbld_set_displayfor);
+	dw.showcontainer = tbld_detail_showcontainer;
 	}
 
     // Easing function for touch drag
