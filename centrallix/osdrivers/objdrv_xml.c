@@ -448,15 +448,20 @@ xml_internal_ReadDoc(pObject obj)
 	/** Determine path of just the XML file itself **/
 	path=obj_internal_PathPart(obj->Pathname,0,obj->SubPtr);
 
+/** TODO: use a full path including params for the cache check **/
+//char hash[4 + OBJSYS_MAX_PATH*2];
+//obj_internal_GetDCHash(obj->Pathname, obj->Mode, hash, (4 + OBJSYS_MAX_PATH*2), obj->SubPtr);
+
 	/** Check cache for an existing copy already **/
 	if((pCache=(pXmlCacheObj)xhLookup(&XML_INF.cache, path)))
 	    {
 	    if(XML_DEBUG) printf("found %s in cache\n", path);
 
 	    /** found match in cache -- check modification time **/
-	    if(objGetAttrValue(obj->Prev, "last_modification", DATA_T_DATETIME, POD(&pDT))==0)
+	    /** FIXME: Rigged the following to always reset the cache **/ 
+	    if(objGetAttrValue(obj->Prev, "last_modification", DATA_T_DATETIME, POD(&pDT))==0 || 1)
 		{
-		if(pDT && pDT->Value!=pCache->lastmod.Value)
+		if(pDT && pDT->Value!=pCache->lastmod.Value || 1)
 		    {
 		    /** modification time changed -- update **/
 		    xhRemove(&XML_INF.cache, path);
