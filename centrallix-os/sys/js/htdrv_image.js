@@ -64,6 +64,9 @@ function im_action_load_image(aparam)
     else
 	return;
 
+    if (!newurl)
+	newurl = "/sys/images/trans_1.gif";
+
     // parameters
     for(var p in aparam)
 	{

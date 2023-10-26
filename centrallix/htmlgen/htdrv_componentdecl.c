@@ -83,9 +83,10 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
     /*char* nptr;*/
 //    pObject subobj = NULL;
     pWgtrNode sub_tree = NULL;
+    pWgtrNode conn_tree = NULL;
     XArray attrs;
     pHTCmpdParam param;
-    int i;
+    int i, j;
     int rval = 0;
     int is_visual = 1;
     char gbuf[256];
@@ -352,7 +353,22 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    if (strcmp(ptr,"widget/component-decl-action") && 
 		    strcmp(ptr,"widget/component-decl-event") &&
 		    strcmp(ptr,"widget/component-decl-cprop"))
+		{
 		htrRenderWidget(s, sub_tree, z+2);
+		}
+	    else if (strcmp(ptr,"widget/component-decl-action") == 0)
+		{
+		/** allow connectors inside component-decl-action **/
+		for (j=0;j<xaCount(&(sub_tree->Children));j++)
+		    {
+		    conn_tree = xaGetItem(&(sub_tree->Children), j);
+		    wgtrGetPropertyValue(conn_tree, "outer_type", DATA_T_STRING, POD(&ptr));
+		    if (strcmp(ptr,"widget/connector") == 0)
+			{
+			htrRenderWidget(s, conn_tree, z+2);
+			}
+		    }
+		}
 	    sub_tree = NULL;
 	    }
 

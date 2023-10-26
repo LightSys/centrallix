@@ -59,7 +59,7 @@
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #endif
 
-#define OBJSYS_NOT_ISA		(0x80000000)
+#define OBJSYS_NOT_RELATED	(0x80000000)
 
 #define OBJ_U_SEEK	FD_U_SEEK
 #define OBJ_U_PACKET	FD_U_PACKET
@@ -650,7 +650,7 @@ pObjectInfo objInfo(pObject this);
 char* objGetPathname(pObject this);
 int objImportFile(pObjSession sess, char* source_filename, char* dest_osml_dir, char* new_osml_name, int new_osml_name_len);
 pContentType objTypeFromName(char* name);
-int objIsA(char* type1, char* type2);
+int objIsRelatedType(char* type1, char* type2);
 
 /** objectsystem directory/query functions **/
 pObjQuery objMultiQuery(pObjSession session, char* query, void* objlist, int flags);

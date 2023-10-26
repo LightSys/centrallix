@@ -1738,8 +1738,8 @@ http_internal_GetPageStream(pHttpData inf)
 		}
 
 	    /** Make sure the content type is allowed **/
-	    rval = objIsA(inf->ContentType, inf->RestrictContentType);
-	    if (rval < 0 || rval == OBJSYS_NOT_ISA)
+	    rval = objIsRelatedType(inf->ContentType, inf->RestrictContentType);
+	    if (rval < 0 || rval == OBJSYS_NOT_RELATED)
 		{
 		mssError(1, "HTTP", "Content type '%s' returned by server is not allowed (only '%s' and descendent types allowed)", inf->ContentType, inf->RestrictContentType);
 		goto error;

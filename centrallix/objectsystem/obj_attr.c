@@ -420,7 +420,7 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
     	/** Inner/content type, and OSML has a better idea than driver? **/
 	if ((!strcmp(attrname,"inner_type") || !strcmp(attrname,"content_type")) && rval==0 && this->Type)
 	    {
-	    if (objIsA(this->Type->Name, val->String) > 0)
+	    if (objIsRelatedType(this->Type->Name, val->String) > 0)
 	        {
 	        val->String = this->Type->Name;
 		}

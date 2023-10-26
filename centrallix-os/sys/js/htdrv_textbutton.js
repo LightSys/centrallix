@@ -128,7 +128,10 @@ function tb_action_settext(aparam)
 function tb_action_click(aparam)
     {
     if (this.enabled)
-	this.ifcProbe(ifEvent).Activate('Click', {});
+	{
+	aparam.from_action = 1;
+	this.ifcProbe(ifEvent).Activate('Click', aparam);
+	}
     }
 
 // used by ifValue
@@ -330,7 +333,7 @@ function tb_mouseup(e)
 	    if (ly.mode == 2)
 		{
 		tb_setmode(ly,1);
-		ly.ifcProbe(ifEvent).Activate('Click', {});
+		ly.ifcProbe(ifEvent).Activate('Click', { from_action:0 });
 		ly.ifcProbe(ifEvent).Activate('MouseUp', {});
 		}
             }

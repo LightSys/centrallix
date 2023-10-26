@@ -1381,8 +1381,8 @@ nht_i_ParsePostPayload(pNhtConn conn)
      ** a subtype of application/octet-stream (this basically makes sure we know
      ** about the file type).
      **/
-    rval = objIsA(payload->mime_type, "application/octet-stream");
-    if (rval == OBJSYS_NOT_ISA)
+    rval = objIsRelatedType(payload->mime_type, "application/octet-stream");
+    if (rval == OBJSYS_NOT_RELATED)
 	{
 	mssError(1,"NHT","Disallowed file MIME type for upload POST request");
 	payload->status = -1;
@@ -1429,7 +1429,7 @@ nht_i_ParsePostPayload(pNhtConn conn)
 	    apparent_type = ct->Name;
 	else
 	    apparent_type = "application/octet-stream";
-	if (objIsA(apparent_type, payload->mime_type) == OBJSYS_NOT_ISA)
+	if (objIsRelatedType(apparent_type, payload->mime_type) == OBJSYS_NOT_RELATED)
 	    {
 	    mssError(1,"NHT","Unknown or mismatched file type and file extension for POST upload request");
 	    payload->status = -1;
@@ -2267,7 +2267,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 
 #ifdef HAVE_LIBZ
 		if(	NHT.EnableGzip && /* global enable flag */
-			objIsA(ptr,"text/plain")>0 /* a subtype of text/plain */
+			objIsRelatedType(ptr,"text/plain")>0 /* a subtype of text/plain */
 			&& acceptencoding && strstr(acceptencoding,"gzip") /* browser wants it gzipped */
 			&& (!strcmp(ptr,"text/html") || (browser && regexec(NHT.reNet47,browser,(size_t)0,NULL,0) != 0 ) )
 			/* only gzip text/html for Netscape 4.7, which doesn't like it if we gzip .js files */

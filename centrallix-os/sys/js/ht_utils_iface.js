@@ -687,18 +687,19 @@ function ifEvent()
 	if (this._NullNotExist && a.exists == false) return true;
 	return a.exists;
 	}
-    function ifvalue_change_cb(a, ov, nv)
+    function ifvalue_change_cb(a, ov, nv, n, obj)
 	{
-	return this.ifcProbe(ifValue).Changing(a, nv, false, ov);
+	return obj.ifcProbe(ifValue).Changing(n, nv, false, ov);
 	}
     function ifvalue_add(n, get_cb, set_cb)	
 	{
 	var a = this._CheckExist(n);
 	if (typeof get_cb == 'string')
 	    {
+	    let obj = a.obj;
 	    a.propname = get_cb;
-	    a.obj.__ifvalue_changed = ifvalue_change_cb;
-	    htr_watch(a.obj, a.propname, '__ifvalue_changed');
+	    a.obj['__ifvalue_changed_' + n] = (a, ov, nv) => this._ChangeCB(a, ov, nv, n, obj);
+	    htr_watch(a.obj, a.propname, '__ifvalue_changed_' + n);
 	    }
 	else
 	    {
@@ -769,6 +770,7 @@ function ifValue()
     {
     // Internal declarations
     this._CheckExist = ifvalue_checkexist;
+    this._ChangeCB = ifvalue_change_cb;
     this._NullNotExist = null; // if defined, this is the handler that runs whenever a value is null or does not exist (instead of an error occurring)
     this._Attributes = {};
 

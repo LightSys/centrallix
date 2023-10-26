@@ -836,16 +836,28 @@ function osrc_delete_record(recnum, client)
 	this.SyncID = osrc_syncid++; // force any client osrc's to resync
 	if (this.CurrentRecord > this.LastRecord)
 	    {
+	    // Force fetch of records after current last one, if available.
 	    this.CurrentRecord--;
 	    this.MoveToRecord(this.CurrentRecord+1, true);
 	    }
+	else if (this.FirstRecord <= this.LastRecord)
+	    {
+	    // At least one record left
+	    this.MoveToRecord(this.CurrentRecord, true);
+	    }
 	else
 	    {
-	    this.MoveToRecord(this.CurrentRecord, true);
+	    // No more records, mark values as changing to null.
+	    for (var j in cr)
+		{
+		if (j == 'oid') continue;
+		this.ifcProbe(ifValue).Changing(cr[j].oid, null, true, cr[j].value, true);
+		}
 	    }
 	}
     if (client)
 	client.OperationComplete(true, this);
+    this.ifcProbe(ifEvent).Activate("Deleted", {});
     }
 
 function osrc_action_create(aparam)
@@ -919,6 +931,7 @@ function osrc_action_create_cb()
     var links = pg_links(this);
     if(links && links[0] && links[0].target != 'ERR')
 	{
+	var oldcur = this.CurrentRecord;
 	if (this.FinalRecord == this.LastRecord)
 	    this.FinalRecord++;
 	this.LastRecord++;
@@ -968,6 +981,27 @@ function osrc_action_create_cb()
 		cr[max_j].id = max_j;
 		cr[max_j].hints = server_rec[i].hints;
 		}
+	    }
+
+	// Mark values as changing
+	for (var j in cr)
+	    {
+	    if (j == 'oid') continue;
+	    var oldrec = this.replica[this.oldcur];
+	    var oldval = null;
+	    if (oldrec)
+		{
+		for(var i in oldrec)
+		    {
+		    if (i == 'oid') continue;
+		    if (oldrec[i].oid == cr[j].oid)
+			{
+			oldval = oldrec[i].value;
+			break;
+			}
+		    }
+		}
+	    this.ifcProbe(ifValue).Changing(cr[j].oid, cr[j].value, true, oldval, true);
 	    }
 
 	//alert(this.replica[this.CurrentRecord].oid);
@@ -1285,7 +1319,7 @@ function osrc_cb_query_continue_2()
 	     this.child[i]._osrc_ready=false;
 	     }*/
 
-	if (!this.do_append) this.ClearReplica();
+	//if (!this.do_append) this.ClearReplica();
 	this.moveop=true;
 
 	this.OpenSession(this.OpenQuery);
@@ -1750,6 +1784,7 @@ function osrc_found_record()
 function osrc_fetch_next()
     {
     pg_debug(this.id + ": FetchNext() ==> " + pg_links(this).length + "\n");
+    var found = false;
     //alert('fetching....');
     if(!this.qid)
 	{
@@ -1795,7 +1830,10 @@ function osrc_fetch_next()
 	    {
 	    this.replica[this.OSMLRecord][j] = row[j];
 	    if (this.doing_refresh && this.refresh_objname && row[j].oid == 'name' && this.refresh_objname == row[j].value)
+		{
+		found = true;
 		this.CurrentRecord = this.OSMLRecord;
+		}
 	    }
 	}
     this.data_start = 1; // reset it
@@ -1845,6 +1883,10 @@ function osrc_fetch_next()
 	    else
 		{
 		this.FoundRecord();
+		}
+	    if (found)
+		{
+		this.ifcProbe(ifEvent).Activate('Found', {ID:null, Name:this.refresh_objname, Column:null, Value:null});
 		}
 	    }
 	}
@@ -1916,12 +1958,18 @@ function osrc_action_find_object(aparam)
 function osrc_find_object_handler(aparam)
     {
     var from_internal = (aparam.from_internal)?true:false;
+    var found = false;
     if (typeof aparam.ID != 'undefined')
 	{
 	// Find by record #
 	var id = parseInt(aparam.ID);
 	if (!id) id = 1;
 	this.MoveToRecord(id, from_internal);
+	if (this.replica[id] && this.replica[id].oid)
+	    {
+	    found = true;
+	    this.ifcProbe(ifEvent).Activate('Found', {ID:id, Name:null, Column:null, Value:null});
+	    }
 	}
     else if (typeof aparam.Name != 'undefined')
 	{
@@ -1935,7 +1983,11 @@ function osrc_find_object_handler(aparam)
 		if (col.oid == 'name')
 		    {
 		    if (col.value == aparam.Name)
+			{
 			this.MoveToRecord(i, from_internal);
+			found = true;
+			this.ifcProbe(ifEvent).Activate('Found', {ID:null, Name:aparam.Name, Column:null, Value:null});
+			}
 		    break;
 		    }
 		}
@@ -1950,6 +2002,7 @@ function osrc_find_object_handler(aparam)
 	    {
 	    var rec = this.replica[i];
 	    var matched = true;
+	    var eparam = {ID:null, Name:null};
 	    for(var j in rec)
 		{
 		var col = rec[j];
@@ -1958,15 +2011,23 @@ function osrc_find_object_handler(aparam)
 		    {
 		    if (col.oid == k && col.value != aparam[k])
 			matched = false;
+		    else
+			eparam[k] = aparam[k];
 		    }
 		if (!matched) break;
 		}
 	    if (matched) // && i != this.CurrentRecord)
 		{
 		this.MoveToRecord(i, from_internal);
+		found = true;
+		this.ifcProbe(ifEvent).Activate('Found', eparam);
 		break;
 		}
 	    }
+	}
+    if (!found)
+	{
+	this.ifcProbe(ifEvent).Activate('NotFound', aparam);
 	}
     }
 
@@ -2087,7 +2148,7 @@ function osrc_give_all_current_record(why)
 	}
     for(var i in this.child)
 	this.GiveOneCurrentRecord(i, why);
-    this.ifcProbe(ifEvent).Activate("DataFocusChanged", {});
+    this.ifcProbe(ifEvent).Activate("DataFocusChanged", { Refresh:(this.doing_refresh?1:0), Reason:why });
     this.doing_refresh = false;
     //confirm('give_all_current_record done');
     }
@@ -2287,6 +2348,7 @@ function osrc_get_qid_startat()
 	{
 	this.DoFetch(this.TargetRecord - this.startat + 1);
 	}*/
+    if (!this.do_append) this.ClearReplica();
     if (lnk.length > 1)
 	{
 	// did an autofetch - we have the data already
@@ -4228,10 +4290,13 @@ function osrc_init(param)
     ie.Add("Results");
     ie.Add("BeginQuery");
     ie.Add("Created");
+    ie.Add("Deleted");
     ie.Add("Modified");
     ie.Add("DataSaved");
     ie.Add("ClientsSaved");
     ie.Add("Sequenced");
+    ie.Add("Found");
+    ie.Add("NotFound");
 
     // Data Values
     var iv = loader.ifcProbeAdd(ifValue);

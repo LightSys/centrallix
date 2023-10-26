@@ -127,6 +127,42 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     int use_attrid;
     int hc_rval;
     handle_t collection;
+    char* sourcetype;
+    pExpression source_exp;
+
+	/** Expression? **/
+	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION)
+	    {
+	    source_exp = ((pQueryStructure)qe->QSLinkage)->Expr;
+	    rval = expEvalTree(source_exp, stmt->Query->ObjList);
+	    if (rval < 0)
+		{
+		mssError(0, "MQP", "Error in expression for INSERT");
+		return -1;
+		}
+
+	    /** If NULL, no inserts are done. **/
+	    if (source_exp->Flags & EXPR_F_NULL)
+		{
+		return 0;
+		}
+
+	    /** If non-string, error. **/
+	    if (source_exp->DataType != DATA_T_STRING)
+		{
+		mssError(1, "MQP", "Expression for INSERT must be a string");
+		return -1;
+		}
+
+	    /** If too long, error **/
+	    if (strlen(source_exp->String) >= sizeof(((pQueryStructure)qe->QSLinkage)->Source))
+		{
+		mssError(1, "MQP", "Expression for INSERT resulted in an over-long string");
+		return -1;
+		}
+
+	    strtcpy(((pQueryStructure)qe->QSLinkage)->Source, source_exp->String, sizeof(((pQueryStructure)qe->QSLinkage)->Source));
+	    }
 
 	/** Prepare for the inserts **/
 	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_FROMOBJECT)
@@ -142,6 +178,9 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		}
 	    snprintf(pathname, sizeof(pathname), "%s/*", ((pQueryStructure)qe->QSLinkage)->Source);
 	    }
+	sourcetype = ((pQueryStructure)qe->QSLinkage)->SourceType;
+	if (!*sourcetype)
+	    sourcetype = "system/object";
     
 	/** Replace the previous __inserted object with NULL, in case insert fails **/
 	old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted", 0);
@@ -191,11 +230,11 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    /** open a new object **/
 	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
 		{
-		new_obj = objOpenChild(parent_obj, "*", OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+		new_obj = objOpenChild(parent_obj, "*", OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0666, sourcetype);
 		}
 	    else
 		{
-		new_obj = objOpen(stmt->Query->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+		new_obj = objOpen(stmt->Query->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0666, sourcetype);
 		}
 	    if (!new_obj)
 		goto error;

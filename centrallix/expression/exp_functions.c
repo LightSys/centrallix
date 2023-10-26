@@ -4362,7 +4362,7 @@ int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression passwor
     //check password and salt
     if (!password || !salt)
 	{
-	mssError(1, "EXP", "Invalid Parameters: Method requires two arguments");
+	mssError(1, "EXP", "Invalid Parameters: argon2id() requires two arguments");
 	return -1;
 	}
     else if ((password->Flags | salt->Flags) & EXPR_F_NULL)
