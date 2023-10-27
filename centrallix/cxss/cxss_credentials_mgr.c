@@ -62,13 +62,10 @@ cxssCredentialsManagerClose(void)
  *  @param cxss_userid          Centrallix User ID
  *  @param pb_userk ey          Password-based user encryption key (used to encrypt private key)
  *  @param keylength            Length of password-based user encryption key
- *  @param salt                 User salt
- *  @param salt_len             Length of user salt
  *  @return                     Status code   
  */
 int
-cxssAddUser(const char *cxss_userid, const char *pb_userkey, size_t pb_userkey_len, 
-            const char *salt, size_t salt_len)
+cxssAddUser(const char *cxss_userid, const char *pb_userkey, size_t pb_userkey_len)
 {
     CXSS_UserData UserData = {};
     CXSS_UserAuth UserAuth = {};
@@ -110,11 +107,9 @@ cxssAddUser(const char *cxss_userid, const char *pb_userkey, size_t pb_userkey_l
     UserAuth.CXSS_UserID = cxss_userid;
     UserAuth.PrivateKey = encrypted_privatekey;
     UserAuth.PrivateKeyIV = iv;
-    UserAuth.Salt = salt;
     UserAuth.DateCreated = current_timestamp;
     UserAuth.DateLastUpdated = current_timestamp;
     UserAuth.RemovalFlag = false;
-    UserAuth.SaltLength = salt_len;
     UserAuth.KeyLength = encr_privatekey_len;
     UserAuth.IVLength = sizeof(iv);
 
@@ -127,13 +122,13 @@ cxssAddUser(const char *cxss_userid, const char *pb_userkey, size_t pb_userkey_l
         goto error;
     }
 
-    free(encrypted_privatekey);
+    nmSysFree(encrypted_privatekey);
     cxssDestroyKey(privatekey, privatekey_len);
     cxssShred(pb_userkey, pb_userkey_len);    
     return CXSS_MGR_SUCCESS;
 
 error:
-    free(encrypted_privatekey);
+    nmSysFree(encrypted_privatekey);
     cxssDestroyKey(privatekey, privatekey_len);
     cxssShred(pb_userkey, pb_userkey_len);
     return CXSS_MGR_INSERT_ERROR;
@@ -173,7 +168,7 @@ cxssRetrieveUserPrivateKey(const char *cxss_userid, const char *pb_userkey, size
     return CXSS_MGR_SUCCESS;
 
 error:
-    free(*privatekey);
+    nmSysFree(*privatekey);
     cxssFreeUserAuth(&UserAuth);
     cxssShred(pb_userkey, pb_userkey_len);
     return CXSS_MGR_RETRIEVE_ERROR;
@@ -198,7 +193,7 @@ cxssRetrieveUserPublicKey(const char *cxss_userid, char **publickey, int *public
     }
    
     /* Allocate buffer for public key */
-    *publickey = malloc(UserData.KeyLength);
+    *publickey = nmSysMalloc(UserData.KeyLength);
     if (!(*publickey)) {
         mssError(0, "CXSS", "Memory allocation error\n");
         goto error;
@@ -227,7 +222,7 @@ error:
  *  @return                     Status code
  */
 int
-cxssAddResource(const char *cxss_userid, const char *resource_id, const char *auth_class,
+cxssAddResource(const char *cxss_userid, const char *resource_id, 
                 const char *resource_username, size_t username_len,
                 const char *resource_authdata, size_t authdata_len)
 {
@@ -290,7 +285,6 @@ cxssAddResource(const char *cxss_userid, const char *resource_id, const char *au
     /* Build struct */
     UserResc.CXSS_UserID = cxss_userid;
     UserResc.ResourceID = resource_id;
-    UserResc.AuthClass = auth_class;
     UserResc.AESKey = encrypted_rand_key;
     UserResc.ResourceUsername = encrypted_username;
     UserResc.ResourceAuthData = encrypted_password;
@@ -310,17 +304,17 @@ cxssAddResource(const char *cxss_userid, const char *resource_id, const char *au
         goto error;
     }
     
-    free(publickey);
-    free(encrypted_username);
-    free(encrypted_password);
+    nmSysFree(publickey);
+    nmSysFree(encrypted_username);
+    nmSysFree(encrypted_password);
     cxssShred(resource_username, username_len);
     cxssShred(resource_authdata, authdata_len);
     return CXSS_MGR_SUCCESS;
 
 error:
-    free(publickey);
-    free(encrypted_username);
-    free(encrypted_password);
+    nmSysFree(publickey);
+    nmSysFree(encrypted_username);
+    nmSysFree(encrypted_password);
     cxssShred(resource_username, username_len);
     cxssShred(resource_authdata, authdata_len);
     return CXSS_MGR_INSERT_ERROR;
@@ -416,7 +410,7 @@ cxss_deleteUser(const char *cxss_userid)
         mssError(0, "CXSS", "Failed to delete user data\n");
         return CXSS_MGR_DELETE_ERROR;
     }
-    if (cxssDeleteAllUserAuth(dbcontext, cxss_userid) < 0) {
+    if (cxssDeleteAllUserAuth(dbcontext, cxss_userid, NULL) < 0) {
         mssError(0, "CXSS", "Failed to delete user auth data\n");
         return CXSS_MGR_DELETE_ERROR;
     }
