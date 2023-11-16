@@ -44,7 +44,7 @@ generic_form "widget/component-decl"
 		cellsize=20;
 		spacing=2;
 		width=runserver(:this:w - 5);
-		height=runserver(:this:division + 5);
+		height=runserver(:this:division - 15);
 
 		rpt "widget/repeat"
 		    {
