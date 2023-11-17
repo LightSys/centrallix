@@ -143,6 +143,7 @@
 #define XML_BLOCK_SIZE 8092
 #define XML_ELEMENT_SIZE 64
 #define XML_ATTR_SIZE 256
+#define XML_HASH_SIZE 8+OBJSYS_MAX_PATH+XML_ATTR_SIZE // make sure room for open mode, path, and params
 
 #define XML_DEBUG 0
 
@@ -152,7 +153,7 @@
 /** the element used in the document cache **/
 typedef struct
     {
-    char	Pathname[OBJSYS_MAX_PATH];
+    char	Pathname[XML_HASH_SIZE];
     xmlDocPtr	document;
     DateTime	lastmod;
     int		LinkCnt;
@@ -444,12 +445,11 @@ xml_internal_ReadDoc(pObject obj)
     int bytes;
     pXmlCacheObj pCache;
     pDateTime pDT=0;
-    char hash[4 + OBJSYS_MAX_PATH*2];
-    int hashmaxlen = 4 + OBJSYS_MAX_PATH*2;
+    char hash[XML_HASH_SIZE];
 
 	/** Determine path of just the XML file itself **/
 	/** use the hash rather than the path for the chache lookup **/
-	obj_internal_GetDCHash(obj->Pathname, obj->Mode, hash, hashmaxlen, obj->SubPtr);
+	obj_internal_GetDCHash(obj->Pathname, obj->Mode, hash, XML_HASH_SIZE, obj->SubPtr);
 
 	/** Check cache for an existing copy already **/
 	if((pCache=(pXmlCacheObj)xhLookup(&XML_INF.cache, hash)))
