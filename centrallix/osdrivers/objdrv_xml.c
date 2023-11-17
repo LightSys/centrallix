@@ -492,8 +492,8 @@ xml_internal_ReadDoc(pObject obj)
 	    ctxt=xmlCreatePushParserCtxt(NULL,NULL,NULL,0,"unknown");
 	    /** change the encoding if needed*/
 	    ObjData contentCharset;
-	    objGetAttrValue(obj->Prev, "content_charset", DATA_T_STRING, &contentCharset);
-	    if(contentCharset.String != NULL)
+	    int status = objGetAttrValue(obj->Prev, "content_charset", DATA_T_STRING, &contentCharset);
+	    if(contentCharset.String != NULL && status >= 0)
 		xmlSwitchEncoding(ctxt, xmlParseCharEncoding(contentCharset.String));
 	    
 	    objRead(obj->Prev,ptr,0,0,FD_U_SEEK);
