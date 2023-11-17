@@ -27,7 +27,7 @@ function cht_object_available(dataobj, force_datafetch, why) {
     this.osrc_busy = false;
 }
 
-function cht_replica_moved(dataobj, force_datafetch) {this.update_soon = true;}
+function cht_replica_moved(dataobj) {this.update_soon = true;}
 function cht_operation_complete(stat, osrc) {}
 function cht_object_deleted(recnum) {this.update_soon = true;}
 function cht_object_created(recnum) {this.update_soon = true;}

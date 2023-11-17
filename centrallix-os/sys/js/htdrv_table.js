@@ -274,7 +274,7 @@ function tbld_redraw_all(dataobj, force_datafetch)
     else
 	{
 	// Rows mode.  OSRC says it has found the final record?
-	if (this.osrc.FinalRecord)
+	if (this.osrc.FinalRecord !== null)
 	    this.rows.lastosrc = this.osrc.FinalRecord + this.is_new;
 
 	var min = this.osrc.FirstRecord;
@@ -687,12 +687,12 @@ function tbld_bring_into_view(rownum)
 	}
 
     // Out of range
-    if (rownum < this.rows.first && this.rows.first != null)
+    if (rownum < this.rows.first && this.rows.first !== null)
 	{
 	this.bring_into_view = rownum;
 	//this.target_range = {start:rownum, end:this.rows.lastvis+1};
 	this.target_range = {start:rownum, end:rownum + this.rowcache_size};
-	if (this.rows.lastosrc && this.target_range.end > this.rows.lastosrc)
+	if (this.rows.lastosrc !== null && this.target_range.end > this.rows.lastosrc)
 	    this.target_range.end = this.rows.lastosrc;
 	if (this.target_range.start > 1 && this.target_range.end - this.target_range.start < this.rowcache_size)
 	    this.target_range.start = this.target_range.end - this.rowcache_size;
@@ -784,7 +784,7 @@ function tbld_update_thumb(anim)
 function tbld_object_created(recnum)
     {
     //this.log.push("Object Created callback (" + recnum + ") from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
-    if (this.rows.lastosrc && recnum > this.rows.lastosrc)
+    if (this.rows.lastosrc !== null && recnum > this.rows.lastosrc)
 	this.rows.lastosrc = recnum;
     if (recnum < this.rows.first)
 	this.target_range = {start:recnum, end:this.rows.last};
@@ -797,7 +797,7 @@ function tbld_object_created(recnum)
 function tbld_object_deleted(recnum)
     {
     //this.log.push("Object Deleted callback (" + recnum + ") from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
-    if (this.rows.lastosrc && this.rows.lastosrc == recnum)
+    if (this.rows.lastosrc !== null && this.rows.lastosrc == recnum)
 	this.rows.lastosrc--;
     if (this.rows[recnum] && this.scroll_maxheight)
 	{
@@ -813,6 +813,13 @@ function tbld_object_modified(current, dataobj)
     //this.log.push("Object Modified callback from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
     this.osrc_busy = false;
     this.RedrawAll(null, true);
+    }
+
+function tbld_replica_moved(osrc, target_start, target_end)
+    {
+    this.osrc_busy = false;
+    this.RedrawAll(null, true);
+    this.osrc_last_op = null;
     }
 
 function tbld_replica_changed(dataobj, force_datafetch, why)
@@ -1197,7 +1204,7 @@ function tbld_scroll(y, animate)
 		this.target_range.start = 1;
 	    this.target_range.end = this.rows.lastvis+1;
 	    }
-	else if (getRelativeY(this.rows[this.rows.last]) + $(this.rows[this.rows.last]).height() + this.cellvspacing - this.vis_height < (0-y))
+	else if (getRelativeY(this.rows[this.rows.last]) + $(this.rows[this.rows.last]).height() + this.cellvspacing - this.vis_height < (0-y) && (this.rows.lastosrc === null || this.rows.lastvis < this.rows.lastosrc))
 	    {
 	    // Next data
 	    this.target_range.start = this.rows.firstvis-1;
@@ -2008,7 +2015,7 @@ function tbld_init(param)
     t.IsDiscardReady = new Function('return true;');
     t.DataAvailable = tbld_clear_rows;
     t.ObjectAvailable = tbld_replica_changed;
-    t.ReplicaMoved = tbld_replica_changed;
+    t.ReplicaMoved = tbld_replica_moved;
     t.OperationComplete = tbld_operation_complete;
     t.ObjectDeleted = tbld_object_deleted;
     t.ObjectCreated = tbld_object_created;
