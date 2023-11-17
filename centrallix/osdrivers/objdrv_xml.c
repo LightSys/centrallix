@@ -143,6 +143,7 @@
 #define XML_BLOCK_SIZE 8092
 #define XML_ELEMENT_SIZE 64
 #define XML_ATTR_SIZE 256
+#define XML_HASH_SIZE 8+OBJSYS_MAX_PATH+XML_ATTR_SIZE // make sure room for open mode, path, and params
 
 #define XML_DEBUG 0
 
@@ -152,7 +153,7 @@
 /** the element used in the document cache **/
 typedef struct
     {
-    char	Pathname[OBJSYS_MAX_PATH];
+    char	Pathname[XML_HASH_SIZE];
     xmlDocPtr	document;
     DateTime	lastmod;
     int		LinkCnt;
@@ -444,22 +445,23 @@ xml_internal_ReadDoc(pObject obj)
     int bytes;
     pXmlCacheObj pCache;
     pDateTime pDT=0;
+    char hash[XML_HASH_SIZE];
 
 	/** Determine path of just the XML file itself **/
-	path=obj_internal_PathPart(obj->Pathname,0,obj->SubPtr);
+	/** use the hash rather than the path for the chache lookup **/
+	obj_internal_GetDCHash(obj->Pathname, obj->Mode, hash, XML_HASH_SIZE, obj->SubPtr);
 
 	/** Check cache for an existing copy already **/
-	if((pCache=(pXmlCacheObj)xhLookup(&XML_INF.cache, path)))
+	if((pCache=(pXmlCacheObj)xhLookup(&XML_INF.cache, hash)))
 	    {
 	    if(XML_DEBUG) printf("found %s in cache\n", path);
-
 	    /** found match in cache -- check modification time **/
 	    if(objGetAttrValue(obj->Prev, "last_modification", DATA_T_DATETIME, POD(&pDT))==0)
 		{
 		if(pDT && pDT->Value!=pCache->lastmod.Value)
 		    {
 		    /** modification time changed -- update **/
-		    xhRemove(&XML_INF.cache, path);
+		    xhRemove(&XML_INF.cache, hash);
 		    xml_internal_CloseCachedDocument(pCache);
 		    pCache = NULL;
 		    }
@@ -469,13 +471,13 @@ xml_internal_ReadDoc(pObject obj)
 	/** Not in cache, or cache was stale **/
 	if (!pCache)	
 	    {
-	    if(XML_DEBUG) printf("couldn't find %s in cache\n",path);
+	    if(XML_DEBUG) printf("couldn't find %s in cache\n",hash);
 	    pCache=(pXmlCacheObj)nmMalloc(sizeof(XmlCacheObj));
 	    if(!pCache) return NULL;
 	    memset(pCache,0,sizeof(XmlCacheObj));
 	    if (objGetAttrValue(obj->Prev, "last_modification", DATA_T_DATETIME, POD(&pDT)) == 0)
 		pCache->lastmod.Value = pDT->Value;
-	    strtcpy(pCache->Pathname, path, sizeof(pCache->Pathname));
+	    strtcpy(pCache->Pathname, hash, sizeof(pCache->Pathname));
 	    xhAdd(&XML_INF.cache, pCache->Pathname, (void*)pCache);
 	    pCache->LinkCnt = 1;
 	    }
