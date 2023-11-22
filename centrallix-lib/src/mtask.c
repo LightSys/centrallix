@@ -2934,7 +2934,7 @@ fdQPrintf_va(pFile filedesc, const char* fmt, va_list va)
 	/** Print it **/
 	rval = qpfPrintf_va_internal(NULL, &buf, &size, fdQPrintf_Grow, filedesc, fmt, va);
 	if (rval < 0) return rval;
-	fdWrite(filedesc, filedesc->PrintfBuf, rval - (filedesc->PrintfBuf - buf), 0, FD_U_PACKET);
+	rval = fdWrite(filedesc, filedesc->PrintfBuf, rval - (filedesc->PrintfBuf - buf), 0, FD_U_PACKET);
    
     return rval;
     }
