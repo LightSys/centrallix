@@ -68,6 +68,7 @@ typedef struct
     char        Password[64];
     char        DefaultPassword[64];
     char        Database[MYSD_NAME_LEN];
+    char        DatabaseCharset[64];
     char        AnnotTable[MYSD_NAME_LEN];
     char        Description[256];
     int                MaxConn;
@@ -344,6 +345,22 @@ mysd_internal_GetConn(pMysdNode node)
             xaAddItem(&node->Conns, conn);
             }
 
+	/** get character set information **/
+	result = mysd_internal_RunQuery_conn(conn, node, "SELECT DEFAULT_CHARACTER_SET_NAME FROM information_schema.SCHEMATA  WHERE SCHEMA_NAME = '?'", node->Database);
+	if (!result || result == MYSD_RUNQUERY_ERROR){
+	    /** just set to all NULLs **/
+	    memset(node->DatabaseCharset, '\x00', sizeof(node->DatabaseCharset));
+	} else {
+	    /** collect the character name **/
+	    MYSQL_ROW row = mysql_fetch_row(result);
+	    if(row == 0){
+		memset(node->DatabaseCharset, '\x00', sizeof(node->DatabaseCharset));
+	    } else {
+		strncpy(node->DatabaseCharset, row[0], sizeof(node->DatabaseCharset));
+	    }
+	    mysql_free_result(result);
+	}
+	
         /** Make it busy **/
         conn->Busy = 1;
         conn->LastAccess = (node->ConnAccessCnt++);
@@ -1832,6 +1849,49 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
 		    xsConcatenate(where_clause, ") ", 2);
 		    }
+		else if (!strcmp(tree->Name,"upper"))
+		    {
+		    /** check if database is using an expected character set **/
+		    char* collation = NULL; 
+		    pMysdTable tempTdata = *tdata;
+
+		    if(strstr(tempTdata->Node->DatabaseCharset, "latin1") != NULL) collation = "latin1_bin";
+		    else if (strstr(tempTdata->Node->DatabaseCharset, "utf8mb4") != NULL) collation = "utf8mb4_bin";
+
+		    /** need to change collation to guarantee the result is case sensitive (in case it is used in compares) **/
+		    xsConcatenate(where_clause, " (upper(", -1);
+		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, where_clause, conn);
+		    /** only change collation if found one **/
+		    if(collation)
+			{
+			xsConcatenate(where_clause, ") collate ", -1);
+			xsConcatenate(where_clause, collation, -1);
+			xsConcatenate(where_clause, ") ", -1);
+			} 
+		    else xsConcatenate(where_clause, ")) ", -1);
+		    }
+		else if (!strcmp(tree->Name,"lower"))
+		    {
+		    /** check if database is using an expected character set **/
+		    char* collation = NULL; 
+		    pMysdTable tempTdata = *tdata;
+
+		    if(strstr(tempTdata->Node->DatabaseCharset, "latin1") != NULL) collation = "latin1_bin";
+		    else if (strstr(tempTdata->Node->DatabaseCharset, "utf8mb4") != NULL) collation = "utf8mb4_bin";
+
+		    /** need to change collation to guarantee the result is case sensitive (in case it is used in compares) **/
+		    xsConcatenate(where_clause, " (lower(", -1);
+		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, where_clause, conn);
+		    /** only change collation if found one **/
+		    if(collation)
+			{
+			xsConcatenate(where_clause, ") collate ", -1);
+			xsConcatenate(where_clause, collation, -1);
+			xsConcatenate(where_clause, ") ", -1);
+			} 
+		    else xsConcatenate(where_clause, ")) ", -1);
+		    }
+		
 		else if (!strcmp(tree->Name,"charindex"))
 		    {
 		    /** MySQL locate() function is the equivalent of CX charindex() **/
