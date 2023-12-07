@@ -2852,7 +2852,7 @@ sybd_internal_BuildAutoname(pSybdData inf, pSybdConn conn, pObjTrxTree oxt)
 			if (t == DATA_T_INTEGER || t == DATA_T_DOUBLE || t == DATA_T_MONEY)
 			    xsConcatenate(sql, key_values[i], -1);
 			else
-			    xsConcatPrintf(sql, "'%s'", key_values[i]);
+			    xsConcatQPrintf(sql, "\"%STR&DSYB\"", key_values[i]);
 			}
 		    }
 
@@ -2878,7 +2878,7 @@ sybd_internal_BuildAutoname(pSybdData inf, pSybdConn conn, pObjTrxTree oxt)
 		    sybd_internal_Close(cmd);
 		    cmd = NULL;
 		    }
-		else
+		if (!key_values[j])
 		    {
 		    mssError(1,"SYBD","Could not obtain next-value information for key '%s' on table '%s'",
 			    inf->TData->Cols[colid], inf->TData->Table);
