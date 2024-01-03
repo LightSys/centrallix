@@ -115,12 +115,16 @@ typedef struct
     int		AllowRedirects;
     int		AllowBadCert;
     int		AllowCookies;
+    int		AllowInsecureRedirects;
+    int		ForceSecureRedirects;
     int		SuccessCodes[8];
     int		NextAttr;
     pFile	Socket;
     pFile	SSLReporting;
     int		SSLpid;
+    SSL_CTX*	SSL_ctx;
     char	Redirected;
+    int		Status;
     DateTime	LastModified;
     char	*Annotation;
     int		ContentLength;
@@ -132,6 +136,15 @@ typedef struct
     char *	ContentCharset;		/* the charset provided by the remote http server */
     char *	ExpectedContentCharset; /* provide the ability to force an expected charset */
     int		OverrideContentCharset;	/* when true, the actual charset withh be overwritten with the specifiied*/
+    int		RetryCount;		/* actual number of retries */
+    int		RetryLimit;		/* configured retry limit */
+    double	RetryDelay;
+    double	RetryBackoffRatio;
+    int		RetryFor;		/* HTTP_RETRY_F_xxx */
+    int		RedirectLimit;
+    int		SentAuth;		/* whether authorization was sent on this request */
+    int		SendAuth;		/* whether to send Authorization on initial request */
+    int		HadAuth;		/* whether an Authorization header was available. */
     XArray	RequestHeaders;		/* of pHttpHeader */
     XArray	ResponseHeaders;	/* of pHttpHeader */
     int		ModDateAlwaysNow;
@@ -148,10 +161,32 @@ typedef struct
 
 #define HTTP_F_CONTENTCOMPLETE	1
 
-    
+#define HTTP_RETRY_F_TCPRESET	1
+#define	HTTP_RETRY_F_RUDECLOSE	2
+#define HTTP_RETRY_F_HTTP401	4
+#define HTTP_RETRY_F_HTTP4XX	8
+#define HTTP_RETRY_F_HTTP5XX	16
+#define HTTP_RETRY_F_TLSERROR	32
+
 #define HTTP(x) ((pHttpData)(x))
-#define HTTP_OS_DEBUG		0
-#define HTTP_REDIR_MAX		4
+#define HTTP_OS_DEBUG		1
+#define HTTP_REDIR_MAX		4	/* default limit on redirects, can be overridden in node */
+
+/*** Status return values from GetPageStream() ***/
+#define HTTP_CONN_S_FAIL	(-1)
+#define HTTP_CONN_S_SUCCESS	0
+#define HTTP_CONN_S_HTTP401	1
+#define HTTP_CONN_S_HTTP404	2
+#define HTTP_CONN_S_HTTP4XX	3
+#define HTTP_CONN_S_HTTP5XX	4
+#define HTTP_CONN_S_TCPRESET	5
+#define HTTP_CONN_S_RUDECLOSE	6
+#define HTTP_CONN_S_TLSERROR	7
+#define HTTP_CONN_S_REDIRECT	8
+#define HTTP_CONN_S_TRYUP	9
+
+const char* http_conn_s_desc[] = { "success", "http401", "http404", "http4xx", "http5xx", "tcpreset", "rudeclose", "tlserror", "redirect", "tryup" };
+
 
 /*** Structure used by queries for this driver. ***/
 typedef struct
@@ -186,7 +221,6 @@ struct
     {
     regex_t	parsehttp;
     regex_t	httpheader;
-    SSL_CTX*	SSL_ctx;
     pCxssKeystreamState NonceData;
     XHashTable	ServerData;
     }
@@ -713,7 +747,13 @@ http_internal_ConnectHttps(pHttpData inf)
 	    }
 
 	/** Start up TLS on the connection **/
-	inf->SSLpid = cxssStartTLS(HTTP_INF.SSL_ctx, &inf->Socket, &inf->SSLReporting, 0, inf->Server);
+	if (inf->AllowBadCert)
+	    SSL_CTX_set_verify(inf->SSL_ctx, SSL_VERIFY_NONE, NULL);
+	else
+	    SSL_CTX_set_verify(inf->SSL_ctx, SSL_VERIFY_PEER, NULL);
+	if (*inf->Cipherlist)
+	    SSL_CTX_set_cipher_list(inf->SSL_ctx, inf->Cipherlist);
+	inf->SSLpid = cxssStartTLS(inf->SSL_ctx, &inf->Socket, &inf->SSLReporting, 0, inf->Server);
 	if (inf->SSLpid <= 0)
 	    {
 	    netCloseTCP(inf->Socket,1,0);
@@ -1215,6 +1255,7 @@ http_internal_SendRequest(pHttpData inf, char* path)
 		    else
 			{
 			mssError(1, "HTTP", "Unsupported data type for url parameter %s", one_http_param->Parameter->Name);
+			errno = 0;
 			goto error;
 			}
 
@@ -1227,8 +1268,10 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	if (strpbrk(path, " \t\r\n") || strpbrk(inf->Server, " \t\r\n:/") || strpbrk(inf->Port, " \t\r\n:/"))
 	    {
 	    mssError(1, "HTTP", "Invalid HTTP request");
-	    return -1;
+	    errno = 0;
+	    goto error;
 	    }
+	errno = 0;
 	rval = fdQPrintf(inf->Socket, "%STR %[http://%STR%]%[:%STR%]%STR%STR HTTP/1.0\r\nHost: %STR%[:%STR%]\r\n",
 		inf->Method,
 		inf->ProxyServer[0],
@@ -1240,12 +1283,15 @@ http_internal_SendRequest(pHttpData inf, char* path)
 		inf->Server,
 		inf->Port[0],
 		inf->Port);
-	if (rval < 0)
-	    return rval;
+	if (rval == 0)
+	    errno = ENOTCONN;
+	if (rval <= 0)
+	    goto error;
 
 	/** POST parameters? **/
 	if (!strcmp(inf->Method, "POST"))
 	    {
+	    errno = 0;
 	    if (!strcmp(inf->RequestContentType, "application/x-www-form-urlencoded"))
 		{
 		/** Form URL Encoded request body **/
@@ -1267,6 +1313,7 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	    else
 		{
 		mssError(1, "HTTP", "Invalid request content type '%s'", inf->RequestContentType);
+		errno = 0;
 		goto error;
 		}
 
@@ -1283,32 +1330,53 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	url_params = NULL;
 
 	/** Send Headers **/
+	inf->SentAuth = 0;
+	inf->HadAuth = 0;
 	for(i=0; i<inf->RequestHeaders.nItems; i++)
 	    {
 	    hdr = (pHttpHeader)inf->RequestHeaders.Items[i];
 	    if (hdr)
 		{
+		errno = 0;
+		if (!strcasecmp(hdr->Name, "Authorization"))
+		    {
+		    inf->HadAuth = 1;
+		    if (!inf->SendAuth)
+			{
+			/** Skip authorization header this time **/
+			continue;
+			}
+		    inf->SentAuth = 1;
+		    }
 		if (strpbrk(hdr->Name, " \t\r\n:") || strpbrk(hdr->Value, "\r\n"))
 		    {
 		    mssError(1, "HTTP", "Invalid HTTP header");
-		    return -1;
+		    goto error;
 		    }
 		rval = fdQPrintf(inf->Socket, "%STR: %STR\r\n", hdr->Name, hdr->Value);
-		if (rval < 0)
-		    return rval;
+		if (rval == 0)
+		    errno = ENOTCONN;
+		if (rval <= 0)
+		    goto error;
 		printf("%s%s=%s", (i==0)?"":",", hdr->Name, hdr->Value);
 		}
 	    }
 	printf("\n");
 
 	/** End-of-headers **/
-	fdQPrintf(inf->Socket, "\r\n");
+	errno = 0;
+	rval = fdQPrintf(inf->Socket, "\r\n");
+	if (rval == 0)
+	    errno = ENOTCONN;
+	if (rval <= 0)
+	    goto error;
 
 	/** Post parameters? **/
 	if (post_params)
 	    {
 	    fdWrite(inf->Socket, xsString(post_params), xsLength(post_params), 0, FD_U_PACKET);
 	    xsFree(post_params);
+	    post_params = NULL;
 	    }
 
 	return 0;
@@ -1337,7 +1405,6 @@ http_internal_GetPageStream(pHttpData inf)
     char *ptr2;
     int alloc = 0;
     char *p1;
-    short status=0;
     pStructInf attr;
     pHttpHeader resp_hdr;
     int resp_cnt;
@@ -1352,6 +1419,16 @@ http_internal_GetPageStream(pHttpData inf)
     pHttpServerData sd = NULL;
     char uri[256];
     int rval;
+    int return_status;
+
+	inf->Status = 0;
+	inf->Annotation=(char*)nmSysMalloc(strlen(inf->Server)+strlen(inf->Port)+strlen(inf->Path)+strlen(inf->Protocol)+6);
+	if(!inf->Annotation)
+	    goto error;
+	if(inf->Port[0])
+	    sprintf(inf->Annotation,"%s://%s:%s/%s",inf->Protocol,inf->Server,inf->Port,inf->Path);
+	else
+	    sprintf(inf->Annotation,"%s://%s/%s",inf->Protocol,inf->Server,inf->Path);
 
 	/** Data about this server? **/
 	snprintf(uri, sizeof(uri), "%s://%s@%s:%s", inf->Protocol, mssUserName(), inf->Server, inf->Port);
@@ -1427,12 +1504,30 @@ http_internal_GetPageStream(pHttpData inf)
 	if (!strcmp(inf->Protocol,"http"))
 	    {
 	    if (http_internal_ConnectHttp(inf) < 0)
+		{
+		if (errno == ECONNREFUSED)
+		    {
+		    return_status = HTTP_CONN_S_TCPRESET;
+		    goto retry;
+		    }
 		goto error;
+		}
 	    }
-	else if (!strcmp(inf->Protocol,"https") && HTTP_INF.SSL_ctx)
+	else if (!strcmp(inf->Protocol,"https") && inf->SSL_ctx)
 	    {
 	    if (http_internal_ConnectHttps(inf) < 0)
-		goto error;
+		{
+		if (errno == ECONNREFUSED)
+		    {
+		    return_status = HTTP_CONN_S_TCPRESET;
+		    goto retry;
+		    }
+		else
+		    {
+		    return_status = HTTP_CONN_S_TLSERROR;
+		    goto retry;
+		    }
+		}
 	    }
 	else
 	    {
@@ -1462,66 +1557,21 @@ http_internal_GetPageStream(pHttpData inf)
 
 	/** Send the request **/
 	if (http_internal_SendRequest(inf, fullpath) < 0)
+	    {
+	    if (errno == ECONNRESET || errno == ECONNABORTED)
+		{
+		return_status = HTTP_CONN_S_TCPRESET;
+		goto retry;
+		}
+	    if (errno == ENOTCONN)
+		{
+		return_status = HTTP_CONN_S_RUDECLOSE;
+		goto retry;
+		}
 	    goto error;
+	    }
 	nmSysFree(fullpath);
 	fullpath = NULL;
-
-	/** Set up connection **/
-#if 00
-	    if(inf->Port[0])
-		{
-		snprintf(buf,256,"GET http://%s:%s%s HTTP/1.0\r\n",inf->Server,inf->Port,fullpath);
-		fdWrite(inf->Socket,buf,strlen(buf),0,FD_U_PACKET);
-		sprintf(buf,"Host: %s:%s\r\n",inf->Server,inf->Port);
-		fdWrite(inf->Socket,buf,strlen(buf),0,FD_U_PACKET);
-		}
-	    else
-		{
-		sprintf(buf,"GET http://%s%s HTTP/1.0\r\n",inf->Server,fullpath);
-		fdWrite(inf->Socket,buf,strlen(buf),0,FD_U_PACKET);
-		sprintf(buf,"Host: %s\r\n",inf->Server);
-		fdWrite(inf->Socket,buf,strlen(buf),0,FD_U_PACKET);
-		}
-	    if(inf->ProxyAuthLine[0])
-		{
-		fdWrite(inf->Socket,inf->ProxyAuthLine,strlen(inf->ProxyAuthLine),0,FD_U_PACKET);
-		fdWrite(inf->Socket,"\r\n",2,0,FD_U_PACKET);
-		}
-	    if(inf->AuthLine[0])
-		{
-		fdWrite(inf->Socket,inf->AuthLine,strlen(inf->AuthLine),0,FD_U_PACKET);
-		fdWrite(inf->Socket,"\r\n",2,0,FD_U_PACKET);
-		}
-	    //fdWrite(inf->Socket,"Connection: close\r\n",19,0,FD_U_PACKET);
-	    fdWrite(inf->Socket,"\r\n",2,0,FD_U_PACKET);
-	    }
-	else
-	    {
-	    if(HTTP_OS_DEBUG) printf("connected\n");
-	    sprintf(buf,"GET %s HTTP/1.0\r\n",fullpath);
-	    if(HTTP_OS_DEBUG) printf("%s\n",buf);
-	    fdWrite(inf->Socket,buf,strlen(buf),0,FD_U_PACKET);
-	    if(inf->Port[0])
-		{
-		sprintf(buf,"Host: %s:%s\r\n",inf->Server,inf->Port);
-		if(HTTP_OS_DEBUG) printf("%s\n",buf);
-		fdWrite(inf->Socket,buf,strlen(buf),0,FD_U_PACKET);
-		}
-	    else
-		{
-		sprintf(buf,"Host: %s\r\n",inf->Server);
-		if(HTTP_OS_DEBUG) printf("%s\n",buf);
-		fdWrite(inf->Socket,buf,strlen(buf),0,FD_U_PACKET);
-		}
-	    if(inf->AuthLine[0])
-		{
-		fdWrite(inf->Socket,inf->AuthLine,strlen(inf->AuthLine),0,FD_U_PACKET);
-		fdWrite(inf->Socket,"\r\n",2,0,FD_U_PACKET);
-		}
-	    //fdWrite(inf->Socket,"Connection: close\r\n",19,0,FD_U_PACKET);
-	    fdWrite(inf->Socket,"\r\n",2,0,FD_U_PACKET);
-	    }
-#endif
 
 	if(HTTP_OS_DEBUG) printf("Opening lexer session\n");
 	lex=mlxOpenSession(inf->Socket,MLX_F_LINEONLY | MLX_F_NODISCARD);
@@ -1539,8 +1589,16 @@ http_internal_GetPageStream(pHttpData inf)
 	    if(HTTP_OS_DEBUG) printf("got it!\n");
 	    if(toktype==MLX_TOK_ERROR)
 		{
-		mssError(1,"HTTP","Lexer error");
-		goto error;
+		if (resp_cnt > 0)
+		    {
+		    mssError(1,"HTTP","HTTP response header parse error");
+		    goto error;
+		    }
+		else
+		    {
+		    return_status = HTTP_CONN_S_RUDECLOSE;
+		    goto retry;
+		    }
 		}
 
 	    /** Get response line **/
@@ -1555,7 +1613,14 @@ http_internal_GetPageStream(pHttpData inf)
 	    /** End of response headers? **/
 	    if (!*ptr)
 		{
+		if (resp_cnt <= 1)
+		    {
+		    /** Short response - nothing or status line only - treat as rude close **/
+		    return_status = HTTP_CONN_S_RUDECLOSE;
+		    goto retry;
+		    }
 		if (alloc) nmSysFree(ptr);
+		alloc = 0;
 		break;
 		}
 
@@ -1563,7 +1628,7 @@ http_internal_GetPageStream(pHttpData inf)
 	    if (resp_cnt == 0)
 		{
 		/** Look for HTTP -- first line of header if server is >=HTTP/1.0 **/
-		if(regexec(&HTTP_INF.httpheader, ptr, 0, NULL, 0)==0)
+		if (regexec(&HTTP_INF.httpheader, ptr, 0, NULL, 0) == 0)
 		    {
 		    if(HTTP_OS_DEBUG) printf("regex match on HTTP header\n");
 		    p1=ptr;
@@ -1571,40 +1636,15 @@ http_internal_GetPageStream(pHttpData inf)
 		    if(p1-ptr==strlen(ptr)) 
 			goto error;
 		    p1++;
-		    status=atoi(p1);
+		    inf->Status=atoi(p1);
 
+		    /** Other non-2XX HTTP response codes treated as success? **/
 		    for(i=0; i<8; i++)
 			{
-			if (inf->SuccessCodes[i] != 0 && inf->SuccessCodes[i] == status)
+			if (inf->SuccessCodes[i] != 0 && inf->SuccessCodes[i] == inf->Status)
 			    {
-			    status = 200;
+			    inf->Status = 200;
 			    break;
-			    }
-			}
-		   
-		    if(status/100==2)
-			{
-			inf->Annotation=(char*)nmSysMalloc(strlen(inf->Server)+strlen(inf->Port)+strlen(inf->Path)+10);
-			if(!inf->Annotation)
-			    goto error;
-			if(inf->Port[0])
-			    sprintf(inf->Annotation,"http://%s:%s/%s",inf->Server,inf->Port,inf->Path);
-			else
-			    sprintf(inf->Annotation,"http://%s/%s",inf->Server,inf->Path);
-
-			}	
-		    if(status/100==4 || status/100==5 || (status/100==3 && !inf->AllowRedirects) )
-			{
-			if(inf->Redirected || inf->Obj->SubCnt<=1) // nothing more to try, fail
-			    {
-			    /** don't need to check AllowSubDirs here -- SubCnt==1 if !AllowSubDirs **/
-			    mssError(1,"HTTP","Object not accessible on the server (HTTP code %d)", status);
-			    goto error;
-			    }
-			else
-			    {
-			    inf->Obj->SubCnt--;
-			    goto try_up;   // unsuccessful -- try up one more level
 			    }
 			}
 		    }
@@ -1636,18 +1676,104 @@ http_internal_GetPageStream(pHttpData inf)
 		xaAddItem(&inf->ResponseHeaders, (void*)resp_hdr);
 		}
 	    if (alloc) nmSysFree(ptr);
+	    alloc = 0;
+	    }
+
+	/** Look for cookies coming from the server.  Right now we only
+	 ** allow one cookie per Set-Cookie header.  Only allow cookies from
+	 ** a 2xx response or a 401 response.
+	 **/
+	if ((inf->Status/100 == 2 || inf->Status == 401) && inf->AllowCookies && (hdr_val = http_internal_GetHeader(&inf->ResponseHeaders, "Set-Cookie")) != NULL)
+	    {
+	    ptr = strchr(hdr_val, '=');
+	    if (ptr)
+		{
+		/** Found a valid cookie of the form Name=Value **/
+		*ptr = '\0';
+		cookie = (pHttpCookie)nmMalloc(sizeof(HttpCookie));
+		if (!cookie)
+		    goto error;
+		memset(cookie, 0, sizeof(HttpCookie));
+		cookie->Name = nmSysStrdup(hdr_val);
+		cookie->Value = nmSysStrdup(ptr + 1);
+		ptr2 = strchr(cookie->Value, ';');
+		if (ptr2)
+		    *ptr2 = '\0';
+		if (!cookie->Name || !cookie->Value)
+		    goto error;
+		*ptr = '=';
+
+		/** Remove any duplicates **/
+		for(i=0; i<sd->Cookies.nItems; i++)
+		    {
+		    old_cookie = (pHttpCookie)sd->Cookies.Items[i];
+		    if (!strcmp(old_cookie->Name, cookie->Name))
+			{
+			xaRemoveItem(&sd->Cookies, i);
+			nmSysFree(old_cookie->Name);
+			nmSysFree(old_cookie->Value);
+			nmFree(old_cookie, sizeof(HttpCookie));
+			break;
+			}
+		    }
+
+		/** Add the new cookie **/
+		if (HTTP_OS_DEBUG)
+		    printf("Received cookie: %s=%s\n", cookie->Name, cookie->Value);
+		xaAddItem(&sd->Cookies, cookie);
+		cookie = NULL;
+		}
+	    }
+
+	/** Failed request? **/
+	if(inf->Status/100==4 || inf->Status/100==5 || (inf->Status/100==3 && !inf->AllowRedirects) )
+	    {
+	    /** Scanning for sub-objects on remote server? **/
+	    if (inf->Status == 404 && inf->AllowSubDirs && inf->Obj->SubCnt > 1)
+		{
+		inf->Obj->SubCnt--;
+		return_status = HTTP_CONN_S_TRYUP;
+		goto retry;
+		}
+
+	    /** Check the status to see how to proceed **/
+	    mssError(1,"HTTP","Object not accessible on the server (HTTP code %d)", inf->Status);
+	    if (inf->Status == 404)
+		{
+		return_status = HTTP_CONN_S_HTTP404;
+		goto retry;
+		}
+	    else if (inf->Status == 401)
+		{
+		return_status = HTTP_CONN_S_HTTP401;
+		goto retry;
+		}
+	    else if (inf->Status/100 == 4)
+		{
+		return_status = HTTP_CONN_S_HTTP4XX;
+		goto retry;
+		}
+	    else if (inf->Status/100 == 5)
+		{
+		return_status = HTTP_CONN_S_HTTP5XX;
+		goto retry;
+		}
+	    else
+		{
+		goto error;
+		}
 	    }
 
 	/** We're being redirected? **/
-	if (status/100 == 3)
+	if (inf->Status/100 == 3)
 	    {
 	    if ((hdr_val = http_internal_GetHeader(&inf->ResponseHeaders, "Location")) != NULL)
-		{   // changed to GNU regex matching -- much better
-		regmatch_t pmatch[5];
-		if (regexec(&HTTP_INF.parsehttp, hdr_val, 5, pmatch, 0) == REG_NOMATCH)
+		{
+		regmatch_t pmatch[6];
+		if (regexec(&HTTP_INF.parsehttp, hdr_val, 6, pmatch, 0) == REG_NOMATCH)
 		    {
-		    // the Location: line was unparsable
-		    goto try_up; // try up one more level
+		    mssError(1, "HTTP", "Server '%s' redirected to unparsable URL '%s'", inf->Server, hdr_val);
+		    goto error;
 		    }
 
 #define COPY_FROM_PMATCH(p,m) \
@@ -1657,11 +1783,32 @@ http_internal_GetPageStream(pHttpData inf)
 		memset((p),0,pmatch[(m)].rm_eo-pmatch[(m)].rm_so+1);\
 		strncpy((p),ptr2+pmatch[(m)].rm_so,pmatch[(m)].rm_eo-pmatch[(m)].rm_so);
 
+		/** Protocol **/
+		COPY_FROM_PMATCH(inf->Protocol, 1);
+
+		/** Insecure redirect disallowed? **/
+		if (!strcmp(inf->Protocol, "http") && inf->SSL_ctx)
+		    {
+		    if (inf->ForceSecureRedirects)
+			{
+			mssError(1, "HTTP", "Warning: Server '%s' tried to redirect to insecure URL '%s', using HTTPS instead", inf->Server, hdr_val);
+			nmSysFree(inf->Protocol);
+			inf->Protocol = nmSysStrdup("https");
+			if (!inf->Protocol)
+			    goto error;
+			}
+		    if (!inf->AllowInsecureRedirects)
+			{
+			mssError(1, "HTTP", "Server '%s' attempted to redirect to insecure URL '%s'", inf->Server, hdr_val);
+			goto error;
+			}
+		    }
+
 		/** Server **/
-		COPY_FROM_PMATCH(inf->Server,1);
+		COPY_FROM_PMATCH(inf->Server, 2);
 		
 		/** Port **/
-		if(pmatch[3].rm_so==-1) // port is optional
+		if(pmatch[4].rm_so==-1) // port is optional
 		    {
 		    if (inf->Port) nmSysFree(inf->Port);
 		    inf->Port=(char*)nmSysStrdup("");
@@ -1670,11 +1817,11 @@ http_internal_GetPageStream(pHttpData inf)
 		    }
 		else
 		    {
-		    COPY_FROM_PMATCH(inf->Port,3);
+		    COPY_FROM_PMATCH(inf->Port, 4);
 		    }
 
 		/** Path **/
-		COPY_FROM_PMATCH(inf->Path,4);
+		COPY_FROM_PMATCH(inf->Path, 5);
 
 		/** apparently a server sending a '302 found' doesn't necessarily mean
 		 **   it actually has the file -- it would just rather you requested
@@ -1682,7 +1829,8 @@ http_internal_GetPageStream(pHttpData inf)
 		 ** Try requesting /news/news.rdf/item from freebsd.org and see....
 		 **/
 		inf->Redirected=1;
-		goto try_up; //unsuccessfull -- try again with updated params
+		return_status = HTTP_CONN_S_REDIRECT;
+		goto retry;
 		}
 
 	    mssError(1, "HTTP", "Redirect response without Location header!");
@@ -1690,7 +1838,7 @@ http_internal_GetPageStream(pHttpData inf)
 	    }
 
 	/** Normal connection response **/
-	if (status/100 == 2)
+	if (inf->Status/100 == 2)
 	    {
 	    inf->ContentCacheTS = mtRealTicks() * 1000 / CxGlobals.ClkTck;
 	    objCurrentDate(&inf->LastModified);
@@ -1744,59 +1892,19 @@ http_internal_GetPageStream(pHttpData inf)
 		mssError(1, "HTTP", "Content type '%s' returned by server is not allowed (only '%s' and descendent types allowed)", inf->ContentType, inf->RestrictContentType);
 		goto error;
 		}
-
-	    /** Look for cookies coming from the server.  Right now we only
-	     ** allow one cookie.
-	     **/
-	    if (inf->AllowCookies && (hdr_val = http_internal_GetHeader(&inf->ResponseHeaders, "Set-Cookie")) != NULL)
-		{
-		ptr = strchr(hdr_val, '=');
-		if (ptr)
-		    {
-		    /** Found a valid cookie of the form Name=Value **/
-		    *ptr = '\0';
-		    cookie = (pHttpCookie)nmMalloc(sizeof(HttpCookie));
-		    if (!cookie)
-			goto error;
-		    memset(cookie, 0, sizeof(HttpCookie));
-		    cookie->Name = nmSysStrdup(hdr_val);
-		    cookie->Value = nmSysStrdup(ptr + 1);
-		    ptr2 = strchr(cookie->Value, ';');
-		    if (ptr2)
-			*ptr2 = '\0';
-		    if (!cookie->Name || !cookie->Value)
-			goto error;
-		    *ptr = '=';
-
-		    /** Remove any duplicates **/
-		    for(i=0; i<sd->Cookies.nItems; i++)
-			{
-			old_cookie = (pHttpCookie)sd->Cookies.Items[i];
-			if (!strcmp(old_cookie->Name, cookie->Name))
-			    {
-			    xaRemoveItem(&sd->Cookies, i);
-			    nmSysFree(old_cookie->Name);
-			    nmSysFree(old_cookie->Value);
-			    nmFree(old_cookie, sizeof(HttpCookie));
-			    break;
-			    }
-			}
-
-		    /** Add the new cookie **/
-		    printf("Received cookie: %s=%s\n", cookie->Name, cookie->Value);
-		    xaAddItem(&sd->Cookies, cookie);
-		    cookie = NULL;
-		    }
-		}
 	    }
 
 	mlxCloseSession(lex);
 	if(HTTP_OS_DEBUG) printf("stream established\n");
 
-	return 1;
+	return HTTP_CONN_S_SUCCESS;
 
     error:
 	/** Error exit **/
+	return_status = HTTP_CONN_S_FAIL;
+
+    retry:
+	http_internal_CloseConnection(inf);
 	if (alloc) nmSysFree(ptr);
 	if (lex) mlxCloseSession(lex);
 	if (fullpath) nmSysFree(fullpath);
@@ -1806,42 +1914,168 @@ http_internal_GetPageStream(pHttpData inf)
 	    if (cookie->Value) nmSysFree(cookie->Value);
 	    nmFree(cookie, sizeof(HttpCookie));
 	    }
-	return -1;
-
-    try_up:
-	/** Try up one level **/
-	if (alloc) nmSysFree(ptr);
-	if (lex) mlxCloseSession(lex);
-	return 2;
+	return return_status;
     }
 
 
-/*** http_internal_GetConfigString - get a configuration value
+/*** http_internal_StartConnection - send the request to the server and start
+ *** retrieval of the response, retrying if we get redirected or if we have a
+ *** retryable error.
  ***/
-char*
-http_internal_GetConfigString(pHttpData inf, char* configname, char* default_value)
+int
+http_internal_StartConnection(pHttpData inf)
     {
-    char* ptr = NULL;
+    int	redir_cnt = 0;
+    int rval;
+    char* ptr;
+
+	while(1)
+	    {
+	    /** Set up OpenSSL if requested **/
+	    if (!inf->SSL_ctx && !strcmp(inf->Protocol, "https"))
+		{
+		inf->SSL_ctx = SSL_CTX_new(SSLv23_client_method());
+		if (inf->SSL_ctx) 
+		    {
+		    SSL_CTX_set_options(inf->SSL_ctx, SSL_OP_NO_SSLv2 | SSL_OP_SINGLE_DH_USE | SSL_OP_ALL);
+		    if (stAttrValue(stLookup(CxGlobals.ParsedConfig,"ssl_cipherlist"),NULL,&ptr,0) < 0) ptr="DEFAULT";
+		    SSL_CTX_set_cipher_list(inf->SSL_ctx, ptr);
+		    SSL_CTX_set_verify(inf->SSL_ctx, SSL_VERIFY_PEER, NULL);
+		    SSL_CTX_set_verify_depth(inf->SSL_ctx, 10);
+		    SSL_CTX_set_default_verify_paths(inf->SSL_ctx);
+		    }
+		}
+
+	    /** Try the connection **/
+	    rval = http_internal_GetPageStream(inf);
+
+	    /** Basic result types **/
+	    if (rval == HTTP_CONN_S_FAIL)
+		goto error;
+	    if (HTTP_OS_DEBUG)
+		printf("http: connection status = %s\n", http_conn_s_desc[rval]);
+
+	    if (rval == HTTP_CONN_S_REDIRECT)
+		{
+		if (HTTP_OS_DEBUG)
+		    printf("trying again...(redirected: %i)\n", inf->Redirected);
+		redir_cnt++;
+		if (redir_cnt > inf->RedirectLimit)
+		    {
+		    mssError(1,"HTTP","HTTP server redirection loop");
+		    goto error;
+		    }
+		inf->SendAuth = http_internal_GetConfigBoolean(inf, "send_auth_initial", 1, 0);
+		}
+	    else if (rval == HTTP_CONN_S_TRYUP)
+		{
+		continue;
+		}
+	    else if (rval == HTTP_CONN_S_SUCCESS)
+		{
+		break;
+		}
+	    else if (rval == HTTP_CONN_S_HTTP401 && !inf->SentAuth && inf->HadAuth)
+		{
+		inf->SendAuth++;
+		continue;
+		}
+	    else
+		{
+		/** Analyze the cause vs. our retry settings **/
+		if (rval == HTTP_CONN_S_HTTP404 && !(inf->RetryFor & HTTP_RETRY_F_HTTP4XX))
+		    goto error;
+		if (rval == HTTP_CONN_S_HTTP4XX && !(inf->RetryFor & HTTP_RETRY_F_HTTP4XX))
+		    goto error;
+		if (rval == HTTP_CONN_S_HTTP5XX && !(inf->RetryFor & HTTP_RETRY_F_HTTP5XX))
+		    goto error;
+		if (rval == HTTP_CONN_S_TCPRESET && !(inf->RetryFor & HTTP_RETRY_F_TCPRESET))
+		    goto error;
+		if (rval == HTTP_CONN_S_RUDECLOSE && !(inf->RetryFor & HTTP_RETRY_F_RUDECLOSE))
+		    goto error;
+		if (rval == HTTP_CONN_S_TLSERROR && !(inf->RetryFor & HTTP_RETRY_F_TLSERROR))
+		    goto error;
+
+		/** Retry? **/
+		if (inf->RetryLimit == 0)
+		    {
+		    mssError(0, "HTTP", "Connection failed to '%s'.", inf->Annotation);
+		    goto error;
+		    }
+		if (inf->RetryCount >= inf->RetryLimit)
+		    {
+		    mssError(0, "HTTP", "Connection retry limit exceeded to '%s'.", inf->Annotation);
+		    goto error;
+		    }
+
+		/** Wait a delay and try again **/
+		if (HTTP_OS_DEBUG)
+		    printf("http: retry #%d, waiting %dms\n", inf->RetryCount+1, (int)(inf->RetryDelay * 1000));
+		thSleep((int)(inf->RetryDelay * 1000 + 0.5));
+		inf->RetryDelay *= inf->RetryBackoffRatio;
+		inf->RetryCount++;
+		}
+	    }
+
+	return rval;
+
+    error:
+	return -1;
+    }
+
+
+/*** http_internal_GetConfig() - get a configuration value
+ ***/
+int
+http_internal_GetConfig(pHttpData inf, char* configname, pObjData pod, int datatype, int index)
+    {
     pExpression exp;
 
 	/** Normal string or expression? **/
-	if (stGetAttrType(stLookup(inf->Node->Data, configname), 0) == DATA_T_CODE)
+	if (stGetAttrType(stLookup(inf->Node->Data, configname), index) == DATA_T_CODE)
 	    {
 	    /** Expression **/
-	    if ((exp = stGetExpression(stLookup(inf->Node->Data, configname), 0)) != NULL)
+	    if ((exp = stGetExpression(stLookup(inf->Node->Data, configname), index)) != NULL)
 		{
 		expBindExpression(exp, inf->ObjList, EXPR_F_RUNSERVER);
 		if (expEvalTree(exp, inf->ObjList) == 0)
 		    {
-		    if (exp->DataType == DATA_T_STRING && !(exp->Flags & EXPR_F_NULL))
-			ptr = exp->String;
+		    if (exp->DataType == datatype && !(exp->Flags & EXPR_F_NULL))
+			{
+			return expExpressionToPod(exp, datatype, pod);
+			}
 		    }
 		}
+	    return -1;
 	    }
-	else if (stGetAttrValueOSML(stLookup(inf->Node->Data, configname), DATA_T_STRING, POD(&ptr), 0, inf->Obj->Session) < 0 || !ptr)
+	else if (stGetAttrValueOSML(stLookup(inf->Node->Data, configname), datatype, pod, index, inf->Obj->Session) < 0)
 	    {
-	    /** Failed to get string **/
+	    /** Failed to get value **/
+	    return -1;
+	    }
+
+    return 0;
+    }
+
+
+/*** http_internal_GetConfigString - get a configuration value as a string
+ ***/
+char*
+http_internal_GetConfigString(pHttpData inf, char* configname, char* default_value, int index)
+    {
+    char* ptr = NULL;
+    int n = 0;
+    char intbuf[16];
+
+	/** Try string **/
+	if (http_internal_GetConfig(inf, configname, POD(&ptr), DATA_T_STRING, index) < 0)
 	    ptr = NULL;
+
+	/** Try integer **/
+	if (http_internal_GetConfig(inf, configname, POD(&n), DATA_T_INTEGER, index) == 0)
+	    {
+	    snprintf(intbuf, sizeof(intbuf), "%d", n);
+	    ptr = intbuf;
 	    }
 
 	/** Apply default? **/
@@ -1858,6 +2092,76 @@ http_internal_GetConfigString(pHttpData inf, char* configname, char* default_val
 	if (HTTP_OS_DEBUG) printf("%s: %s\n",configname,ptr);
 
     return ptr;
+    }
+
+
+/*** http_internal_GetConfigBoolean - get a configuration value as a boolean
+ ***/
+int
+http_internal_GetConfigBoolean(pHttpData inf, char* configname, int default_value, int index)
+    {
+    char* ptr = NULL;
+    int n = 0;
+
+	/** Try string **/
+	if (http_internal_GetConfig(inf, configname, POD(&ptr), DATA_T_STRING, index) < 0)
+	    ptr = NULL;
+	if (ptr)
+	    {
+	    if (!strcasecmp(ptr, "true") || !strcasecmp(ptr, "yes") || !strcasecmp(ptr, "on") || !strcmp(ptr, "1"))
+		return 1;
+	    else if (!strcasecmp(ptr, "false") || !strcasecmp(ptr, "no") || !strcasecmp(ptr, "off") || !strcmp(ptr, "0"))
+		return 0;
+	    }
+
+	/** Try integer **/
+	if (http_internal_GetConfig(inf, configname, POD(&n), DATA_T_INTEGER, index) == 0)
+	    {
+	    return n?1:0;
+	    }
+
+    return default_value;
+    }
+
+
+/*** http_internal_GetConfigInteger - get a configuration value as an integer
+ ***/
+int
+http_internal_GetConfigInteger(pHttpData inf, char* configname, int default_value, int index)
+    {
+    int n = 0;
+
+	/** Get integer **/
+	if (http_internal_GetConfig(inf, configname, POD(&n), DATA_T_INTEGER, index) == 0)
+	    {
+	    return n;
+	    }
+
+    return default_value;
+    }
+
+
+/*** http_internal_GetConfigDouble - get a configuration value as a double
+ ***/
+double
+http_internal_GetConfigDouble(pHttpData inf, char* configname, double default_value, int index)
+    {
+    double d = 0.0;
+    int n = 0;
+
+	/** Try double **/
+	if (http_internal_GetConfig(inf, configname, POD(&d), DATA_T_DOUBLE, index) == 0)
+	    {
+	    return d;
+	    }
+
+	/** Try integer **/
+	if (http_internal_GetConfig(inf, configname, POD(&n), DATA_T_INTEGER, index) == 0)
+	    {
+	    return (double)n;
+	    }
+
+    return default_value;
     }
 
 
@@ -2114,6 +2418,7 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	inf->Flags = 0;
 	inf->NetworkOffset = 0;
 	inf->ReadOffset = 0;
+	inf->SSL_ctx = NULL;
 
 	//printf("objdrv_http.c was offered: (%i,%i,%i) %s\n",obj->SubPtr,
 	//	obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
@@ -2150,18 +2455,20 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    goto error;
 
 	/** Configuration **/
-	inf->ProxyServer = http_internal_GetConfigString(inf, "proxyserver", "");
-	inf->ProxyPort = http_internal_GetConfigString(inf, "proxyport", "80");
-	inf->Server = http_internal_GetConfigString(inf, "server", "");
-	inf->Port = http_internal_GetConfigString(inf, "port", "");
-	inf->Path = http_internal_GetConfigString(inf, "path", "/");
-	inf->Method = http_internal_GetConfigString(inf, "method", "GET");
-	inf->RequestContentType = http_internal_GetConfigString(inf, "request_content_type", "application/x-www-form-urlencoded");
-	inf->RestrictContentType = http_internal_GetConfigString(inf, "restrict_content_type", "application/octet-stream");
-	inf->ExpectedContentCharset = http_internal_GetConfigString(inf, "expected_content_charset", NULL);
-	inf->OverrideContentCharset = strcmp(http_internal_GetConfigString(inf, "override_content_charset", "false"), "true") == 0;
-	inf->Protocol = http_internal_GetConfigString(inf, "protocol", "http");
-	inf->Cipherlist = http_internal_GetConfigString(inf, "ssl_cipherlist", "");
+	inf->ProxyServer = http_internal_GetConfigString(inf, "proxyserver", "", 0);
+	inf->ProxyPort = http_internal_GetConfigString(inf, "proxyport", "80", 0);
+	inf->Server = http_internal_GetConfigString(inf, "server", "", 0);
+	inf->Port = http_internal_GetConfigString(inf, "port", "", 0);
+	inf->Path = http_internal_GetConfigString(inf, "path", "/", 0);
+	inf->Method = http_internal_GetConfigString(inf, "method", "GET", 0);
+	inf->RequestContentType = http_internal_GetConfigString(inf, "request_content_type", "application/x-www-form-urlencoded", 0);
+	inf->RestrictContentType = http_internal_GetConfigString(inf, "restrict_content_type", "application/octet-stream", 0);
+	inf->ExpectedContentCharset = http_internal_GetConfigString(inf, "expected_content_charset", NULL, 0);
+	inf->OverrideContentCharset = http_internal_GetConfigBoolean(inf, "override_content_charset", 0, 0);
+	inf->AllowInsecureRedirects = http_internal_GetConfigBoolean(inf, "allow_insecure_redirects", 0, 0);
+	inf->ForceSecureRedirects = http_internal_GetConfigBoolean(inf, "force_secure_redirects", 0, 0);
+	inf->Protocol = http_internal_GetConfigString(inf, "protocol", "http", 0);
+	inf->Cipherlist = http_internal_GetConfigString(inf, "ssl_cipherlist", "", 0);
 
 	/** Valid method? **/
 	if (strcmp(inf->Method, "GET") && strcmp(inf->Method, "POST") && strcmp(inf->Method, "DELETE"))
@@ -2173,22 +2480,61 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	/** Which result codes (other than 2XX) are treated as successful? **/
 	for(i=0; i<8; i++)
 	    {
-	    if (stAttrValue(stLookup(node->Data, "success_codes"), &inf->SuccessCodes[i], NULL, i) < 0)
-		inf->SuccessCodes[i] = 0;
+	    inf->SuccessCodes[i] = http_internal_GetConfigInteger(inf, "success_codes", 0, i);
+	    }
+
+	/** Retry settings **/
+	inf->RetryCount = 0;
+	inf->RetryLimit = http_internal_GetConfigInteger(inf, "retry_limit", 0, 0);
+	inf->RedirectLimit = http_internal_GetConfigInteger(inf, "redirect_limit", HTTP_REDIR_MAX, 0);
+	inf->RetryDelay = http_internal_GetConfigDouble(inf, "retry_delay", 1.0, 0);
+	inf->RetryBackoffRatio = http_internal_GetConfigDouble(inf, "retry_backoff_ratio", 2.0, 0);
+	inf->RetryFor = 0;
+	for(i=0; i<5; i++)
+	    {
+	    ptr = http_internal_GetConfigString(inf, "retry_for", NULL, i);
+	    if (ptr)
+		{
+		if (!strcmp(ptr, "tcp_reset"))
+		    inf->RetryFor |= HTTP_RETRY_F_TCPRESET;
+		else if (!strcmp(ptr, "rude_close"))
+		    inf->RetryFor |= HTTP_RETRY_F_RUDECLOSE;
+		else if (!strcmp(ptr, "http_401"))
+		    inf->RetryFor |= HTTP_RETRY_F_HTTP401;
+		else if (!strcmp(ptr, "http_4xx"))
+		    inf->RetryFor |= HTTP_RETRY_F_HTTP4XX;
+		else if (!strcmp(ptr, "http_5xx"))
+		    inf->RetryFor |= HTTP_RETRY_F_HTTP5XX;
+		else if (!strcmp(ptr, "tls_error"))
+		    inf->RetryFor |= HTTP_RETRY_F_TLSERROR;
+		else if (!strcmp(ptr, "any"))
+		    inf->RetryFor = HTTP_RETRY_F_TCPRESET | HTTP_RETRY_F_RUDECLOSE | HTTP_RETRY_F_HTTP401 | HTTP_RETRY_F_HTTP4XX | HTTP_RETRY_F_HTTP5XX | HTTP_RETRY_F_TLSERROR;
+		else if (!strcmp(ptr, "none") && i == 0)
+		    {
+		    inf->RetryFor = 0;
+		    break;
+		    }
+		else
+		    {
+		    mssError(1, "HTTP", "Invalid retry_for option '%s'", ptr);
+		    goto error;
+		    }
+		}
 	    }
 
 	/** Authentication headers **/
-	if ((ptr = http_internal_GetConfigString(inf, "proxyauthline", NULL)))
+	inf->SendAuth = http_internal_GetConfigBoolean(inf, "send_auth_initial", 1, 0);
+	if ((ptr = http_internal_GetConfigString(inf, "proxyauthline", NULL, 0)))
 	    {
 	    http_internal_AddRequestHeader(inf, "Proxy-Authorization", ptr, 1, 0);
 	    }
-	if ((ptr = http_internal_GetConfigString(inf, "authline", NULL)))
+	if ((ptr = http_internal_GetConfigString(inf, "authline", NULL, 0)))
 	    {
 	    http_internal_AddRequestHeader(inf, "Authorization", ptr, 1, 0);
 	    }
-	else if ((user = http_internal_GetConfigString(inf, "username", NULL)))
+	else if ((user = http_internal_GetConfigString(inf, "username", NULL, 0)))
 	    {
-	    pw = http_internal_GetConfigString(inf, "password", "");
+	    pw = http_internal_GetConfigString(inf, "password", "", 0);
 	    ptr = nmSysMalloc(strlen(user) + 1 + strlen(pw) + 1);
 	    if (!ptr)
 		goto error;
@@ -2206,30 +2552,29 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    }
 
 	/** Control flags **/
-	if (stAttrValue(stLookup(node->Data, "allowbadcert"), &inf->AllowBadCert, NULL, 0) < 0)
-	    inf->AllowBadCert=0;
-	if (stAttrValue(stLookup(node->Data, "allowsubdirs"), &inf->AllowSubDirs, NULL, 0) < 0)
-	    inf->AllowSubDirs=1;
-	if (stAttrValue(stLookup(node->Data, "allowredirects"), &inf->AllowRedirects, NULL, 0) < 0)
-	    inf->AllowRedirects=1;
-	if (stAttrValue(stLookup(node->Data, "allowcookies"), &inf->AllowCookies, NULL, 0) < 0)
-	    inf->AllowCookies=0;
+	inf->AllowBadCert = http_internal_GetConfigBoolean(inf, "allowbadcert", 0, 0);
+	inf->AllowSubDirs = http_internal_GetConfigBoolean(inf, "allowsubdirs", 0, 0);
+	inf->AllowRedirects = http_internal_GetConfigBoolean(inf, "allowredirects", 1, 0);
+	inf->AllowCookies = http_internal_GetConfigBoolean(inf, "allowcookies", 0, 0);
 	if (!inf->AllowSubDirs)
 	    inf->Obj->SubCnt=1;
 
 	/** Cache control **/
-	if (stAttrValue(stLookup(node->Data, "cache_min_ttl"), &inf->CacheMinTime, NULL, 0) < 0)
-	    inf->CacheMinTime = 0;
+	inf->CacheMinTime = http_internal_GetConfigInteger(inf, "cache_min_ttl", 0, 0);
 	if (inf->CacheMinTime < 0)
 	    inf->CacheMinTime = 0;
-	if (stAttrValue(stLookup(node->Data, "cache_max_ttl"), &inf->CacheMaxTime, NULL, 0) < 0)
-	    inf->CacheMaxTime = 0;
+	inf->CacheMaxTime = http_internal_GetConfigInteger(inf, "cache_max_ttl", 0, 0);
 	if (inf->CacheMaxTime < 0)
 	    inf->CacheMaxTime = 0;
-	if (stAttrValue(stLookup(node->Data, "cache_max_length"), &inf->ContentCacheMaxLen, NULL, 0) < 0)
-	    inf->ContentCacheMaxLen = HTTP_DEFAULT_MEM_CACHE;
+	inf->ContentCacheMaxLen = http_internal_GetConfigInteger(inf, "cache_max_length", HTTP_DEFAULT_MEM_CACHE, 0);
 	if (inf->ContentCacheMaxLen < 0)
 	    inf->ContentCacheMaxLen = 0;
+
+	/** Warn if http_4xx retry type is provided while allowing subdirs **/
+	if (inf->RetryLimit > 0 && inf->AllowSubDirs && (inf->RetryFor & HTTP_RETRY_F_HTTP4XX))
+	    {
+	    mssError(1, "HTTP", "Warning: both retry_for http_4xx and allowsubdirs are enabled; retry on 404 Not Found is disabled.");
+	    }
 
 	/** Ensure all required config items are given **/
 	if (!inf->Server[0])
@@ -2243,24 +2588,15 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    inf->Obj->SubCnt = 1 + inf->ParamSubCnt;
 
 	/** Connect to server and retrieve the response headers **/
-	redir_cnt = 0;
-	while((rval = http_internal_GetPageStream(inf)) == 2)
-	    {
-	    if(HTTP_OS_DEBUG) printf("trying again...(redirected: %i)\n",inf->Redirected);
-	    if (inf->Redirected) redir_cnt++;
-	    if (redir_cnt > HTTP_REDIR_MAX)
-		{
-		mssError(1,"HTTP","HTTP server redirection loop");
-		goto error;
-		}
-	    }
-	if(rval != 1)
+	rval = http_internal_StartConnection(inf);
+	if (rval != 0)
 	    goto error;
 
 	return (void*)inf;
 
     error:
-	if (inf) http_internal_Cleanup(inf);
+	if (inf)
+	    http_internal_Cleanup(inf);
 	return NULL;
     }
 
@@ -2312,7 +2648,6 @@ httpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
     {
     pHttpData inf = HTTP(inf_v);
     int readcnt=maxcnt; /* if we get no other info, use the size requested */
-    int redir_cnt;
     int maxread;
     int rval;
     int cur_msec = mtRealTicks() * 1000 / CxGlobals.ClkTck;
@@ -2350,18 +2685,8 @@ httpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	    {
 	    /** if there's no connection or we're told to seek to 0, reinit the connection **/
 	    int rval;
-	    redir_cnt = 0;
-	    while((rval=http_internal_GetPageStream(inf))==2)
-		{
-		if(HTTP_OS_DEBUG) printf("trying again...(redirected: %i)\n",inf->Redirected);
-		if (inf->Redirected) redir_cnt++;
-		if (redir_cnt > HTTP_REDIR_MAX)
-		    {
-		    mssError(1,"HTTP","HTTP server redirection loop");
-		    return -1;
-		    }
-		}
-	    if(rval==0)
+	    rval = http_internal_StartConnection(inf);
+	    if (rval != 0)
 		return -1;
 	    inf->NetworkOffset = 0;
 	    inf->Flags &= ~HTTP_F_CONTENTCOMPLETE;
@@ -2803,7 +3128,7 @@ httpInitialize()
 
 	/** Initialize globals **/
 	memset(&HTTP_INF,0,sizeof(HTTP_INF));
-	retval=regcomp(&HTTP_INF.parsehttp,"http://([^:/]+)(:(.+))?/(.*)",REG_EXTENDED | REG_ICASE);
+	retval=regcomp(&HTTP_INF.parsehttp,"(http|https)://([^:/]+)(:(.+))?/(.*)",REG_EXTENDED | REG_ICASE);
 	if(retval)
 	    {
 	    regerror(retval,&HTTP_INF.parsehttp,temp,sizeof(temp));
@@ -2821,18 +3146,6 @@ httpInitialize()
 	HTTP_INF.NonceData = cxssKeystreamNew(NULL, 0);
 	if (!HTTP_INF.NonceData)
 	    mssError(1, "HTTP", "Warning: X-Nonce headers will not be emitted");
-
-	/** Set up OpenSSL **/
-	HTTP_INF.SSL_ctx = SSL_CTX_new(SSLv23_client_method());
-	if (HTTP_INF.SSL_ctx) 
-	    {
-	    SSL_CTX_set_options(HTTP_INF.SSL_ctx, SSL_OP_NO_SSLv2 | SSL_OP_SINGLE_DH_USE | SSL_OP_ALL);
-	    if (stAttrValue(stLookup(CxGlobals.ParsedConfig,"ssl_cipherlist"),NULL,&ptr,0) < 0) ptr="DEFAULT";
-	    SSL_CTX_set_cipher_list(HTTP_INF.SSL_ctx, ptr);
-	    SSL_CTX_set_verify(HTTP_INF.SSL_ctx, SSL_VERIFY_PEER, NULL);
-	    SSL_CTX_set_verify_depth(HTTP_INF.SSL_ctx, 10);
-	    SSL_CTX_set_default_verify_paths(HTTP_INF.SSL_ctx);
-	    }
 
 	/** Setup the structure **/
 	strcpy(drv->Name,"HTTP - HTTP/HTTPS Protocol for objectsystem");
