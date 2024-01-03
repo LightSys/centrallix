@@ -169,7 +169,7 @@ typedef struct
 #define HTTP_RETRY_F_TLSERROR	32
 
 #define HTTP(x) ((pHttpData)(x))
-#define HTTP_OS_DEBUG		1
+#define HTTP_OS_DEBUG		0
 #define HTTP_REDIR_MAX		4	/* default limit on redirects, can be overridden in node */
 
 /*** Status return values from GetPageStream() ***/
