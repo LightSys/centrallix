@@ -56,6 +56,8 @@
 /*									*/
 /************************************************************************/
 
+#define JSON_READ_SIZE		8192
+
 
 /** the element used in the document cache **/
 typedef struct
@@ -168,7 +170,7 @@ json_internal_ReadDoc(pObject obj)
     pDateTime dt = NULL;
     struct json_tokener* jtok = NULL;
     enum json_tokener_error jerr;
-    char rbuf[256];
+    char *rbuf = NULL;
     int rcnt;
     int first_read;
 
@@ -220,8 +222,11 @@ json_internal_ReadDoc(pObject obj)
 
 	    /** Parse it one chunk at a time **/
 	    first_read = 1;
+	    rbuf = nmSysMalloc(JSON_READ_SIZE);
+	    if (!rbuf)
+		goto error;
 	    do  {
-		rcnt = objRead(obj->Prev, rbuf, sizeof(rbuf), 0, first_read?OBJ_U_SEEK:0);
+		rcnt = objRead(obj->Prev, rbuf, JSON_READ_SIZE, 0, first_read?OBJ_U_SEEK:0);
 		if (rcnt < 0 || (rcnt == 0 && first_read))
 		    {
 		    mssError(0,"JSON","Could not read JSON document");
@@ -250,6 +255,12 @@ json_internal_ReadDoc(pObject obj)
 	    jtok = NULL;
 	    }
 
+	if (rbuf)
+	    {
+	    nmSysFree(rbuf);
+	    rbuf = NULL;
+	    }
+
 	/** Return the parsed JSON document **/
 	json_internal_CacheLink(cache_obj);
 	return cache_obj;
@@ -257,6 +268,11 @@ json_internal_ReadDoc(pObject obj)
     error:
 	if (jtok)
 	    json_tokener_free(jtok);
+	if (rbuf)
+	    {
+	    nmSysFree(rbuf);
+	    rbuf = NULL;
+	    }
 	return NULL;
     }
 
