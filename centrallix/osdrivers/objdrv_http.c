@@ -2048,7 +2048,7 @@ http_internal_GetConfig(pHttpData inf, char* configname, pObjData pod, int datat
 		}
 	    return -1;
 	    }
-	else if (stGetAttrValueOSML(stLookup(inf->Node->Data, configname), datatype, pod, index, inf->Obj->Session) < 0)
+	else if (stGetAttrValueOSML(stLookup(inf->Node->Data, configname), datatype, pod, index, inf->Obj->Session, NULL) < 0)
 	    {
 	    /** Failed to get value **/
 	    return -1;

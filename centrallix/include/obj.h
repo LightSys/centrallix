@@ -669,6 +669,7 @@ int objWrite(pObject this, char* buffer, int cnt, int offset, int flags);
 /** objectsystem attribute functions **/
 int objGetAttrType(pObject this, char* attrname);
 int objSetEvalContext(pObject this, void* objlist);
+void* objGetEvalContext(pObject this);
 #if 1
 int objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val);
 int objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val);

@@ -307,6 +307,7 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 
 	/** Object List **/
 	inf->ObjList = expCreateParamList();
+	inf->ObjList->Session = obj->Session;
 	expAddParamToList(inf->ObjList,"this",NULL,EXPR_O_CURRENT);
 	expAddParamToList(inf->ObjList,"parameters",(void*)inf,0);
 	expSetParamFunctions(inf->ObjList, "parameters", qy_internal_GetParamType, qy_internal_GetParamValue, qy_internal_SetParamValue);
@@ -355,14 +356,6 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	/** Link to the node, increasing its reference count **/
 	inf->Node->OpenCnt++;
 
-	/** Get SQL string **/
-	if (stGetAttrValueOSML(stLookup(inf->Node->Data,"sql"), DATA_T_STRING, POD(&sql), 0, obj->Session) != 0)
-	    {
-	    mssError(1,"QY","'sql' property must be supplied for query objects");
-	    goto error;
-	    }
-	inf->SQL = nmSysStrdup(sql);
-
 	/** Get Name Expression string **/
 	if (stAttrValue(stLookup(inf->Node->Data,"name_expression"),NULL,&name_expr,0) != 0)
 	    {
@@ -397,6 +390,14 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 		    }
 		}
 	    }
+
+	/** Get SQL string **/
+	if (stGetAttrValueOSML(stLookup(inf->Node->Data,"sql"), DATA_T_STRING, POD(&sql), 0, obj->Session, inf->ObjList) != 0)
+	    {
+	    mssError(1,"QY","'sql' property must be supplied for query objects");
+	    goto error;
+	    }
+	inf->SQL = nmSysStrdup(sql);
 
 	/** If the .qy file is the end of the Pathname, We  **/
 	/** will not need to chop apart extra where clauses **/

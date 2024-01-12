@@ -707,3 +707,13 @@ objSetEvalContext(pObject this, void* objlist_v)
     return 0;
     }
 
+
+/*** objGetEvalContext() - gets an object list (objlist) to be used in
+ *** the evaluation of property values that use runserver() expressions.
+ ***/
+void*
+objGetEvalContext(pObject this)
+    {
+    return this->EvalContext;
+    }
+

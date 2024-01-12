@@ -124,7 +124,7 @@ int stPrintInf(pStructInf this);
 int stRemoveInf(pStructInf inf);
 int stGetAttrValue(pStructInf this, int type, pObjData value, int nval);
 int stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value);
-int stGetAttrValueOSML(pStructInf this, int type, pObjData value, int nval, pObjSession sess);
+int stGetAttrValueOSML(pStructInf this, int type, pObjData value, int nval, pObjSession sess, pParamObjects objlist);
 int stGetAttrType(pStructInf this, int nval);
 int stStructType(pStructInf this);
 int stSetAttrValue(pStructInf this, int type, pObjData value, int nval);

@@ -520,7 +520,7 @@ stGetExpression(pStructInf this, int nval)
 int
 stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
     {
-    return stGetAttrValueOSML(this, type, pod, nval, NULL);
+    return stGetAttrValueOSML(this, type, pod, nval, NULL, NULL);
     }
 
 
@@ -541,7 +541,7 @@ stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value)
 	    return 1;
 	    }
 
-    return stGetAttrValueOSML(attr_inf, type, value, 0, NULL);
+    return stGetAttrValueOSML(attr_inf, type, value, 0, NULL, NULL);
     }
 
 
@@ -549,10 +549,10 @@ stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value)
  *** in the context of an OSML session.
  ***/
 int
-stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSession sess)
+stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSession sess, pParamObjects objlist)
     {
     pExpression find_exp;
-    pParamObjects objlist;
+    pParamObjects my_objlist = objlist;
 
 	/** Do some error-cascade checking. **/
 	if (!this) return -1;
@@ -573,10 +573,14 @@ stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSessio
 	/** If external ref, do eval **/
 	if ((find_exp->ObjCoverageMask & (EXPR_MASK_EXTREF | EXPR_MASK_INDETERMINATE)) && !(find_exp->Flags & EXPR_F_RUNCLIENT))
 	    {
-	    objlist = expCreateParamList();
-	    objlist->Session = sess;
-	    expEvalTree(find_exp, objlist);
-	    expFreeParamList(objlist);
+	    if (!objlist)
+		{
+		my_objlist = expCreateParamList();
+		my_objlist->Session = sess;
+		}
+	    expEvalTree(find_exp, my_objlist);
+	    if (!objlist)
+		expFreeParamList(my_objlist);
 	    }
 
 	/** Correct type requested? **/
