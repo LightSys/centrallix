@@ -1216,7 +1216,10 @@ obfObfuscateData(pObjData srcval, pObjData dstval, int data_type, char* attrname
 		break;
 
 	    case DATA_T_DOUBLE:
-		scale = floor(log10(srcval->Double));
+		if (srcval->Double != 0.0)
+		    scale = floor(log10(srcval->Double));
+		else
+		    scale = 0;
 		iv = (srcval->Double * exp10(8 - scale));
 		if (strchr(param,'i'))
 		    dv = obf_internal_ObfuscateIntegerMultiples(hash, hash_novalue, &bitcnt, iv);
