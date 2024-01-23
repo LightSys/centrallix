@@ -80,9 +80,9 @@ wgtalVerify(pWgtrVerifySession s)
     {
     pWgtrNode al = s->CurrWidget;
     pWgtrNode child;
-    pWgtrNode widgetarray[64];
-    pWgtrNode sortarray[64];
-    int ord[64];
+    pWgtrNode widgetarray[80];
+    pWgtrNode sortarray[80];
+    int ord[80];
     int xo, yo;
     int al_type = -1;
     int i, j;
