@@ -756,9 +756,9 @@ http_internal_ConnectHttps(pHttpData inf)
 	inf->SSLpid = cxssStartTLS(inf->SSL_ctx, &inf->Socket, &inf->SSLReporting, 0, inf->Server);
 	if (inf->SSLpid <= 0)
 	    {
+	    mssErrorErrno(0, "HTTP", "Could not start SSL/TLS session");
 	    netCloseTCP(inf->Socket,1,0);
 	    inf->Socket = NULL;
-	    mssError(0, "HTTP", "Could not start SSL/TLS session");
 	    return -1;
 	    }
 
@@ -1517,7 +1517,11 @@ http_internal_GetPageStream(pHttpData inf)
 	    {
 	    if (http_internal_ConnectHttps(inf) < 0)
 		{
-		if (errno == ECONNREFUSED)
+		if (errno == EMFILE || errno == ENFILE || errno == EAGAIN || errno == ENOMEM)
+		    {
+		    goto error;
+		    }
+		else if (errno == ECONNREFUSED)
 		    {
 		    return_status = HTTP_CONN_S_TCPRESET;
 		    goto retry;
@@ -2685,6 +2689,7 @@ httpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	    {
 	    /** if there's no connection or we're told to seek to 0, reinit the connection **/
 	    int rval;
+	    http_internal_CloseConnection(inf);
 	    rval = http_internal_StartConnection(inf);
 	    if (rval != 0)
 		return -1;
@@ -2731,6 +2736,9 @@ httpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 		xsWrite(inf->ContentCache, buffer, rval, inf->NetworkOffset, XS_U_SEEK);
 	    inf->NetworkOffset += rval;
 	    inf->ReadOffset += rval;
+
+	    if (inf->ContentLength && inf->NetworkOffset >= inf->ContentLength)
+		http_internal_CloseConnection(inf);
 	    }
 	else
 	    {
@@ -2738,7 +2746,7 @@ httpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 		inf->Flags |= HTTP_F_CONTENTCOMPLETE;
 
 	    /** end of file - close up **/
-	    if (rval < 0 || readcnt > 0)
+	    if (rval < 0 || readcnt > 0 || (inf->ContentLength && inf->NetworkOffset >= inf->ContentLength))
 		http_internal_CloseConnection(inf);
 	    }
 

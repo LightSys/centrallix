@@ -251,6 +251,19 @@ json_internal_ReadDoc(pObject obj)
 		mssError(1,"JSON","Error processing JSON document: %s", json_tokener_error_desc(jerr));
 		goto error;
 		}
+	    if (rcnt > 0)
+		{
+		/** JSON parser triggered end of read, do a quick additional
+		 ** read to see if there is any trailing data, and this also
+		 ** allows the HTTP driver (if being used) to detect end of
+		 ** stream and close the connection.
+		 **/
+		rcnt = objRead(obj->Prev, rbuf, JSON_READ_SIZE, 0, first_read?OBJ_U_SEEK:0);
+		if (rcnt > 0)
+		    {
+		    mssError(1, "JSON", "Warning: trailing data beyond end of JSON document.");
+		    }
+		}
 	    json_tokener_free(jtok);
 	    jtok = NULL;
 	    }

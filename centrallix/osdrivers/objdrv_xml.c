@@ -140,7 +140,7 @@
 **/
 #endif
 
-#define XML_BLOCK_SIZE 8092
+#define XML_BLOCK_SIZE 8192
 #define XML_ELEMENT_SIZE 64
 #define XML_ATTR_SIZE 256
 #define XML_HASH_SIZE 8+OBJSYS_MAX_PATH+XML_ATTR_SIZE // make sure room for open mode, path, and params
