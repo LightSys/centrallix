@@ -2663,6 +2663,12 @@ httpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	if (maxcnt <= 0)
 	    return 0;
 
+	/** Complete, and we're still at end of result?  Give an EOF if so. **/
+	if ((inf->Flags & HTTP_F_CONTENTCOMPLETE) && inf->ContentLength && inf->ReadOffset >= inf->ContentLength)
+	    {
+	    return 0;
+	    }
+
 	/** Cached and data available? **/
 	if (!inf->ContentCache)
 	    inf->ContentCache = xsNew();
@@ -2696,12 +2702,15 @@ httpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	    inf->NetworkOffset = 0;
 	    inf->Flags &= ~HTTP_F_CONTENTCOMPLETE;
 	    }
+
+	/** if the server provided a Content-Length header, use it... **/
 	if(inf->ContentLength)
 	    {
-	    /** if the server provided a Content-Length header, use it... **/
 	    readcnt = inf->ContentLength - inf->NetworkOffset; /* the maximum length we're allowed to request */
 	    readcnt = readcnt>maxcnt?maxcnt:readcnt; /* drop down to what the requesting object wants */
 	    }
+
+	/** Still no connection? **/
 	if(!inf->Socket) return -1;
 	if(HTTP_OS_DEBUG) printf("HTTP -- starting fdRead -- asking for: %i bytes\n", readcnt);
 
@@ -2717,7 +2726,11 @@ httpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 		if (rval == 0 && maxread > 0 && inf->NetworkOffset <= inf->ContentCacheMaxLen)
 		    inf->Flags |= HTTP_F_CONTENTCOMPLETE;
 		if (rval < 0 || maxread > 0)
+		    {
+		    inf->Flags |= HTTP_F_CONTENTCOMPLETE;
+		    inf->ContentLength = inf->NetworkOffset;
 		    http_internal_CloseConnection(inf);
+		    }
 		return rval;
 		}
 	    if (inf->NetworkOffset + rval <= inf->ContentCacheMaxLen)
@@ -2738,7 +2751,10 @@ httpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	    inf->ReadOffset += rval;
 
 	    if (inf->ContentLength && inf->NetworkOffset >= inf->ContentLength)
+		{
+		inf->Flags |= HTTP_F_CONTENTCOMPLETE;
 		http_internal_CloseConnection(inf);
+		}
 	    }
 	else
 	    {
@@ -2747,7 +2763,11 @@ httpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 
 	    /** end of file - close up **/
 	    if (rval < 0 || readcnt > 0 || (inf->ContentLength && inf->NetworkOffset >= inf->ContentLength))
+		{
+		inf->Flags |= HTTP_F_CONTENTCOMPLETE;
+		inf->ContentLength = inf->NetworkOffset;
 		http_internal_CloseConnection(inf);
+		}
 	    }
 
     return rval;
