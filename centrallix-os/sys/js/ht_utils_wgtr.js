@@ -445,7 +445,11 @@ function wgtrProbeProperty(node, prop_name)
 	    {
 	    if (node.ifcProbe(ifValue).Exists(prop_name))
 		{
-		return node.ifcProbe(ifValue).getValue(prop_name);
+		var v = node.ifcProbe(ifValue).getValue(prop_name);
+		if (v === undefined)
+		    return new wgtrUndefinedObject();
+		else
+		    return v;
 		}
 	    else
 		{

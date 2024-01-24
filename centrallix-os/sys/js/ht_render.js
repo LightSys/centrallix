@@ -331,7 +331,7 @@ function cxjs_rtrim(s)
     }
 function cxjs_plus(a, b)
     {
-    if (a == null || b == null) return null;
+    if (a === undefined || b === undefined || a == null || b == null) return null;
     if ((typeof a == 'string') || (typeof b == 'string'))
 	return String(a) + String(b);
     else
@@ -453,7 +453,8 @@ function cxjs_substitute(_context, _this, str, remaplist)
 			var fieldname = id[1];
 			}
 		    var prop = wgtrProbeProperty(obj, fieldname);
-		    if (typeof prop != 'undefined' && !wgtrIsUndefined(prop) && typeof window.__cur_exp != 'undefined' && window.__cur_exp)
+		    //if (typeof prop != 'undefined' && !wgtrIsUndefined(prop) && typeof window.__cur_exp != 'undefined' && window.__cur_exp)
+		    if (typeof window.__cur_exp != 'undefined' && window.__cur_exp)
 			pg_expaddpart(window.__cur_exp, obj, fieldname);
 		    if (prop == null || typeof prop == 'undefined' || wgtrIsUndefined(prop))
 			prop = "";
