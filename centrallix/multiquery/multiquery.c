@@ -4246,40 +4246,27 @@ char*
 mq_internal_QEGetNextAttr(pMultiQuery mq, pQueryElement qe, pParamObjects objlist, int* attrid, int* astobjid)
     {
     char* attrname = NULL;
+    int i;
 
-    	/** Check overflow... **/
+    	/** Look for the next attribute... **/
 	while(!attrname)
 	    {
-	    if (*attrid >= qe->AttrNames.nItems) return NULL;
-
-	    /** Asterisk? **/
-	    attrname = qe->AttrNames.Items[*attrid];
-	    if (!strcmp(attrname,"*"))
+	    if (*astobjid > -1)
 		{
-		attrname = NULL;
-		while(!attrname)
+		/** Working with a SELECT * **/
+		if (!objlist->Objects[*astobjid] || !(attrname = objGetNextAttr(objlist->Objects[*astobjid])))
 		    {
-		    if (*astobjid == -1)
+		    /** End of source or source unavailable; advance to the next source **/
+		    (*astobjid)++;
+		    if (*astobjid >= objlist->nObjects)
 			{
-			/** First non-external object **/
-			if (mq->nProvidedObjects < objlist->nObjects && objlist->Objects[mq->nProvidedObjects])
-			    attrname = objGetFirstAttr(objlist->Objects[mq->nProvidedObjects]);
-			*astobjid = mq->nProvidedObjects;
+			/** End of SELECT *, move to next attribute in list **/
+			*astobjid = -1;
+			(*attrid)++;
 			}
-		    else	
+		    else
 			{
-			if (objlist->Objects[*astobjid])
-			    attrname = objGetNextAttr(objlist->Objects[*astobjid]);
-			}
-		    if (attrname == NULL)
-			{
-			(*astobjid)++;
-			if (*astobjid >= objlist->nObjects)
-			    {
-			    *astobjid = -1;
-			    (*attrid)++;
-			    break;
-			    }
+			/** Start the next source **/
 			if (objlist->Objects[*astobjid])
 			    attrname = objGetFirstAttr(objlist->Objects[*astobjid]);
 			}
@@ -4288,6 +4275,37 @@ mq_internal_QEGetNextAttr(pMultiQuery mq, pQueryElement qe, pParamObjects objlis
 	    else
 		{
 		(*attrid)++;
+		}
+
+	    /** End of attribute list? **/
+	    if (*attrid >= qe->AttrNames.nItems)
+		return NULL;
+
+	    /** Use attribute from list if not doing SELECT * **/
+	    if (*astobjid == -1)
+		{
+		attrname = qe->AttrNames.Items[*attrid];
+		if (!strcmp(attrname, "*"))
+		    {
+		    /** Doing a SELECT *, start the first source now **/
+		    attrname = NULL;
+		    *astobjid = mq->nProvidedObjects;
+		    if (*astobjid < objlist->nObjects && objlist->Objects[*astobjid])
+			attrname = objGetFirstAttr(objlist->Objects[*astobjid]);
+		    }
+		}
+
+	    /** Exclude SELECT * items if explicitly named in attr list **/
+	    if (attrname && *astobjid > -1)
+		{
+		for(i=0; i<qe->AttrNames.nItems; i++)
+		    {
+		    if (!strcmp(attrname, qe->AttrNames.Items[i]))
+			{
+			attrname = NULL;
+			break;
+			}
+		    }
 		}
 	    }
 
@@ -4320,7 +4338,7 @@ mqGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
 
     	/** Set attr id, and return next attr **/
 	p->AstObjID = -1;
-	p->AttrID = 0;
+	p->AttrID = -1;
 
     return mqGetNextAttr(inf_v, oxt);
     }

@@ -123,8 +123,9 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     int attrid, astobjid;
     char* attrname;
     ObjData od;
+    pObjData pod;
     int t;
-    int use_attrid;
+    //int use_attrid;
     int hc_rval;
     handle_t collection;
     char* sourcetype;
@@ -241,12 +242,12 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    objUnmanageObject(stmt->Query->SessionID, new_obj);
 	   
 	    /** Set all of the SELECTed attributes **/
-	    attrid = 0;
+	    attrid = -1;
 	    astobjid = -1;
 	    while(1)
 		{
-		use_attrid = attrid;
 		attrname = mq_internal_QEGetNextAttr(stmt->Query, sel, stmt->Query->ObjList, &attrid, &astobjid);
+		pod = &od;
 		if (!attrname) break;
 		if (astobjid >= 0)
 		    {
@@ -260,20 +261,20 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		else
 		    {
 		    /** attr available through SELECT item list **/
-		    if (expEvalTree((pExpression)sel->AttrCompiledExpr.Items[use_attrid], stmt->Query->ObjList) < 0)
+		    if (expEvalTree((pExpression)sel->AttrCompiledExpr.Items[attrid], stmt->Query->ObjList) < 0)
 			goto error;
-		    t = ((pExpression)sel->AttrCompiledExpr.Items[use_attrid])->DataType;
+		    t = ((pExpression)sel->AttrCompiledExpr.Items[attrid])->DataType;
 		    if (t <= 0)
 			continue;
-		    exp_rval = expExpressionToPod((pExpression)(sel->AttrCompiledExpr.Items[use_attrid]), t, &od);
+		    exp_rval = expExpressionToPod((pExpression)(sel->AttrCompiledExpr.Items[attrid]), t, &od);
 		    if (exp_rval < 0)
 			goto error;
 		    else if (exp_rval == 1) /* null */
-			continue;
+			pod = NULL;
 		    }
 
 		/** Set the attribute on the newly inserted object **/
-		if (objSetAttrValue(new_obj, attrname, t, &od) < 0)
+		if (objSetAttrValue(new_obj, attrname, t, pod) < 0)
 		    goto error;
 		}
 
