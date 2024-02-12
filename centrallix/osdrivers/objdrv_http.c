@@ -534,6 +534,11 @@ http_internal_Cleanup(pHttpData inf)
 	    if (inf->Annotation)
 		nmSysFree(inf->Annotation);
 
+	    /** free SSL context, if needed**/
+	    if(inf->SSL_ctx)
+		SSL_CTX_free(inf->SSL_ctx);
+	    inf->SSL_ctx = NULL;
+
 	    nmFree(inf,sizeof(HttpData));
 	    }
 
