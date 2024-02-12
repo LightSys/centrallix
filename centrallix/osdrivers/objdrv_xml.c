@@ -214,7 +214,7 @@ typedef struct
 /*** GLOBALS ***/
 struct
     {
-    XHashTable	cache;
+    XHashQueue	cache;
     regex_t namematch;
     }
     XML_INF;
@@ -254,6 +254,26 @@ free_wrapper(void* ptr, void* arg)
         return 0   ; /* meaningless, but is needed for type safety */
     }
 
+
+/*** xml_internal_DiscardCO - this is the XHQ callback routine for the
+ *** cached xml objects when a cached item is being discarded via the LRU
+ *** discard algorithm.  We need to clean up by closing the object.
+ ***/
+int
+xml_internal_DiscardCO(pXHashQueue xhq, pXHQElement xe, int locked)
+    {
+    pXmlCacheObj cache;
+	/** Make sure can remove the object **/
+	if(locked) return -1;
+
+	/** find the object to close **/
+	cache = (pXmlCacheObj)xhqGetData(xhq, xe, XHQ_UF_PRELOCKED);
+
+	/** free the cache **/
+	xml_internal_CloseCachedDocument(cache);
+
+    return 0;
+    }
 
 /*** xml_internal_IsObject
  ***   decides if an XML node will be a centrallix object
@@ -450,9 +470,8 @@ xml_internal_ReadDoc(pObject obj)
 	/** Determine path of just the XML file itself **/
 	/** use the hash rather than the path for the chache lookup **/
 	obj_internal_GetDCHash(obj->Pathname, obj->Mode, hash, XML_HASH_SIZE, obj->SubPtr);
-
 	/** Check cache for an existing copy already **/
-	if((pCache=(pXmlCacheObj)xhLookup(&XML_INF.cache, hash)))
+	if((pCache=(pXmlCacheObj)xhqLookup(&XML_INF.cache, hash)))
 	    {
 	    if(XML_DEBUG) printf("found %s in cache\n", path);
 	    /** found match in cache -- check modification time **/
@@ -461,7 +480,7 @@ xml_internal_ReadDoc(pObject obj)
 		if(pDT && pDT->Value!=pCache->lastmod.Value)
 		    {
 		    /** modification time changed -- update **/
-		    xhRemove(&XML_INF.cache, hash);
+		    xhqRemove(&XML_INF.cache, xhqLookup(&XML_INF.cache, hash), 0);
 		    xml_internal_CloseCachedDocument(pCache);
 		    pCache = NULL;
 		    }
@@ -478,7 +497,9 @@ xml_internal_ReadDoc(pObject obj)
 	    if (objGetAttrValue(obj->Prev, "last_modification", DATA_T_DATETIME, POD(&pDT)) == 0)
 		pCache->lastmod.Value = pDT->Value;
 	    strtcpy(pCache->Pathname, hash, sizeof(pCache->Pathname));
-	    xhAdd(&XML_INF.cache, pCache->Pathname, (void*)pCache);
+	    pXHQElement tempItem = xhqAdd(&XML_INF.cache, pCache->Pathname, (void*)pCache, 0);
+	    /** make sure the cached item can be freed later; don't need it linked since only the cache uses it **/
+	    xhqUnlink(&XML_INF.cache, tempItem, 0); 
 	    pCache->LinkCnt = 1;
 	    }
 
@@ -1437,7 +1458,7 @@ xmlInitialize()
 
 	/** Initialize globals **/
 	memset(&XML_INF,0,sizeof(XML_INF));
-	xhInit(&XML_INF.cache,17,0);
+	xhqInit(&XML_INF.cache, 256, 0, 509, xml_internal_DiscardCO, 0);
 	if ((regcomp(&XML_INF.namematch, "^([^|]*)\\|*([0123456789]*)$", REG_EXTENDED)) != 0)
 	    {
 	    /** this is a critical failure -- this regex should compile just fine **/
