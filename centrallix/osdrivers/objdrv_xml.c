@@ -463,7 +463,8 @@ xml_internal_ReadDoc(pObject obj)
     char* ptr;
     char* path;
     int bytes;
-    pXmlCacheObj pCache;
+    pXmlCacheObj pCache = NULL;
+    pXHQElement cacheElem;
     pDateTime pDT=0;
     char hash[XML_HASH_SIZE];
 
@@ -471,18 +472,18 @@ xml_internal_ReadDoc(pObject obj)
 	/** use the hash rather than the path for the chache lookup **/
 	obj_internal_GetDCHash(obj->Pathname, obj->Mode, hash, XML_HASH_SIZE, obj->SubPtr);
 	/** Check cache for an existing copy already **/
-	if((pCache=(pXmlCacheObj)xhqLookup(&XML_INF.cache, hash)))
+	if((cacheElem=xhqLookup(&XML_INF.cache, hash)))
 	    {
 	    if(XML_DEBUG) printf("found %s in cache\n", path);
 	    /** found match in cache -- check modification time **/
 	    if(objGetAttrValue(obj->Prev, "last_modification", DATA_T_DATETIME, POD(&pDT))==0)
 		{
+		pCache = (pXmlCacheObj) xhqGetData(&XML_INF.cache, cacheElem, 0);
 		if(pDT && pDT->Value!=pCache->lastmod.Value)
 		    {
 		    /** modification time changed -- update **/
-		    xhqRemove(&XML_INF.cache, xhqLookup(&XML_INF.cache, hash), 0);
-		    xml_internal_CloseCachedDocument(pCache);
-		    pCache = NULL;
+		    xhqRemove(&XML_INF.cache, cacheElem, 0);
+		    pCache = NULL; /* xhqRemove handles cleaning up pCache */
 		    }
 		}
 	    }
@@ -498,6 +499,7 @@ xml_internal_ReadDoc(pObject obj)
 		pCache->lastmod.Value = pDT->Value;
 	    strtcpy(pCache->Pathname, hash, sizeof(pCache->Pathname));
 	    pXHQElement tempItem = xhqAdd(&XML_INF.cache, pCache->Pathname, (void*)pCache, 0);
+	    if(!tempItem) return NULL;
 	    /** make sure the cached item can be freed later; don't need it linked since only the cache uses it **/
 	    xhqUnlink(&XML_INF.cache, tempItem, 0); 
 	    pCache->LinkCnt = 1;
