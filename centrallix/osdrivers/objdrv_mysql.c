@@ -3027,10 +3027,13 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
                     {
 		    if (datatype == DATA_T_STRING && type == DATA_T_DATETIME)
 			{
-			/** Promote string to date time **/
-			objDataToDateTime(DATA_T_STRING, val->String, &dt, NULL);
-			od.DateTime = &dt;
-			val = &od;
+			if(val) /** make sure val can be a NULL and still handle as datetime **/
+			    {
+			    /** Promote string to date time **/
+			    objDataToDateTime(DATA_T_STRING, val->String, &dt, NULL);
+			    od.DateTime = &dt;
+			    val = &od;
+			    }
 			datatype = DATA_T_DATETIME;
 			}
                     if (*oxt)

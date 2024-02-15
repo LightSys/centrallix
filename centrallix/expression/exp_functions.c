@@ -2883,7 +2883,9 @@ int exp_fn_hash(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
 	    SHA512((unsigned char*)i1->String, strlen(i1->String), hashvalue);
 	    hashlen = 64;
 	    }
+	if (tree->Alloc && tree->String) nmSysFree(tree->String);
 	tree->String = nmSysMalloc(hashlen * 2 + 1);
+	tree->Alloc = 1;
 	if (!tree->String)
 	    {
 	    mssError(1, "EXP", "hash(): out of memory");
