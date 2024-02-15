@@ -7,6 +7,7 @@
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
+#include "cxlib/xhashqueue.h" 
 #include "stparse.h"
 #include "st_node.h"
 #include "cxlib/mtsession.h"
