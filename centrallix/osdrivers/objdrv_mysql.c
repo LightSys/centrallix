@@ -3037,7 +3037,7 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
                         {
 			/** This is part of a larger transaction, such as during an INSERT **/
                         if (type < 0) return -1;
-                        if (datatype != type)
+                        if (datatype != type && val)
                             {
                             mssError(1,"MYSD","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
                                     attrname, obj_type_names[datatype], obj_type_names[type]);

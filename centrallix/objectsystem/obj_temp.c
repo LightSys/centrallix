@@ -1284,6 +1284,8 @@ tmpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 
 	/** Set value of attribute **/
 	t = stGetAttrType(find_inf, 0);
+	if (!val && t > 0)
+	    datatype = t;
 	if (t > 0 && datatype != t)
 	    {
 	    mssError(1,"OSML","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
