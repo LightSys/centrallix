@@ -25,7 +25,7 @@ insert into topic values(null,1,"3. Application Components",null,
 	
 	Sample code is generally given in \"structure file\" format, which is the normal format for the building of applications.  However, other suitable object-structured data formats can be used, including XML.
 
-	Copyright (c)  1998-2010 LightSys Technology Services, Inc.
+	Copyright (c)  1998-2024 LightSys Technology Services, Inc.
 	
 	[b]Documentation on the following widgets is available:[/b]
 
