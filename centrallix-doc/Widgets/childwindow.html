@@ -13,12 +13,18 @@
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>The childwindow provides the capability of creating a popup dialog or application window within a web page.  The window is not actually a separate browser window, but rather a movable container that can appear "floating" above the rest of the Centrallix application.They can take on one of two styles;"dialog" and "window", which currently relate only to how the window border and titlebar are drawn.  The windows support windowshading (double-clicking on the titlebar to "rollup" or "rolldown" the window contents).</p>
+
 			<p>These "windows" currently do not support multiple instantiation.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>Childwindows are normally coded at the top-level of an application, since if they are placed within containers, the container limits where the window can be moved (the window is clipped by its container).  However, if the "toplevel" property is enabled, then the window floats at the top level of other widgets regardless of the size and location of its container in the application or component (thus the window is not clipped by its container).</p>
+
 			<p>These windows can contain other visual and nonvisual widgets.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -37,6 +43,31 @@
 <td class="description">A color, RGB or named, to be used as the window body's background.If neither transparent.</td>
 </tr>
 <tr>
+<td class="name">border_color</td>
+<td class="type">string</td>
+<td class="description">A color that outlines window.</td>
+</tr>
+<tr>
+<td class="name">border_radius</td>
+<td class="type">integer</td>
+<td class="description">A radius that describes the sharpness of the corners of the window (smaller means sharper).</td>
+</tr>
+<tr>
+<td class="name">border_style</td>
+<td class="type">string</td>
+<td class="description">Determines the look of the outline.</td>
+</tr>
+<tr>
+<td class="name">closetype</td>
+<td class="type">string</td>
+<td class="description">Decides wither the screen closes widthwise (1) or heightwise (2).</td>
+</tr>
+<tr>
+<td class="name">gshade</td>
+<td class="type">string</td>
+<td class="description">Acts as a boolean to declare if the window is shaded or not (all but title bar minimized).</td>
+</tr>
+<tr>
 <td class="name">hdr_background</td>
 <td class="type">string</td>
 <td class="description">A background image for the titlebar of the window.</td>
@@ -49,7 +80,7 @@
 <tr>
 <td class="name">height</td>
 <td class="type">integer</td>
-<td class="description">height, in pixels, of the window.</td>
+<td class="description">Height, in pixels, of the window.</td>
 </tr>
 <tr>
 <td class="name">icon</td>
@@ -57,19 +88,34 @@
 <td class="description">A pathname to an icon to be used in the upper left corner of the window.  If unspecified, the default "CX" ichthus icon is used instead.</td>
 </tr>
 <tr>
-<td class="name">style</td>
-<td class="type">string</td>
-<td class="description">Either "dialog" or "window", and determines the style of the window's border.</td>
-</tr>
-<tr>
 <td class="name">modal</td>
 <td class="type">yes/no</td>
 <td class="description">If "yes", the window is modal (and IsModal need not be passed to "Open").  A modal window will force the user to close the window before anything else in the application can be accessed.</td>
 </tr>
 <tr>
-<td class="name">toplevel</td>
-<td class="type">yes/no</td>
-<td class="description">If "yes", the window will float above all other widgets in the application, otherwise it will be clipped by its own container.</td>
+<td class="name">shadow_angle</td>
+<td class="type">integer</td>
+<td class="description">The placement of the shadow described as a rotational transformation with respect to the window.</td>
+</tr>
+<tr>
+<td class="name">shadow_color</td>
+<td class="type">string</td>
+<td class="description">The color of the shadow.</td>
+</tr>
+<tr>
+<td class="name">shadow_radius</td>
+<td class="type">integer</td>
+<td class="description">A radius that describes the sharpness of the corners of the shadow (smaller means sharper).</td>
+</tr>
+<tr>
+<td class="name">shadow_offset</td>
+<td class="type">integer</td>
+<td class="description">The placement of the shadow with respect to the window.</td>
+</tr>
+<tr>
+<td class="name">style</td>
+<td class="type">string</td>
+<td class="description">Either "dialog" or "window", and determines the style of the window's border.</td>
 </tr>
 <tr>
 <td class="name">textcolor</td>
@@ -77,34 +123,39 @@
 <td class="description">The color for the titlebar's text (window title).  Default "black".</td>
 </tr>
 <tr>
-<td class="name">titlebar</td>
-<td class="type">yes/no</td>
-<td class="description">whether the window will have a titlebar (and the close "X" in the upper right corner of the window). Default "yes".</td>
-</tr>
-<tr>
 <td class="name">title</td>
 <td class="type">string</td>
 <td class="description">The window's title.</td>
 </tr>
 <tr>
+<td class="name">titlebar</td>
+<td class="type">yes/no</td>
+<td class="description">Whether the window will have a titlebar (and the close "X" in the upper right corner of the window). Default "yes".</td>
+</tr>
+<tr>
+<td class="name">toplevel</td>
+<td class="type">yes/no</td>
+<td class="description">If "yes", the window will float above all other widgets in the application, otherwise it will be clipped by its own container.</td>
+</tr>
+<tr>
 <td class="name">visible</td>
 <td class="type">boolean</td>
-<td class="description">the window is initially visible on screen. The window has an action which can "true".</td>
+<td class="description">The window is initially visible on screen. The window has an action which can "true".</td>
 </tr>
 <tr>
 <td class="name">width</td>
 <td class="type">integer</td>
-<td class="description">width, in pixels, of the window.</td>
+<td class="description">Width, in pixels, of the window.</td>
 </tr>
 <tr>
 <td class="name">x</td>
 <td class="type">integer</td>
-<td class="description">x-coordinate of the upper left corner of the window, relative to its container.</td>
+<td class="description">X-coordinate of the upper left corner of the window, relative to its container.</td>
 </tr>
 <tr>
 <td class="name">y</td>
 <td class="type">integer</td>
-<td class="description">y-coordinate of the upper left corner of the window, relative to its container.</td>
+<td class="description">Y-coordinate of the upper left corner of the window, relative to its container.</td>
 </tr>
 </table>
 <h3 class="actions">Actions:</h3>
@@ -114,20 +165,36 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">SetVisibility</td>
-<td class="description">one parameter, "is_visible", which is set to 0 or 1 to hide or show the window, respectively.</td>
-</tr>
-<tr>
-<td class="name">ToggleVisibility</td>
-<td class="description">If the window is visible, this closes it.  If it is closed, this opens it.</td>
+<td class="name">Close</td>
+<td class="description">Closes the window.  Note that widgets inside the window may choose to veto the Close operation: for example, if there is unsaved data in a form.</td>
 </tr>
 <tr>
 <td class="name">Open</td>
 <td class="description">Opens the window.  If the parameter IsModal is set to 1, then the window becomes modal (only the window's contents are accessible to the user until the window is closed).  If the parameter NoClose is set to 1, then the close button in the upper right corner of the window becomes inactive and the window will only close via the Close, SetVisibility, and ToggleVisibility actions.</td>
 </tr>
 <tr>
-<td class="name">Close</td>
-<td class="description">Closes the window.  Note that widgets inside the window may choose to veto the Close operation: for example, if there is unsaved data in a form.</td>
+<td class="name">Point</td>
+<td class="description">Makes the window relocate to a side using a triangle (pop over).</td>
+</tr>
+<tr>
+<td class="name">Popup</td>
+<td class="description">Opens a window like a pop-up.</td>
+</tr>
+<tr>
+<td class="name">SetVisibility</td>
+<td class="description">One parameter, "is_visible", which is set to 0 or 1 to hide or show the window, respectively.</td>
+</tr>
+<tr>
+<td class="name">Shade</td>
+<td class="description">Turns the gshade property(see above) on.</td>
+</tr>
+<tr>
+<td class="name">ToggleVisibility</td>
+<td class="description">If the window is visible, this closes it.  If it is closed, this opens it.</td>
+</tr>
+<tr>
+<td class="name">Unshade</td>
+<td class="description">Turns the gshade property(see above) off.</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
@@ -137,33 +204,67 @@
 <th class="description">Description</th>
 </tr>
 <tr>
+<td class="name">Close</td>
+<td class="description">This event is triggered each time the window is closed (becomes invisible).</td>
+</tr>
+<tr>
 <td class="name">Load</td>
 <td class="description">This event is triggered the first time the window is opened.  If the window is visible by default, then this event is triggered when the application loads.</td>
+</tr>
+<tr>
+<td class="name">MouseDown</td>
+<td class="description">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
+</tr>
+<tr>
+<td class="name">MouseMove</td>
+<td class="description">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</td>
+</tr>
+<tr>
+<td class="name">MouseOut</td>
+<td class="description">This event occurs when the user moves the mouse pointer off of the checkbox.</td>
+</tr>
+<tr>
+<td class="name">MouseOver</td>
+<td class="description">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</td>
+</tr>
+<tr>
+<td class="name">MouseUp</td>
+<td class="description">This event occurs when the user releases the mouse button on the checkbox.</td>
 </tr>
 <tr>
 <td class="name">Open</td>
 <td class="description">This event is triggered each time the window is opened (becomes visible).</td>
 </tr>
-<tr>
-<td class="name">Close</td>
-<td class="description">This event is triggered each time the window is closed (becomes invisible).</td>
-</tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 		
+
 $Version=2$
+
 MyWindow "widget/childwindow"
+
 	{
+
 	x = 10; y = 10;
+
 	width = 200; height = 200;
+
 	style = "dialog";
+
 	bgcolor = "#c0c0c0";
+
 	hdr_background = "/sys/images/grey_gradient2.png";
+
 	title = "An HTML Window";
+
 	textcolor = "black";
+
 	}
+
 		
+
 		</pre>
 </body>
 </html>

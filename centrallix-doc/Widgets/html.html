@@ -5,7 +5,7 @@
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
-		</span><!-- PAGE BREAK: 'html.html' -->
+<!-- PAGE BREAK: 'html.html' -->
 <h2 class="widgetname"><a name="html">html</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/html</span></p>
 <p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
@@ -13,12 +13,18 @@
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>The HTML area widget provides a way to insert a plain HTML document into a Centrallix generated page, either in-flow (static) or in its own separate layer that can be reloaded at will (dynamic). The HTML document can either be given in a property of the widget or can be referenced so that the HTML is read from an external document.</p>
+
 			<p>The HTML area widget also can act as a mini-browser -- clicking on hyper-text links in the visible document will by default cause the link to be followed, and the new document to be displayed in the HTML area (if the HTML area is dynamic).</p>
+
 			<p>Dynamic HTML areas do double-buffering and allow for transitions (fades) of various types.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>The HTML area widget can be placed within any other widget that has a visible container (such as panes, pages, tab pages, etc.).</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -59,17 +65,17 @@
 <tr>
 <td class="name">width</td>
 <td class="type">integer</td>
-<td class="description">width, in pixels, of the HTML area as a whole.</td>
+<td class="description">Width, in pixels, of the HTML area as a whole.</td>
 </tr>
 <tr>
 <td class="name">x</td>
 <td class="type">integer</td>
-<td class="description">dynamic HTML areas, the x coordinate on the container of its upper left corner.</td>
+<td class="description">Dynamic HTML areas, the x coordinate on the container of its upper left corner.</td>
 </tr>
 <tr>
 <td class="name">y</td>
 <td class="type">integer</td>
-<td class="description">dynamic HTML areas, the y coordinate on the container of its upper left corner.</td>
+<td class="description">Dynamic HTML areas, the y coordinate on the container of its upper left corner.</td>
 </tr>
 </table>
 <h3 class="actions">Actions:</h3>
@@ -80,21 +86,59 @@
 </tr>
 <tr>
 <td class="name">LoadPage</td>
-<td class="description">loadpage action takes two parameters. "Source" contains the URL for the new page to be loaded into the HTML area.The optional parameter "Transition" indicates the type of fade to be used between one page and the next.Currently supported values are "pixelate", "rlwipe", and "lrwipe".</td>
+<td class="description">Loadpage action takes two parameters. "Source" contains the URL for the new page to be loaded into the HTML area.The optional parameter "Transition" indicates the type of fade to be used between one page and the next.Currently supported values are "pixelate", "rlwipe", and "lrwipe".</td>
+</tr>
+</table>
+<h3 class="events">Events:</h3>
+<table class="events">
+<tr>
+<th class="name">Event</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">MouseDown</td>
+<td class="description">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
+</tr>
+<tr>
+<td class="name">MouseMove</td>
+<td class="description">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</td>
+</tr>
+<tr>
+<td class="name">MouseOut</td>
+<td class="description">This event occurs when the user moves the mouse pointer off of the checkbox.</td>
+</tr>
+<tr>
+<td class="name">MouseOver</td>
+<td class="description">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</td>
+</tr>
+<tr>
+<td class="name">MouseUp</td>
+<td class="description">This event occurs when the user releases the mouse button on the checkbox.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 		
+
 $Version=2$
+
 HTMLArea "widget/html"
+
 	{
+
 	mode = "dynamic";
+
 	x = 2; y = 2;
+
 	width = 478; height = 396;
+
 	source = "http://localhost:800/index.html";
+
 	}
+
 		
+
 		</pre>
 </body>
 </html>

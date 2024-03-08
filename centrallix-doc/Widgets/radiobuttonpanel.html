@@ -13,11 +13,16 @@
 <p class="widgettype">form element: <span class="widgettypevalue">yes</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>A radio button panel widget is a form element used to create a set of radio buttons on screen.  Only one radio button may be selected at a time.  When the form goes into query mode the radio buttons change into checkboxes and more than one can be selected at a time.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>The radio button panel can be placed inside of any visual container, and will automatically attach itself to a form widget if it is inside of one (directly or indirectly).  The "widget/radiobuttonpanel" is the main widget, and can contain any number of "widget/radiobutton" widgets which specify the choices which will be present on the panel.  No other visual widgets can be contained within a radio button panel.</p>
+
 			<p>Note: form widget interaction was not yet implemented as of the time of writing of this document.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -43,17 +48,12 @@
 <tr>
 <td class="name">height</td>
 <td class="type">integer</td>
-<td class="description">height, in pixels, of the panel.</td>
+<td class="description">Height, in pixels, of the panel.</td>
 </tr>
 <tr>
 <td class="name">outline_background</td>
 <td class="type">string</td>
 <td class="description">An image to be used for the rectangular border drawn around the radio buttons.</td>
-</tr>
-<tr>
-<td class="name">outline_bgcolor</td>
-<td class="type">string</td>
-<td class="description">The color, RGB or named, of the rectangular border drawn around the radio buttons.</td>
 </tr>
 <tr>
 <td class="name">textcolor</td>
@@ -68,17 +68,17 @@
 <tr>
 <td class="name">width</td>
 <td class="type">integer</td>
-<td class="description">width, in pixels, of the panel.</td>
+<td class="description">Width, in pixels, of the panel.</td>
 </tr>
 <tr>
 <td class="name">x</td>
 <td class="type">integer</td>
-<td class="description">x-coordinate of the upper left corner of the panel, default is 0.</td>
+<td class="description">X-coordinate of the upper left corner of the panel, default is 0.</td>
 </tr>
 <tr>
 <td class="name">y</td>
 <td class="type">integer</td>
-<td class="description">y-coordinate of the upper left corner of the panel, default is 0.</td>
+<td class="description">Y-coordinate of the upper left corner of the panel, default is 0.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -102,24 +102,38 @@
 <tr>
 <td class="name">value</td>
 <td class="type">string</td>
-<td class="description">The value of the selected item</td>
+<td class="description">The value of the selected item.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 		
+
 $Version=2$
+
 // Here are some radio buttons...
+
 testradio "widget/radiobuttonpanel" 
+
 	{
+
 	x=20; y=20;
+
 	width=150; height=80;
+
 	title="test";
+
 	bgcolor="#ffffff";
+
 	label1 "widget/radiobutton" { label="basketball";selected="true"; }
+
 	label2 "widget/radiobutton" { label="is fun"; }
+
 	}
+
 		
+
 		</pre>
 </body>
 </html>
