@@ -3130,7 +3130,7 @@ int exp_fn_from_hex(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 	if (!dest)
 	    goto error;
 
-	if (xsQPrintf(dest, "%*STR&DHEX", strlen(i0->String)/2, i0->String) < 0)
+	if (xsQPrintf(dest, "%*STR&DHEX", strlen(i0->String), i0->String) < 0)
 	    {
 	    mssError(1, "EXP", "from_hex(): invalid hex-encoded data");
 	    goto error;
