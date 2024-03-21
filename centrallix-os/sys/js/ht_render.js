@@ -301,9 +301,9 @@ function cxjs_substring(s,p,l)
     {
     if (s == null || p == null) return null;
     if (l == null)
-	return s.substr(p-1);
+	return (String(s)).substr(p-1);
     else
-	return s.substr(p-1,l);
+	return (String (s)).substr(p-1,l);
     }
 function cxjs_right(s,l)
     {

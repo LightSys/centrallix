@@ -678,6 +678,7 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
     char* cursor;
     int ix;
     int req_size;
+    char* orig_src = src;
 
 	/** Required size **/
 	if (src_size%2 == 1)
@@ -700,7 +701,7 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
 	cursor = *dst + *dst_offset;
 	
 	/** Step through src 2 bytes at a time. **/
-	while(*src)
+	while(*src && (src - orig_src) < src_size)
 	    {
 	    /** First 4 bits. **/
 	    ptr = strchr(hex, src[0]);
