@@ -842,7 +842,7 @@ nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
 		"Connection: %STR\r\n",
 		code,
 		text,
-		hdr != NULL, hdr->Name, hdr->Value,
+		hdr != NULL, hdr?(hdr->Name):"", hdr?(hdr->Value):"",
 		NHT.ServerString,
 		tbuf,
 		(conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie),
