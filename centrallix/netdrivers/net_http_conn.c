@@ -240,6 +240,8 @@ nht_i_ConnHandler(void* conn_v)
     {
     char sbuf[160];
     char* msg = "";
+    char* parsemsg;
+    char errbuf[256];
     char* ptr;
     char* nextptr;
     char* usrname;
@@ -281,12 +283,13 @@ nht_i_ConnHandler(void* conn_v)
 	    }
 
 	/** Parse the HTTP Headers... **/
-	if (nht_i_ParseHeaders(conn) < 0)
+	if (nht_i_ParseHeaders(conn, &parsemsg) < 0)
 	    {
-	    if (conn->ReportingFD != NULL && cxssStatTLS(conn->ReportingFD, sbuf, sizeof(sbuf)) >= 0)
-		msg = sbuf;
+	    if (conn->ReportingFD != NULL && cxssStatTLS(conn->ReportingFD, sbuf, sizeof(sbuf)) >= 0 && sbuf[0] == '!')
+		snprintf(errbuf, sizeof(errbuf), "Error parsing headers: %s: %s", parsemsg, sbuf+1);
 	    else
-		msg = "Error parsing headers";
+		snprintf(errbuf, sizeof(errbuf), "Error parsing headers: %s", parsemsg);
+	    msg = errbuf;
 	    goto error;
 	    }
 

@@ -817,9 +817,20 @@ nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
 	conn->ResponseCode = code;
 	strtcpy(conn->ResponseText, text, sizeof(conn->ResponseText));
 
+	/** Find the X-Nonce header and put it first **/
+	hdr = NULL;
+	for(i=0;i<conn->ResponseHeaders.nItems;i++)
+	    {
+	    hdr = (pHttpHeader)conn->ResponseHeaders.Items[i];
+	    if (!strcmp(hdr->Name, "X-Nonce"))
+		break;
+	    hdr = NULL;
+	    }
+
 	/** Send the main headers **/
 	wcnt = nht_i_QPrintfConn(conn, 1,
 		"HTTP/1.0 %INT %STR\r\n"
+		"%[%STR: %STR\r\n%]"
 		"Server: %STR\r\n"
 		"Date: %STR\r\n"
 		"%[Set-Cookie: %STR; path=/; HttpOnly%]%[; Secure%]%[; SameSite=strict%]%[\r\n%]"
@@ -831,6 +842,7 @@ nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
 		"Connection: %STR\r\n",
 		code,
 		text,
+		hdr != NULL, hdr->Name, hdr->Value,
 		NHT.ServerString,
 		tbuf,
 		(conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie),
@@ -850,8 +862,16 @@ nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
 	for(i=0;i<conn->ResponseHeaders.nItems;i++)
 	    {
 	    hdr = (pHttpHeader)conn->ResponseHeaders.Items[i];
+
+	    /** Invalid header? **/
 	    if (strpbrk(hdr->Name, ": \r\n\t") || strpbrk(hdr->Value, "\r\n"))
 		continue;
+
+	    /** Nonce already emitted **/
+	    if (!strcmp(hdr->Name, "X-Nonce"))
+		continue;
+
+	    /** Send it **/
 	    rval = nht_i_QPrintfConn(conn, 1, "%STR: %STR\r\n", hdr->Name, hdr->Value);
 	    if (rval < 0) return rval;
 	    wcnt += rval;
@@ -2932,9 +2952,8 @@ nht_i_COPY(pNhtConn conn, pStruct url_inf, char* dest)
  *** headers into the NhtConn structure
  ***/
 int
-nht_i_ParseHeaders(pNhtConn conn)
+nht_i_ParseHeaders(pNhtConn conn, char** errmsg)
     {
-    char* msg;
     pLxSession s = NULL;
     int toktype;
     char hdr[64];
@@ -2960,56 +2979,56 @@ nht_i_ParseHeaders(pNhtConn conn)
 	    }
 
 	/** Expecting request method **/
-	if (toktype != MLX_TOK_KEYWORD) { msg="Invalid method syntax"; goto error; }
+	if (toktype != MLX_TOK_KEYWORD) { *errmsg="Invalid method syntax"; goto error; }
 	mlxCopyToken(s,conn->Method,sizeof(conn->Method));
 	mlxSetOptions(s,MLX_F_IFSONLY);
 
 	/** Expecting request URL and version **/
-	if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Invalid url syntax"; goto error; }
+	if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Invalid url syntax"; goto error; }
 	did_alloc = 1;
 	conn->URL = mlxStringVal(s, &did_alloc);
-	if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected HTTP version after url"; goto error; }
+	if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected HTTP version after url"; goto error; }
 	mlxCopyToken(s,conn->HTTPVer,sizeof(conn->HTTPVer));
-	if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after version"; goto error; }
+	if (mlxNextToken(s) != MLX_TOK_EOL) { *errmsg="Expected EOL after version"; goto error; }
 	mlxUnsetOptions(s,MLX_F_IFSONLY);
 
 	/** Read in the various header parameters. **/
 	while((toktype = mlxNextToken(s)) != MLX_TOK_EOL)
 	    {
 	    if (toktype == MLX_TOK_EOF) break;
-	    if (toktype != MLX_TOK_KEYWORD) { msg="Expected HTTP header item"; goto error; }
+	    if (toktype != MLX_TOK_KEYWORD) { *errmsg="Expected HTTP header item"; goto error; }
 	    /*ptr = mlxStringVal(s,NULL);*/
 	    mlxCopyToken(s,hdr,sizeof(hdr));
-	    if (mlxNextToken(s) != MLX_TOK_COLON) { msg="Expected : after HTTP header"; goto error; }
+	    if (mlxNextToken(s) != MLX_TOK_COLON) { *errmsg="Expected : after HTTP header"; goto error; }
 
 	    /** Got a header item.  Pick an appropriate type. **/
 	    if (!strcmp(hdr,"destination"))
 	        {
 		/** Copy next IFS-only token to destination value **/
 		mlxSetOptions(s,MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected filename after dest."; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected filename after dest."; goto error; }
 		mlxCopyToken(s,conn->Destination,sizeof(conn->Destination));
 		mlxUnsetOptions(s,MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_EOF) { msg="Expected EOL after filename"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_EOF) { *errmsg="Expected EOL after filename"; goto error; }
 		}
 	    else if (!strcmp(hdr,"authorization"))
 	        {
 		/** Get 'Basic' then the auth string in base64 **/
 		mlxSetOptions(s,MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected auth type"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected auth type"; goto error; }
 		ptr = mlxStringVal(s,NULL);
-		if (strcasecmp(ptr,"basic")) { msg="Can only handle BASIC auth"; goto error; }
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected auth after Basic"; goto error; }
+		if (strcasecmp(ptr,"basic")) { *errmsg="Can only handle BASIC auth"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected auth after Basic"; goto error; }
 		qpfPrintf(NULL,conn->Auth,sizeof(conn->Auth),"%STR&DB64",mlxStringVal(s,NULL));
 		mlxUnsetOptions(s,MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after auth"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_EOL) { *errmsg="Expected EOL after auth"; goto error; }
 		}
 	    else if (!strcmp(hdr,"cookie"))
 	        {
 		/** Copy whole thing. **/
 		conn->AllCookies[0] = '\0';
 		mlxSetOptions(s,MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected str after Cookie:"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected str after Cookie:"; goto error; }
 		mlxCopyToken(s,conn->Cookie,sizeof(conn->Cookie));
 		strtcpy(conn->AllCookies + strlen(conn->AllCookies), conn->Cookie, sizeof(conn->AllCookies) - strlen(conn->AllCookies));
 		while((toktype = mlxNextToken(s)))
@@ -3036,14 +3055,14 @@ nht_i_ParseHeaders(pNhtConn conn)
 	    else if (!strcmp(hdr,"content-length"))
 	        {
 		/** Get the integer. **/
-		if (mlxNextToken(s) != MLX_TOK_INTEGER) { msg="Expected content-length"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_INTEGER) { *errmsg="Expected content-length"; goto error; }
 		conn->Size = mlxIntVal(s);
-		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after length"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_EOL) { *errmsg="Expected EOL after length"; goto error; }
 		}
 	    else if (!strcmp(hdr,"referer"))
 		{
 		mlxSetOptions(s, MLX_F_LINEONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected str after Referer:"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected str after Referer:"; goto error; }
 		did_alloc = 1;
 		conn->Referrer = mlxStringVal(s, &did_alloc);
 		if (conn->Referrer[0] == ' ')
@@ -3051,13 +3070,13 @@ nht_i_ParseHeaders(pNhtConn conn)
 		if (strpbrk(conn->Referrer, "\r\n"))
 		    *(strpbrk(conn->Referrer, "\r\n")) = '\0';
 		mlxUnsetOptions(s,MLX_F_LINEONLY);
-		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after Referer: header"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_EOL) { *errmsg="Expected EOL after Referer: header"; goto error; }
 		}
 	    else if (!strcmp(hdr,"user-agent"))
 	        {
 		/** Copy whole User-Agent. **/
 		mlxSetOptions(s, MLX_F_LINEONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected str after User-Agent:"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected str after User-Agent:"; goto error; }
 		/** NOTE: This needs to be freed up at the end of the session.  Is that taken
 		          care of by mssEndSession?  I don't think it is, since xhClear is passed
 			  a NULL function for free_fn.  This will be a 160 byte memory leak for
@@ -3080,12 +3099,12 @@ nht_i_ParseHeaders(pNhtConn conn)
 		    }
 		mlxUnsetOptions(s,MLX_F_IFSONLY);*/
 		mlxUnsetOptions(s,MLX_F_LINEONLY);
-		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after User-Agent: header"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_EOL) { *errmsg="Expected EOL after User-Agent: header"; goto error; }
 		}
 	    else if (!strcmp(hdr,"content-type"))
 		{
 		mlxSetOptions(s, MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected type after Content-Type:"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected type after Content-Type:"; goto error; }
 		mlxCopyToken(s, conn->RequestContentType, sizeof(conn->RequestContentType));
 		if ((ptr = strchr(conn->RequestContentType, ';')) != NULL) *ptr = '\0';
 		while(1)
@@ -3109,7 +3128,7 @@ nht_i_ParseHeaders(pNhtConn conn)
 	    else if (!strcmp(hdr,"accept-encoding"))
 	        {
 		mlxSetOptions(s,MLX_F_LINEONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected str after Accept-encoding:"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected str after Accept-encoding:"; goto error; }
 		mlxCopyToken(s, conn->AcceptEncoding, sizeof(conn->AcceptEncoding));
 		/*conn->AcceptEncoding = mlxStringVal(s, &did_alloc);
 		acceptencoding = (char*)nmMalloc(160);
@@ -3126,15 +3145,15 @@ nht_i_ParseHeaders(pNhtConn conn)
 		mlxUnsetOptions(s,MLX_F_IFSONLY);*/
 		/* printf("accept-encoding: %s\n",acceptencoding); */
 		mlxUnsetOptions(s,MLX_F_LINEONLY);
-		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after Accept-Encoding: header"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_EOL) { *errmsg="Expected EOL after Accept-Encoding: header"; goto error; }
 		}
 	    else if (!strcmp(hdr,"if-modified-since"))
 		{
 		mlxSetOptions(s,MLX_F_LINEONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected date after If-Modified-Since:"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected date after If-Modified-Since:"; goto error; }
 		mlxCopyToken(s, conn->IfModifiedSince, sizeof(conn->IfModifiedSince));
 		mlxUnsetOptions(s,MLX_F_LINEONLY);
-		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after If-Modified-Since: header"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_EOL) { *errmsg="Expected EOL after If-Modified-Since: header"; goto error; }
 		}
 	    else
 	        {
