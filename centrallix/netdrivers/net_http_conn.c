@@ -209,7 +209,7 @@ nht_i_CheckLoginHashCookie(pNhtConn conn)
 		memcpy(nonce, decode, sizeof(nonce));
 		qpfPrintf(NULL, (char*)decode, sizeof(decode), "%16STR&DHEX", cookieptr + 5 + (sizeof(nonce) * 2));
 		memcpy((char*)&timestamp, decode, sizeof(timestamp));
-		qpfPrintf(NULL, (char*)decode, sizeof(decode), "%16STR&DHEX", cookieptr + 5 + (sizeof(nonce) * 2) + (sizeof(timestamp) * 2));
+		qpfPrintf(NULL, (char*)decode, sizeof(decode), "%64STR&DHEX", cookieptr + 5 + (sizeof(nonce) * 2) + (sizeof(timestamp) * 2));
 
 		/** Recompute the hash **/
 		SHA256_Init(&hashctx);
