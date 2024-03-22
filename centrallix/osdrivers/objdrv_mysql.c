@@ -891,12 +891,13 @@ mysd_internal_FreeRow(MYSQL_ROW row)
  ***/
 
 int
-mysd_internal_GetNextRow(char* filename, pMysdQuery qy, pMysdData data, char* tablename)
+mysd_internal_GetNextRow(char* filename, int filename_size, pMysdQuery qy, pMysdData data, char* tablename)
     {
     MYSQL_RES * result = NULL;
     MYSQL_ROW row = NULL;
     int i = 0;
     int ret = 0;
+    int len;
         
         if(!data->Result) /** we haven't executed the query yet **/
             {
@@ -913,8 +914,14 @@ mysd_internal_GetNextRow(char* filename, pMysdQuery qy, pMysdData data, char* ta
         if((data->Row = mysql_fetch_row(data->Result)))
             {
 	    data->Row = mysd_internal_DupRow(data->Row, data->Result);
-            for(i = 0; i<data->TData->nKeys; i++)
+            for(len = i = 0; i<data->TData->nKeys; i++)
                 {
+		len += (strlen(data->Row[data->TData->KeyCols[i]]) + 1);
+		if (len >= filename_size)
+		    {
+		    mssError(1, "MYSD", "Object name too long while retrieving row");
+		    return -1;
+		    }
                 sprintf(filename,"%s%s|",filename,data->Row[data->TData->KeyCols[i]]);
                 }
             /** kill the trailing pipe **/
@@ -925,13 +932,13 @@ mysd_internal_GetNextRow(char* filename, pMysdQuery qy, pMysdData data, char* ta
             ret = -1;
             }
 
-        return ret;
+    return ret;
     }
 
-/*** mysd_internal_GetNextRow() - get a given row from the database
+
+/*** mysd_internal_GetRowByKey() - get a given row from the database
  *** returns number of rows on success and -1 on error
  ***/
-
 int
 mysd_internal_GetRowByKey(char* key, pMysdData data)
     {
@@ -2576,7 +2583,7 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
             case MYSD_T_ROWSOBJ:
                 /** Get the rows **/
-                if (!(mysd_internal_GetNextRow(name_buf,qy,qy->Data,qy->Data->TData->Name)))
+                if (!(mysd_internal_GetNextRow(name_buf, sizeof(name_buf), qy, qy->Data, qy->Data->TData->Name)))
                     {
                     inf->Type = MYSD_T_ROW;
                     inf->Row = qy->Data->Row;
