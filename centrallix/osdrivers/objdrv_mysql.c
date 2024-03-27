@@ -1201,9 +1201,8 @@ mysd_internal_UpdateName(pMysdData data, char * newval, int col)
 		/* find the start and end of the field to edit*/
 		start = data->Objname;
 		for(j = 0 ; j < i ; j++) start = strchr(start, '|')+1;
-		end = strchr(start, '|');
-		if(!end) end = data->Objname + fullLen - 1; /* make sure to account for if the string is at the end */
-		end -= 1; 
+		end = strchr(start, '|') - 1;
+		if(end == (char*) -1) end = data->Objname + fullLen -1; /* make sure to account for if the string is at the end */
 
 		/* check if new item will fit */
 		curLen = end - start + 1;
@@ -1219,12 +1218,16 @@ mysd_internal_UpdateName(pMysdData data, char * newval, int col)
 		jump = newLen - curLen;
 		if(jump > 0)
 		    {
+		    /* shift data to the right working right to left.
+		    	Done once copied to the location right after where the new value will end */
 		    for(j = fullLen + jump ; j > (start - data->Objname) + (newLen - 1); j--)
 			data->Objname[j] = data->Objname[j-jump];
 		    }
 		else if(jump < 0)
 		    {
-		    for(j = start - data->Objname + 1 ; j < fullLen + jump + 1; j++)
+		    /* shift data to the left, working left to right. 
+			Done once copied to the location where the full string will end */
+		    for(j = start - data->Objname + newLen ; j < fullLen + jump + 1; j++)
 			data->Objname[j] = data->Objname[j-jump];
 		    }
 		
