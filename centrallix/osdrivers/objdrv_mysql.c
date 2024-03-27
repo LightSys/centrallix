@@ -1179,6 +1179,62 @@ mysd_internal_BuildAutoname(pMysdData inf, pMysdConn conn, pObjTrxTree oxt)
     return rval;
     }
 
+/*** mysd_internal_UpdateName() - check an updated row and update the row if need be 
+***/
+int
+mysd_internal_UpdateName(pMysdData data, char * newval, int col)
+    {
+    int i, j;
+    char *start, *end;
+    int curLen;
+    int newLen;
+    int fullLen;
+    int jump;
+
+	/** If the updated value is part of a primary key, update the object name **/
+	for(i = 0 ; i < data->TData->nKeys ; i++)
+	    {
+	    if(data->TData->KeyCols[i] == col && newval)
+		{
+
+		fullLen = strlen(data->Objname);
+		/* find the start and end of the field to edit*/
+		start = data->Objname;
+		for(j = 0 ; j < i ; j++) start = strchr(start, '|')+1;
+		end = strchr(start, '|');
+		if(!end) end = data->Objname + fullLen - 1; /* make sure to account for if the string is at the end */
+		end -= 1; 
+
+		/* check if new item will fit */
+		curLen = end - start + 1;
+		newLen = strlen(newval);
+		if(fullLen - curLen + newLen >= sizeof(data->Objname))
+		    {
+		    mssError(1,"MYSD","Cannot change object '%s' name to include '%s': name exceeds max length.",
+			data->Objname, newval);
+		    return -1;
+		    }
+
+		/* shift over existing items to make room */
+		jump = newLen - curLen;
+		if(jump > 0)
+		    {
+		    for(j = fullLen + jump ; j > (start - data->Objname) + (newLen - 1); j--)
+			data->Objname[j] = data->Objname[j-jump];
+		    }
+		else if(jump < 0)
+		    {
+		    for(j = start - data->Objname + 1 ; j < fullLen + jump + 1; j++)
+			data->Objname[j] = data->Objname[j-jump];
+		    }
+		
+		/* copy over the new value */
+		for(j = 0 ; j < newLen ; j++) start[j] = newval[j];
+		break;
+		}
+	    }
+	return 0;
+    }
 
 /*** mysd_internal_UpdateRow() - update a given row
  ***/
@@ -2974,6 +3030,7 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     int type;
     DateTime dt;
     ObjData od;
+    char * valStr;
 
         type = mysdGetAttrType(inf, attrname, oxt);
         /** Choose the attr name **/
@@ -3072,13 +3129,16 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 			    }
                         else if(datatype == DATA_T_DOUBLE || datatype == DATA_T_INTEGER) 
                             {
-                            if(mysd_internal_UpdateRow(inf,mysd_internal_CxDataToMySQL(datatype,(ObjData*)val),i) < 0) return -1;
+			    valStr = mysd_internal_CxDataToMySQL(datatype,(ObjData*)val);
+                            if(mysd_internal_UpdateRow(inf,valStr,i) < 0) return -1;
                             }
                         else
                             {
-                            if(mysd_internal_UpdateRow(inf,mysd_internal_CxDataToMySQL(datatype,*(ObjData**)val),i) < 0) return -1;
+			    valStr = mysd_internal_CxDataToMySQL(datatype,*(ObjData**)val);
+                            if(mysd_internal_UpdateRow(inf,valStr,i) < 0) return -1;
                             }
                         }
+			mysd_internal_UpdateName(inf, valStr, i);
                     }
                 }
             }
