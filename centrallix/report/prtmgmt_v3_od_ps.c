@@ -18,6 +18,7 @@
 #include "prtmgmt_v3/hp_font_metrics.h"
 #include "config.h"
 #include "assert.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -811,6 +812,7 @@ prt_psod_WriteText(void* context_v, char* str, char* url, double width, double h
     double bl;
     int i,psbuflen;
     int do_underline;
+    pXString url_xs;
 
 	if (context->PageNum >= context->MaxPages) return 0;
 
@@ -844,15 +846,18 @@ prt_psod_WriteText(void* context_v, char* str, char* url, double width, double h
 	    }
 
 	/** URL? **/
-	if (url)
+	if (url && !strpbrk(url, "() "))
 	    {
+	    url_xs = cxssLinkSign(url);
 	    prt_psod_Output_va(context, "[ /Rect [ %.1f %.1f %.1f %.1f ] /Action << /Subtype /URI /URI (%s) >> /Border [0 0 0] /Color [0 0 .7] /Subtype /Link /ANN pdfmark\n",
 		    (context->CurHPos)*7.2 + 0.000001,
 		    context->PageHeight - ((context->CurVPos)*12.0 + bl*12.0 - 0.000001 - height*12.0),
 		    (context->CurHPos)*7.2 + 0.000001 + width*7.2,
 		    context->PageHeight - ((context->CurVPos)*12.0 + bl*12.0 - 0.000001),
-		    url
+		    url_xs?xsString(url_xs):url
 		    );
+	    if (url_xs)
+		xsFree(url_xs);
 	    }
 
     return 0;

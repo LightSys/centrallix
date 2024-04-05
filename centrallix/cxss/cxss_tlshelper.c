@@ -113,12 +113,12 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 		{
 		err = ERR_get_error();
 		fdPrintf(report_fd, "!Abnormal SSL termination from network during handshake: %s\n", ERR_error_string(err, NULL));
-		cxDebugLog("TLS handshake failed: %s", ERR_error_string(err, NULL));
+		cxDebugLog("CXSS-TLS: handshake failed: %s", ERR_error_string(err, NULL));
 		goto error;
 		}
 	    }
 
-	cxDebugLog("TLS handshake complete: %s %s %dbit",
+	cxDebugLog("CXSS-TLS: handshake complete: %s %s %dbit",
 		SSL_get_cipher_version(encrypted_conn),
 		SSL_get_cipher_name(encrypted_conn),
 		SSL_get_cipher_bits(encrypted_conn, NULL));
@@ -368,12 +368,13 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 		if (err == 0)
 		    goto done; /* no error */
 		fdPrintf(report_fd, "!Abnormal SSL termination from network during connection shutdown: %s\n", ERR_error_string(err, NULL));
+		cxDebugLog("CXSS-TLS: Exiting on abnormal SSL termination from network during connection shutdown");
 		goto error;
 		}
 	    }
-	cxDebugLog("exiting");
 
     done:
+	cxDebugLog("CXSS-TLS: exiting");
 	if (encrypted_conn)
 	    SSL_free(encrypted_conn);
 	return 0;
@@ -421,7 +422,7 @@ cxssStartTLS(SSL_CTX* context, pFile* ext_conn, pFile* reporting_stream, int as_
 	    {
 	    /** subprocess **/
 	    thLock();
-	    cxDebugLog("TLS %s handler process starting: %s %s", as_server?"server":"client", as_server?"client":"server", remotename?remotename:netGetRemoteIP(*ext_conn, 0));
+	    cxDebugLog("CXSS-TLS: %s handler process starting: %s %s", as_server?"server":"client", as_server?"client":"server", remotename?remotename:netGetRemoteIP(*ext_conn, 0));
 	    fdClose(mainprocess_fd, 0);
 	    fdClose(mainprocess_report_fd, 0);
 	    cxss_internal_DoTLS(context, *ext_conn, subprocess_fd, subprocess_report_fd, as_server, remotename);

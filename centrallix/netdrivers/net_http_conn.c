@@ -197,11 +197,13 @@ nht_i_CheckLoginHashCookie(pNhtConn conn)
     unsigned char decode[256];
     unsigned char hash[SHA256_DIGEST_LENGTH];
     char* cookieptr;
+    int found = 0;
 
 	cur_timestamp = mtLastTick() * 1000LL / NHT.ClkTck;
 	cookieptr = conn->AllCookies;
 	while((cookieptr = strstr(cookieptr, "CXLH=")) != NULL)
 	    {
+	    found = 1;
 	    if (strspn(cookieptr + 5, hex) == (SHA256_DIGEST_LENGTH + sizeof(nonce) + sizeof(timestamp)) * 2)
 		{
 		/** Extract the pieces **/
@@ -228,7 +230,7 @@ nht_i_CheckLoginHashCookie(pNhtConn conn)
 	    cookieptr++;
 	    }
 
-    return -1;
+    return found?(-2):(-1);
     }
 
 
@@ -268,6 +270,8 @@ nht_i_ConnHandler(void* conn_v)
     char* cookie_prefix;
     int cred_valid = 0;
     int akey_valid = 0;
+    int is_signed_url = 0;
+    int rval;
 
 	/** Set the thread's name **/
 	thSetName(NULL,"HTTP Connection Handler");
@@ -291,6 +295,21 @@ nht_i_ConnHandler(void* conn_v)
 		snprintf(errbuf, sizeof(errbuf), "Error parsing headers: %s", parsemsg);
 	    msg = errbuf;
 	    goto error;
+	    }
+
+	/** Sanity check **/
+	if (strspn(conn->Method, "abcdefghijklmnopqrstuvwxyz") < strlen(conn->Method))
+	    {
+	    msg = "Malformed method";
+	    goto error;
+	    }
+
+	/** Signed url? **/
+	is_signed_url = (cxssLinkVerify(conn->URL) == 0);
+	ptr = strstr(conn->URL, "cx__lkey=");
+	if (!is_signed_url && ptr && ptr != conn->URL && (ptr[-1] == '&' || ptr[-1] == '?'))
+	    {
+	    cxDebugLog("NHT: %s: URL contains an invalid signature.", conn->IPAddr);
 	    }
 
 	/** Compute header nonce.  This is used for functionally nothing, but
@@ -327,7 +346,14 @@ nht_i_ConnHandler(void* conn_v)
 	    {
 	    nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
 	    if (NHT.AuthMethods & NHT_AUTH_HTTPSTRICT)
+		{
 		nht_i_AddLoginHashCookie(conn);
+		cxDebugLog("NHT: %s: No Authentication provided, sending 401 and login cookie.", conn->IPAddr);
+		}
+	    else
+		{
+		cxDebugLog("NHT: %s: No Authentication provided, sending 401.", conn->IPAddr);
+		}
 	    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
 	    goto out;
 	    }
@@ -336,8 +362,9 @@ nht_i_ConnHandler(void* conn_v)
 	usrname = strtok(conn->Auth,":");
 	if (usrname) passwd = strtok(NULL,"\r\n");
 	if (usrname && !passwd) passwd = "";
-	if (!usrname || !passwd) 
+	if (!usrname || !passwd || !usrname[0] || strspn(usrname, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.") < strlen(usrname))
 	    {
+	    cxDebugLog("NHT: %s: Malformed authentication provided, sending 401.", conn->IPAddr);
 	    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>401 Unauthorized</h1>\r\n");
 	    goto out;
 	    }
@@ -372,6 +399,7 @@ nht_i_ConnHandler(void* conn_v)
 			n += i;
 			}
 
+		    cxDebugLog("NHT: %s: Valid session cookie but credential mismatch, sending 401.", conn->IPAddr);
 		    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
 
 		    goto out;
@@ -407,10 +435,42 @@ nht_i_ConnHandler(void* conn_v)
 	    conn->NhtSession = NULL;
 	    }
 
+	/** Authenticated but using a signed URL and no session cookie?  This
+	 ** indicates the browser may be withholding cookies due to same-origin
+	 ** constraints.  So we verify we made the link via the HMAC signature
+	 ** and cause the browser to re-load the URL with us as the origin,
+	 ** which causes the request to be re-sent with cookies.
+	 **/
+	if (!conn->NhtSession && is_signed_url && mssAuthenticate(usrname, passwd, cred_valid) == 0)
+	    {
+	    ptr = strstr(conn->URL, "cx__lkey=");
+	    if (ptr && ptr != conn->URL && (ptr[-1] == '&' || ptr[-1] == '?'))
+		{
+		ptr[-1] = '\0';
+		nht_i_WriteResponse(conn, 200, "OK", NULL);
+		nht_i_QPrintfConn(conn, 0,
+			"<!doctype html>\r\n"
+			"<html>\r\n"
+			"    <head>\r\n"
+			"         <script language=\"JavaScript\">\r\n"
+			"             var url = '%STR&JSSTR';\r\n"
+			"         </script>\r\n"
+			"    </head>\r\n"
+			"    <body onload=\"document.location = url;\">\r\n"
+			"    </body>\r\n"
+			"</html>\r\n"
+			"\r\n",
+			conn->URL
+			);
+		cxDebugLog("NHT: %s: Processing correctly signed URL.", conn->IPAddr);
+		goto out;
+		}
+	    }
+
 	/** If the user is logging in initially, ensure they are doing so
 	 ** with a valid login hash cookie (CXLH).
 	 **/
-	if ((NHT.AuthMethods & NHT_AUTH_HTTPSTRICT) && !cred_valid && nht_i_CheckLoginHashCookie(conn) < 0)
+	if ((NHT.AuthMethods & NHT_AUTH_HTTPSTRICT) && !cred_valid && (rval = nht_i_CheckLoginHashCookie(conn)) < 0)
 	    {
 	    nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
 
@@ -422,6 +482,10 @@ nht_i_ConnHandler(void* conn_v)
 		}
 	    nht_i_AddLoginHashCookie(conn);
 	    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
+	    if (rval == -2)
+		cxDebugLog("NHT: %s: No valid session, and login cookie was invalid; sending login cookie.", conn->IPAddr);
+	    else
+		cxDebugLog("NHT: %s: No valid session; sending login cookie.", conn->IPAddr);
 	    goto out;
 	    }
 
@@ -433,7 +497,14 @@ nht_i_ConnHandler(void* conn_v)
 	    {
 	    nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
 	    if (NHT.AuthMethods & NHT_AUTH_HTTPSTRICT)
+		{
 		nht_i_AddLoginHashCookie(conn);
+		cxDebugLog("NHT: %s(%s): Failed login attempt, sending 401 and login cookie.", conn->IPAddr, usrname);
+		}
+	    else
+		{
+		cxDebugLog("NHT: %s(%s): Failed login attempt, sending 401.", conn->IPAddr, usrname);
+		}
 	    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
 	    mssError(1, "NHT", "Failed login attempt for user '%s'", usrname);
 	    goto out;
@@ -447,6 +518,7 @@ nht_i_ConnHandler(void* conn_v)
 	url_inf = conn->ReqURL = htsParseURL(conn->URL);
 	if (!url_inf)
 	    {
+	    cxDebugLog("NHT: %s(%s): Malformed URL.", conn->IPAddr, usrname);
 	    nht_i_WriteErrResponse(conn, 500, "Internal Server Error", "<h1>500 Internal Server Error</h1>\r\n");
 	    mssError(1,"NHT","Failed to handle HTTP request, exiting thread (could not parse URL).");
 	    goto out;
@@ -569,6 +641,7 @@ nht_i_ConnHandler(void* conn_v)
 		nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
 		nht_i_AddResponseHeaderQPrintf(conn, "Set-Cookie", "%STR=%STR&32LEN; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT", (conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie, strchr(conn->Cookie, '=') + 1);
 		nht_i_AddLoginHashCookie(conn);
+		cxDebugLog("NHT: %s(%s): Expired session, forcing logout and sending login cookie.", conn->IPAddr, usrname);
 		nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
 		goto out;
 		}
@@ -762,6 +835,7 @@ nht_i_ConnHandler(void* conn_v)
 		}
 	    else
 	        {
+		cxDebugLog("NHT: %s(%s): Method '%s' not implemented, sending 501", conn->IPAddr, usrname, conn->Method);
 		nht_i_WriteErrResponse(conn, 501, "Not Implemented", "<h1>501 Method Not Implemented</h1>\r\n");
 		}
 	    }
@@ -769,6 +843,7 @@ nht_i_ConnHandler(void* conn_v)
 	/** Catch-all, since we relocated the default response calls **/
 	if (!conn->InBody)
 	    {
+	    cxDebugLog("NHT: %s(%s): No response available for request, sending 500", conn->IPAddr, usrname);
 	    nht_i_WriteErrResponse(conn, 500, "Internal Server Error", "<h1>500 Internal Server Error</h1>\r\n");
 	    }
 
@@ -784,6 +859,7 @@ nht_i_ConnHandler(void* conn_v)
 
     error:
 	mssError(1,"NHT","Failed to handle HTTP request, exiting thread (%s).",msg);
+	cxDebugLog("NHT: %s: %s, sending 400.", conn->IPAddr, msg);
 	nht_i_WriteErrResponse(conn, 400, "Request Error", NULL);
 	nht_i_QPrintfConn(conn, 0, "%STR\r\n", msg);
 

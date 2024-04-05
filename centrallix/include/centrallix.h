@@ -97,8 +97,10 @@ int cxAddShutdownHandler(ShutdownHandlerFunc);
 
 /*** startup functions ***/
 int cxInitialize();
+int cxDriverInit();
 int cxHtInit();
 int cxNetworkInit();
+int cxLinkSigningSetup(pStructInf my_config);
 
 /*** Debugging ***/
 int cxDebugLog(char* fmt, ...);

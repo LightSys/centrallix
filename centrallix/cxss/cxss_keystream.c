@@ -50,22 +50,16 @@
 /************************************************************************/
 
 
-/*** noncebuf
+/*** Algorithm:
  ***
- ***     [current sha256 hash][counter][original sha256 hash]
+ *** This keystream logic uses AES256 in Counter mode to generate the
+ *** keystream, i.e. a stream cipher.
  ***
- *** initialization
+ *** The AES256 key is derived by SHA256 hashing the provided key.
+ *** The AES256 IV is derived through a SHA256 hash of a transformation
+ *** of the provided key.
  ***
- ***     1. If key not provided, use 32 bytes from random pool for key
- ***     2. Hash key, place in current and original hashes
- ***     3. Set counter to zero
- ***
- *** algorithm
- ***
- ***     1. Hash the noncebuf, result into current sha256 hash
- ***     2. Increment counter
- ***     3. Return required bytes from current sha256 hash
- ***     4. If more bytes needed, repeat the process
+ *** If the provided key is NULL, then a random key is obtained.
  ***/
 
 
@@ -74,7 +68,7 @@
 pCxssKeystreamState
 cxssKeystreamNew(unsigned char* key, int keylen)
     {
-    pCxssKeystreamState kstate;
+    pCxssKeystreamState kstate = NULL;
     unsigned char tmpkey[CXSS_CIPHER_STRENGTH];
     unsigned char tmphash[SHA256_DIGEST_LENGTH];
     unsigned char ivkey[CXSS_CIPHER_STRENGTH];
@@ -95,7 +89,10 @@ cxssKeystreamNew(unsigned char* key, int keylen)
 	memset(kstate, 0, sizeof(CxssKeystreamState));
 	kstate->Context = EVP_CIPHER_CTX_new();
 	if (!kstate->Context)
+	    {
+	    mssError(1, "CXSS", "Could not create new cipher context via EVP_CIPHER_CTX_new()");
 	    goto error;
+	    }
 	kstate->DataIndex = sizeof(kstate->Data); /* empty */
 
 	/** Setup cipher key and IV from the provided key.  For the
@@ -113,24 +110,22 @@ cxssKeystreamNew(unsigned char* key, int keylen)
 	 ** for us.
 	 **/
 	if (EVP_EncryptInit_ex(kstate->Context, EVP_aes_256_ctr(), NULL, kstate->Key, kstate->IV) != 1)
+	    {
+	    mssError(1, "CXSS", "Could not initialize AES256-CTR keystream via EVP_EncryptInit_ex()");
 	    goto error;
+	    }
 
 	return kstate;
 
     error:
 	/** Clean up **/
 	if (kstate)
-	    {
-	    if (kstate->Context)
-		EVP_CIPHER_CTX_free(kstate->Context);
-	    memset(kstate, 0, sizeof(CxssKeystreamState));
-	    nmFree(kstate, sizeof(CxssKeystreamState));
-	    }
+	    cxssKeystreamFree(kstate);
 	return NULL;
     }
 
 
-/*** cxssKeystreamGenerate - Generate a nonce value of a given length
+/*** cxssKeystreamGenerate - Generate a secure PRNG value of a given length
  ***/
 int
 cxssKeystreamGenerate(pCxssKeystreamState kstate, unsigned char* data, int datalen)
@@ -160,12 +155,41 @@ cxssKeystreamGenerate(pCxssKeystreamState kstate, unsigned char* data, int datal
 	    if (datalen > 0)
 		{
 		if (EVP_EncryptUpdate(kstate->Context, kstate->Data, &cryptlen, zero, sizeof(zero)) != 1 || cryptlen != sizeof(kstate->Data))
-		    return -1;
+		    {
+		    mssError(1, "CXSS", "Could not generate AES256-CTR keystream via EVP_EncryptUpdate()");
+		    goto error;
+		    }
 		kstate->DataIndex = 0;
 		}
 	    }
 
-    return 0;
+	return 0;
+
+    error:
+	return -1;
+    }
+
+
+/*** cxssKeystreamGenerateHex - generate a secure PRNG hex stream of the
+ *** given length.  Note length == number of hex characters.  A nul byte
+ *** is added after those characters.
+ ***/
+int
+cxssKeystreamGenerateHex(pCxssKeystreamState kstate, char* hexdata, int hexdatalen)
+    {
+
+	/** Generate binary data **/
+	if (cxssKeystreamGenerate(kstate, (unsigned char*)hexdata, hexdatalen/2+1) < 0)
+	    goto error;
+
+	/** Convert to hex **/
+	if (cxss_i_Hexify((unsigned char*)hexdata, hexdatalen/2+1, hexdata, hexdatalen) < 0)
+	    goto error;
+
+	return hexdatalen;
+
+    error:
+	return -1;
     }
 
 

@@ -1471,7 +1471,8 @@ start(void* v)
     pApplication app;
 
 	/** Initialize. **/
-	cxInitialize();
+	if (cxInitialize() < 0) thExit();
+	if (cxDriverInit() < 0) thExit();
 
 	/** history file **/
 	home = getenv("HOME");
@@ -1728,6 +1729,7 @@ main(int argc, char* argv[])
 	    alarm(TESTOBJ.WaitSecs);
 	    }
 
-    mtInitialize(0, start);
+	mtInitialize((CxGlobals.QuietInit)?MT_F_QUIET:0, start);
+
     return 0;
     }

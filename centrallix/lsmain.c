@@ -68,6 +68,7 @@ start(void* v)
 
 	/** Initialization. **/
 	if (cxInitialize() < 0) thExit();
+	if (cxDriverInit() < 0) thExit();
 	cxHtInit();
 	cxNetworkInit();
 
@@ -272,7 +273,7 @@ main(int argc, char* argv[])
 
 	/** Init the multithreading module to start the first thread **/
 	/** 'start' is the name of the function to be the first thread **/
-	mtInitialize(0, start);
+	mtInitialize((CxGlobals.QuietInit)?MT_F_QUIET:0, start);
 
     return 0; /* never reached */
     }

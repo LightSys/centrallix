@@ -19,6 +19,7 @@ centrallix/.subbuild
 centrallix/autom4te.cache
 centrallix/centrallix
 centrallix/cxpasswd
+centrallix/linksign
 centrallix/config.h
 centrallix/etc/centrallix.conf
 centrallix/etc/centrallix.conf.mk

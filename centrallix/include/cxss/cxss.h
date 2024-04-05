@@ -40,6 +40,7 @@
 #include <openssl/evp.h>
 #include <openssl/err.h>
 #include "cxlib/xarray.h"
+#include "cxlib/xstring.h"
 
 #define CXSS_ENTROPY_SIZE	1280
 #define CXSS_DEBUG_CONTEXTSTACK	1
@@ -124,6 +125,8 @@ extern CXSS_t CXSS;
 int cxssInitialize();
 
 /*** Utility functions ***/
+int cxssHexify(unsigned char* bindata, size_t bindatalen, char* hexdata, size_t hexdatabuflen);
+int cxss_i_Hexify(unsigned char* bindata, size_t bindatalen, char* hexdata, size_t hexdatalen);
 int cxssGenerateKey(unsigned char* key, size_t n_bytes);
 int cxssGenerateHexKey(char* hexkey, size_t len);
 int cxssShred(unsigned char* data, size_t n_bytes);
@@ -153,6 +156,11 @@ int cxssStatTLS(pFile reporting_stream, char* status, int maxlen);
 pCxssKeystreamState cxssKeystreamNew(unsigned char* key, int keylen);
 int cxssKeystreamGenerate(pCxssKeystreamState kstate, unsigned char* data, int datalen);
 int cxssKeystreamFree(pCxssKeystreamState kstate);
+
+/*** Link signing functions ***/
+int cxssLinkInitialize(unsigned char* key, int keylen, pXArray site_list);
+pXString cxssLinkSign(char* url);
+int cxssLinkVerify(char* url);
 
 /*** Credentials Manager API ***/
 #include "cxss/credentials_mgr.h"

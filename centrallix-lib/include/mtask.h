@@ -59,6 +59,7 @@
 #define MT_F_LOCKED	4		/* Sched locked */
 #define	MT_F_AUTOFLUSH	8		/* auto-flush buffers */
 #define	MT_F_SEGV	16		/* a thread seg faulted */
+#define MT_F_QUIET	32		/* suppress MTASK messages */
 
 #define MT_FD_CACHE_SIZE	4096	/* 8kb */
 #define MT_FD_FLUSH_INTERVAL	5000	/* 5 seconds */

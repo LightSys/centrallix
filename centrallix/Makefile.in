@@ -324,6 +324,7 @@ XCXSSMODS=cxss_main.o \
 	  cxss_tlshelper.o \
 	  cxss_policy.o \
 	  cxss_keystream.o \
+	  cxss_linksign.o \
 	  cxss_util.o \
 	  cxss_crypto.o \
 	  cxss_credentials_db.o \
@@ -413,7 +414,7 @@ V3LSOBJS=$(V3BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)
 .PHONY:	test_install
 .PHONY:	test
 
-all:	centrallix mods config manpages cxpasswd test_obj
+all:	centrallix mods config manpages cxpasswd test_obj linksign
 
 centrallix.o: $(V3LSOBJS) centrallix.c
 
@@ -429,11 +430,15 @@ centrallix: .build .subbuild lsmain.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
 cxpasswd: cxpasswd.o centrallix.o $(STATIC_LIBS) $(V3LSOBJS)
 	$(CC) cxpasswd.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o cxpasswd $(LIBS)
 
+linksign: linksign.o centrallix.o $(STATIC_LIBS) $(V3LSOBJS)
+	$(CC) linksign.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o linksign $(LIBS)
+
 install: all config_install modules_install manpages_install test_install
 	@mkdir -p "$(sbindir)"
 	@mkdir -p "$(sysconfdir)"
 	@$(INSTALL) centrallix "$(sbindir)"
 	@$(INSTALL) cxpasswd "$(sbindir)"
+	@$(INSTALL) linksign "$(sbindir)"
 
 manpages: $(MANPAGES)
 
