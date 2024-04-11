@@ -692,7 +692,7 @@ sybd_internal_GetCxType(int ut)
 	if (ut == 11 || ut == 21) return DATA_T_MONEY;
 
 	if (!CxGlobals.QuietInit)
-	    mssError(1, "SYBD", "the usertype %d is not supported by Centrallix");
+	    mssError(1, "SYBD", "the usertype %d is not supported by Centrallix", ut);
 	return -1;
     }
 
@@ -1628,6 +1628,7 @@ sybd_internal_KeyToFilename(pSybdTableInf tdata, pSybdData inf)
     unsigned long long col64;
     ObjData val;
     MoneyType m;
+    DateTime dt;
     char* mstr;
 
     	/** Get pointers to the key data. **/
@@ -1659,8 +1660,13 @@ sybd_internal_KeyToFilename(pSybdTableInf tdata, pSybdData inf)
 			break;
 		    case 22: /** date value **/
 		    case 12: /** date value **/
+		    	/* convert to a more useable form */
 			memcpy(&col64, inf->ColPtrs[tdata->KeyCols[i]], 8);
-			snprintf(ptr,n_left,"%8.8llX",col64);
+			val.DateTime = &dt;
+			if(sybd_internal_GetCxValue(&col64, 22, &val, DATA_T_DATETIME) < 0)
+			    return NULL;
+			mstr = objFormatDateTmp(val.DateTime, obj_default_date_fmt);
+			if (mstr) snprintf(ptr, n_left, "%s", mstr);
 			break;
 		    case 7: /** INT **/
 			memcpy(&col, inf->ColPtrs[tdata->KeyCols[i]], 4);
@@ -4411,6 +4417,73 @@ sybdGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
     return ptr;
     }
 
+int
+sybd_internal_UpdateName(pSybdData inf, char* attrVal, int colInd, int type)
+    {
+    int newLen, oldLen;
+    int i;
+    int pkInd = -1;
+    char* start = inf->RowColPtr;
+    char* end;
+
+	/** shouldn't be possible, but verify that the string is not null **/
+	if(!attrVal)
+	    {
+	    mssError(1,"SYBD","Cannot update path: A PK value is being set to NULL");
+	    return -1; 
+	    } 
+
+	newLen = strlen(attrVal);
+	// if the name is too long, trim it down like it will be on insert; must match. 
+	if(newLen > inf->TData->ColLengths[colInd] && type == DATA_T_STRING)
+	    {
+	    attrVal[inf->TData->ColLengths[colInd]] = '\0';
+	    newLen = inf->TData->ColLengths[colInd];
+	    }
+
+	// find which key in pk this is
+	for(i = 0 ; i < inf->TData->nKeys ; i++)
+	    {
+	    if(colInd == inf->TData->KeyCols[i])
+		{
+		pkInd = i;
+		break;
+		}
+	    }
+	if(pkInd == -1)
+	    {
+	    mssError(1,"SYBD","Cannot update path: can not identify which part of PK is being changed");
+	    return -1; 
+	    } 
+
+	// get the start and end of the part that needs replaced
+	for(i = 0 ; i < pkInd ; i++)
+	    {
+	    start = strchr(start, '|') + 1;
+	    if(start == (char*) 1)
+		{
+		mssError(1,"SYBD","Cannot update path: path contains fewer values than the table has keys");
+		return -1; 
+		} 
+	    }
+	end = strchr(start, '|');
+	if(!end) end = start+strlen(start);
+	oldLen = (int) (end - start);
+
+	// make sure has enough room to resize 
+	if((strlen(inf->RowColPtr) - oldLen + newLen) + (inf->RowColPtr - inf->Pathname.Pathbuf) >= sizeof(inf->Pathname.Pathbuf))
+	    {
+	    mssError(1,"SYBD","Cannot update path: Can not fit new key value in Pathbuf");
+	    return -1;
+	    }
+
+	// now shift things over
+	memmove(start+newLen, end, strlen(end)+1); //make sure it moves the null as well
+	// now copy in the new value
+	memcpy(start, attrVal, newLen);
+
+	return 0;
+    }
 
 /*** sybdSetAttrValue - sets the value of an attribute.  'val' must
  *** point to an appropriate data type.
@@ -4427,6 +4500,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     pXString xs;
     char* ptr;
     CS_INT restype = 0;
+    char * tempStr = NULL;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -4607,21 +4681,25 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		        {
 	                xsPrintf(xs,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr,
 	                    attrname,objDataToStringTmp(type,val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
+			tempStr = objDataToStringTmp(type,val,0); // need to get value without quotes
 			}
 		    else if (type == DATA_T_STRING)
 		        {   /** objDataToString quotes strings **/
 	                xsPrintf(xs,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
 			    objDataToStringTmp(type,*(void**)val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
+			tempStr = objDataToStringTmp(type,*(void**)val,0); // need without quote
 			}
 		    else if (type == DATA_T_MONEY)
 		        {
+			tempStr = objFormatMoneyTmp(*(void**)val, "0.0000");
 	                xsPrintf(xs,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
-			    objFormatMoneyTmp(*(void**)val, "0.0000"), ptr);
+			    tempStr, ptr);
 			}
 		    else if (type == DATA_T_DATETIME)
 			{
+			tempStr = objFormatDateTmp(*(void**)val, obj_default_date_fmt);
 	                xsPrintf(xs,"UPDATE %s SET %s=\"%s\" WHERE %s",inf->TablePtr, attrname,
-			    objFormatDateTmp(*(void**)val, obj_default_date_fmt), ptr);
+			    tempStr, ptr);
 			}
 
 		    /** Start the update. **/
@@ -4643,6 +4721,9 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		     ** need to give feedback to the user on what other effects
 		     ** the update operation may have had.
 		     **/
+		    /* if it is a PK, need to change the object name so it can be located properly */
+		    if(is_key) sybd_internal_UpdateName(inf, tempStr, i, type);
+
 		    if (sybd_internal_LookupRow(conn, inf) <= 0)
 			{
 			if (is_key)
