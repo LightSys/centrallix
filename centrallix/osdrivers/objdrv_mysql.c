@@ -1182,60 +1182,62 @@ mysd_internal_BuildAutoname(pMysdData inf, pMysdConn conn, pObjTrxTree oxt)
 /*** mysd_internal_UpdateName() - check an updated row and update the row if need be 
 ***/
 int
-mysd_internal_UpdateName(pMysdData data, char * newval, int col)
+mysd_internal_UpdateName(pMysdData data, char * newval, int colInd, int type)
     {
-    int i, j;
+    int j;
+    int keyInd = -1;
     char *start, *end;
-    int curLen;
-    int newLen;
-    int fullLen;
-    int jump;
+    int oldLen, newLen, fullLen;
 
-	/** If the updated value is part of a primary key, update the object name **/
-	for(i = 0 ; i < data->TData->nKeys ; i++)
+	/** find the PK index for the column. If it is not part of the pk, exit **/
+	for(j = 0 ; j < data->TData->nKeys ; j++)
 	    {
-	    if(data->TData->KeyCols[i] == col && newval)
+	    if(data->TData->KeyCols[j] == colInd)
 		{
-
-		fullLen = strlen(data->Objname);
-		/* find the start and end of the field to edit*/
-		start = data->Objname;
-		for(j = 0 ; j < i ; j++) start = strchr(start, '|')+1;
-		end = strchr(start, '|') - 1;
-		if(end == (char*) -1) end = data->Objname + fullLen -1; /* make sure to account for if the string is at the end */
-
-		/* check if new item will fit */
-		curLen = end - start + 1;
-		newLen = strlen(newval);
-		if(fullLen - curLen + newLen >= sizeof(data->Objname))
-		    {
-		    mssError(1,"MYSD","Cannot change object '%s' name to include '%s': name exceeds max length.",
-			data->Objname, newval);
-		    return -1;
-		    }
-
-		/* shift over existing items to make room */
-		jump = newLen - curLen;
-		if(jump > 0)
-		    {
-		    /* shift data to the right working right to left.
-		    	Done once copied to the location right after where the new value will end */
-		    for(j = fullLen + jump ; j > (start - data->Objname) + (newLen - 1); j--)
-			data->Objname[j] = data->Objname[j-jump];
-		    }
-		else if(jump < 0)
-		    {
-		    /* shift data to the left, working left to right. 
-			Done once copied to the location where the full string will end */
-		    for(j = start - data->Objname + newLen ; j < fullLen + jump + 1; j++)
-			data->Objname[j] = data->Objname[j-jump];
-		    }
-		
-		/* copy over the new value */
-		for(j = 0 ; j < newLen ; j++) start[j] = newval[j];
+		keyInd = j;
 		break;
 		}
 	    }
+	if (keyInd == -1 || !newval) return 0;
+
+	/* if it is a string and is too long, truncate it to match what will be stored */
+	newLen = strlen(newval);
+	if(newLen > data->TData->ColLengths[colInd] && type == DATA_T_STRING)
+	    {
+	    newval[data->TData->ColLengths[colInd]] = '\0';
+	    newLen = data->TData->ColLengths[colInd];
+	    }
+
+	fullLen = strlen(data->Objname);
+	/* find the start and end of the field to edit*/
+	start = data->Objname;
+	for(j = 0 ; j < keyInd ; j++)
+	    {
+	    start = strchr(start, '|')+1;
+	    if(start == (char*) 1) /* make sure has enough fields */
+		{
+		mssError(1,"MYSD","Cannot change object '%s' name to include '%s': too few fields in name.",
+		    data->Objname, newval);
+		return -1;
+		}
+	    }
+	end = strchr(start, '|');
+	if(!end) end = data->Objname + fullLen; /* make sure to account for if the string is at the end */
+
+	/* check if new item will fit */
+	oldLen = end - start;
+	if(fullLen - oldLen + newLen >= sizeof(data->Objname))
+	    {
+	    mssError(1,"MYSD","Cannot change object '%s' name to include '%s': name exceeds max length.",
+		data->Objname, newval);
+	    return -1;
+	    }
+
+	/* shift over existing items to make room */
+	memmove(start+newLen, end, strlen(end)+1);
+	/* copy over the new value */
+	memcpy(start, newval, newLen);
+	
 	return 0;
     }
 
@@ -3141,7 +3143,7 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
                             if(mysd_internal_UpdateRow(inf,valStr,i) < 0) return -1;
                             }
                         }
-			mysd_internal_UpdateName(inf, valStr, i);
+			mysd_internal_UpdateName(inf, valStr, i, type);
                     }
                 }
             }
