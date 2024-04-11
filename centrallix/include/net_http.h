@@ -369,6 +369,8 @@ typedef struct
     pCxssKeystreamState NonceData;
     unsigned char   LoginKey[32];	/* 256-bit hash secret for Basic auth logins */
     int		AuthMethods;		/* allowed authentication methods */
+    char	LinkSignKey[256];
+    XArray	LinkSignSites;
     }
     NHT_t;
 

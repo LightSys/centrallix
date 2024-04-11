@@ -549,11 +549,14 @@ mtInitialize(int flags, void (*start_fn)())
 	    room_for_threads = stacklimit.rlim_cur / (MT_MAX_STACK + MT_TASKSEP) - 1;
 	    if (room_for_threads < MTASK.MaxThreads)
 		{
-		printf("Notice: Max thread count reduced from %d to %d due to rlimit stack (%lld).\n",
-			MTASK.MaxThreads,
-			room_for_threads,
-			(long long)stacklimit.rlim_cur
-			);
+		if (!(flags & MT_F_QUIET))
+		    {
+		    printf("Notice: Max thread count reduced from %d to %d due to rlimit stack (%lld).\n",
+			    MTASK.MaxThreads,
+			    room_for_threads,
+			    (long long)stacklimit.rlim_cur
+			    );
+		    }
 		MTASK.MaxThreads = room_for_threads;
 		}
 	    }
@@ -621,7 +624,7 @@ mtInitialize(int flags, void (*start_fn)())
 	MTASK.ThreadTable[0] = MTASK.CurrentThread;
 
 	/** Set the MTASK flags **/
-	MTASK.MTFlags = (flags & (MT_F_NOYIELD)) | MT_F_ONEPROC;
+	MTASK.MTFlags = (flags & (MT_F_NOYIELD | MT_F_QUIET)) | MT_F_ONEPROC;
 
 	/** Initialize the timer. **/
 	MTASK.FirstTick = 0;

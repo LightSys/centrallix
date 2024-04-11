@@ -225,7 +225,8 @@ main(int argc, char* argv[])
 		}
 	    }
 
-    mtInitialize(0, start);
+	mtInitialize(0, start);
+
     return 0;
     }
 

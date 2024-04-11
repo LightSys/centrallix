@@ -2463,6 +2463,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			if (rowid == rowlimit) break;
 			}
 		    objQueryClose(query);
+		    nht_i_WriteConn(conn, "", 0, 0);
 		    }
 		}
 
@@ -2492,6 +2493,13 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		}
 
 	    find_inf = stLookup_ne(url_inf,"ls__req");
+	    if (!find_inf)
+		{
+		mssError(1, "NHT", "Invalid OSML-over-HTTP request: missing OSML request type");
+		cxDebugLog("NHT: %s: Missing ls__req from OSML request", conn->IPAddr);
+		nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
+		return -1;
+		}
 	    nht_i_OSML(conn,target_obj, find_inf->StrVal, url_inf, app);
 	    }
 
@@ -3236,9 +3244,25 @@ nhtInitialize()
     	/** Initialize the random number generator. **/
 	srand48(time(NULL));
 
+	memset(&NHT, 0, sizeof(NHT));
+
+	/** Set up header nonce **/
+	NHT.NonceData = cxssKeystreamNew(NULL, 0);
+	if (!NHT.NonceData)
+	    {
+	    if (NHT.AuthMethods & NHT_AUTH_HTTPSTRICT)
+		{
+		mssError(1, "NHT", "Could not initialize nonce/hash keystream in http-strict mode; exiting");
+		return -1;
+		}
+	    else
+		{
+		mssError(1, "NHT", "Warning: Could not initialize nonce/hash keystream; X-Nonce headers will not be emitted");
+		}
+	    }
+
 	/** Initialize globals **/
 	NHT.numbCachedApps = 0;
-	memset(&NHT, 0, sizeof(NHT));
 	xhInit(&(NHT.CookieSessions),255,0);
 	xhInit(&(NHT.SessionsByID),255,0);
 	xaInit(&(NHT.Sessions),256);
@@ -3261,6 +3285,7 @@ nhtInitialize()
 	NHT.CollectedConns = syCreateSem(0, 0);
 	NHT.CollectedTLSConns = syCreateSem(0, 0);
 	NHT.AuthMethods = NHT_AUTH_HTTPSTRICT;
+	xaInit(&NHT.LinkSignSites, 16);
 
 #ifdef _SC_CLK_TCK
         NHT.ClkTck = sysconf(_SC_CLK_TCK);
@@ -3273,11 +3298,6 @@ nhtInitialize()
 	NHT.S_ID_Count = 0;
 
 	nht_i_RegisterSessionInfo();
-
-	/** Set up header nonce **/
-	NHT.NonceData = cxssKeystreamNew(NULL, 0);
-	if (!NHT.NonceData)
-	    mssError(1, "NHT", "Warning: X-Nonce headers will not be emitted");
 
 	/** Set up secret for login cookie hash **/
 	cxssGenerateKey(NHT.LoginKey, 32);
@@ -3421,6 +3441,9 @@ nhtInitialize()
 	    /** Allowed file upload extensions **/
 	    for(i=0; stAttrValue(stLookup(my_config, "upload_extensions"), NULL, &strval, i) >= 0; i++)
 		xaAddItem(&NHT.AllowedUploadExts, nmSysStrdup(strval));
+
+	    /** Link signing key **/
+	    cxLinkSigningSetup(my_config);
 	    }
 
 	/** Start the watchdog timer thread **/
