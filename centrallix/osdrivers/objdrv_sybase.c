@@ -1690,6 +1690,10 @@ sybd_internal_KeyToFilename(pSybdTableInf tdata, pSybdData inf)
 			    n--;
 			snprintf(ptr,n_left,"%*.*s", n, n, inf->ColPtrs[tdata->KeyCols[i]]);
 			break;
+		    default:
+			mssError(1,"SYBD","Error - key/object type %d is not supported as a PK", tdata->ColTypes[tdata->KeyCols[i]]);
+			/* add a null to the end so the rest of the it can be generated properly */
+			ptr[0] = '\0';
 		    }
 		}
 	    else
