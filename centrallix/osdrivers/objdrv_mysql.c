@@ -1184,17 +1184,17 @@ mysd_internal_BuildAutoname(pMysdData inf, pMysdConn conn, pObjTrxTree oxt)
 int
 mysd_internal_UpdateName(pMysdData data, char * newval, int colInd, int type)
     {
-    int j;
+    int i;
     int keyInd = -1;
     char *start, *end;
     int oldLen, newLen, fullLen;
 
 	/** find the PK index for the column. If it is not part of the pk, exit **/
-	for(j = 0 ; j < data->TData->nKeys ; j++)
+	for(i = 0 ; i < data->TData->nKeys ; i++)
 	    {
-	    if(data->TData->KeyCols[j] == colInd)
+	    if(data->TData->KeyCols[i] == colInd)
 		{
-		keyInd = j;
+		keyInd = i;
 		break;
 		}
 	    }
@@ -1211,7 +1211,7 @@ mysd_internal_UpdateName(pMysdData data, char * newval, int colInd, int type)
 	fullLen = strlen(data->Objname);
 	/* find the start and end of the field to edit*/
 	start = data->Objname;
-	for(j = 0 ; j < keyInd ; j++)
+	for(i = 0 ; i < keyInd ; i++)
 	    {
 	    start = strchr(start, '|')+1;
 	    if(start == (char*) 1) /* make sure has enough fields */
