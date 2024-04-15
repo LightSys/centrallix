@@ -3142,8 +3142,9 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 			    valStr = mysd_internal_CxDataToMySQL(datatype,*(ObjData**)val);
                             if(mysd_internal_UpdateRow(inf,valStr,i) < 0) return -1;
                             }
-                        }
+			// make sure this does not run for inserts or other major transactions
 			mysd_internal_UpdateName(inf, valStr, i, type);
+                        }
                     }
                 }
             }
