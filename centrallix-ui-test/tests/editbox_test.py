@@ -65,64 +65,68 @@ async def take_screenshots(time_stamp: str, c_top: int, c_left: int, c_width: in
 
     await browser.close()
 
-# Configure settings
-config = toml.load("config.toml")
+try:
+    # Configure settings
+    config = toml.load("config.toml")
 
-user, password, url, port = config["user"], config["pw"], config["url"], config["port"]
+except FileNotFoundError:
+    print("Config.toml is missing. Make sure to rename config.template and try again.")
+    exit()
 
-proper_url = f"http://{user}:{password}@{url}:{port}/tests/ui/editbox_test.app"
+else:
+    proper_url = config["url"] + "/tests/ui/editbox_test.app"
 
-# Create the WebDriver
-driver = create_driver(proper_url)
+    # Create the WebDriver
+    driver = create_driver(proper_url)
 
-# Wait for the page to load
-WebDriverWait(driver, 5).until(
-    EC.presence_of_element_located((By.XPATH, "//input[last()]"))
-)
+    # Wait for the page to load
+    WebDriverWait(driver, 5).until(
+        EC.presence_of_element_located((By.XPATH, "//input[last()]"))
+    )
 
-# Print baseline value
-print_script(driver, "eb")
-eb = driver.find_element(By.XPATH, "//input[last()]")
+    # Print baseline value
+    print_script(driver, "eb")
+    eb = driver.find_element(By.XPATH, "//input[last()]")
 
-# Print value after sending keys from Python
-eb.send_keys("From Python")
-print_script(driver, "eb")
+    # Print value after sending keys from Python
+    eb.send_keys("From Python")
+    print_script(driver, "eb")
 
-# Print value after interacting with the widget
-eb.click()
-print_script(driver, "eb")
+    # Print value after interacting with the widget
+    eb.click()
+    print_script(driver, "eb")
 
-# Print value after sending keys from JavaScript
-driver.execute_script("wgtrFind('testtext').value = 'From JavaScript'")
-eb.click()
-print_script(driver, "eb")
+    # Print value after sending keys from JavaScript
+    driver.execute_script("wgtrFind('testtext').value = 'From JavaScript'")
+    eb.click()
+    print_script(driver, "eb")
 
-# Get the dimensions (position and size) of the widget
-dims = driver.execute_script("""
-return {
-    top: wgtrFind('vbox').clientTop,
-    left: wgtrFind('vbox').clientLeft,
-    width: wgtrFind('vbox').clientWidth,
-    height: wgtrFind('vbox').clientHeight
-}
-""")
-top, left, width, height = dims['top'], dims['left'], dims['width'], dims['height']
+    # Get the dimensions (position and size) of the widget
+    dims = driver.execute_script("""
+    return {
+        top: wgtrFind('vbox').clientTop,
+        left: wgtrFind('vbox').clientLeft,
+        width: wgtrFind('vbox').clientWidth,
+        height: wgtrFind('vbox').clientHeight
+    }
+    """)
+    top, left, width, height = dims['top'], dims['left'], dims['width'], dims['height']
 
-# Get timestamp
-timestamp = time.strftime("%Y%m%d-%H%M%S")
+    # Get timestamp
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
 
-# Take screenshots
-asyncio.get_event_loop().run_until_complete(take_screenshots(timestamp, top, left, width, height, proper_url))
+    # Take screenshots
+    asyncio.get_event_loop().run_until_complete(take_screenshots(timestamp, top, left, width, height, proper_url))
 
-# Close the browser
-driver.quit()
+    # Close the browser
+    driver.quit()
 
+    # Compare the screenshots
+    hover_diff = compare_images(f'test_eb_{timestamp}_hover.png', 'ss_editbox_hover.png')
+    clicked_diff = compare_images(f'test_eb_{timestamp}_click.png', 'ss_editbox_click.png')
 
-# Compare the screenshots
-hover_diff = compare_images(f'test_eb_{timestamp}_hover.png', 'ss_editbox_hover.png')
-clicked_diff = compare_images(f'test_eb_{timestamp}_click.png', 'ss_editbox_click.png')
-
-# Print the results
-print("\nDifference (lower is better): ")
-print(f"Mouseover Test (0-64): {hover_diff}")
-print(f"Click Test (0-64): {clicked_diff}\n")
+    # Print the results
+    print("\nDifference (lower is better): ")
+    print(f"Mouseover Test (0-64): {hover_diff}")
+    print(f"Click Test (0-64): {clicked_diff}\n")
+    

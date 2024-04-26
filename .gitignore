@@ -52,6 +52,7 @@ centrallix/depcomp
 centrallix/missing
 centrallix/ltmain.sh
 centrallix/test-driver
+centrallix-ui-test/config.toml
 .gdb_history
 *.gcno
 *.gcov
