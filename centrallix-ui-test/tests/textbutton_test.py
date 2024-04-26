@@ -55,47 +55,52 @@ async def take_screenshots(time_stamp: str, c_top: int, c_left: int, c_width: in
 
     await browser.close()
 
-# Configure settings
-config = toml.load("config.toml")
+try:
+    # Configure settings
+    config = toml.load("config.toml")
 
-user, password, url, port = config["user"], config["pw"], config["url"], config["port"]
+except FileNotFoundError:
+    print("Config.toml is missing. Make sure to rename config.template and try again.")
+    exit()
+    
+else:
+    # Insert folder location
+    proper_url = config["url"] + "/tests/ui/textbutton_test.app"
 
-proper_url = f"http://{user}:{password}@{url}:{port}/tests/ui/textbutton_test.app"
+    # Create the WebDriver
+    driver = create_driver(proper_url)
 
-# Create the WebDriver
-driver = create_driver(proper_url)
+    WebDriverWait(driver, 5).until(
+        EC.presence_of_element_located((By.XPATH, "//div[last()]"))
+    )
 
-WebDriverWait(driver, 5).until(
-    EC.presence_of_element_located((By.XPATH, "//div[last()]"))
-)
+    button1 = driver.find_element(By.XPATH, "//div[last() - 1]")
 
-button1 = driver.find_element(By.XPATH, "//div[last() - 1]")
+    # Get the dimensions (position and size) of the widget
+    dims = driver.execute_script("""
+    return {
+        top: wgtrFind('vbox').clientTop,
+        left: wgtrFind('vbox').clientLeft,
+        width: wgtrFind('vbox').clientWidth,
+        height: wgtrFind('vbox').clientHeight
+    }
+    """)
+    top, left, width, height = dims['top'], dims['left'], dims['width'], dims['height']
 
-# Get the dimensions (position and size) of the widget
-dims = driver.execute_script("""
-return {
-    top: wgtrFind('vbox').clientTop,
-    left: wgtrFind('vbox').clientLeft,
-    width: wgtrFind('vbox').clientWidth,
-    height: wgtrFind('vbox').clientHeight
-}
-""")
-top, left, width, height = dims['top'], dims['left'], dims['width'], dims['height']
+    # Get timestamp
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
 
-# Get timestamp
-timestamp = time.strftime("%Y%m%d-%H%M%S")
+    # Take screenshots
+    asyncio.get_event_loop().run_until_complete(take_screenshots(timestamp, top, left, width, height, proper_url))
 
-# Take screenshots
-asyncio.get_event_loop().run_until_complete(take_screenshots(timestamp, top, left, width, height, proper_url))
+    # Close the browser
+    driver.quit()
 
-# Close the browser
-driver.quit()
+    # Compare the screenshots
+    hover_diff = compare_images(f'test_tb_{timestamp}_hover.png', 'ss_textbutton_hover.png')
+    clicked_diff = compare_images(f'test_tb_{timestamp}_click.png', 'ss_textbutton_click.png')
 
-# Compare the screenshots
-hover_diff = compare_images(f'test_tb_{timestamp}_hover.png', 'ss_textbutton_hover.png')
-clicked_diff = compare_images(f'test_tb_{timestamp}_click.png', 'ss_textbutton_click.png')
-
-# Print the results
-print("\nDifference (lower is better): ")
-print(f"Mouseover Test (0-64): {hover_diff}")
-print(f"Click Test (0-64): {clicked_diff}\n")
+    # Print the results
+    print("\nDifference (lower is better): ")
+    print(f"Mouseover Test (0-64): {hover_diff}")
+    print(f"Click Test (0-64): {clicked_diff}\n")

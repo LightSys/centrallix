@@ -1,5 +1,3 @@
 # Copy and rename config.toml
-url = "google.com"
-user = "user"
-pw = "password"
-port = "8080"
+
+url = "https://user:password@localhost:8080
