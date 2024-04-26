@@ -2,6 +2,7 @@
 
 import time
 import asyncio
+import toml
 import imagehash as ImageHash
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -11,7 +12,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from PIL import Image
 from pyppeteer import launch
 
-def create_driver() -> webdriver:
+def create_driver(test_url: str) -> webdriver:
     """ Create a WebDriver """
     service = Service(executable_path="chromedriver.exe")
     chrome_options = webdriver.ChromeOptions()
@@ -21,7 +22,7 @@ def create_driver() -> webdriver:
     chrome_driver.set_window_size(1920, 1080)
 
     # Replace credentials
-    chrome_driver.get("http://10.5.18.252:800/tests/ui/textbutton_test.app")
+    chrome_driver.get(test_url)
 
     return chrome_driver
 
@@ -35,13 +36,13 @@ def compare_images(img1: str, img2: str) -> bool:
 
     return hash1 - hash2
 
-async def take_screenshots(time_stamp: str, c_top: int, c_left: int, c_width: int, c_height: int):
+async def take_screenshots(time_stamp: str, c_top: int, c_left: int, c_width: int, c_height: int, test_url: str):
     """ Take a screenshot of the page """
     browser = await launch(executablePath='C:/Program Files/Google/Chrome/Application/chrome.exe')
     page = await browser.newPage()
 
     # Replace credentials
-    await page.goto('http://10.5.18.252:800/tests/ui/textbutton_test.app')
+    await page.goto(test_url)
 
     element = await page.waitForXPath('//input[1]')
     await element.hover()
@@ -54,8 +55,15 @@ async def take_screenshots(time_stamp: str, c_top: int, c_left: int, c_width: in
 
     await browser.close()
 
+# Configure settings
+config = toml.load("config.toml")
+
+user, password, url, port = config["user"], config["pw"], config["url"], config["port"]
+
+proper_url = f"http://{user}:{password}@{url}:{port}/tests/ui/textbutton_test.app"
+
 # Create the WebDriver
-driver = create_driver()
+driver = create_driver(proper_url)
 
 WebDriverWait(driver, 5).until(
     EC.presence_of_element_located((By.XPATH, "//div[last()]"))
@@ -78,7 +86,7 @@ top, left, width, height = dims['top'], dims['left'], dims['width'], dims['heigh
 timestamp = time.strftime("%Y%m%d-%H%M%S")
 
 # Take screenshots
-asyncio.get_event_loop().run_until_complete(take_screenshots(timestamp, top, left, width, height))
+asyncio.get_event_loop().run_until_complete(take_screenshots(timestamp, top, left, width, height, proper_url))
 
 # Close the browser
 driver.quit()
