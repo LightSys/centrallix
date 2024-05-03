@@ -2955,6 +2955,8 @@ sybd_internal_InsertRow(pSybdData inf, pSybdConn conn, pObjTrxTree oxt)
     int colid;
     int holding_sem = 0;
     MoneyType m;
+    DateTime dt;
+    int result;
 
         /** Allocate a buffer for our insert statement. **/
 	insbuf = (pXString)nmMalloc(sizeof(XString));
@@ -3024,6 +3026,27 @@ sybd_internal_InsertRow(pSybdData inf, pSybdConn conn, pObjTrxTree oxt)
 			xsConcatenate(insbuf, tmpptr, -1);
 			}
 		    kptr[len] = tmpch;
+		    }
+		else if (ctype == DATA_T_DATETIME)
+		    {
+		    tmpch = kptr[len];
+		    kptr[len] = 0;
+		    if (objDataToDateTime(DATA_T_STRING, kptr, &dt, obj_default_date_fmt) == 0)
+			{
+			tmpptr = objFormatDateTmp(&dt, obj_default_date_fmt);
+			if (!tmpptr)
+			    tmpptr = " NULL ";
+			xsConcatPrintf(insbuf, " \"%s\" ", tmpptr);
+			}
+		    kptr[len] = tmpch;
+		    }
+		else
+		    {
+		    mssError(1,"SYBD","Cannot insert a primary key column with datatype %d", ctype);
+		    xsDeInit(insbuf);
+		    nmFree(insbuf,sizeof(XString));
+		    if (holding_sem) syPostSem(inf->TData->AutonameSem, 1, 0);
+		    return -1;
 		    }
 		}
 	    else
@@ -4421,6 +4444,8 @@ sybdGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
     return ptr;
     }
 
+/*** sybd_internal_UpdateName - Update the object name to match new values
+ ***/
 int
 sybd_internal_UpdateName(pSybdData inf, char* attrVal, int colInd, int type)
     {
@@ -4436,16 +4461,22 @@ sybd_internal_UpdateName(pSybdData inf, char* attrVal, int colInd, int type)
 	    mssError(1,"SYBD","Cannot update path: A PK value is being set to NULL");
 	    return -1; 
 	    } 
-
+	
 	newLen = strlen(attrVal);
-	// if the name is too long, trim it down like it will be on insert; must match. 
+	/* if the name is too long, trim it down like it will be on insert; must match. */
 	if(newLen > inf->TData->ColLengths[colInd] && type == DATA_T_STRING)
 	    {
 	    attrVal[inf->TData->ColLengths[colInd]] = '\0';
 	    newLen = inf->TData->ColLengths[colInd];
 	    }
+	/* convert empty strings to a single space; sybase makes the same conversion */
+	else if(type == DATA_T_STRING && newLen == 0)
+	    {
+	    attrVal = " ";
+	    newLen = 1;
+	    }
 
-	// find which key in pk this is
+	/* find which key in pk this is */
 	for(i = 0 ; i < inf->TData->nKeys ; i++)
 	    {
 	    if(colInd == inf->TData->KeyCols[i])
@@ -4460,7 +4491,7 @@ sybd_internal_UpdateName(pSybdData inf, char* attrVal, int colInd, int type)
 	    return -1; 
 	    } 
 
-	// get the start and end of the part that needs replaced
+	/* get the start and end of the part that needs replaced */
 	for(i = 0 ; i < pkInd ; i++)
 	    {
 	    start = strchr(start, '|') + 1;
@@ -4474,16 +4505,16 @@ sybd_internal_UpdateName(pSybdData inf, char* attrVal, int colInd, int type)
 	if(!end) end = start+strlen(start);
 	oldLen = (int) (end - start);
 
-	// make sure has enough room to resize 
+	/* make sure has enough room to resize */
 	if((strlen(inf->RowColPtr) - oldLen + newLen) + (inf->RowColPtr - inf->Pathname.Pathbuf) >= sizeof(inf->Pathname.Pathbuf))
 	    {
 	    mssError(1,"SYBD","Cannot update path: Can not fit new key value in Pathbuf");
 	    return -1;
 	    }
 
-	// now shift things over
-	memmove(start+newLen, end, strlen(end)+1); //make sure it moves the null as well
-	// now copy in the new value
+	/* now shift things over */
+	memmove(start+newLen, end, strlen(end)+1); /* make sure it moves the null as well */
+	/* now copy in the new value */
 	memcpy(start, attrVal, newLen);
 
 	return 0;
@@ -4685,13 +4716,13 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		        {
 	                xsPrintf(xs,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr,
 	                    attrname,objDataToStringTmp(type,val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
-			tempStr = objDataToStringTmp(type,val,0); // need to get value without quotes
+			tempStr = objDataToStringTmp(type,val,0); /* need to get value without quotes */
 			}
 		    else if (type == DATA_T_STRING)
 		        {   /** objDataToString quotes strings **/
 	                xsPrintf(xs,"UPDATE %s SET %s=%s WHERE %s",inf->TablePtr, attrname,
 			    objDataToStringTmp(type,*(void**)val,DATA_F_QUOTED | DATA_F_SYBQUOTE), ptr);
-			tempStr = objDataToStringTmp(type,*(void**)val,0); // need without quote
+			tempStr = objDataToStringTmp(type,*(void**)val,0); /* need without quote */
 			}
 		    else if (type == DATA_T_MONEY)
 		        {
