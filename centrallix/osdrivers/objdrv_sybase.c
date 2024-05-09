@@ -2815,6 +2815,11 @@ sybd_internal_BuildAutoname(pSybdData inf, pSybdConn conn, pObjTrxTree oxt)
 		else
 		    {
 		    ptr = objDataToStringTmp(find_oxt->AttrType, find_oxt->AttrValue, 0);
+		    if(ptr && strlen(ptr) == 0 && find_oxt->AttrType == DATA_T_STRING)
+			{
+			/* sybase will change "" to " ", so this keeps things consistent */
+			ptr = " ";
+			}
 		    }
 		key_values[j] = nmSysStrdup(ptr);
 		if (!key_values[j])
