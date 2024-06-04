@@ -731,6 +731,7 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
 	    }
 	else if (ut==22 || ut==12)
 	    {
+	    /** FIXME: Datetime conversion will become a day off starting in 2101 **/
 	    val->DateTime->Value = 0;
 
 	    /** datetime **/
@@ -2221,6 +2222,7 @@ sybd_internal_TreeToClause(pExpression tree, pSybdNode node, pSybdConn conn, pSy
 	        xsConcatenate(where_clause, " (", 2);
 		sybd_internal_TreeToClause(subtree,node,conn,tdata,n_tdata,where_clause);
 	        xsConcatenate(where_clause, " ", 1);
+		/** FIXME: If the database uses a case insensitive colation the driver will be unable to detect case differences **/
 		if (tree->CompareType & MLX_CMP_LESS) xsConcatenate(where_clause,"<",1);
 		if (tree->CompareType & MLX_CMP_GREATER) xsConcatenate(where_clause,">",1);
 		if (tree->CompareType & MLX_CMP_EQUALS) xsConcatenate(where_clause,"=",1);
