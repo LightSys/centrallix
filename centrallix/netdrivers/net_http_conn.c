@@ -234,6 +234,89 @@ nht_i_CheckLoginHashCookie(pNhtConn conn)
     }
 
 
+/*** nht_i_AddHeaderNonce - attaches a X-Nonce: header to the response,
+ *** which perturbs the order of things in the header which could make
+ *** some types of cryptographic attacks harder to carry out.
+ ***/
+int
+nht_i_AddHeaderNonce(pNhtConn conn)
+    {
+    char* nonce = NULL;
+    int cnt;
+    unsigned char noncelen;
+
+	/** Buffer for the nonce **/
+	nonce = nmSysMalloc(256+16+1);
+	if (!nonce)
+	    goto error;
+
+	/** This gives us the length of the nonce, between 16 and 271 chars **/
+	cxssKeystreamGenerate(NHT.NonceData, &noncelen, 1);
+	cnt = ((int)noncelen) + 16;
+
+	/** This is the actual nonce data **/
+	if (cxssKeystreamGenerateHex(NHT.NonceData, nonce, cnt) < 0)
+	    goto error;
+
+	/** Add the header **/
+	nht_i_AddResponseHeader(conn, "X-Nonce", nonce, 1);
+	nonce = NULL;
+
+	return 0;
+
+    error:
+	if (nonce) nmSysFree(nonce);
+	return -1;
+    }
+
+
+/*** nht_i_ZapSessionCookie - see if there is a session cookie in the request,
+ *** and if so, cause it to expire.
+ ***/
+int
+nht_i_ZapSessionCookie(pNhtConn conn)
+    {
+    char* cookie_prefix = (conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie;
+
+	/** If session is not valid and session cookie is set, zap it **/
+	if (!conn->NhtSession && strncmp(conn->Cookie, cookie_prefix, strlen(cookie_prefix)) == 0 && conn->Cookie[strlen(cookie_prefix)] == '=' && strspn(strchr(conn->Cookie, '=') + 1, "abcdef0123456789") == 32)
+	    {
+	    nht_i_AddResponseHeaderQPrintf(conn, "Set-Cookie", "%STR=%STR&32LEN; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT", cookie_prefix, strchr(conn->Cookie, '=') + 1);
+	    return 1;
+	    }
+
+    return 0;
+    }
+
+
+/*** nht_i_SendRefreshDocument - send an HTML document to refresh the current
+ *** request in the current site context (same-site).  Used after verifying
+ *** a signed url request is trusted.
+ ***/
+int
+nht_i_SendRefreshDocument(pNhtConn conn, char* url)
+    {
+
+	/** This is a simple HTML document that loads the url we give it. **/
+	nht_i_QPrintfConn(conn, 0,
+		"<!doctype html>\r\n"
+		"<html>\r\n"
+		"    <head>\r\n"
+		"         <script language=\"JavaScript\">\r\n"
+		"             var url = '%STR&JSSTR';\r\n"
+		"         </script>\r\n"
+		"    </head>\r\n"
+		"    <body onload=\"document.location = url;\">\r\n"
+		"    </body>\r\n"
+		"</html>\r\n"
+		"\r\n",
+		url
+		);
+
+    return 0;
+    }
+
+
 /*** nht_i_ConnHandler - manages a single incoming HTTP connection
  *** and processes the connection's request.
  ***/
@@ -261,17 +344,12 @@ nht_i_ConnHandler(void* conn_v)
     pNhtAppGroup group = NULL;
     int context_started = 0;
     pApplication tmp_app = NULL;
-    unsigned char* keydata;
-    char* nonce;
-    unsigned char noncelen;
-    int cnt, i;
     long long n;
-    char hexval[17] = "0123456789abcdef";
-    char* cookie_prefix;
     int cred_valid = 0;
     int akey_valid = 0;
     int is_signed_url = 0;
     int rval;
+    int i;
 
 	/** Set the thread's name **/
 	thSetName(NULL,"HTTP Connection Handler");
@@ -319,31 +397,24 @@ nht_i_ConnHandler(void* conn_v)
 	 **/
 	if (conn->UsingTLS && NHT.NonceData)
 	    {
-	    keydata = nmSysMalloc(128+8+1);
-	    nonce = nmSysMalloc(256+16+1);
-	    cxssKeystreamGenerate(NHT.NonceData, &noncelen, 1);
-	    cnt = noncelen;
-	    cnt += 16;
-	    cxssKeystreamGenerate(NHT.NonceData, keydata, cnt / 2 + 1);
-	    for(i=0;i<cnt;i++)
-		{
-		if (i & 1)
-		    nonce[i] = hexval[(keydata[i/2] & 0xf0) >> 4];
-		else
-		    nonce[i] = hexval[keydata[i/2] & 0x0f];
-		}
-	    nonce[cnt] = '\0';
-	    nht_i_AddResponseHeader(conn, "X-Nonce", nonce, 1);
-	    nmSysFree(keydata);
+	    nht_i_AddHeaderNonce(conn);
 	    }
 
-	/** Add some entropy to the pool - just the LSB of the time **/
+	/** Add some entropy to the pool - just the LSB of the time.  Our
+	 ** estimate is that this byte contains just 2 bits of entropy.
+	 **/
 	t_lsb = mtRealTicks() & 0xFF;
-	cxssAddEntropy(&t_lsb, 1, 4);
+	cxssAddEntropy(&t_lsb, 1, 2);
 
 	/** Did client send authentication? **/
 	if (!*(conn->Auth))
 	    {
+	    /** It helps in some cases to zap the session cookie when a request
+	     ** without auth happens, but due to a browser bug we can't reliably
+	     ** do this (tested: Chrome 122).  Without this zap, occasionally a
+	     ** user will get an extra login prompt.
+	     **/
+	    /*nht_i_ZapSessionCookie(conn);*/
 	    nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
 	    if (NHT.AuthMethods & NHT_AUTH_HTTPSTRICT)
 		{
@@ -448,20 +519,7 @@ nht_i_ConnHandler(void* conn_v)
 		{
 		ptr[-1] = '\0';
 		nht_i_WriteResponse(conn, 200, "OK", NULL);
-		nht_i_QPrintfConn(conn, 0,
-			"<!doctype html>\r\n"
-			"<html>\r\n"
-			"    <head>\r\n"
-			"         <script language=\"JavaScript\">\r\n"
-			"             var url = '%STR&JSSTR';\r\n"
-			"         </script>\r\n"
-			"    </head>\r\n"
-			"    <body onload=\"document.location = url;\">\r\n"
-			"    </body>\r\n"
-			"</html>\r\n"
-			"\r\n",
-			conn->URL
-			);
+		nht_i_SendRefreshDocument(conn, conn->URL);
 		cxDebugLog("NHT: %s: Processing correctly signed URL.", conn->IPAddr);
 		goto out;
 		}
@@ -474,12 +532,8 @@ nht_i_ConnHandler(void* conn_v)
 	    {
 	    nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
 
-	    /** Also deal with expired session cookie? **/
-	    cookie_prefix = (conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie;
-	    if (!conn->NhtSession && strncmp(conn->Cookie, cookie_prefix, strlen(cookie_prefix)) == 0 && conn->Cookie[strlen(cookie_prefix)] == '=' && strspn(strchr(conn->Cookie, '=') + 1, "abcdef0123456789") == 32)
-		{
-		nht_i_AddResponseHeaderQPrintf(conn, "Set-Cookie", "%STR=%STR&32LEN; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT", (conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie, strchr(conn->Cookie, '=') + 1);
-		}
+	    /** Also deal with expired session cookie **/
+	    nht_i_ZapSessionCookie(conn);
 	    nht_i_AddLoginHashCookie(conn);
 	    nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
 	    if (rval == -2)
@@ -635,18 +689,20 @@ nht_i_ConnHandler(void* conn_v)
 	if (!conn->NhtSession)
 	    {
 	    /** Expired cookie?  Force logout. **/
-	    cookie_prefix = (conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie;
-	    if ((NHT.AuthMethods & NHT_AUTH_HTTPSTRICT) && strncmp(conn->Cookie, cookie_prefix, strlen(cookie_prefix)) == 0 && conn->Cookie[strlen(cookie_prefix)] == '=' && strspn(strchr(conn->Cookie, '=') + 1, "abcdef0123456789") == 32)
+	    if ((NHT.AuthMethods & NHT_AUTH_HTTPSTRICT) && nht_i_ZapSessionCookie(conn))
 		{
 		nht_i_AddResponseHeaderQPrintf(conn, "WWW-Authenticate", "Basic realm=%STR&DQUOT", NHT.Realm);
-		nht_i_AddResponseHeaderQPrintf(conn, "Set-Cookie", "%STR=%STR&32LEN; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT", (conn->UsingTLS)?NHT.TlsSessionCookie:NHT.SessionCookie, strchr(conn->Cookie, '=') + 1);
 		nht_i_AddLoginHashCookie(conn);
 		cxDebugLog("NHT: %s(%s): Expired session, forcing logout and sending login cookie.", conn->IPAddr, usrname);
 		nht_i_WriteErrResponse(conn, 401, "Unauthorized", "<h1>Unauthorized</h1>\r\n");
 		goto out;
 		}
 
-	    /** No session, and the connection is a 'non-activity' request? **/
+	    /** No session, and the connection is a "non-activity" request? This
+	     ** check prevents creating a new session for "non-activity" after a
+	     ** prior session has ended, instead we just treat the request as a
+	     ** NOP.
+	     **/
 	    if (conn->NotActivity)
 		{
 		conn->NoCache = 1;
