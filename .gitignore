@@ -61,3 +61,4 @@ perf.data
 perf.data.old
 .idea/
 .vscode/
+centrallix-os/tmp/*
