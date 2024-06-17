@@ -33,7 +33,7 @@ AC_FUNC_MEMCMP
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS(select socket strdup strerror strtod strtol strtoul endservent)
 
-CXLIBVER="0.9.1.0"
+CXLIBVER="0.9.1.1"
 CXLIBVER_GEN="0.9.1"
 FINAL_TARGETS="libCentrallix.a libStParse.a"
 
