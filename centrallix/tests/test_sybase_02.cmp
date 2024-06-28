@@ -1,0 +1,6 @@
+"dates","monies","ints","strings","bits","floats"
+01 Jan 2000 00:00,$12345.6789,-987654321,"This string is long enough tha",0,0.0
+"dates","monies","ints","strings","bits","floats"
+01 Jan 2000 00:00,$1.2345,123,"B",0,0.0
+"dates","monies","ints","strings","bits","floats"
+01 Jan 2000 00:00,$0.00,0," ",0,0.0

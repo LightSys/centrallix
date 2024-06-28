@@ -1,0 +1,21 @@
+##NAME Sybase Update Multiple Keys
+
+# make sure clean start
+query delete from /tests/Test_DB/typeTests/rows
+
+# insert test values
+query insert into /tests/Test_DB/typeTests/rows select dates = convert('datetime', '2000-01-01'), monies = convert('money', 0.000), ints = 0, strings = 'A', bits = 0, floats = 0.0
+
+# run updates
+query update  /tests/Test_DB/typeTests/rows set :monies = convert('money', 12345.6789), :strings = 'This string is long enough that it will need truncated', :ints = -987654321
+csv select * from /tests/Test_DB/typeTests/rows
+
+query update  /tests/Test_DB/typeTests/rows set :monies = convert('money', 1.2345), :strings = 'B', :ints = 123
+csv select * from /tests/Test_DB/typeTests/rows
+
+query update  /tests/Test_DB/typeTests/rows set :monies = convert('money', 0), :strings = '', :ints = 0
+csv select * from /tests/Test_DB/typeTests/rows
+
+# cleanup
+query delete from /tests/Test_DB/typeTests/rows
+csv select * from /tests/Test_DB/typeTests/rows
