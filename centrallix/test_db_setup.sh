@@ -43,7 +43,7 @@ elif [ ${1,,} = "mysql" ]; then
 	# create the new database and add the tables
 	echo "running against mysql"
 	mysql -u$DB_USER -p$DB_PASS -e 'CREATE DATABASE Test_DB'
-	mysql -u$DB_USER -p$DB_PASS -DTest_DB -e 'CREATE TABLE typeTests (dates datetime, monies decimal(14,4), ints int, strings varchar(30), bits bit, floats float NULL, PRIMARY KEY(dates, monies, ints, strings))'
+	mysql -u$DB_USER -p$DB_PASS -DTest_DB -e 'CREATE TABLE typeTests (dates datetime, monies decimal(14,4), ints int, strings varchar(30), bits bit, floats float NULL, blobs blob NULL, PRIMARY KEY(dates, monies, ints, strings))'
 	mysql -u$DB_USER -p$DB_PASS -DTest_DB -e 'GRANT ALL ON typeTests TO $DB_TEST_USER'
 	mysql -u$DB_USER -p$DB_PASS -DTest_DB -e 'CREATE TABLE stringTests (a varchar(32), b varchar(32), c varchar(32), d varchar(32), PRIMARY KEY(a, b, c))'
 	mysql -u$DB_USER -p$DB_PASS -DTest_DB -e 'GRANT ALL ON stringTests TO $DB_TEST_USER'
