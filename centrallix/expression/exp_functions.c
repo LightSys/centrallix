@@ -20,6 +20,7 @@
 #include <openssl/evp.h>
 #include <ctype.h>
 #include <argon2.h>
+#include "include/obfuscate.h"
 
 
 /************************************************************************/
@@ -4464,6 +4465,106 @@ int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression passwor
     return 0;
 }
 
+
+/*
+ * exp_fn_obfuscate
+ * This method obfuscates one value. Well, for now it is but a test
+ *
+ * Parameters:
+ * 	tree : structure where output is stored
+ *	objlist: 
+ *	i0 : data to be obsfucated (pExpression)
+ *	i1 : key for obsfucation (pExpression)
+ *	i2 : column name
+ *
+ * Returns:
+ * 	0 	
+ */
+int exp_fn_obfuscate(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    ObjData src, dst;
+
+    // Ensure function receives three  non-null parameters
+    if (!i0 || !i1 || !i2)
+	{
+	mssError(1,"EXP","obfuscate() requires three parameters.");
+	return -1;
+	}
+
+    // Ensure value passed in both parameters is not null
+    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL) || (i2->Flags & EXPR_F_NULL))
+	{
+	tree->DataType = DATA_T_DOUBLE;
+	tree->Flags |= EXPR_F_NULL;
+	return 0;
+	}
+
+    // Ensure the key and column name are strings
+    if ((i1->DataType != DATA_T_STRING) || (i2->DataType != DATA_T_STRING)) 
+	{
+	mssError(1,"EXP","obsfucate() requires the key to be a string.");
+	return -1;
+	}
+
+    // assign value based on datatype
+    switch(i0->DataType)
+	{
+	case DATA_T_INTEGER:
+	    src.Integer = i0->Integer;
+	    break;
+	case DATA_T_MONEY:
+	    // can share memory; src does not modify it and does not leave the function
+	    src.Money = &i0->Types.Money;
+	    break;
+	case DATA_T_DOUBLE:
+	    src.Double = i0->Types.Double;
+	    break;
+	case DATA_T_DATETIME:
+	    // can share memory; src does not modify it and does not leave the function
+	    src.DateTime = &i0->Types.Date;
+	    break;
+	case DATA_T_STRING:
+	    // can share memory; src does not modify it and does not leave the function
+	    src.String = i0->String; 
+	    break;
+	default:
+	    mssError(1,"EXP","Unsupported data type for obfuscation");
+	    return -1;
+	}
+
+    // run the obfuscation
+    obfObfuscateData(&src, &dst, i0->DataType, i2->String, NULL, NULL, i1->String, "KANTV", NULL, NULL, NULL);
+
+    // prepare output
+    tree->DataType = i0->DataType;
+    switch(tree->DataType)
+	{
+	case DATA_T_INTEGER:
+	    tree->Integer = dst.Integer;
+	    break;
+	case DATA_T_MONEY:
+	    tree->Types.Money.WholePart = dst.Money->WholePart;
+	    tree->Types.Money.FractionPart = dst.Money->FractionPart;
+	    break;
+	case DATA_T_DOUBLE:
+	    tree->Types.Double = dst.Double;
+	    break;
+	case DATA_T_DATETIME:
+	    memcpy(&tree->Types.Date, dst.DateTime, sizeof(DateTime));
+	    break;
+	case DATA_T_STRING:
+	    tree->String = tree->Types.StringBuf;
+	    strcpy(tree->String, dst.String);
+	    break;
+	default:
+	    // this shouldn't be possible, but check anyway
+	    mssError(1,"EXP","Unsupported output data type for obfuscation");
+	    return -1;
+	}
+
+    return 0;
+    }
+
 int exp_internal_DefineFunctions()
     {
 
@@ -4530,6 +4631,7 @@ int exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "from_hex", (char*)exp_fn_from_hex);
 	xhAdd(&EXP.Functions, "octet_length", (char*)exp_fn_octet_length);
 	xhAdd(&EXP.Functions, "argon2id",(char*)exp_fn_argon2id);
+	xhAdd(&EXP.Functions, "obfuscate",(char*)exp_fn_obfuscate);
 
 	/** Windowing **/
 	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
