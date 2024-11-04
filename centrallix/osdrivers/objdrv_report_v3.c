@@ -4179,7 +4179,7 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
     double* dbl_ptr = NULL;
     int* int_ptr = NULL;
     int series_index;
-    char* cur_x;
+    char* cur_x = NULL;
     pXArray tempVals = NULL;
     pXArray tempSeries = NULL;
     int box = 0;
@@ -4231,7 +4231,7 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 	memset(ctx, 0, sizeof(RptChartContext));
 	ctx->inf = inf;
 
-	/** Determine axis/series counts **/
+	/** Determine axis (series has to wait for data to be read) **/
 	for(i=0; i<chart->nSubInf; i++)
 	    {
 	    subobj = chart->SubInf[i];
@@ -4307,7 +4307,6 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 	    {
 	    /** Get the labels for the x-axis **/
 	    rpt_internal_GetString(inf, chart, "x_value", &ptr, "", 0);
-
 	    /** check for change in X value **/
 	    if(!cur_x || strcmp(cur_x, ptr) != 0)
 		{
@@ -4339,15 +4338,25 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 	    rpt_internal_GetString(inf, chart, "series_value", &ptr, "", 0);
 	    /** check if we've seen this series before **/
 	    series_index = -1;
-	    for(i = 0 ; i < ctx->series->nItems ; i++) if(!strcmp(ctx->series->Items[i], ptr))
+	    for(i = 0 ; i < ctx->series->nItems ; i++) if(!strcmp(((pStructInf)ctx->series->Items[i])->Name, ptr))
 		series_index = i;
-	    if(series_index == -1) series_index = xaAddItem(ctx->series, nmSysStrdup(ptr)); 
+	    if(series_index == -1)
+		{
+		/** Build the pStructInf for the series here **/
+		subobj = stAllocInf();
+		subobj->Magic = MGK_STRUCTINF;
+		subobj->Name = nmSysStrdup(ptr);
+		subobj->UsrType = "report/chart-auto-series"; // this type only occurs when built here
+		/** TODO: add sub objects for color, show_value, show_percent, and font size as applicable (color at least?) **/
+		stAddInf(chart, subobj);
+		series_index = xaAddItem(ctx->series, subobj);
+		}
 	    
 	    int_ptr = nmMalloc(sizeof(int));
 	    *int_ptr = series_index;
 	    xaAddItem(tempSeries, int_ptr);
 	    int_ptr = NULL;
-
+	
 	    /** get the current y value **/
 	    dbl_ptr = nmMalloc(sizeof(double));
 	    if (rpt_internal_GetDouble(inf, chart, "y_value", dbl_ptr, 0.0, 0) < 0)
@@ -4357,23 +4366,23 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 		}
 	    xaAddItem(tempVals, dbl_ptr);
 	    dbl_ptr = NULL;
-
+	
 	    /** Next record **/
 	    rval = rpt_internal_NextRecord(ac, inf, chart, rs, 0);
 	    series_cnt++;
 	    }
 	// final cleanup
-	if(strlen(cur_x) > 0)
+	if(cur_x)
 	    {
 	    value = rpt_internal_NewChartValues(cur_x, series_cnt);
 	    if (!value)
 		goto error;
 	    for(i = 0 ; i < series_cnt ; i++)
 		{
-		value->Values[i] = *(double*) xaGetItem(tempVals, i);
-		value->Series[i] = *(int*) xaGetItem(tempSeries, i);
-		nmFree(dbl_ptr, sizeof(double));
-		nmFree(dbl_ptr, sizeof(int));
+		value->Values[i] = *(double*) tempVals->Items[i];
+		value->Series[i] = *(int*) tempSeries->Items[i];
+		nmFree(tempVals->Items[i], sizeof(double));
+		nmFree(tempSeries->Items[i], sizeof(int));
 		}
 	    xaAddItem(ctx->values, value);
 	    value = NULL;
@@ -4548,15 +4557,23 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 
     error:
     /// FIXME: I'll probably be making some new items here
-	if (ctx->x_labels)
+	if (ctx && ctx->x_labels)
 	    nmSysFree(ctx->x_labels);
-	if (ctx->series)
+	if (ctx && ctx->series)
+	    {
 	    for(i = 0 ; i < ctx->series->nItems ; i++)
-		nmSysFree(ctx->series->Items[i]);
+		{
+		// name and struct itself were manually added. 
+		/// FIXME: I'm pretty sure this will need updated before I'm done
+		/// FIXME: it seems like if I just free the name I assigned, the rest is okay? CHECK THIS
+		nmSysFree((char*)((pStructInf)ctx->series->Items[i])->Name);
+		//stFreeInf(ctx->series->Items[i]);
+		}
 	    xaFree(ctx->series);
+	    }
 	if (value)
 	    rpt_internal_FreeChartValues(value);
-	if (ctx->values)
+	if (ctx && ctx->values)
 	    {
 	    for(i=0; i<ctx->values->nItems; i++)
 		{
@@ -4565,13 +4582,17 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 	    xaFree(ctx->values);
 	    }
 	if(tempVals)
+	   {
 	    for(i = 0 ; i < tempVals->nItems ; i++) 
 		nmFree(tempVals->Items[i], sizeof(double));
 	    xaFree(tempVals);
+	   }
 	if(tempSeries)
+	    {
 	    for(i = 0 ; i < tempSeries->nItems ; i++) 
 		nmFree(tempSeries->Items[i], sizeof(int));
 	    xaFree(tempSeries);
+	    }
 	if(cur_x)
 	   nmSysFree(cur_x);
 	if(dbl_ptr)
@@ -4580,9 +4601,9 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 	    nmFree(int_ptr, sizeof(int));
 	if (ac)
 	    rpt_internal_Deactivate(inf, ac);
-	if (ctx->chart_data)
+	if (ctx && ctx->chart_data)
 	    mgl_delete_data(ctx->chart_data);
-	if (ctx->gr)
+	if (ctx && ctx->gr)
 	    mgl_delete_graph(ctx->gr);
 	if (img)
 	    prtFreeImage(img);
