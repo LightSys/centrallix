@@ -237,7 +237,9 @@ typedef struct
     {
     char*	Label;		/* label for x axis */
     double*	Values;		/* array of n doubles, where n = number of series */
+    int*	Series;		/* array of n series keys. Used for auto charts, where the order and presence/absence of series can vary */
     char*	Types;		/* array of n 8-bit ints for data types */
+    int		nItems;		/* The number of items in the Series and Value arrays. Used for auto charts */
     }
     RptChartValues, *pRptChartValues;
 
@@ -350,6 +352,11 @@ RptUDItem rpt_ud_list[] =
 	{ "report/chart",	"condition",	0 },
 	{ "report/chart-series","x_value",	0 },
 	{ "report/chart-series","y_value",	0 },
+
+	{ "report/auto-chart",	"condition",	0},
+	{ "report/auto-chart",	"x_value",	0},
+	{ "report/auto-chart",	"y_value",	0},
+	{ "report/auto-chart",	"series_value",	0},
 
 	{ "report/data",	"condition",	0 },
 	{ "report/data",	"value",	1 },
@@ -3063,6 +3070,8 @@ rpt_internal_FreeChartValues(pRptChartValues value)
 	    nmSysFree(value->Values);
 	if (value->Types)
 	    nmSysFree(value->Types);
+	if(value->Series)
+	    nmSysFree(value->Series);
 	nmFree(value, sizeof(RptChartValues));
 
     return 0;
@@ -3081,6 +3090,7 @@ rpt_internal_NewChartValues(char* label, int n_values)
 	    goto error;
 	value->Values = NULL;
 	value->Types = NULL;
+	value->Series = NULL;
 	value->Label = nmSysStrdup(label);
 	if (!value->Label)
 	    goto error;
@@ -3091,7 +3101,11 @@ rpt_internal_NewChartValues(char* label, int n_values)
 	value->Types = (char*)nmSysMalloc(sizeof(char) * n_values);
 	if (!value->Types)
 	    goto error;
-
+	value->Series = (int*)nmSysMalloc(sizeof(int) * n_values);
+	if (!value->Series)
+	    goto error;
+	memset(value->Series, 0, sizeof(int) * n_values);
+	value->nItems = n_values;
 	return value;
 
     error:
@@ -4143,6 +4157,439 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	    nmFree(ctx, sizeof(RptChartContext));
 	return errval;
     }
+/*** rpt_internal_DoAutoChart prints a bar, line, or pie chart on the report based on the
+ *** information provided by the user. Series are automatically broken up by the series_value pulled from the query.
+ *** MathGL is used for the rendering.
+ ***/
+int
+rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int container_handle)
+    {
+    int errval = -1; /* default */
+    pRptActiveQueries ac = NULL;
+    int rval;
+    int i,j;
+    pPrtImage img = NULL;;
+    int flags;
+    double x,y,w,h;
+    char* chart_type;
+    char* title;
+    char* x_axis_label;
+    char* y_axis_label;
+    char* ptr;
+    double* dbl_ptr = NULL;
+    int* int_ptr = NULL;
+    int series_index;
+    char* cur_x;
+    pXArray tempVals = NULL;
+    pXArray tempSeries = NULL;
+    int box = 0;
+    int stacked;
+    int axis_fontsize;
+    pStructInf subobj;
+    pRptChartValues value = NULL;
+    pRptChartDriver drv;
+    pRptChartContext ctx = NULL;
+    double xoffset, yoffset;
+    char color[8];
+    int prec;
+    char precstr[32];
+    
+    #ifndef HAVE_MGL2
+	// Only supporting mathgl2 
+	mssError(0, "RPT", "auto-chart requires MGL2");
+	goto error;
+    #endif
+
+	/** Conditional rendering of the chart **/
+	rval = rpt_internal_CheckCondition(inf, chart);
+	if (rval < 0) return rval;
+	if (rval == 0) return 0;
+
+	/** Determine chart type **/
+	if (rpt_internal_GetString(inf, chart, "chart_type", &chart_type, NULL, 0) < 0)
+	    {
+	    mssError(0, "RPT", "Chart type required for chart '%s'", chart->Name);
+	    goto error;
+            }
+	for(i=0; i<RPT_INF.ChartDrivers.nItems; i++)
+	    {
+	    drv = (pRptChartDriver)RPT_INF.ChartDrivers.Items[i];
+	    if (!strcmp(drv->Type, chart_type))
+		break;
+	    drv = NULL;
+	    }
+	if (!drv)
+	    {
+	    mssError(0, "RPT", "Invalid chart type '%s' for chart '%s'", chart_type, chart->Name);
+	    goto error;
+	    }
+
+	/** Set up rendering context **/
+	ctx = (pRptChartContext)nmMalloc(sizeof(RptChartContext));
+	if (!ctx)
+	    goto error;
+	memset(ctx, 0, sizeof(RptChartContext));
+	ctx->inf = inf;
+
+	/** Determine axis/series counts **/
+	for(i=0; i<chart->nSubInf; i++)
+	    {
+	    subobj = chart->SubInf[i];
+	    if (stStructType(subobj) == ST_T_SUBGROUP)
+		{
+		if (!strcmp(subobj->UsrType, "report/chart-axis"))
+		    {
+		    if (rpt_internal_GetString(inf, subobj, "axis", &ptr, NULL, 0) < 0 || !ptr)
+			{
+			mssError(1, "RPT", "Chart axis '%s' must have an 'axis' property", subobj->Name);
+			goto error;
+			}
+		    if (!strcmp(ptr, "x"))
+			{
+			if (ctx->x_axis)
+			    {
+			    mssError(1, "RPT", "Chart '%s' must have only one x axis", chart->Name);
+			    goto error;
+			    }
+			ctx->x_axis = subobj;
+			}
+		    else if (!strcmp(ptr, "y"))
+			{
+			if (ctx->y_axis)
+			    {
+			    mssError(1, "RPT", "Chart '%s' must have only one y axis", chart->Name);
+			    goto error;
+			    }
+			ctx->y_axis = subobj;
+			}
+		    else
+			{
+			mssError(1, "RPT", "Chart axis '%s' must have an 'axis' property of 'x' or 'y'", subobj->Name);
+			goto error;
+			}
+		    }
+		}
+	    }
+
+	/** Verify has both axes **/
+	if (!ctx->x_axis || !ctx->y_axis)
+	    {
+	    mssError(1, "RPT", "auto-chart '%s' must have x and y axes", chart->Name);
+	    goto error;
+	    }
+
+	/** Title and labels **/
+	rpt_internal_GetString(inf, chart, "title", &title, "", 0);
+	rpt_internal_GetString(inf, ctx->x_axis, "label", &x_axis_label, "", 0);
+	rpt_internal_GetString(inf, ctx->y_axis, "label", &y_axis_label, "", 0);
+
+	/** Start the query to get the chart values. **/
+	if ((ac = rpt_internal_Activate(inf, chart, rs)) == NULL)
+	    goto error;
+
+	/** Fetch the first row. **/
+	if ((rval = rpt_internal_NextRecord(ac, inf, chart, rs, 1)) < 0)
+	    goto error;
+
+	/** Enter the row retrieval loop. **/
+	
+	/** Each row belongs to just one series. Store values and indexes until x changes, then store **/
+	cur_x = NULL;
+	value = NULL;
+	int series_cnt = 0;
+	tempVals = xaNew(16);
+	tempSeries = xaNew(16);
+	ctx->series = xaNew(16);
+	ctx->values = xaNew(16);
+	if (!ctx->series || !tempSeries || !tempVals || !ctx->values)
+	    goto error;
+	while(rval == 0)
+	    {
+	    /** Get the labels for the x-axis **/
+	    rpt_internal_GetString(inf, chart, "x_value", &ptr, "", 0);
+
+	    /** check for change in X value **/
+	    if(!cur_x || strcmp(cur_x, ptr) != 0)
+		{
+		/** add previous **/
+		if(cur_x)
+		    {
+		    value = rpt_internal_NewChartValues(cur_x, series_cnt);
+		    if (!value)
+			goto error;
+		    for(i = 0 ; i < series_cnt ; i++)
+			{
+			value->Values[i] = *(double*) tempVals->Items[i];
+			value->Series[i] = *(int*) tempSeries->Items[i];
+			nmFree(tempVals->Items[i], sizeof(double));
+			nmFree(tempSeries->Items[i], sizeof(int));
+			}
+		    xaAddItem(ctx->values, value);
+		    value = NULL;
+		    /** Clear out the arrays **/
+		    xaClear(tempVals, NULL, NULL);
+		    xaClear(tempSeries, NULL, NULL);
+		    series_cnt = 0;
+		    nmSysFree(cur_x);
+		    }
+		cur_x = nmSysStrdup(ptr);
+		}
+	    
+	    /** get the current series **/
+	    rpt_internal_GetString(inf, chart, "series_value", &ptr, "", 0);
+	    /** check if we've seen this series before **/
+	    series_index = -1;
+	    for(i = 0 ; i < ctx->series->nItems ; i++) if(!strcmp(ctx->series->Items[i], ptr))
+		series_index = i;
+	    if(series_index == -1) series_index = xaAddItem(ctx->series, nmSysStrdup(ptr)); 
+	    
+	    int_ptr = nmMalloc(sizeof(int));
+	    *int_ptr = series_index;
+	    xaAddItem(tempSeries, int_ptr);
+	    int_ptr = NULL;
+
+	    /** get the current y value **/
+	    dbl_ptr = nmMalloc(sizeof(double));
+	    if (rpt_internal_GetDouble(inf, chart, "y_value", dbl_ptr, 0.0, 0) < 0)
+		{
+		mssError(0, "RPT", "Could not get y_value for series '%s' at X='%s'", ptr, cur_x);
+		goto error;
+		}
+	    xaAddItem(tempVals, dbl_ptr);
+	    dbl_ptr = NULL;
+
+	    /** Next record **/
+	    rval = rpt_internal_NextRecord(ac, inf, chart, rs, 0);
+	    series_cnt++;
+	    }
+	// final cleanup
+	if(strlen(cur_x) > 0)
+	    {
+	    value = rpt_internal_NewChartValues(cur_x, series_cnt);
+	    if (!value)
+		goto error;
+	    for(i = 0 ; i < series_cnt ; i++)
+		{
+		value->Values[i] = *(double*) xaGetItem(tempVals, i);
+		value->Series[i] = *(int*) xaGetItem(tempSeries, i);
+		nmFree(dbl_ptr, sizeof(double));
+		nmFree(dbl_ptr, sizeof(int));
+		}
+	    xaAddItem(ctx->values, value);
+	    value = NULL;
+	    /** Clear out the arrays **/
+	    xaClear(tempVals, NULL, NULL);
+	    xaClear(tempSeries, NULL, NULL);
+	    series_cnt = 0;
+	    nmSysFree(cur_x);
+	    cur_x = NULL;
+	    }
+	value = NULL;
+
+	/** We're finished with the query **/
+	rpt_internal_Deactivate(inf, ac);
+	ac = NULL;
+
+	/** Bar chart?  Add empty space on each end. **/
+	if (drv->PreProcessData(ctx) < 0)
+	    goto error;
+
+	/** Allocate the chart data **/
+	ctx->chart_data = mgl_create_data_size(ctx->values->nItems, ctx->series->nItems, 1); 
+	if (!ctx->chart_data)
+	    goto error;
+	ctx->x_labels = nmSysMalloc(sizeof(char*) * ctx->values->nItems);
+	if (!ctx->x_labels)
+	    goto error;
+
+	/** Transfer our chart values to the MGL data and while we're at
+	 ** it, determine min/max data values too.
+	 **/
+	ctx->min = 0;
+	ctx->max = 0;
+	for(i=0; i<ctx->values->nItems; i++)
+	    {
+	    value = (pRptChartValues)ctx->values->Items[i];
+	    ctx->x_labels[i] = value->Label;
+	    for(j=0; j < value->nItems; j++)
+		{
+		mgl_data_set_value(ctx->chart_data, (float)value->Values[j], i, value->Series[j], 0);
+		if (ctx->min > value->Values[j]) ctx->min = value->Values[j];
+		if (ctx->max < value->Values[j]) ctx->max = value->Values[j];
+		}
+	    }
+	value = NULL;
+
+	/** Get area geometry in given units **/
+	rpt_internal_GetDouble(inf, chart, "x", &x, -1.0, 0);
+	rpt_internal_GetDouble(inf, chart, "y", &y, -1.0, 0);
+	if (rpt_internal_GetDouble(inf, chart, "width", &w, NAN, 0) < 0 || w == 0) goto error;
+	if (rpt_internal_GetDouble(inf, chart, "height", &h, NAN, 0) < 0 || h == 0) goto error;
+
+	/** Chart configuration **/
+	box = rpt_internal_GetBool(inf, chart, "box", 0, 0);
+	ctx->scale = rpt_internal_GetBool(inf, chart, "scale", 0, 0);
+	stacked = rpt_internal_GetBool(inf, chart, "stacked", 0, 0);
+	ctx->rotation = rpt_internal_GetBool(inf, chart, "text_rotation", 0, 0);
+	rpt_internal_GetDouble(inf, chart, "zoom", &ctx->zoom, 1.0, 0);
+	rpt_internal_GetInteger(inf, chart, "fontsize", &ctx->fontsize, (int)round(prtGetFontSize(container_handle)), 0);
+	if (ctx->fontsize < 1)
+	    goto error;
+
+	/* Convert to standard units */
+	ctx->stand_w = prtUnitX(rs->PSession, w);
+	ctx->stand_h = prtUnitY(rs->PSession, h);
+	
+	/* Get the resolution */
+	prtGetResolution(rs->PSession, &ctx->xres, &ctx->yres);
+	
+	/* Get Actual pixel dimensions */
+	ctx->x_pixels = ctx->stand_w * (double)ctx->xres / 10;
+	ctx->y_pixels = ctx->stand_h * (double)ctx->yres / 6;
+
+	/** Trim for absence of title / label **/
+	if (!*title)
+	    ctx->trim.top = 0.14 + (ctx->stand_h - 8) / 42.0 * 0.025;
+	else
+	    ctx->trim.top = (ctx->stand_h - 8) / 42.0 * 0.03;
+	if (!*x_axis_label && !ctx->rotation)
+	    ctx->trim.bottom = 0.075 + (ctx->stand_h - 8) / 42.0 * 0.08;
+	else
+	    ctx->trim.bottom = (ctx->stand_h < 12)?0.0:((ctx->stand_h - 12) / 42.0 * 0.13);
+
+	/** Rendering dimensions **/
+	ctx->rend_x_pixels = round(ctx->x_pixels / (1.0 - ctx->trim.left - ctx->trim.right));
+	ctx->rend_y_pixels = round(ctx->y_pixels / (1.0 - ctx->trim.top - ctx->trim.bottom));
+
+	/** Font scaling **/
+	ctx->font_scale_factor = 6.4 / ctx->stand_h * ctx->y_pixels / ctx->rend_y_pixels * ctx->zoom;
+
+	/** Chart color **/
+	/// TODO: need to let it auto generate colors if have a dynamic series
+	strtcpy(color, rpt_internal_GetMglColor(ctx, chart, "color", "b", 0), sizeof(color));
+	ctx->color = color;
+
+	/** Create the chart **/
+	ctx->gr = mgl_create_graph(ctx->rend_x_pixels, ctx->rend_y_pixels);
+	if (!ctx->gr)
+	    goto error;
+	mgl_set_rotated_text(ctx->gr, ctx->rotation?1:0);
+	if (ctx->zoom < 0.999 || ctx->zoom > 1.001)
+	    mgl_set_plotfactor(ctx->gr, 1.55*ctx->zoom);
+
+	/** Decimal precision **/
+	prec = rpt_internal_GetYDecimalPrecision(ctx, -1, -1);
+	snprintf(precstr, sizeof(precstr), "%%.%df", prec);
+	mgl_set_tick_templ(ctx->gr, 'y', precstr);
+
+	/** Graphics setup for chart type **/
+	if (drv->SetupFormat(ctx) < 0)
+	    goto error;
+
+	/** Y axis min/max/ticks **/
+	ctx->tickdist = rpt_internal_GetTickDist(ctx->max - ctx->min);
+	ctx->minaxis = (ctx->min == 0)?0.0:(ctx->min - ctx->tickdist);
+	ctx->maxaxis = ctx->max + ctx->tickdist;
+
+	/** Draw the chart, depending on type **/
+	if (drv->Generate(ctx) < 0)
+	    goto error;
+	
+	/** Title and axis labels **/
+	if (*title)
+	    mgl_puts(ctx->gr, 0.5, 0.9, 0.0, title, "A", ctx->fontsize * ctx->font_scale_factor);
+	if (*x_axis_label)
+	    {
+	    rpt_internal_GetInteger(inf, ctx->x_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
+	    char opt[32];
+	    snprintf(opt, sizeof(opt), "size %.1f; value %.2f", axis_fontsize * ctx->font_scale_factor, axis_fontsize * ctx->font_scale_factor / 50.0 + ctx->stand_h / 100.0);
+	    mgl_puts(ctx->gr, 0.5, 0.04, 0.0, x_axis_label, "A", ctx->fontsize * ctx->font_scale_factor);
+	    }
+	if (*y_axis_label)
+	    {
+	    rpt_internal_GetInteger(inf, ctx->y_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
+	    xoffset = (ctx->values->nItems - 0.8) / -4.2;
+	    yoffset = (ctx->maxaxis + ctx->minaxis)/2.0;
+	    mgl_set_rotated_text(ctx->gr, 1);
+	    mgl_puts_dir(ctx->gr, xoffset, yoffset, 0.0, xoffset, yoffset+1.0, 0.0, y_axis_label, "", axis_fontsize * ctx->font_scale_factor);
+	    mgl_set_rotated_text(ctx->gr, ctx->rotation?1:0);
+	    }
+	
+	/** Chart box **/
+	if (box)
+	    mgl_box(ctx->gr);
+
+	/** Render the chart **/
+	img = rpt_internal_GraphToImage(ctx);
+	if (!img)
+	    {
+	    mssError(0, "RPT", "Could not create chart");
+	    goto error;
+	    }
+	mgl_delete_data(ctx->chart_data);
+	ctx->chart_data = NULL;
+	mgl_delete_graph(ctx->gr);
+	ctx->gr = NULL;
+
+	/** Check flags **/
+	flags = 0;
+	if (x >= 0.0) flags |= PRT_OBJ_U_XSET;
+	if (y >= 0.0) flags |= PRT_OBJ_U_YSET;
+
+	/** Add it to its container **/
+	if (prtWriteImage(container_handle, img, x,y,w,h, flags) < 0)
+	    goto error;
+	img = NULL;
+
+	/** Fall through to error handler, to cleanup our resources,
+	 ** but return success.
+	 **/
+	errval = 0;
+
+    error:
+    /// FIXME: I'll probably be making some new items here
+	if (ctx->x_labels)
+	    nmSysFree(ctx->x_labels);
+	if (ctx->series)
+	    for(i = 0 ; i < ctx->series->nItems ; i++)
+		nmSysFree(ctx->series->Items[i]);
+	    xaFree(ctx->series);
+	if (value)
+	    rpt_internal_FreeChartValues(value);
+	if (ctx->values)
+	    {
+	    for(i=0; i<ctx->values->nItems; i++)
+		{
+		rpt_internal_FreeChartValues((pRptChartValues)xaGetItem(ctx->values, i));
+		}
+	    xaFree(ctx->values);
+	    }
+	if(tempVals)
+	    for(i = 0 ; i < tempVals->nItems ; i++) 
+		nmFree(tempVals->Items[i], sizeof(double));
+	    xaFree(tempVals);
+	if(tempSeries)
+	    for(i = 0 ; i < tempSeries->nItems ; i++) 
+		nmFree(tempSeries->Items[i], sizeof(int));
+	    xaFree(tempSeries);
+	if(cur_x)
+	   nmSysFree(cur_x);
+	if(dbl_ptr)
+	    nmFree(dbl_ptr, sizeof(double));
+	if(int_ptr)
+	    nmFree(int_ptr, sizeof(int));
+	if (ac)
+	    rpt_internal_Deactivate(inf, ac);
+	if (ctx->chart_data)
+	    mgl_delete_data(ctx->chart_data);
+	if (ctx->gr)
+	    mgl_delete_graph(ctx->gr);
+	if (img)
+	    prtFreeImage(img);
+	if (ctx)
+	    nmFree(ctx, sizeof(RptChartContext));
+	return errval;
+    }
 
 
 #if 00
@@ -4416,6 +4863,11 @@ rpt_internal_DoContainer(pRptData inf, pStructInf container, pRptSession rs, int
                 else if (!strcmp(subobj->UsrType, "report/chart"))
                     {
                     rval = rpt_internal_DoChart(inf, subobj, rs, container_handle);
+		    if (rval < 0) break;
+                    }
+		else if (!strcmp(subobj->UsrType, "report/auto-chart"))
+                    {
+                    rval = rpt_internal_DoAutoChart(inf, subobj, rs, container_handle);
 		    if (rval < 0) break;
                     }
 		}
@@ -5140,6 +5592,14 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
                 else if (!strcmp(subreq->UsrType,"report/chart"))
 		    {
 		    if (rpt_internal_DoChart(inf, subreq,rsess, rsess->PageHandle) <0)
+		        {
+			err = 1;
+			break;
+			}
+		    }
+		else if (!strcmp(subreq->UsrType,"report/auto-chart"))
+		    {
+		    if (rpt_internal_DoAutoChart(inf, subreq,rsess, rsess->PageHandle) <0)
 		        {
 			err = 1;
 			break;
