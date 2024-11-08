@@ -3181,7 +3181,7 @@ rpt_internal_GetYDecimalPrecision(pRptChartContext ctx, int n, int ser)
 	if (ser == -1)
 	    {
 	    serstart = 0;
-	    serlen = ctx->series->nItems;
+	    /** serlen needs to be dynamic since not all values include every series **/
 	    }
 	else
 	    {
@@ -3192,6 +3192,7 @@ rpt_internal_GetYDecimalPrecision(pRptChartContext ctx, int n, int ser)
 	/** Iterate **/
 	for(i=nstart; i<nstart+nlen; i++)
 	    {
+	    if(ser == -1) serlen = ((pRptChartValues)ctx->values->Items[i])->nItems;
 	    for(j=serstart; j<serstart+serlen; j++)
 		{
 		val = ((pRptChartValues)ctx->values->Items[i])->Values[j];
@@ -4164,6 +4165,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 int
 rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int container_handle)
     {
+    const char* AUTO_CHART_NAME = "report/chart-auto-series";
     int errval = -1; /* default */
     pRptActiveQueries ac = NULL;
     int rval;
@@ -4345,8 +4347,12 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 		/** Build the pStructInf for the series here **/
 		subobj = stAllocInf();
 		subobj->Magic = MGK_STRUCTINF;
-		subobj->Name = nmSysStrdup(ptr);
-		subobj->UsrType = "report/chart-auto-series"; // this type only occurs when built here
+		/** make use of the name buffer **/
+		memcpy(subobj->Name, ptr, (strlen(ptr)+1 < ST_NAME_STRLEN?strlen(ptr)+1:ST_NAME_STRLEN));
+		subobj->Name[ST_NAME_STRLEN-1] = '\0'; // make sure ends with a null
+		/** allocate a copy of the auto chart type **/
+		subobj->UsrType = nmMalloc(strlen(AUTO_CHART_NAME)+1);
+		memcpy(subobj->UsrType, AUTO_CHART_NAME, strlen(AUTO_CHART_NAME)+1);
 		/** TODO: add sub objects for color, show_value, show_percent, and font size as applicable (color at least?) **/
 		stAddInf(chart, subobj);
 		series_index = xaAddItem(ctx->series, subobj);
@@ -4561,14 +4567,6 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 	    nmSysFree(ctx->x_labels);
 	if (ctx && ctx->series)
 	    {
-	    for(i = 0 ; i < ctx->series->nItems ; i++)
-		{
-		// name and struct itself were manually added. 
-		/// FIXME: I'm pretty sure this will need updated before I'm done
-		/// FIXME: it seems like if I just free the name I assigned, the rest is okay? CHECK THIS
-		nmSysFree((char*)((pStructInf)ctx->series->Items[i])->Name);
-		//stFreeInf(ctx->series->Items[i]);
-		}
 	    xaFree(ctx->series);
 	    }
 	if (value)
