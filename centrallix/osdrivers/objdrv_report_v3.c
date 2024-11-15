@@ -3198,7 +3198,7 @@ rpt_internal_GetYDecimalPrecision(pRptChartContext ctx, int n, int ser)
 		val = ((pRptChartValues)ctx->values->Items[i])->Values[j];
 		for(k=0; k<8; k++)
 		    {
-		    if (val == 0 || ceil(abs(val)*exp10(k)*0.99999999999999) != ceil(abs(val)*exp10(k)*1.00000000000001))
+		    if (val == 0 || fabs(ceil(fabs(val)*exp10(k)*1.00000000000001) - ceil(fabs(val)*exp10(k)*0.99999999999999)) > 0.00000000000001 )
 			break;
 		    }
 		if (k > prec)
@@ -3213,13 +3213,14 @@ rpt_internal_GetYDecimalPrecision(pRptChartContext ctx, int n, int ser)
 /*** Generate value strings
  ***/
 pXArray
-rpt_internal_GetValueStrings(pRptChartContext ctx, int startval, int n_vals, int show_pct, int ser)
+rpt_internal_GetValueStrings(pRptChartContext ctx, int startval, int n_vals, int show_pct, int targetSer)
     {
     pXArray labels;
     char str[32];
-    int i;
+    int i,j;
     double val;
     int prec;
+    int indexSer = -1;
 
 	labels = xaNew(n_vals);
 	if (!labels)
@@ -3228,8 +3229,19 @@ rpt_internal_GetValueStrings(pRptChartContext ctx, int startval, int n_vals, int
 	/** Format the label strings **/
 	for(i=startval; i<startval+n_vals; i++)
 	    {
-	    val = ((pRptChartValues)ctx->values->Items[i])->Values[ser];
-	    prec = rpt_internal_GetYDecimalPrecision(ctx, i, ser);
+	    /** see if the serries is in the item. Skip if not. **/
+	    for(j=0; j<((pRptChartValues)ctx->values->Items[i])->nItems; j++)
+		{
+		if(targetSer == ((pRptChartValues)ctx->values->Items[i])->Series[j])
+		    {
+		    indexSer = j;
+		    break;
+		    }
+		}
+	    if(indexSer == -1) continue; /* the series was missing from the value set */
+
+	    val = ((pRptChartValues)ctx->values->Items[i])->Values[indexSer];
+	    prec = rpt_internal_GetYDecimalPrecision(ctx, i, indexSer);
 
 	    if (prec == 0)
 		{
@@ -3242,6 +3254,7 @@ rpt_internal_GetValueStrings(pRptChartContext ctx, int startval, int n_vals, int
 		snprintf(str, sizeof(str), "%.*f%s", prec, val, show_pct?"%":"");
 		}
 	    xaAddItem(labels, nmSysStrdup(str));
+	    indexSer = -1;
 	    }
 
     return labels;
@@ -3267,21 +3280,23 @@ rpt_internal_FreeValueStrings(pXArray labels)
 /*** Line/Bar Labels
  ***/
 int
-rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int total_n_vals, int ser, int n_ser, int bar, double fontsize, int show_pct, double offset)
+rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int total_n_vals, int targetSer, int n_ser, int bar, double fontsize, int show_pct, double offset)
     {
-    int i;
+    int i,j;
     double val, valoffset;
     pXArray labels;
     int maxstrlen;
     double fs;
+    int indexSer = -1;
+    int labelIndex = 0;
 
-	labels = rpt_internal_GetValueStrings(ctx, startval, n_vals, show_pct, ser);
+	labels = rpt_internal_GetValueStrings(ctx, startval, n_vals, show_pct, targetSer);
 	if (!labels)
 	    return -1;
 
 	/** Font size - scale for longer labels / smaller bars **/
 	maxstrlen = 0;
-	for(i=0; i<n_vals; i++)
+	for(i=0; i<labels->nItems; i++)
 	    {
 	    if (maxstrlen < strlen(labels->Items[i]))
 		maxstrlen = strlen(labels->Items[i]);
@@ -3293,17 +3308,30 @@ rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int
 	/** Add the labels **/
 	for(i=startval; i<startval+n_vals; i++)
 	    {
-	    val = ((pRptChartValues)ctx->values->Items[i])->Values[ser];
+	    /** Find the actual index of series (if present) **/
+	    for(j=0; j<((pRptChartValues)ctx->values->Items[i])->nItems; j++)
+		{
+		if(targetSer == ((pRptChartValues)ctx->values->Items[i])->Series[j])
+		    {
+		    indexSer = j;
+		    break;
+		    }
+		}
+	    if(indexSer == -1) continue;
+	    val = ((pRptChartValues)ctx->values->Items[i])->Values[indexSer];
 	    valoffset = (ctx->max - ctx->min)*0.02;
 #ifdef HAVE_MGL2
 	    if (val < 0)
 		valoffset = 0 - valoffset - (fs * ctx->font_scale_factor) * (ctx->max - ctx->min) * 0.022;
-	    mgl_puts(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + ser) * (1.4 / n_ser)):0.0), val + valoffset, 0.0, (char*)labels->Items[i - startval], "", fs * ctx->font_scale_factor);
+	    mgl_puts(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + targetSer) * (1.4 / n_ser)):0.0), val + valoffset, 0.0, (char*)labels->Items[labelIndex], "", fs * ctx->font_scale_factor);
 #else
 	    if (val < 0)
 		valoffset = 0 - valoffset - (fs * ctx->font_scale_factor) * (ctx->max - ctx->min) * 0.013;
-	    mgl_puts_ext(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + ser) * (1.4 / n_ser)):0.0), val + valoffset, 0.0, (char*)labels->Items[i - startval], "", fs * ctx->font_scale_factor, '\0');
+	    mgl_puts_ext(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + targetSer) * (1.4 / n_ser)):0.0), val + valoffset, 0.0, (char*)labels->Items[labelIndex], "", fs * ctx->font_scale_factor, '\0');
 #endif
+	    /** reset the index of the series and move on to the next label **/
+	    indexSer = -1;
+	    labelIndex++; 
 	    }
 
 	rpt_internal_FreeValueStrings(labels);
@@ -3927,6 +3955,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 		    mssError(0, "RPT", "Could not get y_value for series '%s'", one_series->Name);
 		    goto error;
 		    }
+		value->Series[i] = i; /** to be compatible with auto charts, needs to keep track of series as well. **/
 		}
 
 	    /** Next record **/
@@ -4295,7 +4324,7 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 
 	/** Enter the row retrieval loop. **/
 	
-	/** Each row belongs to just one series. Store values and indexes until x changes, then store **/
+	/** Each row belongs to just one series. Store values and series indexes until x changes, then store **/
 	cur_x = NULL;
 	value = NULL;
 	int series_cnt = 0;
@@ -4377,7 +4406,7 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 	    rval = rpt_internal_NextRecord(ac, inf, chart, rs, 0);
 	    series_cnt++;
 	    }
-	// final cleanup
+	/** final cleanup **/
 	if(cur_x)
 	    {
 	    value = rpt_internal_NewChartValues(cur_x, series_cnt);
@@ -4426,6 +4455,10 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 	    {
 	    value = (pRptChartValues)ctx->values->Items[i];
 	    ctx->x_labels[i] = value->Label;
+	    for(j=0; j < ctx->series->nItems; j++)
+		{
+		mgl_data_set_value(ctx->chart_data, (float)NAN, i, j, 0);
+		}
 	    for(j=0; j < value->nItems; j++)
 		{
 		mgl_data_set_value(ctx->chart_data, (float)value->Values[j], i, value->Series[j], 0);
@@ -4480,7 +4513,7 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 	ctx->font_scale_factor = 6.4 / ctx->stand_h * ctx->y_pixels / ctx->rend_y_pixels * ctx->zoom;
 
 	/** Chart color **/
-	/// TODO: need to let it auto generate colors if have a dynamic series
+	/// TODO: need to let it auto generate colors if none specified.
 	strtcpy(color, rpt_internal_GetMglColor(ctx, chart, "color", "b", 0), sizeof(color));
 	ctx->color = color;
 
@@ -4488,6 +4521,7 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 	ctx->gr = mgl_create_graph(ctx->rend_x_pixels, ctx->rend_y_pixels);
 	if (!ctx->gr)
 	    goto error;
+
 	mgl_set_rotated_text(ctx->gr, ctx->rotation?1:0);
 	if (ctx->zoom < 0.999 || ctx->zoom > 1.001)
 	    mgl_set_plotfactor(ctx->gr, 1.55*ctx->zoom);
