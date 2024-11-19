@@ -267,6 +267,7 @@ typedef struct
     double	maxaxis;
     int		tickdist;
     int		scale;
+    int		show_legend;
     char*	color;
     char**	x_labels;
     pRptData	inf;
@@ -3630,8 +3631,12 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
 	    /** Generate the numeric bar labels **/
 	    if (show_value || show_percent)
 		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, 1, 0, series_fontsize, show_percent, 0.0);
+	    /** Generate the legend **/
+	    if(ctx->show_legend)
+		mgl_add_legend(ctx->gr, one_series->Name, color);
+	// TODO: either manually recreate default pallet when strlen(color) == 0, or find a way to stash as options (a function that plots nothing...?)
 	    }
-        
+
 	/** Font size for y axis **/
 	rpt_internal_GetInteger(ctx->inf, ctx->y_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
 	fs = ctx->stand_w * ctx->rend_x_pixels / ctx->x_pixels * 6.0 / 50.0;
@@ -3654,6 +3659,18 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
 	mgl_axis_grid(ctx->gr, "y", "W-");
 	mgl_plot(ctx->gr, ctx->chart_data, linecolors);
 #endif
+
+	/** finish off legend if applicable **/
+	if(ctx->show_legend)
+	    {
+#ifdef HAVE_MGL2
+	    char opt[32];
+	    snprintf(opt, sizeof(opt), "size %.1f; value 0.1", axis_fontsize * ctx->font_scale_factor);
+	    mgl_legend_pos(ctx->gr, 0.06, 0.0, "A", opt);
+#else
+	    mgl_legend_xy(ctx->gr, -0.28, 0.0, "", axis_fontsize * ctx->font_scale_factor, 0.1);
+#endif
+	    }
 
     return 0;
     }
@@ -3855,6 +3872,8 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	    goto error;
 	memset(ctx, 0, sizeof(RptChartContext));
 	ctx->inf = inf;
+	rpt_internal_GetString(inf, chart, "show_legend", &ptr, "no", 0);
+	ctx->show_legend = (!strcmp("yes", ptr))?1:0;
 
 	/** Determine axis/series counts **/
 	ctx->series = xaNew(4);
@@ -4261,6 +4280,8 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 	    goto error;
 	memset(ctx, 0, sizeof(RptChartContext));
 	ctx->inf = inf;
+	rpt_internal_GetString(inf, chart, "show_legend", &ptr, "no", 0);
+	ctx->show_legend = (!strcmp("yes", ptr))?1:0;
 
 	/** Determine axis (series has to wait for data to be read) **/
 	for(i=0; i<chart->nSubInf; i++)
@@ -4512,9 +4533,8 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 	/** Font scaling **/
 	ctx->font_scale_factor = 6.4 / ctx->stand_h * ctx->y_pixels / ctx->rend_y_pixels * ctx->zoom;
 
-	/** Chart color **/
-	/// TODO: need to let it auto generate colors if none specified.
-	strtcpy(color, rpt_internal_GetMglColor(ctx, chart, "color", "b", 0), sizeof(color));
+	/** Auto Chart color - defaults to math gl's default pallet **/
+	strtcpy(color, rpt_internal_GetMglColor(ctx, chart, "color", "", 0), sizeof(color));
 	ctx->color = color;
 
 	/** Create the chart **/
