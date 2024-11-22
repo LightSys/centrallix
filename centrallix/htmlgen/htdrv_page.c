@@ -46,6 +46,12 @@
 /************************************************************************/
 
 
+int htpageSetup(pHtSession s)
+	{
+	htrAddStylesheetItem_va(s,"\t.pageAbsHid { POSITION:absolute; VISIBILITY:hidden }\n");
+	htrAddStylesheetItem_va(s,"\t.pageSetZInd { Z-INDEX:1000 }\n");
+	return 0;
+	}
 
 int
 htpageRender(pHtSession s, pWgtrNode tree, int z)
@@ -325,35 +331,35 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    /** Add focus box **/
 	    htrAddStylesheetItem(s,"\ttd img { display: block; }\n");
-	    htrAddStylesheetItem(s,"\t#pgtop { POSITION:absolute; VISIBILITY:hidden; LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pgbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pgrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:-1000px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pglft { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:-1000px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pgtvl { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:0px;WIDTH:1px;HEIGHT:1px; Z-INDEX:0; }\n");
-	    htrAddStylesheetItem(s,"\t#pgktop { POSITION:absolute; VISIBILITY:hidden; LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pgkbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pgkrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:-1000px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pgklft { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:-1000px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pginpt { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:20px; Z-INDEX:20; }\n");
-	    htrAddStylesheetItem(s,"\t#pgping { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; Z-INDEX:0;}\n");
-	    htrAddStylesheetItem(s,"\t#pgmsg { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; Z-INDEX:0;}\n");
+	    htrAddStylesheetItem(s,"\t#pgtop { LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgbtm { LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgrgt { LEFT:0px;TOP:-1000px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px);  overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pglft { LEFT:0px;TOP:-1000px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgtvl { LEFT:0px;TOP:0px;WIDTH:1px;HEIGHT:1px; Z-INDEX:0; }\n");
+	    htrAddStylesheetItem(s,"\t#pgktop { LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgkbtm { LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgkrgt { LEFT:0px;TOP:-1000px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pgklft { LEFT:0px;TOP:-1000px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); overflow:hidden;}\n");
+	    htrAddStylesheetItem(s,"\t#pginpt { LEFT:0px; TOP:20px; Z-INDEX:20; }\n");
+	    htrAddStylesheetItem(s,"\t#pgping { LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; Z-INDEX:0;}\n");
+	    htrAddStylesheetItem(s,"\t#pgmsg { LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; Z-INDEX:0;}\n");
 	    }
 	else
 	    {
 	    /** Add focus box **/
 	    htrAddStylesheetItem(s,
-		    "\t#pgtop { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
-		    "\t#pgbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
-		    "\t#pgrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
-		    "\t#pglft { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
-		    "\t#pgtvl { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:1; Z-INDEX:0; }\n"
-		    "\t#pgktop { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
-		    "\t#pgkbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
-		    "\t#pgkrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
-		    "\t#pgklft { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
-		    "\t#pginpt { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:20; Z-INDEX:20; }\n"
-		    "\t#pgping { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; Z-INDEX:0; }\n"
-		    "\t#pgmsg { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; Z-INDEX:0; }\n");
+		    "\t#pgtop { LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); }\n"
+		    "\t#pgbtm { LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); }\n"
+		    "\t#pgrgt { LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); }\n"
+		    "\t#pglft { LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); }\n"
+		    "\t#pgtvl { LEFT:0;TOP:0;WIDTH:1;HEIGHT:1; Z-INDEX:0; }\n"
+		    "\t#pgktop { LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); }\n"
+		    "\t#pgkbtm { LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); }\n"
+		    "\t#pgkrgt { LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); }\n"
+		    "\t#pgklft { LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); }\n"
+		    "\t#pginpt { LEFT:0; TOP:20; Z-INDEX:20; }\n"
+		    "\t#pgping { LEFT:0; TOP:0; Z-INDEX:0; }\n"
+		    "\t#pgmsg { LEFT:0; TOP:0; Z-INDEX:0; }\n");
 	    }
 
 	if (show == 1)
@@ -377,20 +383,19 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddStylesheetItem_va(s, "\tfont { %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
 		font_size > 0, font_size, *font_name, font_name);
 	    }
+	htrAddBodyItem(s, "<DIV ID=\"pgtop\" class=\"pageAbsHid pageSetZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgbtm\" class=\"pageAbsHid pageSetZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgrgt\" class=\"pageAbsHid pageSetZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pglft\" class=\"pageAbsHid pageSetZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgtvl\" class=\"pageAbsHid\"></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgktop\" class=\"pageAbsHid pageSetZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgkbtm\" class=\"pageAbsHid pageSetZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgkrgt\" class=\"pageAbsHid pageSetZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
+	htrAddBodyItem(s, "<DIV ID=\"pgklft\" class=\"pageAbsHid pageSetZInd\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
 
-	htrAddBodyItem(s, "<DIV ID=\"pgtop\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgbtm\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgrgt\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pglft\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgtvl\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgktop\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgkbtm\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgkrgt\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgklft\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
-
-	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgping",0, NULL);
+	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgping",0, "pageAbsHid");
 	htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
-	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgmsg",0, NULL);
+	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgmsg",0, "pageAbsHid");
 	htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
 	htrAddBodyItem(s, "\n");
 
@@ -466,6 +471,7 @@ htpageInitialize()
 	strcpy(drv->Name,"HTML Page Driver");
 	strcpy(drv->WidgetName,"page");
 	drv->Render = htpageRender;
+	drv->Setup = htpageSetup;
 	/** Actions **/
 	htrAddAction(drv, "LoadPage");
 	htrAddParam(drv, "LoadPage", "Source", DATA_T_STRING);

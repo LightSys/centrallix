@@ -68,6 +68,14 @@ static struct
     }
     HTTBL;
 
+int httblSetup(pHtSession s)
+	{
+	htrAddStylesheetItem_va(s,"\t.tbldPosAbs { POSITION:absolute }\n");
+	htrAddStylesheetItem_va(s,"\t.tbldPane { VISIBILITY:inherit; } \n");
+	htrAddStylesheetItem_va(s,"\t.tbldScroll { WIDTH:18px; }\n");
+	htrAddStylesheetItem_va(s,"\t.tbldBox { VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:16px; HEIGHT:16px; BORDER: solid 1px; BORDER-COLOR: white gray gray white; }\n");
+	return 0;
+	}
 
 typedef struct
     {
@@ -161,9 +169,9 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    }
 
 	/** STYLE for the layer **/
-	htrAddStylesheetItem_va(s,"\t#tbld%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; } \n",t->id,t->x,t->y,(t->overlap_scrollbar)?(t->w):(t->w-18),z+0);
-	htrAddStylesheetItem_va(s,"\t#tbld%POSscroll { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:18px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",t->id,(t->hide_scrollbar || t->demand_scrollbar)?"hidden":"inherit",t->x+t->w-18,t->y+first_offset,t->h-first_offset,z+0);
-	htrAddStylesheetItem_va(s,"\t#tbld%POSbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:16px; HEIGHT:16px; Z-INDEX:%POS; BORDER: solid 1px; BORDER-COLOR: white gray gray white; }\n",t->id,z+1);
+	htrAddStylesheetItem_va(s,"\t#tbld%POSpane { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; } \n",t->id,t->x,t->y,(t->overlap_scrollbar)?(t->w):(t->w-18),z+0);
+	htrAddStylesheetItem_va(s,"\t#tbld%POSscroll { VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",t->id,(t->hide_scrollbar || t->demand_scrollbar)?"hidden":"inherit",t->x+t->w-18,t->y+first_offset,t->h-first_offset,z+0);
+	htrAddStylesheetItem_va(s,"\t#tbld%POSbox { Z-INDEX:%POS; }\n",t->id,z+1);
 
 	htrAddScriptGlobal(s,"tbld_current","null",0);
 	htrAddScriptGlobal(s,"tbldb_current","null",0);
@@ -214,7 +222,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 
 	htrAddScriptInit(s,"null]});\n");
 
-	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSpane\">\n",t->id);
+	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSpane\" class=\"tbldPane tbldPosAbs\">\n",t->id);
 
 	detailcnt = wgtrGetMatchingChildList(tree, "widget/table-row-detail", children, sizeof(children)/sizeof(pWgtrNode));
 	//for (i=0;i<xaCount(&(tree->Children));i++)
@@ -251,14 +259,14 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	htrAddBodyItem(s,"</DIV>\n");
 
 	/** HTML body <DIV> element for the scrollbar layer. **/
-	htrAddBodyItem_va(s,"<div id=\"tbld%POSscroll\">\n",t->id);
+	htrAddBodyItem_va(s,"<div id=\"tbld%POSscroll\" class=\"tbldScroll tbldPosAbs\">\n",t->id);
 	htrAddBodyItem(s,"<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"18\">\n");
 	htrAddBodyItem(s,"<tr><td><img src=\"/sys/images/ico13b.gif\" name=\"u\"></td></tr>\n");
 	htrAddBodyItem_va(s,"<tr><td id=\"tbld%POSscrarea\" height=\"%POS\"></td></tr>\n", t->id, t->h-2*18-first_offset);
 	htrAddBodyItem(s,"<tr><td><img src=\"/sys/images/ico12b.gif\" name=\"d\"></td></tr>\n");
 	htrAddBodyItem(s,"</table>\n");
 	/*htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSbox\"><IMG SRC=/sys/images/ico14b.gif NAME=b></DIV>\n",t->id);*/
-	htrAddBodyItem_va(s,"<div id=\"tbld%POSbox\"></div>\n",t->id);
+	htrAddBodyItem_va(s,"<div id=\"tbld%POSbox\" class=\"tbldBox tbldPosAbs\"></div>\n",t->id);
 	htrAddBodyItem(s,"</div>\n");
 
 	htrAddEventHandlerFunction(s,"document","MOUSEOVER","tbld","tbld_mouseover");
@@ -505,6 +513,7 @@ httblInitialize()
 	strcpy(drv->Name,"DHTML DataTable Driver");
 	strcpy(drv->WidgetName,"table");
 	drv->Render = httblRender;
+	drv->Setup = httblSetup;
 	xaAddItem(&(drv->PseudoTypes), "table-column");
 	xaAddItem(&(drv->PseudoTypes), "table-row-detail");
 

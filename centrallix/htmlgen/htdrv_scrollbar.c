@@ -49,6 +49,12 @@ static struct
     }
     HTSB;
 
+int htsbSetup(pHtSession s)
+	{
+	htrAddStylesheetItem_va(s,"\t.sbPosAbs { POSITION:absolute; }\n");
+	htrAddStylesheetItem_va(s,"\t.sbThum { VISIBILITY:inherit; WIDTH:18px; }\n");	
+	return 0;
+	}
 
 /*** htsbRender - generate the HTML code for the page.
  ***/
@@ -163,11 +169,11 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#sb%POSpane { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; clip:rect(0px,%POSpx,%POSpx,0px); Z-INDEX:%POS; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
+	htrAddStylesheetItem_va(s,"\t#sb%POSpane { VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; clip:rect(0px,%POSpx,%POSpx,0px); Z-INDEX:%POS; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
 	if (is_horizontal)
-	    htrAddStylesheetItem_va(s,"\t#sb%POSthum { POSITION:absolute; VISIBILITY:inherit; LEFT:18px; TOP:0px; WIDTH:18px; Z-INDEX:%POS; }\n",id,z+1);
+	    htrAddStylesheetItem_va(s,"\t#sb%POSthum { LEFT:18px; TOP:0px; Z-INDEX:%POS; }\n",id,z+1);
 	else
-	    htrAddStylesheetItem_va(s,"\t#sb%POSthum { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:18px; Z-INDEX:%POS; }\n",id,z+1);
+	    htrAddStylesheetItem_va(s,"\t#sb%POSthum { LEFT:0px; TOP:18px; Z-INDEX:%POS; }\n",id,z+1);
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "sb_target_img", "null", 0);
@@ -189,7 +195,7 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInit_va(s,"    sb_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), tname:\"sb%POSthum\", isHorizontal:%INT, range:%INT});\n", name, id, is_horizontal, r);
 
 	/** HTML body <DIV> elements for the layers. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"sb%POSpane\"><TABLE %[bgcolor=\"%STR&HTE\"%] %[background=\"%STR&HTE\"%] border=0 cellspacing=0 cellpadding=0 width=%POS>", id, *bcolor, bcolor, *bimage, bimage, w);
+	htrAddBodyItem_va(s,"<DIV ID=\"sb%POSpane\" class=\"sbPosAbs\"><TABLE %[bgcolor=\"%STR&HTE\"%] %[background=\"%STR&HTE\"%] border=0 cellspacing=0 cellpadding=0 width=%POS>", id, *bcolor, bcolor, *bimage, bimage, w);
 	if (is_horizontal)
 	    {
 	    htrAddBodyItem(s,   "<TR><TD align=right><IMG SRC=/sys/images/ico19b.gif width=18 height=18 NAME=u></TD><TD align=right>");
@@ -202,7 +208,7 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddBodyItem_va(s,"<IMG SRC=/sys/images/trans_1.gif height=%POS width=18 name='b'>",h-36);
 	    htrAddBodyItem(s,   "</TD></TR><TR><TD align=right><IMG SRC=/sys/images/ico12b.gif width=18 height=18 NAME=d></TD></TR></TABLE>\n");
 	    }
-	htrAddBodyItem_va(s,"<DIV ID=\"sb%POSthum\"><IMG SRC=/sys/images/ico14b.gif NAME=t></DIV>",id);
+	htrAddBodyItem_va(s,"<DIV ID=\"sb%POSthum\" class=\"sbThum sbPosAbs\"><IMG SRC=/sys/images/ico14b.gif NAME=t></DIV>",id);
 
 	/** Add the event handling scripts **/
 
@@ -237,6 +243,7 @@ htsbInitialize()
 	strcpy(drv->Name,"DHTML Scrollbar Widget Driver");
 	strcpy(drv->WidgetName,"scrollbar");
 	drv->Render = htsbRender;
+	drv->Setup = htsbSetup;
 
 	/** Events **/ 
 	htrAddEvent(drv,"Click");

@@ -46,7 +46,14 @@ static struct {
    int     idcnt;
 } HTDD;
 
-
+int htddSetup(pHtSession s)
+	{
+	htrAddStylesheetItem_va(s,"\t.ddHidAbs { OVERFLOW:hidden; POSITION:absolute; }\n");
+	htrAddStylesheetItem_va(s,"\t.ddBtn { VISIBILITY:inherit; cursor:default; border:1px outset #e0e0e0;}\n");
+	htrAddStylesheetItem_va(s,"\t.ddCon1 { VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n");
+	htrAddStylesheetItem_va(s,"\t.ddCon2 { VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n");
+	return 0;
+	}
 /* 
    htddRender - generate the HTML code for the page.
 */
@@ -138,9 +145,9 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     strtcpy(name,ptr,sizeof(name));
 
     /** Ok, write the style header items. **/
-    htrAddStylesheetItem_va(s,"\t#dd%POSbtn { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; background-color: %STR&CSSVAL; border:1px outset #e0e0e0;}\n",id,x,y,h,w,z,bgstr);
-    htrAddStylesheetItem_va(s,"\t#dd%POScon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,h-2,z+1);
-    htrAddStylesheetItem_va(s,"\t#dd%POScon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,h-2,z+1);
+    htrAddStylesheetItem_va(s,"\t#dd%POSbtn { LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; background-color: %STR&CSSVAL;}\n",id,x,y,h,w,z,bgstr);
+    htrAddStylesheetItem_va(s,"\t#dd%POScon1 { HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,h-2,z+1);
+    htrAddStylesheetItem_va(s,"\t#dd%POScon2 { HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,h-2,z+1);
 
     htrAddScriptGlobal(s, "dd_current", "null", 0);
     htrAddScriptGlobal(s, "dd_lastkey", "null", 0);
@@ -190,7 +197,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     htrAddScriptInit_va(s,"    dd_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), c1:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"dd%POScon1\"), c2:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"dd%POScon2\"), background:'%STR&JSSTR', highlight:'%STR&JSSTR', fieldname:'%STR&JSSTR', numDisplay:%INT, mode:%INT, sql:'%STR&JSSTR', width:%INT, height:%INT, form:'%STR&JSSTR', osrc:'%STR&JSSTR', qms:%INT, ivs:%INT, popup_width:%INT});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql?sql:"", w, h, form, osrc, query_multiselect, invalid_select_default, pop_w);
 
     /** HTML body <DIV> element for the layers. **/
-    htrAddBodyItem_va(s,"<DIV ID=\"dd%POSbtn\">\n"
+    htrAddBodyItem_va(s,"<DIV ID=\"dd%POSbtn\" class=\"ddBtn ddHidAbs\">\n"
 			"<IMG SRC=\"/sys/images/ico15b.gif\" style=\"float:right;\">\n", id);
     /*htrAddBodyItem_va(s,"<TABLE width=%POS cellspacing=0 cellpadding=0 border=0>\n",w);
     htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
@@ -203,8 +210,8 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%POS></TD>\n",w-2);
     htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
     htrAddBodyItem(s,   "</TABLE>\n");*/
-    htrAddBodyItem_va(s,"<DIV ID=\"dd%POScon1\"></DIV>\n",id);
-    htrAddBodyItem_va(s,"<DIV ID=\"dd%POScon2\"></DIV>\n",id);
+    htrAddBodyItem_va(s,"<DIV ID=\"dd%POScon1\" class=\"ddCon1 ddHidAbs\"></DIV>\n",id);
+    htrAddBodyItem_va(s,"<DIV ID=\"dd%POScon2\" class=\"ddCon2 ddHidAbs\"></DIV>\n",id);
     htrAddBodyItem(s,   "</DIV>\n");
     
     /* Read and initialize the dropdown items */
@@ -376,6 +383,7 @@ int htddInitialize() {
    strcpy(drv->Name,"DHTML Drop Down Widget Driver");
    strcpy(drv->WidgetName,"dropdown");
    drv->Render = htddRender;
+   drv->Setup = htddSetup;
    xaAddItem(&(drv->PseudoTypes), "dropdownitem");
 
    /** Register events **/

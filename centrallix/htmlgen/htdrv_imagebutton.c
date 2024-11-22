@@ -51,7 +51,11 @@ static struct
     }
     HTIBTN;
 
-
+int htibtnSetup(pHtSession s)
+	{
+	htrAddStylesheetItem_va(s,"\t.ibtnPane { POSITION:absolute; VISIBILITY:inherit; cursor:pointer; }\n");
+	return 0;
+	}
 /*** htibtnRender - generate the HTML code for the page.
  ***/
 int
@@ -137,7 +141,7 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	button_repeat = htrGetBoolean(tree, "repeat", 0);
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#ib%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:pointer; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#ib%POSpane { LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
 
 	htrAddScriptGlobal(s, "ib_cur_img", "null", 0);
 	htrAddWgtrObjLinkage_va(s, tree, "ib%POSpane", id);
@@ -158,14 +162,14 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	/** HTML body <DIV> elements for the layers. **/
 	if (h < 0)
 	    if(is_enabled)
-		htrAddBodyItem_va(s,"<DIV ID=\"ib%POSpane\"><IMG SRC=\"%STR&HTE\" border=\"0\"></DIV>\n",id,n_img);
+		htrAddBodyItem_va(s,"<DIV ID=\"ib%POSpane\" class=\"ibtnPane\"><IMG SRC=\"%STR&HTE\" border=\"0\"></DIV>\n",id,n_img);
 	    else
-		htrAddBodyItem_va(s,"<DIV ID=\"ib%POSpane\"><IMG SRC=\"%STR&HTE\" border=\"0\"></DIV>\n",id,d_img);
+		htrAddBodyItem_va(s,"<DIV ID=\"ib%POSpane\" class=\"ibtnPane\"><IMG SRC=\"%STR&HTE\" border=\"0\"></DIV>\n",id,d_img);
 	else
 	    if(is_enabled)
-		htrAddBodyItem_va(s,"<DIV ID=\"ib%POSpane\"><IMG SRC=\"%STR&HTE\" border=\"0\" width=\"%POS\" height=\"%POS\"></DIV>\n",id,n_img,w,h);
+		htrAddBodyItem_va(s,"<DIV ID=\"ib%POSpane\" class=\"ibtnPane\"><IMG SRC=\"%STR&HTE\" border=\"0\" width=\"%POS\" height=\"%POS\"></DIV>\n",id,n_img,w,h);
 	    else
-		htrAddBodyItem_va(s,"<DIV ID=\"ib%POSpane\"><IMG SRC=\"%STR&HTE\" border=\"0\" width=\"%POS\" height=\"%POS\"></DIV>\n",id,d_img,w,h);
+		htrAddBodyItem_va(s,"<DIV ID=\"ib%POSpane\" class=\"ibtnPane\"><IMG SRC=\"%STR&HTE\" border=\"0\" width=\"%POS\" height=\"%POS\"></DIV>\n",id,d_img,w,h);
 
 	/** Add the event handling scripts **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "ib", "ib_mousedown");
@@ -199,6 +203,7 @@ htibtnInitialize()
 	strcpy(drv->Name,"HTML ImageButton Widget Driver");
 	strcpy(drv->WidgetName,"imagebutton");
 	drv->Render = htibtnRender;
+	drv->Setup = htibtnSetup;
 
 	htrAddAction(drv,"Enable");
 	htrAddAction(drv,"Disable");
