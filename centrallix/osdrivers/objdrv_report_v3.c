@@ -4398,11 +4398,12 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 		subobj = stAllocInf();
 		subobj->Magic = MGK_STRUCTINF;
 		/** make use of the name buffer **/
-		memcpy(subobj->Name, ptr, (strlen(ptr)+1 < ST_NAME_STRLEN?strlen(ptr)+1:ST_NAME_STRLEN));
+		strncpy(subobj->Name, ptr, ST_NAME_STRLEN-1);
 		subobj->Name[ST_NAME_STRLEN-1] = '\0'; // make sure ends with a null
 		/** allocate a copy of the auto chart type **/
-		subobj->UsrType = nmMalloc(strlen(AUTO_CHART_NAME)+1);
-		memcpy(subobj->UsrType, AUTO_CHART_NAME, strlen(AUTO_CHART_NAME)+1);
+		subobj->UsrType = nmMalloc(ST_USRTYPE_STRLEN);
+		strncpy(subobj->UsrType, AUTO_CHART_NAME, ST_USRTYPE_STRLEN-1);
+		subobj->UsrType[ST_USRTYPE_STRLEN-1] = '\0';
 		/** TODO: add sub objects for color, show_value, show_percent, and font size as applicable (color at least?) **/
 		stAddInf(chart, subobj);
 		series_index = xaAddItem(ctx->series, subobj);
