@@ -312,6 +312,7 @@ static char* attrnames[RPT_NUM_ATTR] = {"bold","expanded","compressed","center",
 
 
 /*** MathGL color definitions ***/
+char rpt_mgl_auto_palette[30] = "bgrhBGRHWcmywpCMYkPlenuqLENUQ";
 char rpt_mgl_colors[30] = "krRgGbBwWcCmMyYhHlLeEnNuUqQpP";
 int rpt_mgl_color_hex[29] =
     {
@@ -3477,6 +3478,8 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
     char* ptr;
     char barcolors[256] = "";
     int i;
+    char colorBuf[2] = "\0\0";
+    char lineStyle[8];
     
 	/** Draw the chart **/
 	//mgl_set_alpha(gr, 1);
@@ -3498,6 +3501,11 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
 	    /** Bar color **/
 	    one_series = (pStructInf)ctx->series->Items[i];
 	    color = rpt_internal_GetMglColor(ctx, one_series, "color", ctx->color, 0);
+	    if(strlen(color) == 0)
+		{
+		colorBuf[0] = rpt_mgl_auto_palette[i%strlen(rpt_mgl_auto_palette)];
+		color = colorBuf;
+		}
 	    if (strlen(barcolors) + strlen(color) >= sizeof(barcolors))
 		break;
 	    strcat(barcolors, color);
@@ -3516,6 +3524,13 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
 #else
 		rpt_internal_DrawValueLabels(ctx, 1, reccnt-2, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_percent, 0.0);
 #endif
+	    /** Generate the legend **/
+	    if(ctx->show_legend)
+		{
+		snprintf(lineStyle, sizeof(lineStyle), "%s-9", color); /* make the line in the legend appear thicker*/
+		rpt_internal_GetString(ctx->inf, one_series, "legend_name", &ptr, one_series->Name, 0);
+		mgl_add_legend(ctx->gr, ptr, lineStyle);
+		}
 	    }
 
 	/** Font size for y axis **/
@@ -3557,6 +3572,17 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
 	mgl_bars(ctx->gr, ctx->chart_data, barcolors);
 #endif
 
+	/** finish off legend if applicable **/
+	if(ctx->show_legend)
+	    {
+#ifdef HAVE_MGL2
+	    char opt[32];
+	    snprintf(opt, sizeof(opt), "size %.1f; value 0.1", axis_fontsize * ctx->font_scale_factor);
+	    mgl_legend_pos(ctx->gr, 0.06, 0.0, "A", opt);
+#else
+	    mgl_legend_xy(ctx->gr, -0.28, 0.0, "", axis_fontsize * ctx->font_scale_factor, 0.1);
+#endif
+	    }
     return 0;
     }
 
@@ -3597,6 +3623,7 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
     char* ptr;
     int show_value, show_percent;
     char* color;
+    char colorBuf[2] = "\0\0";
     
 	tickDist = rpt_internal_GetTickDist(ctx->max);
 	rpt_internal_GetInteger(ctx->inf, one_series, "fontsize", &series_fontsize, ctx->fontsize, 0);
@@ -3616,6 +3643,11 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
 	    /** Bar color **/
 	    one_series = (pStructInf)ctx->series->Items[i];
 	    color = rpt_internal_GetMglColor(ctx, one_series, "color", ctx->color, 0);
+	    if(strlen(color) == 0)
+		{
+		colorBuf[0] = rpt_mgl_auto_palette[i%strlen(rpt_mgl_auto_palette)];
+		color = colorBuf;
+		}
 	    snprintf(lineStyle, sizeof(lineStyle), "%s-4#d", color);
 	    if (strlen(linecolors) + strlen(lineStyle) >= sizeof(linecolors))
 		break;
@@ -3633,8 +3665,10 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
 		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, 1, 0, series_fontsize, show_percent, 0.0);
 	    /** Generate the legend **/
 	    if(ctx->show_legend)
-		mgl_add_legend(ctx->gr, one_series->Name, color);
-	// TODO: either manually recreate default pallet when strlen(color) == 0, or find a way to stash as options (a function that plots nothing...?)
+		{
+		rpt_internal_GetString(ctx->inf, one_series, "legend_name", &ptr, one_series->Name, 0);
+		mgl_add_legend(ctx->gr, ptr, lineStyle);
+		}
 	    }
 
 	/** Font size for y axis **/
@@ -4235,12 +4269,18 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
     int box = 0;
     int stacked;
     int axis_fontsize;
-    pStructInf subobj;
+    pStructInf subobj, childobj;
+    pExpression childexp;
     pRptChartValues value = NULL;
     pRptChartDriver drv;
     pRptChartContext ctx = NULL;
     double xoffset, yoffset;
     char color[8];
+    char* paletteBuf = NULL;
+    char* start;
+    char* end;
+    int series_cnt, paletteInd;
+    pXArray palette = NULL;
     int prec;
     char precstr[32];
     
@@ -4343,12 +4383,33 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 	if ((rval = rpt_internal_NextRecord(ac, inf, chart, rs, 1)) < 0)
 	    goto error;
 
-	/** Enter the row retrieval loop. **/
-	
+	/** check for a custom palette **/
+	rpt_internal_GetString(inf, chart, "palette", &ptr, "", 0);
+	if(strlen(ptr) > 0)
+	    {
+	    paletteBuf = nmSysStrdup(ptr);
+	    palette = xaNew(16);
+	    if (!palette || !ptr)
+		goto error;
+	    start = paletteBuf;
+	    /* paletteBuf contains a ',' seperated list of colors. Parse it */
+	    while((end = strchr(start, ',')) != 0)
+		{
+		end[0] = '\0';
+		xaAddItem(palette, start);
+		start = end+1;
+		}
+	    /* handle the final/only color */
+	    if(start[0] != '\0') // in case the list is like "red,"
+		xaAddItem(palette, start);
+	    }
+
+	/** Enter the row retrieval loop. **/	
 	/** Each row belongs to just one series. Store values and series indexes until x changes, then store **/
 	cur_x = NULL;
 	value = NULL;
-	int series_cnt = 0;
+	series_cnt = 0;
+	paletteInd = 0;
 	tempVals = xaNew(16);
 	tempSeries = xaNew(16);
 	ctx->series = xaNew(16);
@@ -4396,15 +4457,30 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 		{
 		/** Build the pStructInf for the series here **/
 		subobj = stAllocInf();
-		subobj->Magic = MGK_STRUCTINF;
-		/** make use of the name buffer **/
+		/** already has a name buffer **/
 		strncpy(subobj->Name, ptr, ST_NAME_STRLEN-1);
 		subobj->Name[ST_NAME_STRLEN-1] = '\0'; // make sure ends with a null
-		/** allocate a copy of the auto chart type **/
+		/** need a new buffer for auto chart type **/
 		subobj->UsrType = nmMalloc(ST_USRTYPE_STRLEN);
 		strncpy(subobj->UsrType, AUTO_CHART_NAME, ST_USRTYPE_STRLEN-1);
 		subobj->UsrType[ST_USRTYPE_STRLEN-1] = '\0';
-		/** TODO: add sub objects for color, show_value, show_percent, and font size as applicable (color at least?) **/
+		/** if the user specified a palette, assign the color **/
+		if(palette)
+		    {
+		    childobj = stAllocInf();
+		    strncpy(childobj->Name, "color", ST_NAME_STRLEN-1);
+		    childobj->Name[ST_NAME_STRLEN-1] = '\0'; // make sure ends with a null
+		    childobj->Flags = ST_F_ATTRIB | ST_F_VERSION2;
+		    /** add the color value **/
+		    childexp = expAllocExpression();
+		    childexp->NodeType = EXPR_N_STRING;
+		    childexp->DataType = DATA_T_STRING;
+		    childexp->Alloc = 1;
+		    childexp->String = nmSysStrdup(palette->Items[paletteInd%palette->nItems]);
+		    paletteInd++;
+		    childobj->Value = childexp;
+		    stAddInf(subobj, childobj);
+		    }
 		stAddInf(chart, subobj);
 		series_index = xaAddItem(ctx->series, subobj);
 		}
@@ -4534,7 +4610,7 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 	/** Font scaling **/
 	ctx->font_scale_factor = 6.4 / ctx->stand_h * ctx->y_pixels / ctx->rend_y_pixels * ctx->zoom;
 
-	/** Auto Chart color - defaults to math gl's default pallet **/
+	/** Auto Chart color - let it default to palette selection **/
 	strtcpy(color, rpt_internal_GetMglColor(ctx, chart, "color", "", 0), sizeof(color));
 	ctx->color = color;
 
@@ -4617,7 +4693,6 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 	errval = 0;
 
     error:
-    /// FIXME: I'll probably be making some new items here
 	if (ctx && ctx->x_labels)
 	    nmSysFree(ctx->x_labels);
 	if (ctx && ctx->series)
@@ -4652,6 +4727,10 @@ rpt_internal_DoAutoChart(pRptData inf, pStructInf chart, pRptSession rs, int con
 	    nmFree(dbl_ptr, sizeof(double));
 	if(int_ptr)
 	    nmFree(int_ptr, sizeof(int));
+	if(paletteBuf)
+	    nmSysFree(paletteBuf);
+	if(palette)
+	    xaFree(palette);
 	if (ac)
 	    rpt_internal_Deactivate(inf, ac);
 	if (ctx && ctx->chart_data)
