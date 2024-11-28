@@ -6,18 +6,18 @@
 </head>
 <body>
 <!-- PAGE BREAK: 'chart.html' -->
-<h2 class="componentname"><a name="chart">chart</a></h2>
-<p class="componenttype">type: <span class="componenttypevalue">report/chart</span></p>
+<h2 class="componentname"><a name="auto-chart">auto-chart</a></h2>
+<p class="componenttype">type: <span class="componenttypevalue">report/auto-chart</span></p>
 <p class="componenttype">visual: <span class="componenttypevalue">yes</span></p>
 <p class="componenttype">container: <span class="componenttypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
-			<p>The chart component is used to display data in a bar, line, or pie chart.  The chart creates an image which is embedded into the report.</p>
+			<p>The auto chart component identical to the chart component, except that the series to be displayed are based on the data source rather than having to be manually specified by the user. It supports bar, line, or pie charts, though pie charts are not meaningfully different than those produced by the chart component. </p>
 			<p>Charts, like forms and tables, can have more than one data mode.  Like tables, charts only support 'normal' and 'inner'; 'outer' is not supported since charts do not contain other components.  See the form documentation for more on the data mode.</p>
 			<p>Charts also can handle multiple queries using a 'multimode' - see the form for more information.</p>
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
-			<p>Charts can be used inside any visual container or inside forms.  Charts can contain "report/chart-axis" and "report/chart-series" objects, and must contain both an X and a Y axis and at least one data series.  Charts cannot contain any other report components.</p>
+			<p>Just like charts, auto-charts can be used inside any visual container or inside forms.  Charts can contain "report/chart-axis" objects, and must contain the x_value, y_value, and series_value attributes.  Auto charts cannot contain any other report components.</p>
 			<p>All chart elements also typically support the common property "fontsize".</p>
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
@@ -39,7 +39,12 @@
 <tr>
 <td class="name">color</td>
 <td class="type">string</td>
-<td class="description">The default color to be used for the chart.</td>
+<td class="description">The default color to be used for the chart. If nothing is specified elsewhere, all series will be made this color. If a palette is also specified, this color will replace any invalid colors.</td>
+</tr>
+<tr>
+<td class="name">palette</td>
+<td class="type">string</td>
+<td class="description">A comma separated list of colors to be used. This takes priority over the color property and the default palette. Once the palette runs out of to map to series, it loops through the colors again. Example: "green,,#014421", would have series colored a bright green, the default, and then a dark green. </td>
 </tr>
 <tr>
 <td class="name">mode</td>
@@ -76,6 +81,26 @@
 <td class="type">double</td>
 <td class="description">The chart zoom; use values less than 1.0 to give the chart more whitespace, and values greater than 1.0 to eliminate whitespace.  Default 1.0.</td>
 </tr>
+<tr>
+<td class="name">show_value</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to show the series value above the bar or line point.  Default "yes".</td>
+</tr>
+<tr>
+<td class="name">x_value</td>
+<td class="type">expression</td>
+<td class="description">The X value for the series. Note that the query needs to sorted by this value for the data to be displayed properly.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
+</tr>
+<tr>
+<td class="name">y_value</td>
+<td class="type">expression</td>
+<td class="description">The Y value for the series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
+</tr>
+<tr>
+<td class="name">series_value</td>
+<td class="type">expression</td>
+<td class="description">The value used to differentiate series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
+</tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
 <p class="childname">(of report/chart-axis child components)</p>
@@ -96,73 +121,28 @@
 <td class="description">A label for the X or Y axis.</td>
 </tr>
 </table>
-<p class="childname">(of report/chart-series child components)</p>
-<table class="childproperties">
-<tr>
-<th class="name">Property</th>
-<th class="type">Type</th>
-<th class="description">Description</th>
-</tr>
-<tr>
-<td class="name">color</td>
-<td class="type">string</td>
-<td class="description">The color to be used for the series.</td>
-</tr>
-<tr>
-<td class="name">legend_name</td>
-<td class="type">string</td>
-<td class="description">The string to be displayed on the legend used to identify the series (line/bar charts only).</td>
-</tr>
-<tr>
-<td class="name">show_legend</td>
-<td class="type">yes/no</td>
-<td class="description">Whether to show the legend for the chart series.</td>
-</tr>
-<tr>
-<td class="name">show_percent</td>
-<td class="type">yes/no</td>
-<td class="description">Whether to show the series value as a percentage above the bar or line point.  Default "no".</td>
-</tr>
-<tr>
-<td class="name">show_value</td>
-<td class="type">yes/no</td>
-<td class="description">Whether to show the series value above the bar or line point.  Default "yes".</td>
-</tr>
-<tr>
-<td class="name">x_value</td>
-<td class="type">expression</td>
-<td class="description">The X value for the series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
-</tr>
-<tr>
-<td class="name">y_value</td>
-<td class="type">expression</td>
-<td class="description">The Y value for the series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
-</tr>
-</table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
 		
-myChart "report/chart"
+myChart "report/auto-chart"
 	{
 	source=myQuery;
 	x=0; y=0; height=20; width=65;
 	chart_type=bar;
 	scale=no;
+	show_value=yes;
 	text_rotation=no;
 	title="My Chart Title";
+	palette="dark green, green, teal";
 
 	x_axis "report/chart-axis" { axis=x; label="X Label"; }
 	y_axis "report/chart-axis" { axis=y; label="Y Label"; }
 
-	series "report/chart-series"
-	    {
-	    x_value=runserver(:myQuery:month);
-	    y_value=runserver(:myQuery:revenue);
-	    show_value=yes;
-	    color="dark green";
-	    }
+	x_value=runserver(:myQuery:month);
+	y_value=runserver(:myQuery:revenue);
+	series_value=runserver(:myQuery:account);
 	}
 		
-		</pre>
+</pre>
 </body>
 </html>
