@@ -41,7 +41,7 @@ chart "system/report"
 	border=0.01;
 	fontsize=10;
 
-	auto_line "report/auto-chart"
+	auto_line "report/chart"
 	    {
 	    source=values_qy;
 	    x=0.1; y=0.1; height=12; width=64.7;
@@ -62,7 +62,7 @@ chart "system/report"
 	    series_value=runserver(:values_qy:key);
 	    }
 
-	auto_bar "report/auto-chart"
+	auto_bar "report/chart"
 	    {
 	    source=values_qy;
 	    x=0.1; y=0.1; height=12; width=64.7;
@@ -85,7 +85,7 @@ chart "system/report"
 	    series_value=runserver(:values_qy:key);
 	    }
 
-	auto_pie "report/auto-chart"
+	auto_pie "report/chart"
 	    {
 	    source=values_qy;
 	    x=0.1; y=0.1; height=12; width=64.7;

@@ -73,6 +73,7 @@ chart "system/report"
 		y_value=runserver(0 + :files_qy:double * 10);
 		legend_name="Second";
 		}
+		
 	    }
 	
 	line_chart "report/chart"
@@ -83,7 +84,6 @@ chart "system/report"
 	    scale=no;
 	    text_rotation=no;
 	    title="File Sizes";
-	    color="dark green";
 	    zoom=1.0;
 	    show_legend=yes;
 
@@ -97,7 +97,6 @@ chart "system/report"
 		y_value=runserver(0 - :files_qy:size * 10);
 		legend_name="First";
 		show_value=yes;
-		color="dark red";
 		}
 
 	    chart_series_2 "report/chart-series"
