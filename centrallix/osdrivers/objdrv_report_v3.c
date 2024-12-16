@@ -4002,7 +4002,7 @@ rpt_internal_ReadAutoSeries(pRptChartContext ctx, pRptActiveQueries ac, pStructI
 		    {
 		    childobj = stAllocInf();
 		    strncpy(childobj->Name, "color", ST_NAME_STRLEN-1);
-		    childobj->Name[ST_NAME_STRLEN-1] = '\0'; // make sure ends with a null
+		    childobj->Name[ST_NAME_STRLEN-1] = '\0'; /* make sure ends with a null */
 		    childobj->Flags = ST_F_ATTRIB | ST_F_VERSION2;
 		    /** add the color value **/
 		    childexp = expAllocExpression();
@@ -4014,7 +4014,24 @@ rpt_internal_ReadAutoSeries(pRptChartContext ctx, pRptActiveQueries ac, pStructI
 		    childobj->Value = childexp;
 		    stAddInf(subobj, childobj);
 		    }
-		/// TODO: add a ledger name based on query... 
+		/** check if an alternate series name was supplied for use in the legend **/
+		rpt_internal_GetString(inf, chart, "legend_value", &ptr, "", 0);
+		if(strlen(ptr) > 0)
+		    {
+		    childobj = stAllocInf();
+		    strncpy(childobj->Name, "legend_name", ST_NAME_STRLEN-1);
+		    childobj->Name[ST_NAME_STRLEN-1] = '\0'; /* make sure ends with a null */
+		    childobj->Flags = ST_F_ATTRIB | ST_F_VERSION2;
+		    /** add the string value **/
+		    childexp = expAllocExpression();
+		    childexp->NodeType = EXPR_N_STRING;
+		    childexp->DataType = DATA_T_STRING;
+		    childexp->Alloc = 1;
+		    childexp->String = nmSysStrdup(ptr);
+		    paletteInd++;
+		    childobj->Value = childexp;
+		    stAddInf(subobj, childobj);
+		    }
 		stAddInf(chart, subobj);
 		series_index = xaAddItem(ctx->series, subobj);
 		}
@@ -4301,7 +4318,9 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 		    mgl_data_set_value(ctx->chart_data, (float)NAN, i, j, 0);
 		    }
 		}
-	    for(j=0; j < value->nItems; j++)
+	    /* values are entered in reverse to ensure that if the data contains multiple y values for the same x and same series 
+		the first will always be used */
+	    for(j=value->nItems -1; j >= 0; j--)
 		{
 		mgl_data_set_value(ctx->chart_data, (float)value->Values[j], i, value->Series[j], 0);
 		if (ctx->min > value->Values[j]) ctx->min = value->Values[j];
