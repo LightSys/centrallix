@@ -17,8 +17,7 @@ chart "system/report"
 	    :x,
 	    :y,
 	    :key,
-	    double = :y * 2,
-	    half = :y / 2.0
+	    :legend
 	from
 	    /samples/chart_data.csv/rows
 	";
@@ -60,6 +59,7 @@ chart "system/report"
 	    x_value=runserver(:values_qy:x);
 	    y_value=runserver(:values_qy:y);
 	    series_value=runserver(:values_qy:key);
+	    legend_value=runserver(:values_qy:legend);
 	    }
 
 	auto_bar "report/chart"

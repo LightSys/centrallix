@@ -13,4 +13,5 @@ UTF8_valid "application/filespec"
     key "filespec/column" { type=string; id=1; }
     x "filespec/column" { type=string; id=2; }
     y "filespec/column" { type=double; id=2; }
+    legend "filespec/column" { type=string; id=2; }
     }
