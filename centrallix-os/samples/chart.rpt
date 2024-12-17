@@ -42,7 +42,7 @@ chart "system/report"
 	border=0.01;
 	fontsize=10;
 
-	chart "report/chart"
+	bar_chart "report/chart"
 	    {
 	    source=files_qy;
 	    x=0.1; y=0.1; height=12; width=64.7;
@@ -52,6 +52,7 @@ chart "system/report"
 	    title="File Sizes";
 	    color="dark green";
 	    zoom=1.0;
+	    show_legend=yes;
 
 	    chart_x "report/chart-axis" { axis=x; label="Files"; }
 
@@ -61,6 +62,7 @@ chart "system/report"
 		{
 		x_value=runserver(:files_qy:name);
 		y_value=runserver(0 - :files_qy:size * 10);
+		legend_name="First";
 		show_value=yes;
 		color="dark red";
 		}
@@ -69,6 +71,62 @@ chart "system/report"
 		{
 		x_value=runserver(:files_qy:name);
 		y_value=runserver(0 + :files_qy:double * 10);
+		legend_name="Second";
+		}
+		
+	    }
+	
+	line_chart "report/chart"
+	    {
+	    source=files_qy;
+	    x=0.1; y=0.1; height=12; width=64.7;
+	    chart_type=line;
+	    scale=no;
+	    text_rotation=no;
+	    title="File Sizes";
+	    zoom=1.0;
+	    show_legend=yes;
+
+	    chart_x "report/chart-axis" { axis=x; label="Files"; }
+
+	    chart_y "report/chart-axis" { axis=y; label="Size in Bytes"; }
+
+	    chart_series "report/chart-series"
+		{
+		x_value=runserver(:files_qy:name);
+		y_value=runserver(0 - :files_qy:size * 10);
+		legend_name="First";
+		show_value=yes;
+		}
+
+	    chart_series_2 "report/chart-series"
+		{
+		x_value=runserver(:files_qy:name);
+		y_value=runserver(0 + :files_qy:double * 10);
+		legend_name="Second";
+		}
+	    }
+	pie_chart "report/chart"
+	    {
+	    source=files_qy;
+	    x=0.1; y=0.1; height=12; width=64.7;
+	    chart_type=pie;
+	    scale=no;
+	    text_rotation=no;
+	    title="File Sizes";
+	    color="dark green";
+	    zoom=1.0;
+	    show_legend=yes;
+
+	    chart_x "report/chart-axis" { axis=x; label="place"; }
+
+	    chart_y "report/chart-axis" { axis=y; label="value"; }
+
+	    chart_series "report/chart-series"
+		{
+		x_value=runserver(:files_qy:name);
+		y_value=runserver(:files_qy:size);
+		show_value=yes;
 		}
 	    }
 	}
