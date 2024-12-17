@@ -13,6 +13,7 @@
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 			<p>The chart component is used to display data in a bar, line, or pie chart.  The chart creates an image which is embedded into the report.</p>
+			<p>Charts can have a dynamic number of series by specifying the "series_value" parameter on the "report/chart" object. The "x_value" and "y_value" parameters will also need to be specified directly inside the "report/chart" rather than inside of a "report/chart-series". "report/chart-series" objects are ignored by charts with dynamic series.</p>
 			<p>Charts, like forms and tables, can have more than one data mode.  Like tables, charts only support 'normal' and 'inner'; 'outer' is not supported since charts do not contain other components.  See the form documentation for more on the data mode.</p>
 			<p>Charts also can handle multiple queries using a 'multimode' - see the form for more information.</p>
 		</span><h3 class="usage">Usage:</h3>
@@ -39,7 +40,12 @@
 <tr>
 <td class="name">color</td>
 <td class="type">string</td>
-<td class="description">The default color to be used for the chart.</td>
+<td class="description">The default color to be used for the chart. If nothing is specified elsewhere, all series will be made this color. If a palette is also specified, this color will replace any invalid colors.</td>
+</tr>
+<tr>
+<td class="name">palette</td>
+<td class="type">string</td>
+<td class="description">A comma separated list of colors to be used by charts with dynamic series. This takes priority over the color property and the default palette. Once the palette runs out of to map to series, it loops through the colors again. Example: "green,,#014421", would have series colored a bright green, the default, and then a dark green.</td>
 </tr>
 <tr>
 <td class="name">mode</td>
@@ -72,9 +78,34 @@
 <td class="description">The chart's title, to be printed above the chart.</td>
 </tr>
 <tr>
+<td class="name">show_legend</td>
+<td class="type">yes/no</td>
+<td class="description">Whether or not to display the legend. Default "no".</td>
+</tr>
+<tr>
 <td class="name">zoom</td>
 <td class="type">double</td>
 <td class="description">The chart zoom; use values less than 1.0 to give the chart more whitespace, and values greater than 1.0 to eliminate whitespace.  Default 1.0.</td>
+</tr>
+<tr>
+<td class="name">x_value</td>
+<td class="type">expression</td>
+<td class="description">The X value for the series, specified here when using dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
+</tr>
+<tr>
+<td class="name">y_value</td>
+<td class="type">expression</td>
+<td class="description">The Y value for the series, specified here when using dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
+</tr>
+<tr>
+<td class="name">series_value</td>
+<td class="type">expression</td>
+<td class="description">The value used to differentiate series. This in only used by charts with dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
+</tr>
+<tr>
+<td class="name">legend_value</td>
+<td class="type">expression</td>
+<td class="description">The value to be displayed when the series name appears in a legend.  This is only used by charts with dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -111,12 +142,7 @@
 <tr>
 <td class="name">legend_name</td>
 <td class="type">string</td>
-<td class="description">The string to be displayed on the legend used to identify the series (line/bar charts only).</td>
-</tr>
-<tr>
-<td class="name">show_legend</td>
-<td class="type">yes/no</td>
-<td class="description">Whether to show the legend for the chart series.</td>
+<td class="description">The name to be displayed on the legend for the series.</td>
 </tr>
 <tr>
 <td class="name">show_percent</td>
@@ -150,6 +176,7 @@ myChart "report/chart"
 	scale=no;
 	text_rotation=no;
 	title="My Chart Title";
+	show_legend=yes;
 
 	x_axis "report/chart-axis" { axis=x; label="X Label"; }
 	y_axis "report/chart-axis" { axis=y; label="Y Label"; }
@@ -161,6 +188,31 @@ myChart "report/chart"
 	    show_value=yes;
 	    color="dark green";
 	    }
+	}
+		
+		</pre>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+myChart "report/chart"
+	{
+	source=myQuery;
+	x=0; y=0; height=20; width=65;
+	chart_type=bar;
+	scale=no;
+	show_value=yes;
+	show_legend=yes;
+	text_rotation=no;
+	title="My Dynamic Series Chart Title";
+	palette="dark green, green, teal";
+
+	x_axis "report/chart-axis" { axis=x; label="X Label"; }
+	y_axis "report/chart-axis" { axis=y; label="Y Label"; }
+
+	x_value=runserver(:myQuery:month);
+	y_value=runserver(:myQuery:revenue);
+	series_value=runserver(:myQuery:account_id);
+	legend_value=runserver(:myQuery:account_name);
 	}
 		
 		</pre>
