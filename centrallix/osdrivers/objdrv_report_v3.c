@@ -5190,6 +5190,7 @@ rpt_internal_Generator(void* v)
     {
     pRptData inf = (pRptData)v;
     pPrtSession ps;
+    char *output_mime_type;
 
     	/** Set this thread's name **/
 	thSetName(NULL,"Report Generator");
@@ -5211,6 +5212,11 @@ rpt_internal_Generator(void* v)
 	    fdClose(inf->SlaveFD,0);
 	    thExit();
 	    }
+
+	/** Get generated content type **/
+	output_mime_type = prtGetOutputType(ps);
+	if (!strcmp(inf->DocumentFormat, inf->ContentType))
+	    strtcpy(inf->ContentType, output_mime_type, sizeof(inf->ContentType));
 
 	/** Set image store location **/
 	prtSetImageStore(ps, "/tmp/", "/tmp/", inf->Obj->Session, (void*(*)())objOpen, objWrite, objClose);

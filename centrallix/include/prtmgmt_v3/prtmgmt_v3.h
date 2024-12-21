@@ -184,6 +184,7 @@ typedef struct _PFM
     char		Name[32];
     int			Priority;
     void*		(*Probe)();
+    char*		(*GetOutputType)();
     int			(*Generate)();
     double		(*GetNearestFontSize)();
     void		(*GetCharacterMetric)();
@@ -471,6 +472,7 @@ int prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, 
 int prtSetSessionParam(pPrtSession s, char* paramname, char* value);
 char* prtGetSessionParam(pPrtSession s, char* paramname, char* defaultvalue);
 int prt_internal_NoZ(pPrtSession s);
+char* prtGetOutputType(pPrtSession s);
 
 /** Internal management functions **/
 pPrtObjStream prt_internal_AllocObj(char* type);

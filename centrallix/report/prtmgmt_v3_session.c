@@ -353,3 +353,13 @@ prtGetSessionParam(pPrtSession s, char* paramname, char* defaultvalue)
 
     return defaultvalue;
     }
+
+
+/*** prtGetOutputType() - return the MIME content type that is being generated.
+ ***/
+char*
+prtGetOutputType(pPrtSession s)
+    {
+    return s->Formatter->GetOutputType(s->FormatterData);
+    }
+
