@@ -577,7 +577,7 @@ xxxPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 int
 xxxInfo(void* inf_v, pObjectInfo info_struct)
     {
-    memset(info_struct, sizeof(ObjectInfo), 0);
+    memset(info_struct, 0, sizeof(ObjectInfo));
     return 0;
     }
 

@@ -286,7 +286,6 @@ ptodPrint(pTObjData ptod)
 char*
 ptodToStringTmp(pTObjData ptod)
     {
-    char* str;
 
 	/** Convert to string **/
 	if (ptod->Flags & DATA_TF_NULL || ptod->DataType < 0 || ptod->DataType == DATA_T_UNAVAILABLE)

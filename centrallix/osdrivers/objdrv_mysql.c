@@ -64,9 +64,9 @@ typedef struct
     {
     char        Path[OBJSYS_MAX_PATH];
     char        Server[64];
-    char        Username[64];
-    char        Password[64];
-    char        DefaultPassword[64];
+    char        Username[CX_USERNAME_SIZE];
+    char        Password[CX_PASSWORD_SIZE];
+    char        DefaultPassword[CX_PASSWORD_SIZE];
     char        Database[MYSD_NAME_LEN];
     char        DatabaseCollation[64];
     char        AnnotTable[MYSD_NAME_LEN];
@@ -87,8 +87,8 @@ typedef struct
 typedef struct
     {
     MYSQL        Handle;
-    char        Username[64];
-    char        Password[64];
+    char        Username[CX_USERNAME_SIZE];
+    char        Password[CX_PASSWORD_SIZE];
     pMysdNode        Node;
     int                Busy;
     int                LastAccess;
@@ -922,7 +922,8 @@ mysd_internal_GetNextRow(char* filename, int filename_size, pMysdQuery qy, pMysd
 		    mssError(1, "MYSD", "Object name too long while retrieving row");
 		    return -1;
 		    }
-                sprintf(filename,"%s%s|",filename,data->Row[data->TData->KeyCols[i]]);
+		strcat(filename, data->Row[data->TData->KeyCols[i]]);
+		strcat(filename, "|");
                 }
             /** kill the trailing pipe **/
             filename[strlen(filename)-1]=0x00;
@@ -2985,7 +2986,7 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
                 if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
                 if (strlen(inf->Obj->Pathname->Pathbuf) - 
                     strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
-                    strlen(val->String) + 1 > 255)
+                    strlen(val->String) + 1 >= OBJSYS_MAX_PATH)
                     {
                     mssError(1,"MYSQL","SetAttr 'name': name too large for internal representation");
                     return -1;
@@ -3053,7 +3054,7 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
                                     attrname, obj_type_names[datatype], obj_type_names[type]);
                             return -1;
                             }
-                        if (strlen(attrname) >= 64)
+                        if (strlen(attrname) >= sizeof((*oxt)->AttrName))
                             {
                             mssError(1,"MYSD","Attribute name '%s' too long",attrname);
                             return -1;
@@ -3061,7 +3062,7 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
                         (*oxt)->AllocObj = 0;
                         (*oxt)->Object = NULL;
                         (*oxt)->Status = OXT_S_VISITED;
-                        strcpy((*oxt)->AttrName, attrname);
+                        strtcpy((*oxt)->AttrName, attrname, sizeof((*oxt)->AttrName));
                         obj_internal_SetTreeAttr(*oxt, type, val); 
                         }
                     else
@@ -3320,7 +3321,7 @@ mysdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 int
 mysdInfo(void* inf_v, pObjectInfo info_struct)
     {
-    memset(info_struct, sizeof(ObjectInfo), 0);
+    memset(info_struct, 0, sizeof(ObjectInfo));
     return 0;
     }
 

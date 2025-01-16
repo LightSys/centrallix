@@ -86,14 +86,10 @@ mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, cha
     {
 
 	/** Setup auth method & log method settings **/
-	memccpy(MSS.AuthMethod, authmethod, 0, 31);
-	MSS.AuthMethod[31] = '\0';
-	memccpy(MSS.AuthFile, authfile, 0, 255);
-	MSS.AuthFile[255] = '\0';
-	memccpy(MSS.LogMethod, logmethod, 0, 31);
-	MSS.LogMethod[31] = '\0';
-	memccpy(MSS.AppName, log_progname, 0, 31);
-	MSS.AppName[31] = '\0';
+	strtcpy(MSS.AuthMethod, authmethod, sizeof(MSS.AuthMethod));
+	strtcpy(MSS.AuthFile, authfile, sizeof(MSS.AuthFile));
+	strtcpy(MSS.LogMethod, logmethod, sizeof(MSS.LogMethod));
+	strtcpy(MSS.AppName, log_progname, sizeof(MSS.AppName));
 	MSS.LogAllErrors = logall;
 
 	/** Setup syslog **/
@@ -269,10 +265,8 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 	if (!s) return -1;
 	memset(s, 0, sizeof(MtSession));
 	s->LinkCnt = 1;
-	strncpy(s->UserName, username, 31);
-	s->UserName[31]=0;
-	strncpy(s->Password, password, 31);
-	s->Password[31]=0;
+	strtcpy(s->UserName, username, sizeof(s->UserName));
+	strtcpy(s->Password, password, sizeof(s->Password));
 
 	/** Sanity checking. **/
 	if (strchr(username,':'))
@@ -775,8 +769,7 @@ mssSetParamPtr(char* paramname, void* ptr)
 	if (!(p = (pMtParam)xhLookup(&s->Params, paramname)))
 	    {
 	    p = (pMtParam)nmMalloc(sizeof(MtParam));
-	    memccpy(p->Name, paramname, 0, 31);
-	    p->Name[31] = 0;
+	    strtcpy(p->Name, paramname, sizeof(p->Name));
 	    is_new = 1;
 	    }
 
@@ -803,8 +796,7 @@ mssSetParam(char* paramname, void* value)
 	if (!(p = (pMtParam)xhLookup(&s->Params, paramname)))
 	    {
 	    p = (pMtParam)nmMalloc(sizeof(MtParam));
-	    memccpy(p->Name, paramname, 0, 31);
-	    p->Name[31] = 0;
+	    strtcpy(p->Name, paramname, sizeof(p->Name));
 	    is_new = 1;
 	    }
 	else
@@ -812,7 +804,7 @@ mssSetParam(char* paramname, void* value)
 	    if (p->Value != p->ValueBuf && p->Value) nmSysFree(p->Value);
 	    }
 
-	if (strlen(value) < 64)
+	if (strlen(value) < sizeof(p->ValueBuf))
 	    {
 	    p->Value = p->ValueBuf;
 	    }

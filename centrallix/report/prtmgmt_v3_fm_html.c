@@ -393,7 +393,7 @@ prt_htmlfm_Close(void* context_v)
 int
 prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
     {
-    char* fonts[3] = { "Courier,Courier New,fixed", "Helvetica,Arial,MS Sans Serif", "Times,Times New Roman,MS Serif"};
+    char* fonts[3] = { "Courier New,Courier,fixed", "Arial,Helvetica,MS Sans Serif", "Times New Roman,Times,MS Serif"};
     int htmlfontsize, fontid;
     char stylebuf[128];
     int boldchanged, italicchanged, underlinechanged, fontchanged;
@@ -598,6 +598,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
     void* arg;
     int w,h;
     unsigned long id;
+    int rval;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -655,23 +656,29 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    h = obj->Height*PRT_HTMLFM_YPIXEL;
 		    if (w <= 0) w = 1;
 		    if (h <= 0) h = 1;
-		    path = (char*)nmMalloc(256);
+		    path = (char*)nmMalloc(OBJSYS_MAX_PATH);
 		    if (!path) 
                         {
                         mssError(1, "PRT", "nmMalloc() failed\n");
                         return -1;
                         }
-                    snprintf(path,256,"%sprt_htmlfm_%8.8lX.png",context->Session->ImageSysDir,id);
+                    rval = snprintf(path, OBJSYS_MAX_PATH, "%sprt_htmlfm_%8.8lX.png", context->Session->ImageSysDir, id);
+		    if (rval < 0 || rval >= OBJSYS_MAX_PATH)
+			{
+                        mssError(1, "PRT", "Internal representation exceeded for image pathname\n");
+			nmFree(path, OBJSYS_MAX_PATH);
+                        return -1;
+			}
 		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/png");
 		    if (!arg)
 			{
 			mssError(0,"PRT","Failed to open new linked image '%s'",path);
-			nmFree(path,256);
+			nmFree(path, OBJSYS_MAX_PATH);
 			return -1;
 			}
 		    prt_internal_WriteImageToPNG(context->Session->ImageWriteFn, arg, (pPrtImage)(obj->Content), w, h);
 		    context->Session->ImageCloseFn(arg);
-		    nmFree(path,256);
+		    nmFree(path, OBJSYS_MAX_PATH);
 		    if (obj->URL && !strchr(obj->URL, '"'))
 			{
 			prt_htmlfm_Output(context, "<a href=\"", 9);
@@ -696,23 +703,29 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    h = obj->Height*PRT_HTMLFM_YPIXEL;
 		    if (w <= 0) w = 1;
 		    if (h <= 0) h = 1;
-		    path = (char*)nmMalloc(256);
+		    path = (char*)nmMalloc(OBJSYS_MAX_PATH);
 		    if (!path) 
                         {
                         mssError(1, "PRT", "nmMalloc() failed\n");
                         return -1;
                         }
-                    snprintf(path,256,"%sprt_htmlfm_%8.8lX.svg",context->Session->ImageSysDir,id);
+                    rval = snprintf(path, OBJSYS_MAX_PATH, "%sprt_htmlfm_%8.8lX.svg", context->Session->ImageSysDir, id);
+		    if (rval < 0 || rval >= OBJSYS_MAX_PATH)
+			{
+                        mssError(1, "PRT", "Internal representation exceeded for image pathname\n");
+			nmFree(path, OBJSYS_MAX_PATH);
+                        return -1;
+			}
 		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/svg+xml");
 		    if (!arg)
 			{
 			mssError(0,"PRT","Failed to open new linked image '%s'",path);
-			nmFree(path,256);
+			nmFree(path, OBJSYS_MAX_PATH);
 			return -1;
 			}
 		    prt_internal_WriteSvgToFile(context->Session->ImageWriteFn, arg, (pPrtSvg)(obj->Content), w, h);
 		    context->Session->ImageCloseFn(arg);
-		    nmFree(path,256);
+		    nmFree(path, OBJSYS_MAX_PATH);
 		    if (obj->URL && !strchr(obj->URL, '"'))
 			{
 			prt_htmlfm_Output(context, "<a href=\"", 9);

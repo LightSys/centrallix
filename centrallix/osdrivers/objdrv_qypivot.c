@@ -763,6 +763,7 @@ qyp_internal_Update(pQypData inf)
     int j;
     char* ptr;
     pDateTime dt;
+    int rval;
 
 	/** Loop through all data items **/
 	for(i=0;i<inf->PivotData.nItems;i++)
@@ -783,7 +784,12 @@ qyp_internal_Update(pQypData inf)
 		    /** new datum - do a Create **/
 		    objCurrentDate(&datum->CreateDate);
 		    strtcpy(datum->CreateBy, mssUserName(), sizeof(datum->CreateBy));
-		    snprintf(source_path, sizeof(source_path), "%s/*", inf->Node->SourcePath);
+		    rval = snprintf(source_path, sizeof(source_path), "%s/*", inf->Node->SourcePath);
+		    if (rval < 0 || rval >= sizeof(source_path))
+			{
+			mssError(1, "QYP", "Source path exceeded internal limits");
+			goto error;
+			}
 		    source_obj = objOpen(inf->Obj->Session, source_path, O_RDWR | O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
 		    if (!source_obj)
 			goto error;
@@ -872,7 +878,12 @@ qyp_internal_Update(pQypData inf)
 			mssError(1,"QYP","Cannot update key field '%s'", datum->Name);
 			goto error;
 			}
-		    snprintf(source_path, sizeof(source_path), "%s/%s", inf->Node->SourcePath, datum->SourceObjName);
+		    rval = snprintf(source_path, sizeof(source_path), "%s/%s", inf->Node->SourcePath, datum->SourceObjName);
+		    if (rval < 0 || rval >= sizeof(source_path))
+			{
+			mssError(1, "QYP", "Source path exceeded internal limits");
+			goto error;
+			}
 		    source_obj = objOpen(inf->Obj->Session, source_path, O_RDWR, 0600, "system/object");
 		    if (!source_obj)
 			goto error;
@@ -1156,6 +1167,7 @@ qypDeleteObj(void* inf_v, pObjTrxTree* oxt)
     int i;
     pQypDatum datum;
     char delete_pathname[OBJSYS_MAX_PATH+1];
+    int rval;
 
 	/** Loop through the data items, deleting the source objects **/
 	for(i=0;i<inf->PivotData.nItems;i++)
@@ -1164,9 +1176,12 @@ qypDeleteObj(void* inf_v, pObjTrxTree* oxt)
 	    if (!(datum->Flags & QYP_DATUM_F_KEY) && datum->SourceObjName[0])
 		{
 		/** Found an object to delete **/
-		if (strlen(inf->Node->SourcePath) + strlen(datum->SourceObjName) + 1 + 1 >= sizeof(delete_pathname))
+		rval = snprintf(delete_pathname, sizeof(delete_pathname), "%s/%s", inf->Node->SourcePath, datum->SourceObjName);
+		if (rval < 0 || rval >= sizeof(delete_pathname))
+		    {
+		    mssError(1, "QYP", "Delete pathname exceeded internal limits");
 		    return -1;
-		snprintf(delete_pathname,sizeof(delete_pathname),"%s/%s",inf->Node->SourcePath,datum->SourceObjName);
+		    }
 		if (objDelete(inf->Obj->Session, delete_pathname) < 0)
 		    return -1;
 		}

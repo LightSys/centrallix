@@ -348,7 +348,12 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 	for(i=0;i<xaCount(&(match->Children));i++)
 	    {
 	    subtree = (pWgtrNode)(xaGetItem(&(match->Children), i));
-	    snprintf(new_name, sizeof(new_name), "%s_%s", base_name, subtree->Name);
+	    rval = snprintf(new_name, sizeof(new_name), "%s_%s", base_name, subtree->Name);
+	    if (rval < 0 || rval >= sizeof(new_name))
+		{
+		mssError(1, "WGTR", "Internal widget name representation exceeded when applying template %s,%s", match->Name, subtree->Name);
+		return -1;
+		}
 	    if ((new_node = wgtrNewNode(new_name, subtree->Type, subtree->ObjSession, 
 			subtree->r_x, subtree->r_y, subtree->r_width, subtree->r_height, 
 			subtree->fl_x, subtree->fl_y, subtree->fl_width, subtree->fl_height)) == NULL)
@@ -1087,7 +1092,12 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
 		     ** a unique namespace, to avoid name conflicts between repeated
 		     ** widgets.
 		     **/
-		    snprintf(rpt_ns, sizeof(rpt_ns), "%s_%6.6x", root->DName, (WGTR.RepeatID++) & 0xffffff);
+		    rval = snprintf(rpt_ns, sizeof(rpt_ns), "%s_%6.6x", root->DName, (WGTR.RepeatID++) & 0xffffff);
+		    if (rval < 0 || rval >= sizeof(rpt_ns))
+			{
+			mssError(1, "WGTR", "Internal namespace representation exceeded in widget/repeat %s", this_node->Name);
+			goto error;
+			}
 		    expModifyParam(context_objlist,this_node->Name, rptrow);
 		   
 		    /** Add the children of the repeat widget **/

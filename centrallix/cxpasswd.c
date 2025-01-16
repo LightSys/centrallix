@@ -60,8 +60,8 @@
 
 struct
     {
-    char    UserName[32];
-    char    Password[32];
+    char    UserName[CX_USERNAME_SIZE];
+    char    Password[CX_PASSWORD_SIZE];
     char    PasswdFile[256];
     int	    ReadStdin;		/* read password from stdin */
     }
@@ -71,9 +71,9 @@ struct
 void
 start(void* v)
     {
-    char enc_pass[64];
+    char enc_pass[CX_PASSWORD_SIZE * 2];
     char salt[MSS_SALT_SIZE + 1];
-    char passwd_line[128];
+    char passwd_line[CX_USERNAME_SIZE + 1 + (CX_PASSWORD_SIZE * 2) + 1];
     XString passwd_contents;
     pFile passwd_file;
     char buf[256];

@@ -152,8 +152,8 @@ typedef struct
 /*** This is used to keep track of user/password/cookie information ***/
 typedef struct
     {
-    char	Username[32];
-    char	Password[32];
+    char	Username[CX_USERNAME_SIZE];
+    char	Password[CX_PASSWORD_SIZE];
     char	Cookie[64];
     char	SKey[64];
     long long	S_ID;		/* incrementing session id counter */
@@ -300,11 +300,11 @@ typedef struct
     char	HTTPVer[16];
     char	Cookie[160];
     char	AllCookies[640];
-    char	Auth[160];
+    char	Auth[CX_USERNAME_SIZE + 1 + CX_PASSWORD_SIZE + 3];
     char	Destination[256];
     char	IfModifiedSince[64];
-    char	Username[32];
-    char	Password[32];
+    char	Username[CX_USERNAME_SIZE];
+    char	Password[CX_PASSWORD_SIZE];
     char	IPAddr[20];
     int		Size;
     int		NotActivity;

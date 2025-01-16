@@ -160,9 +160,9 @@ typedef struct
     pObjPresentationHints	TypeHints[SYBD_MAX_NUM_TYPES];		/** for storing hint info about each type **/
     int		Version;
     int		Flags;
-    char	Username[32];		/* username to log into db server */
-    char	Password[32];		/* password to log into db server */
-    char	DefaultPassword[32];	/* default password for uninitialized user */
+    char	Username[CX_USERNAME_SIZE];		/* username to log into db server */
+    char	Password[CX_PASSWORD_SIZE];		/* password to log into db server */
+    char	DefaultPassword[CX_PASSWORD_SIZE];	/* default password for uninitialized user */
     }
     SybdNode, *pSybdNode;
 
@@ -174,8 +174,8 @@ typedef struct
     {
     /*int		SessionID;*/
     CS_CONNECTION* CsConn;
-    char	Username[32];
-    char	Password[32];
+    char	Username[CX_USERNAME_SIZE];
+    char	Password[CX_PASSWORD_SIZE];
     int		Busy;
     int		SPID;			/* sybase server-side process ID */
     }
@@ -434,7 +434,7 @@ sybd_internal_GetConn(pSybdNode db_node)
     pSybdConn conn;
     CS_COMMAND* cmd;
     CS_INT restype = 0;
-    char sbuf[64];
+    char sbuf[CX_PASSWORD_SIZE*2 + 20];
     char* user;
     char* pwd;
 
@@ -463,7 +463,7 @@ sybd_internal_GetConn(pSybdNode db_node)
 	    }
 
 	/** User/pass out of range? **/
-	if (strlen(user) > 31 || strlen(pwd) > 31)
+	if (strlen(user) >= CX_USERNAME_SIZE || strlen(pwd) >= CX_PASSWORD_SIZE)
 	    {
 	    mssError(1,"SYBD","Username or password invalid");
 	    return NULL;
@@ -528,8 +528,8 @@ sybd_internal_GetConn(pSybdNode db_node)
 	ct_con_props(conn->CsConn, CS_SET, CS_USERNAME, user, CS_NULLTERM, NULL);
 	ct_con_props(conn->CsConn, CS_SET, CS_PASSWORD, pwd, CS_NULLTERM, NULL);
 	ct_con_props(conn->CsConn, CS_SET, CS_APPNAME, "Centrallix", CS_NULLTERM, NULL);
-	gethostname(sbuf,63);
-	sbuf[63]=0;
+	gethostname(sbuf, sizeof(sbuf)-1);
+	sbuf[sizeof(sbuf)-1]=0;
 	ct_con_props(conn->CsConn, CS_SET, CS_HOSTNAME, sbuf, CS_NULLTERM, NULL);
 #if 00 /* locking */
 	ct_diag(conn->CsConn, CS_INIT, CS_UNUSED, CS_UNUSED, NULL);
@@ -559,7 +559,7 @@ sybd_internal_GetConn(pSybdNode db_node)
 		    nmFree(conn,sizeof(SybdConn));
 		    return NULL;
 		    }
-		snprintf(sbuf,sizeof(sbuf),"sp_password \"%s\", \"%s\"", db_node->DefaultPassword, pwd);
+		snprintf(sbuf, sizeof(sbuf), "sp_password \"%s\", \"%s\"", db_node->DefaultPassword, pwd);
 		cmd = sybd_internal_Exec(conn, sbuf);
 		while((rval=ct_results(cmd, (CS_INT*)&restype)))
 		    {
@@ -601,7 +601,7 @@ sybd_internal_GetConn(pSybdNode db_node)
 		nmFree(conn,sizeof(SybdConn));
 		return NULL;
 		}
-	    snprintf(sbuf,64,"use %s",db_node->Database);
+	    snprintf(sbuf, sizeof(sbuf), "use %s", db_node->Database);
 	    cmd = sybd_internal_Exec(conn, sbuf);
 	    while((rval=ct_results(cmd, (CS_INT*)&restype)))
 	        {
@@ -620,7 +620,7 @@ sybd_internal_GetConn(pSybdNode db_node)
 	    }
 
 	/** Enable ANSI NULL option **/
-	snprintf(sbuf, 64, "set ansinull on");
+	snprintf(sbuf, sizeof(sbuf), "set ansinull on");
 	cmd = sybd_internal_Exec(conn, sbuf);
 	while((rval=ct_results(cmd, (CS_INT*)&restype)))
 	    {

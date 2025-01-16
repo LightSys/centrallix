@@ -130,6 +130,7 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     handle_t collection;
     char* sourcetype;
     pExpression source_exp;
+    int sprval;
 
 	/** Expression? **/
 	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION)
@@ -172,12 +173,12 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    }
 	else
 	    {
-	    if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 2 + 1 > sizeof(pathname))
+	    sprval = snprintf(pathname, sizeof(pathname), "%s/*", ((pQueryStructure)qe->QSLinkage)->Source);
+	    if (sprval < 0 || sprval >= sizeof(pathname))
 		{
 		mssError(1, "MQIS", "Pathname too long for INSERT destination");
 		goto error;
 		}
-	    snprintf(pathname, sizeof(pathname), "%s/*", ((pQueryStructure)qe->QSLinkage)->Source);
 	    }
 	sourcetype = ((pQueryStructure)qe->QSLinkage)->SourceType;
 	if (!*sourcetype)
@@ -293,12 +294,12 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		    mssError(0, "MQIS", "Could not INSERT new object");
 		    goto error;
 		    }
-		if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 1 + strlen(new_objname) + 1 > sizeof(new_pathname))
+		sprval = snprintf(new_pathname, sizeof(new_pathname), "%s/%s", ((pQueryStructure)qe->QSLinkage)->Source, new_objname);
+		if (sprval < 0 || sprval >= sizeof(pathname))
 		    {
 		    mssError(1, "MQIS", "Pathname too long for newly INSERTed object %s", new_objname);
 		    goto error;
 		    }
-		snprintf(new_pathname, sizeof(new_pathname), "%s/%s", ((pQueryStructure)qe->QSLinkage)->Source, new_objname);
 		}
 
 	    /** Link the new object as the __inserted object in the object list.**/

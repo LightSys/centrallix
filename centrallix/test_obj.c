@@ -74,8 +74,8 @@ pObjSession s;
 
 struct
     {
-    char		UserName[32];
-    char		Password[32];
+    char		UserName[CX_USERNAME_SIZE];
+    char		Password[CX_PASSWORD_SIZE];
     char		CmdFile[256];
     pFile		Output;
     char		OutputFilename[256];
@@ -1122,7 +1122,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    mlxCloseSession(ls);
 		    return -1;
 		    }
-		mlxCopyToken(ls, sbuf, 1023);
+		mlxCopyToken(ls, sbuf, sizeof(sbuf));
 		if (mlxNextToken(ls) != MLX_TOK_STRING)
 		    {
 		    printf("copy3: must specify <dsttype/srctype> <source> <destination>\n");
@@ -1164,7 +1164,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 			return -1;
 			}
 		    }
-		while((cnt = objRead(obj, sbuf, 255, 0, 0)) > 0)
+		while((cnt = objRead(obj, sbuf, sizeof(sbuf), 0, 0)) > 0)
 		    {
 		    objWrite(to_obj, sbuf, cnt, 0, 0);
 		    }
@@ -1223,8 +1223,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		while(1)
 		    {
 		    char* slbuf = readline("");
-		    strncpy(sbuf, slbuf, BUFF_SIZE-1);
-		    sbuf[BUFF_SIZE-1] = 0;
+		    strtcpy(sbuf, slbuf, sizeof(sbuf));
 		    if (sbuf[0] == 0) break;
 		    attrname = strtok(sbuf,"=");
 		    stringval = strtok(NULL,"=");
@@ -1676,20 +1675,15 @@ main(int argc, char* argv[])
 	        {
 		case 'i':	TESTOBJ.WaitSecs = strtoui(optarg, NULL, 10);
 				break;
-		case 'C':	memccpy(TESTOBJ.Command, optarg, 0, 1023);
-				TESTOBJ.Command[1023] = 0;
+		case 'C':	strtcpy(TESTOBJ.Command, optarg, sizeof(TESTOBJ.Command));
 				break;
-		case 'f':	memccpy(TESTOBJ.CmdFile, optarg, 0, 255);
-				TESTOBJ.CmdFile[255] = 0;
+		case 'f':	strtcpy(TESTOBJ.CmdFile, optarg, sizeof(TESTOBJ.CmdFile));
 				break;
-		case 'u':	memccpy(TESTOBJ.UserName, optarg, 0, 31);
-				TESTOBJ.UserName[31] = 0;
+		case 'u':	strtcpy(TESTOBJ.UserName, optarg, sizeof(TESTOBJ.UserName));
 				break;
-		case 'p':	memccpy(TESTOBJ.Password, optarg, 0, 31);
-				TESTOBJ.Password[31] = 0;
+		case 'p':	strtcpy(TESTOBJ.Password, optarg, sizeof(TESTOBJ.Password));
 				break;
-		case 'c':	memccpy(CxGlobals.ConfigFileName, optarg, 0, 255);
-				CxGlobals.ConfigFileName[255] = '\0';
+		case 'c':	strtcpy(CxGlobals.ConfigFileName, optarg, sizeof(CxGlobals.ConfigFileName));
 				break;
 
 		case 'q':	CxGlobals.QuietInit = 1;

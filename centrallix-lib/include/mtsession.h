@@ -37,13 +37,18 @@
 #define	MSS_SALT_SIZE	4
 
 
+/** Password and Username size **/
+#define	MSS_PASSWORD_SIZE	64
+#define MSS_USERNAME_SIZE	32
+
+
 /** Structure for a session. **/
 typedef struct
     {
     int		UserID;
     int		GroupID;
-    char	UserName[32];
-    char	Password[32];
+    char	UserName[MSS_USERNAME_SIZE];
+    char	Password[MSS_PASSWORD_SIZE];
     XArray	ErrList;
     XHashTable	Params;
     int		LinkCnt;

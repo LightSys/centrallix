@@ -1403,7 +1403,7 @@ tmpInfo(void* inf_v, pObjectInfo info)
     int i;
 
 	/** Setup the flags, and we know the subobject count btw **/
-	memset(info, sizeof(ObjectInfo), 0);
+	memset(info, 0, sizeof(ObjectInfo));
 	info->Flags = (OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_SUBOBJ_CNT_KNOWN |
 		OBJ_INFO_F_CAN_ADD_ATTR | OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CANT_HAVE_CONTENT |
 		OBJ_INFO_F_NO_CONTENT | OBJ_INFO_F_SUPPORTS_INHERITANCE | OBJ_INFO_F_TEMPORARY);
