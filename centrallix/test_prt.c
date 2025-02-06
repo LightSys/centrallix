@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include "cxlib/mtask.h"
 #include "cxlib/mtlexer.h"
 #include "obj.h"
@@ -173,8 +174,8 @@ testprt_process_cmd(pObjSession s, char* cmd)
 		}
 	    ptr = mlxStringVal(ls,NULL);
 	    prtsession= prtOpenSession(ptr, outputfn, outputarg, PRT_OBJ_U_ALLOWBREAK);
-	    printf("image: prtOpenSession returned %8.8X\n", (int)prtsession);
-	    rval = prtSetImageStore(prtsession, "/tmp/", "/tmp/", (void*)s, objOpen, objWrite, objClose);
+	    printf("image: prtOpenSession returned %8.8lX\n", (intptr_t)prtsession);
+	    rval = prtSetImageStore(prtsession, "/tmp/", "/tmp/", (void*)s, (void*(*)())objOpen, objWrite, objClose);
 	    printf("image: prtSetImageStore returned %d\n", rval);
 	    rval = prtSetResolution(prtsession, 300);
 	    printf("image: prtSetResolution(300) returned %d\n", rval);
@@ -272,8 +273,8 @@ testprt_process_cmd(pObjSession s, char* cmd)
 		}
 	    ptr = mlxStringVal(ls,NULL);
 	    prtsession= prtOpenSession(ptr, outputfn, outputarg, PRT_OBJ_U_ALLOWBREAK);
-	    printf("svg: prtOpenSession returned %8.8X\n", (int)prtsession);
-	    rval = prtSetImageStore(prtsession, "/tmp/", "/tmp/", (void*)s, objOpen, objWrite, objClose);
+	    printf("svg: prtOpenSession returned %8.8lX\n", (intptr_t)prtsession);
+	    rval = prtSetImageStore(prtsession, "/tmp/", "/tmp/", (void*)s, (void*(*)())objOpen, objWrite, objClose);
 	    printf("svg: prtSetImageStore returned %d\n", rval);
 	    rval = prtSetResolution(prtsession, 300);
 	    printf("svg: prtSetResolution(300) returned %d\n", rval);
@@ -371,7 +372,7 @@ testprt_process_cmd(pObjSession s, char* cmd)
 		}
 	    ptr = mlxStringVal(ls,NULL);
 	    prtsession= prtOpenSession(ptr, outputfn, outputarg, PRT_OBJ_U_ALLOWBREAK);
-	    printf("table: prtOpenSession returned %8.8X\n", (int)prtsession);
+	    printf("table: prtOpenSession returned %8.8lX\n", (intptr_t)prtsession);
 	    pagehandle = prtGetPageRef(prtsession);
 	    printf("table: prtGetPageRef returned page handle %d\n", pagehandle);
 	    bdr = prtAllocBorder(1,0.0,0.0, 0.05,0x00FFFF);
@@ -467,7 +468,7 @@ testprt_process_cmd(pObjSession s, char* cmd)
 		}
 	    ptr = mlxStringVal(ls,NULL);
 	    prtsession= prtOpenSession(ptr, outputfn, outputarg, PRT_OBJ_U_ALLOWBREAK);
-	    printf("rectangle: prtOpenSession returned %8.8X\n", (int)prtsession);
+	    printf("rectangle: prtOpenSession returned %8.8lX\n", (intptr_t)prtsession);
 	    if (!prtsession)
 		{
 		mlxCloseSession(ls);
@@ -533,7 +534,7 @@ testprt_process_cmd(pObjSession s, char* cmd)
 		}
 	    ptr = mlxStringVal(ls,NULL);
 	    prtsession= prtOpenSession(ptr, outputfn, outputarg, PRT_OBJ_U_ALLOWBREAK);
-	    printf("columns: prtOpenSession returned %8.8X\n", (int)prtsession);
+	    printf("columns: prtOpenSession returned %8.8lX\n", (intptr_t)prtsession);
 	    if (!prtsession)
 		{
 		mlxCloseSession(ls);
@@ -625,7 +626,7 @@ testprt_process_cmd(pObjSession s, char* cmd)
 		}
 	    ptr = mlxStringVal(ls,NULL);
 	    prtsession= prtOpenSession(ptr, outputfn, outputarg, 0);
-	    printf("session: prtOpenSession returned %8.8X\n", (int)prtsession);
+	    printf("session: prtOpenSession returned %8.8lX\n", (intptr_t)prtsession);
 	    if (prtsession) 
 		{
 		rval = prtCloseSession(prtsession);
@@ -642,7 +643,7 @@ testprt_process_cmd(pObjSession s, char* cmd)
 		}
 	    ptr = mlxStringVal(ls,NULL);
 	    prtsession= prtOpenSession(ptr, outputfn, outputarg, PRT_OBJ_U_ALLOWBREAK);
-	    printf("printfile: prtOpenSession returned %8.8X\n", (int)prtsession);
+	    printf("printfile: prtOpenSession returned %8.8lX\n", (intptr_t)prtsession);
 	    if (!prtsession)
 		{
 		mlxCloseSession(ls);
@@ -702,7 +703,7 @@ testprt_process_cmd(pObjSession s, char* cmd)
 		}
 	    ptr = mlxStringVal(ls,NULL);
 	    prtsession= prtOpenSession(ptr, outputfn, outputarg, 0);
-	    printf("text: prtOpenSession returned %8.8X\n", (int)prtsession);
+	    printf("text: prtOpenSession returned %8.8lX\n", (intptr_t)prtsession);
 	    if (!prtsession)
 		{
 		mlxCloseSession(ls);
@@ -777,7 +778,7 @@ testprt_process_cmd(pObjSession s, char* cmd)
 		}
 	    ptr = mlxStringVal(ls,NULL);
 	    prtsession= prtOpenSession(ptr, outputfn, outputarg, 0);
-	    printf("colors: prtOpenSession returned %8.8X\n", (int)prtsession);
+	    printf("colors: prtOpenSession returned %8.8lX\n", (intptr_t)prtsession);
 	    if (!prtsession)
 		{
 		mlxCloseSession(ls);
@@ -822,7 +823,7 @@ testprt_process_cmd(pObjSession s, char* cmd)
 		}
 	    ptr = mlxStringVal(ls,NULL);
 	    prtsession= prtOpenSession(ptr, outputfn, outputarg, PRT_OBJ_U_ALLOWBREAK);
-	    printf("fonts: prtOpenSession returned %8.8X\n", (int)prtsession);
+	    printf("fonts: prtOpenSession returned %8.8lX\n", (intptr_t)prtsession);
 	    if (!prtsession)
 		{
 		mlxCloseSession(ls);
@@ -874,7 +875,7 @@ testprt_process_cmd(pObjSession s, char* cmd)
 		}
 	    ptr = mlxStringVal(ls,NULL);
 	    prtsession= prtOpenSession(ptr, outputfn, outputarg, 0);
-	    printf("styles: prtOpenSession returned %8.8X\n", (int)prtsession);
+	    printf("styles: prtOpenSession returned %8.8lX\n", (intptr_t)prtsession);
 	    if (!prtsession)
 		{
 		mlxCloseSession(ls);
@@ -928,7 +929,7 @@ testprt_process_cmd(pObjSession s, char* cmd)
 		}
 	    ptr = mlxStringVal(ls,NULL);
 	    prtsession= prtOpenSession(ptr, outputfn, outputarg, 0);
-	    printf("justify: prtOpenSession returned %8.8X\n", (int)prtsession);
+	    printf("justify: prtOpenSession returned %8.8lX\n", (intptr_t)prtsession);
 	    if (!prtsession)
 		{
 		mlxCloseSession(ls);
@@ -978,10 +979,8 @@ start(void* v)
     char prompt[1024];
     char sbuf[320];
     char* ptr;
-    int is_where;
     char* user;
     char* pwd;
-    pFile StdOut;
     pFile cxconf;
     pStructInf mss_conf;
     char* authmethod;
@@ -1061,7 +1060,6 @@ start(void* v)
 	pwd = getpass("Password: ");
 	if (mssAuthenticate(user, pwd, 0) < 0)
 	    puts("Warning: auth failed, running outside session context.");
-	StdOut = fdOpen("/dev/tty", O_RDWR, 0600);
 	free( user);
 
 	/** Open a session **/
@@ -1108,7 +1106,6 @@ start(void* v)
 	    /** Loop, putting prompt and getting commands **/
 	    while(1)
 		{
-		is_where = 0;
 		sprintf(prompt,"PRT:%.1000s> ",objGetWD(s));
 
 		/** If the buffer has already been allocated, return the memory to the free pool. **/

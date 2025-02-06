@@ -448,7 +448,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
     char hexbuf[3];
     int mode,mask;
     char* usrtype;
-    int i,t,n,o,cnt,start,flags,len,rval;
+    int i,t,n,o,cnt,start,flags,rval;
     pStruct subinf, find_inf;
     MoneyType m;
     DateTime dt;
@@ -960,12 +960,8 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		/** First, if creating, open the new object. **/
 		if (!strcmp(request,"create"))
 		    {
-		    len = strlen(req_inf->StrVal);
 		    /* let osml determine whether or not it is autoname - it is in a much better position to do so. */
-		    /*if (len < 1 || req_inf->StrVal[len-1] != '*' || (len >= 2 && req_inf->StrVal[len-2] != '/'))
-			obj = objOpen(objsess, req_inf->StrVal, O_CREAT | O_RDWR, 0600, "system/object");
-		    else*/
-			obj = objOpen(objsess, req_inf->StrVal, OBJ_O_AUTONAME | O_CREAT | O_RDWR, 0600, "system/object");
+		    obj = objOpen(objsess, req_inf->StrVal, OBJ_O_AUTONAME | O_CREAT | O_RDWR, 0600, "system/object");
 		    if (!obj)
 			{
 			nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");

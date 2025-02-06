@@ -375,6 +375,18 @@ prt_strictfm_Generate(void* context_v, pPrtObjStream page_obj)
     }
 
 
+/*** prt_strictfm_GetOutputType - get the content type for the output of this
+ *** formatter session.  This may vary from the requested type, which may
+ *** be more specific in some cases.
+ ***/
+char*
+prt_strictfm_GetOutputType(void* context_v)
+    {
+    pPrtStrictfmInf context = (pPrtStrictfmInf)context_v;
+    return context->OutputDriver->ContentType;
+    }
+
+
 /*** prt_strictfm_Initialize() - init this module and register with the main
  *** print management system.
  ***/
@@ -392,6 +404,7 @@ prt_strictfm_Initialize()
 	if (!fmtdrv) return -1;
 	strcpy(fmtdrv->Name, "strict");
 	fmtdrv->Probe = prt_strictfm_Probe;
+	fmtdrv->GetOutputType = prt_strictfm_GetOutputType;
 	fmtdrv->Generate = prt_strictfm_Generate;
 	fmtdrv->GetNearestFontSize = prt_strictfm_GetNearestFontSize;
 	fmtdrv->GetCharacterMetric = prt_strictfm_GetCharacterMetric;

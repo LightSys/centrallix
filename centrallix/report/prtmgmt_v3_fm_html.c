@@ -68,7 +68,7 @@
 				"    <title>Centrallix HTML Document</title>\n" \
 				"    <meta name=\"Generator\" content=\"Centrallix PRTMGMT v3.0\">\n" \
 				"</head>\n" \
-				"<body bgcolor=\"#c0c0c0\">\n"
+				"<body bgcolor=\"%s\">\n"
 
 
 /*** Document footer ***/
@@ -111,6 +111,27 @@ static int prt_htmlfm_fontsize_to_htmlsize[] = {8,9,10,12,15,19,22,26};
 #define PRT_HTMLFM_MINFONTSIZE	(1)
 #define	PRT_HTMLFM_MAXFONTSIZE	(7)
 
+
+/*** Session flags ***/
+#define PRT_HTMLFM_F_PAGINATED		1
+
+
+/*** MIME media types ***/
+typedef struct
+    {
+    char*		MimeType;
+    char*		OutputMimeType;
+    int			SessionFlags;
+    }
+    PrtHTMLfmSubtype, *pPrtHTMLfmSubtype;
+
+static PrtHTMLfmSubtype prt_htmlfm_subtypes[] =
+    {
+    { "text/vnd.cx.paginated+html", "text/html", PRT_HTMLFM_F_PAGINATED },
+    { "text/html", "text/html", 0 },
+    };
+
+
 /*** GLOBAL DATA FOR THIS MODULE ***/
 typedef struct _PSF
     {
@@ -121,8 +142,8 @@ typedef struct _PSF
 PRT_HTMLFM_t PRT_HTMLFM;
 
 
-/*** formatter internal structure.  Typedef incomplete def'n is in the
- *** header file.  This completes it. 
+/*** Formatter internal structure (pPrtHTMLfmInf).  Typedef incomplete
+ *** def'n is in the header file.  This completes it. 
  ***/
 struct _PSFI
     {
@@ -131,7 +152,10 @@ struct _PSFI
     PrtTextStyle	CurStyle;
     int			InitStyle;
     int			ExitStyle;
+    pPrtHTMLfmSubtype	Subtype;
+    int			Flags;			/* PRT_HTMLFM_F_xxx */
     };
+
 
 
 /*** prt_htmlfm_Output() - outputs a string of text into the HTML
@@ -217,20 +241,48 @@ void*
 prt_htmlfm_Probe(pPrtSession s, char* output_type)
     {
     pPrtHTMLfmInf context;
-
-	/** Is it html? **/
-	if (strcasecmp(output_type,"text/html") != 0) return NULL;
+    int i;
 
 	/** Allocate our context inf structure **/
 	context = (pPrtHTMLfmInf)nmMalloc(sizeof(PrtHTMLfmInf));
-	if (!context) return NULL;
+	if (!context) goto error;
 	memset(context, 0, sizeof(PrtHTMLfmInf));
 	context->Session = s;
 
-	/** Write the document header **/
-	prt_htmlfm_Output(context, PRT_HTMLFM_HEADER, -1);
+	/** Is it an html type we can handle? **/
+	for(i=0; i<sizeof(prt_htmlfm_subtypes)/sizeof(PrtHTMLfmSubtype); i++)
+	    {
+	    if (strcasecmp(output_type, prt_htmlfm_subtypes[i].MimeType) == 0)
+		{
+		context->Subtype = &(prt_htmlfm_subtypes[i]);
+		context->Flags = context->Subtype->SessionFlags;
+		break;
+		}
+	    }
+	if (!context->Subtype)
+	    goto error;
 
-    return (void*)context;
+	/** Write the document header **/
+	prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, (context->Flags & PRT_HTMLFM_F_PAGINATED)?"#c0c0c0":"#ffffff");
+
+	return (void*)context;
+
+    error:
+	if (context) nmFree(context, sizeof(PrtHTMLfmInf));
+
+	return NULL;
+    }
+
+
+/*** prt_htmlfm_GetOutputType - get the content type for the output of this
+ *** formatter session.  This may vary from the requested type, which may
+ *** be more specific in some cases.
+ ***/
+char*
+prt_htmlfm_GetOutputType(void* context_v)
+    {
+    pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;
+    return context->Subtype->OutputMimeType;
     }
 
 
@@ -341,7 +393,7 @@ prt_htmlfm_Close(void* context_v)
 int
 prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
     {
-    char* fonts[3] = { "Courier,Courier New,fixed", "Helvetica,Arial,MS Sans Serif", "Times,Times New Roman,MS Serif"};
+    char* fonts[3] = { "Courier New,Courier,fixed", "Arial,Helvetica,MS Sans Serif", "Times New Roman,Times,MS Serif"};
     int htmlfontsize, fontid;
     char stylebuf[128];
     int boldchanged, italicchanged, underlinechanged, fontchanged;
@@ -546,6 +598,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
     void* arg;
     int w,h;
     unsigned long id;
+    int rval;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -603,23 +656,29 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    h = obj->Height*PRT_HTMLFM_YPIXEL;
 		    if (w <= 0) w = 1;
 		    if (h <= 0) h = 1;
-		    path = (char*)nmMalloc(256);
+		    path = (char*)nmMalloc(OBJSYS_MAX_PATH);
 		    if (!path) 
                         {
                         mssError(1, "PRT", "nmMalloc() failed\n");
                         return -1;
                         }
-                    snprintf(path,256,"%sprt_htmlfm_%8.8lX.png",context->Session->ImageSysDir,id);
+                    rval = snprintf(path, OBJSYS_MAX_PATH, "%sprt_htmlfm_%8.8lX.png", context->Session->ImageSysDir, id);
+		    if (rval < 0 || rval >= OBJSYS_MAX_PATH)
+			{
+                        mssError(1, "PRT", "Internal representation exceeded for image pathname\n");
+			nmFree(path, OBJSYS_MAX_PATH);
+                        return -1;
+			}
 		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/png");
 		    if (!arg)
 			{
 			mssError(0,"PRT","Failed to open new linked image '%s'",path);
-			nmFree(path,256);
+			nmFree(path, OBJSYS_MAX_PATH);
 			return -1;
 			}
 		    prt_internal_WriteImageToPNG(context->Session->ImageWriteFn, arg, (pPrtImage)(obj->Content), w, h);
 		    context->Session->ImageCloseFn(arg);
-		    nmFree(path,256);
+		    nmFree(path, OBJSYS_MAX_PATH);
 		    if (obj->URL && !strchr(obj->URL, '"'))
 			{
 			prt_htmlfm_Output(context, "<a href=\"", 9);
@@ -644,23 +703,29 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    h = obj->Height*PRT_HTMLFM_YPIXEL;
 		    if (w <= 0) w = 1;
 		    if (h <= 0) h = 1;
-		    path = (char*)nmMalloc(256);
+		    path = (char*)nmMalloc(OBJSYS_MAX_PATH);
 		    if (!path) 
                         {
                         mssError(1, "PRT", "nmMalloc() failed\n");
                         return -1;
                         }
-                    snprintf(path,256,"%sprt_htmlfm_%8.8lX.svg",context->Session->ImageSysDir,id);
+                    rval = snprintf(path, OBJSYS_MAX_PATH, "%sprt_htmlfm_%8.8lX.svg", context->Session->ImageSysDir, id);
+		    if (rval < 0 || rval >= OBJSYS_MAX_PATH)
+			{
+                        mssError(1, "PRT", "Internal representation exceeded for image pathname\n");
+			nmFree(path, OBJSYS_MAX_PATH);
+                        return -1;
+			}
 		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/svg+xml");
 		    if (!arg)
 			{
 			mssError(0,"PRT","Failed to open new linked image '%s'",path);
-			nmFree(path,256);
+			nmFree(path, OBJSYS_MAX_PATH);
 			return -1;
 			}
 		    prt_internal_WriteSvgToFile(context->Session->ImageWriteFn, arg, (pPrtSvg)(obj->Content), w, h);
 		    context->Session->ImageCloseFn(arg);
-		    nmFree(path,256);
+		    nmFree(path, OBJSYS_MAX_PATH);
 		    if (obj->URL && !strchr(obj->URL, '"'))
 			{
 			prt_htmlfm_Output(context, "<a href=\"", 9);
@@ -705,7 +770,8 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
     int rs,cs;
 
 	/** Write the page header **/
-	prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_PAGEHEADER, (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001)+34);
+	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
+	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_PAGEHEADER, (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001)+34);
 
 	/** Write a table to handle page margins **/
 	prt_htmlfm_Output(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n", -1);
@@ -828,7 +894,8 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	/** Write the page footer **/
 	prt_htmlfm_OutputPrintf(context, "</td><td></td></tr><tr><td height=\"%d\"></td><td></td><td></td></tr></table>\n", 
 		(int)((page_obj->MarginBottom+0.001)*PRT_HTMLFM_YPIXEL));
-	prt_htmlfm_Output(context, PRT_HTMLFM_PAGEFOOTER, -1);
+	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
+	    prt_htmlfm_Output(context, PRT_HTMLFM_PAGEFOOTER, -1);
 
     return 0;
     }
@@ -837,7 +904,12 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 int
 prt_htmlfm_GetType(void* ctx, char* objname, char* attrname, void* val_v)
     {
-    POD(val_v)->String = "text/html";
+    pPrtHTMLfmSubtype type = (pPrtHTMLfmSubtype)ctx;
+
+	if (!type) return -1;
+
+	POD(val_v)->String = type->MimeType;
+
     return 0;
     }
 
@@ -850,6 +922,9 @@ prt_htmlfm_Initialize()
     {
     pPrtFormatter fmtdrv;
     pSysInfoData si;
+    int i;
+    char sbuf[256];
+    char* ptr;
 
 	/** Init our globals **/
 	memset(&PRT_HTMLFM, 0, sizeof(PRT_HTMLFM));
@@ -860,6 +935,7 @@ prt_htmlfm_Initialize()
 	if (!fmtdrv) return -1;
 	strcpy(fmtdrv->Name, "html");
 	fmtdrv->Probe = prt_htmlfm_Probe;
+	fmtdrv->GetOutputType = prt_htmlfm_GetOutputType;
 	fmtdrv->Generate = prt_htmlfm_Generate;
 	fmtdrv->GetNearestFontSize = prt_htmlfm_GetNearestFontSize;
 	fmtdrv->GetCharacterMetric = prt_htmlfm_GetCharacterMetric;
@@ -870,9 +946,16 @@ prt_htmlfm_Initialize()
 	prtRegisterFormatter(fmtdrv);
 
 	/** Register with the cx.sysinfo /prtmgmt/output_types dir **/
-	si = sysAllocData("/prtmgmt/output_types/html", NULL, NULL, NULL, NULL, prt_htmlfm_GetType, NULL, 0);
-	sysAddAttrib(si, "type", DATA_T_STRING);
-	sysRegister(si, NULL);
+	for(i=0; i<sizeof(prt_htmlfm_subtypes)/sizeof(PrtHTMLfmSubtype); i++)
+	    {
+	    ptr = strchr(prt_htmlfm_subtypes[i].MimeType, '/');
+	    if (!ptr) return -1;
+	    snprintf(sbuf, sizeof(sbuf), "/prtmgmt/output_types/%s", ptr+1);
+	    si = sysAllocData(sbuf, NULL, NULL, NULL, NULL, prt_htmlfm_GetType, NULL, 0);
+	    if (!si) return -1;
+	    sysAddAttrib(si, "type", DATA_T_STRING);
+	    sysRegister(si, &prt_htmlfm_subtypes[i]);
+	    }
 
     return 0;
     }

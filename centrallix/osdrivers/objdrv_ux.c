@@ -898,6 +898,7 @@ uxdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     pUxdQuery qy = ((pUxdQuery)(qy_v));
     pUxdData inf;
     struct dirent *d;
+    int rval;
 
 	/** Read the next item. **/
       GET_NEXT_DIRITEM:
@@ -926,7 +927,12 @@ uxdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    }
 	inf = (pUxdData)nmMalloc(sizeof(UxdData));
 	memset(inf,0,sizeof(UxdData));
-	snprintf(inf->RealPathname, OBJSYS_MAX_PATH, "%s/%s",qy->File->RealPathname,d->d_name);
+	rval = snprintf(inf->RealPathname, OBJSYS_MAX_PATH, "%s/%s", qy->File->RealPathname, d->d_name);
+	if (rval < 0 || rval >= OBJSYS_MAX_PATH)
+	    {
+	    mssError(1,"UXD","Query result pathname exceeds internal limits");
+	    return NULL;
+	    }
 	stat(inf->RealPathname, &(inf->Fileinfo));
 	if (S_ISDIR(inf->Fileinfo.st_mode)) inf->Flags |= UXD_F_ISDIR;
 	inf->Node = qy->File->Node;

@@ -151,11 +151,14 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 			}
 		    type = objGetAttrType(qy_obj, attr);
 		    rval = objGetAttrValue(qy_obj, attr, type,&od);
-		    if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE)
-			str = objDataToStringTmp(type, (void*)(&od), 0);
-		    else
-			str = objDataToStringTmp(type, (void*)(od.String), 0);
-		    strtcpy(initialdate, str, sizeof(initialdate));
+		    if (rval == 0)
+			{
+			if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE)
+			    str = objDataToStringTmp(type, (void*)(&od), 0);
+			else
+			    str = objDataToStringTmp(type, (void*)(od.String), 0);
+			strtcpy(initialdate, str, sizeof(initialdate));
+			}
 		    objClose(qy_obj);
 		    }
 		objQueryClose(qy);

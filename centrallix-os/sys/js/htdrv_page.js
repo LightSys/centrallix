@@ -1551,7 +1551,7 @@ function pg_launch(aparam)
     // Mailto?  We handle this differently if so.
     if (url.substr(0,7) == 'mailto:')
 	{
-	$('<iframe src="' + htutil_encode(url) + '">').appendTo('body').css('display', 'none');
+	$('<iframe src="' + htutil_encode(url, true) + '">').appendTo('body').css('display', 'none');
 	return;
 	}
 

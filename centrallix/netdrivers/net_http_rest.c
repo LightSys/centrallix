@@ -785,6 +785,7 @@ nht_i_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
     struct json_object_iter iter;
     struct json_object* j_attr_obj;
     char* attrname;
+    int rval;
 
 	/** Open the target object **/
 	if (strlen(url_inf->StrVal) + 2 + 1 >= OBJSYS_MAX_PATH)
@@ -907,19 +908,19 @@ nht_i_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
 	    code = 500;
 	    goto error;
 	    }
-	if (strlen(new_obj_path) + strlen(ptr) + 2 >= sizeof(new_obj_name))
+	if (strlen(new_obj_path) >= 2)
+	    {
+	    /** trim the trailing slash and star **/
+	    new_obj_path[strlen(new_obj_path)-2] = '\0';
+	    }
+	rval = snprintf(new_obj_name, sizeof(new_obj_name), "%s/%s", new_obj_path, ptr);
+	if (rval < 0 || rval >= sizeof(new_obj_name))
 	    {
 	    mssError(1,"NHT","Path too long for new object for POST request");
 	    msg = "Internal Server Error";
 	    code = 500;
 	    goto error;
 	    }
-	if (strlen(new_obj_path) >= 2)
-	    {
-	    /** trim the trailing slash and star **/
-	    new_obj_path[strlen(new_obj_path)-2] = '\0';
-	    }
-	snprintf(new_obj_name, sizeof(new_obj_name), "%s/%s", new_obj_path, ptr);
 
 	/** Do the reopen **/
 	objClose(target_obj);

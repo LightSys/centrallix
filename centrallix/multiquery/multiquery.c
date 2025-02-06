@@ -1329,7 +1329,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
     pQueryStructure declare_cls = NULL;
     ParserState state = LookForClause;
     ParserState next_state = ParseError;
-    int t,parenlevel,subtr,identity,inclsubtr,wildcard,fromobject,prunesubtr,expfrom,collfrom,nonempty,paged;
+    int t,subtr,identity,inclsubtr,wildcard,fromobject,prunesubtr,expfrom,collfrom,nonempty,paged;
     int is_object;
     char* ptr;
     char* str;
@@ -2542,7 +2542,6 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 		    if (paged) new_qs->Flags |= MQ_SF_PAGED;
 		    xaAddItem(&from_cls->Children, (void*)new_qs);
 		    new_qs->Parent = from_cls;
-		    parenlevel = 0;
 		    if (expfrom)
 			{
 			t = mq_internal_ParseExpressionSource(lxs, new_qs);

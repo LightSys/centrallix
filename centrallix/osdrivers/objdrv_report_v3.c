@@ -3428,7 +3428,9 @@ rpt_internal_DrawXTickLabels(pRptChartContext ctx, int startval, int n_vals, int
 int
 rpt_internal_BarChart_PreProcess(pRptChartContext ctx)
     {
+#ifndef HAVE_MGL2
     pRptChartValues value;
+#endif
 
 	/** Add blank one at beginning and end to make chart more readable **/
 #ifndef HAVE_MGL2
@@ -3612,7 +3614,7 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
     {
     int reccnt = ctx->values->nItems;
     pStructInf one_series = (pStructInf)ctx->series->Items[0];
-    int tickDist;
+    //int tickDist;
     int series_fontsize, axis_fontsize;
     double fs;
     char lineStyle[8];
@@ -3623,7 +3625,7 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
     char* color;
     char colorBuf[2] = "\0\0";
     
-	tickDist = rpt_internal_GetTickDist(ctx->max);
+	//tickDist = rpt_internal_GetTickDist(ctx->max);
 	rpt_internal_GetInteger(ctx->inf, one_series, "fontsize", &series_fontsize, ctx->fontsize, 0);
         
 #ifdef HAVE_MGL2
@@ -4132,7 +4134,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
     char* y_axis_label;
     char* ptr;
     int box = 0;
-    int stacked;
+    //int stacked;
     int axis_fontsize;
     pStructInf subobj;
     pRptChartValues value = NULL;
@@ -4338,7 +4340,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	/** Chart configuration **/
 	box = rpt_internal_GetBool(inf, chart, "box", 0, 0);
 	ctx->scale = rpt_internal_GetBool(inf, chart, "scale", 0, 0);
-	stacked = rpt_internal_GetBool(inf, chart, "stacked", 0, 0);
+	//stacked = rpt_internal_GetBool(inf, chart, "stacked", 0, 0);
 	ctx->rotation = rpt_internal_GetBool(inf, chart, "text_rotation", 0, 0);
 	rpt_internal_GetDouble(inf, chart, "zoom", &ctx->zoom, 1.0, 0);
 	rpt_internal_GetInteger(inf, chart, "fontsize", &ctx->fontsize, (int)round(prtGetFontSize(container_handle)), 0);
@@ -5564,6 +5566,7 @@ rpt_internal_Generator(void* v)
     {
     pRptData inf = (pRptData)v;
     pPrtSession ps;
+    char *output_mime_type;
 
     	/** Set this thread's name **/
 	thSetName(NULL,"Report Generator");
@@ -5585,6 +5588,11 @@ rpt_internal_Generator(void* v)
 	    fdClose(inf->SlaveFD,0);
 	    thExit();
 	    }
+
+	/** Get generated content type **/
+	output_mime_type = prtGetOutputType(ps);
+	if (!strcmp(inf->DocumentFormat, inf->ContentType))
+	    strtcpy(inf->ContentType, output_mime_type, sizeof(inf->ContentType));
 
 	/** Set image store location **/
 	prtSetImageStore(ps, "/tmp/", "/tmp/", inf->Obj->Session, (void*(*)())objOpen, objWrite, objClose);
