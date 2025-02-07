@@ -70,7 +70,7 @@ chart "system/report"
 	    scale=no;
 	    text_rotation=no;
 	    title="File Sizes";
-	    palette="green,fake,#014421";
+	    palette="green","fake,#014421";
 	    color='gray';
 	    zoom=1.0;
 	    show_value=yes;

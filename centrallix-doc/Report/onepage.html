@@ -913,7 +913,7 @@ myTable "report/table"
 <tr>
 <td class="name">palette</td>
 <td class="type">string</td>
-<td class="description">A comma separated list of colors to be used by charts with dynamic series. This takes priority over the color property and the default palette. Once the palette runs out of to map to series, it loops through the colors again. Example: "green,,#014421", would have series colored a bright green, the default, and then a dark green.</td>
+<td class="description">A comma separated list of colors to be used by charts with dynamic series. This takes priority over the color property and the default palette. Once the palette runs out of to map to series, it loops through the colors again. Example: "green", "fake", "#014421" (or "green,fake,#014421", or any mixture of the two) would have series colored a bright green, the default, and then a dark green.  </td>
 </tr>
 <tr>
 <td class="name">mode</td>
@@ -1072,7 +1072,7 @@ myChart "report/chart"
 	show_legend=yes;
 	text_rotation=no;
 	title="My Dynamic Series Chart Title";
-	palette="dark green, green, teal";
+	palette="dark green", "green", "teal";
 
 	x_axis "report/chart-axis" { axis=x; label="X Label"; }
 	y_axis "report/chart-axis" { axis=y; label="Y Label"; }

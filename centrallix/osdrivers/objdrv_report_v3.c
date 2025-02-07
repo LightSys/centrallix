@@ -3904,7 +3904,7 @@ int
 rpt_internal_ReadAutoSeries(pRptChartContext ctx, pRptActiveQueries ac, pStructInf chart, pRptSession rs){
     const char* AUTO_CHART_NAME = "report/chart-auto-series";
     int errval = -1; /* default */
-    int rval = 0;
+    int rval;
     int i;
     char* ptr;
     pRptData inf = ctx->inf;
@@ -3924,25 +3924,41 @@ rpt_internal_ReadAutoSeries(pRptChartContext ctx, pRptActiveQueries ac, pStructI
     int* int_ptr = NULL;
     double* dbl_ptr = NULL;
 
-	/** check for a custom palette **/
-	rpt_internal_GetString(inf, chart, "palette", &ptr, "", 0);
-	if(strlen(ptr) > 0)
+	/** check for a custom palette - any combination of a list of strings or strings containing a list **/
+	i = 0;
+	rval = rpt_internal_GetString(inf, chart, "palette", &ptr, NULL, i++);
+	if(rval >= 0)
 	    {
-	    paletteBuf = nmSysStrdup(ptr);
 	    palette = xaNew(16);
-	    if (!palette || !ptr)
+	    if(!palette)
 		goto error;
-	    start = paletteBuf;
-	    /* paletteBuf contains a ',' seperated list of colors. Parse it */
+	    }
+	while(rval >= 0)
+	    {
+	    start = ptr;
+	    /** paletteBuf may contain a ',' seperated list of colors. Parse it **/
 	    while((end = strchr(start, ',')) != 0)
 		{
 		end[0] = '\0';
-		xaAddItem(palette, start);
+		if(strlen(start) > 0) /*in the case of "value,,value", skip the empty string */
+		    {
+		    paletteBuf = nmSysStrdup(start);
+		    if (!paletteBuf)
+			goto error;
+		    xaAddItem(palette, paletteBuf);
+		    }
+		end[0] = ','; /* make sure to leave the string unmodified in the end */
 		start = end+1;
 		}
-	    /* handle the final/only color */
-	    if(start[0] != '\0') // in case the list is like "red,"
-		xaAddItem(palette, start);
+	    /** handle the final/only color **/
+	    if(start[0] != '\0') /* in case the list is like "red," or "" */
+		{
+		paletteBuf = nmSysStrdup(start);
+		if (!paletteBuf)
+		    goto error;
+		xaAddItem(palette, paletteBuf);
+		}
+	    rval = rpt_internal_GetString(inf, chart, "palette", &ptr, NULL, i++);
 	    }
 
 	/** Enter the row retrieval loop. **/	
@@ -3951,6 +3967,7 @@ rpt_internal_ReadAutoSeries(pRptChartContext ctx, pRptActiveQueries ac, pStructI
 	tempSeries = xaNew(16);
 	if (!ctx->series || !tempSeries || !tempVals || !ctx->values)
 	    goto error;
+	rval = 0;
 	while(rval == 0)
 	    {
 	    /** Get the labels for the x-axis **/
@@ -4106,10 +4123,12 @@ rpt_internal_ReadAutoSeries(pRptChartContext ctx, pRptActiveQueries ac, pStructI
 	    nmFree(dbl_ptr, sizeof(double));
 	if(int_ptr)
 	    nmFree(int_ptr, sizeof(int));
-	if(paletteBuf)
-	    nmSysFree(paletteBuf);
 	if(palette)
+	    {
+	    for(i = 0 ; i < palette->nItems ; i++) 
+		nmSysFree(palette->Items[i]);
 	    xaFree(palette);
+	    }
     return errval;
 }
 

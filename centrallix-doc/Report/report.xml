@@ -345,7 +345,7 @@ myTable "report/table"
 			<property name="box" type="yes/no">Whether to draw a box around the chart's data area (the box is drawn just around the graph or chart itself, not around the axis and tick labels and titles).  Default "no".</property>
 			<property name="chart_type" type="string">The type of chart:  bar, line, or pie.</property>
 			<property name="color" type="string">The default color to be used for the chart. If nothing is specified elsewhere, all series will be made this color. If a palette is also specified, this color will replace any invalid colors.</property>
-			<property name="palette" type="string">A comma separated list of colors to be used by charts with dynamic series. This takes priority over the color property and the default palette. Once the palette runs out of to map to series, it loops through the colors again. Example: "green,,#014421", would have series colored a bright green, the default, and then a dark green.</property>
+			<property name="palette" type="string">A comma separated list of colors to be used by charts with dynamic series. This takes priority over the color property and the default palette. Once the palette runs out of to map to series, it loops through the colors again. Example: "green", "fake", "#014421" (or "green,fake,#014421", or any mixture of the two) would have series colored a bright green, the default, and then a dark green.  </property>
 			<property name="mode" type="string">The mode of the chart (see overview).  'normal' is the default.</property>
 			<property name="multimode" type="string">How the chart handles multiple queries (see overview).  'nested' is the default.</property>
 			<property name="scale" type="yes/no">Whether to automatically scale axis tick labels using scientific notation and a multiplier (default "no").</property>
@@ -410,7 +410,7 @@ myChart "report/chart"
 	show_legend=yes;
 	text_rotation=no;
 	title="My Dynamic Series Chart Title";
-	palette="dark green, green, teal";
+	palette="dark green", "green", "teal";
 
 	x_axis "report/chart-axis" { axis=x; label="X Label"; }
 	y_axis "report/chart-axis" { axis=y; label="Y Label"; }
