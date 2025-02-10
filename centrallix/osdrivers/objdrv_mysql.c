@@ -1180,6 +1180,67 @@ mysd_internal_BuildAutoname(pMysdData inf, pMysdConn conn, pObjTrxTree oxt)
     return rval;
     }
 
+/*** mysd_internal_UpdateName() - check an updated row and update the row if need be 
+***/
+int
+mysd_internal_UpdateName(pMysdData data, char * newval, int colInd, int type)
+    {
+    int i;
+    int keyInd = -1;
+    char *start, *end;
+    int oldLen, newLen, fullLen;
+
+	/** find the PK index for the column. If it is not part of the pk, exit **/
+	for(i = 0 ; i < data->TData->nKeys ; i++)
+	    {
+	    if(data->TData->KeyCols[i] == colInd)
+		{
+		keyInd = i;
+		break;
+		}
+	    }
+	if (keyInd == -1 || !newval) return 0;
+
+	/* if it is a string and is too long, truncate it to match what will be stored */
+	newLen = strlen(newval);
+	if(newLen > data->TData->ColLengths[colInd] && type == DATA_T_STRING)
+	    {
+	    newval[data->TData->ColLengths[colInd]] = '\0';
+	    newLen = data->TData->ColLengths[colInd];
+	    }
+
+	fullLen = strlen(data->Objname);
+	/* find the start and end of the field to edit*/
+	start = data->Objname;
+	for(i = 0 ; i < keyInd ; i++)
+	    {
+	    start = strchr(start, '|')+1;
+	    if(start == (char*) 1) /* make sure has enough fields */
+		{
+		mssError(1,"MYSD","Cannot change object '%s' name to include '%s': too few fields in name.",
+		    data->Objname, newval);
+		return -1;
+		}
+	    }
+	end = strchr(start, '|');
+	if(!end) end = data->Objname + fullLen; /* make sure to account for if the string is at the end */
+
+	/* check if new item will fit */
+	oldLen = end - start;
+	if(fullLen - oldLen + newLen >= sizeof(data->Objname))
+	    {
+	    mssError(1,"MYSD","Cannot change object '%s' name to include '%s': name exceeds max length.",
+		data->Objname, newval);
+	    return -1;
+	    }
+
+	/* shift over existing items to make room */
+	memmove(start+newLen, end, strlen(end)+1);
+	/* copy over the new value */
+	memcpy(start, newval, newLen);
+	
+	return 0;
+    }
 
 /*** mysd_internal_UpdateRow() - update a given row
  ***/
@@ -2975,6 +3036,7 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     int type;
     DateTime dt;
     ObjData od;
+    char * valStr;
 
         type = mysdGetAttrType(inf, attrname, oxt);
         /** Choose the attr name **/
@@ -3073,12 +3135,16 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 			    }
                         else if(datatype == DATA_T_DOUBLE || datatype == DATA_T_INTEGER) 
                             {
-                            if(mysd_internal_UpdateRow(inf,mysd_internal_CxDataToMySQL(datatype,(ObjData*)val),i) < 0) return -1;
+			    valStr = mysd_internal_CxDataToMySQL(datatype,(ObjData*)val);
+                            if(mysd_internal_UpdateRow(inf,valStr,i) < 0) return -1;
                             }
                         else
                             {
-                            if(mysd_internal_UpdateRow(inf,mysd_internal_CxDataToMySQL(datatype,*(ObjData**)val),i) < 0) return -1;
+			    valStr = mysd_internal_CxDataToMySQL(datatype,*(ObjData**)val);
+                            if(mysd_internal_UpdateRow(inf,valStr,i) < 0) return -1;
                             }
+			// make sure this does not run for inserts or other major transactions
+			mysd_internal_UpdateName(inf, valStr, i, type);
                         }
                     }
                 }
