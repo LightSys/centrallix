@@ -1314,12 +1314,6 @@ function osrc_cb_query_continue_2()
 	this.pendingquery=null;
 	this.pendingqueryobject=null;
 	this.pendingorderobject=null;
-	/*for(var i in this.child)
-	     {
-	     this.child[i]._osrc_ready=false;
-	     }*/
-
-	//if (!this.do_append) this.ClearReplica();
 	this.moveop=true;
 
 	this.OpenSession(this.OpenQuery);
@@ -1329,10 +1323,6 @@ function osrc_cb_query_continue_2()
 	this.MoveToRecordCB(this.RecordToMoveTo, true);
 	this.RecordToMoveTo=null;
 	}
-    //this seems premature - GRB
-    //this.SetPending(false);
-    /*this.pending=false;
-    this.Dispatch();*/
     }
 
 function osrc_cb_query_cancel()
@@ -1645,14 +1635,19 @@ function osrc_action_clear(aparam)
     {
     this.SyncID = osrc_syncid++;
     this.lastSync = [];
+    this.ClearTarget();
     this.ClearReplica();
     this.GiveAllCurrentRecord('clear');
     }
 
+function osrc_clear_target()
+    {
+	this.TargetRecord = [1,1];/* the record we're aiming for -- go until we get it*/
+	this.CurrentRecord=1;/* the current record */
+    }
+
 function osrc_clear_replica()
     {
-    this.TargetRecord = [1,1];/* the record we're aiming for -- go until we get it*/
-    this.CurrentRecord=1;/* the current record */
     this.OSMLRecord=0;/* the last record we got from the OSML */
 
     /** Clear replica **/
@@ -4181,6 +4176,7 @@ function osrc_init(param)
     loader.NewReplicaObj = osrc_new_replica_object;
     loader.PruneReplica = osrc_prune_replica;
     loader.ClearReplica = osrc_clear_replica;
+    loader.ClearTarget = osrc_clear_target;
     loader.ApplyRelationships = osrc_apply_rel;
     loader.ApplyKeys = osrc_apply_keys;
     loader.ApplySequence = osrc_apply_sequence;
@@ -4249,6 +4245,7 @@ function osrc_init(param)
 	});
    
     // Zero out the replica
+    loader.ClearTarget();
     loader.ClearReplica();
 
     // Actions
