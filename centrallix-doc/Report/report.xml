@@ -333,6 +333,7 @@ myTable "report/table"
 	<component name="chart" type="report/chart" description="A chart or graph presentation of report data" visual="yes" container="no">
 		<overview>
 			<p>The chart component is used to display data in a bar, line, or pie chart.  The chart creates an image which is embedded into the report.</p>
+			<p>Charts can have a dynamic number of series by specifying the "series_value" parameter on the "report/chart" object. The "x_value" and "y_value" parameters will also need to be specified directly inside the "report/chart" rather than inside of a "report/chart-series". "report/chart-series" objects are ignored by charts with dynamic series.</p>
 			<p>Charts, like forms and tables, can have more than one data mode.  Like tables, charts only support 'normal' and 'inner'; 'outer' is not supported since charts do not contain other components.  See the form documentation for more on the data mode.</p>
 			<p>Charts also can handle multiple queries using a 'multimode' - see the form for more information.</p>
 		</overview>
@@ -343,14 +344,20 @@ myTable "report/table"
 		<properties>
 			<property name="box" type="yes/no">Whether to draw a box around the chart's data area (the box is drawn just around the graph or chart itself, not around the axis and tick labels and titles).  Default "no".</property>
 			<property name="chart_type" type="string">The type of chart:  bar, line, or pie.</property>
-			<property name="color" type="string">The default color to be used for the chart.</property>
+			<property name="color" type="string">The default color to be used for the chart. If nothing is specified elsewhere, all series will be made this color. If a palette is also specified, this color will replace any invalid colors.</property>
+			<property name="palette" type="string">A comma separated list of colors to be used by charts with dynamic series. This takes priority over the color property and the default palette. Once the palette runs out of to map to series, it loops through the colors again. Example: "green", "fake", "#014421" (or "green,fake,#014421", or any mixture of the two) would have series colored a bright green, the default, and then a dark green.  </property>
 			<property name="mode" type="string">The mode of the chart (see overview).  'normal' is the default.</property>
 			<property name="multimode" type="string">How the chart handles multiple queries (see overview).  'nested' is the default.</property>
 			<property name="scale" type="yes/no">Whether to automatically scale axis tick labels using scientific notation and a multiplier (default "no").</property>
 			<property name="source" type="stringvec">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.</property>
 			<property name="text_rotation" type="yes/no">Whether to rotate tick labels to allow them to better fit on the chart.  Default "no".</property>
 			<property name="title" type="string">The chart's title, to be printed above the chart.</property>
+			<property name="show_legend" type="yes/no">Whether or not to display the legend. Default "no".</property>
 			<property name="zoom" type="double">The chart zoom; use values less than 1.0 to give the chart more whitespace, and values greater than 1.0 to eliminate whitespace.  Default 1.0.</property>
+			<property name="x_value" type="expression">The X value for the series, specified here when using dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</property>
+			<property name="y_value" type="expression">The Y value for the series, specified here when using dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</property>
+			<property name="series_value" type="expression">The value used to differentiate series. This in only used by charts with dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</property>
+			<property name="legend_value" type="expression">The value to be displayed when the series name appears in a legend.  This is only used by charts with dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</property>
 		</properties>
 		<children>
 			<child type="report/chart-axis">
@@ -359,6 +366,7 @@ myTable "report/table"
 			</child>
 			<child type="report/chart-series">
 				<childproperty name="color" type="string">The color to be used for the series.</childproperty>
+				<childproperty name="legend_name" type="string">The name to be displayed on the legend for the series.</childproperty>
 				<childproperty name="show_percent" type="yes/no">Whether to show the series value as a percentage above the bar or line point.  Default "no".</childproperty>
 				<childproperty name="show_value" type="yes/no">Whether to show the series value above the bar or line point.  Default "yes".</childproperty>
 				<childproperty name="x_value" type="expression">The X value for the series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</childproperty>
@@ -375,6 +383,7 @@ myChart "report/chart"
 	scale=no;
 	text_rotation=no;
 	title="My Chart Title";
+	show_legend=yes;
 
 	x_axis "report/chart-axis" { axis=x; label="X Label"; }
 	y_axis "report/chart-axis" { axis=y; label="Y Label"; }
@@ -386,6 +395,30 @@ myChart "report/chart"
 	    show_value=yes;
 	    color="dark green";
 	    }
+	}
+		]]>
+		</sample>
+		<sample>
+		<![CDATA[
+myChart "report/chart"
+	{
+	source=myQuery;
+	x=0; y=0; height=20; width=65;
+	chart_type=bar;
+	scale=no;
+	show_value=yes;
+	show_legend=yes;
+	text_rotation=no;
+	title="My Dynamic Series Chart Title";
+	palette="dark green", "green", "teal";
+
+	x_axis "report/chart-axis" { axis=x; label="X Label"; }
+	y_axis "report/chart-axis" { axis=y; label="Y Label"; }
+
+	x_value=runserver(:myQuery:month);
+	y_value=runserver(:myQuery:revenue);
+	series_value=runserver(:myQuery:account_id);
+	legend_value=runserver(:myQuery:account_name);
 	}
 		]]>
 		</sample>

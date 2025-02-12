@@ -237,7 +237,9 @@ typedef struct
     {
     char*	Label;		/* label for x axis */
     double*	Values;		/* array of n doubles, where n = number of series */
+    int*	Series;		/* array of n series keys. Used for auto charts, where the order and presence/absence of series can vary */
     char*	Types;		/* array of n 8-bit ints for data types */
+    int		nItems;		/* The number of items in the Series and Value arrays. Used for auto charts */
     }
     RptChartValues, *pRptChartValues;
 
@@ -265,6 +267,7 @@ typedef struct
     double	maxaxis;
     int		tickdist;
     int		scale;
+    int		show_legend;
     char*	color;
     char**	x_labels;
     pRptData	inf;
@@ -309,6 +312,7 @@ static char* attrnames[RPT_NUM_ATTR] = {"bold","expanded","compressed","center",
 
 
 /*** MathGL color definitions ***/
+char rpt_mgl_auto_palette[30] = "bgrhBGRHWcmywpCMYkPlenuqLENUQ";
 char rpt_mgl_colors[30] = "krRgGbBwWcCmMyYhHlLeEnNuUqQpP";
 int rpt_mgl_color_hex[29] =
     {
@@ -348,6 +352,9 @@ RptUDItem rpt_ud_list[] =
 	{ "report/area",	"value",	0 },
 
 	{ "report/chart",	"condition",	0 },
+	{ "report/chart",	"series_value",	0 },
+	{ "report/chart",	"x_value",	0 },
+	{ "report/chart",	"y_value",	0 },
 	{ "report/chart-series","x_value",	0 },
 	{ "report/chart-series","y_value",	0 },
 
@@ -3063,6 +3070,8 @@ rpt_internal_FreeChartValues(pRptChartValues value)
 	    nmSysFree(value->Values);
 	if (value->Types)
 	    nmSysFree(value->Types);
+	if(value->Series)
+	    nmSysFree(value->Series);
 	nmFree(value, sizeof(RptChartValues));
 
     return 0;
@@ -3081,6 +3090,7 @@ rpt_internal_NewChartValues(char* label, int n_values)
 	    goto error;
 	value->Values = NULL;
 	value->Types = NULL;
+	value->Series = NULL;
 	value->Label = nmSysStrdup(label);
 	if (!value->Label)
 	    goto error;
@@ -3091,7 +3101,11 @@ rpt_internal_NewChartValues(char* label, int n_values)
 	value->Types = (char*)nmSysMalloc(sizeof(char) * n_values);
 	if (!value->Types)
 	    goto error;
-
+	value->Series = (int*)nmSysMalloc(sizeof(int) * n_values);
+	if (!value->Series)
+	    goto error;
+	memset(value->Series, 0, sizeof(int) * n_values);
+	value->nItems = n_values;
 	return value;
 
     error:
@@ -3167,7 +3181,7 @@ rpt_internal_GetYDecimalPrecision(pRptChartContext ctx, int n, int ser)
 	if (ser == -1)
 	    {
 	    serstart = 0;
-	    serlen = ctx->series->nItems;
+	    /** serlen needs to be dynamic since not all values include every series **/
 	    }
 	else
 	    {
@@ -3178,12 +3192,13 @@ rpt_internal_GetYDecimalPrecision(pRptChartContext ctx, int n, int ser)
 	/** Iterate **/
 	for(i=nstart; i<nstart+nlen; i++)
 	    {
+	    if(ser == -1) serlen = ((pRptChartValues)ctx->values->Items[i])->nItems;
 	    for(j=serstart; j<serstart+serlen; j++)
 		{
 		val = ((pRptChartValues)ctx->values->Items[i])->Values[j];
 		for(k=0; k<8; k++)
 		    {
-		    if (val == 0 || ceil(abs(val)*exp10(k)*0.99999999999999) != ceil(abs(val)*exp10(k)*1.00000000000001))
+		    if (val == 0 || fabs(ceil(fabs(val)*exp10(k)*1.00000000000001) - ceil(fabs(val)*exp10(k)*0.99999999999999)) > 0.00000000000001 )
 			break;
 		    }
 		if (k > prec)
@@ -3198,13 +3213,14 @@ rpt_internal_GetYDecimalPrecision(pRptChartContext ctx, int n, int ser)
 /*** Generate value strings
  ***/
 pXArray
-rpt_internal_GetValueStrings(pRptChartContext ctx, int startval, int n_vals, int show_pct, int ser)
+rpt_internal_GetValueStrings(pRptChartContext ctx, int startval, int n_vals, int show_pct, int targetSer)
     {
     pXArray labels;
     char str[32];
-    int i;
+    int i,j;
     double val;
     int prec;
+    int indexSer = -1;
 
 	labels = xaNew(n_vals);
 	if (!labels)
@@ -3213,8 +3229,19 @@ rpt_internal_GetValueStrings(pRptChartContext ctx, int startval, int n_vals, int
 	/** Format the label strings **/
 	for(i=startval; i<startval+n_vals; i++)
 	    {
-	    val = ((pRptChartValues)ctx->values->Items[i])->Values[ser];
-	    prec = rpt_internal_GetYDecimalPrecision(ctx, i, ser);
+	    /** see if the serries is in the item. Skip if not. **/
+	    for(j=0; j<((pRptChartValues)ctx->values->Items[i])->nItems; j++)
+		{
+		if(targetSer == ((pRptChartValues)ctx->values->Items[i])->Series[j])
+		    {
+		    indexSer = j;
+		    break;
+		    }
+		}
+	    if(indexSer == -1) continue; /* the series was missing from the value set */
+
+	    val = ((pRptChartValues)ctx->values->Items[i])->Values[indexSer];
+	    prec = rpt_internal_GetYDecimalPrecision(ctx, i, indexSer);
 
 	    if (prec == 0)
 		{
@@ -3227,6 +3254,7 @@ rpt_internal_GetValueStrings(pRptChartContext ctx, int startval, int n_vals, int
 		snprintf(str, sizeof(str), "%.*f%s", prec, val, show_pct?"%":"");
 		}
 	    xaAddItem(labels, nmSysStrdup(str));
+	    indexSer = -1;
 	    }
 
     return labels;
@@ -3252,21 +3280,23 @@ rpt_internal_FreeValueStrings(pXArray labels)
 /*** Line/Bar Labels
  ***/
 int
-rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int total_n_vals, int ser, int n_ser, int bar, double fontsize, int show_pct, double offset)
+rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int total_n_vals, int targetSer, int n_ser, int bar, double fontsize, int show_pct, double offset)
     {
-    int i;
+    int i,j;
     double val, valoffset;
     pXArray labels;
     int maxstrlen;
     double fs;
+    int indexSer = -1;
+    int labelIndex = 0;
 
-	labels = rpt_internal_GetValueStrings(ctx, startval, n_vals, show_pct, ser);
+	labels = rpt_internal_GetValueStrings(ctx, startval, n_vals, show_pct, targetSer);
 	if (!labels)
 	    return -1;
 
 	/** Font size - scale for longer labels / smaller bars **/
 	maxstrlen = 0;
-	for(i=0; i<n_vals; i++)
+	for(i=0; i<labels->nItems; i++)
 	    {
 	    if (maxstrlen < strlen(labels->Items[i]))
 		maxstrlen = strlen(labels->Items[i]);
@@ -3278,17 +3308,30 @@ rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int
 	/** Add the labels **/
 	for(i=startval; i<startval+n_vals; i++)
 	    {
-	    val = ((pRptChartValues)ctx->values->Items[i])->Values[ser];
+	    /** Find the actual index of series (if present) **/
+	    for(j=0; j<((pRptChartValues)ctx->values->Items[i])->nItems; j++)
+		{
+		if(targetSer == ((pRptChartValues)ctx->values->Items[i])->Series[j])
+		    {
+		    indexSer = j;
+		    break;
+		    }
+		}
+	    if(indexSer == -1) continue;
+	    val = ((pRptChartValues)ctx->values->Items[i])->Values[indexSer];
 	    valoffset = (ctx->max - ctx->min)*0.02;
 #ifdef HAVE_MGL2
 	    if (val < 0)
 		valoffset = 0 - valoffset - (fs * ctx->font_scale_factor) * (ctx->max - ctx->min) * 0.022;
-	    mgl_puts(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + ser) * (1.4 / n_ser)):0.0), val + valoffset, 0.0, (char*)labels->Items[i - startval], "", fs * ctx->font_scale_factor);
+	    mgl_puts(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + targetSer) * (1.4 / n_ser)):0.0), val + valoffset, 0.0, (char*)labels->Items[labelIndex], "", fs * ctx->font_scale_factor);
 #else
 	    if (val < 0)
 		valoffset = 0 - valoffset - (fs * ctx->font_scale_factor) * (ctx->max - ctx->min) * 0.013;
-	    mgl_puts_ext(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + ser) * (1.4 / n_ser)):0.0), val + valoffset, 0.0, (char*)labels->Items[i - startval], "", fs * ctx->font_scale_factor, '\0');
+	    mgl_puts_ext(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + targetSer) * (1.4 / n_ser)):0.0), val + valoffset, 0.0, (char*)labels->Items[labelIndex], "", fs * ctx->font_scale_factor, '\0');
 #endif
+	    /** reset the index of the series and move on to the next label **/
+	    indexSer = -1;
+	    labelIndex++; 
 	    }
 
 	rpt_internal_FreeValueStrings(labels);
@@ -3416,7 +3459,7 @@ rpt_internal_BarChart_Setup(pRptChartContext ctx)
 
     return 0;
     }
-
+/// TODO: anything in common between bar, pie, and line can potentially be moved to doChart
 int
 rpt_internal_BarChart_Generate(pRptChartContext ctx)
     {
@@ -3435,6 +3478,8 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
     char* ptr;
     char barcolors[256] = "";
     int i;
+    char colorBuf[2] = "\0\0";
+    char lineStyle[8];
     
 	/** Draw the chart **/
 	//mgl_set_alpha(gr, 1);
@@ -3456,6 +3501,11 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
 	    /** Bar color **/
 	    one_series = (pStructInf)ctx->series->Items[i];
 	    color = rpt_internal_GetMglColor(ctx, one_series, "color", ctx->color, 0);
+	    if(strlen(color) == 0)
+		{
+		colorBuf[0] = rpt_mgl_auto_palette[i%strlen(rpt_mgl_auto_palette)];
+		color = colorBuf;
+		}
 	    if (strlen(barcolors) + strlen(color) >= sizeof(barcolors))
 		break;
 	    strcat(barcolors, color);
@@ -3474,6 +3524,13 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
 #else
 		rpt_internal_DrawValueLabels(ctx, 1, reccnt-2, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_percent, 0.0);
 #endif
+	    /** Generate the legend **/
+	    if(ctx->show_legend)
+		{
+		snprintf(lineStyle, sizeof(lineStyle), "%s-9", color); /* make the line in the legend appear thicker*/
+		rpt_internal_GetString(ctx->inf, one_series, "legend_name", &ptr, one_series->Name, 0);
+		mgl_add_legend(ctx->gr, ptr, lineStyle);
+		}
 	    }
 
 	/** Font size for y axis **/
@@ -3515,6 +3572,17 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
 	mgl_bars(ctx->gr, ctx->chart_data, barcolors);
 #endif
 
+	/** finish off legend if applicable **/
+	if(ctx->show_legend)
+	    {
+#ifdef HAVE_MGL2
+	    char opt[32];
+	    snprintf(opt, sizeof(opt), "size %.1f; value 0.1", axis_fontsize * ctx->font_scale_factor);
+	    mgl_legend_pos(ctx->gr, 0.06, 0.0, "A", opt);
+#else
+	    mgl_legend_xy(ctx->gr, -0.28, 0.0, "", axis_fontsize * ctx->font_scale_factor, 0.1);
+#endif
+	    }
     return 0;
     }
 
@@ -3555,6 +3623,7 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
     char* ptr;
     int show_value, show_percent;
     char* color;
+    char colorBuf[2] = "\0\0";
     
 	//tickDist = rpt_internal_GetTickDist(ctx->max);
 	rpt_internal_GetInteger(ctx->inf, one_series, "fontsize", &series_fontsize, ctx->fontsize, 0);
@@ -3574,6 +3643,11 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
 	    /** Bar color **/
 	    one_series = (pStructInf)ctx->series->Items[i];
 	    color = rpt_internal_GetMglColor(ctx, one_series, "color", ctx->color, 0);
+	    if(strlen(color) == 0)
+		{
+		colorBuf[0] = rpt_mgl_auto_palette[i%strlen(rpt_mgl_auto_palette)];
+		color = colorBuf;
+		}
 	    snprintf(lineStyle, sizeof(lineStyle), "%s-4#d", color);
 	    if (strlen(linecolors) + strlen(lineStyle) >= sizeof(linecolors))
 		break;
@@ -3589,8 +3663,14 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
 	    /** Generate the numeric bar labels **/
 	    if (show_value || show_percent)
 		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, 1, 0, series_fontsize, show_percent, 0.0);
+	    /** Generate the legend **/
+	    if(ctx->show_legend)
+		{
+		rpt_internal_GetString(ctx->inf, one_series, "legend_name", &ptr, one_series->Name, 0);
+		mgl_add_legend(ctx->gr, ptr, lineStyle);
+		}
 	    }
-        
+
 	/** Font size for y axis **/
 	rpt_internal_GetInteger(ctx->inf, ctx->y_axis, "fontsize", &axis_fontsize, ctx->fontsize, 0);
 	fs = ctx->stand_w * ctx->rend_x_pixels / ctx->x_pixels * 6.0 / 50.0;
@@ -3613,6 +3693,18 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
 	mgl_axis_grid(ctx->gr, "y", "W-");
 	mgl_plot(ctx->gr, ctx->chart_data, linecolors);
 #endif
+
+	/** finish off legend if applicable **/
+	if(ctx->show_legend)
+	    {
+#ifdef HAVE_MGL2
+	    char opt[32];
+	    snprintf(opt, sizeof(opt), "size %.1f; value 0.1", axis_fontsize * ctx->font_scale_factor);
+	    mgl_legend_pos(ctx->gr, 0.06, 0.0, "A", opt);
+#else
+	    mgl_legend_xy(ctx->gr, -0.28, 0.0, "", axis_fontsize * ctx->font_scale_factor, 0.1);
+#endif
+	    }
 
     return 0;
     }
@@ -3752,6 +3844,294 @@ rpt_internal_PieChart_Generate(pRptChartContext ctx)
     }
 
 
+/*** rpt_internal_ReadManualSeries reads in the query data for a manually specified 
+ *** series in a chart. The query passed in must be initialized before and cleared after 
+ *** calling this function.
+ ***/
+
+int
+rpt_internal_ReadManualSeries(pRptChartContext ctx, pRptActiveQueries ac, pStructInf chart, pRptSession rs){
+    int errval = -1; /* default */
+    int rval = 0;
+    int i;
+    char* ptr;
+    pRptData inf = ctx->inf;
+    pRptChartValues value = NULL;
+    pStructInf one_series;
+	while(rval == 0)
+	    {
+	    /** Get the labels for the x-axis **/
+	    rpt_internal_GetString(inf, (pStructInf)(ctx->series->Items[0]), "x_value", &ptr, "", 0);
+
+	    /** Allocate the tuple **/
+	    value = rpt_internal_NewChartValues(ptr, ctx->series->nItems);
+	    if (!value)
+		goto error;
+            
+            /** Get the y values **/
+	    for(i=0; i<ctx->series->nItems; i++)
+		{
+		one_series = (pStructInf)xaGetItem(ctx->series, i);
+		if (rpt_internal_GetDouble(inf, one_series, "y_value", &(value->Values[i]), 0.0, 0) < 0)
+		    {
+		    mssError(0, "RPT", "Could not get y_value for series '%s'", one_series->Name);
+		    goto error;
+		    }
+		value->Series[i] = i; /** to be compatible with auto charts, needs to keep track of series as well. **/
+		}
+
+	    /** Next record **/
+	    xaAddItem(ctx->values, value);
+	    value = NULL;
+	    rval = rpt_internal_NextRecord(ac, inf, chart, rs, 0);
+	    }
+	
+	/** Fall through to error handler, to cleanup our resources,
+	 ** but return success.
+	 **/
+	errval = 0;
+    error:
+	if (value)
+	    rpt_internal_FreeChartValues(value);
+    return errval;
+}
+
+/*** rpt_internal_ReadAutoSeries reads in the query data for auto series in a chart.
+ *** The query passed in must be initialized before and cleared after calling this function.
+ ***/
+
+int
+rpt_internal_ReadAutoSeries(pRptChartContext ctx, pRptActiveQueries ac, pStructInf chart, pRptSession rs){
+    const char* AUTO_CHART_NAME = "report/chart-auto-series";
+    int errval = -1; /* default */
+    int rval;
+    int i;
+    char* ptr;
+    pRptData inf = ctx->inf;
+    pRptChartValues value = NULL;
+    char* paletteBuf = NULL;
+    pXArray palette = NULL;
+    char* start;
+    char* end;
+    char* cur_x = NULL;
+    int series_cnt = 0;
+    int paletteInd = 0;
+    int series_index;
+    pXArray tempVals = NULL;
+    pXArray tempSeries = NULL;
+    pStructInf subobj, childobj;
+    pExpression childexp;
+    int* int_ptr = NULL;
+    double* dbl_ptr = NULL;
+
+	/** check for a custom palette - any combination of a list of strings or strings containing a list **/
+	i = 0;
+	rval = rpt_internal_GetString(inf, chart, "palette", &ptr, NULL, i++);
+	if(rval >= 0)
+	    {
+	    palette = xaNew(16);
+	    if(!palette)
+		goto error;
+	    }
+	while(rval >= 0)
+	    {
+	    start = ptr;
+	    /** paletteBuf may contain a ',' seperated list of colors. Parse it **/
+	    while((end = strchr(start, ',')) != 0)
+		{
+		end[0] = '\0';
+		if(strlen(start) > 0) /*in the case of "value,,value", skip the empty string */
+		    {
+		    paletteBuf = nmSysStrdup(start);
+		    if (!paletteBuf)
+			goto error;
+		    xaAddItem(palette, paletteBuf);
+		    }
+		end[0] = ','; /* make sure to leave the string unmodified in the end */
+		start = end+1;
+		}
+	    /** handle the final/only color **/
+	    if(start[0] != '\0') /* in case the list is like "red," or "" */
+		{
+		paletteBuf = nmSysStrdup(start);
+		if (!paletteBuf)
+		    goto error;
+		xaAddItem(palette, paletteBuf);
+		}
+	    rval = rpt_internal_GetString(inf, chart, "palette", &ptr, NULL, i++);
+	    }
+
+	/** Enter the row retrieval loop. **/	
+	/** Each row belongs to just one series. Store values and series indexes until x changes, then store **/
+	tempVals = xaNew(16);
+	tempSeries = xaNew(16);
+	if (!ctx->series || !tempSeries || !tempVals || !ctx->values)
+	    goto error;
+	rval = 0;
+	while(rval == 0)
+	    {
+	    /** Get the labels for the x-axis **/
+	    rpt_internal_GetString(inf, chart, "x_value", &ptr, "", 0);
+	    /** check for change in X value **/
+	    if(!cur_x || strcmp(cur_x, ptr) != 0)
+		{
+		/** add previous **/
+		if(cur_x)
+		    {
+		    value = rpt_internal_NewChartValues(cur_x, series_cnt);
+		    if (!value)
+			goto error;
+		    for(i = 0 ; i < series_cnt ; i++)
+			{
+			value->Values[i] = *(double*) tempVals->Items[i];
+			value->Series[i] = *(int*) tempSeries->Items[i];
+			nmFree(tempVals->Items[i], sizeof(double));
+			nmFree(tempSeries->Items[i], sizeof(int));
+			}
+		    xaAddItem(ctx->values, value);
+		    value = NULL;
+		    /** Clear out the arrays **/
+		    xaClear(tempVals, NULL, NULL);
+		    xaClear(tempSeries, NULL, NULL);
+		    series_cnt = 0;
+		    nmSysFree(cur_x);
+		    }
+		cur_x = nmSysStrdup(ptr);
+		}
+	    
+	    /** get the current series **/
+	    rpt_internal_GetString(inf, chart, "series_value", &ptr, "", 0);
+	    /** check if we've seen this series before **/
+	    series_index = -1;
+	    for(i = 0 ; i < ctx->series->nItems ; i++) if(!strcmp(((pStructInf)ctx->series->Items[i])->Name, ptr))
+		series_index = i;
+	    if(series_index == -1)
+		{
+		/** Build the pStructInf for the series here **/
+		subobj = stAllocInf();
+		/** already has a name buffer **/
+		strncpy(subobj->Name, ptr, ST_NAME_STRLEN-1);
+		subobj->Name[ST_NAME_STRLEN-1] = '\0'; // make sure ends with a null
+		/** need a new buffer for auto chart type **/
+		subobj->UsrType = nmMalloc(ST_USRTYPE_STRLEN);
+		strncpy(subobj->UsrType, AUTO_CHART_NAME, ST_USRTYPE_STRLEN-1);
+		subobj->UsrType[ST_USRTYPE_STRLEN-1] = '\0';
+		/** if the user specified a palette, assign the color **/
+		if(palette)
+		    {
+		    childobj = stAllocInf();
+		    strncpy(childobj->Name, "color", ST_NAME_STRLEN-1);
+		    childobj->Name[ST_NAME_STRLEN-1] = '\0'; /* make sure ends with a null */
+		    childobj->Flags = ST_F_ATTRIB | ST_F_VERSION2;
+		    /** add the color value **/
+		    childexp = expAllocExpression();
+		    childexp->NodeType = EXPR_N_STRING;
+		    childexp->DataType = DATA_T_STRING;
+		    childexp->Alloc = 1;
+		    childexp->String = nmSysStrdup(palette->Items[paletteInd%palette->nItems]);
+		    paletteInd++;
+		    childobj->Value = childexp;
+		    stAddInf(subobj, childobj);
+		    }
+		/** check if an alternate series name was supplied for use in the legend **/
+		rpt_internal_GetString(inf, chart, "legend_value", &ptr, "", 0);
+		if(strlen(ptr) > 0)
+		    {
+		    childobj = stAllocInf();
+		    strncpy(childobj->Name, "legend_name", ST_NAME_STRLEN-1);
+		    childobj->Name[ST_NAME_STRLEN-1] = '\0'; /* make sure ends with a null */
+		    childobj->Flags = ST_F_ATTRIB | ST_F_VERSION2;
+		    /** add the string value **/
+		    childexp = expAllocExpression();
+		    childexp->NodeType = EXPR_N_STRING;
+		    childexp->DataType = DATA_T_STRING;
+		    childexp->Alloc = 1;
+		    childexp->String = nmSysStrdup(ptr);
+		    paletteInd++;
+		    childobj->Value = childexp;
+		    stAddInf(subobj, childobj);
+		    }
+		stAddInf(chart, subobj);
+		series_index = xaAddItem(ctx->series, subobj);
+		}
+	    
+	    int_ptr = nmMalloc(sizeof(int));
+	    *int_ptr = series_index;
+	    xaAddItem(tempSeries, int_ptr);
+	    int_ptr = NULL;
+	
+	    /** get the current y value **/
+	    dbl_ptr = nmMalloc(sizeof(double));
+	    if (rpt_internal_GetDouble(inf, chart, "y_value", dbl_ptr, 0.0, 0) < 0)
+		{
+		mssError(0, "RPT", "Could not get y_value for series '%s' at X='%s'", ptr, cur_x);
+		goto error;
+		}
+	    xaAddItem(tempVals, dbl_ptr);
+	    dbl_ptr = NULL;
+	
+	    /** Next record **/
+	    rval = rpt_internal_NextRecord(ac, inf, chart, rs, 0);
+	    series_cnt++;
+	    }
+	/** final cleanup **/
+	if(cur_x)
+	    {
+	    value = rpt_internal_NewChartValues(cur_x, series_cnt);
+	    if (!value)
+		goto error;
+	    for(i = 0 ; i < series_cnt ; i++)
+		{
+		value->Values[i] = *(double*) tempVals->Items[i];
+		value->Series[i] = *(int*) tempSeries->Items[i];
+		nmFree(tempVals->Items[i], sizeof(double));
+		nmFree(tempSeries->Items[i], sizeof(int));
+		}
+	    xaAddItem(ctx->values, value);
+	    value = NULL;
+	    /** Clear out the arrays **/
+	    xaClear(tempVals, NULL, NULL);
+	    xaClear(tempSeries, NULL, NULL);
+	    series_cnt = 0;
+	    nmSysFree(cur_x);
+	    cur_x = NULL;
+	    }
+	value = NULL;
+
+	/** Fall through to error handler, to cleanup our resources,
+	 ** but return success.
+	 **/
+	errval = 0;
+    error:
+	if (value)
+	    rpt_internal_FreeChartValues(value);
+	if(tempVals)
+	   {
+	    for(i = 0 ; i < tempVals->nItems ; i++) 
+		nmFree(tempVals->Items[i], sizeof(double));
+	    xaFree(tempVals);
+	   }
+	if(tempSeries)
+	    {
+	    for(i = 0 ; i < tempSeries->nItems ; i++) 
+		nmFree(tempSeries->Items[i], sizeof(int));
+	    xaFree(tempSeries);
+	    }
+	if(cur_x)
+	   nmSysFree(cur_x);
+	if(dbl_ptr)
+	    nmFree(dbl_ptr, sizeof(double));
+	if(int_ptr)
+	    nmFree(int_ptr, sizeof(int));
+	if(palette)
+	    {
+	    for(i = 0 ; i < palette->nItems ; i++) 
+		nmSysFree(palette->Items[i]);
+	    xaFree(palette);
+	    }
+    return errval;
+}
+
 /*** rpt_internal_DoChart prints a bar, line, or pie chart on the report based on the
  *** information provided by the user.  MathGL is used for the rendering.
  ***/
@@ -3761,6 +4141,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
     int errval = -1; /* default */
     pRptActiveQueries ac = NULL;
     int rval;
+    int isAuto = -1;
     int i,j;
     pPrtImage img = NULL;;
     int flags;
@@ -3775,7 +4156,6 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
     //int stacked;
     int axis_fontsize;
     pStructInf subobj;
-    pStructInf one_series;
     pRptChartValues value = NULL;
     pRptChartDriver drv;
     pRptChartContext ctx = NULL;
@@ -3814,9 +4194,10 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	    goto error;
 	memset(ctx, 0, sizeof(RptChartContext));
 	ctx->inf = inf;
-
+	ctx->show_legend = rpt_internal_GetBool(inf, chart, "show_legend", false, 0);
 	/** Determine axis/series counts **/
 	ctx->series = xaNew(4);
+
 	if (!ctx->series)
 	    goto error;
 	for(i=0; i<chart->nSubInf; i++)
@@ -3826,6 +4207,13 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 		{
 		if (!strcmp(subobj->UsrType, "report/chart-series"))
 		    {
+		    /** Make sure the user did not declare this as an auto series already **/
+		    if(isAuto == 1)
+			{
+			mssError(1, "RPT", "Error in chart '%s': auto series and manually declared series cannot be intermixed", chart->Name);
+			goto error;
+			}
+		    isAuto = 0;
 		    /** Get chart type - eventually we should be able to combine line
 		     ** and bar charts, but not right now.
 		     **/
@@ -3869,10 +4257,20 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 			}
 		    }
 		}
+	    else if (stStructType(subobj) == ST_T_ATTRIB && subobj->UsrType == NULL && !strcmp(subobj->Name, "series_value"))
+		{
+		/** Make sure the user did not already manually declare a series **/
+		if(isAuto == 0)
+		    {
+		    mssError(1, "RPT", "Error in chart '%s': auto series and manually declared series cannot be intermixed", chart->Name);
+		    goto error;
+		    }
+		isAuto = 1;
+		}
 	    }
 
 	/** Verify at least one series and two axes **/
-	if (ctx->series->nItems == 0 || !ctx->x_axis || !ctx->y_axis)
+	if ((ctx->series->nItems == 0 && isAuto != 1) || !ctx->x_axis || !ctx->y_axis)
 	    {
 	    mssError(1, "RPT", "chart '%s' must have x and y axes and at least one series", chart->Name);
 	    goto error;
@@ -3895,31 +4293,16 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	ctx->values = xaNew(16);
 	if (!ctx->values)
 	    goto error;
-	while(rval == 0)
-            {
-            /** Get the labels for the x-axis **/
-	    rpt_internal_GetString(inf, (pStructInf)(ctx->series->Items[0]), "x_value", &ptr, "", 0);
-
-	    /** Allocate the tuple **/
-	    value = rpt_internal_NewChartValues(ptr, ctx->series->nItems);
-	    if (!value)
+	
+	if(isAuto)
+	    {
+	    if(rpt_internal_ReadAutoSeries(ctx, ac, chart, rs) < 0)
 		goto error;
-            
-            /** Get the y values **/
-	    for(i=0; i<ctx->series->nItems; i++)
-		{
-		one_series = (pStructInf)xaGetItem(ctx->series, i);
-		if (rpt_internal_GetDouble(inf, one_series, "y_value", &(value->Values[i]), 0.0, 0) < 0)
-		    {
-		    mssError(0, "RPT", "Could not get y_value for series '%s'", one_series->Name);
-		    goto error;
-		    }
-		}
-
-	    /** Next record **/
-	    xaAddItem(ctx->values, value);
-	    value = NULL;
-	    rval = rpt_internal_NextRecord(ac, inf, chart, rs, 0);
+	    }
+	else
+	    {
+	    if(rpt_internal_ReadManualSeries(ctx, ac, chart, rs) < 0)
+		goto error;
 	    }
 
 	/** We're finished with the query **/
@@ -3943,13 +4326,24 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	 **/
 	ctx->min = 0;
 	ctx->max = 0;
+
 	for(i=0; i<ctx->values->nItems; i++)
 	    {
 	    value = (pRptChartValues)ctx->values->Items[i];
 	    ctx->x_labels[i] = value->Label;
-	    for(j=0; j<ctx->series->nItems; j++)
+	    /* auto series can be sparsely pupolated and thus require initialization */
+	    if(isAuto)
 		{
-		mgl_data_set_value(ctx->chart_data, (float)value->Values[j], i, j, 0);
+		for(j=0; j < ctx->series->nItems; j++)
+		    {
+		    mgl_data_set_value(ctx->chart_data, (float)NAN, i, j, 0);
+		    }
+		}
+	    /* values are entered in reverse to ensure that if the data contains multiple y values for the same x and same series 
+		the first will always be used */
+	    for(j=value->nItems -1; j >= 0; j--)
+		{
+		mgl_data_set_value(ctx->chart_data, (float)value->Values[j], i, value->Series[j], 0);
 		if (ctx->min > value->Values[j]) ctx->min = value->Values[j];
 		if (ctx->max < value->Values[j]) ctx->max = value->Values[j];
 		}
@@ -4009,7 +4403,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 #endif
         
 	/** Chart color **/
-	strtcpy(color, rpt_internal_GetMglColor(ctx, chart, "color", "b", 0), sizeof(color));
+	strtcpy(color, rpt_internal_GetMglColor(ctx, chart, "color", "", 0), sizeof(color));
 	ctx->color = color;
 
 	/** Create the chart **/
@@ -4117,7 +4511,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	 ** but return success.
 	 **/
 	errval = 0;
-
+	/// TODO: update what gets freed to include everything
     error:
 	if (ctx->x_labels)
 	    nmSysFree(ctx->x_labels);
@@ -4145,7 +4539,6 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	    nmFree(ctx, sizeof(RptChartContext));
 	return errval;
     }
-
 
 #if 00
 /*** rpt_internal_DoFooter - generate a report footer on demand.  This is
