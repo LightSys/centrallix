@@ -16,6 +16,7 @@
 #include "st_node.h"
 #include "expression.h"
 #include "cxlib/mtsession.h"
+#include "endorsement_utils.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -259,6 +260,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
     XString sql;
     pObjQuery test_qy;
     char createpath[OBJSYS_MAX_PATH+1];
+    char* endorsement_name;
 
     	/** Setup the pathname into its subparts **/
 	for(i=1;i<path->nElements;i++) path->Elements[i][-1] = 0;
@@ -308,6 +310,13 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
                         stAttrValue(lookup_inf,NULL,&strval,0);
                         if (!strcmp(path->Elements[subref],strval))
                             {
+			    /** Security check **/
+			    if (endVerifyEndorsements(find_inf, stGetObjAttrValue, &endorsement_name) < 0)
+				{
+				mssError(1,"QYT","Security check failed - endorsement '%s' required for object '%s'", endorsement_name, find_inf->Name);
+				goto error;
+				}
+
 			    if (!did_param)
 				expAddParamToList(objlist,strval,NULL,EXPR_O_CURRENT | EXPR_O_ALLOWDUPS);
                             next_inf = find_inf;
@@ -318,6 +327,13 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
                         }
                     else if ((lookup_inf = stLookup(find_inf, "sql")))
 			{
+			/** Security check **/
+			if (endVerifyEndorsements(find_inf, stGetObjAttrValue, &endorsement_name) < 0)
+			    {
+			    mssError(1,"QYT","Security check failed - endorsement '%s' required for object '%s'", endorsement_name, find_inf->Name);
+			    goto error;
+			    }
+
 			xhAdd(&struct_table, find_inf->Name, (void*)find_inf);
 
 			/** forced leaf flag and having clause flag **/
@@ -413,6 +429,13 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 			}
                     else if ((lookup_inf = stLookup(find_inf, "source")))
                         {
+			/** Security check **/
+			if (endVerifyEndorsements(find_inf, stGetObjAttrValue, &endorsement_name) < 0)
+			    {
+			    mssError(1,"QYT","Security check failed - endorsement '%s' required for object '%s'", endorsement_name, find_inf->Name);
+			    goto error;
+			    }
+
                         strval = "";
                         stAttrValue(lookup_inf,NULL,&strval,0);
                         expr = NULL;
@@ -574,6 +597,7 @@ qytOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     pQytData inf;
     pSnNode node = NULL;
     char buf[1];
+    char* endorsement_name;
 
 	/** If CREAT and EXCL, we only create, failing if already exists. **/
 	if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))
@@ -603,6 +627,13 @@ qytOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	if (!node)
 	    {
 	    mssError(0,"QYT","Could not open querytree node object");
+	    return NULL;
+	    }
+
+	/** Security check **/
+	if (node->Data && endVerifyEndorsements(node->Data, stGetObjAttrValue, &endorsement_name) < 0)
+	    {
+	    mssError(1,"QYT","Security check failed - endorsement '%s' required", endorsement_name);
 	    return NULL;
 	    }
 
