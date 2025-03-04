@@ -63,3 +63,4 @@ perf.data.old
 .vscode/
 centrallix-os/tmp/*
 compile_commands.json
+.cache/*
