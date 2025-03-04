@@ -35,6 +35,7 @@
 
 
 
+#include "prtmgmt_v3/prtmgmt_v3.h"
 #define PRT_TEXTLM_F_RMSPACE    PRT_OBJ_F_LMFLAG1       /* space was removed at end */
 
 

@@ -611,14 +611,31 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 	switch(obj->ObjType->TypeID)
 	    {
 	    case PRT_OBJ_T_STRING:
+		// don't print needless empty strings
+		if (strlen((char*)obj->Content) == 0) break;
+		
 		prt_htmlfm_SetStyle(context, &(obj->TextStyle));
-		if (obj->URL && !strchr(obj->URL, '"'))
-		    {
+		if (obj->URL && !strchr(obj->URL, '"')) {
 		    prt_htmlfm_Output(context, "<a href=\"", 9);
 		    prt_htmlfm_OutputEncoded(context, obj->URL, -1);
 		    prt_htmlfm_Output(context, "\">", 2);
-		    }
-		prt_htmlfm_OutputEncoded(context, (char*)obj->Content, -1);
+		}
+		if (context->Flags & PRT_HTMLFM_F_PAGINATED) {
+			prt_htmlfm_OutputEncoded(context, (char*)obj->Content, -1);
+		} else {
+			switch (obj->Justification) {
+				default: prt_htmlfm_OutputPrintf(context, "<div #string style=\"text-align: left\">");
+					break;
+				case 1: prt_htmlfm_OutputPrintf(context, "<div #string style=\"text-align: right\">");
+					break;
+				case 2: prt_htmlfm_OutputPrintf(context, "<div #string style=\"text-align: center\">");
+					break;
+				case 3: prt_htmlfm_OutputPrintf(context, "<div #string style=\"text-align: justify\">");
+					break;
+			}
+			prt_htmlfm_Output(context, (char*)obj->Content, -1);
+			prt_htmlfm_Output(context, "</div>", -1);
+		}
 		if (obj->URL && !strchr(obj->URL, '"'))
 		    {
 		    prt_htmlfm_Output(context, "</a>", 4);
@@ -773,8 +790,8 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
 	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_PAGEHEADER, (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001)+34);
 
-	/** Write a table to handle page margins **/
-	prt_htmlfm_OutputPrintf(context, "<div style=\"maxwidth:%d;padding:%d %d %d %d\">\n", (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001),
+	/** Write div to handle page margins **/
+	prt_htmlfm_OutputPrintf(context, "<div style=\"max-width: %d; padding: %d %d %d %d\">\n", (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001),
 		(int)((page_obj->MarginTop+0.001)*PRT_HTMLFM_YPIXEL), (int)((page_obj->MarginRight+0.001)*PRT_HTMLFM_YPIXEL),
 		(int)((page_obj->MarginBottom+0.001)*PRT_HTMLFM_YPIXEL), (int)((page_obj->MarginLeft+0.001)*PRT_HTMLFM_YPIXEL));
 
