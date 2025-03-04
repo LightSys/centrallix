@@ -774,12 +774,9 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_PAGEHEADER, (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001)+34);
 
 	/** Write a table to handle page margins **/
-	prt_htmlfm_Output(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n", -1);
-	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", (int)(page_obj->MarginLeft*PRT_HTMLFM_XPIXEL+0.001));
-	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", (int)((page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight+0.001)*PRT_HTMLFM_XPIXEL));
-	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", (int)(page_obj->MarginRight*PRT_HTMLFM_XPIXEL+0.001));
-	prt_htmlfm_OutputPrintf(context, "<tr><td height=\"%d\"></td><td></td><td></td></tr><tr><td></td><td>\n", 
-		(int)((page_obj->MarginTop+0.001)*PRT_HTMLFM_YPIXEL));
+	prt_htmlfm_OutputPrintf(context, "<div style=\"maxwidth:%d;padding:%d %d %d %d\">\n", (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001),
+		(int)((page_obj->MarginTop+0.001)*PRT_HTMLFM_YPIXEL), (int)((page_obj->MarginRight+0.001)*PRT_HTMLFM_YPIXEL),
+		(int)((page_obj->MarginBottom+0.001)*PRT_HTMLFM_YPIXEL), (int)((page_obj->MarginLeft+0.001)*PRT_HTMLFM_YPIXEL));
 
 	/** We need to scan the absolute-positioned content to figure out how many
 	 ** "columns" and "rows" we need to put in the "table" used for layout
@@ -892,8 +889,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 
 
 	/** Write the page footer **/
-	prt_htmlfm_OutputPrintf(context, "</td><td></td></tr><tr><td height=\"%d\"></td><td></td><td></td></tr></table>\n", 
-		(int)((page_obj->MarginBottom+0.001)*PRT_HTMLFM_YPIXEL));
+	prt_htmlfm_Output(context, "</div>", -1);
 	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
 	    prt_htmlfm_Output(context, PRT_HTMLFM_PAGEFOOTER, -1);
 
