@@ -36,6 +36,7 @@
 
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
+#include "cxlib/xstring.h"
 
 
 #define PRT_XY_CORRECTION_FACTOR	(72.0/120.0)
