@@ -62,7 +62,7 @@
 
 
 /*** Document header ***/
-#define	PRT_HTMLFM_HEADER	"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">\n" \
+#define	PRT_HTMLFM_HEADER	"<!DOCTYPE html>\n" \
 				"<html>\n" \
 				"<head>\n" \
 				"    <title>Centrallix HTML Document</title>\n" \
