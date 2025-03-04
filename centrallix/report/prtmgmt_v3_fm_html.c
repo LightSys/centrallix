@@ -731,52 +731,49 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 			break;
 
 
-            case PRT_OBJ_T_SVG:
-		/** We need an image store location in order to handle these **/
-		if (context->Session->ImageOpenFn)
-		    {
-		    id = PRT_HTMLFM.ImageID++;
-		    w = obj->Width*PRT_HTMLFM_XPIXEL;
-		    h = obj->Height*PRT_HTMLFM_YPIXEL;
-		    if (w <= 0) w = 1;
-		    if (h <= 0) h = 1;
-		    path = (char*)nmMalloc(OBJSYS_MAX_PATH);
-		    if (!path) 
-                        {
-                        mssError(1, "PRT", "nmMalloc() failed\n");
-                        return -1;
-                        }
-                    rval = snprintf(path, OBJSYS_MAX_PATH, "%sprt_htmlfm_%8.8lX.svg", context->Session->ImageSysDir, id);
-		    if (rval < 0 || rval >= OBJSYS_MAX_PATH)
-			{
-                        mssError(1, "PRT", "Internal representation exceeded for image pathname\n");
-			nmFree(path, OBJSYS_MAX_PATH);
-                        return -1;
+			case PRT_OBJ_T_SVG:
+			if (context->Session->ImageOpenFn) {
+			    w = obj->Width * PRT_HTMLFM_XPIXEL;
+			    h = obj->Height * PRT_HTMLFM_YPIXEL;
+			    if (w <= 0) w = 1;
+			    if (h <= 0) h = 1;
+		    
+			    ImageBuffer imgBuf = { (char *)nmMalloc(MAX_IMAGE_SIZE), 0, MAX_IMAGE_SIZE };
+			    if (!imgBuf.buffer) {
+				mssError(1, "PRT", "nmMalloc() failed\n");
+				return -1;
+			    }
+		    
+			    // Capture SVG image into the buffer
+			    prt_internal_WriteSvgToFile(ImageWriteFn, &imgBuf, (pPrtSvg)(obj->Content), w, h);
+		    
+			    // Encode SVG to Base64
+			    char *base64Image = base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size);
+			    nmFree(imgBuf.buffer, MAX_IMAGE_SIZE);
+			    if (!base64Image) {
+				mssError(1, "PRT", "Base64 encoding failed\n");
+				return -1;
+			    }
+		    
+			    // Output the image as an embedded base64 SVG
+			    if (obj->URL && !strchr(obj->URL, '"')) {
+				prt_htmlfm_Output(context, "<a href=\"", 9);
+				prt_htmlfm_OutputEncoded(context, obj->URL, -1);
+				prt_htmlfm_Output(context, "\">", 2);
+			    }
+		    
+			    prt_htmlfm_OutputPrintf(context,
+				"<img src=\"data:image/svg+xml;base64,%s\" width=\"%d\" height=\"%d\" border=\"0\">",
+				base64Image, w, h);
+		    
+			    if (obj->URL && !strchr(obj->URL, '"')) {
+				prt_htmlfm_Output(context, "</a>", 4);
+			    }
+		    
+			    nmFree(base64Image, strlen(base64Image) + 1);
 			}
-		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/svg+xml");
-		    if (!arg)
-			{
-			mssError(0,"PRT","Failed to open new linked image '%s'",path);
-			nmFree(path, OBJSYS_MAX_PATH);
-			return -1;
-			}
-		    prt_internal_WriteSvgToFile(context->Session->ImageWriteFn, arg, (pPrtSvg)(obj->Content), w, h);
-		    context->Session->ImageCloseFn(arg);
-		    nmFree(path, OBJSYS_MAX_PATH);
-		    if (obj->URL && !strchr(obj->URL, '"'))
-			{
-			prt_htmlfm_Output(context, "<a href=\"", 9);
-			prt_htmlfm_OutputEncoded(context, obj->URL, -1);
-			prt_htmlfm_Output(context, "\">", 2);
-			}
-		    prt_htmlfm_OutputPrintf(context, "<img src=\"%sprt_htmlfm_%8.8X.svg\" border=\"0\" width=\"%d\" height=\"%d\">", 
-			    context->Session->ImageExtDir, id, w, h);
-		    if (obj->URL && !strchr(obj->URL, '"'))
-			{
-			prt_htmlfm_Output(context, "</a>", 4);
-			}
-		    }
-		break;
+			break;
+		    
 
 	    case PRT_OBJ_T_TABLE:
 		prt_htmlfm_GenerateTable(context, obj);
