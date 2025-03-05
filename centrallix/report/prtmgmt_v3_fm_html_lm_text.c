@@ -91,7 +91,22 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area) {
 	prt_htmlfm_OutputPrintf(context, "<div #area style=\"border: %d solid %d; display: flex; flex-direction: column; width: 100%%\">", lm_inf->AreaBorder.Width[0], lm_inf->AreaBorder.Color[0]);
 
 	for (scan = area->ContentHead; scan != NULL; scan = scan->Next) {
-		prt_htmlfm_Generate_r(context, scan);		
+		
+		prt_htmlfm_Output(context, "<div style=\"display: flex\">", -1);
+
+		prt_htmlfm_Generate_r(context, scan);
+
+		// justified text is split into individual objects... skip to next actual object
+		while (scan->ObjType->TypeID == PRT_OBJ_T_STRING
+				&& scan->Justification == 3
+				&& scan->Next
+				&& scan->Next->ObjType->TypeID == PRT_OBJ_T_STRING
+				&& scan->Next->Justification == 3) {
+			scan = scan->Next;
+		}
+
+		prt_htmlfm_Output(context, "</div>", -1);
+		
 	}
 
 	prt_htmlfm_Output(context, "</div>", -1);

@@ -640,6 +640,13 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
     unsigned long id;
     int rval;
 
+	printf("Generate_r: %s\n", obj->ObjType->TypeName);
+	if (obj->ObjType->TypeID == PRT_OBJ_T_STRING) {
+		printf("         C: \"%s\"\n", obj->Content);
+		printf("        LF: \"%d\"\n", obj->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE));
+	}
+
+
 	/** Check recursion **/
 	if (thExcessiveRecursion())
 	    {
@@ -652,7 +659,9 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 	    {
 	    case PRT_OBJ_T_STRING:
 		// don't print needless empty strings
-		if (strlen((char*)obj->Content) == 0) break;
+		// if (strlen((char*)obj->Content) == 0) {
+		// 	break;
+		// }
 		
 		prt_htmlfm_SetStyle(context, &(obj->TextStyle));
 		if (obj->URL && !strchr(obj->URL, '"')) {
@@ -673,7 +682,25 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 				case 3: prt_htmlfm_OutputPrintf(context, "<div #string style=\"text-align: justify\">");
 					break;
 			}
+			// printf("TEST: %s\n", (char*)obj->Content);
 			prt_htmlfm_Output(context, (char*)obj->Content, -1);
+
+			if (obj->Justification == 3) {
+				while (obj->Next && obj->Next->ObjType->TypeID == PRT_OBJ_T_STRING && obj->Next->Justification == 3) {
+
+					if (obj->Flags & PRT_OBJ_F_SOFTNEWLINE) {
+						prt_htmlfm_Output(context, " ", -1);
+					}
+		
+					if (obj->Flags & PRT_OBJ_F_NEWLINE) {
+						prt_htmlfm_Output(context, "<br>", -1);
+					}
+
+					obj = obj->Next;
+					prt_htmlfm_Output(context, (char*)obj->Content, -1);
+				}
+			}
+
 			prt_htmlfm_Output(context, "</div>", -1);
 		}
 		if (obj->URL && !strchr(obj->URL, '"'))
@@ -828,7 +855,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_PAGEHEADER, (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001)+34);
 
 	/** Write div to handle page margins **/
-	prt_htmlfm_OutputPrintf(context, "<div style=\"max-width: %d; padding: %d %d %d %d\">\n", (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001),
+	prt_htmlfm_OutputPrintf(context, "<div style=\"max-width: %dpx; padding: %d %d %d %d\">\n", (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001),
 		(int)((page_obj->MarginTop+0.001)*PRT_HTMLFM_YPIXEL), (int)((page_obj->MarginRight+0.001)*PRT_HTMLFM_YPIXEL),
 		(int)((page_obj->MarginBottom+0.001)*PRT_HTMLFM_YPIXEL), (int)((page_obj->MarginLeft+0.001)*PRT_HTMLFM_YPIXEL));
 
