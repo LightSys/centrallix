@@ -707,6 +707,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    {
 		    prt_htmlfm_Output(context, "</a>", 4);
 		    }
+		prt_htmlfm_EndStyle(context);
 		break;
 
 	    case PRT_OBJ_T_AREA:
@@ -852,7 +853,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_PAGEHEADER, (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001)+34);
 
 	/** Write div to handle page margins **/
-	prt_htmlfm_OutputPrintf(context, "<div style=\"max-width: %dpx; padding: %d %d %d %d\">\n", (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001),
+	prt_htmlfm_OutputPrintf(context, "<div style=\"max-width: %dpx; padding: %dpx %dpx %dpx %dpx\">\n", (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001),
 		(int)((page_obj->MarginTop+0.001)*PRT_HTMLFM_YPIXEL), (int)((page_obj->MarginRight+0.001)*PRT_HTMLFM_YPIXEL),
 		(int)((page_obj->MarginBottom+0.001)*PRT_HTMLFM_YPIXEL), (int)((page_obj->MarginLeft+0.001)*PRT_HTMLFM_YPIXEL));
 
@@ -967,7 +968,6 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		prt_htmlfm_Output(context, "</tr></table>\n", 14);
 	} else {
 		/** Write the layout table **/
-		prt_htmlfm_Output(context, "<div>", -1);
 
 		/** Generate the body of the page, by selectively walking the YPrev/YNext chain **/
 		cur_row = 0;
@@ -1001,7 +1001,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 				}
 			}
 		}
-		prt_htmlfm_Output(context, "</div></div>\n", 14);
+		prt_htmlfm_Output(context, "</div>\n", -1);
 	}
 
 

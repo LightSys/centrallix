@@ -92,7 +92,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area) {
 
 	for (scan = area->ContentHead; scan != NULL; scan = scan->Next) {
 		
-		prt_htmlfm_Output(context, "<div style=\"display: flex\">", -1);
+		// prt_htmlfm_Output(context, "<div style=\"display: flex\">", -1);
 
 		prt_htmlfm_Generate_r(context, scan);
 
@@ -105,7 +105,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area) {
 			scan = scan->Next;
 		}
 
-		prt_htmlfm_Output(context, "</div>", -1);
+		// prt_htmlfm_Output(context, "</div>", -1);
 		
 	}
 
