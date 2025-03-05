@@ -885,58 +885,97 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		}
 	    }
 
-	/** Write the layout table **/
-	prt_htmlfm_Output(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n", -1);
-	for(i = 0; i < n_cols; i++)
-	    {
-	    if (i == n_cols-1)
-		w = (page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight - colpos[i])*PRT_HTMLFM_XPIXEL;
-	    else
-		w = (colpos[i+1] - colpos[i]) * PRT_HTMLFM_XPIXEL;
-	    prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", w);
-	    }
-
-	/** Generate the body of the page, by selectively walking the YPrev/YNext chain **/
-	cur_row = 0;
-	cur_col = 0;
-	prt_htmlfm_Output(context, "<tr>", 4);
-	for(subobj=page_obj; subobj; subobj=subobj->YNext)
-	    {
-	    if (subobj->Parent == page_obj)
-		{
-		/** Next row? **/
-		if (subobj->Y > rowpos[cur_row])
-		    {
-		    while(subobj->Y > (rowpos[cur_row]+0.001) && cur_row < PRT_HTMLFM_MAXROWS-1) cur_row++;
-		    prt_htmlfm_Output(context, "</tr>\n<tr>", 10);
-		    cur_col = 0;
-		    }
-
-		/** Skip cols? **/
-		if (subobj->X > colpos[cur_col])
-		    {
-		    i=0;
-		    while(subobj->X > (colpos[cur_col]+0.001) && cur_col < PRT_HTMLFM_MAXCOLS-1)
+	if(context->Flags & PRT_HTMLFM_F_PAGINATED) {
+		/** Write the layout table **/
+		prt_htmlfm_Output(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n", -1);
+		for(i = 0; i < n_cols; i++)
 			{
-			i++;
-			cur_col++;
+			if (i == n_cols-1)
+			w = (page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight - colpos[i])*PRT_HTMLFM_XPIXEL;
+			else
+			w = (colpos[i+1] - colpos[i]) * PRT_HTMLFM_XPIXEL;
+			prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", w);
 			}
-		    prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\">&nbsp;</td>", i);
-		    }
 
-		/** Figure rowspan and colspan **/
-		cs=1;
-		while(cur_col+cs < n_cols && (colpos[cur_col+cs]+0.001) < subobj->X + subobj->Width) cs++;
-		rs=1;
-		while(cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height) rs++;
-		prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\" rowspan=\"%d\" valign=\"top\" align=\"left\">", cs, rs);
-		prt_htmlfm_Generate_r(context, subobj);
-		prt_htmlfm_Output(context, "</td>", 5);
-		cur_col += cs;
-		if (cur_col >= n_cols) cur_col = n_cols-1;
+		/** Generate the body of the page, by selectively walking the YPrev/YNext chain **/
+		cur_row = 0;
+		cur_col = 0;
+		prt_htmlfm_Output(context, "<tr>", 4);
+		for(subobj=page_obj; subobj; subobj=subobj->YNext)
+			{
+			if (subobj->Parent == page_obj)
+			{
+			/** Next row? **/
+			if (subobj->Y > rowpos[cur_row])
+				{
+				while(subobj->Y > (rowpos[cur_row]+0.001) && cur_row < PRT_HTMLFM_MAXROWS-1) cur_row++;
+				prt_htmlfm_Output(context, "</tr>\n<tr>", 10);
+				cur_col = 0;
+				}
+
+			/** Skip cols? **/
+			if (subobj->X > colpos[cur_col])
+				{
+				i=0;
+				while(subobj->X > (colpos[cur_col]+0.001) && cur_col < PRT_HTMLFM_MAXCOLS-1)
+				{
+				i++;
+				cur_col++;
+				}
+				prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\">&nbsp;</td>", i);
+				}
+
+			/** Figure rowspan and colspan **/
+			cs=1;
+			while(cur_col+cs < n_cols && (colpos[cur_col+cs]+0.001) < subobj->X + subobj->Width) cs++;
+			rs=1;
+			while(cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height) rs++;
+			prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\" rowspan=\"%d\" valign=\"top\" align=\"left\">", cs, rs);
+			prt_htmlfm_Generate_r(context, subobj);
+			prt_htmlfm_Output(context, "</td>", 5);
+			cur_col += cs;
+			if (cur_col >= n_cols) cur_col = n_cols-1;
+			}
+			}
+		prt_htmlfm_Output(context, "</tr></table>\n", 14);
+	} else {
+		/** Write the layout table **/
+		prt_htmlfm_Output(context, "<div>", -1);
+
+		/** Generate the body of the page, by selectively walking the YPrev/YNext chain **/
+		cur_row = 0;
+		cur_col = 0;
+		char* divFormat = "<div style=\"display: flex; padding-bottom: 3px; justify-content: center\">";
+		prt_htmlfm_Output(context, divFormat, -1);
+		for(subobj=page_obj; subobj; subobj=subobj->YNext)	{
+			if (subobj->Parent == page_obj) {
+				/** Next row? **/
+				if (subobj->Y > rowpos[cur_row]) {
+					while(subobj->Y > (rowpos[cur_row]+0.001) && cur_row < PRT_HTMLFM_MAXROWS-1) cur_row++;
+					prt_htmlfm_Output(context, "</div>\n", -1);
+					prt_htmlfm_Output(context, divFormat, -1);
+					cur_col = 0;
+				}
+
+				/** Skip cols? **/
+				if (subobj->X > colpos[cur_col]) {
+					prt_htmlfm_OutputPrintf(context, "<p>&nbsp;</p>");
+				}
+
+				/** Figure rowspan and colspan **/
+				cs = 1;
+				while(cur_col+cs < n_cols && (colpos[cur_col+cs]+0.001) < subobj->X + subobj->Width) cs++;
+				rs = 1;
+				while(cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height) rs++;
+				prt_htmlfm_Generate_r(context, subobj);
+				cur_col += cs;
+				if (cur_col >= n_cols) {
+					cur_col = n_cols-1;
+				}
+			}
 		}
-	    }
-	prt_htmlfm_Output(context, "</tr></table>\n", 14);
+		prt_htmlfm_Output(context, "</div></div>\n", 14);
+	}
 
 
 	/** Write the page footer **/
