@@ -594,9 +594,6 @@ prt_htmlfm_EndBorder(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj
     return 0;
     }
 
-
-
-
 /** Gets size of image file */
 int ImageWriteFn(void *arg, const void *data, size_t len) {
 	ImageBuffer *imgBuf = (ImageBuffer *)arg;
@@ -608,10 +605,10 @@ int ImageWriteFn(void *arg, const void *data, size_t len) {
 	return len;
 }
     
-const char b64_table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /** Encodes a char* input to base64 */
 char *base64_encode(const unsigned char *input, size_t len) {
+	const char b64_table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 	size_t out_len = 4 * ((len + 2) / 3);
 	char *output = (char *)nmMalloc(out_len + 1);
 	if (!output) return NULL;
@@ -632,31 +629,21 @@ char *base64_encode(const unsigned char *input, size_t len) {
  *** of page generation.
  ***/
 int
-prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
-    {
-    char* path;
-    void* arg;
-    int w,h;
-    unsigned long id;
-    int rval;
-
+prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 	printf("Generate_r: %s\n", obj->ObjType->TypeName);
 	if (obj->ObjType->TypeID == PRT_OBJ_T_STRING) {
 		printf("         C: \"%s\"\n", obj->Content);
 		printf("        LF: \"%d\"\n", obj->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE));
 	}
 
-
 	/** Check recursion **/
-	if (thExcessiveRecursion())
-	    {
+	if (thExcessiveRecursion()) {
 	    mssError(1,"PRT","Could not generate page: resource exhaustion occurred");
 	    return -1;
-	    }
+	}
 
 	/** Select the type of object we're formatting **/
-	switch(obj->ObjType->TypeID)
-	    {
+	switch(obj->ObjType->TypeID) {
 	    case PRT_OBJ_T_STRING:
 		// don't print needless empty strings
 		// if (strlen((char*)obj->Content) == 0) {
@@ -711,32 +698,33 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		break;
 
 	    case PRT_OBJ_T_AREA:
-		prt_htmlfm_GenerateArea(context, obj);
-		break;
+			prt_htmlfm_GenerateArea(context, obj);
+			break;
 
 	    case PRT_OBJ_T_SECTION:
-		prt_htmlfm_GenerateMultiCol(context, obj);
-		break;
+			prt_htmlfm_GenerateMultiCol(context, obj);
+			break;
 
 	    case PRT_OBJ_T_RECT:
-		/** Don't output rectangles that are container decorations added
-		 ** by finalize routines in the layout managers.  We really need a 
-		 ** better way to tell this than the conditional below.
-		 **/
-		if (obj->Parent && obj->Parent->ObjType->TypeID != PRT_OBJ_T_SECTION && !(obj->Flags & PRT_OBJ_F_MARGINRELEASE))
-		    {
-		    w = obj->Width*PRT_HTMLFM_XPIXEL;
-		    h = obj->Height*PRT_HTMLFM_YPIXEL;
-		    prt_htmlfm_OutputPrintf(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\"><tr><td bgcolor=\"#%6.6X\" width=\"%d\" height=\"%d\"><table border=\"0\" cellspacing=\"0\" cellpadding=\"0\"><tr><td></td></tr></table></td></tr></table>\n",
-			    obj->TextStyle.Color, w, h);
-		    }
-		break;
+			/** Don't output rectangles that are container decorations added
+			** by finalize routines in the layout managers.  We really need a 
+			** better way to tell this than the conditional below.
+			**/
+			if (obj->Parent && obj->Parent->ObjType->TypeID != PRT_OBJ_T_SECTION && !(obj->Flags & PRT_OBJ_F_MARGINRELEASE))
+				{
+				int w = obj->Width*PRT_HTMLFM_XPIXEL;
+				int h = obj->Height*PRT_HTMLFM_YPIXEL;
+				prt_htmlfm_OutputPrintf(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\"><tr><td bgcolor=\"#%6.6X\" width=\"%d\" height=\"%d\"><table border=\"0\" cellspacing=\"0\" cellpadding=\"0\"><tr><td></td></tr></table></td></tr></table>\n",
+					obj->TextStyle.Color, w, h);
+				}
+			break;
 
 		/* Encodes image to base64 and writes to HTML */
 		case PRT_OBJ_T_IMAGE:
+		case PRT_OBJ_T_SVG:
 			if (context->Session->ImageOpenFn) {
-			    w = obj->Width * PRT_HTMLFM_XPIXEL;
-			    h = obj->Height * PRT_HTMLFM_YPIXEL;
+			    int w = obj->Width * PRT_HTMLFM_XPIXEL;
+			    int h = obj->Height * PRT_HTMLFM_YPIXEL;
 			    if (w <= 0) w = 1;
 			    if (h <= 0) h = 1;
 
@@ -764,8 +752,15 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 			        prt_htmlfm_Output(context, "\">", 2);
 			    }
 
-			    prt_htmlfm_OutputPrintf(context, "<img src=\"data:image/png;base64,%s\" width=\"%d\" height=\"%d\" border=\"0\">",
-					base64Image, w, h);
+				// Justification: All cases in which it is not an image, it is a SVG.
+				if(obj->ObjType->TypeID == PRT_OBJ_T_IMAGE) {
+					prt_htmlfm_OutputPrintf(context, "<img src=\"data:image/png;base64,%s\" width=\"%d\" height=\"%d\" border=\"0\">",
+						base64Image, w, h);
+				} else {
+					prt_htmlfm_OutputPrintf(context,
+					"<img src=\"data:image/svg+xml;base64,%s\" width=\"%d\" height=\"%d\" border=\"0\">",
+						base64Image, w, h);
+				}
 
 			    if (obj->URL && !strchr(obj->URL, '"')) {
 			        prt_htmlfm_Output(context, "</a>", 4);
@@ -775,58 +770,13 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 			}
 			break;
 
-
-			case PRT_OBJ_T_SVG:
-			if (context->Session->ImageOpenFn) {
-			    w = obj->Width * PRT_HTMLFM_XPIXEL;
-			    h = obj->Height * PRT_HTMLFM_YPIXEL;
-			    if (w <= 0) w = 1;
-			    if (h <= 0) h = 1;
-		    
-			    ImageBuffer imgBuf = { (char *)nmMalloc(MAX_IMAGE_SIZE), 0, MAX_IMAGE_SIZE };
-			    if (!imgBuf.buffer) {
-				mssError(1, "PRT", "nmMalloc() failed\n");
-				return -1;
-			    }
-		    
-			    // Capture SVG image into the buffer
-			    prt_internal_WriteSvgToFile(ImageWriteFn, &imgBuf, (pPrtSvg)(obj->Content), w, h);
-		    
-			    // Encode SVG to Base64
-			    char *base64Image = base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size);
-			    nmFree(imgBuf.buffer, MAX_IMAGE_SIZE);
-			    if (!base64Image) {
-				mssError(1, "PRT", "Base64 encoding failed\n");
-				return -1;
-			    }
-		    
-			    // Output the image as an embedded base64 SVG
-			    if (obj->URL && !strchr(obj->URL, '"')) {
-				prt_htmlfm_Output(context, "<a href=\"", 9);
-				prt_htmlfm_OutputEncoded(context, obj->URL, -1);
-				prt_htmlfm_Output(context, "\">", 2);
-			    }
-		    
-			    prt_htmlfm_OutputPrintf(context,
-				"<img src=\"data:image/svg+xml;base64,%s\" width=\"%d\" height=\"%d\" border=\"0\">",
-				base64Image, w, h);
-		    
-			    if (obj->URL && !strchr(obj->URL, '"')) {
-				prt_htmlfm_Output(context, "</a>", 4);
-			    }
-		    
-			    nmFree(base64Image, strlen(base64Image) + 1);
-			}
-			break;
-		    
-
 	    case PRT_OBJ_T_TABLE:
-		prt_htmlfm_GenerateTable(context, obj);
-		break;
-	    }
+			prt_htmlfm_GenerateTable(context, obj);
+			break;
+	}
 
     return 0;
-    }
+}
 
 
 /*** prt_htmlfm_Generate() - generate the html for the page.  Basically,
@@ -835,21 +785,15 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
  *** overlapping objects on a page.
  ***/
 int
-prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
-    {
+prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj) {
     pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;
-    pPrtObjStream subobj;
     double colpos[PRT_HTMLFM_MAXCOLS];
     double rowpos[PRT_HTMLFM_MAXROWS];
-    int n_cols=0, n_rows=0;
-    int found;
-    int i;
-    int w;
-    int rs,cs;
 
 	/** Write the page header **/
-	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
+	if (context->Flags & PRT_HTMLFM_F_PAGINATED) {
 	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_PAGEHEADER, (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001)+34);
+	}
 
 	/** Write div to handle page margins **/
 	prt_htmlfm_OutputPrintf(context, "<div style=\"max-width: %dpx; padding: %dpx %dpx %dpx %dpx\">\n", (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001),
@@ -860,115 +804,101 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	 ** "columns" and "rows" we need to put in the "table" used for layout
 	 ** purposes.
 	 **/
-	for(subobj=page_obj->ContentHead; subobj; subobj=subobj->Next)
-	    {
-	    if (n_cols < PRT_HTMLFM_MAXCOLS)
-		{
-		/** Search for the X position in the 'colpos' list **/
-		found = n_cols;
-		for(i=0;i<n_cols;i++)
-		    {
-		    if (subobj->X == colpos[i]) 
-			{
-			found = -1;
-			break;
+    int n_cols=0, n_rows=0;
+	for(pPrtObjStream subobj=page_obj->ContentHead; subobj; subobj=subobj->Next) {
+	    if (n_cols < PRT_HTMLFM_MAXCOLS) {
+			/** Search for the X position in the 'colpos' list **/
+			int found = n_cols;
+			for(int i = 0; i < n_cols; i++) {
+				if (subobj->X == colpos[i]) {
+					found = -1;
+					break;
+				}
+				if (subobj->X < colpos[i]) {
+					found=i;
+					break;
+				}
 			}
-		    if (subobj->X < colpos[i])
-			{
-			found=i;
-			break;
+			if (found != -1) {
+				for(int i = n_cols-1 ; i >= found; i--) colpos[i+1] = colpos[i];
+				colpos[found] = subobj->X;
+				n_cols++;
 			}
-		    }
-		if (found != -1)
-		    {
-		    for(i=n_cols-1;i>=found;i--) colpos[i+1] = colpos[i];
-		    colpos[found] = subobj->X;
-		    n_cols++;
-		    }
 		}
-	    if (n_rows < PRT_HTMLFM_MAXROWS)
-		{
-		/** Search for the Y position in the 'rowpos' list **/
-		found = n_rows;
-		for(i=0;i<n_rows;i++)
-		    {
-		    if (subobj->Y == rowpos[i]) 
-			{
-			found = -1;
-			break;
+
+	    if (n_rows < PRT_HTMLFM_MAXROWS) {
+			/** Search for the Y position in the 'rowpos' list **/
+			int found = n_rows;
+			for(int i = 0; i < n_rows; i++) {
+				if (subobj->Y == rowpos[i]) {
+					found = -1;
+					break;
+				}
+				if (subobj->Y < rowpos[i]) {
+					found=i;
+					break;
+				}
 			}
-		    if (subobj->Y < rowpos[i])
-			{
-			found=i;
-			break;
+			if (found != -1) {
+				for(int i = n_rows-1; i>=found; i--) rowpos[i+1] = rowpos[i];
+				rowpos[found] = subobj->Y;
+				n_rows++;
 			}
-		    }
-		if (found != -1)
-		    {
-		    for(i=n_rows-1;i>=found;i--) rowpos[i+1] = rowpos[i];
-		    rowpos[found] = subobj->Y;
-		    n_rows++;
-		    }
 		}
-	    }
+	}
 
 	if(context->Flags & PRT_HTMLFM_F_PAGINATED) {
 		/** Write the layout table **/
 		prt_htmlfm_Output(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n", -1);
-		for(i = 0; i < n_cols; i++)
-			{
-			if (i == n_cols-1)
-			w = (page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight - colpos[i])*PRT_HTMLFM_XPIXEL;
-			else
-			w = (colpos[i+1] - colpos[i]) * PRT_HTMLFM_XPIXEL;
-			prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", w);
+		for(int i = 0; i < n_cols; i++) {
+			int w;
+			if (i == n_cols-1) {
+				w = (page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight - colpos[i])*PRT_HTMLFM_XPIXEL;
+			} else {
+				w = (colpos[i+1] - colpos[i]) * PRT_HTMLFM_XPIXEL;
 			}
+			prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", w);
+		}
 
 		/** Generate the body of the page, by selectively walking the YPrev/YNext chain **/
 		int cur_row = 0;
 		int cur_col = 0;
 		prt_htmlfm_Output(context, "<tr>", 4);
-		for(subobj=page_obj; subobj; subobj=subobj->YNext)
-			{
-			if (subobj->Parent == page_obj)
-			{
-			/** Next row? **/
-			if (subobj->Y > rowpos[cur_row])
-				{
-				while(subobj->Y > (rowpos[cur_row]+0.001) && cur_row < PRT_HTMLFM_MAXROWS-1) cur_row++;
-				prt_htmlfm_Output(context, "</tr>\n<tr>", 10);
-				cur_col = 0;
+		for(pPrtObjStream subobj=page_obj; subobj; subobj=subobj->YNext) {
+			if (subobj->Parent == page_obj) {
+				/** Next row? **/
+				if (subobj->Y > rowpos[cur_row]) {
+					while(subobj->Y > (rowpos[cur_row]+0.001) && cur_row < PRT_HTMLFM_MAXROWS-1) cur_row++;
+					prt_htmlfm_Output(context, "</tr>\n<tr>", 10);
+					cur_col = 0;
 				}
 
-			/** Skip cols? **/
-			if (subobj->X > colpos[cur_col])
-				{
-				i=0;
-				while(subobj->X > (colpos[cur_col]+0.001) && cur_col < PRT_HTMLFM_MAXCOLS-1)
-				{
-				i++;
-				cur_col++;
-				}
-				prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\">&nbsp;</td>", i);
+				/** Skip cols? **/
+				if (subobj->X > colpos[cur_col]) {
+					int i=0;
+					while(subobj->X > (colpos[cur_col]+0.001) && cur_col < PRT_HTMLFM_MAXCOLS-1) {
+						i++;
+						cur_col++;
+					}
+					prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\">&nbsp;</td>", i);
 				}
 
-			/** Figure rowspan and colspan **/
-			cs=1;
-			while(cur_col+cs < n_cols && (colpos[cur_col+cs]+0.001) < subobj->X + subobj->Width) cs++;
-			rs=1;
-			while(cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height) rs++;
-			prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\" rowspan=\"%d\" valign=\"top\" align=\"left\">", cs, rs);
-			prt_htmlfm_Generate_r(context, subobj);
-			prt_htmlfm_Output(context, "</td>", 5);
-			cur_col += cs;
-			if (cur_col >= n_cols) cur_col = n_cols-1;
+				/** Figure rowspan and colspan **/
+				int cs=1;
+				while(cur_col+cs < n_cols && (colpos[cur_col+cs]+0.001) < subobj->X + subobj->Width) cs++;
+				int rs=1;
+				while(cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height) rs++;
+				prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\" rowspan=\"%d\" valign=\"top\" align=\"left\">", cs, rs);
+				prt_htmlfm_Generate_r(context, subobj);
+				prt_htmlfm_Output(context, "</td>", 5);
+				cur_col += cs;
+				if (cur_col >= n_cols) cur_col = n_cols-1;
 			}
-			}
+		}
 		prt_htmlfm_Output(context, "</tr></table>\n", 14);
 	} else {
 		double cur_row = -1;
-		char* divFormat = "<div style=\"display: flex; padding-bottom: 3px; justify-content: center\">";
-		for(subobj=page_obj; subobj; subobj=subobj->YNext)	{
+		for(pPrtObjStream subobj=page_obj; subobj; subobj=subobj->YNext)	{
 			if (subobj->Parent == page_obj) {
 				// Move to next row.
 				if (subobj->Y > cur_row) {
@@ -976,7 +906,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 					if(cur_row != -1) {
 						prt_htmlfm_Output(context, "</div>\n", -1);
 					}
-					prt_htmlfm_Output(context, divFormat, -1);
+					prt_htmlfm_Output(context, "<div style=\"display: flex; padding-bottom: 3px; justify-content: center\">", -1);
 					cur_row = subobj->Y;
 				}
 
@@ -986,14 +916,14 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		}
 	}
 
-
 	/** Write the page footer **/
 	prt_htmlfm_Output(context, "</div>", -1);
-	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
+	if (context->Flags & PRT_HTMLFM_F_PAGINATED) {
 	    prt_htmlfm_Output(context, PRT_HTMLFM_PAGEFOOTER, -1);
+	}
 
     return 0;
-    }
+}
 
 
 int
@@ -1054,5 +984,3 @@ prt_htmlfm_Initialize()
 
     return 0;
     }
-
-
