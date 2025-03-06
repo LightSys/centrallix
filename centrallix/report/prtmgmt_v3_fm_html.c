@@ -658,6 +658,10 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 		// if (strlen((char*)obj->Content) == 0) {
 		// 	break;
 		// }
+
+		if (strlen((const char*)obj->Content) == 0 && obj->Flags & PRT_OBJ_F_NEWLINE) {
+			prt_htmlfm_Output(context, "<br>", -1);
+		}
 		
 		// prt_htmlfm_SetStyle(context, &(obj->TextStyle));
 		if (obj->URL && !strchr(obj->URL, '"')) {

@@ -88,7 +88,10 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area) {
 
 	prt_htmlfm_SaveStyle(context, &oldstyle);
 
-	prt_htmlfm_OutputPrintf(context, "<div #area style=\"border: %d solid %d; display: flex; flex-direction: column; width: 100%%\">", lm_inf->AreaBorder.Width[0], lm_inf->AreaBorder.Color[0]);
+
+	printf("%.2f -> %d, %.2f -> %d", area->Height, (int)(area->Height * PRT_HTMLFM_YPIXEL + 0.0001), area->ConfigHeight, (int)(area->ConfigHeight * PRT_HTMLFM_YPIXEL + 0.0001));
+	prt_htmlfm_OutputPrintf(context, "<div #area style=\"border: %d solid %d; display: flex; flex-direction: column; width: 100%%; min-height: %dpx\">",
+		lm_inf->AreaBorder.Width[0], lm_inf->AreaBorder.Color[0], (int)(area->Height * PRT_HTMLFM_YPIXEL + 0.0001));
 
 	prt_htmlfm_Output(context, "<div #area-row style=\"display: flex; fiex-direction: row; position: relative\">", -1);
 
@@ -102,6 +105,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area) {
 			prt_htmlfm_Output(context, "</div>", -1);
 			prt_htmlfm_Output(context, "<div #area-row style=\"display: flex; fiex-direction: row; position: relative\">", -1);
 			prt_htmlfm_Output(context, "<div #area-cell style=\"width: 100%;\">", -1);
+			continue;
 		}
 		
 		// prt_htmlfm_Output(context, "<div style=\"display: flex\">", -1);
