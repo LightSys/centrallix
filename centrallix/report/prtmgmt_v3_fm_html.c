@@ -395,13 +395,25 @@ prt_htmlfm_Close(void* context_v)
     }
 
 
+/*** prt_htmlfm_GetFont() - get the text style's font
+ ***/
+const char *
+prt_htmlfm_GetFont(pPrtTextStyle style) {
+	const char* fonts[3] = { "Courier New,Courier,fixed", "Arial,Helvetica,MS Sans Serif", "Times New Roman,Times,MS Serif"};
+
+	/*htmlfontsize = style->FontSize - PRT_HTMLFM_FONTSIZE_DEFAULT + PRT_HTMLFM_FONTSIZE_OFFSET;*/
+	int fontid = style->FontID - 1;
+	if (fontid < 0 || fontid > 2) fontid = 0;
+	return fonts[fontid];
+}
+
+
 /*** prt_htmlfm_SetStyle() - output the html to change the text style
  ***/
 int
 prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
     {
-    char* fonts[3] = { "Courier New,Courier,fixed", "Arial,Helvetica,MS Sans Serif", "Times New Roman,Times,MS Serif"};
-    int htmlfontsize, fontid;
+    int htmlfontsize;
     char stylebuf[128];
     int boldchanged, italicchanged, underlinechanged, fontchanged;
     int i;
@@ -415,9 +427,6 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 		break;
 		}
 	    }
-	/*htmlfontsize = style->FontSize - PRT_HTMLFM_FONTSIZE_DEFAULT + PRT_HTMLFM_FONTSIZE_OFFSET;*/
-	fontid = style->FontID - 1;
-	if (fontid < 0 || fontid > 2) fontid = 0;
 
 	/** Close out current style settings? **/
 	boldchanged = (style->Attr ^ context->CurStyle.Attr) & PRT_OBJ_A_BOLD;
@@ -454,7 +463,7 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 		    if (context->InitStyle || fontchanged)
 			{
 			snprintf(stylebuf, sizeof(stylebuf), "<font face=\"%s\" color=\"#%6.6X\" size=\"%d\">",
-				fonts[fontid], style->Color, htmlfontsize);
+				prt_htmlfm_GetFont(style), style->Color, htmlfontsize);
 			prt_htmlfm_Output(context, stylebuf, -1);
 			}
 		    if (style->Attr & PRT_OBJ_A_UNDERLINE) prt_htmlfm_Output(context, "<u>", 3);
@@ -633,8 +642,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 	printf("Generate_r: %s\n", obj->ObjType->TypeName);
 	if (obj->ObjType->TypeID == PRT_OBJ_T_STRING) {
 		printf("         C: \"%s\"\n", obj->Content);
-		printf("        LF: \"%d\"\n", obj->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE));
 	}
+	printf("      Font: \"%d\"\n", obj->TextStyle.FontID);
 
 	/** Check recursion **/
 	if (thExcessiveRecursion()) {
@@ -650,7 +659,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 		// 	break;
 		// }
 		
-		prt_htmlfm_SetStyle(context, &(obj->TextStyle));
+		// prt_htmlfm_SetStyle(context, &(obj->TextStyle));
 		if (obj->URL && !strchr(obj->URL, '"')) {
 		    prt_htmlfm_Output(context, "<a href=\"", 9);
 		    prt_htmlfm_OutputEncoded(context, obj->URL, -1);
@@ -660,18 +669,37 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 			prt_htmlfm_OutputEncoded(context, (char*)obj->Content, -1);
 		} else {
 			switch (obj->Justification) {
-				default: prt_htmlfm_OutputPrintf(context, "<div #string style=\"text-align: left\">");
+				default: prt_htmlfm_Output(context, "<div #string style=\"text-align: left;", -1);
 					break;
-				case 1: prt_htmlfm_OutputPrintf(context, "<div #string style=\"text-align: right\">");
+				case 1: prt_htmlfm_Output(context, "<div #string style=\"text-align: right;", -1);
 					break;
-				case 2: prt_htmlfm_OutputPrintf(context, "<div #string style=\"text-align: center\">");
+				case 2: prt_htmlfm_Output(context, "<div #string style=\"text-align: center;", -1);
 					break;
-				case 3: prt_htmlfm_OutputPrintf(context, "<div #string style=\"text-align: justify\">");
+				case 3: prt_htmlfm_Output(context, "<div #string style=\"text-align: justify;", -1);
 					break;
 			}
+
+			char stylebuf[128];
+			snprintf(stylebuf, sizeof(stylebuf), " font-family:%s; color:#%6.6X; font-size:%dpx;",
+				prt_htmlfm_GetFont(&obj->TextStyle), obj->TextStyle.Color, (int) obj->TextStyle.FontSize);
+			prt_htmlfm_Output(context, stylebuf, -1);
+			prt_htmlfm_Output(context, " white-space: pre-wrap;\">", -1);
+
+			int attr = obj->TextStyle.Attr;
+
+			if (attr & PRT_OBJ_A_BOLD) {
+				prt_htmlfm_Output(context, "<b>", -1);
+			}
+			if (attr & PRT_OBJ_A_ITALIC) {
+				prt_htmlfm_Output(context, "<i>", -1);
+			}
+			if (attr & PRT_OBJ_A_UNDERLINE) {
+				prt_htmlfm_Output(context, "<u>", -1);
+			}
+
 			// printf("TEST: %s\n", (char*)obj->Content);
 			prt_htmlfm_Output(context, (char*)obj->Content, -1);
-
+			
 			if (obj->Justification == 3) {
 				while (obj->Next && obj->Next->ObjType->TypeID == PRT_OBJ_T_STRING && obj->Next->Justification == 3) {
 
@@ -688,13 +716,23 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 				}
 			}
 
+			if (attr & PRT_OBJ_A_UNDERLINE) {
+				prt_htmlfm_Output(context, "</u>", -1);
+			}
+			if (attr & PRT_OBJ_A_ITALIC) {
+				prt_htmlfm_Output(context, "</i>", -1);
+			}
+			if (attr & PRT_OBJ_A_BOLD) {
+				prt_htmlfm_Output(context, "</b>", -1);
+			}
+
 			prt_htmlfm_Output(context, "</div>", -1);
 		}
 		if (obj->URL && !strchr(obj->URL, '"'))
 		    {
 		    prt_htmlfm_Output(context, "</a>", 4);
 		    }
-		prt_htmlfm_EndStyle(context);
+		// prt_htmlfm_EndStyle(context);
 		break;
 
 	    case PRT_OBJ_T_AREA:
