@@ -652,8 +652,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 	printf("Generate_r: %s\n", obj->ObjType->TypeName);
 	if (obj->ObjType->TypeID == PRT_OBJ_T_STRING) {
 		printf("         C: \"%s\"\n", obj->Content);
-		printf("        LF: \"%d\"\n", obj->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE));
 	}
+	printf("      Font: \"%d\"\n", obj->TextStyle.FontID);
 
 
 	/** Check recursion **/
@@ -672,7 +672,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		// 	break;
 		// }
 		
-		prt_htmlfm_SetStyle(context, &(obj->TextStyle));
+		// prt_htmlfm_SetStyle(context, &(obj->TextStyle));
 		if (obj->URL && !strchr(obj->URL, '"')) {
 		    prt_htmlfm_Output(context, "<a href=\"", 9);
 		    prt_htmlfm_OutputEncoded(context, obj->URL, -1);
@@ -682,18 +682,37 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 			prt_htmlfm_OutputEncoded(context, (char*)obj->Content, -1);
 		} else {
 			switch (obj->Justification) {
-				default: prt_htmlfm_OutputPrintf(context, "<div #string style=\"text-align: left\">");
+				default: prt_htmlfm_Output(context, "<div #string style=\"text-align: left;", -1);
 					break;
-				case 1: prt_htmlfm_OutputPrintf(context, "<div #string style=\"text-align: right\">");
+				case 1: prt_htmlfm_Output(context, "<div #string style=\"text-align: right;", -1);
 					break;
-				case 2: prt_htmlfm_OutputPrintf(context, "<div #string style=\"text-align: center\">");
+				case 2: prt_htmlfm_Output(context, "<div #string style=\"text-align: center;", -1);
 					break;
-				case 3: prt_htmlfm_OutputPrintf(context, "<div #string style=\"text-align: justify\">");
+				case 3: prt_htmlfm_Output(context, "<div #string style=\"text-align: justify;", -1);
 					break;
 			}
+
+			char stylebuf[128];
+			snprintf(stylebuf, sizeof(stylebuf), " font-family:%s; color:#%6.6X; font-size:%dpx;",
+				prt_htmlfm_GetFont(&obj->TextStyle), obj->TextStyle.Color, (int) obj->TextStyle.FontSize);
+			prt_htmlfm_Output(context, stylebuf, -1);
+			prt_htmlfm_Output(context, " white-space: pre-wrap;\">", -1);
+
+			int attr = obj->TextStyle.Attr;
+
+			if (attr & PRT_OBJ_A_BOLD) {
+				prt_htmlfm_Output(context, "<b>", -1);
+			}
+			if (attr & PRT_OBJ_A_ITALIC) {
+				prt_htmlfm_Output(context, "<i>", -1);
+			}
+			if (attr & PRT_OBJ_A_UNDERLINE) {
+				prt_htmlfm_Output(context, "<u>", -1);
+			}
+
 			// printf("TEST: %s\n", (char*)obj->Content);
 			prt_htmlfm_Output(context, (char*)obj->Content, -1);
-
+			
 			if (obj->Justification == 3) {
 				while (obj->Next && obj->Next->ObjType->TypeID == PRT_OBJ_T_STRING && obj->Next->Justification == 3) {
 
@@ -710,13 +729,23 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 				}
 			}
 
+			if (attr & PRT_OBJ_A_UNDERLINE) {
+				prt_htmlfm_Output(context, "</u>", -1);
+			}
+			if (attr & PRT_OBJ_A_ITALIC) {
+				prt_htmlfm_Output(context, "</i>", -1);
+			}
+			if (attr & PRT_OBJ_A_BOLD) {
+				prt_htmlfm_Output(context, "</b>", -1);
+			}
+
 			prt_htmlfm_Output(context, "</div>", -1);
 		}
 		if (obj->URL && !strchr(obj->URL, '"'))
 		    {
 		    prt_htmlfm_Output(context, "</a>", 4);
 		    }
-		prt_htmlfm_EndStyle(context);
+		// prt_htmlfm_EndStyle(context);
 		break;
 
 	    case PRT_OBJ_T_AREA:
