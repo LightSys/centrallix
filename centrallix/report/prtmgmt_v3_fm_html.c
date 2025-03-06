@@ -395,13 +395,25 @@ prt_htmlfm_Close(void* context_v)
     }
 
 
+/*** prt_htmlfm_GetFont() - get the text style's font
+ ***/
+const char *
+prt_htmlfm_GetFont(pPrtTextStyle style) {
+	const char* fonts[3] = { "Courier New,Courier,fixed", "Arial,Helvetica,MS Sans Serif", "Times New Roman,Times,MS Serif"};
+
+	/*htmlfontsize = style->FontSize - PRT_HTMLFM_FONTSIZE_DEFAULT + PRT_HTMLFM_FONTSIZE_OFFSET;*/
+	int fontid = style->FontID - 1;
+	if (fontid < 0 || fontid > 2) fontid = 0;
+	return fonts[fontid];
+}
+
+
 /*** prt_htmlfm_SetStyle() - output the html to change the text style
  ***/
 int
 prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
     {
-    char* fonts[3] = { "Courier New,Courier,fixed", "Arial,Helvetica,MS Sans Serif", "Times New Roman,Times,MS Serif"};
-    int htmlfontsize, fontid;
+    int htmlfontsize;
     char stylebuf[128];
     int boldchanged, italicchanged, underlinechanged, fontchanged;
     int i;
@@ -415,9 +427,6 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 		break;
 		}
 	    }
-	/*htmlfontsize = style->FontSize - PRT_HTMLFM_FONTSIZE_DEFAULT + PRT_HTMLFM_FONTSIZE_OFFSET;*/
-	fontid = style->FontID - 1;
-	if (fontid < 0 || fontid > 2) fontid = 0;
 
 	/** Close out current style settings? **/
 	boldchanged = (style->Attr ^ context->CurStyle.Attr) & PRT_OBJ_A_BOLD;
@@ -454,7 +463,7 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 		    if (context->InitStyle || fontchanged)
 			{
 			snprintf(stylebuf, sizeof(stylebuf), "<font face=\"%s\" color=\"#%6.6X\" size=\"%d\">",
-				fonts[fontid], style->Color, htmlfontsize);
+				prt_htmlfm_GetFont(style), style->Color, htmlfontsize);
 			prt_htmlfm_Output(context, stylebuf, -1);
 			}
 		    if (style->Attr & PRT_OBJ_A_UNDERLINE) prt_htmlfm_Output(context, "<u>", 3);
