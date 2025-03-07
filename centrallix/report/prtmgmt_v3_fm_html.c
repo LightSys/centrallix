@@ -661,7 +661,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 	switch(obj->ObjType->TypeID) {
 	    case PRT_OBJ_T_STRING:
 			if (strlen((const char*)obj->Content) == 0 && obj->Flags & PRT_OBJ_F_NEWLINE) {
-				prt_htmlfm_Output(context, "<br #654>", -1);
+				prt_htmlfm_Output(context, "<br>", -1);
 			}
 			
 			if (obj->URL && !strchr(obj->URL, '"')) {
@@ -674,26 +674,25 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 			} else {
 				switch (obj->Justification) {
 					default: 
-						prt_htmlfm_Output(context, "<div #string style=\"text-align: left;", -1);
+						prt_htmlfm_Output(context, "<div style=\"text-align: left;", -1);
 						break;
 					case 1: 
-						prt_htmlfm_Output(context, "<div #string style=\"text-align: right;", -1);
+						prt_htmlfm_Output(context, "<div style=\"text-align: right;", -1);
 						break;
 					case 2: 
-						prt_htmlfm_Output(context, "<div #string style=\"text-align: center;", -1);
+						prt_htmlfm_Output(context, "<div style=\"text-align: center;", -1);
 						break;
 					case 3: 
-						prt_htmlfm_Output(context, "<div #string style=\"text-align: justify;", -1);
+						prt_htmlfm_Output(context, "<div style=\"text-align: justify;", -1);
 						break;
 				}
 
 				prt_htmlfm_Output(context, " line-height: 0.6;\"><span style=\" white-space: pre-wrap;", -1);
 
 				char stylebuf[128];
-				snprintf(stylebuf, sizeof(stylebuf), " font-family:%s; color:#%6.6X; font-size:%dpx;",
-						prt_htmlfm_GetFont(&obj->TextStyle), obj->TextStyle.Color, (int) obj->TextStyle.FontSize);
+				snprintf(stylebuf, sizeof(stylebuf), " font-family: %s; color: #%6.6X; font-size: %dpx; line-height: %f;\">",
+						prt_htmlfm_GetFont(&obj->TextStyle), obj->TextStyle.Color, (int) obj->TextStyle.FontSize, obj->LineHeight);
 				prt_htmlfm_Output(context, stylebuf, -1);
-				prt_htmlfm_Output(context, "\">", -1);
 
 				int attr = obj->TextStyle.Attr;
 
@@ -714,6 +713,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 
 				pPrtObjStream firstObj = obj;
 				/*
+				 * Logic for appending other string objects to the current one:
 				 * 1. don't append if there is no next
 				 * 2. only append if next is a string
 				 * 3. only append if next string has the same justification
@@ -731,12 +731,13 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 					}
 		
 					if (obj->Flags & PRT_OBJ_F_NEWLINE) {
-						prt_htmlfm_Output(context, "<br #711>", -1);
+						prt_htmlfm_Output(context, "<br>", -1);
 						if (strlen((const char *)obj->Content) == 0) {
 							break;
 						}
 					}
 
+					// compare text styles to see if there was a change
 					if (prt_htmlfm_CompareStyles(&obj->TextStyle, &obj->Next->TextStyle)) {
 						// same style, no need to change div
 						obj = obj->Next;
@@ -758,11 +759,9 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 
 						prt_htmlfm_Output(context, "<span style=\" white-space: pre-wrap;", -1);
 	
-						char stylebuf[128];
-						snprintf(stylebuf, sizeof(stylebuf), " font-family:%s; color:#%6.6X; font-size:%dpx;",
-								prt_htmlfm_GetFont(&obj->TextStyle), obj->TextStyle.Color, (int) obj->TextStyle.FontSize);
+						snprintf(stylebuf, sizeof(stylebuf), " font-family: %s; color: #%6.6X; font-size: %dpx; line-height: %f;\">",
+						prt_htmlfm_GetFont(&obj->TextStyle), obj->TextStyle.Color, (int) obj->TextStyle.FontSize, obj->LineHeight);
 						prt_htmlfm_Output(context, stylebuf, -1);
-						prt_htmlfm_Output(context, "\">", -1);
 	
 						attr = obj->TextStyle.Attr;
 	

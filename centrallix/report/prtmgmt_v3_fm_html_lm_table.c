@@ -1,20 +1,10 @@
 #include <stdio.h>
-#include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <stdlib.h>
 #include <stdarg.h>
-#include "barcode.h"
-#include "report.h"
-#include "cxlib/mtask.h"
-#include "cxlib/magic.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xstring.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "prtmgmt_v3/prtmgmt_v3_fm_html.h"
 #include "prtmgmt_v3/prtmgmt_v3_lm_table.h"
-#include "htmlparse.h"
-#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/

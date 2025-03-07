@@ -4,17 +4,9 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include "barcode.h"
-#include "report.h"
-#include "cxlib/mtask.h"
-#include "cxlib/magic.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xstring.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "prtmgmt_v3/prtmgmt_v3_fm_html.h"
 #include "prtmgmt_v3/prtmgmt_v3_lm_text.h"
-#include "htmlparse.h"
-#include "cxlib/mtsession.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 								*/
@@ -55,6 +47,73 @@
  ***/
 int
 prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area) {
+	pPrtObjStream scan;
+	PrtTextStyle oldstyle;
+	pPrtTextLMData lm_inf = (pPrtTextLMData)(area->LMData);
+
+	prt_htmlfm_SaveStyle(context, &oldstyle);
+
+	prt_htmlfm_OutputPrintf(context, "<div style=\"border: %d solid %d; display: flex; flex-direction: column; width: 100%%;\">",
+			lm_inf->AreaBorder.Width[0], lm_inf->AreaBorder.Color[0]);
+	prt_htmlfm_Output(context, "<div style=\"display: flex; fiex-direction: row; position: relative\">", -1);
+	prt_htmlfm_Output(context, "<div style=\"width: 100%;\">", -1);
+
+	for (scan = area->ContentHead; scan != NULL; scan = scan->Next) {
+
+		if (scan->Flags & PRT_OBJ_F_NEWLINE) {
+			prt_htmlfm_Output(context, "</div>", -1);
+			prt_htmlfm_Output(context, "</div>", -1);
+			prt_htmlfm_Output(context, "<div style=\"display: flex; fiex-direction: row; position: relative\">", -1);
+			prt_htmlfm_Output(context, "<div style=\"width: 100%;\">", -1);
+			continue;
+		}
+		
+		if (scan->Flags & PRT_OBJ_F_XSET && scan->X) {
+			prt_htmlfm_Output(context, "</div>", -1);
+			prt_htmlfm_OutputPrintf(context, "<div style=\"width: 100%; height: %dpx;\">",
+					(int)(scan->Height * 2.455011 + 0.0001)); // My favorite magic constant.  None of us know why this specific constant works, but it does.
+			prt_htmlfm_Output(context, "</div>", -1);
+			prt_htmlfm_OutputPrintf(context, "<div style=\"width: 100%; position: absolute; left: %dpx;\">",
+					(int)(scan->X * PRT_HTMLFM_XPIXEL + 0.0001), (int)(scan->Y * PRT_HTMLFM_YPIXEL + 0.0001));
+		}
+
+		prt_htmlfm_Generate_r(context, scan);
+
+		pPrtObjStream firstObj = scan;
+		// some strings are combined in prt_htmlfm_Generate_r(), so we need to account for that
+		while (scan->ObjType->TypeID == PRT_OBJ_T_STRING
+				&& scan->Next
+				&& scan->Next->ObjType->TypeID == PRT_OBJ_T_STRING
+				&& scan->Justification == scan->Next->Justification
+				&& !(scan->Next->Flags & (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET))
+				&& (!(scan->Next->Flags & (PRT_OBJ_F_NEWLINE)) || !(firstObj->Flags & (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET)))) {
+			if (scan->Flags & PRT_OBJ_F_NEWLINE && strlen((const char *)scan->Content) == 0) {
+				prt_htmlfm_Output(context, "</div>", -1);
+				prt_htmlfm_Output(context, "</div>", -1);
+				prt_htmlfm_Output(context, "<div style=\"display: flex; fiex-direction: row; position: relative\">", -1);
+				prt_htmlfm_Output(context, "<div style=\"width: 100%;\">", -1);
+				break;
+			}
+			scan = scan->Next;
+		}
+	}
+
+	prt_htmlfm_Output(context, "</div>", -1);
+	prt_htmlfm_Output(context, "</div>", -1);
+	prt_htmlfm_Output(context, "</div>", -1);
+
+	prt_htmlfm_ResetStyle(context, &oldstyle);
+
+	return 0;
+}
+
+
+/*** prt_htmlfm_GenerateAreaPaginated() - generates the html to represent a
+ *** textflow area using the older paginated style.
+ ***/
+ int
+ prt_htmlfm_GenerateAreaPaginated(pPrtHTMLfmInf context, pPrtObjStream area)
+ 	{
 	int n_xset;
 	double xset[PRT_HTMLFM_MAX_TABSTOP];
 	double widths[PRT_HTMLFM_MAX_TABSTOP];
@@ -72,79 +131,23 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area) {
 	 **/
 	xset[0] = 0.0;
 	n_xset = 1;
-	for (scan = area->ContentHead; scan; scan = scan->Next) {
-		if (scan->Flags & PRT_OBJ_F_XSET) {
-			for (i = 0; i <= n_xset; i++) {
+	for (scan = area->ContentHead; scan; scan = scan->Next)
+		{
+		if (scan->Flags & PRT_OBJ_F_XSET)
+			{
+			for (i = 0; i <= n_xset; i++)
+				{
 				if (i!=n_xset && xset[i] == scan->X) break;
-				if (n_xset < PRT_HTMLFM_MAX_TABSTOP && (i == n_xset || xset[i] > scan->X)) {
+				if (n_xset < PRT_HTMLFM_MAX_TABSTOP && (i == n_xset || xset[i] > scan->X))
+					{
 					for (j = n_xset; j > i; j--) xset[j] = xset[j - 1];
 					xset[i] = scan->X;
 					n_xset++;
 					break;
+					}
 				}
 			}
 		}
-	}
-
-	prt_htmlfm_SaveStyle(context, &oldstyle);
-
-	prt_htmlfm_OutputPrintf(context, "<div #area style=\"border: %d solid %d; display: flex; flex-direction: column; width: 100%%; min-height: %dpx\">",
-		lm_inf->AreaBorder.Width[0], lm_inf->AreaBorder.Color[0], (int)(area->Height * PRT_HTMLFM_YPIXEL + 0.0001));
-
-	prt_htmlfm_Output(context, "<div #area-row style=\"display: flex; fiex-direction: row; position: relative\">", -1);
-
-	prt_htmlfm_Output(context, "<div #area-cell style=\"width: 100%;\">", -1);
-
-
-	for (scan = area->ContentHead; scan != NULL; scan = scan->Next) {
-
-		if (scan->Flags & PRT_OBJ_F_NEWLINE) {
-			prt_htmlfm_Output(context, "</div>", -1);
-			prt_htmlfm_Output(context, "</div>", -1);
-			prt_htmlfm_Output(context, "<div #area-row style=\"display: flex; fiex-direction: row; position: relative\">", -1);
-			prt_htmlfm_Output(context, "<div #area-cell style=\"width: 100%;\">", -1);
-			continue;
-		}
-		
-		// prt_htmlfm_Output(context, "<div style=\"display: flex\">", -1);
-
-		if (scan->Flags & PRT_OBJ_F_XSET && scan->X) {
-			prt_htmlfm_Output(context, "</div>", -1);
-			prt_htmlfm_OutputPrintf(context, "<div #area-cell style=\"width: 100%; height: %dpx;\">",
-					(int)(scan->Height * 2.455011 + 0.0001)); // My favorite magic constant.  None of us know why this specific constant works, but it does.
-			prt_htmlfm_Output(context, "</div>", -1);
-			prt_htmlfm_OutputPrintf(context, "<div #area-cell style=\"width: 100%; position: absolute; left: %dpx;\">",
-					(int)(scan->X * PRT_HTMLFM_XPIXEL + 0.0001), (int)(scan->Y * PRT_HTMLFM_YPIXEL + 0.0001));
-		}
-
-		prt_htmlfm_Generate_r(context, scan);
-
-		pPrtObjStream firstObj = scan;
-		// justified text is split into individual objects... skip to next actual object
-		while (scan->ObjType->TypeID == PRT_OBJ_T_STRING
-				&& scan->Next
-				&& scan->Next->ObjType->TypeID == PRT_OBJ_T_STRING
-				&& scan->Justification == scan->Next->Justification
-				&& !(scan->Next->Flags & (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET))
-				&& (!(scan->Next->Flags & (PRT_OBJ_F_NEWLINE)) || !(firstObj->Flags & (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET)))) {
-			if (scan->Flags & PRT_OBJ_F_NEWLINE && strlen((const char *)scan->Content) == 0) {
-				prt_htmlfm_Output(context, "</div>", -1);
-				prt_htmlfm_Output(context, "</div>", -1);
-				prt_htmlfm_Output(context, "<div #area-row style=\"display: flex; fiex-direction: row; position: relative\">", -1);
-				prt_htmlfm_Output(context, "<div #area-cell style=\"width: 100%;\">", -1);
-				break;
-			}
-			scan = scan->Next;
-		}
-	}
-
-	prt_htmlfm_Output(context, "</div>", -1);
-	prt_htmlfm_Output(context, "</div>", -1);
-	prt_htmlfm_Output(context, "</div>", -1);
-
-	prt_htmlfm_ResetStyle(context, &oldstyle);
-
-	return 0;
 
 	/** Output the area prologue **/
 	prt_htmlfm_SaveStyle(context, &oldstyle);
