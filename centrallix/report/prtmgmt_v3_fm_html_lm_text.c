@@ -112,6 +112,9 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area) {
 
 		if (scan->Flags & PRT_OBJ_F_XSET && scan->X) {
 			prt_htmlfm_Output(context, "</div>", -1);
+			prt_htmlfm_OutputPrintf(context, "<div #area-cell style=\"width: 100%; height: %dpx;\">",
+				(int)(scan->Height * 2.455011 + 0.0001)); // My favorite magic constant.  None of us know why this specific constant works, but it does.
+			prt_htmlfm_Output(context, "</div>", -1);
 			prt_htmlfm_OutputPrintf(context, "<div #area-cell style=\"width: 100%; position: absolute; left: %dpx;\">",
 				(int)(scan->X * PRT_HTMLFM_XPIXEL + 0.0001), (int)(scan->Y * PRT_HTMLFM_YPIXEL + 0.0001));
 		}
