@@ -478,6 +478,16 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
     return 0;
     }
 
+/*** prt_htmlfm_CompareStyles() - compares two text styles for equality
+ ***/
+int
+prt_htmlfm_CompareStyles(pPrtTextStyle style1, pPrtTextStyle style2) {
+	return style1->Attr == style2->Attr
+			&& style1->Color == style2->Color
+			&& style1->FontID == style2->FontID
+			&& style1->FontSize == style2->FontSize;
+}
+
 
 /*** prt_htmlfm_InitStyle() - initialize style settings, as if we are 
  *** entering a new subcontainer.
@@ -677,11 +687,13 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 						break;
 				}
 
+				prt_htmlfm_Output(context, " line-height: 0.6;\"><span style=\" white-space: pre-wrap;", -1);
+
 				char stylebuf[128];
 				snprintf(stylebuf, sizeof(stylebuf), " font-family:%s; color:#%6.6X; font-size:%dpx;",
-					prt_htmlfm_GetFont(&obj->TextStyle), obj->TextStyle.Color, (int) obj->TextStyle.FontSize);
+						prt_htmlfm_GetFont(&obj->TextStyle), obj->TextStyle.Color, (int) obj->TextStyle.FontSize);
 				prt_htmlfm_Output(context, stylebuf, -1);
-				prt_htmlfm_Output(context, " white-space: pre-wrap;\">", -1);
+				prt_htmlfm_Output(context, "\">", -1);
 
 				int attr = obj->TextStyle.Attr;
 
@@ -712,10 +724,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 						&& obj->Next->ObjType->TypeID == PRT_OBJ_T_STRING
 						&& obj->Next->Justification == obj->Justification
 						&& !(obj->Next->Flags & (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET))
-						&& !(obj->Next->Flags & (PRT_OBJ_F_NEWLINE))
-						&& !(firstObj->Flags & (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET))) {
-
-					printf("%s: %d\n", (char*)obj->Content, (obj->Flags & (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET)));
+						&& (!(obj->Next->Flags & (PRT_OBJ_F_NEWLINE)) || !(firstObj->Flags & (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET)))) {
 					
 					if (obj->Flags & PRT_OBJ_F_SOFTNEWLINE && obj->Flags & PRT_TEXTLM_F_RMSPACE) {
 						prt_htmlfm_Output(context, " ", -1);
@@ -723,9 +732,51 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 		
 					if (obj->Flags & PRT_OBJ_F_NEWLINE) {
 						prt_htmlfm_Output(context, "<br #711>", -1);
+						if (strlen((const char *)obj->Content) == 0) {
+							break;
+						}
 					}
 
-					obj = obj->Next;
+					if (prt_htmlfm_CompareStyles(&obj->TextStyle, &obj->Next->TextStyle)) {
+						// same style, no need to change div
+						obj = obj->Next;
+					} else {
+						// new style!
+						if (attr & PRT_OBJ_A_UNDERLINE) {
+							prt_htmlfm_Output(context, "</u>", -1);
+						}
+						if (attr & PRT_OBJ_A_ITALIC) {
+							prt_htmlfm_Output(context, "</i>", -1);
+						}
+						if (attr & PRT_OBJ_A_BOLD) {
+							prt_htmlfm_Output(context, "</b>", -1);
+						}
+
+						prt_htmlfm_Output(context, "</span>", -1);
+
+						obj = obj->Next;
+
+						prt_htmlfm_Output(context, "<span style=\" white-space: pre-wrap;", -1);
+	
+						char stylebuf[128];
+						snprintf(stylebuf, sizeof(stylebuf), " font-family:%s; color:#%6.6X; font-size:%dpx;",
+								prt_htmlfm_GetFont(&obj->TextStyle), obj->TextStyle.Color, (int) obj->TextStyle.FontSize);
+						prt_htmlfm_Output(context, stylebuf, -1);
+						prt_htmlfm_Output(context, "\">", -1);
+	
+						attr = obj->TextStyle.Attr;
+	
+						if (attr & PRT_OBJ_A_BOLD) {
+							prt_htmlfm_Output(context, "<b>", -1);
+						}
+						if (attr & PRT_OBJ_A_ITALIC) {
+							prt_htmlfm_Output(context, "<i>", -1);
+						}
+						if (attr & PRT_OBJ_A_UNDERLINE) {
+							prt_htmlfm_Output(context, "<u>", -1);
+						}
+					}
+
 					prt_htmlfm_Output(context, (char*)obj->Content, -1);
 				}
 
@@ -738,6 +789,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 				if (attr & PRT_OBJ_A_BOLD) {
 					prt_htmlfm_Output(context, "</b>", -1);
 				}
+				
+				prt_htmlfm_Output(context, "</span>", -1);
 
 				prt_htmlfm_Output(context, "</div>", -1);
 			}
@@ -806,11 +859,11 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 				// Justification: All cases in which it is not an image, it is a SVG.
 				if(obj->ObjType->TypeID == PRT_OBJ_T_IMAGE) {
 					prt_htmlfm_OutputPrintf(context, 
-						"<img src=\"data:image/png;base64,%s\" width=\"%d\" height=\"%d\" border=\"0\">",
+						"<img src=\"data:image/png;base64,%s\" width=\"%d\" height=\"%d\" border=\"0\" style=\"padding: 3px 0 0 0\">",
 						base64Image, w, h);
 				} else {
 					prt_htmlfm_OutputPrintf(context,
-						"<img src=\"data:image/svg+xml;base64,%s\" width=\"%d\" height=\"%d\" border=\"0\">",
+						"<img src=\"data:image/svg+xml;base64,%s\" width=\"%d\" height=\"%d\" border=\"0\" style=\"padding: 3px 0 0 0\">",
 						base64Image, w, h);
 				}
 
@@ -819,7 +872,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 			    }
 
 				// lifetime end: img
-			    nmFree(base64Image, strlen(base64Image) + 1);
+			    nmFree(base64Image, strlen(base64Image));
 			}
 			break;
 
