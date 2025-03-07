@@ -104,3 +104,20 @@ There are a variety of useful flags in the `PrtObjStream` struct scattered throu
 
 - **Description**: Indicates that the string object replaced a space character with a soft newline. Useful for deciding whether or not to insert a space character when a soft newline is found.
 
+## Next Steps
+
+### Sending in email
+
+We found that some of the design goals (encoding the images in the file with base 64 and using flexbox designs instead of a tabular system) may not be compatible with sending the HTML via email. Further research into the issue is needed along with some potential redesigning of the HTML generator.
+
+### Table spacing
+
+We hard-coded padding values inside of table cells to match the receipt report file that we were given. However, this value was not quite right for the donation detail report. We could not find a cell padding value in the `PrtObjStream` struct, but there may be something we missed. Some of the vertical sizing of the tables is also not consistent with the PDF output, but we did not see any cell height info the struct.
+
+### Absolute positioning
+
+Not all absolute position rules are honored. For example, the "pls_retain" and "rcpt_summary" areas defined in the receipt report have no spacing between them, but there should be one y unit between them.
+
+### Image positioning issues
+
+The receipt report has a Centrallix icon in the lower right corner that was moved to the middle of the page. We did not have an opportunity to look into this issue.
