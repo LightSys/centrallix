@@ -68,7 +68,7 @@ mutt -e "set content_type=text/html" <TARGET_EMAIL> -s "<EMAIL_SUBJECT>" < <PATH
 
 ## PrtObjStream and pPrtObjStream
 
-The `PrtObjStream` struct and pointer (`pPrtObjStream`) store all of the information about the data being printed. The struct definition can be found in [prtmgmt_v3.h](../centrallix/include/prtmgmt_v3/prtmgmt_v3.h).
+The `PrtObjStream` struct and pointer (`pPrtObjStream`) store all of the information about the data being printed. The struct definition can be found in [prtmgmt_v3.h](../centrallix/include/prtmgmt_v3/prtmgmt_v3.h). There is also a type-specific struct that stores additional data for each data type. These are found in the same folder as prtmgmt_v3.h as "prtmgmt_v3_lm_(type).h" for the text, table, and col types.
 
 ### Special Flags
 
