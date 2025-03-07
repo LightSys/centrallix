@@ -11,6 +11,7 @@
 #include "cxlib/mtsession.h"
 #include "centrallix.h"
 #include "double.h"
+#include "prtmgmt_v3/prtmgmt_v3_lm_text.h"
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/buffer.h>
@@ -650,7 +651,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 	switch(obj->ObjType->TypeID) {
 	    case PRT_OBJ_T_STRING:
 			if (strlen((const char*)obj->Content) == 0 && obj->Flags & PRT_OBJ_F_NEWLINE) {
-				prt_htmlfm_Output(context, "<br>", -1);
+				prt_htmlfm_Output(context, "<br #654>", -1);
 			}
 			
 			if (obj->URL && !strchr(obj->URL, '"')) {
@@ -696,20 +697,36 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
 
 				prt_htmlfm_Output(context, (char*)obj->Content, -1);
 				
-				if (obj->Justification == 3) {
-					while (obj->Next && obj->Next->ObjType->TypeID == PRT_OBJ_T_STRING && obj->Next->Justification == 3) {
 
-						if (obj->Flags & PRT_OBJ_F_SOFTNEWLINE) {
-							prt_htmlfm_Output(context, " ", -1);
-						}
-			
-						if (obj->Flags & PRT_OBJ_F_NEWLINE) {
-							prt_htmlfm_Output(context, "<br>", -1);
-						}
+				printf("%s: %d\n", (char*)obj->Content, (obj->Flags & (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET)));
 
-						obj = obj->Next;
-						prt_htmlfm_Output(context, (char*)obj->Content, -1);
+				pPrtObjStream firstObj = obj;
+				/*
+				 * 1. don't append if there is no next
+				 * 2. only append if next is a string
+				 * 3. only append if next string has the same justification
+				 * 4. don't append if next string has absolute positioning
+				 * 5. don't append if next string has new line and first string was absolutely positioned
+				 */
+				while (obj->Next
+						&& obj->Next->ObjType->TypeID == PRT_OBJ_T_STRING
+						&& obj->Next->Justification == obj->Justification
+						&& !(obj->Next->Flags & (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET))
+						&& !(obj->Next->Flags & (PRT_OBJ_F_NEWLINE))
+						&& !(firstObj->Flags & (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET))) {
+
+					printf("%s: %d\n", (char*)obj->Content, (obj->Flags & (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET)));
+					
+					if (obj->Flags & PRT_OBJ_F_SOFTNEWLINE && obj->Flags & PRT_TEXTLM_F_RMSPACE) {
+						prt_htmlfm_Output(context, " ", -1);
 					}
+		
+					if (obj->Flags & PRT_OBJ_F_NEWLINE) {
+						prt_htmlfm_Output(context, "<br #711>", -1);
+					}
+
+					obj = obj->Next;
+					prt_htmlfm_Output(context, (char*)obj->Content, -1);
 				}
 
 				if (attr & PRT_OBJ_A_UNDERLINE) {

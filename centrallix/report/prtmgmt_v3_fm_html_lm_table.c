@@ -62,7 +62,7 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 
 	/** Write the table prologue **/
 	prt_htmlfm_SaveStyle(context, &oldstyle);
-	prt_htmlfm_OutputPrintf(context,"<table width=\"100%\" height=\"%f\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\"",
+	prt_htmlfm_OutputPrintf(context,"<table width=\"100%\" height=\"%fpx\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\"",
 			table->Height * PRT_HTMLFM_YPIXEL);
 	
 	char borderbuf[256];
@@ -89,14 +89,47 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 	    if (cell && cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
 		{
 		/** Got a cell.  Emit list of cells in the row **/
-		prt_htmlfm_Output(context, "<tr>", 4);
+		prt_htmlfm_Output(context, "<tr>", -1);
+
 		while(cell)
 		    {
 		    if (cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
 			{
-			prt_htmlfm_OutputPrintf(context,"<td width=\"%d\" align=\"left\" valign=\"top\" bgcolor=\"#%6.6X\">",
-				(int)(cell->Width*PRT_HTMLFM_XPIXEL),
-				cell->BGColor);
+			prt_htmlfm_OutputPrintf(context,"<td style=\"width: %dpx; vertical-align: top; bgcolor: #%6.6X;",
+					(int)(cell->Width*PRT_HTMLFM_XPIXEL),
+					cell->BGColor);
+			
+			if (cell->BorderTop != 0 || row->BorderTop != 0) {
+				if (cell->BorderTop != 0) {
+					snprintf(borderbuf, sizeof(borderbuf), " border-top: %fpx solid;", cell->BorderTop * PRT_HTMLFM_XPIXEL);
+					prt_htmlfm_Output(context, borderbuf, -1);
+				} else {
+					snprintf(borderbuf, sizeof(borderbuf), " border-top: %fpx solid;", row->BorderTop * PRT_HTMLFM_XPIXEL);
+					prt_htmlfm_Output(context, borderbuf, -1);
+				}
+			}
+
+			if (cell->BorderRight != 0) {
+				snprintf(borderbuf, sizeof(borderbuf), " border-right: %fpx solid;", cell->BorderRight * PRT_HTMLFM_XPIXEL);
+				prt_htmlfm_Output(context, borderbuf, -1);
+			}
+
+			if (cell->BorderBottom != 0 || row->BorderBottom != 0) {
+				if (cell->BorderBottom != 0) {
+					snprintf(borderbuf, sizeof(borderbuf), " border-bottom: %fpx solid;", cell->BorderBottom * PRT_HTMLFM_XPIXEL);
+					prt_htmlfm_Output(context, borderbuf, -1);
+				} else {
+					snprintf(borderbuf, sizeof(borderbuf), " border-bottom: %fpx solid;", row->BorderBottom * PRT_HTMLFM_XPIXEL);
+					prt_htmlfm_Output(context, borderbuf, -1);
+				}
+			}
+
+			if (cell->BorderLeft != 0) {
+				snprintf(borderbuf, sizeof(borderbuf), " border-left: %fpx solid;", cell->BorderLeft * PRT_HTMLFM_XPIXEL);
+				prt_htmlfm_Output(context, borderbuf, -1);
+			}
+
+			prt_htmlfm_Output(context, "\">", -1);
 
 			// prt_htmlfm_InitStyle(context, &(cell->TextStyle));
 			for(subobj=cell->ContentHead;subobj;subobj=subobj->Next)
@@ -113,7 +146,7 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 	    else
 		{
 		/** Row containing arbitrary stuff.  Emit entire row **/
-		prt_htmlfm_OutputPrintf(context, "<tr><td width=\"%d\" align=\"left\" valign=\"top\" colspan=\"%d\" bgcolor=\"#%6.6X\">", 
+		prt_htmlfm_OutputPrintf(context, "<tr><td width=\"%d\" vertical-align=\"top\" colspan=\"%d\" bgcolor=\"#%6.6X\">", 
 			(int)(row->Width*PRT_HTMLFM_XPIXEL),
 			lm_data->nColumns,
 			row->BGColor);

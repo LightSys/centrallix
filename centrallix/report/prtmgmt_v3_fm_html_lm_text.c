@@ -88,8 +88,6 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area) {
 
 	prt_htmlfm_SaveStyle(context, &oldstyle);
 
-
-	printf("%.2f -> %d, %.2f -> %d", area->Height, (int)(area->Height * PRT_HTMLFM_YPIXEL + 0.0001), area->ConfigHeight, (int)(area->ConfigHeight * PRT_HTMLFM_YPIXEL + 0.0001));
 	prt_htmlfm_OutputPrintf(context, "<div #area style=\"border: %d solid %d; display: flex; flex-direction: column; width: 100%%; min-height: %dpx\">",
 		lm_inf->AreaBorder.Width[0], lm_inf->AreaBorder.Color[0], (int)(area->Height * PRT_HTMLFM_YPIXEL + 0.0001));
 
@@ -123,10 +121,11 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area) {
 
 		// justified text is split into individual objects... skip to next actual object
 		while (scan->ObjType->TypeID == PRT_OBJ_T_STRING
-				&& scan->Justification == 3
 				&& scan->Next
 				&& scan->Next->ObjType->TypeID == PRT_OBJ_T_STRING
-				&& scan->Next->Justification == 3) {
+				&& scan->Justification == scan->Next->Justification
+				&& !(scan->Next->Flags & (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET))
+				&& !(scan->Next->Flags & (PRT_OBJ_F_NEWLINE))) {
 			scan = scan->Next;
 		}
 	}
