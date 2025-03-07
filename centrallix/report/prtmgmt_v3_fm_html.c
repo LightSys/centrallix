@@ -948,7 +948,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj) {
 					if(cur_row != -1) {
 						prt_htmlfm_Output(context, "</div>\n", -1);
 					}
-					prt_htmlfm_Output(context, "<div style=\"display: flex; padding-bottom: 3px; justify-content: center\">", -1);
+					prt_htmlfm_Output(context, "<div style=\"display: flex; padding-bottom: 2px; justify-content: center\">", -1);
 					cur_row = subobj->Y;
 				}
 
