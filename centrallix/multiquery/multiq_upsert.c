@@ -358,7 +358,7 @@ mqusNextItem(pQueryElement qe, pQueryStatement stmt)
 	    objlist = expCreateParamList();
 	    if (!objlist)
 		goto error;
-	    expAddParamToList(objlist, "this", NULL, EXPR_O_CURRENT);
+	    expAddParamToList(objlist, "this", NULL, EXPR_O_CURRENT | EXPR_O_PRESERVEPARENT);
 	    expBindExpression(pdata->AllCriteria, objlist, 0);
 	    expFreeParamList(objlist);
 	    objlist = NULL;
@@ -383,7 +383,7 @@ mqusNextItem(pQueryElement qe, pQueryStatement stmt)
 		expCopyList(stmt->Query->ObjList, objlist, -1);
 		//objlist->PSeqID = stmt->Query->ObjList->PSeqID;
 		expLinkParams(objlist, stmt->Query->nProvidedObjects, -1);
-		expAddParamToList(objlist, "this", one_dup, EXPR_O_CURRENT | EXPR_O_ALLOWDUPS);
+		expAddParamToList(objlist, "this", one_dup, EXPR_O_CURRENT | EXPR_O_ALLOWDUPS | EXPR_O_PRESERVEPARENT);
 		xaAddItem(&pdata->ToBeUpdated, (void*)objlist);
 		dup_cnt++;
 		}

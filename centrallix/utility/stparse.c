@@ -430,14 +430,51 @@ stLookup(pStructInf this, char* name)
 	/** Search for a subinf with the right name **/
 	for(i=0;i<this->nSubInf;i++)
 	    {
-	    if (!strcmp(this->SubInf[i]->Name, name)) 
+	    if (!strcmp(this->SubInf[i]->Name, name))
 		{
 		inf = this->SubInf[i];
 		break;
 		}
 	    }
 
+	if (!inf) return NULL;
+	ASSERTMAGIC(inf, MGK_STRUCTINF);
+
     return inf;
+    }
+
+
+/*** stFind() - recursively search the struct tree for a given named
+ *** subgroup.  Excludes matching against the struct inf passed in
+ *** as 'inf'; just matches against children/descendents.
+ ***/
+pStructInf
+stFind(pStructInf this, char* name)
+    {
+    pStructInf find_inf = NULL, search_inf;
+    int i;
+
+	if (!this) return NULL;
+	ASSERTMAGIC(this, MGK_STRUCTINF);
+
+	/** Search for a subinf with the right name **/
+	for(i=0;i<this->nSubInf;i++)
+	    {
+	    search_inf = this->SubInf[i];
+	    if (!strcmp(search_inf->Name, name))
+		{
+		find_inf = search_inf;
+		break;
+		}
+	    find_inf = stFind(search_inf, name);
+	    if (find_inf)
+		break;
+	    }
+
+	if (!find_inf) return NULL;
+	ASSERTMAGIC(find_inf, MGK_STRUCTINF);
+
+    return find_inf;
     }
 
 

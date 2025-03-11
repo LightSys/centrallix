@@ -243,10 +243,11 @@ qyt_internal_AttrValue(pQytObjAttr objattr, char* attrname)
  *** and so forth.
  ***/
 pQytData
-qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref, pStructInf dptr, int openflags, pParamObjects parent_objlist)
+qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref, pStructInf process_inf, int openflags, pParamObjects parent_objlist)
     {
     pQytData inf;
-    pStructInf lookup_inf, find_inf, next_inf;
+    pStructInf lookup_inf, find_inf, next_inf, text_inf;
+    pStructInf dptr = process_inf;
     char* strval;
     char* exprval;
     char* ptr;
@@ -255,12 +256,13 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
     int no_open = (parent_objlist != NULL);
     pExpression expr;
     pParamObjects objlist;
-    pObject test_obj;
+    pObject test_obj; /* lower level object - from SQL or Source */
     XHashTable struct_table;
     XString sql;
     pObjQuery test_qy;
     char createpath[OBJSYS_MAX_PATH+1];
     char* endorsement_name;
+    int iter_cnt;
 
     	/** Setup the pathname into its subparts **/
 	for(i=1;i<path->nElements;i++) path->Elements[i][-1] = 0;
@@ -281,10 +283,11 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 	xhInit(&struct_table, 17, 0);
 
 	/** Look for the part of the structinf which this path references. **/
+	iter_cnt = 0;
+	objlist->ParentID = objlist->CurrentID; /* Parent ID should be set to the most recent SQL or SOURCE object, not TEXT */
 	while(subref < path->nElements)
 	    {
 	    /** Add a slot to the param object list for this tree level **/
-	    objlist->ParentID = objlist->CurrentID;
 	    did_param = 0;
 
 	    /** Get object from parent's object list? **/
@@ -295,19 +298,34 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 		}
 
 	    /** Look for text and source items in the querytree definition. **/
-	    next_inf = NULL;
-	    for(i=0;i<dptr->nSubInf;i++) 
+	    next_inf = find_inf = NULL;
+	    for(i=0;i<dptr->nSubInf;)
 	        {
-		find_inf = dptr->SubInf[i];
+		/** Limiter, for example to prevent infinite-recursing .qyt files **/
+		iter_cnt++;
+		if (iter_cnt >= 256)
+		    {
+		    mssError(1, "QYT", "Querytree processing exceeded internal limits");
+		    goto error;
+		    }
+
+		/** "Eat" a querytree element if we're not already trying a different one **/
+		if (!find_inf)
+		    {
+		    find_inf = dptr->SubInf[i];
+		    i++;
+		    }
+
+		/** Subgroup? (object) **/
 		if (stStructType(find_inf) == ST_T_SUBGROUP)
                     {
-	    PROCESS_SUBGROUP:
                     inf->Pathname[0] = '\0';
 		    inf->Flags = 0;
-                    if ((lookup_inf = stLookup(find_inf, "text")))
+                    if ((text_inf = stLookup(find_inf, "text")) && !stLookup(find_inf, "sql") && !stLookup(find_inf, "source"))
                         {
+			/** TEXT node (just a static name) **/
                         strval = "";
-                        stAttrValue(lookup_inf,NULL,&strval,0);
+                        stAttrValue(text_inf,NULL,&strval,0);
                         if (!strcmp(path->Elements[subref],strval))
                             {
 			    /** Security check **/
@@ -318,15 +336,35 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 				}
 
 			    if (!did_param)
-				expAddParamToList(objlist,strval,NULL,EXPR_O_CURRENT | EXPR_O_ALLOWDUPS);
+				expAddParamToList(objlist, strval, NULL, EXPR_O_ALLOWDUPS);
+
+			    if (subref == path->nElements - 1)
+				inf->LLObj = NULL;
                             next_inf = find_inf;
                             break;
                             }
-                        if (subref == path->nElements - 1)
-                            inf->LLObj = NULL;
+			else
+			    {
+			    /** No match - done examining this one, try again **/
+			    find_inf = NULL;
+			    }
                         }
                     else if ((lookup_inf = stLookup(find_inf, "sql")))
 			{
+			/** SQL node (children obtained via SQL query) **/
+			if ((text_inf = stLookup(find_inf, "text")) != NULL)
+			    {
+			    /** Name check, if provided **/
+			    strval = "";
+			    stAttrValue(text_inf,NULL,&strval,0);
+			    if (strcmp(path->Elements[subref],strval) != 0)
+				{
+				/** No match, continue looking **/
+				find_inf = NULL;
+				continue;
+				}
+			    }
+
 			/** Security check **/
 			if (endVerifyEndorsements(find_inf, stGetObjAttrValue, &endorsement_name) < 0)
 			    {
@@ -387,10 +425,17 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 			    goto error;
 			    }
 
-			xsQPrintf(&sql, "%STR %STR :name = %STR&DQUOT", strval, (inf->Flags & QYT_F_USEHAVING)?"HAVING":"WHERE", path->Elements[subref]);
+			/** Build the query - search based on 'name' if text= not
+			 ** provided in the .qyt
+			 **/
+			if (text_inf)
+			    xsQPrintf(&sql, "%STR", strval);
+			else
+			    xsQPrintf(&sql, "%STR %STR :name = %STR&DQUOT", strval, (inf->Flags & QYT_F_USEHAVING)?"HAVING":"WHERE", path->Elements[subref]);
 			if (expr) expFreeExpression(expr);
 			expr = NULL;
 
+			/** Run the query **/
 			test_obj = NULL;
 			test_qy = objMultiQuery(s, sql.String, objlist, 0);
 			if (test_qy)
@@ -415,7 +460,10 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 			    }
 			xsDeInit(&sql);
 			if (!test_obj)
+			    {
+			    find_inf = NULL;
 			    continue;
+			    }
 
 			/** ok, found the object **/
 			expModifyParam(objlist,NULL,test_obj);
@@ -425,10 +473,25 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
                             inf->LLObj = objLinkTo(test_obj);
 			    }
 			next_inf = find_inf;
+			objlist->ParentID = objlist->CurrentID;
 			break;
 			}
                     else if ((lookup_inf = stLookup(find_inf, "source")))
                         {
+			/** SOURCE node (children obtained via list of subobjects from a source) **/
+			if ((text_inf = stLookup(find_inf, "text")) != NULL)
+			    {
+			    /** Name check, if provided **/
+			    strval = "";
+			    stAttrValue(text_inf,NULL,&strval,0);
+			    if (strcmp(path->Elements[subref],strval) != 0)
+				{
+				/** No match, continue looking **/
+				find_inf = NULL;
+				continue;
+				}
+			    }
+
 			/** Security check **/
 			if (endVerifyEndorsements(find_inf, stGetObjAttrValue, &endorsement_name) < 0)
 			    {
@@ -481,7 +544,13 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
                             {
                             test_obj = objOpen(s, inf->Pathname, O_RDWR | O_TRUNC | (openflags & (O_CREAT | OBJ_O_AUTONAME)), 0600, "system/file");
                             if (!test_obj)
+				{
+				/** Create failed, go look again **/
+				if (expr) expFreeExpression(expr);
+				expr = NULL;
+				find_inf = NULL;
 				continue;
+				}
 			    expModifyParam(objlist, NULL, test_obj);
 			    objUnmanageObject(test_obj->Session, test_obj);
 			    objlist->Flags[(signed char)(objlist->CurrentID)] |= EXPR_O_UPDATE;
@@ -501,34 +570,45 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
                                 }
                             }
                         else if (!test_obj)
+			    {
+			    /** Could not find it, and did not try to create it; go look again **/
+			    if (expr) expFreeExpression(expr);
+			    expr = NULL;
+			    find_inf = NULL;
 			    continue;
+			    }
     
                         /** Validate the where clause expression if need be. **/
 			objlist->Session = s;
                         v = !expr || (expEvalTree(expr,objlist) >= 0 && expr->Integer != 0);
                         if (expr) expFreeExpression(expr);
 			expr = NULL;
-                        if (subref == path->nElements - 1) 
-			    {
-                            inf->LLObj = objLinkTo(test_obj);
-			    }
-                        /*else 
-			    {
-                            if (!v) objClose(test_obj);
-			    }*/
 			if (v)
 			    {
+			    if (subref == path->nElements - 1) 
+				{
+				inf->LLObj = objLinkTo(test_obj);
+				}
 			    next_inf = find_inf;
+			    objlist->ParentID = objlist->CurrentID;
 			    break;
+			    }
+			else
+			    {
+			    objClose(test_obj);
+			    expModifyParam(objlist, NULL, NULL);
 			    }
                         }
                     }
 		else if (!strcmp(find_inf->Name,"recurse"))
 		    {
+		    /** "recurse" attribute - allows subchildren to be generated in the
+		     ** same way as the parent object.
+		     **/
 		    expr = NULL;
 		    exprval = NULL;
 		    stAttrValue(stLookup(dptr, "known_leaf"),NULL,&exprval,0);
-		    expAddParamToList(objlist,find_inf->Name,NULL,EXPR_O_CURRENT | EXPR_O_ALLOWDUPS);
+		    expAddParamToList(objlist, find_inf->Name, NULL, EXPR_O_CURRENT | EXPR_O_ALLOWDUPS); /* FIXME ->Name is 'recurse' */
 		    if (exprval) 
 			{
 			expr = (pExpression)expCompileExpression(exprval, objlist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
@@ -548,7 +628,43 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 		    expRemoveParamFromList(objlist, find_inf->Name);
 		    stGetAttrValue(find_inf, DATA_T_STRING, POD(&ptr), 0);
 		    find_inf = (pStructInf)xhLookup(&struct_table, ptr);
-		    if (find_inf) goto PROCESS_SUBGROUP;
+		    if (find_inf)
+			{
+			/** Try find_inf next **/
+			continue;
+			}
+		    }
+		else if (!strcmp(find_inf->Name, "same_children_as"))
+		    {
+		    /** same_children_as - this attribute allows us to process the children
+		     ** of one subgroup the same as another, so we don't have to code up
+		     ** both subgroup children exactly the same way.
+		     **/
+		    strval = NULL;
+		    if (stAttrValue(find_inf, NULL, &strval, 0) < 0 || !strval)
+			{
+			mssError(1, "QYT", "same_children_as property on %s must have a string value", dptr->Name);
+			goto error;
+			}
+		    lookup_inf = stFind(process_inf, strval);
+		    if (!lookup_inf)
+			{
+			mssError(1, "QYT", "same_children_as %s on %s does not exist", strval, dptr->Name);
+			goto error;
+			}
+		    if (stStructType(lookup_inf) != ST_T_SUBGROUP)
+			{
+			mssError(1, "QYT", "same_children_as %s on %s is not a subgroup (object)", strval, dptr->Name);
+			goto error;
+			}
+		    next_inf = lookup_inf;
+		    subref--; /* because we're not actually eating a path element this time */
+		    break;
+		    }
+		else
+		    {
+		    /** Done with this find_inf **/
+		    find_inf = NULL;
 		    }
 		}
 
@@ -561,6 +677,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 		}
 	    dptr = next_inf;
 	    subref++;
+	    find_inf = NULL;
 	    }
 
 	/** Ok, close up the structure table. **/

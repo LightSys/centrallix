@@ -504,6 +504,12 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 	    for(i=0;i<from->Children.nItems;i++)
 		{
 		subtree = (pQueryStructure)(from->Children.Items[i]);
+		if (subtree->Flags & MQ_SF_IDENTITY)
+		    has_identity = 1;
+		}
+	    for(i=0;i<from->Children.nItems;i++)
+		{
+		subtree = (pQueryStructure)(from->Children.Items[i]);
 		if (subtree->Flags & MQ_SF_EXPRESSION && !subtree->Presentation[0])
 		    snprintf(subtree->Presentation, sizeof(subtree->Presentation), "from_%d", i);
 		if (subtree->Flags & MQ_SF_COLLECTION && !subtree->Presentation[0])
@@ -512,14 +518,12 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		    ptr = subtree->Presentation;
 		else
 		    ptr = subtree->Source;
-		if (subtree->Flags & MQ_SF_IDENTITY)
-		    has_identity = 1;
 		if (expLookupParam(stmt->Query->ObjList, ptr, 0) >= 0)
 		    {
 		    mssError(1, "MQ", "Data source '%s' already exists in query or query parameter", ptr);
 		    return -1;
 		    }
-		subtree->ObjID = expAddParamToList(stmt->Query->ObjList, ptr, NULL, (i==0 || (subtree->Flags & MQ_SF_IDENTITY))?EXPR_O_CURRENT:0);
+		subtree->ObjID = expAddParamToList(stmt->Query->ObjList, ptr, NULL, ((i==0 && !has_identity) || (subtree->Flags & MQ_SF_IDENTITY))?(EXPR_O_CURRENT | EXPR_O_PRESERVEPARENT):0);
 
 		/** Compile FROM clause expression if needed **/
 		if (subtree->Flags & MQ_SF_EXPRESSION)
@@ -3060,7 +3064,7 @@ mq_internal_NextStatement(pMultiQuery this)
 	stmt->OneObjList = expCreateParamList();
 	expCopyList(this->ObjList, stmt->OneObjList, this->nProvidedObjects);
 	stmt->OneObjList->Session = stmt->Query->SessionID;
-	expAddParamToList(stmt->OneObjList, "this", NULL, EXPR_O_CURRENT | EXPR_O_REPLACE);
+	expAddParamToList(stmt->OneObjList, "this", NULL, EXPR_O_CURRENT | EXPR_O_REPLACE | EXPR_O_PRESERVEPARENT);
 	expSetParamFunctions(stmt->OneObjList, "this", mqGetAttrType, mqGetAttrValue, mqSetAttrValue);
 
 	/** Parse the query **/
@@ -3556,7 +3560,7 @@ mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p)
 	having_objlist = expCreateParamList();
 	expCopyList(stmt->Query->ObjList, having_objlist, -1);
 	having_objlist->Session = stmt->Query->SessionID;
-	expAddParamToList(having_objlist, "this", (void*)our_p, EXPR_O_CURRENT | EXPR_O_REPLACE);
+	expAddParamToList(having_objlist, "this", (void*)our_p, EXPR_O_CURRENT | EXPR_O_REPLACE | EXPR_O_PRESERVEPARENT);
 	expSetParamFunctions(having_objlist, "this", mqGetAttrType, mqGetAttrValue, mqSetAttrValue);
 
 	/** Do late binding, and evaluate it **/

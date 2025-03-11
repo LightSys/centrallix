@@ -131,6 +131,7 @@ int stSetAttrValue(pStructInf this, int type, pObjData value, int nval);
 pExpression stGetExpression(pStructInf this, int nval);
 void* stGetValueList(pStructInf this, int type, unsigned int* nval);
 int stAttrIsList(pStructInf this);
+pStructInf stFind(pStructInf this, char* name);
 
 #endif /* _STPARSE_H */
 
