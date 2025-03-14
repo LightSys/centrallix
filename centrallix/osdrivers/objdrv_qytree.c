@@ -470,8 +470,19 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 			xsDeInit(&sql);
 			if (!test_obj)
 			    {
-			    find_inf = NULL;
-			    continue;
+			    if (text_inf)
+				{
+				/** Query might be update/delete/etc, returning no rows, accept if text_inf is set. **/
+				next_inf = find_inf;
+				objlist->ParentID = objlist->CurrentID;
+				break;
+				}
+			    else
+				{
+				/** No results here, keep looking. **/
+				find_inf = NULL;
+				continue;
+				}
 			    }
 
 			/** ok, found the object **/
@@ -1015,6 +1026,7 @@ qyt_internal_GetQueryItem(pQytQuery qy)
     char* val;
     char* ptr;
     int t;
+    char* endorsement_name;
 
     	/** Already hit end of query? **/
 	if (qy->NextSubInfID == -1) return -1;
@@ -1055,13 +1067,22 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 	/** Do the search **/
 	while(qy->NextSubInfID < main_inf->nSubInf)
 	    {
+	    /** Get the next qyt item **/
 	    find_inf = main_inf->SubInf[qy->NextSubInfID++];
+
+	    /** Do we have access?  Completely ignore it if not. **/
+	    if (endVerifyEndorsements(find_inf, stGetObjAttrValue, &endorsement_name) < 0)
+		continue;
+
+	    /** Recursion? **/
 	    if (stStructType(find_inf) == ST_T_ATTRIB && !strcmp(find_inf->Name, "recurse"))
 	        {
 		stGetAttrValue(find_inf, DATA_T_STRING, POD(&ptr), 0);
 		find_inf = (pStructInf)xhLookup(&qy->StructTable, ptr);
 		if (!find_inf) continue;
 		}
+
+	    /** Set up the .qyt item **/
 	    qy->ItemText = NULL;
 	    qy->ItemSrc = NULL;
 	    qy->ItemWhere = NULL;
@@ -1073,6 +1094,8 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 	    if (stStructType(find_inf) == ST_T_SUBGROUP)
 	        {
 		xhAdd(&qy->StructTable, find_inf->Name, (void*)find_inf);
+
+		/** Text item **/
 		val = NULL;
 		stAttrValue(stLookup(find_inf,"text"),NULL,&val,0);
 		if (val)
@@ -1080,6 +1103,8 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 		    qy->ItemText = val;
 		    return qy->NextSubInfID - 1;
 		    }
+
+		/** Source item **/
 		stAttrValue(stLookup(find_inf,"source"),NULL,&val,0);
 		if (val)
 		    {
@@ -1088,9 +1113,12 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 		    stAttrValue(stLookup(find_inf,"order"),NULL,&(qy->ItemOrder),0);
 		    return qy->NextSubInfID - 1;
 		    }
+
+		/** SQL item **/
 		t = stGetAttrType(stLookup(find_inf,"sql"), 0);
 		if (t == DATA_T_STRING)
 		    {
+		    /** Ordinary SQL string **/
 		    stAttrValue(stLookup(find_inf,"sql"),NULL,&val,0);
 		    if (val)
 			{
@@ -1100,6 +1128,7 @@ qyt_internal_GetQueryItem(pQytQuery qy)
 		    }
 		else if (t == DATA_T_CODE)
 		    {
+		    /** SQL string is an expression **/
 		    stGetAttrValue(stLookup(find_inf,"sql"), DATA_T_CODE, POD(&qy->ItemSqlExpr), 0);
 		    if (qy->ItemSqlExpr)
 			{
@@ -1369,16 +1398,6 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    objClose(inf->LLObj);
 	inf->LLObj = llobj;
 	inf->BaseNode = qy->ObjInf->BaseNode;
-
-	/** Point to the correct structure file subgroup **/
-	inf->NodeData = qy->ObjInf->NodeData->SubInf[cur_id];
-	if (stStructType(inf->NodeData) == ST_T_ATTRIB && !strcmp(inf->NodeData->Name, "recurse"))
-	    {
-	    stGetAttrValue(inf->NodeData, DATA_T_STRING, POD(&ptr), 0);
-	    find_inf = (pStructInf)xhLookup(&qy->StructTable, ptr);
-	    if (find_inf) inf->NodeData = find_inf;
-	    }
-
 	inf->BaseNode->OpenCnt++;
 	inf->Obj = obj;
 	inf->Offset = 0;
