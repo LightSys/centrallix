@@ -318,7 +318,7 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 	/** Ok, add parameter. **/
 	for(i=0;i<EXPR_MAX_PARAMS;i++)
 	    {
-	    if (this->Names[i] == NULL || i == exist)
+	    if ((this->Names[i] == NULL && exist == -1) || i == exist)
 		{
 		/** Setup the entry for this parameter. **/
 		this->SeqIDs[i] = EXP.ModSeqID++;
@@ -342,7 +342,7 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 		/** Check for parent id and current id **/
 		if (flags & EXPR_O_PARENT)
 		    this->ParentID = i;
-		else if ((flags & EXPR_O_CURRENT) && this->CurrentID >= 0)
+		else if ((flags & EXPR_O_CURRENT) && this->CurrentID >= 0 && !(flags & EXPR_O_PRESERVEPARENT))
 		    this->ParentID = this->CurrentID;
 		if (flags & EXPR_O_CURRENT) this->CurrentID = i;
 		if (this->nObjects == 1) this->CurrentID = i;
@@ -526,7 +526,7 @@ expFreezeOne(pExpression this, pParamObjects objlist, int freeze_id)
     int i, oldflags;
 
     	/** Is this a PROPERTY object and does not match freeze_id?? **/
-	if ((this->NodeType == EXPR_N_PROPERTY || this->NodeType == EXPR_N_OBJECT) && this->ObjID == freeze_id)
+	if ((this->NodeType == EXPR_N_PROPERTY || this->NodeType == EXPR_N_OBJECT) && (this->ObjID == freeze_id || (this->ObjID == EXPR_OBJID_PARENT && objlist->ParentID == freeze_id)))
 	    {
 	    oldflags = this->Flags;
 	    this->Flags &= ~EXPR_F_FREEZEEVAL;

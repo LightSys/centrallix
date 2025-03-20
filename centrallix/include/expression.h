@@ -177,6 +177,7 @@ typedef struct _PO
 #define EXPR_O_REFERENCED	32	/* object was referenced */
 #define EXPR_O_ALLOWDUPS	64	/* allow duplicate object names */
 #define EXPR_O_REPLACE		128	/* replace entry on duplicate */
+#define EXPR_O_PRESERVEPARENT	256	/* keep parent reference the same */
 
 extern pParamObjects expNullObjlist;
 

@@ -1539,6 +1539,8 @@ start(void* v)
 	/** Application context **/
 	cxssPushContext();
 	app = appCreate("test_obj");
+	cxssAddEndorsement("system:from_application", "*");
+	cxssAddEndorsement("system:from_appgroup", "*");
 
 	/** Open a session **/
 	s = objOpenSession("/");

@@ -1319,7 +1319,11 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 	    if (qe->Flags & MQ_EF_FROMSUBTREE)
 		{
 		obj = mqp_internal_Return(qe, stmt, NULL);
-		if (!obj || obj == qe->LLSource) return 0;
+		if (!obj || obj == qe->LLSource)
+		    {
+		    if (obj) objClose(obj);
+		    return 0;
+		    }
 		expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, obj);
 		}
 	    else
