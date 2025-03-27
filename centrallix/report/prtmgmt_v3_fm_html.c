@@ -12,6 +12,7 @@
 #include "cxlib/xstring.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "prtmgmt_v3/prtmgmt_v3_fm_html.h"
+#include "prtmgmt_v3/prtmgmt_v3_lm_text.h"
 #include "prtmgmt_v3/ht_font_metrics.h"
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
@@ -62,8 +63,8 @@
 
 
 /*** Document header ***/
-#define	PRT_HTMLFM_HEADER	"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">\n" \
-				"<html>\n" \
+#define	PRT_HTMLFM_HEADER	"<!DOCTYPE html>\n" \
+				"<html lang=\"en\" width=\"100%\">\n" \
 				"<head>\n" \
 				"    <title>Centrallix HTML Document</title>\n" \
 				"    <meta name=\"Generator\" content=\"Centrallix PRTMGMT v3.0\">\n" \
@@ -111,10 +112,18 @@ static int prt_htmlfm_fontsize_to_htmlsize[] = {8,9,10,12,15,19,22,26};
 #define PRT_HTMLFM_MINFONTSIZE	(1)
 #define	PRT_HTMLFM_MAXFONTSIZE	(7)
 
+static char* prt_htmlfm_fontstyles[3] = { "Courier New,Courier,fixed", "Arial,Helvetica,MS Sans Serif", "Times New Roman,Times,MS Serif"};
+#define PRT_HTMLFM_MINFONTSTYLE	(0)
+#define PRT_HTMLFM_MAXFONTSTYLE	(2)
 
 /*** Session flags ***/
 #define PRT_HTMLFM_F_PAGINATED		1
 
+/*** Style Flags ***/
+#define PRT_HTMLFM_F_FONTDIRTY		2
+#define PRT_HTMLFM_F_UNDERLINEDIRTY	4
+#define PRT_HTMLFM_F_ITALICDIRTY	8
+#define PRT_HTMLFM_F_BOLDDIRTY		16
 
 /*** MIME media types ***/
 typedef struct
@@ -154,6 +163,7 @@ struct _PSFI
     int			ExitStyle;
     pPrtHTMLfmSubtype	Subtype;
     int			Flags;			/* PRT_HTMLFM_F_xxx */
+    int			StyleFlags;
     };
 
 
@@ -206,7 +216,9 @@ prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len)
 	/** Output with care... **/
 	while(str[offset] && offset < len)
 	    {
-	    badcharpos = strpbrk(str+offset, "<>& ");
+//	    badcharpos = strpbrk(str+offset, "<>& ");
+//	    TODO CSMITH: see remark below. Removed space from this list.
+	    badcharpos = strpbrk(str+offset, "<>&");
 	    if (badcharpos)
 		endoffset = badcharpos - str;
 	    else
@@ -220,7 +232,8 @@ prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len)
 		    case '<': repl = "&lt;"; break;
 		    case '>': repl = "&gt;"; break;
 		    case '&': repl = "&amp;"; break;
-		    case ' ': repl = "&nbsp;"; break;
+//		    TODO CSMITH: check that this does not decrease security? Removed to allow HTML to determine line wrapping itself.
+//		    case ' ': repl = "&nbsp;"; break;
 		    default: repl = ""; break;
 		    }
 		prt_htmlfm_Output(context, repl, -1);
@@ -387,30 +400,20 @@ prt_htmlfm_Close(void* context_v)
     return 0;
     }
 
+const char *
+prt_htmlfm_GetFont(pPrtTextStyle style) {
+    int fontid = style->FontID - 1;
+    if (fontid < PRT_HTMLFM_MINFONTSTYLE || fontid > PRT_HTMLFM_MAXFONTSTYLE) fontid = PRT_HTMLFM_MINFONTSTYLE;
+	return prt_htmlfm_fontstyles[fontid];
+}
+
 
 /*** prt_htmlfm_SetStyle() - output the html to change the text style
  ***/
 int
 prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
     {
-    char* fonts[3] = { "Courier New,Courier,fixed", "Arial,Helvetica,MS Sans Serif", "Times New Roman,Times,MS Serif"};
-    int htmlfontsize, fontid;
-    char stylebuf[128];
     int boldchanged, italicchanged, underlinechanged, fontchanged;
-    int i;
-
-	/** Figure the size **/
-	for(i=PRT_HTMLFM_MINFONTSIZE;i<=PRT_HTMLFM_MAXFONTSIZE;i++)
-	    {
-	    if (realComparePrecision(prt_htmlfm_fontsize_to_htmlsize[i], style->FontSize, 0.5) == 0)
-		{
-		htmlfontsize = i;
-		break;
-		}
-	    }
-	/*htmlfontsize = style->FontSize - PRT_HTMLFM_FONTSIZE_DEFAULT + PRT_HTMLFM_FONTSIZE_OFFSET;*/
-	fontid = style->FontID - 1;
-	if (fontid < 0 || fontid > 2) fontid = 0;
 
 	/** Close out current style settings? **/
 	boldchanged = (style->Attr ^ context->CurStyle.Attr) & PRT_OBJ_A_BOLD;
@@ -419,16 +422,23 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 	fontchanged = (style->FontID != context->CurStyle.FontID || 
 		realComparePrecision(style->FontSize, context->CurStyle.FontSize, 0.5) != 0 || 
 		style->Color != context->CurStyle.Color);
+
+	
 	if ((!context->InitStyle) && (context->ExitStyle || boldchanged || italicchanged || underlinechanged || fontchanged))
 	    {
-	    if (context->CurStyle.Attr & PRT_OBJ_A_BOLD) prt_htmlfm_Output(context, "</b>", 4);
+	    /*For each thing, check dirty flag is clear to ensure opening tag was actually written*/
+	    if ((context->CurStyle.Attr & PRT_OBJ_A_BOLD) && 
+		!(context->StyleFlags & PRT_HTMLFM_F_BOLDDIRTY)) prt_htmlfm_Output(context, "</b>", 4);
 	    if (context->ExitStyle || italicchanged || underlinechanged || fontchanged)
 		{
-		if (context->CurStyle.Attr & PRT_OBJ_A_ITALIC) prt_htmlfm_Output(context, "</i>", 4);
+		if (context->CurStyle.Attr & PRT_OBJ_A_ITALIC &&
+		    !(context->StyleFlags & PRT_HTMLFM_F_ITALICDIRTY)) prt_htmlfm_Output(context, "</i>", 4);
 		if (context->ExitStyle || underlinechanged || fontchanged)
 		    {
-		    if (context->CurStyle.Attr & PRT_OBJ_A_UNDERLINE) prt_htmlfm_Output(context, "</u>", 4);
-		    if (context->ExitStyle || fontchanged)
+		    if (context->CurStyle.Attr & PRT_OBJ_A_UNDERLINE && 
+			!(context->StyleFlags & PRT_HTMLFM_F_UNDERLINEDIRTY)) prt_htmlfm_Output(context, "</u>", 4);
+		    if ((context->ExitStyle || fontchanged) &&
+			!(context->StyleFlags & PRT_HTMLFM_F_FONTDIRTY))
 			{
 			prt_htmlfm_Output(context, "</font>",7);
 			}
@@ -437,30 +447,73 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 	    }
 	if (context->ExitStyle) return 0;
 
-	/** Apply new style settings **/
+
+	/*Set the dirty flags as appropriate*/
 	if (context->InitStyle || boldchanged || italicchanged || underlinechanged || fontchanged)
 	    {
 	    if (context->InitStyle || italicchanged || underlinechanged || fontchanged)
 		{
 		if (context->InitStyle || underlinechanged || fontchanged)
-		    {
+		{
 		    if (context->InitStyle || fontchanged)
-			{
-			snprintf(stylebuf, sizeof(stylebuf), "<font face=\"%s\" color=\"#%6.6X\" size=\"%d\">",
-				fonts[fontid], style->Color, htmlfontsize);
-			prt_htmlfm_Output(context, stylebuf, -1);
-			}
-		    if (style->Attr & PRT_OBJ_A_UNDERLINE) prt_htmlfm_Output(context, "<u>", 3);
+		    {
+			context->StyleFlags |= PRT_HTMLFM_F_FONTDIRTY;
 		    }
-		if (style->Attr & PRT_OBJ_A_ITALIC) prt_htmlfm_Output(context, "<i>", 3);
+		    if (style->Attr & PRT_OBJ_A_UNDERLINE)
+			context->StyleFlags |= PRT_HTMLFM_F_UNDERLINEDIRTY;
 		}
-	    if (style->Attr & PRT_OBJ_A_BOLD) prt_htmlfm_Output(context, "<b>", 3);
-	    memcpy(&(context->CurStyle), style, sizeof(PrtTextStyle));
+		if (style->Attr & PRT_OBJ_A_ITALIC)
+		    context->StyleFlags |= PRT_HTMLFM_F_ITALICDIRTY;
 	    }
+	    if (style->Attr & PRT_OBJ_A_BOLD)
+		context->StyleFlags |= PRT_HTMLFM_F_BOLDDIRTY;
 
+	    memcpy(&(context->CurStyle), style, sizeof(PrtTextStyle));
+	}
     return 0;
     }
 
+int
+prt_htmlfm_WriteStyle(pPrtHTMLfmInf context) {
+    pPrtTextStyle style = &(context->CurStyle);
+    int htmlfontsize;
+    int i;
+    char stylebuf[128];
+    
+    /** Figure the size **/
+    for(i=PRT_HTMLFM_MINFONTSIZE;i<=PRT_HTMLFM_MAXFONTSIZE;i++)
+    {
+        if (realComparePrecision(prt_htmlfm_fontsize_to_htmlsize[i], style->FontSize, 0.5) == 0)
+	{
+	    htmlfontsize = i;
+	    break;
+	}
+    }
+    /*htmlfontsize = style->FontSize - PRT_HTMLFM_FONTSIZE_DEFAULT + PRT_HTMLFM_FONTSIZE_OFFSET;*/
+    
+    if(context->StyleFlags & PRT_HTMLFM_F_FONTDIRTY)
+    {
+	snprintf(stylebuf, sizeof(stylebuf), "<font face=\"%s\" color=\"#%6.6X\" size=\"%d\">",
+	    prt_htmlfm_GetFont(style), style->Color, htmlfontsize);
+	prt_htmlfm_Output(context, stylebuf, -1);
+    }
+    if(context->StyleFlags & PRT_HTMLFM_F_UNDERLINEDIRTY)
+    {
+	prt_htmlfm_Output(context, "<u>", 3);
+    }
+    if(context->StyleFlags & PRT_HTMLFM_F_ITALICDIRTY)
+    {
+	prt_htmlfm_Output(context, "<i>", 3);
+    }
+    if(context->StyleFlags & PRT_HTMLFM_F_BOLDDIRTY)
+    {
+	prt_htmlfm_Output(context, "<b>", 3);
+    }
+
+    /*Clear the dirty flags*/
+    context->StyleFlags &= ! (PRT_HTMLFM_F_FONTDIRTY | PRT_HTMLFM_F_UNDERLINEDIRTY |
+	    PRT_HTMLFM_F_ITALICDIRTY | PRT_HTMLFM_F_BOLDDIRTY);
+}
 
 /*** prt_htmlfm_InitStyle() - initialize style settings, as if we are 
  *** entering a new subcontainer.
@@ -612,6 +665,12 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 	    {
 	    case PRT_OBJ_T_STRING:
 		prt_htmlfm_SetStyle(context, &(obj->TextStyle));
+
+		if(strlen((char*) obj->Content))
+		{
+		    prt_htmlfm_WriteStyle(context);
+    		}
+
 		if (obj->URL && !strchr(obj->URL, '"'))
 		    {
 		    prt_htmlfm_Output(context, "<a href=\"", 9);
@@ -619,12 +678,16 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    prt_htmlfm_Output(context, "\">", 2);
 		    }
 		prt_htmlfm_OutputEncoded(context, (char*)obj->Content, -1);
+
+		if ((obj->Flags & PRT_OBJ_F_SOFTNEWLINE) && (obj->Flags & PRT_TEXTLM_F_RMSPACE)) {
+		    prt_htmlfm_OutputEncoded(context, " ", 1);
+		}
+
 		if (obj->URL && !strchr(obj->URL, '"'))
 		    {
 		    prt_htmlfm_Output(context, "</a>", 4);
 		    }
 		break;
-
 	    case PRT_OBJ_T_AREA:
 		prt_htmlfm_GenerateArea(context, obj);
 		break;
@@ -774,12 +837,26 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_PAGEHEADER, (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001)+34);
 
 	/** Write a table to handle page margins **/
+	//TODO CSMITH I can't figure out if the width* actually does anything (didn't do anything when switched to px either). I don't see any padding in web client. (Also email will often ignore padding on <body> I think). Need to test on email.
+	int left_margin = (int)(page_obj->MarginLeft*PRT_HTMLFM_XPIXEL+0.001);
+	int center_width = (int)((page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight+0.001)*PRT_HTMLFM_XPIXEL);
+	int right_margin = (int)(page_obj->MarginRight*PRT_HTMLFM_XPIXEL+0.001);
+	int top_margin = (int)((page_obj->MarginTop+0.001)*PRT_HTMLFM_YPIXEL);
 	prt_htmlfm_Output(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n", -1);
-	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", (int)(page_obj->MarginLeft*PRT_HTMLFM_XPIXEL+0.001));
-	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", (int)((page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight+0.001)*PRT_HTMLFM_XPIXEL));
-	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", (int)(page_obj->MarginRight*PRT_HTMLFM_XPIXEL+0.001));
-	prt_htmlfm_OutputPrintf(context, "<tr><td height=\"%d\"></td><td></td><td></td></tr><tr><td></td><td>\n", 
-		(int)((page_obj->MarginTop+0.001)*PRT_HTMLFM_YPIXEL));
+	prt_htmlfm_Output(context, "<colgroup>", -1);
+	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", left_margin);
+	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", center_width);
+	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", right_margin);
+	prt_htmlfm_Output(context, "</colgroup>", -1);
+	/* Print the first row, empty with appropriate margins*/
+	//TODO CSMITH the "px" modifier here has no effect, and the element does not actually have that much width. Why?
+	prt_htmlfm_OutputPrintf(context, "<tr><td height=\"%dpx\" width=\"%dpx\"></td><td height=\"%dpx\" width=\"%dpx\"></td><td height=\"%dpx\" width=\"%dpx\"></td></tr>", 
+		top_margin, left_margin,
+		top_margin, center_width,
+		top_margin, right_margin);
+	/* Start the second row (with appropriate margin) */
+	prt_htmlfm_OutputPrintf(context, "<tr><td width=\"%dpx\"></td><td>\n", left_margin);
+
 
 	/** We need to scan the absolute-positioned content to figure out how many
 	 ** "columns" and "rows" we need to put in the "table" used for layout
@@ -880,6 +957,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		cs=1;
 		while(cur_col+cs < n_cols && (colpos[cur_col+cs]+0.001) < subobj->X + subobj->Width) cs++;
 		rs=1;
+		//TODO CSMITH: we need to enter empty rows if we don't have anything in one, but something still spans multiple rows. How to do? Or do we just rowspan everything to 1?? Problem I think might actually be in the recept file def... somehow, the table is showing up as "should be at this Y height" but the other div is extending into that?... TBD.
 		while(cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height) rs++;
 		prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\" rowspan=\"%d\" valign=\"top\" align=\"left\">", cs, rs);
 		prt_htmlfm_Generate_r(context, subobj);

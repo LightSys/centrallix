@@ -132,7 +132,8 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    while(1)
 		{
 		if (linetail->Flags & PRT_OBJ_F_XSET) cur_needs_cols = 1;
-		if ((linetail->Flags & (PRT_OBJ_F_SOFTNEWLINE | PRT_OBJ_F_NEWLINE)) || !linetail->Next) break;
+		if ((linetail->Flags & PRT_OBJ_F_NEWLINE) || !linetail->Next) break;
+
 		linetail = linetail->Next;
 		}
 	    need_new_row = (cur_needs_cols || last_needed_cols || scan->Justification != PRT_JUST_T_LEFT);

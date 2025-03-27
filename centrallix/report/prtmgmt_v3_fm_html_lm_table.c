@@ -62,7 +62,17 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 
 	/** Write the table prologue **/
 	prt_htmlfm_SaveStyle(context, &oldstyle);
-	prt_htmlfm_Output(context,"<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\">\n", -1);
+
+
+	prt_htmlfm_OutputPrintf(context,"<table width=\"100%\" height=\"%fpx\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\"", table->Height * PRT_HTMLFM_YPIXEL);
+
+	char borderbuf[256];
+	snprintf(borderbuf, sizeof(borderbuf), " style=\"border-top: %fpx solid #%6.6X; border-right: %fpx solid #%6.6X; border-bottom: %fpx solid #%6.6X; border-left: %fpx solid #%6.6X;\">",
+	    lm_data->TopBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->TopBorder.Color[0],
+	    lm_data->RightBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->RightBorder.Color[0],
+	    lm_data->BottomBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->BottomBorder.Color[0],
+	    lm_data->LeftBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->LeftBorder.Color[0]);
+	prt_htmlfm_Output(context, borderbuf, -1);
 
 	/** Loop through the subobjects, generating the rows **/
 	for(row = table->ContentHead; row; row=row->Next)
