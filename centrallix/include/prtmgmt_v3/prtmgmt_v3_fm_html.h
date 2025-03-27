@@ -59,8 +59,10 @@ int prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj);
 int prt_htmlfm_SaveStyle(pPrtHTMLfmInf context, pPrtTextStyle origstyle);
 int prt_htmlfm_ResetStyle(pPrtHTMLfmInf context, pPrtTextStyle origstyle);
 
+const char * prt_htmlfm_GetFont(pPrtTextStyle style);
 int prt_htmlfm_InitStyle(pPrtHTMLfmInf context, pPrtTextStyle initial_style);
 int prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle newstyle);
+int prt_htmlfm_WriteStyle(pPrtHTMLfmInf context);
 int prt_htmlfm_EndStyle(pPrtHTMLfmInf context);
 
 int prt_htmlfm_Border(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj);
