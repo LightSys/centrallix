@@ -59,7 +59,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
     int n_xset;
     double xset[PRT_HTMLFM_MAX_TABSTOP];
     double widths[PRT_HTMLFM_MAX_TABSTOP];
-    pPrtObjStream scan, linetail, next_xset_obj;
+    pPrtObjStream scan, linetail, next_xset_obj, justif_subscan;
     int i,j,cur_xset,next_xset;
     double w;
     int last_needed_cols, cur_needs_cols, need_new_row, in_td, in_tr;
@@ -94,31 +94,39 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	/** Output the area prologue **/
 	prt_htmlfm_SaveStyle(context, &oldstyle);
 	prt_htmlfm_Border(context, &(lm_inf->AreaBorder), area);
-	prt_htmlfm_Output(context, "<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\">\n", -1);
+	prt_htmlfm_Output(context, "<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\">\n", -1);
 	in_tr = 0;
 	in_td = 0;
 
 	/** Issue column width info **/
-	for(i=0;i<n_xset;i++)
+	/* If only one, specify 100% instead */
+	//TODO CSMITH verify that skipping it actually calculates size properly in email!! If it doesn't, you can test not throwing a col in at all?...
+	if(n_xset == 1) {
+	    prt_htmlfm_OutputPrintf(context,"<col width=\"100%\">\n");
+	} else {
+	    for(i=0;i<n_xset;i++)
 	    {
-	    if (i == n_xset-1)
-		widths[i] = area->Width - area->MarginLeft - area->MarginRight - xset[i];
-	    else 
-		widths[i] = xset[i+1] - xset[i];
+		if (i == n_xset-1)
+		    widths[i] = area->Width - area->MarginLeft - area->MarginRight - xset[i];
+		else 
+		    widths[i] = xset[i+1] - xset[i];
 
-	    /** We could use relative 'n*' formatting; older browsers will interpret as pixel
-	     ** width, newer ones as relative width, but doesn't seem to work right
-	     ** with newer browsers.
-	     **/
-	    prt_htmlfm_OutputPrintf(context,"<col width=\"%d\">\n",(int)(widths[i]*PRT_HTMLFM_XPIXEL+0.0001));
+		/** We could use relative 'n*' formatting; older browsers will interpret as pixel
+		 ** width, newer ones as relative width, but doesn't seem to work right
+		 ** with newer browsers.
+		 **/
+		prt_htmlfm_OutputPrintf(context,"<col width=\"%d*\">\n",(int)(widths[i]*PRT_HTMLFM_XPIXEL+0.0001));
 	    }
-	prt_htmlfm_Output(context,"<tr>",4);
+	}
+
+	//TODO CLS it might be a mistake to remove this, but I'm not sure why it's here; these have no height and no content
+/*	prt_htmlfm_Output(context,"<tr>",4);
 	for(i=0;i<n_xset;i++)
 	    {
 	    prt_htmlfm_OutputPrintf(context,"<td width=\"%d\"></td>",(int)(widths[i]*PRT_HTMLFM_XPIXEL+0.0001));
 	    }
 	prt_htmlfm_Output(context,"</tr>\n",6);
-
+*/
 	/** Walk the area's content **/
 	scan = area->ContentHead;
 	last_needed_cols = 0;
@@ -174,6 +182,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    /** Ok, scan through the line now **/
 	    while(scan != linetail->Next)
 		{
+
 		/** Find next xset location **/
 		if (cur_needs_cols)
 		    {
@@ -196,9 +205,18 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		    }
 		if (!in_td)
 		    {
+		    /* find first non-empty or non-string justification */
+		    justif_subscan = scan;
+		    while(justif_subscan != linetail && 
+			justif_subscan->ObjType->TypeID == PRT_OBJ_T_STRING && ! (strlen((char*) scan->Content)))
+		    {
+			justif_subscan = justif_subscan->Next;
+		    }
+
+
 		    for(w=0.0,i=cur_xset;i<next_xset;i++) w += widths[i];
 		    prt_htmlfm_OutputPrintf(context, "<td align=\"%s\" valign=\"top\" colspan=\"%d\" width=\"%d\">",
-			    justifytypes[scan->Justification], next_xset - cur_xset,
+			    justifytypes[justif_subscan->Justification], next_xset - cur_xset,
 			    (int)(w*PRT_HTMLFM_XPIXEL+0.001));
 		    prt_htmlfm_InitStyle(context, &(scan->TextStyle));
 		    in_td = 1;
@@ -206,6 +224,8 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 
 		/** print the child objects **/
 		w = 0.0;
+		/* set keepspaces at the start of this line */
+		prt_htmlfm_SetKeepSpaces(context);
 		while((!next_xset_obj || scan != next_xset_obj->Next) && scan != linetail->Next)
 		    {
 		    prt_htmlfm_Generate_r(context, scan);

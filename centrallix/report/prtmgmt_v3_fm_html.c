@@ -63,7 +63,8 @@
 
 
 /*** Document header ***/
-#define	PRT_HTMLFM_HEADER	"<!DOCTYPE html>\n" \
+/* CLS 2025-03-28: Note that changing the HTML version may change spacing between lines/wrapped text.*/
+#define PRT_HTMLFM_HEADER       "<!DOCTYPE html>\n" \
 				"<html lang=\"en\" width=\"100%\">\n" \
 				"<head>\n" \
 				"    <title>Centrallix HTML Document</title>\n" \
@@ -120,6 +121,7 @@ static char* prt_htmlfm_fontstyles[3] = { "Courier New,Courier,fixed", "Arial,He
 #define PRT_HTMLFM_F_PAGINATED		1
 
 /*** Style Flags ***/
+#define PRT_HTMLFM_F_KEEPSPACES		1 //used after newlines to keep space-padding
 #define PRT_HTMLFM_F_FONTDIRTY		2
 #define PRT_HTMLFM_F_UNDERLINEDIRTY	4
 #define PRT_HTMLFM_F_ITALICDIRTY	8
@@ -216,15 +218,19 @@ prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len)
 	/** Output with care... **/
 	while(str[offset] && offset < len)
 	    {
-//	    badcharpos = strpbrk(str+offset, "<>& ");
-//	    TODO CSMITH: see remark below. Removed space from this list.
-	    badcharpos = strpbrk(str+offset, "<>&");
+	    badcharpos = strpbrk(str+offset, "<>& ");
 	    if (badcharpos)
 		endoffset = badcharpos - str;
 	    else
 		endoffset = len;
 	    if (endoffset - offset > 0)
 		prt_htmlfm_Output(context, str+offset, endoffset - offset);
+
+	    if(str[offset] != ' ')
+	    {
+	    /* we are no longer in our leading spaces, so don't &nbsp them */
+		context->Flags &= (! PRT_HTMLFM_F_KEEPSPACES);
+	    }
 	    if (badcharpos)
 		{
 		switch(*badcharpos)
@@ -232,8 +238,7 @@ prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len)
 		    case '<': repl = "&lt;"; break;
 		    case '>': repl = "&gt;"; break;
 		    case '&': repl = "&amp;"; break;
-//		    TODO CSMITH: check that this does not decrease security? Removed to allow HTML to determine line wrapping itself.
-//		    case ' ': repl = "&nbsp;"; break;
+		    case ' ': repl = ( context->Flags & PRT_HTMLFM_F_KEEPSPACES ) ? "&nbsp" : " "; break;
 		    default: repl = ""; break;
 		    }
 		prt_htmlfm_Output(context, repl, -1);
@@ -578,6 +583,14 @@ prt_htmlfm_EndStyle(pPrtHTMLfmInf context)
     return 0;
     }
 
+/*** prt_htmlfm_SetKeepSpaces() - turn &nbsp replacement on until 
+ *** the next non-space character 
+ ***/
+void
+prt_htmlfm_SetKeepSpaces(pPrtHTMLfmInf context) {
+    context->Flags |= PRT_HTMLFM_F_KEEPSPACES;
+}
+
 
 /*** prt_htmlfm_Border() - use nested tables to create a border matching
  *** the given border structure, with an appropriate margin setting from
@@ -609,7 +622,7 @@ prt_htmlfm_Border(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj)
 	    }
 	if (border->nLines == 0)
 	    {
-	    prt_htmlfm_OutputPrintf(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"%d\"><tr><td bgcolor=\"%6.6X\">\n",
+	    prt_htmlfm_OutputPrintf(context, "<table border=\"0\" width=\"100%\" cellspacing=\"0\" cellpadding=\"%d\"><tr><td bgcolor=\"%6.6X\">\n",
 		    (int)(m),
 		    (int)(obj->BGColor));
 	    }
@@ -821,6 +834,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 int
 prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
     {
+    char* justifytypes[] = { "left", "right", "center", "justify" };
     pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;
     pPrtObjStream subobj;
     double colpos[PRT_HTMLFM_MAXCOLS];
@@ -959,7 +973,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		rs=1;
 		//TODO CSMITH: we need to enter empty rows if we don't have anything in one, but something still spans multiple rows. How to do? Or do we just rowspan everything to 1?? Problem I think might actually be in the recept file def... somehow, the table is showing up as "should be at this Y height" but the other div is extending into that?... TBD.
 		while(cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height) rs++;
-		prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\" rowspan=\"%d\" valign=\"top\" align=\"left\">", cs, rs);
+		prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\" rowspan=\"%d\" valign=\"top\" align=\"%s\">", cs, rs, justifytypes[subobj->Justification]);
 		prt_htmlfm_Generate_r(context, subobj);
 		prt_htmlfm_Output(context, "</td>", 5);
 		cur_col += cs;
