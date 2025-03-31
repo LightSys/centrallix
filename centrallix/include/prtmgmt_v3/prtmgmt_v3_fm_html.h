@@ -58,6 +58,7 @@ int prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj);
 
 int prt_htmlfm_SaveStyle(pPrtHTMLfmInf context, pPrtTextStyle origstyle);
 int prt_htmlfm_ResetStyle(pPrtHTMLfmInf context, pPrtTextStyle origstyle);
+void prt_htmlfm_SetKeepSpaces(context);
 
 const char * prt_htmlfm_GetFont(pPrtTextStyle style);
 int prt_htmlfm_InitStyle(pPrtHTMLfmInf context, pPrtTextStyle initial_style);
