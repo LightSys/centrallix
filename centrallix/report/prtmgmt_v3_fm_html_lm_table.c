@@ -58,6 +58,7 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
     {
     pPrtObjStream row, cell, subobj;
     PrtTextStyle oldstyle;
+    int n_rows = 0, n_cols = 0, cur_row = 0, cur_col = 0;
     pPrtTabLMData lm_data = (pPrtTabLMData)(table->LMData);
 
 	/** Write the table prologue **/
@@ -74,10 +75,26 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 	    lm_data->LeftBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->LeftBorder.Color[0]);
 	prt_htmlfm_Output(context, borderbuf, -1);
 
+	/* Count rows for style purposes */
+	for(row = table->ContentHead; row; row=row->Next) {
+	    if (row->ObjType->TypeID == PRT_OBJ_T_TABLEROW)
+		n_rows++;
+	}
+	cur_row = 0;
+
 	/** Loop through the subobjects, generating the rows **/
 	for(row = table->ContentHead; row; row=row->Next)
 	    {
 	    if (row->ObjType->TypeID != PRT_OBJ_T_TABLEROW) continue;
+
+	    cur_row++;
+	    /*count cols for style purposes */
+	    n_cols = 0;
+	    for(cell = row->ContentHead; cell; cell=cell->Next) {
+		if (cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
+		    n_cols++;
+	    }
+	    cur_col = 0;
 
 	    /** Got a row.  Does it contain cells or otherwise? **/
 	    cell = row->ContentHead;
@@ -89,9 +106,43 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 		    {
 		    if (cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
 			{
-			prt_htmlfm_OutputPrintf(context,"<td width=\"%d\" align=\"left\" valign=\"top\" bgcolor=\"#%6.6X\">",
+			cur_col++;
+			prt_htmlfm_OutputPrintf(context,"<td width=\"%d\" align=\"left\" valign=\"top\" bgcolor=\"#%6.6X\"; style=\"",
 				(int)(cell->Width*PRT_HTMLFM_XPIXEL),
 				cell->BGColor);
+
+			/* top border */
+			if (cell->BorderTop != 0 || row->BorderTop != 0) {
+			    if (cell->BorderTop != 0) {
+				prt_htmlfm_OutputPrintf(context, " border-top: %fpx solid;", cell->BorderTop * PRT_HTMLFM_XPIXEL);
+			    } else {
+				prt_htmlfm_OutputPrintf(context, " border-top: %fpx solid;", row->BorderTop * PRT_HTMLFM_XPIXEL);
+			    }
+			} else if(cur_row != 1) {
+			    prt_htmlfm_OutputPrintf(context, " border-top: %fpx solid #%6.6X;",
+	    			lm_data->InnerBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->InnerBorder.Color[0]);
+			}
+			/* bottom border */
+			if (cell->BorderBottom != 0 || row->BorderBottom != 0) {
+			    if (cell->BorderBottom != 0) {
+				prt_htmlfm_OutputPrintf(context, " border-bottom: %fpx solid;", cell->BorderBottom * PRT_HTMLFM_XPIXEL);
+			    } else {
+				prt_htmlfm_OutputPrintf(context," border-bottom: %fpx solid;", row->BorderBottom * PRT_HTMLFM_XPIXEL);
+			    }
+			} 
+			/* left border */
+			if (cell->BorderLeft != 0) {
+			    prt_htmlfm_OutputPrintf(context, " border-left: %fpx solid;", cell->BorderLeft * PRT_HTMLFM_XPIXEL);
+			} else if(cur_col != 1) {
+			    prt_htmlfm_OutputPrintf(context, " border-left: %fpx solid #%6.6X;", 
+				lm_data->InnerBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->InnerBorder.Color[0]);
+			}
+			/* right border */
+			if (cell->BorderRight != 0) {
+			    prt_htmlfm_OutputPrintf(context, " border-right: %fpx solid;", cell->BorderRight * PRT_HTMLFM_XPIXEL);
+			}
+			
+			prt_htmlfm_Output(context, "\">", 2);
 			prt_htmlfm_InitStyle(context, &(cell->TextStyle));
 			for(subobj=cell->ContentHead;subobj;subobj=subobj->Next)
 			    {

@@ -61,7 +61,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
     double widths[PRT_HTMLFM_MAX_TABSTOP];
     pPrtObjStream scan, linetail, next_xset_obj, justif_subscan;
     int i,j,cur_xset,next_xset;
-    double w;
+    double w, cur_x;
     int last_needed_cols, cur_needs_cols, need_new_row, in_td, in_tr;
     PrtTextStyle oldstyle;
     char* justifytypes[] = { "left", "right", "center", "justify" };
@@ -183,11 +183,17 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    while(scan != linetail->Next)
 		{
 
-		/** Find next xset location **/
+		/** Find next xset location that isn't at the current x **/
 		if (cur_needs_cols)
 		    {
+		    cur_x = scan->X; 
 		    next_xset_obj = scan->Next;
-		    while(next_xset_obj != linetail->Next && !(next_xset_obj->Flags & PRT_OBJ_F_XSET)) next_xset_obj=next_xset_obj->Next;
+		    while(next_xset_obj != linetail->Next && 
+			(!(next_xset_obj->Flags & PRT_OBJ_F_XSET) ||
+			next_xset_obj->X - cur_x < 0.001)) 
+		    {
+			next_xset_obj=next_xset_obj->Next;
+		    }
 		    if (next_xset_obj == linetail->Next)
 			{
 			next_xset_obj = NULL;
@@ -226,7 +232,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		w = 0.0;
 		/* set keepspaces at the start of this line */
 		prt_htmlfm_SetKeepSpaces(context);
-		while((!next_xset_obj || scan != next_xset_obj->Next) && scan != linetail->Next)
+		while((!next_xset_obj || scan != next_xset_obj) && scan != linetail->Next)
 		    {
 		    prt_htmlfm_Generate_r(context, scan);
 		    w += scan->Width;
