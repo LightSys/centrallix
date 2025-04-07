@@ -664,7 +664,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
     void* arg;
     int w,h;
     unsigned long id;
-    int rval;
+    int rval, justif = 0;
+    char* justifytypes[] = { "left", "right", "center", "justify" };
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -724,6 +725,13 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		break;
 
 	    case PRT_OBJ_T_IMAGE:
+		justif=0;
+		if(obj->Parent) {
+		    if (obj->Parent->Width - obj->Parent->MarginLeft - obj->Parent->MarginRight - obj->Width - 0.1 <= obj->X) {
+			justif = 1;
+		    }
+		}
+
 		/** We need an image store location in order to handle these **/
 		if (context->Session->ImageOpenFn)
 		    {
@@ -761,7 +769,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 			prt_htmlfm_OutputEncoded(context, obj->URL, -1);
 			prt_htmlfm_Output(context, "\">", 2);
 			}
-		    prt_htmlfm_OutputPrintf(context, "<img src=\"%sprt_htmlfm_%8.8X.png\" border=\"0\" width=\"%d\" height=\"%d\">", 
+		    prt_htmlfm_OutputPrintf(context, "<img align=\"%s\" src=\"%sprt_htmlfm_%8.8X.png\" border=\"0\" width=\"%d\" height=\"%d\">", 
+			    justifytypes[justif],
 			    context->Session->ImageExtDir, id, w, h);
 		    if (obj->URL && !strchr(obj->URL, '"'))
 			{
@@ -771,6 +780,13 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		break;
 
             case PRT_OBJ_T_SVG:
+		justif=0;
+		if(obj->Parent) {
+		    if (obj->Parent->Width - obj->Parent->MarginLeft - obj->Parent->MarginRight - obj->Width - 0.1 <= obj->X) {
+			justif = 1;
+		    }
+		}
+
 		/** We need an image store location in order to handle these **/
 		if (context->Session->ImageOpenFn)
 		    {
@@ -808,7 +824,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 			prt_htmlfm_OutputEncoded(context, obj->URL, -1);
 			prt_htmlfm_Output(context, "\">", 2);
 			}
-		    prt_htmlfm_OutputPrintf(context, "<img src=\"%sprt_htmlfm_%8.8X.svg\" border=\"0\" width=\"%d\" height=\"%d\">", 
+		    prt_htmlfm_OutputPrintf(context, "<img align=\"%s\" src=\"%sprt_htmlfm_%8.8X.svg\" border=\"0\" width=\"%d\" height=\"%d\">", 
+			    justifytypes[justif],
 			    context->Session->ImageExtDir, id, w, h);
 		    if (obj->URL && !strchr(obj->URL, '"'))
 			{
@@ -851,7 +868,6 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_PAGEHEADER, (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001)+34);
 
 	/** Write a table to handle page margins **/
-	//TODO CSMITH I can't figure out if the width* actually does anything (didn't do anything when switched to px either). I don't see any padding in web client. (Also email will often ignore padding on <body> I think). Need to test on email.
 	int left_margin = (int)(page_obj->MarginLeft*PRT_HTMLFM_XPIXEL+0.001);
 	int center_width = (int)((page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight+0.001)*PRT_HTMLFM_XPIXEL);
 	int right_margin = (int)(page_obj->MarginRight*PRT_HTMLFM_XPIXEL+0.001);
@@ -863,7 +879,6 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", right_margin);
 	prt_htmlfm_Output(context, "</colgroup>", -1);
 	/* Print the first row, empty with appropriate margins*/
-	//TODO CSMITH the "px" modifier here has no effect, and the element does not actually have that much width. Why?
 	prt_htmlfm_OutputPrintf(context, "<tr><td height=\"%dpx\" width=\"%dpx\"></td><td height=\"%dpx\" width=\"%dpx\"></td><td height=\"%dpx\" width=\"%dpx\"></td></tr>", 
 		top_margin, left_margin,
 		top_margin, center_width,
@@ -971,7 +986,6 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		cs=1;
 		while(cur_col+cs < n_cols && (colpos[cur_col+cs]+0.001) < subobj->X + subobj->Width) cs++;
 		rs=1;
-		//TODO CSMITH: we need to enter empty rows if we don't have anything in one, but something still spans multiple rows. How to do? Or do we just rowspan everything to 1?? Problem I think might actually be in the recept file def... somehow, the table is showing up as "should be at this Y height" but the other div is extending into that?... TBD.
 		while(cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height) rs++;
 		prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\" rowspan=\"%d\" valign=\"top\" align=\"%s\">", cs, rs, justifytypes[subobj->Justification]);
 		prt_htmlfm_Generate_r(context, subobj);
