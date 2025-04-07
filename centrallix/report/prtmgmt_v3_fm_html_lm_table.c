@@ -68,7 +68,8 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 	prt_htmlfm_OutputPrintf(context,"<table width=\"100%\" height=\"%fpx\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\"", table->Height * PRT_HTMLFM_YPIXEL);
 
 	char borderbuf[256];
-	snprintf(borderbuf, sizeof(borderbuf), " style=\"border-top: %fpx solid #%6.6X; border-right: %fpx solid #%6.6X; border-bottom: %fpx solid #%6.6X; border-left: %fpx solid #%6.6X;\">",
+	/*margin-top and margin-bottom are arbitrary...*/
+	snprintf(borderbuf, sizeof(borderbuf), " style=\"margin-top:5px; margin-bottom:5px; border-top: %fpx solid #%6.6X; border-right: %fpx solid #%6.6X; border-bottom: %fpx solid #%6.6X; border-left: %fpx solid #%6.6X;\">",
 	    lm_data->TopBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->TopBorder.Color[0],
 	    lm_data->RightBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->RightBorder.Color[0],
 	    lm_data->BottomBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->BottomBorder.Color[0],
@@ -101,15 +102,21 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 	    if (cell && cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
 		{
 		/** Got a cell.  Emit list of cells in the row **/
-		prt_htmlfm_Output(context, "<tr>", 4);
+		/* Arbitrarily specify a restricted height for table header if it has one */
+		if(cur_row == 1 && lm_data->HeaderRow) {
+		    prt_htmlfm_Output(context, "<tr height=10>", -1);
+		} else {
+		    prt_htmlfm_Output(context, "<tr>", 4);
+		}
 		while(cell)
 		    {
 		    if (cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
 			{
 			cur_col++;
-			prt_htmlfm_OutputPrintf(context,"<td width=\"%d\" align=\"left\" valign=\"top\" bgcolor=\"#%6.6X\"; style=\"",
+			prt_htmlfm_OutputPrintf(context,"<td width=\"%d\" align=\"left\" valign=\"top\" bgcolor=\"#%6.6X\"; style=\"padding:%dpx;" ,
 				(int)(cell->Width*PRT_HTMLFM_XPIXEL),
-				cell->BGColor);
+    				cell->BGColor,
+				(int)(lm_data->ColSep * PRT_HTMLFM_XPIXEL / 2));
 
 			/* top border */
 			if (cell->BorderTop != 0 || row->BorderTop != 0) {
