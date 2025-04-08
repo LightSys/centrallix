@@ -68,8 +68,7 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 	prt_htmlfm_OutputPrintf(context,"<table width=\"100%\" height=\"%fpx\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\"", table->Height * PRT_HTMLFM_YPIXEL);
 
 	char borderbuf[256];
-	/*margin-top and margin-bottom are arbitrary...*/
-	snprintf(borderbuf, sizeof(borderbuf), " style=\"margin-top:5px; margin-bottom:5px; border-top: %fpx solid #%6.6X; border-right: %fpx solid #%6.6X; border-bottom: %fpx solid #%6.6X; border-left: %fpx solid #%6.6X;\">",
+	snprintf(borderbuf, sizeof(borderbuf), " style=\"border-top: %fpx solid #%6.6X; border-right: %fpx solid #%6.6X; border-bottom: %fpx solid #%6.6X; border-left: %fpx solid #%6.6X;\">",
 	    lm_data->TopBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->TopBorder.Color[0],
 	    lm_data->RightBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->RightBorder.Color[0],
 	    lm_data->BottomBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->BottomBorder.Color[0],
