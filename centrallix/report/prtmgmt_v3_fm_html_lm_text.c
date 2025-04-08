@@ -221,7 +221,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 
 
 		    for(w=0.0,i=cur_xset;i<next_xset;i++) w += widths[i];
-		    prt_htmlfm_OutputPrintf(context, "<td align=\"%s\" valign=\"top\" colspan=\"%d\" width=\"%d\">",
+		    prt_htmlfm_OutputPrintf(context, "<td align=\"%s\" valign=\"top\" colspan=\"%d\" width=\"%d\" style=\"line-height:1;\">",
 			    justifytypes[justif_subscan->Justification], next_xset - cur_xset,
 			    (int)(w*PRT_HTMLFM_XPIXEL+0.001));
 		    prt_htmlfm_InitStyle(context, &(scan->TextStyle));
@@ -273,6 +273,11 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    prt_htmlfm_Output(context,"</tr>\n", 6);
 	    in_tr = 0;
 	    }
+    
+	if(area->ContentTail && (area->ContentTail->Y + area->ContentTail->Height + 0.01 < area->Height)) {
+	    prt_htmlfm_OutputPrintf(context, "<tr><td height=\"%dpx\" style=\"line-height:0;\">&nbsp</td></tr>",
+		(int) ((area->Height - area->ContentTail->Y - area->ContentTail->Height + 0.001) * PRT_HTMLFM_YPIXEL));
+	}
 
 	/** Output the area epilogue **/
 	prt_htmlfm_Output(context,"</table>\n", -1);

@@ -727,7 +727,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 	    case PRT_OBJ_T_IMAGE:
 		justif=0;
 		if(obj->Parent) {
-		    if (obj->Parent->Width - obj->Parent->MarginLeft - obj->Parent->MarginRight - obj->Width - 0.1 <= obj->X) {
+		    if (obj->X > 0.1 && obj->Parent->Width - obj->Parent->MarginLeft - obj->Parent->MarginRight - obj->Width - 0.1 <= obj->X) {
 			justif = 1;
 		    }
 		}
@@ -861,6 +861,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
     int i;
     int w;
     int cur_row, cur_col;
+    double last_height;
     int rs,cs;
 
 	/** Write the page header **/
@@ -957,6 +958,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	/** Generate the body of the page, by selectively walking the YPrev/YNext chain **/
 	cur_row = 0;
 	cur_col = 0;
+	last_height = 0.0;
 	prt_htmlfm_Output(context, "<tr>", 4);
 	for(subobj=page_obj; subobj; subobj=subobj->YNext)
 	    {
@@ -966,6 +968,11 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		if (subobj->Y > rowpos[cur_row])
 		    {
 		    while(subobj->Y > (rowpos[cur_row]+0.001) && cur_row < PRT_HTMLFM_MAXROWS-1) cur_row++;
+		    
+		    if(last_height + 0.001 < subobj->Y) {
+			prt_htmlfm_OutputPrintf(context, "</tr><tr><td height=\"%dpx\" style=\"line-height:0;\">&nbsp</td>",
+			   (int) ((subobj->Y - last_height) * PRT_HTMLFM_YPIXEL));
+		    }
 		    prt_htmlfm_Output(context, "</tr>\n<tr>", 10);
 		    cur_col = 0;
 		    }
@@ -987,6 +994,8 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		while(cur_col+cs < n_cols && (colpos[cur_col+cs]+0.001) < subobj->X + subobj->Width) cs++;
 		rs=1;
 		while(cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height) rs++;
+		
+		last_height = subobj->Y + subobj->Height;
 		prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\" rowspan=\"%d\" valign=\"top\" align=\"%s\">", cs, rs, justifytypes[subobj->Justification]);
 		prt_htmlfm_Generate_r(context, subobj);
 		prt_htmlfm_Output(context, "</td>", 5);

@@ -976,12 +976,6 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     double x,y;
     int handle_id;
 
-	/** Need to adjust the height/width if unspecified? **/
-	if (new_child_obj->Width < 0)
-	    new_child_obj->Width = prtInnerWidth(this);
-	if (new_child_obj->Height < 0)
-	    new_child_obj->Height = prtInnerHeight(this);
-
 	/** Space removed from object previously (e.g., linewrap)? **/
 	prt_textlm_UndoWrap(new_child_obj);
 
@@ -1064,6 +1058,12 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    objptr->Y = y;
 		    }
 		}
+
+	    /** Set width/height to 0 if unspecified and let it grow **/
+	    if (objptr->Width < 0)
+		objptr->Width = 0;
+	    if (objptr->Height < 0)
+		objptr->Height = 0;
 
 	    /** Need to break this into two parts to wrap it? **/
 	    if (objptr->X + objptr->Width - PRT_FP_FUDGE > prtInnerWidth(this))
