@@ -168,6 +168,15 @@ struct _PSFI
     int			StyleFlags;
     };
 
+#define MAX_IMAGE_SIZE (10 * 1024 * 1024) // 10 MB for image buffer
+
+/*** Struct that holds a raw file and its size
+ ***/
+typedef struct {
+	char *buffer;
+	size_t size;
+	size_t capacity;
+} ImageBuffer;
 
 
 /*** prt_htmlfm_Output() - outputs a string of text into the HTML
@@ -653,6 +662,38 @@ prt_htmlfm_EndBorder(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj
     return 0;
     }
 
+//TODO CSMITH put in .h
+/** Gets size of image file */
+int ImageWriteFn(void *arg, const void *data, size_t len) {
+	ImageBuffer *imgBuf = (ImageBuffer *)arg;
+	if (imgBuf->size + len > imgBuf->capacity) {
+		return -1;  // Buffer overflow
+	}
+	memcpy(imgBuf->buffer + imgBuf->size, data, len);
+	imgBuf->size += len;
+	return len;
+}
+
+//TODO CSMITH put in .h
+//TODO CSMITH remember to free()
+/** Encodes a char* input to base64 */
+char *base64_encode(const unsigned char *input, size_t len) {
+	const char b64_table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	size_t out_len = 4 * ((len + 2) / 3);
+	char *output = (char *)nmMalloc(out_len + 1);
+	if (!output) return NULL;
+
+	char *p = output;
+	for (size_t i = 0; i < len; i += 3) {
+		int val = (input[i] << 16) | ((i + 1 < len ? input[i + 1] : 0) << 8) | (i + 2 < len ? input[i + 2] : 0);
+		*p++ = b64_table[(val >> 18) & 0x3F];
+		*p++ = b64_table[(val >> 12) & 0x3F];
+		*p++ = (i + 1 < len) ? b64_table[(val >> 6) & 0x3F] : '=';
+		*p++ = (i + 2 < len) ? b64_table[val & 0x3F] : '=';
+	}
+	*p = '\0';
+	return output;
+}
 
 /*** prt_htmlfm_Generate_r() - recursive worker routine to do the bulk
  *** of page generation.
@@ -732,51 +773,55 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    }
 		}
 
-		/** We need an image store location in order to handle these **/
-		if (context->Session->ImageOpenFn)
+		w = obj->Width*PRT_HTMLFM_XPIXEL;
+		h = obj->Height*PRT_HTMLFM_YPIXEL;
+		if (w <= 0) w = 1;
+		if (h <= 0) h = 1;
+		
+		// lifetime start: buf
+		ImageBuffer imgBuf = { (char *)nmMalloc(MAX_IMAGE_SIZE), 0, MAX_IMAGE_SIZE };
+		if (!imgBuf.buffer) {
+		    mssError(1, "PRT", "nmMalloc() failed\n");
+		    return -1;
+		}
+		
+		// Capture image to buffer
+		prt_internal_WriteImageToPNG(ImageWriteFn, &imgBuf, (pPrtImage)(obj->Content), w, h);
+		
+		// Encode image to base64
+		// copy out of lifetime: buf into img
+		char *base64Image = base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size);
+		// lifetime end: buf
+		nmFree(imgBuf.buffer, MAX_IMAGE_SIZE);
+		if (!base64Image) {
+		    mssError(1, "PRT", "Base64 encoding failed\n");
+		    return -1;
+		}
+		
+		if (obj->URL && !strchr(obj->URL, '"'))
 		    {
-		    id = PRT_HTMLFM.ImageID++;
-		    w = obj->Width*PRT_HTMLFM_XPIXEL;
-		    h = obj->Height*PRT_HTMLFM_YPIXEL;
-		    if (w <= 0) w = 1;
-		    if (h <= 0) h = 1;
-		    path = (char*)nmMalloc(OBJSYS_MAX_PATH);
-		    if (!path) 
-                        {
-                        mssError(1, "PRT", "nmMalloc() failed\n");
-                        return -1;
-                        }
-                    rval = snprintf(path, OBJSYS_MAX_PATH, "%sprt_htmlfm_%8.8lX.png", context->Session->ImageSysDir, id);
-		    if (rval < 0 || rval >= OBJSYS_MAX_PATH)
-			{
-                        mssError(1, "PRT", "Internal representation exceeded for image pathname\n");
-			nmFree(path, OBJSYS_MAX_PATH);
-                        return -1;
-			}
-		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/png");
-		    if (!arg)
-			{
-			mssError(0,"PRT","Failed to open new linked image '%s'",path);
-			nmFree(path, OBJSYS_MAX_PATH);
-			return -1;
-			}
-		    prt_internal_WriteImageToPNG(context->Session->ImageWriteFn, arg, (pPrtImage)(obj->Content), w, h);
-		    context->Session->ImageCloseFn(arg);
-		    nmFree(path, OBJSYS_MAX_PATH);
-		    if (obj->URL && !strchr(obj->URL, '"'))
-			{
-			prt_htmlfm_Output(context, "<a href=\"", 9);
-			prt_htmlfm_OutputEncoded(context, obj->URL, -1);
-			prt_htmlfm_Output(context, "\">", 2);
-			}
-		    prt_htmlfm_OutputPrintf(context, "<img align=\"%s\" src=\"%sprt_htmlfm_%8.8X.png\" border=\"0\" width=\"%d\" height=\"%d\">", 
-			    justifytypes[justif],
-			    context->Session->ImageExtDir, id, w, h);
-		    if (obj->URL && !strchr(obj->URL, '"'))
-			{
-			prt_htmlfm_Output(context, "</a>", 4);
-			}
+		    prt_htmlfm_Output(context, "<a href=\"", 9);
+		    prt_htmlfm_OutputEncoded(context, obj->URL, -1);
+		    prt_htmlfm_Output(context, "\">", 2);
 		    }
+		
+		// Justification: All cases in which it is not an image, it is a SVG.
+		if(obj->ObjType->TypeID == PRT_OBJ_T_IMAGE) {
+		    prt_htmlfm_OutputPrintf(context, "<img src=\"data:image/png;");
+		} else {
+		    prt_htmlfm_OutputPrintf(context, "<img src=\"data:image/svg+xml;");
+		}	
+		prt_htmlfm_OutputPrintf(context, "base64,%s\" align=\"%s\" border=\"0\" width=\"%d\" height=\"%d\">", 
+			base64Image, justifytypes[justif], w, h);
+		
+		if (obj->URL && !strchr(obj->URL, '"'))
+		    {
+		    prt_htmlfm_Output(context, "</a>", 4);
+		    }
+		
+		// lifetime end: img
+		nmFree(base64Image, strlen(base64Image));
+		
 		break;
 
             case PRT_OBJ_T_SVG:
