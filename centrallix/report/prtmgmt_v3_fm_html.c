@@ -993,8 +993,11 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		cs=1;
 		while(cur_col+cs < n_cols && (colpos[cur_col+cs]+0.001) < subobj->X + subobj->Width) cs++;
 		rs=1;
-		while(cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height) rs++;
-		
+		while(cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height) {
+		    if(subobj->Height <= subobj->ConfigHeight+1.5 && 
+			(rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->ConfigHeight) rs++;
+		    else break;
+		}
 		last_height = subobj->Y + subobj->Height;
 		prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\" rowspan=\"%d\" valign=\"top\" align=\"%s\">", cs, rs, justifytypes[subobj->Justification]);
 		prt_htmlfm_Generate_r(context, subobj);
