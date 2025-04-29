@@ -196,6 +196,8 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	mssError(1, "HTDD", "SQL parameter was not specified for dropdown widget");
 	return -1;
     }
+    htrCheckAddExpression(s,tree,name,"sql");
+
     /** Script initialization call. **/
     htrAddScriptInit_va(s,"    dd_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), c1:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"dd%POScon1\"), c2:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"dd%POScon2\"), background:'%STR&JSSTR', highlight:'%STR&JSSTR', fieldname:'%STR&JSSTR', numDisplay:%INT, mode:%INT, sql:'%STR&JSSTR', width:%INT, height:%INT, form:'%STR&JSSTR', osrc:'%STR&JSSTR', qms:%INT, ivs:%INT, popup_width:%INT});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql?sql:"", w, h, form, osrc, query_multiselect, invalid_select_default, pop_w);
 
