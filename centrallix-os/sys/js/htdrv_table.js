@@ -26,7 +26,7 @@ function tbld_format_cell(cell, color)
 
     if (!colinfo.widget || colinfo.widget.visible)
 	{
-	if (cell.subkind != 'headercell' && colinfo.type != 'check' && colinfo.type != 'image')
+	if (cell.subkind != 'headercell' && colinfo.type != 'check' && colinfo.type != 'image' && colinfo.type != 'checkbox')
 	    var str = htutil_encode(String(htutil_obscure(cell.data)), colinfo.wrap != 'no');
 	else
 	    var str = htutil_encode(String(cell.data), colinfo.wrap != 'no');
@@ -73,6 +73,15 @@ function tbld_format_cell(cell, color)
 		}
 	    else
 		txt = '';
+	    }
+	else if (cell.subkind != 'headercell' && colinfo.type == 'checkbox')
+	    {
+	    // Checkbox
+	    var sl = str.toLowerCase();
+	    if (sl == 'n' || sl == 'no' || sl == 'off' || sl == 'false' || str == '0' || str == '' || str == 'null')
+		txt = '<img width="16" height="16" src="/sys/images/checkbox_unchecked.png">';
+	    else
+		txt = '<img width="16" height="16" src="/sys/images/checkbox_checked.png">';
 	    }
 	else if (cell.subkind != 'headercell' && colinfo.type == 'check')
 	    {
@@ -1894,6 +1903,7 @@ function tbld_init(param)
     t.dragcols = param.dragcols;
     t.colsep = param.colsep;
     t.colsepbg = param.colsep_bgnd;
+    t.colsepmode = param.colsep_mode;
     t.gridinemptyrows = param.gridinemptyrows;
     t.allowselect = param.allow_selection;
     t.showselect = param.show_selection;
@@ -2105,7 +2115,7 @@ function tbld_init(param)
 	    $(l.resizebdr).css
 		({
 		"cursor": "move", 
-		"height": ((t.gridinemptyrows)?(t.rowheight * (t.maxtotalwindowsize)):t.rowheight) + "px", 
+		"height": (t.colsepmode == 0)?(((t.gridinemptyrows)?(t.rowheight * (t.maxtotalwindowsize)):t.rowheight) + "px"):(t.rowheight + "px"), 
 		"visibility": "inherit",
 		"width": t.colsep + t.bdr_width*2 + "px",
 		"padding-left": t.bdr_width + "px",
@@ -2195,6 +2205,8 @@ function tbld_init(param)
 
     // Events
     var ie = t.ifcProbeAdd(ifEvent);
+    ie.Add("Check");
+    ie.Add("Uncheck");
     ie.Add("Click");
     ie.Add("DblClick");
     ie.Add("RightClick");
@@ -2523,7 +2535,7 @@ function tbld_keydown(e)
 		    for(var c in row.cols)
 			{
 			var col = row.cols[c];
-			if (t.cols[col.colnum].type != 'check' && t.cols[col.colnum].type != 'image')
+			if (t.cols[col.colnum].type != 'check' && t.cols[col.colnum].type != 'image' && t.cols[col.colnum].type != 'checkbox')
 			    {
 			    if (t.CheckHighlight(col, t.ttf_string))
 				{
@@ -2594,6 +2606,7 @@ function tbld_mousedown(e)
     {
     var ly = e.layer;
     var toggle_row = false;
+    var canceled = false;
     var moved = false;
     var selected = (ly.table?ly.table.selected:((ly.row && ly.row.table)?ly.row.table.selected:null));
     if(ly.kind && ly.kind=='tabledynamic')
@@ -2665,7 +2678,19 @@ function tbld_mousedown(e)
 			}
 		    }
 		ly.table.dta=event.data;
-		if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Click', event)))
+		if (e.target && e.target.src && e.target.src.indexOf('/sys/images/checkbox_unchecked.png') >= 0)
+		    {
+		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Check', event)))
+			canceled = true;
+		    }
+		if (!canceled && e.target && e.target.src && e.target.src.indexOf('/sys/images/checkbox_checked.png') >= 0)
+		    {
+		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Uncheck', event)))
+			canceled = true;
+		    }
+		if (!canceled && isCancel(ly.table.ifcProbe(ifEvent).Activate('Click', event)))
+		    canceled = true;
+		if (canceled)
 		    toggle_row = false;
 		}
 	    if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("DblClick"))
