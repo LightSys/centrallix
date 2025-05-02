@@ -489,7 +489,10 @@ function ifAction()
 		    ap[pn] = p.value;
 		else if (p.type == 'sym')
 		    {
-		    ap[pn] = wgtrGetNode(this.to, p.value);
+		    if (p.namespace)
+			ap[pn] = wgtrGetNode(p.namespace, p.value);
+		    else
+			ap[pn] = wgtrGetNode(this.to, p.value);
 		    }
 		else if (p.type == 'exp')
 		    {
