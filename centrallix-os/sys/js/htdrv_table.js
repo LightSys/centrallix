@@ -536,13 +536,23 @@ function tbld_setup_row_data(rowslot, is_new)
     }
 
 
+function tbld_get_selected_column_geom()
+    {
+    if (this.table.cr && this.table.rows[this.table.cr])
+	var obj = this.table.rows[this.table.cr];
+    else
+	var obj = this.table;
+    return { x:$(obj).offset().left + this.col.xoffset, y:$(obj).offset().top, width:this.col.width, height:$(obj).height() };
+    }
+
+
 function tbld_get_selected_geom()
     {
     if (this.cr && this.rows[this.cr])
 	var obj = this.rows[this.cr];
     else
 	var obj = this;
-    return {x:$(obj).offset().left,y:$(obj).offset().top,width:$(obj).width(),height:$(obj).height()};
+    return { x:$(obj).offset().left, y:$(obj).offset().top, width:$(obj).width(), height:$(obj).height() };
     }
 
 
@@ -1002,8 +1012,8 @@ function tbld_set_displayfor(attr, val)
 
 function tbld_set_coltitle(attr, val)
     {
-    this.col.data = val;
-    this.table.FormatCell(this.col, this.table.titlecolor);
+    this.colhdr.data = val;
+    this.table.FormatCell(this.colhdr, this.table.titlecolor);
     this.table.UpdateHeight(this.hdrrow);
     this.table.DisplayRow(this.hdrrow, 0);
     this.table.UpdateGeom();
@@ -1012,7 +1022,7 @@ function tbld_set_coltitle(attr, val)
 
 function tbld_get_coltitle(attr)
     {
-    return this.col.data;
+    return this.colhdr.data;
     }
 
 
@@ -1025,14 +1035,14 @@ function tbld_set_visible(attr, val)
 	    {
 	    // Show column
 	    this.visible = 1;
-	    this.col.ChangeWidth(this.visible_width, true);
+	    this.colhdr.ChangeWidth(this.visible_width, true);
 	    }
 	else
 	    {
 	    // Hide column
 	    this.visible_width = this.table.cols[this.colnum].width;
 	    this.visible = 0;
-	    this.col.ChangeWidth(-this.visible_width, true);
+	    this.colhdr.ChangeWidth(-this.visible_width, true);
 	    }
 	this.table.ReflowWidth();
 	}
@@ -2158,9 +2168,11 @@ function tbld_init(param)
 	    cw.hdrrow = t.hdrrow;
 	    cw.table = t;
 	    cw.colnum = i;
-	    cw.col = t.hdrrow.cols[i];
+	    cw.colhdr = t.hdrrow.cols[i];
+	    cw.col = t.cols[i];
 	    cw.visible = 1;
 	    cw.visible_width = t.cols[i].width;
+	    cw.GetSelectedGeom = tbld_get_selected_column_geom;
 	    var iv = cw.ifcProbeAdd(ifValue);
 	    iv.Add("title", tbld_get_coltitle, tbld_set_coltitle);
 	    iv.Add("visible", tbld_get_visible, tbld_set_visible);
@@ -2667,6 +2679,7 @@ function tbld_mousedown(e)
 		event.recnum = ly.rownum;
 		event.selected = selected;
 		event.data = new Object();
+		event.checkbox = 0;
 		var rec=ly.table.osrc.replica[ly.rownum];
 		if(rec)
 		    {
@@ -2680,11 +2693,13 @@ function tbld_mousedown(e)
 		ly.table.dta=event.data;
 		if (e.target && e.target.src && e.target.src.indexOf('/sys/images/checkbox_unchecked.png') >= 0)
 		    {
+		    event.checkbox = 1;
 		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Check', event)))
 			canceled = true;
 		    }
 		if (!canceled && e.target && e.target.src && e.target.src.indexOf('/sys/images/checkbox_checked.png') >= 0)
 		    {
+		    event.checkbox = 2;
 		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Uncheck', event)))
 			canceled = true;
 		    }
