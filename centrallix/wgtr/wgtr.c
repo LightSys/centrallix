@@ -287,6 +287,8 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 	if (match->fl_y >= 0) tree->fl_y = match->fl_y;
 	if (match->fl_width >= 0) tree->fl_width = match->fl_width;
 	if (match->fl_height >= 0) tree->fl_height = match->fl_height;
+	if (match->total_flexW >= 0) tree->total_flexW = match->total_flexW;
+	if (match->total_flexH >= 0) tree->total_flexH = match->total_flexH;
 
 	/** Check for substitutions **/
 	for(prop=objGetFirstAttr(tree_obj);prop;prop=objGetNextAttr(tree_obj))
@@ -356,7 +358,8 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 		}
 	    if ((new_node = wgtrNewNode(new_name, subtree->Type, subtree->ObjSession, 
 			subtree->r_x, subtree->r_y, subtree->r_width, subtree->r_height, 
-			subtree->fl_x, subtree->fl_y, subtree->fl_width, subtree->fl_height)) == NULL)
+			subtree->fl_x, subtree->fl_y, subtree->fl_width, subtree->fl_height,
+			subtree->total_flexW, subtree->total_flexH)) == NULL)
 		return -1;
 
 	    if (wgtrSetupNode(new_node) < 0)
@@ -1548,7 +1551,8 @@ wgtrSetProperty(pWgtrNode widget, char* name, int datatype, pObjData val)
 pWgtrNode 
 wgtrNewNode(	char* name, char* type, pObjSession s,
 		int rx, int ry, int rwidth, int rheight,
-		int flx, int fly, int flwidth, int flheight)
+		int flx, int fly, int flwidth, int flheight,
+	   	int flwidthTotal, int flheightTotal)
     {
     pWgtrNode node;
 
@@ -1571,6 +1575,8 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 	node->fl_y = fly;
 	node->fl_width = flwidth;
 	node->fl_height = flheight;
+	node->total_flexW = flwidthTotal; /* added for total flexible width of container */
+	node->total_flexH = flheightTotal; /* added for total flexible height of container */
 	node->ObjSession = s;
 	node->Parent = NULL;
 	node->min_height = 0;
