@@ -275,7 +275,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    }
     
 	if(area->ContentTail && (area->ContentTail->Y + area->ContentTail->Height + 0.01 < area->Height)) {
-	    prt_htmlfm_OutputPrintf(context, "<tr><td height=\"%dpx\" style=\"line-height:0;\">&nbsp</td></tr>",
+	    prt_htmlfm_OutputPrintf(context, "<tr><td height=\"%dpx\" style=\"line-height:0;\">&nbsp;</td></tr>",
 		(int) ((area->Height - area->ContentTail->Y - area->ContentTail->Height + 0.001) * PRT_HTMLFM_YPIXEL));
 	}
 
