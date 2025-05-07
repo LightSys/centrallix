@@ -77,6 +77,11 @@
 #define PRT_HTMLFM_FOOTER	"</body>\n" \
 				"</html>\n"
 
+#define PRT_HTMLFM_EMAIL_BOUNDARY "cx-email-boundary"
+
+//TODO CSMITH multipart/related?
+#define PRT_HTMLFM_EMAIL_HEADER "Content-Type: multipart/mixed; boundary=" PRT_HTMLFM_EMAIL_BOUNDARY "\n" \
+				"Content-Type: text/html\n"
 
 /*** Page header - build the graphical layout showing the 'page'
  ***
@@ -119,6 +124,7 @@ static char* prt_htmlfm_fontstyles[3] = { "Courier New,Courier,fixed", "Arial,He
 
 /*** Session flags ***/
 #define PRT_HTMLFM_F_PAGINATED		1
+#define PRT_HTMLFM_F_EMAIL		2
 
 /*** Style Flags ***/
 #define PRT_HTMLFM_F_KEEPSPACES		1 //used after newlines to keep space-padding
@@ -140,6 +146,7 @@ static PrtHTMLfmSubtype prt_htmlfm_subtypes[] =
     {
     { "text/vnd.cx.paginated+html", "text/html", PRT_HTMLFM_F_PAGINATED },
     { "text/html", "text/html", 0 },
+    { "multipart/vnd.cx.htmlemail+mixed", "multipart/mixed", PRT_HTMLFM_F_EMAIL },
     };
 
 
@@ -247,7 +254,7 @@ prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len)
 		    case '<': repl = "&lt;"; break;
 		    case '>': repl = "&gt;"; break;
 		    case '&': repl = "&amp;"; break;
-		    case ' ': repl = ( context->Flags & PRT_HTMLFM_F_KEEPSPACES ) ? "&nbsp" : " "; break;
+		    case ' ': repl = ( context->Flags & PRT_HTMLFM_F_KEEPSPACES ) ? "&nbsp;" : " "; break;
 		    default: repl = ""; break;
 		    }
 		prt_htmlfm_Output(context, repl, -1);
@@ -290,6 +297,9 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	    goto error;
 
 	/** Write the document header **/
+	if(context->Flags & PRT_HTMLFM_F_EMAIL) {
+	    prt_htmlfm_Output(context, PRT_HTMLFM_EMAIL_HEADER, -1);
+	}
 	prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, (context->Flags & PRT_HTMLFM_F_PAGINATED)?"#c0c0c0":"#ffffff");
 
 	return (void*)context;
@@ -695,6 +705,7 @@ char *base64_encode(const unsigned char *input, size_t len) {
 	return output;
 }
 
+
 /*** prt_htmlfm_Generate_r() - recursive worker routine to do the bulk
  *** of page generation.
  ***/
@@ -766,13 +777,15 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		break;
 
 	    case PRT_OBJ_T_IMAGE:
+	    case PRT_OBJ_T_SVG:
 		justif=0;
 		if(obj->Parent) {
 		    if (obj->X > 0.1 && obj->Parent->Width - obj->Parent->MarginLeft - obj->Parent->MarginRight - obj->Width - 0.1 <= obj->X) {
 			justif = 1;
 		    }
 		}
-
+		
+		id = PRT_HTMLFM.ImageID++;
 		w = obj->Width*PRT_HTMLFM_XPIXEL;
 		h = obj->Height*PRT_HTMLFM_YPIXEL;
 		if (w <= 0) w = 1;
@@ -786,8 +799,14 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		}
 		
 		// Capture image to buffer
-		prt_internal_WriteImageToPNG(ImageWriteFn, &imgBuf, (pPrtImage)(obj->Content), w, h);
-		
+		//TODO we weren't supposed to replace context->Session->ImageWriteFn with ImageWriteFn,
+		// except the former references the image store I think which we don't want anymore...
+		if(obj->ObjType->TypeID == PRT_OBJ_T_IMAGE) {
+		    prt_internal_WriteImageToPNG(ImageWriteFn, &imgBuf, (pPrtImage)(obj->Content), w, h);
+		} else {
+		    prt_internal_WriteSvgToFile(ImageWriteFn, &imgBuf, (pPrtSvg)(obj->Content), w, h);
+		}
+
 		// Encode image to base64
 		// copy out of lifetime: buf into img
 		char *base64Image = base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size);
@@ -804,16 +823,27 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    prt_htmlfm_OutputEncoded(context, obj->URL, -1);
 		    prt_htmlfm_Output(context, "\">", 2);
 		    }
-		
-		// Justification: All cases in which it is not an image, it is a SVG.
-		if(obj->ObjType->TypeID == PRT_OBJ_T_IMAGE) {
-		    prt_htmlfm_OutputPrintf(context, "<img src=\"data:image/png;");
+	
+		if(context->Flags & PRT_HTMLFM_F_EMAIL) {
+		    prt_htmlfm_OutputPrintf(context, "<img src=\"cid:image_%d\"", id);
+		    //TODO CSMITH: now buffer attachments
+		    //prt_htmlfm_Output("\n\n--" PRT_HTMLFM_EMAIL_BOUNDARY "\n", -1);
+		    //prt_htmlfm_Output("Content-Type: image/png\n", -1); //how to specify base64?
+		    //prt_htmlfm_OutputPrintf("Content-ID: image_%d\n", id);
+		    //prt_htmlfm_Output(base64Image);
 		} else {
-		    prt_htmlfm_OutputPrintf(context, "<img src=\"data:image/svg+xml;");
-		}	
-		prt_htmlfm_OutputPrintf(context, "base64,%s\" align=\"%s\" border=\"0\" width=\"%d\" height=\"%d\">", 
-			base64Image, justifytypes[justif], w, h);
-		
+
+		    if(obj->ObjType->TypeID == PRT_OBJ_T_IMAGE) {
+			prt_htmlfm_OutputPrintf(context, "<img src=\"data:image/png;base64,%s\"", 
+			    base64Image, justifytypes[justif], w, h);
+		    } else {
+			prt_htmlfm_OutputPrintf(context, "<img src=\"data:image/svg+xml;base64,%s\"", 
+			    base64Image, justifytypes[justif], w, h);
+		    }
+		}
+		prt_htmlfm_OutputPrintf(context, " align=\"%s\" border=\"0\" width=\"%d\" height=\"%d\">", 
+		    justifytypes[justif], w, h);
+
 		if (obj->URL && !strchr(obj->URL, '"'))
 		    {
 		    prt_htmlfm_Output(context, "</a>", 4);
@@ -823,62 +853,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		nmFree(base64Image, strlen(base64Image));
 		
 		break;
-
-            case PRT_OBJ_T_SVG:
-		justif=0;
-		if(obj->Parent) {
-		    if (obj->Parent->Width - obj->Parent->MarginLeft - obj->Parent->MarginRight - obj->Width - 0.1 <= obj->X) {
-			justif = 1;
-		    }
-		}
-
-		/** We need an image store location in order to handle these **/
-		if (context->Session->ImageOpenFn)
-		    {
-		    id = PRT_HTMLFM.ImageID++;
-		    w = obj->Width*PRT_HTMLFM_XPIXEL;
-		    h = obj->Height*PRT_HTMLFM_YPIXEL;
-		    if (w <= 0) w = 1;
-		    if (h <= 0) h = 1;
-		    path = (char*)nmMalloc(OBJSYS_MAX_PATH);
-		    if (!path) 
-                        {
-                        mssError(1, "PRT", "nmMalloc() failed\n");
-                        return -1;
-                        }
-                    rval = snprintf(path, OBJSYS_MAX_PATH, "%sprt_htmlfm_%8.8lX.svg", context->Session->ImageSysDir, id);
-		    if (rval < 0 || rval >= OBJSYS_MAX_PATH)
-			{
-                        mssError(1, "PRT", "Internal representation exceeded for image pathname\n");
-			nmFree(path, OBJSYS_MAX_PATH);
-                        return -1;
-			}
-		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/svg+xml");
-		    if (!arg)
-			{
-			mssError(0,"PRT","Failed to open new linked image '%s'",path);
-			nmFree(path, OBJSYS_MAX_PATH);
-			return -1;
-			}
-		    prt_internal_WriteSvgToFile(context->Session->ImageWriteFn, arg, (pPrtSvg)(obj->Content), w, h);
-		    context->Session->ImageCloseFn(arg);
-		    nmFree(path, OBJSYS_MAX_PATH);
-		    if (obj->URL && !strchr(obj->URL, '"'))
-			{
-			prt_htmlfm_Output(context, "<a href=\"", 9);
-			prt_htmlfm_OutputEncoded(context, obj->URL, -1);
-			prt_htmlfm_Output(context, "\">", 2);
-			}
-		    prt_htmlfm_OutputPrintf(context, "<img align=\"%s\" src=\"%sprt_htmlfm_%8.8X.svg\" border=\"0\" width=\"%d\" height=\"%d\">", 
-			    justifytypes[justif],
-			    context->Session->ImageExtDir, id, w, h);
-		    if (obj->URL && !strchr(obj->URL, '"'))
-			{
-			prt_htmlfm_Output(context, "</a>", 4);
-			}
-		    }
-		break;
-
+	    
 	    case PRT_OBJ_T_TABLE:
 		prt_htmlfm_GenerateTable(context, obj);
 		break;
@@ -1015,7 +990,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    while(subobj->Y > (rowpos[cur_row]+0.001) && cur_row < PRT_HTMLFM_MAXROWS-1) cur_row++;
 		    
 		    if(last_height + 0.001 < subobj->Y) {
-			prt_htmlfm_OutputPrintf(context, "</tr><tr><td height=\"%dpx\" style=\"line-height:0;\">&nbsp</td>",
+			prt_htmlfm_OutputPrintf(context, "</tr><tr><td height=\"%dpx\" style=\"line-height:0;\">&nbsp;</td>",
 			   (int) ((subobj->Y - last_height) * PRT_HTMLFM_YPIXEL));
 		    }
 		    prt_htmlfm_Output(context, "</tr>\n<tr>", 10);
