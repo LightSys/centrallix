@@ -179,7 +179,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    	    wgtrGetPropertyValue(tree, ptr, DATA_T_STRING,POD(&vstr));
 		    if (!strpbrk(vstr," !@#$%^&*()-=+`~;:,.<>/?'\"[]{}\\|"))
 		        {
-			xsConcatQPrintf(&xs, "%STR&SYM:{type:'sym', value:'%STR&SYM'}", ptr, vstr);
+			xsConcatQPrintf(&xs, "%STR&SYM:{type:'sym', value:'%STR&SYM', namespace:ns}", ptr, vstr);
 			}
 		    else
 		        {

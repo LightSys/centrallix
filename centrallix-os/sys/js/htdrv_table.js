@@ -26,7 +26,7 @@ function tbld_format_cell(cell, color)
 
     if (!colinfo.widget || colinfo.widget.visible)
 	{
-	if (cell.subkind != 'headercell' && colinfo.type != 'check' && colinfo.type != 'image')
+	if (cell.subkind != 'headercell' && colinfo.type != 'check' && colinfo.type != 'image' && colinfo.type != 'checkbox')
 	    var str = htutil_encode(String(htutil_obscure(cell.data)), colinfo.wrap != 'no');
 	else
 	    var str = htutil_encode(String(cell.data), colinfo.wrap != 'no');
@@ -73,6 +73,15 @@ function tbld_format_cell(cell, color)
 		}
 	    else
 		txt = '';
+	    }
+	else if (cell.subkind != 'headercell' && colinfo.type == 'checkbox')
+	    {
+	    // Checkbox
+	    var sl = str.toLowerCase();
+	    if (sl == 'n' || sl == 'no' || sl == 'off' || sl == 'false' || str == '0' || str == '' || str == 'null')
+		txt = '<img width="16" height="16" src="/sys/images/checkbox_unchecked.png">';
+	    else
+		txt = '<img width="16" height="16" src="/sys/images/checkbox_checked.png">';
 	    }
 	else if (cell.subkind != 'headercell' && colinfo.type == 'check')
 	    {
@@ -527,13 +536,23 @@ function tbld_setup_row_data(rowslot, is_new)
     }
 
 
+function tbld_get_selected_column_geom()
+    {
+    if (this.table.cr && this.table.rows[this.table.cr])
+	var obj = this.table.rows[this.table.cr];
+    else
+	var obj = this.table;
+    return { x:$(obj).offset().left + this.col.xoffset, y:$(obj).offset().top, width:this.col.width, height:$(obj).height() };
+    }
+
+
 function tbld_get_selected_geom()
     {
     if (this.cr && this.rows[this.cr])
 	var obj = this.rows[this.cr];
     else
 	var obj = this;
-    return {x:$(obj).offset().left,y:$(obj).offset().top,width:$(obj).width(),height:$(obj).height()};
+    return { x:$(obj).offset().left, y:$(obj).offset().top, width:$(obj).width(), height:$(obj).height() };
     }
 
 
@@ -993,8 +1012,8 @@ function tbld_set_displayfor(attr, val)
 
 function tbld_set_coltitle(attr, val)
     {
-    this.col.data = val;
-    this.table.FormatCell(this.col, this.table.titlecolor);
+    this.colhdr.data = val;
+    this.table.FormatCell(this.colhdr, this.table.titlecolor);
     this.table.UpdateHeight(this.hdrrow);
     this.table.DisplayRow(this.hdrrow, 0);
     this.table.UpdateGeom();
@@ -1003,7 +1022,7 @@ function tbld_set_coltitle(attr, val)
 
 function tbld_get_coltitle(attr)
     {
-    return this.col.data;
+    return this.colhdr.data;
     }
 
 
@@ -1016,14 +1035,14 @@ function tbld_set_visible(attr, val)
 	    {
 	    // Show column
 	    this.visible = 1;
-	    this.col.ChangeWidth(this.visible_width, true);
+	    this.colhdr.ChangeWidth(this.visible_width, true);
 	    }
 	else
 	    {
 	    // Hide column
 	    this.visible_width = this.table.cols[this.colnum].width;
 	    this.visible = 0;
-	    this.col.ChangeWidth(-this.visible_width, true);
+	    this.colhdr.ChangeWidth(-this.visible_width, true);
 	    }
 	this.table.ReflowWidth();
 	}
@@ -1894,6 +1913,7 @@ function tbld_init(param)
     t.dragcols = param.dragcols;
     t.colsep = param.colsep;
     t.colsepbg = param.colsep_bgnd;
+    t.colsepmode = param.colsep_mode;
     t.gridinemptyrows = param.gridinemptyrows;
     t.allowselect = param.allow_selection;
     t.showselect = param.show_selection;
@@ -2105,7 +2125,7 @@ function tbld_init(param)
 	    $(l.resizebdr).css
 		({
 		"cursor": "move", 
-		"height": ((t.gridinemptyrows)?(t.rowheight * (t.maxtotalwindowsize)):t.rowheight) + "px", 
+		"height": (t.colsepmode == 0)?(((t.gridinemptyrows)?(t.rowheight * (t.maxtotalwindowsize)):t.rowheight) + "px"):(t.rowheight + "px"), 
 		"visibility": "inherit",
 		"width": t.colsep + t.bdr_width*2 + "px",
 		"padding-left": t.bdr_width + "px",
@@ -2148,9 +2168,11 @@ function tbld_init(param)
 	    cw.hdrrow = t.hdrrow;
 	    cw.table = t;
 	    cw.colnum = i;
-	    cw.col = t.hdrrow.cols[i];
+	    cw.colhdr = t.hdrrow.cols[i];
+	    cw.col = t.cols[i];
 	    cw.visible = 1;
 	    cw.visible_width = t.cols[i].width;
+	    cw.GetSelectedGeom = tbld_get_selected_column_geom;
 	    var iv = cw.ifcProbeAdd(ifValue);
 	    iv.Add("title", tbld_get_coltitle, tbld_set_coltitle);
 	    iv.Add("visible", tbld_get_visible, tbld_set_visible);
@@ -2195,6 +2217,8 @@ function tbld_init(param)
 
     // Events
     var ie = t.ifcProbeAdd(ifEvent);
+    ie.Add("Check");
+    ie.Add("Uncheck");
     ie.Add("Click");
     ie.Add("DblClick");
     ie.Add("RightClick");
@@ -2523,7 +2547,7 @@ function tbld_keydown(e)
 		    for(var c in row.cols)
 			{
 			var col = row.cols[c];
-			if (t.cols[col.colnum].type != 'check' && t.cols[col.colnum].type != 'image')
+			if (t.cols[col.colnum].type != 'check' && t.cols[col.colnum].type != 'image' && t.cols[col.colnum].type != 'checkbox')
 			    {
 			    if (t.CheckHighlight(col, t.ttf_string))
 				{
@@ -2594,6 +2618,7 @@ function tbld_mousedown(e)
     {
     var ly = e.layer;
     var toggle_row = false;
+    var canceled = false;
     var moved = false;
     var selected = (ly.table?ly.table.selected:((ly.row && ly.row.table)?ly.row.table.selected:null));
     if(ly.kind && ly.kind=='tabledynamic')
@@ -2654,6 +2679,7 @@ function tbld_mousedown(e)
 		event.recnum = ly.rownum;
 		event.selected = selected;
 		event.data = new Object();
+		event.checkbox = 0;
 		var rec=ly.table.osrc.replica[ly.rownum];
 		if(rec)
 		    {
@@ -2665,7 +2691,21 @@ function tbld_mousedown(e)
 			}
 		    }
 		ly.table.dta=event.data;
-		if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Click', event)))
+		if (e.target && e.target.src && e.target.src.indexOf('/sys/images/checkbox_unchecked.png') >= 0)
+		    {
+		    event.checkbox = 1;
+		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Check', event)))
+			canceled = true;
+		    }
+		if (!canceled && e.target && e.target.src && e.target.src.indexOf('/sys/images/checkbox_checked.png') >= 0)
+		    {
+		    event.checkbox = 2;
+		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Uncheck', event)))
+			canceled = true;
+		    }
+		if (!canceled && isCancel(ly.table.ifcProbe(ifEvent).Activate('Click', event)))
+		    canceled = true;
+		if (canceled)
 		    toggle_row = false;
 		}
 	    if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("DblClick"))
