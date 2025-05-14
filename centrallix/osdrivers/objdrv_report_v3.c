@@ -3914,6 +3914,7 @@ rpt_internal_ReadAutoSeries(pRptChartContext ctx, pRptActiveQueries ac, pStructI
     char* start;
     char* end;
     char* cur_x = NULL;
+    int showValue = 1;
     int series_cnt = 0;
     int paletteInd = 0;
     int series_index;
@@ -3960,6 +3961,10 @@ rpt_internal_ReadAutoSeries(pRptChartContext ctx, pRptActiveQueries ac, pStructI
 		}
 	    rval = rpt_internal_GetString(inf, chart, "palette", &ptr, NULL, i++);
 	    }
+	
+	/** Determine the show_value value each series should have **/
+	rval = rpt_internal_GetString(inf, chart, "show_value", &ptr, "yes", 0);
+	if(rval > 0 && !strcmp(ptr, "no")) showValue = 0;
 
 	/** Enter the row retrieval loop. **/	
 	/** Each row belongs to just one series. Store values and series indexes until x changes, then store **/
@@ -4047,7 +4052,22 @@ rpt_internal_ReadAutoSeries(pRptChartContext ctx, pRptActiveQueries ac, pStructI
 		    childexp->DataType = DATA_T_STRING;
 		    childexp->Alloc = 1;
 		    childexp->String = nmSysStrdup(ptr);
-		    paletteInd++;
+		    childobj->Value = childexp;
+		    stAddInf(subobj, childobj);
+		    }
+		/* if show_value is no, add that as well; defaults to yes otherwise */
+		if(!showValue)
+		    {
+		    childobj = stAllocInf();
+		    strncpy(childobj->Name, "show_value", ST_NAME_STRLEN-1);
+		    childobj->Name[ST_NAME_STRLEN-1] = '\0'; /* make sure ends with a null */
+		    childobj->Flags = ST_F_ATTRIB | ST_F_VERSION2;
+		    /** add the string value **/
+		    childexp = expAllocExpression();
+		    childexp->NodeType = EXPR_N_STRING;
+		    childexp->DataType = DATA_T_STRING;
+		    childexp->Alloc = 1;
+		    childexp->String = nmSysStrdup("no");
 		    childobj->Value = childexp;
 		    stAddInf(subobj, childobj);
 		    }
@@ -4416,8 +4436,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	    goto error;
 	mgl_set_rotated_text(ctx->gr, ctx->rotation?1:0);
 	if (ctx->zoom < 0.999 || ctx->zoom > 1.001)
-	    mgl_set_plotfactor(ctx->gr, 1.55*ctx->zoom);
-
+	    mgl_set_plotfactor(ctx->gr, 1.55/ctx->zoom);
 	/** Decimal precision **/
 	prec = rpt_internal_GetYDecimalPrecision(ctx, -1, -1);
 	snprintf(precstr, sizeof(precstr), "%%.%df", prec);
