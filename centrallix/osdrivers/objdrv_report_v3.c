@@ -4436,8 +4436,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	    goto error;
 	mgl_set_rotated_text(ctx->gr, ctx->rotation?1:0);
 	if (ctx->zoom < 0.999 || ctx->zoom > 1.001)
-	    mgl_set_plotfactor(ctx->gr, 1.55*ctx->zoom);
-
+	    mgl_set_plotfactor(ctx->gr, 1.55/ctx->zoom);
 	/** Decimal precision **/
 	prec = rpt_internal_GetYDecimalPrecision(ctx, -1, -1);
 	snprintf(precstr, sizeof(precstr), "%%.%df", prec);
