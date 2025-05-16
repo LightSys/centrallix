@@ -358,6 +358,7 @@ myTable "report/table"
 			<property name="y_value" type="expression">The Y value for the series, specified here when using dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</property>
 			<property name="series_value" type="expression">The value used to differentiate series. This in only used by charts with dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</property>
 			<property name="legend_value" type="expression">The value to be displayed when the series name appears in a legend.  This is only used by charts with dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</property>
+			<property name="legend_width" type="expression">The percentage of space, expressed as a value in [0.0,1.0], to leave for the legend. When show_legend is yes, it defauts to 0.1 (10%), and 0 otherwise.</property>
 		</properties>
 		<children>
 			<child type="report/chart-axis">

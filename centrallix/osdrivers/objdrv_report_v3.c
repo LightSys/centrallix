@@ -4179,7 +4179,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
     pRptChartValues value = NULL;
     pRptChartDriver drv;
     pRptChartContext ctx = NULL;
-    double xoffset, yoffset;
+    double xoffset, yoffset, legend_width;
     char color[8];
     int prec;
     char precstr[32];
@@ -4351,7 +4351,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	    {
 	    value = (pRptChartValues)ctx->values->Items[i];
 	    ctx->x_labels[i] = value->Label;
-	    /* auto series can be sparsely pupolated and thus require initialization */
+	    /* auto series can be sparsely populated and thus require initialization */
 	    if(isAuto)
 		{
 		for(j=0; j < ctx->series->nItems; j++)
@@ -4382,6 +4382,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	//stacked = rpt_internal_GetBool(inf, chart, "stacked", 0, 0);
 	ctx->rotation = rpt_internal_GetBool(inf, chart, "text_rotation", 0, 0);
 	rpt_internal_GetDouble(inf, chart, "zoom", &ctx->zoom, 1.0, 0);
+	rpt_internal_GetDouble(inf, chart, "legend_width", &legend_width, (ctx->show_legend?0.1:0.0), 0);
 	rpt_internal_GetInteger(inf, chart, "fontsize", &ctx->fontsize, (int)round(prtGetFontSize(container_handle)), 0);
 	if (ctx->fontsize < 1)
 	    goto error;
@@ -4435,6 +4436,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	if (!ctx->gr)
 	    goto error;
 	mgl_set_rotated_text(ctx->gr, ctx->rotation?1:0);
+	mgl_relplot(ctx->gr, legend_width, 1, 0, 1); /// TODO: does ledger_width still need to be in the struct
 	if (ctx->zoom < 0.999 || ctx->zoom > 1.001)
 	    mgl_set_plotfactor(ctx->gr, 1.55/ctx->zoom);
 	/** Decimal precision **/
@@ -4530,7 +4532,6 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	 ** but return success.
 	 **/
 	errval = 0;
-	/// TODO: update what gets freed to include everything
     error:
 	if (ctx->x_labels)
 	    nmSysFree(ctx->x_labels);
