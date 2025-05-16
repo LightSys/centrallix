@@ -49,7 +49,7 @@ chart "system/report"
 	    text_rotation=no;
 	    title="File Sizes";
 	    zoom=1.0;
-	    show_value=yes;
+	    show_value=no;
 	    show_legend=yes;
 
 	    chart_x "report/chart-axis" { axis=x; label="place"; }
@@ -75,6 +75,7 @@ chart "system/report"
 	    zoom=1.0;
 	    show_value=yes;
 	    show_legend=yes;
+	    legend_width=0;
 
 	    chart_x "report/chart-axis" { axis=x; label="place"; }
 
