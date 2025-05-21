@@ -3615,6 +3615,7 @@ function osrc_oc_resync(master_osrc)
     if (!master_osrc)
 	{
 	// If master unknown, just issue a query that captures all relationship values
+	this.ifcProbe(ifAction).Invoke("Invalidate", {});
 	this.ifcProbe(ifAction).Invoke("QueryObject", {query:[], client:null, ro:this.readonly});
 	return;
 	}
