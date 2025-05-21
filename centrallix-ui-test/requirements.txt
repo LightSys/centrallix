@@ -1,5 +1,4 @@
-ImageHash==4.3.1
-Pillow==10.3.0
-pyppeteer==2.0.0
+ChromeDriverManager==3.14.0
 selenium==4.20.0
-toml==0.10.2
+toml
+time
