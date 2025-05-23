@@ -122,16 +122,12 @@ static char* prt_htmlfm_fontstyles[3] = { "Courier New,Courier,fixed", "Arial,He
 #define PRT_HTMLFM_MINFONTSTYLE	(0)
 #define PRT_HTMLFM_MAXFONTSTYLE	(2)
 
-/*** Session flags ***/
-#define PRT_HTMLFM_F_PAGINATED		1
-#define PRT_HTMLFM_F_EMAIL		2
-
 /*** Style Flags ***/
-#define PRT_HTMLFM_F_KEEPSPACES		1 //used after newlines to keep space-padding
-#define PRT_HTMLFM_F_FONTDIRTY		2
-#define PRT_HTMLFM_F_UNDERLINEDIRTY	4
-#define PRT_HTMLFM_F_ITALICDIRTY	8
-#define PRT_HTMLFM_F_BOLDDIRTY		16
+#define PRT_HTMLFM_SF_KEEPSPACES	1 //used after newlines to keep space-padding
+#define PRT_HTMLFM_SF_FONTDIRTY		2
+#define PRT_HTMLFM_SF_UNDERLINEDIRTY	4
+#define PRT_HTMLFM_SF_ITALICDIRTY	8
+#define PRT_HTMLFM_SF_BOLDDIRTY		16
 
 /*** MIME media types ***/
 typedef struct
@@ -172,7 +168,7 @@ struct _PSFI
     int			ExitStyle;
     pPrtHTMLfmSubtype	Subtype;
     int			Flags;			/* PRT_HTMLFM_F_xxx */
-    int			StyleFlags;
+    int			StyleFlags;		/* PRT_HTMLFM_SF_xxx */
     };
 
 #define MAX_IMAGE_SIZE (10 * 1024 * 1024) // 10 MB for image buffer
@@ -245,7 +241,7 @@ prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len)
 	    if(str[offset] != ' ')
 	    {
 	    /* we are no longer in our leading spaces, so don't &nbsp them */
-		context->Flags &= (! PRT_HTMLFM_F_KEEPSPACES);
+		context->StyleFlags &= (~PRT_HTMLFM_SF_KEEPSPACES);
 	    }
 	    if (badcharpos)
 		{
@@ -254,7 +250,7 @@ prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len)
 		    case '<': repl = "&lt;"; break;
 		    case '>': repl = "&gt;"; break;
 		    case '&': repl = "&amp;"; break;
-		    case ' ': repl = ( context->Flags & PRT_HTMLFM_F_KEEPSPACES ) ? "&nbsp;" : " "; break;
+		    case ' ': repl = ( context->StyleFlags & PRT_HTMLFM_SF_KEEPSPACES ) ? "&nbsp;" : " "; break;
 		    default: repl = ""; break;
 		    }
 		prt_htmlfm_Output(context, repl, -1);
@@ -452,17 +448,17 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 	    {
 	    /*For each thing, check dirty flag is clear to ensure opening tag was actually written*/
 	    if ((context->CurStyle.Attr & PRT_OBJ_A_BOLD) && 
-		!(context->StyleFlags & PRT_HTMLFM_F_BOLDDIRTY)) prt_htmlfm_Output(context, "</b>", 4);
+		!(context->StyleFlags & PRT_HTMLFM_SF_BOLDDIRTY)) prt_htmlfm_Output(context, "</b>", 4);
 	    if (context->ExitStyle || italicchanged || underlinechanged || fontchanged)
 		{
 		if (context->CurStyle.Attr & PRT_OBJ_A_ITALIC &&
-		    !(context->StyleFlags & PRT_HTMLFM_F_ITALICDIRTY)) prt_htmlfm_Output(context, "</i>", 4);
+		    !(context->StyleFlags & PRT_HTMLFM_SF_ITALICDIRTY)) prt_htmlfm_Output(context, "</i>", 4);
 		if (context->ExitStyle || underlinechanged || fontchanged)
 		    {
 		    if (context->CurStyle.Attr & PRT_OBJ_A_UNDERLINE && 
-			!(context->StyleFlags & PRT_HTMLFM_F_UNDERLINEDIRTY)) prt_htmlfm_Output(context, "</u>", 4);
+			!(context->StyleFlags & PRT_HTMLFM_SF_UNDERLINEDIRTY)) prt_htmlfm_Output(context, "</u>", 4);
 		    if ((context->ExitStyle || fontchanged) &&
-			!(context->StyleFlags & PRT_HTMLFM_F_FONTDIRTY))
+			!(context->StyleFlags & PRT_HTMLFM_SF_FONTDIRTY))
 			{
 			prt_htmlfm_Output(context, "</font>",7);
 			}
@@ -481,16 +477,16 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 		{
 		    if (context->InitStyle || fontchanged)
 		    {
-			context->StyleFlags |= PRT_HTMLFM_F_FONTDIRTY;
+			context->StyleFlags |= PRT_HTMLFM_SF_FONTDIRTY;
 		    }
 		    if (style->Attr & PRT_OBJ_A_UNDERLINE)
-			context->StyleFlags |= PRT_HTMLFM_F_UNDERLINEDIRTY;
+			context->StyleFlags |= PRT_HTMLFM_SF_UNDERLINEDIRTY;
 		}
 		if (style->Attr & PRT_OBJ_A_ITALIC)
-		    context->StyleFlags |= PRT_HTMLFM_F_ITALICDIRTY;
+		    context->StyleFlags |= PRT_HTMLFM_SF_ITALICDIRTY;
 	    }
 	    if (style->Attr & PRT_OBJ_A_BOLD)
-		context->StyleFlags |= PRT_HTMLFM_F_BOLDDIRTY;
+		context->StyleFlags |= PRT_HTMLFM_SF_BOLDDIRTY;
 
 	    memcpy(&(context->CurStyle), style, sizeof(PrtTextStyle));
 	}
@@ -515,28 +511,28 @@ prt_htmlfm_WriteStyle(pPrtHTMLfmInf context) {
     }
     /*htmlfontsize = style->FontSize - PRT_HTMLFM_FONTSIZE_DEFAULT + PRT_HTMLFM_FONTSIZE_OFFSET;*/
     
-    if(context->StyleFlags & PRT_HTMLFM_F_FONTDIRTY)
+    if(context->StyleFlags & PRT_HTMLFM_SF_FONTDIRTY)
     {
 	snprintf(stylebuf, sizeof(stylebuf), "<font face=\"%s\" color=\"#%6.6X\" size=\"%d\">",
 	    prt_htmlfm_GetFont(style), style->Color, htmlfontsize);
 	prt_htmlfm_Output(context, stylebuf, -1);
     }
-    if(context->StyleFlags & PRT_HTMLFM_F_UNDERLINEDIRTY)
+    if(context->StyleFlags & PRT_HTMLFM_SF_UNDERLINEDIRTY)
     {
 	prt_htmlfm_Output(context, "<u>", 3);
     }
-    if(context->StyleFlags & PRT_HTMLFM_F_ITALICDIRTY)
+    if(context->StyleFlags & PRT_HTMLFM_SF_ITALICDIRTY)
     {
 	prt_htmlfm_Output(context, "<i>", 3);
     }
-    if(context->StyleFlags & PRT_HTMLFM_F_BOLDDIRTY)
+    if(context->StyleFlags & PRT_HTMLFM_SF_BOLDDIRTY)
     {
 	prt_htmlfm_Output(context, "<b>", 3);
     }
 
     /*Clear the dirty flags*/
-    context->StyleFlags &= ! (PRT_HTMLFM_F_FONTDIRTY | PRT_HTMLFM_F_UNDERLINEDIRTY |
-	    PRT_HTMLFM_F_ITALICDIRTY | PRT_HTMLFM_F_BOLDDIRTY);
+    context->StyleFlags &= ~ (PRT_HTMLFM_SF_FONTDIRTY | PRT_HTMLFM_SF_UNDERLINEDIRTY |
+	    PRT_HTMLFM_SF_ITALICDIRTY | PRT_HTMLFM_SF_BOLDDIRTY);
 }
 
 /*** prt_htmlfm_InitStyle() - initialize style settings, as if we are 
@@ -607,7 +603,7 @@ prt_htmlfm_EndStyle(pPrtHTMLfmInf context)
  ***/
 void
 prt_htmlfm_SetKeepSpaces(pPrtHTMLfmInf context) {
-    context->Flags |= PRT_HTMLFM_F_KEEPSPACES;
+    context->StyleFlags |= PRT_HTMLFM_SF_KEEPSPACES;
 }
 
 
