@@ -1,4 +1,6 @@
-##NAME Date diff test
+##NAME Date/Time Formats and Parsing
+
+# Date diff specific
 query select datediff("year", convert(datetime, '1/1/1970'), convert(datetime, '1/1/1980'))
 query select datediff("year", convert(datetime, '1/1/1980'), convert(datetime, '1/1/1970'))
 query select datediff("month", convert(datetime, '1/1/1980'), convert(datetime, '1/1/1970'))
@@ -8,3 +10,29 @@ query select datediff("minute", convert(datetime, '1/1/1980'), convert(datetime,
 query select datediff("second", convert(datetime, '1/1/1970'), convert(datetime, '1/1/1980'))
 query select datediff('minute', convert(datetime, '1/1/1970 12:15:35'), convert(datetime, '1/1/1970 14:18:34'))
 query select datediff('minute', convert(datetime, '1/1/1970 14:18:34'), convert(datetime, '1/1/1970 12:15:35'))
+
+# Parsing
+query select convert(datetime, "3/1/17 12:00")
+query select convert(datetime, "3/1/2017 12:00")
+query select convert(datetime, "3/1/2017 12:00am")
+query select convert(datetime, "3-1-2017 3pm")
+query select convert(datetime, "2017-03-01 3am")
+query select convert(datetime, "2017-03-01 20:00")
+query select convert(datetime, "1999-03-01 20:00")
+query select convert(datetime, "03-01-99 20:00")
+query select datediff(minute, convert(datetime, "03-01-99 04:00 +0000"), convert(datetime, "03-01-99 04:00 +0600"))
+query select datediff(minute, convert(datetime, "03-01-99 04:00 -0000"), convert(datetime, "03-01-99 04:00 -0600"))
+query select datediff(minute, convert(datetime, "03-01-99 04:00-0000"), convert(datetime, "03-01-99 04:00-0600"))
+query select datediff(minute, convert(datetime, "03-01-99 04:00+0000"), convert(datetime, "03-01-99 04:00+0600"))
+query select datediff(minute, convert(datetime, "03-01-99 04:00 +0600"), convert(datetime, "03-01-99 04:00 +0000"))
+query select datediff(minute, convert(datetime, "03-01-99 04:00 -0600"), convert(datetime, "03-01-99 04:00 -0000"))
+query select datediff(minute, convert(datetime, "03-01-99 04:00+0600"), convert(datetime, "03-01-99 04:00+0000"))
+query select datediff(minute, convert(datetime, "03-01-99 04:00-0600"), convert(datetime, "03-01-99 04:00-0000"))
+
+# Formatting
+query select dateformat(convert(datetime, "3/1/17 13:01"), "yyyy-MM-dd hh:mm")
+query select dateformat(convert(datetime, "3/1/17 13:01"), "yyyy-M-d hh:mm")
+query select dateformat(convert(datetime, "3/1/17 13:01"), "yy-MM-dd HH:mm")
+query select dateformat(convert(datetime, "3/1/17 13:02"), "MM/dd/yyyy HH:mm:ss")
+query select dateformat(convert(datetime, "3/1/17 13:01:00"), "yyyy-MMM-dd HH:mm:ss")
+query select dateformat(convert(datetime, "3/1/17 13:01:59"), "yyyy-MMM-dd HH:mm:ss")

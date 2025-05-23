@@ -122,6 +122,23 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
 	    newy = getPageY(this)+ htr_getvisheight(this) + 1;
 	else // top
 	    newy = getPageY(this) - 24;
+
+	// Clipping
+	switch(l.tloc)
+	    {
+	    case 0: // top
+		$(l_tab).css('clip', 'rect(-10px, ' + ($(l_tab).outerWidth()+10) + 'px, 25px, -10px)');
+		break;
+	    case 1: // bottom
+		$(l_tab).css('clip', 'rect(0px, ' + ($(l_tab).outerWidth()+10) + 'px, 35px, -10px)');
+		break;
+	    case 2: // left
+		$(l_tab).css('clip', 'rect(-10px, ' + ($(l_tab).outerWidth()) + 'px, 35px, -10px)');
+		break;
+	    case 3: // right
+		$(l_tab).css('clip', 'rect(-10px, ' + ($(l_tab).outerWidth()+10) + 'px, 35px, 0px)');
+		break;
+	    }
 	}
     else
 	{
@@ -187,12 +204,13 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
     l_page.Reveal = tc_cb_reveal;
     pg_reveal_register_triggerer(l_page);
     //if (htr_getvisibility(l_page) == 'inherit') pg_addsched("pg_reveal(" + l_tab.tabname + ")");
-    l_page.is_visible = (l.tloc != 4 && htr_getvisibility(l_tab) == 'inherit');
+    //l_page.is_visible = (l.tloc != 4 && htr_getvisibility(l_tab) == 'inherit');
+    l_page.is_visible = true;
 
+    l_page.tc_visible_changed = tc_visible_changed;
+    htr_watch(l_page,"is_visible", "tc_visible_changed"); //visible property
     var iv = l_page.ifcProbeAdd(ifValue);
     iv.Add("visible", "is_visible");
-    htr_watch(l_page,"is_visible", "tc_visible_changed"); //visible property
-    l_page.tc_visible_changed = tc_visible_changed;
 
     // Show Container API
     l_page.showcontainer = tc_showcontainer;
@@ -454,7 +472,9 @@ function tc_visible_changed(prop,o,n)
 	//try default tab
 	if(htr_getvisibility(t.init_tab.tab)=='inherit')
 	    {
-	    t.tabs[t.init_tab.tabindex-1].makeCurrent();
+	    // This is forced, so we skip the obscure/reveal checks
+	    t.ChangeSelection3(t.tabs[t.init_tab.tabindex-1]);
+	    //t.tabs[t.init_tab.tabindex-1].makeCurrent();
 	    }
 	else //otherwise find first tab not hidden
 	    {
@@ -462,7 +482,9 @@ function tc_visible_changed(prop,o,n)
 		{
 		if(htr_getvisibility(t.tabs[i].tab)=='inherit')
 		    {
-		    t.tabs[i].makeCurrent();
+		    // This is forced, so we skip the obscure/reveal checks
+		    t.ChangeSelection3(t.tabs[i]);
+		    //t.tabs[i].makeCurrent();
 		    break;
 		    }
 		}

@@ -250,7 +250,7 @@
    mtask9
    Memcheck:Cond
    fun:mssErrorErrno
-   fun:nht_internal_Handler
+   fun:nht_i_Handler
    fun:r_mtRun_Spacer
    fun:r_mtRunStartFn
    fun:r_mtRunStartFn
@@ -263,7 +263,7 @@
    Memcheck:Cond
    fun:mtSched
    fun:netAcceptTCP
-   fun:nht_internal_Handler
+   fun:nht_i_Handler
    fun:r_mtRun_Spacer
    fun:r_mtRunStartFn
    fun:r_mtRunStartFn
@@ -276,7 +276,7 @@
    Memcheck:Value4
    fun:mtSched
    fun:netAcceptTCP
-   fun:nht_internal_Handler
+   fun:nht_i_Handler
    fun:r_mtRun_Spacer
    fun:r_mtRunStartFn
    fun:r_mtRunStartFn

@@ -80,9 +80,9 @@ wgtalVerify(pWgtrVerifySession s)
     {
     pWgtrNode al = s->CurrWidget;
     pWgtrNode child;
-    pWgtrNode widgetarray[64];
-    pWgtrNode sortarray[64];
-    int ord[64];
+    pWgtrNode widgetarray[80];
+    pWgtrNode sortarray[80];
+    int ord[80];
     int xo, yo;
     int al_type = -1;
     int i, j;
@@ -247,7 +247,7 @@ wgtalVerify(pWgtrVerifySession s)
 			    mssError(1, "WGTRAL", "Warning: overflow of end of hbox '%s'",al->Name);
 			}
 		    child->x = child->pre_x = xo;
-		    child->width = child->pre_width = child->width = possible_width;
+		    child->pre_width = child->width = possible_width;
 		    if (child->y < 0)
 			child->pre_y = child->y = row_offset;
 		    else

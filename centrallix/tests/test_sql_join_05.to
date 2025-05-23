@@ -1,0 +1,6 @@
+##NAME Two joins, one inner and one outer
+
+query select msg = "JS optional:"
+query select t1id = :t1:f_id, t2id = :t2:f_id, jsid = :js:rowid, t1desc = :t1:f_desc, t2desc = :t2:f_desc, jscolor = :js:color, cnt = :t1:f_count + :t2:f_square from /tests/Testdata1.csv/rows t1, /tests/Testdata2.csv/rows t2, /tests/test3.json js where lower(:t1:f_desc) *= lower(:js:color) and :t2:f_id = :t1:f_id
+query select msg = "T1 optional:"
+query select t1id = :t1:f_id, t2id = :t2:f_id, jsid = :js:rowid, t1desc = :t1:f_desc, t2desc = :t2:f_desc, jscolor = :js:color, cnt = :t1:f_count + :t2:f_square from /tests/Testdata1.csv/rows t1, /tests/Testdata2.csv/rows t2, /tests/test3.json js where lower(:t1:f_desc) =* lower(:js:color) and :t2:f_id = :t1:f_id

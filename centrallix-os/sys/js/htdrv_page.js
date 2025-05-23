@@ -21,7 +21,8 @@
 var pg_msglist = '';
 var pg_init_ts = (new Date()).valueOf();
 
-var pg_waitlyr_id = null;
+var pg_spinner_id = null;
+var pg_spinner = null;
 
 var pg_layer = null;
 
@@ -35,6 +36,8 @@ pg_msg.MSG_REPMSG=8;
 pg_msg.MSG_EVENT=16;
 
 var pg_explog = [];
+
+var pg_interval = 60000; /* milliseconds */
 
 
 function pg_scriptavailable(s)
@@ -486,77 +489,80 @@ function pg_get(o,a)
 //END SECTION: DOM/CSS helper functions -----------------------------------
 
 //START SECTION: pinging functions ---------------------------------------
-/* these functions deal with pinging the server. The client pings the
- * server because ...? //SETH:
- */
+// These are used for keepalives to let the server know the application
+// is still running in the user's browser.  In the absence of keepalives
+// the application is destroyed with a very short time interval, otherwise
+// the session times out after a much longer period of inactivity.
 
 function pg_ping_init(l,i)
     {
-    if(cx__capabilities.Dom0IE)
-        {
-    	l.tid=setInterval(pg_ping_send, i);
-	}
-    else
-    	{
-    	l.tid=setInterval(pg_ping_send,i,l);    		
-    	}
+    l.tid=setInterval(pg_ping_send,i,l);
+    pg_interval = i;
     }
 
-function pg_ping_recieve()
+function pg_ping_receive()
     {
-    var link;
-    //confirm("recieving");
-    if(cx__capabilities.Dom1HTML)
-	{
-	link = this.contentDocument.getElementsByTagName("a")[0];
-	}
-    else if(cx__capabilities.Dom0NS)
-	{
-	link = this.document.links[0];
-	}
-    else
-	{
-	return false;
-	}
+    var link = null;
+    var links = null;
+
+    if (this.contentDocument)
+	links = this.contentDocument.getElementsByTagName("a");
+    if (links && links.length > 0)
+	link = links[0];
+
     if(!link || link.target==='ERR')
 	{
 	clearInterval(this.tid);
 	if (!window.pg_disconnected)
+	    {
+	    window.pg_disconnected = true;
 	    confirm('you have been disconnected from the server');
-	window.pg_disconnected = true;
+	    }
 	}
     else if (link && link.target !== 'OK')
 	{
 	pg_servertime_notz = new Date(link.target);
 	pg_clienttime = new Date();
 	pg_clockoffset = pg_clienttime - pg_servertime_notz;
+
+	// Inactivity timeout imminent?  We catch this a bit early so the user
+	// doesn't get a 401 on a normal data request.
+	//
+	if (parseInt(link.text) > 0 && parseInt(link.text) < pg_interval + 2000)
+	    {
+	    clearInterval(this.tid);
+	    if (!window.pg_disconnected)
+		{
+		window.pg_disconnected = true;
+		confirm('you have been disconnected from the server');
+		}
+	    }
 	}
     }
     
 function pg_ping_send(p)
     {
-    //confirm('sending');
-    if (cx__capabilities.Dom0IE)
-        {
-        p = document.getElementById('pgping');
-	}
-	        
-    //p.onload=pg_ping_recieve;
-   
-    pg_serialized_load(p, '/INTERNAL/ping?cx__akey=' + window.akey, pg_ping_recieve);
-    /*if(cx__capabilities.Dom1HTML)
-	{
-	p.setAttribute('src','/INTERNAL/ping');
-	}
-    else if(cx__capabilities.Dom0NS)
-	{
-	//alert(p);
-	p.src='/INTERNAL/ping';
-	}*/
+    pg_serialized_load(p, '/INTERNAL/ping?cx__akey=' + window.akey, pg_ping_receive);
     }
 
 //END SECTION: pinging functions ---------------------------------------
 
+
+function pg_logout(all)
+    {
+    if (!window.pg_disconnected)
+	{
+	$.ajax
+	    ({
+	    url: '/INTERNAL/' + (all?'logoutall':'logout') + '?cx__akey=' + window.akey,
+	    cache: false,
+	    complete: function(xhr, stat)
+		{
+		window.pg_disconnected = true;
+		}
+	    });
+	}
+    }
 
 function pg_get_computed_clip(o) //SETH: ??
     {
@@ -633,13 +639,37 @@ function pg_set_emulation(d)
     }
 
 /** Function to set modal mode to a layer. **/
-function pg_setmodal(l)
+function pg_setmodal(l, is_modal)
     {
-    if (pg_modallist.length && !l)
+    // Find l in the modal list
+    var pos = pg_modallist.indexOf(l);
+    if (!is_modal)
+	{
+	if (pos >= 0)
+	    {
+	    pg_modallist.splice(pos, 1);
+	    }
+	else if (l == pg_modallayer)
+	    {
+	    pg_modallayer = pg_modallist.pop();
+	    if (pg_modallayer === undefined)
+		pg_modallayer = null;
+	    }
+	}
+    else
+	{
+	if (pos === -1 && l !== pg_modallayer)
+	    {
+	    if (pg_modallayer)
+		pg_modallist.push(pg_modallayer);
+	    pg_modallayer = l;
+	    }
+	}
+    /*if (pg_modallist.length && !l)
 	l = pg_modallist.pop();
     else if (l && pg_modallayer)
 	pg_modallist.push(pg_modallayer);
-    pg_modallayer = l;
+    pg_modallayer = l;*/
     if (!window.pg_masklayer)
         {
 	pg_masklayer = htr_new_layer(pg_width, null);
@@ -651,8 +681,9 @@ function pg_setmodal(l)
 	else
 	    htr_setbgimage(pg_masklayer, "/sys/images/black_trans_2x2.gif");
 	}
-    if (l)
+    if (pg_modallayer)
 	{
+	var l = pg_modallayer;
 	if (l.mainlayer) l = l.mainlayer;
 	moveBelow(pg_masklayer, l);
 	moveTo(pg_masklayer, 0, 0);
@@ -1153,7 +1184,8 @@ function pg_keyhandler(k,m,e)
     //alert(this.caller);
 
     // block non-special codes for IE here - handle em in keypress, not keydown.
-    if (cx__capabilities.Dom0IE || cx__capabilities.Dom2Events)
+    //if (cx__capabilities.Dom0IE || cx__capabilities.Dom2Events)
+    if (cx__capabilities.Dom0IE)
 	{
 	if (k >= 32 && k != 46)
 	    return true;
@@ -1165,7 +1197,8 @@ function pg_keyhandler(k,m,e)
 	    k = 127;
 	}
 
-    return pg_keyhandler_internal(k,m,e);
+    var r = pg_keyhandler_internal(k,m,e);
+    return  r;
     }
 
 function pg_keyhandler_internal(k,m,e)
@@ -1196,7 +1229,7 @@ function pg_keyhandler_internal(k,m,e)
 	    return false;
 	    }
 	}
-    return false;
+    return true;
     }
  
 function pg_status_init() //SETH: ??
@@ -1359,8 +1392,25 @@ function pg_init(l,a,gs,ct) //SETH: ??
 	});
     document.body.appendChild(window.paste_input);
     //window.paste_input.focus();
-
+    
+    // Check logout
+    pg_addsched_fn(window, pg_checklogout, [], 150);
+    
     return window;
+    }
+
+function pg_checklogout()
+    {
+    // Is this a logout page?
+    var lo = wgtrGetServerProperty(window, "logout");
+    if (lo == 1 || lo == "true" || lo == "yes")
+	{
+	pg_logout(false);
+	}
+    else if (lo == "all")
+	{
+	pg_logout(true);
+	}
     }
 
 function pg_cleanup()
@@ -1426,7 +1476,10 @@ function pg_load_page(aparam) //SETH: ??
 	    newurl += '&';
 	else
 	    newurl += '?';
-	newurl += "cx__akey=" + window.akey.substr(0,49);
+	if (aparam.LinkApp !== null && (aparam.LinkApp == 'yes' || aparam.LinkApp == 1))
+	    newurl += "cx__akey=" + window.akey;
+	else
+	    newurl += "cx__akey=" + window.akey.substr(0,49);
 	}
 
     window.location.href = newurl;
@@ -1447,7 +1500,7 @@ function pg_launch(aparam)
     var url = new String(aparam.Source);
     for(var p in aparam)
 	{
-	if (p == '_Origin' || p == '_EventName' || p == 'Multi' || p == 'Name' || p == 'Width' || p == 'Height' || p == 'Source')
+	if (p == '_Origin' || p == '_EventName' || p == 'Multi' || p == 'Name' || p == 'Width' || p == 'Height' || p == 'Source' || p == 'LinkApp')
 	    continue;
 	var v = aparam[p];
 	var r = wgtrCheckReference(v);
@@ -1475,7 +1528,10 @@ function pg_launch(aparam)
 	    url += '&';
 	else
 	    url += '?';
-	url += "cx__akey=" + window.akey.substr(0,49);
+	if (aparam.LinkApp !== null && (aparam.LinkApp == 'yes' || aparam.LinkApp == 1))
+	    url += "cx__akey=" + window.akey;
+	else
+	    url += "cx__akey=" + window.akey.substr(0,49);
 	}
 
     // Find a unique name for the new window.
@@ -1492,6 +1548,13 @@ function pg_launch(aparam)
 	    }
 	}
 
+    // Mailto?  We handle this differently if so.
+    if (url.substr(0,7) == 'mailto:')
+	{
+	$('<iframe src="' + htutil_encode(url, true) + '">').appendTo('body').css('display', 'none');
+	return;
+	}
+
     // Already exists?
     if (window.windowlist[w_name] && window.windowlist[w_name].close) w_exists = true;
     if (!aparam.Multi && w_exists) 
@@ -1499,6 +1562,11 @@ function pg_launch(aparam)
 	window.windowlist[w_name].close();
 	w_exists = false;
 	}
+
+    // Compute the height
+    var h = aparam.Height;
+    if (window.devicePixelRatio)
+	h *= window.devicePixelRatio;
 
     // Open it.
     if (!w_exists) 
@@ -1515,7 +1583,7 @@ function pg_launch(aparam)
 	    var scroll = ",scrollbars=yes";
 	else
 	    var scroll = ",scrollbars=no";
-	window.windowlist[w_name] = window.open(url, w_name, "toolbar=no" + scroll + ",innerHeight=" + aparam.Height + ",innerWidth=" + aparam.Width + ",personalbar=no,status=no" + menubar + resizable);
+	window.windowlist[w_name] = window.open(url, w_name, "toolbar=no" + scroll + ",innerHeight=" + h + ",innerWidth=" + aparam.Width + ",personalbar=no,status=no" + menubar + resizable);
 	}
     }
 
@@ -1994,17 +2062,17 @@ function pg_setkbdfocus(l, a, xo, yo)
 	if (v & 1)
 	    {
 	    // mk box for kbd focus
-	    if (prevArea != a)
-		{
-		if (cx__capabilities.Dom0NS)
-		    {
-		    pg_mkbox(l ,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
-		    }
-		else if (cx__capabilities.Dom1HTML)
-		    {		    
+	    //if (prevArea != a)
+	//	{
+	//	if (cx__capabilities.Dom0NS)
+	//	    {
+	//	    pg_mkbox(l ,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
+	//	    }
+	//	else if (cx__capabilities.Dom1HTML)
+	//	    {		    
 		    pg_mkbox(l ,x,y,w,h, 1, document.getElementById("pgktop"),document.getElementById("pgkbtm"),document.getElementById("pgkrgt"),document.getElementById("pgklft"), page.kbcolor1, page.kbcolor2, htr_getzindex(document.getElementById("pgtop"))+100);
-		    }
-		}
+	//	    }
+	//	}
 	    }
 	if (v & 2)
 	    {
@@ -2052,13 +2120,32 @@ function pg_loadqueue_additem(item)
     pg_loadqueue.splice(i, 0, item);
     }
 
+// Remove from the load queue
+function pg_loadqueue_remove(item)
+    {
+    for(var i=0; i<pg_loadqueue.length; i++)
+	{
+	if (pg_loadqueue[i] == item)
+	    {
+	    pg_loadqueue.splice(i,1);
+	    if (item.active)
+		{
+		item.active = false;
+		if (item.lyr) item.lyr.__load_busy = false;
+		pg_loadqueue_busy--;
+		}
+	    break;
+	    }
+	}
+    }
+
 // pg_serialized_write() - schedules the writing of content to a layer, so that
 // we don't have the document open while stuff is happening from the server.
 function pg_serialized_write(l, text, cb)
     {
     //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + ': ' + l.name + ' loads "' + text.substring(0,100) + '"\n');
     //pg_loadqueue.push({lyr:l, text:text, cb:cb});
-    pg_loadqueue_additem({level:1, type:'write', lyr:l, text:text, cb:cb, retry_cnt:0});
+    pg_loadqueue_additem({level:1, type:'write', lyr:l, text:text, cb:cb, retry_cnt:0, silent:true, active:false});
     //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + '\n');
     pg_serialized_load_doone();
     }
@@ -2069,7 +2156,7 @@ function pg_serialized_write(l, text, cb)
 // complete (even if scheduled later) before it runs.
 function pg_serialized_func(level, obj, func, params)
     {
-    pg_loadqueue_additem({level:level, type:'func', lyr:obj, cb:func, params:params, retry_cnt:0});
+    pg_loadqueue_additem({level:level, type:'func', lyr:obj, cb:func, params:params, retry_cnt:0, silent:true, active:false});
     //pg_serialized_load_doone();
     pg_loadqueue_check();
     }
@@ -2080,26 +2167,13 @@ function pg_serialized_func(level, obj, func, params)
 // manner that keeps things serialized so server loads don't overlap.
 function pg_serialized_load(l, newsrc, cb, silent)
     {
-    // pg_waitlyr says if the 'wait layer' should be used (the 'wait layer' is the layer that takes focus and says "please wait...")
-    if (!silent && (!pg_waitlyr || !pg_waitlyr.vis))
+    if (!window.pg_disconnected)
 	{
-	if (!pg_waitlyr)
-	    {
-	    pg_waitlyr = htr_new_layer(96);
-	    htr_write_content(pg_waitlyr, "<center><img src=\"/sys/images/wait_spinner.gif\"</img></center>");
-	    moveToAbsolute(pg_waitlyr, (pg_width-100)/2, (pg_height-24)/2);
-	    htr_setzindex(pg_waitlyr, 99999);
-	    }
-	if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
-	pg_waitlyr_id = null;
-	pg_waitlyr.vis = true;
-
-	htr_setvisibility(pg_waitlyr, "inherit");
+	pg_debug('pg_serialized_load: ' + pg_loadqueue.length + ': ' + l.name + ' loads ' + newsrc + '\n');
+	pg_loadqueue_additem({level:1, type:'src', lyr:l, src:newsrc, cb:cb, retry_cnt:0, silent:silent, active:false});
+	pg_debug('pg_serialized_load: ' + pg_loadqueue.length + '\n');
+	pg_serialized_load_doone();
 	}
-    pg_debug('pg_serialized_load: ' + pg_loadqueue.length + ': ' + l.name + ' loads ' + newsrc + '\n');
-    pg_loadqueue_additem({level:1, type:'src', lyr:l, src:newsrc, cb:cb, retry_cnt:0});
-    pg_debug('pg_serialized_load: ' + pg_loadqueue.length + '\n');
-    pg_serialized_load_doone();
     }
 
 // pg_serialized_load_doone() - loads the next item off of the
@@ -2107,13 +2181,9 @@ function pg_serialized_load(l, newsrc, cb, silent)
 // actually made.
 function pg_serialized_load_doone()
     {
-    if (pg_loadqueue_busy >= pg_max_requests) return;
-    if (pg_loadqueue.length == 0) 
-	{
-	//pg_loadqueue_busy = 0;
-	pg_clear_waitlyr();
-	return;
-	}
+    if (pg_loadqueue_busy >= pg_max_requests || window.pg_disconnected) return;
+
+    pg_loadqueue_check_spinner();
 
     // Find an item from the load queue
     //var one_item = pg_loadqueue.shift(); 
@@ -2121,10 +2191,12 @@ function pg_serialized_load_doone()
     for(var i=0; i<pg_loadqueue.length; i++)
 	{
 	var item = pg_loadqueue[i];
-	if (!item.lyr.__load_busy)
+	if (!item.active && (!item.lyr || !item.lyr.__load_busy))
 	    {
-	    one_item = pg_loadqueue.splice(i,1)[0];
+	    // Activate
+	    one_item = item;
 	    one_item.lyr.__load_busy = true;
+	    one_item.active = true;
 	    pg_loadqueue_busy++;
 	    break;
 	    }
@@ -2136,8 +2208,8 @@ function pg_serialized_load_doone()
     switch(one_item.type)
 	{
 	case 'src':
-	    one_item.lyr.onload = pg_serialized_load_cb;
-	    one_item.lyr.onerror = pg_serialized_load_error_cb;
+	    one_item.lyr.onload = () => { pg_serialized_load_cb(one_item); };
+	    one_item.lyr.onerror = () => { pg_serialized_load_error_cb(one_item); };
 	    pg_set(one_item.lyr, 'src', one_item.src);
 	    break;
 
@@ -2149,47 +2221,43 @@ function pg_serialized_load_doone()
 	    if (one_item.lyr.__pg_onload) 
 		{
 		one_item.lyr.__pg_onload_cb = pg_serialized_load_cb;
-		pg_addsched_fn(one_item.lyr, '__pg_onload_cb', [], 0);
+		pg_addsched_fn(one_item.lyr, '__pg_onload_cb', [one_item], 0);
 		}
 	    else
 		{
 		pg_debug('pg_serialized_load_doone: ' + pg_loadqueue.length + ': ' + one_item.lyr.name + ' no cb\n');
-		one_item.lyr.__load_busy = false;
-		pg_loadqueue_busy--;
+		pg_loadqueue_remove(one_item);
 		}
 	    pg_loadqueue_check();
 	    break;
 
 	case 'func':
 	    one_item.cb.apply(one_item.lyr, one_item.params);
-	    one_item.lyr.__load_busy = false;
-	    pg_loadqueue_busy--;
+	    pg_loadqueue_remove(one_item);
 	    pg_loadqueue_check();
 	    break;
 	}
     }
 
 // pg_serialized_load_cb() - called when a load finishes
-function pg_serialized_load_cb()
+function pg_serialized_load_cb(item)
     {
-    this.__load_busy = false;
-    pg_loadqueue_busy--;
-    if (pg_loadqueue_busy < 0)
-	pg_loadqueue_busy = 0;
+    pg_loadqueue_remove(item);
+    //if (pg_loadqueue_busy < 0)
+//	pg_loadqueue_busy = 0;
 
-    if (this.__pg_onload) 
-	this.__pg_onload();
+    if (item.lyr && item.lyr.__pg_onload) 
+	item.lyr.__pg_onload();
 
     pg_loadqueue_check();
     }
 
 // need some specialized error handling here in the future.
-function pg_serialized_load_error_cb()
+function pg_serialized_load_error_cb(item)
     {
-    this.__load_busy = false;
-    pg_loadqueue_busy--;
-    if (pg_loadqueue_busy < 0)
-	pg_loadqueue_busy = 0;
+    pg_loadqueue_remove(item);
+    //if (pg_loadqueue_busy < 0)
+//	pg_loadqueue_busy = 0;
     pg_loadqueue_check();
     }
 
@@ -2197,17 +2265,53 @@ function pg_loadqueue_check()
     {
     if (pg_loadqueue.length > 0)
 	pg_addsched_fn(window, 'pg_serialized_load_doone', [], 0);
-    else
-	pg_clear_waitlyr();
+    pg_loadqueue_check_spinner();
     }
 
-function pg_clear_waitlyr()
+function pg_loadqueue_check_spinner()
     {
-    if (pg_waitlyr && !pg_loadqueue_busy)
+    // Do we need the busy spinner?
+    var spinner = false;
+    for(var i=0; i<pg_loadqueue.length; i++)
 	{
-	if (pg_waitlyr_id) pg_delsched(pg_waitlyr_id);
-	pg_waitlyr.vis = false;
-	pg_waitlyr_id = pg_addsched_fn(window, function() { pg_waitlyr.vis || htr_setvisibility(pg_waitlyr, "hidden"); }, [], 150);
+	if (pg_loadqueue[i].silent === false)
+	    {
+	    spinner = true;
+	    break;
+	    }
+	}
+
+    if (spinner) 
+	{
+	// Create and/or make visible
+	if (!pg_spinner)
+	    {
+	    pg_spinner = htr_new_layer(96);
+	    htr_write_content(pg_spinner, "<center><img src=\"/sys/images/wait_spinner.gif\"</img></center>");
+	    moveToAbsolute(pg_spinner, (pg_width-100)/2, (pg_height-24)/2);
+	    htr_setzindex(pg_spinner, 99999);
+	    }
+	if (pg_spinner_id) pg_delsched(pg_spinner_id);
+	pg_spinner_id = null;
+	pg_spinner.vis = true;
+
+	htr_setvisibility(pg_spinner, "inherit");
+	}
+    else
+	{
+	// Clear the busy spinner
+	pg_clear_spinner();
+	return;
+	}
+    }
+
+function pg_clear_spinner()
+    {
+    if (pg_spinner)
+	{
+	if (pg_spinner_id) pg_delsched(pg_spinner_id);
+	pg_spinner.vis = false;
+	pg_spinner_id = pg_addsched_fn(window, function() { pg_spinner.vis || htr_setvisibility(pg_spinner, "hidden"); }, [], 150);
 	}
     }
 
@@ -2828,13 +2932,13 @@ function pg_keydown(e)
     else if (cx__capabilities.Dom2Events)
 	{
 	var k = e.Dom2Event.which;
-        if (k == pg_lastkey && e.Dom2Event.modifiers == pg_lastmodifiers) 
+        /*if (k == pg_lastkey && e.Dom2Event.modifiers == pg_lastmodifiers) 
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         pg_lastkey = k;
 	pg_lastmodifiers = e.Dom2Event.modifiers;
         if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
 	if (pg_keyschedid) pg_delsched(pg_keyschedid);
-        pg_keyschedid = pg_addsched_fn(window, function() { pg_keytimeoutid = setTimeout(pg_keytimeout, 200); }, [], 0);
+        pg_keyschedid = pg_addsched_fn(window, function() { pg_keytimeoutid = setTimeout(pg_keytimeout, 200); }, [], 0);*/
         //if (pg_keyhandler(k, e.Dom2Event.modifiers, e.Dom2Event))
 	//if (e.ctrlKey && k == 17)
 	//    window.paste_input.focus();
@@ -2937,6 +3041,18 @@ function pg_check_resize(l)
 	    }
 	}
     return null;
+    }
+
+function pg_scroll(e)
+    {
+    if (e.target == document)
+	{
+	return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
+    else
+	{
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+	}
     }
 
 

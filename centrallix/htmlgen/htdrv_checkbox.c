@@ -106,7 +106,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddScriptInit_va(s,"    checkbox_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", checked:%INT, enabled:%INT, form:\"%STR&JSSTR\"});\n", name, fieldname,checked,enabled,form);
 
    /** HTML body <DIV> element for the layers. **/
-   htrAddBodyItemLayerStart(s, 0, "cb%POSmain", id);
+   htrAddBodyItemLayerStart(s, 0, "cb%POSmain", id, NULL);
    switch(checked)
 	{
 	case 1:

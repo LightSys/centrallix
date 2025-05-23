@@ -6,9 +6,7 @@
 #include <math.h>
 #include <stdarg.h>
 #include <errno.h>
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 #ifdef HAVE_PNG_H
 #include <png.h>
 #endif
@@ -22,6 +20,11 @@
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
+#ifdef HAVE_RSVG_H
+#include "librsvg/rsvg.h"
+#include "cairo-svg.h"
+#include "cairo-ps.h"
+#endif
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -63,7 +66,8 @@ typedef struct
     int		(*io_fn)();
     void*	io_arg;
     }
-    PrtPngIOInfo, *pPrtPngIOInfo;
+    PrtIOInfo, *pPrtIOInfo;
+
 
 /*** prtAllocBorder - this is a convenience function to allocate a new
  *** border descriptor.
@@ -149,6 +153,7 @@ prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, in
 	    offset_dir = -1;
 	else
 	    offset_dir = 0;
+	if (flags & PRT_MKBDR_F_OUTSIDE) offset_dir = -offset_dir;
 
 	/** Which 'orientation' (vertical vs. horizontal) **/
 	if (flags & (PRT_MKBDR_F_TOP | PRT_MKBDR_F_BOTTOM))
@@ -219,6 +224,7 @@ prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, in
 
 	    /** Add the rectangle **/
 	    prt_internal_Add(parent, rect_obj);
+	    rect_obj->Z = parent->Z + 0x100; /* above the object and its children */
 
 	    /** Account for our own line thickness **/
 	    thickness += (b->Sep + b->Width[selected_line]);
@@ -231,6 +237,47 @@ prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, in
     return 0;
     }
 
+
+
+/*** prtAllocImage() - create a new blank image.
+ ***/
+pPrtImage
+prtAllocImage(int width, int height, int color_type)
+    {
+    pPrtImage img;
+    int bytes_per_row;
+
+	/** Determine bytes per row **/
+	switch(color_type)
+	    {
+	    case PRT_COLOR_T_MONO:
+		bytes_per_row = (width+7)/8;
+		break;
+	    case PRT_COLOR_T_GREY:
+		bytes_per_row = width;
+		break;
+	    case PRT_COLOR_T_FULL:
+		bytes_per_row = width*4;
+		break;
+	    default:
+		mssError(1, "PRT", "Invalid color type for image: %d", color_type);
+		return NULL;
+	    }
+
+	/** Allocate the image **/
+	img = (pPrtImage)nmSysMalloc(sizeof(PrtImageHdr) + bytes_per_row*height);
+	if (!img)
+	    return NULL;
+	
+	/** Set up the blank image **/
+	img->Hdr.Width = width;
+	img->Hdr.Height = height;
+	img->Hdr.ColorMode = color_type;
+	img->Hdr.DataLength = bytes_per_row*height;
+	img->Hdr.YOffset = 0.0;
+
+    return img;
+    }
 
 
 #if defined(HAVE_PNG_H) && defined(HAVE_LIBPNG)
@@ -253,7 +300,7 @@ prt_png_Free(png_structp png_ptr, voidp ptr)
 void
 prt_png_Read(png_structp png_ptr, png_bytep data, png_size_t length)
     {
-    pPrtPngIOInfo read_info = png_get_io_ptr(png_ptr);
+    pPrtIOInfo read_info = png_get_io_ptr(png_ptr);
 
         if (read_info->io_fn(read_info->io_arg, (char*)data, (int)length, 0, FD_U_PACKET) < (int)length)
 	    {
@@ -266,7 +313,7 @@ prt_png_Read(png_structp png_ptr, png_bytep data, png_size_t length)
 void
 prt_png_Write(png_structp png_ptr, png_bytep data, png_size_t length)
     {
-    pPrtPngIOInfo write_info = png_get_io_ptr(png_ptr);
+    pPrtIOInfo write_info = png_get_io_ptr(png_ptr);
 
         if (write_info->io_fn(write_info->io_arg, (char*)data, (int)length, 0, FD_U_PACKET) < (int)length)
 	    {
@@ -279,7 +326,7 @@ prt_png_Write(png_structp png_ptr, png_bytep data, png_size_t length)
 void
 prt_png_Flush(png_structp png_ptr)
     {
-    /*pPrtPngIOInfo write_info = png_get_io_ptr(png_ptr);*/
+    /*pPrtIOInfo write_info = png_get_io_ptr(png_ptr);*/
     return;
     }
 
@@ -298,11 +345,10 @@ prtCreateImageFromPNG(int (*read_fn)(), void* read_arg)
     png_structp libpng_png_ptr;
     png_infop libpng_info_ptr;
     png_infop libpng_end_ptr;
-    PrtPngIOInfo read_info;
+    PrtIOInfo read_info;
     png_uint_32 width, height;
     int bit_depth, color_type;
     png_bytep *row_pointers;
-    int bytes_per_row;
     int i;
     int our_color_type;
 
@@ -380,17 +426,14 @@ prtCreateImageFromPNG(int (*read_fn)(), void* read_arg)
 	/** Allocate row pointers for image data **/
 	if (bit_depth == 1 && color_type == PNG_COLOR_TYPE_GRAY)
 	    {
-	    bytes_per_row = (width+7)/8;
 	    our_color_type = PRT_COLOR_T_MONO;
 	    }
 	else if (bit_depth == 8 && (color_type == PNG_COLOR_TYPE_RGB))
 	    {
-	    bytes_per_row = width*4;
 	    our_color_type = PRT_COLOR_T_FULL;
 	    }
 	else if (bit_depth == 8 && color_type == PNG_COLOR_TYPE_GRAY)
 	    {
-	    bytes_per_row = width;
 	    our_color_type = PRT_COLOR_T_GREY;
 	    }
 	else
@@ -399,22 +442,29 @@ prtCreateImageFromPNG(int (*read_fn)(), void* read_arg)
 	    png_destroy_read_struct(&libpng_png_ptr, &libpng_info_ptr, &libpng_end_ptr);
 	    return NULL;
 	    }
-	row_pointers = (png_bytep*)nmSysMalloc(height*sizeof(png_bytep));
 
 	/** Allocate our image header **/
-	img = (pPrtImage)nmSysMalloc(sizeof(PrtImageHdr) + bytes_per_row*height);
-	for(i=0;i<height;i++)
+	img = prtAllocImage(width, height, our_color_type);
+	if (!img)
 	    {
-	    row_pointers[i] = img->Data.Byte + i*bytes_per_row;
+	    png_destroy_read_struct(&libpng_png_ptr, &libpng_info_ptr, &libpng_end_ptr);
+	    return NULL;
 	    }
-	img->Hdr.Width = width;
-	img->Hdr.Height = height;
-	img->Hdr.ColorMode = our_color_type;
-	img->Hdr.DataLength = bytes_per_row*height;
-	img->Hdr.YOffset = 0.0;
 
 	/** Read the image data **/
+	row_pointers = (png_bytep*)nmSysMalloc(height*sizeof(png_bytep));
+	if (!row_pointers)
+	    {
+	    png_destroy_read_struct(&libpng_png_ptr, &libpng_info_ptr, &libpng_end_ptr);
+	    prtFreeImage(img);
+	    return NULL;
+	    }
+	for(i=0;i<height;i++)
+	    {
+	    row_pointers[i] = img->Data.Byte + i*(img->Hdr.DataLength/height);
+	    }
 	png_read_image(libpng_png_ptr, row_pointers);
+	nmSysFree(row_pointers);
 
 	/** All done... **/
 	png_read_end(libpng_png_ptr, libpng_end_ptr);
@@ -604,7 +654,7 @@ prt_internal_WriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, 
 #if defined(HAVE_PNG_H) && defined(HAVE_LIBPNG)
     png_structp libpng_png_ptr;
     png_infop libpng_info_ptr;
-    PrtPngIOInfo write_info;
+    PrtIOInfo write_info;
     int bitdepth, colortype;
     png_byte* row_pointer = NULL;
     int i,j;
@@ -718,6 +768,320 @@ prt_internal_WriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, 
     return 0;
 #else
     mssError(1,"PRT","PNG image support not available; cannot use prtWriteImageToPNG()");
+    return -1;
+#endif
+    }
+
+
+/*
+ *  VECTOR IMAGE FUNCTIONS
+ *  ______________________
+ *
+ */
+
+
+#if defined(HAVE_RSVG_H) && defined(HAVE_LIBRSVG)
+/*** svgSanityCheck() - checks whether a buffer contains valid svg data.
+ ***/
+int
+svgSanityCheck(char* svg_data, int length)
+    {
+    RsvgHandle *rsvg;
+    GError *rsvg_err;
+
+    /* Attempt to load SVG data into rsvg handle */
+    rsvg_err = NULL;
+    rsvg = rsvg_handle_new_from_data((guint8*)svg_data, length, &rsvg_err);
+
+    if (!rsvg) 
+    {
+	mssError(1, "PRT", "SVG sanity check failed: %s", rsvg_err->message);
+        g_object_unref(rsvg_err);
+        return -1;    
+    }
+
+    g_object_unref(rsvg);
+    return 0;
+    }
+
+
+/*** prtSvgSize() - returns the total memory used by an svg image.
+ ***/
+int
+prtSvgSize(pPrtSvg svg)
+    {
+    return svg->SvgData->Length + sizeof(PrtSvg);
+    }
+
+
+/*** prtFreeSvg() - free memory used by an svg image.
+ ***/
+int
+prtFreeSvg(pPrtSvg svg)
+    {
+    xsFree(svg->SvgData);
+    nmFree(svg, sizeof(PrtSvg));
+    
+    return 0;
+    }
+
+
+/*** prt_svg_Write() - this function gets passed to CAIRO when
+ *** outputting to a file.
+ ***/
+static cairo_status_t
+prt_svg_Write(void* write_info, char* data, int length)
+    {
+    if (((PrtIOInfo *)write_info)->io_fn(((PrtIOInfo *)write_info)->io_arg, 
+                                          data, length, 0, FD_U_PACKET) < 0)
+        return CAIRO_STATUS_WRITE_ERROR;
+
+    return CAIRO_STATUS_SUCCESS;
+    }
+
+
+/*** prt_svg_WriteXS() - this function gets passed to CAIRO when
+ *** outputting to an XString.
+ ***/
+static cairo_status_t
+prt_svg_WriteXS(void* xs, char* data, int length)
+    {
+    if (xsConcatenate((pXString)xs, data, length) < 0)
+        return CAIRO_STATUS_WRITE_ERROR;
+    
+    return CAIRO_STATUS_SUCCESS;
+    }
+#endif
+
+
+/*** prtWriteSvgToContainer() - add an svg image to a Centrallix container
+ ***/
+int
+prtWriteSvgToContainer(int handle_id, pPrtSvg svg, double x, double y, 
+		       double width, double height, int flags)
+    {
+#if defined(HAVE_RSVG_H) && defined(HAVE_LIBRSVG)
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+    pPrtObjStream svg_obj;
+
+    /* Allocate new (sub)object of type "svg" */
+    svg_obj = prt_internal_AllocObjByID(PRT_OBJ_T_SVG);
+    if (!svg_obj) return -ENOMEM;
+    
+    /* Copy attributes inherited from parent */
+    if (obj->ContentTail) 
+        prt_internal_CopyAttrs(obj->ContentTail, svg_obj);
+    else 
+        prt_internal_CopyAttrs(obj, svg_obj);
+
+    /* Set other relevant attributes */
+    svg_obj->Flags = flags & PRT_OBJ_UFLAGMASK;
+    svg_obj->X = x;
+    svg_obj->Y = y;
+    svg_obj->Width = width;
+    svg_obj->Height = height;
+    svg_obj->ConfigWidth = width;
+    svg_obj->Content = (void*)svg;
+    svg_obj->ContentSize = prtSvgSize(svg);
+    svg_obj->YBase = height;
+    svg_obj->Finalize = prtFreeSvg;
+
+    /* Add obj to layout manager */
+    return obj->LayoutMgr->AddObject(obj, svg_obj);
+
+#else
+    mssError(1,"PRT","SVG image support not available");
+    return -1;
+#endif 
+    }
+
+
+/*** prtConvertSvgToEps() - convert an svg image (pPrtSvg) to encapsulated
+ *** postscript. Returns an xstring with the eps data.     
+ ***/
+pXString prtConvertSvgToEps(pPrtSvg svg, double w, double h)
+    {
+#if defined(HAVE_RSVG_H) && defined(HAVE_LIBRSVG)
+    RsvgHandle *rsvg;
+    RsvgDimensionData dimensions;    
+    pXString epsXString;
+    cairo_surface_t *surface;
+    cairo_t *cr;
+
+    /* Init EPS string */
+    epsXString = xsNew();
+    if (!epsXString)
+    {
+        mssError(0, "PRT", "EPS data allocation error");
+        return NULL;
+    }
+
+    /* Load SVG data into rsvg handle */
+    rsvg = rsvg_handle_new_from_data((guint8*)svg->SvgData->String, svg->SvgData->Length, NULL); 
+    if (!rsvg)
+    {
+        mssError(1, "PRT", "Error reloading SVG data");
+        xsFree(epsXString);
+        return NULL;
+    }
+
+    /* Retrieve current dimensions */
+    rsvg_handle_get_dimensions(rsvg, &dimensions);
+
+    /* Set up cairo context */
+    surface = cairo_ps_surface_create_for_stream((cairo_write_func_t)prt_svg_WriteXS, (void*)epsXString, w, h);
+    cairo_ps_surface_set_eps(surface, TRUE);
+
+    /* Resize image */
+    cr = cairo_create(surface);
+    cairo_scale(cr, (double)w / dimensions.width, (double)h / dimensions.height); 
+
+    /* Render */
+    if (!rsvg_handle_render_cairo(rsvg, cr))
+    {
+        mssError(0, "PRT", "Error rendering EPS image");
+        goto error;
+    }
+
+    cairo_destroy(cr);
+    cairo_surface_destroy(surface);
+    g_object_unref(rsvg);
+    return epsXString;
+
+error:
+    cairo_destroy(cr);
+    cairo_surface_destroy(surface);
+    g_object_unref(rsvg);
+    xsFree(epsXString);
+    return NULL;
+
+#else
+    mssError(1,"PRT","SVG image support not available");
+    return NULL;
+#endif 
+    }
+
+
+/*** prtReadSvg() - reads an svg image from an arbitrary
+ *** location (pObject, pFile, XString, etc) into Centrallix.
+ ***/
+pPrtSvg
+prtReadSvg(int (*read_fn)(), void* read_arg)
+    {
+#if defined(HAVE_RSVG_H) && defined(HAVE_LIBRSVG)  
+    pPrtSvg svg;
+    pXString svgXString;
+
+    int count;
+    char buf[256];
+
+    /* Init SVG string */
+    svgXString = xsNew();
+    if (!svgXString)
+    {
+	mssError(0, "PRT", "SVG data allocation error");
+	return NULL;
+    }
+
+    /* Read SVG data */
+    while ((count = read_fn(read_arg, buf, sizeof(buf), 0, 0))) 
+    {
+	if (count < 0) 
+        {
+	    mssError(0, "PRT", "Error while reading SVG file");
+	    goto error;
+	}
+	if (xsConcatenate(svgXString, buf, count) < 0) 
+        {
+	    mssError(0, "PRT", "Error while reading SVG file");
+	    goto error;
+	}
+    }
+
+    /* SVG sanity check */
+    if (svgSanityCheck(svgXString->String, svgXString->Length) < 0)
+    {
+	goto error;
+    }
+
+    /* Allocate SVG struct */
+    svg = (pPrtSvg)nmMalloc(sizeof(PrtSvg));
+    if (!svg)
+    {
+	mssError(0, "PRT", "SVG struct allocation error");
+	goto error;
+    }
+    
+    svg->SvgData = svgXString;
+    return svg;
+
+error:
+    xsFree(svgXString);
+    return NULL;
+
+#else
+    mssError(1,"PRT","SVG image support not available");
+    return NULL;
+#endif 
+}
+
+
+/*** prt_internal_WriteSvgToFile() - write svg image to a file, with
+ *** given dimensions (scale to a given width and height).
+ ***/
+int
+prt_internal_WriteSvgToFile(int (*write_fn)(), void* write_arg, pPrtSvg svg,
+                            int w, int h)
+    {
+#if defined(HAVE_RSVG_H) && defined(HAVE_LIBRSVG)
+    RsvgHandle *rsvg;
+    RsvgDimensionData dimensions;
+    PrtIOInfo write_info;
+    cairo_surface_t *surface;
+    cairo_t *cr;
+
+    /* Load SVG data into rsvg handle */
+    rsvg = rsvg_handle_new_from_data((guint8*)svg->SvgData->String, svg->SvgData->Length, NULL);
+    if (!rsvg)
+    {
+        mssError(1, "PRT", "Error reloading SVG data");
+        return -1;
+    }
+
+    /* Retrieve current dimensions */
+    rsvg_handle_get_dimensions(rsvg, &dimensions);
+
+    /* Set up cairo context */
+    write_info.io_fn = write_fn;
+    write_info.io_arg = write_arg;
+    surface = cairo_svg_surface_create_for_stream((cairo_write_func_t)prt_svg_Write, (void*)&write_info, w, h);
+    cairo_svg_surface_set_document_unit(surface, CAIRO_SVG_UNIT_PX);
+
+    /* Resize image */
+    cr = cairo_create(surface);
+    cairo_scale(cr, ((double)w) / dimensions.width, 
+                    ((double)h) / dimensions.height); 
+
+    /* Render */
+    if (!rsvg_handle_render_cairo(rsvg, cr))
+    {
+        mssError(0, "PRT", "Error rendering SVG image");
+        goto error;
+    }
+
+    cairo_destroy(cr);
+    cairo_surface_destroy(surface);
+    g_object_unref(rsvg);
+    return 0;
+
+error:
+    cairo_destroy(cr);
+    cairo_surface_destroy(surface);
+    g_object_unref(rsvg);
+    return -1;
+
+#else
+    mssError(1,"PRT","SVG image support not available");
     return -1;
 #endif
     }

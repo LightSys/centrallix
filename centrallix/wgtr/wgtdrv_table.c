@@ -73,7 +73,7 @@ wgttblNew(pWgtrNode node)
 	    {
 	    if(node->fl_width < 0) node->fl_width = 100;
 	    if(node->fl_height < 0) node->fl_height = 100;
-	    node->Flags |= WGTR_F_CONTAINER;
+	    node->Flags |= (WGTR_F_CONTAINER | WGTR_F_VSCROLLABLE);
 	    }
 	else if (!strcmp(node->Type, "widget/table-row-detail"))
 	    {

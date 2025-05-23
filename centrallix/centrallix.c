@@ -302,6 +302,7 @@ cxInitialize(void* v)
     time_t tm;
     int pid;
     char rbuf[16];
+    char* debugfile;
 
 	xaInit(&CxGlobals.ShutdownHandlers,4);
 
@@ -312,6 +313,12 @@ cxInitialize(void* v)
 	/** Add a shutdown handler to delete the pid file **/
 	if (CxGlobals.PidFile[0])
 	    cxAddShutdownHandler(cxRemovePidFile);
+
+#ifdef _SC_CLK_TCK
+        CxGlobals.ClkTck = sysconf(_SC_CLK_TCK);
+#else
+        CxGlobals.ClkTck = CLK_TCK;
+#endif
 
 	/** Startup message **/
 	if (!CxGlobals.QuietInit)
@@ -338,6 +345,14 @@ cxInitialize(void* v)
 	    thExit();
 	    }
 	fdClose(cxconf, 0);
+
+	/** Debug log **/
+	if (stAttrValue(stLookup(CxGlobals.ParsedConfig, "debug_log_file"), NULL, &debugfile, 0) < 0)
+	    debugfile = "/var/log/cx_debug_log";
+	CxGlobals.DebugFile = fdOpen(debugfile, O_WRONLY | O_APPEND | O_CREAT, 0600);
+	if (!CxGlobals.DebugFile)
+	    perror("centrallix: warning: could not open debug log file");
+	cxDebugLog("centrallix initializing: pid=%d, uid=%d, euid=%d", getpid(), getuid(), geteuid());
 
 	/** This setting can be dangerous apart from the RBAC security subsystem.
 	 ** We default to Enabled here, but this is turned off in the default config.
@@ -395,6 +410,14 @@ cxInitialize(void* v)
 	tm = time(NULL);
 	RAND_add(&tm, 4, (double)0.125);
 
+    return 0;
+    }
+
+
+int
+cxDriverInit()
+    {
+
 	/** Init the multiquery system and drivers **/
 	mqInitialize();				/* MultiQuery system */
 	mqtInitialize();			/* tablegen query module */
@@ -450,6 +473,9 @@ cxInitialize(void* v)
 
 	/** Initialize the Interface module **/
 	ifcInitialize();
+
+	/** Application management layer **/
+	appInitialize();
 
 	/** Init the modules being used if dynamic loading is disabled **/
 	
@@ -511,6 +537,7 @@ cxHtInit()
 	httabInitialize();			/* tab control / tab page module */
 	htpnInitialize();			/* pane module */
 	httblInitialize();			/* tabular data module */
+	htchtInitialize();			/* chart module */
 	htwinInitialize();			/* draggable window module */
 	htcbInitialize();			/* checkbox module */
 	htrbInitialize();			/* radiobutton module */
@@ -565,6 +592,14 @@ cxNetworkInit()
 	cgiInitialize();			/* CGI "listener" */
 #endif
 
+#ifndef WITH_DYNAMIC_LOAD
+
+#ifdef USE_NETLDAP
+	nldapInitialize();			/* LDAP network interface */
+#endif
+
+#endif
+
 	bnetInitialize();			/* BDQS network listener */
 
 	/** Load any network driver modules **/
@@ -573,3 +608,91 @@ cxNetworkInit()
     return 0;
     }
 #endif
+
+int
+cxDebugLog(char* fmt, ...)
+    {
+    va_list va;
+    int rval;
+    long long msec;
+    char* our_fmt;
+    int our_fmt_len;
+
+	if (!CxGlobals.DebugFile)
+	    return -1;
+
+	msec = mtRealTicks() * 1000LL / CxGlobals.ClkTck;
+
+	our_fmt_len = strlen(fmt) + 256;
+	our_fmt = nmSysMalloc(our_fmt_len);
+	if (!our_fmt)
+	    return -ENOMEM;
+	snprintf(our_fmt, our_fmt_len, "T%lld.%3.3lld P%7.7d %s\n", msec/1000, msec%1000, getpid(), fmt);
+
+	/** Alloc a printf buf? **/
+	if (!CxGlobals.DebugFile->PrintfBuf)
+	    {
+	    CxGlobals.DebugFile->PrintfBufSize = FD_PRINTF_BUFSIZ;
+	    CxGlobals.DebugFile->PrintfBuf = (char*)nmSysMalloc(CxGlobals.DebugFile->PrintfBufSize);
+	    if (!CxGlobals.DebugFile->PrintfBuf)
+		return -ENOMEM;
+	    }
+
+	/** Print it. **/
+	va_start(va,fmt);
+	rval=xsGenPrintf_va(fdWrite, CxGlobals.DebugFile, &(CxGlobals.DebugFile->PrintfBuf), &(CxGlobals.DebugFile->PrintfBufSize), our_fmt, va);
+	va_end(va);
+
+	nmSysFree(our_fmt);
+
+    return rval;
+    }
+
+
+int
+cxLinkSigningSetup(pStructInf my_config)
+    {
+    pXArray sites;
+    char key[256];
+    char* strval;
+    int i;
+
+	/** Create our sites list **/
+	sites = xaNew(16);
+	if (!sites)
+	    return -1;
+
+	/** Determine a suitable signing key **/
+	if (stAttrValue(stLookup(my_config, "link_signing_key"), NULL, &strval, 0) >= 0 && strval && *strval)
+	    {
+	    strtcpy(key, strval, sizeof(key));
+	    }
+	else
+	    {
+	    if (cxssGenerateHexKey((char*)key, 32) < 0)
+		{
+		mssError(1, "CX", "Warning: no link_signing_key provided and temporal key generation failed, disabling link signing");
+		strtcpy(key, "", sizeof(key));
+		}
+	    else
+		{
+		mssError(1, "CX", "Warning: no link_signing_key provided, signing links with temporal key only");
+		}
+	    }
+
+	/** Link Signing - allowed sites **/
+	for(i=0; stAttrValue(stLookup(my_config, "link_signing_sites"), NULL, &strval, i) >= 0; i++)
+	    xaAddItem(sites, nmSysStrdup(strval));
+
+	/** Set up link signing **/
+	if (*key)
+	    {
+	    if (cxssLinkInitialize((unsigned char*)key, strlen(key), sites) < 0)
+		{
+		mssError(1, "CX", "Warning: Link signing initialization failed, disabling link signing");
+		}
+	    }
+
+    return 0;
+    }
+

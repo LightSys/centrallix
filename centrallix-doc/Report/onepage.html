@@ -132,6 +132,10 @@
 <td>A tabular presentation of report data</td>
 </tr>
 <tr>
+<td><a href="#chart">chart</a></td>
+<td>A chart or graph presentation of report data</td>
+</tr>
+<tr>
 <td><a href="#image">image</a></td>
 <td>An image (graphic/photo)</td>
 </tr>
@@ -172,6 +176,11 @@
 <td class="name">align</td>
 <td class="type">string</td>
 <td class="description">The text alignment to use - either "left" (default), "center", "right", or "full".  Available on all objects except image, query, and parameter.</td>
+</tr>
+<tr>
+<td class="name">bgcolor</td>
+<td class="type">string</td>
+<td class="description">The background color of a table, table row, table cell, or area.</td>
 </tr>
 <tr>
 <td class="name">bottomborder</td>
@@ -772,7 +781,7 @@ outerForm "report/form"
 <tr>
 <td class="name">widths</td>
 <td class="type">intvec</td>
-<td class="description">A list of numbers giving the widths of the columns.  This MUST match the number of columns specified with the 'columns' setting.</td>
+<td class="description">A list of numbers giving the widths of the columns.  This MUST match the number of columns specified with the 'columns' setting.  As an alternative, widths may be specified in the column header cells, see below.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -827,9 +836,19 @@ outerForm "report/form"
 <th class="description">Description</th>
 </tr>
 <tr>
+<td class="name">colspan</td>
+<td class="type">integer</td>
+<td class="description">The number of columns that this cell should span.  Default 1.</td>
+</tr>
+<tr>
 <td class="name">value</td>
 <td class="type">expression</td>
 <td class="description">The text to be printed inside the cell.  Can reference report/query objects using :queryname:fieldname syntax.  When the expression references queries, it should be enclosed in the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">double</td>
+<td class="description">The width of the column.  Specifying widths in the column header cells is an alternative to specifying a list (intvec) of widths at the table level.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
@@ -851,6 +870,217 @@ myTable "report/table"
 	    t_name "report/table-cell" { align=center; style=bold; value=runserver(:myQuery:name); }
 	    t_size "report/table-cell" { align=center; style=bold; value=runserver(:myQuery:size); }
 	    }
+	}
+		
+		</pre>
+<!-- PAGE BREAK: 'chart.html' -->
+<h2 class="componentname"><a name="chart">chart</a></h2>
+<p class="componenttype">type: <span class="componenttypevalue">report/chart</span></p>
+<p class="componenttype">visual: <span class="componenttypevalue">yes</span></p>
+<p class="componenttype">container: <span class="componenttypevalue">no</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+			<p>The chart component is used to display data in a bar, line, or pie chart.  The chart creates an image which is embedded into the report.</p>
+			<p>Charts can have a dynamic number of series by specifying the "series_value" parameter on the "report/chart" object. The "x_value" and "y_value" parameters will also need to be specified directly inside the "report/chart" rather than inside of a "report/chart-series". "report/chart-series" objects are ignored by charts with dynamic series.</p>
+			<p>Charts, like forms and tables, can have more than one data mode.  Like tables, charts only support 'normal' and 'inner'; 'outer' is not supported since charts do not contain other components.  See the form documentation for more on the data mode.</p>
+			<p>Charts also can handle multiple queries using a 'multimode' - see the form for more information.</p>
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+			<p>Charts can be used inside any visual container or inside forms.  Charts can contain "report/chart-axis" and "report/chart-series" objects, and must contain both an X and a Y axis and at least one data series.  Charts cannot contain any other report components.</p>
+			<p>All chart elements also typically support the common property "fontsize".</p>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">box</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to draw a box around the chart's data area (the box is drawn just around the graph or chart itself, not around the axis and tick labels and titles).  Default "no".</td>
+</tr>
+<tr>
+<td class="name">chart_type</td>
+<td class="type">string</td>
+<td class="description">The type of chart:  bar, line, or pie.</td>
+</tr>
+<tr>
+<td class="name">color</td>
+<td class="type">string</td>
+<td class="description">The default color to be used for the chart. If nothing is specified elsewhere, all series will be made this color. If a palette is also specified, this color will replace any invalid colors.</td>
+</tr>
+<tr>
+<td class="name">palette</td>
+<td class="type">string</td>
+<td class="description">A comma separated list of colors to be used by charts with dynamic series. This takes priority over the color property and the default palette. Once the palette runs out of to map to series, it loops through the colors again. Example: "green", "fake", "#014421" (or "green,fake,#014421", or any mixture of the two) would have series colored a bright green, the default, and then a dark green.  </td>
+</tr>
+<tr>
+<td class="name">mode</td>
+<td class="type">string</td>
+<td class="description">The mode of the chart (see overview).  'normal' is the default.</td>
+</tr>
+<tr>
+<td class="name">multimode</td>
+<td class="type">string</td>
+<td class="description">How the chart handles multiple queries (see overview).  'nested' is the default.</td>
+</tr>
+<tr>
+<td class="name">scale</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to automatically scale axis tick labels using scientific notation and a multiplier (default "no").</td>
+</tr>
+<tr>
+<td class="name">source</td>
+<td class="type">stringvec</td>
+<td class="description">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.</td>
+</tr>
+<tr>
+<td class="name">text_rotation</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to rotate tick labels to allow them to better fit on the chart.  Default "no".</td>
+</tr>
+<tr>
+<td class="name">title</td>
+<td class="type">string</td>
+<td class="description">The chart's title, to be printed above the chart.</td>
+</tr>
+<tr>
+<td class="name">show_legend</td>
+<td class="type">yes/no</td>
+<td class="description">Whether or not to display the legend. Default "no".</td>
+</tr>
+<tr>
+<td class="name">zoom</td>
+<td class="type">double</td>
+<td class="description">The chart zoom; use values less than 1.0 to give the chart more whitespace, and values greater than 1.0 to eliminate whitespace.  Default 1.0.</td>
+</tr>
+<tr>
+<td class="name">x_value</td>
+<td class="type">expression</td>
+<td class="description">The X value for the series, specified here when using dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
+</tr>
+<tr>
+<td class="name">y_value</td>
+<td class="type">expression</td>
+<td class="description">The Y value for the series, specified here when using dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
+</tr>
+<tr>
+<td class="name">series_value</td>
+<td class="type">expression</td>
+<td class="description">The value used to differentiate series. This in only used by charts with dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
+</tr>
+<tr>
+<td class="name">legend_value</td>
+<td class="type">expression</td>
+<td class="description">The value to be displayed when the series name appears in a legend.  This is only used by charts with dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="childname">(of report/chart-axis child components)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">axis</td>
+<td class="type">string</td>
+<td class="description">Which axis to configure; must be "x" or "y".</td>
+</tr>
+<tr>
+<td class="name">label</td>
+<td class="type">string</td>
+<td class="description">A label for the X or Y axis.</td>
+</tr>
+</table>
+<p class="childname">(of report/chart-series child components)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">color</td>
+<td class="type">string</td>
+<td class="description">The color to be used for the series.</td>
+</tr>
+<tr>
+<td class="name">legend_name</td>
+<td class="type">string</td>
+<td class="description">The name to be displayed on the legend for the series.</td>
+</tr>
+<tr>
+<td class="name">show_percent</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to show the series value as a percentage above the bar or line point.  Default "no".</td>
+</tr>
+<tr>
+<td class="name">show_value</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to show the series value above the bar or line point.  Default "yes".</td>
+</tr>
+<tr>
+<td class="name">x_value</td>
+<td class="type">expression</td>
+<td class="description">The X value for the series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
+</tr>
+<tr>
+<td class="name">y_value</td>
+<td class="type">expression</td>
+<td class="description">The Y value for the series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+myChart "report/chart"
+	{
+	source=myQuery;
+	x=0; y=0; height=20; width=65;
+	chart_type=bar;
+	scale=no;
+	text_rotation=no;
+	title="My Chart Title";
+	show_legend=yes;
+
+	x_axis "report/chart-axis" { axis=x; label="X Label"; }
+	y_axis "report/chart-axis" { axis=y; label="Y Label"; }
+
+	series "report/chart-series"
+	    {
+	    x_value=runserver(:myQuery:month);
+	    y_value=runserver(:myQuery:revenue);
+	    show_value=yes;
+	    color="dark green";
+	    }
+	}
+		
+		</pre>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+		
+myChart "report/chart"
+	{
+	source=myQuery;
+	x=0; y=0; height=20; width=65;
+	chart_type=bar;
+	scale=no;
+	show_value=yes;
+	show_legend=yes;
+	text_rotation=no;
+	title="My Dynamic Series Chart Title";
+	palette="dark green", "green", "teal";
+
+	x_axis "report/chart-axis" { axis=x; label="X Label"; }
+	y_axis "report/chart-axis" { axis=y; label="Y Label"; }
+
+	x_value=runserver(:myQuery:month);
+	y_value=runserver(:myQuery:revenue);
+	series_value=runserver(:myQuery:account_id);
+	legend_value=runserver(:myQuery:account_name);
 	}
 		
 		</pre>

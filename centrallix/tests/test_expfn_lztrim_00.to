@@ -1,0 +1,17 @@
+##NAME lztrim() function
+
+query select 'lztrim("This is a test string.")' = lztrim("This is a test string.")
+
+query select 'lztrim("012345")' = lztrim("012345")
+
+query select 'lztrim("000.12345")' = lztrim("000.12345")
+
+query select 'lztrim("00astring")' = lztrim("00astring")
+
+query select 'lztrim("$00.12345")' = lztrim("$00.12345")
+
+query select 'lztrim("0001.23")' = lztrim("0001.23")
+
+query select 'lztrim("")' = lztrim("")
+
+query select 'lztrim(null)' = lztrim(null)

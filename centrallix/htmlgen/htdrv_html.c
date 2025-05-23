@@ -149,10 +149,10 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
     
             /** HTML body <DIV> element for the layer. **/
             htrAddBodyItem_va(s,"<DIV background=\"/sys/images/fade_lrwipe_01.gif\" ID=\"ht%POSfader\"></DIV>",id);
-	    htrAddBodyItemLayer_va(s, 0, "ht%POSpane2", id, "");
+	    htrAddBodyItemLayer_va(s, 0, "ht%POSpane2", id, NULL, "");
 	    if (!s->Capabilities.Dom0NS)
-		htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "ht%POSloader", id, "");
-	    htrAddBodyItemLayerStart(s, 0, "ht%POSpane", id);
+		htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "ht%POSloader", id, NULL, "");
+	    htrAddBodyItemLayerStart(s, 0, "ht%POSpane", id, NULL);
 	    }
 	else
 	    {

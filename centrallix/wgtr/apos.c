@@ -26,6 +26,7 @@
 /* Author:	Nathaniel Colson					*/
 /* Creation:	August 9, 2005						*/
 /* Description:	Applies layout logic to the widgets of an application.	*/
+/* See centrallix-sysdoc/Auto-Positioning.md for more information. */
 /************************************************************************/
 
 
@@ -683,22 +684,22 @@ pXArray FirstCross, LastCross;
 	{
 	    FirstCross = &(((pAposLine)xaGetItem(HLines, 0))->CWidgets);
 	    LastCross  = &(((pAposLine)xaGetItem(HLines, (xaCount(HLines)-1)))->CWidgets);
-	    if(xaCount(FirstCross))
+	    /*if(xaCount(FirstCross))
 		mssError(1, "APOS", "%d widget(s) crossed the top borderline, including %s '%s'", xaCount(FirstCross),
 		    ((pWgtrNode)xaGetItem(FirstCross, 0))->Type, ((pWgtrNode)xaGetItem(FirstCross, 0))->Name);
 	    if(xaCount(LastCross))
 		mssError(1, "APOS", "%d widget(s) crossed the bottom borderline, including %s '%s'", xaCount(LastCross),
-		    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);
+		    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);*/
 	}
 	
     FirstCross = &(((pAposLine)xaGetItem(VLines, 0))->CWidgets);
     LastCross  = &(((pAposLine)xaGetItem(VLines, (xaCount(VLines)-1)))->CWidgets);
-    if(xaCount(FirstCross))
+    /*if(xaCount(FirstCross))
 	mssError(1, "APOS", "%d widget(s) crossed the left borderline, including %s '%s'", xaCount(FirstCross), 
 	    ((pWgtrNode)xaGetItem(FirstCross, 0))->Type, ((pWgtrNode)xaGetItem(FirstCross, 0))->Name);
     if(xaCount(LastCross))
 	mssError(1, "APOS", "%d widget(s) crossed the right borderline, including %s '%s'", xaCount(LastCross), 
-	    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);
+	    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);*/
 
     return 0;
     
@@ -1262,6 +1263,9 @@ aposProcessWindows(pWgtrNode VisualRef, pWgtrNode Parent)
 int i=0, changed=0, isWin=0, isSP=0;
 int childCount=xaCount(&(Parent->Children));
 pWgtrNode Child;
+int rw, rh, rpw, rph;
+char* val;
+int ival;
 
     /** Check recursion **/
     if (thExcessiveRecursion())
@@ -1279,29 +1283,43 @@ pWgtrNode Child;
 	    if(Child->Flags & WGTR_F_FLOATING)
 		{
 
-		    /** auto-detect centered floating objects **/
-		    if (abs(Child->pre_x - (VisualRef->pre_width - (Child->pre_x + Child->pre_width))) < 10)
+		    /** Top level or local reference for container? **/
+		    if ((wgtrGetPropertyValue(Child, "toplevel", DATA_T_STRING, POD(&val)) == 0 && (!strcasecmp(val, "yes") || !strcasecmp(val, "true") || !strcasecmp(val, "1") || !strcmp(val, "on"))) || (wgtrGetPropertyValue(Child, "toplevel", DATA_T_INTEGER, POD(&ival)) == 0 && ival == 1))
 			{
-			    Child->x = (VisualRef->width - Child->width)/2;
+			rpw = rw = Parent->Root->ClientInfo->AppMaxWidth;
+			rph = rh = Parent->Root->ClientInfo->AppMaxHeight;
+			}
+		    else
+			{
+			rw = VisualRef->width;
+			rh = VisualRef->height;
+			rpw = VisualRef->pre_width;
+			rph = VisualRef->pre_height;
+			}
+
+		    /** auto-detect centered floating objects **/
+		    if (abs(Child->pre_x - (rpw - (Child->pre_x + Child->pre_width))) < 10)
+			{
+			    Child->x = (rw - Child->width)/2;
 			    if (Child->x < 0) Child->x = 0;
 			    changed = 1;
 			}
-		    if (abs(Child->pre_y - (VisualRef->pre_height - (Child->pre_y + Child->pre_height))) < 10)
+		    if (abs(Child->pre_y - (rph - (Child->pre_y + Child->pre_height))) < 10)
 			{
-			    Child->y = (VisualRef->height - Child->height)/2;
+			    Child->y = (rh - Child->height)/2;
 			    if (Child->y < 0) Child->y = 0;
 			    changed = 1;
 			}
 
 		    /**if it's larger than its container, shrink it and set flag**/
-		    if(Child->width > (VisualRef->width - isSP*18))
+		    if(Child->width > (rw - isSP*18))
 		        {
-			    Child->width = (VisualRef->width - isSP*18);
+			    Child->width = (rw - isSP*18);
 			    changed = 1;
 			}
-		    if(Child->height > (VisualRef->height - isWin*24))
+		    if(Child->height > (rh - isWin*24))
 			{
-			    Child->height = (VisualRef->height - isWin*24);
+			    Child->height = (rh - isWin*24);
 			    changed = 1;
 			}
 		    
@@ -1316,10 +1334,10 @@ pWgtrNode Child;
 		    if(Child->y < 0) Child->y = 0;
 		    
 		    /**if it's outside the bottom right corner, pull the whole window in**/
-		    if((Child->x + Child->width) > (VisualRef->width - isSP*18))
-			Child->x = (VisualRef->width - isSP*18) - Child->width;
-		    if((Child->y + Child->height) > (VisualRef->height - isWin*24))
-			Child->y = (VisualRef->height - isWin*24) - Child->height;
+		    if((Child->x + Child->width) > (rw - isSP*18))
+			Child->x = (rw - isSP*18) - Child->width;
+		    if((Child->y + Child->height) > (rh - isWin*24))
+			Child->y = (rh - isWin*24) - Child->height;
 		}
 	    
 	    /**recursive call on visual containers; new visual reference is passed**/

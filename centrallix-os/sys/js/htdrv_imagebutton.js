@@ -252,6 +252,10 @@ function ib_init(param)
 	l.curmode = 'n';
     else
 	l.curmode = 'd';
+
+    // Properties
+    //var iv = l.ifcProbeAdd(ifValue);
+    //iv.Add("enabled", "enabled");
     }
 
 

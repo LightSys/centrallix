@@ -19,6 +19,7 @@ centrallix/.subbuild
 centrallix/autom4te.cache
 centrallix/centrallix
 centrallix/cxpasswd
+centrallix/linksign
 centrallix/config.h
 centrallix/etc/centrallix.conf
 centrallix/etc/centrallix.conf.mk
@@ -28,6 +29,7 @@ centrallix/man/centrallix.8.gz
 centrallix/man/centrallix.conf.5.gz
 centrallix/man/test_obj.1.gz
 centrallix/osdrivers/*.so
+centrallix/netdrivers/*.so
 centrallix/test_obj
 centrallix/test_prt
 centrallix-os/apps/kardia
@@ -35,6 +37,7 @@ centrallix-lib/include/cxlib
 */nbproject/
 centrallix-lib/tests/test_*.bin
 centrallix/tests/*.out
+centrallix/tests/*.bin
 centrallix/tests/*.to.tmp
 centrallix/thirdparty/compare-*
 centrallix/thirdparty/*-inst
@@ -49,3 +52,13 @@ centrallix/depcomp
 centrallix/missing
 centrallix/ltmain.sh
 centrallix/test-driver
+.gdb_history
+*.gcno
+*.gcov
+*.gcda
+lcov.info
+perf.data
+perf.data.old
+.idea/
+.vscode/
+centrallix-os/tmp/*

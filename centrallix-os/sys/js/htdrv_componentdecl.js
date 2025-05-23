@@ -21,7 +21,23 @@ function cmpd_init(node, param) // I think that: param.gns = ? namespace, param.
     ia.Add("TriggerEvent", cmpd_action_trigger_event);
     ia.Add("Launch", cmpd_launch);
     ia.Add("Alert", cmpd_alert);
+    ia.Add('ModifyProperty', cmpd_action_modify_property);
     var ie = component.ifcProbeAdd(ifEvent);
+    ie.Add('LoadComplete');
+    ie.Add('KeyPress');
+    ie.Add('BeforeKeyPress');
+    ie.Add('KeyDown');
+    ie.Add('KeyUp');
+
+    // Events
+    var ctr = wgtrGetContainer(component);
+    if (ctr)
+	{
+	$(ctr).on("keydown", (e) => { cmpd_keydown(component, e); } );
+	$(ctr).on("keyup", (e) => { cmpd_keyup(component, e); } );
+	$(ctr).on("keypress", (e) => { cmpd_keypress(component, e); } );
+	}
+
     shell.RegisterComponent(component);
     wgtrRegisterContainer(component, shell);
 
@@ -30,8 +46,7 @@ function cmpd_init(node, param) // I think that: param.gns = ? namespace, param.
     component.addProp = cmpd_add_prop;
     component.postInit = cmpd_post_init;
     component.handleAction = cmpd_handle_action;
-    component.ifcProbe(ifAction).Add('ModifyProperty', cmpd_action_modify_property);
-    component.ifcProbe(ifEvent).Add('LoadComplete');
+    component.internalHandleAction = cmpd_internal_handle_action;
     component.shell = shell;
     component.is_visual = param.vis;
     component.FindContainer = cmpd_find_container;
@@ -190,6 +205,7 @@ function cmpd_add_action(a)
     //this.shell.ifcProbe(ifAction).Add(a, new Function('aparam','this.handleAction("' + a + '",aparam);'));
     this.shell.AddAction(this, a);
     this.ifcProbe(ifEvent).Add(a);
+    this.ifcProbe(ifAction).Add(a, function(aparam) { this.internalHandleAction(a,aparam); } );
     return;
     }
 
@@ -230,16 +246,16 @@ function cmpd_shell_prop_change(p,o,n)
     return n;
     }
 
-// when an action is called externally, trigger an internal event on the component
-function cmpd_shell_handle_action(a,aparam)
-    {
-    return cn_activate(this.component, a, aparam);
-    }
-
 // when an action is called internally, trigger an external event on the shell
 function cmpd_handle_action(a,aparam)
     {
     return cn_activate(this.shell, a, aparam);
+    }
+
+// when an action is called internally, also trigger an internal event on the component
+function cmpd_internal_handle_action(a,aparam)
+    {
+    return cn_activate(this, a, aparam);
     }
 
 // set the context of the component
@@ -259,6 +275,37 @@ function cmpd_alert(aparam)
     return window.ifcProbe(ifAction).Invoke("Alert", aparam);
     }
 
+function cmpd_keypress(cmp, e)
+    {
+    if (isCancel(cmp.ifcProbe(ifEvent).Activate('BeforeKeyPress', {Code:e.keyCode, Name:htr_code_to_keyname(e.keyCode), Ctrl:e.ctrlKey?1:0})))
+	{
+	e.preventDefault();
+	return;
+	}
+    if (isCancel(cmp.ifcProbe(ifEvent).Activate('KeyPress', {Code:e.keyCode, Name:htr_code_to_keyname(e.keyCode), Ctrl:e.ctrlKey?1:0})))
+	{
+	e.preventDefault();
+	return;
+	}
+    }
+
+function cmpd_keydown(cmp, e)
+    {
+    if (isCancel(cmp.ifcProbe(ifEvent).Activate('KeyDown', {Code:e.keyCode, Name:htr_code_to_keyname(e.keyCode), Ctrl:e.ctrlKey?1:0})))
+	{
+	e.preventDefault();
+	return;
+	}
+    }
+
+function cmpd_keyup(cmp, e)
+    {
+    if (isCancel(cmp.ifcProbe(ifEvent).Activate('KeyUp', {Code:e.keyCode, Name:htr_code_to_keyname(e.keyCode), Ctrl:e.ctrlKey?1:0})))
+	{
+	e.preventDefault();
+	return;
+	}
+    }
 
 // Load indication
 if (window.pg_scripts) pg_scripts['htdrv_componentdecl.js'] = true;

@@ -1,0 +1,3 @@
+##NAME Cartesian of two inner joins (four sources)
+
+query select t1id = :t1:f_id, t2id = :t2:f_id, t1desc = :t1:f_desc, t2desc = :t2:f_desc, cnt = :t1:f_count + :t2:f_square, :js1:color, :js2:rowid from /tests/Testdata1.csv/rows t1, /tests/Testdata2.csv/rows t2, /tests/test3.json js1, /tests/test3.json js2 where :t1:f_id = :t2:f_id and :t1:f_desc != 'Green' and :t2:f_desc != 'Fox' and char_length(:js1:color) = :js2:rowid

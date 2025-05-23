@@ -1,0 +1,11 @@
+Attribute [integers before]:  integer  16
+Attribute [strings before]:  integer  16
+Attribute [money before]:  integer  16
+Attribute [datetimes before]:  integer  16
+Attribute [doubles before]:  integer  16
+Attribute [integers after]:  integer  16
+Attribute [strings after]:  integer  17
+Attribute [money after]:  integer  16
+Attribute [datetimes after]:  integer  16
+Attribute [doubles after]:  integer  16
+Attribute [incl null]:  integer  17

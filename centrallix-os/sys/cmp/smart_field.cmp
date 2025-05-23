@@ -26,6 +26,7 @@ smart_field "widget/component-decl"
     initialdate "widget/parameter" { type=string; default=""; }
     invalid_select_default "widget/parameter" { type=string; default="no"; }
     numdisplay "widget/parameter" { type=integer; default=3; }
+    label_valign "widget/parameter" { type=string; default="middle"; }
 
     preview_sql "widget/parameter" { type=string; default=null; }
     preview_field "widget/parameter" { type=string; default=null; }
@@ -62,6 +63,7 @@ smart_field "widget/component-decl"
 	fl_width=0;
 	text=runserver(:this:text); 
 	align=right; 
+	valign=runserver(:this:label_valign);
 	allow_break=no;
 	overflow_ellipsis=yes;
 	}
@@ -71,6 +73,7 @@ smart_field "widget/component-decl"
 	x=24;y=0;height=20;width=196;
 	text=runserver(:this:text); 
 	align=left; 
+	valign=runserver(:this:label_valign);
 	}
     ctl "widget/checkbox" 
 	{
@@ -154,6 +157,7 @@ smart_field "widget/component-decl"
 	x=runserver(:this:label_width);y=0;height=20;
 	width=runserver(220 - :this:label_width);
 	align=left;
+	valign=runserver(:this:label_valign);
 	style=bold;
 	fieldname=runserver(:this:field); 
 	form=form; 

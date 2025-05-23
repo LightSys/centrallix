@@ -67,6 +67,7 @@ typedef struct _MQUS
     int		nCriteria;
     char	InsertPath[OBJSYS_MAX_PATH+1];
     pObject	InsertPathObj;
+    int		IsCollection;
     XArray	ToBeUpdated; /* of pParamObjects */
     }
     MqusData, *pMqusData;
@@ -138,6 +139,7 @@ mqusAnalyze(pQueryStatement stmt)
 	/** Private data **/
 	pdata = (pMqusData)nmMalloc(sizeof(MqusData));
 	pdata->nCriteria = 0;
+	pdata->IsCollection = 0;
 	qe->PrivateData = pdata;
 
 	/** Handle the ON DUPLICATE keying items **/
@@ -160,6 +162,7 @@ mqusAnalyze(pQueryStatement stmt)
 		expAddNode(exp, item->Expr);
 		pdata->Criteria[pdata->nCriteria].Compare = exp;
 		pdata->Criteria[pdata->nCriteria].Exp = item->Expr;
+		item->Expr = NULL;
 
 		/** Main criteria tree **/
 		if (pdata->AllCriteria)
@@ -182,6 +185,8 @@ mqusAnalyze(pQueryStatement stmt)
 
 	/** What path are we inserting into (and thus potentially updating)? **/
 	strtcpy(pdata->InsertPath, insert_qs->Source, sizeof(pdata->InsertPath));
+	if (insert_qs->Flags & MQ_SF_COLLECTION)
+	    pdata->IsCollection = 1;
 
 	/** Link the qe into the multiquery **/
 	xaAddItem(&stmt->Trees, qe);
@@ -231,6 +236,7 @@ mqusStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     pQueryElement cld;
     int rval = -1;
     int is_started = 0;
+    handle_t collection;
 
 	pdata = (pMqusData)qe->PrivateData;
 	xaInit(&pdata->ToBeUpdated, 16);
@@ -248,15 +254,33 @@ mqusStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	qe->IterCnt = 0;
 
 	/** Open the insert path object (used for dup checking) **/
-	pdata->InsertPathObj = objOpen(stmt->Query->SessionID, pdata->InsertPath, O_RDWR, 0600, "system/directory");
-	if (!pdata->InsertPathObj)
-	    goto error;
+	if (pdata->IsCollection)
+	    {
+	    collection = mq_internal_FindCollection(stmt->Query, pdata->InsertPath);
+	    if (collection == XHN_INVALID_HANDLE)
+		{
+		mssError(1,"MQUS","Could not find destination collection '%s' for SQL upsert", pdata->InsertPath);
+		goto error;
+		}
+	    pdata->InsertPathObj = objOpenTempObject(stmt->Query->SessionID, collection, OBJ_O_RDONLY);
+	    if (!pdata->InsertPathObj)
+		{
+		mssError(1,"MQUS","Could not open destination collection '%s' for SQL upsert", pdata->InsertPath);
+		goto error;
+		}
+	    }
+	else
+	    {
+	    pdata->InsertPathObj = objOpen(stmt->Query->SessionID, pdata->InsertPath, O_RDWR, 0600, "system/directory");
+	    if (!pdata->InsertPathObj)
+		goto error;
+	    }
 
 	rval = 0;
 
     error:
 	/** Close the SELECT **/
-	if (is_started)
+	if (rval < 0 && is_started)
 	    if (cld->Driver->Finish(cld, stmt) < 0)
 		return -1;
 
@@ -311,6 +335,7 @@ mqusNextItem(pQueryElement qe, pQueryStatement stmt)
 		/** Evaluate the expression on the SELECTed row **/
 		p = mq_internal_CreatePseudoObject(stmt->Query, NULL);
 		expModifyParam(stmt->OneObjList, "this", (void*)p);
+		expBindExpression(pdata->Criteria[i].Exp, stmt->OneObjList, 0);
 		rval = expEvalTree(pdata->Criteria[i].Exp, stmt->OneObjList);
 		mq_internal_FreePseudoObject(p);
 		if (rval < 0)
@@ -319,13 +344,27 @@ mqusNextItem(pQueryElement qe, pQueryStatement stmt)
 		/** Copy the value **/
 		expCopyValue(pdata->Criteria[i].Exp, pdata->Criteria[i].Value, 1);
 		if (pdata->Criteria[i].Exp->Flags & EXPR_F_NULL || pdata->Criteria[i].Exp->DataType == 0)
+		    {
 		    pdata->Criteria[i].Value->NodeType = EXPR_N_INTEGER;
+		    pdata->Criteria[i].Value->DataType = DATA_T_INTEGER;
+		    }
 		else
+		    {
 		    pdata->Criteria[i].Value->NodeType = expDataTypeToNodeType(pdata->Criteria[i].Exp->DataType);
+		    }
 		}
 
+	    /** Rebind the criteria so current = object zero **/
+	    objlist = expCreateParamList();
+	    if (!objlist)
+		goto error;
+	    expAddParamToList(objlist, "this", NULL, EXPR_O_CURRENT | EXPR_O_PRESERVEPARENT);
+	    expBindExpression(pdata->AllCriteria, objlist, 0);
+	    expFreeParamList(objlist);
+	    objlist = NULL;
+
 	    /** Search for existing duplicate rows in the insert source **/
-	    find_dups_qy = objOpenQuery(pdata->InsertPathObj, NULL, NULL, pdata->AllCriteria, NULL);
+	    find_dups_qy = objOpenQuery(pdata->InsertPathObj, NULL, NULL, pdata->AllCriteria, NULL, 0);
 	    if (!find_dups_qy)
 		goto error;
 
@@ -337,12 +376,14 @@ mqusNextItem(pQueryElement qe, pQueryStatement stmt)
 		objlist = expCreateParamList();
 		if (!objlist)
 		    {
+		    objClose(one_dup);
 		    objQueryClose(find_dups_qy);
 		    goto error;
 		    }
 		expCopyList(stmt->Query->ObjList, objlist, -1);
+		//objlist->PSeqID = stmt->Query->ObjList->PSeqID;
 		expLinkParams(objlist, stmt->Query->nProvidedObjects, -1);
-		expAddParamToList(objlist, "this", one_dup, EXPR_O_CURRENT);
+		expAddParamToList(objlist, "this", one_dup, EXPR_O_CURRENT | EXPR_O_ALLOWDUPS | EXPR_O_PRESERVEPARENT);
 		xaAddItem(&pdata->ToBeUpdated, (void*)objlist);
 		dup_cnt++;
 		}
@@ -371,7 +412,7 @@ mqusNextItem(pQueryElement qe, pQueryStatement stmt)
 		expFreeParamList(objlist);
 		}
 	    }
-	xaClear(&pdata->ToBeUpdated);
+	xaClear(&pdata->ToBeUpdated, NULL, NULL);
 	return -1;
     }
 
@@ -390,6 +431,12 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
     pExpression exp, assign_exp;
     int t;
     int rval = -1;
+    int need_update;
+    int did_update;
+    pObject ins_obj, upd_obj, refresh_obj;
+    int id;
+    char* path;
+    pObjectInfo info;
 
 	cld = (pQueryElement)(qe->Children.Items[0]);
 	pdata = (pMqusData)qe->PrivateData;
@@ -401,19 +448,55 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 	    objlist = (pParamObjects)xaGetItem(&pdata->ToBeUpdated, i);
 	    if (objlist)
 		{
-		expCopyList(objlist, stmt->Query->ObjList, -1);
-
-		/** Apply all of the update criteria **/
-		for(j=0;j<((pQueryStructure)qe->QSLinkage)->Children.nItems;j++)
+		/** Reopen the object to be updated, in case it has changed. **/
+		id = expLookupParam(objlist, "this", EXPR_F_REVERSE);
+		if (id >= 0)
 		    {
-		    update_qs = ((pQueryStructure)qe->QSLinkage)->Children.Items[j];
+		    upd_obj = objlist->Objects[id];
+		    if (upd_obj)
+			{
+			info = objInfo(upd_obj);
+			if (info && !(info->Flags & OBJ_INFO_F_TEMPORARY))
+			    {
+			    path = objGetPathname(upd_obj);
+			    refresh_obj = objOpen(stmt->Query->SessionID, path, OBJ_O_RDWR, 0600, "system/object");
+			    if (refresh_obj)
+				{
+				expModifyParamByID(objlist, id, refresh_obj);
+				objClose(upd_obj);
+				}
+			    }
+			}
+		    }
+
+		/** Update object list, but preserve the __inserted object **/
+		ins_obj = NULL;
+		if (!(stmt->Query->Flags & MQ_F_NOINSERTED) && (id = expLookupParam(stmt->Query->ObjList, "__inserted", 0)) >= 0)
+		    ins_obj = stmt->Query->ObjList->Objects[id];
+		expCopyList(objlist, stmt->Query->ObjList, -1);
+		if (ins_obj)
+		    expModifyParam(stmt->Query->ObjList, "__inserted", ins_obj);
+
+		/** Apply all of the update criteria.  We loop twice - first for all
+		 ** items not marked IF MODIFIED, and a second time for only items
+		 ** so marked.
+		 **/
+		did_update = 0;
+		for(j=0; j<((pQueryStructure)qe->QSLinkage)->Children.nItems * 2; j++)
+		    {
+		    update_qs = ((pQueryStructure)qe->QSLinkage)->Children.Items[j % ((pQueryStructure)qe->QSLinkage)->Children.nItems];
 		    if (update_qs->NodeType != MQ_T_ONDUPUPDATEITEM)
+			continue;
+		    if (j < ((pQueryStructure)qe->QSLinkage)->Children.nItems && (update_qs->Flags & MQ_SF_IFMODIFIED))
+			continue;
+		    if (j >= ((pQueryStructure)qe->QSLinkage)->Children.nItems && (!did_update || !(update_qs->Flags & MQ_SF_IFMODIFIED)))
 			continue;
 		    exp = update_qs->Expr;
 		    assign_exp = update_qs->AssignExpr;
 
 		    /** Get the value to be assigned **/
-		    if (expEvalTree(exp, stmt->Query->ObjList) < 0) 
+		    expBindExpression(exp, stmt->Query->ObjList, EXPR_CMP_REVERSE);
+		    if (expEvalTree(exp, stmt->Query->ObjList) < 0)
 			{
 			mssError(0,"MQUS","Could not evaluate UPDATE SET expression's value");
 			goto error;
@@ -425,18 +508,57 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 			goto error;
 			}
 
-		    /** Set the attribute on the object **/
-		    if (expCopyValue(exp, assign_exp, 1) < 0)
+		    /** See if the value is already correct - avoid a needless update op **/
+		    need_update = 1;
+		    expBindExpression(assign_exp, stmt->Query->ObjList, EXPR_CMP_REVERSE);
+		    if (expEvalTree(assign_exp, stmt->Query->ObjList) >= 0)
 			{
-			mssError(1,"MQUS","Could not handle UPDATE SET expression's value");
-			goto error;
+			if (expCompareExpressionValues(assign_exp, exp) == 1)
+			    {
+			    /** Values are already the same **/
+			    need_update = 0;
+			    }
 			}
-		    if (expReverseEvalTree(assign_exp, stmt->Query->ObjList) < 0)
+
+		    /** Set the attribute on the object **/
+		    if (need_update)
 			{
-			mssError(0,"MQUS","Could not update the object");
-			goto error;
+			if (expCopyValue(exp, assign_exp, 1) < 0)
+			    {
+			    mssError(1,"MQUS","Could not handle UPDATE SET expression's value");
+			    goto error;
+			    }
+			if (expReverseEvalTree(assign_exp, stmt->Query->ObjList) < 0)
+			    {
+			    mssError(0,"MQUS","Could not update the object");
+			    goto error;
+			    }
+			did_update = 1;
 			}
 		    }
+
+		/** Did any objects change?  Note that if so **/
+#if 00
+		for(j=0;j<stmt->Query->ObjList->nObjects;j++)
+		    {
+		    if (objlist->SeqIDs[j] != stmt->Query->ObjList->SeqIDs[j])
+			{
+			/** Found a change.  Scan the other objlists to see if
+			 ** we need to change the sequence ID there too.
+			 **/
+			for(k=i+1;k<pdata->ToBeUpdated.nItems;k++)
+			    {
+			    check_objlist = (pParamObjects)xaGetItem(&pdata->ToBeUpdated, k);
+			    if (check_objlist)
+				{
+				/** Does it have the same object/seq? **/
+				if (check_objlist->SeqIDs[j] == objlist->SeqIDs[j])
+				    check_objlist->SeqIDs[j] = stmt->Query->ObjList->SeqIDs[j];
+				}
+			    }
+			}
+		    }
+#endif
 
 		/** Release the object list **/
 		expUnlinkParams(objlist, stmt->Query->nProvidedObjects, -1);
@@ -466,6 +588,16 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 int
 mqusRelease(pQueryElement qe, pQueryStatement stmt)
     {
+    pMqusData pdata;
+
+	pdata = (pMqusData)qe->PrivateData;
+	if (pdata)
+	    {
+	    if (pdata->AllCriteria)
+		expFreeExpression(pdata->AllCriteria);
+	    nmFree(pdata, sizeof(MqusData));
+	    }
+
     return 0;
     }
 
@@ -482,6 +614,8 @@ mqusInitialize()
 	drv = (pQueryDriver)nmMalloc(sizeof(QueryDriver));
 	if (!drv) return -1;
 	memset(drv,0,sizeof(QueryDriver));
+
+	nmRegister(sizeof(MqusData), "MqusData");
 
 	/** Fill in the structure elements **/
 	strcpy(drv->Name, "MQUS - MultiQuery ON DUPLICATE...UPDATE SET Statement Module");

@@ -63,6 +63,34 @@ paramFree(pParam param)
     }
 
 
+/*** paramCreate() - create a parameter.
+ ***/
+pParam
+paramCreate(char* name)
+    {
+    pParam param = NULL;
+
+	/** Allocate **/
+	param = (pParam)nmMalloc(sizeof(Param));
+	if (!param)
+	    goto error;
+	memset(param, 0, sizeof(Param));
+
+	/** Set up **/
+	strtcpy(param->Name, name, sizeof(param->Name));
+	param->Value = ptodAllocate();
+	if (!param->Value)
+	    goto error;
+
+	return param;
+
+    error:
+	if (param)
+	    paramFree(param);
+	return NULL;
+    }
+
+
 /*** paramCreateFromInf() - using a StructInf tree, obtain the parameter
  *** settings and build a Param structure.
  ***/
@@ -175,11 +203,41 @@ paramCreateFromObject(pObject obj)
     }
 
 
+/*** paramSetValueDirect - set the value of a parameter with
+ *** separate attr type/value instead of ptod
+ ***/
+int
+paramSetValueDirect(pParam param, int datatype, pObjData value, int defer_hints, pParamObjects objlist, pObjSession sess)
+    {
+    pTObjData ptod;
+
+	/** Set up ptod container **/
+	ptod = ptodAllocate();
+	if (!ptod)
+	    return -1;
+	ptod->DataType = datatype;
+	objCopyData(value, &ptod->Data, datatype);
+	if (value)
+	    ptod->Flags &= ~DATA_TF_NULL;
+	ptod->Flags |= DATA_TF_UNMANAGED;
+
+	/** Copy **/
+	paramSetValue(param, ptod, defer_hints, objlist, sess);
+
+	/** Free **/
+	ptodFree(ptod);
+
+    return 0;
+    }
+
+
 /*** paramSetValue - set the value of a parameter
  ***/
 int
-paramSetValue(pParam param, pTObjData value)
+paramSetValue(pParam param, pTObjData value, int defer_hints, pParamObjects objlist, pObjSession sess)
     {
+    char* str;
+    pTObjData rollback;
 
 	/** Value supplied? **/
 	if (value)
@@ -189,7 +247,7 @@ paramSetValue(pParam param, pTObjData value)
 		/** We're not yet importing expression data **/
 		param->Value->Flags |= DATA_TF_NULL;
 		}
-	    else if (value->DataType != param->Value->DataType)
+	    else if (value->DataType != param->Value->DataType && param->Value->DataType != DATA_T_UNAVAILABLE)
 		{
 		/** type mismatch? **/
 		mssError(1,"PARAM","Type mismatch");
@@ -197,8 +255,27 @@ paramSetValue(pParam param, pTObjData value)
 		}
 	    else
 		{
-		/** Get supplied value? **/
-		ptodCopy(value, param->Value);
+		if (defer_hints || !param->Hints)
+		    {
+		    /** Set it directly **/
+		    ptodCopy(value, param->Value);
+		    }
+		else
+		    {
+		    /** Set it but save old value in case we need to roll back **/
+		    rollback = ptodAllocate();
+		    ptodCopy(param->Value, rollback);
+		    ptodCopy(value, param->Value);
+
+		    /** Check hints, and roll back the param update if the check fails. **/
+		    if (hntVerifyHints(param->Hints, param->Value, &str, objlist, objlist?(objlist->Session):sess) < 0)
+			{
+			ptodCopy(rollback, param->Value);
+			ptodFree(rollback);
+			return -1;
+			}
+		    ptodFree(rollback);
+		    }
 		}
 	    }
 	else
@@ -212,7 +289,7 @@ paramSetValue(pParam param, pTObjData value)
  *** the parameter value out of it, and set the parameter's value.
  ***/
 int
-paramSetValueFromInfNe(pParam param, pStruct inf)
+paramSetValueFromInfNe(pParam param, pStruct inf, int defer_hints, pParamObjects objlist, pObjSession sess)
     {
     char* str;
     pTObjData ptod;
@@ -231,13 +308,31 @@ paramSetValueFromInfNe(pParam param, pStruct inf)
 	    {
 	    ptod = ptodAllocate();
 	    ptod->DataType = param->Value->DataType;
-	    if (objDataFromStringAlloc(&(ptod->Data), param->Value->DataType, str) < 0)
-		goto error;
-	    ptod->Flags &= ~(DATA_TF_NULL);
-	    paramSetValue(param, ptod);
+
+	    /** Empty is NULL if datatype is non-string, otherwise there
+	     ** is no good way to indicate an empty string vs a null
+	     ** string, so it has to be handled via hints (strnull).
+	     **/
+	    if (ptod->DataType != DATA_T_STRING && !*str)
+		{
+		ptod->Flags |= DATA_TF_NULL;
+		}
+	    else
+		{
+		if (objDataFromStringAlloc(&(ptod->Data), param->Value->DataType, str) < 0)
+		    goto error;
+		ptod->Flags &= ~(DATA_TF_NULL);
+		}
+	    paramSetValue(param, ptod, defer_hints, objlist, sess);
 	    ptodFree(ptod);
-	    return 0;
 	    }
+	else
+	    {
+	    /** Null **/
+	    param->Value->Flags |= DATA_TF_NULL;
+	    }
+
+	return 0;
 
     error:
 	mssError(1, "PARAM", "Parameter '%s' specified incorrectly", param->Name);
@@ -251,17 +346,72 @@ paramSetValueFromInfNe(pParam param, pStruct inf)
  *** expressions (min/max/default/etc) in the hints.
  ***/
 int
-paramEvalHints(pParam param, pParamObjects objlist)
+paramEvalHints(pParam param, pParamObjects objlist, pObjSession sess)
     {
     char* str;
 
 	/** set default value and/or verify that the given value is valid **/
-	if (hntVerifyHints(param->Hints, param->Value, &str, objlist, objlist?(objlist->Session):NULL) < 0)
+	if (hntVerifyHints(param->Hints, param->Value, &str, objlist, objlist?(objlist->Session):sess) < 0)
 	    {
 	    mssError(1, "PARAM", "Parameter '%s' specified incorrectly: %s", param->Name, str);
 	    return -1;
 	    }
 
     return 0;
+    }
+
+
+/*** paramGetType - return the data type of the parameter
+ **/
+int
+paramGetType(pParam param)
+    {
+    return param->Value->DataType;
+    }
+
+
+/** paramGetValueUntyped - obtain the value of the parameter.  Return value
+ ** is -1 on error, 0 on success, 1 on null
+ **/
+int
+paramGetValueUntyped(pParam param, pObjData value)
+    {
+
+	/** Null? **/
+	if (param->Value->Flags & DATA_TF_NULL)
+	    return 1;
+
+    return objCopyData(&param->Value->Data, value, param->Value->DataType);
+    }
+
+
+/** paramGetValue - obtain the value of the parameter.  Return value
+ ** is -1 on error, 0 on success, 1 on null
+ **/
+int
+paramGetValue(pParam param, int datatype, pObjData value)
+    {
+
+	/** Null? **/
+	if (param->Value->Flags & DATA_TF_NULL)
+	    return 1;
+
+	/** Implicit conversion? **/
+	if (datatype == DATA_T_INTEGER && param->Value->DataType == DATA_T_STRING)
+	    {
+	    value->Integer = objDataToInteger(DATA_T_STRING, param->Value->Data.String, NULL);
+	    return 0;
+	    }
+	else if (datatype == DATA_T_STRING && param->Value->DataType == DATA_T_INTEGER)
+	    {
+	    value->String = objDataToStringTmp(DATA_T_INTEGER, &param->Value->Data.Integer, 0);
+	    return 0;
+	    }
+
+	/** Type mismatch? **/
+	if (datatype != param->Value->DataType)
+	    return -1;
+
+    return paramGetValueUntyped(param, value);
     }
 

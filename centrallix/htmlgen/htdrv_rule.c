@@ -168,6 +168,15 @@ htruleRender(pHtSession s, pWgtrNode tree, int z)
 			    ptr = objDataToStringTmp(t, (void*)(od.Generic), 0);
 			    xsConcatQPrintf(xs, "\"%STR&JSSTR\"", ptr);
 			    }
+			else if (t == DATA_T_STRINGVEC)
+			    {
+			    xsConcatenate(xs, "[", 1);
+			    for(i=0; i<od.StringVec->nStrings; i++)
+				{
+				xsConcatQPrintf(xs, "%[,%]\"%STR&JSSTR\"", (i>0), od.StringVec->Strings[i]);
+				}
+			    xsConcatenate(xs, "]", 1);
+			    }
 			else
 			    {
 			    ptr = objDataToStringTmp(t, (void*)(od.Generic), DATA_F_QUOTED);

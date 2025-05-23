@@ -359,12 +359,13 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	if (show == 1)
 	    {
 	    htrAddStylesheetItem(s, "\t#pgstat { POSITION:absolute; VISIBILITY:visible; LEFT:0;TOP:0;WIDTH:100%;HEIGHT:99%; Z-INDEX:100000;}\n");
-	    htrAddBodyItemLayerStart(s,0,"pgstat",0);
+	    htrAddBodyItemLayerStart(s,0,"pgstat",0, NULL);
 	    htrAddBodyItem_va(s, "<BODY %STR>", bgstr);
 	    htrAddBodyItem   (s, "<TABLE width=\"100\%\" height=\"100\%\" cellpadding=20><TR><TD valign=top><IMG src=\"/sys/images/loading.gif\"></TD></TR></TABLE></BODY>\n");
 	    htrAddBodyItemLayerEnd(s,0);
 	    }
 
+	htrAddStylesheetItem_va(s, "\thtml { overflow:hidden; }\n");
 	htrAddStylesheetItem_va(s, "\tbody { overflow:hidden; %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
 		font_size > 0, font_size, *font_name, font_name);
 	htrAddStylesheetItem(s, "\tpre { font-size:90%; }\n");
@@ -387,9 +388,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItem(s, "<DIV ID=\"pgkrgt\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
 	htrAddBodyItem(s, "<DIV ID=\"pgklft\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
 
-	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgping",0);
+	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgping",0, NULL);
 	htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
-	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgmsg",0);
+	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgmsg",0, NULL);
 	htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
 	htrAddBodyItem(s, "\n");
 
@@ -402,6 +403,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "pg", "pg_mouseover");
 	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "pg", "pg_mousedown");
 	htrAddEventHandlerFunction(s, "document", "MOUSEUP", "pg", "pg_mouseup");
+	htrAddEventHandlerFunction(s, "document", "SCROLL", "pg", "pg_scroll");
 	if (s->Capabilities.Dom1HTML)
 	    htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "pg", "pg_contextmenu");
 

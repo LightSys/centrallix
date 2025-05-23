@@ -249,6 +249,7 @@ function wgtrRepeatNode(nodename, nodelist)
     this.wgtr_rn_ValueChanging = wgtr_rn_ValueChanging;
     ifc_init_widget(this);
     var ie = this.ifcProbeAdd(ifEvent);
+    ie.EnableLateConnectBinding();
     ie.SetNewEventCallback(wgtr_rn_NewEvent);
     var ia = this.ifcProbeAdd(ifAction);
     ia.SetUndefinedAction(wgtr_rn_Action);
@@ -365,7 +366,7 @@ function wgtrGetServerProperty(node, prop_name, def)
     var val = node.__WgtrParams[prop_name];
     if (typeof val == 'undefined')
 	return def;
-    else if (typeof val == 'object' && val.exp)
+    else if (typeof val == 'object' && val && val.exp)
 	{
 	//var _context = window[node.__WgtrNamespace.NamespaceID];
 	var _context = node.__WgtrNamespace;
@@ -444,7 +445,11 @@ function wgtrProbeProperty(node, prop_name)
 	    {
 	    if (node.ifcProbe(ifValue).Exists(prop_name))
 		{
-		return node.ifcProbe(ifValue).getValue(prop_name);
+		var v = node.ifcProbe(ifValue).getValue(prop_name);
+		if (v === undefined)
+		    return new wgtrUndefinedObject();
+		else
+		    return v;
 		}
 	    else
 		{
@@ -552,6 +557,23 @@ function wgtrGetParent(node)
 
 	return node.__WgtrParent;
 
+    }
+
+
+// same as wgtrGetParent but traverses through components.
+function wgtrGetParentAll(node)
+    {
+
+	if (!node || !node.__WgtrName)
+	    {
+	    pg_debug("wgtrGetProperty - object passed as node was not a WgtrNode!\n"); 
+	    return null; 
+	    }
+
+	if (node.__WgtrType == 'widget/component-decl')
+	    return node.shell;
+	else
+	    return node.__WgtrParent;
     }
 
 

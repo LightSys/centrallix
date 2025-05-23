@@ -8,85 +8,178 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
+//
 
+window.tbld_touches = [];
+
+// tbld_format_cell (FormatCell) - This function formats one cell in one row of the
+// table, based on the source data and style configuration.
+//
 function tbld_format_cell(cell, color)
     {
-    var txt,captxt;
+    var txt = '', captxt = '', titletxt = '';
+    var imgsrc = '', imgstyle = '';
     var style = 'margin:0px; padding:0px; ';
     var capstyle = 'font-size:80%; margin:2px 0px 0px 0px; padding:0px; ';
+    var titlestyle = 'font-size:120%; margin:0px 0px 2px 0px; padding:0px; ';
     var colinfo = this.cols[cell.colnum];
-    if (cell.subkind != 'headercell' && colinfo.type != 'check' && colinfo.type != 'image')
-	var str = htutil_encode(String(htutil_obscure(cell.data)), colinfo.wrap != 'no');
-    else
-	var str = htutil_encode(String(cell.data));
-    if (colinfo.wrap != 'no')
-	str = htutil_nlbr(str);
-    if (cell.subkind != 'headercell' && colinfo.type == 'check')
+
+    if (!colinfo.widget || colinfo.widget.visible)
 	{
-	// Checkmark
-	var sl = str.toLowerCase();
-	if (sl == 'n' || sl == 'no' || sl == 'off' || sl == 'false' || str == '0' || str == '' || str == 'null')
-	    txt = '<img width="16" height="16" src="/sys/images/tbl_dash.gif">';
+	if (cell.subkind != 'headercell' && colinfo.type != 'check' && colinfo.type != 'image' && colinfo.type != 'checkbox')
+	    var str = htutil_encode(String(htutil_obscure(cell.data)), colinfo.wrap != 'no');
 	else
-	    txt = '<img width="16" height="16" src="/sys/images/tbl_check.gif">';
-	}
-    else if (cell.subkind != 'headercell' && colinfo.type == 'image')
-	{
-	// Image
-	if (str.indexOf(':') >= 0 || str.indexOf('//') >= 0 || str.charAt(0) != '/')
-	    txt = '';
+	    var str = htutil_encode(String(cell.data), colinfo.wrap != 'no');
+	if (colinfo.wrap != 'no')
+	    str = htutil_nlbr(str);
+	if (cell.subkind != 'headercell' && colinfo.type == 'progress')
+	    {
+	    // Progress Bar
+	    var val = cell.data;
+	    if (val !== null)
+		{
+		var roundto = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'round_to');
+		if (!roundto) roundto = 1.0;
+		var pad = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_padding');
+		if (!pad) pad = 0;
+		pad = parseInt(pad);
+		var barcolor = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_color');
+		if (!barcolor) barcolor = '#a0a0a0';
+		barcolor = String(barcolor).replace(/[^a-z0-9A-Z#]/g, "");
+		var bartext = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_textcolor');
+		if (!bartext) bartext = 'black';
+		bartext = String(bartext).replace(/[^a-z0-9A-Z#]/g, "");
+		var actpct = '' + (100 * ((val < 0)?0:((val > 1)?1:val))) + '%';
+		actpct = String(actpct).replace(/[^0-9.%]/g, "");
+		var pct = '' + (Math.round(val * 100 / roundto) * roundto) + '%';
+		if (val >= 0.5)
+		    {
+		    innertxt = pct + ' ';
+		    outertxt = '';
+		    }
+		else
+		    {
+		    innertxt = ' ';
+		    outertxt = ' ' + pct;
+		    }
+		txt = '<div style="display:inline-block; width:100%;">' +
+			  '<div style="display:inline-block; color:' + bartext + '; background-color:' + barcolor + '; padding:' + pad + 'px; text-align:right; min-width:1px; width:' + actpct + ';">' +
+			      htutil_encode(innertxt) + 
+			  '</div>' +
+			  (outertxt?('<span style="padding:' + pad + 'px;">' +
+			      htutil_encode(outertxt) + 
+			  '</span>'):'') + 
+		      '</div>';
+		}
+	    else
+		txt = '';
+	    }
+	else if (cell.subkind != 'headercell' && colinfo.type == 'checkbox')
+	    {
+	    // Checkbox
+	    var sl = str.toLowerCase();
+	    if (sl == 'n' || sl == 'no' || sl == 'off' || sl == 'false' || str == '0' || str == '' || str == 'null')
+		txt = '<img width="16" height="16" src="/sys/images/checkbox_unchecked.png">';
+	    else
+		txt = '<img width="16" height="16" src="/sys/images/checkbox_checked.png">';
+	    }
+	else if (cell.subkind != 'headercell' && colinfo.type == 'check')
+	    {
+	    // Checkmark
+	    var sl = str.toLowerCase();
+	    if (sl == 'n' || sl == 'no' || sl == 'off' || sl == 'false' || str == '0' || str == '' || str == 'null')
+		txt = '<img width="16" height="16" src="/sys/images/tbl_dash.gif">';
+	    else
+		txt = '<img width="16" height="16" src="/sys/images/tbl_check.gif">';
+	    }
+	else if (cell.subkind != 'headercell' && colinfo.type == 'image')
+	    {
+	    // Image
+	    if (!(str.indexOf(':') >= 0 || str.indexOf('//') >= 0 || str.charAt(0) != '/'))
+		{
+		imgsrc = cell.data;
+		if (colinfo.image_maxwidth) imgstyle += 'max-width:' + colinfo.image_maxwidth + 'px; ';
+		if (colinfo.image_maxheight) imgstyle += 'max-height:' + colinfo.image_maxheight + 'px; ';
+		imgstyle += htutil_getstyle(wgtrFindDescendent(this, colinfo.name, colinfo.ns), 'image', {} );
+		}
+	    }
 	else
 	    {
-	    txt = '<img src="' + htutil_encode(String(cell.data),true) + '"';
-	    if (colinfo.image_maxwidth || colinfo.image_maxheight)
-		{
-		txt += ' style="';
-		if (colinfo.image_maxwidth) txt += 'max-width:' + colinfo.image_maxwidth + 'px; ';
-		if (colinfo.image_maxheight) txt += 'max-height:' + colinfo.image_maxheight + 'px; ';
-		txt += '"';
-		}
-	    txt += ">";
+	    // Text
+	    txt = '<span onclick="function() {}">' + str + '</span>';
 	    }
-	}
-    else
-	{
-	// Text
-	txt = '<span onclick="function() {}">' + str + '</span>';
-	}
-    style += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), null, {textcolor: color});
-    if (cell.capdata)
-	{
-	// Caption (added to any of the above types)
-	captxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no') + '</span>';
-	if (colinfo.wrap != 'no')
-	    captxt = htutil_nlbr(captxt);
-	capstyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "caption", {textcolor: color});
+	style += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), null, {textcolor: color});
+	if (cell.capdata)
+	    {
+	    // Caption (added to any of the above types)
+	    captxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no') + '</span>';
+	    if (colinfo.wrap != 'no')
+		captxt = htutil_nlbr(captxt);
+	    capstyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "caption", {textcolor: color});
+	    }
+	if (cell.titledata)
+	    {
+	    titletxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.titledata), colinfo.wrap != 'no') + '</span>';
+	    if (colinfo.wrap != 'no')
+		titletxt = htutil_nlbr(titletxt);
+	    titlestyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "title", {textcolor: color});
+	    }
 	}
 
     // If style or content has changed, then update it.
-    if (txt != cell.content || captxt != cell.capcontent || style != cell.cxstyle || capstyle != cell.cxcapstyle)
+    if (txt != cell.content || captxt != cell.capcontent || titletxt != cell.titlecontent || style != cell.cxstyle || capstyle != cell.cxcapstyle || titlestyle != cell.cxtitlestyle || imgsrc != cell.imgsrc || imgstyle != cell.imgstyle)
 	{
+	// Build the paragraph elements of the cell
+	var t_p = null;
+	var c_p = null;
+	if (titletxt)
+	    {
+	    t_p = document.createElement('p');
+	    $(t_p).attr("style", titlestyle);
+	    $(t_p).css({'margin':'0px'});
+	    $(t_p).append(titletxt);
+	    }
 	var p = document.createElement('p');
-	//p.style = style;
 	$(p).attr("style", style);
 	$(p).css({'margin':'0px'});
-	$(p).append(txt);
+	if (txt)
+	    $(p).append(txt);
+	if (imgsrc)
+	    {
+	    var ie = document.createElement('img');
+	    $(ie).attr('src', imgsrc);
+	    if (imgstyle)
+		$(ie).attr('style', imgstyle);
+	    $(p).append(ie);
+	    }
 	if (captxt)
 	    {
-	    var c_p = document.createElement('p');
-	    //c_p.style = capstyle;
+	    c_p = document.createElement('p');
 	    $(c_p).attr("style", capstyle);
 	    $(c_p).css({'margin':'0px'});
 	    $(c_p).append(captxt);
 	    }
+
+	// build the cell
 	$(cell).empty();
+	if (titletxt)
+	    $(cell).append(t_p)
 	$(cell).append(p);
 	if (captxt)
 	    $(cell).append(c_p);
+
+	// Remember the data so we can tell if it changed
 	cell.content = txt;
 	cell.capcontent = captxt;
+	cell.titlecontent = titletxt;
 	cell.cxstyle = style;
 	cell.cxcapstyle = capstyle;
+	cell.cxtitlestyle = titlestyle;
+	cell.el_title = t_p;
+	cell.el_text = p;
+	cell.el_caption = c_p;
+	cell.imgsrc = imgsrc;
+	cell.imgstyle = imgstyle;
 
 	// If an image, then test for final image loading, and readjust row
 	// height once the image is loaded.
@@ -101,15 +194,18 @@ function tbld_format_cell(cell, color)
 		var row = this.layer.row;
 		var pre_h = $(row).height();
 		var upd_rows = [];
+		//var disp_rows = [];
 		t.UpdateHeight(row);
 		if (pre_h != $(row).height() && row.positioned)
 		    {
-		    for(var i=row.rownum+1; i<=t.rows.lastvis+1; i++)
+		    for(var i=row.rownum+1; i<=t.rows.last; i++)
 			{
 			if (t.rows[i])
 			    {
 			    t.rows[i].positioned = false;
 			    upd_rows.push(t.rows[i]);
+			    /*if (i <= t.rows.lastvis+1)
+				disp_rows.push(t.rows[i]);*/
 			    }
 			}
 		    t.PositionRows(upd_rows);
@@ -120,6 +216,10 @@ function tbld_format_cell(cell, color)
 	}
     }
 
+
+// This function is used to compare two property sheet rows, and is used in
+// the sorting process to alphabetize the property sheet items.
+//
 function tbld_attr_cmp(a, b)
     {
     if (a.oid > b.oid)
@@ -131,13 +231,17 @@ function tbld_attr_cmp(a, b)
     }
 
 
+// tbld_redraw_all (RedrawAll) - this is the core function that uses the objectsource
+// data to create the necessary data rows in the table.
+//
 function tbld_redraw_all(dataobj, force_datafetch)
     {
+    //this.log.push("tbld_redraw_all()");
     var new_rows = [];
 
     // Creating a new record?  Give indication if so.
     this.was_new = this.is_new;
-    this.is_new = (dataobj && dataobj.length == 0 && this.row_bgndnew)?1:0;
+    this.is_new = ((this.was_new && dataobj === null) || (dataobj && dataobj.length == 0 && this.row_bgndnew))?1:0;
     if (this.was_new && !this.is_new && this.rows.last)
 	{
 	var recnum = this.rows.last;
@@ -153,13 +257,15 @@ function tbld_redraw_all(dataobj, force_datafetch)
     this.cr = this.osrc.CurrentRecord;
     if (this.is_new)
 	{
-	this.cr = this.rows.last + 1;
-	this.target_range = {start:this.rows.first, end:this.rows.last+1};
+	this.cr = this.rows.last + 1 - this.was_new;
+	this.target_range = {start:this.rows.first, end:this.rows.last + 1 - this.was_new};
 	}
 
     // Presentation mode -- rows or propsheet?
     if (this.datamode == 1)
 	{
+	if (!dataobj && this.osrc.CurrentRecord && this.osrc.replica[this.osrc.CurrentRecord])
+	    dataobj = this.osrc.replica[this.osrc.CurrentRecord];
 	// Propsheet mode - build the attr list
 	this.attrlist = [];
 	for(var j in dataobj)
@@ -177,7 +283,7 @@ function tbld_redraw_all(dataobj, force_datafetch)
     else
 	{
 	// Rows mode.  OSRC says it has found the final record?
-	if (this.osrc.FinalRecord)
+	if (this.osrc.FinalRecord !== null)
 	    this.rows.lastosrc = this.osrc.FinalRecord + this.is_new;
 
 	var min = this.osrc.FirstRecord;
@@ -288,7 +394,7 @@ function tbld_redraw_all(dataobj, force_datafetch)
 	this.Scroll(new_y, false);
 	return;
 	}
-    if (this.cr < this.rows.firstvis || this.cr > this.rows.lastvis)
+    if ((this.cr < this.rows.firstvis || this.cr > this.rows.lastvis) && this.osrc_last_op != 'ScrollTo')
 	{
 	this.BringIntoView(this.cr);
 	return;
@@ -297,10 +403,16 @@ function tbld_redraw_all(dataobj, force_datafetch)
     // space at bottom of table?
     if (this.CheckBottom())
 	return;
+
+    // Dispatch osrc requests
+    this.OsrcDispatch();
     }
 
+
 // Handle deletion or new row cancel cases where blank space is now visible
-// even though there are enough rows to fill the visible area.
+// at the bottom of the table, even though there are enough rows to fill the
+// visible area.
+//
 function tbld_check_bottom()
     {
     if (this.rows.lastvis > 0)
@@ -377,28 +489,35 @@ function tbld_setup_row_data(rowslot, is_new)
 		}
 	    if(txt == null || typeof txt == 'undefined')
 		txt = '';
+	    if (typeof row.cols[j].data == 'undefined' || (row.cols[j].data == null && txt) || txt != row.cols[j].data)
+		changed = true;
 	    row.cols[j].data=txt;
 	    }
 	}
     else
 	{
 	// Normal
-	// main value
 	for(var j in row.cols)
 	    {
-	    if (this.cols[j].fieldname)
-		var txt = this.FindOsrcValue(rowslot, this.cols[j].fieldname);
+	    // title value
+	    var titlefield = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[j].name, this.cols[j].ns), "title_fieldname");
+	    if (titlefield)
+		var txt = this.FindOsrcValue(rowslot, titlefield);
 	    else
-		var txt = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[j].name, this.cols[j].ns), "value");
+		var txt = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[j].name, this.cols[j].ns), "title_value");
+	    if (typeof row.cols[j].titledata == 'undefined' || (row.cols[j].titledata == null && txt) || txt != row.cols[j].titledata)
+		changed = true;
+	    row.cols[j].titledata = txt;
+
+	    // main value
+	    var txt = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[j].name, this.cols[j].ns), "value");
+	    if (!txt && this.cols[j].fieldname)
+		txt = this.FindOsrcValue(rowslot, this.cols[j].fieldname);
 	    if (typeof row.cols[j].data == 'undefined' || (row.cols[j].data == null && txt) || txt != row.cols[j].data)
 		changed = true;
 	    row.cols[j].data = txt;
-	    }
-	row.name = this.FindOsrcValue(rowslot, 'name');
 
-	// caption value
-	for(var j in row.cols)
-	    {
+	    // caption value
 	    if (this.cols[j].caption_fieldname)
 		var txt = this.FindOsrcValue(rowslot, this.cols[j].caption_fieldname);
 	    else
@@ -407,6 +526,7 @@ function tbld_setup_row_data(rowslot, is_new)
 		changed = true;
 	    row.cols[j].capdata = txt;
 	    }
+	row.name = this.FindOsrcValue(rowslot, 'name');
 	}
 
     if (changed)
@@ -416,13 +536,23 @@ function tbld_setup_row_data(rowslot, is_new)
     }
 
 
+function tbld_get_selected_column_geom()
+    {
+    if (this.table.cr && this.table.rows[this.table.cr])
+	var obj = this.table.rows[this.table.cr];
+    else
+	var obj = this.table;
+    return { x:$(obj).offset().left + this.col.xoffset, y:$(obj).offset().top, width:this.col.width, height:$(obj).height() };
+    }
+
+
 function tbld_get_selected_geom()
     {
     if (this.cr && this.rows[this.cr])
 	var obj = this.rows[this.cr];
     else
 	var obj = this;
-    return {x:$(obj).offset().left,y:$(obj).offset().top,width:$(obj).width(),height:$(obj).height()};
+    return { x:$(obj).offset().left, y:$(obj).offset().top, width:$(obj).width(), height:$(obj).height() };
     }
 
 
@@ -450,6 +580,8 @@ function tbld_update_height(row)
 	    var h = $(col.firstChild).innerHeight();
 	    if (col.firstChild && col.firstChild.nextSibling)
 		h += ($(col.firstChild.nextSibling).innerHeight() + 2);
+	    if (col.firstChild && col.firstChild.nextSibling && col.firstChild.nextSibling.nextSibling)
+		h += ($(col.firstChild.nextSibling.nextSibling).innerHeight() + 2);
 	    if (h > this.max_rowheight - this.cellvspacing*2)
 		h = this.max_rowheight - this.cellvspacing*2;
 	    if (h < this.min_rowheight - this.cellvspacing*2)
@@ -498,13 +630,22 @@ function tbld_format_row(id, selected, do_new)
     switch(new_disp_mode)
 	{
 	case 'newselect':
+	    this.selected_row = this.rows[id];
+	    this.selected = id;
 	    this.rows[id].newselect();
 	    break;
 	case 'select':
+	    this.selected_row = this.rows[id];
+	    this.selected = id;
 	    this.rows[id].select();
 	    break;
 	case 'deselect':
 	    this.rows[id].deselect();
+	    if (this.selected_row == this.rows[id])
+		{
+		this.selected_row = null;
+		this.selected = null;
+		}
 	    break;
 	}
     if (this.UpdateHeight(this.rows[id]) && this.rows[id].positioned)
@@ -534,6 +675,7 @@ function tbld_format_row(id, selected, do_new)
 
 function tbld_bring_into_view(rownum)
     {
+    //this.log.push("tbld_bring_into_view(" + rownum + ")");
     this.bring_into_view = null;
 
     // Clamp the requested row to the available range
@@ -544,7 +686,10 @@ function tbld_bring_into_view(rownum)
 
     // Already visible?
     if (rownum >= this.rows.firstvis && rownum <= this.rows.lastvis)
+	{
+	this.OsrcDispatch();
 	return;
+	}
 
     // If row is in current set, just scroll backward.
     if (rownum >= this.rows.first && rownum < this.rows.firstvis)
@@ -561,18 +706,18 @@ function tbld_bring_into_view(rownum)
 	}
 
     // Out of range
-    if (rownum < this.rows.first && this.rows.first != null)
+    if (rownum < this.rows.first && this.rows.first !== null)
 	{
 	this.bring_into_view = rownum;
 	//this.target_range = {start:rownum, end:this.rows.lastvis+1};
 	this.target_range = {start:rownum, end:rownum + this.rowcache_size};
-	if (this.rows.lastosrc && this.target_range.end > this.rows.lastosrc)
+	if (this.rows.lastosrc !== null && this.target_range.end > this.rows.lastosrc)
 	    this.target_range.end = this.rows.lastosrc;
 	if (this.target_range.start > 1 && this.target_range.end - this.target_range.start < this.rowcache_size)
 	    this.target_range.start = this.target_range.end - this.rowcache_size;
 	if (this.target_range.start < 1)
 	    this.target_range.start = 1;
-	this.osrc.ScrollTo(this.target_range.start, this.target_range.end);
+	this.OsrcRequest('ScrollTo', {start:this.target_range.start, end:this.target_range.end});
 	}
     else if (rownum > this.rows.last && this.rows.last != null)
 	{
@@ -581,8 +726,22 @@ function tbld_bring_into_view(rownum)
 	this.target_range = {start:rownum - this.rowcache_size, end:rownum};
 	if (this.target_range.start < 1)
 	    this.target_range.start = 1;
-	this.osrc.ScrollTo(this.target_range.start, this.target_range.end);
+	this.OsrcRequest('ScrollTo', {start:this.target_range.start, end:this.target_range.end});
 	}
+    else
+	{
+	this.OsrcDispatch();
+	}
+    }
+
+
+function tbld_update_scrollbar()
+    {
+    $(this.scrollbar).stop(false, true);
+    if (this.thumb_height != this.thumb_avail)
+	htr_setvisibility(this.scrollbar, "inherit");
+    $(this.scrollbar).animate({"opacity": (this.thumb_height == this.thumb_avail)?0.0:(this.has_mouse?1.0:0.33)}, 150, "linear",
+	() => { if (this.thumb_height == this.thumb_avail) htr_setvisibility(this.scrollbar, "hidden"); } );
     }
 
 
@@ -623,7 +782,7 @@ function tbld_update_thumb(anim)
     if (anim)
 	{
 	$(this.scrollbar.b).stop(false, false);
-	$(this.scrollbar.b).animate({"top": (18+Math.round(this.thumb_pos))+"px", "height": (Math.round(this.thumb_height)-2)+"px"}, 250, "swing", null);
+	$(this.scrollbar.b).animate({"top": (18+Math.round(this.thumb_pos))+"px", "height": (Math.round(this.thumb_height)-2)+"px"}, 250, anim, null);
 	}
     else
 	{
@@ -634,8 +793,7 @@ function tbld_update_thumb(anim)
     // Set scrollbar visibility
     if (this.demand_scrollbar)
 	{
-	$(this.scrollbar).stop(false, true);
-	$(this.scrollbar).animate({"opacity": (this.thumb_height == this.thumb_avail)?0.0:(this.has_mouse?1.0:0.33)}, 150, "linear", null);
+	this.UpdateScrollbar();
 	}
 	//$(this.scrollbar).css({"opacity": (this.thumb_height == this.thumb_avail)?0.0:1.0});
 	//htr_setvisibility(this.scrollbar, (this.thumb_height == this.thumb_avail)?"hidden":"inherit");
@@ -644,30 +802,58 @@ function tbld_update_thumb(anim)
 
 function tbld_object_created(recnum)
     {
-    if (this.rows.lastosrc && recnum > this.rows.lastosrc)
+    //this.log.push("Object Created callback (" + recnum + ") from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+    if (this.rows.lastosrc !== null && recnum > this.rows.lastosrc)
 	this.rows.lastosrc = recnum;
     if (recnum < this.rows.first)
 	this.target_range = {start:recnum, end:this.rows.last};
     else if (recnum > this.rows.last)
 	this.target_range = {start:this.rows.first, end:recnum};
+    this.osrc_busy = false;
     this.RedrawAll(null, true);
     }
 
 function tbld_object_deleted(recnum)
     {
-    if (this.rows.lastosrc && this.rows.lastosrc == recnum)
+    //this.log.push("Object Deleted callback (" + recnum + ") from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+    if (this.rows.lastosrc !== null && this.rows.lastosrc == recnum)
 	this.rows.lastosrc--;
     if (this.rows[recnum] && this.scroll_maxheight)
 	{
 	this.scroll_maxheight -= ($(this.rows[recnum]).height() + this.cellvspacing*2);
 	this.scroll_maxrec--;
 	}
+    this.osrc_busy = false;
     this.RedrawAll(null, true);
     }
 
 function tbld_object_modified(current, dataobj)
     {
+    //this.log.push("Object Modified callback from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+    this.osrc_busy = false;
     this.RedrawAll(null, true);
+    }
+
+function tbld_replica_moved(osrc, target_start, target_end)
+    {
+    this.osrc_busy = false;
+    this.RedrawAll(null, true);
+    this.osrc_last_op = null;
+    }
+
+function tbld_replica_changed(dataobj, force_datafetch, why)
+    {
+    //this.log.push("ReplicaMoved / ObjectAvailable from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+    this.osrc_busy = false;
+    this.RedrawAll(dataobj, force_datafetch);
+    this.osrc_last_op = null;
+    }
+
+function tbld_operation_complete(stat, osrc)
+    {
+    // If the operation (move, etc.) failed...
+    if (!stat)
+	this.osrc_busy = false;
     }
 
 function tbld_clear_rows(fromobj, why)
@@ -719,63 +905,155 @@ function tbld_select()
 	{
 	this.mouseover();
 	}
+    this.showdetail(false);
+    }
+
+
+function tbld_showdetail(on_new)
+    {
     for(var i=0; i<this.table.detail_widgets.length; i++)
 	{
 	var dw = this.table.detail_widgets[i];
-	if (wgtrGetServerProperty(dw, 'display_for', 1) && this.table.initselect !== 2 /* 2 = noexpand */ )
+	dw.on_new = on_new;
+	this.updatedetail(dw);
+	}
+    }
+
+
+function tbld_detail_showcontainer()
+    {
+    if (this.table.selected_row)
+	{
+	this.table.ShowSelection();
+	}
+    }
+
+
+function tbld_update_detail(dw)
+    {
+    if (dw.display_for && (this.table.initselect !== 2 || (this.table.initselect == 2 && dw.on_new)) /* 2 = noexpand */ && (!dw.on_new || wgtrGetServerProperty(dw, 'show_on_new', 0)))
+	{
+	var found=false;
+	for(var j=0; j<this.detail.length; j++)
 	    {
-	    var found=false;
-	    for(var j=0; j<this.detail.length; j++)
+	    if (this.detail[j] == dw)
 		{
-		if (this.detail[j] == dw)
-		    {
-		    found=true;
-		    break;
-		    }
-		}
-
-	    if (!found)
-		{
-		// already a part of another row?
-		if ($(dw).css("visibility") == 'inherit')
-		    {
-		    pg_reveal_event(dw, dw, 'Obscure');
-		    dw.ifcProbe(ifEvent).Activate('Close', {});
-		    }
-
-		// Add to this row and show it.
-		this.detail.push(dw);
-		this.appendChild(dw);
-		$(dw).css
-		    ({
-		    "visibility": "inherit",
-		    "left": "0px",
-		    "top": "0px",
-		    });
-		pg_reveal_event(dw, dw, 'Reveal');
-		dw.ifcProbe(ifEvent).Activate('Open', {});
+		found=true;
+		break;
 		}
 	    }
-	else
+
+	if (!found)
 	    {
-	    for(var j=0; j<this.detail.length; j++)
+	    // already a part of another row?
+	    if ($(dw).css("visibility") == 'inherit' || $(dw).css("visibility") == 'visible')
 		{
-		if (this.detail[j] == dw)
-		    {
-		    this.detail.splice(j, 1);
-		    pg_reveal_event(dw, dw, 'Obscure');
-		    $(dw).css
-			({
-			"visibility": "hidden",
-			});
-		    this.table.appendChild(dw);
-		    dw.ifcProbe(ifEvent).Activate('Close', {});
-		    break;
-		    }
+		pg_reveal_event(dw, dw, 'Obscure');
+		dw.is_visible = 0;
+		dw.ifcProbe(ifEvent).Activate('Close', {});
+		}
+
+	    // Add to this row and show it.
+	    this.detail.push(dw);
+	    this.appendChild(dw);
+	    $(dw).css
+		({
+		"visibility": "inherit",
+		"left": "0px",
+		"top": "0px",
+		});
+	    pg_reveal_event(dw, dw, 'Reveal');
+	    dw.is_visible = 1;
+	    dw.ifcProbe(ifEvent).Activate('Open', {});
+	    }
+	}
+    else
+	{
+	for(var j=0; j<this.detail.length; j++)
+	    {
+	    if (this.detail[j] == dw)
+		{
+		this.detail.splice(j, 1);
+		pg_reveal_event(dw, dw, 'Obscure');
+		$(dw).css
+		    ({
+		    "visibility": "hidden",
+		    });
+		this.table.appendChild(dw);
+		dw.is_visible = 0;
+		dw.ifcProbe(ifEvent).Activate('Close', {});
+		break;
 		}
 	    }
 	}
     }
+
+
+function tbld_get_displayfor(attr)
+    {
+    return this.display_for;
+    }
+
+
+function tbld_set_displayfor(attr, val)
+    {
+    val = val?1:0;
+    if (val != this.display_for)
+	{
+	this.display_for = val;
+	if (this.table.selected_row)
+	    {
+	    this.table.selected_row.needs_redraw = true;
+	    this.table.RedrawAll(null, true);
+	    }
+	}
+    }
+
+
+function tbld_set_coltitle(attr, val)
+    {
+    this.colhdr.data = val;
+    this.table.FormatCell(this.colhdr, this.table.titlecolor);
+    this.table.UpdateHeight(this.hdrrow);
+    this.table.DisplayRow(this.hdrrow, 0);
+    this.table.UpdateGeom();
+    }
+
+
+function tbld_get_coltitle(attr)
+    {
+    return this.colhdr.data;
+    }
+
+
+function tbld_set_visible(attr, val)
+    {
+    var newvis = val?1:0;
+    if (newvis != this.visible)
+	{
+	if (newvis == 1)
+	    {
+	    // Show column
+	    this.visible = 1;
+	    this.colhdr.ChangeWidth(this.visible_width, true);
+	    }
+	else
+	    {
+	    // Hide column
+	    this.visible_width = this.table.cols[this.colnum].width;
+	    this.visible = 0;
+	    this.colhdr.ChangeWidth(-this.visible_width, true);
+	    }
+	this.table.ReflowWidth();
+	}
+    }
+
+
+function tbld_get_visible(attr)
+    {
+    return this.visible;
+    }
+
 
 function tbld_deselect()
     {
@@ -792,6 +1070,11 @@ function tbld_deselect()
 	this.removeChild(this.ctr);
 	this.ctr = null;
 	}
+    this.hidedetail();
+    }
+
+function tbld_hidedetail()
+    {
     for(var i=0; i<this.detail.length; i++)
 	{
 	var dw = this.detail[i];
@@ -803,6 +1086,7 @@ function tbld_deselect()
 		"visibility": "hidden",
 		});
 	    this.table.appendChild(dw);
+	    dw.is_visible = 0;
 	    dw.ifcProbe(ifEvent).Activate('Close', {});
 	    }
 	}
@@ -825,6 +1109,7 @@ function tbld_newselect()
 	{
 	this.table.FormatCell(this.cols[i], wgtrGetServerProperty(this.table, 'textcolornew', this.table.textcolornew));
 	}
+    this.showdetail(true);
     }
 
 function tbld_setbackground(obj, widget, prefix)
@@ -848,7 +1133,9 @@ function tbld_setbackground(obj, widget, prefix)
 
 function tbld_domouseover()
     {
-    if(this.rownum!=null && this.subkind!='headerrow')
+    var mfocus = wgtrGetServerProperty(this.table, "show_mouse_focus");
+    mfocus = (mfocus == 'yes' || mfocus == 1 || mfocus == true || mfocus == 'on' || mfocus == 'true' || mfocus == null)?true:false;
+    if(this.rownum!=null && this.subkind!='headerrow' && mfocus)
 	$(this).css({"border": "1px solid black"});
     }
 
@@ -856,8 +1143,15 @@ function tbld_domouseout()
     {
     if(this.subkind!='headerrow')
 	{
-	var rbc = wgtrGetServerProperty(this.table,"row_border_color");
-	$(this).css({"border": "1px solid " + (rbc?rbc:"transparent") });
+	var rbc = "";
+	if (this.disp_mode == 'select')
+	    rbc = wgtrGetServerProperty(this.table,"rowhighlight_border_color");
+	if (!rbc)
+	    rbc = wgtrGetServerProperty(this.table,"row_border_color");
+	var mfocus = wgtrGetServerProperty(this.table, "show_mouse_focus");
+	mfocus = (mfocus == 'yes' || mfocus == 1 || mfocus == true || mfocus == 'on' || mfocus == 'true' || mfocus == null)?true:false;
+	if (mfocus)
+	    $(this).css({"border": "1px solid " + (rbc?rbc:"transparent") });
 	}
     }
 
@@ -868,18 +1162,24 @@ function tbld_sched_scroll(y)
 	pg_delsched(this.scroll_timeout);
     $(this.scrolldiv).stop(false, true);
     $(this.box).stop(false, true);
-    pg_addsched_fn(this, "Scroll", [y], 0);
+    this.scroll_timeout = pg_addsched_fn(this, "Scroll", [y], 0);
     }
 
 
 // Scroll the table to the given y offset
 function tbld_scroll(y, animate)
     {
+    if (animate == true)
+	animate = 'swing';
+    //this.log.push("tbld_scroll(" + y + ")");
     this.target_y = null;
 
     // Not enough data to scroll?
     if (this.thumb_height == this.thumb_avail && y != 0 - getRelativeY(this.rows[this.rows.first]))
+	{
+	this.OsrcDispatch();
 	return;
+	}
 
     // Current start and end of scrollable content
     var scroll_start = getRelativeY(this.rows[this.rows.first]);
@@ -897,12 +1197,13 @@ function tbld_scroll(y, animate)
 	this.scroll_y = y;
 	$(this.scrolldiv).stop(false, false);
 	if (animate)
-	    $(this.scrolldiv).animate({"top": y+"px"}, 250, "swing", null);
+	    $(this.scrolldiv).animate({"top": y+"px"}, 250, animate, null);
 	else
 	    $(this.scrolldiv).css({"top": y+"px"});
 	this.target_range = {start:this.rows.first, end:this.rows.last};
 	this.RescanRowVisibility();
 	this.UpdateThumb(animate);
+	this.OsrcDispatch();
 	}
     else
 	{
@@ -922,18 +1223,26 @@ function tbld_scroll(y, animate)
 		this.target_range.start = 1;
 	    this.target_range.end = this.rows.lastvis+1;
 	    }
-	else if (getRelativeY(this.rows[this.rows.last]) + $(this.rows[this.rows.last]).height() + this.cellvspacing - this.vis_height < (0-y))
+	else if (getRelativeY(this.rows[this.rows.last]) + $(this.rows[this.rows.last]).height() + this.cellvspacing - this.vis_height < (0-y) && (this.rows.lastosrc === null || this.rows.lastvis < this.rows.lastosrc))
 	    {
 	    // Next data
 	    this.target_range.start = this.rows.firstvis-1;
+	    if (this.target_range.start < 1)
+		this.target_range.start = 1;
 	    this.target_range.end = this.rows.firstvis + this.rowcache_size + this.max_display;
+
+	    // If there are enough rows in the replica, and we got here, we need to
+	    // look further in the result set to satisfy the scroll requirements.
+	    while (this.osrc.FirstRecord <= this.target_range.start && this.osrc.LastRecord >= this.target_range.end)
+		this.target_range.end += this.rowcache_size;
 	    }
 	else
 	    {
 	    // ??
+	    this.OsrcDispatch();
 	    return;
 	    }
-	this.osrc.ScrollTo(this.target_range.start, this.target_range.end);
+	this.OsrcRequest('ScrollTo', {start:this.target_range.start, end:this.target_range.end});
 	}
     }
 
@@ -971,7 +1280,7 @@ function tbld_bar_click(e)
     }
 
 
-function tbld_change_width(move)
+function tbld_change_width(move, compensate)
     {
     var l=this;
     var t=l.row.table;
@@ -979,16 +1288,16 @@ function tbld_change_width(move)
     var colinfo = t.cols[l.colnum];
 
     // Sanity checks on column resizing...
-    if(colinfo.xoffset+colinfo.width+move+rw>l.row.w)
-	move = l.row.w - rw - colinfo.xoffset - colinfo.width;
+    //if(colinfo.xoffset+colinfo.width+move+rw>l.row.w)
+    //	move = l.row.w - rw - colinfo.xoffset - colinfo.width;
     if(colinfo.xoffset+colinfo.width+rw+move<0)
 	move=0-colinfo.xoffset-rw;
     if (colinfo.width + move < 3)
 	move = 3-colinfo.width;
     if(l.resizebdr.xoffset+move<0)
 	move=0-l.resizebdr.xoffset;
-    if(getPageX(l.resizebdr) + t.colsep + t.bdr_width*2 + move >= getPageX(t) + t.param_width)
-	move = getPageX(t) + t.param_width - getPageX(l.resizebdr) - t.colsep - t.bdr_width*2;
+    //if(getPageX(l.resizebdr) + t.colsep + t.bdr_width*2 + move >= getPageX(t) + t.param_width)
+    //	move = getPageX(t) + t.param_width - getPageX(l.resizebdr) - t.colsep - t.bdr_width*2;
 
     // Figure how much space on the right of this resize handle we're adjusting, too...
     var cols_right = t.colcount - l.colnum - 1;
@@ -1009,7 +1318,10 @@ function tbld_change_width(move)
 	else
 	    {
 	    // Columns to the right of adjustment
-	    adj[j] = t.cols[j].width/total_right_width*move;
+	    if (compensate)
+		adj[j] = t.cols[j].width/total_right_width*move;
+	    else
+		adj[j] = 0;
 	    t.cols[j].width -= adj[j];
 	    t.cols[j].xoffset += total_move;
 	    total_move -= adj[j];
@@ -1053,7 +1365,48 @@ function tbld_change_width(move)
 	t.CheckBottom();
 	}
 
+    // Update overall table geometry based on header size changes
+    t.UpdateGeom();
+
     return move;
+    }
+
+
+function tbld_reflow_width()
+    {
+    if (this.hdrrow)
+	{
+	var logstr = 'Before reflow widths:';
+	var ttl = 0;
+	for(var i=0; i<this.colcount; i++)
+	    {
+	    logstr += ' ' + this.cols[i].width;
+	    ttl += this.cols[i].width;
+	    }
+	console.log(logstr + ' (total ' + ttl + ')');
+
+	// What's our space excess or deficit?
+	var colinfo = this.cols[this.colcount - 1];
+	var total = this.hdrrow.w;
+	var curtotal = (colinfo.xoffset + colinfo.width);
+	var adj = total - curtotal;
+	console.log('Reflowing total ' + total + ', curtotal ' + curtotal + ', adj ' + adj);
+
+	// Go through the columns and proportion the excess/deficit to them
+	for(var i=0; i<this.colcount; i++)
+	    {
+	    this.hdrrow.cols[i].ChangeWidth(adj * this.cols[i].width / curtotal, false);
+	    }
+
+	var logstr = 'After reflow widths:';
+	var ttl = 0;
+	for(var i=0; i<this.colcount; i++)
+	    {
+	    logstr += ' ' + this.cols[i].width;
+	    ttl += this.cols[i].width;
+	    }
+	console.log(logstr + ' (total ' + ttl + ')');
+	}
     }
 
 
@@ -1068,7 +1421,7 @@ function tbld_apply_row_geom(row, firstcol)
     for(var j=firstcol; j<this.colcount; j++)
 	{
 	var c=row.cols[j];
-	var new_w = this.cols[j].width - this.innerpadding*2;
+	var new_w = this.cols[j].width; // - this.innerpadding*2;
 	if (this.colsep > 0 || this.dragcols)
 	    new_w -= (this.bdr_width*2 + this.colsep);
 	$(c).width(new_w);
@@ -1089,7 +1442,18 @@ function tbld_unsetclick(l,n)
 // Callback used for obscure and reveal checks from row detail widgets
 function tbld_cb_dw_reveal(event)
     {
-    // we don't do obscure/reveal checks yet, so we just return true here.
+    /*switch(e.eventName)
+	{
+	case 'ObscureOK':
+	    this.tabctl.ChangeSelection2(e.c);
+	    break;
+	case 'RevealOK':
+	    this.tabctl.ChangeSelection3(e.c);
+	    break;
+	case 'ObscureFailed':
+	case 'RevealFailed':
+	    break;
+	}*/
     return true;
     }
 
@@ -1101,6 +1465,7 @@ function tbld_cb_reveal(event)
 	{
 	case 'Reveal':
 	    if (this.osrc) this.osrc.Reveal(this);
+	    this.RefreshRowVisibility();
 	    break;
 	case 'Obscure':
 	    if (this.osrc) this.osrc.Obscure(this);
@@ -1111,6 +1476,27 @@ function tbld_cb_reveal(event)
 	case 'ObscureCheck':
 	    pg_reveal_check_ok(event);
 	    break;
+	}
+    }
+
+
+// This is due to a Google Chrome 62 bug.  Sub-divs created
+// in a hidden div do not show up when the parent div is made
+// visible.  We jiggle them here (things other than the visibility
+// toggle below do successfully jiggle the sub-divs also.)
+//
+// https://bugs.chromium.org/p/chromium/issues/detail?id=778873
+// 
+function tbld_refresh_row_visibility()
+    {
+    for(var i=0; i<=this.rows.last; i++)
+	{
+	var rowobj = this.rows[i];
+	if (rowobj && rowobj.vis != 'none')
+	    {
+	    $(rowobj).css({'visibility': 'hidden'});
+	    $(rowobj).css({'visibility': 'inherit'});
+	    }
 	}
     }
 
@@ -1138,6 +1524,11 @@ function tbld_remove_row(rowobj)
     {
     if (!rowobj)
 	return;
+    if (rowobj.table.selected_row == rowobj)
+	{
+	rowobj.table.selected_row = null;
+	rowobj.table.selected = null;
+	}
     var slot = rowobj.rownum;
     $(rowobj).css({visibility: "hidden"});
     delete this.rows[slot];
@@ -1154,6 +1545,7 @@ function tbld_remove_row(rowobj)
 		"visibility": "hidden",
 		});
 	    this.appendChild(dw);
+	    dw.is_visible = 0;
 	    dw.ifcProbe(ifEvent).Activate('Close', {});
 	    }
 	}
@@ -1295,6 +1687,16 @@ function tbld_is_row_visible(rowslot)
     }
 
 
+function tbld_show_selection()
+    {
+    if (this.initselect != 1)
+	{
+	this.initselect = 1;
+	this.RedrawAll(null, true);
+	}
+    }
+
+
 function tbld_instantiate_row(parentDiv, x, y)
     {
     // Check the cache
@@ -1333,6 +1735,7 @@ function tbld_instantiate_row(parentDiv, x, y)
 	"border": "1px solid " + (rbc?rbc:"transparent"),
 	"border-radius": (rbr?rbr:0) + "px",
 	"background-clip": "padding-box",
+	"clip": "auto"
 	});
     if (rsr)
 	{
@@ -1349,6 +1752,9 @@ function tbld_instantiate_row(parentDiv, x, y)
     row.newselect=tbld_newselect;
     row.mouseover=tbld_domouseover;
     row.mouseout=tbld_domouseout;
+    row.showdetail=tbld_showdetail;
+    row.hidedetail=tbld_hidedetail;
+    row.updatedetail = tbld_update_detail;
     row.needs_redraw = false;
     row.detail = [];
 
@@ -1364,7 +1770,7 @@ function tbld_instantiate_row(parentDiv, x, y)
 	col.colnum = j;
 	col.xoffset = this.cols[j].xoffset;
 	col.subkind = "cell";
-	col.initwidth=this.cols[j].width-this.innerpadding*2;
+	col.initwidth=this.cols[j].width; //-this.innerpadding*2;
 	if (this.colsep > 0 || this.dragcols)
 	    col.initwidth -= (this.bdr_width*2 + this.colsep);
 	$(col).css
@@ -1382,21 +1788,138 @@ function tbld_instantiate_row(parentDiv, x, y)
     }
 
 
+function tbld_osrc_request(request, param)
+    {
+    var item = {type: request};
+    for(var p in param)
+	item[p] = param[p];
+    this.osrc_request_queue.push(item);
+    this.OsrcDispatch();
+    }
+
+
+function tbld_osrc_dispatch()
+    {
+    if (this.osrc_busy)
+	return;
+    
+    // Scan through requests
+    do  {
+	var item = this.osrc_request_queue.shift();
+	}
+	while (this.osrc_request_queue.length && this.osrc_request_queue[0].type == item.type);
+    if (!item)
+	return;
+
+    // Run the request
+    switch(item.type)
+	{
+	case 'ScrollTo':
+	    this.osrc_busy = true;
+	    this.osrc_last_op = item.type;
+	    //this.log.push("Calling ScrollTo(" + item.start + "," + item.end + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+	    this.osrc.ScrollTo(item.start, item.end);
+	    break;
+
+	case 'MoveToRecord':
+	    this.osrc_busy = true;
+	    this.osrc_last_op = item.type;
+	    //this.log.push("Calling MoveToRecord(" + item.rownum + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+	    this.osrc.MoveToRecord(item.rownum, this);
+	    break;
+
+	default:
+	    return;
+	}
+    }
+
+
+/*function tbld_dispatch(dclass)
+    {
+    if (this.dispatch_queue[dclass] === undefined)
+	{
+	this.dispatch_queue[dclass] = [];
+	this.dispatch_queue[dclass].active_cnt = 0;
+	}
+    while (this.dispatch_queue[dclass].active_cnt < this.dispatch_parallel_max && this.dispatch_queue[dclass].length > 0)
+	{
+	let item = this.dispatch_queue[dclass].shift();
+	this.dispatch_queue[dclass].active_cnt++;
+
+	// do request
+	if (item.callback)
+	    item.callback(item.data);
+	this.dispatch_queue[dclass].active_cnt--;
+	this.Dispatch(dclass);
+	if (this.dispatch_queue[dclass].length == 0 && this.dispatch_queue[dclass].active_cnt == 0 && item.completion)
+	    item.completion();
+	}
+    }
+
+
+function tbld_request(dclass, data, callback, completion)
+    {
+    if (this.dispatch_queue[dclass] === undefined)
+	{
+	this.dispatch_queue[dclass] = [];
+	this.dispatch_queue[dclass].active_cnt = 0;
+	}
+    this.dispatch_queue[dclass].push({data:data, callback:callback, completion:completion});
+    this.Dispatch(dclass);
+    }*/
+
+
+// Update the overall geometry of the table visual area based on the
+// available height and header row height.
+function tbld_update_geom()
+    {
+    this.vis_offset = (this.hdrrow)?($(this.hdrrow).height() + this.cellvspacing*2):0;
+    this.vis_height = this.param_height - this.vis_offset;
+    if (this.max_rowheight == this.param_height)
+	this.max_rowheight = this.vis_height;
+    this.max_display = Math.ceil(this.vis_height / this.min_rowheight);
+    if (this.rowcache_size < this.max_display*2)
+	this.rowcache_size = this.max_display*2;
+    this.target_range = {start:1, end:this.rowcache_size};
+    $(this.scrollctr).css
+	({
+	"visibility": "inherit",
+	"top": this.vis_offset + "px",
+	"left": "0px",
+	"overflow": "hidden",
+	"height": (this.param_height - this.vis_offset) + "px",
+	"width": this.param_width + "px"
+	});
+    $(this.scrollbar).css(
+	{
+	//"top": (((this.has_header)?($(this.hdrrow).height() + this.cellvspacing):0) + $(this).position().top) + "px",
+	"top": (((this.has_header)?(this.hdrrow.offsetHeight + this.cellvspacing):0) + $(this).position().top) + "px",
+	});
+    $($(this.scrollbar).find('td')[1]).css(
+	{
+	"height": (this.vis_height - 2*18 - 1) + "px"
+	});
+    }
+
+
 function tbld_init(param)
     {
     var t = param.table;
     var scroll = param.scroll;
     ifc_init_widget(t);
+    t.table = t;
     t.param_width = param.width;
     t.param_height = param.height;
     t.dragcols = param.dragcols;
     t.colsep = param.colsep;
     t.colsepbg = param.colsep_bgnd;
+    t.colsepmode = param.colsep_mode;
     t.gridinemptyrows = param.gridinemptyrows;
     t.allowselect = param.allow_selection;
     t.showselect = param.show_selection;
     t.initselect = param.initial_selection;
     t.initselect_orig = param.initial_selection;
+    t.allowdeselect = param.allow_deselection;
     t.datamode = param.dm;
     t.has_header = param.hdr;
     t.demand_scrollbar = param.demand_sb;
@@ -1431,6 +1954,17 @@ function tbld_init(param)
     t.down.subkind='down';
     t.box.subkind='box';
     t.scrollbar.subkind='bar';
+    /*t.dispatch_queue = {};
+    t.dispatch_parallel_max = 1;
+    t.Dispatch = tbld_dispatch;
+    t.Request = tbld_request;*/
+    t.osrc_request_queue = [];
+    t.osrc_busy = false;
+    t.osrc_last_op = null;
+    //t.log = [];
+    t.ttf_string = '';
+    t.selected_row = null;
+    t.selected = null;
     
     t.rowheight=param.min_rowheight>0?param.min_rowheight:15;
     t.min_rowheight = param.min_rowheight;
@@ -1474,7 +2008,9 @@ function tbld_init(param)
     t.PositionRows = tbld_position_rows;
     t.IsRowVisible = tbld_is_row_visible;
     t.RescanRowVisibility = tbld_rescan_row_visibility;
+    t.RefreshRowVisibility = tbld_refresh_row_visibility;
     t.UpdateThumb = tbld_update_thumb;
+    t.UpdateScrollbar = tbld_update_scrollbar;
     t.FormatRow = tbld_format_row;
     t.FormatCell = tbld_format_cell;
     t.UpdateHeight = tbld_update_height;
@@ -1487,13 +2023,20 @@ function tbld_init(param)
     t.CheckBottom = tbld_check_bottom;
     t.ApplyRowGeom = tbld_apply_row_geom;
     t.InitBH = tbld_init_bh;
+    t.OsrcDispatch = tbld_osrc_dispatch;
+    t.OsrcRequest = tbld_osrc_request;
+    t.EndTTF = tbld_end_ttf;
+    t.CheckHighlight = tbld_check_highlight;
+    t.UpdateGeom = tbld_update_geom;
+    t.ReflowWidth = tbld_reflow_width;
+    t.ShowSelection = tbld_show_selection;
 
     // ObjectSource integration
     t.IsDiscardReady = new Function('return true;');
     t.DataAvailable = tbld_clear_rows;
-    t.ObjectAvailable = tbld_redraw_all;
-    t.ReplicaMoved = tbld_redraw_all;
-    t.OperationComplete = new Function();
+    t.ObjectAvailable = tbld_replica_changed;
+    t.ReplicaMoved = tbld_replica_moved;
+    t.OperationComplete = tbld_operation_complete;
     t.ObjectDeleted = tbld_object_deleted;
     t.ObjectCreated = tbld_object_created;
     t.ObjectModified = tbld_object_modified;
@@ -1531,7 +2074,7 @@ function tbld_init(param)
 	    t.cols[i].width = 64;
 	total_w += t.cols[i].width;
 	}
-    var adj = param.width / total_w;
+    var adj = (param.width - t.cols.length*t.innerpadding*2) / total_w;
     for (var i in t.cols)
 	{
 	t.cols[i].width *= adj;
@@ -1582,7 +2125,7 @@ function tbld_init(param)
 	    $(l.resizebdr).css
 		({
 		"cursor": "move", 
-		"height": ((t.gridinemptyrows)?(t.rowheight * (t.maxtotalwindowsize)):t.rowheight) + "px", 
+		"height": (t.colsepmode == 0)?(((t.gridinemptyrows)?(t.rowheight * (t.maxtotalwindowsize)):t.rowheight) + "px"):(t.rowheight + "px"), 
 		"visibility": "inherit",
 		"width": t.colsep + t.bdr_width*2 + "px",
 		"padding-left": t.bdr_width + "px",
@@ -1614,32 +2157,40 @@ function tbld_init(param)
 	    }
 	t.UpdateHeight(t.hdrrow);
 	t.DisplayRow(t.hdrrow, 0);
+
+	t.column_widgets = wgtrFindMatchingDescendents(t, 'widget/table-column');
+	for(var i=0; i<t.column_widgets.length; i++)
+	    {
+	    if (i >= t.cols.length - 1) continue;
+	    var cw = t.column_widgets[i];
+	    ifc_init_widget(cw);
+	    t.cols[i].widget = cw;
+	    cw.hdrrow = t.hdrrow;
+	    cw.table = t;
+	    cw.colnum = i;
+	    cw.colhdr = t.hdrrow.cols[i];
+	    cw.col = t.cols[i];
+	    cw.visible = 1;
+	    cw.visible_width = t.cols[i].width;
+	    cw.GetSelectedGeom = tbld_get_selected_column_geom;
+	    var iv = cw.ifcProbeAdd(ifValue);
+	    iv.Add("title", tbld_get_coltitle, tbld_set_coltitle);
+	    iv.Add("visible", tbld_get_visible, tbld_set_visible);
+	    }
 	}
-    t.vis_offset = (t.hdrrow)?($(t.hdrrow).height() + t.cellvspacing*2):0;
-    t.vis_height = param.height - t.vis_offset;
-    if (t.max_rowheight == param.height)
-	t.max_rowheight = t.vis_height;
+
     t.scroll_maxheight = null;
     t.scroll_maxrec = null;
     t.scroll_minheight = null;
     t.scroll_minrec = null;
-    t.max_display = Math.ceil(t.vis_height / t.min_rowheight);
-    if (t.rowcache_size < t.max_display*2)
-	t.rowcache_size = t.max_display*2;
-    t.target_range = {start:1, end:t.rowcache_size};
 
     // Create scroll div
     t.scrollctr = htr_new_layer(t.param_width, t);
     htr_init_layer(t.scrollctr, t, "tabledynamic");
-    $(t.scrollctr).css
-	({
-	"visibility": "inherit",
-	"top": t.vis_offset + "px",
-	"left": "0px",
-	"overflow": "hidden",
-	"height": (param.height - t.vis_offset) + "px",
-	"width": t.param_width + "px"
-	});
+
+    // set working area height and scrollbar size
+    t.UpdateGeom();
+
     t.scrolldiv = htr_new_layer(t.param_width, t.scrollctr);
     htr_init_layer(t.scrolldiv, t, "tabledynamic");
     t.scrolldiv.subkind = "scrolldiv";
@@ -1654,7 +2205,7 @@ function tbld_init(param)
     // Scrollbar styling
     //$(t.scrollbar).find('td:has(img),div').css({'background-color':'rgba(128,128,128,0.2)'});
     if (t.demand_scrollbar)
-	$(t.scrollbar).css({"opacity": 0.0, "visibility": "inherit"});
+	$(t.scrollbar).css({"opacity": 0.0, "visibility": "hidden"});
     if (window.tbld_mcurrent == undefined)
 	window.tbld_mcurrent = null;
 
@@ -1666,9 +2217,16 @@ function tbld_init(param)
 
     // Events
     var ie = t.ifcProbeAdd(ifEvent);
+    ie.Add("Check");
+    ie.Add("Uncheck");
     ie.Add("Click");
     ie.Add("DblClick");
     ie.Add("RightClick");
+
+    // Actions
+    var ia = t.ifcProbeAdd(ifAction);
+    ia.Add("Clear", tbld_clear_rows);
+    ia.Add("ShowSelection", tbld_show_selection);
 
     // Request reveal/obscure notifications
     t.Reveal = tbld_cb_reveal;
@@ -1686,10 +2244,24 @@ function tbld_init(param)
 	dw.Reveal = tbld_cb_dw_reveal;
 	pg_reveal_register_triggerer(dw);
 	dw.display_for = 1;
+	dw.is_visible = 0;
 	ifc_init_widget(dw);
 	var ie = dw.ifcProbeAdd(ifEvent);
 	ie.Add("Open");
 	ie.Add("Close");
+	var iv = dw.ifcProbeAdd(ifValue);
+	iv.Add("display_for", tbld_get_displayfor, tbld_set_displayfor);
+	dw.showcontainer = tbld_detail_showcontainer;
+	}
+
+    // Easing function for touch drag
+    if (!$.easing.tostop)
+	{
+	$.easing.tostop = function(x,t,b,c,d)
+	    {
+	    var pct = t/d;
+	    return b + c*Math.pow(pct,1/4);
+	    }
 	}
 
     t.InitBH();
@@ -1705,6 +2277,67 @@ function tbld_init_bh()
     ndm.css({"top":((this.param_height - ndm.height())/2) + "px", "color":wgtrGetServerProperty(this,"nodata_message_textcolor") });
     }
 
+function tbld_touchstart(e)
+    {
+    if (!e.layer || !e.layer.table) return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    var t = e.layer.table;
+    var touches = e.Dom2Event.changedTouches;
+    tbld_mcurrent = t;
+    for(var i=0; i<touches.length; i++)
+	tbld_touches.push({pageX:touches[i].pageX, pageY:touches[i].pageY, table:t, identifier:touches[i].identifier, ts:pg_timestamp()});
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tbld_touchmove(e)
+    {
+    var touches = e.Dom2Event.changedTouches;
+    for(var i=0; i<touches.length; i++)
+	{
+	for(var j=0; j<tbld_touches.length; j++)
+	    {
+	    if (tbld_touches[j].identifier == touches[i].identifier)
+		{
+		var t = tbld_touches[j].table;
+		if (tbld_touches[j].pageY)
+		    {
+		    var ydiff = touches[i].pageY - tbld_touches[j].pageY;
+		    var new_ts = pg_timestamp();
+		    tbld_touches[j].speed = ydiff / (new_ts - tbld_touches[j].ts + 1);
+		    tbld_touches[j].ts = new_ts;
+		    tbld_touches[j].pageY = touches[i].pageY;
+		    t.Scroll(t.scroll_y + ydiff, false);
+		    }
+		}
+	    }
+	}
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tbld_touchend(e)
+    {
+    //tbld_touchmove(e);
+    var touches = e.Dom2Event.changedTouches;
+    for(var i=0; i<touches.length; i++)
+	{
+	for(var j=0; j<tbld_touches.length; j++)
+	    {
+	    if (tbld_touches[j].identifier == touches[i].identifier)
+		{
+		var t = tbld_touches[j].table;
+		t.Scroll(t.scroll_y + tbld_touches[j].speed * 200, "tostop");
+		tbld_touches.splice(j, 1);
+		break;
+		}
+	    }
+	}
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+function tbld_touchcancel(e)
+    {
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
 function tbld_mouseover(e)
     {
     var ly = e.layer;
@@ -1717,14 +2350,15 @@ function tbld_mouseover(e)
 	    if (tbld_mcurrent && tbld_mcurrent != t)
 		{
 		tbld_mcurrent.has_mouse = false;
-		$(tbld_mcurrent.scrollbar).stop(false, true);
-		$(tbld_mcurrent.scrollbar).animate({"opacity": (tbld_mcurrent.thumb_height == tbld_mcurrent.thumb_avail)?0.0:(tbld_mcurrent.has_mouse?1.0:0.33)}, 150, "linear", null);
+		if (tbld_mcurrent.demand_scrollbar)
+		    {
+		    tbld_mcurrent.UpdateScrollbar();
+		    }
 		}
 	    tbld_mcurrent = t;
 	    if (t.demand_scrollbar)
 		{
-		$(t.scrollbar).stop(false, true);
-		$(t.scrollbar).animate({"opacity": (t.thumb_height == t.thumb_avail)?0.0:(t.has_mouse?1.0:0.33)}, 150, "linear", null);
+		t.UpdateScrollbar();
 		}
 	    }
         if(ly.subkind=='cellborder')
@@ -1736,7 +2370,8 @@ function tbld_mouseover(e)
 	    var t = ly.table;
 	    if (ly.firstChild && ly.firstChild.firstChild)
 		{
-		var cell_width = getdocWidth(ly.firstChild.firstChild);
+		//var cell_width = getdocWidth(ly.firstChild.firstChild);
+		var cell_width = $(ly.firstChild.firstChild).width();
 		if (t.colsep > 0 || t.dragcols)
 		    cell_width += (t.bdr_width*2 + t.colsep);
 		if (t.cols[ly.colnum].width < cell_width && ly.data)
@@ -1805,6 +2440,138 @@ function tbld_wheel(e)
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
+function tbld_end_ttf()
+    {
+    this.ttf_timeout = null;
+    this.ttf_string = '';
+    }
+
+function tbld_check_highlight(cell, str)
+    {
+    // Title data
+    if (cell.titledata)
+	{
+	var pos = cell.titledata.toLowerCase().indexOf(this.ttf_string.toLowerCase());
+	if (pos >= 0)
+	    {
+	    var sel = window.getSelection();
+	    var r = document.createRange();
+	    r.selectNodeContents(cell.el_title);
+	    r.setStart(cell.el_title.firstChild.firstChild, pos);
+	    r.setEnd(cell.el_title.firstChild.firstChild, pos + this.ttf_string.length);
+	    sel.removeAllRanges();
+	    sel.addRange(r);
+	    return true;
+	    }
+	}
+
+    // Main data
+    if (cell.data)
+	{
+	var pos = cell.data.toLowerCase().indexOf(this.ttf_string.toLowerCase());
+	if (pos >= 0)
+	    {
+	    var sel = window.getSelection();
+	    var r = document.createRange();
+	    r.selectNodeContents(cell.el_text);
+	    r.setStart(cell.el_text.firstChild.firstChild, pos);
+	    r.setEnd(cell.el_text.firstChild.firstChild, pos + this.ttf_string.length);
+	    sel.removeAllRanges();
+	    sel.addRange(r);
+	    return true;
+	    }
+	}
+
+    return false;
+    }
+
+function tbld_keydown(e)
+    {
+    e = e.Dom2Event;
+    var t = tbld_mcurrent;
+    if (t && !window.eb_current && !window.tx_current)
+	{
+	var ttf = wgtrGetServerProperty(t, 'type_to_find');
+	if (ttf == 'yes' || ttf == 1 || ttf == 'on' || ttf == 'true')
+	    ttf = true;
+	else
+	    ttf = false;
+	if (e.keyCode == e.DOM_VK_HOME || e.key == 'Home')
+	    {
+	    var target_row = t.rows[t.rows.first];
+	    var target_y = t.vis_height - getRelativeY(target_row);
+	    t.Scroll(target_y, true);
+	    }
+	else if (e.keyCode == e.DOM_VK_END || e.key == 'End')
+	    {
+	    var target_row = t.rows[t.rows.last];
+	    var target_y = 0 - (getRelativeY(target_row) + $(target_row).height() + t.cellvspacing*2);
+	    t.Scroll(target_y, true);
+	    }
+	else if (e.keyCode == e.DOM_VK_PAGE_UP || e.key == 'PageUp')
+	    {
+	    var target_row = t.rows[t.rows.firstvis];
+	    var target_y = t.vis_height - getRelativeY(target_row);
+	    t.Scroll(target_y, true);
+	    }
+	else if (e.keyCode == e.DOM_VK_PAGE_DOWN || e.key == 'PageDown' || (e.key == ' ' && !t.ttf_string))
+	    {
+	    var target_row = t.rows[t.rows.lastvis];
+	    var target_y = 0 - (getRelativeY(target_row) + $(target_row).height() + t.cellvspacing*2);
+	    t.Scroll(target_y, true);
+	    }
+	else if (e.keyCode == e.DOM_VK_UP || e.key == 'ArrowUp')
+	    {
+	    t.BringIntoView(t.rows.firstvis-1);
+	    }
+	else if (e.keyCode == e.DOM_VK_DOWN || e.key == 'ArrowDown')
+	    {
+	    t.BringIntoView(t.rows.lastvis+1);
+	    }
+	else if (ttf && e.which)
+	    {
+	    if (t.ttf_timeout)
+		pg_delsched(t.ttf_timeout);
+	    t.ttf_timeout = pg_addsched_fn(t, "EndTTF", [], 800);
+	    var old_str = t.ttf_string;
+	    if (e.which == 8)
+		t.ttf_string = t.ttf_string.substring(0, t.ttf_string.length-1);
+	    else
+		t.ttf_string += String.fromCharCode(e.which);
+	    var found = false;
+	    if (t.ttf_string)
+		{
+		for(var i = t.rows.first; i<= t.rows.last && !found; i++)
+		    {
+		    var row = t.rows[i];
+		    for(var c in row.cols)
+			{
+			var col = row.cols[c];
+			if (t.cols[col.colnum].type != 'check' && t.cols[col.colnum].type != 'image' && t.cols[col.colnum].type != 'checkbox')
+			    {
+			    if (t.CheckHighlight(col, t.ttf_string))
+				{
+				t.BringIntoView(i);
+				found = true;
+				break;
+				}
+			    }
+			}
+		    }
+		if (!found)
+		    {
+		    t.ttf_string = old_str;
+		    }
+		}
+	    else
+		{
+		window.getSelection().removeAllRanges();
+		}
+	    }
+	}
+    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
 function tbld_contextmenu(e)
     {
     var ly = e.layer;
@@ -1824,6 +2591,7 @@ function tbld_contextmenu(e)
 		    event.ColumnValue = orig_ly.data;
 		    }
 		event.recnum = ly.rownum;
+		event.selected = ly.table.selected;
 		event.data = new Object();
 		event.X = e.pageX;
 		event.Y = e.pageY;
@@ -1849,6 +2617,10 @@ function tbld_contextmenu(e)
 function tbld_mousedown(e)
     {
     var ly = e.layer;
+    var toggle_row = false;
+    var canceled = false;
+    var moved = false;
+    var selected = (ly.table?ly.table.selected:((ly.row && ly.row.table)?ly.row.table.selected:null));
     if(ly.kind && ly.kind=='tabledynamic')
         {
         if(ly.subkind=='cellborder')
@@ -1881,22 +2653,18 @@ function tbld_mousedown(e)
 		{
 		if(ly.table.osrc.CurrentRecord!=ly.rownum)
 		    {
-		    ly.table.initselect = 1;
+		    toggle_row = true;
+		    //ly.table.initselect = 1;
 		    if(ly.rownum && ly.disp_mode != 'newselect')
 			{
+			moved = true;
 			ly.crname = null;
-			ly.table.osrc.MoveToRecord(ly.rownum);
+			ly.table.OsrcRequest('MoveToRecord', {rownum:ly.rownum});
 			}
 		    }
-		else if (ly.table.initselect !== 1)
+		else if (ly.table.initselect !== 1 || ly.table.initselect !== ly.table.initselect_orig)
 		    {
-		    ly.table.initselect = 1;
-		    ly.table.RedrawAll(null, true);
-		    }
-		else if (ly.table.initselect !== ly.table.initselect_orig)
-		    {
-		    ly.table.initselect = ly.table.initselect_orig;
-		    ly.table.RedrawAll(null, true);
+		    toggle_row = true;
 		    }
 		}
 	    if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("Click"))
@@ -1909,7 +2677,9 @@ function tbld_mousedown(e)
 		    }
 		event.Caller = ly.table;
 		event.recnum = ly.rownum;
+		event.selected = selected;
 		event.data = new Object();
+		event.checkbox = 0;
 		var rec=ly.table.osrc.replica[ly.rownum];
 		if(rec)
 		    {
@@ -1921,7 +2691,22 @@ function tbld_mousedown(e)
 			}
 		    }
 		ly.table.dta=event.data;
-		cn_activate(ly.table,'Click', event);
+		if (e.target && e.target.src && e.target.src.indexOf('/sys/images/checkbox_unchecked.png') >= 0)
+		    {
+		    event.checkbox = 1;
+		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Check', event)))
+			canceled = true;
+		    }
+		if (!canceled && e.target && e.target.src && e.target.src.indexOf('/sys/images/checkbox_checked.png') >= 0)
+		    {
+		    event.checkbox = 2;
+		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Uncheck', event)))
+			canceled = true;
+		    }
+		if (!canceled && isCancel(ly.table.ifcProbe(ifEvent).Activate('Click', event)))
+		    canceled = true;
+		if (canceled)
+		    toggle_row = false;
 		}
 	    if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("DblClick"))
 		{
@@ -1944,6 +2729,7 @@ function tbld_mousedown(e)
 			}
 		    event.Caller = ly.table;
 		    event.recnum = ly.rownum;
+		    event.selected = selected;
 		    event.data = new Object();
 		    var rec=ly.table.osrc.replica[ly.rownum];
 		    if(rec)
@@ -1956,7 +2742,22 @@ function tbld_mousedown(e)
 			    }
 			}
 		    ly.table.dta=event.data;
-		    cn_activate(ly.table,'DblClick', event);
+		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('DblClick', event)))
+			toggle_row = false;
+		    }
+		}
+	    if (toggle_row)
+		{
+		if (ly.table.initselect !== 1 || moved)
+		    {
+		    ly.table.initselect = 1;
+		    ly.table.RedrawAll(null, true);
+		    }
+		else if (ly.table.initselect !== ly.table.initselect_orig)
+		    {
+		    if (ly.table.allowdeselect)
+			ly.table.initselect = ly.table.initselect_orig;
+		    ly.table.RedrawAll(null, true);
 		    }
 		}
 	    }
@@ -1966,8 +2767,10 @@ function tbld_mousedown(e)
             for(var i in ly.row.table.osrc.orderobject)
                 neworder[i]=ly.row.table.osrc.orderobject[i];
             
-            var colname=ly.row.table.cols[ly.colnum].fieldname;
-                /** check for the this field already in the sort criteria **/
+            var colname=ly.row.table.cols[ly.colnum].sort_fieldname;
+	    if (!colname)
+		colname=ly.row.table.cols[ly.colnum].fieldname;
+	    /** check for the this field already in the sort criteria **/
             if(':"'+colname+'" asc'==neworder[0])
                 neworder[0]=':"'+colname+'" desc';
             else if (':"'+colname+'" desc'==neworder[0])
@@ -2001,8 +2804,7 @@ function tbld_mousemove(e)
 	    t.has_mouse = false;
 	    if (t.demand_scrollbar)
 		{
-		$(t.scrollbar).stop(false, true);
-		$(t.scrollbar).animate({"opacity": (t.thumb_height == t.thumb_avail)?0.0:(t.has_mouse?1.0:0.33)}, 150, "linear", null);
+		t.UpdateScrollbar();
 		}
 	    }
 	}
@@ -2012,7 +2814,7 @@ function tbld_mousemove(e)
         var t=l.row.table;
         var move = e.pageX - tbldb_start;
         tbldb_start += move;
-        var realmove = l.ChangeWidth(move);
+        var realmove = l.ChangeWidth(move, true);
 	tbldb_start += (realmove-move);
 	return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         }
@@ -2068,7 +2870,8 @@ function tbld_mouseup(e)
 		maxw += t.innerpadding*2;
 		if (t.colsep > 0 || t.dragcols)
 		    maxw += (t.bdr_width*2 + t.colsep);
-                l.ChangeWidth(maxw-t.cols[l.colnum].width);
+                l.ChangeWidth(maxw-t.cols[l.colnum].width, true);
+		t.ReflowWidth();
                 }
             else
                 {

@@ -33,6 +33,9 @@
 /************************************************************************/
 
 
+#ifndef __builtin_expect
+#define __builtin_expect(e,c) (e)
+#endif
 
 #define MLX_EOF		(-1)
 #define MLX_ERROR	(-2)
@@ -191,7 +194,7 @@ mlx_internal_CheckBuffer(pLxSession s, int offset)
     int newcnt;
 
 	/** no data in input? **/
-	if (s->InpCnt <= offset)
+	if (__builtin_expect(s->InpCnt <= offset, 0))
 	    {
 	    if (!(s->Flags & MLX_F_NOFILE))
 		{
@@ -281,12 +284,12 @@ mlxPeekChar(pLxSession s, int offset)
     int v, ch;
 
 	v = mlx_internal_CheckBuffer(s, offset);
-	if (v < 0) return MLX_ERROR;
-	if (v <= offset) return MLX_EOF;
+	if (__builtin_expect(v < 0, 0)) return MLX_ERROR;
+	if (__builtin_expect(v <= offset, 0)) return MLX_EOF;
 
 	ch = (int)((unsigned char)(s->InpPtr[offset]));
 
-	if (!(s->Flags & MLX_F_ALLOWNUL) && ch == 0)
+	if (__builtin_expect(!(s->Flags & MLX_F_ALLOWNUL) && ch == 0, 0))
 	    {
 	    mssError(1,"MLX","Invalid NUL character in input data stream");
 	    return MLX_ERROR;

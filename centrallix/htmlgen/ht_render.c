@@ -195,14 +195,14 @@ htr_internal_ProcessUserAgent(const pStructInf node, const pHtCapabilities paren
  ***     as the cx__capabilities object (for javascript)
  ***/
 void
-htr_internal_writeCxCapabilities(pHtSession s, pFile out)
+htr_internal_writeCxCapabilities(pHtSession s)
     {
-    fdWrite(out,"    cx__capabilities = {};\n",27,0,FD_U_PACKET);
+    htrWrite(s,"    cx__capabilities = {};\n",27);
 #define PROCESS_CAP_OUT(attr) \
-    fdWrite(out,"    cx__capabilities.",21,0,FD_U_PACKET); \
-    fdWrite(out, # attr ,strlen( # attr ),0,FD_U_PACKET); \
-    fdWrite(out," = ",3,0,FD_U_PACKET); \
-    fdWrite(out,(s->Capabilities.attr?"1;\n":"0;\n"),3,0,FD_U_PACKET);
+    htrWrite(s,"    cx__capabilities.",21); \
+    htrWrite(s, # attr ,strlen( # attr )); \
+    htrWrite(s," = ",3); \
+    htrWrite(s,(s->Capabilities.attr?"1;\n":"0;\n"),3);
 
     PROCESS_CAP_OUT(Dom0NS); //true when navigator is netscape navigator
     PROCESS_CAP_OUT(Dom0IE); //true when navigator is IE
@@ -453,6 +453,17 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 	    {
 	    mssError(1,"HTR","Unknown widget object type '%s'", widget->Type);
 	    return -1;
+	    }
+
+	/** Has this driver been used this session yet? **/
+	if (xhLookup(&session->UsedDrivers, drv->WidgetName) == NULL)
+	    {
+	    xhAdd(&session->UsedDrivers, drv->WidgetName, (void*)drv);
+	    if (drv->Setup)
+		{
+		if (drv->Setup(session) < 0)
+		    return -1;
+		}
 	    }
 
 	/** Crossing a namespace boundary? **/
@@ -1077,12 +1088,12 @@ htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype)
  *** in a number of different ways in the actual user agent itself.
  ***/
 int
-htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, const char* fmt, ...)
+htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, char* cls, const char* fmt, ...)
     {
     va_list va;
 
 	/** Add the opening tag **/
-	htrAddBodyItemLayerStart(s, flags, id, cnt);
+	htrAddBodyItemLayerStart(s, flags, id, cnt, cls);
 
 	/** Add the content **/
 	va_start(va, fmt);
@@ -1104,7 +1115,7 @@ htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, const char* f
  *** PARAMETER WHICH IS A FORMAT STRING FOR THE LAYER'S ID!!!
  ***/
 int
-htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt)
+htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* cls)
     {
     char* starttag;
     char id_sbuf[64];
@@ -1123,7 +1134,7 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt)
 
 	/** Add it. **/
 	qpfPrintf(NULL, id_sbuf,sizeof(id_sbuf),id,cnt);
-	htrAddBodyItem_va(s, "<%STR id=\"%STR&HTE\">", starttag, id_sbuf);
+	htrAddBodyItem_va(s, "<%STR %[class=\"%STR&HTE\" %]id=\"%STR&HTE\">", starttag, cls != NULL, cls, id_sbuf);
 
     return 0;
     }
@@ -1288,7 +1299,7 @@ htrRenderSubwidgets(pHtSession s, pWgtrNode widget, int zlevel)
 
 	/** Open the query for subwidgets **/
 	/*
-	qy = objOpenQuery(widget_obj, "", NULL, NULL, NULL);
+	qy = objOpenQuery(widget_obj, "", NULL, NULL, NULL, 0);
 	if (qy)
 	    {
 	    while((sub_widget_obj = objQueryFetch(qy, O_RDONLY)))
@@ -1313,7 +1324,7 @@ htrRenderSubwidgets(pHtSession s, pWgtrNode widget, int zlevel)
  *** then an include statement is generated in any event.
  ***/
 int
-htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
+htr_internal_GenInclude(pHtSession s, char* filename)
     {
     pStruct c_param;
     pObject include_file;
@@ -1330,13 +1341,13 @@ htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
 	    include_file = objOpen(s->ObjSession, filename, O_RDONLY, 0600, "application/x-javascript");
 	    if (include_file)
 		{
-		fdPrintf(output, "<SCRIPT language=\"javascript\">\n// Included from: %s\n\n", filename);
+		htrQPrintf(s, "<script language=\"javascript\">\n// Included from: %STR&HTE\n\n", filename);
 		while((rcnt = objRead(include_file, buf, sizeof(buf), 0, 0)) > 0)
 		    {
-		    fdWrite(output, buf, rcnt, 0, FD_U_PACKET);
+		    htrWrite(s, buf, rcnt);
 		    }
 		objClose(include_file);
-		fdPrintf(output, "\n</SCRIPT>\n");
+		htrQPrintf(s, "\n</script>\n");
 		return 0;
 		}
 	    }
@@ -1357,7 +1368,7 @@ htr_internal_GenInclude(pFile output, pHtSession s, char* filename)
 	if (slash)
 	    {
 	    *slash = '\0';
-	    fdQPrintf(output, "\n<SCRIPT language=\"javascript\" src=\"%STR%[/CXDC:%STR%]/%STR\"></SCRIPT>\n", path, buf[0], buf, slash+1);
+	    htrQPrintf(s, "\n<script language=\"javascript\" src=\"%STR%[/CXDC:%STR%]/%STR\"></script>\n", path, buf[0], buf, slash+1);
 	    }
 
     return 0;
@@ -1591,6 +1602,40 @@ htr_internal_FreeNamespace(pHtNamespace ns)
     }
 
 
+/*** htrWrite - write data to the output stream
+ ***/
+int
+htrWrite(pHtSession s, char* buf, int len)
+    {
+    if (len < 0)
+	len = strlen(buf);
+    return s->StreamWrite(s->Stream, buf, len, 0, 0);
+    }
+
+
+/*** htrQPrintf - write formatted data to output stream
+ ***/
+int
+htrQPrintf(pHtSession s, char* fmt, ...)
+    {
+    pXString xs;
+    va_list va;
+    int rval;
+   
+	/** print to xstring first, then output via htrWrite() **/
+	xs = xsNew();
+	if (!xs)
+	    return -1;
+	va_start(va, fmt);
+	xsQPrintf_va(xs, fmt, va);
+	va_end(va);
+	rval = htrWrite(s, xsString(xs), -1);
+	xsFree(xs);
+
+    return rval;
+    }
+
+
 /*** htrRender - generate an HTML document given the app structure subtree
  *** as an open ObjectSystem object.
  ***/
@@ -1600,7 +1645,7 @@ htr_internal_FreeNamespace(pHtNamespace ns)
     understanding of returned infrastructure is needed first.
  **/
 int
-htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info)
+htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info)
     {
     pHtSession s;
     int i,n,j,k,cnt,cnt2;
@@ -1613,6 +1658,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
     char* agent = NULL;
     char* classname = NULL;
     int rval;
+    pXString err_xs;
 
 	/** What UA is on the other end of the connection? **/
 	agent = (char*)mssGetParam("User-Agent");
@@ -1634,6 +1680,9 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	s->Namespace->HasScriptInits = 1;
 	strtcpy(s->Namespace->DName, wgtrGetRootDName(tree), sizeof(s->Namespace->DName));
 	s->IsDynamic = 1;
+	s->Stream = stream;
+	s->StreamWrite = stream_write;
+	xhInit(&s->UsedDrivers, 257, 0);
 
 	/** Parent container name specified? I (Seth) think that this
 	    GET parameter is only used when a component is
@@ -1770,53 +1819,60 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 #endif
 
 
+	/** Could not render? **/
 	if (rval < 0)
 	    {
-	    fdPrintf(output, "<HTML><HEAD><TITLE>Error</TITLE></HEAD><BODY bgcolor=\"white\"><h1>An Error occured while attempting to render this document</h1><br><pre>");
-	    mssPrintError(output);
+	    err_xs = xsNew();
+	    if (err_xs)
+		{
+		mssStringError(err_xs);
+		htrQPrintf(s, "<html><head><title>Error</title></head><body bgcolor=\"white\"><h1>An Error occured while attempting to render this document</h1><br><pre>%STR&HTE</pre></body></html>\r\n", xsString(err_xs));
+		xsFree(err_xs);
+		}
 	    }
 	
 	/** Output the DOCTYPE for browsers supporting HTML 4.0 -- this will make them use HTML 4.0 Strict **/
 	/** FIXME: should probably specify the DTD.... **/
 	if(s->Capabilities.HTML40 && !s->Capabilities.Dom0IE)
-	    fdWrite(output, "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">\n",91,0,FD_U_PACKET);
+	    htrWrite(s, "<!doctype html>\n\n", -1);
 
 	/** Write the HTML out... **/
-	snprintf(sbuf, HT_SBUF_SIZE, "<!--\nGenerated by Centrallix v%s (http://www.centrallix.org)\n"
-				     "(c) 1998-2006 by LightSys Technology Services, Inc.\n\n", PACKAGE_VERSION);
-	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
-	snprintf(sbuf, HT_SBUF_SIZE, "This DHTML document contains Javascript and other DHTML\n"
-				     "generated from Centrallix which is licensed under the\n"
-				     "GNU GPL (http://www.gnu.org/licenses/gpl.txt).  Any copying\n");
-	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
-	snprintf(sbuf, HT_SBUF_SIZE, "modifying, or redistributing of this generated code falls\n"
-				     "under the restrictions of the GPL.\n"
-				     "-->\n");
-	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
-	fdWrite(output, "<HTML>\n<HEAD>\n",14,0,FD_U_PACKET);
-	snprintf(sbuf, HT_SBUF_SIZE, "    <META NAME=\"Generator\" CONTENT=\"Centrallix v%s\">\n", cx__version);
-	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
-	fdPrintf(output, "    <META NAME=\"Pragma\" CONTENT=\"no-cache\">\n");
+	htrQPrintf(s,	"<!--\n"
+			"Generated by Centrallix/%STR (http://www.centrallix.org)\n"
+			"Centrallix is (c) 1998-2017 by LightSys Technology Services, Inc.\n"
+			"and is free software, licensed under the GNU GPL version 2, or\n"
+			"at your option any later version.  This software is provided\n"
+			"with ABSOLUTELY NO WARRANTY, NOT EVEN THE IMPLIED WARRANTIES\n"
+			"OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.\n"
+			"-->\n\n"
+			, cx__version);
 
-	fdWrite(output, "    <STYLE TYPE=\"text/css\">\n", 28, 0, FD_U_PACKET);
+	htrQPrintf(s,	"<html>\n"
+			"<head>\n"
+			"    <meta name=\"generator\" content=\"Centrallix/%STR\">\n"
+			"    <meta name=\"pragma\" content=\"no-cache\">\n"
+			"    <meta name=\"referrer\" content=\"same-origin\">\n"
+			, cx__version);
+
+	htrWrite(s, "    <style type=\"text/css\">\n", -1);
 	/** Write the HTML stylesheet items. **/
 	for(i=0;i<s->Page.HtmlStylesheet.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.HtmlStylesheet.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
-	fdWrite(output, "    </STYLE>\n", 13, 0, FD_U_PACKET);
+	htrWrite(s, "    </style>\n", -1);
 	/** Write the HTML header items. **/
 	for(i=0;i<s->Page.HtmlHeader.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.HtmlHeader.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
 
 	/** Write the script globals **/
-	fdWrite(output, "<SCRIPT language=\"javascript\">\n\n\n", 33,0,FD_U_PACKET);
+	htrWrite(s, "<script language=\"javascript\">\n\n\n", -1);
 	for(i=0;i<s->Page.Globals.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Globals.Items[i]);
@@ -1824,27 +1880,27 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 		qpfPrintf(NULL, sbuf,HT_SBUF_SIZE,"if (typeof %STR&SYM == 'undefined') var %STR&SYM = %STR;\n", sv->Name, sv->Name, sv->Value);
 	    else
 		qpfPrintf(NULL, sbuf,HT_SBUF_SIZE,"var %STR&SYM;\n", sv->Name);
-	    fdWrite(output, sbuf, strlen(sbuf),0,FD_U_PACKET);
+	    htrWrite(s, sbuf, -1);
 	    }
 
 	/** Write the includes **/
-	fdWrite(output, "\n</SCRIPT>\n\n", 12,0,FD_U_PACKET);
+	htrWrite(s, "\n</script>\n\n", -1);
 
 	/** include ht_render.js **/
-	htr_internal_GenInclude(output, s, "/sys/js/ht_render.js");
+	htr_internal_GenInclude(s, "/sys/js/ht_render.js");
 
 	/** include browser-specific geometry js **/
 	if(s->Capabilities.Dom0IE)
 	    {
-	    htr_internal_GenInclude(output, s, "/sys/js/ht_geom_dom0ie.js");
+	    htr_internal_GenInclude(s, "/sys/js/ht_geom_dom0ie.js");
 	    }
 	else if (s->Capabilities.Dom0NS)
 	    {
-	    htr_internal_GenInclude(output, s, "/sys/js/ht_geom_dom0ns.js");
+	    htr_internal_GenInclude(s, "/sys/js/ht_geom_dom0ns.js");
 	    }
 	else if (s->Capabilities.Dom1HTML)
 	    {
-	    htr_internal_GenInclude(output, s, "/sys/js/ht_geom_dom1html.js");
+	    htr_internal_GenInclude(s, "/sys/js/ht_geom_dom1html.js");
 	    }
 	else
 	    {
@@ -1854,20 +1910,20 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	for(i=0;i<s->Page.Includes.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Includes.Items[i]);
-	    htr_internal_GenInclude(output, s, sv->Name);
+	    htr_internal_GenInclude(s, sv->Name);
 	    }
-	fdWrite(output, "<SCRIPT language=\"javascript\">\n\n", 32,0,FD_U_PACKET);
+	htrWrite(s, "<script language=\"javascript\">\n\n", -1);
 
 	/** Write the script functions **/
 	for(i=0;i<s->Page.Functions.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Functions.Items[i]);
-	    fdWrite(output, sv->Value, strlen(sv->Value),0,FD_U_PACKET);
+	    htrWrite(s, sv->Value, -1);
 	    }
 
 
 	/** Write the event capture lines **/
-	fdPrintf(output,"\nfunction events_%s()\n    {\n",s->Namespace->DName);
+	htrQPrintf(s,"\nfunction events_%STR()\n    {\n",s->Namespace->DName);
 	cnt = xaCount(&s->Page.EventHandlers);
 	strcpy(sbuf,"    if(window.Event)\n        htr_captureevents(");
 	for(i=0;i<cnt;i++)
@@ -1878,7 +1934,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    strcat(sbuf,e->DomEvent);
 	    }
 	strcat(sbuf,");\n");
-	fdWrite(output, sbuf, strlen(sbuf), 0, FD_U_PACKET);
+	htrWrite(s, sbuf, -1);
 	for(i=0;i<cnt;i++)
 	    {
 	    e = (pHtDomEvent)xaGetItem(&s->Page.EventHandlers,i);
@@ -1889,89 +1945,87 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    cnt2 = xaCount(&e->Handlers);
 	    for(j=0;j<cnt2;j++)
 		{
-		fdPrintf(output, "    htr_addeventhandler(\"%s\",\"%s\");\n",
+		htrQPrintf(s, "    htr_addeventhandler(%STR&DQUOT,%STR&DQUOT);\n",
 			ename, xaGetItem(&e->Handlers, j));
 		}
 	    if (!strcmp(ename,"mousemove"))
-		fdPrintf(output, "    htr_addeventlistener('%s', document, htr_mousemovehandler);\n",
+		htrQPrintf(s, "    htr_addeventlistener(%STR&DQUOT, document, htr_mousemovehandler);\n",
 			ename);
 	    else
-		fdPrintf(output, "    htr_addeventlistener('%s', document, htr_eventhandler);\n",
+		htrQPrintf(s, "    htr_addeventlistener(%STR&DQUOT, document, htr_eventhandler);\n",
 			ename);
 	    }
 
-	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
+	htrWrite(s,"    }\n",-1);
 
 	/** Write the expression initializations **/
-	fdPrintf(output,"\nfunction expinit_%s()\n    {\n",s->Namespace->DName);
+	htrQPrintf(s,"\nfunction expinit_%STR()\n    {\n",s->Namespace->DName);
 	for(i=0;i<s->Page.HtmlExpressionInit.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.HtmlExpressionInit.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
-	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
+	htrWrite(s,"    }\n",-1);
 
 	/** Write the wgtr declaration **/
-	fdPrintf(output, "\nfunction build_wgtr_%s()\n    {\n",
+	htrQPrintf(s, "\nfunction build_wgtr_%STR()\n    {\n",
 		s->Namespace->DName);
 	for (i=0;i<s->Page.Wgtr.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.Wgtr.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n, 0, FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
-	fdWrite(output, "    }\n", 6, 0, FD_U_PACKET);
+	htrWrite(s, "    }\n", -1);
 
 	/** Write the initialization lines **/
-	fdPrintf(output,"\nfunction startup_%s()\n    {\n", s->Namespace->DName);
-	//fdPrintf(output,"    console.profile();\n");
-	htr_internal_writeCxCapabilities(s,output); //TODO: (by Seth) this really only needs to happen during first-load.
+	htrQPrintf(s,"\nfunction startup_%STR()\n    {\n", s->Namespace->DName);
+	htr_internal_writeCxCapabilities(s); //TODO: (by Seth) this really only needs to happen during first-load.
 
 	for(i=0;i<s->Page.Inits.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.Inits.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
-	fdPrintf(output,"    events_%s();\n", s->Namespace->DName);
-	fdPrintf(output,"    expinit_%s();\n", s->Namespace->DName);
-	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
+	htrQPrintf(s,"    events_%STR();\n", s->Namespace->DName);
+	htrQPrintf(s,"    expinit_%STR();\n", s->Namespace->DName);
+	htrWrite(s,"    }\n",-1);
 
 	/** Write the cleanup lines **/
-	fdWrite(output,"\nfunction cleanup()\n    {\n",26,0,FD_U_PACKET);
+	htrWrite(s,"\nfunction cleanup()\n    {\n",-1);
 	for(i=0;i<s->Page.Cleanups.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.Cleanups.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
-	fdWrite(output,"    }\n",6,0,FD_U_PACKET);
+	htrWrite(s,"    }\n",-1);
 
 
 	/** If the body part is disabled, skip over body section generation **/
 	if (s->DisableBody == 0)
 	    {
 	    /** Write the HTML body params **/
-	    fdWrite(output, "\n</SCRIPT>\n</HEAD>",18,0,FD_U_PACKET);
-	    fdWrite(output, "\n<BODY", 6,0,FD_U_PACKET);
+	    htrWrite(s, "\n</script>\n</head>",-1);
+	    htrWrite(s, "\n<body", -1);
 	    for(i=0;i<s->Page.HtmlBodyParams.nItems;i++)
 	        {
 	        ptr = (char*)(s->Page.HtmlBodyParams.Items[i]);
 	        n = *(int*)ptr;
-	        fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	        htrWrite(s, ptr+8, n);
 	        }
 	    /** work around the Netscape 4.x bug regarding page resizing **/
 	    if(s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
 		{
-		fdWrite(output, " onResize=\"location.reload()\"",29,0,FD_U_PACKET);
+		htrWrite(s, " onResize=\"location.reload()\"",-1);
 		}
-	    /*fdPrintf(output, " onLoad=\"startup();\" onUnload=\"cleanup();\"");*/
-	    fdPrintf(output, ">\n");
+	    htrWrite(s, ">\n", -1);
 	    }
 	else
 	    {
-	    fdWrite(output, "\n</SCRIPT>\n",11,0,FD_U_PACKET);
+	    htrWrite(s, "\n</script>\n",-1);
 	    }
 
 	/** Write the HTML body. **/
@@ -1979,16 +2033,16 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	    {
 	    ptr = (char*)(s->Page.HtmlBody.Items[i]);
 	    n = *(int*)ptr;
-	    fdWrite(output, ptr+8, n,0,FD_U_PACKET);
+	    htrWrite(s, ptr+8, n);
 	    }
 
 	if (s->DisableBody == 0)
 	    {
-	    fdWrite(output, "</BODY>\n</HTML>\n",16,0,FD_U_PACKET);
+	    htrWrite(s, "</body>\n</html>\n",-1);
 	    }
 	else
 	    {
-	    fdWrite(output, "\n</HTML>\n",9,0,FD_U_PACKET);
+	    htrWrite(s, "\n</HTML>\n",-1);
 	    }
 
 	/** Deinitialize the session and page structures **/
@@ -2038,46 +2092,11 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 	for(i=0;i<s->Page.HtmlExpressionInit.nItems;i++) nmFree(s->Page.HtmlExpressionInit.Items[i],2048);
 	xaDeInit(&(s->Page.HtmlExpressionInit));
 
-	/** Clean up the event script structure, which is multi-level. **/
-	/*for(i=0;i<s->Page.EventScripts.Array.nItems;i++)
-	    {
-	    tmp_a = (pHtNameArray)(s->Page.EventScripts.Array.Items[i]);
-	    for(j=0;j<tmp_a->Array.nItems;j++)
-	        {
-	        tmp_a2 = (pHtNameArray)(tmp_a->Array.Items[j]);
-		for(k=0;k<tmp_a2->Array.nItems;k++)
-		    {
-		    tmp_a3 = (pHtNameArray)(tmp_a2->Array.Items[k]);
-		    for(l=0;l<tmp_a3->Array.nItems;l++)
-		        {
-			nmFree(tmp_a3->Array.Items[l],2048);
-			}
-	            xaDeInit(&(tmp_a3->Array));
-	            xhRemove(&(tmp_a2->HashTable),tmp_a3->Name);
-		    nmFree(tmp_a3,sizeof(HtNameArray));
-		    }
-	        xaDeInit(&(tmp_a2->Array));
-		xhDeInit(&(tmp_a2->HashTable));
-	        xhRemove(&(tmp_a->HashTable),tmp_a2->Name);
-	        nmFree(tmp_a2,sizeof(HtNameArray));
-		}
-	    xaDeInit(&(tmp_a->Array));
-	    xhDeInit(&(tmp_a->HashTable));
-	    xhRemove(&(s->Page.EventScripts.HashTable),tmp_a->Name);
-	    nmFree(tmp_a,sizeof(HtNameArray));
-	    }
-	xhDeInit(&(s->Page.EventScripts.HashTable));
-	xaDeInit(&(s->Page.EventScripts.Array));*/
 	cnt = xaCount(&s->Page.EventHandlers);
 	for(i=0;i<cnt;i++)
 	    {
 	    e = (pHtDomEvent)xaGetItem(&s->Page.EventHandlers,i);
 	    /** these must all be string constants; no need to free **/
-	    /*cnt2 = xaCount(&e->Handlers);
-	    for(j=0;j<cnt2;j++)
-		{
-		nmSysFree((char*)xaGetItem(&e->Handlers, j));
-		}*/
 	    xaDeInit(&e->Handlers);
 	    nmFree(e, sizeof(HtDomEvent));
 	    }
@@ -2089,6 +2108,7 @@ htrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtr
 
 	htr_internal_FreeDMPrivateData(tree);
 
+	xhDeInit(&s->UsedDrivers);
 	nmFree(s,sizeof(HtSession));
 
     return 0;
@@ -2106,6 +2126,7 @@ htrAllocDriver()
 	/** Allocate the driver structure **/
 	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
 	if (!drv) return NULL;
+	memset(drv, 0, sizeof(HtDriver));
 
 	/** Init some of the basic array structures **/
 	xaInit(&(drv->PosParams),16);
@@ -2113,6 +2134,7 @@ htrAllocDriver()
 	xaInit(&(drv->Events),16);
 	xaInit(&(drv->Actions),16);
 	xaInit(&(drv->PseudoTypes), 4);
+
     return drv;
     }
 

@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtlexer.h"
+#include "cxss/credentials_mgr.h"
 #include "cxss/cxss.h"
 
 /************************************************************************/
@@ -55,6 +56,11 @@ cxssInitialize()
 
 	/** Initialize the entropy pool **/
 	err = cxss_internal_InitEntropy(CXSS_ENTROPY_SIZE);
+        if (err < 0) return err;
+
+        /** Initialize credentials manager **/
+        err = cxssCredentialsManagerInit();
+        if (err < 0) return err;
 
     return err;
     }

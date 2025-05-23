@@ -85,7 +85,8 @@ typedef struct _POT
 typedef struct _PTS
     {
     int			FontID;			/* ID from PRTMGMT.FontList mapping */
-    int			FontSize;		/* point size of font */
+    double		FontSize;		/* point size of font */
+    double		MinFontSize;		/* size of font if down-scaling to fit */
     int			Attr;			/* PRT_OBJ_A_xxx */
     int			Color;			/* 0x00RRGGBB */
     }
@@ -121,6 +122,7 @@ typedef struct _POS
     double		X;			/* Relative X position to container origin */
     double		Y;			/* Relative Y position to container origin */
     double		YBase;			/* Relative Y baseline to the object's Y position */
+    int			Z;			/* Z value (layering order, higher values are above) */
     double		Width;			/* Width of object */
     double		Height;			/* Height of object */
     double		ConfigWidth;		/* initially configured width of object */
@@ -136,8 +138,10 @@ typedef struct _POS
     double		LineHeight;		/* Height of lines... */
     double		ConfigLineHeight;	/* Configured height of lines, negative if unset. */
     unsigned char*	Content;		/* Text content or image bitmap */
+    char*		URL;			/* Hyperlink for the content */
     int			ContentSize;		/* total memory allocated for the content */
     char		DataType;		/* type of data displayed in this object (Hints) */
+    int                 (*Finalize)();          /* cleanup when destroying object */
     }
     PrtObjStream, *pPrtObjStream;
 
@@ -180,8 +184,9 @@ typedef struct _PFM
     char		Name[32];
     int			Priority;
     void*		(*Probe)();
+    char*		(*GetOutputType)();
     int			(*Generate)();
-    int			(*GetNearestFontSize)();
+    double		(*GetNearestFontSize)();
     void		(*GetCharacterMetric)();
     double		(*GetCharacterBaseline)();
     int			(*Close)();
@@ -195,19 +200,21 @@ typedef struct _PD
     int			Magic;
     char		Name[32];
     char		ContentType[64];
+    int			Flags;
     void*		(*Open)();
     int			(*Close)();
     pXArray		(*GetResolutions)();
     int			(*SetResolution)();
     int			(*SetPageGeom)();
     int			(*SetTextStyle)();
-    int			(*GetNearestFontSize)();
+    double		(*GetNearestFontSize)();
     void		(*GetCharacterMetric)();
     double		(*GetCharacterBaseline)();
     int			(*SetHPos)();
     int			(*SetVPos)();
     int			(*WriteText)();
     double		(*WriteRasterData)();
+    double              (*WriteSvgData)();
     int			(*WriteFF)();
     double		(*WriteRect)();
     }
@@ -229,6 +236,7 @@ typedef struct _PE
 typedef struct _PS
     {
     int			Magic;
+    int			Flags;
     pPrtObjStream	StreamHead;
     double		PageWidth;
     double		PageHeight;
@@ -246,8 +254,8 @@ typedef struct _PS
     char		ImageSysDir[256];
     void*		ImageContext;
     void*		(*ImageOpenFn)();
-    void*		(*ImageWriteFn)();
-    void*		(*ImageCloseFn)();
+    int 		(*ImageWriteFn)();
+    int 		(*ImageCloseFn)();
     XArray		SessionParams;
     }
     PrtSession, *pPrtSession;
@@ -284,7 +292,7 @@ typedef struct _PBD
     PrtBorder, *pPrtBorder;
 
 
-/*** image data header structure ***/
+/*** raster image data structure ***/
 typedef struct _PIH
     {
     int			Width;		    /* raster data width in pixels */
@@ -308,6 +316,23 @@ typedef struct _PIM
     PrtImage, *pPrtImage;
 
 
+/*** svg image data structure ***/
+typedef struct _PSVG
+    {
+    pXString SvgData;                   /* SVG data stored as an XString */
+    }
+    PrtSvg, *pPrtSvg;
+
+
+/*** Named colors ***/
+typedef struct _PC
+    {
+    char		Name[24];
+    int			RGB;		/* 0x00RRGGBB */
+    }
+    PrtColor, *pPrtColor;
+
+
 /*** Print management global structure ***/
 typedef struct _PG
     {
@@ -320,6 +345,8 @@ typedef struct _PG
     XHashTable		HandleTable;
     XHashTable		HandleTableByPtr;
     int			NextHandleID;
+    XArray		Colors;
+    XHashTable		ColorsByName;
     }
     PrtGlobals, *pPrtGlobals;
 
@@ -370,13 +397,14 @@ extern PrtGlobals PRTMGMT;
 #define PRT_OBJ_T_PAGE		    2		/* one page of the document */
 #define PRT_OBJ_T_AREA		    3		/* a textflow-managed area */
 #define PRT_OBJ_T_STRING	    4		/* a string of text content */
-#define PRT_OBJ_T_IMAGE		    5		/* an image/picture */
+#define PRT_OBJ_T_IMAGE		    5		/* a raster image/picture */
 #define PRT_OBJ_T_RECT		    6		/* rectangle, solid color */
 #define PRT_OBJ_T_TABLE		    7		/* tabular-data */
 #define PRT_OBJ_T_TABLEROW	    8		/* table row */
 #define PRT_OBJ_T_TABLECELL	    9		/* table cell */
 #define PRT_OBJ_T_SECTION	    10		/* columnar section */
 #define PRT_OBJ_T_SECTCOL	    11		/* one column in a section. */
+#define PRT_OBJ_T_SVG               12          /* an SVG image/picture */
 
 #define PRT_COLOR_T_MONO	    1		/* black/white only image, 1 bit per pixel */
 #define PRT_COLOR_T_GREY	    2		/* greyscale image, 1 byte per pixel */
@@ -394,6 +422,10 @@ extern PrtGlobals PRTMGMT;
 
 #define PRT_EVENT_T_REFLOW	    0		/* reflow the contents of a container */
 
+#define PRT_DRV_F_NOZ		    1		/* driver does not support Z-layering */
+
+#define PRT_SESS_F_NOZ		    1		/* disable Z-layering */
+
 
 /*** MakeBorder flags ***/
 #define PRT_MKBDR_F_TOP		    1		/* border is 'top' */
@@ -402,6 +434,7 @@ extern PrtGlobals PRTMGMT;
 #define PRT_MKBDR_F_RIGHT	    8
 #define PRT_MKBDR_DIRFLAGS	    (PRT_MKBDR_F_TOP | PRT_MKBDR_F_BOTTOM | PRT_MKBDR_F_LEFT | PRT_MKBDR_F_RIGHT)
 #define PRT_MKBDR_F_MARGINRELEASE   16
+#define PRT_MKBDR_F_OUTSIDE	    32
 
 
 /*** System functions ***/
@@ -434,9 +467,12 @@ int prtSetUnits(pPrtSession s, char* units_name);
 char* prtGetUnits(pPrtSession s);
 double prtGetUnitsRatio(pPrtSession s);
 int prtSetResolution(pPrtSession s, int dpi);
-int prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void* (*open_fn)(), void* (*write_fn)(), void* (*close_fn)());
+int prtGetResolution(pPrtSession s, int* xres, int* yres);
+int prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void* (*open_fn)(), int (*write_fn)(), int (*close_fn)());
 int prtSetSessionParam(pPrtSession s, char* paramname, char* value);
 char* prtGetSessionParam(pPrtSession s, char* paramname, char* defaultvalue);
+int prt_internal_NoZ(pPrtSession s);
+char* prtGetOutputType(pPrtSession s);
 
 /** Internal management functions **/
 pPrtObjStream prt_internal_AllocObj(char* type);
@@ -496,21 +532,33 @@ int prtSetAttr(int handle_id, int attrs);		/* PRT_OBJ_A_xxx */
 int prtGetAttr(int handle_id);
 int prtSetFont(int handle_id, char* fontname);
 char* prtGetFont(int handle_id);
-int prtSetFontSize(int handle_id, int pt_size);
-int prtGetFontSize(int handle_id);
+int prtSetFontSize(int handle_id, double pt_size);
+double prtGetFontSize(int handle_id);
+int prtSetMinFontSize(int handle_id, double pt_size);
+double prtGetMinFontSize(int handle_id);
 int prtSetColor(int handle_id, int font_color);
 int prtGetColor(int handle_id);
+int prtSetBGColor(int handle_id, int bgcolor);
+int prtGetBGColor(int handle_id);
+int prtLookupColor(char* color);
 int prtSetHPos(int handle_id, double x);
 int prtSetVPos(int handle_id, double y);
 int prtSetValue(int handle_id, char* attrname, ...);
 int prtSetMargins(int handle_id, double t, double b, double l, double r);
 pPrtBorder prtAllocBorder(int n_lines, double sep, double pad, ...);
 int prtFreeBorder(pPrtBorder b);
+pPrtImage prtAllocImage(int width, int height, int color_type);
 pPrtImage prtCreateImageFromPNG(int (*read_fn)(), void* read_arg);
-int prtWriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, int w, int h);
+int prt_internal_WriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, int w, int h);
 int prtFreeImage(pPrtImage i);
 int prtImageSize(pPrtImage i);
+pPrtSvg prtReadSvg(int (*read_fn)(), void* read_arg);
+int prt_internal_WriteSvgToFile(int (*write_fn)(), void* write_arg, pPrtSvg svg, int w, int h);
+int prtFreeSvg(pPrtSvg svg);
+int prtSvgSize(pPrtSvg svg);
+pXString prtConvertSvgToEps(pPrtSvg svg, double w, double h);
 int prtSetDataHints(int handle_id, int data_type, int flags);
+int prtSetURL(int handle_id, char* url);
 
 /*** Printing content functions ***/
 int prtWriteImage(int handle_id, pPrtImage imgdata, double x, double y, double width, double height, int flags);

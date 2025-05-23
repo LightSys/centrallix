@@ -9,6 +9,7 @@
 #include "cxlib/xstring.h"
 #include "multiquery.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 
 /************************************************************************/
@@ -116,28 +117,107 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     pObject new_obj = NULL;
     pObject reopen_obj;
     pObject old_newobj;
+    pObject parent_obj = NULL;
     int old_newobj_id;
     int is_started = 0;
     int attrid, astobjid;
     char* attrname;
     ObjData od;
+    pObjData pod;
     int t;
-    int use_attrid;
+    //int use_attrid;
     int hc_rval;
+    handle_t collection;
+    char* sourcetype;
+    pExpression source_exp;
+    int sprval;
+
+	/** Expression? **/
+	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION)
+	    {
+	    source_exp = ((pQueryStructure)qe->QSLinkage)->Expr;
+	    rval = expEvalTree(source_exp, stmt->Query->ObjList);
+	    if (rval < 0)
+		{
+		mssError(0, "MQP", "Error in expression for INSERT");
+		return -1;
+		}
+
+	    /** If NULL, no inserts are done. **/
+	    if (source_exp->Flags & EXPR_F_NULL)
+		{
+		return 0;
+		}
+
+	    /** If non-string, error. **/
+	    if (source_exp->DataType != DATA_T_STRING)
+		{
+		mssError(1, "MQP", "Expression for INSERT must be a string");
+		return -1;
+		}
+
+	    /** If too long, error **/
+	    if (strlen(source_exp->String) >= sizeof(((pQueryStructure)qe->QSLinkage)->Source))
+		{
+		mssError(1, "MQP", "Expression for INSERT resulted in an over-long string");
+		return -1;
+		}
+
+	    strtcpy(((pQueryStructure)qe->QSLinkage)->Source, source_exp->String, sizeof(((pQueryStructure)qe->QSLinkage)->Source));
+	    }
 
 	/** Prepare for the inserts **/
-	if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 2 + 1 > sizeof(pathname))
+	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_FROMOBJECT)
 	    {
-	    mssError(1, "MQIS", "Pathname too long for INSERT destination");
-	    goto error;
+	    strtcpy(pathname, ((pQueryStructure)qe->QSLinkage)->Source, sizeof(pathname));
 	    }
-	snprintf(pathname, sizeof(pathname), "%s/*", ((pQueryStructure)qe->QSLinkage)->Source);
-	    
+	else
+	    {
+	    sprval = snprintf(pathname, sizeof(pathname), "%s/*", ((pQueryStructure)qe->QSLinkage)->Source);
+	    if (sprval < 0 || sprval >= sizeof(pathname))
+		{
+		mssError(1, "MQIS", "Pathname too long for INSERT destination");
+		goto error;
+		}
+	    }
+	sourcetype = ((pQueryStructure)qe->QSLinkage)->SourceType;
+	if (!*sourcetype)
+	    sourcetype = "system/object";
+    
+	/** Replace the previous __inserted object with NULL, in case insert fails **/
+	old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted", 0);
+	if (old_newobj_id >= 0)
+	    {
+	    old_newobj = stmt->Query->ObjList->Objects[old_newobj_id];
+	    if (old_newobj)
+		objClose(old_newobj);
+	    expModifyParam(stmt->Query->ObjList, "__inserted", NULL);
+	    }
+
 	/** Start the SELECT query **/
 	sel = (pQueryElement)(qe->Children.Items[0]);
 	if (sel->Driver->Start(sel, stmt, NULL) < 0)
 	    goto error;
 	is_started = 1;
+
+	/** If we're working with a collection, open its parent so we can
+	 ** later do objOpenChild() calls to create the child objects.
+	 **/
+	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
+	    {
+	    collection = mq_internal_FindCollection(stmt->Query, ((pQueryStructure)qe->QSLinkage)->Source);
+	    if (collection == XHN_INVALID_HANDLE)
+		{
+		mssError(1,"MQIS","Could not find destination collection '%s' for SQL insert", ((pQueryStructure)qe->QSLinkage)->Source);
+		goto error;
+		}
+	    parent_obj = objOpenTempObject(stmt->Query->SessionID, collection, OBJ_O_RDONLY);
+	    if (!parent_obj)
+		{
+		mssError(1,"MQIS","Could not open destination collection '%s' for SQL insert", ((pQueryStructure)qe->QSLinkage)->Source);
+		goto error;
+		}
+	    }
 
 	/** Select all items in the result set **/
 	while((sel_rval = sel->Driver->NextItem(sel, stmt)) == 1)
@@ -150,18 +230,25 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		continue;
 
 	    /** open a new object **/
-	    new_obj = objOpen(stmt->Query->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
+		{
+		new_obj = objOpenChild(parent_obj, "*", OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0666, sourcetype);
+		}
+	    else
+		{
+		new_obj = objOpen(stmt->Query->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0666, sourcetype);
+		}
 	    if (!new_obj)
 		goto error;
 	    objUnmanageObject(stmt->Query->SessionID, new_obj);
 	   
 	    /** Set all of the SELECTed attributes **/
-	    attrid = 0;
+	    attrid = -1;
 	    astobjid = -1;
 	    while(1)
 		{
-		use_attrid = attrid;
 		attrname = mq_internal_QEGetNextAttr(stmt->Query, sel, stmt->Query->ObjList, &attrid, &astobjid);
+		pod = &od;
 		if (!attrname) break;
 		if (astobjid >= 0)
 		    {
@@ -175,52 +262,64 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		else
 		    {
 		    /** attr available through SELECT item list **/
-		    if (expEvalTree((pExpression)sel->AttrCompiledExpr.Items[use_attrid], stmt->Query->ObjList) < 0)
+		    if (expEvalTree((pExpression)sel->AttrCompiledExpr.Items[attrid], stmt->Query->ObjList) < 0)
 			goto error;
-		    t = ((pExpression)sel->AttrCompiledExpr.Items[use_attrid])->DataType;
+		    t = ((pExpression)sel->AttrCompiledExpr.Items[attrid])->DataType;
 		    if (t <= 0)
 			continue;
-		    exp_rval = expExpressionToPod((pExpression)(sel->AttrCompiledExpr.Items[use_attrid]), t, &od);
+		    exp_rval = expExpressionToPod((pExpression)(sel->AttrCompiledExpr.Items[attrid]), t, &od);
 		    if (exp_rval < 0)
 			goto error;
 		    else if (exp_rval == 1) /* null */
-			continue;
+			pod = NULL;
 		    }
 
 		/** Set the attribute on the newly inserted object **/
-		if (objSetAttrValue(new_obj, attrname, t, &od) < 0)
+		if (objSetAttrValue(new_obj, attrname, t, pod) < 0)
 		    goto error;
 		}
 
 	    /** Commit and get new object name **/
-	    //objCommit(stmt->Query->SessionID);
 	    objCommitObject(new_obj);
-	    new_objname = NULL;
-	    objGetAttrValue(new_obj, "name", DATA_T_STRING, POD(&new_objname));
-	    if (!new_objname)
+	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_FROMOBJECT)
 		{
-		mssError(0, "MQIS", "Could not INSERT new object");
-		goto error;
+		strtcpy(new_pathname, pathname, sizeof(new_pathname));
 		}
-	    if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 1 + strlen(new_objname) + 1 > sizeof(new_pathname))
+	    else
 		{
-		mssError(1, "MQIS", "Pathname too long for newly INSERTed object %s", new_objname);
-		goto error;
+		new_objname = NULL;
+		objGetAttrValue(new_obj, "name", DATA_T_STRING, POD(&new_objname));
+		if (!new_objname)
+		    {
+		    mssError(0, "MQIS", "Could not INSERT new object");
+		    goto error;
+		    }
+		sprval = snprintf(new_pathname, sizeof(new_pathname), "%s/%s", ((pQueryStructure)qe->QSLinkage)->Source, new_objname);
+		if (sprval < 0 || sprval >= sizeof(pathname))
+		    {
+		    mssError(1, "MQIS", "Pathname too long for newly INSERTed object %s", new_objname);
+		    goto error;
+		    }
 		}
-	    snprintf(new_pathname, sizeof(new_pathname), "%s/%s", ((pQueryStructure)qe->QSLinkage)->Source, new_objname);
 
 	    /** Link the new object as the __inserted object in the object list.**/
 	    if (!(stmt->Query->Flags & MQ_F_NOINSERTED))
 		{
-		reopen_obj = objOpen(stmt->Query->SessionID, new_pathname, OBJ_O_RDONLY, 0600, "system/object");
-		if (reopen_obj)
+		/** Don't reopen for inserts into collections (won't find it) **/
+		if (!(((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION))
 		    {
-		    objUnmanageObject(stmt->Query->SessionID, reopen_obj);
-		    objClose(new_obj);
-		    new_obj = reopen_obj;
-		    ASSERTMAGIC(new_obj, MGK_OBJECT);
+		    reopen_obj = objOpen(stmt->Query->SessionID, new_pathname, OBJ_O_RDONLY, 0600, "system/object");
+		    if (reopen_obj)
+			{
+			objUnmanageObject(stmt->Query->SessionID, reopen_obj);
+			objClose(new_obj);
+			new_obj = reopen_obj;
+			ASSERTMAGIC(new_obj, MGK_OBJECT);
+			}
 		    }
-		old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted");
+
+		/** Replace the previous __inserted object with our newly created one **/
+		old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted", 0);
 		if (old_newobj_id >= 0)
 		    {
 		    old_newobj = stmt->Query->ObjList->Objects[old_newobj_id];
@@ -233,6 +332,13 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    /** Close up and go on to next object to be inserted. **/
 	    objClose(new_obj);
 	    new_obj = NULL;
+
+	    /** Yield, if necessary **/
+	    mq_internal_CheckYield(stmt->Query);
+
+	    /** Insert into object?  Only use the first row **/
+	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_FROMOBJECT)
+		break;
 	    }
 
 	if (sel_rval < 0)
@@ -241,6 +347,9 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	rval = 0;
 
     error:
+	if (parent_obj)
+	    objClose(parent_obj);
+
 	/** Close the SELECT **/
 	if (is_started)
 	    if (sel->Driver->Finish(sel, stmt) < 0)

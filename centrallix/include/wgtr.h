@@ -224,8 +224,8 @@ int wgtrReverify(pWgtrVerifySession vs, pWgtrNode widget);	/** add to queue only
 int wgtrRegisterDriver(char* name, int (*Verify)(), int (*New)());	/** registers a widget driver **/
 int wgtrAddType(char* name, char* type_name);	    /** associate a type with a wgtr driver **/
 int wgtrAddDeploymentMethod(char* method, int (*Render)());	/** add a deployment method to a driver **/
-int wgtrRender(pFile output, pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info, char* method);
-int wgtrRenderObject(pFile output, pObjSession s, pObject obj, pStruct app_params, pWgtrClientInfo client_info, char* method);
+int wgtrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info, char* method);
+int wgtrRenderObject(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSession s, pObject obj, pStruct app_params, pWgtrClientInfo client_info, char* method);
 
 /** for debugging **/
 void wgtrPrint(pWgtrNode tree, int indent);	/** for debug purposes **/

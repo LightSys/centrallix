@@ -52,6 +52,7 @@ static struct {
 */
 int htddRender(pHtSession s, pWgtrNode tree, int z) {
    char bgstr[HT_SBUF_SIZE];
+   char textcolor[HT_SBUF_SIZE];
    char hilight[HT_SBUF_SIZE];
    char string[HT_SBUF_SIZE];
    char fieldname[30];
@@ -118,6 +119,12 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	return -1;
    }
 
+   if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0) {
+	strtcpy(textcolor,ptr,sizeof(textcolor));
+   } else {
+	strcpy(textcolor, "");
+   }
+
    if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) {
 	strtcpy(fieldname,ptr,sizeof(fieldname));
    } else {
@@ -138,7 +145,10 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     strtcpy(name,ptr,sizeof(name));
 
     /** Ok, write the style header items. **/
-    htrAddStylesheetItem_va(s,"\t#dd%POSbtn { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; background-color: %STR&CSSVAL; }\n",id,x,y,h,w,z,bgstr);
+    htrAddStylesheetItem_va(s,"\t#dd%POSbtn { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; background-color: %STR&CSSVAL; border:1px outset #e0e0e0;}\n",id,x,y,h,w,z,bgstr);
+    if (*textcolor) {
+	htrAddStylesheetItem_va(s,"\t#dd%POSbtn { color: %STR&CSSVAL; }\n",id,textcolor);
+    }
     htrAddStylesheetItem_va(s,"\t#dd%POScon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,h-2,z+1);
     htrAddStylesheetItem_va(s,"\t#dd%POScon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,h-2,z+1);
 
@@ -186,12 +196,15 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	mssError(1, "HTDD", "SQL parameter was not specified for dropdown widget");
 	return -1;
     }
+    htrCheckAddExpression(s,tree,name,"sql");
+
     /** Script initialization call. **/
     htrAddScriptInit_va(s,"    dd_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), c1:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"dd%POScon1\"), c2:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"dd%POScon2\"), background:'%STR&JSSTR', highlight:'%STR&JSSTR', fieldname:'%STR&JSSTR', numDisplay:%INT, mode:%INT, sql:'%STR&JSSTR', width:%INT, height:%INT, form:'%STR&JSSTR', osrc:'%STR&JSSTR', qms:%INT, ivs:%INT, popup_width:%INT});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql?sql:"", w, h, form, osrc, query_multiselect, invalid_select_default, pop_w);
 
     /** HTML body <DIV> element for the layers. **/
-    htrAddBodyItem_va(s,"<DIV ID=\"dd%POSbtn\">\n", id);
-    htrAddBodyItem_va(s,"<TABLE width=%POS cellspacing=0 cellpadding=0 border=0>\n",w);
+    htrAddBodyItem_va(s,"<DIV ID=\"dd%POSbtn\">\n"
+			"<IMG SRC=\"/sys/images/ico15b.gif\" style=\"float:right;\">\n", id);
+    /*htrAddBodyItem_va(s,"<TABLE width=%POS cellspacing=0 cellpadding=0 border=0>\n",w);
     htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
     htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%POS></TD>\n",w-2);
     htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
@@ -201,7 +214,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD>\n");
     htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%POS></TD>\n",w-2);
     htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
-    htrAddBodyItem(s,   "</TABLE>\n");
+    htrAddBodyItem(s,   "</TABLE>\n");*/
     htrAddBodyItem_va(s,"<DIV ID=\"dd%POScon1\"></DIV>\n",id);
     htrAddBodyItem_va(s,"<DIV ID=\"dd%POScon2\"></DIV>\n",id);
     htrAddBodyItem(s,   "</DIV>\n");

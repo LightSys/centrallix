@@ -28,6 +28,9 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Define to 1 if you have the `argon2' library (-largon2). */
+#undef HAVE_LIBARGON2
+
 /* Define to 1 if you have the `Centrallix' library (-lCentrallix). */
 #undef HAVE_LIBCENTRALLIX
 
@@ -43,8 +46,14 @@
 /* Define to 1 if you have the `m' library (-lm). */
 #undef HAVE_LIBM
 
+/* Define to 1 if you have the `mgl' library (-lmgl). */
+#undef HAVE_LIBMGL
+
 /* Define to 1 if you have the `png' library (-lpng). */
 #undef HAVE_LIBPNG
+
+/* Define to 1 if librsvg is present. */
+#undef HAVE_LIBRSVG
 
 /* Define to 1 if you have the `z' library (-lz). */
 #undef HAVE_LIBZ
@@ -52,8 +61,18 @@
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
+/* Define to 1 if MathGL 1.x is present. */
+#undef HAVE_MGL1
+
+/* Define to 1 if MathGL 2.x is present. */
+#undef HAVE_MGL2
+
 /* Define to 1 if you have the `mkdir' function. */
 #undef HAVE_MKDIR
+
+/* Defined to 1 if you have the ncurses library (-lncurses, curses.h, and
+   term.h). */
+#undef HAVE_NCURSES
 
 /* Define to 1 if you have the <ndir.h> header file, and it defines `DIR'. */
 #undef HAVE_NDIR_H
@@ -72,6 +91,9 @@
 
 /* Define to 1 if you have the `rmdir' function. */
 #undef HAVE_RMDIR
+
+/* Define to 1 if <rsvg.h> is present. */
+#undef HAVE_RSVG_H
 
 /* Define to 1 if you have the `socket' function. */
 #undef HAVE_SOCKET
@@ -144,6 +166,9 @@
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
 
+/* The size of `void *', as computed by sizeof. */
+#undef SIZEOF_VOID_P
+
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
 
@@ -176,6 +201,9 @@
 
 /* Define for MySQL support */
 #undef USE_MYSQL
+
+/* Define for LDAP netdriver support */
+#undef USE_NETLDAP
 
 /* Define for NFS netdriver support */
 #undef USE_NETNFS

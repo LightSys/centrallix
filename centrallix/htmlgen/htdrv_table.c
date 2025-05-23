@@ -59,7 +59,7 @@
 /************************************************************************/
 
 
-#define HTTBL_MAX_COLS		(32)
+#define HTTBL_MAX_COLS		(64)
 
 /** globals **/
 static struct 
@@ -75,6 +75,7 @@ typedef struct
     char wnamespace[32];
     char title[64];
     char fieldname[64];
+    char sort_fieldname[64];
     char caption_fieldname[64];
     char caption_textcolor[64];
     char wrap[16];
@@ -125,10 +126,12 @@ typedef struct
     int followcurrent;
     int dragcols;
     int colsep;
+    int colsep_mode;
     int gridinemptyrows;
     int allow_selection;
     int show_selection;
     int initial_selection;
+    int allow_deselection;
     int reverse_order;
     int overlap_scrollbar;	/* scrollbar overlaps with table */
     int hide_scrollbar;		/* don't show scrollbar at all */
@@ -147,7 +150,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
     int subcnt = 0;
     char *nptr;
     int h;
-    int first_offset = (t->has_header)?(t->min_rowheight):0;
+    int first_offset = (t->has_header)?(t->min_rowheight + t->cellvspacing):0;
     pWgtrNode children[32];
     int detailcnt;
     httbl_col* col;
@@ -159,9 +162,9 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    }
 
 	/** STYLE for the layer **/
-	htrAddStylesheetItem_va(s,"\t#tbld%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; } \n",t->id,t->x,t->y,(t->overlap_scrollbar)?(t->w):(t->w-18),z+1);
-	htrAddStylesheetItem_va(s,"\t#tbld%POSscroll { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:18px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",t->id,(t->hide_scrollbar || t->demand_scrollbar)?"hidden":"inherit",t->x+t->w-18,t->y+first_offset,t->h-first_offset,z+1);
-	htrAddStylesheetItem_va(s,"\t#tbld%POSbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:16px; HEIGHT:16px; Z-INDEX:%POS; BORDER: solid 1px; BORDER-COLOR: white gray gray white; }\n",t->id,z+2);
+	htrAddStylesheetItem_va(s,"\t#tbld%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; } \n",t->id,t->x,t->y,(t->overlap_scrollbar)?(t->w):(t->w-18),z+0);
+	htrAddStylesheetItem_va(s,"\t#tbld%POSscroll { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:18px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",t->id,(t->hide_scrollbar || t->demand_scrollbar)?"hidden":"inherit",t->x+t->w-18,t->y+first_offset,t->h-first_offset,z+0);
+	htrAddStylesheetItem_va(s,"\t#tbld%POSbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:16px; HEIGHT:16px; Z-INDEX:%POS; BORDER: solid 1px; BORDER-COLOR: white gray gray white; }\n",t->id,z+1);
 
 	htrAddScriptGlobal(s,"tbld_current","null",0);
 	htrAddScriptGlobal(s,"tbldb_current","null",0);
@@ -174,15 +177,15 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 
 	htrAddWgtrObjLinkage_va(s, tree, "tbld%POSpane",t->id);
 
-	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:wgtrGetNodeRef(ns,\"%STR&SYM\"), scroll:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, min_rowheight:%INT, max_rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&JSSTR\", textcolorhighlight:\"%STR&JSSTR\", titlecolor:\"%STR&JSSTR\", rowbgnd1:\"%STR&JSSTR\", rowbgnd2:\"%STR&JSSTR\", rowbgndhigh:\"%STR&JSSTR\", hdrbgnd:\"%STR&JSSTR\", followcurrent:%INT, dragcols:%INT, colsep:%INT, colsep_bgnd:\"%STR&JSSTR\", gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, show_selection:%INT, initial_selection:%INT, overlap_sb:%INT, hide_sb:%INT, demand_sb:%INT, osrc:%['%STR&SYM'%]%[null%], dm:%INT, hdr:%INT, newrow_bgnd:\"%STR&JSSTR\", newrow_textcolor:\"%STR&JSSTR\", rcsize:%INT, cols:[",
+	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:wgtrGetNodeRef(ns,\"%STR&SYM\"), scroll:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, min_rowheight:%INT, max_rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&JSSTR\", textcolorhighlight:\"%STR&JSSTR\", titlecolor:\"%STR&JSSTR\", rowbgnd1:\"%STR&JSSTR\", rowbgnd2:\"%STR&JSSTR\", rowbgndhigh:\"%STR&JSSTR\", hdrbgnd:\"%STR&JSSTR\", followcurrent:%INT, dragcols:%INT, colsep:%INT, colsep_mode:%INT, colsep_bgnd:\"%STR&JSSTR\", gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, show_selection:%INT, initial_selection:%INT, allow_deselection:%INT, overlap_sb:%INT, hide_sb:%INT, demand_sb:%INT, osrc:%['%STR&SYM'%]%[null%], dm:%INT, hdr:%INT, newrow_bgnd:\"%STR&JSSTR\", newrow_textcolor:\"%STR&JSSTR\", rcsize:%INT, cols:[",
 		t->name,t->name,t->name,t->id,t->id,t->name,t->h,
 		(t->overlap_scrollbar)?t->w:t->w-18,
 		t->inner_padding,t->inner_border,t->windowsize,t->min_rowheight, t->max_rowheight,
 		t->cellhspacing, t->cellvspacing,t->textcolor, 
 		t->textcolorhighlight, t->titlecolor,t->row_bgnd1,t->row_bgnd2,
 		t->row_bgndhigh,t->hdr_bgnd,t->followcurrent,t->dragcols,
-		t->colsep,t->colsep_bgnd,t->gridinemptyrows, t->reverse_order,
-		t->allow_selection, t->show_selection, t->initial_selection,
+		t->colsep, t->colsep_mode, t->colsep_bgnd,t->gridinemptyrows, t->reverse_order,
+		t->allow_selection, t->show_selection, t->initial_selection, t->allow_deselection,
 		t->overlap_scrollbar, t->hide_scrollbar, t->demand_scrollbar,
 		*(t->osrc) != '\0', t->osrc, *(t->osrc) == '\0',
 		t->data_mode, t->has_header,
@@ -192,10 +195,11 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	for(colid=0;colid<t->ncols;colid++)
 	    {
 	    col = t->col_infs[colid];
-	    htrAddScriptInit_va(s,"{name:\"%STR&JSSTR\",ns:\"%STR&JSSTR\",fieldname:\"%STR&JSSTR\",title:\"%STR&JSSTR\",width:%INT,type:\"%STR&JSSTR\",group:%POS,align:\"%STR&JSSTR\",wrap:\"%STR&JSSTR\",caption_fieldname:\"%STR&JSSTR\",caption_textcolor:\"%STR&JSSTR\",image_maxwidth:%POS,image_maxheight:%POS},",
+	    htrAddScriptInit_va(s,"{name:\"%STR&JSSTR\",ns:\"%STR&JSSTR\",fieldname:\"%STR&JSSTR\",sort_fieldname:\"%STR&JSSTR\",title:\"%STR&JSSTR\",width:%INT,type:\"%STR&JSSTR\",group:%POS,align:\"%STR&JSSTR\",wrap:\"%STR&JSSTR\",caption_fieldname:\"%STR&JSSTR\",caption_textcolor:\"%STR&JSSTR\",image_maxwidth:%POS,image_maxheight:%POS},",
 		    col->wname,
 		    col->wnamespace,
 		    col->fieldname,
+		    col->sort_fieldname,
 		    col->title,
 		    col->width,
 		    col->type,
@@ -229,9 +233,9 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 
 		if (wgtrGetPropertyValue(sub_tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h = t->min_rowheight;
 		htrAddStylesheetItem_va(s,"\t#tbld%POSsub%POS { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; } \n",
-			t->id, ++subcnt, t->w-(t->demand_scrollbar?0:18), h, z+2);
+			t->id, ++subcnt, t->w-(t->demand_scrollbar?0:18), h, z+1);
 		htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSsub%POS\">\n", t->id, subcnt);
-		htrRenderSubwidgets(s, sub_tree, z+3);
+		htrRenderSubwidgets(s, sub_tree, z+2);
 		htrAddBodyItem(s,"</DIV>\n");
 		htrAddWgtrObjLinkage_va(s, sub_tree, "tbld%POSsub%POS", t->id, subcnt);
 		htrCheckAddExpression(s, sub_tree, nptr, "display_for");
@@ -243,20 +247,20 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		//htrRenderWidget(s, sub_tree, z+3);
 		//}
 	    }
-	htrRenderSubwidgets(s, tree, z+3);
+	htrRenderSubwidgets(s, tree, z+2);
 
 	htrAddBodyItem(s,"</DIV>\n");
 
 	/** HTML body <DIV> element for the scrollbar layer. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSscroll\">\n",t->id);
-	htrAddBodyItem(s,"<TABLE border=0 cellspacing=0 cellpadding=0 width=18>\n");
-	htrAddBodyItem(s,"<TR><TD><IMG SRC=/sys/images/ico13b.gif NAME=u></TD></TR>\n");
-	htrAddBodyItem_va(s,"<TR><TD height=%POS></TD></TR>\n",t->h-2*18-first_offset-t->cellvspacing);
-	htrAddBodyItem(s,"<TR><TD><IMG SRC=/sys/images/ico12b.gif NAME=d></TD></TR>\n");
-	htrAddBodyItem(s,"</TABLE>\n");
+	htrAddBodyItem_va(s,"<div id=\"tbld%POSscroll\">\n",t->id);
+	htrAddBodyItem(s,"<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"18\">\n");
+	htrAddBodyItem(s,"<tr><td><img src=\"/sys/images/ico13b.gif\" name=\"u\"></td></tr>\n");
+	htrAddBodyItem_va(s,"<tr><td id=\"tbld%POSscrarea\" height=\"%POS\"></td></tr>\n", t->id, t->h-2*18-first_offset);
+	htrAddBodyItem(s,"<tr><td><img src=\"/sys/images/ico12b.gif\" name=\"d\"></td></tr>\n");
+	htrAddBodyItem(s,"</table>\n");
 	/*htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSbox\"><IMG SRC=/sys/images/ico14b.gif NAME=b></DIV>\n",t->id);*/
-	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSbox\"></DIV>\n",t->id);
-	htrAddBodyItem(s,"</DIV>\n");
+	htrAddBodyItem_va(s,"<div id=\"tbld%POSbox\"></div>\n",t->id);
+	htrAddBodyItem(s,"</div>\n");
 
 	htrAddEventHandlerFunction(s,"document","MOUSEOVER","tbld","tbld_mouseover");
 	htrAddEventHandlerFunction(s,"document","MOUSEOUT","tbld","tbld_mouseout");
@@ -264,6 +268,11 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE","tbld","tbld_mousemove");
 	htrAddEventHandlerFunction(s, "document","MOUSEUP","tbld","tbld_mouseup");
 	htrAddEventHandlerFunction(s, "document","WHEEL","tbld","tbld_wheel");
+	htrAddEventHandlerFunction(s, "document","KEYDOWN","tbld","tbld_keydown");
+	htrAddEventHandlerFunction(s, "document","TOUCHSTART","tbld","tbld_touchstart");
+	htrAddEventHandlerFunction(s, "document","TOUCHEND","tbld","tbld_touchend");
+	htrAddEventHandlerFunction(s, "document","TOUCHMOVE","tbld","tbld_touchmove");
+	htrAddEventHandlerFunction(s, "document","TOUCHCANCEL","tbld","tbld_touchcancel");
 	if (s->Capabilities.Dom1HTML)
 	    htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "tbld", "tbld_contextmenu");
 
@@ -279,6 +288,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
     {
     pWgtrNode sub_tree;
     char* ptr;
+    char* nptr;
     int n, i;
     httbl_struct* t;
     int rval;
@@ -333,6 +343,13 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"cellvspacing",DATA_T_INTEGER,POD(&(t->cellvspacing))) != 0) t->cellvspacing = 1;
 
 	if (wgtrGetPropertyValue(tree,"colsep",DATA_T_INTEGER,POD(&(t->colsep))) != 0) t->colsep = 1;
+	if (wgtrGetPropertyValue(tree,"colsep_mode",DATA_T_STRING,POD(&ptr)) == 0)
+	    {
+	    if (!strcasecmp(ptr, "full"))
+		t->colsep_mode = 0;
+	    else if (!strcasecmp(ptr, "header"))
+		t->colsep_mode = 1;
+	    }
 
 	if (wgtrGetPropertyValue(tree,"rowcache_size",DATA_T_INTEGER,POD(&(t->rowcache_size))) != 0) t->rowcache_size = 0;
 
@@ -344,6 +361,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	    t->initial_selection = 2;
 	else
 	    t->initial_selection = htrGetBoolean(tree, "initial_selection", 1);
+	t->allow_deselection = htrGetBoolean(tree, "allow_deselection", t->initial_selection?0:1);
 	t->reverse_order = htrGetBoolean(tree, "reverse_order", 0);
 
 	t->overlap_scrollbar = htrGetBoolean(tree, "overlap_scrollbar", 0);
@@ -424,6 +442,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    sub_tree = children[i];
 	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING,POD(&ptr));
+	    wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING,POD(&nptr));
 	    if (!strcmp(ptr,"widget/table-column") != 0)
 		{
 		col = (httbl_col*)nmMalloc(sizeof(httbl_col));
@@ -438,6 +457,8 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		/** Get column properties **/
 		if (wgtrGetPropertyValue(sub_tree, "fieldname", DATA_T_STRING, POD(&ptr)) == 0)
 		    strtcpy(col->fieldname, ptr, sizeof(col->fieldname));
+		if (wgtrGetPropertyValue(sub_tree, "sort_fieldname", DATA_T_STRING, POD(&ptr)) == 0)
+		    strtcpy(col->sort_fieldname, ptr, sizeof(col->sort_fieldname));
 		if (wgtrGetPropertyValue(sub_tree, "caption_fieldname", DATA_T_STRING,POD(&ptr)) == 0)
 		    strtcpy(col->caption_fieldname, ptr, sizeof(col->caption_fieldname));
 		if (wgtrGetPropertyValue(sub_tree, "caption_textcolor", DATA_T_STRING,POD(&ptr)) == 0)
@@ -449,6 +470,8 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		    strtcpy(col->title, ptr, sizeof(col->title));
 		else
 		    strtcpy(col->title, col->fieldname, sizeof(col->title));
+		htrCheckAddExpression(s, sub_tree, nptr, "title");
+		htrCheckAddExpression(s, sub_tree, nptr, "visible");
 		if (wgtrGetPropertyValue(sub_tree, "align", DATA_T_STRING,POD(&ptr)) == 0)
 		    strtcpy(col->align, ptr, sizeof(col->align));
 		else
@@ -457,7 +480,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		    strtcpy(col->wrap, ptr, sizeof(col->wrap));
 		else
 		    strcpy(col->wrap, "no");
-		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check") || !strcmp(ptr,"image") || !strcmp(ptr,"code") || !strcmp(ptr,"link")))
+		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check") || !strcmp(ptr,"checkbox") || !strcmp(ptr,"image") || !strcmp(ptr,"code") || !strcmp(ptr,"link") || !strcmp(ptr,"progress")))
 		    strtcpy(col->type, ptr, sizeof(col->type));
 		else
 		    strcpy(col->type, "text");

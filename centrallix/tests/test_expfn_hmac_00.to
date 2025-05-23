@@ -1,0 +1,25 @@
+##NAME hmac() function
+
+# options for hash type are md5, sha1, sha256, sha384, sha512
+query select 'md5' = hmac("md5", "test string", "key")
+query select 'sha1' = hmac("sha1", "test string", "key")
+query select 'sha256' = hmac("sha256", "test string", "key")
+query select 'sha384' = hmac("sha384", "test string", "key")
+query select 'sha512' = hmac("sha512", "test string", "key")
+
+# should cause invalid hash type error
+query select hmac("md7", "test string", "key")
+
+# null values as parameters
+query select hmac(null, "test string", "key")
+query select hmac("md5", null, "key")
+query select hmac("md5", "test string", null)
+
+# unusual test strings
+query select hmac("md5", "\0\n\t\\\r\"", "key")
+query select hmac("sha1", "", "key")
+
+# unusual keys
+query select hmac("sha256", "test string", "\0\n\t\\\r\"")
+query select hmac("sha256", "test string", "")
+

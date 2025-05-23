@@ -39,6 +39,8 @@ function eb_actionsetvalue(aparam)
 	this.changed=true;
 	cn_activate(this,"DataModify", {Value:aparam.Value, FromKeyboard:0, FromOSRC:0, OldValue:oldval});
 	}
+    // also check description
+    this.ifcProbe(ifAction).Invoke('SetValueDescription', aparam);
     }
 
 function eb_actionsetvaldesc(aparam)
@@ -66,14 +68,27 @@ function eb_internal_setvalue(v)
 function eb_setvalue(v,f)
     {
     this.internal_setvalue(v);
+    if (!this.in_transaction)
+	this.DoDataChange(1, 0);
+    }
+
+function eb_begin_transaction()
+    {
+    this.in_transaction = true;
+    }
+
+function eb_end_transaction()
+    {
     this.DoDataChange(1, 0);
+    this.in_transaction = false;
     }
 
 function eb_clearvalue()
     {
     this.was_null = true;
     this.Update(null);
-    this.DoDataChange(1, 0);
+    if (!this.in_transaction)
+	this.DoDataChange(1, 0);
     }
 
 function eb_content_changed(p,o,n)
@@ -148,7 +163,7 @@ function eb_setdesc(txt)
 	"z-index":"-1",
 	"color":this.desc_fgcolor?this.desc_fgcolor:"#808080",
 	"top":($(this).height() - $(this.DescLayer).height())/2 + "px",
-	"left":(this.input_width() + (this.content?4:0) + 5) + "px",
+	"left":(this.input_width() + ((this.content || this.has_focus)?4:0) + 5) + "px",
 	"visibility":"inherit",
 	"white-space":"nowrap",
 	});
@@ -159,7 +174,7 @@ function eb_settext(l,txt)
     var vistxt = txt;
     if (vistxt == null) vistxt = '';
     l.set_content(txt);
-    l.ContentLayer.value = vistxt;
+    l.ContentLayer.value = htutil_obscure(vistxt);
     }
 
 
@@ -227,7 +242,8 @@ function eb_update(txt)
 
     // Value description field
     var descr = '';
-    if (this.descriptions[this.content] && (!this.has_focus || this.content))
+    //if (this.descriptions[this.content] && (!this.has_focus || this.content))
+    if (this.descriptions[this.content])
 	descr = this.descriptions[this.content];
     if (descr != this.description)
 	this.description = descr;
@@ -252,27 +268,33 @@ function eb_paste(e)
 function eb_receiving_input(e)
     {
     var eb=this.mainlayer;
-    var sel = document.getSelection();
-    var range = sel.getRangeAt(0);
-    var rstart = range.startOffset;
-    var rend = range.endOffset;
+    //var sel = document.getSelection();
+    //var range = sel.getRangeAt(0);
+    var rstart = eb.ContentLayer.selectionStart;
+    var rend = eb.ContentLayer.selectionEnd;
+    //var rstart = range.startOffset;
+    //var rend = range.endOffset;
+    //htr_alert(sel.focusNode, 1);
     var orig_curtxt = this.value;
     var changed = false;
     var curtxt = orig_curtxt.replace(/\n$/,"");
+    var curlen = curtxt?curtxt.length:0;
 
     if (curtxt != orig_curtxt)
-	changed = true;
-    if (rend > curtxt.length)
 	{
 	changed = true;
-	rend = curtxt.length;
 	}
-    if (rstart > curtxt.length)
+    if (rend > curlen)
 	{
 	changed = true;
-	rstart = curtxt.length;
+	rend = curlen;
 	}
-    for(var i=0; i<curtxt.length; i++)
+    if (rstart > curlen)
+	{
+	changed = true;
+	rstart = curlen;
+	}
+    for(var i=0; i<curlen; i++)
 	{
 	if (curtxt.charCodeAt(i) < 32 || curtxt.charCodeAt(i) == 127)
 	    {
@@ -283,8 +305,9 @@ function eb_receiving_input(e)
     if (changed)
 	{
 	this.value = curtxt;
-	range.setStart(range.startContainer, rstart);
-	range.setEnd(range.startContainer, rend);
+	//range.setStart(range.startContainer, rstart);
+	//range.setEnd(range.startContainer, rend);
+	eb.ContentLayer.setSelectionRange(rstart, rend);
 	}
 
     var oldtxt = eb.content;
@@ -424,7 +447,7 @@ function eb_keyhandler(l,e,k)
     {
     if(l.enabled!='full') return 1;
     cn_activate(l, "KeyPress", {Code:k, Name:e.keyName, Modifiers:e.modifiers, Content:l.content});
-    if (e.keyName == 'f3') return true;
+    if (e.keyName == 'f3' && e.Dom2Event.type == 'keypress') return true;
     return false;
     }
 
@@ -443,7 +466,8 @@ function eb_do_data_change(from_osrc, from_kbd)
 	}
     this.oldvalue = this.value;
     this.value = nv;
-    cn_activate(this, "DataChange", {Value:this.value, OldValue:this.oldvalue, FromOSRC:from_osrc, FromKeyboard:from_kbd});
+    if (this.value !== this.oldvalue)
+	cn_activate(this, "DataChange", {Value:this.value, OldValue:this.oldvalue, FromOSRC:from_osrc, FromKeyboard:from_kbd});
     }
 
 
@@ -454,6 +478,16 @@ function eb_action_set_focus(aparam)
     pg_setkbdfocus(this, null, x, y);
     }
 
+function eb_checkfocus(e)
+    {
+    var form = this.mainlayer.form;
+    if (form && !form.is_focusable)
+	{
+	e.preventDefault();
+	e.currentTarget.blur();
+	}
+    return;
+    }
 
 function eb_browserfocus(e)
     {
@@ -466,7 +500,10 @@ function eb_select(x,y,l,c,n,a,k)
     this.ContentLayer.focus();
     var got_focus = $(this.ContentLayer).is(':focus');
     if (!got_focus)
-	pg_addsched_fn(this.ContentLayer, function() { this.focus() }, {}, 200);
+	pg_addsched_fn(this.ContentLayer, function()
+	    {
+	    this.focus()
+	    }, {}, 200);
     if (k)
 	pg_addsched_fn(this, function()
 	    {
@@ -474,6 +511,7 @@ function eb_select(x,y,l,c,n,a,k)
 	    this.Update(this.content);
 	    }, [], got_focus?10:201);
     this.has_focus = true;
+    eb_current = this;
     if(this.form)
 	if (!this.form.FocusNotify(this)) return 0;
     cn_activate(this,"GetFocus", {});
@@ -484,6 +522,7 @@ function eb_deselect(p)
     {
     this.ContentLayer.blur();
     this.has_focus = false;
+    eb_current = null;
     if (this.changed)
 	{
 	if (!p || !p.nodatachange)
@@ -555,6 +594,8 @@ function eb_cb_reveal(e)
     switch (e.eventName) 
 	{
 	case 'Reveal':
+	    if (this.has_focus)
+		pg_setkbdfocus(this, null, null, null);
 	    this.form.Reveal(this,e);
 	    break;
 	case 'Obscure':
@@ -623,6 +664,7 @@ function eb_init(param)
     l.was_null = false;
     l.value_history = [];
     l.hist_offset = -1;
+    l.in_transaction = false;
 
     // Callbacks
     l.keyhandler = eb_keyhandler;
@@ -633,6 +675,8 @@ function eb_init(param)
     l.tipid = null;
     l.getvalue = eb_getvalue;
     l.setvalue = eb_setvalue;
+    l.begintransaction = eb_begin_transaction;
+    l.endtransaction = eb_end_transaction;
     l.internal_setvalue = eb_internal_setvalue;
     l.clearvalue = eb_clearvalue;
     l.setoptions = null;
@@ -682,6 +726,7 @@ function eb_init(param)
     $(l.ContentLayer).on("keydown", eb_keydown);
     $(l.ContentLayer).on("keyup", eb_keyup);
     $(l.ContentLayer).on("keypress", eb_keypress);
+    $(l.ContentLayer).on("focus", eb_checkfocus);
     $(l.ContentLayer).css({"outline":"none", "border":"1px transparent", "background-color":"transparent"});
 
     // Callbacks for internal management of 'content' value

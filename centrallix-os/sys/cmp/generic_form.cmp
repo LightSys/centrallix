@@ -4,14 +4,19 @@ generic_form "widget/component-decl"
     width=640;
     height=480;
 
+    w "widget/parameter" { type=integer; deploy_to_client=yes; default=640; }
+    h "widget/parameter" { type=integer; deploy_to_client=yes; default=480; }
+
     table "widget/parameter" { type=string; default="/samples/Months.csv"; badchars=" '\""; }
 
     division "widget/parameter"
 	{
 	type=integer;
 	//default=runserver(40 + eval("(select count(1) from " + :this:table + "/columns )")*9);
-	default=310;
+	default=320;
 	}
+
+    cols "widget/parameter" { type=integer; default=3; }
 
     osrc "widget/osrc"
 	{
@@ -25,13 +30,21 @@ generic_form "widget/component-decl"
 	    {
 	    ctls "widget/component"
 		{
-		x=0;y=0;width=640;height=24;
+		x=0;
+		y=0;
+		width=runserver(:this:w);
+		height=24;
 		path="/sys/cmp/form_controls.cmp";
 		bgcolor="#d0d0d0";
 		}
 	    vbox "widget/vbox"
 		{
-		x=10;y=40;column_width=200;cellsize=20; spacing=5; width=620;
+		x=10;y=30;
+		column_width=runserver(:this:w / :this:cols - 5);
+		cellsize=20;
+		spacing=2;
+		width=runserver(:this:w - 5);
+		height=runserver(:this:division - 15);
 
 		rpt "widget/repeat"
 		    {
@@ -42,6 +55,11 @@ generic_form "widget/component-decl"
 			field=runserver(:rpt:name);
 			text=runserver(:rpt:name);
 			ctl_type=runserver(condition(:rpt:datatype == 'datetime', 'datetime', condition(:rpt:name == 'comments', 'textarea', 'editbox')));
+
+			h1 "widget/hints" { condition=runserver(:rpt:name == 's_date_created'); default=runclient(getdate()); }
+			h2 "widget/hints" { condition=runserver(:rpt:name == 's_date_modified'); default=runclient(getdate()); style=alwaysdef; }
+			h3 "widget/hints" { condition=runserver(:rpt:name == 's_created_by'); default=runclient(user_name()); }
+			h4 "widget/hints" { condition=runserver(:rpt:name == 's_modified_by'); default=runclient(user_name()); style=alwaysdef; }
 			}
 		    }
 		}
@@ -49,12 +67,12 @@ generic_form "widget/component-decl"
 
 	detail_pane "widget/pane"
 	    {
-	    x=10;y=runserver(:this:division);width=620;height=runserver(480 - :this:division - 10);
+	    x=10;y=runserver(:this:division);width=620;height=runserver(:this:h - :this:division - 10);
 	    style=lowered;
 
 	    detail "widget/table"
 		{
-		x=0;y=0;width=618;height=runserver(480 - :this:division - 10 - 2);
+		x=0;y=0;width=618;height=runserver(:this:h - :this:division - 10 - 2);
 		mode=dynamicrow;
 
 		row1_bgcolor = "#ffffff";

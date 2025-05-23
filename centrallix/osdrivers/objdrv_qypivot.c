@@ -48,6 +48,7 @@
 /* Description:	Pivot Query object driver.  This driver provides a     	*/
 /*		"pivot" conversion of underlying EAV-structured data	*/
 /*		into a conventional object.				*/
+/* See centrallix-sysdoc/EAV_Pivot.md for more information. */
 /************************************************************************/
 
 
@@ -337,11 +338,6 @@ qyp_internal_ReadNode(char* nodepath, pSnNode nodestruct)
 	    mssError(1, "QYP", "attribute name field must be specified");
 	    goto error;
 	    }
-	if (node->nKeys == 0)
-	    {
-	    mssError(1, "QYP", "at least one entity key field must be specified");
-	    goto error;
-	    }
 	if (node->nValues == 0)
 	    {
 	    mssError(1, "QYP", "at least one value field must be specified");
@@ -373,7 +369,7 @@ qyp_internal_ReadNode(char* nodepath, pSnNode nodestruct)
 
 
 /*** qyp_internal_LoadDatum() - take one source object from the underlying
- *** data source, and build a single QytDatum structure from it.
+ *** data source, and build a single QypDatum structure from it.
  ***/
 pQypDatum
 qyp_internal_LoadDatum(pQypData inf, pObject source_subobj)
@@ -504,7 +500,11 @@ qyp_internal_LoadDatum(pQypData inf, pObject source_subobj)
 	/** Didn't find any valid values?  Treat as NULL if so. **/
 	if (one_datum->Data.DataType == DATA_T_UNAVAILABLE)
 	    {
-	    one_datum->Data.DataType = given_type;
+	    /** If only one value field, use its type **/
+	    if (inf->Node->nValues == 1 && given_type == DATA_T_UNAVAILABLE)
+		one_datum->Data.DataType = inf->Node->ValueTypes[0];
+	    else
+		one_datum->Data.DataType = given_type;
 	    one_datum->Data.Flags |= DATA_TF_NULL;
 	    }
 
@@ -617,32 +617,35 @@ qyp_internal_ProcessOpen(pQypData inf)
     pQypDatum one_datum = NULL;
     int rval = 0;
 
-	/** Break up the object name into separate concat key values **/
-	strtcpy(keybuf, inf->ObjName, sizeof(keybuf));
-	n_objname_keys = 0;
-	ptr = strtok(keybuf, "|");
-	while (ptr && n_objname_keys < QYP_MAX_KEYS)
+	if (inf->Node->nKeys > 0)
 	    {
-	    keyptrs[n_objname_keys] = ptr;
-	    n_objname_keys++;
-	    ptr = strtok(NULL,"|");
-	    }
+	    /** Break up the object name into separate concat key values **/
+	    strtcpy(keybuf, inf->ObjName, sizeof(keybuf));
+	    n_objname_keys = 0;
+	    ptr = strtok(keybuf, "|");
+	    while (ptr && n_objname_keys < QYP_MAX_KEYS)
+		{
+		keyptrs[n_objname_keys] = ptr;
+		n_objname_keys++;
+		ptr = strtok(NULL,"|");
+		}
 
-	/** Correct key count? **/
-	if (n_objname_keys != inf->Node->nKeys)
-	    {
-	    mssError(1, "QYP", "Invalid concat key count in object name");
-	    goto error;
-	    }
+	    /** Correct key count? **/
+	    if (n_objname_keys != inf->Node->nKeys)
+		{
+		mssError(1, "QYP", "Invalid concat key count in object name");
+		goto error;
+		}
 
-	/** Get the selection criteria from the name **/
-	criteria = qyp_internal_NameToExpression(inf->Node, keyptrs);
+	    /** Get the selection criteria from the name **/
+	    criteria = qyp_internal_NameToExpression(inf->Node, keyptrs);
+	    }
 
 	/** Open the source object using the criteria **/
 	source_obj = objOpen(inf->Obj->Session, inf->Node->SourcePath, O_RDONLY, 0600, "system/directory");
 	if (!source_obj)
 	    goto error;
-	source_qy = objOpenQuery(source_obj, NULL, NULL, criteria, NULL);
+	source_qy = objOpenQuery(source_obj, NULL, NULL, criteria, NULL, 0);
 	if (!source_qy)
 	    goto error;
 
@@ -682,7 +685,8 @@ qyp_internal_ProcessOpen(pQypData inf)
 	    xaInsertBefore(&inf->PivotData, i, (void*)one_datum);
 	    }
 
-	expFreeExpression(criteria);
+	if (criteria)
+	    expFreeExpression(criteria);
 
 	return rval;
 
@@ -759,6 +763,7 @@ qyp_internal_Update(pQypData inf)
     int j;
     char* ptr;
     pDateTime dt;
+    int rval;
 
 	/** Loop through all data items **/
 	for(i=0;i<inf->PivotData.nItems;i++)
@@ -773,13 +778,21 @@ qyp_internal_Update(pQypData inf)
 		{
 		objCurrentDate(&datum->ModifyDate);
 		strtcpy(datum->ModifyBy, mssUserName(), sizeof(datum->ModifyBy));
+
 		if (datum->Flags & QYP_DATUM_F_NEW)
 		    {
 		    /** new datum - do a Create **/
 		    objCurrentDate(&datum->CreateDate);
 		    strtcpy(datum->CreateBy, mssUserName(), sizeof(datum->CreateBy));
-		    snprintf(source_path, sizeof(source_path), "%s/*", inf->Node->SourcePath);
+		    rval = snprintf(source_path, sizeof(source_path), "%s/*", inf->Node->SourcePath);
+		    if (rval < 0 || rval >= sizeof(source_path))
+			{
+			mssError(1, "QYP", "Source path exceeded internal limits");
+			goto error;
+			}
 		    source_obj = objOpen(inf->Obj->Session, source_path, O_RDWR | O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+		    if (!source_obj)
+			goto error;
 
 		    /** Set entity fields **/
 		    for(j=0;j<inf->PivotData.nItems;j++)
@@ -865,7 +878,12 @@ qyp_internal_Update(pQypData inf)
 			mssError(1,"QYP","Cannot update key field '%s'", datum->Name);
 			goto error;
 			}
-		    snprintf(source_path, sizeof(source_path), "%s/%s", inf->Node->SourcePath, datum->SourceObjName);
+		    rval = snprintf(source_path, sizeof(source_path), "%s/%s", inf->Node->SourcePath, datum->SourceObjName);
+		    if (rval < 0 || rval >= sizeof(source_path))
+			{
+			mssError(1, "QYP", "Source path exceeded internal limits");
+			goto error;
+			}
 		    source_obj = objOpen(inf->Obj->Session, source_path, O_RDWR, 0600, "system/object");
 		    if (!source_obj)
 			goto error;
@@ -1044,10 +1062,10 @@ qypOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	inf->Node->BaseNode->OpenCnt++;
 
 	/** Read in the row data? **/
-	if (obj->SubPtr < obj->Pathname->nElements)
+	if (obj->SubPtr < obj->Pathname->nElements || inf->Node->nKeys == 0)
 	    {
 	    inf->Flags |= QYP_F_ISROW;
-	    strtcpy(inf->ObjName, obj_internal_PathPart(obj->Pathname, obj->SubPtr, 1), sizeof(inf->ObjName));
+	    strtcpy(inf->ObjName, obj_internal_PathPart(obj->Pathname, obj->SubPtr - ((inf->Node->nKeys == 0)?1:0), 1), sizeof(inf->ObjName));
 
 	    /** autoname requested? **/
 	    if (!strcmp(inf->ObjName,"*") && (obj->Mode & OBJ_O_AUTONAME))
@@ -1104,11 +1122,11 @@ qypClose(void* inf_v, pObjTrxTree* oxt)
 	for(i=0;i<inf->PivotData.nItems;i++)
 	    {
 	    datum = (pQypDatum)inf->PivotData.Items[i];
-	    if (datum->Data.DataType == DATA_T_STRING)
+	    if (datum->Data.DataType == DATA_T_STRING && datum->Data.Data.String)
 		nmSysFree(datum->Data.Data.String);
-	    else if (datum->Data.DataType == DATA_T_DATETIME)
+	    else if (datum->Data.DataType == DATA_T_DATETIME && datum->Data.Data.DateTime)
 		nmFree(datum->Data.Data.DateTime, sizeof(DateTime));
-	    else if (datum->Data.DataType == DATA_T_MONEY)
+	    else if (datum->Data.DataType == DATA_T_MONEY && datum->Data.Data.Money)
 		nmFree(datum->Data.Data.Money, sizeof(MoneyType));
 	    nmFree(datum, sizeof(QypDatum));
 	    }
@@ -1149,6 +1167,7 @@ qypDeleteObj(void* inf_v, pObjTrxTree* oxt)
     int i;
     pQypDatum datum;
     char delete_pathname[OBJSYS_MAX_PATH+1];
+    int rval;
 
 	/** Loop through the data items, deleting the source objects **/
 	for(i=0;i<inf->PivotData.nItems;i++)
@@ -1157,9 +1176,12 @@ qypDeleteObj(void* inf_v, pObjTrxTree* oxt)
 	    if (!(datum->Flags & QYP_DATUM_F_KEY) && datum->SourceObjName[0])
 		{
 		/** Found an object to delete **/
-		if (strlen(inf->Node->SourcePath) + strlen(datum->SourceObjName) + 1 + 1 >= sizeof(delete_pathname))
+		rval = snprintf(delete_pathname, sizeof(delete_pathname), "%s/%s", inf->Node->SourcePath, datum->SourceObjName);
+		if (rval < 0 || rval >= sizeof(delete_pathname))
+		    {
+		    mssError(1, "QYP", "Delete pathname exceeded internal limits");
 		    return -1;
-		snprintf(delete_pathname,sizeof(delete_pathname),"%s/%s",inf->Node->SourcePath,datum->SourceObjName);
+		    }
 		if (objDelete(inf->Obj->Session, delete_pathname) < 0)
 		    return -1;
 		}
@@ -1247,7 +1269,7 @@ qypOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    return NULL;
 	    }
 	objUnmanageObject(inf->Obj->Session, qy->LLQueryObj);
-	qy->LLQuery = objOpenQuery(qy->LLQueryObj, NULL, orderby.String, NULL, NULL);
+	qy->LLQuery = objOpenQuery(qy->LLQueryObj, NULL, orderby.String, NULL, NULL, 0);
 	if (!qy->LLQuery)
 	    {
 	    objClose(qy->LLQueryObj);
@@ -1560,6 +1582,8 @@ qypSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	/** No attribute found? Add a new one **/
 	if (!datum)
 	    {
+	    if (val == NULL)
+		return 0;
 	    if (datatype <= 0)
 		return -1;
 	    new_datum = (pQypDatum)nmMalloc(sizeof(QypDatum));
@@ -1590,8 +1614,14 @@ qypSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	/** Modify the datum **/
 	if ((datum->Flags & QYP_DATUM_F_KEY) && !(inf->Flags & QYP_F_NEW))
 	    {
-	    mssError(1,"QYP","Setting entity/key value '%s' not supported on existing objects",attrname);
-	    goto error;
+	    /** Only complain about keys if the value is actually changing **/
+	    if (!val || (datatype == DATA_T_INTEGER && datum->Data.Data.Integer != val->Integer) || (datatype == DATA_T_STRING && strcmp(datum->Data.Data.String, val->String) != 0) || (datatype != DATA_T_INTEGER && datatype != DATA_T_STRING))
+		{
+		mssError(1,"QYP","Setting entity/key value '%s' not supported on existing objects",attrname);
+		goto error;
+		}
+	    else
+		return 0;
 	    }
 	if (datum->Data.DataType != datatype)
 	    {

@@ -38,7 +38,7 @@ cx_hints_style.applyonchange = 524288;
 
 // cx_set_hints() - initializes hints information for a given
 // form field.
-function cx_set_hints(element, hstr, hinttype)
+function cx_set_hints(element, hstr, hinttype, applydef)
     {
     if (!element.cx_hints) element.cx_hints = {};
     if (element.cx_hints.hstr == hstr) 
@@ -53,8 +53,8 @@ function cx_set_hints(element, hstr, hinttype)
     cx_merge_hints(element);
     if (element.hintschanged) element.hintschanged(hinttype);
     if (element.cx_hints_applyto)
-	cx_set_hints(element.cx_hints_applyto, hstr, hinttype);
-    if (element.form && element.form.mode == 'New' && old_default != element.cx_hints['all'].DefaultExpr)
+	cx_set_hints(element.cx_hints_applyto, hstr, hinttype, applydef);
+    if (element.form && element.form.mode == 'New' && applydef && old_default != element.cx_hints['all'].DefaultExpr)
 	cx_hints_startnew(element);
     }
 
@@ -68,7 +68,7 @@ function cx_copy_hints(src, dst)
 	for(var h in src.cx_hints)
 	    {
 	    if ((h == 'app' || h == 'data' || h == 'widget') && src.cx_hints[h].hstr)
-		cx_set_hints(dst, src.cx_hints[h].hstr, h);
+		cx_set_hints(dst, src.cx_hints[h].hstr, h, true);
 	    }
 	}
     }
@@ -421,12 +421,34 @@ function cx_hints_checkmodify(e, ov, nv, type, onchange)
 	// badchars/allowchars
 	if (h.AllowChars && nv)
 	    {
-	    for(var i = 0; i<(''+nv).length; i++) if (h.AllowChars.indexOf((''+nv).charAt(i)) < 0) return ov;
+	    var nv2 = '';
+	    for(var i = 0; i<(''+nv).length; i++)
+		{
+		if (h.AllowChars.indexOf((''+nv).charAt(i)) >= 0) 
+		    {
+		    nv2 = nv2 + (''+nv).charAt(i);
+		    //return ov;
+		    }
+		}
+	    nv = nv2;
 	    }
 	if (h.BadChars && nv)
 	    {
-	    for(var i = 0; i<h.BadChars.length; i++) if ((''+nv).indexOf(h.BadChars.charAt(i)) >= 0) return ov;
+	    var nv2 = '';
+	    for(var i = 0; i<(''+nv).length; i++)
+		{
+		if (h.BadChars.indexOf((''+nv).charAt(i)) < 0)
+		    {
+		    nv2 = nv2 + (''+nv).charAt(i);
+		    }
+		    //return ov;
+		}
+	    nv = nv2;
 	    }
+
+	// Empty string is null?
+	if ((h.Style & cx_hints_style.strnull) && ((typeof nv == 'string') || (typeof nv == 'object' && nv != null && nv.constructor == String)) && nv == '')
+	    return null;
 
     return nv;
     }

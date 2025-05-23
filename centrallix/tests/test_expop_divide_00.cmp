@@ -1,0 +1,11 @@
+Attribute [6 / 2]:  integer  3
+Attribute [5 / 2]:  integer  2
+Attribute [5 / 2.0]:   double  2.5
+Attribute [5.0 / 2]:   double  2.5
+Attribute [5.0 / 2.0]:   double  2.5
+Attribute [$5.00 / 2]:    money   $2.50 
+Attribute [$5.00 / 2.0]:    money   $2.50 
+Attribute [$5.00 / $2.00]:   double  2.5
+Attribute [2 / null]:  integer  NULL
+Attribute [null / 2]:  integer  NULL
+Attribute [null / null]:  integer  NULL

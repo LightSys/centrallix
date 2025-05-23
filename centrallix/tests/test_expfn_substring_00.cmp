@@ -1,0 +1,12 @@
+Attribute [column_000]:   string   "cd" 
+Attribute [column_000]:   string   "de" 
+Attribute [column_000]:   string   "abcde" 
+Attribute [column_000]:   string   "ab" 
+Attribute [column_000]:   string   "c" 
+Attribute [column_000]:   string   "" 
+Attribute [column_000]:   string  NULL
+Attribute [column_000]:   string  NULL
+Attribute [column_000]:   string   "string" 
+Attribute [column_000]:   string   "y longer string" 
+Attribute [column_000]:   string   "\\" 
+Attribute [column_000]:   string   "" 

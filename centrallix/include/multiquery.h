@@ -39,6 +39,12 @@
 #include "expression.h"
 #include "cxlib/xstring.h"
 #include "stparse.h"
+#include "cxlib/xhandle.h"
+
+
+#define MQ_MAX_ORDERBY		(25)
+
+#define MQ_MAX_SOURCELEN	(OBJSYS_MAX_PATH+1+16384)
 
 
 /*** Structure for a query driver.  A query driver basically manages a type
@@ -82,7 +88,7 @@ typedef struct _QE
     pObjQuery		LLQuery;
     void*		QSLinkage;
     pExpression		Constraint;
-    pExpression		OrderBy[25];
+    pExpression		OrderBy[MQ_MAX_ORDERBY];
     int			OrderPrio;		/* priority of ordering */
     void*		PrivateData;		/* q-driver specific data structure */
     }
@@ -97,6 +103,7 @@ typedef struct _QE
 #define MQ_EF_FROMOBJECT	64		/* SELECT ... FROM OBJECT */
 #define MQ_EF_WILDCARD		128		/* SELECT ... FROM WILDCARD /path/name*.txt */
 #define MQ_EF_PRUNESUBTREE	256		/* SELECT ... FROM PRUNED SUBTREE /path */
+#define MQ_EF_PAGED		512		/* SELECT ... FROM PAGED ... */
 
 
 /*** Structure for the syntactical analysis of the query text. ***/
@@ -105,8 +112,10 @@ typedef struct _QS
     struct _QS*		Parent;
     int			NodeType;		/* one-of MQ_T_xxx */
     XArray		Children;
+    int			ObjID;
     char		Presentation[32];
-    char		Source[OBJSYS_MAX_PATH+1];
+    char		Source[MQ_MAX_SOURCELEN];
+    char		SourceType[64];
     char		Name[32];
     int			ObjFlags[EXPR_MAX_PARAMS];
     int			ObjCnt;
@@ -131,6 +140,12 @@ typedef struct _QS
 #define MQ_SF_WILDCARD		128		/* SELECT ... FROM WILDCARD /path/name*.txt */
 #define MQ_SF_PRUNESUBTREE	256		/* SELECT ... FROM PRUNED SUBTREE /path */
 #define MQ_SF_ASSIGNMENT	512		/* SELECT :obj:attr = ... */
+#define MQ_SF_EXPRESSION	1024		/* SELECT ... FROM EXPRESSION (exp) */
+#define MQ_SF_IFMODIFIED	2048		/* UPDATE ... SET ... IF MODIFIED */
+#define MQ_SF_APPSCOPE		4096		/* DECLARE ... SCOPE APPLICATION */
+#define MQ_SF_COLLECTION	8192		/* DECLARE COLLECTION ... */
+#define MQ_SF_NONEMPTY		16384		/* SELECT ... FROM NONEMPTY ... */
+#define MQ_SF_PAGED		32768		/* SELECT ... FROM PAGED ... */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1
@@ -169,6 +184,26 @@ typedef struct _QDO
     QueryDeclaredObject, *pQueryDeclaredObject;
 
 
+/*** Similarly, this is for a declared collection (i.e. table). ***/
+typedef struct _QDC
+    {
+    char		Name[32];		/* Name of the collection */
+    handle_t		Collection;		/* Collection data */
+    }
+    QueryDeclaredCollection, *pQueryDeclaredCollection;
+
+
+/*** Data from end-user session/group/app.  This is for declared
+ *** items with scope "application".
+ ***/
+typedef struct _QAD
+    {
+    XArray		DeclaredObjects;	/* objects created with DECLARE OBJECT ... */
+    XArray		DeclaredCollections;	/* collections created with DECLARE COLLECTION ... */
+    }
+    QueryAppData, *pQueryAppData;
+
+
 typedef struct _QST QueryStatement, *pQueryStatement;
 typedef struct _MQ MultiQuery, *pMultiQuery;
 
@@ -196,6 +231,8 @@ struct _QST /* QueryStatement */
 #define MQ_TF_FINISHED		8		/* Finish() called on this statement */
 #define MQ_TF_ALLASSIGN		16		/* All select items are assignments */
 #define MQ_TF_ONEASSIGN		32		/* At least one select item assigns */
+#define MQ_TF_IMMEDIATE		64		/* command already executed */
+#define MQ_TF_OBJCONTENT	128		/* "objcontent" is being explicitly named - mqRead from attr instead of content. */
 
 /*** Structure for managing the multiquery. ***/
 struct _MQ /* MultiQuery */
@@ -214,7 +251,16 @@ struct _MQ /* MultiQuery */
     pLxSession		LexerSession;		/* tokenized query string */
     char*		QueryText;		/* saved copy of query string */
     pQueryStatement	CurStmt;		/* current SQL statement that is executing */
+    int			ThisObj;		/* a self-reference to a select statement's items */
+    unsigned int	StartMsec;		/* msec value at start of query */
+    unsigned int	YieldMsec;		/* msec value at last thYield() */
+
+    /*** the following are for declared objects and
+     *** collections with scope "query", the default
+     *** scope.
+     ***/
     XArray		DeclaredObjects;	/* objects created with DECLARE OBJECT ... */
+    XArray		DeclaredCollections;	/* collections created with DECLARE COLLECTION ... */
     };
 
 #define MQ_F_ENDOFSQL		1		/* reached end of list of sql queries */
@@ -222,6 +268,8 @@ struct _MQ /* MultiQuery */
 #define MQ_F_ONESTATEMENT	4		/* disable use of multiple statements (such as in subquery) */
 #define MQ_F_NOUPDATE		8		/* disallow changes to any data with this query. */
 #define MQ_F_NOINSERTED		16		/* did not create __inserted object. **/
+#define MQ_F_SHOWPLAN		32		/* print diagnostics for SQL statement **/
+#define MQ_F_FIRSTSTATEMENT	64		/* parsing the first statement in the query */
 
 
 /*** Pseudo-object structure. ***/
@@ -237,6 +285,7 @@ typedef struct
     int			RowIDAllQuery;
     int			RowIDThisQuery;
     int			RowIDBeforeLimit;
+    int			Offset;			/* objcontent read offset */
     }
     PseudoObject, *pPseudoObject;
 
@@ -257,5 +306,7 @@ int mq_internal_FreeQE(pQueryElement qe);
 pPseudoObject mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj);
 int mq_internal_FreePseudoObject(pPseudoObject p);
 int mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p);
+handle_t mq_internal_FindCollection(pMultiQuery mq, char* collection);
+void mq_internal_CheckYield(pMultiQuery mq);
 
 #endif  /* not defined _MULTIQUERY_H */

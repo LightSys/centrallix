@@ -1,0 +1,5 @@
+Attribute [quote(This_string_has_no_quotes]:   string   "\"This_string_has_no_quotes\"" 
+Attribute [quote("God is good, all the tim]:   string   "\"God is good, all the time\"" 
+Attribute [quote('And God said, "Let there]:   string   "\"And God said, \\\"Let there be light\\\"\"" 
+Attribute [quote("")]:   string   "\"\"" 
+Attribute [quote(null)]:   string  NULL

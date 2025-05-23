@@ -1,0 +1,6 @@
+##NAME Inner Equijoin with ORDER BY
+
+query select msg = "Ordering By Colors:"
+query select t1id = :t1:f_id, t2id = :t2:f_id, t1desc = :t1:f_desc, t2desc = :t2:f_desc, cnt = :t1:f_count + :t2:f_square from /tests/Testdata1.csv/rows t1, /tests/Testdata2.csv/rows t2 where :t1:f_id = :t2:f_id and :t1:f_desc != 'Green' and :t2:f_desc != 'Fox' order by :t1:f_desc desc
+query select msg = "Ordering By Animals:"
+query select t1id = :t1:f_id, t2id = :t2:f_id, t1desc = :t1:f_desc, t2desc = :t2:f_desc, cnt = :t1:f_count + :t2:f_square from /tests/Testdata1.csv/rows t1, /tests/Testdata2.csv/rows t2 where :t1:f_id = :t2:f_id and :t1:f_desc != 'Green' and :t2:f_desc != 'Fox' order by :t2:f_desc desc

@@ -71,8 +71,7 @@ typedef struct
     int		CurrAttr;
     int		Version;
     pObject	MultiQueryObject;
-    pParam	Parameters[QY_MAX_PARAM];
-    int		nParameters;
+    XArray	Parameters;
     char*	SQL;
     char*	NameExpression;
     pParamObjects   ObjList;
@@ -180,8 +179,9 @@ qy_internal_Close(pQyData inf)
 	    {
 	    if (inf->MultiQueryObject)
 		objClose(inf->MultiQueryObject);
-	    for(i=0;i<inf->nParameters;i++)
-		paramFree(inf->Parameters[i]);
+	    for(i=0;i<inf->Parameters.nItems;i++)
+		paramFree((pParam)inf->Parameters.Items[i]);
+	    xaDeInit(&inf->Parameters);
 	    if (inf->SQL)
 		nmSysFree(inf->SQL);
 	    if (inf->Node)
@@ -212,9 +212,9 @@ qy_internal_GetParamType(void* inf_v, char* attrname)
     int i;
 
 	/** Find the param **/
-	for(i=0;i<inf->nParameters;i++)
+	for(i=0;i<inf->Parameters.nItems;i++)
 	    {
-	    param = inf->Parameters[i];
+	    param = (pParam)inf->Parameters.Items[i];
 	    if (!strcmp(attrname, param->Name))
 		{
 		if (!param->Value)
@@ -237,9 +237,9 @@ qy_internal_GetParamValue(void* inf_v, char* attrname, int datatype, pObjData va
     int i;
 
 	/** Find the param **/
-	for(i=0;i<inf->nParameters;i++)
+	for(i=0;i<inf->Parameters.nItems;i++)
 	    {
-	    param = inf->Parameters[i];
+	    param = (pParam)inf->Parameters.Items[i];
 	    if (!strcmp(attrname, param->Name))
 		{
 		if (!param->Value)
@@ -284,6 +284,7 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
     pParam one_param;
     pStruct one_open_ctl, open_ctl;
     pObjQuery lookup_qy;
+    char* endorsement_name;
 
 	/** Allocate the structure **/
 	inf = (pQyData)nmMalloc(sizeof(QyData));
@@ -291,6 +292,7 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 
 	/** Zero out the structure **/
 	memset(inf,0,sizeof(QyData));
+	xaInit(&inf->Parameters, 16);
 
 	/** Set the parent Object **/
 	inf->Obj = obj;
@@ -305,6 +307,7 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 
 	/** Object List **/
 	inf->ObjList = expCreateParamList();
+	inf->ObjList->Session = obj->Session;
 	expAddParamToList(inf->ObjList,"this",NULL,EXPR_O_CURRENT);
 	expAddParamToList(inf->ObjList,"parameters",(void*)inf,0);
 	expSetParamFunctions(inf->ObjList, "parameters", qy_internal_GetParamType, qy_internal_GetParamValue, qy_internal_SetParamValue);
@@ -324,6 +327,13 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	if (!node)
 	    {
 	    node = snReadNode(obj->Prev);
+	    }
+
+	/** Security check **/
+	if (node && endVerifyEndorsements(node->Data, stGetObjAttrValue, &endorsement_name) < 0)
+	    {
+	    mssError(1,"QY","Security check failed - endorsement '%s' required", endorsement_name);
+	    goto error;
 	    }
 
 	/** If no node, and user said CREAT ok, try that. **/
@@ -346,14 +356,6 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	/** Link to the node, increasing its reference count **/
 	inf->Node->OpenCnt++;
 
-	/** Get SQL string **/
-	if (stAttrValue(stLookup(inf->Node->Data,"sql"),NULL,&sql,0) != 0)
-	    {
-	    mssError(1,"QY","'sql' property must be supplied for query objects");
-	    goto error;
-	    }
-	inf->SQL = nmSysStrdup(sql);
-
 	/** Get Name Expression string **/
 	if (stAttrValue(stLookup(inf->Node->Data,"name_expression"),NULL,&name_expr,0) != 0)
 	    {
@@ -364,18 +366,13 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	/** Get parameter list **/
 	for(i=0; i<inf->Node->Data->nSubInf; i++)
 	    {
-	    if (inf->nParameters >= QY_MAX_PARAM)
-		{
-		mssError(1,"QY","Too many parameters in query; maximum is %d", QY_MAX_PARAM);
-		goto error;
-		}
 	    param_inf = inf->Node->Data->SubInf[i];
 	    if (stStructType(param_inf) == ST_T_SUBGROUP && !strcmp(param_inf->UsrType,"query/parameter"))
 		{
 		/** Found a parameter.  Now set it up **/
 		one_param = paramCreateFromInf(param_inf);
 		if (!one_param) goto error;
-		inf->Parameters[inf->nParameters++] = one_param;
+		xaAddItem(&inf->Parameters, one_param);
 
 		/** Set the value supplied by the user, if needed. **/
 		open_ctl = obj->Pathname->OpenCtl[obj->SubPtr-1];
@@ -386,16 +383,21 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 			one_open_ctl = open_ctl->SubInf[j];
 			if (!strcmp(one_open_ctl->Name, one_param->Name))
 			    {
-			    paramSetValueFromInfNe(one_param, one_open_ctl);
+			    paramSetValueFromInfNe(one_param, one_open_ctl, 0, NULL, obj->Session);
 			    break;
 			    }
 			}
 		    }
-
-		/** Apply hints **/
-		paramEvalHints(one_param, NULL);
 		}
 	    }
+
+	/** Get SQL string **/
+	if (stGetAttrValueOSML(stLookup(inf->Node->Data,"sql"), DATA_T_STRING, POD(&sql), 0, obj->Session, inf->ObjList) != 0)
+	    {
+	    mssError(1,"QY","'sql' property must be supplied for query objects");
+	    goto error;
+	    }
+	inf->SQL = nmSysStrdup(sql);
 
 	/** If the .qy file is the end of the Pathname, We  **/
 	/** will not need to chop apart extra where clauses **/
@@ -594,6 +596,7 @@ qyQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	inf = (pQyData)nmMalloc(sizeof(QyData));
 	if (!inf) return NULL;
 	memset(inf, 0, sizeof(QyData));
+	xaInit(&inf->Parameters, 16);
 	strcpy(inf->Pathname, obj->Pathname->Pathbuf);
 	inf->Node = qy->Data->Node;
 	inf->Mode = mode;
@@ -670,8 +673,7 @@ qyGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	/** Put checking for your own attributes here. **/
 	if (inf->Type == QY_T_LIST)
 	    {
-	    /** None, currently **/
-	    return -1;
+	    return qy_internal_GetParamType(inf, attrname);
 	    }
 	if (inf->Type == QY_T_ITEM)
 	    {
@@ -722,7 +724,7 @@ qyGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxT
 	    }
 	if (inf->Type == QY_T_LIST)
 	    {
-	    return -1;
+	    return qy_internal_GetParamValue(inf, attrname, datatype, val);
 	    }
 
 	mssError(1,"QY","Could not locate requested attribute");

@@ -1034,10 +1034,19 @@ dat_csv_ParseRow(pDatData inf, pDatTableInf td)
 		}
 
 	    /** Escape character? **/
-	    if (*ptr == '\\') 
+	    if (!(inf->Node->Flags & DAT_NODE_F_TWOQUOTEESC) && *ptr == '\\' && !is_escaped) 
 	        {
 		is_escaped = 1;
 		continue;
+		}
+	    if ((inf->Node->Flags & DAT_NODE_F_TWOQUOTEESC) && (quot == '"' || quot == '\'') && *ptr == quot && !is_escaped)
+		{
+		if ((((ptr+1) - inf->Row->Pages[cur_page]->Data) >= inf->Row->Pages[cur_page]->Length && cur_page+1 < inf->Row->nPages && inf->Row->Pages[cur_page+1]->Data[0] == quot)
+		    || (((ptr+1) - inf->Row->Pages[cur_page]->Data) < inf->Row->Pages[cur_page]->Length && ptr[1] == quot))
+		    {
+		    is_escaped = 1;
+		    continue;
+		    }
 		}
 
 	    /** Check for begin-quote mark. **/
@@ -1403,6 +1412,7 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 	    {
 	    /** Not found... Allocate a new one **/
 	    dn = (pDatNode)nmMalloc(sizeof(DatNode));
+	    memset(dn, 0, sizeof(DatNode));
 	    new_node = 1;
 	    if (!dn) return NULL;
 	    strcpy(dn->SpecPath, nodefile);
@@ -1438,6 +1448,11 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 			nmFree(dn,sizeof(DatNode));
 			return NULL;
 			}
+		    dn->Flags |= DAT_NODE_F_HDRROW | DAT_NODE_F_ROWIDKEY;
+		    dn->Type = DAT_NODE_T_CSV;
+		    dat_csv_OpenNode(dn);
+		    context->DataObj = obj->Prev;
+		    objLinkTo(context->DataObj);
 		    }
 		else
 		    {
@@ -1592,6 +1607,9 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 		ptr=NULL;
 		stAttrValue(stLookup(dn->Node->Data,"key_is_rowid"),NULL,&ptr,0);
 		if (ptr && !strcmp(ptr,"yes")) dn->Flags |= DAT_NODE_F_ROWIDKEY;
+		ptr=NULL;
+		stAttrValue(stLookup(dn->Node->Data,"two_quote_escape"),NULL,&ptr,0);
+		if (ptr && !strcmp(ptr,"yes")) dn->Flags |= DAT_NODE_F_TWOQUOTEESC;
 		n = -1;
 		stAttrValue(stLookup(dn->Node->Data,"new_row_padding"),&n,NULL,0);
 		if (n > DAT_CACHE_PAGESIZE) n = DAT_CACHE_PAGESIZE;
@@ -1869,7 +1887,14 @@ dat_csv_GenerateText(pDatNode node, int colid, pObjData val, unsigned char* buf,
 		}
 	    else
 	        {
-	        if (*ptr == quot) *(buf++) = '\\';
+		/** Escape an embedded quote mark? **/
+	        if (*ptr == quot)
+		    {
+		    if (node->Flags & DAT_NODE_F_TWOQUOTEESC)
+			*(buf++) = quot;
+		    else
+			*(buf++) = '\\';
+		    }
 	        *(buf++) = *ptr;
 		}
 	    ptr++;
@@ -3594,6 +3619,10 @@ datPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
     pDatTableInf tdata = NULL;
     int i, j;
 
+    /* No spec file? */
+    if (!inf->Node->Node)
+	return NULL;
+
     tdata = inf->Node->TableInf;
     for (i=0; i < tdata->nCols; i++)
 	{
@@ -3744,7 +3773,7 @@ dat_internal_FillTdata(pDatNode dn, pObject obj, char* filename)
     int columns = 0;
     unsigned char text[DAT_CACHE_PAGESIZE];
     /** Read in the first line of the csv file **/
-    int len = objRead(obj->Prev, text, DAT_CACHE_PAGESIZE, 0, 0);
+    int len = objRead(obj->Prev, (char*)text, DAT_CACHE_PAGESIZE, 0, 0);
     if (len < 1)
 	{
 	success = 0;
@@ -3825,7 +3854,7 @@ dat_internal_FillTdata(pDatNode dn, pObject obj, char* filename)
     withinQuote = 0;
     tdata->Cols[colsSoFar] = tdata->ColBuf;
     colsSoFar++;
-    for (i = 0; i < len && text[i] != '\n'; i++)
+    for (i = 0; i < len && text[i] != '\n' && text[i] != '\r'; i++)
 	{
 	if (!withinQuote)
 	    {
@@ -3833,14 +3862,14 @@ dat_internal_FillTdata(pDatNode dn, pObject obj, char* filename)
 		{
 		withinQuote = 1;
 		}
-	    else if (text[i] != ',' && text[i] != '\n')
+	    else if (text[i] != ',' && text[i] != '\n' && text[i] != '\r')
 		{
 		tdata->ColBuf[tdata->ColBufLen] = text[i];
 		tdata->ColBufLen++;
 		}
-	    else if (text[i] == ',')
+	    else /*if (text[i] == ',')*/
 		{
-		/** NULL terminate **/
+		/** NULL terminate - end of column name in header row **/
 		tdata->ColBuf[tdata->ColBufLen] = '\0';
 		tdata->ColBufLen++;
 
@@ -3870,6 +3899,7 @@ dat_internal_FillTdata(pDatNode dn, pObject obj, char* filename)
 		}
 	    }
 	}
+    tdata->ColBuf[tdata->ColBufLen] = '\0';
     for (i = 0; i < tdata->nCols; i++)
 	{
 	/** This is some intelligence to make a guess at the proper type for the column. (Currently Disabled)

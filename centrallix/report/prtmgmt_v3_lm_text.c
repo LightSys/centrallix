@@ -89,16 +89,7 @@ prt_textlm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 	    {
 	    /** Duplicate the object... without the content. **/
 	    new_object = prt_internal_AllocObjByID(this->ObjType->TypeID);
-	    /*prt_internal_CopyAttrs(this, new_object);
-	    prt_internal_CopyGeom(this, new_object);
-	    new_object->Height = this->ConfigHeight;
-	    new_object->Width = this->ConfigWidth;
-	    new_object->Session = this->Session;
-	    new_object->Flags = this->Flags;*/
 	    new_object = prt_internal_Duplicate(this,0);
-
-	    /** Init the new object. **/
-	    /*new_object->LayoutMgr->InitContainer(new_object, this->LMData, NULL);*/
 
 	    /** Update the handle so that later adds go to the correct place. **/
 	    prtUpdateHandleByPtr(this, new_object);
@@ -555,6 +546,7 @@ prt_textlm_SplitString(pPrtObjStream stringobj, int splitpt, int splitlen, doubl
 	split_obj->Height = stringobj->Height;
 	split_obj->YBase = stringobj->YBase;
 	split_obj->Width = prt_internal_GetStringWidth(split_obj, (char*)split_obj->Content, -1);
+	split_obj->Z = stringobj->Z;
 
     return split_obj;
     }
@@ -716,7 +708,26 @@ prt_textlm_WordWrap(pPrtObjStream area, pPrtObjStream* curobj)
 int
 prt_textlm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_width, double req_height, pPrtObjStream *new_container)
     {
-    /** For now, do not allow any resizing. **/
+    double delta;
+    double container_room;
+
+	/** Width resize?  Not yet supported. **/
+	if (req_width != child->Width)
+	    return -1;
+
+	/** Fits already? **/
+	delta = req_height - child->Height;
+	container_room = prtInnerHeight(this) - (this->ContentTail->Height + this->ContentTail->Y + delta);
+	if (container_room >= 0.0)
+	    return 0;
+
+	/** Can we resize ourselves? **/
+	if (this->LayoutMgr->Resize(this, this->Width, this->Height + (0.0 - container_room)) >= 0)
+	    {
+	    /** Our resize succeeded - allow child resize. **/
+	    return 0;
+	    }
+	
     return -1;
     }
 
@@ -729,7 +740,37 @@ prt_textlm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wi
 int
 prt_textlm_ChildResized(pPrtObjStream this, pPrtObjStream child, double old_width, double old_height)
     {
-    return -1;
+    pPrtObjStream nextchild;
+    double delta;
+
+	/** Update Y values for all items after resized child **/
+	delta = child->Height - old_height;
+	nextchild = child->Next;
+	while (nextchild)
+	    {
+	    if (nextchild->Y > child->Y)
+		nextchild->Y += delta;
+	    nextchild = nextchild->Next;
+	    }
+
+    return 0;
+    }
+
+
+/*** prt_textlm_UndoWrapWidth() - returns the width an object will have
+ *** if wrapping is undone.
+ ***/
+double
+prt_textlm_UndoWrapWidth(pPrtObjStream obj)
+    {
+
+	/** Space removed during wrapping? **/
+	if (obj->Flags & PRT_TEXTLM_F_RMSPACE)
+	    {
+	    return obj->Width + prt_internal_GetStringWidth(obj, " ", 1);
+	    }
+
+    return obj->Width;
     }
 
 
@@ -780,6 +821,28 @@ prt_textlm_GetSplitObj(pPrtObjStream* split_obj_list)
     return tmpobj;
     }
 
+
+/*** prt_textlm_FreeObjects() - free a list of objects including their text
+ *** content.
+ ***/
+int
+prt_textlm_FreeObjects(pPrtObjStream objects)
+    {
+    pPrtObjStream del;
+
+	while(objects)
+	    {
+	    del = objects;
+	    objects = objects->Next;
+	    if (del->Content)
+		nmSysFree(del->Content);
+	    prt_internal_FreeObj(del);
+	    }
+
+    return 0;
+    }
+
+
 /*** prt_textlm_Setup() - adds an empty object to a freshly created area
  *** container to be the 'start' of the content.
  ***/
@@ -804,6 +867,80 @@ prt_textlm_Setup(pPrtObjStream this)
 
 	/** Add the initial object **/
 	prt_internal_Add(this, first_obj);
+
+    return 0;
+    }
+
+
+/*** prt_textlm_Rescale() - try to downscale the font size to make the
+ *** content fit within the container.  This is somewhat expensive due to
+ *** multiple steps of refitting, which may be multiplied by additional
+ *** content being added.
+ ***/
+int
+prt_textlm_Rescale(pPrtObjStream container, pPrtObjStream newobj)
+    {
+    pPrtObjStream search;
+    int has_wrap = 0;
+    double target_scale, available_scale;
+
+	/** Safety catch **/
+	if (prtInnerHeight(container) <= 0.0)
+	    return -1;
+
+	/** Any word wrapping? **/
+	for(search=container->ContentTail; search; search=search->Prev)
+	    {
+	    if ((search->Flags & PRT_OBJ_F_SOFTNEWLINE) && search->Next)
+		{
+		has_wrap = 1;
+		break;
+		}
+	    }
+
+	/** If it has wrapping, we just error out at this time (TODO) **/
+	if (has_wrap)
+	    return -1;
+
+	/** If no wrapping, rescaling is purely mathematical **/
+	if (!has_wrap)
+	    {
+	    if (container->ContentTail->Flags & PRT_OBJ_F_SOFTNEWLINE)
+		target_scale = prtInnerWidth(container) / (container->ContentTail->X + prt_textlm_UndoWrapWidth(container->ContentTail) + newobj->Width);
+	    else
+		target_scale = prtInnerHeight(container) / (newobj->Height + newobj->Y);
+	    }
+	if (target_scale >= 1.0 || target_scale <= 0.0)
+	    return -1;
+
+	/** Does the current min fontsize permit us to scale as needed? **/
+	if (newobj->TextStyle.MinFontSize > 0.0)
+	    available_scale = newobj->TextStyle.MinFontSize / newobj->TextStyle.FontSize;
+	else
+	    available_scale = 1.0;
+	if (available_scale > target_scale)
+	    return -1;
+
+	/** Rescale the container to the target scale **/
+	for(search=container->ContentHead; search; search=search->Next)
+	    {
+	    search->TextStyle.FontSize *= target_scale;
+	    search->Width *= target_scale;
+	    search->Height *= target_scale;
+	    search->X *= target_scale;
+	    search->Y *= target_scale;
+	    }
+	newobj->TextStyle.FontSize *= target_scale;
+	newobj->Width *= target_scale;
+	newobj->Height *= target_scale;
+	newobj->X *= target_scale;
+	newobj->Y *= target_scale;
+
+	/** Move the wrapped item back where it was **/
+	if (container->ContentTail->Flags & PRT_OBJ_F_SOFTNEWLINE)
+	    {
+	    prt_textlm_UndoWrap(container->ContentTail);
+	    }
 
     return 0;
     }
@@ -836,7 +973,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     pPrtObjStream split_obj_list = NULL;
     pPrtObjStream new_parent;
     pPrtObjStream search;
-    double x,y,yb;
+    double x,y;
     int handle_id;
 
 	/** Need to adjust the height/width if unspecified? **/
@@ -869,9 +1006,15 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	     **/
 	    if ((this->ContentTail && this->ContentTail->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)))
 		{
-		/** Justify previous line? **/
+		/** New line needed.
+		 ** Justify previous line?
+		 **/
 		prt_textlm_JustifyLine(this->ContentTail, this->ContentTail->Justification);
+
+		/** Start a new line at the left edge **/
 		objptr->X = 0.0;
+
+		/** Start a new line just below the previous line **/
 		if (this->ContentTail->LineHeight > bottom - top)
 		    objptr->Y = top + this->ContentTail->LineHeight;
 		else
@@ -879,17 +1022,19 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		}
 	    else
 		{
-		/** Where will this go, by default?  X is pretty easy... **/
+		/** Add the object on the same line.
+		 ** Where will this go, by default?  For X, it goes at the end of the
+		 ** last object on the line.
+		 **/
 		x = this->ContentTail->X + this->ContentTail->Width;
 
-		/** for the Y location, we have to look at the baseline for text.  If
+		/** For the Y location, we have to look at the baseline for text.  If
 		 ** the baseline for the new object is unset (0), we ignore the previous
 		 ** baseline.
 		 **/
 		y = this->ContentTail->Y;
 		if (objptr->YBase > 0)
 		    {
-		    //y = this->ContentTail->Y + this->ContentTail->YBase - objptr->YBase;
 		    for(search=this->ContentTail; search; search=search->Prev)
 			{
 			if (search->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE))
@@ -977,29 +1122,38 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		/** Request the additional space, if allowed **/
 		if (this->LayoutMgr->Resize(this, this->Width, objptr->Y + objptr->Height + this->MarginTop + this->MarginBottom + this->BorderTop + this->BorderBottom) < 0)
 		    {
-		    /** Resize denied.  If container is empty, we can't continue on, so error out here. **/
+		    /** Resize denied.  If container is empty, we can't do a Break. **/
 		    if (!this->ContentHead || (this->ContentHead->X + this->ContentHead->Width == 0.0 && !this->ContentHead->Next))
 			{
-			while ((split_obj = prt_textlm_GetSplitObj(&split_obj_list)) != NULL) 
+			/** Try rescale if possible. **/
+			if (prt_textlm_Rescale(this, objptr) < 0)
 			    {
-			    if (split_obj->Content) nmSysFree(split_obj->Content);
-			    prt_internal_FreeObj(split_obj);
+			    /** Resize and Rescale denied?  Fail if so. **/
+			    mssError(1,"PRT","Could not fit new object into layout area");
+			    goto error;
 			    }
-			mssError(1,"PRT","Could not fit new object into layout area");
-			return -1;
+			else
+			    {
+			    /** Reposition wrapped item **/
+			    continue;
+			    }
 			}
 
 		    /** Try a break operation. **/
 		    if (!(this->Flags & PRT_OBJ_F_ALLOWSOFTBREAK) || this->LayoutMgr->Break(this, &new_parent) < 0)
 			{
-			/** Break also denied?  Fail if so. **/
-			while ((split_obj = prt_textlm_GetSplitObj(&split_obj_list)) != NULL) 
+			/** Unable to break.  Try rescale if possible. **/
+			if (prt_textlm_Rescale(this, objptr) < 0)
 			    {
-			    if (split_obj->Content) nmSysFree(split_obj->Content);
-			    prt_internal_FreeObj(split_obj);
+			    /** Resize, Break and Rescale all denied?  Fail if so. **/
+			    mssError(1,"PRT","Could not fit new object into layout area, and automatic page break failed");
+			    goto error;
 			    }
-			mssError(1,"PRT","Could not fit new object into layout area, and automatic page break failed");
-			return -1;
+			else
+			    {
+			    /** Reposition wrapped item **/
+			    continue;
+			    }
 			}
 		    }
 
@@ -1022,7 +1176,11 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    objptr = prt_textlm_GetSplitObj(&split_obj_list);
 	    }
 
-    return 0;
+	return 0;
+
+    error:
+	prt_textlm_FreeObjects(split_obj_list);
+	return -1;
     }
 
 

@@ -1,0 +1,94 @@
+Attribute [7 + 11 * 13]:  integer  150
+Attribute [7 * 11 + 13]:  integer  90
+Attribute [(7 + 11) * 13]:  integer  234
+Attribute [7 * (11 + 13)]:  integer  168
+Attribute [7 + 11 - 13]:  integer  5
+Attribute [7 - 11 + 13]:  integer  9
+Attribute [(7 - 11) + 13]:  integer  9
+Attribute [7 + (11 - 13)]:  integer  5
+Attribute [7 + 11 - 13 * 19 / 23.0]:   double  7.26086956521739
+Attribute [7 * 11 - 13 + 19 / 23.0]:   double  64.8260869565217
+Attribute [7 / 11.0 * 13 + 19 - 23.0]:   double  4.27272727272727
+Attribute [(7 / 11.0) * 13 + 19 - 23.0]:   double  4.27272727272727
+Attribute [7 / (11.0 * 13) + 19 - 23.0]:   double  -3.95104895104895
+Attribute [7 / 11.0 * (13 + 19) - 23.0]:   double  -2.63636363636364
+Attribute [not 1 and 1]:  integer  0
+Attribute [not 1 and 0]:  integer  0
+Attribute [not 0 and 1]:  integer  1
+Attribute [not 0 and 0]:  integer  0
+Attribute [1 and not 1]:  integer  0
+Attribute [1 and not 0]:  integer  1
+Attribute [0 and not 1]:  integer  0
+Attribute [0 and not 0]:  integer  0
+Attribute [not (1 and 1)]:  integer  0
+Attribute [not (1 and 0)]:  integer  1
+Attribute [not (0 and 1)]:  integer  1
+Attribute [not (0 and 0)]:  integer  1
+Attribute [(not 1) and 1]:  integer  0
+Attribute [(not 1) and 0]:  integer  0
+Attribute [(not 0) and 1]:  integer  1
+Attribute [(not 0) and 0]:  integer  0
+Attribute [not 1 or 1]:  integer  1
+Attribute [not 1 or 0]:  integer  0
+Attribute [not 0 or 1]:  integer  1
+Attribute [not 0 or 0]:  integer  1
+Attribute [1 or not 1]:  integer  1
+Attribute [1 or not 0]:  integer  1
+Attribute [0 or not 1]:  integer  0
+Attribute [0 or not 0]:  integer  1
+Attribute [not (1 or 1)]:  integer  0
+Attribute [not (1 or 0)]:  integer  0
+Attribute [not (0 or 1)]:  integer  0
+Attribute [not (0 or 0)]:  integer  1
+Attribute [(not 1) or 1]:  integer  1
+Attribute [(not 1) or 0]:  integer  0
+Attribute [(not 0) or 1]:  integer  1
+Attribute [(not 0) or 0]:  integer  1
+Attribute [0 and 0 or 0]:  integer  0
+Attribute [0 and 0 or 1]:  integer  1
+Attribute [0 and 1 or 0]:  integer  0
+Attribute [0 and 1 or 1]:  integer  1
+Attribute [1 and 0 or 0]:  integer  0
+Attribute [1 and 0 or 1]:  integer  1
+Attribute [1 and 1 or 0]:  integer  1
+Attribute [1 and 1 or 1]:  integer  1
+Attribute [(0 and 0) or 0]:  integer  0
+Attribute [(0 and 0) or 1]:  integer  1
+Attribute [(0 and 1) or 0]:  integer  0
+Attribute [(0 and 1) or 1]:  integer  1
+Attribute [(1 and 0) or 0]:  integer  0
+Attribute [(1 and 0) or 1]:  integer  1
+Attribute [(1 and 1) or 0]:  integer  1
+Attribute [(1 and 1) or 1]:  integer  1
+Attribute [0 and (0 or 0)]:  integer  0
+Attribute [0 and (0 or 1)]:  integer  0
+Attribute [0 and (1 or 0)]:  integer  0
+Attribute [0 and (1 or 1)]:  integer  0
+Attribute [1 and (0 or 0)]:  integer  0
+Attribute [1 and (0 or 1)]:  integer  1
+Attribute [1 and (1 or 0)]:  integer  1
+Attribute [1 and (1 or 1)]:  integer  1
+Attribute [0 or 0 and 0]:  integer  0
+Attribute [0 or 0 and 1]:  integer  0
+Attribute [0 or 1 and 0]:  integer  0
+Attribute [0 or 1 and 1]:  integer  1
+Attribute [1 or 0 and 0]:  integer  1
+Attribute [1 or 0 and 1]:  integer  1
+Attribute [1 or 1 and 0]:  integer  1
+Attribute [1 or 1 and 1]:  integer  1
+Attribute [(0 or 0) and 0]:  integer  0
+Attribute [(0 or 0) and 1]:  integer  0
+Attribute [(0 or 1) and 0]:  integer  0
+Attribute [(0 or 1) and 1]:  integer  1
+Attribute [(1 or 0) and 0]:  integer  0
+Attribute [(1 or 0) and 1]:  integer  1
+Attribute [(1 or 1) and 0]:  integer  0
+Attribute [(1 or 1) and 1]:  integer  1
+Attribute [0 or (0 and 0)]:  integer  0
+Attribute [0 or (0 and 1)]:  integer  0
+Attribute [0 or (1 and 0)]:  integer  0
+Attribute [0 or (1 and 1)]:  integer  1
+Attribute [1 or (0 and 0)]:  integer  1
+Attribute [1 or (0 and 1)]:  integer  1
+Attribute [1 or (1 and 0)]:  integer  1
+Attribute [1 or (1 and 1)]:  integer  1

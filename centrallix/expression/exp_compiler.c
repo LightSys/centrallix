@@ -62,6 +62,7 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
     char* sptr;
     int alloc;
     pXString subqy;
+    int idx;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -258,10 +259,15 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				if (!strcasecmp(etmp->Name,"count") || !strcasecmp(etmp->Name,"avg") ||
 				    !strcasecmp(etmp->Name,"max") || !strcasecmp(etmp->Name,"min") ||
 				    !strcasecmp(etmp->Name,"sum") || !strcasecmp(etmp->Name,"first") ||
-				    !strcasecmp(etmp->Name,"last"))
+				    !strcasecmp(etmp->Name,"last") || !strcasecmp(etmp->Name,"nth"))
 				    {
 				    etmp->Flags |= (EXPR_F_AGGREGATEFN | EXPR_F_AGGLOCKED);
 				    /*etmp->AggExp = expAllocExpression();*/
+				    }
+				if (!strcasecmp(etmp->Name,"row_number") || !strcasecmp(etmp->Name,"dense_rank") ||
+				    !strcasecmp(etmp->Name,"lag"))
+				    {
+				    etmp->Flags |= (EXPR_F_WINDOWFN | EXPR_F_HASWINDOWFN);
 				    }
 
 				/** Pseudo-functions declaring domain of exec of the expression **/
@@ -399,7 +405,11 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 				{
 				for(i=0;i<objlist->nObjects;i++) 
 				    {
-				    if (objlist->Names[i] && !strcmp(etmp->Name,objlist->Names[i]))
+				    if (cmpflags & EXPR_CMP_REVERSE)
+					idx = (objlist->nObjects-1) - i;
+				    else
+					idx = i;
+				    if (objlist->Names[idx] && !strcmp(etmp->Name,objlist->Names[idx]))
 					{
 					if (etmp->NameAlloc)
 					    {
@@ -407,7 +417,7 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 					    etmp->NameAlloc = 0;
 					    }
 					etmp->Name = NULL;
-					etmp->ObjID = i;
+					etmp->ObjID = idx;
 					break;
 					}
 				    }
@@ -641,11 +651,14 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 		case MLX_TOK_ASTERISK: /* outer join? */
 		    if (cmpflags & EXPR_CMP_OUTERJOIN)
 		        {
-			if (mlxNextToken(lxs) == MLX_TOK_EQUALS)
+			if ((t = mlxNextToken(lxs)) == MLX_TOK_EQUALS || t == MLX_TOK_COMPARE)
 			    {
 			    etmp->NodeType = EXPR_N_COMPARE;
 			    etmp->Flags |= EXPR_F_LOUTERJOIN;
-			    etmp->CompareType = MLX_CMP_EQUALS;
+			    if (t == MLX_TOK_EQUALS)
+				etmp->CompareType = MLX_CMP_EQUALS;
+			    else
+				etmp->CompareType = mlxIntVal(lxs);
 			    break;
 			    }
 			else
@@ -691,6 +704,19 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 		case MLX_TOK_COMPARE:
 		    etmp->NodeType = EXPR_N_COMPARE;
 		    etmp->CompareType = mlxIntVal(lxs);
+
+		    /** Check outer join? **/
+		    if (cmpflags & EXPR_CMP_OUTERJOIN)
+		        {
+			if (mlxNextToken(lxs) == MLX_TOK_ASTERISK)
+			    {
+			    etmp->Flags |= EXPR_F_ROUTERJOIN;
+			    }
+			else
+			    {
+			    mlxHoldToken(lxs);
+			    }
+			}
 		    break;
 
 		case MLX_TOK_PLUS:
@@ -790,7 +816,7 @@ exp_internal_SetCoverageMask(pExpression exp)
 	    }
 
 	/** Coverage mask for direct references (incl getdate() and user_name()) **/
-	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"user_name") || !strcmp(exp->Name,"getdate")))
+	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"user_name") || !strcmp(exp->Name,"getdate") || !strcmp(exp->Name,"row_number") || !strcmp(exp->Name, "eval")))
 	    {
 	    exp->ObjCoverageMask |= EXPR_MASK_EXTREF;
 	    }
@@ -850,6 +876,8 @@ exp_internal_SetAggLevel(pExpression exp)
 	    child = (pExpression)(exp->Children.Items[i]);
 	    rval = exp_internal_SetAggLevel(child);
 	    if (rval > max_level) max_level = rval;
+	    if (child->Flags & EXPR_F_HASWINDOWFN)
+		exp->Flags |= EXPR_F_HASWINDOWFN;
 	    }
 
 	/** Is this an aggregate function?  If so, set level one higher **/
@@ -995,24 +1023,31 @@ expCompileExpression(char* text, pParamObjects objlist, int lxflags, int cmpflag
 /*** expBindExpression - do late binding of an expression tree to an
  *** object list.  'domain' specifies the requested bind domain, whether
  *** runstatic (EXP_F_RUNSTATIC), runserver (EXP_F_RUNSERVER), or runclient
- *** (EXP_F_RUNCLIENT).
+ *** (EXP_F_RUNCLIENT).  'domain' can also be -0-, in which case we rebind
+ *** a domainless expression.
  ***/
 int
-expBindExpression(pExpression exp, pParamObjects objlist, int domain)
+expBindExpression(pExpression exp, pParamObjects objlist, int flags)
     {
     int i,cm=0;
+    int idx;
+    int domain = flags & EXPR_F_DOMAINMASK;
 
 	/** For a property node, check if the object should be set. **/
-	if (exp->NodeType == EXPR_N_PROPERTY && (exp->Flags & domain))
+	if (exp->NodeType == EXPR_N_PROPERTY && ((exp->Flags & domain) || !domain))
 	    {
 	    if (exp->ObjID == -1 && exp->Parent && exp->Parent->NodeType == EXPR_N_OBJECT)
 		{
 		for(i=0;i<objlist->nObjects;i++)
 		    {
-		    if (objlist->Names[i] && !strcmp(exp->Parent->Name, objlist->Names[i]))
+		    if (flags & EXPR_F_REVERSE)
+			idx = (objlist->nObjects-1) - i;
+		    else
+			idx = i;
+		    if (objlist->Names[idx] && !strcmp(exp->Parent->Name, objlist->Names[idx]))
 			{
-			cm |= (1<<i);
-			exp->ObjID = i;
+			cm |= (1<<idx);
+			exp->ObjID = idx;
 			break;
 			}
 		    }
@@ -1026,10 +1061,14 @@ expBindExpression(pExpression exp, pParamObjects objlist, int domain)
 		if (exp->ObjID == -2) cm |= (1<<(objlist->CurrentID));
 		if (exp->ObjID == -3) cm |= (1<<(objlist->ParentID));
 		}
+	    else if (exp->ObjID >= 0)
+		{
+		cm |= (1<<(exp->ObjID));
+		}
 	    }
 
 	/** Check for absolute references in functions **/
-	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"getdate") || !strcmp(exp->Name,"user_name")))
+	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"getdate") || !strcmp(exp->Name,"user_name") || !strcmp(exp->Name,"row_number")))
 	    {
 	    cm |= EXPR_MASK_EXTREF;
 	    }

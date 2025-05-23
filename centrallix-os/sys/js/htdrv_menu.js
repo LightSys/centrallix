@@ -410,7 +410,7 @@ function mn_init(param)
 	}
     menu.act_w = getClipWidth(menu.clayer);
     menu.act_h = getClipHeight(menu.clayer);
-    if (htr_getvisibility(menu) == 'hidden')
+    if ($(menu).css('visibility') == 'hidden' && (!menu.__WgtrParent.style || $(menu.__WgtrParent).css('visibility') == 'inherit'))
 	moveTo(menu, 0, -menu.act_h);
     if (cx__capabilities.CSSBox) menu.act_h += 2;
     htutil_tag_images(menu.clayer, "mn", menu.clayer, menu);

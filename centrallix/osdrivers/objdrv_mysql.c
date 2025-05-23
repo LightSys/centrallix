@@ -20,34 +20,34 @@
 
 /************************************************************************/
 /* Centrallix Application Server System                                 */
-/* Centrallix Core                                                       */
-/*                                                                         */
-/* Copyright (C) 1998-2008 LightSys Technology Services, Inc.                */
-/*                                                                         */
-/* This program is free software; you can redistribute it and/or modify        */
-/* it under the terms of the GNU General Public License as published by        */
-/* the Free Software Foundation; either version 2 of the License, or        */
-/* (at your option) any later version.                                        */
-/*                                                                         */
-/* This program is distributed in the hope that it will be useful,        */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of        */
+/* Centrallix Core                                                      */
+/*                                                                      */
+/* Copyright (C) 1998-2008 LightSys Technology Services, Inc.           */
+/*                                                                      */
+/* This program is free software; you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License as published by */
+/* the Free Software Foundation; either version 2 of the License, or    */
+/* (at your option) any later version.                                  */
+/*                                                                      */
+/* This program is distributed in the hope that it will be useful,      */
+/* but WITHOUT ANY WARRANTY; without even the implied warranty of       */
 /* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the        */
-/* GNU General Public License for more details.                                */
-/*                                                                         */
-/* You should have received a copy of the GNU General Public License        */
-/* along with this program; if not, write to the Free Software                */
-/* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA                  */
-/* 02111-1307  USA                                                        */
-/*                                                                        */
-/* A copy of the GNU General Public License has been included in this        */
-/* distribution in the file "COPYING".                                        */
-/*                                                                         */
-/* Module:         objdrv_mysql.c                                                 */
-/* Author:        Greg Beeley (GB)                                               */
-/* Creation:        February 21, 2008                                              */
-/* Description:        A MySQL driver for Centrallix.  Eventually this driver        */
-/*                should be merged with the Sybase driver in something of        */
-/*                an intelligent manner.                                    */
+/* GNU General Public License for more details.                         */
+/*                                                                      */
+/* You should have received a copy of the GNU General Public License    */
+/* along with this program; if not, write to the Free Software          */
+/* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA             */
+/* 02111-1307  USA                                                      */
+/*                                                                      */
+/* A copy of the GNU General Public License has been included in this   */
+/* distribution in the file "COPYING".                                  */
+/*                                                                      */
+/* Module:      objdrv_mysql.c					        */
+/* Author:      Greg Beeley (GB)                                        */
+/* Creation:    February 21, 2008                                       */
+/* Description: A MySQL driver for Centrallix.  Eventually this driver  */
+/*              should be merged with the Sybase driver in something of */
+/*              an intelligent manner.                                  */
 /************************************************************************/
 
 
@@ -64,10 +64,11 @@ typedef struct
     {
     char        Path[OBJSYS_MAX_PATH];
     char        Server[64];
-    char        Username[64];
-    char        Password[64];
-    char        DefaultPassword[64];
+    char        Username[CX_USERNAME_SIZE];
+    char        Password[CX_PASSWORD_SIZE];
+    char        DefaultPassword[CX_PASSWORD_SIZE];
     char        Database[MYSD_NAME_LEN];
+    char        DatabaseCollation[64];
     char        AnnotTable[MYSD_NAME_LEN];
     char        Description[256];
     int                MaxConn;
@@ -86,8 +87,8 @@ typedef struct
 typedef struct
     {
     MYSQL        Handle;
-    char        Username[64];
-    char        Password[64];
+    char        Username[CX_USERNAME_SIZE];
+    char        Password[CX_PASSWORD_SIZE];
     pMysdNode        Node;
     int                Busy;
     int                LastAccess;
@@ -146,7 +147,7 @@ typedef struct
         IntVec		IV;
         StringVec	SV;
         } Types;
-    char	Autoname[256];
+    char	Objname[256];
     }
     MysdData, *pMysdData;
 
@@ -213,17 +214,20 @@ mysd_internal_GetConn(pMysdNode node)
             {
             /** Do we have permission to do this? **/
             if (!(CxGlobals.Flags & CX_F_ENABLEREMOTEPW))
-            {
-            mssError(1,"MYSD","use_system_auth requested, but Centrallix global enable_send_credentials is turned off");
-            return NULL;
-            }
+		{
+		mssError(1,"MYSD","use_system_auth requested, but Centrallix global enable_send_credentials is turned off");
+		return NULL;
+		}
         
             /** Get usernamename/password from session **/
             username = mssUserName();
             password = mssPassword();
         
             if(!username || !password)
-            return NULL;
+		{
+		mssError(1,"MYSD","Connect to database: username and/or password not supplied");
+		return NULL;
+		}
             }
         else
             {
@@ -262,7 +266,11 @@ mysd_internal_GetConn(pMysdNode node)
                 {
                 /** Below pool maximum?  Alloc if so **/
                 conn = (pMysdConn)nmMalloc(sizeof(MysdConn));
-                if (!conn) return NULL;
+                if (!conn)
+		    {
+		    mssError(0,"MYSD","Could not connect to database server");
+		    return NULL;
+		    }
                 conn->Node = node;
                 }
             else
@@ -335,8 +343,37 @@ mysd_internal_GetConn(pMysdNode node)
             strtcpy(conn->Username, username, sizeof(conn->Username));
             strtcpy(conn->Password, password, sizeof(conn->Password));
             xaAddItem(&node->Conns, conn);
-            }
 
+	    /** get character set information **/
+	    result = mysd_internal_RunQuery_conn(conn, node, "SELECT DEFAULT_CHARACTER_SET_NAME FROM information_schema.SCHEMATA  WHERE SCHEMA_NAME = '?'", node->Database);
+	    if (!result || result == MYSD_RUNQUERY_ERROR)
+		{
+		/** just set to all NULLs **/
+		strcpy(node->DatabaseCollation, "");
+		}
+	    else
+		{
+		/** collect the character name **/
+		MYSQL_ROW row = mysql_fetch_row(result);
+		if(row == 0)
+		    {
+		    strcpy(node->DatabaseCollation, "");
+		    }
+		else
+		    {
+		    // check for exceptions. If none, then "<CHARACTER SET NAME>_bin" will work
+		    if(!strcmp(row[0], "binary")) strtcpy(node->DatabaseCollation, row[0], sizeof(node->DatabaseCollation));
+		    else if (row[0] == NULL || strlen(row[0]) == 0) strcpy(node->DatabaseCollation, "");
+		    else 
+			{
+			strtcpy(node->DatabaseCollation, row[0], sizeof(node->DatabaseCollation) - 4);
+			strncat(node->DatabaseCollation, "_bin", 5); // will always fit
+			}
+		    }
+		mysql_free_result(result);
+		}
+            }
+	
         /** Make it busy **/
         conn->Busy = 1;
         conn->LastAccess = (node->ConnAccessCnt++);
@@ -375,6 +412,7 @@ mysd_internal_ReleaseConn(pMysdConn * conn)
 ***     it will become: item1,item2,items3 (length = 3, separator = ',')
 *** '?a' => same as array except with individual quoting specified
 ***     it will become: 'item1','item2','items3' (length = 3, separator = ',')
+*** ?n => transform name of object into criteria (field1 = 'value1' and field2 = 'value2')
 *** add_quote can be left NULL, in which case nothing gets quoted with ?a.
 *** (add_quote has no effect on '?a' forms).  Otherwise, a non-'\0' value
 *** for add_quote[x] means to add single quotes '' onto the value.
@@ -398,8 +436,11 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
     char tmp[32];
     char * add_quote;
     char * str;
+    char * endstr;
     int err;
     char * errtxt;
+    char ch;
+    pMysdData data;
 
         xsInit(&query);
 
@@ -476,7 +517,37 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
                         start = &stmt[i+2];
                         i++;
                     }
-                else /** handle plain sanatize+insert **/
+		else if(stmt[i+1]=='n') /** object name criteria - expect pMysdData **/
+		    {
+			data = va_arg(ap, pMysdData);
+			xsConcatenate(&query, " (", 2);
+			str = data->Name;
+			for(j=0; j<data->TData->nKeys; j++)
+			    {
+			    endstr = strchr(str, '|');
+			    if (!endstr)
+				endstr = str + strlen(str);
+			    if (j != 0)
+				xsConcatenate(&query, " and ", 5);
+			    xsConcatenate(&query, "`", 1);
+			    if (mysd_internal_SafeAppend(&conn->Handle, &query, data->TData->Keys[j])) goto error;
+			    xsConcatenate(&query, "` = '", 5);
+			    ch = *endstr;
+			    *endstr = '\0';
+			    if (mysd_internal_SafeAppend(&conn->Handle, &query, str))
+				{
+				*endstr = ch;
+				goto error;
+				}
+			    *endstr = ch;
+			    xsConcatenate(&query, "'", 1);
+			    str = (*endstr)?(endstr+1):(endstr);
+			    }
+			xsConcatenate(&query, ") ", 2);
+                        start = &stmt[i+2];
+                        i++;
+		    }
+                else /** handle plain sanitize+insert **/
                     {
                     if(mysd_internal_SafeAppend(&conn->Handle,&query,va_arg(ap,char*))) goto error;
                     start = &stmt[i+1];
@@ -820,12 +891,13 @@ mysd_internal_FreeRow(MYSQL_ROW row)
  ***/
 
 int
-mysd_internal_GetNextRow(char* filename, pMysdQuery qy, pMysdData data, char* tablename)
+mysd_internal_GetNextRow(char* filename, int filename_size, pMysdQuery qy, pMysdData data, char* tablename)
     {
     MYSQL_RES * result = NULL;
     MYSQL_ROW row = NULL;
     int i = 0;
     int ret = 0;
+    int len;
         
         if(!data->Result) /** we haven't executed the query yet **/
             {
@@ -842,9 +914,16 @@ mysd_internal_GetNextRow(char* filename, pMysdQuery qy, pMysdData data, char* ta
         if((data->Row = mysql_fetch_row(data->Result)))
             {
 	    data->Row = mysd_internal_DupRow(data->Row, data->Result);
-            for(i = 0; i<data->TData->nKeys; i++)
+            for(len = i = 0; i<data->TData->nKeys; i++)
                 {
-                sprintf(filename,"%s%s|",filename,data->Row[data->TData->KeyCols[i]]);
+		len += (strlen(data->Row[data->TData->KeyCols[i]]) + 1);
+		if (len >= filename_size)
+		    {
+		    mssError(1, "MYSD", "Object name too long while retrieving row");
+		    return -1;
+		    }
+		strcat(filename, data->Row[data->TData->KeyCols[i]]);
+		strcat(filename, "|");
                 }
             /** kill the trailing pipe **/
             filename[strlen(filename)-1]=0x00;
@@ -854,13 +933,13 @@ mysd_internal_GetNextRow(char* filename, pMysdQuery qy, pMysdData data, char* ta
             ret = -1;
             }
 
-        return ret;
+    return ret;
     }
 
-/*** mysd_internal_GetNextRow() - get a given row from the database
+
+/*** mysd_internal_GetRowByKey() - get a given row from the database
  *** returns number of rows on success and -1 on error
  ***/
-
 int
 mysd_internal_GetRowByKey(char* key, pMysdData data)
     {
@@ -871,7 +950,11 @@ mysd_internal_GetRowByKey(char* key, pMysdData data)
 
         if(!(data->TData)) return -1;
 
-        result = mysd_internal_RunQuery(data->Node,"SELECT * FROM `?` WHERE CONCAT_WS('|',`?a`)='?' LIMIT 0,1",data->TData->Name,data->TData->Keys,NULL,data->TData->nKeys,',',key);
+        //result = mysd_internal_RunQuery(data->Node,"SELECT * FROM `?` WHERE CONCAT_WS('|',`?a`)='?' LIMIT 0,1",data->TData->Name,data->TData->Keys,NULL,data->TData->nKeys,',',key);
+        result = mysd_internal_RunQuery(data->Node, "SELECT * FROM `?` WHERE ?n LIMIT 0,1",
+		data->TData->Name,
+		data
+		);
 	if (!result || result == MYSD_RUNQUERY_ERROR)
 	    {
 	    result = NULL;
@@ -920,7 +1003,7 @@ mysd_internal_RefreshRow(pMysdData data)
 
 /*** mysd_internal_BuildAutoname - figures out how to fill in the required 
  *** information for an autoname-based row insertion, and populates the
- *** "Autoname" field in the MysdData structure accordingly.  Looks in the
+ *** "Objname" field in the MysdData structure accordingly.  Looks in the
  *** OXT for a partially (or fully) completed key, and uses an autonumber
  *** type of approach to complete the remainder of the key.  Returns nonnegative
  *** on success and with the autoname semaphore held.  Returns negative on error
@@ -1061,13 +1144,13 @@ mysd_internal_BuildAutoname(pMysdData inf, pMysdConn conn, pObjTrxTree oxt)
 	    }
 
 	/** Okay, all keys filled in.  Build the autoname. **/
-	inf->Autoname[0] = '\0';
+	inf->Objname[0] = '\0';
 	for(len=j=0;j<inf->TData->nKeys;j++)
 	    {
 	    if (j) len += 1; /* for | separator */
 	    len += strlen(key_values[j]);
 	    }
-	if (len >= sizeof(inf->Autoname))
+	if (len >= sizeof(inf->Objname))
 	    {
 	    mssError(1,"MYSD","Autoname too long!");
 	    rval = -1;
@@ -1075,8 +1158,8 @@ mysd_internal_BuildAutoname(pMysdData inf, pMysdConn conn, pObjTrxTree oxt)
 	    }
 	for(j=0;j<inf->TData->nKeys;j++)
 	    {
-	    if (j) strcat(inf->Autoname,"|");
-	    strcat(inf->Autoname, key_values[j]);
+	    if (j) strcat(inf->Objname,"|");
+	    strcat(inf->Objname, key_values[j]);
 	    }
 
     exit_BuildAutoname:
@@ -1105,19 +1188,9 @@ mysd_internal_UpdateRow(pMysdData data, char* newval, int col)
     {
     pMysdConn conn = NULL;
     int i = 0;
-    char* filename;
-    char tablename[MYSD_NAME_LEN];
     MYSQL_RES* result;
     int use_quotes;
     
-        /** get the filename from the path **/
-        filename = data->Pathname.Elements[data->Pathname.nElements - 1]; /** pkey|pkey... **/
-        
-        /** get the table name from the path **/
-        i = (data->Pathname.Elements[data->Pathname.nElements - 2] - data->Pathname.Elements[data->Pathname.nElements - 3]);
-        memcpy(tablename, data->Pathname.Elements[data->Pathname.nElements - 3], i); 
-        tablename[i-1]=0x00; /** clean trailing slash **/
-
 	/** Handle bits **/
 	/*if (!strcmp(data->TData->ColTypes[col], "bit") && newval)
 	    {
@@ -1130,7 +1203,14 @@ mysd_internal_UpdateRow(pMysdData data, char* newval, int col)
 	/** Quote the value if not an integer and value is not NULL **/
 	use_quotes = (data->TData->ColCxTypes[col] != DATA_T_INTEGER && newval != NULL);
         
-        result = mysd_internal_RunQuery(data->Node,"UPDATE `?` SET `?`=?v WHERE CONCAT_WS('|',`?a`)='?'",tablename,data->TData->Cols[col],newval?newval:"NULL",use_quotes, data->TData->Keys,NULL,data->TData->nKeys,',',filename);
+        //result = mysd_internal_RunQuery(data->Node,"UPDATE `?` SET `?`=?v WHERE CONCAT_WS('|',`?a`)='?'", data->TData->Name, data->TData->Cols[col],newval?newval:"NULL",use_quotes, data->TData->Keys,NULL,data->TData->nKeys,',', data->Name);
+        result = mysd_internal_RunQuery(data->Node,"UPDATE `?` SET `?`=?v WHERE ?n",
+		data->TData->Name,
+		data->TData->Cols[col],
+		newval?newval:"NULL",
+		use_quotes,
+		data
+		);
 	if (result == MYSD_RUNQUERY_ERROR)
 	    return -1;
 
@@ -1145,17 +1225,16 @@ mysd_internal_DeleteRow(pMysdData data)
     {
     pMysdConn conn = NULL;
     int i = 0;
-    char* filename;
-    char tablename[MYSD_NAME_LEN];
     MYSQL_RES* result;
 
 	/** Only rows can be deleted **/
 	if (data->Type != MYSD_T_ROW) return -1;
 
-        /** get the filename from the path **/
-        filename = data->Pathname.Elements[data->Pathname.nElements - 1]; /** pkey|pkey... **/
-        
-        result = mysd_internal_RunQuery(data->Node,"DELETE FROM `?` WHERE CONCAT_WS('|',`?a`)='?'",data->TData->Name,data->TData->Keys,NULL,data->TData->nKeys,',',filename);
+        //result = mysd_internal_RunQuery(data->Node,"DELETE FROM `?` WHERE CONCAT_WS('|',`?a`)='?'",data->TData->Name,data->TData->Keys,NULL,data->TData->nKeys,',', data->Name);
+        result = mysd_internal_RunQuery(data->Node,"DELETE FROM `?` WHERE ?n",
+		data->TData->Name,
+		data
+		);
 	if (result == MYSD_RUNQUERY_ERROR)
 	    return -1;
         return 0;
@@ -1202,7 +1281,7 @@ mysd_internal_InsertRow(pMysdData inf, pObjTrxTree oxt)
 		mssError(0, "MYSD", "Could not generate a name for new object.");
 		goto error;
 		}
-	    inf->Name = inf->Autoname;
+	    inf->Name = inf->Objname;
 	    }
 
 	/** Make a copy of the object name so we can parse it out **/
@@ -1521,7 +1600,8 @@ mysd_internal_DetermineType(pObject obj, pMysdData inf)
             }
 
 	/** Point to name. **/
-	inf->Name = inf->Pathname.Elements[obj->SubPtr + obj->SubCnt - 1 - 1];
+	strtcpy(inf->Objname, inf->Pathname.Elements[obj->SubPtr + obj->SubCnt - 1 - 1], sizeof(inf->Objname));
+	inf->Name = inf->Objname;
 
     return 0;
     }
@@ -1539,6 +1619,14 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
     int use_stock_fn_call;
     char quote;
     char* ptr;
+    int len;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"MYSD","Failed to run query: resource exhaustion occurred");
+	    return -1;
+	    }
     
         xsInit(&tmp);
 
@@ -1597,7 +1685,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 			    tree->Parent->DataType = DATA_T_STRING;
 			    }
                         else if (!strcmp(tree->String,"double")) xsConcatenate(&tmp,"double",6);
-                        else if (!strcmp(tree->String,"money")) xsConcatenate(&tmp,"decimal(14,4)",5);
+                        else if (!strcmp(tree->String,"money")) xsConcatenate(&tmp,"decimal(14,4)",13);
                         else if (!strcmp(tree->String,"datetime")) xsConcatenate(&tmp,"datetime",8);
                         }
                     else
@@ -1783,6 +1871,34 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
 		    xsConcatenate(where_clause, ") ", 2);
 		    }
+		else if (!strcmp(tree->Name,"upper") || !strcmp(tree->Name, "lower"))
+		    {
+		    /** check if database is using an expected character set **/
+		    pMysdTable tempTdata = *tdata;
+
+		    /** need to change collation to guarantee the result is case sensitive (in case it is used in compares) **/
+		    xsConcatPrintf(where_clause, " (%s(", tree->Name);
+		    len = xsLength(where_clause);
+		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, where_clause, conn);
+
+		    if (xsLength(where_clause) - len == 6 && !strcmp(xsString(where_clause)+len, " NULL "))
+			{
+			/** upper()/lower() param evaluated to NULL, don't use collation. **/
+			xsConcatenate(where_clause, ")) ", 3);
+			}
+		    else
+			{
+			/** only change collation if found one **/
+			if(tempTdata->Node->DatabaseCollation[0] != '\0')
+			    {
+			    xsConcatenate(where_clause, ") collate ", -1);
+			    xsConcatenate(where_clause, tempTdata->Node->DatabaseCollation, -1);
+			    xsConcatenate(where_clause, ") ", -1);
+			    } 
+			else
+			    xsConcatenate(where_clause, ")) ", 3);
+			}
+		    }
 		else if (!strcmp(tree->Name,"charindex"))
 		    {
 		    /** MySQL locate() function is the equivalent of CX charindex() **/
@@ -1884,6 +2000,12 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
 			xsConcatenate(where_clause, ") ", 2);
 			}
+		    else if (subtree->DataType == DATA_T_STRING && subtree->String && (!strcmp(subtree->String, "weekday")))
+			{
+			xsConcatenate(where_clause, " dayofweek(", -1);
+			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+			xsConcatenate(where_clause, ") ", 2);
+			}
 		    else
 			{
 			mssError(1,"MYSD","Invalid date part for datepart()");
@@ -1906,6 +2028,36 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 			{
 			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), tdata, where_clause, conn);
 			xsConcatenate(where_clause, ") ", 2);
+			}
+		    }
+		else if (!strcmp(tree->Name, "hash"))
+		    {
+		    /** MySQL uses MD5(), SHA1(), SHA2(data, bitsize) **/
+		    subtree = (pExpression)(tree->Children.Items[0]);
+		    if (subtree->DataType == DATA_T_STRING && subtree->String && (!strcmp(subtree->String, "md5") || !strcmp(subtree->String, "sha1") || !strcmp(subtree->String, "sha256") || !strcmp(subtree->String, "sha384") || !strcmp(subtree->String, "sha512")))
+			{
+			/** Function call itself **/
+			if (!strcmp(subtree->String, "md5"))
+			    xsConcatenate(where_clause, " MD5(", 5);
+			else if (!strcmp(subtree->String, "sha1"))
+			    xsConcatenate(where_clause, " SHA1(", 6);
+			else if (!strcmp(subtree->String, "sha256") || !strcmp(subtree->String, "sha384") || !strcmp(subtree->String, "sha512"))
+			    xsConcatenate(where_clause, " SHA2(", 6);
+
+			/** Data **/
+			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata, where_clause, conn);
+
+			/** Bit length, if needed **/
+			if (!strcmp(subtree->String, "sha256") || !strcmp(subtree->String, "sha384") || !strcmp(subtree->String, "sha512"))
+			    {
+			    xsConcatQPrintf(where_clause, ", %POS", strtoi(subtree->String+3, NULL, 10));
+			    }
+			xsConcatenate(where_clause, ") ", 2);
+			}
+		    else
+			{
+			mssError(1,"MYSD","Invalid algorithm for hash()");
+			return -1;
 			}
 		    }
                 else
@@ -1965,6 +2117,16 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    {
 		    /** These functions always invariably return a string... **/
 		    subtree->DataType = DATA_T_STRING;
+		    }
+		if (subtree->NodeType == EXPR_N_FUNCTION && (!strcmp(subtree->Name, "charindex")))
+		    {
+		    /** These functions always invariably return an integer... **/
+		    subtree->DataType = DATA_T_INTEGER;
+		    }
+		if (subtree->NodeType == EXPR_N_FUNCTION && (!strcmp(subtree->Name, "sin") || !strcmp(subtree->Name, "cos") || !strcmp(subtree->Name, "power") || !strcmp(subtree->Name, "sqrt") || !strcmp(subtree->Name, "atan2") || !strcmp(subtree->Name, "radians")))
+		    {
+		    /** These functions always invariably return a floating point type **/
+		    subtree->DataType = DATA_T_DOUBLE;
 		    }
 		if (subtree->DataType == DATA_T_STRING)
 		    {
@@ -2336,6 +2498,8 @@ mysdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
             if(query->Tree || query->SortBy[0]) 
                 {
                 escape_conn = mysd_internal_GetConn(qy->Data->Node);
+		if (!escape_conn)
+		    return NULL;
                 if (query->Tree)
                     {
                     xsConcatenate(&qy->Clause, " WHERE ", 7);
@@ -2420,7 +2584,7 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
             case MYSD_T_ROWSOBJ:
                 /** Get the rows **/
-                if (!(mysd_internal_GetNextRow(name_buf,qy,qy->Data,qy->Data->TData->Name)))
+                if (!(mysd_internal_GetNextRow(name_buf, sizeof(name_buf), qy, qy->Data, qy->Data->TData->Name)))
                     {
                     inf->Type = MYSD_T_ROW;
                     inf->Row = qy->Data->Row;
@@ -2473,7 +2637,8 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 #endif
 
         obj_internal_CopyPath(&(inf->Pathname), obj->Pathname);
-	inf->Name = inf->Pathname.Elements[inf->Pathname.nElements - 1];
+	strtcpy(inf->Objname, inf->Pathname.Elements[inf->Pathname.nElements - 1], sizeof(inf->Objname));
+	inf->Name = inf->Objname;
         if (!inf->TData)
 	    inf->TData = qy->Data->TData;
         inf->Node = qy->Data->Node;
@@ -2482,6 +2647,23 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
         qy->ItemCnt++;
 
     return (void*)inf;
+    }
+
+
+/*** mysdQueryDelete() - delete objects matching the query
+ ***/
+int
+mysdQueryDelete(void* qy_v, pObjTrxTree* oxt)
+    {
+    pMysdQuery qy = (pMysdQuery)qy_v;
+    MYSQL_RES * result;
+
+	/** Run the delete. **/
+	result = mysd_internal_RunQuery(qy->Data->Node, "DELETE FROM `?` ?q", qy->Data->TData->Name, qy->Clause.String);
+	if (result == MYSD_RUNQUERY_ERROR)
+	    return -1;
+
+    return 0;
     }
 
 
@@ -2791,6 +2973,9 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     int length;
     int i,j;
     int type;
+    DateTime dt;
+    ObjData od;
+
         type = mysdGetAttrType(inf, attrname, oxt);
         /** Choose the attr name **/
         /** Changing name of node object? **/
@@ -2801,7 +2986,7 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
                 if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
                 if (strlen(inf->Obj->Pathname->Pathbuf) - 
                     strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
-                    strlen(val->String) + 1 > 255)
+                    strlen(val->String) + 1 >= OBJSYS_MAX_PATH)
                     {
                     mssError(1,"MYSQL","SetAttr 'name': name too large for internal representation");
                     return -1;
@@ -2848,16 +3033,28 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
                 {
                 if (!strcmp(inf->TData->Cols[i],attrname))
                     {
-                    if (*oxt) /** Check if this is part of a larger transaction **/
+		    if (datatype == DATA_T_STRING && type == DATA_T_DATETIME)
+			{
+			if(val) /** make sure val can be a NULL and still handle as datetime **/
+			    {
+			    /** Promote string to date time **/
+			    objDataToDateTime(DATA_T_STRING, val->String, &dt, NULL);
+			    od.DateTime = &dt;
+			    val = &od;
+			    }
+			datatype = DATA_T_DATETIME;
+			}
+                    if (*oxt)
                         {
+			/** This is part of a larger transaction, such as during an INSERT **/
                         if (type < 0) return -1;
-                        if (datatype != type)
+                        if (datatype != type && val)
                             {
                             mssError(1,"MYSD","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
                                     attrname, obj_type_names[datatype], obj_type_names[type]);
                             return -1;
                             }
-                        if (strlen(attrname) >= 64)
+                        if (strlen(attrname) >= sizeof((*oxt)->AttrName))
                             {
                             mssError(1,"MYSD","Attribute name '%s' too long",attrname);
                             return -1;
@@ -2865,7 +3062,7 @@ mysdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
                         (*oxt)->AllocObj = 0;
                         (*oxt)->Object = NULL;
                         (*oxt)->Status = OXT_S_VISITED;
-                        strcpy((*oxt)->AttrName, attrname);
+                        strtcpy((*oxt)->AttrName, attrname, sizeof((*oxt)->AttrName));
                         obj_internal_SetTreeAttr(*oxt, type, val); 
                         }
                     else
@@ -3068,7 +3265,7 @@ mysdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
                                 else
                                     {
                                     hints->MinValue = expCompileExpression("-32768", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
-                                    hints->MaxValue = expCompileExpression("-32767", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+                                    hints->MaxValue = expCompileExpression("32767", tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
                                     }
                                 }
                             if(!strcmp(inf->TData->ColTypes[i], "mediumint"))
@@ -3124,7 +3321,7 @@ mysdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 int
 mysdInfo(void* inf_v, pObjectInfo info_struct)
     {
-    memset(info_struct, sizeof(ObjectInfo), 0);
+    memset(info_struct, 0, sizeof(ObjectInfo));
     return 0;
     }
 
@@ -3209,7 +3406,7 @@ mysdInitialize()
         drv->Delete = mysdDelete;
         drv->DeleteObj = mysdDeleteObj;
         drv->OpenQuery = mysdOpenQuery;
-        drv->QueryDelete = NULL;
+        drv->QueryDelete = mysdQueryDelete;
         drv->QueryFetch = mysdQueryFetch;
         drv->QueryClose = mysdQueryClose;
         drv->Read = mysdRead;

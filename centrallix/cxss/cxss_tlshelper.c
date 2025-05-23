@@ -52,10 +52,10 @@
 /*** cxss_internal_DoTLS - perform the actual TLS negotiation and cryptography.
  ***/
 int
-cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pFile report_fd, int as_server)
+cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pFile report_fd, int as_server, char* remotename)
     {
     int pid, tm, ret, err;
-    SSL* encrypted_conn;
+    SSL* encrypted_conn = NULL;
     EventReq event0, event1;
     pEventReq ev[2] = { &event0, &event1 };
     enum { Idle=0, Data=1, Done=2 } locstate, netstate;
@@ -66,6 +66,8 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
     int LocBytes;
     int cnt;
 
+	//cxDebugLog("cxss_internal_DoTLS()");
+
 	/** Add to the PRNG **/
 	pid = getpid();
 	RAND_add(&pid, 4, (double)0.25);
@@ -74,8 +76,15 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 
 	/** get an SSL context and connection **/
 	encrypted_conn = SSL_new(context);
-	if (!encrypted_conn) return -1;
+	if (!encrypted_conn)
+	    goto error;
 	SSL_set_fd(encrypted_conn, fdFD(encrypted_fd));
+
+	/** SNI? **/
+	if (remotename && remotename[0] && !as_server)
+	    SSL_set_tlsext_host_name(encrypted_conn, remotename);
+
+	//cxDebugLog("TLS handshake start");
 
 	/** start the handshake **/
 	while (1)
@@ -88,21 +97,31 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 	    err = SSL_get_error(encrypted_conn, ret);
 	    if (err == SSL_ERROR_WANT_READ)
 		{
+		//cxDebugLog("TLS handshake: wait on read start");
 		thWait(PMTOBJECT(encrypted_fd), OBJ_T_FD, EV_T_FD_READ, 1);
+		//cxDebugLog("TLS handshake: wait on read complete");
 		continue;
 		}
 	    else if (err == SSL_ERROR_WANT_WRITE)
 		{
+		//cxDebugLog("TLS handshake: wait on write start");
 		thWait(PMTOBJECT(encrypted_fd), OBJ_T_FD, EV_T_FD_WRITE, 1);
+		//cxDebugLog("TLS handshake: wait on write complete");
 		continue;
 		}
 	    else
 		{
 		err = ERR_get_error();
 		fdPrintf(report_fd, "!Abnormal SSL termination from network during handshake: %s\n", ERR_error_string(err, NULL));
-		return -1;
+		cxDebugLog("CXSS-TLS: handshake failed: %s", ERR_error_string(err, NULL));
+		goto error;
 		}
 	    }
+
+	cxDebugLog("CXSS-TLS: handshake complete: %s %s %dbit",
+		SSL_get_cipher_version(encrypted_conn),
+		SSL_get_cipher_name(encrypted_conn),
+		SSL_get_cipher_bits(encrypted_conn, NULL));
 
 	/** Notify parent process of security type negotiated **/
 	fdPrintf(report_fd, ".%s %s %dbit\n",
@@ -174,7 +193,17 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 		}
 
 	    /** Wait on events **/
+	    /*cxDebugLog("thMultiWait: locstate %s/%s, netstate %s/%s",
+		    (locstate == Idle)?"Idle":"Data",
+		    ((locsslstate == Try)?"Try":((locsslstate == Read)?"Read":"Write")),
+		    (netstate == Idle)?"Idle":"Data",
+		    ((netsslstate == Try)?"Try":((netsslstate == Read)?"Read":"Write"))
+		    );*/
 	    thMultiWait(2, ev);
+	    /*cxDebugLog("thMultiWait return: ev0 %s, ev1 %s",
+		    (event0.Status == EV_S_ERROR)?"Error":((event0.Status == EV_S_COMPLETE)?"Complete":"Incomplete"),
+		    (event1.Status == EV_S_ERROR)?"Error":((event1.Status == EV_S_COMPLETE)?"Complete":"Incomplete")
+		    );*/
 
 	    /** What completed? **/
 	    if (event0.Status == EV_S_ERROR)
@@ -187,6 +216,7 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 		    {
 		    case Idle:
 			LocBytes = fdRead(decrypted_fd, LocBuf, sizeof(LocBuf), 0, 0);
+			//cxDebugLog("fdRead(): %d bytes", LocBytes);
 			if (LocBytes > 0)
 			    {
 			    locstate = Data;
@@ -203,11 +233,20 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 			    {
 			    err = SSL_get_error(encrypted_conn, ret);
 			    if (err == SSL_ERROR_WANT_WRITE)
+				{
+				//cxDebugLog("SSL_write(): want write");
 				locsslstate = Write;
+				}
 			    else if (err == SSL_ERROR_WANT_READ)
+				{
+				//cxDebugLog("SSL_write(): want read");
 				locsslstate = Read;
+				}
 			    else if (err == SSL_ERROR_ZERO_RETURN)
+				{
+				//cxDebugLog("SSL_write(): -0-");
 				locstate = Done;
+				}
 			    else
 				{
 				err = ERR_get_error();
@@ -217,6 +256,7 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 			    }
 			else /** openssl docs: SSL_write writes entire buffer **/
 			    {
+			    //cxDebugLog("SSL_write(): %d", ret);
 			    locstate = Idle;
 			    locsslstate = Try;
 			    }
@@ -238,6 +278,7 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 			SSLBytes = SSL_read(encrypted_conn, SSLBuf, sizeof(SSLBuf));
 			if (SSLBytes > 0)
 			    {
+			    //cxDebugLog("SSL_read(): %d", ret);
 			    netstate = Data;
 			    netsslstate = Try;
 			    }
@@ -245,11 +286,20 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 			    {
 			    err = SSL_get_error(encrypted_conn, SSLBytes);
 			    if (err == SSL_ERROR_WANT_WRITE)
+				{
+				//cxDebugLog("SSL_read(): want write");
 				netsslstate = Write;
+				}
 			    else if (err == SSL_ERROR_WANT_READ)
+				{
+				//cxDebugLog("SSL_read(): want read");
 				netsslstate = Read;
+				}
 			    else if (err == SSL_ERROR_ZERO_RETURN)
+				{
+				//cxDebugLog("SSL_read(): -0-");
 				netstate = Done;
+				}
 			    else
 				{
 				err = ERR_get_error();
@@ -261,6 +311,7 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 			break;
 		    case Data:
 			ret = fdWrite(decrypted_fd, SSLBuf, SSLBytes, 0, FD_U_PACKET);
+			//cxDebugLog("fdWrite(): %d", ret);
 			if (ret <= 0)
 			    {
 			    netstate = Done;
@@ -281,16 +332,19 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 	/** Now shut down the connection. **/
 	fdClose(decrypted_fd, 0);
 	cnt = 0;
+	//cxDebugLog("shutting down...");
 	while ((ret = SSL_shutdown(encrypted_conn)) <= 0)
 	    {
 	    err = SSL_get_error(encrypted_conn, ret);
 	    if (err == SSL_ERROR_WANT_READ)
 		{
+		//cxDebugLog("waiting on read");
 		thWait(PMTOBJECT(encrypted_fd), OBJ_T_FD, EV_T_FD_READ, 1);
 		continue;
 		}
 	    else if (err == SSL_ERROR_WANT_WRITE)
 		{
+		//cxDebugLog("waiting on write");
 		thWait(PMTOBJECT(encrypted_fd), OBJ_T_FD, EV_T_FD_WRITE, 1);
 		continue;
 		}
@@ -301,6 +355,7 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 		}
 	    else
 		{
+		//cxDebugLog("retry");
 		cnt++;
 		if (ret == 0 && cnt == 1) continue; /* shutdown both ways per openssl docs */
 		if (ret == 0 && cnt == 2)
@@ -310,13 +365,24 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
 		    continue;
 		    }
 		err = ERR_get_error();
-		if (err == 0) return 0; /* no error */
+		if (err == 0)
+		    goto done; /* no error */
 		fdPrintf(report_fd, "!Abnormal SSL termination from network during connection shutdown: %s\n", ERR_error_string(err, NULL));
-		return -1;
+		cxDebugLog("CXSS-TLS: Exiting on abnormal SSL termination from network during connection shutdown");
+		goto error;
 		}
 	    }
 
-    return 0;
+    done:
+	cxDebugLog("CXSS-TLS: exiting");
+	if (encrypted_conn)
+	    SSL_free(encrypted_conn);
+	return 0;
+
+    error:
+	if (encrypted_conn)
+	    SSL_free(encrypted_conn);
+	return -1;
     }
 
 
@@ -332,7 +398,7 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
  *** the PID of the SSL helper process.
  ***/
 int
-cxssStartTLS(SSL_CTX* context, pFile* ext_conn, pFile* reporting_stream, int as_server)
+cxssStartTLS(SSL_CTX* context, pFile* ext_conn, pFile* reporting_stream, int as_server, char* remotename)
     {
     int pid;
     int fds[2];
@@ -356,9 +422,10 @@ cxssStartTLS(SSL_CTX* context, pFile* ext_conn, pFile* reporting_stream, int as_
 	    {
 	    /** subprocess **/
 	    thLock();
+	    cxDebugLog("CXSS-TLS: %s handler process starting: %s %s", as_server?"server":"client", as_server?"client":"server", remotename?remotename:netGetRemoteIP(*ext_conn, 0));
 	    fdClose(mainprocess_fd, 0);
 	    fdClose(mainprocess_report_fd, 0);
-	    cxss_internal_DoTLS(context, *ext_conn, subprocess_fd, subprocess_report_fd, as_server);
+	    cxss_internal_DoTLS(context, *ext_conn, subprocess_fd, subprocess_report_fd, as_server, remotename);
 	    _exit(0);
 	    }
 	else
@@ -384,11 +451,14 @@ cxssFinishTLS(int childpid, pFile ext_conn, pFile reporting_stream)
     int rval;
     int interval;
 
-	/** Close up the streams.  We linger for 5 seconds on the
-	 ** ext_conn to make sure things are flushed out.
+	/** Close up the streams.  The ext_conn is almost certainly an AF_UNIX
+	 ** socket, not an AF_INET socket, but netCloseTCP does a graceful
+	 ** shutdown which is appropriate for the socketpair.
 	 **/
-	fdClose(ext_conn, 5000);
-	fdClose(reporting_stream, 0);
+	if (ext_conn)
+	    netCloseTCP(ext_conn, 10000, 0);
+	if (reporting_stream)
+	    netCloseTCP(reporting_stream, 10000, 0);
 
 	/** Shutdown and/or wait for the TLS helper process **/
 	interval = 1;

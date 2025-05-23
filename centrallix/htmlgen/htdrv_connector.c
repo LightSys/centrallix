@@ -63,14 +63,15 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
     int vint;
     double vdbl;
     char name[64];
-    char event[32];
+    char event[32] = "";
     char target[128];
     char source[128];
-    char action[32];
+    char action[32] = "";
     int id, i;
     XString xs;
     pExpression code;
     int first;
+    int inside_action = 0;
     /*char rpt_context[128];*/
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML )
@@ -82,19 +83,39 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
     	/** Get an id for this. **/
 	id = (HTCONN.idcnt++);
 
-	/** Get the event linkage information **/
-	if (wgtrGetPropertyValue(tree,"event",DATA_T_STRING,POD(&ptr)) != 0) 
+	/** Inside a component-decl-action? **/
+	if (tree->Parent && wgtrGetPropertyValue(tree->Parent, "outer_type", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr, "widget/component-decl-action"))
+	    {
+	    inside_action = 1;
+	    wgtrGetPropertyValue(tree->Parent, "name", DATA_T_STRING, POD(&ptr));
+	    strtcpy(event, ptr, sizeof(event));
+	    }
+
+	/** Get the event and action linkage information **/
+	if (wgtrGetPropertyValue(tree,"event",DATA_T_STRING,POD(&ptr)) == 0) 
+	    {
+	    if (inside_action)
+		{
+		mssError(1,"HTCONN","Connector inside componentdecl-action cannot have an 'event' property");
+		return -1;
+		}
+	    strtcpy(event,ptr,sizeof(event));
+	    }
+	if (!*event)
 	    {
 	    mssError(1,"HTCONN","Connector must have an 'event' property");
 	    return -1;
 	    }
-	strtcpy(event,ptr,sizeof(event));
-	if (wgtrGetPropertyValue(tree,"action",DATA_T_STRING,POD(&ptr)) != 0)
+
+	if (wgtrGetPropertyValue(tree,"action",DATA_T_STRING,POD(&ptr)) == 0)
+	    {
+	    strtcpy(action,ptr,sizeof(action));
+	    }
+	if (!*action)
 	    {
 	    mssError(1,"HTCONN","Connector must have an 'action' property");
 	    return -1;
 	    }
-	strtcpy(action,ptr,sizeof(action));
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -121,7 +142,14 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) != 0)
 	    source[0] = '\0';
 	else
+	    {
+	    if (inside_action)
+		{
+		mssError(1,"HTCONN","Connector inside componentdecl-action cannot have a 'source' property");
+		return -1;
+		}
 	    strtcpy(source, ptr, sizeof(source));
+	    }
 
 	/** Build the param list **/
 	xsInit(&xs);
@@ -151,7 +179,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    	    wgtrGetPropertyValue(tree, ptr, DATA_T_STRING,POD(&vstr));
 		    if (!strpbrk(vstr," !@#$%^&*()-=+`~;:,.<>/?'\"[]{}\\|"))
 		        {
-			xsConcatQPrintf(&xs, "%STR&SYM:{type:'sym', value:'%STR&SYM'}", ptr, vstr);
+			xsConcatQPrintf(&xs, "%STR&SYM:{type:'sym', value:'%STR&SYM', namespace:ns}", ptr, vstr);
 			}
 		    else
 		        {
@@ -176,9 +204,9 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    htrAddScriptInit_va(s, "    var src=%[wgtrGetParent(nodes[\"%STR&SYM\"])%]%[nodes[\"%STR&SYM\"]%];\n",
 #endif
-	    htrAddScriptInit_va(s, "    var src=%[wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\"))%]%[wgtrGetNodeRef(ns, \"%STR&SYM\")%];\n",
+	    /*htrAddScriptInit_va(s, "    var src=%[wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\"))%]%[wgtrGetNodeRef(ns, \"%STR&SYM\")%];\n",
 		    !*source, name, 
-		    *source, source);
+		    *source, source);*/
 #if 00
 	    }
 	if (*rpt_context && *target)
@@ -192,14 +220,19 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    {
 #endif
-	    htrAddScriptInit_va(s, "    var tgt=%['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")))%];\n",
+	    /*htrAddScriptInit_va(s, "    var tgt=%['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")))%];\n",
 		    *target, target, 
-		    !*target, name);
+		    !*target, name);*/
 #if 00
 	    }
 #endif
-	htrAddScriptInit_va(s, "    src.ifcProbe(ifEvent).Connect('%STR&SYM', tgt, '%STR&SYM', {%STR});\n",
+	//htrAddScriptInit_va(s, "    src.ifcProbe(ifEvent).Connect('%STR&SYM', tgt, '%STR&SYM', {%STR});\n",
+	htrAddScriptInit_va(s, "    %[wgtrGetParent(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")))%]%[wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\"))%]%[wgtrGetNodeRef(ns, \"%STR&SYM\")%].ifcProbe(ifEvent).Connect('%STR&SYM', %['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")))%], '%STR&SYM', {%STR});\n",
+		inside_action, name,
+		!*source && !inside_action, name,
+		*source && !inside_action, source,
 		event, 
+		*target, target, !*target, name,
 		action,
 		xs.String);
 	xsDeInit(&xs);

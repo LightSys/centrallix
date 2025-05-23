@@ -1,0 +1,109 @@
+$Version=2$
+chart "system/report"
+    {
+    title = "Chart Test";
+    resolution = 600;
+    document_format="application/pdf";
+    pagewidth=85;
+    pageheight=66;
+    marginleft=10;
+    marginright=10;
+    margintop=4.2;
+    marginbottom=2.2;
+
+    values_qy "report/query"
+	{
+	sql = "	select
+	    :x,
+	    :y,
+	    :key,
+	    :legend
+	from
+	    /samples/chart_data.csv/rows
+	";
+	}
+
+    text "report/data"
+	{
+	x=0; y=0;
+	width=65;
+	height=2;
+	fontsize=8;
+	font=times;
+	url="https://lightsys.org";
+	value=runserver("Test text\n");
+	}
+
+    area "report/area"
+	{
+	x=0; y=2; height=8; width=65;
+	border=0.01;
+	fontsize=10;
+
+	auto_line "report/chart"
+	    {
+	    source=values_qy;
+	    x=0.1; y=0.1; height=12; width=64.7;
+	    chart_type=line;
+	    scale=no;
+	    text_rotation=no;
+	    title="File Sizes";
+	    zoom=1.0;
+	    show_value=yes;
+	    show_legend=yes;
+
+	    chart_x "report/chart-axis" { axis=x; label="place"; }
+
+	    chart_y "report/chart-axis" { axis=y; label="value"; }
+
+	    x_value=runserver(:values_qy:x);
+	    y_value=runserver(:values_qy:y);
+	    series_value=runserver(:values_qy:key);
+	    legend_value=runserver(:values_qy:legend);
+	    }
+
+	auto_bar "report/chart"
+	    {
+	    source=values_qy;
+	    x=0.1; y=0.1; height=12; width=64.7;
+	    chart_type=bar;
+	    scale=no;
+	    text_rotation=no;
+	    title="File Sizes";
+	    palette="green","fake,#014421";
+	    color='gray';
+	    zoom=1.0;
+	    show_value=yes;
+	    show_legend=yes;
+
+	    chart_x "report/chart-axis" { axis=x; label="place"; }
+
+	    chart_y "report/chart-axis" { axis=y; label="value"; }
+
+	    x_value=runserver(:values_qy:x);
+	    y_value=runserver(:values_qy:y);
+	    series_value=runserver(:values_qy:key);
+	    }
+
+	auto_pie "report/chart"
+	    {
+	    source=values_qy;
+	    x=0.1; y=0.1; height=12; width=64.7;
+	    chart_type=pie;
+	    scale=no;
+	    text_rotation=no;
+	    title="File Sizes";
+	    zoom=1.0;
+
+	    chart_x "report/chart-axis" { axis=x; label="place"; }
+
+	    chart_y "report/chart-axis" { axis=y; label="value"; }
+
+	    x_value=runserver(:values_qy:x);
+	    y_value=runserver(:values_qy:y);
+	    series_value=runserver('constant');
+
+	    }
+
+	}
+    }

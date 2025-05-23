@@ -1,0 +1,103 @@
+##NAME Order of Operations
+
+# Addition/multiplication
+query select '7 + 11 * 13' = 7 + 11 * 13
+query select '7 * 11 + 13' = 7 * 11 + 13
+query select '(7 + 11) * 13' = (7 + 11) * 13
+query select '7 * (11 + 13)' = 7 * (11 + 13)
+
+# Addition/subtraction
+query select '7 + 11 - 13' = 7 + 11 - 13
+query select '7 - 11 + 13' = 7 - 11 + 13
+query select '(7 - 11) + 13' = (7 - 11) + 13
+query select '7 + (11 - 13)' = 7 + (11 - 13)
+
+# Addition/multiplication/subtraction/division
+query select '7 + 11 - 13 * 19 / 23.0' = 7 + 11 - 13 * 19 / 23.0
+query select '7 * 11 - 13 + 19 / 23.0' = 7 * 11 - 13 + 19 / 23.0
+query select '7 / 11.0 * 13 + 19 - 23.0' = 7 / 11.0 * 13 + 19 - 23.0
+query select '(7 / 11.0) * 13 + 19 - 23.0' = (7 / 11.0) * 13 + 19 - 23.0
+query select '7 / (11.0 * 13) + 19 - 23.0' = 7 / (11.0 * 13) + 19 - 23.0
+query select '7 / 11.0 * (13 + 19) - 23.0' = 7 / 11.0 * (13 + 19) - 23.0
+
+# Boolean combinations
+query select 'not 1 and 1' = not 1 and 1
+query select 'not 1 and 0' = not 1 and 0
+query select 'not 0 and 1' = not 0 and 1
+query select 'not 0 and 0' = not 0 and 0
+query select '1 and not 1' = 1 and not 1
+query select '1 and not 0' = 1 and not 0
+query select '0 and not 1' = 0 and not 1
+query select '0 and not 0' = 0 and not 0
+query select 'not (1 and 1)' = not (1 and 1)
+query select 'not (1 and 0)' = not (1 and 0)
+query select 'not (0 and 1)' = not (0 and 1)
+query select 'not (0 and 0)' = not (0 and 0)
+query select '(not 1) and 1' = (not 1) and 1
+query select '(not 1) and 0' = (not 1) and 0
+query select '(not 0) and 1' = (not 0) and 1
+query select '(not 0) and 0' = (not 0) and 0
+query select 'not 1 or 1' = not 1 or 1
+query select 'not 1 or 0' = not 1 or 0
+query select 'not 0 or 1' = not 0 or 1
+query select 'not 0 or 0' = not 0 or 0
+query select '1 or not 1' = 1 or not 1
+query select '1 or not 0' = 1 or not 0
+query select '0 or not 1' = 0 or not 1
+query select '0 or not 0' = 0 or not 0
+query select 'not (1 or 1)' = not (1 or 1)
+query select 'not (1 or 0)' = not (1 or 0)
+query select 'not (0 or 1)' = not (0 or 1)
+query select 'not (0 or 0)' = not (0 or 0)
+query select '(not 1) or 1' = (not 1) or 1
+query select '(not 1) or 0' = (not 1) or 0
+query select '(not 0) or 1' = (not 0) or 1
+query select '(not 0) or 0' = (not 0) or 0
+query select '0 and 0 or 0' = 0 and 0 or 0
+query select '0 and 0 or 1' = 0 and 0 or 1
+query select '0 and 1 or 0' = 0 and 1 or 0
+query select '0 and 1 or 1' = 0 and 1 or 1
+query select '1 and 0 or 0' = 1 and 0 or 0
+query select '1 and 0 or 1' = 1 and 0 or 1
+query select '1 and 1 or 0' = 1 and 1 or 0
+query select '1 and 1 or 1' = 1 and 1 or 1
+query select '(0 and 0) or 0' = (0 and 0) or 0
+query select '(0 and 0) or 1' = (0 and 0) or 1
+query select '(0 and 1) or 0' = (0 and 1) or 0
+query select '(0 and 1) or 1' = (0 and 1) or 1
+query select '(1 and 0) or 0' = (1 and 0) or 0
+query select '(1 and 0) or 1' = (1 and 0) or 1
+query select '(1 and 1) or 0' = (1 and 1) or 0
+query select '(1 and 1) or 1' = (1 and 1) or 1
+query select '0 and (0 or 0)' = 0 and (0 or 0)
+query select '0 and (0 or 1)' = 0 and (0 or 1)
+query select '0 and (1 or 0)' = 0 and (1 or 0)
+query select '0 and (1 or 1)' = 0 and (1 or 1)
+query select '1 and (0 or 0)' = 1 and (0 or 0)
+query select '1 and (0 or 1)' = 1 and (0 or 1)
+query select '1 and (1 or 0)' = 1 and (1 or 0)
+query select '1 and (1 or 1)' = 1 and (1 or 1)
+query select '0 or 0 and 0' = 0 or 0 and 0
+query select '0 or 0 and 1' = 0 or 0 and 1
+query select '0 or 1 and 0' = 0 or 1 and 0
+query select '0 or 1 and 1' = 0 or 1 and 1
+query select '1 or 0 and 0' = 1 or 0 and 0
+query select '1 or 0 and 1' = 1 or 0 and 1
+query select '1 or 1 and 0' = 1 or 1 and 0
+query select '1 or 1 and 1' = 1 or 1 and 1
+query select '(0 or 0) and 0' = (0 or 0) and 0
+query select '(0 or 0) and 1' = (0 or 0) and 1
+query select '(0 or 1) and 0' = (0 or 1) and 0
+query select '(0 or 1) and 1' = (0 or 1) and 1
+query select '(1 or 0) and 0' = (1 or 0) and 0
+query select '(1 or 0) and 1' = (1 or 0) and 1
+query select '(1 or 1) and 0' = (1 or 1) and 0
+query select '(1 or 1) and 1' = (1 or 1) and 1
+query select '0 or (0 and 0)' = 0 or (0 and 0)
+query select '0 or (0 and 1)' = 0 or (0 and 1)
+query select '0 or (1 and 0)' = 0 or (1 and 0)
+query select '0 or (1 and 1)' = 0 or (1 and 1)
+query select '1 or (0 and 0)' = 1 or (0 and 0)
+query select '1 or (0 and 1)' = 1 or (0 and 1)
+query select '1 or (1 and 0)' = 1 or (1 and 0)
+query select '1 or (1 and 1)' = 1 or (1 and 1)

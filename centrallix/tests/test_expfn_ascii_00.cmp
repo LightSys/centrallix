@@ -1,0 +1,6 @@
+Attribute [ascii("A")]:  integer  65
+Attribute [ascii("Ab")]:  integer  65
+Attribute [ascii("1")]:  integer  49
+Attribute [ascii("10")]:  integer  49
+Attribute [ascii(null)]:  integer  NULL
+Attribute [ascii("")]:  integer  NULL

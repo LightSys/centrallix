@@ -53,10 +53,15 @@ typedef struct
 
 /*** Functions for handling parameters ***/
 int paramFree(pParam param);
+pParam paramCreate(char* name);
 pParam paramCreateFromObject(pObject obj);
 pParam paramCreateFromInf(pStructInf inf);
-int paramSetValue(pParam param, pTObjData value);
-int paramSetValueFromInfNe(pParam param, pStruct inf);
-int paramEvalHints(pParam param, pParamObjects objlist);
+int paramSetValue(pParam param, pTObjData value, int defer_hints, pParamObjects objlist, pObjSession sess);
+int paramSetValueFromInfNe(pParam param, pStruct inf, int defer_hints, pParamObjects objlist, pObjSession sess);
+int paramSetValueDirect(pParam param, int datatype, pObjData value, int defer_hints, pParamObjects objlist, pObjSession sess);
+int paramEvalHints(pParam param, pParamObjects objlist, pObjSession sess);
+int paramGetType(pParam param);
+int paramGetValueUntyped(pParam param, pObjData value);
+int paramGetValue(pParam param, int datatype, pObjData value);
 
 #endif /* not defined _PARAM_H */

@@ -69,6 +69,16 @@ mssMemoryErr(char* message)
     }
 
 
+/*** mssLog - write to syslog
+ ***/
+int
+mssLog(int level, char* msg)
+    {
+    syslog(level, "%s", msg);
+    return 0;
+    }
+
+
 /*** mssInitialize - init the globals, etc.
  ***/
 int 
@@ -76,20 +86,16 @@ mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, cha
     {
 
 	/** Setup auth method & log method settings **/
-	memccpy(MSS.AuthMethod, authmethod, 0, 31);
-	MSS.AuthMethod[31] = '\0';
-	memccpy(MSS.AuthFile, authfile, 0, 255);
-	MSS.AuthFile[255] = '\0';
-	memccpy(MSS.LogMethod, logmethod, 0, 31);
-	MSS.LogMethod[31] = '\0';
-	memccpy(MSS.AppName, log_progname, 0, 31);
-	MSS.AppName[31] = '\0';
+	strtcpy(MSS.AuthMethod, authmethod, sizeof(MSS.AuthMethod));
+	strtcpy(MSS.AuthFile, authfile, sizeof(MSS.AuthFile));
+	strtcpy(MSS.LogMethod, logmethod, sizeof(MSS.LogMethod));
+	strtcpy(MSS.AppName, log_progname, sizeof(MSS.AppName));
 	MSS.LogAllErrors = logall;
 
-	/** Setup syslog, if requested. **/
+	/** Setup syslog **/
+	openlog(MSS.AppName, LOG_PID, LOG_USER);
 	if (!strcmp(MSS.LogMethod, "syslog"))
 	    {
-	    openlog(MSS.AppName, LOG_PID, LOG_USER);
 	    syslog(LOG_INFO, "%s initializing...", MSS.AppName);
 	    }
    
@@ -231,9 +237,12 @@ mssUnlinkSession(pMtSession s)
 
 /*** mssAuthenticate - start a new session, overwriting previous
  *** (inherited) session information.
+ ***
+ *** bypass_crypt: set to 1 if we already know the credentials are
+ *** correct and we just need to set up a new session.
  ***/
 int 
-mssAuthenticate(char* username, char* password)
+mssAuthenticate(char* username, char* password, int bypass_crypt)
     {
     pMtSession s;
     char* encrypted_pwd;
@@ -254,11 +263,19 @@ mssAuthenticate(char* username, char* password)
 	/** Allocate a new session structure. **/
 	s = (pMtSession)nmMalloc(sizeof(MtSession));
 	if (!s) return -1;
+	memset(s, 0, sizeof(MtSession));
 	s->LinkCnt = 1;
-	strncpy(s->UserName, username, 31);
-	s->UserName[31]=0;
-	strncpy(s->Password, password, 31);
-	s->Password[31]=0;
+	strtcpy(s->UserName, username, sizeof(s->UserName));
+	strtcpy(s->Password, password, sizeof(s->Password));
+
+	/** Sanity checking. **/
+	if (strchr(username,':'))
+	    {
+	    mssError(1, "MSS", "Attempt to use invalid username '%s'", username);
+	    memset(s, 0, sizeof(MtSession));
+	    nmFree(s,sizeof(MtSession));
+	    return -1;
+	    }
 
 	/** Attempt to authenticate. **/
 	if (!strcmp(MSS.AuthMethod,"system"))
@@ -286,25 +303,20 @@ mssAuthenticate(char* username, char* password)
 #endif
 	    strncpy(salt,pwd,2);
 	    salt[2]=0;
-	    encrypted_pwd = (char*)crypt(s->Password,pwd);
-	    if (strcmp(encrypted_pwd,pwd))
+
+	    if (!bypass_crypt)
 		{
-		memset(s, 0, sizeof(MtSession));
-		nmFree(s,sizeof(MtSession));
-		return -1;
+		encrypted_pwd = (char*)crypt(s->Password,pwd);
+		if (!encrypted_pwd || strcmp(encrypted_pwd,pwd))
+		    {
+		    memset(s, 0, sizeof(MtSession));
+		    nmFree(s,sizeof(MtSession));
+		    return -1;
+		    }
 		}
 	    }
 	else if (!strcmp(MSS.AuthMethod, "altpasswd"))
 	    {
-	    /** Sanity checking. **/
-	    if (strchr(username,':'))
-		{
-		mssError(1, "MSS", "Attempt to use invalid username '%s'", username);
-		memset(s, 0, sizeof(MtSession));
-		nmFree(s,sizeof(MtSession));
-		return -1;
-		}
-
 	    /** Open the alternate password file **/
 	    altpass_fd = fdOpen(MSS.AuthFile, O_RDONLY, 0600);
 	    if (!altpass_fd)
@@ -347,12 +359,16 @@ mssAuthenticate(char* username, char* password)
 		if (pwline[strlen(pwline)-1] == '\n')
 		    pwline[strlen(pwline)-1] = '\0';
 		pwd = pwline + strlen(username) + 1;
-		encrypted_pwd = (char*)crypt(s->Password,pwd);
-		if (strcmp(encrypted_pwd,pwd))
+
+		if (!bypass_crypt)
 		    {
-		    memset(s, 0, sizeof(MtSession));
-		    nmFree(s,sizeof(MtSession));
-		    return -1;
+		    encrypted_pwd = (char*)crypt(s->Password,pwd);
+		    if (strcmp(encrypted_pwd,pwd))
+			{
+			memset(s, 0, sizeof(MtSession));
+			nmFree(s,sizeof(MtSession));
+			return -1;
+			}
 		    }
 		}
 	    else
@@ -684,7 +700,6 @@ mssPrintError(pFile fd)
 int
 mssStringError(pXString str)
     {
-    char sbuf[200];
     int i;
     pMtSession s;
 
@@ -693,14 +708,46 @@ mssStringError(pXString str)
 	if (!s) return -1;
 
 	/** Print the error stack. **/
-	snprintf(sbuf,200,"ERROR - Session By Username [%s]\r\n",s->UserName);
-	xsConcatenate(str,sbuf,-1);
+	xsConcatPrintf(str, "ERROR - Session By Username [%s]\r\n", s->UserName);
 	for(i=s->ErrList.nItems-1;i>=0;i--)
 	    {
-	    snprintf(sbuf,200,"--- %s\r\n",(char*)(s->ErrList.Items[i]));
-	    xsConcatenate(str,sbuf, -1);
+	    xsConcatPrintf(str, "--- %s\r\n", (char*)(s->ErrList.Items[i]));
 	    }
     	
+    return 0;
+    }
+
+
+/*** mssUserError() - returns a user-friendly version of the error message
+ *** stack (i.e., without the module codes).
+ ***/
+int
+mssUserError(pXString str)
+    {
+    int i;
+    pMtSession s;
+    char* item;
+    char* colon;
+
+	/** Get session. **/
+	s = (pMtSession)thGetParam(NULL,"mss");
+	if (!s) return -1;
+
+	/** Create a space-separated string of the messages, without module codes **/
+	for(i=s->ErrList.nItems-1;i>=0;i--)
+	    {
+	    item = (char*)(s->ErrList.Items[i]);
+	    if (item)
+		{
+		colon = strchr(item, ':');
+		if (colon)
+		    item = colon + 2;
+		xsConcatenate(str, item, -1);
+		if (i > 0)
+		    xsConcatenate(str, " ", 1);
+		}
+	    }
+
     return 0;
     }
 
@@ -722,8 +769,7 @@ mssSetParamPtr(char* paramname, void* ptr)
 	if (!(p = (pMtParam)xhLookup(&s->Params, paramname)))
 	    {
 	    p = (pMtParam)nmMalloc(sizeof(MtParam));
-	    memccpy(p->Name, paramname, 0, 31);
-	    p->Name[31] = 0;
+	    strtcpy(p->Name, paramname, sizeof(p->Name));
 	    is_new = 1;
 	    }
 
@@ -750,8 +796,7 @@ mssSetParam(char* paramname, void* value)
 	if (!(p = (pMtParam)xhLookup(&s->Params, paramname)))
 	    {
 	    p = (pMtParam)nmMalloc(sizeof(MtParam));
-	    memccpy(p->Name, paramname, 0, 31);
-	    p->Name[31] = 0;
+	    strtcpy(p->Name, paramname, sizeof(p->Name));
 	    is_new = 1;
 	    }
 	else
@@ -759,7 +804,7 @@ mssSetParam(char* paramname, void* value)
 	    if (p->Value != p->ValueBuf && p->Value) nmSysFree(p->Value);
 	    }
 
-	if (strlen(value) < 64)
+	if (strlen(value) < sizeof(p->ValueBuf))
 	    {
 	    p->Value = p->ValueBuf;
 	    }

@@ -1,0 +1,74 @@
+
+
+GetRowByKey:
+
+    if (result AND valid_row)
+	Result = valid query handle for one row (runs one query)
+    else
+	if (Result)
+	    free (Result)
+	Result = NULL
+
+Open:
+
+    Result = NULL
+
+    if (row AND NOT autoname)
+	if (GetRowByKey FAIL)
+	    if (Result)
+		free (Result)
+	    Result = NULL
+	    return NULL
+	else
+	    if (Result)
+		free (Result)
+	    Result = NULL
+
+OpenQuery:
+
+    if (parent Result)
+	free parent Result
+    parent Result = NULL
+
+QueryFetch:
+
+    Result = NULL
+
+    if (row)
+	if (!parent Result)
+	    parent Result = valid query handle for multi row set (starts the query)
+	fetch(parent Result)
+
+	child Result = parent Result
+
+QueryClose
+
+    static last_result = NULL
+
+    if (last_result) free last_result
+    last_result = parent Result
+    parent Result = NULL
+
+RefreshRow:
+
+    GetRowByKey
+
+Create:
+
+    Open
+    Close
+
+Delete:
+
+    Open
+    Delete
+
+UpdateRow:
+
+    RefreshRow
+
+SetAttrValue
+
+    UpdateRow
+
+

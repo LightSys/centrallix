@@ -113,8 +113,8 @@ xhq_internal_DiscardOne(pXHashQueue this)
 		    {
 		    xe->Prev->Next = xe->Next;
 		    xe->Next->Prev = xe->Prev;
+		    this->NumElements -= xe->Weight;
 		    nmFree(xe,sizeof(XHQElement));
-		    this->NumElements--;
 		    break;
 		    }
 		}
@@ -156,15 +156,17 @@ xhq_internal_EnQueue(pXHashQueue this, pXHQElement xe)
  *** doesn't seem to make much sense right after xhqAdd()...)
  ***/
 pXHQElement 
-xhqAdd(pXHashQueue this, void* key, void* data)
+xhqAdd(pXHashQueue this, void* key, void* data, int weight)
     {
     pXHQElement xe;
+
+	if (!weight) weight = 1;
 
     	/** Lock the queue. **/
 	syGetSem(this->ControlLock, 1, 0);
 
     	/** Need to make room? **/
-	while (this->NumElements >= this->MaxElements)
+	while (this->NumElements + weight > this->MaxElements)
 	    {
 	    if (xhq_internal_DiscardOne(this) < 0)
 	        {
@@ -188,6 +190,7 @@ xhqAdd(pXHashQueue this, void* key, void* data)
 	xe->LinkCnt = 1;
 	xe->KeyPtr = key;
 	xe->DataPtr = data;
+	xe->Weight = weight;
 	xe->Prev = NULL;
 	xe->Next = NULL;
 
@@ -200,7 +203,7 @@ xhqAdd(pXHashQueue this, void* key, void* data)
 	    return NULL;
 	    }
 	xhq_internal_EnQueue(this, xe);
-	this->NumElements++;
+	this->NumElements += weight;
 	syPostSem(this->ControlLock, 1, 0);
 
     return xe;
@@ -277,8 +280,8 @@ xhqRemove(pXHashQueue this, pXHQElement item, int flags)
 	/** Unlink the element and free it. **/
 	item->Next->Prev = item->Prev;
 	item->Prev->Next = item->Next;
+	this->NumElements -= item->Weight;
 	nmFree(item,sizeof(XHQElement));
-	this->NumElements--;
 	if (!(flags & XHQ_UF_PRELOCKED)) syPostSem(this->ControlLock, 1, 0);
 
     return 0;

@@ -29,6 +29,7 @@ function dt_cb_setvalue(a,v) {
 }
 
 function dt_setvalue(v,nodrawdate) {
+	var oldval = this.getvalue();
 	if (v) {
 		this.DateObj = new Date(v);
 		this.TmpDateObj = new Date(v);
@@ -46,6 +47,7 @@ function dt_setvalue(v,nodrawdate) {
 		if (!this.date_only)
 			dt_drawtime(this.PaneLayer, this.DateObj);
 	}
+	this.ifcProbe(ifValue).Changing('value', this.getvalue(), true, oldval, true);
 }
 
 function dt_setvalue2(v,nodrawdate) {
@@ -80,14 +82,14 @@ function dt_resetvalue() {
 function dt_enable() {
 	this.enabled = 'full';
 	//this.bgColor = this.bg;
-	pg_images(this)[4].src = '/sys/images/ico17.gif';
+	pg_images(this)[0].src = '/sys/images/ico17.gif';
 	if (this.bg) htr_setbgcolor(this, this.bg);
 	if (this.bgi) htr_setbgimage(this, this.bgi);
 }
 
 function dt_readonly() {
 	this.enabled = 'readonly';
-	pg_images(this)[4].src = '/sys/images/ico17.gif';
+	pg_images(this)[0].src = '/sys/images/ico17.gif';
 	if (this.bg) htr_setbgcolor(this, this.bg);
 	if (this.bgi) htr_setbgimage(this, this.bgi);
 }
@@ -95,7 +97,7 @@ function dt_readonly() {
 function dt_disable() {
 	this.enabled = 'disabled';
 	//this.bgColor = '#e0e0e0';
-	pg_images(this)[4].src = '/sys/images/ico17d.gif';
+	pg_images(this)[0].src = '/sys/images/ico17d.gif';
 	if (this.bg) htr_setbgcolor(this, '#e0e0e0');
 }
 
@@ -185,9 +187,11 @@ function dt_init(param){
 		l.TmpDateObj2 = new Date(param.id);
 		dt_drawdate(l, l.DateObj);
 	} else {
-		l.DateObj = new Date();
+		//l.DateObj = new Date();
+		l.DateObj = null;
 		l.TmpDateObj = new Date();
-		l.DateObj2 = new Date();
+		//l.DateObj2 = new Date();
+		l.DateObj2 = null;
 		l.TmpDateObj2 = new Date();
 		dt_drawdate(l, '');
 	}
@@ -196,7 +200,7 @@ function dt_init(param){
 	else
 	    l.form = wgtrFindContainer(l,"widget/form");
 	if (l.form) l.form.Register(l);
-	pg_addarea(l, -1, -1, getClipWidth(l)+1, getClipHeight(l)+1, 'dt', 'dt', 3);
+	pg_addarea(l, -1, -1, getClipWidth(l)+3, getClipHeight(l)+3, 'dt', 'dt', 3);
 
 	// Events
 	ifc_init_widget(l);
@@ -231,6 +235,10 @@ function dt_init(param){
 function dt_prepare(l) {
 	// Create the pane if needed.
 	if((!l.form || l.form.mode != 'Query' || !l.sbr) && l.PaneLayer2){
+	    if (l.PaneLayer && l.PaneLayer.parentNode)
+		l.PaneLayer.parentNode.removeChild(l.PaneLayer);
+	    if (l.PaneLayer2 && l.PaneLayer2.parentNode)
+		l.PaneLayer2.parentNode.removeChild(l.PaneLayer2);
 	    l.PaneLayer = null;
 	    l.PaneLayer2 = null;
 	}
@@ -498,7 +506,7 @@ function dt_toggle(l) {
 	var imgs = pg_images(l);
 	//for (i=0; i<l.document.images.length;i++) {
 	for (var i=0; i<imgs.length;i++) {
-		if (i == 4)
+		if (i == 0)
 			continue;
 		//else if (l.document.images[i].src.substr(-14, 6) == 'dkgrey')
 		else if (imgs[i].src.substr(-14, 6) == 'dkgrey')
@@ -598,7 +606,7 @@ function dt_keyhandler(l,e,k) {
 		if (dt.form) dt.form.DataNotify(dt);
 		cn_activate(dt, 'DataChange');
 	}*/
-	else if ((k >= 97 && k <= 122) ||( k>=65 && k<=90) || k ==45) { //letters or numbers or hyphen
+	else if ((k >= 97 && k <= 122) ||( k>=65 && k<=90) || k ==45 || (k >= 48 && k < 58)) { //letters or numbers or hyphen
 	    if(!dt_current) {
 		dt_expand(dt);
 		dt_current = dt;
@@ -607,16 +615,11 @@ function dt_keyhandler(l,e,k) {
 	    dt_update_typed(dt);
 	    if(dt.form) dt.form.DataNotify(dt);
 	    cn_activate(dt, 'DataChange');
-	}
-	else if (k >= 48 && k < 58) { // 0 - 9
-		if (!dt_current) {
-			dt_expand(dt);
-			dt_current = dt;
+	} else if (e.keyText == '/' || e.keyText == '-' || e.keyText == ':') {
+		if (dt_current && dt.typed_content) {
+			dt.typed_content += e.keyText;
+			dt_update_typed(dt);
 		}
-		dt.typed_content += String.fromCharCode(k);
-		dt_update_typed(dt);
-		if(dt.form) dt.form.DataNotify(dt);
-		cn_activate(dt, 'DataChange');
 	} else if (k == '/'.charCodeAt() || k == ':'.charCodeAt()) {
 		if (dt_current && dt.typed_content) {
 			dt.typed_content += String.fromCharCode(k);
@@ -722,7 +725,7 @@ function dt_update_typed(l) {
 
 // dt_getfocus is called when the user selects or tabs to the control
 function dt_getfocus(x,y,l) {
-	if (this.enabled != 'full') return 0;
+	if (this.enabled != 'full' || (this.form && !this.form.is_focusable)) return 0;
 	if(l.form) l.form.FocusNotify(l);
 	cn_activate(l, 'GetFocus');
 	return 1;
@@ -744,6 +747,8 @@ function dt_getfocus_day(a,b,c,d,e,f) {
 	// check area
 	if (e != 'dt_today' && e != 'dt_day' && e != 'dt_null') return;
 	if (!dt_current) return;
+
+	var oldval = dt_current.getvalue();
 
 	// hide the drop down part of the control
 	if(!dt_current.form || dt_current.form.mode != 'Query' || !dt_current.sbr){
@@ -795,6 +800,9 @@ function dt_getfocus_day(a,b,c,d,e,f) {
 		dt_current.form.DataNotify(dt_current);
 		cn_activate(dt_current, 'DataChange');
 	}
+	var newval = dt_current.getvalue();
+	if (newval != oldval)
+	    dt_current.ifcProbe(ifValue).Changing('value', newval, true, oldval, true);
 
 	// draw the date/time on the collapsed control
 	if(dt_current.form && dt_current.form.mode == 'Query' && dt_current.sbr){
@@ -958,11 +966,13 @@ function dt_create_pane(ml,bg,w,h,h2,name) {
 function dt_expand(l) {
 	dt_prepare(l);
 	pg_stackpopup(l.PaneLayer, l);
-	pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), l.h, l.w);
+	pg_positionpopup(l.PaneLayer, $(l).offset().left, $(l).offset().top, l.h, l.w);
+	//pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), l.h, l.w);
 	htr_setvisibility(l.PaneLayer, 'inherit');
 	if(l.form && l.form.mode == 'Query' && l.sbr){
 	    pg_stackpopup(l.PaneLayer2, l);
-	    pg_positionpopup(l.PaneLayer2, getPageX(l)+getClipWidth(l.PaneLayer)+5, getPageY(l), l.h, l.w);
+	    pg_positionpopup(l.PaneLayer2, $(l).offset().left + getClipWidth(l.PaneLayer) + 5, $(l).offset().top, l.h, l.w);
+	    //pg_positionpopup(l.PaneLayer2, getPageX(l)+getClipWidth(l.PaneLayer)+5, getPageY(l), l.h, l.w);
 	    htr_setvisibility(l.PaneLayer2, 'inherit');
 	}
 	l.typed_content = '';
@@ -970,7 +980,8 @@ function dt_expand(l) {
 
 // collapse the date/time control
 function dt_collapse(l) {
-	htr_setvisibility(l.PaneLayer, 'hidden');
+	if (l.PaneLayer)
+	    htr_setvisibility(l.PaneLayer, 'hidden');
 	if(l.PaneLayer2)
 	    htr_setvisibility(l.PaneLayer2, 'hidden');
 }
@@ -991,7 +1002,7 @@ function dt_domousedown(l) {
 			if (p.mainlayer.typed_content)
 				dt_parse_date(p.mainlayer,p.mainlayer.typed_content,true);
 			p.mainlayer.typed_content = '';
-		} else if (p.mainlayer.enabled == 'full') {
+		} else if (p.mainlayer.enabled == 'full' && (!p.mainlayer.form || p.mainlayer.form.is_focusable)) {
 			dt_current = p.mainlayer;
 			dt_expand(p.mainlayer);
 		}

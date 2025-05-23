@@ -1,0 +1,40 @@
+##NAME nth() function
+
+#Example from a different table
+#query select nth(:Color,3) from /tests/TestLevel1.csv/rows order by :Color asc
+
+query select nth(:f_desc,1) from /tests/Testdata1.csv/rows order by :f_id asc
+
+query select nth(:f_desc,2) from /tests/Testdata1.csv/rows order by :f_id asc
+
+query select nth(:f_desc,3) from /tests/Testdata1.csv/rows order by :f_id asc
+
+query select nth(:f_desc,4) from /tests/Testdata1.csv/rows order by :f_id asc
+
+query select nth(:f_desc,5) from /tests/Testdata1.csv/rows order by :f_id asc
+
+query select nth(:f_desc,6) from /tests/Testdata1.csv/rows order by :f_id asc
+
+query select nth(:f_desc,7) from /tests/Testdata1.csv/rows order by :f_id asc
+
+query select nth(:f_desc,8) from /tests/Testdata1.csv/rows order by :f_id asc
+
+query select nth(:f_desc,8) from /tests/Testdata1.csv/rows order by :f_id desc
+
+query select nth(:f_desc,7) from /tests/Testdata1.csv/rows order by :f_id desc
+
+query select nth(:f_desc,6) from /tests/Testdata1.csv/rows order by :f_id desc
+
+query select nth(:f_desc,5) from /tests/Testdata1.csv/rows order by :f_id desc
+
+query select nth(:f_desc,4) from /tests/Testdata1.csv/rows order by :f_id desc
+
+query select nth(:f_desc,3) from /tests/Testdata1.csv/rows order by :f_id desc
+
+query select nth(:f_desc,2) from /tests/Testdata1.csv/rows order by :f_id desc
+
+query select nth(:f_desc,1) from /tests/Testdata1.csv/rows order by :f_id desc
+#This will return null because it is out of the bounds of the data within the table
+query select nth(:f_desc,9) from /tests/Testdata1.csv/rows order by :f_id desc
+
+

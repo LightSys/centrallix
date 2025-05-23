@@ -33,7 +33,8 @@ function dd_getvalue()
 function dd_action_set_value(aparam)
     {
     this.setvalue(aparam.Value);
-    this.ifcProbe(ifEvent).Activate('DataModify', {Value:this.Values[this.VisLayer.index].value});
+    dd_datachange(this);
+    //this.ifcProbe(ifEvent).Activate('DataModify', {Value:this.Values[this.VisLayer.index].value});
     }
 
 function dd_setvalue(v) 
@@ -72,7 +73,7 @@ function dd_resetvalue()
 
 function dd_enable()
     {
-    pg_images(this)[4].src = '/sys/images/ico15b.gif';
+    pg_images(this)[0].src = '/sys/images/ico15b.gif';
     htr_setbgcolor(this, this.bg);
     this.keyhandler = dd_keyhandler;
     this.enabled = 'full';
@@ -80,7 +81,7 @@ function dd_enable()
 
 function dd_readonly()
     {
-    pg_images(this)[4].src = '/sys/images/ico15b.gif';
+    pg_images(this)[0].src = '/sys/images/ico15b.gif';
     htr_setbgcolor(this, "#e0e0e0");
     this.keyhandler = null;
     this.enabled = 'readonly';
@@ -93,7 +94,7 @@ function dd_disable()
 	htr_setvisibility(dd_current.PaneLayer, 'hidden');
 	dd_current = null;
 	}
-    pg_images(this)[4].src = '/sys/images/ico15a.gif';
+    pg_images(this)[0].src = '/sys/images/ico15a.gif';
     htr_setbgcolor(this, "#e0e0e0");
     this.keyhandler = null;
     this.enabled = 'disabled';
@@ -410,7 +411,7 @@ function dd_expand(l)
     if (l && htr_getvisibility(l.PaneLayer) != 'inherit')
 	{
 	pg_stackpopup(l.PaneLayer, l);
-	pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), l.h, 
+	pg_positionpopup(l.PaneLayer, $(l).offset().left, $(l).offset().top, l.h, 
 		getClipWidth(l));
 	htr_setvisibility(l.PaneLayer, 'inherit');
 	dd_current = l;
@@ -540,7 +541,7 @@ function dd_select_item(l,i,from)
 function dd_datachange(l)
     {
     if (l.form) l.form.DataNotify(l);
-    l.ifcProbe(ifEvent).Activate('DataModify', {Value:l.Values[l.VisLayer.index].value});
+    l.ifcProbe(ifEvent).Activate('DataModify', {Value:(l.Values.length && l.VisLayer.index !== null && l.Values[l.VisLayer.index])?(l.Values[l.VisLayer.index].value):null});
     }
 
 function dd_getfocus()
@@ -801,13 +802,13 @@ function dd_add_items(l,ary)
 	if (!l.form)
 	    dd_select_item(l, sel, l.init_items?'additems':'init');
 	if (typeof ary[sel].value == 'number')
-	    cx_set_hints(this, "d=" + ary[sel].value, "widget");
+	    cx_set_hints(this, "d=" + ary[sel].value, "widget", true);
 	else
-	    cx_set_hints(this, "d=" + escape(cxjs_quote(ary[sel].value)), "widget");
+	    cx_set_hints(this, "d=" + escape(cxjs_quote(ary[sel].value)), "widget", true);
 	}
     else
 	{
-	cx_set_hints(this, "", "widget");
+	cx_set_hints(this, "", "widget", true);
 	}
     if (ary.length == 0 && l.value != null)
 	{
@@ -827,7 +828,8 @@ function dd_add_items(l,ary)
 		break;
 		}
 	    }
-	if (!found && this.invalid_select_default && this.value)
+	//if (!found && this.invalid_select_default && this.value)
+	if (!found && this.invalid_select_default && (!this.form || this.form.mode == 'Modify'))
 	    cx_hints_setdefault(this);
 	}
     l.init_items = true;
@@ -1042,7 +1044,7 @@ function dd_action_set_group(aparam)
     var new_select = null;
     for(var i=0; i<this.allValues.length; i++)
 	{
-	if (!this.currentGroup || !this.allValues[i].grp || this.currentGroup == this.allValues[i].grp)
+	if (typeof this.currentGroup == 'undefined' || this.currentGroup === null || this.allValues[i].grp === null || this.currentGroup == this.allValues[i].grp)
 	    {
 	    if (typeof aparam.Min == 'undefined' || aparam.Min === null || aparam.Min <= this.allValues[i].value)
 		{
@@ -1126,11 +1128,55 @@ function dd_action_set_items(aparam)
 	    htr_setvisibility(this.sql_loader, 'hidden');
 	    }
 
-	var rowlimit = parseInt(aparam.RowLimit)?parseInt(aparam.RowLimit):50;
+	var rowlimit = parseInt(aparam.RowLimit)?parseInt(aparam.RowLimit):100;
 
 	var url = "/?cx__akey=" + akey + "&ls__mode=query&ls__rowcount=" + rowlimit + "&ls__sql=" + htutil_escape(aparam.SQL);
 	pg_serialized_load(this.sql_loader, url, dd_sql_loaded);
 	}
+    else
+	{
+	this.additems(this, []);
+	}
+    }
+
+function dd_cb_getsql(attr)
+    {
+    return this.SQL;
+    }
+
+function dd_cb_setsql(attr, val)
+    {
+    this.ifcProbe(ifAction).Invoke('SetItems', {SQL:val});
+    return;
+    }
+
+function dd_cb_reveal(e)
+    {
+    switch (e.eventName) 
+	{
+	case 'Reveal':
+	    if (this.form)
+		this.form.Reveal(this,e);
+	    else if (this.osrc)
+		this.osrc.Reveal(this);
+	    break;
+	case 'Obscure':
+	    // yes the below is correct. API is different between form and osrc.
+	    if (this.form)
+		this.form.Reveal(this,e);
+	    else if (this.osrc)
+		this.osrc.Obscure(this);
+	    break;
+	case 'RevealCheck':
+	case 'ObscureCheck':
+	    if (this.form)
+		this.form.Reveal(this,e);
+	    else
+		pg_reveal_check_ok(e);
+	    break;
+	}
+
+    return true;
     }
 
 function dd_deinit()
@@ -1222,8 +1268,8 @@ function dd_init(param)
 	else if (imgs[i].src.substr(-13,5) == 'white')
 	    imgs[i].upimg = true;
 	}
-    l.area = pg_addarea(l, -1, -1, getClipWidth(l)+1, 
-	    getClipHeight(l)+1, 'dd', 'dd', 3);
+    l.area = pg_addarea(l, -1, -1, getClipWidth(l)+3, 
+	    getClipHeight(l)+3, 'dd', 'dd', 3);
     if (l.form) l.form.Register(l);
     l.init_items = false;
 
@@ -1245,9 +1291,27 @@ function dd_init(param)
     ia.Add("SetItems", dd_action_set_items);
     ia.Add("ClearItems", dd_clear_layers);
 
+    var iv = l.ifcProbeAdd(ifValue);
+    iv.Add("sql", dd_cb_getsql, dd_cb_setsql);
+    iv.Add("value", "value");
+    iv.Add("label", "label");
+
     if (l.form)
 	{
 	l.form.ifcProbe(ifEvent).Hook('StatusChange',dd_changemode,l);
+	}
+
+    if (l.form || l.osrc)
+	{
+	l.Reveal = dd_cb_reveal;
+	if (pg_reveal_register_listener(l)) 
+	    {
+	    // already visible
+	    if (l.form)
+		l.form.Reveal(l, { eventName:'Reveal' });
+	    else
+		l.osrc.Reveal(l, { eventName:'Reveal' });
+	    }
 	}
 
     return l;

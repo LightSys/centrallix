@@ -7,6 +7,7 @@
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
+#include "cxlib/xhashqueue.h" 
 #include "stparse.h"
 #include "st_node.h"
 #include "cxlib/mtsession.h"
@@ -140,9 +141,10 @@
 **/
 #endif
 
-#define XML_BLOCK_SIZE 8092
+#define XML_BLOCK_SIZE 8192
 #define XML_ELEMENT_SIZE 64
 #define XML_ATTR_SIZE 256
+#define XML_HASH_SIZE 8+OBJSYS_MAX_PATH+XML_ATTR_SIZE // make sure room for open mode, path, and params
 
 #define XML_DEBUG 0
 
@@ -152,6 +154,7 @@
 /** the element used in the document cache **/
 typedef struct
     {
+    char	Pathname[XML_HASH_SIZE];
     xmlDocPtr	document;
     DateTime	lastmod;
     int		LinkCnt;
@@ -212,7 +215,8 @@ typedef struct
 /*** GLOBALS ***/
 struct
     {
-    XHashTable	cache;
+    XHashQueue	cache;
+    regex_t namematch;
     }
     XML_INF;
 
@@ -251,6 +255,26 @@ free_wrapper(void* ptr, void* arg)
         return 0   ; /* meaningless, but is needed for type safety */
     }
 
+
+/*** xml_internal_DiscardCO - this is the XHQ callback routine for the
+ *** cached xml objects when a cached item is being discarded via the LRU
+ *** discard algorithm.  We need to clean up by closing the object.
+ ***/
+int
+xml_internal_DiscardCO(pXHashQueue xhq, pXHQElement xe, int locked)
+    {
+    pXmlCacheObj cache;
+	/** Make sure can remove the object **/
+	if(locked) return -1;
+
+	/** find the object to close **/
+	cache = (pXmlCacheObj)xhqGetData(xhq, xe, XHQ_UF_PRELOCKED);
+
+	/** free the cache **/
+	xml_internal_CloseCachedDocument(cache);
+
+    return 0;
+    }
 
 /*** xml_internal_IsObject
  ***   decides if an XML node will be a centrallix object
@@ -303,17 +327,10 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 	int target=-1; /* the element number we're looking for */
 	int flag=0; /* did we find the target? */
 	char searchElement[XML_ELEMENT_SIZE];
-	regex_t namematch;
 	regmatch_t pmatch[3];
 
 	ptr=obj_internal_PathPart(obj->Pathname,obj->SubPtr+obj->SubCnt-1,1);
-	if((i=regcomp(&namematch,"^([^|]*)\\|*([0123456789]*)$",REG_EXTENDED)))
-	    {
-	    /** this is a critical failure -- this regex should compile just fine **/
-	    mssError(0,"XML","Error while building namematch");
-	    return -1;
-	    }
-	if(regexec(&namematch,ptr,3,pmatch,0)!=0)
+	if(regexec(&XML_INF.namematch,ptr,3,pmatch,0)!=0)
 	    {
 	    /** be optimistic: maybe this is for another driver **/
 	    mssError(0,"XML","Warning: pattern didn't match!");
@@ -424,6 +441,22 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
     return -1;
     }
 
+
+int
+xml_internal_CloseCachedDocument(pXmlCacheObj document)
+    {
+
+	document->LinkCnt--;
+	if (document->LinkCnt > 0)
+	    return 0;
+
+	xmlFreeDoc(document->document);
+	nmFree(document, sizeof(XmlCacheObj));
+
+    return 0;
+    }
+
+
 pXmlCacheObj
 xml_internal_ReadDoc(pObject obj)
     {
@@ -431,33 +464,49 @@ xml_internal_ReadDoc(pObject obj)
     char* ptr;
     char* path;
     int bytes;
-    pXmlCacheObj pCache;
+    pXmlCacheObj pCache = NULL;
+    pXHQElement cacheElem;
     pDateTime pDT=0;
+    char hash[XML_HASH_SIZE];
 
-	path=obj_internal_PathPart(obj->Pathname,0,3);
-	if((pCache=(pXmlCacheObj)xhLookup(&XML_INF.cache,path)))
+	/** Determine path of just the XML file itself **/
+	/** use the hash rather than the path for the chache lookup **/
+	obj_internal_GetDCHash(obj->Pathname, obj->Mode, hash, XML_HASH_SIZE, obj->SubPtr);
+	/** Check cache for an existing copy already **/
+	if((cacheElem=xhqLookup(&XML_INF.cache, hash)))
 	    {
-	    if(XML_DEBUG) printf("found %s in cache\n",path);
+	    if(XML_DEBUG) printf("found %s in cache\n", path);
 	    /** found match in cache -- check modification time **/
-	    if(objGetAttrValue(obj->Prev,"last_modification",DATA_T_DATETIME,POD(&pDT))==0)
-	    if(pDT && pDT->Value!=pCache->lastmod.Value)
+	    if(objGetAttrValue(obj->Prev, "last_modification", DATA_T_DATETIME, POD(&pDT))==0)
 		{
-		/** modification time changed -- update **/
-		xmlFreeDoc(pCache->document);
-		pCache->document=NULL;
+		pCache = (pXmlCacheObj) xhqGetData(&XML_INF.cache, cacheElem, 0);
+		if(pDT && pDT->Value!=pCache->lastmod.Value)
+		    {
+		    /** modification time changed -- update **/
+		    xhqRemove(&XML_INF.cache, cacheElem, 0);
+		    pCache = NULL; /* xhqRemove handles cleaning up pCache */
+		    }
 		}
 	    }
-	else
+
+	/** Not in cache, or cache was stale **/
+	if (!pCache)	
 	    {
-	    if(XML_DEBUG) printf("couldn't find %s in cache\n",path);
+	    if(XML_DEBUG) printf("couldn't find %s in cache\n",hash);
 	    pCache=(pXmlCacheObj)nmMalloc(sizeof(XmlCacheObj));
 	    if(!pCache) return NULL;
 	    memset(pCache,0,sizeof(XmlCacheObj));
-	    ptr=(char*)malloc(strlen(path)+1);
-	    strcpy(ptr,path);
-	    xhAdd(&XML_INF.cache,ptr,(char*)pCache);
+	    if (objGetAttrValue(obj->Prev, "last_modification", DATA_T_DATETIME, POD(&pDT)) == 0)
+		pCache->lastmod.Value = pDT->Value;
+	    strtcpy(pCache->Pathname, hash, sizeof(pCache->Pathname));
+	    pXHQElement tempItem = xhqAdd(&XML_INF.cache, pCache->Pathname, (void*)pCache, 0);
+	    if(!tempItem) return NULL;
+	    /** make sure the cached item can be freed later; don't need it linked since only the cache uses it **/
+	    xhqUnlink(&XML_INF.cache, tempItem, 0); 
+	    pCache->LinkCnt = 1;
 	    }
 
+	/** Need to load the content itself **/
 	if(!pCache->document)
 	    {
 #ifndef USE_LIBXML1
@@ -467,15 +516,22 @@ xml_internal_ReadDoc(pObject obj)
 	    /** parse the document **/
 	    ptr=(char*)malloc(XML_BLOCK_SIZE);
 	    ctxt=xmlCreatePushParserCtxt(NULL,NULL,NULL,0,"unknown");
+	    /** change the encoding if needed*/
+	    ObjData contentCharset;
+	    int status = objGetAttrValue(obj->Prev, "content_charset", DATA_T_STRING, &contentCharset);
+	    if(contentCharset.String != NULL && status >= 0)
+		xmlSwitchEncoding(ctxt, xmlParseCharEncoding(contentCharset.String));
+	    
 	    objRead(obj->Prev,ptr,0,0,FD_U_SEEK);
 	    while((bytes=objRead(obj->Prev,ptr,XML_BLOCK_SIZE,0,0))>0)
-	    {
+		{
 		if(XML_DEBUG) printf("giving parser a chunk\n");
 		xmlParseChunk(ctxt,ptr,bytes,0);
 		if(XML_DEBUG) printf("parser done with the chunk\n");
-	    }
+		}
 	    free(ptr);
 	    xmlParseChunk(ctxt,NULL,0,1);
+
 	    /** get the document reference **/
 	    if(!ctxt->myDoc)
 		{
@@ -485,7 +541,8 @@ xml_internal_ReadDoc(pObject obj)
 		}
 	    pCache->document=ctxt->myDoc;
 	    xmlFreeParserCtxt(ctxt);
-	}
+	    }
+
     return pCache;
     }
 
@@ -565,11 +622,12 @@ xmlClose(void* inf_v, pObjTrxTree* oxt)
 	/** free any memory used to return an attribute **/
 	if(inf->AttrValue)
 	    {
-	    free(inf->AttrValue);
+	    xmlFree(inf->AttrValue);
 	    inf->AttrValue=NULL;
 	    }
+
 	/** Release the memory **/
-	inf->CacheObj->LinkCnt--;
+	xml_internal_CloseCachedDocument(inf->CacheObj);
 	nmFree(inf,sizeof(XmlData));
 
     return 0;
@@ -685,7 +743,7 @@ xmlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 
     inf->Offset+=i;
 
-    free(buf);
+    xmlFree(buf);
 
     return i;
     }
@@ -813,8 +871,8 @@ xmlQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		/** the structure file driver will return the node's literal name, even if it isn't unique
 		 **   -- for now, we'll follow suit -- should we not do this?
 		 **/
-		//cnt = snprintf(name,256,"%s|%i",qy->NextNode->name,pHE->current);
-		cnt = snprintf(name,256,"%s",qy->NextNode->name);
+		cnt = snprintf(name,256,"%s|%i",qy->NextNode->name,pHE->current);
+		//cnt = snprintf(name,256,"%s",qy->NextNode->name);
 		}
 
 	    }
@@ -828,18 +886,13 @@ xmlQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    return NULL;
 	    }
 
-
 	/** Shamelessly stolen from objdrv_sybase.c :) **/
-	ptr = memchr(obj->Pathname->Elements[obj->Pathname->nElements-1],'\0',256);
-	if ((ptr - obj->Pathname->Pathbuf) + 1 + strlen(name) >= 255)
+	if (obj_internal_AddToPath(obj->Pathname, name) < 0)
 	    {
-	    mssError(1,"XML","Pathname too long for internal representation");
+	    mssError(1,"XML","Query result pathname exceeds internal limits");
 	    nmFree(inf,sizeof(XmlData));
 	    return NULL;
 	    }
-	*(ptr++) = '/';
-	strcpy(ptr,name);
-	obj->Pathname->Elements[obj->Pathname->nElements++] = ptr;
 	obj->SubCnt++;
 
 	if(XML_DEBUG) printf("QueryFetch gave back: (%i,%i,%i) %s\n",obj->SubPtr,
@@ -849,6 +902,7 @@ xmlQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	qy->ItemCnt++;
 
 	inf->CacheObj->LinkCnt++;
+
     return (void*)inf;
     }
 
@@ -905,6 +959,12 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	if (!strncmp(attrname, "__cx_literal_", 13))
 	    attrname += 13;
 
+	if(inf->AttrValue)
+	    {
+	    xmlFree(inf->AttrValue);
+	    inf->AttrValue=NULL;
+	    }
+
 	/** needed in case this isn't a GetFirstAttribute-style request **/
 	xml_internal_BuildAttributeHashTable(inf);
 
@@ -933,15 +993,15 @@ xmlGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 
 	    if(inf->AttrValue)
 		{
-		(void)strtoi(inf->AttrValue,&ptr,10);
+		/*(void)strtoi(inf->AttrValue,&ptr,10);
 		if(ptr && !*ptr)
 		    {
-		    free(inf->AttrValue);
+		    xmlFree(inf->AttrValue);
 		    inf->AttrValue=NULL;
 		    return DATA_T_INTEGER;
 		    }
-		free(inf->AttrValue);
-		inf->AttrValue=NULL;
+		xmlFree(inf->AttrValue);
+		inf->AttrValue=NULL;*/
 		return DATA_T_STRING;
 		}
 	    else
@@ -976,7 +1036,7 @@ xml_internal_BuildAttributeHashTable(pXmlData inf)
 	if(XML_DEBUG) printf("walking attributes to set up hash table\n");
 	while(ap)
 	    {
-	    pHE=(pXmlAttrObj)nmMalloc(sizeof(XmlAttrObj));
+	    pHE=(pXmlAttrObj)malloc(sizeof(XmlAttrObj));
 	    if(!pHE)
 		{
 		mssError(0,"XML","nmMalloc failed!");
@@ -1009,14 +1069,14 @@ xml_internal_BuildAttributeHashTable(pXmlData inf)
 		    }
 		else
 		    {
-		    pHE=(pXmlAttrObj)nmMalloc(sizeof(XmlAttrObj));
+		    pHE=(pXmlAttrObj)malloc(sizeof(XmlAttrObj));
 		    pHE->type=XML_SUBOBJ;
 		    pHE->count=1;
 		    pHE->ptr=np;
 		    xhAdd(inf->Attributes,(char*)np->name,(char*)pHE);
 		    }
 		}
-	    if(p) free(p);
+	    if(p) xmlFree(p);
 	    np=np->next;
 	    }
 	}
@@ -1045,7 +1105,7 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 
 	if(inf->AttrValue)
 	    {
-	    free(inf->AttrValue);
+	    xmlFree(inf->AttrValue);
 	    inf->AttrValue=NULL;
 	    }
 
@@ -1137,11 +1197,11 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		    val->Integer=strtoi(inf->AttrValue,&ptr,10);
 		    if(ptr && !*ptr)
 			{
-			free(inf->AttrValue);
+			xmlFree(inf->AttrValue);
 			inf->AttrValue=NULL;
 			return 0;
 			}
-		    free(inf->AttrValue);
+		    xmlFree(inf->AttrValue);
 		    inf->AttrValue=NULL;
 		    mssError(0,"XML","%s is not an integer",attrname);
 		    return -1;
@@ -1160,8 +1220,7 @@ xmlGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    else
 		{
 		/** if there's no text, we're going to return the empty string **/
-		inf->AttrValue=(char*)malloc(1);
-		inf->AttrValue[0]='\0';
+		inf->AttrValue = (char*)xmlStrdup((unsigned char*)"");
 		val->String = inf->AttrValue;
 		return -0;
 		}
@@ -1402,7 +1461,13 @@ xmlInitialize()
 
 	/** Initialize globals **/
 	memset(&XML_INF,0,sizeof(XML_INF));
-	xhInit(&XML_INF.cache,17,0);
+	xhqInit(&XML_INF.cache, 256, 0, 509, xml_internal_DiscardCO, 0);
+	if ((regcomp(&XML_INF.namematch, "^([^|]*)\\|*([0123456789]*)$", REG_EXTENDED)) != 0)
+	    {
+	    /** this is a critical failure -- this regex should compile just fine **/
+	    mssError(1,"XML","Error while building name match regex");
+	    return -1;
+	    }
 
 	/** Setup the structure **/
 	strcpy(drv->Name,"XML - XML OS Driver");

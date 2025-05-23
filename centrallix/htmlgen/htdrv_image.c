@@ -14,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2004 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2017 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -49,6 +49,22 @@ static struct
     HTIMG;
 
 
+/*** htimgSetup - do overall setup work to cover all image widgets.
+ ***/
+int
+htimgSetup(pHtSession s)
+    {
+
+	/** Global style code for all image widget "img" tags **/
+	htrAddStylesheetItem(s, "    img.wimage { display:block; position:relative; left:0px; top:0px; }\n");
+
+	/** Global style code for all image widget "div" containers **/
+	htrAddStylesheetItem(s, "    div.wimage { visibility:inherit; position:absolute; overflow:hidden; }\n");
+
+    return 0;
+    }
+
+
 /*** htimgRender - generate the HTML code for the label widget.
  ***/
 int
@@ -62,6 +78,7 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
     char *text;
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
+    char* aspect;
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
 	    {
@@ -87,13 +104,15 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	if(wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
 	    text=nmSysStrdup(ptr);
-	    }
 	else
-	    {
 	    text=nmSysStrdup("");
-	    }
+
+	/** Image aspect scaling: stretch or preserve **/
+	if(wgtrGetPropertyValue(tree,"aspect",DATA_T_STRING,POD(&ptr)) == 0)
+	    aspect=nmSysStrdup(ptr);
+	else
+	    aspect=nmSysStrdup("stretch");
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -111,6 +130,10 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr));
 	strtcpy(src, ptr, sizeof(src));
 
+	htrCheckAddExpression(s, tree, name, "scale");
+	htrCheckAddExpression(s, tree, name, "xoffset");
+	htrCheckAddExpression(s, tree, name, "yoffset");
+
 	/** Field name **/
 	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0)
 	    strtcpy(fieldname,ptr,sizeof(fieldname));
@@ -122,7 +145,7 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    form[0]='\0';
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#img%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
+	htrAddStylesheetItem_va(s,"\t#img%POS { left:%INTpx; top:%INTpx; width:%POSpx; height:%POSpx; z-index:%POS; text-align:center; }\n",id,x,y,w,h,z);
 
 	/** Init image widget (?) **/
 	htrAddWgtrObjLinkage_va(s, tree, "img%POS",id);
@@ -138,8 +161,18 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "img", "im_mousemove");
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItemLayer_va(s, 0, "img%POS", id, 
-	    "\n<img id=im%POS width=%POS height=%POS src=\"%STR&HTE\" style=\"display:block;\">\n",id,w,h,src);
+	if (!strcmp(aspect, "stretch"))
+	    {
+	    htrAddBodyItemLayer_va(s, 0, "img%POS", id, "wimage",
+		"\n<img class=\"wimage\" id=\"im%POS\" width=\"%POS\" height=\"%POS\" src=\"%STR&HTE\">\n",
+		id, w, h, src);
+	    }
+	else // "preserve"
+	    {
+	    htrAddBodyItemLayer_va(s, 0, "img%POS", id, "wimage",
+		"\n<img class=\"wimage\" id=\"im%POS\" width=\"%POS\" height=\"%POS\" style=\"max-width:fit-content; max-height:fit-content; display:inline;\" src=\"%STR&HTE\">\n",
+		id, w, h, src);
+	    }
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
@@ -165,6 +198,7 @@ htimgInitialize()
 	/** Fill in the structure. **/
 	strcpy(drv->Name,"DHTML Image Widget");
 	strcpy(drv->WidgetName,"image");
+	drv->Setup = htimgSetup;
 	drv->Render = htimgRender;
 
 	/** Events **/ 

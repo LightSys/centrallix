@@ -198,6 +198,39 @@ function cxjs_max(v)
 	}
     return highest;
     }
+function cxjs_sum(v)
+    {
+    var cnt = 0;
+    var sum = 0;
+    if (v instanceof Array)
+	{
+	for(var i=0; i<v.length; i++)
+	    {
+	    if (v[i] != null && !isNaN(v[i]))
+		{
+		cnt++;
+		sum += v[i];
+		}
+	    }
+	}
+    else if (v instanceof Object)
+	{
+	for(var i in v)
+	    {
+	    if (v[i] != null && !isNaN(v[i]))
+		{
+		cnt++;
+		sum += v[i];
+		}
+	    }
+	}
+    else
+	{
+	cnt = 1;
+	sum = v;
+	}
+    return (cnt > 0)?sum:null;
+    }
 function cxjs_count(v)
     {
     var cnt = 0;
@@ -250,8 +283,14 @@ function cxjs_convert(dt,v)
 	}
     if (dt == 'double')
 	{
-	if (String(v).substr(1,1) == '$')
+	if (String(v).substr(0,1) == '$')
+	    return parseFloat(String(v).substr(1));
+	else if (String(v).substr(0,2) == ' $' || String(v).substr(0,2) == '+$')
 	    return parseFloat(String(v).substr(2));
+	else if (String(v).substr(0,2) == '$ ')
+	    return parseFloat(String(v).substr(2));
+	else if (String(v).substr(0,2) == '-$')
+	    return -parseFloat(String(v).substr(2));
 	else
 	    return parseFloat(v);
 	}
@@ -262,9 +301,9 @@ function cxjs_substring(s,p,l)
     {
     if (s == null || p == null) return null;
     if (l == null)
-	return s.substr(p-1);
+	return (String(s)).substr(p-1);
     else
-	return s.substr(p-1,l);
+	return (String (s)).substr(p-1,l);
     }
 function cxjs_right(s,l)
     {
@@ -298,7 +337,7 @@ function cxjs_rtrim(s)
     }
 function cxjs_plus(a, b)
     {
-    if (a == null || b == null) return null;
+    if (a === undefined || b === undefined || a == null || b == null) return null;
     if ((typeof a == 'string') || (typeof b == 'string'))
 	return String(a) + String(b);
     else
@@ -313,7 +352,7 @@ function cxjs_minus(a, b)
 	a = String(a);
 	b = String(b);
 	if (a.lastIndexOf(b) == a.length - b.length)
-	    return a.substr(a.length - b.length);
+	    return a.substr(0, a.length - b.length);
 	else
 	    return a;
 	}
@@ -420,7 +459,8 @@ function cxjs_substitute(_context, _this, str, remaplist)
 			var fieldname = id[1];
 			}
 		    var prop = wgtrProbeProperty(obj, fieldname);
-		    if (typeof prop != 'undefined' && !wgtrIsUndefined(prop) && typeof window.__cur_exp != 'undefined' && window.__cur_exp)
+		    //if (typeof prop != 'undefined' && !wgtrIsUndefined(prop) && typeof window.__cur_exp != 'undefined' && window.__cur_exp)
+		    if (typeof window.__cur_exp != 'undefined' && window.__cur_exp)
 			pg_expaddpart(window.__cur_exp, obj, fieldname);
 		    if (prop == null || typeof prop == 'undefined' || wgtrIsUndefined(prop))
 			prop = "";
@@ -477,6 +517,11 @@ function cxjs_replace(str, srch, rep)
 		rep);
     }
 
+function htr_boolean(v)
+    {
+    return !(v==0 || String(v).toLowerCase()=='no' || String(v).toLowerCase() == 'false' || String(v).toLowerCase() == 'off' || v == '0');
+    }
+
 function htr_code_to_keyname(k)
     {
     switch(k)
@@ -511,23 +556,38 @@ function htr_event(e)
 	cx__event.modifiers = e.modifiers;
 	cx__event.shiftKey = e.shiftKey;
 	cx__event.ctrlKey = e.ctrlKey;
+	cx__event.keyText = e.key;
 	if (e.type == 'keypress' || e.type == 'keydown' || e.type == 'keyup')
 	    {
 	    cx__event.key = e.which;
-	    switch(e.keyCode)
+	    if (e.charCode == 0)
 		{
-		case e.DOM_VK_HOME:	cx__event.keyName = 'home'; break;
-		case e.DOM_VK_END:	cx__event.keyName = 'end'; break;
-		case e.DOM_VK_LEFT:	cx__event.keyName = 'left'; break;
-		case e.DOM_VK_RIGHT:	cx__event.keyName = 'right'; break;
-		case e.DOM_VK_UP:	cx__event.keyName = 'up'; break;
-		case e.DOM_VK_DOWN:	cx__event.keyName = 'down'; break;
-		case e.DOM_VK_TAB:	cx__event.keyName = 'tab'; break;
-		case e.DOM_VK_ENTER:	cx__event.keyName = 'enter'; break;
-		case e.DOM_VK_RETURN:	cx__event.keyName = 'enter'; break;
-		case e.DOM_VK_ESCAPE:	cx__event.keyName = 'escape'; break;
-		case e.DOM_VK_F3:	cx__event.keyName = 'f3'; break;
-		default:		cx__event.keyName = null; break;
+		switch(e.keyCode)
+		    {
+		    case 36:		cx__event.keyName = 'home'; break;
+		    case 23:		cx__event.keyName = 'end'; break;
+		    case 37:		cx__event.keyName = 'left'; break;
+		    case 39:		cx__event.keyName = 'right'; break;
+		    case 38:		cx__event.keyName = 'up'; break;
+		    case 40:		cx__event.keyName = 'down'; break;
+		    case 9:			cx__event.keyName = 'tab'; break;
+		    case 14:		cx__event.keyName = 'enter'; break;
+		    case 13:		cx__event.keyName = 'enter'; break;
+		    case 27:		cx__event.keyName = 'escape'; break;
+		    case 114:		cx__event.keyName = 'f3'; break;
+		    //case e.DOM_VK_HOME:	cx__event.keyName = 'home'; break;
+		    //case e.DOM_VK_END:	cx__event.keyName = 'end'; break;
+		    //case e.DOM_VK_LEFT:	cx__event.keyName = 'left'; break;
+		    //case e.DOM_VK_RIGHT:	cx__event.keyName = 'right'; break;
+		    //case e.DOM_VK_UP:	cx__event.keyName = 'up'; break;
+		    //case e.DOM_VK_DOWN:	cx__event.keyName = 'down'; break;
+		    //case e.DOM_VK_TAB:	cx__event.keyName = 'tab'; break;
+		    //case e.DOM_VK_ENTER:	cx__event.keyName = 'enter'; break;
+		    //case e.DOM_VK_RETURN:	cx__event.keyName = 'enter'; break;
+		    //case e.DOM_VK_ESCAPE:	cx__event.keyName = 'escape'; break;
+		    //case e.DOM_VK_F3:	cx__event.keyName = 'f3'; break;
+		    default:		cx__event.keyName = null; break;
+		    }
 		}
 	    }
 
@@ -743,7 +803,7 @@ function htr_stylize_element(element, widget, prefix, defaults)
 	'background-color': styleobj.bgcolor,
 	'padding': styleobj.padding + 'px',
 	'border-radius': styleobj.border_radius + 'px',
-	'border': styleobj.border_color?('1px ' + (styleobj.border_style?styleobj.border_style:'solid') + ' ' + styleobj.border_color):'none',
+	'border': styleobj.border_color?('1px ' + (styleobj.border_style?styleobj.border_style:'solid') + ' ' + styleobj.border_color):(styleobj.border_style?('1px ' + styleobj.border_style + ' #c0c0c0'):'none'),
 	'text-align': styleobj.align?styleobj.align:'initial',
 	'white-space': (styleobj.wrap=='no')?'nowrap':'normal',
 	'box-shadow': (!styleobj.shadow_color || !styleobj.shadow_radius)?'none':
@@ -1156,7 +1216,12 @@ function htr_getbgimage(l)
     if (cx__capabilities.Dom0NS)
 	return l.background.src;
     else if (cx__capabilities.Dom1HTML)
-	return l.style.backgroundImage;
+	{
+	var i = l.style.backgroundImage;
+	if (i && i.substr(0,4) == 'url(')
+	    i = i.substr(5, i.length - 7);
+	return i;
+	}
     return null;
     }
 

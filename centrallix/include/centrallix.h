@@ -2,6 +2,11 @@
 #define _CENTRALLIX_H
 
 #include "stparse.h"
+#include "cxlib/mtsession.h"
+
+
+#define	CX_USERNAME_SIZE    (MSS_USERNAME_SIZE)
+#define	CX_PASSWORD_SIZE    (MSS_PASSWORD_SIZE)
 
 
 /*** Platform-independent types definition ***/
@@ -52,6 +57,8 @@ typedef struct _CXG
     pCxModule	ModuleList;
     XArray	ShutdownHandlers;
     int		Flags;
+    int		ClkTck;
+    pFile	DebugFile;
     }
     CxGlobals_t, *pCxGlobals_t;
 
@@ -95,8 +102,13 @@ int cxAddShutdownHandler(ShutdownHandlerFunc);
 
 /*** startup functions ***/
 int cxInitialize();
+int cxDriverInit();
 int cxHtInit();
 int cxNetworkInit();
+int cxLinkSigningSetup(pStructInf my_config);
+
+/*** Debugging ***/
+int cxDebugLog(char* fmt, ...);
 
 
 /*** Sys Info data structure for object/tree additions ***/

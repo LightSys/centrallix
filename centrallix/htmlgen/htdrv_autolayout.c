@@ -115,7 +115,7 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInit_va(s, "    al_init(wgtrGetNodeRef(ns,'%STR&SYM'), {});\n", name);
 
 	/** Start of container **/
-	htrAddBodyItemLayerStart(s, 0, "al%POSbase", id);
+	htrAddBodyItemLayerStart(s, 0, "al%POSbase", id, NULL);
 
 	/** Check for objects within this autolayout widget. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)

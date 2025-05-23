@@ -1,0 +1,12 @@
+##NAME Static WHERE Optimization
+
+query select sw1 = count(1) from /tests/Testdata1.csv/rows t1 where :t1:f_id = 1
+query select sw2 = count(1) from /tests/Testdata1.csv/rows t1 where :t1:f_id = 10
+query select sw3 = count(1) from /tests/Testdata1.csv/rows t1 where 1 = 2
+query select sw4 = count(1) from /tests/Testdata1.csv/rows t1 where :t1:f_id = 1 and 1 = 2
+query select sw5 = count(1) from /tests/Testdata1.csv/rows t1 where :t1:f_id = 10 and 1 = 2
+query select sw6 = :f_id from /tests/Testdata1.csv/rows t1 where :t1:f_id = 1
+query select sw7 = :f_id from /tests/Testdata1.csv/rows t1 where :t1:f_id = 10
+query select sw8 = :f_id from /tests/Testdata1.csv/rows t1 where 1 = 2
+query select sw9 = :f_id from /tests/Testdata1.csv/rows t1 where :t1:f_id = 1 and 1 = 2
+query select sw10 = :f_id from /tests/Testdata1.csv/rows t1 where :t1:f_id = 10 and 1 = 2

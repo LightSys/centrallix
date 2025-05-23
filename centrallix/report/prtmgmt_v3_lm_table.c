@@ -240,7 +240,7 @@ prt_tablm_ChildBreakReq(pPrtObjStream this, pPrtObjStream child, pPrtObjStream *
 int
 prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_width, double req_height)
     {
-    pPrtObjStream table_obj, new_parent, old_parent;
+    pPrtObjStream table_obj, new_parent, old_parent = NULL;
     double new_height;
 
 	PRT_DEBUG("prt_tablm_ChildResizeReq() %s %8.8x %s %8.8x\n", this->ObjType->TypeName, this, child->ObjType->TypeName, child);
@@ -308,10 +308,11 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 			}
 
 		    /** break failed, re-add to old container.  Bad news though.  If
-		     ** the new_parent got set to NULL, we no longer have a old_parent
+		     ** the new_parent got set to NULL, we no longer have an old_parent
 		     ** or a new_parent.  Exit without doing anything.
 		     **/
-		    prt_internal_Add(new_parent, table_obj);
+		    if (new_parent)
+			prt_internal_Add(new_parent, table_obj);
 		    /*if (new_parent == old_parent)
 			old_parent->LayoutMgr->AddObject(old_parent, table_obj);*/
 		    return -1;
@@ -463,11 +464,12 @@ prt_tablm_SetWidths(pPrtObjStream this)
 	    totalwidth += lm_inf->ColWidths[i];
 	    }
 
-	/** Check total of column widths. **/
-	if (totalwidth > (prtInnerWidth(this) + PRT_FP_FUDGE))
+	/** Check total of column widths.  If too wide, we always scale it back
+	 ** to fit.  If too narrow, we only scale it to fill if AUTOWIDTH is
+	 ** enabled.
+	 **/
+	if (totalwidth > (prtInnerWidth(this) + PRT_FP_FUDGE) || (lm_inf->Flags & PRT_TABLM_F_AUTOWIDTH))
 	    {
-	    /*mssError(1,"TABLM","Total of column widths and separations exceeds available table width");
-	    return -EINVAL;*/
 	    for(i=0;i<lm_inf->nColumns;i++)
 		{
 		lm_inf->ColWidths[i] *= (prtInnerWidth(this)/totalwidth);
@@ -488,43 +490,14 @@ prt_tablm_SetWidths(pPrtObjStream this)
     }
 
 
-/*** prt_tablm_AddObject() - used to add a new object to the table, row, or
- *** cell.  We need to mainly make sure that the added object is valid in its
- *** container, as well as make any final settings.  The object will have
- *** been initialized (via InitContainer), if appropriate, *before* this 
- *** routine is called.
+/*** prt_tablm_DetermineGeometry() - set geometry for the object we're adding.
  ***/
 int
-prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
+prt_tablm_DetermineGeometry(pPrtObjStream this, pPrtObjStream new_child_obj)
     {
     pPrtTabLMData lm_inf = (pPrtTabLMData)(new_child_obj->LMData);
     pPrtTabLMData parent_lm_inf = (pPrtTabLMData)(this->LMData);
-    pPrtObjStream new_parent;
-    int i,rval;
-
-	/** Make sure the types are OK **/
-	if (this->ObjType->TypeID == PRT_OBJ_T_TABLE && new_child_obj->ObjType->TypeID != PRT_OBJ_T_TABLEROW)
-	    {
-	    mssError(1,"TABLM","Tables may only contain table-row objects");
-	    return -1;
-	    }
-	if (new_child_obj->ObjType->TypeID == PRT_OBJ_T_TABLEROW && this->ObjType->TypeID != PRT_OBJ_T_TABLE)
-	    {
-	    mssError(1,"TABLM","Table-row objects may only be contained within a table");
-	    return -1;
-	    }
-	if (new_child_obj->ObjType->TypeID == PRT_OBJ_T_TABLECELL && this->ObjType->TypeID != PRT_OBJ_T_TABLEROW)
-	    {
-	    mssError(1,"TABLM","Table-cell objects may only be contained within a table-row");
-	    return -1;
-	    }
-
-	/** Init the column widths? **/
-	if (!this->ContentHead && this->ObjType->TypeID == PRT_OBJ_T_TABLE)
-	    {
-	    rval = prt_tablm_SetWidths(this);
-	    if (rval < 0) return rval;
-	    }
+    int i;
 
 	/** Determine geometries and propagate config data. **/
 	if (this->ObjType->TypeID == PRT_OBJ_T_TABLE)
@@ -582,9 +555,6 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    new_child_obj->Height = prtInnerHeight(this);
 		new_child_obj->Y = 0.0;
 		new_child_obj->ObjID = parent_lm_inf->CurColID;
-		parent_lm_inf->CurColID += lm_inf->ColSpan;
-		if (parent_lm_inf->CurColID > parent_lm_inf->nColumns)
-		    parent_lm_inf->CurColID = parent_lm_inf->nColumns;
 		}
 	    else
 		{
@@ -607,6 +577,60 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		new_child_obj->Width = prtInnerWidth(this) - new_child_obj->X;
 	    if (new_child_obj->Height < 0) 
 		new_child_obj->Height = prtInnerHeight(this) - new_child_obj->Y;
+	    }
+
+    return 0;
+    }
+
+
+/*** prt_tablm_AddObject() - used to add a new object to the table, row, or
+ *** cell.  We need to mainly make sure that the added object is valid in its
+ *** container, as well as make any final settings.  The object will have
+ *** been initialized (via InitContainer), if appropriate, *before* this 
+ *** routine is called.
+ ***/
+int
+prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
+    {
+    pPrtObjStream new_parent;
+    pPrtTabLMData lm_inf = (pPrtTabLMData)(new_child_obj->LMData);
+    pPrtTabLMData parent_lm_inf = (pPrtTabLMData)(this->LMData);
+    int rval;
+
+	/** Make sure the types are OK **/
+	if (this->ObjType->TypeID == PRT_OBJ_T_TABLE && new_child_obj->ObjType->TypeID != PRT_OBJ_T_TABLEROW)
+	    {
+	    mssError(1,"TABLM","Tables may only contain table-row objects");
+	    return -1;
+	    }
+	if (new_child_obj->ObjType->TypeID == PRT_OBJ_T_TABLEROW && this->ObjType->TypeID != PRT_OBJ_T_TABLE)
+	    {
+	    mssError(1,"TABLM","Table-row objects may only be contained within a table");
+	    return -1;
+	    }
+	if (new_child_obj->ObjType->TypeID == PRT_OBJ_T_TABLECELL && this->ObjType->TypeID != PRT_OBJ_T_TABLEROW)
+	    {
+	    mssError(1,"TABLM","Table-cell objects may only be contained within a table-row");
+	    return -1;
+	    }
+
+	/** Init the column widths? **/
+	if (!this->ContentHead && this->ObjType->TypeID == PRT_OBJ_T_TABLE)
+	    {
+	    rval = prt_tablm_SetWidths(this);
+	    if (rval < 0) return rval;
+	    }
+
+	/** Determine geometry and config of new child **/
+	if (prt_tablm_DetermineGeometry(this, new_child_obj) < 0)
+	    return -1;
+
+	/** Update parent to count table cells **/
+	if (this->ObjType->TypeID == PRT_OBJ_T_TABLEROW && new_child_obj->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
+	    {
+	    parent_lm_inf->CurColID += lm_inf->ColSpan;
+	    if (parent_lm_inf->CurColID > parent_lm_inf->nColumns)
+		parent_lm_inf->CurColID = parent_lm_inf->nColumns;
 	    }
 
 	/** Ok, geometry now set.  Now see if the thing will actually fit. **/
@@ -635,6 +659,10 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		{
 		/** Point to new container **/
 		this = new_parent;
+
+		/** Recompute new child object geometries **/
+		if (prt_tablm_DetermineGeometry(this, new_child_obj) < 0)
+		    return -1;
 
 		/** Re-check height sizing; new parent may need to be resized. **/
 		if (new_child_obj->Height + new_child_obj->Y - PRT_FP_FUDGE > prtInnerHeight(this))
@@ -708,6 +736,13 @@ prt_tablm_InitTable(pPrtObjStream this, pPrtTabLMData old_lm_data, va_list va)
 		    {
 		    lm_inf->ColWidths[i] = prtUnitX(this->Session, widths[i]);
 		    }
+		}
+	    else if (!strcmp(attrname, "autowidth"))
+		{
+		if (va_arg(va, int) != 0)
+		    lm_inf->Flags |= PRT_TABLM_F_AUTOWIDTH;
+		else
+		    lm_inf->Flags &= ~PRT_TABLM_F_AUTOWIDTH;
 		}
 	    else if (!strcmp(attrname, "colsep"))
 		{
@@ -786,8 +821,8 @@ prt_tablm_InitTable(pPrtObjStream this, pPrtTabLMData old_lm_data, va_list va)
 	/** Compute border widths for object **/
 	this->BorderTop = lm_inf->TopBorder.TotalWidth;
 	this->BorderLeft = lm_inf->LeftBorder.TotalWidth;
-	this->BorderBottom = lm_inf->BottomBorder.TotalWidth + lm_inf->Shadow.TotalWidth;
-	this->BorderRight = lm_inf->RightBorder.TotalWidth + lm_inf->Shadow.TotalWidth;
+	this->BorderBottom = lm_inf->BottomBorder.TotalWidth; // + lm_inf->Shadow.TotalWidth;
+	this->BorderRight = lm_inf->RightBorder.TotalWidth; // + lm_inf->Shadow.TotalWidth;
 
     return 0;
     }
@@ -1112,32 +1147,32 @@ prt_tablm_Finalize(pPrtObjStream this)
 	if (lm_inf->Shadow.nLines > 0)
 	    {
 	    prt_internal_MakeBorder(this, lm_inf->ShadowWidth, this->Height,
-		    this->Width - lm_inf->ShadowWidth, 
-		    PRT_MKBDR_F_BOTTOM | PRT_MKBDR_F_MARGINRELEASE,
+		    this->Width, // - lm_inf->ShadowWidth, 
+		    PRT_MKBDR_F_BOTTOM | PRT_MKBDR_F_MARGINRELEASE | PRT_MKBDR_F_OUTSIDE,
 		    &(lm_inf->Shadow), NULL, &(lm_inf->Shadow));
-	    prt_internal_MakeBorder(this, this->Width, lm_inf->ShadowWidth,
-		    this->Height - lm_inf->ShadowWidth, 
-		    PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_MARGINRELEASE,
+	    prt_internal_MakeBorder(this, this->Width, lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
+		    this->Height, //- lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR, 
+		    PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_MARGINRELEASE | PRT_MKBDR_F_OUTSIDE,
 		    &(lm_inf->Shadow), NULL, &(lm_inf->Shadow));
 	    }
 
 	/** Draw main table borders **/
 	if (lm_inf->TopBorder.nLines > 0)
-	    prt_internal_MakeBorder(this, 0.0, 0.0, this->Width - lm_inf->ShadowWidth,
+	    prt_internal_MakeBorder(this, 0.0, 0.0, this->Width, // - lm_inf->ShadowWidth,
 		    PRT_MKBDR_F_TOP | PRT_MKBDR_F_MARGINRELEASE,
 		    &(lm_inf->TopBorder), &(lm_inf->LeftBorder), &(lm_inf->RightBorder));
 	if (lm_inf->BottomBorder.nLines > 0)
-	    prt_internal_MakeBorder(this, 0.0, this->Height - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR, 
-		    this->Width - lm_inf->ShadowWidth,
+	    prt_internal_MakeBorder(this, 0.0, this->Height, // - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR, 
+		    this->Width, // - lm_inf->ShadowWidth,
 		    PRT_MKBDR_F_BOTTOM | PRT_MKBDR_F_MARGINRELEASE,
 		    &(lm_inf->BottomBorder), &(lm_inf->LeftBorder), &(lm_inf->RightBorder));
 	if (lm_inf->LeftBorder.nLines > 0)
-	    prt_internal_MakeBorder(this, 0.0, 0.0, this->Height - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
+	    prt_internal_MakeBorder(this, 0.0, 0.0, this->Height, // - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
 		    PRT_MKBDR_F_LEFT | PRT_MKBDR_F_MARGINRELEASE,
 		    &(lm_inf->LeftBorder), &(lm_inf->TopBorder), &(lm_inf->BottomBorder));
 	if (lm_inf->RightBorder.nLines > 0)
-	    prt_internal_MakeBorder(this, this->Width - lm_inf->ShadowWidth, 0.0,
-		    this->Height - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
+	    prt_internal_MakeBorder(this, this->Width, 0.0, // - lm_inf->ShadowWidth, 0.0,
+		    this->Height, // - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
 		    PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_MARGINRELEASE,
 		    &(lm_inf->RightBorder), &(lm_inf->TopBorder), &(lm_inf->BottomBorder));
 
@@ -1147,7 +1182,7 @@ prt_tablm_Finalize(pPrtObjStream this)
 	    for(i=0;i<lm_inf->nColumns-1;i++)
 		{
 		prt_internal_MakeBorder(this, this->MarginLeft + this->BorderLeft + lm_inf->ColX[i+1] - 0.5*lm_inf->ColSep, 0.0,
-			this->Height - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
+			this->Height, // - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
 			PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_LEFT | PRT_MKBDR_F_MARGINRELEASE,
 			&(lm_inf->InnerBorder), &(lm_inf->TopBorder), &(lm_inf->BottomBorder));
 		}
@@ -1199,7 +1234,7 @@ prt_tablm_Finalize(pPrtObjStream this)
 		    rowright = NULL;
 		if (!row->Next || row->Next->ObjType->TypeID == PRT_OBJ_T_RECT)
 		    {
-		    if (lm_inf->BottomBorder.nLines > 0 && this->MarginBottom <= lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR)
+		    if (lm_inf->BottomBorder.nLines > 0 && this->MarginBottom <= 0.0) // lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR)
 			rowbottom = &(lm_inf->BottomBorder);
 		    else
 			rowbottom = NULL;

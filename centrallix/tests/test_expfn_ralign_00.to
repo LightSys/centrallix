@@ -1,0 +1,14 @@
+##NAME ralign() function
+
+query select 'ralign("Test", 5)' = ralign("Test", 10)
+
+query select 'ralign("Test", 0)' = ralign("Test", 0)
+
+query select 'ralign("Test", -50)' = ralign("Test", -10)
+
+query select 'ralign("",5)' = ralign("",5)
+
+query select 'ralign(null,1)' = ralign(null,1)
+
+query select ralign(:f_string,20) from /tests/Datatypes.csv/rows
+

@@ -85,7 +85,7 @@ typedef struct
 typedef struct 
     {
     /** Variables all object types use **/
-    char	Pathname[256];	/** Hold the full path to the object **/
+    char	Pathname[OBJSYS_MAX_PATH];	/** Hold the full path to the object **/
     pObject	Obj;
     int		CurAttr;
     pSnNode	Node;
@@ -255,7 +255,7 @@ pop_internal_FreeMaildrop(pPopMaildrop drop)
 		{
 		if ( (uid = xaGetItem(drop->uids, i)) != NULL) nmSysFree (uid);
 		}
-	    xaClear(drop->uids);
+	    xaClear(drop->uids, NULL, NULL);
 	    xaDeInit(drop->uids);
 	    nmFree(drop->uids, sizeof(PopMaildrop));
 	    }
@@ -302,10 +302,10 @@ pop_internal_UpdateMaildrop(pPopMaildrop drop)
 	syGetSem(drop->Sem, 1, 0);
 
 	/** Stat the server to find out if we need to update **/
-	snprintf(buf, 32, "STAT\r\n");
+	snprintf(buf, sizeof(buf), "STAT\r\n");
 	fdWrite(drop->Session, buf, strlen(buf), 0, FD_U_PACKET);
 
-	if ( pop_internal_GetResponse(drop->Session, buf, 32) < 1)
+	if ( pop_internal_GetResponse(drop->Session, buf, sizeof(buf)) < 1)
 	    {
 	    mssError(1, "POP", "Could not STAT %s: %s", drop->DropName, buf);
 	    goto piUM_Error;
@@ -328,7 +328,7 @@ pop_internal_UpdateMaildrop(pPopMaildrop drop)
 		{
 		if ( (uid = xaGetItem(drop->uids, i)) != NULL) nmSysFree (uid);
 		}
-	    xaClear(drop->uids);
+	    xaClear(drop->uids, NULL, NULL);
 
 	    /** Tell the server we want the uids **/
 	    fdWrite(drop->Session, "UIDL\r\n", 6, 0, FD_U_PACKET);
@@ -378,7 +378,7 @@ int
 pop_internal_ConnectToMaildrop(pPopData inf)
     {
 	pPopMaildrop drop = inf->Drop;
-	char buf[32];
+	char buf[CX_PASSWORD_SIZE + 8];
 	char *passwd;
 
 	/** make sure the caller isn't an idiot **/
@@ -402,7 +402,7 @@ pop_internal_ConnectToMaildrop(pPopData inf)
 		}
 
 	    /** Make sure the response was good **/
-	    if (pop_internal_GetResponse(drop->Session, buf, 32) < 1)
+	    if (pop_internal_GetResponse(drop->Session, buf, sizeof(buf)) < 1)
 		{
 		mssError(1, "POP", "Error connecting to %s:%s - %s", inf->Host, inf->Port, buf);
 		goto piCTM_Error;
@@ -426,22 +426,22 @@ pop_internal_ConnectToMaildrop(pPopData inf)
 		}
 
 	    /** Send the user command **/
-	    snprintf(buf, 32, "USER %s\r\n", drop->DropName);
+	    snprintf(buf, sizeof(buf), "USER %s\r\n", drop->DropName);
 	    fdWrite(drop->Session, buf, strlen(buf), 0, FD_U_PACKET);
 	    
 	    /** Check the response **/
-	    if ( pop_internal_GetResponse(drop->Session, buf, 32) < 1)
+	    if ( pop_internal_GetResponse(drop->Session, buf, sizeof(buf)) < 1)
 		{
 		mssError(1, "POP", "Could not log in to %s:  %s", drop->DropName, buf);
 		goto piCTM_Error;
 		}
 
 	    /** Send the password command **/
-	    snprintf(buf, 32, "PASS %s\r\n", passwd);
+	    snprintf(buf, sizeof(buf), "PASS %s\r\n", passwd);
 	    fdWrite(drop->Session, buf, strlen(buf), 0, FD_U_PACKET);
 
 	    /** Check the response **/
-	    if ( pop_internal_GetResponse(drop->Session, buf, 32) < 1)
+	    if ( pop_internal_GetResponse(drop->Session, buf, sizeof(buf)) < 1)
 		{
 		mssError(1, "POP", "Could not log in to %s: %s", drop->DropName, buf);
 		goto piCTM_Error;
@@ -592,11 +592,11 @@ int
 pop_internal_Login(pPopData inf)
     {
     char* username;
-    char buf[64];
+    char buf[CX_PASSWORD_SIZE + 8];
 
 	/** Send Username **/
 	username = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->Pathname->nElements-1, 1);
-	snprintf(buf, 32, "USER %s\r\n", username);
+	snprintf(buf, sizeof(buf), "USER %s\r\n", username);
 	fdWrite(inf->Conn, buf, strlen(buf), 0, FD_U_PACKET);
 
 	/** Get response **/
@@ -607,7 +607,7 @@ pop_internal_Login(pPopData inf)
 	    }
 	
 	/** Now authenticate **/
-	snprintf(buf, 256, "PASS %s\r\n", mssPassword());
+	snprintf(buf, sizeof(buf), "PASS %s\r\n", mssPassword());
 	fdWrite(inf->Conn, buf, strlen(buf), 0, FD_U_PACKET);
 
 	/** Get the response **/
@@ -699,12 +699,12 @@ pop_internal_OpenMaildrop(pPopData inf, char* usrtype)
 
 	/** num_messages **/
 	xaAddItem(inf->AttribNames, "num_messages");
-	snprintf(buf, 32, "%d", xaCount(inf->Drop->uids));
+	snprintf(buf, sizeof(buf), "%d", xaCount(inf->Drop->uids));
 	xaAddItem(inf->AttribVals, nmSysStrdup(buf));
 
 	/** size **/
 	xaAddItem(inf->AttribNames, "size");
-	snprintf(buf, 32, "%ld", inf->Drop->Size);
+	snprintf(buf, sizeof(buf), "%ld", inf->Drop->Size);
 	xaAddItem(inf->AttribVals, nmSysStrdup(buf));
 
 	return 0;

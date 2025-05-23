@@ -78,6 +78,7 @@ function wn_init(param)
 	    l.has_titlebar = 1;
 	}
 
+    l.open_params = {};
     l.orig_parent = null;
     l.is_toplevel = false;
     if (param.toplevel == 1)
@@ -135,10 +136,16 @@ function wn_init(param)
 	pg_addsched_fn(window, "pg_reveal_event", [l,l,'Reveal'], 0);
 	}
 
+    // force on page...
+    if (getPageY(l) + l.orig_height > getInnerHeight())
+	{
+	moveToAbsolute(l, getPageX(l), getInnerHeight() - l.orig_height - 2);
+	}
+
     // Show container API
     l.showcontainer = wn_showcontainer;
 
-    if (l.is_modal && l.is_visible) pg_setmodal(l);
+    if (l.is_modal && l.is_visible) pg_setmodal(l, true);
 
     return l;
     }
@@ -250,7 +257,7 @@ function wn_cb_reveal(e)
 	    this.loaded = true;
 	    this.ifcProbe(ifEvent).Activate("Load", {});
 	    }
-	this.ifcProbe(ifEvent).Activate("Open", {});
+	this.ifcProbe(ifEvent).Activate("Open", this.open_params);
 	}
     return true;
     }
@@ -280,6 +287,7 @@ function wn_setvisibility_bh(v)
 	}
     else
 	{
+	$(this).css({display:"block"});
 	pg_reveal_event(this, v, 'Reveal');
 	if (!this.loaded)
 	    {
@@ -291,12 +299,18 @@ function wn_setvisibility_bh(v)
 	wn_bring_top(this);
 	htr_setvisibility(this,'inherit');
 	this.is_visible = 1;
-	if (this.is_modal) pg_setmodal(this);
-	this.ifcProbe(ifEvent).Activate("Open", {});
+	if (this.is_modal) pg_setmodal(this, true);
+	this.ifcProbe(ifEvent).Activate("Open", this.open_params);
 
 	// Point logic
 	if (this.point_at)
 	    {
+	    // Border radius of this window
+	    var brtxt = $(this).css('border-radius');
+	    if (!brtxt) brtxt = $(this).css('border-bottom-left-radius'); // grrr firefox
+	    var br = parseInt(brtxt);
+	    var min_offset = br + 20;
+
 	    // Geometry of widget we're pointing at...
 	    if (this.point_at.GetSelectedGeom)
 		var geom = this.point_at.GetSelectedGeom();
@@ -307,11 +321,32 @@ function wn_setvisibility_bh(v)
 	    // Compute based on which side of the window the point will be on
 	    switch(this.point_side)
 		{
+		case 'bottom':
+		    // Allowable point positions
+		    var pt_y = $(this).outerHeight() + 15;
+		    var min_pt_x = min_offset;
+		    var max_pt_x = $(this).outerWidth() - min_offset;
+		    if (min_pt_x > max_pt_x) return;
+
+		    // Allowable window positions
+		    var win_y = geom.y - $(this).outerHeight() - 15;
+		    var min_win_x = Math.max(geom.x + (using_offset?this.point_offset:0) - max_pt_x, 0);
+		    var max_win_x = Math.min(geom.x + (using_offset?this.point_offset:geom.width) - min_pt_x, pg_width - $(this).outerWidth());;
+		    if (min_win_x > max_win_x) return;
+
+		    // Go with midpoint of min/max win x
+		    win_x = (min_win_x + max_win_x)/2;
+
+		    // Compute point x from there
+		    pt_x = geom.x + (using_offset?this.point_offset:(geom.width/2)) - win_x;
+		    pt_x = Math.min(Math.max(pt_x, min_pt_x), max_pt_x);
+		    break;
+
 		case 'top':
 		    // Allowable point positions
 		    var pt_y = -15;
-		    var min_pt_x = 20;
-		    var max_pt_x = $(this).outerWidth() - 20;
+		    var min_pt_x = min_offset;
+		    var max_pt_x = $(this).outerWidth() - min_offset;
 		    if (min_pt_x > max_pt_x) return;
 
 		    // Allowable window positions
@@ -331,8 +366,8 @@ function wn_setvisibility_bh(v)
 		case 'left':
 		    // Allowable point positions
 		    var pt_x = -15;
-		    var min_pt_y = 20;
-		    var max_pt_y = $(this).outerHeight() - 20;
+		    var min_pt_y = min_offset;
+		    var max_pt_y = $(this).outerHeight() - min_offset;
 		    if (min_pt_y > max_pt_y) return;
 
 		    // Allowable window positions
@@ -352,8 +387,8 @@ function wn_setvisibility_bh(v)
 		case 'right':
 		    // Allowable point positions
 		    var pt_x = $(this).outerWidth() + 15;
-		    var min_pt_y = 20;
-		    var max_pt_y = $(this).outerHeight() - 20;
+		    var min_pt_y = min_offset;
+		    var max_pt_y = $(this).outerHeight() - min_offset;
 		    if (min_pt_y > max_pt_y) return;
 
 		    // Allowable window positions
@@ -493,7 +528,7 @@ function wn_graphical_shade(l,to,speed,size)
 
 function wn_close(l)
     {
-    if (l.is_modal) pg_setmodal(null);
+    if (l.is_modal) pg_setmodal(l, false);
     if (wn_popped[l.id]) delete wn_popped[l.id];
     //l.is_modal = false;
     l.no_close = false;
@@ -510,6 +545,7 @@ function wn_close(l)
     if (l.closetype == 0 || !cx__capabilities.Dom0NS)
 	{
 	htr_setvisibility(l,'hidden');
+	$(l).css({display:"none"});
 	if (l.point1) htr_setvisibility(l.point1,'hidden');
 	if (l.point2) htr_setvisibility(l.point2,'hidden');
 	l.is_visible = 0;
@@ -578,7 +614,8 @@ function wn_togglevisibility(aparam)
     var vis = htr_getvisibility(this);
     if (vis != 'inherit' && vis != 'visible')
 	{
-	this.SetVisibilityTH(true);
+	//this.SetVisibilityTH(true);
+	wn_openwin.call(this, aparam);
 	}
     else
 	{
@@ -594,6 +631,7 @@ function wn_closewin(aparam)
 
 function wn_openwin(aparam)
     {
+    this.open_params = aparam;
     this.point_at = aparam.PointAt;
     if (this.point_at && (typeof this.point_at != 'object' || !wgtrIsNode(this.point_at)))
 	this.point_at = wgtrGetNode(this, this.point_at);

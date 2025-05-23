@@ -1,0 +1,3 @@
+##NAME avg() function
+
+query select 'avg(:f_integer)' = avg(:f_integer), 'avg(:f_double)' = avg(:f_double), 'avg(:f_money)' = avg(:f_money), 'avg(null)' = avg(null) from /tests/Datatypes.csv/rows where abs(:f_integer) < 1000000000 and abs(:f_money) < 1000000000

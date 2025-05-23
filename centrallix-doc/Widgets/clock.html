@@ -13,10 +13,14 @@
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>The clock widget displays the current time on the client computer, and is very configurable in terms of appearance.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>The clock widget can be used inside of any container capable of having visual subwidgets.  It may contain no widgets other than any applicable connectors.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -40,6 +44,11 @@
 <td class="description">A color, either named or numeric, for the background of the clock.  If neither bgcolor nor background are specified, the clock is transparent.</td>
 </tr>
 <tr>
+<td class="name">bold</td>
+<td class="type">string</td>
+<td class="description">Acts as a boolean to declare if the type will be bold (larger and thicker).</td>
+</tr>
+<tr>
 <td class="name">fgcolor1</td>
 <td class="type">string</td>
 <td class="description">A color, either named or numeric, for the foreground text of the clock.</td>
@@ -50,6 +59,11 @@
 <td class="description">A color, either named or numeric, for the foreground text's shadow, if 'shadowed' is enabled.</td>
 </tr>
 <tr>
+<td class="name">fieldname</td>
+<td class="type">string</td>
+<td class="description">Stores the field name and memory.</td>
+</tr>
+<tr>
 <td class="name">height</td>
 <td class="type">integer</td>
 <td class="description">The height of the clock, in pixels.</td>
@@ -58,6 +72,11 @@
 <td class="name">hrtype</td>
 <td class="type">integer</td>
 <td class="description">Set to 12 for a 12-hour clock, or to 24 for military (24-hour) time.</td>
+</tr>
+<tr>
+<td class="name">moveable</td>
+<td class="type">string</td>
+<td class="description">Acts as a boolean to control if the entire clock can be moved.</td>
 </tr>
 <tr>
 <td class="name">seconds</td>
@@ -107,24 +126,24 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">MouseUp</td>
-<td class="description">This event occurs when the user releases the mouse button on the widget.</td>
-</tr>
-<tr>
 <td class="name">MouseDown</td>
 <td class="description">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
 </tr>
 <tr>
-<td class="name">MouseOver</td>
-<td class="description">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</td>
+<td class="name">MouseMove</td>
+<td class="description">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</td>
 </tr>
 <tr>
 <td class="name">MouseOut</td>
 <td class="description">This event occurs when the user moves the mouse pointer off of the widget.</td>
 </tr>
 <tr>
-<td class="name">MouseMove</td>
-<td class="description">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</td>
+<td class="name">MouseOver</td>
+<td class="description">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</td>
+</tr>
+<tr>
+<td class="name">MouseUp</td>
+<td class="description">This event occurs when the user releases the mouse button on the widget.</td>
 </tr>
 </table>
 </body>

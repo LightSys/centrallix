@@ -34,8 +34,11 @@
 
 
 #include "obj.h"
+#include "ptod.h"
 #include "cxlib/mtlexer.h"
 #include "cxlib/xhash.h"
+#include <openssl/sha.h>
+#include <openssl/md5.h>
 
 #define EXPR_MAX_PARAMS		30
 
@@ -49,10 +52,22 @@ typedef struct
     int         Precedence[64];
     XHashTable  Functions;
     XHashTable  ReverseFunctions;
+    unsigned char Random[SHA256_DIGEST_LENGTH];
     }
     EXP_Globals;
 
 extern EXP_Globals EXP;
+
+
+/** description of a property that is in a tree **/
+typedef struct
+    {
+    char*		ObjName;	/* null if unknown or unavailable */
+    int			ObjID;
+    char*		PropName;
+    int			Flags;		/* such as EXPR_F_FREEZEEVAL */
+    }
+    ExpProperty, *pExpProperty;
 
 
 /** expression tree control structure **/
@@ -87,10 +102,11 @@ typedef struct _ET
     char*		Name;
     int			Flags;			/* bitmask EXPR_F_xxx */
     int			Integer;
-    char*		String;
+    char*		String;			/* for string or binary */
+    int			Size;			/* for DATA_T_BINARY */
     union
         {
-        char		StringBuf[64];
+        char		StringBuf[64];		/* for string or binary */
         double		Double;
         MoneyType	Money;
         DateTime	Date;
@@ -110,6 +126,8 @@ typedef struct _ET
     unsigned int	LinkCnt;
     unsigned int	LxFlags;
     unsigned int	CmpFlags;
+    void*		PrivateData;		/* allocated with nmSysMalloc() */
+    int			(*PrivateDataFinalize)(void*);
     }
     Expression, *pExpression;
 
@@ -140,10 +158,12 @@ typedef struct _PO
     unsigned char	nObjects;
     char		CurrentID;
     char		ParentID;
-    unsigned int	MainFlags;		/* bitmask EXPR_MO_xxx */
+    unsigned int	MainFlags;			/* bitmask EXPR_MO_xxx */
     unsigned int 	PSeqID;
     int			ModCoverageMask;
     pExpControl		CurControl;
+    int			RandomInit;
+    unsigned char	Random[SHA256_DIGEST_LENGTH];	/* current seed for rand() */
     }
     ParamObjects, *pParamObjects;
 
@@ -157,6 +177,7 @@ typedef struct _PO
 #define EXPR_O_REFERENCED	32	/* object was referenced */
 #define EXPR_O_ALLOWDUPS	64	/* allow duplicate object names */
 #define EXPR_O_REPLACE		128	/* replace entry on duplicate */
+#define EXPR_O_PRESERVEPARENT	256	/* keep parent reference the same */
 
 extern pParamObjects expNullObjlist;
 
@@ -186,6 +207,7 @@ extern pParamObjects expNullObjlist;
 #define EXPR_N_LIST		23
 #define EXPR_N_SUBQUERY		24	/* such as "i = (select ...)" */
 #define EXPR_N_ISNOTNULL	25
+#define EXPR_N_BINARY		26
 
 /*** Flags for expression nodes ***/
 #define EXPR_F_OPERATOR		1	/* node is an operator */
@@ -203,20 +225,33 @@ extern pParamObjects expNullObjlist;
 #define EXPR_F_RUNCLIENT	4096	/* Run expression on client */
 #define EXPR_F_RUNSERVER	8192	/* Run expression on server */
 #define EXPR_F_RUNSTATIC	16384	/* Run expression as static on server */
+#define EXPR_F_REVERSE		32768	/* Lookup param name in reverse order */
 
 #define EXPR_F_DOMAINMASK	(EXPR_F_RUNSTATIC | EXPR_F_RUNCLIENT | EXPR_F_RUNSERVER)
 #define EXPR_F_RUNDEFAULT	(EXPR_F_RUNSTATIC)
 
 #define EXPR_F_INDETERMINATE	32768	/* Value cannot yet be known */
-
 #define EXPR_F_HASRUNSERVER	65536	/* Expression contains runserver() */
+#define EXPR_F_WINDOWFN		131072	/* node is a windowing function */
+#define EXPR_F_HASWINDOWFN	262144	/* subtree has a windowing function */
 
 /*** Expression objlist MainFlags ***/
 #define EXPR_MO_RECALC		1	/* ignore EXPR_F_STALE; recalc */
+#define EXPR_MO_NOCURRENT	2	/* deny access via :attrname */
+#define EXPR_MO_NOPARENT	4	/* deny access via ::attrname */
+#define EXPR_MO_NOOBJECT	8	/* deny :objectname:attrname */
+#define EXPR_MO_NODIRECT	16	/* deny /path/to/object:attrname */
+#define EXPR_MO_NOSUBQUERY	32	/* deny (sql) */
+#define EXPR_MO_NOEVAL		64	/* deny eval() */
+#define EXPR_MO_PERMMASK	(EXPR_MO_NOCURRENT | EXPR_MO_NOPARENT | EXPR_MO_NOOBJECT | EXPR_MO_NODIRECT | EXPR_MO_NOSUBQUERY | EXPR_MO_NOEVAL)
+#define EXPR_MO_DEFPERMMASK	(EXPR_MO_NODIRECT | EXPR_MO_NOSUBQUERY | EXPR_MO_NOEVAL)
 #define EXPR_MO_RUNSTATIC	EXPR_F_RUNSTATIC
 #define EXPR_MO_RUNSERVER	EXPR_F_RUNSERVER
 #define EXPR_MO_RUNCLIENT	EXPR_F_RUNCLIENT
 #define EXPR_MO_DOMAINMASK	EXPR_F_DOMAINMASK
+#if (EXPR_MO_DOMAINMASK & EXPR_MO_PERMMASK)
+#error "Conflict in expression EXPR_MO_xxxx options, sorry!!!"
+#endif
 
 /*** Compiler flags ***/
 #define EXPR_CMP_ASCDESC	1	/* flag asc/desc for sort expr */
@@ -225,6 +260,7 @@ extern pParamObjects expNullObjlist;
 #define EXPR_CMP_LATEBIND	8	/* allow late object name binding */
 #define EXPR_CMP_RUNSERVER	16	/* compile as a 'runserver' expression */
 #define EXPR_CMP_RUNCLIENT	32	/* compile as a 'runclient' expression */
+#define EXPR_CMP_REVERSE	32768	/* Lookup param names in reverse order */
 
 
 /*** Functions ***/
@@ -240,9 +276,19 @@ int expReplaceString(pExpression this, char* oldstr, char* newstr);
 int expIsConstant(pExpression this);
 pExpression expReducedDuplicate(pExpression this);
 int expCompareExpressions(pExpression exp1, pExpression exp2);
+int expCompareExpressionValues(pExpression exp1, pExpression exp2);
+pTObjData expCompileAndEval(char* text, pParamObjects objlist, int lxflags, int cmpflags);
+pExpression expPtodToExpression(pTObjData ptod, pExpression exp);
+pTObjData expExpressionToPtod(pExpression exp);
+int expSetString(pExpression this, char* str);
+int expSetBinary(pExpression this, unsigned char* str, int len);
+pDateTime expPromoteDate(pExpression exp);
 
 /*** Generator functions ***/
 int expGenerateText(pExpression exp, pParamObjects objlist, int (*write_fn)(), void* write_arg, char esc_char, char* language, int domain);
+int expGetPropList(pExpression exp, pXArray objs_xa, pXArray props_xa);
+pXArray expGetPropsForObject(pExpression exp, int obj_id, pXArray proplist); /* call with proplist = NULL */
+void expFreeProps(pXArray proplist);
 
 /*** Internal Functions ***/
 pExpression exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlist, int cmpflags);
@@ -251,6 +297,7 @@ int exp_internal_CopyNode(pExpression src, pExpression dst);
 pExpression exp_internal_CopyTree(pExpression orig_exp);
 int expSplitTree(pExpression src_tree, pExpression split_point, pExpression result_trees[]);
 int exp_internal_EvalTree(pExpression tree, pParamObjects objlist);
+int exp_internal_EvalAggregates(pExpression tree, pParamObjects objlist);
 int exp_internal_DefineFunctions();
 int exp_internal_DefineNodeEvals();
 int expCopyValue(pExpression src, pExpression dst, int make_independent);
@@ -285,13 +332,14 @@ int expReverseEvalTree(pExpression tree, pParamObjects objlist);
 pParamObjects expCreateParamList();
 int expSetEvalDomain(pParamObjects this, int domain);
 int expCopyList(pParamObjects src, pParamObjects dst, int n_objects);
+int expCopyParams(pParamObjects src, pParamObjects dst, int start, int n_objects);
 int expBindExpression(pExpression exp, pParamObjects this, int domain);
 int expFreeParamList(pParamObjects this);
 int expFreeParamListWithCB(pParamObjects this, int (*free_fn)());
 int expAddParamToList(pParamObjects this, char* name, pObject obj, int flags);
 int expModifyParam(pParamObjects this, char* name, pObject replace_obj);
 int expModifyParamByID(pParamObjects this, int id, pObject replace_obj);
-int expLookupParam(pParamObjects this, char* name);
+int expLookupParam(pParamObjects this, char* name, int flags);
 int expSyncModify(pExpression tree, pParamObjects objlist);
 int expReplaceID(pExpression tree, int oldid, int newid);
 int expFreezeEval(pExpression tree, pParamObjects objlist, int freeze_id);
@@ -301,7 +349,9 @@ int expResetAggregates(pExpression tree, int reset_id, int level);
 int exp_internal_ResetAggregates(pExpression tree, int reset_id, int level);
 int expUnlockAggregates(pExpression tree, int level);
 int expRemoveParamFromList(pParamObjects this, char* name);
+int expRemoveParamFromListById(pParamObjects this, int i);
 int expSetParamFunctions(pParamObjects this, char* name, int (*type_fn)(), int (*get_fn)(), int (*set_fn)());
+int expSetParamFunctionsByID(pParamObjects this, int id, int (*type_fn)(), int (*get_fn)(), int (*set_fn)());
 int expRemapID(pExpression tree, int exp_obj_id, int objlist_obj_id);
 int expClearRemapping(pExpression tree);
 int expObjChanged(pParamObjects this, pObject obj);

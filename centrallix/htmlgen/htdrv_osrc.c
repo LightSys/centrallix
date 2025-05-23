@@ -223,8 +223,13 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
       }
    else
       {
-      mssError(1,"HTOSRC","You must give a sql parameter");
-      return -1;
+      if (wgtrGetPropertyType(tree,"sql") != DATA_T_CODE)
+         {
+         mssError(1,"HTOSRC","'sql' parameter required for objectsource '%s'", name);
+         return -1;
+	 }
+      else
+         sql = nmSysStrdup("");
       }
 
    if (wgtrGetPropertyValue(tree,"baseobj",DATA_T_STRING,POD(&ptr)) == 0)
@@ -259,7 +264,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
 
    /** HTML body element for the frame **/
-   htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"osrc%POSloader",id);
+   htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"osrc%POSloader",id, NULL);
    htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
    htrAddBodyItem(s, "\n");
 
@@ -345,6 +350,7 @@ int htosrcInitialize() {
 		"target_key_5",		DATA_T_STRING,
 		"is_slave",		HT_DATA_T_BOOLEAN,
 		"revealed_only",	HT_DATA_T_BOOLEAN,
+		"on_each_reveal",	HT_DATA_T_BOOLEAN,
 		"enforce_create",	HT_DATA_T_BOOLEAN,
 		"autoquery",		HT_DATA_T_BOOLEAN,
 		"master_norecs_action",	DATA_T_STRING,		/* what to do if no record in master (allrecs, sameasnull, norecs) */
@@ -363,6 +369,17 @@ int htosrcInitialize() {
 		"counter_attribute",	DATA_T_STRING,
 		"sql",			DATA_T_STRING,
 		"osrc",			DATA_T_STRING,
+		NULL);
+
+    htruleRegister("osrc_sequence",
+		"fieldname",		DATA_T_STRING,
+		NULL);
+
+    htruleRegister("osrc_version",
+		"fieldname",		DATA_T_STRING,
+		"current",		DATA_T_STRING,		/* zero, one, or max */
+		"version_if",		DATA_T_CODE,		/* only do a versioned save if this is true */
+		"version_fields",	DATA_T_STRINGVEC,	/* only do a versioned save if one of these fields has changed */
 		NULL);
 
    return 0;

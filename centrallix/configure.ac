@@ -19,6 +19,10 @@ AC_CACHE_SAVE
 
 CHECK_EXPORT_DYNAMIC
 
+dnl Check 32 bit vs 64 bit build
+AC_CHECK_SIZEOF([void *])
+PTRSIZE="$ac_cv_sizeof_void_p"
+
 dnl Checks for libraries.
 dnl Replace `main' with a function in -lcrypt:
 AC_CHECK_LIB(crypt, main)
@@ -28,8 +32,14 @@ dnl Replace `main' with a function in -lm:
 AC_CHECK_LIB(m, main)
 dnl Replace `main' with a function in -lz:
 AC_CHECK_LIB(z, main)
+dnl Replace 'main with a function in -largon2 ADDED THIS EXPERIMENTALLY TRYING TO GET ARGON TO WORK
+AC_CHECK_LIB(argon2, main)
+
 dnl Check for libpng
 AC_CHECK_LIB(png, png_read_png)
+dnl Check for MathGL
+AC_CHECK_LIB(mgl, mgl_create_data_size)
+CENTRALLIX_CHECK_MATHGL
 AC_CACHE_SAVE
 
 dnl Checks for header files.
@@ -67,8 +77,20 @@ AC_CACHE_SAVE
 dnl Check for makedepend (typically in XFree86-devel)
 CHECK_MAKEDEPEND
 
+dnl Check for pkg-config
+PKG_PROG_PKG_CONFIG
+
 dnl Check for OpenSSL
 CENTRALLIX_CHECK_OPENSSL
+
+dnl Check for JSON-C
+CENTRALLIX_CHECK_JSONC
+
+dnl Check for SQLite
+CENTRALLIX_CHECK_SQLITE
+
+dnl Check for ncurses
+CENTRALLIX_CHECK_NCURSES
 
 dnl Check for __ctype_b
 AH_TEMPLATE([HAVE_CTYPE_B], [Whether __ctype_b is present and usable])
@@ -77,6 +99,9 @@ CHECK_CTYPE_B
 dnl Check if -pg is allowed with -fPIC
 AH_TEMPLATE([USE_PROFILE], [Define for profiling])
 CHECK_PROFILE
+
+dnl Check if test coverage metering is desired
+CHECK_COVERAGE
 
 dnl GZIP osdriver support.
 AH_TEMPLATE([USE_GZIP], [Define for GZIP support])
@@ -135,13 +160,22 @@ dnl NFS netdriver support.
 AH_TEMPLATE([USE_NETNFS], [Define for NFS netdriver support])
 CENTRALLIX_CHECK_NET_NFS
 
+dnl LDAP netdriver support.
+AH_TEMPLATE([USE_NETLDAP], [Define for LDAP netdriver support])
+CENTRALLIX_CHECK_NET_LDAP
+
+dnl CAIRO/RSVG support.
+CENTRALLIX_CHECK_RSVG
+
 AC_SUBST(OBJDRIVERMODULES)
 AC_SUBST(OBJDRIVERS)
 AC_SUBST(NETDRIVERMODULES)
 AC_SUBST(NETDRIVERS)
 AC_SUBST(STATIC_CFLAGS)
 AC_SUBST(STATIC_LIBS)
+AC_SUBST(NCURSES_LIBS)
 AC_SUBST(PROFILE)
+AC_SUBST(COVERAGE)
 
 dnl Check security hardening facilities
 CHECK_HARDENING

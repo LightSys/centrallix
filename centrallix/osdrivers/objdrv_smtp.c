@@ -578,7 +578,7 @@ smtp_internal_CreateEmail(pSmtpData inf, pXString emailPath)
 
 	/** Calculate the default expire date for the object. **/
 	memcpy(attrDate, &currentDate, sizeof(DateTime));
-	objDateAdd(attrDate, 72, "hour");
+	objDateAddPart(attrDate, 72, "hour");
 
 	/** Create the expire_date attribute. **/
 	createdStruct = stAddAttr(emailStruct, "expire_date");

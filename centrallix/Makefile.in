@@ -58,7 +58,7 @@ INSTALL_DATA = @INSTALL_DATA@
 GZIP = @GZIP@
 
 # VPATH - all the directories we manage.
-VPATH=objectsystem:osdrivers:utility:multiquery:htmlgen:netdrivers:include:report:testsuite:expression:etc:wgtr:cxss:man:tests
+VPATH=objectsystem:osdrivers:utility:multiquery:htmlgen:netdrivers:include:report:testsuite:expression:etc:wgtr:cxss:man:tests:application
 
 # Support modules -- only basic utilities.
 #XBASIC=mtask.o mtlexer.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o stparse.o
@@ -80,9 +80,15 @@ XSUPPORT=stparse.o \
 	 iface.o \
 	 endorsement_utils.o \
 	 obfuscate.o \
-	 json_util.o
+	 json_util.o \
+	 double.o
 
 SUPPORT=$(patsubst %,utility/%,$(XSUPPORT))
+
+# App Management Layer (AML)
+XAPPLAYER=app_main.o
+
+APPLAYER=$(patsubst %,application/%,$(XAPPLAYER))
 
 # OSML modules that implement the OSML API for internal C use
 XOBJECTSYSTEM=obj_main.o \
@@ -97,7 +103,8 @@ XOBJECTSYSTEM=obj_main.o \
 	      obj_inherit.o \
 	      obj_datatypes.o \
 	      obj_rootnode.o \
-	      obj_replica.o
+	      obj_replica.o \
+	      obj_temp.o
 
 OBJECTSYSTEM=$(patsubst %,objectsystem/%,$(XOBJECTSYSTEM))
 
@@ -141,6 +148,7 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_autolayout.o \
 	wgtdrv_button.o \
 	wgtdrv_calendar.o \
+	wgtdrv_chart.o \
 	wgtdrv_checkbox.o \
 	wgtdrv_clock.o \
 	wgtdrv_component.o \
@@ -207,6 +215,7 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_tab.o \
 	   htdrv_pane.o \
 	   htdrv_table.o \
+	   htdrv_chart.o \
 	   htdrv_window.o \
 	   htdrv_uawindow.o \
 	   htdrv_checkbox.o \
@@ -314,7 +323,15 @@ XCXSSMODS=cxss_main.o \
 	  cxss_utility.o \
 	  cxss_entropy.o \
 	  cxss_contextstack.o \
-	  cxss_tlshelper.o
+	  cxss_tlshelper.o \
+	  cxss_policy.o \
+	  cxss_keystream.o \
+	  cxss_linksign.o \
+	  cxss_util.o \
+	  cxss_crypto.o \
+	  cxss_credentials_db.o \
+	  cxss_credentials_mgr.o
+
 CXSSMODS=$(patsubst %,cxss/%,$(XCXSSMODS))
 
 # Javascript VM modules... for Centrallix side of things.
@@ -342,13 +359,23 @@ MODULES=$(OBJDRIVERMODULES) $(HTDRIVERMODULES) $(QYDRIVERMODULES) $(NETDRIVERMOD
 CONFFILES=centrallix.conf \
    	  rootnode \
 	  types.cfg \
-	  useragent.cfg
+	  useragent.cfg \
+	  rgb.txt
 
 # testobj-driven test files
 TOTESTFILES:=$(wildcard tests/test_$(TONLY)*.to)
+CTESTFILES:=$(wildcard tests/test_$(TONLY)*.c)
+COTESTFILES=$(patsubst %.c,%.o,$(CTESTFILES))
+CBTESTFILES=$(patsubst %.c,%.bin,$(CTESTFILES))
+ifeq ($TOTESTFILES,)
+    TOTESTDEPS=
+else
+    TOTESTDEPS=test_obj
+endif
 
 # Some basic build parameters.
 PROFILE=@PROFILE@
+COVERAGE=@COVERAGE@
 BUILD=$(shell cat .build)
 BLDFILE=$(shell if [ -f .ismaster ]; then echo ".build"; echo '1' >.subbuild; else echo ".subbuild"; if [ ! -e .subbuild ]; then echo '1' > .subbuild; fi; fi)
 SUBBUILD=$(shell if [ ! -e .subbuild ]; then echo '1' > .subbuild; fi; cat .subbuild)
@@ -357,18 +384,21 @@ YEARS=$(shell YR=`date +%Y`; echo 1998-$$YR)
 VERSION=$(shell cat .version)
 
 # JSON-C library location
-JSONC=$(shell cd thirdparty; ls -d json-c-* | grep -v inst | tail -n 1)
+#JSONC=$(shell cd thirdparty; ls -d json-c-* | grep -v inst | tail -n 1)
 
 CXLIBDIR=@CXLIBDIR@
 CXINCDIR=@CXINCDIR@
-CFLAGS=$(PROFILE) -I./include -I. -I$(CXINCDIR) -Ithirdparty/$(JSONC)-inst/include/json-c @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
+#CFLAGS=$(PROFILE) -I./include -I. -I$(CXINCDIR) -Ithirdparty/$(JSONC)-inst/include/json-c @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
+CFLAGS=$(PROFILE) $(COVERAGE) -I./include -I. -I$(CXINCDIR) @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
 
-LIBS=@LIBS@ @STATIC_LIBS@ thirdparty/$(JSONC)-inst/lib/libjson-c.a
-STATIC_LIBS=@STATIC_LIBS@ thirdparty/$(JSONC)-inst/lib/libjson-c.a
+#LIBS=@LIBS@ @STATIC_LIBS@ thirdparty/$(JSONC)-inst/lib/libjson-c.a
+#STATIC_LIBS=@STATIC_LIBS@ thirdparty/$(JSONC)-inst/lib/libjson-c.a
+LIBS=@LIBS@ @STATIC_LIBS@
+STATIC_LIBS=@STATIC_LIBS@
 
-BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(OBJDRIVERS) $(QYDRIVERS) $(RPTMODS) $(CXSSMODS)
+BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(OBJDRIVERS) $(QYDRIVERS) $(APPLAYER) $(RPTMODS) $(CXSSMODS)
 LSOBJS=$(BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)
-V3BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS) $(CXSSMODS)
+V3BASEOBJS=$(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(APPLAYER) $(V3RPTMODS) $(CXSSMODS)
 V3LSOBJS=$(V3BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)
 
 .PHONY:	modules
@@ -386,7 +416,7 @@ V3LSOBJS=$(V3BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)
 .PHONY:	test_install
 .PHONY:	test
 
-all:	centrallix mods config manpages cxpasswd test_obj
+all:	centrallix mods config manpages cxpasswd test_obj linksign
 
 centrallix.o: $(V3LSOBJS) centrallix.c
 
@@ -394,19 +424,23 @@ centrallix: .build .subbuild lsmain.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
 	@echo ''
 	@echo "Linking Build #"`cat .build`"-"`cat .subbuild`
 	@echo
-	$(CC) centrallix.o lsmain.o $(V3LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) -Wl@EXPORT_DYNAMIC@ -o centrallix
+	$(CC) centrallix.o lsmain.o $(V3LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o centrallix
 	@sh -c 'BLD=`cat $(BLDFILE)`; BLD=`expr $$BLD + 1`; echo $$BLD > $(BLDFILE)'
 	#@rm centrallix.o
 	@echo ''
 
-cxpasswd: cxpasswd.o $(STATIC_LIBS) $(CXSSMODS)
-	$(CC) cxpasswd.o $(CXSSMODS) $(LIBDIRS) $(PROFILE) -Wl@EXPORT_DYNAMIC@ -o cxpasswd $(LIBS)
+cxpasswd: cxpasswd.o centrallix.o $(STATIC_LIBS) $(V3LSOBJS)
+	$(CC) cxpasswd.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o cxpasswd $(LIBS)
+
+linksign: linksign.o centrallix.o $(STATIC_LIBS) $(V3LSOBJS)
+	$(CC) linksign.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o linksign $(LIBS)
 
 install: all config_install modules_install manpages_install test_install
 	@mkdir -p "$(sbindir)"
 	@mkdir -p "$(sysconfdir)"
 	@$(INSTALL) centrallix "$(sbindir)"
 	@$(INSTALL) cxpasswd "$(sbindir)"
+	@$(INSTALL) linksign "$(sbindir)"
 
 manpages: $(MANPAGES)
 
@@ -419,8 +453,8 @@ manpages_install: manpages
 	done
 
 # JSON-C library
-osdrivers/objdrv_json.o: thirdparty/$(JSONC)-inst/lib/libjson-c.a
-utility/json_util.o: thirdparty/$(JSONC)-inst/lib/libjson-c.a
+#osdrivers/objdrv_json.o: thirdparty/$(JSONC)-inst/lib/libjson-c.a
+#utility/json_util.o: thirdparty/$(JSONC)-inst/lib/libjson-c.a
 
 thirdparty/$(JSONC)-inst/lib/libjson-c.a: thirdparty/$(JSONC)/Makefile
 	@echo ""
@@ -477,11 +511,11 @@ config_install: config
 	@for CFILE in $(CONFFILES) ; do \
 		if ! [ -a "$(sysconfdir)/centrallix/$${CFILE}" ] ; then \
 			echo "Installing default version of $${CFILE}" ; \
-			$(INSTALL) -m 644 "etc/$${CFILE}" "$(sysconfdir)/centrallix/$${CFILE}" ; \
+			$(INSTALL) -m 644 "etc/$${CFILE}" "$(sysconfdir)/centrallix/$${CFILE}" || true; \
 		fi \
 	done ; \
 	if [ ! -a "$(sysconfdir)/centrallix.conf" ]; then \
-	    mv "$(sysconfdir)/centrallix/centrallix.conf" "$(sysconfdir)/centrallix.conf" ; \
+	    mv "$(sysconfdir)/centrallix/centrallix.conf" "$(sysconfdir)/centrallix.conf" || true; \
 	fi
 
 rhinit_install: config
@@ -501,40 +535,51 @@ tests/centrallix.conf-test: tests/centrallix.conf-test.in
 	RUNLIBDIR=$${LIBDIR#$(builddir)}; \
 	$(SED) -e "s|##SYSCONFDIR##|$$RUNSYSCONFDIR|g" -e "s|##LIBDIR##|$$RUNLIBDIR|g" -e "s|##LOGMETHOD##|@LOGMETHOD@|g" tests/centrallix.conf-test.in > tests/centrallix.conf-test
 
+tests/t_driver.o: tests/t_driver.c 
+	$(CC) $(CFLAGS) $< -c -o $@
 
-test: tests/centrallix.conf-test test_install $(TOTESTFILES)
+tests/test_%.bin: tests/test_%.o tests/t_driver.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
+	$(CC) $< tests/t_driver.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o $@ $(LIBS) @NCURSES_LIBS@
+
+test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 	@printf "%-62.62s  %s\n" "Test Name" "Stat"
 	@printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"
-	@for TOFILE in $$(ls $(TOTESTFILES) ); do \
+	@for TOFILE in $$(ls $(TOTESTFILES) $(CBTESTFILES) ); do \
 	    if [ "$$TONLY" = "" -o "$${TOFILE#tests/test_$$TONLY}" != "$$TOFILE" ]; then \
 		CXOS=$$(sed -n 's/^[ 	]*path *= *"\([^"]*\).*/\1/p' < "$(sysconfdir)/centrallix/rootnode"); \
-	    	TOBASE="$${TOFILE%.to}"; \
-		TONAME=$$(sed -n 's/^##NAME //p' < $$TOBASE.to); \
-		TOUNDO=$$(sed -n 's/^##UNDO //p' < $$TOBASE.to); \
-		TOUNDOBAK="$${TOUNDO}-$$RANDOM-$$RANDOM"; \
-		TOSIMPLE="$${TOBASE#tests/test_}"; \
 		CBLUE=$$(/usr/bin/tput setaf 4); \
 		CRED=$$(/usr/bin/tput setaf 1); \
 		CGREEN=$$(/usr/bin/tput setaf 2); \
 		CBOLD=$$(/usr/bin/tput bold); \
 		CNORM=$$(/usr/bin/tput sgr0); \
+	    if [ "$${TOFILE%.to}" != "$${TOFILE}" ]; then \
+		TOBASE="$${TOFILE%.to}"; \
+		TONAME=$$(sed -n 's/^##NAME //p' < $$TOBASE.to); \
+		TOUNDO=$$(sed -n 's/^##UNDO //p' < $$TOBASE.to); \
+		TOUNDOBAK="$${TOUNDO}-$$RANDOM-$$RANDOM"; \
+		TOSIMPLE="$${TOBASE#tests/test_}"; \
 		/bin/rm -f "$$PWD/$$TOBASE.out"; \
 		[ -f "$$CXOS/$$TOUNDO" ] && /bin/cp -a "$$CXOS/$$TOUNDO" "$$CXOS/$$TOUNDOBAK"; \
 		echo -n "$$CBLUE"; \
-	    	"$(bindir)/test_obj" -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 3 2>&1 | sed 's/^/    /'; \
+		./test_obj -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 4 2>&1 | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
 		RET="$${PIPESTATUS[0]}"; \
 		[ -f "$$CXOS/$$TOUNDOBAK" ] && /bin/mv -f "$$CXOS/$$TOUNDOBAK" "$$CXOS/$$TOUNDO"; \
-		if [ "$$RET" -eq 142 ]; then \
-		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}LOCKUP$$CNORM"; \
-		elif [ "$$RET" -gt 120 ]; then \
-		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}CRASH$$CNORM"; \
-		elif cmp -s "$$TOBASE.out" "$$TOBASE.cmp"; then \
-		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CGREEN$${CBOLD}Pass$$CNORM"; \
-		    /bin/rm -f "$$PWD/$$TOBASE.out"; \
+            if [ "$$RET" -eq 142 ]; then \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}LOCKUP$$CNORM"; \
+            elif [ "$$RET" -gt 120 ]; then \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}CRASH$$CNORM"; \
+            elif cmp -s "$$TOBASE.out" "$$TOBASE.cmp"; then \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CGREEN$${CBOLD}Pass$$CNORM"; \
+                /bin/rm -f "$$PWD/$$TOBASE.out"; \
+            else \
+                echo -n "$$CRED"; \
+                diff --label EXPECTED -U0 -N "$$TOBASE.cmp" "$$TOBASE.out" | sed 's/^/    /'; \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}FAIL$$CNORM"; \
+            fi; \
 		else \
-		    echo -n "$$CRED"; \
-		    diff --label EXPECTED -U3 -N "$$TOBASE.cmp" "$$TOBASE.out" | sed 's/^/    /'; \
-		    printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}FAIL$$CNORM"; \
+		    TOBASE="$${TOFILE%.bin}"; \
+		    ulimit -s 16384; \
+		    ./$$TOBASE.bin 2>&1; \
 		fi; \
 	    fi \
 	done 
@@ -543,34 +588,37 @@ sfeditor/sfedit.o: sfeditor/sfedit.c sfeditor/*.xpm
 	$(CC) $(CFLAGS) `gtk-config --cflags` $< -c -o $@
 
 sfedit: sfeditor/sfedit.o $(V3LSOBJS)
-	$(CC) sfeditor/sfedit.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) -o sfedit $(LIBS) `gtk-config --libs`
+	$(CC) sfeditor/sfedit.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o sfedit $(LIBS) `gtk-config --libs`
 
 clog: clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM)
-	$(CC) clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM) $(LIBDIRS) $(PROFILE) -o clog $(LIBS)
+	$(CC) clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o clog $(LIBS)
 
 .c.so:	$<
-	$(CC) $(CFLAGS) -DMODULE -Wno-unused $(PROFILE) -shared -fPIC $< -o $@
+	$(CC) $(CFLAGS) -DMODULE -Wno-unused $(PROFILE) $(COVERAGE) -shared -fPIC $< -o $@
 
 %.gz:	%
 	$(GZIP) -9 < $< > $@
 
 jsengine: $(JSVM)
-	$(CC) $(JSVM) $(LIBDIRS) $(PROFILE) -o jsvm
+	$(CC) $(JSVM) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o jsvm
 
 test_obj: test_obj.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
-	$(CC) centrallix.o test_obj.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) -Wl@EXPORT_DYNAMIC@ -o test_obj $(LIBS)
+	$(CC) centrallix.o test_obj.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o test_obj $(LIBS)
 
-test_prt: test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS) $(CXSSMODS)
-	$(CC) test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(V3RPTMODS) $(CXSSMODS) $(LIBDIRS) $(PROFILE) -o test_prt $(LIBS)
+test_prt: test_prt.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
+	$(CC) centrallix.o test_prt.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o test_prt $(LIBS)
+
+#test_prt: test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(APPLAYER) $(V3RPTMODS) $(CXSSMODS)
+#	$(CC) test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(APPLAYER) $(V3RPTMODS) $(CXSSMODS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o test_prt $(LIBS)
 
 ts: ts.o $(LSOBJS) $(TESTSUITE)
-	$(CC) ts.o $(LSOBJS) $(TESTSUITE) $(LIBDIRS) $(PROFILE) -o ts $(LIBS)
+	$(CC) ts.o $(LSOBJS) $(TESTSUITE) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o ts $(LIBS)
 
 lsclient: lsclient.o $(BASIC)
-	$(CC) lsclient.o $(BASIC) $(PROFILE) -o lsclient
+	$(CC) lsclient.o $(BASIC) $(PROFILE) $(COVERAGE) -o lsclient
 
 htmltest: htmltest.o $(SUPPORT)
-	$(CC) htmltest.o $(SUPPORT) $(PROFILE) -o htmltest
+	$(CC) htmltest.o $(SUPPORT) $(PROFILE) $(COVERAGE) -o htmltest
 
 etc/rootnode: etc/rootnode.in
 	@CXOSDIR=$(cxosdir); \
@@ -600,13 +648,17 @@ etc/centrallix.init: etc/centrallix.init.in
 clean:
 	@rm -f */*.o
 	@rm -f */*.so
-	@rm -f centrallix test_obj lsclient sfedit
+	@rm -f centrallix test_obj lsclient sfedit test_prt
 	@rm -f *.o
 	@rm -f etc/centrallix.conf etc/rootnode
 	@rm -f etc/centrallix.init
 	@rm -f man/*.gz
 	@rm -f tests/*.to.tmp tests/*.out
+	@rm -f tests/*.o tests/*.bin
 	@rm -rf thirdparty/*-inst
+	@rm -f *.gcov */*.gcov
+	@rm -f *.gcda */*.gcda
+	@rm -f *.gcno */*.gcno
 
 distclean: clean
 	@rm -f config.status config.cache config.log
@@ -658,9 +710,11 @@ osdrivers/objdrv_berk.so: osdrivers/objdrv_berk.c
 #osdrivers/objdrv_snmp.so: osdrivers/objdrv_snmp.c
 #	$(CC) $(CFLAGS) @SNMP_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @SNMP_LIBS@ -o $@
 
+netdrivers/net_ldap.so: netdrivers/net_ldap.c
+	$(CC) $(CFLAGS) @NETLDAP_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @NETLDAP_LIBS@ -o $@
+
 %.so: %.c
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
-	
+
 # Dependencies made by "make depend"
 include .depend
-

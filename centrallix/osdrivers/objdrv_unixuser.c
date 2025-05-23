@@ -411,7 +411,7 @@ uxuOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    if (!pwd_data) break;
 	    xaAddItem(&(qy->PasswdEntries), (void*)pwd_data);
 	    }
-	setpwent();
+	endpwent();
     
     return (void*)qy;
     }

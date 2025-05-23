@@ -224,8 +224,8 @@ cxss_internal_FreeContext(void* ctx_v)
 int
 cxss_internal_CompareContexts(char* ctx1, char* ctx2)
     {
-    char buf1[64];
-    char buf2[64];
+    char buf1[CXSS_IDENTIFIER_LENGTH];
+    char buf2[CXSS_IDENTIFIER_LENGTH];
     char* ptr1;
     char* ptr2;
     char* end1;
@@ -251,7 +251,7 @@ cxss_internal_CompareContexts(char* ctx1, char* ctx2)
 	    ptr2 = strsep(&end2, ":");
 	    if (!ptr1) ptr1="";
 	    if (!ptr2) ptr2="";
-	    if (strcmp(ptr1, ptr2) != 0 && *ptr2)
+	    if (strcmp(ptr1, ptr2) != 0 && *ptr2 && strcmp(ptr1, "*"))
 		return -1;
 	    }
 
@@ -269,6 +269,7 @@ int
 cxssPopContext()
     {
     pCxssCtxStack sptr, del;
+    void* ret_addr;
 
 	/** Get auth stack pointer **/
 	sptr = (pCxssCtxStack)thGetSecParam(NULL);
@@ -281,7 +282,11 @@ cxssPopContext()
 #if CXSS_DEBUG_CONTEXTSTACK
 	if (sptr->CallerReturnAddr)
 	    {
-	    if (sptr->CallerReturnAddr != __builtin_return_address(1))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wframe-address"
+	    ret_addr = __builtin_return_address(1);
+#pragma GCC diagnostic pop
+	    if (sptr->CallerReturnAddr != ret_addr)
 		printf("WARNING - unbalanced cxssPopContext / cxssPushContext\n");
 	    sptr->CallerReturnAddr = NULL;
 	    }
@@ -331,7 +336,10 @@ cxssPushContext()
 	    }
 
 #if CXSS_DEBUG_CONTEXTSTACK
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wframe-address"
 	sptr->CallerReturnAddr = __builtin_return_address(1);
+#pragma GCC diagnostic pop
 #endif
 
     return 0;
