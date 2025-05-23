@@ -44,6 +44,9 @@
 #define PRT_HTMLFM_XPIXEL               (7)
 #define PRT_HTMLFM_YPIXEL               (12)
 
+/*** Session flags ***/
+#define PRT_HTMLFM_F_PAGINATED          1
+#define PRT_HTMLFM_F_EMAIL              2
 
 /** incomplete struct def'n - don't need whole thing here **/
 typedef struct _PSFI PrtHTMLfmInf, *pPrtHTMLfmInf;
