@@ -21,6 +21,15 @@ textarea_test "widget/page"
         bgcolor="#e0e0e0";
         }
 
+    ta_readonly "widget/textarea"
+        {
+        x=8; y=80; width=128; height=60;
+        style=lowered;
+        bgcolor="#f0f0f0";
+        readonly=yes;
+        value="This textarea is read-only.";
+        }
+
     cn1 "widget/connector"
         {
         event="Click"; 
