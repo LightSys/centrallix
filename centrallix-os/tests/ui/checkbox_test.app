@@ -27,5 +27,12 @@ checkbox_test "widget/page"
             fieldname = "mycheckbox2";
             checked = yes;
         }
+
+        checkbox3 "widget/checkbox"
+        {
+            x = 8; y = 50; width = 20; height = 20;
+            fieldname = "readonly checkbox";
+            readonly = yes;
+        }
     }
 }
