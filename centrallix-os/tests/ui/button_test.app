@@ -36,7 +36,7 @@ checkbox_test "widget/page"
           {
             height = 20; width = 60;
             type = "text";
-            text = "Click Me";
+            text = "text button";
             bgcolor = "blue";
             fgcolor1 = "white";
             fgcolor2 = "red";
@@ -56,7 +56,7 @@ checkbox_test "widget/page"
           {
             height = 20; width = 60;
             type = "text";
-            text = "Click Me";
+            text = "disabled text button";
             bgcolor = "blue";
             fgcolor1 = "white";
             fgcolor2 = "red";
@@ -113,7 +113,7 @@ checkbox_test "widget/page"
             height = 80; width = 80;
             type = "topimage";
             enabled = yes;
-            text = "top image button1";
+            text = "top image button";
             fgcolor1 = "white";
             fgcolor2 = "black";
             clickimage = "/sys/images/wait_spinner.gif";
@@ -136,7 +136,7 @@ checkbox_test "widget/page"
             type = "topimage";
             tristate = no;
             enabled = no;
-            text = "top image button2";
+            text = "disabled top image button";
             clickimage = "/sys/images/wait_spinner.gif";
             disabledimage = "/sys/images/dotted_check.gif";
             image = "/sys/images/grey_check.gif";
@@ -177,7 +177,7 @@ checkbox_test "widget/page"
             type = "rightimage";
             enabled = no;
             tristate = no;
-            text = "right image button";
+            text = "disabled right image button";
             clickimage = "/sys/images/wait_spinner.gif";
             disabledimage = "/sys/images/dotted_check.gif";
             image = "/sys/images/grey_check.gif";
@@ -216,7 +216,7 @@ checkbox_test "widget/page"
             type = "leftimage";
             enabled = no;
             tristate = no;
-            text = "left image button2";
+            text = "disabled left image button";
             clickimage = "/sys/images/wait_spinner.gif";
             disabledimage = "/sys/images/dotted_check.gif";
             image = "/sys/images/grey_check.gif";
@@ -255,7 +255,7 @@ checkbox_test "widget/page"
             type = "bottomimage";
             enabled = no;
             tristate = no;
-            text = "bottom image button";
+            text = "disabled bottom image button";
             clickimage = "/sys/images/wait_spinner.gif";
             disabledimage = "/sys/images/dotted_check.gif";
             image = "/sys/images/grey_check.gif";
