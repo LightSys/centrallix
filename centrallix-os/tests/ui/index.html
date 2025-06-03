@@ -1,0 +1,29 @@
+<!-- 
+David Hopkins June 2025
+THIS IS A TEST FILE. DO NOT EDIT IT..
+It connects to html_test.app
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hi, there!</title>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            const input = document.getElementById('nameInput');
+            const message = document.getElementById('greetingMessage');
+            input.addEventListener('input', function() {
+                // Set textContent to avoid XSS
+                message.textContent = input.value ? `Hello, ${input.value}!` : '';
+            });
+        });
+    </script>
+</head>
+<body>
+    <h1>Hi, there!</h1>
+    <input type="text" placeholder="Enter your name" id="nameInput">
+    <p id="greetingMessage"></p> 
+    <br>
+</body>
+</html>
