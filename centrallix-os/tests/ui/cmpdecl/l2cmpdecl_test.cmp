@@ -1,0 +1,36 @@
+//David Hopkins June 2025
+// CMP DECL test #2: Inner 2 component declaration
+// Connected to the .app file
+// OUTER component that contains (nests) the 'l1cmpdecl_test.cmp'.
+// This demonstrates nested component declaration.
+
+$Version=2$
+nested_container "widget/component-decl"
+{
+    width=300; height=250;
+
+    expose_events_for = "my_radio_panel";
+    
+    selection_changed "widget/component-decl-event" {}
+
+    initial_choice "widget/parameter" { type=integer; default=2; }
+
+    wrapper_label "widget/label"
+    {
+        x=10; y=5;
+        text = "This is the Nested Container (L2)";
+        fgcolor = "#000000";
+        bgcolor = "#ffffff";
+    }
+
+    my_radio_panel "widget/component"
+    {
+        path = "l1cmpdecl_test.cmp";
+        x = 0; y = 30; 
+        width = 250; height = 200;
+        default_selection = runserver(:this:initial_choice);
+        panel_title = "Select An Option (David's RadioButtons):";
+    }
+}
+
+
