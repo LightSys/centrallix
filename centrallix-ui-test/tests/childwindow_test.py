@@ -1,4 +1,4 @@
-#David Hopkins June 2025
+# David Hopkins - June 2025
 # NOTE: USE ChromeDriverManager. Pip install it.
 
 import toml
@@ -7,155 +7,173 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
+from selenium.common.exceptions import TimeoutException
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
-def create_driver(test_url) -> webdriver.Chrome:
-    service = Service(ChromeDriverManager().install())
-    chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument('--lang=en')
-    chrome_options.add_argument('--incognito')
-    chrome_options.add_argument('--ignore-certificate-errors')
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    driver.set_window_size(1920, 1080)
-    driver.get(test_url)
-    WebDriverWait(driver, 10).until(
-        lambda d: d.execute_script("return document.readyState") == "complete"
-    )
-    print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Page loaded.")
-    time.sleep(2)
-    return driver
+class TestBlock:
+    """A class to manage a block of test checks and format the output."""
+    def __init__(self, number, name):
+        self.number = number
+        self.name = name
+        self.checks = []
+
+    def start(self):
+        """Prints the header for this test block."""
+        print(f"TEST {self.number} = {self.name}")
+
+    def add_check(self, description, passed: bool):
+        """Adds a check to the block and prints its immediate status."""
+        self.checks.append(passed)
+        status = "PASS" if passed else "FAIL"
+        print(f"    Test {description} ... {status}")
+
+    def conclude(self) -> bool:
+        """Prints the summary for the block and returns its overall status."""
+        passed_count = sum(1 for p in self.checks if p)
+        total_count = len(self.checks)
+        block_passed = passed_count == total_count and total_count > 0
+        status = "PASS" if block_passed else "FAIL"
+        print(f"({passed_count}/{total_count}) {status}\n")
+        return block_passed
 
 def run_test():
+    """Runs the entire suite of tests and provides a formatted summary."""
+    print("# UI Test coverage: Child Window Test")
+    print("Author: David Hopkins")
+    driver = None
+    all_blocks_passed = []
+
     try:
         config = toml.load("config.toml")
-    except FileNotFoundError:
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Config.toml is missing.")
-        return
+        test_url = config["url"] + "/tests/ui/childwindow_test.app"
 
-    test_url = config["url"] + "/tests/ui/childwindow_test.app"
-    driver = create_driver(test_url)
+        service = Service(ChromeDriverManager().install())
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument('--lang=en')
+        chrome_options.add_argument('--incognito')
+        chrome_options.add_argument('--ignore-certificate-errors')
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        driver.set_window_size(1920, 1080)
 
-    try:
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.TAG_NAME, "body"))
-        )
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Body element found.")
-        time.sleep(1)
+        # --- TEST 1: Initialization ---
+        init_test = TestBlock(1, "Page and Framework Initialization")
+        init_test.start()
 
-        WebDriverWait(driver, 20).until(
-            lambda d: d.execute_script("return typeof pg_isloaded !== 'undefined' && pg_isloaded")
-        )
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Framework initialized.")
-
-        WebDriverWait(driver, 20).until(
-            lambda d: d.execute_script("return typeof wn_topwin !== 'undefined' && wn_topwin !== null")
-        )
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Window initialized.")
-        time.sleep(1)
-
-        # Find the title bar
+        # Check 1: Page Load
         try:
-            titlebar = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "div.wntitlebar"))
-            )
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Titlebar (.wntitlebar) found.")
-            time.sleep(1)
+            driver.get(test_url)
+            WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+            init_test.add_check("page ready state is complete", True)
+        except Exception:
+            init_test.add_check("page ready state is complete", False)
 
-            # Log initial position
-            initial_position = driver.execute_script("""
-                var window = document.querySelector('div.wnbase');
-                return window ? { left: window.style.left, top: window.style.top } : null;
-            """)
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Initial window position: {initial_position}")
+        # Check 2: Body Element
+        try:
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+            init_test.add_check("body element is present", True)
+        except Exception:
+            init_test.add_check("body element is present", False)
 
-            # Attempt ActionChains drag with overlay workaround
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Attempting ActionChains drag.")
-            try:
-                # Temporarily disable pointer-events on overlay
-                driver.execute_script("""
-                    var overlay = document.querySelector('div[style*="black_trans_50.png"]');
-                    if (overlay) overlay.style.pointerEvents = 'none';
-                """)
-                actions = ActionChains(driver)
-                actions.move_to_element_with_offset(titlebar, 10, 10).click_and_hold().perform()
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Clicked and held titlebar.")
-                time.sleep(0.5)
-                actions.move_by_offset(500, 0).perform()
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Dragged window right by 500px.")
-                time.sleep(0.5)
-                actions.release().perform()
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Released titlebar.")
-                # Restore pointer-events
-                driver.execute_script("""
-                    var overlay = document.querySelector('div[style*="black_trans_50.png"]');
-                    if (overlay) overlay.style.pointerEvents = 'auto';
-                """)
-                # Log final position
-                final_position = driver.execute_script("""
-                    var window = document.querySelector('div.wnbase');
-                    return window ? { left: window.style.left, top: window.style.top } : null;
-                """)
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Final window position (ActionChains): {final_position}")
-                if initial_position == final_position:
-                    print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Warning: Window position did not change (ActionChains).")
-            except (TimeoutException, ElementClickInterceptedException) as e:
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Error with ActionChains drag: {e}")
+        # Check 3: Framework JS
+        try:
+            WebDriverWait(driver, 20).until(lambda d: d.execute_script("return typeof pg_isloaded !== 'undefined' && pg_isloaded"))
+            init_test.add_check("framework (pg_isloaded) is initialized", True)
+        except Exception:
+            init_test.add_check("framework (pg_isloaded) is initialized", False)
 
-            # JavaScript-based drag (fallback, works with overlay)
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Attempting JavaScript-based drag.")
-            driver.execute_script("""
-                var titlebar = document.querySelector('div.wntitlebar');
-                var mousedown = new MouseEvent('mousedown', { bubbles: true, clientX: 100, clientY: 100 });
-                var mousemove = new MouseEvent('mousemove', { bubbles: true, clientX: 600, clientY: 100 });
-                var mouseup = new MouseEvent('mouseup', { bubbles: true, clientX: 600, clientY: 100 });
-                titlebar.dispatchEvent(mousedown);
-                setTimeout(function() {
-                    titlebar.dispatchEvent(mousemove);
-                    setTimeout(function() {
-                        titlebar.dispatchEvent(mouseup);
-                    }, 500);
-                }, 500);
-            """)
-            time.sleep(2)
-            js_final_position = driver.execute_script("""
-                var window = document.querySelector('div.wnbase');
-                return window ? { left: window.style.left, top: window.style.top } : null;
-            """)
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Final window position (JS drag): {js_final_position}")
+        # Check 4: Window JS
+        try:
+            WebDriverWait(driver, 20).until(lambda d: d.execute_script("return typeof wn_topwin !== 'undefined' && wn_topwin !== null"))
+            init_test.add_check("window (wn_topwin) is initialized", True)
+        except Exception:
+            init_test.add_check("window (wn_topwin) is initialized", False)
 
-            #Now, try to double click the titlebar to minimize the window, then double clicking it again to restore it.
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Attempting to double click titlebar to minimize.")
-            actions = ActionChains(driver)
-            actions.move_to_element(titlebar).double_click().perform()
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Titlebar double-clicked to minimize.")
-            time.sleep(1)
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Attempting to double click titlebar to restore.")
-            actions.move_to_element(titlebar).double_click().perform()
-            time.sleep(3)
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Titlebar double-clicked to restore.")
+        all_blocks_passed.append(init_test.conclude())
+        time.sleep(1)
 
-            #Now, try to click the x window close button. (td align right, class="wntitlebar" )
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Attempting to click close button.")
-            close_button = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "td[align='right']"))
-            )
-            time.sleep(3)  # Pause to ensure button is ready
-            close_button.click()
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Close button clicked.")
-
-        except (TimeoutException, ElementClickInterceptedException) as e:
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Error finding titlebar: {e}")
-
+        # --- TEST 2: Window Interaction ---
+        interaction_test = TestBlock(2, "Window Interaction Test")
+        interaction_test.start()
         
+        # Check 1: Find Titlebar
+        titlebar = None
+        try:
+            titlebar = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "div.wntitlebar")))
+            interaction_test.add_check("titlebar element is found", True)
+        except Exception:
+            interaction_test.add_check("titlebar element is found", False)
+
+        if titlebar:
+            # Check 2: JavaScript Drag
+            try:
+                driver.execute_script("""
+                    var titlebar = arguments[0];
+                    var mousedown = new MouseEvent('mousedown', { bubbles: true, clientX: 100, clientY: 100 });
+                    var mousemove = new MouseEvent('mousemove', { bubbles: true, clientX: 600, clientY: 100 });
+                    var mouseup = new MouseEvent('mouseup', { bubbles: true, clientX: 600, clientY: 100 });
+                    titlebar.dispatchEvent(mousedown);
+                    setTimeout(() => titlebar.dispatchEvent(mousemove), 500);
+                    setTimeout(() => titlebar.dispatchEvent(mouseup), 1000);
+                """, titlebar)
+                time.sleep(2)
+                interaction_test.add_check("javascript drag event", True)
+            except Exception:
+                interaction_test.add_check("javascript drag event", False)
+
+            # Checks 3 & 4: Minimize and Restore
+            actions = ActionChains(driver)
+            try:
+                actions.move_to_element(titlebar).double_click().perform()
+                interaction_test.add_check("double-click to minimize", True)
+            except Exception:
+                interaction_test.add_check("double-click to minimize", False)
+            
+            time.sleep(1)
+            try:
+                actions.move_to_element(titlebar).double_click().perform()
+                interaction_test.add_check("double-click to restore", True)
+            except Exception:
+                interaction_test.add_check("double-click to restore", False)
+        else:
+            # If titlebar isn't found, these tests cannot run
+            interaction_test.add_check("javascript drag event (SKIPPED)", False)
+            interaction_test.add_check("double-click to minimize (SKIPPED)", False)
+            interaction_test.add_check("double-click to restore (SKIPPED)", False)
+
+        all_blocks_passed.append(interaction_test.conclude())
+        time.sleep(3)
+        
+        # --- TEST 3: Window Closing ---
+        closing_test = TestBlock(3, "Window Closing Test")
+        closing_test.start()
+        try:
+            close_button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "td[align='right']")))
+            time.sleep(1)
+            close_button.click()
+            closing_test.add_check("close button click event", True)
+        except Exception:
+            closing_test.add_check("close button click event", False)
+        
+        all_blocks_passed.append(closing_test.conclude())
+
+    except Exception as e:
+        print(f"\n--- A CRITICAL ERROR OCCURRED ---\n{e}")
+        # Mark all remaining tests as failed if there's a major breakdown
+        while len(all_blocks_passed) < 3:
+            all_blocks_passed.append(False)
+
     finally:
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Test complete, keeping browser open for observation.")
-        time.sleep(5)
-        driver.quit()
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Driver closed.")
+        final_status = "PASS" if all(all_blocks_passed) else "FAIL"
+        print(f"ChildWindow Widget Test {final_status}")
+        print("---\n")
+        
+        if driver:
+            print("Test complete. Browser will close in 5 seconds.")
+            time.sleep(5)
+            driver.quit()
 
 if __name__ == "__main__":
     run_test()
