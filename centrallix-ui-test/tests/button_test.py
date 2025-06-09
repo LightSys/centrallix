@@ -18,6 +18,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+from test_reporter import TestReporter
+reporter = TestReporter("Button")
 
 def create_driver(test_url) -> webdriver.Chrome:
     """Create and return a configured Chrome WebDriver."""
@@ -63,53 +65,41 @@ def run_test():
             EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@id, 'lbl')]"))
         )
 
-        # Initial read
-        print(f"Initial label text: {get_label_info(driver)}\n")
-
-        # Get buttons
-        prefix = "gb"
-        suffix = "pane"
-        # gb1234pane
-        xpath_expression = (
-            f"//div[starts-with(@id, '{prefix}') and "
-            f"substring(@id, string-length(@id) - string-length('{suffix}') + 1) = '{suffix}' and "
-            f"number(substring(@id, string-length('{prefix}') + 1, string-length(@id) - string-length('{prefix}') - string-length('{suffix}'))) = "
-            f"number(substring(@id, string-length('{prefix}') + 1, string-length(@id) - string-length('{prefix}') - string-length('{suffix}')))]"
-        )
-        buttons = WebDriverWait(driver, 10).until(
-            EC.presence_of_all_elements_located((By.XPATH, xpath_expression))
-        )
+        # Get all buttons by its widget name
+        bttn_names = ["textButton", "textButton2", "imgButton", "imgButton2", "topImgButton", "topImgButton2", "rightImgButton", "rightImgButton2", "leftImgButton", "leftImgButton2", "bottomImgButton", "bottomImgButton2"]
+        buttons = []
+        for bttn in bttn_names:
+            buttons.append(driver.execute_script(f"return wgtrFind('{bttn}');"))
+        print(len(buttons))
 
         disabled = False
+        #pointiimage, tristate
+        hoverTestFlags = [True, True]
+        clickTestFlag = True
+        reporter.add_test(1, "Hover behavior test")
+        reporter.add_test(2, "Click behavior test")
+        
         for button in buttons:
-
-            # Get button name
-            try:
-                button_name = button.find_element(By.XPATH, ".//b").text
-                print(f"testing {button_name}")
-            except:
-                msg = "tesing image button" if not disabled else "testing disabled image button"
-                print(msg)
 
             ActionChains(driver).move_to_element(button).perform()
 
             if not disabled:
-              # Test Hover
+              # Test1: Hover Behavior
               # 1. pointimage
-              try:
-                  img = button.find_element(By.XPATH, ".//img").get_attribute("src")
-                  if "green" in img:
-                    print("hover test pass")
-              except:
-                  pass
-              # 2. tristate
-              try:
-                  style = button.get_attribute("style")
-                  # print(style)
-                  if "border-width: 1px" in style:
-                      print("tristate test pass")
-              except:
-                  pass
+                try:
+                    img = button.find_element(By.XPATH, ".//img").get_attribute("src")
+                    if "green" not in img:
+                        hoverTestFlags[0] = False
+                except:
+                    pass
+                # 2. tristate
+                try: 
+                    table = button.find_element(By.XPATH, ".//table")
+                    style = button.get_attribute("style")
+                    if "border-width: 1px" not in style:
+                        hoverTestFlags[1] = False
+                except:
+                    pass
             
             prev_label = get_label_info(driver)
 
@@ -120,17 +110,23 @@ def run_test():
             # Test connector
             ActionChains(driver).release(button).perform()
 
-            # Print click result
-            # print(f"click result: {get_label_info(driver)}\n")
+            # Verify click result
             if not disabled and prev_label != get_label_info(driver):
-              print("Test PASS\n")
+              pass
             elif disabled and prev_label == get_label_info(driver):
-              print("Test PASS\n")
+              pass
             else:
-                print("Test FAILED\n")
+                clickTestFlag = False
             disabled = not disabled
+            
+            
+        reporter.record_check(1, "pointimage change", hoverTestFlags[0])
+        reporter.record_check(1, "tristate border change", hoverTestFlags[1])
+        
+        reporter.record_check(2, "click event updates label", clickTestFlag)
 
     finally:
+        reporter.print_report()
         # Cleanup
         time.sleep(10)
         driver.quit()

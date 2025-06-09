@@ -53,6 +53,7 @@ centrallix/missing
 centrallix/ltmain.sh
 centrallix/test-driver
 centrallix-ui-test/tests/config.toml
+centrallix-ui-test/tests/__pycache__
 .gdb_history
 *.gcno
 *.gcov
