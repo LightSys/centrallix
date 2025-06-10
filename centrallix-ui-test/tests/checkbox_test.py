@@ -15,6 +15,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+from test_reporter import TestReporter
+reporter = TestReporter("Checkbox")
 
 def create_driver(test_url) -> webdriver.Chrome:
     """Create and return a configured Chrome WebDriver."""
@@ -36,11 +38,12 @@ def create_driver(test_url) -> webdriver.Chrome:
     return driver
 
 
-def get_checkbox_info(driver: webdriver.Chrome, index) -> None:
+def get_checkbox_info(driver: webdriver.Chrome, cb) -> None:
     """Return clicked status of a checkbox."""
     try:
-        checkbox_elements = driver.find_elements(By.XPATH, "//div[contains(@id,'cb')]//img")
-        imgsrc = checkbox_elements[index].get_attribute("src")
+        if cb is None:
+            return "ERROR (get_checkbox_info): checkbox not found"
+        imgsrc = cb.find_element(By.TAG_NAME, "img").get_attribute("src")
         if "un" in imgsrc:
             return("unchecked")
         elif "checked" in imgsrc:
@@ -64,26 +67,30 @@ def run_test():
     driver = create_driver(test_url)
 
     try:
-        # Wait for checkbox to appear
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@id,'cb')]"))
-        )
-
-        # Initial read
-        print(f"Initial Checbox info: {get_checkbox_info(driver, 0)}")
+        # Get test elements
+        cb_names = ["checkbox1", "checkbox2", "checkbox3"]
+        checkboxes = []
+        for cb_name in cb_names:
+            checkboxes.append(driver.execute_script(f"return wgtrFind('{cb_name}')")) 
         
-        # Click checkbox 3 times
-        checkbox_elem = driver.find_element(By.XPATH, "//div[contains(@id,'cb')]")
-        for i in range(3):
-            ActionChains(driver).click(checkbox_elem).perform()
-            print(f"Checkbox status after click: {get_checkbox_info(driver,0)}")
+        for cb in checkboxes:
+            if cb is None:
+                raise ValueError("Checkbox element not found")
 
-        # Click Readonly Checkbox
-        readonly_checkbox_elem = driver.find_element(By.XPATH, "//div[contains(@id,'cb')][last()]")
-        print(f"readonly cb status before click: {get_checkbox_info(driver, 2)}")
-        ActionChains(driver).click(readonly_checkbox_elem).perform()
-        print(f"readonly cb status after click: {get_checkbox_info(driver, 2)}")
-
+        # TEST 1 = Click behavior test
+        reporter.add_test(1, "Click behavior test")
+        #   Test clicked status change
+        reporter.record_check(1, "checkbox state change", True)
+        for checkbox in checkboxes:
+            case_order = ["unchecked", "checked", "null"]
+            initial_index = case_order.index(get_checkbox_info(driver, checkbox))
+            for _ in range(3):
+                ActionChains(driver).click(checkbox).perform()
+                if get_checkbox_info(driver, checkbox) != case_order[(initial_index + 1) % 3]:
+                    reporter.record_check(1, "checkbox state change", False)
+                initial_index += 1
+                
+        reporter.print_report()
     finally:
         # Cleanup
         time.sleep(10)

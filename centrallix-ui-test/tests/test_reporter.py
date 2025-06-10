@@ -2,17 +2,20 @@ class Test:
   def __init__(self, number, description):
     self.number = number
     self.description = description
-    self.checks = []
+    self.checks_order = []
+    self.checks_map = {}
     
   def record_check(self, description, passed):
-    self.checks.append((description,passed))
+    if description not in self.checks_map:
+      self.checks_order.append(description)
+    self.checks_map[description] = passed
     
   def get_test_result(self):
     print(f"TEST {self.number} = {self.description}")
-    checks_len = len(self.checks)
-    
+    checks_len = len(self.checks_order)
     passed_checks = 0
-    for desc, passed in self.checks:
+    for desc in self.checks_order:
+      passed = self.checks_map[desc]
       if passed:
         passed_checks += 1
       print(f"\tTest {desc} ... {'PASS' if passed else 'FAIL'}")
@@ -39,7 +42,7 @@ class TestReporter:
       test_result = test.get_test_result()
       if not test_result:
         all_passed = False
-    print(f"{self.name} Test {'PASS' if all_passed else 'FAIL'}")
+    print(f"\n{self.name} Test {'PASS' if all_passed else 'FAIL'}")
     
 '''
 Usage:
@@ -52,7 +55,7 @@ reporter.add_test(1, "Hover behavior test")
 reporter.record_check(1, "pointimage change", True)
 reporter.record_check(1, "tristate border change", False)
 
-reporter.start_test(2, "Click behavior test")
+reporter.add_test(2, "Click behavior test")
 reporter.record_check(2, "click event updates label", True)
 
 reporter.print_report()

@@ -14,6 +14,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+from test_reporter import TestReporter
+reporter = TestReporter("Clock")
 
 def create_driver(test_url) -> webdriver.Chrome:
     """Create and return a configured Chrome WebDriver."""
@@ -34,11 +36,12 @@ def create_driver(test_url) -> webdriver.Chrome:
 
     return driver
 
-def get_label_info(driver: webdriver.Chrome):
+def get_label_info(label):
     """Return status of the label."""
     try:
-        label_element = driver.find_element(By.XPATH, "//div[contains(@id, 'lbl')]//span").text
-        return(label_element)
+        label_text = label.find_element(By.TAG_NAME, "span").text
+        # label_text = driver.find_element(By.XPATH, "//div[contains(@id, 'lbl')]//span").text
+        return(label_text)
     except Exception as e:
         print(f"Error retrieving label properties: {e}")
 
@@ -59,49 +62,45 @@ def run_test():
             EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@id, 'lbl')]"))
         )
 
-        # Initial read
-        print(f"Initial label text: {get_label_info(driver)}\n")
+        # Get elements
+        label_widget_name = "clock_label"
+        label_elem = driver.execute_script(f"return wgtrFind('{label_widget_name}')")
+        clock_widget_name = "clock"
+        clock_elem = driver.execute_script(f"return wgtrFind('{clock_widget_name}')")
 
-        # Get clock element
-        clock_element = driver.find_element(By.XPATH, "//div[contains(@id, 'cl')]")
+        # Test 1 = Hover behavior test
+        reporter.add_test(1, "Hover behavior test")
+        #   Test mouse over
+        reporter.record_check(1, "mouse over event", False)        # Initialize check as False
+        ActionChains(driver).move_to_element(clock_elem).perform()
 
-        # Test Mouse Over
-        ActionChains(driver).move_to_element(clock_element).perform()
-        print("Testing mouse over ...")
-
-        passed = False
         for _ in range(10):
-            label = get_label_info(driver)
+            label = get_label_info(label_elem)
             if label == "Mouse Over":
-              print("Mouse Over: PASS")
-              passed = True
+              reporter.record_check(1, "mouse over event", True)
               break
             time.sleep(0.5)
-
-        if not passed:
-          raise ValueError("Mouse Over: FAIL")
         
-        # Test Mouse Move
-        ActionChains(driver).move_to_element(clock_element).perform()
-        if get_label_info(driver) == "Mouse Move":
-            print("Mouse Move: PASS")
-        else:
-            raise ValueError("Mouse Move: FAIL")
+        #   Test mouse move
+        reporter.record_check(1, "mouse move event", False)        # Initialize check as False
+        ActionChains(driver).move_to_element(clock_elem).perform()
+        if get_label_info(label_elem) == "Mouse Move":
+            reporter.record_check(1, "mouse move event", True)
             
-        # Test Mouse Down
-        ActionChains(driver).click_and_hold(clock_element).perform()
-        if get_label_info(driver) == "Mouse Down":
-            print("Mouse Down: PASS")
-        else:
-            raise ValueError("Mouse Down: FAIL")
+        # Test 2 = Click behavior test
+        reporter.add_test(2, "Click behavior test")
+        #   Test mouse down
+        reporter.record_check(2, "mouse down event", False)
+        ActionChains(driver).click_and_hold(clock_elem).perform()
+        if get_label_info(label_elem) == "Mouse Down":
+            reporter.record_check(2, "mouse down event", True)
 
-        # Test Mouse Up
+        #   Test mouse up
         ActionChains(driver).release().perform()
-        if get_label_info(driver) == "Mouse Up":
-            print("Mouse Up: PASS")
-        else:
-            raise ValueError("Mouse Up: FAIL")
-        print("Test All Passed\nExiting ...")
+        reporter.record_check(2, "mouse up event", False)
+        if get_label_info(label_elem) == "Mouse Up":
+            reporter.record_check(2, "mouse up event", True)
+        reporter.print_report()
 
     finally:
         # Cleanup

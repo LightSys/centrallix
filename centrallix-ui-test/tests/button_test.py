@@ -70,7 +70,6 @@ def run_test():
         buttons = []
         for bttn in bttn_names:
             buttons.append(driver.execute_script(f"return wgtrFind('{bttn}');"))
-        print(len(buttons))
 
         disabled = False
         #pointiimage, tristate
