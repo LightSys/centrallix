@@ -14,69 +14,100 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.keys import Keys
 
-def create_driver(test_url) -> webdriver.Chrome:
-    """Create and return a configured Chrome WebDriver."""
-    service = Service(ChromeDriverManager().install())
-    chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument('--lang=en')
-    chrome_options.add_argument('--incognito')
-    chrome_options.add_argument('--ignore-certificate-errors')  # Skip SSL errors
+class TestBlock:
+    """A class to manage a block of test checks and format the output."""
+    def __init__(self, number, name):
+        self.number = number
+        self.name = name
+        self.checks = []
 
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    driver.set_window_size(1920, 1080)
-    driver.get(test_url)
+    def start(self):
+        """Prints the header for this test block."""
+        print(f"TEST {self.number} = {self.name}")
 
-    # Wait until the page has fully loaded
-    WebDriverWait(driver, 10).until(
-        lambda d: d.execute_script("return document.readyState") == "complete"
-    )
-    print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Page loaded.")
-    time.sleep(2)  # Pause to observe page load
-    return driver
+    def add_check(self, description, passed: bool):
+        """Adds a check to the block and prints its immediate status."""
+        self.checks.append(passed)
+        status = "PASS" if passed else "FAIL"
+        print(f"    Test {description} ... {status}")
+
+    def conclude(self) -> bool:
+        """Prints the summary for the block and returns its overall status."""
+        passed_count = sum(1 for p in self.checks if p)
+        total_count = len(self.checks)
+        block_passed = passed_count == total_count and total_count > 0
+        status = "PASS" if block_passed else "FAIL"
+        print(f"({passed_count}/{total_count}) {status}\n")
+        return block_passed
 
 def run_test():
+    """Runs the pane test with structured reporting."""
+    print("# UI Test coverage: Pane Test")
+    print("Author: David Hopkins")
+    driver = None
+    all_blocks_passed = []
+
     try:
         config = toml.load("config.toml")
-    except FileNotFoundError:
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Config.toml is missing. Make sure to rename config.template and try again.")
-        return
+        test_url = config["url"] + "/tests/ui/pane_test.app"
 
-    test_url = config["url"] + "/tests/ui/pane_test.app"
-    driver = create_driver(test_url)
+        # --- Driver and Page Initialization ---
+        service = Service(ChromeDriverManager().install())
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument('--lang=en')
+        chrome_options.add_argument('--incognito')
+        chrome_options.add_argument('--ignore-certificate-errors')
 
-    try:
-        # Wait for the page to load and framework to initialize
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.TAG_NAME, "body"))
-        )
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Body element found.")
-        time.sleep(2)  # Pause to observe page
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        driver.set_window_size(1920, 1080)
 
-        WebDriverWait(driver, 20).until(
-            lambda d: d.execute_script("return typeof pg_isloaded !== 'undefined' && pg_isloaded")
-        )
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Framework initialized.")
-        time.sleep(2)  # Pause to observe initialization
+        # --- TEST 1: Page Initialization and Pane Verification ---
+        pane_test = TestBlock(1, "Page Initialization and Pane Verification")
+        pane_test.start()
+        
+        try:
+            driver.get(test_url)
+            WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+            pane_test.add_check("page loaded successfully", True)
+        except Exception:
+            pane_test.add_check("page loaded successfully", False)
 
-        #There are 5 styles of pane in this test: lowered, raised, flat, transparent, and bordered.
+        try:
+            WebDriverWait(driver, 20).until(lambda d: d.execute_script("return typeof pg_isloaded !== 'undefined' && pg_isloaded"))
+            pane_test.add_check("framework is initialized (pg_isloaded)", True)
+        except Exception:
+            pane_test.add_check("framework is initialized (pg_isloaded)", False)
+        
+        # Original logic to find and count the panes
+        try:
+            time.sleep(2) # Pause to allow elements to render
+            panes = driver.find_elements(By.CSS_SELECTOR, "div[id^='pn']")
+            num_panes = len(panes)
+            time.sleep(5)  # Additional pause for stability
+            # The check is whether the count is exactly 5
+            if num_panes == 5:
+                pane_test.add_check(f"found exactly 5 panes", True)
+            else:
+                pane_test.add_check(f"found {num_panes} panes instead of 5", False)
+        except Exception as e:
+            pane_test.add_check("finding and counting panes", False)
+            print(f"    (Error) An exception occurred: {e}")
 
-        #Check that there is 5 panes on the page. Doesn't matter what ind they are. 
-        #It is under pgmsg and has dynamic div id like pn...main etc. 
-
-        panes = driver.find_elements(By.CSS_SELECTOR, "div[id^='pn']")
-        if len(panes) != 5:
-            raise Exception(f"Expected 5 panes, found {len(panes)}.")
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Found {len(panes)} panes.")
-        time.sleep(2)  # Pause to observe panes
+        all_blocks_passed.append(pane_test.conclude())
 
     except Exception as e:
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Test failed: {str(e)}")
+        print(f"\n--- A CRITICAL ERROR OCCURRED ---\n{e}")
+        while len(all_blocks_passed) < 1:
+            all_blocks_passed.append(False)
 
     finally:
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Test complete, keeping browser open for observation.")
-        time.sleep(2)
-        driver.quit()
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Driver closed.")
+        final_status = "PASS" if all(all_blocks_passed) else "FAIL"
+        print(f"Pane Test {final_status}")
+        print("---")
+        if driver:
+            print("Test complete. Browser will close in 2 seconds.")
+            time.sleep(2)
+            driver.quit()
 
 if __name__ == "__main__":
     run_test()
