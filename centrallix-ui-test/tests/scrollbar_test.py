@@ -1,4 +1,4 @@
-# David Hopkins May 2025
+# David Hopkins June 2025
 # NOTE: USE ChromeDriverManager. Pip install it.
 
 import toml
@@ -8,201 +8,176 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
-from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
-def create_driver(test_url) -> webdriver.Chrome:
-    """Create and return a configured Chrome WebDriver."""
-    service = Service(ChromeDriverManager().install())
-    chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument('--lang=en')
-    chrome_options.add_argument('--incognito')
-    chrome_options.add_argument('--ignore-certificate-errors')  # Skip SSL errors
+class TestBlock:
+    """A class to manage a block of test checks and format the output."""
+    def __init__(self, number, name):
+        self.number = number
+        self.name = name
+        self.checks = []
 
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    driver.set_window_size(1920, 1080)
-    driver.get(test_url)
+    def start(self):
+        """Prints the header for this test block."""
+        print(f"TEST {self.number} = {self.name}")
 
-    # Wait until the page has fully loaded
-    WebDriverWait(driver, 10).until(
-        lambda d: d.execute_script("return document.readyState") == "complete"
-    )
-    print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Page loaded.")
-    time.sleep(2)  # Pause to observe page load
-    return driver
+    def add_check(self, description, passed: bool):
+        """Adds a check to the block and prints its immediate status."""
+        self.checks.append(passed)
+        status = "PASS" if passed else "FAIL"
+        print(f"    Test {description} ... {status}")
+
+    def conclude(self) -> bool:
+        """Prints the summary for the block and returns its overall status."""
+        passed_count = sum(1 for p in self.checks if p)
+        total_count = len(self.checks)
+        block_passed = passed_count == total_count and total_count > 0
+        status = "PASS" if block_passed else "FAIL"
+        print(f"({passed_count}/{total_count}) {status}\n")
+        return block_passed
 
 def run_test():
-    """Run the button functionality test slowly for visibility."""
+    """Runs the scrollbar test with structured reporting."""
+    print("# UI Test coverage: Scrollbar Test")
+    print("Author: David Hopkins")
+    driver = None
+    all_blocks_passed = []
+
     try:
         config = toml.load("config.toml")
-    except FileNotFoundError:
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Config.toml is missing. Make sure to rename config.template and try again.")
-        return
+        test_url = config["url"] + "/tests/ui/scrollbar_test.app"
 
-    test_url = config["url"] + "/tests/ui/scrollbar_test.app"
-    driver = create_driver(test_url)
+        # --- Driver and Page Initialization ---
+        service = Service(ChromeDriverManager().install())
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument('--lang=en')
+        chrome_options.add_argument('--incognito')
+        chrome_options.add_argument('--ignore-certificate-errors')
 
-    try:
-        # Wait for the page to load and framework to initialize
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.TAG_NAME, "body"))
-        )
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Body element found.")
-        time.sleep(2)  # Pause to observe page
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        driver.set_window_size(1920, 1080)
 
-        WebDriverWait(driver, 20).until(
-            lambda d: d.execute_script("return typeof pg_isloaded !== 'undefined' && pg_isloaded")
-        )
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Framework initialized.")
-        time.sleep(2)  # Pause to observe initialization
-
-        # 1. Click the forward button that is shown by an arrow
+        # --- TEST 1: Page Initialization ---
+        init_test = TestBlock(1, "Page Initialization")
+        init_test.start()
+        
         try:
-            # Define locators for the right arrow (forward button)
-            forward_locators = [
-                (By.XPATH, "//img[@src='/sys/images/ico18b.gif']"),  # By image source
-                (By.XPATH, "//img[@name='d']"),  # By name attribute
-                (By.XPATH, "//div[@id='sb17pane']//table//td[3]/img"),  # By table position
-            ]
+            driver.get(test_url)
+            WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+            init_test.add_check("page loaded successfully", True)
+        except Exception:
+            init_test.add_check("page loaded successfully", False)
+        
+        try:
+            WebDriverWait(driver, 20).until(lambda d: d.execute_script("return typeof pg_isloaded !== 'undefined' && pg_isloaded"))
+            init_test.add_check("framework is initialized (pg_isloaded)", True)
+        except Exception:
+            init_test.add_check("framework is initialized (pg_isloaded)", False)
+        
+        all_blocks_passed.append(init_test.conclude())
 
+        # --- TEST 2: Scrollbar Interaction ---
+        scrollbar_test = TestBlock(2, "Scrollbar Interaction")
+        scrollbar_test.start()
+        
+        # 1. Click the forward button
+        try:
+            forward_locators = [
+                (By.XPATH, "//img[@src='/sys/images/ico18b.gif']"),
+                (By.XPATH, "//img[@name='d']"),
+                (By.XPATH, "//div[@id='sb17pane']//table//td[3]/img"),
+            ]
             forward_button = None
             for locator in forward_locators:
                 try:
-                    forward_button = WebDriverWait(driver, 10).until(
-                        EC.element_to_be_clickable(locator)
-                    )
-                    if forward_button:
-                        break
-                except TimeoutException:
-                    continue
-
-            if not forward_button:
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Forward button not found with any locator.")
-                print("Page HTML:")
-                print(driver.page_source)
-                return
-
-            # Scroll to the element to ensure it's in view
+                    forward_button = WebDriverWait(driver, 2).until(EC.element_to_be_clickable(locator))
+                    if forward_button: break
+                except TimeoutException: continue
+            
+            assert forward_button is not None, "Forward button not found"
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", forward_button)
-            time.sleep(0.5)  # Brief pause after scrolling
-
-            # Attempt to click the forward button
-            try:
-                forward_button.click()
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Forward button clicked successfully.")
-            except ElementClickInterceptedException:
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Forward button click intercepted, attempting JavaScript click.")
-                driver.execute_script("arguments[0].click();", forward_button)
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Forward button clicked via JavaScript.")
-
-            time.sleep(2)  # Pause to observe click
-
+            time.sleep(3)
+            forward_button.click()
+            scrollbar_test.add_check("clicking the forward arrow button", True)
+        except ElementClickInterceptedException:
+            driver.execute_script("arguments[0].click();", forward_button)
+            scrollbar_test.add_check("clicking the forward arrow button (using JS)", True)
         except Exception as e:
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Error clicking forward button: {str(e)}")
-            print("Page HTML:")
-            print(driver.page_source)
-            return
+            scrollbar_test.add_check("clicking the forward arrow button", False)
+            print(f"    (Error) {e}")
 
-        # 2. Click the backward button that is shown by an arrow
+        time.sleep(1)
+
+        # 2. Click the backward button
         try:
-            # Define locators for the left arrow (backward button)
             backward_locators = [
-                (By.XPATH, "//img[@src='/sys/images/ico19b.gif']"),  # By image source
-                (By.XPATH, "//img[@name='u']"),  # By name attribute
-                (By.XPATH, "//div[@id='sb17pane']//table//td[1]/img"),  # By table position
+                (By.XPATH, "//img[@src='/sys/images/ico19b.gif']"),
+                (By.XPATH, "//img[@name='u']"),
+                (By.XPATH, "//div[@id='sb17pane']//table//td[1]/img"),
             ]
-
             backward_button = None
             for locator in backward_locators:
                 try:
-                    backward_button = WebDriverWait(driver, 10).until(
-                        EC.element_to_be_clickable(locator)
-                    )
-                    if backward_button:
-                        break
-                except TimeoutException:
-                    continue
+                    backward_button = WebDriverWait(driver, 2).until(EC.element_to_be_clickable(locator))
+                    if backward_button: break
+                except TimeoutException: continue
 
-            if not backward_button:
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Backward button not found with any locator.")
-                print("Page HTML:")
-                print(driver.page_source)
-                return
-
-            # Scroll to the element to ensure it's in view
+            assert backward_button is not None, "Backward button not found"
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", backward_button)
-            time.sleep(0.5)  # Brief pause after scrolling
-
-            # Attempt to click the backward button
-            try:
-                backward_button.click()
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Backward button clicked successfully.")
-            except ElementClickInterceptedException:
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Backward button click intercepted, attempting JavaScript click.")
-                driver.execute_script("arguments[0].click();", backward_button)
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Backward button clicked via JavaScript.")
-
-            time.sleep(2)  # Pause to observe click
-
+            time.sleep(3)
+            backward_button.click()
+            scrollbar_test.add_check("clicking the backward arrow button", True)
+        except ElementClickInterceptedException:
+            driver.execute_script("arguments[0].click();", backward_button)
+            scrollbar_test.add_check("clicking the backward arrow button (using JS)", True)
         except Exception as e:
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Error clicking backward button: {str(e)}")
-            print("Page HTML:")
-            print(driver.page_source)
-            return
+            scrollbar_test.add_check("clicking the backward arrow button", False)
+            print(f"    (Error) {e}")
 
-        # 3. Drag the scrollbar thumb freely
+        time.sleep(1)
+
+        # 3. Drag the scrollbar thumb
         try:
-            # Define locators for the scrollbar thumb
             thumb_locators = [
-                (By.XPATH, "//img[@src='/sys/images/ico14b.gif']"),  # By image source
-                (By.XPATH, "//img[@name='t']"),  # By name attribute
-                (By.XPATH, "//div[@id='sb17thum']/img"),  # By parent div
+                (By.XPATH, "//img[@src='/sys/images/ico14b.gif']"),
+                (By.XPATH, "//img[@name='t']"),
+                (By.XPATH, "//div[@id='sb17thum']/img"),
             ]
-
             thumb = None
             for locator in thumb_locators:
                 try:
-                    thumb = WebDriverWait(driver, 10).until(
-                        EC.element_to_be_clickable(locator)
-                    )
-                    if thumb:
-                        break
-                except TimeoutException:
-                    continue
-
-            if not thumb:
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Scrollbar thumb not found with any locator.")
-                print("Page HTML:")
-                print(driver.page_source)
-                return
-
-            # Scroll to the element to ensure it's in view
+                    thumb = WebDriverWait(driver, 2).until(EC.element_to_be_clickable(locator))
+                    if thumb: break
+                except TimeoutException: continue
+            
+            assert thumb is not None, "Scrollbar thumb not found"
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", thumb)
-            time.sleep(0.5)  # Brief pause after scrolling
-
-            # Drag the thumb by 62ixels to the right (adjustable)
-            drag_offset_x = 62 # Positive for right, negative for left
-            try:
-                actions = ActionChains(driver)
-                actions.click_and_hold(thumb).move_by_offset(drag_offset_x, 0).release().perform()
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Scrollbar thumb dragged {drag_offset_x}px successfully.")
-            except Exception as e:
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Error dragging scrollbar thumb: {str(e)}")
-            time.sleep(2)  # Pause to observe drag
-
+            time.sleep(3)
+            
+            actions = ActionChains(driver)
+            actions.click_and_hold(thumb).move_by_offset(62, 0).release().perform()
+            scrollbar_test.add_check("dragging the scrollbar thumb", True)
         except Exception as e:
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Error dragging scrollbar thumb: {str(e)}")
-            print("Page HTML:")
-            print(driver.page_source)
-            return
+            scrollbar_test.add_check("dragging the scrollbar thumb", False)
+            print(f"    (Error) {e}")
+
+        all_blocks_passed.append(scrollbar_test.conclude())
+
+    except Exception as e:
+        print(f"\n--- A CRITICAL ERROR OCCURRED ---\n{e}")
+        while len(all_blocks_passed) < 2:
+            all_blocks_passed.append(False)
 
     finally:
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Test complete, keeping browser open for observation.")
-        time.sleep(2)
-        driver.quit()
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Driver closed.")
+        final_status = "PASS" if all(all_blocks_passed) else "FAIL"
+        print(f"Scrollbar Test {final_status}")
+        print("---")
+        if driver:
+            print("Test complete. Browser will close in 2 seconds.")
+            time.sleep(2)
+            driver.quit()
 
 if __name__ == "__main__":
     run_test()
