@@ -1,162 +1,151 @@
 # Updated by: [David Hopkins] May 2025
 # NOTE: USE ChromeDriverManager. Pip install it.
 
-""" Module allowing web testing using pure Selenium """
-
 from selenium.webdriver.common.alert import Alert
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
 import toml
 import time
-from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
-def create_driver(test_url) -> webdriver.Chrome:
-    """Create and return a configured Chrome WebDriver."""
-    service = Service(ChromeDriverManager().install())
-    chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument('--lang=en')
-    chrome_options.add_argument('--incognito')
-    chrome_options.add_argument('--ignore-certificate-errors')  # Skip SSL errors
+class TestBlock:
+    """A class to manage a block of test checks and format the output."""
+    def __init__(self, number, name):
+        self.number = number
+        self.name = name
+        self.checks = []
 
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    driver.set_window_size(1920, 1080)
-    driver.get(test_url)
+    def start(self):
+        """Prints the header for this test block."""
+        print(f"TEST {self.number} = {self.name}")
 
-    # Wait until the page has fully loaded
-    WebDriverWait(driver, 10).until(
-        lambda d: d.execute_script("return document.readyState") == "complete"
-    )
-    print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Page loaded.")
-    time.sleep(2)  # Pause to observe page load
-    return driver
+    def add_check(self, description, passed: bool):
+        """Adds a check to the block and prints its immediate status."""
+        self.checks.append(passed)
+        status = "PASS" if passed else "FAIL"
+        print(f"    Test {description} ... {status}")
+
+    def conclude(self) -> bool:
+        """Prints the summary for the block and returns its overall status."""
+        passed_count = sum(1 for p in self.checks if p)
+        total_count = len(self.checks)
+        block_passed = passed_count == total_count and total_count > 0
+        status = "PASS" if block_passed else "FAIL"
+        print(f"({passed_count}/{total_count}) {status}\n")
+        return block_passed
 
 def run_test():
-    """Run the button functionality test slowly for visibility."""
+    """Runs the text button test with structured reporting."""
+    print("# UI Test coverage: TextButton Test")
+    print("Author: David Hopkins")
+    driver = None
+    all_blocks_passed = []
+
     try:
         config = toml.load("config.toml")
-    except FileNotFoundError:
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Config.toml is missing. Make sure to rename config.template and try again.")
-        return
+        test_url = config["url"] + "/tests/ui/textbutton_test.app"
 
-    test_url = config["url"] + "/tests/ui/textbutton_test.app"
-    driver = create_driver(test_url)
+        # --- Driver and Page Initialization ---
+        service = Service(ChromeDriverManager().install())
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument('--lang=en')
+        chrome_options.add_argument('--incognito')
+        chrome_options.add_argument('--ignore-certificate-errors')
 
-    try:
-        # Wait for the page to load and framework to initialize
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.TAG_NAME, "body"))
-        )
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Body element found.")
-        time.sleep(2)  # Pause to observe page
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        driver.set_window_size(1920, 1080)
 
-        WebDriverWait(driver, 20).until(
-            lambda d: d.execute_script("return typeof pg_isloaded !== 'undefined' && pg_isloaded")
-        )
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Framework initialized.")
-        time.sleep(2)  # Pause to observe initialization
-
-        # Locate and test Button 1
+        # --- TEST 1: Page Initialization ---
+        init_test = TestBlock(1, "Page Initialization")
+        init_test.start()
         try:
-            button1 = WebDriverWait(driver, 20).until(
-                EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'cell') and .//span[text()='Button 1']]"))
-            )
-            button1_id = button1.get_attribute("id") or "No ID"
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Button 1 located with ID: {button1_id}")
-            time.sleep(2)  # Pause to observe Button 1 location
+            driver.get(test_url)
+            WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+            init_test.add_check("page loaded successfully", True)
+            
+            WebDriverWait(driver, 20).until(lambda d: d.execute_script("return typeof pg_isloaded !== 'undefined' && pg_isloaded"))
+            init_test.add_check("framework is initialized", True)
+        except Exception as e:
+            init_test.add_check("page or framework failed to initialize", False)
+            print(f"    (Error) {e}")
+        all_blocks_passed.append(init_test.conclude())
 
-            # Highlight Button 1
+        # --- TEST 2: Button 1 Functionality ---
+        button1_test = TestBlock(2, "Button 1 Functionality")
+        button1_test.start()
+        try:
+            button_xpath = "//div[contains(@class, 'cell') and .//span[text()='Button 1']]"
+            button1 = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, button_xpath)))
+            button1_test.add_check("locating the button", True)
+            
             driver.execute_script("arguments[0].style.border = '3px solid red';", button1)
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Button 1 highlighted.")
-            time.sleep(2)  # Pause to see highlight
+            time.sleep(1)
+            button1_test.add_check("highlighting the button", True)
 
-            # Wait for button to be ready
-            WebDriverWait(driver, 20).until(
-                lambda d: d.find_element(By.XPATH, "//div[contains(@class, 'cell') and .//span[text()='Button 1']]").value_of_css_property("cursor") == "default"
-            )
-            is_enabled = button1.is_enabled()
-            is_displayed = button1.is_displayed()
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Button 1 enabled: {is_enabled}, displayed: {is_displayed}")
-            time.sleep(2)  # Pause to observe state
+            WebDriverWait(driver, 20).until(lambda d: d.find_element(By.XPATH, button_xpath).value_of_css_property("cursor") == "default")
+            button1_test.add_check("verifying cursor state is ready", True)
 
-            if is_enabled and is_displayed:
-                button1.click()
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Button 1 clicked.")
-            else:
-                driver.execute_script("arguments[0].click();", button1)
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Button 1 clicked via JavaScript.")
-            time.sleep(2)  # Pause to observe click
-
-            # Handle the alert
+            button1.click()
+            time.sleep(3)
+            button1_test.add_check("clicking the button", True)
+            
             WebDriverWait(driver, 10).until(EC.alert_is_present())
             alert = Alert(driver)
             alert_text = alert.text
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Button 1 alert text: {alert_text}")
-            time.sleep(2)  # Pause to observe alert
             alert.accept()
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Button 1 alert accepted.")
-            time.sleep(2)  # Pause to observe alert closing
-        except TimeoutException:
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Button 1 not found, not clickable, or alert not present.")
-            with open("page_source_button1.html", "w", encoding="utf-8") as f:
-                f.write(driver.page_source)
-            return
+            button1_test.add_check(f"handling alert (text: '{alert_text}')", True)
 
-        # Locate and test Button 2
+        except Exception as e:
+            button1_test.add_check("button interaction failed", False)
+            print(f"    (Error) {e}")
+        all_blocks_passed.append(button1_test.conclude())
+
+        # --- TEST 3: Button 2 Functionality ---
+        button2_test = TestBlock(3, "Button 2 Functionality")
+        button2_test.start()
         try:
-            button2 = WebDriverWait(driver, 20).until(
-                EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'cell') and .//span[text()='Button 2']]"))
-            )
-            button2_id = button2.get_attribute("id") or "No ID"
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Button 2 located with ID: {button2_id}")
-            time.sleep(2)  # Pause to observe Button 2 location
+            button_xpath = "//div[contains(@class, 'cell') and .//span[text()='Button 2']]"
+            button2 = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, button_xpath)))
+            button2_test.add_check("locating the button", True)
 
-            # Highlight Button 2
             driver.execute_script("arguments[0].style.border = '3px solid blue';", button2)
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Button 2 highlighted.")
-            time.sleep(2)  # Pause to see highlight
+            time.sleep(1)
+            button2_test.add_check("highlighting the button", True)
 
-            # Wait for button to be ready
-            WebDriverWait(driver, 20).until(
-                lambda d: d.find_element(By.XPATH, "//div[contains(@class, 'cell') and .//span[text()='Button 2']]").value_of_css_property("cursor") == "default"
-            )
-            is_enabled = button2.is_enabled()
-            is_displayed = button2.is_displayed()
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Button 2 enabled: {is_enabled}, displayed: {is_displayed}")
-            time.sleep(2)  # Pause to observe state
+            WebDriverWait(driver, 20).until(lambda d: d.find_element(By.XPATH, button_xpath).value_of_css_property("cursor") == "default")
+            button2_test.add_check("verifying cursor state is ready", True)
 
-            if is_enabled and is_displayed:
-                button2.click()
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Button 2 clicked.")
-            else:
-                driver.execute_script("arguments[0].click();", button2)
-                print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Button 2 clicked via JavaScript.")
-            time.sleep(2)  # Pause to observe click
-
-            # Handle the alert
+            button2.click()
+            time.sleep(3)
+            button2_test.add_check("clicking the button", True)
+            
             WebDriverWait(driver, 10).until(EC.alert_is_present())
             alert = Alert(driver)
             alert_text = alert.text
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Button 2 alert text: {alert_text}")
-            time.sleep(2)  # Pause to observe alert
             alert.accept()
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Button 2 alert accepted.")
-            time.sleep(2)  # Pause to observe alert closing
-        except TimeoutException:
-            print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Button 2 not found, not clickable, or alert not present.")
-            with open("page_source_button2.html", "w", encoding="utf-8") as f:
-                f.write(driver.page_source)
-            return
+            button2_test.add_check(f"handling alert (text: '{alert_text}')", True)
+
+        except Exception as e:
+            button2_test.add_check("button interaction failed", False)
+            print(f"    (Error) {e}")
+        all_blocks_passed.append(button2_test.conclude())
+
+    except Exception as e:
+        print(f"\n--- A CRITICAL ERROR OCCURRED ---\n{e}")
+        while len(all_blocks_passed) < 3:
+            all_blocks_passed.append(False)
 
     finally:
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Test complete, keeping browser open for observation.")
-        time.sleep(2) 
-        driver.quit()
-        print(f"{datetime.now().strftime('%H:%M:%S.%f')} - Driver closed.")
+        final_status = "PASS" if all(all_blocks_passed) else "FAIL"
+        print(f"TextButton Test {final_status}")
+        print("---")
+        if driver:
+            print("Test complete. Browser will close in 2 seconds.")
+            time.sleep(2)
+            driver.quit()
 
 if __name__ == "__main__":
     run_test()
