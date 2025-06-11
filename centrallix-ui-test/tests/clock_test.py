@@ -7,6 +7,7 @@
 
 import toml
 import time
+import sys
 from selenium import webdriver
 from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.service import Service
@@ -70,42 +71,43 @@ def run_test():
 
         # Test 1 = Hover behavior test
         reporter.add_test(1, "Hover behavior test")
-        #   Test mouse over
-        reporter.record_check(1, "mouse over event", False)        # Initialize check as False
+        check1_1 = "mouse over event"
+        reporter.record_check(1, check1_1, False)        # Initialize check as False
         ActionChains(driver).move_to_element(clock_elem).perform()
 
         for _ in range(10):
             label = get_label_info(label_elem)
             if label == "Mouse Over":
-              reporter.record_check(1, "mouse over event", True)
+              reporter.record_check(1, check1_1, True)
               break
             time.sleep(0.5)
         
-        #   Test mouse move
-        reporter.record_check(1, "mouse move event", False)        # Initialize check as False
+        check1_2 = "mouse move event"
+        reporter.record_check(1, check1_2, False)
         ActionChains(driver).move_to_element(clock_elem).perform()
         if get_label_info(label_elem) == "Mouse Move":
-            reporter.record_check(1, "mouse move event", True)
+            reporter.record_check(1, check1_2, True)
             
         # Test 2 = Click behavior test
         reporter.add_test(2, "Click behavior test")
-        #   Test mouse down
-        reporter.record_check(2, "mouse down event", False)
+        check2_1 = "mouse down event"
+        reporter.record_check(2, check2_1, False)
         ActionChains(driver).click_and_hold(clock_elem).perform()
         if get_label_info(label_elem) == "Mouse Down":
-            reporter.record_check(2, "mouse down event", True)
+            reporter.record_check(2, check2_1, True)
 
-        #   Test mouse up
+        check2_2 = "mouse up event"
         ActionChains(driver).release().perform()
-        reporter.record_check(2, "mouse up event", False)
+        reporter.record_check(2, check2_2, False)
         if get_label_info(label_elem) == "Mouse Up":
-            reporter.record_check(2, "mouse up event", True)
-        reporter.print_report()
+            reporter.record_check(2, check2_2, True)
 
     finally:
         # Cleanup
-        time.sleep(10)
+        result = reporter.print_report()
+        time.sleep(5)
         driver.quit()
+        sys.exit(0) if result else sys.exit(1)
 
 
 if __name__ == "__main__":

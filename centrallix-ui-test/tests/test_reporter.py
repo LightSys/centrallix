@@ -43,6 +43,7 @@ class TestReporter:
       if not test_result:
         all_passed = False
     print(f"\n{self.name} Test {'PASS' if all_passed else 'FAIL'}")
+    return all_passed
     
 '''
 Usage:

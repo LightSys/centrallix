@@ -8,6 +8,7 @@
 
 import toml
 import time
+import sys
 from selenium import webdriver
 from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.service import Service
@@ -90,11 +91,12 @@ def run_test():
                     reporter.record_check(1, "checkbox state change", False)
                 initial_index += 1
                 
-        reporter.print_report()
     finally:
         # Cleanup
-        time.sleep(10)
+        result = reporter.print_report()
+        time.sleep(5)
         driver.quit()
+        sys.exit(0) if result else sys.exit(1)
 
 
 if __name__ == "__main__":
