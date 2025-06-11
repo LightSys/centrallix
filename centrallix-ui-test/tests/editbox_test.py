@@ -9,6 +9,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+import sys
 
 class TestBlock:
     """A class to manage a block of test checks and format the output."""
@@ -128,6 +129,8 @@ def run_test():
         final_status = "PASS" if all(all_blocks_passed) else "FAIL"
         print(f"Editbox Test {final_status}")
         print("---")
+        sys.exit(0 if final_status == "PASS" else 1)
+
         if driver:
             print("Test complete. Browser will close in 10 seconds.")
             time.sleep(10)

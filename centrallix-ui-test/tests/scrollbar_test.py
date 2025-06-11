@@ -11,6 +11,7 @@ from selenium.common.exceptions import TimeoutException, ElementClickIntercepted
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+import sys 
 
 class TestBlock:
     """A class to manage a block of test checks and format the output."""
@@ -174,6 +175,8 @@ def run_test():
         final_status = "PASS" if all(all_blocks_passed) else "FAIL"
         print(f"Scrollbar Test {final_status}")
         print("---")
+        sys.exit(0 if final_status == "PASS" else 1)
+
         if driver:
             print("Test complete. Browser will close in 2 seconds.")
             time.sleep(2)
