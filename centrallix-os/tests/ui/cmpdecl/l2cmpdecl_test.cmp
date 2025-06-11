@@ -7,30 +7,22 @@
 $Version=2$
 nested_container "widget/component-decl"
 {
-    width=300; height=250;
+    width=250; height=250;
+    
+    // ADDED: A clean background and subtle border for a "card" look.
+    bgcolor = "white"; 
+    border = "solid 1 #e0e0e0";
 
     expose_events_for = "my_radio_panel";
-    
     selection_changed "widget/component-decl-event" {}
-
     initial_choice "widget/parameter" { type=integer; default=2; }
-
-    wrapper_label "widget/label"
-    {
-        x=10; y=5;
-        text = "This is the Nested Container (L2)";
-        fgcolor = "#000000";
-        bgcolor = "#ffffff";
-    }
 
     my_radio_panel "widget/component"
     {
         path = "l1cmpdecl_test.cmp";
-        x = 0; y = 30; 
-        width = 250; height = 200;
+        x = 5; y = 35; 
+        width = 270; height = 185; // ADJUSTED: Sized to fit perfectly within the container.
         default_selection = runserver(:this:initial_choice);
-        panel_title = "Select An Option (David's RadioButtons):";
+        panel_title = "Select the best sorting algorithm option:"; // UPDATED: A simpler sub-title.
     }
 }
-
-
