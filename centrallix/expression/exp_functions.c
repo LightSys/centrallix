@@ -4464,6 +4464,55 @@ int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression passwor
     return 0;
 }
 
+
+/*** exp_fn_path_element() - implements the "path_element" function which constrains a
+ *** string to only be a valid path element.
+ ***/
+int exp_fn_path_element(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    char* bad_paths[] = {".", "..", "%2e", "%2e.", ".%2e", "%2e%2e", NULL };
+    int i;
+
+    if (!i0 || i1)
+	{
+	mssError(1, "EXP", "path_element() expects one string parameter");
+	return -1;
+	}
+    if ((i0->Flags & EXPR_F_NULL) || i0->DataType != DATA_T_STRING)
+	{
+	mssError(1, "EXP", "path_element() expects a non-null string parameter");
+	return -1;
+	}
+    if (strpbrk(i0->String, "/"))
+	{
+	mssError(1, "EXP", "illegal character in string provided to path_element()");
+	return -1;
+	}
+    if (strstr(i0->String, "%2f") || strstr(i0->String, "%2F"))
+	{
+	mssError(1, "EXP", "illegal character in string provided to path_element()");
+	return -1;
+	}
+    if (!strcmp(i0->String, ""))
+	{
+	mssError(1, "EXP", "path_element() string cannot be empty");
+	return -1;
+	}
+    for(i=0; bad_paths[i]; i++)
+	{
+	if (!strcasecmp(i0->String, bad_paths[i]))
+	    {
+	    mssError(1, "EXP", "string provided to path_element() cannot be '.' or '..'");
+	    return -1;
+	    }
+	}
+    tree->DataType = DATA_T_STRING;
+    tree->Flags &= ~EXPR_F_NULL;
+    tree->Alloc = 0;
+    tree->String = i0->String;
+    return 0;
+    }
+
 int exp_internal_DefineFunctions()
     {
 
@@ -4530,6 +4579,7 @@ int exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "from_hex", (char*)exp_fn_from_hex);
 	xhAdd(&EXP.Functions, "octet_length", (char*)exp_fn_octet_length);
 	xhAdd(&EXP.Functions, "argon2id",(char*)exp_fn_argon2id);
+	xhAdd(&EXP.Functions, "path_element",(char*)exp_fn_path_element);
 
 	/** Windowing **/
 	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);

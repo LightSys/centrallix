@@ -1,0 +1,24 @@
+##NAME path_element() function
+
+query select text='Valid Names:'
+query select path_element('filename.png')
+query select path_element('testfile')
+
+query select text='Invalid Names:'
+query select path_element('')
+query select path_element('/')
+query select path_element('%2f')
+query select path_element('file1/file2')
+query select path_element('file1%2ffile2')
+query select path_element('..')
+query select path_element('.')
+query select path_element('%2e')
+query select path_element('%2E')
+query select path_element('%2e.')
+query select path_element('%2E.')
+query select path_element('.%2e')
+query select path_element('.%2E')
+query select path_element('%2e%2e')
+query select path_element('%2E%2e')
+query select path_element('%2e%2E')
+query select path_element('%2E%2E')
