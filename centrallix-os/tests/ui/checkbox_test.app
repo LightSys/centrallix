@@ -1,4 +1,4 @@
-//David Hopkins May 2025
+// Minsik Lee May 2025
 
 $Version=2$
 checkbox_test "widget/page"
@@ -32,7 +32,7 @@ checkbox_test "widget/page"
         {
             x = 8; y = 50; width = 20; height = 20;
             fieldname = "readonly checkbox";
-            readonly = yes;
+            readonly = "yes";
         }
     }
 }
