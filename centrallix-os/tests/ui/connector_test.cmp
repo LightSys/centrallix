@@ -1,0 +1,55 @@
+// Minsik Lee 2025
+$Version=2$
+component "widget/component-decl"
+{
+    cmp_childwindow "widget/childwindow"
+    {
+      x = 30;y = 100; width = 260; height = 160;
+      bgcolor = "white";
+      modal = "no";
+      title = "child window";
+
+      cmp_label "widget/label"
+      {
+        x = 10; y = 10;
+        width = 220;
+        font_size = 18;
+        value = "Component Status";
+      }
+
+      cmp_button "widget/textbutton"
+      {
+        x = 10; y = 40;
+        width = 60; height = 30;  
+        fgcolor1 = "black";
+        fgcolor2 = "grey";  
+        bgcolor = "#6f7872";
+        text = "Test";
+      }
+    }
+
+    load_cn "widget/connector"
+    {
+      event = LoadComplete;
+      action = SetValue;
+      target = cmp_label;
+      Value = "Load Complete";
+    }
+
+    // losefocus_cn "widget/connector"
+    // {
+    //   event = LoseFocus;
+    //   action = Alert;
+    //   target = component;
+    //   Message = "Lost focus";
+    // }
+
+}
+
+component_modal "widget/childwindow"
+{
+  x = 30;y = 100; width = 260; height = 160;
+  bgcolor = "white";
+  modal = yes;
+  title = "child window";
+}

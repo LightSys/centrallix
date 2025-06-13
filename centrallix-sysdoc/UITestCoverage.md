@@ -442,3 +442,103 @@ Button Test FAIL
 - None.
 
 ----------
+
+## CMPDECL Part 2 Test
+### Properties Tested
+- **Page readiness:** `document.readyState`
+- **Element Presence:** `<body>`
+- **JavaScript Initialization:** `pg_isloaded`
+- **Component State:** Clicking buttons, focused cursor, pulling data from csv file, building a table 
+
+### 1. Initialization Test 
+
+- Verifies that the browser has fully loaded the page's Document Object Model (DOM)
+- Confirms that the application's core framework and the specific ChildWindow widget have initialized successfully in JavaScript
+
+### 2. Iteration and Clicking (RadioButtons)
+- Verifies of locating the buttons
+- Verifies clicking the buttons and printing the choices out
+- Verifies that 3 nested layers are working correctly.
+  - Widgets tested: widget/cmp-decl, widget/component, widget/radiobuttonpanel
+                    widget/connector, widget/parameter, widget/component-decl-event
+  - Verifies that nested layer L1 works
+  - Verifies tat nested layer L2 works 
+  - Verifies that the .app file works
+
+### 2. Table Data Extraction and Formatting 
+- Verifies that the .app file works, with a table and a CSV file as the object source
+- Widgets tested: widget/osrce, widget/table, widget/repeat, widget/label, widget/table-column 
+- Verifies that the headers and rows can be clearly read
+
+#### Note
+- All interaction and closing tests are dependent on the successful completion of the Initialization Test.
+- This is part 2 of CMPDECL Test 
+
+----------
+
+## Tab Test
+### Properties Tested
+- **style**: `border_color`, `border_radius`, `border_style`, `shadow_angle`, `shadow_color`, `shadow_offset`, `shadow_radius`, `background`, `inactive_background`
+- `tab_location`: top, bottom, left, right
+- `selected_index`
+- `selected`
+
+### 1. Tab Click Behavior Test
+- Test if current tab changes on tab click
+
+#### Note
+- `selected_index` displays both the first tab and indexth tab as selected
+- could not find any example of dynamic tab and was not able to get it work
+- tab page with `visible=0` property is still visible
+
+----------
+
+## Tab Test
+### Properties Tested
+- `widget_class`
+
+### No selenium test
+- Verified that template with button successfully appears on the app
+
+#### Note
+- Tried to create a hbox template containing buttons and the buttons were not clickable.
+
+----------
+
+## Timer + Button Test
+### Properties Tested
+- **Page readiness:** `document.readyState`
+- **Element Presence:** `<body>`
+- **JavaScript Initialization:** `pg_isloaded`
+- **Component State:** Focused cursor, clicking, inputting text into tet area, retrieving HTML components, `auto_start`, `auto_reset`
+
+### 1. Initialization Test 
+
+- Verifies that the browser has fully loaded the page's Document Object Model (DOM)
+- Confirms that the application's core framework and the specific ChildWindow widget have initialized successfully in JavaScript
+
+### 2. Coordinated Timer, Type and Clear Action 
+- Verifies that auto_start and auto_reset properties works
+- Verifies that timer is clicked to start a 5s countdown
+- Verifies that text area is found post click
+- Verifies that text area is able to receive random text for 4 seconds
+- Verifies that text area can be cleared
+- Verifies that, after 5 seconds, the button is ready to be clicked again (Click Me Again)
+
+### 3. Redo Sequence After Button Reset (Click Me Again)
+- Verifies that timer is clicked to start a 5s countdown (now is Click Me Again)
+- Verifies that text area is found post click
+- Verifies that text area is able to receive random text for 4 seconds
+- Verifies that text area can be cleared
+- Verifies that, after 5 seconds, the button is ready to be clicked again (Click Me Again)
+
+### 4. Check HTML Elements After Button Reset 
+- Verifies that HTML is present 
+- Verifies that content length (characters) can be retrieved 
+- Verifies that the page title and message is displayed correctly 
+
+#### Note
+- All interaction and closing tests are dependent on the successful completion of the Initialization Test.
+- This is a combination of a button, timer, and HTML widget test 
+
+----------

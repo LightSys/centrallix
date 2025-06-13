@@ -5,7 +5,7 @@ component "widget/component-decl"
   TabCtlOne "widget/tab"
   {
     tab_location = top;
-    x = 300; y = 40; width=600; height=400;
+    width=400; height=100;
     background = "/sys/images/slate2.gif";
     inactive_background = "/sys/images/slate2_dark.gif";
 
@@ -26,7 +26,7 @@ component "widget/component-decl"
           table "widget/table"
           {
             mode = dynamicrow;
-            x=0;y=0;width=400;height=300;
+            x=0;y=0;width=400;height=100;
             row1_bgcolor = "#ffffff";
             row2_bgcolor = "#e0e0e0";
             rowhighlight_bgcolor = "#000080";
