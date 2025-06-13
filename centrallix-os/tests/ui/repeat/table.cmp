@@ -1,0 +1,55 @@
+// Minsik Lee 2025
+$Version=2$
+component "widget/component-decl"
+{
+  TabCtlOne "widget/tab"
+  {
+    tab_location = top;
+    x = 300; y = 40; width=600; height=400;
+    background = "/sys/images/slate2.gif";
+    inactive_background = "/sys/images/slate2_dark.gif";
+
+    tp_rpt "widget/repeat"
+    {
+      sql = "SELECT fullpath = '/tests/ui/repeat/' + :name FROM /tests/ui/repeat WHERE right(:name, 4) = '.csv'";
+
+      tp "widget/tabpage" 
+      { 
+        title=runserver(:tp_rpt:name);
+
+        osrc "widget/osrc"
+        {
+          sql = runserver("select * from " + :tp_rpt:fullpath + "/rows");
+          // baseobj = "/tests/ui/repeat/repeat_test2.csv/rows";
+          readahead=20;
+          // replicasize=20;
+          table "widget/table"
+          {
+            mode = dynamicrow;
+            x=0;y=0;width=400;height=300;
+            row1_bgcolor = "#ffffff";
+            row2_bgcolor = "#e0e0e0";
+            rowhighlight_bgcolor = "#000080";
+            rowheight = 20;
+            windowsize = 8;
+            hdr_bgcolor = "#c0c0c0";
+            textcolorhighlight = "#ffffff";
+            textcolor = "black";
+
+            col_rpt "widget/repeat"
+            {
+              sql = runserver("select :name from " + :tp_rpt:fullpath + "/columns");
+
+              dynamic_col "widget/table-column"
+              {
+                fieldname = runserver(:col_rpt:name);
+                title = runserver(:col_rpt:name);
+                width = 100;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
