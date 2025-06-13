@@ -4483,7 +4483,7 @@ int exp_fn_path_element(pExpression tree, pParamObjects objlist, pExpression i0,
 	mssError(1, "EXP", "path_element() expects a non-null string parameter");
 	return -1;
 	}
-    if (strpbrk(i0->String, "/"))
+    if (strpbrk(i0->String, "/?&="))
 	{
 	mssError(1, "EXP", "illegal character in string provided to path_element()");
 	return -1;
@@ -4512,6 +4512,107 @@ int exp_fn_path_element(pExpression tree, pParamObjects objlist, pExpression i0,
     tree->String = i0->String;
     return 0;
     }
+
+
+/*** exp_fn_path_params() - implements the "path_params" function which
+ *** properly encodes parameters and their names for appending to a path
+ *** element.  Parameters alternate param names and values.
+ ***/
+int exp_fn_path_params(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    int param_num;
+    pExpression param_name, param_value;
+    pXString dest = NULL;
+    void* vptr;
+    char* ptr;
+    Binary b;
+
+	dest = xsNew();
+	if (!dest)
+	    goto error;
+
+	/** Loop through parameters **/
+	for(param_num=0; param_num*2 < tree->Children.nItems; param_num++)
+	    {
+	    /** Parameter name **/
+	    param_name = (pExpression)tree->Children.Items[param_num * 2];
+	    if (param_name->Flags & EXPR_F_NULL)
+		continue;
+	    if (param_name->DataType != DATA_T_STRING)
+		{
+		mssError(1, "EXP", "path_params() param names must be strings");
+		goto error;
+		}
+	    if (strpbrk(param_name->String, "=&?/"))
+		{
+		mssError(1, "EXP", "path_params() param name contained illegal character");
+		goto error;
+		}
+	    if (!strcmp(param_name->String, ""))
+		{
+		mssError(1, "EXP", "path_params() param name cannot be empty");
+		goto error;
+		}
+	    xsConcatQPrintf(dest, "%STR%STR&URL=", (param_num == 0)?"?":"&", param_name->String);
+
+	    /** Parameter value... **/
+	    param_value = (param_num*2 + 1 < tree->Children.nItems)?((pExpression)tree->Children.Items[param_num * 2 + 1]):NULL;
+	    if (!param_value)
+		continue;
+	    if (param_value->Flags & EXPR_F_NULL)
+		continue;
+	    switch(param_value->DataType)
+		{
+		case DATA_T_INTEGER: vptr = &(param_value->Integer); break;
+		case DATA_T_STRING: vptr = param_value->String; break;
+		case DATA_T_BINARY:
+		    b.Size = param_value->Size;
+		    b.Data = (unsigned char*)param_value->String;
+		    vptr = &b;
+		    break;
+		case DATA_T_DOUBLE: vptr = &(param_value->Types.Double); break;
+		case DATA_T_DATETIME: vptr = &(param_value->Types.Date); break;
+		case DATA_T_MONEY: vptr = &(param_value->Types.Money); break;
+		default:
+		    mssError(1, "EXP", "path_params(): unsupported value datatype");
+		    goto error;
+		}
+	    ptr = objDataToStringTmp(param_value->DataType, vptr, 0);
+	    if (!ptr)
+		{
+		mssError(1, "EXP", "path_params(): unsupported value");
+		goto error;
+		}
+	    xsConcatQPrintf(dest, "%STR&URL", ptr);
+	    }
+
+	/** Move our xstring data into the result **/
+	if (strlen(dest->String) < sizeof(tree->Types.StringBuf))
+	    {
+	    tree->Alloc = 0;
+	    tree->String = tree->Types.StringBuf;
+	    strtcpy(tree->Types.StringBuf, dest->String, sizeof(tree->Types.StringBuf));
+	    }
+	else
+	    {
+	    if (tree->Alloc && tree->String)
+		nmSysFree(tree->String);
+	    tree->Alloc = 0;
+	    tree->String = nmSysStrdup(dest->String);
+	    if (!tree->String)
+		goto error;
+	    tree->Alloc = 1;
+	    }
+	xsFree(dest);
+
+	return 0;
+
+    error:
+	if (dest)
+	    xsFree(dest);
+	return -1;
+    }
+
 
 int exp_internal_DefineFunctions()
     {
@@ -4580,6 +4681,7 @@ int exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "octet_length", (char*)exp_fn_octet_length);
 	xhAdd(&EXP.Functions, "argon2id",(char*)exp_fn_argon2id);
 	xhAdd(&EXP.Functions, "path_element",(char*)exp_fn_path_element);
+	xhAdd(&EXP.Functions, "path_params",(char*)exp_fn_path_params);
 
 	/** Windowing **/
 	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
