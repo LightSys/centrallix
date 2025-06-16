@@ -10,8 +10,9 @@ import toml
 import time
 import sys
 import re
+import traceback
 from selenium import webdriver
-from selenium.webdriver import ActionChains
+from selenium.webdriver import ActionChains, Keys
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -60,68 +61,98 @@ def run_test():
     test_url = config["url"] + "/tests/ui/dropdown_test.app"
     driver = create_driver(test_url)
 
-    try:
-        # Wait for dropdowns to appear
-        WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@id, 'dd')]")))
+    # Wait for dropdowns to appear
+    WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@id, 'dd')]")))
 
-        # Get dropdown widgets
-        dd_widget_names = ["Dropdown1", "Dropdown2"]
-        dd_elems = []
-        for name in dd_widget_names:
-            dd_elems.append(driver.execute_script(f"return wgtrFind('{name}')"))
+    # Get dropdown widgets
+    dd_widget_names = ["Dropdown1", "Dropdown2"]
+    dd_elems = []
+    for name in dd_widget_names:
+        dd_elems.append(driver.execute_script(f"return wgtrFind('{name}')"))
 
-        for dd in dd_elems:
-            if dd == None:
-                raise ValueError("Dropdown element not found")
-                sys.exit(1)
+    for dd in dd_elems:
+        if dd == None:
+            raise ValueError("Dropdown element not found")
 
-        # Test 1
-        reporter.add_test(1, "Dropdown item click behavior test")
-        check1_1 = "value change"
-        reporter.record_check(1,check1_1,True)
-        
-        for dropdown in dd_elems:
-            ActionChains(driver).click(dropdown).perform()
+    # Test 1
+    reporter.add_test(1, "Dropdown item click behavior test")
+    check1_1 = "value change"
+    reporter.record_check(1,check1_1,True)
+    
+    for dropdown in dd_elems:
+        ActionChains(driver).click(dropdown).perform()
 
-            # Click items
-            items = driver.execute_script(f"return arguments[0].PaneLayer.ScrLayer.childNodes", dropdown)
-            downbtn = driver.execute_script(f"return arguments[0].imgdn", dropdown)    
-            height = int(''.join(s for s in driver.execute_script(f"return arguments[0].PaneLayer.ScrLayer.childNodes[0].style.height", dropdown) if s.isdigit()))
+        # Click items
+        items = driver.execute_script(f"return arguments[0].PaneLayer.ScrLayer.childNodes", dropdown)
+        downbtn = driver.execute_script(f"return arguments[0].imgdn", dropdown)    
+        height = int(''.join(s for s in driver.execute_script(f"return arguments[0].PaneLayer.ScrLayer.childNodes[0].style.height", dropdown) if s.isdigit()))
 
-            for i in range(len(items)):
-                if i > 0:
-                    ActionChains(driver).click(dropdown).perform()
-                
+        for i in range(len(items)):
+            if i > 0:
+                ActionChains(driver).click(dropdown).perform()
+            
+            container_clip = driver.execute_script(f"return arguments[0].PaneLayer.ScrLayer.style.clip", dropdown)
+            containerBottom = get_number(container_clip)
+            top = int(''.join(s for s in driver.execute_script(f"return arguments[0].PaneLayer.ScrLayer.childNodes[{i}].style.top", dropdown) if s.isdigit()))
+            visible = top + height <= containerBottom
+            old_val = driver.execute_script(f"return arguments[0].value", dropdown)
+            
+            moved_down = False
+            while(not visible):
+                moved_down = True
+                ActionChains(driver).click(downbtn).perform()
                 container_clip = driver.execute_script(f"return arguments[0].PaneLayer.ScrLayer.style.clip", dropdown)
                 containerBottom = get_number(container_clip)
-                top = int(''.join(s for s in driver.execute_script(f"return arguments[0].PaneLayer.ScrLayer.childNodes[{i}].style.top", dropdown) if s.isdigit()))
                 visible = top + height <= containerBottom
-                old_val = driver.execute_script(f"return arguments[0].value", dropdown)
+            if moved_down:
+                ActionChains(driver).move_to_element(downbtn).move_by_offset(-10,0).click().perform()
+            else:
+                ActionChains(driver).move_to_element(items[i]).perform()
+
+
+            ActionChains(driver).click(items[i]).perform()
+            
+            new_val = driver.execute_script(f"return arguments[0].value", dropdown)
+            if i > 0 and old_val == new_val:
+                reporter.record_check(1,check1_1,False)
                 
-                moved_down = False
-                while(not visible):
-                    moved_down = True
-                    ActionChains(driver).click(downbtn).perform()
-                    container_clip = driver.execute_script(f"return arguments[0].PaneLayer.ScrLayer.style.clip", dropdown)
-                    containerBottom = get_number(container_clip)
-                    visible = top + height <= containerBottom
-                if moved_down:
-                    ActionChains(driver).move_to_element(downbtn).move_by_offset(-10,0).click().perform()
-                else:
-                    ActionChains(driver).move_to_element(items[i]).perform()
-
-
-                ActionChains(driver).click(items[i]).perform()
+    # Test 2
+    reporter.add_test(2, "Keyboard interaction test")
+    check2_1 = "value change"
+    reporter.record_check(2,check2_1,True)
+    
+    for dropdown in dd_elems:
+        old_val = driver.execute_script(f"return arguments[0].value", dropdown)
+        ActionChains(driver).click(dropdown).perform()
                 
-                new_val = driver.execute_script(f"return arguments[0].value", dropdown)
-                if i > 0 and old_val == new_val:
-                    reporter.record_check(1,check1_1,False)
+        # Keyboard Up Arrow
+        item_number = driver.execute_script(f"return arguments[0].Items.length", dropdown)
+        count = item_number if item_number < 5 else 5
 
-    finally:
-        result = reporter.print_report()
-        time.sleep(5)
-        driver.quit()
-        sys.exit(0) if result else sys.exit(1)
+        for _ in range(count - 1):
+            ActionChains(driver).key_down(Keys.UP).perform()
+            ActionChains(driver).key_down('\uE006').perform()
+            new_val = driver.execute_script(f"return arguments[0].value", dropdown)
+            if old_val == new_val:
+                reporter.record_check(2,check2_1,False)
+            old_val = new_val
+            
+            ActionChains(driver).click(dropdown).perform()
+                    
+        # Keyboard Down Arrow
+        for _ in range(count - 2):
+            ActionChains(driver).key_down(Keys.DOWN).perform()
+            ActionChains(driver).key_down('\uE006').perform()
+            new_val = driver.execute_script(f"return arguments[0].value", dropdown)
+            if old_val == new_val:
+                reporter.record_check(2,check2_1,False)
+            old_val = new_val
+            ActionChains(driver).click(dropdown).perform()  
+
+    result = reporter.print_report()
+    time.sleep(5)
+    driver.quit()
+    sys.exit(0) if result else sys.exit(1)
 
 
 if __name__ == "__main__":
