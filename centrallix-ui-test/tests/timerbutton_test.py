@@ -21,13 +21,13 @@ class TestBlock:
 
     def start(self):
         """Prints the header for this test block."""
-        print(f"TEST {self.number} = {self.name}")
+        print(f"START TEST {self.number}")
 
     def add_check(self, description, passed: bool):
         """Adds a check to the block and prints its immediate status."""
         self.checks.append(passed)
         status = "PASS" if passed else "FAIL"
-        print(f"      Test {description} ... {status}")
+        print(f"    Test {description} ... {status}")
 
     def conclude(self) -> bool:
         """Prints the summary for the block and returns its overall status."""
@@ -35,7 +35,7 @@ class TestBlock:
         total_count = len(self.checks)
         block_passed = passed_count == total_count and total_count > 0
         status = "PASS" if block_passed else "FAIL"
-        print(f"({passed_count}/{total_count}) {status}\n")
+        print(f"TEST {self.number} = {self.name} ({passed_count}/{total_count}) {status}\n")
         return block_passed
 
 def run_test():
