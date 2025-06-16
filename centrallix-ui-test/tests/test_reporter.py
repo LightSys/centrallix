@@ -11,7 +11,7 @@ class Test:
     self.checks_map[description] = passed
     
   def get_test_result(self):
-    print(f"TEST {self.number} = {self.description}")
+    print(f"START TEST {self.number}")
     checks_len = len(self.checks_order)
     passed_checks = 0
     for desc in self.checks_order:
@@ -21,7 +21,7 @@ class Test:
       print(f"\tTest {desc} ... {'PASS' if passed else 'FAIL'}")
       
     passed_test = checks_len == passed_checks
-    print(f"({passed_checks}/{checks_len}) {'PASS' if passed_test else 'FAIL'}")
+    print(f"TEST {self.number} = {self.description} ({passed_checks}/{checks_len}) {'PASS' if passed_test else 'FAIL'}")
     return passed_test
     
   
