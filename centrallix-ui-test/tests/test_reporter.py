@@ -28,18 +28,19 @@ class Test:
 class TestReporter:
   def __init__(self, component_name):
     self.name = component_name
-    self.tests = []
+    self.tests = {}
   
   def add_test(self, test_number, test_name):
-    self.tests.append(Test(test_number, test_name))
+    self.tests[test_number] = Test(test_number, test_name)
+    # self.tests.append(Test(test_number, test_name))
   
   def record_check(self, test_number, description, passed):
-    self.tests[test_number - 1].record_check(description, passed)
+    self.tests[test_number].record_check(description, passed)
     
   def print_report(self):
     all_passed = True
     for test in self.tests:
-      test_result = test.get_test_result()
+      test_result = self.tests[test].get_test_result()
       if not test_result:
         all_passed = False
     print(f"\n{self.name} Test {'PASS' if all_passed else 'FAIL'}")
