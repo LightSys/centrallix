@@ -55,7 +55,7 @@ in_main "widget/page"
 
         btn "widget/button"
         {
-          x=30;y=runserver(:widget_rpt:cx__rowid * 40 + 450);
+          x=30;y=runserver(:widget_rpt:cx__rowid * 40 + 920);
           height=30; width=90;
           type="text";
           text=runserver(:widget_rpt:display);
@@ -76,14 +76,14 @@ in_main "widget/page"
 
         checkbox "widget/checkbox"
         {
-            x = 130; y=runserver(:widget_rpt:cx__rowid * 40 + 450);
+            x = 130; y=runserver(:widget_rpt:cx__rowid * 40 + 920);
             fieldname = "mycheckbox1";
         }
 
         clock "widget/clock"
         {
           ampm="yes";
-          x = 150; y=runserver(:widget_rpt:cx__rowid * 40 + 440); width=80; height=40;
+          x = 150; y=runserver(:widget_rpt:cx__rowid * 40 + 920); width=80; height=40;
           bgcolor="white";
           shadowed="true";
           fgcolor1="#dddddd";
@@ -95,7 +95,7 @@ in_main "widget/page"
 
         dropdown "widget/dropdown"
         {
-          x = 320; y=runserver(:widget_rpt:cx__rowid * 40 + 450); width=120; height=20;
+          x = 320; y=runserver(:widget_rpt:cx__rowid * 40 + 920); width=120; height=20;
           fieldname="value";
           hilight="#b5b5b5";
           bgcolor="#c0c0c0";
@@ -109,14 +109,14 @@ in_main "widget/page"
 
         editbox "widget/editbox" 
         {
-          x = 460; y=runserver(:widget_rpt:cx__rowid * 40 + 450); 
+          x = 460; y=runserver(:widget_rpt:cx__rowid * 40 + 920); 
           width=120; height=15;  
           bgcolor="#ffffff";
         }
 
         html "widget/html"
         {
-          x = 600; y=runserver(:widget_rpt:cx__rowid * 40 + 450); 
+          x = 600; y=runserver(:widget_rpt:cx__rowid * 40 + 920); 
           width = 120; height = 30;
           mode = dynamic;
           source = "/tests/ui/repeat/index.html";
@@ -124,14 +124,14 @@ in_main "widget/page"
 
         image "widget/image"
         {
-          x = 730; y=runserver(:widget_rpt:cx__rowid * 40 + 450); 
+          x = 730; y=runserver(:widget_rpt:cx__rowid * 40 + 920); 
           source = "/sys/images/centrallix_18x18.gif";
           width = 26; height = 26;
         }
 
         imagebutton "widget/imagebutton"
         {
-          x = 770; y=runserver(:widget_rpt:cx__rowid * 40 + 450); 
+          x = 770; y=runserver(:widget_rpt:cx__rowid * 40 + 920); 
             width = 30; height = 30;
             image="/sys/images/ico16aa.gif";
             pointimage="/sys/images/ico16ab.gif";
@@ -142,13 +142,13 @@ in_main "widget/page"
 
         pane "widget/pane"
         {
-          x = 820; y=runserver(:widget_rpt:cx__rowid * 40 + 450);
+          x = 820; y=runserver(:widget_rpt:cx__rowid * 40 + 920);
           bgcolor="green"; height=30; width=30;
         }
 
         radiobuttonpanel "widget/radiobuttonpanel"
         {
-          x = 870; y=runserver(:widget_rpt:cx__rowid * 40 + 450);
+          x = 870; y=runserver(:widget_rpt:cx__rowid * 40 + 920);
           width = 110; height = 30;
           bgcolor = "white"; 
           title = "radiopanel";
@@ -158,35 +158,35 @@ in_main "widget/page"
 
         // scrollbar "widget/scrollbar"
         // {
-        //   x = 990; y=runserver(:widget_rpt:cx__rowid * 40 + 450);
+        //   x = 990; y=runserver(:widget_rpt:cx__rowid * 40 + 920);
         //   width = 140; height = 30; 
         //   bgcolor = "white"; direction = "vertical"; range = 30;
         // }
 
         scrollpane "widget/scrollpane"
         {
-          x = 990; y=runserver(:widget_rpt:cx__rowid * 40 + 450);
+          x = 990; y=runserver(:widget_rpt:cx__rowid * 40 + 920);
           width = 50; height = 60;
           bgcolor = "white";
         }
 
         textarea "widget/textarea"
         {
-          x = 1050; y=runserver(:widget_rpt:cx__rowid * 40 + 450);
+          x = 1050; y=runserver(:widget_rpt:cx__rowid * 40 + 920);
           width = 50; height = 30;
           bgcolor = "white";
         }
 
         textbutton "widget/textbutton"
         {
-          x = 1110; y=runserver(:widget_rpt:cx__rowid * 40 + 450);
+          x = 1110; y=runserver(:widget_rpt:cx__rowid * 40 + 920);
           width = 30; height = 30;
           text="button";
         }
 
         mypane "widget/pane"
         {
-        x=1180; y=runserver(:widget_rpt:cx__rowid * 40 + 450); width=120; height=30;
+        x=1180; y=runserver(:widget_rpt:cx__rowid * 40 + 920); width=120; height=30;
         style = "lowered";
         bgcolor = "#c0c0c0";
         myscroll "widget/scrollpane"
@@ -201,12 +201,33 @@ in_main "widget/page"
         }
     }
 
+    update_button "widget/button"
+    {
+      x=30;y=550;
+      height=40; width=140;
+      type="text";
+      text="update component";
+      bgcolor="white";
+      fgcolor1="black";
+      fgcolor2="grey";
+      disable_color="grey";
+      enabled=yes;
+
+      update_bttn_cn "widget/connector"
+      {
+        event = Click;
+        target = cmp;
+        action = UpdateLabel;
+        newLabel = "New Value";
+      }
+    }
+
     cmp "widget/component"
     {
       path = "/tests/ui/repeat/repeat_test.cmp";
       mode = dynamic;
-      x = 100; y = 100; width=300; height=220;
-      multiple_instantiation = no;
+      x = 100; y = 100; width=600; height=400;
+      multiple_instantiation = yes;
       icon = "/sys/images/ico26a.gif";
 
       cmp_update "widget/connector"

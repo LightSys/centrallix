@@ -2,6 +2,8 @@
 $Version=2$
 component "widget/component-decl"
 {
+  Update "widget/component-decl-event" { }
+
   TabCtlOne "widget/tab"
   {
     tab_location = top;

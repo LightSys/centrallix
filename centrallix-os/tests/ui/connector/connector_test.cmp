@@ -39,9 +39,9 @@ component "widget/component-decl"
     // losefocus_cn "widget/connector"
     // {
     //   event = LoseFocus;
-    //   action = Alert;
-    //   target = component;
-    //   Message = "Lost focus";
+    //   action = SetValue;
+    //   cmp_label = component;
+    //   Value = "Lost focus";
     // }
 
 }

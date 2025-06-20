@@ -12,26 +12,21 @@ Each test includes:
 ### Format Structure
 
 ```text
-TEST [#] = [Test Name / Description]
-    Test [specific check description] ... [PASS/FAIL]
-    Test [specific check description] ... [PASS/FAIL]
-([number passed]/[total number of checks]) [PASS/FAIL]
+START TEST [#]
+  Test [specific check description] ... [PASS/FAIL]
+  Test [specific check description] ... [PASS/FAIL]
+TEST 1 = [Test Name / Description] ([number passed]/[total number of checks]) [PASS/FAIL]
 
 [Component] Test [PASS/FAIL]
 ```
 
 ### Example
 ```text
-TEST 1 = Hover behavior test
-  Test pointimage change ... PASS
-  Test tristate change ... PASS
-(2/2) PASS
+START TEST 1
+  Test current tabpage change ... PASS
+TEST 1 = Tab page click behavior test (1/1) PASS
 
-TEST 2 = Click behavior test
-  Test click event ... FAIL
-(0/1) FAIL
-
-Button Test FAIL
+Tab Test PASS
 ```
 
 ----------
@@ -53,6 +48,19 @@ Button Test FAIL
 #### Note
 - The `textoverImgButton` component appears to be non-functional; additionally, other buttons stop responding when it is added to the ge.
 - Buttons with `text` type display only the `clickimage` when clicked. Other button types display both the default image and `clickimage` when clicked.
+
+----------
+
+## Checkbox Test
+### Properties Tested
+- `checked`: yes, no
+- `readonly`: yes, no
+
+### 1. Click Behavior Test
+- Verifies that the img src changes to `checkbox_checked.gif` -> `checkbox_null.gif` -> `checkbox_unchecked.gif` in order.
+
+#### Note
+- Readonly checkbox is clickable and its img source gets updated,
 
 ----------
 
@@ -83,6 +91,147 @@ Button Test FAIL
 #### Note
 
 - All interaction and closing tests are dependent on the successful completion of the Initialization Test.
+
+----------
+
+## Clock Test
+### Properties Tested
+- `event`: MouseOver, MouseMove, MouseDown, MouseUp
+### 1. Hover Behavior Test
+- Verifies that the connected label text value changes on clock `MouseOver`
+- Verifies that the connected label text value changes on clock `MouseMove`
+### 2. Click Behavior Test
+- Verifies that the connected label text value changes on clock `MouseDown`
+- Verifies that the connected label text value changes on clock `MouseUp`
+#### Note
+- None.
+
+----------
+
+## CMPDECL (Component Declaration) Part 1 Test
+### Properties Tested
+
+- **Page readiness:** `document.readyState`
+- **Element Presence:** `<body>`
+- **JavaScript Initialization:** `pg_isloaded`
+- **Mouse Interactivity:** Single-click, typing into textbox
+- **Component State:** Inserting various types of random characters (letters, numbers, symbols, etc.) and button clicking. Futhermore, this is part of component declaration widget testing which includes parameter widget testing and component widget testing. This test is made of a .cmp and .app file. 
+
+### 1. Initialization Test
+
+- Verifies that the browser has fully loaded the page's Document Object Model (DOM)
+- Confirms that the application's core framework and the specific ChildWindow widget have initialized successfully in JavaScript
+
+### 2. Text Area Interaction 
+
+- Verifies that text area is found 
+- Verifies that text area is clickable 
+- Verifies that initial text (the one that is already written) can be sent 
+- Verifies that a large random text can be sent 
+
+### 3. Button Interaction
+
+- Retrieve that the text is "Hello David" 
+- Attempted 5 clicks on the button 
+
+#### Note
+
+- All interaction and closing tests are dependent on the successful completion of the Initialization Test.
+- This is just part 1 of the CMPDECL (Component Declaration) Test.
+
+----------
+
+## CMPDECL Part 2 Test
+### Properties Tested
+- **Page readiness:** `document.readyState`
+- **Element Presence:** `<body>`
+- **JavaScript Initialization:** `pg_isloaded`
+- **Component State:** Clicking buttons, focused cursor, pulling data from csv file, building a table 
+
+### 1. Initialization Test 
+
+- Verifies that the browser has fully loaded the page's Document Object Model (DOM)
+- Confirms that the application's core framework and the specific ChildWindow widget have initialized successfully in JavaScript
+
+### 2. Iteration and Clicking (RadioButtons)
+- Verifies of locating the buttons
+- Verifies clicking the buttons and printing the choices out
+- Verifies that 3 nested layers are working correctly.
+  - Widgets tested: widget/cmp-decl, widget/component, widget/radiobuttonpanel
+                    widget/connector, widget/parameter, widget/component-decl-event
+  - Verifies that nested layer L1 works
+  - Verifies tat nested layer L2 works 
+  - Verifies that the .app file works
+
+### 2. Table Data Extraction and Formatting 
+- Verifies that the .app file works, with a table and a CSV file as the object source
+- Widgets tested: widget/osrce, widget/table, widget/repeat, widget/label, widget/table-column 
+- Verifies that the headers and rows can be clearly read
+
+#### Note
+- All interaction and closing tests are dependent on the successful completion of the Initialization Test.
+- This is part 2 of CMPDECL Test 
+
+----------
+
+## Connector Test
+### Action/event Tested
+- `window`: load event, close action, toggle visibility action
+- `component`: instantiate action, loadcomplete event, destroy action
+- `Datetime`: GetFocus event, DataChange event, LoseFocus event
+- `Dropdown`: GetFocus event, DataChange event, LoseFocus event, SetItems action, SetGroup action
+- `Editbox`:  GetFocus event, LoseFocus event, SetValue event, SetValueDescription event
+- `HTML`: LoadPage action
+- `Textarea`: GetFocus event, LoseFocus event
+- `Textbutton`: Click event, SetText event
+
+### 1. Window widget events and action test
+- Test load event
+- Test close action and close event
+- Test toggle visibility action and open event
+
+### 2. Component widget events and actions test
+- Test instantiate action
+- Test LoadComplete event
+- Test Destroy action
+
+### 3. Datetime widget events and actions test
+- Test GetFocus event
+- Test DataChange event
+- Test LoseFocus event
+
+### 4. Dropdown widget events and actions test
+- Test GetFocus event
+- Test DataChange event
+- Test LoseFocus event
+- Test SetItems action
+- Test SetGroup action
+
+### 5. Editbox widget events and actions test
+- Test GetFocus event
+- Test LoseFocus event
+- Test SetValue event
+- Test SetValueDescription event
+
+### 6. Form Test
+- Not implemented yet
+
+### 7. HTML load action test
+- Test LoadPage action
+
+### 8. Textarea widget events and actions test
+- Test GetFocus event
+- Test LoseFocus event
+
+### 9. Textbutton widget events and actions test
+- Test Click event
+- Test SetText action
+
+### Note
+- `Dropwindow` DataChange event is only triggered by keyboard input
+- `Editbox` DataChange event is not triggered when typing into the editbox, but is triggered by SetValue action
+- `Textarea` Datachange event is not triggered
+- `Treeview` RightClickItem opens browser's default right click menu
 
 ----------
 
@@ -121,36 +270,20 @@ Button Test FAIL
 
 ----------
 
-## CMPDECL (Component Declaration) Part 1 Test
+## Dropdown Test
 ### Properties Tested
+- `hilight`
+- `bgcolor`
+- `fieldname`
+- `mode`: objectsource
 
-- **Page readiness:** `document.readyState`
-- **Element Presence:** `<body>`
-- **JavaScript Initialization:** `pg_isloaded`
-- **Mouse Interactivity:** Single-click, typing into textbox
-- **Component State:** Inserting various types of random characters (letters, numbers, symbols, etc.) and button clicking. Futhermore, this is part of component declaration widget testing which includes parameter widget testing and component widget testing. This test is made of a .cmp and .app file. 
-
-### 1. Initialization Test
-
-- Verifies that the browser has fully loaded the page's Document Object Model (DOM)
-- Confirms that the application's core framework and the specific ChildWindow widget have initialized successfully in JavaScript
-
-### 2. Text Area Interaction 
-
-- Verifies that text area is found 
-- Verifies that text area is clickable 
-- Verifies that initial text (the one that is already written) can be sent 
-- Verifies that a large random text can be sent 
-
-### 3. Button Interaction
-
-- Retrieve that the text is "Hello David" 
-- Attempted 5 clicks on the button 
-
+### 1. Click Behavior Test
+- Verifies that clicking the dropdown item updates the value
+### 2. Keyboard Input Behavior Test
+- Verifies that down arrow key and enter key correctly moves and select
+- Verifies that up arrow key and enter key correctly moves and select
 #### Note
-
-- All interaction and closing tests are dependent on the successful completion of the Initialization Test.
-- This is just part 1 of the CMPDECL (Component Declaration) Test.
+- Property `hilight` is stated as `highlight` on the web document but only `hilight` works.
 
 ----------
 
@@ -187,16 +320,63 @@ Button Test FAIL
 
 ----------
 
-## Checkbox Test
+## Form + Table Test
 ### Properties Tested
-- `checked`: yes, no
-- `readonly`: yes, no
+- **Page readiness:** `document.readyState`
+- **Element Presence:** `<body>`
+- **JavaScript Initialization:** `pg_isloaded`
+- **Component State:** Focused cursor, clicking, inputting text into text area, dragging (scrollbar), table, CRUD Design test (create, read, update, delete), keyboard focus, table resizing
 
-### 1. Click Behavior Test
-- Verifies that the img src changes to `checkbox_checked.gif` -> `checkbox_null.gif` -> `checkbox_unchecked.gif` in order.
+### 1. Initialization Test 
+
+- Verifies that the browser has fully loaded the page's Document Object Model (DOM)
+- Confirms that the application's core framework and the specific ChildWindow widget have initialized successfully in JavaScript
+
+### 2. Test 2-7 (Test First Name, Last Name, and Email Box): Data Extraction
+- Verifies search thru First Name for 'Frank' (whose data is already there)
+- Verifies Frank's details and computers
+- Verifies search thru Last Name for 'Alliste'
+- Verifies Alliste's details and computers
+- Verifies search thru Email for 'erin@nodomain.where'
+- Verifies erin@nodomain.where details and computers 
+
+### 3. Test 8-13 CRUD Design
+- Verifies clicking the New button and handles alert well (known bug that when you first save a new data its fine/no alert. But after you delete a record, there will be an alert)
+- Verifies that the person's data and computer details are accurate
+- Verifies clicking the Edit button and handles alert well
+- Verifies that data persists after edit is done (details and computers)
+- Verifies clicking the Delete button and handles the alert well
+- Verifies that the user's data is deleted completely
+
+### 4. Test 14 : Advanced UI Interactions
+- Verifies that table row and tabbing works well
+- Verifies that scrollbars arrows works well
+- Verifies that dragging scrolbar works well
+- Verifies that column reszing in the table works well
+
 
 #### Note
-- Readonly checkbox is clickable and its img source gets updated,
+- All interaction and closing tests are dependent on the successful completion of the Initialization Test.
+- This is a combination of a form and table test
+- Files involved: The files are located under form folder (tests/ui/form/)
+          There are .qyt files, .spec files, .csv files, as well as the .app file
+- Widgets used: widget/osrc, wiget/form, widget/pane, widget/table, widget/label,widget/textbutton, widget/table-column, widget/editbox, widget/connector, widget/rule, widget/page 
+
+----------
+
+## Formstatus Test
+### Status Tested
+- `No Data`, `New`, `View`, `Search`, `Searching`
+
+### 1. Formstatus update test
+- Verifies the staut updates to No data
+- Verifies the staut updates to New
+- Verifies the staut updates to View
+- Verifies the staut updates to Search
+- Verifies the staut updates to Searching
+
+### Note
+- None.
 
 ----------
 
@@ -256,6 +436,23 @@ Button Test FAIL
 
 ----------
 
+## Menu Test
+### Properties Tested
+- **style**: `icon`, `label`, `row_height`, `bgcolor`, `highlight_bgcolor`, `active_bgcolor`, `direction`
+- `popup`: yes, no
+
+### 1. Mouse over Behavior Test
+- Test if mouse over expands menu
+- Verifies highlight value change
+### 2. Click Behavior Test
+- Verifies that click behavior opens up a child window, expands if it is a menu, and updates connected label value
+### 3. Right Click Popup
+- Verifies menu popup appears on right click
+#### Note
+- None.
+
+----------
+
 ## Pane Test
 ### Properties Tested
 - **Page readiness:** `document.readyState`
@@ -272,20 +469,6 @@ Button Test FAIL
 #### Note
 
 - All interaction and closing tests are dependent on the successful completion of the Initialization Test.
-
-----------
-
-## Clock Test
-### Properties Tested
-- `event`: MouseOver, MouseMove, MouseDown, MouseUp
-### 1. Hover Behavior Test
-- Verifies that the connected label text value changes on clock `MouseOver`
-- Verifies that the connected label text value changes on clock `MouseMove`
-### 2. Click Behavior Test
-- Verifies that the connected label text value changes on clock `MouseDown`
-- Verifies that the connected label text value changes on clock `MouseUp`
-#### Note
-- None.
 
 ----------
 
@@ -308,6 +491,30 @@ Button Test FAIL
 
 #### Note
 - All interaction and closing tests are dependent on the successful completion of the Initialization Test.
+
+----------
+
+## Repeat Test
+### Properties Tested
+- `sql`
+- widgest tested for repeating: `menu`, `label`, `component`, `button`, `checkbox`, `clock`, `dropdown`, `editbox`, `html`, `image`, `imagebutton`, `pane`, `radiobuttonpanel`, `scrollpane`, `textarea`, `textbutton`, `scrollpane` 
+
+### 1. Component click action and event behavior test
+- Test if component event behaves properly
+- Test if component action behaves properly
+#### Note
+- None.
+
+----------
+
+## Rule Test
+### Properties Tested
+- `osrc_relationship`
+
+### No selenium test
+### Note
+- Failed to implement rule with `osrc_key` ruletype, only end up with seg fault. 
+- Program stops when data add is attempted.
 
 ----------
 
@@ -355,6 +562,55 @@ Button Test FAIL
 
 #### Note
 - All interaction and closing tests are dependent on the successful completion of the Initialization Test.
+
+----------
+
+## Tab Test
+### Properties Tested
+- **style**: `border_color`, `border_radius`, `border_style`, `shadow_angle`, `shadow_color`, `shadow_offset`, `shadow_radius`, `background`, `inactive_background`
+- `tab_location`: top, bottom, left, right
+- `selected_index`
+- `selected`
+
+### 1. Tab Click Behavior Test
+- Test if current tab changes on tab click
+
+#### Note
+- `selected_index` displays both the first tab and indexth tab as selected
+- could not find any example of dynamic tab and was not able to get it work
+- tab page with `visible=0` property is still visible
+
+----------
+
+## Tab Test
+### Properties Tested
+- `widget_class`
+
+### No selenium test
+- Verified that template with button successfully appears on the app
+
+#### Note
+- Tried to create a hbox template containing buttons and the buttons were not clickable.
+
+----------
+
+## Table Test
+### Properties Tested
+- `mode`: static, dynamic
+- style : `x`, `y`, `width`, `height`, `row1_bgcolor`, `row2_bgcolor`, `rowhighlight_bgcolor`, `hdr_bgcolor`, `textcolorhighlight`, `textcolor`, `colsep`, `cellvspacing`, `titlecolor`, `inner_padding`, `show_selection`, `rowheight`, `windowsize`
+
+### 1. Table row click and click event behavior test
+- Verifies that selected row property updates
+- Verifies that click event is triggered properly
+- Verifies that double click event is triggered properly
+
+### 2. "Scroll behavior test"
+- Test scroll up and down button behavior
+- Test scroll bar behavior
+
+### Note
+- Tried adding `outer_border`, `dragcols`, `gridinemptyrows`, `inner_border` properties but had no effect.
+- Table scrollbar often failes, hiding all the row items.
 
 ----------
 
@@ -409,99 +665,6 @@ Button Test FAIL
 
 #### Note
 - All interaction and closing tests are dependent on the successful completion of the Initialization Test.
-
-----------
-
-## Dropdown Test
-### Properties Tested
-- `hilight`
-- `bgcolor`
-- `fieldname`
-- `mode`: objectsource
-
-### 1. Click Behavior Test
-- Verifies that clicking the dropdown item updates the value
-#### Note
-- Property `hilight` is stated as `highlight` on the web document but only `hilight` works.
-
-----------
-
-## Menu Test
-### Properties Tested
-- **style**: `icon`, `label`, `row_height`, `bgcolor`, `highlight_bgcolor`, `active_bgcolor`, `direction`
-- `popup`: yes, no
-
-### 1. Mouse over Behavior Test
-- Test if mouse over expands menu
-- Verifies highlight value change
-### 2. Click Behavior Test
-- Verifies that click behavior opens up a child window, expands if it is a menu, and updates connected label value
-### 3. Right Click Popup
-- Verifies menu popup appears on right click
-#### Note
-- None.
-
-----------
-
-## CMPDECL Part 2 Test
-### Properties Tested
-- **Page readiness:** `document.readyState`
-- **Element Presence:** `<body>`
-- **JavaScript Initialization:** `pg_isloaded`
-- **Component State:** Clicking buttons, focused cursor, pulling data from csv file, building a table 
-
-### 1. Initialization Test 
-
-- Verifies that the browser has fully loaded the page's Document Object Model (DOM)
-- Confirms that the application's core framework and the specific ChildWindow widget have initialized successfully in JavaScript
-
-### 2. Iteration and Clicking (RadioButtons)
-- Verifies of locating the buttons
-- Verifies clicking the buttons and printing the choices out
-- Verifies that 3 nested layers are working correctly.
-  - Widgets tested: widget/cmp-decl, widget/component, widget/radiobuttonpanel
-                    widget/connector, widget/parameter, widget/component-decl-event
-  - Verifies that nested layer L1 works
-  - Verifies tat nested layer L2 works 
-  - Verifies that the .app file works
-
-### 2. Table Data Extraction and Formatting 
-- Verifies that the .app file works, with a table and a CSV file as the object source
-- Widgets tested: widget/osrce, widget/table, widget/repeat, widget/label, widget/table-column 
-- Verifies that the headers and rows can be clearly read
-
-#### Note
-- All interaction and closing tests are dependent on the successful completion of the Initialization Test.
-- This is part 2 of CMPDECL Test 
-
-----------
-
-## Tab Test
-### Properties Tested
-- **style**: `border_color`, `border_radius`, `border_style`, `shadow_angle`, `shadow_color`, `shadow_offset`, `shadow_radius`, `background`, `inactive_background`
-- `tab_location`: top, bottom, left, right
-- `selected_index`
-- `selected`
-
-### 1. Tab Click Behavior Test
-- Test if current tab changes on tab click
-
-#### Note
-- `selected_index` displays both the first tab and indexth tab as selected
-- could not find any example of dynamic tab and was not able to get it work
-- tab page with `visible=0` property is still visible
-
-----------
-
-## Tab Test
-### Properties Tested
-- `widget_class`
-
-### No selenium test
-- Verified that template with button successfully appears on the app
-
-#### Note
-- Tried to create a hbox template containing buttons and the buttons were not clickable.
 
 ----------
 

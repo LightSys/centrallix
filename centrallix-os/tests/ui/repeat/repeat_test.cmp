@@ -4,24 +4,34 @@ component "widget/component-decl"
 {
   Open "widget/component-decl-action" { }
   Update "widget/component-decl-event" { }
+  UpdateLabel "widget/component-decl-action" { }
 
   title "widget/parameter" { type=string; default="Name param"; }
   icon "widget/parameter" { type=string; default=null;}
 
   open_cn "widget/connector" { event="Open"; target=mainwin; action="Open"; Cascade=1; }
+  lbl_cn "widget/connector" { event = "UpdateLabel"; target = cmp_lbl; action = SetValue; Value=runclient(:newLabel);}
   
   mainwin "widget/childwindow"
   {
-    width=640;height=480;
+    width=600;height=400;
     x=320;y=120;
     style="raised";
     bgcolor="#c0c0c0";
     icon=runserver(:this:icon);
     title=runserver(:this:title);
 
-    btn "widget/button"
+    cmp_lbl "widget/label"
     {
-      x=280;y=160;
+      x = 220; y = 30;
+      width=180;height=16;
+      font_size=24;
+      value = "component label";
+    }
+
+    cmp_btn "widget/button"
+    {
+      x=260;y=160;
       height=40; width=80;
       type="text";
       text="update";
