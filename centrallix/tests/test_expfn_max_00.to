@@ -1,0 +1,11 @@
+##NAME max() function
+
+query select max(:f_integer) from /tests/Datatypes.csv/rows 
+
+query select max(:f_money) from /tests/Datatypes.csv/rows 
+
+query select max(:f_datetime) from /tests/Datatypes.csv/rows 
+
+query select max(:f_double) from /tests/Datatypes.csv/rows 
+
+

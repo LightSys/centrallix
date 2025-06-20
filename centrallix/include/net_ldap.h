@@ -74,8 +74,8 @@ typedef struct
     {
     pFile	ConnFD;
     int		Port;
-    char	Username[32];
-    char	Password[32];
+    char	Username[CX_USERNAME_SIZE];
+    char	Password[CX_PASSWORD_SIZE];
     char	IPAddr[20];
     pFile	ReportingFD;
     int		SSLpid;

@@ -61,6 +61,10 @@ function pa_setvalue(v)
 	{
 	if (v === null)
 	    this.value = v;
+	else if (v === true)
+	    this.value = 1;
+	else if (v === false)
+	    this.value = 0;
 	else
 	    this.value = parseInt(v);
 	}

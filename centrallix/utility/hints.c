@@ -426,6 +426,7 @@ objInfToHints(pStructInf inf, int data_type)
 	while(stAttrValue(stLookup(inf,"style"),NULL,&ptr,cnt) >= 0)
 	    {
 	    hnt_internal_SetStyleItem(ph, ptr);
+	    cnt++;
 	    }
 
 	/** Check for group ID and Name **/
@@ -526,39 +527,42 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 		}
 	    else
 		{
-		if (EXPR(ph->DefaultExpr)->DataType != ptod->DataType && ptod->DataType != DATA_T_UNAVAILABLE)
+		if (EXPR(ph->DefaultExpr)->Flags & EXPR_F_NULL)
 		    {
+		    /** Null **/
+		    ptod->Flags |= DATA_TF_NULL;
+		    if (ptod->DataType == DATA_T_UNAVAILABLE)
+			ptod->DataType = EXPR(ph->DefaultExpr)->DataType;
+		    }
+		else if (EXPR(ph->DefaultExpr)->DataType != ptod->DataType && ptod->DataType != DATA_T_UNAVAILABLE)
+		    {
+		    /** Type mismatch **/
 		    rval = -1;
 		    *msg = "ERR: type mismatch on default value expression";
 		    }
 		else
 		    {
+		    /** Valid value **/
 		    ptod->DataType = EXPR(ph->DefaultExpr)->DataType;
 		    ptod->Flags &= ~DATA_TF_NULL;
-		    if (EXPR(ph->DefaultExpr)->Flags & EXPR_F_NULL) 
+
+		    /** Copy expr data to ptod **/
+		    switch(ptod->DataType)
 			{
-			ptod->Flags |= DATA_TF_NULL;
-			}
-		    else
-			{
-			/** Copy expr data to ptod **/
-			switch(ptod->DataType)
-			    {
-			    case DATA_T_INTEGER:
-				ptod->Data.Integer = EXPR(ph->DefaultExpr)->Integer;
-				break;
-			    case DATA_T_DOUBLE:
-				ptod->Data.Double = EXPR(ph->DefaultExpr)->Types.Double;
-				break;
-			    case DATA_T_STRING:
-				/** FIXME: dangerous to set string ptr directly like this **/
-				ptod->Data.String = nmSysStrdup(EXPR(ph->DefaultExpr)->String);
-				break;
-			    default:
-				rval = -1;
-				*msg = "ERR: unsupported type for default value";
-				break;
-			    }
+			case DATA_T_INTEGER:
+			    ptod->Data.Integer = EXPR(ph->DefaultExpr)->Integer;
+			    break;
+			case DATA_T_DOUBLE:
+			    ptod->Data.Double = EXPR(ph->DefaultExpr)->Types.Double;
+			    break;
+			case DATA_T_STRING:
+			    /** FIXME: dangerous to set string ptr directly like this **/
+			    ptod->Data.String = nmSysStrdup(EXPR(ph->DefaultExpr)->String);
+			    break;
+			default:
+			    rval = -1;
+			    *msg = "ERR: unsupported type for default value";
+			    break;
 			}
 		    }
 		}
@@ -695,20 +699,23 @@ hntVerifyHints(pObjPresentationHints ph, pTObjData ptod, char** msg, pParamObjec
 	    rval = -1;
 	    *msg = "ERR: badchars/allowchars set but type is not a string";
 	    }
-	if (ph->BadChars)
+	else
 	    {
-	    if (!(ptod->Flags & DATA_TF_NULL) && strpbrk(ptod->Data.String, ph->BadChars))
+	    if (ph->BadChars)
 		{
-		rval = -1;
-		*msg = "String value contains an excluded character";
+		if (!(ptod->Flags & DATA_TF_NULL) && strpbrk(ptod->Data.String, ph->BadChars))
+		    {
+		    rval = -1;
+		    *msg = "String value contains an excluded character";
+		    }
 		}
-	    }
-	if (ph->AllowChars)
-	    {
-	    if (!(ptod->Flags & DATA_TF_NULL) && strspn(ptod->Data.String, ph->AllowChars) < strlen(ptod->Data.String))
+	    if (ph->AllowChars)
 		{
-		rval = -1;
-		*msg = "String value contains a non-allowed character";
+		if (!(ptod->Flags & DATA_TF_NULL) && strspn(ptod->Data.String, ph->AllowChars) < strlen(ptod->Data.String))
+		    {
+		    rval = -1;
+		    *msg = "String value contains a non-allowed character";
+		    }
 		}
 	    }
 

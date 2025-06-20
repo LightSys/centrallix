@@ -1,0 +1,18 @@
+##NAME square() function
+
+query select 'square(0)' = square(0)
+
+query select 'square(1)' = square(1)
+
+query select 'square(-1)' = square(-1)
+
+query select 'square(5)' = square(5)
+
+query select 'square(-5)' = square(-5)             
+
+query select 'square(2.2)' = square(2.2)          
+
+query select 'square(-2.2)' = square(-2.2)             
+
+
+

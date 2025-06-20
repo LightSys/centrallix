@@ -15,7 +15,7 @@ function vbl_actionsetvalue(aparam)
 	this.setvalue(aparam.Value);
     if (this.form)
 	this.form.DataNotify(this, true);
-    cn_activate(this,"DataModify", {});
+    cn_activate(this,"DataModify", {Value:this.value});
     }
 
 function vbl_getvalue()

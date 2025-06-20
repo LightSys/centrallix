@@ -1,0 +1,6 @@
+##NAME lower() function
+
+query select lower(:f_string) from /tests/Datatypes.csv/rows
+query select lower(:Color) from /tests/TestLevel1.csv/rows 
+query select lower(null)
+query select lower("\t")

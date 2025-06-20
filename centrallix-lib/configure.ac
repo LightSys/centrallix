@@ -33,7 +33,7 @@ AC_FUNC_MEMCMP
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS(select socket strdup strerror strtod strtol strtoul endservent)
 
-CXLIBVER="0.9.1.0"
+CXLIBVER="0.9.1.1"
 CXLIBVER_GEN="0.9.1"
 FINAL_TARGETS="libCentrallix.a libStParse.a"
 
@@ -56,6 +56,9 @@ CHECK_HARDENING
 dnl Check optimization
 CHECK_OPTIMIZE
 
+dnl Check if test coverage metering is desired
+CHECK_COVERAGE
+
 dnl Check for Valgrind integration
 CHECK_VALGRIND
 
@@ -66,6 +69,7 @@ dnl Build shared libCentrallix
 SHARED_LIBCENTRALLIX
 
 AC_SUBST(PROFILE)
+AC_SUBST(COVERAGE)
 AC_SUBST(FINAL_TARGETS)
 AC_SUBST(CXLIBVER)
 AC_SUBST(CXLIBVER_GEN)

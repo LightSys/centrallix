@@ -99,9 +99,22 @@ function tb_init(param)
     // Actions
     var ia = l.ifcProbeAdd(ifAction);
     ia.Add("SetText", tb_action_settext);
+    ia.Add("Click", tb_action_click);
+    ia.Add("Enable", tb_enable);
+    ia.Add("Disable", tb_disable);
 
     // Mobile Safari workaround
     $(l).find("span").on("click", function() {});
+    }
+
+function tb_enable()
+    {
+    this.enabled = true;
+    }
+
+function tb_disable()
+    {
+    this.enabled = false;
     }
 
 function tb_action_settext(aparam)
@@ -110,6 +123,15 @@ function tb_action_settext(aparam)
     //this.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.data = aparam.Text;
     //this.l2.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.data = aparam.Text;
     //this.l3.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.firstChild.data = aparam.Text;
+    }
+
+function tb_action_click(aparam)
+    {
+    if (this.enabled)
+	{
+	aparam.from_action = 1;
+	this.ifcProbe(ifEvent).Activate('Click', aparam);
+	}
     }
 
 // used by ifValue
@@ -311,7 +333,7 @@ function tb_mouseup(e)
 	    if (ly.mode == 2)
 		{
 		tb_setmode(ly,1);
-		ly.ifcProbe(ifEvent).Activate('Click', {});
+		ly.ifcProbe(ifEvent).Activate('Click', { from_action:0 });
 		ly.ifcProbe(ifEvent).Activate('MouseUp', {});
 		}
             }

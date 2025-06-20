@@ -13,36 +13,20 @@
 <p class="widgettype">form element: <span class="widgettypevalue">yes</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 		  <p>A dropdown form element widget that allows one of several options to be selected in a visual manner.  The options are filled in using one of the child widgets, or via an SQL query to a database defined below.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 		  <p>This widget can be placed within any visual widget (or within a form widget).  It may only contain 'dropdownitem' child objects, although it may of course also contain connectors as needed.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
 <th class="name">Property</th>
 <th class="type">Type</th>
 <th class="description">Description</th>
-</tr>
-<tr>
-<td class="name">x</td>
-<td class="type">integer</td>
-<td class="description">x-coordinate of the upper left corner of the editbox, default is 0.</td>
-</tr>
-<tr>
-<td class="name">y</td>
-<td class="type">integer</td>
-<td class="description">y-coordinate of the upper left corner of the editbox, default is 0.</td>
-</tr>
-<tr>
-<td class="name">width</td>
-<td class="type">integer</td>
-<td class="description">width, in pixels, of the editbox.</td>
-</tr>
-<tr>
-<td class="name">highlight</td>
-<td class="type">integer</td>
-<td class="description">The color of the highlighted option when the mouse goes over the item.</td>
 </tr>
 <tr>
 <td class="name">bgcolor</td>
@@ -52,7 +36,27 @@
 <tr>
 <td class="name">fieldname</td>
 <td class="type">string</td>
-<td class="description">Fieldname (from the dataset) to bind this element to</td>
+<td class="description">Fieldname (from the dataset) to bind this element to.</td>
+</tr>
+<tr>
+<td class="name">form</td>
+<td class="type">string</td>
+<td class="description">Represents the widget form (groups many widgets into one widget).</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">Height, in pixels, of the dropdown.</td>
+</tr>
+<tr>
+<td class="name">hilight</td>
+<td class="type">integer</td>
+<td class="description">The color of the highlighted option when the mouse goes over the item.</td>
+</tr>
+<tr>
+<td class="name">invalid_select_default</td>
+<td class="type">integer</td>
+<td class="description">The default widget that has focus when the dropdown is first activated.</td>
 </tr>
 <tr>
 <td class="name">mode</td>
@@ -60,14 +64,44 @@
 <td class="description">If this is set to objectsource then the dropdown acts an objectsource client.</td>
 </tr>
 <tr>
-<td class="name">sql</td>
+<td class="name">num_disp</td>
+<td class="type">integer</td>
+<td class="description">Number of widgets displayed at once in the dropdown box.</td>
+</tr>
+<tr>
+<td class="name">objectsource</td>
 <td class="type">string</td>
-<td class="description">The SQL used to retrieve the list of items for the dropdown.  It should have between two and five columns, in this order:  label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).</td>
+<td class="description">Represents the widget object source (transfers data to and from server).</td>
+</tr>
+<tr>
+<td class="name">popup_width</td>
+<td class="type">integer</td>
+<td class="description">Width of popup dropdown list.</td>
 </tr>
 <tr>
 <td class="name">query_multiselect</td>
 <td class="type">yes/no</td>
 <td class="description">If set to yes, this indicates that when the dropdown's form is in search (QBF) mode, the dropdown will allow multiple items to be selected, so the user can search for records/objects that match one of several values.  The values will be listed in the dropdown, separated by commas.</td>
+</tr>
+<tr>
+<td class="name">sql</td>
+<td class="type">string</td>
+<td class="description">The SQL used to retrieve the list of items for the dropdown.  It should have between two and five columns, in this order:  label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">Width, in pixels, of the dropdown.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">X-coordinate of the upper left corner of the dropdown, default is 0.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">Y-coordinate of the upper left corner of the dropdown, default is 0.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -96,12 +130,20 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">SetItems</td>
-<td class="description">This specifies a SQL (use "SQL" parameter) query to use to re-load the contents of the dropdown.  It should have between two and five columns, in this order: label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).</td>
+<td class="name">ClearItems</td>
+<td class="description">Deletes all the widgets in the dropdown menu.</td>
 </tr>
 <tr>
 <td class="name">SetGroup</td>
 <td class="description">This causes the dropdown to display a different Group of items (use the Group parameter).  It can also restrict what items are displayed based on a minimum or maximum value (use Min and Max parameters).</td>
+</tr>
+<tr>
+<td class="name">SetItems</td>
+<td class="description">This specifies a SQL (use "SQL" parameter) query to use to re-load the contents of the dropdown.  It should have between two and five columns, in this order: label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).</td>
+</tr>
+<tr>
+<td class="name">SetValue</td>
+<td class="description">Changes the child property "value".</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
@@ -111,75 +153,119 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">MouseUp</td>
-<td class="description">This event occurs when the user releases the mouse button on the widget.</td>
-</tr>
-<tr>
-<td class="name">MouseDown</td>
-<td class="description">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
-</tr>
-<tr>
-<td class="name">MouseOver</td>
-<td class="description">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</td>
-</tr>
-<tr>
-<td class="name">MouseOut</td>
-<td class="description">This event occurs when the user moves the mouse pointer off of the widget.</td>
-</tr>
-<tr>
-<td class="name">MouseMove</td>
-<td class="description">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</td>
-</tr>
-<tr>
 <td class="name">DataChange</td>
 <td class="description">This event occurs when the user has modified the data value of the widget (clicked or unclicked it).</td>
+</tr>
+<tr>
+<td class="name">DataModify</td>
+<td class="description">This event occurs when the data is changed (occurs when key press or button changes things).</td>
+</tr>
+<tr>
+<td class="name">GetFocus</td>
+<td class="description">This event occurs when the edit bar receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</td>
 </tr>
 <tr>
 <td class="name">LoseFocus</td>
 <td class="description">This event occurs when the edit bar of the dropdown loses keyboard focus (if the user tabs off of it, for instance).</td>
 </tr>
 <tr>
-<td class="name">GetFocus</td>
-<td class="description">This event occurs when the edit bar receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</td>
+<td class="name">MouseDown</td>
+<td class="description">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
+</tr>
+<tr>
+<td class="name">MouseMove</td>
+<td class="description">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</td>
+</tr>
+<tr>
+<td class="name">MouseOut</td>
+<td class="description">This event occurs when the user moves the mouse pointer off of the widget.</td>
+</tr>
+<tr>
+<td class="name">MouseOver</td>
+<td class="description">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</td>
+</tr>
+<tr>
+<td class="name">MouseUp</td>
+<td class="description">This event occurs when the user releases the mouse button on the widget.</td>
+</tr>
+<tr>
+<td class="name">RightClick</td>
+<td class="description">This event occurs when right click is used on the mouse.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 		
+
 $Version=2$
+
 // Example using child widgets for options
+
 myDropDown1 "widget/dropdown"
+
 	{
+
 	x=10;
+
 	y=10;
+
 	width=120;
+
 	bgcolor="#dcdcdc";
+
 	highlight="#c0c0c0";
+
 	fieldname="gender";
+
 	myDropDownChild1 "widget/dropdownitem"
+
 		{
+
 		label="Male";
+
 		value="0";
+
 		}
+
 	myDropDownChild2 "widget/dropdownitem"
+
 		{
+
 		label="Female";
+
 		value="1";
+
 		}
+
 	}
+
 $Version=2$
+
 //  Example getting options from datasource using a query
+
 myDropDown2 "widget/dropdown"
+
 	{
+
 	x=10;
+
 	y=10;
+
 	width=120;
+
 	bgcolor="#dcdcdc";
+
 	highlight="#c0c0c0";
+
 	fieldname="gender";
+
 	sql="SELECT :gender_label, :gender_value FROM /my_DB/infotable/rows";
+
 	}
+
 		
+
 		</pre>
 </body>
 </html>

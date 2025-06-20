@@ -152,8 +152,8 @@ typedef struct
 /*** This is used to keep track of user/password/cookie information ***/
 typedef struct
     {
-    char	Username[32];
-    char	Password[32];
+    char	Username[CX_USERNAME_SIZE];
+    char	Password[CX_PASSWORD_SIZE];
     char	Cookie[64];
     char	SKey[64];
     long long	S_ID;		/* incrementing session id counter */
@@ -182,6 +182,7 @@ typedef struct
     char	LastIPAddr[20];
     XArray	OsmlQueryList;	/* array of pNhtQuery */
     XArray	AppGroups;	/* array of pNhtAppGroup */
+    int		Closed;		/* Set to 1 if session no longer available */
     }
     NhtSessionData, *pNhtSessionData;
 
@@ -202,6 +203,7 @@ typedef struct
     /*handle_t	InactivityTimer;*/
     pNhtSessionData Session;
     XArray	Apps;		/* array of pNhtApp */
+    int		LinkCnt;
     }
     NhtAppGroup, *pNhtAppGroup;
 
@@ -240,6 +242,7 @@ typedef struct
     XArray	Endorsements;
     XArray	Contexts;
     pApplication Application;
+    int		LinkCnt;
     }
     NhtApp, *pNhtApp;
 
@@ -280,7 +283,9 @@ typedef struct
     {
     pFile	ConnFD;
     pStruct	ReqURL;
-    pNhtSessionData NhtSession;
+    pNhtSessionData	NhtSession;
+    pNhtAppGroup	AppGroup;
+    pNhtApp		App;
     int		InBody;
     int		BytesWritten;
     int		ResultCode;
@@ -294,11 +299,12 @@ typedef struct
     char	Method[16];
     char	HTTPVer[16];
     char	Cookie[160];
-    char	Auth[160];
+    char	AllCookies[640];
+    char	Auth[CX_USERNAME_SIZE + 1 + CX_PASSWORD_SIZE + 3];
     char	Destination[256];
     char	IfModifiedSince[64];
-    char	Username[32];
-    char	Password[32];
+    char	Username[CX_USERNAME_SIZE];
+    char	Password[CX_PASSWORD_SIZE];
     char	IPAddr[20];
     int		Size;
     int		NotActivity;
@@ -361,6 +367,10 @@ typedef struct
     pSemaphore	CollectedConns;
     pSemaphore	CollectedTLSConns;
     pCxssKeystreamState NonceData;
+    unsigned char   LoginKey[32];	/* 256-bit hash secret for Basic auth logins */
+    int		AuthMethods;		/* allowed authentication methods */
+    char	LinkSignKey[256];
+    XArray	LinkSignSites;
     }
     NHT_t;
 
@@ -369,6 +379,11 @@ extern NHT_t NHT;
 #define NHT_XFO_T_NONE		0
 #define NHT_XFO_T_DENY		1
 #define NHT_XFO_T_SAMEORIGIN	2
+
+#define NHT_AUTH_HTTP		1	/* HTTP Basic auth */
+#define NHT_AUTH_HTTPSTRICT	2	/* HTTP Basic auth with strict logout management */
+#define NHT_AUTH_HTTPBEARER	4	/* HTTP Bearer token auth (future) */
+#define NHT_AUTH_WEBFORM	8	/* Web form based auth (future) */
 
 typedef struct
     {
@@ -384,13 +399,18 @@ pNhtSessionData nht_i_AllocSession(char* usrname, int using_tls);
 handle_t nht_i_AddWatchdog(int timer_msec, int (*expire_fn)(), void* expire_arg);
 int nht_i_RemoveWatchdog(handle_t th);
 void nht_i_Watchdog(void* v);
+int nht_i_WatchdogTime(handle_t th);
+int nht_i_UnlinkSess(pNhtSessionData sess);
+int nht_i_LogoutUser(char* username);
 
 int nht_i_VerifyAKey(char* client_key, pNhtSessionData sess, pNhtAppGroup *group, pNhtApp *app);
 
 pNhtApp nht_i_AllocApp(char* path, pNhtAppGroup g);
-int nht_i_FreeApp(pNhtApp app);
+pNhtApp nht_i_LinkApp(pNhtApp app);
+int nht_i_UnlinkApp(pNhtApp app);
 pNhtAppGroup nht_i_AllocAppGroup(char* path, pNhtSessionData s);
-int nht_i_FreeAppGroup(pNhtAppGroup group);
+pNhtAppGroup nht_i_LinkAppGroup(pNhtAppGroup group);
+int nht_i_UnlinkAppGroup(pNhtAppGroup group);
 
 void nht_i_TLSHandler(void* v);
 void nht_i_Handler(void* v);

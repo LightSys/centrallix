@@ -1,6 +1,7 @@
 #include "net_http.h"
 #include "cxss/cxss.h"
 #include "cxlib/memstr.h"
+#include "cxlib/strtcpy.h"
 #include "json/json.h"
 
 /************************************************************************/
@@ -562,8 +563,9 @@ int
 nht_i_AddHeader(pXArray hdrlist, char* hdrname, char* hdrvalue, int hdralloc)
     {
     pHttpHeader hdr;
-    int i;
+    //int i;
 
+#if 00
 	/** Already present? **/
 	for(i=0;i<hdrlist->nItems;i++)
 	    {
@@ -587,6 +589,7 @@ nht_i_AddHeader(pXArray hdrlist, char* hdrname, char* hdrvalue, int hdralloc)
 		return 0;
 		}
 	    }
+#endif
 
 	/** Don't add a NULL header **/
 	if (!hdrvalue) return 0;
@@ -814,9 +817,20 @@ nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
 	conn->ResponseCode = code;
 	strtcpy(conn->ResponseText, text, sizeof(conn->ResponseText));
 
+	/** Find the X-Nonce header and put it first **/
+	hdr = NULL;
+	for(i=0;i<conn->ResponseHeaders.nItems;i++)
+	    {
+	    hdr = (pHttpHeader)conn->ResponseHeaders.Items[i];
+	    if (!strcmp(hdr->Name, "X-Nonce"))
+		break;
+	    hdr = NULL;
+	    }
+
 	/** Send the main headers **/
 	wcnt = nht_i_QPrintfConn(conn, 1,
 		"HTTP/1.0 %INT %STR\r\n"
+		"%[%STR: %STR\r\n%]"
 		"Server: %STR\r\n"
 		"Date: %STR\r\n"
 		"%[Set-Cookie: %STR; path=/; HttpOnly%]%[; Secure%]%[; SameSite=strict%]%[\r\n%]"
@@ -828,6 +842,7 @@ nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
 		"Connection: %STR\r\n",
 		code,
 		text,
+		hdr != NULL, hdr?(hdr->Name):"", hdr?(hdr->Value):"",
 		NHT.ServerString,
 		tbuf,
 		(conn->NhtSession && conn->NhtSession->IsNewCookie && conn->NhtSession->Cookie),
@@ -847,8 +862,16 @@ nht_i_WriteResponse(pNhtConn conn, int code, char* text, char* resptxt)
 	for(i=0;i<conn->ResponseHeaders.nItems;i++)
 	    {
 	    hdr = (pHttpHeader)conn->ResponseHeaders.Items[i];
+
+	    /** Invalid header? **/
 	    if (strpbrk(hdr->Name, ": \r\n\t") || strpbrk(hdr->Value, "\r\n"))
 		continue;
+
+	    /** Nonce already emitted **/
+	    if (!strcmp(hdr->Name, "X-Nonce"))
+		continue;
+
+	    /** Send it **/
 	    rval = nht_i_QPrintfConn(conn, 1, "%STR: %STR\r\n", hdr->Name, hdr->Value);
 	    if (rval < 0) return rval;
 	    wcnt += rval;
@@ -1173,6 +1196,42 @@ nht_i_Hex16ToInt(char* hex)
     }
 
 
+/*** nht_i_Logout - log the current session out.
+ ***/
+int
+nht_i_Logout(pNhtConn conn, pNhtAppGroup group, pNhtApp app, int do_all)
+    {
+    pNhtSessionData nsess = conn->NhtSession;
+    int do_logout = (app != NULL);
+
+	/** Send the answer to the user **/
+	conn->NoCache = 1;
+	strtcpy(conn->ResponseContentType, "application/json", sizeof(conn->ResponseContentType));
+	nht_i_WriteResponse(conn, 200, "OK", NULL);
+	nht_i_QPrintfConn(conn, 0,
+		"{\"logout\":%STR, \"all\":%STR}\r\n",
+		do_logout?"true":"false",
+		do_all?"true":"false"
+		);
+
+	/** Do the logout by unlinking the session **/
+	if (do_logout)
+	    {
+	    if (do_all)
+		{
+		nht_i_LogoutUser(nsess->User->Username);
+		}
+	    else
+		{
+		nsess->Closed = 1;
+		nht_i_UnlinkSess(nsess);
+		}
+	    }
+
+    return 0;
+    }
+
+
 /*** nht_i_ParsePostPayload - parses the payload of a post request.
  *** The request includes one or more files.  This function needs to be
  *** called once for each file recieved and -not- per request.  Payload
@@ -1342,8 +1401,8 @@ nht_i_ParsePostPayload(pNhtConn conn)
      ** a subtype of application/octet-stream (this basically makes sure we know
      ** about the file type).
      **/
-    rval = objIsA(payload->mime_type, "application/octet-stream");
-    if (rval == OBJSYS_NOT_ISA)
+    rval = objIsRelatedType(payload->mime_type, "application/octet-stream");
+    if (rval == OBJSYS_NOT_RELATED)
 	{
 	mssError(1,"NHT","Disallowed file MIME type for upload POST request");
 	payload->status = -1;
@@ -1390,7 +1449,7 @@ nht_i_ParsePostPayload(pNhtConn conn)
 	    apparent_type = ct->Name;
 	else
 	    apparent_type = "application/octet-stream";
-	if (objIsA(apparent_type, payload->mime_type) == OBJSYS_NOT_ISA)
+	if (objIsRelatedType(apparent_type, payload->mime_type) == OBJSYS_NOT_RELATED)
 	    {
 	    mssError(1,"NHT","Unknown or mismatched file type and file extension for POST upload request");
 	    payload->status = -1;
@@ -1578,10 +1637,10 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
     {
     pNhtSessionData nsess = conn->NhtSession;
     pStruct find_inf;
-    pFile file;
+    pFile file = NULL;
     pObject obj;
     pNhtPostPayload payload;
-    XString json;
+    pXString json = NULL;
     char buffer[2048];
     int length, wcnt, bytes_written;
     pNhtApp app = NULL;
@@ -1596,15 +1655,22 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	if (!find_inf || nht_i_VerifyAKey(find_inf->StrVal, nsess, &group, &app) != 0 || !group || !app)
 	    {
 	    nht_i_WriteErrResponse(conn, 403, "Forbidden", NULL);
-	    return -1;
+	    goto error;
 	    }
+	if (group && !conn->AppGroup)
+	    conn->AppGroup = nht_i_LinkAppGroup(group);
+	if (app && !conn->App)
+	    conn->App = nht_i_LinkApp(app);
 
 	/** REST-type request vs. standard file upload POST? **/
 	find_inf = stLookup_ne(url_inf,"cx__mode");
 	if (find_inf && !strcmp(find_inf->StrVal, "rest"))
 	    {
 	    conn->StrictSameSite = 0;
-	    return nht_i_RestPost(conn, url_inf, size, content);
+	    if (nht_i_RestPost(conn, url_inf, size, content) < 0)
+		goto error;
+	    else
+		return 0;
 	    }
 	   
 	/** Standard file upload POST request **/
@@ -1613,7 +1679,7 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	if(!find_inf)
 	    {
 	    nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
-	    return -1;
+	    goto error;
 	    }
 
 	/** Validate the target location **/
@@ -1629,11 +1695,11 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	if (!allowed)
 	    {
 	    nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
-	    return -1;
+	    goto error;
 	    }
 	
 	/** Keep parsing files until stream is empty. **/
-	xsInit(&json);
+	json = xsNew();
 	while(1)
 	    {
 	    payload = nht_i_ParsePostPayload(conn);
@@ -1646,17 +1712,16 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 		    {
 		    mssErrorErrno(1, "NHT", "POST request: could not open file %s", payload->full_new_path);
 		    nht_i_WriteErrResponse(conn, 500, "Internal Server Error", NULL);
-		    return -1;
+		    goto error;
 		    }
 		snprintf(buffer, sizeof buffer, "%s/%s", find_inf->StrVal, payload->newname);
-		xsConcatQPrintf(&json, ",{\"fn\":\"%STR&JSONSTR\",\"up\":\"%STR&JSONSTR\"}", payload->filename, buffer);
+		xsConcatQPrintf(json, ",{\"fn\":\"%STR&JSONSTR\",\"up\":\"%STR&JSONSTR\"}", payload->filename, buffer);
 		obj = objOpen(nsess->ObjSess, buffer, O_CREAT | O_RDWR | O_EXCL, 0660, "application/file");
 		if (!obj)
 		    {
 		    mssError(0, "NHT", "POST request: could not create object %s", buffer);
-		    fdClose(file, 0);
 		    nht_i_WriteErrResponse(conn, 403, "Forbidden", NULL);
-		    return -1;
+		    goto error;
 		    }
 		while(1)
 		    {
@@ -1674,6 +1739,7 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 		    }
 		objClose(obj);
 		fdClose(file, 0);
+		file = NULL;
 		unlink(payload->full_new_path);
 		n_uploaded_files++;
 		}
@@ -1682,20 +1748,30 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 		break;
 		}
 	    }
-	xsRTrim(&json);
+	xsRTrim(json);
 
 	/** Error if POST with no files **/
 	if (n_uploaded_files == 0)
 	    {
 	    nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
-	    return -1;
+	    goto error;
 	    }
 
 	/** Send out the response **/
 	nht_i_WriteResponse(conn, 202, "Accepted", NULL);
-	nht_i_QPrintfConn(conn, 0, "[%STR]", json.String+1);
+	nht_i_QPrintfConn(conn, 0, "[%STR]", json->String+1);
 
-    return 0;
+	/** Clean up **/
+	xsFree(json);
+
+	return 0;
+
+    error:
+	if (json)
+	    xsFree(json);
+	if (file)
+	    fdClose(file, 0);
+	return -1;
     }
 
 
@@ -1787,12 +1863,28 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    {
 		    cxssAddEndorsement("system:from_application", "*");
 		    akey_match = 1;
+		    if (!conn->App)
+			conn->App = nht_i_LinkApp(app);
+		    if (!conn->AppGroup)
+			conn->AppGroup = nht_i_LinkAppGroup(group);
 		    }
 		if (group)
 		    {
 		    cxssAddEndorsement("system:from_appgroup", "*");
+		    if (!conn->AppGroup)
+			conn->AppGroup = nht_i_LinkAppGroup(group);
 		    }
 		}
+	    }
+
+	/** Logout? **/
+	if (!strncmp(url_inf->StrVal, "/INTERNAL/logoutall", 19))
+	    {
+	    return nht_i_Logout(conn, group, app, 1);
+	    }
+	if (!strncmp(url_inf->StrVal, "/INTERNAL/logout", 16))
+	    {
+	    return nht_i_Logout(conn, group, app, 0);
 	    }
 
 	/** Indicate activity... **/
@@ -2107,9 +2199,9 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		if (!strcmp(ptr, "widget/page"))
 		    {
 		    if (!group)
-			group = nht_i_AllocAppGroup(url_inf->StrVal, nsess);
+			conn->AppGroup = group = nht_i_AllocAppGroup(url_inf->StrVal, nsess);
 		    if (group && !app)
-			app = nht_i_AllocApp(url_inf->StrVal, group);
+			conn->App = app = nht_i_AllocApp(url_inf->StrVal, group);
 		    }
 
 		/** Build the akey - CSRF prevention **/
@@ -2195,7 +2287,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 
 #ifdef HAVE_LIBZ
 		if(	NHT.EnableGzip && /* global enable flag */
-			objIsA(ptr,"text/plain")>0 /* a subtype of text/plain */
+			objIsRelatedType(ptr,"text/plain")>0 /* a subtype of text/plain */
 			&& acceptencoding && strstr(acceptencoding,"gzip") /* browser wants it gzipped */
 			&& (!strcmp(ptr,"text/html") || (browser && regexec(NHT.reNet47,browser,(size_t)0,NULL,0) != 0 ) )
 			/* only gzip text/html for Netscape 4.7, which doesn't like it if we gzip .js files */
@@ -2251,7 +2343,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 
 	    /** Try to join an existing app group, if specified **/
 	    if (!group)
-		group = nht_i_AllocAppGroup(kname, nsess);
+		conn->AppGroup = group = nht_i_AllocAppGroup(kname, nsess);
 	    if (group)
 		{
 		find_inf = stLookup_ne(url_inf, "cx__appname");
@@ -2261,7 +2353,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    kname = find_inf->StrVal;
 
 		/** Set up a new active app **/
-		app = nht_i_AllocApp(kname, group);
+		conn->App = app = nht_i_AllocApp(kname, group);
 		if (app)
 		    {
 		    /** We want to give the api client information about our
@@ -2300,9 +2392,9 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    if (stAttrValue_ne(stLookup_ne(url_inf,"ls__orderdesc"),&ptr) >= 0 && !strcmp(ptr,"1"))
 		order_desc = 1;
 	    if (order_desc)
-		query = objOpenQuery(target_obj,"",":name desc",NULL,NULL);
+		query = objOpenQuery(target_obj,"",":name desc",NULL,NULL,0);
 	    else
-		query = objOpenQuery(target_obj,"",NULL,NULL,NULL);
+		query = objOpenQuery(target_obj,"",NULL,NULL,NULL,0);
 	    if (query)
 	        {
 		nht_i_WriteResponse(conn, 200, "OK", NULL);
@@ -2371,6 +2463,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			if (rowid == rowlimit) break;
 			}
 		    objQueryClose(query);
+		    nht_i_WriteConn(conn, "", 0, 0);
 		    }
 		}
 
@@ -2400,6 +2493,13 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		}
 
 	    find_inf = stLookup_ne(url_inf,"ls__req");
+	    if (!find_inf)
+		{
+		mssError(1, "NHT", "Invalid OSML-over-HTTP request: missing OSML request type");
+		cxDebugLog("NHT: %s: Missing ls__req from OSML request", conn->IPAddr);
+		nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
+		return -1;
+		}
 	    nht_i_OSML(conn,target_obj, find_inf->StrVal, url_inf, app);
 	    }
 
@@ -2453,6 +2553,10 @@ nht_i_DELETE(pNhtConn conn, pStruct url_inf)
 	    code = 401;
 	    goto error;
 	    }
+	if (group && !conn->AppGroup)
+	    conn->AppGroup = nht_i_LinkAppGroup(group);
+	if (app && !conn->App)
+	    conn->App = nht_i_LinkApp(app);
 
 	/** Open the target object **/
 	target_obj = objOpen(conn->NhtSession->ObjSess, url_inf->StrVal, OBJ_O_RDWR, 0600, "application/octet-stream");
@@ -2528,6 +2632,10 @@ nht_i_PATCH(pNhtConn conn, pStruct url_inf, char* content)
 	    code = 401;
 	    goto error;
 	    }
+	if (group && !conn->AppGroup)
+	    conn->AppGroup = nht_i_LinkAppGroup(group);
+	if (app && !conn->App)
+	    conn->App = nht_i_LinkApp(app);
 
 	/** Open the target object **/
 	target_obj = objOpen(conn->NhtSession->ObjSess, url_inf->StrVal, OBJ_O_RDWR, 0600, "application/octet-stream");
@@ -2658,6 +2766,10 @@ nht_i_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
 	    nht_i_WriteErrResponse(conn, 403, "Forbidden", NULL);
 	    return -1;
 	    }
+	if (group && !conn->AppGroup)
+	    conn->AppGroup = nht_i_LinkAppGroup(group);
+	if (app && !conn->App)
+	    conn->App = nht_i_LinkApp(app);
 
     	/** See if the object already exists. **/
 	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_RDONLY, 0600, "text/html");
@@ -2848,9 +2960,8 @@ nht_i_COPY(pNhtConn conn, pStruct url_inf, char* dest)
  *** headers into the NhtConn structure
  ***/
 int
-nht_i_ParseHeaders(pNhtConn conn)
+nht_i_ParseHeaders(pNhtConn conn, char** errmsg)
     {
-    char* msg;
     pLxSession s = NULL;
     int toktype;
     char hdr[64];
@@ -2876,56 +2987,58 @@ nht_i_ParseHeaders(pNhtConn conn)
 	    }
 
 	/** Expecting request method **/
-	if (toktype != MLX_TOK_KEYWORD) { msg="Invalid method syntax"; goto error; }
+	if (toktype != MLX_TOK_KEYWORD) { *errmsg="Invalid method syntax"; goto error; }
 	mlxCopyToken(s,conn->Method,sizeof(conn->Method));
 	mlxSetOptions(s,MLX_F_IFSONLY);
 
 	/** Expecting request URL and version **/
-	if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Invalid url syntax"; goto error; }
+	if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Invalid url syntax"; goto error; }
 	did_alloc = 1;
 	conn->URL = mlxStringVal(s, &did_alloc);
-	if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected HTTP version after url"; goto error; }
+	if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected HTTP version after url"; goto error; }
 	mlxCopyToken(s,conn->HTTPVer,sizeof(conn->HTTPVer));
-	if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after version"; goto error; }
+	if (mlxNextToken(s) != MLX_TOK_EOL) { *errmsg="Expected EOL after version"; goto error; }
 	mlxUnsetOptions(s,MLX_F_IFSONLY);
 
 	/** Read in the various header parameters. **/
 	while((toktype = mlxNextToken(s)) != MLX_TOK_EOL)
 	    {
 	    if (toktype == MLX_TOK_EOF) break;
-	    if (toktype != MLX_TOK_KEYWORD) { msg="Expected HTTP header item"; goto error; }
+	    if (toktype != MLX_TOK_KEYWORD) { *errmsg="Expected HTTP header item"; goto error; }
 	    /*ptr = mlxStringVal(s,NULL);*/
 	    mlxCopyToken(s,hdr,sizeof(hdr));
-	    if (mlxNextToken(s) != MLX_TOK_COLON) { msg="Expected : after HTTP header"; goto error; }
+	    if (mlxNextToken(s) != MLX_TOK_COLON) { *errmsg="Expected : after HTTP header"; goto error; }
 
 	    /** Got a header item.  Pick an appropriate type. **/
 	    if (!strcmp(hdr,"destination"))
 	        {
 		/** Copy next IFS-only token to destination value **/
 		mlxSetOptions(s,MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected filename after dest."; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected filename after dest."; goto error; }
 		mlxCopyToken(s,conn->Destination,sizeof(conn->Destination));
 		mlxUnsetOptions(s,MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_EOF) { msg="Expected EOL after filename"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_EOF) { *errmsg="Expected EOL after filename"; goto error; }
 		}
 	    else if (!strcmp(hdr,"authorization"))
 	        {
 		/** Get 'Basic' then the auth string in base64 **/
 		mlxSetOptions(s,MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected auth type"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected auth type"; goto error; }
 		ptr = mlxStringVal(s,NULL);
-		if (strcasecmp(ptr,"basic")) { msg="Can only handle BASIC auth"; goto error; }
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected auth after Basic"; goto error; }
+		if (strcasecmp(ptr,"basic")) { *errmsg="Can only handle BASIC auth"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected auth after Basic"; goto error; }
 		qpfPrintf(NULL,conn->Auth,sizeof(conn->Auth),"%STR&DB64",mlxStringVal(s,NULL));
 		mlxUnsetOptions(s,MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after auth"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_EOL) { *errmsg="Expected EOL after auth"; goto error; }
 		}
 	    else if (!strcmp(hdr,"cookie"))
 	        {
 		/** Copy whole thing. **/
+		conn->AllCookies[0] = '\0';
 		mlxSetOptions(s,MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected str after Cookie:"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected str after Cookie:"; goto error; }
 		mlxCopyToken(s,conn->Cookie,sizeof(conn->Cookie));
+		strtcpy(conn->AllCookies + strlen(conn->AllCookies), conn->Cookie, sizeof(conn->AllCookies) - strlen(conn->AllCookies));
 		while((toktype = mlxNextToken(s)))
 		    {
 		    if (toktype == MLX_TOK_EOL || toktype == MLX_TOK_ERROR) break;
@@ -2933,10 +3046,16 @@ nht_i_ParseHeaders(pNhtConn conn)
 		    if (!conn->UsingTLS && toktype == MLX_TOK_STRING && (strncmp(conn->Cookie,NHT.SessionCookie,strlen(NHT.SessionCookie)) || conn->Cookie[strlen(NHT.SessionCookie)] != '='))
 			{
 			mlxCopyToken(s,conn->Cookie,sizeof(conn->Cookie));
+			strtcpy(conn->AllCookies + strlen(conn->AllCookies), conn->Cookie, sizeof(conn->AllCookies) - strlen(conn->AllCookies));
 			}
 		    else if (conn->UsingTLS && toktype == MLX_TOK_STRING && (strncmp(conn->Cookie,NHT.TlsSessionCookie,strlen(NHT.TlsSessionCookie)) || conn->Cookie[strlen(NHT.TlsSessionCookie)] != '='))
 			{
 			mlxCopyToken(s,conn->Cookie,sizeof(conn->Cookie));
+			strtcpy(conn->AllCookies + strlen(conn->AllCookies), conn->Cookie, sizeof(conn->AllCookies) - strlen(conn->AllCookies));
+			}
+		    else
+			{
+			mlxCopyToken(s, conn->AllCookies + strlen(conn->AllCookies), sizeof(conn->AllCookies) - strlen(conn->AllCookies));
 			}
 		    }
 		mlxUnsetOptions(s,MLX_F_IFSONLY);
@@ -2944,14 +3063,14 @@ nht_i_ParseHeaders(pNhtConn conn)
 	    else if (!strcmp(hdr,"content-length"))
 	        {
 		/** Get the integer. **/
-		if (mlxNextToken(s) != MLX_TOK_INTEGER) { msg="Expected content-length"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_INTEGER) { *errmsg="Expected content-length"; goto error; }
 		conn->Size = mlxIntVal(s);
-		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after length"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_EOL) { *errmsg="Expected EOL after length"; goto error; }
 		}
 	    else if (!strcmp(hdr,"referer"))
 		{
 		mlxSetOptions(s, MLX_F_LINEONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected str after Referer:"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected str after Referer:"; goto error; }
 		did_alloc = 1;
 		conn->Referrer = mlxStringVal(s, &did_alloc);
 		if (conn->Referrer[0] == ' ')
@@ -2959,13 +3078,13 @@ nht_i_ParseHeaders(pNhtConn conn)
 		if (strpbrk(conn->Referrer, "\r\n"))
 		    *(strpbrk(conn->Referrer, "\r\n")) = '\0';
 		mlxUnsetOptions(s,MLX_F_LINEONLY);
-		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after Referer: header"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_EOL) { *errmsg="Expected EOL after Referer: header"; goto error; }
 		}
 	    else if (!strcmp(hdr,"user-agent"))
 	        {
 		/** Copy whole User-Agent. **/
 		mlxSetOptions(s, MLX_F_LINEONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected str after User-Agent:"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected str after User-Agent:"; goto error; }
 		/** NOTE: This needs to be freed up at the end of the session.  Is that taken
 		          care of by mssEndSession?  I don't think it is, since xhClear is passed
 			  a NULL function for free_fn.  This will be a 160 byte memory leak for
@@ -2988,12 +3107,12 @@ nht_i_ParseHeaders(pNhtConn conn)
 		    }
 		mlxUnsetOptions(s,MLX_F_IFSONLY);*/
 		mlxUnsetOptions(s,MLX_F_LINEONLY);
-		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after User-Agent: header"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_EOL) { *errmsg="Expected EOL after User-Agent: header"; goto error; }
 		}
 	    else if (!strcmp(hdr,"content-type"))
 		{
 		mlxSetOptions(s, MLX_F_IFSONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected type after Content-Type:"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected type after Content-Type:"; goto error; }
 		mlxCopyToken(s, conn->RequestContentType, sizeof(conn->RequestContentType));
 		if ((ptr = strchr(conn->RequestContentType, ';')) != NULL) *ptr = '\0';
 		while(1)
@@ -3017,7 +3136,7 @@ nht_i_ParseHeaders(pNhtConn conn)
 	    else if (!strcmp(hdr,"accept-encoding"))
 	        {
 		mlxSetOptions(s,MLX_F_LINEONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected str after Accept-encoding:"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected str after Accept-encoding:"; goto error; }
 		mlxCopyToken(s, conn->AcceptEncoding, sizeof(conn->AcceptEncoding));
 		/*conn->AcceptEncoding = mlxStringVal(s, &did_alloc);
 		acceptencoding = (char*)nmMalloc(160);
@@ -3034,15 +3153,15 @@ nht_i_ParseHeaders(pNhtConn conn)
 		mlxUnsetOptions(s,MLX_F_IFSONLY);*/
 		/* printf("accept-encoding: %s\n",acceptencoding); */
 		mlxUnsetOptions(s,MLX_F_LINEONLY);
-		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after Accept-Encoding: header"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_EOL) { *errmsg="Expected EOL after Accept-Encoding: header"; goto error; }
 		}
 	    else if (!strcmp(hdr,"if-modified-since"))
 		{
 		mlxSetOptions(s,MLX_F_LINEONLY);
-		if (mlxNextToken(s) != MLX_TOK_STRING) { msg="Expected date after If-Modified-Since:"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_STRING) { *errmsg="Expected date after If-Modified-Since:"; goto error; }
 		mlxCopyToken(s, conn->IfModifiedSince, sizeof(conn->IfModifiedSince));
 		mlxUnsetOptions(s,MLX_F_LINEONLY);
-		if (mlxNextToken(s) != MLX_TOK_EOL) { msg="Expected EOL after If-Modified-Since: header"; goto error; }
+		if (mlxNextToken(s) != MLX_TOK_EOL) { *errmsg="Expected EOL after If-Modified-Since: header"; goto error; }
 		}
 	    else
 	        {
@@ -3125,9 +3244,25 @@ nhtInitialize()
     	/** Initialize the random number generator. **/
 	srand48(time(NULL));
 
+	memset(&NHT, 0, sizeof(NHT));
+
+	/** Set up header nonce **/
+	NHT.NonceData = cxssKeystreamNew(NULL, 0);
+	if (!NHT.NonceData)
+	    {
+	    if (NHT.AuthMethods & NHT_AUTH_HTTPSTRICT)
+		{
+		mssError(1, "NHT", "Could not initialize nonce/hash keystream in http-strict mode; exiting");
+		return -1;
+		}
+	    else
+		{
+		mssError(1, "NHT", "Warning: Could not initialize nonce/hash keystream; X-Nonce headers will not be emitted");
+		}
+	    }
+
 	/** Initialize globals **/
 	NHT.numbCachedApps = 0;
-	memset(&NHT, 0, sizeof(NHT));
 	xhInit(&(NHT.CookieSessions),255,0);
 	xhInit(&(NHT.SessionsByID),255,0);
 	xaInit(&(NHT.Sessions),256);
@@ -3149,6 +3284,8 @@ nhtInitialize()
 	xaInit(&NHT.AllowedUploadExts, 16);
 	NHT.CollectedConns = syCreateSem(0, 0);
 	NHT.CollectedTLSConns = syCreateSem(0, 0);
+	NHT.AuthMethods = NHT_AUTH_HTTPSTRICT;
+	xaInit(&NHT.LinkSignSites, 16);
 
 #ifdef _SC_CLK_TCK
         NHT.ClkTck = sysconf(_SC_CLK_TCK);
@@ -3162,10 +3299,8 @@ nhtInitialize()
 
 	nht_i_RegisterSessionInfo();
 
-	/** Set up header nonce **/
-	NHT.NonceData = cxssKeystreamNew(NULL, 0);
-	if (!NHT.NonceData)
-	    mssError(1, "NHT", "Warning: X-Nonce headers will not be emitted");
+	/** Set up secret for login cookie hash **/
+	cxssGenerateKey(NHT.LoginKey, 32);
 
 	/* intialize the regex for netscape 4.7 -- it has a broken gzip implimentation */
 	NHT.reNet47=(regex_t *)nmMalloc(sizeof(regex_t));
@@ -3199,6 +3334,30 @@ nhtInitialize()
 		snprintf(NHT.Realm, 80, "Centrallix");
 		}
 
+	    /** Auth methods **/
+	    for(i=0; i<4; i++)
+		{
+		if (stAttrValue(stLookup(my_config, "auth_methods"), NULL, &strval, i) >= 0)
+		    {
+		    if (i == 0)
+			NHT.AuthMethods = 0;
+		    if (!strcasecmp(strval, "http"))
+			NHT.AuthMethods |= NHT_AUTH_HTTP;
+		    else if (!strcasecmp(strval, "http-strict"))
+			NHT.AuthMethods |= NHT_AUTH_HTTPSTRICT;
+		    else if (!strcasecmp(strval, "http-bearer"))
+			NHT.AuthMethods |= NHT_AUTH_HTTPBEARER;
+		    else if (!strcasecmp(strval, "web-form"))
+			NHT.AuthMethods |= NHT_AUTH_WEBFORM;
+		    else
+			mssError(1, "NHT", "Warning: invalid auth method '%s'", strval);
+		    }
+		else
+		    {
+		    break;
+		    }
+		}
+
 	    /** Directory indexing? **/
 	    for(i=0;i<sizeof(NHT.DirIndex)/sizeof(char*);i++)
 		{
@@ -3226,10 +3385,31 @@ nhtInitialize()
 
 	    /** Get the timer settings **/
 	    stAttrValue(stLookup(my_config, "session_watchdog_timer"), &(NHT.WatchdogTime), NULL, 0);
+	    if (NHT.WatchdogTime <= 0 || NHT.WatchdogTime > 200000)
+		{
+		mssError(1, "NHT", "Warning: session_watchdog_timer (%d) must be > 0 and <= 200000, reverting to default (180).", NHT.WatchdogTime);
+		NHT.WatchdogTime = 180;
+		}
 	    stAttrValue(stLookup(my_config, "session_inactivity_timer"), &(NHT.InactivityTime), NULL, 0);
+	    if (NHT.InactivityTime <= NHT.WatchdogTime || NHT.InactivityTime > 200000)
+		{
+		i = (NHT.WatchdogTime >= 1800)?(NHT.WatchdogTime + 1):1800;
+		if (i > 200000)
+		    {
+		    i = 200000;
+		    NHT.WatchdogTime = 199999;
+		    }
+		mssError(1, "NHT", "Warning: session_inactivity_timer (%d) must be > watchdog (%d) and <= 200000, reverting to %d.", NHT.InactivityTime, NHT.WatchdogTime, i);
+		NHT.InactivityTime = i;
+		}
 
 	    /** Session limits **/
 	    stAttrValue(stLookup(my_config, "user_session_limit"), &(NHT.UserSessionLimit), NULL, 0);
+	    if (NHT.UserSessionLimit > 1000 || NHT.UserSessionLimit < 1)
+		{
+		mssError(1, "NHT", "Warning: user_session_limit (%d) must be > 0 and <= 1000, reverting to default (100).", NHT.UserSessionLimit);
+		NHT.UserSessionLimit = 100;
+		}
 
 	    /** Cookie name **/
 	    if (stAttrValue(stLookup(my_config, "session_cookie"), NULL, &strval, 0) < 0)
@@ -3261,6 +3441,9 @@ nhtInitialize()
 	    /** Allowed file upload extensions **/
 	    for(i=0; stAttrValue(stLookup(my_config, "upload_extensions"), NULL, &strval, i) >= 0; i++)
 		xaAddItem(&NHT.AllowedUploadExts, nmSysStrdup(strval));
+
+	    /** Link signing key **/
+	    cxLinkSigningSetup(my_config);
 	    }
 
 	/** Start the watchdog timer thread **/

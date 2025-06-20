@@ -65,7 +65,8 @@ objAddVirtualAttr(pObject this, char* attrname, void* context, int (*type_fn)(),
 	/** Must not already exist **/
 	if (!strcmp(attrname, "objcontent") || !strcmp(attrname,"name") || !strcmp(attrname,"cx__pathname") ||
 		!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type") ||
-		!strcmp(attrname,"outer_type") || !strcmp(attrname,"annotation") || !strncmp(attrname,"cx__pathpart",12))
+		!strcmp(attrname,"outer_type") || !strcmp(attrname,"annotation") || !strncmp(attrname,"cx__pathpart",12) || 
+		!strncmp(attrname,"content_charset",12))
 	    {
 	    mssError(1, "OSML", "Virtual Attribute '%s' already exists in object.", attrname);
 	    return -1;
@@ -126,7 +127,7 @@ objGetAttrType(pObject this, char* attrname)
 	if (!strcmp(attrname,"name") || !strcmp(attrname,"cx__pathname")) return DATA_T_STRING;
 	if (!strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type") ||
 		!strcmp(attrname,"outer_type")) return DATA_T_STRING;
-	if (!strcmp(attrname,"annotation")) return DATA_T_STRING;
+	if (!strcmp(attrname,"annotation") || !strcmp(attrname,"content_charset")) return DATA_T_STRING;
 
 	if (!strncmp(attrname,"cx__pathpart", 12))
 	    {
@@ -348,7 +349,9 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 
 	/** Get the type from the lowlevel driver **/
 	used_expr = 0;
-	if (!strcmp(attrname,"name") || !strcmp(attrname,"inner_type") || !strcmp(attrname,"outer_type") || !strcmp(attrname, "content_type") || !strcmp(attrname, "annotation") || !strcmp(attrname,"objcontent"))
+	if (!strcmp(attrname,"name") || !strcmp(attrname,"inner_type") || !strcmp(attrname,"outer_type") ||
+		!strcmp(attrname, "content_type") || !strcmp(attrname, "annotation") || !strcmp(attrname,"objcontent") ||
+		!strcmp(attrname, "content_charset"))
 	    osmltype = DATA_T_STRING;
 	else
 	    osmltype = this->Driver->GetAttrType(this->Data,attrname,&(this->Session->Trx));
@@ -362,6 +365,7 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 		return 0;
 	    }
 
+	/** Expression to evaluate?  If so cache it in AttrExp / AttrExpName **/
 	if (this->EvalContext && osmltype == DATA_T_CODE && (!this->AttrExpName || strcmp(attrname, this->AttrExpName)))
 	    {
 	    if (this->Driver->GetAttrValue(this->Data, attrname, osmltype, POD(&exp), &(this->Session->Trx)) == 0)
@@ -382,6 +386,7 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 		}
 	    }
 
+	/** Expression to evaluate?  Bind and evaluate it. **/
 	if (this->EvalContext && osmltype == DATA_T_CODE && this->AttrExpName && !strcmp(this->AttrExpName, attrname))
 	    {
 	    expBindExpression(this->AttrExp, this->EvalContext, EXPR_F_RUNSERVER);
@@ -417,7 +422,7 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
     	/** Inner/content type, and OSML has a better idea than driver? **/
 	if ((!strcmp(attrname,"inner_type") || !strcmp(attrname,"content_type")) && rval==0 && this->Type)
 	    {
-	    if (objIsA(this->Type->Name, val->String) > 0)
+	    if (objIsRelatedType(this->Type->Name, val->String) > 0)
 	        {
 	        val->String = this->Type->Name;
 		}
@@ -429,7 +434,14 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    rval = 0;
 	    val->String = "";
 	    }
- 
+	
+	/** Avoid any errors from drivers that do not suport content_charset **/
+	if(rval < 0 && !strcmp(attrname, "content_charset"))
+	    {
+	    rval = 0;
+	    val->String = NULL;
+	    }
+
     return rval;
     }
 
@@ -485,6 +497,7 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 #endif
 
 	/** Nulls not allowed on system attributes **/
+	/** NOTE: for now, since content_charset is not widely supported, let it be set to NULL **/
 	if (!val && (!strcmp(attrname,"name") || !strcmp(attrname,"content_type") || !strcmp(attrname,"inner_type") || !strcmp(attrname,"outer_type")))
 	    {
 	    mssError(1, "OSML", "'%s' attribute cannot be set to NULL", attrname);
@@ -494,16 +507,27 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
     	/** How about content? **/
 	if (!strcmp(attrname,"objcontent"))
 	    {
-	    /** Check type **/
-	    if (data_type != DATA_T_STRING) 
+	    if (data_type == DATA_T_STRING) 
+		{
+		/** String value **/
+		if (!val)
+		    rval = this->Driver->Write(this->Data, "", 0, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		else
+		    rval = this->Driver->Write(this->Data, val->String, strlen(val->String), 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		}
+	    else if (data_type == DATA_T_BINARY)
+		{
+		/** Binary value **/
+		if (!val || !val->Binary.Data)
+		    rval = this->Driver->Write(this->Data, "", 0, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		else
+		    rval = this->Driver->Write(this->Data, val->Binary.Data, val->Binary.Size, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		}
+	    else
 		{
 		mssError(1,"OSML","Type mismatch in setting 'objcontent' attribute");
 		return -1;
 		}
-	    if (!val)
-		rval = this->Driver->Write(this->Data, "", 0, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
-	    else
-		rval = this->Driver->Write(this->Data, val->String, strlen(val->String), 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
 
 	    return rval;
 	    }
@@ -512,7 +536,15 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	for(va=this->VAttrs; va; va=va->Next)
 	    {
 	    if (!strcmp(attrname, va->Name))
-		return va->SetFn(this->Session, this, attrname, va->Context, data_type, val);
+		{
+		if (va->SetFn)
+		    return va->SetFn(this->Session, this, attrname, va->Context, data_type, val);
+		else
+		    {
+		    mssError(1,"OSML","Set Value: Attribute '%s' is readonly", attrname);
+		    return -1;
+		    }
+		}
 	    }
 
 	rval = this->Driver->SetAttrValue(this->Data, attrname, data_type, val, &(this->Session->Trx));
@@ -529,6 +561,10 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    if (!str) str = "";
 	    obj_internal_TrxLog(this, "setattr", "%STR&DQUOT,%INT,%STR&DQUOT", attrname, data_type, str);*/
 	    }
+
+	/** Avoid any errors from drivers that do not suport content_charset **/
+	if(rval < 0 && !strcmp(attrname, "content_charset"))
+	    rval = 0;
 
     return rval;
     }
@@ -671,5 +707,15 @@ objSetEvalContext(pObject this, void* objlist_v)
 	this->EvalContext = (void*)objlist;
 
     return 0;
+    }
+
+
+/*** objGetEvalContext() - gets an object list (objlist) to be used in
+ *** the evaluation of property values that use runserver() expressions.
+ ***/
+void*
+objGetEvalContext(pObject this)
+    {
+    return this->EvalContext;
     }
 

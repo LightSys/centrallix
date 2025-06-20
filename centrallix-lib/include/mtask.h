@@ -59,6 +59,7 @@
 #define MT_F_LOCKED	4		/* Sched locked */
 #define	MT_F_AUTOFLUSH	8		/* auto-flush buffers */
 #define	MT_F_SEGV	16		/* a thread seg faulted */
+#define MT_F_QUIET	32		/* suppress MTASK messages */
 
 #define MT_FD_CACHE_SIZE	4096	/* 8kb */
 #define MT_FD_FLUSH_INTERVAL	5000	/* 5 seconds */
@@ -182,6 +183,7 @@ typedef struct _FD
 #define FD_F_CONNECTED	1024		/* is a 'connected' UDP socket */
 #define FD_F_PIPE	2048		/* is a pipe */
 #define FD_UF_BLOCKINGIO 4096		/* use blocking IO only */
+#define FD_F_RDEOF	8192		/* FD cannot be read due to eof */
 
 
 #define FD_S_OPENING	0		/* FD is opening or connecting */

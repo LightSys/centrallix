@@ -1,0 +1,11 @@
+##NAME quote() function
+
+query select 'quote(This_string_has_no_quotes)' = quote(This_string_has_no_quotes)
+
+query select 'quote("God is good, all the time")' = quote("God is good, all the time")
+
+query select 'quote(\'And God said, "Let there be light"\')' = quote('And God said, "Let there be light"')
+
+query select 'quote("")' = quote("")
+
+query select 'quote(null)' = quote(null)

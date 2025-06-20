@@ -13,20 +13,34 @@
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>The form widget is used as a high-level container for form elements.  Essentially, a form widget represents a single record of data, or the attributes of a single object in the objectsystem (or of a single query result set object). Form widgets must be used in conjunction with an ObjectSource widget, which does the actual transferring of data to and from the server.</p>
+
 			<p>Forms have five different "modes"of operation, each of which can be specifically allowed or disallowed for the form.</p>
+
 		<ol>
+
 		<li> No Data - form inactive/disabled, no data viewed/edited.</li>
+
 		<li> View - data being viewed readonly.</li>
+
 		<li> Modify - existing data being modified.</li>
+
 		<li> Query - query criteria being entered (used for query-by-form applications)</li>
+
 		<li> New - new object being entered/created.</li>
+
 		</ol>
+
 			<p>Occasionally, the user may perform an operation which inherently disregards that the form may contain unsaved data.  When this occurs and there is newly created or modified data in the form, the application must ask the user whether the data in the form should be saved or discarded, or whether to simply not even perform the operation in question.  Since DHTML does not inherently have a "three-way confirm" message box (with save, discard, and cancel buttons), Centrallix allows a form to specify a "three-way confirm" window.  This should be a hidden (visible=no) "widget/htmlwindow" object which may contain any content, but should at least contain three buttons named "_3bConfirmSave", "_3bConfirmDiscard", and "_3bConfirmCancel" directly in the htmlwindow.  During a confirm operation, this window will become "application-modal"; that is, no other widgets in the application may be accessed by the user until one of the three buttons is pushed.</p>
+
 			<p>Several settings on the form widget control what state, or "mode", the form can be in: allow_query, allow_new, allow_modify, allow_view, and allow_nodata.  These can beused to constrain a form to perform a specific task, such as only searching, or only creating new records.  For example, a form with only allow_search enabled will always return to the search (QBF) mode and will never display the searched-for data that is returned in the objectsource.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>Although the form widget itself is nonvisual in nature, it can contain visual widgets, including other containers, which may then in turn contain form elements as well.  The form widget may be contained within any widget with a visual container (otherwise, the form elements would not show up on the page).</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -35,39 +49,39 @@
 <th class="description">Description</th>
 </tr>
 <tr class="notimplimented">
-<td class="name">allow_query</td>
+<td class="name">allow_delete</td>
 <td class="type">yes/no</td>
-<td class="description">Allow query by form</td>
-</tr>
-<tr class="notimplimented">
-<td class="name">allow_new</td>
-<td class="type">yes/no</td>
-<td class="description">Allow creation of new records</td>
+<td class="description">Allow deletion of the displayed record.</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">allow_modify</td>
 <td class="type">yes/no</td>
-<td class="description">Allow modification of existing records</td>
+<td class="description">Allow modification of existing records.</td>
 </tr>
 <tr class="notimplimented">
-<td class="name">allow_view</td>
+<td class="name">allow_new</td>
 <td class="type">yes/no</td>
-<td class="description">Allow viewing of existing data</td>
+<td class="description">Allow creation of new records.</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">allow_nodata</td>
 <td class="type">yes/no</td>
-<td class="description">Allow the 'no data' state</td>
+<td class="description">Allow the 'no data' state.</td>
 </tr>
 <tr class="notimplimented">
-<td class="name">allow_delete</td>
+<td class="name">allow_obscure</td>
 <td class="type">yes/no</td>
-<td class="description">Allow deletion of the displayed record</td>
+<td class="description">Default "no".  If this is set to "yes", then the form will permit its data to be obscured (hidden from the user, via a window closure or tab page switch) and unsaved at the same time.  If set to "no", the form will require the user to save or cancel any data modifications before the form may be obscured.</td>
 </tr>
 <tr class="notimplimented">
-<td class="name">confirm_delete</td>
+<td class="name">allow_query</td>
 <td class="type">yes/no</td>
-<td class="description">Whether to pop up an OK/Cancel message box asking the user whether he/she is sure the record should be deleted</td>
+<td class="description">Allow query by form.</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">allow_view</td>
+<td class="type">yes/no</td>
+<td class="description">Allow viewing of existing data.</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">auto_focus</td>
@@ -75,9 +89,29 @@
 <td class="description">Default "yes".  Whether to automatically place the focus on the first form element in the form when the form transitions to the New, Modify, or Search mode for any reason other than the user manually putting focus on one of the form elements.</td>
 </tr>
 <tr class="notimplimented">
+<td class="name">confirm_delete</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to pop up an OK/Cancel message box asking the user whether he/she is sure the record should be deleted.</td>
+</tr>
+<tr>
+<td class="name">comfirm_discard</td>
+<td class="type">yes/no</td>
+<td class="description">Set to true when the discard button of the 3 buttom confirm window (3bconfirmwindow) is pressed.</td>
+</tr>
+<tr class="notimplimented">
 <td class="name">enter_mode</td>
 <td class="type">string</td>
 <td class="description">Can be "save" (default), "nextfield", or "lastsave".  Controls what to do when the user presses ENTER while in a form element in this form.  "save" means to save the record immediately.  "nextfield" means to move to the next form field, as if TAB were pressed instead.  "lastsave" means to move to the next form field, but once ENTER is pressed on the very last field, to then save the record.  Most people prefer "save" for this, since that is consistent with how normal applications work, but people in finance or accounting work often prefer "lastsave" since it allows them to perform high-speed data entry using a numeric keypad.</td>
+</tr>
+<tr>
+<td class="name">interlock_with</td>
+<td class="type">string</td>
+<td class="description">Stores wither this form can be grouped with other forms.</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">MultiEnter</td>
+<td class="type">integer</td>
+<td class="description">Enable MultiEnter.</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">next_form</td>
@@ -89,35 +123,30 @@
 <td class="type">string</td>
 <td class="description">Similar to "next_form", but searches for the next form after this one within a given widget or component.  Transitioning from one component context to another is permitted (you could specify a "widget/page" widget here, and cause focus to transfer to another form in the same application, regardless of level of component nesting; this may or may not be desired behavior).</td>
 </tr>
+<tr>
+<td class="name">objectsource</td>
+<td class="type"></td>
+<td class="description">Represents the widget object source (transfers data to and from server).</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">ReadOnly</td>
+<td class="type">integer</td>
+<td class="description">Allow changes.</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">TabMode</td>
+<td class="type">string</td>
+<td class="description">How to react to a tab in a control.</td>
+</tr>
 <tr class="notimplimented">
 <td class="name">tab_revealed_only</td>
 <td class="type">yes/no</td>
 <td class="description">When tabbing between form elements, if this is set to "yes", do not transfer focus to form elements that are not currently visible to the user.</td>
 </tr>
-<tr class="notimplimented">
-<td class="name">allow_obscure</td>
-<td class="type">yes/no</td>
-<td class="description">Default "no".  If this is set to "yes", then the form will permit its data to be obscured (hidden from the user, via a window closure or tab page switch) and unsaved at the same time.  If set to "no", the form will require the user to save or cancel any data modifications before the form may be obscured.</td>
-</tr>
-<tr class="notimplimented">
-<td class="name">MultiEnter</td>
-<td class="type">integer</td>
-<td class="description">Enable MultiEnter</td>
-</tr>
-<tr class="notimplimented">
-<td class="name">TabMode</td>
-<td class="type">string</td>
-<td class="description">How to react to a tab in a control</td>
-</tr>
-<tr class="notimplimented">
-<td class="name">ReadOnly</td>
-<td class="type">integer</td>
-<td class="description">Allow changes</td>
-</tr>
 <tr>
 <td class="name">_3bconfirmwindow</td>
 <td class="type">string</td>
-<td class="description">The name of the window to use for all 3-way confirm operations (save/discard/cancel)</td>
+<td class="description">The name of the window to use for all 3-way confirm operations (save/discard/cancel).</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -131,7 +160,7 @@
 <tr class="notimplimented">
 <td class="name">fieldname</td>
 <td class="type">string</td>
-<td class="description">Fieldname (from the dataset) to bind this element to</td>
+<td class="description">Fieldname (from the dataset) to bind this element to.</td>
 </tr>
 </table>
 <p class="childname">(of formstatus child widgets)</p>
@@ -155,8 +184,16 @@
 <td class="description">Cancels an edit of form contents.</td>
 </tr>
 <tr>
+<td class="name">Disable</td>
+<td class="description">Prevents interaction with the entire form.</td>
+</tr>
+<tr>
 <td class="name">Edit</td>
 <td class="description">Allows editing of form's contents.</td>
+</tr>
+<tr>
+<td class="name">Enable</td>
+<td class="description">Allows interaction with the form.</td>
 </tr>
 <tr>
 <td class="name">First</td>
@@ -187,12 +224,89 @@
 <td class="description">the query and returns data.</td>
 </tr>
 <tr>
+<td class="name">QueryToggle</td>
+<td class="description">Either executes a query or allows one to be made depending on the previous state.</td>
+</tr>
+<tr>
 <td class="name">Save</td>
 <td class="description">Saves the form's contents.</td>
 </tr>
+<tr>
+<td class="name">SetValue</td>
+<td class="description">Modifies a field and puts the form into a new modify or search mode if appropriate.</td>
+</tr>
+<tr>
+<td class="name">Submit</td>
+<td class="description">Attemps to save data, if there is an error it returns false.</td>
+</tr>
+<tr>
+<td class="name">test3bconfirm</td>
+<td class="description">Debugging tool to test the 3bcomfirm method (only use if you know what this method is).</td>
+</tr>
+<tr>
+<td class="name">View</td>
+<td class="description">Changes the form to view mode.</td>
+</tr>
 </table>
 <h3 class="events">Events:</h3>
-<p class="none">none currently available</p>
+<table class="events">
+<tr>
+<th class="name">Event</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">BeforeSave</td>
+<td class="description">This event occurs just before the form is enabled after a save.</td>
+</tr>
+<tr>
+<td class="name">DataChange</td>
+<td class="description">This event occurs when a child controller changes its data.</td>
+</tr>
+<tr>
+<td class="name">DataDeleted</td>
+<td class="description">This event occurs when the delete function is successfully completed.</td>
+</tr>
+<tr>
+<td class="name">DataLoaded</td>
+<td class="description">This event occurs when it is confirmed that the method search for object is available.</td>
+</tr>
+<tr>
+<td class="name">DataSaved</td>
+<td class="description">This event occurs when the save action was successful.</td>
+</tr>
+<tr>
+<td class="name">Discard</td>
+<td class="description">This event occurs after the discard action is performed.</td>
+</tr>
+<tr>
+<td class="name">ModeChange</td>
+<td class="description">This event occurs at the end of the change mode action (always with status change event).</td>
+</tr>
+<tr>
+<td class="name">Modify</td>
+<td class="description">This event occurs if and only if there was a mode change and the new mode is the 'Modify' state (always occurs with both a statusChange event and a ModeChange Event).</td>
+</tr>
+<tr>
+<td class="name">New</td>
+<td class="description">This event occurs if and only if there was a mode change and the new mode is the 'New' state (always occurs with both a statusChange event and a ModeChange Event).</td>
+</tr>
+<tr>
+<td class="name">NoData</td>
+<td class="description">This event occurs if and only if there was a mode change and the new mode is the 'NoData' state (always occurs with both a statusChange event and a ModeChange Event.</td>
+</tr>
+<tr>
+<td class="name">Query</td>
+<td class="description">This event occurs if and only if there was a mode change and the new mode is the 'Query' state (always occurs with both a statusChange event and a ModeChange Event.</td>
+</tr>
+<tr>
+<td class="name">StatusChange</td>
+<td class="description">The even occurs when the form changes modes or when a child control changes its data.</td>
+</tr>
+<tr>
+<td class="name">View</td>
+<td class="description">This event occurs if and only if there was a mode change and the new mode is the 'View' state (always occurs with both a statusChange event and a ModeChange Event.</td>
+</tr>
+</table>
 <h3 class="properties">Client Properties:</h3>
 <table class="properties">
 <tr>
@@ -244,12 +358,19 @@
 <p class="none">none currently available</p>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 		
+
 form1 "widget/form"
+
 	{
+
 	//Form elements here
+
 	}
+
 		
+
 		</pre>
 </body>
 </html>

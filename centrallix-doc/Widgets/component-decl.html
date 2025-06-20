@@ -13,15 +13,24 @@
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>The component-decl widget is used to define a new component which can be used and reused in other applications or components.  Creating a component is very similar to creating an application - except that the top-level widget in a component is "widget/component-decl" instead of "widget/page".</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>A widget/component-decl widget must occur at the top level of a component (.cmp) file.</p>
+
 			<p>Other visual and nonvisual widgets may be placed inside a component-decl, in addition to parameters and declarations of Events and Actions that the component generates and handles.</p>
+
 			<p>To declare that a component generates an Event, place a "widget/component-decl-event" inside the component at the top level.  No parameters are needed for that Event.  To cause the component to generate the Event, trigger an Action with the same name on the component-decl from inside, and the event will be activated for the containing application or component.</p>
+
 			<p>Similarly, to declare that a component can receive an Action, place a "widget/component-decl-action" inside the component at the top level.  Again, no parameters are needed.  The containing application or component can then trigger the Action, which will cause an event to occur inside the component.  The event occurs on the component-decl widget (top level of the component), and can be caught with a connector widget.</p>
+
 			<p>Components can take parameters just like applications can.  See the "widget/parameter" widget for details on how to declare parameters on applications and components.</p>
+
 			<p>Several of the properties of a component-decl are used to make it easy to wrap another widget or component.  The expose_actions_for, expose_events_for, and expose_properties_for properties cause the actions, events, and properties of a widget or component inside the component-decl to be exposed to the "outside world".  The apply_hints_to property causes any presentation hints ("widget/hints") that are applied in the instantiation of a component-decl (inside the "widget/component") to be applied to the specified widget or component inside the component-decl.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -30,14 +39,9 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">width</td>
-<td class="type">integer</td>
-<td class="description">The design width, in pixels, of the component.  When the component is instantiated, it is subject to resizing; this width value will be used as a reference in that process.</td>
-</tr>
-<tr>
-<td class="name">height</td>
-<td class="type">integer</td>
-<td class="description">The design height, in pixels, of the component.</td>
+<td class="name">apply_hints_to</td>
+<td class="type">string</td>
+<td class="description">Specifies a widget inside the component-decl that will receive any presentation hints constraints ("widget/hints") that are applied to the instantiation of this component-decl.</td>
 </tr>
 <tr>
 <td class="name">expose_actions_for</td>
@@ -55,36 +59,90 @@
 <td class="description">Specifies a widget inside the component-decl whose client-side properties we want to expose on the external interface of this component-decl.</td>
 </tr>
 <tr>
-<td class="name">apply_hints_to</td>
+<td class="name">visual</td>
 <td class="type">string</td>
-<td class="description">Specifies a widget inside the component-decl that will receive any presentation hints constraints ("widget/hints") that are applied to the instantiation of this component-decl.</td>
+<td class="description">Indicates if the component is seen (not = -1).</td>
+</tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">Alert</td>
+<td class="description">Sends an alert to the screen.</td>
+</tr>
+<tr>
+<td class="name">Launch</td>
+<td class="description">Loads the widget.</td>
+</tr>
+<tr>
+<td class="name">TriggerEvent</td>
+<td class="description">Allows events to happen.</td>
+</tr>
+</table>
+<h3 class="events">Events:</h3>
+<table class="events">
+<tr>
+<th class="name">Event</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">LoadComplete</td>
+<td class="description">Occurs when the widget has finished launching.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 			
+
 // Declare a component having a button that triggers an event
+
 my_button "widget/component-decl"
+
 	{
+
 	width=100; height=32;
+
 	button_txt "widget/parameter" { type=string; default="OK"; }
+
 	button_clk "widget/component-decl-event" { }
+
 	btn "widget/textbutton"
+
 		{
+
 		x=0; y=0; width=100; height=32;
+
 		text = runserver(:this:button_txt);
+
 		fgcolor1="white"; fgcolor2="black";
+
 		tristate=no;
+
 		bgcolor="#c0c0c0";
+
 		onclk "widget/connector"
+
 			{
+
 			event="Click";
+
 			target=my_button;
+
 			action="button_clk";
+
 			}
+
 		}
+
 	}
+
 			
+
 		</pre>
 </body>
 </html>

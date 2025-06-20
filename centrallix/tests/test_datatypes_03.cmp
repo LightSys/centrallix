@@ -15,6 +15,7 @@ Attribute [column_000]:  integer  -360
 Attribute [column_000]:  integer  360
 Attribute [column_000]:  integer  -360
 Attribute [column_000]:   string   "2017-03-01 01:01PM" 
+Attribute [column_000]:   string   "2017-3-1 01:01PM" 
 Attribute [column_000]:   string   "17-03-01 13:01" 
 Attribute [column_000]:   string   "03/01/2017 13:02:00" 
 Attribute [column_000]:   string   "2017-Mar-01 13:01:00" 

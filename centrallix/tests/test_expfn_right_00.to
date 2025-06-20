@@ -1,0 +1,13 @@
+##NAME right() function
+
+query select 'right("abcde", 3)' = right("abcde", 3)
+
+query select 'right("abcde", 8)' = right("abcde", 8)
+
+query select 'right("abcde", 0)' = right("abcde", 0)
+
+query select 'right("abcde\"", 6)' = right("abcde\"", 6)
+
+query select 'right("", 1)' = right("", 1)
+
+query select 'right(null, null)' = right(null, null)

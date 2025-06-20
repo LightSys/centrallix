@@ -269,6 +269,7 @@ int
 cxssPopContext()
     {
     pCxssCtxStack sptr, del;
+    void* ret_addr;
 
 	/** Get auth stack pointer **/
 	sptr = (pCxssCtxStack)thGetSecParam(NULL);
@@ -281,7 +282,11 @@ cxssPopContext()
 #if CXSS_DEBUG_CONTEXTSTACK
 	if (sptr->CallerReturnAddr)
 	    {
-	    if (sptr->CallerReturnAddr != __builtin_return_address(1))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wframe-address"
+	    ret_addr = __builtin_return_address(1);
+#pragma GCC diagnostic pop
+	    if (sptr->CallerReturnAddr != ret_addr)
 		printf("WARNING - unbalanced cxssPopContext / cxssPushContext\n");
 	    sptr->CallerReturnAddr = NULL;
 	    }
@@ -331,7 +336,10 @@ cxssPushContext()
 	    }
 
 #if CXSS_DEBUG_CONTEXTSTACK
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wframe-address"
 	sptr->CallerReturnAddr = __builtin_return_address(1);
+#pragma GCC diagnostic pop
 #endif
 
     return 0;

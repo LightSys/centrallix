@@ -1,0 +1,63 @@
+##NAME acos() function
+
+query select 'acos(cos(0.0))' = acos(cos(0.0))
+
+query select 'acos(cos(radians(30)))' = acos(cos(radians(30)))
+
+query select 'acos(cos(radians(60)))' = acos(cos(radians(60)))
+
+query select 'acos(cos(radians(90)))' = acos(cos(radians(90)))
+
+query select 'acos(cos(radians(180)))' = acos(cos(radians(180)))
+
+query select 'acos(cos(radians(270)))' = acos(cos(radians(270)))
+
+query select 'acos(cos(radians(360)))' = acos(cos(radians(360)))
+
+query select 'acos(cos(radians(720)))' = acos(cos(radians(720)))
+
+query select 'acos(cos(radians(-30)))' = acos(cos(radians(-30)))
+
+query select 'acos(cos(radians(-60)))' = acos(cos(radians(-60)))
+
+query select 'acos(cos(radians(-90)))' = acos(cos(radians(-90)))
+
+query select 'acos(cos(radians(-180)))' = acos(cos(radians(-180)))
+
+query select 'acos(cos(radians(-270)))' = acos(cos(radians(-270)))
+
+query select 'acos(cos(radians(-360)))' = acos(cos(radians(-360)))
+
+query select 'acos(cos(radians(-720)))' = acos(cos(radians(-720)))
+
+query select 'acos(cos(0))' = acos(cos(0))
+
+query select 'acos(cos(1))' = acos(cos(1))
+
+query select 'acos(cos(2))' = acos(cos(2))
+
+query select 'acos(cos(3))' = acos(cos(3))
+
+query select 'acos(cos(4))' = acos(cos(4))
+
+query select 'acos(cos(5))' = acos(cos(5))
+
+query select 'acos(cos(6))' = acos(cos(6))
+
+query select 'acos(cos(7))' = acos(cos(7))
+
+query select 'acos(cos(-1))' = acos(cos(-1))
+
+query select 'acos(cos(-2))' = acos(cos(-2))
+
+query select 'acos(cos(-3))' = acos(cos(-3))
+
+query select 'acos(cos(-4))' = acos(cos(-4))
+
+query select 'acos(cos(-5))' = acos(cos(-5))
+
+query select 'acos(cos(-6))' = acos(cos(-6))
+
+query select 'acos(cos(-7))' = acos(cos(-7))
+
+

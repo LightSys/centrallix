@@ -37,13 +37,18 @@
 #define	MSS_SALT_SIZE	4
 
 
+/** Password and Username size **/
+#define	MSS_PASSWORD_SIZE	64
+#define MSS_USERNAME_SIZE	32
+
+
 /** Structure for a session. **/
 typedef struct
     {
     int		UserID;
     int		GroupID;
-    char	UserName[32];
-    char	Password[32];
+    char	UserName[MSS_USERNAME_SIZE];
+    char	Password[MSS_PASSWORD_SIZE];
     XArray	ErrList;
     XHashTable	Params;
     int		LinkCnt;
@@ -65,7 +70,7 @@ typedef struct
 int mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, char* log_progname);
 char* mssUserName();
 char* mssPassword();
-int mssAuthenticate(char* username, char* password);
+int mssAuthenticate(char* username, char* password, int bypass_crypt);
 int mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_maxlen);
 int mssEndSession(pMtSession s);
 int mssLinkSession(pMtSession s);
@@ -75,6 +80,7 @@ int mssSetParamPtr(char* paramname, void* ptr);
 void* mssGetParam(char* paramname);
 
 /** Error handling functions **/
+int mssLog(int level, char* msg);
 int mssError(int clr, char* module, char* message, ...);
 int mssErrorErrno(int clr, char* module, char* message, ...);
 int mssClearError();

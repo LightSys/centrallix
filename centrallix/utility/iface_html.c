@@ -129,7 +129,7 @@ int ifc_internal_ObjToJS(pXString str, pObject obj)
 	    }
 
 	/** now get sub-objects **/
-	if ( (qy = objOpenQuery(obj, NULL, NULL, NULL, NULL)) != NULL)
+	if ( (qy = objOpenQuery(obj, NULL, NULL, NULL, NULL, 0)) != NULL)
 	    {
 	    while ( (subobj = objQueryFetch(qy, O_RDONLY)) != NULL)
 		{

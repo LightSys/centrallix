@@ -1,0 +1,64 @@
+#include <assert.h>
+#include <string.h>
+#include "centrallix.h"
+#include "obj.h"
+#include "cxss/cxss.h"
+
+//int cxssHexify(unsigned char* bindata, size_t bindatalen, char* hexdata, size_t hexdatabuflen);
+int cxss_i_Hexify(unsigned char* bindata, size_t bindatalen, char* hexdata, size_t hexdatalen);
+
+int
+test_hexify(char* str, char* cmp, int dstbuflen, int cmprval)
+    {
+    char buf1[256];
+    char buf2[256];
+    int len = strlen(str);
+    int cmplen = strlen(cmp);
+    int rval;
+
+    assert(len <= 251);
+    assert(dstbuflen <= 252);
+    assert(dstbuflen >= 0);
+    buf1[0] = 0;
+    buf1[1] = 127;
+    strcpy(buf1+2, str);
+    buf1[len+2+1] = 127;
+    buf1[len+2+2] = 0;
+    memset(buf2, 127, sizeof(buf2));
+
+    rval = cxssHexify(buf1+2, len, buf2+2, dstbuflen);
+
+    assert(rval == cmprval);
+    assert(buf1[0] == 0);
+    assert(buf1[1] == 127);
+    assert(buf1[len+2+1] == 127);
+    assert(buf1[len+2+2] == 0);
+    assert(!strcmp(buf1+2, str));
+
+    if (rval < 0) return 0;
+
+    assert(buf2[0] == 127);
+    assert(buf2[1] == 127);
+    assert(buf2[cmplen+2+1] == 127);
+    assert(buf2[cmplen+2+2] == 127);
+    assert(!strcmp(buf2+2, cmp));
+
+    return 0;
+    }
+
+long long
+test(char** name)
+    {
+    *name = "cxss_hexify_00 cxssHexify()";
+
+    test_hexify("", "", 0, -1);
+    test_hexify("", "", 1, 0);
+    test_hexify("", "", 2, 0);
+    test_hexify("A", "41", 3, 2);
+    test_hexify("A", "41", 2, -1);
+    test_hexify("AB", "4142", 5, 4);
+    test_hexify("ABC", "414243", 7, 6);
+    test_hexify("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ", "303132333435363738394142434445464748494a4b4c4d4e4f505152535455565758595a", 200, 72);
+
+    return 0;
+    }

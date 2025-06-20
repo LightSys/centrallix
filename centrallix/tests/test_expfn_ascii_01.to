@@ -1,0 +1,13 @@
+##NAME ascii() function
+# Will not be as expected because no support for utf-8 yet
+query select 'ascii("God")' = ascii("God")
+
+query select 'ascii("-3")' = ascii("-3")
+
+query select 'ascii("È")' = ascii("È")
+
+query select 'ascii("À")' = ascii("À")
+
+query select 'ascii("Ç")' = ascii("Ç")
+
+query select 'ascii("Ô")' = ascii("Ô")

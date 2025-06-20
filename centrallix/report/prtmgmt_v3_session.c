@@ -64,6 +64,7 @@ prtOpenSession(char* output_type, int (*write_fn)(), void* write_arg, int page_f
 	this = (pPrtSession)nmMalloc(sizeof(PrtSession));
 	if (!this) return NULL;
 	SETMAGIC(this, MGK_PRTOBJSSN);
+	this->Flags = 0;
 	this->WriteFn = write_fn;
 	this->WriteArg = write_arg;
 	this->Units = prtLookupUnits("default");
@@ -126,6 +127,7 @@ prtOpenSession(char* output_type, int (*write_fn)(), void* write_arg, int page_f
 	prtSetAttr(this->FocusHandle, 0);
 	prtSetFont(this->FocusHandle, "monospace");
 	prtSetFontSize(this->FocusHandle, 12);
+	prtSetMinFontSize(this->FocusHandle, 0);
 
     return this;
     }
@@ -266,6 +268,18 @@ prtSetResolution(pPrtSession s, int dpi)
     }
 
 
+/*** prtGetResolution() - return the x and y resolution, in dpi, via the
+ *** given integer pointers.
+ ***/
+int
+prtGetResolution(pPrtSession s, int* xres, int* yres)
+    {
+    if (xres) *xres = s->ResolutionX;
+    if (yres) *yres = s->ResolutionY;
+    return 0;
+    }
+
+
 /*** prtSetImageStore() - set the image store location, which is used by
  *** output formats which do not allow embedding of images physically in
  *** the byte stream of the format itself, but rather must link to those
@@ -339,3 +353,13 @@ prtGetSessionParam(pPrtSession s, char* paramname, char* defaultvalue)
 
     return defaultvalue;
     }
+
+
+/*** prtGetOutputType() - return the MIME content type that is being generated.
+ ***/
+char*
+prtGetOutputType(pPrtSession s)
+    {
+    return s->Formatter->GetOutputType(s->FormatterData);
+    }
+

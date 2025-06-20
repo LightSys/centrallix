@@ -1,0 +1,23 @@
+$Version=2$
+component "widget/component-decl"
+    {
+    width=210;
+    height=32;
+
+    emptytext "widget/parameter" { type=string; default="Click Me"; deploy_to_client=yes; }
+
+    btn "widget/textbutton"
+	{
+	x=0; y=0; width=100; height=32;
+	text=runclient(condition(isnull(:eb:content, "") = "", :emptytext:value, :eb:content));
+	bgcolor = "#808080";
+	tristate = no;
+	border_radius = 8;
+	}
+
+    eb "widget/editbox"
+	{
+	x=110; y=0; width=100; height=32;
+	bgcolor = white;
+	}
+    }

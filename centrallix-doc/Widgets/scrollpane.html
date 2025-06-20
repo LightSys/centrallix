@@ -13,11 +13,16 @@
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>The scrollpane widget provides a container and a scrollbar. The scrollbar can be used to move up and down in the container, so more content can be placed in the container than can be normally viewed at one time.</p>
+
 			<p>The scrollbar includes a draggable thumb as well as up and down arrows at the top and bottom.  Clicking the arrows scrolls the content of the container up or down by a small amount, whereas clicking on the scrollbar itself above or below the thumb will scroll the area by a large amount.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>Scrollpane widgets can be placed inside any other container, but are usually placed inside a pane or a tab page.  Almost any content can be placed inside a scrollpane, but most commonly tables, treeviews, and html areas appear there.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -41,6 +46,11 @@
 <td class="description">height, in pixels, of the scrollpane's visible area. Due to the nature of the  can time.</td>
 </tr>
 <tr>
+<td class="name">visible</td>
+<td class="type">boolean</td>
+<td class="description">allows user to set scroll pane to visible (true) or not (false).</td>
+</tr>
+<tr>
 <td class="name">width</td>
 <td class="type">integer</td>
 <td class="description">width, in pixels, of the scrollpane, including the scrollbar area on the right side.</td>
@@ -55,33 +65,86 @@
 <td class="type">integer</td>
 <td class="description">y-coordinate of the upper left corner of the scrollpane, relative to its container.</td>
 </tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<table class="actions">
 <tr>
-<td class="name">visible</td>
-<td class="type">boolean</td>
-<td class="description">allows user to set scroll pane to visible (true) or not (false).</td>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">ScrollTo</td>
+<td class="description">Scrolls to a specific location determined by the scroll bar.</td>
+</tr>
+</table>
+<h3 class="events">Events:</h3>
+<table class="events">
+<tr>
+<th class="name">Event</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">MouseDown</td>
+<td class="description">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
+</tr>
+<tr>
+<td class="name">MouseMove</td>
+<td class="description">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</td>
+</tr>
+<tr>
+<td class="name">MouseOut</td>
+<td class="description">This event occurs when the user moves the mouse pointer off of the widget.</td>
+</tr>
+<tr>
+<td class="name">MouseOver</td>
+<td class="description">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</td>
+</tr>
+<tr>
+<td class="name">MouseUp</td>
+<td class="description">This event occurs when the user releases the mouse button on the widget.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 		
+
 $Version=2$
+
 MyScrollPane "widget/scrollpane"
+
 	{
+
 	// Visible scrollpane geometries...
+
 	x = 0; y = 0;
+
 	width = 600; height = 300;
+
 	// This treeview is inside the scrollpane.
+
 	MyTreeView "widget/treeview"
+
 		{
+
 		x = 1; y = 1;
+
 		// Leave room for the scrollbar, (600 - 20 = 580)
+
 		width = 580;
+
 		// The source for the treeview.
+
 		source = "/";
+
 		}
+
 	visible = "true";
+
 	}
+
 		
+
 		</pre>
 </body>
 </html>

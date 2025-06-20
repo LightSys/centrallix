@@ -39,6 +39,8 @@ function eb_actionsetvalue(aparam)
 	this.changed=true;
 	cn_activate(this,"DataModify", {Value:aparam.Value, FromKeyboard:0, FromOSRC:0, OldValue:oldval});
 	}
+    // also check description
+    this.ifcProbe(ifAction).Invoke('SetValueDescription', aparam);
     }
 
 function eb_actionsetvaldesc(aparam)
@@ -66,14 +68,27 @@ function eb_internal_setvalue(v)
 function eb_setvalue(v,f)
     {
     this.internal_setvalue(v);
+    if (!this.in_transaction)
+	this.DoDataChange(1, 0);
+    }
+
+function eb_begin_transaction()
+    {
+    this.in_transaction = true;
+    }
+
+function eb_end_transaction()
+    {
     this.DoDataChange(1, 0);
+    this.in_transaction = false;
     }
 
 function eb_clearvalue()
     {
     this.was_null = true;
     this.Update(null);
-    this.DoDataChange(1, 0);
+    if (!this.in_transaction)
+	this.DoDataChange(1, 0);
     }
 
 function eb_content_changed(p,o,n)
@@ -148,7 +163,7 @@ function eb_setdesc(txt)
 	"z-index":"-1",
 	"color":this.desc_fgcolor?this.desc_fgcolor:"#808080",
 	"top":($(this).height() - $(this.DescLayer).height())/2 + "px",
-	"left":(this.input_width() + (this.content?4:0) + 5) + "px",
+	"left":(this.input_width() + ((this.content || this.has_focus)?4:0) + 5) + "px",
 	"visibility":"inherit",
 	"white-space":"nowrap",
 	});
@@ -227,7 +242,8 @@ function eb_update(txt)
 
     // Value description field
     var descr = '';
-    if (this.descriptions[this.content] && (!this.has_focus || this.content))
+    //if (this.descriptions[this.content] && (!this.has_focus || this.content))
+    if (this.descriptions[this.content])
 	descr = this.descriptions[this.content];
     if (descr != this.description)
 	this.description = descr;
@@ -450,7 +466,8 @@ function eb_do_data_change(from_osrc, from_kbd)
 	}
     this.oldvalue = this.value;
     this.value = nv;
-    cn_activate(this, "DataChange", {Value:this.value, OldValue:this.oldvalue, FromOSRC:from_osrc, FromKeyboard:from_kbd});
+    if (this.value !== this.oldvalue)
+	cn_activate(this, "DataChange", {Value:this.value, OldValue:this.oldvalue, FromOSRC:from_osrc, FromKeyboard:from_kbd});
     }
 
 
@@ -483,7 +500,10 @@ function eb_select(x,y,l,c,n,a,k)
     this.ContentLayer.focus();
     var got_focus = $(this.ContentLayer).is(':focus');
     if (!got_focus)
-	pg_addsched_fn(this.ContentLayer, function() { this.focus() }, {}, 200);
+	pg_addsched_fn(this.ContentLayer, function()
+	    {
+	    this.focus()
+	    }, {}, 200);
     if (k)
 	pg_addsched_fn(this, function()
 	    {
@@ -574,6 +594,8 @@ function eb_cb_reveal(e)
     switch (e.eventName) 
 	{
 	case 'Reveal':
+	    if (this.has_focus)
+		pg_setkbdfocus(this, null, null, null);
 	    this.form.Reveal(this,e);
 	    break;
 	case 'Obscure':
@@ -642,6 +664,7 @@ function eb_init(param)
     l.was_null = false;
     l.value_history = [];
     l.hist_offset = -1;
+    l.in_transaction = false;
 
     // Callbacks
     l.keyhandler = eb_keyhandler;
@@ -652,6 +675,8 @@ function eb_init(param)
     l.tipid = null;
     l.getvalue = eb_getvalue;
     l.setvalue = eb_setvalue;
+    l.begintransaction = eb_begin_transaction;
+    l.endtransaction = eb_end_transaction;
     l.internal_setvalue = eb_internal_setvalue;
     l.clearvalue = eb_clearvalue;
     l.setoptions = null;
