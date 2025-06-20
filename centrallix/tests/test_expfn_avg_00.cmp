@@ -1,4 +1,4 @@
 Attribute [avg(:f_integer)]:  integer  8
 Attribute [avg(:f_double)]:   double  416.055833333333
-Attribute [avg(:f_money)]:    money   $5423.62 
+Attribute [avg(:f_money)]:    money   $5423.6241 
 Attribute [avg(null)]:   string  NULL

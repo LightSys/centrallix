@@ -237,7 +237,7 @@ evFile(int ev_type, void* obj)
                 if (FD_ISSET(fd->FD,&exceptfds)) code=-1;
                 if (code == 0) fd->Flags |= FD_F_RDBLK;
                 if (code == 1) fd->Flags &= ~(FD_F_RDBLK | FD_F_RDERR);
-                if (code == -1) fd->Flags |= FD_F_RDERR;
+                if (code == -1) fd->Flags |= (FD_F_RDERR | FD_F_RDEOF);
                 break;
 
             case EV_T_FD_OPEN:
@@ -549,11 +549,14 @@ mtInitialize(int flags, void (*start_fn)())
 	    room_for_threads = stacklimit.rlim_cur / (MT_MAX_STACK + MT_TASKSEP) - 1;
 	    if (room_for_threads < MTASK.MaxThreads)
 		{
-		printf("Notice: Max thread count reduced from %d to %d due to rlimit stack (%lld).\n",
-			MTASK.MaxThreads,
-			room_for_threads,
-			(long long)stacklimit.rlim_cur
-			);
+		if (!(flags & MT_F_QUIET))
+		    {
+		    printf("Notice: Max thread count reduced from %d to %d due to rlimit stack (%lld).\n",
+			    MTASK.MaxThreads,
+			    room_for_threads,
+			    (long long)stacklimit.rlim_cur
+			    );
+		    }
 		MTASK.MaxThreads = room_for_threads;
 		}
 	    }
@@ -621,7 +624,7 @@ mtInitialize(int flags, void (*start_fn)())
 	MTASK.ThreadTable[0] = MTASK.CurrentThread;
 
 	/** Set the MTASK flags **/
-	MTASK.MTFlags = (flags & (MT_F_NOYIELD)) | MT_F_ONEPROC;
+	MTASK.MTFlags = (flags & (MT_F_NOYIELD | MT_F_QUIET)) | MT_F_ONEPROC;
 
 	/** Initialize the timer. **/
 	MTASK.FirstTick = 0;
@@ -2567,6 +2570,7 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
 #ifdef HAVE_LIBZ
 		}
 #endif
+	    if (rval == 0) filedesc->Flags |= FD_F_RDEOF;
 	    if (rval == -1 && (errno != EWOULDBLOCK && errno != EINTR && errno != EAGAIN)) return -1;
     	    }
 
@@ -2632,6 +2636,8 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
 #ifdef HAVE_LIBZ
 		    }
 #endif
+
+		if (rval == 0) filedesc->Flags |= FD_F_RDEOF;
 		eno = errno;
 
     	        /** I sincerely hope this doesn't happen... **/
@@ -2931,7 +2937,7 @@ fdQPrintf_va(pFile filedesc, const char* fmt, va_list va)
 	/** Print it **/
 	rval = qpfPrintf_va_internal(NULL, &buf, &size, fdQPrintf_Grow, filedesc, fmt, va);
 	if (rval < 0) return rval;
-	fdWrite(filedesc, filedesc->PrintfBuf, rval - (filedesc->PrintfBuf - buf), 0, FD_U_PACKET);
+	rval = fdWrite(filedesc, filedesc->PrintfBuf, rval - (filedesc->PrintfBuf - buf), 0, FD_U_PACKET);
    
     return rval;
     }
@@ -3587,23 +3593,27 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	/** Shutdown for writing and wait for EOF from the peer **/
 	shutdown(net_filedesc->FD, SHUT_WR);
 	sl=1;
-	while(1)
+	if (!(net_filedesc->Flags & FD_F_RDEOF))
 	    {
-	    rval = read(net_filedesc->FD, buf, sizeof(buf));
-	    t2 = mtRealTicks();
-	    if ((t2-t)*(1000/MTASK.TicksPerSec) < linger_msec && rval > 0)
-		continue;
-	    if (rval == 0 || (rval < 0 && errno != EWOULDBLOCK))
-		break;
-	    thSleep(sl);
-	    sl = sl * 2;
+	    while(sl <= 8192) /* max approx. 16 sec sleep time waiting on EOF */
+		{
+		rval = read(net_filedesc->FD, buf, sizeof(buf));
+		t2 = mtRealTicks();
+		if ((t2-t)*(1000/MTASK.TicksPerSec) < linger_msec && rval > 0)
+		    continue;
+		if (rval == 0 || (rval < 0 && errno != EWOULDBLOCK))
+		    break;
+		thSleep(sl);
+		sl = sl * 2;
+		}
 	    }
 
 	/** Verify that all data has been transmitted to the peer (Linux only)
 	 **/
 #if HAVE_SIOCOUTQ && defined(SIOCOUTQ)
 	t2 = t;
-	while(1)
+	sl = 1;
+	while(sl <= 8192)
 	    {
 	    rval = ioctl(net_filedesc->FD, SIOCOUTQ, &arg);
 	    if (rval < 0 || arg == 0)

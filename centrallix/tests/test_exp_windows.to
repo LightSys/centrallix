@@ -1,0 +1,3 @@
+##NAME Window functions: row_number, dense_rank
+
+query select :f_id, :f_desc, len = char_length(:f_desc), r1 = row_number(), r2 = row_number(char_length(:f_desc)), d1 = dense_rank(), d2 = dense_rank(char_length(:f_desc)) from /tests/Testdata1.csv/rows order by char_length(:f_desc)

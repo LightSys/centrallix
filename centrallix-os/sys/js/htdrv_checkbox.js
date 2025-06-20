@@ -120,11 +120,11 @@ function checkbox_hintschanged(ht)
 	{
 	if (cx_hints_teststyle(this, cx_hints_style.notnull))
 	    {
-	    cx_set_hints(this, "DefaultExpr=0&Style=" + cx_hints_style.notnull + "," + cx_hints_style.notnull, "widget");
+	    cx_set_hints(this, "DefaultExpr=0&Style=" + cx_hints_style.notnull + "," + cx_hints_style.notnull, "widget", true);
 	    }
 	else
 	    {
-	    cx_set_hints(this, "Style=" + cx_hints_style.notnull + "," + cx_hints_style.notnull, "widget");
+	    cx_set_hints(this, "Style=" + cx_hints_style.notnull + "," + cx_hints_style.notnull, "widget", true);
 	    }
 	}
 
@@ -214,7 +214,7 @@ function checkbox_init(param)
     // hints interaction - default don't allow nulls - 
     // but app and data can override this.
     l.hintschanged = checkbox_hintschanged;
-    cx_set_hints(l, "DefaultExpr=0&Style=" + cx_hints_style.notnull + "," + cx_hints_style.notnull, "widget");
+    cx_set_hints(l, "DefaultExpr=0&Style=" + cx_hints_style.notnull + "," + cx_hints_style.notnull, "widget", true);
 
     // focus interaction
     l.getfocushandler  = checkbox_getfocus;

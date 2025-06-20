@@ -201,7 +201,7 @@ mboxClose(void* inf_v, pObjTrxTree* oxt)
     if(MBOX_DEBUG & MBOX_DEBUG_CLOSE)
 	printf("closed: %p\n",inf);
 
-	nmFree(inf,sizeof(MboxData));
+    nmFree(inf,sizeof(MboxData));
 
     return 0;
     }

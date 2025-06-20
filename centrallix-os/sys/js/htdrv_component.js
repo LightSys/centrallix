@@ -626,7 +626,19 @@ function cmp_value_getter(n)
 	{
 	var cmp = this.components[i];
 
-	// try property target first, if one.
+	// try param on the cmp
+	v = wgtrProbeProperty(cmp.cmp, n);
+	if (!wgtrIsUndefined(v))
+	    {
+	    if (!(cmp.propwatched[n]))
+		{
+		cmp.propwatched[n] = true;
+		wgtrWatchProperty(cmp.cmp, n, this, 'cmp_value_changing');
+		}
+	    return v;
+	    }
+
+	// try property target, if one.
 	if (cmp.proptarget)
 	    {
 	    v = wgtrProbeProperty(cmp.proptarget, n);
@@ -644,18 +656,6 @@ function cmp_value_getter(n)
 		return v;
 		}
 	    }
-
-	// try param on the cmp
-	v = wgtrProbeProperty(cmp.cmp, n);
-	if (!wgtrIsUndefined(v))
-	    {
-	    if (!(cmp.propwatched[n]))
-		{
-		cmp.propwatched[n] = true;
-		wgtrWatchProperty(cmp.cmp, n, this, 'cmp_value_changing');
-		}
-	    return v;
-	    }
 	}
 
     alert("Property " + n + " is undefined for component " + wgtrGetName(this));
@@ -669,16 +669,17 @@ function cmp_value_setter(n, v)
     for(var i in this.components)
 	{
 	var cmp = this.components[i];
+
+	oldv = wgtrProbeProperty(cmp.cmp, n);
+	if (!wgtrIsUndefined(oldv))
+	    return wgtrSetProperty(cmp.cmp, n, v);
+
 	if (cmp.proptarget)
 	    {
 	    oldv = wgtrProbeProperty(cmp.proptarget, n);
 	    if (!wgtrIsUndefined(oldv))
 		return wgtrSetProperty(cmp.proptarget, n, v);
 	    }
-
-	oldv = wgtrProbeProperty(cmp.cmp, n);
-	if (!wgtrIsUndefined(oldv))
-	    return wgtrSetProperty(cmp.cmp, n, v);
 	}
     }
 

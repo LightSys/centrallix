@@ -1,4 +1,4 @@
-.PHONY: multipage clean
+.PHONY: multipage clean all
 
 HTML := ${subst index.html,,${wildcard *.html}}
 
@@ -10,6 +10,8 @@ onepage.html: widgets.xml widgets.xsl
 
 website.sql: widgets.xml widgets-website.xsl
 	xsltproc widgets-website.xsl widgets.xml > website.sql
+
+all: multipage website.sql
 
 clean:
 	rm -f ${HTML}

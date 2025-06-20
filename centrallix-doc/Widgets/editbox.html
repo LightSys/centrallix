@@ -13,22 +13,22 @@
 <p class="widgettype">form element: <span class="widgettypevalue">yes</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>An editbox form element widget allows the display and data entry of a single line of text (or a numeric value).  When the editbox is clicked (and thus receives keyboard focus), the user can type and erase data inside the widget.  Data which does not fit will cause the text to scroll.  When it receives keyboard focus, the editbox displays a flashing I-beam cursor.  The cursor color uses the data focus color for the page (default is '#000080', or dark blue).</p>
+
 			<p>  When an editbox is part of a form and the form goes into query mode the editbox has several additional features.  First, you can use the * operator as a wildcard (e.g. *ber matches September, October, November, December).  Second you can enter a range if the field is numeric (e.g. 1-100).  Thirdly, a list of criteria can be specified, separated by commas.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>The editbox can be placed within any visual widget (or within a form widget).  Editboxes automatically attach themselves to the form which contains them (whether directly or indirectly).  Editboxes cannot contain visual widgets.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
 <th class="name">Property</th>
 <th class="type">Type</th>
 <th class="description">Description</th>
-</tr>
-<tr>
-<td class="name">fieldname</td>
-<td class="type">string</td>
-<td class="description">Name of the column in the datasource you want to reference.</td>
 </tr>
 <tr>
 <td class="name">background</td>
@@ -46,24 +46,34 @@
 <td class="description">A color, RGB or named, editbox's value description.  The value description is displayed to the right of the value in the editbox, in parentheses, and in a different color.</td>
 </tr>
 <tr>
+<td class="name">disabled</td>
+<td class="type">boolean</td>
+<td class="description">Specifies wither the edit box can be written in, default is true meaning the edit box cannot be written in.</td>
+</tr>
+<tr>
 <td class="name">empty_description</td>
 <td class="type">string</td>
 <td class="description">The value description to display in the editbox when the editbox is empty.  For instance, "optional" or "required" or "type search and press ENTER" might be commonly used empty_description settings.</td>
 </tr>
 <tr>
+<td class="name">fieldname</td>
+<td class="type">string</td>
+<td class="description">Name of the column in the datasource you want to reference.</td>
+</tr>
+<tr>
 <td class="name">height</td>
 <td class="type">integer</td>
-<td class="description">height, in pixels, of the editbox.</td>
+<td class="description">Height, in pixels, of the editbox.</td>
 </tr>
 <tr>
 <td class="name">maxchars</td>
 <td class="type">integer</td>
-<td class="description">number of characters to accept from the user.</td>
+<td class="description">Number of characters to accept from the user.</td>
 </tr>
 <tr>
 <td class="name">readonly</td>
 <td class="type">yes/no</td>
-<td class="description">set to 'yes' if the user cannot modify the value of the edit box (default 'no').</td>
+<td class="description">Set to 'yes' if the user cannot modify the value of the edit box (default 'no').</td>
 </tr>
 <tr>
 <td class="name">style</td>
@@ -78,26 +88,32 @@
 <tr>
 <td class="name">width</td>
 <td class="type">integer</td>
-<td class="description">width, in pixels, of the editbox.</td>
+<td class="description">Width, in pixels, of the editbox.</td>
 </tr>
 <tr>
 <td class="name">x</td>
 <td class="type">integer</td>
-<td class="description">x-coordinate of the upper left corner of the editbox, default is 0.</td>
+<td class="description">X-coordinate of the upper left corner of the editbox, default is 0.</td>
 </tr>
 <tr>
 <td class="name">y</td>
 <td class="type">integer</td>
-<td class="description">y-coordinate of the upper left corner of the editbox, default is 0.</td>
+<td class="description">Y-coordinate of the upper left corner of the editbox, default is 0.</td>
 </tr>
 </table>
-<h3 class="childproperties">Child Properties:</h3>
-<p class="none">none currently available</p>
 <h3 class="actions">Actions:</h3>
 <table class="actions">
 <tr>
 <th class="name">Action</th>
 <th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">Enable</td>
+<td class="description">The Enable action allows an edit box to be written in, and takes no parameters x from being written in, and takes no parameters.</td>
+</tr>
+<tr>
+<td class="name">SetFocus</td>
+<td class="description">The SetFocus action selects and gives control to an edit box.</td>
 </tr>
 <tr>
 <td class="name">SetValue</td>
@@ -115,8 +131,40 @@
 <th class="description">Description</th>
 </tr>
 <tr>
+<td class="name">BeforeDataChange</td>
+<td class="description">This event occurs before the data changes and can stop the data change event.</td>
+</tr>
+<tr>
+<td class="name">BeforeKeyPress</td>
+<td class="description">This event occurs before the key press event is fired and can stop the key press event.</td>
+</tr>
+<tr>
 <td class="name">Click</td>
 <td class="description">This event occurs when the user clicks the widget. No parameters are available from this event.</td>
+</tr>
+<tr>
+<td class="name">DataChange</td>
+<td class="description">This event occurs when the user has modified the data value of the widget (clicked or unclicked it).</td>
+</tr>
+<tr>
+<td class="name">DataModify</td>
+<td class="description">This event occurs when the data is changed (occurs when key press or button changes things).</td>
+</tr>
+<tr>
+<td class="name">EscapePressed</td>
+<td class="description">This event occurs when the user presses the escape key.</td>
+</tr>
+<tr>
+<td class="name">GetFocus</td>
+<td class="description">This event occurs when the editbox receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</td>
+</tr>
+<tr>
+<td class="name">KeyPress</td>
+<td class="description">This event occurs when the user presses any key.</td>
+</tr>
+<tr>
+<td class="name">LoseFocus</td>
+<td class="description">This event occurs when the editbox loses keyboard focus (if the user tabs off of it, for instance).</td>
 </tr>
 <tr>
 <td class="name">MouseUp</td>
@@ -139,34 +187,45 @@
 <td class="description">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</td>
 </tr>
 <tr>
-<td class="name">DataChange</td>
-<td class="description">This event occurs when the user has modified the data value of the widget (clicked or unclicked it).</td>
+<td class="name">ReturnPressed</td>
+<td class="description">This event occurs when the user presses the return key.</td>
 </tr>
 <tr>
-<td class="name">LoseFocus</td>
-<td class="description">This event occurs when the editbox loses keyboard focus (if the user tabs off of it, for instance).</td>
-</tr>
-<tr>
-<td class="name">GetFocus</td>
-<td class="description">This event occurs when the editbox receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</td>
+<td class="name">TabPressed</td>
+<td class="description">This event occurs when the user presses the tab key.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 		
+
 $Version=2$
+
 // Here is a single lonely edit box.
+
 my_editbox "widget/editbox" 
+
 	{
+
 	x=180; 
+
 	y=40; 
+
 	width=120; 
+
 	height=15; 
+
 	style="lowered"; 
+
 	fieldname="datasource_fieldname";
+
 	bgcolor="#ffffff";
+
 	}
+
 		
+
 		</pre>
 </body>
 </html>

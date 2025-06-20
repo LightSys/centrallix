@@ -64,6 +64,9 @@ function im_action_load_image(aparam)
     else
 	return;
 
+    if (!newurl)
+	newurl = "/sys/images/trans_1.gif";
+
     // parameters
     for(var p in aparam)
 	{
@@ -83,7 +86,10 @@ function im_action_load_image(aparam)
 	    newurl += '&';
 	else
 	    newurl += '?';
-	newurl += "cx__akey=" + window.akey.substr(0,49);
+	if (aparam.LinkApp !== null && (aparam.LinkApp == 'yes' || aparam.LinkApp == 1))
+	    newurl += "cx__akey=" + window.akey;
+	else
+	    newurl += "cx__akey=" + window.akey.substr(0,49);
 	}
 
     this.source = newurl;

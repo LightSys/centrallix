@@ -12,6 +12,7 @@
 #include <time.h>
 #include <signal.h>
 #include <errno.h>
+#include "centrallix.h"
 #include "obj.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
@@ -22,6 +23,7 @@
 #include "prtmgmt.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
+#include "cxlib/strtcpy.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -60,8 +62,8 @@ typedef struct
     {
     int		JobID;
     char	Name[128];
-    char	Pathname[256];
-    char	User[32];
+    char	Pathname[OBJSYS_MAX_PATH];
+    char	User[CX_USERNAME_SIZE];
     int		Size;
     int		Percent;
     char	Status[32];
@@ -71,7 +73,7 @@ typedef struct
 /*** Structure for managing the print queue listing. ***/
 typedef struct
     {
-    char	Pathname[256];		/* pathname to printer in objsys */
+    char	Pathname[OBJSYS_MAX_PATH];		/* pathname to printer in objsys */
     XArray	Entries;		/* print queue entries */
     }
     LprPrintQueue, *pLprPrintQueue;
@@ -80,14 +82,14 @@ typedef struct
 typedef struct 
     {
     pFile	fd;
-    char	Pathname[256];
+    char	Pathname[OBJSYS_MAX_PATH];
     int		Flags;
     int		Type;
     pObject	Obj;
     int		Mask;
     int		CurAttr;
     pFile	SpoolFileFD;
-    char	SpoolPathname[256];
+    char	SpoolPathname[OBJSYS_MAX_PATH];
     pSnNode	Node;
     pFile	MasterFD;
     pFile	SlaveFD;
@@ -149,7 +151,7 @@ uxp_internal_LoadPrintQueue(char* nodepath, pSnNode nodeinfo)
 	    {
 	    pq = (pLprPrintQueue)nmMalloc(sizeof(LprPrintQueue));
 	    xaInit(&pq->Entries, 16);
-	    strcpy(pq->Pathname, nodepath);
+	    strtcpy(pq->Pathname, nodepath, sizeof(pq->Pathname));
 	    xhAdd(&UXP_INF.PrintQueues, pq->Pathname, (void*)pq);
 	    }
 
@@ -215,12 +217,14 @@ uxp_internal_LoadPrintQueue(char* nodepath, pSnNode nodeinfo)
 		/** Create the queue entry structure **/
 		e = (pLprQueueEntry)nmMalloc(sizeof(LprQueueEntry));
 		e->JobID = jobid;
-		strcpy(e->User,user);
+		strtcpy(e->User, user, sizeof(e->User));
 		e->Percent = 0;
-		if (cnt==0) strcpy(e->Status,"Printing");
-		else strcpy(e->Status,"Queued");
-		strcpy(e->Pathname, filename);
-		strcpy(e->Name, strrchr(filename,'/')+1);
+		if (cnt==0)
+		    strcpy(e->Status, "Printing");
+		else
+		    strcpy(e->Status, "Queued");
+		strtcpy(e->Pathname, filename, sizeof(e->Pathname));
+		strtcpy(e->Name, strrchr(filename,'/')+1, sizeof(e->Name));
 
 		/** Get the file's size and skip to eol. **/
 		if (mlxNextToken(lxs) != MLX_TOK_STRING) break;
@@ -277,6 +281,56 @@ uxp_internal_FindQueueItem(pLprPrintQueue pq, char* name)
     }
 
 
+/*** uxp_internal_Spool - send the print job to the OS print spooler.
+ ***/
+int
+uxp_internal_Spool(pUxpData inf)
+    {
+    char* printcmd;
+    char* uxname;
+    char* form=NULL;
+    char cmd[OBJSYS_MAX_PATH + 128];
+    int rval;
+
+	/** Get configuration **/
+	stAttrValue(stLookup(inf->Node->Data,"if_type"),NULL,&printcmd,0);
+	stAttrValue(stLookup(inf->Node->Data,"unix_name"),NULL,&uxname,0);
+	stAttrValue(stLookup(inf->Node->Data,"form_name"),NULL,&form,0);
+
+	/** Sanitize **/
+	if (strcmp(printcmd, "lp") && strcmp(printcmd, "lpr"))
+	    return -1;
+	if (strchr(uxname, '\'') || strchr(uxname, '\\'))
+	    return -1;
+	if (strchr(form, '\'') || strchr(form, '\\'))
+	    return -1;
+	if (strchr(inf->SpoolPathname, '\'') || strchr(inf->SpoolPathname, '\\'))
+	    return -1;
+
+	/** Send it **/
+	if (printcmd && uxname)
+	    {
+	    if (!strcmp(printcmd,"lp"))
+	        rval = snprintf(cmd, sizeof(cmd), "(%s -d'%s' %s%s%s '%s'; /bin/rm '%s') &", printcmd, uxname, form?"-f'":"", form?form:"", 
+			form?"'":"", inf->SpoolPathname, inf->SpoolPathname);
+	    else
+		rval = snprintf(cmd, sizeof(cmd), "(%s -P'%s' %s%s%s '%s'; /bin/rm '%s') &", printcmd, uxname, form?"-f'":"", form?form:"", 
+			form?"'":"", inf->SpoolPathname, inf->SpoolPathname);
+	    if (rval < 0 || rval >= sizeof(cmd))
+		{
+		return -1;
+		}
+	    system(cmd);
+	    }
+	else
+	    {
+	    return -1;
+	    }
+
+    return 0;
+    }
+
+
 /*** uxp_internal_Filter - this is the worker thread that does the 
  *** html-to-pcl-or-fx conversion process, using prtConvertHTML.
  ***/
@@ -286,10 +340,6 @@ uxp_internal_Filter(void* v)
     pUxpData inf = (pUxpData)v;
     pPrtSession s;
     char* type;
-    char* printcmd;
-    char* uxname;
-    char* form=NULL;
-    char cmd[128];
 
     	/** Set thread name **/
 	thSetName(NULL, "Print Writer");
@@ -312,19 +362,8 @@ uxp_internal_Filter(void* v)
 
 	/** Print the thing via the OS's spooler **/
 	fdClose(inf->SpoolFileFD, 0);
-	stAttrValue(stLookup(inf->Node->Data,"if_type"),NULL,&printcmd,0);
-	stAttrValue(stLookup(inf->Node->Data,"unix_name"),NULL,&uxname,0);
-	stAttrValue(stLookup(inf->Node->Data,"form_name"),NULL,&form,0);
-	if (printcmd && uxname)
-	    {
-	    if (!strcmp(printcmd,"lp"))
-	        sprintf(cmd,"(%s -d%s %s%s %s; /bin/rm %s) &",printcmd, uxname, form?"-f":"",form?form:"", 
-			inf->SpoolPathname, inf->SpoolPathname);
-	    else
-		sprintf(cmd,"(%s -P%s %s%s %s; /bin/rm %s) &",printcmd, uxname, form?"-f":"", form?form:"", 
-			inf->SpoolPathname, inf->SpoolPathname);
-	    system(cmd);
-	    }
+	if (uxp_internal_Spool(inf) < 0)
+	    thExit();
 
     thExit();
     }
@@ -364,6 +403,7 @@ uxpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     char sbuf[256];
     int is_new = 0;
     pLprPrintQueue pq = NULL;
+    int rval;
 
         /** If CREAT and EXCL, we only create, failing if already exists. **/
         if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))
@@ -406,7 +446,12 @@ uxpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    snSetParamString(node, obj->Prev, "valid_sources", "0,1,2,4");
 	    snSetParamString(node, obj->Prev, "current_source", "0");
 	    snSetParamString(node, obj->Prev, "auto_switch", "yes");
-	    sprintf(sbuf,"/var/spool/centrallix/%s",strrchr(obj->Pathname->Pathbuf,'/')+1);
+	    rval = snprintf(sbuf, sizeof(sbuf), "/var/spool/centrallix/%s", strrchr(obj->Pathname->Pathbuf,'/')+1);
+	    if (rval < 0 || rval >= sizeof(sbuf))
+		{
+		snDelete(node);
+		return NULL;
+		}
 	    snSetParamString(node, obj->Prev, "spool_directory", sbuf);
 	    node->Status = SN_NS_DIRTY;
 	    snWriteNode(obj->Prev,node);
@@ -418,8 +463,7 @@ uxpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	memset(inf,0,sizeof(UxpData));
 	inf->Obj = obj;
 	inf->Mask = mask;
-	memccpy(inf->ReqType, usrtype, 0, 255);
-	inf->ReqType[255] = 0;
+	strtcpy(inf->ReqType, usrtype, sizeof(inf->ReqType));
 
 	/** Check to see if opening printer or print job. **/
 	if (obj->SubPtr == obj->Pathname->nElements)
@@ -441,6 +485,7 @@ uxpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
             // TODO Initialize the pq object!
 	    if (uxp_internal_FindQueueItem(pq, obj_internal_PathPart(obj->Pathname, obj->SubPtr, 0)) == NULL)
 	        {
+		if (is_new) snDelete(node);
 		nmFree(inf, sizeof(UxpData));
 		return NULL;
 		}
@@ -465,10 +510,6 @@ int
 uxpClose(void* inf_v, pObjTrxTree* oxt)
     {
     pUxpData inf = UXP(inf_v);
-    char cmd[320];
-    char* printcmd;
-    char* uxname;
-    char* form=NULL;
 
     	/** Node need to be updated? **/
 	snWriteNode(inf->Obj->Prev, inf->Node);
@@ -480,18 +521,10 @@ uxpClose(void* inf_v, pObjTrxTree* oxt)
 	if (inf->SpoolFileFD && !inf->MasterFD)
 	    {
 	    fdClose(inf->SpoolFileFD, 0);
-	    stAttrValue(stLookup(inf->Node->Data,"if_type"),NULL,&printcmd,0);
-	    stAttrValue(stLookup(inf->Node->Data,"unix_name"),NULL,&uxname,0);
-	    stAttrValue(stLookup(inf->Node->Data,"form_name"),NULL,&form,0);
-	    if (printcmd && uxname)
-	        {
-		if (!strcmp(printcmd,"lp"))
-	            sprintf(cmd,"(%s -d%s %s%s %s; /bin/rm %s) &",printcmd, uxname, form?"-f":"",form?form:"", 
-			inf->SpoolPathname, inf->SpoolPathname);
-	        else
-		    sprintf(cmd,"(%s -P%s %s%s %s; /bin/rm %s) &",printcmd, uxname, form?"-f":"", form?form:"", 
-			inf->SpoolPathname, inf->SpoolPathname);
-	        system(cmd);
+	    if (uxp_internal_Spool(inf) < 0)
+		{
+		nmFree(inf, sizeof(UxpData));
+		return -1;
 		}
 	    }
 
@@ -578,8 +611,13 @@ uxpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
 	    /** Generate a spool file name **/
 	  TRY_SPOOL_AGAIN:
 	    do  {
-	        sprintf(inf->SpoolPathname,"%s/%8.8d.job",spooldir,UXP_INF.SpoolCnt++);
+	        rval = snprintf(inf->SpoolPathname, sizeof(inf->SpoolPathname), "%s/%8.8d.job", spooldir, UXP_INF.SpoolCnt++);
 		} while (lstat(inf->SpoolPathname, &fileinfo) == 0);
+	    if (rval < 0 || rval >= sizeof(inf->SpoolPathname))
+		{
+		mssError(1,"UXP","Internal representation exceeded for spool pathname");
+		return -1;
+		}
 
 	    /** Open the spool file **/
 	    inf->SpoolFileFD = fdOpen(inf->SpoolPathname, O_WRONLY | O_CREAT | O_EXCL, 0600);
@@ -597,7 +635,7 @@ uxpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
 		}
 	    }
 
-	/** Ok, delayed start of filter process to wait until spoofile-fd is open **/
+	/** Ok, delayed start of filter process to wait until spoolfile-fd is open **/
 	if (start_filter)
 	    {
 	    stAttrValue(stLookup(inf->Node->Data,"type"), NULL, &type, 0);
@@ -710,7 +748,7 @@ uxpGetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    ptr = strrchr(inf->Obj->Pathname->Pathbuf+1,'/')+1;
 	    if (ptr)
 	        {
-		strcpy(inf->Pathname,ptr);
+		strtcpy(inf->Pathname, ptr, sizeof(inf->Pathname));
 	        *((char**)val) = inf->Pathname;
 		}
 	    else
@@ -830,12 +868,12 @@ uxpSetAttrValue(void* inf_v, char* attrname, int datatype, void* val, pObjTrxTre
 	    if (!strcmp(inf->Obj->Pathname->Pathbuf,".")) return -1;
 	    if (strlen(inf->Obj->Pathname->Pathbuf) - 
 	        strlen(strrchr(inf->Obj->Pathname->Pathbuf,'/')) + 
-		strlen(*(char**)(val)) + 1 > 255)
+		strlen(*(char**)(val)) + 1 >= OBJSYS_MAX_PATH)
 		{
 		mssError(1,"UXP","SetAttr 'name': new value exceeds internal size limits");
 		return -1;
 		}
-	    strcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf);
+	    strtcpy(inf->Pathname, inf->Obj->Pathname->Pathbuf, sizeof(inf->Pathname));
 	    strcpy(strrchr(inf->Pathname,'/')+1,*(char**)(val));
 	    if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) 
 	        {

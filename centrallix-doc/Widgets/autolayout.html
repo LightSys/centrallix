@@ -13,13 +13,20 @@
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>The autolayout widget is used to automatically position widgets without having to explicitly provide x, y, width, and height values for those widgets.  Most of the layout in Centrallix is done on a coordinate basis (although the automatic resize logic adjusts those coordinates to fit the target application or component render size).  The autolayout widget provides the capability to do nested gui layout in Centrallix, where the coordinate positions of the widgets are computed automatically.</p>
+
 			<p>Normally, the autolayout widget is used not as "widget/autolayout", but as "widget/hbox" or "widget/vbox", two synonyms for this widget which also set the layout direction (horizontal or vertical).</p>
+
 			<p>A "hbox" widget stacks its children horizontally one after the other, while a "vbox" widget stacks its children vertically from the top down.  The spacing between children can be set, and the size of each child can be either independently set per-child, or it can be set by virtue of the geometry of the autolayout widget.</p>
+
 			<p>The autolayout widget supports having multiple rows or columns of widgets.  That is, if a "vbox" widget fills up vertically, it can resume adding children to a second vertical column should there be space to the right of the original column of widgets.  For this to work, the width of the columns (for a vbox) or the height of the rows (for an hbox) must be specified.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>The autolayout widget can occur any place that a visual widget can be placed.  As it is a container, it can also contain both visual and nonvisual widgets and containers.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -28,34 +35,9 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">x</td>
-<td class="type">integer</td>
-<td class="description">x-coordinate of the upper left corner of the autolayout area.</td>
-</tr>
-<tr>
-<td class="name">y</td>
-<td class="type">integer</td>
-<td class="description">y-coordinate of the upper left corner of the autolayout area.</td>
-</tr>
-<tr>
-<td class="name">width</td>
-<td class="type">integer</td>
-<td class="description">width, in pixels, of the autolayout area.  If omitted, it defaults to the maximum available width for the given height, without overlapping other visible widgets.</td>
-</tr>
-<tr>
-<td class="name">height</td>
-<td class="type">integer</td>
-<td class="description">height, in pixels, of the autolayout area.  If omitted, it defaults to the maximum available height for the given width, without overlapping other visible widgets.  If both width and height are unspecified, Centrallix will chose a width and height that maximize the available autolayout area.</td>
-</tr>
-<tr>
-<td class="name">style</td>
+<td class="name">align</td>
 <td class="type">string</td>
-<td class="description">either "hbox" or "vbox".  Not needed if the widget is created via "widget/hbox" or "widget/vbox".</td>
-</tr>
-<tr>
-<td class="name">spacing</td>
-<td class="type">integer</td>
-<td class="description">The spacing, in pixels, between widgets.  For an hbox, this refers to the horizontal spacing between children.  For a vbox, this refers to the vertical spacing.</td>
+<td class="description">Sets the alignment of text  can have left (default) right or center.</td>
 </tr>
 <tr>
 <td class="name">cellsize</td>
@@ -68,9 +50,44 @@
 <td class="description">This specifies the width of columns for a vbox -- should the first column of widgets fill up, a second column will be started at this offset from the start of the first column.</td>
 </tr>
 <tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">Height, in pixels, of the autolayout area.  If omitted, it defaults to the maximum available height for the given width, without overlapping other visible widgets.  If both width and height are unspecified, Centrallix will chose a width and height that maximize the available autolayout area.</td>
+</tr>
+<tr>
+<td class="name">justify</td>
+<td class="type">string</td>
+<td class="description">Makes the text fill page (justifies text - google it if you need).</td>
+</tr>
+<tr>
 <td class="name">row_height</td>
 <td class="type">integer</td>
 <td class="description">This specifies the height of rows for an hbox -- should the first row of widgets fill up horizontally, a second row will be started beneath the first one, at this vertical offset from the start of the first row.</td>
+</tr>
+<tr>
+<td class="name">spacing</td>
+<td class="type">integer</td>
+<td class="description">The spacing, in pixels, between widgets.  For an hbox, this refers to the horizontal spacing between children.  For a vbox, this refers to the vertical spacing.</td>
+</tr>
+<tr>
+<td class="name">style</td>
+<td class="type">string</td>
+<td class="description">Either "hbox" or "vbox".  Not needed if the widget is created via "widget/hbox" or "widget/vbox".</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">X-coordinate of the upper left corner of the autolayout area.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">Y-coordinate of the upper left corner of the autolayout area.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">Width, in pixels, of the autolayout area.  If omitted, it defaults to the maximum available width for the given height, without overlapping other visible widgets.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -86,25 +103,40 @@
 <td class="type">integer</td>
 <td class="description">An optional property, this allows the layout sequence of child widgets to be controlled, and the children are placed in ascending order.  If unspecified, this defaults to a value of 100 for the first child encountered, or to N+1 where N is the autolayout sequence of the most recent child widget encountered.</td>
 </tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">Height, in pixels, of the child.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">Width, in pixels, of the child.</td>
+</tr>
 </table>
-<h3 class="actions">Actions:</h3>
-<p class="none">none currently available</p>
-<h3 class="events">Events:</h3>
-<p class="none">none currently available</p>
-<h3 class="properties">Client Properties:</h3>
-<p class="none">none currently available</p>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 		
+
 // Here is a vbox which can have up to three
+
 // vertical columns of widgets; the columns will
+
 // fill up one at a time.
+
 vbox1 "widget/vbox"
+
 	{
+
 	x=0; y=0; width=600; height=200;
+
 	spacing=5; column_width=200;
+
 	}
+
 		
+
 		</pre>
 </body>
 </html>

@@ -132,8 +132,8 @@ prt_csvfm_Probe(pPrtSession s, char* output_type)
  *** driver supports.  We're creating a CSV file, so we don't care about font
  *** sizes.
  ***/
-int
-prt_csvfm_GetNearestFontSize(void* context_v, int req_size)
+double
+prt_csvfm_GetNearestFontSize(void* context_v, double req_size)
     {
     /*pPrtCSVfmInf context = (pPrtCSVfmInf)context_v;*/
 
@@ -416,6 +416,17 @@ prt_csvfm_Generate(void* context_v, pPrtObjStream page_obj)
     }
 
 
+/*** prt_csvfm_GetOutputType - get the content type for the output of this
+ *** formatter session.  This may vary from the requested type, which may
+ *** be more specific in some cases.
+ ***/
+char*
+prt_csvfm_GetOutputType(void* context_v)
+    {
+    return "text/csv";
+    }
+
+
 int
 prt_csvfm_GetType(void* ctx, char* objname, char* attrname, void* val_v)
     {
@@ -441,6 +452,7 @@ prt_csvfm_Initialize()
 	if (!fmtdrv) return -1;
 	strcpy(fmtdrv->Name, "csv");
 	fmtdrv->Probe = prt_csvfm_Probe;
+	fmtdrv->GetOutputType = prt_csvfm_GetOutputType;
 	fmtdrv->Generate = prt_csvfm_Generate;
 	fmtdrv->GetNearestFontSize = prt_csvfm_GetNearestFontSize;
 	fmtdrv->GetCharacterMetric = prt_csvfm_GetCharacterMetric;

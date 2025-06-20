@@ -13,11 +13,16 @@
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>This widget is used to instantiate a custom component that has already been defined using a widget/component-decl widget, typically inside a ".cmp" file.  The instantiation can be either static or dynamic:  a static component is rendered along with the component or application that it resides inside, whereas a dynamic component is loaded as needed from the client.  Components may also allow multiple instantiation when dynamic, which is especially beneficial with components whose top-level widget happens to be a widget/childwindow.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>A component can be either visual or non-visual, and can be placed at almost any point in the application.</p>
+
 			<p>At the time of writing, only connectors may be placed inside a widget/component.  It is planned that it be possible to place widgets inside a widget/component which then appear inside specially designated containers within the component itself.  However that capability is not available at present.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -26,14 +31,9 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">x</td>
-<td class="type">integer</td>
-<td class="description">x-coordinate of the upper left corner of the component.  If unset, defaults to 0.</td>
-</tr>
-<tr>
-<td class="name">y</td>
-<td class="type">integer</td>
-<td class="description">y-coordinate of the upper left corner of the component.  If unset, defaults to 0.</td>
+<td class="name">auto_destroy</td>
+<td class="type">yes/no</td>
+<td class="description">If enabled (dynamic single-instantiation components only), when a component is instantiated a second time, the original component is automatically destroyed so there is at most one instance at a time in existence.  Defaults to 'yes'.</td>
 </tr>
 <tr>
 <td class="name">form</td>
@@ -41,19 +41,9 @@
 <td class="description">Can specify another form to be a child of (if different than the implied form in which this control is nested).</td>
 </tr>
 <tr>
-<td class="name">width</td>
-<td class="type">integer</td>
-<td class="description">width, in pixels, of the component.  If unset, this defaults to the width of the component's containing widget.</td>
-</tr>
-<tr>
 <td class="name">height</td>
 <td class="type">integer</td>
-<td class="description">height, in pixels, of the component.  If unset, this defaults to the height of the component's containing widget.</td>
-</tr>
-<tr>
-<td class="name">path</td>
-<td class="type">string</td>
-<td class="description">The path, in the OSML, to the component's definition (.cmp) file. (e.g. /sys/cmp/smart_field.cmp, /sys/cmp/form_controls.cmp, /samples/button.cmp)</td>
+<td class="description">Height, in pixels, of the component.  If unset, this defaults to the height of the component's containing widget.</td>
 </tr>
 <tr>
 <td class="name">mode</td>
@@ -66,59 +56,34 @@
 <td class="description">If enabled (dynamic components only), the component can be instantiated more than once on the client.  Defaults to 'no'.</td>
 </tr>
 <tr>
-<td class="name">auto_destroy</td>
-<td class="type">yes/no</td>
-<td class="description">If enabled (dynamic single-instantiation components only), when a component is instantiated a second time, the original component is automatically destroyed so there is at most one instance at a time in existence.  Defaults to 'yes'.</td>
-</tr>
-<tr>
-<td class="name">text</td>
+<td class="name">path</td>
 <td class="type">string</td>
-<td class="description">Set the Initial starting value contained in this component (Can this be directly accessed? as :widget_name:text?).</td>
+<td class="description">The path, in the OSML, to the component's definition (.cmp) file. (e.g. /sys/cmp/smart_field.cmp, /sys/cmp/form_controls.cmp, /samples/button.cmp).</td>
 </tr>
 <tr>
-<td class="name">visible</td>
-<td class="type">true/false</td>
-<td class="description">(e.g. visible=false).</td>
-</tr>
-<tr>
-<td class="name">field</td>
+<td class="name">toplevel</td>
 <td class="type">string</td>
-<td class="description">The osrc field to which this this smartfield is linked/connected.</td>
+<td class="description">Acts as a boolean to indicate if there are any components on a higher level.</td>
 </tr>
 <tr>
-<td class="name">tooltip</td>
+<td class="name">type</td>
 <td class="type">string</td>
-<td class="description">The message to display when the user hovers their mouse over the smart field.</td>
+<td class="description">A string that represents the data type.</td>
 </tr>
 <tr>
-<td class="name">popup_source</td>
-<td class="type">string</td>
-<td class="description">PopUp tree of possible selections (in one example, it references a .qyt file).</td>
-</tr>
-<tr>
-<td class="name">popup_text</td>
-<td class="type">string</td>
-<td class="description">The text to display above the popup selection tree.</td>
-</tr>
-<tr>
-<td class="name">popup_order</td>
-<td class="type">string</td>
-<td class="description">(e.g. desc)</td>
-</tr>
-<tr>
-<td class="name">label_height</td>
+<td class="name">width</td>
 <td class="type">integer</td>
-<td class="description">The height of the label in pixels.</td>
+<td class="description">Width, in pixels, of the component.  If unset, this defaults to the width of the component's containing widget.</td>
 </tr>
 <tr>
-<td class="name">label_width</td>
+<td class="name">x</td>
 <td class="type">integer</td>
-<td class="description">The width of the label in pixels.</td>
+<td class="description">X-coordinate of the upper left corner of the component.  If unset, defaults to 0.</td>
 </tr>
 <tr>
-<td class="name">http_frame_options</td>
-<td class="type">string</td>
-<td class="description">When the component is dynamically instantiated over HTTP/HTML, this controls the X-Frame-Options anti-clickjacking HTTP response header.  Possible values are "none", "sameorigin", and "deny".  The default value is set by the x_frame_options setting in the "net_http" section of centrallix.conf (see configuration docs for more information).  The http_frame_options setting only applies to the component widget it is set in, not to any sub-components that the component loads (it can be set in those components separately if needed).  NOTE: Setting this to "deny" will entirely BLOCK the component from being loaded dynamically over HTTP/HTML; it can still be used statically.</td>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">Y-coordinate of the upper left corner of the component.  If unset, defaults to 0.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -153,11 +118,6 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">deletable</td>
-<td class="type">yes/no</td>
-<td class="description"></td>
-</tr>
-<tr>
 <td class="name">multienter</td>
 <td class="type">integer</td>
 <td class="description">(e.g. 1)</td>
@@ -165,7 +125,7 @@
 <tr>
 <td class="name">object_name</td>
 <td class="type">string</td>
-<td class="description">Title to put across the form control bar (Note: the form_controls.cmp allows the user to perform row operations on a given record set)</td>
+<td class="description">Title to put across the form control bar (Note: the form_controls.cmp allows the user to perform row operations on a given record set).</td>
 </tr>
 </table>
 <p class="childname">(of /apps/kardia/modules/base/editbox_tree.cmp child widgets)</p>
@@ -188,16 +148,12 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">Instantiate</td>
-<td class="description">Instantiates the component.</td>
-</tr>
-<tr>
 <td class="name">Destroy</td>
 <td class="description">Destroys the component.  If multiple instances exist, then all instances are destroyed.</td>
 </tr>
 <tr>
-<td class="name">SetValue</td>
-<td class="description">Called by a connector to this a smartfield with the parameter 'Value' set to the new value.</td>
+<td class="name">Instantiate</td>
+<td class="description">Instantiates the component.</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
@@ -210,27 +166,30 @@
 <td class="name">LoadComplete</td>
 <td class="description">This event is triggered when a dynamic component completes loading from the server.</td>
 </tr>
-<tr>
-<td class="name">DataChange</td>
-<td class="description">This event is triggered when ...</td>
-</tr>
-<tr>
-<td class="name">LoseFocus</td>
-<td class="description"></td>
-</tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 			
+
 // Instantiate the form_controls.cmp component
+
 formctl "widget/component"
+
 	{
+
 	x=0; y=0; width=800; height=26;
+
 	mode=static;
+
 	path="/sys/cmp/form_controls.cmp";
+
 	form=my_form;
+
 	}
+
 			
+
 		</pre>
 </body>
 </html>

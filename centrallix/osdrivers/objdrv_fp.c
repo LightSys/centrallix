@@ -885,7 +885,7 @@ fp_internal_FindIndices(pFpData inf, char* table_path)
 	qpfPrintf(NULL, index_query, sizeof(index_query), 
 		"substring(:name,1,%INT) == 'index%STR&ESCQ.' AND char_length(:name) == %INT", 
 		6 + strlen(tdata->Qualifier), tdata->Qualifier, 7 + strlen(tdata->Qualifier));
-	qy = objOpenQuery(qy_obj, index_query, NULL, NULL, NULL);
+	qy = objOpenQuery(qy_obj, index_query, NULL, NULL, NULL, 0);
 	if (!qy) goto error;
 	objUnmanageQuery(inf->Obj->Session, qy);
 	while((fetched_obj = objQueryFetch(qy, O_RDONLY)))
@@ -1715,7 +1715,7 @@ fpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		    return NULL;
 		    }
 		objUnmanageObject(inf->Obj->Session, qy->LLObj);
-		qy->LLQuery = objOpenQuery(qy->LLObj, NULL, ":name", NULL, NULL);
+		qy->LLQuery = objOpenQuery(qy->LLObj, NULL, ":name", NULL, NULL, 0);
 		if (!qy->LLQuery)
 		    {
 		    objClose(qy->LLObj);
@@ -1847,7 +1847,7 @@ fpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 			i = strlen(filename);
 			if (i <= 3 || strncmp(filename+i-3, ".fp", 3))
 			    {
-			    qy->LLQuery2 = objOpenQuery(qy->LLObj2, "substring(:name,1,3) == 'key'", ":name", NULL, NULL);
+			    qy->LLQuery2 = objOpenQuery(qy->LLObj2, "substring(:name,1,3) == 'key'", ":name", NULL, NULL, 0);
 			    if (qy->LLQuery2)
 				objUnmanageQuery(inf->Obj->Session, qy->LLQuery2);
 			    }

@@ -39,6 +39,6 @@ test(char** tname)
 	    assert(buf[0] == '\0');
 	    }
 
-    return iter*6;
+    return iter*2;
     }
 

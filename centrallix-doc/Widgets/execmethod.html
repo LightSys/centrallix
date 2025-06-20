@@ -13,11 +13,16 @@
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>The execmethod widget is a nonvisual widget which is used to call ObjectSystem methods on objects on the server.This widget may become deprecated in the future when more advanced OSML API widgets become available.</p>
+
 			<p>These widgets are used via the activation of their "ExecuteMethod" action.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>The execmethod widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type "widget/page") for clarity's sake. It has no effect on its container.These widgets cannot contain visual widgets, and since they have no Events, normally contain no connector widgets either.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -49,21 +54,32 @@
 </tr>
 <tr>
 <td class="name">ExecuteMethod</td>
-<td class="description">action causes the widget to execute the method on the server. It can take three parameters, which default to those provided in this widget's properties: "Objname", the object path, "Method", the method to invoke, and "Parameter", the parameter to pass to the method being invoked.</td>
+<td class="description">Action causes the widget to execute the method on the server. It can take three parameters, which default to those provided in this widget's properties: "Objname", the object path, "Method", the method to invoke, and "Parameter", the parameter to pass to the method being invoked.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 		
+
 $Version=2$
+
 // This execmethod widget is set up to play a sound file (on the server).
+
 mySoundPlayer "widget/execmethod"
+
 	{
+
 	object = "/sys/ossdsp.aud";
+
 	method = "Play";
+
 	parameter = "/data/Welcome.wav";
+
 	}
+
 		
+
 		</pre>
 </body>
 </html>

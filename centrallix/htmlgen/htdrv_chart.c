@@ -129,11 +129,10 @@ htchtGetType(pWgtrNode tree, char* buf, size_t buflen)
     {
     char* chart_types[16] = {"line", "bar", "scatter", "pie", "doughnut", NULL};
     char err_msg[256];
-    int rval;
     int found = 0;
     int type_idx;
 
-        rval = htchtGetStrValue(tree, "chart_type", "bar", buf, buflen);
+        htchtGetStrValue(tree, "chart_type", "bar", buf, buflen);
 
 	/** Verify we have a valid chart type **/
         for (type_idx = 0; chart_types[type_idx]; type_idx++)

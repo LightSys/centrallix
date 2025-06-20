@@ -1,0 +1,7 @@
+##NAME Text Mining String Similarity
+
+query select sw1 = (cos_compare('hello', 'hello') >= 0.999) and (cos_compare('hello', 'hello') <= 1)
+query select sw1 = (cos_compare('hello', 'nancy') <= 0.001) and (cos_compare('hello', 'nancy') >= 0)
+query select sw1 = (cos_compare('hello', 'hello world') <= 0.891) and (cos_compare('hello', 'hello world') >= 0.890)
+query select sw1 = (cos_compare('hello', 'hellow') >= 0.935) and (cos_compare('hello', 'hellow') <= 0.936)
+query select sw1 = (cos_compare('hello', 'hellow', 1) >= 0.935) and (cos_compare('hello', 'hellow', 1) <= 0.936)

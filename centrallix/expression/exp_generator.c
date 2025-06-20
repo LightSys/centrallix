@@ -425,6 +425,7 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
     int prop_func;
     int nodetype;
     int id;
+    int rval;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -449,7 +450,12 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 	        /** Function node - write function call, param list, end paren. **/
 		if ((!strcmp(exp->Name,"runclient") || !strcmp(exp->Name,"runserver") || !strcmp(exp->Name,"runstatic")) && exp->Children.nItems == 1)
 		    return exp_internal_GenerateText_js((pExpression)(exp->Children.Items[0]), eg);
-	        snprintf(eg->TmpBuf,sizeof(eg->TmpBuf),"cxjs_%.250s(",exp->Name);
+	        rval = snprintf(eg->TmpBuf,sizeof(eg->TmpBuf),"cxjs_%.250s(",exp->Name);
+		if (rval < 0 || rval >= sizeof(eg->TmpBuf))
+		    {
+		    mssError(1,"EXP","Generator - exceeded representation for cxjs function call");
+		    return -1;
+		    }
 		exp_internal_WriteText(eg, eg->TmpBuf);
 		if (!strcmp(exp->Name, "substitute"))
 		    {

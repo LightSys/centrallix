@@ -20,6 +20,7 @@ query select datediff(minute, convert(datetime, "03-01-99 04:00-0600"), convert(
 
 # Formatting
 query select dateformat(convert(datetime, "3/1/17 13:01"), "yyyy-MM-dd hh:mm")
+query select dateformat(convert(datetime, "3/1/17 13:01"), "yyyy-M-d hh:mm")
 query select dateformat(convert(datetime, "3/1/17 13:01"), "yy-MM-dd HH:mm")
 query select dateformat(convert(datetime, "3/1/17 13:02"), "MM/dd/yyyy HH:mm:ss")
 query select dateformat(convert(datetime, "3/1/17 13:01:00"), "yyyy-MMM-dd HH:mm:ss")

@@ -13,21 +13,20 @@
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>The frameset widget provides the ability to construct a page consisting of multiple (potentially resizeable) frames.It is one of two possible top-level widgets (the page widget is the other one).  Framesets can consist of one or more frames, arranged either in rows or columns.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>The frameset can either be a top-level widget, or can be contained within a frameset (for subframes).The frameset widget should not be used anywhere else in an application. The frameset should contain only other framesets and/or pages.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
 <th class="name">Property</th>
 <th class="type">Type</th>
 <th class="description">Description</th>
-</tr>
-<tr>
-<td class="name">title</td>
-<td class="type">string</td>
-<td class="description">Title of the frameset for an html page.</td>
 </tr>
 <tr>
 <td class="name">borderwidth</td>
@@ -40,9 +39,9 @@
 <td class="description">Whether the frames are arranged in rows or columns.  Set this attribute to "rows" or "columns"respectively.</td>
 </tr>
 <tr>
-<td class="name">http_frame_options</td>
+<td class="name">title</td>
 <td class="type">string</td>
-<td class="description">When the frameset is rendered over HTTP/HTML, this controls the X-Frame-Options anti-clickjacking HTTP response header.  Possible values are "none", "sameorigin", and "deny".  The default value is set by the x_frame_options setting in the "net_http" section of centrallix.conf (see configuration docs for more information).  The http_frame_options setting only applies to the frameset widget it is set in, not to any pages or components that the frameset loads (it can be set in those pages/components separately if needed).</td>
+<td class="description">Title of the frameset for an html page.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -56,45 +55,75 @@
 <tr>
 <td class="name">framesize</td>
 <td class="type">integer/string</td>
-<td class="description">large this frame will be.Can either be expressed as an integer, which represents "50%".</td>
+<td class="description">Large this frame will be.Can either be expressed as an integer, which represents "50%".</td>
 </tr>
 <tr>
 <td class="name">marginwidth</td>
 <td class="type">integer</td>
-<td class="description">width, in pixels, of the margins of the frame.</td>
+<td class="description">Width, in pixels, of the margins of the frame.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 		
+
 $Version=2$
+
 // Example of a page with three frames on it.
+
 //
+
 BigFrameset "widget/frameset"
+
 	{
+
 	title = "MyTitle";
+
 	direction = "rows";
+
 	borderwidth = 3;
+
 	TopFrameset "widget/frameset"
+
 		{
+
 		framesize = "40%";
+
 		direction = "columns";
+
 		borderwidth = 3;
+
 		TopLeftDocument "widget/page"
+
 			{
+
 			framesize = "50%";
+
 			}
+
 		TopRightDocument "widget/page"
+
 			{
+
 			framesize = "50%";
+
 			}
+
 		}
+
 	BottomDocument "widget/page"
+
 		{
+
 		framesize = "60%";
+
 		}
+
 	}
+
 		
+
 		</pre>
 </body>
 </html>

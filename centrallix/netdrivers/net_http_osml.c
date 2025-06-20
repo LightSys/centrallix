@@ -448,7 +448,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
     char hexbuf[3];
     int mode,mask;
     char* usrtype;
-    int i,t,n,o,cnt,start,flags,len,rval;
+    int i,t,n,o,cnt,start,flags,rval;
     pStruct subinf, find_inf;
     MoneyType m;
     DateTime dt;
@@ -469,6 +469,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
     char* strval;
     XArray tail_buffer;
     int n_skipped;
+    int ws;
     
     handle_t session_handle;
     handle_t query_handle;
@@ -678,7 +679,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		orderby=NULL;
 		stAttrValue_ne(stLookup_ne(req_inf,"ls__where"),&where);
 		stAttrValue_ne(stLookup_ne(req_inf,"ls__orderby"),&orderby);
-		qy = objOpenQuery(obj,where,orderby,NULL,NULL);
+		qy = objOpenQuery(obj,where,orderby,NULL,NULL,0);
 		if (!qy)
 		    query_handle = XHN_INVALID_HANDLE;
 		else
@@ -698,6 +699,26 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 			nht_i_WriteHandle(conn, session_handle);
 			}
 		    qy = NULL;
+
+		    /** Close old objects **/
+		    ptr = NULL;
+		    stAttrValue_ne(stLookup_ne(req_inf,"ls__closeobjs"),&ptr);
+		    while(ptr && *ptr)
+			{
+			obj_handle = xhnStringToHandle(ptr+1, &newptr, 16);
+			if (newptr <= ptr+1) break;
+			ptr = newptr;
+			if (*ptr == ',') ptr++;
+			obj = (pObject)xhnHandlePtr(&(sess->Hctx), obj_handle);
+			if (!obj || !ISMAGIC(obj, MGK_OBJECT)) 
+			    {
+			    mssError(1,"NHT","Invalid object id(s) in OSML multiquery 'ls__closeobjs' request");
+			    continue;
+			    }
+			xhnFreeHandle(&(sess->Hctx), obj_handle);
+			objClose(obj);
+			obj = NULL;
+			}
 
 		    /** check for query parameters **/
 		    nht_query = nht_i_CreateQuery(req_inf);
@@ -939,12 +960,8 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		/** First, if creating, open the new object. **/
 		if (!strcmp(request,"create"))
 		    {
-		    len = strlen(req_inf->StrVal);
 		    /* let osml determine whether or not it is autoname - it is in a much better position to do so. */
-		    /*if (len < 1 || req_inf->StrVal[len-1] != '*' || (len >= 2 && req_inf->StrVal[len-2] != '/'))
-			obj = objOpen(objsess, req_inf->StrVal, O_CREAT | O_RDWR, 0600, "system/object");
-		    else*/
-			obj = objOpen(objsess, req_inf->StrVal, OBJ_O_AUTONAME | O_CREAT | O_RDWR, 0600, "system/object");
+		    obj = objOpen(objsess, req_inf->StrVal, OBJ_O_AUTONAME | O_CREAT | O_RDWR, 0600, "system/object");
 		    if (!obj)
 			{
 			nht_i_WriteResponse(conn, 200, "OK", "<A HREF=/ TARGET=ERR>&nbsp;</A>\r\n");
@@ -1098,12 +1115,15 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 				find_inf = stLookup_ne(nht_query->ParamData, "name");
 				if (find_inf)
 				    {
+				    /** Method #1: by parameter **/
 				    xsQPrintf(reopen_str, "string:V:%STR", ptr);
 				    stAddValue_ne(find_inf, xsString(reopen_str));
-				    xsQPrintf(reopen_str, "%STR FOR UPDATE", reopen_sql);
+				    ws = strspn(reopen_sql, " \t\r\n");
+				    xsQPrintf(reopen_str, "%STR%STR", reopen_sql, (strncasecmp(reopen_sql+ws, "exec", 4) == 0)?"":" FOR UPDATE");
 				    }
 				else
 				    {
+				    /** Method #2: by SQL clause **/
 				    xsQPrintf(reopen_str, "%STR %[WHERE%]%[HAVING%] :name = %STR&QUOT FOR UPDATE", reopen_sql, !reopen_having, reopen_having, ptr);
 				    }
 				qy = objMultiQuery(objsess, reopen_str->String, nht_query?nht_query->ParamList:NULL, 0);

@@ -38,8 +38,90 @@ typedef enum { ResAttrsBasic, ResAttrsFull, ResAttrsNone } nhtResAttrs_t;
 
 int nht_i_RestGetElementContent(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, char* mime_type);
 int nht_i_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, char* mime_type);
-int nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int levels);
-int nht_i_RestGetBoth(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int res_levels, char* mime_type);
+int nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int levels, pStruct url_inf);
+int nht_i_RestGetBoth(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int res_levels, char* mime_type, pStruct url_inf);
+
+
+/*** nht_i_EncodeCriteria() - look for criteria in the url_inf and encode
+ *** them into a query criteria string.  Returns NULL if no criteria were
+ *** found.
+ ***/
+ pXString
+ nht_i_EncodeCriteria(pStruct url_inf)
+    {
+    pXString xs = NULL;
+    int i, n_criteria = 0, n, j;
+    pStruct criteria_inf;
+    char* val;
+    char* op;
+    char* ops[] = { "=", "!=", "<", "<=", ">", ">=", "*", "_*", "*_", NULL };
+
+
+	/** Loop through criteria looking for non-cx__xxyyzz params **/
+	for(i=0; i<url_inf->nSubInf; i++)
+	    {
+	    criteria_inf = url_inf->SubInf[i];
+	    if (criteria_inf->Type == ST_T_ATTRIB && strncmp(criteria_inf->Name, "cx__", 4) != 0)
+		{
+		if (stAttrValue_ne(criteria_inf, &val) == 0)
+		    {
+		    n_criteria++;
+		    if (!xs)
+			{
+			xs = xsNew();
+			if (!xs) return NULL;
+			}
+
+		    /** Comparison operator supplied? **/
+		    op = NULL;
+		    for(j=0; ops[j]; j++)
+			{
+			if (!strncmp(val, ops[j], strlen(ops[j])) && val[strlen(ops[j])] == ':')
+			    {
+			    op = ops[j];
+			    val += (strlen(ops[j]) + 1);
+			    break;
+			    }
+			}
+
+		    /** Build the criteria **/
+		    if (op && !strcmp(op, "*"))
+			{
+			xsConcatQPrintf(xs, "%STRcharindex(%STR&QUOT, :%STR&QUOT) > 0", (n_criteria > 1)?" and ":"", val, criteria_inf->Name);
+			}
+		    else if (op && !strcmp(op, "_*"))
+			{
+			xsConcatQPrintf(xs, "%STRcharindex(%STR&QUOT, :%STR&QUOT) == 1", (n_criteria > 1)?" and ":"", val, criteria_inf->Name);
+			}
+		    else if (op && !strcmp(op, "*_"))
+			{
+			xsConcatQPrintf(xs, "%STRcharindex(%STR&QUOT, :%STR&QUOT) == char_length(:%STR&QUOT) - char_length(%STR&QUOT) + 1", (n_criteria > 1)?" and ":"", val, criteria_inf->Name, criteria_inf->Name, val);
+			}
+		    else
+			{
+			xsConcatQPrintf(xs, "%STR:%STR&QUOT %STR ", (n_criteria > 1)?" and ":"", criteria_inf->Name, op?op:"=");
+
+			/** What type are we dealing with?  This duck-typing isn't ideal,
+			 ** but we don't currently have a better way of working this out.
+			 **/
+			if (strlen(val) == strspn(val, "-0123456789"))
+			    {
+			    /** integer **/
+			    n = strtol(val, NULL, 10);
+			    xsConcatQPrintf(xs, "%INT", n);
+			    }
+			else
+			    {
+			    /** string **/
+			    xsConcatQPrintf(xs, "%STR&QUOT", val);
+			    }
+			}
+		    }
+		}
+	    }
+
+    return xs;
+    }
 
 
 /*** nht_i_RestGetElementContent() - get a REST element's content.
@@ -199,8 +281,8 @@ nht_i_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtR
     char* path;
     char pathbuf[OBJSYS_MAX_PATH];
     char* attr;
-    char xfer_buf[256];
-    int rcnt;
+    char xfer_buf[255];
+    int rcnt, rcnt2, padcnt;
     char* sys_attrs[] = { "name", "annotation", "inner_type", "outer_type" };
     char sent_sys_attrs[sizeof(sys_attrs)/sizeof(char*)];
     int i;
@@ -220,6 +302,37 @@ nht_i_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtR
 	/** Write any attrs? **/
 	if (res_attrs != ResAttrsNone)
 	    {
+	    /** Content?  If so, we do content first in order to ensure metadata
+	     ** values are set; with some content the metadata values are generated
+	     ** during content generation.
+	     **/
+	    if (res_format == ResFormatBoth)
+		{
+		nht_i_WriteConn(conn, ",\r\n\"cx__objcontent\":\"", -1, 0);
+		while((rcnt = objRead(obj, xfer_buf, sizeof(xfer_buf), 0, 0)) > 0)
+		    {
+		    /** Base64 source data needs to be multiples of 3 bytes except
+		     ** at the tail end.
+		     **/
+		    padcnt = (3 - (rcnt%3))%3;
+		    while(padcnt > 0)
+			{
+			rcnt2 = objRead(obj, xfer_buf+rcnt, padcnt, 0, 0);
+			if (rcnt2 <= 0)
+			    break;
+			rcnt += rcnt2;
+			padcnt = (3 - (rcnt%3))%3;
+			}
+		    
+		    /** Encode it **/
+		    nht_i_QPrintfConn(conn, 0, "%*STR&B64", rcnt, xfer_buf);
+		    }
+		nht_i_WriteConn(conn, "\"", -1, 0);
+
+		/** Filename? **/
+		nht_i_RestWriteAttr(conn, obj, "cx__download_as", res_attrs, 1);
+		}
+
 	    /** Keep track of any sys attrs that were sent with the main ones **/
 	    memset(sent_sys_attrs, 0, sizeof(sent_sys_attrs));
 
@@ -243,17 +356,6 @@ nht_i_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtR
 		if (!sent_sys_attrs[i])
 		    nht_i_RestWriteAttr(conn, obj, sys_attrs[i], res_attrs, 1);
 		}
-
-	    /** Content? **/
-	    if (res_format == ResFormatBoth)
-		{
-		nht_i_WriteConn(conn, ",\r\n\"cx__objcontent\":\"", -1, 0);
-		while((rcnt = objRead(obj, xfer_buf, sizeof(xfer_buf), 0, 0)) > 0)
-		    {
-		    nht_i_QPrintfConn(conn, 0, "%*STR&JSONSTR", rcnt, xfer_buf);
-		    }
-		nht_i_WriteConn(conn, "\"", -1, 0);
-		}
 	    }
 
 	/** And end it with } **/
@@ -269,7 +371,7 @@ nht_i_RestGetElement(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtR
  *** the attributes for each one.
  ***/
 int
-nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int levels)
+nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int levels, pStruct url_inf)
     {
     pObjQuery query;
     pObject subobj;
@@ -277,6 +379,7 @@ nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtRe
     char* objtype;
     char* path;
     char pathbuf[OBJSYS_MAX_PATH];
+    pXString criteria = NULL;
 
 	/** We open our list with just a { **/
 	nht_i_WriteConn(conn, "{\r\n", -1, 0);
@@ -291,8 +394,11 @@ nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtRe
 		(res_attrs == ResAttrsFull)?"full":"basic"
 		);
 
+	/** Check for query criteria **/
+	criteria = nht_i_EncodeCriteria(url_inf);
+
 	/** Open the query and loop through subobjects **/
-	query = objOpenQuery(obj, "", NULL, NULL, NULL);
+	query = objOpenQuery(obj, criteria?criteria->String:"", NULL, NULL, NULL, 0);
 	if (query)
 	    {
 	    while((subobj = objQueryFetch(query, O_RDONLY)) != NULL)
@@ -315,9 +421,9 @@ nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtRe
 		    else
 			{
 			if (res_type == ResTypeBoth)
-			    nht_i_RestGetBoth(conn, subobj, res_format, res_attrs, levels-1, objtype);
+			    nht_i_RestGetBoth(conn, subobj, res_format, res_attrs, levels-1, objtype, url_inf);
 			else
-			    nht_i_RestGetCollection(conn, subobj, ResTypeCollection, res_format, res_attrs, levels-1);
+			    nht_i_RestGetCollection(conn, subobj, ResTypeCollection, res_format, res_attrs, levels-1, url_inf);
 			}
 		    objClose(subobj);
 		    }
@@ -328,6 +434,8 @@ nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtRe
 	/** And close it with } **/
 	nht_i_WriteConn(conn, "}\r\n", -1, 0);
 
+	if (criteria) xsFree(criteria);
+
     return 0;
     }
 
@@ -337,7 +445,7 @@ nht_i_RestGetCollection(pNhtConn conn, pObject obj, nhtResType_t res_type, nhtRe
  *** into a two-part JSON document.
  ***/
 int
-nht_i_RestGetBoth(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int res_levels, char* mime_type)
+nht_i_RestGetBoth(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResAttrs_t res_attrs, int res_levels, char* mime_type, pStruct url_inf)
     {
     char* path;
     char pathbuf[OBJSYS_MAX_PATH];
@@ -361,7 +469,7 @@ nht_i_RestGetBoth(pNhtConn conn, pObject obj, nhtResFormat_t res_format, nhtResA
 
 	/** Output the collection **/
 	nht_i_WriteConn(conn, ",\"cx__collection\":", -1, 0);
-	nht_i_RestGetCollection(conn, obj, ResTypeBoth, res_format, res_attrs, res_levels);
+	nht_i_RestGetCollection(conn, obj, ResTypeBoth, res_format, res_attrs, res_levels, url_inf);
 
 	/** Close the JSON container **/
 	nht_i_WriteConn(conn, "}\r\n", -1, 0);
@@ -491,13 +599,19 @@ nht_i_RestGet(pNhtConn conn, pStruct url_inf, pObject obj)
 		(res_type == ResTypeElement && res_format == ResFormatContent)?mime_type:"application/json",
 		sizeof(conn->ResponseContentType));
 
+	/** Remove content disposition header for a JSON response. **/
+	if (res_type != ResTypeElement || res_format != ResFormatContent)
+	    {
+	    nht_i_AddResponseHeader(conn, "Content-Disposition", NULL, 0);
+	    }
+
 	/** End of headers - we don't have anything else to add at this point. Send the HTTP response. **/
 	nht_i_WriteResponse(conn, 200, "OK", NULL);
 
 	/** Ok, generate the document **/
 	if (res_type == ResTypeBoth)
 	    {
-	    rval = nht_i_RestGetBoth(conn, obj, res_format, res_attrs, res_levels, mime_type);
+	    rval = nht_i_RestGetBoth(conn, obj, res_format, res_attrs, res_levels, mime_type, url_inf);
 	    }
 	else if (res_type == ResTypeElement)
 	    {
@@ -508,7 +622,7 @@ nht_i_RestGet(pNhtConn conn, pStruct url_inf, pObject obj)
 	    }
 	else
 	    {
-	    rval = nht_i_RestGetCollection(conn, obj, ResTypeCollection, res_format, res_attrs, res_levels);
+	    rval = nht_i_RestGetCollection(conn, obj, ResTypeCollection, res_format, res_attrs, res_levels, url_inf);
 	    }
 
     return rval;
@@ -575,6 +689,12 @@ nht_i_RestSetOneAttr(pObject obj, char* attrname, struct json_object* j_attr_obj
 		rval = objSetAttrValue(obj, attrname, DATA_T_DATETIME, &od);
 		}
 	    }
+	else if (json_object_is_type(j_attr_obj, json_type_boolean))
+	    {
+	    /** json_bool is "typedef int", 0=false, 1=true **/
+	    n = (int)json_object_get_boolean(j_attr_obj);
+	    rval = objSetAttrValue(obj, attrname, DATA_T_INTEGER, POD(&n));
+	    }
 
     return rval;
     }
@@ -622,7 +742,10 @@ nht_i_RestPatch(pNhtConn conn, pStruct url_inf, pObject obj, struct json_object*
 	    j_attr_obj = iter.val;
 	    attrname = iter.key;
 	    if (nht_i_RestSetOneAttr(obj, attrname, j_attr_obj) < 0)
+		{
+		mssError(1, "NHT", "JSON PATCH: could not set attribute %s", attrname);
 		return -1;
+		}
 	    }
 
 	/** Ok, issue the HTTP header for this one. **/
@@ -662,6 +785,7 @@ nht_i_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
     struct json_object_iter iter;
     struct json_object* j_attr_obj;
     char* attrname;
+    int rval;
 
 	/** Open the target object **/
 	if (strlen(url_inf->StrVal) + 2 + 1 >= OBJSYS_MAX_PATH)
@@ -766,7 +890,12 @@ nht_i_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
 	    j_attr_obj = iter.val;
 	    attrname = iter.key;
 	    if (nht_i_RestSetOneAttr(target_obj, attrname, j_attr_obj) < 0)
-		return -1;
+		{
+		mssError(1, "NHT", "JSON POST: could not set attribute %s", attrname);
+		msg = "Bad Request";
+		code = 400;
+		goto error;
+		}
 	    }
 	//objCommit(conn->NhtSession->ObjSess);
 	objCommitObject(target_obj);
@@ -779,19 +908,19 @@ nht_i_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
 	    code = 500;
 	    goto error;
 	    }
-	if (strlen(new_obj_path) + strlen(ptr) + 2 >= sizeof(new_obj_name))
+	if (strlen(new_obj_path) >= 2)
+	    {
+	    /** trim the trailing slash and star **/
+	    new_obj_path[strlen(new_obj_path)-2] = '\0';
+	    }
+	rval = snprintf(new_obj_name, sizeof(new_obj_name), "%s/%s", new_obj_path, ptr);
+	if (rval < 0 || rval >= sizeof(new_obj_name))
 	    {
 	    mssError(1,"NHT","Path too long for new object for POST request");
 	    msg = "Internal Server Error";
 	    code = 500;
 	    goto error;
 	    }
-	if (strlen(new_obj_path) >= 2)
-	    {
-	    /** trim the trailing slash and star **/
-	    new_obj_path[strlen(new_obj_path)-2] = '\0';
-	    }
-	snprintf(new_obj_name, sizeof(new_obj_name), "%s/%s", new_obj_path, ptr);
 
 	/** Do the reopen **/
 	objClose(target_obj);

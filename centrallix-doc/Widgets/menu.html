@@ -13,18 +13,34 @@
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>The menu widget is used to create popup menus, drop-down menus, and menu bars.  Menu widgets consist of a series of menuitem widgets which compose a menu.</p>
+
 			<p>Menu items are generally linked to actions on a page via the use of connectors.  Simply place the connector inside the menu item widget.</p>
+
 			<p>Note: as of the time of writing, menu widgets were not yet properly functional.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>Menus can be placed inside of any visual container. However, be aware that the menu will be clipped by its container, so placing them at the top-level can be of an advantage. Menu widgets contain menuitem widgets, which are also described in this section.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
 <th class="name">Property</th>
 <th class="type">Type</th>
 <th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">active_background</td>
+<td class="type">string</td>
+<td class="description">A background image for a menu item that is selected (clicked on).</td>
+</tr>
+<tr>
+<td class="name">active_bgcolor</td>
+<td class="type">string</td>
+<td class="description">A color, RGB or named, to be used as a selected (clicked) item's background.  If neither active_bgcolor nor active_background are specified, the 'highlight' color or background is used instead.</td>
 </tr>
 <tr>
 <td class="name">background</td>
@@ -37,19 +53,24 @@
 <td class="description">A color, RGB or named, to be used as the menu's background.  If neither bgcolor nor background are specified, the menu is transparent.</td>
 </tr>
 <tr>
+<td class="name">column_width</td>
+<td class="type">integer</td>
+<td class="description">The width of the data elements in the menu.</td>
+</tr>
+<tr>
+<td class="name">direction</td>
+<td class="type">string</td>
+<td class="description">Either "horizontal" or "vertical" (default), and determines whether the menu is a drop-down/popup (vertical) or a menubar (horizontal).</td>
+</tr>
+<tr>
 <td class="name">fgcolor</td>
 <td class="type">string</td>
 <td class="description">A color for the menu's text.</td>
 </tr>
 <tr>
-<td class="name">active_background</td>
-<td class="type">string</td>
-<td class="description">A background image for a menu item that is selected (clicked on)</td>
-</tr>
-<tr>
-<td class="name">active_bgcolor</td>
-<td class="type">string</td>
-<td class="description">A color, RGB or named, to be used as a selected (clicked) item's background.  If neither active_bgcolor nor active_background are specified, the 'highlight' color or background is used instead.</td>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">Height, in pixels, of the menu, for menus with a direction of 'horizontal'.</td>
 </tr>
 <tr>
 <td class="name">highlight_background</td>
@@ -62,11 +83,6 @@
 <td class="description">A color, RGB or named, to be used as a highlighted (pointed-at) item's background.  If neither highlight_bgcolor nor highlight_background are specified, the standard color or background is used instead.</td>
 </tr>
 <tr>
-<td class="name">direction</td>
-<td class="type">string</td>
-<td class="description">Either "horizontal" or "vertical" (default), and determines whether the menu is a drop-down/popup (vertical) or a menubar (horizontal).</td>
-</tr>
-<tr>
 <td class="name">popup</td>
 <td class="type">yes/no</td>
 <td class="description">Default "no".  Popup menus disappear after an item on them is selected, whereas fixed menus remain visible (such as for menubars).</td>
@@ -74,27 +90,32 @@
 <tr>
 <td class="name">row_height</td>
 <td class="type">integer</td>
-<td class="description">height, in pixels, of the menu items in a menu.</td>
+<td class="description">Height, in pixels, of the menu items in a menu.</td>
 </tr>
 <tr>
-<td class="name">height</td>
+<td class="name">shadow_offset</td>
 <td class="type">integer</td>
-<td class="description">height, in pixels, of the menu, for menus with a direction of 'horizontal'.</td>
+<td class="description">Determines how far the shadow translates from the menu.</td>
+</tr>
+<tr>
+<td class="name">shadow_radius</td>
+<td class="type">integer</td>
+<td class="description">Describes in a ratio how much larger or smaller the size of the shadow is compared to the window.</td>
 </tr>
 <tr>
 <td class="name">width</td>
 <td class="type">integer</td>
-<td class="description">width, in pixels, of the menu.  For menus with a direction of 'vertical', an unspecified width is determined dynamically based on the menu contents.</td>
+<td class="description">Width, in pixels, of the menu.  For menus with a direction of 'vertical', an unspecified width is determined dynamically based on the menu contents.</td>
 </tr>
 <tr>
 <td class="name">x</td>
 <td class="type">integer</td>
-<td class="description">x-coordinate of the upper left corner of the menu, relative to its container.</td>
+<td class="description">X-coordinate of the upper left corner of the menu, relative to its container.</td>
 </tr>
 <tr>
 <td class="name">y</td>
 <td class="type">integer</td>
-<td class="description">y-coordinate of the upper left corner of the menu, relative to its container.</td>
+<td class="description">Y-coordinate of the upper left corner of the menu, relative to its container.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -106,24 +127,24 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">icon</td>
-<td class="type">string</td>
-<td class="description">Optionally, the pathname of an image file to display to the left of the menu item.</td>
-</tr>
-<tr>
 <td class="name">checked</td>
 <td class="type">yes/no</td>
 <td class="description">Optionally, a checkbox can be displayed to the left of the menu item when 'checked' is specified.  In this case, the 'value' can also be a runclient() expression that controls whether the menu item is checked.</td>
 </tr>
 <tr>
-<td class="name">onright</td>
-<td class="type">yes/no</td>
-<td class="description">If set to "yes", then the menu item will be displayed on the righthand side of a horizontal menu bar (e.g., for having "File" "Edit" "Tools" on the left, and "Help" on the far right).</td>
+<td class="name">icon</td>
+<td class="type">string</td>
+<td class="description">Optionally, the pathname of an image file to display to the left of the menu item.</td>
 </tr>
 <tr>
 <td class="name">label</td>
 <td class="type">string</td>
 <td class="description">The text to appear on the menu item.</td>
+</tr>
+<tr>
+<td class="name">onright</td>
+<td class="type">yes/no</td>
+<td class="description">If set to "yes", then the menu item will be displayed on the righthand side of a horizontal menu bar (e.g., for having "File" "Edit" "Tools" on the left, and "Help" on the far right).</td>
 </tr>
 <tr>
 <td class="name">value</td>
@@ -164,26 +185,73 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">Selected</td>
+<td class="name">DataChange</td>
+<td class="description">This event occurs when the an item in the menu which is not a submenu is changed.</td>
+</tr>
+<tr>
+<td class="name">GetFocus</td>
+<td class="description">This event occurs when the menu which previously was not clicked is clicked.</td>
+</tr>
+<tr>
+<td class="name">LoseFocus</td>
+<td class="description">This event occurs when the menu which previously was clicked is unselected.</td>
+</tr>
+<tr>
+<td class="name">MouseDown</td>
+<td class="description">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
+</tr>
+<tr>
+<td class="name">MouseMove</td>
+<td class="description">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</td>
+</tr>
+<tr>
+<td class="name">MouseOut</td>
+<td class="description">This event occurs when the user moves the mouse pointer off of the checkbox.</td>
+</tr>
+<tr>
+<td class="name">MouseOver</td>
+<td class="description">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</td>
+</tr>
+<tr>
+<td class="name">MouseUp</td>
+<td class="description">This event occurs when the user releases the mouse button on the checkbox.</td>
+</tr>
+<tr>
+<td class="name">Select</td>
 <td class="description">This event fires when a menu item is selected.  It can be placed in the menu itself, or inside the menu item widget.  When on a menu item, it only fires when that item is selected.  When on a menu, it passes the selected item's value as a parameter named 'Item' (string).</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 		
+
 $Version=2$
+
 // Here's a sample menu with three buttons.
+
 myMenu "widget/menu"
+
 	{
+
 	x = 10; y = 10; width = 72;
+
 	direction = "vertical"; popup = yes;
+
 	bgcolor="#808080";
+
 	
+
 	m1 "widget/menuitem" { label="One"; }
+
 	m2 "widget/menuitem" { label="Two"; }
+
 	m3 "widget/menuitem" { label="Three"; }
+
 	}
+
 		
+
 		</pre>
 </body>
 </html>

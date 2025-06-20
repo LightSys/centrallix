@@ -9,6 +9,7 @@ centrallix "system/config"
     // General Configuration Data
     types_config = "/usr/local/etc/centrallix/types.cfg";
     useragent_config = "/usr/local/etc/centrallix/useragent.cfg";
+    colors_config = "/usr/local/etc/centrallix/rgb.txt";
     rootnode_type = "system/uxfile";
     rootnode_file = "/usr/local/etc/centrallix/rootnode";
     iface_dir = "/sys/ifc";	    // this is an OSML path

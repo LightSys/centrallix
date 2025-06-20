@@ -928,7 +928,7 @@ qy_internal_StartQuery(pQyQuery qy)
 	qy->LLQueryObj = objOpen(qy->ObjInf->Obj->Session, qy->ItemSrc, O_RDONLY, 0600, "system/directory");
 	if (qy->LLQueryObj) 
 	    {
-	    qyinf = objOpenQuery(qy->LLQueryObj, qy->QyText, NULL,NULL,NULL);
+	    qyinf = objOpenQuery(qy->LLQueryObj, qy->QyText, NULL,NULL,NULL,0);
 	    if (!qyinf) objClose(qy->LLQueryObj);
 	    }
 

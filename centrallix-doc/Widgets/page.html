@@ -13,17 +13,27 @@
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>The page widget represents the HTML application (or subapplication) as a whole and serves as a top-level container for other widgets in the application.  The page widget also implements some important functionality regarding the management of keypresses, focus, widget resizing, and event management. When creating an application, the top-level object in the application must either be "widget/page" or "widget/frameset", where the latter is used to create a multi-framed application containing multiple page widgets.</p>
+
 			<p>Page widgets specify the colors for mouse, keyboard, and data focus for the application.  Focus is usually indicated via the drawing of a rectangle around a widget or data item, and for a 3D-effect two colors are specified for each type of focus: a color for the top and left of the rectangle, and another color for the right and bottom of the rectangle.  Mouse focus gives feedback to the user as to which widget they are pointing at (and thus which one will receive keyboard and/or data focus if the user clicks the mouse).  Keyboard focus tells the user which widget will receive data entered via the keyboard.  Data focus tells the user which record or data item is selected in a widget.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>The page widget cannot be embedded within other widgets on a page. There must only be one per page, unless a frameset is used, in which case page widgets may be added within a frameset widget.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
 <th class="name">Property</th>
 <th class="type">Type</th>
 <th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">attract</td>
+<td class="type">integer</td>
+<td class="description">Determines how close the window is to the browser edge.</td>
 </tr>
 <tr>
 <td class="name">background</td>
@@ -56,6 +66,21 @@
 <td class="description">The default font size, in pixels (same as points on a typical 72dpi display), for text in the application.</td>
 </tr>
 <tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">The height of the page in pixels.</td>
+</tr>
+<tr>
+<td class="name">http_frame_options</td>
+<td class="type">string</td>
+<td class="description">When the application is rendered over HTTP/HTML, this controls the X-Frame-Options anti-clickjacking HTTP response header.  Possible values are "none", "sameorigin", and "deny".  The default value is set by the x_frame_options setting in the "net_http" section of centrallix.conf (see configuration docs for more information).  The http_frame_options setting only applies to the page widget it is set in, not to any components that the page loads (it can be set in those components separately if needed).</td>
+</tr>
+<tr>
+<td class="name">icon</td>
+<td class="type">string</td>
+<td class="description">The file path to the page icon.</td>
+</tr>
+<tr>
 <td class="name">kbdfocus1</td>
 <td class="type">string</td>
 <td class="description">A color, RGB or named, to be used for the top and left edges of rectangles drawn to indicate keyboard focus (default is "white").</td>
@@ -64,6 +89,21 @@
 <td class="name">kbdfocus2</td>
 <td class="type">string</td>
 <td class="description">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate keyboard focus (default is dark grey).</td>
+</tr>
+<tr>
+<td class="name">linkcolor</td>
+<td class="type">string</td>
+<td class="description">Color for hyper links.</td>
+</tr>
+<tr>
+<td class="name">loadstatus</td>
+<td class="type">string</td>
+<td class="description">True if page is loaded, false otherwise.</td>
+</tr>
+<tr>
+<td class="name">max_requests</td>
+<td class="type">integer</td>
+<td class="description">The maximum amount of server requests at one time.</td>
 </tr>
 <tr>
 <td class="name">mousefocus1</td>
@@ -76,9 +116,9 @@
 <td class="description">A color, RGB or named, for the bottom and right edges of rectangles drawn to indicate mouse focus (default is "black").</td>
 </tr>
 <tr>
-<td class="name">textcolor</td>
-<td class="type">string</td>
-<td class="description">The default color for text which appears on the page.  Can either be a named color or RGB (numeric) color.</td>
+<td class="name">show_diagnostics</td>
+<td class="type">yes/no</td>
+<td class="description">Set this to "yes" to display message boxes when application errors occur, such as an undefined property reference.  The default is "no", but this is handy when debugging.</td>
 </tr>
 <tr>
 <td class="name">title</td>
@@ -86,14 +126,9 @@
 <td class="description">The title which will appear in the browser's window title bar.</td>
 </tr>
 <tr>
-<td class="name">x</td>
-<td class="type">integer</td>
-<td class="description"></td>
-</tr>
-<tr>
-<td class="name">y</td>
-<td class="type">integer</td>
-<td class="description"></td>
+<td class="name">textcolor</td>
+<td class="type">string</td>
+<td class="description">The default color for text which appears on the page.  Can either be a named color or RGB (numeric) color.</td>
 </tr>
 <tr>
 <td class="name">widget_template</td>
@@ -103,45 +138,76 @@
 <tr>
 <td class="name">width</td>
 <td class="type">integer</td>
-<td class="description"></td>
-</tr>
-<tr>
-<td class="name">height</td>
-<td class="type">integer</td>
-<td class="description"></td>
-</tr>
-<tr>
-<td class="name">show_diagnostics</td>
-<td class="type">yes/no</td>
-<td class="description">Set this to "yes" to display message boxes when application errors occur, such as an undefined property reference.  The default is "no", but this is handy when debugging.</td>
-</tr>
-<tr>
-<td class="name">http_frame_options</td>
-<td class="type">string</td>
-<td class="description">When the application is rendered over HTTP/HTML, this controls the X-Frame-Options anti-clickjacking HTTP response header.  Possible values are "none", "sameorigin", and "deny".  The default value is set by the x_frame_options setting in the "net_http" section of centrallix.conf (see configuration docs for more information).  The http_frame_options setting only applies to the page widget it is set in, not to any components that the page loads (it can be set in those components separately if needed).</td>
+<td class="description">The width of the page in pixels.</td>
 </tr>
 </table>
-<h3 class="childproperties">Child Properties:</h3>
-<p class="none">none currently available</p>
 <h3 class="actions">Actions:</h3>
-<p class="none">none currently available</p>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">Alert</td>
+<td class="description">Sends an alert widget.</td>
+</tr>
+<tr>
+<td class="name">Close</td>
+<td class="description">Closes the page.</td>
+</tr>
+<tr>
+<td class="name">Launch</td>
+<td class="description">Starts a new app in a new window.</td>
+</tr>
+<tr>
+<td class="name">LoadPage</td>
+<td class="description">Loads the page.</td>
+</tr>
+</table>
 <h3 class="events">Events:</h3>
-<p class="none">none currently available</p>
+<table class="events">
+<tr>
+<th class="name">Event</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">Load</td>
+<td class="description">This occurs when the page initializes.</td>
+</tr>
+<tr>
+<td class="name">RightClick</td>
+<td class="description">This occurs when the uses right clicks on a mouse or mouse pad.</td>
+</tr>
+</table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 		
+
 $Version=2$
+
 // A really simple application.Just a blank page with a title.
+
 //
+
 MyPage "widget/page"
+
 	{
+
 	title = "This is an example page.";
+
 	bgcolor = "white";
+
 	textcolor = "black";
 
+
+
 	// widgets for application go here
+
 	}
+
 		
+
 		</pre>
 </body>
 </html>

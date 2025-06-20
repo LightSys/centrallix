@@ -306,8 +306,8 @@ prt_fxod_SetPageGeom(void* context_v, double width, double height, double t, dou
 /*** prt_fxod_GetNearestFontSize() - return the nearest font size to the
  *** requested one.  Right now, we just support a few sizes.
  ***/
-int
-prt_fxod_GetNearestFontSize(void* context_v, int req_size)
+double
+prt_fxod_GetNearestFontSize(void* context_v, double req_size)
     {
     /*pPrtFXodInf context = (pPrtFXodInf)context_v;*/
     if (req_size >= 11)
@@ -515,7 +515,7 @@ prt_fxod_WriteScreen(pPrtFXodInf context, int color_id, int intensity, char* tex
 /*** prt_fxod_WriteText() - sends a string of text to the printer.
  ***/
 int
-prt_fxod_WriteText(void* context_v, char* str)
+prt_fxod_WriteText(void* context_v, char* str, char* url, double width, double height)
     {
     pPrtFXodInf context = (pPrtFXodInf)context_v;
 
@@ -535,13 +535,13 @@ double
 prt_fxod_WriteRasterData(void* context_v, pPrtImage img, double width, double height, double next_y)
     {
     pPrtFXodInf context = (pPrtFXodInf)context_v;
-    int rows,cols;
+    //int rows,cols;
     double actual_height;
 
 	/** How many raster rows/cols are we looking at here? **/
 	actual_height = (context->CurVPos + height <= next_y)?height:(next_y - context->CurVPos);
-	rows = actual_height/6.0*(context->SelectedResolution->Yres);
-	cols = width/10.0*(context->SelectedResolution->Xres);
+	//rows = actual_height/6.0*(context->SelectedResolution->Yres);
+	//cols = width/10.0*(context->SelectedResolution->Xres);
 
 	/** Don't actually print the image for now **/
 
@@ -570,7 +570,7 @@ prt_fxod_WriteFF(void* context_v)
  *** on the page that will be printed after this row of objects.
  ***/
 double
-prt_fxod_WriteRect(void* context_v, double width, double height, double next_y)
+prt_fxod_WriteRect(void* context_v, double width, double height, double next_y, int color)
     {
     pPrtFXodInf context = (pPrtFXodInf)context_v;
 

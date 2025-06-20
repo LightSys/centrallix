@@ -13,10 +13,14 @@
 <p class="widgettype">form element: <span class="widgettypevalue">yes</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 		    <p>The datetime widget displays a calendar and clock.  Input is done by typing into the bar or by selecting a date in display pane.  When the form goes into query mode two panes will appear, one for the start and one for the end time.  Note that the osml format for searching for dates is dd Mon yyyy, whereas the format dates are displayed in the widget is Mon dd, yyyy.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 		    <p>This widget can be placed within any visual widget.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -25,59 +29,9 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">x</td>
-<td class="type">integer</td>
-<td class="description">x-coordinate of the upper left corner of the bar.</td>
-</tr>
-<tr>
-<td class="name">y</td>
-<td class="type">integer</td>
-<td class="description">y-coordinate of the upper left corner of the bar.</td>
-</tr>
-<tr>
-<td class="name">width</td>
-<td class="type">integer</td>
-<td class="description">width, in pixels, of the bar.</td>
-</tr>
-<tr>
-<td class="name">height</td>
-<td class="type">integer</td>
-<td class="description">height, in pixels, of the bar.</td>
-</tr>
-<tr>
-<td class="name">form</td>
+<td class="name">background</td>
 <td class="type">string</td>
-<td class="description">name of a form object that is a parent of the datetime widget (not required)</td>
-</tr>
-<tr>
-<td class="name">fieldname</td>
-<td class="type">string</td>
-<td class="description">not used currently to my knowledge.</td>
-</tr>
-<tr>
-<td class="name">sql</td>
-<td class="type">string</td>
-<td class="description">used to set the initial date by a query</td>
-</tr>
-<tr>
-<td class="name">initialdate</td>
-<td class="type">string</td>
-<td class="description">used to set the initialdate by a string</td>
-</tr>
-<tr>
-<td class="name">bgcolor</td>
-<td class="type">string</td>
-<td class="description">the background color of the bar and pane. (named or numeric)</td>
-</tr>
-<tr>
-<td class="name">fgcolor</td>
-<td class="type">string</td>
-<td class="description">the foreground color of the bar and pane. (named or numeric)</td>
-</tr>
-<tr>
-<td class="name">search_by_range</td>
-<td class="type">yes/no</td>
-<td class="description">Default "yes".  Specifies that when the datetime widget is in a form that is in search (QBF) mode, the datetime should display both a "start" and an "end" calendar so the user can search for records/objects matching a range of dates.</td>
+<td class="description">The background color of the bar and pane (named or numeric).</td>
 </tr>
 <tr>
 <td class="name">date_only</td>
@@ -88,6 +42,67 @@
 <td class="name">default_time</td>
 <td class="type">string</td>
 <td class="description">When the user sets the date without selecting a time value (or if date_only is set), use this time as the "default" time.  This can be set to "00:00:00" or "23:59:59", for example, to specify a time at the start or end of a day.</td>
+</tr>
+<tr>
+<td class="name">fgcolor</td>
+<td class="type">string</td>
+<td class="description">The foreground color of the bar and pane (named or numeric).</td>
+</tr>
+<tr>
+<td class="name">fieldname</td>
+<td class="type">string</td>
+<td class="description">Not used currently to my knowledge.</td>
+</tr>
+<tr>
+<td class="name">form</td>
+<td class="type">string</td>
+<td class="description">Name of a form object that is a parent of the datetime widget (not required).</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">Height, in pixels, of the bar.</td>
+</tr>
+<tr>
+<td class="name">initialdate</td>
+<td class="type">string</td>
+<td class="description">Used to set the initialdate by a string.</td>
+</tr>
+<tr>
+<td class="name">search_by_range</td>
+<td class="type">yes/no</td>
+<td class="description">Default "yes".  Specifies that when the datetime widget is in a form that is in search (QBF) mode, the datetime should display both a "start" and an "end" calendar so the user can search for records/objects matching a range of dates.</td>
+</tr>
+<tr>
+<td class="name">sql</td>
+<td class="type">string</td>
+<td class="description">Used to set the initial date by a query.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">Width, in pixels, of the bar.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">X-coordinate of the upper left corner of the bar.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">Y-coordinate of the upper left corner of the bar.</td>
+</tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">SetValue</td>
+<td class="description">Generates an internal data object using the data specified or the current time.</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
@@ -101,50 +116,61 @@
 <td class="description">This event occurs when the user clicks the widget. No parameters are available from this event.</td>
 </tr>
 <tr>
-<td class="name">MouseUp</td>
-<td class="description">This event occurs when the user releases the mouse button on the widget.</td>
-</tr>
-<tr>
-<td class="name">MouseDown</td>
-<td class="description">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
-</tr>
-<tr>
-<td class="name">MouseOver</td>
-<td class="description">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</td>
-</tr>
-<tr>
-<td class="name">MouseOut</td>
-<td class="description">This event occurs when the user moves the mouse pointer off of the widget.</td>
-</tr>
-<tr>
-<td class="name">MouseMove</td>
-<td class="description">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</td>
-</tr>
-<tr>
 <td class="name">DataChange</td>
 <td class="description">This event occurs when the user has modified the data value of the widget (clicked or unclicked it).</td>
+</tr>
+<tr>
+<td class="name">GetFocus</td>
+<td class="description">This event occurs when the datetime widget receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</td>
 </tr>
 <tr>
 <td class="name">LoseFocus</td>
 <td class="description">This event occurs when the datetime widget loses keyboard focus (if the user tabs off of it, for instance).</td>
 </tr>
 <tr>
-<td class="name">GetFocus</td>
-<td class="description">This event occurs when the datetime widget receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</td>
+<td class="name">MouseDown</td>
+<td class="description">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
+</tr>
+<tr>
+<td class="name">MouseMove</td>
+<td class="description">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</td>
+</tr>
+<tr>
+<td class="name">MouseOut</td>
+<td class="description">This event occurs when the user moves the mouse pointer off of the widget.</td>
+</tr>
+<tr>
+<td class="name">MouseOver</td>
+<td class="description">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</td>
+</tr>
+<tr>
+<td class="name">MouseUp</td>
+<td class="description">This event occurs when the user releases the mouse button on the widget.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 	
+
 	dda "widget/datetime" {
+
 	    x=15;y=15;
+
 	    width=200;
+
 	    height=20;
+
 	    fgcolor="#000000";
+
 	    bgcolor="#cfcfcf";
+
 	    //initialdate="12:34:56 May 3, 2002";
+
 	}
+
 	
+
 		</pre>
 </body>
 </html>

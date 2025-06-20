@@ -9,6 +9,7 @@
 #include "cxlib/xstring.h"
 #include "multiquery.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 
 
 /************************************************************************/
@@ -122,18 +123,66 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     int attrid, astobjid;
     char* attrname;
     ObjData od;
+    pObjData pod;
     int t;
-    int use_attrid;
+    //int use_attrid;
     int hc_rval;
     handle_t collection;
+    char* sourcetype;
+    pExpression source_exp;
+    int sprval;
+
+	/** Expression? **/
+	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION)
+	    {
+	    source_exp = ((pQueryStructure)qe->QSLinkage)->Expr;
+	    rval = expEvalTree(source_exp, stmt->Query->ObjList);
+	    if (rval < 0)
+		{
+		mssError(0, "MQP", "Error in expression for INSERT");
+		return -1;
+		}
+
+	    /** If NULL, no inserts are done. **/
+	    if (source_exp->Flags & EXPR_F_NULL)
+		{
+		return 0;
+		}
+
+	    /** If non-string, error. **/
+	    if (source_exp->DataType != DATA_T_STRING)
+		{
+		mssError(1, "MQP", "Expression for INSERT must be a string");
+		return -1;
+		}
+
+	    /** If too long, error **/
+	    if (strlen(source_exp->String) >= sizeof(((pQueryStructure)qe->QSLinkage)->Source))
+		{
+		mssError(1, "MQP", "Expression for INSERT resulted in an over-long string");
+		return -1;
+		}
+
+	    strtcpy(((pQueryStructure)qe->QSLinkage)->Source, source_exp->String, sizeof(((pQueryStructure)qe->QSLinkage)->Source));
+	    }
 
 	/** Prepare for the inserts **/
-	if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 2 + 1 > sizeof(pathname))
+	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_FROMOBJECT)
 	    {
-	    mssError(1, "MQIS", "Pathname too long for INSERT destination");
-	    goto error;
+	    strtcpy(pathname, ((pQueryStructure)qe->QSLinkage)->Source, sizeof(pathname));
 	    }
-	snprintf(pathname, sizeof(pathname), "%s/*", ((pQueryStructure)qe->QSLinkage)->Source);
+	else
+	    {
+	    sprval = snprintf(pathname, sizeof(pathname), "%s/*", ((pQueryStructure)qe->QSLinkage)->Source);
+	    if (sprval < 0 || sprval >= sizeof(pathname))
+		{
+		mssError(1, "MQIS", "Pathname too long for INSERT destination");
+		goto error;
+		}
+	    }
+	sourcetype = ((pQueryStructure)qe->QSLinkage)->SourceType;
+	if (!*sourcetype)
+	    sourcetype = "system/object";
     
 	/** Replace the previous __inserted object with NULL, in case insert fails **/
 	old_newobj_id = expLookupParam(stmt->Query->ObjList, "__inserted", 0);
@@ -183,23 +232,23 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    /** open a new object **/
 	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
 		{
-		new_obj = objOpenChild(parent_obj, "*", OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+		new_obj = objOpenChild(parent_obj, "*", OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0666, sourcetype);
 		}
 	    else
 		{
-		new_obj = objOpen(stmt->Query->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
+		new_obj = objOpen(stmt->Query->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0666, sourcetype);
 		}
 	    if (!new_obj)
 		goto error;
 	    objUnmanageObject(stmt->Query->SessionID, new_obj);
 	   
 	    /** Set all of the SELECTed attributes **/
-	    attrid = 0;
+	    attrid = -1;
 	    astobjid = -1;
 	    while(1)
 		{
-		use_attrid = attrid;
 		attrname = mq_internal_QEGetNextAttr(stmt->Query, sel, stmt->Query->ObjList, &attrid, &astobjid);
+		pod = &od;
 		if (!attrname) break;
 		if (astobjid >= 0)
 		    {
@@ -213,38 +262,45 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		else
 		    {
 		    /** attr available through SELECT item list **/
-		    if (expEvalTree((pExpression)sel->AttrCompiledExpr.Items[use_attrid], stmt->Query->ObjList) < 0)
+		    if (expEvalTree((pExpression)sel->AttrCompiledExpr.Items[attrid], stmt->Query->ObjList) < 0)
 			goto error;
-		    t = ((pExpression)sel->AttrCompiledExpr.Items[use_attrid])->DataType;
+		    t = ((pExpression)sel->AttrCompiledExpr.Items[attrid])->DataType;
 		    if (t <= 0)
 			continue;
-		    exp_rval = expExpressionToPod((pExpression)(sel->AttrCompiledExpr.Items[use_attrid]), t, &od);
+		    exp_rval = expExpressionToPod((pExpression)(sel->AttrCompiledExpr.Items[attrid]), t, &od);
 		    if (exp_rval < 0)
 			goto error;
 		    else if (exp_rval == 1) /* null */
-			continue;
+			pod = NULL;
 		    }
 
 		/** Set the attribute on the newly inserted object **/
-		if (objSetAttrValue(new_obj, attrname, t, &od) < 0)
+		if (objSetAttrValue(new_obj, attrname, t, pod) < 0)
 		    goto error;
 		}
 
 	    /** Commit and get new object name **/
 	    objCommitObject(new_obj);
-	    new_objname = NULL;
-	    objGetAttrValue(new_obj, "name", DATA_T_STRING, POD(&new_objname));
-	    if (!new_objname)
+	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_FROMOBJECT)
 		{
-		mssError(0, "MQIS", "Could not INSERT new object");
-		goto error;
+		strtcpy(new_pathname, pathname, sizeof(new_pathname));
 		}
-	    if (strlen(((pQueryStructure)qe->QSLinkage)->Source) + 1 + strlen(new_objname) + 1 > sizeof(new_pathname))
+	    else
 		{
-		mssError(1, "MQIS", "Pathname too long for newly INSERTed object %s", new_objname);
-		goto error;
+		new_objname = NULL;
+		objGetAttrValue(new_obj, "name", DATA_T_STRING, POD(&new_objname));
+		if (!new_objname)
+		    {
+		    mssError(0, "MQIS", "Could not INSERT new object");
+		    goto error;
+		    }
+		sprval = snprintf(new_pathname, sizeof(new_pathname), "%s/%s", ((pQueryStructure)qe->QSLinkage)->Source, new_objname);
+		if (sprval < 0 || sprval >= sizeof(pathname))
+		    {
+		    mssError(1, "MQIS", "Pathname too long for newly INSERTed object %s", new_objname);
+		    goto error;
+		    }
 		}
-	    snprintf(new_pathname, sizeof(new_pathname), "%s/%s", ((pQueryStructure)qe->QSLinkage)->Source, new_objname);
 
 	    /** Link the new object as the __inserted object in the object list.**/
 	    if (!(stmt->Query->Flags & MQ_F_NOINSERTED))
@@ -279,6 +335,10 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 
 	    /** Yield, if necessary **/
 	    mq_internal_CheckYield(stmt->Query);
+
+	    /** Insert into object?  Only use the first row **/
+	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_FROMOBJECT)
+		break;
 	    }
 
 	if (sel_rval < 0)

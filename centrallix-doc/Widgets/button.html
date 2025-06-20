@@ -13,10 +13,14 @@
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 		<p>Combines the functionality of the textbutton and imagebutton, as well as adding the ability to have both text and image displayed in a button.</p>
+
 	    </span><h3 class="usage">Usage:</h3>
 <span class="usage">
-		<p>A Button can be placed inside any visible container, but only nonvisual widgets can be placed within it.  Properties that don't apply to the button's type are ignored</p>
+
+		<p>A Button can be placed inside any visible container, but only nonvisual widgets can be placed within it.  Properties that don't apply to the button's type are ignored.</p>
+
 	    </span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -25,19 +29,24 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">type</td>
-<td class="type">string</td>
-<td class="description">There are currently 7 different types.  1) text 2) image 3) topimage (image above text) 4) rightimage 5) leftimage 6) bottomimage 7) textoverimage (text over image background)</td>
-</tr>
-<tr>
 <td class="name">bgcolor</td>
 <td class="type">string</td>
 <td class="description">A color, RGB or named, to be used as the button's background.If neither bgcolor nor background are specified, the button is transparent.</td>
 </tr>
 <tr>
+<td class="name">clickimage</td>
+<td class="type">string</td>
+<td class="description">The ObjectSystem pathname of the image to be shown when the user clicks the imagebutton.  Defaults to 'image' if not specified.</td>
+</tr>
+<tr>
 <td class="name">disable_color</td>
 <td class="type">string</td>
 <td class="description">A color, RGB or named, to be used for the button's text when it is disabled.</td>
+</tr>
+<tr>
+<td class="name">disabledimage</td>
+<td class="type">string</td>
+<td class="description">The ObjectSystem pathname of the image to be shown when the imagebutton is disabled.  Defaults to 'image' if not specified.</td>
 </tr>
 <tr>
 <td class="name">enabled</td>
@@ -57,7 +66,22 @@
 <tr>
 <td class="name">height</td>
 <td class="type">integer</td>
-<td class="description">height, in pixels, of the text button.</td>
+<td class="description">Height, in pixels, of the text button.</td>
+</tr>
+<tr>
+<td class="name">image</td>
+<td class="type">string</td>
+<td class="description">The pathname of the image to be shown when the button is "idle".</td>
+</tr>
+<tr>
+<td class="name">pointimage</td>
+<td class="type">string</td>
+<td class="description">The pathname of the image to be shown when the button is pointed-to.  Defaults to  the 'image' if not specified.</td>
+</tr>
+<tr>
+<td class="name">spacing</td>
+<td class="type">integer</td>
+<td class="description">The distance between the image and text if applicable.</td>
 </tr>
 <tr>
 <td class="name">text</td>
@@ -70,6 +94,11 @@
 <td class="description">Whether or not the button is tri-state (does not display a raised border until the user points at it). Default is yes.</td>
 </tr>
 <tr>
+<td class="name">type</td>
+<td class="type">string</td>
+<td class="description">There are currently 7 different types.  1) text 2) image 3) topimage (image above text) 4) rightimage 5) leftimage 6) bottomimage 7) textoverimage (text over image background).</td>
+</tr>
+<tr>
 <td class="name">width</td>
 <td class="type">integer</td>
 <td class="description">The width, in pixels, of the text button.</td>
@@ -77,33 +106,46 @@
 <tr>
 <td class="name">x</td>
 <td class="type">integer</td>
-<td class="description">x-coordinate of the upper left corner of the button, relative to its container.</td>
+<td class="description">X-coordinate of the upper left corner of the button, relative to its container.</td>
 </tr>
 <tr>
 <td class="name">y</td>
 <td class="type">integer</td>
-<td class="description">y-coordinate of the upper left corner of the button, relative to its container.</td>
-</tr>
-<tr>
-<td class="name">clickimage</td>
-<td class="type">string</td>
-<td class="description">The ObjectSystem pathname of the image to be shown when the user clicks the imagebutton.  Defaults to 'image' if not specified.</td>
-</tr>
-<tr>
-<td class="name">disabledimage</td>
-<td class="type">string</td>
-<td class="description">The ObjectSystem pathname of the image to be shown when the imagebutton is disabled.  Defaults to 'image' if not specified.</td>
-</tr>
-<tr>
-<td class="name">image</td>
-<td class="type">string</td>
-<td class="description">The pathname of the image to be shown when the button is "idle".</td>
-</tr>
-<tr>
-<td class="name">pointimage</td>
-<td class="type">string</td>
-<td class="description">The pathname of the image to be shown when the button is pointed-to.  Defaults to  the 'image' if not specified.</td>
+<td class="description">Y-coordinate of the upper left corner of the button, relative to its container.</td>
 </tr>
 </table>
+<h3 class="events">Events:</h3>
+<table class="events">
+<tr>
+<th class="name">Event</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">Click</td>
+<td class="description">This event occurs when the user clicks the widget. No parameters are available from this event.</td>
+</tr>
+<tr>
+<td class="name">MouseDown</td>
+<td class="description">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
+</tr>
+<tr>
+<td class="name">MouseMove</td>
+<td class="description">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</td>
+</tr>
+<tr>
+<td class="name">MouseOver</td>
+<td class="description">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</td>
+</tr>
+<tr>
+<td class="name">MouseOut</td>
+<td class="description">This event occurs when the user moves the mouse pointer off of the widget.</td>
+</tr>
+<tr>
+<td class="name">MouseUp</td>
+<td class="description">This event occurs when the user releases the mouse button on the widget.</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
+<p class="none">none currently available</p>
 </body>
 </html>

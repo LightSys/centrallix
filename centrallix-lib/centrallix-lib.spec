@@ -1,7 +1,7 @@
 Summary: A base functionality library developed for the Centrallix server.
 Name: centrallix-lib
 Version: 0.9.1
-Release: 0
+Release: 1
 License: LGPL
 Group: System Environment/Libraries
 Source: centrallix-lib-%{version}.tgz
@@ -9,7 +9,7 @@ Buildroot: %{_tmppath}/%{name}-%{version}-root
 BuildPrereq: zlib-devel
 URL: http://www.centrallix.net/
 Vendor: LightSys (http://www.lightsys.org)
-%define librelease 0
+%define librelease 1
 
 %description
 The centrallix-lib package provides required base functionality for the
@@ -62,6 +62,9 @@ make install
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Tue Jun  4 2024 Greg Beeley <Greg.Beeley@LightSys.org> 0.9.1-1
+- A minor release with various fixes, rebuilding for RL8.
+
 * Mon Sep 13 2010 Greg Beeley <Greg.Beeley@LightSys.org> 0.9.1-0
 - Update to 0.9.1
 - Many bug fixes, including a major rewrite of the 'mtlexer'

@@ -66,6 +66,7 @@ objOpenSession(char* current_dir)
 	this->Magic = MGK_OBJSESSION;
 	xhqInit(&(this->DirectoryCache), 256, 0, 509, obj_internal_DiscardDC, 0);
 	this->Handle = xhnAllocHandle(&(OSYS.SessionHandleCtx), this);
+	this->Flags = 0;
 
 	/** Add to the sessions list **/
 	xaAddItem(&(OSYS.OpenSessions),(void*)this);
@@ -85,6 +86,14 @@ objCloseSession(pObjSession this)
     pObject obj;
 
 	ASSERTMAGIC(this, MGK_OBJSESSION);
+
+	/** Close session being re-entered? **/
+	if (this->Flags & OBJ_SESS_F_CLOSING)
+	    {
+	    mssError(1,"OSML","Bark! Session close was re-entered");
+	    return 0;
+	    }
+	this->Flags |= OBJ_SESS_F_CLOSING;
 
 	xhnFreeHandle(&(OSYS.SessionHandleCtx), this->Handle);
 

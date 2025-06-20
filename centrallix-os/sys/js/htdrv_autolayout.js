@@ -80,6 +80,71 @@ function al_reflow()
     var yo = 0;
     var row_offset = 0;
     var column_offset = 0;
+    var xalign = 0;
+    var yalign = 0;
+
+    // Determine alignment/offset first.
+    for(var i=0; i<children.length; i++)
+	{
+	var child = children[i];
+	var cwidth = wgtrGetServerProperty(child,"width");
+	var cheight = wgtrGetServerProperty(child,"height");
+	if (type == 'hbox')
+	    {
+	    if (xo + cwidth > width)
+		{
+		if (xo > 0 && row_height > 0 && row_offset + row_height*2 + spacing <= height)
+		    {
+		    row_offset += (row_height + spacing);
+		    xo = 0;
+		    i--;
+		    continue;
+		    }
+		}
+	    if (cwidth + xo > xalign)
+		xalign = cwidth + xo;
+	    xo += cwidth;
+	    xo += spacing;
+	    }
+	else if (type == 'vbox')
+	    {
+	    if (yo + cheight > height)
+		{
+		if (yo > 0 && column_width > 0 && column_offset + column_width*2 + spacing <= width)
+		    {
+		    column_offset += (column_width + spacing);
+		    yo = 0;
+		    i--;
+		    continue;
+		    }
+		}
+	    if (cheight + yo > yalign)
+		yalign = cheight + yo;
+	    yo += cheight;
+	    yo += spacing;
+	    }
+	}
+
+    // Now actually set the geometry.
+    var xo = 0;
+    var yo = 0;
+    var row_offset = 0;
+    var column_offset = 0;
+    if (align == 'center')
+	{
+	xalign = (width - xalign) / 2;
+	yalign = (height - yalign) / 2;
+	}
+    else if (align == 'left')
+	{
+	xalign = 0;
+	yalign = 0;
+	}
+    else
+	{
+	xalign = (width - xalign);
+	yalign = (height - yalign);
+	}
     for(var i=0; i<children.length; i++)
 	{
 	var child = children[i];
@@ -99,7 +164,7 @@ function al_reflow()
 		}
 	    if (child.tagName)
 		{
-		setRelativeX(child, xo);
+		setRelativeX(child, xo + xalign);
 		if (wgtrGetServerProperty(child,"r_y") == -1)
 		    setRelativeY(child, row_offset);
 		else
@@ -122,7 +187,7 @@ function al_reflow()
 		}
 	    if (child.tagName)
 		{
-		setRelativeY(child, yo);
+		setRelativeY(child, yo + yalign);
 		if (wgtrGetServerProperty(child,"r_x") == -1)
 		    setRelativeX(child, column_offset);
 		else

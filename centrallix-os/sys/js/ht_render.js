@@ -283,8 +283,14 @@ function cxjs_convert(dt,v)
 	}
     if (dt == 'double')
 	{
-	if (String(v).substr(1,1) == '$')
+	if (String(v).substr(0,1) == '$')
+	    return parseFloat(String(v).substr(1));
+	else if (String(v).substr(0,2) == ' $' || String(v).substr(0,2) == '+$')
 	    return parseFloat(String(v).substr(2));
+	else if (String(v).substr(0,2) == '$ ')
+	    return parseFloat(String(v).substr(2));
+	else if (String(v).substr(0,2) == '-$')
+	    return -parseFloat(String(v).substr(2));
 	else
 	    return parseFloat(v);
 	}
@@ -295,9 +301,9 @@ function cxjs_substring(s,p,l)
     {
     if (s == null || p == null) return null;
     if (l == null)
-	return s.substr(p-1);
+	return (String(s)).substr(p-1);
     else
-	return s.substr(p-1,l);
+	return (String (s)).substr(p-1,l);
     }
 function cxjs_right(s,l)
     {
@@ -331,7 +337,7 @@ function cxjs_rtrim(s)
     }
 function cxjs_plus(a, b)
     {
-    if (a == null || b == null) return null;
+    if (a === undefined || b === undefined || a == null || b == null) return null;
     if ((typeof a == 'string') || (typeof b == 'string'))
 	return String(a) + String(b);
     else
@@ -453,7 +459,8 @@ function cxjs_substitute(_context, _this, str, remaplist)
 			var fieldname = id[1];
 			}
 		    var prop = wgtrProbeProperty(obj, fieldname);
-		    if (typeof prop != 'undefined' && !wgtrIsUndefined(prop) && typeof window.__cur_exp != 'undefined' && window.__cur_exp)
+		    //if (typeof prop != 'undefined' && !wgtrIsUndefined(prop) && typeof window.__cur_exp != 'undefined' && window.__cur_exp)
+		    if (typeof window.__cur_exp != 'undefined' && window.__cur_exp)
 			pg_expaddpart(window.__cur_exp, obj, fieldname);
 		    if (prop == null || typeof prop == 'undefined' || wgtrIsUndefined(prop))
 			prop = "";

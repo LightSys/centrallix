@@ -1,0 +1,37 @@
+$Version=2$
+Datatypes "system/report"
+    {
+    title = "Datatypes Report";
+
+    limit "report/parameter" { type=integer; direction=in; }
+    count "report/parameter" { type=integer; direction=out; default=runserver(:dt_qy:cnt); }
+    text "report/parameter" { type=string; direction=out; default=runserver(:dt_qy:sumtxt); }
+
+    document_format="text/plain";
+
+    resolution = 300;
+    pagewidth=85;
+    pageheight=66;
+    marginleft=2.5;
+    marginright=2.5;
+    margintop=3;
+    marginbottom=3;
+
+    dt_qy "report/query"
+	{
+	sql = runserver("select * from /tests/Datatypes.csv/rows " + condition(:this:limit is not null, "limit " + :this:limit, ""));
+
+	cnt "report/aggregate" { compute="count(1)"; reset=0; }
+	sumtxt "report/aggregate" { compute="sum(:f_string + ',') - ','"; reset=0; }
+	}
+
+    dt_form "report/form"
+	{
+	source = dt_qy;
+
+	dt_item "report/data"
+	    {
+	    value = runserver(:dt_qy:name + ' ' + :dt_qy:f_integer + ' ' + :dt_qy:f_string);
+	    }
+	}
+    }

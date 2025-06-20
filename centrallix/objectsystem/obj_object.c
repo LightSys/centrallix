@@ -50,7 +50,7 @@
 
 
 
-/*** objIsA - determines the possible relationship between two
+/*** objIsRelatedType - determines the possible relationship between two
  *** datatypes, from types.cfg, and returns a value indicating the 
  *** relationship between the two:
  ***
@@ -59,12 +59,12 @@
  ***       the second type,
  ***    return a positive integer if the first type is a more specific kind
  ***       of the second type, and
- ***    return OBJSYS_NOT_ISA (0x80000000) if the types are not related.
+ ***    return OBJSYS_NOT_RELATED (0x80000000) if the types are not related.
  ***/
 int
-objIsA(char* type1, char* type2)
+objIsRelatedType(char* type1, char* type2)
     {
-    int i,l = OBJSYS_NOT_ISA;
+    int i,l = OBJSYS_NOT_RELATED;
     pContentType t1, t2;
 
     	/** Shortcut: are they the same? **/
@@ -72,9 +72,9 @@ objIsA(char* type1, char* type2)
 
 	/** Lookup the types **/
 	t1 = (pContentType)xhLookup(&OSYS.Types, type1);
-	if (!t1) return OBJSYS_NOT_ISA;
+	if (!t1) return OBJSYS_NOT_RELATED;
 	t2 = (pContentType)xhLookup(&OSYS.Types, type2);
-	if (!t2) return OBJSYS_NOT_ISA;
+	if (!t2) return OBJSYS_NOT_RELATED;
 
 	/** Search the relation list in t1 for t2. **/
 	for(i=0;i<t1->RelatedTypes.nItems;i++)
@@ -359,24 +359,27 @@ obj_internal_GetDCHash(pPathname pathinfo, int mode, char* hash, int hashmaxlen,
     pXString url_params = NULL;
     char* paramstr = "";
     pStruct one_open_ctl, open_ctl;
-    int i;
+    int i,j;
 
 	url_params = xsNew();
 	if (url_params)
 	    {
 	    paramstr = xsString(url_params);
-	    open_ctl = pathinfo->OpenCtl[pathcnt - 1];
-	    if (open_ctl)
+	    for(j=0; j<pathcnt; j++)
 		{
-		for(i=0; i<open_ctl->nSubInf; i++)
+		open_ctl = pathinfo->OpenCtl[j];
+		if (open_ctl)
 		    {
-		    one_open_ctl = open_ctl->SubInf[i];
-		    xsConcatQPrintf(url_params, "%STR%STR&URL=%STR&URL",
-			    (xsString(url_params)[0])?"&":"?",
-			    one_open_ctl->Name,
-			    one_open_ctl->StrVal);
+		    for(i=0; i<open_ctl->nSubInf; i++)
+			{
+			one_open_ctl = open_ctl->SubInf[i];
+			xsConcatQPrintf(url_params, "%STR%STR&URL=%STR&URL",
+				(xsString(url_params)[0])?"&":"?",
+				one_open_ctl->Name,
+				one_open_ctl->StrVal);
+			}
+		    paramstr = xsString(url_params);
 		    }
-		paramstr = xsString(url_params);
 		}
 	    }
 
@@ -483,8 +486,8 @@ obj_internal_TypeFromSfHeader(pObject obj)
 	    return NULL;
 
 	/** Is the type a subtype of system/structure? **/
-	rval = objIsA(type->Name, "system/structure");
-	if (rval == OBJSYS_NOT_ISA || rval < 0)
+	rval = objIsRelatedType(type->Name, "system/structure");
+	if (rval == OBJSYS_NOT_RELATED || rval < 0)
 	    return NULL;
 
     return type;
@@ -751,8 +754,8 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		}
 
 	    /** Ok, got reported type and apparent type.  See which is more specific. **/
-	    v = objIsA(type, apparent_type->Name);
-	    if (v < 0 || v == OBJSYS_NOT_ISA) ck_type = apparent_type;
+	    v = objIsRelatedType(type, apparent_type->Name);
+	    if (v < 0 || v == OBJSYS_NOT_RELATED) ck_type = apparent_type;
 	    else ck_type = (pContentType)xhLookup(&OSYS.Types, (void*)type);
 
 	    /** If our type is only application/octet-stream, try to determine
@@ -777,7 +780,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	        {
 		if (stAttrValue_ne(stLookup_ne(inf,"ls__type"),&type) >= 0 && type)
 		    {
-		    if (objIsA(type, ck_type->Name) != OBJSYS_NOT_ISA)
+		    if (objIsRelatedType(type, ck_type->Name) != OBJSYS_NOT_RELATED)
 		        {
 			ck_type = (pContentType)xhLookup(&OSYS.Types, (void*)type);
 			used_openas = 1;
@@ -816,7 +819,9 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 
 			    /** Otherwise, error out **/
 			    obj_internal_PathPart(this->Pathname,0,0);
-			    mssError(1,"OSML","Object '%s' access failed - no driver found",this->Pathname->Pathbuf+1);
+			    mssError(1,"OSML","Object '%s' access failed - no suitable driver to handle '%s'",
+				    this->Pathname->Pathbuf+1,
+				    ck_type->Name);
 			    obj_internal_FreeObj(this);
 			    return NULL;
 			    }
@@ -865,7 +870,9 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    if (!this->Data)
 	        {
 		obj_internal_PathPart(this->Pathname,0,0);
-	        mssError(0,"OSML","Object '%s' access failed - driver open failed", this->Pathname->Pathbuf+1);
+	        mssError(0,"OSML","Object '%s' access failed - driver '%s' open failed",
+			this->Pathname->Pathbuf+1,
+			this->Driver->Name);
 	        obj_internal_FreeObj(this);
 		return NULL;
 		}
@@ -1278,7 +1285,8 @@ objClose(pObject this)
 		{
 		del = va;
 		va = va->Next;
-		del->FinalizeFn(this->Session, this, del->Name, del->Context);
+		if (del->FinalizeFn)
+		    del->FinalizeFn(this->Session, this, del->Name, del->Context);
 		nmFree(del, sizeof(ObjVirtualAttr));
 		}
 	    this->VAttrs = NULL;

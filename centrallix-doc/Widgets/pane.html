@@ -13,10 +13,14 @@
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>The pane is Centrallix's simplest container. It consists only of a background and a border, which can either have a "raised" edge or "lowered" edge style.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>This container can be placed inside any widget having a visible container.  Visual or nonvisual widgets may be placed inside a pane.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -35,6 +39,11 @@
 <td class="description">A color, RGB or named, to be used as the pane's background.  If neither bgcolor nor background is specified, the pane will be transparent.</td>
 </tr>
 <tr>
+<td class="name">border_radius</td>
+<td class="type">integer</td>
+<td class="description"> The radius (sharpness) of the pane, smaller is more sharp.</td>
+</tr>
+<tr>
 <td class="name">border_color</td>
 <td class="type">string</td>
 <td class="description">For "bordered" pane styles, this is the color of the border, either named or a #number.</td>
@@ -42,7 +51,22 @@
 <tr>
 <td class="name">height</td>
 <td class="type">integer</td>
-<td class="description">height, in pixels, of the pane.</td>
+<td class="description">Height, in pixels, of the pane.</td>
+</tr>
+<tr>
+<td class="name">shadow_color</td>
+<td class="type">string</td>
+<td class="description">The color of the shadow.</td>
+</tr>
+<tr>
+<td class="name">shadow_offset</td>
+<td class="type">integer</td>
+<td class="description">The placement of the shadow with respect to the window.</td>
+</tr>
+<tr>
+<td class="name">shadow_radius</td>
+<td class="type">integer</td>
+<td class="description">A radius that describes the sharpness of the corners of the shadow (smaller means sharper).</td>
 </tr>
 <tr>
 <td class="name">style</td>
@@ -52,36 +76,104 @@
 <tr>
 <td class="name">width</td>
 <td class="type">integer</td>
-<td class="description">width, in pixels, of the pane.</td>
+<td class="description">Width, in pixels, of the pane.</td>
 </tr>
 <tr>
 <td class="name">x</td>
 <td class="type">integer</td>
-<td class="description">x-coordinate of the upper left corner of the pane, relative to its container.</td>
+<td class="description">X-coordinate of the upper left corner of the pane, relative to its container.</td>
 </tr>
 <tr>
 <td class="name">y</td>
 <td class="type">integer</td>
-<td class="description">y-coordinate of the upper left corner of the pane, relative to its container.</td>
+<td class="description">Y-coordinate of the upper left corner of the pane, relative to its container.</td>
 </tr>
 </table>
-<h3 class="childproperties">Child Properties:</h3>
-<p class="none">none currently available</p>
 <h3 class="actions">Actions:</h3>
-<p class="none">none currently available</p>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">Point</td>
+<td class="description">Creates a triangular pointer on the edge of a pane to point at a given (X,Y) coordinate.</td>
+</tr>
+<tr>
+<td class="name">Resize</td>
+<td class="description">Changes the width and height of the pane to the given (Width,Height).</td>
+</tr>
+<tr>
+<td class="name">SetBackground</td>
+<td class="description">Sets the backgound image or color of the pane, using the attribute Color or Image.</td>
+</tr>
+</table>
 <h3 class="events">Events:</h3>
+<table class="events">
+<tr>
+<th class="name">Event</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">Click</td>
+<td class="description">This event occurs when the user clicks the checkbox. No parameters are available from this event.</td>
+</tr>
+<tr>
+<td class="name">MouseDown</td>
+<td class="description">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
+</tr>
+<tr>
+<td class="name">MouseMove</td>
+<td class="description">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</td>
+</tr>
+<tr>
+<td class="name">MouseOut</td>
+<td class="description">This event occurs when the user moves the mouse pointer off of the checkbox.</td>
+</tr>
+<tr>
+<td class="name">MouseOver</td>
+<td class="description">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</td>
+</tr>
+<tr>
+<td class="name">MouseUp</td>
+<td class="description">This event occurs when the user releases the mouse button on the checkbox.</td>
+</tr>
+</table>
+<h3 class="properties">Client Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">enable</td>
+<td class="type">string</td>
+<td class="description">Indicates if the user can interact with the pane (if so "true").</td>
+</tr>
+</table>
 <p class="none">none currently available</p>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 		
+
 $Version=2$
+
 mypane "widget/pane"
+
 	{
+
 	x=100; y=100; width=300; height=300;
+
 	style = "raised";
+
 	bgcolor = "#c0c0c0";
+
 	}
+
 		
+
 		</pre>
 </body>
 </html>

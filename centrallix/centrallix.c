@@ -352,7 +352,7 @@ cxInitialize(void* v)
 	CxGlobals.DebugFile = fdOpen(debugfile, O_WRONLY | O_APPEND | O_CREAT, 0600);
 	if (!CxGlobals.DebugFile)
 	    perror("centrallix: warning: could not open debug log file");
-	cxDebugLog("centrallix initializing...", getpid());
+	cxDebugLog("centrallix initializing: pid=%d, uid=%d, euid=%d", getpid(), getuid(), geteuid());
 
 	/** This setting can be dangerous apart from the RBAC security subsystem.
 	 ** We default to Enabled here, but this is turned off in the default config.
@@ -409,6 +409,14 @@ cxInitialize(void* v)
 	RAND_add(&pid, 4, (double)0.25);
 	tm = time(NULL);
 	RAND_add(&tm, 4, (double)0.125);
+
+    return 0;
+    }
+
+
+int
+cxDriverInit()
+    {
 
 	/** Init the multiquery system and drivers **/
 	mqInitialize();				/* MultiQuery system */
@@ -607,16 +615,18 @@ cxDebugLog(char* fmt, ...)
     int rval;
     long long msec;
     char* our_fmt;
+    int our_fmt_len;
 
 	if (!CxGlobals.DebugFile)
 	    return -1;
 
 	msec = mtRealTicks() * 1000LL / CxGlobals.ClkTck;
 
-	our_fmt = nmSysMalloc(strlen(fmt) + 256);
+	our_fmt_len = strlen(fmt) + 256;
+	our_fmt = nmSysMalloc(our_fmt_len);
 	if (!our_fmt)
 	    return -ENOMEM;
-	sprintf(our_fmt, "T%lld.%3.3lld P%5.5d %s\n", msec/1000, msec%1000, getpid(), fmt);
+	snprintf(our_fmt, our_fmt_len, "T%lld.%3.3lld P%7.7d %s\n", msec/1000, msec%1000, getpid(), fmt);
 
 	/** Alloc a printf buf? **/
 	if (!CxGlobals.DebugFile->PrintfBuf)
@@ -635,5 +645,53 @@ cxDebugLog(char* fmt, ...)
 	nmSysFree(our_fmt);
 
     return rval;
+    }
+
+
+int
+cxLinkSigningSetup(pStructInf my_config)
+    {
+    pXArray sites;
+    char key[256];
+    char* strval;
+    int i;
+
+	/** Create our sites list **/
+	sites = xaNew(16);
+	if (!sites)
+	    return -1;
+
+	/** Determine a suitable signing key **/
+	if (stAttrValue(stLookup(my_config, "link_signing_key"), NULL, &strval, 0) >= 0 && strval && *strval)
+	    {
+	    strtcpy(key, strval, sizeof(key));
+	    }
+	else
+	    {
+	    if (cxssGenerateHexKey((char*)key, 32) < 0)
+		{
+		mssError(1, "CX", "Warning: no link_signing_key provided and temporal key generation failed, disabling link signing");
+		strtcpy(key, "", sizeof(key));
+		}
+	    else
+		{
+		mssError(1, "CX", "Warning: no link_signing_key provided, signing links with temporal key only");
+		}
+	    }
+
+	/** Link Signing - allowed sites **/
+	for(i=0; stAttrValue(stLookup(my_config, "link_signing_sites"), NULL, &strval, i) >= 0; i++)
+	    xaAddItem(sites, nmSysStrdup(strval));
+
+	/** Set up link signing **/
+	if (*key)
+	    {
+	    if (cxssLinkInitialize((unsigned char*)key, strlen(key), sites) < 0)
+		{
+		mssError(1, "CX", "Warning: Link signing initialization failed, disabling link signing");
+		}
+	    }
+
+    return 0;
     }
 

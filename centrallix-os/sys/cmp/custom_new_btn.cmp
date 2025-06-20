@@ -1,0 +1,31 @@
+$Version=2$
+custom_new_btn "widget/component-decl"
+    {
+    width=18;
+    height=18;
+
+    enabled "widget/parameter" { type=integer; default=1; deploy_to_client=yes; }
+
+    expose_properties_for=btnNew;
+    expose_events_for=btnNew;
+    expose_actions_for=btnNew;
+
+    object_name "widget/parameter"
+	{
+	type = "string";
+	default = "Record";
+	}
+
+    btnNew "widget/imagebutton"
+	{
+	x=0;y=0;
+	width=18;
+	height=18;
+	image="/sys/images/ico25a.gif";
+	pointimage="/sys/images/ico25b.gif";
+	clickimage="/sys/images/ico25c.gif";
+	disabledimage="/sys/images/ico25d.gif";
+	tooltip = runserver("Create a New " + :this:object_name);
+	enabled = runclient(:custom_new_btn:enabled);
+	}
+    }

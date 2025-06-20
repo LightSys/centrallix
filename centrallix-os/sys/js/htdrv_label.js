@@ -69,7 +69,10 @@ function lbl_mousemove(e)
 function lb_actionsetvalue(aparam)
     {
     if ((typeof aparam.Value) != 'undefined')
+	{
 	this.setvalue(aparam.Value);
+	if (this.form) this.form.DataNotify(this, true);
+	}
     }
 
 function lb_getvalue()

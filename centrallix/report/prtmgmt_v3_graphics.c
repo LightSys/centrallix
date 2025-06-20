@@ -6,9 +6,7 @@
 #include <math.h>
 #include <stdarg.h>
 #include <errno.h>
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 #ifdef HAVE_PNG_H
 #include <png.h>
 #endif
@@ -155,6 +153,7 @@ prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, in
 	    offset_dir = -1;
 	else
 	    offset_dir = 0;
+	if (flags & PRT_MKBDR_F_OUTSIDE) offset_dir = -offset_dir;
 
 	/** Which 'orientation' (vertical vs. horizontal) **/
 	if (flags & (PRT_MKBDR_F_TOP | PRT_MKBDR_F_BOTTOM))
@@ -225,6 +224,7 @@ prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, in
 
 	    /** Add the rectangle **/
 	    prt_internal_Add(parent, rect_obj);
+	    rect_obj->Z = parent->Z + 0x100; /* above the object and its children */
 
 	    /** Account for our own line thickness **/
 	    thickness += (b->Sep + b->Width[selected_line]);
@@ -237,6 +237,47 @@ prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, in
     return 0;
     }
 
+
+
+/*** prtAllocImage() - create a new blank image.
+ ***/
+pPrtImage
+prtAllocImage(int width, int height, int color_type)
+    {
+    pPrtImage img;
+    int bytes_per_row;
+
+	/** Determine bytes per row **/
+	switch(color_type)
+	    {
+	    case PRT_COLOR_T_MONO:
+		bytes_per_row = (width+7)/8;
+		break;
+	    case PRT_COLOR_T_GREY:
+		bytes_per_row = width;
+		break;
+	    case PRT_COLOR_T_FULL:
+		bytes_per_row = width*4;
+		break;
+	    default:
+		mssError(1, "PRT", "Invalid color type for image: %d", color_type);
+		return NULL;
+	    }
+
+	/** Allocate the image **/
+	img = (pPrtImage)nmSysMalloc(sizeof(PrtImageHdr) + bytes_per_row*height);
+	if (!img)
+	    return NULL;
+	
+	/** Set up the blank image **/
+	img->Hdr.Width = width;
+	img->Hdr.Height = height;
+	img->Hdr.ColorMode = color_type;
+	img->Hdr.DataLength = bytes_per_row*height;
+	img->Hdr.YOffset = 0.0;
+
+    return img;
+    }
 
 
 #if defined(HAVE_PNG_H) && defined(HAVE_LIBPNG)
@@ -308,7 +349,6 @@ prtCreateImageFromPNG(int (*read_fn)(), void* read_arg)
     png_uint_32 width, height;
     int bit_depth, color_type;
     png_bytep *row_pointers;
-    int bytes_per_row;
     int i;
     int our_color_type;
 
@@ -386,17 +426,14 @@ prtCreateImageFromPNG(int (*read_fn)(), void* read_arg)
 	/** Allocate row pointers for image data **/
 	if (bit_depth == 1 && color_type == PNG_COLOR_TYPE_GRAY)
 	    {
-	    bytes_per_row = (width+7)/8;
 	    our_color_type = PRT_COLOR_T_MONO;
 	    }
 	else if (bit_depth == 8 && (color_type == PNG_COLOR_TYPE_RGB))
 	    {
-	    bytes_per_row = width*4;
 	    our_color_type = PRT_COLOR_T_FULL;
 	    }
 	else if (bit_depth == 8 && color_type == PNG_COLOR_TYPE_GRAY)
 	    {
-	    bytes_per_row = width;
 	    our_color_type = PRT_COLOR_T_GREY;
 	    }
 	else
@@ -405,22 +442,29 @@ prtCreateImageFromPNG(int (*read_fn)(), void* read_arg)
 	    png_destroy_read_struct(&libpng_png_ptr, &libpng_info_ptr, &libpng_end_ptr);
 	    return NULL;
 	    }
-	row_pointers = (png_bytep*)nmSysMalloc(height*sizeof(png_bytep));
 
 	/** Allocate our image header **/
-	img = (pPrtImage)nmSysMalloc(sizeof(PrtImageHdr) + bytes_per_row*height);
-	for(i=0;i<height;i++)
+	img = prtAllocImage(width, height, our_color_type);
+	if (!img)
 	    {
-	    row_pointers[i] = img->Data.Byte + i*bytes_per_row;
+	    png_destroy_read_struct(&libpng_png_ptr, &libpng_info_ptr, &libpng_end_ptr);
+	    return NULL;
 	    }
-	img->Hdr.Width = width;
-	img->Hdr.Height = height;
-	img->Hdr.ColorMode = our_color_type;
-	img->Hdr.DataLength = bytes_per_row*height;
-	img->Hdr.YOffset = 0.0;
 
 	/** Read the image data **/
+	row_pointers = (png_bytep*)nmSysMalloc(height*sizeof(png_bytep));
+	if (!row_pointers)
+	    {
+	    png_destroy_read_struct(&libpng_png_ptr, &libpng_info_ptr, &libpng_end_ptr);
+	    prtFreeImage(img);
+	    return NULL;
+	    }
+	for(i=0;i<height;i++)
+	    {
+	    row_pointers[i] = img->Data.Byte + i*(img->Hdr.DataLength/height);
+	    }
 	png_read_image(libpng_png_ptr, row_pointers);
+	nmSysFree(row_pointers);
 
 	/** All done... **/
 	png_read_end(libpng_png_ptr, libpng_end_ptr);

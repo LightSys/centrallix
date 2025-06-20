@@ -47,6 +47,8 @@ window_container "widget/component-decl"
 	    {
 	    width = runserver(:this:w - (:this:padding + 1) * 2);
 	    height = runserver(:this:h - 23 - (:this:padding + 1) * 2);
+	    //w = runserver(:this:w - (:this:padding + 1) * 2);
+	    //h = runserver(:this:h - 23 - (:this:padding + 1) * 2);
 	    x = runserver(:this:padding);
 	    y = runserver(:this:padding);
 	    path=runserver(:this:component);
