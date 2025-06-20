@@ -626,6 +626,7 @@ ac_subst_vars='LTLIBOBJS
 LOGMETHOD
 COVERAGE
 PROFILE
+NCURSES_LIBS
 STATIC_LIBS
 STATIC_CFLAGS
 NETDRIVERS
@@ -4261,6 +4262,46 @@ _ACEOF
 
 fi
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for main in -largon2" >&5
+$as_echo_n "checking for main in -largon2... " >&6; }
+if ${ac_cv_lib_argon2_main+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-largon2  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+int
+main ()
+{
+return main ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_argon2_main=yes
+else
+  ac_cv_lib_argon2_main=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_argon2_main" >&5
+$as_echo "$ac_cv_lib_argon2_main" >&6; }
+if test "x$ac_cv_lib_argon2_main" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBARGON2 1
+_ACEOF
+
+  LIBS="-largon2 $LIBS"
+
+fi
+
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for png_read_png in -lpng" >&5
 $as_echo_n "checking for png_read_png in -lpng... " >&6; }
 if ${ac_cv_lib_png_png_read_png+:} false; then :
@@ -4305,6 +4346,79 @@ _ACEOF
   LIBS="-lpng $LIBS"
 
 fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for mgl_create_data_size in -lmgl" >&5
+$as_echo_n "checking for mgl_create_data_size in -lmgl... " >&6; }
+if ${ac_cv_lib_mgl_mgl_create_data_size+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lmgl  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char mgl_create_data_size ();
+int
+main ()
+{
+return mgl_create_data_size ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_mgl_mgl_create_data_size=yes
+else
+  ac_cv_lib_mgl_mgl_create_data_size=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_mgl_mgl_create_data_size" >&5
+$as_echo "$ac_cv_lib_mgl_mgl_create_data_size" >&6; }
+if test "x$ac_cv_lib_mgl_mgl_create_data_size" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBMGL 1
+_ACEOF
+
+  LIBS="-lmgl $LIBS"
+
+fi
+
+
+	ac_fn_c_check_header_mongrel "$LINENO" "mgl/mgl_c.h" "ac_cv_header_mgl_mgl_c_h" "$ac_includes_default"
+if test "x$ac_cv_header_mgl_mgl_c_h" = xyes; then :
+
+$as_echo "#define HAVE_MGL1 1" >>confdefs.h
+
+else
+  WITH_MGL1="no"
+
+fi
+
+
+	ac_fn_c_check_header_compile "$LINENO" "mgl2/mgl.h" "ac_cv_header_mgl2_mgl_h" "#include <stdbool.h>
+	    #include <complex.h>
+
+
+"
+if test "x$ac_cv_header_mgl2_mgl_h" = xyes; then :
+
+$as_echo "#define HAVE_MGL2 1" >>confdefs.h
+
+else
+  WITH_MGL2="no"
+fi
+
+
+
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5627,6 +5741,68 @@ else
 fi
 
 
+
+
+
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for setupterm in -lncurses" >&5
+$as_echo_n "checking for setupterm in -lncurses... " >&6; }
+if ${ac_cv_lib_ncurses_setupterm+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lncurses  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char setupterm ();
+int
+main ()
+{
+return setupterm ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_ncurses_setupterm=yes
+else
+  ac_cv_lib_ncurses_setupterm=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ncurses_setupterm" >&5
+$as_echo "$ac_cv_lib_ncurses_setupterm" >&6; }
+if test "x$ac_cv_lib_ncurses_setupterm" = xyes; then :
+  ncurses_found="yes"
+fi
+
+    ac_fn_c_check_header_mongrel "$LINENO" "curses.h" "ac_cv_header_curses_h" "$ac_includes_default"
+if test "x$ac_cv_header_curses_h" = xyes; then :
+  curses_h_found="yes"
+fi
+
+
+    ac_fn_c_check_header_mongrel "$LINENO" "term.h" "ac_cv_header_term_h" "$ac_includes_default"
+if test "x$ac_cv_header_term_h" = xyes; then :
+  term_h_found="yes"
+fi
+
+
+    if test "$ncurses_found" = "yes" -a "$curses_h_found" = "yes" -a "$term_h_found" = "yes"; then
+
+$as_echo "#define HAVE_NCURSES 1" >>confdefs.h
+
+       NCURSES_LIBS="-lncurses"
+    fi
 
 
 
@@ -7204,6 +7380,7 @@ $as_echo "$as_me: WARNING: recent Cairo was not found -- svg support will be dis
             { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: librsvg was not found -- svg support will be disabled" >&5
 $as_echo "$as_me: WARNING: librsvg was not found -- svg support will be disabled" >&2;}
         fi
+
 
 
 

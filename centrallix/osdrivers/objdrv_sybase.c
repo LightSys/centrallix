@@ -160,9 +160,9 @@ typedef struct
     pObjPresentationHints	TypeHints[SYBD_MAX_NUM_TYPES];		/** for storing hint info about each type **/
     int		Version;
     int		Flags;
-    char	Username[32];		/* username to log into db server */
-    char	Password[32];		/* password to log into db server */
-    char	DefaultPassword[32];	/* default password for uninitialized user */
+    char	Username[CX_USERNAME_SIZE];		/* username to log into db server */
+    char	Password[CX_PASSWORD_SIZE];		/* password to log into db server */
+    char	DefaultPassword[CX_PASSWORD_SIZE];	/* default password for uninitialized user */
     }
     SybdNode, *pSybdNode;
 
@@ -174,8 +174,8 @@ typedef struct
     {
     /*int		SessionID;*/
     CS_CONNECTION* CsConn;
-    char	Username[32];
-    char	Password[32];
+    char	Username[CX_USERNAME_SIZE];
+    char	Password[CX_PASSWORD_SIZE];
     int		Busy;
     int		SPID;			/* sybase server-side process ID */
     }
@@ -434,7 +434,7 @@ sybd_internal_GetConn(pSybdNode db_node)
     pSybdConn conn;
     CS_COMMAND* cmd;
     CS_INT restype = 0;
-    char sbuf[64];
+    char sbuf[CX_PASSWORD_SIZE*2 + 20];
     char* user;
     char* pwd;
 
@@ -463,7 +463,7 @@ sybd_internal_GetConn(pSybdNode db_node)
 	    }
 
 	/** User/pass out of range? **/
-	if (strlen(user) > 31 || strlen(pwd) > 31)
+	if (strlen(user) >= CX_USERNAME_SIZE || strlen(pwd) >= CX_PASSWORD_SIZE)
 	    {
 	    mssError(1,"SYBD","Username or password invalid");
 	    return NULL;
@@ -528,8 +528,8 @@ sybd_internal_GetConn(pSybdNode db_node)
 	ct_con_props(conn->CsConn, CS_SET, CS_USERNAME, user, CS_NULLTERM, NULL);
 	ct_con_props(conn->CsConn, CS_SET, CS_PASSWORD, pwd, CS_NULLTERM, NULL);
 	ct_con_props(conn->CsConn, CS_SET, CS_APPNAME, "Centrallix", CS_NULLTERM, NULL);
-	gethostname(sbuf,63);
-	sbuf[63]=0;
+	gethostname(sbuf, sizeof(sbuf)-1);
+	sbuf[sizeof(sbuf)-1]=0;
 	ct_con_props(conn->CsConn, CS_SET, CS_HOSTNAME, sbuf, CS_NULLTERM, NULL);
 #if 00 /* locking */
 	ct_diag(conn->CsConn, CS_INIT, CS_UNUSED, CS_UNUSED, NULL);
@@ -559,7 +559,7 @@ sybd_internal_GetConn(pSybdNode db_node)
 		    nmFree(conn,sizeof(SybdConn));
 		    return NULL;
 		    }
-		snprintf(sbuf,sizeof(sbuf),"sp_password \"%s\", \"%s\"", db_node->DefaultPassword, pwd);
+		snprintf(sbuf, sizeof(sbuf), "sp_password \"%s\", \"%s\"", db_node->DefaultPassword, pwd);
 		cmd = sybd_internal_Exec(conn, sbuf);
 		while((rval=ct_results(cmd, (CS_INT*)&restype)))
 		    {
@@ -601,7 +601,7 @@ sybd_internal_GetConn(pSybdNode db_node)
 		nmFree(conn,sizeof(SybdConn));
 		return NULL;
 		}
-	    snprintf(sbuf,64,"use %s",db_node->Database);
+	    snprintf(sbuf, sizeof(sbuf), "use %s", db_node->Database);
 	    cmd = sybd_internal_Exec(conn, sbuf);
 	    while((rval=ct_results(cmd, (CS_INT*)&restype)))
 	        {
@@ -618,6 +618,24 @@ sybd_internal_GetConn(pSybdNode db_node)
 	        }
 	    sybd_internal_Close(cmd);
 	    }
+
+	/** Enable ANSI NULL option **/
+	snprintf(sbuf, sizeof(sbuf), "set ansinull on");
+	cmd = sybd_internal_Exec(conn, sbuf);
+	while((rval=ct_results(cmd, (CS_INT*)&restype)))
+	    {
+	    if (rval == CS_FAIL)
+		{
+		mssError(0,"SYBD","Could not enable ansi null mode!");
+		sybd_internal_Close(cmd);
+		ct_close(conn->CsConn, CS_FORCE_CLOSE);
+		ct_con_drop(conn->CsConn);
+		nmFree(conn,sizeof(SybdConn));
+		return NULL;
+		}
+	    if (rval == CS_END_RESULTS || restype == CS_CMD_DONE) break;
+	    }
+	sybd_internal_Close(cmd);
 
 	/** Get the spid **/
 	conn->SPID = 0;
@@ -2834,7 +2852,7 @@ sybd_internal_BuildAutoname(pSybdData inf, pSybdConn conn, pObjTrxTree oxt)
 			if (t == DATA_T_INTEGER || t == DATA_T_DOUBLE || t == DATA_T_MONEY)
 			    xsConcatenate(sql, key_values[i], -1);
 			else
-			    xsConcatPrintf(sql, "'%s'", key_values[i]);
+			    xsConcatQPrintf(sql, "\"%STR&DSYB\"", key_values[i]);
 			}
 		    }
 
@@ -2860,7 +2878,7 @@ sybd_internal_BuildAutoname(pSybdData inf, pSybdConn conn, pObjTrxTree oxt)
 		    sybd_internal_Close(cmd);
 		    cmd = NULL;
 		    }
-		else
+		if (!key_values[j])
 		    {
 		    mssError(1,"SYBD","Could not obtain next-value information for key '%s' on table '%s'",
 			    inf->TData->Cols[colid], inf->TData->Table);
@@ -3320,7 +3338,7 @@ sybdDelete(pObject obj, pObjTrxTree* oxt)
 CS_COMMAND*
 sybd_internal_PrepareText(pSybdData inf, pSybdConn conn, int maxtextsize)
     {
-    char* col;
+    char* col = NULL;
     int i;
     char buffer[1];
     char sbuf[160];
@@ -4137,7 +4155,7 @@ sybdGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    if (!strcmp(attrname,"datatype")) return DATA_T_STRING;
 	    }
 
-	mssError(1,"SYBD","Invalid column for GetAttrType");
+	//mssError(1,"SYBD","Invalid column for GetAttrType");
 
     return -1;
     }
@@ -4402,6 +4420,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     {
     pSybdData inf = SYBD(inf_v);
     int type;
+    int i, is_key = 0;
     CS_COMMAND* cmd;
     pSybdConn conn;
     char sbuf[320];
@@ -4545,6 +4564,18 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		    if (!strncmp(attrname, "__cx_literal_", 13))
 			attrname = attrname + 13;
 
+		    /** Primary key being set? **/
+		    i = sybd_internal_ColNameToID(inf->TData, attrname);
+		    if (i >= 0)
+			{
+			/** Remember that this is a primary key field, as it
+			 ** will interfere with the retrieval of the updated
+			 ** object data afterward.
+			 **/
+			if (inf->TData->ColFlags[i] & SYBD_CF_PRIKEY)
+			    is_key = 1;
+			}
+
 		    /** No transaction.  Simply do an update. **/
 		    type = sybdGetAttrType(inf_v, attrname, oxt);
 		    if (type < 0) return -1;
@@ -4614,9 +4645,16 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		     **/
 		    if (sybd_internal_LookupRow(conn, inf) <= 0)
 			{
-			if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,conn);
-			mssError(1,"SYBD","Could not retrieve updated record");
-			return -1;
+			if (is_key)
+			    {
+			    mssError(1,"SYBD","Warning: could not retrieve primary key updated record");
+			    }
+			else
+			    {
+			    if (!inf->SessionID) sybd_internal_ReleaseConn(inf->Node,conn);
+			    mssError(1,"SYBD","Could not retrieve updated record");
+			    return -1;
+			    }
 			}
 
 		    /** Release the session **/
@@ -5046,7 +5084,7 @@ sybdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 		    }
 		else
 		    {
-		    mssError(1, "SYBD", "No attribute '%s'", attrname);
+		    //mssError(1, "SYBD", "No attribute '%s'", attrname);
 		    return NULL;
 		    }
 		break;

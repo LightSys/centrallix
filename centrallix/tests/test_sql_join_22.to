@@ -1,0 +1,4 @@
+##NAME Multiple joined sources, grouping
+
+# S1 primary, S2 outer of S1, S3 outer of S1, S4 inner of S3, S5 outer of S1.
+query select id1 = :s1:f_desc, id2 = :s2:color, id3 = :s3:f_desc, id4 = sum(:s4:color + ',') - ',', id5 = :s5:color from /tests/Testdata2.csv/rows s1, /tests/test3.json s2, /tests/Testdata1.csv/rows s3, /tests/test3.json s4, /tests/test3.json s5 where :s3:f_id =* :s1:f_id and :s3:f_desc != 'Yellow' and :s4:color < lower(:s3:f_desc) and :s5:rowid =* :s1:f_id + 1 and :s5:color != 'yellow' and :s2:rowid =* :s1:f_id and :s2:color != 'gunk' and :s4:color != 'gunk' group by :s1:f_id

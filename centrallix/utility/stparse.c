@@ -430,14 +430,51 @@ stLookup(pStructInf this, char* name)
 	/** Search for a subinf with the right name **/
 	for(i=0;i<this->nSubInf;i++)
 	    {
-	    if (!strcmp(this->SubInf[i]->Name, name)) 
+	    if (!strcmp(this->SubInf[i]->Name, name))
 		{
 		inf = this->SubInf[i];
 		break;
 		}
 	    }
 
+	if (!inf) return NULL;
+	ASSERTMAGIC(inf, MGK_STRUCTINF);
+
     return inf;
+    }
+
+
+/*** stFind() - recursively search the struct tree for a given named
+ *** subgroup.  Excludes matching against the struct inf passed in
+ *** as 'inf'; just matches against children/descendents.
+ ***/
+pStructInf
+stFind(pStructInf this, char* name)
+    {
+    pStructInf find_inf = NULL, search_inf;
+    int i;
+
+	if (!this) return NULL;
+	ASSERTMAGIC(this, MGK_STRUCTINF);
+
+	/** Search for a subinf with the right name **/
+	for(i=0;i<this->nSubInf;i++)
+	    {
+	    search_inf = this->SubInf[i];
+	    if (!strcmp(search_inf->Name, name))
+		{
+		find_inf = search_inf;
+		break;
+		}
+	    find_inf = stFind(search_inf, name);
+	    if (find_inf)
+		break;
+	    }
+
+	if (!find_inf) return NULL;
+	ASSERTMAGIC(find_inf, MGK_STRUCTINF);
+
+    return find_inf;
     }
 
 
@@ -520,7 +557,7 @@ stGetExpression(pStructInf this, int nval)
 int
 stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
     {
-    return stGetAttrValueOSML(this, type, pod, nval, NULL);
+    return stGetAttrValueOSML(this, type, pod, nval, NULL, NULL);
     }
 
 
@@ -541,7 +578,7 @@ stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value)
 	    return 1;
 	    }
 
-    return stGetAttrValueOSML(attr_inf, type, value, 0, NULL);
+    return stGetAttrValueOSML(attr_inf, type, value, 0, NULL, NULL);
     }
 
 
@@ -549,10 +586,10 @@ stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value)
  *** in the context of an OSML session.
  ***/
 int
-stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSession sess)
+stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSession sess, pParamObjects objlist)
     {
     pExpression find_exp;
-    pParamObjects objlist;
+    pParamObjects my_objlist = objlist;
 
 	/** Do some error-cascade checking. **/
 	if (!this) return -1;
@@ -573,10 +610,14 @@ stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSessio
 	/** If external ref, do eval **/
 	if ((find_exp->ObjCoverageMask & (EXPR_MASK_EXTREF | EXPR_MASK_INDETERMINATE)) && !(find_exp->Flags & EXPR_F_RUNCLIENT))
 	    {
-	    objlist = expCreateParamList();
-	    objlist->Session = sess;
-	    expEvalTree(find_exp, objlist);
-	    expFreeParamList(objlist);
+	    if (!objlist)
+		{
+		my_objlist = expCreateParamList();
+		my_objlist->Session = sess;
+		}
+	    expEvalTree(find_exp, my_objlist);
+	    if (!objlist)
+		expFreeParamList(my_objlist);
 	    }
 
 	/** Correct type requested? **/

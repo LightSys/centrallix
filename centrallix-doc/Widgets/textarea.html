@@ -13,10 +13,14 @@
 <p class="widgettype">form element: <span class="widgettypevalue">yes</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>The textarea is a multi-line text edit widget, allowing the user to enter text data containing line endings, tabs, and more.  It also contains a scrollbar which allows more text to be edited than can fit in the displayable area.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>The textarea is a visual form element widget, and can be contained inside any container capable of holding visual widgets.  It may only contain nonvisual widgets like the connector.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -40,6 +44,11 @@
 <td class="description">The field in the objectsource to associate this textarea with.</td>
 </tr>
 <tr>
+<td class="name">form</td>
+<td class="type">string</td>
+<td class="description">Links text area to a form.</td>
+</tr>
+<tr>
 <td class="name">height</td>
 <td class="type">integer</td>
 <td class="description">The height of the textarea, in pixels</td>
@@ -50,9 +59,14 @@
 <td class="description">The maximum number of characters the textarea should accept from the user</td>
 </tr>
 <tr>
+<td class="name">mode</td>
+<td class="type">string</td>
+<td class="description">Can hold text, html, or wiki and display.</td>
+</tr>
+<tr>
 <td class="name">readonly</td>
 <td class="type">yes/no</td>
-<td class="description">Set to 'yes' if the data in the text area should be viewed only and not be modified</td>
+<td class="description">Set to 'yes' if the data in the text area should be viewed only and not be modified.</td>
 </tr>
 <tr>
 <td class="name">style</td>
@@ -75,10 +89,25 @@
 <td class="description">The vertical coordinate of the top edge of the textarea, relative to the container.</td>
 </tr>
 </table>
-<h3 class="childproperties">Child Properties:</h3>
-<p class="none">none currently available</p>
 <h3 class="actions">Actions:</h3>
-<p class="none">none currently available</p>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">InsertText</td>
+<td class="description">Checks to see if things need to be changed (new is different from old) then calls set value.</td>
+</tr>
+<tr>
+<td class="name">SetFocus</td>
+<td class="description">Sets the focus on a selected widget.</td>
+</tr>
+<tr>
+<td class="name">SetValue</td>
+<td class="description">Sets the content to the text parameter sent.</td>
+</tr>
+</table>
 <h3 class="events">Events:</h3>
 <table class="events">
 <tr>
@@ -86,48 +115,58 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">Click</td>
-<td class="description">This event occurs when the user clicks the widget. No parameters are available from this event.</td>
+<td class="name">BeforeKeyPress</td>
+<td class="description">This event occurs before the key press event is fired and can stop the key press event.</td>
 </tr>
 <tr>
-<td class="name">MouseUp</td>
-<td class="description">This event occurs when the user releases the mouse button on the widget.</td>
+<td class="name">DataChange</td>
+<td class="description">This event occurs when the user has modified the data value of the widget (clicked or unclicked it).</td>
+</tr>
+<tr>
+<td class="name">DataModify</td>
+<td class="description">This event occurs when the data is changed (occurs when key press or button changes things).</td>
+</tr>
+<tr>
+<td class="name">EscapePressed</td>
+<td class="description">This event occurs when the user presses the escape key.</td>
+</tr>
+<tr>
+<td class="name">GetFocus</td>
+<td class="description">This event occurs when the editbox receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</td>
+</tr>
+<tr>
+<td class="name">KeyPress</td>
+<td class="description">This event occurs when the user presses any key.</td>
+</tr>
+<tr>
+<td class="name">LoseFocus</td>
+<td class="description">This event occurs when the editbox loses keyboard focus (if the user tabs off of it, for instance).</td>
 </tr>
 <tr>
 <td class="name">MouseDown</td>
 <td class="description">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
 </tr>
 <tr>
-<td class="name">MouseOver</td>
-<td class="description">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</td>
+<td class="name">MouseMove</td>
+<td class="description">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</td>
 </tr>
 <tr>
 <td class="name">MouseOut</td>
 <td class="description">This event occurs when the user moves the mouse pointer off of the widget.</td>
 </tr>
 <tr>
-<td class="name">MouseMove</td>
-<td class="description">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</td>
+<td class="name">MouseOver</td>
+<td class="description">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</td>
 </tr>
 <tr>
-<td class="name">DataChange</td>
-<td class="description">This event occurs when the data value of the widget has changed.</td>
+<td class="name">MouseUp</td>
+<td class="description">This event occurs when the user releases the mouse button on the widget.</td>
 </tr>
 <tr>
-<td class="name">Modified</td>
-<td class="description">This event occurs when the user modifies the data value of the widget (the distinction from 'DataChange' is that in this case the user modified the data value, whereas DataChange can occur even when the form containing the textarea views a new object, but also by user modification).</td>
-</tr>
-<tr>
-<td class="name">LoseFocus</td>
-<td class="description">This event occurs when the textarea loses keyboard focus (if the user tabs off of it, for instance).</td>
-</tr>
-<tr>
-<td class="name">GetFocus</td>
-<td class="description">This event occurs when the textarea receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</td>
+<td class="name">TabPressed</td>
+<td class="description">This event occurs when the user presses the tab key.</td>
 </tr>
 </table>
-<h3 class="properties">Client Properties:</h3>
-<p class="none">none currently available</p>
 <h3 class="sample">Sample Code:</h3>
 <p class="none">none currently available</p>
 </body>

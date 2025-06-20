@@ -93,6 +93,19 @@ AC_DEFUN(CENTRALLIX_CHECK_JSONC,
     ]
 )
 
+dnl Test for ncurses
+AC_DEFUN(CENTRALLIX_CHECK_NCURSES,
+    [
+    AC_CHECK_LIB(ncurses, setupterm, [ncurses_found="yes"])
+    AC_CHECK_HEADER([curses.h], [curses_h_found="yes"])
+    AC_CHECK_HEADER([term.h], [term_h_found="yes"])
+    if test "$ncurses_found" = "yes" -a "$curses_h_found" = "yes" -a "$term_h_found" = "yes"; then
+       AC_DEFINE(HAVE_NCURSES, 1, [Defined to 1 if you have the ncurses library (-lncurses, curses.h, and term.h).])
+       NCURSES_LIBS="-lncurses"
+    fi
+    ]
+)
+
 
 dnl Test for the Centrallix-LIB header and library files.
 AC_DEFUN(CENTRALLIX_CHECK_CENTRALLIX,
@@ -1538,3 +1551,19 @@ AC_DEFUN(CENTRALLIX_CHECK_RSVG,
     ]
 )
 
+dnl Check for MathGL versions
+AC_DEFUN(CENTRALLIX_CHECK_MATHGL,
+    [
+	AC_CHECK_HEADER(mgl/mgl_c.h,
+	    AC_DEFINE([HAVE_MGL1], [1], [Define to 1 if MathGL 1.x is present.]),
+	    WITH_MGL1="no"
+	)
+	AC_CHECK_HEADER(mgl2/mgl.h,
+	    AC_DEFINE([HAVE_MGL2], [1], [Define to 1 if MathGL 2.x is present.]),
+	    WITH_MGL2="no",
+	    [#include <stdbool.h>
+	    #include <complex.h>
+	    ]
+	)
+    ]
+)

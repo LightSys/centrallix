@@ -59,7 +59,7 @@
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #endif
 
-#define OBJSYS_NOT_ISA		(0x80000000)
+#define OBJSYS_NOT_RELATED	(0x80000000)
 
 #define OBJ_U_SEEK	FD_U_SEEK
 #define OBJ_U_PACKET	FD_U_PACKET
@@ -231,6 +231,15 @@ typedef struct _OT
     }
     ObjTrxTree, *pObjTrxTree;
 
+#define OXT_S_PENDING	0
+#define OXT_S_VISITED	1
+#define OXT_S_COMPLETE	2
+#define OXT_S_FAILED	3
+
+#define OXT_OP_NONE	0
+#define OXT_OP_CREATE	1
+#define OXT_OP_SETATTR	2
+#define OXT_OP_DELETE	3
 
 
 /** objectsystem session **/
@@ -243,18 +252,11 @@ typedef struct _OSS
     pObjTrxTree		Trx;
     XHashQueue		DirectoryCache;		/* directory entry cache */
     handle_t		Handle;
+    int			Flags;
     }
     ObjSession, *pObjSession;
 
-#define OXT_S_PENDING	0
-#define OXT_S_VISITED	1
-#define OXT_S_COMPLETE	2
-#define OXT_S_FAILED	3
-
-#define OXT_OP_NONE	0
-#define OXT_OP_CREATE	1
-#define OXT_OP_SETATTR	2
-#define OXT_OP_DELETE	3
+#define OBJ_SESS_F_CLOSING	1
 
 
 /** Content type descriptor **/
@@ -394,7 +396,7 @@ typedef struct _SRT
     XArray	SortNames[2];	/* names of objects */
     XString	SortDataBuf;	/* buffer for sort key data */
     XString	SortNamesBuf;	/* buffer for object names */
-    int		IsTemp;
+    int		Reopen;
     }
     ObjQuerySort, *pObjQuerySort;
 
@@ -421,6 +423,7 @@ typedef struct _OQ
 #define OBJ_QY_F_FULLQUERY	2
 #define OBJ_QY_F_FULLSORT	4
 #define OBJ_QY_F_FROMSORT	8
+#define OBJ_QY_F_NOREOPEN	16
 
 
 /*** Event and EventHandler structures ***/
@@ -647,11 +650,11 @@ pObjectInfo objInfo(pObject this);
 char* objGetPathname(pObject this);
 int objImportFile(pObjSession sess, char* source_filename, char* dest_osml_dir, char* new_osml_name, int new_osml_name_len);
 pContentType objTypeFromName(char* name);
-int objIsA(char* type1, char* type2);
+int objIsRelatedType(char* type1, char* type2);
 
 /** objectsystem directory/query functions **/
 pObjQuery objMultiQuery(pObjSession session, char* query, void* objlist, int flags);
-pObjQuery objOpenQuery(pObject obj, char* query, char* order_by, void* tree, void** orderby_exp);
+pObjQuery objOpenQuery(pObject obj, char* query, char* order_by, void* tree, void** orderby_exp, int flags);
 int objQueryDelete(pObjQuery this);
 pObject objQueryFetch(pObjQuery this, int mode);
 pObject objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* type);
@@ -666,6 +669,7 @@ int objWrite(pObject this, char* buffer, int cnt, int offset, int flags);
 /** objectsystem attribute functions **/
 int objGetAttrType(pObject this, char* attrname);
 int objSetEvalContext(pObject this, void* objlist);
+void* objGetEvalContext(pObject this);
 #if 1
 int objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val);
 int objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val);

@@ -1158,7 +1158,7 @@ dbl_internal_FindDefinition(pDblData inf, pDblTableInf tdata)
 	/** Not there.  Look in all DEF files in the DEF file directory (ack!) **/
 	obj = objOpen(inf->Obj->Session, inf->Node->DefPath, O_RDONLY, 0600, "system/directory");
 	if (!obj) return -1;
-	qy = objOpenQuery(obj, "lower(right(:name, 4)) == '.def'", NULL, NULL, NULL);
+	qy = objOpenQuery(obj, "lower(right(:name, 4)) == '.def'", NULL, NULL, NULL, 0);
 	if (!qy)
 	    {
 	    objClose(obj);
@@ -2047,7 +2047,7 @@ dblOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		    nmFree(qy,sizeof(DblQuery));
 		    return NULL;
 		    }
-		qy->LLQuery = objOpenQuery(qy->LLObj, "lower(right(:name, 4)) == '.ism'", ":name", NULL, NULL);
+		qy->LLQuery = objOpenQuery(qy->LLObj, "lower(right(:name, 4)) == '.ism'", ":name", NULL, NULL, 0);
 		if (!qy->LLQuery)
 		    {
 		    objClose(qy->LLObj);

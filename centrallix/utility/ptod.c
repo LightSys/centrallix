@@ -99,8 +99,8 @@ ptod_internal_FreeData(pTObjData ptod)
 		default:
 		    break;
 		}
-	    ptod->Data.Generic = NULL;
 	    }
+	ptod->Data.Generic = NULL;
 
     return 0;
     }
@@ -168,60 +168,69 @@ ptodCopy(pTObjData src, pTObjData dst)
 	ptod_internal_FreeData(dst);
 
 	/** Copy data, based on managed/attached status of ptod **/
-	if (dst->Flags & DATA_TF_UNMANAGED)
+	if (!(src->Flags & DATA_TF_NULL))
 	    {
-	    /** unmanaged/unattached copy? **/
-	    objCopyData(&src->Data, &dst->Data, src->DataType);
-	    }
-	else if (dst->Flags & DATA_TF_ATTACHED)
-	    {
-	    /** Attached copy? **/
-	    if (dst->AttachedLen < src->AttachedLen)
+	    if (dst->Flags & DATA_TF_UNMANAGED)
 		{
-		mssError(1,"PTOD","Could not copy: destination size %d is less than source size %d.",dst->AttachedLen,src->AttachedLen);
-		return -1;
+		/** unmanaged/unattached copy? **/
+		objCopyData(&src->Data, &dst->Data, src->DataType);
 		}
-	    if (src->AttachedLen)
-		memcpy(((char*)dst)+sizeof(TObjData), ((char*)src)+sizeof(TObjData), src->AttachedLen);
-	    switch(src->DataType)
+	    else if (dst->Flags & DATA_TF_ATTACHED)
 		{
-		case DATA_T_INTEGER:
-		case DATA_T_DOUBLE:
-		    objCopyData(&src->Data, &dst->Data, src->DataType);
-		    break;
-		case DATA_T_STRING:
-		case DATA_T_MONEY:
-		case DATA_T_DATETIME:
-		case DATA_T_INTVEC:
-		case DATA_T_STRINGVEC:
-		default:
-		    dst->Data.Generic = ((char*)dst)+sizeof(TObjData);
-		    break;
+		/** Attached copy? **/
+		if (dst->AttachedLen < src->AttachedLen)
+		    {
+		    mssError(1,"PTOD","Could not copy: destination size %d is less than source size %d.",dst->AttachedLen,src->AttachedLen);
+		    return -1;
+		    }
+		if (src->AttachedLen)
+		    memcpy(((char*)dst)+sizeof(TObjData), ((char*)src)+sizeof(TObjData), src->AttachedLen);
+		switch(src->DataType)
+		    {
+		    case DATA_T_INTEGER:
+		    case DATA_T_DOUBLE:
+			objCopyData(&src->Data, &dst->Data, src->DataType);
+			break;
+		    case DATA_T_STRING:
+		    case DATA_T_MONEY:
+		    case DATA_T_DATETIME:
+		    case DATA_T_INTVEC:
+		    case DATA_T_STRINGVEC:
+		    case DATA_T_BINARY:
+		    default:
+			dst->Data.Generic = ((char*)dst)+sizeof(TObjData);
+			break;
+		    }
 		}
-	    }
-	else
-	    {
-	    /** Managed copy **/
-	    switch(src->DataType)
+	    else
 		{
-		case DATA_T_INTEGER:
-		case DATA_T_DOUBLE:
-		    objCopyData(&src->Data, &dst->Data, src->DataType);
-		    break;
-		case DATA_T_STRING:
-		    dst->Data.String = nmSysStrdup(src->Data.String);
-		    break;
-		case DATA_T_MONEY:
-		    dst->Data.Money = nmMalloc(sizeof(MoneyType));
-		    memcpy(dst->Data.Money, src->Data.Money, sizeof(MoneyType));
-		    break;
-		case DATA_T_DATETIME:
-		    dst->Data.DateTime = nmMalloc(sizeof(DateTime));
-		    memcpy(dst->Data.DateTime, src->Data.DateTime, sizeof(DateTime));
-		    break;
-		default:
-		    /** FIXME: how do we want to handle intvec/stringvec/binary/etc? **/
-		    break;
+		/** Managed copy **/
+		switch(src->DataType)
+		    {
+		    case DATA_T_INTEGER:
+		    case DATA_T_DOUBLE:
+			objCopyData(&src->Data, &dst->Data, src->DataType);
+			break;
+		    case DATA_T_STRING:
+			dst->Data.String = nmSysStrdup(src->Data.String);
+			break;
+		    case DATA_T_BINARY:
+			dst->Data.Binary.Data = nmSysMalloc(src->Data.Binary.Size+1);
+			dst->Data.Binary.Size = src->Data.Binary.Size;
+			memcpy(dst->Data.Binary.Data, src->Data.Binary.Data, src->Data.Binary.Size+1);
+			break;
+		    case DATA_T_MONEY:
+			dst->Data.Money = nmMalloc(sizeof(MoneyType));
+			memcpy(dst->Data.Money, src->Data.Money, sizeof(MoneyType));
+			break;
+		    case DATA_T_DATETIME:
+			dst->Data.DateTime = nmMalloc(sizeof(DateTime));
+			memcpy(dst->Data.DateTime, src->Data.DateTime, sizeof(DateTime));
+			break;
+		    default:
+			/** FIXME: how do we want to handle intvec/stringvec/binary/etc? **/
+			break;
+		    }
 		}
 	    }
 
@@ -269,6 +278,23 @@ ptodPrint(pTObjData ptod)
 	    }
 
     return 0;
+    }
+
+
+/*** ptodToStringTmp() - Convert a ptod to string form.
+ ***/
+char*
+ptodToStringTmp(pTObjData ptod)
+    {
+
+	/** Convert to string **/
+	if (ptod->Flags & DATA_TF_NULL || ptod->DataType < 0 || ptod->DataType == DATA_T_UNAVAILABLE)
+	    return "";
+	else if (ptod->DataType == DATA_T_INTEGER || ptod->DataType == DATA_T_DOUBLE)
+	    return (char*)objDataToStringTmp(ptod->DataType, (void*)&(ptod->Data), 0);
+	else
+	    return (char*)objDataToStringTmp(ptod->DataType, (void*)(ptod->Data.Generic), 0);
+
     }
 
 

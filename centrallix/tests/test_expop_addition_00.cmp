@@ -17,6 +17,13 @@ Attribute ["1" + 2]:   string   "12"
 Attribute ["1" + 2.3]:   string   "12.3" 
 Attribute ["1" + "2"]:   string   "12" 
 Attribute ["1" + "2" + "3"]:   string   "123" 
+Attribute [1.5 + "1.3"]:   double  2.8
+Attribute ["" + 12]:   string   "12" 
+Attribute [10 + "-5"]:  integer  5
+Attribute ["|" + "	|"]:   string   "|	|" 
 Attribute [1 + null]:  integer  NULL
 Attribute [null + 1]:   string  NULL
 Attribute [null + null]:   string  NULL
+Attribute ["" + ""]:   string   "" 
+Attribute ["" + null]:   string  NULL
+Attribute [null + ""]:   string  NULL

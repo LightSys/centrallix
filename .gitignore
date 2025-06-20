@@ -19,6 +19,7 @@ centrallix/.subbuild
 centrallix/autom4te.cache
 centrallix/centrallix
 centrallix/cxpasswd
+centrallix/linksign
 centrallix/config.h
 centrallix/etc/centrallix.conf
 centrallix/etc/centrallix.conf.mk
@@ -36,6 +37,7 @@ centrallix-lib/include/cxlib
 */nbproject/
 centrallix-lib/tests/test_*.bin
 centrallix/tests/*.out
+centrallix/tests/*.bin
 centrallix/tests/*.to.tmp
 centrallix/thirdparty/compare-*
 centrallix/thirdparty/*-inst
@@ -54,5 +56,9 @@ centrallix/test-driver
 *.gcno
 *.gcov
 *.gcda
+lcov.info
 perf.data
 perf.data.old
+.idea/
+.vscode/
+centrallix-os/tmp/*

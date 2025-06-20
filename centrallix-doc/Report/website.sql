@@ -52,6 +52,8 @@ insert into topic values(null,1,"5. Report Components",null,
 	
 		[tr][td][report/area][/td][td]A positionable rectangular container[/td][/tr]
 	
+		[tr][td][report/chart][/td][td]A chart or graph presentation of report data[/td][/tr]
+	
 		[tr][td][report/data][/td][td]An expression-based data value such as text, a number, or currency[/td][/tr]
 	
 		[tr][td][report/form][/td][td]A freeform layout container for displaying query results[/td][/tr]
@@ -110,6 +112,12 @@ insert into topic values(null, @newid, "Common Properties", null,
 					[td]align[/td]
 					[td]string[/td]
 					[td]The text alignment to use - either \"left\" (default), \"center\", \"right\", or \"full\".  Available on all objects except image, query, and parameter.[/td]
+				[/tr]
+			
+				[tr]
+					[td]bgcolor[/td]
+					[td]string[/td]
+					[td]The background color of a table, table row, table cell, or area.[/td]
 				[/tr]
 			
 				[tr]
@@ -790,7 +798,7 @@ insert into topic values(null, @newid, "report/table", null,
 				[tr]
 					[td]widths[/td]
 					[td]intvec[/td]
-					[td]A list of numbers giving the widths of the columns.  This MUST match the number of columns specified with the 'columns' setting.[/td]
+					[td]A list of numbers giving the widths of the columns.  This MUST match the number of columns specified with the 'columns' setting.  As an alternative, widths may be specified in the column header cells, see below.[/td]
 				[/tr]
 			
 		[/table]
@@ -852,9 +860,21 @@ insert into topic values(null, @newid, "report/table", null,
 				[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
 				
 						[tr]
+							[td]colspan[/td]
+							[td]integer[/td]
+							[td]The number of columns that this cell should span.  Default 1.[/td]
+						[/tr]
+					
+						[tr]
 							[td]value[/td]
 							[td]expression[/td]
 							[td]The text to be printed inside the cell.  Can reference report/query objects using :queryname:fieldname syntax.  When the expression references queries, it should be enclosed in the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).[/td]
+						[/tr]
+					
+						[tr]
+							[td]width[/td]
+							[td]double[/td]
+							[td]The width of the column.  Specifying widths in the column header cells is an alternative to specifying a list (intvec) of widths at the table level.[/td]
 						[/tr]
 					
 				[/table]
@@ -879,6 +899,188 @@ myTable \"report/table\"
 	    {
 	    t_name \"report/table-cell\" { align=center; style=bold; value=runserver(:myQuery:name); }
 	    t_size \"report/table-cell\" { align=center; style=bold; value=runserver(:myQuery:size); }
+	    }
+	}
+		
+		
+		[/code]
+	
+");
+	
+insert into topic values(null, @newid, "report/chart", null,
+"		[b]chart[/b] :: A chart or graph presentation of report data
+
+		[b]Metadata:[/b]
+		[table]
+		[tr][td]type:[/td][td]report/chart[/td][/tr]
+		[tr][td]visual:[/td][td] yes[/td][/tr]
+		[tr][td]container:[/td][td] no[/td][/tr]
+		[/table]
+		
+	[b]Overview:[/b]
+	
+			The chart component is used to display data in a bar, line, or pie chart.  The chart creates an image which is embedded into the report.
+
+			Charts, like forms and tables, can have more than one data mode.  Like tables, charts only support 'normal' and 'inner'; 'outer' is not supported since charts do not contain other components.  See the form documentation for more on the data mode.
+
+			Charts also can handle multiple queries using a 'multimode' - see the form for more information.
+
+		
+	[b]Usage:[/b]
+	
+			Charts can be used inside any visual container or inside forms.  Charts can contain \"report/chart-axis\" and \"report/chart-series\" objects, and must contain both an X and a Y axis and at least one data series.  Charts cannot contain any other report components.
+
+			All chart elements also typically support the common property \"fontsize\".
+
+		
+	[b]Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]box[/td]
+					[td]yes/no[/td]
+					[td]Whether to draw a box around the chart's data area (the box is drawn just around the graph or chart itself, not around the axis and tick labels and titles).  Default \"no\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]chart_type[/td]
+					[td]string[/td]
+					[td]The type of chart:  bar, line, or pie.[/td]
+				[/tr]
+			
+				[tr]
+					[td]color[/td]
+					[td]string[/td]
+					[td]The default color to be used for the chart.[/td]
+				[/tr]
+			
+				[tr]
+					[td]mode[/td]
+					[td]string[/td]
+					[td]The mode of the chart (see overview).  'normal' is the default.[/td]
+				[/tr]
+			
+				[tr]
+					[td]multimode[/td]
+					[td]string[/td]
+					[td]How the chart handles multiple queries (see overview).  'nested' is the default.[/td]
+				[/tr]
+			
+				[tr]
+					[td]scale[/td]
+					[td]yes/no[/td]
+					[td]Whether to automatically scale axis tick labels using scientific notation and a multiplier (default \"no\").[/td]
+				[/tr]
+			
+				[tr]
+					[td]source[/td]
+					[td]stringvec[/td]
+					[td]A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.[/td]
+				[/tr]
+			
+				[tr]
+					[td]text_rotation[/td]
+					[td]yes/no[/td]
+					[td]Whether to rotate tick labels to allow them to better fit on the chart.  Default \"no\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]title[/td]
+					[td]string[/td]
+					[td]The chart's title, to be printed above the chart.[/td]
+				[/tr]
+			
+				[tr]
+					[td]zoom[/td]
+					[td]double[/td]
+					[td]The chart zoom; use values less than 1.0 to give the chart more whitespace, and values greater than 1.0 to eliminate whitespace.  Default 1.0.[/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Child Properties:[/b]
+	
+			(of report/chart-axis child widgets)
+			
+				[table]
+				[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+				
+						[tr]
+							[td]axis[/td]
+							[td]string[/td]
+							[td]Which axis to configure; must be \"x\" or \"y\".[/td]
+						[/tr]
+					
+						[tr]
+							[td]label[/td]
+							[td]string[/td]
+							[td]A label for the X or Y axis.[/td]
+						[/tr]
+					
+				[/table]
+			
+			(of report/chart-series child widgets)
+			
+				[table]
+				[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+				
+						[tr]
+							[td]color[/td]
+							[td]string[/td]
+							[td]The color to be used for the series.[/td]
+						[/tr]
+					
+						[tr]
+							[td]show_percent[/td]
+							[td]yes/no[/td]
+							[td]Whether to show the series value as a percentage above the bar or line point.  Default \"no\".[/td]
+						[/tr]
+					
+						[tr]
+							[td]show_value[/td]
+							[td]yes/no[/td]
+							[td]Whether to show the series value above the bar or line point.  Default \"yes\".[/td]
+						[/tr]
+					
+						[tr]
+							[td]x_value[/td]
+							[td]expression[/td]
+							[td]The X value for the series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).[/td]
+						[/tr]
+					
+						[tr]
+							[td]y_value[/td]
+							[td]expression[/td]
+							[td]The Y value for the series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).[/td]
+						[/tr]
+					
+				[/table]
+			
+	[b]Sample Code:[/b]
+	
+		[code]
+		
+		
+myChart \"report/chart\"
+	{
+	source=myQuery;
+	x=0; y=0; height=20; width=65;
+	chart_type=bar;
+	scale=no;
+	text_rotation=no;
+	title=\"My Chart Title\";
+
+	x_axis \"report/chart-axis\" { axis=x; label=\"X Label\"; }
+	y_axis \"report/chart-axis\" { axis=y; label=\"Y Label\"; }
+
+	series \"report/chart-series\"
+	    {
+	    x_value=runserver(:myQuery:month);
+	    y_value=runserver(:myQuery:revenue);
+	    show_value=yes;
+	    color=\"dark green\";
 	    }
 	}
 		

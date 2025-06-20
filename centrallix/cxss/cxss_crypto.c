@@ -45,7 +45,10 @@ void
 cxssCryptoCleanup(void)
 {
     EVP_cleanup();
-    ERR_remove_state(0);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    ERR_remove_thread_state(NULL); /* can't remove this yet if we might still build against 1.0.x */
+#pragma GCC diagnostic pop
     ERR_free_strings();
     CRYPTO_cleanup_all_ex_data();
 }

@@ -122,6 +122,23 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
 	    newy = getPageY(this)+ htr_getvisheight(this) + 1;
 	else // top
 	    newy = getPageY(this) - 24;
+
+	// Clipping
+	switch(l.tloc)
+	    {
+	    case 0: // top
+		$(l_tab).css('clip', 'rect(-10px, ' + ($(l_tab).outerWidth()+10) + 'px, 25px, -10px)');
+		break;
+	    case 1: // bottom
+		$(l_tab).css('clip', 'rect(0px, ' + ($(l_tab).outerWidth()+10) + 'px, 35px, -10px)');
+		break;
+	    case 2: // left
+		$(l_tab).css('clip', 'rect(-10px, ' + ($(l_tab).outerWidth()) + 'px, 35px, -10px)');
+		break;
+	    case 3: // right
+		$(l_tab).css('clip', 'rect(-10px, ' + ($(l_tab).outerWidth()+10) + 'px, 35px, 0px)');
+		break;
+	    }
 	}
     else
 	{

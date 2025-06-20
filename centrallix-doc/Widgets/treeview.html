@@ -13,11 +13,16 @@
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>A treeview provides a way of viewing hierarchically-organized data via a "traditional" GUI point-and-click tree structure. A treeview has "branches" that can expand and collapse entire subtrees of data.</p>
+
 			<p>Centrallix treeviews present a subtree of the ObjectSystem, with the data dynamically loaded, on demand, from the server as the widget is used. The treeview widget thus has no intelligence in and of itself in determining what kinds of objects are presented at each level of the tree. Many times, this is exactly what is desired because the treeview is being used to simply browse objects in the ObjectSystem, such as directories and files. In other cases, the treeview is teamed up with a special ObjectSystem object called a "querytree" (QYT) object. The querytree object creates a hierarchical view from other potentially non-hierarchical data in the ObjectSystem, such as that from different database tables and so forth.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>Treeviews can be placed inside of any visual container, but are usually placed inside of a scrollpane, since scrollpanes can expand to allow the user to view data that would not normally fit inside the desired container. Treeviews can contain only nonvisual widgets such as connectors.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -26,29 +31,9 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">source</td>
+<td class="name">fgcolor</td>
 <td class="type">string</td>
-<td class="description">The ObjectSystem path of the root of the treeview.</td>
-</tr>
-<tr>
-<td class="name">width</td>
-<td class="type">integer</td>
-<td class="description">width, in pixels, of the treeview.</td>
-</tr>
-<tr>
-<td class="name">x</td>
-<td class="type">integer</td>
-<td class="description">x-coordinate of the upper left corner of the treeview's root object.</td>
-</tr>
-<tr>
-<td class="name">y</td>
-<td class="type">integer</td>
-<td class="description">y-coordinate of the upper left corner of the treeview's root object.</td>
-</tr>
-<tr>
-<td class="name">icon</td>
-<td class="type">string</td>
-<td class="description">A pathname to an image to be used as icons for the items in the treeview.</td>
+<td class="description">A color, RGB or named, to be used for the text for the items in the treeview.</td>
 </tr>
 <tr>
 <td class="name">highlight_background</td>
@@ -56,24 +41,19 @@
 <td class="description">A background image for the selected item in the treeview.</td>
 </tr>
 <tr>
-<td class="name">highlight_bgcolor</td>
-<td class="type">string</td>
-<td class="description">A color, RGB or named, to be used as the background for the selected item. If neither bgcolor nor background are specified, the selection is not visible.</td>
-</tr>
-<tr>
 <td class="name">highlight_fgcolor</td>
 <td class="type">string</td>
 <td class="description">A color, RGB or named, to be used for the text for the selected item.</td>
 </tr>
 <tr>
-<td class="name">fgcolor</td>
+<td class="name">icon</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, to be used for the text for the items in the treeview.</td>
+<td class="description">A pathname to an image to be used as icons for the items in the treeview.</td>
 </tr>
 <tr>
-<td class="name">show_root</td>
-<td class="type">yes/no</td>
-<td class="description">Whether to display the root of the tree.  If "no", then the root is auto-expanded and only its children are visible.</td>
+<td class="name">order</td>
+<td class="type">string</td>
+<td class="description">Orders treeview in descending (desc) and ascending (anything else) order.</td>
 </tr>
 <tr>
 <td class="name">show_branches</td>
@@ -81,14 +61,62 @@
 <td class="description">Whether to display the connections between items in the tree using lines.</td>
 </tr>
 <tr>
+<td class="name">show_root</td>
+<td class="type">yes/no</td>
+<td class="description">Whether to display the root of the tree.  If "no", then the root is auto-expanded and only its children are visible.</td>
+</tr>
+<tr>
 <td class="name">show_root_branch</td>
 <td class="type">yes/no</td>
 <td class="description">Whether to display the connection lines between the root and the root's immediate children.  If "no", the root's children are flush against the lefthand side of the treeview, otherwise the connecting lines show up.</td>
 </tr>
 <tr>
+<td class="name">source</td>
+<td class="type">string</td>
+<td class="description">The ObjectSystem path of the root of the treeview.</td>
+</tr>
+<tr>
 <td class="name">use_3d_lines</td>
 <td class="type">yes/no</td>
 <td class="description">If set to "yes", the branch lines are drawn in a 3D style, otherwise they are drawn in a single color.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">Width, in pixels, of the treeview.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">X-coordinate of the upper left corner of the treeview's root object.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">Y-coordinate of the upper left corner of the treeview's root object.</td>
+</tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">Search</td>
+<td class="description">Searches for a specific element.</td>
+</tr>
+<tr>
+<td class="name">SearchNext</td>
+<td class="description">Returns the next element in the treeview.</td>
+</tr>
+<tr>
+<td class="name">SetFocus</td>
+<td class="description">Transfers focus to the selected element.</td>
+</tr>
+<tr>
+<td class="name">SetRoot</td>
+<td class="description">Sets the selected element as the root.</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
@@ -98,35 +126,83 @@
 <th class="description">Description</th>
 </tr>
 <tr>
+<td class="name">Click</td>
+<td class="description">This event occurs when the user clicks while the treeview is in focus.</td>
+</tr>
+<tr>
 <td class="name">ClickItem</td>
-<td class="description">occurs when the user clicks on the clickable link for an item in the treeview. Its one parameter is "Pathname", or the ObjectSystem path to the object which was selected.</td>
+<td class="description">Occurs when the user clicks on the clickable link for an item in the treeview. Its one parameter is "Pathname", or the ObjectSystem path to the object which was selected.</td>
+</tr>
+<tr>
+<td class="name">MouseDown</td>
+<td class="description">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
+</tr>
+<tr>
+<td class="name">MouseMove</td>
+<td class="description">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</td>
+</tr>
+<tr>
+<td class="name">MouseOut</td>
+<td class="description">This event occurs when the user moves the mouse pointer off of the widget.</td>
+</tr>
+<tr>
+<td class="name">MouseOver</td>
+<td class="description">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</td>
+</tr>
+<tr>
+<td class="name">MouseUp</td>
+<td class="description">This event occurs when the user releases the mouse button on the widget.</td>
+</tr>
+<tr>
+<td class="name">SelectItem</td>
+<td class="description">This event occurs when one of the elements of the treeview is given focus.</td>
 </tr>
 <tr>
 <td class="name">RightClickItem</td>
-<td class="description">to the above, but when the user right-clicks on an item in the treeview.</td>
+<td class="description">To the above, but when the user right-clicks on an item in the treeview.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 		
+
 $Version=2$
+
 // Example of a pane containing a scrollpane containing a treeview.
+
 mypane "widget/pane"
+
 	{
+
 	x=100; y=100; width=300; height=300;
+
 	style = "lowered";
+
 	bgcolor = "#c0c0c0";
+
 	myscroll "widget/scrollpane"
+
 		{
+
 		x=0; y=0; width=198; height=198;
+
 		mytreeview "widget/treeview"
+
 			{
+
 			x=1; y=1; width=175;
+
 			source="/";
+
 			}
+
 		}
+
 	}
+
 		
+
 		</pre>
 </body>
 </html>

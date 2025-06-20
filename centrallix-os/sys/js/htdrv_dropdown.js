@@ -802,13 +802,13 @@ function dd_add_items(l,ary)
 	if (!l.form)
 	    dd_select_item(l, sel, l.init_items?'additems':'init');
 	if (typeof ary[sel].value == 'number')
-	    cx_set_hints(this, "d=" + ary[sel].value, "widget");
+	    cx_set_hints(this, "d=" + ary[sel].value, "widget", true);
 	else
-	    cx_set_hints(this, "d=" + escape(cxjs_quote(ary[sel].value)), "widget");
+	    cx_set_hints(this, "d=" + escape(cxjs_quote(ary[sel].value)), "widget", true);
 	}
     else
 	{
-	cx_set_hints(this, "", "widget");
+	cx_set_hints(this, "", "widget", true);
 	}
     if (ary.length == 0 && l.value != null)
 	{
@@ -1044,7 +1044,7 @@ function dd_action_set_group(aparam)
     var new_select = null;
     for(var i=0; i<this.allValues.length; i++)
 	{
-	if (!this.currentGroup || !this.allValues[i].grp || this.currentGroup == this.allValues[i].grp)
+	if (typeof this.currentGroup == 'undefined' || this.currentGroup === null || this.allValues[i].grp === null || this.currentGroup == this.allValues[i].grp)
 	    {
 	    if (typeof aparam.Min == 'undefined' || aparam.Min === null || aparam.Min <= this.allValues[i].value)
 		{
@@ -1128,11 +1128,26 @@ function dd_action_set_items(aparam)
 	    htr_setvisibility(this.sql_loader, 'hidden');
 	    }
 
-	var rowlimit = parseInt(aparam.RowLimit)?parseInt(aparam.RowLimit):50;
+	var rowlimit = parseInt(aparam.RowLimit)?parseInt(aparam.RowLimit):100;
 
 	var url = "/?cx__akey=" + akey + "&ls__mode=query&ls__rowcount=" + rowlimit + "&ls__sql=" + htutil_escape(aparam.SQL);
 	pg_serialized_load(this.sql_loader, url, dd_sql_loaded);
 	}
+    else
+	{
+	this.additems(this, []);
+	}
+    }
+
+function dd_cb_getsql(attr)
+    {
+    return this.SQL;
+    }
+
+function dd_cb_setsql(attr, val)
+    {
+    this.ifcProbe(ifAction).Invoke('SetItems', {SQL:val});
+    return;
     }
 
 function dd_cb_reveal(e)
@@ -1275,6 +1290,11 @@ function dd_init(param)
     ia.Add("SetGroup", dd_action_set_group);
     ia.Add("SetItems", dd_action_set_items);
     ia.Add("ClearItems", dd_clear_layers);
+
+    var iv = l.ifcProbeAdd(ifValue);
+    iv.Add("sql", dd_cb_getsql, dd_cb_setsql);
+    iv.Add("value", "value");
+    iv.Add("label", "label");
 
     if (l.form)
 	{

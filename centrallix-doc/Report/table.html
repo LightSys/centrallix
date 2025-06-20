@@ -88,7 +88,7 @@
 <tr>
 <td class="name">widths</td>
 <td class="type">intvec</td>
-<td class="description">A list of numbers giving the widths of the columns.  This MUST match the number of columns specified with the 'columns' setting.</td>
+<td class="description">A list of numbers giving the widths of the columns.  This MUST match the number of columns specified with the 'columns' setting.  As an alternative, widths may be specified in the column header cells, see below.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -143,9 +143,19 @@
 <th class="description">Description</th>
 </tr>
 <tr>
+<td class="name">colspan</td>
+<td class="type">integer</td>
+<td class="description">The number of columns that this cell should span.  Default 1.</td>
+</tr>
+<tr>
 <td class="name">value</td>
 <td class="type">expression</td>
 <td class="description">The text to be printed inside the cell.  Can reference report/query objects using :queryname:fieldname syntax.  When the expression references queries, it should be enclosed in the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">double</td>
+<td class="description">The width of the column.  Specifying widths in the column header cells is an alternative to specifying a list (intvec) of widths at the table level.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>

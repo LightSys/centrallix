@@ -1,0 +1,71 @@
+##NAME tan() function
+
+# Only file where there is radians(45) among radians, degrees, sin, cos and tan files
+
+query select 'tan(0.0)' = tan(0.0)
+
+query select 'tan(radians(30))' = tan(radians(30))
+
+query select 'tan(radians(45))' = tan(radians(45))
+
+query select 'tan(radians(60))' = tan(radians(60))
+
+query select 'tan(radians(90))' = tan(radians(90))
+
+query select 'tan(radians(180))' = tan(radians(180))
+
+query select 'tan(radians(270))' = tan(radians(270))
+
+query select 'tan(radians(360))' = tan(radians(360))
+
+query select 'tan(radians(720))' = tan(radians(720))
+
+query select 'tan(radians(-30))' = tan(radians(-30))
+
+query select 'tan(radians(-45))' = tan(radians(-45))
+
+query select 'tan(radians(-60))' = tan(radians(-60))
+
+query select 'tan(radians(-90))' = tan(radians(-90))
+
+query select 'tan(radians(-180))' = tan(radians(-180))
+
+query select 'tan(radians(-270))' = tan(radians(-270))
+
+query select 'tan(radians(-360))' = tan(radians(-360))
+
+query select 'tan(radians(720))' = tan(radians(-720))
+
+query select 'tan(0)' = tan(0)
+
+query select 'tan(1)' = tan(1)
+
+query select 'tan(2)' = tan(2)
+
+query select 'tan(3)' = tan(3)
+
+query select 'tan(4)' = tan(4)
+
+query select 'tan(5)' = tan(5)
+
+query select 'tan(6)' = tan(6)
+
+query select 'tan(7)' = tan(7)
+
+query select 'tan(-1)' = tan(-1)
+
+query select 'tan(-2)' = tan(-2)
+
+query select 'tan(-3)' = tan(-3)
+
+query select 'tan(-4)' = tan(-4)
+
+query select 'tan(-5)' = tan(-5)
+
+query select 'tan(-6)' = tan(-6)
+
+query select 'tan(-7)' = tan(-7)
+
+
+
+

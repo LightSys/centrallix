@@ -1034,10 +1034,19 @@ dat_csv_ParseRow(pDatData inf, pDatTableInf td)
 		}
 
 	    /** Escape character? **/
-	    if (*ptr == '\\') 
+	    if (!(inf->Node->Flags & DAT_NODE_F_TWOQUOTEESC) && *ptr == '\\' && !is_escaped) 
 	        {
 		is_escaped = 1;
 		continue;
+		}
+	    if ((inf->Node->Flags & DAT_NODE_F_TWOQUOTEESC) && (quot == '"' || quot == '\'') && *ptr == quot && !is_escaped)
+		{
+		if ((((ptr+1) - inf->Row->Pages[cur_page]->Data) >= inf->Row->Pages[cur_page]->Length && cur_page+1 < inf->Row->nPages && inf->Row->Pages[cur_page+1]->Data[0] == quot)
+		    || (((ptr+1) - inf->Row->Pages[cur_page]->Data) < inf->Row->Pages[cur_page]->Length && ptr[1] == quot))
+		    {
+		    is_escaped = 1;
+		    continue;
+		    }
 		}
 
 	    /** Check for begin-quote mark. **/
@@ -1598,6 +1607,9 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 		ptr=NULL;
 		stAttrValue(stLookup(dn->Node->Data,"key_is_rowid"),NULL,&ptr,0);
 		if (ptr && !strcmp(ptr,"yes")) dn->Flags |= DAT_NODE_F_ROWIDKEY;
+		ptr=NULL;
+		stAttrValue(stLookup(dn->Node->Data,"two_quote_escape"),NULL,&ptr,0);
+		if (ptr && !strcmp(ptr,"yes")) dn->Flags |= DAT_NODE_F_TWOQUOTEESC;
 		n = -1;
 		stAttrValue(stLookup(dn->Node->Data,"new_row_padding"),&n,NULL,0);
 		if (n > DAT_CACHE_PAGESIZE) n = DAT_CACHE_PAGESIZE;
@@ -1875,7 +1887,14 @@ dat_csv_GenerateText(pDatNode node, int colid, pObjData val, unsigned char* buf,
 		}
 	    else
 	        {
-	        if (*ptr == quot) *(buf++) = '\\';
+		/** Escape an embedded quote mark? **/
+	        if (*ptr == quot)
+		    {
+		    if (node->Flags & DAT_NODE_F_TWOQUOTEESC)
+			*(buf++) = quot;
+		    else
+			*(buf++) = '\\';
+		    }
 	        *(buf++) = *ptr;
 		}
 	    ptr++;

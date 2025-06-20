@@ -49,9 +49,9 @@
 /************************************************************************/
 
 #define	TMP_THRESHOLD	(32)	/* minimum collection size to index */
-#define	TMP_MIN_ORDER	(63)	/* min buckets in index hash table */
-#define TMP_MAX_ORDER	(1501)	/* max buckets in index hash table */
-#define	TMP_MAX_KEY	(256)	/* max internal key size for hash table */
+#define	TMP_MIN_ORDER	(513)	/* min buckets in index hash table */
+#define TMP_MAX_ORDER	(3001)	/* max buckets in index hash table */
+#define	TMP_MAX_KEY	(512)	/* max internal key size for hash table */
 
 typedef struct
     {
@@ -195,6 +195,19 @@ tmp_internal_IndexLookupFromInf(pObjTempIndex idx, pStructInf values)
     }
 
 
+/*** tmp_internal_FreeIndexNode() - release a node in the index
+ ***/
+int
+tmp_internal_FreeIndexNode(pObjTempIdxNode node)
+    {
+
+	nmSysFree(node->Key);
+	nmFree(node, sizeof(ObjTempIdxNode));
+
+    return 0;
+    }
+
+
 /*** tmp_internal_RemoveFromIndex() - remove an object from an index
  ***/
 int
@@ -209,7 +222,7 @@ tmp_internal_RemoveFromIndex(pObjTempIndex idx, pStructInf tuple)
 	    return -1;
 
 	/** Look it up **/
-	node = xhLookup(&idx->Index, key);
+	node = (pObjTempIdxNode)xhLookup(&idx->Index, key);
 	if (!node)
 	    {
 	    nmSysFree(key);
@@ -220,8 +233,7 @@ tmp_internal_RemoveFromIndex(pObjTempIndex idx, pStructInf tuple)
 	xhRemove(&idx->Index,  key);
 
 	/** Free the node **/
-	nmSysFree(node->Key);
-	nmFree(node, sizeof(ObjTempIdxNode));
+	tmp_internal_FreeIndexNode(node);
 	nmSysFree(key);
 
     return 0;
@@ -349,10 +361,11 @@ tmp_internal_FreeIndex(pObjTempIndex idx)
     {
 
 	expFreeParamList(idx->OneObjList);
-	xaClear(&idx->Fields, nmSysFree, NULL);
-	xhClear(&idx->Index, NULL, NULL);
+	xaClear(&idx->Fields, (void*)nmSysFree, NULL);
+	xhClear(&idx->Index, (void*)tmp_internal_FreeIndexNode, NULL);
 	xaDeInit(&idx->Fields);
 	xhDeInit(&idx->Index);
+	nmFree(idx, sizeof(ObjTempIndex));
 
     return 0;
     }
@@ -785,8 +798,6 @@ int
 tmpDeleteObj(void* inf_v, pObjTrxTree* oxt)
     {
     pObjTempData inf = (pObjTempData)inf_v;
-    int i;
-    pObjTempIndex idx;
 
 	/** Trying to delete root? **/
 	if (inf->Data == (pStructInf)inf->TempObj->Data)
@@ -798,7 +809,6 @@ tmpDeleteObj(void* inf_v, pObjTrxTree* oxt)
 	/** Delete it. **/
 	tmp_internal_RemoveFromMatchingIndexes(inf->TempObj, inf->Data, "*");
 	stRemoveInf(inf->Data);
-	//stFreeInf(inf->Data);
 	 
 	/** Release the inf structure **/
 	tmpClose(inf_v, oxt);
@@ -936,7 +946,7 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 
 		expFreeProps(props);
 		props = NULL;
-		xaClear(propnames, nmSysFree, NULL);
+		xaClear(propnames, (void*)nmSysFree, NULL);
 		xaFree(propnames);
 		}
 	    }
@@ -961,7 +971,7 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    }
 	if (propnames)
 	    {
-	    xaClear(propnames, nmSysFree, NULL);
+	    xaClear(propnames, (void*)nmSysFree, NULL);
 	    xaFree(propnames);
 	    }
 	return NULL;
@@ -1274,6 +1284,8 @@ tmpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 
 	/** Set value of attribute **/
 	t = stGetAttrType(find_inf, 0);
+	if (!val && t > 0)
+	    datatype = t;
 	if (t > 0 && datatype != t)
 	    {
 	    mssError(1,"OSML","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
@@ -1391,7 +1403,7 @@ tmpInfo(void* inf_v, pObjectInfo info)
     int i;
 
 	/** Setup the flags, and we know the subobject count btw **/
-	memset(info, sizeof(ObjectInfo), 0);
+	memset(info, 0, sizeof(ObjectInfo));
 	info->Flags = (OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_SUBOBJ_CNT_KNOWN |
 		OBJ_INFO_F_CAN_ADD_ATTR | OBJ_INFO_F_CANT_SEEK | OBJ_INFO_F_CANT_HAVE_CONTENT |
 		OBJ_INFO_F_NO_CONTENT | OBJ_INFO_F_SUPPORTS_INHERITANCE | OBJ_INFO_F_TEMPORARY);

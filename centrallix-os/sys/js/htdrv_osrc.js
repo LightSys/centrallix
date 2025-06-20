@@ -37,6 +37,7 @@ function osrc_criteria_from_aparam(aparam)
 	{
 	if (i == 'cx__enable_lists') continue;
 	if (i == 'cx__case_insensitive') continue;
+	if (i == 'cx__find_object') continue;
 	if (i == 'joinstring' && (new String(aparam[i])).toLowerCase() == 'or')
 	    {
 	    qo.joinstring = 'OR';
@@ -71,7 +72,7 @@ function osrc_action_query_param(aparam)
 	this.query_delay_schedid = null;
 	}
     var qo = osrc_criteria_from_aparam(aparam);
-    this.ifcProbe(ifAction).Invoke("QueryObject", {query:qo, client:null, ro:this.readonly});
+    this.ifcProbe(ifAction).Invoke("QueryObject", {query:qo, client:null, ro:this.readonly, find:aparam['cx__find_object'] });
     }
 
 
@@ -93,7 +94,11 @@ function osrc_action_refresh(aparam)
     this.doing_refresh = true;
 
     // Keep track of current object by name
-    if (this.replica[this.CurrentRecord])
+    if (aparam.find_object)
+	{
+	this.refresh_objname = aparam.find_object;
+	}
+    else if (this.replica[this.CurrentRecord])
 	{
 	for(var j=0; j<this.replica[this.CurrentRecord].length;j++)
 	    {
@@ -108,7 +113,7 @@ function osrc_action_refresh(aparam)
 	this.refresh_objname = null;
 
     if (this.querytext)
-	this.ifcProbe(ifAction).Invoke("QueryText", {query:this.querytext, client:null, ro:this.readonly, field_list:this.querytext_fields, cx__case_insensitive:this.querytext_icase, targetrec:tr});
+	this.ifcProbe(ifAction).Invoke("QueryText", {query:this.querytext, client:null, ro:this.readonly, field_list:this.querytext_fields, cx__case_insensitive:this.querytext_icase, targetrec:tr, use_having:this.querytext_use_having});
     else
 	this.ifcProbe(ifAction).Invoke("QueryObject", {query:this.queryobject, client:null, ro:this.readonly, targetrec:tr});
     }
@@ -183,6 +188,7 @@ function osrc_query_text_handler(aparam)
 	var min_length = 2;
 
     this.move_target = aparam.targetrec;
+    this.find_target = null;
 
     if (!aparam.fromsync)
 	this.SyncID = osrc_syncid++;
@@ -279,6 +285,7 @@ function osrc_query_text_handler(aparam)
     this.querytext = aparam.query;
     this.querytext_fields = aparam.field_list;
     this.querytext_icase = case_insensitive;
+    this.querytext_use_having = aparam.use_having;
     this.queryobject = null;
 
     this.ifcProbe(ifAction).Invoke("Query", {query:statement, client:initiating_client, appendrows:appendrows});
@@ -315,6 +322,11 @@ function osrc_query_object_handler(aparam)
 	}
 
     this.move_target = aparam.targetrec;
+    if (aparam.find)
+	{
+	this.doing_refresh = true;
+	this.refresh_objname = aparam.find;
+	}
 
     if (typeof q != 'undefined' && q !== null) this.ApplyRelationships(q, false, false);
 
@@ -705,7 +717,7 @@ function osrc_go_nogo(go_func, nogo_func, context)
 	{
 	if (this.child[i]._osrc_ready == false)
 	    {
-	    if (this.child[i].IsDiscardReady(this) == true)
+	    if (this.child[i].IsDiscardReady(this, this.doing_refresh?'refresh':'query') == true)
 		this._unsaved_cnt--;
 
 	    // Somebody already did a QueryCancel?
@@ -764,9 +776,15 @@ function osrc_action_delete(aparam) //up,initiating_client)
 
     //Delete an object through OSML
     //var src = this.baseobj + '?cx__akey='+akey+'&ls__mode=osml&ls__req=delete&ls__sid=' + this.sid + '&ls__oid=' + up.oid;
-    this.initiating_client = initiating_client;
-    this.deleteddata=up;
-    this.DoRequest('delete', this.baseobj, {ls__oid:up.oid}, osrc_action_delete_cb);
+    if (this.send_updates)
+	{
+	this.initiating_client = initiating_client;
+	this.DoRequest('delete', this.baseobj, {ls__oid:up.oid}, osrc_action_delete_cb);
+	}
+    else
+	{
+	this.DeleteRecord(this.CurrentRecord, initiating_client);
+	}
     //this.initiating_client.ObjectDeleted();
     //this.initiating_client.OperationComplete();
     return 0;
@@ -778,51 +796,68 @@ function osrc_action_delete_cb()
     var initiating_client = this.initiating_client;
     if(links && links[0] && links[0].target != 'ERR')
 	{
-	var recnum=this.CurrentRecord;
-	var cr=this.replica[recnum];
-	if(cr)
-	    {
-	    // Remove the deleted row
-	    delete this.replica[recnum];
-
-	    // Adjust replica row id's to fill up the 'hole'
-	    for(var i=recnum; i<this.LastRecord; i++)
-		{
-		this.replica[i] = this.replica[i+1];
-		this.replica[i].id = i;
-		}
-	    delete this.replica[this.LastRecord];
-	    if (this.FinalRecord == this.LastRecord)
-		this.FinalRecord--;
-	    this.LastRecord--;
-	    if (this.OSMLRecord > 0) this.OSMLRecord--;
-
-	    // Notify osrc clients (forms/tables/etc)
-	    for(var i in this.child)
-		this.child[i].ObjectDeleted(recnum, this);
-
-	    // Need to fetch another record (delete was on last one in replica)?
-	    this.SyncID = osrc_syncid++; // force any client osrc's to resync
-	    if (this.CurrentRecord > this.LastRecord)
-		{
-		this.CurrentRecord--;
-		this.MoveToRecord(this.CurrentRecord+1, true);
-		}
-	    else
-		{
-		this.MoveToRecord(this.CurrentRecord, true);
-		}
-	    }
-	if (initiating_client) initiating_client.OperationComplete(true, this);
+	this.DeleteRecord(this.CurrentRecord, initiating_client);
 	}
     else
 	{
 	// delete failed
-	if (initiating_client) initiating_client.OperationComplete(false, this);
+	if (initiating_client)
+	    initiating_client.OperationComplete(false, this);
 	}
     this.initiating_client=null;
-    delete this.deleteddata;
     return 0;
+    }
+
+function osrc_delete_record(recnum, client)
+    {
+    var cr=this.replica[recnum];
+    if(cr)
+	{
+	// Remove the deleted row
+	delete this.replica[recnum];
+
+	// Adjust replica row id's to fill up the 'hole'
+	for(var i=recnum; i<this.LastRecord; i++)
+	    {
+	    this.replica[i] = this.replica[i+1];
+	    this.replica[i].id = i;
+	    }
+	delete this.replica[this.LastRecord];
+	if (this.FinalRecord == this.LastRecord)
+	    this.FinalRecord--;
+	this.LastRecord--;
+	if (this.OSMLRecord > 0) this.OSMLRecord--;
+
+	// Notify osrc clients (forms/tables/etc)
+	for(var i in this.child)
+	    this.child[i].ObjectDeleted(recnum, this);
+
+	// Need to fetch another record (delete was on last one in replica)?
+	this.SyncID = osrc_syncid++; // force any client osrc's to resync
+	if (this.CurrentRecord > this.LastRecord)
+	    {
+	    // Force fetch of records after current last one, if available.
+	    this.CurrentRecord--;
+	    this.MoveToRecord(this.CurrentRecord+1, true);
+	    }
+	else if (this.FirstRecord <= this.LastRecord)
+	    {
+	    // At least one record left
+	    this.MoveToRecord(this.CurrentRecord, true);
+	    }
+	else
+	    {
+	    // No more records, mark values as changing to null.
+	    for (var j in cr)
+		{
+		if (j == 'oid') continue;
+		this.ifcProbe(ifValue).Changing(cr[j].oid, null, true, cr[j].value, true);
+		}
+	    }
+	}
+    if (client)
+	client.OperationComplete(true, this);
+    this.ifcProbe(ifEvent).Activate("Deleted", {});
     }
 
 function osrc_action_create(aparam)
@@ -896,6 +931,7 @@ function osrc_action_create_cb()
     var links = pg_links(this);
     if(links && links[0] && links[0].target != 'ERR')
 	{
+	var oldcur = this.CurrentRecord;
 	if (this.FinalRecord == this.LastRecord)
 	    this.FinalRecord++;
 	this.LastRecord++;
@@ -947,6 +983,27 @@ function osrc_action_create_cb()
 		}
 	    }
 
+	// Mark values as changing
+	for (var j in cr)
+	    {
+	    if (j == 'oid') continue;
+	    var oldrec = this.replica[this.oldcur];
+	    var oldval = null;
+	    if (oldrec)
+		{
+		for(var i in oldrec)
+		    {
+		    if (i == 'oid') continue;
+		    if (oldrec[i].oid == cr[j].oid)
+			{
+			oldval = oldrec[i].value;
+			break;
+			}
+		    }
+		}
+	    this.ifcProbe(ifValue).Changing(cr[j].oid, cr[j].value, true, oldval, true);
+	    }
+
 	//alert(this.replica[this.CurrentRecord].oid);
 	this.in_create = false;
 	this.SyncID = osrc_syncid++;
@@ -956,6 +1013,7 @@ function osrc_action_create_cb()
 	    this.child[i].ObjectCreated(recnum, this);
 	this.GiveAllCurrentRecord('create');
 	this.ifcProbe(ifEvent).Activate("Created", {});
+	this.ifcProbe(ifEvent).Activate("DataSaved", {});
 	//if (this.create_focus)
 	//    this.MoveToRecord(this.LastRecord, true);
 	}
@@ -1027,6 +1085,8 @@ function osrc_refresh_object_handler(aparam)
     sql += " LIMIT 1";
 
     // Now issue the query
+    this.doing_refresh = true;
+    this.refresh_objname = null;
     this.DoRequest("multiquery", "/", 
 	    {
 	    ls__sql:sql,
@@ -1203,7 +1263,10 @@ function osrc_action_modify_cb_2(diff)
     if (diff)
 	this.GiveAllCurrentRecord('modify');
     if (!this.initiating_client)
+	{
 	this.ifcProbe(ifEvent).Activate('Modified', {});
+	this.ifcProbe(ifEvent).Activate('DataSaved', {});
+	}
     this.initiating_client=null;
     delete this.modifieddata;
     }
@@ -1251,12 +1314,6 @@ function osrc_cb_query_continue_2()
 	this.pendingquery=null;
 	this.pendingqueryobject=null;
 	this.pendingorderobject=null;
-	/*for(var i in this.child)
-	     {
-	     this.child[i]._osrc_ready=false;
-	     }*/
-
-	if (!this.do_append) this.ClearReplica();
 	this.moveop=true;
 
 	this.OpenSession(this.OpenQuery);
@@ -1266,10 +1323,6 @@ function osrc_cb_query_continue_2()
 	this.MoveToRecordCB(this.RecordToMoveTo, true);
 	this.RecordToMoveTo=null;
 	}
-    //this seems premature - GRB
-    //this.SetPending(false);
-    /*this.pending=false;
-    this.Dispatch();*/
     }
 
 function osrc_cb_query_cancel()
@@ -1426,7 +1479,19 @@ function osrc_open_query()
 	return 0;
 	}
     this.query_ended = false;
-    var reqobj = {ls__autoclose_sr:'1', ls__autofetch:'1', ls__objmode:'0', ls__notify:this.request_updates, ls__rowcount:this.replicasize, ls__sql:this.query, ls__sqlparam:this.EncodeParams()};
+    var oldoids = this.oldoids.join();
+    this.oldoids = [];
+    var reqobj =
+	{
+	ls__autoclose_sr:'1', 
+	ls__autofetch:'1', 
+	ls__objmode:'0', 
+	ls__notify:this.request_updates, 
+	ls__rowcount:this.replicasize, 
+	ls__sql:this.query, 
+	ls__sqlparam:this.EncodeParams(),
+	ls__closeobjs:oldoids
+	};
     if (!this.sid)
 	reqobj.ls__newsess = 'yes';
     this.ifcProbe(ifEvent).Activate("BeginQuery", {});
@@ -1455,6 +1520,7 @@ function osrc_get_qid()
 	{
 	/*this.pending=false;*/
 	this.move_target = null;
+	this.find_target = null;
 	this.GiveAllCurrentRecord('get_qid');
 	this.SetPending(false);
 	/*this.Dispatch();*/
@@ -1569,14 +1635,19 @@ function osrc_action_clear(aparam)
     {
     this.SyncID = osrc_syncid++;
     this.lastSync = [];
+    this.ClearTarget();
     this.ClearReplica();
     this.GiveAllCurrentRecord('clear');
     }
 
+function osrc_clear_target()
+    {
+	this.TargetRecord = [1,1];/* the record we're aiming for -- go until we get it*/
+	this.CurrentRecord=1;/* the current record */
+    }
+
 function osrc_clear_replica()
     {
-    this.TargetRecord = [1,1];/* the record we're aiming for -- go until we get it*/
-    this.CurrentRecord=1;/* the current record */
     this.OSMLRecord=0;/* the last record we got from the OSML */
 
     /** Clear replica **/
@@ -1640,7 +1711,8 @@ function osrc_query_timeout()
 function osrc_end_query()
     {
     //this.initiating_client.OperationComplete(); /* don't need this...I think....*/
-    var qid=this.qid
+    var qid=this.qid;
+    var wasrefresh = this.doing_refresh;
     this.qid=null;
     /* return the last record as the current one if it was our target otherwise, don't */
     if (this.LastRecord >= this.FirstRecord && this.replica[this.LastRecord])
@@ -1659,9 +1731,9 @@ function osrc_end_query()
 	{
 	this.DoRequest('queryclose', '/', {ls__qid:qid}, osrc_close_query);
 	}
-    this.Dispatch();
-    this.ifcProbe(ifEvent).Activate("EndQuery", {FinalRecord:this.FinalRecord, LastRecord:this.LastRecord, FirstRecord:this.FirstRecord, CurrentRecord:this.CurrentRecord});
+    this.ifcProbe(ifEvent).Activate("EndQuery", {FinalRecord:this.FinalRecord, LastRecord:this.LastRecord, FirstRecord:this.FirstRecord, CurrentRecord:this.CurrentRecord, QueryRequestQueue:this.query_request_queue.length, Pending:(this.pending?1:0), Refresh:(wasrefresh?1:0)});
     this.doing_refresh = false;
+    this.Dispatch();
 
     // Handle auto-refresh timer
     if (this.refresh_schedid)
@@ -1707,6 +1779,7 @@ function osrc_found_record()
 function osrc_fetch_next()
     {
     pg_debug(this.id + ": FetchNext() ==> " + pg_links(this).length + "\n");
+    var found = false;
     //alert('fetching....');
     if(!this.qid)
 	{
@@ -1752,7 +1825,10 @@ function osrc_fetch_next()
 	    {
 	    this.replica[this.OSMLRecord][j] = row[j];
 	    if (this.doing_refresh && this.refresh_objname && row[j].oid == 'name' && this.refresh_objname == row[j].value)
+		{
+		found = true;
 		this.CurrentRecord = this.OSMLRecord;
+		}
 	    }
 	}
     this.data_start = 1; // reset it
@@ -1796,9 +1872,17 @@ function osrc_fetch_next()
 	else
 	    {
 	    if (rowcnt < this.querysize)
+		{
 		this.EndQuery();
+		}
 	    else
+		{
 		this.FoundRecord();
+		}
+	    if (found)
+		{
+		this.ifcProbe(ifEvent).Activate('Found', {ID:null, Name:this.refresh_objname, Column:null, Value:null});
+		}
 	    }
 	}
     }
@@ -1869,12 +1953,18 @@ function osrc_action_find_object(aparam)
 function osrc_find_object_handler(aparam)
     {
     var from_internal = (aparam.from_internal)?true:false;
+    var found = false;
     if (typeof aparam.ID != 'undefined')
 	{
 	// Find by record #
 	var id = parseInt(aparam.ID);
 	if (!id) id = 1;
 	this.MoveToRecord(id, from_internal);
+	if (this.replica[id] && this.replica[id].oid)
+	    {
+	    found = true;
+	    this.ifcProbe(ifEvent).Activate('Found', {ID:id, Name:null, Column:null, Value:null});
+	    }
 	}
     else if (typeof aparam.Name != 'undefined')
 	{
@@ -1888,7 +1978,11 @@ function osrc_find_object_handler(aparam)
 		if (col.oid == 'name')
 		    {
 		    if (col.value == aparam.Name)
+			{
 			this.MoveToRecord(i, from_internal);
+			found = true;
+			this.ifcProbe(ifEvent).Activate('Found', {ID:null, Name:aparam.Name, Column:null, Value:null});
+			}
 		    break;
 		    }
 		}
@@ -1903,6 +1997,7 @@ function osrc_find_object_handler(aparam)
 	    {
 	    var rec = this.replica[i];
 	    var matched = true;
+	    var eparam = {ID:null, Name:null};
 	    for(var j in rec)
 		{
 		var col = rec[j];
@@ -1911,15 +2006,23 @@ function osrc_find_object_handler(aparam)
 		    {
 		    if (col.oid == k && col.value != aparam[k])
 			matched = false;
+		    else
+			eparam[k] = aparam[k];
 		    }
 		if (!matched) break;
 		}
-	    if (matched)
+	    if (matched) // && i != this.CurrentRecord)
 		{
 		this.MoveToRecord(i, from_internal);
+		found = true;
+		this.ifcProbe(ifEvent).Activate('Found', eparam);
 		break;
 		}
 	    }
+	}
+    if (!found)
+	{
+	this.ifcProbe(ifEvent).Activate('NotFound', aparam);
 	}
     }
 
@@ -2020,7 +2123,7 @@ function osrc_change_current_record()
 
 function osrc_give_one_current_record(id, why)
     {
-    this.child[id].ObjectAvailable(this.replica[this.CurrentRecord], this, (why=='create')?'create':(this.doing_refresh?'refresh':'change'));
+    this.child[id].ObjectAvailable(this.replica[this.CurrentRecord], this, (why=='create')?'create':(this.doing_refresh?'refresh':why));
     }
 
 function osrc_give_all_current_record(why)
@@ -2040,7 +2143,7 @@ function osrc_give_all_current_record(why)
 	}
     for(var i in this.child)
 	this.GiveOneCurrentRecord(i, why);
-    this.ifcProbe(ifEvent).Activate("DataFocusChanged", {});
+    this.ifcProbe(ifEvent).Activate("DataFocusChanged", { Refresh:(this.doing_refresh?1:0), Reason:why });
     this.doing_refresh = false;
     //confirm('give_all_current_record done');
     }
@@ -2240,6 +2343,7 @@ function osrc_get_qid_startat()
 	{
 	this.DoFetch(this.TargetRecord - this.startat + 1);
 	}*/
+    if (!this.do_append) this.ClearReplica();
     if (lnk.length > 1)
 	{
 	// did an autofetch - we have the data already
@@ -2772,6 +2876,14 @@ function osrc_action_cancelcreate(aparam)
     }
 
 
+// Used to force a refresh on sync
+function osrc_action_invalidate(aparam)
+    {
+    this.SyncID = osrc_syncid++;
+    this.lastSync = [];
+    }
+
+
 function osrc_seq(direction)
     {
     // Find the sequence field
@@ -3100,7 +3212,13 @@ function osrc_cb_reveal(child)
     if ((this.autoquery == this.AQonFirstReveal || this.autoquery == this.AQonEachReveal) && !this.init)
 	pg_addsched_fn(this,'InitQuery', [], 0);
     else if (this.autoquery == this.AQonEachReveal)
-	this.ifcProbe(ifAction).SchedInvoke('QueryObject', {query:[], client:null, ro:this.readonly}, 0);
+	{
+	var method = wgtrGetServerProperty(this, "autoquery_method", "query");
+	if (method == "query")
+	    this.ifcProbe(ifAction).SchedInvoke('QueryObject', {query:[], client:null, ro:this.readonly}, 0);
+	else if (method == "refresh")
+	    this.ifcProbe(ifAction).SchedInvoke('Refresh', {}, 0);
+	}
     else
 	{
 	did_query = false;
@@ -3497,6 +3615,7 @@ function osrc_oc_resync(master_osrc)
     if (!master_osrc)
 	{
 	// If master unknown, just issue a query that captures all relationship values
+	this.ifcProbe(ifAction).Invoke("Invalidate", {});
 	this.ifcProbe(ifAction).Invoke("QueryObject", {query:[], client:null, ro:this.readonly});
 	return;
 	}
@@ -3662,21 +3781,89 @@ function osrc_action_save_clients(aparam)
     {
     if (!this.is_client_savable) return;
 
-    // Do this in two steps - save our immediate clients first, then pass the word
-    // on to clients of clients.  This minimizes the chance of failures due to
-    // relational integrity constraints.
+    var to_save = [];
+    var to_saveclients = [];
+
+    var next_client = (cld, mystat) =>
+	{
+	// Failed? -- notify and don't continue.
+	if (!mystat)
+	    {
+	    if (aparam.completion)
+		{
+		aparam.completion(false);
+		}
+	    return false;
+	    }
+
+	// Remove it -- we do this separately (instead of using shift() below)
+	// so this process can eventually be parallelized where appropriate.
+	var idx = to_save.indexOf(cld);
+	if (idx >= 0)
+	    {
+	    to_save.splice(idx, 1);
+	    }
+	else
+	    {
+	    var idx = to_saveclients.indexOf(cld);
+	    if (idx >= 0)
+		{
+		to_saveclients.splice(idx, 1);
+		}
+	    }
+
+	// Fire off next one, in series right now.  Support for parallel save should
+	// be added later, likely as an action parameter (aparam) option.
+	if (to_save.length)
+	    {
+	    // Next client to save
+	    let ts = to_save[0];
+	    ts.ifcProbe(ifAction).Invoke('Save', {completion: (stat) => next_client(ts, stat)});
+	    }
+	else if (to_saveclients.length)
+	    {
+	    // Next osrc client to saveclients
+	    let ts = to_saveclients[0];
+	    ts.ifcProbe(ifAction).Invoke('SaveClients', {completion: (stat) => next_client(ts, stat)});
+	    }
+	else
+	    {
+	    // Done
+	    if (aparam.completion)
+		{
+		aparam.completion(true);
+		}
+	    else
+		{
+		this.ifcProbe(ifEvent).Activate("ClientsSaved", {});
+		}
+	    }
+
+	return true;
+	}
+
+    // Scan for clients available to be saved
     for (var c in this.child)
 	{
 	var cld = this.child[c];
 	if (typeof cld.is_savable != 'undefined' && cld.is_savable)
-	    cld.ifcProbe(ifAction).Invoke('Save', {});
+	    to_save.push(cld);
+	else if (typeof cld.is_client_savable != 'undefined' && cld.is_client_savable)
+	    to_saveclients.push(cld);
 	}
-    for (var c in this.child)
+
+    // Do this in two steps - save our immediate clients first, then pass the word
+    // on to clients of clients.  This minimizes the chance of failures due to
+    // relational integrity constraints.
+    /*to_save.forEach(cld =>
 	{
-	var cld = this.child[c];
-	if (typeof cld.is_client_savable != 'undefined' && cld.is_client_savable)
-	    cld.ifcProbe(ifAction).Invoke('SaveClients', {});
-	}
+	cld.ifcProbe(ifAction).Invoke('Save', {});
+	});
+    to_saveclients.forEach(cld =>
+	{
+	cld.ifcProbe(ifAction).Invoke('SaveClients', {});
+	});*/
+    next_client(null, true);
     }
 
 
@@ -3990,6 +4177,7 @@ function osrc_init(param)
     loader.NewReplicaObj = osrc_new_replica_object;
     loader.PruneReplica = osrc_prune_replica;
     loader.ClearReplica = osrc_clear_replica;
+    loader.ClearTarget = osrc_clear_target;
     loader.ApplyRelationships = osrc_apply_rel;
     loader.ApplyKeys = osrc_apply_keys;
     loader.ApplySequence = osrc_apply_sequence;
@@ -4011,6 +4199,7 @@ function osrc_init(param)
     loader.MoveToRecord=osrc_move_to_record;
     loader.MoveToRecordCB=osrc_move_to_record_cb;
     loader.Clear = osrc_action_clear;
+    loader.DeleteRecord = osrc_delete_record;
     loader.child =  [];
     loader.oldoids =  [];
     loader.sid = null;
@@ -4057,6 +4246,7 @@ function osrc_init(param)
 	});
    
     // Zero out the replica
+    loader.ClearTarget();
     loader.ClearReplica();
 
     // Actions
@@ -4089,6 +4279,7 @@ function osrc_init(param)
     ia.Add("SeqBackward", osrc_seq_backward);
     ia.Add("SeqForward", osrc_seq_forward);
     ia.Add("ForEach", osrc_action_for_each);
+    ia.Add("Invalidate", osrc_action_invalidate);
 
     // Events
     var ie = loader.ifcProbeAdd(ifEvent);
@@ -4097,8 +4288,13 @@ function osrc_init(param)
     ie.Add("Results");
     ie.Add("BeginQuery");
     ie.Add("Created");
+    ie.Add("Deleted");
     ie.Add("Modified");
+    ie.Add("DataSaved");
+    ie.Add("ClientsSaved");
     ie.Add("Sequenced");
+    ie.Add("Found");
+    ie.Add("NotFound");
 
     // Data Values
     var iv = loader.ifcProbeAdd(ifValue);

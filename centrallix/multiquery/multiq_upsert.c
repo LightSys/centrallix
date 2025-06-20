@@ -162,6 +162,7 @@ mqusAnalyze(pQueryStatement stmt)
 		expAddNode(exp, item->Expr);
 		pdata->Criteria[pdata->nCriteria].Compare = exp;
 		pdata->Criteria[pdata->nCriteria].Exp = item->Expr;
+		item->Expr = NULL;
 
 		/** Main criteria tree **/
 		if (pdata->AllCriteria)
@@ -357,13 +358,13 @@ mqusNextItem(pQueryElement qe, pQueryStatement stmt)
 	    objlist = expCreateParamList();
 	    if (!objlist)
 		goto error;
-	    expAddParamToList(objlist, "this", NULL, EXPR_O_CURRENT);
+	    expAddParamToList(objlist, "this", NULL, EXPR_O_CURRENT | EXPR_O_PRESERVEPARENT);
 	    expBindExpression(pdata->AllCriteria, objlist, 0);
 	    expFreeParamList(objlist);
 	    objlist = NULL;
 
 	    /** Search for existing duplicate rows in the insert source **/
-	    find_dups_qy = objOpenQuery(pdata->InsertPathObj, NULL, NULL, pdata->AllCriteria, NULL);
+	    find_dups_qy = objOpenQuery(pdata->InsertPathObj, NULL, NULL, pdata->AllCriteria, NULL, 0);
 	    if (!find_dups_qy)
 		goto error;
 
@@ -382,7 +383,7 @@ mqusNextItem(pQueryElement qe, pQueryStatement stmt)
 		expCopyList(stmt->Query->ObjList, objlist, -1);
 		//objlist->PSeqID = stmt->Query->ObjList->PSeqID;
 		expLinkParams(objlist, stmt->Query->nProvidedObjects, -1);
-		expAddParamToList(objlist, "this", one_dup, EXPR_O_CURRENT | EXPR_O_ALLOWDUPS);
+		expAddParamToList(objlist, "this", one_dup, EXPR_O_CURRENT | EXPR_O_ALLOWDUPS | EXPR_O_PRESERVEPARENT);
 		xaAddItem(&pdata->ToBeUpdated, (void*)objlist);
 		dup_cnt++;
 		}
@@ -424,8 +425,8 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
     {
     pMqusData pdata;
     pQueryElement cld;
-    int i,j,k;
-    pParamObjects objlist, check_objlist;
+    int i,j;
+    pParamObjects objlist;
     pQueryStructure update_qs;
     pExpression exp, assign_exp;
     int t;
@@ -587,6 +588,16 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 int
 mqusRelease(pQueryElement qe, pQueryStatement stmt)
     {
+    pMqusData pdata;
+
+	pdata = (pMqusData)qe->PrivateData;
+	if (pdata)
+	    {
+	    if (pdata->AllCriteria)
+		expFreeExpression(pdata->AllCriteria);
+	    nmFree(pdata, sizeof(MqusData));
+	    }
+
     return 0;
     }
 

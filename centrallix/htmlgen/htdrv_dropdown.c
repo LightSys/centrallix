@@ -52,6 +52,7 @@ static struct {
 */
 int htddRender(pHtSession s, pWgtrNode tree, int z) {
    char bgstr[HT_SBUF_SIZE];
+   char textcolor[HT_SBUF_SIZE];
    char hilight[HT_SBUF_SIZE];
    char string[HT_SBUF_SIZE];
    char fieldname[30];
@@ -118,6 +119,12 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	return -1;
    }
 
+   if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0) {
+	strtcpy(textcolor,ptr,sizeof(textcolor));
+   } else {
+	strcpy(textcolor, "");
+   }
+
    if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0) {
 	strtcpy(fieldname,ptr,sizeof(fieldname));
    } else {
@@ -139,6 +146,9 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 
     /** Ok, write the style header items. **/
     htrAddStylesheetItem_va(s,"\t#dd%POSbtn { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; background-color: %STR&CSSVAL; border:1px outset #e0e0e0;}\n",id,x,y,h,w,z,bgstr);
+    if (*textcolor) {
+	htrAddStylesheetItem_va(s,"\t#dd%POSbtn { color: %STR&CSSVAL; }\n",id,textcolor);
+    }
     htrAddStylesheetItem_va(s,"\t#dd%POScon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,h-2,z+1);
     htrAddStylesheetItem_va(s,"\t#dd%POScon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,h-2,z+1);
 
@@ -186,6 +196,8 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	mssError(1, "HTDD", "SQL parameter was not specified for dropdown widget");
 	return -1;
     }
+    htrCheckAddExpression(s,tree,name,"sql");
+
     /** Script initialization call. **/
     htrAddScriptInit_va(s,"    dd_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), c1:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"dd%POScon1\"), c2:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"dd%POScon2\"), background:'%STR&JSSTR', highlight:'%STR&JSSTR', fieldname:'%STR&JSSTR', numDisplay:%INT, mode:%INT, sql:'%STR&JSSTR', width:%INT, height:%INT, form:'%STR&JSSTR', osrc:'%STR&JSSTR', qms:%INT, ivs:%INT, popup_width:%INT});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql?sql:"", w, h, form, osrc, query_multiselect, invalid_select_default, pop_w);
 

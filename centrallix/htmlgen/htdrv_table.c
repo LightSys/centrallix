@@ -59,7 +59,7 @@
 /************************************************************************/
 
 
-#define HTTBL_MAX_COLS		(32)
+#define HTTBL_MAX_COLS		(64)
 
 /** globals **/
 static struct 
@@ -126,6 +126,7 @@ typedef struct
     int followcurrent;
     int dragcols;
     int colsep;
+    int colsep_mode;
     int gridinemptyrows;
     int allow_selection;
     int show_selection;
@@ -176,14 +177,14 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 
 	htrAddWgtrObjLinkage_va(s, tree, "tbld%POSpane",t->id);
 
-	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:wgtrGetNodeRef(ns,\"%STR&SYM\"), scroll:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, min_rowheight:%INT, max_rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&JSSTR\", textcolorhighlight:\"%STR&JSSTR\", titlecolor:\"%STR&JSSTR\", rowbgnd1:\"%STR&JSSTR\", rowbgnd2:\"%STR&JSSTR\", rowbgndhigh:\"%STR&JSSTR\", hdrbgnd:\"%STR&JSSTR\", followcurrent:%INT, dragcols:%INT, colsep:%INT, colsep_bgnd:\"%STR&JSSTR\", gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, show_selection:%INT, initial_selection:%INT, allow_deselection:%INT, overlap_sb:%INT, hide_sb:%INT, demand_sb:%INT, osrc:%['%STR&SYM'%]%[null%], dm:%INT, hdr:%INT, newrow_bgnd:\"%STR&JSSTR\", newrow_textcolor:\"%STR&JSSTR\", rcsize:%INT, cols:[",
+	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:wgtrGetNodeRef(ns,\"%STR&SYM\"), scroll:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, min_rowheight:%INT, max_rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&JSSTR\", textcolorhighlight:\"%STR&JSSTR\", titlecolor:\"%STR&JSSTR\", rowbgnd1:\"%STR&JSSTR\", rowbgnd2:\"%STR&JSSTR\", rowbgndhigh:\"%STR&JSSTR\", hdrbgnd:\"%STR&JSSTR\", followcurrent:%INT, dragcols:%INT, colsep:%INT, colsep_mode:%INT, colsep_bgnd:\"%STR&JSSTR\", gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, show_selection:%INT, initial_selection:%INT, allow_deselection:%INT, overlap_sb:%INT, hide_sb:%INT, demand_sb:%INT, osrc:%['%STR&SYM'%]%[null%], dm:%INT, hdr:%INT, newrow_bgnd:\"%STR&JSSTR\", newrow_textcolor:\"%STR&JSSTR\", rcsize:%INT, cols:[",
 		t->name,t->name,t->name,t->id,t->id,t->name,t->h,
 		(t->overlap_scrollbar)?t->w:t->w-18,
 		t->inner_padding,t->inner_border,t->windowsize,t->min_rowheight, t->max_rowheight,
 		t->cellhspacing, t->cellvspacing,t->textcolor, 
 		t->textcolorhighlight, t->titlecolor,t->row_bgnd1,t->row_bgnd2,
 		t->row_bgndhigh,t->hdr_bgnd,t->followcurrent,t->dragcols,
-		t->colsep,t->colsep_bgnd,t->gridinemptyrows, t->reverse_order,
+		t->colsep, t->colsep_mode, t->colsep_bgnd,t->gridinemptyrows, t->reverse_order,
 		t->allow_selection, t->show_selection, t->initial_selection, t->allow_deselection,
 		t->overlap_scrollbar, t->hide_scrollbar, t->demand_scrollbar,
 		*(t->osrc) != '\0', t->osrc, *(t->osrc) == '\0',
@@ -287,6 +288,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
     {
     pWgtrNode sub_tree;
     char* ptr;
+    char* nptr;
     int n, i;
     httbl_struct* t;
     int rval;
@@ -341,6 +343,13 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"cellvspacing",DATA_T_INTEGER,POD(&(t->cellvspacing))) != 0) t->cellvspacing = 1;
 
 	if (wgtrGetPropertyValue(tree,"colsep",DATA_T_INTEGER,POD(&(t->colsep))) != 0) t->colsep = 1;
+	if (wgtrGetPropertyValue(tree,"colsep_mode",DATA_T_STRING,POD(&ptr)) == 0)
+	    {
+	    if (!strcasecmp(ptr, "full"))
+		t->colsep_mode = 0;
+	    else if (!strcasecmp(ptr, "header"))
+		t->colsep_mode = 1;
+	    }
 
 	if (wgtrGetPropertyValue(tree,"rowcache_size",DATA_T_INTEGER,POD(&(t->rowcache_size))) != 0) t->rowcache_size = 0;
 
@@ -433,6 +442,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    sub_tree = children[i];
 	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING,POD(&ptr));
+	    wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING,POD(&nptr));
 	    if (!strcmp(ptr,"widget/table-column") != 0)
 		{
 		col = (httbl_col*)nmMalloc(sizeof(httbl_col));
@@ -460,6 +470,8 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		    strtcpy(col->title, ptr, sizeof(col->title));
 		else
 		    strtcpy(col->title, col->fieldname, sizeof(col->title));
+		htrCheckAddExpression(s, sub_tree, nptr, "title");
+		htrCheckAddExpression(s, sub_tree, nptr, "visible");
 		if (wgtrGetPropertyValue(sub_tree, "align", DATA_T_STRING,POD(&ptr)) == 0)
 		    strtcpy(col->align, ptr, sizeof(col->align));
 		else
@@ -468,7 +480,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		    strtcpy(col->wrap, ptr, sizeof(col->wrap));
 		else
 		    strcpy(col->wrap, "no");
-		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check") || !strcmp(ptr,"image") || !strcmp(ptr,"code") || !strcmp(ptr,"link") || !strcmp(ptr,"progress")))
+		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check") || !strcmp(ptr,"checkbox") || !strcmp(ptr,"image") || !strcmp(ptr,"code") || !strcmp(ptr,"link") || !strcmp(ptr,"progress")))
 		    strtcpy(col->type, ptr, sizeof(col->type));
 		else
 		    strcpy(col->type, "text");

@@ -318,7 +318,7 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 	/** Ok, add parameter. **/
 	for(i=0;i<EXPR_MAX_PARAMS;i++)
 	    {
-	    if (this->Names[i] == NULL || i == exist)
+	    if ((this->Names[i] == NULL && exist == -1) || i == exist)
 		{
 		/** Setup the entry for this parameter. **/
 		this->SeqIDs[i] = EXP.ModSeqID++;
@@ -342,7 +342,7 @@ expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 		/** Check for parent id and current id **/
 		if (flags & EXPR_O_PARENT)
 		    this->ParentID = i;
-		else if ((flags & EXPR_O_CURRENT) && this->CurrentID >= 0)
+		else if ((flags & EXPR_O_CURRENT) && this->CurrentID >= 0 && !(flags & EXPR_O_PRESERVEPARENT))
 		    this->ParentID = this->CurrentID;
 		if (flags & EXPR_O_CURRENT) this->CurrentID = i;
 		if (this->nObjects == 1) this->CurrentID = i;
@@ -523,13 +523,18 @@ expReplaceVariableID(pExpression this, int newid)
 int
 expFreezeOne(pExpression this, pParamObjects objlist, int freeze_id)
     {
-    int i;
+    int i, oldflags;
 
     	/** Is this a PROPERTY object and does not match freeze_id?? **/
-	if ((this->NodeType == EXPR_N_PROPERTY || this->NodeType == EXPR_N_OBJECT) && this->ObjID == freeze_id)
+	if ((this->NodeType == EXPR_N_PROPERTY || this->NodeType == EXPR_N_OBJECT) && (this->ObjID == freeze_id || (this->ObjID == EXPR_OBJID_PARENT && objlist->ParentID == freeze_id)))
 	    {
+	    oldflags = this->Flags;
 	    this->Flags &= ~EXPR_F_FREEZEEVAL;
-	    expEvalTree(this,objlist);
+	    if (expEvalTree(this,objlist) < 0)
+		{
+		this->Flags = oldflags;
+		return -1;
+		}
 	    this->Flags |= EXPR_F_FREEZEEVAL;
 	    return 0;
 	    }
@@ -537,7 +542,8 @@ expFreezeOne(pExpression this, pParamObjects objlist, int freeze_id)
 	/** Otherwise, check child items. **/
 	for(i=0;i<this->Children.nItems;i++)
 	    {
-	    expFreezeOne((pExpression)(this->Children.Items[i]), objlist, freeze_id);
+	    if (expFreezeOne((pExpression)(this->Children.Items[i]), objlist, freeze_id) < 0)
+		return -1;
 	    }
 
     return 0;
@@ -552,13 +558,18 @@ expFreezeOne(pExpression this, pParamObjects objlist, int freeze_id)
 int
 expFreezeEval(pExpression this, pParamObjects objlist, int freeze_id)
     {
-    int i;
+    int i, oldflags;
 
     	/** Is this a PROPERTY object and does not match freeze_id?? **/
 	if ((this->NodeType == EXPR_N_PROPERTY || this->NodeType == EXPR_N_OBJECT) && this->ObjID != -1 && this->ObjID != freeze_id)
 	    {
+	    oldflags = this->Flags;
 	    this->Flags &= ~EXPR_F_FREEZEEVAL;
-	    expEvalTree(this,objlist);
+	    if (expEvalTree(this,objlist) < 0)
+		{
+		this->Flags = oldflags;
+		return -1;
+		}
 	    this->Flags |= EXPR_F_FREEZEEVAL;
 	    return 0;
 	    }
@@ -566,7 +577,8 @@ expFreezeEval(pExpression this, pParamObjects objlist, int freeze_id)
 	/** Otherwise, check child items. **/
 	for(i=0;i<this->Children.nItems;i++)
 	    {
-	    expFreezeEval((pExpression)(this->Children.Items[i]), objlist, freeze_id);
+	    if (expFreezeEval((pExpression)(this->Children.Items[i]), objlist, freeze_id) < 0)
+		return -1;
 	    }
 
     return 0;
@@ -655,6 +667,32 @@ expUnlockAggregates(pExpression this, int level)
     }
 
 
+/*** expSetParamFunctionsByID - set the functions that will be used to get/set
+ *** paramobjects attribute values and types.  Used for "custom" objects and
+ *** such.
+ ***/
+int
+expSetParamFunctionsByID(pParamObjects this, int id, int (*type_fn)(), int (*get_fn)(), int (*set_fn)())
+    {
+
+	/** Set the functions. **/
+	if (type_fn == NULL && get_fn == NULL && set_fn == NULL)
+	    {
+	    this->GetTypeFn[id] = objGetAttrType;
+	    this->GetAttrFn[id] = objGetAttrValue;
+	    this->SetAttrFn[id] = objSetAttrValue;
+	    }
+	else
+	    {
+	    this->GetTypeFn[id] = type_fn;
+	    this->GetAttrFn[id] = get_fn;
+	    this->SetAttrFn[id] = set_fn;
+	    }
+
+    return 0;
+    }
+
+
 /*** expSetParamFunctions - set the functions that will be used to get/set
  *** paramobjects attribute values and types.  Used for "custom" objects and
  *** such.
@@ -675,12 +713,8 @@ expSetParamFunctions(pParamObjects this, char* name, int (*type_fn)(), int (*get
 	    }
 	if (slot_id < 0) return -1;
 
-	/** Set the functions. **/
-	this->GetTypeFn[slot_id] = type_fn;
-	this->GetAttrFn[slot_id] = get_fn;
-	this->SetAttrFn[slot_id] = set_fn;
 
-    return 0;
+    return expSetParamFunctionsByID(this, slot_id, type_fn, get_fn, set_fn);
     }
 
 
