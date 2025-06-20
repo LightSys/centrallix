@@ -5,7 +5,7 @@
 <link rel="StyleSheet" href="style.css" type="text/css">
 </head>
 <body>
-<!-- PAGE BREAK: 'hints.html' -->
+		</span><!-- PAGE BREAK: 'hints.html' -->
 <h2 class="widgetname"><a name="hints">hints</a></h2>
 <p class="widgettype">type: <span class="widgettypevalue">widget/hints</span></p>
 <p class="widgettype">visual: <span class="widgettypevalue">no</span></p>
@@ -13,10 +13,14 @@
 <p class="widgettype">form element: <span class="widgettypevalue">yes</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>The hints widget stores default values and other component modifying properties.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>The hints widget can be placed inside of any visual component. Hints do not contain visual widgets.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -30,41 +34,114 @@
 <td class="description">Defines a set of acceptable characters (e.g. allowchars="0123456789").</td>
 </tr>
 <tr>
+<td class="name">badchars</td>
+<td class="type">string</td>
+<td class="description">Defines a set of unacceptable characters.</td>
+</tr>
+<tr>
+<td class="name">constraint</td>
+<td class="type">object</td>
+<td class="description">Defines a condition that the parent value must meet to be valid.</td>
+</tr>
+<tr>
 <td class="name">default</td>
-<td class="type">mixed</td>
+<td class="type">object</td>
 <td class="description">A string or integer that specifies the initial, default, starting value for the component which containing this widget/hints widget.</td>
+</tr>
+<tr>
+<td class="name">enumlist</td>
+<td class="type">object</td>
+<td class="description">A list of string values that give all the possible values of th the parent.</td>
+</tr>
+<tr>
+<td class="name">enumquery</td>
+<td class="type">string</td>
+<td class="description">A sql query that is used to get the required value list.</td>
+</tr>
+<tr>
+<td class="name">format</td>
+<td class="type">string</td>
+<td class="description">The way in which data is presented to the user.</td>
+</tr>
+<tr>
+<td class="name">groupid</td>
+<td class="type">integer</td>
+<td class="description">A numeric identification for a group of attributes.</td>
+</tr>
+<tr>
+<td class="name">groupname</td>
+<td class="type">string</td>
+<td class="description">A string identification for a group of attributes.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">Determines rows of the widget.</td>
+</tr>
+<tr>
+<td class="name">length</td>
+<td class="type">integer</td>
+<td class="description">Length in characters that can be entered into this field.</td>
+</tr>
+<tr>
+<td class="name">max</td>
+<td class="type">object</td>
+<td class="description">A string or integer that stores the maximum value of the attributes of its parent widget.</td>
+</tr>
+<tr>
+<td class="name">min</td>
+<td class="type">object</td>
+<td class="description">A string or integer that stores the minimum value of the attributes of its parent widget.</td>
+</tr>
+<tr>
+<td class="name">readonlybits</td>
+<td class="type">object</td>
+<td class="description">If the field is a bitmask, determines which ones are read only.</td>
 </tr>
 <tr>
 <td class="name">style</td>
 <td class="type">string</td>
 <td class="description">Optional: contains a combination of 1 or more items following set {readonly, alwaysdef} separated by a comma if multiple items are chosen.</td>
 </tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">Number of characters in the field shown to the user at once.</td>
+</tr>
 </table>
-<h3 class="childproperties">Child Properties:</h3>
-<p class="none">none currently available</p>
-<h3 class="actions">Actions:</h3>
-<p class="none">none currently available</p>
-<h3 class="events">Events:</h3>
-<p class="none">none currently available</p>
-<h3 class="properties">Client Properties:</h3>
-<p class="none">none currently available</p>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 		
+
 $Version=2$
+
 // Here is a checkbox which uses widget/hints.
+
 f_trx_mod "widget/checkbox"
+
 {
+
 	width=16;
+
 	y=4;
+
 	readonly=yes;
+
 	fieldname="a_modified";
+
 	f_trx_mod_h "widget/hints"
+
 	{
+
 		style=readonly,alwaysdef;
+
 		default=1;
+
 	}
+
 }		
+
 		</pre>
 </body>
 </html>

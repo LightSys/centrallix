@@ -268,8 +268,8 @@ prt_pclod_SetPageGeom(void* context_v, double width, double height, double t, do
  *** requested one.  Most PCL printers can scale fonts without any problem,
  *** so we'll allow any font size greater than zero.
  ***/
-int
-prt_pclod_GetNearestFontSize(void* context_v, int req_size)
+double
+prt_pclod_GetNearestFontSize(void* context_v, double req_size)
     {
     /*pPrtPclodInf context = (pPrtPclodInf)context_v;*/
     return (req_size<=0)?1:req_size;
@@ -307,12 +307,12 @@ prt_pclod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle 
 	    else if (style->FontID == PRT_FONT_T_SANSSERIF)
 		{
 		/** metrics based on empirical analysis **/
-		n += hp_helvetica_font_metrics[(*str) - 0x20][style_code]/60.0;
+		n += hp_helvetica_font_metrics[(*str) - 0x20][style_code]/600.0;
 		}
 	    else if (style->FontID == PRT_FONT_T_SERIF)
 		{
 		/** metrics based on empirical analysis **/
-		n += hp_times_font_metrics[(*str) - 0x20][style_code]/60.0;
+		n += hp_times_font_metrics[(*str) - 0x20][style_code]/600.0;
 		}
 	    else
 		{
@@ -483,7 +483,7 @@ prt_pclod_WriteScreen(pPrtPclodInf context, int color_id, int intensity, char* t
 /*** prt_pclod_WriteText() - sends a string of text to the printer.
  ***/
 int
-prt_pclod_WriteText(void* context_v, char* str)
+prt_pclod_WriteText(void* context_v, char* str, char* url, double width, double height)
     {
     pPrtPclodInf context = (pPrtPclodInf)context_v;
     char pclbuf[64];
@@ -655,7 +655,7 @@ prt_pclod_WriteFF(void* context_v)
  *** on the page that will be printed after this row of objects.
  ***/
 double
-prt_pclod_WriteRect(void* context_v, double width, double height, double next_y)
+prt_pclod_WriteRect(void* context_v, double width, double height, double next_y, int color)
     {
     pPrtPclodInf context = (pPrtPclodInf)context_v;
     char pclbuf[80];

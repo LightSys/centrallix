@@ -13,11 +13,16 @@
 <p class="widgettype">form element: <span class="widgettypevalue">yes</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>The image widget displays a picture (image).</p>
+
 			<p>This widget can be a form element, in which case it will display an image as specified by the data from the form.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>The image widget can be placed inside any container that allows for visual widgets.  Only connectors may be placed inside it.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -26,9 +31,9 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">form</td>
-<td class="type">string</td>
-<td class="description">If using a form for the image path, this is the name of the form.  If left unspecified, and fieldname is supplied, the default will be whatever form the image is inside.</td>
+<td class="name">aspect</td>
+<td class="type">sting</td>
+<td class="description">Determines wither the image can be stretched or must stay its original aspect ration.</td>
 </tr>
 <tr>
 <td class="name">fieldname</td>
@@ -36,30 +41,114 @@
 <td class="description">If using a form for the image path, the name of the column in the datasource you want to reference.</td>
 </tr>
 <tr>
+<td class="name">form</td>
+<td class="type">string</td>
+<td class="description">If using a form for the image path, this is the name of the form.  If left unspecified, and fieldname is supplied, the default will be whatever form the image is inside.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">Height, in pixels, of the image.</td>
+</tr>
+<tr>
+<td class="name">text</td>
+<td class="type">string</td>
+<td class="description">The words that come up if the image object cannot find its source and display an image.</td>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">Width, in pixels, of the image.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">X-coordinate of the upper left corner of the image, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">Y-coordinate of the upper left corner of the image, relative to its container.</td>
+</tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">LoadImage</td>
+<td class="description">Displays the image to user.</td>
+</tr>
+<tr>
+<td class="name">Offset</td>
+<td class="description">Reloads the image with new offset values.</td>
+</tr>
+<tr>
+<td class="name">Scale</td>
+<td class="description">Reloads the image with a new scale value.</td>
+</tr>
+</table>
+<h3 class="events">Events:</h3>
+<table class="events">
+<tr>
+<th class="name">Event</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">Click</td>
+<td class="description">This event occurs when the user clicks the checkbox. No parameters are available from this event.</td>
+</tr>
+<tr>
+<td class="name">MouseDown</td>
+<td class="description">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
+</tr>
+<tr>
+<td class="name">MouseMove</td>
+<td class="description">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</td>
+</tr>
+<tr>
+<td class="name">MouseOut</td>
+<td class="description">This event occurs when the user moves the mouse pointer off of the checkbox.</td>
+</tr>
+<tr>
+<td class="name">MouseOver</td>
+<td class="description">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</td>
+</tr>
+<tr>
+<td class="name">MouseUp</td>
+<td class="description">This event occurs when the user releases the mouse button on the checkbox.</td>
+</tr>
+</table>
+<h3 class="properties">Client Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">scale</td>
+<td class="type">integer</td>
+<td class="description">Determines how much the image grows or shrinks compared to the original.</td>
+</tr>
+<tr>
 <td class="name">source</td>
 <td class="type">string</td>
 <td class="description">An OSML pathname for the location of the image (such as a png or jpg file).</td>
 </tr>
 <tr>
-<td class="name">height</td>
+<td class="name">xoffset</td>
 <td class="type">integer</td>
-<td class="description">height, in pixels, of the image.</td>
+<td class="description">Distance it is along the x axis from its parent widget.</td>
 </tr>
 <tr>
-<td class="name">width</td>
+<td class="name">yoffset</td>
 <td class="type">integer</td>
-<td class="description">width, in pixels, of the image.</td>
-</tr>
-<tr>
-<td class="name">x</td>
-<td class="type">integer</td>
-<td class="description">x-coordinate of the upper left corner of the image, relative to its container.</td>
-</tr>
-<tr>
-<td class="name">y</td>
-<td class="type">integer</td>
-<td class="description">y-coordinate of the upper left corner of the image, relative to its container.</td>
+<td class="description">Distance it is along the y axis from its parent widget.</td>
 </tr>
 </table>
+<p class="none">none currently available</p>
 </body>
 </html>

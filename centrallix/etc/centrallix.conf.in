@@ -9,6 +9,7 @@ centrallix "system/config"
     // General Configuration Data
     types_config = "##SYSCONFDIR##/centrallix/types.cfg";
     useragent_config = "##SYSCONFDIR##/centrallix/useragent.cfg";
+    colors_config = "##SYSCONFDIR##/centrallix/rgb.txt";
     rootnode_type = "system/uxfile";
     rootnode_file = "##SYSCONFDIR##/centrallix/rootnode";
     credentials_db = "##SYSCONFDIR##/centrallix/cxss.db";

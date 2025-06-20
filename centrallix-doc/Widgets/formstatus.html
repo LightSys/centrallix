@@ -13,16 +13,25 @@
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>Many times with multi-mode forms like those offered by Centrallix, the end-user can become confused as to what the form is currently "doing" (for instance, is a blank form with a blinking cursor in a "new" state or "enter query" state?).  Centrallix helps to address this issue using the form status widget. A form status widget displays the current mode of operation that a form is in, as well as whether the form is busy processing a query, save, or delete operation.  This clear presentation of the form's mode is intended to clear up any confusion created by a multi-mode form.  This widget is a special-case form element.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>The form status widget can only be used either directly or indirectly within a form widget.  It can contain no visual widgets.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
 <th class="name">Property</th>
 <th class="type">Type</th>
 <th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">form</td>
+<td class="type">string</td>
+<td class="description">The name of the form that this instance of form status corresponds to.</td>
 </tr>
 <tr>
 <td class="name">style</td>
@@ -40,10 +49,6 @@
 <td class="description">Allows you to set y position in pixels relative to the window.</td>
 </tr>
 </table>
-<h3 class="childproperties">Child Properties:</h3>
-<p class="none">none currently available</p>
-<h3 class="actions">Actions:</h3>
-<p class="none">none currently available</p>
 <h3 class="events">Events:</h3>
 <table class="events">
 <tr>
@@ -51,40 +56,45 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">Click</td>
-<td class="description">This event occurs when the user clicks the widget. No parameters are available from this event.</td>
-</tr>
-<tr>
-<td class="name">MouseUp</td>
-<td class="description">This event occurs when the user releases the mouse button on the widget.</td>
-</tr>
-<tr>
 <td class="name">MouseDown</td>
 <td class="description">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
 </tr>
 <tr>
-<td class="name">MouseOver</td>
-<td class="description">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</td>
+<td class="name">MouseMove</td>
+<td class="description">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</td>
 </tr>
 <tr>
 <td class="name">MouseOut</td>
 <td class="description">This event occurs when the user moves the mouse pointer off of the widget.</td>
 </tr>
 <tr>
-<td class="name">MouseMove</td>
-<td class="description">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</td>
+<td class="name">MouseOver</td>
+<td class="description">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</td>
+</tr>
+<tr>
+<td class="name">MouseUp</td>
+<td class="description">This event occurs when the user releases the mouse button on the widget.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 		
+
 $Version=2$
+
 formstatus "widget/formstatus" 
+
     {
+
     x=5; y=450;
+
     style="largeflat";
+
     }
+
 		
+
 		</pre>
 </body>
 </html>

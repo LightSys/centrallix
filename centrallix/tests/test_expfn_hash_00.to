@@ -1,0 +1,21 @@
+##NAME hash() function
+
+# The hash types are sha1, sha256, sha384, sha512, md5
+query select 'hash(sha1,"sha1")' = hash(sha1,"sha1")
+query select 'hash(sha256,"sha256")' = hash(sha256,"sha256")
+query select 'hash(sha384,"sha384")' = hash(sha384,"sha384")
+query select 'hash(sha512,"sha512")' = hash(sha512,"sha512")
+query select 'hash(md5,"md5")' = hash(md5,"md5")
+
+# this should result in empty string
+query select 'hash(md7,md7)' = hash(md7,md7)
+
+# use of unusual string
+query select 'hash(md5,"")' = hash(md5,"")
+query select 'hasd(md5,"\0\n\t\\\r\"")' = hash(md5,"\0\n\t\\\r\"")
+query select 'hash("\0\n\t\\\r\""/, "")' = hash("\0\n\t\\\r\"", "")
+# should cause erros due to null vallues or inexistent input
+query select 'hash(md5,null)' = hash(md5,null)
+query select 'hash(md5)' = hash(md5)
+query select 'hash(null,md5)' = hash(null,md5)
+

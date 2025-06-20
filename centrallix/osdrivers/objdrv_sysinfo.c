@@ -1113,7 +1113,7 @@ sysInfo(void* inf_v, pObjectInfo info_struct)
     {
     /*pSysData inf = SYS(inf_v);*/
     
-	memset(info_struct, sizeof(ObjectInfo), 0);
+	memset(info_struct, 0, sizeof(ObjectInfo));
 
     return 0;
     }

@@ -1,0 +1,61 @@
+##NAME cos() function
+
+query select 'cos(0.0)' = cos(0.0)
+
+query select 'cos(radians(30))' = cos(radians(30))
+
+query select 'cos(radians(60))' = cos(radians(60))
+
+query select 'cos(radians(90))' = cos(radians(90))
+
+query select 'cos(radians(180))' = cos(radians(180))
+
+query select 'cos(radians(270))' = cos(radians(270))
+
+query select 'cos(radians(360))' = cos(radians(360))
+
+query select 'cos(radians(720))' = cos(radians(720))
+
+query select 'cos(radians(-30))' = cos(radians(-30))
+
+query select 'cos(radians(-60))' = cos(radians(-60))
+
+query select 'cos(radians(-90))' = cos(radians(-90))
+
+query select 'cos(radians(-180))' = cos(radians(-180))
+
+query select 'cos(radians(-270))' = cos(radians(-270))
+
+query select 'cos(radians(-360))' = cos(radians(-360))
+
+query select 'cos(radians(-720))' = cos(radians(-720))
+
+query select 'cos(0)' = cos(0)
+
+query select 'cos(1)' = cos(1)
+
+query select 'cos(2)' = cos(2)
+
+query select 'cos(3)' = cos(3)
+
+query select 'cos(4)' = cos(4)
+
+query select 'cos(5)' = cos(5)
+
+query select 'cos(6)' = cos(6)
+
+query select 'cos(7)' = cos(7)
+
+query select 'cos(-1)' = cos(-1)
+
+query select 'cos(-2)' = cos(-2)
+
+query select 'cos(-3)' = cos(-3)
+
+query select 'cos(-4)' = cos(-4)
+
+query select 'cos(-5)' = cos(-5)
+
+query select 'cos(-6)' = cos(-6)
+
+query select 'cos(-7)' = cos(-7)

@@ -109,6 +109,8 @@ typedef struct _MPI
     pExpression	    AddlExp;
     int		    Flags;
     pQueryStatement Statement;
+    int		    Page;	/* used when MQP_MI_F_PAGED is set */
+    int		    PageRecCnt;	/* count of records returned from this page */
     }
     MqpInf, *pMqpInf;
 
@@ -116,6 +118,7 @@ typedef struct _MPI
 #define MQP_MI_F_USINGCACHE	2	/* using row cache */
 #define MQP_MI_F_SOURCEOPEN	4	/* source has been opened */
 #define MQP_MI_F_LASTMATCHED	8	/* last item returned matched (for pruning) */
+#define MQP_MI_F_PAGED		16	/* paged (multi-part) source */
 
 
 int mqp_internal_SetupSubtreeAttrs(pQueryElement qe, pObject obj);
@@ -256,7 +259,7 @@ mqp_internal_Recurse(pQueryElement qe, pQueryStatement stmt, pObject obj)
 	if (oi && (oi->Flags & OBJ_INFO_F_NO_SUBOBJ)) return NULL;
 
 	/** Try running the query. **/
-	newqy = objOpenQuery(obj, NULL, NULL, (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
+	newqy = objOpenQuery(obj, NULL, NULL, (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL), 0);
 	if (!newqy) return NULL;
 	objUnmanageQuery(stmt->Query->SessionID, newqy);
 	newobj = objQueryFetch(newqy, ((pMqpInf)(qe->PrivateData))->ObjMode);
@@ -538,6 +541,7 @@ mqpAnalyze(pQueryStatement stmt)
 	    if (from_qs->Flags & MQ_SF_INCLSUBTREE) qe->Flags |= MQ_EF_INCLSUBTREE;
 	    if (from_qs->Flags & MQ_SF_WILDCARD) qe->Flags |= MQ_EF_WILDCARD;
 	    if (from_qs->Flags & MQ_SF_FROMOBJECT) qe->Flags |= MQ_EF_FROMOBJECT;
+	    if (from_qs->Flags & MQ_SF_PAGED) qe->Flags |= MQ_EF_PAGED;
 	    from_qs->Flags |= MQ_SF_USED;
 	    from_qs->QELinkage = qe;
 
@@ -552,6 +556,8 @@ mqpAnalyze(pQueryStatement stmt)
 	    xaInit(&mi->SourceList, 16);
 	    mi->SourceIndex = 0;
 	    mi->Statement = stmt;
+	    if (qe->Flags & MQ_EF_PAGED)
+		mi->Flags |= MQP_MI_F_PAGED;
 
 	    /** Mode to open new objects with **/
 	    if (stmt->Flags & MQ_TF_ALLOWUPDATE)
@@ -725,98 +731,6 @@ mqp_internal_CloseSource(pQueryElement qe)
     }
 
 
-/*** mqp_internal_OpenNextSource() - take the next source off of the
- *** source list compiled by wildcard processing, and open it.
- ***/
-int
-mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
-    {
-    pMqpRowCache rc;
-    char* src;
-    pMqpInf mi = (pMqpInf)(qe->PrivateData);
-    handle_t collection;
-
-	mi->Flags &= ~MQP_MI_F_USINGCACHE;
-
-	/** Get next source **/
-	while(1)
-	    {
-	    if (mi->SourceIndex >= mi->SourceList.nItems) return 0;
-	    src = xaGetItem(&(mi->SourceList), mi->SourceIndex++);
-	    strtcpy(mi->CurrentSource, src, sizeof(mi->CurrentSource));
-
-	    /** Check for cached single row result set **/
-	    if (mi->RowCache)
-		{
-		rc = mi->RowCache;
-		rc->CurCached = mqp_internal_CheckCache(stmt, rc, mi->CurrentSource, qe->Constraint);
-		if (rc->CurCached >= 0)
-		    {
-		    /** We're going from the cache this time **/
-		    /*objClose(qe->LLSource);*/
-		    qe->LLSource = NULL;
-		    qe->LLQuery = NULL;
-		    mi->Flags |= MQP_MI_F_USINGCACHE;
-		    break;
-		    }
-		}
-
-	    /** Open the data source in the objectsystem **/
-	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
-		{
-		collection = mq_internal_FindCollection(stmt->Query, ((pQueryStructure)qe->QSLinkage)->Source);
-		if (collection == XHN_INVALID_HANDLE)
-		    {
-		    mssError(0,"MQP","Could not find source collection '%s' for SQL projection", ((pQueryStructure)qe->QSLinkage)->Source);
-		    return -1;
-		    }
-		qe->LLSource = objOpenTempObject(stmt->Query->SessionID, collection, mi->ObjMode);
-		}
-	    else
-		{
-		qe->LLSource = objOpen(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, (qe->Flags & MQ_EF_FROMOBJECT)?"system/object":"system/directory");
-		}
-	    if (!qe->LLSource) 
-		{
-		if ((qe->Flags & MQ_EF_WILDCARD) || (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION))
-		    {
-		    /** with wildcarding and/or expressions, it is ok for a source to not exist, we just ignore it. **/
-		    continue;
-		    }
-		else
-		    {
-		    mssError(0,"MQP","Could not open source object for SQL projection");
-		    return -1;
-		    }
-		}
-	    objUnmanageObject(stmt->Query->SessionID, qe->LLSource);
-	    break;
-	    }
-
-    	/** Open the query with the objectsystem. **/
-	if (((qe->Flags & MQ_EF_FROMSUBTREE) && (qe->Flags & MQ_EF_INCLSUBTREE)) || (qe->Flags & MQ_EF_FROMOBJECT))
-	    {
-	    qe->LLQuery = NULL;
-	    }
-	else if (!(mi->Flags & MQP_MI_F_USINGCACHE))
-	    {
-	    qe->LLQuery = objOpenQuery(qe->LLSource, NULL, NULL, (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL));
-	    if (!qe->LLQuery) 
-		{
-		mqpFinish(qe,stmt);
-		mssError(0,"MQP","Could not query source object for SQL projection");
-		return -1;
-		}
-	    objUnmanageQuery(stmt->Query->SessionID, qe->LLQuery);
-	    }
-	qe->IterCnt = 0;
-
-	mi->Flags |= MQP_MI_F_SOURCEOPEN;
-
-    return 1;
-    }
-
-
 /*** mqp_internal_WildcardMatch() - compare a wildcard string with a constant string
  *** to see if there is a match.  Returns 1 on a match, 0 on no match.
  ***/
@@ -921,7 +835,7 @@ mqp_internal_SetupWildcard_r(pQueryElement qe, pQueryStatement stmt, char* orig_
 	    info = objInfo(obj);
 	    if (info && (info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)))
 		goto finished;
-	    qy = objOpenQuery(obj, NULL, NULL, NULL, NULL);
+	    qy = objOpenQuery(obj, NULL, ":name", NULL, NULL, OBJ_QY_F_NOREOPEN);
 	    if (!qy)
 		goto finished;
 	    while ((subobj = objQueryFetch(qy, O_RDONLY)) != NULL)
@@ -1029,41 +943,59 @@ mqp_internal_SetupWildcard(pQueryElement qe, pQueryStatement stmt)
     }
 
 
-/*** mqpStart - starts the query operation for a given projection element
- *** in the query.  Does not fetch the first row -- that is what NextItem
- *** is there for.
+/*** mqp_internal_GetAttrType() - return the type of cx__page.
  ***/
 int
-mqpStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
+mqp_internal_GetAttrType(pMqpInf mi, char* attrname)
     {
-    pMqpInf mi = (pMqpInf)(qe->PrivateData);
-    pExpression new_exp;
-    pExpression source_exp;
+    if (!strcmp(attrname, "cx__page"))
+	return DATA_T_INTEGER;
+    else
+	return -1;
+    }
 
-	if (additional_expr)
-	    expFreezeEval(additional_expr, stmt->Query->ObjList, qe->SrcIndex);
+int
+mqp_internal_GetVirtAttrType(pObjSession sess, pObject obj, char* attrname, pMqpInf mi)
+    {
+    return mqp_internal_GetAttrType(mi, attrname);
+    }
 
-	mi->AddlExp = additional_expr;
-	mi->Flags &= ~(MQP_MI_F_USINGCACHE | MQP_MI_F_SOURCEOPEN);
-	mi->SourceIndex = 0;
 
-	/** Additional expression supplied?? **/
-	if (mi->AddlExp) qe->Flags |= MQ_EF_ADDTLEXP;
-	if (qe->Constraint) qe->Flags |= MQ_EF_CONSTEXP;
-	if (mi->AddlExp && qe->Constraint)
+/*** mqp_internal_GetAttrValue() - return the value of cx__page.
+ ***/
+int
+mqp_internal_GetAttrValue(pMqpInf mi, char* attrname, int datatype, pObjData val)
+    {
+    if (!strcmp(attrname, "cx__page"))
+	{
+	if (datatype == DATA_T_INTEGER)
 	    {
-	    new_exp = expAllocExpression();
-	    new_exp->NodeType = EXPR_N_AND;
-	    expAddNode(new_exp, qe->Constraint);
-	    expAddNode(new_exp, mi->AddlExp);
-	    qe->Constraint = new_exp;
+	    val->Integer = mi->Page;
+	    return 0;
 	    }
-	if (!qe->Constraint) qe->Constraint = mi->AddlExp;
-        if (qe->Constraint && !(qe->Flags & MQ_EF_FROMSUBTREE) && !(qe->Flags & MQ_EF_FROMOBJECT))
-	    expRemapID(qe->Constraint, qe->SrcIndex, 0);
+	else
+	    return -1;
+	}
+    else
+	return -1;
+    }
 
-	qe->LLSource = NULL;
-	qe->LLQuery = NULL;
+int
+mqp_internal_GetVirtAttrValue(pObjSession sess, pObject obj, char* attrname, pMqpInf mi, int datatype, pObjData val)
+    {
+    return mqp_internal_GetAttrValue(mi, attrname, datatype, val);
+    }
+
+
+/*** mqp_internal_EvaluateSource() - do expression evaluation and wildcard
+ *** expansion on a source, to generate the source list.
+ ***/
+int
+mqp_internal_EvaluateSource(pQueryElement qe, pQueryStatement stmt, pMqpInf mi)
+    {
+    pExpression source_exp;
+    int rval;
+    pObject oldobj;
 
 	/** Evaluate source expression? **/
 	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION)
@@ -1081,9 +1013,23 @@ mqpStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		mi->Flags &= ~MQP_MI_F_SOURCELIST;
 		}
 
-	    /** Evalute **/
+	    /** Evalute.  We swap the NULL object for the evaluation so the expression
+	     ** can contain the :cx__page property for paginated sources.
+	     **/
 	    source_exp = ((pQueryStructure)qe->QSLinkage)->Expr;
-	    if (expEvalTree(source_exp, stmt->Query->ObjList) < 0)
+	    if ((mi->Flags & MQP_MI_F_PAGED))
+		{
+		oldobj = (pObject)stmt->Query->ObjList->Objects[qe->SrcIndex];
+		expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, (void*)mi);
+		expSetParamFunctionsByID(stmt->Query->ObjList, qe->SrcIndex, mqp_internal_GetAttrType, mqp_internal_GetAttrValue, NULL);
+		}
+	    rval = expEvalTree(source_exp, stmt->Query->ObjList);
+	    if ((mi->Flags & MQP_MI_F_PAGED))
+		{
+		expSetParamFunctionsByID(stmt->Query->ObjList, qe->SrcIndex, NULL, NULL, NULL);
+		expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, oldobj);
+		}
+	    if (rval < 0)
 		{
 		mssError(0, "MQP", "Error in expression for FROM clause item");
 		return -1;
@@ -1132,9 +1078,134 @@ mqpStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     }
 
 
-/*** mqpNextItem - retrieves the first/next item in the result set for the
- *** projection.  Returns 1 if valid row obtained, 0 if no more rows are
- *** available, and -1 on error.
+/*** mqp_internal_OpenNextSource() - take the next source off of the
+ *** source list compiled by wildcard processing, and open it.
+ ***/
+int
+mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
+    {
+    pMqpRowCache rc;
+    char* src;
+    pMqpInf mi = (pMqpInf)(qe->PrivateData);
+    handle_t collection;
+
+	mi->Flags &= ~MQP_MI_F_USINGCACHE;
+
+	/** Get next source **/
+	while(1)
+	    {
+	    /** Get a new source list if we are at the start, or if we exhausted
+	     ** our source list.
+	     **/
+	    if (mi->SourceIndex >= mi->SourceList.nItems || mi->Page == 0)
+		{
+		if ((mi->Flags & MQP_MI_F_PAGED) || mi->Page == 0)
+		    {
+		    if (mi->Page > 0 && mi->PageRecCnt == 0)
+			{
+			/** Empty page - we're done **/
+			return 0;
+			}
+		    else
+			{
+			/** End of a nonempty page, or beginning of query; goto next page **/
+			mi->Page++;
+			mi->PageRecCnt = 0;
+			mi->SourceIndex = 0;
+
+			/** Expression eval and wildcard expansion **/
+			if (mqp_internal_EvaluateSource(qe, stmt, mi) < 0)
+			    return -1;
+
+			/** No sources? We're done. **/
+			if (mi->SourceList.nItems == 0)
+			    return 0;
+			}
+		    }
+		else
+		    {
+		    /** Not paged and page complete - we're done. **/
+		    return 0;
+		    }
+		}
+	    src = xaGetItem(&(mi->SourceList), mi->SourceIndex++);
+	    strtcpy(mi->CurrentSource, src, sizeof(mi->CurrentSource));
+
+	    /** Check for cached single row result set **/
+	    if (mi->RowCache)
+		{
+		rc = mi->RowCache;
+		rc->CurCached = mqp_internal_CheckCache(stmt, rc, mi->CurrentSource, qe->Constraint);
+		if (rc->CurCached >= 0)
+		    {
+		    /** We're going from the cache this time **/
+		    /*objClose(qe->LLSource);*/
+		    qe->LLSource = NULL;
+		    qe->LLQuery = NULL;
+		    mi->Flags |= MQP_MI_F_USINGCACHE;
+		    break;
+		    }
+		}
+
+	    /** Open the data source in the objectsystem **/
+	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
+		{
+		collection = mq_internal_FindCollection(stmt->Query, ((pQueryStructure)qe->QSLinkage)->Source);
+		if (collection == XHN_INVALID_HANDLE)
+		    {
+		    mssError(0,"MQP","Could not find source collection '%s' for SQL projection", ((pQueryStructure)qe->QSLinkage)->Source);
+		    return -1;
+		    }
+		qe->LLSource = objOpenTempObject(stmt->Query->SessionID, collection, mi->ObjMode);
+		}
+	    else
+		{
+		qe->LLSource = objOpen(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, (qe->Flags & MQ_EF_FROMOBJECT)?"system/object":"system/directory");
+		}
+	    if (!qe->LLSource) 
+		{
+		if ((qe->Flags & MQ_EF_WILDCARD) || (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION))
+		    {
+		    /** with wildcarding and/or expressions, it is ok for a source to not exist, we just ignore it. **/
+		    continue;
+		    }
+		else
+		    {
+		    mssError(0,"MQP","Could not open source object for SQL projection");
+		    return -1;
+		    }
+		}
+	    objUnmanageObject(stmt->Query->SessionID, qe->LLSource);
+	    break;
+	    }
+
+    	/** Open the query with the objectsystem. **/
+	if (((qe->Flags & MQ_EF_FROMSUBTREE) && (qe->Flags & MQ_EF_INCLSUBTREE)) || (qe->Flags & MQ_EF_FROMOBJECT))
+	    {
+	    qe->LLQuery = NULL;
+	    }
+	else if (!(mi->Flags & MQP_MI_F_USINGCACHE))
+	    {
+	    qe->LLQuery = objOpenQuery(qe->LLSource, NULL, NULL, (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL), 0);
+	    if (!qe->LLQuery) 
+		{
+		mqpFinish(qe,stmt);
+		mssError(0,"MQP","Could not query source object for SQL projection");
+		return -1;
+		}
+	    objUnmanageQuery(stmt->Query->SessionID, qe->LLQuery);
+	    }
+	qe->IterCnt = 0;
+
+	mi->Flags |= MQP_MI_F_SOURCEOPEN;
+
+    return 1;
+    }
+
+
+/*** mqp_internal_NextItemFromSource - retrieves the first/next item in the current
+ *** data source (from the source list).  Returns 1 on valid item, 0 on end of
+ *** results from this source, or -1 on error.
  ***/
 int
 mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
@@ -1176,6 +1247,8 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 	    {
 	    obj = objLinkTo(qe->LLSource);
 	    expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, obj);
+	    if (qe->Flags & MQ_EF_PAGED)
+		objAddVirtualAttr(obj, "cx__page", (void*)mi, mqp_internal_GetVirtAttrType, mqp_internal_GetVirtAttrValue, NULL, NULL);
 
 	    if (qe->Flags & MQ_EF_FROMSUBTREE)
 		{
@@ -1235,7 +1308,10 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 		if (saved_obj) objClose(saved_obj);
 		objUnmanageObject(stmt->Query->SessionID, obj);
 		expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, obj);
-		if (qe->Flags & MQ_EF_FROMSUBTREE) mqp_internal_SetupSubtreeAttrs(qe, obj);
+		if (qe->Flags & MQ_EF_PAGED)
+		    objAddVirtualAttr(obj, "cx__page", (void*)mi, mqp_internal_GetVirtAttrType, mqp_internal_GetVirtAttrValue, NULL, NULL);
+		if (qe->Flags & MQ_EF_FROMSUBTREE)
+		    mqp_internal_SetupSubtreeAttrs(qe, obj);
 		return 1;
 		}
 
@@ -1243,7 +1319,11 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 	    if (qe->Flags & MQ_EF_FROMSUBTREE)
 		{
 		obj = mqp_internal_Return(qe, stmt, NULL);
-		if (!obj || obj == qe->LLSource) return 0;
+		if (!obj || obj == qe->LLSource)
+		    {
+		    if (obj) objClose(obj);
+		    return 0;
+		    }
 		expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, obj);
 		}
 	    else
@@ -1260,6 +1340,51 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
     return 0;
     }
 
+
+/*** mqpStart - starts the query operation for a given projection element
+ *** in the query.  Does not fetch the first row -- that is what NextItem
+ *** is there for.
+ ***/
+int
+mqpStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
+    {
+    pMqpInf mi = (pMqpInf)(qe->PrivateData);
+    pExpression new_exp;
+
+	if (additional_expr)
+	    if (expFreezeEval(additional_expr, stmt->Query->ObjList, qe->SrcIndex) < 0)
+		return -1;
+
+	mi->AddlExp = additional_expr;
+	mi->Flags &= ~(MQP_MI_F_USINGCACHE | MQP_MI_F_SOURCEOPEN);
+	mi->Page = 0;
+
+	/** Additional expression supplied?? **/
+	if (mi->AddlExp) qe->Flags |= MQ_EF_ADDTLEXP;
+	if (qe->Constraint) qe->Flags |= MQ_EF_CONSTEXP;
+	if (mi->AddlExp && qe->Constraint)
+	    {
+	    new_exp = expAllocExpression();
+	    new_exp->NodeType = EXPR_N_AND;
+	    expAddNode(new_exp, qe->Constraint);
+	    expAddNode(new_exp, mi->AddlExp);
+	    qe->Constraint = new_exp;
+	    }
+	if (!qe->Constraint) qe->Constraint = mi->AddlExp;
+        if (qe->Constraint && !(qe->Flags & MQ_EF_FROMSUBTREE) && !(qe->Flags & MQ_EF_FROMOBJECT))
+	    expRemapID(qe->Constraint, qe->SrcIndex, 0);
+
+	qe->LLSource = NULL;
+	qe->LLQuery = NULL;
+
+    return 0;
+    }
+
+
+/*** mqpNextItem - retrieves the first/next item in the result set for the
+ *** projection.  Returns 1 if valid row obtained, 0 if no more rows are
+ *** available, and -1 on error.
+ ***/
 int
 mqpNextItem(pQueryElement qe, pQueryStatement stmt)
     {
@@ -1296,6 +1421,10 @@ mqpNextItem(pQueryElement qe, pQueryStatement stmt)
 		    break;
 		    }
 		}
+
+	    /** Count it, if valid row **/
+	    if (rval == 1)
+		mi->PageRecCnt++;
 
 	    /** Return if valid row (1) or if error (-1) **/
 	    if (rval != 0) break;

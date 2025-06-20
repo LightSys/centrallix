@@ -1161,7 +1161,7 @@ readdirres* nnfs_internal_nfsproc_readdir(readdirargs* param)
 	return retval;
 	}
     
-    qy = objOpenQuery(obj, "", NULL, NULL, NULL);
+    qy = objOpenQuery(obj, "", NULL, NULL, NULL, 0);
     if(!qy)
 	{
 	retval->status = NFSERR_NOTDIR;

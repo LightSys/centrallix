@@ -152,6 +152,108 @@ function map_refresh() {
   for (var i = this.osrc.FirstRecord; i <= this.osrc.LastRecord; i++) {
     this.AddOsrcObject(this.osrc.replica[i], i);
   }
+
+  // creates popup html elements
+  var containerDiv = document.createElement("div");
+  containerDiv.id = "popup";
+  containerDiv.setAttribute("class", "ol-popup");
+  document.head.appendChild(containerDiv);
+
+  var containerCloser = document.createElement("a");
+  containerCloser.id = "popup-closer";
+  containerCloser.setAttribute("href", "#");
+  containerCloser.setAttribute("class", "ol-popup-closer");
+  containerDiv.appendChild(containerCloser);
+
+  var contentDiv = document.createElement("div");
+  contentDiv.id = "popup-content";
+  containerDiv.appendChild(contentDiv);
+
+  var element = document.getElementById(containerDiv.id);
+  var popupCloser = document.getElementById(containerCloser.id);
+
+  //popup layer
+  var popup = new ol.Overlay({
+    element: element,
+    stopEvent: false,
+    name: "popover"
+  });
+  this.map.addOverlay(popup);
+
+  //button to close popup
+  popupCloser.onclick = () => {
+    popup.setPosition(undefined);
+    popupCloser.blur();
+    return false;
+  };
+
+  //event to handle marker click
+  this.map.on("click", evt => {
+    let feature = this.map.forEachFeatureAtPixel(evt.pixel, feature => {
+      return feature;
+    });
+    if (feature && feature.unique_id && this.param.allow_select && this.osrc) {
+      this.trigger = true;
+      this.osrc.MoveToRecord(feature.unique_id);
+      delete this.trigger;
+
+      contentDiv.innerHTML = feature.get("content");
+      let coordinates = feature.getGeometry().getCoordinates();
+      popup.setPosition(coordinates);
+
+      let event = new Object();
+      event.recnum = feature.unique_id;
+      this.ifcProbe(ifEvent).Activate("Click", event);
+      delete event;
+    } else if (!feature) {
+      popup.setPosition(undefined);
+      popupCloser.blur();
+    }
+  });
+
+  // handles double click
+  this.map.on("dblclick", evt => {
+    let feature = this.map.forEachFeatureAtPixel(evt.pixel, feature => {
+      return feature;
+    });
+    if (feature) {
+      let event = new Object();
+      event.recnum = feature.unique_id;
+      this.ifcProbe(ifEvent).Activate("DblClick", event);
+      delete event;
+      return false;
+    }
+  });
+
+  this.map.on("contextmenu", evt => {
+    let feature = this.map.forEachFeatureAtPixel(evt.pixel, feature => {
+      return feature;
+    });
+    evt.preventDefault();
+    if (feature && feature.unique_id && this.param.allow_select && this.osrc) {
+      this.trigger = true;
+      this.osrc.MoveToRecord(feature.unique_id);
+      delete this.trigger;
+
+      let event = new Object();
+      event.recnum = feature.unique_id;
+      this.ifcProbe(ifEvent).Activate("RightClick", event);
+      delete event;
+      return false;
+    }
+  });
+
+  //changes curose when it is on marker
+  this.map.on("pointermove", e => {
+    // if (e.dragging) {
+    //   $(element).popover("dispose");
+    //   return;
+    // }
+    var pixel = this.map.getEventPixel(e.originalEvent);
+    var hit = this.map.hasFeatureAtPixel(pixel);
+    var target = document.getElementById(this.map.getTarget());
+    target.style.cursor = hit ? "pointer" : "";
+  });
 }
 
 // Add an object from a record in the osrc
@@ -204,109 +306,11 @@ function map_add_osrc_object(o, id) {
     name: "Marker"
   });
 
-  // creates popup html elements
-  var containerDiv = document.createElement("div");
-  containerDiv.id = "popup";
-  containerDiv.setAttribute("class", "ol-popup");
-  document.head.appendChild(containerDiv);
-
-  var containerCloser = document.createElement("a");
-  containerCloser.id = "popup-closer";
-  containerCloser.setAttribute("href", "#");
-  containerCloser.setAttribute("class", "ol-popup-closer");
-  containerDiv.appendChild(containerCloser);
-
-  var contentDiv = document.createElement("div");
-  contentDiv.id = "popup-content";
-  containerDiv.appendChild(contentDiv);
-
-  var element = document.getElementById(containerDiv.id);
-  var popupCloser = document.getElementById(containerCloser.id);
-
   //adds maker to map layer and focuses view
   this.map.addLayer(oneMarkerVectorLayer);
   this.map.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
   this.map.getView().setZoom(4);
 
-  //popup layer
-  var popup = new ol.Overlay({
-    element: element,
-    stopEvent: false,
-    name: "popover"
-  });
-  this.map.addOverlay(popup);
-
-  //button to close popup
-  popupCloser.onclick = () => {
-    popup.setPosition(undefined);
-    popupCloser.blur();
-    return false;
-  };
-
-  //event to handle marker click
-  this.map.on("click", evt => {
-    let feature = this.map.forEachFeatureAtPixel(evt.pixel, feature => {
-      return feature;
-    });
-    if (feature && feature.unique_id && this.param.allow_select && this.osrc) {
-      this.trigger = true;
-      this.osrc.MoveToRecord(feature.unique_id);
-      delete this.trigger;
-
-      contentDiv.innerHTML = feature.get("content");
-      let coordinates = feature.getGeometry().getCoordinates();
-      popup.setPosition(coordinates);
-
-      let event = new Object();
-      event.recnum = feature.unique_id;
-      this.ifcProbe(ifEvent).Activate("Click", event);
-      delete event;
-    }
-  });
-
-  // handles double click
-  this.map.on("dblclick", evt => {
-    let feature = this.map.forEachFeatureAtPixel(evt.pixel, feature => {
-      return feature;
-    });
-    if (feature) {
-      let event = new Object();
-      event.recnum = feature.unique_id;
-      this.ifcProbe(ifEvent).Activate("DblClick", event);
-      delete event;
-      return false;
-    }
-  });
-
-  this.map.on("contextmenu", evt => {
-    let feature = this.map.forEachFeatureAtPixel(evt.pixel, feature => {
-      return feature;
-    });
-    evt.preventDefault();
-    if (feature && feature.unique_id && this.param.allow_select && this.osrc) {
-      this.trigger = true;
-      this.osrc.MoveToRecord(feature.unique_id);
-      delete this.trigger;
-
-      let event = new Object();
-      event.recnum = feature.unique_id;
-      this.ifcProbe(ifEvent).Activate("RightClick", event);
-      delete event;
-      return false;
-    }
-  });
-
-  //changes curose when it is on marker
-  this.map.on("pointermove", e => {
-    // if (e.dragging) {
-    //   $(element).popover("dispose");
-    //   return;
-    // }
-    var pixel = this.map.getEventPixel(e.originalEvent);
-    var hit = this.map.hasFeatureAtPixel(pixel);
-    var target = document.getElementById(this.map.getTarget());
-    target.style.cursor = hit ? "pointer" : "";
-  });
   return true;
 }
 

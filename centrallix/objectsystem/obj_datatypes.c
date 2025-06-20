@@ -72,11 +72,13 @@ char* obj_long_week[] = {"Sunday","Monday","Tuesday","Wednesday","Thursday",
 /*** date format:
  ***   DDDD = long day-of-week name	NOT YET IMPL.
  ***   DDD = short day-of-week abbrev.	NOT YET IMPL.
- ***   dd = 2-digit day of month
+ ***   dd = 2-digit day of month (zero padded to two digits)
+ ***   d = day of month, not zero padded
  ***   ddd = day of month plus cardinality '1st','2nd','3rd', etc.
  ***   MMMM = full (long) month name
  ***   MMM = short month abbreviation
- ***   MM = 2-digit month of year
+ ***   MM = 2-digit month of year (zero-padded to two digits)
+ ***   M = month of year, not zero padded
  ***   yy = 2-digit year (bad)
  ***   yyyy = 4-digit year (good)
  ***   HH = hour in 24-hour format
@@ -260,6 +262,11 @@ obj_internal_FormatDate(pDateTime dt, char* str, char* format, int length)
 		    xsConcatenate(&xs, tmp, -1);
 		    fmt++;
 		    }
+		else
+		    {
+		    sprintf(tmp,"%d",dt->Part.Day+1);
+		    xsConcatenate(&xs, tmp, -1);
+		    }
 		fmt++;
 		break;
 
@@ -280,6 +287,11 @@ obj_internal_FormatDate(pDateTime dt, char* str, char* format, int length)
 		    sprintf(tmp,"%2.2d",dt->Part.Month+1);
 		    xsConcatenate(&xs, tmp, -1);
 		    fmt++;
+		    }
+		else
+		    {
+		    sprintf(tmp,"%d",dt->Part.Month+1);
+		    xsConcatenate(&xs, tmp, -1);
 		    }
 		fmt++;
 		break;
@@ -525,6 +537,8 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
                 case '0':
                 case '^':
                 case '#':
+		    if (!tens_multiplier)
+			break;
 		    if (in_decimal_part)
 		        {
 			d = (print_fract/tens_multiplier)%10;
@@ -610,19 +624,35 @@ obj_internal_FormatMoney(pMoneyType m, char* str, char* format, int length)
                     break;
                 }
 	    fmt++;
+
+	    if ((*fmt == '\0' || *fmt == ']' || *fmt == ')') || ((*fmt == '+' || *fmt == '-') && (fmt[-1] == ' ' || fmt[-1] == '*' || fmt[-1] == '#' || fmt[-1] == '0' || fmt[-1] == '^')))
+		{
+		/** Don't hide decimal values past the format spec **/
+		if (print_fract && !in_decimal_part)
+		    {
+		    in_decimal_part = 1;
+		    tens_multiplier = 1000;
+		    xsConcatenate(&xs, &decimal, 1);
+		    }
+		while (print_fract && in_decimal_part && tens_multiplier && (print_fract%(tens_multiplier?(tens_multiplier*10):1)) != 0)
+		    {
+		    d = (print_fract/tens_multiplier)%10;
+		    tens_multiplier /= 10;
+		    xsConcatPrintf(&xs, "%d", d);
+		    }
+		}
 	    }
 
-	if(strlen(xs.String) < length)
+	if (strlen(xs.String) < length)
 	    {
 	    strcpy(str,xs.String);
 	    xsDeInit(&xs);
 	    return 0;
 	    }
-	else
-	    {
-	    xsDeInit(&xs);
-	    return -1;
-	    }
+
+	xsDeInit(&xs);
+
+    return -1;
     }
 
 
@@ -1524,6 +1554,7 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
     MoneyType m_v;
     double dblval;
     long long dt_cmp_value;
+    pBinary b1, b2;
 
     	/** Need to transpose v1 and v2 to simplify? **/
 	/*if ((data_type_1 != DATA_T_INTEGER && data_type_2 == DATA_T_INTEGER) ||
@@ -1832,6 +1863,24 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 		    }
 	        break;
 
+	    case DATA_T_BINARY:
+		if (data_type_2 != DATA_T_BINARY)
+		    {
+		    err = 1;
+		    break;
+		    }
+		b1 = (pBinary)data_ptr_1;
+		b2 = (pBinary)data_ptr_2;
+		cmp_value = memcmp(b1->Data, b2->Data, (b1->Size > b2->Size)?b2->Size:b1->Size);
+		if (!cmp_value)
+		    {
+		    if (b1->Size > b2->Size)
+			cmp_value = 1;
+		    else
+			cmp_value = -1;
+		    }
+		break;
+
 	    default:
 		err = 1;
 		break;
@@ -2029,6 +2078,10 @@ objCopyData(pObjData src, pObjData dst, int type)
 	    case DATA_T_DOUBLE:
 		dst->Double = src->Double;
 		break;
+	    case DATA_T_BINARY:
+		dst->Binary.Data = src->Binary.Data;
+		dst->Binary.Size = src->Binary.Size;
+		break;
 		
 	    default:
 		return -1;
@@ -2076,6 +2129,11 @@ objDataFromString(pObjData pod, int type, char* str)
 		pod->String = str;
 		break;
 
+	    case DATA_T_BINARY:
+		pod->Binary.Data = (unsigned char*)str;
+		pod->Binary.Size = strlen(str);
+		break;
+
 	    case DATA_T_DOUBLE:
 		pod->Double = objDataToDouble(DATA_T_STRING, str);
 		break;
@@ -2102,6 +2160,7 @@ objDataFromString(pObjData pod, int type, char* str)
 int
 objDataFromStringAlloc(pObjData pod, int type, char* str)
     {
+    unsigned char* bptr;
     
 	switch(type)
 	    {
@@ -2128,6 +2187,15 @@ objDataFromStringAlloc(pObjData pod, int type, char* str)
 
 	if (type == DATA_T_STRING)
 	    pod->String = nmSysStrdup(pod->String);
+
+	if (type == DATA_T_BINARY)
+	    {
+	    bptr = pod->Binary.Data;
+	    pod->Binary.Data = nmSysMalloc(pod->Binary.Size + 1);
+	    if (!pod->Binary.Data)
+		return -1;
+	    memcpy(pod->Binary.Data, bptr, pod->Binary.Size + 1);
+	    }
 
     return 0;
     }
@@ -2168,8 +2236,15 @@ obj_internal_BuildBinaryItem(char** item, int* itemlen, pExpression exp, pParamO
 		break;
 
 	    case DATA_T_STRING:
+		if (!exp->String) /* FIXME */
+		    return 1;
 		*item = exp->String;
 		*itemlen = strlen(exp->String)+1;
+		break;
+
+	    case DATA_T_BINARY:
+		*item = exp->String;
+		*itemlen = exp->Size+1;
 		break;
 
 	    case DATA_T_DATETIME:

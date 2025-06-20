@@ -59,7 +59,7 @@ int
 mquAnalyze(pQueryStatement stmt)
     {
     pQueryStructure qs = NULL, item, where_qs, where_item, from_qs;
-    pQueryElement qe,recent;
+    pQueryElement qe /*,recent*/ ;
     pExpression new_exp;
     int i;
     int src_idx;
@@ -125,7 +125,7 @@ mquAnalyze(pQueryStatement stmt)
 	    stmt->Tree = qe;
 
 	    /** Need to link in with each of the update-items. **/
-	    recent = NULL;
+	    /*recent = NULL;*/
 	    for(i=0;i<qs->Children.nItems;i++)
 	        {
 		item = (pQueryStructure)(qs->Children.Items[i]);

@@ -145,7 +145,7 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    form[0]='\0';
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#img%POS { left:%INTpx; top:%INTpx; width:%POSpx; height:%POSpx; z-index:%POS; }\n",id,x,y,w,h,z);
+	htrAddStylesheetItem_va(s,"\t#img%POS { left:%INTpx; top:%INTpx; width:%POSpx; height:%POSpx; z-index:%POS; text-align:center; }\n",id,x,y,w,h,z);
 
 	/** Init image widget (?) **/
 	htrAddWgtrObjLinkage_va(s, tree, "img%POS",id);
@@ -161,9 +161,18 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "img", "im_mousemove");
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItemLayer_va(s, 0, "img%POS", id, "wimage",
-	    "\n<img class=\"wimage\" id=\"im%POS\" width=\"%POS\" %[height=\"%POS\" %]src=\"%STR&HTE\">\n",
-	    id, w, !strcmp(aspect,"stretch"), h, src);
+	if (!strcmp(aspect, "stretch"))
+	    {
+	    htrAddBodyItemLayer_va(s, 0, "img%POS", id, "wimage",
+		"\n<img class=\"wimage\" id=\"im%POS\" width=\"%POS\" height=\"%POS\" src=\"%STR&HTE\">\n",
+		id, w, h, src);
+	    }
+	else // "preserve"
+	    {
+	    htrAddBodyItemLayer_va(s, 0, "img%POS", id, "wimage",
+		"\n<img class=\"wimage\" id=\"im%POS\" width=\"%POS\" height=\"%POS\" style=\"max-width:fit-content; max-height:fit-content; display:inline;\" src=\"%STR&HTE\">\n",
+		id, w, h, src);
+	    }
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)

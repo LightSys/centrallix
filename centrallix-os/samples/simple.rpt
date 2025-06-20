@@ -9,7 +9,7 @@ simple "system/report"
 	{
 	default = 0;
 	type = integer;
-	allowchars="0123456789";
+	//allowchars="0123456789";
 	}
     
     pagewidth=85;
@@ -30,12 +30,13 @@ simple "system/report"
 			:size > :this:min_size 
 		ORDER BY
 			:name");
+	rowid "report/aggregate" { compute="count(1)"; reset=0; }
 	}
 
     cx "report/image"
 	{
 	x=32.5; y=0; width=1.5; height=0.9;
-	source="/lightsys/CX.png";
+	source="/sys/images/CX.png";
 	}
 
     file_data "report/table"
@@ -53,6 +54,7 @@ simple "system/report"
 	rightborder=0.05;
 	shadow=0.4;
 	innerborder=0.05;
+	//bgcolor="#e0e0e0";
 
 	rcpt_data_hdr "report/table-row"
 	    {
@@ -60,6 +62,8 @@ simple "system/report"
 	    fontsize=8;
 	    header=yes;
 	    bottomborder=0.01;
+	    bgcolor="#000080";
+	    fontcolor="#ffffff";
 	    rdh1 "report/table-cell" { value='Name'; align=center; style=bold; }
 	    rdh2 "report/table-cell" { value='Size'; align=center; style=bold; }
 	    rdh3 "report/table-cell" { value='Modified'; align=center; style=bold; }
@@ -69,8 +73,11 @@ simple "system/report"
 	    {
 	    font=courier;
 	    fontsize=8;
-	    rdr1 "report/table-cell" { font=helvetica; value=runserver(:files:thename); align=left; }
-	    rdr2 "report/table-cell" { value=runserver(:files:size); align=right; }
+	    marginleft=0.2;
+	    bgcolor=runserver(condition((:files:rowid / 2) * 2 == :files:rowid, "#f0f0f0", "#e0e0e0"));
+	    //bgcolor=runserver("#f0f0f0");
+	    rdr1 "report/table-cell" { font=helvetica; value=runserver(:files:thename); align=left; url=runserver("/sys/images/" + :files:thename); }
+	    rdr2 "report/table-cell" { value=runserver(:files:size); align=right; fontcolor=runserver(condition(:files:size > 10000, '#ff0000', '#000000')); }
 	    rdr3 "report/table-cell" { value=runserver(:files:last_modification); dateformat="dd-MMM-yyyy"; align=left; }
 	    }
 	}

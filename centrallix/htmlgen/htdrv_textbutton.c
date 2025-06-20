@@ -69,7 +69,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
     int is_enabled = 1;
     pExpression code;
     int box_offset;
-    int clip_offset;
+    //int clip_offset;
     int border_radius;
     char border_style[32];
     char border_color[64];
@@ -158,7 +158,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    box_offset = 1;
 	else
 	    box_offset = 0;
-	clip_offset = s->Capabilities.CSSClip?1:0;
+	//clip_offset = s->Capabilities.CSSClip?1:0;
 
 	/** User requesting expression for enabled? **/
 	if (wgtrGetPropertyType(tree,"enabled") == DATA_T_CODE)

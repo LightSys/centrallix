@@ -43,6 +43,53 @@
 /************************************************************************/
 
 
+/*** cxss_i_Hexify - convert binary data into a hex string.  Supports doing an
+ *** in-place conversion, i.e. bindata and hexdata referring to the same
+ *** buffer starting address.
+ ***
+ *** This function fills as much of the buffer hexdata as is possible given
+ *** the length of the bindata input.  If hexdata is too small, on the other
+ *** hand, the conversion is truncated.  'hexdatalen' refers to the number of
+ *** hex characters to convert; this function adds an additional nul
+ *** terminator beyond those 'hexdatalen' characters.
+ ***/
+int
+cxss_i_Hexify(unsigned char* bindata, size_t bindatalen, char* hexdata, size_t hexdatalen)
+    {
+    int i;
+    char hex_chars[] = "0123456789abcdef";
+
+	/** Ensure we have enough data, truncate if not. **/
+	if (hexdatalen > bindatalen*2)
+	    hexdatalen = bindatalen*2;
+
+	/** Convert it, starting at the end **/
+	for(i=hexdatalen-1; i>=0; i--)
+	    {
+	    hexdata[i] = hex_chars[(i&1)?(bindata[i/2] & 0x0f):((bindata[i/2]>>4) & 0x0f)];
+	    }
+	hexdata[hexdatalen] = '\0';
+
+    return hexdatalen;
+    }
+
+
+/*** cxssHexify - this is cxss_i_Hexify with a more traditional interface.  The above
+ *** function is different because it is optimized for generating a hex string of a
+ *** given size, even if an odd length, rather than for converting all of a binary
+ *** string to a hex string.
+ ***/
+int
+cxssHexify(unsigned char* bindata, size_t bindatalen, char* hexdata, size_t hexdatabuflen)
+    {
+
+	/** Ensure buffer is large enough **/
+	if (hexdatabuflen < bindatalen*2 + 1)
+	    return -1;
+	
+    return cxss_i_Hexify(bindata, bindatalen, hexdata, bindatalen*2);
+    }
+
 
 /*** cxssGenerateKey - create a pseudorandom key of the specified size
  *** using cryptographically secure methods.
@@ -60,23 +107,22 @@ cxssGenerateKey(unsigned char* key, size_t n_bytes)
 
 
 /*** cxssGenerateHexKey - generate a random key in hexadecimal form.
+ *** 'len' is the number of characters to generate, and this function
+ *** will add an additional nul terminator past the 'len' characters.
  ***/
 int
 cxssGenerateHexKey(char* hexkey, size_t len)
     {
     int rval;
-    int i;
-    char hex_chars[] = "0123456789abcdef";
     
 	/** Get entropy bytes first **/
-	rval = cxss_internal_GetBytes((unsigned char*)hexkey, len/2+1);
+	rval = cxssGenerateKey((unsigned char*)hexkey, len/2+1);
+	if (rval < 0)
+	    return rval;
 
 	/** Convert to hex **/
-	for(i=len-1; i>=0; i--)
-	    {
-	    hexkey[i] = hex_chars[(i&1)?(hexkey[i/2] & 0x0f):((hexkey[i/2]>>4) & 0x0f)];
-	    }
-	hexkey[len] = '\0';
+	if (cxss_i_Hexify((unsigned char*)hexkey, len/2+1, hexkey, len) < 0)
+	    return -1;
 
     return rval;
     }

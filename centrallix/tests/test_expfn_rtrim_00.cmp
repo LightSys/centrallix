@@ -1,0 +1,10 @@
+Attribute [rtrim("White space on the left ]:   string   "No white space on the left or right side." 
+Attribute [rtrim("     White space on the ]:   string   "     White space on the left side." 
+Attribute [rtrim("White space on the right]:   string   "White space on the right side." 
+Attribute [rtrim("     White space on the ]:   string   "     White space on the right and the left side." 
+Attribute [rtrim("With tab character	")]:   string   "With tab character	" 
+Attribute [rtrim("With newline character
+"]:   string   "With newline character
+" 
+Attribute [rtrim("")]:   string   "" 
+Attribute [rtrim(null)]:   string  NULL

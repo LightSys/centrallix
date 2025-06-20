@@ -13,10 +13,14 @@
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
 <span class="overview">
+
 			<p>The 'variable' nonvisual widget is used to create a global javascript scalar variable in the application.The variable can be an integer or string.</p>
+
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
+
 			<p>This nonvisual widget is used at the top-level (within a "widget/page").  Currently it has no events, and so shouldn't contain any visual or nonvisual widgets.</p>
+
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
@@ -35,11 +39,6 @@
 <td class="description">The form (e.g. it's osrc) with which to associate the variable and fieldname (if different than the form in which variable is currently nested).</td>
 </tr>
 <tr>
-<td class="name">type</td>
-<td class="type">string</td>
-<td class="description">(e.g. integer).</td>
-</tr>
-<tr>
 <td class="name">value</td>
 <td class="type">string</td>
 <td class="description">Can be accessed as :var_name:value.</td>
@@ -56,16 +55,40 @@
 <td class="description">Called by a widget/connector: Sets the value of the variable to whatever is specified by the "Value" parameter.</td>
 </tr>
 </table>
+<h3 class="events">Events:</h3>
+<table class="events">
+<tr>
+<th class="name">Event</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">DataChange</td>
+<td class="description">This event occurs when the user has modified the data value of the widget (clicked or unclicked it).</td>
+</tr>
+<tr>
+<td class="name">DataModify</td>
+<td class="description">This event occurs when the data is changed (occurs when key press or button changes things).</td>
+</tr>
+</table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
+
 		
+
 $Version=2$
+
 // This creates a global variable.
+
 counter "widget/variable"
+
 	{
+
 	value = 0;
+
 	}
+
 		
+
 		</pre>
 </body>
 </html>

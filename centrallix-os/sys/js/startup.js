@@ -32,6 +32,8 @@ function startup()
 
     loc = loc.replace(new RegExp('([?&])cx__geom[^&]*([&]?)'),
 	    function (str,p1,p2) { return p2?p1:''; });
+    loc = loc.replace(new RegExp('([?&])cx__lkey[^&]*([&]?)'),
+	    function (str,p1,p2) { return p2?p1:''; });
     if (loc.indexOf('?') >= 0)
         loc += '&';
     else

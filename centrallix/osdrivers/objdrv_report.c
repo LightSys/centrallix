@@ -3059,8 +3059,8 @@ rptOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	inf->ContentType[63] = 0;
 
 	/** Content type must be application/octet-stream or more specific. **/
-	rval = obj_internal_IsA(usrtype, "application/octet-stream");
-	if (rval == OBJSYS_NOT_ISA)
+	rval = objIsRelatedType(usrtype, "application/octet-stream");
+	if (rval == OBJSYS_NOT_RELATED)
 	    {
 	    mssError(1,"RPT","Requested content type must be at least application/octet-stream");
 	    nmFree(inf,sizeof(RptData));

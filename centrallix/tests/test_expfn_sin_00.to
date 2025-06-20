@@ -1,0 +1,63 @@
+##NAME sin() function
+
+query select 'sin(0.0)' = sin(0.0)
+
+query select 'sin(radians(30))' = sin(radians(30))
+
+query select 'sin(radians(60))' = sin(radians(60))
+
+query select 'sin(radians(90))' = sin(radians(90))
+
+query select 'sin(radians(180))' = sin(radians(180))
+
+query select 'sin(radians(270))' = sin(radians(270))
+
+query select 'sin(radians(360))' = sin(radians(360))
+
+query select 'sin(radians(720))' = sin(radians(720))
+
+query select 'sin(radians(-30))' = sin(radians(-30))
+
+query select 'sin(radians(-60))' = sin(radians(-60))
+
+query select 'sin(radians(-90))' = sin(radians(-90))
+
+query select 'sin(radians(-180))' = sin(radians(-180))
+
+query select 'sin(radians(-270))' = sin(radians(-270))
+
+query select 'sin(radians(-360))' = sin(radians(-360))
+
+query select 'sin(radians(-720))' = sin(radians(-720))
+
+query select 'sin(0)' = sin(0)
+
+query select 'sin(1)' = sin(1)
+
+query select 'sin(2)' = sin(2)
+
+query select 'sin(3)' = sin(3)
+
+query select 'sin(4)' = sin(4)
+
+query select 'sin(5)' = sin(5)
+
+query select 'sin(6)' = sin(6)
+
+query select 'sin(7)' = sin(7)
+
+query select 'sin(-1)' = sin(-1)
+
+query select 'sin(-2)' = sin(-2)
+
+query select 'sin(-3)' = sin(-3)
+
+query select 'sin(-4)' = sin(-4)
+
+query select 'sin(-5)' = sin(-5)
+
+query select 'sin(-6)' = sin(-6)
+
+query select 'sin(-7)' = sin(-7)
+
+

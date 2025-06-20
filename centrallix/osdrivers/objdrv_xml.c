@@ -7,6 +7,7 @@
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
+#include "cxlib/xhashqueue.h" 
 #include "stparse.h"
 #include "st_node.h"
 #include "cxlib/mtsession.h"
@@ -140,9 +141,10 @@
 **/
 #endif
 
-#define XML_BLOCK_SIZE 8092
+#define XML_BLOCK_SIZE 8192
 #define XML_ELEMENT_SIZE 64
 #define XML_ATTR_SIZE 256
+#define XML_HASH_SIZE 8+OBJSYS_MAX_PATH+XML_ATTR_SIZE // make sure room for open mode, path, and params
 
 #define XML_DEBUG 0
 
@@ -152,7 +154,7 @@
 /** the element used in the document cache **/
 typedef struct
     {
-    char	Pathname[OBJSYS_MAX_PATH];
+    char	Pathname[XML_HASH_SIZE];
     xmlDocPtr	document;
     DateTime	lastmod;
     int		LinkCnt;
@@ -213,7 +215,7 @@ typedef struct
 /*** GLOBALS ***/
 struct
     {
-    XHashTable	cache;
+    XHashQueue	cache;
     regex_t namematch;
     }
     XML_INF;
@@ -253,6 +255,26 @@ free_wrapper(void* ptr, void* arg)
         return 0   ; /* meaningless, but is needed for type safety */
     }
 
+
+/*** xml_internal_DiscardCO - this is the XHQ callback routine for the
+ *** cached xml objects when a cached item is being discarded via the LRU
+ *** discard algorithm.  We need to clean up by closing the object.
+ ***/
+int
+xml_internal_DiscardCO(pXHashQueue xhq, pXHQElement xe, int locked)
+    {
+    pXmlCacheObj cache;
+	/** Make sure can remove the object **/
+	if(locked) return -1;
+
+	/** find the object to close **/
+	cache = (pXmlCacheObj)xhqGetData(xhq, xe, XHQ_UF_PRELOCKED);
+
+	/** free the cache **/
+	xml_internal_CloseCachedDocument(cache);
+
+    return 0;
+    }
 
 /*** xml_internal_IsObject
  ***   decides if an XML node will be a centrallix object
@@ -442,26 +464,27 @@ xml_internal_ReadDoc(pObject obj)
     char* ptr;
     char* path;
     int bytes;
-    pXmlCacheObj pCache;
+    pXmlCacheObj pCache = NULL;
+    pXHQElement cacheElem;
     pDateTime pDT=0;
+    char hash[XML_HASH_SIZE];
 
 	/** Determine path of just the XML file itself **/
-	path=obj_internal_PathPart(obj->Pathname,0,obj->SubPtr);
-
+	/** use the hash rather than the path for the chache lookup **/
+	obj_internal_GetDCHash(obj->Pathname, obj->Mode, hash, XML_HASH_SIZE, obj->SubPtr);
 	/** Check cache for an existing copy already **/
-	if((pCache=(pXmlCacheObj)xhLookup(&XML_INF.cache, path)))
+	if((cacheElem=xhqLookup(&XML_INF.cache, hash)))
 	    {
 	    if(XML_DEBUG) printf("found %s in cache\n", path);
-
 	    /** found match in cache -- check modification time **/
 	    if(objGetAttrValue(obj->Prev, "last_modification", DATA_T_DATETIME, POD(&pDT))==0)
 		{
+		pCache = (pXmlCacheObj) xhqGetData(&XML_INF.cache, cacheElem, 0);
 		if(pDT && pDT->Value!=pCache->lastmod.Value)
 		    {
 		    /** modification time changed -- update **/
-		    xhRemove(&XML_INF.cache, path);
-		    xml_internal_CloseCachedDocument(pCache);
-		    pCache = NULL;
+		    xhqRemove(&XML_INF.cache, cacheElem, 0);
+		    pCache = NULL; /* xhqRemove handles cleaning up pCache */
 		    }
 		}
 	    }
@@ -469,14 +492,17 @@ xml_internal_ReadDoc(pObject obj)
 	/** Not in cache, or cache was stale **/
 	if (!pCache)	
 	    {
-	    if(XML_DEBUG) printf("couldn't find %s in cache\n",path);
+	    if(XML_DEBUG) printf("couldn't find %s in cache\n",hash);
 	    pCache=(pXmlCacheObj)nmMalloc(sizeof(XmlCacheObj));
 	    if(!pCache) return NULL;
 	    memset(pCache,0,sizeof(XmlCacheObj));
 	    if (objGetAttrValue(obj->Prev, "last_modification", DATA_T_DATETIME, POD(&pDT)) == 0)
 		pCache->lastmod.Value = pDT->Value;
-	    strtcpy(pCache->Pathname, path, sizeof(pCache->Pathname));
-	    xhAdd(&XML_INF.cache, pCache->Pathname, (void*)pCache);
+	    strtcpy(pCache->Pathname, hash, sizeof(pCache->Pathname));
+	    pXHQElement tempItem = xhqAdd(&XML_INF.cache, pCache->Pathname, (void*)pCache, 0);
+	    if(!tempItem) return NULL;
+	    /** make sure the cached item can be freed later; don't need it linked since only the cache uses it **/
+	    xhqUnlink(&XML_INF.cache, tempItem, 0); 
 	    pCache->LinkCnt = 1;
 	    }
 
@@ -490,6 +516,12 @@ xml_internal_ReadDoc(pObject obj)
 	    /** parse the document **/
 	    ptr=(char*)malloc(XML_BLOCK_SIZE);
 	    ctxt=xmlCreatePushParserCtxt(NULL,NULL,NULL,0,"unknown");
+	    /** change the encoding if needed*/
+	    ObjData contentCharset;
+	    int status = objGetAttrValue(obj->Prev, "content_charset", DATA_T_STRING, &contentCharset);
+	    if(contentCharset.String != NULL && status >= 0)
+		xmlSwitchEncoding(ctxt, xmlParseCharEncoding(contentCharset.String));
+	    
 	    objRead(obj->Prev,ptr,0,0,FD_U_SEEK);
 	    while((bytes=objRead(obj->Prev,ptr,XML_BLOCK_SIZE,0,0))>0)
 		{
@@ -1429,7 +1461,7 @@ xmlInitialize()
 
 	/** Initialize globals **/
 	memset(&XML_INF,0,sizeof(XML_INF));
-	xhInit(&XML_INF.cache,17,0);
+	xhqInit(&XML_INF.cache, 256, 0, 509, xml_internal_DiscardCO, 0);
 	if ((regcomp(&XML_INF.namematch, "^([^|]*)\\|*([0123456789]*)$", REG_EXTENDED)) != 0)
 	    {
 	    /** this is a critical failure -- this regex should compile just fine **/

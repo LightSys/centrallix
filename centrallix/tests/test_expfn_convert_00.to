@@ -1,0 +1,35 @@
+##NAME convert() function
+# There is a bug for conversion to int
+query select 'convert(integer, 100)' = convert(integer, 100)
+query select 'convert(integer, " 2.9")' = convert(integer, " 2.9")
+query select 'convert(integer, -2.9)' = convert(integer, -2.9)
+query select 'convert(integer, $-2147483647.99)' = convert(integer, $-2147483647.99)
+query select 'convert(integer, $-1.50)' = convert(integer, $-1.50)
+query select 'convert(integer, "7Jesus")' = convert(integer, "7Jesus")
+query select 'convert(integer, "Jesus7")' = convert(integer, "Jesus7")
+
+query select 'convert(string, -100)' = convert(string, -100)
+query select 'convert(string, "test string")' = convert(string, "test string")
+query select 'convert(string, 2147483647.99)' = convert(string, 2147483647.99)
+query select 'convert(string, $-1.00)' = convert(string, $-1.00)
+query select 'convert(string, convert(datetime, "05/32/2020 15:45:00"))' = convert(string, convert(datetime, "05/32/2020 15:45:00"))
+
+query select 'convert(double, 100)' = convert(double, 100)
+query select 'convert(double, "-10.3")' = convert(double, "-10.3")
+query select 'convert(double, -10.3)' = convert(double, -10.3)
+query select 'convert(double, $3.50)' = convert(double, $3.50)
+query select 'convert(double, $-3.999999)' = convert(double, $-3.999999)
+query select 'convert(double,"7Jesus")' = convert(double,"7Jesus")
+query select 'convert(double,"Jesus7")' = convert(double,"Jesus7")
+
+query select 'convert(money, 100)' = convert(money, 100)
+query select 'convert(money, "$-0.50")' = convert(money, "$-0.50")
+query select 'convert(money, (10 - 10))' = convert(money, (10 - 10))
+query select 'convert(money, $0)' = convert(money, $0)
+query select 'convert(money, convert(string, $-1.50))' = convert(money, convert(string, $-1.50))
+query select 'convert(money, "7Jesus")' = convert(money, "7Jesus")
+# the following does not work for money as it does for integer and double
+#  query select 'convert("money,"Jesus7")' = convert("money,"Jesus7")
+
+query select 'convert(datetime, "05/21/2020 15:45:00")' = convert(datetime, "05/21/2020 15:45:00")
+query select 'convert(datetime, "05/21/2020 12:00:00 +0600")' = convert(datetime, "05/21/2020 12:00:00 +0600")

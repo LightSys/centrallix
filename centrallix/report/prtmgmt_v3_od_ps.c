@@ -18,6 +18,7 @@
 #include "prtmgmt_v3/hp_font_metrics.h"
 #include "config.h"
 #include "assert.h"
+#include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -178,12 +179,13 @@ prt_psod_OutputHeader(pPrtPsodInf context)
     {
 
 	prt_psod_Output(context,"%!PS-Adobe-3.0\n"
-				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3 $Revision: 1.9 $ \n"
+				"%%Creator: Centrallix/" PACKAGE_VERSION " PRTMGMTv3\n"
 				"%%Title: Centrallix/" PACKAGE_VERSION " Generated Document\n"
 				"%%Pages: (atend)\n"
 				"%%DocumentData: Clean7Bit\n"
 				"%%LanguageLevel: 2\n"
 				"%%EndComments\n"
+				"/pdfmark where {pop} {userdict /pdfmark /cleartomark load put} ifelse\n"
 				, -1);
 
     return 0;
@@ -209,6 +211,7 @@ prt_psod_OutputSetup(pPrtPsodInf context)
 					"/XY { %d exch sub moveto } bind def\n"
 					"/NXY { newpath XY } bind def\n"
 					"/LXY { %d exch sub lineto } bind def\n"
+					"/UL { dup show stringwidth pop neg gsave 0 currentfont dup /FontInfo get /UnderlineThickness get exch /FontMatrix get dtransform setlinewidth 0 currentfont dup /FontInfo get /UnderlinePosition get exch /FontMatrix get dtransform rmoveto rlineto stroke grestore } bind def\n"
 					"12 /Courier FS\n"
 					"%%%%EndProlog\n",
 				context->PageHeight,
@@ -616,8 +619,8 @@ prt_psod_SetPageGeom(void* context_v, double width, double height, double t, dou
  *** requested one.  Most PS printers can scale fonts without any problem,
  *** so we'll allow any font size greater than zero.
  ***/
-int
-prt_psod_GetNearestFontSize(void* context_v, int req_size)
+double
+prt_psod_GetNearestFontSize(void* context_v, double req_size)
     {
     /*pPrtPsodInf context = (pPrtPsodInf)context_v;*/
     return (req_size<=0)?1:req_size;
@@ -655,12 +658,12 @@ prt_psod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle s
 	    else if (style->FontID == PRT_FONT_T_SANSSERIF)
 		{
 		/** metrics based on empirical analysis **/
-		n += hp_helvetica_font_metrics[(*str) - 0x20][style_code]/60.0;
+		n += hp_helvetica_font_metrics[(*str) - 0x20][style_code]/600.0;
 		}
 	    else if (style->FontID == PRT_FONT_T_SERIF)
 		{
 		/** metrics based on empirical analysis **/
-		n += hp_times_font_metrics[(*str) - 0x20][style_code]/60.0;
+		n += hp_times_font_metrics[(*str) - 0x20][style_code]/600.0;
 		}
 	    else
 		{
@@ -754,7 +757,7 @@ prt_psod_SetTextStyle(void* context_v, pPrtTextStyle style)
 		fontattr = "";
 
 	    /** Output our FS command (see %%BeginProlog for FS macro def'n) **/
-	    prt_psod_Output_va(context,	"%d /%s%s FS\n", style->FontSize, fontname, fontattr);
+	    prt_psod_Output_va(context,	"%.1f /%s%s FS\n", style->FontSize, fontname, fontattr);
 	    }
 
 	/** Color change? **/
@@ -803,15 +806,19 @@ prt_psod_SetVPos(void* context_v, double y)
 /*** prt_psod_WriteText() - sends a string of text to the printer.
  ***/
 int
-prt_psod_WriteText(void* context_v, char* str)
+prt_psod_WriteText(void* context_v, char* str, char* url, double width, double height)
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
     double bl;
     int i,psbuflen;
+    int do_underline;
+    pXString url_xs;
 
 	if (context->PageNum >= context->MaxPages) return 0;
 
 	prt_psod_BeforeDraw(context);
+
+	do_underline = (context->SelectedStyle.Attr & PRT_OBJ_A_UNDERLINE);
 
 	/** Move the starting point and adjust for the baseline before outputting the text. **/
 	bl = prt_psod_GetCharacterBaseline(context_v, NULL);
@@ -828,14 +835,29 @@ prt_psod_WriteText(void* context_v, char* str)
 	    psbuflen += 2;
 	    if (psbuflen >= sizeof(context->Buffer)-1)
 		{
-		prt_psod_Output_va(context, "<%s> show\n", context->Buffer);
+		prt_psod_Output_va(context, "<%s> %s\n", context->Buffer, do_underline?"UL":"show");
 		psbuflen = 0;
 		context->Buffer[0] = '\0';
 		}
 	    }
 	if (psbuflen)
 	    {
-	    prt_psod_Output_va(context, "<%s> show\n", context->Buffer);
+	    prt_psod_Output_va(context, "<%s> %s\n", context->Buffer, do_underline?"UL":"show");
+	    }
+
+	/** URL? **/
+	if (url && !strpbrk(url, "() "))
+	    {
+	    url_xs = cxssLinkSign(url);
+	    prt_psod_Output_va(context, "[ /Rect [ %.1f %.1f %.1f %.1f ] /Action << /Subtype /URI /URI (%s) >> /Border [0 0 0] /Color [0 0 .7] /Subtype /Link /ANN pdfmark\n",
+		    (context->CurHPos)*7.2 + 0.000001,
+		    context->PageHeight - ((context->CurVPos)*12.0 + bl*12.0 - 0.000001 - height*12.0),
+		    (context->CurHPos)*7.2 + 0.000001 + width*7.2,
+		    context->PageHeight - ((context->CurVPos)*12.0 + bl*12.0 - 0.000001),
+		    url_xs?xsString(url_xs):url
+		    );
+	    if (url_xs)
+		xsFree(url_xs);
 	    }
 
     return 0;
@@ -1009,7 +1031,7 @@ prt_psod_WriteFF(void* context_v)
  *** on the page that will be printed after this row of objects.
  ***/
 double
-prt_psod_WriteRect(void* context_v, double width, double height, double next_y)
+prt_psod_WriteRect(void* context_v, double width, double height, double next_y, int color)
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
     double x1,x2,y1,y2;
@@ -1027,12 +1049,30 @@ prt_psod_WriteRect(void* context_v, double width, double height, double next_y)
 	y1 = context->CurVPos*12.0 + 0.000001;
 	y2 = y1 + height*12.0;
 
+	/** Color change? **/
+	if (color != -1 && color != context->SelectedStyle.Color)
+	    {
+	    prt_psod_Output_va(context, "%.3f %.3f %.3f RGB\n", 
+		    ((color>>16) & 0xFF) / 255.0,
+		    ((color>>8) & 0xFF) / 255.0,
+		    ((color) & 0xFF) / 255.0);
+	    }
+
 	/** Output the rectangle **/
 	prt_psod_Output_va(context,	"%.1f %.1f NXY %.1f %.1f LXY %.1f %.1f LXY %.1f %.1f LXY fill\n",
 		x1,y1,
 		x2,y1,
 		x2,y2,
 		x1,y2);
+
+	/** Color change? **/
+	if (color != -1 && color != context->SelectedStyle.Color)
+	    {
+	    prt_psod_Output_va(context, "%.3f %.3f %.3f RGB\n", 
+		    ((context->SelectedStyle.Color>>16) & 0xFF) / 255.0,
+		    ((context->SelectedStyle.Color>>8) & 0xFF) / 255.0,
+		    ((context->SelectedStyle.Color) & 0xFF) / 255.0);
+	    }
 
     return context->CurVPos + height;
     }

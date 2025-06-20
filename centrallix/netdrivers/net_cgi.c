@@ -10,8 +10,10 @@
 #include "cxlib/mtlexer.h"
 #include "cxlib/util.h"
 #include "cxlib/exception.h"
+#include "cxlib/strtcpy.h"
 #include "obj.h"
 #include "stparse.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -49,8 +51,8 @@
 /*** This is used to keep track of user/password/cookie information ***/
 typedef struct
     {
-    char	Username[32];
-    char	Password[32];
+    char	Username[CX_USERNAME_SIZE];
+    char	Password[CX_PASSWORD_SIZE];
     char	Cookie[32];
     void*	Session;
     int		IsNewCookie;
@@ -522,7 +524,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	/** GET DIRECTORY LISTING mode. **/
 	else if (!strcmp(find_inf->StrVal,"list"))
 	    {
-	    query = objOpenQuery(target_obj,"",NULL,NULL,NULL);
+	    query = objOpenQuery(target_obj,"",NULL,NULL,NULL,0);
 	    if (query)
 	        {
 		sprintf(sbuf,"<HTML><HEAD><META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\"></HEAD><BODY><TT><A HREF=%s/..>..</A><BR>\n",url_inf->StrVal);
@@ -1000,8 +1002,8 @@ nht_internal_ConnHandler(void* conn_v)
 	        thExit();
 		}
 	    nsess = (pNhtSessionData)nmSysMalloc(sizeof(NhtSessionData));
-	    strcpy(nsess->Username, mssUserName());
-	    strcpy(nsess->Password, mssPassword());
+	    strtcpy(nsess->Username, mssUserName(), sizeof(nsess->Username));
+	    strtcpy(nsess->Password, mssPassword(), sizeof(nsess->Password));
 	    nsess->Session = thGetParam(NULL,"mss");
 	    nsess->IsNewCookie = 1;
 	    nsess->ObjSess = objOpenSession("/");
