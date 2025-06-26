@@ -115,23 +115,32 @@ int aposSpaceOutLines(pXArray, pXArray, int);	/**Adjusts spaces between lines to
 int aposSnapWidgetsToGrid(pXArray, int);	/**Refreshes widget dimensions to match adjusted grid**/
 int aposProcessWindows(pWgtrNode, pWgtrNode);	/**Makes a pass through the tree to process windows**/
 
-/** # defines **/
+/** # defines names for magic values to make them easier to read. **/
+
+/** Indicates how a line links to a widget. */
 #define APOS_SWIDGETS 	1
 #define APOS_EWIDGETS 	2
 
+/*** Indicates if a section or line is a row (horizontal) or a column (vertical).
+ *** A row spans horizontally between two vertical lines, and a column spans
+ *** vertically between two horizontal lines.
+ ***/
 #define APOS_ROW 	1
 #define APOS_COL 	2
 
 #define APOS_FUDGEFACTOR 0.5
 
-/** The greatest width between two widgets that still defines them as "adjacent," 
-*** indicating that we don't want to increase the distance between them **/
+/*** The greatest width between two widgets that still defines them as
+ *** "adjacent," indicating that we don't want to increase the distance
+ *** between them. Therefore, a section of this size or less is considered
+ *** a "spacer" which will not be resized.
+ ***/
 #define APOS_MINSPACE 20
 
-/**Lowest acceptable width or height for a widget**/
+/** The lowest acceptable width or height for a widget. **/
 #define APOS_MINWIDTH 30
 
-/**Default flexibilities for widgetless gaps in expanding or contracting applications **/
+/** Default flexibilities for widgetless gaps in expanding or contracting applications. **/
 #define APOS_EGAPFLEX 30
 #define APOS_CGAPFLEX 50
 
