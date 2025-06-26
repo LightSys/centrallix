@@ -1312,6 +1312,9 @@ wgtrGetPropertyType(pWgtrNode widget, char* name)
 		 !strcmp(name, "r_x") || !strcmp(name, "r_y") || !strcmp(name, "r_width") || !strcmp(name, "r_height") ||
 		 !strcmp(name, "fl_x") || !strcmp(name, "fl_y") || !strcmp(name, "fl_width") || !strcmp(name, "fl_height"))
 	    return DATA_T_INTEGER;
+	else if (!strcmp(name, "adj_weight_x") || !strcmp(name, "adj_weight_y") ||
+		 !strcmp(name, "adj_weight_w") || !strcmp(name, "adj_weight_h"))
+	    return DATA_T_DOUBLE;
 	count = xaCount(&(widget->Properties));
 	for (i=0;i<count;i++)
 	    {
@@ -1351,6 +1354,16 @@ wgtrGetPropertyValue(pWgtrNode widget, char* name, int datatype, pObjData val)
 		if (!strcmp(name+3, "y")) { val->Integer = widget->fl_y; return 0; }
 		if (!strcmp(name+3, "width")) { val->Integer = widget->fl_width; return 0; }
 		if (!strcmp(name+3, "height")) { val->Integer = widget->fl_height; return 0; }
+		}
+	    }
+	if (datatype == DATA_T_DOUBLE)
+	    {
+	    if (!strncmp(name, "adj_weight_", 11))
+	    	{
+		if (!strcmp(name+11, "x")) { val->Double = (double)widget->xAdjWeight; return 0; }
+		else if (!strcmp(name+11, "y")) { val->Double = (double)widget->yAdjWeight; return 0; }
+		else if (!strcmp(name+11, "w")) { val->Double = (double)widget->wAdjWeight; return 0; }
+		else if (!strcmp(name+11, "h")) { val->Double = (double)widget->hAdjWeight; return 0; }
 		}
 	    }
 	else if (datatype == DATA_T_STRING)
