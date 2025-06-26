@@ -1419,6 +1419,10 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 			xsDeInit(&proptxt);
 			xsDeInit(&exptxt);
 			break;
+
+		    default:
+			htrAddScriptWgtr_va(s, "%STR&SYM:'Unknown Datatype (%INT) - Add it in ht_render.c:htr_internal_WriteWgtrProperty()', ", propname, t);
+			break;
 		    }
 		}
 	    }
