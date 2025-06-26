@@ -833,15 +833,18 @@ pXArray FirstCross, LastCross;
     /** Add the 2 horizontal border lines, unless parent is a scrollpane. **/
     if(strcmp(Parent->Type, "widget/scrollpane"))
         {
-	    if(aposCreateLine(NULL, HLines, 0, 0, 1, 0, 0) < 0)
+	    int minHeightLoc = 0, maxHeightLoc = Parent->pre_height - isWin * 24;
+	    if(aposCreateLine(NULL, HLines, minHeightLoc, APOS_NOT_LINKED, APOS_IS_BORDER, 0, APOS_HORIZONTAL) < 0)
 	        goto CreateLineError;
-	    if(aposCreateLine(NULL, HLines, (Parent->pre_height-isWin*24), 0, 1, height_adj, 0) < 0)
+	    if(aposCreateLine(NULL, HLines, maxHeightLoc, APOS_NOT_LINKED, APOS_IS_BORDER, height_adj, APOS_HORIZONTAL) < 0)
 	        goto CreateLineError;
         }
 
     /** Add the 2 vertical border lines. **/
+    int minWidthLoc = 0, maxWidthLoc = (Parent->pre_width-isSP*18);
+    if(aposCreateLine(NULL, VLines, minWidthLoc, APOS_NOT_LINKED, APOS_IS_BORDER, 0, APOS_VERTICAL) < 0)
         goto CreateLineError;
-    if(aposCreateLine(NULL, VLines, (Parent->pre_width-isSP*18), 0, 1, width_adj, 1) < 0)
+    if(aposCreateLine(NULL, VLines, maxWidthLoc, APOS_NOT_LINKED, APOS_IS_BORDER, width_adj, APOS_VERTICAL) < 0)
         goto CreateLineError;
 
     /** Recursively add the nonborder lines for all child nodes. **/
@@ -953,8 +956,10 @@ pWgtrNode C;
 			     *** start line and the bottom line is the end line
 			     *** because Y increases as we decend the page.
 			     ***/
+			    int minY = (C->y), maxY = (C->y + C->height + isTopTab*24);
+			    if(aposCreateLine(C, HLines, minY, APOS_SWIDGETS, APOS_NOT_BORDER, 0, APOS_HORIZONTAL) < 0)
 			        goto CreateLineError;
-			    if(aposCreateLine(C, HLines, (C->y + C->height + isTopTab*24), APOS_EWIDGETS, 0, height_adj, 0) < 0)
+			    if(aposCreateLine(C, HLines, maxY, APOS_EWIDGETS, APOS_NOT_BORDER, height_adj, APOS_HORIZONTAL) < 0)
 			        goto CreateLineError;
 			}
 		    
@@ -965,8 +970,10 @@ pWgtrNode C;
 		     *** line is the end line because X increases as we move
 		     *** right along the page.
 		     ***/
+		    int minX = (C->x), maxX = (C->x + C->width + isSideTab*tabWidth);
+		    if(aposCreateLine(C, VLines, minX, APOS_SWIDGETS, APOS_NOT_BORDER, 0, APOS_VERTICAL) < 0)
 			goto CreateLineError;
-		    if(aposCreateLine(C, VLines, (C->x + C->width + isSideTab*tabWidth), APOS_EWIDGETS, 0, width_adj, 1) < 0)
+		    if(aposCreateLine(C, VLines, maxX, APOS_EWIDGETS, APOS_NOT_BORDER, width_adj, APOS_VERTICAL) < 0)
 			goto CreateLineError;
 	        }
 	}
@@ -1470,9 +1477,7 @@ float TotalSum=0;
 	{
 	    PrevSect = (pAposSection)xaGetItem(Sections, (i-1));
 	    FlexWeight = (float)(PrevSect->Flex) / (float)(TotalFlex);
-	    SizeWeight = 0;
-	    if(FlexWeight > 0)
-	        SizeWeight = (float)(PrevSect->Width) / (float)(TotalFlexibleSpace);
+	    SizeWeight = (FlexWeight > 0) ? (float)(PrevSect->Width) / (float)(TotalFlexibleSpace) : 0;
 
 	    TotalSum += (FlexWeight * SizeWeight);
 	}

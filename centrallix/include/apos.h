@@ -118,8 +118,13 @@ int aposProcessWindows(pWgtrNode, pWgtrNode);	/**Makes a pass through the tree t
 /** # defines names for magic values to make them easier to read. **/
 
 /** Indicates how a line links to a widget. */
+#define APOS_NOT_LINKED 0
 #define APOS_SWIDGETS 	1
 #define APOS_EWIDGETS 	2
+
+/** Indicates if a line is vertical. */
+#define APOS_VERTICAL 	1
+#define APOS_HORIZONTAL 0
 
 /*** Indicates if a section or line is a row (horizontal) or a column (vertical).
  *** A row spans horizontally between two vertical lines, and a column spans
@@ -127,6 +132,10 @@ int aposProcessWindows(pWgtrNode, pWgtrNode);	/**Makes a pass through the tree t
  ***/
 #define APOS_ROW 	1
 #define APOS_COL 	2
+
+/** Indicates if a line is a border. */
+#define APOS_IS_BORDER 	1
+#define APOS_NOT_BORDER 0
 
 #define APOS_FUDGEFACTOR 0.5
 
