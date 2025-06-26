@@ -1482,6 +1482,10 @@ float TotalSum=0;
 	    TotalSum += (FlexWeight * SizeWeight);
 	}
 
+    /** The initial borders do not adjust.**/
+    pAposLine leftBorder = (pAposLine)xaGetItem(Lines, 0);
+    leftBorder->LocAdjWeight = leftBorder->MyAdjWeight = 0.0f;
+
     for(i=1; i<count; ++i)	//starts at i=1 to skip the first borderline
         {
 	    CurrLine = (pAposLine)xaGetItem(Lines, i);
@@ -1493,20 +1497,32 @@ float TotalSum=0;
 	    /** unless there's at least some flexibility, don't factor in size **/
 	    if(FlexWeight > 0)
 	        SizeWeight = (float)(PrevSect->Width) / (float)(TotalFlexibleSpace);
+
+	    /*** Calculate the adjustment weight, and also save it so we can
+	     *** replicate some of the following logic in the CSS we will
+	     *** eventually send to the client.
+	     ***/
+	    float AdjWeight = PrevSect->AdjWeight = (float)(FlexWeight*SizeWeight)/TotalSum;
 	    
 	    /**for expanding lines**/
 	    if(Diff > 0)
 	        {
-		    /*Adj = APOS_FUDGEFACTOR + (float)(Diff) * ((float)(FlexWeight+SizeWeight)/2.0);*/
-		    Adj = APOS_FUDGEFACTOR + (float)(Diff) * ((float)(FlexWeight*SizeWeight)/TotalSum);
+		    /** Calculate adjustment using the adjustment weight. **/
+		    Adj = (float)(Diff) * AdjWeight + APOS_FUDGEFACTOR;
+		    
+		    /** Store the line adjustment weight for responsive CSS later.**/
+		    CurrLine->LocAdjWeight = PrevLine->LocAdjWeight + AdjWeight;
+		    CurrLine->MyAdjWeight = AdjWeight;
+
+		    /** Apply the calculated adjustment.**/
 		    CurrLine->Loc = PrevLine->Loc + PrevSect->Width + Adj;
 		    PrevSect->Width += Adj;
 		}
 	    /**for contracting lines**/
 	    else if(Diff < 0)
 		{
-		    /*Adj = (float)(Diff) * ((float)(FlexWeight+SizeWeight)/2.0) - APOS_FUDGEFACTOR;*/
-		    Adj = (float)(Diff) * ((float)(FlexWeight*SizeWeight)/TotalSum) - APOS_FUDGEFACTOR;
+		    /** Calculate adjustment using the adjustment weight. **/
+		    Adj = (float)(Diff) * AdjWeight - APOS_FUDGEFACTOR;
 		    
 		    /** if the section width will be unacceptably 
 		    *** narrow or negative after the adjustment **/
@@ -1572,8 +1588,14 @@ pWgtrNode Widget;
 	    for(j=0; j<count; ++j)
 	        {
 	            Widget = (pWgtrNode)xaGetItem(&(CurrLine->SWidgets), j);
-		    if(flag == APOS_ROW) Widget->y = CurrLine->Loc;
-		    else Widget->x = CurrLine->Loc;
+		    if(flag == APOS_ROW) {
+			Widget->y = CurrLine->Loc;
+			Widget->yAdjWeight = CurrLine->LocAdjWeight;
+		    }
+		    else {
+			Widget->x = CurrLine->Loc;
+			Widget->xAdjWeight = CurrLine->LocAdjWeight;
+		    }
 		}
 	    
 	    /** Adjusts width or height of widgets ending on this line **/
@@ -1593,6 +1615,13 @@ pWgtrNode Widget;
 			    else 
 				/*Widget->height = APOS_MINWIDTH;*/
 				Widget->height = Widget->pre_height;
+			
+			    /*** The widget copies the adjustment weight of the
+			     *** line, ignoring APOS_MINWIDTH. This might lead
+			     *** to problems down the road, but I plan to fix
+			     *** them if and when I encounter them.
+			     ***/
+			    Widget->hAdjWeight = CurrLine->MyAdjWeight;
 			}
 		    else if(flag==APOS_COL  &&  Widget->fl_width)
 		        {
@@ -1605,6 +1634,13 @@ pWgtrNode Widget;
 			    else
 				/*Widget->width = APOS_MINWIDTH;*/
 				Widget->width = Widget->pre_width;
+
+			    /*** The widget copies the adjustment weight of the
+			     *** line, ignoring APOS_MINWIDTH. This might lead
+			     *** to problems down the road, but I plan to fix
+			     *** them if and when I encounter them.
+			     ***/
+			    Widget->hAdjWeight = CurrLine->MyAdjWeight;
 			}
 		}
 	}
