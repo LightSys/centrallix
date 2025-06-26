@@ -51,6 +51,14 @@ struct _APOS_L
     XArray	CWidgets;	//widgets that cross the line
     pAposSection SSection;	// section starting with this line
     pAposSection ESection;	// section ending with this line
+    
+    /*** Used to find the distance the line should move when the parent
+     *** container is resized. LocAdjWeight is the weight that this line
+     *** moves relative to the container. MyAdjWeight is the amount that
+     *** this line moves relative to the line before (left of) it.
+     *** Used for generating responsive CSS.
+     ***/
+    float   LocAdjWeight, MyAdjWeight;
     };
     
 /**Section Structure (used for both rows and columns)**/
@@ -63,6 +71,19 @@ struct _APOS_S
     int		DesiredWidth;	//When we need to resize to honor max/mins
     int		isSpacer;	//set for narrow spaces between widgets
     int		isBorder;	//set for grid border sections
+
+    /*** Computed value which stores the weight for how much this section
+     *** should be adjusted when resizing. All sections along each dimention
+     *** inside a single page or other container should have a total adjWeight
+     *** of 1.0.
+     ***
+     *** For example, if we have two sections with adj weights of 0.4 and 0.6.
+     *** If the container/page is stretched by 10 px, then 4 px is distributed
+     *** to the first section and 6 px is distributed to the second section.
+     ***
+     *** Warning: Currently unused.
+     ***/
+    float   AdjWeight;
     };
 
 /**Grid Structure**/

@@ -102,6 +102,8 @@ typedef struct _WN
     int		pre_x, pre_y, pre_width, pre_height;  /** pre-layout geom. **/
     int		fl_x, fl_y, fl_width, fl_height;/** Flexibility **/
     double  	fx, fy, fw, fh;			/** internal flexibility calculations **/
+    float   	xAdjWeight, yAdjWeight;		/** Responsive CSS adjustment weights for x and y */
+    float   	wAdjWeight, hAdjWeight;		/** Responsive CSS adjustment weights for width and height */
     int		min_width, min_height;		/** absolute minimums **/
     int		x, y, width, height;		/** actual geometry **/
     int		top, bottom, left, right;	/** container offsets **/
