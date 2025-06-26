@@ -1405,6 +1405,10 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 			htrAddScriptWgtr_va(s, "%STR&SYM:%INT, ", propname, od.Integer);
 			break;
 
+		    case DATA_T_DOUBLE:
+			htrAddScriptWgtr_va(s, "%STR&SYM:%DBL, ", propname, od.Double);
+			break;
+
 		    case DATA_T_STRING:
 			htrAddScriptWgtr_va(s, "%STR&SYM:'%STR&JSSTR', ", propname, od.String);
 			break;
