@@ -99,11 +99,26 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name,wgtrGetName(tree),sizeof(name));
 
 	/** Add the stylesheet for the layer **/
-	htrAddStylesheetItem_va(s,"\t#al%POSbase { POSITION:absolute; VISIBILITY:inherit; OVERFLOW:visible; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",
-	//htrAddStylesheetItem_va(s,"\t#al%POSbase { POSITION:absolute; VISIBILITY:inherit; OVERFLOW:visible; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; CLIP:rect(%INTpx,%INTpx,%INTpx,%INTpx); Z-INDEX:%POS; }\n",
-		id,x,y,w,h,
-		//-1, w+1, h+1, -1,
-		z);
+	htrAddStylesheetItem_va(s,
+	    "\t#al%POSbase {"
+		"POSITION:absolute; "
+		"VISIBILITY:inherit; "
+		"OVERFLOW:visible; "
+		"LEFT:%POSpx; "
+		"TOP:%POSpx; "
+		"WIDTH:%POSpx; "
+		"HEIGHT:%POSpx; "
+		//"CLIP:rect(%INTpx,%INTpx,%INTpx,%INTpx);"
+		"Z-INDEX:%POS; "
+	    "}\n",
+	    id,
+	    x,
+	    y,
+	    w,
+	    h,
+	    //-1, w+1, h+1, -1,
+	    z
+	);
 
 	/** Linkage **/
 	htrAddWgtrObjLinkage_va(s, tree, "al%POSbase",id);
