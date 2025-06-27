@@ -2694,10 +2694,10 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 	/** Generate the style CSS **/
 	htrAddStylesheetItem_va(s,
 	    "\t%STR {"
-		"left:%POSpx; "
-		"top:%POSpx; "
-		"%[width:%POSpx; %]"
-		"%[height:%POSpx; %]"
+		"left:%DBL%%; "
+		"top:%DBL%%; "
+		"%[width:%DBL%%; %]" // BUG!
+		"%[height:%DBL%%; %]"// BUG!
 		"%[z-index:%POS; %]"
 		"%[color:%STR&CSSVAL; %]"
 		"%[font-weight:bold; %]"
@@ -2716,10 +2716,10 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 		"%[%STR %]"
 	    "}\n",
 	    id,
-	    x,
-	    y, 
-	    (w > 0), w,
-	    (h > 0), h,
+	             (double)x / node->Root->width * 100.0,
+	             (double)y / node->Root->height * 100.0,
+	    (w > 0), (double)w / node->Parent->width * 100.0,
+	    (h > 0), (double)h / node->Parent->height * 100.0,
 	    (z > 0), z,
 	    (*textcolor), textcolor,
 	    (!strcmp(style, "bold")),
