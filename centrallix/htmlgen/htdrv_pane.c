@@ -154,24 +154,64 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Ok, write the style header items. **/
-	if (style == 2) /* flat */
-	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-radius: %INTpx; %STR}\n",id,border_radius,main_bg);
-	    }
+	int offset = 0;
+	if (style == 2) { /* flat, the default style, nothing to do */ }
 	else if (style == 0 || style == 1) /* lowered or raised */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);
+	    offset = -2 * box_offset;
+	    htrAddStylesheetItem_va(s,
+		"\t#pn%POSmain {"
+		    "border-style: solid; "
+		    "border-width: 1px; "
+		    "border-color: %STR %STR %STR %STR; "
+		"}\n",
+		id,
+		c1, c2, c2, c1
+	    );
 	    }
 	else if (style == 3) /* bordered */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
+	    offset = -2 * box_offset;
+	    htrAddStylesheetItem_va(s,
+		"\t#pn%POSmain {"
+		    "border-style: solid;"
+		    "border-width: 1px; "
+		    "border-color:%STR&CSSVAL; "
+		"}\n",
+		id,
+		bdr
+	    );
 	    }
+	
+	htrAddStylesheetItem_va(s,
+	    "\t#pn%POSmain {"
+		"POSITION:absolute; "
+		"VISIBILITY:inherit; "
+		"overflow:hidden; "
+		"LEFT:%INTpx; "
+		"TOP:%INTpx; "
+		"WIDTH:%POSpx; "
+		"HEIGHT:%POSpx; "
+		"Z-INDEX:%POS; "
+		"border-radius: %INTpx;"
+		"%STR"
+	    "}\n",
+	    id,
+	    x,
+	    y,
+	    w + offset,
+	    h + offset,
+	    z,
+	    border_radius,
+	    main_bg
+	);
+
 	if (shadow_radius > 0)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_radius, shadow_color);
+	    htrAddStylesheetItem_va(s,
+		"\t#pn%POSmain { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n",
+		id, shadow_offset, shadow_offset, shadow_radius, shadow_color
+	    );
 	    }
 
 	/** DOM linkages **/
