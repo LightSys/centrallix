@@ -2692,20 +2692,51 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 	    shadow_angle = strtod(strval, NULL);
 
 	/** Generate the style CSS **/
-	htrAddStylesheetItem_va(s, "\t%STR { left:%POSpx; top:%POSpx; %[width:%POSpx; %]%[height:%POSpx; %]%[z-index:%POS; %]%[color:%STR&CSSVAL; %]%[font-weight:bold; %]%[text-decoration:underline; %]%[font-style:italic; %]%[font:%STR&CSSVAL; %]%[font-size:%DBLpx; %]%[background-color:%STR&CSSVAL; %]%[background-image:url('%STR&CSSURL'); %]%[padding:%DBLpx; %]%[border:1px %STR&CSSVAL %STR&CSSVAL; %]%[border-radius:%DBLpx; %]%[text-align:%STR&CSSVAL; %]%[white-space:nowrap; %]%[box-shadow:%DBLpx %DBLpx %DBLpx %STR&CSSVAL%STR&CSSVAL; %]%[%STR %]}\n",
-		id,
-		x, y, w > 0, w, h > 0, h, z > 0, z,
-		*textcolor, textcolor,
-		!strcmp(style, "bold"), !strcmp(style, "underline"), !strcmp(style, "italic"),
-		*font, font, font_size > 0, font_size,
-		*bgcolor, bgcolor, *background, background,
-		padding > 0, padding,
-		*border_color, (*border_style)?border_style:"solid", border_color, border_radius > 0, border_radius,
-		*align, align,
-		!wrap,
-		(*shadow_color && shadow_radius > 0), sin(shadow_angle*M_PI/180)*shadow_offset, cos(shadow_angle*M_PI/180)*(-shadow_offset), shadow_radius, shadow_color, (!strcasecmp(shadow_location,"inside"))?" inset":"",
-		addl && *addl, addl
-		);
+	htrAddStylesheetItem_va(s,
+	    "\t%STR {"
+		"left:%POSpx; "
+		"top:%POSpx; "
+		"%[width:%POSpx; %]"
+		"%[height:%POSpx; %]"
+		"%[z-index:%POS; %]"
+		"%[color:%STR&CSSVAL; %]"
+		"%[font-weight:bold; %]"
+		"%[text-decoration:underline; %]"
+		"%[font-style:italic; %]"
+		"%[font:%STR&CSSVAL; %]"
+		"%[font-size:%DBLpx; %]"
+		"%[background-color:%STR&CSSVAL; %]"
+		"%[background-image:url('%STR&CSSURL'); %]"
+		"%[padding:%DBLpx; %]"
+		"%[border:1px %STR&CSSVAL %STR&CSSVAL; %]"
+		"%[border-radius:%DBLpx; %]"
+		"%[text-align:%STR&CSSVAL; %]"
+		"%[white-space:nowrap; %]"
+		"%[box-shadow:%DBLpx %DBLpx %DBLpx %STR&CSSVAL%STR&CSSVAL; %]"
+		"%[%STR %]"
+	    "}\n",
+	    id,
+	    x,
+	    y, 
+	    (w > 0), w,
+	    (h > 0), h,
+	    (z > 0), z,
+	    (*textcolor), textcolor,
+	    (!strcmp(style, "bold")),
+	    (!strcmp(style, "underline")),
+	    (!strcmp(style, "italic")),
+	    (*font), font,
+	    (font_size > 0), font_size,
+	    (*bgcolor), bgcolor,
+	    (*background), background,
+	    (padding > 0), padding,
+	    (*border_color), (*border_style) ? border_style : "solid", border_color,
+	    (border_radius > 0), border_radius,
+	    (*align), align,
+	    (!wrap),
+	    (*shadow_color && shadow_radius > 0), sin(shadow_angle * M_PI/180) * shadow_offset, cos(shadow_angle * M_PI/180) *(-shadow_offset), shadow_radius, shadow_color, (!strcasecmp(shadow_location,"inside"))?" inset":"",
+	    (addl && *addl), addl
+	);
 
     return 0;
     }
