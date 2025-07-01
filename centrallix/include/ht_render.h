@@ -366,5 +366,12 @@ int htruleRegister(char* ruletype, ...);
 #define ht_flex_format "calc(%POSpx + (%DBL%% - %POSpx) * %DBL)"
 #define ht_flex(size, total, flex) (size), (double)(size) / (total) * 100.0, (size), (double)(flex) / 100.0
 
+/*** The widget fl_x and fl_y fields are never used in the generated layout.
+ *** Thus, the CSS I created to add responsiveness uses the values below
+ *** instead of the provided value to preserve backwards compatibility.
+ ***/
+#define ht_fl_x_compat 100.0
+#define ht_fl_y_compat 100.0
+
 #endif /* _HT_RENDER_H */
 
