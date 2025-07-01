@@ -1496,6 +1496,10 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	    htr_internal_WriteWgtrProperty(s, tree, "r_y");
 	    htr_internal_WriteWgtrProperty(s, tree, "r_width");
 	    htr_internal_WriteWgtrProperty(s, tree, "r_height");
+	    htr_internal_WriteWgtrProperty(s, tree, "fl_x");
+	    htr_internal_WriteWgtrProperty(s, tree, "fl_y");
+	    htr_internal_WriteWgtrProperty(s, tree, "fl_width");
+	    htr_internal_WriteWgtrProperty(s, tree, "fl_height");
 	    htr_internal_WriteWgtrProperty(s, tree, "adj_weight_x");
 	    htr_internal_WriteWgtrProperty(s, tree, "adj_weight_y");
 	    htr_internal_WriteWgtrProperty(s, tree, "adj_weight_w");

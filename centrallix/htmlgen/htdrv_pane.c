@@ -197,8 +197,8 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 		"%STR"
 	    "}\n",
 	    id,
-	    (double)tree->x / tree->Root->width * 100.0,
-	    (double)tree->y / tree->Root->height * 100.0,
+	    (double)x / tree->Root->width * 100.0,
+	    (double)y / tree->Root->height * 100.0,
 	    (double)(w + offset) / tree->Parent->width * 100.0,
 	    (double)(h + offset) / tree->Parent->height * 100.0,
 	    z,
