@@ -2698,10 +2698,10 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 	/** Generate the style CSS **/
 	htrAddStylesheetItem_va(s,
 	    "\t%STR {"
-		"left:%DBL%%; "
-		"top:%DBL%%; "
-		"%[width:%DBL%%; %]" // BUG!
-		"%[height:%DBL%%; %]"// BUG!
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"%[width:"ht_flex_format"; %]" // BUG!
+		"%[height:"ht_flex_format"; %]"// BUG!
 		"%[z-index:%POS; %]"
 		"%[color:%STR&CSSVAL; %]"
 		"%[font-weight:bold; %]"
@@ -2720,10 +2720,10 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 		"%[%STR %]"
 	    "}\n",
 	    id,
-	             (double)x / node->Root->width * 100.0,
-	             (double)y / node->Root->height * 100.0,
-	    (w > 0), (double)w / node->Parent->width * 100.0,
-	    (h > 0), (double)h / node->Parent->height * 100.0,
+	             ht_flex(x, node->Parent->width, 100.0),
+	             ht_flex(y, node->Parent->height, 100.0),
+	    (w > 0), ht_flex(w, node->Parent->width, node->fl_width),
+	    (h > 0), ht_flex(h, node->Parent->height, node->fl_height),
 	    (z > 0), z,
 	    (*textcolor), textcolor,
 	    (!strcmp(style, "bold")),

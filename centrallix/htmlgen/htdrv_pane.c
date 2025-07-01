@@ -188,19 +188,19 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 		"POSITION:absolute; "
 		"VISIBILITY:inherit; "
 		"overflow:hidden; "
-		"LEFT:%DBL%%; "
-		"TOP:%DBL%%; "
-		"WIDTH:%DBL%%; "
-		"HEIGHT:%DBL%%; "
+		"LEFT:"ht_flex_format"; "
+		"TOP:"ht_flex_format"; "
+		"WIDTH:"ht_flex_format"; "
+		"HEIGHT:"ht_flex_format"; "
 		"Z-INDEX:%POS; "
 		"border-radius: %INTpx;"
 		"%STR"
 	    "}\n",
 	    id,
-	    (double)x / tree->Root->width * 100.0,
-	    (double)y / tree->Root->height * 100.0,
-	    (double)(w + offset) / tree->Parent->width * 100.0,
-	    (double)(h + offset) / tree->Parent->height * 100.0,
+	    ht_flex(x, tree->Parent->width, 100.0),
+	    ht_flex(y, tree->Parent->height, 100.0),
+	    ht_flex(w + offset, tree->Parent->width, tree->fl_width),
+	    ht_flex(h + offset, tree->Parent->height, tree->fl_height),
 	    z,
 	    border_radius,
 	    main_bg
