@@ -2720,8 +2720,8 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 		"%[%STR %]"
 	    "}\n",
 	    id,
-	             ht_flex(x, node->Parent->width, 100.0),
-	             ht_flex(y, node->Parent->height, 100.0),
+	             ht_flex(x, node->Parent->width, ht_fl_x_compat),
+	             ht_flex(y, node->Parent->height, ht_fl_y_compat),
 	    (w > 0), ht_flex(w, node->Parent->width, node->fl_width),
 	    (h > 0), ht_flex(h, node->Parent->height, node->fl_height),
 	    (z > 0), z,
