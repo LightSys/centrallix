@@ -78,6 +78,11 @@
  *** 
  *** XArray: This array also stores its size (nAlloc) and the number of items
  *** 	stored (nItems), so you don't have to pass that info separately.
+ ***
+ *** SWidgets, CWidgets, and EWidgets: Lines record which widgets start, cross,
+ *** 	and end on them. These categories are exclusive, so a widget which
+ *** 	starts on a given line will be in the SWidgets list but it will not be
+ *** 	in the CWidgets list.
  ***/
 
 #include <stdio.h>
@@ -529,8 +534,10 @@ int i=0, sectCount=0, TotalWidth=0, ProductSum=0;
 
     if (!theGrid) return 0;
 
-    /** Calculate average row flexibility, weighted by height. **/
-    /** Note: Height is called width because rows are 1 dimentional. **/
+    /*** Calculate average row flexibility, weighted by height.
+     *** Note: Section height is called width here because rows
+     ***       are one dimentional and the feild is reused.
+     ***/
     sectCount = xaCount(&(theGrid->Rows));
     for(i=0; i<sectCount; ++i)
         {
@@ -1470,8 +1477,7 @@ float TotalSum=0;
      ***/
     if(TotalFlex == 0) return Diff;
     
-    /** sets each line's location equal to the previous line's location
-    *** plus the adjusted width of the preceding section **/
+    /** Sum the flex weights of all sections, weighted by their size. **/
     count = xaCount(Lines);
     for(i=1; i<count; ++i)
 	{
@@ -1492,11 +1498,7 @@ float TotalSum=0;
 	    PrevLine = (pAposLine)xaGetItem(Lines, (i-1));
 	    PrevSect = (pAposSection)xaGetItem(Sections, (i-1));
 	    FlexWeight = (float)(PrevSect->Flex) / (float)(TotalFlex);
-	    SizeWeight = 0;
-	    
-	    /** unless there's at least some flexibility, don't factor in size **/
-	    if(FlexWeight > 0)
-	        SizeWeight = (float)(PrevSect->Width) / (float)(TotalFlexibleSpace);
+	    SizeWeight = (FlexWeight > 0) ? (float)(PrevSect->Width) / (float)(TotalFlexibleSpace) : 0;
 
 	    /*** Calculate the adjustment weight, and also save it so we can
 	     *** replicate some of the following logic in the CSS we will
@@ -1598,7 +1600,7 @@ pWgtrNode Widget;
 		    }
 		}
 	    
-	    /** Adjusts width or height of widgets ending on this line **/
+	    /** Adjusts width or height of widgets ending on this line. **/
 	    count = xaCount(&(CurrLine->EWidgets));
 	    for(j=0; j<count; ++j)
 	        {
@@ -1627,10 +1629,14 @@ pWgtrNode Widget;
 		        {
 			    /** Calculate the new size, taking APOS_MINWIDTH into account.**/
 			    newsize = CurrLine->Loc - Widget->x - isSideTab*tabWidth;
+			    
+			    /** If the new size is now smaller than the minimum, clamp it. **/
 			    if (newsize < APOS_MINWIDTH && Widget->pre_width >= APOS_MINWIDTH)
 				Widget->width = APOS_MINWIDTH;
+			    /** If the size is bigger than the minimum, or growing, that's fine. **/
 			    else if (newsize >= APOS_MINWIDTH || newsize >= Widget->pre_width)
 				Widget->width = newsize;
+			    /** Otherwise, we can't update the size. **/
 			    else
 				/*Widget->width = APOS_MINWIDTH;*/
 				Widget->width = Widget->pre_width;
