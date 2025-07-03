@@ -362,9 +362,9 @@ int htrBuildClientWgtr(pHtSession s, pWgtrNode tree);
 /** For the rule module... **/
 int htruleRegister(char* ruletype, ...);
 
-/** My attempt to make flex code more readable. **/
-#define ht_flex_format "calc(%POSpx + (%DBL%% - %POSpx) * %DBL)"
-#define ht_flex(size, total, flex) (size), (double)(size) / (total) * 100.0, (size), (double)(flex) / 100.0
+/** ===================================================== **/
+/** Define macros for implementing responsive dimensions. **/
+/** ===================================================== **/
 
 /*** The widget fl_x and fl_y fields are never used in the generated layout.
  *** Thus, the CSS I created to add responsiveness uses the values below

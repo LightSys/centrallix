@@ -158,12 +158,13 @@ int aposProcessWindows(pWgtrNode, pWgtrNode);	/**Makes a pass through the tree t
 #define APOS_IS_BORDER 	1
 #define APOS_NOT_BORDER 0
 
+/** Allows rounding when casting floats or doubles to ints. */
 #define APOS_FUDGEFACTOR 0.5
 
 /*** The greatest width between two widgets that still defines them as
  *** "adjacent," indicating that we don't want to increase the distance
  *** between them. Therefore, a section of this size or less is considered
- *** a "spacer" which will not be resized.
+ *** a "spacer" which will not be resized (aka. flex = 0).
  ***/
 #define APOS_MINSPACE 20
 
