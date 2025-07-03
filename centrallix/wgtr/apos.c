@@ -1505,20 +1505,20 @@ float TotalSum=0;
 	     *** eventually send to the client.
 	     ***/
 	    float AdjWeight = PrevSect->AdjWeight = (float)(FlexWeight*SizeWeight)/TotalSum;
+
+	    /** Store the line adjustment weight for responsive CSS later.**/
+	    CurrLine->LocAdjWeight = PrevLine->LocAdjWeight + AdjWeight;
+	    CurrLine->MyAdjWeight = AdjWeight;
 	    
 	    /**for expanding lines**/
 	    if(Diff > 0)
 	        {
 		    /** Calculate adjustment using the adjustment weight. **/
 		    Adj = (float)(Diff) * AdjWeight + APOS_FUDGEFACTOR;
-		    
-		    /** Store the line adjustment weight for responsive CSS later.**/
-		    CurrLine->LocAdjWeight = PrevLine->LocAdjWeight + AdjWeight;
-		    CurrLine->MyAdjWeight = AdjWeight;
 
 		    /** Apply the calculated adjustment.**/
-		    CurrLine->Loc = PrevLine->Loc + PrevSect->Width + Adj;
 		    PrevSect->Width += Adj;
+		    CurrLine->Loc = PrevLine->Loc + PrevSect->Width;
 		}
 	    /**for contracting lines**/
 	    else if(Diff < 0)
@@ -1551,8 +1551,8 @@ float TotalSum=0;
 			}
 		    else
 			{
-			    CurrLine->Loc = PrevLine->Loc + PrevSect->Width + Adj;
 			    PrevSect->Width += Adj;
+			    CurrLine->Loc = PrevLine->Loc + PrevSect->Width;
 			}
 		}
 	}
@@ -1623,11 +1623,11 @@ pWgtrNode Widget;
 			     *** to problems down the road, but I plan to fix
 			     *** them if and when I encounter them.
 			     ***/
-			    Widget->hAdjWeight = CurrLine->MyAdjWeight;
+			    Widget->hAdjWeight += CurrLine->MyAdjWeight;
 			}
 		    else if(flag==APOS_COL  &&  Widget->fl_width)
 		        {
-			    /** Calculate the new size, taking APOS_MINWIDTH into account.**/
+			    /** Calculate the new size, taking APOS_MINWIDTH into account. **/
 			    newsize = CurrLine->Loc - Widget->x - isSideTab*tabWidth;
 			    
 			    /** If the new size is now smaller than the minimum, clamp it. **/
@@ -1646,9 +1646,22 @@ pWgtrNode Widget;
 			     *** to problems down the road, but I plan to fix
 			     *** them if and when I encounter them.
 			     ***/
-			    Widget->hAdjWeight = CurrLine->MyAdjWeight;
+			    Widget->wAdjWeight += CurrLine->MyAdjWeight;
 			}
 		}
+
+	    /** Adjusts width or height of widgets ending on this line. **/
+	    count = xaCount(&(CurrLine->CWidgets));
+	    printf("Doing %d widgets.\n", count);
+	    for(j=0; j<count; ++j)
+	        {
+	            Widget = (pWgtrNode)xaGetItem(&(CurrLine->CWidgets), j);
+		    if(flag==APOS_ROW  &&  Widget->fl_height)
+		    	Widget->hAdjWeight += CurrLine->MyAdjWeight;
+		    else if(flag==APOS_COL  &&  Widget->fl_width)
+		    	Widget->wAdjWeight += CurrLine->MyAdjWeight;
+		}
+
 	}
 	
     return 0;

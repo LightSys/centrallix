@@ -370,8 +370,58 @@ int htruleRegister(char* ruletype, ...);
  *** Thus, the CSS I created to add responsiveness uses the values below
  *** instead of the provided value to preserve backwards compatibility.
  ***/
-#define ht_fl_x_compat 100.0
-#define ht_fl_y_compat 100.0
+/** @brief widget->fl_x is never used. Use this instead for compatibility. **/
+#define ht_fl_x_compat 1.0
+/** @brief widget->fl_y is never used. Use this instead for compatibility. **/
+#define ht_fl_y_compat 1.0
+
+/** @brief The qprintf format to specify a responsive dimension. **/
+#define ht_flex_format "calc(%INTpx + (%DBL%% - %INTpx) * %DBL)"
+/*** @brief The function which generates the values that should be passed to
+ *** qprintf in order to satisfy an ht_flex_format.
+ ***
+ *** @param size The original size of the ui element.
+ *** @param total The total size of the ui element's container.
+ *** @param flex The flexibility of the ui element. It is strongly recomended
+ ***             to generate this with an ht_get_fl function call.
+ *** @returns Several values to serve as parameters for a qprintf call.
+ ***/
+#define ht_flex(size, total, flex) (size), (double)(size) / (total) * 100.0, (size), (flex)
+/*** @param widget The widget to be queried.
+ *** @returns The flexibility of the widget in the x direction.
+ ***/
+#define ht_get_fl_x(widget) (ht_fl_x_compat)
+/*** @param widget The widget to be queried.
+ *** @returns The flexibility of the widget in the y direction.
+ ***/
+#define ht_get_fl_y(widget) (ht_fl_y_compat)
+/*** @param widget The widget to be queried.
+ *** @returns The flexibility of the widget in the width direction.
+ ***/
+#define ht_get_fl_w(widget) ((widget)->wAdjWeight)
+/*** @param widget The widget to be queried.
+ *** @returns The flexibility of the widget in the height direction.
+ ***/
+#define ht_get_fl_h(widget) ((widget)->hAdjWeight)
+/*** @brief A shortcut function to get the flexibility when writing the
+ ***        LEFT CSS attribute.
+ *** @param widget The widget to be queried.
+ *** @returns The flexibility of the widget in the left direction.
+ ***/
+#define ht_get_fl_l ht_get_fl_x
+/*** @brief A shortcut function to get the flexibility when writing the
+ ***        TOP CSS attribute.
+ *** @param widget The widget to be queried.
+ *** @returns The flexibility of the widget in the top direction.
+ ***/
+#define ht_get_fl_t ht_get_fl_y
+
+/*** Alternate formula suggested in the GitHub Issue. I think this should work
+ *** and be more efficient, but for some reason it doesn't at all, and I can't
+ *** understand why. I probably just implemented it wrong.
+ ***/
+// #define ht_flex_format "calc(%INTpx + (100%% - %INTpx) * %DBL)"
+// #define ht_flex(size, total, flex) (size), (total), (double)(flex) / 100.0
 
 #endif /* _HT_RENDER_H */
 

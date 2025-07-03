@@ -197,10 +197,10 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 		"%STR"
 	    "}\n",
 	    id,
-	    ht_flex(x, tree->Parent->width, ht_fl_x_compat),
-	    ht_flex(y, tree->Parent->height, ht_fl_y_compat),
-	    ht_flex(w + offset, tree->Parent->width, tree->fl_width),
-	    ht_flex(h + offset, tree->Parent->height, tree->fl_height),
+	    ht_flex(x,          tree->Parent->width,  ht_get_fl_x(tree)),
+	    ht_flex(y,          tree->Parent->height, ht_get_fl_y(tree)),
+	    ht_flex(w + offset, tree->Parent->width,  ht_get_fl_w(tree)),
+	    ht_flex(h + offset, tree->Parent->height, ht_get_fl_h(tree)),
 	    z,
 	    border_radius,
 	    main_bg
