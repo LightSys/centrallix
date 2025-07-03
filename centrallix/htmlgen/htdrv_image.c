@@ -145,7 +145,22 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    form[0]='\0';
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#img%POS { left:%INTpx; top:%INTpx; width:%POSpx; height:%POSpx; z-index:%POS; text-align:center; }\n",id,x,y,w,h,z);
+	htrAddStylesheetItem_va(s,
+	    "\t#img%POS { "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"height:"ht_flex_format"; "
+		"z-index:%POS; "
+		"text-align:center; "
+	    "}\n",
+	    id,
+	    ht_flex(x, tree->Parent->width,  ht_get_fl_x(tree)),
+	    ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
+	    ht_flex(w, tree->Parent->width,  ht_get_fl_w(tree)),
+	    ht_flex(h, tree->Parent->height, ht_get_fl_h(tree)),
+	    z
+	);
 
 	/** Init image widget (?) **/
 	htrAddWgtrObjLinkage_va(s, tree, "img%POS",id);

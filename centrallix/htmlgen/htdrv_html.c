@@ -101,17 +101,59 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    /** Only give x and y if supplied. **/
 	    if (x < 0 || y < 0)
-	        {
-	        htrAddStylesheetItem_va(s,"\t#ht%POSpane { POSITION:relative; VISIBILITY:inherit; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,w,z);
-	        htrAddStylesheetItem_va(s,"\t#ht%POSpane2 { POSITION:relative; VISIBILITY:hidden; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,w,z);
-	        htrAddStylesheetItem_va(s,"\t#ht%POSfader { POSITION:relative; VISIBILITY:hidden; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,w,z+1);
-	        }
+		{
+		htrAddStylesheetItem_va(s,"\t#ht%POSpane { POSITION:relative; VISIBILITY:inherit; WIDTH:"ht_flex_format"; Z-INDEX:%POS; }\n",id,ht_flex(w,tree->Parent->width,ht_get_fl_w(tree)),z);
+		htrAddStylesheetItem_va(s,"\t#ht%POSpane2 { POSITION:relative; VISIBILITY:hidden; WIDTH:"ht_flex_format"; Z-INDEX:%POS; }\n",id,ht_flex(w,tree->Parent->width,ht_get_fl_w(tree)),z);
+		htrAddStylesheetItem_va(s,"\t#ht%POSfader { POSITION:relative; VISIBILITY:hidden; WIDTH:"ht_flex_format"; Z-INDEX:%POS; }\n",id,ht_flex(w,tree->Parent->width,ht_get_fl_w(tree)),z+1);
+		}
 	    else
-	        {
-	        htrAddStylesheetItem_va(s,"\t#ht%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
-	        htrAddStylesheetItem_va(s,"\t#ht%POSpane2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
-	        htrAddStylesheetItem_va(s,"\t#ht%POSfader { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z+1);
-	        }
+		{
+		htrAddStylesheetItem_va(s,
+		    "\t#ht%POSpane { "
+			"POSITION:absolute; "
+			"VISIBILITY:inherit; "
+			"LEFT:"ht_flex_format"; "
+			"TOP:"ht_flex_format"; "
+			"WIDTH:"ht_flex_format"; "
+			"Z-INDEX:%POS; "
+		    "}\n",
+		    id,
+		    ht_flex(x, tree->Parent->width, ht_get_fl_x(tree)),
+		    ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
+		    ht_flex(w, tree->Parent->width, ht_get_fl_w(tree)),
+		    z
+		);
+		htrAddStylesheetItem_va(s,
+		    "\t#ht%POSpane2 { "
+			"POSITION:absolute; "
+			"VISIBILITY:hidden; "
+			"LEFT:"ht_flex_format"; "
+			"TOP:"ht_flex_format"; "
+			"WIDTH:"ht_flex_format"; "
+			"Z-INDEX:%POS; "
+		    "}\n",
+		    id,
+		    ht_flex(x, tree->Parent->width, ht_get_fl_x(tree)),
+		    ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
+		    ht_flex(w, tree->Parent->width, ht_get_fl_w(tree)),
+		    z
+		);
+		htrAddStylesheetItem_va(s,
+		    "\t#ht%POSfader { "
+			"POSITION:absolute; "
+			"VISIBILITY:hidden; "
+			"LEFT:"ht_flex_format"; "
+			"TOP:"ht_flex_format"; "
+			"WIDTH:"ht_flex_format"; "
+			"Z-INDEX:%POS; "
+		    "}\n",
+		    id,
+		    ht_flex(x, tree->Parent->width, ht_get_fl_x(tree)),
+		    ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
+		    ht_flex(w, tree->Parent->width, ht_get_fl_w(tree)),
+		    z+1
+		);
+		}
 
 	    if (s->Capabilities.CSS1)
 		{

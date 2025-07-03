@@ -100,23 +100,21 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Add the stylesheet for the layer **/
 	htrAddStylesheetItem_va(s,
-	    "\t#al%POSbase {"
+	    "\t#al%POSbase { "
 		"POSITION:absolute; "
 		"VISIBILITY:inherit; "
 		"OVERFLOW:visible; "
-		"LEFT:%POSpx; "
-		"TOP:%POSpx; "
-		"WIDTH:%POSpx; "
-		"HEIGHT:%POSpx; "
-		//"CLIP:rect(%INTpx,%INTpx,%INTpx,%INTpx);"
+		"LEFT:"ht_flex_format"; "
+		"TOP:"ht_flex_format"; "
+		"WIDTH:"ht_flex_format"; "
+		"HEIGHT:"ht_flex_format"; "
 		"Z-INDEX:%POS; "
 	    "}\n",
 	    id,
-	    x,
-	    y,
-	    w,
-	    h,
-	    //-1, w+1, h+1, -1,
+	    ht_flex(x, tree->Parent->width,  ht_get_fl_x(tree)),
+	    ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
+	    ht_flex(w, tree->Parent->width,  ht_get_fl_w(tree)),
+	    ht_flex(h, tree->Parent->height, ht_get_fl_h(tree)),
 	    z
 	);
 
