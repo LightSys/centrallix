@@ -172,7 +172,22 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	if (s->Capabilities.Dom0NS)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#tv%POSroot { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,show_root?"inherit":"hidden",x,y,w,z);
+	    htrAddStylesheetItem_va(s,
+		"\t#tv%POSroot { "
+		    "POSITION:absolute; "
+		    "VISIBILITY:%STR; "
+		    "LEFT:"ht_flex_format"; "
+		    "TOP:"ht_flex_format"; "
+		    "WIDTH:"ht_flex_format"; "
+		    "Z-INDEX:%POS; "
+		"}\n",
+		id,
+		(show_root) ? "inherit" : "hidden",
+		ht_flex(x, tree->Parent->width,  ht_get_fl_x(tree)),
+		ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
+		ht_flex(w, tree->Parent->width,  ht_get_fl_w(tree)),
+		z
+	    );
 	    }
 	htrAddStylesheetItem_va(s,"\t#tv%POSload { POSITION:absolute; VISIBILITY:hidden; OVERFLOW:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0; }\n",id);
 	htrAddStylesheetItem_va(s,"\tdiv.tv%POS a { %[color:%STR&CSSVAL;%] }\n", id, *fgcolor, fgcolor);
@@ -205,7 +220,31 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	else
 	    {
-	    htrAddBodyItem_va(s, "<DIV class=\"tv%POS\" ID=\"tv%POSroot\" style=\"POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS;\"><IMG SRC=\"%STR&HTE\" align=left>&nbsp;%STR&HTE</DIV>\n",id,id,show_root?"inherit":"hidden",x,y,w,z,(*icon)?icon:"/sys/images/ico02b.gif", src);
+	    htrAddBodyItem_va(s,
+		"<DIV "
+		    "class=\"tv%POS\" "
+		    "ID=\"tv%POSroot\" "
+		    "style=\""
+			"POSITION:absolute; "
+			"VISIBILITY:%STR; "
+			"LEFT:"ht_flex_format"; "
+			"TOP:"ht_flex_format"; "
+			"WIDTH:"ht_flex_format"; "
+			"Z-INDEX:%POS; "
+		    "\""
+		">"
+		    "<IMG SRC=\"%STR&HTE\" align=left>"
+		    "&nbsp;%STR&HTE"
+		"</DIV>\n",
+		id, /** Class **/
+		id, /** ID **/
+		(show_root) ? "inherit" : "hidden",
+		ht_flex(x, tree->Parent->width,  ht_get_fl_x(tree)),
+		ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
+		ht_flex(w, tree->Parent->width,  ht_get_fl_w(tree)),
+		z,
+		(*icon) ? icon : "/sys/images/ico02b.gif", src
+	    );
 	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "tv%POSload", id, NULL, "");
 	    /*htrAddBodyItem_va(s, "<DIV ID=\"tv%dload\" style=\"POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0;\"></DIV>\n",id);*/
 	    }

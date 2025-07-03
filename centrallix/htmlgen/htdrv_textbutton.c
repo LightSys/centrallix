@@ -206,10 +206,25 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 
 	/** Initial CSS styles **/
-	htrAddStylesheetItem_va(s,"\t#tb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]WIDTH:%POSpx; Z-INDEX:%POS; OVERFLOW:hidden; display:table; }\n",
-		id,
-		x, y, h>=0, h-1-2*box_offset, w-1-2*box_offset, z
-		);
+	htrAddStylesheetItem_va(s,
+	    "\t#tb%POSpane { "
+		"POSITION:absolute; "
+		"VISIBILITY:inherit; "
+		"LEFT:"ht_flex_format"; "
+		"TOP:"ht_flex_format"; "
+		"WIDTH:"ht_flex_format"; "
+		"%[HEIGHT:"ht_flex_format"; %]"
+		"Z-INDEX:%POS; "
+		"OVERFLOW:hidden; "
+		"display:table; "
+	    "}\n",
+	    id,
+	    ht_flex(x, tree->Parent->width, ht_get_fl_x(tree)),
+	    ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
+	    ht_flex(w-1-2*box_offset, tree->Parent->width, ht_get_fl_w(tree)),
+	    (h>=0), ht_flex(h-1-2*box_offset, tree->Parent->height, ht_get_fl_h(tree)),
+	    z
+	);
 	htrAddStylesheetItem_va(s, "\t#tb%POSpane .cell { height:100%%; width:100%%; vertical-align:middle; display:table-cell; padding:1px; font-weight:bold; cursor:default; text-align:%STR; border-width:1px; border-style:%STR&CSSVAL; border-color:%STR&CSSVAL; border-radius:%INTpx; color:%STR&CSSVAL; %[text-shadow:1px 1px %STR&CSSVAL; %]%STR }\n",
 		/* clipping no longer needed:  0, w-1-2*box_offset+2*clip_offset, h-1-2*box_offset+2*clip_offset, 0, */
 		id,
@@ -249,14 +264,23 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	//htrAddBodyItem(s,   "</DIV>");
 
 	/** We need two DIVs here because of a long-outstanding Firefox bug :( **/
-	htrAddBodyItem_va(s,"<div id=\"tb%POSpane\"><div class=\"cell\">%[<img border=\"0\" src=\"%STR&HTE\"/><br>%]%[<img border=\"0\" src=\"%STR&HTE\" style=\"vertical-align:middle;\"/>%]<span>%STR&HTE</span>%[<img border=\"0\" src=\"%STR&HTE\" style=\"vertical-align:middle;\"/>%]%[<br><img border=\"0\" src=\"%STR&HTE\"/>%]</div></div>", 
-		id,
-		image[0] && !strcmp(image_position, "top"), image,
-		image[0] && !strcmp(image_position, "left"), image,
-		text,
-		image[0] && !strcmp(image_position, "right"), image,
-		image[0] && !strcmp(image_position, "bottom"), image
-		);
+	htrAddBodyItem_va(s,
+	    "<div id=\"tb%POSpane\">"
+		"<div class=\"cell\">"
+		    "%[<img border=\"0\" src=\"%STR&HTE\"/><br>%]"
+		    "%[<img border=\"0\" src=\"%STR&HTE\" style=\"vertical-align:middle;\"/>%]"
+		    "<span>%STR&HTE</span>"
+		    "%[<img border=\"0\" src=\"%STR&HTE\" style=\"vertical-align:middle;\"/>%]"
+		    "%[<br><img border=\"0\" src=\"%STR&HTE\"/>%]"
+		"</div>"
+	    "</div>",
+	    id,
+	    (image[0] && !strcmp(image_position, "top")), image,
+	    (image[0] && !strcmp(image_position, "left")), image,
+	    text,
+	    (image[0] && !strcmp(image_position, "right")), image,
+	    (image[0] && !strcmp(image_position, "bottom")), image
+	);
 
 	/** Script initialization call. **/
 	//htrAddScriptInit_va(s, "    tb_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), span:document.getElementById(\"tb%POSspan\"), ena:%INT, c1:\"%STR&JSSTR\", c2:\"%STR&JSSTR\", dc1:\"%STR&JSSTR\", top:null, bottom:null, right:null, left:null, width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&JSSTR'});\n",

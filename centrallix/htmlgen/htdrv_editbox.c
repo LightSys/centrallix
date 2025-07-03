@@ -149,8 +149,35 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    box_offset = 0;
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#eb%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
-	htrAddStylesheetItem_va(s,"\t#eb%POScon1 { VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; border:none; }\n",id,5,0,w-10,z+1);
+	htrAddStylesheetItem_va(s,
+	    "\t#eb%POSbase { "
+		"POSITION:absolute; "
+		"VISIBILITY:inherit; "
+		"LEFT:"ht_flex_format"; "
+		"TOP:"ht_flex_format"; "
+		"WIDTH:"ht_flex_format"; "
+		"Z-INDEX:%POS; "
+		"overflow:hidden; "
+	    "}\n",
+	    id,
+	    ht_flex(x, tree->Parent->width, ht_get_fl_x(tree)),
+	    ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
+	    ht_flex(w - 2 * box_offset, tree->Parent->width, ht_get_fl_w(tree)),
+	    z
+	);
+	htrAddStylesheetItem_va(s,
+	    "\t#eb%POScon1 { "
+		"VISIBILITY:inherit; "
+		"LEFT:5px; "
+		"TOP:0px; "
+		"WIDTH:"ht_flex_format"; "
+		"Z-INDEX:%POS; "
+		"border:none; "
+	    "}\n",
+	    id,
+	    ht_flex(w - 10, tree->Parent->width, ht_get_fl_w(tree)),
+	    z+1
+	);
 
 	/** Write named global **/
 	htrAddWgtrObjLinkage_va(s, tree, "eb%POSbase",id);
@@ -187,7 +214,12 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n",id, main_bg);
 	if (h >= 0)
-	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { height:%POSpx; }\n\t#eb%POScon1 { height:%POSpx; }\n", id, h-2*box_offset, id, h-2*box_offset-2);
+	    htrAddStylesheetItem_va(s,
+		"\t#eb%POSbase { height:"ht_flex_format"; }\n"
+		"\t#eb%POScon1 { height:"ht_flex_format"; }\n",
+		id, ht_flex(h - 2 * box_offset, tree->Parent->height, ht_get_fl_h(tree)),
+		id, ht_flex(h - 2 * box_offset - 2, tree->Parent->height, ht_get_fl_h(tree))
+	    );
 
 	//htrAddBodyItem_va(s, "<table border='0' cellspacing='0' cellpadding='0' width='%POS'><tr><td align='left' valign='middle' height='%POS'><img name='l' src='/sys/images/eb_edg.gif'></td><td>&nbsp;</td><td align='right' valign='middle'><img name='r' src='/sys/images/eb_edg.gif'></td></tr></table>\n", w-2, h-2);
 	//htrAddBodyItem_va(s, "<DIV ID=\"eb%POScon1\"></DIV>\n",id);

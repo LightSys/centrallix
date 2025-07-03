@@ -197,17 +197,60 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    form[0]='\0';
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#lbl%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; %[font-weight:bold; %]%[color:%STR&CSSVAL; %]%[font-size:%POSpx; %]text-align:%STR&CSSVAL; vertical-align:%STR&CSSVAL; %[white-space:nowrap; %]%[text-overflow:ellipsis; overflow:hidden; %]%[font-style:italic; %]}\n",
-		id,x,y,
-		!auto_height, h,
-		w,z, 
-		is_bold, *fgcolor, fgcolor, font_size > 0, font_size, align, valign,
-		!allow_break, overflow_ellipsis, is_italic);
+	htrAddStylesheetItem_va(s,
+	    "\t#lbl%POS { "
+		"POSITION:absolute; "
+		"VISIBILITY:inherit; "
+		"LEFT:"ht_flex_format"; "
+		"TOP:"ht_flex_format"; "
+		"WIDTH:"ht_flex_format"; "
+		"%[HEIGHT:"ht_flex_format"; %]"
+		"Z-INDEX:%POS; "
+		"cursor:default; "
+		"%[font-weight:bold; %]"
+		"%[color:%STR&CSSVAL; %]"
+		"%[font-size:%POSpx; %]"
+		"text-align:%STR&CSSVAL; "
+		"vertical-align:%STR&CSSVAL; "
+		"%[white-space:nowrap; %]"
+		"%[text-overflow:ellipsis; overflow:hidden; %]"
+		"%[font-style:italic; %]"
+	    "}\n",
+	    id,
+	    ht_flex(x, tree->Parent->width,  ht_get_fl_x(tree)),
+	    ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
+	    ht_flex(w, tree->Parent->width,  ht_get_fl_w(tree)),
+	    (!auto_height), ht_flex(h, tree->Parent->height, ht_get_fl_h(tree)),
+	    z,
+	    (is_bold),
+	    (*fgcolor), fgcolor,
+	    (font_size > 0), font_size,
+	    align,
+	    valign,
+	    (!allow_break),
+	    (overflow_ellipsis),
+	    (is_italic)
+	);
+
 	if (is_link)
 	    htrAddStylesheetItem_va(s,"\t#lbl%POS:hover { %[color:%STR&CSSVAL; %]text-decoration:underline; cursor:pointer; }\n", id, *pfgcolor, pfgcolor);
 	if (is_link && *cfgcolor)
 	    htrAddStylesheetItem_va(s,"\t#lbl%POS:active { color:%STR&CSSVAL; text-decoration:underline; cursor:pointer; }\n", id, cfgcolor);
-	htrAddStylesheetItem_va(s,"\t#lbl%POS p { text-align:%STR&CSSVAL; %[position:relative; top:50%%; transform:translateY(-50%%); %]padding:0px; margin:0px; border-spacing:0px; width:%POSpx; }\n", id, align, !strcmp(valign, "middle"), w);
+
+	htrAddStylesheetItem_va(s,
+	    "\t#lbl%POS p { "
+		"text-align:%STR&CSSVAL; "
+		"%[position:relative; top:50%%; transform:translateY(-50%%); %]"
+		"padding:0px; "
+		"margin:0px; "
+		"border-spacing:0px; "
+		"width:"ht_flex_format"; "
+	    "}\n",
+	    id,
+	    align,
+	    !strcmp(valign, "middle"),
+	    ht_flex(w, tree->Parent->width, ht_get_fl_w(tree))
+	);
 
 	htrAddWgtrObjLinkage_va(s, tree, "lbl%POS",id);
 	stylestr[0] = '\0';
