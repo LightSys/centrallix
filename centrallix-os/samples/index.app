@@ -74,7 +74,7 @@ index "widget/page"
 
 		info_html "widget/html"
 		    {
-		    x=1;y=0;width = 356;
+		    x=10;y=0;width = 356;
 		    mode=dynamic;
 		    source="/samples/welcome.html";
 		    }

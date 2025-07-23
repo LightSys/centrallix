@@ -183,13 +183,13 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 		"}\n",
 		id,
 		(show_root) ? "inherit" : "hidden",
-		ht_flex(x, tree->Parent->width,  ht_get_fl_x(tree)),
-		ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
-		ht_flex(w, tree->Parent->width,  ht_get_fl_w(tree)),
+		ht_flex(x, ht_get_total_w(tree), ht_get_fl_x(tree)),
+		ht_flex(y, ht_get_total_h(tree), ht_get_fl_y(tree)),
+		ht_flex(w, ht_get_total_w(tree), ht_get_fl_w(tree)),
 		z
 	    );
 	    }
-	htrAddStylesheetItem_va(s,"\t#tv%POSload { POSITION:absolute; VISIBILITY:hidden; OVERFLOW:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0; }\n",id);
+	htrAddStylesheetItem_va(s,"\t#tv%POSload { POSITION:absolute; VISIBILITY:hidden; OVERFLOW:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; clip-path:inset(0px 0px 0px 0px); Z-INDEX:0; }\n",id);
 	htrAddStylesheetItem_va(s,"\tdiv.tv%POS a { %[color:%STR&CSSVAL;%] }\n", id, *fgcolor, fgcolor);
 	htrAddStylesheetItem_va(s,"\tdiv.tv%POSh a { %[color:%STR&CSSVAL;%] }\n", id, *hfgcolor, hfgcolor);
 
@@ -239,9 +239,9 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 		id, /** Class **/
 		id, /** ID **/
 		(show_root) ? "inherit" : "hidden",
-		ht_flex(x, tree->Parent->width,  ht_get_fl_x(tree)),
-		ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
-		ht_flex(w, tree->Parent->width,  ht_get_fl_w(tree)),
+		ht_flex(x, ht_get_total_w(tree), ht_get_fl_x(tree)),
+		ht_flex(y, ht_get_total_h(tree), ht_get_fl_y(tree)),
+		ht_flex(w, ht_get_total_w(tree), ht_get_fl_w(tree)),
 		z,
 		(*icon) ? icon : "/sys/images/ico02b.gif", src
 	    );

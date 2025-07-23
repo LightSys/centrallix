@@ -2720,10 +2720,10 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 		"%[%STR %]"
 	    "}\n",
 	    id,
-	             ht_flex(x, node->Parent->width,  ht_get_fl_x(node)),
-	             ht_flex(y, node->Parent->height, ht_get_fl_y(node)),
-	    (w > 0), ht_flex(w, node->Parent->width,  ht_get_fl_w(node)),
-	    (h > 0), ht_flex(h, node->Parent->height, ht_get_fl_h(node)),
+	             ht_flex(x, ht_get_total_w(node), ht_get_fl_x(node)),
+	             ht_flex(y, ht_get_total_h(node), ht_get_fl_y(node)),
+	    (w > 0), ht_flex(w, ht_get_total_w(node), ht_get_fl_w(node)),
+	    (h > 0), ht_flex(h, ht_get_total_h(node), ht_get_fl_h(node)),
 	    (z > 0), z,
 	    (*textcolor), textcolor,
 	    (!strcmp(style, "bold")),
@@ -2746,3 +2746,32 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
     }
 
 
+int
+ht_get_total_w__INTERNAL(pWgtrNode widget) {
+    pWgtrNode parent = widget->Parent;
+    int parentWidth = parent->width;
+//     printf(
+// 	"Getting total width available to '%s' (%s), child of '%s' (%s) - %dpx\n",
+// 	widget->Name, widget->Type, parent->Name, parent->Type, parentWidth
+//     );
+    if (parentWidth >= 0) {
+	int offset = parent->left + parent->right, ret = parentWidth - offset;
+	// printf("Returning %d-%d=%d\n", parentWidth, offset, ret);
+	return ret;
+    } else return ht_get_total_w(parent); // Tail-recursion
+}
+
+int
+ht_get_total_h__INTERNAL(pWgtrNode widget) {
+    pWgtrNode parent = widget->Parent;
+    int parentHeight = parent->height;
+//     printf(
+// 	"Getting total height available to '%s' (%s), child of '%s' (%s) - %dpx\n",
+// 	widget->Name, widget->Type, parent->Name, parent->Type, parentHeight
+//     );
+    if (parentHeight >= 0) {
+	int offset = parent->top + parent->bottom, ret = parentHeight - offset;
+	// printf("Returning %d-%d=%d\n", parentHeight, offset, ret);
+	return ret;
+    } else return ht_get_total_h(parent); // Tail-recursion
+}

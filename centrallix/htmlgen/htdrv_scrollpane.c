@@ -126,16 +126,15 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 			"TOP:"ht_flex_format"; "
 			"WIDTH:"ht_flex_format"; "
 			"HEIGHT:"ht_flex_format"; "
-			"clip:rect(0px, "ht_flex_format", "ht_flex_format", 0px); "
+			"OVERFLOW: clip; "
 			"Z-INDEX:%POS; "
 		    "}\n",
 		    id,
 		    (visible) ? "inherit" : "hidden",
-		    ht_flex(x, tree->Parent->width,  ht_get_fl_x(tree)),
-		    ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
-		    ht_flex(w, tree->Parent->width,  ht_get_fl_w(tree)),
-		    ht_flex(h, tree->Parent->height, ht_get_fl_h(tree)),
-		    ht_flex(w, tree->Parent->width,  ht_get_fl_w(tree)), ht_flex(h, tree->Parent->height, ht_get_fl_h(tree)),
+		    ht_flex(x, ht_get_total_w(tree), ht_get_fl_x(tree)),
+		    ht_flex(y, ht_get_total_h(tree), ht_get_fl_y(tree)),
+		    ht_flex(w, ht_get_total_w(tree), ht_get_fl_w(tree)),
+		    ht_flex(h, ht_get_total_h(tree), ht_get_fl_h(tree)),
 		    z
 		);
 		htrAddStylesheetItem_va(s,
@@ -148,7 +147,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 			"Z-INDEX:%POS; "
 		    "}\n",
 		    id,
-		    ht_flex(w - 18, tree->Parent->width, ht_get_fl_w(tree)),
+		    ht_flex(w - 18, ht_get_total_w(tree), 1.0),
 		    z + 1
 		);
 		htrAddStylesheetItem_va(s,
@@ -161,7 +160,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 			"Z-INDEX:%POS; "
 		    "}\n",
 		    id,
-		    ht_flex(w - 18, tree->Parent->width, ht_get_fl_x(tree)),
+		    ht_flex(w - 18, tree->width, 1.0),
 		    z + 1
 		);
 	    }
@@ -207,17 +206,16 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 			"TOP:"ht_flex_format"; "
 			"WIDTH:"ht_flex_format"; "
 			"HEIGHT:"ht_flex_format"; "
-			"clip:rect(0, "ht_flex_format", "ht_flex_format", 0); "
+			"OVERFLOW: clip; "
 			"Z-INDEX:%POS; "
 		    "\""
 		">\n",
 		id,
 		(visible) ? "inherit" : "hidden",
-		ht_flex(x, tree->Parent->width, ht_fl_x_compat),
-		ht_flex(y, tree->Parent->height, ht_fl_y_compat),
-		ht_flex(w, tree->Parent->width, tree->fl_width),
-		ht_flex(h, tree->Parent->height, tree->fl_height),
-		ht_flex(w, tree->Parent->width, tree->fl_width), ht_flex(h, tree->Parent->height, tree->fl_height),
+		ht_flex(x, ht_get_total_w(tree), ht_get_fl_x(tree)),
+		ht_flex(y, ht_get_total_h(tree), ht_get_fl_y(tree)),
+		ht_flex(w, ht_get_total_w(tree), ht_get_fl_w(tree)),
+		ht_flex(h, ht_get_total_h(tree), ht_get_fl_h(tree)),
 		z
 	    );
 	    htrAddBodyItem_va(s,"<IMG ID=\"sp%POSup\" SRC='/sys/images/ico13b.gif' NAME='u'/>", id);
@@ -230,7 +228,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 		    "TOP:0px; "
 		"}\n",
 		id,
-		ht_flex(w - 18, tree->Parent->width, ht_get_fl_x(tree))
+		ht_flex(w - 18, tree->width, 1.0)
 	    );
 	    htrAddStylesheetItem_va(s,
 		"\t#sp%POSbar { "
@@ -241,8 +239,8 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 		    "HEIGHT:"ht_flex_format"; "
 		"}\n",
 		id,
-		ht_flex(w - 18, tree->Parent->width, ht_get_fl_x(tree)),
-		ht_flex(h - 36, tree->Parent->height, ht_get_fl_h(tree))
+		ht_flex(w - 18, tree->width, 1.0),
+		ht_flex(h - 36, tree->height, 1.0)
 	    );
 	    htrAddStylesheetItem_va(s,
 		"\t#sp%POSdown { "
@@ -251,8 +249,8 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 		    "TOP:"ht_flex_format"; "
 		"}\n",
 		id,
-		ht_flex(w - 18, tree->Parent->width, ht_get_fl_x(tree)),
-		ht_flex(h - 18, tree->Parent->height, ht_get_fl_y(tree))
+		ht_flex(w - 18, tree->width, 1.0),
+		ht_flex(h - 18, tree->height, 1.0)
 	    );
 	    htrAddBodyItem_va(s,
 		"<DIV "
@@ -269,7 +267,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 		    "<IMG SRC='/sys/images/ico14b.gif' NAME='t'>"
 		"</DIV>\n",
 		id,
-		ht_flex(w - 18, tree->Parent->width, ht_get_fl_x(tree)),
+		ht_flex(w - 18, tree->width, 1.0),
 		z + 1
 	    );
 	    htrAddBodyItem_va(s,
@@ -286,8 +284,8 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 		    "\""
 		">",
 		id,
-		ht_flex(w - 18, tree->Parent->width, ht_get_fl_w(tree)),
-		ht_flex(h, tree->Parent->height, ht_get_fl_h(tree)),
+		ht_flex(w - 18, ht_get_total_w(tree), 1.0),
+		ht_flex(h, ht_get_total_h(tree), 1.0),
 		z + 1
 	    );
 	    }

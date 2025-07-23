@@ -155,10 +155,10 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 		"text-align:center; "
 	    "}\n",
 	    id,
-	    ht_flex(x, tree->Parent->width,  ht_get_fl_x(tree)),
-	    ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
-	    ht_flex(w, tree->Parent->width,  ht_get_fl_w(tree)),
-	    ht_flex(h, tree->Parent->height, ht_get_fl_h(tree)),
+	    ht_flex(x, ht_get_total_w(tree), ht_get_fl_x(tree)),
+	    ht_flex(y, ht_get_total_h(tree), ht_get_fl_y(tree)),
+	    ht_flex(w, ht_get_total_w(tree), ht_get_fl_w(tree)),
+	    ht_flex(h, ht_get_total_h(tree), ht_get_fl_h(tree)),
 	    z
 	);
 

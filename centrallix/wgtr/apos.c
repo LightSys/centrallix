@@ -222,7 +222,7 @@ int i=0, count=0;
 	((pWgtrNode)xaGetItem(&PatchedWidgets, i))->pre_height = -1;
 	}
     
-    /** Free the PatchedWidgets XArray.**/
+    /** Free the PatchedWidgets XArray. **/
     xaDeInit(&PatchedWidgets);
     
     return 0;
@@ -1282,9 +1282,9 @@ aposIsSpacer(pAposLine StartL, pAposLine EndL, int type, int isBorder)
 {
 pWgtrNode SW, EW;
 int i=0, j=0;
-/** @brief The number of widgets starting at the end of this section.**/
+/** @brief The number of widgets starting at the end of this section. **/
 int sCount=xaCount(&(EndL->SWidgets)); 
-/** @brief The number of widgets ending at the start of this section.**/
+/** @brief The number of widgets ending at the start of this section. **/
 int eCount=xaCount(&(StartL->EWidgets));
 
     if((EndL->Loc - StartL->Loc) <= APOS_MINSPACE)	// If section is sufficiently narrow.
@@ -1488,7 +1488,7 @@ float TotalSum=0;
 	    TotalSum += (FlexWeight * SizeWeight);
 	}
 
-    /** The initial borders do not adjust.**/
+    /** The initial borders do not adjust. **/
     pAposLine leftBorder = (pAposLine)xaGetItem(Lines, 0);
     leftBorder->LocAdjWeight = leftBorder->MyAdjWeight = 0.0f;
 
@@ -1506,25 +1506,29 @@ float TotalSum=0;
 	     ***/
 	    float AdjWeight = PrevSect->AdjWeight = (float)(FlexWeight*SizeWeight)/TotalSum;
 
-	    /** Store the line adjustment weight for responsive CSS later.**/
+	    /** Store the line adjustment weight for responsive CSS later. **/
 	    CurrLine->LocAdjWeight = PrevLine->LocAdjWeight + AdjWeight;
 	    CurrLine->MyAdjWeight = AdjWeight;
 	    
-	    /**for expanding lines**/
+	    /** Expand lines. **/
 	    if(Diff > 0)
 	        {
 		    /** Calculate adjustment using the adjustment weight. **/
 		    Adj = (float)(Diff) * AdjWeight + APOS_FUDGEFACTOR;
 
-		    /** Apply the calculated adjustment.**/
+		//     printf("Expanding lines by %d*%f=%d\n", Diff, AdjWeight, Adj);
+
+		    /** Apply the calculated adjustment. **/
 		    PrevSect->Width += Adj;
 		    CurrLine->Loc = PrevLine->Loc + PrevSect->Width;
 		}
-	    /**for contracting lines**/
+	    /** Contract lines. **/
 	    else if(Diff < 0)
 		{
 		    /** Calculate adjustment using the adjustment weight. **/
 		    Adj = (float)(Diff) * AdjWeight - APOS_FUDGEFACTOR;
+		    
+		//     printf("Contracting lines by %d*%f=%d\n", Diff, AdjWeight, Adj);
 		    
 		    /** if the section width will be unacceptably 
 		    *** narrow or negative after the adjustment **/
@@ -1608,7 +1612,7 @@ pWgtrNode Widget;
 		    aposSetOffsetBools(Widget, NULL, NULL, &isTopTab, &isSideTab, &tabWidth);
 		    if(flag==APOS_ROW  &&  Widget->fl_height)
 			{
-			    /** Calculate the new size, taking APOS_MINWIDTH into account.**/
+			    /** Calculate the new size, taking APOS_MINWIDTH into account. **/
 			    newsize = CurrLine->Loc - Widget->y - isTopTab*24;
 			    if (newsize < APOS_MINWIDTH && Widget->pre_height >= APOS_MINWIDTH)
 				Widget->height = APOS_MINWIDTH;
@@ -1652,7 +1656,7 @@ pWgtrNode Widget;
 
 	    /** Adjusts width or height of widgets ending on this line. **/
 	    count = xaCount(&(CurrLine->CWidgets));
-	    printf("Doing %d widgets.\n", count);
+	//     printf("Doing %d widgets.\n", count);
 	    for(j=0; j<count; ++j)
 	        {
 	            Widget = (pWgtrNode)xaGetItem(&(CurrLine->CWidgets), j);

@@ -226,7 +226,6 @@ function tb_setmode(layer,mode)
 		break;
 
 	    case 1: /* point, but no click */
-		moveTo(layer,layer.orig_x,layer.orig_y);
 		$(layer).find(".cell").css({'border-style':wgtrGetServerProperty(layer, 'border_style', 'outset'), 'border-color':wgtrGetServerProperty(layer, 'border_color', '#c0c0c0')});
 		/*if(cx__capabilities.Dom2CSS)
 		    {
@@ -259,7 +258,6 @@ function tb_setmode(layer,mode)
 		break;
 
 	    case 2: /* point and click */
-		moveTo(layer,layer.orig_x+1,layer.orig_y+1);
 		var bstyle = wgtrGetServerProperty(layer, 'border_style', 'outset');
 		if (bstyle == 'outset')
 		    bstyle = 'inset';
