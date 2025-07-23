@@ -58,6 +58,7 @@ function sp_init(param)
     images[0].area=alayer;
     images[0].pane=l;
     setClipWidth(alayer, getClipWidth(l)-18);
+    disableClippingCSS(alayer); // Clipping breaks responsive pages and is not required in modern browers.
     alayer.maxwidth=getClipWidth(alayer);
     alayer.minwidth=getClipWidth(alayer);
     tlayer.nofocus = true;
@@ -96,10 +97,27 @@ function sp_init(param)
     	}
     }
 
+/** @returns The height of the scrollpane content (including content outside the visibile area). **/
+// Replaces getClipHeight(area) + getClipTop(area)
+function sp_get_content_height(area) {
+    return getClipHeight(area) + getClipTop(area);
+}
+
+/** @returns The height of visible area in the scrollpane. **/
+// Replaces getClipHeight(pane)
+function sp_get_total_height(pane) {
+    return parseInt(window.getComputedStyle(pane).height);
+}
+
+/** @returns The height of visible area in the scroll bar. **/
+function sp_get_sb_height(pane) {
+    return sp_get_total_height(pane) - (3*18);
+}
+
 function sp_action_scrollto(aparam)
     {
-    var h = getClipHeight(this.area)+getClipTop(this.area); // height of content
-    var ch = getClipHeight(this);
+    var h = sp_get_content_height(this.area); // height of content
+    var ch = sp_get_total_height(this);
     var d = h-ch; // height of non-visible content (max scrollable distance)
     if (d < 0) d=0;
     if (typeof aparam.Percent != 'undefined')
@@ -135,8 +153,10 @@ function sp_WatchHeight(property, oldvalue, newvalue)
 
     // make sure region not offscreen now
     newvalue += getClipTop(this.pane.area);
-    if (getRelativeY(this.pane.area) + newvalue < getClipHeight(this.pane)) setRelativeY(this.pane.area, getClipHeight(this.pane) - newvalue);
-    if (newvalue < getClipHeight(this.pane)) setRelativeY(this.pane.area, 0);
+    if (getRelativeY(this.pane.area) + newvalue < sp_get_total_height(this.pane)) {
+	setRelativeY(this.pane.area, sp_get_total_height(this.pane) - newvalue);
+    }
+    if (newvalue < sp_get_total_height(this.pane)) setRelativeY(this.pane.area, 0);
     this.pane.UpdateThumb(newvalue);
     newvalue -= getClipTop(this.pane.area);
     this.bottom = this.top + newvalue; /* ns seems to unlink bottom = top + height if you modify clip obj */
@@ -148,10 +168,10 @@ function sp_UpdateThumb(h)
     /** 'this' is a spXpane **/
     if(!h)
 	{ /** if h is supplied, it is the soon-to-be clip.height of the spXarea **/
-	h=getClipHeight(this.area)+getClipTop(this.area); // height of content
+	h=sp_get_content_height(this.area); // height of content
 	}
-    var d=h-getClipHeight(this); // height of non-visible content (max scrollable distance)
-    var v=getClipHeight(this)-(3*18);
+    var d=h-sp_get_total_height(this); // height of non-visible content (max scrollable distance)
+    var v=sp_get_sb_height(this);
     if(d<=0)
 	setRelativeY(this.thum, 18);
     else
@@ -167,8 +187,8 @@ function do_mv()
 	{
 	return;
 	}
-    var h=getClipHeight(ti.area)+getClipTop(ti.area); // height of content
-    var d=h-getClipHeight(ti.pane); // height of non-visible content (max scrollable distance)
+    var h=sp_get_content_height(ti.area); // height of content
+    var d=h-sp_get_total_height(ti.pane); // height of non-visible content (max scrollable distance)
     var incr=sp_mv_incr;
     if(d<0)
 	incr=0;
@@ -253,13 +273,13 @@ function sp_mousemove(e)
     var ti=sp_target_img;
     if (ti != null && ti.kind=='sp' && ti.name=='t')
         {
-        var v=getClipHeight(ti.pane)-(3*18);
+        var v=sp_get_sb_height(ti.pane);
         var new_y=sp_thum_y + (e.pageY-sp_click_y);
         if (new_y > getPageY(ti.pane)+18+v) new_y=getPageY(ti.pane)+18+v;
         if (new_y < getPageY(ti.pane)+18) new_y=getPageY(ti.pane)+18;
         setPageY(ti.thum,new_y);
-        var h=getClipHeight(ti.area)+getClipTop(ti.area);
-        var d=h-getClipHeight(ti.pane);
+        var h=sp_get_content_height(ti.area);
+        var d=h-sp_get_total_height(ti.pane);
         if (d<0) d=0;
         var yincr = (((getRelativeY(ti.thum)-18)/v)*-d) - getRelativeY(ti.area);
         moveBy(ti.area, 0, yincr);

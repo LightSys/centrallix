@@ -219,20 +219,46 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 		"display:table; "
 	    "}\n",
 	    id,
-	    ht_flex(x, tree->Parent->width, ht_get_fl_x(tree)),
-	    ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
-	    ht_flex(w-1-2*box_offset, tree->Parent->width, ht_get_fl_w(tree)),
-	    (h>=0), ht_flex(h-1-2*box_offset, tree->Parent->height, ht_get_fl_h(tree)),
+	            ht_flex(x,                ht_get_total_w(tree), ht_get_fl_x(tree)),
+	            ht_flex(y,                ht_get_total_h(tree), ht_get_fl_y(tree)),
+	            ht_flex(w-1-2*box_offset, ht_get_total_w(tree), ht_get_fl_w(tree)),
+	    (h>=0), ht_flex(h-1-2*box_offset, ht_get_total_h(tree), ht_get_fl_h(tree)),
 	    z
 	);
-	htrAddStylesheetItem_va(s, "\t#tb%POSpane .cell { height:100%%; width:100%%; vertical-align:middle; display:table-cell; padding:1px; font-weight:bold; cursor:default; text-align:%STR; border-width:1px; border-style:%STR&CSSVAL; border-color:%STR&CSSVAL; border-radius:%INTpx; color:%STR&CSSVAL; %[text-shadow:1px 1px %STR&CSSVAL; %]%STR }\n",
-		/* clipping no longer needed:  0, w-1-2*box_offset+2*clip_offset, h-1-2*box_offset+2*clip_offset, 0, */
-		id,
-		h_align,
-		border_style, border_color, border_radius,
-		is_enabled?fgcolor1:disable_color, is_enabled, fgcolor2,
-		bgstyle
-		);
+	// CSS button click animation (replaces manual the JS implementation).
+	if (is_enabled) {
+	    htrAddStylesheetItem_va(s,
+		"\t#tb%POSpane:active { transform: translate(1px, 1px); }\n",
+		id
+	    );
+	}
+	htrAddStylesheetItem_va(s,
+	    "\t#tb%POSpane .cell { "
+		"height:100%%; "
+		"width:100%%; "
+		"vertical-align:middle; "
+		"display:table-cell; "
+		"padding:1px; "
+		"font-weight:bold; "
+		"cursor:default; "
+		"text-align:%STR; "
+		"border-width:1px; "
+		"border-style:%STR&CSSVAL; "
+		"border-color:%STR&CSSVAL; "
+		"border-radius:%INTpx; "
+		"color:%STR&CSSVAL; "
+		"%[text-shadow:1px 1px %STR&CSSVAL; %]"
+		"%STR "
+	    "}\n",
+	    id,
+	    h_align,
+	    border_style,
+	    border_color,
+	    border_radius,
+	    (is_enabled) ? fgcolor1 : disable_color,
+	    (is_enabled), fgcolor2,
+	    bgstyle
+	);
 
 	/** CSS for image on the button **/
 	if (image[0] && (image_width || image_height || image_margin))

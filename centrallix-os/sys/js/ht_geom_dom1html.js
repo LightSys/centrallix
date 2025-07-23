@@ -11,6 +11,35 @@
 
 // Cross browser Geometry DOM1HTML
 
+/*** Experimental system for turning off clipping CSS.
+ *** The clip values are still stored and can be queried
+ *** for legacy compatibility, but they will not output
+ *** any clip rectangles or clip paths in the CSS or HTML.
+ ***/
+/** Ensure clipping is disabled for a layer / HTML node. **/
+function disableClippingCSS(l) {
+    console.log(`Turning off clipping for ${l.clip.obj.id}.`);
+    l.clip.noclip = true;
+    updateClippingCSS(l);
+}
+/** Ensure clipping is enabled for a layer / HTML node. **/
+function enableClippingCSS(l) {
+    l.clip.noclip = false;
+    updateClippingCSS(l);
+}
+/** Update clipping without changing any specific values. **/
+function updateClippingCSS(l) {
+    setClipTop(l, getClipTop(l));
+}
+
+/** Debug function for finding clipped dom nodes. **/
+function getClipped() {
+    return Array
+    	.from(Window.clipped)
+    	.filter(id=>id)
+	.map(id=>document.getElementById(id));
+}
+
 // Clip Width
 function getClipWidth(l) 
     { 
@@ -321,6 +350,7 @@ function getHeight(l)
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+Window.clipped = new Set(); // Debug set for saving clipped dom nodes.
 function ClipObject_SetAll(top,right,bottom,left)
     {
     var str = "rect(" 
@@ -329,7 +359,17 @@ function ClipObject_SetAll(top,right,bottom,left)
 	    + bottom + "px, "
 	    + left + "px)";
     this.arr = {1:top,2:right,3:bottom,4:left};
-    this.obj.style.setProperty('clip',str,"");
+    if (this.noclip)
+	{
+	Window.clipped.delete(this.obj.id); // debug
+	this.obj.style.setProperty('clip', "");
+	}
+    else
+	{
+	Window.clipped.add(this.obj.id); // debug
+	this.obj.style.setProperty('clip', str, "");
+	}
+
     }
 
 var ClipRegexp = /rect\((.*), (.*), (.*), (.*)\)/;

@@ -366,17 +366,25 @@ int htruleRegister(char* ruletype, ...);
 /** Define macros for implementing responsive dimensions. **/
 /** ===================================================== **/
 
-/*** The widget fl_x and fl_y fields are never used in the generated layout.
- *** Thus, the CSS I created to add responsiveness uses the values below
- *** instead of the provided value to preserve backwards compatibility.
+/*** Brief explanation of the responsiveness formula.
+ ***
+ *** Responsive dimensions in widgets use the following formula:
+ ***    Original px + (100% - Total px) * Flex
+ *** Where "Original" is the original size of the object in an adaptive layout,
+ ***       "Total" is the total size of the widget's parent container, and
+ ***       "Flex" is the widget flexibility (where all flexibilities add to 1).
+ *** All, with respect to the given dimension.
+ ***
+ *** The intuition behind this formula is that (100% - Total px) is 0px
+ *** if the parent container is the size intended by the adaptive design.
+ *** However, if the user resizes the window, (100% - Total px) is the
+ *** difference between the size in the adaptive design and the current
+ *** size, so the widget changes size with respect to that difference.
  ***/
-/** @brief widget->fl_x is never used. Use this instead for compatibility. **/
-#define ht_fl_x_compat 1.0
-/** @brief widget->fl_y is never used. Use this instead for compatibility. **/
-#define ht_fl_y_compat 1.0
 
 /** @brief The qprintf format to specify a responsive dimension. **/
-#define ht_flex_format "calc(%INTpx + (%DBL%% - %INTpx) * %DBL)"
+#define ht_flex_format "calc(%INTpx + (100%% - %INTpx) * %DBL)"
+
 /*** @brief The function which generates the values that should be passed to
  *** qprintf in order to satisfy an ht_flex_format.
  ***
@@ -386,42 +394,50 @@ int htruleRegister(char* ruletype, ...);
  ***             to generate this with an ht_get_fl function call.
  *** @returns Several values to serve as parameters for a qprintf call.
  ***/
-#define ht_flex(size, total, flex) (size), (double)(size) / (total) * 100.0, (size), (flex)
+#define ht_flex(size, total, flex) (size), (total), (flex)
+
 /*** @param widget The widget to be queried.
  *** @returns The flexibility of the widget in the x direction.
  ***/
-#define ht_get_fl_x(widget) (ht_fl_x_compat)
+#define ht_get_fl_x(widget) ((widget)->xAdjWeight)
+
 /*** @param widget The widget to be queried.
  *** @returns The flexibility of the widget in the y direction.
  ***/
-#define ht_get_fl_y(widget) (ht_fl_y_compat)
+#define ht_get_fl_y(widget) ((widget)->yAdjWeight)
+
 /*** @param widget The widget to be queried.
  *** @returns The flexibility of the widget in the width direction.
  ***/
 #define ht_get_fl_w(widget) ((widget)->wAdjWeight)
+
 /*** @param widget The widget to be queried.
  *** @returns The flexibility of the widget in the height direction.
  ***/
 #define ht_get_fl_h(widget) ((widget)->hAdjWeight)
+
+int ht_get_total_w__INTERNAL(pWgtrNode widget);
+int ht_get_total_h__INTERNAL(pWgtrNode widget);
+
+#define ht_get_total_w(widget) ht_get_total_w__INTERNAL(widget)
+#define ht_get_total_h(widget) ht_get_total_h__INTERNAL(widget)
+
+// #define ht_get_total_w(widget) ((widget)->Parent->width - (widget)->Parent->left - (widget)->Parent->right)
+// #define ht_get_total_h(widget) ((widget)->Parent->height - (widget)->Parent->top - (widget)->Parent->bottom)
+
 /*** @brief A shortcut function to get the flexibility when writing the
  ***        LEFT CSS attribute.
  *** @param widget The widget to be queried.
  *** @returns The flexibility of the widget in the left direction.
  ***/
 #define ht_get_fl_l ht_get_fl_x
+
 /*** @brief A shortcut function to get the flexibility when writing the
  ***        TOP CSS attribute.
  *** @param widget The widget to be queried.
  *** @returns The flexibility of the widget in the top direction.
  ***/
 #define ht_get_fl_t ht_get_fl_y
-
-/*** Alternate formula suggested in the GitHub Issue. I think this should work
- *** and be more efficient, but for some reason it doesn't at all, and I can't
- *** understand why. I probably just implemented it wrong.
- ***/
-// #define ht_flex_format "calc(%INTpx + (100%% - %INTpx) * %DBL)"
-// #define ht_flex(size, total, flex) (size), (total), (double)(flex) / 100.0
 
 #endif /* _HT_RENDER_H */
 
