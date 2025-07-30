@@ -1500,10 +1500,12 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	    htr_internal_WriteWgtrProperty(s, tree, "fl_y");
 	    htr_internal_WriteWgtrProperty(s, tree, "fl_width");
 	    htr_internal_WriteWgtrProperty(s, tree, "fl_height");
-	    htr_internal_WriteWgtrProperty(s, tree, "adj_weight_x");
-	    htr_internal_WriteWgtrProperty(s, tree, "adj_weight_y");
-	    htr_internal_WriteWgtrProperty(s, tree, "adj_weight_w");
-	    htr_internal_WriteWgtrProperty(s, tree, "adj_weight_h");
+	    htr_internal_WriteWgtrProperty(s, tree, "total_fl_x");
+	    htr_internal_WriteWgtrProperty(s, tree, "total_fl_y");
+	    htr_internal_WriteWgtrProperty(s, tree, "total_fl_w");
+	    htr_internal_WriteWgtrProperty(s, tree, "total_fl_h");
+	    htr_internal_WriteWgtrProperty(s, tree, "parent_w");
+	    htr_internal_WriteWgtrProperty(s, tree, "parent_h");
 	    }
 	propname = wgtrFirstPropertyName(tree);
 	while(propname)
@@ -2748,30 +2750,82 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 
 int
 ht_get_total_w__INTERNAL(pWgtrNode widget) {
+    /** Check to see if the value was already cached by a previous call. **/
+    int cached_value = widget->parent_w;
+    if (cached_value != -1) {
+//	printf(
+//	    "Got total width available to '%s' (%s) from cache: %dpx\n",
+//	    widget->Name, widget->Type, cached_value
+//	);
+	return cached_value;
+    }
+
+    // DEBUG
+    if (widget->Parent == NULL) {
+	printf("\nPANIC: Call to ht_get_total_w__INTERNAL() on widget with no parent!\n\n");
+	wgtrPrint(widget, 1);
+    }
+
+    /** Cache miss, we'll need to traverse to the parent and find its width manually. */
     pWgtrNode parent = widget->Parent;
     int parentWidth = parent->width;
-//     printf(
-// 	"Getting total width available to '%s' (%s), child of '%s' (%s) - %dpx\n",
-// 	widget->Name, widget->Type, parent->Name, parent->Type, parentWidth
-//     );
-    if (parentWidth >= 0) {
+//    int isParentVisual = !(parent->Flags & WGTR_F_NONVISUAL);
+//    printf(
+//	"Getting total width available to '%s' (%s), child of '%s' (%s) - %dpx %d\n",
+//	widget->Name, widget->Type, parent->Name, parent->Type, parentWidth, isParentVisual
+//    );
+
+    /** Check if the parent has a width value. **/
+    if (parentWidth >= 0 /* && isParentVisual */) {
 	int offset = parent->left + parent->right, ret = parentWidth - offset;
-	// printf("Returning %d-%d=%d\n", parentWidth, offset, ret);
-	return ret;
-    } else return ht_get_total_w(parent); // Tail-recursion
+	printf("Returning %d-%d=%d\n", parentWidth, offset, ret);
+	return (widget->parent_w = ret);
+    } else {
+	if (parent->Parent == NULL) {
+	    printf("Recursive call would segfault! Guessing %dpx instead.\n", parentWidth);
+	    return (widget->parent_w = parentWidth);
+	}
+	return (widget->parent_w = ht_get_total_w(parent));
+    }
 }
 
 int
 ht_get_total_h__INTERNAL(pWgtrNode widget) {
+    /** Check to see if the value was already cached by a previous call. **/
+    int cached_value = widget->parent_h;
+    if (cached_value != -1) {
+//	printf(
+//	    "Got total height available to '%s' (%s) from cache: %dpx\n",
+//	    widget->Name, widget->Type, cached_value
+//	);
+	return cached_value;
+    }
+
+    // DEBUG
+    if (widget->Parent == NULL) {
+	printf("\nPANIC: Call to ht_get_total_h__INTERNAL() on widget with no parent!\n\n");
+	wgtrPrint(widget, 1);
+    }
+
+    /** Cache miss, we'll need to traverse to the parent and find its height manually. */
     pWgtrNode parent = widget->Parent;
     int parentHeight = parent->height;
-//     printf(
-// 	"Getting total height available to '%s' (%s), child of '%s' (%s) - %dpx\n",
-// 	widget->Name, widget->Type, parent->Name, parent->Type, parentHeight
-//     );
-    if (parentHeight >= 0) {
+//    int isParentVisual = !(parent->Flags & WGTR_F_NONVISUAL);
+//    printf(
+//	"Getting total height available to '%s' (%s), child of '%s' (%s) - %dpx %d\n",
+//	widget->Name, widget->Type, parent->Name, parent->Type, parentHeight, isParentVisual
+//    );
+
+    /** Check if the parent has a height value. **/
+    if (parentHeight >= 0 /* && isParentVisual */) {
 	int offset = parent->top + parent->bottom, ret = parentHeight - offset;
-	// printf("Returning %d-%d=%d\n", parentHeight, offset, ret);
-	return ret;
-    } else return ht_get_total_h(parent); // Tail-recursion
+	printf("Returning %d-%d=%d\n", parentHeight, offset, ret);
+	return (widget->parent_h = ret);
+    } else {
+	if (parent->Parent == NULL) {
+	    printf("Recursive call would segfault! Guessing %dpx instead.\n", parentHeight);
+	    return (widget->parent_h = parentHeight);
+	}
+	return (widget->parent_h = ht_get_total_h__INTERNAL(parent));
+    }
 }

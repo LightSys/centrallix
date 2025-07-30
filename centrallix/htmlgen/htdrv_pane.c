@@ -187,7 +187,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    "\t#pn%POSmain {"
 		"POSITION:absolute; "
 		"VISIBILITY:inherit; "
-		"overflow:hidden; "
+		"OVERFLOW:hidden; "
 		"LEFT:"ht_flex_format"; "
 		"TOP:"ht_flex_format"; "
 		"WIDTH:"ht_flex_format"; "
@@ -234,7 +234,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** HTML body <DIV> element for the base layer. **/
 	//htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\"><table width=%POS height=%POS cellspacing=0 cellpadding=0 border=0><tr><td></td></tr></table>\n",id, w-2, h-2);
-	htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\">\n",id, w-2, h-2);
+	htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\">\n", id);
 
 	/** Check for objects within the pane. **/
 	htrRenderSubwidgets(s, tree, z+2);

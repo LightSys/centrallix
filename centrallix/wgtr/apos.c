@@ -31,6 +31,8 @@
 
 /*** Author: Israel Fuller
  *** Date: June, 2025
+ ***
+ *** See also: Auto-Positioning.md
  *** 
  *** I wasn't the one to write most of this (although I did write a ton of
  *** comments), but after doing my best to understand it, I hope that you will
@@ -123,6 +125,11 @@ int i, childCnt, sectionCnt;
 pAposSection section;
 pWgtrNode child;
 
+    /*** Note: The "%*.*s" format specifier here takes two parameters:
+     ***   - The first (indent*4) specifies the minimum width (number of spaces).
+     ***   - The second (indent*4) limits the maximum number of characters to print.
+     *** Essentially, this adds (indent*4) spaces to the start of the line.
+     ***/
     printf("%*.*s*** %s ***\n", indent*4, indent*4, "", tree->Name);
     if (tree->LayoutGrid)
 	{
@@ -448,7 +455,7 @@ int i=0, childCount=xaCount(&(Parent->Children));
 	     *** Remember here that strcmp() returns 0 (false) if the strings are equal.
 	     ***/
 	    if((Child->height < 0) && !(Child->Flags & WGTR_F_NONVISUAL) && 
-	        strcmp(Parent->Type, "widget/scrollpane"))
+	        !isScrollpane(Parent))
 	        aposPatchNegativeHeight(Child, PatchedWidgets);
 	    
 	    /** If child is a container, but not a floating window, recursively prepare it as well. **/
@@ -587,7 +594,7 @@ aposSetOffsetBools(pWgtrNode W, int *isSP, int *isWin, int *isTopTab, int *isSid
 ObjData val;
 
     /** Set isSP to compensate for scrollpane scrollbars. **/
-    if(isSP) *isSP = (!strcmp(W->Type, "widget/scrollpane"));
+    if(isSP) *isSP = (isScrollpane(W));
     
     /** Set isWin to compensate windows' titlebars, if any. **/
     if(isWin && !strcmp(W->Type, "widget/childwindow"))
@@ -838,7 +845,7 @@ pXArray FirstCross, LastCross;
 	height_adj = Parent->min_height - Parent->pre_height;
 
     /** Add the 2 horizontal border lines, unless parent is a scrollpane. **/
-    if(strcmp(Parent->Type, "widget/scrollpane"))
+    if(!isScrollpane(Parent))
         {
 	    int minHeightLoc = 0, maxHeightLoc = Parent->pre_height - isWin * 24;
 	    if(aposCreateLine(NULL, HLines, minHeightLoc, APOS_NOT_LINKED, APOS_IS_BORDER, 0, APOS_HORIZONTAL) < 0)
@@ -955,9 +962,10 @@ pWgtrNode C;
 	    else if(!(C->Flags & WGTR_F_NONVISUAL) && !(C->Flags & WGTR_F_FLOATING))
 	        {
 		    /** Add horizontal lines, unless parent is a scrollpane. **/
-		    if(strcmp(Parent->Type, "widget/scrollpane"))
+		    if(!isScrollpane(Parent))
 			{
-			    /*** From this code, we see that the start line is
+			    /*** Note:
+			     *** From this code, we see that the start line is
 			     *** always the minY, and the end of the line is
 			     *** always the maxY. Thus, the top line is the
 			     *** start line and the bottom line is the end line
@@ -969,14 +977,15 @@ pWgtrNode C;
 			    if(aposCreateLine(C, HLines, maxY, APOS_EWIDGETS, APOS_NOT_BORDER, height_adj, APOS_HORIZONTAL) < 0)
 			        goto CreateLineError;
 			}
-		    
-		    /** Add vertical lines. **/
-		    /*** From this code, we see that the start line is always
+
+		    /*** Note:
+		     *** From this code, we see that the start line is always
 		     *** the minX, and the end of the line is always the maxX.
 		     *** Thus, the left line is the start line and the right
 		     *** line is the end line because X increases as we move
 		     *** right along the page.
 		     ***/
+		    /** Add vertical lines. **/
 		    int minX = (C->x), maxX = (C->x + C->width + isSideTab*tabWidth);
 		    if(aposCreateLine(C, VLines, minX, APOS_SWIDGETS, APOS_NOT_BORDER, 0, APOS_VERTICAL) < 0)
 			goto CreateLineError;
@@ -1465,10 +1474,9 @@ float TotalSum=0;
 	    TotalFlex += CurrSect->Flex;
 	    if(CurrSect->Flex)
 		{
-		    FlexibleSections++;
-		    TotalFlexibleSpace += CurrSect->Width;
+		FlexibleSections++;
+		TotalFlexibleSpace += CurrSect->Width;
 		}
-	    else CurrSect->AdjWeight = 0.0f;
 	}
     
     /*** If there is no flexibility (no expansion or contraction), we can't
@@ -1490,7 +1498,7 @@ float TotalSum=0;
 
     /** The initial borders do not adjust. **/
     pAposLine leftBorder = (pAposLine)xaGetItem(Lines, 0);
-    leftBorder->LocAdjWeight = leftBorder->MyAdjWeight = 0.0f;
+    leftBorder->loc_fl = leftBorder->my_fl = 0.0f;
 
     for(i=1; i<count; ++i)	//starts at i=1 to skip the first borderline
         {
@@ -1504,19 +1512,19 @@ float TotalSum=0;
 	     *** replicate some of the following logic in the CSS we will
 	     *** eventually send to the client.
 	     ***/
-	    float AdjWeight = PrevSect->AdjWeight = (float)(FlexWeight*SizeWeight)/TotalSum;
+	    float fl = (float)(FlexWeight * SizeWeight) / TotalSum;
 
 	    /** Store the line adjustment weight for responsive CSS later. **/
-	    CurrLine->LocAdjWeight = PrevLine->LocAdjWeight + AdjWeight;
-	    CurrLine->MyAdjWeight = AdjWeight;
+	    CurrLine->loc_fl = PrevLine->loc_fl + fl;
+	    CurrLine->my_fl = fl;
 	    
 	    /** Expand lines. **/
 	    if(Diff > 0)
 	        {
 		    /** Calculate adjustment using the adjustment weight. **/
-		    Adj = (float)(Diff) * AdjWeight + APOS_FUDGEFACTOR;
+		    Adj = (float)(Diff) * fl + APOS_FUDGEFACTOR;
 
-		//     printf("Expanding lines by %d*%f=%d\n", Diff, AdjWeight, Adj);
+		//     printf("Expanding lines by %d*%f=%d\n", Diff, fl, Adj);
 
 		    /** Apply the calculated adjustment. **/
 		    PrevSect->Width += Adj;
@@ -1526,9 +1534,9 @@ float TotalSum=0;
 	    else if(Diff < 0)
 		{
 		    /** Calculate adjustment using the adjustment weight. **/
-		    Adj = (float)(Diff) * AdjWeight - APOS_FUDGEFACTOR;
+		    Adj = (float)(Diff) * fl - APOS_FUDGEFACTOR;
 		    
-		//     printf("Contracting lines by %d*%f=%d\n", Diff, AdjWeight, Adj);
+		//     printf("Contracting lines by %d*%f=%d\n", Diff, fl, Adj);
 		    
 		    /** if the section width will be unacceptably 
 		    *** narrow or negative after the adjustment **/
@@ -1596,11 +1604,11 @@ pWgtrNode Widget;
 	            Widget = (pWgtrNode)xaGetItem(&(CurrLine->SWidgets), j);
 		    if(flag == APOS_ROW) {
 			Widget->y = CurrLine->Loc;
-			Widget->yAdjWeight = CurrLine->LocAdjWeight;
+			Widget->total_fl_y = CurrLine->loc_fl;
 		    }
 		    else {
 			Widget->x = CurrLine->Loc;
-			Widget->xAdjWeight = CurrLine->LocAdjWeight;
+			Widget->total_fl_x = CurrLine->loc_fl;
 		    }
 		}
 	    
@@ -1627,7 +1635,7 @@ pWgtrNode Widget;
 			     *** to problems down the road, but I plan to fix
 			     *** them if and when I encounter them.
 			     ***/
-			    Widget->hAdjWeight += CurrLine->MyAdjWeight;
+			    Widget->total_fl_h += CurrLine->my_fl;
 			}
 		    else if(flag==APOS_COL  &&  Widget->fl_width)
 		        {
@@ -1650,7 +1658,7 @@ pWgtrNode Widget;
 			     *** to problems down the road, but I plan to fix
 			     *** them if and when I encounter them.
 			     ***/
-			    Widget->wAdjWeight += CurrLine->MyAdjWeight;
+			    Widget->total_fl_w += CurrLine->my_fl;
 			}
 		}
 
@@ -1661,9 +1669,9 @@ pWgtrNode Widget;
 	        {
 	            Widget = (pWgtrNode)xaGetItem(&(CurrLine->CWidgets), j);
 		    if(flag==APOS_ROW  &&  Widget->fl_height)
-		    	Widget->hAdjWeight += CurrLine->MyAdjWeight;
+		    	Widget->total_fl_h += CurrLine->my_fl;
 		    else if(flag==APOS_COL  &&  Widget->fl_width)
-		    	Widget->wAdjWeight += CurrLine->MyAdjWeight;
+		    	Widget->total_fl_w += CurrLine->my_fl;
 		}
 
 	}

@@ -145,12 +145,62 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     strtcpy(name,ptr,sizeof(name));
 
     /** Ok, write the style header items. **/
-    htrAddStylesheetItem_va(s,"\t#dd%POSbtn { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; background-color: %STR&CSSVAL; border:1px outset #e0e0e0;}\n",id,x,y,h,w,z,bgstr);
+    htrAddStylesheetItem_va(s,
+	"\t#dd%POSbtn { "
+	    "OVERFLOW:hidden; "
+	    "POSITION:absolute; "
+	    "VISIBILITY:inherit; "
+	    "LEFT:"ht_flex_format"; "
+	    "TOP:"ht_flex_format"; "
+	    "WIDTH:"ht_flex_format"; "
+	    "HEIGHT:"ht_flex_format"; "
+	    "Z-INDEX:%POS; "
+	    "cursor:default; "
+	    "background-color: %STR&CSSVAL; "
+	    "border:1px outset #e0e0e0; "
+	"}\n",
+	id,
+	ht_flex(x, ht_get_total_w(tree), ht_get_fl_x(tree)),
+	ht_flex(y, ht_get_total_h(tree), ht_get_fl_y(tree)),
+	ht_flex(w, ht_get_total_w(tree), ht_get_fl_w(tree)),
+	ht_flex(h, ht_get_total_h(tree), ht_get_fl_h(tree)),
+	z,
+	bgstr
+    );
     if (*textcolor) {
 	htrAddStylesheetItem_va(s,"\t#dd%POSbtn { color: %STR&CSSVAL; }\n",id,textcolor);
     }
-    htrAddStylesheetItem_va(s,"\t#dd%POScon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,h-2,z+1);
-    htrAddStylesheetItem_va(s,"\t#dd%POScon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:1024px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,h-2,z+1);
+    htrAddStylesheetItem_va(s,
+	"\t#dd%POScon1 { "
+	    "OVERFLOW:hidden; "
+	    "POSITION:absolute; "
+	    "VISIBILITY:inherit; "
+	    "LEFT:1px; "
+	    "TOP:1px; "
+	    "WIDTH:1024px; "
+	    "HEIGHT:"ht_flex_format"; "
+	    "Z-INDEX:%POS; "
+	"}\n",
+	id,
+	ht_flex(h-2, h, 0.0),
+	z+1
+    );
+    /** I have no idea why we need dd#con2. It's hidden by default. **/
+    htrAddStylesheetItem_va(s,
+	"\t#dd%POScon2 { "
+	    "OVERFLOW:hidden; "
+	    "POSITION:absolute; "
+	    "VISIBILITY:hidden; "
+	    "LEFT:1px; "
+	    "TOP:1px; "
+	    "WIDTH:1024px; "
+	    "HEIGHT:"ht_flex_format"; "
+	    "Z-INDEX:%POS; "
+	"}\n",
+	id,
+	ht_flex(h-2, h, 0.0),
+	z+1
+    );
 
     htrAddScriptGlobal(s, "dd_current", "null", 0);
     htrAddScriptGlobal(s, "dd_lastkey", "null", 0);

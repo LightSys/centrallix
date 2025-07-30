@@ -100,16 +100,17 @@ typedef struct _WN
     char	Namespace[64];			/** Namespace this widget and subwidgets are in **/
     int		r_x, r_y, r_width, r_height;	/** Requested geometry **/
     int		pre_x, pre_y, pre_width, pre_height;  /** pre-layout geom. **/
-    int		fl_x, fl_y, fl_width, fl_height;/** Flexibility **/
-    double  	fx, fy, fw, fh;			/** internal flexibility calculations **/
-    double   	xAdjWeight, yAdjWeight;		/** Responsive CSS adjustment weights for x and y */
-    double   	wAdjWeight, hAdjWeight;		/** Responsive CSS adjustment weights for width and height */
+    int		fl_x, fl_y, fl_width, fl_height;/** Flexibilities as specified by the designer **/
+    double	fx, fy, fw, fh;			/** internal flexibility calculations **/
+    double	total_fl_x, total_fl_y;		/** Total flexiblities as calculated for this layout. */
+    double	total_fl_w, total_fl_h;		/** Responsive CSS adjustment weights for width and height */
+    int		parent_w, parent_h;		/** The expected size of the parent container */
     int		min_width, min_height;		/** absolute minimums **/
     int		x, y, width, height;		/** actual geometry **/
     int		top, bottom, left, right;	/** container offsets **/
     XArray	Properties;			/** Array of widget properties **/
     XArray	Children;			/** Array of child widgets **/
-    struct _WN* Parent;
+    struct _WN*	Parent;
     struct _WN*	Root;
     int		CurrProperty;			/** Property to return on next call to wgtNextProperty **/
     int		CurrChild;			/** Child to return on next call to wgtrNextChild **/

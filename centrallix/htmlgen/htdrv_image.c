@@ -178,14 +178,39 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	/** HTML body <DIV> element for the base layer. **/
 	if (!strcmp(aspect, "stretch"))
 	    {
-	    htrAddBodyItemLayer_va(s, 0, "img%POS", id, "wimage",
-		"\n<img class=\"wimage\" id=\"im%POS\" width=\"%POS\" height=\"%POS\" src=\"%STR&HTE\">\n",
+	    htrAddBodyItemLayer_va(s,
+		0, "img%POS", id, "wimage",
+		"\n<img "
+		    "class=\"wimage\" "
+		    "id=\"im%POS\" "
+		    "width=\"%POS\" "
+		    "height=\"%POS\" "
+		    "style=\""
+			"width: 100%%; "
+			"height: 100%%; "
+		    "\""
+		    "src=\"%STR&HTE\" "
+		">\n",
 		id, w, h, src);
 	    }
 	else // "preserve"
 	    {
-	    htrAddBodyItemLayer_va(s, 0, "img%POS", id, "wimage",
-		"\n<img class=\"wimage\" id=\"im%POS\" width=\"%POS\" height=\"%POS\" style=\"max-width:fit-content; max-height:fit-content; display:inline;\" src=\"%STR&HTE\">\n",
+	    htrAddBodyItemLayer_va(s,
+		0, "img%POS", id, "wimage",
+		"\n<img "
+		    "class=\"wimage\" "
+		    "id=\"im%POS\" "
+		    "width=\"%POS\" "
+		    "height=\"%POS\" "
+		    "style=\""
+			"width: 100%%; "
+			"height: auto; "
+			"max-width:fit-content; "
+			"max-height:fit-content; "
+			"display:inline; "
+		    "\""
+		    "src=\"%STR&HTE\" "
+		">\n",
 		id, w, h, src);
 	    }
 
