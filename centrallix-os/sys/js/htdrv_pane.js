@@ -79,6 +79,10 @@ function pn_setbackground(aparam)
 
 function pn_action_resize(aparam)
     {
+    // I think this code is a better implementation of the following lines:
+    // var w = (aparam.Width)  ?? pg_get_style(this, 'width');
+    // var h = (aparam.Height) ?? pg_get_style(this, 'height');
+
     var w = aparam.Width?aparam.Width:pg_get_style(this, 'width');
     var h = aparam.Height?aparam.Height:pg_get_style(this, 'height');
     resizeTo(this, w, h);

@@ -353,8 +353,31 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		mssError(0,"HTCMP","Invalid component for widget '%s'",name);
 		goto out;
 		}
-	    wgtrMoveChildren(cmp_tree, x, y);
 
+	    /*** Adjusting children is no longer necessary because
+	     *** the component is placed inside an isolating div.
+	     *** Thus, the children's location within this div will
+	     *** be correct without adjustment.
+	     ***/
+	    // wgtrMoveChildren(cmp_tree, x, y);
+
+	    /** Style enclosing div. **/
+	    htrAddStylesheetItem_va(s,
+		"\t#cmp%POSbase { "
+		    "POSITION:absolute; "
+		    "VISIBILITY:inherit; "
+		    "OVERFLOW:hidden; "
+		    ht_flex_format_all
+		    "Z-INDEX:%POS; "
+		"}\n",
+		id,
+		ht_flex_all(x, y, w, h, tree),
+		z
+	    );
+
+	    /** Enclosing div to isolate children. **/
+	    htrAddBodyItem_va(s,"<DIV ID=\"cmp%POSbase\">\n", id);
+	    
 	    /** Check param references **/
 	    htcmp_internal_CheckReferences(cmp_tree, params, s->Namespace->DName);
 
@@ -368,6 +391,9 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** Switch the namespace back **/
 	    htrLeaveNamespace(s);
+
+	    /** End the containing layer. **/
+	    htrAddBodyItem(s, "</DIV>\n");
 
 	    /** End Init component **/
 	    htrAddScriptInit_va(s, "    cmp_endinit(wgtrGetNodeRef(ns,\"%STR&SYM\"));\n", name);
