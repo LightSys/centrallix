@@ -77,9 +77,11 @@ typedef struct
     char*	ModifyUserField;
     pSnNode	BaseNode;
     pStructInf	NodeData;
+    int		Flags;
     }
     QypNode, *pQypNode;
 
+#define QYP_NODE_F_ALIAS	(1)
 
 /*** Info for a single datum ***/
 typedef struct
@@ -248,6 +250,9 @@ qyp_internal_ReadNode(char* nodepath, pSnNode nodestruct)
 		    goto error;
 		    }
 		node->AttrNameField = nmSysStrdup(fieldname);
+		/** Check if the name requires an alias to make the user data usable as a variable name **/
+		if (stAttrValue(stLookup(field_inf, "alias"), NULL, &ptr, 0) == 0 && strcmp(ptr, "yes") == 0)
+		    node->Flags |= QYP_NODE_F_ALIAS;
 		}
 	    else if (!strcmp(usage, "type"))
 		{
@@ -381,6 +386,7 @@ qyp_internal_LoadDatum(pQypData inf, pObject source_subobj)
     char* ptr;
     int given_type;
     int actual_type;
+    int rval;
 
 	/** allocate the datum **/
 	one_datum = (pQypDatum)nmMalloc(sizeof(QypDatum));
@@ -398,7 +404,22 @@ qyp_internal_LoadDatum(pQypData inf, pObject source_subobj)
 	    mssError(0, "QYP", "Attribute name field (%s) must be valid and non-null", inf->Node->AttrNameField);
 	    goto error;
 	    }
-	strtcpy(one_datum->Name, ptr, sizeof(one_datum->Name));
+	/* check if an alias is required, and pass the name accordingly */
+	if(inf->Node->Flags & QYP_NODE_F_ALIAS)
+	    {
+	    /* alias encodes as hex starting with an 'x' to guarantee that any string value becomes a valid variable name */
+	    rval = qpfPrintf(NULL, one_datum->Name, sizeof(one_datum->Name), "x%STR&HEX", ptr);
+	    if(rval < 0 || rval >= sizeof(one_datum->Name))
+		{
+		mssError(0, "QYP", "Failed to alias for attribute name (%s) with attribute value (%s)", inf->Node->AttrNameField, inf->Node->ValueTypeField);
+		goto error;
+		}
+	    }
+	else
+	    {
+	    strtcpy(one_datum->Name, ptr, sizeof(one_datum->Name));
+	    }
+	
 
 	/** Data type provided? **/
 	given_type = DATA_T_UNAVAILABLE;
@@ -784,6 +805,9 @@ qyp_internal_Update(pQypData inf)
 		    /** new datum - do a Create **/
 		    objCurrentDate(&datum->CreateDate);
 		    strtcpy(datum->CreateBy, mssUserName(), sizeof(datum->CreateBy));
+		
+		    /** Check if the name was aliased, and copy path accordingly **/
+		    /// FIXME: Looks like this is fine. If not, need to parse out just the end
 		    rval = snprintf(source_path, sizeof(source_path), "%s/*", inf->Node->SourcePath);
 		    if (rval < 0 || rval >= sizeof(source_path))
 			{
@@ -878,6 +902,7 @@ qyp_internal_Update(pQypData inf)
 			mssError(1,"QYP","Cannot update key field '%s'", datum->Name);
 			goto error;
 			}
+		/// FIXME: it seems like I would need to do work here, but it's just fine...?
 		    rval = snprintf(source_path, sizeof(source_path), "%s/%s", inf->Node->SourcePath, datum->SourceObjName);
 		    if (rval < 0 || rval >= sizeof(source_path))
 			{
