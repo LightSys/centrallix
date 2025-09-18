@@ -21,7 +21,7 @@ This proposal not only suggests allowing SELECT items to reference each other, b
 Some SQLs provide a WITH clause with a conceptually similar, but logically different, use: defining a tabular data source, almost like a lightweight VIEW, that can be referenced in the FROM clause of a SELECT statement.  It takes the form
 
 ```
-    WITH viewname (outparams) AS (SELECT statement) SELECT ...
+	WITH viewname (outparams) AS (SELECT statement) SELECT ...
 ```
 
 We don't want to implement our use of the WITH keyword in a way that would prevent us from implementing this usage in the future; that said, I believe our usage is both distinct and can co-exist appropriately.
@@ -33,14 +33,14 @@ The WITH clause will follow the SELECT item list, but precede the FROM clause.  
 The general format would be:
 
 ```
-    SELECT
-	values ...
-    WITH
-	values ...
-    FROM
-	sources ...
-    WHERE
-	expression
+	SELECT
+		values ...
+	WITH
+		values ...
+	FROM
+		sources ...
+	WHERE
+		expression
 ```
 
 The SELECT items and WHERE clause can both reference common and precedent values in the WITH clause, and the WITH clause values can reference any data source that a FROM clause item can reference.
@@ -50,12 +50,12 @@ The WITH items will overall be similar to SELECT items, but will not be per se i
 ## Simple Example
 
 ```
-    SELECT
-	largest = condition(:this:a > :this:b, :this:a, :this:b)
-    WITH
-	a = 5,
-	b = 6
-    ;
+	SELECT
+		largest = condition(:this:a > :this:b, :this:a, :this:b)
+	WITH
+		a = 5,
+		b = 6
+	;
 ```
 
 ## Implementation considerations
