@@ -781,6 +781,7 @@ qyp_internal_Update(pQypData inf)
     pQypDatum datum, entity_datum;
     pObject source_obj = NULL;
     char source_path[OBJSYS_MAX_PATH + 1];
+    char *name_buf = NULL;
     int j;
     char* ptr;
     pDateTime dt;
@@ -798,16 +799,27 @@ qyp_internal_Update(pQypData inf)
 	    if ((datum->Flags & QYP_DATUM_F_DIRTY) && !(datum->Flags & QYP_DATUM_F_KEY))
 		{
 		objCurrentDate(&datum->ModifyDate);
-		strtcpy(datum->ModifyBy, mssUserName(), sizeof(datum->ModifyBy));
+		ptr = mssUserName();
+		if(ptr == 0)
+		    {
+		    mssError(1, "QYP", "Login required to fill out create/modify user field");
+		    goto error;
+		    }
+		strtcpy(datum->ModifyBy, ptr, sizeof(datum->ModifyBy));
 
 		if (datum->Flags & QYP_DATUM_F_NEW)
 		    {
 		    /** new datum - do a Create **/
 		    objCurrentDate(&datum->CreateDate);
-		    strtcpy(datum->CreateBy, mssUserName(), sizeof(datum->CreateBy));
+		    ptr = mssUserName();
+		    if(ptr == 0)
+			{
+			mssError(1, "QYP", "Login required to fill out create/modify user field");
+			goto error;
+			}
+		    strtcpy(datum->CreateBy, ptr, sizeof(datum->CreateBy));
 		
 		    /** Check if the name was aliased, and copy path accordingly **/
-		    /// FIXME: Looks like this is fine. If not, need to parse out just the end
 		    rval = snprintf(source_path, sizeof(source_path), "%s/*", inf->Node->SourcePath);
 		    if (rval < 0 || rval >= sizeof(source_path))
 			{
@@ -829,11 +841,25 @@ qyp_internal_Update(pQypData inf)
 			    }
 			}
 
-		    /** Set attribute name field **/
-		    ptr = datum->Name;
+		    /** Set attribute name field, checking if the column name needs decoded **/
+		    if (inf->Node->Flags & QYP_NODE_F_ALIAS)
+			{
+			name_buf = nmMalloc(sizeof(datum->Name));
+			qpfPrintf(NULL, name_buf, sizeof(name_buf), "%STR&DHEX\0", datum->Name+1);
+			ptr = name_buf;
+			}
+		    else
+			{
+			ptr = datum->Name;
+			}
 		    if (objSetAttrValue(source_obj, inf->Node->AttrNameField, DATA_T_STRING, POD(&ptr)) < 0)
 			goto error;
-
+		    if(name_buf)
+			{
+			nmFree(name_buf, sizeof(datum->Name));
+			name_buf = NULL;
+			ptr = NULL;
+			}
 		    /** Set Data type field, if applicable **/
 		    if (inf->Node->ValueTypeField)
 			{
@@ -902,7 +928,6 @@ qyp_internal_Update(pQypData inf)
 			mssError(1,"QYP","Cannot update key field '%s'", datum->Name);
 			goto error;
 			}
-		/// FIXME: it seems like I would need to do work here, but it's just fine...?
 		    rval = snprintf(source_path, sizeof(source_path), "%s/%s", inf->Node->SourcePath, datum->SourceObjName);
 		    if (rval < 0 || rval >= sizeof(source_path))
 			{
@@ -947,6 +972,7 @@ qyp_internal_Update(pQypData inf)
 
     error:
 	if (source_obj) objClose(source_obj);
+	if(name_buf) nmFree(name_buf, sizeof(char)*64);
 	return -1;
     }
 

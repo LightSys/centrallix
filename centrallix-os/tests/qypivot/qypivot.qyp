@@ -1,0 +1,14 @@
+$Version=2$
+account_customizable "system/querypivot"
+    {
+    source = "/tests/qypivot/qypivot_data.csv/rows";
+
+    ID1		"system/querypivot" { type=integer;	usage=key; }
+    ID2		"system/querypivot" { type=string;	usage=key; }
+    NAME	"system/querypivot" { type=string;	usage=name;	alias=no; }
+    VALUE	"system/querypivot" { type=string;	usage=value; }
+    CREATE_DATE	"system/querypivot" { type=datetime;	usage=createdate; }
+    CREATE_USER	"system/querypivot" { type=string;	usage=createuser; }
+    MODIFY_DATE	"system/querypivot" { type=datetime;	usage=modifydate; }
+    MODIFY_USER	"system/querypivot" { type=string;	usage=modifyuser; }
+    }
