@@ -1,4 +1,4 @@
-##NAME Basic Query Pivot Test
+##NAME Basic query pivot test
 # check initial state
 csv SELECT * FROM /tests/qypivot/qypivot.qyp
 
