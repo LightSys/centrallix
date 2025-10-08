@@ -1813,6 +1813,90 @@ int exp_fn_substitute(pExpression tree, pParamObjects objlist, pExpression i0, p
     return fn_rval;
     }
 
+/* Parses a delimited string and passes back the nth item. 1 returns the first item. called as parse_str_list(delimiter, string, index)*/
+int exp_fn_parsestrlist(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    int n, len, finalLen;
+    char* strStart = NULL;
+    char* strEnd = NULL;
+    char* strFull = NULL;
+    char delim;
+
+    if (!i0 || !i1 || !i2 || i0->Flags & EXPR_F_NULL || i1->Flags & EXPR_F_NULL || i2->Flags & EXPR_F_NULL) 
+        {
+	tree->Flags |= EXPR_F_NULL;
+	tree->DataType = DATA_T_STRING;
+	return 0;
+	}
+    if (i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_STRING || i2->DataType != DATA_T_INTEGER) 
+        {
+	mssError(1,"EXP","Invalid datatypes in parse_str_list() - takes (string,string,integer)");
+	return -1;
+	}
+    if(strlen(i0->String) != 1)
+	{
+	mssError(1, "EXP", "Invalid delimiter in parse_str_list() - delimiter must be a single character");
+	return -1;
+	}
+    if(i2->Integer < 1)
+	{
+	mssError(1, "EXP", "Invalid index for parse_str_list() - indexing starts at 1, and must be positive");
+	return -1;
+	}
+    delim = i0->String[0];
+    len = strlen(i1->String);
+    strStart = strEnd = strFull = i1->String;
+    n = i2->Integer;
+    for(int i = 0 ; i < len ; i++)
+	{
+	if(strFull[i] == delim)
+	    {
+	    // found what we wanted
+	    if(n == 1) break;
+	    else
+		{
+		// move past the delimiter and start again
+		strStart = strEnd = strFull+i+1;
+		n--;
+		}
+	    }
+	else
+	    {
+	    strEnd++;
+	    }
+	}
+    // found target?
+    if(n == 1)
+	{
+	finalLen = strEnd - strStart;
+	// find out how to store the result
+	if (tree->Alloc && tree->String)
+	    {
+	    nmSysFree(tree->String);
+	    tree->Alloc = 0;
+	    }
+	if (finalLen < 64)
+	    {
+	    tree->String = tree->Types.StringBuf;
+	    tree->Alloc = 0;
+	    }
+	else
+	    {
+	    tree->String = (char*)nmSysMalloc( finalLen + 1);
+	    tree->Alloc = 1;
+	    }
+	memcpy(tree->String, strStart, finalLen);
+	tree->String[finalLen] = '\0';
+	tree->DataType = DATA_T_STRING;
+	return 0;
+	}
+    else
+	{
+	// asked for an invalid index - return an error 
+	mssError(1, "EXP", "Invalid index for parse_str_list() - index is larger the number of items in the list");
+	return -1;
+	}
+    }
 
 int exp_fn_eval(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
@@ -4494,6 +4578,7 @@ int exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "escape", (char*)exp_fn_escape);
 	xhAdd(&EXP.Functions, "quote", (char*)exp_fn_quote);
 	xhAdd(&EXP.Functions, "substitute", (char*)exp_fn_substitute);
+	xhAdd(&EXP.Functions, "parse_str_list", (char*)exp_fn_parsestrlist);
 	xhAdd(&EXP.Functions, "eval", (char*)exp_fn_eval);
 	xhAdd(&EXP.Functions, "round", (char*)exp_fn_round);
 	xhAdd(&EXP.Functions, "dateadd", (char*)exp_fn_dateadd);
