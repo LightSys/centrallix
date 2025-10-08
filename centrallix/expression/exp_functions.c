@@ -1892,9 +1892,10 @@ int exp_fn_parsestrlist(pExpression tree, pParamObjects objlist, pExpression i0,
 	}
     else
 	{
-	// asked for an invalid index - return an error 
-	mssError(1, "EXP", "Invalid index for parse_str_list() - index is larger the number of items in the list");
-	return -1;
+	// asked for an invalid index - return null
+	tree->Flags |= EXPR_F_NULL;
+	tree->DataType = DATA_T_STRING;
+	return 0;
 	}
     }
 
