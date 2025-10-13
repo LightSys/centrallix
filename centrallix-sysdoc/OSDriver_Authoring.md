@@ -166,9 +166,11 @@ Within the initialization function, the driver should initialize all necessary g
 
 To register with the OSML, the driver must first allocate an ObjDriver structure and fill in its contents.  
 
+```c
     pObjDriver drv;
 
     drv = (pObjDriver)nmMalloc(sizeof(ObjDriver));
+```
 
 This involves setting a large number of fields to the appropriate entry points within the OS Driver, as well as telling the OSML what object type(s) are handled by the driver and giving the OSML a description of the driver.  A list of the required entry point functions / fields follows:
 
@@ -208,14 +210,17 @@ Another field in the driver structure is the Capabilities field. This field is a
 The 'Name' field should be filled in with a description of the OS driver, with a maximum length of 63 characters (plus the string null terminator).  Normally, the 2-4 letter prefix of the driver is included at the beginning of 'Name', such as "UXD - UNIX filesystem driver".  
 
 Finally, the 'RootContentTypes' field is an XArray containing a list of strings, each of which specifies the node object types that the driver will handle.  Such types are added to this XArray using the normal XArray utility functions, such as:
-
+```c
     xaInit(&drv->RootContentTypes, 16);
     xaAddItem(&drv->RootContentTypes, "system/file");
     xaAddItem(&drv->RootContentTypes, "system/directory");
+```
 
 When the structure has been filled out, the os driver should call the OSML to register itself, using the objRegisterDriver function:
 
+```c
     objRegisterDriver(drv);
+```
 
 The initialization function should return 0 to indicate success, or -1 on failure.  Currently, initialization success/failure is not verified by lsmain.c.
 
@@ -234,54 +239,58 @@ As an overview, the normal procedure for the open routine to follow is this:
 
 The first basic part of the OS driver consists of the Open and Close routines, normally named 'xxxOpen' and 'xxxClose' within the driver, where 'xxx' is the driver's prefix.  The Close routine is normally fairly simple, but the Open routine is one of the most complicated routines in a typical OS driver, for the Open routine must parse the subtree pathname beneath the node object.  For example, if the node object had a pathname like:
 
+```sh
     /datasources/OMSS_DB
+```
 
 and the user opened an object called:
 
+```sh
     /datasources/OMSS_DB/JNetHelp/rows/1
+```
 
 the OS driver would have to determine what the subtree pathname 'JNetHelp/rows/1' means, since this path will mean different things to different os drivers.
 
-The Open routine also must determine whether the object already exists or not, and if not, whether to create a new object.  This logic is largely dependent on the obj->Mode flags, as if O_CREAT is included, the driver must attempt to create the object if it does not already exist, and if O_EXCL is included, the driver must refuse to open the object if it already exists, as with the UNIX open() system call semantics.  
+The Open routine also must determine whether the object already exists or not, and if not, whether to create a new object.  This logic is largely dependent on the `obj->Mode` flags, as if `O_CREAT` is included, the driver must attempt to create the object if it does not already exist, and if `O_EXCL` is included, the driver must refuse to open the object if it already exists, as with the UNIX `open()` system call semantics.  
 
-Finally, if the os driver specified a capability of OBJDRV_C_TRANS, it must pay attention to the current state of the end-user's trans- action.  If a new object is being created, an object is being deleted, or other modifications/additions are being performed, and if the OXT layer indicates a transaction is in process, the driver must either complete the current transaction and then complete the current call, or else add the current delete/create/modify call to the transaction tree (in which case the tree item is preallocated; all the driver needs to do is fill it in).  The transaction layer will be discussed in depth later in this document.
+Finally, if the os driver specified a capability of `OBJDRV_C_TRANS`, it must pay attention to the current state of the end-user's transaction.  If a new object is being created, an object is being deleted, or other modifications/additions are being performed, and if the OXT layer indicates a transaction is in process, the driver must either complete the current transaction and then complete the current call, or else add the current delete/create/modify call to the transaction tree (in which case the tree item is preallocated; all the driver needs to do is fill it in).  The transaction layer will be discussed in depth later in this document.
 
-As a part of the Open process, the OS driver will normally allocate an internal structure to represent the current open object, and will return that structure as a void* data type in the return value.  This pointer will be then passed to each of the other driver entry point functions, with the exception of QueryFetch, QueryDelete, and Query- Close, which will be discussed later.
+As a part of the Open process, the OS driver will normally allocate an internal structure to represent the current open object, and will return that structure as a `void*` data type in the return value.  This pointer will be then passed to each of the other driver entry point functions, with the exception of QueryFetch, QueryDelete, and Query- Close, which will be discussed later.
 
 The Open() routine is called with five parameters:
 
-- obj (pObject)
+- `obj` (pObject)
     This is a pointer to the Object sturcture maintained by the OSML.  This structure will contain some important fields for processing the open() request.
 
-    obj->Mode is a bitmask of the O_* flags, which include O_RDONLY, O_WRONLY, O_RDWR, O_CREAT, O_TRUNC, and O_EXCL.
+    - `obj->Mode` is a bitmask of the O_* flags, which include `O_RDONLY`, `O_WRONLY`, `O_RDWR`, `O_CREAT`, `O_TRUNC`, and `O_EXCL`.
 
-    obj->Pathname is a Pathname structure which contains the complete parsed pathname for the object.  This structure is defined in the file include/obj.h, and has a buffer for the pathname as well as an array of pointers to the pathname's components.  The function obj_internal_PathPart() can be used to obtain at will any component or series of components of the pathname.
+    - `obj->Pathname` is a Pathname structure which contains the complete parsed pathname for the object.  This structure is defined in the file `include/obj.h`, and has a buffer for the pathname as well as an array of pointers to the pathname's components.  The function `obj_internal_PathPart()` can be used to obtain at will any component or series of components of the pathname.
 
-    obj->Pathname->OpenCtl[] contains parameters to the open() operation.  Frequently these params provide additional information on how to open the object.  The use of these parameters is determined by the author of the objectsystem driver.  The parameters are those passed in normal URL fasion (?param=value, etc.). Typically, the only OpenCtl of interest is going to be obj->Pathname->OpenCtl[obj->SubPtr] (see below for SubPtr meaning).
+    - `obj->Pathname->OpenCtl[]` contains parameters to the open() operation.  Frequently these params provide additional information on how to open the object.  The use of these parameters is determined by the author of the objectsystem driver.  The parameters are those passed in normal URL fasion (?param=value, etc.). Typically, the only OpenCtl of interest is going to be `obj->Pathname->OpenCtl[obj->SubPtr]` (see below for SubPtr meaning).
 
-    obj->SubPtr is the number of components in the path that are a part of the node object's path.  For example, in the above path of '/datasources/OMSS_DB', the path would be internally represented as './datasources/ OMSS_DB', and the SubPtr would be 3.
+    - `obj->SubPtr` is the number of components in the path that are a part of the node object's path.  For example, in the above path of '/datasources/OMSS_DB', the path would be internally represented as './datasources/ OMSS_DB', and the SubPtr would be 3.
 
-    obj->SubCnt reflects the number of components of the path which are under the control of the current driver.  This includes the node object, so SubCnt will always be at least 1.  For example, when opening '/data/file.csv/rows/1', and the driver in question is the CSV driver, SubPtr would be 3 (includes an "invisible" first component), from '/data/file.csv', and SubCnt would be 3, from 'file.csv/rows/1'. The driver will need to SET THE SUBCNT value in its Open function.  SubPtr is already set.
+    - `obj->SubCnt` reflects the number of components of the path which are under the control of the current driver.  This includes the node object, so SubCnt will always be at least 1.  For example, when opening '/data/file.csv/rows/1', and the driver in question is the CSV driver, SubPtr would be 3 (includes an "invisible" first component), from '/data/file.csv', and SubCnt would be 3, from 'file.csv/rows/1'. The driver will need to SET THE SUBCNT value in its Open function.  SubPtr is already set.
 
-    obj->Prev is the underlying object as opened by the next-lower-level driver.  It is the duty of this driver to parse the content of that object and do something meaningful with it.
+    - `obj->Prev` is the underlying object as opened by the next-lower-level driver.  It is the duty of this driver to parse the content of that object and do something meaningful with it.
 
-    obj->Prev->Flags contains some critical infor- mation about the underlying object.  If it contains the flag OBJ_F_CREATED, then the underlying object was just created by this open() operation.  In that case, this driver is expected to create the node with snNewNode() (see later in this document) as long as obj->Mode contains O_CREAT.
+    - `obj->Prev->Flags` contains some critical information about the underlying object.  If it contains the flag `OBJ_F_CREATED`, then the underlying object was just created by this open() operation.  In that case, this driver is expected to create the node with snNewNode() (see later in this document) as long as obj->Mode contains O_CREAT.
 
-- mask (int)	
+- `mask` (int)	
     Indicates the security mask to be given to the object if it is being created.  Typically, this will only apply to files and directories.  The values are the same as UNIX chmod() type values.
 
-- systype (pContentType)
+- `systype` (pContentType)
     This param indicates the content type of the node object as determined by the OSML.  The ContentType structure is defined in include/ obj.h, and includes among other things the name of the content type.  For example, for the reporting driver, this type would be "system/report".
 
-- usrtype (char*)
+- `usrtype` (char*)
     This param is the requested object type by the user and is normally used when creating a new object, though under some circumstances it may change the way the open operates on an existing object.  For example, the reporting driver can change whether it generates HTML report text or plaintext reports based on usrtype being either "text/html" or "text/plain".
 
-- oxt (pObjTrxTree*)
+- `oxt` (pObjTrxTree*)
     This param is only used by object drivers that specified a capability of OBJDRV_C_TRANS.  More on this field later.  For non-transaction-aware drivers, this field can be safely ignored.
 
     Yes, this param *is* a pointer to a pointer. Essentially, a pointer passed by reference.
 
-The Open routine should return its internal structure pointer on success, or NULL on failure.  It is normal to allocate one such structure per Open call, and for the structure to point, among other things, to shared data describing the node object.  Accessing the node object is described later in this document.
+The Open routine should return its internal structure pointer on success, or `NULL` on failure.  It is normal to allocate one such structure per Open call, and for the structure to point, among other things, to shared data describing the node object.  Accessing the node object is described later in this document.
 
 It is important to know what kinds of fields normally are placed in the allocated data structure returned by Open.  These fields are all determined by the driver author, but here are a few typical ones that are helpful to have ("inf" is the pointer to the structure here):
 
@@ -307,7 +316,7 @@ Before exiting, the Close routine should make sure it decrements the Open Count 
 ### C.  Creating and Deleting Objects.
 The Create and Delete functions are used for creating and deleting objects.  Normally, the os driver will process the Pathname in the same manner for Create and Delete as for Open, thus such functionality could be placed in another function.  
 
-As a side note, within Centrallix, the standard function naming convention is to use xxx_internal_FunctionName for functions that are more or less internal to the module and not a part of any standard interface.
+As a side note, within Centrallix, the standard function naming convention is to use `xxx_internal_FunctionName()` for functions that are more or less internal to the module and not a part of any standard interface.
 
 The Create routine has parameters identical to the Open routine.  It should return 0 on success and -1 on error.
 
@@ -349,19 +358,19 @@ The query mechanism can also be used to delete a set of child objects, optionall
 
 The first main function for handling queries is OpenQuery.  This function is passed three arguments:
 
-- inf_v (void*)	The value returned from Open for this object.
+- `inf_v` (void*)	The value returned from Open for this object.
 
-- query (pObjQuery)	The query structure setup by the OSML.  It will contain several key fields:
+- `query` (pObjQuery)	The query structure setup by the OSML.  It will contain several key fields:
 
-    query->QyText: the text of the criteria (i.e., the WHERE clause, in Centrallix SQL syntax)
+    - `query->QyText`: the text of the criteria (i.e., the WHERE clause, in Centrallix SQL syntax)
 
-    query->Tree: the compiled expression tree, which evaluates to nonzero for true or zero for false as the WHERE clause condition.
+    - `query->Tree`: the compiled expression tree, which evaluates to nonzero for true or zero for false as the WHERE clause condition.
 
-    query->SortBy[]: an array of expressions giving the various components of the sorting criteria.
+    - `query->SortBy[]`: an array of expressions giving the various components of the sorting criteria.
 
-    query->Flags: the driver should set and/or clear the flags OBJ_QY_F_FULLQUERY and OBJ_QY_F_FULLSORT if need be.  The former indicates that the driver is willing to handle the full WHERE clause (the query->Tree).  The latter indicates that the driver is willing to handle the sorting of the data as well (in query->SortBy[]).  If the driver can easily have the sorting/selection done (as when querying an RDBMS), it should set these flags. Otherwise, it should let the OSML take care of the ORDER BY and WHERE conditions.
+    - `query->Flags`: the driver should set and/or clear the flags `OBJ_QY_F_FULLQUERY` and `OBJ_QY_F_FULLSORT` if need be.  The former indicates that the driver is willing to handle the full WHERE clause (the query->Tree).  The latter indicates that the driver is willing to handle the sorting of the data as well (in query->SortBy[]).  If the driver can easily have the sorting/selection done (as when querying an RDBMS), it should set these flags. Otherwise, it should let the OSML take care of the ORDER BY and WHERE conditions.
 
-- oxt (pObjTrxTree*)	The transaction tree pointer.
+- `oxt` (pObjTrxTree*)	The transaction tree pointer.
 
 The OpenQuery function should return a void* value, which will within the driver point to a structure used for managing the query.  This structure will normally have a pointer to the inf_v value returned by Open as well, since inf_v is never passed to QueryFetch, QueryDelete or QueryClose.  OpenQuery should return NULL if the object does not support queries or if some other error condition occurs that will prevent the execution of the query.
 
@@ -378,6 +387,7 @@ The QueryFetch routine should return an inf_v pointer to the child object, or NU
 
 All object drivers will need to add an element to the obj->Pathname structure to indicate the path to the child object being returned. This will involve a process somewhat like this: (given that new_name is the new object's name, qy is the current query structure, which contains a field 'Parent' that points to the inf_v originally returned by Open, and where the inf_v contains a field Obj that points to the Object structure containing a Pathname structure)
 
+```c
     int cnt;
     pObject obj;
     char* new_name;
@@ -389,6 +399,7 @@ All object drivers will need to add an element to the obj->Pathname structure to
     if (cnt < 0 || cnt >= 256) return NULL;
     obj->Pathname->Elements[obj->Pathname->nElements++] = 
         strrchr(obj->Pathname->Pathbuf,'/')+1;
+```
 
 QueryDelete is passed the qy_v void* parameter, and an oxt parameter. It should return 0 on successful deletion, and -1 on failure.
 
@@ -456,22 +467,28 @@ The driver's first course of action to obtain node object data is to open the no
 ### pSnNode snReadNode(pObject obj)
 This function reads a Structure File from the already-open node object which is passed in the "obj" parameter in the xxxOpen() routine.  The "obj" parameter has an element, obj->Prev, which is a link to the node object as opened by the previous driver in the OSML's chain of drivers for handling this open().  All you need to know to get the parsed node object is the following:
 
+```c
     pSnNode node;
 
     node = snReadNode(obj->Prev);
+```
 
 The returned node structure is managed by the SN module and need not be nmFree()ed.  The only thing that must be done is that the driver should increment the node structure's link count like this:
 
+```c
     node->OpenCnt++;
+```
 
 When closing an object (and thus releasing a reference to the Node structure), the driver should decrement the link count.
 
 ### pSnNode snNewNode(pObject obj, char* content_type)
 This function creates a new node object with a given content type. The open link count should be incremented as appropriate, as before with snReadNode().
 
+```c
     pSnNode node;
 
     node = snNewNode(obj->Prev, "system/structure");
+```
 
 The "system/structure" argument is the type that will be assigned to the newly created node object.  Note that the underlying object must already exist in order for this to create a node object as that object's content.  Normally the OSML does this for you by commanding the previous driver (handling obj->Prev) to create the underlying object in question.
 
@@ -512,6 +529,7 @@ This function adds a node of type ST_T_SUBGROUP to either a ST_T_SUBGROUP or ST_
 ### int stAddValue(pStructInf inf, char* strval, int intval)
 This function adds a value to an attribute, and can be called multiple times on an attribute to add a list of values.  If 'strval' is not null, a string value is added, otherwise an integer value is added.  The string is NOT copied, but is simply pointed-to.  If the string is non-static, and has a lifetime less than the ST_T_ATTRIB tree node, then the following procedure must be used:
 
+```c
     char* ptr;
     char* nptr;
     pStructInf attr_inf;
@@ -522,6 +540,7 @@ This function adds a value to an attribute, and can be called multiple times on 
     strcpy(nptr, ptr);
     stAddValue(attr_inf, nptr, 0);
     attr_inf->StrAlloc[0] = 1;
+```
 
 By following this method (making a copy of the string and then setting the StrAlloc value for that string), when the StructInf tree node is freed by the stparse module, the string will auto- matically be freed as well.
 
@@ -533,6 +552,7 @@ This function returns the value of the given attribute in an ST_T_ATTRIB tree no
 
 It is common practice to use the stLookup and stAttrValue functions together to retrieve values, and search for an attribute StructInf and retrieve its value in one operation:
 
+```c
     pStructInf inf;
     char* ptr;
 
@@ -540,12 +560,14 @@ It is common practice to use the stLookup and stAttrValue functions together to 
         {
         printf("%s is the value\n", ptr);
         }
+```
 
 ### int stFreeInf(pStructInf this)
 This function is used to free a StructInf tree node.  It will free any sub-nodes first, so if that is not desired, be sure to disconnect them by removing them from the SubInf array and appropriately adjusting the nSubInf counter, and setting the SubInf array position to NULL.  This function also disconnects the tree node from its parent, if any, so if the parent is already free()'d, be sure to set the node's Parent pointer to NULL.  Any strings marked allocated with the StrAlloc flags will be free()'d.
 
 It is also common practice to bypass the stXxx() functions entirely and access the elements of the StructInf structures themselves.  This is not forbidden, and may be done.  See the file stparse.h for a description of the structure.  For example,
 
+```c
     pStructInf inf;
     int i;
 
@@ -556,6 +578,7 @@ It is also common practice to bypass the stXxx() functions entirely and access t
             /** do stuff with attribute... **/
             }
         }
+```
 
 ## IV Memory Management in Centrallix
 Centrallix has its own memory manager that caches freshly-deallocated blocks of memory in lists according to size so that they can be quickly reallocated.  This memory manager also catches double-freeing of blocks, making debugging of memory problems a little easier.
@@ -625,6 +648,7 @@ This adds an item to the xarray, and keeps the array sorted.  The value for sort
 #### xaFindItem(pXArray this, void* item)
 This returns the offset into the array's items of the given value. An exact match is required.  The array's items are given below:
 
+```c
     XArray xa;
     pStructInf inf;
     int item_id;
@@ -639,6 +663,7 @@ This returns the offset into the array's items of the given value. An exact matc
 
     item_id = xaFindItem(&xa, inf);
     inf == xa.Items[item_id];
+```
 
 #### xaRemoveItem(pXArray this, int index)
 This function removes an item from the xarray at the given index.
@@ -682,22 +707,27 @@ Copies the string 'text' into the XString.  Like xsConcatenate, except that the 
 #### char* xsStringEnd(pXString this)
 Returns a pointer to the end of the string.  Useful for finding the end of the string without performing:
 
+```c
     pXString xs;
 
     xs->String + strlen(xs->String)
+```
 
 since the xs module already knows the string length and does not have to search for the null terminator.  Furthermore, since the string can contain nulls, the above statement could produce incorrect results in those situations.
 
 The contents of the XString can be easily referenced via:
 
+```c
     pXString xs;
 
     printf("This string is %s\n", xs->String);
+```
 
 IMPORTANT NOTE:  Do not store pointers to values within the string while you are still adding text to the end of the string.  If the string ends up realloc()ing, your pointers will be incorrect.  Instead, if data in the middle of the string needs to be pointed to, store offsets from the beginning of the string, not pointers to the string.
 
 For example, this is WRONG:
 
+```c
     pXString xs;
     char* ptr;
 
@@ -706,9 +736,11 @@ For example, this is WRONG:
     ptr = xsStringEnd(&xs);
     xsConcatenate(&xs, "This is the second sentence.", -1);
     printf("A pointer to the second sentence is '%s'\n", ptr);
+```
 
 Instead, use pointer aritmetic and do this:
 
+```c
     pXString xs;
     int offset;
 
@@ -717,6 +749,7 @@ Instead, use pointer aritmetic and do this:
     offset = xsStringEnd(&xs) - xs->String;
     xsConcatenate(&xs, "This is the second sentence.", -1);
     printf("A pointer to the second sentence is '%s'\n",xs->String+offset);
+```
 
 
 ### D.	Expression (EXP) - Expression Trees
@@ -726,7 +759,9 @@ Expressions can be stand-alone expression trees, or they can take parameter obje
 
 Expression evaluation results in the top-level expression tree node having the final value of the expression, which may be NULL, and may be an integer, string, datetime, money, or double data type.  For example, the final value of
 
+```
     :myobject:oneattribute == 'yes'
+```
 
 would be integer 1 (true) if the attribute's value is indeed 'yes'.
 
@@ -777,8 +812,10 @@ Frees a parameter object list.
 #### int expAddParamToList(pParamObjects this, char* name, pObject obj, int flags)
 Adds a parameter to the parameter object list.  The 'obj' pointer may be left NULL during the expCompileExpression state of operation but must be set to a value before expEvalTree is called.  Otherwise the attributes that reference that parameter object will result in NULL values in the expression (it's technically not an error). Flags can be EXPR_O_CURRENT if the object is to be marked as the current one, or EXPR_O_PARENT if it is to be marked as the parent object.  Current and Parent objects can be referenced in an expression like this:
 
+```
     :currentobjattr
     ::parentobjattr
+```
 
 and is thus a shortcut to typing the full object name.
 
@@ -851,15 +888,21 @@ drivers.  Most of them are named obj_internal_XxxYyy or similar.
 #### char* obj_internal_PathPart(pPathname path, int start, int length)
 The Pathname structure breaks down a pathname into path elements, which are text strings separated by the directory separator '/'. This function takes the given Pathname structure, and returns the number of path elements requested.  For instance, if you have a path:
 
+```
     /apps/kardia/data/Kardia_DB/p_partner/rows/1
+```
 
 that path would be stored internally in Centrallix as:
 
+```
     ./apps/kardia/data/Kardia_DB/p_partner/rows/1
+```
 
 To just return "Kardia_DB/p_partner", you could call:
 
+```
     obj_internal_PathPart(pathstruct, 4, 2);
+```
 
 Note that return values from obj_internal_PathPart are only valid until the next call to PathPart on the given pathname structure.
 
@@ -886,9 +929,9 @@ This function closes a network connection, and optionally waits up to 'linger_ms
 ### int fdWrite(pFile filedesc, char* buffer, int length, int offset, int flags)
 This function writes data to a file descriptor, from a given buffer and length, and to an optional seek offset and with some optional flags.  Flags can be the following:
 
-- FD_U_NOBLOCK - If the write can't be performed immediately, don't perform it at all.
-- FD_U_SEEK - The 'offset' value is valid.  Seek to it before writing.  Not valid for network connections.
-- FD_U_PACKET - ALL of the data of 'length' in 'buffer' must be written.  Normal write() semantics in UNIX state that not all data has to be written, and the number of bytes actually written is returned.  Setting this flag makes sure all data is really written before returning.
+- `FD_U_NOBLOCK` - If the write can't be performed immediately, don't perform it at all.
+- `FD_U_SEEK` - The 'offset' value is valid.  Seek to it before writing.  Not valid for network connections.
+- `FD_U_PACKET` - ALL of the data of 'length' in 'buffer' must be written.  Normal write() semantics in UNIX state that not all data has to be written, and the number of bytes actually written is returned.  Setting this flag makes sure all data is really written before returning.
 
 #### int fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
 The complement to the above routine.  Takes the same flags as the above routine, except FD_U_PACKET means that all of 'maxlen' bytes must be read before returning.  This is good for reading a packet that is known to be exactly 'maxlen' bytes long, but which might be broken up into fragments by the network (TCP/IP has a maximum frame transmission size of about 1450 bytes).

@@ -31,9 +31,9 @@ int exp_fn_fuzzy_compare(pExpression tree, pParamObjects objlist, pExpression i0
 ```
 Returns a value between 0.0 (complete match) and 1.0 (complete difference) between strings a and b, based on the (levenshtein distance) / (max len of input strings). 
 Some alterations to the calculation are as follows: 
-- matching an empty string against anything returns 0.5. 
-- a string that only required insertions to become the other string has its (lev_dist)/(strlen) value halved before returning
-The parameter max_field_width is required, but not used.
+- Matching an empty string against anything returns 0.5. 
+- A string that only required insertions to become the other string has its `(lev_dist)/(strlen)` value halved before returning.
+- The parameter `max_field_width` is required, but not used.
 
 ## Cosine Similarity  
 
@@ -46,6 +46,7 @@ const char *CHAR_SET ...
 `CHAR_SET` represents all of the characters that should be considered during the calculation of similarity. `CHAR_SET` can be extended to include additional characters, as necessary.
 
 ### Frequency Table
+<!-- ANCHOR[id=exp_fn_i_frequency_table] -->
 ```c
 int exp_fn_i_frequency_table(double *table, char *term)
 ```
@@ -70,6 +71,7 @@ Helper function for similarity(). Creates a TF x IDF vector from a frequency tab
 The `frequency_table` parameter must have been created using the `exp_fn_i_frequency_table` function above.
 
 ### Dot Product
+<!-- ANCHOR[id=exp_fn_i_dot_product] -->
 ```c
 int exp_fn_i_dot_product(double *dot_product, double *r_freq_table1, double *r_freq_table2)
 ```
@@ -78,6 +80,7 @@ Helper function for similarity(). Calculates the dot product of two relative fre
 The `dot_product` parameter should be initialized to 0 before calling the function. The table parameters must contain relative frequency tables that are generated from the `exp_fn_i_relative_frequency_table` function. The lengths of both tables must equal the length of `CHAR_SET`.
 
 ### Magnitude
+<!-- ANCHOR[id=exp_fn_i_magnitude] -->
 ```c
 int exp_fn_i_magnitude(double *magnitude, double *r_freq_table)
 ```
@@ -86,6 +89,7 @@ Helper function for similarity(). Calculates the magnitude of a relative frequen
 The `magnitude` parameter should be initialized to 0 before calling the function. The table parameter must contain a relative frequency table that was generated from the `exp_fn_i_relative_frequency_table` function. The length of the frequency table must equal the length of `CHAR_SET`.
 
 ### Similarity
+<!-- ANCHOR[id=exp_fn_similarity] -->
 ```c
 int exp_fn_similarity(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
 ```
@@ -95,5 +99,3 @@ Returns a value between 0.0 (completely different) and 1.0 (complete match) refl
 
 ### Inverse Document Frequency (IDF)
 In text mining, the most common metric to use in the cosine similarity function is the [TF x IDF](https://en.wikipedia.org/wiki/Tf%E2%80%93idf) metric. Our approach uses only TF (term frequency). Inverse document frequency calculates a weighting factor for each character. This could increase precision a small amount by weighting characters that appear on many records as less important in distinguishing matches, and weighting characters that appear on only certain records as more important. IDF could be calculated by iterating through the entire partner dataset each time. The current approach uses the relative frequency of each letter used in the English language on [Wikipedia](https://en.wikipedia.org/wiki/Letter_frequency), which may not be consistent with the data in the partner database.
-
-

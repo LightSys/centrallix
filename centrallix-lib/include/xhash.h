@@ -1,7 +1,6 @@
 #ifndef _XHASH_H
 #define _XHASH_H
 
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
@@ -55,6 +54,7 @@ int xhAdd(pXHashTable this, char* key, char* data);
 int xhRemove(pXHashTable this, char* key);
 char* xhLookup(pXHashTable this, char* key);
 int xhClear(pXHashTable this, int (*free_fn)(), void* free_arg);
+int xhForEach(pXHashTable this, int (*callback_fn)(pXHashEntry, void*), void* each_arg);
+int xhClearKeySafe(pXHashTable this, void (*free_fn)(pXHashEntry, void*), void* free_arg);
 
 #endif /* _XHASH_H */
-

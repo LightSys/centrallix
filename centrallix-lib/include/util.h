@@ -21,14 +21,119 @@
 extern "C" {
 #endif
 
-
     int strtoi(const char *nptr, char **endptr, int base);
     unsigned int strtoui(const char *nptr, char **endptr, int base);
 
+    char* snprint_bytes(char* buf, const size_t buf_size, unsigned int bytes);
+    void fprint_mem(FILE* out);
+    
+    typedef struct
+	{
+	double start, end;
+	}
+	Timer, *pTimer;
+    
+    pTimer timer_init(pTimer timer);
+    pTimer timer_new(void);
+    pTimer timer_start(pTimer timer);
+    pTimer timer_stop(pTimer timer);
+    double timer_get(pTimer timer);
+    void timer_de_init(pTimer timer);
+    void timer_free(pTimer timer);
 
 #ifdef	__cplusplus
 }
 #endif
 
-#endif	/* UTILITY_H */
+#ifndef __cplusplus
 
+/** TODO: Greg, is the __typeof__ syntax from GCC a portability concern? **/
+
+/*** @brief Returns the smaller of two values.
+ *** 
+ *** @param a The first value.
+ *** @param b The second value.
+ *** @return The smaller of the two values.
+ *** 
+ *** @note This macro uses GCC extensions to enusre type safety.
+ ***/
+#define min(a, b) \
+    ({ \
+    __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    (_a < _b) ? _a : _b; \
+    })
+
+/*** @brief Returns the larger of two values.
+ *** 
+ *** @param a The first value.
+ *** @param b The second value.
+ *** @return The larger of the two values.
+ *** 
+ *** @note This macro uses GCC extensions to enusre type safety.
+ ***/
+#define max(a, b) \
+    ({ \
+    __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    (_a > _b) ? _a : _b; \
+    })
+
+/** Error Handling. **/
+void fail(const char* function_name, int code);
+
+/*** Helper function for compact error handling on library & system function calls.
+ *** Any non-zero value is treated as an error, exiting the program.
+ ***
+ *** @param result The result of the function we're checking.
+ *** @returns result
+ ***/
+#define check(result) \
+    ({ \
+    __typeof__ (result) _r = (result); \
+    if (_r != 0) fail(#result, _r); \
+    _r; \
+    })
+    
+/*** Helper function for compact error handling on library & system function calls.
+ *** Any negative is treated as an error, exiting the program.
+ ***
+ *** @param result The result of the function we're checking.
+ *** @returns result
+ ***/
+#define check_neg(result) \
+    ({ \
+    __typeof__ (result) _r = (result); \
+    if (_r < 0) fail(#result, _r); \
+    _r; \
+    })
+
+/*** Helper function for compact error handling on library & system function calls.
+ *** Any value of -1 is treated as an error, exiting the program.
+ ***
+ *** @param result The result of the function we're checking.
+ *** @returns result
+ ***/
+#define check_strict(result) \
+    ({ \
+    __typeof__ (result) _r = (result); \
+    if (_r == -1) fail(#result, _r); \
+    _r; \
+    })
+
+/*** Helper function for compact error handling on library & system function calls.
+ *** Any null value is treated as an error, exiting the program.
+ ***
+ *** @param result The result of the function we're checking
+ *** @returns result
+ ***/
+#define check_ptr(result) \
+    ({ \
+    __typeof__ (result) _r = (result); \
+    if (_r == NULL) fail(#result, 0); \
+    _r; \
+    })
+
+#endif  /* __cplusplus */
+
+#endif	/* UTILITY_H */
