@@ -51,16 +51,16 @@ file_name "system/cluster"
   - /average_similarity : double && 0.0 < x < 1.0
   - /size = average_similarity
   - /{arbitrary uint}
-    - /val : typeof(attr_name)              // The value of the data point.
+    - /val : string                         // The value of the data point.
     - /label : uint < num_clusters          // id of the cluster to which this data point belongs.
     - /sim : double && 0.0 < x <= threshold // Similarity to cluster centroid.
 ...
 /search_name
 - /{arbitrary uint}
-  - /id1 : uint                            // The id of the first data point.
-  - /id2 : uint                            // The id of the second data point.
-  - /val1 : typeof(attr_name)              // The value of the first data point.
-  - /val2 : typeof(attr_name)              // The value of the second data point.
+  - /id1 : uint < sizeof(source/attr_name) // The id of the first data point.
+  - /id2 : uint < sizeof(source/attr_name) // The id of the second data point.
+  - /val1 : string                         // The value of the first data point.
+  - /val2 : string                         // The value of the second data point.
   - /sim  : double && 0.0 < x <= threshold // The similarity of the two data points.
 ...
 
