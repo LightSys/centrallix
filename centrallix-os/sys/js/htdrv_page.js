@@ -1565,7 +1565,7 @@ function pg_launch(aparam)
 
     // Compute the height
     var h = aparam.Height;
-    if (window.devicePixelRatio)
+    if (window.devicePixelRatio && window.pg_dpi_scaling === true)
 	h *= window.devicePixelRatio;
 
     // Open it.
