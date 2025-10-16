@@ -1355,7 +1355,6 @@ int exp_fn_ralign(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
 	    tree->Alloc = 0;
 	    tree->String = tree->Types.StringBuf;
 	    }
-	/** Possible overflow? **/
 	sprintf(tree->String,"%*.*s",i1->Integer,i1->Integer,i0->String);
 	}
     return 0;

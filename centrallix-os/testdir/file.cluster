@@ -1,0 +1,64 @@
+$Version=2$
+file_name "system/cluster"
+    {
+    // Developer can specify parameters to improve file reuseability.
+    // TIP: Improve performance by declairing frequently used parameters first.
+    k "cluster/parameter" { type = integer; style=notnull; }
+    str "cluster/parameter" { type = string; }
+    int "cluster/parameter" { type = integer; default = runserver(:parameters:k); }
+    dbl "cluster/parameter" { type = double; default=4.2; }
+    // conversion "cluster/parameter" { type=double; default=4; }
+    
+    null_str "cluster/parameter" { type = string; default = null; }
+    null_int "cluster/parameter" { type = integer; default = null; }
+    null_dbl "cluster/parameter" { type = double; default = null; }
+    
+    // We calculate k in a centrallix script using:
+    // k = max(2, pow(log(n) / log(36), 3.2) - 8)
+    // where n is the number of records passed.
+    
+    // Specify the data source at the top of the file.
+    // How do we pass distinct data? Should the driver
+    // handle that for us?
+    source = "/apps/kardia/data/Kardia_DB/p_partner/rows";
+    attr_name = p_given_name; // runserver(:parameters:str)
+    
+    // Clustering object specifies properties for clustering.
+    kmeans_cluster "cluster/cluster"
+	{
+	algorithm = "k-means";
+	similarity_measure = "cosine";
+	num_clusters = runserver(:parameters:k);
+	min_improvement = 0.0001;
+	max_iterations = 48;
+	
+	// Create subclusters. (Not implemented)
+	sub_cluster "cluster/cluster"
+	    {
+	    algorithm = "none";
+	    similarity_measure = "cosine";
+	    num_clusters = 7;
+	    min_improvement = "max";
+	    }
+	}
+    
+    // Complete search.
+    no_clustering "cluster/cluster"
+	{
+	algorithm = "none";
+	}
+    
+    dups "cluster/search"
+	{
+	source = kmeans_cluster;
+	threshold = 0.75;
+	similarity_measure = "cosine";
+	}
+    
+    dups2 "cluster/search"
+	{
+	source = no_clustering;
+	threshold = 0.75;
+	similarity_measure = "cosine";
+	}
+    }
