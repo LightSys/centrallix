@@ -1,0 +1,9 @@
+##NAME Query Print function
+# The print function does not chowup in the cmp, so this largly tests for crashes
+query select convert(integer, 12345.54321); print convert(integer, 12345.54321)
+query select convert(double, 12345.54321); print convert(double, 12345.54321)
+query select convert(money, 12345.54321); print convert(money, 12345.54321)
+query select convert(datetime, '1999-02-01'); print convert(datetime, '1999-02-01')
+query select convert(string, '1999-02-01'); print convert(string, '1999-02-01')
+# cannot convert to binary, so use a function that returns the type
+query select from_hex('6f5f4f'); print from_hex('6f5f4f')
