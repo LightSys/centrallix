@@ -97,6 +97,13 @@ typedef struct
     int buflen;
     } WriteStruct, *pWriteStruct;
 
+void set_output(pFile output)
+    {
+    TESTOBJ.Output = output;
+    // redirect the multiquery print statements as well
+    mqRedirectPrint(output);
+    }
+
 int text_gen_callback(pWriteStruct dst, char *src, int len, int a, int b)
     {
     dst->buffer = (char*)realloc(dst->buffer,dst->buflen+len+1);
@@ -1350,7 +1357,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    {
 		    if (TESTOBJ.Output)
 			fdClose(TESTOBJ.Output, 0);
-		    TESTOBJ.Output = try_file;
+		    set_output(try_file);
 		    strtcpy(TESTOBJ.OutputFilename, ptr, sizeof(TESTOBJ.OutputFilename));
 		    }
 		}
@@ -1462,6 +1469,7 @@ start(void* v)
     char prompt[1024];
     pFile cmdfile;
     pFile histfile = NULL;
+    pFile outfile = NULL;
     char histname[256];
     char* home;
     pLxSession input_lx;
@@ -1514,27 +1522,28 @@ start(void* v)
 
 	if (mssAuthenticate(user, pwd, 0) < 0)
 	    puts("Warning: auth failed, running outside session context.");
-	TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR | O_CREAT | O_TRUNC, 0600);
-	if (!TESTOBJ.Output)
+	outfile = fdOpen(TESTOBJ.OutputFilename, O_RDWR | O_CREAT | O_TRUNC, 0600);
+	if (!outfile)
 	    {
 	    strcpy(TESTOBJ.OutputFilename, "/dev/tty");
-	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR, 0600);
+	    outfile = fdOpen(TESTOBJ.OutputFilename, O_RDWR, 0600);
 	    }
-	if (!TESTOBJ.Output)
+	if (!outfile)
 	    {
 	    strcpy(TESTOBJ.OutputFilename, "/dev/stdout");
-	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_WRONLY, 0600);
+	    outfile = fdOpen(TESTOBJ.OutputFilename, O_WRONLY, 0600);
 	    }
-	if (!TESTOBJ.Output)
+	if (!outfile)
 	    {
 	    strcpy(TESTOBJ.OutputFilename, "/dev/null");
-	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR, 0600);
+	    outfile = fdOpen(TESTOBJ.OutputFilename, O_RDWR, 0600);
 	    }
-	if (!TESTOBJ.Output)
+	if (!outfile)
 	    {
 	    /** No ability to output anything - exit now **/
 	    thExit();
 	    }
+	set_output(outfile);
 
 	/** Application context **/
 	cxssPushContext();
