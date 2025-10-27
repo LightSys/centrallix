@@ -12,7 +12,8 @@ annot /tests/qypivot/qypivot.qyp/3|b "Test Annot"
 show /tests/qypivot/qypivot.qyp/3|b
 
 # modify annotation
-annot /tests/qypivot/qypivot.qyp/3|b "Another Annot"
+# NOTE: Need a reliable test for insert and edit, so CSV is the only option. The csv driver has bugs, so the edits are designed to avoid causing problems
+annot /tests/qypivot/qypivot.qyp/3|b "Annot Test"
 ls /tests/qypivot/qypivot.qyp
 
 # misc commands
