@@ -192,6 +192,7 @@ typedef struct _OSD
     int		(*Commit)();
     int		(*GetQueryCoverageMask)();
     int		(*GetQueryIdentityPath)();
+    int 	(*Unregister)();
     }
     ObjDriver, *pObjDriver;
 

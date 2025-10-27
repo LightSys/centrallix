@@ -46,6 +46,7 @@ extern "C" {
 #endif
 
 #ifndef __cplusplus
+#include <errno.h>
 
 /** TODO: Greg, is the __typeof__ syntax from GCC a portability concern? **/
 
@@ -79,58 +80,72 @@ extern "C" {
     (_a > _b) ? _a : _b; \
     })
 
-/** Error Handling. **/
-void fail(const char* function_name, int code);
+/** File name macro, expanding functionality like __FILE__ and __LINE__. **/
+#define __FILENAME__ \
+    ({ \
+    const char* last_directory = strrchr(__FILE__, '/'); \
+    ((last_directory != NULL) ? last_directory + 1 : __FILE__); \
+    })
 
-/*** Helper function for compact error handling on library & system function calls.
- *** Any non-zero value is treated as an error, exiting the program.
+/** Error Handling. **/
+void print_diagnostics(int code, const char* function_name, const char* file_name, const int line_number);
+
+/*** Ensures that developer diagnostics are printed if the result of the
+ *** passed function call is not zero. Not intended for user errors.
  ***
  *** @param result The result of the function we're checking.
- *** @returns result
+ *** @returns Whether the passed function succeeded.
  ***/
 #define check(result) \
     ({ \
+    errno = 0; /* Reset errno to prevent confusion. */ \
     __typeof__ (result) _r = (result); \
-    if (_r != 0) fail(#result, _r); \
-    _r; \
+    const bool success = (_r == 0); \
+    if (!success) print_diagnostics(_r, #result, __FILE__, __LINE__); \
+    success; \
     })
-    
-/*** Helper function for compact error handling on library & system function calls.
- *** Any negative is treated as an error, exiting the program.
+
+/*** Ensures that developer diagnostics are printed if the result of the
+ *** passed function call is negative. Not intended for user errors.
  ***
  *** @param result The result of the function we're checking.
- *** @returns result
+ *** @returns Whether the passed function succeeded.
  ***/
 #define check_neg(result) \
     ({ \
+    errno = 0; /* Reset errno to prevent confusion. */ \
     __typeof__ (result) _r = (result); \
-    if (_r < 0) fail(#result, _r); \
-    _r; \
+    const bool success = (_r >= 0); \
+    if (!success) print_diagnostics(_r, #result, __FILE__, __LINE__); \
+    success; \
     })
 
-/*** Helper function for compact error handling on library & system function calls.
- *** Any value of -1 is treated as an error, exiting the program.
+/*** Ensures that developer diagnostics are printed if the result of the
+ *** passed function call is -1. Not intended for user errors.
  ***
  *** @param result The result of the function we're checking.
- *** @returns result
+ *** @returns Whether the passed function succeeded.
  ***/
-#define check_strict(result) \
+#define check_weak(result) \
     ({ \
+    errno = 0; /* Reset errno to prevent confusion. */ \
     __typeof__ (result) _r = (result); \
-    if (_r == -1) fail(#result, _r); \
-    _r; \
+    const bool success = (_r != -1); \
+    if (!success) print_diagnostics(_r, #result, __FILE__, __LINE__); \
+    success; \
     })
 
-/*** Helper function for compact error handling on library & system function calls.
- *** Any null value is treated as an error, exiting the program.
+/*** Ensures that developer diagnostics are printed if the result of the
+ *** passed function call is a NULL pointer. Not intended for user errors.
  ***
- *** @param result The result of the function we're checking
+ *** @param result The result of the function we're checking.
  *** @returns result
  ***/
 #define check_ptr(result) \
     ({ \
+    errno = 0; /* Reset errno to prevent confusion. */ \
     __typeof__ (result) _r = (result); \
-    if (_r == NULL) fail(#result, 0); \
+    if (_r == NULL) print_diagnostics(0, #result, __FILE__, __LINE__); \
     _r; \
     })
 

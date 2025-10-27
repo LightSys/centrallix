@@ -10,7 +10,7 @@ file_name "system/cluster"
 	?style : StyleObj // idk where to find docs for this.
 	}
     // Access with :parameters:name. Accessing dynamic data (e.g. parameters)
-    // should be managed within a runserver() call.
+    // should be done within a runserver() call.
     ...
     
     source : DataSourcePath
@@ -18,12 +18,14 @@ file_name "system/cluster"
     
     cluster_name "cluster/cluster"
 	{
-	algorithm : "none" | "sliding-window" | "k-means"
-	          | "k-means++" | "k-medoids" |"db-scan"    // dbscan not implemented
+	algorithm : "none" | "sliding-window" | "k-means"   // Implemented
+	          | "k-means++" | "k-medoids" | "db-scan"   // Not implemented
 	similarity_measure : "cosine" | "levenshtein"       // levenshtein not implemented.
 	num_clusters : uint > 1                             // (probably a parameter)
 	?min_improvement : double && 0.0 < x < 1.0 | "none" // default: 0.0001
 	?max_iterations : uint                              // default: 64
+	?window_size : uint > 0                             // required for algorithm = sliding_window.
+	?overlap_size : double && 0.0 <= x <= 1.0           // default: 0.0, only allowed for algorithm = k-means | k-means++ | k-medoids, not implemented
 	
 	// Not implemented
 	sub_cluster_name "cluster/cluster"
@@ -37,26 +39,21 @@ file_name "system/cluster"
 	{
 	source : string ⊂ [cluster_name, ...]
 	threshold : double && 0.0 < x < 1.0                 // optimization.
-	similarity_measure : "cosine" | "levenshtein"       // levenshtein not implemented.
+	similarity_measure : "cosine" | "levenshtein"
 	}
     ...
     }
 
 // Output schema
 
-- /{arbitrary uint}
+- /cluster_name
   ? /sub_cluster_name
-    ? /{arbitrary uint}
+    ? ...
+  - /{query}
+    - /items : StringVec                   // The data points in the cluster.
     ...
-  - /average_similarity : double && 0.0 < x < 1.0
-  - /size = average_similarity
-  - /{arbitrary uint}
-    - /val : string                         // The value of the data point.
-    - /label : uint < num_clusters          // id of the cluster to which this data point belongs.
-    - /sim : double && 0.0 < x <= threshold // Similarity to cluster centroid.
-...
 /search_name
-- /{arbitrary uint}
+- /{query}
   - /id1 : uint < sizeof(source/attr_name) // The id of the first data point.
   - /id2 : uint < sizeof(source/attr_name) // The id of the second data point.
   - /val1 : string                         // The value of the first data point.
@@ -71,7 +68,7 @@ file_name "system/cluster"
 // thing, because that feels like a higher-level responsibility.
 
 // Invoke file:
-// select * from /file.cl
+// select * from /file.cluster
 
 // Driver-authoring.md
 // Comprehend stparse.c (lib vs. centrallix?)

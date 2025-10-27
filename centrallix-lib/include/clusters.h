@@ -1,3 +1,5 @@
+#ifndef CLUSTERS_H
+#define	CLUSTERS_H
 
 /************************************************************************/
 /* Centrallix Application Server System                                 */
@@ -23,7 +25,7 @@
 /* A copy of the GNU General Public License has been included in this   */
 /* distribution in the file "COPYING".                                  */
 /*                                                                      */
-/* Module:      lib_cluster.c                                           */
+/* Module:      lib_cluster.h                                           */
 /* Author:      Israel Fuller                                           */
 /* Creation:    September 29, 2025                                      */
 /* Description: Internal algorithms for the cluster object driver.      */
@@ -40,6 +42,7 @@
 
 #define CA_NUM_DIMS 251 /* aka. The vector table size. */
 
+/// LINK ../../centrallix-sysdoc/string_comparison.md#cosine_charsets
 /** The character used to create a pair with the first and last characters of a string. **/
 #define CA_BOUNDARY_CHAR ('a' - 1)
 
@@ -57,37 +60,47 @@ typedef struct
     }
     Dup, *pDup;
 
+/** Registering all defined types for debugging. **/
+#define ca_init() \
+    nmRegister(sizeof(pVector), "pVector"); \
+    nmRegister(sizeof(pCentroid), "pCentroid"); \
+    nmRegister(pCentroidSize, "Centroid"); \
+    nmRegister(sizeof(Dup), "Dup")
+
 pVector ca_build_vector(const char* str);
 unsigned int ca_sparse_len(const pVector vector);
 void ca_free_vector(pVector sparse_vector);
-void ca_kmeans(
+int ca_kmeans(
     pVector* vectors,
     const unsigned int num_vectors,
-    unsigned int* labels,
     const unsigned int num_clusters,
     const unsigned int max_iter,
-    const double improvement_threshold
-);
-pXArray ca_search(
-    pVector* vectors,
-    const unsigned int num_vectors,
-    const unsigned int* labels,
-    const double dupe_threshold
-);
-pXArray ca_lightning_search(
-    pVector* vectors,
-    const unsigned int num_vectors,
-    const double dupe_threshold
-);
-unsigned int ca_edit_dist(
-    const char* str1,
-    const char* str2,
-    const size_t str1_length,
-    const size_t str2_length
-);
-pXArray ca_phone_search(
-    char dataset[][10u],
-    const unsigned int dataset_size,
-    const double dupe_threshold
-);
-void ca_init();
+    const double min_improvement,
+    unsigned int* labels,
+    double* vector_sims);
+
+/** Comparison functions, for ca_search(). **/
+double ca_cos_compare(void* v1, void* v2);
+double ca_lev_compare(void* str1, void* str2);
+
+void* ca_most_similar(
+    void* target,
+    void** data,
+    const unsigned int num_data,
+    const double (*similarity)(void*, void*),
+    const double threshold);
+pXArray ca_sliding_search(
+    void** data,
+    const unsigned int num_data,
+    const unsigned int window_size,
+    const double (*similarity)(void*, void*),
+    const double dupe_threshold,
+    pXArray dups);
+pXArray ca_complete_search(
+    void** data,
+    const unsigned int num_data,
+    const double (*similarity)(void*, void*),
+    const double dupe_threshold,
+    pXArray dups);
+
+#endif /* End of .h file. */

@@ -110,10 +110,13 @@ int util_detect_num_threads(void)
  ***/
 #define USE_METRIC false
 #define nUnits 6u
-static char* units_cs[nUnits] = {"bytes", "KiB", "MiB", "GiB", "TiB", "PiB"};
-static char* units_metric[nUnits] = {"bytes", "KB", "MB", "GB", "TB", "PB"};
+static char* units_cs[nUnits] = {"bytes", "KiB", "MiB", "GiB"};
+static char* units_metric[nUnits] = {"bytes", "KB", "MB", "GB"};
+
 /*** Displays a size in bytes using the largest unit where the result would be
- *** at least 1.0.
+ *** at least 1.0. Note that units larger than GB and GiB are not supported
+ *** because the largest possible unsigned int is 4,294,967,295, which is
+ *** exactly 4 GiB (or approximately 4.29 GB).
  *** 
  *** @param buf The buffer to which new text will be written, using snprintf().
  *** @param buf_size The amount of space in the buffer, passed to snprintf().
@@ -228,16 +231,14 @@ void timer_free(pTimer timer)
 /*** Function for failing on error, assuming the error came from a library or
  *** system function call, so that the error buffer is set to a valid value.
  ***/
-void fail(const char* function_name, int code)
+void print_diagnostics(int code, const char* function_name, const char* file_name, const int line_number)
     {
-    /** Create the most descriptive error message we can. **/
+    /** Create a descriptive error message. **/
     char error_buf[BUFSIZ];
-    snprintf(error_buf, sizeof(error_buf), "kmeans.c: Fail - %s", function_name);
-    if (errno != 0) perror(error_buf);
-    else if (code != 0) fprintf(stderr, "%s (error code %d)\n", error_buf, code);
-    else fprintf(stderr, "%s", error_buf);
+    snprintf(error_buf, sizeof(error_buf), "%s:%d: %s failed", file_name, line_number, function_name);
     
-    /** Throw error for easier locating in a debugger. **/
-    fprintf(stderr, "Program will now crash.\n");
-    raise(SIGSEGV);
+    /** Print it with as much info as we can reasonably find. **/
+    if (errno != 0) perror(error_buf);
+    else if (code != 0) fprintf(stderr, "%s (error code %d).\n", error_buf, code);
+    else fprintf(stderr, "%s.\n", error_buf);
     }

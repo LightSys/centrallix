@@ -27,10 +27,10 @@
 /* Author:      Israel Fuller                                           */
 /* Creation:    September 29, 2025                                      */
 /* Description: Internal algorithms for the cluster object driver.      */
-/* See centrallix-sysdoc/EAV_Pivot.md for more information.             */
 /************************************************************************/
 
-#include <assert.h>
+/** This file has additional documentation in string_similarity.md. **/
+
 #include <ctype.h>
 #include <float.h>
 #include <limits.h>
@@ -42,6 +42,7 @@
 #include <time.h>
 
 #include "clusters.h"
+#include "glyph.h"
 #include "newmalloc.h"
 #include "util.h"
 #include "xarray.h"
@@ -55,13 +56,6 @@
  ***/
 static unsigned int hash_char_pair(const unsigned int num1, const unsigned int num2)
     {
-    if (num1 == CA_BOUNDARY_CHAR && num2 == CA_BOUNDARY_CHAR)
-	{
-	// fprintf(stderr,
-	//     "hash_char_pair(%u, %u) - Warning: Pair of boundary characters.\n",
-	//     num1, num2
-	// );
-	}
     const double sum = (num1 * num1 * num1) + (num2 * num2 * num2);
     const double scale = ((double)num1 + 1.0) / ((double)num2 + 1.0);
     const unsigned int hash = (unsigned int)round(sum * scale) - 1u;
@@ -201,15 +195,8 @@ pVector ca_build_vector(const char* str)
     
     /** Allocate space for sparse vector. **/
     const size_t sparse_vector_size = size * sizeof(int);
-    pVector sparse_vector = (pVector)nmSysMalloc(sparse_vector_size);
-    if (sparse_vector == NULL)
-	{
-	fprintf(stderr,
-	    "cli_build_vector(%s) - nmSysMalloc(%lu) failed.\n",
-	    str, sparse_vector_size
-	);
-	return NULL;
-	}
+    pVector sparse_vector = (pVector)check_ptr(nmSysMalloc(sparse_vector_size));
+    if (sparse_vector == NULL) return NULL;
     
     /** Convert the dense vector above to a sparse vector. **/
     unsigned int j = 0u, sparse_idx = 0u;
@@ -248,27 +235,6 @@ void ca_free_vector(pVector sparse_vector)
     nmSysFree(sparse_vector);
     }
 
-/*** Compute the magnitude of a sparsely allocated vector.
- *** 
- *** @param vector The vector.
- *** @returns The computed magnitude.
- ***/
-static double magnitude_sparse(const pVector vector)
-    {
-    unsigned int magnitude = 0u;
-    for (unsigned int i = 0u, dim = 0u; dim < CA_NUM_DIMS;)
-	{
-	const int val = vector[i++];
-	
-	/** Negative val represents -val 0s in the array, so skip that many values. **/
-	if (val < 0) dim += (unsigned)(-val);
-	
-	/** We have a param_value, so square it and add it to the magnitude. **/
-	else { magnitude += (unsigned)(val * val); dim++; }
-	}
-    return sqrt((double)magnitude);
-    }
-
 /*** Compute the length of a sparsely allocated vector.
  *** 
  *** @param vector The vector.
@@ -288,6 +254,27 @@ unsigned int ca_sparse_len(const pVector vector)
 	else dim++;
 	}
     return i;
+    }
+
+/*** Compute the magnitude of a sparsely allocated vector.
+ *** 
+ *** @param vector The vector.
+ *** @returns The computed magnitude.
+ ***/
+static double magnitude_sparse(const pVector vector)
+    {
+    unsigned int magnitude = 0u;
+    for (unsigned int i = 0u, dim = 0u; dim < CA_NUM_DIMS;)
+	{
+	const int val = vector[i++];
+	
+	/** Negative val represents -val 0s in the array, so skip that many values. **/
+	if (val < 0) dim += (unsigned)(-val);
+	
+	/** We have a param_value, so square it and add it to the magnitude. **/
+	else { magnitude += (unsigned)(val * val); dim++; }
+	}
+    return sqrt((double)magnitude);
     }
 
 /*** Compute the magnitude of a densely allocated centroid.
@@ -417,6 +404,163 @@ static double sparse_similarity_to_centroid(const pVector v1, const pCentroid c2
  ***/
 #define sparse_dif_to_centroid(v1, c2) (1.0 - sparse_similarity_to_centroid(v1, c2))
 
+/*** Computes Levenshtein distance between two strings.
+ *** 
+ *** @param str1 The first string.
+ *** @param str2 The second string.
+ *** @param length1 The length of the first string.
+ *** @param length1 The length of the first string.
+ *** 
+ *** @attention - `Tip`: Pass 0 for the length of either string to infer it
+ *** 	using the null terminating character. Conversely, character arrays
+ *** 	with no null terminator are allowed if an explicit length is specified.
+ *** 
+ *** @attention - `Complexity`: O(nm), where n and m are the lengths of	str1
+ *** 	and str2 (respectively).
+ *** 
+ *** @skip
+ *** LINK ../../centrallix-sysdoc/string_comparison.md#levenshtein
+ ***/
+static unsigned int edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length)
+    {
+    /*** lev_matrix:
+     *** For all i and j, d[i][j] will hold the Levenshtein distance between
+     *** the first i characters of s and the first j characters of t.
+     *** 
+     *** As they say, no dynamic programming algorithm is complete without a
+     *** matrix that you fill out and it has the answer in the final location.
+     ***/
+    const size_t str1_len = (str1_length == 0u) ? strlen(str1) : str1_length;
+    const size_t str2_len = (str2_length == 0u) ? strlen(str2) : str2_length;
+    unsigned int* lev_matrix[str1_len + 1];
+    for (unsigned int i = 0u; i < str1_len + 1u; i++)
+	lev_matrix[i] = nmMalloc((str2_len + 1) * sizeof(unsigned int));
+    
+    /*** Base case #0:
+     *** Transforming an empty string into an empty string has 0 cost.
+     ***/
+    lev_matrix[0][0] = 0u;
+    
+    /*** Base case #1:
+     *** Any source prefixe can be transformed into an empty string by
+     *** dropping each character.
+     ***/
+    for (unsigned int i = 1u; i <= str1_len; i++)
+	lev_matrix[i][0] = i;
+    
+    /*** Base case #2:
+     *** Any target prefixes can be transformed into an empty string by
+     *** inserting each character.
+     ***/
+    for (unsigned int j = 1u; j <= str2_len; j++)
+	lev_matrix[0][j] = j;
+    
+    /** General Case **/
+    for (unsigned int i = 1u; i <= str1_len; i++)
+	{
+	for (unsigned int j = 1u; j <= str2_len; j++)
+	    {
+	    /** Equal characters need no changes. **/
+	    if (str1[i - 1] == str2[j - 1])
+		lev_matrix[i][j] = lev_matrix[i - 1][j - 1];
+	    
+	    /*** We need to make a change, so use the opereration with the
+	     *** lowest cost out of delete, insert, replace, or swap.
+	     ***/
+	    else 
+		{
+		unsigned int cost_delete  = lev_matrix[i - 1][j] + 1u;
+		unsigned int cost_insert  = lev_matrix[i][j - 1] + 1u;
+		unsigned int cost_replace = lev_matrix[i-1][j-1] + 1u;
+		
+		/** If a swap is possible, calculate the cost. **/
+		bool can_swap = (
+		    i > 1 && j > 1 &&
+		    str1[i - 1] == str2[j - 2] &&
+		    str1[i - 2] == str2[j - 1]
+		);
+		unsigned int cost_swap = (can_swap) ? lev_matrix[i - 2][j - 2] + 1 : UINT_MAX;
+		
+		// Find the best operation.
+		lev_matrix[i][j] = min(min(min(cost_delete, cost_insert), cost_replace), cost_swap);
+		}
+	    }
+	}
+    
+    /** Store result. **/
+    unsigned int result = lev_matrix[str1_len][str2_len];
+    
+    /** Cleanup. **/
+    for (unsigned int i = 0u; i < str1_len + 1u; i++)
+	nmFree(lev_matrix[i], (str2_len + 1) * sizeof(unsigned int));
+    
+    return result;
+    }
+
+/*** Compares two strings using their cosie simiarity, returning a value
+ *** between `0.0` (completely different) and `1.0` (identical). If either
+ *** OR BOTH strings are NULL, this function returns `0.0`.
+ *** 
+ *** @attention - This function takes `void*` instead of `pVector` so that it
+ *** 	can be used as the similarity function in the ca_search() function
+ *** 	family without needing a messy typecast to avoid the compiler warning.
+ *** 
+ *** @param v1 A `pVector` to the first string to compare.
+ *** @param v2 A `pVector` to the second string to compare.
+ *** @returns The cosine similarity between the two strings.
+ *** 
+ *** @skip
+ *** LINK ../../centrallix-sysdoc/string_comparison.md#cosine
+ ***/
+double ca_cos_compare(void* v1, void* v2)
+    {
+    /** Input validation checks. **/
+    if (v1 == NULL || v2 == NULL) return 0.0;
+    if (v1 == v2) return 1.0;
+    
+    /** Return the sparse similarity. **/
+    return sparse_similarity((const pVector)v1, (const pVector)v2);
+    }
+
+/*** Compares two strings using their levenstien edit distance to compute a
+ *** similarity between `0.0` (completely different) and `1.0` (identical).
+ *** If both strings are empty, this function returns `1.0` (identical). If
+ *** either OR BOTH strings are NULL, this function returns `0.0`.
+ *** 
+ *** @attention - This function takes `void*` instead of `char*` so that it
+ *** 	can be used as the similarity function in the ca_search() function
+ *** 	family without needing a messy typecast to avoid the compiler warning.
+ *** 
+ *** @param str1 A `char*` to the first string to compare.
+ *** @param str2 A `char*` to the second string to compare.
+ *** @returns The levenshtein similarity between the two strings.
+ *** 
+ *** @skip
+ *** LINK ../../centrallix-sysdoc/string_comparison.md#levenshtein
+ ***/
+double ca_lev_compare(void* str1, void* str2)
+    {
+    /** Input validation checks. **/
+    if (str1 == NULL || str2 == NULL) return 0.0;
+    if (str1 == str2) return 1.0;
+    
+    /** Compute string length. **/
+    const size_t len1 = strlen(str1);
+    const size_t len2 = strlen(str2);
+    
+    /** Empty strings are identical, avoiding a divide by zero. */
+    if (len1 == 0lu && len2 == 0lu) return 1.0;
+    
+    /** Compute levenshtein edit distance. **/
+    const unsigned int dist = edit_dist((const char*)str1, (const char*)str2, len1, len2);
+    
+    /** Normalize edit distance into a similarity measure. **/
+    const double normalized_similarity = 1.0 - (double)dist / (double)max(len1, len2);
+    
+    /** Done. **/
+    return normalized_similarity;
+    }
+
 /*** Calculate the average size of all clusters in a set of vectors.
  *** 
  *** @param vectors The vectors of the dataset (allocated sparsely).
@@ -436,8 +580,7 @@ static double get_cluster_size(
     /** Could be up to around 1KB on the stack, but I think that's fine. **/
     double cluster_sums[num_clusters];
     unsigned int cluster_counts[num_clusters];
-    for (unsigned int i = 0u; i < num_clusters; i++)
-	cluster_sums[i] = 0.0;
+    memset(cluster_sums, 0, sizeof(cluster_sums));
     memset(cluster_counts, 0, sizeof(cluster_counts));
     
     /** Sum the difference from each vector to its cluster centroid. **/
@@ -499,14 +642,16 @@ unsigned int compute_k(const unsigned int n)
  *** 
  *** @param vectors The vectors to cluster.
  *** @param num_vectors The number of vectors to cluster.
- *** @param labels Stores the final cluster identities of the vectors after
- ***     clustering is completed.
- *** @param centroids Stores the locations of the centroids used for the clusters
- ***     of the data.
- *** @param iterations The number of iterations that actually executed is stored
- ***     here. Leave this NULL if you don't care.
- *** @param max_iter The max number of iterations.
  *** @param num_clusters The number of clusters to generate.
+ *** @param max_iter The max number of iterations.
+ *** @param min_improvement The minimum amount of improvement that must be met
+ *** 	each clustering iteration. If there is less improvement, the algorithm
+ *** 	will stop. Pass any value less than -1 to fully disable this feature.
+ *** @param labels Stores the final cluster identities of the vectors after
+ ***     clustering is completed. Each value will be `0 <= n < num_clusters`.
+ *** @param vector_sims An array of num_vectors elements, allocated by the
+ *** 	caller, where index i stores the similarity of vector i to its assigned
+ *** 	cluster. Passing NULL skips evaluation of these values.
  ***
  *** @attention - Assumes: num_vectors is the length of vectors.
  *** @attention - Assumes: num_clusters is the length of labels.
@@ -528,49 +673,39 @@ unsigned int compute_k(const unsigned int n)
  *** 
  *** - `O(nk + nd)`
  ***/
-void ca_kmeans(
+int ca_kmeans(
     pVector* vectors,
     const unsigned int num_vectors,
-    unsigned int* labels,
     const unsigned int num_clusters,
     const unsigned int max_iter,
-    const double improvement_threshold)
+    const double min_improvement,
+    unsigned int* labels,
+    double* vector_sims)
     {
-    /** Ensure labels is clean. **/
-    memset(labels, 0, num_clusters * sizeof(unsigned int));
+    /** Setup stuff. **/
+    bool successful = false;
+    unsigned int cluster_counts[num_clusters];
+    memset(labels, 0u, num_vectors * sizeof(unsigned int));
     
     /** Allocate space to store centroids and new_centroids. **/
     /** Dynamic allocation is required because these densely allocated arrays might be up to 500KB! **/
-    pCentroid* centroids = (pCentroid*)nmMalloc(num_clusters * sizeof(pCentroid));
-    if (centroids == NULL)
-	{
-	fprintf(stderr, "ca_kmeans() - nmMalloc(%lu) failed.\n", num_clusters * sizeof(pCentroid));
-	assert(false);
-	}
-    pCentroid* new_centroids = (pCentroid*)nmMalloc(num_clusters * sizeof(pCentroid));
-    if (new_centroids == NULL)
-	{
-	fprintf(stderr, "ca_kmeans() - nmMalloc(%lu) failed.\n", num_clusters * sizeof(pCentroid));
-	assert(false);
-	}
+    const size_t centroids_size = num_clusters * sizeof(pCentroid);
+    pCentroid* centroids = (pCentroid*)check_ptr(nmMalloc(centroids_size));
+    if (centroids == NULL) goto end;
+    memset(centroids, 0, centroids_size);
+    pCentroid* new_centroids = (pCentroid*)check_ptr(nmMalloc(centroids_size));
+    if (new_centroids == NULL) goto end_free_centroids;
+    memset(new_centroids, 0, centroids_size);
     for (unsigned int i = 0u; i < num_clusters; i++)
 	{
 	/** Malloc each centroid. **/
-	centroids[i] = (pCentroid)nmMalloc(pCentroidSize);
-	if (centroids[i] == NULL)
-	    {
-	    fprintf(stderr, "ca_kmeans() - nmMalloc(%lu) failed.\n", pCentroidSize);
-	    assert(false);
-	    }
+	centroids[i] = (pCentroid)check_ptr(nmMalloc(pCentroidSize));
+	if (centroids[i] == NULL) goto end_deep_free_centroids;
 	memset(centroids[i], 0, pCentroidSize);
 	
 	/** Malloc each new centroid. **/
-	new_centroids[i] = (pCentroid)nmMalloc(pCentroidSize);
-	if (new_centroids[i] == NULL)
-	    {
-	    fprintf(stderr, "ca_kmeans() - nmMalloc(%lu) failed.\n", pCentroidSize);
-	    assert(false);
-	    }
+	new_centroids[i] = (pCentroid)check_ptr(nmMalloc(pCentroidSize));
+	if (new_centroids[i] == NULL) goto end_deep_free_centroids;
 	memset(new_centroids[i], 0, pCentroidSize);
 	}
     
@@ -578,10 +713,10 @@ void ca_kmeans(
     srand(time(NULL));
     for (unsigned int i = 0u; i < num_clusters; i++)
 	{
-	// Pick a random vector.
+	/** Pick a random vector. **/
 	const pVector vector = vectors[rand() % num_vectors];
 	
-	// Sparse copy the vector to expand it into a densely allocated centroid.
+	/** Sparse copy the vector to expand it into a densely allocated centroid. **/
 	pCentroid centroid = centroids[i];
 	for (unsigned int i = 0u, dim = 0u; dim < CA_NUM_DIMS;)
 	    {
@@ -591,11 +726,17 @@ void ca_kmeans(
 	    }
 	}
     
+    /** Setup debug visualizations. **/
+    glyph_init(iter, "\n", 1, false);
+    glyph_init(find, ".", 64, false);
+    glyph_init(update_label, "!", 16, false);
+    glyph_init(update_centroid, ":", 8, false);
+    
     /** Main kmeans loop. **/
     double old_average_cluster_size = 1.0;
-    unsigned int cluster_counts[num_clusters];
     for (unsigned int iter = 0u; iter < max_iter; iter++)
 	{
+	glyph(iter);
 	bool changed = false;
 	
 	/** Reset new centroids. **/
@@ -609,6 +750,7 @@ void ca_kmeans(
 	/** Assign each point to the nearest centroid. **/
 	for (unsigned int i = 0u; i < num_vectors; i++)
 	    {
+	    glyph(find);
 	    const pVector vector = vectors[i];
 	    double min_dist = DBL_MAX;
 	    unsigned int best_centroid_label = 0u;
@@ -627,6 +769,7 @@ void ca_kmeans(
 	    /** Update label to new centroid, if necessary. **/
 	    if (labels[i] != best_centroid_label)
 		{
+		glyph(update_label);
 		labels[i] = best_centroid_label;
 		changed = true;
 		}
@@ -648,6 +791,7 @@ void ca_kmeans(
 	/** Update centroids. **/
 	for (unsigned int i = 0u; i < num_clusters; i++)
 	    {
+	    glyph(update_centroid);
 	    if (cluster_counts[i] == 0u) continue;
 	    pCentroid centroid = centroids[i];
 	    const pCentroid new_centroid = new_centroids[i];
@@ -657,331 +801,187 @@ void ca_kmeans(
 	    }
 	
 	/** Is there enough improvement? **/
+	if (min_improvement < -1) continue; /** Skip check if it will always fail. **/
 	const double average_cluster_size = get_cluster_size(vectors, num_vectors, labels, centroids, num_clusters);
 	const double improvement = old_average_cluster_size - average_cluster_size;
-	if (improvement < improvement_threshold) break;
+	if (improvement < min_improvement) break;
 	old_average_cluster_size = average_cluster_size;
 	}
     
+    /** Compute vector similarities, if requested. **/
+    if (vector_sims != NULL)
+	{
+	for (unsigned int i = 0u; i < num_vectors; i++)
+	    vector_sims[i] = sparse_similarity_to_centroid(vectors[i], centroids[labels[i]]);
+	}
+    
+    glyph_print("\n");
+    
+    /** Success. **/
+    successful = true;
+    
     /** Clean up. **/
+    end_deep_free_centroids:
     for (unsigned int i = 0u; i < num_clusters; i++)
 	{
-	nmFree(centroids[i], pCentroidSize);
-	nmFree(new_centroids[i], pCentroidSize);
+	if (centroids[i] != NULL) nmFree(centroids[i], pCentroidSize);
+	else break;
+	if (new_centroids[i] != NULL) nmFree(new_centroids[i], pCentroidSize);
+	else break;
 	}
-    nmFree(centroids, num_clusters * sizeof(pCentroid));
+    
+    // end_free_new_centroids:
     nmFree(new_centroids, num_clusters * sizeof(pCentroid));
+    
+    end_free_centroids:
+    nmFree(centroids, num_clusters * sizeof(pCentroid));
+    
+    end:
+    return (successful) ? 0 : -1;
     }
 
-pXArray ca_search(
-    pVector* vectors,
-    const unsigned int num_vectors,
-    const unsigned int* labels,
-    const double dupe_threshold)
+/*** Finds the data that is the most similar to the target and returns
+ *** it if the similarity meets the threshold.
+ *** 
+ *** @param target The target data to compare to the rest of the data.
+ *** @param data The rest of the data, compared against the target to
+ *** 	find the data that is the most similar.
+ *** @param num_data The number of elements in data. Specify 0 to detect
+ *** 	length on a null terminated array of data.
+ *** @param similarity A function which takes two data items of the type
+ *** 	of the data param and returns their similarity.
+ *** @param threshold The minimum similarity threshold. If the most similar
+ *** 	data does not meet this threshold, the funciton returns NULL.
+ *** @returns A pointer to the most similar piece of data found in the data
+ *** 	array, or NULL if the most similar data did not meet the threshold.
+ ***/
+void* ca_most_similar(
+    void* target,
+    void** data,
+    const unsigned int num_data,
+    const double (*similarity)(void*, void*),
+    const double threshold)
     {
-    /** Allocate space for dups. **/
-    pXArray dups = xaNew(num_vectors);
-    if (dups == NULL)
+    void* most_similar = NULL;
+    double best_sim = -INFINITY;
+    for (unsigned int i = 0u; (num_data == 0u) ? (data[i] != NULL) : (i < num_data); i++)
 	{
-	fprintf(stderr, "ca_search() - xaNew(%u) failed.\n", num_vectors);
-	return NULL;
-	}
-    
-    unsigned int a = 0, b = 0, c = 0, d = 0;
-    for (unsigned int i = 0u; i < num_vectors; i++)
-	{
-	const pVector v1 = vectors[i];
-	const unsigned int label = labels[i];
-	for (unsigned int j = i + 1u; j < num_vectors; j++)
+	const double sim = similarity(target, data[i]);
+	if (sim > best_sim && sim > threshold)
 	    {
-	    if (b++ % 100 == 0) printf(".");
-	    if (labels[j] != label) continue;
-	    if (c++ % 100 == 0) printf(":");
-	    const pVector v2 = vectors[j];
-	    const double similarity = sparse_similarity(v1, v2);
-	    if (similarity > dupe_threshold) /* Dup found! */
+	    most_similar = data[i];
+	    best_sim = sim;
+	    }
+	}
+    return most_similar;
+    }
+
+
+/*** Runs a sliding search over the povided data, comparing each element to
+ *** the following `window_size` elements, invoking the passed comparison
+ *** function just under `window_size * num_data` times. If any comparison
+ *** yeilds a similarity greater than the threshold, it is stored in the
+ *** xArray returned by this function.
+ *** 
+ *** @param data The data to be searched.
+ *** @param num_data The number of data items in data.
+ *** @param window_size The size of the sliding window used for the search.
+ *** @param similarity A function which takes two data items of the type of
+ *** 	the data param and returns their similarity.
+ *** @param threshold The minimum threshold required for a duplocate to be
+ *** 	included in the returned xArray.
+ *** @param maybe_dups A pointer to an xArray in which dups should be found.
+ *** 	Pass NULL to allocate a new one.
+ *** @returns An xArray holding all of the duplocates found. If maybe_dups is
+ *** 	not NULL, this will be that xArray, to allow for chaining.
+ ***/
+pXArray ca_sliding_search(
+    void** data,
+    const unsigned int num_data,
+    const unsigned int window_size,
+    const double (*similarity)(void*, void*),
+    const double threshold,
+    pXArray dups)
+    {
+    /** Allocate space for dups (if necessary). **/
+    const bool allocate_dups = (dups == NULL);
+    if (allocate_dups)
+	{
+	/** Guess that we will need space for num_data * 2 dups. **/
+	const int guess_size = num_data * 2;
+	dups = check_ptr(xaNew(guess_size));
+	if (dups == NULL) goto err;
+	}
+    const int num_starting_dups = dups->nItems;
+    
+    /** Setup debug visualizations. **/
+    glyph_init(outer, " ", 4, true);
+    glyph_init(inner, ".", 128, false);
+    glyph_init(find, "!", 32, false);
+        
+    /** Search for dups. **/
+    for (unsigned int i = 0u; i < num_data; i++)
+        {
+	glyph(outer);
+	const unsigned int window_start = i + 1u;
+	const unsigned int window_end = min(i + window_size, num_data);
+	for (unsigned int j = window_start; j < window_end; j++)
+	    {
+	    glyph(inner);
+	    const double sim = similarity(data[i], data[j]);
+	    if (sim > threshold) /* Dup found! */
 		{
-		Dup* dup = (Dup*)nmMalloc(sizeof(Dup));
-		if (dup == NULL)
-		    {
-		    fprintf(stderr,
-			"ca_search() - nmMalloc(%lu) failed.\n",
-			sizeof(Dup)
-		    );
-		    goto err_free_dups;
-		    }
-		
+		glyph(find);
+		Dup* dup = (Dup*)check_ptr(nmMalloc(sizeof(Dup)));
+		if (dup == NULL) goto err_free_dups;
 		dup->id1 = i;
 		dup->id2 = j;
-		dup->similarity = similarity;
-		xaAddItem(dups, (void*)dup);
-		if (d++ % 4 == 0) printf("!");
+		dup->similarity = sim;
+		if (!check_neg(xaAddItem(dups, (void*)dup))) goto err_free_dups;
 		}
 	    }
-	if (a++ % 4 == 0) printf("\n");
 	}
+    glyph_print("\n");
     
+    /** Success. **/
     return dups;
     
-    /** Free dups. **/
-    err_free_dups:;
-    const size_t num_dups = dups->nItems;
-    for (unsigned int i = 0u; i < num_dups; i++)
-	{
-	nmFree(dups->Items[i], sizeof(Dup));
-	dups->Items[i] = NULL;
-	}
-    xaDeInit(dups);
+    /** Error cleanup. **/
+    
+    err_free_dups:
+    /** Free the dups we added to the XArray. */
+    while (dups->nItems > num_starting_dups)
+	nmFree(dups->Items[dups->nItems--], sizeof(Dup));
+    if (allocate_dups) check(xaDeInit(dups)); /* Failure ignored. */
+    
+    err:
     return NULL;
     }
 
-/*** Runs complete search to find duplocates if `num_vectors <  MAX_COMPLETE_SEARCH`
- *** and runs a search using k-means clustering on larger amounts of data.
+/*** Runs a complete search over the povided data, comparing each element to
+ *** each other element, invoking the passed comparison function `num_data^2`
+ *** times. If any comparison yeilds a similarity greater than the threshold,
+ *** it is stored in the xArray returned by this function.
  *** 
- *** @param vectors Array of precomputed frequency vectors for all dataset strings.
- *** @param num_vectors The number of vectors to be scanned.
- *** @param dupe_threshold The similarity threshold, below which dups are ignored.
- *** @returns The duplicates in pDup structs.
+ *** @param data The data to be searched.
+ *** @param num_data The number of data items in data.
+ *** @param similarity A function which takes two data items of the type of
+ *** 	the data param and returns their similarity.
+ *** @param threshold The minimum threshold required for a duplocate to be
+ *** 	included in the returned xArray.
+ *** @param maybe_dups A pointer to an xArray in which dups should be found.
+ *** 	Pass NULL to allocate a new one.
+ *** @returns An xArray holding all of the duplocates found. If maybe_dups is
+ *** 	not NULL, this will be that xArray, to allow for chaining.
  ***/
-pXArray ca_lightning_search(pVector* vectors, const unsigned int num_vectors, const double dupe_threshold)
+pXArray ca_complete_search(
+    void** data,
+    const unsigned int num_data,
+    const double (*similarity)(void*, void*),
+    const double threshold,
+    pXArray dups)
     {
-    /** Allocate space for dups. **/
-    const size_t guess_size = num_vectors * 2u;
-    pXArray dups = xaNew(guess_size);
-    if (dups == NULL)
-	{
-	fprintf(stderr, "ca_lightning_search() - xaNew(%lu) failed.\n", guess_size);
-	return NULL;
-	}
-    
-    /** Descide which algorithm to use. **/
-    if (num_vectors <= 50 * 1000)
-	{ /** Do a complete search. **/
-	for (unsigned int i = 0u; i < num_vectors; i++)
-	    {
-	    const pVector v1 = vectors[i];
-	    for (unsigned int j = i + 1u; j < num_vectors; j++)
-		{
-		const pVector v2 = vectors[j];
-		const double similarity = sparse_similarity(v1, v2);
-		if (similarity > dupe_threshold) // Dup found!
-		    {
-		    Dup* dup = (Dup*)nmMalloc(sizeof(Dup));
-		    if (dup == NULL)
-			{
-			fprintf(stderr, "ca_lightning_search() - nmMalloc(%lu) failed.\n", sizeof(Dup));
-			goto err_free_dups;
-			}
-		    
-		    dup->id1 = i;
-		    dup->id2 = j;
-		    dup->similarity = similarity;
-		    xaAddItem(dups, (void*)dup);
-		    }
-		}
-	    }
-	}
-    else
-	{ /** Do a k-means search. **/
-	/** Define constants for the algorithm. **/
-	const unsigned int max_iter = 64u; /** Hardcode value because idk. **/
-	const unsigned int num_clusters = compute_k(num_vectors);
-	
-	/** Allocate static memory for finding clusters. **/
-	unsigned int labels[num_vectors];
-	memset(labels, 0u, sizeof(labels));
-	
-	/** Execute kmeans clustering. **/
-	ca_kmeans(vectors, num_vectors, labels, num_clusters, max_iter, 0.0002);
-	
-	/** Find duplocates in clusters. **/
-	for (unsigned int i = 0u; i < num_vectors; i++)
-	    {
-	    const pVector v1 = vectors[i];
-	    const unsigned int label = labels[i];
-	    for (unsigned int j = i + 1u; j < num_vectors; j++)
-		{
-		if (labels[j] != label) continue;
-		const pVector v2 = vectors[j];
-		const double similarity = sparse_similarity(v1, v2);
-		if (similarity > dupe_threshold) /* Dup found! */
-		    {
-		    Dup* dup = (Dup*)nmMalloc(sizeof(Dup));
-		    if (dup == NULL)
-			{
-			fprintf(stderr,
-			    "ca_lightning_search() - nmMalloc(%lu) failed.\n",
-			    sizeof(Dup)
-			);
-			goto err_free_dups;
-			}
-		    
-		    dup->id1 = i;
-		    dup->id2 = j;
-		    dup->similarity = similarity;
-		    xaAddItem(dups, (void*)dup);
-		    }
-		}
-	    }
-	}
-    
-    /** Done **/
-    return dups;
-    
-    /** Free dups. **/
-    err_free_dups:;
-    const size_t num_dups = dups->nItems;
-    for (unsigned int i = 0u; i < num_dups; i++)
-	{
-	nmFree(dups->Items[i], sizeof(Dup));
-	dups->Items[i] = NULL;
-	}
-    xaDeInit(dups);
-    return NULL;
-    }
-
-/*** Computes Levenshtein distance between two strings.
- *** 
- *** @param str1 The first string.
- *** @param str2 The second string.
- *** @param length1 The length of the first string.
- *** @param length1 The length of the first string.
- *** 
- *** @attention - Tip: Pass 0 for the length of either string to infer it
- *** 	using the null terminating character. Thus, strings with no null
- *** 	terminator are supported if you pass explicit lengths.
- ***  
- *** Complexity: O(length1 * length2).
- *** 
- *** @see centrallix-sysdoc/string_comparison.md
- ***/
-unsigned int ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length)
-    {
-    /*** lev_matrix:
-     *** For all i and j, d[i][j] will hold the Levenshtein distance between
-     *** the first i characters of s and the first j characters of t.
-     *** 
-     *** As they say, no dynamic programming algorithm is complete without a
-     *** matrix that you fill out and it has the answer in the final location.
-     ***/
-    const size_t str1_len = (str1_length == 0u) ? strlen(str1) : str1_length;
-    const size_t str2_len = (str2_length == 0u) ? strlen(str2) : str2_length;
-    unsigned int lev_matrix[str1_len + 1][str2_len + 1];
-    
-    /*** Base case #0:
-     *** Transforming an empty string into an empty string has 0 cost.
-     ***/
-    lev_matrix[0][0] = 0u;
-    
-    /*** Base case #1:
-     *** Any source prefixe can be transformed into an empty string by
-     *** dropping each character.
-     ***/
-    for (unsigned int i = 1u; i <= str1_len; i++)
-	lev_matrix[i][0] = i;
-    
-    /*** Base case #2:
-     *** Any target prefixes can be transformed into an empty string by
-     *** inserting each character.
-     ***/
-    for (unsigned int j = 1u; j <= str2_len; j++)
-	lev_matrix[0][j] = j;
-    
-    /** General Case **/
-    for (unsigned int i = 1u; i <= str1_len; i++)
-	{
-	for (unsigned int j = 1u; j <= str2_len; j++)
-	    {
-	    /** Equal characters need no changes. **/
-	    if (str1[i - 1] == str2[j - 1])
-		lev_matrix[i][j] = lev_matrix[i - 1][j - 1];
-	    
-	    /*** We need to make a change, so use the opereration with the
-	     *** lowest cost out of delete, insert, replace, or swap.
-	     ***/
-	    else 
-		{
-		unsigned int cost_delete  = lev_matrix[i - 1][j] + 1u;
-		unsigned int cost_insert  = lev_matrix[i][j - 1] + 1u;
-		unsigned int cost_replace = lev_matrix[i-1][j-1] + 1u;
-		
-		/** If a swap is possible, calculate the cost. **/
-		bool can_swap = (
-		    i > 1 && j > 1 &&
-		    str1[i - 1] == str2[j - 2] &&
-		    str1[i - 2] == str2[j - 1]
-		);
-		unsigned int cost_swap = (can_swap) ? lev_matrix[i - 2][j - 2] + 1 : UINT_MAX;
-		
-		// Find the best operation.
-		lev_matrix[i][j] = min(min(min(cost_delete, cost_insert), cost_replace), cost_swap);
-		}
-	    }
-	}
-    
-    return lev_matrix[str1_len][str2_len];
-    }
-
-/*** Runs complete search to find duplocates in phone numbers using the
- *** levenshtein min edit distance algorithm.
- ***
- *** @param dataset An array of characters for all dataset strings.
- *** @param dataset_size The number of phone numbers to be scanned.
- *** @param dupe_threshold The similarity threshold, below which dups are ignored.
- *** @returns The duplicates in pDup structs.
- ***/
-pXArray ca_phone_search(char dataset[][10u], const unsigned int dataset_size, const double dupe_threshold)
-    {
-    /** Allocate space for dups. **/
-    const size_t guess_size = dataset_size * 2u;
-    pXArray dups = xaNew(guess_size);
-    if (dups == NULL)
-	{
-	fprintf(stderr, "ca_phone_search() - xaNew(%lu) failed.\n", guess_size);
-	return NULL;
-	}
-    
-    /** Search for dups using edit distance. **/
-    for (unsigned int i = 0u; i < dataset_size; i++)
-	{
-	const char* v1 = dataset[i];
-	for (unsigned int j = i + 1u; j < dataset_size; j++)
-	    {
-	    const char* v2 = dataset[j];
-	    const unsigned int dist = ca_edit_dist(v1, v2, 10u, 10u);
-	    const double similarity = (double)dist / 10.0;
-	    if (similarity > dupe_threshold) /* Dup found! */
-		{
-		Dup* dup = (Dup*)nmMalloc(sizeof(Dup));
-		if (dup == NULL)
-		    {
-		    fprintf(stderr, "ca_phone_search() - nmMalloc(%lu) failed.\n", sizeof(Dup));
-		    
-		    /** Free data before returning. **/
-		    const size_t num_dups = dups->nItems;
-		    for (unsigned int i = 0u; i < num_dups; i++)
-			{
-			void* dup = dups->Items[i];
-			nmFree(dup, sizeof(Dup));
-			}
-		    xaDeInit(dups);
-		    return NULL;
-		    }
-		
-		dup->id1 = i;
-		dup->id2 = j;
-		dup->similarity = similarity;
-		xaAddItem(dups, (void*)dup);
-		}
-	    }
-	}
-    
-    return dups;
-    }
-
-void ca_init()
-    {
-    nmRegister(sizeof(Dup), "Dup");
+    return ca_sliding_search(data, num_data, num_data, similarity, threshold, dups);
     }
 
 /** Scope cleanup. **/

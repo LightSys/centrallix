@@ -23,11 +23,14 @@ file_name "system/cluster"
     source = "/apps/kardia/data/Kardia_DB/p_partner/rows";
     attr_name = p_given_name; // runserver(:parameters:str)
     
+    // Multiple data sources when?
+    
     // Clustering object specifies properties for clustering.
     kmeans_cluster "cluster/cluster"
 	{
 	algorithm = "k-means";
 	similarity_measure = "cosine";
+	// window_size = 16;
 	num_clusters = runserver(:parameters:k);
 	min_improvement = 0.0001;
 	max_iterations = 48;
