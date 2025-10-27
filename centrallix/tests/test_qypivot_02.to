@@ -1,0 +1,15 @@
+##NAME Basic aliased query pivot test
+# check initial state
+csv SELECT * FROM /tests/qypivot/qypivot_alias.qyp
+
+# create a new rows
+csv INSERT INTO /tests/qypivot/qypivot_alias.qyp SELECT ID1=3, ID2="a", x496e7465676572="54321", x446f75626c65="1.2", x4461746574696d65="2025-09-24 09:21:27"
+csv SELECT * FROM /tests/qypivot/qypivot_alias.qyp
+
+# modify new row
+csv UPDATE /tests/qypivot/qypivot_alias.qyp SET :x537472696e67="Purple", :x496e7465676572="321" where :ID1=3 AND :ID2="a"
+csv SELECT * FROM /tests/qypivot/qypivot_alias.qyp
+
+# delete new rows with query and command
+csv DELETE /tests/qypivot/qypivot_alias.qyp where :ID1=3 and :ID2="a"
+csv SELECT * FROM /tests/qypivot/qypivot_alias.qyp

@@ -1,0 +1,15 @@
+##NAME Basic query pivot test
+# check initial state
+csv SELECT * FROM /tests/qypivot/qypivot.qyp
+
+# create a new rows
+csv INSERT INTO /tests/qypivot/qypivot.qyp SELECT ID1=3, ID2="a", Integer="54321", Double="1.2", Datetime="2025-09-24 09:21:27"
+csv SELECT * FROM /tests/qypivot/qypivot.qyp
+
+# modify new row
+csv UPDATE /tests/qypivot/qypivot.qyp SET :String="Purple", :Integer="321" where :ID1=3 AND :ID2="a"
+csv SELECT * FROM /tests/qypivot/qypivot.qyp
+
+# delete new rows with query and command
+csv DELETE /tests/qypivot/qypivot.qyp where :ID1=3 and :ID2="a"
+csv SELECT * FROM /tests/qypivot/qypivot.qyp

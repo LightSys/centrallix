@@ -1,0 +1,25 @@
+##NAME Query pivot non query tests
+
+# check initial state
+csv exec /tests/qypivot/qypivot.qyp
+
+# create command stalls for user input, so will have to settle for sql query
+csv INSERT INTO /tests/qypivot/qypivot.qyp SELECT ID1=3, ID2="b", String="Pink", Integer="123", Double="1.00001", Datetime="1970-01-01"
+csv exec /tests/qypivot/qypivot.qyp
+
+# create annotation
+annot /tests/qypivot/qypivot.qyp/3|b "Test Annot"
+show /tests/qypivot/qypivot.qyp/3|b
+
+# modify annotation
+# NOTE: Need a reliable test for insert and edit, so CSV is the only option. The csv driver has bugs, so the edits are designed to avoid causing problems
+annot /tests/qypivot/qypivot.qyp/3|b "Annot Test"
+ls /tests/qypivot/qypivot.qyp
+
+# misc commands
+show /tests/qypivot/qypivot.qyp
+hints /tests/qypivot/qypivot.qyp/1|a
+
+# delete the new row
+delete /tests/qypivot/qypivot.qyp/3|b
+csv exec /tests/qypivot/qypivot.qyp

@@ -54,7 +54,7 @@
 
 #define QYP_MAX_KEYS		(16)
 #define QYP_MAX_ATTRFIELDS	(16)
-
+#define QYP_MAX_NAME_LENGTH	(64)
 
 /*** Node data ***/
 typedef struct
@@ -77,15 +77,17 @@ typedef struct
     char*	ModifyUserField;
     pSnNode	BaseNode;
     pStructInf	NodeData;
+    int		Flags;
     }
     QypNode, *pQypNode;
 
+#define QYP_NODE_F_ALIAS	(1)
 
 /*** Info for a single datum ***/
 typedef struct
     {
-    char	Name[64];		/* attribute name for this datum */
-    char	SourceObjName[64];	/* name of object under the SourcePath */
+    char	Name[QYP_MAX_NAME_LENGTH];		/* attribute name for this datum */
+    char	SourceObjName[QYP_MAX_NAME_LENGTH];	/* name of object under the SourcePath */
     int		SourceValueID;		/* index into ValueNames/ValueTypes in the node structure */
     TObjData	Data;
     DateTime	CreateDate;
@@ -248,6 +250,9 @@ qyp_internal_ReadNode(char* nodepath, pSnNode nodestruct)
 		    goto error;
 		    }
 		node->AttrNameField = nmSysStrdup(fieldname);
+		/** Check if the name requires an alias to make the user data usable as a variable name **/
+		if (stAttrValue(stLookup(field_inf, "alias"), NULL, &ptr, 0) == 0 && strcmp(ptr, "yes") == 0)
+		    node->Flags |= QYP_NODE_F_ALIAS;
 		}
 	    else if (!strcmp(usage, "type"))
 		{
@@ -381,6 +386,7 @@ qyp_internal_LoadDatum(pQypData inf, pObject source_subobj)
     char* ptr;
     int given_type;
     int actual_type;
+    int rval;
 
 	/** allocate the datum **/
 	one_datum = (pQypDatum)nmMalloc(sizeof(QypDatum));
@@ -398,7 +404,22 @@ qyp_internal_LoadDatum(pQypData inf, pObject source_subobj)
 	    mssError(0, "QYP", "Attribute name field (%s) must be valid and non-null", inf->Node->AttrNameField);
 	    goto error;
 	    }
-	strtcpy(one_datum->Name, ptr, sizeof(one_datum->Name));
+	/* check if an alias is required, and pass the name accordingly */
+	if(inf->Node->Flags & QYP_NODE_F_ALIAS)
+	    {
+	    /* alias encodes as hex starting with an 'x' to guarantee that any string value becomes a valid variable name */
+	    rval = qpfPrintf(NULL, one_datum->Name, sizeof(one_datum->Name), "x%STR&HEX", ptr);
+	    if(rval < 0 || rval >= sizeof(one_datum->Name))
+		{
+		mssError(0, "QYP", "Failed to alias for attribute name (%s) with attribute value (%s)", inf->Node->AttrNameField, inf->Node->ValueTypeField);
+		goto error;
+		}
+	    }
+	else
+	    {
+	    strtcpy(one_datum->Name, ptr, sizeof(one_datum->Name));
+	    }
+	
 
 	/** Data type provided? **/
 	given_type = DATA_T_UNAVAILABLE;
@@ -760,6 +781,7 @@ qyp_internal_Update(pQypData inf)
     pQypDatum datum, entity_datum;
     pObject source_obj = NULL;
     char source_path[OBJSYS_MAX_PATH + 1];
+    char alias_buf[QYP_MAX_NAME_LENGTH];
     int j;
     char* ptr;
     pDateTime dt;
@@ -777,13 +799,27 @@ qyp_internal_Update(pQypData inf)
 	    if ((datum->Flags & QYP_DATUM_F_DIRTY) && !(datum->Flags & QYP_DATUM_F_KEY))
 		{
 		objCurrentDate(&datum->ModifyDate);
-		strtcpy(datum->ModifyBy, mssUserName(), sizeof(datum->ModifyBy));
+		ptr = mssUserName();
+		if(ptr == 0)
+		    {
+		    mssError(1, "QYP", "Login required to fill out create/modify user field");
+		    goto error;
+		    }
+		strtcpy(datum->ModifyBy, ptr, sizeof(datum->ModifyBy));
 
 		if (datum->Flags & QYP_DATUM_F_NEW)
 		    {
 		    /** new datum - do a Create **/
 		    objCurrentDate(&datum->CreateDate);
-		    strtcpy(datum->CreateBy, mssUserName(), sizeof(datum->CreateBy));
+		    ptr = mssUserName();
+		    if(ptr == 0)
+			{
+			mssError(1, "QYP", "Login required to fill out create/modify user field");
+			goto error;
+			}
+		    strtcpy(datum->CreateBy, ptr, sizeof(datum->CreateBy));
+		
+		    /** Check if the name was aliased, and copy path accordingly **/
 		    rval = snprintf(source_path, sizeof(source_path), "%s/*", inf->Node->SourcePath);
 		    if (rval < 0 || rval >= sizeof(source_path))
 			{
@@ -805,8 +841,16 @@ qyp_internal_Update(pQypData inf)
 			    }
 			}
 
-		    /** Set attribute name field **/
-		    ptr = datum->Name;
+		    /** Set attribute name field, checking if the column name needs decoded. Be careful to leave annotation alone **/
+		    if (inf->Node->Flags & QYP_NODE_F_ALIAS && datum->Name[0] == 'x')
+			{
+			qpfPrintf(NULL, alias_buf, QYP_MAX_NAME_LENGTH, "%STR&DHEX\0", datum->Name+1);
+			ptr = alias_buf;
+			}
+		    else
+			{
+			ptr = datum->Name;
+			}
 		    if (objSetAttrValue(source_obj, inf->Node->AttrNameField, DATA_T_STRING, POD(&ptr)) < 0)
 			goto error;
 
@@ -1433,6 +1477,8 @@ qypGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     pQypData inf = QYP(inf_v);
     int i;
     pQypDatum datum;
+    char alias_buf[QYP_MAX_NAME_LENGTH];
+    char* selected_attrname = attrname;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -1455,6 +1501,17 @@ qypGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		{
 		mssError(1,"QYP","Type mismatch accessing attribute '%s' (should be string)", attrname);
 		return -1;
+		}
+	    /** special parameters like annotation will not come from the OSML properly aliased */
+	    if(inf->Node->Flags & QYP_NODE_F_ALIAS )
+		{
+		int rval = qpfPrintf(NULL, alias_buf, sizeof(alias_buf), "x%STR&HEX", attrname);
+		if(rval < 0 || rval >= sizeof(alias_buf))
+		    {
+		    mssError(0, "QYP", "Failed to create alias for attribute name (%s)", attrname);
+		    return -1;
+		    }
+		selected_attrname = alias_buf;
 		}
 	    }
 
@@ -1484,13 +1541,14 @@ qypGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	for(i=0;i<inf->PivotData.nItems;i++)
 	    {
 	    datum = (pQypDatum)inf->PivotData.Items[i];
-	    if (!strcmp(attrname, datum->Name))
+	    if (!strcmp(selected_attrname, datum->Name))
 		{
 		if (datum->Data.Flags & DATA_TF_NULL)
 		    return 1;
 		if (datum->Data.DataType != datatype)
 		    {
-		    mssError(1,"QYP","Type mismatch accessing attribute '%s'", attrname);
+		    /** print the attrname directly - if its a special one lke annotation it will be more readable **/
+		    mssError(1,"QYP","getattr: type mismatch accessing attribute '%s'", attrname);
 		    return -1;
 		    }
 		switch(datum->Data.DataType)
@@ -1560,6 +1618,8 @@ qypSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     int i;
     pQypDatum datum = NULL;
     pQypDatum new_datum = NULL;
+    char alias_buf[QYP_MAX_NAME_LENGTH];
+    char* selected_attrname = attrname; /** overwritten if alias is set and OSML sets annotation **/
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -1568,11 +1628,23 @@ qypSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    return -1;
 	    }
 
+	/** Check if the attribute needs to be encoded **/
+	if (!strcmp(attrname,"annotation") && inf->Node->Flags & QYP_NODE_F_ALIAS )
+	    {
+	    int rval = qpfPrintf(NULL, alias_buf, sizeof(alias_buf), "x%STR&HEX", attrname);
+	    if(rval < 0 || rval >= sizeof(alias_buf))
+		{
+		mssError(0, "QYP", "Set Attribute: Failed to create alias for attribute name (%s)", attrname);
+		goto error;
+		}
+	    selected_attrname = alias_buf;
+	    }
+
 	/** Try to find the attribute being set **/
 	for(i=0;i<inf->PivotData.nItems;i++)
 	    {
 	    datum = (pQypDatum)inf->PivotData.Items[i];
-	    if (!strcmp(datum->Name, attrname))
+	    if (!strcmp(datum->Name, selected_attrname))
 		{
 		break;
 		}
