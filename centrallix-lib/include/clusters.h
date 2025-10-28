@@ -79,6 +79,14 @@ int ca_kmeans(
     unsigned int* labels,
     double* vector_sims);
 
+/** Vector helper macros. **/
+#define ca_is_empty(vector) (vector[0] == -CA_NUM_DIMS)
+#define ca_has_no_pairs(vector) \
+    ({ \
+    __typeof__ (vector) _v = (vector); \
+    _v[0] == -172 && _v[1] == 11 && _v[2] == -78; \
+    })
+
 /** Comparison functions, for ca_search(). **/
 double ca_cos_compare(void* v1, void* v2);
 double ca_lev_compare(void* str1, void* str2);

@@ -72,7 +72,7 @@
  ***/
 
 /** Pure Laziness **/
-// #define ENABLE_TPRINTF
+#define ENABLE_TPRINTF
 
 /** Debugging **/
 #ifndef ENABLE_TPRINTF
@@ -243,7 +243,7 @@ void** ci_xaToTrimmedArray(pXArray arr)
     }
     
     const size_t arr_size = arr->nItems * sizeof(void*);
-    void** result = check_ptr(nmMalloc(arr_size));
+    void** result = check_ptr(nmSysMalloc(arr_size));
     memcpy(result, arr->Items, arr_size);
     return result;
     }
@@ -675,7 +675,7 @@ static void ci_FreeSourceData(pSourceData source_data);
 static void ci_FreeClusterData(pClusterData cluster_data, bool recursive);
 static void ci_FreeSearchData(pSearchData search_data);
 static void ci_FreeNodeData(pNodeData node_data);
-static void ci_FreeCaches(void);
+static void ci_ClearCaches(void);
 
 /** Deep Size Computation Functions. **/
 // LINK #sizing
@@ -718,7 +718,6 @@ static void ci_CacheFreeSourceData(pXHashEntry entry, void* path);
 static void ci_CacheFreeCluster(pXHashEntry entry, void* path);
 static void ci_CacheFreeSearch(pXHashEntry entry, void* path);
 int clusterExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt);
-int clusterUnregister(pObjDriver object_driver, pObjSession session);
 
 /** Unimplemented DriverFunctions. **/
 // LINK #unimplemented
@@ -1539,7 +1538,6 @@ static pNodeData ci_ParseNodeData(pStructInf inf, pObject parent)
     if (path == NULL) goto err;
     
     /** Allocate node struct data. **/
-    // pNodeData node_data = NodeData |> sizeof() |> nmMalloc() |> check_ptr();
     pNodeData node_data = check_ptr(nmMalloc(sizeof(NodeData)));
     if (node_data == NULL) goto err;
     memset(node_data, 0, sizeof(NodeData));
@@ -1678,7 +1676,7 @@ static pNodeData ci_ParseNodeData(pStructInf inf, pObject parent)
     /** Itterate over each param in the structure file. **/
     node_data->nParams = param_infs.nItems;
     const size_t params_size = node_data->nParams * sizeof(pParam);
-    node_data->Params = check_ptr(nmMalloc(params_size));
+    node_data->Params = check_ptr(nmSysMalloc(params_size));
     if (node_data->Params == NULL) goto err_free_arrs;
     memset(node_data->Params, 0, params_size);
     for (unsigned int i = 0u; i < node_data->nParams; i++)
@@ -1755,7 +1753,7 @@ static pNodeData ci_ParseNodeData(pStructInf inf, pObject parent)
     if (node_data->nClusterDatas > 0)
 	{
 	const size_t clusters_size = node_data->nClusterDatas * sizeof(pClusterData);
-	node_data->ClusterDatas = check_ptr(nmMalloc(clusters_size));
+	node_data->ClusterDatas = check_ptr(nmSysMalloc(clusters_size));
 	if (node_data->ClusterDatas == NULL) goto err_free_arrs;
 	memset(node_data->ClusterDatas, 0, clusters_size);
 	for (unsigned int i = 0u; i < node_data->nClusterDatas; i++)
@@ -1773,7 +1771,7 @@ static pNodeData ci_ParseNodeData(pStructInf inf, pObject parent)
     if (node_data->nSearchDatas > 0)
 	{
 	const size_t searches_size = node_data->nSearchDatas * sizeof(pSearchData);
-	node_data->SearchDatas = check_ptr(nmMalloc(searches_size));
+	node_data->SearchDatas = check_ptr(nmSysMalloc(searches_size));
 	if (node_data->SearchDatas == NULL) goto err_free_arrs;
 	memset(node_data->SearchDatas, 0, searches_size);
 	for (unsigned int i = 0u; i < node_data->nSearchDatas; i++)
@@ -1810,17 +1808,39 @@ static pNodeData ci_ParseNodeData(pStructInf inf, pObject parent)
 /** @param source_data A pSourceData struct, freed by this function. **/
 static void ci_FreeSourceData(pSourceData source_data)
     {
+    /** Guard segfault. **/
+    if (source_data == NULL)
+	{
+	fprintf(stderr, "Call to ci_FreeSourceData(NULL);\n");
+	return;
+	}
+    
     /** Free top level attributes, if they exist. **/
-    if (source_data->Name != NULL)       nmSysFree(source_data->Name);
-    if (source_data->SourcePath != NULL) nmSysFree(source_data->SourcePath);
-    if (source_data->AttrName != NULL)   nmSysFree(source_data->AttrName);
+    if (source_data->Name != NULL)
+	{
+	nmSysFree(source_data->Name);
+	source_data->Name = NULL;
+	}
+    if (source_data->SourcePath != NULL)
+	{
+	nmSysFree(source_data->SourcePath);
+	source_data->SourcePath = NULL;
+	}
+    if (source_data->AttrName != NULL)
+	{
+	nmSysFree(source_data->AttrName);
+	source_data->AttrName = NULL;
+	}
     
     /** Free fetched data, if it exists. **/
     if (source_data->Strings != NULL)
 	{
 	for (unsigned int i = 0u; i < source_data->nVectors; i++)
+	    {
 	    nmSysFree(source_data->Strings[i]);
-	nmFree(source_data->Strings, source_data->nVectors * sizeof(char*));
+	    source_data->Strings[i] = NULL;
+	    }
+	nmSysFree(source_data->Strings);
 	source_data->Strings = NULL;
 	}
     
@@ -1828,13 +1848,17 @@ static void ci_FreeSourceData(pSourceData source_data)
     if (source_data->Vectors != NULL)
 	{
 	for (unsigned int i = 0u; i < source_data->nVectors; i++)
+	    {
 	    ca_free_vector(source_data->Vectors[i]);
-	nmFree(source_data->Vectors, source_data->nVectors * sizeof(pVector));
+	    source_data->Vectors[i] = NULL;
+	    }
+	nmSysFree(source_data->Vectors);
 	source_data->Vectors = NULL;
 	}
     
-    /** Free the source_data struct. **/
+    /** Free the source data struct. **/
     nmFree(source_data, sizeof(SourceData));
+    source_data = NULL;
     }
 
 
@@ -1846,21 +1870,33 @@ static void ci_FreeSourceData(pSourceData source_data)
  ***/
 static void ci_FreeClusterData(pClusterData cluster_data, bool recursive)
     {
-    /** Free top level cluster data. **/
-    if (cluster_data->Name != NULL) nmSysFree(cluster_data->Name);
+    /** Guard segfault. **/
+    if (cluster_data == NULL)
+	{
+	fprintf(stderr, "Call to ci_FreeClusterData(NULL, %s);\n", (recursive) ? "true" : "false");
+	return;
+	}
+    
+    /** Free attribute data. **/
+    if (cluster_data->Name != NULL)
+	{
+	nmSysFree(cluster_data->Name);
+	cluster_data->Name = NULL;
+	}
     
     /** Free computed data, if it exists. **/
     if (cluster_data->Clusters != NULL)
 	{
-	const unsigned int nVectors = cluster_data->SourceData->nVectors;
 	for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
 	    {
 	    pCluster cluster = &cluster_data->Clusters[i];
-	    nmFree(cluster->Strings, cluster->Size * sizeof(char*));
-	    nmFree(cluster->Vectors, cluster->Size * sizeof(pVector));
+	    nmSysFree(cluster->Strings);
+	    nmSysFree(cluster->Vectors);
+	    cluster->Strings = NULL;
+	    cluster->Vectors = NULL;
 	    }
-	nmFree(cluster_data->Clusters, nVectors * sizeof(Cluster));
-	nmFree(cluster_data->Sims, nVectors * sizeof(double));
+	nmSysFree(cluster_data->Clusters);
+	nmSysFree(cluster_data->Sims);
 	cluster_data->Clusters = NULL;
 	cluster_data->Sims = NULL;
 	}
@@ -1871,14 +1907,18 @@ static void ci_FreeClusterData(pClusterData cluster_data, bool recursive)
 	if (recursive)
 	    {
 	    for (unsigned int i = 0u; i < cluster_data->nSubClusters; i++)
+		{
 		ci_FreeClusterData(cluster_data->SubClusters[i], recursive);
+		cluster_data->SubClusters[i] = NULL;
+		}
 	    }
-	nmFree(cluster_data->SubClusters, cluster_data->nSubClusters * sizeof(void*));
+	nmSysFree(cluster_data->SubClusters);
 	cluster_data->SubClusters = NULL;
 	}
     
-    /** Free the cluster struct. **/
+    /** Free the cluster data struct. **/
     nmFree(cluster_data, sizeof(ClusterData));
+    cluster_data = NULL;
     }
 
 
@@ -1886,15 +1926,35 @@ static void ci_FreeClusterData(pClusterData cluster_data, bool recursive)
 /** @param search_data A pSearchData struct, freed by this function. **/
 static void ci_FreeSearchData(pSearchData search_data)
     {
-    if (search_data->Name != NULL) nmSysFree(search_data->Name);
+    /** Guard segfault. **/
+    if (search_data == NULL)
+	{
+	fprintf(stderr, "Call to ci_FreeSearchData(NULL);\n");
+	return;
+	}
+    
+    /** Free attribute data. **/
+    if (search_data->Name != NULL)
+	{
+	nmSysFree(search_data->Name);
+	search_data->Name = NULL;
+	}
+    
+    /** Free computed data. **/
     if (search_data->Dups != NULL)
 	{
 	for (unsigned int i = 0; i < search_data->nDups; i++)
+	    {
 	    nmFree(search_data->Dups[i], sizeof(Dup));
-	nmFree(search_data->Dups, search_data->nDups * sizeof(void*));
+	    search_data->Dups[i] = NULL;
+	    }
+	nmSysFree(search_data->Dups);
 	search_data->Dups = NULL;
 	}
+    
+    /** Free the search data struct. **/
     nmFree(search_data, sizeof(SearchData));
+    search_data = NULL;
     }
 
 
@@ -1902,6 +1962,13 @@ static void ci_FreeSearchData(pSearchData search_data)
 /** @param node_data A pNodeData struct, freed by this function. **/
 static void ci_FreeNodeData(pNodeData node_data)
     {
+    /** Guard segfault. **/
+    if (node_data == NULL)
+	{
+	fprintf(stderr, "Call to ci_FreeNodeData(NULL);\n");
+	return;
+	}
+    
     /** Free parsed params, if they exist. **/
     if (node_data->Params != NULL)
 	{
@@ -1909,28 +1976,36 @@ static void ci_FreeNodeData(pNodeData node_data)
 	    {
 	    if (node_data->Params[i] == NULL) break;
 	    paramFree(node_data->Params[i]);
+	    node_data->Params[i] = NULL;
 	    }
-	nmFree(node_data->Params, node_data->nParams * sizeof(pParam));
+	nmSysFree(node_data->Params);
+	node_data->Params = NULL;
         }
-    if (node_data->ParamList != NULL) expFreeParamList(node_data->ParamList);
+    if (node_data->ParamList != NULL)
+	{
+	expFreeParamList(node_data->ParamList);
+	node_data->ParamList = NULL;
+	}
     
     /** Free parsed clusters, if they exist. **/
     if (node_data->ClusterDatas != NULL)
 	{
-	/*** This data is cached, so we should NOT free it!
-	 *** The caching system is responsible for the memory.
+	/*** This data is cached, so we should NOT free it! The caching system
+	 *** is responsible for the memory. We only need to free the array
+	 *** holding our pointers to said cached memory.
 	 ***/
-	nmFree(node_data->ClusterDatas, node_data->nClusterDatas * sizeof(pClusterData));
+	nmSysFree(node_data->ClusterDatas);
 	node_data->ClusterDatas = NULL;
 	}
     
     /** Free parsed searches, if they exist. **/
     if (node_data->SearchDatas != NULL)
 	{
-	/*** This data is cached, so we should NOT free it!
-	 *** The caching system is responsible for the memory.
+	/*** This data is cached, so we should NOT free it! The caching system
+	 *** is responsible for the memory. We only need to free the array
+	 *** holding our pointers to said cached memory.
 	 ***/
-	nmFree(node_data->SearchDatas, node_data->nSearchDatas * sizeof(pSearchData));
+	nmSysFree(node_data->SearchDatas);
 	node_data->SearchDatas = NULL;
 	}
 	
@@ -1942,18 +2017,20 @@ static void ci_FreeNodeData(pNodeData node_data)
      ***/
     if (node_data->SourceData != NULL)
 	{
-	/*** This data is cached, so we should NOT free it!
-	 *** The caching system is responsible for the memory.
+	/*** This data is cached, so we should NOT free it! The caching system
+	 *** is responsible for the memory. We only need to free the array
+	 *** holding our pointers to said cached memory.
 	 ***/
 	node_data->SourceData = NULL;
 	}
     
     /** Free the node data. **/
     nmFree(node_data, sizeof(NodeData));
+    node_data = NULL;
     }
 
-/** Frees all caches for all cluster driver instances. **/
-static void ci_FreeCaches(void)
+/** Frees all data in caches for all cluster driver instances. **/
+static void ci_ClearCaches(void)
     {
     /*** Free caches in reverse of the order they are created in case
      *** cached data relies on its source during the freeing process.
@@ -2207,13 +2284,13 @@ static int ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    successful = false;
 	    goto end_free_data;
 	    }
-	if (vector[0] == -CA_NUM_DIMS)
+	if (ca_is_empty(vector))
 	    {
 	    mssErrorf(1, "Cluster", "Vector building for string \"%s\" produced no character pairs.", val);
 	    successful = false;
 	    goto end_free_data;
 	    }
-	if (vector[0] == -172 && vector[1] == 11 && vector[2] == -78)
+	if (ca_has_no_pairs(vector))
 	    {
 	    /** Skip pVector with no pairs. **/
 	    tprintf(".");
@@ -2241,7 +2318,7 @@ static int ci_ComputeSourceData(pSourceData source_data, pObjSession session)
     
     /** Trim data and store data. **/
     const size_t data_size = source_data->nVectors * sizeof(char*);
-    source_data->Strings = check_ptr(nmMalloc(data_size));
+    source_data->Strings = check_ptr(nmSysMalloc(data_size));
     if (source_data->Strings == NULL) goto end_free_data;
     memcpy(source_data->Strings, data_xarray.Items, data_size);
     check(xaDeInit(&data_xarray)); /* Failure ignored. */
@@ -2249,7 +2326,7 @@ static int ci_ComputeSourceData(pSourceData source_data, pObjSession session)
     
     /** Trim data and store vectors. **/
     const size_t vectors_size = source_data->nVectors * sizeof(pVector);
-    source_data->Vectors = check_ptr(nmMalloc(vectors_size));
+    source_data->Vectors = check_ptr(nmSysMalloc(vectors_size));
     memcpy(source_data->Vectors, vector_xarray.Items, vectors_size);
     check(xaDeInit(&vector_xarray)); /* Failure ignored. */
     vector_xarray.nAlloc = 0;
@@ -2325,11 +2402,11 @@ static int ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
     
     /** Allocate static memory for finding clusters. **/
     const size_t clusters_size = cluster_data->nClusters * sizeof(Cluster);
-    cluster_data->Clusters = check_ptr(nmMalloc(clusters_size));
+    cluster_data->Clusters = check_ptr(nmSysMalloc(clusters_size));
     if (cluster_data->Clusters == NULL) goto err;
     memset(cluster_data->Clusters, 0, clusters_size);
     const size_t sims_size = source_data->nVectors * sizeof(double);
-    cluster_data->Sims = check_ptr(nmMalloc(sims_size));
+    cluster_data->Sims = check_ptr(nmSysMalloc(sims_size));
     if (cluster_data->Sims == NULL) goto err_free_clusters;
     memset(cluster_data->Sims, 0, sims_size);
     
@@ -2342,9 +2419,9 @@ static int ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 	    /** Put all the data into one cluster. **/
 	    pCluster first_cluster = &cluster_data->Clusters[0];
 	    first_cluster->Size = source_data->nVectors;
-	    first_cluster->Strings = check_ptr(nmMalloc(source_data->nVectors * sizeof(char*)));
+	    first_cluster->Strings = check_ptr(nmSysMalloc(source_data->nVectors * sizeof(char*)));
 	    if (first_cluster->Strings == NULL) goto err_free_sims;
-	    first_cluster->Vectors = check_ptr(nmMalloc(source_data->nVectors * sizeof(pVector)));
+	    first_cluster->Vectors = check_ptr(nmSysMalloc(source_data->nVectors * sizeof(pVector)));
 	    if (first_cluster->Vectors == NULL) goto err_free_sims;
 	    memcpy(first_cluster->Strings, source_data->Strings, source_data->nVectors * sizeof(char*));
 	    memcpy(first_cluster->Vectors, source_data->Vectors, source_data->nVectors * sizeof(pVector));
@@ -2372,7 +2449,7 @@ static int ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 	    
 	    /** Allocate lables. Note: kmeans does not require us to initialize them. **/
 	    const size_t lables_size = source_data->nVectors * sizeof(unsigned int);
-	    unsigned int* labels = check_ptr(nmMalloc(lables_size));
+	    unsigned int* labels = check_ptr(nmSysMalloc(lables_size));
 	    if (labels == NULL) goto err_free_sims;
 	    
 	    /** Run kmeans. **/
@@ -2409,9 +2486,9 @@ static int ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		pXArray indexes_in_this_cluster = &indexes_in_cluster[i];
 		pCluster cluster = &cluster_data->Clusters[i];
 		cluster->Size = indexes_in_this_cluster->nItems;
-		cluster->Strings = check_ptr(nmMalloc(cluster->Size * sizeof(char*)));
+		cluster->Strings = check_ptr(nmSysMalloc(cluster->Size * sizeof(char*)));
 		if (cluster->Strings == NULL) goto err_free_sims;
-		cluster->Vectors = check_ptr(nmMalloc(cluster->Size * sizeof(pVector)));
+		cluster->Vectors = check_ptr(nmSysMalloc(cluster->Size * sizeof(pVector)));
 		if (cluster->Vectors == NULL) goto err_free_sims;
 		for (unsigned int j = 0u; j < cluster->Size; j++)
 		    {
@@ -2584,7 +2661,7 @@ static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
     /** Store dups. **/
     search_data->nDups = dups->nItems;
     search_data->Dups = (dups->nItems == 0)
-	? check_ptr(nmMalloc(0))
+	? check_ptr(nmSysMalloc(0))
 	: ci_xaToTrimmedArray(dups);
     
     /** Free unused data. **/
@@ -4162,7 +4239,7 @@ int clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrx
 	    else printf("all files:\n");
 	    
 	    /** Free caches. **/
-	    ci_FreeCaches();
+	    ci_ClearCaches();
 	    
 	    tprintf("Cache dropped.\n");
 	    return 0;
@@ -4182,21 +4259,6 @@ int clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrx
     err:
     mssErrorf(0, "Cluster", "Failed execute command.");
     return -1;
-    }
-
-
-/*** Frees caches when the driver is unregistered.
- *** 
- *** This function does not free either of the given parameters.
- *** 
- *** @param object_driver The driver instance which was registered being unregistered. (unused)
- *** @param session The session being closed. (unused)
- *** Returns
- ***/
-int clusterUnregister(pObjDriver object_driver, pObjSession session)
-    {
-    ci_FreeCaches();
-    return 0;
     }
 
 
@@ -4272,9 +4334,6 @@ int clusterCommit(void* inf_v, pObjTrxTree *oxt)
  ***/
 int clusterInitialize(void)
     {
-    /** Initialize library. **/
-    ca_init();
-    
     /** Allocate the driver. **/
     pObjDriver drv = (pObjDriver)check_ptr(nmMalloc(sizeof(ObjDriver)));
     if (drv == NULL) goto err;
@@ -4320,36 +4379,47 @@ int clusterInitialize(void)
     drv->Commit = clusterCommit;
     drv->GetQueryCoverageMask = NULL;
     drv->GetQueryIdentityPath = NULL;
-    drv->Unregister = clusterUnregister;
 
     /** Register some structures. **/
+    nmRegister(sizeof(SourceData), "ClusterSourceData");
+    nmRegister(sizeof(Cluster), "Cluster");
     nmRegister(sizeof(ClusterData), "ClusterData");
     nmRegister(sizeof(SearchData), "ClusterSearch");
-    nmRegister(sizeof(SourceData), "ClusterSourceData");
     nmRegister(sizeof(NodeData), "ClusterNodeData");
     nmRegister(sizeof(DriverData), "ClusterDriverData");
     nmRegister(sizeof(ClusterQuery), "ClusterQuery");
     nmRegister(sizeof(ClusterDriverCaches), "ClusterDriverCaches");
     
     /** Print debug size info. **/
-    char buf1[16], buf2[16], buf3[16], buf4[16], buf5[16], buf6[16], buf7[16];
-    tprintf(
-	"Cluster driver struct sizes:\n"
-	"  > sizeof(SourceData):    %s\n"
-	"  > sizeof(ClusterData):   %s\n"
-	"  > sizeof(SearchData):    %s\n"
-	"  > sizeof(NodeData):      %s\n"
-	"  > sizeof(DriverData):    %s\n"
-	"  > sizeof(ClusterQuery):  %s\n"
-	"  > sizeof(ClusterDriverCaches): %s\n",
-	snprint_bytes(buf1, sizeof(buf1), sizeof(SourceData)),
-	snprint_bytes(buf2, sizeof(buf2), sizeof(ClusterData)),
-	snprint_bytes(buf3, sizeof(buf3), sizeof(SearchData)),
-	snprint_bytes(buf4, sizeof(buf4), sizeof(NodeData)),
-	snprint_bytes(buf5, sizeof(buf5), sizeof(DriverData)),
-	snprint_bytes(buf6, sizeof(buf6), sizeof(ClusterQuery)),
-	snprint_bytes(buf7, sizeof(buf7), sizeof(ClusterDriverCaches))
-    );
+//     char buf1[16], buf2[16], buf3[16], buf4[16], buf5[16], buf6[16], buf7[16], buf8[16];
+//     tprintf(
+// 	"Cluster driver struct sizes:\n"
+// 	"  > sizeof(SourceData):          %s\n"
+// 	"  > sizeof(Cluster):             %s\n"
+// 	"  > sizeof(ClusterData):         %s\n"
+// 	"  > sizeof(SearchData):          %s\n"
+// 	"  > sizeof(NodeData):            %s\n"
+// 	"  > sizeof(DriverData):          %s\n"
+// 	"  > sizeof(ClusterQuery):        %s\n"
+// 	"  > sizeof(ClusterDriverCaches): %s\n",
+// 	snprint_bytes(buf1, sizeof(buf1), sizeof(SourceData)),
+// 	snprint_bytes(buf2, sizeof(buf2), sizeof(Cluster)),
+// 	snprint_bytes(buf3, sizeof(buf3), sizeof(ClusterData)),
+// 	snprint_bytes(buf4, sizeof(buf4), sizeof(SearchData)),
+// 	snprint_bytes(buf5, sizeof(buf5), sizeof(NodeData)),
+// 	snprint_bytes(buf6, sizeof(buf6), sizeof(DriverData)),
+// 	snprint_bytes(buf7, sizeof(buf7), sizeof(ClusterQuery)),
+// 	snprint_bytes(buf8, sizeof(buf8), sizeof(ClusterDriverCaches))
+//     );
+    
+//     pVector v = ca_build_vector("");
+//     const unsigned int len = ca_sparse_len(v);
+//     fprintf(stderr, "Vector (x%d): [%d", len, v[0]);
+//     for (unsigned int i = 1u; i < len; i++)
+// 	{
+// 	fprintf(stderr, ", %d", v[i]);
+// 	}
+//     fprintf(stderr, "]\n");
     
     /** Register the driver. **/
     if (!check(objRegisterDriver(drv))) goto err;

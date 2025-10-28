@@ -1271,13 +1271,6 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		}
 	    else if (!strcmp(cmdname,"quit"))
 		{
-		/** Loop through each driver and call their unregister handler, if they have one. **/
-		for (unsigned int i = 0u; i < OSYS.Drivers.nItems; i++)
-		    {
-		    pObjDriver cur = (pObjDriver)OSYS.Drivers.Items[i];
-		    if (cur->Unregister != NULL) cur->Unregister(cur, s);
-		    }
-		
 		mlxCloseSession(ls);
 		return 1;
 		}

@@ -514,12 +514,18 @@ static unsigned int edit_dist(const char* str1, const char* str2, const size_t s
  ***/
 double ca_cos_compare(void* v1, void* v2)
     {
-    /** Input validation checks. **/
-    if (v1 == NULL || v2 == NULL) return 0.0;
     if (v1 == v2) return 1.0;
     
+    /** Input validation checks. **/
+    const pVector vec1 = v1, vec2 = v2;
+    const bool v1_empty = (vec1 == NULL || ca_is_empty(vec1) || ca_has_no_pairs(vec1));
+    const bool v2_empty = (vec2 == NULL || ca_is_empty(vec2) || ca_has_no_pairs(vec2));
+    if (v1_empty && v2_empty) return 1.0;
+    if (v1_empty && !v2_empty) return 0.0;
+    if (!v1_empty && v2_empty) return 0.0;
+    
     /** Return the sparse similarity. **/
-    return sparse_similarity((const pVector)v1, (const pVector)v2);
+    return sparse_similarity(vec1, vec2);
     }
 
 /*** Compares two strings using their levenstien edit distance to compute a
@@ -544,12 +550,12 @@ double ca_lev_compare(void* str1, void* str2)
     if (str1 == NULL || str2 == NULL) return 0.0;
     if (str1 == str2) return 1.0;
     
-    /** Compute string length. **/
+    /** Handle string length. **/
     const size_t len1 = strlen(str1);
     const size_t len2 = strlen(str2);
-    
-    /** Empty strings are identical, avoiding a divide by zero. */
     if (len1 == 0lu && len2 == 0lu) return 1.0;
+    if (len1 != 0lu && len2 == 0lu) return 0.0;
+    if (len1 != 0lu && len2 != 0lu) return 0.0;
     
     /** Compute levenshtein edit distance. **/
     const unsigned int dist = edit_dist((const char*)str1, (const char*)str2, len1, len2);
