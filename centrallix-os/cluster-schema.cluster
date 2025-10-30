@@ -38,8 +38,8 @@ file_name "system/cluster"
     search_name "system/search"
 	{
 	source : string ⊂ [cluster_name, ...]
-	threshold : double && 0.0 < x < 1.0                 // optimization.
 	similarity_measure : "cosine" | "levenshtein"
+	threshold : double && 0.0 < x < 1.0                 // optimization.
 	}
     ...
     }

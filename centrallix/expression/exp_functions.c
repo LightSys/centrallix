@@ -3288,6 +3288,101 @@ int exp_fn_log10(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     }
 
 
+int exp_fn_log_natural(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    double n;
+
+	if (!i0)
+	    {
+	    mssError(1, "EXP", "ln() requires a number as its first parameter");
+	    goto error;
+	    }
+	if (i0->Flags & EXPR_F_NULL)
+	    {
+	    tree->DataType = DATA_T_DOUBLE;
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+	switch(i0->DataType)
+	    {
+	    case DATA_T_INTEGER:
+		n = i0->Integer;
+		break;
+	    case DATA_T_DOUBLE:
+		n = i0->Types.Double;
+		break;
+	    case DATA_T_MONEY:
+		n = objDataToDouble(DATA_T_MONEY, &(i0->Types.Money));
+		break;
+	    default:
+		mssError(1, "EXP", "ln() requires a number as its first parameter");
+		goto error;
+	    }
+	if (n < 0)
+	    {
+	    mssError(1, "EXP", "ln(): cannot compute the logarithm of a negative number");
+	    goto error;
+	    }
+	tree->DataType = DATA_T_DOUBLE;
+	tree->Types.Double = log(n);
+	return 0;
+
+    error:
+	return -1;
+    }
+
+
+int exp_fn_log_base_n(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    double n, p;
+
+	if (!i0 || !i1)
+	    {
+	    mssError(1, "EXP", "logn() requires numbers as its first and second parameters");
+	    goto error;
+	    }
+	if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+	    {
+	    tree->DataType = DATA_T_DOUBLE;
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+	switch(i0->DataType)
+	    {
+	    case DATA_T_INTEGER:
+		n = i0->Integer;
+		break;
+	    case DATA_T_DOUBLE:
+		n = i0->Types.Double;
+		break;
+	    case DATA_T_MONEY:
+		n = objDataToDouble(DATA_T_MONEY, &(i0->Types.Money));
+		break;
+	    default:
+		mssError(1, "EXP", "logn() requires a number as its first parameter");
+		goto error;
+	    }
+	switch(i1->DataType)
+	    {
+	    case DATA_T_INTEGER:
+		p = i1->Integer;
+		break;
+	    case DATA_T_DOUBLE:
+		p = i1->Types.Double;
+		break;
+	    default:
+		mssError(1, "EXP", "logn() requires an integer or double as its second parameter");
+		goto error;
+	    }
+	tree->DataType = DATA_T_DOUBLE;
+	tree->Types.Double = log(n) / log(p);
+	return 0;
+    
+    error:
+	return -1;
+    }
+
+
 int exp_fn_power(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
     double n, p;
@@ -4008,6 +4103,7 @@ int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
  *** @param maybe_str2 Possibly the second string.
  *** @param u1 Unused parameter.
  *** @param is_cos Whether to compute cosine or levenshtien.
+ *** @returns 0 for success, -1 for failure.
  ***/
 static int exp_fn_cmp(pExpression tree, pParamObjects objlist, pExpression maybe_str1, pExpression maybe_str2, pExpression u1, bool is_cos)
     {
@@ -4126,6 +4222,7 @@ static int exp_fn_cmp(pExpression tree, pParamObjects objlist, pExpression maybe
  *** @param maybe_str1 Possibly the first string.
  *** @param maybe_str2 Possibly the second string.
  *** @param u1 Unused parameter.
+ *** @returns 0 for success, -1 for failure.
  ***/
 int exp_fn_cos_cmp(pExpression tree, pParamObjects objlist, pExpression maybe_str1, pExpression maybe_str2, pExpression u1)
     {
@@ -4140,10 +4237,119 @@ int exp_fn_cos_cmp(pExpression tree, pParamObjects objlist, pExpression maybe_st
  *** @param maybe_str1 Possibly the first string.
  *** @param maybe_str2 Possibly the second string.
  *** @param u1 Unused parameter.
+ *** @returns 0 for success, -1 for failure.
  ***/
 int exp_fn_lev_cmp(pExpression tree, pParamObjects objlist, pExpression maybe_str1, pExpression maybe_str2, pExpression u1)
     {
     return exp_fn_cmp(tree, objlist, maybe_str1, maybe_str2, u1, false);
+    }
+
+
+/*** Comparse two strings to see if their sparse vectors are equal.
+ *** 
+ *** @param tree The tree resulting from this function.
+ *** @param objlist The evaluation "scope", including available variables.
+ *** @param maybe_str1 Possibly the first string.
+ *** @param maybe_str2 Possibly the second string.
+ *** @param u1 Unused parameter.
+ *** @returns 0 for success, -1 for failure.
+ ***/
+static int exp_fn_sparse_eql(pExpression tree, pParamObjects objlist, pExpression maybe_str1, pExpression maybe_str2, pExpression u1, bool is_cos)
+    {
+    const char fn_name[] = "sparse_compare";
+    
+    /** Check number of arguments. **/
+    const int num_params = tree->Children.nItems;
+    if (num_params != 2)
+	{
+	mssErrorf(1, "EXP", "%s(?) expects 2 parameters, got %d parameters.", fn_name, num_params);
+	return -1;
+	}
+    if (maybe_str1 == NULL || maybe_str2 == NULL || u1 != NULL)
+	{
+	mssErrorf(1, "EXP", "%s(?) expects 2 parameters.", fn_name);
+	return -1;
+	}
+    
+    /** Magic checks. **/
+    ASSERTMAGIC(tree, MGK_EXPRESSION);
+    ASSERTMAGIC(maybe_str1, MGK_EXPRESSION);
+    ASSERTMAGIC(maybe_str2, MGK_EXPRESSION);
+    
+    /** Check object list. **/
+    if (objlist == NULL)
+	{
+	mssErrorf(1, "EXP", "%s(\?\?\?) no object list?", fn_name);
+	return -1;
+	}
+    ASSERTMAGIC(objlist->Session, MGK_OBJSESSION);
+    
+    /** Extract str1. **/
+    if (maybe_str1->Flags & EXPR_F_NULL)
+	{
+	mssErrorf(1, "EXP", "%s(NULL, ...) str1 cannot be NULL.", fn_name);
+	return -1;
+	}
+    if (maybe_str1->DataType != DATA_T_STRING)
+	{
+	mssErrorf(1, "EXP", "%s(\?\?\?, ..) str1 should be a string.", fn_name);
+	return -1;
+	}
+    char* str1 = maybe_str1->String;
+    if (str1 == NULL)
+	{
+	mssErrorf(1, "EXP",
+	    "%s(nothing?, ...) expected string from str1 (of datatype DataType = "
+	    "DATA_T_STRING), but the String was NULL or did not exist!",
+	    fn_name
+	);
+	return -1;
+	}
+	
+    /** Extract str2. **/
+    if (maybe_str2->Flags & EXPR_F_NULL)
+	{
+	mssErrorf(1, "EXP", "%s(\"%s\", NULL) str2 cannot be NULL.", fn_name, str1);
+	return -1;
+	}
+    if (maybe_str2->DataType != DATA_T_STRING)
+	{
+	mssErrorf(1, "EXP", "%s(\"%s\", \?\?\?) str2 should be a string.", fn_name, str1);
+	return -1;
+	}
+    char* str2 = maybe_str2->String;
+    if (str2 == NULL)
+	{
+	mssErrorf(1, "EXP",
+	    "%s(\"%s\", nothing?) expected string from str2 (of datatype DataType = "
+	    "DATA_T_STRING), but the String was NULL or did not exist!",
+	    fn_name, str1
+	);
+	return -1;
+	}
+    
+    /** Build vectors. **/
+    int ret;
+    const pVector v1 = check_ptr(ca_build_vector(str1));
+    const pVector v2 = check_ptr(ca_build_vector(str2));
+    if (v1 == NULL || v2 == NULL)
+	{
+	mssErrorf(1, "EXP",
+	    "%s(\"%s\", \"%s\") - Failed to build vectors.",
+	    fn_name, str1, str2
+	);
+	ret = -1;
+	}
+    else
+	{
+	tree->Integer = (ca_eql(v1, v2)) ? 1 : 0;
+	tree->DataType = DATA_T_INTEGER;
+	ret = 0;
+	}
+    
+    if (v1 != NULL) ca_free_vector(v1);
+    if (v2 != NULL) ca_free_vector(v2);
+    return ret;
     }
 
 /*** Computes double metaphone.
@@ -4406,6 +4612,8 @@ int exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "hash", (char*)exp_fn_hash);
 	xhAdd(&EXP.Functions, "hmac", (char*)exp_fn_hmac);
 	xhAdd(&EXP.Functions, "log10", (char*)exp_fn_log10);
+	xhAdd(&EXP.Functions, "ln", (char*)exp_fn_log_natural);
+	xhAdd(&EXP.Functions, "logn", (char*)exp_fn_log_base_n);
 	xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
 	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
 	xhAdd(&EXP.Functions, "to_base64", (char*)exp_fn_to_base64);
@@ -4422,6 +4630,7 @@ int exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "lev_cmp", (char*)exp_fn_lev_cmp);
 	xhAdd(&EXP.Functions, "lev_compare", (char*)exp_fn_lev_cmp);
 	xhAdd(&EXP.Functions, "levenshtein_compare", (char*)exp_fn_lev_cmp);
+	xhAdd(&EXP.Functions, "sparse_eql", (char*)exp_fn_sparse_eql);
 	xhAdd(&EXP.Functions, "double_metaphone", (char*)exp_fn_double_metaphone);
 	
 	/** Windowing **/

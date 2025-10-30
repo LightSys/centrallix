@@ -33,6 +33,7 @@
 /************************************************************************/
 
 #include <stdlib.h>
+#include <stdbool.h>
 
 #ifdef CXLIB_INTERNAL
 #include "xarray.h"
@@ -90,6 +91,7 @@ int ca_kmeans(
 /** Comparison functions, for ca_search(). **/
 double ca_cos_compare(void* v1, void* v2);
 double ca_lev_compare(void* str1, void* str2);
+bool ca_eql(pVector v1, pVector v2);
 
 void* ca_most_similar(
     void* target,

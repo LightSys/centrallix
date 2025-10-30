@@ -184,7 +184,7 @@ pVector ca_build_vector(const char* str)
     if (size > expected_max_size)
 	{
 	fprintf(stderr,
-	    "cli_build_vector(%s) - Warning: Sparse vector larger than expected.\n"
+	    "cli_build_vector(\"%s\") - Warning: Sparse vector larger than expected.\n"
 	    "    > Size: %lu\n"
 	    "    > #Dims: %u\n",
 	    str,
@@ -555,7 +555,7 @@ double ca_lev_compare(void* str1, void* str2)
     const size_t len2 = strlen(str2);
     if (len1 == 0lu && len2 == 0lu) return 1.0;
     if (len1 != 0lu && len2 == 0lu) return 0.0;
-    if (len1 != 0lu && len2 != 0lu) return 0.0;
+    if (len1 == 0lu && len2 != 0lu) return 0.0;
     
     /** Compute levenshtein edit distance. **/
     const unsigned int dist = edit_dist((const char*)str1, (const char*)str2, len1, len2);
@@ -565,6 +565,21 @@ double ca_lev_compare(void* str1, void* str2)
     
     /** Done. **/
     return normalized_similarity;
+    }
+
+/*** Check if two sparse vectors are identical.
+ *** 
+ *** @param v1 The first vector.
+ *** @param v2 The second vector.
+ *** @returns true if they are equal,
+ ***          false if any element is different.
+ ***/
+bool ca_eql(pVector v1, pVector v2)
+    {
+    const unsigned int len = ca_sparse_len(v1);
+    for (unsigned int i = 0u; i < len; i++)
+	if (v1[i] != v2[i]) return false;
+    return true;
     }
 
 /*** Calculate the average size of all clusters in a set of vectors.

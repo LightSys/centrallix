@@ -71,8 +71,8 @@
  *** https://marketplace.visualstudio.com/items?itemName=ExodiusStudios.comment-anchors
  ***/
 
-/** Pure Laziness **/
-#define ENABLE_TPRINTF
+/** Pure Laziness. **/
+// #define ENABLE_TPRINTF
 
 /** Debugging **/
 #ifndef ENABLE_TPRINTF
@@ -815,7 +815,7 @@ static int ci_ParseAttribute(
     if (datatype != exp->DataType)
 	{
 	mssErrorf(1, "Cluster",
-	    "Expected \"%s\" : %s, but got type %s.",
+	    "Expected ['%s' : %s], but got type %s.",
 	    attr_name, ci_TypeToStr(datatype), ci_TypeToStr(exp->DataType)
 	);
 	goto err;
@@ -826,7 +826,7 @@ static int ci_ParseAttribute(
     if (ret != 0)
 	{
 	mssErrorf(1, "Cluster",
-	    "Failed to get \"%s\" : %s using expression \"%s\" (error code %d).",
+	    "Failed to get ['%s' : %s] using expression \"%s\" (error code %d).",
 	    attr_name, ci_TypeToStr(datatype), exp->Name, ret
 	);
 	goto err;
@@ -1215,7 +1215,7 @@ static pClusterData ci_ParseClusterData(pStructInf inf, pNodeData node_data)
 		if (strcmp(group_type, "cluster/cluster") != 0)
 		    {
 		    fprintf(stderr,
-			"Warning: Unknown group \"%s\" : \"%s\" in cluster \"%s\".\n",
+			"Warning: Unknown group [\"%s\" : \"%s\"] in cluster \"%s\".\n",
 			name, group_type, inf->Name
 		    );
 		    continue;
@@ -1364,13 +1364,13 @@ static pSearchData ci_ParseSearchData(pStructInf inf, pNodeData node_data)
     if (search_data->Name == NULL) goto err_free_search;
     if (!check(objCurrentDate(&search_data->DateCreated))) goto err_free_search;
     
-    /** Get source. **/
-    char* source_name;
-    if (ci_ParseAttribute(inf, "source", DATA_T_STRING, POD(&source_name), node_data->ParamList, true, true) != 0) return NULL;
+    /** Get source cluster. **/
+    char* source_cluster_name;
+    if (ci_ParseAttribute(inf, "source", DATA_T_STRING, POD(&source_cluster_name), node_data->ParamList, true, true) != 0) return NULL;
     for (unsigned int i = 0; i < node_data->nClusterDatas; i++)
 	{
 	pClusterData cluster_data = node_data->ClusterDatas[i];
-	if (strcmp(source_name, cluster_data->Name) == 0)
+	if (strcmp(source_cluster_name, cluster_data->Name) == 0)
 	    {
 	    /** Source found. **/
 	    search_data->Source = cluster_data;
@@ -1384,13 +1384,13 @@ static pSearchData ci_ParseSearchData(pStructInf inf, pNodeData node_data)
     if (search_data->Source == NULL)
 	{
 	/** Print error. **/
-	mssErrorf(1, "Cluster", "Could not find cluster \"%s\" for search \"%s\".", source_name, search_data->Name);
+	mssErrorf(1, "Cluster", "Could not find cluster \"%s\" for search \"%s\".", source_cluster_name, search_data->Name);
 	
 	/** Attempt to give a hint. **/
 	char* cluster_names[node_data->nClusterDatas];
 	for (unsigned int i = 0; i < node_data->nClusterDatas; i++)
 	    cluster_names[i] = node_data->ClusterDatas[i]->Name;
-	ci_TryHint(source_name, cluster_names, node_data->nClusterDatas);
+	ci_TryHint(source_cluster_name, cluster_names, node_data->nClusterDatas);
 	
 	/** Fail. **/
 	goto err_free_search;
@@ -1457,7 +1457,7 @@ static pSearchData ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 		char* group_type = check_ptr(sub_inf->UsrType);
 		if (group_type == NULL) goto err_free_search;
 		fprintf(stderr,
-		    "Warning: Unknown group \"%s\" : \"%s\" in search \"%s\".\n",
+		    "Warning: Unknown group [\"%s\" : \"%s\"] in search \"%s\".\n",
 		    name, group_type, inf->Name
 		);
 		break;
@@ -1513,7 +1513,7 @@ static pSearchData ci_ParseSearchData(pStructInf inf, pNodeData node_data)
     ci_FreeSearchData(search_data);
     
     err:
-    mssErrorf(0, "Cluster", "Failed to parse search from group \"%s\".", inf->Name);
+    mssErrorf(0, "Cluster", "Failed to parse SearchData from group \"%s\".", inf->Name);
     return NULL;
     }
 
@@ -2174,9 +2174,9 @@ static int ci_ComputeSourceData(pSourceData source_data, pObjSession session)
     if (obj == NULL)
 	{
 	mssErrorf(0, "Cluster",
-	    "Failed to open object driver:"
-	    "  > Attribute: \"%s\" : String\n"
-	    "  > Source Path: %s",
+	    "Failed to open object driver:\n"
+	    "  > Attribute: ['%s' : String]\n"
+	    "  > Source Path: \"%s\"",
 	    source_data->AttrName,
 	    source_data->SourcePath
 	);
@@ -2190,9 +2190,9 @@ static int ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	{
 	mssErrorf(0, "Cluster",
 	    "Failed to open query:\n"
-	    "  > Attribute: \"%s\" : String\n"
+	    "  > Attribute: ['%s' : String]\n"
 	    "  > Driver Used: %s\n"
-	    "  > Source Path: %s",
+	    "  > Source Path: \"%s\"",
 	    source_data->AttrName,
 	    obj->Driver->Name,
 	    source_data->SourcePath
@@ -2221,9 +2221,9 @@ static int ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    {
 	    mssErrorf(0, "Cluster",
 		"Failed to get type for %uth entry:\n"
-		"  > Attribute: \"%s\" : String\n"
+		"  > Attribute: '%s' : String\n"
 		"  > Driver Used: %s\n"
-		"  > Source Path: %s",
+		"  > Source Path: \"%s\"",
 		i,
 		source_data->AttrName,
 		obj->Driver->Name,
@@ -2235,9 +2235,9 @@ static int ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    {
 	    mssErrorf(1, "Cluster",
 		"Type for %uth entry was not a string:\n"
-		"  > Attribute: \"%s\" : %s!!\n"
+		"  > Attribute: ['%s' : %s]\n"
 		"  > Driver Used: %s\n"
-		"  > Source Path: %s",
+		"  > Source Path: \"%s\"",
 		i,
 		source_data->AttrName, ci_TypeToStr(datatype),
 		obj->Driver->Name,
@@ -2254,9 +2254,9 @@ static int ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    tprintf("\n");
 	    mssErrorf(0, "Cluster",
 		"Failed to value for %uth entry:\n"
-		"  > Attribute: \"%s\" : String\n"
+		"  > Attribute: ['%s' : String]\n"
 		"  > Driver Used: %s\n"
-		"  > Source Path: %s\n"
+		"  > Source Path: \"%s\"\n"
 		"  > Error code: %d",
 		i,
 		source_data->AttrName,
@@ -2264,7 +2264,6 @@ static int ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 		source_data->SourcePath,
 		ret
 	    );
-	    successful = false;
 	    goto end_free_data;
 	    }
 	
@@ -2393,7 +2392,7 @@ static int ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
     /** We need the SourceData vectors to compute clusters. **/
     if (ci_ComputeSourceData(source_data, node_data->ParamList->Session) != 0)
 	{
-	mssErrorf(0, "Cluster", "Failed to compute SourceData.");
+	mssErrorf(0, "Cluster", "ClusterData computation failed due to missing SourceData.");
 	goto err;
 	}
     
@@ -2532,7 +2531,7 @@ static int ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
     cluster_data->Clusters = NULL;
     
     err:
-    mssErrorf(0, "Cluster", "Cluster computation failed for \"%s\".", cluster_data->Name);
+    mssErrorf(0, "Cluster", "ClusterData computation failed for \"%s\".", cluster_data->Name);
     return -1;
     }
 
@@ -2561,7 +2560,7 @@ static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
     ret = ci_ComputeClusterData(cluster_data, node_data);
     if (ret != 0)
 	{
-	mssErrorf(0, "Cluster", "Search computation failed due to missing clusters.");
+	mssErrorf(0, "Cluster", "SearchData computation failed due to missing clusters.");
 	goto err;
 	}
     
@@ -2608,7 +2607,7 @@ static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 			search_data->Threshold,
 			dups
 		    ));
-		    if (dups_temp == NULL) goto err;
+		    if (dups_temp == NULL) goto err_free;
 		    else dups = dups_temp;
 		    }
 		}
@@ -2639,7 +2638,7 @@ static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 			search_data->Threshold,
 			dups
 		    ));
-		    if (dups_temp == NULL) goto err;
+		    if (dups_temp == NULL) goto err_free;
 		    else dups = dups_temp;
 		    }
 		}
@@ -2651,10 +2650,10 @@ static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		"Unknown similarity meansure \"%s\".",
 		ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
 	    );
-	    goto err;
+	    goto err_free;
 	}
     timer_stop(timer);
-    if (dups_temp == NULL) goto err;
+    if (dups_temp == NULL) goto err_free;
     else dups = dups_temp;
     tprintf("Search done after %.4lf.\n", timer_get(timer));
     
@@ -2671,7 +2670,7 @@ static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
     /** Success. **/
     return 0;
     
-    err:
+    err_free:
     if (dups != NULL)
 	{
 	for (unsigned int i = 0u; i < dups->nItems; i++)
@@ -2682,7 +2681,8 @@ static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	check(xaFree(dups)); /* Failure ignored. */
 	}
     
-    mssErrorf(0, "Cluster", "Search computation failed for \"%s\".", search_data->Name);
+    err:
+    mssErrorf(0, "Cluster", "SearchData computation failed for \"%s\".", search_data->Name);
     return -1;
     }
 
@@ -2770,7 +2770,7 @@ static int ci_GetParamValue(void* inf_v, char* attr_name, int datatype, pObjData
     
     err:
     mssErrorf(1, "Cluster",
-	"Failed to get parameter %s : %s",
+	"Failed to get parameter ['%s' : %s]",
 	attr_name, ci_TypeToStr(datatype)
     );
     return -1;
@@ -3040,7 +3040,7 @@ void* clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	case TARGET_ROOT:
 	    mssErrorf(1, "Cluster", "Querying the root node of a cluster file is not allowed.");
 	    fprintf(stderr, "  > Hint: Try /<cluster_name> or /<search_name>\n");
-	    return NULL;
+	    goto err;
 	
 	case TARGET_CLUSTER:
 	    {
@@ -3049,8 +3049,8 @@ void* clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    ret = ci_ComputeClusterData(target, cluster_query->DriverData->NodeData);
 	    if (ret != 0)
 		{
-		mssErrorf(0, "Cluster", "Internal cluster computation failed.");
-		return NULL;
+		mssErrorf(0, "Cluster", "Failed to compute ClusterData for query.");
+		goto err;
 		}
 	    data_amount = target->nClusters;
 	    break;
@@ -3063,8 +3063,8 @@ void* clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    ret = ci_ComputeSearchData(target, cluster_query->DriverData->NodeData);
 	    if (ret != 0)
 		{
-		mssErrorf(0, "Cluster", "Internal search computation failed.");
-		return NULL;
+		mssErrorf(0, "Cluster", "Failed to compute SearchData for query.");
+		goto err;
 		}
 	    data_amount = target->nDups;
 	    break;
@@ -3073,29 +3073,33 @@ void* clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	case TARGET_CLUSTER_ENTRY:
 	case TARGET_SEARCH_ENTRY:
 	    mssErrorf(1, "Cluster", "Querying a query result is not allowed.");
-	    return NULL;
+	    goto err;
 	
 	default:
 	    mssErrorf(1, "Cluster", "Unknown target type %u.", target_type);
-	    return NULL;
+	    goto err;
 	}
     tprintf("Fetch Index: %u/16 (total: %u)\n", cluster_query->RowIndex, data_amount);
     
-    /** Cap results to 16 for faster debugging. TODO: Remove. **/
-    data_amount = min(data_amount, 16);
+    /** Cap results to 16 for faster debugging. TODO: Israel - Remove. **/
+//     data_amount = min(data_amount, 16);
     
     /** Check that the requested data exists, returning null if we've reached the end of the data. **/
     if (cluster_query->RowIndex >= data_amount) return NULL;
     
     /** Create the result struct. **/
     pDriverData driver_data = check_ptr(nmMalloc(sizeof(DriverData)));
-    if (driver_data == NULL) return NULL;
+    if (driver_data == NULL) goto err;
     memcpy(driver_data, cluster_query->DriverData, sizeof(DriverData));
     driver_data->TargetType = new_target_type;
     driver_data->TargetIndex = cluster_query->RowIndex++;
     
     /** Success. **/
     return driver_data;
+    
+    err:
+    mssErrorf(0, "Cluster", "Failed to fetch query result.");
+    return NULL;
     }
 
 
@@ -3259,7 +3263,7 @@ int clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val
     if (datatype != expected_datatype)
 	{
 	mssErrorf(1, "Cluster",
-	    "Type mismatch: Accessing attribute '%s' : %s as type %s.",
+	    "Type mismatch: Accessing attribute ['%s' : %s] as type %s.",
 	    attr_name, ci_TypeToStr(expected_datatype), ci_TypeToStr(datatype)
 	);
 	return -1;
@@ -4168,7 +4172,7 @@ int clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrx
 	if (param->String == NULL)
 	    {
 	    mssErrorf(1, "Cluster",
-		"param : \"show\" | \"show_all\" | \"drop_all\" is required for the cache method."
+		"[param : \"show\" | \"show_all\" | \"drop_all\"] is required for the cache method."
 	    );
 	goto err;
 	    }
@@ -4247,7 +4251,7 @@ int clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrx
 	
 	/** Unknown parameter. **/
 	mssErrorf(1, "Cluster",
-	    "Expected param : \"show\" | \"show_all\" | \"drop_all\" the cache method, but got: \"%s\"",
+	    "Expected [param : \"show\" | \"show_all\" | \"drop_all\"] for the cache method, but got: \"%s\"",
 	    param->String
 	);
 	goto err;

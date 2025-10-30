@@ -54,14 +54,14 @@ file_name "system/cluster"
     dups "cluster/search"
 	{
 	source = kmeans_cluster;
-	threshold = 0.75;
 	similarity_measure = "cosine";
+	threshold = 0.75;
 	}
     
     dups2 "cluster/search"
 	{
 	source = no_clustering;
-	threshold = 0.75;
 	similarity_measure = "cosine";
+	threshold = 0.75;
 	}
     }
