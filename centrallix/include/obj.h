@@ -55,6 +55,10 @@
 #define OBJSYS_MAX_ELEMENTS	32
 #define OBJSYS_MAX_ATTR		64
 
+#define	OBJSYS_SORT_XASIZE	4096	/* initial size of query sort xarray */
+#define	OBJSYS_SORT_REOPEN	0	/* whether to enable reopen functionality in sorts */
+#define	OBJSYS_SORT_MAX		16	/* maximum sort-by items */
+
 #ifndef MAX
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #endif
@@ -388,17 +392,25 @@ typedef struct _TO
     ObjTemp, *pObjTemp;
 
 
-/** structure used for sorting a query result set. **/
+/** structures used for sorting a query result set. **/
 typedef struct _SRT
     {
-    XArray	SortPtr[2];	/* ptrs to sort key data */
-    XArray	SortPtrLen[2];	/* lengths of sort key data */
-    XArray	SortNames[2];	/* names of objects */
+    XArray	SortItems;	/* of ObjQuerySortItem */
     XString	SortDataBuf;	/* buffer for sort key data */
-    XString	SortNamesBuf;	/* buffer for object names */
     int		Reopen;
+    char	ReopenPath[OBJSYS_MAX_PATH];	/* path of parent object with open ctl added */
     }
     ObjQuerySort, *pObjQuerySort;
+
+typedef struct _SRTI
+    {
+    pObject	Obj;		/* the open object */
+    char*	Name;		/* object name */
+    size_t	SortDataOffset;	/* the BuildBinaryImage data offset in SortDataBuf */
+    size_t	SortDataLen;	/* length of the sort key data in SortDataBuf */
+    pObjQuerySort	SortInf;
+    }
+    ObjQuerySortItem, *pObjQuerySortItem;
 
 
 /** object query information **/
@@ -408,7 +420,7 @@ typedef struct _OQ
     pObject	Obj;
     char*	QyText;
     void*	Tree;	/* pExpression */
-    void*	SortBy[16];	/* pExpression [] */
+    void*	SortBy[OBJSYS_SORT_MAX];	/* pExpression [] */
     void*	ObjList; /* pParamObjects */
     void*	Data;
     int		Flags;
@@ -719,6 +731,8 @@ int obj_internal_PathPrefixCnt(pPathname full_path, pPathname prefix);
 int obj_internal_CopyPath(pPathname dest, pPathname src);
 int obj_internal_AddToPath(pPathname path, char* new_element);
 int obj_internal_RenamePath(pPathname path, int element_id, char* new_element);
+void obj_internal_OpenCtlToString(pPathname pathinfo, int pathstart, int pathend, pXString str);
+int obj_internal_PathToText(pPathname pathinfo, int pathend, pXString str);
 
 /** objectsystem datatype functions **/
 int objDataToString(pXString dest, int data_type, void* data_ptr, int flags);
