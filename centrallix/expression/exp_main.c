@@ -931,6 +931,11 @@ expCompareExpressions(pExpression exp1, pExpression exp2)
 	    if (exp1->ObjID >= 0 && exp1->Name && exp2->Name && strcmp(exp1->Name, exp2->Name) != 0)
 		return 0;
 	    }
+	if ((exp1->Flags & EXPR_F_DESC) + (exp2->Flags & EXPR_F_DESC) == EXPR_F_DESC)
+	    {
+	    /** Just one has EXPR_F_DESC **/
+	    return 0;
+	    }
 	
 	/** Compare children **/
 	if (exp1->Children.nItems != exp2->Children.nItems)

@@ -10,12 +10,13 @@
 #include "expression.h"
 #include "cxlib/magic.h"
 #include "cxlib/mtsession.h"
+#include "mergesort.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2025 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -48,101 +49,36 @@
 
 
 /*** obj_internal_SortCompare - compares two items in the sorting 
- *** criteria.
+ *** criteria.  This function is passed to mergesort() to sort a query
+ *** result set.
  ***/
 int
-obj_internal_SortCompare(pObjQuerySort sortinf, int bufferid1, int bufferid2, int id1, int id2)
+obj_internal_SortCompare(pObjQuerySortItem a, pObjQuerySortItem b)
     {
-    int len1,len2,n;
+    size_t n, len_a, len_b;
     int r;
-    char *ptr1, *ptr2;
-    	
-	len1 = (intptr_t)(sortinf->SortPtrLen[bufferid1].Items[id1]);
-	len2 = (intptr_t)(sortinf->SortPtrLen[bufferid2].Items[id2]);
-	ptr1 = sortinf->SortPtr[bufferid1].Items[id1];
-	ptr2 = sortinf->SortPtr[bufferid2].Items[id2];
-	n = (len1>len2)?len2:len1;
-	r = memcmp(ptr1,ptr2,n);
-	if (r == 0) r = len1-len2;
+    
+	/** Length that we will memcmp is the minimum of the two lengths **/
+	len_a = a->SortDataLen;
+	len_b = b->SortDataLen;
+	n = (len_a > len_b) ? len_b : len_a;
+
+	/** Compare the binary sortable data **/
+	r = memcmp(a->SortInf->SortDataBuf.String + a->SortDataOffset, b->SortInf->SortDataBuf.String + b->SortDataOffset, n);
+
+	/** Same?  Longer one comes after shorter one.  We use a conditional
+	 ** here instead of just len_a - len_b because of the likely data
+	 ** type conversion from size_t to int.
+	 **/
+	if (r == 0 && len_a != len_b)
+	    {
+	    if (len_a > len_b)
+		r = 1;
+	    else
+		r = -1;
+	    }
 
     return r;
-    }
-
-
-/*** obj_internal_MergeSort - mergesorts a result set given the sort inf
- *** structure.  This merge algorithm switches to a selection sort when the
- *** number of items is less than about 16.
- ***/
-int
-obj_internal_MergeSort(pObjQuerySort sortinf, int bufferid, int startid, int endid)
-    {
-    int i,j,k,found,n = (endid-startid+1);
-
-    	/** Fewer than 16 items?  If so, selection sort. **/
-	if (n < 16)
-	    {
-	    for(i=startid;i<startid+n;i++)
-	        {
-		found = -1;
-		for(j=startid;j<startid+n;j++)
-		    {
-		    if (sortinf->SortPtr[bufferid].Items[j])
-		        {
-			if (found == -1)
-			    {
-			    found = j;
-			    }
-			else
-			    {
-			    if (obj_internal_SortCompare(sortinf,bufferid,bufferid, found, j) > 0) found=j;
-			    }
-			}
-		    }
-		sortinf->SortPtr[1-bufferid].Items[i] = sortinf->SortPtr[bufferid].Items[found];
-		sortinf->SortPtrLen[1-bufferid].Items[i] = sortinf->SortPtrLen[bufferid].Items[found];
-		sortinf->SortNames[1-bufferid].Items[i] = sortinf->SortNames[bufferid].Items[found];
-		sortinf->SortPtr[bufferid].Items[found] = NULL;
-		}
-	    return 0;
-	    }
-
-	/** Otherwise, mergesort.  Sort the halves first. **/
-	obj_internal_MergeSort(sortinf, 1-bufferid, startid, startid+(n/2));
-	obj_internal_MergeSort(sortinf, 1-bufferid, startid+(n/2)+1, endid);
-
-	/** Now, merge the halves together into the other buffer **/
-	i=startid;
-	j=startid+(n/2)+1;
-	for(k=startid;k<=endid;k++)
-	    {
-	    /** Pick which side to choose from. **/
-	    if (i > startid+(n/2))
-	        found = 1;
-	    else if (j > endid)
-	        found = 0;
-	    else if (obj_internal_SortCompare(sortinf, bufferid, bufferid, i,j) > 0)
-	        found = 1;
-	    else
-	        found = 0;
-
-	    /** Ok. Found the lowest one.  Now transfer to the other buffer. **/
-	    if (found == 0)
-	        {
-                sortinf->SortPtr[1-bufferid].Items[k] = sortinf->SortPtr[bufferid].Items[i];
-                sortinf->SortPtrLen[1-bufferid].Items[k] = sortinf->SortPtrLen[bufferid].Items[i];
-                sortinf->SortNames[1-bufferid].Items[k] = sortinf->SortNames[bufferid].Items[i];
-		i++;
-		}
-	    else
-	        {
-                sortinf->SortPtr[1-bufferid].Items[k] = sortinf->SortPtr[bufferid].Items[j];
-                sortinf->SortPtrLen[1-bufferid].Items[k] = sortinf->SortPtrLen[bufferid].Items[j];
-                sortinf->SortNames[1-bufferid].Items[k] = sortinf->SortNames[bufferid].Items[j];
-		j++;
-		}
-	    }
-
-    return 0;
     }
 
 
@@ -222,15 +158,15 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
     pObjQuery this = NULL;
     pExpression tree = (pExpression)tree_v;
     pExpression *orderbyexp = (pExpression*)orderby_exp_v;
-    int i,n,len,t;
+    int i,len,t;
     int n_sortby;
-    pExpression sort_item;
     pLxSession lxs = NULL;
     pObject tmp_obj;
     char* ptr;
-    char* start_ptr;
     pObject linked_obj = NULL;
     pObjectInfo info;
+    pObjQuerySortItem sort_item;
+    pXString reopen_path = NULL;
 
     	ASSERTMAGIC(obj,MGK_OBJECT);
 
@@ -239,14 +175,10 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	/** Allocate a query object **/
 	this = (pObjQuery)nmMalloc(sizeof(ObjQuery));
 	if (!this) 
-	    goto error_return;
+	    goto error;
+	memset(this, 0, sizeof(ObjQuery));
 	this->QyText = query;
-	this->Drv = NULL;
-	this->Flags = 0;
-	this->SortInf = NULL;
 	this->Magic = MGK_OBJQUERY;
-	this->ObjList = NULL;
-	this->Tree = NULL;
 	linked_obj = objLinkTo(obj);
 	this->Obj = linked_obj;
         this->ObjList = (void*)expCreateParamList();
@@ -257,59 +189,56 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    {
 	    mssError(0,"OSML","Query search criteria is invalid");
 	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "null\n");
-	    goto error_return;
+	    goto error;
 	    }
 
 	/** Now, parse the order-by clause **/
 	n_sortby = 0;
 	if (orderbyexp)
 	    {
-	    for(i=0;i < sizeof(this->SortBy)/sizeof(void*);i++)
+	    /** A list of expressions is provided **/
+	    for(i=0; i < OBJSYS_SORT_MAX; i++)
 	        {
 		this->SortBy[i] = orderbyexp[i];
 		if (!orderbyexp[i]) break;
 		n_sortby++;
 		}
 	    }
-	else if (order_by)
+	else if (order_by && order_by[0])
 	    {
+	    /** A list of text strings is provided **/
 	    lxs = mlxStringSession(order_by, MLX_F_EOF | MLX_F_FILENAMES | MLX_F_ICASER);
-	    for(i=0;i < sizeof(this->SortBy)/sizeof(void*);i++)
+	    for(i=0; i < OBJSYS_SORT_MAX; i++)
 	        {
-		sort_item = exp_internal_CompileExpression_r(lxs, 0, this->ObjList, EXPR_CMP_ASCDESC);
-		this->SortBy[i] = sort_item;
-		if (!sort_item) break;
+		this->SortBy[i] = exp_internal_CompileExpression_r(lxs, 0, this->ObjList, EXPR_CMP_ASCDESC);
+		if (!this->SortBy[i])
+		    {
+		    mssError(0, "OSML", "Invalid sort criteria '%s'", order_by);
+		    goto error;
+		    }
 		n_sortby++;
 		t = mlxNextToken(lxs);
 		if (t == MLX_TOK_EOF)
 		    {
-		    i++;
-		    if (i < sizeof(this->SortBy)/sizeof(void*))
-			this->SortBy[i] = NULL;
 		    break;
 		    }
 		else if (t != MLX_TOK_COMMA)
 		    {
-		    mssError(1,"OSML","Invalid sort criteria '%s'", order_by);
-		    goto error_return;
+		    mssError(1, "OSML", "Invalid sort criteria '%s'", order_by);
+		    goto error;
 		    }
 		}
 	    mlxCloseSession(lxs);
 	    lxs = NULL;
 	    }
-	else
-	    {
-	    this->SortBy[0] = NULL;
-	    }
 
-	/** Issue to driver **/
+	/** Issue the open query operation to driver **/
 	this->Data = linked_obj->Driver->OpenQuery(linked_obj->Data,this,&(linked_obj->Session->Trx));
-
 	if (!(this->Data))
 	    {
 	    mssError(0,"OSML","Either queries not supported on this object or query failed");
 	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "null\n");
-	    goto error_return;
+	    goto error;
 	    }
 
 	/** Add to session open queries... **/
@@ -321,62 +250,80 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    /** Ok, first item of business is to read entire result set.  Init the sort structure **/
 	    this->SortInf = (pObjQuerySort)nmMalloc(sizeof(ObjQuerySort));
 	    if (!this->SortInf)
-		goto error_return;
-	    xaInit(this->SortInf->SortPtr+0,4096);
-	    xaInit(this->SortInf->SortPtrLen+0,4096);
-	    xaInit(this->SortInf->SortNames+0,4096);
+		goto error;
+	    xaInit(&this->SortInf->SortItems, OBJSYS_SORT_XASIZE);
 	    xsInit(&this->SortInf->SortDataBuf);
-	    xsInit(&this->SortInf->SortNamesBuf);
-	    this->SortInf->Reopen = 1;
+	    this->SortInf->Reopen = OBJSYS_SORT_REOPEN;
 
 	    /** Temp object or caller requested no-reopen behavior? **/
 	    info = objInfo(obj);
 	    if ((flags & OBJ_QY_F_NOREOPEN) || (info && (info->Flags & OBJ_INFO_F_TEMPORARY)))
 		this->SortInf->Reopen = 0;
 
+	    /** Generate path for doing reopens **/
+	    if (this->SortInf->Reopen)
+		{
+		reopen_path = xsNew();
+		if (!reopen_path)
+		    goto error;
+		if (obj_internal_PathToText(obj->Pathname, obj->SubPtr + obj->SubCnt, reopen_path) < 0)
+		    goto error;
+		if (strlen(xsString(reopen_path)) >= OBJSYS_MAX_PATH)
+		    {
+		    mssError(1, "OSML", "objOpenQuery: pathname too long");
+		    goto error;
+		    }
+		strtcpy(this->SortInf->ReopenPath, xsString(reopen_path), sizeof(this->SortInf->ReopenPath));
+		xsFree(reopen_path);
+		reopen_path = NULL;
+		}
+
 	    /** Read result set **/
 	    while((tmp_obj = objQueryFetch(this, 0400)))
 	        {
-		/** We keep temp objects open, for others we squirrel away the name instead and re-open later **/
-		if (this->SortInf->Reopen)
-		    xaAddItem(this->SortInf->SortNames+0, (void*)(xsStringEnd(&this->SortInf->SortNamesBuf) - this->SortInf->SortNamesBuf.String));
+		/** Record our sortable item **/
+		sort_item = (pObjQuerySortItem)nmMalloc(sizeof(ObjQuerySortItem));
+		if (!sort_item)
+		    goto error;
+		memset(sort_item, 0, sizeof(ObjQuerySortItem));
+		if (!this->SortInf->Reopen)
+		    {
+		    sort_item->Obj = tmp_obj;
+		    }
 		else
-		    xaAddItem(this->SortInf->SortNames+0, (void*)tmp_obj);
-		objGetAttrValue(tmp_obj,"name",DATA_T_STRING,POD(&ptr));
-		xsConcatenate(&this->SortInf->SortNamesBuf, ptr, strlen(ptr)+1);
+		    {
+		    if (objGetAttrValue(tmp_obj,"name",DATA_T_STRING,POD(&ptr)) != 0)
+			{
+			mssError(1, "OSML", "objOpenQuery: could not get 'name' of result set object");
+			goto error;
+			}
+		    sort_item->Name = nmSysStrdup(ptr);
+		    if (!sort_item->Name)
+			goto error;
+		    }
+		    
+		/** Build the sortable binary string representing the sort criteria values **/
 		expModifyParam(this->ObjList, NULL, tmp_obj);
-		start_ptr = xsStringEnd(&this->SortInf->SortDataBuf);
-		xaAddItem(this->SortInf->SortPtr+0, (void*)(start_ptr - this->SortInf->SortDataBuf.String));
-
+		sort_item->SortDataOffset = xsLength(&this->SortInf->SortDataBuf);
 		len = objBuildBinaryImageXString(&this->SortInf->SortDataBuf, this->SortBy, n_sortby, this->ObjList, 0);
 		if (len < 0)
 		    {
+		    mssError(1, "OSML", "objOpenQuery: could build binary comparison image for sort");
 		    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "null\n");
-		    goto error_return;
+		    goto error;
 		    }
+		sort_item->SortDataLen = len;
 
-		xaAddItem(this->SortInf->SortPtrLen+0, (void*)(intptr_t)len);
+		xaAddItem(&this->SortInf->SortItems, (void*)sort_item);
+		sort_item->SortInf = this->SortInf;
+
+		/** Reopening later?  If so close the open object. **/
 		if (this->SortInf->Reopen)
 		    objClose(tmp_obj);
 		}
 
-	    /** Absolute-reference the string offsets. **/
-	    n = this->SortInf->SortPtr[0].nItems;
-	    for(i=0;i<n;i++)
-	        {
-		if (this->SortInf->Reopen)
-		    this->SortInf->SortNames[0].Items[i] = this->SortInf->SortNamesBuf.String + (intptr_t)(this->SortInf->SortNames[0].Items[i]);
-		this->SortInf->SortPtr[0].Items[i] = this->SortInf->SortDataBuf.String + (intptr_t)(this->SortInf->SortPtr[0].Items[i]);
-		}
-
 	    /** Mergesort the result set. **/
-	    xaInit(this->SortInf->SortPtr+1, n);
-	    memcpy(this->SortInf->SortPtr[1].Items, this->SortInf->SortPtr[0].Items, n*sizeof(void *));
-	    xaInit(this->SortInf->SortPtrLen+1, n);
-	    memcpy(this->SortInf->SortPtrLen[1].Items, this->SortInf->SortPtrLen[0].Items, n*sizeof(void *));
-	    xaInit(this->SortInf->SortNames+1, n);
-	    memcpy(this->SortInf->SortNames[1].Items, this->SortInf->SortNames[0].Items, n*sizeof(void *));
-	    obj_internal_MergeSort(this->SortInf, 1, 0, n - 1);
+	    mergesort(this->SortInf->SortItems.Items, this->SortInf->SortItems.nItems, obj_internal_SortCompare);
 	    this->Flags |= OBJ_QY_F_FROMSORT;
 	    }
 
@@ -384,22 +331,41 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 
 	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "%8.8lX\n", (long)this);
 
-    return this;
-
-    error_return:
-
-	if (lxs) mlxCloseSession(lxs);
-	if (this && order_by && !orderbyexp) for(i=0;this->SortBy[i];i++) expFreeExpression(this->SortBy[i]);
-	if (linked_obj) objClose(linked_obj); /* unlink */
-	if (this)
+	/** Order by expressions? **/
+	if (this && order_by && !orderbyexp)
 	    {
-	    xaRemoveItem(&(linked_obj->Session->OpenQueries), xaFindItem(&(linked_obj->Session->OpenQueries), (void*)this));
-	    if (this->Flags & OBJ_QY_F_ALLOCTREE) expFreeExpression((pExpression)(this->Tree));
-	    if (this->ObjList) expFreeParamList((pParamObjects)(this->ObjList));
-	    nmFree(this,sizeof(ObjQuery));
+	    for(i=0; this->SortBy[i] && i < OBJSYS_SORT_MAX; i++)
+		{
+		expFreeExpression(this->SortBy[i]);
+		this->SortBy[i] = NULL;
+		}
 	    }
 
-    return NULL;
+	return this;
+
+    error:
+	if (reopen_path)
+	    xsFree(reopen_path);
+
+	/** Lexer session for textual order by items **/
+	if (lxs)
+	    mlxCloseSession(lxs);
+
+	/** Order by expressions? **/
+	if (this && order_by && !orderbyexp)
+	    {
+	    for(i=0; this->SortBy[i] && i < OBJSYS_SORT_MAX; i++)
+		{
+		expFreeExpression(this->SortBy[i]);
+		this->SortBy[i] = NULL;
+		}
+	    }
+
+	/** Clean up the query structure **/
+	if (this)
+	    objQueryClose(this);
+
+	return NULL;
     }
 
 
@@ -446,10 +412,12 @@ objQueryDelete(pObjQuery this)
 pObject 
 objQueryFetch(pObjQuery this, int mode)
     {
-    pObject obj;
+    pObject obj = NULL;
     void* obj_data;
     char* name;
     char buf[OBJSYS_MAX_PATH + 32];
+    pObjQuerySortItem sort_item;
+    int rval;
 
     	ASSERTMAGIC(this,MGK_OBJQUERY);
 
@@ -458,14 +426,13 @@ objQueryFetch(pObjQuery this, int mode)
     	/** Multiquery? **/
 	if (this->Drv) 
 	    {
-	    /*obj = (pObject)nmMalloc(sizeof(Object));*/
 	    obj = obj_internal_AllocObj();
-	    if (!obj) return NULL;
+	    if (!obj)
+		goto error;
 	    if ((obj->Data = this->Drv->QueryFetch(this->Data, obj, mode, NULL)) == NULL)
 	        {
-		obj_internal_FreeObj(obj);
 		OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " null\n");
-		return NULL;
+		goto error;
 		}
 	    obj->Driver = this->Drv;
 	    obj->Session = this->QySession;
@@ -485,19 +452,40 @@ objQueryFetch(pObjQuery this, int mode)
 	/** Retrieving from a sort result set? **/
 	if (this->Flags & OBJ_QY_F_FROMSORT)
 	    {
-	    if (this->RowID >= this->SortInf->SortNames[0].nItems) return NULL;
+	    /** End of results? **/
+	    if (this->RowID >= this->SortInf->SortItems.nItems)
+		goto error;
+
+	    /** Get next item **/
+	    sort_item = (pObjQuerySortItem)this->SortInf->SortItems.Items[this->RowID++];
 
 	    /** Temp objects we kept open; others we reopen by name **/
 	    if (!this->SortInf->Reopen)
 		{
-		obj = (pObject)this->SortInf->SortNames[0].Items[this->RowID++];
-		this->SortInf->SortNames[0].Items[this->RowID - 1] = NULL;
+		/** Not reopening - just grab the object **/
+		obj = sort_item->Obj;
+		sort_item->Obj = NULL;
 		}
 	    else
 		{
+		/** Reopening - build the path to use **/
 		obj_internal_PathPart(this->Obj->Pathname, 0, 0);
-		snprintf(buf,sizeof(buf),"%s/%s?ls__type=system%%2fobject",this->Obj->Pathname->Pathbuf+1,(char*)(this->SortInf->SortNames[0].Items[this->RowID++]));
+		if (strlen(sort_item->Name) + strlen(this->SortInf->ReopenPath) + 27 > OBJSYS_MAX_PATH) 
+		    {
+		    mssError(1, "OSML", "Filename in query result exceeded internal limits");
+		    goto error;
+		    }
+		rval = snprintf(buf, sizeof(buf), "%s/%s?ls__type=system%%2fobject", this->SortInf->ReopenPath, sort_item->Name);
+		if (rval < 0 || rval >= sizeof(buf))
+		    {
+		    mssError(1, "OSML", "Filename in query result exceeded internal limits");
+		    goto error;
+		    }
 		obj = objOpen(this->Obj->Session, buf, mode, 0400, "");
+		if (!obj)
+		    mssError(1, "OSML", "Could not re-open sorted query item '%s'", sort_item->Name);
+		nmSysFree(sort_item->Name);
+		sort_item->Name = NULL;
 		}
 	    if (obj)
 		obj->RowID = this->RowID;
@@ -506,9 +494,9 @@ objQueryFetch(pObjQuery this, int mode)
 	    }
 
 	/** Open up the object descriptor **/
-	/*obj = (pObject)nmMalloc(sizeof(Object));*/
 	obj = obj_internal_AllocObj();
-	if (!obj) return NULL;
+	if (!obj)
+	    goto error;
 	obj->EvalContext = this->Obj->EvalContext;	/* inherit from parent */
 	obj->Driver = this->Obj->Driver;
 	obj->ILowLevelDriver = this->Obj->ILowLevelDriver;
@@ -537,30 +525,17 @@ objQueryFetch(pObjQuery this, int mode)
             obj_data = this->Obj->Driver->QueryFetch(this->Data, obj, mode, &(obj->Session->Trx));
             if (!obj_data) 
 	        {
-		/*nmFree(obj->Pathname,sizeof(Pathname));*/
-		/*objClose(obj->Prev);
-		xaDeInit(&(obj->Attrs));
-		obj_internal_FreePath(obj->Pathname);
-                nmFree(obj,sizeof(Object));*/
-		obj_internal_FreeObj(obj);
 		OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " null\n");
-		return NULL;
+		goto error;
 		}
             obj->Data = obj_data;
     
             this->Obj->Driver->GetAttrValue(obj_data, "name", DATA_T_STRING, &name, NULL);
             if (strlen(name) + strlen(this->Obj->Pathname->Pathbuf) + 2 > OBJSYS_MAX_PATH) 
                 {
-		/*this->Obj->Driver->Close(obj_data, &(obj->Session->Trx));*/
-		/*nmFree(obj->Pathname,sizeof(Pathname));*/
-		/*objClose(obj->Prev);
-		xaDeInit(&(obj->Attrs));
-		obj_internal_FreePath(obj->Pathname);
-                nmFree(obj,sizeof(Object));*/
-		obj_internal_FreeObj(obj);
 		mssError(1,"OSML","Filename in query result exceeded internal limits");
 		OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " null\n");
-                return NULL;
+                goto error;
                 }
 
 	    /** If we need to check it, do so now. **/
@@ -591,7 +566,13 @@ objQueryFetch(pObjQuery this, int mode)
 
 	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %8.8lX:%3.3s:%s\n", (long)obj, obj->Driver->Name, obj->Pathname->Pathbuf);
 
-    return obj;
+	return obj;
+
+    error: /* error or end of results - return NULL */
+	if (obj)
+	    obj_internal_FreeObj(obj);
+
+	return NULL;
     }
 
 
@@ -601,7 +582,7 @@ objQueryFetch(pObjQuery this, int mode)
 pObject
 objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* type)
     {
-    pObject new_obj;
+    pObject new_obj = NULL;
     void* rval;
     char* bufptr;
     char* newname;
@@ -617,16 +598,16 @@ objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* 
 	    if (strcmp(name,"*"))
 		{
 		mssError(1,"OSML","When creating an object using autokeying, name must be '*'");
-		return NULL;
+		goto error;
 		}
 	    /** This is inherent with autoname **/
 	    mode |= OBJ_O_EXCL;
 	    }
 
 	/** Open up the new object descriptor **/
-	/*new_obj = (pObject)nmMalloc(sizeof(Object));*/
 	new_obj = obj_internal_AllocObj();
-	if (!new_obj) return NULL;
+	if (!new_obj)
+	    goto error;
 	new_obj->Driver = this->Obj->Driver;
 	new_obj->ILowLevelDriver = this->Obj->ILowLevelDriver;
 	new_obj->TLowLevelDriver = this->Obj->TLowLevelDriver;
@@ -648,12 +629,7 @@ objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* 
 	    if (!rval)
 		{
 		/** Call failed.  Free up the obj structure **/
-		obj_internal_FreeObj(new_obj);
-		/*objClose(new_obj->Prev);
-		xaDeInit(&(new_obj->Attrs));
-		obj_internal_FreePath(new_obj->Pathname);
-                nmFree(new_obj,sizeof(Object));*/
-		return NULL;
+		goto error;
 		}
 
 	    /** querycreate succeeded. **/
@@ -665,34 +641,31 @@ objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* 
 	     ** that condition is not yet handled.  Sorry... (FIXME)
 	     **/
 	    mssError(1,"OSML","Bark!  Unimplemented functionality in objQueryCreate()");
-	    obj_internal_FreeObj(new_obj);
-	    /*objClose(new_obj->Prev);
-	    xaDeInit(&(new_obj->Attrs));
-	    obj_internal_FreePath(new_obj->Pathname);
-	    nmFree(new_obj,sizeof(Object));*/
-	    return NULL;
+	    goto error;
 	    }
 
 	/** Set the name **/
 	new_obj->Driver->GetAttrValue(new_obj->Data, "name", DATA_T_STRING, &newname, NULL);
 	if (strlen(newname) + strlen(new_obj->Pathname->Pathbuf) + 2 > OBJSYS_MAX_PATH || new_obj->Pathname->nElements + 1 > OBJSYS_MAX_ELEMENTS)
 	    {
-	    new_obj->Driver->Close(new_obj->Data, &(new_obj->Session->Trx));
-	    obj_internal_FreeObj(new_obj);
-	    /*nmFree(obj->Pathname,sizeof(Pathname));*/
-	    /*objClose(new_obj->Prev);
-	    xaDeInit(&(new_obj->Attrs));
-	    obj_internal_FreePath(new_obj->Pathname);
-	    nmFree(new_obj,sizeof(Object));*/
 	    mssError(1,"OSML","Filename in query result exceeded internal limits");
-	    return NULL;
+	    goto error;
 	    }
 	bufptr = strchr(new_obj->Pathname->Pathbuf,0);
 	*(bufptr++) = '/';
 	new_obj->Pathname->Elements[new_obj->Pathname->nElements++] = bufptr;
 	strcpy(bufptr, newname);
 
-    return new_obj;
+	return new_obj;
+
+    error:
+	if (new_obj)
+	    {
+	    if (new_obj->Data)
+		new_obj->Driver->Close(new_obj->Data, &(new_obj->Session->Trx));
+	    obj_internal_FreeObj(new_obj);
+	    }
+	return NULL;
     }
 
 
@@ -703,7 +676,8 @@ int
 objQueryClose(pObjQuery this)
     {
     int i;
-    pObject obj;
+    pObjQuerySortItem sort_item;
+    pObjSession sess;
 
     	ASSERTMAGIC(this,MGK_OBJQUERY);
 
@@ -715,39 +689,36 @@ objQueryClose(pObjQuery this)
 	    /** Close temp objects? **/
 	    if (!this->SortInf->Reopen)
 		{
-		for(i = this->SortInf->SortNames[0].nItems - 1; i >= this->RowID; i--)
+		for(i = this->SortInf->SortItems.nItems - 1; i >= this->RowID; i--)
 		    {
-		    obj = (pObject)this->SortInf->SortNames[0].Items[i];
-		    if (obj) objClose(obj);
+		    sort_item = (pObjQuerySortItem)this->SortInf->SortItems.Items[i];
+		    if (sort_item->Obj) objClose(sort_item->Obj);
+		    if (sort_item->Name) nmSysFree(sort_item->Name);
 		    }
 		}
-	    xaDeInit(this->SortInf->SortPtr+0);
-	    xaDeInit(this->SortInf->SortPtrLen+0);
-	    xaDeInit(this->SortInf->SortNames+0);
-	    xaDeInit(this->SortInf->SortPtr+1);
-	    xaDeInit(this->SortInf->SortPtrLen+1);
-	    xaDeInit(this->SortInf->SortNames+1);
+	    xaDeInit(&this->SortInf->SortItems);
 	    xsDeInit(&this->SortInf->SortDataBuf);
-	    xsDeInit(&this->SortInf->SortNamesBuf);
 	    nmFree(this->SortInf,sizeof(ObjQuerySort));
 	    }
 
 	/** Shut down query with the driver. **/
-	if (this->Drv) 
+	if (this->Data)
 	    {
-	    this->Drv->QueryClose(this->Data);
+	    if (this->Drv) 
+		{
+		/** Using multiquery **/
+		this->Drv->QueryClose(this->Data);
+		sess = this->QySession;
+		}
+	    else
+		{
+		/** Standard query **/
+		this->Obj->Driver->QueryClose(this->Data, &(this->Obj->Session->Trx));
+		sess = this->Obj->Session;
+		}
 
 	    /** Remove from session open queries... **/
-	    xaRemoveItem(&(this->QySession->OpenQueries),
-	        xaFindItem(&(this->QySession->OpenQueries),(void*)this));
-	    }
-	else
-	    {
-	    this->Obj->Driver->QueryClose(this->Data, &(this->Obj->Session->Trx));
-
-	    /** Remove from session open queries... **/
-	    xaRemoveItem(&(this->Obj->Session->OpenQueries),
-	        xaFindItem(&(this->Obj->Session->OpenQueries),(void*)this));
+	    xaRemoveItem(&(sess->OpenQueries), xaFindItem(&(sess->OpenQueries), (void*)this));
 	    }
 
 	/** Close the parent object (or, just unlink from it), if applicable **/

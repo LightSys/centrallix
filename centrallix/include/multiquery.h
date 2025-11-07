@@ -42,7 +42,7 @@
 #include "cxlib/xhandle.h"
 
 
-#define MQ_MAX_ORDERBY		(25)
+#define MQ_MAX_ORDERBY		(24)
 
 #define MQ_MAX_SOURCELEN	(OBJSYS_MAX_PATH+1+16384)
 
@@ -88,7 +88,7 @@ typedef struct _QE
     pObjQuery		LLQuery;
     void*		QSLinkage;
     pExpression		Constraint;
-    pExpression		OrderBy[MQ_MAX_ORDERBY];
+    pExpression		OrderBy[MQ_MAX_ORDERBY + 1];
     int			OrderPrio;		/* priority of ordering */
     void*		PrivateData;		/* q-driver specific data structure */
     }
