@@ -50,16 +50,29 @@
 /*** Gets the hash, representing a pair of ASCII characters, represented by unsigned ints.
  *** Thank you to professor John Delano for this hashing algorithm.
  *** 
- *** @param num1 The first character in the pair.
- *** @param num1 The second character in the pair.
+ *** @param c1 The first character in the pair.
+ *** @param c2 The second character in the pair.
  *** @returns The resulting hash.
  ***/
-static unsigned int hash_char_pair(const unsigned int num1, const unsigned int num2)
+static unsigned int hash_char_pair(const char c1, const char c2)
     {
-    const double sum = (num1 * num1 * num1) + (num2 * num2 * num2);
-    const double scale = ((double)num1 + 1.0) / ((double)num2 + 1.0);
+    const double sum = (c1 * c1 * c1) + (c2 * c2 * c2);
+    const double scale = ((double)c1 + 1.0) / ((double)c2 + 1.0);
     const unsigned int hash = (unsigned int)round(sum * scale) - 1u;
     return hash % CA_NUM_DIMS;
+    }
+
+typedef struct
+    {
+    unsigned char c1, c2;
+    unsigned int hash;
+    }
+    CharPair, *pCharPair;
+
+static int charpair_cmp(const void *p1, const void *p2)
+    {
+    const CharPair *a = p1, *b = p2;
+    return a->hash - b->hash;
     }
 
 /*** Builds a vector using a string.
@@ -109,122 +122,184 @@ static unsigned int hash_char_pair(const unsigned int num1, const unsigned int n
  ***/
 pVector ca_build_vector(const char* str)
     {
-    /** Allocate space for a dense vector. **/
-    unsigned int dense_vector[CA_NUM_DIMS] = {0u};
-    
-    /** j is the former character, i is the latter. **/
-    const unsigned int num_chars = (unsigned int)strlen(str);
-    for (unsigned int j = 65535u, i = 0u; i <= num_chars; i++)
+    char chars[strlen(str) + 2u];
+    unsigned int num_chars = 0u;
+    chars[num_chars++] = CA_BOUNDARY_CHAR; /* Starting boundary character. */
+    for (const char* char_ptr = str; *char_ptr != '\0'; char_ptr++)
 	{
-	/** isspace: space, \n, \v, \f, \r **/
-	if (isspace(str[i])) continue;
+	unsigned char c = *char_ptr;
 	
-	/** ispunct: !"#$%&'()*+,-./:;<=>?@[\]^_{|}~ **/
-	if (ispunct(str[i]) && str[i] != CA_BOUNDARY_CHAR) continue;
+	/** Always consider boundary character in string. **/
+	if (c == CA_BOUNDARY_CHAR) goto skip_checks;
 	
-	/*** iscntrl (0-8):   NULL, SOH, STX, ETX, EOT, ENQ, ACK, BEL, BS
-	 ***         (14-31): SO, SI, DLE, DC1-4, NAK, SYN, ETB, CAN EM,
-	 ***                  SUB, ESC, FS, GS, RS, US
-	 ***/
-	if (iscntrl(str[i]) && i != num_chars)
-	    {
-	    fprintf(stderr,
-		"ca_build_vector(%s) - Warning: Skipping unknown character #%u.\n",
-		str, (unsigned int)str[i]
-	    );
-	    continue;
-	    }
+	/** Ignore insignificant characters: spaces and punctuation. **/
+	if (isspace(c)) continue; /* space, \n, \v, \f, \r */
+	if (ispunct(c)) continue; /* !"#$%&'()*+,-./:;<=>?@[\]^_{|}~ */
 	
-	/** First and last character should fall one before 'a' in the ASCII table. **/
-	unsigned int temp1 = (j == 65535u) ? CA_BOUNDARY_CHAR : (unsigned int)tolower(str[j]);
-	unsigned int temp2 = (i == num_chars) ? CA_BOUNDARY_CHAR : (unsigned int)tolower(str[i]);
-	
+	skip_checks:
 	/** Shift numbers to the end of the lowercase letters. **/
-	if ('0' <= temp1 && temp1 <= '9') temp1 += 75u;
-	if ('0' <= temp2 && temp2 <= '9') temp2 += 75u;
+	if ('0' <= c && c <= '9') c += 75u;
+	
+	/** Store the character. **/
+	chars[num_chars++] = tolower(c);
+	}
+    chars[num_chars++] = CA_BOUNDARY_CHAR; /* Ending boundary character. */
+    
+    /** Compute char pairs. **/
+    CharPair char_pairs[num_chars];
+    const unsigned int num_pairs = num_chars - 1u;
+    for (unsigned int i = 0u; i < num_pairs; i++)
+	{
+	/** Store characters. **/
+	char_pairs[i].c1 = chars[i];
+	char_pairs[i].c2 = chars[i + 1];
 	
 	/** Hash the character pair into an index (dimension).  **/
-	/** Note that temp will be between 97 ('a') and 132 ('9'). **/
-	unsigned int dim = hash_char_pair(temp1, temp2);
-	
-	/** Increment the dimension of the dense vector by a number from 1 to 13. **/
-	dense_vector[dim] += (temp1 + temp2) % 13u + 1u;
-	
-	j = i;
+	/** Note that the passed value should always be between 97 ('a') and 132 ('9'). **/
+	char_pairs[i].hash = hash_char_pair(chars[i], chars[i + 1]);
 	}
     
-    /** Count how much space is needed for a sparse vector. **/
-    bool zero_prev = false;
-    size_t size = 0u;
-    for (unsigned int dim = 0u; dim < CA_NUM_DIMS; dim++)
-	{
-	if (dense_vector[dim] == 0u)
-	    {
-	    size += (zero_prev) ? 0u : 1u;
-	    zero_prev = true;
-	    }
-	else
-	    {
-	    size++;
-	    zero_prev = false;
-	    }
-	}
+    /** Sort char_pairs by hash value. **/
+    qsort(char_pairs, num_pairs, sizeof(CharPair), charpair_cmp);
     
-    /*** Check compression size.
-     *** If this check fails, I doubt anything will break. However, the longest
-     *** word I know (supercalifragilisticexpialidocious) has only 35 character
-     *** pairs, so it shouldn't reach half this size (and it'd be even shorter
-     *** if the hash generates at least one collision).
-     *** 
-     *** Bad vector compression will result in degraded performace and increased
-     *** memory usage. This indicates a likely bug in the code. Thus, if this
-     *** warning is ever generated, it is definitely worth investigating.
-     ***/
-    const size_t expected_max_size = 64u;
-    if (size > expected_max_size)
-	{
-	fprintf(stderr,
-	    "cli_build_vector(\"%s\") - Warning: Sparse vector larger than expected.\n"
-	    "    > Size: %lu\n"
-	    "    > #Dims: %u\n",
-	    str,
-	    size,
-	    CA_NUM_DIMS
-	);
-	}
-    
-    /** Allocate space for sparse vector. **/
-    const size_t sparse_vector_size = size * sizeof(int);
-    pVector sparse_vector = (pVector)check_ptr(nmSysMalloc(sparse_vector_size));
+    /** Allocate space for the sparce vector. **/
+    pVector sparse_vector = (pVector)check_ptr(nmSysMalloc((num_pairs * 2u + 1u) * sizeof(int)));
     if (sparse_vector == NULL) return NULL;
     
-    /** Convert the dense vector above to a sparse vector. **/
-    unsigned int j = 0u, sparse_idx = 0u;
-    while (j < CA_NUM_DIMS)
-        {
-	if (dense_vector[j] == 0u)
+    /** Build the sparse vector. **/
+    unsigned int cur = 0u, dim = 0u;
+    for (unsigned int i = 0u; i < num_pairs;)
+	{
+	unsigned int hash = char_pairs[i].hash;
+	
+	/** Proceed through the pairs until we find a unique hash. **/
+	/** Dividing value by 2 each time reduces the impact of repeated pairs. **/
+	int value = 0;
+	for (; i < num_pairs && char_pairs[i].hash == hash; i++)
+	    value = (value / 2) + ((unsigned int)char_pairs[i].c1 + (unsigned int)char_pairs[i].c2) % 13u + 1u;
+	
+	/** Skip zeros to reach the dimension index specified by the hash. **/
+	unsigned int num_zeros = hash - dim;
+	if (num_zeros > 0u) 
 	    {
-	    /*** Count and store consecutive zeros, except the first one,
-	     *** which we already know is zero.
-	     ***/
-	    unsigned int zero_count = 1u;
-	    j++;
-	    while (j < CA_NUM_DIMS && dense_vector[j] == 0u)
-	        {
-		zero_count++;
-		j++;
-	        }
-	    sparse_vector[sparse_idx++] = (int)-zero_count;
+	    sparse_vector[cur++] = (int)-num_zeros;
+	    dim = hash;
 	    }
-	else
-	    {
-	    /** Store the value. **/
-	    sparse_vector[sparse_idx++] = (int)dense_vector[j++];
-	    }
+	
+	/** Add the value to the sparse vector. **/
+	sparse_vector[cur++] = value;
+	dim++;
 	}
+    if (dim != CA_NUM_DIMS) sparse_vector[cur++] = -(CA_NUM_DIMS - dim);
     
-    return sparse_vector;
+    /** Trim extra space wasted by identical hashes. **/
+    pVector trimmed_sparse_vector = (pVector)check_ptr(nmSysRealloc(sparse_vector, cur * sizeof(int)));
+    if (trimmed_sparse_vector == NULL) return NULL;
+    
+    return trimmed_sparse_vector;
     }
+
+// Build vector by converting a dense vector to a sparse one.
+//pVector ca_build_vector_old(const char* str)
+//    {
+//    /** Allocate space for a dense vector. **/
+//    unsigned int dense_vector[CA_NUM_DIMS] = {0u};
+//    
+//    /** j is the former character, i is the latter. **/
+//    const unsigned int num_chars = (unsigned int)strlen(str);
+//    for (unsigned int j = 65535u, i = 0u; i <= num_chars; i++)
+//	{
+//	if (isspace(str[i])) continue;
+//	if (ispunct(str[i]) && str[i] != CA_BOUNDARY_CHAR) continue;
+//	
+//	/** First and last character should fall one before 'a' in the ASCII table. **/
+//	unsigned int temp1 = (j == 65535u) ? CA_BOUNDARY_CHAR : (unsigned int)tolower(str[j]);
+//	unsigned int temp2 = (i == num_chars) ? CA_BOUNDARY_CHAR : (unsigned int)tolower(str[i]);
+//	 
+//	/** Shift numbers to the end of the lowercase letters. **/
+//	if ('0' <= temp1 && temp1 <= '9') temp1 += 75u;
+//	if ('0' <= temp2 && temp2 <= '9') temp2 += 75u;
+//	
+//	/** Hash the character pair into an index (dimension).  **/
+//	/** Note that temp will be between 97 ('a') and 132 ('9'). **/
+//	unsigned int dim = hash_char_pair(temp1, temp2);
+//	
+//	/** Increment the dimension of the dense vector by a number from 1 to 13. **/
+//	dense_vector[dim] += (temp1 + temp2) % 13u + 1u;
+//	
+//	j = i;
+//	}
+//   
+//    /** Count how much space is needed for a sparse vector. **/
+//    bool zero_prev = false;
+//    size_t size = 0u;
+//    for (unsigned int dim = 0u; dim < CA_NUM_DIMS; dim++)
+//	{
+//	if (dense_vector[dim] == 0u)
+//	    {
+//	    size += (zero_prev) ? 0u : 1u;
+//	    zero_prev = true;
+//	    }
+//	else
+//	    {
+//	    size++;
+//	    zero_prev = false;
+//	    }
+//	}
+//   
+//    /*** Check compression size.
+//     *** If this check fails, I doubt anything will break. However, the longest
+//     *** word I know (supercalifragilisticexpialidocious) has only 35 character
+//     *** pairs, so it shouldn't reach half this size (and it'd be even shorter
+//     *** if the hash generates at least one collision).
+//     *** 
+//     *** Bad vector compression will result in degraded performace and increased
+//     *** memory usage. This indicates a likely bug in the code. Thus, if this
+//     *** warning is ever generated, it is definitely worth investigating.
+//     ***/
+//    const size_t expected_max_size = 256u;
+//    if (size > expected_max_size)
+//	{
+//	fprintf(stderr,
+//	    "cli_build_vector(\"%s\") - Warning: Sparse vector larger than expected.\n"
+//	    "    > Size: %lu\n"
+//	    "    > #Dims: %u\n",
+//	    str,
+//	    size,
+//	    CA_NUM_DIMS
+//	);
+//	}
+//    
+//    /** Allocate space for sparse vector. **/
+//    const size_t sparse_vector_size = size * sizeof(int);
+//    pVector sparse_vector = (pVector)check_ptr(nmSysMalloc(sparse_vector_size));
+//    if (sparse_vector == NULL) return NULL;
+//    
+//    /** Convert the dense vector above to a sparse vector. **/
+//    unsigned int dim = 0u, sparse_idx = 0u;
+//    while (dim < CA_NUM_DIMS)
+//        {
+//	if (dense_vector[dim] == 0u)
+//	    {
+//	    /** Count and store consecutive zeros, skipping the first one. **/
+//	    unsigned int zero_count = 1u;
+//	    dim++;
+//	    while (dim < CA_NUM_DIMS && dense_vector[dim] == 0u)
+//	        {
+//		zero_count++;
+//		dim++;
+//	        }
+//	    sparse_vector[sparse_idx++] = (int)-zero_count;
+//	    }
+//	else
+//	    {
+//	    /** Store the value. **/
+//	    sparse_vector[sparse_idx++] = (int)dense_vector[dim++];
+//	    }
+//	}
+//    
+//    return sparse_vector;
+//    }
 
 /*** Free memory allocated to store a sparse vector.
  *** 
@@ -254,6 +329,21 @@ unsigned int ca_sparse_len(const pVector vector)
 	else dim++;
 	}
     return i;
+    }
+
+/*** Print the underlying implementation values sparsely allocated
+ *** vector (intended for debugging).
+ *** 
+ *** @param out File to print to.
+ *** @param vector The vector.
+ ***/
+void ca_fprint_vector(FILE* out, const pVector vector)
+    {
+    const unsigned int len = ca_sparse_len(vector);
+    fprintf(out, "Vector: [%d", vector[0]);
+    for (unsigned int i = 1u; i < len; i++)
+	fprintf(out, ", %d", vector[i]);
+    fprintf(out, "]");
     }
 
 /*** Compute the magnitude of a sparsely allocated vector.
@@ -911,6 +1001,9 @@ void* ca_most_similar(
  *** 	the data param and returns their similarity.
  *** @param threshold The minimum threshold required for a duplocate to be
  *** 	included in the returned xArray.
+ *** @param maybe_keys A pointer to an array of keys, with one key per data.
+ *** 	These will be used to fill in the key1 and key2 attributes for each
+ *** 	struct. If this variable is null, these values are also left null.
  *** @param maybe_dups A pointer to an xArray in which dups should be found.
  *** 	Pass NULL to allocate a new one.
  *** @returns An xArray holding all of the duplocates found. If maybe_dups is
@@ -922,11 +1015,12 @@ pXArray ca_sliding_search(
     const unsigned int window_size,
     const double (*similarity)(void*, void*),
     const double threshold,
-    pXArray dups)
+    void** maybe_keys,
+    pXArray maybe_dups)
     {
     /** Allocate space for dups (if necessary). **/
-    const bool allocate_dups = (dups == NULL);
-    if (allocate_dups)
+    pXArray dups = maybe_dups;
+    if (dups == NULL)
 	{
 	/** Guess that we will need space for num_data * 2 dups. **/
 	const int guess_size = num_data * 2;
@@ -955,8 +1049,11 @@ pXArray ca_sliding_search(
 		glyph(find);
 		Dup* dup = (Dup*)check_ptr(nmMalloc(sizeof(Dup)));
 		if (dup == NULL) goto err_free_dups;
-		dup->id1 = i;
-		dup->id2 = j;
+		if (maybe_keys != NULL)
+		    {
+		    dup->key1 = maybe_keys[i];
+		    dup->key2 = maybe_keys[j];
+		    }
 		dup->similarity = sim;
 		if (!check_neg(xaAddItem(dups, (void*)dup))) goto err_free_dups;
 		}
@@ -973,7 +1070,7 @@ pXArray ca_sliding_search(
     /** Free the dups we added to the XArray. */
     while (dups->nItems > num_starting_dups)
 	nmFree(dups->Items[dups->nItems--], sizeof(Dup));
-    if (allocate_dups) check(xaDeInit(dups)); /* Failure ignored. */
+    if (maybe_dups == NULL) check(xaDeInit(dups)); /* Failure ignored. */
     
     err:
     return NULL;
@@ -990,6 +1087,9 @@ pXArray ca_sliding_search(
  *** 	the data param and returns their similarity.
  *** @param threshold The minimum threshold required for a duplocate to be
  *** 	included in the returned xArray.
+ *** @param maybe_keys A pointer to an array of keys, with one key per data.
+ *** 	These will be used to fill in the key1 and key2 attributes for each
+ *** 	struct. If this variable is null, these values are also left null.
  *** @param maybe_dups A pointer to an xArray in which dups should be found.
  *** 	Pass NULL to allocate a new one.
  *** @returns An xArray holding all of the duplocates found. If maybe_dups is
@@ -1000,9 +1100,10 @@ pXArray ca_complete_search(
     const unsigned int num_data,
     const double (*similarity)(void*, void*),
     const double threshold,
-    pXArray dups)
+    void** maybe_keys,
+    pXArray maybe_dups)
     {
-    return ca_sliding_search(data, num_data, num_data, similarity, threshold, dups);
+    return ca_sliding_search(data, num_data, num_data, similarity, threshold, maybe_keys, maybe_dups);
     }
 
 /** Scope cleanup. **/

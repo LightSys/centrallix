@@ -41,7 +41,11 @@
 #include "cxlib/xarray.h"
 #endif
 
-#define CA_NUM_DIMS 251 /* aka. The vector table size. */
+/*** 2147483629 is the signed int max, and is also a prime number.
+ *** Using this value ensures that the longest run of 0s will not
+ *** cause an int underflow with the current encoding scheme.
+ ***/
+#define CA_NUM_DIMS 251 //2147483629 /* aka. The vector table size. */
 
 /// LINK ../../centrallix-sysdoc/string_comparison.md#cosine_charsets
 /** The character used to create a pair with the first and last characters of a string. **/
@@ -55,8 +59,8 @@ typedef double* pCentroid; /* Dense centroid. */
 /** Duplocate information. **/
 typedef struct
     {
-    unsigned int id1;
-    unsigned int id2;
+    void* key1;
+    void* key2;
     double similarity;
     }
     Dup, *pDup;
@@ -70,6 +74,7 @@ typedef struct
 
 pVector ca_build_vector(const char* str);
 unsigned int ca_sparse_len(const pVector vector);
+void ca_print_vector(const pVector vector);
 void ca_free_vector(pVector sparse_vector);
 int ca_kmeans(
     pVector* vectors,
@@ -105,12 +110,14 @@ pXArray ca_sliding_search(
     const unsigned int window_size,
     const double (*similarity)(void*, void*),
     const double dupe_threshold,
+    void** maybe_keys,
     pXArray dups);
 pXArray ca_complete_search(
     void** data,
     const unsigned int num_data,
     const double (*similarity)(void*, void*),
     const double dupe_threshold,
+    void** maybe_keys,
     pXArray dups);
 
 #endif /* End of .h file. */

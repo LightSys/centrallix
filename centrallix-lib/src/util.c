@@ -155,6 +155,32 @@ char* snprint_bytes(char* buf, const size_t buf_size, unsigned int bytes)
     }
 #undef nUints
 
+char* snprint_llu(char* buf, size_t buflen, unsigned long long value)
+    {
+    if (buflen == 0) return NULL;
+    if (value == 0)
+	{
+	if (buflen > 1) { buf[0] = '0'; buf[1] = '\0'; }
+	else buf[0] = '\0';
+	return buf;
+	}
+
+    char tmp[32];
+    unsigned int ti = 0;
+    while (value > 0 && ti < sizeof(tmp) - 1)
+	{
+	if (ti % 4 == 3) tmp[ti++] = ',';
+	tmp[ti++] = '0' + (value % 10);
+	value /= 10;
+	}
+    tmp[ti] = '\0';
+
+    unsigned int outlen = min(ti, buflen - 1u);
+    for (unsigned int i = 0u; i < outlen; i++) buf[i] = tmp[ti - i - 1];
+    buf[outlen] = '\0';
+    return buf;
+    }
+
 void fprint_mem(FILE* out)
     {
     FILE* fp = fopen("/proc/self/statm", "r");
@@ -192,7 +218,7 @@ pTimer timer_init(pTimer timer)
     {
     if (timer == NULL) return NULL;
     timer->start = NAN;
-    timer->end = NAN;
+    timer->total = 0.0;
     return timer;
     }
 
@@ -211,13 +237,18 @@ pTimer timer_start(pTimer timer)
 pTimer timer_stop(pTimer timer)
     {
     if (!timer) return timer;
-    timer->end = get_time();
+    timer->total += get_time() - timer->start;
     return timer;
     }
 
 double timer_get(pTimer timer)
     {
-    return (timer) ? timer->end - timer->start : NAN;
+    return (timer) ? timer->total : NAN;
+    }
+
+pTimer timer_reset(pTimer timer)
+    {
+    return timer_init(timer);
     }
 
 void timer_de_init(pTimer timer) {}

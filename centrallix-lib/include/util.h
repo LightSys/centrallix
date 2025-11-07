@@ -25,11 +25,12 @@ extern "C" {
     unsigned int strtoui(const char *nptr, char **endptr, int base);
 
     char* snprint_bytes(char* buf, const size_t buf_size, unsigned int bytes);
+    char* snprint_llu(char* buf, size_t buflen, unsigned long long value);
     void fprint_mem(FILE* out);
     
     typedef struct
 	{
-	double start, end;
+	double start, total;
 	}
 	Timer, *pTimer;
     
@@ -38,6 +39,7 @@ extern "C" {
     pTimer timer_start(pTimer timer);
     pTimer timer_stop(pTimer timer);
     double timer_get(pTimer timer);
+    pTimer timer_reset(pTimer timer);
     void timer_de_init(pTimer timer);
     void timer_free(pTimer timer);
 

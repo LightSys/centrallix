@@ -14,7 +14,8 @@ file_name "system/cluster"
     ...
     
     source : DataSourcePath
-    attr_name : string ⊂ DataSourcePath/columns
+    key_attr : string ⊂ DataSourcePath/columns
+    data_attr : string ⊂ DataSourcePath/columns
     
     cluster_name "cluster/cluster"
 	{
@@ -54,10 +55,8 @@ file_name "system/cluster"
     ...
 /search_name
 - /{query}
-  - /id1 : uint < sizeof(source/attr_name) // The id of the first data point.
-  - /id2 : uint < sizeof(source/attr_name) // The id of the second data point.
-  - /val1 : string                         // The value of the first data point.
-  - /val2 : string                         // The value of the second data point.
+  - /key1 : string // The key of the first data point.
+  - /key2 : string // The key of the second data point.
   - /sim  : double && 0.0 < x <= threshold // The similarity of the two data points.
 ...
 
