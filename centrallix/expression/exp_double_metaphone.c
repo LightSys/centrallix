@@ -18,9 +18,9 @@
 /*                                                                      */
 /* A summary of the relevant content from https://dev.perl.org/licenses */
 /* has been included below for the convenience of the reader. This      */
-/* was collected and saved on September 5th, 2025 and may not reflect   */
-/* current information. For the most up to date information, please use */
-/* the link above.                                                      */
+/* information was collected and saved on September 5th, 2025 and may   */
+/* differ from current information. For the most up to date copy of     */
+/* this information, please use  the link provided above.               */
 /*                                                                      */
 /*    Perl5 is Copyright © 1993 and later, by Larry Wall and others.    */
 /*                                                                      */
@@ -64,11 +64,15 @@
 /*                                                                      */
 /* Module:      exp_double_metaphone.c                                  */
 /* Author:      Maurice Aubrey                                          */
-/* Description: This module implements a "sounds like" algorithm        */
-/*              developed by Lawrence Philips which he published        */
-/*              in the June, 2000 issue of C/C++ Users Journal.         */
-/*              Double Metaphone is an improved version of Philips'     */
-/*              original Metaphone algorithm.                           */
+/* Description: This module implements a "sounds like" algorithm by     */
+/*              Lawrence Philips which he published in the June, 2000   */
+/*              issue of C/C++ Users Journal. Double Metaphone is an    */
+/*              improved version of the original Metaphone algorithm    */
+/*              written by Philips'. This implementaton was written by  */
+/*              Maurice Aubrey for C/C++ with bug fixes provided by     */
+/*              Kevin Atkinson. It was revised by Israel Fuller to      */
+/*              better align with the Centrallix coding style and       */
+/*              standards so that it could be included here.            */
 /************************************************************************/
 
 /*** Note to future programmers reading this file (by Israel Fuller):
@@ -83,7 +87,7 @@
  *** might not line up with the original author.
  *** 
  *** To be honest, though, trying to make this code as readable as possible
- *** was very challanging due to all the messy boolean algebra. If there is
+ *** was very challenging due to all the messy boolean algebra. If there is
  *** ever a professional linguist reading this, please factor out some of the
  *** logic into local variables with descriptive names so that the rest of us
  *** can read this code without our eyes glazing over.
@@ -205,7 +209,7 @@ void meta_destroy_string(MetaString* s)
 /*** Increases a MetaString's buffer size.
  *** 
  *** @param s The MetaString* being modified.
- *** @param chars_needed Minimumn number of characters to increase buffer size.
+ *** @param chars_needed Minimum number of characters to increase buffer size.
  ***/
 void meta_increase_buffer(MetaString* s, const size_t chars_needed)
     {
@@ -347,7 +351,7 @@ void meta_double_metaphone(const char* str, char** primary_code, char** secondar
     if (str == NULL || (length = strlen(str)) == 0u) {
 	fprintf(stderr, "Warning: Call to meta_double_metaphone() with invalid string.\n");
 	
-	/** Double Metaphone on an invalid string yeilds two empty strings. **/
+	/** Double Metaphone on an invalid string yields two empty strings. **/
 	*primary_code = (char*)SAFE_MALLOC(sizeof(char));
 	*secondary_code = (char*)SAFE_MALLOC(sizeof(char));
 	return;
@@ -1066,7 +1070,7 @@ void meta_double_metaphone(const char* str, char** primary_code, char** secondar
 		    }
 		
 		/** german & anglicisations, e.g. 'smith' match 'schmidt', 'snider' match 'schneider' **/
-		/** also, -sz- in slavic language altho in hungarian it is pronounced 's' **/
+		/** also, -sz- in slavic language although in hungarian it is pronounced 's' **/
 		if (current == 0 && meta_is_str_at(original, (current + 1), "M", "N", "L", "W", ""))
 		    {
 		    meta_add_str(primary, "S");
@@ -1269,7 +1273,7 @@ void meta_double_metaphone(const char* str, char** primary_code, char** secondar
 /*** Built in test cases.
  *** 
  *** These tests have been integrated into the Centrallix testing environment,
- *** where they can be run using `export TONLY=expfn_double_metaphone_00`,
+ *** where they can be run using `export TONLY=exp_fn_double_metaphone_00`,
  *** followed by make test, in the Centrallix directory.
  *** 
  *** The can also be run here by executing the following commands in the

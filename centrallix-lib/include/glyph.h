@@ -35,8 +35,8 @@
 
 #include <stdlib.h>
 
-/** Uncomment to use glyphs. **/
-/** TODO: Israel - Comment this out. **/
+/** Uncomment to activate glyphs. **/
+/** Should not be enabled in production code on the master branch. */
 // #define ENABLE_GLYPHS
 
 #ifdef ENABLE_GLYPHS
@@ -50,7 +50,7 @@
  *** 
  *** @param name The symbol name of the visualizer.
  *** @param str The string printed for the visualization.
- *** @param interval The number of invokations of glyph() required to print.
+ *** @param interval The number of invocations of glyph() required to print.
  *** @param flush Whether to flush on output.
  ***/
 #define glyph_init(name, str, interval, flush) \

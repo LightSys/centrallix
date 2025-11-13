@@ -71,11 +71,17 @@ typedef struct
     nmRegister(sizeof(pCentroid), "pCentroid"); \
     nmRegister(pCentroidSize, "Centroid"); \
     nmRegister(sizeof(Dup), "Dup")
+    
+/** Edit distance function. **/
+unsigned int edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length);
 
+/** Vector functions. **/
 pVector ca_build_vector(const char* str);
 unsigned int ca_sparse_len(const pVector vector);
 void ca_print_vector(const pVector vector);
 void ca_free_vector(pVector sparse_vector);
+
+/** Kmeans function. **/
 int ca_kmeans(
     pVector* vectors,
     const unsigned int num_vectors,
@@ -98,6 +104,7 @@ double ca_cos_compare(void* v1, void* v2);
 double ca_lev_compare(void* str1, void* str2);
 bool ca_eql(pVector v1, pVector v2);
 
+/** Similarity search functions. **/
 void* ca_most_similar(
     void* target,
     void** data,

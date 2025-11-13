@@ -86,7 +86,7 @@ static char* ci_TypeToStr(const int type)
 	case DATA_T_STRING:      return "String";
 	case DATA_T_DOUBLE:      return "Double";
 	case DATA_T_DATETIME:    return "DateTime";
-	case DATA_T_INTVEC:      return "IntVecor";
+	case DATA_T_INTVEC:      return "IntVector";
 	case DATA_T_STRINGVEC:   return "StringVector";
 	case DATA_T_MONEY:       return "Money";
 	case DATA_T_ARRAY:       return "Array";
@@ -2414,16 +2414,36 @@ int exp_fn_truncate(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 /*** constrain(value, min, max) ***/
 int exp_fn_constrain(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-    if (!i0 || !i1 || !i2 || (i0->DataType != i1->DataType) || i0->DataType != i2->DataType || !(i0->DataType == DATA_T_INTEGER || i0->DataType == DATA_T_MONEY || i0->DataType == DATA_T_DOUBLE))
-	{
-	mssError(1,"EXP","constrain() requires three numeric parameters of the same data type");
-	return -1;
-	}
+    /** Skip null value. **/
     tree->DataType = i0->DataType;
     if ((i0->Flags & EXPR_F_NULL))
 	{
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
+	}
+    
+    /** Verify parameters. **/
+    if (i0 == NULL || i1 == NULL || i2 == NULL)
+	{
+	mssError(1, "EXP", "constrain() expects three parameters.");
+	return -1;
+	}
+    if (i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE && i0->DataType != DATA_T_MONEY)
+	{
+	mssError(1, "EXP",
+	    "constrain() expects three numeric parameters: %s is not numeric.",
+	    ci_TypeToStr(i0->DataType)
+	);
+	if (i0->DataType == DATA_T_STRING) printf("Value: '%s'\n", i0->String);
+	return -1;
+	}
+    if (i0->DataType != i1->DataType || i1->DataType != i2->DataType)
+	{
+	mssError(1, "EXP",
+	    "constrain() expects three numeric parameters of the same data type but got types %s, %s, and %s.",
+	    ci_TypeToStr(i0->DataType), ci_TypeToStr(i1->DataType), ci_TypeToStr(i2->DataType)
+	);
+	return -1;
 	}
 
     /* check min */
@@ -4131,78 +4151,143 @@ int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
     return 0;
     }
 
-
-/*** Computes cosine or levenshtien similarity between two strings. These two
- *** tasks have a large amount of overlapping logic (mostly error checking),
- *** so doing them with one function greatly reduces code duplocation.
- *** 
- *** @param tree The tree resulting from this function.
- *** @param objlist The evaluation "scope", including available variables.
- *** @param maybe_str1 Possibly the first string.
- *** @param maybe_str2 Possibly the second string.
- *** @param u1 Unused parameter.
- *** @param is_cos Whether to compute cosine or levenshtien.
- *** @returns 0 for success, -1 for failure.
- ***/
-static int exp_fn_cmp(pExpression tree, pParamObjects objlist, pExpression maybe_str1, pExpression maybe_str2, pExpression u1, const char* fn_name)
+static int exp_fn_verify_schema(
+    const char* fn_name,
+    const int* param_types,
+    const int num_params,
+    pExpression tree,
+    pParamObjects obj_list)
     {
-    /** Check number of arguments. **/
-    const int num_params = tree->Children.nItems;
-    if (num_params != 2)
-	{
-	mssErrorf(1, "EXP", "%s(?) expects 2 parameters, got %d parameters.", fn_name, num_params);
-	return -1;
-	}
-    if (maybe_str1 == NULL || maybe_str2 == NULL || u1 != NULL)
-	{
-	mssErrorf(1, "EXP", "%s(?) expects 2 parameters.", fn_name);
-	return -1;
-	}
-    
-    /** Magic checks. **/
-    ASSERTMAGIC(tree, MGK_EXPRESSION);
-    ASSERTMAGIC(maybe_str1, MGK_EXPRESSION);
-    ASSERTMAGIC(maybe_str2, MGK_EXPRESSION);
-    
-    /** Check object list. **/
-    if (objlist == NULL)
+    /** Verify object list and session. **/
+    if (obj_list == NULL)
 	{
 	mssErrorf(1, "EXP", "%s(\?\?\?) no object list?", fn_name);
 	return -1;
 	}
-    ASSERTMAGIC(objlist->Session, MGK_OBJSESSION);
+    ASSERTMAGIC(obj_list->Session, MGK_OBJSESSION);
     
-    /** Extract str1. **/
-    if (maybe_str1->Flags & EXPR_F_NULL)
+    /** Verify expression tree. **/
+    ASSERTMAGIC(tree, MGK_EXPRESSION);
+    
+    /** Verify parameter number. **/
+    const int num_params_actual = tree->Children.nItems;
+    if (num_params != num_params_actual)
+	{
+	mssErrorf(1, "EXP",
+	    "%s(?) expects %u param%s, got %d param%s.",
+	    fn_name, num_params, (num_params > 1) ? "s" : "", num_params_actual, (num_params_actual > 1) ? "s" : ""
+	);
+	return -1;
+	}
+        
+    /** Verify parameter datatypes. **/
+    for (int i = 0; i < num_params; i++)
+	{
+	const pExpression arg = tree->Children.Items[i];
+	ASSERTMAGIC(arg, MGK_EXPRESSION);
+	
+	/** Skip null values. **/
+	if (arg->Flags & EXPR_F_NULL) continue;
+	
+	/** Extract datatypes. **/
+	const int expected_datatype = param_types[i];
+	const int actual_datatype = arg->DataType;
+	
+	/** Verify datatypes. **/
+	if (expected_datatype != actual_datatype)
+	    {
+	    mssErrorf(1, "EXP",
+		"%s(...) param #%d/%d expects type %s (%d) but got type %s (%d).",
+		fn_name, i + 1, num_params, ci_TypeToStr(expected_datatype), expected_datatype, ci_TypeToStr(actual_datatype), actual_datatype
+	    );
+	    return -1;
+	    }
+	}
+    
+    /** Pass. **/
+    return 0;
+    }
+
+
+int exp_fn_metaphone(pExpression tree, pParamObjects obj_list)
+    {
+    const char fn_name[] = "metaphone";
+    
+    /** Verify function schema. **/
+    if (exp_fn_verify_schema(fn_name, (int[]){ DATA_T_STRING }, 1, tree, obj_list) != 0)
+	{
+	mssErrorf(0, "EXP", "%s(?) Call does not match function schema.", fn_name);
+	return -1;
+	}
+    
+    /** Extract string param. **/
+    pExpression maybe_str = check_ptr(tree->Children.Items[0]);
+    if (maybe_str->Flags & EXPR_F_NULL)
+	{
+	tree->Flags |= EXPR_F_NULL;
+	tree->DataType = DATA_T_STRING;
+	return 0;
+	}
+    const char* str = check_ptr(maybe_str->String);
+    const size_t str_len = strlen(str);
+    if (str_len == 0u)
+	{
+	tree->String = "";
+	tree->DataType = DATA_T_STRING;
+	return 0;
+	}
+    
+    /** Compute DoubleMetaphone. **/
+    char* primary = NULL;
+    char* secondary = NULL;
+    meta_double_metaphone(str, &primary, &secondary);
+    
+    /** Process result. **/
+    const size_t result_length = strlen(primary) + 1u + strlen(secondary) + 1u;
+    char* result = check_ptr(nmSysMalloc(result_length * sizeof(char*)));
+    if (result == NULL) return -1;
+    sprintf(result, "%s%c%s", primary, CA_BOUNDARY_CHAR, secondary);
+    
+    /** Return the result. **/
+    tree->String = result;
+    tree->DataType = DATA_T_STRING;
+    return 0;
+    }
+
+
+/*** Computes cosine or Levenshtein similarity between two strings. These two
+ *** tasks have a large amount of overlapping logic (mostly error checking),
+ *** so doing them with one function greatly reduces code duplocation.
+ *** 
+ *** @param tree The tree resulting from this function.
+ *** @param obj_list The evaluation "scope", including available variables.
+ *** @param fn_name Either `cos_compare()` or `lev_compare()`.
+ *** @returns 0 for success, -1 for failure.
+ ***/
+static int exp_fn_compare(pExpression tree, pParamObjects obj_list, const char* fn_name)
+    {
+    /** Verify function schema. **/
+    if (exp_fn_verify_schema(fn_name, (int[]){ DATA_T_STRING, DATA_T_STRING }, 2, tree, obj_list) != 0)
+	{
+	mssErrorf(0, "EXP", "%s(?) Call does not match function schema.", fn_name);
+	return -1;
+	}
+    
+    /** Extract strings. **/
+    pExpression maybe_str1 = check_ptr(tree->Children.Items[0]);
+    pExpression maybe_str2 = check_ptr(tree->Children.Items[1]);
+    if (maybe_str1->Flags & EXPR_F_NULL || maybe_str2->Flags & EXPR_F_NULL)
 	{
 	tree->Flags |= EXPR_F_NULL;
 	tree->DataType = DATA_T_DOUBLE;
 	return 0;
-	}
-    if (maybe_str1->DataType != DATA_T_STRING)
-	{
-	mssErrorf(1, "EXP", "%s(\?\?\?, ..) str1 should be a string.", fn_name);
-	return -1;
 	}
     char* str1 = check_ptr(maybe_str1->String);
-	
-    /** Extract str2. **/
-    if (maybe_str2->Flags & EXPR_F_NULL)
-	{
-	tree->Flags |= EXPR_F_NULL;
-	tree->DataType = DATA_T_DOUBLE;
-	return 0;
-	}
-    if (maybe_str2->DataType != DATA_T_STRING)
-	{
-	mssErrorf(1, "EXP", "%s(\"%s\", \?\?\?) str2 should be a string.", fn_name, str1);
-	return -1;
-	}
     char* str2 = check_ptr(maybe_str2->String);
     
-    /** Handle either cos_cmp or lev_cmp. **/
+    /** Handle either cos_compare() or lev_compare(). **/
     if (fn_name[0] == 'c')
-	{ /* cos_cmp */
+	{ /* cos_compare() */
 	int ret;
 	
 	/** Build vectors. **/
@@ -4218,17 +4303,19 @@ static int exp_fn_cmp(pExpression tree, pParamObjects objlist, pExpression maybe
 	    }
 	else
 	    {
+	    /** Compute the similarity. **/
 	    tree->Types.Double = ca_cos_compare(v1, v2);
 	    tree->DataType = DATA_T_DOUBLE;
 	    ret = 0;
 	    }
 	
+	/** Clean up. **/
 	if (v1 != NULL) ca_free_vector(v1);
 	if (v2 != NULL) ca_free_vector(v2);
 	return ret;
 	}
     else
-	{ /* lev_cmp */
+	{ /* lev_compare() */
 	tree->Types.Double = ca_lev_compare(str1, str2);
 	tree->DataType = DATA_T_DOUBLE;
 	return 0;
@@ -4237,310 +4324,43 @@ static int exp_fn_cmp(pExpression tree, pParamObjects objlist, pExpression maybe
     }
 
 
-int exp_fn_cos_cmp(pExpression tree, pParamObjects objlist, pExpression maybe_str1, pExpression maybe_str2, pExpression u1)
-    { return exp_fn_cmp(tree, objlist, maybe_str1, maybe_str2, u1, "cos_cmp"); }
-int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression maybe_str1, pExpression maybe_str2, pExpression u1)
-    { return exp_fn_cmp(tree, objlist, maybe_str1, maybe_str2, u1, "cos_compare"); }
-int exp_fn_cosine_compare(pExpression tree, pParamObjects objlist, pExpression maybe_str1, pExpression maybe_str2, pExpression u1)
-    { return exp_fn_cmp(tree, objlist, maybe_str1, maybe_str2, u1, "cosine_compare"); }
-int exp_fn_lev_cmp(pExpression tree, pParamObjects objlist, pExpression maybe_str1, pExpression maybe_str2, pExpression u1)
-    { return exp_fn_cmp(tree, objlist, maybe_str1, maybe_str2, u1, "lev_cmp"); }
-int exp_fn_lev_compare(pExpression tree, pParamObjects objlist, pExpression maybe_str1, pExpression maybe_str2, pExpression u1)
-    { return exp_fn_cmp(tree, objlist, maybe_str1, maybe_str2, u1, "lev_compare"); }
-int exp_fn_levenshtein_compare(pExpression tree, pParamObjects objlist, pExpression maybe_str1, pExpression maybe_str2, pExpression u1)
-    { return exp_fn_cmp(tree, objlist, maybe_str1, maybe_str2, u1, "levenshtein_compare"); }
-    
-
-/*** Comparse two strings to see if their sparse vectors are equal.
- *** 
- *** @param tree The tree resulting from this function.
- *** @param objlist The evaluation "scope", including available variables.
- *** @param maybe_str1 Possibly the first string.
- *** @param maybe_str2 Possibly the second string.
- *** @param u1 Unused parameter.
- *** @returns 0 for success, -1 for failure.
- ***/
-static int exp_fn_sparse_eql(pExpression tree, pParamObjects objlist, pExpression maybe_str1, pExpression maybe_str2, pExpression u1, bool is_cos)
+int exp_fn_cos_compare(pExpression tree, pParamObjects obj_list)
     {
-    const char fn_name[] = "sparse_compare";
+    return exp_fn_compare(tree, obj_list, "cos_compare");
+    }
+int exp_fn_lev_compare(pExpression tree, pParamObjects obj_list)
+    {
+    return exp_fn_compare(tree, obj_list, "lev_compare");
+    }
+
     
-    /** Check number of arguments. **/
-    const int num_params = tree->Children.nItems;
-    if (num_params != 2)
-	{
-	mssErrorf(1, "EXP", "%s(?) expects 2 parameters, got %d parameters.", fn_name, num_params);
-	return -1;
-	}
-    if (maybe_str1 == NULL || maybe_str2 == NULL || u1 != NULL)
-	{
-	mssErrorf(1, "EXP", "%s(?) expects 2 parameters.", fn_name);
-	return -1;
-	}
+int exp_fn_levenshtein(pExpression tree, pParamObjects obj_list)
+    {
+    const char fn_name[] = "levenshtein";
     
-    /** Magic checks. **/
-    ASSERTMAGIC(tree, MGK_EXPRESSION);
-    ASSERTMAGIC(maybe_str1, MGK_EXPRESSION);
-    ASSERTMAGIC(maybe_str2, MGK_EXPRESSION);
-    
-    /** Check object list. **/
-    if (objlist == NULL)
+    /** Verify function schema. **/
+    if (exp_fn_verify_schema(fn_name, (int[]){ DATA_T_STRING, DATA_T_STRING }, 2, tree, obj_list) != 0)
 	{
-	mssErrorf(1, "EXP", "%s(\?\?\?) no object list?", fn_name);
-	return -1;
-	}
-    ASSERTMAGIC(objlist->Session, MGK_OBJSESSION);
-    
-    /** Extract str1. **/
-    if (maybe_str1->Flags & EXPR_F_NULL)
-	{
-	mssErrorf(1, "EXP", "%s(NULL, ...) str1 cannot be NULL.", fn_name);
-	return -1;
-	}
-    if (maybe_str1->DataType != DATA_T_STRING)
-	{
-	mssErrorf(1, "EXP", "%s(\?\?\?, ..) str1 should be a string.", fn_name);
-	return -1;
-	}
-    char* str1 = maybe_str1->String;
-    if (str1 == NULL)
-	{
-	mssErrorf(1, "EXP",
-	    "%s(nothing?, ...) expected string from str1 (of datatype DataType = "
-	    "DATA_T_STRING), but the String was NULL or did not exist!",
-	    fn_name
-	);
-	return -1;
-	}
-	
-    /** Extract str2. **/
-    if (maybe_str2->Flags & EXPR_F_NULL)
-	{
-	mssErrorf(1, "EXP", "%s(\"%s\", NULL) str2 cannot be NULL.", fn_name, str1);
-	return -1;
-	}
-    if (maybe_str2->DataType != DATA_T_STRING)
-	{
-	mssErrorf(1, "EXP", "%s(\"%s\", \?\?\?) str2 should be a string.", fn_name, str1);
-	return -1;
-	}
-    char* str2 = maybe_str2->String;
-    if (str2 == NULL)
-	{
-	mssErrorf(1, "EXP",
-	    "%s(\"%s\", nothing?) expected string from str2 (of datatype DataType = "
-	    "DATA_T_STRING), but the String was NULL or did not exist!",
-	    fn_name, str1
-	);
+	mssErrorf(0, "EXP", "%s(?) Call does not match function schema.", fn_name);
 	return -1;
 	}
     
-    /** Build vectors. **/
-    int ret;
-    const pVector v1 = check_ptr(ca_build_vector(str1));
-    const pVector v2 = check_ptr(ca_build_vector(str2));
-    if (v1 == NULL || v2 == NULL)
+    /** Extract strings. **/
+    pExpression maybe_str1 = check_ptr(tree->Children.Items[0]);
+    pExpression maybe_str2 = check_ptr(tree->Children.Items[1]);
+    if (maybe_str1->Flags & EXPR_F_NULL || maybe_str2->Flags & EXPR_F_NULL)
 	{
-	mssErrorf(1, "EXP",
-	    "%s(\"%s\", \"%s\") - Failed to build vectors.",
-	    fn_name, str1, str2
-	);
-	ret = -1;
-	}
-    else
-	{
-	tree->Integer = (ca_eql(v1, v2)) ? 1 : 0;
+	tree->Flags |= EXPR_F_NULL;
 	tree->DataType = DATA_T_INTEGER;
-	ret = 0;
+	return 0;
 	}
+    char* str1 = check_ptr(maybe_str1->String);
+    char* str2 = check_ptr(maybe_str2->String);
     
-    if (v1 != NULL) ca_free_vector(v1);
-    if (v2 != NULL) ca_free_vector(v2);
-    return ret;
-    }
-
-/*** Computes double metaphone.
- *** 
- *** @param tree The tree resulting from this function.
- *** @param objlist The evaluation "scope", including available variables.
- *** @param maybe_str Possibly the string passed to double metaphone.
- *** @param u1 Unused parameter.
- *** @param u2 Unused parameter.
- ***/
-int exp_fn_double_metaphone(pExpression tree, pParamObjects objlist, pExpression maybe_str, pExpression u1, pExpression u2)
-    {
-    const char fn_name[] = "double_metaphone";
-    
-    /** Check number of arguments. **/
-    const int num_params = tree->Children.nItems;
-    if (num_params != 1)
-	{
-	mssErrorf(1, "EXP", "%s(?) expects 1 parameter, got %d parameters.", fn_name, num_params);
-	return -1;
-	}
-    if (maybe_str == NULL || u1 != NULL || u2 != NULL)
-	{
-	mssErrorf(1, "EXP", "%s(?) expects 1 parameter.", fn_name);
-	return -1;
-	}
-    
-    /** Magic checks. **/
-    ASSERTMAGIC(tree, MGK_EXPRESSION);
-    ASSERTMAGIC(maybe_str, MGK_EXPRESSION);
-    
-    /** Check object list. **/
-    if (objlist == NULL)
-	{
-	mssErrorf(1, "EXP", "%s(\?\?\?) no object list?", fn_name);
-	return -1;
-	}
-    ASSERTMAGIC(objlist->Session, MGK_OBJSESSION);
-    
-    /** Extract str. **/
-    if (maybe_str->Flags & EXPR_F_NULL)
-	{
-	mssErrorf(1, "EXP", "%s(NULL) str cannot be NULL.", fn_name);
-	return -1;
-	}
-    if (maybe_str->DataType != DATA_T_STRING)
-	{
-	mssErrorf(1, "EXP", "%s(\?\?\?) str should be a string.", fn_name);
-	return -1;
-	}
-    const char* str = maybe_str->String;
-    if (str == NULL)
-	{
-	mssErrorf(1, "EXP",
-	    "%s(nothing?) expected string from str (of datatype DataType = "
-	    "DATA_T_STRING), but the String was NULL or did not exist!",
-	    fn_name
-	);
-	return -1;
-	}
-    const size_t str_len = strlen(str);
-    if (str_len == 0u)
-	{
-	mssErrorf(1, "EXP", "%s(\"\") str cannot be an empty string.", fn_name);
-	return -1;
-	}
-    
-    /** Compute DoubleMetaphone. **/
-    char* primary = NULL;
-    char* secondary = NULL;
-    meta_double_metaphone(str, &primary, &secondary);
-    
-    /** Process result. **/
-    const size_t primary_length = strlen(primary);
-    const size_t secondary_length = strlen(secondary);
-    char* result = check_ptr(nmSysMalloc(primary_length + 1u + secondary_length + 1u));
-    if (result == NULL) return -1;
-    sprintf(result, "%s%c%s", primary, CA_BOUNDARY_CHAR, secondary);
-    
-    /** Return the result. **/
-    tree->String = result;
-    tree->DataType = DATA_T_STRING;
-    return 0;
-    }
-
-
-int exp_fn_aggregate_similarities(pExpression tree, pParamObjects objlist)
-    {
-    const char fn_name[] = "aggregate_similarities";
-	
-    /** Check number of arguments. **/
-    const int num_params = tree->Children.nItems;
-    if (num_params != 6)
-	{
-	mssErrorf(1, "EXP", "%s(?) expects 6 parameters, got %d parameters.", fn_name, num_params);
-	return -1;
-	}
-    
-    /** Magic checks. **/
-    ASSERTMAGIC(tree, MGK_EXPRESSION);
-    ASSERTMAGIC(tree->Children.Items[0], MGK_EXPRESSION);
-    ASSERTMAGIC(tree->Children.Items[1], MGK_EXPRESSION);
-    ASSERTMAGIC(tree->Children.Items[2], MGK_EXPRESSION);
-    ASSERTMAGIC(tree->Children.Items[3], MGK_EXPRESSION);
-    
-    /** Check object list. **/
-    if (objlist == NULL)
-	{
-	mssErrorf(1, "EXP", "%s(\?\?\?) no object list?", fn_name);
-	return -1;
-	}
-    ASSERTMAGIC(objlist->Session, MGK_OBJSESSION);
-    
-    /** Extract parameters. **/
-    double params[4] = {NAN};
-    const char names[4][8] = {"name", "email", "phone", "address"};
-    for (unsigned int i = 0; i < 4u; i++)
-	{
-	pExpression param = (pExpression)tree->Children.Items[i];
-	
-	/** Ignore null values. **/
-	if (param->Flags & EXPR_F_NULL) continue;
-	
-	/** Only accept doubles. **/
-	if (param->DataType != DATA_T_DOUBLE)
-	    {
-	    mssErrorf(1, "EXP",
-		"%s() param%u (%s) expected type %s but got %s.",
-		fn_name, i, names[i], ci_TypeToStr(DATA_T_DOUBLE), ci_TypeToStr(param->DataType)
-	    );
-	    if (param->DataType == DATA_T_INTEGER) fprintf(stderr, "Value: %d\n", param->Integer);
-	    return -1;
-	    }
-	
-	/** Do not accept NaN. **/
-	params[i] = param->Types.Double;
-	if (isnan(params[i]))
-	    {
-	    mssErrorf(1, "EXP", "%s() param%u (%s) cannot be NaN", fn_name, names[i], i);
-	    return -1;
-	    }
-	}
-    
-    char* dup_names[2] = {NULL};
-    for (unsigned int i = 0; i < 2u; i++)
-	{
-	pExpression param = (pExpression)tree->Children.Items[i + 4u];
-	
-	/** Ignore null values. **/
-	if (param->Flags & EXPR_F_NULL) continue;
-	
-	/** Only accept doubles. **/
-	if (param->DataType != DATA_T_STRING)
-	    {
-	    mssErrorf(1, "EXP",
-		"%s() param%u expected type %s but got %s.",
-		fn_name, i, ci_TypeToStr(DATA_T_STRING), ci_TypeToStr(param->DataType)
-	    );
-	    return -1;
-	    }
-	
-	dup_names[i] = param->String;
-	}
-    
-    FILE *f = check_ptr(fopen("/home/israel/exp_log.swift", "a"));
-    check_neg(fprintf(f, "aggregate_similarities(%g, %g, %g, %g, \"%s\", \"%s\")", params[0], params[1], params[2], params[3], dup_names[0], dup_names[1]));
-    
-    /** Compute aggregated similarity. **/
-    double name_sim = params[0];
-    double email_sim = params[1];
-    double phone_sim = params[2];
-    double address_sim = params[3];
-    
-    double mean = 0.0, n = 0.0;
-    if (name_sim > 0.0) { mean += name_sim; n++; }
-    if (email_sim > 0.0) { mean += email_sim; n++; }
-    if (phone_sim > 0.0) { mean += phone_sim; n++; }
-    if (address_sim > 0.0) { mean += address_sim; n++; }
-    mean /= n;
-    
-    /** Success. **/
-    tree->DataType = DATA_T_DOUBLE;
-    tree->Types.Double = mean;
-    fprintf(f, " = %g\n", tree->Types.Double);
-    check(fclose(f));
+    /** Compute edit distance. **/
+    /** Length 0 is provided for both strings so that the function will compute it for us. **/
+    tree->Integer = edit_dist(str1, str2, 0lu, 0lu);
+    tree->DataType = DATA_T_INTEGER;
     return 0;
     }
 
@@ -4552,7 +4372,7 @@ int exp_fn_aggregate_similarities(pExpression tree, pParamObjects objlist)
  * Parameters:
  * 	pExpression tree: 
  * 	pParamObjects: 
- * 	pExpression passowrd: The password, passed as a pExpression
+ * 	pExpression password: The password, passed as a pExpression
  * 	pExpression salt: The salt, passed as a pExpression
  *
  * returns:
@@ -4745,15 +4565,10 @@ int exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
 	
 	/** Duplicate detection. **/
-	xhAdd(&EXP.Functions, "cos_cmp", (char*)exp_fn_cos_cmp);
+	xhAdd(&EXP.Functions, "metaphone", (char*)exp_fn_metaphone);
 	xhAdd(&EXP.Functions, "cos_compare", (char*)exp_fn_cos_compare);
-	xhAdd(&EXP.Functions, "cosine_compare", (char*)exp_fn_cosine_compare);
-	xhAdd(&EXP.Functions, "lev_cmp", (char*)exp_fn_lev_cmp);
 	xhAdd(&EXP.Functions, "lev_compare", (char*)exp_fn_lev_compare);
-	xhAdd(&EXP.Functions, "levenshtein_compare", (char*)exp_fn_levenshtein_compare);
-	xhAdd(&EXP.Functions, "sparse_eql", (char*)exp_fn_sparse_eql);
-	xhAdd(&EXP.Functions, "aggregate_similarities", (char*)exp_fn_aggregate_similarities);
-	xhAdd(&EXP.Functions, "double_metaphone", (char*)exp_fn_double_metaphone);
+	xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
 	
 	/** Windowing. **/
 	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);

@@ -295,11 +295,11 @@ xhClear(pXHashTable this, int (*free_fn)(), void* free_arg)
  *** @param this The affected hash table.
  *** @param callback_fn A callback function to be called on each hash table
  *** 	entry. It takes 2 parameters: the current hash table entry and a void*
- *** 	argument specified using each_arg. If any invokation of the callback
+ *** 	argument specified using each_arg. If any invocation of the callback
  *** 	function returns a value other than 0, xhForEach() will immediately
  *** 	fail, returning that value as the error code.
- *** @param each_arg An aditional argument which will be passed to each
- *** 	invokation of the callback function.
+ *** @param each_arg An additional argument which will be passed to each
+ *** 	invocation of the callback function.
  *** @returns 0 if the function executes successfully.
  ***          1 if the callback function is NULL.
  ***          n (where n != 0) if the callback function returns n.

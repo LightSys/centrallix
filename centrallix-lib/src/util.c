@@ -85,7 +85,7 @@ unsigned int strtoui(const char *nptr, char **endptr, int base){
 }
 
 /*** Detects the optimal number of threads to use on this system.
- *** Note: Multithreading is not currently supported, so this funciton
+ *** Note: Multithreading is not currently supported, so this function
  ***       will always return 1, for now.
  *** 
  *** @returns The number of threads that should be used on this system.
@@ -120,7 +120,7 @@ static char* units_metric[nUnits] = {"bytes", "KB", "MB", "GB"};
  *** 
  *** @param buf The buffer to which new text will be written, using snprintf().
  *** @param buf_size The amount of space in the buffer, passed to snprintf().
- *** 	It is recomended to have at least 12 characters available.
+ *** 	It is recommended to have at least 12 characters available.
  *** @param bytes The number of bytes, which will be formatted and written
  *** 	to the buffer..
  *** @returns buf, for chaining.

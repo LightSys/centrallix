@@ -50,7 +50,10 @@ extern "C" {
 #ifndef __cplusplus
 #include <errno.h>
 
-/** TODO: Greg, is the __typeof__ syntax from GCC a portability concern? **/
+/*** TODO: Greg - Can we assume this code will always be compiled with GCC?
+ *** If not, then the __typeof__, __LINE__, and __FILE__ syntaxes might be a
+ *** portability concern.
+ ***/
 
 /*** @brief Returns the smaller of two values.
  *** 
@@ -58,7 +61,7 @@ extern "C" {
  *** @param b The second value.
  *** @return The smaller of the two values.
  *** 
- *** @note This macro uses GCC extensions to enusre type safety.
+ *** @note This macro uses GCC extensions to ensure type safety.
  ***/
 #define min(a, b) \
     ({ \
@@ -73,7 +76,7 @@ extern "C" {
  *** @param b The second value.
  *** @return The larger of the two values.
  *** 
- *** @note This macro uses GCC extensions to enusre type safety.
+ *** @note This macro uses GCC extensions to ensure type safety.
  ***/
 #define max(a, b) \
     ({ \
@@ -150,53 +153,6 @@ void print_diagnostics(int code, const char* function_name, const char* file_nam
     if (_r == NULL) print_diagnostics(0, #result, __FILE__, __LINE__); \
     _r; \
     })
-
-/** Pattern for printing a binary int using printf(). **/
-#define INT_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c"
-
-/*** Converts an int to the values that should be passed to printf() for the
- *** INT_TO_BINARY_PATTERN pattern.
- *** 
- *** @attention - Double evaluation is NOT HANDLED so int_val will be evaluted
- ***    32 times when this macro is used. Ensure that evaluation of the value
- ***    passed for int_val does not have important side effects!
- *** 
- *** @param int_val The int to be printed.
- *** @returns Values for printf().
- ***/
-#define INT_TO_BINARY(int_val) \
-    ((int_val) & 0b10000000000000000000000000000000 ? '1' : '0'), \
-    ((int_val) & 0b01000000000000000000000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00100000000000000000000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00010000000000000000000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00001000000000000000000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000100000000000000000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000010000000000000000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000001000000000000000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000100000000000000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000010000000000000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000001000000000000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000100000000000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000010000000000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000001000000000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000100000000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000010000000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000001000000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000000100000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000000010000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000000001000000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000000000100000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000000000010000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000000000001000000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000000000000100000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000000000000010000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000000000000001000000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000000000000000100000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000000000000000010000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000000000000000001000 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000000000000000000100 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000000000000000000010 ? '1' : '0'), \
-    ((int_val) & 0b00000000000000000000000000000001 ? '1' : '0')
 
 #endif  /* __cplusplus */
 

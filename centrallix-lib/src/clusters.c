@@ -104,7 +104,7 @@ static int charpair_cmp(const void *p1, const void *p2)
  *** input to get_char_pair_hash().
  *** 
  *** After hashing each character pair, we add some number from 1 to 13 to the
- *** coresponding dimention. However, for most names, this results in a lot of
+ *** coresponding dimension. However, for most names, this results in a lot of
  *** zeros and a FEW positive numbers. Thus, after creating the dense vector,
  *** we convert it to a sparse vector in which a negative number replaces a run
  *** of that many zeros. Consider the following example:
@@ -114,7 +114,7 @@ static int charpair_cmp(const void *p1, const void *p2)
  *** Sparse pVector: `[1,-3,3,-1]`
  *** 
  *** Using these sparse vectors greatly reduces the required memory and gives
- *** aproximately an x5 boost to performance when traversing vectors, at the
+ *** approximately an x5 boost to performance when traversing vectors, at the
  *** cost of more algorithmically complex code.
  *** 
  *** @param str The string to be divided into pairs and hashed to make the vector.
@@ -162,7 +162,7 @@ pVector ca_build_vector(const char* str)
     /** Sort char_pairs by hash value. **/
     qsort(char_pairs, num_pairs, sizeof(CharPair), charpair_cmp);
     
-    /** Allocate space for the sparce vector. **/
+    /** Allocate space for the sparse vector. **/
     pVector sparse_vector = (pVector)check_ptr(nmSysMalloc((num_pairs * 2u + 1u) * sizeof(int)));
     if (sparse_vector == NULL) return NULL;
     
@@ -403,7 +403,7 @@ static void parse_vector_token(const int token, unsigned int* remaining, unsigne
 	}
     }
 
-/*** Calculate the similarity on sparcely allocated vectors. Comparing
+/*** Calculate the similarity on sparsely allocated vectors. Comparing
  *** any string to an empty string should always return 0.5 (untested).
  *** 
  *** @param v1 Sparse vector #1.
@@ -442,7 +442,7 @@ static double sparse_similarity(const pVector v1, const pVector v2)
     return (double)dot_product / (magnitude_sparse(v1) * magnitude_sparse(v2));
     }
 
-/*** Calculate the difference on sparcely allocated vectors. Comparing
+/*** Calculate the difference on sparsely allocated vectors. Comparing
  *** any string to an empty string should always return 0.5 (untested).
  *** 
  *** @param v1 Sparse vector #1.
@@ -511,7 +511,7 @@ static double sparse_similarity_to_centroid(const pVector v1, const pCentroid c2
  *** @skip
  *** LINK ../../centrallix-sysdoc/string_comparison.md#levenshtein
  ***/
-static unsigned int edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length)
+unsigned int edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length)
     {
     /*** lev_matrix:
      *** For all i and j, d[i][j] will hold the Levenshtein distance between
@@ -554,7 +554,7 @@ static unsigned int edit_dist(const char* str1, const char* str2, const size_t s
 	    if (str1[i - 1] == str2[j - 1])
 		lev_matrix[i][j] = lev_matrix[i - 1][j - 1];
 	    
-	    /*** We need to make a change, so use the opereration with the
+	    /*** We need to make a change, so use the oppereration with the
 	     *** lowest cost out of delete, insert, replace, or swap.
 	     ***/
 	    else 
@@ -587,7 +587,7 @@ static unsigned int edit_dist(const char* str1, const char* str2, const size_t s
     return result;
     }
 
-/*** Compares two strings using their cosie simiarity, returning a value
+/*** Compares two strings using their cosie similarity, returning a value
  *** between `0.0` (completely different) and `1.0` (identical). If either
  *** OR BOTH strings are NULL, this function returns `0.0`.
  *** 
@@ -618,7 +618,7 @@ double ca_cos_compare(void* v1, void* v2)
     return sparse_similarity(vec1, vec2);
     }
 
-/*** Compares two strings using their levenstien edit distance to compute a
+/*** Compares two strings using their Levenshtein edit distance to compute a
  *** similarity between `0.0` (completely different) and `1.0` (identical).
  *** If both strings are empty, this function returns `1.0` (identical). If
  *** either OR BOTH strings are NULL, this function returns `0.0`.
@@ -722,7 +722,7 @@ static double get_cluster_size(
  *** a size of `n`.
  *** 
  *** The following table shows data sizes vs.selected cluster size. In testing,
- *** these numbers tended to givea good balance of accuracy and dulocates detected.
+ *** these numbers tended to give a good balance of accuracy and duplicates detected.
  *** 
  *** ```csv
  *** Data Size, Actual
@@ -771,7 +771,7 @@ unsigned int compute_k(const unsigned int n)
  ***     clusters have a size of    negative infinity. In this implementation,
  ***     the bug is mitigated by setting a small number of max iterations,
  ***     such as 16 instead of 100.
- *** @attention - Issue: Clusters do not apear to improve much after the first
+ *** @attention - Issue: Clusters do not appear to improve much after the first
  ***     iteration, which puts the efficacy of the algorithm into question. This
  ***     may be due to the uneven density of a typical dataset. However, the
  ***     clusters still offer useful information.
@@ -962,7 +962,7 @@ int ca_kmeans(
  *** @param similarity A function which takes two data items of the type
  *** 	of the data param and returns their similarity.
  *** @param threshold The minimum similarity threshold. If the most similar
- *** 	data does not meet this threshold, the funciton returns NULL.
+ *** 	data does not meet this threshold, the function returns NULL.
  *** @returns A pointer to the most similar piece of data found in the data
  *** 	array, or NULL if the most similar data did not meet the threshold.
  ***/
@@ -988,10 +988,10 @@ void* ca_most_similar(
     }
 
 
-/*** Runs a sliding search over the povided data, comparing each element to
+/*** Runs a sliding search over the provided data, comparing each element to
  *** the following `window_size` elements, invoking the passed comparison
  *** function just under `window_size * num_data` times. If any comparison
- *** yeilds a similarity greater than the threshold, it is stored in the
+ *** yields a similarity greater than the threshold, it is stored in the
  *** xArray returned by this function.
  *** 
  *** @param data The data to be searched.
@@ -1076,9 +1076,9 @@ pXArray ca_sliding_search(
     return NULL;
     }
 
-/*** Runs a complete search over the povided data, comparing each element to
+/*** Runs a complete search over the provided data, comparing each element to
  *** each other element, invoking the passed comparison function `num_data^2`
- *** times. If any comparison yeilds a similarity greater than the threshold,
+ *** times. If any comparison yields a similarity greater than the threshold,
  *** it is stored in the xArray returned by this function.
  *** 
  *** @param data The data to be searched.
