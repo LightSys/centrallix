@@ -1057,11 +1057,11 @@ expExpressionToPtod(pExpression exp)
 		break;
 	    case DATA_T_MONEY:
 		ptod->Data.Money = nmMalloc(sizeof(MoneyType));
-		memcpy(&ptod->Data.Money, &exp->Types.Money, sizeof(MoneyType));
+		memcpy(ptod->Data.Money, &exp->Types.Money, sizeof(MoneyType));
 		break;
 	    case DATA_T_DATETIME:
 		ptod->Data.DateTime = nmMalloc(sizeof(DateTime));
-		memcpy(&ptod->Data.DateTime, &exp->Types.Date, sizeof(DateTime));
+		memcpy(ptod->Data.DateTime, &exp->Types.Date, sizeof(DateTime));
 		break;
 	    case DATA_T_DOUBLE:
 		ptod->Data.Double = exp->Types.Double;
