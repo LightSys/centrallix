@@ -46,7 +46,7 @@ typedef struct _SI
     int		    Magic;
     int		    LinkCnt;
     char*	    Name;	/* name of attrib or group */
-    char*	    UsrType;	/* type of group, null if attrib */
+    char*	    UsrType;	/* type of group (e.g. "system/object"), null if attrib */
     pExpression	    Value;	/* value; EXPR_N_LIST if several listed */
     struct _SI*	    Parent;	/* Parent inf, null if toplevel */
     struct _SI**    SubInf;	/* List of attrs/groups included */

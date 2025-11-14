@@ -1022,8 +1022,8 @@ expCompileExpression(char* text, pParamObjects objlist, int lxflags, int cmpflag
 
 /*** expBindExpression - do late binding of an expression tree to an
  *** object list.  'domain' specifies the requested bind domain, whether
- *** runstatic (EXP_F_RUNSTATIC), runserver (EXP_F_RUNSERVER), or runclient
- *** (EXP_F_RUNCLIENT).  'domain' can also be -0-, in which case we rebind
+ *** runstatic (EXPR_F_RUNSTATIC), runserver (EXPR_F_RUNSERVER), or runclient
+ *** (EXPR_F_RUNCLIENT).  'domain' can also be -0-, in which case we rebind
  *** a domainless expression.
  ***/
 int
@@ -1051,16 +1051,10 @@ expBindExpression(pExpression exp, pParamObjects objlist, int flags)
 			break;
 			}
 		    }
-		if (exp->ObjID == -1)
-		    {
-		    cm |= EXPR_MASK_EXTREF;
-		    }
+		cm |= EXPR_MASK_EXTREF;
 		}
-	    else if (exp->ObjID == -2 || exp->ObjID == -3)
-		{
-		if (exp->ObjID == -2) cm |= (1<<(objlist->CurrentID));
-		if (exp->ObjID == -3) cm |= (1<<(objlist->ParentID));
-		}
+	    else if (exp->ObjID == EXPR_CTL_CURRENT) cm |= (1<<(objlist->CurrentID));
+	    else if (exp->ObjID == EXPR_CTL_PARENT) cm |= (1<<(objlist->ParentID));
 	    else if (exp->ObjID >= 0)
 		{
 		cm |= (1<<(exp->ObjID));
@@ -1084,4 +1078,3 @@ expBindExpression(pExpression exp, pParamObjects objlist, int flags)
 
     return cm;
     }
-
