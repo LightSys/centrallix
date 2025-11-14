@@ -202,9 +202,12 @@ Using the example above, we can query from the database using a statement like `
 This section describes the standard interface between the OSML and the ObjectSystem driver itself.  Every driver should implement certain required functions.  (**Note**: Many drivers "implement" some required functions to simply fail with a not implemented or not supported error.  For example, most database drivers "implement" `Read()` and `Write()` this way because database content should be queried, not read).  Various optional functions are also available, which a driver is not required to implement.
 
 <!-- TODO: Greg
-  --- Double check the information in this table. Some of it is incomplete,
+  --- Double check the information in this table. Some of it is missing,
   --- and I had to guess a lot of it by looking at how various drivers were
-  --- implemented. Also, some of it may be out of date.
+  --- implemented. Also, which functions are optional and which are required
+  --- seems very chaotic and I vaguely remember there being a driver that
+  --- does not implement a ton of "required" functions, so please double
+  --- check that this information is 100% correct.
   --->
 The driver should implement an `Initialize()` function, as well as the following (* indicates required functions):
 | Function Name                                             | Description
@@ -332,7 +335,8 @@ The `Open()` function opens a given file to create a new driver instance. This p
 5.  Return a pointer to the node instance as a void pointer.  This pointer will be passed as `void* inf_v` to the driver in subsequent calls involving this object (except the Query functions, discussed below).
 
 - 📖 **Note - Transactions**: If the os driver specified the `OBJDRV_C_TRANS` capability, it must respect the current state of the user's transaction.  If a new object is being created, an object is being deleted, or other modifications/additions are being performed, and if the OXT layer indicates a transaction is in process, the driver must either complete the current transaction and then complete the current call, or else add the current delete/create/modify call to the transaction tree (in which case the tree item is preallocated; all the driver needs to do is fill it in).  This is handled using the transaction tree parameter (`oxt : pObjTrxTree*`).  The transaction later is discussed in depth in the ??? section.
-<!-- TODO: Israel - ADD SECTION LINK ABOVE. -->
+<!-- TODO: Greg - The transaction layer does not seem to be discussed anywhere. Did I miss it? -->
+<!-- TODO: Israel - Add section link above, once we find the correct section for the transaction layer. -->
 
 #### Accessing the Node Object
 If `O_CREAT` and `O_EXCL` are both specified in `parent->Mode`, the driver should **only** create a new file and fail if the file already exists (refusing to open and read it).  Otherwise, the driver should read an existing file, or create one if it does not exist and `O_CREAT` is specified, failing if no file can be read or created.
@@ -540,7 +544,6 @@ The `QueryFetch()` function fetches a driver instance pointer (aka. an `inf_v` p
 | mode       | int           | The open mode for the new object, the same as `obj->Mode` in `Open()`.
 | oxt        | pObjTrxTree*  | The transaction tree pointer for the `OBJDRV_C_TRANS` capability.
 
-<!-- TODO: Israel - I don't do this in the cluster driver. Talk to Greg to see if I should. -->
 The driver should add an element to the `obj->Pathname` structure to indicate the path of the returned child object. This will involve a process somewhat like this, where:
 - `new_name : char*` is the new object's name.
 - `qy : pMyDriversQueryInf` is the current query structure.
@@ -747,7 +750,7 @@ The return value, `hints : ObjPresentationHints`, contains the following useful 
 - `hints->MaxValue : void*`: An expression defining the maximum valid value.
 - `hints->EnumList : XArray`: If the attribute is a string enum, this XArray lists the valid string values.
 - `hints->EnumQuery : char*`: A query string which enumerates the valid values a string enum attribute.
-- `hints->Format : char*`: presentation format - datetime or money  <!-- TODO: Greg - Add detail to this line -->
+- `hints->Format : char*`: presentation format - datetime or money  <!-- TODO: Greg - We should add detail here. -->
 - `hints->AllowChars : char*`: An array of all valid characters for a string attribute, NULL to allow all characters.
 - `hints->BadChars : char*`: An array of all invalid characters for a string attribute.
 - `hints->Length : int`: The maximum length of data that can be included in a string attribute.
@@ -785,7 +788,7 @@ The following macros are provided for setting style flags:
 - `OBJ_PH_STYLE_SEPWINDOW`: Prefer separate windows for grouped fields.
 - `OBJ_PH_STYLE_ALWAYSDEF`: Always reset the default value when this attribute is modified.
 - `OBJ_PH_STYLE_CREATEONLY`: This attribute is writeable only when created, after that it is read only.
-- `OBJ_PH_STYLE_MULTISEL`: Multiple select <!-- TODO: Greg - Add detail to this line -->
+- `OBJ_PH_STYLE_MULTISEL`: Multiple select <!-- TODO: Greg - We should add detail here. -->
 - `OBJ_PH_STYLE_KEY`: This attribute is a primary key.
 - `OBJ_PH_STYLE_APPLYCHG`: Presentation hints should be applied on DataChange instead of on DataModify.
 
@@ -812,10 +815,12 @@ The `pObjectInfo` struct has two fields: `Flags` and `nSubobjects`.  This functi
 - `OBJ_INFO_F_CANT_SEEK`: Seeking is not supported at all.
 - `OBJ_INFO_F_CAN_ADD_ATTR` / `OBJ_INFO_F_CANT_ADD_ATTR`: Indicates that the object does or does not allow attributes to be added with the [AddAttr()](#function-addattr) function.
 - `OBJ_INFO_F_SUPPORTS_INHERITANCE`: Indicates that the object supports inheritance through attributes such as `cx__inherit`.  See ??? for more information about object inheritance.
-<!-- TODO: Israel - Add link to section about inheritance. -->
+<!-- TODO: Greg - Is there supposed to be a section about driver inheritance around here somewhere? Did I miss it? -->
+<!-- TODO: Israel - Add link to section about inheritance, once I find it, if it exists. -->
 - `OBJ_INFO_F_FORCED_LEAF`: Indicates that the object is forced to be a 'leaf' unless ls__type used.
 - `OBJ_INFO_F_TEMPORARY`: Indicates that this is a temporary object without a vaoid pathname.
 <!-- The possible typo `vaoid` is intentional, mirroring the wording used in `obj.h`. -->
+<!-- TODO: Greg - Is `vaoid` a typo? I copied it from the comment in `obj.h`. -->
 
 The function returns 0 on success, and -1 to indicate an error, in which case `mssError()` should be called before returning.
 
@@ -852,7 +857,6 @@ Although using the structure file format may be complex, it allows significant f
 Structure files are accessed via the st_node (SN) and stparse (SP) modules.  The st_node module loads and saves the structure file heirarchies as a whole.  It also manages caching to reduce disk activity and eliminate repeated parsing of the same file.  The stparse module provides access to the individual attributes and groups of attributes within a node structure file.
 
 For example, if two sessions open two files, `/test1.rpt` and `/test2.rpt` the st_node module will cache the internal representations of these node object files, and for successive uses of these node objects, the physical file will not be re-parsed.  The file will be re-parsed if its timestamp changes.
-<!-- TODO: Israel - This caching causes the cluster driver to break if the file is modified. -->
 
 If the underlying object does not support the attribute "last_modification" (assumed to be the timestamp), then st_node prints a warning.  In essence, this warning indicates that changes to the underlying object will not trigger the st_node module to re-read the structure file defining the node object.  Otherwise, the st_node module keeps track of the timestamp, and if it changes, the node object is re-read and re-parsed.
 
@@ -1157,7 +1161,7 @@ Frees a block of memory allocated by `nmSysMalloc()`, `nmSysRealloc()`, or `nmSy
 
 
 ## V Other Utility Modules
-<!-- TODO: Greg - As with IV, these feel like they should be documented somewhere else and linked here. Also, this should probably be split into multiple sections instead of cramming this many functions into a single section. -->
+<!-- TODO: Greg - As I mentioned in passing to you before, this section and the previous section (IV) feel like they should be documented elsewhere and maybe linked here. Also, this section should probably be split into multiple sections (or files) instead of cramming this many functions into a single section. -->
 <!-- TODO: Israel - Finish documenting this section after Greg has reviewed the above TODO. -->
 The Centrallix library (`centralllix-lib`) has a host of useful utility modules.  These include `xarray`, used for managing growable arrays; `xstring`, used for managing growable strings; `xhash`, used for managing hash tables with no overflow problems and variable-length keys; `expression`, used for compiling and evaluating expressions; and `mtsession`, used for managing session-level variables and reporting errors.
 

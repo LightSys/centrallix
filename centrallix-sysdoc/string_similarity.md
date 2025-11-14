@@ -168,3 +168,7 @@ Several algorithms (such as [k-means++](#k-means-clustering-1), [k-medoids](#k-m
 
 ### Upgrade Other Duplicate Detection Systems
 When a new record is entered, a quick scan is run to check if it might be a duplicate.  There is also a button in the UI for a record that lets you run a duplicate check.  These systems could also be upgraded using the new algorithms and strategies developed for general duplicate detection.
+
+### Known Issues
+- The cluster driver often fails to open the structure file if it was modifed since the last time the path was openned.  Opening a different path (including the root path, even though it does not support queries) fixes this issue.  This is either a bug in the st_node caching or in the cluster driver's usage of stparse.
+- The cluster does not invalidate caches if the underlying data source changes.  This bug exists because I wasn't sure how to do this, but I'm pretty sure it's possible.  Workaround: Developers should use `exec <filename.cluster> "cache" "drop_all"` to invalidate caches when data is changed, or use a fresh object system instance.

@@ -75,7 +75,7 @@
 #include "obj.h"
 
 
-/** TODO: I think this should be moved to datatypes. **/
+/** TODO: Greg - I think this should be moved to datatypes. **/
 /** Should maybe replace duplocate functionality elsewhere. **/
 static char* ci_TypeToStr(const int type)
     {
