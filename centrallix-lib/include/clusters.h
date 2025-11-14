@@ -49,7 +49,7 @@
 
 /// LINK ../../centrallix-sysdoc/string_comparison.md#cosine_charsets
 /** The character used to create a pair with the first and last characters of a string. **/
-#define CA_BOUNDARY_CHAR ('a' - 1)
+#define CA_BOUNDARY_CHAR (unsigned char)('a' - 1)
 
 /** Types. **/
 typedef int* pVector;      /* Sparse vector. */

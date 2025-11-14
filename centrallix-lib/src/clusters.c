@@ -53,7 +53,7 @@
  *** @param c2 The second character in the pair.
  *** @returns The resulting hash.
  ***/
-static unsigned int hash_char_pair(const char c1, const char c2)
+static unsigned int hash_char_pair(const unsigned char c1, const unsigned char c2)
     {
     const double sum = (c1 * c1 * c1) + (c2 * c2 * c2);
     const double scale = ((double)c1 + 1.0) / ((double)c2 + 1.0);
@@ -121,12 +121,17 @@ static int charpair_cmp(const void *p1, const void *p2)
  ***/
 pVector ca_build_vector(const char* str)
     {
-    char chars[strlen(str) + 2u];
+    unsigned char chars[strlen(str) + 2u];
     unsigned int num_chars = 0u;
     chars[num_chars++] = CA_BOUNDARY_CHAR; /* Starting boundary character. */
     for (const char* char_ptr = str; *char_ptr != '\0'; char_ptr++)
 	{
-	unsigned char c = *char_ptr;
+	char maybe_char = *char_ptr;
+	if (maybe_char < 0)
+	    {
+	    fprintf(stderr, "Warning: Unexpected negative char '%c' in string: \"%s\"\n", maybe_char, str);
+	    }
+	unsigned char c = (unsigned char)maybe_char;
 	
 	/** Always consider boundary character in string. **/
 	if (c == CA_BOUNDARY_CHAR) goto skip_checks;
@@ -175,7 +180,10 @@ pVector ca_build_vector(const char* str)
 	/** Dividing value by 2 each time reduces the impact of repeated pairs. **/
 	int value = 0;
 	for (; i < num_pairs && char_pairs[i].hash == hash; i++)
-	    value = (value / 2) + ((unsigned int)char_pairs[i].c1 + (unsigned int)char_pairs[i].c2) % 13u + 1u;
+	    {
+	    value /= 2; /* Reduce impact of repeated pairs. */
+	    value += ((unsigned int)char_pairs[i].c1 + (unsigned int)char_pairs[i].c2) % 13u + 1u;
+	    }
 	
 	/** Skip zeros to reach the dimension index specified by the hash. **/
 	unsigned int num_zeros = hash - dim;
