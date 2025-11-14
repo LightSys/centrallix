@@ -42,7 +42,6 @@
 #include <time.h>
 
 #include "clusters.h"
-#include "glyph.h"
 #include "newmalloc.h"
 #include "util.h"
 #include "xarray.h"
@@ -198,108 +197,6 @@ pVector ca_build_vector(const char* str)
     
     return trimmed_sparse_vector;
     }
-
-// Build vector by converting a dense vector to a sparse one.
-//pVector ca_build_vector_old(const char* str)
-//    {
-//    /** Allocate space for a dense vector. **/
-//    unsigned int dense_vector[CA_NUM_DIMS] = {0u};
-//    
-//    /** j is the former character, i is the latter. **/
-//    const unsigned int num_chars = (unsigned int)strlen(str);
-//    for (unsigned int j = 65535u, i = 0u; i <= num_chars; i++)
-//	{
-//	if (isspace(str[i])) continue;
-//	if (ispunct(str[i]) && str[i] != CA_BOUNDARY_CHAR) continue;
-//	
-//	/** First and last character should fall one before 'a' in the ASCII table. **/
-//	unsigned int temp1 = (j == 65535u) ? CA_BOUNDARY_CHAR : (unsigned int)tolower(str[j]);
-//	unsigned int temp2 = (i == num_chars) ? CA_BOUNDARY_CHAR : (unsigned int)tolower(str[i]);
-//	 
-//	/** Shift numbers to the end of the lowercase letters. **/
-//	if ('0' <= temp1 && temp1 <= '9') temp1 += 75u;
-//	if ('0' <= temp2 && temp2 <= '9') temp2 += 75u;
-//	
-//	/** Hash the character pair into an index (dimension).  **/
-//	/** Note that temp will be between 97 ('a') and 132 ('9'). **/
-//	unsigned int dim = hash_char_pair(temp1, temp2);
-//	
-//	/** Increment the dimension of the dense vector by a number from 1 to 13. **/
-//	dense_vector[dim] += (temp1 + temp2) % 13u + 1u;
-//	
-//	j = i;
-//	}
-//   
-//    /** Count how much space is needed for a sparse vector. **/
-//    bool zero_prev = false;
-//    size_t size = 0u;
-//    for (unsigned int dim = 0u; dim < CA_NUM_DIMS; dim++)
-//	{
-//	if (dense_vector[dim] == 0u)
-//	    {
-//	    size += (zero_prev) ? 0u : 1u;
-//	    zero_prev = true;
-//	    }
-//	else
-//	    {
-//	    size++;
-//	    zero_prev = false;
-//	    }
-//	}
-//   
-//    /*** Check compression size.
-//     *** If this check fails, I doubt anything will break. However, the longest
-//     *** word I know (supercalifragilisticexpialidocious) has only 35 character
-//     *** pairs, so it shouldn't reach half this size (and it'd be even shorter
-//     *** if the hash generates at least one collision).
-//     *** 
-//     *** Bad vector compression will result in degraded performace and increased
-//     *** memory usage. This indicates a likely bug in the code. Thus, if this
-//     *** warning is ever generated, it is definitely worth investigating.
-//     ***/
-//    const size_t expected_max_size = 256u;
-//    if (size > expected_max_size)
-//	{
-//	fprintf(stderr,
-//	    "cli_build_vector(\"%s\") - Warning: Sparse vector larger than expected.\n"
-//	    "    > Size: %lu\n"
-//	    "    > #Dims: %u\n",
-//	    str,
-//	    size,
-//	    CA_NUM_DIMS
-//	);
-//	}
-//    
-//    /** Allocate space for sparse vector. **/
-//    const size_t sparse_vector_size = size * sizeof(int);
-//    pVector sparse_vector = (pVector)check_ptr(nmSysMalloc(sparse_vector_size));
-//    if (sparse_vector == NULL) return NULL;
-//    
-//    /** Convert the dense vector above to a sparse vector. **/
-//    unsigned int dim = 0u, sparse_idx = 0u;
-//    while (dim < CA_NUM_DIMS)
-//        {
-//	if (dense_vector[dim] == 0u)
-//	    {
-//	    /** Count and store consecutive zeros, skipping the first one. **/
-//	    unsigned int zero_count = 1u;
-//	    dim++;
-//	    while (dim < CA_NUM_DIMS && dense_vector[dim] == 0u)
-//	        {
-//		zero_count++;
-//		dim++;
-//	        }
-//	    sparse_vector[sparse_idx++] = (int)-zero_count;
-//	    }
-//	else
-//	    {
-//	    /** Store the value. **/
-//	    sparse_vector[sparse_idx++] = (int)dense_vector[dim++];
-//	    }
-//	}
-//    
-//    return sparse_vector;
-//    }
 
 /*** Free memory allocated to store a sparse vector.
  *** 
@@ -837,17 +734,10 @@ int ca_kmeans(
 	    }
 	}
     
-    /** Setup debug visualizations. **/
-    glyph_init(iter, "\n", 1, false);
-    glyph_init(find, ".", 64, false);
-    glyph_init(update_label, "!", 16, false);
-    glyph_init(update_centroid, ":", 8, false);
-    
     /** Main kmeans loop. **/
     double old_average_cluster_size = 1.0;
     for (unsigned int iter = 0u; iter < max_iter; iter++)
 	{
-	glyph(iter);
 	bool changed = false;
 	
 	/** Reset new centroids. **/
@@ -861,7 +751,6 @@ int ca_kmeans(
 	/** Assign each point to the nearest centroid. **/
 	for (unsigned int i = 0u; i < num_vectors; i++)
 	    {
-	    glyph(find);
 	    const pVector vector = vectors[i];
 	    double min_dist = DBL_MAX;
 	    unsigned int best_centroid_label = 0u;
@@ -880,7 +769,6 @@ int ca_kmeans(
 	    /** Update label to new centroid, if necessary. **/
 	    if (labels[i] != best_centroid_label)
 		{
-		glyph(update_label);
 		labels[i] = best_centroid_label;
 		changed = true;
 		}
@@ -902,7 +790,6 @@ int ca_kmeans(
 	/** Update centroids. **/
 	for (unsigned int i = 0u; i < num_clusters; i++)
 	    {
-	    glyph(update_centroid);
 	    if (cluster_counts[i] == 0u) continue;
 	    pCentroid centroid = centroids[i];
 	    const pCentroid new_centroid = new_centroids[i];
@@ -925,8 +812,6 @@ int ca_kmeans(
 	for (unsigned int i = 0u; i < num_vectors; i++)
 	    vector_sims[i] = sparse_similarity_to_centroid(vectors[i], centroids[labels[i]]);
 	}
-    
-    glyph_print("\n");
     
     /** Success. **/
     successful = true;
@@ -1028,25 +913,17 @@ pXArray ca_sliding_search(
 	if (dups == NULL) goto err;
 	}
     const int num_starting_dups = dups->nItems;
-    
-    /** Setup debug visualizations. **/
-    glyph_init(outer, " ", 4, true);
-    glyph_init(inner, ".", 128, false);
-    glyph_init(find, "!", 32, false);
         
     /** Search for dups. **/
     for (unsigned int i = 0u; i < num_data; i++)
         {
-	glyph(outer);
 	const unsigned int window_start = i + 1u;
 	const unsigned int window_end = min(i + window_size, num_data);
 	for (unsigned int j = window_start; j < window_end; j++)
 	    {
-	    glyph(inner);
 	    const double sim = similarity(data[i], data[j]);
 	    if (sim > threshold) /* Dup found! */
 		{
-		glyph(find);
 		Dup* dup = (Dup*)check_ptr(nmMalloc(sizeof(Dup)));
 		if (dup == NULL) goto err_free_dups;
 		if (maybe_keys != NULL)
@@ -1059,7 +936,6 @@ pXArray ca_sliding_search(
 		}
 	    }
 	}
-    glyph_print("\n");
     
     /** Success. **/
     return dups;
