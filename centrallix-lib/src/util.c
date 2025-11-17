@@ -1,17 +1,24 @@
 /************************************************************************/
-/* Centrallix Application Server System 				*/
-/* Centrallix Base Library						*/
-/* 									*/
-/* Copyright (C) 1998-2011 LightSys Technology Services, Inc.		*/
-/* 									*/
-/* You may use these files and this library under the terms of the	*/
-/* GNU Lesser General Public License, Version 2.1, contained in the	*/
-/* included file "COPYING".						*/
-/* 									*/
-/* Module:	(util.c,.h)                                             */
-/* Author:	Micah Shennum                                           */
-/* Date:	May 26, 2011                                            */
-/* Description:	Collection of utilities                                 */
+/* Centrallix Application Server System                                 */
+/* Centrallix Base Library                                              */
+/*                                                                      */
+/* Copyright (C) 1998-2011 LightSys Technology Services, Inc.           */
+/*                                                                      */
+/* You may use these files and this library under the terms of the      */
+/* GNU Lesser General Public License, Version 2.1, contained in the     */
+/* included file "COPYING".                                             */
+/*                                                                      */
+/* Module:      util.c, util.h                                          */
+/* Author:      Micah Shennum and Israel Fuller                         */
+/* Date:        May 26, 2011                                            */
+/* Description:	Collection of utilities including:                      */
+/*              - Utilities for parsing numbers.                        */
+/*              - The timer utility for benchmarking code.              */
+/*              - snprint_bytes() for formatting a byte count.          */
+/*              - snprint_llu() for formatting large numbers.           */
+/*              - fprint_mem() for printing memory stats.               */
+/*              - min() and max() for handling numbers.                 */
+/*              - The check functions for reliably printing debug data. */
 /************************************************************************/
 
 #include <errno.h>

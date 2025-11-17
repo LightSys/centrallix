@@ -25,7 +25,10 @@
 <!-- File:        string_similarity.md                                    -->
 <!-- Author:      Israel Fuller                                           -->
 <!-- Creation:    October 24th, 2025                                      -->
-<!-- Description: Cluster object driver.                                  -->
+<!-- Description: Documentation of how to use the clustering library.     -->
+<!--              This library is used to cluster and search data with    -->
+<!--              cosine similarity and Levenshtein similarity (aka. edit -->
+<!--              distance). Used by the "clustering driver".             -->
 <!-------------------------------------------------------------------------->
 
 <!-- File notes:

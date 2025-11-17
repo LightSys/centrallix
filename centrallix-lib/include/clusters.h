@@ -28,8 +28,11 @@
 /* Module:      lib_cluster.h                                           */
 /* Author:      Israel Fuller                                           */
 /* Creation:    September 29, 2025                                      */
-/* Description: Internal algorithms for the cluster object driver.      */
-/* See centrallix-sysdoc/EAV_Pivot.md for more information.             */
+/* Description: Clustering library used to cluster and search data with */
+/*              cosine similarity and Levenshtein similarity (aka. edit */
+/*              distance). Used by the "clustering driver".             */
+/*              For more information on how to use this library, see    */
+/*              string-similarity.md in the centrallix-sysdoc folder.   */
 /************************************************************************/
 
 #include <stdlib.h>

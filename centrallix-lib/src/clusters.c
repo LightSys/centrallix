@@ -1,4 +1,3 @@
-
 /************************************************************************/
 /* Centrallix Application Server System                                 */
 /* Centrallix Core                                                      */
@@ -26,7 +25,11 @@
 /* Module:      lib_cluster.c                                           */
 /* Author:      Israel Fuller                                           */
 /* Creation:    September 29, 2025                                      */
-/* Description: Internal algorithms for the cluster object driver.      */
+/* Description: Clustering library used to cluster and search data with */
+/*              cosine similarity and Levenshtein similarity (aka. edit */
+/*              distance). Used by the "clustering driver".             */
+/*              For more information on how to use this library, see    */
+/*              string-similarity.md in the centrallix-sysdoc folder.   */
 /************************************************************************/
 
 /** This file has additional documentation in string_similarity.md. **/
