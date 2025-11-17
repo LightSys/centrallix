@@ -11,13 +11,13 @@ query select case4 = condition((cos_compare('hello there', 'hellow there') >= 0.
 # All email addresses and phone numbers are imaginary and were fabricated for the purposes of this test
 query select cynthia = condition((cos_compare("Cynthia Adams; cynthiaadams@gmail.com; 720-769-1293", "Timothy Adams; thetbear@gmail.com; 720-891-1470") >= 0.49) and (cos_compare("Cynthia Adams; cynthiaadams@gmail.com; 720-769-1293", "Timothy Adams; thetbear@gmail.com; 720-891-1470") <= 0.54), "pass", "fail")
 
-query select timothy = condition((cos_compare("Timothy Adams; thetbear@gmail.com; 720-891-1470", "Lance Freson; lancetheturtle@gmail.com; 720-111-8189") >= 0.425) and (cos_compare("Timothy Adams; thetbear@gmail.com; 720-891-1470", "Lance Freson; lancetheturtle@gmail.com; 720-111-8189") <= 0.475), "pass", "fail")
+query select timothy = condition((cos_compare("Timothy Adams; thetbear@gmail.com; 720-891-1470", "Lance Freson; lancetheturtle@gmail.com; 720-111-8189") >= 0.45) and (cos_compare("Timothy Adams; thetbear@gmail.com; 720-891-1470", "Lance Freson; lancetheturtle@gmail.com; 720-111-8189") <= 0.50), "pass", "fail")
 
-query select lance = condition((cos_compare("Lance Freson; lancetheturtle@gmail.com; 720-111-8189", "Gregory Freson; greatgregory@gmail.com; 720-198-5791") >= 0.35) and (cos_compare("Lance Freson; lancetheturtle@gmail.com; 720-111-8189", "Gregory Freson; greatgregory@gmail.com; 720-198-5791") <= 0.40), "pass", "fail")
+query select lance = condition((cos_compare("Lance Freson; lancetheturtle@gmail.com; 720-111-8189", "Gregory Freson; greatgregory@gmail.com; 720-198-5791") >= 0.425) and (cos_compare("Lance Freson; lancetheturtle@gmail.com; 720-111-8189", "Gregory Freson; greatgregory@gmail.com; 720-198-5791") <= 0.475), "pass", "fail")
 
 query select gregory = condition((cos_compare("Gregory Freson; greatgregory@gmail.com; 720-198-5791", "Gregory Freson; greatgregory@gmail.co; 720-198-5791") >= 0.94) and (cos_compare("Gregory Freson; greatgregory@gmail.com; 720-198-5791", "Gregory Freson; greatgregory@gmail.co; 720-198-5791") <= 0.99), "pass", "fail")
 
-query select nathan = condition((cos_compare("Nathan Mayor; nmmayor@yahoo.com; +1-800-192-9128", "Mindy Mayor; nmmayor@yahoo.com; 720-981-9149") >= 0.66) and (cos_compare("Nathan Mayor; nmmayor@yahoo.com; +1-800-192-9128", "Mindy Mayor; nmmayor@yahoo.com; 720-981-9149") <= 0.71), "pass", "fail")
+query select nathan = condition((cos_compare("Nathan Mayor; nmmayor@yahoo.com; +1-800-192-9128", "Mindy Mayor; nmmayor@yahoo.com; 720-981-9149") >= 0.575) and (cos_compare("Nathan Mayor; nmmayor@yahoo.com; +1-800-192-9128", "Mindy Mayor; nmmayor@yahoo.com; 720-981-9149") <= 0.625), "pass", "fail")
 
 query select identical = condition((cos_compare("This is an identical case", "This is an identical case") >= 0.975) and (cos_compare("This is an identical case", "This is an identical case") <= 1.00), "pass", "fail")
 

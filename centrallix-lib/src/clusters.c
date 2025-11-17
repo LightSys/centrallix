@@ -178,7 +178,7 @@ pVector ca_build_vector(const char* str)
 	int value = 0;
 	for (; i < num_pairs && char_pairs[i].hash == hash; i++)
 	    {
-	//     value /= 2; /* Reduce impact of repeated pairs. */
+	    value /= 2; /* Reduce impact of repeated pairs. */
 	    value += ((unsigned int)char_pairs[i].c1 + (unsigned int)char_pairs[i].c2) % 13u + 1u;
 	    }
 	
