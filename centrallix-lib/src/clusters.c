@@ -234,18 +234,17 @@ unsigned int ca_sparse_len(const pVector vector)
     }
 
 /*** Print the underlying implementation values sparsely allocated
- *** vector (intended for debugging).
+ *** vector (for debugging).
  *** 
- *** @param out File to print to.
  *** @param vector The vector.
  ***/
-void ca_fprint_vector(FILE* out, const pVector vector)
+void ca_print_vector(const pVector vector)
     {
     const unsigned int len = ca_sparse_len(vector);
-    fprintf(out, "Vector: [%d", vector[0]);
+    printf("Vector: [%d", vector[0]);
     for (unsigned int i = 1u; i < len; i++)
-	fprintf(out, ", %d", vector[i]);
-    fprintf(out, "]");
+	printf(", %d", vector[i]);
+    printf("]");
     }
 
 /*** Compute the magnitude of a sparsely allocated vector.
@@ -409,9 +408,6 @@ static double sparse_similarity_to_centroid(const pVector v1, const pCentroid c2
  *** 
  *** @attention - `Complexity`: O(nm), where n and m are the lengths of	str1
  *** 	and str2 (respectively).
- *** 
- *** @skip
- *** LINK ../../centrallix-sysdoc/string_comparison.md#levenshtein
  ***/
 unsigned int edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length)
     {
@@ -500,9 +496,6 @@ unsigned int edit_dist(const char* str1, const char* str2, const size_t str1_len
  *** @param v1 A `pVector` to the first string to compare.
  *** @param v2 A `pVector` to the second string to compare.
  *** @returns The cosine similarity between the two strings.
- *** 
- *** @skip
- *** LINK ../../centrallix-sysdoc/string_comparison.md#cosine
  ***/
 double ca_cos_compare(void* v1, void* v2)
     {
@@ -532,9 +525,6 @@ double ca_cos_compare(void* v1, void* v2)
  *** @param str1 A `char*` to the first string to compare.
  *** @param str2 A `char*` to the second string to compare.
  *** @returns The levenshtein similarity between the two strings.
- *** 
- *** @skip
- *** LINK ../../centrallix-sysdoc/string_comparison.md#levenshtein
  ***/
 double ca_lev_compare(void* str1, void* str2)
     {

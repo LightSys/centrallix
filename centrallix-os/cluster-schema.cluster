@@ -4,9 +4,9 @@ file_name "system/cluster"
     {
     name "cluster/parameter"
 	{
-	type : DATA_T // See datatypes.h
-	?default : type
-	?name : String // Overrides the name above.
+	type : DATA_T     // See datatypes.h
+	?default : type   // Default value for the variable.
+	?name : String    // Overrides the name above.
 	?style : StyleObj // idk where to find docs for this.
 	}
     // Access with :parameters:name. Accessing dynamic data (e.g. parameters)
