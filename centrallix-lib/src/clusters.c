@@ -127,10 +127,7 @@ pVector ca_build_vector(const char* str)
     for (const char* char_ptr = str; *char_ptr != '\0'; char_ptr++)
 	{
 	char maybe_char = *char_ptr;
-	if (maybe_char < 0)
-	    {
-	    fprintf(stderr, "Warning: Unexpected negative char '%c' in string: \"%s\"\n", maybe_char, str);
-	    }
+	if (maybe_char < 0) fprintf(stderr, "Warning: Unexpected negative char '%c' in string: \"%s\"\n", maybe_char, str);
 	unsigned char c = (unsigned char)maybe_char;
 	
 	/** Always consider boundary character in string. **/
@@ -181,7 +178,7 @@ pVector ca_build_vector(const char* str)
 	int value = 0;
 	for (; i < num_pairs && char_pairs[i].hash == hash; i++)
 	    {
-	    value /= 2; /* Reduce impact of repeated pairs. */
+	//     value /= 2; /* Reduce impact of repeated pairs. */
 	    value += ((unsigned int)char_pairs[i].c1 + (unsigned int)char_pairs[i].c2) % 13u + 1u;
 	    }
 	

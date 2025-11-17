@@ -1,8 +1,25 @@
 ##NAME Levenshtein String Comparison
 
-query select sw1 = levenshtein('hello', 'hello!')
-query select sw1 = levenshtein('kitten', 'mitten')
-query select sw1 = levenshtein('kitten', 'smitten')
-query select sw1 = levenshtein('lawn', 'flown')
-query select sw1 = levenshtein('kitten', 'itten')
-query select sw1 = levenshtein('kitten', 'skitten')
+# Kitten tests.
+query select case1  = condition(levenshtein('kitten', 'kitten')  == 0, 'pass', 'fail') -- 0 edits
+query select case2  = condition(levenshtein('kitten', 'skitten') == 1, 'pass', 'fail') -- 1 insert
+query select case3  = condition(levenshtein('kitten', 'itten')   == 1, 'pass', 'fail') -- 1 delete
+query select case4  = condition(levenshtein('kitten', 'mitten')  == 1, 'pass', 'fail') -- 1 replace
+query select case5  = condition(levenshtein('kitten', 'smitten') == 2, 'pass', 'fail') -- 1 insert and one replace
+query select case6  = condition(levenshtein('kitten', 'iktten')  == 1, 'pass', 'fail') -- 1 transpose
+query select case7  = condition(levenshtein('kitten', 'kittens') == 1, 'pass', 'fail') -- 1 insert (end)
+query select case8  = condition(levenshtein('kitten', 'kitte')   == 1, 'pass', 'fail') -- 1 delete (end)
+query select case9  = condition(levenshtein('kitten', 'kittem')  == 1, 'pass', 'fail') -- 1 replace (end)
+query select case10 = condition(levenshtein('kitten', 'kittne')  == 1, 'pass', 'fail') -- 1 transpose (end)
+
+# Alternate words.
+query select case11 = condition(levenshtein('lawn', 'flown')   == 2, 'pass', 'fail')  -- 1 insert and one replace
+query select case12 = condition(levenshtein('hello', 'hello!') == 1, 'pass', 'fail')  -- 1 insert (end)
+query select case13 = condition(levenshtein('zert', 'zerf')    == 1, 'pass', 'fail')  -- 1 replace (end)
+query select case14 = condition(levenshtein('llearr', 'lear')  == 2, 'pass', 'fail')  -- 2 deletes (start & end)
+
+# Edge cases.
+query select case15 = condition(levenshtein('', '') == 0, 'pass', 'fail')  -- 0 edits
+query select case16 = condition(levenshtein('This is a very long string!! I do not expect this function to need to process a string longer than this, because this string is a full 254 characters. That is pretty long. The object system limits strings to this size so we cannot make a longer string...', 'This is a very long string!! I do not expect this function to need to process a string longer than this, because this string is a full 254 characters. That is pretty long. The object system limits strings to this size so we cannot make a longer string...') == 0, 'pass', 'fail') -- 0 edits.
+query select case17 = condition(levenshtein('This is a very long string!! I do not expect this function to need to process a string longer than this, because this string is a full 254 characters. That is pretty long. The object system limits strings to this size so we cannot make a longer string...', 'This is quite a lengthy string. I do not expect the function to compute any longer string since this one is a full 254 characters. That is plenty, even if someone adds many contact details to their record!! Thus, this test should cover most cases we see.') == 133, 'pass', 'fail')  -- 133 edits.
+query select case18 = condition(levenshtein('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB') == 254, 'pass', 'fail')  -- 254 replaces.
