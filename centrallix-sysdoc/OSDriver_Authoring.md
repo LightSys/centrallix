@@ -35,7 +35,7 @@
 
 **Date**:    January 13, 1999
 
-**Updated**: November 27, 2025
+**Updated**: November 17, 2025
 
 **License**: Copyright (C) 2001-2011 LightSys Technology Services. See LICENSE.txt for more information.
 

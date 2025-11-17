@@ -1,4 +1,3 @@
-
 /************************************************************************/
 /* Centrallix Application Server System                                 */
 /* Centrallix Core                                                      */
@@ -42,14 +41,12 @@
 #include <strings.h>
 
 #include "cxlib/clusters.h"
-#include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/newmalloc.h"
 #include "cxlib/util.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "expression.h"
-#include "hints.h"
 #include "obj.h"
 #include "param.h"
 #include "st_node.h"
