@@ -4316,7 +4316,15 @@ static int exp_fn_compare(pExpression tree, pParamObjects obj_list, const char* 
 	}
     else
 	{ /* lev_compare() */
-	tree->Types.Double = ca_lev_compare(str1, str2);
+	double lev_sim = check_double(ca_lev_compare(str1, str2));
+	if (isnan(lev_sim))
+	    {
+	    mssErrorf(1, "EXP", "%s(\"%s\", \"%s\") Failed to compute levenstein edit distance.");
+	    return -1;
+	    }
+	
+	/** Return the computed result. **/
+	tree->Types.Double = lev_sim;
 	tree->DataType = DATA_T_DOUBLE;
 	return 0;
 	}
@@ -4359,7 +4367,11 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects obj_list)
     
     /** Compute edit distance. **/
     /** Length 0 is provided for both strings so that the function will compute it for us. **/
-    tree->Integer = edit_dist(str1, str2, 0lu, 0lu);
+    int dist = check_neg(edit_dist(str1, str2, 0lu, 0lu));
+    if (dist < 0) return -1;
+    
+    /** Return the computed distance. **/
+    tree->Integer = dist;
     tree->DataType = DATA_T_INTEGER;
     return 0;
     }

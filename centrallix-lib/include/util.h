@@ -148,6 +148,20 @@ void print_diagnostics(int code, const char* function_name, const char* file_nam
     })
 
 /*** Ensures that developer diagnostics are printed if the result of the
+ *** passed function call is a NAN double. Not intended for user errors.
+ ***
+ *** @param result The result of the function we're checking.
+ *** @returns result
+ ***/
+#define check_double(result) \
+    ({ \
+    errno = 0; /* Reset errno to prevent confusion. */ \
+    __typeof__ (result) _r = (result); \
+    if (isnan(_r)) print_diagnostics(0, #result, __FILE__, __LINE__); \
+    _r; \
+    })
+
+/*** Ensures that developer diagnostics are printed if the result of the
  *** passed function call is a NULL pointer. Not intended for user errors.
  ***
  *** @param result The result of the function we're checking.

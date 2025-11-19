@@ -76,7 +76,7 @@ typedef struct
     nmRegister(sizeof(Dup), "Dup")
     
 /** Edit distance function. **/
-unsigned int edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length);
+int edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length);
 
 /** Vector functions. **/
 pVector ca_build_vector(const char* str);
@@ -102,7 +102,7 @@ int ca_kmeans(
     _v[0] == -172 && _v[1] == 11 && _v[2] == -78; \
     })
 
-/** Comparison functions, for ca_search(). **/
+/** Comparison functions (see ca_search()). **/
 double ca_cos_compare(void* v1, void* v2);
 double ca_lev_compare(void* str1, void* str2);
 bool ca_eql(pVector v1, pVector v2);

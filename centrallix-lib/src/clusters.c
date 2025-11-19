@@ -124,8 +124,11 @@ static int charpair_cmp(const void *p1, const void *p2)
  ***/
 pVector ca_build_vector(const char* str)
     {
-    unsigned char chars[strlen(str) + 2u];
     unsigned int num_chars = 0u;
+    unsigned char* chars = check_ptr(nmSysMalloc((strlen(str) + 2u) * sizeof(unsigned char)));
+    if (chars == NULL) goto err;
+    
+    /** Begin adding char pairs (in order). **/
     chars[num_chars++] = CA_BOUNDARY_CHAR; /* Starting boundary character. */
     for (const char* char_ptr = str; *char_ptr != '\0'; char_ptr++)
 	{
@@ -149,8 +152,9 @@ pVector ca_build_vector(const char* str)
 	}
     chars[num_chars++] = CA_BOUNDARY_CHAR; /* Ending boundary character. */
     
-    /** Compute char pairs. **/
-    CharPair char_pairs[num_chars];
+    /** Compute hash values for char pairs. **/
+    CharPair* char_pairs = check_ptr(nmSysMalloc(num_chars * sizeof(CharPair)));
+    if (char_pairs == NULL) goto err;
     const unsigned int num_pairs = num_chars - 1u;
     for (unsigned int i = 0u; i < num_pairs; i++)
 	{
@@ -163,12 +167,16 @@ pVector ca_build_vector(const char* str)
 	char_pairs[i].hash = hash_char_pair(chars[i], chars[i + 1]);
 	}
     
+    /** Free unused memory. **/
+    nmSysFree(chars);
+    chars = NULL;
+    
     /** Sort char_pairs by hash value. **/
     qsort(char_pairs, num_pairs, sizeof(CharPair), charpair_cmp);
     
     /** Allocate space for the sparse vector. **/
-    pVector sparse_vector = (pVector)check_ptr(nmSysMalloc((num_pairs * 2u + 1u) * sizeof(int)));
-    if (sparse_vector == NULL) return NULL;
+    pVector sparse_vector = check_ptr(nmSysMalloc((num_pairs * 2u + 1u) * sizeof(int)));
+    if (sparse_vector == NULL) goto err;
     
     /** Build the sparse vector. **/
     unsigned int cur = 0u, dim = 0u;
@@ -199,11 +207,23 @@ pVector ca_build_vector(const char* str)
 	}
     if (dim != CA_NUM_DIMS) sparse_vector[cur++] = -(CA_NUM_DIMS - dim);
     
-    /** Trim extra space wasted by identical hashes. **/
-    pVector trimmed_sparse_vector = (pVector)check_ptr(nmSysRealloc(sparse_vector, cur * sizeof(int)));
-    if (trimmed_sparse_vector == NULL) return NULL;
+    /** Free unused memory. **/
+    nmSysFree(char_pairs);
+    char_pairs = NULL;
     
+    /** Trim extra space wasted by identical hashes. **/
+    pVector trimmed_sparse_vector = check_ptr(nmSysRealloc(sparse_vector, cur * sizeof(int)));
+    if (trimmed_sparse_vector == NULL) goto err;
+    sparse_vector = NULL; /* Mark memory freed by nmSysRealloc() no longer valid. */
+    
+    /** Return the result. **/
     return trimmed_sparse_vector;
+    
+    err:
+    if (sparse_vector != NULL) nmSysFree(sparse_vector);
+    if (char_pairs != NULL) nmSysFree(char_pairs);
+    if (chars != NULL) nmSysFree(chars);
+    return NULL;
     }
 
 /*** Free memory allocated to store a sparse vector.
@@ -404,6 +424,7 @@ static double sparse_similarity_to_centroid(const pVector v1, const pCentroid c2
  *** @param str2 The second string.
  *** @param length1 The length of the first string.
  *** @param length1 The length of the first string.
+ *** @returns The edit distance between the two strings, or a negative value on error.
  *** 
  *** @attention - `Tip`: Pass 0 for the length of either string to infer it
  *** 	using the null terminating character. Conversely, character arrays
@@ -412,8 +433,10 @@ static double sparse_similarity_to_centroid(const pVector v1, const pCentroid c2
  *** @attention - `Complexity`: O(nm), where n and m are the lengths of	str1
  *** 	and str2 (respectively).
  ***/
-unsigned int edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length)
+int edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length)
     {
+    int result = -1;
+    
     /*** lev_matrix:
      *** For all i and j, d[i][j] will hold the Levenshtein distance between
      *** the first i characters of s and the first j characters of t.
@@ -423,9 +446,13 @@ unsigned int edit_dist(const char* str1, const char* str2, const size_t str1_len
      ***/
     const size_t str1_len = (str1_length == 0u) ? strlen(str1) : str1_length;
     const size_t str2_len = (str2_length == 0u) ? strlen(str2) : str2_length;
-    unsigned int* lev_matrix[str1_len + 1];
+    unsigned int** lev_matrix = check_ptr(nmSysMalloc((str1_len + 1) * sizeof(unsigned int*)));
+    if (lev_matrix == NULL) goto end;
     for (unsigned int i = 0u; i < str1_len + 1u; i++)
-	lev_matrix[i] = nmMalloc((str2_len + 1) * sizeof(unsigned int));
+	{
+	lev_matrix[i] = check_ptr(nmSysMalloc((str2_len + 1) * sizeof(unsigned int)));
+	if (lev_matrix[i] == NULL) goto end;
+	}
     
     /*** Base case #0:
      *** Transforming an empty string into an empty string has 0 cost.
@@ -472,19 +499,36 @@ unsigned int edit_dist(const char* str1, const char* str2, const size_t str1_len
 		);
 		unsigned int cost_swap = (can_swap) ? lev_matrix[i - 2][j - 2] + 1 : UINT_MAX;
 		
-		// Find the best operation.
+		/** Assign the best operation. **/
 		lev_matrix[i][j] = min(min(min(cost_delete, cost_insert), cost_replace), cost_swap);
 		}
 	    }
 	}
     
     /** Store result. **/
-    unsigned int result = lev_matrix[str1_len][str2_len];
+    unsigned int unsigned_result = lev_matrix[str1_len][str2_len];
+    if (unsigned_result > INT_MAX)
+	{
+	fprintf(stderr,
+	    "Warning: Integer overflow detected in edit_dist(\"%s\", \"%s\", %lu, %lu) = %u > %d\n",
+	    str1, str2, str1_length, str2_length, unsigned_result, INT_MAX
+	);
+	}
+    result = (int)unsigned_result;
     
     /** Cleanup. **/
-    for (unsigned int i = 0u; i < str1_len + 1u; i++)
-	nmFree(lev_matrix[i], (str2_len + 1) * sizeof(unsigned int));
+    end:
+    if (lev_matrix != NULL)
+	{
+	for (unsigned int i = 0u; i < str1_len + 1u; i++)
+	    {
+	    if (lev_matrix[i] == NULL) break;
+	    else nmSysFree(lev_matrix[i]);
+	    }
+	nmSysFree(lev_matrix);
+	}
     
+    /** Done. **/
     return result;
     }
 
@@ -527,7 +571,7 @@ double ca_cos_compare(void* v1, void* v2)
  *** 
  *** @param str1 A `char*` to the first string to compare.
  *** @param str2 A `char*` to the second string to compare.
- *** @returns The levenshtein similarity between the two strings.
+ *** @returns The levenshtein similarity between the two strings, or NAN on failure.
  ***/
 double ca_lev_compare(void* str1, void* str2)
     {
@@ -543,7 +587,8 @@ double ca_lev_compare(void* str1, void* str2)
     if (len1 == 0lu && len2 != 0lu) return 0.0;
     
     /** Compute levenshtein edit distance. **/
-    const unsigned int dist = edit_dist((const char*)str1, (const char*)str2, len1, len2);
+    const int dist = check_neg(edit_dist((const char*)str1, (const char*)str2, len1, len2));
+    if (dist < 0) return NAN;
     
     /** Normalize edit distance into a similarity measure. **/
     const double normalized_similarity = 1.0 - (double)dist / (double)max(len1, len2);
@@ -583,11 +628,14 @@ static double get_cluster_size(
     pCentroid* centroids,
     const unsigned int num_clusters)
     {
+    double result = NAN;
     /** Could be up to around 1KB on the stack, but I think that's fine. **/
-    double cluster_sums[num_clusters];
-    unsigned int cluster_counts[num_clusters];
-    memset(cluster_sums, 0, sizeof(cluster_sums));
-    memset(cluster_counts, 0, sizeof(cluster_counts));
+    double* cluster_sums = check_ptr(nmSysMalloc(num_clusters * sizeof(double)));
+    unsigned int* cluster_counts = check_ptr(nmSysMalloc(num_clusters * sizeof(unsigned int)));
+    if (cluster_sums == NULL) goto end;
+    if (cluster_counts == NULL) goto end;
+    memset(cluster_sums, 0, sizeof(num_clusters * sizeof(double)));
+    memset(cluster_counts, 0, sizeof(num_clusters * sizeof(unsigned int)));
     
     /** Sum the difference from each vector to its cluster centroid. **/
     for (unsigned int i = 0u; i < num_vectors; i++)
@@ -609,37 +657,15 @@ static double get_cluster_size(
 	num_valid_clusters++;
 	}
     
-    /** Return average sizes. **/
-    return cluster_total / num_valid_clusters;
-    }
-
-/*** Compute the param_value for `k` (number of clusters), given a dataset of with
- *** a size of `n`.
- *** 
- *** The following table shows data sizes vs.selected cluster size. In testing,
- *** these numbers tended to give a good balance of accuracy and duplicates detected.
- *** 
- *** ```csv
- *** Data Size, Actual
- *** 10k,       12
- *** 100k,      33
- *** 1M,        67
- *** 4M,        93
- *** ```
- *** 
- *** This function is not intended for datasets smaller than (`n < ~2000`).
- *** These should be handled using complete search.
- *** 
- *** LaTeX Notation: \log_{36}\left(n\right)^{3.1}-8
- *** 
- *** @param n The size of the dataset.
- *** @returns k, the number of clusters to use.
- *** 
- *** Complexity: `O(1)`
- ***/
-unsigned int compute_k(const unsigned int n)
-    {
-    return (unsigned)max(2, pow(log(n) / log(36), 3.2) - 8);
+    /** Calculate average sizes. **/
+    result = cluster_total / num_valid_clusters;
+    
+    end:
+    /** Clean up. **/
+    if (cluster_sums != NULL) nmSysFree(cluster_sums);
+    if (cluster_counts != NULL) nmSysFree(cluster_counts);
+    
+    return result;
     }
 
 /*** Executes the k-means clustering algorithm. Selects NUM_CLUSTERS random
@@ -696,22 +722,19 @@ int ca_kmeans(
     /** Allocate space to store centroids and new_centroids. **/
     /** Dynamic allocation is required because these densely allocated arrays might be up to 500KB! **/
     const size_t centroids_size = num_clusters * sizeof(pCentroid);
-    pCentroid* centroids = (pCentroid*)check_ptr(nmMalloc(centroids_size));
+    pCentroid* centroids = check_ptr(nmMalloc(centroids_size));
+    pCentroid* new_centroids = check_ptr(nmMalloc(centroids_size));
     if (centroids == NULL) goto end;
+    if (new_centroids == NULL) goto end;
     memset(centroids, 0, centroids_size);
-    pCentroid* new_centroids = (pCentroid*)check_ptr(nmMalloc(centroids_size));
-    if (new_centroids == NULL) goto end_free_centroids;
     memset(new_centroids, 0, centroids_size);
     for (unsigned int i = 0u; i < num_clusters; i++)
 	{
-	/** Malloc each centroid. **/
-	centroids[i] = (pCentroid)check_ptr(nmMalloc(pCentroidSize));
-	if (centroids[i] == NULL) goto end_deep_free_centroids;
+	centroids[i] = check_ptr(nmMalloc(pCentroidSize));
+	new_centroids[i] = check_ptr(nmMalloc(pCentroidSize));
+	if (centroids[i] == NULL) goto end;
+	if (new_centroids[i] == NULL) goto end;
 	memset(centroids[i], 0, pCentroidSize);
-	
-	/** Malloc each new centroid. **/
-	new_centroids[i] = (pCentroid)check_ptr(nmMalloc(pCentroidSize));
-	if (new_centroids[i] == NULL) goto end_deep_free_centroids;
 	memset(new_centroids[i], 0, pCentroidSize);
 	}
     
@@ -797,8 +820,9 @@ int ca_kmeans(
 	    }
 	
 	/** Is there enough improvement? **/
-	if (min_improvement < -1) continue; /** Skip check if it will always fail. **/
-	const double average_cluster_size = get_cluster_size(vectors, num_vectors, labels, centroids, num_clusters);
+	if (min_improvement < -1) continue; /** Skip check if it will never end the loop. **/
+	const double average_cluster_size = check_double(get_cluster_size(vectors, num_vectors, labels, centroids, num_clusters));
+	if (isnan(average_cluster_size)) goto end;
 	const double improvement = old_average_cluster_size - average_cluster_size;
 	if (improvement < min_improvement) break;
 	old_average_cluster_size = average_cluster_size;
@@ -815,22 +839,25 @@ int ca_kmeans(
     successful = true;
     
     /** Clean up. **/
-    end_deep_free_centroids:
-    for (unsigned int i = 0u; i < num_clusters; i++)
-	{
-	if (centroids[i] != NULL) nmFree(centroids[i], pCentroidSize);
-	else break;
-	if (new_centroids[i] != NULL) nmFree(new_centroids[i], pCentroidSize);
-	else break;
-	}
-    
-    // end_free_new_centroids:
-    nmFree(new_centroids, num_clusters * sizeof(pCentroid));
-    
-    end_free_centroids:
-    nmFree(centroids, num_clusters * sizeof(pCentroid));
-    
     end:
+    if (centroids != NULL)
+	{
+	for (unsigned int i = 0u; i < num_clusters; i++)
+	    {
+	    if (centroids[i] != NULL) nmFree(centroids[i], pCentroidSize);
+	    else break;
+	    }
+	nmFree(centroids, num_clusters * sizeof(pCentroid));
+	}
+    if (new_centroids != NULL)
+	{
+	for (unsigned int i = 0u; i < num_clusters; i++)
+	    {
+	    if (new_centroids[i] != NULL) nmFree(new_centroids[i], pCentroidSize);
+	    else break;
+	    }
+	nmFree(new_centroids, num_clusters * sizeof(pCentroid));
+	}
     return (successful) ? 0 : -1;
     }
 
@@ -860,7 +887,8 @@ void* ca_most_similar(
     double best_sim = -INFINITY;
     for (unsigned int i = 0u; (num_data == 0u) ? (data[i] != NULL) : (i < num_data); i++)
 	{
-	const double sim = similarity(target, data[i]);
+	const double sim = check_double(similarity(target, data[i]));
+	if (isnan(sim)) continue; /* Skip this comparison. */
 	if (sim > best_sim && sim > threshold)
 	    {
 	    most_similar = data[i];
@@ -889,8 +917,8 @@ void* ca_most_similar(
  *** 	struct. If this variable is null, these values are also left null.
  *** @param maybe_dups A pointer to an xArray in which dups should be found.
  *** 	Pass NULL to allocate a new one.
- *** @returns An xArray holding all of the duplocates found. If maybe_dups is
- *** 	not NULL, this will be that xArray, to allow for chaining.
+ *** @returns An xArray holding all of the duplocates found, or NULL if an
+ *** 	error occurs.
  ***/
 pXArray ca_sliding_search(
     void** data,
@@ -919,7 +947,8 @@ pXArray ca_sliding_search(
 	const unsigned int window_end = min(i + window_size, num_data);
 	for (unsigned int j = window_start; j < window_end; j++)
 	    {
-	    const double sim = similarity(data[i], data[j]);
+	    const double sim = check_double(similarity(data[i], data[j]));
+	    if (isnan(sim)) goto err_free_dups;
 	    if (sim > threshold) /* Dup found! */
 		{
 		Dup* dup = (Dup*)check_ptr(nmMalloc(sizeof(Dup)));

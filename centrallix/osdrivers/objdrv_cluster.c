@@ -2546,7 +2546,6 @@ static int ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 	    if (labels == NULL) goto err_free_sims;
 	    
 	    /** Run kmeans. **/
-	    Timer timer_i, *timer = timer_start(timer_init(&timer_i));
 	    const bool successful = check(ca_kmeans(
 		source_data->Vectors,
 		source_data->nVectors,
@@ -2556,7 +2555,6 @@ static int ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		labels,
 		cluster_data->Sims
 	    ));
-	    timer_stop(timer);
 	    if (!successful) goto err_free_sims;
 	    
 	    /** Convert the labels into clusters. **/
@@ -2675,6 +2673,11 @@ static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		    (void**)cluster_data->SourceData->Keys,
 		    dups
 		));
+		if (dups_temp == NULL)
+		    {
+		    mssErrorf(1, "Cluster", "Failed to compute sliding search with cosine similarity measure.");
+		    goto err_free;
+		    }
 		}
 	    else
 		{
@@ -2688,7 +2691,11 @@ static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 			(void**)cluster_data->SourceData->Keys,
 			dups
 		    ));
-		    if (dups_temp == NULL) goto err_free;
+		    if (dups_temp == NULL) 
+			{
+			mssErrorf(1, "Cluster", "Failed to compute complete search with cosine similarity measure.");
+			goto err_free;
+			}
 		    else dups = dups_temp;
 		    }
 		}
@@ -2708,6 +2715,11 @@ static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		    (void**)cluster_data->SourceData->Keys,
 		    dups
 		));
+		if (dups_temp == NULL)
+		    {
+		    mssErrorf(1, "Cluster", "Failed to compute sliding search with Levenstein similarity measure.");
+		    goto err_free;
+		    }
 		}
 	    else
 		{
@@ -2721,7 +2733,11 @@ static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 			(void**)cluster_data->SourceData->Keys,
 			dups
 		    ));
-		    if (dups_temp == NULL) goto err_free;
+		    if (dups_temp == NULL) 
+			{
+			mssErrorf(1, "Cluster", "Failed to compute complete search with Levenstein similarity measure.");
+			goto err_free;
+			}
 		    else dups = dups_temp;
 		    }
 		}
