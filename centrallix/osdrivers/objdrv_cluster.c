@@ -4067,7 +4067,8 @@ static int ci_PrintEntry(pXHashEntry entry, void* arg)
     void** args = (void**)arg;
     unsigned int* type_id_ptr     = (unsigned int*)args[0];
     unsigned int* total_bytes_ptr = (unsigned int*)args[1];
-    char* path = (char*)args[2];
+    unsigned long long* less_ptr  = (unsigned long long*)args[2];
+    char* path = (char*)args[3];
     
     /** If a path is provided, check that it matches the start of the key. **/
     if (path != NULL && strncmp(key, (char*)path, strlen((char*)path)) != 0) return 0;
@@ -4081,25 +4082,46 @@ static int ci_PrintEntry(pXHashEntry entry, void* arg)
 	case 1u:
 	    {
 	    pSourceData source_data = (pSourceData)data;
+	    
+	    /** Compute size. **/
+	    bytes = ci_SizeOfSourceData(source_data);
+	    
+	    /** If less is specified, skip uncomputed source. **/
+	    if (*less_ptr > 0llu && source_data->Vectors == NULL) goto no_print;
+	    
+	    /** Compute printing information. **/
 	    type = "Source";
 	    name = source_data->Name;
-	    bytes = ci_SizeOfSourceData(source_data);
 	    break;
 	    }
 	case 2u:
 	    {
 	    pClusterData cluster_data = (pClusterData)data;
+	    
+	    /** Compute size. **/
+	    bytes = ci_SizeOfClusterData(cluster_data, false);
+	    
+	    /** If less is specified, skip uncomputed source. **/
+	    if (*less_ptr > 0llu && cluster_data->Clusters == NULL) goto no_print;
+	    
+	    /** Compute printing information. **/
 	    type = "Cluster";
 	    name = cluster_data->Name;
-	    bytes = ci_SizeOfClusterData(cluster_data, false);
 	    break;
 	    }
 	case 3u:
 	    {
 	    pSearchData search_data = (pSearchData)data;
+	    
+	    /** Compute size. **/
+	    bytes = ci_SizeOfSearchData(search_data);
+	    
+	    /** If less is specified, skip uncomputed source. **/
+	    if (*less_ptr > 0llu && search_data->Dups == NULL) goto no_print;
+	    
+	    /** Compute printing information. **/
 	    type = "Search";
 	    name = search_data->Name;
-	    bytes = ci_SizeOfSearchData(search_data);
 	    break;
 	    }
 	default:
@@ -4107,14 +4129,20 @@ static int ci_PrintEntry(pXHashEntry entry, void* arg)
 	    return -1;
 	}
     
-    /** Increment total bytes. **/
-    *total_bytes_ptr += bytes;
     
+    /** Print the cache entry data. **/
     char buf[12];
     snprint_bytes(buf, sizeof(buf), bytes);
     printf("%-8s %-16s %-12s \"%s\"\n", type, name, buf, key);
     
+    increment_total:
+    *total_bytes_ptr += bytes;
+    
     return 0;
+    
+    no_print:
+    (*less_ptr)++;
+    goto increment_total;
     }
 
 
@@ -4190,14 +4218,18 @@ int clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrx
 	if (param->String == NULL)
 	    {
 	    mssErrorf(1, "Cluster",
-		"[param : \"show\" | \"show_all\" | \"drop_all\"] is required for the cache method."
+		"[param : \"show\" | \"show_less\" | \"show_all\" | \"drop_all\"] is required for the cache method."
 	    );
 	    goto err;
 	    }
 	
 	/** 'show' and 'show_all'. **/
 	bool show = false;
-	if (strcmp(param->String, "show") == 0)
+	unsigned long long skip_uncomputed = 0llu;
+	if (strcmp(param->String, "show_less") == 0)
+	    /** Specify show_less to skip uncomputed caches. **/
+	    skip_uncomputed = 1ull;
+	if (skip_uncomputed == 1ull || strcmp(param->String, "show") == 0)
 	    {
 	    show = true;
 	    path = ci_file_path(driver_data->NodeData->Parent);
@@ -4217,25 +4249,32 @@ int clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrx
 	    failed |= !check(xhForEach(
 		&ClusterDriverCaches.SourceDataCache,
 		ci_PrintEntry,
-		(void*[]){&i, &source_bytes, path}
+		(void*[]){&i, &source_bytes, (void*)&skip_uncomputed, path}
 	    ));
 	    i++;
 	    failed |= !check(xhForEach(
 		&ClusterDriverCaches.ClusterDataCache,
 		ci_PrintEntry,
-		(void*[]){&i, &cluster_bytes, path}
+		(void*[]){&i, &cluster_bytes, (void*)&skip_uncomputed, path}
 	    ));
 	    i++;
 	    failed |= !check(xhForEach(
 		&ClusterDriverCaches.SearchDataCache,
 		ci_PrintEntry,
-		(void*[]){&i, &search_bytes, path}
+		(void*[]){&i, &search_bytes, (void*)&skip_uncomputed, path}
 	    ));
 	    if (failed)
 		{
 		mssErrorf(0, "Cluster", "Unexpected error occurred while showhing caches.");
 		ret = -1;
 		}
+		
+	    /** Precomputations. **/
+	    unsigned int total_caches = 0u
+		+ (unsigned int)ClusterDriverCaches.SourceDataCache.nItems
+		+ (unsigned int)ClusterDriverCaches.ClusterDataCache.nItems
+		+ (unsigned int)ClusterDriverCaches.SearchDataCache.nItems;
+	    if (total_caches <= skip_uncomputed) printf("All caches skipped, nothing to show...\n");
 	    
 	    /** Print stats. **/
 	    char buf[16];
@@ -4244,10 +4283,10 @@ int clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrx
 	    printf("%-8s %-4d %-12s\n", "Source", ClusterDriverCaches.SourceDataCache.nItems, snprint_bytes(buf, sizeof(buf), source_bytes));
 	    printf("%-8s %-4d %-12s\n", "Cluster", ClusterDriverCaches.ClusterDataCache.nItems, snprint_bytes(buf, sizeof(buf), cluster_bytes));
 	    printf("%-8s %-4d %-12s\n", "Search", ClusterDriverCaches.SearchDataCache.nItems, snprint_bytes(buf, sizeof(buf), search_bytes));
-	    printf("%-8s %-4d %-12s\n\n", "Total",
-		ClusterDriverCaches.SourceDataCache.nItems + ClusterDriverCaches.ClusterDataCache.nItems + ClusterDriverCaches.SearchDataCache.nItems,
-		snprint_bytes(buf, sizeof(buf), source_bytes + cluster_bytes + search_bytes)
-	    );
+	    printf("%-8s %-4d %-12s\n\n", "Total", total_caches, snprint_bytes(buf, sizeof(buf), source_bytes + cluster_bytes + search_bytes));
+	    
+	    /** Print skip stats (if anything was skipped.) **/
+	    if (skip_uncomputed > 0llu) printf("Skipped %llu uncomputed caches.\n\n", skip_uncomputed - 1llu);
 	    
 	    return ret;
 	    }
@@ -4262,7 +4301,7 @@ int clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrx
 	
 	/** Unknown parameter. **/
 	mssErrorf(1, "Cluster",
-	    "Expected [param : \"show\" | \"show_all\" | \"drop_all\"] for the cache method, but got: \"%s\"",
+	    "Expected [param : \"show\" | \"show_less\" | \"show_all\" | \"drop_all\"] for the cache method, but got: \"%s\"",
 	    param->String
 	);
 	goto err;
@@ -4272,17 +4311,17 @@ int clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrx
 	{
 	char buf[12];
 	printf("Cluster Driver Statistics:\n");
-	printf("  Stat Name         Value\n");
-	printf("  OpenCalls         %8s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.OpenCalls));
-	printf("  OpenQueryCalls    %8s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.OpenQueryCalls));
-	printf("  FetchCalls        %8s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.FetchCalls));
-	printf("  CloseCalls        %8s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.CloseCalls));
-	printf("  GetTypeCalls      %8s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.GetTypeCalls));
-	printf("  GetValCalls       %8s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.GetValCalls));
-	printf("  GetValCalls_name  %8s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.GetValCalls_name));
-	printf("  GetValCalls_key1  %8s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.GetValCalls_key1));
-	printf("  GetValCalls_key2  %8s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.GetValCalls_key2));
-	printf("  GetValCalls_sim   %8s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.GetValCalls_sim));
+	printf("  Stat Name         %12s\n", "Value");
+	printf("  OpenCalls         %12s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.OpenCalls));
+	printf("  OpenQueryCalls    %12s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.OpenQueryCalls));
+	printf("  FetchCalls        %12s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.FetchCalls));
+	printf("  CloseCalls        %12s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.CloseCalls));
+	printf("  GetTypeCalls      %12s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.GetTypeCalls));
+	printf("  GetValCalls       %12s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.GetValCalls));
+	printf("  GetValCalls_name  %12s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.GetValCalls_name));
+	printf("  GetValCalls_key1  %12s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.GetValCalls_key1));
+	printf("  GetValCalls_key2  %12s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.GetValCalls_key2));
+	printf("  GetValCalls_sim   %12s\n", snprint_llu(buf, sizeof(buf), ClusterStatistics.GetValCalls_sim));
 	return 0;
 	}
 
