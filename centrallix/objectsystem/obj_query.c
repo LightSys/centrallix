@@ -414,7 +414,6 @@ objQueryFetch(pObjQuery this, int mode)
     {
     pObject obj = NULL;
     void* obj_data;
-    char* name;
     char buf[OBJSYS_MAX_PATH + 32];
     pObjQuerySortItem sort_item;
     int rval;
@@ -529,14 +528,6 @@ objQueryFetch(pObjQuery this, int mode)
 		goto error;
 		}
             obj->Data = obj_data;
-    
-            this->Obj->Driver->GetAttrValue(obj_data, "name", DATA_T_STRING, &name, NULL);
-            if (strlen(name) + strlen(this->Obj->Pathname->Pathbuf) + 2 > OBJSYS_MAX_PATH) 
-                {
-		mssError(1,"OSML","Filename in query result exceeded internal limits");
-		OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " null\n");
-                goto error;
-                }
 
 	    /** If we need to check it, do so now. **/
 	    if (!(this->Flags & OBJ_QY_F_FULLQUERY) && this->Tree)
@@ -778,4 +769,3 @@ objGetQueryIdentityPath(pObjQuery this, char* pathbuf, int maxlen)
 
     return 0;
     }
-
