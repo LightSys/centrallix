@@ -47,6 +47,10 @@
 /*** 2147483629 is the signed int max, and is also a prime number.
  *** Using this value ensures that the longest run of 0s will not
  *** cause an int underflow with the current encoding scheme.
+ *** 
+ *** Unfortunately, we can't use a number this large yet because
+ *** kmeans algorithm creates densely allocated centroids with
+ *** `CA_NUM_DIMS` dimensions, so a large number causes it to fail.
  ***/
 #define CA_NUM_DIMS 251 //2147483629 /* aka. The vector table size. */
 

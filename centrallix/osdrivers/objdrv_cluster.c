@@ -350,11 +350,14 @@ typedef unsigned char TargetType;
 
 /** Attribute name lists by TargetType. **/
 #define END_OF_ARRAY NULL
-char* const ATTR_ROOT[] = {
+char* const ATTR_ROOT[] =
+    {
     "source",
     "attr_name",
+    "date_created",
+    "date_computed",
     END_OF_ARRAY,
-};
+    };
 char* const ATTR_CLUSTER[] =
     {
     "algorithm",
@@ -378,6 +381,8 @@ char* const ATTR_SEARCH[] =
 char* const ATTR_CLUSTER_ENTRY[] =
     {
     "items",
+    "date_created",
+    "date_computed",
     END_OF_ARRAY,
     };
 char* const ATTR_SEARCH_ENTRY[] =
@@ -385,6 +390,8 @@ char* const ATTR_SEARCH_ENTRY[] =
     "key1",
     "key2",
     "sim",
+    "date_created",
+    "date_computed",
     END_OF_ARRAY,
     };
 
@@ -432,17 +439,17 @@ char* const METHOD_NAME[] =
  ***/
 typedef struct _SOURCE
     {
-    char*          Name;
-    char*          Key;
-    char*          SourcePath;
-    char*          KeyAttr;
-    char*          NameAttr;
-    char**         Keys;
-    char**         Strings;
-    pVector*       Vectors;
-    unsigned int   nVectors;
-    DateTime       DateCreated;
-    DateTime       DateComputed;
+    char*        Name;
+    char*        Key;
+    char*        SourcePath;
+    char*        KeyAttr;
+    char*        NameAttr;
+    char**       Keys;
+    char**       Strings;
+    pVector*     Vectors;
+    unsigned int nVectors;
+    DateTime     DateCreated;
+    DateTime     DateComputed;
     }
     SourceData, *pSourceData;
 

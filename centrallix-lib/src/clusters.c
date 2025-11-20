@@ -64,6 +64,14 @@ static unsigned int hash_char_pair(const unsigned char c1, const unsigned char c
     return hash % CA_NUM_DIMS;
     }
 
+/*** An internal struct for temporarily storing character pairs while building
+ *** sparse vectors.
+ *** 
+ *** @param c1 The first character in the character pair.
+ *** @param c2 The second character in the character pair.
+ *** @param hash The hash for the two characters, calculated by calling the 
+ *** 	hash_char_pair() function (above).
+ **/
 typedef struct
     {
     unsigned char c1, c2;
@@ -71,6 +79,15 @@ typedef struct
     }
     CharPair, *pCharPair;
 
+/*** Internal function to compare two character pairs to allow us to sort them
+ *** by hash (ascending).
+ *** 
+ *** @param p1 The first pCharPair.
+ *** @param p2 The second pCharPair.
+ *** @returns An int > 0 if p1's hash is larger.
+ ***          An int < 0 if p2's hash is larger.
+ ***          0 if p1 and p2 have identical hashes.
+ ***/
 static int charpair_cmp(const void *p1, const void *p2)
     {
     const CharPair *a = p1, *b = p2;
