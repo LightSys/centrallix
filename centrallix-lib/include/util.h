@@ -100,7 +100,7 @@ extern "C" {
     })
 
 /** Error Handling. **/
-void print_diagnostics(int code, const char* function_name, const char* file_name, const int line_number);
+void print_err(int code, const char* function_name, const char* file_name, const int line_number);
 
 /*** Ensures that developer diagnostics are printed if the result of the
  *** passed function call is not zero. Not intended for user errors.
@@ -113,7 +113,7 @@ void print_diagnostics(int code, const char* function_name, const char* file_nam
     errno = 0; /* Reset errno to prevent confusion. */ \
     __typeof__ (result) _r = (result); \
     const bool success = (_r == 0); \
-    if (!success) print_diagnostics(_r, #result, __FILE__, __LINE__); \
+    if (!success) print_err(_r, #result, __FILE__, __LINE__); \
     success; \
     })
 
@@ -128,7 +128,7 @@ void print_diagnostics(int code, const char* function_name, const char* file_nam
     errno = 0; /* Reset errno to prevent confusion. */ \
     __typeof__ (result) _r = (result); \
     const bool success = (_r >= 0); \
-    if (!success) print_diagnostics(_r, #result, __FILE__, __LINE__); \
+    if (!success) print_err(_r, #result, __FILE__, __LINE__); \
     success; \
     })
 
@@ -143,7 +143,7 @@ void print_diagnostics(int code, const char* function_name, const char* file_nam
     errno = 0; /* Reset errno to prevent confusion. */ \
     __typeof__ (result) _r = (result); \
     const bool success = (_r != -1); \
-    if (!success) print_diagnostics(_r, #result, __FILE__, __LINE__); \
+    if (!success) print_err(_r, #result, __FILE__, __LINE__); \
     success; \
     })
 
@@ -157,7 +157,7 @@ void print_diagnostics(int code, const char* function_name, const char* file_nam
     ({ \
     errno = 0; /* Reset errno to prevent confusion. */ \
     __typeof__ (result) _r = (result); \
-    if (isnan(_r)) print_diagnostics(0, #result, __FILE__, __LINE__); \
+    if (isnan(_r)) print_err(0, #result, __FILE__, __LINE__); \
     _r; \
     })
 
@@ -171,7 +171,7 @@ void print_diagnostics(int code, const char* function_name, const char* file_nam
     ({ \
     errno = 0; /* Reset errno to prevent confusion. */ \
     __typeof__ (result) _r = (result); \
-    if (_r == NULL) print_diagnostics(0, #result, __FILE__, __LINE__); \
+    if (_r == NULL) print_err(0, #result, __FILE__, __LINE__); \
     _r; \
     })
 

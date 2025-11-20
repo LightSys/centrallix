@@ -268,7 +268,7 @@ void timer_free(pTimer timer)
 /*** Function for failing on error, assuming the error came from a library or
  *** system function call, so that the error buffer is set to a valid value.
  ***/
-void print_diagnostics(int code, const char* function_name, const char* file_name, const int line_number)
+void print_err(int code, const char* function_name, const char* file_name, const int line_number)
     {
     /** Create a descriptive error message. **/
     char error_buf[BUFSIZ];

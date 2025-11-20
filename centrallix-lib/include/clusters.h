@@ -76,7 +76,7 @@ typedef struct
     nmRegister(sizeof(Dup), "Dup")
     
 /** Edit distance function. **/
-int edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length);
+int ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length);
 
 /** Vector functions. **/
 pVector ca_build_vector(const char* str);

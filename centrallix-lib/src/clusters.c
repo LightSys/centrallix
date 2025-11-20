@@ -433,7 +433,7 @@ static double sparse_similarity_to_centroid(const pVector v1, const pCentroid c2
  *** @attention - `Complexity`: O(nm), where n and m are the lengths of	str1
  *** 	and str2 (respectively).
  ***/
-int edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length)
+int ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length)
     {
     int result = -1;
     
@@ -473,12 +473,12 @@ int edit_dist(const char* str1, const char* str2, const size_t str1_length, cons
     for (unsigned int j = 1u; j <= str2_len; j++)
 	lev_matrix[0][j] = j;
     
-    /** General Case **/
+    /** General Case. **/
     for (unsigned int i = 1u; i <= str1_len; i++)
 	{
 	for (unsigned int j = 1u; j <= str2_len; j++)
 	    {
-	    /** Equal characters need no changes. **/
+	    /** If the characters are equal, no change is needed. **/
 	    if (str1[i - 1] == str2[j - 1])
 		lev_matrix[i][j] = lev_matrix[i - 1][j - 1];
 	    
@@ -510,7 +510,7 @@ int edit_dist(const char* str1, const char* str2, const size_t str1_length, cons
     if (unsigned_result > INT_MAX)
 	{
 	fprintf(stderr,
-	    "Warning: Integer overflow detected in edit_dist(\"%s\", \"%s\", %lu, %lu) = %u > %d\n",
+	    "Warning: Integer overflow detected in ca_edit_dist(\"%s\", \"%s\", %lu, %lu) = %u > %d\n",
 	    str1, str2, str1_length, str2_length, unsigned_result, INT_MAX
 	);
 	}
@@ -556,8 +556,8 @@ double ca_cos_compare(void* v1, void* v2)
     if (v1_empty && !v2_empty) return 0.0;
     if (!v1_empty && v2_empty) return 0.0;
     
-    /** Return the sparse similarity. **/
-    return sparse_similarity(vec1, vec2);
+    /** Apply rounding to avoid annoying floating point issues before returning. **/
+    return round(sparse_similarity(vec1, vec2) * 1000000) / 1000000;
     }
 
 /*** Compares two strings using their Levenshtein edit distance to compute a
@@ -587,14 +587,14 @@ double ca_lev_compare(void* str1, void* str2)
     if (len1 == 0lu && len2 != 0lu) return 0.0;
     
     /** Compute levenshtein edit distance. **/
-    const int dist = check_neg(edit_dist((const char*)str1, (const char*)str2, len1, len2));
-    if (dist < 0) return NAN;
+    const int edit_dist = ca_edit_dist((const char*)str1, (const char*)str2, len1, len2);
+    if (!check_neg(edit_dist)) return NAN;
     
     /** Normalize edit distance into a similarity measure. **/
-    const double normalized_similarity = 1.0 - (double)dist / (double)max(len1, len2);
+    const double normalized_similarity = 1.0 - (double)edit_dist / (double)max(len1, len2);
     
-    /** Done. **/
-    return normalized_similarity;
+    /** Apply rounding to avoid annoying floating point issues before returning. **/
+    return round(normalized_similarity * 1000000) / 1000000;
     }
 
 /*** Check if two sparse vectors are identical.
@@ -629,9 +629,15 @@ static double get_cluster_size(
     const unsigned int num_clusters)
     {
     double result = NAN;
-    /** Could be up to around 1KB on the stack, but I think that's fine. **/
-    double* cluster_sums = check_ptr(nmSysMalloc(num_clusters * sizeof(double)));
-    unsigned int* cluster_counts = check_ptr(nmSysMalloc(num_clusters * sizeof(unsigned int)));
+    
+    /** Allocate space to store clusters as averages are computed. **/
+    /*** We use nmMalloc() here because this function is usually called
+     *** repeatedly with the same number of clusters in the k-means loop.
+     *** Also, it is likely that k-means may be invoked multiple times with
+     *** the same k value, leading to additional caching benefits.
+     ***/
+    double* cluster_sums = check_ptr(nmMalloc(num_clusters * sizeof(double)));
+    unsigned int* cluster_counts = check_ptr(nmMalloc(num_clusters * sizeof(unsigned int)));
     if (cluster_sums == NULL) goto end;
     if (cluster_counts == NULL) goto end;
     memset(cluster_sums, 0, sizeof(num_clusters * sizeof(double)));
@@ -662,8 +668,8 @@ static double get_cluster_size(
     
     end:
     /** Clean up. **/
-    if (cluster_sums != NULL) nmSysFree(cluster_sums);
-    if (cluster_counts != NULL) nmSysFree(cluster_counts);
+    if (cluster_sums != NULL) nmFree(cluster_sums, num_clusters * sizeof(double));
+    if (cluster_counts != NULL) nmFree(cluster_counts, num_clusters * sizeof(unsigned int));
     
     return result;
     }
@@ -939,7 +945,7 @@ pXArray ca_sliding_search(
 	if (dups == NULL) goto err;
 	}
     const int num_starting_dups = dups->nItems;
-        
+    
     /** Search for dups. **/
     for (unsigned int i = 0u; i < num_data; i++)
         {
@@ -948,7 +954,11 @@ pXArray ca_sliding_search(
 	for (unsigned int j = window_start; j < window_end; j++)
 	    {
 	    const double sim = check_double(similarity(data[i], data[j]));
-	    if (isnan(sim)) goto err_free_dups;
+	    if (isnan(sim) || sim < 0.0 || 1.0 < sim)
+		{
+		fprintf(stderr, "Invalid similarity %g %lf.\n", sim, sim);
+		goto err_free_dups;
+		}
 	    if (sim > threshold) /* Dup found! */
 		{
 		Dup* dup = (Dup*)check_ptr(nmMalloc(sizeof(Dup)));
@@ -968,11 +978,10 @@ pXArray ca_sliding_search(
     return dups;
     
     /** Error cleanup. **/
-    
     err_free_dups:
-    /** Free the dups we added to the XArray. */
+    /** Free the dups that we added to the XArray. **/
     while (dups->nItems > num_starting_dups)
-	nmFree(dups->Items[dups->nItems--], sizeof(Dup));
+	nmFree(dups->Items[--dups->nItems], sizeof(Dup));
     if (maybe_dups == NULL) check(xaDeInit(dups)); /* Failure ignored. */
     
     err:

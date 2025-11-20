@@ -2691,7 +2691,7 @@ static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 			(void**)cluster_data->SourceData->Keys,
 			dups
 		    ));
-		    if (dups_temp == NULL) 
+		    if (dups_temp == NULL)
 			{
 			mssErrorf(1, "Cluster", "Failed to compute complete search with cosine similarity measure.");
 			goto err_free;
@@ -2733,7 +2733,7 @@ static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 			(void**)cluster_data->SourceData->Keys,
 			dups
 		    ));
-		    if (dups_temp == NULL) 
+		    if (dups_temp == NULL)
 			{
 			mssErrorf(1, "Cluster", "Failed to compute complete search with Levenstein similarity measure.");
 			goto err_free;
@@ -2753,6 +2753,7 @@ static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	}
     if (dups_temp == NULL) goto err_free;
     else dups = dups_temp;
+    // fprintf(stderr, "Done searching, found %d dups.\n", dups->nItems);
     
     /** Store dups. **/
     search_data->nDups = dups->nItems;

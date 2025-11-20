@@ -4367,11 +4367,15 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects obj_list)
     
     /** Compute edit distance. **/
     /** Length 0 is provided for both strings so that the function will compute it for us. **/
-    int dist = check_neg(edit_dist(str1, str2, 0lu, 0lu));
-    if (dist < 0) return -1;
+    int edit_dist = ca_edit_dist(str1, str2, 0lu, 0lu);
+    if (!check_neg(edit_dist))
+	{
+	mssErrorf(1, "EXP", "%s(\"%s\", \"%s\") Failed to compute edit distance.\n", fn_name, str1, str2);
+	return -1;
+	}
     
     /** Return the computed distance. **/
-    tree->Integer = dist;
+    tree->Integer = edit_dist;
     tree->DataType = DATA_T_INTEGER;
     return 0;
     }
