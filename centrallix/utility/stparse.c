@@ -788,6 +788,15 @@ stAttrIsList(pStructInf this)
     }
 
 
+/*** stAttrIsNull - returns nonzero if the attribute is NULL.
+ ***/
+int
+stAttrIsNull(pStructInf this)
+    {
+    return (this->Value->Flags & EXPR_F_NULL);
+    }
+
+
 /*** st_internal_ParseAttr - parse an attribute.  This routine
  *** should be called with the current token set at the equals
  *** sign.
