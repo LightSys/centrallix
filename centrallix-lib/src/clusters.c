@@ -154,7 +154,7 @@ pVector ca_build_vector(const char* str)
     
     /** Compute hash values for char pairs. **/
     CharPair* char_pairs = check_ptr(nmSysMalloc(num_chars * sizeof(CharPair)));
-    if (char_pairs == NULL) goto err;
+    if (char_pairs == NULL) goto err_free_chars;
     const unsigned int num_pairs = num_chars - 1u;
     for (unsigned int i = 0u; i < num_pairs; i++)
 	{
@@ -176,7 +176,7 @@ pVector ca_build_vector(const char* str)
     
     /** Allocate space for the sparse vector. **/
     pVector sparse_vector = check_ptr(nmSysMalloc((num_pairs * 2u + 1u) * sizeof(int)));
-    if (sparse_vector == NULL) goto err;
+    if (sparse_vector == NULL) goto err_free_char_pairs;
     
     /** Build the sparse vector. **/
     unsigned int cur = 0u, dim = 0u;
@@ -213,16 +213,22 @@ pVector ca_build_vector(const char* str)
     
     /** Trim extra space wasted by identical hashes. **/
     pVector trimmed_sparse_vector = check_ptr(nmSysRealloc(sparse_vector, cur * sizeof(int)));
-    if (trimmed_sparse_vector == NULL) goto err;
+    if (trimmed_sparse_vector == NULL) goto err_free_sparse_vector;
     sparse_vector = NULL; /* Mark memory freed by nmSysRealloc() no longer valid. */
     
     /** Return the result. **/
     return trimmed_sparse_vector;
     
-    err:
+    err_free_sparse_vector:
     if (sparse_vector != NULL) nmSysFree(sparse_vector);
+    
+    err_free_char_pairs:
     if (char_pairs != NULL) nmSysFree(char_pairs);
+    
+    err_free_chars:
     if (chars != NULL) nmSysFree(chars);
+    
+    err:
     return NULL;
     }
 
@@ -640,8 +646,11 @@ static double get_cluster_size(
     unsigned int* cluster_counts = check_ptr(nmMalloc(num_clusters * sizeof(unsigned int)));
     if (cluster_sums == NULL) goto end;
     if (cluster_counts == NULL) goto end;
-    memset(cluster_sums, 0, sizeof(num_clusters * sizeof(double)));
-    memset(cluster_counts, 0, sizeof(num_clusters * sizeof(unsigned int)));
+    for (unsigned int i = 0u; i < num_clusters; i++)
+	{
+	cluster_sums[i] = 0.0;
+	cluster_counts[i] = 0u;
+	}
     
     /** Sum the difference from each vector to its cluster centroid. **/
     for (unsigned int i = 0u; i < num_vectors; i++)
@@ -757,7 +766,7 @@ int ca_kmeans(
 	    {
 	    const int token = vector[i++];
 	    if (token > 0) centroid[dim++] = (double)token;
-	    else for (unsigned int j = 0u; j < -token; j++) centroid[dim++] = 0.0;
+	    else for (unsigned int j = 0u; j < (unsigned)-token; j++) centroid[dim++] = 0.0;
 	    }
 	}
     

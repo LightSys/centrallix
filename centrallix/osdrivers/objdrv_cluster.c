@@ -2567,7 +2567,7 @@ static int ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 	    /** Iterate through each label and add the index of the specified cluster to the xArray. **/
 	    for (unsigned long long i = 0llu; i < source_data->nVectors; i++)
 		if (!check_neg(xaAddItem(&indexes_in_cluster[labels[i]], (void*)i))) goto err_free_sims;
-	    nmFree(labels, lables_size); /* Free unused data. */
+	    nmSysFree(labels); /* Free unused data. */
 	    
 	    /** Iterate through each cluster, store it, and free the xArray. **/
 	    for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
