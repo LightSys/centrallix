@@ -392,6 +392,7 @@ char* const ATTR_SEARCH_ENTRY[] =
 char* const METHOD_NAME[] =
     {
     "cache",
+    "stat",
     END_OF_ARRAY,
     };
 
@@ -549,7 +550,7 @@ typedef struct _SEARCH
     {
     char*             Name;
     char*             Key;
-    pClusterData      Source;
+    pClusterData      SourceCluster;
     double            Threshold;
     pDup*             Dups;
     unsigned int      nDups;
@@ -1376,8 +1377,8 @@ static pSearchData ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	pClusterData cluster_data = node_data->ClusterDatas[i];
 	if (strcmp(source_cluster_name, cluster_data->Name) == 0)
 	    {
-	    /** Source found. **/
-	    search_data->Source = cluster_data;
+	    /** SourceCluster found. **/
+	    search_data->SourceCluster = cluster_data;
 	    break;
 	    }
 	
@@ -1385,7 +1386,7 @@ static pSearchData ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	}
     
     /** Did we find the requested source? **/
-    if (search_data->Source == NULL)
+    if (search_data->SourceCluster == NULL)
 	{
 	/** Print error. **/
 	mssErrorf(1, "Cluster", "Could not find cluster \"%s\" for search \"%s\".", source_cluster_name, search_data->Name);
@@ -1479,7 +1480,7 @@ static pSearchData ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	}
     
     /** Create cache entry key. **/
-    char* source_key = search_data->Source->Key;
+    char* source_key = search_data->SourceCluster->Key;
     const size_t len = strlen(source_key) + strlen(search_data->Name) + 16lu;
     char* key = check_ptr(nmSysMalloc(len * sizeof(char)));
     if (key == NULL) goto err_free_search;
@@ -2645,7 +2646,7 @@ static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
     if (search_data->Dups != NULL) return 0;
     
     /** We need the cluster data to be computed before we search it. **/
-    pClusterData cluster_data = search_data->Source;
+    pClusterData cluster_data = search_data->SourceCluster;
     ret = ci_ComputeClusterData(cluster_data, node_data);
     if (ret != 0)
 	{
@@ -3525,7 +3526,7 @@ int clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val
 	    
 	    if (strcmp(attr_name, "source") == 0)
 		{
-		val->String = target->Source->Name;
+		val->String = target->SourceCluster->Name;
 		return 0;
 		}
 	    if (strcmp(attr_name, "similarity_measure") == 0)
