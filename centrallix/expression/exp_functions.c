@@ -139,7 +139,7 @@ typedef struct
 /*** An internal function used by the schema verifier (below) to verify each
  *** argument of the schema.
  ***/
-static int verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_expect)
+static int exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_expect)
     {
     /** The expectation struct cannot be NULL. **/
     if (arg_expect == NULL)
@@ -251,7 +251,7 @@ static int verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg
 		}
 	    break;
 	    }
-	    
+	
 	case DATA_T_DOUBLE:
 	    {
 	    double value = arg->Types.Double;
@@ -281,7 +281,7 @@ static int verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg
 		}
 	    break;
 	    }
-	    
+	
 	case DATA_T_STRING:
 	    {
 	    char* str = arg->String;
@@ -295,7 +295,7 @@ static int verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg
 		}
 	    break;
 	    }
-		
+	
 	case DATA_T_DATETIME:
 	    {
 	    pDateTime value = &arg->Types.Date;
@@ -317,15 +317,15 @@ static int verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg
 		}
 	    break;
 	    }
-	    
+	
 	case DATA_T_MONEY:
 	    {
 	    pMoneyType value = &arg->Types.Money;
 	    if (arg_expect->Flags & EXP_ARG_POSITIVE && value->WholePart < 0)
 		{
 		mssErrorf(1, "EXP",
-		    "%s(...): Expects positive money value but got $%d.%d.",
-		    fn_name, value->WholePart, value->FractionPart
+		    "%s(...): Expects positive money value but got $%d.%g.",
+		    fn_name, value->WholePart, (double)value->FractionPart / 100.0
 		);
 		return -1;
 		}
@@ -333,7 +333,7 @@ static int verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg
 		{
 		mssErrorf(1, "EXP",
 		    "%s(...): Expects negative money value but got $%d.%d.",
-		    fn_name, value->WholePart, value->FractionPart
+		    fn_name, value->WholePart, (double)value->FractionPart / 100.0
 		);
 		return -1;
 		}
@@ -390,7 +390,7 @@ static int verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg
  *** Example:
  *** ```c
  *** char fn_name[] = "example";
- *** if (verify_schema(fn_name,
+ *** if (exp_fn_i_verify_schema(fn_name,
  ***     (ArgExpect[]){
  ***         {(int[]){DATA_T_INTEGER, DATA_T_DOUBLE, -1}, EXP_PARAM_NOT_NULL},
  ***         {(int[]){DATA_T_STRING, -1}, 0}
@@ -403,7 +403,7 @@ static int verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg
  ***     }
  *** ```
  ***/
-static int verify_schema(
+static int exp_fn_i_verify_schema(
     const char* fn_name,
     const ArgExpect* arg_expects,
     const int num_args,
@@ -435,7 +435,7 @@ static int verify_schema(
     /** Verify argument datatypes. **/
     for (int i = 0; i < num_args; i++)
 	{
-	if (verify_arg(fn_name, tree->Children.Items[i], &arg_expects[i]) != 0)
+	if (exp_fn_i_verify_arg(fn_name, tree->Children.Items[i], &arg_expects[i]) != 0)
 	    {
 	    mssErrorf(0, "EXP", "%s(...): Error while reading arg #%d/%d.", fn_name, i + 1, num_args);
 	    return -1;
@@ -443,31 +443,6 @@ static int verify_schema(
 	}
     
     /** Pass. **/
-    return 0;
-    }
-
-int exp_fn_test(pExpression tree, pParamObjects obj_list)
-    {
-    char fn_name[] = "test";
-    if (verify_schema(fn_name,
-	(ArgExpect[]){
-	    {(int[]){DATA_T_INTEGER, DATA_T_DOUBLE, -1}, EXP_ARG_NOT_NULL | EXP_ARG_NON_NAN},
-	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NOT_NULL | EXP_ARG_NON_EMPTY}
-	}, 2,
-	tree, obj_list
-    ) != 0)
-	{
-	mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", fn_name);
-	return -1;
-	}
-    
-    pExpression arg1 = tree->Children.Items[0];
-    pExpression arg2 = tree->Children.Items[1];
-    if (arg1->DataType == DATA_T_INTEGER) printf("Success: %d, '%s'.\n", arg1->Integer, arg2->String);
-    else printf("Success: %g, '%s'.\n", arg1->Types.Double, arg2->String);
-    
-    tree->DataType = DATA_T_INTEGER;
-    tree->Flags |= EXPR_F_NULL;
     return 0;
     }
 
@@ -4530,7 +4505,7 @@ int exp_fn_metaphone(pExpression tree, pParamObjects obj_list)
     const char fn_name[] = "metaphone";
     
     /** Verify function schema. **/
-    if (verify_schema(fn_name,
+    if (exp_fn_i_verify_schema(fn_name,
 	(ArgExpect[]){{(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS}}, 1,
 	tree, obj_list
     ) != 0)
@@ -4586,7 +4561,7 @@ int exp_fn_metaphone(pExpression tree, pParamObjects obj_list)
 static int exp_fn_compare(pExpression tree, pParamObjects obj_list, const char* fn_name)
     {
     /** Verify function schema. **/
-    if (verify_schema(fn_name,
+    if (exp_fn_i_verify_schema(fn_name,
 	(ArgExpect[]){
 	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
 	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS}
@@ -4672,7 +4647,7 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects obj_list)
     const char fn_name[] = "levenshtein";
     
     /** Verify function schema. **/
-    if (verify_schema(fn_name,
+    if (exp_fn_i_verify_schema(fn_name,
 	(ArgExpect[]){
 	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
 	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS}
@@ -4858,7 +4833,6 @@ int exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
 	xhAdd(&EXP.Functions, "octet_length", (char*)exp_fn_octet_length);
 	xhAdd(&EXP.Functions, "argon2id",(char*)exp_fn_argon2id);
-	xhAdd(&EXP.Functions, "test", (char*)exp_fn_test);
 	
 	/** Dates. **/
 	xhAdd(&EXP.Functions, "getdate", (char*)exp_fn_getdate);
