@@ -4344,72 +4344,18 @@ int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
     return 0;
     }
 
-static int exp_fn_verify_schema(
-    const char* fn_name,
-    const int* param_types,
-    const int num_params,
-    pExpression tree,
-    pParamObjects obj_list)
-    {
-    /** Verify object list and session. **/
-    if (obj_list == NULL)
-	{
-	mssErrorf(1, "EXP", "%s(\?\?\?) no object list?", fn_name);
-	return -1;
-	}
-    ASSERTMAGIC(obj_list->Session, MGK_OBJSESSION);
-    
-    /** Verify expression tree. **/
-    ASSERTMAGIC(tree, MGK_EXPRESSION);
-    
-    /** Verify parameter number. **/
-    const int num_params_actual = tree->Children.nItems;
-    if (num_params != num_params_actual)
-	{
-	mssErrorf(1, "EXP",
-	    "%s(?) expects %u param%s, got %d param%s.",
-	    fn_name, num_params, (num_params > 1) ? "s" : "", num_params_actual, (num_params_actual > 1) ? "s" : ""
-	);
-	return -1;
-	}
-        
-    /** Verify parameter datatypes. **/
-    for (int i = 0; i < num_params; i++)
-	{
-	const pExpression arg = tree->Children.Items[i];
-	ASSERTMAGIC(arg, MGK_EXPRESSION);
-	
-	/** Skip null values. **/
-	if (arg->Flags & EXPR_F_NULL) continue;
-	
-	/** Extract datatypes. **/
-	const int expected_datatype = param_types[i];
-	const int actual_datatype = arg->DataType;
-	
-	/** Verify datatypes. **/
-	if (expected_datatype != actual_datatype)
-	    {
-	    mssErrorf(1, "EXP",
-		"%s(...) param #%d/%d expects type %s (%d) but got type %s (%d).",
-		fn_name, i + 1, num_params, ci_TypeToStr(expected_datatype), expected_datatype, ci_TypeToStr(actual_datatype), actual_datatype
-	    );
-	    return -1;
-	    }
-	}
-    
-    /** Pass. **/
-    return 0;
-    }
-
 
 int exp_fn_metaphone(pExpression tree, pParamObjects obj_list)
     {
     const char fn_name[] = "metaphone";
     
     /** Verify function schema. **/
-    if (exp_fn_verify_schema(fn_name, (int[]){ DATA_T_STRING }, 1, tree, obj_list) != 0)
+    if (verify_schema(fn_name,
+	(ArgExpect[]){{(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS}}, 1,
+	tree, obj_list
+    ) != 0)
 	{
-	mssErrorf(0, "EXP", "%s(?) Call does not match function schema.", fn_name);
+	mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", fn_name);
 	return -1;
 	}
     
@@ -4460,9 +4406,15 @@ int exp_fn_metaphone(pExpression tree, pParamObjects obj_list)
 static int exp_fn_compare(pExpression tree, pParamObjects obj_list, const char* fn_name)
     {
     /** Verify function schema. **/
-    if (exp_fn_verify_schema(fn_name, (int[]){ DATA_T_STRING, DATA_T_STRING }, 2, tree, obj_list) != 0)
+    if (verify_schema(fn_name,
+	(ArgExpect[]){
+	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
+	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS}
+	}, 2,
+	tree, obj_list
+    ) != 0)
 	{
-	mssErrorf(0, "EXP", "%s(?) Call does not match function schema.", fn_name);
+	mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", fn_name);
 	return -1;
 	}
     
@@ -4489,7 +4441,7 @@ static int exp_fn_compare(pExpression tree, pParamObjects obj_list, const char* 
 	if (v1 == NULL || v2 == NULL)
 	    {
 	    mssErrorf(1, "EXP",
-		"%s(\"%s\", \"%s\") - Failed to build vectors.",
+		"%s(\"%s\", \"%s\"): Failed to build vectors.",
 		fn_name, str1, str2
 	    );
 	    ret = -1;
@@ -4512,7 +4464,7 @@ static int exp_fn_compare(pExpression tree, pParamObjects obj_list, const char* 
 	double lev_sim = check_double(ca_lev_compare(str1, str2));
 	if (isnan(lev_sim))
 	    {
-	    mssErrorf(1, "EXP", "%s(\"%s\", \"%s\") Failed to compute levenstein edit distance.");
+	    mssErrorf(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute levenstein edit distance.");
 	    return -1;
 	    }
 	
@@ -4540,9 +4492,15 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects obj_list)
     const char fn_name[] = "levenshtein";
     
     /** Verify function schema. **/
-    if (exp_fn_verify_schema(fn_name, (int[]){ DATA_T_STRING, DATA_T_STRING }, 2, tree, obj_list) != 0)
+    if (verify_schema(fn_name,
+	(ArgExpect[]){
+	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
+	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS}
+	}, 2,
+	tree, obj_list
+    ) != 0)
 	{
-	mssErrorf(0, "EXP", "%s(?) Call does not match function schema.", fn_name);
+	mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", fn_name);
 	return -1;
 	}
     
@@ -4563,7 +4521,7 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects obj_list)
     int edit_dist = ca_edit_dist(str1, str2, 0lu, 0lu);
     if (!check_neg(edit_dist))
 	{
-	mssErrorf(1, "EXP", "%s(\"%s\", \"%s\") Failed to compute edit distance.\n", fn_name, str1, str2);
+	mssErrorf(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute edit distance.\n", fn_name, str1, str2);
 	return -1;
 	}
     
