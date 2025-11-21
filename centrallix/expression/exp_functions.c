@@ -110,6 +110,13 @@ static char* ci_TypeToStr(const int type)
  *** Valid Flags:
  *** 	- `EXP_ARG_NOT_NULL`: Expect the arg to not be null.
  *** 	- `EXP_ARG_FORCE_TYPE`: Run type check on null args (not recommended).
+ ***    - `EXP_ARG_NON_EMPTY`: Expect string to be non-empty. Expect a
+ ***       stringvec or intvec to have elements (does not check them).
+ ***    - `EXP_ARG_POSITIVE`: Expect a positive or zero value for int, double,
+ ***       money, or datetime. (Includes NON_NAN: NAN is not positive).
+ ***    - `EXP_ARG_NEGATIVE`: Expect a negative or zero value for int, double,
+ ***       money, or datetime. (Includes NON_NAN: NAN is not negative).
+ *** 	- `EXP_ARG_NON_NAN`: Expect a double to be a number, not NAN.
  *** 
  *** @attention - Checks like `EXP_ARG_NON_EMPTY`, `EXP_ARG_NON_NAN`, etc. also
  *** 	succeed for `NULL` values. To avoid this, specify `EXP_ARG_NOT_NULL`.
@@ -124,6 +131,10 @@ typedef struct
 #define EXP_ARG_NO_FLAGS   (0)
 #define EXP_ARG_NOT_NULL   (1 << 0)
 #define EXP_ARG_FORCE_TYPE (1 << 1)
+#define EXP_ARG_NON_EMPTY  (1 << 2)
+#define EXP_ARG_NEGATIVE   (1 << 3)
+#define EXP_ARG_POSITIVE   (1 << 4)
+#define EXP_ARG_NON_NAN    (1 << 5)
 
 /*** An internal function used by the schema verifier (below) to verify each
  *** argument of the schema.
@@ -213,6 +224,150 @@ static int verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg
 	}
     
     skip_type_checks:
+    /** All flag checks not implemented above should pass on NULL values. **/
+    if (arg->Flags & EXPR_F_NULL) return 0;
+    
+    /** Verify other Flags by type, if specified. **/
+    switch (actual_datatype)
+	{
+	case DATA_T_INTEGER:
+	    {
+	    int value = arg->Integer;
+	    if (arg_expect->Flags & EXP_ARG_POSITIVE && value < 0)
+		{
+		mssErrorf(1, "EXP",
+		    "%s(...): Expects positive int but got %d.",
+		    fn_name, value
+		);
+		return -1;
+		}
+	    if (arg_expect->Flags & EXP_ARG_NEGATIVE && value > 0)
+		{
+		mssErrorf(1, "EXP",
+		    "%s(...): Expects negative int but got %d.",
+		    fn_name, value
+		);
+		return -1;
+		}
+	    break;
+	    }
+	    
+	case DATA_T_DOUBLE:
+	    {
+	    double value = arg->Types.Double;
+	    if (arg_expect->Flags & EXP_ARG_NON_NAN && isnan(value))
+		{
+		mssErrorf(1, "EXP",
+		    "%s(...): Expects non-nan double but got %g.",
+		    fn_name, value
+		);
+		return -1;
+		}
+	    if (arg_expect->Flags & EXP_ARG_POSITIVE && value < 0)
+		{
+		mssErrorf(1, "EXP",
+		    "%s(...): Expects positive double but got %g.",
+		    fn_name, value
+		);
+		return -1;
+		}
+	    if (arg_expect->Flags & EXP_ARG_NEGATIVE && value > 0)
+		{
+		mssErrorf(1, "EXP",
+		    "%s(...): Expects negative double but got %g.",
+		    fn_name, value
+		);
+		return -1;
+		}
+	    break;
+	    }
+	    
+	case DATA_T_STRING:
+	    {
+	    char* str = arg->String;
+	    if (arg_expect->Flags & EXP_ARG_NON_EMPTY && str[0] == '\0')
+		{
+		mssErrorf(1, "EXP",
+		    "%s(...): Expects string to contain characters, but got \"\".",
+		    fn_name
+		);
+		return -1;
+		}
+	    break;
+	    }
+		
+	case DATA_T_DATETIME:
+	    {
+	    pDateTime value = &arg->Types.Date;
+	    if (arg_expect->Flags & EXP_ARG_POSITIVE && value->Value < 0)
+		{
+		mssErrorf(1, "EXP",
+		    "%s(...): Expects positive date offset but got %llu.",
+		    fn_name, value->Value
+		);
+		return -1;
+		}
+	    if (arg_expect->Flags & EXP_ARG_NEGATIVE && value->Value > 0)
+		{
+		mssErrorf(1, "EXP",
+		    "%s(...): Expects negative date offset but got %llu.",
+		    fn_name, value->Value
+		);
+		return -1;
+		}
+	    break;
+	    }
+	    
+	case DATA_T_MONEY:
+	    {
+	    pMoneyType value = &arg->Types.Money;
+	    if (arg_expect->Flags & EXP_ARG_POSITIVE && value->WholePart < 0)
+		{
+		mssErrorf(1, "EXP",
+		    "%s(...): Expects positive money value but got $%d.%d.",
+		    fn_name, value->WholePart, value->FractionPart
+		);
+		return -1;
+		}
+	    if (arg_expect->Flags & EXP_ARG_NEGATIVE && value->WholePart > 0)
+		{
+		mssErrorf(1, "EXP",
+		    "%s(...): Expects negative money value but got $%d.%d.",
+		    fn_name, value->WholePart, value->FractionPart
+		);
+		return -1;
+		}
+	    }
+	
+	case DATA_T_STRINGVEC:
+	    {
+	    pStringVec str_vec = &arg->Types.StrVec;
+	    if (arg_expect->Flags & EXP_ARG_NON_EMPTY && str_vec->nStrings == 0)
+		{
+		mssErrorf(1, "EXP",
+		    "%s(...): Expects StringVec to contain strings, but got [].",
+		    fn_name
+		);
+		return -1;
+		}
+	    break;
+	    }
+	
+	case DATA_T_INTVEC:
+	    {
+	    pIntVec int_vec = &arg->Types.IntVec;
+	    if (arg_expect->Flags & EXP_ARG_NON_EMPTY && int_vec->nIntegers == 0)
+		{
+		mssErrorf(1, "EXP",
+		    "%s(...): Expects IntVec to contain strings, but got [].",
+		    fn_name
+		);
+		return -1;
+		}
+	    break;
+	    }
+	}
+    
     return 0;
     }
 
@@ -288,6 +443,31 @@ static int verify_schema(
 	}
     
     /** Pass. **/
+    return 0;
+    }
+
+int exp_fn_test(pExpression tree, pParamObjects obj_list)
+    {
+    char fn_name[] = "test";
+    if (verify_schema(fn_name,
+	(ArgExpect[]){
+	    {(int[]){DATA_T_INTEGER, DATA_T_DOUBLE, -1}, EXP_ARG_NOT_NULL | EXP_ARG_NON_NAN},
+	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NOT_NULL | EXP_ARG_NON_EMPTY}
+	}, 2,
+	tree, obj_list
+    ) != 0)
+	{
+	mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", fn_name);
+	return -1;
+	}
+    
+    pExpression arg1 = tree->Children.Items[0];
+    pExpression arg2 = tree->Children.Items[1];
+    if (arg1->DataType == DATA_T_INTEGER) printf("Success: %d, '%s'.\n", arg1->Integer, arg2->String);
+    else printf("Success: %g, '%s'.\n", arg1->Types.Double, arg2->String);
+    
+    tree->DataType = DATA_T_INTEGER;
+    tree->Flags |= EXPR_F_NULL;
     return 0;
     }
 
@@ -4678,6 +4858,7 @@ int exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
 	xhAdd(&EXP.Functions, "octet_length", (char*)exp_fn_octet_length);
 	xhAdd(&EXP.Functions, "argon2id",(char*)exp_fn_argon2id);
+	xhAdd(&EXP.Functions, "test", (char*)exp_fn_test);
 	
 	/** Dates. **/
 	xhAdd(&EXP.Functions, "getdate", (char*)exp_fn_getdate);
