@@ -99,6 +99,199 @@ static char* ci_TypeToStr(const int type)
     return "Invalid"; /* Shall not parse to a valid type in ci_TypeFromStr(). */
     }
 
+/*** Specifies expectations about an argument.
+ *** 
+ *** @param Datatypes An array of datatypes (terminated with a -1). Set to NULL
+ *** 	to accept any datatype as valid for this argument.
+ *** @param Flags Flags to require other properties about an argument. If the
+ *** 	flag a required behavior for specific types, the requirement will be
+ *** 	skipped for other types.
+ *** 
+ *** Valid Flags:
+ *** 	- `EXP_ARG_NOT_NULL`: Expect the arg to not be null.
+ *** 	- `EXP_ARG_FORCE_TYPE`: Run type check on null args (not recommended).
+ *** 
+ *** @attention - Checks like `EXP_ARG_NON_EMPTY`, `EXP_ARG_NON_NAN`, etc. also
+ *** 	succeed for `NULL` values. To avoid this, specify `EXP_ARG_NOT_NULL`.
+ ***/
+typedef struct
+    {
+    int* Datatypes;
+    int Flags;
+    }
+    ArgExpect, *pArgExpect;
+
+#define EXP_ARG_NO_FLAGS   (0)
+#define EXP_ARG_NOT_NULL   (1 << 0)
+#define EXP_ARG_FORCE_TYPE (1 << 1)
+
+/*** An internal function used by the schema verifier (below) to verify each
+ *** argument of the schema.
+ ***/
+static int verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_expect)
+    {
+    /** The expectation struct cannot be NULL. **/
+    if (arg_expect == NULL)
+	{
+	mssErrorf(1, "EXP",
+	    "%s(...): Expectation struct cannot be NULL",
+	    fn_name
+	);
+	return -1;
+	}
+    
+    /** Extract values. **/
+    ASSERTMAGIC(arg, MGK_EXPRESSION);
+    int actual_datatype = arg->DataType;
+    
+    /** Check for a provided NULL value. **/
+    if (arg->Flags & EXPR_F_NULL)
+	{
+	if (arg_expect->Flags & EXP_ARG_NOT_NULL)
+	    {
+	    mssErrorf(1, "EXP",
+		"%s(...): Expects a non-null value, but got NULL : %s (%d).",
+		fn_name, ci_TypeToStr(actual_datatype), actual_datatype
+	    );
+	    return -1;
+	    }
+	
+	/** Skip type checks unless forced. **/
+	if (!(arg_expect->Flags & EXP_ARG_FORCE_TYPE)) goto skip_type_checks;
+	}
+    
+    /** No type checking required. **/
+    if (arg_expect->Datatypes == NULL) goto skip_type_checks;
+    
+    /** No types given: Probably a mistake. **/
+    if (arg_expect->Datatypes[0] == -1)
+	{
+	mssErrorf(1, "EXP",
+	    "%s(...): Array of allowed Datatypes is empty.",
+	    fn_name
+	);
+	return -1;
+	}
+    
+    /** Verify Datatypes. **/
+    bool found = false;
+    for (int j = 0; arg_expect->Datatypes[j] != -1; j++)
+	{
+	const int expected_datatype = arg_expect->Datatypes[j];
+	if (expected_datatype == actual_datatype)
+	    {
+	    found = true;
+	    break;
+	    }
+	}
+    
+    /** Handle failure. **/
+    if (!found)
+	{
+	/** Accumulate additional valid types. **/
+	char buf[256] = {'\0'};
+	int cur = 0, j = 1;
+	while (true)
+	    {
+	    int datatype = arg_expect->Datatypes[j++];
+	    if (datatype == -1) break;
+	    
+	    cur += snprintf(
+		buf + cur, 256 - cur,
+		" or %s (%d)",
+		ci_TypeToStr(datatype), datatype
+	    );
+	    }
+	
+	/** Print error. **/
+	int first_datatype = arg_expect->Datatypes[0];
+	mssErrorf(1, "EXP",
+	    "%s(...): Expects type %s (%d)%s but got type %s (%d).",
+	    fn_name, ci_TypeToStr(first_datatype), first_datatype, buf, ci_TypeToStr(actual_datatype), actual_datatype
+	);
+	return -1;
+	}
+    
+    skip_type_checks:
+    return 0;
+    }
+
+/*** Verify that arguments passed to a function match some expected values.
+ *** 
+ *** @param fn_name The name of the function (for error messages).
+ *** @param arg_expects A pointer to an array of ArgExpect structs, each
+ *** 	representing expectations for a single argument, in the order they
+ *** 	are passed to the function.
+ *** @param num_args The number of arguments to expect to be passed to the
+ *** 	function (and the length of arg_expects).
+ *** @param tree The tree containing the actual arguments passed.
+ *** @param obj_list The object list scope which was passed to the function.
+ *** @returns 0 if all arguments are successfully verified, or
+ ***         -1 if an error occurs or arguments are incorrect.
+ *** 
+ *** @attention - Promises that an error message will be printed with a call
+ *** 	to mssError() if an error occurs.
+ *** 
+ *** Example:
+ *** ```c
+ *** char fn_name[] = "example";
+ *** if (verify_schema(fn_name,
+ ***     (ArgExpect[]){
+ ***         {(int[]){DATA_T_INTEGER, DATA_T_DOUBLE, -1}, EXP_PARAM_NOT_NULL},
+ ***         {(int[]){DATA_T_STRING, -1}, 0}
+ ***     }, 2,
+ ***     tree, obj_list
+ *** ) != 0)
+ ***     {
+ ***     mssErrorf(0, "EXP", "%s(?) Call does not match function schema.", fn_name);
+ ***     return -1;
+ ***     }
+ *** ```
+ ***/
+static int verify_schema(
+    const char* fn_name,
+    const ArgExpect* arg_expects,
+    const int num_args,
+    pExpression tree,
+    pParamObjects obj_list)
+    {
+    /** Verify object list and session. **/
+    if (obj_list == NULL)
+	{
+	mssErrorf(1, "EXP", "%s(\?\?\?): No object list?", fn_name);
+	return -1;
+	}
+    ASSERTMAGIC(obj_list->Session, MGK_OBJSESSION);
+    
+    /** Verify expression tree. **/
+    ASSERTMAGIC(tree, MGK_EXPRESSION);
+    
+    /** Verify argument count. **/
+    const int num_args_actual = tree->Children.nItems;
+    if (num_args != num_args_actual)
+	{
+	mssErrorf(1, "EXP",
+	    "%s(?): Expects %u argument%s, got %d argument%s.",
+	    fn_name, num_args, (num_args == 1) ? "" : "s", num_args_actual, (num_args_actual == 1) ? "" : "s"
+	);
+	return -1;
+	}
+    
+    /** Verify argument datatypes. **/
+    for (int i = 0; i < num_args; i++)
+	{
+	if (verify_arg(fn_name, tree->Children.Items[i], &arg_expects[i]) != 0)
+	    {
+	    mssErrorf(0, "EXP", "%s(...): Error while reading arg #%d/%d.", fn_name, i + 1, num_args);
+	    return -1;
+	    }
+	}
+    
+    /** Pass. **/
+    return 0;
+    }
+
+
 /****** Evaluator functions follow for expEvalFunction ******/
 
 int exp_fn_getdate(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
