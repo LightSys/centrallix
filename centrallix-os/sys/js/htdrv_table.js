@@ -12,6 +12,17 @@
 
 window.tbld_touches = [];
 
+function tbld_log_status()
+    {
+    var rowstr = '';
+    for(var i in this.rows)
+	{
+	if (!isNaN(parseInt(i)))
+	    rowstr += ('' + i + ' (' + this.rows[i].rownum + '), ');
+	}
+    console.log('TABLE ' + this.__WgtrName + ': first ' + this.rows.first + ', last ' + this.rows.last + ', lastosrc ' + this.rows.lastosrc + ', firstvis ' + this.rows.firstvis + ', lastvis ' + this.rows.lastvis + ', rows [' + rowstr + ']');
+    }
+
 // tbld_format_cell (FormatCell) - This function formats one cell in one row of the
 // table, based on the source data and style configuration.
 //
@@ -1195,7 +1206,11 @@ function tbld_scroll(y, animate)
     if (scroll_start <= (0-y) && (scroll_end - this.vis_height >= (0-y) || this.rows.lastosrc == this.rows.last))
 	{
 	this.scroll_y = y;
-	$(this.scrolldiv).stop(false, false);
+	if ($(this.scrolldiv).queue().length)
+	    {
+	    $(this.scrolldiv).stop(false, false);
+	    animate = 'linear'; // FIXME some kind of half-swing would be appropriate here.
+	    }
 	if (animate)
 	    $(this.scrolldiv).animate({"top": y+"px"}, 250, animate, null);
 	else
@@ -2030,6 +2045,7 @@ function tbld_init(param)
     t.UpdateGeom = tbld_update_geom;
     t.ReflowWidth = tbld_reflow_width;
     t.ShowSelection = tbld_show_selection;
+    t.LogStatus = tbld_log_status;
 
     // ObjectSource integration
     t.IsDiscardReady = new Function('return true;');
@@ -2432,7 +2448,15 @@ function tbld_wheel(e)
 	    e.pageY >= $(ly).offset().top &&
 	    e.pageY < $(ly).offset().top + ly.param_height)
 	    {
-	    var amt_to_move = e.Dom2Event.deltaY * 16;
+	    if (e.Dom2Event.deltaMode == 0)
+		var multiplier = 1;
+	    else if (e.Dom2Event.deltaMode == 1)
+		var multiplier = (ly.has_header)?(ly.rows[0].height()):16;
+	    else if (e.Dom2Event.deltaMode == 2)
+		var multiplier = ly.vis_height;
+	    else
+		var multiplier = 1;
+	    var amt_to_move = e.Dom2Event.deltaY * multiplier;
 	    ly.Scroll(ly.scroll_y - amt_to_move, true);
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
