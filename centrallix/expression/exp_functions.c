@@ -3691,194 +3691,75 @@ int exp_fn_from_base64(pExpression tree, pParamObjects objlist, pExpression i0, 
 	return -1;
     }
 
-
-int exp_fn_log10(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+static int exp_fn_i_do_math(pExpression tree, pParamObjects obj_list, const char* fn_name, double (*math)(), int arg_num)
     {
-    double n;
-
-	if (!i0)
-	    {
-	    mssError(1, "EXP", "log10() requires a number as its first parameter");
-	    goto error;
-	    }
-	if (i0->Flags & EXPR_F_NULL)
-	    {
-	    tree->DataType = DATA_T_DOUBLE;
-	    tree->Flags |= EXPR_F_NULL;
-	    return 0;
-	    }
-	switch(i0->DataType)
-	    {
-	    case DATA_T_INTEGER:
-		n = i0->Integer;
-		break;
-	    case DATA_T_DOUBLE:
-		n = i0->Types.Double;
-		break;
-	    case DATA_T_MONEY:
-		n = objDataToDouble(DATA_T_MONEY, &(i0->Types.Money));
-		break;
-	    default:
-		mssError(1, "EXP", "log10() requires a number as its first parameter");
-		goto error;
-	    }
-	if (n < 0)
-	    {
-	    mssError(1, "EXP", "log10(): cannot compute the logarithm of a negative number");
-	    goto error;
-	    }
-	tree->DataType = DATA_T_DOUBLE;
-	tree->Types.Double = log10(n);
-	return 0;
-
-    error:
+    /** Verify function schema: expect arg_num numeric values. **/
+    ArgExpect expects[arg_num];
+    for (int i = 0; i < arg_num; i++)
+	expects[i] = (ArgExpect){(int[]){DATA_T_INTEGER, DATA_T_DOUBLE, DATA_T_MONEY, -1}, EXP_ARG_NO_FLAGS};
+    if (exp_fn_i_verify_schema(fn_name, expects, arg_num, tree, obj_list) != 0)
+	{
+	mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", fn_name);
 	return -1;
-    }
-
-
-int exp_fn_log_natural(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
-    {
-    double n;
-
-	if (!i0)
-	    {
-	    mssError(1, "EXP", "ln() requires a number as its first parameter");
-	    goto error;
-	    }
-	if (i0->Flags & EXPR_F_NULL)
-	    {
-	    tree->DataType = DATA_T_DOUBLE;
-	    tree->Flags |= EXPR_F_NULL;
-	    return 0;
-	    }
-	switch(i0->DataType)
-	    {
-	    case DATA_T_INTEGER:
-		n = i0->Integer;
-		break;
-	    case DATA_T_DOUBLE:
-		n = i0->Types.Double;
-		break;
-	    case DATA_T_MONEY:
-		n = objDataToDouble(DATA_T_MONEY, &(i0->Types.Money));
-		break;
-	    default:
-		mssError(1, "EXP", "ln() requires a number as its first parameter");
-		goto error;
-	    }
-	if (n < 0)
-	    {
-	    mssError(1, "EXP", "ln(): cannot compute the logarithm of a negative number");
-	    goto error;
-	    }
-	tree->DataType = DATA_T_DOUBLE;
-	tree->Types.Double = log(n);
-	return 0;
-
-    error:
-	return -1;
-    }
-
-
-int exp_fn_log_base_n(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
-    {
-    double n, p;
-
-	if (!i0 || !i1)
-	    {
-	    mssError(1, "EXP", "logn() requires numbers as its first and second parameters");
-	    goto error;
-	    }
-	if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
-	    {
-	    tree->DataType = DATA_T_DOUBLE;
-	    tree->Flags |= EXPR_F_NULL;
-	    return 0;
-	    }
-	switch(i0->DataType)
-	    {
-	    case DATA_T_INTEGER:
-		n = i0->Integer;
-		break;
-	    case DATA_T_DOUBLE:
-		n = i0->Types.Double;
-		break;
-	    case DATA_T_MONEY:
-		n = objDataToDouble(DATA_T_MONEY, &(i0->Types.Money));
-		break;
-	    default:
-		mssError(1, "EXP", "logn() requires a number as its first parameter");
-		goto error;
-	    }
-	switch(i1->DataType)
-	    {
-	    case DATA_T_INTEGER:
-		p = i1->Integer;
-		break;
-	    case DATA_T_DOUBLE:
-		p = i1->Types.Double;
-		break;
-	    default:
-		mssError(1, "EXP", "logn() requires an integer or double as its second parameter");
-		goto error;
-	    }
-	tree->DataType = DATA_T_DOUBLE;
-	tree->Types.Double = log(n) / log(p);
-	return 0;
+	}
     
-    error:
-	return -1;
-    }
-
-
-int exp_fn_power(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
-    {
-    double n, p;
-
-	if (!i0 || !i1)
-	    {
-	    mssError(1, "EXP", "power() requires numbers as its first and second parameters");
-	    goto error;
-	    }
-	if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+    /** Null checks. **/
+    for (int i = 0; i < arg_num; i++)
+	{
+	pExpression arg = tree->Children.Items[i];
+	if (arg->Flags & EXPR_F_NULL)
 	    {
 	    tree->DataType = DATA_T_DOUBLE;
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
 	    }
-	switch(i0->DataType)
-	    {
-	    case DATA_T_INTEGER:
-		n = i0->Integer;
-		break;
-	    case DATA_T_DOUBLE:
-		n = i0->Types.Double;
-		break;
-	    case DATA_T_MONEY:
-		n = objDataToDouble(DATA_T_MONEY, &(i0->Types.Money));
-		break;
-	    default:
-		mssError(1, "EXP", "power() requires a number as its first parameter");
-		goto error;
-	    }
-	switch(i1->DataType)
-	    {
-	    case DATA_T_INTEGER:
-		p = i1->Integer;
-		break;
-	    case DATA_T_DOUBLE:
-		p = i1->Types.Double;
-		break;
-	    default:
-		mssError(1, "EXP", "power() requires an integer or double as its second parameter");
-		goto error;
-	    }
-	tree->DataType = DATA_T_DOUBLE;
-	tree->Types.Double = pow(n, p);
-	return 0;
-    
-    error:
+	}
+
+    /** Maximum supported args. **/
+    if (arg_num > 4)
+	{
+	mssErrorf(1, "EXP", "%s(...): exp_fn_i_do_math() does not support functions with more than 4 arguments. If this is an issue, please increase the number of arguments here: %s:%d", fn_name, __FILE__, __LINE__);
 	return -1;
+        }
+    
+    /** Get the numbers for the args. **/
+    double n[4];
+    for (int i = 0; i < arg_num; i++)
+	{
+	if (!check(exp_fn_i_get_number(tree->Children.Items[i], &(n[i]))))
+	    {
+	    mssErrorf(0, "EXP", "%s(...): Failed to get arg%d.", fn_name, i);
+	    return -1;
+	    }
+	}
+    
+    tree->DataType = DATA_T_DOUBLE;
+    tree->Types.Double = math(n[0], n[1], n[2], n[3]); /* Call function with max supported args. */
+    return 0;
+    }
+
+int exp_fn_log_natural(pExpression tree, pParamObjects obj_list)
+    {
+    return exp_fn_i_do_math(tree, obj_list, "ln", log, 1);
+    }
+int exp_fn_log10(pExpression tree, pParamObjects obj_list)
+    {
+    return exp_fn_i_do_math(tree, obj_list, "log10", log10, 1);
+    }
+
+/** This is why we need lambdas in C. **/
+double exp_fn_i_log_base_n(double x, double base)
+    {
+    return log(x) / log(base);
+    }
+
+int exp_fn_log_base_n(pExpression tree, pParamObjects obj_list)
+    {
+    return exp_fn_i_do_math(tree, obj_list, "logn", exp_fn_i_log_base_n, 2);
+    }
+int exp_fn_power(pExpression tree, pParamObjects obj_list)
+    {
+    return exp_fn_i_do_math(tree, obj_list, "power", pow, 2);
     }
 
 
