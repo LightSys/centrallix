@@ -446,6 +446,47 @@ static int exp_fn_i_verify_schema(
     return 0;
     }
 
+/*** Extract a number from a numeric expression.
+ *** 
+ *** @param numeric_expr The numeric expression to be extracted.
+ *** @param result_ptr A pointer to a double where the result is stored.
+ *** @returns 0 on success,
+ ***         -1 on failure,
+ ***          1 if the expression is NULL.
+ ***/
+static int exp_fn_i_get_number(pExpression numeric_expr, double* result_ptr)
+    {
+    /** Check for null values. **/
+    if (numeric_expr == NULL || numeric_expr->Flags & EXPR_F_NULL) return 1;
+    
+    /** Check for null destination. **/
+    if (result_ptr == NULL)
+	{
+	mssError(1, "EXP", "Null location provided to store numeric result.");
+	return -1;
+	}
+    
+    /** Get the numeric value. **/
+    double n;
+    switch(numeric_expr->DataType)
+	{
+	case DATA_T_INTEGER: n = numeric_expr->Integer; break;
+	case DATA_T_DOUBLE:  n = numeric_expr->Types.Double; break;
+	case DATA_T_MONEY:   n = objDataToDouble(DATA_T_MONEY, &(numeric_expr->Types.Money)); break;
+	default:
+	    mssError(1, "EXP",
+		"%s (%d) is not a numeric type.",
+		ci_TypeToStr(numeric_expr->DataType), numeric_expr->DataType
+	    );
+	    return -1;
+	}
+    
+    /** Store the result. **/
+    *result_ptr = n;
+    
+    return 0;
+    }
+
 
 /****** Evaluator functions follow for expEvalFunction ******/
 
