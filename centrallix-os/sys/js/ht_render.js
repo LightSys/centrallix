@@ -1514,5 +1514,28 @@ function htr_captureevents(elist)
 	}
     }
 
+/** Remove cx_geom on load, forcing the server to use the latest geometry when users reload. **/
+document.addEventListener('DOMContentLoaded', () =>
+    {
+    const { hash, pathname, searchParams: params } = new URL(window.location.href);
+
+    /*** The function will clobber #s in URLs, so we display a warning for
+     *** future developers, should they attempt to use this functionality.
+     ***/
+    if (hash)
+	console.warn(
+	    `cx__geom remover: #${hash} is not supported in URLs.` +
+	    "Please find and update this code if you intend to use #s."
+	);
+
+    /** Remove 'cx__geom'. **/
+    if (params.get('cx__geom') !== 'design')
+	params.delete('cx__geom');
+
+    /** Update the URL without reloading the page. **/
+    const new_url = pathname + '?' + params.toString();
+    window.history.replaceState({}, '', new_url);
+    }, { once: true, passive: true });
+
 // Load indication
 if (window.pg_scripts) pg_scripts['ht_render.js'] = true;
