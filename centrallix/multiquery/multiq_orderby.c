@@ -94,7 +94,7 @@ int
 mqobAnalyzeBeforeGroup(pQueryStatement stmt)
     {
     pQueryStructure qs, item;
-    pQueryElement qe, search_qe;
+    pQueryElement qe = NULL, search_qe;
     int i,j,k;
     int src_idx;
     unsigned int mask;
@@ -173,9 +173,14 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 				    }
 				}
 			    }
-			if ((n_sources > 1 || non_primary || non_simple || n_sources_total > 1) && n_orderby < 24)
+			if (n_sources > 1 || non_primary || non_simple || n_sources_total > 1)
 			    {
 			    /** Grab this one **/
+			    if (n_orderby >= MQ_MAX_ORDERBY)
+				{
+				mssError(1, "MQOB", "Too many ORDER BY expressions (max %d)", MQ_MAX_ORDERBY);
+				goto error;
+				}
 			    qe->OrderBy[n_orderby++] = exp_internal_CopyTree(item->Expr);
 			    }
 			}
@@ -198,9 +203,15 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 	else
 	    {
 	    mq_internal_FreeQE(qe);
+	    qe = NULL;
 	    }
 
-    return 0;
+	return 0;
+
+    error:
+	if (qe)
+	    mq_internal_FreeQE(qe);
+	return -1;
     }
 
 
@@ -211,25 +222,53 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 int
 mqobAnalyzeAfterGroup(pQueryStatement stmt)
     {
-    pQueryStructure qs, item;
-    pQueryElement qe, child;
+    pQueryStructure order_qs, group_qs, order_item, group_item;
+    pQueryElement qe = NULL, child;
     int i, n_orderby = 0;
+    int sep_groupby = 0;
 
 	/** Allocate a new query-element **/
 	qe = mq_internal_AllocQE();
 	qe->Driver = MQOBINF.AfterGroupDriver;
 
 	/** Look for an ORDER BY clause **/
-	if ((qs = mq_internal_FindItem(stmt->QTree, MQ_T_ORDERBYCLAUSE, NULL)) != NULL)
+	if ((order_qs = mq_internal_FindItem(stmt->QTree, MQ_T_ORDERBYCLAUSE, NULL)) != NULL)
 	    {
-	    /** Look for ORDER BY items with an Aggregate Level of 1 **/
-	    for(i=0;i<qs->Children.nItems;i++)
+	    /** Do we have group and order clauses, and they're different? **/
+	    if ((group_qs = mq_internal_FindItem(stmt->QTree, MQ_T_GROUPBYCLAUSE, NULL)) != NULL)
 		{
-		item = (pQueryStructure)(qs->Children.Items[i]);
-		if (item->Expr && item->Expr->AggLevel == 1 && n_orderby < 24)
+		if (order_qs->Children.nItems != group_qs->Children.nItems)
+		    {
+		    sep_groupby = 1;
+		    }
+		else
+		    {
+		    for(i=0; i<order_qs->Children.nItems; i++)
+			{
+			order_item = (pQueryStructure)(order_qs->Children.Items[i]);
+			group_item = (pQueryStructure)(group_qs->Children.Items[i]);
+			if (!expCompareExpressions(order_item->Expr, group_item->Expr))
+			    {
+			    sep_groupby = 1;
+			    break;
+			    }
+			}
+		    }
+		}
+	
+	    /** Look for ORDER BY items with an Aggregate Level of 1 **/
+	    for(i=0;i<order_qs->Children.nItems;i++)
+		{
+		order_item = (pQueryStructure)(order_qs->Children.Items[i]);
+		if (sep_groupby || (order_item->Expr && order_item->Expr->AggLevel == 1))
 		    {
 		    /** Found one.  Squirrel it away in our order-by list. **/
-		    qe->OrderBy[n_orderby++] = exp_internal_CopyTree(item->Expr);
+		    if (n_orderby >= MQ_MAX_ORDERBY)
+			{
+			mssError(1, "MQOB", "Too many ORDER BY expressions (max %d)", MQ_MAX_ORDERBY);
+			goto error;
+			}
+		    qe->OrderBy[n_orderby++] = exp_internal_CopyTree(order_item->Expr);
 		    }
 		}
 	    }
@@ -261,9 +300,15 @@ mqobAnalyzeAfterGroup(pQueryStatement stmt)
 	else
 	    {
 	    mq_internal_FreeQE(qe);
+	    qe = NULL;
 	    }
 
-    return 0;
+	return 0;
+
+    error:
+	if (qe)
+	    mq_internal_FreeQE(qe);
+	return -1;
     }
 
 
