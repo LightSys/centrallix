@@ -90,26 +90,6 @@ unsigned int strtoui(const char *nptr, char **endptr, int base){
     return (unsigned int)tmp;
 }
 
-/*** Detects the optimal number of threads to use on this system.
- *** Note: Multithreading is not currently supported, so this function
- ***       will always return 1, for now.
- *** 
- *** @returns The number of threads that should be used on this system.
- ***/
-int util_detect_num_threads(void)
-    {
-    /** Centrallix does not support multithreading. **/
-    return 1;
-    
-    long num_procs = sysconf(_SC_NPROCESSORS_ONLN);
-    if (num_procs < 1 || INT_MAX < num_procs)
-	{
-	fprintf(stderr, "Warning: Detected strange number of processors (assuming 1): %ld\n", num_procs);
-	return 1;
-	}
-    else return (int)num_procs;
-    }
-
 /*** snprint_bytes() allows one to pick between CS units, where the kibibyte
  *** (KiB) is 1024 bytes, and metric units where the kilobyte (KB) is 1000 bytes.
  *** Fun Fact: Windows uses kibibytes, but displays them as KB.

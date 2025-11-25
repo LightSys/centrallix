@@ -25,7 +25,7 @@
 /* A copy of the GNU General Public License has been included in this   */
 /* distribution in the file "COPYING".                                  */
 /*                                                                      */
-/* Module:      lib_cluster.h                                           */
+/* Module:      lib_cluster.c, lib_cluster.h                            */
 /* Author:      Israel Fuller                                           */
 /* Creation:    September 29, 2025                                      */
 /* Description: Clustering library used to cluster and search data with */
