@@ -169,6 +169,13 @@ xsConcatenate(pXString this, char* text, int len)
 
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
+	
+	/** Guard invalid length. **/
+	if (len < -1)
+	    {
+	    CXSEC_EXIT(XS_FN_KEY);
+	    return -1;
+	    }
 
     	/** Determine length. **/
 	if (len == -1) len = strlen(text);
@@ -605,6 +612,14 @@ xsFind(pXString this,char* find,int findlen, int offset)
     CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
+    
+    /** Guard against undefined behavior. **/
+    if (find == NULL)
+	{
+	CXSEC_EXIT(XS_FN_KEY);
+	return -1;
+	}
+    
     if(findlen==-1) findlen=strlen(find);
     for(;offset<this->Length;offset++)
 	{
@@ -636,6 +651,14 @@ xsFindRev(pXString this,char* find,int findlen, int offset)
     CXSEC_ENTRY(XS_FN_KEY);
     ASSERTMAGIC(this, MGK_XSTRING);
     CXSEC_VERIFY(*this);
+    
+    /** Guard against undefined behavior. **/
+    if (find == NULL)
+	{
+	CXSEC_EXIT(XS_FN_KEY);
+	return -1;
+	}
+    
     if(findlen==-1) findlen=strlen(find);
     offset=this->Length-offset-1;
     for(;offset>=0;offset--)
@@ -970,4 +993,3 @@ xsConcatQPrintf(pXString this, char* fmt, ...)
     CXSEC_EXIT(XS_FN_KEY);
     return rval;
     }
-

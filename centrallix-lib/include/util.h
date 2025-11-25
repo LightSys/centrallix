@@ -30,6 +30,12 @@ extern "C" {
 
     int strtoi(const char *nptr, char **endptr, int base);
     unsigned int strtoui(const char *nptr, char **endptr, int base);
+    
+    /*** snprint_bytes() allows one to pick between CS units, where the kibibyte
+     *** (KiB) is 1024 bytes, and metric units where the kilobyte (KB) is 1000 bytes.
+     *** Fun Fact: Windows uses kibibytes, but displays them as KB.
+     ***/
+    #define UTIL_USE_METRIC false
 
     char* snprint_bytes(char* buf, const size_t buf_size, unsigned int bytes);
     char* snprint_llu(char* buf, size_t buflen, unsigned long long value);
@@ -49,6 +55,8 @@ extern "C" {
     pTimer timer_reset(pTimer timer);
     void timer_de_init(pTimer timer);
     void timer_free(pTimer timer);
+    
+    double round_to(double value, int decimals);
 
 #ifdef	__cplusplus
 }
@@ -74,7 +82,7 @@ extern "C" {
     ({ \
     __typeof__ (a) _a = (a); \
     __typeof__ (b) _b = (b); \
-    (_a < _b) ? _a : _b; \
+    (_a <= _b) ? _a : _b; \
     })
 
 /*** @brief Returns the larger of two values.
@@ -89,7 +97,7 @@ extern "C" {
     ({ \
     __typeof__ (a) _a = (a); \
     __typeof__ (b) _b = (b); \
-    (_a > _b) ? _a : _b; \
+    (_a >= _b) ? _a : _b; \
     })
 
 /** File name macro, expanding functionality like __FILE__ and __LINE__. **/

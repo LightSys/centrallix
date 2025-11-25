@@ -90,11 +90,6 @@ unsigned int strtoui(const char *nptr, char **endptr, int base){
     return (unsigned int)tmp;
 }
 
-/*** snprint_bytes() allows one to pick between CS units, where the kibibyte
- *** (KiB) is 1024 bytes, and metric units where the kilobyte (KB) is 1000 bytes.
- *** Fun Fact: Windows uses kibibytes, but displays them as KB.
- ***/
-#define USE_METRIC false
 #define nUnits 6u
 static char* units_cs[nUnits] = {"bytes", "KiB", "MiB", "GiB"};
 static char* units_metric[nUnits] = {"bytes", "KB", "MB", "GB"};
@@ -113,8 +108,8 @@ static char* units_metric[nUnits] = {"bytes", "KB", "MB", "GB"};
  ***/
 char* snprint_bytes(char* buf, const size_t buf_size, unsigned int bytes)
     {
-    char** units = (USE_METRIC) ? units_metric : units_cs;
-    const double unit_size = (USE_METRIC) ? 1000.0 : 1024.0;
+    char** units = (UTIL_USE_METRIC) ? units_metric : units_cs;
+    const double unit_size = (UTIL_USE_METRIC) ? 1000.0 : 1024.0;
     
     /** Search for the largest unit where the value would be at least 1. **/
     const double size = (double)bytes;
@@ -224,12 +219,16 @@ pTimer timer_stop(pTimer timer)
     {
     if (!timer) return timer;
     timer->total += get_time() - timer->start;
+    timer->start = NAN; /* Stop the timer. */
     return timer;
     }
 
 double timer_get(pTimer timer)
     {
-    return (timer) ? timer->total : NAN;
+    if (timer == NULL) return NAN;
+    return (isnan(timer->start))
+	? timer->total                                /* Timer is stopped. */
+	: timer->total + (get_time() - timer->start); /* Timer is running. */
     }
 
 pTimer timer_reset(pTimer timer)
@@ -243,6 +242,12 @@ void timer_free(pTimer timer)
     {
     timer_de_init(timer);
     nmFree(timer, sizeof(Timer));
+    }
+
+double round_to(double value, int decimals)
+    {
+    const double mul = pow(10, decimals);
+    return round(value * mul) / mul;
     }
 
 /*** Function for failing on error, assuming the error came from a library or
