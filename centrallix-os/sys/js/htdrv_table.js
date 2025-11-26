@@ -1192,6 +1192,13 @@ function tbld_scroll(y, animate)
 	return;
 	}
 
+    // No rows currently accessible?
+    if (!this.rows.first || !this.rows.last || !this.rows[this.rows.first] || !this.rows[this.rows.last])
+	{
+	this.OsrcDispatch();
+	return;
+	}
+
     // Current start and end of scrollable content
     var scroll_start = getRelativeY(this.rows[this.rows.first]);
     var scroll_end = getRelativeY(this.rows[this.rows.last]) + $(this.rows[this.rows.last]).height() + this.cellvspacing*2;
@@ -1236,7 +1243,10 @@ function tbld_scroll(y, animate)
 	    this.target_range.start = this.rows.first - this.rowcache_size;
 	    if (this.target_range.start < 1)
 		this.target_range.start = 1;
-	    this.target_range.end = this.rows.lastvis+1;
+	    if (this.rows.lastvis)
+		this.target_range.end = this.rows.lastvis+1;
+	    else
+		this.target_range.end = this.target_range.start + this.rowcache_size;
 	    }
 	else if (getRelativeY(this.rows[this.rows.last]) + $(this.rows[this.rows.last]).height() + this.cellvspacing - this.vis_height < (0-y) && (this.rows.lastosrc === null || this.rows.lastvis < this.rows.lastosrc))
 	    {
@@ -1278,14 +1288,14 @@ function tbld_bar_click(e)
     {
     var sb = e.layer;
     var t = sb.table;
-    if (e.pageY > $(sb.b).offset().top + $(sb.b).height())
+    if (e.pageY > $(sb.b).offset().top + $(sb.b).height() && t.rows.lastvis && t.rows[t.rows.lastvis])
 	{
 	// Down a page
 	var target_row = t.rows[t.rows.lastvis];
 	var target_y = 0 - (getRelativeY(target_row) + $(target_row).height() + t.cellvspacing*2);
 	t.Scroll(target_y, true);
 	}
-    else if (e.pageY < $(sb.b).offset().top)
+    else if (e.pageY < $(sb.b).offset().top && t.rows.firstvis && t.rows[t.rows.firstvis])
 	{
 	// Up a page
 	var target_row = t.rows[t.rows.firstvis];
@@ -1594,6 +1604,7 @@ function tbld_remove_row(rowobj)
 	}
     if (this.rows.firstvis > this.rows.lastvis)
 	{
+	console.log('TABLE ' + this.__WgtrName + ': resetting firstvis/lastvis to null (firstvis > lastvis)');
 	this.rows.firstvis = null;
 	this.rows.lastvis = null;
 	}
@@ -1833,6 +1844,7 @@ function tbld_osrc_dispatch()
 	    this.osrc_busy = true;
 	    this.osrc_last_op = item.type;
 	    //this.log.push("Calling ScrollTo(" + item.start + "," + item.end + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+	    //console.log("Calling ScrollTo(" + item.start + "," + item.end + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
 	    this.osrc.ScrollTo(item.start, item.end);
 	    break;
 
@@ -1840,6 +1852,7 @@ function tbld_osrc_dispatch()
 	    this.osrc_busy = true;
 	    this.osrc_last_op = item.type;
 	    //this.log.push("Calling MoveToRecord(" + item.rownum + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+	    //console.log("Calling MoveToRecord(" + item.rownum + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
 	    this.osrc.MoveToRecord(item.rownum, this);
 	    break;
 
@@ -2673,6 +2686,13 @@ function tbld_mousedown(e)
             {
 	    var orig_ly = ly;
             if(ly.row) ly=ly.row;
+
+	    // Do not let user select a row if an animation is in progress.
+	    if ($(ly.table.scrolldiv).queue().length)
+		{
+		return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+		}
+
 	    if (ly.table.allowselect)
 		{
 		if(ly.table.osrc.CurrentRecord!=ly.rownum)
