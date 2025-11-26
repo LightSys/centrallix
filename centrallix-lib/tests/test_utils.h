@@ -36,21 +36,49 @@
     __typeof__ (v1) _v1 = (v1); \
     __typeof__ (v2) _v2 = (v2); \
     int success = (_v1 == _v2); \
-    if (!success) fprintf(stderr, "  > Expected %s ("sp") to equal %s ("sp") at %s:%d\n", #v1, _v1, #v2, _v2, __FILE__, __LINE__); \
+    if (!success) fprintf(stderr, \
+	"  > Expected %s ("sp") to equal %s ("sp") at %s:%d\n", \
+	#v1, _v1, #v2, _v2, __FILE__, __LINE__ \
+    ); \
     success; \
     })
-    
+
 /*** Expect two strings to be equal.
  *** 
- *** @param v1 The first string.
- *** @param v2 The second string.
+ *** @param str1 The first string.
+ *** @param str2 The second string.
  ***/
-#define EXPECT_STR_EQL(v1, v2) \
+#define EXPECT_STR_EQL(str1, str2) \
     ({ \
-    char* _v1 = (v1); \
-    char* _v2 = (v2); \
-    int success = (strcmp(_v1, _v2) == 0); \
-    if (!success) fprintf(stderr, "  > Expected %s (\"%s\") to equal %s (\"%s\") at %s:%d\n", #v1, _v1, #v2, _v2, __FILE__, __LINE__); \
+    char* _str1 = (str1); \
+    char* _str2 = (str2); \
+    int success = (_str1 == _str2) || (_str1 != NULL && _str2 != NULL && strcmp(_str1, _str2) == 0); \
+    if (!success) fprintf(stderr, \
+	"  > Expected %s (\"%s\") to equal %s (\"%s\") at %s:%d\n", \
+	#str1, _str1, #str2, _str2, __FILE__, __LINE__ \
+    ); \
+    success; \
+    })
+
+/*** Expect a value to fall within a range.
+ *** 
+ *** @param v The value.
+ *** @param min_v The minimum acceptable value.
+ *** @param max_v The maximum acceptable value.
+ *** @param sp The specifier to print the values if there is an error. This
+ ***    MUST be a string known to the compiler at compile time, such as a
+ ***    sting literal or a macro that expands to one.
+ ***/
+#define EXPECT_RANGE(v, min_v, max_v, sp) \
+    ({ \
+    __typeof__ (v) _v = (v); \
+    __typeof__ (min_v) _min = (min_v); \
+    __typeof__ (max_v) _max = (max_v); \
+    int success = (_min <= _v && _v <= _max); \
+    if (!success) fprintf(stderr, \
+	"  > Expected %s ("sp") to be in the range %s ("sp") - %s ("sp") at %s:%d\n", \
+	#v, _v, #min_v, _min, #max_v, _max, __FILE__, __LINE__ \
+    ); \
     success; \
     })
 

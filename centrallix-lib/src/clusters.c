@@ -141,6 +141,10 @@ static int charpair_cmp(const void *p1, const void *p2)
  ***/
 pVector ca_build_vector(const char* str)
     {
+    /** Guard against a segfault. **/
+    if (str == NULL) return NULL;
+    
+    /** Allocate memory. **/
     unsigned int num_chars = 0u;
     unsigned char* chars = check_ptr(nmSysMalloc((strlen(str) + 2u) * sizeof(unsigned char)));
     if (chars == NULL) goto err;
@@ -460,6 +464,16 @@ int ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, c
     {
     int result = -1;
     
+    /** Detect string lengths, if necessary. **/
+    const size_t str1_len = (str1_length == 0u) ? strlen(str1) : str1_length;
+    const size_t str2_len = (str2_length == 0u) ? strlen(str2) : str2_length;
+    
+    /** Optimization: Handle identical string pointers. **/
+    if (str1 == str2)
+	return (str1_len > str2_len)
+	     ? (str1_len - str2_len)
+	     : (str2_len - str1_len);
+    
     /*** lev_matrix:
      *** For all i and j, d[i][j] will hold the Levenshtein distance between
      *** the first i characters of s and the first j characters of t.
@@ -467,8 +481,6 @@ int ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, c
      *** As they say, no dynamic programming algorithm is complete without a
      *** matrix that you fill out and it has the answer in the final location.
      ***/
-    const size_t str1_len = (str1_length == 0u) ? strlen(str1) : str1_length;
-    const size_t str2_len = (str2_length == 0u) ? strlen(str2) : str2_length;
     unsigned int** lev_matrix = check_ptr(nmSysMalloc((str1_len + 1) * sizeof(unsigned int*)));
     if (lev_matrix == NULL) goto end;
     for (unsigned int i = 0u; i < str1_len + 1u; i++)
@@ -915,13 +927,23 @@ void* ca_most_similar(
     const double (*similarity)(void*, void*),
     const double threshold)
     {
+    /** Error cases. **/
+    if (target == NULL
+     || data == NULL
+     || similarity == NULL
+     || num_data == 0u
+     || (threshold < 0.0 || 1.0 < threshold)
+     || isnan(threshold)
+    ) return NULL;
+    
+    /** Search for the most similar string. **/
     void* most_similar = NULL;
     double best_sim = -INFINITY;
     for (unsigned int i = 0u; (num_data == 0u) ? (data[i] != NULL) : (i < num_data); i++)
 	{
-	const double sim = check_double(similarity(target, data[i]));
+	const double sim = similarity(target, data[i]);
 	if (isnan(sim)) continue; /* Skip this comparison. */
-	if (sim > best_sim && sim > threshold)
+	if (sim > best_sim && sim >= threshold)
 	    {
 	    most_similar = data[i];
 	    best_sim = sim;

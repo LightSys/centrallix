@@ -68,7 +68,18 @@ start(void* v)
 	if (rval < 0)
 	    printf("%-62.62s  FAIL\n", tname);
 	else
-	    printf("%-62.62s  PASS %lld\n", tname, rval*100/(long long)(end - start));
+	    {
+	    long long duration = end - start;
+	    if (duration == 0)
+		{
+		printf("%-62.62s  PASS ???\n", tname);
+		printf("Warning: Test ran too fast! Ops/sec could not be measured. Please run tests in a loop or use loop_tests() from test_utils.h.\n");
+		return;
+		}
+	    long long ops_per_second = rval * (100 / duration);
+	    if (ops_per_second > 0) printf("%-62.62s  PASS %lld\n", tname, ops_per_second);
+	    else printf("%-62.62s  PASS %.4g\n", tname, rval * (100.0 / duration));
+	    }
 
     return;
     }
@@ -79,4 +90,3 @@ main(int argc, char* argv[])
     mtInitialize(0, start);
     return 0;
     }
-
