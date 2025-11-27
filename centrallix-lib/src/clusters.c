@@ -983,6 +983,15 @@ pXArray ca_sliding_search(
     void** maybe_keys,
     pXArray maybe_dups)
     {
+    /** Error cases. **/
+    if (data == NULL
+     || num_data == 0
+     || window_size == 0
+     || similarity == NULL 
+     || (threshold < 0.0 || 1.0 < threshold)
+     || isnan(threshold)
+    ) return NULL;
+    
     /** Allocate space for dups (if necessary). **/
     pXArray dups = maybe_dups;
     if (dups == NULL)
