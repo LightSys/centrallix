@@ -2464,7 +2464,7 @@ function tbld_wheel(e)
 	    if (e.Dom2Event.deltaMode == 0)
 		var multiplier = 1;
 	    else if (e.Dom2Event.deltaMode == 1)
-		var multiplier = (ly.has_header)?(ly.rows[0].height()):16;
+		var multiplier = (ly.has_header)?($(ly.rows[0]).height()):16;
 	    else if (e.Dom2Event.deltaMode == 2)
 		var multiplier = ly.vis_height;
 	    else
