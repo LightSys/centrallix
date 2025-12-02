@@ -134,6 +134,15 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 		{
 		for(i=0;i<qs->Children.nItems;i++)
 		    {
+		    /** Here's what we're looking for:
+		     **
+		     ** 1.  A sort/group item that is NOT an aggregate expression, and
+		     ** 2.  One or more of the following:
+		     ** 2a.  More than one source in the scanned criteria overall
+		     ** 2b.  More than one source in this expression
+		     ** 2c.  FROM wildcard or FROM subtree (non-simple)
+		     ** 2d.  Order item not on the primary side of a join
+		     **/
 		    item = (pQueryStructure)(qs->Children.Items[i]);
 		    if (item->Expr && item->Expr->AggLevel == 0)
 			{
@@ -234,7 +243,7 @@ mqobAnalyzeAfterGroup(pQueryStatement stmt)
 	/** Look for an ORDER BY clause **/
 	if ((order_qs = mq_internal_FindItem(stmt->QTree, MQ_T_ORDERBYCLAUSE, NULL)) != NULL)
 	    {
-	    /** Do we have group and order clauses, and they're different? **/
+	    /** Do we have group and order clauses, and they have different requirements? **/
 	    if ((group_qs = mq_internal_FindItem(stmt->QTree, MQ_T_GROUPBYCLAUSE, NULL)) != NULL)
 		{
 		if (order_qs->Children.nItems != group_qs->Children.nItems)
@@ -363,6 +372,116 @@ mqob_internal_CompareItems(void* item_a, void* item_b)
     }
 
 
+/*** mqob_internal_FreeItem - free an Orderable item
+ ***/
+void
+mqob_internal_FreeItem(pMqobOrderable item, pQueryStatement stmt, pMQOData context)
+    {
+
+	if (item->ObjList)
+	    {
+	    expUnlinkParams(item->ObjList, stmt->Query->nProvidedObjects, -1);
+	    expFreeParamList(item->ObjList);
+	    }
+	xsDeInit(&item->OrderBuf);
+	if (item->SavedValues)
+	    nmFree(item->SavedValues, sizeof(Expression) * context->AggregateFieldIDs.nItems);
+	nmFree(item, sizeof(MqobOrderable));
+
+    return;
+    }
+
+
+/*** mqob_internal_InitSort - set up our orderable list and sort it
+ ***/
+int
+mqob_internal_InitSort(pQueryElement qe, pQueryStatement stmt)
+    {
+    pQueryElement cld;
+    pMQOData context;
+    int n,i;
+    int rval;
+    pMqobOrderable item = NULL;
+    pParamObjects objlist = NULL;
+    pExpression exp;
+
+	cld = (pQueryElement)(qe->Children.Items[0]);
+
+	/** Init our private data result list **/
+	context = (pMQOData)nmMalloc(sizeof(MQOData));
+	qe->PrivateData = context;
+	xaInit(&context->Objects, 16);
+	xaInit(&context->AggregateFieldIDs, 16);
+	for(n=0;n<MQ_MAX_ORDERBY;n++)
+	    {
+	    if (!qe->OrderBy[n])
+		{
+		context->nOrderBy = n;
+		break;
+		}
+	    }
+	context->IterCnt = 0;
+
+	/** Determine SELECTed aggregate fields we need to save/restore **/
+	for(i=0; i<qe->AttrCompiledExpr.nItems; i++)
+	    {
+	    exp = (pExpression)qe->AttrCompiledExpr.Items[i];
+	    if (exp && exp->AggLevel == 1)
+		{
+		/** Got a level-1 aggregate, e.g. sum(x) but not sum(sum(x)) **/
+		xaAddItem(&context->AggregateFieldIDs, (void*)(long)i);
+		}
+	    }
+
+	/** Loop through the child QE's results and build our unsorted list **/
+	while ((rval = cld->Driver->NextItem(cld, stmt)) == 1)
+	    {
+	    item = (pMqobOrderable)nmMalloc(sizeof(MqobOrderable));
+	    if (!item)
+		goto error;
+	    objlist = expCreateParamList();
+	    if (!objlist)
+		goto error;
+	    item->SavedValues = NULL;
+	    expCopyList(stmt->Query->ObjList, objlist, -1);
+	    objlist->PSeqID = stmt->Query->ObjList->PSeqID;
+	    item->ObjList = objlist;
+	    objlist = NULL;
+	    expLinkParams(item->ObjList, stmt->Query->nProvidedObjects, -1);
+	    xsInit(&item->OrderBuf);
+	    if (objBuildBinaryImageXString(&item->OrderBuf, qe->OrderBy, context->nOrderBy, item->ObjList, 0) < 0)
+		goto error;
+	    item->SavedValues = (Expression *)nmMalloc(sizeof(Expression) * context->AggregateFieldIDs.nItems);
+	    if (!item->SavedValues)
+		goto error;
+	    memset(item->SavedValues, 0, sizeof(Expression) * context->AggregateFieldIDs.nItems);
+	    for(i=0; i<context->AggregateFieldIDs.nItems; i++)
+		{
+		n = (long)context->AggregateFieldIDs.Items[i];
+		exp = (pExpression)qe->AttrCompiledExpr.Items[n];
+		expEvalTree(exp, stmt->Query->ObjList);
+		expCopyValue(exp, item->SavedValues + i, 1);
+		}
+	    xaAddItem(&context->Objects, item);
+	    item = NULL;
+	    }
+	if (rval < 0)
+	    goto error;
+
+	/** Sort the results **/
+	mergesort(context->Objects.Items, context->Objects.nItems, mqob_internal_CompareItems);
+
+	return 0;
+
+    error:
+	if (objlist)
+	    expFreeParamList(objlist);
+	if (item)
+	    mqob_internal_FreeItem(item, stmt, context);
+	return -1;
+    }
+
+
 /*** mqobNextItem - the first time this is called, we iterate through all of the
  *** child QE's results, then sort them, then return the first one.  After that,
  *** we return one result per call (rval 1), then rval 0 when there are no more.
@@ -370,81 +489,18 @@ mqob_internal_CompareItems(void* item_a, void* item_b)
 int
 mqobNextItem(pQueryElement qe, pQueryStatement stmt)
     {
-    pQueryElement cld;
     pMQOData context;
-    pMqobOrderable item;
-    pParamObjects objlist;
-    int n,i;
-    int rval = -1;
+    pMqobOrderable item = NULL;
+    int i,n;
     pExpression exp;
-
-	cld = (pQueryElement)(qe->Children.Items[0]);
 
 	/** Have we gotten the sorted list yet? **/
 	if (qe->PrivateData == NULL)
 	    {
-	    /** Init our private data result list **/
-	    context = (pMQOData)nmMalloc(sizeof(MQOData));
-	    qe->PrivateData = context;
-	    xaInit(&context->Objects, 16);
-	    xaInit(&context->AggregateFieldIDs, 16);
-	    for(n=0;n<MQ_MAX_ORDERBY;n++)
-		{
-		if (!qe->OrderBy[n])
-		    {
-		    context->nOrderBy = n;
-		    break;
-		    }
-		}
-	    context->IterCnt = 0;
-
-	    /** Determine SELECTed aggregate fields we need to save/restore **/
-	    for(i=0; i<qe->AttrCompiledExpr.nItems; i++)
-		{
-		exp = (pExpression)qe->AttrCompiledExpr.Items[i];
-		if (exp && exp->AggLevel == 1)
-		    {
-		    /** Got a level-1 aggregate, e.g. sum(x) but not sum(sum(x)) **/
-		    xaAddItem(&context->AggregateFieldIDs, (void*)(long)i);
-		    }
-		}
-
-	    /** Loop through the child QE's results and build our unsorted list **/
-	    while ((rval = cld->Driver->NextItem(cld, stmt)) == 1)
-		{
-		item = (pMqobOrderable)nmMalloc(sizeof(MqobOrderable));
-		objlist = expCreateParamList();
-		if (!objlist || !item) goto error;
-		item->SavedValues = NULL;
-		expCopyList(stmt->Query->ObjList, objlist, -1);
-		objlist->PSeqID = stmt->Query->ObjList->PSeqID;
-		item->ObjList = objlist;
-		expLinkParams(objlist, stmt->Query->nProvidedObjects, -1);
-		xsInit(&item->OrderBuf);
-		xaAddItem(&context->Objects, item);
-		if (objBuildBinaryImageXString(&item->OrderBuf, qe->OrderBy, context->nOrderBy, item->ObjList, 0) < 0)
-		    goto error;
-		item->SavedValues = (Expression *)nmMalloc(sizeof(Expression) * context->AggregateFieldIDs.nItems);
-		if (!item->SavedValues)
-		    goto error;
-		memset(item->SavedValues, 0, sizeof(Expression) * context->AggregateFieldIDs.nItems);
-		for(i=0; i<context->AggregateFieldIDs.nItems; i++)
-		    {
-		    n = (long)context->AggregateFieldIDs.Items[i];
-		    exp = (pExpression)qe->AttrCompiledExpr.Items[n];
-		    expEvalTree(exp, stmt->Query->ObjList);
-		    expCopyValue(exp, item->SavedValues + i, 1);
-		    }
-		}
-	    if (rval < 0) goto error;
-
-	    /** Sort the results **/
-	    mergesort(context->Objects.Items, context->Objects.nItems, mqob_internal_CompareItems);
+	    if (mqob_internal_InitSort(qe, stmt) < 0)
+		goto error;
 	    }
-	else
-	    {
-	    context = qe->PrivateData;
-	    }
+	context = qe->PrivateData;
 
 	/** Ok, got the sorted list.  Do we have items remaining? **/
 	if (context->IterCnt >= context->Objects.nItems)
@@ -455,7 +511,6 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
 
 	/** Copy in the next item **/
 	item = context->Objects.Items[context->IterCnt];
-	objlist = item->ObjList;
 	for(i=0; i<context->AggregateFieldIDs.nItems; i++)
 	    {
 	    n = (long)context->AggregateFieldIDs.Items[i];
@@ -466,17 +521,18 @@ mqobNextItem(pQueryElement qe, pQueryStatement stmt)
 	    }
 	for(i=stmt->Query->nProvidedObjects;i<stmt->Query->ObjList->nObjects;i++)
 	    {
-	    stmt->Query->ObjList->Objects[i] = objlist->Objects[i];
-	    stmt->Query->ObjList->SeqIDs[i] = objlist->SeqIDs[i];
+	    stmt->Query->ObjList->Objects[i] = item->ObjList->Objects[i];
+	    stmt->Query->ObjList->SeqIDs[i] = item->ObjList->SeqIDs[i];
 	    }
-	expFreeParamList(objlist);
+	stmt->Query->ObjList->PSeqID = item->ObjList->PSeqID;
+	expFreeParamList(item->ObjList);
 	item->ObjList = NULL;
-	rval = 1;
 	context->IterCnt++;
 
-    error:
+	return 1;
 
-    return rval;
+    error:
+	return -1;
     }
 
 
@@ -503,18 +559,7 @@ mqobFinish(pQueryElement qe, pQueryStatement stmt)
 		{
 		item = (pMqobOrderable)(context->Objects.Items[i]);
 		if (item)
-		    {
-		    if (item->ObjList)
-			{
-			objlist = item->ObjList;
-			expUnlinkParams(objlist, stmt->Query->nProvidedObjects, -1);
-			expFreeParamList(objlist);
-			}
-		    xsDeInit(&item->OrderBuf);
-		    if (item->SavedValues)
-			nmFree(item->SavedValues, sizeof(Expression) * context->AggregateFieldIDs.nItems);
-		    nmFree(item, sizeof(MqobOrderable));
-		    }
+		    mqob_internal_FreeItem(item, stmt, context);
 		}
 	    xaDeInit(&context->Objects);
 	    xaDeInit(&context->AggregateFieldIDs);
