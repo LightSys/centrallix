@@ -2154,7 +2154,7 @@ function tbld_init(param)
 	    $(l.resizebdr).css
 		({
 		"cursor": "move", 
-		"height": (t.colsepmode == 0)?(((t.gridinemptyrows)?(t.rowheight * (t.maxtotalwindowsize)):t.rowheight) + "px"):(t.rowheight + "px"), 
+		"height": (t.colsepmode == 0)?(((t.gridinemptyrows)?(t.param_height):t.rowheight) + "px"):(t.rowheight + "px"), 
 		"visibility": "inherit",
 		"width": t.colsep + t.bdr_width*2 + "px",
 		"padding-left": t.bdr_width + "px",
