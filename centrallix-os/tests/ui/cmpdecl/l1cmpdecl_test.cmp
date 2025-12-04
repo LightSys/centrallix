@@ -1,0 +1,60 @@
+//David Hopkins June 2025
+// CMP DECL test #2: Inner 1 component declaration
+// Connected to the .app file
+// INNER component that wraps a radiobuttonpanel.
+// It accepts an integer parameter to set the default selection.
+
+
+$Version=2$
+radio_panel "widget/component-decl"
+{
+    width = 250; height = 200;
+    
+    // Declare the custom event. This is correct.
+    selection_changed "widget/component-decl-event" {}
+
+    default_selection "widget/parameter" { type=integer; default=1; }
+    panel_title "widget/parameter" { type=string; default="David's RadioButtons (L1)"; }
+
+    // This panel is now ONLY for the visual radio buttons.
+    the_panel "widget/radiobuttonpanel"
+    {
+        x = 0; y = 0; width = 250; height = 200;
+        title = runserver(:this:panel_title);
+        bgcolor = "#ffffff";
+
+        rb1 "widget/radiobutton" { label="Merge Sort"; value="1"; selected=runserver(:this:default_selection == 1); }
+        rb2 "widget/radiobutton" { label="Heap Sort"; value="2"; selected=runserver(:this:default_selection == 2); }
+        rb3 "widget/radiobutton" { label="Tim Sort"; value="3"; selected=runserver(:this:default_selection == 3); }
+        rb4 "widget/radiobutton" { label="Shell Sort"; value="4"; selected=runserver(:this:default_selection == 4); }
+    }
+    rb1_clk "widget/connector" 
+    { 
+        source="the_panel.rb1"; 
+        event="Click"; 
+        action="selection_changed"; 
+        target=radio_panel; 
+    }
+    rb2_clk "widget/connector" 
+    { 
+        source="the_panel.rb2"; 
+        event="Click"; 
+        action="selection_changed"; 
+        target=radio_panel; 
+    }
+    rb3_clk "widget/connector" 
+    { 
+        source="the_panel.rb3"; 
+        event="Click"; 
+        action="selection_changed"; 
+        target=radio_panel; 
+    }
+    rb4_clk "widget/connector" 
+    { 
+        source="the_panel.rb4"; 
+        event="Click"; 
+        action="selection_changed"; 
+        target=radio_panel; 
+    }
+}
+
