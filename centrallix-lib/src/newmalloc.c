@@ -538,6 +538,12 @@ nmStats()
     {
     if (!is_init) nmInitialize();
     
+    /** Warn if statistics are not being tracked. **/
+    #ifndef GLOBAL_BLK_COUNTING
+    printf("Warning: GLOBAL_BLK_COUNTING is disabled.\n");
+    #endif
+    
+    /** Print subsystem stats. **/
     printf(
 	"NewMalloc subsystem statistics:\n"
 	"   nmMalloc: %d calls, %d hits (%3.3f%%)\n"
@@ -571,6 +577,22 @@ nmRegister(int size, char* name)
     strcpy(blk->Name, name);
     }
 
+/*** Print the registered names for a block of data of a given size to stdout.
+ *** 
+ *** @param size The size of block to query.
+ ***/
+void
+nmPrintNames(int size)
+    {
+    /*** Traverse the linked list that holds all registered names for the given
+     *** size and print each one.
+     **/
+    for (pRegisteredBlockType blk = blknames[size]; blk != NULL; blk = blk->Next)
+	{
+	ASSERTMAGIC(blk, MGK_REGISBLK);
+	printf("%s ", blk->Name);
+	}
+    }
 
 
 /** Print debug information about the newmalloc system. **/
@@ -589,13 +611,8 @@ nmDebug()
 	/** Print stats about this block size. **/
 	printf("%ld\t%d\t%d\t%d\t", size, outcnt[size], listcnt[size], usagecnt[size]);
 	
-	pRegisteredBlockType blk = blknames[size];
-	while(blk)
-	    {
-	    ASSERTMAGIC(blk,MGK_REGISBLK);
-	    printf("%s ", blk->Name);
-	    blk = blk->Next;
-	    }
+	/** Print each name for this block size. **/
+	nmPrintNames(size);
 	
 	printf("\n");
 	}
@@ -635,13 +652,8 @@ nmDeltas()
 	printf("%ld\t%d\t", size, outcnt[size] - outcnt_delta[size]);
 	total_delta += (size * (outcnt[size] - outcnt_delta[size]));
 	
-	pRegisteredBlockType blk = blknames[size];
-	while(blk)
-	    {
-	    ASSERTMAGIC(blk,MGK_REGISBLK);
-	    printf("%s ", blk->Name);
-	    blk = blk->Next;
-	    }
+	/** Print each name for this block size from the linked list. **/
+	nmPrintNames(size);
 	
 	/** End of line. **/
 	printf("\n");
@@ -751,22 +763,26 @@ nmSysRealloc(void* ptr, int new_size)
     /** Behaves as nmSysMalloc() if there is no target pointer. **/
     if (ptr == NULL) return nmSysMalloc(new_size);
     
+    /** If no work needs to be done, do nothing. **/
+    void* buffer_ptr = ((char*)ptr) - sizeof(int);
+    const int size = *(int*)buffer_ptr;
+    if (size == new_size) return ptr;
+    
     /** Realloc the given memory, taking the initial size int into account into account. **/
-    char* newptr = (char*)nmDebugRealloc((((char*)ptr) - sizeof(int)), sizeof(int) + new_size);
-    if (newptr == NULL) return NULL;
+    char* new_ptr = (char*)nmDebugRealloc(buffer_ptr, sizeof(int) + new_size);
+    if (new_ptr == NULL) return NULL;
     
     /** Update the initial size int. **/
-    *(int*)newptr = new_size;
+    *(int*)new_ptr = new_size;
     
     /** Handle counting. **/
     #ifdef SIZED_BLK_COUNTING
-    int size = *(int*)(((char*)ptr)-sizeof(int));
     if (0 < size && size <= MAX_SIZE) nmsys_outcnt[size]--;
     if (0 < new_size && new_size <= MAX_SIZE) nmsys_outcnt[new_size]++;
     #endif
     
     /** Return the pointer to the new memory. **/
-    return (void*)(sizeof(int) + newptr);
+    return (void*)(sizeof(int) + new_ptr);
     #endif
     }
 

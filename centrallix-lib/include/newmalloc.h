@@ -72,6 +72,7 @@ void* nmMalloc(int size);
 void nmFree(void* ptr, int size);
 void nmStats();
 void nmRegister(int size, char* name);
+void nmPrintNames(int size);
 void nmDebug();
 void nmDeltas();
 void* nmSysMalloc(int size);
