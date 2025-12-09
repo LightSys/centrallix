@@ -370,6 +370,8 @@ ifeq ($TOTESTFILES,)
 else
     TOTESTDEPS=test_obj
 endif
+CTESTHELPERS:=$(wildcard tests/helpers/*.c)
+TESTHELPERS:=$(patsubst %.c,%.o,$(CTESTHELPERS))
 
 # Some basic build parameters.
 PROFILE=@PROFILE@
@@ -536,8 +538,8 @@ tests/centrallix.conf-test: tests/centrallix.conf-test.in
 tests/t_driver.o: tests/t_driver.c 
 	$(CC) $(CFLAGS) $< -c -o $@
 
-tests/test_%.bin: tests/test_%.o tests/t_driver.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
-	$(CC) $< tests/t_driver.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o $@ $(LIBS) @NCURSES_LIBS@
+tests/test_%.bin: tests/test_%.o tests/t_driver.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS) $(TESTHELPERS)
+	$(CC) $< tests/t_driver.o centrallix.o $(V3LSOBJS) $(TESTHELPERS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o $@ $(LIBS) @NCURSES_LIBS@ @SYBASE_LIBS@
 
 test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 	@printf "%-62.62s  %s\n" "Test Name" "Stat"
@@ -653,6 +655,7 @@ clean:
 	@rm -f man/*.gz
 	@rm -f tests/*.to.tmp tests/*.out
 	@rm -f tests/*.o tests/*.bin
+	@rm -f tests/helpers/*.o
 	@rm -rf thirdparty/*-inst
 	@rm -f *.gcov */*.gcov
 	@rm -f *.gcda */*.gcda
