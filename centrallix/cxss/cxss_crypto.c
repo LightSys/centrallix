@@ -10,6 +10,7 @@
 #include <openssl/pem.h>
 #include "cxss/crypto.h"
 #include "cxss/credentials_db.h"
+#include "cxlib/newmalloc.h"
 
 static bool CSPRNG_Initialized = false;
 
@@ -76,7 +77,7 @@ cxssEncryptAES256(const char *plaintext, int plaintext_len,
     int len;
 
     /* Allocate buffer to store ciphertext */
-    *ciphertext = malloc(cxssAES256CiphertextLength(plaintext_len));
+    *ciphertext = (char*)nmSysMalloc(cxssAES256CiphertextLength(plaintext_len));
     if (!(*ciphertext)) {
         mssError(0, "CXSS", "Memory allocation error\n");
         goto error;
@@ -115,7 +116,7 @@ cxssEncryptAES256(const char *plaintext, int plaintext_len,
 
 error:
     EVP_CIPHER_CTX_free(ctx);
-    free(*ciphertext);
+    nmSysFree(*ciphertext);
     return CXSS_CRYPTO_ENCR_ERROR;
 }
 
@@ -143,7 +144,7 @@ cxssDecryptAES256(const char *ciphertext, int ciphertext_len,
     int len;
  
     /* Allocate buffer to store plaintext */
-    *plaintext = malloc(cxssAES256CiphertextLength(ciphertext_len));
+    *plaintext = (char*)nmSysMalloc(cxssAES256CiphertextLength(ciphertext_len));
     if (!(*plaintext)) {
         mssError(0, "CXSS", "Memory allocation error\n");
         goto error;
@@ -183,7 +184,7 @@ cxssDecryptAES256(const char *ciphertext, int ciphertext_len,
 
 error:
     EVP_CIPHER_CTX_free(ctx);
-    free(*plaintext);
+    nmSysFree(*plaintext);
     return CXSS_CRYPTO_DECR_ERROR;
 }            
 
@@ -349,8 +350,8 @@ cxssGenerateRSA4096bitKeypair(char **privatekey, int *privatekey_len,
         goto error;
     }
     
-    *privatekey = malloc(pri_len + 1);
-    *publickey = malloc(pub_len + 1);
+    *privatekey = nmSysMalloc(pri_len + 1);
+    *publickey = nmSysMalloc(pub_len + 1);
     if (!(*publickey) || !(*privatekey)) {
         mssError(0, "CXSS", "Memory allocation error\n");
         goto error;
@@ -499,7 +500,7 @@ cxssDestroyKey(char *key, size_t keylength)
 {
     if (key && keylength >= 0) {
         memset(key, 0, keylength);
-        free(key);
+        nmSysFree(key);
     }
 }
 
