@@ -1450,6 +1450,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 	    else
 		{
 		printf("Unknown command '%s'\n",cmdname);
+		mlxCloseSession(ls);
 		return -1;
 		}
 	

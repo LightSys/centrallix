@@ -3731,7 +3731,7 @@ myTabControl "widget/tab"
 				
 				<childproperty name="title" type="string">The title of the column to be displayed in the header row.</childproperty>
 
-				<childproperty name="type" type="string">The type of the column: "text", "check", or "image".  "text" is a normal column, and displays the textual value of the data element.  "check" displays a checkmark if the data is non-zero (integers) or for strings if the value is non-empty and not "N" or "No".  "image" displays the image referred to by the pathname contained in the data value.</childproperty>
+				<childproperty name="type" type="string">The type of the column: "text", "check", "image", or "progress".  "text" is a normal column, and displays the textual value of the data element.  "check" displays a checkmark if the data is non-zero (integers) or for strings if the value is non-empty and not "N" or "No".  "image" displays the image referred to by the pathname contained in the data value. "progress" displays a progress bar, with additional fields such as bar_color, bar_textcollor, and bar_padding.</childproperty>
 
 				<childproperty name="width" type="integer">width of the column.</childproperty>
 
