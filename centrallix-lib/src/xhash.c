@@ -292,7 +292,8 @@ xhClear(pXHashTable this, int (*free_fn)(), void* free_arg)
 
 /*** Executes an operation on each entry of the hash table entry. 
  *** 
- *** @param this The affected hash table.
+ *** @param this The affected hash table (passing NULL causes undefined
+ *** 	behavior).
  *** @param callback_fn A callback function to be called on each hash table
  *** 	entry. It takes 2 parameters: the current hash table entry and a void*
  *** 	argument specified using each_arg. If any invocation of the callback
@@ -307,57 +308,85 @@ xhClear(pXHashTable this, int (*free_fn)(), void* free_arg)
 int
 xhForEach(pXHashTable this, int (*callback_fn)(pXHashEntry, void*), void* each_arg)
     {
-    if (callback_fn == NULL) return 1;
-    
-    for (int row = 0; row < this->nRows; row++) 
-	{
-	pXHashEntry entry = (pXHashEntry)(this->Rows.Items[row]);
-	while (entry != NULL)
+	if (callback_fn == NULL) return 1;
+	
+	for (int row = 0; row < this->nRows; row++) 
 	    {
-	    pXHashEntry next = entry->Next;
-	    const int ret = callback_fn(entry, each_arg);
-	    if (ret != 0) return ret;
-	    entry = next;
+	    pXHashEntry entry = (pXHashEntry)(this->Rows.Items[row]);
+	    while (entry != NULL)
+		{
+		pXHashEntry next = entry->Next;
+		const int ret = callback_fn(entry, each_arg);
+		if (ret != 0) return ret;
+		entry = next;
+		}
 	    }
-	}
     
     return 0;
     }
 
+/*** A helper function for `xhClearKeySafe()`. Deallocates a hash table entry
+ *** after calling the appropriate free function with the provided free arg.
+ *** 
+ *** @param entry A pointer to the hash table entry to be freed (passing NULL
+ *** 	causes undefined behavior).
+ *** @param arg A pointer to a void* array with 2 elements: The first element
+ *** 	is a function pointer to the free function, which we invoke using the
+ *** 	provided entry and the free_arg, specified as the second element of
+ *** 	this array.
+ *** @returns 0, success.
+ ****/
 static int
-xhiFreeEntry(pXHashEntry entry, void* arg)
+xh_i_FreeEntry(pXHashEntry entry, void* arg)
     {
-    /*** The passed void* actually points to a void* array with 2 elements. 
-     *** The first element is a function pointer to the free function, which
-     *** we invoke using the provided entry and the free_arg, specified as the
-     *** second element of the array.
-     *** 
-     *** Interestingly, you can write this code in one line like this:
-     *** ((void (*)(pXHashEntry, void*))((void**)arg)[0])(entry, ((void**)arg)[1]);
-     *** But I value code readability, so fortunately, I can't be THAT cleaver...
-     ***/
-    void** args = (void**)arg;
-    void (*free_fn)(pXHashEntry, void*) = args[0];
-    free_fn(entry, args[1]);
-    
-    /** Free the entry. **/
-    nmFree(entry, sizeof(XHashEntry));
+	/*** The passed void* actually points to a void* array with 2 elements.
+	 *** 
+	 *** The first element is a function pointer to the free function, which
+	 *** we invoke using the provided entry and the free_arg, specified as the
+	 *** second element of the array.
+	 *** 
+	 *** Interestingly, you can write this code in one line like this:
+	 *** ((void (*)(pXHashEntry, void*))((void**)arg)[0])(entry, ((void**)arg)[1]);
+	 *** But I value code readability, so fortunately, I can't be THAT cleaver...
+	 ***/
+	void** args = (void**)arg;
+	void (*free_fn)(pXHashEntry, void*) = args[0];
+	free_fn(entry, args[1]);
+	
+	/** Free the entry. **/
+	nmFree(entry, sizeof(XHashEntry));
     
     return 0;
     }
 
+/*** Clears all contents from a hash table.  The free function is passed each
+ *** hash entry struct, allowing it to free both the value and key, if needed.
+ *** 
+ *** @param this The affected hash table (passing NULL causes undefined
+ *** 	behavior).
+ *** @param free_fn A pointer to a free function which will be called with a
+ *** 	pointer to each `XHashEntry` before they are deallocated. It is also
+ *** 	passed a `void*`, which will be `free_arg` (the third argument).
+ *** @param free_arg The void pointer value passed to the free function.
+ *** @returns 0 if successful, or
+ ***         -1 if `free_fn()` is `NULL`.
+ ***/
 int
 xhClearKeySafe(pXHashTable this, void (*free_fn)(pXHashEntry, void*), void* free_arg)
     {
-    /** Free each row. **/
-    void* args[2] = {free_fn, free_arg};
-    const int ret = xhForEach(this, xhiFreeEntry, args);
+	if (free_fn == NULL) return -1;
+	
+	/** Free each row. **/
+	void* args[2] = {free_fn, free_arg};
+	const int ret = xhForEach(this, xh_i_FreeEntry, args);
+	
+	/** Mark all rows as empty. **/
+	for (int i = 0; i < this->nRows; i++)
+	    this->Rows.Items[i] = NULL;
+	this->nItems = 0;
     
-    /** Mark all rows as empty. **/
-    for (int i = 0; i < this->nRows; i++)
-	this->Rows.Items[i] = NULL;
-    this->nItems = 0;
-    
-    /** We are successful only if the free function didn't fail. **/
+    /*** We are successful only if the free function didn't fail (and it should
+     *** not be able to fail).
+     ***/
     return ret;
     }

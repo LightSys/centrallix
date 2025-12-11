@@ -2124,8 +2124,10 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 				    }
 
 				if (xs != NULL)
+				    {
 				    strtcpy(new_qs->Source, xs->String, sizeof(new_qs->Source));
-				next_state = LookForClause;
+				    next_state = LookForClause;
+				    }
 				}
 			    else
 				{

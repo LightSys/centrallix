@@ -2,37 +2,37 @@
 #define	CLUSTERS_H
 
 /************************************************************************/
-/* Centrallix Application Server System                                 */
-/* Centrallix Core                                                      */
-/*                                                                      */
-/* Copyright (C) 1998-2012 LightSys Technology Services, Inc.           */
-/*                                                                      */
-/* This program is free software; you can redistribute it and/or modify */
-/* it under the terms of the GNU General Public License as published by */
-/* the Free Software Foundation; either version 2 of the License, or    */
-/* (at your option) any later version.                                  */
-/*                                                                      */
-/* This program is distributed in the hope that it will be useful,      */
-/* but WITHOUT ANY WARRANTY; without even the implied warranty of       */
-/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the        */
-/* GNU General Public License for more details.                         */
-/*                                                                      */
-/* You should have received a copy of the GNU General Public License    */
-/* along with this program; if not, write to the Free Software          */
-/* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA             */
-/* 02111-1307  USA                                                      */
-/*                                                                      */
-/* A copy of the GNU General Public License has been included in this   */
-/* distribution in the file "COPYING".                                  */
-/*                                                                      */
-/* Module:      lib_cluster.c, lib_cluster.h                            */
-/* Author:      Israel Fuller                                           */
-/* Creation:    September 29, 2025                                      */
-/* Description: Clustering library used to cluster and search data with */
-/*              cosine similarity and Levenshtein similarity (aka. edit */
-/*              distance). Used by the "clustering driver".             */
-/*              For more information on how to use this library, see    */
-/*              string-similarity.md in the centrallix-sysdoc folder.   */
+/* Centrallix Application Server System					*/
+/* Centrallix Core							*/
+/* 									*/
+/* Copyright (C) 1998-2012 LightSys Technology Services, Inc.		*/
+/* 									*/
+/* This program is free software; you can redistribute it and/or modify	*/
+/* it under the terms of the GNU General Public License as published by	*/
+/* the Free Software Foundation; either version 2 of the License, or	*/
+/* (at your option) any later version.					*/
+/* 									*/
+/* This program is distributed in the hope that it will be useful,	*/
+/* but WITHOUT ANY WARRANTY; without even the implied warranty of	*/
+/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the	*/
+/* GNU General Public License for more details.				*/
+/* 									*/
+/* You should have received a copy of the GNU General Public License	*/
+/* along with this program; if not, write to the Free Software		*/
+/* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA		*/
+/* 02111-1307  USA							*/
+/* 									*/
+/* A copy of the GNU General Public License has been included in this	*/
+/* distribution in the file "COPYING".					*/
+/* 									*/
+/* Module:	lib_cluster.c, lib_cluster.h				*/
+/* Author:	Israel Fuller						*/
+/* Creation:	September 29, 2025					*/
+/* Description	Clustering library used to cluster and search data with	*/
+/*		cosine similarity and Levenshtein similarity (aka. edit	*/
+/*		distance). Used by the "clustering driver".		*/
+/*		For more information on how to use this library, see	*/
+/*		string-similarity.md in the centrallix-sysdoc folder.	*/
 /************************************************************************/
 
 #include <stdlib.h>
@@ -44,15 +44,24 @@
 #include "cxlib/xarray.h"
 #endif
 
-/*** 2147483629 is the signed int max, and is also a prime number.
+/*** This value defines the number of dimensions used for a sparse
+ *** vector.  The higher the number, the fewer collisions will be
+ *** encountered when using these vectors for cosine comparisons.
+ *** This is also called the vector table size, if viewing the
+ *** vector as a hash table of character pairs.
+ *** 
+ *** 2147483629 is the signed int max, and is also a prime number.
  *** Using this value ensures that the longest run of 0s will not
  *** cause an int underflow with the current encoding scheme.
  *** 
  *** Unfortunately, we can't use a number this large yet because
  *** kmeans algorithm creates densely allocated centroids with
  *** `CA_NUM_DIMS` dimensions, so a large number causes it to fail.
+ *** This, we use 251 as the largest prime number less than 256,
+ *** giving us a decent balance between collision reduction and
+ *** kmeans centroid performance/memory overhead.
  ***/
-#define CA_NUM_DIMS 251 //2147483629 /* aka. The vector table size. */
+#define CA_NUM_DIMS 251
 
 /// LINK ../../centrallix-sysdoc/string_comparison.md#cosine_charsets
 /** The character used to create a pair with the first and last characters of a string. **/
@@ -74,10 +83,10 @@ typedef struct
 
 /** Registering all defined types for debugging. **/
 #define ca_init() \
-    nmRegister(sizeof(pVector), "pVector"); \
-    nmRegister(sizeof(pCentroid), "pCentroid"); \
-    nmRegister(pCentroidSize, "Centroid"); \
-    nmRegister(sizeof(Dup), "Dup")
+	nmRegister(sizeof(pVector), "pVector"); \
+	nmRegister(sizeof(pCentroid), "pCentroid"); \
+	nmRegister(pCentroidSize, "Centroid"); \
+	nmRegister(sizeof(Dup), "Dup")
     
 /** Edit distance function. **/
 int ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length);
@@ -102,8 +111,8 @@ int ca_kmeans(
 #define ca_is_empty(vector) (vector[0] == -CA_NUM_DIMS)
 #define ca_has_no_pairs(vector) \
     ({ \
-    __typeof__ (vector) _v = (vector); \
-    _v[0] == -172 && _v[1] == 11 && _v[2] == -78; \
+	__typeof__ (vector) _v = (vector); \
+	_v[0] == -172 && _v[1] == 11 && _v[2] == -78; \
     })
 
 /** Comparison functions (see ca_search()). **/

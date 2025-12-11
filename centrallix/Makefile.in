@@ -80,6 +80,7 @@ XSUPPORT=stparse.o \
 	 endorsement_utils.o \
 	 obfuscate.o \
 	 json_util.o \
+	 double_metaphone.o \
 	 double.o
 
 SUPPORT=$(patsubst %,utility/%,$(XSUPPORT))
@@ -316,7 +317,6 @@ XEXPRMODS=exp_main.o \
 	  exp_compiler.o \
 	  exp_evaluate.o \
 	  exp_functions.o \
-	  exp_double_metaphone.o \
 	  exp_generator.o
 EXPRMODS=$(patsubst %,expression/%,$(XEXPRMODS))
 

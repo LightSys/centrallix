@@ -307,7 +307,6 @@ int exp_internal_SetupControl(pExpression exp);
 pExpControl exp_internal_LinkControl(pExpControl ctl);
 int exp_internal_UnlinkControl(pExpControl ctl);
 
-void meta_double_metaphone(const char* str, char** primary_code, char** secondary_code);
 
 /*** Evaluator functions ***/
 int expEvalIsNull(pExpression tree, pParamObjects objlist);
