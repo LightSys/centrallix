@@ -1046,11 +1046,14 @@ mq_internal_ParseSelectItem(pQueryStructure item_qs, pLxSession lxs)
 	n_tok = 0;
 	while(1)
 	    {
+	    /** Get the next token. **/
 	    t = mlxNextToken(lxs);
 	    if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
 		break;
 	    n_tok++;
-	    if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_COMMA || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
+	    
+	    /** Special handling for certain token types. **/
+	    if ((t == MLX_TOK_COMMA || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
 		break;
 	    if (t == MLX_TOK_OPENPAREN) 
 		parenlevel++;
@@ -1061,9 +1064,19 @@ mq_internal_ParseSelectItem(pQueryStructure item_qs, pLxSession lxs)
 		    break;
 		}
 
-	    /** Copy it to the raw data **/
+	    /** Get the token string. **/
 	    ptr = mlxStringVal(lxs,NULL);
 	    if (!ptr) break;
+
+	    /** Skip all reserved words except log(). **/
+	    if (t == MLX_TOK_RESERVEDWD && parenlevel <= 0)
+		{
+		/** Treat "log" as a keyword to allow the log function to be handled properly. **/
+		if (strcmp(ptr, "log") == 0) t = MLX_TOK_KEYWORD;
+		else break;
+		};
+
+	    /** Copy the token string into item_qs->RawData. **/
 	    if (t == MLX_TOK_STRING)
 		xsConcatQPrintf(&item_qs->RawData, "%STR&DQUOT", ptr);
 	    else

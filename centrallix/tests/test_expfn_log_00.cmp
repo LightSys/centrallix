@@ -16,19 +16,28 @@ Attribute [log10(0.01)]:   double  -2.0
 Attribute [log10(1.234)]:   double  0.09131516
 Attribute [log10(1e-10)]:   double  -10.0
 Attribute [log10(1e10)]:   double  10.0
-Attribute [logn(8, 2)]:   double  3.0
-Attribute [logn(1000, 10)]:   double  3.0
-Attribute [logn(10, 0)]:   double  -0.0
-Attribute [logn(10, 1)]:   double  inf.0
-Attribute [logn(8, -2)]:   double  nan.0
-Attribute [logn(0, 2)]:   double  -inf.0
-Attribute [logn(-8, 2)]:   double  nan.0
-Attribute [logn(1, 2)]:   double  0.0
-Attribute [logn(1e10, 10)]:   double  10.0
-Attribute [logn(8, 0.5)]:   double  -3.0
+Attribute [log(8, 2)]:   double  3.0
+Attribute [log(1000, 10)]:   double  3.0
+Attribute [log(10, 0)]:   double  -0.0
+Attribute [log(10, 1)]:   double  inf.0
+Attribute [log(8, -2)]:   double  nan.0
+Attribute [log(0, 2)]:   double  -inf.0
+Attribute [log(-8, 2)]:   double  nan.0
+Attribute [log(1, 2)]:   double  0.0
+Attribute [log(1e10, 10)]:   double  10.0
+Attribute [log(8, 0.5)]:   double  -3.0
+Attribute [log(1)]:  integer  1
+Attribute [log(e)]:  integer  1
+Attribute [log(0)]:  integer  1
+Attribute [log(-1)]:  integer  1
+Attribute [log(10)]:  integer  1
+Attribute [log(1.5)]:  integer  1
+Attribute [log(1e-10)]:  integer  1
+Attribute [log(1e10)+]:  integer  1
+Attribute [log(1e10)-]:  integer  1
 Attribute [ln(2.718281828)]:   double  1.0
 Attribute [log10(3.14159)]:   double  0.49714951
-Attribute [logn(10, 1.1)]:   double  0.04139269
-Attribute [logn(1.1, 10)]:   double  24.15885793
-Attribute [logn(10, 0.001)]:   double  -3.0
-Attribute [logn(0.1, 1000)]:   double  -3.0
+Attribute [log(10, 1.1)]:   double  0.04139269
+Attribute [log(1.1, 10)]:   double  24.15885793
+Attribute [log(10, 0.001)]:   double  -3.0
+Attribute [log(0.1, 1000)]:   double  -3.0
