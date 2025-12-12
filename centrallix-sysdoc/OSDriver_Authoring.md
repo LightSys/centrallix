@@ -214,15 +214,8 @@ Using the example above, we can query from the database using a statement like `
 ## II Interface
 This section describes the standard interface between the OSML and the ObjectSystem driver itself.  Every driver should implement certain required functions.  (**Note**: Many drivers "implement" some required functions to simply fail with a not implemented or not supported error.  For example, most database drivers "implement" `Read()` and `Write()` this way because database content should be queried, not read).  Various optional functions are also available, which a driver is not required to implement.
 
-<!-- TODO: Greg
-  --- Double check the information in this table. Some of it is missing,
-  --- and I had to guess a lot of it by looking at how various drivers were
-  --- implemented. Also, which functions are optional and which are required
-  --- seems very chaotic and I vaguely remember there being a driver that
-  --- does not implement a ton of "required" functions, so please double
-  --- check that this information is 100% correct.
-  --->
 The driver should implement an `Initialize()` function, as well as the following (* indicates required functions):
+
 | Function Name                                             | Description
 | --------------------------------------------------------- | ------------
 | [Open](#function-open)*                                   | Opens a new driver instance object on a given node object.
@@ -485,7 +478,6 @@ int xxxDeleteObj(void* inf_v, pObjTrxTree* oxt);
 ```c
 int xxxRead(void* inf_v, char* buffer, int max_cnt, int offset, int flags, pObjTrxTree* oxt);
 ```
-<!-- TODO: Greg - Above is the signature that the cluster driver uses.  However, this conflicts with the documented parameters below (the `arg` parameter is missing).  Can you please resolve this conflict? -->
 
 The `Read()` function reads content from objects that have content, similar to reading content from a file.  If the object does or can have content, the driver should handle these functions as is appropriate.  Otherwise, the driver should return a failure code (-1) and call `mssError()` in these functions.
 
@@ -511,7 +503,6 @@ Each of these routines should return -1 on failure and return the number of byte
 ```c
 int xxxWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt);
 ```
-<!-- TODO: Greg - Update this to match any fixes made to Read(). -->
 The `Write()` function is very similar to the `Read()` function above, allowing the caller to write data to objects of supporting drivers with content.  However, the third argument (`max_cnt`) is replaced with `cnt`, specifying the number of bytes of data in the buffer that should be written.
 
 
@@ -637,8 +628,6 @@ The following five attributes are required (all are of type `DATA_T_STRING`):
 | outer_type   | This is the type of the object itself (the container).
 
 The `last_modification : DATA_T_DATETIME` attribute is a sixth, optional attribute that may be useful in some situations.  This attribute should indicate the last time that the object's content was modified or updated.
-
-<!-- TODO: Greg - Should I cover some of the other common attributes here? `cx__download_as`? `cx__pathpart`? etc. -->
 
 
 ### Function: GetAttrType()
