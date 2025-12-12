@@ -56,7 +56,8 @@
  *** @param c2 The second character in the pair.
  *** @returns The resulting hash.
  ***/
-static unsigned int hash_char_pair(const unsigned char c1, const unsigned char c2)
+static unsigned int
+hash_char_pair(const unsigned char c1, const unsigned char c2)
     {
 	const double sum = (c1 * c1 * c1) + (c2 * c2 * c2);
 	const double scale = ((double)c1 + 1.0) / ((double)c2 + 1.0);
@@ -88,7 +89,8 @@ typedef struct
  ***          An int < 0 if p2's hash is larger.
  ***          0 if p1 and p2 have identical hashes.
  ***/
-static int charpair_cmp(const void *p1, const void *p2)
+static int
+charpair_cmp(const void *p1, const void *p2)
     {
 	const CharPair *a = p1, *b = p2;
 	return a->hash - b->hash;
@@ -139,7 +141,8 @@ static int charpair_cmp(const void *p1, const void *p2)
  *** @param str The string to be divided into pairs and hashed to make the vector.
  *** @returns The sparse vector built using the hashed character pairs.
  ***/
-pVector ca_build_vector(const char* str)
+pVector
+ca_build_vector(const char* str)
     {
     unsigned char* chars = NULL;
     CharPair* char_pairs = NULL;
@@ -253,9 +256,12 @@ pVector ca_build_vector(const char* str)
  *** 
  *** @param sparse_vector The sparse vector being freed.
  ***/
-void ca_free_vector(pVector sparse_vector)
+void
+ca_free_vector(pVector sparse_vector)
     {
 	nmSysFree(sparse_vector);
+    
+    return;
     }
 
 /*** Compute the length of a sparsely allocated vector.
@@ -263,7 +269,8 @@ void ca_free_vector(pVector sparse_vector)
  *** @param vector The vector.
  *** @returns The computed length.
  ***/
-unsigned int ca_sparse_len(const pVector vector)
+unsigned int
+ca_sparse_len(const pVector vector)
     {
     unsigned int i = 0u;
     
@@ -286,13 +293,16 @@ unsigned int ca_sparse_len(const pVector vector)
  *** 
  *** @param vector The vector.
  ***/
-void ca_print_vector(const pVector vector)
+void
+ca_print_vector(const pVector vector)
     {
 	const unsigned int len = ca_sparse_len(vector);
 	printf("Vector: [%d", vector[0]);
 	for (unsigned int i = 1u; i < len; i++)
 	    printf(", %d", vector[i]);
 	printf("]");
+    
+    return;
     }
 
 /*** Compute the magnitude of a sparsely allocated vector.
@@ -300,7 +310,8 @@ void ca_print_vector(const pVector vector)
  *** @param vector The vector.
  *** @returns The computed magnitude.
  ***/
-static double magnitude_sparse(const pVector vector)
+static double
+magnitude_sparse(const pVector vector)
     {
     unsigned int magnitude = 0u;
     
@@ -323,7 +334,8 @@ static double magnitude_sparse(const pVector vector)
  *** @param centroid The centroid.
  *** @returns The computed magnitude.
  ***/
-static double magnitude_dense(const pCentroid centroid)
+static double
+magnitude_dense(const pCentroid centroid)
     {
     double magnitude = 0.0;
     
@@ -340,7 +352,8 @@ static double magnitude_dense(const pCentroid centroid)
  *** @param remaining The location to save the remaining number of characters.
  *** @param param_value The location to save the param_value of the token.
  ***/
-static void parse_vector_token(const int token, unsigned int* remaining, unsigned int* param_value)
+static void
+parse_vector_token(const int token, unsigned int* remaining, unsigned int* param_value)
     {
 	if (token < 0)
 	    {
@@ -354,6 +367,8 @@ static void parse_vector_token(const int token, unsigned int* remaining, unsigne
 	    *remaining = 1u;
 	    *param_value = (unsigned)(token);
 	    }
+    
+    return;
     }
 
 /*** Calculate the similarity on sparsely allocated vectors. Comparing
@@ -365,7 +380,8 @@ static void parse_vector_token(const int token, unsigned int* remaining, unsigne
  ***     1 indicates identical and
  ***     0 indicates completely different.
  ***/
-static double sparse_similarity(const pVector v1, const pVector v2)
+static double
+sparse_similarity(const pVector v1, const pVector v2)
     {
 	/** Calculate dot product. **/
 	unsigned int vec1_remaining = 0u, vec2_remaining = 0u;
@@ -416,7 +432,8 @@ static double sparse_similarity(const pVector v1, const pVector v2)
  ***     1 indicates identical and
  ***     0 indicates completely different.
  ***/
-static double sparse_similarity_to_centroid(const pVector v1, const pCentroid c2)
+static double
+sparse_similarity_to_centroid(const pVector v1, const pCentroid c2)
     {
     double dot_product = 0.0;
     
@@ -462,7 +479,8 @@ static double sparse_similarity_to_centroid(const pVector v1, const pCentroid c2
  *** @attention - `Complexity`: O(nm), where n and m are the lengths of	str1
  *** 	and str2 (respectively).
  ***/
-int ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length)
+int
+ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length)
     {
     int result = -1;
     unsigned int** lev_matrix = NULL;
@@ -574,7 +592,8 @@ int ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, c
  *** @param v2 A `pVector` to the second string to compare.
  *** @returns The cosine similarity between the two strings.
  ***/
-double ca_cos_compare(void* v1, void* v2)
+double
+ca_cos_compare(void* v1, void* v2)
     {
 	if (v1 == v2) return 1.0;
 	
@@ -603,7 +622,8 @@ double ca_cos_compare(void* v1, void* v2)
  *** @param str2 A `char*` to the second string to compare.
  *** @returns The levenshtein similarity between the two strings, or NAN on failure.
  ***/
-double ca_lev_compare(void* str1, void* str2)
+double
+ca_lev_compare(void* str1, void* str2)
     {
 	/** Input validation checks. **/
 	if (str1 == NULL || str2 == NULL) return 0.0;
@@ -634,7 +654,8 @@ double ca_lev_compare(void* str1, void* str2)
  *** @returns true if they are equal,
  ***          false if any element is different.
  ***/
-bool ca_eql(pVector v1, pVector v2)
+bool
+ca_eql(pVector v1, pVector v2)
     {
     const unsigned int len = ca_sparse_len(v1);
     
@@ -653,7 +674,8 @@ bool ca_eql(pVector v1, pVector v2)
  *** @param num_clusters The number of centroids (k).
  *** @returns The average cluster size.
  ***/
-static double get_cluster_size(
+static double
+get_cluster_size(
     pVector* vectors,
     const unsigned int num_vectors,
     unsigned int* labels,
@@ -748,7 +770,8 @@ static double get_cluster_size(
  *** 
  *** - `O(nk + nd)`
  ***/
-int ca_kmeans(
+int
+ca_kmeans(
     pVector* vectors,
     const unsigned int num_vectors,
     const unsigned int num_clusters,
@@ -924,7 +947,8 @@ int ca_kmeans(
  *** @returns A pointer to the most similar piece of data found in the data
  *** 	array, or NULL if the most similar data did not meet the threshold.
  ***/
-void* ca_most_similar(
+void*
+ca_most_similar(
     void* target,
     void** data,
     const unsigned int num_data,
@@ -934,10 +958,11 @@ void* ca_most_similar(
     void* most_similar = NULL;
     double best_sim = -INFINITY;
     
+	/** Iterate over all data options to find the one with the highest similarity. **/
 	for (unsigned int i = 0u; (num_data == 0u) ? (data[i] != NULL) : (i < num_data); i++)
 	    {
 	    const double sim = check_double(similarity(target, data[i]));
-	    if (isnan(sim)) continue; /* Skip this comparison. */
+	    if (isnan(sim)) continue; /* Skip failed comparison. */
 	    if (sim > best_sim && sim > threshold)
 		{
 		most_similar = data[i];
@@ -970,7 +995,8 @@ void* ca_most_similar(
  *** @returns An xArray holding all of the duplocates found, or NULL if an
  *** 	error occurs.
  ***/
-pXArray ca_sliding_search(
+pXArray
+ca_sliding_search(
     void** data,
     const unsigned int num_data,
     const unsigned int window_size,
@@ -1051,7 +1077,8 @@ pXArray ca_sliding_search(
  *** @returns An xArray holding all of the duplocates found. If maybe_dups is
  *** 	not NULL, this will be that xArray, to allow for chaining.
  ***/
-pXArray ca_complete_search(
+pXArray
+ca_complete_search(
     void** data,
     const unsigned int num_data,
     const double (*similarity)(void*, void*),

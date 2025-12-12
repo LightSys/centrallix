@@ -101,7 +101,8 @@
  *** @param ... Variables matching format specifiers in the format.
  *** @returns Nothing, always succeeds.
  ***/
-void mssErrorf(int clr, char* module, const char* format, ...)
+void
+mssErrorf(int clr, char* module, const char* format, ...)
     {
 	/** Prevent interlacing with stdout flushing at a weird time. **/
 	check(fflush(stdout)); /* Failure ignored. */
@@ -131,6 +132,8 @@ void mssErrorf(int clr, char* module, const char* format, ...)
 	
 	/** Not sure why you have to error check the error function... **/
 	if (ret != 0) fprintf(stderr, "FAIL %d: mssError(%d, \"%s\", \"%%s\", \"%s\")\n", ret, clr, module, buf);
+    
+    return;
     }
 
 
@@ -144,7 +147,8 @@ void mssErrorf(int clr, char* module, const char* format, ...)
  ***                *: Any other value prints a warning and does nothing.
  *** @returns The new array, or null if and only if the passed pXArray has 0 items.
  ***/
-static void** ci_xaToTrimmedArray(pXArray arr, int array_handling)
+static void**
+ci_xaToTrimmedArray(pXArray arr, int array_handling)
     {
 	const size_t arr_size = arr->nItems * sizeof(void*);
 	void** result = check_ptr(nmSysMalloc(arr_size));
@@ -208,7 +212,8 @@ ClusterAlgorithm ALL_CLUSTERING_ALGORITHMS[nClusteringAlgorithms] =
     };
 
 /** Converts a clustering algorithm to its string name. **/
-char* ci_ClusteringAlgorithmToString(ClusterAlgorithm clustering_algorithm)
+char*
+ci_ClusteringAlgorithmToString(ClusterAlgorithm clustering_algorithm)
     {
 	switch (clustering_algorithm)
 	    {
@@ -221,6 +226,8 @@ char* ci_ClusteringAlgorithmToString(ClusterAlgorithm clustering_algorithm)
 	    case ALGORITHM_DB_SCAN: return "db-scan";
 	    default: return "Unknown algorithm";
 	    }
+    
+    return; /** Unreachable. **/
     }
 
 /** Enum representing a similarity measurement algorithm. **/
@@ -238,7 +245,8 @@ SimilarityMeasure ALL_SIMILARITY_MEASURES[nSimilarityMeasures] =
     };
 
 /** Converts a similarity measure to its string name. **/
-char* ci_SimilarityMeasureToString(SimilarityMeasure similarity_measure)
+char*
+ci_SimilarityMeasureToString(SimilarityMeasure similarity_measure)
     {
 	switch (similarity_measure)
 	    {
@@ -247,6 +255,8 @@ char* ci_SimilarityMeasureToString(SimilarityMeasure similarity_measure)
 	    case SIMILARITY_LEVENSHTEIN: return "levenshtein";
 	    default: return "Unknown similarity measure";
 	    }
+    
+    return; /** Unreachable. **/
     }
 
 /*** Enum representing the type of data targetted by the driver,
@@ -690,6 +700,8 @@ int clusterCommit(void* inf_v, pObjTrxTree *oxt);
 static void ci_GiveHint(const char* hint)
     {
 	fprintf(stderr, "  > Hint: Did you mean \"%s\"?\n", hint);
+    
+    return;
     }
 
 
@@ -703,7 +715,8 @@ static void ci_GiveHint(const char* hint)
  *** 	length on a null terminated array of values.
  *** @returns Whether a hint was given.
  ***/
-static bool ci_TryHint(char* value, char** valid_values, const unsigned int n_valid_values)
+static bool
+ci_TryHint(char* value, char** valid_values, const unsigned int n_valid_values)
     {
 	char* guess = ca_most_similar(value, (void**)valid_values, n_valid_values, ca_lev_compare, 0.25);
 	if (guess == NULL) return false; /* No hint. */
@@ -727,7 +740,8 @@ static bool ci_TryHint(char* value, char** valid_values, const unsigned int n_va
  *** is NOT REQUIRED for dynamic attributes in the cluster driver. I had to debug
  *** and rewrite this for ages and it uses several functions I don't 100% understand. 
  ***/
-static int ci_ParseAttribute(
+static int
+ci_ParseAttribute(
     pStructInf inf,
     char* attr_name,
     int datatype,
@@ -809,7 +823,8 @@ static int ci_ParseAttribute(
  *** 	evaluating parameter variables in the structure file.
  *** @returns The data algorithm, or ALGORITHM_NULL on failure.
  ***/
-static ClusterAlgorithm ci_ParseClusteringAlgorithm(pStructInf inf, pParamObjects param_list)
+static ClusterAlgorithm
+ci_ParseClusteringAlgorithm(pStructInf inf, pParamObjects param_list)
     {
 	/** Get the algorithm attribute. **/
 	char* algorithm;
@@ -857,7 +872,8 @@ static ClusterAlgorithm ci_ParseClusteringAlgorithm(pStructInf inf, pParamObject
  *** 	evaluating parameter variables in the structure file.
  *** @returns The similarity measure, or SIMILARITY_NULL on failure.
  ***/
-static SimilarityMeasure ci_ParseSimilarityMeasure(pStructInf inf, pParamObjects param_list)
+static SimilarityMeasure
+ci_ParseSimilarityMeasure(pStructInf inf, pParamObjects param_list)
     {
 	/** Get the similarity_measure attribute. **/
 	char* measure;
@@ -903,7 +919,8 @@ static SimilarityMeasure ci_ParseSimilarityMeasure(pStructInf inf, pParamObjects
  *** 	cache entry keys.
  *** @returns A new pSourceData struct on success, or NULL on failure.
  ***/
-static pSourceData ci_ParseSourceData(pStructInf inf, pParamObjects param_list, char* path)
+static pSourceData
+ci_ParseSourceData(pStructInf inf, pParamObjects param_list, char* path)
     {
     char* buf = NULL;
     pSourceData source_data = NULL;
@@ -995,7 +1012,8 @@ static pSourceData ci_ParseSourceData(pStructInf inf, pParamObjects param_list, 
  *** 	used to generate cache entry keys.
  *** @returns A new pClusterData struct on success, or NULL on failure.
  ***/
-static pClusterData ci_ParseClusterData(pStructInf inf, pNodeData node_data)
+static pClusterData
+ci_ParseClusterData(pStructInf inf, pNodeData node_data)
     {
     int result;
     pClusterData cluster_data = NULL;
@@ -1294,7 +1312,8 @@ static pClusterData ci_ParseClusterData(pStructInf inf, pNodeData node_data)
  *** 	the cluster pointed to by the source attribute.
  *** @returns A new pSearchData struct on success, or NULL on failure.
  ***/
-static pSearchData ci_ParseSearchData(pStructInf inf, pNodeData node_data)
+static pSearchData
+ci_ParseSearchData(pStructInf inf, pNodeData node_data)
     {
     pSearchData search_data = NULL;
     char* key = NULL;
@@ -1471,7 +1490,8 @@ static pSearchData ci_ParseSearchData(pStructInf inf, pNodeData node_data)
  *** @param parent The parent object struct.
  *** @returns A new pNodeData struct on success, or NULL on failure.
  ***/
-static pNodeData ci_ParseNodeData(pStructInf inf, pObject parent)
+static pNodeData
+ci_ParseNodeData(pStructInf inf, pObject parent)
     {
     int ret = -1;
     pNodeData node_data = NULL;
@@ -1758,7 +1778,8 @@ static pNodeData ci_ParseNodeData(pStructInf inf, pObject parent)
 // LINK #functions
 
 /** @param source_data A pSourceData struct, freed by this function. **/
-static void ci_FreeSourceData(pSourceData source_data)
+static void
+ci_FreeSourceData(pSourceData source_data)
     {
 	/** Guard segfault. **/
 	if (source_data == NULL)
@@ -1820,6 +1841,8 @@ static void ci_FreeSourceData(pSourceData source_data)
 	/** Free the source data struct. **/
 	nmFree(source_data, sizeof(SourceData));
 	source_data = NULL;
+    
+    return;
     }
 
 
@@ -1829,7 +1852,8 @@ static void ci_FreeSourceData(pSourceData source_data)
  *** @param cluster_data The cluster data struct to free.
  *** @param recursive Whether to recursively free subclusters.
  ***/
-static void ci_FreeClusterData(pClusterData cluster_data, bool recursive)
+static void
+ci_FreeClusterData(pClusterData cluster_data, bool recursive)
     {
 	/** Guard segfault. **/
 	if (cluster_data == NULL)
@@ -1883,12 +1907,15 @@ static void ci_FreeClusterData(pClusterData cluster_data, bool recursive)
 	/** Free the cluster data struct. **/
 	nmFree(cluster_data, sizeof(ClusterData));
 	cluster_data = NULL;
+    
+    return;
     }
 
 
 // LINK #functions
 /** @param search_data A pSearchData struct, freed by this function. **/
-static void ci_FreeSearchData(pSearchData search_data)
+static void
+ci_FreeSearchData(pSearchData search_data)
     {
 	/** Guard segfault. **/
 	if (search_data == NULL)
@@ -1919,12 +1946,15 @@ static void ci_FreeSearchData(pSearchData search_data)
 	/** Free the search data struct. **/
 	nmFree(search_data, sizeof(SearchData));
 	search_data = NULL;
+    
+    return;
     }
 
 
 // LINK #functions
 /** @param node_data A pNodeData struct, freed by this function. **/
-static void ci_FreeNodeData(pNodeData node_data)
+static void
+ci_FreeNodeData(pNodeData node_data)
     {
 	/** Guard segfault. **/
 	if (node_data == NULL)
@@ -1991,10 +2021,13 @@ static void ci_FreeNodeData(pNodeData node_data)
 	/** Free the node data. **/
 	nmFree(node_data, sizeof(NodeData));
 	node_data = NULL;
+    
+    return;
     }
 
 /** Frees all data in caches for all cluster driver instances. **/
-static void ci_ClearCaches(void)
+static void
+ci_ClearCaches(void)
     {
 	/*** Free caches in reverse of the order they are created in case
 	 *** cached data relies on its source during the freeing process.
@@ -2002,6 +2035,8 @@ static void ci_ClearCaches(void)
 	check(xhClearKeySafe(&ClusterDriverCaches.SearchDataCache, ci_CacheFreeSearch, NULL)); /* Failure ignored. */
 	check(xhClearKeySafe(&ClusterDriverCaches.ClusterDataCache, ci_CacheFreeCluster, NULL)); /* Failure ignored. */
 	check(xhClearKeySafe(&ClusterDriverCaches.SourceDataCache, ci_CacheFreeSourceData, NULL)); /* Failure ignored. */
+    
+    return;
     }
 
 
@@ -2019,7 +2054,8 @@ static void ci_ClearCaches(void)
  *** @param source_data The source data struct to be queried.
  *** @returns The size in bytes of the struct and all internal allocated data.
  ***/
-static unsigned int ci_SizeOfSourceData(pSourceData source_data)
+static unsigned int
+ci_SizeOfSourceData(pSourceData source_data)
     {
 	/** Guard segfault. **/
 	if (source_data == NULL)
@@ -2063,7 +2099,8 @@ static unsigned int ci_SizeOfSourceData(pSourceData source_data)
  *** @param recursive Whether to recursively free subclusters.
  *** @returns The size in bytes of the struct and all internal allocated data.
  ***/
-static unsigned int ci_SizeOfClusterData(pClusterData cluster_data, bool recursive)
+static unsigned int
+ci_SizeOfClusterData(pClusterData cluster_data, bool recursive)
     {
 	/** Guard segfault. **/
 	if (cluster_data == NULL)
@@ -2107,7 +2144,8 @@ static unsigned int ci_SizeOfClusterData(pClusterData cluster_data, bool recursi
  *** @param search_data The search data struct to be queried.
  *** @returns The size in bytes of the struct and all internal allocated data.
  ***/
-static unsigned int ci_SizeOfSearchData(pSearchData search_data)
+static unsigned int
+ci_SizeOfSearchData(pSearchData search_data)
     {
 	/** Guard segfault. **/
 	if (search_data == NULL)
@@ -2140,7 +2178,8 @@ static unsigned int ci_SizeOfSearchData(pSearchData search_data)
  *** @returns 0 if successful, or
  ***         -1 other value on failure.
  ***/
-static int ci_ComputeSourceData(pSourceData source_data, pObjSession session)
+static int
+ci_ComputeSourceData(pSourceData source_data, pObjSession session)
     {
     bool successful = false;
     int ret;
@@ -2467,7 +2506,8 @@ static int ci_ComputeSourceData(pSourceData source_data, pObjSession session)
  *** @returns 0 if successful, or
  ***         -1 other value on failure.
  ***/
-static int ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
+static int
+ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
     {
     cluster_data->Sims = NULL;
     cluster_data->Clusters = NULL;
@@ -2637,7 +2677,8 @@ static int ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
  *** @returns 0 if successful, or
  ***         -1 other value on failure.
  ***/
-static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
+static int
+ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
     {
     pXArray dups = NULL;
     
@@ -2803,7 +2844,8 @@ static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
  *** 
  *** LINK ../../centrallix-lib/include/datatypes.h:72
  ***/
-static int ci_GetParamType(void* inf_v, const char* attr_name)
+static int
+ci_GetParamType(void* inf_v, const char* attr_name)
     {
     pNodeData node_data = (pNodeData)inf_v;
     
@@ -2846,7 +2888,8 @@ static int ci_GetParamType(void* inf_v, const char* attr_name)
  *** 
  *** LINK ../../centrallix-lib/include/datatypes.h:72
  ***/
-static int ci_GetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
+static int
+ci_GetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
     {
     pNodeData node_data = (pNodeData)inf_v;
     
@@ -2881,7 +2924,8 @@ static int ci_GetParamValue(void* inf_v, char* attr_name, int datatype, pObjData
 
 // LINK #functions
 /** Not implemented. **/
-static int ci_SetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
+static int
+ci_SetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
     {
 	mssErrorf(1, "Cluster", "SetParamValue() is not implemented because clusters are imutable.");
     
@@ -2908,7 +2952,8 @@ static int ci_SetParamValue(void* inf_v, char* attr_name, int datatype, pObjData
  *** @returns A pDriverData struct representing a driver instance, or
  ***          NULL if an error occurs.
  ***/
-void* clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pObjTrxTree* oxt)
+void*
+clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pObjTrxTree* oxt)
     {
     pNodeData node_data = NULL;
     pDriverData driver_data = NULL;
@@ -3075,7 +3120,8 @@ void* clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_typ
  *** @param oxt The object system tree, similar to a kind of "scope" (unused).
  *** @returns 0, success.
  ***/
-int clusterClose(void* inf_v, pObjTrxTree* oxt)
+int
+clusterClose(void* inf_v, pObjTrxTree* oxt)
     {
     pDriverData driver_data = (pDriverData)inf_v;
     
@@ -3109,7 +3155,8 @@ int clusterClose(void* inf_v, pObjTrxTree* oxt)
  *** @returns The cluster query, or
  ***          NULL if an error occurs.
  ***/
-void* clusterOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
+void*
+clusterOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
     pClusterQuery cluster_query = NULL;
     pDriverData driver_data = inf_v;
@@ -3149,7 +3196,8 @@ void* clusterOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
  *** 	pointing to a specific target index into the relevant data.
  *** 	OR NULL, indicating that all data has been fetched.
  ***/
-void* clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
+void*
+clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
     pClusterQuery cluster_query = (pClusterQuery)qy_v;
     pDriverData driver_data = cluster_query->DriverData;
@@ -3281,7 +3329,8 @@ void* clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
  *** @param oxt The object system tree, similar to a kind of "scope" (unused).
  *** @returns 0, success.
  ***/
-int clusterQueryClose(void* qy_v, pObjTrxTree* oxt)
+int
+clusterQueryClose(void* qy_v, pObjTrxTree* oxt)
     {    
 	if (qy_v != NULL) nmFree(qy_v, sizeof(ClusterQuery));
     
@@ -3299,7 +3348,8 @@ int clusterQueryClose(void* qy_v, pObjTrxTree* oxt)
  *** 
  *** LINK ../../centrallix-lib/include/datatypes.h:72
  ***/
-int clusterGetAttrType(void* inf_v, char* attr_name, pObjTrxTree* oxt)
+int
+clusterGetAttrType(void* inf_v, char* attr_name, pObjTrxTree* oxt)
     {
     pDriverData driver_data = (pDriverData)inf_v;
     
@@ -3407,7 +3457,8 @@ int clusterGetAttrType(void* inf_v, char* attr_name, pObjTrxTree* oxt)
  *** 
  *** LINK ../../centrallix-lib/include/datatypes.h:72
  ***/
-int clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pObjTrxTree* oxt)
+int
+clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pDriverData driver_data = (pDriverData)inf_v;
     
@@ -3743,7 +3794,8 @@ int clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val
  *** @returns A presentation hints object, if successful,
  ***          NULL if an error occurs.
  ***/
-pObjPresentationHints clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
+pObjPresentationHints
+clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
     {
     pDriverData driver_data = (pDriverData)inf_v;
     pObjPresentationHints hints = NULL;
@@ -4047,7 +4099,8 @@ pObjPresentationHints clusterPresentationHints(void* inf_v, char* attr_name, pOb
  *** @param oxt Unused.
  *** @returns The name of the first attribute.
  ***/
-char* clusterGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
+char*
+clusterGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
     {
     pDriverData driver_data = (pDriverData)inf_v;
     
@@ -4067,7 +4120,8 @@ char* clusterGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
  *** @param oxt Unused.
  *** @returns The name of the next attribute.
  ***/
-char* clusterGetNextAttr(void* inf_v, pObjTrxTree* oxt)
+char*
+clusterGetNextAttr(void* inf_v, pObjTrxTree* oxt)
     {
     pDriverData driver_data = (pDriverData)inf_v;
     
@@ -4083,6 +4137,8 @@ char* clusterGetNextAttr(void* inf_v, pObjTrxTree* oxt)
 		mssErrorf(1, "Cluster", "Unknown target type %u.", driver_data->TargetType);
 		return NULL;
 	    }
+    
+    return; /* Unreachable. */
     }
 
 
@@ -4094,7 +4150,8 @@ char* clusterGetNextAttr(void* inf_v, pObjTrxTree* oxt)
  *** @returns 0 if successful,
  ***         -1 if the driver is an unimplemented type (should never happen).
  ***/
-int clusterInfo(void* inf_v, pObjectInfo info)
+int
+clusterInfo(void* inf_v, pObjectInfo info)
     {
     pDriverData driver_data = (pDriverData)inf_v;
     pNodeData node_data = (pNodeData)driver_data->NodeData;
@@ -4180,7 +4237,8 @@ int clusterInfo(void* inf_v, pObjectInfo info)
  *** @param oxt Unused.
  *** @returns The name of the first method.
  ***/
-char* clusterGetFirstMethod(void* inf_v, pObjTrxTree* oxt)
+char*
+clusterGetFirstMethod(void* inf_v, pObjTrxTree* oxt)
     {
     pDriverData driver_data = (pDriverData)inf_v;
     
@@ -4200,7 +4258,8 @@ char* clusterGetFirstMethod(void* inf_v, pObjTrxTree* oxt)
  *** @param oxt Unused.
  *** @returns The name of the next method.
  ***/
-char* clusterGetNextMethod(void* inf_v, pObjTrxTree* oxt)
+char*
+clusterGetNextMethod(void* inf_v, pObjTrxTree* oxt)
     {
     pDriverData driver_data = (pDriverData)inf_v;
     
@@ -4210,7 +4269,8 @@ char* clusterGetNextMethod(void* inf_v, pObjTrxTree* oxt)
 
 // LINK #functions
 /** Intended for use in xhForEach(). **/
-static int ci_PrintEntry(pXHashEntry entry, void* arg)
+static int
+ci_PrintEntry(pXHashEntry entry, void* arg)
     {
 	/** Extract entry. **/
 	char* key = entry->Key;
@@ -4300,7 +4360,8 @@ static int ci_PrintEntry(pXHashEntry entry, void* arg)
 
 // LINK #functions
 /** Intended for use in xhClearKeySafe(). **/
-static void ci_CacheFreeSourceData(pXHashEntry entry, void* path)
+static void
+ci_CacheFreeSourceData(pXHashEntry entry, void* path)
     {
 	/** Extract hash entry. **/
 	char* key = entry->Key;
@@ -4312,12 +4373,15 @@ static void ci_CacheFreeSourceData(pXHashEntry entry, void* path)
 	/** Free data. **/
 	ci_FreeSourceData(source_data);
 	nmSysFree(key);
+    
+    return;
     }
 
 
 // LINK #functions
 /** Intended for use in xhClearKeySafe(). **/
-static void ci_CacheFreeCluster(pXHashEntry entry, void* path)
+static void
+ci_CacheFreeCluster(pXHashEntry entry, void* path)
     {
 	/** Extract hash entry. **/
 	char* key = entry->Key;
@@ -4329,12 +4393,15 @@ static void ci_CacheFreeCluster(pXHashEntry entry, void* path)
 	/** Free data. **/
 	ci_FreeClusterData(cluster_data, false);
 	nmSysFree(key);
+    
+    return;
     }
 
 
 // LINK #functions
 /** Intended for use in xhClearKeySafe(). **/
-static void ci_CacheFreeSearch(pXHashEntry entry, void* path)
+static void
+ci_CacheFreeSearch(pXHashEntry entry, void* path)
     {
 	/** Extract hash entry. **/
 	char* key = entry->Key;
@@ -4346,6 +4413,8 @@ static void ci_CacheFreeSearch(pXHashEntry entry, void* path)
 	/** Free data. **/
 	ci_FreeSearchData(search_data);
 	nmSysFree(key);
+    
+    return;
     }
 
 
@@ -4357,7 +4426,8 @@ static void ci_CacheFreeSearch(pXHashEntry entry, void* path)
  *** @param param A possibly optional param passed to the method.
  *** @param oxt The object system tree, similar to a kind of "scope" (unused).
  ***/
-int clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree* oxt)
+int
+clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree* oxt)
     {
     pDriverData driver_data = (pDriverData)inf_v;
     
@@ -4496,64 +4566,81 @@ int clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrx
 // LINK #functions
 
 /** Not implemented. **/
-int clusterCreate(pObject obj, int mask, pContentType sys_type, char* usr_type, pObjTrxTree* oxt)
+int
+clusterCreate(pObject obj, int mask, pContentType sys_type, char* usr_type, pObjTrxTree* oxt)
     {
 	mssErrorf(1, "Cluster", "clusterCreate() is not implemented.");
     
     return -ENOSYS;
     }
+
 /** Not implemented. **/
-int clusterDelete(pObject obj, pObjTrxTree* oxt)
+int
+clusterDelete(pObject obj, pObjTrxTree* oxt)
     {
 	mssErrorf(1, "Cluster", "clusterDelete() is not implemented.");
     
     return -1;
     }
+
 /** Not implemented. **/
-int clusterDeleteObj(void* inf_v, pObjTrxTree* oxt)
+int
+clusterDeleteObj(void* inf_v, pObjTrxTree* oxt)
     {
 	mssErrorf(1, "Cluster", "clusterDeleteObj() is not implemented.");
     
     return -1;
     }
+
 /** Not implemented. **/
-int clusterRead(void* inf_v, char* buffer, int max_cnt, int offset, int flags, pObjTrxTree* oxt)
+int
+clusterRead(void* inf_v, char* buffer, int max_cnt, int offset, int flags, pObjTrxTree* oxt)
     {
 	mssErrorf(1, "Cluster", "clusterRead() not implemented.");
 	fprintf(stderr, "HINT: Use queries instead, (e.g. clusterOpenQuery()).\n");
     
     return -1;
     }
+
 /** Not implemented. **/
-int clusterWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
+int
+clusterWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
 	mssErrorf(1, "Cluster", "clusterWrite() not implemented because clusters are imutable.");
     
     return -1;
     }
+
 /** Not implemented. **/
-int clusterSetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pObjTrxTree* oxt)
+int
+clusterSetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pObjTrxTree* oxt)
     {
 	mssErrorf(1, "Cluster", "clusterSetAttrValue() not implemented because clusters are imutable.");
     
     return -1;
     }
+
 /** Not implemented. **/
-int clusterAddAttr(void* inf_v, char* attr_name, int type, pObjData val, pObjTrxTree* oxt)
+int
+clusterAddAttr(void* inf_v, char* attr_name, int type, pObjData val, pObjTrxTree* oxt)
     {
 	mssErrorf(1, "Cluster", "clusterAddAttr() not implemented because clusters are imutable.");
     
     return -1;
     }
+
 /** Not implemented. **/
-void* clusterOpenAttr(void* inf_v, char* attr_name, int mode, pObjTrxTree* oxt)
+void*
+clusterOpenAttr(void* inf_v, char* attr_name, int mode, pObjTrxTree* oxt)
     {
 	mssErrorf(1, "Cluster", "clusterOpenAttr() not implemented.");
     
     return NULL;
     }
+
 /** Not implemented. **/
-int clusterCommit(void* inf_v, pObjTrxTree* oxt)
+int
+clusterCommit(void* inf_v, pObjTrxTree* oxt)
     {
 	mssErrorf(1, "Cluster", "clusterCommit() not implemented because clusters are imutable.");
     
@@ -4570,7 +4657,8 @@ int clusterCommit(void* inf_v, pObjTrxTree* oxt)
  *** @returns 0 if successful, or
  ***         -1 if an error occurs.
  ***/
-int clusterInitialize(void)
+int
+clusterInitialize(void)
     {
 	/** Allocate the driver. **/
 	pObjDriver drv = (pObjDriver)check_ptr(nmMalloc(sizeof(ObjDriver)));
@@ -4637,8 +4725,8 @@ int clusterInitialize(void)
 	/** Success. **/
 	return 0;
 	
-	/** Error cleanup. **/
     err_free:
+	/** Error cleanup. **/
 	if (ClusterDriverCaches.SourceDataCache.nRows != 0) check(xhDeInit(&ClusterDriverCaches.SourceDataCache)); /* Failure ignored. **/
 	if (ClusterDriverCaches.ClusterDataCache.nRows != 0) check(xhDeInit(&ClusterDriverCaches.ClusterDataCache)); /* Failure ignored. **/
 	if (ClusterDriverCaches.SearchDataCache.nRows != 0) check(xhDeInit(&ClusterDriverCaches.SearchDataCache)); /* Failure ignored. **/

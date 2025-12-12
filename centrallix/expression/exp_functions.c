@@ -127,7 +127,8 @@ typedef struct
  *** @returns 0 if the expectations are successfully met,
  ***         -1 if an expectation is violated (and mssError() is called).
  ***/
-static int exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_expect)
+static int
+exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_expect)
     {
         /** The expectation struct cannot be NULL. **/
 	if (arg_expect == NULL)
@@ -388,7 +389,8 @@ static int exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgEx
  ***     }
  *** ```
  ***/
-static int exp_fn_i_verify_schema(const ArgExpect* arg_expects, pExpression tree)
+static int
+exp_fn_i_verify_schema(const ArgExpect* arg_expects, pExpression tree)
     {
 	/** Verify expression tree. **/
 	ASSERTMAGIC(tree, MGK_EXPRESSION);
@@ -460,35 +462,36 @@ static int exp_fn_i_verify_schema(const ArgExpect* arg_expects, pExpression tree
  ***         -1 on failure,
  ***          1 if the expression is NULL.
  ***/
-static int exp_fn_i_get_number(pExpression numeric_expr, double* result_ptr)
+static int
+exp_fn_i_get_number(pExpression numeric_expr, double* result_ptr)
     {
-    /** Check for null values. **/
-    if (numeric_expr == NULL || numeric_expr->Flags & EXPR_F_NULL) return 1;
-    
-    /** Check for null destination. **/
-    if (result_ptr == NULL)
-	{
-	mssError(1, "EXP", "Null location provided to store numeric result.");
-	return -1;
-	}
-    
-    /** Get the numeric value. **/
-    double n;
-    switch(numeric_expr->DataType)
-	{
-	case DATA_T_INTEGER: n = numeric_expr->Integer; break;
-	case DATA_T_DOUBLE:  n = numeric_expr->Types.Double; break;
-	case DATA_T_MONEY:   n = objDataToDouble(DATA_T_MONEY, &(numeric_expr->Types.Money)); break;
-	default:
-	    mssError(1, "EXP",
-		"%s (%d) is not a numeric type.",
-		objTypeToStr(numeric_expr->DataType), numeric_expr->DataType
-	    );
+	/** Check for null values. **/
+	if (numeric_expr == NULL || numeric_expr->Flags & EXPR_F_NULL) return 1;
+	
+	/** Check for null destination. **/
+	if (result_ptr == NULL)
+	    {
+	    mssError(1, "EXP", "Null location provided to store numeric result.");
 	    return -1;
-	}
-    
-    /** Store the result. **/
-    *result_ptr = n;
+	    }
+	
+	/** Get the numeric value. **/
+	double n;
+	switch(numeric_expr->DataType)
+	    {
+	    case DATA_T_INTEGER: n = numeric_expr->Integer; break;
+	    case DATA_T_DOUBLE:  n = numeric_expr->Types.Double; break;
+	    case DATA_T_MONEY:   n = objDataToDouble(DATA_T_MONEY, &(numeric_expr->Types.Money)); break;
+	    default:
+		mssError(1, "EXP",
+		    "%s (%d) is not a numeric type.",
+		    objTypeToStr(numeric_expr->DataType), numeric_expr->DataType
+		);
+		return -1;
+	    }
+	
+	/** Store the result. **/
+	*result_ptr = n;
     
     return 0;
     }
@@ -497,7 +500,8 @@ static int exp_fn_i_get_number(pExpression numeric_expr, double* result_ptr)
  *** 
  *** @param tree The affected tree.
  ***/
-static void exp_fn_i_free_result_string(pExpression tree)
+static void
+exp_fn_i_free_result_string(pExpression tree)
     {
 	/** If no string is allocated, no work is needed. **/
 	if (tree->Alloc == 0) return;
@@ -507,6 +511,8 @@ static void exp_fn_i_free_result_string(pExpression tree)
 	
 	/** No string is allocated anymore. */
 	tree->Alloc = 0;
+    
+    return;
     }
 
 /*** Ensure that the allocated result string is long enough to store a given
@@ -518,7 +524,8 @@ static void exp_fn_i_free_result_string(pExpression tree)
  *** @returns 0 if successful, or
  ***         -1 if an error occurs.
  ***/
-static int exp_fn_i_alloc_result_string(pExpression tree, const size_t required_space)
+static int
+exp_fn_i_alloc_result_string(pExpression tree, const size_t required_space)
     {
 	/** Free the previous string (if needed) so we can store a new one. **/
 	exp_fn_i_free_result_string(tree);
@@ -1589,7 +1596,8 @@ int exp_fn_reverse(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     }
 
 /** Leading zero trim. */
-int exp_fn_lztrim(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+int
+exp_fn_lztrim(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
 	/** Expect one nullable string parameter. **/
 	if (exp_fn_i_verify_schema((ArgExpect[]){
@@ -1630,7 +1638,8 @@ int exp_fn_lztrim(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
 
 
 /** Left trim spaces. **/
-int exp_fn_ltrim(pExpression tree)
+int
+exp_fn_ltrim(pExpression tree)
     {
 	/** Expect one nullable string parameter. **/
 	if (exp_fn_i_verify_schema((ArgExpect[]){
@@ -1672,7 +1681,8 @@ int exp_fn_ltrim(pExpression tree)
 
 
 /** Right trim spaces. **/
-int exp_fn_rtrim(pExpression tree)
+int
+exp_fn_rtrim(pExpression tree)
     {
 	/** Expect one nullable string parameter. **/
 	if (exp_fn_i_verify_schema((ArgExpect[]){
@@ -1723,7 +1733,8 @@ int exp_fn_rtrim(pExpression tree)
 
 
 /** Left and right trim spaces. **/
-int exp_fn_trim(pExpression tree)
+int
+exp_fn_trim(pExpression tree)
     {
 	/** Left trim the expression. **/
 	exp_fn_ltrim(tree);
@@ -3768,7 +3779,8 @@ int exp_fn_from_base64(pExpression tree, pParamObjects objlist, pExpression i0, 
 	return -1;
     }
 
-static int exp_fn_i_do_math(pExpression tree, double (*math)(), int arg_num)
+static int
+exp_fn_i_do_math(pExpression tree, double (*math)(), int arg_num)
     {
         /** Verify function schema: expect arg_num numeric values. **/
 	ArgExpect expects[arg_num + 1];
@@ -3818,20 +3830,26 @@ static int exp_fn_i_do_math(pExpression tree, double (*math)(), int arg_num)
     return 0;
     }
 
-int exp_fn_power(pExpression tree)
+int
+exp_fn_power(pExpression tree)
     {
     return exp_fn_i_do_math(tree, pow, 2);
     }
-int exp_fn_ln(pExpression tree)
+
+int
+exp_fn_ln(pExpression tree)
     {
     return exp_fn_i_do_math(tree, log, 1);
     }
-int exp_fn_log10(pExpression tree)
+
+int
+exp_fn_log10(pExpression tree)
     {
     return exp_fn_i_do_math(tree, log10, 1);
     }
 
-int exp_fn_log(pExpression tree)
+int
+exp_fn_log(pExpression tree)
     {
 	/** Verify function schema: A number and an optional base. **/
 	if (exp_fn_i_verify_schema((ArgExpect[]){
@@ -4528,17 +4546,16 @@ int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
     }
 
 
-int exp_fn_metaphone(pExpression tree, pParamObjects obj_list)
+int
+exp_fn_metaphone(pExpression tree, pParamObjects obj_list)
     {
-    const char fn_name[] = "metaphone";
-    
         /** Verify function schema. **/
 	if (exp_fn_i_verify_schema((ArgExpect[]){
 	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
 	    EXP_ARG_END,
 	}, tree) != 0)
 	    {
-	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", fn_name);
+	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
 	    return -1;
 	    }
 	
@@ -4586,7 +4603,8 @@ int exp_fn_metaphone(pExpression tree, pParamObjects obj_list)
  *** @param fn_name Either `cos_compare()` or `lev_compare()`.
  *** @returns 0 for success, -1 for failure.
  ***/
-static int exp_fn_compare(pExpression tree, pParamObjects obj_list, const char* fn_name)
+static int
+exp_fn_compare(pExpression tree, pParamObjects obj_list, const char* fn_name)
     {
 	/** Verify function schema. **/
 	if (exp_fn_i_verify_schema((ArgExpect[]){
@@ -4654,25 +4672,25 @@ static int exp_fn_compare(pExpression tree, pParamObjects obj_list, const char* 
 	    tree->DataType = DATA_T_DOUBLE;
 	    return 0;
 	    }
-	
-	return -1;
+    
+    return -1; /* Unreachable. */
     }
 
-
-int exp_fn_cos_compare(pExpression tree, pParamObjects obj_list)
+int
+exp_fn_cos_compare(pExpression tree, pParamObjects obj_list)
     {
     return exp_fn_compare(tree, obj_list, "cos_compare");
     }
-int exp_fn_lev_compare(pExpression tree, pParamObjects obj_list)
+
+int
+exp_fn_lev_compare(pExpression tree, pParamObjects obj_list)
     {
     return exp_fn_compare(tree, obj_list, "lev_compare");
     }
 
-    
-int exp_fn_levenshtein(pExpression tree, pParamObjects obj_list)
+int
+exp_fn_levenshtein(pExpression tree, pParamObjects obj_list)
     {
-    const char fn_name[] = "levenshtein";
-    
 	/** Verify function schema. **/
 	if (exp_fn_i_verify_schema((ArgExpect[]){
 	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
@@ -4680,7 +4698,7 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects obj_list)
 	    EXP_ARG_END,
 	}, tree) != 0)
 	    {
-	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", fn_name);
+	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
 	    return -1;
 	    }
 	
@@ -4701,7 +4719,7 @@ int exp_fn_levenshtein(pExpression tree, pParamObjects obj_list)
 	int edit_dist = ca_edit_dist(str1, str2, 0lu, 0lu);
 	if (!check_neg(edit_dist))
 	    {
-	    mssErrorf(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute edit distance.\n", fn_name, str1, str2);
+	    mssErrorf(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute edit distance.\n", tree->Name, str1, str2);
 	    return -1;
 	    }
     

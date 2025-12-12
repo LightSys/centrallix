@@ -127,7 +127,8 @@
  *** @param size The amount of memory being allocated.
  *** @returns The pointer, for chaining.
  ***/
-void* meta_check_allocation(void* ptr, const char* fname, const size_t size)
+void*
+meta_check_allocation(void* ptr, const char* fname, const size_t size)
     {
 	if (ptr == NULL)
 	    {
@@ -170,7 +171,8 @@ MetaString;
  *** @param init_str The initial size of the string.
  *** @returns The new MetaString.
  ***/
-MetaString* meta_new_string(const char* init_str)
+MetaString*
+meta_new_string(const char* init_str)
     {
     MetaString *s;
     char empty_string[] = "";
@@ -196,7 +198,8 @@ MetaString* meta_new_string(const char* init_str)
  *** 
  *** @param s The MetaString.
  ***/
-void meta_destroy_string(MetaString* s)
+void
+meta_destroy_string(MetaString* s)
     {
 	if (s == NULL)
 	    return;
@@ -205,6 +208,8 @@ void meta_destroy_string(MetaString* s)
 	    META_FREE(s->str);
 	
 	META_FREE(s);
+    
+    return;
     }
 
 /*** Increases a MetaString's buffer size.
@@ -212,20 +217,26 @@ void meta_destroy_string(MetaString* s)
  *** @param s The MetaString* being modified.
  *** @param chars_needed Minimum number of characters to increase buffer size.
  ***/
-void meta_increase_buffer(MetaString* s, const size_t chars_needed)
+void
+meta_increase_buffer(MetaString* s, const size_t chars_needed)
     {
 	s->bufsize += chars_needed + 8u;
 	s->str = SAFE_REALLOC(s->str, s->bufsize * sizeof(char));
+    
+    return;
     }
 
 /*** Convert all characters of a MetaString to uppercase.
  *** 
  *** @param s The MetaString being modified.
  ***/
-void meta_make_upper(MetaString* s)
+void
+meta_make_upper(MetaString* s)
     {
 	for (char* i = s->str; i[0] != '\0'; i++)
 	    *i = (char)toupper(*i);
+    
+    return;
     }
 
 /*** @param s The MetaString being checked.
@@ -233,7 +244,8 @@ void meta_make_upper(MetaString* s)
  *** @returns 1 if the location is out of bounds for the MetaString,
  ***          0 otherwise.
  ***/
-bool meta_is_out_of_bounds(MetaString* s, unsigned int pos)
+bool
+meta_is_out_of_bounds(MetaString* s, unsigned int pos)
     {
     return (s->length <= pos);
     }
@@ -243,7 +255,8 @@ bool meta_is_out_of_bounds(MetaString* s, unsigned int pos)
  *** @param s The MetaString being checked.
  *** @param pos The character location to check within the MetaString.
  ***/
-bool meta_is_vowel(MetaString* s, unsigned int pos)
+bool
+meta_is_vowel(MetaString* s, unsigned int pos)
     {
 	if (meta_is_out_of_bounds(s, pos)) return 0;
 	
@@ -259,7 +272,8 @@ bool meta_is_vowel(MetaString* s, unsigned int pos)
  *** @param s The MetaString to be searched.
  *** @returns 1 if the MetaString is Slavo Germanic, or 0 otherwise. 
  ***/
-bool meta_is_slavo_germanic(MetaString* s)
+bool
+meta_is_slavo_germanic(MetaString* s)
     {
     return (strstr(s->str, "W") != NULL)
 	|| (strstr(s->str, "K") != NULL)
@@ -272,7 +286,8 @@ bool meta_is_slavo_germanic(MetaString* s)
  *** @returns The character at the position in the MetaString, or
  ***          '\0' if the position is not in the MetaString.
  ***/
-char meta_get_char_at(MetaString* s, unsigned int pos)
+char
+meta_get_char_at(MetaString* s, unsigned int pos)
     {
     return (meta_is_out_of_bounds(s, pos)) ? '\0' : ((char) *(s->str + pos));
     }
@@ -289,7 +304,8 @@ char meta_get_char_at(MetaString* s, unsigned int pos)
  *** @returns 1 if any of the character sequences appear after the start
  *** 	in the MetaString and 0 otherwise.
  ***/
-bool meta_is_str_at(MetaString* s, unsigned int start, ...)
+bool
+meta_is_str_at(MetaString* s, unsigned int start, ...)
     {
     va_list ap;
     
@@ -319,7 +335,8 @@ bool meta_is_str_at(MetaString* s, unsigned int start, ...)
  *** @param s The MetaString being modified.
  *** @param new_str The string being added.
  ***/
-void meta_add_str(MetaString* s, const char* new_str)
+void
+meta_add_str(MetaString* s, const char* new_str)
     {
 	if (new_str == NULL)
 	    return;
@@ -330,6 +347,8 @@ void meta_add_str(MetaString* s, const char* new_str)
 	
 	strcat(s->str, new_str);
 	s->length += add_length;
+    
+    return;
     }
     
 /*** Computes double metaphone.
@@ -347,7 +366,8 @@ void meta_add_str(MetaString* s, const char* new_str)
  *** @param secondary_code A pointer to a buffer where the pointer to a string
  ***	containing the produced secondary code will be stored.
  ***/
-void meta_double_metaphone(const char* str, char** primary_code, char** secondary_code)
+void
+meta_double_metaphone(const char* str, char** primary_code, char** secondary_code)
     {
     size_t length;
     
@@ -1283,6 +1303,8 @@ void meta_double_metaphone(const char* str, char** primary_code, char** secondar
 	meta_destroy_string(original);
 	meta_destroy_string(primary);
 	meta_destroy_string(secondary);
+    
+    return;
     }
 
 #ifdef TESTING
@@ -1308,7 +1330,8 @@ void meta_double_metaphone(const char* str, char** primary_code, char** secondar
 
 unsigned int num_tests_passed = 0u, num_tests_failed = 0u;
 
-void test(const char* input, const char* expected_primary, const char* expected_secondary)
+void
+test(const char* input, const char* expected_primary, const char* expected_secondary)
     {
     char* codes[2];
 	
@@ -1337,13 +1360,16 @@ void test(const char* input, const char* expected_primary, const char* expected_
 	    );
 	    num_tests_failed++;
 	    }
+    
+    return;
     }
 
 // Special thanks to the following websites for double checking the correct results:
 // 1: https://words.github.io/double-metaphone
 // 2: https://mainegenealogy.net/metaphone_converter.asp
 // 3: https://en.toolpage.org/tool/metaphone
-void run_tests(void)
+void
+run_tests(void)
     {
 	printf("\nRunning tests...\n");
 	
@@ -1526,6 +1552,8 @@ void run_tests(void)
 	printf("    > Failed: %u\n", num_tests_failed);
 	printf("    > Skipped: %u\n", 0u); /* Implementation removed. */
 	printf("    > Passed: %u/%u\n", num_tests_passed, total_tests);
+    
+    return;
     }
 
 int main(void)

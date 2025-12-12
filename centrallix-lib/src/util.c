@@ -111,7 +111,8 @@ static char* units_metric[N_UNITS] = {"bytes", "KB", "MB", "GB"};
  *** 	to the buffer..
  *** @returns buf, for chaining.
  ***/
-char* snprint_bytes(char* buf, const size_t buf_size, unsigned int bytes)
+char*
+snprint_bytes(char* buf, const size_t buf_size, unsigned int bytes)
     {
 	char** units = (USE_METRIC) ? units_metric : units_cs;
 	const double unit_size = (USE_METRIC) ? 1000.0 : 1024.0;
@@ -148,7 +149,8 @@ char* snprint_bytes(char* buf, const size_t buf_size, unsigned int bytes)
  *** @param value The value to write into the buffer.
  *** @returns `buf`, or `NULL` if `buf_size` is 0.
  */
-char* snprint_commas_llu(char* buf, size_t buf_size, unsigned long long value)
+char*
+snprint_commas_llu(char* buf, size_t buf_size, unsigned long long value)
     {
 	if (buf_size == 0) return NULL;
 	if (value == 0)
@@ -175,7 +177,8 @@ char* snprint_commas_llu(char* buf, size_t buf_size, unsigned long long value)
     return buf;
     }
 
-void fprint_mem(FILE* out)
+void
+fprint_mem(FILE* out)
     {
 	FILE* fp = fopen("/proc/self/statm", "r");
 	if (fp == NULL) { perror("fopen()"); return; }
@@ -199,9 +202,12 @@ void fprint_mem(FILE* out)
 	
 	fprintf(out, "Memory used: %ld bytes (%s)\n", resident_bytes, buf);
 	fprintf(out, "Share %ldb, Text %ldb, Lib %ldb, Data %ldb\n", share, text, lib, data);
+    
+    return;
     }
 
-static double get_time(void)
+static double
+get_time(void)
     {
     struct timespec ts;
     
@@ -210,7 +216,8 @@ static double get_time(void)
     return (double)ts.tv_sec + (double)ts.tv_nsec / 1.0e9f;
     }
 
-pTimer timer_init(pTimer timer)
+pTimer
+timer_init(pTimer timer)
     {
 	if (timer == NULL) return NULL;
 	timer->start = NAN;
@@ -219,12 +226,14 @@ pTimer timer_init(pTimer timer)
     return timer;
     }
 
-pTimer timer_new(void)
+pTimer
+timer_new(void)
     {
     return timer_init(nmMalloc(sizeof(Timer)));
     }
 
-pTimer timer_start(pTimer timer)
+pTimer
+timer_start(pTimer timer)
     {
 	if (!timer) return timer;
 	timer->start = get_time();
@@ -232,7 +241,8 @@ pTimer timer_start(pTimer timer)
     return timer;
     }
 
-pTimer timer_stop(pTimer timer)
+pTimer
+timer_stop(pTimer timer)
     {
 	if (!timer) return timer;
 	timer->total += get_time() - timer->start;
@@ -240,22 +250,28 @@ pTimer timer_stop(pTimer timer)
     return timer;
     }
 
-double timer_get(pTimer timer)
+double
+timer_get(pTimer timer)
     {
     return (timer) ? timer->total : NAN;
     }
 
-pTimer timer_reset(pTimer timer)
+pTimer
+timer_reset(pTimer timer)
     {
     return timer_init(timer);
     }
 
-void timer_de_init(pTimer timer) {}
+void
+timer_de_init(pTimer timer) {}
 
-void timer_free(pTimer timer)
+void
+timer_free(pTimer timer)
     {
 	timer_de_init(timer);
 	nmFree(timer, sizeof(Timer));
+    
+    return;
     }
 
 /*** Function for failing on error, assuming the error came from a library or
@@ -271,4 +287,6 @@ void print_err(int code, const char* function_name, const char* file_name, const
 	if (errno != 0) perror(error_buf);
 	else if (code != 0) fprintf(stderr, "%s (error code %d).\n", error_buf, code);
 	else fprintf(stderr, "%s.\n", error_buf);
+    
+    return;
     }

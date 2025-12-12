@@ -139,7 +139,8 @@ char* obj_default_null_fmt = "NULL";
  *** 
  *** LINK ../../centrallix-lib/include/datatypes.h:72
  ***/
-int objTypeFromStr(const char* str)
+int
+objTypeFromStr(const char* str)
     {
 	/** All valid types are non-null strings, at least 2 characters long. **/
 	if (str == NULL || str[0] == '\0' || str[1] == '\0') return -1;
@@ -197,7 +198,8 @@ int objTypeFromStr(const char* str)
  ***          "(unknown)" if the type is unknown, or
  ***          "invalid" if the type number cannot even be a valid type.
  ***/
-char* objTypeToStr(const int type)
+char*
+objTypeToStr(const int type)
     {
 	/** Guard out of bounds reads. **/
         if (type < 0 || OBJ_TYPE_NAMES_CNT <= type)

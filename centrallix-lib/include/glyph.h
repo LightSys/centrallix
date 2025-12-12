@@ -41,6 +41,7 @@
 
 #ifdef ENABLE_GLYPHS
 #define glyph_print(s) printf("%s", s);
+
 /*** Initialize a simple debug visualizer to make pretty patterns in the
  *** developer's terminal. Great for when you need to run a long task and
  *** want a super simple way to make sure it's still working.
