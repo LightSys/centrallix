@@ -80,6 +80,7 @@ XSUPPORT=stparse.o \
 	 endorsement_utils.o \
 	 obfuscate.o \
 	 json_util.o \
+	 double_metaphone.o \
 	 double.o
 
 SUPPORT=$(patsubst %,utility/%,$(XSUPPORT))
@@ -115,6 +116,7 @@ XOBJDRIVERS=objdrv_ux.o \
 	    objdrv_uxprint.o \
 	    objdrv_qytree.o \
 	    objdrv_qypivot.o \
+	    objdrv_cluster.o \
 	    objdrv_datafile.o \
 	    objdrv_audio.o \
 	    objdrv_link.o \
@@ -133,6 +135,7 @@ XV3OBJDRIVERS= \
 	      objdrv_uxprint_v3.o \
 	      objdrv_qytree.o \
 	      objdrv_qypivot.o \
+	      objdrv_cluster.o \
 	      objdrv_query.o \
 	      objdrv_datafile.o \
 	      objdrv_audio.o \

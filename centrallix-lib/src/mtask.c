@@ -3407,7 +3407,7 @@ netGetRemotePort(pFile net_filedesc)
     }
 
 
-/*** NETCONNECTTCP creats a client socket and connects it to a
+/*** NETCONNECTTCP creates a client socket and connects it to a
  *** server on a given TCP service/port and host name.  The flag
  *** NET_U_NOBLOCK causes the request to return immediately even
  *** if the connection is still trying to establish.  Further
@@ -4265,4 +4265,3 @@ syGetSem(pSemaphore sem, int cnt, int flags)
 
     return code;
     }
-

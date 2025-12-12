@@ -774,7 +774,13 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 			    fdQPrintf(TESTOBJ.Output, "%[,%]%STR", i!=0, ptr);
 			else
 			    {
-			    while (strpbrk(ptr, "\r\n")) *(strpbrk(ptr, "\r\n")) = ' ';
+			    char* cur;
+			    while (1)
+				{
+				cur = strpbrk(ptr, "\r\n");
+				if (cur == NULL) break;
+				else *cur = ' ';
+				}
 			    fdQPrintf(TESTOBJ.Output, "%[,%]\"%STR&DSYB\"", i!=0, ptr);
 			    }
 
@@ -1450,6 +1456,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 	    else
 		{
 		printf("Unknown command '%s'\n",cmdname);
+		mlxCloseSession(ls);
 		return -1;
 		}
 	
