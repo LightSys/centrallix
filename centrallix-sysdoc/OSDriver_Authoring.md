@@ -1053,20 +1053,7 @@ This function adds a node of type `ST_T_SUBGROUP` to either an `ST_T_SUBGROUP` o
 ```c
 int stAddValue(pStructInf inf, char* strval, int intval);
 ```
-This function adds a value to an attribute, and can be called multiple times on an attribute to add a list of values.  If `strval` is not null, a string value is added, otherwise an integer value is added.  The string is NOT copied, but is simply pointed-to.  If the string is non-static, and has a lifetime less than the `ST_T_ATTRIB` tree node, then the following procedure should be used to allocate a new string which will have the correct lifetime:  (In this example, `str` is the string pointer to the string.)
-
-```c
-pStructInf attr_inf = stAddAttr(my_parent_inf, "my_attr");
-if (attr_inf == NULL) goto error_handling;
-
-char* new_str = (char*)nmSysMalloc(strlen(str) + 1lu);
-if (new_str == NULL) goto error_handling;
-strcpy(new_str, str);
-stAddValue(attr_inf, new_str, 0);
-attr_inf->StrAlloc[0] = 1;
-```
-
-With this method (making a copy of the string and then setting the StrAlloc value for that string), the string is automatically freed when the StructInf tree node is freed by the stparse module.
+This function adds a value to an attribute, and can be called multiple times on an attribute to add a list of values.  If `strval` is not null, a string value is added, otherwise an integer value is added.  The string is NOT copied, but is simply pointed-to.
 
 <!-- TODO: Greg - I just realized I didn't explain what this function returns and that info isn't clear from the implementation. Could you explain the meaning of the int that this function returns? -->
 
