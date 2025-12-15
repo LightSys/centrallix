@@ -59,12 +59,23 @@ start(void* v)
 	signal(SIGSEGV, segv_handler);
 	signal(SIGABRT, abort_handler);
 	signal(SIGALRM, alarm_handler);
-	alarm(10);
+	
+	/*** Set a timer before Lockup is triggered, using a significantly
+	 *** larger value if Valgrind appears to be enabled.
+	 ***/
+	#ifndef NM_USE_SYSMALLOC
+	alarm(90); /* Valgrind detected. */
+	#else
+	alarm(5); /* Normal timeout. */
+	#endif
+	
+	
 	times(&t);
 	start = t.tms_utime + t.tms_stime + t.tms_cutime + t.tms_cstime;
 	rval = test(&tname);
 	times(&t);
 	end = t.tms_utime + t.tms_stime + t.tms_cutime + t.tms_cstime;
+	
 	if (rval < 0)
 	    printf("%-62.62s  FAIL\n", tname);
 	else
@@ -78,7 +89,7 @@ start(void* v)
 		}
 	    long long ops_per_second = rval * (100 / duration);
 	    if (ops_per_second > 0) printf("%-62.62s  PASS %lld\n", tname, ops_per_second);
-	    else printf("%-62.62s  PASS %.4g\n", tname, rval * (100.0 / duration));
+	    else printf("%-62.62s  PASS %.4lf\n", tname, rval * (100.0 / duration));
 	    }
 
     return;

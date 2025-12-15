@@ -131,6 +131,6 @@ static bool do_tests(void)
 
 long long test(char** tname)
     {
-    *tname = "xarray-00";
+    *tname = "xarray-00 Full Test";
     return loop_tests(do_tests);
     }

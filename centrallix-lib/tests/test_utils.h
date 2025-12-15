@@ -30,6 +30,7 @@
  *** @param sp The specifier to print the values if there is an error. This
  ***    MUST be a string known to the compiler at compile time, such as a
  ***    sting literal or a macro that expands to one.
+ *** @returns true if successful, false otherwise.
  ***/
 #define EXPECT_EQL(v1, v2, sp) \
     ({ \
@@ -47,6 +48,7 @@
  *** 
  *** @param str1 The first string.
  *** @param str2 The second string.
+ *** @returns true if successful, false otherwise.
  ***/
 #define EXPECT_STR_EQL(str1, str2) \
     ({ \
@@ -68,6 +70,7 @@
  *** @param sp The specifier to print the values if there is an error. This
  ***    MUST be a string known to the compiler at compile time, such as a
  ***    sting literal or a macro that expands to one.
+ *** @returns true if successful, false otherwise.
  ***/
 #define EXPECT_RANGE(v, min_v, max_v, sp) \
     ({ \
@@ -78,6 +81,23 @@
     if (!success) fprintf(stderr, \
 	"  > Expected %s ("sp") to be in the range %s ("sp") - %s ("sp") at %s:%d\n", \
 	#v, _v, #min_v, _min, #max_v, _max, __FILE__, __LINE__ \
+    ); \
+    success; \
+    })
+
+/*** Syntactic sugar to expect a pointer to be non null in a clearer, more
+ *** concise way.
+ *** 
+ *** @param ptr The pointer.
+ *** @returns true if successful, false otherwise.
+ ***/
+#define EXPECT_NOT_NULL(ptr) \
+    ({ \
+    __typeof__ (ptr) _ptr = (ptr); \
+    int success = (_ptr != NULL); \
+    if (!success) fprintf(stderr, \
+	"  > Expected %s (%p) to be non null at %s:%d\n", \
+	#ptr, _ptr, __FILE__, __LINE__ \
     ); \
     success; \
     })

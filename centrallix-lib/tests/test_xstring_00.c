@@ -157,6 +157,6 @@ static bool do_tests(void)
 
 long long test(char** tname)
     {
-    *tname = "xstring-00";
+    *tname = "xstring-00 Full Test";
     return loop_tests(do_tests);
     }
