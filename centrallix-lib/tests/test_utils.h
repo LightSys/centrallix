@@ -103,21 +103,21 @@
     })
 
 /** Repeat the test as many times as possible within a set time window. **/
-#define loop_tests(test_fn)                                                 \
-    ({                                                                      \
-    long long result = 0ll;                                                 \
-    Timer iter_timer_, *iter_timer = timer_start(timer_init(&iter_timer_)); \
-    while (timer_get(iter_timer) < 0.02)                                    \
-	{                                                                   \
-	result++;                                                           \
-	if (!test_fn())                                                     \
-	    {                                                               \
-	    result = -1;                                                    \
-	    break;                                                          \
-	    }                                                               \
-	}                                                                   \
-    timer_de_init(iter_timer);                                              \
-    result;                                                                 \
+#define loop_tests(test_fn)							\
+    ({										\
+    long long result = 0ll;							\
+    Timer iter_timer_, *iter_timer = timer_start(timer_init(&iter_timer_));	\
+    while (timer_get(iter_timer) < 0.02)					\
+	{									\
+	result++;								\
+	if (!test_fn())								\
+	    {									\
+	    result = -1;							\
+	    break;								\
+	    }									\
+	}									\
+    timer_de_init(iter_timer);							\
+    result;									\
     })
 
 #endif

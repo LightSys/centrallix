@@ -31,15 +31,15 @@ static bool do_tests(void)
     {
     bool success = true;
     
-    /** Many, many replace edits. **/
-    const static unsigned short num_edits = 254;//15827;
-    char AAA[num_edits + 1], BBB[num_edits + 1];
-    memset(AAA, 'A', num_edits);
-    memset(BBB, 'B', num_edits);
-    AAA[num_edits] = BBB[num_edits] = '\0';
-    success &= EXPECT_EQL(ca_edit_dist(AAA, "", 0, 0), num_edits, "%d");
-    success &= EXPECT_EQL(ca_edit_dist("", BBB, 0, 0), num_edits, "%d");
-    success &= EXPECT_EQL(ca_edit_dist(AAA, BBB, 0, 0), num_edits, "%d");
+	/** Many, many replace edits. **/
+	const static unsigned short num_edits = 254;//15827;
+	char AAA[num_edits + 1], BBB[num_edits + 1];
+	memset(AAA, 'A', num_edits);
+	memset(BBB, 'B', num_edits);
+	AAA[num_edits] = BBB[num_edits] = '\0';
+	success &= EXPECT_EQL(ca_edit_dist(AAA, "", 0, 0), num_edits, "%d");
+	success &= EXPECT_EQL(ca_edit_dist("", BBB, 0, 0), num_edits, "%d");
+	success &= EXPECT_EQL(ca_edit_dist(AAA, BBB, 0, 0), num_edits, "%d");
     
     return success;
     }
