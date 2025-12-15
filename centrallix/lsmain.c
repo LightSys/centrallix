@@ -200,6 +200,7 @@ main(int argc, char* argv[])
 	CxGlobals.ModuleList = NULL;
 	CxGlobals.ArgV = argv;
 	CxGlobals.Flags = 0;
+	xaInit(&CxGlobals.TestIDs, 16);
 
 	/** Check for config file options on the command line **/
 #ifdef HAVE_BASENAME
