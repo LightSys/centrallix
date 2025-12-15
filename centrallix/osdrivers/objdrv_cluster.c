@@ -1353,7 +1353,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	    /** Attempt to give a hint. **/
 	    char* cluster_names[node_data->nClusterDatas];
 	    for (unsigned int i = 0; i < node_data->nClusterDatas; i++)
-	        cluster_names[i] = node_data->ClusterDatas[i]->Name;
+		cluster_names[i] = node_data->ClusterDatas[i]->Name;
 	    ci_TryHint(source_cluster_name, cluster_names, node_data->nClusterDatas);
 	    
 	    /** Fail. **/
@@ -1656,7 +1656,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 	    node_data->Params[i] = param;
 	    
 	    /** Check each provided param to see if the user provided value. **/
-            for (unsigned int j = 0u; j < num_provided_params; j++)
+	    for (unsigned int j = 0u; j < num_provided_params; j++)
 		{
 		pStruct provided_param = check_ptr(provided_params[j]); /* Failure ignored. */
 		
@@ -2005,10 +2005,10 @@ ci_FreeNodeData(pNodeData node_data)
 	    
 	/** Free data source, if one exists. **/
 	/*** Note: SourceData is freed last since other free functions may need to
- 	***       access information from this structure when freeing data.
- 	***       (For example, nVector which is used to determine the size of the
- 	***        label struct in each cluster.)
- 	***/
+	***       access information from this structure when freeing data.
+	***       (For example, nVector which is used to determine the size of the
+	***        label struct in each cluster.)
+	***/
 	if (node_data->SourceData != NULL)
 	    {
 	    /*** This data is cached, so we should NOT free it! The caching system
@@ -2436,7 +2436,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	if (key_xarray.nAlloc != 0)
 	    {
 	    for (unsigned int i = 0u; i < vector_xarray.nItems; i++)
-	    	{
+		{
 		char* key = key_xarray.Items[i];
 		if (key != NULL) nmSysFree(key);
 		else break;
@@ -2790,7 +2790,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		}
 	    
 	    default:
-	 	mssErrorf(1, "Cluster",
+		mssErrorf(1, "Cluster",
 		    "Unknown similarity meansure \"%s\".",
 		    ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
 		);
@@ -4178,10 +4178,10 @@ clusterInfo(void* inf_v, pObjectInfo info)
 		info->Flags |= OBJ_INFO_F_HAS_SUBOBJ; /* Data must not be empty. */
 		
 		/*** Clusters always have one label per vector.
-	 	*** If we know how many vectors are in the dataset,
-	 	*** we know how many labels this cluster will have,
-	 	*** even if it hasn't been computed yet.
-	 	***/
+		 *** If we know how many vectors are in the dataset,
+		 *** we know how many labels this cluster will have,
+		 *** even if it hasn't been computed yet.
+		 ***/
 		if (node_data->SourceData->Vectors != NULL)
 		    {
 		    info->Flags |= OBJ_INFO_F_SUBOBJ_CNT_KNOWN;

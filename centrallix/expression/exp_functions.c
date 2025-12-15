@@ -130,7 +130,7 @@ typedef struct
 static int
 exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_expect)
     {
-        /** The expectation struct cannot be NULL. **/
+	/** The expectation struct cannot be NULL. **/
 	if (arg_expect == NULL)
 	    {
 	    mssErrorf(1, "EXP",
@@ -3782,7 +3782,7 @@ int exp_fn_from_base64(pExpression tree, pParamObjects objlist, pExpression i0, 
 static int
 exp_fn_i_do_math(pExpression tree, double (*math)(), int arg_num)
     {
-        /** Verify function schema: expect arg_num numeric values. **/
+	/** Verify function schema: expect arg_num numeric values. **/
 	ArgExpect expects[arg_num + 1];
 	for (int i = 0; i < arg_num; i++)
 	    expects[i] = (ArgExpect){(int[]){DATA_T_INTEGER, DATA_T_DOUBLE, DATA_T_MONEY, -1}, EXP_ARG_NO_FLAGS};
@@ -3804,7 +3804,7 @@ exp_fn_i_do_math(pExpression tree, double (*math)(), int arg_num)
 		return 0;
 		}
 	    }
-    
+	
 	/** Maximum supported args. **/
 	if (arg_num > 4)
 	    {
@@ -4549,7 +4549,7 @@ int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 int
 exp_fn_metaphone(pExpression tree, pParamObjects obj_list)
     {
-        /** Verify function schema. **/
+	/** Verify function schema. **/
 	if (exp_fn_i_verify_schema((ArgExpect[]){
 	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
 	    EXP_ARG_END,
@@ -4722,7 +4722,7 @@ exp_fn_levenshtein(pExpression tree, pParamObjects obj_list)
 	    mssErrorf(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute edit distance.\n", tree->Name, str1, str2);
 	    return -1;
 	    }
-    
+	
 	/** Return the computed distance. **/
 	tree->Integer = edit_dist;
 	tree->DataType = DATA_T_INTEGER;

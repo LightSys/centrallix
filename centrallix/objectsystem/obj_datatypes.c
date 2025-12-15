@@ -202,7 +202,7 @@ char*
 objTypeToStr(const int type)
     {
 	/** Guard out of bounds reads. **/
-        if (type < 0 || OBJ_TYPE_NAMES_CNT <= type)
+	if (type < 0 || OBJ_TYPE_NAMES_CNT <= type)
 	    {
 	    /** Invalid type. **/
 	    mssErrorf(1, "Cluster", "Invalid type %d.\n", type);

@@ -587,7 +587,7 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			/** 'bellocchio' but not 'bacchus' **/
 			if (
 			    meta_is_str_at(original, (current + 2), "I", "E", "H", "")
-		            && !meta_is_str_at(original, (current + 2), "HU", "")
+			    && !meta_is_str_at(original, (current + 2), "HU", "")
 			   )
 			    {
 			    /** 'accident', 'accede' 'succeed' **/

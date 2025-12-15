@@ -191,11 +191,11 @@ fprint_mem(FILE* out)
 	    check(fclose(fp)); /* Failure ignored. */
 	    return;
 	    }
-        check(fclose(fp)); /* Failure ignored. */
+	check(fclose(fp)); /* Failure ignored. */
 	
 	long page_size = sysconf(_SC_PAGESIZE); // in bytes
 	long resident_bytes = resident * page_size;
-    
+	
 	const size_t buf_siz = 16u;
 	char buf[buf_siz];
 	snprint_bytes(buf, buf_siz, (unsigned int)resident_bytes);
