@@ -11,7 +11,7 @@
 /* Module:	test_clusters_02.c					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	November 25th, 2025					*/
-/* Description:	Test the ca_edit_dist() function from clusters.h.	*/
+/* Description:	Test the ca_build_vector() function from clusters.h.	*/
 /************************************************************************/
 
 #include <limits.h>
