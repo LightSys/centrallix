@@ -103,7 +103,7 @@ void set_output(pFile output)
     TESTOBJ.Output = output;
 
     // redirect the multiquery print statements as well
-    // Noah: add this when you merge: mqRedirectPrint(output);
+    mqRedirectPrint(output);
 
     /** Redirect test suite required output **/
     cxRedirectTestOutput(output);
@@ -796,7 +796,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 				memcpy(&od, &od2, sizeof(ObjData));
 			    if (attrtypes[i] == DATA_T_CODE)
 				ptr = NULL;
-			    else if (attrtypes[i] == DATA_T_INTEGER || attrtypes[i] == DATA_T_DOUBLE)
+			    else if (attrtypes[i] == DATA_T_INTEGER || attrtypes[i] == DATA_T_DOUBLE || attrtypes[i] == DATA_T_BINARY)
 				ptr = objDataToStringTmp(attrtypes[i], &od, 0);
 			    else
 				ptr = objDataToStringTmp(attrtypes[i], od.Generic, 0);

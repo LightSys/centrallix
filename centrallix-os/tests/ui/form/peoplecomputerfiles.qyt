@@ -1,0 +1,28 @@
+$Version=2$
+info "system/querytree"
+    {
+    people "system/querytree"
+	{
+	source="/form/people2.csv/rows";
+	where="1==1";
+
+	peoplecomp "system/querytree"
+	    {
+	    source="/form/computers2.csv/rows";
+	    where=":first_name = ::first_name";
+
+	    topfiles "system/querytree"
+		{
+		source="/form/files2.csv/rows";
+		where=":computer_name == ::computer_name and :parentid is NULL";
+
+		files "system/querytree"
+		    {
+		    source="/form/files2.csv/rows";
+		    where=":parentid == ::fileid";
+		    recurse = files;
+		    }
+		}
+	    }
+	}
+}
