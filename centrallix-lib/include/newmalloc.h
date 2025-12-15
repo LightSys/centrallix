@@ -32,7 +32,7 @@ typedef struct _ov
     int		Magic;
     struct _ov 	*Next;
     }
-    Overlay,*pOverlay;
+    Overlay, *pOverlay;
 
 #ifdef NMMALLOC_DEBUG
 #define	BLK_LEAK_CHECK	1
@@ -70,15 +70,15 @@ void nmSetErrFunction(int (*error_fn)());
 void nmClear();
 void nmCheckAll(); // checks for buffer overflows
 void* nmMalloc(int size);
-void nmFree(void* ptr,int size);
+void nmFree(void* ptr, int size);
 void nmStats();
-void nmRegister(int size,char* name);
+void nmRegister(int size, char* name);
 void nmDebug();
 void nmDeltas();
 void* nmSysMalloc(int size);
 void nmSysFree(void* ptr);
-void* nmSysRealloc(void* ptr, int newsize);
-char* nmSysStrdup(const char* ptr);
+void* nmSysRealloc(void* ptr, int new_size);
+char* nmSysStrdup(const char* str);
 
 void nmEnableTagging();
 void nmRegisterTagID(int tag_id, char* name);
