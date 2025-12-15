@@ -194,7 +194,7 @@ nmCheckAll(void)
 	/** "Handle" error. **/
 	if (ret == -1)
 	    {
-	    printf("causing segfault to halt.......\n");
+	    fprintf(stderr, "causing segfault to halt.......\n");
 	    *(int*)NULL = 0;
 	    }
 #endif
@@ -214,7 +214,7 @@ nmDebugMalloc(int size)
     {
 	/** Allocate space for the data. **/
 	pMemStruct tmp = (pMemStruct)malloc(size + EXTRA_MEM);
-	if(tmp == NULL) return NULL;
+	if (tmp == NULL) return NULL;
 	
 	/** Initialize data in the memory struct (including magic values). **/
 	tmp->size = size;
@@ -513,7 +513,7 @@ nmFree(void* ptr, int size)
 		ASSERTMAGIC(OVERLAY(tmp),MGK_FREEMEM);
 		if (OVERLAY(tmp) == OVERLAY(ptr))
 		    {
-		    printf("Duplicate nmFree()!!!  Size = %d, Address = %p\n", size, ptr);
+		    fprintf(stderr, "Duplicate nmFree()!!!  Size = %d, Address = %p\n", size, ptr);
 		    if (err_fn) err_fn("Internal error - duplicate nmFree() occurred.");
 		    return;
 		    }
@@ -556,6 +556,11 @@ nmStats(void)
     {
 	if (!is_init) nmInitialize();
 	
+	/** Warn if statistics are not being tracked. **/
+	#ifndef GLOBAL_BLK_COUNTING
+	fprintf(stderr, "Warning: GLOBAL_BLK_COUNTING is disabled.\n");
+	#endif
+	
 	/** Print subsystem stats. **/
 	printf(
 	    "NewMalloc subsystem statistics:\n"
@@ -594,6 +599,25 @@ nmRegister(int size, char* name)
     return;
     }
 
+/*** Print the registered names for a block of data of a given size to stdout.
+ *** 
+ *** @param size The size of block to query.
+ ***/
+void
+nmPrintNames(int size)
+    {
+	/*** Traverse the linked list that holds all registered names for the given
+ 	*** size and print each one.
+ 	**/
+	for (pRegisteredBlockType blk = blknames[size]; blk != NULL; blk = blk->Next)
+	    {
+	    ASSERTMAGIC(blk, MGK_REGISBLK);
+	    printf("%s ", blk->Name);
+	    }
+    
+    return;
+    }
+
 
 /** Print debug information about the newmalloc system. **/
 void
@@ -611,14 +635,8 @@ nmDebug(void)
 	    /** Print stats about this block size. **/
 	    printf("%ld\t%d\t%d\t%d\t", size, outcnt[size], listcnt[size], usagecnt[size]);
 	    
-	    /*** Traverse the linked list that holds all registered names for the given
- 	    *** size and print each one.
- 	    **/
-	    for (pRegisteredBlockType blk = blknames[size]; blk != NULL; blk = blk->Next)
-		{
-		ASSERTMAGIC(blk, MGK_REGISBLK);
-		printf("%s ", blk->Name);
-		}
+	    /** Print each name for this block size. **/
+	    nmPrintNames(size);
 	    
 	    printf("\n");
 	    }
@@ -660,14 +678,8 @@ nmDeltas(void)
 	    printf("%ld\t%d\t", size, outcnt[size] - outcnt_delta[size]);
 	    total_delta += (size * (outcnt[size] - outcnt_delta[size]));
 	    
-	    /*** Traverse the linked list that holds all registered names for the given
- 	    *** size and print each one.
- 	    **/
-	    for (pRegisteredBlockType blk = blknames[size]; blk != NULL; blk = blk->Next)
-		{
-		ASSERTMAGIC(blk, MGK_REGISBLK);
-		printf("%s ", blk->Name);
-		}
+	    /** Print each name for this block size from the linked list. **/
+	    nmPrintNames(size);
 	    
 	    /** End of line. **/
 	    printf("\n");
@@ -853,4 +865,27 @@ nmSysStrdup(const char* str)
 #endif
     
     return NULL; /** Unreachable. **/
+    }
+
+
+/*** Gets the size of memory allocated in the buffer using an `nmSysXYZ()`
+ *** function, if possible (depending on compiler #define flags, this size
+ *** might not be stored).
+ *** 
+ *** @param ptr A pointer to the memory buffer to be checked.  The function's
+ *** 	behavior is undefined if this pointer is a nonNULL value which does
+ *** 	NOT point to the start of a valid memory block from an `nmSysXYZ()`.
+ *** @returns The size of the memory buffer, if it can be found, or
+ *** 	-1 if the size of the buffere was not stored, or
+ *** 	-1 if `ptr` is NULL.
+ ***/
+int
+nmSysGetSize(void* ptr)
+    {
+#ifndef NM_USE_SYSMALLOC
+    return -1; /* Value not stored. */
+#else
+    if (ptr == NULL) return -1;
+    return *(ptr - sizeof(int));
+#endif	
     }

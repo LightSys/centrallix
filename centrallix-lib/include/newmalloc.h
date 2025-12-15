@@ -72,12 +72,14 @@ void* nmMalloc(int size);
 void nmFree(void* ptr, int size);
 void nmStats();
 void nmRegister(int size, char* name);
+void nmPrintNames(int size);
 void nmDebug();
 void nmDeltas();
 void* nmSysMalloc(int size);
 void nmSysFree(void* ptr);
 void* nmSysRealloc(void* ptr, int new_size);
 char* nmSysStrdup(const char* str);
+int nmSysGetSize(void* ptr);
 
 /** Tagging system (not implemented). **/
 void nmEnableTagging();
