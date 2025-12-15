@@ -63,7 +63,7 @@ start(void* v)
 	/*** Set a timer before Lockup is triggered, using a significantly
 	 *** larger value if Valgrind appears to be enabled.
 	 ***/
-	#ifndef NM_USE_SYSMALLOC
+	#ifdef NO_BLK_CACHE
 	alarm(90); /* Valgrind detected. */
 	#else
 	alarm(5); /* Normal timeout. */
