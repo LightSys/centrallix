@@ -3321,6 +3321,8 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	    }
 	if (flags & OBJ_MQ_F_NOUPDATE)
 	    this->Flags |= MQ_F_NOUPDATE;
+	if (flags & OBJ_MQ_F_ONEROW)
+	    this->Flags |= MQ_F_ONEROW;
 	this->Flags |= MQ_F_FIRSTSTATEMENT;
 
 	/** Parse the text of the query, building the syntax structure **/
