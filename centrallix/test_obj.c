@@ -1745,18 +1745,11 @@ main(int argc, char* argv[])
     int ch;
     char* ptr;
 
-	/** Default global values **/
-	nmInitialize();
-	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
-	CxGlobals.QuietInit = 0;
-	CxGlobals.ParsedConfig = NULL;
-	CxGlobals.ModuleList = NULL;
-	CxGlobals.ArgV = argv;
-	CxGlobals.Flags = 0;
+	/** Inital setup **/
+	cxSetupGlobals(argc, argv);
 	memset(&TESTOBJ,0,sizeof(TESTOBJ));
 	strcpy(TESTOBJ.OutputFilename, "/dev/tty");
 	TESTOBJ.WaitSecs = 0;
-	xaInit(&CxGlobals.TestIDs, 16);
     
 	/** Check for config file options on the command line **/
 	while ((ch=getopt(argc,argv,"ho:c:qu:p:f:C:i:O:t:P:")) > 0)

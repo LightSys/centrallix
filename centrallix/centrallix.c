@@ -286,6 +286,27 @@ cxRemovePidFile()
     }
 
 
+void
+cxSetupGlobals(int argc, char* argv[])
+    {
+
+	/** Memory management **/
+	nmInitialize();
+
+	/** Default global values **/
+	memset(&CxGlobals, 0, sizeof(CxGlobals));
+	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
+	CxGlobals.QuietInit = 0;
+	CxGlobals.ParsedConfig = NULL;
+	CxGlobals.ModuleList = NULL;
+	CxGlobals.ArgV = argv;
+	CxGlobals.Flags = 0;
+	xaInit(&CxGlobals.TestIDs, 16);
+
+    return;
+    }
+
+
 int
 cxInitialize(void* v)
     {

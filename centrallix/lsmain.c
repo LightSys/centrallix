@@ -169,7 +169,8 @@ main(int argc, char* argv[])
     int fd;
     char pidbuf[16];
 
-	nmInitialize();				/* memory manager */
+	/** Default global values **/
+	cxSetupGlobals(argc, argv);
 
 	/** Seed random number generator **/
 	fd = open("/dev/urandom", O_RDONLY);
@@ -192,15 +193,6 @@ main(int argc, char* argv[])
 		}
 	    close(fd);
 	    }
-
-	/** Default global values **/
-	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
-	CxGlobals.QuietInit = 0;
-	CxGlobals.ParsedConfig = NULL;
-	CxGlobals.ModuleList = NULL;
-	CxGlobals.ArgV = argv;
-	CxGlobals.Flags = 0;
-	xaInit(&CxGlobals.TestIDs, 16);
 
 	/** Check for config file options on the command line **/
 #ifdef HAVE_BASENAME

@@ -105,6 +105,7 @@ int cxAddShutdownHandler(ShutdownHandlerFunc);
 
 /*** startup functions ***/
 int cxInitialize();
+void cxSetupGlobals(int argc, char* argv[]);
 int cxDriverInit();
 int cxHtInit();
 int cxNetworkInit();
