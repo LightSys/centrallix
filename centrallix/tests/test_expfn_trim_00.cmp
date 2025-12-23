@@ -1,0 +1,10 @@
+Attribute [trim("White space on the left o]:   string   "No white space on the left or right side." 
+Attribute [trim("     White space on the l]:   string   "White space on the left side." 
+Attribute [trim("White space on the right ]:   string   "White space on the right side." 
+Attribute [trim("     White space on the r]:   string   "White space on the right and the left side." 
+Attribute [trim("With tab character	")]:   string   "With tab character	" 
+Attribute [trim("With newline character
+")]:   string   "With newline character
+" 
+Attribute [trim("")]:   string   "" 
+Attribute [trim(null)]:   string  NULL
