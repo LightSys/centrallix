@@ -2087,6 +2087,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 					mssError(1,"MQ","Expected equals after EXEC parameter");
 					mlxNoteError(lxs);
 					xsFree(xs);
+					xs = NULL;
 					break;
 					}
 
@@ -2099,6 +2100,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 					mssError(1,"MQ","Error in EXEC parameter");
 					mlxNoteError(lxs);
 					xsFree(xs);
+					xs = NULL;
 					xsFree(param);
 					break;
 					}
@@ -2109,6 +2111,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 					mssError(1,"MQ","Could not evaluate EXEC parameter");
 					mlxNoteError(lxs);
 					xsFree(xs);
+					xs = NULL;
 					xsFree(param);
 					break;
 					}
@@ -2121,7 +2124,8 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 					}
 				    }
 
-				strtcpy(new_qs->Source, xs->String, sizeof(new_qs->Source));
+				if (xs != NULL)
+				    strtcpy(new_qs->Source, xs->String, sizeof(new_qs->Source));
 				next_state = LookForClause;
 				}
 			    else
@@ -4787,5 +4791,3 @@ mqInitialize()
 
     return 0;
     }
-
-
