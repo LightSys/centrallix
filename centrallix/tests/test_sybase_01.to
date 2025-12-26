@@ -1,0 +1,22 @@
+##NAME Sybase Update One key
+
+# make sure clean start
+query delete from /tests/Test_DB/typeTests/rows
+
+# insert test values
+query insert into /tests/Test_DB/typeTests/rows select dates = convert('datetime', '2020-02-02'), monies = convert('money', 20.0200), ints = -1000, strings = 'two twos', bits = 0, floats = 22222.22222
+
+# run updates
+query update  /tests/Test_DB/typeTests/rows set :dates = convert('datetime', '1991-09-01')
+query update  /tests/Test_DB/typeTests/rows set :monies = convert('money', 1991.0901)
+query update  /tests/Test_DB/typeTests/rows set :ints = 12
+query update  /tests/Test_DB/typeTests/rows set :strings = 'this is a new string'
+query update  /tests/Test_DB/typeTests/rows set :bits = 1
+query update  /tests/Test_DB/typeTests/rows set :floats = 19.91
+
+# test that values updated properly 
+csv select * from /tests/Test_DB/typeTests/rows
+
+# cleanup
+query delete from /tests/Test_DB/typeTests/rows
+csv select * from /tests/Test_DB/typeTests/rows

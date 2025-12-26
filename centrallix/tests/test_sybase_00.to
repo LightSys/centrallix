@@ -1,0 +1,17 @@
+##NAME Sybase Basic Insert
+
+# make sure clean start
+query delete from /tests/Test_DB/typeTests/rows
+
+# insert test values
+query insert into /tests/Test_DB/typeTests/rows select dates = convert('datetime', '2020-02-02'), monies = convert('money', 20.0200), ints = -1000, strings = 'two twos', bits = 0, floats = 22222.22222
+query insert into /tests/Test_DB/typeTests/rows select dates = convert('datetime', '2024-03-14 01:59:26'), monies = convert('money', 3.14), ints = 0, strings = 'pi', bits = 1, floats = 3.14159265358979323846
+query insert into /tests/Test_DB/typeTests/rows select dates = convert('datetime', '2000-03-30 23:59:59'), monies = convert('money', 3.3333), ints = 2000, strings = '', bits = 0, floats = -10000.0
+
+
+# test that values inserted properly 
+csv select * from /tests/Test_DB/typeTests/rows
+
+# cleanup
+query delete from /tests/Test_DB/typeTests/rows
+csv select * from /tests/Test_DB/typeTests/rows

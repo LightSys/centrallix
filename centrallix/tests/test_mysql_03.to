@@ -1,0 +1,38 @@
+##NAME Sybase Update with string key size changes
+
+# make sure clean start
+query delete from /tests/Test_DB/stringTests/rows
+
+# insert test values
+query insert into /tests/Test_DB/stringTests/rows select a = 'a', b = 'b', c = 'c', d = 'd'
+
+# grow each field 
+query update  /tests/Test_DB/stringTests/rows set :a = 'a much longer string that will even be truncated', :d = 'test_1'
+csv select * from /tests/Test_DB/stringTests/rows
+
+query update  /tests/Test_DB/stringTests/rows set :b = 'be it as it may, it is longer than before', :d = 'test_2'
+csv select * from /tests/Test_DB/stringTests/rows
+
+query update  /tests/Test_DB/stringTests/rows set :c = 'see this sentence? It sounds like it starts with C, but alas does not', :d = 'test_3'
+csv select * from /tests/Test_DB/stringTests/rows
+
+# shrink each field
+query update  /tests/Test_DB/stringTests/rows set :a = 'x', :d = 'test_4'
+csv select * from /tests/Test_DB/stringTests/rows
+
+query update  /tests/Test_DB/stringTests/rows set :b = 'y', :d = 'test_5'
+csv select * from /tests/Test_DB/stringTests/rows
+
+query update  /tests/Test_DB/stringTests/rows set :c = 'z', :d = 'test_6'
+csv select * from /tests/Test_DB/stringTests/rows
+
+# expand and then shrink all at once 
+query update  /tests/Test_DB/stringTests/rows set :a = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', :b = 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB', :c = 'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCC', :d = 'test_7'
+csv select * from /tests/Test_DB/stringTests/rows
+
+query update  /tests/Test_DB/stringTests/rows set :a = 'a', :b = 'b', :c = 'c', :d = 'test_8'
+csv select * from /tests/Test_DB/stringTests/rows
+
+# cleanup
+query delete from /tests/Test_DB/stringTests/rows
+csv select * from /tests/Test_DB/stringTests/rows
