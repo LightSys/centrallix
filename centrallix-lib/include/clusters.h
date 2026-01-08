@@ -29,8 +29,8 @@
 /* Author:	Israel Fuller						*/
 /* Creation:	September 29, 2025					*/
 /* Description	Clustering library used to cluster and search data with	*/
-/*		cosine similarity and Levenshtein similarity (aka. edit	*/
-/*		distance). Used by the "clustering driver".		*/
+/*		cosine or Levenshtein (aka. edit distance) similarity 	*/
+/*		measures. Used by the "clustering driver".		*/
 /*		For more information on how to use this library, see	*/
 /*		string-similarity.md in the centrallix-sysdoc folder.	*/
 /************************************************************************/
