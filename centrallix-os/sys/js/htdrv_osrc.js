@@ -18,6 +18,15 @@ function osrc_init_query()
     }
 
 
+function osrc_log_status()
+    {
+    var repstr = '';
+    for(var i in this.replica)
+	repstr += ('' + i + ',');
+    console.log('OSRC ' + this.__WgtrName + ': first ' + this.FirstRecord + ', last ' + this.LastRecord + ', final ' + this.FinalRecord + ', cur ' + this.CurrentRecord + ', osml ' + this.OSMLRecord + ', target [' + this.TargetRecord[0] + ',' + this.TargetRecord[1] + '], replica [' + repstr + ']');
+    }
+
+
 function osrc_action_order_object(aparam) //order)
     {
     this.pendingorderobject=aparam.orderobj;
@@ -760,7 +769,7 @@ function osrc_query_handler(aparam)
 	alert('There is already a query or movement in progress...');
 	return 0;
 	}
-    this.do_append = aparam.appendrows?true:false;
+    this.keep_data = aparam.appendrows?true:false;
     this.lastquery=q;
     this.pendingquery=q;
     this.SetPending(true);
@@ -1538,7 +1547,7 @@ function osrc_get_qid()
 	if (lnk.length > 1)
 	    {
 	    // did an autofetch - we have the data already
-	    if (!this.do_append) this.ClearReplica();
+	    if (!this.keep_data) this.ClearReplica();
 	    this.TargetRecord = [tgt,tgt];
 	    this.CurrentRecord = tgt;
 	    this.moveop = true;
@@ -2321,6 +2330,8 @@ function osrc_open_query_startat()
     else
 	this.querysize = this.replicasize;
     this.query_ended = false;
+    //this.LogStatus();
+    //console.log('OSRC ' + this.__WgtrName + ': startat ' + this.startat + ', rowcount ' + this.querysize);
     this.DoRequest('multiquery', '/', {ls__startat:this.startat, ls__autoclose_sr:1, ls__autofetch:1, ls__objmode:0, ls__notify:this.request_updates, ls__rowcount:this.querysize, ls__sql:this.query, ls__sqlparam:this.EncodeParams()}, osrc_get_qid_startat);
     }
 
@@ -2331,23 +2342,16 @@ function osrc_get_qid_startat()
     if (!this.qid)
 	{
 	this.startat = null;
-	//this.pending=false;
 	this.GiveAllCurrentRecord('get_qid');
 	this.SetPending(false);
-	//this.Dispatch();
 	return;
 	}
     this.OSMLRecord=(this.startat)?(this.startat-1):0;
-    //this.FirstRecord=this.startat;
-    /*if(this.startat-this.TargetRecord+1<this.replicasize)
-	{
-	this.DoFetch(this.TargetRecord - this.startat + 1);
-	}*/
-    if (!this.do_append) this.ClearReplica();
     if (lnk.length > 1)
 	{
 	// did an autofetch - we have the data already
 	this.query_delay = pg_timestamp() - this.request_start_ts;
+	this.startat=null;
 	this.FetchNext();
 	}
     else
@@ -2409,13 +2413,13 @@ function osrc_scroll_to(startrec, endrec)
     this.moveop=false;
     this.TargetRecord = [startrec, endrec];
     this.SyncID = osrc_syncid++;
-    if(this.TargetRecord[1] <= this.LastRecord && this.TargetRecord[0] >= this.FirstRecord)
+    if((this.TargetRecord[1] <= this.LastRecord || this.query_ended) && this.TargetRecord[0] >= this.FirstRecord)
 	{
 	// check for a 'hole' in the replica
 	var hole = false;
 	for(var i=startrec; i<=endrec; i++)
 	    {
-	    if (!this.replica[i])
+	    if (!this.replica[i] && (!this.query_ended || i <= this.FinalRecord))
 		{
 		hole = i;
 		break;
@@ -4213,7 +4217,7 @@ function osrc_init(param)
     loader.hidden_change_cnt = 0;
     loader.query_delay = 0;
     loader.type_list = [];
-    loader.do_append = false;
+    loader.keep_data = false;
     loader.query_ended = false;
     loader.in_create = false;
 
@@ -4344,6 +4348,7 @@ function osrc_init(param)
 
     loader.TellAllReplicaMoved = osrc_tell_all_replica_moved;
 
+    loader.LogStatus = osrc_log_status;
     loader.InitQuery = osrc_init_query;
     loader.cleanup = osrc_cleanup;
 

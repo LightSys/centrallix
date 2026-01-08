@@ -227,7 +227,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 #endif
 	//htrAddScriptInit_va(s, "    src.ifcProbe(ifEvent).Connect('%STR&SYM', tgt, '%STR&SYM', {%STR});\n",
-	htrAddScriptInit_va(s, "    %[wgtrGetParent(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")))%]%[wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\"))%]%[wgtrGetNodeRef(ns, \"%STR&SYM\")%].ifcProbe(ifEvent).Connect('%STR&SYM', %['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")))%], '%STR&SYM', {%STR});\n",
+	htrAddScriptInit_va(s, "    %[wgtrGetParent(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")))%]%[wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\"))%]%[wgtrGetNodeRef(ns, \"%STR&SYM\")%].ifcProbe(ifEvent).Connect('%STR&SYM', %['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")))%], '%STR&SYM', {%STR}, ns);\n",
 		inside_action, name,
 		!*source && !inside_action, name,
 		*source && !inside_action, source,

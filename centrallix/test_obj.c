@@ -76,6 +76,7 @@ struct
     {
     char		UserName[CX_USERNAME_SIZE];
     char		Password[CX_PASSWORD_SIZE];
+    char		PasswordFile[256];
     char		CmdFile[256];
     pFile		Output;
     char		OutputFilename[256];
@@ -97,6 +98,17 @@ typedef struct
     int buflen;
     } WriteStruct, *pWriteStruct;
 
+void set_output(pFile output)
+    {
+    TESTOBJ.Output = output;
+
+    // redirect the multiquery print statements as well
+    mqRedirectPrint(output);
+
+    /** Redirect test suite required output **/
+    cxRedirectTestOutput(output);
+    }
+
 int text_gen_callback(pWriteStruct dst, char *src, int len, int a, int b)
     {
     dst->buffer = (char*)realloc(dst->buffer,dst->buflen+len+1);
@@ -105,6 +117,38 @@ int text_gen_callback(pWriteStruct dst, char *src, int len, int a, int b)
     memcpy(dst->buffer+dst->buflen,src,len);
     dst->buflen+=len;
     return 0;
+    }
+
+void
+setup_test_ids(char* id_str)
+    {
+    char* endptr;
+    uintptr_t id;
+
+	/** Remove all existing test IDs **/
+	cxTestEnable(CX_TEST_NONE);
+
+	if (*id_str)
+	    {
+	    /** Setup tests **/
+	    CxGlobals.Flags |= CX_F_SHOWTESTOUTPUT;
+
+	    /** Work through the comma and/or space separated list **/
+	    while(*id_str)
+		{
+		id = strtol(id_str, &endptr, 0);
+		if (endptr == id_str)
+		    {
+		    printf("Warning: could not setup tests for '%s'.\n", endptr);
+		    break;
+		    }
+		cxTestEnable(id);
+		while(*endptr == ',' || *endptr == ' ') endptr++;
+		id_str = endptr;
+		}
+	    }
+
+    return;
     }
 
 int 
@@ -752,7 +796,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 				memcpy(&od, &od2, sizeof(ObjData));
 			    if (attrtypes[i] == DATA_T_CODE)
 				ptr = NULL;
-			    else if (attrtypes[i] == DATA_T_INTEGER || attrtypes[i] == DATA_T_DOUBLE)
+			    else if (attrtypes[i] == DATA_T_INTEGER || attrtypes[i] == DATA_T_DOUBLE || attrtypes[i] == DATA_T_BINARY)
 				ptr = objDataToStringTmp(attrtypes[i], &od, 0);
 			    else
 				ptr = objDataToStringTmp(attrtypes[i], od.Generic, 0);
@@ -1350,7 +1394,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    {
 		    if (TESTOBJ.Output)
 			fdClose(TESTOBJ.Output, 0);
-		    TESTOBJ.Output = try_file;
+		    set_output(try_file);
 		    strtcpy(TESTOBJ.OutputFilename, ptr, sizeof(TESTOBJ.OutputFilename));
 		    }
 		}
@@ -1390,6 +1434,13 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    intval = strtoi(ptr, NULL, 10);
 		    sleep(intval);
 		    }
+		}
+	    else if (!strcmp(cmdname, "test"))
+		{
+		if (ptr && *ptr)
+		    setup_test_ids(ptr);
+		else
+		    setup_test_ids("");
 		}
 	    else if (!strcmp(cmdname,"trunc"))
 		{
@@ -1438,6 +1489,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		printf("  query     - Runs a SQL query.\n");
 		printf("  quit      - Exits this application.\n");
 		printf("  show      - Displays an object's attributes and methods.\n");
+		printf("  test      - Enables test suite output for the given list of ids.\n");
 		printf("  trunc     - Truncates an object's content to a given point.\n");
 		}
 	    else
@@ -1462,6 +1514,8 @@ start(void* v)
     char prompt[1024];
     pFile cmdfile;
     pFile histfile = NULL;
+    pFile outfile = NULL;
+    pFile pwfile;
     char histname[256];
     char* home;
     pLxSession input_lx;
@@ -1507,34 +1561,64 @@ start(void* v)
 	    user = readline("Username: ");
 	else
 	    user = TESTOBJ.UserName;
+	if (!user)
+	    user = "";
+	if (TESTOBJ.PasswordFile[0])
+	    {
+	    pwfile = fdOpen(TESTOBJ.PasswordFile, O_RDONLY, 0600);
+	    if (pwfile)
+		{
+		if ((rval = fdRead(pwfile, TESTOBJ.Password, sizeof(TESTOBJ.Password) - 1, 0, 0)) > 0 && rval < sizeof(TESTOBJ.Password))
+		    {
+		    TESTOBJ.Password[rval] = '\0';
+		    if (TESTOBJ.Password[rval - 1] == '\n')
+			{
+			TESTOBJ.Password[rval - 1] = '\0';
+			rval--;
+			}
+		    if (rval && TESTOBJ.Password[rval - 1] == '\r')
+			{
+			TESTOBJ.Password[rval - 1] = '\0';
+			rval--;
+			}
+		    }
+		else
+		    {
+		    strcpy(TESTOBJ.Password, "");
+		    }
+		}
+	    }
 	if (!TESTOBJ.Password[0])
 	    pwd = getpass("Password: ");
 	else
 	    pwd = TESTOBJ.Password;
+	if (!pwd)
+	    pwd = "";
 
 	if (mssAuthenticate(user, pwd, 0) < 0)
 	    puts("Warning: auth failed, running outside session context.");
-	TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR | O_CREAT | O_TRUNC, 0600);
-	if (!TESTOBJ.Output)
+	outfile = fdOpen(TESTOBJ.OutputFilename, O_RDWR | O_CREAT | O_TRUNC, 0600);
+	if (!outfile)
 	    {
 	    strcpy(TESTOBJ.OutputFilename, "/dev/tty");
-	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR, 0600);
+	    outfile = fdOpen(TESTOBJ.OutputFilename, O_RDWR, 0600);
 	    }
-	if (!TESTOBJ.Output)
+	if (!outfile)
 	    {
 	    strcpy(TESTOBJ.OutputFilename, "/dev/stdout");
-	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_WRONLY, 0600);
+	    outfile = fdOpen(TESTOBJ.OutputFilename, O_WRONLY, 0600);
 	    }
-	if (!TESTOBJ.Output)
+	if (!outfile)
 	    {
 	    strcpy(TESTOBJ.OutputFilename, "/dev/null");
-	    TESTOBJ.Output = fdOpen(TESTOBJ.OutputFilename, O_RDWR, 0600);
+	    outfile = fdOpen(TESTOBJ.OutputFilename, O_RDWR, 0600);
 	    }
-	if (!TESTOBJ.Output)
+	if (!outfile)
 	    {
 	    /** No ability to output anything - exit now **/
 	    thExit();
 	    }
+	set_output(outfile);
 
 	/** Application context **/
 	cxssPushContext();
@@ -1635,19 +1719,21 @@ void
 show_usage()
     {
     printf("Usage:  test_obj [-c <config-file>] [-f <command-file>] [-C <command>]\n"
-	   "                 [-u <user>] [-p <password>] [-q] [-o <output file>] \n"
-	   "                 [-O obfkey[,obfrulefile] ]\n"
-	   "                 [-i <wait-seconds>] [-h]\n"
-	   "        -h            Show this message\n"
-	   "        -q            Initialize quietly\n"
+	   "                 [-u <user>] [-p <password>] [-P <read-password-from-file>]\n"
+	   "                 [-o <output file>] [-O obfkey[,obfrulefile] ]\n"
+	   "                 [-i <wait-seconds>] [-t id,... ] [-h] [-q]\n"
 	   "        -c file       Specify configuration file\n"
 	   "        -C command    Run a single command\n"
 	   "        -f file       Run commands from a file\n"
-	   "        -u user       Login as user\n"
-	   "        -p pass       Specify password\n"
+	   "        -h            Show this message\n"
+	   "        -i secs       Terminate test_obj after secs with SIGALRM (for test suite purposes)\n"
 	   "        -o file       Send output to specified file\n"
-	   "        -i secs       Terminate test_obj after secs with SIGALRM\n"
-	   "	    -O key[,file] Obfuscate CSV and query output data with a given key and optional rule file\n"
+	   "        -O key[,file] Obfuscate CSV and query output data with a given key and optional rule file\n"
+	   "        -p pass       Specify password\n"
+	   "        -P file       Read user password from file\n"
+	   "        -q            Initialize and run quietly (minimal output)\n"
+	   "        -t id,...     Show testing output for test logging IDs (for debugging and running test suites)\n"
+	   "        -u user       Login as user\n"
 	   "\n");
     return;
     }
@@ -1659,19 +1745,14 @@ main(int argc, char* argv[])
     int ch;
     char* ptr;
 
-	/** Default global values **/
-	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
-	CxGlobals.QuietInit = 0;
-	CxGlobals.ParsedConfig = NULL;
-	CxGlobals.ModuleList = NULL;
-	CxGlobals.ArgV = argv;
-	CxGlobals.Flags = 0;
+	/** Inital setup **/
+	cxSetupGlobals(argc, argv);
 	memset(&TESTOBJ,0,sizeof(TESTOBJ));
 	strcpy(TESTOBJ.OutputFilename, "/dev/tty");
 	TESTOBJ.WaitSecs = 0;
     
 	/** Check for config file options on the command line **/
-	while ((ch=getopt(argc,argv,"ho:c:qu:p:f:C:i:O:")) > 0)
+	while ((ch=getopt(argc,argv,"ho:c:qu:p:f:C:i:O:t:P:")) > 0)
 	    {
 	    switch (ch)
 	        {
@@ -1684,6 +1765,8 @@ main(int argc, char* argv[])
 		case 'u':	strtcpy(TESTOBJ.UserName, optarg, sizeof(TESTOBJ.UserName));
 				break;
 		case 'p':	strtcpy(TESTOBJ.Password, optarg, sizeof(TESTOBJ.Password));
+				break;
+		case 'P':	strtcpy(TESTOBJ.PasswordFile, optarg, sizeof(TESTOBJ.PasswordFile));
 				break;
 		case 'c':	strtcpy(CxGlobals.ConfigFileName, optarg, sizeof(CxGlobals.ConfigFileName));
 				break;
@@ -1701,6 +1784,9 @@ main(int argc, char* argv[])
 				    strtcpy(TESTOBJ.ObfRuleFile, ptr+1, sizeof(TESTOBJ.ObfRuleFile));
 				    *ptr = '\0';
 				    }
+				break;
+
+		case 't':	setup_test_ids(optarg);
 				break;
 
 		case 'h':	show_usage();

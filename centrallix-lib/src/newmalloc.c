@@ -263,8 +263,7 @@ nmClear()
     }
 
 void*
-nmMalloc(size)
-    int size;
+nmMalloc(int size)
     {
     void* tmp;
 #ifdef BLK_LEAK_CHECK
@@ -319,7 +318,8 @@ nmMalloc(size)
 	    }
 	else
 	    {
-	    OVERLAY(tmp)->Magic = MGK_ALLOCMEM;
+	    if (size >= MIN_SIZE)
+		OVERLAY(tmp)->Magic = MGK_ALLOCMEM;
 	    }
 
 #ifdef BUFFER_OVERFLOW_CHECKING
@@ -343,9 +343,7 @@ nmMalloc(size)
 
 
 void
-nmFree(ptr,size)
-    void* ptr;
-    int size;
+nmFree(void* ptr, int size)
     {
 #ifndef NO_BLK_CACHE
 #ifdef DUP_FREE_CHECK
@@ -356,7 +354,8 @@ nmFree(ptr,size)
     int i;
 #endif
 
-    	ASSERTNOTMAGIC(ptr,MGK_FREEMEM);
+	if (size >= MIN_SIZE)
+	    ASSERTNOTMAGIC(ptr,MGK_FREEMEM);
 
     	if (!ptr) return;
 
@@ -470,7 +469,7 @@ nmDebug()
     pRegisteredBlockType blk;
 
 	printf("size\tout\tcache\tusage\tnames\n");
-    	for(i=0;i<MAX_SIZE;i++)
+    	for(i=MIN_SIZE;i<MAX_SIZE;i++)
 	    {
 	    if (usagecnt[i] != 0)
 	        {
@@ -487,7 +486,7 @@ nmDebug()
 	    }
 	printf("\n-----\n");
 	printf("size\toutcnt\n-------\t-------\n");
-	for(i=0;i<=MAX_SIZE;i++)
+	for(i=MIN_SIZE;i<=MAX_SIZE;i++)
 	    {
 	    if (nmsys_outcnt[i]) printf("%d\t%d\n",i,nmsys_outcnt[i]);
 	    }
@@ -505,7 +504,7 @@ nmDeltas()
 
 	total = 0;
 	printf("size\tdelta\tnames\n-------\t-------\t-------\n");
-    	for(i=0;i<=MAX_SIZE;i++)
+    	for(i=MIN_SIZE;i<=MAX_SIZE;i++)
 	    {
 	    if (outcnt[i] != outcnt_delta[i])
 	        {
@@ -523,7 +522,7 @@ nmDeltas()
 		}
 	    }
 	printf("\nsize\tdelta\n-------\t-------\n");
-    	for(i=0;i<=MAX_SIZE;i++)
+    	for(i=MIN_SIZE;i<=MAX_SIZE;i++)
 	    {
 	    if (nmsys_outcnt[i] != nmsys_outcnt_delta[i])
 	        {

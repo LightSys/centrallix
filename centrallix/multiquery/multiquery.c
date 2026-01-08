@@ -54,6 +54,7 @@
 struct
     {
     XArray		Drivers;
+    pFile		Output; /* used for redirecting the print output */
     }
     MQINF;
 
@@ -2191,7 +2192,8 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 				    if (!strcmp("log", cmd))
 					mssLog(LOG_INFO, xs->String);
 				    else
-					printf("%s\n", xs->String);
+					if(MQINF.Output) fdPrintf(MQINF.Output, "%s\n", xs->String);
+					else printf("%s\n", xs->String);
 				    xsFree(xs);
 				    xsFree(param);
 				    stmt->Flags |= MQ_TF_IMMEDIATE;
@@ -3319,6 +3321,8 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	    }
 	if (flags & OBJ_MQ_F_NOUPDATE)
 	    this->Flags |= MQ_F_NOUPDATE;
+	if (flags & OBJ_MQ_F_ONEROW)
+	    this->Flags |= MQ_F_ONEROW;
 	this->Flags |= MQ_F_FIRSTSTATEMENT;
 
 	/** Parse the text of the query, building the syntax structure **/
@@ -4713,6 +4717,14 @@ mq_internal_FindCollection(pMultiQuery mq, char* collection)
     return XHN_INVALID_HANDLE;
     }
 
+/*** mqRedirectPrint - redirect the output of the print command to a file.
+ *** To redirect back to stdout, pass NULL for the file pointer
+ ***/
+void
+mqRedirectPrint(pFile outfile)
+    {
+	MQINF.Output = outfile;
+    }
 
 /*** mqInitialize - initialize the multiquery module and link in with the
  *** objectsystem management layer, registering as the multiquery module.
@@ -4724,6 +4736,7 @@ mqInitialize()
 
     	/** Initialize globals **/
 	xaInit(&MQINF.Drivers,16);
+	MQINF.Output = NULL;
 
     	/** Allocate the driver structure **/
 	drv = (pObjDriver)nmMalloc(sizeof(ObjDriver));

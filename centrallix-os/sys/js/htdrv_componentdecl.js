@@ -110,7 +110,7 @@ function cmpd_post_init()
 				    }
 				}
 			    )(ename) );
-		    ewidget.ifcProbe(ifEvent).Connect(ename, wgtrGetName(this), ename, null);
+		    ewidget.ifcProbe(ifEvent).Connect(ename, wgtrGetName(this), ename, null, null);
 		    }
 		}
 	    }
@@ -127,7 +127,7 @@ function cmpd_post_init()
 		if (!this.shell.ifcProbe(ifAction).Exists(alist[a]))
 		    {
 		    this.addAction(alist[a]);
-		    this.ifcProbe(ifEvent).Connect(alist[a], wgtrGetName(awidget), alist[a], null);
+		    this.ifcProbe(ifEvent).Connect(alist[a], wgtrGetName(awidget), alist[a], null, null);
 		    }
 		}
 	    }
