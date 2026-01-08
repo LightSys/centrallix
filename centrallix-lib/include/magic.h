@@ -27,9 +27,39 @@
 
 
 #ifdef 	DBMAGIC
+#include <stdlib.h>
 
-#define ASSERTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic == (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X != %X for %8.8lX\n",(x)?(((pMagicHdr)(x))->Magic):(0xEE1EE100),(y),(long)(x)),(*((int*)(8)) = *((int*)(0)))))
-#define ASSERTNOTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic != (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X\n",(y)),(*((int*)(8)) = *((int*)(0)))))
+#define ASSERTMAGIC(data, expect) \
+    ({ \
+    pMagicHdr _data = (pMagicHdr)(data); \
+    Magic_t _expect = (expect); \
+    Magic_t _actual = (_data == NULL) ? 0xEE1EE100 : _data->Magic; \
+    if (_data != NULL && _actual != _expect) \
+	{ \
+	printf( \
+	    "%s:%d: Magic assertion failed, unexpected %u != %d for %8.8lX.\n", \
+	    __FILE__, __LINE__, _actual, _expect, (long)_data \
+	); \
+	abort(); \
+	} \
+    0; \
+    })
+
+#define ASSERTNOTMAGIC(data, expect) \
+    ({ \
+    pMagicHdr _data = (pMagicHdr)(data); \
+    Magic_t _expect = (expect); \
+    Magic_t _actual = (_data == NULL) ? 0xEE1EE100 : _data->Magic; \
+    if (_data != NULL && _actual == _expect) \
+	{ \
+	printf( \
+	    "%s:%d: Magic assertion failed, unexpected %d.\n", \
+	    __FILE__, __LINE__, _expect \
+	); \
+	abort(); \
+	} \
+    0; \
+    })
 
 #else	/* defined DBMAGIC */
 
@@ -38,9 +68,9 @@
 
 #endif	/* defined DBMAGIC */
 
-#define ISMAGIC(x,y) (((pMagicHdr)(x))->Magic == (y))
-#define ISNTMAGIC(x,y) (((pMagicHdr)(x))->Magic != (y))
-#define SETMAGIC(x,y) (((pMagicHdr)(x))->Magic = (y))
+#define ISMAGIC(data, expect)   (((pMagicHdr)(data))->Magic == (expect))
+#define ISNTMAGIC(data, expect) (((pMagicHdr)(data))->Magic != (expect))
+#define SETMAGIC(data, expect)  (((pMagicHdr)(data))->Magic = (expect))
 
 typedef int Magic_t;
 
