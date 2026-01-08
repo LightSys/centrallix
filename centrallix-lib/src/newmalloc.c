@@ -886,6 +886,6 @@ nmSysGetSize(void* ptr)
     return -1; /* Value not stored. */
 #else
     if (ptr == NULL) return -1;
-    return *(ptr - sizeof(int));
+    return *(int*)(ptr - sizeof(int));
 #endif	
     }
