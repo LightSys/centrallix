@@ -111,4 +111,12 @@ typedef struct
 #define MGK_SMREGION	0x1200345c	/* smmalloc.h::SmRegion */
 #define MGK_SMBLOCK	0x1200349a	/* smmalloc_private.h::SmBlock */
 
+#define	MGK_CL_SOURCE_DATA	0x12340c19	/* objdrv_cluster.c::SourceData */
+#define	MGK_CL_CLUSTER		0x12340c28	/* objdrv_cluster.c::Cluster */
+#define	MGK_CL_CLUSTER_DATA	0x12340c37	/* objdrv_cluster.c::ClusterData */
+#define	MGK_CL_SEARCH_DATA	0x12340c46	/* objdrv_cluster.c::SearchData */
+#define	MGK_CL_NODE_DATA	0x12340c55	/* objdrv_cluster.c::NodeData */
+#define	MGK_CL_DRIVER_DATA	0x12340c64	/* objdrv_cluster.c::DriverData */
+#define	MGK_CL_QUERY_DATA	0x12340c73	/* objdrv_cluster.c::QueryData */
+
 #endif /* not defined _MAGIC_H */
