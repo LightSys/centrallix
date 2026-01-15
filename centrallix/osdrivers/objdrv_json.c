@@ -300,6 +300,25 @@ json_internal_IsSubobjectNode(struct json_object* jobj)
     }
 
 
+/*** json_internal_SetContentType() - determine the content type for a json
+ *** object based on its characteristics.
+ ***/
+int
+json_internal_SetContentType(pJsonData inf)
+    {
+
+	/** Set content type based on what we found **/
+	if (json_object_is_type(inf->CurNode, json_type_string))
+	    inf->ContentType = "application/octet-stream";
+	else if (json_object_is_type(inf->CurNode, json_type_array) || json_object_is_type(inf->CurNode, json_type_object))
+	    inf->ContentType = "system/void";
+	else
+	    return -1;
+
+    return 0;
+    }
+
+
 /*** jsonOpen - open an object.
  ***/
 void*
@@ -384,11 +403,7 @@ jsonOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    }
 
 	/** Set content type based on what we found **/
-	if (json_object_is_type(inf->CurNode, json_type_string))
-	    inf->ContentType = "application/octet-stream";
-	else if (json_object_is_type(inf->CurNode, json_type_array) || json_object_is_type(inf->CurNode, json_type_object))
-	    inf->ContentType = "system/void";
-	else
+	if (json_internal_SetContentType(inf) < 0)
 	    {
 	    mssError(1,"JSON","Invalid direct reference to non-string/array/object JSON tree element '%s'", inf->CurNodeName);
 	    goto error;
@@ -594,31 +609,44 @@ void*
 jsonQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
     pJsonQuery qy = ((pJsonQuery)(qy_v));
-    pJsonData inf;
+    pJsonData inf = NULL;
 
 	/** Past end of results? **/
 	if (qy->IterCnt >= qy->ItemCnt)
-	    return NULL;
+	    goto error;
 
 	/** Alloc the structure **/
 	inf = (pJsonData)nmMalloc(sizeof(JsonData));
-	if (!inf) return NULL;
+	if (!inf)
+	    goto error;
 	memset(inf,0,sizeof(JsonData));
-	inf->CacheObj = qy->Data->CacheObj;
 	inf->CurNode = qy->ItemList.Items[qy->IterCnt];
 	strtcpy(inf->CurNodeName, qy->NameList.Items[qy->IterCnt], sizeof(inf->CurNodeName));
 	qy->IterCnt++;
 	inf->Obj = obj;
 	inf->Mask = qy->Data->Mask;
+	if (json_internal_SetContentType(inf) < 0)
+	    {
+	    mssError(1,"JSON","QueryFetch: could not process subobject '%s'", inf->CurNodeName);
+	    goto error;
+	    }
 
 	/** Build path name **/
 	if (obj_internal_AddToPath(obj->Pathname, inf->CurNodeName) < 0)
-	    return NULL;
+	    goto error;
 
 	/** Link **/
+	inf->CacheObj = qy->Data->CacheObj;
 	json_internal_CacheLink(inf->CacheObj);
 
-    return (void*)inf;
+	return (void*)inf;
+
+    error:
+	if (inf)
+	    {
+	    jsonClose(inf, oxt);
+	    }
+	return NULL;
     }
 
 

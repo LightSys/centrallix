@@ -1,0 +1,3 @@
+##NAME Order by high level with grouping and two sources
+
+csv select cnt = count(1), len = char_length(:t1:f_desc), ids = sum('' + :t1:f_id + ',') - ',', sum(:t2:f_square) from /tests/Testdata1.csv/rows t1, /tests/Testdata2.csv/rows t2 where :t2:f_id = :t1:f_id group by char_length(:t1:f_desc) order by :t2:f_id

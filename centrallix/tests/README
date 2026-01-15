@@ -21,6 +21,11 @@ operating correctly.  The tests in this category will pass, fail, crash, and
 lockup, just to ensure that the test suite is correctly reporting the test
 results.
 
+Or, to just run the SQL engine tests:
+
+    $ export TONLY=sql
+    $ make test
+
 
 == UNDERSTANDING TEST SUITE OUTPUT ==
 
@@ -66,6 +71,20 @@ automatically undone post-test by including an "##UNDO " tag inside the script:
     ##NAME an update test
     ##UNDO /tests/updatetest.csv
     query update /tests/updatetest.csv/rows set :value = 1
+
+If the test depends on enabling specific types of debugging output from the
+Centrallix binary (test_obj), you'll want to enable those using the 'test'
+command in your .to file:
+
+    ##NAME A test including output from C code debugging
+    test 2,3,4
+
+This will cause test/debug output for cxTestOutput() C code function calls to
+appear in the .out output file (and thus be compared with the .cmp file).
+The principle behind this architecture is that output-driven test suites will
+only want to include certain, predictable, types of test/debug output in
+order to verify code paths and functionality.  Each cxTestOutput() line in
+the C code should have its own unique ID value.
 
 As you develop new test suite entires to cover new or existing functionality,
 see the discussion above about the $TONLY environment variable, as well, to

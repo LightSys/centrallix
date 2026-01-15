@@ -54,6 +54,7 @@
 struct
     {
     XArray		Drivers;
+    pFile		Output; /* used for redirecting the print output */
     }
     MQINF;
 
@@ -504,6 +505,12 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 	    for(i=0;i<from->Children.nItems;i++)
 		{
 		subtree = (pQueryStructure)(from->Children.Items[i]);
+		if (subtree->Flags & MQ_SF_IDENTITY)
+		    has_identity = 1;
+		}
+	    for(i=0;i<from->Children.nItems;i++)
+		{
+		subtree = (pQueryStructure)(from->Children.Items[i]);
 		if (subtree->Flags & MQ_SF_EXPRESSION && !subtree->Presentation[0])
 		    snprintf(subtree->Presentation, sizeof(subtree->Presentation), "from_%d", i);
 		if (subtree->Flags & MQ_SF_COLLECTION && !subtree->Presentation[0])
@@ -512,14 +519,12 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		    ptr = subtree->Presentation;
 		else
 		    ptr = subtree->Source;
-		if (subtree->Flags & MQ_SF_IDENTITY)
-		    has_identity = 1;
 		if (expLookupParam(stmt->Query->ObjList, ptr, 0) >= 0)
 		    {
 		    mssError(1, "MQ", "Data source '%s' already exists in query or query parameter", ptr);
 		    return -1;
 		    }
-		subtree->ObjID = expAddParamToList(stmt->Query->ObjList, ptr, NULL, (i==0 || (subtree->Flags & MQ_SF_IDENTITY))?EXPR_O_CURRENT:0);
+		subtree->ObjID = expAddParamToList(stmt->Query->ObjList, ptr, NULL, ((i==0 && !has_identity) || (subtree->Flags & MQ_SF_IDENTITY))?(EXPR_O_CURRENT | EXPR_O_PRESERVEPARENT):0);
 
 		/** Compile FROM clause expression if needed **/
 		if (subtree->Flags & MQ_SF_EXPRESSION)
@@ -2187,7 +2192,8 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 				    if (!strcmp("log", cmd))
 					mssLog(LOG_INFO, xs->String);
 				    else
-					printf("%s\n", xs->String);
+					if(MQINF.Output) fdPrintf(MQINF.Output, "%s\n", xs->String);
+					else printf("%s\n", xs->String);
 				    xsFree(xs);
 				    xsFree(param);
 				    stmt->Flags |= MQ_TF_IMMEDIATE;
@@ -3060,7 +3066,7 @@ mq_internal_NextStatement(pMultiQuery this)
 	stmt->OneObjList = expCreateParamList();
 	expCopyList(this->ObjList, stmt->OneObjList, this->nProvidedObjects);
 	stmt->OneObjList->Session = stmt->Query->SessionID;
-	expAddParamToList(stmt->OneObjList, "this", NULL, EXPR_O_CURRENT | EXPR_O_REPLACE);
+	expAddParamToList(stmt->OneObjList, "this", NULL, EXPR_O_CURRENT | EXPR_O_REPLACE | EXPR_O_PRESERVEPARENT);
 	expSetParamFunctions(stmt->OneObjList, "this", mqGetAttrType, mqGetAttrValue, mqSetAttrValue);
 
 	/** Parse the query **/
@@ -3315,6 +3321,8 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	    }
 	if (flags & OBJ_MQ_F_NOUPDATE)
 	    this->Flags |= MQ_F_NOUPDATE;
+	if (flags & OBJ_MQ_F_ONEROW)
+	    this->Flags |= MQ_F_ONEROW;
 	this->Flags |= MQ_F_FIRSTSTATEMENT;
 
 	/** Parse the text of the query, building the syntax structure **/
@@ -3556,7 +3564,7 @@ mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p)
 	having_objlist = expCreateParamList();
 	expCopyList(stmt->Query->ObjList, having_objlist, -1);
 	having_objlist->Session = stmt->Query->SessionID;
-	expAddParamToList(having_objlist, "this", (void*)our_p, EXPR_O_CURRENT | EXPR_O_REPLACE);
+	expAddParamToList(having_objlist, "this", (void*)our_p, EXPR_O_CURRENT | EXPR_O_REPLACE | EXPR_O_PRESERVEPARENT);
 	expSetParamFunctions(having_objlist, "this", mqGetAttrType, mqGetAttrValue, mqSetAttrValue);
 
 	/** Do late binding, and evaluate it **/
@@ -4709,6 +4717,14 @@ mq_internal_FindCollection(pMultiQuery mq, char* collection)
     return XHN_INVALID_HANDLE;
     }
 
+/*** mqRedirectPrint - redirect the output of the print command to a file.
+ *** To redirect back to stdout, pass NULL for the file pointer
+ ***/
+void
+mqRedirectPrint(pFile outfile)
+    {
+	MQINF.Output = outfile;
+    }
 
 /*** mqInitialize - initialize the multiquery module and link in with the
  *** objectsystem management layer, registering as the multiquery module.
@@ -4720,6 +4736,7 @@ mqInitialize()
 
     	/** Initialize globals **/
 	xaInit(&MQINF.Drivers,16);
+	MQINF.Output = NULL;
 
     	/** Allocate the driver structure **/
 	drv = (pObjDriver)nmMalloc(sizeof(ObjDriver));

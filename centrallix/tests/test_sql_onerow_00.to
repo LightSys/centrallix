@@ -1,0 +1,31 @@
+##NAME One Row Optimization
+
+# Enable testing output 1
+test 1
+
+# Single row but no optimization
+csv select :f_desc from /tests/Testdata1.csv/rows where :f_id = 2
+
+# Limit clause triggers optimization
+csv select :f_desc from /tests/Testdata1.csv/rows where :f_id = 2 limit 1
+
+# Subquery triggers optimization
+csv select f_desc = (select :f_desc from /tests/Testdata1.csv/rows where :f_id = 2)
+
+# Subquery triggers optimization but also has limit clause
+csv select f_desc = (select :f_desc from /tests/Testdata1.csv/rows where :f_id = 2 limit 1)
+
+# Disable onerow when an aggregate is present
+csv select f_desc = (select max(:f_desc) from /tests/Testdata1.csv/rows where :f_id = 2)
+
+# Disable onerow when having is present 
+csv select f_desc = (select :f_desc, :f_count from /tests/Testdata1.csv/rows where :f_id = 2 having :f_count = 5)
+
+# Disable onerow when grouping is present 
+csv select f_desc = (select :f_desc from /tests/Testdata1.csv/rows where :f_id = 2 group by :f_count)
+
+# Disable onerow when two sources are present 
+csv select f_desc = (select :t1:f_desc from /tests/Testdata1.csv/rows t1, /tests/Testdata2.csv/rows t2 where :t1:f_id = 2 and :t2:f_id = :t1:f_id)
+
+# Disable onerow when two sources are present despite limit clause
+csv select f_desc = (select :t1:f_desc from /tests/Testdata1.csv/rows t1, /tests/Testdata2.csv/rows t2 where :t1:f_id = 2 and :t2:f_id = :t1:f_id limit 1)

@@ -272,27 +272,12 @@ obj_internal_AllocObj()
 
     	/** Allocate the thing **/
 	this = (pObject)nmMalloc(sizeof(Object));
-	if (!this) return NULL;
+	if (!this)
+	    return NULL;
 	memset(this, 0, sizeof(Object));
 
 	/** Initialize it **/
 	this->Magic = MGK_OBJECT;
-	this->EvalContext = NULL;
-	this->Prev = NULL;
-	this->Next = NULL;
-	this->ContentPtr = NULL;
-	this->Pathname = NULL;
-	this->Obj = NULL;
-	this->Flags = 0;
-	this->Data = NULL;
-	this->Type = NULL;
-	this->NotifyItem = NULL;
-	this->VAttrs = NULL;
-	this->ILowLevelDriver = NULL;
-	this->TLowLevelDriver = NULL;
-	this->Driver = NULL;
-	this->AttrExp = NULL;
-	this->AttrExpName = NULL;
 	this->LinkCnt = 1;
 	this->RowID = -1;
 	xaInit(&(this->Attrs),16);
@@ -344,6 +329,69 @@ obj_internal_FreeObj(pObject this)
     }
 
 
+/*** obj_internal_OpenCtlToXString - convert open ctl on an object back to URL
+ *** parameter string form.
+ ***/
+void
+obj_internal_OpenCtlToString(pPathname pathinfo, int pathstart, int pathend, pXString str)
+    {
+    pStruct one_open_ctl, open_ctl;
+    int i,j;
+    int start_offset;
+
+	/** Each path element may have openctl data **/
+	start_offset = xsLength(str);
+	for(j=pathstart; j<=pathend; j++)
+	    {
+	    open_ctl = pathinfo->OpenCtl[j];
+	    if (open_ctl)
+		{
+		/** Grab each parameter from this path element **/
+		for(i=0; i<open_ctl->nSubInf; i++)
+		    {
+		    one_open_ctl = open_ctl->SubInf[i];
+		    xsConcatQPrintf(str, "%STR%STR&URL=%STR&URL",
+			    (xsString(str)[start_offset])?"&":"?",
+			    one_open_ctl->Name,
+			    one_open_ctl->StrVal);
+		    }
+		}
+	    }
+
+    return;
+    }
+
+
+/*** obj_internal_PathToText - convert a pathname structure back into a string
+ *** representation, including any open params (openctl), and place the
+ *** result in str.
+ ***/
+int
+obj_internal_PathToText(pPathname pathinfo, int pathcnt, pXString str)
+    {
+    int i;
+    char* path_element;
+
+	/** Special case **/
+	if (pathcnt == 1 || pathinfo->nElements == 1)
+	    {
+	    xsConcatenate(str, "/", 1);
+	    }
+	else
+	    {
+	    /** Loop through path elements, skipping root node **/
+	    for(i=1; i < pathcnt && i < pathinfo->nElements; i++)
+		{
+		path_element = obj_internal_PathPart(pathinfo, i, 1);
+		xsConcatPrintf(str, "/%s", path_element);
+		obj_internal_OpenCtlToString(pathinfo, i, i, str);
+		}
+	    }
+
+    return 0;
+    }
+
+
 /*** obj_internal_GetDCHash - assemble the hash key (a string) that we will use
  *** for the directory cache.  The string has this form:
  ***
@@ -357,36 +405,15 @@ int
 obj_internal_GetDCHash(pPathname pathinfo, int mode, char* hash, int hashmaxlen, int pathcnt)
     {
     pXString url_params = NULL;
-    char* paramstr = "";
-    pStruct one_open_ctl, open_ctl;
-    int i,j;
 
 	url_params = xsNew();
-	if (url_params)
-	    {
-	    paramstr = xsString(url_params);
-	    for(j=0; j<pathcnt; j++)
-		{
-		open_ctl = pathinfo->OpenCtl[j];
-		if (open_ctl)
-		    {
-		    for(i=0; i<open_ctl->nSubInf; i++)
-			{
-			one_open_ctl = open_ctl->SubInf[i];
-			xsConcatQPrintf(url_params, "%STR%STR&URL=%STR&URL",
-				(xsString(url_params)[0])?"&":"?",
-				one_open_ctl->Name,
-				one_open_ctl->StrVal);
-			}
-		    paramstr = xsString(url_params);
-		    }
-		}
-	    }
+	if (!url_params)
+	    return -1;
 
-	snprintf(hash, hashmaxlen, "%8.8x%s%s", mode, obj_internal_PathPart(pathinfo, 0, pathcnt), paramstr);
-
-	if (url_params)
-	    xsFree(url_params);
+	/** Just dump all of them into one place for this purpose **/
+	obj_internal_OpenCtlToString(pathinfo, 0, pathcnt-1, url_params);
+	snprintf(hash, hashmaxlen, "%8.8x%s%s", mode, obj_internal_PathPart(pathinfo, 0, pathcnt), xsString(url_params));
+	xsFree(url_params);
 
     return 0;
     }
@@ -401,10 +428,14 @@ obj_internal_AllocDC(pObject obj, int cachemode, int pathcnt)
     pDirectoryCache dc;
 
 	dc = (pDirectoryCache)nmMalloc(sizeof(DirectoryCache));
+	strcpy(dc->Pathname, obj_internal_PathPart(obj->Pathname, 0, pathcnt));
+	if (obj_internal_GetDCHash(obj->Pathname, cachemode, dc->Hashname, sizeof(dc->Hashname), pathcnt) < 0)
+	    {
+	    nmFree(dc, sizeof(DirectoryCache));
+	    return NULL;
+	    }
 	dc->NodeObj = obj;
 	objLinkTo(obj);
-	strcpy(dc->Pathname, obj_internal_PathPart(obj->Pathname, 0, pathcnt));
-	obj_internal_GetDCHash(obj->Pathname, cachemode, dc->Hashname, sizeof(dc->Hashname), pathcnt);
 
     return dc;
     }
@@ -650,26 +681,18 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	for(j=pathinfo->nElements-1;j>=2;j--)
 	    {
 	    /** Try a prefix of the pathname. **/
-	    obj_internal_GetDCHash(pathinfo, mode, testhash, sizeof(testhash), j);
+	    if (obj_internal_GetDCHash(pathinfo, mode, testhash, sizeof(testhash), j) < 0)
+		{
+		if (this)
+		    obj_internal_FreeObj(this);
+		return NULL;
+		}
 	    xe = xhqLookup(&(s->DirectoryCache), testhash);
 	    if (xe)
 	        {
 		/** Lookup was successful - get the data for it **/
 		dc = (pDirectoryCache)xhqGetData(&(s->DirectoryCache), xe, 0);
 		this = dc->NodeObj;
-
-#if 00 /* now taken care of in how we hash */
-		/** Make sure the access mode is what we need **/
-		if (((this->Mode & O_ACCMODE) == O_RDONLY && ((mode & O_ACCMODE) == O_RDWR || (mode & O_ACCMODE) == O_WRONLY)) ||
-			((this->Mode & O_ACCMODE) == O_WRONLY && ((mode & O_ACCMODE) == O_RDWR || (mode & O_ACCMODE) == O_RDONLY)))
-		    {
-		    /** Discard cached entry, in hopes of caching the one we have. **/
-		    this = NULL;
-		    xhqRemove(&(s->DirectoryCache), xe, 0);
-		    dc = NULL;
-		    break;
-		    }
-#endif
 
 		/** Link to the intermediate object to lock it open. **/
 		objLinkTo(this);
@@ -727,16 +750,12 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    /** Determine the apparent/perceived type from the name **/
 	    apparent_type = NULL;
 
-	    /** Do NOT operate based on "apparent type" if the name is the same as the previous **/
-	    /** intermediate object's name, and the SubCnt of the previous obj was 1. **/
+	    /** Do NOT operate based on "apparent type" if the name is the same as the previous
+	     ** intermediate object's name, and the SubCnt of the previous obj was 1.
+	     **/
 	    if (!this || this->SubCnt != 1 || strcmp(name, prevname))
 	        {
-		/** Check for forced-leaf condition -- in that case we don't use the apparent type **/
-		/*obj_info = objInfo(this);
-		if (!obj_info || !(obj_info->Flags & OBJ_INFO_F_FORCED_LEAF))
-		    {*/
-		    apparent_type = objTypeFromName(name);
-		    /*}*/
+		apparent_type = objTypeFromName(name);
 		}
 
 	    strcpy(prevname, name);
@@ -848,7 +867,7 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    this->Session = s;
 	    this->Mode = mode;
 
-	    /** Set object type **/
+	    /** Set object type if using ls__type open-as functionality **/
 	    if (used_openas) this->Type = ck_type;
 
 	    /** Driver requested transactions? **/
@@ -882,9 +901,9 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		{
 		this->Mode &= ~(OBJ_O_CREAT | OBJ_O_EXCL);
 		}
-	    }
+	    } /* intermediate open loop */
 
-	/** Set object type **/
+	/** We have the driver/object chain now.  Set object type if needed. **/
 	if (name && !this->Type) this->Type = objTypeFromName(name);
 
 	/** Cache the upper-level node for this object? **/
@@ -901,16 +920,19 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 		 ** item later on.
 		 **/
 		dc = obj_internal_AllocDC(this->Prev, mode, this->SubPtr);
-		xe = xhqAdd(&(s->DirectoryCache), dc->Hashname, dc, 1);
-		if (!xe)
+		if (dc)
 		    {
-		    /** Already cached -- oops!  Probably bug! **/
-		    obj_internal_FreeDC(dc);
-		    }
-		else
-		    {
-		    /** Release our "hold" on the entry **/
-		    xhqUnlink(&(s->DirectoryCache), xe, 0);
+		    xe = xhqAdd(&(s->DirectoryCache), dc->Hashname, dc, 1);
+		    if (!xe)
+			{
+			/** Already cached -- oops!  Probably bug! **/
+			obj_internal_FreeDC(dc);
+			}
+		    else
+			{
+			/** Release our "hold" on the entry **/
+			xhqUnlink(&(s->DirectoryCache), xe, 0);
+			}
 		    }
 		}
 	    }

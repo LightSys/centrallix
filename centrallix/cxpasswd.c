@@ -201,6 +201,7 @@ main(int argc, char* argv[])
     int ch;
 
 	/** Default global values **/
+	cxSetupGlobals(argc, argv);
 	memset(&CXPASSWD,0,sizeof(CXPASSWD));
 	strcpy(CXPASSWD.PasswdFile, "");
 	CXPASSWD.ReadStdin = 0;

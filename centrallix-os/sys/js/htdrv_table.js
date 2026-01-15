@@ -12,6 +12,17 @@
 
 window.tbld_touches = [];
 
+function tbld_log_status()
+    {
+    var rowstr = '';
+    for(var i in this.rows)
+	{
+	if (!isNaN(parseInt(i)))
+	    rowstr += ('' + i + ' (' + this.rows[i].rownum + '), ');
+	}
+    console.log('TABLE ' + this.__WgtrName + ': first ' + this.rows.first + ', last ' + this.rows.last + ', lastosrc ' + this.rows.lastosrc + ', firstvis ' + this.rows.firstvis + ', lastvis ' + this.rows.lastvis + ', rows [' + rowstr + ']');
+    }
+
 // tbld_format_cell (FormatCell) - This function formats one cell in one row of the
 // table, based on the source data and style configuration.
 //
@@ -26,7 +37,7 @@ function tbld_format_cell(cell, color)
 
     if (!colinfo.widget || colinfo.widget.visible)
 	{
-	if (cell.subkind != 'headercell' && colinfo.type != 'check' && colinfo.type != 'image')
+	if (cell.subkind != 'headercell' && colinfo.type != 'check' && colinfo.type != 'image' && colinfo.type != 'checkbox')
 	    var str = htutil_encode(String(htutil_obscure(cell.data)), colinfo.wrap != 'no');
 	else
 	    var str = htutil_encode(String(cell.data), colinfo.wrap != 'no');
@@ -73,6 +84,15 @@ function tbld_format_cell(cell, color)
 		}
 	    else
 		txt = '';
+	    }
+	else if (cell.subkind != 'headercell' && colinfo.type == 'checkbox')
+	    {
+	    // Checkbox
+	    var sl = str.toLowerCase();
+	    if (sl == 'n' || sl == 'no' || sl == 'off' || sl == 'false' || str == '0' || str == '' || str == 'null')
+		txt = '<img width="16" height="16" src="/sys/images/checkbox_unchecked.png">';
+	    else
+		txt = '<img width="16" height="16" src="/sys/images/checkbox_checked.png">';
 	    }
 	else if (cell.subkind != 'headercell' && colinfo.type == 'check')
 	    {
@@ -527,13 +547,23 @@ function tbld_setup_row_data(rowslot, is_new)
     }
 
 
+function tbld_get_selected_column_geom()
+    {
+    if (this.table.cr && this.table.rows[this.table.cr])
+	var obj = this.table.rows[this.table.cr];
+    else
+	var obj = this.table;
+    return { x:$(obj).offset().left + this.col.xoffset, y:$(obj).offset().top, width:this.col.width, height:$(obj).height() };
+    }
+
+
 function tbld_get_selected_geom()
     {
     if (this.cr && this.rows[this.cr])
 	var obj = this.rows[this.cr];
     else
 	var obj = this;
-    return {x:$(obj).offset().left,y:$(obj).offset().top,width:$(obj).width(),height:$(obj).height()};
+    return { x:$(obj).offset().left, y:$(obj).offset().top, width:$(obj).width(), height:$(obj).height() };
     }
 
 
@@ -993,8 +1023,8 @@ function tbld_set_displayfor(attr, val)
 
 function tbld_set_coltitle(attr, val)
     {
-    this.col.data = val;
-    this.table.FormatCell(this.col, this.table.titlecolor);
+    this.colhdr.data = val;
+    this.table.FormatCell(this.colhdr, this.table.titlecolor);
     this.table.UpdateHeight(this.hdrrow);
     this.table.DisplayRow(this.hdrrow, 0);
     this.table.UpdateGeom();
@@ -1003,7 +1033,7 @@ function tbld_set_coltitle(attr, val)
 
 function tbld_get_coltitle(attr)
     {
-    return this.col.data;
+    return this.colhdr.data;
     }
 
 
@@ -1016,14 +1046,14 @@ function tbld_set_visible(attr, val)
 	    {
 	    // Show column
 	    this.visible = 1;
-	    this.col.ChangeWidth(this.visible_width, true);
+	    this.colhdr.ChangeWidth(this.visible_width, true);
 	    }
 	else
 	    {
 	    // Hide column
 	    this.visible_width = this.table.cols[this.colnum].width;
 	    this.visible = 0;
-	    this.col.ChangeWidth(-this.visible_width, true);
+	    this.colhdr.ChangeWidth(-this.visible_width, true);
 	    }
 	this.table.ReflowWidth();
 	}
@@ -1162,6 +1192,13 @@ function tbld_scroll(y, animate)
 	return;
 	}
 
+    // No rows currently accessible?
+    if (!this.rows.first || !this.rows.last || !this.rows[this.rows.first] || !this.rows[this.rows.last])
+	{
+	this.OsrcDispatch();
+	return;
+	}
+
     // Current start and end of scrollable content
     var scroll_start = getRelativeY(this.rows[this.rows.first]);
     var scroll_end = getRelativeY(this.rows[this.rows.last]) + $(this.rows[this.rows.last]).height() + this.cellvspacing*2;
@@ -1176,7 +1213,11 @@ function tbld_scroll(y, animate)
     if (scroll_start <= (0-y) && (scroll_end - this.vis_height >= (0-y) || this.rows.lastosrc == this.rows.last))
 	{
 	this.scroll_y = y;
-	$(this.scrolldiv).stop(false, false);
+	if ($(this.scrolldiv).queue().length)
+	    {
+	    $(this.scrolldiv).stop(false, false);
+	    animate = 'linear'; // FIXME some kind of half-swing would be appropriate here.
+	    }
 	if (animate)
 	    $(this.scrolldiv).animate({"top": y+"px"}, 250, animate, null);
 	else
@@ -1202,7 +1243,10 @@ function tbld_scroll(y, animate)
 	    this.target_range.start = this.rows.first - this.rowcache_size;
 	    if (this.target_range.start < 1)
 		this.target_range.start = 1;
-	    this.target_range.end = this.rows.lastvis+1;
+	    if (this.rows.lastvis)
+		this.target_range.end = this.rows.lastvis+1;
+	    else
+		this.target_range.end = this.target_range.start + this.rowcache_size;
 	    }
 	else if (getRelativeY(this.rows[this.rows.last]) + $(this.rows[this.rows.last]).height() + this.cellvspacing - this.vis_height < (0-y) && (this.rows.lastosrc === null || this.rows.lastvis < this.rows.lastosrc))
 	    {
@@ -1244,14 +1288,14 @@ function tbld_bar_click(e)
     {
     var sb = e.layer;
     var t = sb.table;
-    if (e.pageY > $(sb.b).offset().top + $(sb.b).height())
+    if (e.pageY > $(sb.b).offset().top + $(sb.b).height() && t.rows.lastvis && t.rows[t.rows.lastvis])
 	{
 	// Down a page
 	var target_row = t.rows[t.rows.lastvis];
 	var target_y = 0 - (getRelativeY(target_row) + $(target_row).height() + t.cellvspacing*2);
 	t.Scroll(target_y, true);
 	}
-    else if (e.pageY < $(sb.b).offset().top)
+    else if (e.pageY < $(sb.b).offset().top && t.rows.firstvis && t.rows[t.rows.firstvis])
 	{
 	// Up a page
 	var target_row = t.rows[t.rows.firstvis];
@@ -1560,6 +1604,7 @@ function tbld_remove_row(rowobj)
 	}
     if (this.rows.firstvis > this.rows.lastvis)
 	{
+	console.log('TABLE ' + this.__WgtrName + ': resetting firstvis/lastvis to null (firstvis > lastvis)');
 	this.rows.firstvis = null;
 	this.rows.lastvis = null;
 	}
@@ -1799,6 +1844,7 @@ function tbld_osrc_dispatch()
 	    this.osrc_busy = true;
 	    this.osrc_last_op = item.type;
 	    //this.log.push("Calling ScrollTo(" + item.start + "," + item.end + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+	    //console.log("Calling ScrollTo(" + item.start + "," + item.end + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
 	    this.osrc.ScrollTo(item.start, item.end);
 	    break;
 
@@ -1806,6 +1852,7 @@ function tbld_osrc_dispatch()
 	    this.osrc_busy = true;
 	    this.osrc_last_op = item.type;
 	    //this.log.push("Calling MoveToRecord(" + item.rownum + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+	    //console.log("Calling MoveToRecord(" + item.rownum + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
 	    this.osrc.MoveToRecord(item.rownum, this);
 	    break;
 
@@ -1894,6 +1941,7 @@ function tbld_init(param)
     t.dragcols = param.dragcols;
     t.colsep = param.colsep;
     t.colsepbg = param.colsep_bgnd;
+    t.colsepmode = param.colsep_mode;
     t.gridinemptyrows = param.gridinemptyrows;
     t.allowselect = param.allow_selection;
     t.showselect = param.show_selection;
@@ -2010,6 +2058,7 @@ function tbld_init(param)
     t.UpdateGeom = tbld_update_geom;
     t.ReflowWidth = tbld_reflow_width;
     t.ShowSelection = tbld_show_selection;
+    t.LogStatus = tbld_log_status;
 
     // ObjectSource integration
     t.IsDiscardReady = new Function('return true;');
@@ -2105,7 +2154,7 @@ function tbld_init(param)
 	    $(l.resizebdr).css
 		({
 		"cursor": "move", 
-		"height": ((t.gridinemptyrows)?(t.rowheight * (t.maxtotalwindowsize)):t.rowheight) + "px", 
+		"height": (t.colsepmode == 0)?(((t.gridinemptyrows)?(t.param_height):t.rowheight) + "px"):(t.rowheight + "px"), 
 		"visibility": "inherit",
 		"width": t.colsep + t.bdr_width*2 + "px",
 		"padding-left": t.bdr_width + "px",
@@ -2148,9 +2197,11 @@ function tbld_init(param)
 	    cw.hdrrow = t.hdrrow;
 	    cw.table = t;
 	    cw.colnum = i;
-	    cw.col = t.hdrrow.cols[i];
+	    cw.colhdr = t.hdrrow.cols[i];
+	    cw.col = t.cols[i];
 	    cw.visible = 1;
 	    cw.visible_width = t.cols[i].width;
+	    cw.GetSelectedGeom = tbld_get_selected_column_geom;
 	    var iv = cw.ifcProbeAdd(ifValue);
 	    iv.Add("title", tbld_get_coltitle, tbld_set_coltitle);
 	    iv.Add("visible", tbld_get_visible, tbld_set_visible);
@@ -2195,6 +2246,8 @@ function tbld_init(param)
 
     // Events
     var ie = t.ifcProbeAdd(ifEvent);
+    ie.Add("Check");
+    ie.Add("Uncheck");
     ie.Add("Click");
     ie.Add("DblClick");
     ie.Add("RightClick");
@@ -2408,7 +2461,15 @@ function tbld_wheel(e)
 	    e.pageY >= $(ly).offset().top &&
 	    e.pageY < $(ly).offset().top + ly.param_height)
 	    {
-	    var amt_to_move = e.Dom2Event.deltaY * 16;
+	    if (e.Dom2Event.deltaMode == 0)
+		var multiplier = 1;
+	    else if (e.Dom2Event.deltaMode == 1)
+		var multiplier = (ly.has_header)?($(ly.rows[0]).height()):16;
+	    else if (e.Dom2Event.deltaMode == 2)
+		var multiplier = ly.vis_height;
+	    else
+		var multiplier = 1;
+	    var amt_to_move = e.Dom2Event.deltaY * multiplier;
 	    ly.Scroll(ly.scroll_y - amt_to_move, true);
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
@@ -2523,7 +2584,7 @@ function tbld_keydown(e)
 		    for(var c in row.cols)
 			{
 			var col = row.cols[c];
-			if (t.cols[col.colnum].type != 'check' && t.cols[col.colnum].type != 'image')
+			if (t.cols[col.colnum].type != 'check' && t.cols[col.colnum].type != 'image' && t.cols[col.colnum].type != 'checkbox')
 			    {
 			    if (t.CheckHighlight(col, t.ttf_string))
 				{
@@ -2594,6 +2655,7 @@ function tbld_mousedown(e)
     {
     var ly = e.layer;
     var toggle_row = false;
+    var canceled = false;
     var moved = false;
     var selected = (ly.table?ly.table.selected:((ly.row && ly.row.table)?ly.row.table.selected:null));
     if(ly.kind && ly.kind=='tabledynamic')
@@ -2624,6 +2686,13 @@ function tbld_mousedown(e)
             {
 	    var orig_ly = ly;
             if(ly.row) ly=ly.row;
+
+	    // Do not let user select a row if an animation is in progress.
+	    if ($(ly.table.scrolldiv).queue().length)
+		{
+		return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+		}
+
 	    if (ly.table.allowselect)
 		{
 		if(ly.table.osrc.CurrentRecord!=ly.rownum)
@@ -2654,6 +2723,7 @@ function tbld_mousedown(e)
 		event.recnum = ly.rownum;
 		event.selected = selected;
 		event.data = new Object();
+		event.checkbox = 0;
 		var rec=ly.table.osrc.replica[ly.rownum];
 		if(rec)
 		    {
@@ -2665,7 +2735,21 @@ function tbld_mousedown(e)
 			}
 		    }
 		ly.table.dta=event.data;
-		if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Click', event)))
+		if (e.target && e.target.src && e.target.src.indexOf('/sys/images/checkbox_unchecked.png') >= 0)
+		    {
+		    event.checkbox = 1;
+		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Check', event)))
+			canceled = true;
+		    }
+		if (!canceled && e.target && e.target.src && e.target.src.indexOf('/sys/images/checkbox_checked.png') >= 0)
+		    {
+		    event.checkbox = 2;
+		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Uncheck', event)))
+			canceled = true;
+		    }
+		if (!canceled && isCancel(ly.table.ifcProbe(ifEvent).Activate('Click', event)))
+		    canceled = true;
+		if (canceled)
 		    toggle_row = false;
 		}
 	    if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("DblClick"))

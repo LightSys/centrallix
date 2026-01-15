@@ -100,12 +100,7 @@ main(int argc, char* argv[])
     int ch;
 
 	/** Default global values **/
-	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
-	CxGlobals.QuietInit = 0;
-	CxGlobals.ParsedConfig = NULL;
-	CxGlobals.ModuleList = NULL;
-	CxGlobals.ArgV = argv;
-	CxGlobals.Flags = 0;
+	cxSetupGlobals(argc, argv);
 	memset(&LINKSIGN, 0, sizeof(LINKSIGN));
 
 	/** Check for config file options on the command line **/

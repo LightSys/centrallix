@@ -1,0 +1,6 @@
+##NAME Order by using aggregate values
+
+csv select len = char_length(:color), colors = sum(:color + ',') - ',', ids = sum('' + :rowid + ',') - ',' from /tests/test3.json group by char_length(:color)
+csv select len = char_length(:color), colors = sum(:color + ',') - ',', ids = sum('' + :rowid + ',') - ',' from /tests/test3.json group by char_length(:color) order by char_length(:color) asc
+csv select len = char_length(:color), colors = sum(:color + ',') - ',', ids = sum('' + :rowid + ',') - ',' from /tests/test3.json group by char_length(:color) order by char_length(:color) desc
+csv select len = char_length(:color), colors = sum(:color + ',') - ',', ids = sum('' + :rowid + ',') - ',' from /tests/test3.json group by char_length(:color) order by sum(:color + ',') - ',' asc

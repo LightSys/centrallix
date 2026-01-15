@@ -365,6 +365,7 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 		return 0;
 	    }
 
+	/** Expression to evaluate?  If so cache it in AttrExp / AttrExpName **/
 	if (this->EvalContext && osmltype == DATA_T_CODE && (!this->AttrExpName || strcmp(attrname, this->AttrExpName)))
 	    {
 	    if (this->Driver->GetAttrValue(this->Data, attrname, osmltype, POD(&exp), &(this->Session->Trx)) == 0)
@@ -385,6 +386,7 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 		}
 	    }
 
+	/** Expression to evaluate?  Bind and evaluate it. **/
 	if (this->EvalContext && osmltype == DATA_T_CODE && this->AttrExpName && !strcmp(this->AttrExpName, attrname))
 	    {
 	    expBindExpression(this->AttrExp, this->EvalContext, EXPR_F_RUNSERVER);

@@ -97,7 +97,7 @@ expEvalSubquery(pExpression tree, pParamObjects objlist)
 	    }
 
 	/** Run the query **/
-	qy = objMultiQuery(objlist->Session, tree->Name, objlist, OBJ_MQ_F_ONESTATEMENT | OBJ_MQ_F_NOUPDATE);
+	qy = objMultiQuery(objlist->Session, tree->Name, objlist, OBJ_MQ_F_ONESTATEMENT | OBJ_MQ_F_NOUPDATE | OBJ_MQ_F_ONEROW);
 	if (!qy)
 	    {
 	    mssError(1,"EXP","Failed to run subselect query");
@@ -1486,6 +1486,17 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 
 	    default: 
 	        if (tree->ObjID == -1 && obj) objClose(obj);
+
+		if (tree->ObjID == EXPR_OBJID_CURRENT)
+		    {
+		    /** Enable late binding for invalid current obj properties,
+		     ** since the 'current' context will be different on the
+		     ** client.
+		     **/
+		    tree->Flags |= (EXPR_F_NULL | EXPR_F_INDETERMINATE);
+		    tree->DataType = DATA_T_INTEGER;
+		    return 0;
+		    }
 	        return -1;
 	    }
 

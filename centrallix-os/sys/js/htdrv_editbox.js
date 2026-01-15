@@ -385,6 +385,8 @@ function eb_keydown(e)
 	    eb.hist_offset--;
 	    var newtxt = eb.value_history[eb.hist_offset];
 	    }
+	if (newtxt == "" && eb.was_null)
+	    newtxt = null;
 	if (eb.form) eb.form.DataNotify(eb);
 	eb.changed=true;
 	cn_activate(eb,"DataModify", {Value:newtxt, FromKeyboard:1, FromOSRC:0, OldValue:eb.content});

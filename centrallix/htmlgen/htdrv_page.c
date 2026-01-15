@@ -65,6 +65,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
     int font_size = 12;
     char font_name[128];
     int show_diag = 0;
+    int dpi_scaling = 0;
     int w,h;
     char* path;
     pStruct c_param;
@@ -177,6 +178,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    attract = (intptr_t)ptr;
 
 	show_diag = htrGetBoolean(tree, "show_diagnostics", 0);
+	dpi_scaling = htrGetBoolean(tree, "dpi_scaling", 0);
 
 	wgtrGetPropertyValue(tree, "font_size", DATA_T_INTEGER, POD(&font_size));
 	if (font_size < 5 || font_size > 100) font_size = 12;
@@ -224,6 +226,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "pg_msg_layer", "null", 0);
 	htrAddScriptGlobal(s, "pg_msg_timeout", "null", 0);
 	htrAddScriptGlobal(s, "pg_diag", show_diag?"true":"false", 0); /* causes pop-up boxes for certain non-fatel warnings */
+	htrAddScriptGlobal(s, "pg_dpi_scaling", (dpi_scaling) ? "true" : "false", 0); /* Whether to scale launched windows based on display dots-per-inch */
 	htrAddScriptGlobal(s, "pg_width", "0", 0);
 	htrAddScriptGlobal(s, "pg_height", "0", 0);
 	htrAddScriptGlobal(s, "pg_charw", "0", 0);

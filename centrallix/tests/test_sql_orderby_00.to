@@ -1,0 +1,12 @@
+##NAME Order by, single field
+
+csv select :f_id, :f_desc, :f_count from /tests/Testdata1.csv/rows order by :f_id asc
+csv select :f_id, :f_desc, :f_count from /tests/Testdata1.csv/rows order by :f_id desc
+csv select :f_id, :f_desc, :f_count from /tests/Testdata1.csv/rows order by :f_count asc
+csv select :f_id, :f_desc, :f_count from /tests/Testdata1.csv/rows order by :f_count desc
+csv select :f_id, :f_desc, :f_count from /tests/Testdata1.csv/rows order by 20 - :f_id asc
+csv select :f_id, :f_desc, :f_count from /tests/Testdata1.csv/rows order by 20 - :f_id desc
+csv select :f_id, :f_desc, :f_count from /tests/Testdata1.csv/rows order by 20 - :f_count asc
+csv select :f_id, :f_desc, :f_count from /tests/Testdata1.csv/rows order by 20 - :f_count desc
+csv select :id, :abbrev, :full_name from /tests/States.csv/rows order by 100 - :id asc
+csv select :id, :abbrev, :full_name from /tests/States.csv/rows order by 100 - :id desc

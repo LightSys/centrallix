@@ -5,7 +5,7 @@ mlquery -- Create a temporary collection containing partner data
 	    declare collection tmp_partner_condensed scope query;
 	    delete from collection tmp_partner_data;
 	    delete from collection tmp_partner_condensed;
-	    print 'Create tmp_partner_data at ' + dateformat(getdate(), 'hh:mm:ss');
+	    print 'Create tmp_partner_data';
 	    insert
 		collection tmp_partner_data
 	    select
@@ -51,7 +51,7 @@ mlquery -- Create a temporary collection containing partner data
 		p_contact_data_phone1 = '123-456-7890'
 	    ;
 	-- Creates and fills tmp_partner_condensed by concatenation
-	    print 'Create tmp_partner_condensed at ' + dateformat(getdate(), 'hh:mm:ss');		
+	    print 'Create tmp_partner_condensed';
 	    insert
 	    	collection tmp_partner_condensed
 	    select
