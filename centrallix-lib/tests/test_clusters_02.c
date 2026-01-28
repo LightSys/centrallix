@@ -27,21 +27,6 @@
 /** Tested module. **/
 #include "clusters.h"
 
-/** Useful testing macro. **/
-#define EXPECT_VEC_EQL(v1, v2) \
-    ({ \
-	pVector _v1 = (v1); \
-	pVector _v2 = (v2); \
-	int success = ca_eql(_v1, _v2); \
-	if (!success) \
-	    { \
-	    printf("  > Expected %s to equal %s at %s:%d, but got:\n", #v1, #v2, __FILE__, __LINE__); \
-	    printf("  > 1. "); ca_print_vector(_v1); printf("\n"); \
-	    printf("  > 2. "); ca_print_vector(_v2); printf("\n"); \
-	    fflush(stdout); \
-	    } \
-	success; \
-    })
 
 static bool do_tests(void)
     {
@@ -52,20 +37,25 @@ static bool do_tests(void)
 	unsigned int index = 0u;
 	pVector free_list[max_index];
 	#define STORE(v) (free_list[index++] = (v))
+	#define vec(s) STORE(ca_build_vector(s))
 	
 	/** Edge case: Null string. **/
 	success &= EXPECT_EQL(ca_build_vector(NULL), NULL, "%p");
 	
 	/** Edge case: Empty string. **/
-	success &= EXPECT_VEC_EQL(STORE(ca_build_vector("")), ((int[]){-172, 11, -78}));
+	success &= EXPECT_VEC_EQL(vec(""), ((int[]){-172, 11, -78}));
 	
 	/** Single letter cases. **/
-	success &= EXPECT_VEC_EQL(STORE(ca_build_vector("a")), ((int[]){-204, 12, -25, 12, -20}));
-	success &= EXPECT_VEC_EQL(STORE(ca_build_vector("b")), ((int[]){-151, 13, -11, 13, -87}));
-	success &= EXPECT_VEC_EQL(STORE(ca_build_vector("v")), ((int[]){-221, 7, -19, 7, -9}));
+	success &= EXPECT_VEC_EQL(vec("a"), ((int[]){-204, 12, -25, 12, -20}));
+	success &= EXPECT_VEC_EQL(vec("b"), ((int[]){-151, 13, -11, 13, -87}));
+	success &= EXPECT_VEC_EQL(vec("v"), ((int[]){-221, 7, -19, 7, -9}));
 	
 	/** Multi-letter cases. **/
-	success &= EXPECT_VEC_EQL(STORE(ca_build_vector("def")), ((int[]){-79, 4, -51, 2, -4, 7, -64, 9, -49}));
+	success &= EXPECT_VEC_EQL(vec("def"), ((int[]){-79, 4, -51, 2, -4, 7, -64, 9, -49}));
+	success &= EXPECT_VEC_EQL(vec("vec"), ((int[]){-37, 1, -175, 12, -18, 6, -8, 7, -9}));
+	
+	/** White space and punctuation should be ignored. **/
+	success &= EXPECT_VEC_EQL(vec("Yippee!!!"), vec(">>->y  i!&P^^_pe$/\n?e"));
 	
 	/** Clean up using the free list. **/
 	if (index >= max_index)
@@ -93,4 +83,4 @@ long long test(char** tname)
 
 /** Clean up scope. **/
 #undef STORE
-#undef EXPECT_VEC_EQL
+#undef vec

@@ -144,13 +144,13 @@ ca_char_pair_cmp(const void *p1, const void *p2)
 pVector
 ca_build_vector(const char* str)
     {
-        /** Guard against a segfault. **/
-        if (str == NULL) return NULL;
-    
     unsigned char* chars = NULL;
     CharPair* char_pairs = NULL;
     pVector sparse_vector = NULL;
     pVector trimmed_sparse_vector = NULL;
+    
+        /** Guard against a segfault. **/
+        if (str == NULL) return NULL;
     
 	/** Allocate memory to store the characters. **/
 	unsigned int num_chars = 0u;

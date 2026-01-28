@@ -28,6 +28,7 @@
 /** Tested module. **/
 #include "clusters.h"
 
+/** Mock similarity function. **/
 static const unsigned int key_length = 64u;
 static pXHashTable mock_sims = NULL;
 static bool* success_ptr = NULL;
@@ -105,31 +106,31 @@ static bool do_tests(void)
 	unsigned int index = 0u;
 	pVector free_list[max_index];
 	#define STORE(v) (free_list[index++] = (v))
-	#define str(s) STORE(ca_build_vector(s))
+	#define vec(s) STORE(ca_build_vector(s))
 	
 	/** Alternative similarity function. **/
-	pVector hello = str("hello"), fellow = str("fellow"), felon = str("felon");
-	pVector held = str("held"), zephora = str("zephora"), hexza = str("hexza");
-	pVector hello_there = str("hello there"), hello_world = str("hello world");
-	pVector hellow_there = str("hellow there");
-	success &= EXPECT_STR_EQL(ca_most_similar(hello, (void*[]){fellow, felon, hello, held}, 4, ca_cos_compare, 0.0), hello);
-	success &= EXPECT_STR_EQL(ca_most_similar(str("hello"), (void*[]){fellow, felon, hello, held}, 4, ca_cos_compare, 0.0), hello);
-	success &= EXPECT_STR_EQL(ca_most_similar(hello, (void*[]){zephora, hello_world, hexza}, 3, ca_cos_compare, 0.0), hello_world);
-	success &= EXPECT_STR_EQL(ca_most_similar(hello, (void*[]){zephora, hello_world}, 1, ca_cos_compare, 0.0), zephora);
-	success &= EXPECT_STR_EQL(ca_most_similar(hello, (void*[]){zephora}, 1, ca_cos_compare, 0.0), zephora);
-	success &= EXPECT_STR_EQL(ca_most_similar(hello_there, (void*[]){hello_world, zephora, hellow_there, hexza}, 4, ca_cos_compare, 0.0), hellow_there);
-	success &= EXPECT_STR_EQL(ca_most_similar(hello_there, (void*[]){hello_world, zephora, hellow_there}, 2, ca_cos_compare, 0.0), hello_world);
-	success &= EXPECT_STR_EQL(ca_most_similar(hello_there, (void*[]){hello_world, zephora, hellow_there}, 2, ca_cos_compare, 0.8), NULL);
+	pVector hello = vec("hello"), fellow = vec("fellow"), felon = vec("felon");
+	pVector held = vec("held"), zephora = vec("zephora"), hexza = vec("hexza");
+	pVector hello_there = vec("hello there"), hello_world = vec("hello world");
+	pVector hellow_there = vec("hellow there");
+	success &= EXPECT_VEC_EQL(ca_most_similar(hello, (void*[]){fellow, felon, hello, held}, 4, ca_cos_compare, 0.0), hello);
+	success &= EXPECT_VEC_EQL(ca_most_similar(hello, (void*[]){zephora, hello_world, hexza}, 3, ca_cos_compare, 0.0), hello_world);
+	success &= EXPECT_VEC_EQL(ca_most_similar(hello, (void*[]){zephora, hello_world}, 1, ca_cos_compare, 0.0), zephora);
+	success &= EXPECT_VEC_EQL(ca_most_similar(hello, (void*[]){zephora}, 1, ca_cos_compare, 0.0), zephora);
+	success &= EXPECT_VEC_EQL(ca_most_similar(hello_there, (void*[]){hello_world, zephora, hellow_there, hexza}, 4, ca_cos_compare, 0.0), hellow_there);
+	success &= EXPECT_VEC_EQL(ca_most_similar(hello_there, (void*[]){hello_world, zephora, hellow_there}, 2, ca_cos_compare, 0.0), hello_world);
+	success &= EXPECT_VEC_EQL(ca_most_similar(hello_there, (void*[]){hello_world, zephora, hellow_there}, 2, ca_cos_compare, 0.8), NULL);
 	
 	/** Special characters (ignored by the similarity function). **/
-	pVector yip = str("Yippee!!!");
-	pVector str1 = str("@*#((%^!&@*-+!"), str2 = str(">>->y  i!&P^^_pe$/\n?e"), str3 = str("yip");
-	success &= EXPECT_STR_EQL(ca_most_similar(yip, (void*[]){str1, str2, str3}, 3, ca_cos_compare, 0.0), str2);
-	success &= EXPECT_STR_EQL(ca_most_similar(yip, (void*[]){str1, str2, str3}, 3, ca_cos_compare, 1.0), str2);
+	pVector yip = vec("Yippee!!!");
+	pVector str1 = vec("@*#((%^!&@*-+!"), str2 = vec(">>->y  i!&P^^_pe$/\n?e"), str3 = vec("yip");
+	success &= EXPECT_VEC_EQL(yip, str2);
+	success &= EXPECT_VEC_EQL(ca_most_similar(yip, (void*[]){str1, str2, str3}, 3, ca_cos_compare, 0.0), str2);
+	success &= EXPECT_VEC_EQL(ca_most_similar(yip, (void*[]){str1, str2, str3}, 3, ca_cos_compare, 1.0), str2);
 	
 	/** Clean up scope. **/
 	#undef STORE
-	#undef str
+	#undef vec
 	
 	/** Clean up using the free list. **/
 	if (index >= max_index)

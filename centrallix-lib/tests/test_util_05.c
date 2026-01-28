@@ -28,9 +28,9 @@
 #include "util.h"
 
 /** Assumes success is in scope. **/
-#define TEST_SNPRINT_LLU(buf, buf_size, value, expect) \
-	EXPECT_STR_EQL(snprint_llu(buf, buf_size, value), expect) && \
-	EXPECT_EQL(snprint_llu(buf, buf_size, value), &buf[0], "%p")
+#define TEST_SNPRINT_COMMAS_LLU(buf, buf_size, value, expect) \
+	EXPECT_STR_EQL(snprint_commas_llu(buf, buf_size, value), expect) && \
+	EXPECT_EQL(snprint_commas_llu(buf, buf_size, value), &buf[0], "%p")
     
 #define TEST_SNPRINT_BYTES(buf, buf_size, value, expect) \
 	EXPECT_STR_EQL(snprint_bytes(buf, buf_size, value), expect) && \
@@ -70,50 +70,50 @@ static bool do_tests(void)
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, INT_MAX,                     (cs) ? "2 GiB"      : "2.15 GB");
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, UINT_MAX,                    (cs) ? "4 GiB"      : "4.29 GB");
 	
-	/** Test snprint_llu(). Note: 10^16 would fail due to the double precision limit. **/
-	success &= TEST_SNPRINT_LLU(buf, buf_size, 0, "0");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 1) - 1,   "9");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 1),       "10");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 2) - 1,   "99");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 2),       "100");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 3) - 1,   "999");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 3),       "1,000");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 4) - 1,   "9,999");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 4),       "10,000");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 5) - 1,   "99,999");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 5),       "100,000");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 6) - 1,   "999,999");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 6),       "1,000,000");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 7) - 1,   "9,999,999");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 7),       "10,000,000");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 8) - 1,   "99,999,999");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 8),       "100,000,000");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 9) - 1,   "999,999,999");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 9),       "1,000,000,000");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 10) - 1,  "9,999,999,999");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 10),      "10,000,000,000");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 11) - 1,  "99,999,999,999");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 11),      "100,000,000,000");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 12) - 1,  "999,999,999,999");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 12),      "1,000,000,000,000");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 13) - 1,  "9,999,999,999,999");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 13),      "10,000,000,000,000");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 14) - 1,  "99,999,999,999,999");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 14),      "100,000,000,000,000");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 15) - 1,  "999,999,999,999,999");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(10, 15),      "1,000,000,000,000,000");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(1024, 1) - 1, "1,023");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(1024, 1),     "1,024");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(1024, 2) - 1, "1,048,575");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(1024, 2),     "1,048,576");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(1024, 3) - 1, "1,073,741,823");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, pow(1024, 3),     "1,073,741,824");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, SHRT_MAX,         "32,767");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, USHRT_MAX,        "65,535");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, INT_MAX,          "2,147,483,647");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, UINT_MAX,         "4,294,967,295");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, LLONG_MAX,        "9,223,372,036,854,775,807");
-	success &= TEST_SNPRINT_LLU(buf, buf_size, ULLONG_MAX,       "18,446,744,073,709,551,615");
+	/** Test snprint_commas_llu(). Note: 10^16 would fail due to the double precision limit. **/
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, 0, "0");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 1) - 1,   "9");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 1),       "10");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 2) - 1,   "99");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 2),       "100");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 3) - 1,   "999");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 3),       "1,000");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 4) - 1,   "9,999");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 4),       "10,000");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 5) - 1,   "99,999");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 5),       "100,000");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 6) - 1,   "999,999");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 6),       "1,000,000");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 7) - 1,   "9,999,999");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 7),       "10,000,000");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 8) - 1,   "99,999,999");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 8),       "100,000,000");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 9) - 1,   "999,999,999");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 9),       "1,000,000,000");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 10) - 1,  "9,999,999,999");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 10),      "10,000,000,000");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 11) - 1,  "99,999,999,999");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 11),      "100,000,000,000");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 12) - 1,  "999,999,999,999");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 12),      "1,000,000,000,000");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 13) - 1,  "9,999,999,999,999");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 13),      "10,000,000,000,000");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 14) - 1,  "99,999,999,999,999");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 14),      "100,000,000,000,000");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 15) - 1,  "999,999,999,999,999");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(10, 15),      "1,000,000,000,000,000");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(1024, 1) - 1, "1,023");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(1024, 1),     "1,024");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(1024, 2) - 1, "1,048,575");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(1024, 2),     "1,048,576");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(1024, 3) - 1, "1,073,741,823");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, pow(1024, 3),     "1,073,741,824");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, SHRT_MAX,         "32,767");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, USHRT_MAX,        "65,535");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, INT_MAX,          "2,147,483,647");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, UINT_MAX,         "4,294,967,295");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, LLONG_MAX,        "9,223,372,036,854,775,807");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, ULLONG_MAX,       "18,446,744,073,709,551,615");
 	
 	/** Test __FILENAME__. **/
 	success &= EXPECT_STR_EQL(__FILENAME__, "test_util_05.c");

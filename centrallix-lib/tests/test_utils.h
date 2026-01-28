@@ -61,6 +61,27 @@
     ); \
     success; \
     })
+    
+/*** Expect two cosine vectors from `cluster.c` to be equal.
+ *** 
+ *** @param v1 The first vector.
+ *** @param v2 The second vector.
+ *** @returns true if successful, false otherwise.
+ ***/
+#define EXPECT_VEC_EQL(v1, v2) \
+    ({ \
+	pVector _v1 = (v1); \
+	pVector _v2 = (v2); \
+	int success = ca_eql(_v1, _v2); \
+	if (!success) \
+	    { \
+	    printf("  > Expected %s (1.) to equal %s (2.) at %s:%d, but got:\n", #v1, #v2, __FILE__, __LINE__); \
+	    printf("  > 1. (%p) ", _v1); ca_print_vector(_v1); printf("\n"); \
+	    printf("  > 2. (%p) ", _v2); ca_print_vector(_v2); printf("\n"); \
+	    fflush(stdout); \
+	    } \
+	success; \
+    })
 
 /*** Expect a value to fall within a range.
  *** 
