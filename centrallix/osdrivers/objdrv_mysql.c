@@ -168,6 +168,7 @@ typedef struct
     char                  NameBuf[256];
     XString            Clause;
     int                ItemCnt;
+    pObjQuery		Query;
     }
     MysdQuery, *pMysdQuery;
 
@@ -185,6 +186,7 @@ struct
 MYSQL_RES* mysd_internal_RunQuery(pMysdNode node, char* stmt, ...);
 MYSQL_RES* mysd_internal_RunQuery_conn(pMysdConn conn, pMysdNode node, char* stmt, ...);
 MYSQL_RES* mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_list ap);
+int mysdQueryClose(void* qy_v, pObjTrxTree* oxt);
 
 /** This value is returned if the query failed.  If NULL is returned from
  ** the RunQuery functions, it means "no result set" but success.  It is
@@ -901,7 +903,7 @@ mysd_internal_GetNextRow(char* filename, int filename_size, pMysdQuery qy, pMysd
         
         if(!data->Result) /** we haven't executed the query yet **/
             {
-            result = mysd_internal_RunQuery(data->Node,"SELECT * FROM `?` ?q",data->TData->Name,qy->Clause.String);
+            result = mysd_internal_RunQuery(data->Node, "SELECT * FROM `?` ?q", data->TData->Name, qy->Clause.String);
 	    if (!result || result == MYSD_RUNQUERY_ERROR)
 		return -1;
             data->Result=result;
@@ -2325,6 +2327,25 @@ mysdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     }
 
 
+/*** mysd_internal_Close() - clean up an open object.
+ ***/
+void
+mysd_internal_Close(pMysdData inf)
+    {
+
+        /** Release the memory **/
+	if (inf->Node)
+	    inf->Node->SnNode->OpenCnt --;
+        obj_internal_FreePathStruct(&inf->Pathname);
+	if (inf->Row)
+	    mysd_internal_FreeRow(inf->Row);
+	inf->Row = NULL;
+        nmFree(inf, sizeof(MysdData));
+
+    return;
+    }
+
+
 /*** mysdClose() - close an open object.
  ***/
 int
@@ -2335,16 +2356,11 @@ mysdClose(void* inf_v, pObjTrxTree* oxt)
         /** commit changes before we get rid of the transaction **/
         mysdCommit(inf,oxt);
 
-            /** Write the node first, if need be. **/
+	/** Write the node first, if need be. **/
         snWriteNode(inf->Obj->Prev, inf->Node->SnNode);
-        
-        /** Release the memory **/
-        inf->Node->SnNode->OpenCnt --;
-        obj_internal_FreePathStruct(&inf->Pathname);
-	if (inf->Row) mysd_internal_FreeRow(inf->Row);
-	inf->Row = NULL;
-        nmFree(inf,sizeof(MysdData));
 
+	mysd_internal_Close(inf);
+        
     return 0;
     }
 
@@ -2402,11 +2418,7 @@ mysdDelete(pObject obj, pObjTrxTree* oxt)
 	    unlink(inf->Node->SnNode->NodePath);
 
         /** Release, don't call close because that might write data to a deleted object **/
-        inf->Node->SnNode->OpenCnt --;
-        obj_internal_FreePathStruct(&inf->Pathname);
-	if (inf->Row) mysd_internal_FreeRow(inf->Row);
-	inf->Row = NULL;
-        nmFree(inf,sizeof(MysdData));
+	mysd_internal_Close(inf);
 
     return 0;
     }
@@ -2435,11 +2447,7 @@ mysdDeleteObj(void* inf_v, pObjTrxTree* oxt)
 	    }
 
         /** Release, don't call close because that might write data to a deleted object **/
-        inf->Node->SnNode->OpenCnt --;
-        obj_internal_FreePathStruct(&inf->Pathname);
-	if (inf->Row) mysd_internal_FreeRow(inf->Row);
-	inf->Row = NULL;
-        nmFree(inf,sizeof(MysdData));
+	mysd_internal_Close(inf);
 
     return rval;
     }
@@ -2473,22 +2481,25 @@ void*
 mysdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
     pMysdData inf = MYSD(inf_v);
-    pMysdQuery qy;
+    pMysdQuery qy = NULL;
     pMysdConn escape_conn = NULL;
     int i;
+
         /** check if we should really allow a query **/
         if(inf->Type==MYSD_T_ROW) return 0;
         if(inf->Type==MYSD_T_COLUMN) return 0;
         
         /** Allocate the query structure **/
         qy = (pMysdQuery)nmMalloc(sizeof(MysdQuery));
-        if (!qy) return NULL;
+        if (!qy)
+	    goto error;
         memset(qy, 0, sizeof(MysdQuery));
         qy->Data = inf;
-        if(qy->Data->Result) mysql_free_result(qy->Data->Result);
+        if (qy->Data->Result)
+	    mysql_free_result(qy->Data->Result);
         qy->Data->Result = NULL;
         qy->ItemCnt = 0;
-        qy->Data->Result = NULL;
+	qy->Query = query;
         xsInit(&qy->Clause);
 
         if(inf->Type==MYSD_T_ROWSOBJ)
@@ -2499,7 +2510,7 @@ mysdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
                 {
                 escape_conn = mysd_internal_GetConn(qy->Data->Node);
 		if (!escape_conn)
-		    return NULL;
+		    goto error;
                 if (query->Tree)
                     {
                     xsConcatenate(&qy->Clause, " WHERE ", 7);
@@ -2514,6 +2525,10 @@ mysdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
                         mysd_internal_TreeToClause((pExpression)(query->SortBy[i]),&(qy->Data->TData),&qy->Clause,&escape_conn->Handle);
                         }
                     }
+		if (query->Flags & OBJ_QY_F_ONEROW)
+		    {
+                    xsConcatenate(&qy->Clause, " LIMIT 1", 8);
+		    }
                 mysd_internal_ReleaseConn(&escape_conn);
                 }
             }
@@ -2523,8 +2538,17 @@ mysdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
             query->Flags &= ~OBJ_QY_F_FULLSORT;
             }
             
-    return (void*)qy;
+	return (void*)qy;
+
+    error:
+	if (escape_conn)
+	    mysd_internal_ReleaseConn(&escape_conn);
+	if (qy)
+	    mysdQueryClose(qy, oxt);
+
+	return NULL;
     }
+
 
 /*** mysdQueryFetch() - get the next directory entry as an open object.
  ***/
@@ -2539,13 +2563,11 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     char* new_obj_name = NULL;
 
         /** Alloc the structure **/
-        if(!(inf = (pMysdData)nmMalloc(sizeof(MysdData)))) return NULL;
+        if(!(inf = (pMysdData)nmMalloc(sizeof(MysdData))))
+	    goto error;
 	memset(inf, 0, sizeof(MysdData));
-        inf->Pathname.OpenCtlBuf = NULL;
-	inf->Row = NULL;
-	inf->Result = NULL;
 
-            /** Get the next name based on the query type. **/
+	/** Get the next name based on the query type. **/
         switch(qy->Data->Type)
             {
             case MYSD_T_DATABASE:
@@ -2557,8 +2579,7 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
                     }
                 else
                     {
-                    nmFree(inf,sizeof(MysdData));
-                    return NULL;
+		    goto error;
                     }
                 /** Get filename from the first column - table name. **/
                 break;
@@ -2577,8 +2598,7 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
                     }
                 else 
                     {
-                    nmFree(inf,sizeof(MysdData));
-                    return NULL;
+		    goto error;
                     }
                 break;
 
@@ -2595,8 +2615,7 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
                     }
                 else
                     {
-                    nmFree(inf,sizeof(MysdData));
-                    return NULL;
+		    goto error;
                     }
                 break;
 
@@ -2604,8 +2623,7 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
                 /** return columns until they are all exhausted **/
                 if(!(qy->Data->TData = mysd_internal_GetTData(qy->Data->Node,qy->Data->TData->Name)))
                     {
-                    nmFree(inf,sizeof(MysdData));
-                    return NULL;
+		    goto error;
                     }
                 if (qy->ItemCnt < qy->Data->TData->nCols)
                     {
@@ -2614,8 +2632,7 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
                     }
                 else
                     {
-                    nmFree(inf,sizeof(MysdData));
-                    return NULL;
+		    goto error;
                     }
                 break;
 
@@ -2623,18 +2640,7 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
         /** Build the filename. **/
 	if (obj_internal_AddToPath(obj->Pathname, new_obj_name) < 0)
-	    return NULL;
-#if 0
-        if (strlen(new_obj_name) > 255) 
-            {
-            mssError(1,"MYSQL","Query result pathname exceeds internal representation");
-            return NULL;
-            }
-        /** Set up a new element at the end of the pathname **/
-        obj->Pathname->Elements[obj->Pathname->nElements] = obj->Pathname->Pathbuf + strlen(obj->Pathname->Pathbuf);
-        obj->Pathname->nElements++;
-        sprintf(obj->Pathname->Pathbuf,"%s\%s",qy->Data->Obj->Pathname->Pathbuf,new_obj_name);
-#endif
+	    goto error;
 
         obj_internal_CopyPath(&(inf->Pathname), obj->Pathname);
 	strtcpy(inf->Objname, inf->Pathname.Elements[inf->Pathname.nElements - 1], sizeof(inf->Objname));
@@ -2646,7 +2652,12 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
         inf->Obj = obj;
         qy->ItemCnt++;
 
-    return (void*)inf;
+	return (void*)inf;
+
+    error:
+	if (inf)
+	    mysd_internal_Close(inf);
+	return NULL;
     }
 
 
@@ -2672,16 +2683,20 @@ mysdQueryDelete(void* qy_v, pObjTrxTree* oxt)
 int
 mysdQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
-        pMysdQuery qy = (pMysdQuery)qy_v;
-        static MYSQL_RES * last_result = NULL;
+    pMysdQuery qy = (pMysdQuery)qy_v;
+    static MYSQL_RES * last_result = NULL;
         
-        /** Free the last result and store the pointer to this query's result **/
+        /** Free the last result and store the pointer to this query's result.
+	 ** Note: last_result is *static* and retains the value from the
+	 ** previous call to this function.
+	 **/
         if(last_result) mysql_free_result(last_result);
         last_result = qy->Data->Result;
         qy->Data->Result = NULL;
         
         /** Free the structure **/
-        nmFree(qy_v,sizeof(MysdQuery));
+	xsDeInit(&qy->Clause);
+        nmFree(qy, sizeof(MysdQuery));
 
     return 0;
     }

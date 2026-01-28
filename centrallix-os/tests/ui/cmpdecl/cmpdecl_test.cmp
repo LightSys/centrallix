@@ -1,0 +1,40 @@
+//David Hopkins June 2025 
+// CMP File for testing component declaration
+// Connected to the .app file 
+
+$Version=2$
+my_button "widget/component-decl"
+{
+    width=32; height=32;
+    expose_actions_for=btn;
+    expose_events_for=btn;
+    expose_properties_for=btn;
+    apply_hints_to=btn;
+
+    button_txt "widget/parameter" { type=string; default="Hello David"; }
+    button_clk "widget/component-decl-event" { }
+    button_act "widget/component-decl-action" { }
+
+    btn "widget/textbutton"
+    {
+        x=0; y=0; width=32; height=32;
+        text = runserver(:this:button_txt);
+        fgcolor1="white"; fgcolor2="black";
+        tristate=no;
+        bgcolor="#c0c0c0";
+        onclk "widget/connector"
+        {
+            event="Click";
+            target=my_button;
+            action="button_clk";
+        }
+    }
+    // Example: handle the action inside the component
+    onact "widget/connector"
+    {
+        event="button_act";
+        action="set";
+        target=btn;        
+        source=btn;
+    }
+}

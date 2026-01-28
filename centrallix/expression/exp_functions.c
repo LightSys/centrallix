@@ -820,11 +820,6 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
 	{
 	return -1;
 	}
-    if (i0->DataType != DATA_T_INTEGER)
-        {
-	mssError(1,"EXP","condition() first parameter must evaluate to boolean");
-	return -1;
-	}
     if (i0->Flags & EXPR_F_NULL) 
         {
 	tree->DataType = DATA_T_INTEGER;
@@ -835,6 +830,11 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
 	    i2->ObjDelayChangeMask |= (objlist->ModCoverageMask & i2->ObjCoverageMask);
 	    }
 	return 0;
+	}
+    if (i0->DataType != DATA_T_INTEGER)
+        {
+	mssError(1,"EXP","condition() first parameter must evaluate to boolean");
+	return -1;
 	}
     if (i0->Integer != 0)
         {

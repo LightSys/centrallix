@@ -419,11 +419,11 @@ typedef struct _OQ
     int		Magic;
     pObject	Obj;
     char*	QyText;
-    void*	Tree;	/* pExpression */
+    void*	Tree;		/* pExpression */
     void*	SortBy[OBJSYS_SORT_MAX];	/* pExpression [] */
-    void*	ObjList; /* pParamObjects */
-    void*	Data;
-    int		Flags;
+    void*	ObjList;	/* pParamObjects */
+    void*	Data;		/* returned from driver xyzOpenQuery() */
+    int		Flags;		/* OBJ_QY_F_xxx */
     int		RowID;
     pObjQuerySort SortInf;
     pObjDriver	Drv;		/* used for multiquery only */
@@ -431,11 +431,12 @@ typedef struct _OQ
     }
     ObjQuery, *pObjQuery;
 
-#define OBJ_QY_F_ALLOCTREE	1
-#define OBJ_QY_F_FULLQUERY	2
-#define OBJ_QY_F_FULLSORT	4
-#define OBJ_QY_F_FROMSORT	8
-#define OBJ_QY_F_NOREOPEN	16
+#define OBJ_QY_F_ALLOCTREE	1	/* internal: OSML allocated WHERE expression tree */
+#define OBJ_QY_F_FULLQUERY	2	/* driver can handle the WHERE criteria entirely */
+#define OBJ_QY_F_FULLSORT	4	/* driver can handle the ORDER BY entirely */
+#define OBJ_QY_F_FROMSORT	8	/* internal: OSML is sorting results */
+#define OBJ_QY_F_NOREOPEN	16	/* internal: OSML is NOT doing re-opens on results */
+#define OBJ_QY_F_ONEROW		32	/* only the first row of results is needed */
 
 
 /*** Event and EventHandler structures ***/
@@ -628,6 +629,7 @@ typedef struct
 /*** Flags for objMultiQuery() ***/
 #define OBJ_MQ_F_ONESTATEMENT	(1<<0)		/* only permit one statement to run */
 #define OBJ_MQ_F_NOUPDATE	(1<<1)		/* disallow any updates in this query */
+#define	OBJ_MQ_F_ONEROW		(1<<2)		/* only need first row from results */
 
 
 /** objectsystem main functions **/
