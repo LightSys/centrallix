@@ -163,7 +163,7 @@ ca_build_vector(const char* str)
 	    unsigned char c = (unsigned char)maybe_char;
 	    
 	    /** Always consider boundary character in string. **/
-	    if (c != CA_BOUNDARY_CHAR) goto skip_checks;
+	    if (c == CA_BOUNDARY_CHAR) goto skip_checks;
 	    
 	    /** Ignore insignificant characters: spaces and punctuation. **/
 	    if (isspace(c)) continue; /* space, \n, \v, \f, \r */
@@ -303,6 +303,12 @@ ca_sparse_len(const pVector vector)
 void
 ca_print_vector(const pVector vector)
     {
+	if (vector == NULL)
+	    {
+	    printf("Vector: NULL");
+	    return;
+	    }
+	
 	const unsigned int len = ca_sparse_len(vector);
 	printf("Vector: [%d", vector[0]);
 	for (unsigned int i = 1u; i < len; i++)
@@ -654,7 +660,8 @@ ca_lev_compare(void* str1, void* str2)
     return round(normalized_similarity * 1000000.0) / 1000000.0;
     }
 
-/*** Check if two sparse vectors are identical.
+/*** Check if two sparse vectors are identical. True if both vectors are
+ *** `NULL`, but false if one is and the other is not.
  *** 
  *** @param v1 The first vector.
  *** @param v2 The second vector.
@@ -664,8 +671,11 @@ ca_lev_compare(void* str1, void* str2)
 bool
 ca_eql(pVector v1, pVector v2)
     {
-    const unsigned int len = ca_sparse_len(v1);
+	/** Edge cases. **/
+	if (v1 == v2) return true;
+	if (v1 == NULL || v2 == NULL) return false;
     
+	const unsigned int len = ca_sparse_len(v1);
 	for (unsigned int i = 0u; i < len; i++)
 	    if (v1[i] != v2[i]) return false;
     
