@@ -260,6 +260,32 @@ ci_SimilarityMeasureToString(SimilarityMeasure similarity_measure)
     return NULL; /** Unreachable. **/
     }
 
+/*** Converts a similarity measure to the function pointer to a comparison
+ *** function. This function can be used to compute similarity between two
+ *** values, or it can be passed to `clusters.c` which uses it for similar
+ *** operations.
+ *** 
+ *** @param similarity_measure The similarity measure to be converted.
+ *** @returns A similarity computation function. This function takes two void
+ *** 	pointers, representing the data to be compared, and a double that
+ *** 	represents how similar the data is. Or returns NULL if an error occurs,
+ *** 	calling mssError() to provide an error message.
+ ***/
+double (*ci_SimilarityMeasureToFunction(SimilarityMeasure similarity_measure))(void*, void*)
+    {
+    switch (similarity_measure)
+	{
+	case SIMILARITY_COSINE: return ca_cos_compare;
+	case SIMILARITY_LEVENSHTEIN: return ca_lev_compare;
+	default:
+	    mssErrorf(1, "Cluster",
+		"Unknown similarity meansure \"%s\".",
+		ci_SimilarityMeasureToString(similarity_measure)
+	    );
+	    return NULL;
+	}
+    }
+
 /*** Enum representing the type of data targetted by the driver,
  *** set based on the path given when the driver is used to open
  *** a cluster file.
@@ -2605,8 +2631,8 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 static int
 ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
     {
-    cluster_data->Sims = NULL;
-    cluster_data->Clusters = NULL;
+    size_t clusters_size = -1;
+    size_t sims_size = -1;
     
 	/** Guard segfaults. **/
 	if (cluster_data == NULL || node_data == NULL) return -1;
@@ -2640,8 +2666,8 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 	if (!check(objCurrentDate(&cluster_data->DateComputed))) goto err_free;
 	
 	/** Allocate static memory for finding clusters. **/
-	const size_t clusters_size = cluster_data->nClusters * sizeof(Cluster);
-	const size_t sims_size = source_data->nVectors * sizeof(double);
+	clusters_size = cluster_data->nClusters * sizeof(Cluster);
+	sims_size = source_data->nVectors * sizeof(double);
 	cluster_data->Clusters = check_ptr(nmSysMalloc(clusters_size));
 	cluster_data->Sims = check_ptr(nmSysMalloc(sims_size));
 	if (cluster_data->Clusters == NULL) goto err_free;
@@ -2770,8 +2796,8 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 	    for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
 		{
 		/*** NOTE: The clusters here do not need to each be freed
-		 *** individually because they are part of the dynamically
-		 *** allocated Clusters array (freed after the loop).
+		 *** individually because the structs themselves are stored
+		 *** directly in the cluster_data->Clusters array.
 		 *** Thus, this loop only frees each cluster's content.
 		 ***/
 		pCluster cluster = &cluster_data->Clusters[i];
@@ -2836,29 +2862,8 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	/** Record the date and time. **/
 	if (!check(objCurrentDate(&search_data->DateComputed))) goto err_free;
 	
-	/** Select the correct comparison function based on the similarity measure. **/
-	const double (*similarity_function)(void *, void *);
-	char* similarity_function_name;
-	switch (search_data->SimilarityMeasure)
-	    {
-	    case SIMILARITY_COSINE:
-		similarity_function = ca_cos_compare;
-		similarity_function_name = "cosine";
-		break;
-		
-	    case SIMILARITY_LEVENSHTEIN:
-		similarity_function = ca_lev_compare;
-		similarity_function_name = "Levenstein";
-		break;
-	    
-	    default:
-		mssErrorf(1, "Cluster",
-		    "Unknown similarity meansure \"%s\".",
-		    ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
-		);
-		goto err_free;
-	    }
-	    
+	/** Get the comparison function based on the similarity measure. **/
+	const double (*similarity_function)(void *, void *) = ci_SimilarityMeasureToFunction(search_data->SimilarityMeasure);
 	
 	/** Execute the search using the specified algorithm. **/
 	pXArray dups_temp = NULL;
@@ -2868,9 +2873,23 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	     ***       was computed during the clustering phase.
 	     ***/
 	    
+	    /** Get a pointer to the data that will be used for the search. **/
+	    void** data = NULL;
+	    switch (search_data->SimilarityMeasure)
+		{
+		case SIMILARITY_COSINE: data = (void**)source_data->Vectors; break;
+		case SIMILARITY_LEVENSHTEIN: data = (void**)source_data->Strings; break;
+		default:
+		    mssErrorf(1, "Cluster",
+			"Unknown similarity meansure \"%s\".",
+			ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
+		    );
+		    goto err_free;
+		}
+	    
 	    /** Execute sliding search. **/
 	    dups_temp = check_ptr(ca_sliding_search(
-		(void**)source_data->Vectors,
+		data,
 		source_data->nVectors,
 		cluster_data->MaxIterations, /* Window size. */
 		similarity_function,
@@ -2882,7 +2901,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		{
 		mssErrorf(1, "Cluster",
 		    "Failed to compute sliding search with %s similarity measure.",
-		    similarity_function_name
+		    ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
 		);
 		goto err_free;
 		}
@@ -2893,11 +2912,25 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		{
 		/** Extract the struct for the cluster. **/
 		pCluster cluster = &cluster_data->Clusters[i];
-		// ASSERTMAGIC(cluster, MGK_CL_CLUSTER);
+		ASSERTMAGIC(cluster, MGK_CL_CLUSTER);
+		
+		/** Get a pointer to the data that will be used for the search. **/
+		void** data = NULL;
+		switch (search_data->SimilarityMeasure)
+		    {
+		    case SIMILARITY_COSINE: data = (void**)cluster->Vectors; break;
+		    case SIMILARITY_LEVENSHTEIN: data = (void**)cluster->Strings; break;
+		    default:
+			mssErrorf(1, "Cluster",
+			    "Unknown similarity meansure \"%s\".",
+			    ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
+			);
+			goto err_free;
+		    }
 		
 		/** Execute complete search. **/
 		dups_temp = check_ptr(ca_complete_search(
-		    (void**)cluster->Vectors,
+		    data,
 		    cluster->Size,
 		    similarity_function,
 		    search_data->Threshold,
@@ -2908,7 +2941,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		    {
 		    mssErrorf(1, "Cluster",
 			"Failed to compute complete search with %s similarity measure.",
-			similarity_function_name
+			ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
 		    );
 		    goto err_free;
 		    }
@@ -3637,11 +3670,13 @@ clusterGetAttrType(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 int
 clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pObjTrxTree* oxt)
     {
+    TargetType target_type = -1;
+    
 	/** Extract target type from driver data. **/
 	pDriverData driver_data = check_ptr(inf_v);
 	if (driver_data == NULL) goto err;
 	ASSERTMAGIC(driver_data, MGK_CL_DRIVER_DATA);
-	const TargetType target_type = driver_data->TargetType;
+	target_type = driver_data->TargetType;
     
 	/** Update statistics. **/
 	ClusterStatistics.GetValCalls++;
