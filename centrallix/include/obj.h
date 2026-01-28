@@ -307,7 +307,7 @@ typedef struct _OA
 #define OBJ_INFO_F_NO_CONTENT		(1<<13)	/* object does not have content, objRead() would fail */
 #define OBJ_INFO_F_SUPPORTS_INHERITANCE	(1<<14)	/* object can support inheritance attr cx__inherit, etc. */
 #define OBJ_INFO_F_FORCED_LEAF		(1<<15)	/* object is forced to be a 'leaf' unless ls__type used. */
-#define OBJ_INFO_F_TEMPORARY		(1<<16)	/* this is a temporary object without a vaoid pathname. */
+#define OBJ_INFO_F_TEMPORARY		(1<<16)	/* this is a temporary object without a valid pathname. */
 
 
 /** object virtual attribute - these are attributes which persist only while
@@ -419,11 +419,11 @@ typedef struct _OQ
     int		Magic;
     pObject	Obj;
     char*	QyText;
-    void*	Tree;	/* pExpression */
+    void*	Tree;		/* pExpression */
     void*	SortBy[OBJSYS_SORT_MAX];	/* pExpression [] */
-    void*	ObjList; /* pParamObjects */
-    void*	Data;
-    int		Flags;
+    void*	ObjList;	/* pParamObjects */
+    void*	Data;		/* returned from driver xyzOpenQuery() */
+    int		Flags;		/* OBJ_QY_F_xxx */
     int		RowID;
     pObjQuerySort SortInf;
     pObjDriver	Drv;		/* used for multiquery only */
@@ -431,11 +431,12 @@ typedef struct _OQ
     }
     ObjQuery, *pObjQuery;
 
-#define OBJ_QY_F_ALLOCTREE	1
-#define OBJ_QY_F_FULLQUERY	2
-#define OBJ_QY_F_FULLSORT	4
-#define OBJ_QY_F_FROMSORT	8
-#define OBJ_QY_F_NOREOPEN	16
+#define OBJ_QY_F_ALLOCTREE	1	/* internal: OSML allocated WHERE expression tree */
+#define OBJ_QY_F_FULLQUERY	2	/* driver can handle the WHERE criteria entirely */
+#define OBJ_QY_F_FULLSORT	4	/* driver can handle the ORDER BY entirely */
+#define OBJ_QY_F_FROMSORT	8	/* internal: OSML is sorting results */
+#define OBJ_QY_F_NOREOPEN	16	/* internal: OSML is NOT doing re-opens on results */
+#define OBJ_QY_F_ONEROW		32	/* only the first row of results is needed */
 
 
 /*** Event and EventHandler structures ***/
@@ -628,6 +629,7 @@ typedef struct
 /*** Flags for objMultiQuery() ***/
 #define OBJ_MQ_F_ONESTATEMENT	(1<<0)		/* only permit one statement to run */
 #define OBJ_MQ_F_NOUPDATE	(1<<1)		/* disallow any updates in this query */
+#define	OBJ_MQ_F_ONEROW		(1<<2)		/* only need first row from results */
 
 
 /** objectsystem main functions **/
@@ -735,6 +737,8 @@ void obj_internal_OpenCtlToString(pPathname pathinfo, int pathstart, int pathend
 int obj_internal_PathToText(pPathname pathinfo, int pathend, pXString str);
 
 /** objectsystem datatype functions **/
+int objTypeFromStr(const char* str);
+char* objTypeToStr(const int type);
 int objDataToString(pXString dest, int data_type, void* data_ptr, int flags);
 double objDataToDouble(int data_type, void* data_ptr);
 int objDataToInteger(int data_type, void* data_ptr, char* format);

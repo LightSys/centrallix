@@ -909,7 +909,7 @@ mlxNextToken(pLxSession this)
 	    else
 		{
 		char buf[4];
-		snprintf(buf, sizeof(buf), "%c", ch); // mssError() does not support %c.
+		snprintf(buf, sizeof(buf), "%c", ch); /* mssError() does not support %c. */
 		mssError(1, "MLX", "Unexpected character encountered: '%s'", buf);
 		this->TokType = MLX_TOK_ERROR;
 		break;

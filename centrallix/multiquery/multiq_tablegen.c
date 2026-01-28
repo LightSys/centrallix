@@ -369,13 +369,6 @@ mqt_internal_ResetAggregates(pQueryStatement stmt, pQueryElement qe, int level)
 	if (stmt->HavingClause)
 	    {
 	    expResetAggregates(stmt->HavingClause, -1, level);
-	    /*id = -1;
-	    if (expLookupParam(objlist, "this") < 0)
-		id = expAddParamToList(objlist, "this", NULL, 0);
-	    expUnlockAggregates(stmt->HavingClause, level);
-	    expEvalTree(stmt->HavingClause, objlist);
-	    if (id >= 0)
-		expRemoveParamFromList(objlist, "this");*/
 	    }
 
     return 0;
@@ -396,7 +389,11 @@ mqt_internal_UpdateAggregates(pQueryStatement stmt, pQueryElement qe, int level,
 	    //if (exp && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL))
 		{
 		expUnlockAggregates(exp, level);
-		expEvalTree(exp, objlist);
+		if (expEvalTree(exp, objlist) < 0)
+		    {
+		    mssError(1, "MQT", "Could not evaluate aggregate item");
+		    return -1;
+		    }
 		}
 	    }
 
@@ -407,7 +404,11 @@ mqt_internal_UpdateAggregates(pQueryStatement stmt, pQueryElement qe, int level,
 		if (qe->Parent->OrderBy[i])
 		    {
 		    expUnlockAggregates(qe->Parent->OrderBy[i], level);
-		    expEvalTree(qe->Parent->OrderBy[i], objlist);
+		    if (expEvalTree(qe->Parent->OrderBy[i], objlist) < 0)
+			{
+			mssError(1, "MQT", "Could not evaluate parent aggregate item");
+			return -1;
+			}
 		    }
 		else
 		    break;
@@ -420,7 +421,11 @@ mqt_internal_UpdateAggregates(pQueryStatement stmt, pQueryElement qe, int level,
 	    if (expLookupParam(objlist, "this", 0) < 0)
 		id = expAddParamToList(objlist, "this", NULL, 0);
 	    expUnlockAggregates(stmt->HavingClause, level);
-	    expEvalTree(stmt->HavingClause, objlist);
+	    if (expEvalTree(stmt->HavingClause, objlist) < 0)
+		{
+		mssError(1, "MQT", "Could not evaluate HAVING clause");
+		return -1;
+		}
 	    if (id >= 0)
 		expRemoveParamFromList(objlist, "this");
 	    }
@@ -482,7 +487,11 @@ mqt_internal_CheckConstraint(pQueryElement qe, pQueryStatement stmt)
 	/** Validate the constraint expression, otherwise succeed by default **/
         if (qe->Constraint)
             {
-            expEvalTree(qe->Constraint, stmt->Query->ObjList);
+            if (expEvalTree(qe->Constraint, stmt->Query->ObjList) < 0)
+		{
+	        mssError(1,"MQT","Could not evaluate WHERE clause item.");
+	        return -1;
+		}
 	    if (qe->Constraint->DataType != DATA_T_INTEGER)
 	        {
 	        mssError(1,"MQT","WHERE clause item must have a boolean/integer value.");
@@ -546,7 +555,9 @@ mqt_internal_NextChildItem(pQueryElement parent, pQueryElement child, pQueryStat
 
 	rval = child->Driver->NextItem(child, stmt);
 
-	mqt_internal_UpdateAggregates(stmt, parent, 0, stmt->Query->ObjList);
+	/** Update aggregates.  This will log if it fails, so we just return -1 **/
+	if (mqt_internal_UpdateAggregates(stmt, parent, 0, stmt->Query->ObjList) < 0)
+	    return -1;
 
     return rval;
     }
@@ -661,7 +672,10 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		while(1)
 		    {
 		    /** Update all aggregate counters - level 1 **/
-		    mqt_internal_UpdateAggregates(stmt, qe, 1, stmt->Query->ObjList);
+		    if (mqt_internal_UpdateAggregates(stmt, qe, 1, stmt->Query->ObjList) < 0)
+			{
+			return -1;
+			}
 
 		    /** Link to all objects in the current object list **/
 		    memcpy(md->SavedObjList + stmt->Query->nProvidedObjects, stmt->Query->ObjList->Objects + stmt->Query->nProvidedObjects, (stmt->Query->ObjList->nObjects - stmt->Query->nProvidedObjects)*sizeof(pObject));
@@ -739,7 +753,10 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		if (fetch_rval == 1 && md->AggLevel == 2)
 		    {
 		    /** Re-eval second level group **/
-		    mqt_internal_UpdateAggregates(stmt, qe, 2, stmt->Query->ObjList);
+		    if (mqt_internal_UpdateAggregates(stmt, qe, 2, stmt->Query->ObjList) < 0)
+			{
+			return -1;
+			}
 		    }
 
 		/** 2-level group and this is the last row?  If so, return. **/

@@ -286,6 +286,27 @@ cxRemovePidFile()
     }
 
 
+void
+cxSetupGlobals(int argc, char* argv[])
+    {
+
+	/** Memory management **/
+	nmInitialize();
+
+	/** Default global values **/
+	memset(&CxGlobals, 0, sizeof(CxGlobals));
+	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
+	CxGlobals.QuietInit = 0;
+	CxGlobals.ParsedConfig = NULL;
+	CxGlobals.ModuleList = NULL;
+	CxGlobals.ArgV = argv;
+	CxGlobals.Flags = 0;
+	xaInit(&CxGlobals.TestIDs, 16);
+
+    return;
+    }
+
+
 int
 cxInitialize(void* v)
     {
@@ -440,7 +461,7 @@ cxDriverInit()
 	stxInitialize();			/* Structure file driver */
 	qytInitialize();			/* Query Tree driver */
 	qypInitialize();			/* Query Pivot driver */
-	clusterInitialize();		/* Cluster driver */
+	clusterInitialize();			/* Cluster driver */
 	qyInitialize();				/* stored query (aka view) driver */
 	rptInitialize();			/* report writer driver */
 	uxpInitialize();			/* UNIX printer access driver */
@@ -649,6 +670,75 @@ cxDebugLog(char* fmt, ...)
     }
 
 
+/*** cxTestOutput - generate a test suite output message with a given ID.
+ *** If the ID has been enabled with cxTestEnable(), then the message will
+ *** be written; otherwise it will be ignored.
+ ***/
+void
+cxTestOutput(uintptr_t id, char* fmt, ...)
+    {
+    va_list va;
+    int i;
+
+	if (CxGlobals.Flags & CX_F_SHOWTESTOUTPUT)
+	    {
+	    for(i=0; i<CxGlobals.TestIDs.nItems; i++)
+		{
+		if (id == (uintptr_t)CxGlobals.TestIDs.Items[i])
+		    {
+		    va_start(va, fmt);
+		    if (CxGlobals.TestOutputFile)
+			xsGenPrintf_va(fdWrite, CxGlobals.TestOutputFile, NULL, NULL, fmt, va);
+		    else
+			vprintf(fmt, va);
+		    va_end(va);
+		    break;
+		    }
+		}
+	    }
+	   
+    return;
+    }
+
+
+/*** cxRedirectTestOutput - send test output to a particular pFile.  The
+ *** file should be writable, and this routine does not dup the output, so
+ *** the file must not be closed unless this function is called again with
+ *** either NULL or a new pFile to use.
+ ***/
+void
+cxRedirectTestOutput(pFile outfile)
+    {
+    CxGlobals.TestOutputFile = outfile;
+    return;
+    }
+
+
+/*** cxTestEnable - enable test output #id
+ ***
+ *** 'id' should be a unique integer value referring to a certain desired
+ *** test output.  When a cxTestOutput() occurs with that ID, then the
+ *** output string will be written, otherwise it will be ignored.  To reset
+ *** test output, pass CX_TEST_NONE as the ID to this function.
+ ***/
+void
+cxTestEnable(uintptr_t id)
+    {
+
+	if (id == CX_TEST_NONE)
+	    xaClear(&CxGlobals.TestIDs, NULL, NULL);
+	else
+	    xaAddItem(&CxGlobals.TestIDs, (void*)id);
+
+    return;
+    }
+
+
+/*** cxLinkSigningSetup - do the configuration required to set up link
+ *** signing.  Generates a temporal link signing key if one is not given
+ *** in the configuration file, in which case signed links will only be
+ *** valid for this invocation of the Centrallix server.
+ ***/
 int
 cxLinkSigningSetup(pStructInf my_config)
     {

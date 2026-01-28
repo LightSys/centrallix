@@ -80,6 +80,7 @@ XSUPPORT=stparse.o \
 	 endorsement_utils.o \
 	 obfuscate.o \
 	 json_util.o \
+	 double_metaphone.o \
 	 double.o
 
 SUPPORT=$(patsubst %,utility/%,$(XSUPPORT))
@@ -316,7 +317,6 @@ XEXPRMODS=exp_main.o \
 	  exp_compiler.o \
 	  exp_evaluate.o \
 	  exp_functions.o \
-	  exp_double_metaphone.o \
 	  exp_generator.o
 EXPRMODS=$(patsubst %,expression/%,$(XEXPRMODS))
 
@@ -562,7 +562,7 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 		/bin/rm -f "$$PWD/$$TOBASE.out"; \
 		[ -f "$$CXOS/$$TOUNDO" ] && /bin/cp -a "$$CXOS/$$TOUNDO" "$$CXOS/$$TOUNDOBAK"; \
 		echo -n "$$CBLUE"; \
-		./test_obj -q -c tests/centrallix.conf-test -u cxtest -p cxtestpass -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 4 2>&1 | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
+		./test_obj -q -c tests/centrallix.conf-test -u cxtest -P "$$PWD/tests/pw" -f "$$PWD/$$TOBASE.to" -o "$$PWD/$$TOBASE.out" -i 4 2>&1 | grep -v 'Notice: Max thread count reduced from' | sed 's/^/    /'; \
 		RET="$${PIPESTATUS[0]}"; \
 		[ -f "$$CXOS/$$TOUNDOBAK" ] && /bin/mv -f "$$CXOS/$$TOUNDOBAK" "$$CXOS/$$TOUNDO"; \
             if [ "$$RET" -eq 142 ]; then \

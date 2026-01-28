@@ -41,6 +41,7 @@
 
 #ifdef ENABLE_GLYPHS
 #define glyph_print(s) printf("%s", s);
+
 /*** Initialize a simple debug visualizer to make pretty patterns in the
  *** developer's terminal. Great for when you need to run a long task and
  *** want a super simple way to make sure it's still working.
@@ -54,21 +55,21 @@
  *** @param flush Whether to flush on output.
  ***/
 #define glyph_init(name, str, interval, flush) \
-    const char* vis_##name##_str = str; \
-    const unsigned int vis_##name##_interval = interval; \
-    const bool vis_##name##_flush = flush; \
-    unsigned int vis_##name##_i = 0u;
+	const char* vis_##name##_str = str; \
+	const unsigned int vis_##name##_interval = interval; \
+	const bool vis_##name##_flush = flush; \
+	unsigned int vis_##name##_i = 0u;
 
 /*** Invoke a visualizer.
  *** 
  *** @param name The name of the visualizer to invoke.
  ***/
 #define glyph(name) \
-    if (++vis_##name##_i % vis_##name##_interval == 0) \
-    { \
-	glyph_print(vis_##name##_str); \
-    if (vis_##name##_flush) fflush(stdout); \
-    }
+	if (++vis_##name##_i % vis_##name##_interval == 0) \
+	    { \
+	    glyph_print(vis_##name##_str); \
+	    if (vis_##name##_flush) fflush(stdout); \
+	    }
 #else
 #define glyph_print(str)
 #define glyph_init(name, str, interval, flush)
