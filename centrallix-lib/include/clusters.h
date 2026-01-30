@@ -44,6 +44,9 @@
 #include "cxlib/xarray.h"
 #endif
 
+/** This file has additional documentation in string_similarity.md. **/
+
+
 /*** This value defines the number of dimensions used for a sparse
  *** vector.  The higher the number, the fewer collisions will be
  *** encountered when using these vectors for cosine comparisons.
@@ -63,7 +66,6 @@
  ***/
 #define CA_NUM_DIMS 251
 
-/// LINK ../../centrallix-sysdoc/string_comparison.md#cosine_charsets
 /** The character used to create a pair with the first and last characters of a string. **/
 #define CA_BOUNDARY_CHAR (unsigned char)('a' - 1)
 

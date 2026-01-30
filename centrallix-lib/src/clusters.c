@@ -32,8 +32,6 @@
 /*		string-similarity.md in the centrallix-sysdoc folder.	*/
 /************************************************************************/
 
-/** This file has additional documentation in string_similarity.md. **/
-
 #include <ctype.h>
 #include <float.h>
 #include <limits.h>
@@ -48,6 +46,9 @@
 #include "newmalloc.h"
 #include "util.h"
 #include "xarray.h"
+
+/** This file has additional documentation in string_similarity.md. **/
+
 
 /*** Gets the hash, representing a pair of ASCII characters, represented by unsigned ints.
  *** Thank you to professor John Delano for this hashing algorithm.

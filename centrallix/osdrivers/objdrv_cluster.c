@@ -53,21 +53,8 @@
 #include "st_node.h"
 #include "stparse.h"
 
-/*** File notes:
- *** This file uses comment anchors, provided by the Comment Anchors VSCode
- *** extension from Starlane Studios. This allows developers with the extension
- *** to control click the "LINK <ID>" comments to navigate to the coresponding
- *** "ANCHOR[id=<ID>]" comment. (Note: Invalid or broken links will default to
- *** the first line of the file.)
- *** 
- *** For example, this link should take you to the function signatures:
- *** LINK #functions
- *** 
- *** Any developers without this extension can safely ignore these comments,
- *** although please try not to break them. :)
- *** 
- *** Comment Anchors VSCode Extension:
- *** https://marketplace.visualstudio.com/items?itemName=ExodiusStudios.comment-anchors
+/*** This file uses the optional Comment Anchors VSCode extension, documented
+ *** with CommentAnchorsExtension.md in centrallix-sysdoc.
  ***/
 
 /** Defaults for unspecified optional attributes. **/
