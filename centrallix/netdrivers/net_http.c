@@ -2096,6 +2096,9 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    wgtr_params.CharWidth = 7;
 		    wgtr_params.CharHeight = 16;
 		    wgtr_params.ParagraphHeight = 16;
+		    
+		    /** Specify design geometry **/
+		    wgtr_params.IsDesign = 1; 
 		    }
 		else
 		    {

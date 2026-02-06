@@ -31,13 +31,13 @@
 
 /*** Author: Israel Fuller
  *** Date: June, 2025
- ***
+ *** 
  *** See also: Auto-Positioning.md
  *** 
  *** I wasn't the one to write most of this (although I did write a ton of
  *** comments), but after doing my best to understand it, I hope that you will
  *** find the compiled information below helpful.
- ***
+ *** 
  *** Execution of this file usually begins when wgtrVerify() in wgtr.c calls
  *** aposAutoPositionWidgetTree(). To auto position the tree, the code first
  *** it draws four lines on the four edges of every visible widget (with some
@@ -49,25 +49,25 @@
  *** small amounts of space intended to provide visual room between widgets.
  *** When resizing, these do not flex at all. However, many elements are able
  *** to flex. @see aposSetFlexibilities() for more information about flexing.
- ***
+ *** 
  *** Next, the program uses aposSetLimits() to honor minimum and maximum sizes
  *** of widgets, and finally calls aposAutoPositionContainers() to position
  *** the widgets on the screen. Lastly, it calls aposProcessWindows() to handle
  *** floating window widgets, which are typically ignored by most of the rest
  *** of the code.
- ***
+ *** 
  *** Note: Due to this approach, this means that all sections and widgets start
- ***	   and end at a line. The way these lines are set up ensures that start
- ***	   lines are always on the top or left, and end lines are always on the
- ***	   bottom or right. @see aposAddLinesForChildren()
- ***
- *** Notes: I wrote some information about various structs below that's good to
- ***	    know. Some of this is covered elsewhere in the documentation.
+ ***       and end at a line. The way these lines are set up ensures that start
+ ***       lines are always on the top or left, and end lines are always on the
+ ***       bottom or right. @see aposAddLinesForChildren()
+ *** 
+ *** Note: I wrote some information about various structs below that's good to
+ ***       know. Some of this is covered elsewhere in the documentation.
  *** 
  *** AposGrid: A data structure to store sections and lines.
- ***
+ *** 
  *** AposLine: An AposLine spans the entire page.
- ***
+ *** 
  *** AposSection: After lines are created, sections are added in between the
  *** 	lines (aka. in between the nodes). Every node begins and ends on the
  *** 	edge of a section, although it may span multiple sections.
@@ -80,7 +80,7 @@
  *** 
  *** XArray: This array also stores its size (nAlloc) and the number of items
  *** 	stored (nItems), so you don't have to pass that info separately.
- ***
+ *** 
  *** SWidgets, CWidgets, and EWidgets: Lines record which widgets start, cross,
  *** 	and end on them. These categories are exclusive, so a widget which
  *** 	starts on a given line will be in the SWidgets list but it will not be
@@ -295,11 +295,11 @@ int sectCount;
     return 0;
 }
 
-/*** Adjusts space to acomodate children, somehow? I think?
+/*** Adjusts space to accommodate children, somehow? I think?
  ***
  *** @param Parent  The widget node parent who's limits are being calculated.
- *** @param delta_w The change in width required to accomodate children.
- *** @param delta_h The change in height required to accomodate children.
+ *** @param delta_w The change in width required to accommodate children.
+ *** @param delta_h The change in height required to accommodate children.
  *** @returns 0 if successful, -1 otherwise.
  ***/
 int
@@ -406,7 +406,7 @@ pWgtrNode Child;
     return 0;
 }
 
-/*** Adjusts space to acomodate children, somehow? I think?
+/*** Adjusts space to accommodate children, somehow? I think?
  ***
  *** @param Parent  The widget node parent who's limits are being calculated.
  *** @returns 0, success.
@@ -543,7 +543,7 @@ int i=0, sectCount=0, TotalWidth=0, ProductSum=0;
 
     /*** Calculate average row flexibility, weighted by height.
      *** Note: Section height is called width here because rows
-     ***       are one dimentional and the feild is reused.
+     ***       are one dimensional and the feild is reused.
      ***/
     sectCount = xaCount(&(theGrid->Rows));
     for(i=0; i<sectCount; ++i)
@@ -580,16 +580,17 @@ int i=0, sectCount=0, TotalWidth=0, ProductSum=0;
  *** Remember: A variable with a name that starts with "is" (e.g. isSP)
  *** 	     pretty much always represents a boolean.
  *** 
- *** @param W         The widget Node to inspect.
+ *** @param W         The widget node to inspect.
  *** @param isSP      Is scrollpane, used to compensate for scrollpane scrollbars.
  *** @param isWin     Is window, used to compensate for the titlebar (if any).
- *** @param isTopTab  Recieves a boolean that is true if this node is a top tab.
- *** @param isSideTab Recieves a boolean that is true if this node is a side tab.
- *** @param tabWidth  Int pointer to recieve the tab width.
+ *** @param isTopTab  Receives a boolean that is true if this node has top tabs.
+ *** @param isSideTab Receives a boolean that is true if this node has side tabs.
+ *** @param tabWidth  Int pointer to receive the tab width.
+ *** @param tabHeight Int pointer to receive the tab height.
  *** @returns 0, success.
  ***/
 int
-aposSetOffsetBools(pWgtrNode W, int *isSP, int *isWin, int *isTopTab, int *isSideTab, int *tabWidth)
+aposSetOffsetBools(pWgtrNode W, int *isSP, int *isWin, int *isTopTab, int *isSideTab, int *tabWidth, int *tabHeight)
 {
 ObjData val;
 
@@ -608,24 +609,25 @@ ObjData val;
 	}
     
     /** isTopTab and isSideTab are used to compensate for tabs. **/
-    if(isTopTab && !strcmp(W->Type, "widget/tab"))
+    if((isTopTab != NULL || isSideTab != NULL) && strcmp(W->Type, "widget/tab") == 0)
         {
 	    /*** Set isTopTab and isSideTab. If the node does not specify the
 	     *** tab location, assume it has a top tab and leave side-tab unset.
 	     **/
 	    if(wgtrGetPropertyValue(W, "tab_location", DATA_T_STRING, &val) < 0)
-	        *isTopTab = 1;	// Property not found, assume it has a top tab only.
+		{
+	        if (isTopTab != NULL) *isTopTab = 1;	// Property not found, assume it has a top tab only.
+		}
 	    else 
 		{
 		    *isTopTab = (!strcmp(val.String, "top") || !strcmp(val.String, "bottom"));
-		    *isSideTab = (!strcmp(val.String, "left") || (!strcmp(val.String, "right"))); // Warning: Unchecked assignment.
+		    *isSideTab = (!strcmp(val.String, "left") || (!strcmp(val.String, "right")));
 		}
-		    
-	    /** Set the tab width. If none is specified, default to 80. **/
-	    if(wgtrGetPropertyValue(W, "tab_width", DATA_T_INTEGER, &val) < 0)
-		*tabWidth = 80;
-	    else *tabWidth = val.Integer;
 	}
+    
+    /** Set the tab width and height (if needed), defaulting to 24 and 80 if unspecified. **/
+    if(tabWidth != NULL)  *tabWidth  = (wgtrGetPropertyValue(W, "tab_width",  DATA_T_INTEGER, &val) == 0) ? val.Integer : 80;
+    if(tabHeight != NULL) *tabHeight = (wgtrGetPropertyValue(W, "tab_height", DATA_T_INTEGER, &val) == 0) ? val.Integer : 24;
 	
     return 0;
 }
@@ -703,7 +705,7 @@ error:
 
 /*** Recursively auto-positions containers and their children based on their grids.
  *** 
- *** Note: Assumes that the grild was already built with a call to aposBuildGrid().
+ *** Note: Assumes that the grid was already built with a call to aposBuildGrid().
  *** 
  *** @param Parent The parent node who's containers are being autopositioned.
  *** @returns 0 if successful, -1 otherwise.
@@ -739,9 +741,9 @@ int rows_extra=0, cols_extra=0;
 	    
 	    /**modify the widgets' x,y,w, and h values to snap to their adjusted lines**/
 	    if (!(Parent->Flags & WGTR_F_VSCROLLABLE))
-		aposSnapWidgetsToGrid(&(theGrid->HLines), APOS_ROW);	//rows
+		aposSnapWidgetsToGrid(&(theGrid->HLines), APOS_ROW, Parent->Root->ClientInfo);	//rows
 	    if (!(Parent->Flags & WGTR_F_HSCROLLABLE))
-		aposSnapWidgetsToGrid(&(theGrid->VLines), APOS_COL);	//columns
+		aposSnapWidgetsToGrid(&(theGrid->VLines), APOS_COL, Parent->Root->ClientInfo);	//columns
 
 	    /** did not resize? **/
 	    /*if (rows_extra < 0)
@@ -814,7 +816,7 @@ aposInitiallizeGrid(pAposGrid theGrid)
  *** lines for each visual child. Searches nonvisual containers recursively for
  *** qualifying grandchildren. Floating windows are ignored.
  *** 
- *** Scrollpanes recieve only 2 vertical lines (skipping their horizontal edges),
+ *** Scrollpanes receive only 2 vertical lines (skipping their horizontal edges),
  *** and if the parent node is a scrollpane, the horizontal border lines are also
  *** skipped.
  *** 
@@ -836,7 +838,7 @@ pAposLine CurrLine, PrevLine;
 pXArray FirstCross, LastCross;
 
     /** Check if this node a scrollbar or window that needs an offset. **/
-    aposSetOffsetBools(Parent, &isSP, &isWin, NULL, NULL, NULL);
+    aposSetOffsetBools(Parent, &isSP, &isWin, NULL, NULL, NULL, NULL);
 
     /** Does this widget need more room than it was given? **/
     if (Parent->pre_width < Parent->min_width && Parent->min_width != 0)
@@ -916,7 +918,7 @@ pXArray FirstCross, LastCross;
 
 /*** Adds 4 lines for the edges of each visual child. Searches nonvisual
  *** containers recursively for qualifying grandchildren. Floating windows
- *** are ignored. Scrollpanes recieve only 2 vertical lines (skipping their
+ *** are ignored. Scrollpanes receive only 2 vertical lines (skipping their
  *** horizontal edges).
  *** 
  *** @param Parent The parent who's children are being given lines.
@@ -928,7 +930,7 @@ int
 aposAddLinesForChildren(pWgtrNode Parent, pXArray HLines, pXArray VLines)
 {
 int i=0, childCount=xaCount(&(Parent->Children));
-int isTopTab=0, isSideTab=0, tabWidth=0;
+int isTopTab=0, isSideTab=0, tabWidth=0, tabHeight=0;
 int height_adj, width_adj;
 pWgtrNode C;
 
@@ -943,7 +945,7 @@ pWgtrNode C;
     for(i=0; i<childCount; ++i)
         {
 	    C = (pWgtrNode)xaGetItem(&(Parent->Children), i);
-	    aposSetOffsetBools(C, NULL, NULL, &isTopTab, &isSideTab, &tabWidth);
+	    aposSetOffsetBools(C, NULL, NULL, &isTopTab, &isSideTab, &tabWidth, &tabHeight);
 	    
 	    /** Does this widget need more room than it was given? **/
 	    height_adj = width_adj = 0;
@@ -971,7 +973,7 @@ pWgtrNode C;
 			     *** start line and the bottom line is the end line
 			     *** because Y increases as we decend the page.
 			     ***/
-			    int minY = (C->y), maxY = (C->y + C->height + isTopTab*24);
+			    int minY = (C->y), maxY = (C->y + C->height + isTopTab*tabHeight);
 			    if(aposCreateLine(C, HLines, minY, APOS_SWIDGETS, APOS_NOT_BORDER, 0, APOS_HORIZONTAL) < 0)
 			        goto CreateLineError;
 			    if(aposCreateLine(C, HLines, maxY, APOS_EWIDGETS, APOS_NOT_BORDER, height_adj, APOS_HORIZONTAL) < 0)
@@ -1051,7 +1053,7 @@ pAposLine Line = aposExistingLine(Lines, Loc);
 		    return -1;
 		}
 	    
-	    /** Initiallize the new line. **/
+	    /** Initialize the new line. **/
 	    memset(Line, 0, sizeof(AposLine));
 	    xaInit(&(Line->SWidgets),16);
 	    xaInit(&(Line->EWidgets),16);
@@ -1114,7 +1116,7 @@ int i, count = xaCount(Lines);
 }
 
 /*** Detects if a widget in PrevList (usually the widgets that started in or
- *** crossed the pevious line) ends on this line (aka. appears in EWidgets).
+ *** crossed the previous line) ends on this line (aka. appears in EWidgets).
  *** If it does not end on this line, we know it crosses this line, so we add
  *** the widget to CWidgets.
  *** 
@@ -1160,7 +1162,7 @@ int found=0, i=0, j=0, pCount=xaCount(PrevList), eCount=xaCount(EWidgets);
 
 /*** Adds row and column sections to the grid based on the lines.
  *** 
- *** @param theGrid The grid to which sections shoudl be added.
+ *** @param theGrid The grid to which sections should be added.
  *** @param VDiff   I had a hard time figuring out what this means.
  *** @param HDiff   I had a hard time figuring out what this means.
  *** @returns 0 if successful, -1 otherwise.
@@ -1240,7 +1242,7 @@ aposCreateSection(pXArray Sections, pAposLine StartL, pAposLine EndL, int Diff, 
 {
 pAposSection NewSect;
     
-    /** Allocate and initiallize a new section. **/
+    /** Allocate and initialize a new section. **/
     if((NewSect = (pAposSection)(nmMalloc(sizeof(AposSection)))) < 0)
 	{
 	    mssError(1, "APOS", "nmMalloc(): Couldn't allocate memory for new row or column");
@@ -1282,7 +1284,7 @@ pAposSection NewSect;
  *** 
  *** @param StartL   The line starting the section. (I think this is always the left/top.)
  *** @param EndL     The line starting the section. (I think this is always the right/bottom.)
- *** @param type     Whether the section is a row (APOS_ROW) or a column (APAS_COL).
+ *** @param type     Whether the section is a row (APOS_ROW) or a column (APOS_COL).
  *** @param isBorder Whether the section is on the border of the page.
  *** @returns 0 if successful, -1 otherwise.
  ***/
@@ -1330,10 +1332,10 @@ int eCount=xaCount(&(StartL->EWidgets));
 }
 
 /*** Checks for any widgets starting on or crossing a line that are non-flexible
- *** in the relevant dimention.
+ *** in the relevant dimension.
  ***
  *** @param L    The line along which to check.
- *** @param type Specifies the relevant dimetion using APOS_ROW or APOS_COL.
+ *** @param type Specifies the relevant dimension using APOS_ROW or APOS_COL.
  *** @returns    1 if any child widget is non-flexible in the relevant dimension,
  ***             0 otherwise.
  ***/
@@ -1372,7 +1374,7 @@ int cCount = xaCount(&(L->CWidgets));
 /*** Calculates the average flexibility of widgets on a line.
  ***
  *** @param L    The line along which to check.
- *** @param type Specifies the relevant dimetion using APOS_ROW or APOS_COL.
+ *** @param type Specifies the relevant dimension using APOS_ROW or APOS_COL.
  *** @returns    The average flexibility of children on the line.
  ***/
 int
@@ -1405,7 +1407,7 @@ int cCount = xaCount(&(L->CWidgets));
 /*** Calculates the minimum flexibility of widgets on a line.
  ***
  *** @param L    The line along which to check.
- *** @param type Specifies the relevant dimetion using APOS_ROW or APOS_COL.
+ *** @param type Specifies the relevant dimension using APOS_ROW or APOS_COL.
  *** @returns    The minimum flexibility of children on the line.
  ***/
 int
@@ -1450,8 +1452,8 @@ int cCount = xaCount(&(L->CWidgets));
 /*** Distributes extra or missing space among grid lines based on section flexibility.
  *** 
  *** @param Lines The array of lines in the relevant direction on this grid.
- *** @param Secctions The array of sections in the relevant direction on this grid.
- *** @param Diff The space differencce from how the elements are currently spaced.
+ *** @param Sections The array of sections in the relevant direction on this grid.
+ *** @param Diff The space difference from how the elements are currently spaced.
  *** @returns The remaining space difference after spacing out elements as much as possible.
  ***/
 int
@@ -1474,8 +1476,8 @@ float TotalSum=0;
 	    TotalFlex += CurrSect->Flex;
 	    if(CurrSect->Flex)
 		{
-		FlexibleSections++;
-		TotalFlexibleSpace += CurrSect->Width;
+		    FlexibleSections++;
+		    TotalFlexibleSpace += CurrSect->Width;
 		}
 	}
     
@@ -1576,19 +1578,23 @@ float TotalSum=0;
     return Extra;
 }
 
+/** TODO: Israel - Update widget flex scales to be 0 if design geometry is specified. **/
 /*** Adjusts widget positions and sizes to snap them to grid lines. This
  *** function should be called after updating grid lines to ensure that
  *** widgets properly reflect the changes.
  *** 
  *** @param Lines The lines being updated.
  *** @param flag Either APOS_ROW or APOS_COL.
+ *** @param info Info about the page design, currently used to determine if
+ *** 	flexibility should be used.
  *** @returns 0, success.
  ***/
 int
-aposSnapWidgetsToGrid(pXArray Lines, int flag)
+aposSnapWidgetsToGrid(pXArray Lines, int flag, pWgtrClientInfo info)
 {
+const int is_design = info->IsDesign;
 int i=0, j=0, count=0, lineCount = xaCount(Lines);
-int isTopTab=0, isSideTab=0, tabWidth=0;
+int isTopTab=0, isSideTab=0, tabWidth=0, tabHeight=0;
 int newsize;
 pAposLine CurrLine;
 pWgtrNode Widget;
@@ -1602,14 +1608,16 @@ pWgtrNode Widget;
 	    for(j=0; j<count; ++j)
 	        {
 	            Widget = (pWgtrNode)xaGetItem(&(CurrLine->SWidgets), j);
-		    if(flag == APOS_ROW) {
-			Widget->y = CurrLine->Loc;
-			Widget->total_fl_y = CurrLine->loc_fl;
-		    }
-		    else {
-			Widget->x = CurrLine->Loc;
-			Widget->total_fl_x = CurrLine->loc_fl;
-		    }
+		    if(flag == APOS_ROW)
+			{
+			    Widget->y = CurrLine->Loc;
+			    Widget->fl_scale_y = (is_design) ? 0.0 : CurrLine->loc_fl;
+			}
+		    else
+			{
+			    Widget->x = CurrLine->Loc;
+			    Widget->fl_scale_x = (is_design) ? 0.0 : CurrLine->loc_fl;
+			}
 		}
 	    
 	    /** Adjusts width or height of widgets ending on this line. **/
@@ -1617,7 +1625,7 @@ pWgtrNode Widget;
 	    for(j=0; j<count; ++j)
 	        {
 	            Widget = (pWgtrNode)xaGetItem(&(CurrLine->EWidgets), j);
-		    aposSetOffsetBools(Widget, NULL, NULL, &isTopTab, &isSideTab, &tabWidth);
+		    aposSetOffsetBools(Widget, NULL, NULL, &isTopTab, &isSideTab, &tabWidth, &tabHeight);
 		    if(flag==APOS_ROW  &&  Widget->fl_height)
 			{
 			    /** Calculate the new size, taking APOS_MINWIDTH into account. **/
@@ -1629,13 +1637,11 @@ pWgtrNode Widget;
 			    else 
 				/*Widget->height = APOS_MINWIDTH;*/
 				Widget->height = Widget->pre_height;
-			
+			    
 			    /*** The widget copies the adjustment weight of the
-			     *** line, ignoring APOS_MINWIDTH. This might lead
-			     *** to problems down the road, but I plan to fix
-			     *** them if and when I encounter them.
+			     *** line, ignoring APOS_MINWIDTH.
 			     ***/
-			    Widget->total_fl_h += CurrLine->my_fl;
+			    Widget->fl_scale_h += (is_design) ? 0.0 : CurrLine->my_fl;
 			}
 		    else if(flag==APOS_COL  &&  Widget->fl_width)
 		        {
@@ -1654,24 +1660,24 @@ pWgtrNode Widget;
 				Widget->width = Widget->pre_width;
 
 			    /*** The widget copies the adjustment weight of the
-			     *** line, ignoring APOS_MINWIDTH. This might lead
-			     *** to problems down the road, but I plan to fix
-			     *** them if and when I encounter them.
+			     *** line, ignoring APOS_MINWIDTH.
 			     ***/
-			    Widget->total_fl_w += CurrLine->my_fl;
+			    Widget->fl_scale_w += (is_design) ? 0.0 : CurrLine->my_fl;
 			}
 		}
 
-	    /** Adjusts width or height of widgets ending on this line. **/
-	    count = xaCount(&(CurrLine->CWidgets));
-	//     printf("Doing %d widgets.\n", count);
-	    for(j=0; j<count; ++j)
-	        {
-	            Widget = (pWgtrNode)xaGetItem(&(CurrLine->CWidgets), j);
-		    if(flag==APOS_ROW  &&  Widget->fl_height)
-		    	Widget->total_fl_h += CurrLine->my_fl;
-		    else if(flag==APOS_COL  &&  Widget->fl_width)
-		    	Widget->total_fl_w += CurrLine->my_fl;
+	    if (!is_design)
+		{
+		/** Adjusts width or height of widgets ending on this line. **/
+		count = xaCount(&(CurrLine->CWidgets));
+		for(j=0; j<count; ++j)
+		    {
+			Widget = (pWgtrNode)xaGetItem(&(CurrLine->CWidgets), j);
+			if(flag==APOS_ROW  &&  Widget->fl_height)
+			    Widget->fl_scale_h += (is_design) ? 0.0 : CurrLine->my_fl;
+			else if(flag==APOS_COL  &&  Widget->fl_width)
+			    Widget->fl_scale_w += (is_design) ? 0.0 : CurrLine->my_fl;
+		    }
 		}
 
 	}
@@ -1704,7 +1710,7 @@ int ival;
 	    return -1;
 	}
 
-    aposSetOffsetBools(Parent, &isSP, &isWin, NULL, NULL, NULL);
+    aposSetOffsetBools(Parent, &isSP, &isWin, NULL, NULL, NULL, NULL);
 
     /**loop through children and process any windows**/
     for(i=0; i<childCount; ++i)
