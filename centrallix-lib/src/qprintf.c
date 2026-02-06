@@ -880,6 +880,14 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
  *** change out from under this function to a new buffer if a realloc is
  *** done by the grow_fn function.  Do not store pointers to 'str'.  Go
  *** solely by offsets.
+ *** 
+ *** NULL, &(s->Tmpbuf), &(s->TmpbufSize), htr_internal_GrowFn, (void*)s, fmt, va
+ *** @param s Optional session struct.
+ *** @param str Pointer to a string buffer where data will be written.
+ *** @param size Pointer to the current size of the string buffer.
+ *** @param grow_fn A function to grow the string buffer.
+ *** @param format The format of data which should be written.
+ *** @param ap The arguments list to fulfill the provided format.
  ***/
 int
 qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, void* grow_arg, const char* format, va_list ap)
@@ -975,6 +983,12 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 		/** Simple specifiers **/
 		if (__builtin_expect(format[0] == '%', 0))
 		    {
+		    if (ignore)
+			{
+			format++;
+			continue;
+			}
+		    
 		    if (__builtin_expect(!nogrow, 1) && (__builtin_expect(cpoffset+2 <= *size, 1) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+2))))
 			(*str)[cpoffset++] = '%';
 		    else
@@ -987,6 +1001,12 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 		    }
 		else if (__builtin_expect(format[0] == '&',0))
 		    {
+		    if (ignore)
+			{
+			format++;
+			continue;
+			}
+		    
 		    if (__builtin_expect(!nogrow, 1) && (__builtin_expect(cpoffset+2 <= *size, 1) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+2))))
 			(*str)[cpoffset++] = '&';
 		    else
@@ -1448,5 +1468,3 @@ qpfRegisterExt(char* ext_spec, int (*ext_fn)(), int is_source)
 
     return;
     }
-
-
