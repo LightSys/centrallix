@@ -147,7 +147,7 @@ cxsecVerifySymbol_n(const char* sym, size_t n)
 	 ** significant security risks in the event of a locale mismatch!!
 	 **/
 	if (n <= 0 || (*sym != '_' && (*sym < 'A' || *sym > 'Z') && (*sym < 'a' || *sym > 'z')))
-	    return -1;
+	    goto err;
 	n--;
 
 	/** Next chars may be 1) end of string, 2) digits, 3) alpha, or 4) underscore **/
@@ -155,11 +155,14 @@ cxsecVerifySymbol_n(const char* sym, size_t n)
 	while(n)
 	    {
 	    if (*sym != '_' && (*sym < 'A' || *sym > 'Z') && (*sym < 'a' || *sym > 'z') && (*sym < '0' || *sym > '9'))
-		return -1;
+		goto err;
 	    sym++;
 	    n--;
 	    }
 
-    return 0;
-    }
+	return 0;
 
+	err:
+	fprintf(stderr, "WARNING: '%s' (of length %lu) is not a valid symbol!\n", sym, n);
+	return -1;
+    }

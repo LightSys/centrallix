@@ -1425,7 +1425,8 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 			break;
 
 		    default:
-			htrAddScriptWgtr_va(s, "%STR&SYM:'Unknown Datatype (%INT) - Add it in ht_render.c:htr_internal_WriteWgtrProperty()', ", propname, t);
+		        fprintf(stderr, "Failed to write widget property '%s': Unknown datatype %d (at %s:%d).\n", propname, t, __FILE__, __LINE__);
+			htrAddScriptWgtr_va(s, "%STR&SYM:'Unknown Datatype (%INT) - Add it to htr_internal_WriteWgtrProperty() in ht_render.c.', ", propname, t);
 			break;
 		    }
 		}

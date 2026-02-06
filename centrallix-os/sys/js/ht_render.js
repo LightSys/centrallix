@@ -1489,7 +1489,7 @@ function htr_addeventlistener(eventType,obj,handler)
 	if (typeof pg_capturedevents[eventType] == 'undefined')
 	    {
 	    pg_capturedevents[eventType] = handler;
-	    obj.addEventListener(eventType, handler, true);
+	    obj.addEventListener(eventType, handler, { capture: true, passive: false });
 	    }
 	}
     else
