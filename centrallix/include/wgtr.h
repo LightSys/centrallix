@@ -69,6 +69,7 @@ typedef struct
     int		CharWidth;
     int		CharHeight;
     int		ParagraphHeight;	/* total height of one line of text */
+    int         IsDesign;               /* 1 if the page is rendered with cx__geom=design, 0 otherwise. */
     char	AKey[256];
     char*	Templates[WGTR_MAX_TEMPLATE];
     char*	Overlays[WGTR_MAX_OVERLAY];

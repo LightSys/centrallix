@@ -92,7 +92,7 @@ int aposInit();					/**Registers datastructures used in auto-positioning**/
 int aposInitiallizeGrid (pAposGrid);		/**Initiallizes the XArrays in the grid object**/
 int aposFree(pAposGrid);				/**Frees dynamically allocated memory**/
 int aposFreeGrids(pWgtrNode);				/**Frees dynamically allocated memory**/
-int aposSetOffsetBools(pWgtrNode, int*, int*, int*, int*, int*); /**sets bools used to offset widgets**/
+int aposSetOffsetBools(pWgtrNode, int*, int*, int*, int*, int*, int*); /**sets bools used to offset widgets**/
 int aposBuildGrid(pWgtrNode);			/** builds the layout grids **/
 int aposSetLimits(pWgtrNode);			/** enforce min/max sizing **/
 
@@ -120,17 +120,18 @@ int aposMinimumChildFlex(pAposLine, int);	 /**Returns minimum flexibility of wid
 
 /**Resizing and Repositioning**/
 int aposSpaceOutLines(pXArray, pXArray, int);	/**Adjusts spaces between lines to expand or contract grid**/
-int aposSnapWidgetsToGrid(pXArray, int);	/**Refreshes widget dimensions to match adjusted grid**/
+int aposSnapWidgetsToGrid(pXArray, int, pWgtrClientInfo); /**Refreshes widget dimensions to match adjusted grid**/
 int aposProcessWindows(pWgtrNode, pWgtrNode);	/**Makes a pass through the tree to process windows**/
 
-/** # defines names for magic values to make them easier to read. **/
 
-/** Indicates how a line links to a widget. */
+/** #define names for values to improve readability. **/
+
+/** Indicates how a line links to a widget. **/
 #define APOS_NOT_LINKED 0
 #define APOS_SWIDGETS 	1
 #define APOS_EWIDGETS 	2
 
-/** Indicates if a line is vertical. */
+/** Indicates if a line is vertical. **/
 #define APOS_VERTICAL 	1
 #define APOS_HORIZONTAL 0
 
@@ -141,11 +142,11 @@ int aposProcessWindows(pWgtrNode, pWgtrNode);	/**Makes a pass through the tree t
 #define APOS_ROW 	1
 #define APOS_COL 	2
 
-/** Indicates if a line is a border. */
+/** Indicates if a line is a border. **/
 #define APOS_IS_BORDER 	1
 #define APOS_NOT_BORDER 0
 
-/** Allows rounding when casting floats or doubles to ints. */
+/** Allows rounding when casting floats or doubles to ints. **/
 #define APOS_FUDGEFACTOR 0.5
 
 /*** The greatest width between two widgets that still defines them as
@@ -159,6 +160,10 @@ int aposProcessWindows(pWgtrNode, pWgtrNode);	/**Makes a pass through the tree t
 #define APOS_MINWIDTH 30
 
 /** Default flexibilities for widgetless gaps in expanding or contracting applications. **/
+/*** Israel: I don't know the difference between these two values. I'm guessing
+ ***         E stands enlarge and C stands for contract, thus (30, 50) makes it
+ ***         easier for gaps to grown than for them to shrink.
+ ***/
 #define APOS_EGAPFLEX 30
 #define APOS_CGAPFLEX 50
 
