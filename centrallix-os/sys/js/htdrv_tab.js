@@ -9,7 +9,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-
 // Sets the value of the current tab (but not the appearance), without
 // triggering on-change events.
 function tc_set_tab_unwatched()
@@ -27,139 +26,150 @@ function tc_set_tab_unwatched()
 // Makes the given tab current.
 function tc_makecurrent()
     {
-    var t;
-    if (this.tabctl.tloc != 4 && htr_getzindex(this.tab) > htr_getzindex(this.tabctl)) return 0;
-    for(var i=0;i<this.tabctl.tabs.length;i++)
+    const { tabctl: t, tab } = this;
+    const { tabs, tloc } = t;
+
+    if (tloc !== 'None' && htr_getzindex(tab) > htr_getzindex(t)) return 0;
+    for(let i = 0; i < tabs.length; i++)
 	{
-	t = this.tabctl.tabs[i];
-	if (t != this && (t.tabctl.tloc == 4 || htr_getzindex(t.tab) > htr_getzindex(this.tab)))
+	const cur = tabs[i];
+	if (cur !== this && (cur.tabctl.tloc === 'None' || htr_getzindex(cur.tab) > htr_getzindex(tab)))
 	    {
-	    htr_setzindex(t, htr_getzindex(this.tabctl) - 1);
-	    htr_setvisibility(t, 'hidden');
-	    if (t.tabctl.tloc != 4)
+	    htr_setzindex(cur, htr_getzindex(t) - 1);
+	    htr_setvisibility(cur, 'hidden');
+	    if (cur.tabctl.tloc !== 'None')
 		{
-		htr_setzindex(t.tab, htr_getzindex(this.tabctl) - 1);
-		t.tab.marker_image.src = '/sys/images/tab_lft3.gif';
-		moveBy(t.tab, this.tabctl.xo, this.tabctl.yo);
-		//setClipItem(t.tab, t.tabctl.cl, getClipItem(t.tab, t.tabctl.cl) + t.tabctl.ci);
-		if (this.tabctl.inactive_bgColor) htr_setbgcolor(t.tab, this.tabctl.inactive_bgColor);
-		if (this.tabctl.inactive_bgnd) htr_setbgimage(t.tab, this.tabctl.inactive_bgnd);
+		htr_setzindex(cur.tab, htr_getzindex(t) - 1);
+		cur.tab.marker_image.src = '/sys/images/tab_lft3.gif';
+		cur.tab.classList.remove('tab_selected');
+		// moveBy(cur.tab, t.xo, t.yo);
+		if (t.inactive_bgColor) htr_setbgcolor(cur.tab, t.inactive_bgColor);
+		if (t.inactive_bgnd) htr_setbgimage(cur.tab, t.inactive_bgnd);
 		}
 	    }
 	}
-    htr_setzindex(this, htr_getzindex(this.tabctl) + 1);
+    htr_setzindex(this, htr_getzindex(t) + 1);
     htr_setvisibility(this,'inherit');
-    if (this.tabctl.tloc != 4)
+    if (tloc !== 'None')
 	{
-	if (this.tabctl.main_bgColor) htr_setbgcolor(this.tab, this.tabctl.main_bgColor);
-	if (this.tabctl.main_bgnd) htr_setbgimage(this.tab, this.tabctl.main_bgnd);
-	htr_setzindex(this.tab, htr_getzindex(this.tabctl) + 1);
-	this.tab.marker_image.src = '/sys/images/tab_lft2.gif';
-	moveBy(this.tab, -this.tabctl.xo, -this.tabctl.yo);
-	//setClipItem(this.tab, this.tabctl.cl, getClipItem(this.tab, this.tabctl.cl) - this.tabctl.ci);
+	if (t.main_bgColor) htr_setbgcolor(tab, t.main_bgColor);
+	if (t.main_bgnd) htr_setbgimage(tab, t.main_bgnd);
+	htr_setzindex(tab, htr_getzindex(t) + 1);
+	tab.marker_image.src = '/sys/images/tab_lft2.gif';
+	tab.classList.add('tab_selected');
+	// moveBy(tab, -t.xo, -t.yo);
 	}
     this.setTabUnwatched();
-    this.tabctl.ifcProbe(ifEvent).Activate("TabChanged", {Selected:this.tabctl.selected, SelectedIndex:this.tabctl.selected_index});
+    t.ifcProbe(ifEvent).Activate("TabChanged", { Selected:t.selected, SelectedIndex:t.selected_index });
     }
 
-function tc_makenotcurrent(t)
+function tc_makenotcurrent(page)
     {
-    htr_setzindex(t,htr_getzindex(t.tabctl) - 1);
-    htr_setvisibility(t,'hidden');
-    if (t.tabctl.tloc != 4)
+    const { tabctl, tab } = page;
+
+    htr_setzindex(page, htr_getzindex(tabctl) - 1);
+    htr_setvisibility(page, 'hidden');
+    
+    if (tabctl.tloc !== 'None')
 	{
-	htr_setzindex(t.tab,htr_getzindex(t.tabctl) - 1);
-	t.tab.marker_image.src = '/sys/images/tab_lft3.gif';
-	moveBy(t.tab, t.tabctl.xo, t.tabctl.yo);
-	//setClipItem(t.tab, t.tabctl.cl, getClipItem(t.tab, t.tabctl.cl) + t.tabctl.ci);
-	if (t.tabctl.inactive_bgColor) htr_setbgcolor(t.tab, t.tabctl.inactive_bgColor);
-	if (t.tabctl.inactive_bgnd) htr_setbgimage(t.tab, t.tabctl.inactive_bgnd);
+	htr_setzindex(page.tab,htr_getzindex(page.tabctl) - 1);
+	tab.marker_image.src = '/sys/images/tab_lft3.gif';
+	tab.classList.remove('tab_selected');
+	// moveBy(tab, tabctl.xo, tabctl.yo);
+	if (tabctl.inactive_bgColor) htr_setbgcolor(tab, tabctl.inactive_bgColor);
+	if (tabctl.inactive_bgnd) htr_setbgimage(tab, tabctl.inactive_bgnd);
 	}
     }
-
-// Adds a new tab to the tab control
-function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
+    
+/*** Adds a new tab to the tab control. This function deals with whether or
+ *** not that tab is selected as LITTLE AS POSSIBLE since that piece of state
+ *** should be handled elsewhere with functions like tc_makenotcurrent() or
+ *** tc_makecurrent().
+ *** 
+ *** @param l_tab The tab being added.
+ *** @param l_page The page to which the tab is being added.
+ *** @param l The layer where this change will occur.
+ *** @param nm The name of the tab.
+ ***/
+function tc_addtab(l_tab, l_page, l, nm, type, fieldname)
     {
-    var newx;
-    var newy;
-    if (!l_tab) l_tab = new Object();
+    const tabctl = this, { tabs } = tabctl, { tloc, tab_h, tab_spacing } = l;
+    
+    let x, y;
+    if (!l_tab) l_tab = {};
     l_page.tabname = nm;
     l_page.type = type;
     l_page.fieldname = fieldname;
-    l_page.tabindex = this.tabs.length+1;
+    l_page.tabindex = tabs.length + 1;
     htr_init_layer(l_page,l,'tc_pn');
     ifc_init_widget(l_page);
-    if (l.tloc != 4) 
+
+    /** Calculate the location and flexibility to render the tab. **/
+    if (tloc === 'None')
 	{
-	htr_init_layer(l_tab,l,'tc');
-	if (l.tloc == 0 || l.tloc == 1) // top or bottom
-	    {
-	    if (this.tabs.length > 0)
-		{
-		//alert(htr_getphyswidth(this.tabs[this.tabs.length-1]));
-		newx = getPageX(this.tabs[this.tabs.length-1].tab) + $(this.tabs[this.tabs.length-1].tab).outerWidth() + 1;
-		if (htr_getvisibility(this.tabs[this.tabs.length-1]) == 'inherit') newx += l.xo;
-		}
-	    else
-		newx = getPageX(this);
-	    }
-	else if (l.tloc == 2) // left
-	    newx = getPageX(this)- htr_getviswidth(l_tab) + 0;
-	else if (l.tloc == 3) // right
-	    newx = getPageX(this) + htr_getviswidth(this) + 1;
-
-	if (l.tloc == 2 || l.tloc == 3) // left or right
-	    {
-	    if (this.tabs.length > 0)
-		{
-		newy = getPageY(this.tabs[this.tabs.length-1].tab) + 26;
-		if (htr_getvisibility(this.tabs[this.tabs.length-1]) == 'inherit') newy += l.yo;
-		}
-	    else
-		newy = getPageY(this);
-	    }
-	else if (l.tloc == 1) // bottom
-	    newy = getPageY(this)+ htr_getvisheight(this) + 1;
-	else // top
-	    newy = getPageY(this) - 24;
-
-	// Clipping
-	switch(l.tloc)
-	    {
-	    case 0: // top
-		$(l_tab).css('clip', 'rect(-10px, ' + ($(l_tab).outerWidth()+10) + 'px, 25px, -10px)');
-		break;
-	    case 1: // bottom
-		$(l_tab).css('clip', 'rect(0px, ' + ($(l_tab).outerWidth()+10) + 'px, 35px, -10px)');
-		break;
-	    case 2: // left
-		$(l_tab).css('clip', 'rect(-10px, ' + ($(l_tab).outerWidth()) + 'px, 35px, -10px)');
-		break;
-	    case 3: // right
-		$(l_tab).css('clip', 'rect(-10px, ' + ($(l_tab).outerWidth()+10) + 'px, 35px, 0px)');
-		break;
-	    }
+	x = 0;
+	y = 0;
 	}
     else
 	{
-	newx = 0;
-	newy = 0;
-	}
+	htr_init_layer(l_tab, l, 'tc');
 
-    if (htr_getvisibility(l_page) != 'inherit')
-	{
-	if (l.tloc != 4)
+	/** Calculate x coordinate. **/
+	if (tloc === 'Top' || tloc === 'Bottom')
 	    {
-	    newx += l.xo;
-	    newy += l.yo;
-	    //setClipItem(l_tab, l.cl, getClipItem(l_tab, l.cl) + l.ci);
-	    if (l.inactive_bgColor) htr_setbgcolor(l_tab, l.inactive_bgColor);
-	    else if (l.main_bgColor) htr_setbgcolor(l_tab, l.main_bgColor);
-	    if (l.inactive_bgnd) htr_setbgimage(l_tab, l.inactive_bgnd);
-	    else if (l.main_bgnd) htr_setbgimage(l_tab, l.main_bgnd);
+	    if (tabs.length > 0)
+		{
+		const previous_tab = tabs[tabs.length - 1].tab;
+		x = getRelativeX(previous_tab) + $(previous_tab).outerWidth() + tab_spacing;
+		}
+	    else if (l.tab_fl_x)
+		/** Copy tabctl.style.left to avoid small but noticeable inconsistencies. **/
+		setRelativeX(l_tab, tabctl.style.left);
+	    else
+		/** Math for inflexible tabs do not suffer from inconsistencies. * */
+		x = getRelativeX(tabctl);
+	    }
+	else if (tloc === 'Left')
+	    x = getRelativeX(tabctl) - htr_getviswidth(l_tab); 
+	else if (tloc === 'Right')
+	    x = getRelativeX(tabctl); // + htr_getviswidth(tabctl) // Included in xtoffset (see below)
+
+	/** Calculate y coordinate. **/
+	if (tloc === 'Left' || tloc === 'Right')
+	    {
+	    if (tabs.length > 0)
+		{
+		const previous_tab = tabs[tabs.length - 1].tab;
+		y = getRelativeY(previous_tab) + tab_h + tab_spacing;
+		}
+	    else if (l.tab_fl_y)
+		/** Copy tabctl.style.top to avoid small but noticeable inconsistencies. **/
+		setRelativeY(l_tab, tabctl.style.top);
+	    else
+		/** Math for inflexible tabs do not suffer from inconsistencies. * */
+		y = getRelativeY(tabctl);
+	    }
+	else if (tloc === 'Bottom')
+	    y = getRelativeY(tabctl); // + htr_getvisheight(tabctl) // Included in ytoffset (see below)
+	else // Top
+	    y = getRelativeY(tabctl) - tab_h;
+
+	/** Apply the same tab offsets used on the server. **/
+	x += l.xtoffset;
+	y += l.ytoffset;
+	
+	/** Space out tab away from previous tab to account for borders. **/
+	if (tabs.length > 0)
+	    {
+	    switch (tloc)
+		{
+		case 'Top': case 'Bottom': x += 2; break;
+		case 'Left': case 'Right': y += 2; break;
+		}
 	    }
 	}
-    else
+
+    if (htr_getvisibility(l_page) === 'inherit')
 	{
 	htr_unwatch(l,"selected","tc_selection_changed");
 	htr_unwatch(l,"selected_index","tc_selection_changed");
@@ -167,49 +177,60 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
 	l.selected_index = l_page.tabindex;
 	l.current_tab = l_page;
 	l.init_tab = l_page;
-	pg_addsched_fn(window,"pg_reveal_event",new Array(l_page,l_page,'Reveal'), 0);
+	pg_addsched_fn(window,"pg_reveal_event",[l_page,l_page,'Reveal'], 0);
 	htr_watch(l,"selected", "tc_selection_changed");
 	htr_watch(l,"selected_index", "tc_selection_changed");
-	if (l.tloc != 4)
+	if (tloc !== 'None')
 	    {
 	    if (l.main_bgColor) htr_setbgcolor(l_tab, l.main_bgColor);
 	    if (l.main_bgnd) htr_setbgimage(l_tab, l.main_bgnd);
 	    }
 	}
-    if (l.tloc != 4)
+    
+    if (tloc !== 'None')
 	{
-	var images = pg_images(l_tab);
-	for(var i=0;i<images.length;i++)
+	const images = pg_images(l_tab);
+	for (let i = 0; i < images.length; i++)
 	    {
-	    images[i].layer = l_tab;
-	    images[i].kind = 'tc';
-	    if  (images[i].width == 5) l_tab.marker_image = images[i];
+	    const image = images[i];
+	    image.layer = l_tab;
+	    image.kind = 'tc';
+	    if (image.width === 5) l_tab.marker_image = image;
 	    }
 	}
-    this.tabs[this.tabs.length++] = l_page;
-    l_page.tabctl = this;
+    
+    tabs[tabs.length++] = l_page;
+    l_page.tabctl = tabctl;
     l_page.tab = l_tab;
     l_page.makeCurrent = tc_makecurrent;
     l_page.setTabUnwatched = tc_set_tab_unwatched;
-    if (l.tloc != 4)
-	{
-	moveToAbsolute(l_tab, newx + 0.001, newy + 0.001);
-	}
     l_tab.tabpage = l_page;
-    l_tab.tabctl = this;
-    //setClipWidth(l_page, getClipWidth(this)-2);
-    //setClipHeight(l_page, getClipHeight(this)-2);
+    l_tab.tabctl = tabctl;
+
+    /** Render the tab at the location calculated above. **/
+    if (tloc !== 'None' && l.do_rendering)
+	{
+	/*** Get the parent width and height.  The top-level body element is
+	 *** sized wrong, so we use the window size if it is the parent.
+	 ***/
+	const is_top_level = (l_tab.parentElement.tagName === 'BODY');
+	const style    = (is_top_level) ? undefined   : getComputedStyle(l_tab.parentElement);
+	const parent_w = (is_top_level) ? innerWidth  : style.width;
+	const parent_h = (is_top_level) ? innerHeight : style.height;
+	if (x) setRelativeX(l_tab, `calc(${x}px + (100% - ${parent_w}) * ${l.tab_fl_x})`);
+	if (y) setRelativeY(l_tab, `calc(${y}px + (100% - ${parent_h}) * ${l.tab_fl_y})`);
+	}
 
     // Indicate that we generate reveal/obscure notifications
     l_page.Reveal = tc_cb_reveal;
     pg_reveal_register_triggerer(l_page);
     //if (htr_getvisibility(l_page) == 'inherit') pg_addsched("pg_reveal(" + l_tab.tabname + ")");
-    //l_page.is_visible = (l.tloc != 4 && htr_getvisibility(l_tab) == 'inherit');
+    //l_page.is_visible = (tloc !== 'None' && htr_getvisibility(l_tab) == 'inherit');
     l_page.is_visible = true;
 
     l_page.tc_visible_changed = tc_visible_changed;
     htr_watch(l_page,"is_visible", "tc_visible_changed"); //visible property
-    var iv = l_page.ifcProbeAdd(ifValue);
+    const iv = l_page.ifcProbeAdd(ifValue);
     iv.Add("visible", "is_visible");
 
     // Show Container API
@@ -221,34 +242,36 @@ function tc_addtab(l_tab, l_page, l, nm, type,fieldname)
 
 function tc_selection_changed(prop,o,n)
     {
+    const { tabs } = this;
+
     var tabindex = null;
     if (o == n) return n;
     // find index if name specified
     if (prop == 'selected')
 	{
-	for (var i=0; i<this.tabs.length; i++)
-	    if (this.tabs[i].tabname == n)
+	for (let i = 0; i < tabs.length; i++)
+	    if (tabs[i].tabname === n)
 		{
-		tabindex = i+1;
+		tabindex = i + 1;
 		break;
 		}
 	}
     else
 	tabindex = n;
-    if (tabindex < 1 || tabindex > this.tabs.length) return o;
+    if (tabindex < 1 || tabindex > tabs.length) return o;
 
     // okay to change tab.
-    //this.tabs[tabindex-1].makeCurrent();
+    //tabs[tabindex-1].makeCurrent();
     if (this.selchange_schedid)
 	pg_delsched(this.selchange_schedid);
-    this.selchange_schedid = pg_addsched_fn(this,"ChangeSelection1", new Array(this.tabs[tabindex-1]), 0);
+    this.selchange_schedid = pg_addsched_fn(this, "ChangeSelection1", new Array(tabs[tabindex - 1]), 0);
     return n;
     }
 
-function tc_action_set_tab(aparam)
+function tc_action_set_tab({ Tab, TabIndex })
     {
-    if (aparam.Tab) this.selected = aparam.Tab;
-    else if (aparam.TabIndex) this.selected_index = parseInt(aparam.TabIndex);
+    if (Tab) this.selected = Tab;
+    else if (TabIndex) this.selected_index = parseInt(TabIndex);
     }
 
 function tc_showcontainer()
@@ -263,13 +286,13 @@ function tc_showcontainer()
 
 function tc_clear_tabs(tabs)
     {
-    for(var i=0;i<tabs.length;i++)
+    for (let i = 0; i < tabs.length; i++)
 	{
-	if(tabs[i].type=='generated')
+	const cur = tabs[i];
+	if (cur.type === 'generated')
 	    {
-	    //setClipWidth(tabs[i],0);
-	    if(!tabs[i].tabctl.tc_layer_cache) tabs[i].tabctl.tc_layer_cache = new Array();
-	    tabs[i].tabctl.tc_layer_cache.push(tabs[i]);
+	    if (!cur.tabctl.tc_layer_cache) cur.tabctl.tc_layer_cache = [];
+	    cur.tabctl.tc_layer_cache.push(cur);
 	    tabs.splice(i,1);
 	    i--; //because we just removed an element
 	    }
@@ -286,35 +309,39 @@ function tc_direct_parent(t)
 
 function tc_updated(p1)
     {
-    var osrc = this.osrc;
-    var tabs = this.tabs;
-    var vals = new Array();
-    var targetval,targettab;
+    const { osrc, tabs } = this;
+    const vals = [];
+    let targetval, targettab;
 
-    if(this.oldreplica && this.osrc.replica == this.oldreplica){
+    if(this.oldreplica && osrc.replica === this.oldreplica){
 	//replica is the same so just switch tabs!
 	for(var i in tabs)
-	    if(tabs[i].recordnumber == osrc.CurrentRecord)
+	    {
+	    const cur_tab = tabs[i];
+	    if(cur_tab.recordnumber === osrc.CurrentRecord)
 		{
-		tabs[i].makeCurrent();
-		tabs[i].tc_visible_changed('visible','hidden','inherit');
+		cur_tab.makeCurrent();
+		cur_tab.tc_visible_changed('visible','hidden','inherit');
 		return; //done!
 		}
+	    }
     }
-    else this.oldreplica = this.osrc.replica;
-    tc_clear_tabs(this.tabs);
+    else this.oldreplica = osrc.replica;
+
+    tc_clear_tabs(tabs);
     for(var i in tabs)
 	{
-	if(tabs[i].type!='dynamic')
-	    continue; //ignore non-dynamic tabs
-	//htr_setvisibility(tabs[i],'inherit');
-	htr_setvisibility(tabs[i],'hidden');
+	const cur_tab = tabs[i];
+	if(cur_tab.type !== 'dynamic') continue; //ignore non-dynamic tabs
+	
+	//htr_setvisibility(cur_tab,'inherit');
+	htr_setvisibility(cur_tab,'hidden');
 	for(var j in osrc.replica)
 	    {
 	    var rec = osrc.replica[j];
 	    for(var k in rec)
 		{
-		if(rec[k].oid == tabs[i].fieldname)
+		if(rec[k].oid === cur_tab.fieldname)
 		    {
 		    vals[j] = rec[k].value;
 		    if(j==osrc.CurrentRecord) targetval = j;
@@ -329,13 +356,27 @@ function tc_updated(p1)
 	    if(cx__capabilities.Dom0NS)
 		content = "\n    <table cellspacing=0 cellpadding=0 border=0><tr><td colspan=3 background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/white_1x1.png\"></td></tr><tr><td width=6><img src=\"/sys/images/white_1x1.png\" heigth=24 width=1><img src=\"/sys/images/tab_lft3.gif\" name=\"tb\" heigth=24></td><td valign=\"middle\" align=\"center\"><font color=\"black\"><b>&nbsp;"+vals[j]+"&nbsp;</b></font></td><td align=\"right><img src=\"/sys/images/dkgrey_1x1.png\" width=1 height=24></td></tr></table>\n";
 	    else
-		content = "\n    <table style=\"border-style: solid; border-color: white gray gray white; border-width: 1px 1px 0px;\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\"><tr><td><img src=\"/sys/images/tab_lft3.gif\" align=\"left\" height=\"24\" width=\"5\"></td><td align=\"center\"><b>&nbsp;"+vals[j]+"&nbsp;</b></td></tr></table>\n";
-	    tabparent = tc_direct_parent(tabs[i]);
+		content =
+		    '\n\t<table ' +
+			'style="' +
+			    'border-style: solid; ' + 
+			    'border-color: white gray gray white; ' + 
+			    'border-width: 1px 1px 0px; ' +
+			'"' +
+			'border="0" ' +
+			'cellpadding="0" ' +
+			'cellspacing="0" ' +
+		    '><tr>' +
+			'<td><img src="/sys/images/tab_lft3.gif" align="left" height="24" width="5"></td>' +
+			'<td align="center"><b>&nbsp;' + vals[j] + '&nbsp;</b></td>' +
+		    '</tr></table>\n';
+	    
+	    tabparent = tc_direct_parent(cur_tab);
 	    if(this.tc_layer_cache && this.tc_layer_cache.length >0) newtab = this.tc_layer_cache.pop();
 	    else newtab = htr_new_layer(null,tabparent);
-	    pageparent = tc_direct_parent(tabs[i].tabpage)
+	    pageparent = tc_direct_parent(cur_tab.tabpage)
 	    newpage = htr_new_layer(null,pageparent);
-	    newtab.marker_image = tabs[i].marker_image;
+	    newtab.marker_image = cur_tab.marker_image;
 	    newtab.marker_image.src = '/sys/images/tab_lft3.gif';
 	    $(newtab).find('span').text('&nbsp;' + htutil_encode(vals[j]) + '&nbsp;');
 	    //htr_write_content(newtab,content);
@@ -343,8 +384,6 @@ function tc_updated(p1)
 	    htr_setvisibility(newpage,'inherit');
 	    htr_setzindex(newtab,14);
 	    this.addTab(newtab,newpage,this,vals[j],'generated','');
-	    //setClipWidth(newtab,htr_getphyswidth(newtab));
-	    //setClipHeight(newtab,26);
 	    
 	    newpage.osrcdata = vals[j];
 	    newpage.recordnumber = j;
@@ -354,8 +393,8 @@ function tc_updated(p1)
 
 	    if(targettab)
 		{
-		this.tabs[targettab].makeCurrent();
-		this.tabs[targettab].tc_visible_changed('visible','hidden','inherit');
+		tabs[targettab].makeCurrent();
+		tabs[targettab].tc_visible_changed('visible','hidden','inherit');
 		}
 	    }
 	}
@@ -367,13 +406,20 @@ function tc_init(param)
     var l = param.layer; 
     htr_init_layer(l,l,'tc');
     ifc_init_widget(l);
-    l.tabs = new Array();
+    l.tabs = [];
     l.addTab = tc_addtab;
     l.current_tab = null;
     l.init_tab = null;
-    l.tloc = param.tloc;
-    if (tc_tabs == null) tc_tabs = new Array();
+    l.do_rendering = param.do_client_rendering;
+    l.select_x_offset = param.select_x_offset;
+    l.select_y_offset = param.select_y_offset;
+    l.xtoffset = param.xtoffset;
+    l.ytoffset = param.ytoffset;
+    l.tab_spacing = param.tab_spacing;
+    l.tab_h = param.tab_h;
+    if (tc_tabs == null) tc_tabs = [];
     tc_tabs[tc_tabs.length++] = l;
+    l.tloc = param.tloc;
 
     // Background color/image selection...
     l.main_bgColor = htr_extract_bgcolor(param.mainBackground);
@@ -422,144 +468,99 @@ function tc_init(param)
     l.ChangeSelection2 = tc_changeselection_2;
     l.ChangeSelection3 = tc_changeselection_3;
 
-    // Movement geometries and clipping for tabs
-    switch(l.tloc)
-	{
-	case 0: // top
-	    l.xo = +1;
-	    l.yo = +2;
-	    l.cl = "bottom";
-	    l.ci = -2;
-	    break;
-	case 1: // bottom
-	    l.xo = +1;
-	    l.yo = -2;
-	    l.cl = "top";
-	    l.ci = +2;
-	    break;
-	case 2: // left
-	    l.xo = +2;
-	    l.yo = +1;
-	    l.cl = "right";
-	    l.ci = -2;
-	    break;
-	case 3: // right
-	    l.xo = -2;
-	    l.yo = +1;
-	    l.cl = "left";
-	    l.ci = +2;
-	    break;
-	case 4: // none
-	    l.xo = 0;
-	    l.yo = 0;
-	    l.cl = "bottom";
-	    l.ci = 0;
-	    break;
-	}
     return l;
     }
 
-function tc_visible_changed(prop,o,n)
+/*** Idk what this does...
+ ***
+ *** @param prop Unused, for some reason.
+ *** @param o Unused again...
+ *** @param n If this is true, it makes this.tab inherit visibility. Otherwise, hidden.
+ *** @returns nothing... idk what this is doing.
+ */
+function tc_visible_changed(prop, o, n)
     {
-    var t = this.tabctl;
-    var xo = t.xo;
-    var yo = t.yo;
+    const { tabctl: t } = this;
+    const { tabs, tloc } = t;
+
+    if (tloc === 'None') console.warn("tc_visible_changed() called on tab contol with tab_location = none.");
+
     if(n) htr_setvisibility(this.tab, 'inherit');
     else htr_setvisibility(this.tab, 'hidden');
-    // which tab should be selected? 
-    if(htr_getvisibility(t.tabs[t.selected_index-1].tab)!='inherit')
+
+    /** This nonsense is why we need goto in js. **/
+    const pickSelectedTab = () =>
 	{
-	//try default tab
-	if(htr_getvisibility(t.init_tab.tab)=='inherit')
+	// If a visible tab is already selected, we're done.
+	const selected = tabs[t.selected_index-1];
+	if (htr_getvisibility(selected.tab) === 'inherit') return;
+	
+	// Try to select the initial tab.
+	const initial = t.init_tab;
+	if (htr_getvisibility(initial.tab) === 'inherit')
 	    {
-	    // This is forced, so we skip the obscure/reveal checks
-	    t.ChangeSelection3(t.tabs[t.init_tab.tabindex-1]);
-	    //t.tabs[t.init_tab.tabindex-1].makeCurrent();
+	    // This is forced, so we skip the obscure/reveal checks.
+	    t.ChangeSelection3(tabs[initial.tabindex - 1]);
+	    return;
 	    }
-	else //otherwise find first tab not hidden
+	
+	// Otherwise, pick the first visible tab.
+	for (let i = 0; i < tabs.length; i++)
 	    {
-	    for(var i=0; i<t.tabs.length;i++)
+	    const cur_tab = tabs[i];
+	    if (htr_getvisibility(cur_tab.tab) === 'inherit')
 		{
-		if(htr_getvisibility(t.tabs[i].tab)=='inherit')
-		    {
-		    // This is forced, so we skip the obscure/reveal checks
-		    t.ChangeSelection3(t.tabs[i]);
-		    //t.tabs[i].makeCurrent();
-		    break;
-		    }
+		// This is forced, so we skip the obscure/reveal checks.
+		t.ChangeSelection3(cur_tab);
+		return;
 		}
 	    }
 	}
-    
-    if(this.tabctl.tloc == 2) //left
+    pickSelectedTab();
+
+    // Determine the initial values for cur_x and cur_y.
+    let cur_x, cur_y;
+    switch (tloc)
 	{
-	var currx = getRelativeX(t)-$(t.tabs[0].tab).width()+4, curry = getRelativeY(t); //initial values
-	for(var i = 0; i< this.tabctl.tabs.length; i++)
-	    {
-	    if(htr_getvisibility(this.tabctl.tabs[i].tab)=='inherit')
-		{
-		if(this.tabctl.selected_index-1 == i) currx-=xo; //stick out
-		moveTo(this.tabctl.tabs[i].tab,currx,curry);
-		curry+=$(this.tabctl.tabs[i].tab).height()+1;
-		if(this.tabctl.selected_index-1 == i)
-		    {
-		    curry+=yo; currx+=xo;
-		    }
-		}
-	    }
+	case 'Top':
+	    // Idk why top uses getPage instead of getRelative.
+	    // They're inside containers too, aren't they?
+	    cur_x = getPageX(t);
+	    cur_y = getPageY(t) - 22; // currently height is fixed at 26
+	    break;
+	case 'Bottom':
+	    cur_x = getRelativeX(t);
+	    cur_y = getRelativeY(t) + $(t).height() - 3; // currently height is fixed at 26
+	    break;
+	case 'Left':
+	    cur_x = getRelativeX(t) - $(tabs[0].tab).width() + 4;
+	    cur_y = getRelativeY(t); // initial values
+	    break;
+	case 'Right':
+	    cur_x = getRelativeX(t) + $(t).width() - 3;
+	    cur_y = getRelativeY(t); // currently height is fixed at 26
+	    break;
 	}
-    else if(this.tabctl.tloc == 0) //top
+
+    for (let i = 0; i < tabs.length; i++)
 	{
-	var currx = getPageX(t), curry = getPageY(t)-22; //currently height is fixed at 26
-	for(var i in this.tabctl.tabs)
-	    {
-	    if(htr_getvisibility(this.tabctl.tabs[i].tab)=='inherit')
-		{
-		if(this.tabctl.selected_index-1 == i) curry-=yo; //stick out
-		moveToAbsolute(this.tabctl.tabs[i].tab,currx,curry);
-		currx+=$(this.tabctl.tabs[i].tab).width()+2;
-		if(this.tabctl.selected_index-1 == i)
-		    {
-		    currx+=xo; curry+=yo;
-		    }
-		}
-	    }
+	const cur_tab = tabs[i].tab;
+
+	/** If the tab isn't visible, skip it. **/
+	if(htr_getvisibility(cur_tab) !== 'inherit') continue;
+
+	/** Update the class for CSS if the tab is selected. **/
+	if(t.selected_index === i + 1) cur_tab.classList.add('tab_selected');
+	
+	/** Update tab location. **/
+	if (tloc === 'Top') moveToAbsolute(cur_tab, cur_x, cur_y); // idk why Top needs special treatment..
+	else moveTo(cur_tab, cur_x, cur_y);
+
+	/** Update cur_x or cur_y. **/
+	if(tloc === 'Top' || tloc === 'Bottom')
+	     cur_x += $(cur_tab).width() + 2; // Top or Bottom
+	else cur_y += $(cur_tab).height() + 1; // Left or Right
 	}
-    else if(this.tabctl.tloc == 3) //right
-	{
-	var currx = getRelativeX(t)+$(t).width()-3, curry = getRelativeY(t); //currently height is fixed at 26
-	for(var i = 0; i< this.tabctl.tabs.length; i++)
-	    {
-	    if(htr_getvisibility(this.tabctl.tabs[i].tab)=='inherit')
-		{
-		if(this.tabctl.selected_index-1 == i) currx-=xo; //stick out
-		moveTo(this.tabctl.tabs[i].tab,currx,curry);
-		curry+=$(this.tabctl.tabs[i].tab).height()+1;
-		if(this.tabctl.selected_index-1 == i)
-		    {
-		    curry+=yo; currx+=xo;
-		    }
-		}
-	    }
-	}
-    else //bottom
-	{    
-	var currx = getRelativeX(t), curry = getRelativeY(t)+$(t).height()-3; //currently height is fixed at 26
-	for(var i = 0; i< this.tabctl.tabs.length; i++)
-	    {
-	    if(htr_getvisibility(this.tabctl.tabs[i].tab)=='inherit')
-		{
-		if(this.tabctl.selected_index-1 == i) curry-=yo; //stick out
-		moveTo(this.tabctl.tabs[i].tab,currx,curry);
-		currx+=$(this.tabctl.tabs[i].tab).width()+2;
-		if(this.tabctl.selected_index-1 == i)
-		    {
-		    currx+=xo; curry+=yo;
-		    }
-		}
-	    }
-	}
-    
     }
 
 // Reveal() interface function - called when a triggerer event occurs.
