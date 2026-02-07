@@ -819,6 +819,41 @@ function htr_stylize_element(element, widget, prefix, defaults)
 	);
     }
 
+/*** When a point action is invoked the first time, a ResizeObserver is also
+ *** created to update the location of the point element if the document is
+ *** resized. The parameters from invocation of this function are saved and
+ *** reused to update the point each time a resize occurs.
+ */
+function htr_action_point(aparam)
+    {
+    const updatePoint = () =>
+	{
+	/** Get the parameters from the resize observer object. **/
+	const { X, Y, AtWidget, BorderColor, FillColor } = this.resizeObserver.aparam;
+	const { p1, p2 } = htutil_point(this, X, Y, AtWidget, BorderColor, FillColor, this.point1, this.point2);
+	this.point1 = p1;
+	this.point2 = p2;
+	}
+    
+    if (!this.resizeObserver)
+	{
+	/*** There isn't a resize observer yet, so create a new one that will
+	 *** update the point when the document is resized.
+	 *** Note: ResizeObserver provides a list of resized entries to the
+	 *** callback (updatePoint()) and we ignore it because we only care
+	 *** that something has been resized, htutil_point() handles the rest. 
+	 ***/
+	const resizeObserver = this.resizeObserver = new ResizeObserver(updatePoint);
+	resizeObserver.observe(document.documentElement);
+	}
+    /** I really wanted to write the code below to show off how cleaver I am, but the if statement above is far more readable. **/
+    // (!this.resizeObserver) && (this.resizeObserver = new ResizeObserver(updatePoint)).observe(document.documentElement);
+    
+    /** Save the parameters, then update the point. **/
+    this.resizeObserver.aparam = aparam;
+    updatePoint();
+    }
+
 function htr_alert(obj,maxlevels)
     {
     alert(htr_obj_to_text(obj,0,maxlevels));
