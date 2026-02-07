@@ -2818,13 +2818,17 @@ osrc1 "widget/osrc"
 
 		<actions>
 		
-			<action name="Alert">Sends an alert widget.</action>
+			<action name="Alert">Sends an alert widget. Set the 'Message' to specify a text string that should appear in the alert.</action>
 		
 			<action name="Close">Closes the page.</action>
 		
 			<action name="Launch">Starts a new app in a new window.</action>
 			
+			<action name="Log">Logs data to the console (using console.log()), for testing and debugging. Set the 'Message' to specify a text string that should appear in the log.</action>
+			
 			<action name="LoadPage">Loads the page.</action>
+			
+			<action name="ReloadPage">Reloads the page in the user's browser. Note: This event forces a reload, even if the original content could be loaded without one.</action>
 
 		</actions>
 
