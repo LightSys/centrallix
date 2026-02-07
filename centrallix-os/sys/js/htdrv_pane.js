@@ -87,9 +87,7 @@ function pn_action_resize(aparam)
 
 function pn_action_point(aparam)
     {
-    var divs = htutil_point(this, aparam.X, aparam.Y, aparam.AtWidget, aparam.BorderColor, aparam.FillColor, this.point1, this.point2);
-    this.point1 = divs.p1;
-    this.point2 = divs.p2;
+    htr_action_point.call(this, aparam);
     }
 
 function pn_init(param)

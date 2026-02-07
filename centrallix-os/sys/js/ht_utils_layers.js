@@ -20,6 +20,12 @@ function htutil_tag_images(d,t,l,ml)
 	}
     }
 
+/***
+ *** @param bc BorderColor
+ *** @param fc FillColor
+ *** @param p1 Point 1
+ *** @param p2 Point 2
+ ***/
 function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
     {
     // Determine x/y to point at
@@ -105,6 +111,7 @@ function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
 	}
 
     // Set the CSS to enable the point divs
+    const { top: wtop, left: wleft } = $(wthis).offset();
     $(p1).css
 	({
 	"position": "absolute",
@@ -114,8 +121,8 @@ function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
 	"border-style": "solid",
 	"box-sizing": "border-box",
 	"content": "",
-	"top": (top + $(wthis).offset().top) + "px",
-	"left": (left + $(wthis).offset().left) + "px",
+	"top": (top + wtop) + "px",
+	"left": (left + wleft) + "px",
 	"border-color": c1,
 	"visibility": "inherit",
 	"z-index": htr_getzindex(wthis) + 1
@@ -129,8 +136,8 @@ function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
 	"border-style": "solid",
 	"box-sizing": "border-box",
 	"content": "",
-	"top": (top + doffs.y + $(wthis).offset().top) + "px",
-	"left": (left + doffs.x + $(wthis).offset().left) + "px",
+	"top": (top + doffs.y + wtop) + "px",
+	"left": (left + doffs.x + wleft) + "px",
 	"border-color": c2,
 	"visibility": "inherit",
 	"z-index": htr_getzindex(wthis) + 2
