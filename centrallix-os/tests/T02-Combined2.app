@@ -112,15 +112,14 @@ Page1 "widget/page"
 			style="lowered";
 			readonly="yes";
 			}
-
-
 		    }
+		
 		TabPage2 "widget/tabpage"
 		    {
 		    Label1 "widget/label"
 			{
-			x=10; y=10; width=100; height=15;
-			text="<b>Current State:</b>";
+			x=10; y=15; width=100; height=15;
+			text="Current State:";
 			align="right";
 			}
 		    Editbox4 "widget/editbox"
