@@ -1501,12 +1501,12 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	    htr_internal_WriteWgtrProperty(s, tree, "fl_y");
 	    htr_internal_WriteWgtrProperty(s, tree, "fl_width");
 	    htr_internal_WriteWgtrProperty(s, tree, "fl_height");
-	    htr_internal_WriteWgtrProperty(s, tree, "total_fl_x");
-	    htr_internal_WriteWgtrProperty(s, tree, "total_fl_y");
-	    htr_internal_WriteWgtrProperty(s, tree, "total_fl_w");
-	    htr_internal_WriteWgtrProperty(s, tree, "total_fl_h");
-	    htr_internal_WriteWgtrProperty(s, tree, "parent_w");
-	    htr_internal_WriteWgtrProperty(s, tree, "parent_h");
+	    htr_internal_WriteWgtrProperty(s, tree, "fl_scale_x");
+	    htr_internal_WriteWgtrProperty(s, tree, "fl_scale_y");
+	    htr_internal_WriteWgtrProperty(s, tree, "fl_scale_w");
+	    htr_internal_WriteWgtrProperty(s, tree, "fl_scale_h");
+	    htr_internal_WriteWgtrProperty(s, tree, "fl_parent_w");
+	    htr_internal_WriteWgtrProperty(s, tree, "fl_parent_h");
 	    }
 	propname = wgtrFirstPropertyName(tree);
 	while(propname)
@@ -2723,10 +2723,10 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 		"%[%STR %]"
 	    "}\n",
 	    id,
-	             ht_flex(x, ht_get_total_w(node), ht_get_fl_x(node)),
-	             ht_flex(y, ht_get_total_h(node), ht_get_fl_y(node)),
-	    (w > 0), ht_flex(w, ht_get_total_w(node), ht_get_fl_w(node)),
-	    (h > 0), ht_flex(h, ht_get_total_h(node), ht_get_fl_h(node)),
+	             ht_flex_x(x, node),
+	             ht_flex_y(y, node),
+	    (w > 0), ht_flex_w(w, node),
+	    (h > 0), ht_flex_h(h, node),
 	    (z > 0), z,
 	    (*textcolor), textcolor,
 	    (!strcmp(style, "bold")),
@@ -2750,9 +2750,9 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 
 
 int
-ht_get_total_w__INTERNAL(pWgtrNode widget) {
+ht_get_parent_w__INTERNAL(pWgtrNode widget) {
     /** Check to see if the value was already cached by a previous call. **/
-    int cached_value = widget->parent_w;
+    int cached_value = widget->fl_parent_w;
     if (cached_value != -1) {
 //	printf(
 //	    "Got total width available to '%s' (%s) from cache: %dpx\n",
@@ -2763,7 +2763,7 @@ ht_get_total_w__INTERNAL(pWgtrNode widget) {
 
     // DEBUG
     if (widget->Parent == NULL) {
-	printf("\nPANIC: Call to ht_get_total_w__INTERNAL() on widget with no parent!\n\n");
+	printf("\nPANIC: Call to ht_get_parent_w__INTERNAL() on widget with no parent!\n\n");
 	wgtrPrint(widget, 1);
     }
 
@@ -2779,21 +2779,21 @@ ht_get_total_w__INTERNAL(pWgtrNode widget) {
     /** Check if the parent has a width value. **/
     if (parentWidth >= 0 /* && isParentVisual */) {
 	int offset = parent->left + parent->right, ret = parentWidth - offset;
-	printf("Returning %d-%d=%d\n", parentWidth, offset, ret);
-	return (widget->parent_w = ret);
+	// printf("Returning %d-%d=%d\n", parentWidth, offset, ret);
+	return (widget->fl_parent_w = ret);
     } else {
 	if (parent->Parent == NULL) {
 	    printf("Recursive call would segfault! Guessing %dpx instead.\n", parentWidth);
-	    return (widget->parent_w = parentWidth);
+	    return (widget->fl_parent_w = parentWidth);
 	}
-	return (widget->parent_w = ht_get_total_w(parent));
+	return (widget->fl_parent_w = ht_get_parent_w(parent));
     }
 }
 
 int
-ht_get_total_h__INTERNAL(pWgtrNode widget) {
+ht_get_parent_h__INTERNAL(pWgtrNode widget) {
     /** Check to see if the value was already cached by a previous call. **/
-    int cached_value = widget->parent_h;
+    int cached_value = widget->fl_parent_h;
     if (cached_value != -1) {
 //	printf(
 //	    "Got total height available to '%s' (%s) from cache: %dpx\n",
@@ -2804,7 +2804,7 @@ ht_get_total_h__INTERNAL(pWgtrNode widget) {
 
     // DEBUG
     if (widget->Parent == NULL) {
-	printf("\nPANIC: Call to ht_get_total_h__INTERNAL() on widget with no parent!\n\n");
+	printf("\nPANIC: Call to ht_get_parent_h__INTERNAL() on widget with no parent!\n\n");
 	wgtrPrint(widget, 1);
     }
 
@@ -2820,13 +2820,13 @@ ht_get_total_h__INTERNAL(pWgtrNode widget) {
     /** Check if the parent has a height value. **/
     if (parentHeight >= 0 /* && isParentVisual */) {
 	int offset = parent->top + parent->bottom, ret = parentHeight - offset;
-	printf("Returning %d-%d=%d\n", parentHeight, offset, ret);
-	return (widget->parent_h = ret);
+	// printf("Returning %d-%d=%d\n", parentHeight, offset, ret);
+	return (widget->fl_parent_h = ret);
     } else {
 	if (parent->Parent == NULL) {
 	    printf("Recursive call would segfault! Guessing %dpx instead.\n", parentHeight);
-	    return (widget->parent_h = parentHeight);
+	    return (widget->fl_parent_h = parentHeight);
 	}
-	return (widget->parent_h = ht_get_total_h__INTERNAL(parent));
+	return (widget->fl_parent_h = ht_get_parent_h__INTERNAL(parent));
     }
 }

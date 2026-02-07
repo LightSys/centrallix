@@ -390,43 +390,40 @@ int htruleRegister(char* ruletype, ...);
  ***
  *** @param size The original size of the ui element.
  *** @param total The total size of the ui element's container.
- *** @param flex The flexibility of the ui element. It is strongly recomended
+ *** @param flex The flexibility of the ui element. It is strongly recommended
  ***             to generate this with an ht_get_fl function call.
  *** @returns Several values to serve as parameters for a qprintf call.
  ***/
 #define ht_flex(size, total, flex) (size), (total), (flex)
 
 /** ====[ Macros for getting total container size ]==== **/
-int ht_get_total_w__INTERNAL(pWgtrNode widget);
-int ht_get_total_h__INTERNAL(pWgtrNode widget);
+int ht_get_parent_w__INTERNAL(pWgtrNode widget);
+int ht_get_parent_h__INTERNAL(pWgtrNode widget);
 
-#define ht_get_total_w(widget) ht_get_total_w__INTERNAL(widget)
-#define ht_get_total_h(widget) ht_get_total_h__INTERNAL(widget)
-
-// #define ht_get_total_w(widget) ((widget)->Parent->width - (widget)->Parent->left - (widget)->Parent->right)
-// #define ht_get_total_h(widget) ((widget)->Parent->height - (widget)->Parent->top - (widget)->Parent->bottom)
+#define ht_get_parent_w(widget) ht_get_parent_w__INTERNAL(widget)
+#define ht_get_parent_h(widget) ht_get_parent_h__INTERNAL(widget)
 
 /** ====[ Macros for getting total flexibilities ]==== **/
 
 /*** @param widget The widget to be queried.
  *** @returns The flexibility of the widget in the x direction.
  ***/
-#define ht_get_fl_x(widget) ((widget)->total_fl_x)
+#define ht_get_fl_x(widget) ((widget)->fl_scale_x)
 
 /*** @param widget The widget to be queried.
  *** @returns The flexibility of the widget in the y direction.
  ***/
-#define ht_get_fl_y(widget) ((widget)->total_fl_y)
+#define ht_get_fl_y(widget) ((widget)->fl_scale_y)
 
 /*** @param widget The widget to be queried.
  *** @returns The flexibility of the widget in the width direction.
  ***/
-#define ht_get_fl_w(widget) ((widget)->total_fl_w)
+#define ht_get_fl_w(widget) ((widget)->fl_scale_w)
 
 /*** @param widget The widget to be queried.
  *** @returns The flexibility of the widget in the height direction.
  ***/
-#define ht_get_fl_h(widget) ((widget)->total_fl_h)
+#define ht_get_fl_h(widget) ((widget)->fl_scale_h)
 
 /*** @brief A shortcut function to get the flexibility when writing the
  ***        LEFT CSS attribute.
@@ -444,22 +441,10 @@ int ht_get_total_h__INTERNAL(pWgtrNode widget);
 
 /** ====[ Macros for being lazy ]==== **/
 
-#define ht_flex_x(x, widget) ht_flex(x, ht_get_total_w(widget), ht_get_fl_x(widget))
-#define ht_flex_y(y, widget) ht_flex(y, ht_get_total_h(widget), ht_get_fl_y(widget))
-#define ht_flex_w(w, widget) ht_flex(w, ht_get_total_w(widget), ht_get_fl_w(widget))
-#define ht_flex_h(h, widget) ht_flex(h, ht_get_total_h(widget), ht_get_fl_h(widget))
-
-#define ht_flex_format_all      \
-    "LEFT:"ht_flex_format"; "   \
-    "TOP:"ht_flex_format"; "    \
-    "WIDTH:"ht_flex_format"; "  \
-    "HEIGHT:"ht_flex_format"; " \
-
-#define ht_flex_all(x, y, w, h, widget) \
-    ht_flex_x(x, widget),               \
-    ht_flex_y(y, widget),               \
-    ht_flex_w(w, widget),               \
-    ht_flex_h(h, widget)                \
+#define ht_flex_x(x, widget) ht_flex(x, ht_get_parent_w(widget), ht_get_fl_x(widget))
+#define ht_flex_y(y, widget) ht_flex(y, ht_get_parent_h(widget), ht_get_fl_y(widget))
+#define ht_flex_w(w, widget) ht_flex(w, ht_get_parent_w(widget), ht_get_fl_w(widget))
+#define ht_flex_h(h, widget) ht_flex(h, ht_get_parent_h(widget), ht_get_fl_h(widget))
 
 // Workaround because -lm isn't passed to my editor and this was the easiest way to fix it.
 // This code should not appear in a pull request. If you are a code reviewer, remove this
@@ -469,4 +454,3 @@ int ht_get_total_h__INTERNAL(pWgtrNode widget);
 #endif
 
 #endif /* _HT_RENDER_H */
-

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdbool.h>
 #include "ht_render.h"
 #include "obj.h"
 #include "cxlib/mtask.h"
@@ -75,6 +76,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
     char border_color[64];
     char image_position[16]; /* top, left, right, bottom */
     char image[OBJSYS_MAX_PATH];
+    bool has_image;
     char h_align[16];
     int image_width=0, image_height=0, image_margin=0;
 
@@ -137,9 +139,15 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Image source **/
 	if (wgtrGetPropertyValue(tree,"image",DATA_T_STRING,POD(&ptr)) != 0)
+	    {
 	    strcpy(image, "");
+	    has_image = false;
+	    }
 	else
+	    {
 	    strtcpy(image, ptr, sizeof(image));
+	    has_image = true;
+	    }
 
 	/** Image sizing **/
 	if (wgtrGetPropertyValue(tree,"image_width",DATA_T_INTEGER, POD(&image_width)) != 0)
@@ -205,33 +213,39 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_textbutton.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 
-	/** Initial CSS styles **/
+	/** Calculate size adjustment. **/
+	const int adj = (2 * box_offset) + 1;
+	
+	/** Write CSS for the container that will hold the button. **/
 	htrAddStylesheetItem_va(s,
 	    "\t#tb%POSpane { "
-		"POSITION:absolute; "
-		"VISIBILITY:inherit; "
-		"LEFT:"ht_flex_format"; "
-		"TOP:"ht_flex_format"; "
-		"WIDTH:"ht_flex_format"; "
-		"%[HEIGHT:"ht_flex_format"; %]"
-		"Z-INDEX:%POS; "
-		"OVERFLOW:hidden; "
+		"position:absolute; "
+		"visibility:inherit; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"%[height:"ht_flex_format"; %]"
+		"z-index:%POS; "
+		"overflow:hidden; "
 		"display:table; "
 	    "}\n",
 	    id,
-	            ht_flex(x,                ht_get_total_w(tree), ht_get_fl_x(tree)),
-	            ht_flex(y,                ht_get_total_h(tree), ht_get_fl_y(tree)),
-	            ht_flex(w-1-2*box_offset, ht_get_total_w(tree), ht_get_fl_w(tree)),
-	    (h>=0), ht_flex(h-1-2*box_offset, ht_get_total_h(tree), ht_get_fl_h(tree)),
+	              ht_flex_x(x,       tree),
+	              ht_flex_y(y,       tree),
+	              ht_flex_w(w - adj, tree),
+	    (h >= 0), ht_flex_h(h - adj, tree),
 	    z
 	);
-	// CSS button click animation (replaces manual the JS implementation).
+	
+	/** Button click animation. **/
 	if (is_enabled) {
 	    htrAddStylesheetItem_va(s,
 		"\t#tb%POSpane:active { transform: translate(1px, 1px); }\n",
 		id
 	    );
 	}
+	
+	/** Write CSS for the button content, inside the border. **/
 	htrAddStylesheetItem_va(s,
 	    "\t#tb%POSpane .cell { "
 		"height:100%%; "
@@ -260,14 +274,20 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    bgstyle
 	);
 
-	/** CSS for image on the button **/
-	if (image[0] && (image_width || image_height || image_margin))
+	/** Write CSS for image on the button. **/
+	if (has_image && (image_width != 0 || image_height != 0 || image_margin != 0))
 	    {
-	    htrAddStylesheetItem_va(s, "\t#tb%POSpane img { %[height:%POSpx; %]%[width:%POSpx; %]%[margin:%POSpx;%] }\n",
-		    id,
-		    image_height, image_height,
-		    image_width, image_width,
-		    image_margin, image_margin);
+	    htrAddStylesheetItem_va(s,
+		"\t#tb%POSpane img { "
+		    "%[height:%POSpx; %]"
+		    "%[width:%POSpx; %]"
+		    "%[margin:%POSpx; %]"
+		"}\n",
+		id,
+		(image_height != 0), image_height,
+		(image_width  != 0), image_width,
+		(image_margin != 0), image_margin
+	    );
 	    }
 
 #if 00
@@ -291,30 +311,56 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** We need two DIVs here because of a long-outstanding Firefox bug :( **/
 	htrAddBodyItem_va(s,
-	    "<div id=\"tb%POSpane\">"
-		"<div class=\"cell\">"
-		    "%[<img border=\"0\" src=\"%STR&HTE\"/><br>%]"
-		    "%[<img border=\"0\" src=\"%STR&HTE\" style=\"vertical-align:middle;\"/>%]"
+	    "<div id='tb%POSpane'>"
+		"<div class='cell'>"
+		    "%[<img border='0' src='%STR&HTE'/><br>%]"
+		    "%[<img border='0' src='%STR&HTE' style='vertical-align:middle;'/>%]"
 		    "<span>%STR&HTE</span>"
-		    "%[<img border=\"0\" src=\"%STR&HTE\" style=\"vertical-align:middle;\"/>%]"
-		    "%[<br><img border=\"0\" src=\"%STR&HTE\"/>%]"
+		    "%[<img border='0' src='%STR&HTE' style='vertical-align:middle;'/>%]"
+		    "%[<br><img border='0' src='%STR&HTE'/>%]"
 		"</div>"
 	    "</div>",
 	    id,
-	    (image[0] && !strcmp(image_position, "top")), image,
-	    (image[0] && !strcmp(image_position, "left")), image,
+	    (has_image && strcmp(image_position, "top") == 0), image,
+	    (has_image && strcmp(image_position, "left") == 0), image,
 	    text,
-	    (image[0] && !strcmp(image_position, "right")), image,
-	    (image[0] && !strcmp(image_position, "bottom")), image
+	    (has_image && strcmp(image_position, "right") == 0), image,
+	    (has_image && strcmp(image_position, "bottom") == 0), image
 	);
 
 	/** Script initialization call. **/
 	//htrAddScriptInit_va(s, "    tb_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), span:document.getElementById(\"tb%POSspan\"), ena:%INT, c1:\"%STR&JSSTR\", c2:\"%STR&JSSTR\", dc1:\"%STR&JSSTR\", top:null, bottom:null, right:null, left:null, width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&JSSTR'});\n",
 		//name, id, is_enabled, fgcolor1, fgcolor2, disable_color, w, h, is_ts, name, text);
-	htrAddScriptInit_va(s, "    tb_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), ena:%INT, c1:\"%STR&JSSTR\", c2:\"%STR&JSSTR\", dc1:\"%STR&JSSTR\", top:null, bottom:null, right:null, left:null, width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&JSSTR'});\n",
-		name, is_enabled, fgcolor1, fgcolor2, disable_color, w, h, is_ts, name, text);
+	htrAddScriptInit_va(s,
+	    "tb_init({ "
+		"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"ena:%INT, "
+		"c1:'%STR&JSSTR', "
+		"c2:'%STR&JSSTR', "
+		"dc1:'%STR&JSSTR', "
+		"top:null, "
+		"bottom:null, "
+		"right:null, "
+		"left:null, "
+		"width:%INT, "
+		"height:%INT, "
+		"tristate:%INT, "
+		"name:'%STR&SYM', "
+		"text:'%STR&JSSTR', "
+	    "});\n",
+	    name,
+	    is_enabled,
+	    fgcolor1,
+	    fgcolor2,
+	    disable_color,
+	    w,
+	    h,
+	    is_ts,
+	    name,
+	    text
+	);
 
-	/** Add the event handling scripts **/
+	/** Add event handlers. **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "tb", "tb_mousedown");
 	htrAddEventHandlerFunction(s, "document", "MOUSEUP", "tb", "tb_mouseup");
 	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "tb", "tb_mouseover");

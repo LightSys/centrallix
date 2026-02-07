@@ -135,6 +135,8 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    if (!strcmp(ptr,"flat")) style = 2;
 	    if (!strcmp(ptr,"bordered")) style = 3;
 	    }
+	    
+	/** Computes styling colors. **/
 	if (style == 1) /* raised */
 	    {
 	    c1 = "white";
@@ -153,7 +155,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 		strtcpy(bdr,ptr,sizeof(bdr));
 	    }
 
-	/** Ok, write the style header items. **/
+	/** Write the CSS for borders on the pane dom node. **/
 	int offset = 0;
 	if (style == 2) { /* flat, the default style, nothing to do */ }
 	else if (style == 0 || style == 1) /* lowered or raised */
@@ -183,24 +185,29 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    );
 	    }
 	
+	/** Apply the offset to the width and height. **/
+	w += offset;
+	h += offset;
+	
+	/** Write the main CSS for the pane DOM node. **/
 	htrAddStylesheetItem_va(s,
 	    "\t#pn%POSmain {"
-		"POSITION:absolute; "
-		"VISIBILITY:inherit; "
-		"OVERFLOW:hidden; "
-		"LEFT:"ht_flex_format"; "
-		"TOP:"ht_flex_format"; "
-		"WIDTH:"ht_flex_format"; "
-		"HEIGHT:"ht_flex_format"; "
-		"Z-INDEX:%POS; "
-		"border-radius: %INTpx;"
-		"%STR"
+		"position:absolute; "
+		"visibility:inherit; "
+		"overflow:hidden; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"height:"ht_flex_format"; "
+		"z-index:%POS; "
+		"border-radius:%INTpx; "
+		"%STR "
 	    "}\n",
 	    id,
-	    ht_flex(x,          ht_get_total_w(tree), ht_get_fl_x(tree)),
-	    ht_flex(y,          ht_get_total_h(tree), ht_get_fl_y(tree)),
-	    ht_flex(w + offset, ht_get_total_w(tree), ht_get_fl_w(tree)),
-	    ht_flex(h + offset, ht_get_total_h(tree), ht_get_fl_h(tree)),
+	    ht_flex_x(x, tree),
+	    ht_flex_y(y, tree),
+	    ht_flex_w(w, tree),
+	    ht_flex_h(h, tree),
 	    z,
 	    border_radius,
 	    main_bg

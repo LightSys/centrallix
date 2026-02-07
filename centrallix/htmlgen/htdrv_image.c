@@ -75,9 +75,9 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
     char src[256];
     int x=-1,y=-1,w,h;
     int id, i;
-    char *text;
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
+    char* alt_text;
     char* aspect;
 
 	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
@@ -104,9 +104,9 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	if(wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) == 0)
-	    text=nmSysStrdup(ptr);
+	    alt_text=nmSysStrdup(ptr);
 	else
-	    text=nmSysStrdup("");
+	    alt_text=nmSysStrdup("");
 
 	/** Image aspect scaling: stretch or preserve **/
 	if(wgtrGetPropertyValue(tree,"aspect",DATA_T_STRING,POD(&ptr)) == 0)
@@ -122,7 +122,7 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	/*if (!htrCheckAddExpression(s, tree, name, "source") && wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTIMG","Image widget must have a 'source' property");
-	    nmSysFree(text);
+	    nmSysFree(alt_text);
 	    return -1;
 	    }*/
 	ptr = "";
@@ -144,7 +144,28 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    form[0]='\0';
 
-	/** Ok, write the style header items. **/
+	/** Initialize linkage. **/
+	htrAddWgtrObjLinkage_va(s, tree, "img%POS", id);
+	
+	/** Initialize image scripts. **/
+	htrAddScriptInit_va(s,
+	    "im_init("
+		"wgtrGetNodeRef(ns,'%STR&SYM'), "
+		"{field:'%STR&JSSTR', form:'%STR&JSSTR'}"
+	    ");\n", 
+	    name,
+	    fieldname, form
+	);
+	htrAddScriptInclude(s, "/sys/js/htdrv_image.js", 0);
+
+	/** Event Handlers **/
+	htrAddEventHandlerFunction(s, "document","MOUSEUP", "img", "im_mouseup");
+	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "img", "im_mousedown");
+	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "img", "im_mouseover");
+	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "img", "im_mouseout");
+	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "img", "im_mousemove");
+	
+	/** Write the style for the image container div. **/
 	htrAddStylesheetItem_va(s,
 	    "\t#img%POS { "
 		"left:"ht_flex_format"; "
@@ -155,70 +176,52 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 		"text-align:center; "
 	    "}\n",
 	    id,
-	    ht_flex(x, ht_get_total_w(tree), ht_get_fl_x(tree)),
-	    ht_flex(y, ht_get_total_h(tree), ht_get_fl_y(tree)),
-	    ht_flex(w, ht_get_total_w(tree), ht_get_fl_w(tree)),
-	    ht_flex(h, ht_get_total_h(tree), ht_get_fl_h(tree)),
+	    ht_flex_x(x, tree),
+	    ht_flex_y(y, tree),
+	    ht_flex_w(w, tree),
+	    ht_flex_h(h, tree),
 	    z
 	);
 
-	/** Init image widget (?) **/
-	htrAddWgtrObjLinkage_va(s, tree, "img%POS",id);
-	htrAddScriptInit_va(s, "    im_init(wgtrGetNodeRef(ns,'%STR&SYM'), {field:'%STR&JSSTR', form:'%STR&JSSTR'});\n", 
-		name, fieldname, form);
-	htrAddScriptInclude(s, "/sys/js/htdrv_image.js", 0);
-
-	/** Event Handlers **/
-	htrAddEventHandlerFunction(s, "document","MOUSEUP", "img", "im_mouseup");
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "img", "im_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "img", "im_mouseover");
-	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "img", "im_mouseout");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "img", "im_mousemove");
-
-	/** HTML body <DIV> element for the base layer. **/
-	if (!strcmp(aspect, "stretch"))
-	    {
-	    htrAddBodyItemLayer_va(s,
-		0, "img%POS", id, "wimage",
-		"\n<img "
-		    "class=\"wimage\" "
-		    "id=\"im%POS\" "
-		    "width=\"%POS\" "
-		    "height=\"%POS\" "
-		    "style=\""
-			"width: 100%%; "
-			"height: 100%%; "
-		    "\""
-		    "src=\"%STR&HTE\" "
-		">\n",
-		id, w, h, src);
-	    }
-	else // "preserve"
-	    {
-	    htrAddBodyItemLayer_va(s,
-		0, "img%POS", id, "wimage",
-		"\n<img "
-		    "class=\"wimage\" "
-		    "id=\"im%POS\" "
-		    "width=\"%POS\" "
-		    "height=\"%POS\" "
-		    "style=\""
-			"width: 100%%; "
-			"height: auto; "
-			"max-width:fit-content; "
-			"max-height:fit-content; "
-			"display:inline; "
-		    "\""
-		    "src=\"%STR&HTE\" "
-		">\n",
-		id, w, h, src);
-	    }
+	/** Use a style that honors the aspect ratio attribute. **/
+	char* style = (strcmp(aspect, "stretch") == 0)
+	    ? /* "stretch" */
+	    "width:100%; "
+	    "height:100%; "
+	    : /* "preserve" */
+	    "width:100%; "
+	    "height:auto; "
+	    "max-width:fit-content; "
+	    "max-height:fit-content; "
+	    "display:inline; ";
+	
+	/** Write image HTML, including the containing div. **/
+	htrAddBodyItemLayer_va(s, 0,
+	    "img%POS", id, "wimage",
+	    "\n<img "
+		"class='wimage' "
+		"id='im%POS' "
+		"width='%POS' "
+		"height='%POS' "
+		"style='%STR' "
+		"src='%STR&HTE' "
+		"alt='%STR&HTE' "
+	    ">\n",
+	    id,
+	    w,
+	    h,
+	    style,
+	    src,
+	    alt_text
+	);
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
 
-	nmSysFree(text);
+	/** Clean up. **/
+	nmSysFree(alt_text);
+	nmSysFree(aspect);
 
     return 0;
     }
