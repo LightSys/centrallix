@@ -1354,6 +1354,8 @@ function pg_init(l,a,gs,ct) //SETH: ??
     ia.Add("Launch", pg_launch);
     ia.Add("Close", pg_close);
     ia.Add("Alert", pg_alert);
+    ia.Add("Log", pg_log);
+    ia.Add("ReloadPage", pg_reload_page);
 
     // Events
     var ie = window.ifcProbeAdd(ifEvent);
@@ -1433,6 +1435,16 @@ function pg_alert(aparam)
     pg_keyschedid = 0;
     pg_keytimeoutid = 0;
     alert(aparam.Message);
+    }
+
+function pg_log({ Message })
+    {
+    console.log(Message);
+    }
+
+function pg_reload_page()
+    {
+    window.location.reload();
     }
 
 function pg_reveal_cb(e)
