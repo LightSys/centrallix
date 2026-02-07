@@ -152,9 +152,7 @@ function wn_init(param)
 
 function wn_action_point(aparam)
     {
-    var divs = htutil_point(this, aparam.X, aparam.Y, aparam.AtWidget, aparam.BorderColor, aparam.FillColor, this.point1, this.point2);
-    this.point1 = divs.p1;
-    this.point2 = divs.p2;
+    htr_action_point.call(this, aparam);
     }
 
 // Popup - pops up a window in the way that a menu might pop up.
