@@ -629,7 +629,7 @@ checkbox_test "widget/page"
 
 		    <action name="Open">Opens the window.  If the parameter IsModal is set to 1, then the window becomes modal (only the window's contents are accessible to the user until the window is closed).  If the parameter NoClose is set to 1, then the close button in the upper right corner of the window becomes inactive and the window will only close via the Close, SetVisibility, and ToggleVisibility actions.</action>
 			
-			<action name="Point">Makes the window relocate to a side using a triangle (pop over).</action>
+			<action name="Point">Creates a triangular pointer on the edge of the window to point at a given (X,Y) coordinate.</action>
 
 			<action name="Popup">Opens a window like a pop-up.</action>
 			
