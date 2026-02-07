@@ -9,6 +9,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+/*** This function works entirely using server-side dimensions.
+ *** Responsive dimensions are handled elsewhere.
+ ***
+ *** @param child The child to be resized.
+ *** @param oldw The previous width in server-side adaptive coordinates.
+ *** @param oldh The previous height in server-side adaptive coordinates.
+ *** @param neww The new width in server-side adaptive coordinates.
+ *** @param newh The new height in server-side adaptive coordinates.
+ ***/
 function al_childresize(child, oldw, oldh, neww, newh)
     {
     if (oldw != neww || oldh != newh)
@@ -37,29 +46,27 @@ function al_reflow_buildlist(node, children)
 	}
     }
 
+/*** Note:
+ *** This function gets all its values from server properties, so its generated
+ *** positions are in server layout. Thus, we convert them right before they
+ *** assigned to allow for responsive values.
+ ***/
 function al_reflow()
     {
     // Get configuration
     var width = wgtrGetServerProperty(this,"width");
     var height = wgtrGetServerProperty(this,"height");
-    var spacing = wgtrGetServerProperty(this,"spacing");
-    if (!spacing) spacing = 0;
-    var cellsize = wgtrGetServerProperty(this,"cellsize");
-    if (!cellsize) cellsize = -1;
-    var align = wgtrGetServerProperty(this,"align");
-    if (!align) align = "left";
-    var justify_mode = wgtrGetServerProperty(this,"justify");
-    if (!justify_mode) justify_mode = "none";
+    var spacing = wgtrGetServerProperty(this,"spacing",0);
+    // var cellsize = wgtrGetServerProperty(this,"cellsize",-1); // Unused
+    var align = wgtrGetServerProperty(this,"align","left");
+    // var justify_mode = wgtrGetServerProperty(this,"justify","none"); // Unused
     var type = "vbox";
     if (wgtrGetServerProperty(this,"style") == "hbox" || wgtrGetType(this) == "widget/hbox")
 	type = "hbox";
-    var column_width;
-    if (type == "vbox")
-	column_width = wgtrGetServerProperty(this,"column_width");
+    var column_width, row_height;
+    if (type == "vbox") column_width = wgtrGetServerProperty(this,"column_width");
+    else		row_height = wgtrGetServerProperty(this,"row_height");
     if (!column_width) column_width = width;
-    var row_height;
-    if (type == "hbox")
-	row_height = wgtrGetServerProperty(this,"row_height");
     if (!row_height) row_height = height;
 
     // Build the child list
@@ -87,10 +94,9 @@ function al_reflow()
     for(var i=0; i<children.length; i++)
 	{
 	var child = children[i];
-	var cwidth = wgtrGetServerProperty(child,"width");
-	var cheight = wgtrGetServerProperty(child,"height");
 	if (type == 'hbox')
 	    {
+	    const cwidth = wgtrGetServerProperty(child, "width");
 	    if (xo + cwidth > width)
 		{
 		if (xo > 0 && row_height > 0 && row_offset + row_height*2 + spacing <= height)
@@ -108,6 +114,7 @@ function al_reflow()
 	    }
 	else if (type == 'vbox')
 	    {
+	    const cheight = wgtrGetServerProperty(child, "height");
 	    if (yo + cheight > height)
 		{
 		if (yo > 0 && column_width > 0 && column_offset + column_width*2 + spacing <= width)
@@ -148,10 +155,9 @@ function al_reflow()
     for(var i=0; i<children.length; i++)
 	{
 	var child = children[i];
-	var cwidth = wgtrGetServerProperty(child,"width");
-	var cheight = wgtrGetServerProperty(child,"height");
 	if (type == 'hbox')
 	    {
+	    const cwidth = wgtrGetServerProperty(child, "width");
 	    if (xo + cwidth > width)
 		{
 		if (xo > 0 && row_height > 0 && row_offset + row_height*2 + spacing <= height)
@@ -164,17 +170,19 @@ function al_reflow()
 		}
 	    if (child.tagName)
 		{
-		setRelativeX(child, xo + xalign);
-		if (wgtrGetServerProperty(child,"r_y") == -1)
-		    setRelativeY(child, row_offset);
+		setResponsiveX(child, xo + xalign);
+		const r_y = wgtrGetServerProperty(child, "r_y");
+		if (r_y == -1)
+		    setResponsiveY(child, row_offset);
 		else
-		    setRelativeY(child, row_offset + wgtrGetServerProperty(child,"r_y"));
+		    setResponsiveY(child, row_offset + r_y);
 		}
 	    xo += cwidth;
 	    xo += spacing;
 	    }
 	else if (type == 'vbox')
 	    {
+	    const cheight = wgtrGetServerProperty(child, "height");
 	    if (yo + cheight > height)
 		{
 		if (yo > 0 && column_width > 0 && column_offset + column_width*2 + spacing <= width)
@@ -187,11 +195,12 @@ function al_reflow()
 		}
 	    if (child.tagName)
 		{
-		setRelativeY(child, yo + yalign);
-		if (wgtrGetServerProperty(child,"r_x") == -1)
-		    setRelativeX(child, column_offset);
+		setResponsiveY(child, yo + yalign);
+		const r_x = wgtrGetServerProperty(child, "r_x");
+		if (r_x == -1)
+		    setResponsiveX(child, column_offset);
 		else
-		    setRelativeX(child, column_offset + wgtrGetServerProperty(child,"r_x"));
+		    setResponsiveX(child, column_offset + r_x);
 		}
 	    yo += cheight;
 	    yo += spacing;
