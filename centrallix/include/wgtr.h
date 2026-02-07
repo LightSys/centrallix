@@ -103,9 +103,9 @@ typedef struct _WN
     int		pre_x, pre_y, pre_width, pre_height;  /** pre-layout geom. **/
     int		fl_x, fl_y, fl_width, fl_height;/** Flexibilities as specified by the designer **/
     double	fx, fy, fw, fh;			/** internal flexibility calculations **/
-    double	total_fl_x, total_fl_y;		/** Total flexiblities as calculated for this layout. */
-    double	total_fl_w, total_fl_h;		/** Responsive CSS adjustment weights for width and height */
-    int		parent_w, parent_h;		/** The expected size of the parent container */
+    double	fl_scale_x, fl_scale_y;		/** Scaled x and y flexibilities calculated for this layout. */
+    double	fl_scale_w, fl_scale_h;		/** Scaled w and h flexibilities calculated for this layout. */
+    int		fl_parent_w, fl_parent_h;	/** The expected size of the parent container, used when it flexes. */
     int		min_width, min_height;		/** absolute minimums **/
     int		x, y, width, height;		/** actual geometry **/
     int		top, bottom, left, right;	/** container offsets **/

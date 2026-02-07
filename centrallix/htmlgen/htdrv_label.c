@@ -199,13 +199,13 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	htrAddStylesheetItem_va(s,
 	    "\t#lbl%POS { "
-		"POSITION:absolute; "
-		"VISIBILITY:inherit; "
-		"LEFT:"ht_flex_format"; "
-		"TOP:"ht_flex_format"; "
-		"WIDTH:"ht_flex_format"; "
-		"%[HEIGHT:"ht_flex_format"; %]"
-		"Z-INDEX:%POS; "
+		"position:absolute; "
+		"visibility:inherit; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"%[height:"ht_flex_format"; %]"
+		"z-index:%POS; "
 		"cursor:default; "
 		"%[font-weight:bold; %]"
 		"%[color:%STR&CSSVAL; %]"
@@ -217,10 +217,10 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 		"%[font-style:italic; %]"
 	    "}\n",
 	    id,
-	    ht_flex(x, ht_get_total_w(tree),  ht_get_fl_x(tree)),
-	    ht_flex(y, ht_get_total_h(tree), ht_get_fl_y(tree)),
-	    ht_flex(w, ht_get_total_w(tree),  ht_get_fl_w(tree)),
-	    (!auto_height), ht_flex(h, ht_get_total_h(tree), ht_get_fl_h(tree)),
+	    ht_flex_x(x, tree),
+	    ht_flex_y(y, tree),
+	    ht_flex_w(w, tree),
+	    (!auto_height), ht_flex_h(h, tree),
 	    z,
 	    (is_bold),
 	    (*fgcolor), fgcolor,
@@ -244,12 +244,11 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 		"padding:0px; "
 		"margin:0px; "
 		"border-spacing:0px; "
-		"width:"ht_flex_format"; "
+		"width:100%%; "
 	    "}\n",
 	    id,
 	    align,
-	    !strcmp(valign, "middle"),
-	    ht_flex(w, ht_get_total_w(tree), ht_get_fl_w(tree))
+	    (strcmp(valign, "middle") == 0)
 	);
 
 	htrAddWgtrObjLinkage_va(s, tree, "lbl%POS",id);

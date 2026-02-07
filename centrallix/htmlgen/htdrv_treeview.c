@@ -174,18 +174,18 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    htrAddStylesheetItem_va(s,
 		"\t#tv%POSroot { "
-		    "POSITION:absolute; "
-		    "VISIBILITY:%STR; "
-		    "LEFT:"ht_flex_format"; "
-		    "TOP:"ht_flex_format"; "
-		    "WIDTH:"ht_flex_format"; "
-		    "Z-INDEX:%POS; "
+		    "position:absolute; "
+		    "visibility:%STR; "
+		    "left:"ht_flex_format"; "
+		    "top:"ht_flex_format"; "
+		    "width:"ht_flex_format"; "
+		    "z-index:%POS; "
 		"}\n",
 		id,
 		(show_root) ? "inherit" : "hidden",
-		ht_flex(x, ht_get_total_w(tree), ht_get_fl_x(tree)),
-		ht_flex(y, ht_get_total_h(tree), ht_get_fl_y(tree)),
-		ht_flex(w, ht_get_total_w(tree), ht_get_fl_w(tree)),
+		ht_flex_x(x, tree),
+		ht_flex_y(y, tree),
+		ht_flex_w(w, tree),
 		z
 	    );
 	    }
@@ -221,32 +221,31 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    {
 	    htrAddBodyItem_va(s,
-		"<DIV "
+		"<div "
 		    "class=\"tv%POS\" "
-		    "ID=\"tv%POSroot\" "
+		    "id=\"tv%POSroot\" "
 		    "style=\""
-			"POSITION:absolute; "
-			"VISIBILITY:%STR; "
-			"LEFT:"ht_flex_format"; "
-			"TOP:"ht_flex_format"; "
-			"WIDTH:"ht_flex_format"; "
-			"Z-INDEX:%POS; "
+			"position:absolute; "
+			"visibility:%STR; "
+			"left:"ht_flex_format"; "
+			"top:"ht_flex_format"; "
+			"width:"ht_flex_format"; "
+			"z-index:%POS; "
 		    "\""
 		">"
-		    "<IMG SRC=\"%STR&HTE\" align=left>"
+		    "<img src=\"%STR&HTE\" align=left>"
 		    "&nbsp;%STR&HTE"
-		"</DIV>\n",
-		id, /** Class **/
-		id, /** ID **/
+		"</div>\n",
+		id, /* class */
+		id, /* id */
 		(show_root) ? "inherit" : "hidden",
-		ht_flex(x, ht_get_total_w(tree), ht_get_fl_x(tree)),
-		ht_flex(y, ht_get_total_h(tree), ht_get_fl_y(tree)),
-		ht_flex(w, ht_get_total_w(tree), ht_get_fl_w(tree)),
+		ht_flex_x(x, tree),
+		ht_flex_y(y, tree),
+		ht_flex_w(w, tree),
 		z,
 		(*icon) ? icon : "/sys/images/ico02b.gif", src
 	    );
 	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "tv%POSload", id, NULL, "");
-	    /*htrAddBodyItem_va(s, "<DIV ID=\"tv%dload\" style=\"POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; clip:rect(0px,0px,0px,0px); Z-INDEX:0;\"></DIV>\n",id);*/
 	    }
 
 	/** Event handler for click-on-url **/

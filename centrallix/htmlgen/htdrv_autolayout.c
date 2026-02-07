@@ -111,10 +111,10 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 		"Z-INDEX:%POS; "
 	    "}\n",
 	    id,
-	    ht_flex(x, ht_get_total_w(tree), ht_get_fl_x(tree)),
-	    ht_flex(y, ht_get_total_h(tree), ht_get_fl_y(tree)),
-	    ht_flex(w, ht_get_total_w(tree), ht_get_fl_w(tree)),
-	    ht_flex(h, ht_get_total_h(tree), ht_get_fl_h(tree)),
+	    ht_flex_x(x, tree),
+	    ht_flex_y(y, tree),
+	    ht_flex_w(w, tree),
+	    ht_flex_h(h, tree),
 	    z
 	);
 
