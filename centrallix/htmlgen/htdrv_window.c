@@ -3,8 +3,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <math.h>
+
 #include "ht_render.h"
 #include "obj.h"
+#include "cxlib/util.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
@@ -59,14 +61,11 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    pWgtrNode sub_tree;
-    int x,y,w,h;
-    int tbw,tbh,bx,by,bw,bh;
     int id, i;
     int visible = 1;
-    char bgnd_style[128] = "";
-    char hdr_bgnd_style[128] = "";
-    char txtcolor[64] = "";
+    char background_style[128] = "";
+    char header_background_style[128] = "";
+    char text_color[64] = "";
     int has_titlebar = 1;
     char title[128];
     int is_dialog_style = 0;
@@ -76,7 +75,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
     int is_toplevel = 0;
     int is_modal = 0;
     char icon[128];
-    int shadow_offset,shadow_radius,shadow_angle;
+    int shadow_offset, shadow_radius, shadow_angle;
     char shadow_color[128];
     int border_radius;
     char border_color[128];
@@ -99,6 +98,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	id = (HTWIN.idcnt++);
 
     	/** Get x,y,w,h of this object **/
+	int x, y, w, h;
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x = 0;
 	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y = 0;
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
@@ -156,17 +156,17 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	is_modal = htrGetBoolean(tree, "modal", 0);
 
 	/** Check background color **/
-	htrGetBackground(tree, NULL, 1, bgnd_style, sizeof(bgnd_style));
+	htrGetBackground(tree, NULL, 1, background_style, sizeof(background_style));
 
 	/** Check header background color/image **/
-	if (htrGetBackground(tree, "hdr", 1, hdr_bgnd_style, sizeof(hdr_bgnd_style)) < 0)
-	    strcpy(hdr_bgnd_style, bgnd_style);
+	if (htrGetBackground(tree, "hdr", 1, header_background_style, sizeof(header_background_style)) < 0)
+	    strcpy(header_background_style, background_style);
 
 	/** Check title text color. **/
 	if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    strtcpy(txtcolor,ptr,sizeof(txtcolor));
+	    strtcpy(text_color, ptr, sizeof(text_color));
 	else
-	    strcpy(txtcolor,"black");
+	    strcpy(text_color, "black");
 
 	/** Check window title. **/
 	if (wgtrGetPropertyValue(tree,"title",DATA_T_STRING,POD(&ptr)) == 0)
@@ -208,79 +208,95 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Compute titlebar width & height - includes edge below titlebar. **/
-	if (has_titlebar)
-	    {
-	    tbw = w-2;
-	    if (is_dialog_style || !s->Capabilities.Dom0NS)
-	        tbh = 24;
-	    else
-	        tbh = 23;
-	    }
-	else
-	    {
-	    tbw = w-2;
-	    tbh = 0;
-	    }
-
-	/** Compute window body geometry **/
-	if (is_dialog_style)
-	    {
-	    bx = 1;
-	    by = 1+tbh;
-	    bw = w-2;
-	    bh = h-tbh-2;
-	    }
-	else
-	    {
-	    bx = 2;
-	    bw = w-4;
-	    if (has_titlebar)
-		{
-		by = 1+tbh;
-		bh = h-tbh-3;
-		}
-	    else
-		{
-		by = 2;
-		bh = h-4;
-		}
-	    }
+	int title_bar_height = (has_titlebar) ? ((is_dialog_style) ? 24 : 23) : 0;
 
 	/** Draw the main window layer and outer edge. **/
-	/*htrAddStylesheetItem_va(s,"\t#wn%POSbase { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; overflow: hidden; clip:rect(0px, %INTpx, %INTpx, 0px); Z-INDEX:%POS;}\n",
-		id,visible?"inherit":"hidden",x,y,w-2*box_offset,h-2*box_offset, w, h, z+100);*/
-	htrAddStylesheetItem_va(s,"\t#wn%POSbase { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; overflow: hidden; Z-INDEX:%POS;}\n",
-		id,visible?"inherit":"hidden",x,y,w-2*box_offset,h-2*box_offset, z+100);
-	htrAddStylesheetItem_va(s,"\t#wn%POSbase { border-style: %STR&CSSVAL; border-width: %INTpx; border-color: %STR&CSSVAL; border-radius: %INTpx; }\n", 
-		id, border_style, border_width, border_color, border_radius);
+	/*** We don't even bother making these styles flex responsively because
+	 *** they will be overwritten by the JS anyway.
+	 ***/
+	htrAddStylesheetItem_va(s,
+	    "\t#wn%POSbase { "
+		"position:absolute; "
+		"visibility:%STR; "
+		"left:%INTpx; "
+		"top:%INTpx; "
+		"width:%POSpx; "
+		"height:%POSpx; "
+		"overflow:hidden; "
+		"z-index:%POS; "
+		"border-style:%STR&CSSVAL; "
+		"border-width:%INTpx; "
+		"border-color:%STR&CSSVAL; "
+		"border-radius:%INTpx; "
+	    "}\n",
+	    id,
+	    (visible) ? "inherit" : "hidden",
+	    x,
+	    y,
+	    w - 2 * box_offset,
+	    h - 2 * box_offset,
+	    z + 100,
+	    border_style,
+	    border_width,
+	    border_color,
+	    border_radius
+	);
 	if (shadow_radius > 0)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#wn%POSbase { box-shadow: %DBLpx %DBLpx %POSpx %STR&CSSVAL; }\n", id,
-			    sin(shadow_angle*M_PI/180)*shadow_offset, cos(shadow_angle*M_PI/180)*(-shadow_offset), shadow_radius, shadow_color);
-	    }
-
-	/** draw titlebar div **/
-	if (has_titlebar)
-	    {
-	    htrAddStylesheetItem_va(s,"\t#wn%POStitlebar { POSITION: absolute; VISIBILITY: inherit; LEFT: 0px; TOP: 0px; HEIGHT: %POSpx; WIDTH: 100%%; overflow: hidden; Z-INDEX: %POS; color:%STR&CSSVAL; cursor:default; %STR}\n", id, tbh-1-box_offset, z+1, txtcolor, hdr_bgnd_style);
-	    htrAddStylesheetItem_va(s,"\t#wn%POStitlebar { border-style: solid; border-width: 0px 0px 1px 0px; border-color: gray; }\n", id);
+	    double shadow_angle_radians = (double)shadow_angle * M_PI/180;
+	    htrAddStylesheetItem_va(s,
+		"\t#wn%POSbase { box-shadow: %DBLpx %DBLpx %POSpx %STR&CSSVAL; }\n", id,
+		sin(shadow_angle_radians)*shadow_offset, cos(shadow_angle_radians)*(-shadow_offset), shadow_radius, shadow_color
+	    );
 	    }
 
 	/** inner structure depends on dialog vs. window style **/
+	int main_width, main_height, clip_height, dialogue_width;
+	char* border_color_str;
 	if (is_dialog_style)
 	    {
 	    /** window inner container -- dialog **/
-	    htrAddStylesheetItem_va(s,"\t#wn%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:%INTpx; WIDTH: %POSpx; HEIGHT:%POSpx; overflow: hidden; clip:rect(0px, %INTpx, %INTpx, 0px); Z-INDEX:%POS; %STR}\n",
-		    id, tbh?(tbh-1):0, w-2, h-tbh-1, w, h-tbh+1, z+1, bgnd_style);
-	    htrAddStylesheetItem_va(s,"\t#wn%POSmain { border-style: solid; border-width: %POSpx 0px 0px 0px; border-color: white; }\n", id, has_titlebar?1:0);
+	    main_width = w - 2;
+	    main_height = h - title_bar_height - 1;
+	    clip_height = h - title_bar_height + 1;
+	    dialogue_width = 0;
+	    border_color_str = "white";
 	    }
 	else
 	    {
 	    /** window inner container -- window **/
-	    htrAddStylesheetItem_va(s,"\t#wn%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:%INTpx; WIDTH: %POSpx; HEIGHT:%POSpx; overflow: hidden; clip:rect(0px, %INTpx, %INTpx, 0px); Z-INDEX:%POS; %STR}\n",
-		    id, tbh?(tbh-1):0, w-2-2*box_offset, h-tbh-(has_titlebar?1:2)-(has_titlebar?1:2)*box_offset, w, h-tbh+(has_titlebar?1:0)-2*box_offset, z+1, bgnd_style);
-	    htrAddStylesheetItem_va(s,"\t#wn%POSmain { border-style: solid; border-width: %POSpx 1px 1px 1px; border-color: gray white white gray; }\n", id, has_titlebar?0:1);
+	    main_width = w - 2 * (box_offset + 1);
+	    main_height = h - title_bar_height - (box_offset + 1) * ((has_titlebar) ? 1 : 2);
+	    clip_height = h - title_bar_height + ((has_titlebar) ? 1 : 0) - 2 * box_offset;
+	    dialogue_width = 1;
+	    border_color_str = "gray white white gray";
 	    }
+	htrAddStylesheetItem_va(s,
+	    "\t#wn%POSmain { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"left:0px; "
+		"top:%INTpx; "
+		"width:%POSpx; "
+		"height:%POSpx; "
+		"overflow:hidden; "
+		"clip:rect(0px, %INTpx, %INTpx, 0px); "
+		"border-style:solid; "
+		"border-color:%STR; "
+		"border-width:%POSpx %POSpx %POSpx %POSpx; "
+		"z-index:%POS; "
+		"%STR"
+	    "}\n",
+	    id,
+	    max(title_bar_height - 1, 0),
+	    main_width,
+	    main_height,
+	    w, clip_height,
+	    border_color_str,
+	    (has_titlebar) ? 1 : 0, dialogue_width, dialogue_width, dialogue_width,
+	    z + 1,
+	    background_style
+	);
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "wn_top_z","10000",0);
@@ -295,7 +311,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "wn_clicked","0",0);
 
 	/** DOM Linkages **/
-	htrAddWgtrObjLinkage_va(s, tree, "wn%POSbase",id);
+	htrAddWgtrObjLinkage_va(s, tree, "wn%POSbase", id);
 	htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(_obj, \"wn%POSmain\")",id);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_window.js", 0);
@@ -312,36 +328,81 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "wn", "wn_mouseout");
 
 	/** Script initialization call. **/
+	htrAddScriptInit_va(s,
+	    "wn_init({ "
+		"mainlayer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"clayer:wgtrGetContainer(wgtrGetNodeRef(ns, '%STR&SYM')), "
+		"titlebar:%[htr_subel(wgtrGetNodeRef(ns, '%STR&SYM'), 'wn%POStitlebar')%]%[null%], "
+		"gshade:%INT, "
+		"closetype:%INT, "
+		"toplevel:%INT, "
+		"modal:%INT, "
+	    "});\n", 
+	    name,
+	    name,
+	    has_titlebar, name, id, !has_titlebar,
+	    gshade,
+	    closetype,
+	    is_toplevel,
+	    is_modal
+	);
+
+	/** Write HTML for the child window. **/
+	htrAddBodyItem_va(s, "<div id='wn%POSbase' class='wnbase'>\n", id);
 	if (has_titlebar)
 	    {
-	    htrAddScriptInit_va(s,"    wn_init({mainlayer:wgtrGetNodeRef(ns,'%STR&SYM'), clayer:wgtrGetContainer(wgtrGetNodeRef(ns,'%STR&SYM')), gshade:%INT, closetype:%INT, toplevel:%INT, modal:%INT, titlebar:htr_subel(wgtrGetNodeRef(ns,'%STR&SYM'),'wn%POStitlebar')});\n", 
-		    name,name,gshade,closetype, is_toplevel, is_modal, name, id);
-	    }
-	else
-	    {
-	    htrAddScriptInit_va(s,"    wn_init({mainlayer:wgtrGetNodeRef(ns,'%STR&SYM'), clayer:wgtrGetNodeRef(ns,'%STR&SYM'), gshade:%INT, closetype:%INT, toplevel:%INT, modal:%INT, titlebar:null});\n", 
-		    name,name,gshade,closetype, is_toplevel, is_modal);
+	    /** Write styles and HTML for the title bar. **/
+	    htrAddStylesheetItem_va(s,
+		"\t#wn%POStitlebar { "
+		    "position:absolute; "
+		    "visibility:inherit; "
+		    "left:0px; "
+		    "top:0px; "
+		    "height:%POSpx; "
+		    "width:calc(100%% - 4px); "
+		    "overflow:hidden; "
+		    "z-index:%POS; "
+		    "color:%STR&CSSVAL; "
+		    "cursor:default; "
+		    "border-style:solid; "
+		    "border-width:0px 0px 1px 0px; "
+		    "border-color:gray; "
+		    "%STR"
+		"}\n",
+		id,
+		title_bar_height - 1 - box_offset,
+		z + 1,
+		text_color,
+		header_background_style
+	    );
+	    htrAddBodyItem_va(s,
+		"<div id='wn%POStitlebar' class='wntitlebar'>"
+		    "<img style='position:absolute; top:2px; left:4px; width:18px; height:18px;' name='icon' src='%STR&HTE'>"
+		    "<div style='position:absolute; top:4px; left:30px; color:%STR&HTE; font-weight:bold;'>%STR&HTE</div>"
+		    "<img style='position:relative; margin-top:3px; margin-right:3px; float:right;' name='close' src='/sys/images/01bigclose.gif'>"
+		"</div>\n",
+		id,
+		icon,
+		text_color, title
+	    );
 	    }
 
-	/** HTML body <DIV> elements for the layers. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"wn%POSbase\" CLASS=\"wnbase\">\n",id);
-	if (has_titlebar)
-	    {
-	    htrAddBodyItem_va(s,"<DIV ID=\"wn%POStitlebar\" class=\"wntitlebar\" >\n",id);
-	    htrAddBodyItem_va(s,"<table border=0 cellspacing=0 cellpadding=0 height=%POS><tr><td><table cellspacing=0 cellpadding=0 border=0 width=%POS><tr><td align=left><TABLE cellspacing=0 cellpadding=0 border=\"0\"><TR><td width=26 align=center><img width=18 height=18 src=\"%STR&HTE\" name=\"icon\"></td><TD valign=\"middle\" nobreak><FONT COLOR='%STR&HTE'>&nbsp;<b>%STR&HTE</b></FONT></TD></TR></TABLE></td><td align=right><IMG src=\"/sys/images/01bigclose.gif\" name=\"close\" align=\"right\"></td></tr></table></td></tr></table>\n", 
-		    tbh-1, tbw-2, icon, txtcolor, title);
-	    htrAddBodyItem(s,   "</DIV>\n");
-	    }
-	htrAddBodyItem_va(s,"<DIV class=\"wnborder\"><DIV ID=\"wn%POSmain\">\n",id);
-
-	/** Check for more sub-widgets within the page. **/
+	/** Write HTML for child widgets in the window. **/
+	htrAddBodyItem_va(s,"<div class='wnborder'><div id='wn%POSmain'>\n",id);
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
-	    sub_tree = xaGetItem(&(tree->Children), i);
-	    htrRenderWidget(s, sub_tree, z+2);
+	    /** TODO: Israel - Rewrite this using util.h, once its updated from the dups branch. **/
+	    const pWgtrNode child = xaGetItem(&(tree->Children), i);
+	    const int ret = htrRenderWidget(s, child, z + 2);
+	    if (ret != 0)
+		{
+		mssError(0, "HTWIN",
+		    "Failed to render child widget '%s:%s' with error code %d.",
+		    child->Namespace, child->Name, ret
+		);
+		}
 	    }
-
-	htrAddBodyItem(s,"</DIV></DIV></DIV>\n");
+	htrAddBodyItem(s,"</div></div></div>\n");
 
     return 0;
     }
