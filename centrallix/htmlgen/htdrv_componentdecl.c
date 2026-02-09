@@ -89,7 +89,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
     int i, j;
     int rval = 0;
     int is_visual = 1;
-    char gbuf[256];
+    char gbuf[256] = "";
     char* gname;
     char* xptr;
     char* yptr;
@@ -184,11 +184,37 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    gname="";
 	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 	    }
+	
+	/** Warning message. **/
+	if (gname[0] == '\0')
+	    {
+	    fprintf(stderr,
+		"Warning: No value specified for gname, which is required to "
+		"be a valid symbol. Expect a printing failure.\n"
+	    );
+	    }
 
 	/** Init component **/
-	htrAddScriptInit_va(s, "    cmpd_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {vis:%POS, gns:%[\"%STR&SYM\"%]%[null%], gname:'%STR&SYM'%[, expe:'%STR&SYM'%]%[, expa:'%STR&SYM'%]%[, expp:'%STR&SYM'%]%[, applyhint:'%STR&SYM'%]});\n", 
-		name, is_visual, *gbuf, gbuf, !*gbuf, gname, *expose_events_for, expose_events_for, *expose_actions_for, expose_actions_for,
-		*expose_props_for, expose_props_for, *apply_hints_to, apply_hints_to);
+	htrAddScriptInit_va(s,
+	    "cmpd_init(wgtrGetNodeRef(ns, '%STR&SYM'), { "
+		"vis:%POS, "
+		"gns:%['%STR&SYM'%]%[null%], "
+		"gname:'%STR&SYM', "
+		"%[expe:'%STR&SYM', %]"
+		"%[expa:'%STR&SYM', %]"
+		"%[expp:'%STR&SYM', %]"
+		"%[applyhint:'%STR&SYM', %]"
+	    "});\n", 
+	    name,
+	    is_visual,
+	    (gbuf[0] != '\0'), gbuf, (gbuf[0] == '\0'),
+	    gname,
+	    (expose_events_for[0] != '\0'), expose_events_for,
+	    (expose_actions_for[0] != '\0'), expose_actions_for,
+	    (expose_props_for[0] != '\0'), expose_props_for,
+	    (apply_hints_to[0] != '\0'), apply_hints_to
+	);
+
 #if 0
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
@@ -427,4 +453,3 @@ htcmpdInitialize()
 
     return 0;
     }
-
