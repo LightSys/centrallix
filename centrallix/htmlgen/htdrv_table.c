@@ -35,7 +35,7 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /*									*/
-/* Module: 	htdrv_table.c           				*/
+/* Module: 	htdrv_table.c						*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	October 29, 1999 					*/
 /* Description:	HTML Widget driver for a data-driven table.  Has three	*/
@@ -57,6 +57,10 @@
 /*		tables are generally best when the data will be read-	*/
 /*		only.  Dynamicrow tables use the most client resources.	*/
 /************************************************************************/
+
+/*** This file uses the optional Comment Anchors VSCode extension, documented
+ *** with CommentAnchorsExtension.md in centrallix-sysdoc.
+ ***/
 
 
 #define HTTBL_MAX_COLS		(64)
@@ -92,12 +96,7 @@ typedef struct
 typedef struct
     {
     char name[64];
-    char sbuf[160];
-    char tbl_bgnd[128];
     char hdr_bgnd[128];
-    char row_bgnd1[128];
-    char row_bgnd2[128];
-    char row_bgndhigh[128];
     char colsep_bgnd[128];
     char textcolor[64];
     char textcolorhighlight[64];
@@ -105,34 +104,25 @@ typedef struct
     char newrow_bgnd[128];
     char newrow_textcolor[64];
     char osrc[64];
-    char row_border[64];
-    char row_shadow_color[64];
-    int row_shadow;
-    int row_shadow_radius;
-    int row_radius;
-    int x,y,w,h;
-    int id;
-    int data_mode;		/* 0="rows" or 1="properties" */
-    int outer_border;
-    int inner_border;
-    int inner_padding;
     httbl_col* col_infs[HTTBL_MAX_COLS];
     int ncols;
+    int id;
+    int x,y,w,h;
+    int data_mode;		/* 0="rows" or 1="properties" */
+    int inner_padding;
     int windowsize;
     int min_rowheight;
     int max_rowheight;
     int cellhspacing;
     int cellvspacing;
-    int followcurrent;
     int dragcols;
     int colsep;
     int colsep_mode;
-    int gridinemptyrows;
+    int grid_in_empty_rows;
     int allow_selection;
     int show_selection;
     int initial_selection;
     int allow_deselection;
-    int reverse_order;
     int overlap_scrollbar;	/* scrollbar overlaps with table */
     int hide_scrollbar;		/* don't show scrollbar at all */
     int demand_scrollbar;	/* only show scrollbar when needed */
@@ -140,20 +130,11 @@ typedef struct
     int rowcache_size;		/* number of rows the table caches for display */
     } httbl_struct;
 
+
 int
 httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
     {
-    int colid;
-    char *ptr;
-    int i;
-    pWgtrNode sub_tree;
-    int subcnt = 0;
-    char *nptr;
-    int h;
-    int first_offset = (t->has_header)?(t->min_rowheight + t->cellvspacing):0;
-    pWgtrNode children[32];
-    int detailcnt;
-    httbl_col* col;
+    char* ptr;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
 	    {
@@ -161,107 +142,279 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    return -1;
 	    }
 
-	/** STYLE for the layer **/
-	htrAddStylesheetItem_va(s,"\t#tbld%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; } \n",t->id,t->x,t->y,(t->overlap_scrollbar)?(t->w):(t->w-18),z+0);
-	htrAddStylesheetItem_va(s,"\t#tbld%POSscroll { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:18px; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",t->id,(t->hide_scrollbar || t->demand_scrollbar)?"hidden":"inherit",t->x+t->w-18,t->y+first_offset,t->h-first_offset,z+0);
-	htrAddStylesheetItem_va(s,"\t#tbld%POSbox { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:16px; HEIGHT:16px; Z-INDEX:%POS; BORDER: solid 1px; BORDER-COLOR: white gray gray white; }\n",t->id,z+1);
+	/** Write CSS for the table base element. **/
+	const int content_width = (t->overlap_scrollbar) ? (t->w) : (t->w - 18);
+	htrAddStylesheetItem_va(s,
+	    "\t#tbld%POSbase { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"height:"ht_flex_format"; "
+		"z-index:%POS; "
+	    "}\n",
+	    t->id,
+	    ht_flex_x(t->x, tree),
+	    ht_flex_y(t->y, tree),
+	    ht_flex_w(content_width, tree),
+	    ht_flex_h(t->h, tree),
+	    z + 0
+	);
+	
+	/** Write CSS for the table scrollbar. **/
+	const int row_start_y = (t->has_header) ? (t->min_rowheight + t->cellvspacing) : 0;
+	htrAddStylesheetItem_va(s,
+	    "\t#tbld%POSscroll { "
+		"position:absolute; "
+		"visibility:%STR; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:18px; "
+		"height:"ht_flex_format"; "
+		"z-index:%POS; "
+	    "}\n",
+	    t->id,
+	    (t->hide_scrollbar || t->demand_scrollbar) ? "hidden" : "inherit", /** TODO: Greg - This logic looks fishy. Why does `demand_scrollbar = true` hide the scrollbar?? **/
+	    ht_flex(t->x + t->w - 18, ht_get_parent_w(tree), ht_get_fl_x(tree) + ht_get_fl_w(tree)),
+	    ht_flex_y(t->y + row_start_y, tree),
+	    ht_flex_h(t->h - row_start_y, tree),
+	    z + 0
+	);
+	
+	/** Write CSS for the table scroll thumb. **/
+	htrAddStylesheetItem_va(s,
+	    "\t#tbld%POSthumb { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"left:0px; "
+		"top:18px; "
+		"width:16px; "
+		"height:16px; "
+		"z-index:%POS; "
+		"border:solid 1px; "
+		"border-color:white gray gray white; "
+	    "}\n",
+	    t->id,
+	    z + 1
+	);
+	
+	/** Link to the table base object. **/
+	htrAddWgtrObjLinkage_va(s, tree, "tbld%POSbase", t->id);
 
+	/** Add globals for scripts. **/
 	htrAddScriptGlobal(s,"tbld_current","null",0);
 	htrAddScriptGlobal(s,"tbldb_current","null",0);
 	htrAddScriptGlobal(s,"tbldx_current","null",0);
 	htrAddScriptGlobal(s,"tbldb_start","null",0);
 	htrAddScriptGlobal(s,"tbldbdbl_current","null",0);
 
+	/** Include scripts. **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_table.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
-
-	htrAddWgtrObjLinkage_va(s, tree, "tbld%POSpane",t->id);
-
-	htrAddScriptInit_va(s,"    tbld_init({tablename:'%STR&SYM', table:wgtrGetNodeRef(ns,\"%STR&SYM\"), scroll:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"tbld%POSscroll\"), boxname:\"tbld%POSbox\", name:\"%STR&SYM\", height:%INT, width:%INT, innerpadding:%INT, innerborder:%INT, windowsize:%INT, min_rowheight:%INT, max_rowheight:%INT, cellhspacing:%INT, cellvspacing:%INT, textcolor:\"%STR&JSSTR\", textcolorhighlight:\"%STR&JSSTR\", titlecolor:\"%STR&JSSTR\", rowbgnd1:\"%STR&JSSTR\", rowbgnd2:\"%STR&JSSTR\", rowbgndhigh:\"%STR&JSSTR\", hdrbgnd:\"%STR&JSSTR\", followcurrent:%INT, dragcols:%INT, colsep:%INT, colsep_mode:%INT, colsep_bgnd:\"%STR&JSSTR\", gridinemptyrows:%INT, reverse_order:%INT, allow_selection:%INT, show_selection:%INT, initial_selection:%INT, allow_deselection:%INT, overlap_sb:%INT, hide_sb:%INT, demand_sb:%INT, osrc:%['%STR&SYM'%]%[null%], dm:%INT, hdr:%INT, newrow_bgnd:\"%STR&JSSTR\", newrow_textcolor:\"%STR&JSSTR\", rcsize:%INT, cols:[",
-		t->name,t->name,t->name,t->id,t->id,t->name,t->h,
-		(t->overlap_scrollbar)?t->w:t->w-18,
-		t->inner_padding,t->inner_border,t->windowsize,t->min_rowheight, t->max_rowheight,
-		t->cellhspacing, t->cellvspacing,t->textcolor, 
-		t->textcolorhighlight, t->titlecolor,t->row_bgnd1,t->row_bgnd2,
-		t->row_bgndhigh,t->hdr_bgnd,t->followcurrent,t->dragcols,
-		t->colsep, t->colsep_mode, t->colsep_bgnd,t->gridinemptyrows, t->reverse_order,
-		t->allow_selection, t->show_selection, t->initial_selection, t->allow_deselection,
-		t->overlap_scrollbar, t->hide_scrollbar, t->demand_scrollbar,
-		*(t->osrc) != '\0', t->osrc, *(t->osrc) == '\0',
-		t->data_mode, t->has_header,
-		t->newrow_bgnd, t->newrow_textcolor,
-		t->rowcache_size);
 	
-	for(colid=0;colid<t->ncols;colid++)
+	/** Begin writing the js initialization call. **/
+	htrAddScriptInit_va(s, "tbld_init({");
+	
+	/** Write identification data. **/
+	const int has_osrc = (*(t->osrc) != '\0');
+	htrAddScriptInit_va(s,
+	    "name:'%STR&SYM', "
+	    "table:wgtrGetNodeRef(ns, '%STR&SYM'), "
+	    "scroll:htr_subel("
+		"wgtrGetParentContainer(wgtrGetNodeRef(ns, '%STR&SYM')), "
+		"'tbld%POSscroll'"
+	    "), "
+	    "osrc:%['%STR&SYM'%]%[null%], ",
+	    t->name, t->name, t->name, t->id,
+	    has_osrc, t->osrc, !has_osrc
+	);
+	
+	/** Write layout data. **/
+	htrAddScriptInit_va(s,
+	    "height:%INT, "
+	    "width:%INT, "
+	    "innerpadding:%INT, "
+	    "min_rowheight:%INT, "
+	    "max_rowheight:%INT, "
+	    "cellhspacing:%INT, "
+	    "cellvspacing:%INT, ",
+	    t->h, content_width,
+	    t->inner_padding,
+	    t->min_rowheight, t->max_rowheight,
+	    t->cellhspacing, t->cellvspacing
+	);
+	
+	/** Write selection data. **/
+	htrAddScriptInit_va(s,
+	    "allow_selection:%INT, "
+	    "show_selection:%INT, "
+	    "initial_selection:%INT, "
+	    "allow_deselection:%INT, ",
+	    t->allow_selection,
+	    t->show_selection,
+	    t->initial_selection,
+	    t->allow_deselection
+	);
+	
+	/** Write scrollbar data. **/
+	htrAddScriptInit_va(s,
+	    "thumb_name:'tbld%POSthumb', "
+	    "demand_sb:%INT, ",
+	    t->id,
+	    t->demand_scrollbar
+	);
+	
+	/** Write theme data (colors, backgrounds, etc.). **/
+	htrAddScriptInit_va(s,
+	    "textcolor:'%STR&JSSTR', "
+	    "textcolorhighlight:'%STR&JSSTR', "
+	    "titlecolor:'%STR&JSSTR', "
+	    "colsep_bgnd:'%STR&JSSTR', "
+	    "hdrbgnd:'%STR&JSSTR', "
+	    "newrow_bgnd:'%STR&JSSTR', "
+	    "newrow_textcolor:'%STR&JSSTR', ",
+	    t->textcolor, t->textcolorhighlight,
+	    t->titlecolor, t->colsep_bgnd, t->hdr_bgnd,
+	    t->newrow_bgnd, t->newrow_textcolor
+	);
+	
+	/** Write general row data. **/
+	htrAddScriptInit_va(s,
+	    "dm:%INT, "
+	    "hdr:%INT, "
+	    "grid_in_empty_rows:%INT, "
+	    "windowsize:%INT, "
+	    "rcsize:%INT, ",
+	    t->data_mode,
+	    t->has_header,
+	    t->grid_in_empty_rows,
+	    t->windowsize,
+	    t->rowcache_size
+	);
+	
+	/** Write general column data. **/
+	htrAddScriptInit_va(s,
+	    "dragcols:%INT, "
+	    "colsep:%INT, "
+	    "colsep_mode:%INT, ",
+	    t->dragcols, t->colsep, t->colsep_mode
+	);
+	
+	/** Write the cols array with data for each column. **/
+	/** ANCHOR[id=table-column] **/
+	htrAddScriptInit_va(s, "cols:[");
+	for (int colid = 0; colid < t->ncols; colid++)
 	    {
-	    col = t->col_infs[colid];
-	    htrAddScriptInit_va(s,"{name:\"%STR&JSSTR\",ns:\"%STR&JSSTR\",fieldname:\"%STR&JSSTR\",sort_fieldname:\"%STR&JSSTR\",title:\"%STR&JSSTR\",width:%INT,type:\"%STR&JSSTR\",group:%POS,align:\"%STR&JSSTR\",wrap:\"%STR&JSSTR\",caption_fieldname:\"%STR&JSSTR\",caption_textcolor:\"%STR&JSSTR\",image_maxwidth:%POS,image_maxheight:%POS},",
-		    col->wname,
-		    col->wnamespace,
-		    col->fieldname,
-		    col->sort_fieldname,
-		    col->title,
-		    col->width,
-		    col->type,
-		    col->group[0]?1:0,
-		    col->align,
-		    col->wrap,
-		    col->caption_fieldname,
-		    col->caption_textcolor,
-		    col->image_maxwidth,
-		    col->image_maxheight
-		    );
+	    httbl_col* col = t->col_infs[colid];
+	    htrAddScriptInit_va(s,
+		"{ "
+		    "name:'%STR&JSSTR', "
+		    "ns:'%STR&JSSTR', "
+		    "fieldname:'%STR&JSSTR', "
+		    "sort_fieldname:'%STR&JSSTR', "
+		    "title:'%STR&JSSTR', "
+		    "width:%INT, "
+		    "type:'%STR&JSSTR', "
+		    "group:%POS, "
+		    "align:'%STR&JSSTR', "
+		    "wrap:'%STR&JSSTR', "
+		    "caption_fieldname:'%STR&JSSTR', "
+		    "caption_textcolor:'%STR&JSSTR', "
+		    "image_maxwidth:%POS, "
+		    "image_maxheight:%POS, "
+		" }, ",
+		col->wname,
+		col->wnamespace,
+		col->fieldname,
+		col->sort_fieldname,
+		col->title,
+		col->width,
+		col->type,
+		col->group[0] ? 1 : 0,
+		col->align,
+		col->wrap,
+		col->caption_fieldname,
+		col->caption_textcolor,
+		col->image_maxwidth,
+		col->image_maxheight
+	    );
 	    }
 
+	/** Null terminate the array, and finish writing the init call. **/
 	htrAddScriptInit(s,"null]});\n");
 
-	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSpane\">\n",t->id);
+	/** Write HTML for the table base container. **/
+	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSbase\">\n",t->id);
 
-	detailcnt = wgtrGetMatchingChildList(tree, "widget/table-row-detail", children, sizeof(children)/sizeof(pWgtrNode));
-	//for (i=0;i<xaCount(&(tree->Children));i++)
-	for (i=0;i<detailcnt;i++)
+	/** Write the table row detail elements. **/
+	/** ANCHOR[id=table-row-detail] **/
+	int subcnt = 0;
+	pWgtrNode children[32]; /** Warning: Large local variable in stack. **/
+	const int detail_count = wgtrGetMatchingChildList(tree, "widget/table-row-detail", children, sizeof(children)/sizeof(pWgtrNode));
+	for (int i = 0; i < detail_count; i++)
 	    {
-	    sub_tree = children[i];
-	    //sub_tree = xaGetItem(&(tree->Children), i);
-	    //
+	    pWgtrNode sub_tree = children[i];
+	    
+	    /** Only affect table-row-detail widgets. **/
 	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING,POD(&ptr));
-	    wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING,POD(&nptr));
-
 	    if (strcmp(ptr, "widget/table-row-detail") == 0)
 		{
 		htrCheckNSTransition(s, tree, sub_tree);
 
-		if (wgtrGetPropertyValue(sub_tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h = t->min_rowheight;
-		htrAddStylesheetItem_va(s,"\t#tbld%POSsub%POS { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; } \n",
-			t->id, ++subcnt, t->w-(t->demand_scrollbar?0:18), h, z+1);
+		/** Write CSS for the table row detail. **/
+		int h;
+		if (wgtrGetPropertyValue(sub_tree, "height", DATA_T_INTEGER, POD(&h)) != 0) h = t->min_rowheight;
+		htrAddStylesheetItem_va(s,
+		    "\t#tbld%POSsub%POS { "
+			"position:absolute; "
+			"visibility:hidden; "
+			"left:0px; "
+			"top:0px; "
+			"width:"ht_flex_format"; "
+			"height:"ht_flex_format"; "
+			"z-index:%POS; "
+		    "}\n",
+		    t->id, ++subcnt,
+		    ht_flex_w(t->w - (t->demand_scrollbar ? 0 : 18), tree),
+		    ht_flex_h(h, tree),
+		    z + 1
+		);
+		
+		/** Write HTML (including subwidgets). **/
 		htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSsub%POS\">\n", t->id, subcnt);
 		htrRenderSubwidgets(s, sub_tree, z+2);
 		htrAddBodyItem(s,"</DIV>\n");
+		
+		/** Add linkage. **/
 		htrAddWgtrObjLinkage_va(s, sub_tree, "tbld%POSsub%POS", t->id, subcnt);
-		htrCheckAddExpression(s, sub_tree, nptr, "display_for");
+		
+		/** Add 'display_for'. **/
+		wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING,POD(&ptr));
+		htrCheckAddExpression(s, sub_tree, ptr, "display_for");
 
 		htrCheckNSTransitionReturn(s, tree, sub_tree);
 		}
-	    //else if (strcmp(ptr,"widget/table-column") != 0) //got columns earlier
-		//{
-		//htrRenderWidget(s, sub_tree, z+3);
-		//}
 	    }
 	htrRenderSubwidgets(s, tree, z+2);
 
+	/** Close the base container. **/
 	htrAddBodyItem(s,"</DIV>\n");
 
-	/** HTML body <DIV> element for the scrollbar layer. **/
-	htrAddBodyItem_va(s,"<div id=\"tbld%POSscroll\">\n",t->id);
-	htrAddBodyItem(s,"<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"18\">\n");
-	htrAddBodyItem(s,"<tr><td><img src=\"/sys/images/ico13b.gif\" name=\"u\"></td></tr>\n");
-	htrAddBodyItem_va(s,"<tr><td id=\"tbld%POSscrarea\" height=\"%POS\"></td></tr>\n", t->id, t->h-2*18-first_offset);
-	htrAddBodyItem(s,"<tr><td><img src=\"/sys/images/ico12b.gif\" name=\"d\"></td></tr>\n");
-	htrAddBodyItem(s,"</table>\n");
-	/*htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSbox\"><IMG SRC=/sys/images/ico14b.gif NAME=b></DIV>\n",t->id);*/
-	htrAddBodyItem_va(s,"<div id=\"tbld%POSbox\"></div>\n",t->id);
-	htrAddBodyItem(s,"</div>\n");
+	/** Write HTML for the scrollbar. **/
+	htrAddBodyItem_va(s,
+	    "<div id='tbld%POSscroll'>\n"
+		"<table border='0' cellspacing='0' cellpadding='0' width='18'>\n"
+		    "<tr><td><img src='/sys/images/ico13b.gif' name='u'></td></tr>\n"
+		    "<tr><td id='tbld%POSscrarea' style='height:"ht_flex_format"'></td></tr>\n"
+		    "<tr><td><img src='/sys/images/ico12b.gif' name='d'></td></tr>\n"
+		"</table>\n"
+		"<div id='tbld%POSthumb'></div>\n"
+	    "</div>\n",
+	    t->id, t->id, ht_flex_h(t->h - row_start_y - 2*18, tree), t->id
+	);
 
+	/** Register event handlers. **/
 	htrAddEventHandlerFunction(s,"document","MOUSEOVER","tbld","tbld_mouseover");
 	htrAddEventHandlerFunction(s,"document","MOUSEOUT","tbld","tbld_mouseout");
 	htrAddEventHandlerFunction(s,"document","MOUSEDOWN","tbld","tbld_mousedown");
@@ -288,14 +441,18 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
     {
     pWgtrNode sub_tree;
     char* ptr;
-    char* nptr;
     int n, i;
     httbl_struct* t;
     int rval;
     pWgtrNode children[HTTBL_MAX_COLS];
     httbl_col* col;
 
-	/** Don't try to render table-column, etc.  We do that elsewhere **/
+	/*** Only render "widget/table". Other widgets (e.g. table-column or
+	 *** table-row-detail) are rendered elsewhere (see links below).
+	 *** 
+	 *** LINK #table-column
+	 *** LINK #table-row-detail
+	 ***/
 	wgtrGetPropertyValue(tree,"outer_type",DATA_T_STRING,POD(&ptr));
 	if (strcmp(ptr, "widget/table") != 0)
 	    return 0;
@@ -304,154 +461,131 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	if (!t) return -1;
 	memset(t, 0, sizeof(httbl_struct));
 
-	t->x=-1;
-	t->y=-1;
-    
-    	/** Get an id for thit. **/
+	/** Get an id. **/
 	t->id = (HTTBL.idcnt++);
 
-	/** Backwards compat for the time being **/
-	wgtrRenameProperty(tree, "row_bgcolor1", "row1_bgcolor");
-	wgtrRenameProperty(tree, "row_background1", "row1_background");
-	wgtrRenameProperty(tree, "row_bgcolor2", "row2_bgcolor");
-	wgtrRenameProperty(tree, "row_background2", "row2_background");
-	wgtrRenameProperty(tree, "row_bgcolorhighlight", "rowhighlight_bgcolor");
-	wgtrRenameProperty(tree, "row_backgroundhighlight", "rowhighlight_background");
-
-    	/** Get x,y,w,h of this object **/
-	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&(t->x))) != 0) t->x = -1;
-	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&(t->y))) != 0) t->y = -1;
-	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&(t->w))) != 0) t->w = -1;
-	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&(t->h))) != 0)
-	    {
-	    mssError(1,"HTTBL","'height' property is required");
-	    return -1;
-	    }
-	if (wgtrGetPropertyValue(tree,"windowsize",DATA_T_INTEGER,POD(&(t->windowsize))) != 0) t->windowsize = -1;
-	if (wgtrGetPropertyValue(tree,"rowheight",DATA_T_INTEGER,POD(&n)) == 0)
-	    {
-	    t->min_rowheight = t->max_rowheight = n;
-	    }
-	else
-	    {
-	    t->min_rowheight = s->ClientInfo->ParagraphHeight + 2;
-	    t->max_rowheight = -1;
-	    }
-	wgtrGetPropertyValue(tree,"min_rowheight",DATA_T_INTEGER,POD(&(t->min_rowheight)));
-	wgtrGetPropertyValue(tree,"max_rowheight",DATA_T_INTEGER,POD(&(t->max_rowheight)));
-	if (wgtrGetPropertyValue(tree,"cellhspacing",DATA_T_INTEGER,POD(&(t->cellhspacing))) != 0) t->cellhspacing = 1;
-	if (wgtrGetPropertyValue(tree,"cellvspacing",DATA_T_INTEGER,POD(&(t->cellvspacing))) != 0) t->cellvspacing = 1;
-
-	if (wgtrGetPropertyValue(tree,"colsep",DATA_T_INTEGER,POD(&(t->colsep))) != 0) t->colsep = 1;
-	if (wgtrGetPropertyValue(tree,"colsep_mode",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
-	    if (!strcasecmp(ptr, "full"))
-		t->colsep_mode = 0;
-	    else if (!strcasecmp(ptr, "header"))
-		t->colsep_mode = 1;
-	    }
-
-	if (wgtrGetPropertyValue(tree,"rowcache_size",DATA_T_INTEGER,POD(&(t->rowcache_size))) != 0) t->rowcache_size = 0;
-
-	t->dragcols = htrGetBoolean(tree, "dragcols", 1);
-	t->gridinemptyrows = htrGetBoolean(tree, "gridinemptyrows", 1);
-	t->allow_selection = htrGetBoolean(tree, "allow_selection", 1);
-	t->show_selection = htrGetBoolean(tree, "show_selection", 1);
-	if (wgtrGetPropertyType(tree, "initial_selection") == DATA_T_STRING && wgtrGetPropertyValue(tree,"initial_selection",DATA_T_STRING,POD(&ptr)) == 0 && !strcasecmp(ptr,"noexpand"))
-	    t->initial_selection = 2;
-	else
-	    t->initial_selection = htrGetBoolean(tree, "initial_selection", 1);
-	t->allow_deselection = htrGetBoolean(tree, "allow_deselection", t->initial_selection?0:1);
-	t->reverse_order = htrGetBoolean(tree, "reverse_order", 0);
-
-	t->overlap_scrollbar = htrGetBoolean(tree, "overlap_scrollbar", 0);
-	t->hide_scrollbar = htrGetBoolean(tree, "hide_scrollbar", 0);
-	t->demand_scrollbar = htrGetBoolean(tree, "demand_scrollbar", 0);
-	t->has_header = htrGetBoolean(tree, "titlebar", 1);
-
-	/** Which data mode to use? **/
-	if (wgtrGetPropertyValue(tree,"data_mode", DATA_T_STRING, POD(&ptr)) == 0)
-	    {
-	    if (!strcmp(ptr, "rows"))
-		t->data_mode = 0;
-	    else if (!strcmp(ptr, "properties"))
-		t->data_mode = 1;
-	    }
-
-	/** Should we follow the current record around? **/
-	t->followcurrent = htrGetBoolean(tree, "followcurrent", 1);
-
-	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) 
+	/** Get name. **/
+	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&ptr)) != 0) 
 	    {
 	    nmFree(t, sizeof(httbl_struct));
 	    return -1;
 	    }
-	strtcpy(t->name,ptr,sizeof(t->name));
+	strtcpy(t->name, ptr, sizeof(t->name));
 
-	if (wgtrGetPropertyValue(tree,"objectsource",DATA_T_STRING,POD(&ptr)) == 0)
-	    strtcpy(t->osrc,ptr,sizeof(t->osrc));
+	/** Get object source path. **/
+	if (wgtrGetPropertyValue(tree, "objectsource", DATA_T_STRING, POD(&ptr)) != 0)
+	    strcpy(t->osrc, "");
 	else
-	    strcpy(t->osrc,"");
+	    strtcpy(t->osrc, ptr, sizeof(t->osrc));
+
+	/** Get the location, size, and layout data. **/
+	if (wgtrGetPropertyValue(tree, "x", DATA_T_INTEGER, POD(&(t->x))) != 0) t->x = -1;
+	if (wgtrGetPropertyValue(tree, "y", DATA_T_INTEGER, POD(&(t->y))) != 0) t->y = -1;
+	if (wgtrGetPropertyValue(tree, "width", DATA_T_INTEGER, POD(&(t->w))) != 0) t->w = -1;
+	if (wgtrGetPropertyValue(tree, "height", DATA_T_INTEGER, POD(&(t->h))) != 0)
+	    {
+	    mssError(1,"HTTBL","'height' property is required");
+	    return -1;
+	    }
+	if (wgtrGetPropertyValue(tree, "rowheight", DATA_T_INTEGER, POD(&n)) != 0)
+	    {
+	    t->min_rowheight = s->ClientInfo->ParagraphHeight + 2;
+	    t->max_rowheight = -1;
+	    }
+	else
+	    {
+	    t->min_rowheight = t->max_rowheight = n;
+	    }
+	if (wgtrGetPropertyValue(tree, "inner_padding", DATA_T_INTEGER, POD(&(t->inner_padding))) != 0) t->inner_padding = 0;
+	if (wgtrGetPropertyValue(tree, "min_rowheight", DATA_T_INTEGER, POD(&(t->min_rowheight))) != 0); /* Keep value from above. */
+	if (wgtrGetPropertyValue(tree, "max_rowheight", DATA_T_INTEGER, POD(&(t->max_rowheight))) != 0); /* Keep value from above. */
+	if (wgtrGetPropertyValue(tree, "cellhspacing",  DATA_T_INTEGER, POD(&(t->cellhspacing)))  != 0) t->cellhspacing = 1;
+	if (wgtrGetPropertyValue(tree, "cellvspacing",  DATA_T_INTEGER, POD(&(t->cellvspacing)))  != 0) t->cellvspacing = 1;
 	
-	/** Get background color/image for table header **/
-	htrGetBackground(tree, NULL, !s->Capabilities.Dom0NS, t->tbl_bgnd, sizeof(t->tbl_bgnd));
+	/** Get selection data. **/
+	t->allow_selection = htrGetBoolean(tree, "allow_selection", 1);
+	t->show_selection = htrGetBoolean(tree, "show_selection", 1);
+	if (wgtrGetPropertyType(tree, "initial_selection") == DATA_T_STRING
+	    && wgtrGetPropertyValue(tree, "initial_selection", DATA_T_STRING, POD(&ptr)) == 0
+	    && strcasecmp(ptr, "noexpand") == 0)
+	    t->initial_selection = 2;
+	else
+	    t->initial_selection = htrGetBoolean(tree, "initial_selection", 1);
+	t->allow_deselection = htrGetBoolean(tree, "allow_deselection", (t->initial_selection) ? 0 : 1);
 
-	/** Get background color/image for header row **/
-	htrGetBackground(tree, "hdr", !s->Capabilities.Dom0NS, t->hdr_bgnd, sizeof(t->hdr_bgnd));
-
-	/** Get background color/image for rows **/
-	htrGetBackground(tree, "row1", !s->Capabilities.Dom0NS, t->row_bgnd1, sizeof(t->row_bgnd1));
-	htrGetBackground(tree, "row2", !s->Capabilities.Dom0NS, t->row_bgnd2, sizeof(t->row_bgnd2));
-	htrGetBackground(tree, "rowhighlight", !s->Capabilities.Dom0NS, t->row_bgndhigh, sizeof(t->row_bgndhigh));
+	/** Get scrollbar data. **/
+	t->overlap_scrollbar = htrGetBoolean(tree, "overlap_scrollbar", 0);
+	t->hide_scrollbar = htrGetBoolean(tree, "hide_scrollbar", 0);
+	t->demand_scrollbar = htrGetBoolean(tree, "demand_scrollbar", 0);
+	
+	/** Get theme data (colors, backgrounds, etc.). **/
+	if (wgtrGetPropertyValue(tree, "textcolor", DATA_T_STRING, POD(&ptr)) == 0)
+	    strtcpy(t->textcolor, ptr, sizeof(t->textcolor));
+	if (wgtrGetPropertyValue(tree, "textcolorhighlight", DATA_T_STRING, POD(&ptr)) == 0)
+	    strtcpy(t->textcolorhighlight, ptr, sizeof(t->textcolorhighlight));
+	if (wgtrGetPropertyValue(tree, "titlecolor", DATA_T_STRING, POD(&ptr)) == 0)
+	    strtcpy(t->titlecolor, ptr, sizeof(t->titlecolor));
+	if (!*t->titlecolor) strcpy(t->titlecolor, t->textcolor);
 	htrGetBackground(tree, "colsep", !s->Capabilities.Dom0NS, t->colsep_bgnd, sizeof(t->colsep_bgnd));
+	htrGetBackground(tree, "hdr", !s->Capabilities.Dom0NS, t->hdr_bgnd, sizeof(t->hdr_bgnd));
 	htrGetBackground(tree, "newrow", !s->Capabilities.Dom0NS, t->newrow_bgnd, sizeof(t->newrow_bgnd));
+	if (wgtrGetPropertyValue(tree, "textcolornew", DATA_T_STRING, POD(&ptr)) == 0)
+	    strtcpy(t->newrow_textcolor, ptr, sizeof(t->newrow_textcolor));
+	
+	/** Get general row data. **/
+	if (wgtrGetPropertyValue(tree, "data_mode", DATA_T_STRING, POD(&ptr)) != 0)
+	    t->data_mode = 0;
+	else
+	    {
+	    if (strcasecmp(ptr, "rows") == 0) t->data_mode = 0;
+	    else if (strcasecmp(ptr, "properties") == 0) t->data_mode = 1;
+	    else
+		{
+		mssError(1, "TBL", "Invalid value for attribute 'data_mode': %s", ptr);
+		return -1;
+		}
+	    }
+	t->has_header = htrGetBoolean(tree, "titlebar", 1); /* Whether to render a header row. */
+	t->grid_in_empty_rows = htrGetBoolean(tree, "gridinemptyrows", 1); /* Whether to show the grid in empty rows. */
+	if (wgtrGetPropertyValue(tree, "windowsize", DATA_T_INTEGER, POD(&(t->windowsize))) != 0) t->windowsize = -1;
+	if (wgtrGetPropertyValue(tree, "rowcache_size", DATA_T_INTEGER, POD(&(t->rowcache_size))) != 0) t->rowcache_size = 0;
 
-	/** Get borders and padding information **/
-	wgtrGetPropertyValue(tree,"outer_border",DATA_T_INTEGER,POD(&(t->outer_border)));
-	wgtrGetPropertyValue(tree,"inner_border",DATA_T_INTEGER,POD(&(t->inner_border)));
-	wgtrGetPropertyValue(tree,"inner_padding",DATA_T_INTEGER,POD(&(t->inner_padding)));
+	/** Get general column data. **/
+	t->dragcols = htrGetBoolean(tree, "dragcols", 1);
+	if (wgtrGetPropertyValue(tree, "colsep", DATA_T_INTEGER, POD(&(t->colsep))) != 0) t->colsep = 1;
+	if (wgtrGetPropertyValue(tree, "colsep_mode", DATA_T_STRING, POD(&ptr)) != 0)
+	    t->colsep_mode = 0;
+	else
+	    {
+	    if (strcasecmp(ptr, "full") == 0) t->colsep_mode = 0;
+	    else if (strcasecmp(ptr, "header") == 0) t->colsep_mode = 1;
+	    else
+		{
+		mssError(1, "TBL", "Invalid value for attribute 'colsep_mode': %s", ptr);
+		return -1;
+		}
+	    }
 
-	/** Row decorations **/
-	wgtrGetPropertyValue(tree, "row_border_color", DATA_T_STRING, POD(&t->row_border));
-	wgtrGetPropertyValue(tree, "row_shadow_color", DATA_T_STRING, POD(&t->row_shadow_color));
-	wgtrGetPropertyValue(tree, "row_shadow_offset", DATA_T_INTEGER, POD(&t->row_shadow));
-	wgtrGetPropertyValue(tree, "row_shadow_radius", DATA_T_INTEGER, POD(&t->row_shadow_radius));
-	wgtrGetPropertyValue(tree, "row_border_radius", DATA_T_INTEGER, POD(&t->row_radius));
-
-	/** Text color information **/
-	if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    strtcpy(t->textcolor,ptr,sizeof(t->textcolor));
-
-	/** Text color information **/
-	if (wgtrGetPropertyValue(tree,"textcolorhighlight",DATA_T_STRING,POD(&ptr)) == 0)
-	    strtcpy(t->textcolorhighlight,ptr,sizeof(t->textcolorhighlight));
-
-	/** Text color information for "new row" in process of being created **/
-	if (wgtrGetPropertyValue(tree,"textcolornew",DATA_T_STRING,POD(&ptr)) == 0)
-	    strtcpy(t->newrow_textcolor,ptr,sizeof(t->newrow_textcolor));
-
-	/** Title text color information **/
-	if (wgtrGetPropertyValue(tree,"titlecolor",DATA_T_STRING,POD(&ptr)) == 0)
-	    strtcpy(t->titlecolor,ptr,sizeof(t->titlecolor));
-	if (!*t->titlecolor) strcpy(t->titlecolor,t->textcolor);
-
-	/** Get column data **/
+	/** Get specific column data for each column. **/
 	t->ncols = wgtrGetMatchingChildList(tree, "widget/table-column", children, sizeof(children)/sizeof(pWgtrNode));
 	for (i=0;i<t->ncols;i++)
 	    {
 	    sub_tree = children[i];
+	    
+	    /** Only read table-column widgets. **/
 	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING,POD(&ptr));
-	    wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING,POD(&nptr));
-	    if (!strcmp(ptr,"widget/table-column") != 0)
+	    if (strcmp(ptr, "widget/table-column") == 0)
 		{
+		/** Allocate space to store the column data. **/
 		col = (httbl_col*)nmMalloc(sizeof(httbl_col));
 		memset(col, 0, sizeof(*col));
+		
+		/** Basic column info. **/
 		t->col_infs[i] = col;
 		strtcpy(col->wname, wgtrGetName(sub_tree), sizeof(col->wname));
 		strtcpy(col->wnamespace, wgtrGetNamespace(sub_tree), sizeof(col->wnamespace));
 
-		/** no layer associated with this guy **/
+		/** The object system doesn't need to render this widget (we will do that). **/
 		sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
 
 		/** Get column properties **/
@@ -470,8 +604,9 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		    strtcpy(col->title, ptr, sizeof(col->title));
 		else
 		    strtcpy(col->title, col->fieldname, sizeof(col->title));
-		htrCheckAddExpression(s, sub_tree, nptr, "title");
-		htrCheckAddExpression(s, sub_tree, nptr, "visible");
+		wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING, POD(&ptr));
+		htrCheckAddExpression(s, sub_tree, ptr, "title");
+		htrCheckAddExpression(s, sub_tree, ptr, "visible");
 		if (wgtrGetPropertyValue(sub_tree, "align", DATA_T_STRING,POD(&ptr)) == 0)
 		    strtcpy(col->align, ptr, sizeof(col->align));
 		else
@@ -489,7 +624,10 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	    }
 
+	/** Render the table. **/
 	rval = httblRenderDynamic(s, tree, z, t);
+	
+	/** Clean up. **/
 	for(i=0;i<t->ncols;i++)
 	    nmFree(t->col_infs[i], sizeof(httbl_col));
 	nmFree(t, sizeof(httbl_struct));
@@ -505,25 +643,26 @@ httblInitialize()
     {
     pHtDriver drv;
 
-    	/** Allocate the driver **/
+    	/** Allocate the driver struct. **/
 	drv = htrAllocDriver();
 	if (!drv) return -1;
 
-	/** Fill in the structure. **/
+	/** Initialize driver values. **/
 	strcpy(drv->Name,"DHTML DataTable Driver");
 	strcpy(drv->WidgetName,"table");
 	drv->Render = httblRender;
 	xaAddItem(&(drv->PseudoTypes), "table-column");
 	xaAddItem(&(drv->PseudoTypes), "table-row-detail");
 
+	/** Add driver events. **/
 	htrAddEvent(drv,"Click");
 	htrAddEvent(drv,"DblClick");
 
-	/** Register. **/
+	/** Register the driver, with dhtml support. **/
 	htrRegisterDriver(drv);
-
 	htrAddSupport(drv, "dhtml");
 
+	/** Initialize the ID counter. **/
 	HTTBL.idcnt = 0;
 
     return 0;
