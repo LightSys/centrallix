@@ -46,6 +46,12 @@ static struct {
    int     idcnt;
 } HTDD;
 
+/** Dropdown modes. **/
+#define HTDD_STATIC 0
+#define HTDD_DYNAMIC_SERVER 1
+#define HTDD_DYNAMIC 2
+#define HTDD_DYNAMIC_CLIENT HTDD_DYNAMIC
+#define HTDD_OBJECTSOURCE 3
 
 /* 
    htddRender - generate the HTML code for the page.
@@ -144,7 +150,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
     strtcpy(name,ptr,sizeof(name));
 
-    /** Ok, write the style header items. **/
+    /** Write basic element CSS. **/
     htrAddStylesheetItem_va(s,
 	"\t#dd%POSbtn { "
 	    "OVERFLOW:hidden; "
@@ -160,10 +166,10 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	    "border:1px outset #e0e0e0; "
 	"}\n",
 	id,
-	ht_flex(x, ht_get_total_w(tree), ht_get_fl_x(tree)),
-	ht_flex(y, ht_get_total_h(tree), ht_get_fl_y(tree)),
-	ht_flex(w, ht_get_total_w(tree), ht_get_fl_w(tree)),
-	ht_flex(h, ht_get_total_h(tree), ht_get_fl_h(tree)),
+	ht_flex_x(x, tree),
+	ht_flex_y(y, tree),
+	ht_flex_w(w, tree),
+	ht_flex_h(h, tree),
 	z,
 	bgstr
     );
@@ -171,35 +177,18 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	htrAddStylesheetItem_va(s,"\t#dd%POSbtn { color: %STR&CSSVAL; }\n",id,textcolor);
     }
     htrAddStylesheetItem_va(s,
-	"\t#dd%POScon1 { "
-	    "OVERFLOW:hidden; "
-	    "POSITION:absolute; "
-	    "VISIBILITY:inherit; "
-	    "LEFT:1px; "
-	    "TOP:1px; "
-	    "WIDTH:1024px; "
-	    "HEIGHT:"ht_flex_format"; "
-	    "Z-INDEX:%POS; "
+	"\t.dd%POScon { "
+	    "overflow:hidden; "
+	    "position:absolute; "
+	    "left:1px; "
+	    "top:1px; "
+	    "width:1024px; "
+	    "height:"ht_flex_format"; "
+	    "z-index:%POS; "
 	"}\n",
 	id,
-	ht_flex(h-2, h, 0.0),
-	z+1
-    );
-    /** I have no idea why we need dd#con2. It's hidden by default. **/
-    htrAddStylesheetItem_va(s,
-	"\t#dd%POScon2 { "
-	    "OVERFLOW:hidden; "
-	    "POSITION:absolute; "
-	    "VISIBILITY:hidden; "
-	    "LEFT:1px; "
-	    "TOP:1px; "
-	    "WIDTH:1024px; "
-	    "HEIGHT:"ht_flex_format"; "
-	    "Z-INDEX:%POS; "
-	"}\n",
-	id,
-	ht_flex(h-2, h, 0.0),
-	z+1
+	ht_flex(h - 2, h, 0.0),
+	z + 1
     );
 
     htrAddScriptGlobal(s, "dd_current", "null", 0);
@@ -228,20 +217,20 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 
 
     /** Get the mode (default to 1, dynamicpage) **/
-    mode = 0;
+    mode = HTDD_STATIC;
     if (wgtrGetPropertyValue(tree,"mode",DATA_T_STRING,POD(&ptr)) == 0) {
-	if (!strcmp(ptr,"static")) mode = 0;
-	else if (!strcmp(ptr,"dynamic_server")) mode = 1;
-	else if (!strcmp(ptr,"dynamic")) mode = 2;
-	else if (!strcmp(ptr,"dynamic_client")) mode = 2;
-	else if (!strcmp(ptr,"objectsource")) mode = 3;
+	if (strcmp(ptr, "static") == 0)              mode = HTDD_STATIC;
+	else if (strcmp(ptr, "dynamic_server") == 0) mode = HTDD_DYNAMIC_SERVER;
+	else if (strcmp(ptr, "dynamic") == 0)        mode = HTDD_DYNAMIC;
+	else if (strcmp(ptr, "dynamic_client") == 0) mode = HTDD_DYNAMIC_CLIENT;
+	else if (strcmp(ptr, "objectsource") == 0)   mode = HTDD_OBJECTSOURCE;
 	else {
-	    mssError(1,"HTDD","Dropdown widget has not specified a valid mode.");
+	    mssError(1, "HTDD", "Invalid dropdown widget 'mode' value: \"%s\"", ptr);
 	    return -1;
 	}
     }
 
-    sql = 0;
+    sql = NULL;
     if (wgtrGetPropertyValue(tree,"sql",DATA_T_STRING,POD(&sql)) != 0 && mode != 0 && mode != 3) {
 	mssError(1, "HTDD", "SQL parameter was not specified for dropdown widget");
 	return -1;
@@ -249,7 +238,43 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     htrCheckAddExpression(s,tree,name,"sql");
 
     /** Script initialization call. **/
-    htrAddScriptInit_va(s,"    dd_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), c1:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"dd%POScon1\"), c2:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"dd%POScon2\"), background:'%STR&JSSTR', highlight:'%STR&JSSTR', fieldname:'%STR&JSSTR', numDisplay:%INT, mode:%INT, sql:'%STR&JSSTR', width:%INT, height:%INT, form:'%STR&JSSTR', osrc:'%STR&JSSTR', qms:%INT, ivs:%INT, popup_width:%INT});\n", name, name, id, name, id, bgstr, hilight, fieldname, num_disp, mode, sql?sql:"", w, h, form, osrc, query_multiselect, invalid_select_default, pop_w);
+    htrAddScriptInit_va(s,
+	"dd_init({ "
+	    "layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+	    "c1:htr_subel(wgtrGetNodeRef(ns, '%STR&SYM'), 'dd%POScon1'), "
+	    "c2:htr_subel(wgtrGetNodeRef(ns, '%STR&SYM'), 'dd%POScon2'), "
+	    "background:'%STR&JSSTR', "
+	    "highlight:'%STR&JSSTR', "
+	    "fieldname:'%STR&JSSTR', "
+	    "numDisplay:%INT, "
+	    "mode:%INT, "
+	    "sql:'%STR&JSSTR', "
+	    "form:'%STR&JSSTR', "
+	    "osrc:'%STR&JSSTR', "
+	    "qms:%INT, "
+	    "ivs:%INT, "
+	    "width:%INT, "
+	    "height:%INT, "
+	    "popup_width:%INT, "
+	"});\n",
+	name,
+	name, id,
+	name, id,
+	bgstr,
+	hilight,
+	fieldname,
+	num_disp,
+	mode,
+	(sql != NULL) ? sql : "",
+	form,
+	osrc,
+	query_multiselect,
+	invalid_select_default,
+	w,
+	ht_get_fl_x(tree),
+	h,
+	pop_w
+    );
 
     /** HTML body <DIV> element for the layers. **/
     htrAddBodyItem_va(s,"<DIV ID=\"dd%POSbtn\">\n"
@@ -265,12 +290,12 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%POS></TD>\n",w-2);
     htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
     htrAddBodyItem(s,   "</TABLE>\n");*/
-    htrAddBodyItem_va(s,"<DIV ID=\"dd%POScon1\"></DIV>\n",id);
-    htrAddBodyItem_va(s,"<DIV ID=\"dd%POScon2\"></DIV>\n",id);
+    htrAddBodyItem_va(s,"<DIV ID='dd%POScon1' CLASS='dd%POScon' style='visibility:inherit;'></DIV>\n", id, id);
+    htrAddBodyItem_va(s,"<DIV ID='dd%POScon2' CLASS='dd%POScon' style='visibility:hidden;'></DIV>\n", id, id);
     htrAddBodyItem(s,   "</DIV>\n");
     
     /* Read and initialize the dropdown items */
-    if (mode == 1) {
+    if (mode == HTDD_DYNAMIC_SERVER) {
 	/** The result set from this SQL query can take two forms: positional or named.
 	 ** For Positional, the params are: label, value, selected, group, hidden.
 	 ** For Named, the above names can appear in any order.
@@ -362,7 +387,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	    objQueryClose(qy);
 	}
     }
-    else if(mode==3) {
+    else if (mode == HTDD_OBJECTSOURCE) {
 	/* get objects from form */
     }
 
@@ -373,7 +398,9 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	subtree = xaGetItem(&(tree->Children), i);
 	if (!strcmp(subtree->Type, "widget/dropdownitem")) 
 	    subtree->RenderFlags |= HT_WGTF_NOOBJECT;
-	if (!strcmp(subtree->Type,"widget/dropdownitem") && mode == 0) 
+	
+	/** Write JS to render dropdown items in static mode. **/
+	if (!strcmp(subtree->Type,"widget/dropdownitem") && mode == HTDD_STATIC) 
 	    {
 	    if (wgtrGetPropertyValue(subtree,"label",DATA_T_STRING,POD(&ptr)) != 0) 
 		{
@@ -459,4 +486,3 @@ int htddInitialize() {
 
    return 0;
 }
-

@@ -390,6 +390,9 @@ function dd_collapse(l)
 	//pg_resize_area(l.area,getClipWidth(l)+1,getClipHeight(l)+1, -1, -1);
 	htr_setvisibility(l.PaneLayer, 'hidden');
 	dd_current = null;
+	
+	/** Remove the pane to avoid leaking DOM nodes. **/
+	dd_remove_pane(l);
 	}
     }
 
@@ -510,6 +513,17 @@ function dd_select_item(l,i,from)
     l.HidLayer.index = i;
     moveTo(l.HidLayer, 2, ((l.h-2) - pg_parah)/2);
     resizeTo(l.HidLayer, l.w, l.h);
+    
+    // Set up responsive handling.
+    if (!l.HidLayer.resize_observer)
+	{
+	const { HidLayer } = l;
+	const resize_observer = HidLayer.resize_observer = new ResizeObserver(_ => {
+	    moveTo(HidLayer, 2, ((l.h - 2) - pg_parah) / 2);
+	    resizeTo(HidLayer, l.w, l.h);
+	});
+	resize_observer.observe(l);
+	}
     
     htr_setvisibility(l.HidLayer, 'inherit');
     setClipWidth(l.HidLayer, l.w-21);
@@ -773,6 +787,41 @@ function dd_create_pane(l)
     p.mainlayer = l;
 
     return p;
+    }
+
+/** Quick and dirty function to remove panes without leaking DOM nodes. **/
+function dd_remove_pane(l)
+    {
+    if (!l || !l.PaneLayer) return;
+    
+    const p = l.PaneLayer;
+    
+    // Function for removing elements.
+    const remove_node = (n) => { if (n && n.parentNode) n.parentNode.removeChild(n); }
+    
+    // Remove item DOM nodes if present.
+    if (l.Items && l.Items.length)
+	{
+	for (let i = 0; i < l.Items.length; i++)
+	    {
+	    remove_node(l.Items[i]);
+	    l.Items[i] = null;
+	    }
+	l.Items.length = 0;
+	l.Items = null;
+	}
+    
+    // Remove scrollbar/thumb layers if present.
+    remove_node(p.ScrLayer);
+    remove_node(p.BarLayer);
+    remove_node(p.TmbLayer);
+    
+    // Remove the pane root.
+    remove_node(p);
+    
+    // Clear references.
+    p.ScrLayer = p.BarLayer = p.TmbLayer = p.Items = p.mainlayer = null;
+    l.PaneLayer = null;
     }
 
 
@@ -1194,7 +1243,6 @@ function dd_init(param)
     l.NumDisplay = param.numDisplay;
     l.Mode = param.mode;
     l.SQL = param.sql;
-    l.popup_width = param.popup_width?param.popup_width:param.width;
     l.VisLayer = param.c1;
     l.HidLayer = param.c2;
     htr_init_layer(l.VisLayer, l, 'ddtxt');
@@ -1244,7 +1292,6 @@ function dd_init(param)
     l.getfocushandler = dd_getfocus;
     l.bg = param.background;
     l.hl = param.highlight;
-    l.w = param.width; l.h = param.height;
     l.fieldname = param.fieldname;
     l.enabled = 'full';
     if (l.Mode != 3)
@@ -1268,10 +1315,33 @@ function dd_init(param)
 	else if (imgs[i].src.substr(-13,5) == 'white')
 	    imgs[i].upimg = true;
 	}
-    l.area = pg_addarea(l, -1, -1, getClipWidth(l)+3, 
-	    getClipHeight(l)+3, 'dd', 'dd', 3);
     if (l.form) l.form.Register(l);
     l.init_items = false;
+
+    // Setup getters widths and heights.
+    const width_ratio = param.popup_width / param.width;
+    l.__defineGetter__('w', () => parseInt(getComputedStyle(l).width));
+    l.__defineGetter__('h', () => parseInt(getComputedStyle(l).height));
+    l.__defineGetter__('popup_width', () => l.w * width_ratio);
+    
+    /** Setup the hover area. **/
+    l.area = pg_addarea(l, -1, -1, l.w + 3, l.h + 3, 'dd', 'dd', 3);
+    l.area.__defineGetter__('width', () => l.w + 3);
+    l.area.__defineGetter__('height', () => l.h + 3);
+    
+    // Resize dropdown automatically.
+    const resize_handler = (layer) =>
+	{
+	if (layer.PaneLayer && htr_getvisibility(layer.PaneLayer) === 'inherit')
+	    {
+	    dd_collapse(layer);
+	    dd_expand(layer);
+	    }
+	};
+    const resize_observer = new ResizeObserver(entries => {
+	for (const entry of entries) resize_handler(entry.target);
+    });
+    resize_observer.observe(l);
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
