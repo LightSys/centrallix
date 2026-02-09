@@ -152,12 +152,12 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		{
 		htrAddStylesheetItem_va(s,
 		    "\t#gb%POSpane { "
-			"POSITION:absolute; "
-			"VISIBILITY:inherit; "
-			"LEFT:"ht_flex_format"; "
-			"TOP:"ht_flex_format"; "
-			"WIDTH:"ht_flex_format"; "
-			"Z-INDEX:%POS; "
+			"position:absolute; "
+			"visibility:inherit; "
+			"left:"ht_flex_format"; "
+			"top:"ht_flex_format"; "
+			"width:"ht_flex_format"; "
+			"z-index:%POS; "
 		    "}\n",
 		    id,
 		    ht_flex(x, tree->Parent->width,  ht_get_fl_x(tree)),
@@ -165,6 +165,14 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    ht_flex(w, tree->Parent->width,  ht_get_fl_w(tree)),
 		    z
 		);
+		
+		/** Button click animation. **/
+		if (is_enabled) {
+		    htrAddStylesheetItem_va(s,
+			"\t#tb%POSpane:active { transform: translate(1px, 1px); }\n",
+			id
+		    );
+		}
 
 		htrAddScriptGlobal(s, "gb_cur_img", "null", 0);
 		htrAddScriptGlobal(s, "gb_current", "null", 0);
@@ -208,12 +216,12 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    {
 		    htrAddStylesheetItem_va(s,
 			"\t#gb%POSpane2 { "
-			    "POSITION:absolute; "
-			    "VISIBILITY:inherit; "
-			    "LEFT:%POS; "
-			    "TOP:%POS; "
-			    "WIDTH:"ht_flex_format"; "
-			    "Z-INDEX:%POS; "
+			    "position:absolute; "
+			    "visibility:inherit; "
+			    "left:%POS; "
+			    "top:%POS; "
+			    "width:"ht_flex_format"; "
+			    "z-index:%POS; "
 			"}\n",
 			id,
 			0,
@@ -337,26 +345,18 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 			{
 			htrAddStylesheetItem_va(s,
 			    "\t#gb%POSpane { "
-				"POSITION:absolute; "
-				"VISIBILITY:inherit; "
-				"OVERFLOW:hidden; "
-				"LEFT:"ht_flex_format"; "
-				"TOP:"ht_flex_format"; "
-				"WIDTH:"ht_flex_format"; "
-				"CLIP:rect("
-				    "0, "
-				    ht_flex_format", "
-				    ht_flex_format", "
-				    "0"
-				"); "
-				"Z-INDEX:%POS; "
+				"position:absolute; "
+				"visibility:inherit; "
+				"overflow:hidden; "
+				"left:"ht_flex_format"; "
+				"top:"ht_flex_format"; "
+				"width:"ht_flex_format"; "
+				"z-index:%POS; "
 			    "}\n",
 			    id,
 			    ht_flex(x, tree->Parent->width, ht_get_fl_x(tree)),
 			    ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
 			    ht_flex(w-1-2*box_offset, tree->Parent->width, ht_get_fl_w(tree)),
-			    ht_flex(w-1-2*box_offset+2*clip_offset, tree->Parent->width, ht_get_fl_w(tree)),
-			    ht_flex(h-1-2*box_offset+2*clip_offset, tree->Parent->height, ht_get_fl_h(tree)),
 			    z
 			);
 			htrAddStylesheetItem_va(s,"\t#gb%POSpane2, #gb%POSpane3 { height: "ht_flex_format";}\n",id,id,ht_flex(h-3,tree->Parent->height,ht_get_fl_h(tree)));
@@ -366,20 +366,18 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 			{
 			htrAddStylesheetItem_va(s,
 			    "\t#gb%POSpane { "
-				"POSITION:absolute; "
-				"VISIBILITY:inherit; "
-				"OVERFLOW:hidden; "
-				"LEFT:"ht_flex_format"; "
-				"TOP:"ht_flex_format"; "
-				"WIDTH:"ht_flex_format"; "
-				"CLIP:rect(0, "ht_flex_format", auto, 0);"
-				"Z-INDEX:%POS; "
+				"position:absolute; "
+				"visibility:inherit; "
+				"overflow:hidden; "
+				"left:"ht_flex_format"; "
+				"top:"ht_flex_format"; "
+				"width:"ht_flex_format"; "
+				"z-index:%POS; "
 			    "}\n",
 			    id,
 			    ht_flex(x, tree->Parent->width, ht_get_fl_x(tree)),
 			    ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
 			    ht_flex(w-1-2*box_offset, tree->Parent->width, ht_get_fl_w(tree)),
-			    ht_flex(w-1-2*box_offset+2*clip_offset, tree->Parent->width, ht_get_fl_w(tree)),
 			    z
 			);
 			}
