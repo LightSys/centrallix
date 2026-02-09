@@ -89,7 +89,22 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddWgtrObjLinkage_va(s, tree, "fs%POSmain", id);
 
    /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,"\t#fs%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:13px; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
+   htrAddStylesheetItem_va(s,
+	"\t#fs%POSmain { "
+	    "position:absolute; "
+	    "visibility:inherit; "
+	    "left:"ht_flex_format"; "
+	    "top:"ht_flex_format"; "
+	    "width:"ht_flex_format"; "
+	    "height:13px; "
+	    "z-index:%POS; "
+	"}\n",
+	id,
+	ht_flex_x(x, tree),
+	ht_flex_y(y, tree),
+	ht_flex_w(w, tree),
+	z
+    );
 
    htrAddScriptInclude(s, "/sys/js/htdrv_formstatus.js", 0);
 
