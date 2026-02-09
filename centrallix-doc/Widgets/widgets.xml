@@ -3394,21 +3394,31 @@ $Version=2$
 		
 		<actions>
 		
-			<action name="ScrollTo">Scrolls to a specific location determined by the scroll bar.</action>
+			<action name="ScrollTo">Scrolls to a specific location determined by the scroll bar.  Specify the 'Percent' attribute to indicate how far to scroll in decimal representation (so 1.00 is 100%, aka. the bottom of the page).  Specify 'Offset' how many pixels the content should be offset from the top (specify 100 to scroll the first 100 px of content off the top of the scroll pane).  Specify 'RangeStart' and 'RangeEnd' to scroll to within the pixel range (using the same units as offset).  Keep in mind that this action will trigger a scroll event to occur.</action>
 		
 		</actions>
 		
 		<events>
 		
+		
+			<event name="Scroll">This event occurs any time the user scrolls the scroll pane.  This includes scrolling by clicking the scroll buttons, clicking on the scroll bar, dragging the scroll thumb, turning the scroll wheel, or when the ScrollTo action is used.  This event does not occur when the scroll pane moves because the contained content changed in length, or when the scroll pane is forced to scroll because the available visible area was resized.  This event will never occur if the content within the scroll pane is shorter than the available visible area because then the content cannot be scrolled.
+			This event provides the :Percent attribute, a number from 0 to 100 (the same as the ScrollTo action above) representing the percentage that the user has now scrolled down the page as of the event occuring.  This event also provides :Change, representing how much the user's scroll location has changed in the same unit as above (although this value will be negative if the user scrolled up).</event>
+			
+			<event name="Click">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
+			
+			<event name="Wheel">This event occurs when the user moves the scroll wheel while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.</event>
+
 			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
-			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.</event>
 
 			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
 			
 			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
 
 			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
+			
+			Note: The Click, Wheel, MouseDown, and MouseUp events provide several pieces of useful information, including :shiftKey, :ctrlKey, :altKey, and :metaKey, which are 1 if the respective key is held down and 0 otherwise. These events also provide :button, a number representing the button number that the user used to execute the event (which appears to always be 0 for wheel).
 
 		</events>
 		
