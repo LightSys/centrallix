@@ -149,34 +149,36 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    box_offset = 0;
 
 	/** Ok, write the style header items. **/
+	const int base_w = w - (2 * box_offset);
 	htrAddStylesheetItem_va(s,
 	    "\t#eb%POSbase { "
-		"POSITION:absolute; "
-		"VISIBILITY:inherit; "
-		"LEFT:"ht_flex_format"; "
-		"TOP:"ht_flex_format"; "
-		"WIDTH:"ht_flex_format"; "
-		"Z-INDEX:%POS; "
+		"position:absolute; "
+		"visibility:inherit; "
 		"overflow:hidden; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"z-index:%POS; "
 	    "}\n",
 	    id,
-	    ht_flex(x,                  ht_get_total_w(tree), ht_get_fl_x(tree)),
-	    ht_flex(y,                  ht_get_total_h(tree), ht_get_fl_y(tree)),
-	    ht_flex(w - 2 * box_offset, ht_get_total_w(tree), ht_get_fl_w(tree)),
+	    ht_flex(x,      ht_get_parent_w(tree), ht_get_fl_x(tree)),
+	    ht_flex(y,      ht_get_parent_h(tree), ht_get_fl_y(tree)),
+	    ht_flex(base_w, ht_get_parent_w(tree), ht_get_fl_w(tree)),
 	    z
 	);
 	htrAddStylesheetItem_va(s,
 	    "\t#eb%POScon1 { "
-		"VISIBILITY:inherit; "
-		"LEFT:5px; "
-		"TOP:0px; "
-		"WIDTH:"ht_flex_format"; "
-		"Z-INDEX:%POS; "
+		"position:absolute; "
+		"visibility:inherit; "
+		"left:5px; "
+		"top:0px; "
+		"width:calc(100%% - 10px); "
+		"height:100%%; "
 		"border:none; "
+		"z-index:%POS; "
 	    "}\n",
 	    id,
-	    ht_flex(w - 10, ht_get_total_w(tree), ht_get_fl_w(tree)),
-	    z+1
+	    z + 1
 	);
 
 	/** Write named global **/
@@ -200,10 +202,28 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","PASTE", "eb", "eb_paste");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    eb_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), c1:document.getElementById(\"eb%POScon1\"), form:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", isReadOnly:%INT, mainBackground:\"%STR&JSSTR\", tooltip:\"%STR&JSSTR\", desc_fgcolor:\"%STR&JSSTR\", empty_desc:\"%STR&JSSTR\"});\n",
-	    name,  id,
-	    form, fieldname, is_readonly, main_bg,
-	    tooltip, descfg, descr);
+	htrAddScriptInit_va(s,
+	    "eb_init({ "
+		"layer:wgtrGetNodeRef(ns,'%STR&SYM'), "
+		"c1:document.getElementById('eb%POScon1'), "
+		"form:'%STR&JSSTR', "
+		"fieldname:'%STR&JSSTR', "
+		"isReadOnly:%INT, "
+		"mainBackground:'%STR&JSSTR', "
+		"tooltip:'%STR&JSSTR', "
+		"desc_fgcolor:'%STR&JSSTR', "
+		"empty_desc:'%STR&JSSTR', "
+	    "});\n",
+	    name,
+	    id,
+	    form,
+	    fieldname,
+	    is_readonly,
+	    main_bg,
+	    tooltip,
+	    descfg,
+	    descr
+	);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"eb%POSbase\">\n",id);
@@ -214,12 +234,12 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n",id, main_bg);
 	if (h >= 0)
+	    {
 	    htrAddStylesheetItem_va(s,
-		"\t#eb%POSbase { height:"ht_flex_format"; }\n"
-		"\t#eb%POScon1 { height:"ht_flex_format"; }\n",
-		id, ht_flex(h - 2 * box_offset, ht_get_total_h(tree), ht_get_fl_h(tree)),
-		id, ht_flex(h - 2 * box_offset - 2, ht_get_total_h(tree), ht_get_fl_h(tree))
+		"\t#eb%POSbase { height:"ht_flex_format"; }\n",
+		id, ht_flex(h - (2 * box_offset), ht_get_parent_h(tree), ht_get_fl_h(tree))
 	    );
+	    }
 
 	//htrAddBodyItem_va(s, "<table border='0' cellspacing='0' cellpadding='0' width='%POS'><tr><td align='left' valign='middle' height='%POS'><img name='l' src='/sys/images/eb_edg.gif'></td><td>&nbsp;</td><td align='right' valign='middle'><img name='r' src='/sys/images/eb_edg.gif'></td></tr></table>\n", w-2, h-2);
 	//htrAddBodyItem_va(s, "<DIV ID=\"eb%POScon1\"></DIV>\n",id);

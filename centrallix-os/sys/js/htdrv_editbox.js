@@ -162,8 +162,10 @@ function eb_setdesc(txt)
 	({
 	"z-index":"-1",
 	"color":this.desc_fgcolor?this.desc_fgcolor:"#808080",
-	"top":($(this).height() - $(this.DescLayer).height())/2 + "px",
+	"top":"0px",
 	"left":(this.input_width() + ((this.content || this.has_focus)?4:0) + 5) + "px",
+	"height":"100%",
+	"align-content":"center",
 	"visibility":"inherit",
 	"white-space":"nowrap",
 	});
