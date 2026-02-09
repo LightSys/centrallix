@@ -64,7 +64,6 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
     int shadowx = 0;
     int shadowy = 0;
     int size = 0;
-    int moveable = 0;
     int bold = 0;
     int showsecs = 1;
     int showampm = 1;
@@ -142,10 +141,6 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"size",DATA_T_INTEGER,POD(&ptr)) == 0)
 	    size = (intptr_t)ptr;
 
-	/** Movable? **/
-	if (wgtrGetPropertyValue(tree,"moveable",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"true"))
-	    moveable = 1;
-
 	/** Show Seconds **/
 	if (wgtrGetPropertyValue(tree,"seconds",DATA_T_STRING,POD(&ptr)) == 0 && (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")))
 	    showsecs = 0;
@@ -160,18 +155,38 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	else 
 	    fieldname[0]='\0';
 
-	/** Write Style header items. **/
-	htrAddStylesheetItem_va(s,"\t#cl%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
-	htrAddStylesheetItem_va(s,"\t#cl%POScon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,0,0,w,z+2);
-	htrAddStylesheetItem_va(s,"\t#cl%POScon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,0,0,w,z+2);
+	/** Write style headers. **/
+	htrAddStylesheetItem_va(s,
+	    "\t#cl%POSbase { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    ht_flex_x(x, tree),
+	    ht_flex_y(y, tree),
+	    ht_flex_w(w, tree),
+	    z
+	);
+	htrAddStylesheetItem_va(s,
+	    "\t.cl%POScon { "
+		"position:absolute; "
+		"left:0px; "
+		"top:0px; "
+		"width:100%%; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    0,
+	    0,
+	    z + 2
+	);
 
-	/** Write named global **/
+	/** Setup linkage **/
 	htrAddWgtrObjLinkage_va(s, tree, "cl%POSbase",id);
-
-	/** Other global variables **/
-	htrAddScriptGlobal(s, "cl_move", "false", 0);
-	htrAddScriptGlobal(s, "cl_xOffset", "null", 0);
-	htrAddScriptGlobal(s, "cl_yOffset", "null", 0);
 
 	/** Javascript include files **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_clock.js", 0);
@@ -185,21 +200,46 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "cl", "cl_mousemove");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    cl_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), c1:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"cl%POScon1\"), c2:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"cl%POScon2\"), fieldname:\"%STR&JSSTR\", background:\"%STR&JSSTR\", shadowed:%POS, foreground1:\"%STR&JSSTR\", foreground2:\"%STR&JSSTR\", fontsize:%INT, moveable:%INT, bold:%INT, sox:%INT, soy:%INT, showSecs:%INT, showAmPm:%INT, milTime:%INT});\n",
+	htrAddScriptInit_va(s,
+	    "cl_init({ "
+		"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"c1:htr_subel(wgtrGetNodeRef(ns, '%STR&SYM'), 'cl%POScon1'), "
+		"c2:htr_subel(wgtrGetNodeRef(ns, '%STR&SYM'), 'cl%POScon2'), "
+		"fieldname:'%STR&JSSTR', "
+		"background:'%STR&JSSTR', "
+		"shadowed:%POS, "
+		"foreground1:'%STR&JSSTR', "
+		"foreground2:'%STR&JSSTR', "
+		"fontsize:%INT, "
+		"bold:%INT, "
+		"sox:%INT, "
+		"soy:%INT, "
+		"showSecs:%INT, "
+		"showAmPm:%INT, "
+		"milTime:%INT, "
+	    "});\n",
 	    name,
 	    name, id,
 	    name, id,
-	    fieldname, main_bg, shadowed,
-	    fgcolor1, fgcolor2,
-	    size, moveable, bold,
-	    shadowx, shadowy,
-	    showsecs, showampm, miltime);
+	    fieldname,
+	    main_bg,
+	    shadowed,
+	    fgcolor1,
+	    fgcolor2,
+	    size,
+	    bold,
+	    shadowx,
+	    shadowy,
+	    showsecs,
+	    showampm,
+	    miltime
+	);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"cl%POSbase\">\n",id);
 	htrAddBodyItem_va(s, "    <BODY %STR><TABLE width=%POS height=%POS border=0 cellpadding=0 cellspacing=0><TR><TD></TD></TR></TABLE></BODY>\n",main_bg,w,h);
-	htrAddBodyItem_va(s, "    <DIV ID=\"cl%POScon1\"></DIV>\n",id);
-	htrAddBodyItem_va(s, "    <DIV ID=\"cl%POScon2\"></DIV>\n",id);
+	htrAddBodyItem_va(s, "    <DIV ID='cl%POScon1' CLASS='cl%POScon' style='visibility:inherit;'></DIV>\n", id, id);
+	htrAddBodyItem_va(s, "    <DIV ID='cl%POScon2' CLASS='cl%POScon' style='visibility:hidden;'></DIV>\n", id, id);
 	htrAddBodyItem(s,    "</DIV>\n");
 
 	/** Check for more sub-widgets **/
