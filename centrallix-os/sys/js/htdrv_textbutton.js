@@ -205,7 +205,6 @@ function tb_setmode(layer,mode)
 	switch(mode)
 	    {
 	    case 0: /* no point no click */
-		moveTo(layer,layer.orig_x,layer.orig_y);
 		$(layer).find(".cell").css({'border-style':'solid', 'border-color':'transparent'});
 		/*if(cx__capabilities.Dom2CSS)
 		    {
