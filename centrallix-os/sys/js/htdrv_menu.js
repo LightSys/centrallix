@@ -395,19 +395,21 @@ function mn_init(param)
     menu.objname = param.name;
     menu.cur_highlight = null;
 
+    // Set up sizing.
     if (cx__capabilities.CSS2)
 	{
 	if (menu.scrollHeight == 0)
 	    {
-	    pg_set_style(menu,'height',menu.childNodes[0].scrollHeight);
-	    pg_set_style(menu,'width',menu.childNodes[0].scrollWidth);
+	    if (param.h === -1) pg_set_style(menu, 'height', menu.childNodes[0].scrollHeight);
+	    if (param.w === -1) pg_set_style(menu, 'width', menu.childNodes[0].scrollWidth);
 	    }
 	else
 	    {
-	    pg_set_style(menu,'height',menu.scrollHeight);
-	    pg_set_style(menu,'width',menu.scrollWidth);
+	    if (param.h === -1) pg_set_style(menu, 'height', menu.scrollHeight);
+	    if (param.w === -1) pg_set_style(menu, 'width', menu.scrollWidth);
 	    }
 	}
+    disableClippingCSS(menu);
     menu.act_w = getClipWidth(menu.clayer);
     menu.act_h = getClipHeight(menu.clayer);
     if ($(menu).css('visibility') == 'hidden' && (!menu.__WgtrParent.style || $(menu.__WgtrParent).css('visibility') == 'inherit'))
