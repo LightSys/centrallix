@@ -102,14 +102,22 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 	    /** Only give x and y if supplied. **/
 	    if (x < 0 || y < 0)
 		{
-		htrAddStylesheetItem_va(s,"\t#ht%POSpane { POSITION:relative; VISIBILITY:inherit; WIDTH:"ht_flex_format"; Z-INDEX:%POS; }\n",id,ht_flex(w,ht_get_total_w(tree),ht_get_fl_w(tree)),z);
-		htrAddStylesheetItem_va(s,"\t#ht%POSpane2 { POSITION:relative; VISIBILITY:hidden; WIDTH:"ht_flex_format"; Z-INDEX:%POS; }\n",id,ht_flex(w,ht_get_total_w(tree),ht_get_fl_w(tree)),z);
-		htrAddStylesheetItem_va(s,"\t#ht%POSfader { POSITION:relative; VISIBILITY:hidden; WIDTH:"ht_flex_format"; Z-INDEX:%POS; }\n",id,ht_flex(w,ht_get_total_w(tree),ht_get_fl_w(tree)),z+1);
+		htrAddStylesheetItem_va(s,
+		    "\t#ht%POSpane, #ht%POSpane, #ht%POSfader { "
+			"POSITION:relative; "
+			"VISIBILITY:inherit; "
+			"WIDTH:"ht_flex_format"; "
+			"Z-INDEX:%POS; "
+		    "}\n",
+		    id, id, id,
+		    ht_flex_w(w, tree),
+		    z
+		);
 		}
 	    else
 		{
 		htrAddStylesheetItem_va(s,
-		    "\t#ht%POSpane { "
+		    "\t#ht%POSpane, #ht%POSpane2, #ht%POSfader { "
 			"POSITION:absolute; "
 			"VISIBILITY:inherit; "
 			"LEFT:"ht_flex_format"; "
@@ -117,60 +125,28 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 			"WIDTH:"ht_flex_format"; "
 			"Z-INDEX:%POS; "
 		    "}\n",
-		    id,
-		    ht_flex(x, ht_get_total_w(tree), ht_get_fl_x(tree)),
-		    ht_flex(y, ht_get_total_h(tree), ht_get_fl_y(tree)),
-		    ht_flex(w, ht_get_total_w(tree), ht_get_fl_w(tree)),
+		    id, id, id,
+		    ht_flex_x(x, tree),
+		    ht_flex_y(y, tree),
+		    ht_flex_w(w, tree),
 		    z
-		);
-		htrAddStylesheetItem_va(s,
-		    "\t#ht%POSpane2 { "
-			"POSITION:absolute; "
-			"VISIBILITY:hidden; "
-			"LEFT:"ht_flex_format"; "
-			"TOP:"ht_flex_format"; "
-			"WIDTH:"ht_flex_format"; "
-			"Z-INDEX:%POS; "
-		    "}\n",
-		    id,
-		    ht_flex(x, ht_get_total_w(tree), ht_get_fl_x(tree)),
-		    ht_flex(y, ht_get_total_h(tree), ht_get_fl_y(tree)),
-		    ht_flex(w, ht_get_total_w(tree), ht_get_fl_w(tree)),
-		    z
-		);
-		htrAddStylesheetItem_va(s,
-		    "\t#ht%POSfader { "
-			"POSITION:absolute; "
-			"VISIBILITY:hidden; "
-			"LEFT:"ht_flex_format"; "
-			"TOP:"ht_flex_format"; "
-			"WIDTH:"ht_flex_format"; "
-			"Z-INDEX:%POS; "
-		    "}\n",
-		    id,
-		    ht_flex(x, ht_get_total_w(tree), ht_get_fl_x(tree)),
-		    ht_flex(y, ht_get_total_h(tree), ht_get_fl_y(tree)),
-		    ht_flex(w, ht_get_total_w(tree), ht_get_fl_w(tree)),
-		    z+1
 		);
 		}
 
 	    if (s->Capabilities.CSS1)
 		{
-	        htrAddStylesheetItem_va(s,"\t#ht%POSpane { overflow:hidden; }\n",id);
-	        htrAddStylesheetItem_va(s,"\t#ht%POSpane2 { overflow:hidden; }\n",id);
-	        htrAddStylesheetItem_va(s,"\t#ht%POSfader { overflow:hidden; }\n",id);
+	        htrAddStylesheetItem_va(s,"\t#ht%POSpane, #ht%POSpane2, #ht%POSfader { overflow:hidden; }\n", id, id, id);
 		htrAddStylesheetItem_va(s,"\t#ht%POSloader { overflow:hidden; visibility:hidden; position:absolute; top:0px; left:0px; width:0px; height:0px; }\n", id);
 		}
 
             /** Write named global **/
 	    htrAddWgtrObjLinkage_va(s, tree, "ht%POSpane",id);
 
-            htrAddScriptGlobal(s, "ht_fadeobj", "null", 0);
-    
+	    htrAddScriptGlobal(s, "ht_fadeobj", "null", 0);
+	    
 	    htrAddScriptInclude(s, "/sys/js/htdrv_html.js", 0);
 	    htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
-
+	    
 	    /** Event handler for click-on-link. **/
 	    htrAddEventHandlerFunction(s, "document","CLICK","ht","ht_click");
 	    htrAddEventHandlerFunction(s,"document","MOUSEOVER","ht","ht_mouseover");
@@ -178,16 +154,53 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddEventHandlerFunction(s,"document","MOUSEMOVE","ht", "ht_mousemove");
 	    htrAddEventHandlerFunction(s,"document","MOUSEDOWN","ht", "ht_mousedown");
 	    htrAddEventHandlerFunction(s,"document","MOUSEUP",  "ht", "ht_mouseup");
-
-            /** Script initialization call. **/
-	    if (s->Capabilities.Dom0NS)
-		htrAddScriptInit_va(s,"    ht_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), layer2:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"ht%POSpane2\"), faderLayer:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"ht%POSfader\"), source:\"%STR&JSSTR\", width:%INT, height:%INT, loader:null});\n",
-                    name, name, id, name, id, 
-		    src, w,h);
+	    
+	    /** Script initialization call. **/
+	    if (s->Capabilities.Dom1HTML)
+		{
+		htrAddScriptInit_va(s,
+		    "ht_init({"
+			"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+			"layer2:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns, '%STR&SYM')), 'ht%POSpane2'), "
+			"faderLayer:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns, '%STR&SYM')), 'ht%POSfader'), "
+			"source:'%STR&JSSTR', "
+			"width:%INT, "
+			"height:%INT, "
+			"loader:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns, '%STR&SYM')), 'ht%POSloader')"
+		    "});\n",
+                    name,
+		    name, id,
+		    name, id, 
+		    src,
+		    w,
+		    h,
+		    name, id
+		);
+		}
+	    else if (s->Capabilities.Dom0NS)
+		{
+		htrAddScriptInit_va(s,
+		    "ht_init({"
+			"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+			"layer2:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns, '%STR&SYM')), 'ht%POSpane2'), "
+			"faderLayer:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns, '%STR&SYM')), 'ht%POSfader'), "
+			"source:'%STR&JSSTR', "
+			"width:%INT, "
+			"height:%INT, "
+			"loader:null"
+		    "});\n",
+		    name,
+		    name, id,
+		    name, id,
+		    src,
+		    w,
+		    h
+		);
+		}
 	    else
-		htrAddScriptInit_va(s,"    ht_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), layer2:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"ht%POSpane2\"), faderLayer:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"ht%POSfader\"), source:\"%STR&JSSTR\", width:%INT, height:%INT, loader:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")), \"ht%POSloader\")});\n",
-                    name, name, id, name, id, 
-		    src, w,h, name, id);
+		{
+		mssError(1, "HTHTML", "Browser not supported!!");
+		}
     
             /** HTML body <DIV> element for the layer. **/
             htrAddBodyItem_va(s,"<DIV background=\"/sys/images/fade_lrwipe_01.gif\" ID=\"ht%POSfader\"></DIV>",id);
@@ -214,14 +227,14 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
             }
 
         /** If source is an objectsystem entry... **/
-        if (src[0] && strncmp(src,"http:",5) && strncmp(src,"debug:",6))
+        if (src[0] && strncmp(src, "http:", 5) != 0 && strncmp(src, "debug:", 6) != 0)
             {
             content_obj = objOpen(s->ObjSession,src,O_RDONLY,0600,"text/html");
             if (content_obj)
                 {
-                while((cnt = objRead(content_obj, sbuf, 159,0,0)) > 0)
+                while ((cnt = objRead(content_obj, sbuf, 159, 0, 0)) > 0)
                     {
-                    sbuf[cnt]=0;
+                    sbuf[cnt] = 0;
                     htrAddBodyItem(s, sbuf);
                     }
                 objClose(content_obj);

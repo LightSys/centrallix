@@ -300,6 +300,8 @@ function ht_init(param)
     
     //l.watch('source', ht_sourcechanged);
     pg_resize(l.parentLayer);
+    disableClippingCSS(l.parentLayer);
+    
     return l;
     }    
 
