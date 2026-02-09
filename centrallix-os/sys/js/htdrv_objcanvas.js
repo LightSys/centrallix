@@ -113,6 +113,7 @@ function oc_add_osrc_object(o)
     y = parseInt(y);
 
     // make and position the layer
+    console.error("New layer created. This will probably break responsive design.");
     var l = this.NewLayer();
     htr_init_layer(l, this, 'oc');
     l.osrc_oid = o.oid;
