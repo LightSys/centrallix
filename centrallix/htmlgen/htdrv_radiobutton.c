@@ -9,6 +9,7 @@
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -61,13 +62,9 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    char form[64];
    pWgtrNode radiobutton_obj, sub_tree;
    int x=-1,y=-1,w,h;
-   int top_offset;
-   int cover_height, cover_width;
-   int item_spacing;
    int id, i, j;
    int is_selected;
-   int rb_cnt;
-   int cover_margin;
+   int raido_button_count;
    char fieldname[32];
    char value[64];
    char label[64];
@@ -137,19 +134,74 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddScriptInclude(s, "/sys/js/htdrv_radiobutton.js", 0);
    htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 
-   /** Ok, write the style header items. **/
-   top_offset = s->ClientInfo->ParagraphHeight*3/4+1;
-   cover_height = h-(top_offset+3+2);
-   cover_width = w-(2*3 +2);
-   htrAddStylesheetItem_va(s,"\t#rb%POSparent    { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",
-           id,x,y,w,h,z,w,h);
-   htrAddStylesheetItem_va(s,"\t#rb%POSborder    { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",
-           id,3,top_offset,w-(2*3),h-(top_offset+3),z+1,w-(2*3),h-(top_offset+3));
-   htrAddStylesheetItem_va(s,"\t#rb%POScover     { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",
-           id,1,1,cover_width,cover_height,z+2,cover_width,cover_height);
-   htrAddStylesheetItem_va(s,"\t#rb%POStitle     { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",
-           id,10,1,w/2,s->ClientInfo->ParagraphHeight,z+3);
-   
+    /** Write style headers for container DOM nodes. **/
+    const int para_height = s->ClientInfo->ParagraphHeight;
+    fprintf(stderr, "h: %d\n", para_height);
+    const int top_offset = (para_height * 3) / 4 + 1;
+    htrAddStylesheetItem_va(s,
+	"#rb%POSparent { "
+	    "position:absolute; "
+	    "visibility:inherit; "
+	    "overflow:hidden; "
+	    "left:"ht_flex_format"; "
+	    "top:"ht_flex_format"; "
+	    "width:"ht_flex_format"; "
+	    "height:"ht_flex_format"; "
+	    "z-index:%POS; "
+	"}\n",
+	id,
+	ht_flex_x(x, tree),
+	ht_flex_y(y, tree),
+	ht_flex_w(w, tree),
+	ht_flex_h(h, tree),
+	z
+    );
+    htrAddStylesheetItem_va(s,
+	"#rb%POSborder { "
+	    "position:absolute; "
+	    "visibility:inherit; "
+	    "overflow:hidden; "
+	    "left:3px; "
+	    "top:%POSpx; "
+	    "width:calc(100%% - 6px); "
+	    "height:calc(100%% - %POSpx); "
+	    "z-index:%POS; "
+	"}\n",
+	id,
+	top_offset,
+	top_offset + 3,
+	z + 1
+    );
+    htrAddStylesheetItem_va(s,
+	"#rb%POScover { "
+	    "position:absolute; "
+	    "visibility:inherit; "
+	    "overflow:hidden; "
+	    "left:1px; "
+	    "top:1px; "
+	    "width:calc(100%% - 2px); "
+	    "height:calc(100%% - 2px); "
+	    "z-index:%POS; "
+	"}\n",
+	id,
+	z + 2
+    );
+    htrAddStylesheetItem_va(s,
+	"#rb%POStitle { "
+	    "position:absolute; "
+	    "visibility:inherit; "
+	    "overflow:hidden; "
+	    "left:10px; "
+	    "top:1px; "
+	    "width:50%%; "
+	    "height:%POSpx; "
+	    "z-index:%POS; "
+	"}\n",
+	id,
+	para_height,
+	z + 3
+    );
+
    htrAddScriptGlobal(s, "radiobutton", "null", 0);
 
    /** DOM linkages **/
@@ -157,27 +209,23 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(htr_subel(_obj,\"rb%POSborder\"),\"rb%POScover\")",id,id);
 
     /** Loop through each radiobutton and flag it NOOBJECT **/
-    rb_cnt = 0;
+    raido_button_count = 0;
     for (j=0;j<xaCount(&(tree->Children));j++)
 	{
 	radiobutton_obj = xaGetItem(&(tree->Children), j);
 	radiobutton_obj->RenderFlags |= HT_WGTF_NOOBJECT;
 	wgtrGetPropertyValue(radiobutton_obj,"outer_type",DATA_T_STRING,POD(&ptr));
-	if (!strcmp(ptr,"widget/radiobutton"))
-	    {
-	    rb_cnt++;
-	    }
+	if (strcmp(ptr,"widget/radiobutton") == 0) raido_button_count++;
 	}
-   /*
-      Now lets loop through and create a style sheet for each optionpane on the
-      radiobuttonpanel
-   */   
-    item_spacing = 12 + s->ClientInfo->ParagraphHeight;
-    cover_margin = 10;
-    if (item_spacing*rb_cnt+2*cover_margin > cover_height)
-	item_spacing = (cover_height-2*cover_margin)/rb_cnt;
-    if (item_spacing*rb_cnt+2*cover_margin > cover_height)
-	cover_margin = (cover_height-(item_spacing*rb_cnt))/2;
+    
+    /** Compute values for laying out radio buttons. **/
+    const int cover_height = h - top_offset - 6;
+    int item_spacing = para_height + 12;
+    int cover_margin = 10;
+    if (item_spacing * raido_button_count + 2*cover_margin > cover_height)
+	item_spacing = (cover_height-2*cover_margin)/raido_button_count;
+    if (item_spacing * raido_button_count + 2*cover_margin > cover_height)
+	cover_margin = (cover_height-(item_spacing*raido_button_count))/2;
     if (cover_margin < 2) cover_margin = 2;
     i = 1;
     for (j=0;j<xaCount(&(tree->Children));j++)
@@ -186,8 +234,22 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
 	wgtrGetPropertyValue(radiobutton_obj,"outer_type",DATA_T_STRING,POD(&ptr));
 	if (!strcmp(ptr,"widget/radiobutton"))
 	    {
-	    htrAddStylesheetItem_va(s,"\t#rb%POSoption%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px, %POSpx, %POSpx, 0px); }\n",
-		    id,i,7,cover_margin+((i-1)*item_spacing)+3,cover_width-7,item_spacing,z+2,cover_width-7,item_spacing);
+	    htrAddStylesheetItem_va(s,
+		"#rb%POSoption%POS { "
+		    "position:absolute; "
+		    "visibility:inherit; "
+		    "overflow:hidden; "
+		    "left:7px; "
+		    "top:%INTpx; "
+		    "width:calc(100%% - 7px); "
+		    "height:%POSpx; "
+		    "z-index:%POS; "
+		"}\n",
+		id, i,
+		cover_margin + ((i-1) * item_spacing) + 2,
+		min(item_spacing, para_height + 4),
+		z + 2
+	    );
 	    i++;
 	    }
 	}
@@ -266,19 +328,58 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
         if (!strcmp(ptr,"widget/radiobutton")) 
 	    {
 	    /** CSS layers **/
-	    htrAddStylesheetItem_va(s,"\t#rb%POSbuttonset%POS   { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); CURSOR:pointer; }\n",
-		   id,i,5,2+(s->ClientInfo->ParagraphHeight-12)/2,12,12,z+2,12,12);
-	    htrAddStylesheetItem_va(s,"\t#rb%POSbuttonunset%POS { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); CURSOR:pointer; }\n",
-		   id,i,5,2+(s->ClientInfo->ParagraphHeight-12)/2,12,12,z+2,12,12);
-	    htrAddStylesheetItem_va(s,"\t#rb%POSvalue%POS       { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); }\n",
-		   id,i,5,5,12,12,z+2,12,12);
-	    htrAddStylesheetItem_va(s,"\t#rb%POSlabel%POS       { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%POSpx,%POSpx,0px); CURSOR:pointer; }\n",
-		   id,i,27,2,cover_width-(27+1),item_spacing-1,z+2,cover_width-(27+1),item_spacing-1);
+	    htrAddStylesheetItem_va(s,
+		"#rb%POSbuttonset%POS, "
+		"#rb%POSbuttonunset%POS { "
+		    "position:absolute; "
+		    "overflow:hidden; "
+		    "left:5px; "
+		    "top:%INTpx; "
+		    "width:12px; "
+		    "height:12px; "
+		    "z-index:%POS; "
+		    "cursor:pointer; "
+		"}\n",
+		id, i,
+		id, i,
+		(para_height / 2) - 3,
+		z + 2
+	    );
+	    htrAddStylesheetItem_va(s,
+		"#rb%POSvalue%POS { "
+		    "position:absolute; "
+		    "visibility:hidden; "
+		    "overflow:hidden; "
+		    "left:5px; "
+		    "top:6px; "
+		    "width:12px; "
+		    "height:12px; "
+		    "z-index:%POS; "
+		"}\n",
+		id, i,
+		z + 2
+	    );
+	    htrAddStylesheetItem_va(s,
+		"#rb%POSlabel%POS { "
+		    "position:absolute; "
+		    "visibility:inherit; "
+		    "overflow:hidden; "
+		    "left:27px; "
+		    "top:3px; "
+		    "width:calc(100%% - 27px); "
+		    "height:%POSpx; "
+		    "z-index:%POS; "
+		    "cursor:pointer; "
+		"}\n",
+		id, i,
+		item_spacing - 1,
+		z + 2
+	    );
 
 	    /** Body layers **/
             htrAddBodyItem_va(s,"            <DIV ID=\"rb%POSoption%POS\">\n", id, i);
-            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSbuttonset%POS\"><IMG SRC=\"/sys/images/radiobutton_set.gif\"></DIV>\n", id, i);
-            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSbuttonunset%POS\"><IMG SRC=\"/sys/images/radiobutton_unset.gif\"></DIV>\n", id, i);
+            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSbuttonset%POS\" style=\"visibility:hidden;\"><IMG SRC=\"/sys/images/radiobutton_set.gif\"></DIV>\n", id, i);
+            htrAddBodyItem_va(s,"               <DIV ID=\"rb%POSbuttonunset%POS\" style=\"visibility:inherit;\"><IMG SRC=\"/sys/images/radiobutton_unset.gif\"></DIV>\n", id, i);
  
             wgtrGetPropertyValue(radiobutton_obj,"label",DATA_T_STRING,POD(&ptr));
 	    strtcpy(sbuf2,ptr,sizeof(sbuf2));
