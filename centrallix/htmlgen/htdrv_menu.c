@@ -284,21 +284,50 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	is_popup = htrGetBoolean(menu, "popup", 0);
 	if (is_popup < 0) is_popup = 0;
 
-	/** Write the main style header item. **/
-	htrAddStylesheetItem_va(s,"\t#mn%POSmain { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]%[WIDTH:%POSpx; %]Z-INDEX:%POS; }\n", id,is_popup?"hidden":"inherit", x, y, h != -1, h-2*bx, w != -1, w-2*bx, z);
+	/** Write styles for the main DOM element. **/
+	htrAddStylesheetItem_va(s,
+	    "\t#mn%POSmain { "
+		"position:absolute; "
+		"visibility:%STR; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"%[height:"ht_flex_format"; %]"
+		"%[width:"ht_flex_format"; %]"
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    (is_popup) ? "hidden" : "inherit",
+	    ht_flex_x(x, menu),
+	    ht_flex_y(y, menu),
+	    (h != -1), ht_flex_h(h - 2 * bx, menu),
+	    (w != -1), ht_flex_w(w - 2 * bx, menu),
+	    z
+	);
 	if (shadow_radius > 0)
 	    {
 	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_radius, shadow_color);
 	    }
-	htrAddStylesheetItem_va(s,"\t#mn%POScontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; %[HEIGHT:%POSpx; %]%[WIDTH:%POSpx; %]Z-INDEX:%POS; }\n", id, h != -1, h-2*bx, w != -1, w-2*bx, z+1);
 	if (s->Capabilities.CSS2)
 	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { overflow:hidden; border-style: solid; border-width: 1px; border-color: white gray gray white; color:%STR; %STR }\n", id, textcolor, bgstr);
-
-	/** content layer **/
+	
+	/** Write styles for the content container. **/
+	htrAddStylesheetItem_va(s,
+	    "\t#mn%POScontent { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"left:0px; "
+		"top:0px; "
+		"height:%%100;"
+		"width:%%100;"
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    z + 1
+	);
 	if (s->Capabilities.CSS2)
 	    htrAddStylesheetItem_va(s,"\t#mn%POScontent { overflow:hidden; cursor:default; }\n", id );
 
-	/** highlight bar **/
+	/** Write styles for the highlight bar. **/
 	htrAddStylesheetItem_va(s, "\t#mn%POShigh { POSITION:absolute; VISIBILITY: hidden; LEFT:0px; TOP:0px; Z-INDEX:%POS; }\n", id, z);
 	if (s->Capabilities.CSS2)
 	    htrAddStylesheetItem_va(s,"\t#mn%POShigh { overflow:hidden; }\n", id );
@@ -324,10 +353,34 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_menu.js", 0);
 
 	/** Initialization **/
-	htrAddScriptInit_va(s,"    mn_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), clayer:wgtrGetContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")), hlayer:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"mn%POShigh\"), bgnd:\"%STR&JSSTR\", high:\"%STR&JSSTR\", actv:\"%STR&JSSTR\", txt:\"%STR&JSSTR\", w:%INT, h:%INT, horiz:%INT, pop:%INT, name:\"%STR&SYM\"});\n", 
-		name, name, name, id, 
-		bgstr, highlight, active, textcolor, 
-		w, h, is_horizontal, is_popup, name);
+	htrAddScriptInit_va(s,
+	    "mn_init({ "
+	        "layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"clayer:wgtrGetContainer(wgtrGetNodeRef(ns,'%STR&SYM')), "
+		"hlayer:htr_subel(wgtrGetNodeRef(ns,'%STR&SYM'), 'mn%POShigh'), "
+		"bgnd:'%STR&JSSTR', "
+		"high:'%STR&JSSTR', "
+		"actv:'%STR&JSSTR', "
+		"txt:'%STR&JSSTR', "
+		"w:%INT, "
+		"h:%INT, "
+		"horiz:%INT, "
+		"pop:%INT, "
+		"name:'%STR&SYM', "
+	    "});\n", 
+	    name,
+	    name,
+	    name, id, 
+	    bgstr,
+	    highlight,
+	    active,
+	    textcolor, 
+	    w,
+	    h,
+	    is_horizontal,
+	    is_popup,
+	    name
+	);
 
 	/** Event handlers **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "mn", "mn_mousemove");
@@ -596,5 +649,3 @@ htmenuInitialize()
 
     return 0;
     }
-
-
