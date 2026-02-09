@@ -51,6 +51,11 @@ function pg_scriptavailable(s)
     }
 
 
+/** Quick and dirty resize handling tool. **/
+const resize_handlers = {};
+window.addEventListener('resize', (e) => Object.values(resize_handlers).forEach(f => f(e)));
+
+
 //START SECTION: DOM/CSS helper functions -----------------------------------
 
 /** returns an attribute of the element in pixels **/
@@ -1929,7 +1934,9 @@ function pg_findfocusarea(l, xo, yo)
 
 function pg_setmousefocus(l, xo, yo)
     {
-    var a = pg_findfocusarea(l, xo, yo);
+    if (!l) return false;
+    
+    const a = pg_findfocusarea(l, xo, yo);
     if (a && a != pg_curarea)
 	{
 	pg_curarea = a;
@@ -1937,26 +1944,52 @@ function pg_setmousefocus(l, xo, yo)
 	    {
 	    if (!pg_curarea.layer.getmousefocushandler || pg_curarea.layer.getmousefocushandler(xo, yo, a.layer, a.cls, a.name, a))
 		{
-		// wants mouse focus
-		var offs = $(pg_curarea.layer).offset();
-		//var x = getPageX(pg_curarea.layer)+pg_curarea.x;
-		//var y = getPageY(pg_curarea.layer)+pg_curarea.y;
-		var x = offs.left+pg_curarea.x;
-		var y = offs.top+pg_curarea.y;
+		// Create a function to handle all box updates with this focus.
+		const update_box = (area) =>
+		    {
+		    // Compute layout data.
+		    const offs = $(area.layer).offset();
+		    const x = area.x + offs.left;
+		    const y = area.y + offs.top;
+		    const w = area.width;
+		    const h = area.height;
+		    
+		    if (cx__capabilities.Dom0NS)
+			{
+			pg_mkbox(l,
+			    x, y, w, h, 1,
+			    document.layers.pgtop,
+			    document.layers.pgbtm,
+			    document.layers.pgrgt,
+			    document.layers.pglft,
+			    page.mscolor1, page.mscolor2,
+			    document.layers.pgktop.zIndex - 1
+			);
+			}
+		    else if (cx__capabilities.Dom1HTML)
+			{
+			pg_mkbox(l,
+			    x, y, w, h, 1,
+			    document.getElementById("pgtop"),
+			    document.getElementById("pgbtm"),
+			    document.getElementById("pgrgt"),
+			    document.getElementById("pglft"),
+			    page.mscolor1, page.mscolor2,
+			    htr_getzindex(document.getElementById("pgktop")) - 1
+			);
+			}
+		    };
 		
-		var w = pg_curarea.width;
-		var h = pg_curarea.height;
-		if (cx__capabilities.Dom0NS)
-		    {
-		    pg_mkbox(l, x,y,w,h, 1, document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft, page.mscolor1, page.mscolor2, document.layers.pgktop.zIndex-1);
-		    }
-		else if (cx__capabilities.Dom1HTML)
-		    {
-		    pg_mkbox(l, x,y,w,h, 1, document.getElementById("pgtop"),document.getElementById("pgbtm"),document.getElementById("pgrgt"),document.getElementById("pglft"), page.mscolor1, page.mscolor2, htr_getzindex(document.getElementById("pgktop"))-1);
-		    }
+		// Initial update.
+		update_box(pg_curarea);
+		
+		// Responsive updates.
+		const area = pg_curarea; // Save value so we can create a closure below.
+		resize_handlers.mouse_focus = () => update_box(area);
 		}
 	    }
 	}
+    if (!a) delete resize_handlers.mouse_focus;
     }
 
 function pg_removekbdfocus(p)
@@ -1975,16 +2008,30 @@ function pg_removekbdfocus(p)
 	    pg_mkbox(null,0,0,0,0, 1, document.getElementById("pgktop"),document.getElementById("pgkbtm"),document.getElementById("pgkrgt"),document.getElementById("pgklft"), page.kbcolor1, page.kbcolor2, pg_get_style(document.getElementById("pgtop"), 'zIndex')+100);
 	    }
 	}
+	
+    // Clear resize handling.
+    delete resize_handlers.mouse_focus;
+    delete resize_handlers.data_focus;
+    delete resize_handlers.kbd_focus;
+    
     return true;
     }
 
 function pg_setdatafocus(a)
     {
+    if (!a) return false;
+    
     var x = getPageX(a.layer)+a.x;
     var y = getPageY(a.layer)+a.y;
     var w = a.width;
     var h = a.height;
     var l = a.layer; 
+    
+    // Setup resize handling.
+    resize_handlers.data_focus = () => {
+	// Recall function to update values.
+	pg_setdatafocus(a);
+    };
 
     // hide old data focus box
     if (l.pg_dttop != null)
@@ -2037,6 +2084,8 @@ function pg_setdatafocus(a)
 
 function pg_setkbdfocus(l, a, xo, yo)
     {
+    if (!l) return false;
+    
     var from_kbd = false;
     if (xo == null && yo == null)
 	{
@@ -2067,6 +2116,12 @@ function pg_setkbdfocus(l, a, xo, yo)
     var v = 0;
     pg_curkbdarea = a;
     pg_curkbdlayer = l;
+
+    // Setup resize handling.
+    resize_handlers.kbd_focus = () => {
+	// Recall function to update values.
+	pg_setkbdfocus(l, a, xo, yo);
+    };
 
     if (pg_curkbdlayer && pg_curkbdlayer.getfocushandler)
 	{
@@ -3040,9 +3095,12 @@ function pg_check_resize(l)
 	{
 	if (wgtrGetServerProperty(l, "height") != $(l).height())
 	    {
-	    if (wgtrGetParent(l).childresize)
+	    const parent = wgtrGetParent(l);
+	    if (parent.childresize)
 		{
-		var geom = wgtrGetParent(l).childresize(l, wgtrGetServerProperty(l, "width"), wgtrGetServerProperty(l, "height"), $(l).width(), $(l).height());
+		const width = wgtrGetServerProperty(l, "width");
+		const height = wgtrGetServerProperty(l, "height");
+		const geom = parent.childresize(l, width, height, $(l).width(), $(l).height());
 		if (geom)
 		    {
 		    wgtrSetServerProperty(l, "height", geom.height);
