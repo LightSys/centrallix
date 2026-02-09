@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ClaudCode — Common Kingfisher (Alcedo atthis) — Extended Brief</title>
+  <meta name="description"
+    content="An expanded, accessible, and styled long-form page about the Common Kingfisher. Contains detailed sections, observation logs, FAQs, glossary and printable facts." />
+  <style>
+    :root{
+      --bg:#071022;
+      --card:#081627;
+      --red:#ff4d6d;
+      --blue:#4da6ff;
+      --muted:#9fb7cf;
+      --glass:rgba(255,255,255,0.03);
+      --radius:10px;
+      --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,"Roboto Mono","Courier New",monospace;
+      --max-width:1100px;
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      font-family:Inter, system-ui, "Segoe UI", Arial, Helvetica, sans-serif;
+      color:#eaf6ff;
+      background:linear-gradient(180deg,var(--bg),#04111b 72%);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:28px 20px;
+      box-sizing:border-box;
+    }
+
+    .container{
+      max-width:var(--max-width);
+      margin:0 auto;
+      display:grid;
+      grid-template-columns: 1fr 360px;
+      gap:20px;
+      align-items:start;
+    }
+
+    header{
+      grid-column:1/-1;
+      display:flex;
+      gap:14px;
+      align-items:center;
+      margin-bottom:8px;
+    }
+
+    .brand{
+      width:64px;
+      height:64px;
+      border-radius:12px;
+      background:linear-gradient(135deg,var(--red),var(--blue));
+      display:grid;
+      place-items:center;
+      font-weight:800;
+      color:#04121a;
+      font-size:18px;
+      box-shadow:0 8px 28px rgba(0,0,0,0.6);
+    }
+
+    h1{
+      margin:0;
+      font-size:20px;
+      line-height:1.05;
+    }
+
+    .subtitle{
+      color:var(--muted);
+      font-size:13px;
+      margin-top:6px;
+    }
+
+    main.article{
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04));
+      padding:18px;
+      border-radius:var(--radius);
+      box-shadow:0 12px 48px rgba(2,6,14,0.6);
+    }
+
+    .meta{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      margin-bottom:14px;
+      flex-wrap:wrap;
+    }
+
+    .badge{
+      font-family:var(--mono);
+      background:rgba(255,255,255,0.02);
+      padding:6px 10px;
+      border-radius:8px;
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 10px;
+      border-radius:999px;
+      background:rgba(255,255,255,0.02);
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .accent{ color:var(--blue); font-weight:600; }
+
+    .lead{
+      color:var(--muted);
+      font-size:14px;
+      margin:6px 0 14px 0;
+    }
+
+    .codeish{
+      background:linear-gradient(90deg,#061528 15%, rgba(255,255,255,0.01));
+      border:1px solid rgba(255,255,255,0.03);
+      padding:14px;
+      border-radius:10px;
+      font-family:var(--mono);
+      font-size:13px;
+      color:#dff3ff;
+      white-space:pre-wrap;
+      margin-bottom:12px;
+    }
+
+    section h2, section h3{
+      color:#eaf6ff;
+      margin:0 0 8px 0;
+    }
+
+    section p, section li{
+      color:var(--muted);
+      line-height:1.55;
+      font-size:14px;
+    }
+
+    .two-col{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+
+    .card-block{
+      background:var(--card);
+      padding:12px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.02);
+    }
+
+    aside.card{
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04));
+      padding:18px;
+      border-radius:var(--radius);
+      box-shadow:0 10px 40px rgba(2,6,14,0.6);
+      height:fit-content;
+    }
+
+    .pill-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      background:linear-gradient(90deg,var(--red),var(--blue));
+      border:none;
+      padding:9px 14px;
+      border-radius:10px;
+      font-weight:700;
+      color:#02121b;
+      cursor:pointer;
+      box-shadow:0 6px 18px rgba(0,0,0,0.45);
+    }
+
+    footer{
+      grid-column:1/-1;
+      text-align:center;
+      color:var(--muted);
+      margin-top:20px;
+      font-size:13px;
+    }
+
+    /* long content spacing to increase vertical length where needed */
+    .spacer-section{ margin-top:18px; margin-bottom:18px; }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    table th{
+      text-align:left;
+      padding:8px 6px;
+      color:#dff3ff;
+      font-weight:700;
+      font-size:13px;
+      border-bottom:1px solid rgba(255,255,255,0.03);
+    }
+
+    table td{
+      padding:8px 6px;
+      vertical-align:top;
+      border-bottom:1px dashed rgba(255,255,255,0.02);
+    }
+
+    ol.long-list{ color:var(--muted); margin:8px 0 12px 18px; }
+
+    .muted-note{ color:var(--muted); font-size:13px; }
+
+    .gallery{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:8px;
+    }
+
+    .photo{
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));
+      height:160px;
+      border-radius:8px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:var(--muted);
+      font-size:13px;
+      border:1px dashed rgba(255,255,255,0.02);
+    }
+
+    @media (max-width:1024px){
+      .container{ grid-template-columns: 1fr 320px; gap:16px; }
+    }
+
+    @media (max-width:880px){
+      .container{ grid-template-columns:1fr; padding:8px; }
+      .gallery{ grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container" role="document">
+    <header role="banner">
+      <div class="brand" aria-hidden="true">CC</div>
+      <div>
+        <h1>ClaudCode — Extended Kingfisher Brief</h1>
+        <div class="subtitle">An expanded, accessible, and printable long-form profile of the Common Kingfisher.</div>
+      </div>
+    </header>
+
+    <main class="article" role="main" aria-labelledby="main-title">
+      <div class="meta" aria-hidden="false">
+        <div class="badge">format: extended-brief</div>
+        <div class="pill">species: <span class="accent">Common Kingfisher</span></div>
+        <div class="pill">latin: <span class="accent">Alcedo atthis</span></div>
+        <div class="pill">length: <span class="accent">16–17 cm</span></div>
+      </div>
+
+      <h2 id="main-title" style="margin-top:0">Common Kingfisher (Alcedo atthis)</h2>
+      <p class="lead">A small, vividly coloured river bird noted for its electric blue upperparts, rich orange underparts,
+        and expert plunge-diving behaviour. This page collects natural history, identification tips, behaviour,
+        conservation notes, observation logs and a long FAQ designed to create a very long, scrollable document.</p>
+
+      <div class="codeish" aria-hidden="false">
+Name: Common Kingfisher
+Scientific name: Alcedo atthis
+Length: 16–17 cm
+Wingspan: 24–26 cm
+Weight: ~34–45 g
+Habitat: Slow rivers, streams, canals, ponds, and lakes with perches and clear water
+Diet: Small fish, aquatic insects, crustaceans
+Breeding: Burrow nests in soft banks, clutch size typically 5–7 eggs
+Longevity: Usually 2–4 years in the wild; some individuals live longer
+Status: Least Concern globally, but locally vulnerable to habitat loss
+      </div>
+
+      <section aria-labelledby="identification" class="spacer-section">
+        <h3 id="identification">Identification and field marks</h3>
+        <p>Kingfishers are unmistakable when seen well: bright iridescent blue on their upperparts that flashes in sunlight,
+        warm orange on the underparts, a long straight black bill, compact body and short tail. Juveniles can appear duller
+        with some brown on the bill base. Males have all-black lower mandible while females often show an orange-red base
+        to the lower mandible.</p>
+
+        <div class="two-col" style="margin-top:12px">
+          <div class="card-block">
+            <h4 style="margin-top:0">Size & shape</h4>
+            <ul>
+              <li>Short neck, large head for body size, long pointed bill adapted for catching fish.</li>
+              <li>Wings: Short and rounded; flight is direct and fast.</li>
+              <li>Perching posture: Upright and still, often at water edge or on low branches.</li>
+            </ul>
+          </div>
+          <div class="card-block">
+            <h4 style="margin-top:0">Plumage details</h4>
+            <ul>
+              <li>Dorsal surface: Iridescent turquoise to deep blue depending on light and feather structure.</li>
+              <li>Ventral surface: Warm orange/rust; throat white in many subspecies.</li>
+              <li>Distinctive white patch on neck and sides of neck in some populations.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="behavior" class="spacer-section">
+        <h3 id="behavior">Behaviour and hunting</h3>
+        <p>Common Kingfishers hunt by sitting on a low perch above the water, watching for fish. When prey is spotted they
+        hover briefly (in some instances) and then dive feet-first to seize the fish with their bill. Prey is usually killed
+        by a sharp blow or by being swallowed head-first to ease passage.</p>
+
+        <p>They are territorial; one pair defends a stretch of river or pond and can be aggressive toward intruders. Outside the
+        breeding season, territories may still be defended but can overlap at high-quality feeding sites.</p>
+
+        <h4 style="margin-top:12px">Daily rhythm</h4>
+        <ol class="long-list">
+          <li>Early morning: Active feeding after dawn; anglers and birders often see highest activity.</li>
+          <li>Midday: Periods of rest on perches or in sheltered vegetation.</li>
+          <li>Dusk: Increased activity before nightfall in some habitats.</li>
+        </ol>
+
+        <h4 style="margin-top:12px">Vocalisations</h4>
+        <p>The typical call is a high, sharp 'chee' or 'tsee' given in flight or when alarmed. Calls are short and direct and
+        can be useful to locate them when dense vegetation hides visual detection.</p>
+      </section>
+
+      <section aria-labelledby="diet" class="spacer-section">
+        <h3 id="diet">Diet and feeding strategy</h3>
+        <p>Diet is dominated by small fish (minnows, sticklebacks, small cyprinids) and aquatic invertebrates. They adjust
+        their prey selection to the local availability: ponds may yield dragonfly larvae and small crustaceans while
+        rivers may produce fish-rich foraging.</p>
+
+        <table aria-label="Typical prey and size">
+          <thead>
+            <tr><th>Prey type</th><th>Typical size</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Small fish</td><td>2–6 cm</td><td>Main food in fish-rich streams</td></tr>
+            <tr><td>Aquatic insects</td><td>variable</td><td>Important in ponds and marsh edges</td></tr>
+            <tr><td>Crustaceans</td><td>small</td><td>Occasionally taken in brackish or inland waters</td></tr>
+          </tbody>
+        </table>
+
+        <p style="margin-top:12px">Feeding technique: Spot, hover or plunge; retrieve to perch; orient prey head-first for swallowing.</p>
+      </section>
+
+      <section aria-labelledby="breeding" class="spacer-section">
+        <h3 id="breeding">Breeding and life cycle</h3>
+        <p>Breeding pairs excavate burrows in soft clay or earth banks. The burrow commonly slopes upward to a chamber where eggs
+        are laid. Clutch size is typically 5–7 eggs. Both adults feed chicks. Fledging occurs after several weeks; juveniles may
+        remain in the natal territory for some time while learning to fish.</p>
+
+        <h4>Timeline (typical temperate population)</h4>
+        <ol class="long-list">
+          <li>Pair formation and nest-site selection: late winter to early spring.</li>
+          <li>Egg laying: spring (timing depends on latitude and climate).</li>
+          <li>Incubation: ~19–21 days.</li>
+          <li>Fledging: 23–27 days after hatching (approximate).</li>
+        </ol>
+
+        <p class="muted-note">Note: Some populations have multiple broods if conditions allow.</p>
+      </section>
+
+      <section aria-labelledby="range" class="spacer-section">
+        <h3 id="range">Distribution and habitat</h3>
+        <p>Range: Widespread across Europe, Asia and parts of North Africa. Absent from high alpine zones and extensive deserts.
+        The species is sedentary in many parts of its range but undertakes local movements linked to ice cover and food availability.</p>
+
+        <div style="margin-top:12px" class="two-col">
+          <div class="card-block">
+            <h4 style="margin-top:0">Preferred habitat</h4>
+            <ul>
+              <li>Slow-moving rivers with clear water and abundant small fish.</li>
+              <li>Ponds, lakes and canals with emergent vegetation and low perches.</li>
+              <li>Sheltered banks with soft substrate for burrow excavation.</li>
+            </ul>
+          </div>
+          <div class="card-block">
+            <h4 style="margin-top:0">Threats to habitat</h4>
+            <ul>
+              <li>Water pollution reducing prey availability.</li>
+              <li>Bank engineering removing nesting sites.</li>
+              <li>Human disturbance near nesting banks and feeding areas.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="conservation" class="spacer-section">
+        <h3 id="conservation">Conservation notes</h3>
+        <p>Globally the Common Kingfisher is currently assigned Least Concern, but local declines occur where water quality
+        deteriorates or banks are heavily modified. Conservation actions that help kingfishers include riparian buffer zones,
+        protection of nesting banks, and restoration of slow-flowing, fish-rich waters.</p>
+
+        <h4 style="margin-top:12px">Practical measures</h4>
+        <ul>
+          <li>Maintain and restore soft riverbanks or provide artificial nesting banks where appropriate.</li>
+          <li>Limit pesticide and nutrient runoff to maintain aquatic invertebrate and fish populations.</li>
+          <li>Encourage low-impact access for anglers and birdwatchers to reduce nest disturbance.</li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="observation" class="spacer-section">
+        <h3 id="observation">Observation logs & long notes (sample entries)</h3>
+
+        <p class="muted-note">The following sample logs present extended, realistic observation entries to increase page length and
+        provide practical examples for citizen scientists. Repeated style is intentional to produce a long scrollable page.</p>
+
+        <div style="margin-top:12px">
+          <article class="card-block" aria-labelledby="log1">
+            <h4 id="log1" style="margin-top:0">Log entry: Riverbank surveillance — 2025-04-03</h4>
+            <p>07:20 — Arrived at eastern bend. Water level low after recent dry spell. Observed single adult kingfisher
+            perched on willow stump at 10m from bank. Perched duration approx. 3 minutes; then dive, successful capture of
+            3 cm fish. Called once in flight. Weather: still, pale sun. Notes: fish abundance low but still present near margin.</p>
+          </article>
+
+          <article class="card-block" aria-labelledby="log2" style="margin-top:12px">
+            <h4 id="log2" style="margin-top:0">Log entry: Pond edge — 2024-08-11</h4>
+            <p>16:30 — Two adults observed; one juvenile present (fuzzier plumage). Juvenile attempted several dives, missed on
+            first two attempts, succeeded on third. Adults delivered prey to juvenile at perch. Notes: ideal demonstration of
+            parental provisioning behaviour. Weather: warm, light breeze.</p>
+          </article>
+
+          <article class="card-block" aria-labelledby="log3" style="margin-top:12px">
+            <h4 id="log3" style="margin-top:0">Log entry: Canal survey — 2023-11-22</h4>
+            <p>09:00 — Single individual flying low along canal, direct flight, short perches. Habitat: concrete-lined banks but
+            with some emergent vegetation pockets. Observed call frequently when flushed by passing cyclist. Good example of
+            adaptability to semi-urban watercourses where sufficient prey exists.</p>
+          </article>
+        </div>
+
+        <!-- repeated descriptive paragraphs to extend vertical length -->
+        <div style="margin-top:18px">
+          <p class="muted-note">Extended note: The common kingfisher is often used as an indicator species for freshwater health.
+          Its presence signals adequate food webs and structural habitat. Because it hunts by sight, water clarity and prey
+          visibility directly impact foraging success. Where rivers are turbid or chemically altered, kingfisher abundance
+          typically falls.</p>
+
+          <p class="muted-note">Extended note (continued): When documenting observations, use standardized forms: date, time,
+          weather, number of individuals, behaviour, and any notes on prey or nesting. Use GPS coordinates or precise map
+          references for long-term monitoring projects. Photographs are valuable but avoid getting too close to active nests.</p>
+
+          <p class="muted-note">Extended note (continued): Citizen science platforms often aggregate dozens to thousands of
+          entries per site. Longitudinal records can reveal subtle trends—seasonal shifts in breeding times, range expansions,
+          or population declines tied to pollution events. Always record effort (time spent, area covered) to allow interpretation
+          of sighting frequency.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="gallery" class="spacer-section">
+        <h3 id="gallery">Gallery — placeholders and captions</h3>
+        <div class="gallery" style="margin-top:8px">
+          <div class="photo">Photo: adult on perch — credit: example</div>
+          <div class="photo">Photo: juvenile learning to fish — credit: example</div>
+          <div class="photo">Photo: side profile showing bill detail — credit: example</div>
+          <div class="photo">Photo: nesting bank cutaway — credit: example</div>
+        </div>
+
+        <p class="muted-note" style="margin-top:12px">Images are placeholders in this example. Replace with high-resolution,
+        credited photographs for publication or print use. Ensure any images of nests comply with disturbance-avoidance guidelines.</p>
+      </section>
+
+      <section aria-labelledby="faq" class="spacer-section">
+        <h3 id="faq">Frequently asked questions — extended</h3>
+
+        <details open>
+          <summary style="cursor:pointer; font-weight:700; color:#dff3ff">Q: Where can I reliably see kingfishers?</summary>
+          <div style="padding:10px 6px">
+            <p class="muted-note">A: Look for clear, slow-flowing waters with low overhanging perches. Early morning and late
+            afternoon are best. Ponds and canals with good prey abundance also hold kingfishers. Avoid approaching nests or
+            getting between adults and their chicks.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary style="cursor:pointer; font-weight:700; color:#dff3ff; margin-top:8px">Q: How can I help kingfisher conservation?</summary>
+          <div style="padding:10px 6px">
+            <p class="muted-note">A: Reduce nutrient and pesticide runoff, support riparian restoration, and protect nesting
+            banks by excluding heavy machinery from sensitive sites during breeding season. Build local awareness among
+            anglers and landowners about the species' needs.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary style="cursor:pointer; font-weight:700; color:#dff3ff; margin-top:8px">Q: What is the difference between the common kingfisher and similar species?</summary>
+          <div style="padding:10px 6px">
+            <p class="muted-note">A: The common kingfisher is smaller than some other kingfisher species, and has a bright orange
+            underside and turquoise upperparts. Regional confusion can occur with local kingfisher species; focus on size,
+            bill colour patterns, and habitat to differentiate.</p>
+          </div>
+        </details>
+
+        <!-- multiple repeated Q&A blocks to lengthen page -->
+        <details>
+          <summary style="cursor:pointer; font-weight:700; color:#dff3ff; margin-top:8px">Q: Can kingfishers live in urban areas?</summary>
+          <div style="padding:10px 6px">
+            <p class="muted-note">A: Yes, provided there are fish-rich waters and suitable perches. Urban canals and parks
+            with good water quality can host kingfishers. Noise and disturbance may reduce nesting success in some settings.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary style="cursor:pointer; font-weight:700; color:#dff3ff; margin-top:8px">Q: Are kingfishers migratory?</summary>
+          <div style="padding:10px 6px">
+            <p class="muted-note">A: Many populations are largely resident, but some undertake local or seasonal movements,
+            especially where winter ice covers feeding waters. Subspecies in colder regions may move southward in severe winters.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary style="cursor:pointer; font-weight:700; color:#dff3ff; margin-top:8px">Q: Why is water clarity important?</summary>
+          <div style="padding:10px 6px">
+            <p class="muted-note">A: Kingfishers rely on sight to detect and accurately time dives for prey. Turbidity reduces
+            foraging efficiency and can force birds to move to clearer waters or reduce breeding success due to insufficient food.</p>
+          </div>
+        </details>
+      </section>
+
+      <section aria-labelledby="glossary" class="spacer-section">
+        <h3 id="glossary">Glossary — long list of relevant terms</h3>
+        <ul style="color:var(--muted); margin-top:8px">
+          <li>Burrow nest — a nesting tunnel excavated into a bank or soft soil.</li>
+          <li>Clutch — a set of eggs laid in one nesting attempt.</li>
+          <li>Fledge — the stage when nestlings first fly.</li>
+          <li>Iridescence — structural coloration causing shifting blue/green sheen.</li>
+          <li>Riparian — relating to riverbanks and associated ecosystems.</li>
+          <li>Turbidity — cloudiness of water due to suspended particles.</li>
+          <li>Provisioning — adults bringing food to chicks.</li>
+          <li>Territoriality — defence of a specific area against conspecifics.</li>
+          <li>Plunge-dive — hunting technique involving a sudden dive into water.</li>
+          <li>Perch-hunting — hunting from a fixed vantage point.</li>
+          <li>Foraging — searching for food.</li>
+          <li>Subspecies — geographically distinct population with minor morphological differences.</li>
+        </ul>
+
+        <!-- repeated paragraphs to extend length -->
+        <p class="muted-note" style="margin-top:12px">Further reading: consult regional field guides for subspecies details and local
+        conservation status. Many local bird clubs publish distribution atlases that include long-term records for monitoring.</p>
+
+        <p class="muted-note">Additional note: When compiling data from multiple sources, record the source, date and any
+        observational caveats to ensure checkable datasets. Metadata are as important as the sighting itself for long-term value.</p>
+      </section>
+
+      <section aria-labelledby="print" class="spacer-section">
+        <h3 id="print">Printable factsheet (compact)</h3>
+        <div class="codeish" aria-hidden="false">
+Common name: Common Kingfisher
+Scientific name: Alcedo atthis
+Length: 16–17 cm
+Habitat: Rivers, streams, ponds with clear water
+Diet: Small fish and aquatic invertebrates
+Breeding: Burrow in banks; 5–7 eggs per clutch
+Conservation: Protect water quality and nesting banks
+        </div>
+
+        <p class="muted-note">Use the above block for quick prints: set printer margins to narrow and choose a dark background-friendly
+        print stylesheet if required. For distribution, include contact and credit information on the printed sheet.</p>
+      </section>
+
+      <section aria-labelledby="longread" class="spacer-section">
+        <h3 id="longread">Extended commentary — natural history essays</h3>
+
+        <p class="muted-note">Essay 1: The kingfisher's role in folklore and culture. Across many regions, kingfishers have been associated
+        with calm seas, good luck for fishermen, and precision. Their vivid colours have inspired artists and poets who draw
+        metaphors between the bird's flash of blue and moments of sudden insight or luck.</p>
+
+        <p class="muted-note">Essay 2: Morphology and hydrodynamics of the dive. The kingfisher's skull and bill shape reduce splash
+        and improve hydrodynamic entry. Researchers have studied feather microstructure and bill angle to understand how the bird
+        minimizes impact and maximizes capture success.</p>
+
+        <p class="muted-note">Essay 3: Long-term monitoring case study. A multi-decade dataset from a temperate river shows correlation
+        between kingfisher abundance and multi-year trends in nutrient loads and fish community composition. Restoration improved
+        sightings within five years, demonstrating recovery potential when water quality is addressed.</p>
+      </section>
+
+      <!-- additional long filler content: repeated educational lists and paragraphs -->
+      <section aria-labelledby="further" class="spacer-section">
+        <h3 id="further">Further resources and reading list</h3>
+        <ol class="long-list">
+          <li>Regional bird atlases and national field guides.</li>
+          <li>Peer-reviewed studies on kingfisher foraging and nesting ecology.</li>
+          <li>Conservation NGO reports on freshwater habitat restoration.</li>
+          <li>Citizen science portals aggregating observation records.</li>
+          <li>Practical guides for building artificial nest banks (where appropriate).</li>
+          <li>Water quality monitoring manuals and citizen protocols.</li>
+        </ol>
+
+        <p class="muted-note">Acknowledgement: This document synthesizes publicly available knowledge and best-practice conservation advice.
+        Replace example logs and images with verified, local data for project-specific outputs.</p>
+
+        <p class="muted-note">Append: repeated paragraph to increase document length and provide more scrollable content. The common kingfisher
+        remains one of the most photogenic and studied small waterbirds across its range. Continued engagement from birdwatchers,
+        anglers, scientists and land managers will help ensure its persistence in managed and natural waters alike.</p>
+
+        <p class="muted-note">Appendix: A final long paragraph describing observational protocol. Before approaching sensitive sites,
+        assess visibility from a distance, use binoculars or a scope where possible, and keep movements slow and quiet. Avoid walking
+        up or down nesting banks when active, and report breeding sites to local conservation authorities if protection is needed.</p>
+      </section>
+    </main>
+
+    <aside class="card" role="complementary" aria-labelledby="sidebar-title">
+      <h3 id="sidebar-title" style="margin-top:0">Quick facts & actions</h3>
+      <p class="muted-note">Concise facts for field reference and quick sharing.</p>
+
+      <div class="pill-row">
+        <div class="pill">status: <span class="accent" style="margin-left:6px">Least Concern</span></div>
+        <div class="pill">diet: <span class="accent" style="margin-left:6px">fish & insects</span></div>
+      </div>
+
+      <div style="margin-top:12px">
+        <button id="moreBtn" class="btn" type="button">Reveal pop fact</button>
+      </div>
+
+      <div style="margin-top:14px">
+        <h4 style="margin:0 0 6px 0">Quick observation checklist</h4>
+        <ul style="color:var(--muted); margin:6px 0 0 18px">
+          <li>Clear view of perches near water</li>
+          <li>Look for rapid direct flight</li>
+          <li>Listen for sharp high-pitched calls</li>
+          <li>Check likely nesting banks in breeding season</li>
+        </ul>
+      </div>
+
+      <div style="margin-top:14px">
+        <h4 style="margin:0 0 6px 0">Share & print</h4>
+        <p class="muted-note">Use the print-friendly facts block or copy the compact data above for quick notes and community sharing.</p>
+      </div>
+
+      <div style="margin-top:14px" class="card-block">
+        <h4 style="margin-top:0">Contact</h4>
+        <p class="muted-note">For corrections or contributions, contact: info@example.org (placeholder)</p>
+      </div>
+    </aside>
+
+    <footer role="contentinfo">Generated in a ClaudCode-like style • © Example • Last updated: 2026-01-13</footer>
+  </div>
+
+  <script>
+    (function(){
+      var btn = document.getElementById('moreBtn');
+      if(btn){
+        btn.addEventListener('click', function(){
+          // small unobtrusive modal-style alert replacement
+          var note = 'Pop fact: Kingfishers often beat larger prey on a branch before swallowing to reduce escape.';
+          if(window.confirm(note + '\\n\\nOpen short reference about feeding behaviour?')){
+            window.open('https://en.wikipedia.org/wiki/Common_kingfisher', '_blank', 'noopener');
+          }
+        });
+      }
+
+      // Accessibility: allow keyboard toggle on details using Enter/Space via event delegation
+      document.addEventListener('keydown', function(e){
+        if((e.key === 'Enter' || e.key === ' ') && document.activeElement && document.activeElement.tagName === 'SUMMARY'){
+          e.preventDefault();
+          document.activeElement.parentElement.open = !document.activeElement.parentElement.open;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
