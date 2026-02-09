@@ -163,7 +163,6 @@ function dt_init(param){
 	htr_init_layer(c2,l,'dt');
 	//dt_tag_images(l.document, 'dt', l);
 	htutil_tag_images(l,'dt',l,l);
-	l.w = w; l.h = h;
 	l.bg = htr_extract_bgcolor(bg);
 	l.ubg = bg;
 	l.fg = param.foreground;
@@ -200,7 +199,29 @@ function dt_init(param){
 	else
 	    l.form = wgtrFindContainer(l,"widget/form");
 	if (l.form) l.form.Register(l);
-	pg_addarea(l, -1, -1, getClipWidth(l)+3, getClipHeight(l)+3, 'dt', 'dt', 3);
+
+	// Setup getters widths and heights.
+	l.__defineGetter__('w', () => parseInt(getComputedStyle(l).width));
+	l.__defineGetter__('h', () => parseInt(getComputedStyle(l).height));
+
+	/** Setup the hover area. **/
+	l.area = pg_addarea(l, -1, -1, l.w + 3, l.h + 3, 'dt', 'dt', 3);
+	l.area.__defineGetter__('width', () => l.w + 3);
+	l.area.__defineGetter__('height', () => l.h + 3);
+	
+	// Resize date selection dropdown automatically.
+	const resize_handler = (layer) =>
+	    {
+	    if (layer.PaneLayer && htr_getvisibility(layer.PaneLayer) === 'inherit')
+		{
+		dt_collapse(layer);
+		dt_expand(layer);
+		}
+	    };
+	const resize_observer = new ResizeObserver(entries => {
+	    for (const entry of entries) resize_handler(entry.target);
+	});
+	resize_observer.observe(l);
 
 	// Events
 	ifc_init_widget(l);
