@@ -38,7 +38,6 @@ function tv_new_layer(width,pdoc,l)
 	else if(cx__capabilities.Dom1HTML)
 	    {
 	    nl = document.createElement('DIV');
-	    if (width) nl.style.width = width + 'px';
 	    nl.className = l.divclass;
 	    //setClip(0, width, 0, 0);
 	    pg_set_style(nl, 'position','absolute');
@@ -1297,7 +1296,7 @@ function tv_mouseover(e)
     if (e.kind == 'tv')
 	{
 	cn_activate(e.mainlayer, 'MouseOver');
-	if (getClipWidth(e.layer) <= getdocWidth(e.layer)+2 && e.layer.link_txt)
+	if (e.layer.link_txt)
 	    e.layer.tipid = pg_tooltip(e.layer.link_txt, e.pageX, e.pageY);
 	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
