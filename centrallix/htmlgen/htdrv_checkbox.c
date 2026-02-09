@@ -90,12 +90,29 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
 
    /** Write named global **/
    htrAddWgtrObjLinkage_va(s, tree, "cb%INTmain", id);
-
-   /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,"\t#cb%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:13px; WIDTH:13px; Z-INDEX:%POS; }\n",id,x,y,z);
+   
+   /** Write style header. **/
+   htrAddStylesheetItem_va(s,
+	"\t#cb%POSmain { "
+	    "position:absolute; "
+	    "visibility:inherit; "
+	    "left:"ht_flex_format"; "
+	    "top:"ht_flex_format"; "
+	    "height:13px; "
+	    "width:13px; "
+	    "z-index:%POS; "
+	"}\n",
+	id,
+	ht_flex_x(x, tree),
+	ht_flex_y(y, tree),
+	z
+    );
+   
+   /** Include scripts. **/
    htrAddScriptInclude(s,"/sys/js/htdrv_checkbox.js",0);
    htrAddScriptInclude(s,"/sys/js/ht_utils_hints.js",0);
 
+   /** Register event handlers. **/
    htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "checkbox", "checkbox_mousedown");
    htrAddEventHandlerFunction(s, "document","MOUSEUP", "checkbox", "checkbox_mouseup");
    htrAddEventHandlerFunction(s, "document","MOUSEOVER", "checkbox", "checkbox_mouseover");
@@ -105,9 +122,9 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    /** Script initialization call. **/
    htrAddScriptInit_va(s,"    checkbox_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", checked:%INT, enabled:%INT, form:\"%STR&JSSTR\"});\n", name, fieldname,checked,enabled,form);
 
-   /** HTML body <DIV> element for the layers. **/
+   /** Write HTML. **/
    htrAddBodyItemLayerStart(s, 0, "cb%POSmain", id, NULL);
-   switch(checked)
+   switch (checked)
 	{
 	case 1:
 	    htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_checked%[_dis%].gif\">\n",!enabled);
@@ -118,8 +135,10 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
 	case -1: /* null */
 	    htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_null%[_dis%].gif\">\n",!enabled);
 	    break;
+	default:
+	    fprintf(stderr, "Unexpected value %d for 'checked'.", checked);
+	    break;
 	}
-
    htrAddBodyItemLayerEnd(s, 0);
 
    /** Check for more sub-widgets **/
