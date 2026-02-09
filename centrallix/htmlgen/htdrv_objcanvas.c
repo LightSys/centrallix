@@ -106,7 +106,28 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 
 	/** Add css item for the layer **/
 	if (s->Capabilities.CSS2)
-	    htrAddStylesheetItem_va(s,"\t#oc%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; overflow: hidden; %STR}\n",id,x,y,w,h,z,main_bg);
+	    {
+	    htrAddStylesheetItem_va(s,
+		"\t#oc%POSbase { "
+		    "position:absolute; "
+		    "visibility:inherit; "
+		    "overflow:hidden; "
+		    "left:"ht_flex_format"; "
+		    "top:"ht_flex_format"; "
+		    "width:"ht_flex_format"; "
+		    "height:"ht_flex_format"; "
+		    "z-index:%POS; "
+		    "%STR "
+		"}\n",
+		id,
+		ht_flex_x(x, oc_node),
+		ht_flex_y(y, oc_node),
+		ht_flex_w(w, oc_node),
+		ht_flex_h(h, oc_node),
+		z,
+		main_bg
+	    );
+	    }
 	else
 	    htrAddStylesheetItem_va(s,"\t#oc%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; HEIGHT:%POS; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
 
