@@ -211,6 +211,7 @@ function ib_init(param)
     l.img.kind = 'ib';
     l.cursrc = param.n;
     setClipWidth(l, w);
+    disableClippingCSS(l);
 
     l.trigger = ib_trigger;
 
