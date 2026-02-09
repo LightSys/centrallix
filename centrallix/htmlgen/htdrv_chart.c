@@ -323,27 +323,54 @@ htchtScriptInclude(pHtSession session)
 void
 htchtGenHTML(pHtSession session, pWgtrNode tree, int z)
     {
-    char buf[32];
-
-        htchtGetCanvasId(tree, buf, sizeof(buf));
-
-        htrAddBodyItem_va(session,"<DIV ID=\"%STR&SYMdiv\"><CANVAS ID=\"%STR&SYM\" width=\"%POS\" height=\"%POS\">\n",
-		buf,
-		buf,
-		htchtGetWidth(tree),
-		htchtGetHeight(tree)
+	/** Get id. **/
+	char id[32];
+	htchtGetCanvasId(tree, id, sizeof(id));
+	
+	/** Get layout data. **/
+	const int x = htchtGetX(tree);
+	const int y = htchtGetY(tree);
+	const int w = htchtGetWidth(tree);
+	const int h = htchtGetHeight(tree);
+	
+	/** Write style rules for the container div. **/
+	htrAddStylesheetItem_va(session,
+	    "\t#%STR&SYMdiv { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"height:"ht_flex_format"; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    ht_flex_x(x, tree),
+	    ht_flex_y(y, tree),
+	    ht_flex_w(w, tree),
+	    ht_flex_h(h, tree),
+	    z
 	);
-
-        htrAddBodyItem(session,"<P>CHART HERE</P>\n");
-        htrAddBodyItem(session,"</CANVAS></DIV>\n");
-
-	htrAddStylesheetItem_va(session, "\t#%STR&SYMdiv { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; } \n",
-		buf,
-		htchtGetX(tree),
-		htchtGetY(tree),
-		htchtGetWidth(tree),
-		htchtGetHeight(tree),
-		z
+	
+	/** Write the canvas HTML. **/
+	/*** Israel: Dark magic and sorcery beyond my comprehension somehow
+	 ***         cause "CHART HERE" to render as the label for the chart.
+	 ***/
+	htrAddBodyItem_va(session,
+	    "<div id='%STR&SYMdiv'>"
+	        "<canvas "
+		    "id='%STR&SYM' "
+		    "width='%POS' "
+		    "height='%POS' "
+		    "style='width:100%%; height:100%%;'"
+		">"
+		    "<p>CHART HERE</p>"
+		"</canvas>"
+	    "</div>",
+	    id,
+	    id,
+	    w,
+	    h
 	);
     }
 
@@ -405,4 +432,3 @@ htchtInitialize()
 
     return 0;
     }
-
