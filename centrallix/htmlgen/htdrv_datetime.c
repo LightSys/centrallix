@@ -203,10 +203,42 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    strcpy(fgcolor,"black");
 
-	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#dt%POSbtn  { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; cursor:default; border:1px outset #e0e0e0; %STR }\n",id,x,y,w,h,z, bgcolor);
-	htrAddStylesheetItem_va(s,"\t#dt%POScon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
-	htrAddStylesheetItem_va(s,"\t#dt%POScon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
+	/** Write style headers. **/
+	htrAddStylesheetItem_va(s,
+	    "\t#dt%POSbtn { "
+		"overflow:hidden; "
+		"position:absolute; "
+		"visibility:inherit; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"height:"ht_flex_format"; "
+		"z-index:%POS; "
+		"cursor:default; "
+		"border:1px outset #e0e0e0; "
+		"%STR "
+	    "}\n",
+	    id,
+	    ht_flex_x(x, tree),
+	    ht_flex_y(y, tree),
+	    ht_flex_w(w, tree),
+	    ht_flex_h(h, tree),
+	    z,
+	    bgcolor
+	);
+	htrAddStylesheetItem_va(s,
+	    "\t.dt%POScon { "
+		"overflow:hidden; "
+		"position:absolute; "
+		"left:1px; "
+		"top:1px; "
+		"width:calc(100%% - 20px); "
+		"height:calc(100%% - 2px); "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    z + 1
+	);
 
 	/** Write named global **/
 	htrAddScriptGlobal(s, "dt_current", "null", 0);
@@ -246,8 +278,8 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%POS></TD>\n",w-2);
 	htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
 	htrAddBodyItem(s,   "</TABLE>\n");*/
-	htrAddBodyItem_va(s,"<DIV ID=\"dt%POScon1\"></DIV>\n",id);
-	htrAddBodyItem_va(s,"<DIV ID=\"dt%POScon2\"></DIV>\n",id);
+	htrAddBodyItem_va(s,"<DIV ID='dt%POScon1' CLASS='dt%POScon' style='visibility:inherit;'></DIV>\n", id, id);
+	htrAddBodyItem_va(s,"<DIV ID='dt%POScon2' CLASS='dt%POScon' style='visibility:hidden;'></DIV>\n", id, id);
 	htrAddBodyItem(s,   "</DIV>\n");
 
 	/** Add the event handling scripts **/
@@ -301,4 +333,3 @@ htdtInitialize()
 
     return 0;
     }
-
