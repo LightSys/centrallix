@@ -185,7 +185,6 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     char sbuf[128];
     pStruct params = NULL;
     pStruct old_params = NULL;
-    int i;
     char* path;
     int is_toplevel;
     int old_is_dynamic = 0;
@@ -275,13 +274,50 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	params = htcmp_internal_CreateParams(s, tree);
 
 	/** Any params have expressions? **/
-	if (params)
+	if (params != NULL)
 	    {
-	    for(i=0;i<params->nSubInf;i++)
+	    for (int i = 0; i < params->nSubInf; i++)
 		{
+		/** TODO: Israel - Add error handling. **/
 		htrCheckAddExpression(s, tree, name, params->SubInf[i]->Name);
 		}
 	    }
+
+
+	/** Write styles for the enclosing div. **/
+	htrAddStylesheetItem_va(s,
+	    "\t#cmp%POSbase { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"overflow:visible; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"height:"ht_flex_format"; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    ht_flex_x(x, tree),
+	    ht_flex_y(y, tree),
+	    ht_flex_w(w, tree),
+	    ht_flex_h(h, tree),
+	    z
+	);
+	
+	/** Write enclosing div event CSS. **/
+	htrAddStylesheetItem_va(s,
+	    "\t#cmp%POSbase { "
+		"pointer-events:none; "
+	    "}\n"
+	    "\t#cmp%POSbase > * { "
+		"pointer-events:auto; "
+	    "}\n",
+	    id, id
+	);
+	
+	/** Write enclosing div to isolate children. **/
+	htrAddWgtrObjLinkage_va(s, tree, "cmp%POSbase", id);
+	htrAddBodyItem_va(s, "<div id=\"cmp%POSbase\">\n", id);
 
 	/** If static mode, load the component **/
 	if (is_static)
@@ -305,13 +341,27 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
-		    "    cmp_init({node:wgtrGetNodeRef(ns,\"%STR&SYM\"), is_static:true, allow_multi:false, auto_destroy:false, width:%INT, height:%INT, xpos:%INT, ypos:%INT});\n",
-		    name, w,h,x,y);
+		"cmp_init({ "
+		    "node:wgtrGetNodeRef(ns,\"%STR&SYM\"), "
+		    "is_static:true, "
+		    "allow_multi:false, "
+		    "auto_destroy:false, "
+		    "width:%INT, "
+		    "height:%INT, "
+		    "xpos:%INT, "
+		    "ypos:%INT, "
+		"});\n",
+		name,
+		w,
+		h,
+		x,
+		y
+	    );
 
 	    /** Are there any templates we should use **/
 	    memcpy(&wgtr_params, s->ClientInfo, sizeof(wgtr_params));
 	    memset(wgtr_params.Templates, 0, sizeof(wgtr_params.Templates));
-	    for(i=0;i<WGTR_MAX_TEMPLATE;i++)
+	    for (int i = 0; i < WGTR_MAX_TEMPLATE; i++)
 		if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
 		    wgtr_params.Templates[i] = path;
 
@@ -353,30 +403,6 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		mssError(0,"HTCMP","Invalid component for widget '%s'",name);
 		goto out;
 		}
-
-	    /*** Adjusting children is no longer necessary because
-	     *** the component is placed inside an isolating div.
-	     *** Thus, the children's location within this div will
-	     *** be correct without adjustment.
-	     ***/
-	    // wgtrMoveChildren(cmp_tree, x, y);
-
-	    /** Style enclosing div. **/
-	    htrAddStylesheetItem_va(s,
-		"\t#cmp%POSbase { "
-		    "POSITION:absolute; "
-		    "VISIBILITY:inherit; "
-		    "OVERFLOW:hidden; "
-		    ht_flex_format_all
-		    "Z-INDEX:%POS; "
-		"}\n",
-		id,
-		ht_flex_all(x, y, w, h, tree),
-		z
-	    );
-
-	    /** Enclosing div to isolate children. **/
-	    htrAddBodyItem_va(s,"<DIV ID=\"cmp%POSbase\">\n", id);
 	    
 	    /** Check param references **/
 	    htcmp_internal_CheckReferences(cmp_tree, params, s->Namespace->DName);
@@ -391,9 +417,6 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** Switch the namespace back **/
 	    htrLeaveNamespace(s);
-
-	    /** End the containing layer. **/
-	    htrAddBodyItem(s, "</DIV>\n");
 
 	    /** End Init component **/
 	    htrAddScriptInit_va(s, "    cmp_endinit(wgtrGetNodeRef(ns,\"%STR&SYM\"));\n", name);
@@ -411,41 +434,68 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    s->IsDynamic = old_is_dynamic;
 	    old_is_dynamic = 0;
 	    }
+	/** Dynamic mode, component is loaded by the client. **/
 	else
 	    {
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
-		    "    cmp_init({node:wgtrGetNodeRef(ns,\"%STR&SYM\"), is_top:%POS, is_static:false, allow_multi:%POS, auto_destroy:%POS, path:\"%STR&JSSTR\", loader:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")), \"cmp%POS\"), width:%INT, height:%INT, xpos:%INT, ypos:%INT});\n",
-		    name, is_toplevel, allow_multi, auto_destroy, cmp_path,
-		    name, id,
-		    w, h, x, y);
+		"cmp_init({ "
+		    "node:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		    "is_top:%POS, "
+		    "is_static:false, "
+		    "allow_multi:%POS, "
+		    "auto_destroy:%POS, "
+		    "path:'%STR&JSSTR', "
+		    "loader:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns, '%STR&SYM')), 'cmp%POS'), "
+		    "width:%INT, "
+		    "height:%INT, "
+		    "xpos:%INT, "
+		    "ypos:%INT, "
+		"});\n",
+		name,
+		is_toplevel,
+		allow_multi,
+		auto_destroy,
+		cmp_path,
+		name, id,
+		w,
+		h,
+		x,
+		y
+	    );
 
-	    /** Add template paths **/
-	    for(i=0;i<WGTR_MAX_TEMPLATE;i++)
+	    /** Add template paths. **/
+	    for (int i = 0; i < WGTR_MAX_TEMPLATE; i++)
 		{
 		if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
-		    htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,'%STR&SYM').templates.push('%STR&JSSTR');\n",
-			name, path);
+		    htrAddScriptInit_va(s,
+			"wgtrGetNodeRef(ns,'%STR&SYM').templates.push('%STR&JSSTR');\n",
+			name, path
+		    );
 		}
 
-	    /** Set Params **/
-	    if (params)
+	    /** Set params. **/
+	    if (params != NULL)
 		{
-		for(i=0;i<params->nSubInf;i++)
+		for (int i = 0; i < params->nSubInf; i++)
 		    {
-		    htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").AddParam(\"%STR&SYM\",%[null%]%[\"%STR&HEX\"%]);\n",
-			name, params->SubInf[i]->Name, !params->SubInf[i]->StrVal, params->SubInf[i]->StrVal,
-			params->SubInf[i]->StrVal);
+		    htrAddScriptInit_va(s,
+			"wgtrGetNodeRef(ns, '%STR&SYM').AddParam('%STR&SYM', %[null%]%['%STR&HEX'%]);\n",
+			name, params->SubInf[i]->Name, !params->SubInf[i]->StrVal, params->SubInf[i]->StrVal, params->SubInf[i]->StrVal
+		    );
 		    }
 		}
 
 	    /** Dynamic mode -- load from client **/
 	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "cmp%POS", id, NULL, "");
-	    htrAddStylesheetItem_va(s,"\t#cmp%POS { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; Z-INDEX:0;}\n", id);
+	    htrAddStylesheetItem_va(s,"\t#cmp%POS { position:absolute; visibility:hidden; left:0px; top:0px; width:0px; height:0px; z-index:0;}\n", id);
 	    }
 
 	htrRenderSubwidgets(s, tree, z+1);
+	
+	/** End the enclosing div. **/
+	htrAddBodyItem(s, "</DIV>\n");
 
 	rval = 0;
 
@@ -507,4 +557,3 @@ htcmpInitialize()
 
     return 0;
     }
-
