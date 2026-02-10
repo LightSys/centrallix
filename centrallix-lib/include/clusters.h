@@ -1,0 +1,148 @@
+#ifndef CLUSTERS_H
+#define	CLUSTERS_H
+
+/************************************************************************/
+/* Centrallix Application Server System					*/
+/* Centrallix Core							*/
+/* 									*/
+/* Copyright (C) 1998-2012 LightSys Technology Services, Inc.		*/
+/* 									*/
+/* This program is free software; you can redistribute it and/or modify	*/
+/* it under the terms of the GNU General Public License as published by	*/
+/* the Free Software Foundation; either version 2 of the License, or	*/
+/* (at your option) any later version.					*/
+/* 									*/
+/* This program is distributed in the hope that it will be useful,	*/
+/* but WITHOUT ANY WARRANTY; without even the implied warranty of	*/
+/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the	*/
+/* GNU General Public License for more details.				*/
+/* 									*/
+/* You should have received a copy of the GNU General Public License	*/
+/* along with this program; if not, write to the Free Software		*/
+/* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA		*/
+/* 02111-1307  USA							*/
+/* 									*/
+/* A copy of the GNU General Public License has been included in this	*/
+/* distribution in the file "COPYING".					*/
+/* 									*/
+/* Module:	lib_cluster.c, lib_cluster.h				*/
+/* Author:	Israel Fuller						*/
+/* Creation:	September 29, 2025					*/
+/* Description	Clustering library used to cluster and search data with	*/
+/*		cosine or Levenshtein (aka. edit distance) similarity 	*/
+/*		measures. Used by the "clustering driver".		*/
+/*		For more information on how to use this library, see	*/
+/*		string-similarity.md in the centrallix-sysdoc folder.	*/
+/************************************************************************/
+
+#include <stdlib.h>
+#include <stdbool.h>
+
+#ifdef CXLIB_INTERNAL
+#include "xarray.h"
+#else
+#include "cxlib/xarray.h"
+#endif
+
+/** This file has additional documentation in string_similarity.md. **/
+
+
+/*** This value defines the number of dimensions used for a sparse
+ *** vector.  The higher the number, the fewer collisions will be
+ *** encountered when using these vectors for cosine comparisons.
+ *** This is also called the vector table size, if viewing the
+ *** vector as a hash table of character pairs.
+ *** 
+ *** 2147483629 is the signed int max, and is also a prime number.
+ *** Using this value ensures that the longest run of 0s will not
+ *** cause an int underflow with the current encoding scheme.
+ *** 
+ *** Unfortunately, we can't use a number this large yet because
+ *** kmeans algorithm creates densely allocated centroids with
+ *** `CA_NUM_DIMS` dimensions, so a large number causes it to fail.
+ *** This, we use 251 as the largest prime number less than 256,
+ *** giving us a decent balance between collision reduction and
+ *** kmeans centroid performance/memory overhead.
+ ***/
+#define CA_NUM_DIMS 251
+
+/** The character used to create a pair with the first and last characters of a string. **/
+#define CA_BOUNDARY_CHAR (unsigned char)('a' - 1)
+
+/** Types. **/
+typedef int* pVector;      /* Sparse vector. */
+typedef double* pCentroid; /* Dense centroid. */
+#define pCentroidSize CA_NUM_DIMS * sizeof(double)
+
+/** Duplocate information. **/
+typedef struct
+    {
+    void* key1;
+    void* key2;
+    double similarity;
+    }
+    Dup, *pDup;
+
+/** Registering all defined types for debugging. **/
+#define ca_init() \
+	nmRegister(sizeof(pVector), "pVector"); \
+	nmRegister(sizeof(pCentroid), "pCentroid"); \
+	nmRegister(pCentroidSize, "Centroid"); \
+	nmRegister(sizeof(Dup), "Dup")
+    
+/** Edit distance function. **/
+int ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length);
+
+/** Vector functions. **/
+pVector ca_build_vector(const char* str);
+unsigned int ca_sparse_len(const pVector vector);
+void ca_print_vector(const pVector vector);
+void ca_free_vector(pVector sparse_vector);
+
+/** Kmeans function. **/
+int ca_kmeans(
+    pVector* vectors,
+    const unsigned int num_vectors,
+    const unsigned int num_clusters,
+    const unsigned int max_iter,
+    const double min_improvement,
+    unsigned int* labels,
+    double* vector_sims);
+
+/** Vector helper macros. **/
+#define ca_is_empty(vector) (vector[0] == -CA_NUM_DIMS)
+#define ca_has_no_pairs(vector) \
+    ({ \
+	__typeof__ (vector) _v = (vector); \
+	_v[0] == -172 && _v[1] == 11 && _v[2] == -78; \
+    })
+
+/** Comparison functions (see ca_search()). **/
+double ca_cos_compare(void* v1, void* v2);
+double ca_lev_compare(void* str1, void* str2);
+bool ca_eql(pVector v1, pVector v2);
+
+/** Similarity search functions. **/
+void* ca_most_similar(
+    void* target,
+    void** data,
+    const unsigned int num_data,
+    const double (*similarity)(void*, void*),
+    const double threshold);
+pXArray ca_sliding_search(
+    void** data,
+    const unsigned int num_data,
+    const unsigned int window_size,
+    const double (*similarity)(void*, void*),
+    const double dupe_threshold,
+    void** maybe_keys,
+    pXArray dups);
+pXArray ca_complete_search(
+    void** data,
+    const unsigned int num_data,
+    const double (*similarity)(void*, void*),
+    const double dupe_threshold,
+    void** maybe_keys,
+    pXArray dups);
+
+#endif /* End of .h file. */
