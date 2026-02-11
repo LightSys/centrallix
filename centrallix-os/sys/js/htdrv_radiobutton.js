@@ -37,7 +37,6 @@ function rb_setvalue(v) {
 		}
 	}
 	this.clearvalue();
-	//alert('Warning: "'+v+'" is not in the radio button list.');
 }
 
 function rb_cb_getvalue(p) {
@@ -104,12 +103,8 @@ function add_radiobutton(optionPane, param) {
 	var rb = wgtrGetParent(optionPane);
 	rb.rbCount++;
 	optionPane.valueIndex = rb.rbCount;
-	/*optionPane.kind = 'radiobutton';
-	optionPane.document.layer = optionPane;*/
 	htr_init_layer(optionPane, rb, 'radiobutton');
-	//optionPane.mainlayer = rb;
 	optionPane.optionPane = optionPane;
-	optionPane.isSelected = param.selected;
 	optionPane.valueStr = param.valuestr;
 	optionPane.labelStr = param.labelstr;
 
@@ -349,8 +344,6 @@ function rb_changemode(){
 	for (var i=0;i<this.buttonList.length;i++) {
 		pg_set(this.buttonList[i].setImage, 'src', '/sys/images/checkbox_checked.gif');
 		pg_set(this.buttonList[i].unsetImage, 'src', '/sys/images/checkbox_unchecked.gif');
-		//htutil_tag_images(this.buttonList[i].optionPane.setPane, 'radiobutton', this.buttonList[i].optionPane.setPane, 'rb');	
-		//htutil_tag_images(this.buttonList[i].optionPane.unsetPane, 'radiobutton', this.buttonList[i].optionPane.unsetPane, 'rb');
 	}
 	//clear the value
 	if(this.mainlayer.selectedOption){
@@ -391,10 +384,8 @@ function rb_changemode(){
 }
 
 function radiobuttonpanel_init(param) {
-	var parentPane = param.parentPane;
-	var borderpane = param.borderPane;
-	var coverpane = param.coverPane;
-	var titlepane = param.titlePane;
+	const { parentPane, borderpane, coverpane, titlepane } = param;
+
 	if (cx__capabilities.Dom1HTML)
 	    titlepane.styleobj = titlepane.getElementsByTagName('table')[0];
 	else
@@ -459,12 +450,15 @@ function radiobuttonpanel_init(param) {
 	    parentPane.form.ifcProbe(ifEvent).Hook("StatusChange",rb_changemode,parentPane);
 	}
 
+	// Values
 	var iv = parentPane.ifcProbeAdd(ifValue);
 	iv.Add("value", rb_cb_getvalue, rb_cb_setvalue);
 	iv.Add("valueindex", 'valueIndex');
 
+	// Actions
 	var ia = parentPane.ifcProbeAdd(ifAction);
 	ia.Add("SetValue", rb_action_setvalue);
+
 	return parentPane;
 }
 
