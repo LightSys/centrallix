@@ -138,7 +138,7 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Ok, write the style header items. **/
 	htrAddStylesheetItem_va(s,
-	    "\t#ib%POSpane { "
+	    "\t\t#ib%POSpane { "
 		"position:absolute; "
 		"visibility:inherit; "
 		"overflow:hidden;"

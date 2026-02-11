@@ -56,10 +56,23 @@ htimgSetup(pHtSession s)
     {
 
 	/** Global style code for all image widget "img" tags **/
-	htrAddStylesheetItem(s, "    img.wimage { display:block; position:relative; left:0px; top:0px; }\n");
+	htrAddStylesheetItem(s,
+	    "\t\timg.wimage { "
+		"display:block; "
+		"position:relative; "
+		"left:0px; "
+		"top:0px; "
+	    "}\n"
+	);
 
 	/** Global style code for all image widget "div" containers **/
-	htrAddStylesheetItem(s, "    div.wimage { visibility:inherit; position:absolute; overflow:hidden; }\n");
+	htrAddStylesheetItem(s,
+	    "\t\tdiv.wimage { "
+		"visibility:inherit; "
+		"position:absolute; "
+		"overflow:hidden; "
+	    "}\n"
+	);
 
     return 0;
     }
@@ -167,7 +180,7 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	
 	/** Write the style for the image container div. **/
 	htrAddStylesheetItem_va(s,
-	    "\t#img%POS { "
+	    "\t\t#img%POS { "
 		"left:"ht_flex_format"; "
 		"top:"ht_flex_format"; "
 		"width:"ht_flex_format"; "

@@ -58,7 +58,7 @@ htsetRender(pHtSession s, pWgtrNode tree, int z)
     	/** Check for a title. **/
 	if (wgtrGetPropertyValue(tree,"title",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    htrAddHeaderItem_va(s,"    <TITLE>%STR&HTE</TITLE>\n",ptr);
+	    htrAddHeaderItem_va(s, "\t<title>%STR&HTE</title>\n", ptr);
 	    }
 
 	/** Loop through the frames (widget/page items) for geometry data **/

@@ -153,15 +153,15 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 
     /** Write basic element CSS. **/
     htrAddStylesheetItem_va(s,
-	"\t#dd%POSbtn { "
-	    "OVERFLOW:hidden; "
-	    "POSITION:absolute; "
-	    "VISIBILITY:inherit; "
-	    "LEFT:"ht_flex_format"; "
-	    "TOP:"ht_flex_format"; "
-	    "WIDTH:"ht_flex_format"; "
-	    "HEIGHT:"ht_flex_format"; "
-	    "Z-INDEX:%POS; "
+	"\t\t#dd%POSbtn { "
+	    "position:absolute; "
+	    "visibility:inherit; "
+	    "overflow:hidden; "
+	    "left:"ht_flex_format"; "
+	    "top:"ht_flex_format"; "
+	    "width:"ht_flex_format"; "
+	    "height:"ht_flex_format"; "
+	    "z-index:%POS; "
 	    "cursor:default; "
 	    "background-color: %STR&CSSVAL; "
 	    "border:1px outset #e0e0e0; "
@@ -174,21 +174,28 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	z,
 	bgstr
     );
-    if (*textcolor) {
-	htrAddStylesheetItem_va(s,"\t#dd%POSbtn { color: %STR&CSSVAL; }\n",id,textcolor);
-    }
+    if (*textcolor)
+        {
+	htrAddStylesheetItem_va(s,
+	    "\t\t#dd%POSbtn { "
+		"color:%STR&CSSVAL; "
+	    "}\n",
+	    id,
+	    textcolor
+        );
+        }
     htrAddStylesheetItem_va(s,
-	"\t.dd%POScon { "
-	    "overflow:hidden; "
+	"\t\t.dd%POScon { "
 	    "position:absolute; "
+	    "overflow:hidden; "
 	    "left:1px; "
 	    "top:1px; "
 	    "width:1024px; "
-	    "height:"ht_flex_format"; "
+	    "height:%POS; "
 	    "z-index:%POS; "
 	"}\n",
 	id,
-	ht_flex(h - 2, h, 0.0),
+	h - 2,
 	z + 1
     );
 

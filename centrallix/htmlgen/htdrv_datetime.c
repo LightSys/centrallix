@@ -205,10 +205,10 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Write style headers. **/
 	htrAddStylesheetItem_va(s,
-	    "\t#dt%POSbtn { "
-		"overflow:hidden; "
+	    "\t\t#dt%POSbtn { "
 		"position:absolute; "
 		"visibility:inherit; "
+		"overflow:hidden; "
 		"left:"ht_flex_format"; "
 		"top:"ht_flex_format"; "
 		"width:"ht_flex_format"; "
@@ -227,9 +227,9 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    bgcolor
 	);
 	htrAddStylesheetItem_va(s,
-	    "\t.dt%POScon { "
-		"overflow:hidden; "
+	    "\t\t.dt%POScon { "
 		"position:absolute; "
+		"overflow:hidden; "
 		"left:1px; "
 		"top:1px; "
 		"width:calc(100%% - 20px); "

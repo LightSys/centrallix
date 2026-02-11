@@ -335,7 +335,7 @@ htchtGenHTML(pHtSession session, pWgtrNode tree, int z)
 	
 	/** Write style rules for the container div. **/
 	htrAddStylesheetItem_va(session,
-	    "\t#%STR&SYMdiv { "
+	    "\t\t#%STR&SYMdiv { "
 		"position:absolute; "
 		"visibility:inherit; "
 		"left:"ht_flex_format"; "

@@ -1811,7 +1811,6 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	htrAddScriptInit_va(s, "\n    var ns = \"%STR&SYM\";\n",
 			       /*"    var rootname = \"%STR&SYM\";\n", */
 		s->Namespace->DName /*, s->Namespace->DName */);
-	/*htrAddStylesheetItem(s, "\tdiv {position:absolute; visibility:inherit; overflow:hidden; }\n");*/
 
 	/** Render the top-level widget -- the function that's run
 	  * underneath will be dependent upon what the widget
@@ -1831,7 +1830,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 #ifdef WGTR_DBG_WINDOW
 	htrAddScriptWgtr_va(s, "    wgtrWalk(%STR&SYM);\n", tree->Name);
 	htrAddScriptWgtr(s, "    ifcLoadDef(\"net/centrallix/button.ifc\");\n");
-	htrAddStylesheetItem(s, "\t#dbgwnd {position: absolute; top: 400; left: 50;}\n");
+	htrAddStylesheetItem(s, "\t\t#dbgwnd {position: absolute; top: 400; left: 50;}\n");
 	htrAddBodyItem(s,   "<div id=\"dbgwnd\"><form name=\"dbgform\">"
 			    "<textarea name=\"dbgtxt\" cols=\"80\" rows=\"10\"></textarea>"
 			    "</form></div>\n");
@@ -1868,12 +1867,12 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 
 	htrQPrintf(s,	"<html>\n"
 			"<head>\n"
-			"    <meta name=\"generator\" content=\"Centrallix/%STR\">\n"
-			"    <meta name=\"pragma\" content=\"no-cache\">\n"
-			"    <meta name=\"referrer\" content=\"same-origin\">\n"
+			    "\t<meta name='generator' content='Centrallix/%STR'>\n"
+			    "\t<meta name='pragma' content='no-cache'>\n"
+			    "\t<meta name='referrer' content='same-origin'>\n"
 			, cx__version);
 
-	htrWrite(s, "    <style type=\"text/css\">\n", -1);
+	htrWrite(s, "\t<style type='text/css'>\n", -1);
 	/** Write the HTML stylesheet items. **/
 	for(i=0;i<s->Page.HtmlStylesheet.nItems;i++)
 	    {
@@ -1881,7 +1880,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    n = *(int*)ptr;
 	    htrWrite(s, ptr+8, n);
 	    }
-	htrWrite(s, "    </style>\n", -1);
+	htrWrite(s, "\t</style>\n", -1);
 	/** Write the HTML header items. **/
 	for(i=0;i<s->Page.HtmlHeader.nItems;i++)
 	    {
@@ -2700,7 +2699,7 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 
 	/** Generate the style CSS **/
 	htrAddStylesheetItem_va(s,
-	    "\t%STR {"
+	    "\t\t%STR { "
 		"left:"ht_flex_format"; "
 		"top:"ht_flex_format"; "
 		"%[width:"ht_flex_format"; %]" // BUG!

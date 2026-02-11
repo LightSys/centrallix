@@ -286,7 +286,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 
 	/** Write styles for the main DOM element. **/
 	htrAddStylesheetItem_va(s,
-	    "\t#mn%POSmain { "
+	    "\t\t#mn%POSmain { "
 		"position:absolute; "
 		"visibility:%STR; "
 		"left:"ht_flex_format"; "
@@ -305,14 +305,34 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	);
 	if (shadow_radius > 0)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_radius, shadow_color);
+	    htrAddStylesheetItem_va(s,
+		"\t\t#mn%POSmain { "
+		    "box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; "
+		"}\n",
+		id,
+		shadow_offset, shadow_offset, shadow_radius, shadow_color
+	    );
 	    }
 	if (s->Capabilities.CSS2)
-	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { overflow:hidden; border-style: solid; border-width: 1px; border-color: white gray gray white; color:%STR; %STR }\n", id, textcolor, bgstr);
+	    {
+	    htrAddStylesheetItem_va(s,
+		"\t\t#mn%POSmain { "
+		    "overflow:hidden; "
+		    "border-style:solid; "
+		    "border-width:1px; "
+		    "border-color:white gray gray white; "
+		    "color:%STR; "
+		    "%STR "
+		"}\n",
+		id,
+		textcolor,
+		bgstr
+	    );
+	    }
 	
 	/** Write styles for the content container. **/
 	htrAddStylesheetItem_va(s,
-	    "\t#mn%POScontent { "
+	    "\t\t#mn%POScontent { "
 		"position:absolute; "
 		"visibility:inherit; "
 		"left:0px; "
@@ -325,12 +345,38 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	    z + 1
 	);
 	if (s->Capabilities.CSS2)
-	    htrAddStylesheetItem_va(s,"\t#mn%POScontent { overflow:hidden; cursor:default; }\n", id );
+	    {
+	    htrAddStylesheetItem_va(s,
+		"\t\t#mn%POScontent { "
+		    "overflow:hidden; "
+		    "cursor:default; "
+		"}\n",
+		id
+	    );
+	    }
 
 	/** Write styles for the highlight bar. **/
-	htrAddStylesheetItem_va(s, "\t#mn%POShigh { POSITION:absolute; VISIBILITY: hidden; LEFT:0px; TOP:0px; Z-INDEX:%POS; }\n", id, z);
+	htrAddStylesheetItem_va(s,
+	    "\t\t#mn%POShigh { "
+		"position:absolute; "
+		"visibility: "
+		"hidden; "
+		"left:0px; "
+		"top:0px; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    z
+	);
 	if (s->Capabilities.CSS2)
-	    htrAddStylesheetItem_va(s,"\t#mn%POShigh { overflow:hidden; }\n", id );
+	    {
+	    htrAddStylesheetItem_va(s,
+		"\t\t#mn%POShigh { "
+		    "overflow:hidden; "
+		"}\n",
+		id
+	    );
+	    }
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(menu,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
