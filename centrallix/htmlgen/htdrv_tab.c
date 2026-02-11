@@ -470,14 +470,14 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		int tab_x = (x + xtoffset) + (i_offset_x * i);
 		int tab_y = (y + ytoffset) + (i_offset_y * i);
 		htrAddStylesheetItem_va(s,
-		    "\t#tc%POStab%POS { "
+		    "\t\t#tc%POStab%POS { "
 			"position:absolute; "
 			"visibility:inherit; "
+			"overflow:hidden; "
 			"left:"ht_flex_format"; "
 			"top:"ht_flex_format"; "
 			"%[width:%POSpx; %]"  /* Tab width has 0 flexibility. */
 			"%[height:%POSpx; %]" /* Tab height has 0 flexibility. */
-			"overflow:hidden; "
 			"z-index:%POS; "
 			"cursor:default; "
 			"border-radius:"
@@ -517,8 +517,11 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		);
 		
 		htrAddStylesheetItem_va(s,
-		    "\t#tc%POStab%POS.tab_selected { transform: translate(%INTpx, %INTpx); }\n",
-		    id, i + 1, select_x_offset, select_y_offset
+		    "\t\t#tc%POStab%POS.tab_selected { "
+			"transform:translate(%INTpx, %INTpx); "
+		    "}\n",
+		    id, i + 1,
+		    select_x_offset, select_y_offset
 		);
 		
 		/** Write tab HTML content. **/
@@ -544,7 +547,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	
 	/** Write tab control CSS and HTML. **/
 	htrAddStylesheetItem_va(s,
-	    "#tc%POSctrl {"
+	    "\t\t#tc%POSctrl {"
 		"position:absolute; "
 		"overflow:hidden; "
 		"left:"ht_flex_format"; "

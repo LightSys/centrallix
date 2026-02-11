@@ -94,7 +94,13 @@ htfuRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInit_va(s, "    fu_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), pane:document.getElementById(\"fu%POSform\"), input:document.getElementById(\"fu%POSinput\"), iframe:document.getElementById(\"fu%POSiframe\"), target:\"%STR&JSSTR\"});\n", name, id, id, id, target);
 	
 	/** style header items **/
-	htrAddStylesheetItem_va(s,"#fu%POSbase { POSITION:absolute; VISIBILITY:hidden; }\n", id);
+	htrAddStylesheetItem_va(s,
+	    "\t\t#fu%POSbase { "
+		"position:absolute; "
+		"visibility:hidden; "
+	    "}\n",
+	    id
+	);
 	htrAddBodyItem_va(s,"<DIV ID=\"fu%POSbase\"><FORM ID=\"fu%POSform\" METHOD=\"post\" ENCTYPE=\"multipart/form-data\" TARGET=\"fu%POSiframe\"><iframe ID=\"fu%POSiframe\" NAME=\"fu%POSiframe\"></iframe><INPUT ID=\"fu%POSinput\" TYPE=\"file\" NAME=\"fu%POSinput\" %STR/></FORM></DIV>", id, id, id, id, id, id, id, multiselect?"MULTIPLE":"");
 	
 	/** Check for more sub-widgets **/

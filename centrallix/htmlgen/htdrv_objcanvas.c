@@ -108,7 +108,7 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 	if (s->Capabilities.CSS2)
 	    {
 	    htrAddStylesheetItem_va(s,
-		"\t#oc%POSbase { "
+		"\t\t#oc%POSbase { "
 		    "position:absolute; "
 		    "visibility:inherit; "
 		    "overflow:hidden; "
@@ -129,7 +129,20 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 	    );
 	    }
 	else
-	    htrAddStylesheetItem_va(s,"\t#oc%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; HEIGHT:%POS; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
+	    {
+	    htrAddStylesheetItem_va(s,
+		"\t\t#oc%POSbase { "
+		    "position:absolute; "
+		    "visibility:inherit; "
+		    "left:%INT; "
+		    "top:%INT; "
+		    "width:%POS; "
+		    "height:%POS; "
+		    "z-index:%POS; "
+		"}\n",
+		id, x, y, w, h, z
+	    );
+	    }
 
 	htrAddWgtrObjLinkage_va(s, oc_node, "oc%POSbase",id);
 

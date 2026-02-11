@@ -90,7 +90,7 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
 
    /** Ok, write the style header items. **/
    htrAddStylesheetItem_va(s,
-	"\t#fs%POSmain { "
+	"\t\t#fs%POSmain { "
 	    "position:absolute; "
 	    "visibility:inherit; "
 	    "left:"ht_flex_format"; "

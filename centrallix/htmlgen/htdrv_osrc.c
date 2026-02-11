@@ -250,7 +250,19 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    htrAddScriptGlobal(s, "osrc_relationships", "[]", 0);
 
    /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,"        #osrc%POSloader { overflow:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:1px;  WIDTH:1px; HEIGHT:1px; Z-INDEX:0; }\n",id);
+   htrAddStylesheetItem_va(s,
+	"\t\t#osrc%POSloader { "
+	    "position:absolute; "
+	    "visibility:hidden; "
+	    "overflow:hidden; "
+	    "left:0px; "
+	    "top:1px; "
+	    "width:1px; "
+	    "height:1px; "
+	    "z-index:0; "
+	"}\n",
+	id
+    );
 
    /** Script initialization call. **/
    htrAddScriptInit_va(s,"    osrc_init({loader:wgtrGetNodeRef(ns,\"%STR&SYM\"), readahead:%INT, scrollahead:%INT, replicasize:%INT, sql:\"%STR&JSSTR\", filter:\"%STR&JSSTR\", baseobj:\"%STR&JSSTR\", name:\"%STR&SYM\", autoquery:%INT, requestupdates:%INT, ind_act:%INT, use_having:%INT, qy_reveal_only:%INT, send_updates:%INT, key_objname:\"%STR&JSSTR\", refresh:%INT});\n",
