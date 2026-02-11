@@ -384,7 +384,7 @@ function rb_changemode(){
 }
 
 function radiobuttonpanel_init(param) {
-	const { parentPane, borderpane, coverpane, titlepane } = param;
+	const { parentPane, borderPane: borderpane, coverPane: coverpane, titlePane: titlepane } = param;
 
 	if (cx__capabilities.Dom1HTML)
 	    titlepane.styleobj = titlepane.getElementsByTagName('table')[0];
