@@ -144,10 +144,24 @@ httermRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItem_va(s,"    <IFRAME ID=\"term%POSwriter\"></IFRAME>\n",id);
 	
 	/** write the stylesheet header element **/
-	htrAddStylesheetItem_va(s,"        #term%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT;  WIDTH:%POS; HEIGHT:%POS; Z-INDEX:%POS; }\n",id,x,y,cols*fontsize,rows*fontsize,z);
-	htrAddStylesheetItem_va(s,"        #term%POSreader { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0;  WIDTH:1; HEIGHT:1; Z-INDEX:-20; }\n",id);
-	htrAddStylesheetItem_va(s,"        #term%POSwriter { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0;  WIDTH:1; HEIGHT:1; Z-INDEX:-20; }\n",id);
-	htrAddStylesheetItem_va(s,"        .fixed%POS {font-family: fixed; }\n",id);
+	htrAddStylesheetItem_va(s,
+	    "\t\t#term%POSbase { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"left:%INTpx; "
+		"top:%INTpx; "
+		"width:%POSpx; "
+		"height:%POS; "
+		"z-index:%POS; "
+	    "}\n",
+	    id, x, y,
+	    cols * fontsize,
+	    rows * fontsize,
+	    z
+	);
+	htrAddStylesheetItem_va(s, "\t\t#term%POSreader { position:absolute; visibility:hidden; left:0px; top:0px; width:1px; height:1; z-index:-20; }\n", id);
+	htrAddStylesheetItem_va(s, "\t\t#term%POSwriter { position:absolute; visibility:hidden; left:0px; top:0px; width:1px; height:1; z-index:-20; }\n", id);
+	htrAddStylesheetItem_va(s, "\t\t.fixed%POS {font-family: fixed; }\n",id);
 
 	/** init line **/
 	htrAddScriptInit_va(s,"    terminal_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), rdr:\"term%POSreader\", wtr:\"term%POSwriter\", fxd:\"fixed%POS\", source:'%STR&JSSTR', rows:%INT, cols:%INT, colors:new Array(",

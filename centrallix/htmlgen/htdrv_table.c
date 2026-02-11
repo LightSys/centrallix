@@ -145,7 +145,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	/** Write CSS for the table base element. **/
 	const int content_width = (t->overlap_scrollbar) ? (t->w) : (t->w - 18);
 	htrAddStylesheetItem_va(s,
-	    "\t#tbld%POSbase { "
+	    "\t\t#tbld%POSbase { "
 		"position:absolute; "
 		"visibility:inherit; "
 		"left:"ht_flex_format"; "
@@ -165,7 +165,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	/** Write CSS for the table scrollbar. **/
 	const int row_start_y = (t->has_header) ? (t->min_rowheight + t->cellvspacing) : 0;
 	htrAddStylesheetItem_va(s,
-	    "\t#tbld%POSscroll { "
+	    "\t\t#tbld%POSscroll { "
 		"position:absolute; "
 		"visibility:%STR; "
 		"left:"ht_flex_format"; "
@@ -184,7 +184,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	
 	/** Write CSS for the table scroll thumb. **/
 	htrAddStylesheetItem_va(s,
-	    "\t#tbld%POSthumb { "
+	    "\t\t#tbld%POSthumb { "
 		"position:absolute; "
 		"visibility:inherit; "
 		"left:0px; "
@@ -366,7 +366,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		int h;
 		if (wgtrGetPropertyValue(sub_tree, "height", DATA_T_INTEGER, POD(&h)) != 0) h = t->min_rowheight;
 		htrAddStylesheetItem_va(s,
-		    "\t#tbld%POSsub%POS { "
+		    "\t\t#tbld%POSsub%POS { "
 			"position:absolute; "
 			"visibility:hidden; "
 			"left:0px; "

@@ -103,13 +103,13 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	/** Page icon? **/
 	if (wgtrGetPropertyValue(tree, "icon", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
-	    htrAddHeaderItem_va(s, "    <link rel=\"shortcut icon\" href=\"%STR&HTE\" />\n",ptr);
+	    htrAddHeaderItem_va(s, "\t<link rel='shortcut icon' href='%STR&HTE' />\n",ptr);
 	    }
 
     	/** Check for a title. **/
-	if (wgtrGetPropertyValue(tree,"title",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree, "title", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
-	    htrAddHeaderItem_va(s, "    <TITLE>%STR&HTE</TITLE>\n",ptr);
+	    htrAddHeaderItem_va(s, "\t<title>%STR&HTE</title>\n", ptr);
 	    }
 
     	/** Check for page load status **/
@@ -324,60 +324,62 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	/** Shutdown **/
 	htrAddScriptCleanup_va(s, "    pg_cleanup();\n");
 
+	/** Add focus box. **/
 	if(s->Capabilities.HTML40)
 	    {
-	    /** Add focus box **/
-	    htrAddStylesheetItem(s,"\ttd img { display: block; }\n");
-	    htrAddStylesheetItem(s,"\t#pgtop { POSITION:absolute; VISIBILITY:hidden; LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pgbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pgrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:-1000px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pglft { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:-1000px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pgtvl { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:0px;WIDTH:1px;HEIGHT:1px; Z-INDEX:0; }\n");
-	    htrAddStylesheetItem(s,"\t#pgktop { POSITION:absolute; VISIBILITY:hidden; LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pgkbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:-1000px;TOP:0px;WIDTH:1152px;HEIGHT:1px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pgkrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:-1000px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pgklft { POSITION:absolute; VISIBILITY:hidden; LEFT:0px;TOP:-1000px;WIDTH:1px;HEIGHT:864px; clip:rect(0px,0px,0px,0px); Z-INDEX:1000; overflow:hidden;}\n");
-	    htrAddStylesheetItem(s,"\t#pginpt { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:20px; Z-INDEX:20; }\n");
-	    htrAddStylesheetItem(s,"\t#pgping { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; Z-INDEX:0;}\n");
-	    htrAddStylesheetItem(s,"\t#pgmsg { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; Z-INDEX:0;}\n");
+	    htrAddStylesheetItem(s,
+		"\t\ttd img  { display: block; }\n"
+		"\t\t#pgtop  { position:absolute; visibility:hidden; left:-1000px; top:0px;     width:1152px; height:1px;   z-index:1000; clip:rect(0px,0px,0px,0px); overflow:hidden; }\n"
+		"\t\t#pgbtm  { position:absolute; visibility:hidden; left:-1000px; top:0px;     width:1152px; height:1px;   z-index:1000; clip:rect(0px,0px,0px,0px); overflow:hidden; }\n"
+		"\t\t#pgrgt  { position:absolute; visibility:hidden; left:0px;     top:-1000px; width:1px;    height:864px; z-index:1000; clip:rect(0px,0px,0px,0px); overflow:hidden; }\n"
+		"\t\t#pglft  { position:absolute; visibility:hidden; left:0px;     top:-1000px; width:1px;    height:864px; z-index:1000; clip:rect(0px,0px,0px,0px); overflow:hidden; }\n"
+		"\t\t#pgtvl  { position:absolute; visibility:hidden; left:0px;     top:0px;     width:1px;    height:1px;   z-index:0; }\n"
+		"\t\t#pgktop { position:absolute; visibility:hidden; left:-1000px; top:0px;     width:1152px; height:1px;   z-index:1000; clip:rect(0px,0px,0px,0px); overflow:hidden; }\n"
+		"\t\t#pgkbtm { position:absolute; visibility:hidden; left:-1000px; top:0px;     width:1152px; height:1px;   z-index:1000; clip:rect(0px,0px,0px,0px); overflow:hidden; }\n"
+		"\t\t#pgkrgt { position:absolute; visibility:hidden; left:0px;     top:-1000px; width:1px;    height:864px; z-index:1000; clip:rect(0px,0px,0px,0px); overflow:hidden; }\n"
+		"\t\t#pgklft { position:absolute; visibility:hidden; left:0px;     top:-1000px; width:1px;    height:864px; z-index:1000; clip:rect(0px,0px,0px,0px); overflow:hidden; }\n"
+		"\t\t#pginpt { position:absolute; visibility:hidden; left:0px;     top:20px;                                z-index:20; }\n"
+		"\t\t#pgping { position:absolute; visibility:hidden; left:0px;     top:0px;     width:0px;    height:0px;   z-index:0; }\n"
+		"\t\t#pgmsg  { position:absolute; visibility:hidden; left:0px;     top:0px;     width:0px;    height:0px;   z-index:0; }\n"
+	    );
 	    }
 	else
 	    {
-	    /** Add focus box **/
 	    htrAddStylesheetItem(s,
-		    "\t#pgtop { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
-		    "\t#pgbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
-		    "\t#pgrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
-		    "\t#pglft { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
-		    "\t#pgtvl { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:1; Z-INDEX:0; }\n"
-		    "\t#pgktop { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
-		    "\t#pgkbtm { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1152;HEIGHT:1; clip:rect(1,1); Z-INDEX:1000;}\n"
-		    "\t#pgkrgt { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
-		    "\t#pgklft { POSITION:absolute; VISIBILITY:hidden; LEFT:0;TOP:0;WIDTH:1;HEIGHT:864; clip:rect(1,1); Z-INDEX:1000;}\n"
-		    "\t#pginpt { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:20; Z-INDEX:20; }\n"
-		    "\t#pgping { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; Z-INDEX:0; }\n"
-		    "\t#pgmsg { POSITION:absolute; VISIBILITY:hidden; LEFT:0; TOP:0; Z-INDEX:0; }\n");
+		"\t\t#pgtop  { position:absolute; visibility:hidden; left:0; top:0;  width:1152; height:1;   z-index:1000; clip:rect(1,1); }\n"
+		"\t\t#pgbtm  { position:absolute; visibility:hidden; left:0; top:0;  width:1152; height:1;   z-index:1000; clip:rect(1,1); }\n"
+		"\t\t#pgrgt  { position:absolute; visibility:hidden; left:0; top:0;  width:1;    height:864; z-index:1000; clip:rect(1,1); }\n"
+		"\t\t#pglft  { position:absolute; visibility:hidden; left:0; top:0;  width:1;    height:864; z-index:1000; clip:rect(1,1); }\n"
+		"\t\t#pgtvl  { position:absolute; visibility:hidden; left:0; top:0;  width:1;    height:1;   z-index:0; }\n"
+		"\t\t#pgktop { position:absolute; visibility:hidden; left:0; top:0;  width:1152; height:1;   z-index:1000; clip:rect(1,1); }\n"
+		"\t\t#pgkbtm { position:absolute; visibility:hidden; left:0; top:0;  width:1152; height:1;   z-index:1000; clip:rect(1,1); }\n"
+		"\t\t#pgkrgt { position:absolute; visibility:hidden; left:0; top:0;  width:1;    height:864; z-index:1000; clip:rect(1,1); }\n"
+		"\t\t#pgklft { position:absolute; visibility:hidden; left:0; top:0;  width:1;    height:864; z-index:1000; clip:rect(1,1); }\n"
+		"\t\t#pginpt { position:absolute; visibility:hidden; left:0; top:20;                         z-index:20; }\n"
+		"\t\t#pgping { position:absolute; visibility:hidden; left:0; top:0;                          z-index:0; }\n"
+		"\t\t#pgmsg  { position:absolute; visibility:hidden; left:0; top:0;                          z-index:0; }\n"
+	    );
 	    }
 
 	if (show == 1)
 	    {
-	    htrAddStylesheetItem(s, "\t#pgstat { POSITION:absolute; VISIBILITY:visible; LEFT:0;TOP:0;WIDTH:100%;HEIGHT:99%; Z-INDEX:100000;}\n");
+	    htrAddStylesheetItem(s, "\t\t#pgstat { position:absolute; visibility:visible; left:0;top:0;width:100%;height:99%; z-index:100000;}\n");
 	    htrAddBodyItemLayerStart(s,0,"pgstat",0, NULL);
 	    htrAddBodyItem_va(s, "<BODY %STR>", bgstr);
 	    htrAddBodyItem   (s, "<TABLE width=\"100\%\" height=\"100\%\" cellpadding=20><TR><TD valign=top><IMG src=\"/sys/images/loading.gif\"></TD></TR></TABLE></BODY>\n");
 	    htrAddBodyItemLayerEnd(s,0);
 	    }
 
-	htrAddStylesheetItem_va(s, "\thtml { overflow:hidden; }\n");
-	htrAddStylesheetItem_va(s, "\tbody { overflow:hidden; %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
+	htrAddStylesheetItem_va(s, "\t\thtml { overflow:hidden; }\n");
+	htrAddStylesheetItem_va(s, "\t\tbody { overflow:hidden; %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
 		font_size > 0, font_size, *font_name, font_name);
-	htrAddStylesheetItem(s, "\tpre { font-size:90%; }\n");
+	htrAddStylesheetItem(s, "\t\tpre { font-size:90%; }\n");
 
 	if (s->Capabilities.Dom0NS)
 	    {
-	    htrAddStylesheetItem_va(s, "\ttd { %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
+	    htrAddStylesheetItem_va(s, "\t\ttd { %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
 		font_size > 0, font_size, *font_name, font_name);
-	    htrAddStylesheetItem_va(s, "\tfont { %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
+	    htrAddStylesheetItem_va(s, "\t\tfont { %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
 		font_size > 0, font_size, *font_name, font_name);
 	    }
 

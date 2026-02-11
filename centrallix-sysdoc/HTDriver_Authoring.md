@@ -194,11 +194,11 @@ The 'parentobj' parameter is the name of the "layer" object that will contain th
 The following list of functions are used by widget drivers to actually generate the DHTML and scripting needed to support widget instances.
 
 #### htrAddStylesheetItem(pHtSession s, char* html_text) returns int
-This functions adds a stylesheet definition to the header between the tags `<STYLE TYPE="text/css"></STYLE>`.  It is recommended to maintain a consistant indention style (using a tab '\t' character) at the beginning of these lines.
+This functions adds a stylesheet definition to the header between the tags `<style type="text/css"></style>`.  It is recommended to maintain a consistant indention style (using a tab '\t' character) at the beginning of these lines.
 
 Example:
 
-`htrAddStylesheetItem(s, "\t#pgtop { POSITION:absolute; VISIBILITY:hidden;");`
+`htrAddStylesheetItem(s, "\t\t#pgtop { position:absolute; visibility:hidden; }");`
 
 #### htrAddHeaderItem(pHtSession s, char* html_text) returns int
 This function adds text directly to the HTML header section of the generated document (between `<HEAD>` and `</HEAD>`).  The html_text string's content is copied into subsystem data structures.
@@ -209,7 +209,7 @@ The 'pHtSession' parameter 's' is passed to the Render() function as the first p
 
 Example:
 
-`htrAddHeaderItem(s, "    <TITLE>This is a title</TITLE>\n");`
+`htrAddHeaderItem(s, "\t<title>This is a title</title>\n");`
 
 #### htrAddBodyItem(pHtSession s, char* html_text) returns int
 This function adds text directly into the HTML body of the document, and works in a manner identical to the above HeaderItem function.

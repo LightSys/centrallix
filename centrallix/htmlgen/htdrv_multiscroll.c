@@ -107,12 +107,36 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	if(s->Capabilities.Dom0NS)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#ms%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
+	    htrAddStylesheetItem_va(s,
+		"\t\t#ms%POSmain { "
+		    "position:absolute; "
+		    "visibility:inherit; "
+		    "left:%INTpx; "
+		    "top:%INTpx; "
+		    "width:%POSpx; "
+		    "height:%POSpx; "
+		    "z-index:%POS; "
+		"}\n",
+		id, x, y, w, h, z
+	    );
 	    }
 	else if(s->Capabilities.CSS1)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#ms%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
-	    htrAddStylesheetItem_va(s,"\t#ms%POSmain { %STR}\n",id,main_bg);
+	    htrAddStylesheetItem_va(s,
+		"\t\t#ms%POSmain { "
+		    "position:absolute; "
+		    "visibility:inherit; "
+		    "overflow:hidden; "
+		    "left:%INTpx; "
+		    "top:%INTpx; "
+		    "width:%POSpx; "
+		    "height:%POSpx; "
+		    "z-index:%POS; "
+		    "%STR "
+		"}\n",
+		id, x, y, w, h, z,
+		main_bg
+	    );
 	    }
 	else
 	    {
@@ -163,7 +187,20 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 	    else
 		cy = h - total_h + total_h_accum;
 	    total_h_accum += ch;
-	    htrAddStylesheetItem_va(s,"\t#ms%POSpart%POS { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:0px; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; CLIP:rect(0px,%INTpx,%INTpx,0px);}\n",id,i,cy,w,ch,z+1,w,ch);
+	    htrAddStylesheetItem_va(s,
+		"\t\t#ms%POSpart%POS { "
+		    "position:absolute; "
+		    "visibility:inherit; "
+		    "overflow:hidden; "
+		    "left:0px; "
+		    "top:%INTpx; "
+		    "width:%POSpx; "
+		    "height:%POSpx; "
+		    "z-index:%POS; "
+		    "clip:rect(0px, %INTpx, %INTpx, 0px); "
+		"}\n",
+		id, i, cy, w, ch, z + 1, w, ch
+	    );
 	    if (wgtrGetPropertyValue(child,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	    if (always_visible && ch == 0)
 		{

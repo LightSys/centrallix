@@ -162,7 +162,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    offset = -2 * box_offset;
 	    htrAddStylesheetItem_va(s,
-		"\t#pn%POSmain {"
+		"\t\t#pn%POSmain {"
 		    "border-style: solid; "
 		    "border-width: 1px; "
 		    "border-color: %STR %STR %STR %STR; "
@@ -175,7 +175,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    offset = -2 * box_offset;
 	    htrAddStylesheetItem_va(s,
-		"\t#pn%POSmain {"
+		"\t\t#pn%POSmain {"
 		    "border-style: solid;"
 		    "border-width: 1px; "
 		    "border-color:%STR&CSSVAL; "
@@ -191,7 +191,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	
 	/** Write the main CSS for the pane DOM node. **/
 	htrAddStylesheetItem_va(s,
-	    "\t#pn%POSmain {"
+	    "\t\t#pn%POSmain {"
 		"position:absolute; "
 		"visibility:inherit; "
 		"overflow:hidden; "
@@ -216,8 +216,11 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	if (shadow_radius > 0)
 	    {
 	    htrAddStylesheetItem_va(s,
-		"\t#pn%POSmain { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n",
-		id, shadow_offset, shadow_offset, shadow_radius, shadow_color
+		"\t\t#pn%POSmain { "
+		    "box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; "
+		"}\n",
+		id,
+		shadow_offset, shadow_offset, shadow_radius, shadow_color
 	    );
 	    }
 
