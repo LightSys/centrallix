@@ -286,7 +286,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Write styles for the enclosing div. **/
 	htrAddStylesheetItem_va(s,
-	    "\t#cmp%POSbase { "
+	    "\t\t#cmp%POSbase { "
 		"position:absolute; "
 		"visibility:inherit; "
 		"overflow:visible; "
@@ -306,10 +306,10 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	
 	/** Write enclosing div event CSS. **/
 	htrAddStylesheetItem_va(s,
-	    "\t#cmp%POSbase { "
+	    "\t\t#cmp%POSbase { "
 		"pointer-events:none; "
 	    "}\n"
-	    "\t#cmp%POSbase > * { "
+	    "\t\t#cmp%POSbase > * { "
 		"pointer-events:auto; "
 	    "}\n",
 	    id, id
@@ -489,7 +489,18 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    /** Dynamic mode -- load from client **/
 	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "cmp%POS", id, NULL, "");
-	    htrAddStylesheetItem_va(s,"\t#cmp%POS { position:absolute; visibility:hidden; left:0px; top:0px; width:0px; height:0px; z-index:0;}\n", id);
+	    htrAddStylesheetItem_va(s,
+		"\t\t#cmp%POS { "
+		    "position:absolute; "
+		    "visibility:hidden; "
+		    "left:0px; "
+		    "top:0px; "
+		    "width:0px; "
+		    "height:0px; "
+		    "z-index:0; "
+		"}\n",
+		id
+	    );
 	    }
 
 	htrRenderSubwidgets(s, tree, z+1);

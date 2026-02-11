@@ -215,14 +215,14 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	 *** they will be overwritten by the JS anyway.
 	 ***/
 	htrAddStylesheetItem_va(s,
-	    "\t#wn%POSbase { "
+	    "\t\t#wn%POSbase { "
 		"position:absolute; "
 		"visibility:%STR; "
+		"overflow:hidden; "
 		"left:%INTpx; "
 		"top:%INTpx; "
 		"width:%POSpx; "
 		"height:%POSpx; "
-		"overflow:hidden; "
 		"z-index:%POS; "
 		"border-style:%STR&CSSVAL; "
 		"border-width:%INTpx; "
@@ -245,8 +245,17 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    double shadow_angle_radians = (double)shadow_angle * M_PI/180;
 	    htrAddStylesheetItem_va(s,
-		"\t#wn%POSbase { box-shadow: %DBLpx %DBLpx %POSpx %STR&CSSVAL; }\n", id,
-		sin(shadow_angle_radians)*shadow_offset, cos(shadow_angle_radians)*(-shadow_offset), shadow_radius, shadow_color
+		"\t\t#wn%POSbase { "
+		    "box-shadow: "
+			"%DBLpx "
+			"%DBLpx "
+			"%POSpx "
+			"%STR&CSSVAL; "
+		"}\n", id,
+		sin(shadow_angle_radians) *   shadow_offset,
+		cos(shadow_angle_radians) * (-shadow_offset),
+		shadow_radius,
+		shadow_color
 	    );
 	    }
 
@@ -272,14 +281,14 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    border_color_str = "gray white white gray";
 	    }
 	htrAddStylesheetItem_va(s,
-	    "\t#wn%POSmain { "
+	    "\t\t#wn%POSmain { "
 		"position:absolute; "
 		"visibility:inherit; "
+		"overflow:hidden; "
 		"left:0px; "
 		"top:%INTpx; "
 		"width:%POSpx; "
 		"height:%POSpx; "
-		"overflow:hidden; "
 		"clip:rect(0px, %INTpx, %INTpx, 0px); "
 		"border-style:solid; "
 		"border-color:%STR; "
@@ -353,14 +362,14 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    /** Write styles and HTML for the title bar. **/
 	    htrAddStylesheetItem_va(s,
-		"\t#wn%POStitlebar { "
+		"\t\t#wn%POStitlebar { "
 		    "position:absolute; "
 		    "visibility:inherit; "
+		    "overflow:hidden; "
 		    "left:0px; "
 		    "top:0px; "
 		    "height:%POSpx; "
 		    "width:calc(100%% - 4px); "
-		    "overflow:hidden; "
 		    "z-index:%POS; "
 		    "color:%STR&CSSVAL; "
 		    "cursor:default; "

@@ -151,7 +151,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	if (!strcmp(type,"image") || !strcmp(type,"textoverimage"))
 		{
 		htrAddStylesheetItem_va(s,
-		    "\t#gb%POSpane { "
+		    "\t\t#gb%POSpane { "
 			"position:absolute; "
 			"visibility:inherit; "
 			"left:"ht_flex_format"; "
@@ -169,7 +169,9 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		/** Button click animation. **/
 		if (is_enabled) {
 		    htrAddStylesheetItem_va(s,
-			"\t#tb%POSpane:active { transform: translate(1px, 1px); }\n",
+			"\t\t#tb%POSpane:active { "
+			    "transform:translate(1px, 1px); "
+			"}\n",
 			id
 		    );
 		}
@@ -215,19 +217,17 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		if(!strcmp(type,"textoverimage"))
 		    {
 		    htrAddStylesheetItem_va(s,
-			"\t#gb%POSpane2 { "
+			"\t\t#gb%POSpane2 { "
 			    "position:absolute; "
 			    "visibility:inherit; "
-			    "left:%POS; "
-			    "top:%POS; "
+			    "left:0px; "
+			    "top:0px; "
 			    "width:"ht_flex_format"; "
 			    "z-index:%POS; "
 			"}\n",
 			id,
-			0,
-			0,
-			ht_flex(w, tree->Parent->width, ht_get_fl_w(tree)),
-			z+1
+			ht_flex_w(w, tree),
+			z + 1
 		    );
 		    htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane2\"><center><table cellpadding=0 height=%INT><tr><td valign=\"center\" align=\"center\"><font color='%STR&HTE'><b>%STR&HTE</b></font></td></tr></table></center></DIV></DIV>\n",id,h,fgcolor1,text);
 		    }
@@ -262,13 +262,107 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		if(s->Capabilities.Dom0NS)
 		    {
 		    /** Ok, write the style header items. **/
-		    htrAddStylesheetItem_va(s,"\t#gb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:"ht_flex_format"; TOP:"ht_flex_format"; WIDTH:"ht_flex_format"; Z-INDEX:%POS; }\n",id,ht_flex(x,tree->Parent->width,ht_get_fl_x(tree)),ht_flex(y,tree->Parent->height,ht_get_fl_y(tree)),ht_flex(w,tree->Parent->width,ht_get_fl_w(tree)),z);
-		    htrAddStylesheetItem_va(s,"\t#gb%POSpane2 { POSITION:absolute; VISIBILITY:%STR; LEFT:-1; TOP:-1; WIDTH:"ht_flex_format"; Z-INDEX:%POS; }\n",id,is_enabled?"inherit":"hidden",ht_flex(w,tree->Parent->width,ht_get_fl_w(tree)),z+1);
-		    htrAddStylesheetItem_va(s,"\t#gb%POSpane3 { POSITION:absolute; VISIBILITY:%STR; LEFT:0; TOP:0; WIDTH:"ht_flex_format"; Z-INDEX:%POS; }\n",id,is_enabled?"hidden":"inherit",ht_flex(w-1,tree->Parent->width,ht_get_fl_w(tree)),z+1);
-		    htrAddStylesheetItem_va(s,"\t#gb%POStop { POSITION:absolute; VISIBILITY:%STR; LEFT:0; TOP:0; HEIGHT:1; WIDTH:"ht_flex_format"; Z-INDEX:%POS; }\n",id,is_ts?"hidden":"inherit",ht_flex(w,tree->Parent->width,ht_get_fl_w(tree)),z+2);
-		    htrAddStylesheetItem_va(s,"\t#gb%POSbtm { POSITION:absolute; VISIBILITY:%STR; LEFT:0; TOP:0; HEIGHT:1; WIDTH:"ht_flex_format"; Z-INDEX:%POS; }\n",id,is_ts?"hidden":"inherit",ht_flex(w,tree->Parent->width,ht_get_fl_w(tree)),z+2);
-		    htrAddStylesheetItem_va(s,"\t#gb%POSrgt { POSITION:absolute; VISIBILITY:%STR; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%POS; }\n",id,is_ts?"hidden":"inherit",z+2);
-		    htrAddStylesheetItem_va(s,"\t#gb%POSlft { POSITION:absolute; VISIBILITY:%STR; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%POS; }\n",id,is_ts?"hidden":"inherit",z+2);
+		    htrAddStylesheetItem_va(s,
+			"\t\t#gb%POSpane { "
+			    "position:absolute; "
+			    "visibility:inherit; "
+			    "left:"ht_flex_format"; "
+			    "top:"ht_flex_format"; "
+			    "width:"ht_flex_format"; "
+			    "z-index:%POS; "
+			"}\n",
+			id,
+			ht_flex_x(x, tree),
+			ht_flex_y(y, tree),
+			ht_flex_w(w, tree),
+			z
+		    );
+		    htrAddStylesheetItem_va(s,
+			"\t\t#gb%POSpane2 { "
+			    "position:absolute; "
+			    "visibility:%STR; "
+			    "left:-1px; "
+			    "top:-1px; "
+			    "width:"ht_flex_format"; "
+			    "z-index:%POS; "
+			"}\n",
+			id,
+			(is_enabled) ? "inherit" : "hidden",
+			ht_flex_w(w, tree),
+			z + 1
+		    );
+		    htrAddStylesheetItem_va(s,
+			"\t\t#gb%POSpane3 { "
+			    "position:absolute; "
+			    "visibility:%STR; "
+			    "left:0px; "
+			    "top:0px; "
+			    "width:"ht_flex_format"; "
+			    "z-index:%POS; "
+			"}\n",
+			id,
+			(is_enabled) ? "hidden" : "inherit",
+			ht_flex_w(w - 1, tree),
+			z + 1
+		    );
+		    htrAddStylesheetItem_va(s,
+			"\t\t#gb%POStop { "
+			    "position:absolute; "
+			    "visibility:%STR; "
+			    "left:0px; "
+			    "top:0px; "
+			    "height:1px; "
+			    "width:"ht_flex_format"; "
+			    "z-index:%POS; "
+			"}\n",
+			id,
+			(is_ts) ? "hidden" : "inherit",
+			ht_flex_w(w, tree),
+			z + 2
+		    );
+		    htrAddStylesheetItem_va(s, 
+			"\t\t#gb%POSbtm { "
+			    "position:absolute; "
+			    "visibility:%STR; "
+			    "left:0px; "
+			    "top:0px; "
+			    "height:1px; "
+			    "width:"ht_flex_format"; "
+			    "z-index:%POS; "
+			"}\n",
+			id,
+			(is_ts) ? "hidden" : "inherit",
+			ht_flex_w(w, tree),
+			z + 2
+		    );
+		    htrAddStylesheetItem_va(s, 
+			"\t\t#gb%POSrgt { "
+			    "position:absolute; "
+			    "visibility:%STR; "
+			    "left:0px; "
+			    "top:0px; "
+			    "height:1px; "
+			    "width:1px; "
+			    "z-index:%POS; "
+			"}\n",
+			id,
+			(is_ts) ? "hidden" : "inherit",
+			z + 2
+		    );
+		    htrAddStylesheetItem_va(s, 
+			"\t\t#gb%POSlft { "
+			    "position:absolute; "
+			    "visibility:%STR; "
+			    "left:0px; "
+			    "top:0px; "
+			    "height:1px; "
+			    "width:1px; "
+			    "z-index:%POS; "
+			"}\n",
+			id,
+			(is_ts) ? "hidden" : "inherit",
+			z + 2
+		    );
 
 		    /** Script initialization call. **/
 		    htrAddScriptInit_va(s, "    gb_init({layer:%STR&SYM, layer2:htr_subel(%STR&SYM, \"gb%POSpane2\"), layer3:htr_subel(%STR&SYM, \"gb%POSpane3\"), top:htr_subel(%STR&SYM, \"gb%POStop\"), bottom:htr_subel(%STR&SYM, \"gb%POSbtm\"), right:htr_subel(%STR&SYM, \"gb%POSrgt\"), left:htr_subel(%STR&SYM, \"gb%POSlft\"), width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&JSSTR', n:\"%STR&JSSTR\", p:\"%STR&JSSTR\", c:\"%STR&JSSTR\", d:\"%STR&JSSTR\", type:\"%STR&JSSTR\"});\n",
@@ -344,7 +438,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    if(h >=0 )
 			{
 			htrAddStylesheetItem_va(s,
-			    "\t#gb%POSpane { "
+			    "\t\t#gb%POSpane { "
 				"position:absolute; "
 				"visibility:inherit; "
 				"overflow:hidden; "
@@ -354,18 +448,30 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 				"z-index:%POS; "
 			    "}\n",
 			    id,
-			    ht_flex(x, tree->Parent->width, ht_get_fl_x(tree)),
-			    ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
-			    ht_flex(w-1-2*box_offset, tree->Parent->width, ht_get_fl_w(tree)),
+			    ht_flex_x(x, tree),
+			    ht_flex_y(y, tree),
+			    ht_flex_w(w - 1 - 2 * box_offset, tree),
 			    z
 			);
-			htrAddStylesheetItem_va(s,"\t#gb%POSpane2, #gb%POSpane3 { height: "ht_flex_format";}\n",id,id,ht_flex(h-3,tree->Parent->height,ht_get_fl_h(tree)));
-			htrAddStylesheetItem_va(s,"\t#gb%POSpane { height: "ht_flex_format";}\n",id,ht_flex(h-1-2*box_offset,tree->Parent->height,ht_get_fl_h(tree)));
+			htrAddStylesheetItem_va(s,
+			    "\t\t#gb%POSpane2, #gb%POSpane3 { "
+				"height: "ht_flex_format"; "
+			    "}\n",
+			    id, id,
+			    ht_flex_h(h - 3, tree)
+			);
+			htrAddStylesheetItem_va(s,
+			    "\t\t#gb%POSpane { "
+				"height:"ht_flex_format"; "
+			    "}\n",
+			    id,
+			    ht_flex_h(h - 1 - 2 * box_offset, tree)
+			);
 			}
 		    else
 			{
 			htrAddStylesheetItem_va(s,
-			    "\t#gb%POSpane { "
+			    "\t\t#gb%POSpane { "
 				"position:absolute; "
 				"visibility:inherit; "
 				"overflow:hidden; "
@@ -375,17 +481,57 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 				"z-index:%POS; "
 			    "}\n",
 			    id,
-			    ht_flex(x, tree->Parent->width, ht_get_fl_x(tree)),
-			    ht_flex(y, tree->Parent->height, ht_get_fl_y(tree)),
-			    ht_flex(w-1-2*box_offset, tree->Parent->width, ht_get_fl_w(tree)),
+			    ht_flex_x(x, tree),
+			    ht_flex_y(y, tree),
+			    ht_flex_w(w - 1 - 2 * box_offset, tree),
 			    z
 			);
 			}
-		    htrAddStylesheetItem_va(s,"\t#gb%POSpane, #gb%POSpane2, #gb%POSpane3 { cursor:default; text-align: center; }\n",id,id,id);
-		    htrAddStylesheetItem_va(s,"\t#gb%POSpane { %STR border-width: 1px; border-style: solid; border-color: white gray gray white; }\n",id,bgstyle);
-		    /*htrAddStylesheetItem_va(s,"\t#gb%dpane { color: %s; }\n",id,fgcolor2);*/
-		    htrAddStylesheetItem_va(s,"\t#gb%POSpane2 { VISIBILITY: %STR; Z-INDEX: %INT; position: absolute; left:-1px; top: -1px; width:"ht_flex_format"; }\n",id,is_enabled?"inherit":"hidden",z+1,ht_flex(w-3,tree->Parent->width,ht_get_fl_w(tree)));
-		    htrAddStylesheetItem_va(s,"\t#gb%POSpane3 { VISIBILITY: %STR; Z-INDEX: %INT; position: absolute; left:0px; top: 0px; width:"ht_flex_format"; }\n",id,is_enabled?"hidden":"inherit",z+1,ht_flex(w-3,tree->Parent->width,ht_get_fl_w(tree)));
+		    htrAddStylesheetItem_va(s,
+			"\t\t#gb%POSpane, #gb%POSpane2, #gb%POSpane3 { "
+			    "cursor:default; "
+			    "text-align:center; "
+			"}\n",
+			id, id, id
+		    );
+		    htrAddStylesheetItem_va(s,
+			"\t\t#gb%POSpane { "
+			    "%STR "
+			    "border-width:1px; "
+			    "border-style:solid; "
+			    "border-color:white gray gray white; "
+			"}\n",
+			id,
+			bgstyle
+		    );
+		    htrAddStylesheetItem_va(s,
+			"\t\t#gb%POSpane2 { "
+			    "position:absolute; "
+			    "visibility:%STR; "
+			    "left:-1px; "
+			    "top:-1px; "
+			    "width:"ht_flex_format"; "
+			    "z-index:%INT; "
+			"}\n",
+			id,
+			(is_enabled) ? "inherit" : "hidden",
+			ht_flex_w(w - 3, tree),
+			z + 1
+		    );
+		    htrAddStylesheetItem_va(s,
+			"\t\t#gb%POSpane3 { "
+			    "visibility:%STR; "
+			    "position:absolute; "
+			    "left:0px; "
+			    "top:0px; "
+			    "width:"ht_flex_format"; "
+			    "z-index:%INT; "
+			"}\n",
+			id,
+			(is_enabled) ? "hidden" : "inherit",
+			ht_flex_w(w - 3, tree),
+			z + 1
+		    );
 
 		    if(!strcmp(type,"text"))
 			{

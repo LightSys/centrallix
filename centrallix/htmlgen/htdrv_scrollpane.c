@@ -167,7 +167,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	    
 	    /** Write shared CSS for the following UI elements. **/
 	    htrAddStylesheetItem_va(s,
-		"\t.sp%POS_scroll { "
+		"\t\t.sp%POS_scroll { "
 		    "position:absolute; "
 		    "left:"ht_flex_format"; "
 		"}\n",
@@ -267,14 +267,14 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    /** Write CSS for everything. **/
 	    htrAddStylesheetItem_va(s,
-		"\t#sp%POSpane { "
+		"\t\t#sp%POSpane { "
 		    "position:absolute; "
 		    "visibility:%STR; "
+		    "overflow:hidden; "
 		    "left:"ht_flex_format"; "
 		    "top:"ht_flex_format"; "
 		    "width:"ht_flex_format"; "
 		    "height:"ht_flex_format"; "
-		    "overflow:clip; "
 		    "z-index:%POS; "
 		"}\n",
 		id,
@@ -286,7 +286,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 		z
 	    );
 	    htrAddStylesheetItem_va(s,
-		"\t#sp%POSarea { "
+		"\t\t#sp%POSarea { "
 		    "position:absolute; "
 		    "visibility:inherit; "
 		    "left:0px; "
@@ -299,7 +299,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 		z + 1
 	    );
 	    htrAddStylesheetItem_va(s,
-		"\t#sp%POSthumb { "
+		"\t\t#sp%POSthumb { "
 		    "position:absolute; "
 		    "visibility:inherit; "
 		    "left:"ht_flex_format"; "

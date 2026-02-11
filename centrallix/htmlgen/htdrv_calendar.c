@@ -141,7 +141,18 @@ htcaRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#ca%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
+	htrAddStylesheetItem_va(s,
+	    "\t\t#ca%POSbase { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"left:%INTpx; "
+		"top:%INTpx; "
+		"width:%POSpx; "
+		"height:%POSpx; "
+		"z-index:%POS; "
+	    "}\n",
+	    id, x, y, w, h, z
+	);
 
 	/** Script include to get functions **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_calendar.js", 0);

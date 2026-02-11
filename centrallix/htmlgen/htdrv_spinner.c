@@ -114,12 +114,12 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#spnr%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,x,y,w,z);
-	htrAddStylesheetItem_va(s,"\t#spnr%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,1,1,w-12,z);
-	htrAddStylesheetItem_va(s,"\t#spnr%POScon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,1,1,w-2-12,z+1);
-	htrAddStylesheetItem_va(s,"\t#spnr%POScon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,1,1,w-2-12,z+1);
-	htrAddStylesheetItem_va(s,"\t#spnr_button_up { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",1+w-12,1,w,z);
-	htrAddStylesheetItem_va(s,"\t#spnr_button_down { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",1+w-12,1+9,w,z);
+	htrAddStylesheetItem_va(s, "\t\t#spnr%POSmain     { position:absolute; visibility:inherit; left:%INT; top:%INT; width:%POS; z-index:%POS; }\n", id,  x, y,  w,      z);
+	htrAddStylesheetItem_va(s, "\t\t#spnr%POSbase     { position:absolute; visibility:inherit; left:%INT; top:%INT; width:%POS; z-index:%POS; }\n", id,  1, 1,  w-12,   z);
+	htrAddStylesheetItem_va(s, "\t\t#spnr%POScon1     { position:absolute; visibility:inherit; left:%INT; top:%INT; width:%POS; z-index:%POS; }\n", id,  1, 1,  w-2-12, z+1);
+	htrAddStylesheetItem_va(s, "\t\t#spnr%POScon2     { position:absolute; visibility:hidden;  left:%INT; top:%INT; width:%POS; z-index:%POS; }\n", id,  1, 1,  w-2-12, z+1);
+	htrAddStylesheetItem_va(s, "\t\t#spnr_button_up   { position:absolute; visibility:inherit; left:%INT; top:%INT; width:%POS; z-index:%POS; }\n", 1+w-12, 1,  w,      z);
+	htrAddStylesheetItem_va(s, "\t\t#spnr_button_down { position:absolute; visibility:inherit; left:%INT; top:%INT; width:%POS; z-index:%POS; }\n", 1+w-12, 1+9,w,      z);
 
 	/** DOM Linkage **/
 	htrAddWgtrObjLinkage_va(s, tree, "spnr%POSmain",id);

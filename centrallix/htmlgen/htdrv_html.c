@@ -103,11 +103,11 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 	    if (x < 0 || y < 0)
 		{
 		htrAddStylesheetItem_va(s,
-		    "\t#ht%POSpane, #ht%POSpane, #ht%POSfader { "
-			"POSITION:relative; "
-			"VISIBILITY:inherit; "
-			"WIDTH:"ht_flex_format"; "
-			"Z-INDEX:%POS; "
+		    "\t\t#ht%POSpane, #ht%POSpane, #ht%POSfader { "
+			"position:relative; "
+			"visibility:inherit; "
+			"width:"ht_flex_format"; "
+			"z-index:%POS; "
 		    "}\n",
 		    id, id, id,
 		    ht_flex_w(w, tree),
@@ -117,13 +117,13 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 	    else
 		{
 		htrAddStylesheetItem_va(s,
-		    "\t#ht%POSpane, #ht%POSpane2, #ht%POSfader { "
-			"POSITION:absolute; "
-			"VISIBILITY:inherit; "
-			"LEFT:"ht_flex_format"; "
-			"TOP:"ht_flex_format"; "
-			"WIDTH:"ht_flex_format"; "
-			"Z-INDEX:%POS; "
+		    "\t\t#ht%POSpane, #ht%POSpane2, #ht%POSfader { "
+			"position:absolute; "
+			"visibility:inherit; "
+			"left:"ht_flex_format"; "
+			"top:"ht_flex_format"; "
+			"width:"ht_flex_format"; "
+			"z-index:%POS; "
 		    "}\n",
 		    id, id, id,
 		    ht_flex_x(x, tree),
@@ -135,8 +135,24 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 
 	    if (s->Capabilities.CSS1)
 		{
-	        htrAddStylesheetItem_va(s,"\t#ht%POSpane, #ht%POSpane2, #ht%POSfader { overflow:hidden; }\n", id, id, id);
-		htrAddStylesheetItem_va(s,"\t#ht%POSloader { overflow:hidden; visibility:hidden; position:absolute; top:0px; left:0px; width:0px; height:0px; }\n", id);
+	        htrAddStylesheetItem_va(s,
+		    "\t\t#ht%POSpane, #ht%POSpane2, #ht%POSfader { "
+			"overflow:hidden; "
+		    "}\n",
+		    id, id, id
+		);
+		htrAddStylesheetItem_va(s,
+		    "\t\t#ht%POSloader { "
+			"position:absolute; "
+			"visibility:hidden; "
+			"overflow:hidden; "
+			"top:0px; "
+			"left:0px; "
+			"width:0px; "
+			"height:0px; "
+		    "}\n",
+		    id
+		);
 		}
 
             /** Write named global **/

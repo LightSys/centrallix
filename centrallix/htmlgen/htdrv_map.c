@@ -104,7 +104,20 @@ int htmapRender(pHtSession s, pWgtrNode map_node, int z)
 	strtcpy(name, ptr, sizeof(name));
 
 	/** Add css item for the layer **/
-	htrAddStylesheetItem_va(s, "\t#map%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; overflow: hidden; %STR}\n", id, x, y, w, h, z, main_bg);
+	htrAddStylesheetItem_va(s,
+	    "\t\t#map%POSbase { "
+	        "position:absolute; "
+		"visibility:inherit; "
+		"overflow:hidden; "
+		"left:%INTpx; "
+		"top:%INTpx; "
+		"width:%POSpx; "
+		"height:%POSpx; "
+		"z-index:%POS; "
+		"%STR "
+	    "}\n",
+	    id, x, y, w, h, z, main_bg
+	);
 
 	htrAddWgtrObjLinkage_va(s, map_node, "map%POSbase", id);
 

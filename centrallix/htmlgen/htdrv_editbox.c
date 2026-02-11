@@ -151,7 +151,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	/** Ok, write the style header items. **/
 	const int base_w = w - (2 * box_offset);
 	htrAddStylesheetItem_va(s,
-	    "\t#eb%POSbase { "
+	    "\t\t#eb%POSbase { "
 		"position:absolute; "
 		"visibility:inherit; "
 		"overflow:hidden; "
@@ -167,7 +167,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    z
 	);
 	htrAddStylesheetItem_va(s,
-	    "\t#eb%POScon1 { "
+	    "\t\t#eb%POScon1 { "
 		"position:absolute; "
 		"visibility:inherit; "
 		"left:5px; "
@@ -230,14 +230,40 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Use CSS border for drawing **/
 	if (is_raised)
-	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: white gray gray white; %STR }\n",id, main_bg);
+	    {
+	    htrAddStylesheetItem_va(s,
+		"\t\t#eb%POSbase { "
+		    "border-style:solid; "
+		    "border-width:1px; "
+		    "border-color: "
+		    "white gray gray white; "
+		    "%STR "
+		"}\n",
+		id,
+		main_bg
+	    );
+	    }
 	else
-	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n",id, main_bg);
+	    {
+	    htrAddStylesheetItem_va(s,
+		"\t\t#eb%POSbase { "
+		    "border-style:solid; "
+		    "border-width:1px; "
+		    "border-color:gray white white gray; "
+		    "%STR "
+		"}\n",
+		id,
+		main_bg
+	    );
+	    }
 	if (h >= 0)
 	    {
 	    htrAddStylesheetItem_va(s,
-		"\t#eb%POSbase { height:"ht_flex_format"; }\n",
-		id, ht_flex(h - (2 * box_offset), ht_get_parent_h(tree), ht_get_fl_h(tree))
+		"\t\t#eb%POSbase { "
+		    "height:"ht_flex_format"; "
+		"}\n",
+		id,
+		ht_flex_h(h - (2 * box_offset), tree)
 	    );
 	    }
 

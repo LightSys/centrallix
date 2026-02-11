@@ -157,7 +157,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Write style headers. **/
 	htrAddStylesheetItem_va(s,
-	    "\t#cl%POSbase { "
+	    "\t\t#cl%POSbase { "
 		"position:absolute; "
 		"visibility:inherit; "
 		"left:"ht_flex_format"; "
@@ -172,7 +172,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	    z
 	);
 	htrAddStylesheetItem_va(s,
-	    "\t.cl%POScon { "
+	    "\t\t.cl%POScon { "
 		"position:absolute; "
 		"left:0px; "
 		"top:0px; "
@@ -180,8 +180,6 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 		"z-index:%POS; "
 	    "}\n",
 	    id,
-	    0,
-	    0,
 	    z + 2
 	);
 

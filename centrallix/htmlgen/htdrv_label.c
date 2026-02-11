@@ -198,7 +198,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Ok, write the style header items. **/
 	htrAddStylesheetItem_va(s,
-	    "\t#lbl%POS { "
+	    "\t\t#lbl%POS { "
 		"position:absolute; "
 		"visibility:inherit; "
 		"left:"ht_flex_format"; "
@@ -233,12 +233,32 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	);
 
 	if (is_link)
-	    htrAddStylesheetItem_va(s,"\t#lbl%POS:hover { %[color:%STR&CSSVAL; %]text-decoration:underline; cursor:pointer; }\n", id, *pfgcolor, pfgcolor);
+	    {
+	    htrAddStylesheetItem_va(s,
+		"\t\t#lbl%POS:hover { "
+		    "%[color:%STR&CSSVAL; %]"
+		    "text-decoration:underline; "
+		    "cursor:pointer; "
+		"}\n",
+		id,
+		(*pfgcolor), pfgcolor
+	    );
+	    }
 	if (is_link && *cfgcolor)
-	    htrAddStylesheetItem_va(s,"\t#lbl%POS:active { color:%STR&CSSVAL; text-decoration:underline; cursor:pointer; }\n", id, cfgcolor);
+	    {
+	    htrAddStylesheetItem_va(s,
+		"\t\t#lbl%POS:active { "
+		    "color:%STR&CSSVAL; "
+		    "text-decoration:underline; "
+		    "cursor:pointer; "
+		"}\n",
+		id,
+		cfgcolor
+	    );
+	    }
 
 	htrAddStylesheetItem_va(s,
-	    "\t#lbl%POS p { "
+	    "\t\t#lbl%POS p { "
 		"text-align:%STR&CSSVAL; "
 		"%[position:relative; top:50%%; transform:translateY(-50%%); %]"
 		"padding:0px; "
