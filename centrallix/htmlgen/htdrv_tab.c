@@ -491,7 +491,8 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			"box-shadow:%DBLpx %DBLpx %POSpx %STR&CSSVAL; "
 			"text-align:%STR&CSSVAL; "
 			"color:%STR&CSSVAL; "
-			"font-weight:bold; "
+			"font-weight:bold; /*"
+			"easter-egg-6:value;*/ "
 			"background-position: %INTpx %INTpx; "
 			"%STR "
 		    "}\n",

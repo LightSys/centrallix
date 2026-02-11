@@ -140,6 +140,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	    "const borderPane = htr_subel(parentPane, 'rb%POSborder'); "
 	    "const coverPane = htr_subel(borderPane, 'rb%POScover'); "
 	    "const titlePane = htr_subel(parentPane, 'rb%POStitle'); "
+	    "const easterEgg2 = 'Easter Egg #2';"
 	    "radiobuttonpanel_init({ "
 		"parentPane, borderPane, coverPane, titlePane, "
 		"fieldname:'%STR&JSSTR', "

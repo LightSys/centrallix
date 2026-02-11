@@ -52,6 +52,7 @@ static struct {
 #define HTDD_DYNAMIC 2
 #define HTDD_DYNAMIC_CLIENT HTDD_DYNAMIC
 #define HTDD_OBJECTSOURCE 3
+#define HTDD_EASTER_EGG_4 4
 
 /* 
    htddRender - generate the HTML code for the page.
