@@ -346,7 +346,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 		"</td></tr>"
 		
 		/** Close the scrollpane table (see above). **/
-		"</table>\n",
+		"</table> <!-- Easter Egg #3 -->\n",
 		h - 36
 	    );
 	    

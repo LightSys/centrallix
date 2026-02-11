@@ -2824,7 +2824,7 @@ osrc1 "widget/osrc"
 		
 			<action name="Launch">Starts a new app in a new window.</action>
 			
-			<action name="Log">Logs data to the console (using console.log()), for testing and debugging. Set the 'Message' to specify a text string that should appear in the log.</action>
+			<action name="Log">Logs data to the console (using console.log()), for testing and debugging. Set the 'Message' to specify a text string that should appear in the log. Might be useful for logging Easter Egg #8.</action>
 			
 			<action name="LoadPage">Loads the page.</action>
 			
