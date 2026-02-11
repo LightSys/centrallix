@@ -1,0 +1,55 @@
+##NAME log() functions
+
+# Natural Log: ln(x)
+query select 'ln(1)'     = ln(1)                           -- Expect 0.
+query select 'ln(e)'     = ln(2.718281828459045)           -- Expect 1.
+query select 'ln(0)'     = ln(0)                           -- Expect -inf (log approaches infinity).
+query select 'ln(-1)'    = ln(-1)                          -- Expect NaN (log undefined for negative).
+query select 'ln(10)'    = round(ln(10), 8)                -- Expect ~2.30258509.
+query select 'ln(1.5)'   = round(ln(1.5), 8)               -- Expect ~0.40546511.
+query select 'ln(1e-10)' = ln(0.0000000001) < 0.0000000001 -- Expect true (value is very small).
+query select 'ln(1e10)+' = ln(10000000000.0) > 23.0        -- Expect true (value is ~23.02585).
+query select 'ln(1e10)-' = ln(10000000000.0) < 23.1        -- Expect true (value is ~23.02585).
+
+# Log base 10: log10(x)
+query select 'log10(1)'        = log10(1)                  -- Expect 0.
+query select 'log10(10)'       = log10(10)                 -- Expect 1.
+query select 'log10(0)'        = log10(0)                  -- Expect -inf.
+query select 'log10(-10)'      = log10(-10)                -- Expect NaN.
+query select 'log10(100)'      = log10(100)                -- Expect 2.
+query select 'log10(0.01)'     = log10(0.01)               -- Expect -2.
+query select 'log10(1.234)'    = round(log10(1.234), 8)    -- Expect ~0.091315.
+query select 'log10(1e-10)'    = log10(0.0000000001)       -- Expect ~-10.
+query select 'log10(1e10)'     = log10(10000000000.0)      -- Expect ~10.
+
+# General base n of x: log(x, n)
+# Edge cases: base <= 0 or base == 1 (invalid), x <= 0 (invalid)
+query select 'log(8, 2)'       = log(8, 2)                 -- Expect 3.
+query select 'log(1000, 10)'   = log(1000, 10)             -- Expect 3.
+query select 'log(10, 0)'      = log(10, 0)                -- Expect -0.0 (base 0 is undefined).
+query select 'log(10, 1)'      = log(10, 1)                -- Expect inf (base 1 is undefined).
+query select 'log(8, -2)'      = log(8, -2)                -- Expect NaN (negative base).
+query select 'log(0, 2)'       = log(0, 2)                 -- Expect -inf (x=0).
+query select 'log(-8, 2)'      = log(-8, 2)                -- Expect NaN or error (x negative).
+query select 'log(1, 2)'       = log(1, 2)                 -- Expect 0.
+query select 'log(1e10, 10)'   = log(10000000000.0, 10)    -- Expect 10.
+query select 'log(8, 0.5)'     = log(8, 0.5)               -- Expect negative value.
+
+# log(x) = ln(x)
+query select 'log(1)'     = (log(1)             == ln(1))
+query select 'log(e)'     = (log(2.71828182845) == ln(2.71828182845))
+query select 'log(0)'     = (log(0)             == ln(0))
+query select 'log(-1)'    = (log(-1)            == ln(-1))
+query select 'log(10)'    = (log(10)            == ln(10))
+query select 'log(1.5)'   = (log(1.5)           == ln(1.5))
+query select 'log(1e-10)' = (log(0.0000000001)  == ln(0.0000000001))
+query select 'log(1e10)+' = (log(10000000000.0) == ln(10000000000.0))
+query select 'log(1e10)-' = (log(10000000000.0) == ln(10000000000.0))
+
+-- Additional double/int mixed cases
+query select 'ln(2.718281828)' = round(ln(2.718281828), 8) -- Expect ~1 (close to e).
+query select 'log10(3.14159)'  = round(log10(3.14159), 8)  -- Expect ~0.49715.
+query select 'log(10, 1.1)'    = round(log(1.1, 10), 8)    -- Expect 0.04139289.
+query select 'log(1.1, 10)'    = round(log(10, 1.1), 8)    -- Expect 24.15885793.
+query select 'log(10, 0.001)'  = round(log(0.001, 10), 8)  -- Expect ~-0.33333333...
+query select 'log(0.1, 1000)'  = round(log(1000, 0.1), 8)  -- Expect ~-0.33333333...

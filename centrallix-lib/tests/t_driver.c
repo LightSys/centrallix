@@ -59,16 +59,38 @@ start(void* v)
 	signal(SIGSEGV, segv_handler);
 	signal(SIGABRT, abort_handler);
 	signal(SIGALRM, alarm_handler);
-	alarm(10);
+	
+	/*** Set a timer before Lockup is triggered, using a significantly
+	 *** larger value if Valgrind appears to be enabled.
+	 ***/
+	#ifdef NO_BLK_CACHE
+	alarm(90); /* Valgrind detected. */
+	#else
+	alarm(5); /* Normal timeout. */
+	#endif
+	
+	
 	times(&t);
 	start = t.tms_utime + t.tms_stime + t.tms_cutime + t.tms_cstime;
 	rval = test(&tname);
 	times(&t);
 	end = t.tms_utime + t.tms_stime + t.tms_cutime + t.tms_cstime;
+	
 	if (rval < 0)
 	    printf("%-62.62s  FAIL\n", tname);
 	else
-	    printf("%-62.62s  PASS %lld\n", tname, rval*100/(long long)(end - start));
+	    {
+	    long long duration = end - start;
+	    if (duration == 0)
+		{
+		printf("%-62.62s  PASS ???\n", tname);
+		printf("Warning: Test ran too fast! Ops/sec could not be measured. Please run tests in a loop or use loop_tests() from test_utils.h.\n");
+		return;
+		}
+	    long long ops_per_second = rval * (100 / duration);
+	    if (ops_per_second > 0) printf("%-62.62s  PASS %lld\n", tname, ops_per_second);
+	    else printf("%-62.62s  PASS %.4lf\n", tname, rval * (100.0 / duration));
+	    }
 
     return;
     }
@@ -79,4 +101,3 @@ main(int argc, char* argv[])
     mtInitialize(0, start);
     return 0;
     }
-

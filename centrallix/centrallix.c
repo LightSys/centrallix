@@ -461,6 +461,7 @@ cxDriverInit()
 	stxInitialize();			/* Structure file driver */
 	qytInitialize();			/* Query Tree driver */
 	qypInitialize();			/* Query Pivot driver */
+	clusterInitialize();			/* Cluster driver */
 	qyInitialize();				/* stored query (aka view) driver */
 	rptInitialize();			/* report writer driver */
 	uxpInitialize();			/* UNIX printer access driver */
@@ -784,4 +785,3 @@ cxLinkSigningSetup(pStructInf my_config)
 
     return 0;
     }
-
