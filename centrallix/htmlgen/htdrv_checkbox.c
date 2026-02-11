@@ -93,7 +93,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    
    /** Write style header. **/
    htrAddStylesheetItem_va(s,
-	"\t#cb%POSmain { "
+	"\t\t#cb%POSmain { "
 	    "position:absolute; "
 	    "visibility:inherit; "
 	    "left:"ht_flex_format"; "

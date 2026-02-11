@@ -218,7 +218,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	
 	/** Write CSS for the container that will hold the button. **/
 	htrAddStylesheetItem_va(s,
-	    "\t#tb%POSpane { "
+	    "\t\t#tb%POSpane { "
 		"position:absolute; "
 		"visibility:inherit; "
 		"left:"ht_flex_format"; "
@@ -240,14 +240,14 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	/** Button click animation. **/
 	if (is_enabled) {
 	    htrAddStylesheetItem_va(s,
-		"\t#tb%POSpane:active { transform: translate(1px, 1px); }\n",
+		"\t\t#tb%POSpane:active { transform: translate(1px, 1px); }\n",
 		id
 	    );
 	}
 	
 	/** Write CSS for the button content, inside the border. **/
 	htrAddStylesheetItem_va(s,
-	    "\t#tb%POSpane .cell { "
+	    "\t\t#tb%POSpane .cell { "
 		"height:100%%; "
 		"width:100%%; "
 		"vertical-align:middle; "
@@ -278,7 +278,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	if (has_image && (image_width != 0 || image_height != 0 || image_margin != 0))
 	    {
 	    htrAddStylesheetItem_va(s,
-		"\t#tb%POSpane img { "
+		"\t\t#tb%POSpane img { "
 		    "%[height:%POSpx; %]"
 		    "%[width:%POSpx; %]"
 		    "%[margin:%POSpx; %]"
@@ -289,22 +289,6 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 		(image_margin != 0), image_margin
 	    );
 	    }
-
-#if 00
-	if(h >=0 )
-	    {
-	    htrAddStylesheetItem_va(s,"\t#tb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; OVERFLOW:hidden; clip:rect(%INTpx %INTpx %INTpx %INTpx)}\n", id, x, y, h-1-2*box_offset, w-1-2*box_offset, z, 0, w-1-2*box_offset+2*clip_offset, h-1-2*box_offset+2*clip_offset, 0);
-	    }
-	else
-	    {
-	    htrAddStylesheetItem_va(s,"\t#tb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; OVERFLOW:hidden; clip:rect(%INTpx %INTpx auto %INTpx)}\n",id,x,y,w-1-2*box_offset,z,0,w-1-2*box_offset+2*clip_offset,0);
-	    }
-	htrAddStylesheetItem_va(s,"\t#tb%POSpane { cursor:default; text-align: center; %STR border-width: 1px; border-style: solid; border-color: white gray gray white; border-radius: %INTpx; }\n",id,bgstyle, border_radius);
-	if (is_enabled)
-	    htrAddStylesheetItem_va(s,"\t#tb%POSspan { color:%STR&CSSVAL; text-shadow:1px 1px %STR&CSSVAL; }\n", id, fgcolor1, fgcolor2);
-	else
-	    htrAddStylesheetItem_va(s,"\t#tb%POSspan { color:%STR&CSSVAL; }\n", id, disable_color);
-#endif
 
 	//htrAddBodyItem_va(s,"<DIV ID=\"tb%POSpane\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><span id=\"tb%POSspan\"><b>%STR&HTE</b></span></td></tr></table></center>\n", id, h-3, id, text);
 	//htrAddBodyItem(s,   "</DIV>");

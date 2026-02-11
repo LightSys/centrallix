@@ -163,11 +163,48 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#sb%POSpane { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; clip:rect(0px,%POSpx,%POSpx,0px); Z-INDEX:%POS; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
+	htrAddStylesheetItem_va(s,
+	    "\t\t#sb%POSpane { "
+		"position:absolute; "
+		"visibility:%STR; "
+		"overflow:hidden; "
+		"left:%INTpx; "
+		"top:%INTpx; "
+		"width:%POSpx; "
+		"height:%POSpx; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    (visible) ? "inherit" : "hidden",
+	    x, y, w, h,
+	    z
+	);
 	if (is_horizontal)
-	    htrAddStylesheetItem_va(s,"\t#sb%POSthum { POSITION:absolute; VISIBILITY:inherit; LEFT:18px; TOP:0px; WIDTH:18px; Z-INDEX:%POS; }\n",id,z+1);
+	    htrAddStylesheetItem_va(s,
+		"\t\t#sb%POSthum { "
+		    "position:absolute; "
+		    "visibility:inherit; "
+		    "left:18px; "
+		    "top:0px; "
+		    "width:18px; "
+		    "z-index:%POS; "
+		"}\n",
+		id,
+		z + 1
+	    );
 	else
-	    htrAddStylesheetItem_va(s,"\t#sb%POSthum { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:18px; Z-INDEX:%POS; }\n",id,z+1);
+	    htrAddStylesheetItem_va(s,
+		"\t\t#sb%POSthum { "
+		    "position:absolute; "
+		    "visibility:inherit; "
+		    "left:0px; "
+		    "top:18px; "
+		    "width:18px; "
+		    "z-index:%POS; "
+		"}\n",
+		id,
+		z + 1
+	    );
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "sb_target_img", "null", 0);

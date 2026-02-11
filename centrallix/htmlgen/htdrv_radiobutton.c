@@ -185,7 +185,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
     const int para_height = s->ClientInfo->ParagraphHeight;
     const int top_offset = (para_height * 3) / 4 + 1;
     htrAddStylesheetItem_va(s,
-	"#rb%POSparent { "
+	"\t\t#rb%POSparent { "
 	    "position:absolute; "
 	    "visibility:inherit; "
 	    "overflow:hidden; "
@@ -203,7 +203,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	z
     );
     htrAddStylesheetItem_va(s,
-	"#rb%POSborder { "
+	"\t\t#rb%POSborder { "
 	    "position:absolute; "
 	    "visibility:inherit; "
 	    "overflow:hidden; "
@@ -219,7 +219,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	z + 1
     );
     htrAddStylesheetItem_va(s,
-	"#rb%POScover { "
+	"\t\t#rb%POScover { "
 	    "position:absolute; "
 	    "visibility:inherit; "
 	    "overflow:hidden; "
@@ -233,7 +233,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	z + 2
     );
     htrAddStylesheetItem_va(s,
-	"#rb%POStitle { "
+	"\t\t#rb%POStitle { "
 	    "position:absolute; "
 	    "visibility:inherit; "
 	    "overflow:hidden; "
@@ -319,7 +319,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	const double percent_space_above = (100.0 / radio_buttons.nItems) * i;
 	const double content_above = ((double)content_height / radio_buttons.nItems) * i;
 	htrAddStylesheetItem_va(s,
-	    "#rb%POSoption%POS { "
+	    "\t\t#rb%POSoption%POS { "
 		"position:absolute; "
 		"visibility:inherit; "
 		"overflow:hidden; "
@@ -341,7 +341,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	
 	/** Write CSS for the radio button elements. **/
 	htrAddStylesheetItem_va(s,
-	    "#rb%POSbuttonset%POS, "
+	    "\t\t#rb%POSbuttonset%POS, "
 	    "#rb%POSbuttonunset%POS { "
 		"position:absolute; "
 		"overflow:hidden; "
@@ -358,7 +358,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	    z + 2
 	);
 	htrAddStylesheetItem_va(s,
-	    "#rb%POSvalue%POS { "
+	    "\t\t#rb%POSvalue%POS { "
 		"position:absolute; "
 		"visibility:hidden; "
 		"overflow:hidden; "
@@ -372,7 +372,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	    z + 2
 	);
 	htrAddStylesheetItem_va(s,
-	    "#rb%POSlabel%POS { "
+	    "\t\t#rb%POSlabel%POS { "
 		"position:absolute; "
 		"visibility:inherit; "
 		"overflow:hidden; "

@@ -143,7 +143,6 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 		x, y, w-2*box_offset, h-2*box_offset, z, "",
 		(char*[]){"border_color","#e0e0e0", "border_style",(is_raised?"outset":"inset"), NULL},
 		"overflow:hidden; position:absolute;");
-	//htrAddStylesheetItem_va(s,"\t#tx%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%INT; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
 
 	/** DOM Linkage **/
 	htrAddWgtrObjLinkage_va(s, tree, "tx%POSbase",id);
@@ -170,14 +169,6 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<div id=\"tx%POSbase\"><textarea style=\"width:100%%; height:100%%; border:none; outline:none; font-family:inherit;\">\n",id);
-
-	/** Use CSS border or table for drawing? **/
-	/*if (is_raised)
-	    htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: white gray gray white; %STR }\n", id, main_bg);
-	else
-	    htrAddStylesheetItem_va(s, "\t#tx%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n", id, main_bg);
-	if (h >= 0)
-	    htrAddStylesheetItem_va(s,"\t#tx%POSbase { height:%POSpx; }\n", id, h-2*box_offset);*/
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)

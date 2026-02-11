@@ -173,7 +173,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	if (s->Capabilities.Dom0NS)
 	    {
 	    htrAddStylesheetItem_va(s,
-		"\t#tv%POSroot { "
+		"\t\t#tv%POSroot { "
 		    "position:absolute; "
 		    "visibility:%STR; "
 		    "left:"ht_flex_format"; "
@@ -189,9 +189,21 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 		z
 	    );
 	    }
-	htrAddStylesheetItem_va(s,"\t#tv%POSload { POSITION:absolute; VISIBILITY:hidden; OVERFLOW:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; clip-path:inset(0px 0px 0px 0px); Z-INDEX:0; }\n",id);
-	htrAddStylesheetItem_va(s,"\tdiv.tv%POS a { %[color:%STR&CSSVAL;%] }\n", id, *fgcolor, fgcolor);
-	htrAddStylesheetItem_va(s,"\tdiv.tv%POSh a { %[color:%STR&CSSVAL;%] }\n", id, *hfgcolor, hfgcolor);
+	htrAddStylesheetItem_va(s, "\t\t#tv%POSload { "
+		"position:absolute; "
+		"visibility:hidden; "
+		"overflow:hidden; "
+		"left:0px; "
+		"top:0px; "
+		"width:0px; "
+		"height:0px; "
+		"clip-path:inset(0px 0px 0px 0px); "
+		"z-index:0; "
+	    "}\n",
+	    id
+	);
+	htrAddStylesheetItem_va(s, "\t\tdiv.tv%POS  a { %[color:%STR&CSSVAL;%] }\n", id, (*fgcolor),  fgcolor);
+	htrAddStylesheetItem_va(s, "\t\tdiv.tv%POSh a { %[color:%STR&CSSVAL;%] }\n", id, (*hfgcolor), hfgcolor);
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "tv_tgt_layer", "null", 0);
