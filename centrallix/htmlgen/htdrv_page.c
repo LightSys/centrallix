@@ -329,35 +329,39 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    htrAddStylesheetItem(s,
 		"\t\ttd img  { display: block; }\n"
-		"\t\t#pgtop  { position:absolute; visibility:hidden; left:-1000px; top:0px;     width:1152px; height:1px;   z-index:1000; clip:rect(0px,0px,0px,0px); overflow:hidden; }\n"
-		"\t\t#pgbtm  { position:absolute; visibility:hidden; left:-1000px; top:0px;     width:1152px; height:1px;   z-index:1000; clip:rect(0px,0px,0px,0px); overflow:hidden; }\n"
-		"\t\t#pgrgt  { position:absolute; visibility:hidden; left:0px;     top:-1000px; width:1px;    height:864px; z-index:1000; clip:rect(0px,0px,0px,0px); overflow:hidden; }\n"
-		"\t\t#pglft  { position:absolute; visibility:hidden; left:0px;     top:-1000px; width:1px;    height:864px; z-index:1000; clip:rect(0px,0px,0px,0px); overflow:hidden; }\n"
-		"\t\t#pgtvl  { position:absolute; visibility:hidden; left:0px;     top:0px;     width:1px;    height:1px;   z-index:0; }\n"
-		"\t\t#pgktop { position:absolute; visibility:hidden; left:-1000px; top:0px;     width:1152px; height:1px;   z-index:1000; clip:rect(0px,0px,0px,0px); overflow:hidden; }\n"
-		"\t\t#pgkbtm { position:absolute; visibility:hidden; left:-1000px; top:0px;     width:1152px; height:1px;   z-index:1000; clip:rect(0px,0px,0px,0px); overflow:hidden; }\n"
-		"\t\t#pgkrgt { position:absolute; visibility:hidden; left:0px;     top:-1000px; width:1px;    height:864px; z-index:1000; clip:rect(0px,0px,0px,0px); overflow:hidden; }\n"
-		"\t\t#pgklft { position:absolute; visibility:hidden; left:0px;     top:-1000px; width:1px;    height:864px; z-index:1000; clip:rect(0px,0px,0px,0px); overflow:hidden; }\n"
-		"\t\t#pginpt { position:absolute; visibility:hidden; left:0px;     top:20px;                                z-index:20; }\n"
-		"\t\t#pgping { position:absolute; visibility:hidden; left:0px;     top:0px;     width:0px;    height:0px;   z-index:0; }\n"
-		"\t\t#pgmsg  { position:absolute; visibility:hidden; left:0px;     top:0px;     width:0px;    height:0px;   z-index:0; }\n"
+		"\t\t.pg     { position:absolute; visibility:hidden; }\n"
+		"\t\t.pgclip { clip:rect(0px, 0px, 0px, 0px); overflow:hidden; z-index:1000; }\n"
+		"\t\t#pgtop  { left:-1000px; top:0px;     width:1152px; height:1px;   }\n"
+		"\t\t#pgbtm  { left:-1000px; top:0px;     width:1152px; height:1px;   }\n"
+		"\t\t#pgrgt  { left:0px;     top:-1000px; width:1px;    height:864px; }\n"
+		"\t\t#pglft  { left:0px;     top:-1000px; width:1px;    height:864px; }\n"
+		"\t\t#pgktop { left:-1000px; top:0px;     width:1152px; height:1px;   }\n"
+		"\t\t#pgkbtm { left:-1000px; top:0px;     width:1152px; height:1px;   }\n"
+		"\t\t#pgkrgt { left:0px;     top:-1000px; width:1px;    height:864px; }\n"
+		"\t\t#pgklft { left:0px;     top:-1000px; width:1px;    height:864px; }\n"
+		"\t\t#pgtvl  { left:0px;     top:0px;     width:1px;    height:1px;   z-index:0;  }\n"
+		"\t\t#pginpt { left:0px;     top:20px;                                z-index:20; }\n"
+		"\t\t#pgping { left:0px;     top:0px;     width:0px;    height:0px;   z-index:0;  }\n"
+		"\t\t#pgmsg  { left:0px;     top:0px;     width:0px;    height:0px;   z-index:0;  }\n"
 	    );
 	    }
 	else
 	    {
 	    htrAddStylesheetItem(s,
-		"\t\t#pgtop  { position:absolute; visibility:hidden; left:0; top:0;  width:1152; height:1;   z-index:1000; clip:rect(1,1); }\n"
-		"\t\t#pgbtm  { position:absolute; visibility:hidden; left:0; top:0;  width:1152; height:1;   z-index:1000; clip:rect(1,1); }\n"
-		"\t\t#pgrgt  { position:absolute; visibility:hidden; left:0; top:0;  width:1;    height:864; z-index:1000; clip:rect(1,1); }\n"
-		"\t\t#pglft  { position:absolute; visibility:hidden; left:0; top:0;  width:1;    height:864; z-index:1000; clip:rect(1,1); }\n"
-		"\t\t#pgtvl  { position:absolute; visibility:hidden; left:0; top:0;  width:1;    height:1;   z-index:0; }\n"
-		"\t\t#pgktop { position:absolute; visibility:hidden; left:0; top:0;  width:1152; height:1;   z-index:1000; clip:rect(1,1); }\n"
-		"\t\t#pgkbtm { position:absolute; visibility:hidden; left:0; top:0;  width:1152; height:1;   z-index:1000; clip:rect(1,1); }\n"
-		"\t\t#pgkrgt { position:absolute; visibility:hidden; left:0; top:0;  width:1;    height:864; z-index:1000; clip:rect(1,1); }\n"
-		"\t\t#pgklft { position:absolute; visibility:hidden; left:0; top:0;  width:1;    height:864; z-index:1000; clip:rect(1,1); }\n"
-		"\t\t#pginpt { position:absolute; visibility:hidden; left:0; top:20;                         z-index:20; }\n"
-		"\t\t#pgping { position:absolute; visibility:hidden; left:0; top:0;                          z-index:0; }\n"
-		"\t\t#pgmsg  { position:absolute; visibility:hidden; left:0; top:0;                          z-index:0; }\n"
+		"\t\t.pg     { position:absolute; visibility:hidden; }\n"
+		"\t\t.pgclip { clip:rect(1,1); z-index:1000; }\n"
+		"\t\t#pgtop  { left:0; top:0;  width:1152; height:1;   }\n"
+		"\t\t#pgbtm  { left:0; top:0;  width:1152; height:1;   }\n"
+		"\t\t#pgrgt  { left:0; top:0;  width:1;    height:864; }\n"
+		"\t\t#pglft  { left:0; top:0;  width:1;    height:864; }\n"
+		"\t\t#pgktop { left:0; top:0;  width:1152; height:1;   }\n"
+		"\t\t#pgkbtm { left:0; top:0;  width:1152; height:1;   }\n"
+		"\t\t#pgkrgt { left:0; top:0;  width:1;    height:864; }\n"
+		"\t\t#pgklft { left:0; top:0;  width:1;    height:864; }\n"
+		"\t\t#pgtvl  { left:0; top:0;  width:1;    height:1;   z-index:0;  }\n"
+		"\t\t#pginpt { left:0; top:20;                         z-index:20; }\n"
+		"\t\t#pgping { left:0; top:0;                          z-index:0;  }\n"
+		"\t\t#pgmsg  { left:0; top:0;                          z-index:0;  }\n"
 	    );
 	    }
 
@@ -370,28 +374,47 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddBodyItemLayerEnd(s,0);
 	    }
 
-	htrAddStylesheetItem_va(s, "\t\thtml { overflow:hidden; }\n");
-	htrAddStylesheetItem_va(s, "\t\tbody { overflow:hidden; %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
-		font_size > 0, font_size, *font_name, font_name);
-	htrAddStylesheetItem(s, "\t\tpre { font-size:90%; }\n");
+	htrAddStylesheetItem_va(s,
+	    "\t\thtml { "
+		"overflow:hidden; "
+	    "}\n"
+	);
+	htrAddStylesheetItem_va(s,
+	    "\t\tbody { "
+		"overflow:hidden; "
+		"%[font-size:%POSpx; %]"
+		"%[font-family:%STR&CSSVAL; %]"
+	    "}\n",
+	    (font_size > 0), font_size,
+	    (*font_name), font_name
+	);
+	htrAddStylesheetItem(s,
+	    "\t\tpre {"
+		"font-size:90%; "
+	    "}\n"
+	);
 
 	if (s->Capabilities.Dom0NS)
 	    {
-	    htrAddStylesheetItem_va(s, "\t\ttd { %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
-		font_size > 0, font_size, *font_name, font_name);
-	    htrAddStylesheetItem_va(s, "\t\tfont { %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
-		font_size > 0, font_size, *font_name, font_name);
+	    htrAddStylesheetItem_va(s,
+		"\t\ttd, font { "
+		    "%[font-size:%POSpx; %]"
+		    "%[font-family:%STR&CSSVAL; %]"
+		"}\n",
+		(font_size > 0), font_size,
+		(*font_name), font_name
+	    );
 	    }
 
-	htrAddBodyItem(s, "<DIV ID=\"pgtop\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgbtm\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgrgt\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pglft\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgtvl\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgktop\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgkbtm\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1152\" height=\"1\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgkrgt\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
-	htrAddBodyItem(s, "<DIV ID=\"pgklft\"><IMG src=\"/sys/images/trans_1.gif\" width=\"1\" height=\"864\"></DIV>\n");
+	htrAddBodyItem(s, "<div id='pgtop'  class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1152' height='1'  ></div>\n");
+	htrAddBodyItem(s, "<div id='pgbtm'  class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1152' height='1'  ></div>\n");
+	htrAddBodyItem(s, "<div id='pgrgt'  class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1'    height='864'></div>\n");
+	htrAddBodyItem(s, "<div id='pglft'  class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1'    height='864'></div>\n");
+	htrAddBodyItem(s, "<div id='pgktop' class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1152' height='1'  ></div>\n");
+	htrAddBodyItem(s, "<div id='pgkbtm' class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1152' height='1'  ></div>\n");
+	htrAddBodyItem(s, "<div id='pgkrgt' class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1'    height='864'></div>\n");
+	htrAddBodyItem(s, "<div id='pgklft' class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1'    height='864'></div>\n");
+	htrAddBodyItem(s, "<div id='pgtvl'  class='pg'></div>\n");
 
 	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgping",0, NULL);
 	htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
