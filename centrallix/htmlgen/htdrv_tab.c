@@ -1,16 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <math.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -41,6 +28,16 @@
 /* Description:	HTML Widget driver for a tab control.			*/
 /************************************************************************/
 
+#include <math.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
+#include "cxlib/util.h"
+#include "ht_render.h"
+#include "obj.h"
+
 
 /** globals **/
 static struct
@@ -70,7 +67,6 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
     int x = -1, y = -1;
     int w, h; /* width & height of the tab control. */
     int id, tab_count, i;
-    enum httab_locations tloc;
     int tab_w = 0, tab_h = 0;
     int is_auto_tab_w = 0; /* 1 if tab_w should be computed client-side. */
     int xoffset, yoffset, xtoffset, ytoffset;
@@ -80,8 +76,6 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
     char border_style[32];
     char border_color[64];
     int border_width;
-    int shadow_offset, shadow_radius, shadow_angle;
-    char shadow_color[128];
 	
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE &&(!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS))
 	    {
@@ -111,20 +105,20 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	
 	/** Get drop shadow data. **/
-	shadow_offset = 0;
+	int shadow_offset = 0, shadow_radius = 0, shadow_angle = 135;
+	char shadow_color[128];
 	if (wgtrGetPropertyValue(tree, "shadow_offset", DATA_T_INTEGER, POD(&shadow_offset)) == 0 && shadow_offset > 0)
 	    shadow_radius = shadow_offset+1;
-	else
-	    shadow_radius = 0;
 	wgtrGetPropertyValue(tree, "shadow_radius", DATA_T_INTEGER, POD(&shadow_radius));
+	wgtrGetPropertyValue(tree, "shadow_angle", DATA_T_INTEGER, POD(&shadow_angle));
 	strcpy(shadow_color, "black");
 	if (shadow_radius > 0)
 	    {
 	    if (wgtrGetPropertyValue(tree, "shadow_color", DATA_T_STRING, POD(&ptr)) == 0)
 		strtcpy(shadow_color, ptr, sizeof(shadow_color));
 	    }
-	if (wgtrGetPropertyValue(tree, "shadow_angle", DATA_T_INTEGER, POD(&shadow_angle)) != 0)
-	    shadow_angle = 135;
+	const double shadow_x = sin(shadow_angle * M_PI/180) * shadow_offset;
+	const double shadow_y = cos(shadow_angle * M_PI/180) * -shadow_offset;
 	
 	/** Get border info (radius, color, and style). **/
 	if (wgtrGetPropertyValue(tree, "border_radius", DATA_T_INTEGER, POD(&border_radius)) != 0)
@@ -143,22 +137,19 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    border_width = 1;
 	
 	/** Get tab_location. **/
+	enum httab_locations tloc = Top;
 	if (wgtrGetPropertyValue(tree, "tab_location", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
-	    if (!strcasecmp(ptr,"top")) tloc = Top;
-	    else if (!strcasecmp(ptr,"bottom")) tloc = Bottom;
-	    else if (!strcasecmp(ptr,"left")) tloc = Left;
-	    else if (!strcasecmp(ptr,"right")) tloc = Right;
-	    else if (!strcasecmp(ptr,"none")) tloc = None;
+	    if (strcasecmp(ptr, "top") == 0) tloc = Top;
+	    else if (strcasecmp(ptr, "bottom") == 0) tloc = Bottom;
+	    else if (strcasecmp(ptr, "left") == 0) tloc = Left;
+	    else if (strcasecmp(ptr, "right") == 0) tloc = Right;
+	    else if (strcasecmp(ptr, "none") == 0) tloc = None;
 	    else
 		{
 		mssError(1,"HTTAB","%s: '%s' is not a valid tab_location",name,ptr);
 		return -1;
 		}
-	    }
-	else
-	    {
-	    tloc = Top;
 	    }
 	
 	/** Count the number of tabs. **/
@@ -225,10 +216,8 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	htrCheckAddExpression(s, tree, name, "selected");
 	htrCheckAddExpression(s, tree, name, "selected_index");
 	
-	/** Get the background color/image. **/
+	/** Get the background colors/images. **/
 	htrGetBackground(tree, NULL, s->Capabilities.Dom2CSS, main_bg, sizeof(main_bg));
-	
-	/** Get the inactive tab color/image. **/
 	if (htrGetBackground(tree, "inactive", s->Capabilities.Dom2CSS, inactive_bg, sizeof(inactive_bg)) != 0)
 	    strcpy(inactive_bg, main_bg);
 	
@@ -415,7 +404,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	/** Check for tabpages within the tab control, to do the tabs at the top. **/
 	if (tloc != None)
 	    {
-	    /*** Calculate offsets for spacing out tabs. This is overwritten
+	    /*** Compute offsets for spacing out tabs. This is overwritten
 	     *** by the JS, but content with these values is visible for a
 	     *** brief period while the page loads, so we try to make a good
 	     *** guesses for it.
@@ -424,12 +413,33 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    const int full_tab_spacing = tab_spacing + border_width * 2;
 	    switch (tloc)
 		{
-		case Top:   case Bottom: i_offset_x = full_tab_spacing + tab_w; break;
+		case Top:   case Bottom: i_offset_x = full_tab_spacing + tab_w + ((is_auto_tab_w) ? 40 : 0); break;
 		case Right: case Left:   i_offset_y = full_tab_spacing + tab_h; break;
 		case None:; /* Unreachable, but the compiler doesn't believe me. */
 		}
 		
-	    /** Calculate tab flex information. **/
+	    /** Compute clip area, ensuring that it will not overlap the tab control. **/
+	    /*** I wasn't sure how to remove edges of any clip path, so I just set
+	     *** -1000 and we'll hope that keeps them out of the way.
+	     ***/
+	    const int clip_top = (tloc == Bottom) ? 0 : -1000;
+	    const int clip_right = (tloc == Left) ? 0 : -1000;
+	    const int clip_bottom = (tloc == Top) ? 0 : -1000;
+	    const int clip_left = (tloc == Right) ? 0 : -1000;
+	    
+	    /** Compute border radius, only rounding corners that don't touch the tab control. **/
+	    const int border_radius_top_left = (tloc == Bottom || tloc == Right) ? 0 : border_radius;
+	    const int border_radius_top_right = (tloc == Bottom || tloc == Left) ? 0 : border_radius;
+	    const int border_radius_bottom_right = (tloc == Top || tloc == Left) ? 0 : border_radius;
+	    const int border_radius_bottom_left = (tloc == Top || tloc == Right) ? 0 : border_radius;
+	    
+	    /** Compute border width, skipping borders that would overlap the tab control. **/
+	    const int border_top = (tloc != Bottom) ? 1 : 0;
+	    const int border_right = (tloc != Left) ? 1 : 0;
+	    const int border_bottom = (tloc != Top) ? 1 : 0;
+	    const int border_left = (tloc != Right) ? 1 : 0;
+	    
+	    /** Compute tab flex information. **/
 	    /*** fl_x/y is enough flex to line up with the left/top of the tab
 	     *** control. However, if the tab box changes size, tabs on the
 	     *** right/bottom need to flex enough to handle that, too.
@@ -437,6 +447,8 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    double tab_fl_x = ht_get_fl_x(tree), tab_fl_y = ht_get_fl_y(tree);
 	    if      (tloc == Right)  tab_fl_x += ht_get_fl_w(tree);
 	    else if (tloc == Bottom) tab_fl_y += ht_get_fl_h(tree);
+	    const int parent_w = ht_get_parent_w(tree);
+	    const int parent_h = ht_get_parent_h(tree);
 	    
 	    /** Inject tab_fl values for client-side rendering. **/
 	    htrAddScriptInit_va(s,
@@ -467,8 +479,8 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		    wgtrGetPropertyValue(tab, "name", DATA_T_STRING, POD(&tabname));
 		
 		/** Write tab CSS styles. **/
-		int tab_x = (x + xtoffset) + (i_offset_x * i);
-		int tab_y = (y + ytoffset) + (i_offset_y * i);
+		const int tab_x = (x + xtoffset) + (i_offset_x * i);
+		const int tab_y = (y + ytoffset) + (i_offset_y * i);
 		htrAddStylesheetItem_va(s,
 		    "\t\t#tc%POStab%POS { "
 			"position:absolute; "
@@ -480,13 +492,10 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			"%[height:%POSpx; %]" /* Tab height has 0 flexibility. */
 			"z-index:%POS; "
 			"cursor:default; "
-			"border-radius:"
-			    "%POSpx "
-			    "%POSpx "
-			    "%POSpx "
-			    "%POSpx; "
-			"border-style:%STR&CSSVAL; "
+			"clip-path:inset(%INTpx %INTpx %INTpx %INTpx); "
+			"border-radius:%POSpx %POSpx %POSpx %POSpx; "
 			"border-width:%POSpx %POSpx %POSpx %POSpx; "
+			"border-style:%STR&CSSVAL; "
 			"border-color:%STR&CSSVAL; "
 			"box-shadow:%DBLpx %DBLpx %POSpx %STR&CSSVAL; "
 			"text-align:%STR&CSSVAL; "
@@ -497,19 +506,17 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			"%STR "
 		    "}\n",
 		    id, i + 1,
-		    ht_flex(tab_x, ht_get_parent_w(tree), tab_fl_x), // left
-		    ht_flex(tab_y, ht_get_parent_h(tree), tab_fl_y), // top
+		    ht_flex(tab_x, parent_w, tab_fl_x), // left
+		    ht_flex(tab_y, parent_h, tab_fl_y), // top
 		    (!is_auto_tab_w), tab_w, /* Tab width has 0 flexibility. */
 		    (tab_h > 0), tab_h, /* Tab height has 0 flexibility. */
 		    (is_selected) ? (z + 2) : z,
-		    (tloc == Bottom || tloc == Right) ? 0 : border_radius,
-		    (tloc == Bottom || tloc == Left) ? 0 : border_radius,
-		    (tloc == Top || tloc == Left) ? 0 : border_radius,
-		    (tloc == Top || tloc == Right) ? 0 : border_radius,
+		    clip_top, clip_right, clip_bottom, clip_left,
+		    border_radius_top_left, border_radius_top_right, border_radius_bottom_right, border_radius_bottom_left,
+		    border_top, border_right, border_bottom, border_left,
 		    border_style,
-		    (tloc != Bottom) ? 1 : 0, (tloc != Left) ? 1 : 0, (tloc != Top) ? 1 : 0, (tloc != Right) ? 1 : 0,
 		    border_color,
-		    sin(shadow_angle * M_PI/180) * shadow_offset, cos(shadow_angle * M_PI/180) * (-shadow_offset), shadow_radius, shadow_color,
+		    shadow_x, shadow_y, shadow_radius, shadow_color,
 		    (tloc != Right) ? "left" : "right",
 		    text_color,
 		    tab_x + 1, tab_y,
@@ -579,7 +586,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    (tloc==Right) ? 0 : border_radius,
 	    border_radius,
 	    (tloc==Bottom) ? 0 : border_radius,
-	    sin(shadow_angle * M_PI/180) * shadow_offset, cos(shadow_angle * M_PI/180) * (-shadow_offset), shadow_radius, shadow_color,
+	    shadow_x, shadow_y, shadow_radius, shadow_color,
 	    x + xoffset, y + yoffset,
 	    main_bg
 	);
