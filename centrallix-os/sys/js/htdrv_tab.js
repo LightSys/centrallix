@@ -123,15 +123,19 @@ function tc_addtab(l_tab, l_page, l, nm, type, fieldname)
 		x = getRelativeX(previous_tab) + $(previous_tab).outerWidth() + tab_spacing;
 		}
 	    else if (l.tab_fl_x)
+		{
 		/** Copy tabctl.style.left to avoid small but noticeable inconsistencies. **/
 		setRelativeX(l_tab, tabctl.style.left);
+		}
 	    else
-		/** Math for inflexible tabs do not suffer from inconsistencies. * */
+		{
+		/** Math for inflexible tabs do not suffer from the inconsistencies handled above. **/
 		x = getRelativeX(tabctl);
+		}
 	    }
 	else if (tloc === 'Left')
 	    x = getRelativeX(tabctl) - htr_getviswidth(l_tab); 
-	else if (tloc === 'Right')
+	else // Right
 	    x = getRelativeX(tabctl); // + htr_getviswidth(tabctl) // Included in xtoffset (see below)
 
 	/** Calculate y coordinate. **/
@@ -214,9 +218,9 @@ function tc_addtab(l_tab, l_page, l, nm, type, fieldname)
 	 *** sized wrong, so we use the window size if it is the parent.
 	 ***/
 	const is_top_level = (l_tab.parentElement.tagName === 'BODY');
-	const style    = (is_top_level) ? undefined   : getComputedStyle(l_tab.parentElement);
-	const parent_w = (is_top_level) ? innerWidth  : style.width;
-	const parent_h = (is_top_level) ? innerHeight : style.height;
+	const style    = (is_top_level) ? undefined          : getComputedStyle(l_tab.parentElement);
+	const parent_w = (is_top_level) ? innerWidth  + 'px' : style.width;
+	const parent_h = (is_top_level) ? innerHeight + 'px' : style.height;
 	if (x) setRelativeX(l_tab, `calc(${x}px + (100% - ${parent_w}) * ${l.tab_fl_x})`);
 	if (y) setRelativeY(l_tab, `calc(${y}px + (100% - ${parent_h}) * ${l.tab_fl_y})`);
 	}
