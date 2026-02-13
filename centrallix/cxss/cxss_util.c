@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include "cxss/util.h"
+#include "cxlib/newmalloc.h"
 
 /** @brief Duplicate a string
  *
@@ -18,7 +19,7 @@ cxssStrdup(const char *str)
 {
     if (!str)
         return NULL;
-    return strdup(str);
+    return nmSysStrdup(str);
 }
 
 /** @brief Duplicate an array of bytes
@@ -39,7 +40,7 @@ cxssBlobdup(const char *blob, size_t len)
     if (!blob)
         return NULL;
 
-    copy = malloc(sizeof(char) * len);
+    copy = nmSysMalloc(sizeof(char) * len);
     if (!copy) {
         mssError(0, "CXSS", "Memory allocation error\n");
         exit(EXIT_FAILURE);
