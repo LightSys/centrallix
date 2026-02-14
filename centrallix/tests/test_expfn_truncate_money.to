@@ -1,0 +1,9 @@
+##NAME truncate() function on money type
+
+query select 'truncate($1.225, 2)' = truncate($1.225, 2)
+query select 'truncate($1.224, 2)' = truncate($1.224, 2)
+query select 'truncate($1.50, 0)' = truncate($1.50, 0)
+query select 'truncate($1.40, 0)' = truncate($1.40, 0)
+query select 'truncate($16.25, -1)' = truncate($16.25, -1)
+query select 'truncate($12.25, -1)' = truncate($12.25, -1)
+query select 'truncate($12.25)' = truncate($12.25)

@@ -704,6 +704,7 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
     {
     int i,minus,n;
     unsigned int msl,lsl,divtmp;
+    long long ll_msl, ll_lsl;
     unsigned int days,fsec;
     float f;
 
@@ -793,9 +794,7 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
 		{
 		/** smallmoney, 4-byte **/
 		memcpy(&i, ptr, 4);
-		val->Money->WholePart = i/10000;
-		if (i < 0 && (i%10000) != 0) val->Money->WholePart--;
-		val->Money->FractionPart = i - (val->Money->WholePart*10000);
+		val->Money->Value = i;
 		return 0;
 		}
 	    else
@@ -803,39 +802,12 @@ sybd_internal_GetCxValue(void* ptr, int ut, pObjData val, int datatype)
 		/** normal 8-byte money **/
 		memcpy(&lsl, ptr+4, 4);
 		memcpy(&msl, ptr, 4);
-		minus = 0;
-		if (msl >= 0x80000000)
-		    {
-		    /** Negate **/
-		    minus = 1;
-		    msl = ~msl;
-		    lsl = ~lsl;
-		    if (lsl == 0xFFFFFFFF) msl++;
-		    lsl++;
-		    }
-		/** Long division, 16 bits = 1 "digit" **/
-		divtmp = msl/10000;
-		n = divtmp;
-		msl -= divtmp*10000;
-		msl = (msl<<16) + (lsl>>16);
-		divtmp = msl/10000;
-		n = (n<<16) + divtmp;
-		msl -= divtmp*10000;
-		msl = (msl<<16) + (lsl & 0xFFFF);
-		divtmp = msl/10000;
-		n = (n<<16) + divtmp;
-		msl -= divtmp*10000;
-		val->Money->WholePart = n;
-		val->Money->FractionPart = msl;
-		if (minus)
-		    {
-		    val->Money->WholePart = -val->Money->WholePart;
-		    if (val->Money->FractionPart > 0)
-			{
-			val->Money->WholePart--;
-			val->Money->FractionPart = 10000 - val->Money->FractionPart;
-			}
-		    }
+
+		/** msl is the most significant 32-bit value and needs to come before lsl
+		** I do this by shifting msl left cast to a long long by 32 bits, and then OR it with lsl
+		**/
+		val->Money->Value = (((long long)msl)<<32) | (long long)lsl;
+
 		return 0;
 		}
 	    }
