@@ -48,6 +48,29 @@ static struct
     }
     HTPN;
 
+/* Function to determine whether stranger is a "main container" - a widget whose width spans the page and whose immediate children are smaller than it */
+int
+isMainContainer(pWgtrNode stranger, int latitude)
+   {
+	pWgtrNode theWholeShebang = wgtrGetRoot(stranger); //Lay hold of the top level of stranger's tree
+	int shebangWidth; //Variable to store top-level width
+	int mandatoryInt = wgtrGetPropertyValue(theWholeShebang,"width",DATA_T_INTEGER,POD(&shebangWidth)); //Load top-level width into shebangWidth (mandatoryInt is necessary but unrelated to the logic)
+	int strangerWidth; //Variable to store stranger's width
+	mandatoryInt = wgtrGetPropertyValue(stranger,"width",DATA_T_INTEGER,POD(&strangerWidth)); //Load stranger's width into strangerWidth
+	pWgtrNode strangerFirstborn = xaGetItem(&(stranger->Children), 0); //Detain stranger's first child for questioning
+	int firstbornWidth; //Variable to store first child's width
+	mandatoryInt = wgtrGetPropertyValue(strangerFirstborn,"width",DATA_T_INTEGER,POD(&firstbornWidth)); //Measure him width-wise
+	
+	if (strangerWidth >= (shebangWidth - (2 * latitude))) //If stranger's width spans the whole tree... (allow for lateral spacing)
+	    {
+		if (firstbornWidth <= strangerWidth - (2 * latitude))//And his first child is thinner than he... (once again, allowing for lateral spacing)
+		    {
+			return 1; //We have ourselves a winner!
+		    }
+	    }
+	return 0; //Nope.
+   }
+   
 
 /*** htpnRender - generate the HTML code for the page.
  ***/
@@ -58,7 +81,10 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     char name[64];
     char main_bg[128];
     char bdr[64];
-    int x=-1,y=-1,w,h;
+    int x=-1,y=-1;
+    //int minW, minH; //Minimum width and height -- these variables were removed because they interfered with other calculations. They were introduced as a means of resolving an issue that caused widgets' widths to shrink to 0px as the window approached its minimal width.
+    int preH, parentPreH, flexH, parentFlexH; //Widget's baseline width, parent node's baseline width, widget's lateral flexibility, parent node's lateral flexibility
+    int preW, parentPreW, flexW, parentFlexW; /* Some variables to facilitate dynamic resizing - preW replaces the variable w */
     int id;
     int style = 1; /* 0 = lowered, 1 = raised, 2 = none, 3 = bordered */
     char* c1;
@@ -77,20 +103,54 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     	/** Get an id for this. **/
 	id = (HTPN.idcnt++);
 
-    	/** Get x,y,w,h of this object **/
+    	/** Get x,y,preW,flexW,preH,flexW,flexH of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
 	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
-	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
+	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&preW)) != 0) 
 	    {
 	    mssError(1,"HTPN","Pane widget must have a 'width' property");
 	    return -1;
 	    }
-	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
+	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&preH)) != 0)
 	    {
 	    mssError(1,"HTPN","Pane widget must have a 'height' property");
 	    return -1;
 	    }
+	if (wgtrGetPropertyValue(tree,"fl_width",DATA_T_INTEGER,POD(&flexW)) != 0) flexW=1;
+	if (wgtrGetPropertyValue(tree,"fl_height",DATA_T_INTEGER,POD(&flexH)) != 0) flexH=1;
+	
+	//Below are the retired functions that formerly initialized min_width and min_height. These variables appeared to be interfering with other calculations, so they've been shelved.
+/*	if (wgtrGetPropertyValue(tree,"min_width",DATA_T_INTEGER,POD(&minW)) != 0)	 //If there's no min-width value to load in...
+	{
+		if (wgtrGetPropertyValue(tree,"r_width",DATA_T_INTEGER,POD(&minW)) != 0) //And no r-width value to load in...
+		{
+			minW = preW / 2;						 //Try half the baseline width
+		}
+	}
+	
+	if (wgtrGetPropertyValue(tree,"min_height",DATA_T_INTEGER,POD(&minH)) != 0)
+	{
+		if (wgtrGetPropertyValue(tree,"r_height",DATA_T_INTEGER,POD(&minH)) != 0)
+		{
+			minH = preH / 2;
+		}
+	}
+*/
 
+	if (isMainContainer(tree, x) != 0) //Top-level widgets get special treatment
+	{	
+		parentPreW=preW; //A top-level widget's width equals that of the page (minus spacing, of course -- but the calc function will take care of that later)
+		parentFlexW=flexW; //A top-level widget's lateral flexibility equals that of the page
+	}
+	else
+	{		
+		if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&parentPreW)) != 0) parentPreW=0; //If the widget doesn't have a width assigned to it, assume a width of 0
+		if (wgtrGetPropertyValue(tree,"fl_width",DATA_T_INTEGER,POD(&parentFlexW)) != 0) parentFlexW=1; //If the widget doesn't have a lateral flexibility assigned to it, mark it down as 1
+	}
+	
+	if (wgtrGetPropertyValue(tree->Parent,"height",DATA_T_INTEGER,POD(&parentPreH)) != 0) parentPreH=0;
+	if (wgtrGetPropertyValue(tree->Parent,"fl_height",DATA_T_INTEGER,POD(&parentFlexH)) != 0) parentFlexH=1;
+	
 	/** Border radius, for raised/lowered/bordered panes **/
 	if (wgtrGetPropertyValue(tree,"border_radius",DATA_T_INTEGER,POD(&border_radius)) != 0)
 	    border_radius=0;
@@ -153,20 +213,70 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 		strtcpy(bdr,ptr,sizeof(bdr));
 	    }
 
+	
+	/* Some checks to prevent dodgy eventualities: */
+	
+/* Important Note:
+	Thus far, the below calls to the function isMainContainer - and indeed, all other calls to that function - have not been returning any values.
+	This became apparent when I changed the conditional on line 140 from "if (isMainContainer(tree, x) == 1)" to "if (isMainContainer(tree, x) != 0)".
+	The resulting changes indicated that the expression now evaluated to true. The source of this problem remains a mystery, but the result is that
+	any conditional which expects a return value from isMainContainer will evaluate to false (0), and any conditional which expects no return value
+	(like the one below) will evaluate to true (1). This doesn't cause any issues for the Centrallix main page (or hasn't so far), but it probably will
+	on any page where one or more widgets of the pane class serve in a capacity other than that of "main container".
+*/
+	
+	if (parentFlexW == 0 && (isMainContainer(tree, x)) != 1) //If future denominator of flexibility quotient (see calc function) is 0, and we're not at the top level...
+	{
+		parentFlexW = 1; //Prevent division by zero
+	}
+	else if (parentFlexW == 0 && (isMainContainer(tree, x)) != 0) //If future denominator of flexibility (see calc function) is 0, and we are at the top level...
+	{
+		parentFlexW = flexW = 1; //Prevent division by zero, and balance the quotient so that it evaluates to 1
+	}
+	else if (parentFlexW < 0) //We don't want negative values here; they'll make widgets expand as the window contracts and vis versa
+	{
+		parentFlexW = -1 * parentFlexW; //Turn that negative into a positive
+	}
+	
+	if (parentFlexH == 0 && parentFlexH != flexH)
+	{
+		parentFlexH = 1; //Prevent division by zero
+	}
+	else if (parentFlexH == 0 && parentFlexH == flexH) //If future denominator of flexibility (see calc function) is 0, and we are at the top level...
+	{
+		parentFlexH = flexH = 1; //Prevent division by zero, and balance the quotient so that it evaluates to 1
+	}
+	else if (parentFlexH < 0) //We don't want negative values here; they'll make widgets expand as the window contracts and vis versa
+	{
+		parentFlexH = -1 * parentFlexH; //Turn that negative into a positive
+	}
+	
 	/** Ok, write the style header items. **/
 	if (style == 2) /* flat */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW-2*x,parentPreW,flexW,parentFlexW,preH,parentPreH,flexH,parentFlexH,z);
+		if(x > 12) 
+		{
+			htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; RIGHT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW-2*x,parentPreW,flexW,parentFlexW,preH-2*y,parentPreH,flexH,parentFlexH,z);
+		}
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-radius: %INTpx; %STR}\n",id,border_radius,main_bg);
 	    }
 	else if (style == 0 || style == 1) /* lowered or raised */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW-2*x,parentPreW,flexW,parentFlexW,preH-2*x,parentPreH,flexH,parentFlexH,z);
+		if(x > 12) 
+		{
+			htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; RIGHT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW-2*x,parentPreW,flexW,parentFlexW,preH-2*y,parentPreH,flexH,parentFlexH,z);
+		}
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);
 	    }
 	else if (style == 3) /* bordered */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
+	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW-2*x,parentPreW,flexW,parentFlexW,preH-2*x,parentPreH,flexH,parentFlexH,z);
+		if(x > 12) 
+		{
+			htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; RIGHT:%INTpx; TOP:%INTpx; WIDTH:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); HEIGHT:calc(%POSpx + (100%% - %POSpx) * (%POS / %POS)); Z-INDEX:%POS;}\n",id,x,y,preW-2*x,parentPreW,flexW,parentFlexW,preH-2*y,parentPreH,flexH,parentFlexH,z);
+		}
 	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
 	    }
 	if (shadow_radius > 0)
@@ -194,7 +304,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** HTML body <DIV> element for the base layer. **/
 	//htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\"><table width=%POS height=%POS cellspacing=0 cellpadding=0 border=0><tr><td></td></tr></table>\n",id, w-2, h-2);
-	htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\">\n",id, w-2, h-2);
+	htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\">\n",id, preW-2, preH-2);
 
 	/** Check for objects within the pane. **/
 	htrRenderSubwidgets(s, tree, z+2);
@@ -204,7 +314,6 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 
     return 0;
     }
-
 
 /*** htpnInitialize - register with the ht_render module.
  ***/
