@@ -245,12 +245,13 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     }
     htrCheckAddExpression(s,tree,name,"sql");
 
-    /** Script initialization call. **/
-    htrAddScriptInit_va(s,
+    /** Write the initialization call in its own scope. **/
+    htrAddScriptInit_va(s, "\t{ "
+	"const layer = wgtrGetNodeRef(ns, '%STR&SYM'); "
 	"dd_init({ "
-	    "layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
-	    "c1:htr_subel(wgtrGetNodeRef(ns, '%STR&SYM'), 'dd%POScon1'), "
-	    "c2:htr_subel(wgtrGetNodeRef(ns, '%STR&SYM'), 'dd%POScon2'), "
+	    "layer, "
+	    "c1:htr_subel(layer, 'dd%POScon1'), "
+	    "c2:htr_subel(layer, 'dd%POScon2'), "
 	    "background:'%STR&JSSTR', "
 	    "highlight:'%STR&JSSTR', "
 	    "fieldname:'%STR&JSSTR', "
@@ -264,24 +265,14 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	    "width:%INT, "
 	    "height:%INT, "
 	    "popup_width:%INT, "
-	"});\n",
-	name,
-	name, id,
-	name, id,
-	bgstr,
-	hilight,
-	fieldname,
-	num_disp,
-	mode,
+	"}); }\n",
+	name, id, id,
+	bgstr, hilight,
+	fieldname, num_disp, mode,
 	(sql != NULL) ? sql : "",
-	form,
-	osrc,
-	query_multiselect,
+	form, osrc, query_multiselect,
 	invalid_select_default,
-	w,
-	ht_get_fl_x(tree),
-	h,
-	pop_w
+	w, h, pop_w
     );
 
     /** HTML body <DIV> element for the layers. **/
@@ -311,7 +302,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	 **/
 	if ((qy = objMultiQuery(s->ObjSession, sql, NULL, 0))) {
 	    flag=0;
-	    htrAddScriptInit_va(s,"    dd_add_items(wgtrGetNodeRef(ns,\"%STR&SYM\"), [",name);
+	    htrAddScriptInit_va(s, "\tdd_add_items(wgtrGetNodeRef(ns, '%STR&SYM'), [",name);
 	    while ((qy_obj = objQueryFetch(qy, O_RDONLY))) {
 		// Label
 		attr = objGetFirstAttr(qy_obj);

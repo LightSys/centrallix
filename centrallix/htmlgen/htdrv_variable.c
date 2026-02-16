@@ -106,13 +106,20 @@ htvblRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** widget init **/
-	htrAddScriptInit_va(s, "    vbl_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {type:\"%STR&JSSTR\", value:%[null%]%[\"%STR&JSSTR\"%]%[%INT%], field:\"%STR&JSSTR\", form:\"%STR&JSSTR\"} );\n",
-		name,
-		obj_type_names[t],
-		is_null,
-		(!is_null) && t == DATA_T_STRING, vptr,
-		(!is_null) && t == DATA_T_INTEGER, n,
-		fieldname, form);
+	htrAddScriptInit_va(s,
+	    "\tvbl_init(wgtrGetNodeRef(ns, '%STR&SYM'), { "
+		"type:'%STR&JSSTR', "
+		"value:%['%STR&JSSTR'%]%[%INT%]%[null%], "
+		"field:'%STR&JSSTR', "
+		"form:'%STR&JSSTR', "
+	    "});\n",
+	    name,
+	    obj_type_names[t],
+	    (!is_null && t == DATA_T_STRING), vptr,
+	    (!is_null && t == DATA_T_INTEGER), n,
+	    (is_null),
+	    fieldname, form
+	);
 
 	/** JavaScript include file **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_variable.js", 0);
@@ -122,9 +129,9 @@ htvblRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 
 	/** Check for more sub-widgets within the vbl entity. **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2);
+	htrRenderSubwidgets(s, tree, z+2);
 
+	/** Clean up. **/
 	if (vptr)
 	    nmSysFree(vptr);
 

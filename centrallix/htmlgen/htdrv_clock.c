@@ -198,39 +198,30 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "cl", "cl_mousemove");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,
+	htrAddScriptInit_va(s, "\t{ "
+	    "const layer = wgtrGetNodeRef(ns, '%STR&SYM'); "
 	    "cl_init({ "
-		"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
-		"c1:htr_subel(wgtrGetNodeRef(ns, '%STR&SYM'), 'cl%POScon1'), "
-		"c2:htr_subel(wgtrGetNodeRef(ns, '%STR&SYM'), 'cl%POScon2'), "
+		"layer, "
+		"c1:htr_subel(layer, 'cl%POScon1'), "
+		"c2:htr_subel(layer, 'cl%POScon2'), "
 		"fieldname:'%STR&JSSTR', "
-		"background:'%STR&JSSTR', "
-		"shadowed:%POS, "
-		"foreground1:'%STR&JSSTR', "
-		"foreground2:'%STR&JSSTR', "
 		"fontsize:%INT, "
 		"bold:%INT, "
+		"background:'%STR&JSSTR', "
+		"foreground1:'%STR&JSSTR', "
+		"foreground2:'%STR&JSSTR', "
+		"shadowed:%POS, "
 		"sox:%INT, "
 		"soy:%INT, "
 		"showSecs:%INT, "
 		"showAmPm:%INT, "
 		"milTime:%INT, "
-	    "});\n",
-	    name,
-	    name, id,
-	    name, id,
-	    fieldname,
-	    main_bg,
-	    shadowed,
-	    fgcolor1,
-	    fgcolor2,
-	    size,
-	    bold,
-	    shadowx,
-	    shadowy,
-	    showsecs,
-	    showampm,
-	    miltime
+	    "}); }\n",
+	    name, id, id,
+	    fieldname, size, bold,
+	    main_bg, fgcolor1, fgcolor2,
+	    shadowed, shadowx, shadowy,
+	    showsecs, showampm, miltime
 	);
 
 	/** HTML body <DIV> element for the base layer. **/

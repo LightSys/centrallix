@@ -61,7 +61,7 @@ htalrtRender(pHtSession s, pWgtrNode tree, int z)
 	id = (HTALRT.idcnt++);
 
 	/** Get name **/
-	htrAddScriptInit_va(s,"    alrt_init(wgtrGetNodeRef(ns,\"%STR&SYM\"));\n", wgtrGetName(tree));
+	htrAddScriptInit_va(s,"\talrt_init(wgtrGetNodeRef(ns, '%STR&SYM'));\n", wgtrGetName(tree));
 
 	htrAddScriptInclude(s,"/sys/js/htdrv_alerter.js",0);
 

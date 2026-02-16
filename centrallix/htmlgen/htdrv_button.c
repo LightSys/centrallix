@@ -44,7 +44,6 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
     int is_enabled = 1;
     pExpression code;
     int box_offset;
-    int clip_offset;
 
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
 	    {
@@ -189,11 +188,30 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    }
 		/** Widget Tree Stuff **/
 		dptr = wgtrGetDName(tree);
-		htrAddScriptInit_va(s, "    %STR&SYM = wgtrGetNodeRef(ns,'%STR&SYM');\n", dptr, name);
+		htrAddScriptInit_va(s, "\t%STR&SYM = wgtrGetNodeRef(ns, '%STR&SYM');\n", dptr, name);
 
-		if(!strcmp(type,"image")) htrAddScriptInit_va(s,"    gb_init({layer:%STR&SYM, n:'%STR&JSSTR', p:'%STR&JSSTR', c:'%STR&JSSTR', d:'%STR&JSSTR', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, type:'%STR&JSSTR', text:'%STR&JSSTR'});\n", dptr, n_img, p_img, c_img, d_img, w, h, name,is_enabled,type,text);
-		/* text over image needs second layer */
-		else htrAddScriptInit_va(s,"    gb_init({layer:\"%STR&SYM\", layer2:htr_subel(%STR&SYM, \"gb%POSpane2\"), n:'%STR&JSSTR', p:'%STR&JSSTR', c:'%STR&JSSTR', d:'%STR&JSSTR', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, type:'%STR&JSSTR', text:'%STR&JSSTR'});\n", dptr, dptr, id, n_img, p_img, c_img, d_img, w, h, name,is_enabled,type,text);
+		/** Write the init script. **/
+		/** Note: We only need to specify layer2 for text-over-image. **/
+		htrAddScriptInit_va(s,
+		    "\tgb_init({ "
+			"layer:'%STR&SYM', "
+			"%[layer2:htr_subel(%STR&SYM, 'gb%POSpane2'), %]"
+			"n:'%STR&JSSTR', "
+			"p:'%STR&JSSTR', "
+			"c:'%STR&JSSTR', "
+			"d:'%STR&JSSTR', "
+			"width:%INT, "
+			"height:%INT, "
+			"name:'%STR&SYM', "
+			"enable:%INT, "
+			"type:'%STR&JSSTR', "
+			"text:'%STR&JSSTR', "
+		    "});\n",
+		    dptr, dptr,
+		    (strcmp(type, "image") != 0), id,
+		    n_img, p_img, c_img, d_img,
+		    w, h, name, is_enabled, type, text
+		);
 
 		/** Include the javascript code for the button **/
 		htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
@@ -245,7 +263,6 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    box_offset = 1;
 		else
 		    box_offset = 0;
-		clip_offset = s->Capabilities.CSSClip?1:0;
 
 		htrAddScriptGlobal(s, "gb_current", "null", 0);
 
@@ -257,7 +274,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		htrAddScriptInclude(s, "/sys/js/htdrv_button.js", 0);
 
 		dptr = wgtrGetDName(tree);
-		htrAddScriptInit_va(s, "    %STR&SYM = wgtrGetNodeRef(ns,'%STR&SYM');\n", dptr, name);
+		htrAddScriptInit_va(s, "\t%STR&SYM = wgtrGetNodeRef(ns, '%STR&SYM');\n", dptr, name);
 
 		if(s->Capabilities.Dom0NS)
 		    {
@@ -365,8 +382,30 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    );
 
 		    /** Script initialization call. **/
-		    htrAddScriptInit_va(s, "    gb_init({layer:%STR&SYM, layer2:htr_subel(%STR&SYM, \"gb%POSpane2\"), layer3:htr_subel(%STR&SYM, \"gb%POSpane3\"), top:htr_subel(%STR&SYM, \"gb%POStop\"), bottom:htr_subel(%STR&SYM, \"gb%POSbtm\"), right:htr_subel(%STR&SYM, \"gb%POSrgt\"), left:htr_subel(%STR&SYM, \"gb%POSlft\"), width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&JSSTR', n:\"%STR&JSSTR\", p:\"%STR&JSSTR\", c:\"%STR&JSSTR\", d:\"%STR&JSSTR\", type:\"%STR&JSSTR\"});\n",
-			    dptr, dptr, id, dptr, id, dptr, id, dptr, id, dptr, id, dptr, id, w, h, is_ts, name, text,n_img,p_img,c_img,d_img,type);
+		    htrAddScriptInit_va(s,
+			"\tgb_init({ "
+			    "layer:%STR&SYM, "
+			    "layer2:htr_subel(%STR&SYM, 'gb%POSpane2'), "
+			    "layer3:htr_subel(%STR&SYM, 'gb%POSpane3'), "
+			    "top:htr_subel(%STR&SYM, 'gb%POStop'), "
+			    "bottom:htr_subel(%STR&SYM, 'gb%POSbtm'), "
+			    "right:htr_subel(%STR&SYM, 'gb%POSrgt'), "
+			    "left:htr_subel(%STR&SYM, 'gb%POSlft'), "
+			    "width:%INT, "
+			    "height:%INT, "
+			    "tristate:%INT, "
+			    "name:'%STR&SYM', "
+			    "text:'%STR&JSSTR', "
+			    "n:'%STR&JSSTR', "
+			    "p:'%STR&JSSTR', "
+			    "c:'%STR&JSSTR', "
+			    "d:'%STR&JSSTR', "
+			    "type:'%STR&JSSTR', "
+			"});\n",
+			dptr, dptr, id, dptr, id, dptr, id, dptr, id, dptr, id, dptr, id,
+			w, h, is_ts, name, text,
+			n_img, p_img, c_img, d_img, type
+		    );
 
 		    /** HTML body <DIV> elements for the layers. **/
 		    if (h >= 0)
@@ -584,8 +623,30 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    htrAddBodyItem(s,   "</DIV>");
 
 		    /** Script initialization call. **/
-		    htrAddScriptInit_va(s, "    gb_init({layer:%STR&SYM, layer2:htr_subel(%STR&SYM, \"gb%POSpane2\"), layer3:htr_subel(%STR&SYM, \"gb%POSpane3\"), top:null, bottom:null, right:null, left:null, width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&JSSTR', n:'%STR&JSSTR', p:'%STR&JSSTR', c:'%STR&JSSTR', d:'%STR&JSSTR', type:'%STR&JSSTR'});\n",
-			    dptr, dptr, id, dptr, id, w, h, is_ts, name, text, n_img, p_img, c_img, d_img,type);
+		    htrAddScriptInit_va(s,
+			"\tgb_init({ "
+			    "layer:%STR&SYM, "
+			    "layer2:htr_subel(%STR&SYM, 'gb%POSpane2'), "
+			    "layer3:htr_subel(%STR&SYM, 'gb%POSpane3'), "
+			    "top:null, "
+			    "bottom:null, "
+			    "right:null, "
+			    "left:null, "
+			    "width:%INT, "
+			    "height:%INT, "
+			    "tristate:%INT, "
+			    "name:'%STR&SYM', "
+			    "text:'%STR&JSSTR', "
+			    "n:'%STR&JSSTR', "
+			    "p:'%STR&JSSTR', "
+			    "c:'%STR&JSSTR', "
+			    "d:'%STR&JSSTR', "
+			    "type:'%STR&JSSTR', "
+			"});\n",
+			dptr, dptr, id, dptr, id,
+			w, h, is_ts, name, text,
+			n_img, p_img, c_img, d_img, type
+		    );
 		    }
 		else
 		    {
