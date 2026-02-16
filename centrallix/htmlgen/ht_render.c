@@ -1341,7 +1341,7 @@ htr_internal_GenInclude(pHtSession s, char* filename)
 	    include_file = objOpen(s->ObjSession, filename, O_RDONLY, 0600, "application/x-javascript");
 	    if (include_file)
 		{
-		htrQPrintf(s, "<script language=\"javascript\">\n// Included from: %STR&HTE\n\n", filename);
+		htrQPrintf(s, "\t<script>\n// Included from: %STR&HTE\n\n", filename);
 		while((rcnt = objRead(include_file, buf, sizeof(buf), 0, 0)) > 0)
 		    {
 		    htrWrite(s, buf, rcnt);
@@ -1368,7 +1368,7 @@ htr_internal_GenInclude(pHtSession s, char* filename)
 	if (slash)
 	    {
 	    *slash = '\0';
-	    htrQPrintf(s, "\n<script language=\"javascript\" src=\"%STR%[/CXDC:%STR%]/%STR\"></script>\n", path, buf[0], buf, slash+1);
+	    htrQPrintf(s, "\t<script src='%STR%[/CXDC:%STR%]/%STR'></script>\n", path, buf[0], buf, slash+1);
 	    }
 
     return 0;
@@ -1844,7 +1844,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    if (err_xs)
 		{
 		mssStringError(err_xs);
-		htrQPrintf(s, "<html><head><title>Error</title></head><body bgcolor=\"white\"><h1>An Error occured while attempting to render this document</h1><br><pre>%STR&HTE</pre></body></html>\r\n", xsString(err_xs));
+		htrQPrintf(s, "<html><head><title>Error</title></head><body style='background-color:\"white\"'><h1>An Error occurred while attempting to render this document</h1><br><pre>%STR&HTE</pre></body></html>\r\n", xsString(err_xs));
 		xsFree(err_xs);
 		}
 	    }
@@ -1865,14 +1865,15 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 			"-->\n\n"
 			, cx__version);
 
-	htrQPrintf(s,	"<html>\n"
+	htrQPrintf(s,	"<html lang='en'>\n"
 			"<head>\n"
+			    "\t<meta charset='utf-8'>\n"
 			    "\t<meta name='generator' content='Centrallix/%STR'>\n"
 			    "\t<meta name='pragma' content='no-cache'>\n"
 			    "\t<meta name='referrer' content='same-origin'>\n"
 			, cx__version);
 
-	htrWrite(s, "\t<style type='text/css'>\n", -1);
+	htrWrite(s, "\t<style>\n", 9);
 	/** Write the HTML stylesheet items. **/
 	for(i=0;i<s->Page.HtmlStylesheet.nItems;i++)
 	    {
@@ -1890,7 +1891,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    }
 
 	/** Write the script globals **/
-	htrWrite(s, "<script language=\"javascript\">\n\n\n", -1);
+	htrWrite(s, "\t<script>\n", 10);
 	for(i=0;i<s->Page.Globals.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Globals.Items[i]);
@@ -1930,7 +1931,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    sv = (pStrValue)(s->Page.Includes.Items[i]);
 	    htr_internal_GenInclude(s, sv->Name);
 	    }
-	htrWrite(s, "<script language=\"javascript\">\n\n", -1);
+	htrWrite(s, "\n\t<script>", 10);
 
 	/** Write the script functions **/
 	for(i=0;i<s->Page.Functions.nItems;i++)
