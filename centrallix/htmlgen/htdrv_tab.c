@@ -387,14 +387,10 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		"tab_h:%INT, "
 		"do_client_rendering:%STR, "
 	    "});\n",
-	    name,
-	    tloc_name,
-	    main_bg,
-	    inactive_bg,
-	    select_x_offset,
-	    select_y_offset,
-	    xtoffset,
-	    ytoffset,
+	    name, tloc_name,
+	    main_bg, inactive_bg,
+	    select_x_offset, select_y_offset,
+	    xtoffset, ytoffset,
 	    tab_spacing,
 	    (is_auto_tab_w) ? 0 : tab_w, /* 0 tells the front end that it should recalculate tab_w. */
 	    tab_h,
@@ -413,7 +409,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    const int full_tab_spacing = tab_spacing + border_width * 2;
 	    switch (tloc)
 		{
-		case Top:   case Bottom: i_offset_x = full_tab_spacing + tab_w + ((is_auto_tab_w) ? 40 : 0); break;
+		case Top:   case Bottom: i_offset_x = full_tab_spacing + tab_w; break;
 		case Right: case Left:   i_offset_y = full_tab_spacing + tab_h; break;
 		case None:; /* Unreachable, but the compiler doesn't believe me. */
 		}
@@ -452,14 +448,12 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    
 	    /** Inject tab_fl values for client-side rendering. **/
 	    htrAddScriptInit_va(s,
-		"{"
-		    "const node = wgtrGetNodeRef(ns,'%STR&SYM'); "
+		"{ "
+		    "const node = wgtrGetNodeRef(ns, '%STR&SYM'); "
 		    "node.tab_fl_x = %DBL; "
 		    "node.tab_fl_y = %DBL; "
 		"}\n",
-		name,
-		tab_fl_x,
-		tab_fl_y
+		name, tab_fl_x, tab_fl_y
 	    );
 	    
 	    /** Loop over each tab. **/
@@ -592,7 +586,9 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	);
 	htrAddBodyItem_va(s, "<div id='tc%POSctrl'>\n", id);
 	
+	/** Store values used during tab generation that are the same for all tabs. **/
 	/** Check for tab pages within the tab control entity, this time to do the pages themselves. **/
+	const char* widget_namespace = wgtrGetNamespace(tree);
 	for (i = 0; i < tab_count; i++)
 	    {
 	    pWgtrNode tab_page_tree = children[i];
@@ -600,7 +596,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    /** Handle namespace transition. **/
 	    htrCheckNSTransition(s, tree, tab_page_tree);
 	    
-	    /** First, render the tabpage and add stuff for it **/
+	    /** First, render the tabpage and add stuff for it. **/
 	    wgtrGetPropertyValue(tab_page_tree,"name",DATA_T_STRING,POD(&ptr));
 	    
 	    /** Check if the tab is selected. **/
@@ -616,43 +612,22 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		strtcpy(fieldname, field, sizeof(fieldname));
 	    else strcpy(fieldname, "");
 	    
-	    /** Add script initialization to add a new tabpage **/
-	    if (tloc == None)
-		{
-		htrAddScriptInit_va(s,
-		    "\twgtrGetNodeRef('%STR&SYM', '%STR&SYM')"
-			".addTab(null, "
-			    "wgtrGetContainer(wgtrGetNodeRef('%STR&SYM', '%STR&SYM')), "
-			    "wgtrGetNodeRef('%STR&SYM', '%STR&SYM'), "
-			    "'%STR&JSSTR', '%STR&JSSTR', '%STR&JSSTR'"
-			");\n",
-		    wgtrGetNamespace(tree), name,
-		    wgtrGetNamespace(tab_page_tree), ptr,
-		    wgtrGetNamespace(tree), name,
-		    ptr, page_type, fieldname
-		);
-		}
-	    else
-		{
-		htrAddScriptInit_va(s,
-		    "\twgtrGetNodeRef('%STR&SYM','%STR&SYM')"
-			".addTab("
-			    "htr_subel("
-				"wgtrGetParentContainer(wgtrGetNodeRef('%STR&SYM', '%STR&SYM')), "
-				"'tc%POStab%POS'"
-			    "), "
-			    "wgtrGetContainer(wgtrGetNodeRef('%STR&SYM', '%STR&SYM')), "
-			    "wgtrGetNodeRef('%STR&SYM', '%STR&SYM'), "
-			    "'%STR&JSSTR', '%STR&JSSTR', '%STR&JSSTR'"
-			");\n",
-		    wgtrGetNamespace(tree), name,
-		    wgtrGetNamespace(tree), name,
-		    id, i + 1,
-		    wgtrGetNamespace(tab_page_tree), ptr,
-		    wgtrGetNamespace(tree), name,
-		    ptr, page_type, fieldname
-		);
-		}
+	    /** Write the addTab() call (in a new scope). **/
+	    const char* tab_page_namespace = wgtrGetNamespace(tab_page_tree);
+	    htrAddScriptInit_va(s, "\t{ "
+		"const tabctrl = wgtrGetNodeRef('%STR&SYM', '%STR&SYM'); "
+		"tabctrl"
+		    ".addTab({ "
+			"%[tab:htr_subel(wgtrGetParentContainer(tabctrl), 'tc%POStab%POS'), %]"
+			"page:wgtrGetContainer(wgtrGetNodeRef('%STR&SYM', '%STR&SYM')), "
+			"name:'%STR&JSSTR', type:'%STR&JSSTR', fieldname:'%STR&JSSTR', "
+		    "}); "
+		"}\n",
+		widget_namespace, name,
+		(tloc != None), id, i + 1,
+		tab_page_namespace, ptr,
+		ptr, page_type, fieldname
+	    );
 	    
 	    /** Add named global for the tabpage. **/
 	    htrAddWgtrObjLinkage_va(s, tab_page_tree, "tc%POSpane%POS", id, i+1);
@@ -678,8 +653,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    );
 	    
 	    /** Handle sub-items within the tabpage. **/
-	    for (int j = 0; j < xaCount(&(tab_page_tree->Children)); j++)
-		htrRenderWidget(s, xaGetItem(&(tab_page_tree->Children), j), z+3);
+	    htrRenderSubwidgets(s, tab_page_tree, z+3);
 	    
 	    /** Close the tab page container. */
 	    htrAddBodyItem(s, "</div>\n");
