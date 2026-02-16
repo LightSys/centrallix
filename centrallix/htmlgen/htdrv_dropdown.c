@@ -191,7 +191,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	    "left:1px; "
 	    "top:1px; "
 	    "width:1024px; "
-	    "height:%POS; "
+	    "height:%POSpx; "
 	    "z-index:%POS; "
 	"}\n",
 	id,
