@@ -338,7 +338,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s,
-	    "wn_init({ "
+	    "\twn_init({ "
 		"mainlayer:wgtrGetNodeRef(ns, '%STR&SYM'), "
 		"clayer:wgtrGetContainer(wgtrGetNodeRef(ns, '%STR&SYM')), "
 		"titlebar:%[htr_subel(wgtrGetNodeRef(ns, '%STR&SYM'), 'wn%POStitlebar')%]%[null%], "

@@ -254,15 +254,33 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_datetime.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
 
-	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    dt_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"),c1:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"dt%POScon1\"),c2:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"dt%POScon2\"),id:\"%STR&JSSTR\", background:\"%STR&JSSTR\", foreground:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", width:%INT, height:%INT, width2:%INT, height2:%INT, sbr:%INT, donly:%INT, dtime:\"%STR&JSSTR\"})\n",
-	    name,
-	    name,id, 
-	    name,id, 
-	    initialdate, bgcolor, fgcolor, fieldname, form,
-	    w-20, h, w2,h2,
+	/** Write the initialization call in its own scope. **/
+	htrAddScriptInit_va(s, "\t{ "
+	    "const layer = wgtrGetNodeRef(ns, '%STR&SYM'); "
+	    "dt_init({ "
+	        "layer, "
+		"c1:htr_subel(layer, 'dt%POScon1'), "
+		"c2:htr_subel(layer, 'dt%POScon2'), "
+		"id:'%STR&JSSTR', "
+		"background:'%STR&JSSTR', "
+		"foreground:'%STR&JSSTR', "
+		"fieldname:'%STR&JSSTR', "
+		"form:'%STR&JSSTR', "
+		"width:%INT, "
+		"height:%INT, "
+		"width2:%INT, "
+		"height2:%INT, "
+		"sbr:%INT, "
+		"donly:%INT, "
+		"dtime:'%STR&JSSTR', "
+	    "}); }\n",
+	    name, id, id,
+	    initialdate,
+	    bgcolor, fgcolor, fieldname, form,
+	    w - 20, h, w2, h2,
 	    search_by_range,
-	    date_only, default_time);
+	    date_only, default_time
+	);
 
 	/** HTML body <DIV> elements for the layers. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"dt%POSbtn\">\n"

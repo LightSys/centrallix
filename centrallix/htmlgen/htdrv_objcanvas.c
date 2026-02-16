@@ -156,10 +156,19 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "oc", "oc_mouseover");
 	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "oc", "oc_mousemove");
 	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "oc", "oc_mouseout");
-   
+
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    oc_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), osrc:%[wgtrGetNodeRef(ns,\"%STR&SYM\")%]%[null%], allow_select:%INT, show_select:%INT, name:\"%STR&SYM\"});\n",
-		name, *osrc, osrc, !*osrc, allow_select, show_select, name);
+	htrAddScriptInit_va(s,
+	    "\toc_init({ "
+		"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"osrc:%[wgtrGetNodeRef(ns, '%STR&SYM')%]%[null%], "
+		"name:'%STR&SYM', "
+		"allow_select:%INT, "
+		"show_select:%INT, "
+	    "});\n",
+	    name, (osrc[0] != '\0'), osrc, (osrc[0] == '\0'), name,
+	    allow_select, show_select
+	);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"oc%POSbase\">\n",id);

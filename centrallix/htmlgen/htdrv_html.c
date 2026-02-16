@@ -171,52 +171,22 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddEventHandlerFunction(s,"document","MOUSEDOWN","ht", "ht_mousedown");
 	    htrAddEventHandlerFunction(s,"document","MOUSEUP",  "ht", "ht_mouseup");
 	    
-	    /** Script initialization call. **/
-	    if (s->Capabilities.Dom1HTML)
-		{
-		htrAddScriptInit_va(s,
-		    "ht_init({"
-			"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
-			"layer2:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns, '%STR&SYM')), 'ht%POSpane2'), "
-			"faderLayer:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns, '%STR&SYM')), 'ht%POSfader'), "
-			"source:'%STR&JSSTR', "
-			"width:%INT, "
-			"height:%INT, "
-			"loader:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns, '%STR&SYM')), 'ht%POSloader')"
-		    "});\n",
-                    name,
-		    name, id,
-		    name, id, 
-		    src,
-		    w,
-		    h,
-		    name, id
-		);
-		}
-	    else if (s->Capabilities.Dom0NS)
-		{
-		htrAddScriptInit_va(s,
-		    "ht_init({"
-			"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
-			"layer2:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns, '%STR&SYM')), 'ht%POSpane2'), "
-			"faderLayer:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns, '%STR&SYM')), 'ht%POSfader'), "
-			"source:'%STR&JSSTR', "
-			"width:%INT, "
-			"height:%INT, "
-			"loader:null"
-		    "});\n",
-		    name,
-		    name, id,
-		    name, id,
-		    src,
-		    w,
-		    h
-		);
-		}
-	    else
-		{
-		mssError(1, "HTHTML", "Browser not supported!!");
-		}
+	    /** Write script initialization call in its own scope. **/
+	    htrAddScriptInit_va(s, "\t{ "
+		"const layer = wgtrGetNodeRef(ns, '%STR&SYM'); "
+		"const layer_container = wgtrGetParentContainer(layer); "
+		"ht_init({"
+		    "layer, "
+		    "layer2:htr_subel(layer_container, 'ht%POSpane2'), "
+		    "faderLayer:htr_subel(layer_container, 'ht%POSfader'), "
+		    "source:'%STR&JSSTR', "
+		    "width:%INT, "
+		    "height:%INT, "
+		    "%[loader:htr_subel(layer_container, 'ht%POSloader'), %]"
+		"}); }\n",
+		name, id, id, src, w, h,
+		(s->Capabilities.Dom1HTML), name, id
+	    );
     
             /** HTML body <DIV> element for the layer. **/
             htrAddBodyItem_va(s,"<DIV background=\"/sys/images/fade_lrwipe_01.gif\" ID=\"ht%POSfader\"></DIV>",id);

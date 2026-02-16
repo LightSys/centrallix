@@ -239,8 +239,13 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "pn", "pn_mousemove");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    pn_init({mainlayer:wgtrGetNodeRef(ns,\"%STR&SYM\"), layer:wgtrGetNodeRef(ns,\"%STR&SYM\")});\n",
-		name, name);
+	htrAddScriptInit_va(s,
+	    "\tpn_init({"
+		"mainlayer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+	    "});\n",
+	    name, name
+	);
 
 	/** HTML body <DIV> element for the base layer. **/
 	//htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\"><table width=%POS height=%POS cellspacing=0 cellpadding=0 border=0><tr><td></td></tr></table>\n",id, w-2, h-2);

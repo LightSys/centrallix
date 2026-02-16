@@ -118,11 +118,20 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	    find_inf = NULL;
 
 	/** Parameter has presentation-hints components to it.  Set those. **/
+	const int has_find_inf = (find_inf != NULL && find_inf->StrVal != NULL && find_inf->StrVal[0] != '\0');
 	if (deploy_to_client)
 	    {
 	    /** Script init **/
-	    htrAddScriptInit_va(s, "    pa_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {name:'%STR&JSSTR', type:'%STR&JSSTR', findc:'%STR&JSSTR', val:%[null%]%[\"%STR&HEX\"%]});\n", 
-		    name, paramname, type, findcontainer, !find_inf || !find_inf->StrVal, find_inf && find_inf->StrVal, find_inf?find_inf->StrVal:"");
+	    htrAddScriptInit_va(s,
+		"\tpa_init(wgtrGetNodeRef(ns, '%STR&SYM'), { "
+		    "name:'%STR&JSSTR', "
+		    "type:'%STR&JSSTR', "
+		    "findc:'%STR&JSSTR', "
+		    "val:%['%STR&HEX'%]%[null%], "
+		"});\n", 
+		name, paramname, type, findcontainer,
+		(has_find_inf), (has_find_inf) ? find_inf->StrVal : "null", (!has_find_inf)
+	    );
 
 	    hints = wgtrWgtToHints(tree);
 	    if (!hints)
@@ -132,12 +141,14 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	    xsInit(&xs);
 	    hntEncodeHints(hints, &xs);
-	    htrAddScriptInit_va(s, "    cx_set_hints(wgtrGetNodeRef(ns,\"%STR&SYM\"), '%STR&JSSTR', 'app');\n",
-		    name, xs.String);
+	    htrAddScriptInit_va(s,
+		"\tcx_set_hints(wgtrGetNodeRef(ns, '%STR&SYM'), '%STR&JSSTR', 'app');\n",
+		name, xs.String
+	    );
 	    xsDeInit(&xs);
 	    objFreeHints(hints);
 
-	    htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").Verify();\n", name);
+	    htrAddScriptInit_va(s, "\twgtrGetNodeRef(ns, '%STR&SYM').Verify();\n", name);
 	    }
 	else
 	    {

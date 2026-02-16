@@ -168,8 +168,26 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddExpression(s, name, "enabled", code);
 	    }
 
-	htrAddScriptInit_va(s,"    ib_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), n:'%STR&JSSTR', p:'%STR&JSSTR', c:'%STR&JSSTR', d:'%STR&JSSTR', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, tooltip:'%STR&JSSTR', repeat:%INT});\n",
-	        name, n_img, p_img, c_img, d_img, w, h, name,is_enabled, tooltip, button_repeat);
+	/** Write script initialization call. **/
+	htrAddScriptInit_va(s,
+	    "\tib_init({ "
+		"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"name:'%STR&SYM', "
+		"n:'%STR&JSSTR', "
+		"p:'%STR&JSSTR', "
+		"c:'%STR&JSSTR', "
+		"d:'%STR&JSSTR', "
+		"width:%INT, "
+		"height:%INT, "
+		"enable:%INT, "
+		"tooltip:'%STR&JSSTR', "
+		"repeat:%INT, "
+	    "});\n",
+	    name, name,
+	    n_img, p_img, c_img, d_img,
+	    w, h,
+	    is_enabled, tooltip, button_repeat
+	);
 
 	/** HTML body <DIV> elements for the layers. **/
 	if (h < 0)

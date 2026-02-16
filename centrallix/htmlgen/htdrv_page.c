@@ -265,7 +265,10 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrCtrLinkage(s, tree, "document");
 
 	/** Set the application key **/
-	htrAddScriptInit_va(s, "    if (typeof window.akey == 'undefined') window.akey = '%STR&JSSTR';\n", s->ClientInfo->AKey);
+	/*** TODO: Greg - This should be a call to htrAddScriptGlobal(), but I
+	 *** do not know how to do that with a the dynamic, formatted value.
+	 ***/
+	htrAddScriptInit_va(s, "\tif (typeof window.akey == 'undefined') window.akey = '%STR&JSSTR';\n", s->ClientInfo->AKey);
 
 	/** Send server's time to the client. **/
 	t = time(NULL);
@@ -275,36 +278,42 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    /** This isn't 100% ideal -- it causes a couple seconds of clock drift **/
 	    if (strftime(timestr, sizeof(timestr), "%Y %m %d %T %Z", timeptr) > 0)
 		{
-		htrAddScriptInit_va(s, "    pg_servertime = new Date(%STR&DQUOT);\n", timestr);
+		htrAddScriptInit_va(s, "\tpg_servertime = new Date(%STR&DQUOT);\n", timestr);
 		if (strftime(timestr, sizeof(timestr), "%Y %m %d %T", timeptr) > 0)
-		    htrAddScriptInit_va(s, "    pg_servertime_notz = new Date(%STR&DQUOT);\n", timestr);
-		htrAddScriptInit_va(s, "    pg_clienttime = new Date();\n");
+		    htrAddScriptInit_va(s, "\tpg_servertime_notz = new Date(%STR&DQUOT);\n", timestr);
+		htrAddScriptInit_va(s, "\tpg_clienttime = new Date();\n");
 		}
 	    }
 
 	/** Page init **/
-	htrAddScriptInit(s,    "    if(typeof(pg_status_init)=='function')pg_status_init();\n");
-	htrAddScriptInit_va(s, "    pg_init(wgtrGetNodeRef(ns,'%STR&SYM'),%INT);\n", name, attract);
-	htrAddScriptInit_va(s, "    pg_username = '%STR&JSSTR';\n", mssUserName());
-	htrAddScriptInit_va(s, "    pg_width = %INT;\n", w);
-	htrAddScriptInit_va(s, "    pg_height = %INT;\n", h);
-	htrAddScriptInit_va(s, "    pg_max_requests = %INT;\n", max_requests);
-	htrAddScriptInit_va(s, "    pg_charw = %INT;\n", s->ClientInfo->CharWidth);
-	htrAddScriptInit_va(s, "    pg_charh = %INT;\n", s->ClientInfo->CharHeight);
-	htrAddScriptInit_va(s, "    pg_parah = %INT;\n", s->ClientInfo->ParagraphHeight);
+	htrAddScriptInit   (s, "\tif (typeof(pg_status_init) === 'function') pg_status_init();\n");
+	htrAddScriptInit_va(s, "\tpg_init(wgtrGetNodeRef(ns,'%STR&SYM'),%INT);\n", name, attract);
+	htrAddScriptInit_va(s, "\tpg_username = '%STR&JSSTR';\n", mssUserName());
+	htrAddScriptInit_va(s, "\tpg_width = %INT;\n", w);
+	htrAddScriptInit_va(s, "\tpg_height = %INT;\n", h);
+	htrAddScriptInit_va(s, "\tpg_max_requests = %INT;\n", max_requests);
+	htrAddScriptInit_va(s, "\tpg_charw = %INT;\n", s->ClientInfo->CharWidth);
+	htrAddScriptInit_va(s, "\tpg_charh = %INT;\n", s->ClientInfo->CharHeight);
+	htrAddScriptInit_va(s, "\tpg_parah = %INT;\n", s->ClientInfo->ParagraphHeight);
 
 	c_param = stLookup_ne(s->Params, "cx__obscure");
 	if (c_param && !strcasecmp(c_param->StrVal,"yes"))
-	    htrAddScriptInit(s, "    obscure_data = true;\n");
+	    htrAddScriptInit(s, "\tobscure_data = true;\n");
 	else
-	    htrAddScriptInit(s, "    obscure_data = false;\n");
+	    htrAddScriptInit(s, "\tobscure_data = false;\n");
 
 	/** Add template paths **/
 	for(i=0;i<WGTR_MAX_TEMPLATE;i++)
 	    {
-	    if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
-		htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,'%STR&SYM').templates.push('%STR&JSSTR');\n",
-		    name, path);
+	    /** Ignore null templates. **/
+	    path = wgtrGetTemplatePath(tree, i);
+	    if (path == NULL) continue;
+	    
+	    /** Write code for the template. **/
+	    htrAddScriptInit_va(s,
+		"\twgtrGetNodeRef(ns,'%STR&SYM').templates.push('%STR&JSSTR');\n",
+		name, path
+	    );
 	    }
 
 	/** Endorsements **/
@@ -313,8 +322,10 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	cxssGetEndorsementList(&endorsements, &contexts);
 	for(i=0;i<endorsements.nItems;i++)
 	    {
-	    htrAddScriptInit_va(s, "    pg_endorsements.push({e:'%STR&JSSTR', ctx:'%STR&JSSTR'});\n",
-		    (char*)endorsements.Items[i], (char*)contexts.Items[i]);
+	    htrAddScriptInit_va(s,
+		"\tpg_endorsements.push({ e:'%STR&JSSTR', ctx:'%STR&JSSTR' });\n",
+		(char*)endorsements.Items[i], (char*)contexts.Items[i]
+	    );
 	    nmSysFree((char*)endorsements.Items[i]);
 	    nmSysFree((char*)contexts.Items[i]);
 	    }
@@ -322,7 +333,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	xaDeInit(&contexts);
 
 	/** Shutdown **/
-	htrAddScriptCleanup_va(s, "    pg_cleanup();\n");
+	htrAddScriptCleanup(s, "\tpg_cleanup();\n");
 
 	/** Add focus box. **/
 	if(s->Capabilities.HTML40)
@@ -369,7 +380,11 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    htrAddStylesheetItem(s, "\t\t#pgstat { position:absolute; visibility:visible; left:0;top:0;width:100%;height:99%; z-index:100000;}\n");
 	    htrAddBodyItemLayerStart(s,0,"pgstat",0, NULL);
-	    htrAddBodyItem   (s, "<TABLE width=\"100\%\" height=\"100\%\" cellpadding=20><TR><TD valign=top><IMG src=\"/sys/images/loading.gif\"></TD></TR></TABLE></BODY>\n");
+	    htrAddBodyItem   (s,
+		"<table width='100%' height='100%' cellpadding=20>"
+		    "<tr><td valign=top><img src='/sys/images/loading.gif' alt='loading'></td></tr>"
+		"</table></body>\n"
+	    );
 	    htrAddBodyItem_va(s, "<body style=\"%STR\">", bgstr);
 	    htrAddBodyItemLayerEnd(s,0);
 	    }
@@ -406,14 +421,14 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    );
 	    }
 
-	htrAddBodyItem(s, "<div id='pgtop'  class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1152' height='1'  ></div>\n");
-	htrAddBodyItem(s, "<div id='pgbtm'  class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1152' height='1'  ></div>\n");
-	htrAddBodyItem(s, "<div id='pgrgt'  class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1'    height='864'></div>\n");
-	htrAddBodyItem(s, "<div id='pglft'  class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1'    height='864'></div>\n");
-	htrAddBodyItem(s, "<div id='pgktop' class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1152' height='1'  ></div>\n");
-	htrAddBodyItem(s, "<div id='pgkbtm' class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1152' height='1'  ></div>\n");
-	htrAddBodyItem(s, "<div id='pgkrgt' class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1'    height='864'></div>\n");
-	htrAddBodyItem(s, "<div id='pgklft' class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1'    height='864'></div>\n");
+	htrAddBodyItem(s, "<div id='pgtop'  class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1152' height='1'   alt=''></div>\n");
+	htrAddBodyItem(s, "<div id='pgbtm'  class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1152' height='1'   alt=''></div>\n");
+	htrAddBodyItem(s, "<div id='pgrgt'  class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1'    height='864' alt=''></div>\n");
+	htrAddBodyItem(s, "<div id='pglft'  class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1'    height='864' alt=''></div>\n");
+	htrAddBodyItem(s, "<div id='pgktop' class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1152' height='1'   alt=''></div>\n");
+	htrAddBodyItem(s, "<div id='pgkbtm' class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1152' height='1'   alt=''></div>\n");
+	htrAddBodyItem(s, "<div id='pgkrgt' class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1'    height='864' alt=''></div>\n");
+	htrAddBodyItem(s, "<div id='pgklft' class='pg pgclip'><img src='/sys/images/trans_1.gif' width='1'    height='864' alt=''></div>\n");
 	htrAddBodyItem(s, "<div id='pgtvl'  class='pg'></div>\n");
 
 	htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgping",0, NULL);
@@ -423,7 +438,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItem(s, "\n");
 
 	stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "net_http"),"session_watchdog_timer"),&watchdogtimer,NULL,0);
-	htrAddScriptInit_va(s,"    pg_ping_init(htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"pgping\"),%INT);\n",name,watchdogtimer/2*1000);
+	htrAddScriptInit_va(s, "\tpg_ping_init(htr_subel(wgtrGetNodeRef(ns, '%STR&SYM'), 'pgping'), %INT);\n", name, watchdogtimer/2*1000);
 
 	/** Add event code to handle mouse in/out of the area.... **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "pg", "pg_mousemove");
@@ -443,14 +458,22 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Set colors for the focus layers **/
-	htrAddScriptInit_va(s, "    page.kbcolor1 = '%STR&JSSTR';\n    page.kbcolor2 = '%STR&JSSTR';\n",kbfocus1,kbfocus2);
-	htrAddScriptInit_va(s, "    page.mscolor1 = '%STR&JSSTR';\n    page.mscolor2 = '%STR&JSSTR';\n",msfocus1,msfocus2);
-	htrAddScriptInit_va(s, "    page.dtcolor1 = '%STR&JSSTR';\n    page.dtcolor2 = '%STR&JSSTR';\n",dtfocus1,dtfocus2);
-	/*htrAddScriptInit(s, "    document.LSParent = null;\n");*/
+	htrAddScriptInit_va(s,
+	    "\tpage.kbcolor1 = '%STR&JSSTR';\n"
+	    "\tpage.kbcolor2 = '%STR&JSSTR';\n"
+	    "\tpage.mscolor1 = '%STR&JSSTR';\n"
+	    "\tpage.mscolor2 = '%STR&JSSTR';\n"
+	    "\tpage.dtcolor1 = '%STR&JSSTR';\n"
+	    "\tpage.dtcolor2 = '%STR&JSSTR';\n",
+	    kbfocus1, kbfocus2,
+	    msfocus1, msfocus2,
+	    dtfocus1, dtfocus2
+	);
 
-	htrAddScriptInit(s, "    pg_togglecursor();\n");
+	/** Write code to ensure cursor updating starts. **/
+	htrAddScriptInit(s, "\tpg_togglecursor();\n");
 
-
+	/** Write event handling functions. **/
 	htrAddEventHandlerFunction(s, "document", "KEYDOWN", "pg", "pg_keydown");
 	htrAddEventHandlerFunction(s, "document", "KEYUP", "pg", "pg_keyup");
 	htrAddEventHandlerFunction(s, "document", "KEYPRESS", "pg", "pg_keypress");
@@ -466,15 +489,18 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	if(s->Capabilities.Dom0NS)
 	    {
 	    htrAddScriptInit(s,
-		    "    setTimeout(pg_mvpginpt, 1, document.layers.pginpt);\n"
-		    "    document.layers.pginpt.moveTo(window.innerWidth-2, 20);\n"
-		    "    document.layers.pginpt.visibility = 'inherit';\n");
-	    htrAddScriptInit(s,"    document.layers.pginpt.document.tmpform.x.focus();\n");
+		"\tsetTimeout(pg_mvpginpt, 1, document.layers.pginpt);\n"
+		"\tdocument.layers.pginpt.moveTo(window.innerWidth-2, 20);\n"
+		"\tdocument.layers.pginpt.visibility = 'inherit';\n"
+		"\tdocument.layers.pginpt.document.tmpform.x.focus();\n"
+	    );
 	    }
 
-	htrAddScriptInit(s, "    if(typeof(pg_status_close)=='function')pg_status_close();\n");
-	htrAddScriptInit(s, "    pg_loadqueue_busy = false;\n");
-	htrAddScriptInit(s, "    pg_serialized_load_doone();\n");
+	htrAddScriptInit(s,
+	    "\tif(typeof(pg_status_close) === 'function') pg_status_close();\n"
+	    "\tpg_loadqueue_busy = false;\n"
+	    "\tpg_serialized_load_doone();\n"
+	);
 	
 	return 0;
     }

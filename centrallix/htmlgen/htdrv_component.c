@@ -341,8 +341,8 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** Init component **/
 	    htrAddScriptInit_va(s, 
-		"cmp_init({ "
-		    "node:wgtrGetNodeRef(ns,\"%STR&SYM\"), "
+		"\tcmp_init({ "
+		    "node:wgtrGetNodeRef(ns, '%STR&SYM'), "
 		    "is_static:true, "
 		    "allow_multi:false, "
 		    "auto_destroy:false, "
@@ -352,10 +352,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		    "ypos:%INT, "
 		"});\n",
 		name,
-		w,
-		h,
-		x,
-		y
+		w, h, x, y
 	    );
 
 	    /** Are there any templates we should use **/
@@ -419,7 +416,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    htrLeaveNamespace(s);
 
 	    /** End Init component **/
-	    htrAddScriptInit_va(s, "    cmp_endinit(wgtrGetNodeRef(ns,\"%STR&SYM\"));\n", name);
+	    htrAddScriptInit_va(s, "\tcmp_endinit(wgtrGetNodeRef(ns, '%STR&SYM'));\n", name);
 
 	    /** Return to previous security context **/
 	    if (new_sec_context) cxssPopContext();
@@ -437,54 +434,59 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	/** Dynamic mode, component is loaded by the client. **/
 	else
 	    {
-	    /** Init component **/
-	    htrAddScriptInit_va(s, 
-		"cmp_init({ "
-		    "node:wgtrGetNodeRef(ns, '%STR&SYM'), "
+	    /** Write a new scope to store variables used below. **/
+	    htrAddScriptInit_va(s, "\t\t{\n"
+		"\t\tconst node = wgtrGetNodeRef(ns, '%STR&SYM');\n"
+		"\t\tconst loader = htr_subel(wgtrGetParentContainer(node), 'cmp%POS');\n",
+		name, id
+	    );
+	    
+	    /** Write initialization call. **/
+	    htrAddScriptInit_va(s,
+		"\t\tcmp_init({ "
+		    "node, "
+		    "loader, "
+		    "path:'%STR&JSSTR', "
 		    "is_top:%POS, "
 		    "is_static:false, "
 		    "allow_multi:%POS, "
 		    "auto_destroy:%POS, "
-		    "path:'%STR&JSSTR', "
-		    "loader:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns, '%STR&SYM')), 'cmp%POS'), "
 		    "width:%INT, "
 		    "height:%INT, "
 		    "xpos:%INT, "
 		    "ypos:%INT, "
 		"});\n",
-		name,
-		is_toplevel,
-		allow_multi,
-		auto_destroy,
 		cmp_path,
-		name, id,
-		w,
-		h,
-		x,
-		y
+		is_toplevel, allow_multi, auto_destroy,
+		w, h, x, y
 	    );
 
-	    /** Add template paths. **/
+	    /** Write template paths. **/
 	    for (int i = 0; i < WGTR_MAX_TEMPLATE; i++)
 		{
 		if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
 		    htrAddScriptInit_va(s,
-			"wgtrGetNodeRef(ns,'%STR&SYM').templates.push('%STR&JSSTR');\n",
+			"\t\tnode.templates.push('%STR&JSSTR');\n",
 			name, path
 		    );
 		}
 
-	    /** Set params. **/
+	    /** Write params. **/
 	    if (params != NULL)
 		{
 		for (int i = 0; i < params->nSubInf; i++)
 		    {
+		    pStruct param = params->SubInf[i];
+		    const int is_empty_str = (param->StrVal == NULL || param->StrVal[0] == '\0');
 		    htrAddScriptInit_va(s,
-			"wgtrGetNodeRef(ns, '%STR&SYM').AddParam('%STR&SYM', %[null%]%['%STR&HEX'%]);\n",
-			name, params->SubInf[i]->Name, !params->SubInf[i]->StrVal, params->SubInf[i]->StrVal, params->SubInf[i]->StrVal
+			"\t\tnode.AddParam('%STR&SYM', %[null%]%['%STR&HEX'%]);\n",
+			param->Name, (is_empty_str), (!is_empty_str), param->StrVal
 		    );
 		    }
 		}
+	    
+	    /** Write data to close the scope above. **/
+	    htrAddScriptInit(s, "\t\t}\n");
 
 	    /** Dynamic mode -- load from client **/
 	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
