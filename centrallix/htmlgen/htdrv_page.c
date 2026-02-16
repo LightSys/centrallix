@@ -103,7 +103,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	/** Page icon? **/
 	if (wgtrGetPropertyValue(tree, "icon", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
-	    htrAddHeaderItem_va(s, "\t<link rel='shortcut icon' href='%STR&HTE' />\n",ptr);
+	    htrAddHeaderItem_va(s, "\t<link rel='shortcut icon' href='%STR&HTE'>\n",ptr);
 	    }
 
     	/** Check for a title. **/
@@ -126,9 +126,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 		s->Namespace->DName);
 
 	/** Check for bgcolor. **/
-	if (htrGetBackground(tree, NULL, 0, bgstr, sizeof(bgstr)) == 0)
+	if (htrGetBackground(tree, NULL, 1, bgstr, sizeof(bgstr)) == 0)
 	    {
-	    htrAddBodyParam_va(s, " %STR",bgstr);
+	    htrAddBodyParam_va(s, " style=\"%STR\"", bgstr);
 	    }
 
 	/** Check for text color **/
@@ -369,8 +369,8 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    htrAddStylesheetItem(s, "\t\t#pgstat { position:absolute; visibility:visible; left:0;top:0;width:100%;height:99%; z-index:100000;}\n");
 	    htrAddBodyItemLayerStart(s,0,"pgstat",0, NULL);
-	    htrAddBodyItem_va(s, "<BODY %STR>", bgstr);
 	    htrAddBodyItem   (s, "<TABLE width=\"100\%\" height=\"100\%\" cellpadding=20><TR><TD valign=top><IMG src=\"/sys/images/loading.gif\"></TD></TR></TABLE></BODY>\n");
+	    htrAddBodyItem_va(s, "<body style=\"%STR\">", bgstr);
 	    htrAddBodyItemLayerEnd(s,0);
 	    }
 
