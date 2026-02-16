@@ -57,12 +57,12 @@ static struct
 int
 htspaneRender(pHtSession s, pWgtrNode tree, int z)
     {
-    char* ptr;
+    char* str;
     
 	if (!(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS) && !s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE)
 	    {
 	    mssError(1, "HTSPANE", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS or IE DOM or Netscape DOM required.");
-	    return -1;
+	    goto err;
 	    }
 	
 	/** Get an id for this scrollpane. **/
@@ -70,54 +70,51 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	
 	/** Get name. **/
 	char name[64];
-	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&ptr)) != 0)
+	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&str)) != 0)
 	    {
 	    mssError(1, "HTSPANE", "widget/scrollpane must have a 'name' property.");
-	    return -1;
+	    goto err;
 	    }
-	strtcpy(name, ptr, sizeof(name));
+	strtcpy(name, str, sizeof(name));
 	
-	/** Get x, y, w, & h. **/
+	/** Get layout data (required). **/
 	int x, y, w, h;
 	if (wgtrGetPropertyValue(tree, "x", DATA_T_INTEGER, POD(&x)) != 0) 
 	    {
 	    mssError(1, "HTSPANE", "widget/scrollpane must have an 'x' property.");
-	    return -1;
+	    goto err;
 	    }
 	if (wgtrGetPropertyValue(tree, "y", DATA_T_INTEGER, POD(&y)) != 0)
 	    {
 	    mssError(1, "HTSPANE", "widget/scrollpane must have a 'y' property.");
-	    return -1;
+	    goto err;
 	    }
 	if (wgtrGetPropertyValue(tree, "width", DATA_T_INTEGER, POD(&w)) != 0)
 	    {
 	    mssError(1, "HTSPANE", "widget/scrollpane must have a 'width' property.");
-	    return -1;
+	    goto err;
 	    }
 	if (wgtrGetPropertyValue(tree, "height", DATA_T_INTEGER, POD(&h)) != 0)
 	    {
 	    mssError(1, "HTSPANE", "widget/scrollpane must have a 'height' property.");
-	    return -1;
+	    goto err;
 	    }
 	
 	/** Get the background color or image. **/
 	char background_color[64] = "";
-	if (wgtrGetPropertyValue(tree, "bgcolor", DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree, "bgcolor", DATA_T_STRING, POD(&str)) == 0)
 	    {
-	    strtcpy(background_color, ptr, sizeof(background_color));
+	    strtcpy(background_color, str, sizeof(background_color));
 	    }
 	char background_image[64] = "";
-	if (wgtrGetPropertyValue(tree, "background", DATA_T_STRING, POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree, "background", DATA_T_STRING, POD(&str)) == 0)
 	    {
-	    strtcpy(background_image, ptr, sizeof(background_image));
+	    strtcpy(background_image, str, sizeof(background_image));
 	    }
 	
 	/** Get visibility. **/
-	int visible = 1;
-	if (wgtrGetPropertyValue(tree, "visible", DATA_T_STRING, POD(&ptr)) == 0)
-	    {
-	    if (strcmp(ptr, "false") == 0) visible = 0;
-	    }
+	const int visible = htrGetBoolean(tree, "visible", 1);
+	if (visible == -1) goto err;
 	
 	/** DOM Linkages. **/
 	htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(_obj, \"sp%POSarea\")",id);
@@ -134,9 +131,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 		"area_name: 'sp%POSarea', "
 		"thumb_name: 'sp%POSthumb', "
 	    "});\n",
-	    name,
-	    id,
-	    id
+	    name, id, id
 	);
 	
 	/** Write html and styles. **/
@@ -373,10 +368,6 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 		h - 2
 	    );
 	    }
-	else
-	    {
-	    mssError(1, "HTSPNE", "Browser not supported!!");
-	    }
 	
 	/** Render children/subwidgets. **/
 	for (int i = 0; i < xaCount(&(tree->Children)); i++)
@@ -391,10 +382,6 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    htrAddBodyItem(s,"</td></tr></table></div></div>\n");
 	    }
-	else
-	    {
-	    mssError(1, "HTSPNE", "Browser not supported!!");
-	    }
 	
 	/** Add the event handling scripts **/
 	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "sp", "sp_mousedown");
@@ -402,8 +389,12 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "sp", "sp_mouseup");
 	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "sp", "sp_mouseover");
 	htrAddEventHandlerFunction(s, "document", "WHEEL",     "sp", "sp_wheel");
-    
-    return 0;
+	
+	return 0;
+	
+    err:
+	mssError(0, "HTSPANE", "Failed to render widget/scrollpane.");
+	return -1;
     }
 
 
