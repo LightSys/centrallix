@@ -42,7 +42,6 @@ function tc_makecurrent()
 		htr_setzindex(cur.tab, htr_getzindex(t) - 1);
 		cur.tab.marker_image.src = '/sys/images/tab_lft3.gif';
 		cur.tab.classList.remove('tab_selected');
-		// moveBy(cur.tab, t.xo, t.yo);
 		if (t.inactive_bgColor) htr_setbgcolor(cur.tab, t.inactive_bgColor);
 		if (t.inactive_bgnd) htr_setbgimage(cur.tab, t.inactive_bgnd);
 		}
@@ -57,10 +56,14 @@ function tc_makecurrent()
 	htr_setzindex(tab, htr_getzindex(t) + 1);
 	tab.marker_image.src = '/sys/images/tab_lft2.gif';
 	tab.classList.add('tab_selected');
-	// moveBy(tab, -t.xo, -t.yo);
 	}
     this.setTabUnwatched();
-    t.ifcProbe(ifEvent).Activate("TabChanged", { Selected:t.selected, SelectedIndex:t.selected_index });
+    
+    // Activate the Centrallix TabChanged event.
+    t.ifcProbe(ifEvent).Activate("TabChanged", {
+	Selected:t.selected,
+	SelectedIndex:t.selected_index,
+    });
     }
 
 function tc_makenotcurrent(page)
@@ -75,7 +78,6 @@ function tc_makenotcurrent(page)
 	htr_setzindex(page.tab,htr_getzindex(page.tabctl) - 1);
 	tab.marker_image.src = '/sys/images/tab_lft3.gif';
 	tab.classList.remove('tab_selected');
-	// moveBy(tab, tabctl.xo, tabctl.yo);
 	if (tabctl.inactive_bgColor) htr_setbgcolor(tab, tabctl.inactive_bgColor);
 	if (tabctl.inactive_bgnd) htr_setbgimage(tab, tabctl.inactive_bgnd);
 	}
@@ -86,25 +88,28 @@ function tc_makenotcurrent(page)
  *** should be handled elsewhere with functions like tc_makenotcurrent() or
  *** tc_makecurrent().
  *** 
- *** @param l_tab The tab being added.
- *** @param l_page The page to which the tab is being added.
- *** @param l The layer where this change will occur.
- *** @param nm The name of the tab.
+ *** @param param The object containing parameters for the function.
+ *** @param param.l_tab The tab to be added.
+ *** @param param.l_page The page to which the tab shall be added.
+ *** @param param.name The name of the tab.
+ *** @param param.type The type of the tab.
+ *** @param param.fieldname The fieldname of the tab.
  ***/
-function tc_addtab(l_tab, l_page, l, nm, type, fieldname)
+function tc_add_tab(param)
     {
-    const tabctl = this, { tabs } = tabctl, { tloc, tab_h, tab_spacing } = l;
+    const { tab, page, name, type, fieldname } = param;
+    const tabctl = this, { tloc, tab_h, tab_spacing, tabs } = tabctl;
+    const l_tab = tab ?? {}, l_page = page;
     
     let x, y;
-    if (!l_tab) l_tab = {};
-    l_page.tabname = nm;
+    l_page.tabname = name;
     l_page.type = type;
     l_page.fieldname = fieldname;
     l_page.tabindex = tabs.length + 1;
-    htr_init_layer(l_page,l,'tc_pn');
+    htr_init_layer(l_page, tabctl, 'tc_pn');
     ifc_init_widget(l_page);
 
-    /** Calculate the location and flexibility to render the tab. **/
+    // Calculate the location and flexibility to render the tab.
     if (tloc === 'None')
 	{
 	x = 0;
@@ -112,7 +117,7 @@ function tc_addtab(l_tab, l_page, l, nm, type, fieldname)
 	}
     else
 	{
-	htr_init_layer(l_tab, l, 'tc');
+	htr_init_layer(l_tab, tabctl, 'tc');
 
 	/** Calculate x coordinate. **/
 	if (tloc === 'Top' || tloc === 'Bottom')
@@ -122,21 +127,21 @@ function tc_addtab(l_tab, l_page, l, nm, type, fieldname)
 		const previous_tab = tabs[tabs.length - 1].tab;
 		x = getRelativeX(previous_tab) + $(previous_tab).outerWidth() + tab_spacing;
 		}
-	    else if (l.tab_fl_x)
+	    else if (tabctl.tab_fl_x)
 		{
-		/** Copy tabctl.style.left to avoid small but noticeable inconsistencies. **/
+		// Copy tabctl.style.left to avoid small but noticeable inconsistencies.
 		setRelativeX(l_tab, tabctl.style.left);
 		}
 	    else
 		{
-		/** Math for inflexible tabs do not suffer from the inconsistencies handled above. **/
+		// Math for inflexible tabs do not suffer from the inconsistencies handled above.
 		x = getRelativeX(tabctl);
 		}
 	    }
 	else if (tloc === 'Left')
 	    x = getRelativeX(tabctl) - htr_getviswidth(l_tab); 
 	else // Right
-	    x = getRelativeX(tabctl); // + htr_getviswidth(tabctl) // Included in xtoffset (see below)
+	    x = getRelativeX(tabctl); // Included in xtoffset (see below)
 
 	/** Calculate y coordinate. **/
 	if (tloc === 'Left' || tloc === 'Right')
@@ -146,7 +151,7 @@ function tc_addtab(l_tab, l_page, l, nm, type, fieldname)
 		const previous_tab = tabs[tabs.length - 1].tab;
 		y = getRelativeY(previous_tab) + tab_h + tab_spacing;
 		}
-	    else if (l.tab_fl_y)
+	    else if (tabctl.tab_fl_y)
 		/** Copy tabctl.style.top to avoid small but noticeable inconsistencies. **/
 		setRelativeY(l_tab, tabctl.style.top);
 	    else
@@ -154,15 +159,15 @@ function tc_addtab(l_tab, l_page, l, nm, type, fieldname)
 		y = getRelativeY(tabctl);
 	    }
 	else if (tloc === 'Bottom')
-	    y = getRelativeY(tabctl); // + htr_getvisheight(tabctl) // Included in ytoffset (see below)
+	    y = getRelativeY(tabctl); // Included in ytoffset (see below)
 	else // Top
 	    y = getRelativeY(tabctl) - tab_h;
 
 	/** Apply the same tab offsets used on the server. **/
-	x += l.xtoffset;
-	y += l.ytoffset;
+	x += tabctl.xtoffset;
+	y += tabctl.ytoffset;
 	
-	/** Space out tab away from previous tab to account for borders. **/
+	// Space out tab away from previous tab to account for borders.
 	if (tabs.length > 0)
 	    {
 	    switch (tloc)
@@ -173,24 +178,26 @@ function tc_addtab(l_tab, l_page, l, nm, type, fieldname)
 	    }
 	}
 
+    // Handle visibility.
     if (htr_getvisibility(l_page) === 'inherit')
 	{
-	htr_unwatch(l,"selected","tc_selection_changed");
-	htr_unwatch(l,"selected_index","tc_selection_changed");
-	l.selected = l_page.tabname;
-	l.selected_index = l_page.tabindex;
-	l.current_tab = l_page;
-	l.init_tab = l_page;
-	pg_addsched_fn(window,"pg_reveal_event",[l_page,l_page,'Reveal'], 0);
-	htr_watch(l,"selected", "tc_selection_changed");
-	htr_watch(l,"selected_index", "tc_selection_changed");
+	htr_unwatch(tabctl, "selected", "tc_selection_changed");
+	htr_unwatch(tabctl, "selected_index", "tc_selection_changed");
+	tabctl.selected = l_page.tabname;
+	tabctl.selected_index = l_page.tabindex;
+	tabctl.current_tab = l_page;
+	tabctl.init_tab = l_page;
+	pg_addsched_fn(window, "pg_reveal_event", [l_page, l_page, 'Reveal'], 0);
+	htr_watch(tabctl, "selected", "tc_selection_changed");
+	htr_watch(tabctl, "selected_index", "tc_selection_changed");
 	if (tloc !== 'None')
 	    {
-	    if (l.main_bgColor) htr_setbgcolor(l_tab, l.main_bgColor);
-	    if (l.main_bgnd) htr_setbgimage(l_tab, l.main_bgnd);
+	    if (tabctl.main_bgColor) htr_setbgcolor(l_tab, tabctl.main_bgColor);
+	    if (tabctl.main_bgnd) htr_setbgimage(l_tab, tabctl.main_bgnd);
 	    }
 	}
     
+    // Handle images.
     if (tloc !== 'None')
 	{
 	const images = pg_images(l_tab);
@@ -211,12 +218,11 @@ function tc_addtab(l_tab, l_page, l, nm, type, fieldname)
     l_tab.tabpage = l_page;
     l_tab.tabctl = tabctl;
 
-    /** Render the tab at the location calculated above. **/
-    if (tloc !== 'None' && l.do_rendering)
+    // Render the tab at the location calculated above.
+    if (tloc !== 'None' && tabctl.do_rendering)
 	{
-	/*** Get the parent width and height.  The top-level body element is
-	 *** sized wrong, so we use the window size if it is the parent.
-	 ***/
+	// Get the parent width and height.  The top-level body element is
+	// sized wrong, so we use the window size if it is the parent.
 	const is_top_level = (l_tab.parentElement.tagName === 'BODY');
 	const style    = (is_top_level) ? undefined          : getComputedStyle(l_tab.parentElement);
 	const parent_w = (is_top_level) ? innerWidth  + 'px' : style.width;
@@ -228,8 +234,6 @@ function tc_addtab(l_tab, l_page, l, nm, type, fieldname)
     // Indicate that we generate reveal/obscure notifications
     l_page.Reveal = tc_cb_reveal;
     pg_reveal_register_triggerer(l_page);
-    //if (htr_getvisibility(l_page) == 'inherit') pg_addsched("pg_reveal(" + l_tab.tabname + ")");
-    //l_page.is_visible = (tloc !== 'None' && htr_getvisibility(l_tab) == 'inherit');
     l_page.is_visible = true;
 
     l_page.tc_visible_changed = tc_visible_changed;
@@ -411,7 +415,7 @@ function tc_init(param)
     htr_init_layer(l,l,'tc');
     ifc_init_widget(l);
     l.tabs = [];
-    l.addTab = tc_addtab;
+    l.addTab = tc_add_tab;
     l.current_tab = null;
     l.init_tab = null;
     l.do_rendering = param.do_client_rendering;
