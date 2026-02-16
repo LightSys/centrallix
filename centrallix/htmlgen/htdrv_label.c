@@ -71,7 +71,6 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     int font_size;
     char *text;
     char* tooltip;
-    char stylestr[128];
     int is_bold = 0;
     int is_link = 0;
     int is_italic = 0;
@@ -271,10 +270,24 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    (strcmp(valign, "middle") == 0)
 	);
 
+ 	/** Link the widget tree data to the DOM node. **/
 	htrAddWgtrObjLinkage_va(s, tree, "lbl%POS",id);
-	stylestr[0] = '\0';
-	htrAddScriptInit_va(s, "    lbl_init(wgtrGetNodeRef(ns,'%STR&SYM'), {field:'%STR&JSSTR', form:'%STR&JSSTR', text:'%STR&JSSTR', style:'%STR&JSSTR', tooltip:'%STR&JSSTR', link:%POS, pfg:'%STR&JSSTR'});\n",
-		name, fieldname, form, text, stylestr, tooltip, is_link, pfgcolor);
+	
+	/** Write the initialization script call. **/
+	htrAddScriptInit_va(s,
+	    "\tlbl_init(wgtrGetNodeRef(ns,'%STR&SYM'), { "
+		"field:'%STR&JSSTR', "
+		"form:'%STR&JSSTR', "
+		"text:'%STR&JSSTR', "
+		"style:'', "
+		"tooltip:'%STR&JSSTR', "
+		"link:%POS, "
+		"pfg:'%STR&JSSTR', "
+	    "});\n",
+	    name,
+	    fieldname, form, text,
+	    tooltip, is_link, pfgcolor
+	);
 
 	/** Script include to get functions **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_label.js", 0);
