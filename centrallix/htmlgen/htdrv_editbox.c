@@ -269,7 +269,12 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 
 	//htrAddBodyItem_va(s, "<table border='0' cellspacing='0' cellpadding='0' width='%POS'><tr><td align='left' valign='middle' height='%POS'><img name='l' src='/sys/images/eb_edg.gif'></td><td>&nbsp;</td><td align='right' valign='middle'><img name='r' src='/sys/images/eb_edg.gif'></td></tr></table>\n", w-2, h-2);
 	//htrAddBodyItem_va(s, "<DIV ID=\"eb%POScon1\"></DIV>\n",id);
-	htrAddBodyItem_va(s, "<img name=\"l\" src=\"/sys/images/eb_edg.gif\" style=\"vertical-align:10%%\" /><input id=\"eb%POScon1\" /><img name=\"r\" src=\"/sys/images/eb_edg.gif\" style=\"vertical-align:10%%\" />\n",id);
+	htrAddBodyItem_va(s,
+	    "<img name='l' src='/sys/images/eb_edg.gif' alt='' style='vertical-align:10%%'>"
+	    "<input id='eb%POScon1'>"
+	    "<img name='r' src='/sys/images/eb_edg.gif' alt='' style='vertical-align:10%%'>\n",
+	    id
+	);
 
 	/** Check for more sub-widgets **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
