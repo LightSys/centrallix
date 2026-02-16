@@ -125,7 +125,7 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_autolayout.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    al_init(wgtrGetNodeRef(ns,'%STR&SYM'), {});\n", name);
+	htrAddScriptInit_va(s, "\tal_init(wgtrGetNodeRef(ns, '%STR&SYM'), {});\n", name);
 
 	/** Start of container **/
 	htrAddBodyItemLayerStart(s, 0, "al%POSbase", id, NULL);

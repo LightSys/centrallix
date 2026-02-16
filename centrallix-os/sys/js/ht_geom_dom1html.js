@@ -42,7 +42,6 @@ Math.isBetween = (lowerBound, num, upperBound) =>
 /** Ensure clipping is disabled for a layer / HTML node. **/
 function disableClippingCSS(l)
     {
-    console.log(`Turning off clipping for ${l.clip.obj.id}.`);
     l.clip.noclip = true;
     updateClippingCSS(l);
     }

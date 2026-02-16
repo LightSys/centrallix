@@ -203,7 +203,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s,
-	    "eb_init({ "
+	    "\teb_init({ "
 		"layer:wgtrGetNodeRef(ns,'%STR&SYM'), "
 		"c1:document.getElementById('eb%POScon1'), "
 		"form:'%STR&JSSTR', "
@@ -214,15 +214,11 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 		"desc_fgcolor:'%STR&JSSTR', "
 		"empty_desc:'%STR&JSSTR', "
 	    "});\n",
-	    name,
-	    id,
-	    form,
-	    fieldname,
+	    name, id,
+	    form, fieldname,
 	    is_readonly,
-	    main_bg,
-	    tooltip,
-	    descfg,
-	    descr
+	    main_bg, tooltip,
+	    descfg, descr
 	);
 
 	/** HTML body <DIV> element for the base layer. **/

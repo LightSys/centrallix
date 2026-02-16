@@ -158,6 +158,7 @@ htcaRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_calendar.js", 0);
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 
+	/** Register events. **/
 	htrAddEventHandlerFunction(s, "document","MOUSEUP", "ca", "ca_mouseup");
 	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "ca", "ca_mousedown");
 	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "ca", "ca_mouseover");
@@ -165,11 +166,26 @@ htcaRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "ca", "ca_mousemove");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    ca_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"%STR&JSSTR\", \"%STR&JSSTR\", \"%STR&JSSTR\", \"%STR&JSSTR\", \"%STR&SYM\", \"%STR&SYM\", \"%STR&SYM\", \"%STR&SYM\", %INT, %INT, %INT);\n",
+	htrAddScriptInit_va(s,
+	    "\tca_init({"
+		"l:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"main_bg:'%STR&JSSTR', "
+		"cell_bg:'%STR&JSSTR', "
+		"textcolor:'%STR&JSSTR', "
+		"dispmode:'%STR&JSSTR', "
+		"eventdatefield:'%STR&SYM', "
+		"eventdescfield:'%STR&SYM', "
+		"eventnamefield:'%STR&SYM', "
+		"eventpriofield:'%STR&SYM', "
+		"minprio:%INT, "
+		"w:%INT, "
+		"h:%INT, "
+	    "});\n",
 	    name,
 	    main_bg, cell_bg, textcolor, dispmode,
 	    eventdatefield, eventdescfield, eventnamefield, eventpriofield,
-	    minpriority, w, h);
+	    minpriority, w, h
+	);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"ca%POSbase\"><BODY %STR text='%STR&HTE'>\n",id, main_bg, textcolor);

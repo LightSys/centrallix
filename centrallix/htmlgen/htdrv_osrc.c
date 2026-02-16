@@ -264,12 +264,30 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
 	id
     );
 
-   /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    osrc_init({loader:wgtrGetNodeRef(ns,\"%STR&SYM\"), readahead:%INT, scrollahead:%INT, replicasize:%INT, sql:\"%STR&JSSTR\", filter:\"%STR&JSSTR\", baseobj:\"%STR&JSSTR\", name:\"%STR&SYM\", autoquery:%INT, requestupdates:%INT, ind_act:%INT, use_having:%INT, qy_reveal_only:%INT, send_updates:%INT, key_objname:\"%STR&JSSTR\", refresh:%INT});\n",
-	 name,readahead,scrollahead,replicasize,sql,filter,
-	 baseobj?baseobj:"",name,aq,receive_updates, ind_activity,
-	 use_having, qy_reveal_only, send_updates, key_objname, refresh_interval);
-   //htrAddScriptCleanup_va(s,"    %s.layers.osrc%dloader.cleanup();\n", parentname, id);
+    /** Script initialization call. **/
+    htrAddScriptInit_va(s,
+	"\tosrc_init({ "
+	    "loader:wgtrGetNodeRef(ns, '%STR&SYM'), "
+	    "name:'%STR&SYM', "
+	    "readahead:%INT, "
+	    "scrollahead:%INT, "
+	    "replicasize:%INT, "
+	    "sql:'%STR&JSSTR', "
+	    "filter:'%STR&JSSTR', "
+	    "baseobj:'%STR&JSSTR', "
+	    "autoquery:%INT, "
+	    "requestupdates:%INT, "
+	    "ind_act:%INT, "
+	    "use_having:%INT, "
+	    "qy_reveal_only:%INT, "
+	    "send_updates:%INT, "
+	    "key_objname:'%STR&JSSTR', "
+	    "refresh:%INT, "
+	"});\n",
+	name, name, readahead, scrollahead, replicasize, sql, filter,
+	(baseobj) ? baseobj : "", aq, receive_updates, ind_activity,
+	use_having, qy_reveal_only, send_updates, key_objname, refresh_interval
+    );
 
    htrAddScriptInclude(s, "/sys/js/htdrv_osrc.js", 0);
    htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);

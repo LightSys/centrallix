@@ -164,8 +164,16 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","PASTE", "tx", "tx_paste");
 	    
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    tx_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", isReadonly:%INT, mode:%INT});\n",
-	    name, fieldname, form, is_readonly, mode);
+	htrAddScriptInit_va(s,
+	    "\ttx_init({ "
+	        "layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"fieldname:'%STR&JSSTR', "
+		"form:'%STR&JSSTR', "
+		"isReadonly:%INT, "
+		"mode:%INT, "
+	    "});\n",
+	    name, fieldname, form, is_readonly, mode
+	);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<div id=\"tx%POSbase\"><textarea style=\"width:100%%; height:100%%; border:none; outline:none; font-family:inherit;\">\n",id);

@@ -158,8 +158,10 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "ms", "ms_mousemove");
 
 	/** Script init **/
-	htrAddScriptInit_va(s, "    ms_init(wgtrGetNodeRef(ns,'%STR&SYM'), {});\n", 
-		name);
+	htrAddScriptInit_va(s,
+	    "\tms_init(wgtrGetNodeRef(ns, '%STR&SYM'), {});\n", 
+	    name
+	);
 
 	/** div for the main body of this widget **/
 	htrAddBodyItem_va(s,"<DIV ID=\"ms%POSmain\">\n",id);
@@ -207,8 +209,12 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 		mssError(1, "HTMS", "MultiScroll part '%s' of '%s' set to always_visible=true must have a height", ptr, name);
 		return -1;
 		}
-	    htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,'%STR&SYM').addPart(wgtrGetNodeRef('%STR&SYM','%STR&SYM'), {av:%INT, h:%INT, y:%INT});\n",
-		    name, wgtrGetNamespace(child), ptr, always_visible, ch, cy);
+	    htrAddScriptInit_va(s,
+		"\twgtrGetNodeRef(ns, '%STR&SYM')"
+		    ".addPart(wgtrGetNodeRef('%STR&SYM','%STR&SYM'), {av:%INT, h:%INT, y:%INT});\n",
+		name,
+		wgtrGetNamespace(child), ptr, always_visible, ch, cy
+	    );
 	    htrRenderSubwidgets(s, child, z+2);
 	    htrAddBodyItem(s, "</DIV>\n");
 	    }

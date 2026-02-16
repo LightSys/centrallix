@@ -195,8 +195,9 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Init component **/
+	const int has_gbuf = (gbuf != NULL && gbuf[0] != '\0');
 	htrAddScriptInit_va(s,
-	    "cmpd_init(wgtrGetNodeRef(ns, '%STR&SYM'), { "
+	    "\tcmpd_init(wgtrGetNodeRef(ns, '%STR&SYM'), { "
 		"vis:%POS, "
 		"gns:%['%STR&SYM'%]%[null%], "
 		"gname:'%STR&SYM', "
@@ -207,12 +208,12 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    "});\n", 
 	    name,
 	    is_visual,
-	    (gbuf[0] != '\0'), gbuf, (gbuf[0] == '\0'),
+	    (has_gbuf), gbuf, (!has_gbuf),
 	    gname,
-	    (expose_events_for[0] != '\0'), expose_events_for,
-	    (expose_actions_for[0] != '\0'), expose_actions_for,
-	    (expose_props_for[0] != '\0'), expose_props_for,
-	    (apply_hints_to[0] != '\0'), apply_hints_to
+	    (expose_events_for  != NULL && expose_events_for[0]  != '\0'), expose_events_for,
+	    (expose_actions_for != NULL && expose_actions_for[0] != '\0'), expose_actions_for,
+	    (expose_props_for   != NULL && expose_props_for[0]   != '\0'), expose_props_for,
+	    (apply_hints_to     != NULL && apply_hints_to[0]     != '\0'), apply_hints_to
 	);
 
 #if 0
@@ -334,7 +335,13 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	    }
 
-	/** Add actions, events, and client properties **/
+	/** Write the declNAME variable. **/
+	htrAddScriptInit_va(s, "\n\t// Start of %STR component.\n"
+	    "\tconst decl%POS = wgtrGetNodeRef(ns, '%STR&SYM');\n",
+	    name, id, name
+	);
+
+	/** Render sub-widgets. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
 	    sub_tree = xaGetItem(&(tree->Children), i);
@@ -349,42 +356,23 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 		goto htcmpd_cleanup;
 		}
 
-	    /** Get type **/
+	    /** Handle sub-widgets based ont he outer type. **/
 	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr));
-	    if (!strcmp(ptr,"widget/component-decl-action"))
-		{
-		htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").addAction('%STR&SYM');\n", name, subobj_name);
-		sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
-		}
-	    else if (!strcmp(ptr,"widget/component-decl-event"))
-		{
-		htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").addEvent('%STR&SYM');\n", name, subobj_name);
-		sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
-		}
-	    else if (!strcmp(ptr,"widget/component-decl-cprop"))
-		{
-		htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").addProp('%STR&SYM');\n", name, subobj_name);
-		sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
-		}
-
-	    sub_tree = NULL;
-	    }
-
-	/** Do subwidgets **/
-	/*htrRenderSubwidgets(s, tree, z+2);*/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    {
-	    sub_tree = xaGetItem(&(tree->Children), i);
-	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr));
-	    if (strcmp(ptr,"widget/component-decl-action") && 
-		    strcmp(ptr,"widget/component-decl-event") &&
-		    strcmp(ptr,"widget/component-decl-cprop"))
-		{
+	    if (strncmp(ptr, "widget/component-decl-", 22) != 0)
+	        {
+		/** Widget is not a component-decl-TYPE, render normally. **/
 		htrRenderWidget(s, sub_tree, z+2);
+		continue;
 		}
-	    else if (strcmp(ptr,"widget/component-decl-action") == 0)
+	    char* decl_type = ptr + 22;
+
+	    /** Pick the function to call to handle this. **/
+	    char* fn_name;
+	    if (strcmp(decl_type, "event") == 0) fn_name = "addEvent";
+	    else if (strcmp(decl_type, "cprop") == 0) fn_name = "addProp";
+	    else if (strcmp(decl_type, "action") == 0)
 		{
-		/** allow connectors inside component-decl-action **/
+		fn_name = "addAction";
 		for (j=0;j<xaCount(&(sub_tree->Children));j++)
 		    {
 		    conn_tree = xaGetItem(&(sub_tree->Children), j);
@@ -395,11 +383,15 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 			}
 		    }
 		}
-	    sub_tree = NULL;
+	    else continue;
+
+	    /** Write the requested function call. **/
+	    htrAddScriptInit_va(s, "\tdecl%POS.%STR('%STR&SYM');\n", id, fn_name, subobj_name);
+	    sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
 	    }
 
-	/** End init for component **/
-	htrAddScriptInit_va(s, "    cmpd_endinit(wgtrGetNodeRef(ns,\"%STR&SYM\"));\n", name);
+	/** Write the end initialization call. **/
+	htrAddScriptInit_va(s, "\tcmpd_endinit(decl%POS);\n", id);
 
     htcmpd_cleanup:
 //	if (subobj) objClose(subobj);

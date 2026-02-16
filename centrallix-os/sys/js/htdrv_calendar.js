@@ -359,7 +359,20 @@ function ca_mousemove(e)
     }
 
 // Widget initialization.
-function ca_init(l,main_bg,cell_bg,textcolor,dispmode,eventdatefield,eventdescfield,eventnamefield,eventpriofield,minprio,w,h)
+function ca_init({
+    l,
+    main_bg,
+    cell_bg,
+    textcolor,
+    dispmode,
+    eventdatefield,
+    eventdescfield,
+    eventnamefield,
+    eventpriofield,
+    minprio,
+    w,
+    h
+})
     {
     l.kind = 'ca';
     if (cx__capabilities.Dom0NS) 

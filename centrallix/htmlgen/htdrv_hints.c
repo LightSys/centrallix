@@ -74,8 +74,10 @@ hthintRender(pHtSession s, pWgtrNode tree, int z)
 	/** Serialize the hints data and add the script init for it **/
 	xsInit(&xs);
 	hntEncodeHints(hints, &xs);
-	htrAddScriptInit_va(s, "    cx_set_hints(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")), '%STR&JSSTR', 'app');\n",
-		wgtrGetName(tree), xs.String);
+	htrAddScriptInit_va(s,
+	    "\tcx_set_hints(wgtrGetParent(wgtrGetNodeRef(ns, '%STR&SYM')), '%STR&JSSTR', 'app');\n",
+	    wgtrGetName(tree), xs.String
+	);
 	xsDeInit(&xs);
 
 	/** mark this node as not being associated with a DHTML object **/

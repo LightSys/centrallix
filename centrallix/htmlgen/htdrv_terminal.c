@@ -163,9 +163,20 @@ httermRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddStylesheetItem_va(s, "\t\t#term%POSwriter { position:absolute; visibility:hidden; left:0px; top:0px; width:1px; height:1; z-index:-20; }\n", id);
 	htrAddStylesheetItem_va(s, "\t\t.fixed%POS {font-family: fixed; }\n",id);
 
-	/** init line **/
-	htrAddScriptInit_va(s,"    terminal_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), rdr:\"term%POSreader\", wtr:\"term%POSwriter\", fxd:\"fixed%POS\", source:'%STR&JSSTR', rows:%INT, cols:%INT, colors:new Array(",
-		name,id,id,id,source.String,rows,cols);
+	/** Write script initialization. **/
+	htrAddScriptInit_va(s,
+	    "\tterminal_init({ "
+		"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"rdr:'term%POSreader', "
+		"wtr:'term%POSwriter', "
+		"fxd:'fixed%POS', "
+		"source:'%STR&JSSTR', "
+		"rows:%INT, "
+		"cols:%INT, "
+		"colors:new Array(",
+	    name, id, id, id,
+	    source.String, rows, cols
+	);
 	for(i=0;i<MAX_COLORS;i++)
 	    {
 	    if(i!=0)

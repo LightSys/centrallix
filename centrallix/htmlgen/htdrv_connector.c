@@ -189,52 +189,25 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	    }
 
-	/** Add a script init to install the connector **/
-#if 00
-	if (*rpt_context && *source)
-	    {
-	    /** Try repeat-specific node first, then normally named node **/
-	    htrAddScriptInit_va(s, "    var src=nodes[\"%STR&SYM_%STR&SYM\"];\n",
-		    rpt_context,
-		    source);
-	    htrAddScriptInit_va(s, "    if(!src) src=nodes[\"%STR&SYM\"];\n",
-		    source);
-	    }
-	else
-	    {
-	    htrAddScriptInit_va(s, "    var src=%[wgtrGetParent(nodes[\"%STR&SYM\"])%]%[nodes[\"%STR&SYM\"]%];\n",
-#endif
-	    /*htrAddScriptInit_va(s, "    var src=%[wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\"))%]%[wgtrGetNodeRef(ns, \"%STR&SYM\")%];\n",
-		    !*source, name, 
-		    *source, source);*/
-#if 00
-	    }
-	if (*rpt_context && *target)
-	    {
-	    htrAddScriptInit_va(s, "    var tgt=\"%STR&SYM_%STR&SYM\";\n",
-		    rpt_context,
-		    target);
-	    htrAddScriptInit_va(s, "    if(!nodes[tgt]) tgt='%STR&SYM';\n",
-		    target);
-	    }
-	else
-	    {
-#endif
-	    /*htrAddScriptInit_va(s, "    var tgt=%['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")))%];\n",
-		    *target, target, 
-		    !*target, name);*/
-#if 00
-	    }
-#endif
-	//htrAddScriptInit_va(s, "    src.ifcProbe(ifEvent).Connect('%STR&SYM', tgt, '%STR&SYM', {%STR});\n",
-	htrAddScriptInit_va(s, "    %[wgtrGetParent(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")))%]%[wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\"))%]%[wgtrGetNodeRef(ns, \"%STR&SYM\")%].ifcProbe(ifEvent).Connect('%STR&SYM', %['%STR&SYM'%]%[wgtrGetName(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")))%], '%STR&SYM', {%STR}, ns);\n",
-		inside_action, name,
-		!*source && !inside_action, name,
-		*source && !inside_action, source,
-		event, 
-		*target, target, !*target, name,
-		action,
-		xs.String);
+	/** Determine the target in a new scope. **/
+	const int no_source = (source == NULL || source[0] == '\0');
+	htrAddScriptInit_va(s, "\t{ "
+	    "let target = wgtrGetNodeRef(ns, '%STR&SYM'); "
+	    "%[target = wgtrGetParent(target); %]"
+	    "%[target = wgtrGetParent(target); %]",
+	    (no_source) ? name : source,
+	    (no_source),
+	    (inside_action) // only true when no_source is true.
+	);
+	
+	/** Call the functions on the target, and close the scope. **/
+	const int no_target = (target == NULL || target[0] == '\0');
+	htrAddScriptInit_va(s, "target"
+	    ".ifcProbe(ifEvent)"
+	    ".Connect('%STR&SYM', '%STR&SYM', '%STR&SYM', {%STR}, ns); "
+	    "}\n",
+	    event, (no_target) ? tree->Parent->Name : target, action, xs.String
+	);
 	xsDeInit(&xs);
 
 	htrAddScriptInclude(s, "/sys/js/htdrv_connector.js", 0);
