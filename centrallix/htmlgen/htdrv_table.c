@@ -214,10 +214,10 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 	
 	/** Begin writing the js initialization call. **/
-	htrAddScriptInit_va(s, "tbld_init({");
+	htrAddScriptInit_va(s, "\ttbld_init({");
 	
 	/** Write identification data. **/
-	const int has_osrc = (*(t->osrc) != '\0');
+	const int has_osrc = (t->osrc != NULL && t->osrc[0] != '\0');
 	htrAddScriptInit_va(s,
 	    "name:'%STR&SYM', "
 	    "table:wgtrGetNodeRef(ns, '%STR&SYM'), "
@@ -227,7 +227,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    "), "
 	    "osrc:%['%STR&SYM'%]%[null%], ",
 	    t->name, t->name, t->name, t->id,
-	    has_osrc, t->osrc, !has_osrc
+	    (has_osrc), t->osrc, (!has_osrc)
 	);
 	
 	/** Write layout data. **/

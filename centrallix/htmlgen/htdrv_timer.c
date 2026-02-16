@@ -91,7 +91,15 @@ httmRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/htdrv_timer.js", 0);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    tm_init({node:wgtrGetNodeRef(ns,\"%STR&SYM\"), time:%INT, autoreset:%INT, autostart:%INT});\n", name, msec, auto_reset, auto_start);
+	htrAddScriptInit_va(s,
+	    "\ttm_init({ "
+		"node:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"time:%INT, "
+		"autoreset:%INT, "
+		"autostart:%INT, "
+	    "});\n",
+	    name, msec, auto_reset, auto_start
+	);
 
 	/** Check for objects within the timer. **/
 	htrRenderSubwidgets(s, tree, z+2);

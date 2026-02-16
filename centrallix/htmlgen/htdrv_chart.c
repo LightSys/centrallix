@@ -205,13 +205,22 @@ htchtAddSeriesProperties(pHtSession session, pWgtrNode tree)
             htchtGetStrValue(sub_tree, "y_column", "", y_column, sizeof(y_column));
             htchtGetStrValue(sub_tree, "chart_type", "", chart_type, sizeof(chart_type));
 
-            htrAddScriptInit_va(session, "    chartobj.series.push({ label: \"%STR&JSSTR\", color: \"%STR&JSSTR\", fill: %INT, x_column: \"%STR&JSSTR\", y_column: \"%STR&JSSTR\", chart_type: \"%STR&JSSTR\" });\n",
-                                   label,
-                                   color,
-                                   htrGetBoolean(tree, "fill", 1),
-                                   x_column,
-                                   y_column,
-                                   chart_type);
+	    htrAddScriptInit_va(session,
+		"\t\tchart_obj.series.push({ "
+		    "label:'%STR&JSSTR', "
+		    "color:'%STR&JSSTR', "
+		    "fill:%INT, "
+		    "x_column:'%STR&JSSTR', "
+		    "y_column:'%STR&JSSTR', "
+		    "chart_type:'%STR&JSSTR' "
+		"});\n",
+		label,
+		color,
+		htrGetBoolean(tree, "fill", 1),
+		x_column,
+		y_column,
+		chart_type
+	    );
 
             htrCheckNSTransitionReturn(session, tree, sub_tree);
             }
@@ -241,7 +250,13 @@ htchtAddAxesProperties(pHtSession session, pWgtrNode tree)
 	    htchtGetStrValue(sub_tree, "label", "", label, sizeof(label));
 	    htchtGetStrValue(sub_tree, "axis", "x", axis, sizeof(axis));
 
-	    htrAddScriptInit_va(session, "    chartobj.axes.push({ label: \"%STR&JSSTR\", axis: \"%STR&JSSTR\", });\n", label, axis);
+	    htrAddScriptInit_va(session,
+		"\t\tchart_obj.axes.push({ "
+		    "label:'%STR&JSSTR', "
+		    "axis:'%STR&JSSTR', "
+		"});\n",
+		label, axis
+	    );
 
 	    htrCheckNSTransitionReturn(session, tree, sub_tree);
             }
@@ -261,6 +276,7 @@ htchtInitCall(pHtSession session, pWgtrNode tree)
     char title_color[32];
     char legend_position[32];
 
+	/** Get data used for the initialization call. **/
         htchtGetObjectSource(tree, object_source, sizeof(object_source));
         htchtGetName(tree, name, sizeof(name));
         htchtGetTitle(tree, title, sizeof(title));
@@ -269,43 +285,48 @@ htchtInitCall(pHtSession session, pWgtrNode tree)
         htchtGetTitleColor(tree, title_color, sizeof(title_color));
         htchtGetLegendPosition(tree, legend_position, sizeof(legend_position));
 
-        htrAddScriptInit_va(session, "    var chartobj = {"
-                    "x_pos: %INT, "
-                    "y_pos: %INT, "
-                    "width: %INT, "
-                    "height: %INT, "
-                    "title_size: %INT, "
-                    "start_at_zero: %INT,"
-                    "stacked: %INT,"
-                    "chart: wgtrGetNodeRef(ns,\"%STR&SYM\"), "
-                    "chart_type: '%STR&JSSTR', "
-                    "canvas_id: '%STR&SYM', "
-                    "osrc: '%STR&JSSTR', "
-                    "title: '%STR&JSSTR', "
-                    "title_color: '%STR&JSSTR', "
-                    "legend_position: '%STR&JSSTR', "
-		    "axes: [], "
-		    "series: [], "
-		    "};\n",
-                    htchtGetX(tree),
-                    htchtGetY(tree),
-                    htchtGetWidth(tree),
-                    htchtGetHeight(tree),
-                    htchtGetIntValue(tree, "title_size", 12),
-                    htrGetBoolean(tree, "start_at_zero", 1),
-                    htrGetBoolean(tree, "stacked", 0),
-                    name,
-                    chart_type,
-                    canvas_id,
-                    object_source,
-                    title,
-                    title_color,
-                    legend_position
-        );
+	/** Write a JS object for the script initialization in a new scope. **/
+	htrAddScriptInit_va(session, "\t\t{\n"
+	    "\t\tconst chart_obj = { "
+		"x_pos: %INT, "
+		"y_pos: %INT, "
+		"width: %INT, "
+		"height: %INT, "
+		"title_size: %INT, "
+		"start_at_zero: %INT,"
+		"stacked: %INT,"
+		"chart: wgtrGetNodeRef(ns,\"%STR&SYM\"), "
+		"chart_type: '%STR&JSSTR', "
+		"canvas_id: '%STR&SYM', "
+		"osrc: '%STR&JSSTR', "
+		"title: '%STR&JSSTR', "
+		"title_color: '%STR&JSSTR', "
+		"legend_position: '%STR&JSSTR', "
+		"axes: [], "
+		"series: [], "
+	    "};\n",
+	    htchtGetX(tree),
+	    htchtGetY(tree),
+	    htchtGetWidth(tree),
+	    htchtGetHeight(tree),
+	    htchtGetIntValue(tree, "title_size", 12),
+	    htrGetBoolean(tree, "start_at_zero", 1),
+	    htrGetBoolean(tree, "stacked", 0),
+	    name,
+	    chart_type,
+	    canvas_id,
+	    object_source,
+	    title,
+	    title_color,
+	    legend_position
+	);
 
+	/** Write code to add values to the initialization object. **/
         htchtAddAxesProperties(session, tree);
         htchtAddSeriesProperties(session, tree);
-	htrAddScriptInit_va(session, "    cht_init(chartobj);\n");
+	
+	/** Write the initialization call, using the object, and close the scope. **/
+	htrAddScriptInit(session, "\t\tcht_init(chart_obj);\n\t\t}\n");
 
     return 0;
     }

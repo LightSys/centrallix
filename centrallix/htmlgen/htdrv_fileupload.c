@@ -91,7 +91,16 @@ htfuRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
 	htrAddScriptInclude(s, "/sys/js/htdrv_fileupload.js", 0);
 	
-	htrAddScriptInit_va(s, "    fu_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), pane:document.getElementById(\"fu%POSform\"), input:document.getElementById(\"fu%POSinput\"), iframe:document.getElementById(\"fu%POSiframe\"), target:\"%STR&JSSTR\"});\n", name, id, id, id, target);
+	htrAddScriptInit_va(s,
+	    "\tfu_init({ "
+		"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"pane:document.getElementById('fu%POSform'), "
+		"input:document.getElementById('fu%POSinput'), "
+		"iframe:document.getElementById('fu%POSiframe'), "
+		"target:'%STR&JSSTR', "
+	    "});\n",
+	    name, id, id, id, target
+	);
 	
 	/** style header items **/
 	htrAddStylesheetItem_va(s,

@@ -231,20 +231,43 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	 **   the name of this instance was defined to be global up above
 	 **   and fm_current is defined in htdrv_page.c 
 	 **/
-	htrAddScriptInit_va(s,"    form_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {aq:%INT, an:%INT, am:%INT, av:%INT, and:%INT, ad:%INT, cd:%INT, cdis:%INT, amrg:%INT, me:%INT, name:'%STR&SYM', _3b:%[wgtrGetNodeRef(ns,\"%STR&SYM\")%]%[null%], ro:%INT, ao:%INT, af:%INT, osrc:%['%STR&SYM'%]%[null%], tro:%INT, em:%INT, nf:%['%STR&SYM'%]%[null%], nfw:%['%STR&SYM'%]%[null%], pf:%['%STR&SYM'%]%[null%], pfw:%['%STR&SYM'%]%[null%], il:'%STR&JSSTR'});\n",
-		name,allowquery,allownew,allowmodify,allowview,allownodata,allowdelete,confirmdelete, confirmdiscard, allowmerge,
-		multienter,name,
-		strcmp(_3bconfirmwindow,"null") != 0, _3bconfirmwindow, strcmp(_3bconfirmwindow,"null") == 0,
-		readonly,allowobscure,autofocus,
-		*osrc != '\0', osrc, *osrc == '\0',
-		tro, enter_mode,
-		*link_next != '\0', link_next, *link_next == '\0',
-		*link_next_within != '\0', link_next_within, *link_next_within == '\0',
-		*link_prev != '\0', link_prev, *link_prev == '\0',
-		*link_prev_within != '\0', link_prev_within, *link_prev_within == '\0',
-		interlock_with
-		);
-	htrAddScriptInit_va(s,"    wgtrGetNodeRef(ns,\"%STR&SYM\").ChangeMode('NoData');\n",name);
+	const int null_confirm_window = (strcmp(_3bconfirmwindow, "null") == 0);
+	const int no_osrc = (osrc == NULL || osrc[0] == '\0');
+	const int no_link_next = (link_next == NULL || link_next[0] == '\0');
+	const int no_link_next_within = (link_next_within == NULL || link_next_within[0] == '\0');
+	const int no_link_prev = (link_prev == NULL || link_prev[0] == '\0');
+	const int no_link_prev_within = (link_prev_within == NULL || link_prev_within[0] == '\0');
+	htrAddScriptInit_va(s,
+	    "\t{ "
+		"const node = wgtrGetNodeRef(ns, '%STR&SYM'); "
+		"form_init(node, { "
+		    "aq:%INT, an:%INT, am:%INT, av:%INT, and:%INT, ad:%INT, "
+		    "cd:%INT, cdis:%INT, amrg:%INT, me:%INT, name:'%STR&SYM', "
+		    "_3b:%[wgtrGetNodeRef(ns, '%STR&SYM')%]%[null%], "
+		    "ro:%INT, ao:%INT, af:%INT, "
+		    "osrc:%['%STR&SYM'%]%[null%], "
+		    "tro:%INT, em:%INT, "
+		    "nf:%['%STR&SYM'%]%[null%], "
+		    "nfw:%['%STR&SYM'%]%[null%], "
+		    "pf:%['%STR&SYM'%]%[null%], "
+		    "pfw:%['%STR&SYM'%]%[null%], "
+		    "il:'%STR&JSSTR', "
+		"});"
+		"node.ChangeMode('NoData');"
+	    "}\n",
+	    name,
+	    allowquery, allownew, allowmodify, allowview, allownodata, allowdelete,
+	    confirmdelete, confirmdiscard, allowmerge, multienter, name,
+	    (!null_confirm_window), _3bconfirmwindow, (null_confirm_window),
+	    readonly, allowobscure, autofocus,
+	    (!no_osrc), osrc, (no_osrc),
+	    tro, enter_mode,
+	    (!no_link_next), link_next, (no_link_next),
+	    (!no_link_next_within), link_next_within, (no_link_next_within),
+	    (!no_link_prev), link_prev, (no_link_prev),
+	    (!no_link_prev_within), link_prev_within, (no_link_prev_within),
+	    interlock_with
+	);
 
 	/** Check for and render all subobjects. **/
 	/** non-visual, don't consume a z level **/

@@ -197,9 +197,9 @@ htr_internal_ProcessUserAgent(const pStructInf node, const pHtCapabilities paren
 void
 htr_internal_writeCxCapabilities(pHtSession s)
     {
-    htrWrite(s,"    cx__capabilities = {};\n",27);
+    htrWrite(s,"\tcx__capabilities = {};\n",24);
 #define PROCESS_CAP_OUT(attr) \
-    htrWrite(s,"    cx__capabilities.",21); \
+    htrWrite(s,"\tcx__capabilities.",18); \
     htrWrite(s, # attr ,strlen( # attr )); \
     htrWrite(s," = ",3); \
     htrWrite(s,(s->Capabilities.attr?"1;\n":"0;\n"),3);
@@ -793,6 +793,10 @@ htrAddScriptInit_va(pHtSession s, char* fmt, ... )
     {
     va_list va;
 
+	/*** TODO: Greg - Can we remove this code? It seems like this is the
+	 *** concern of htrRender(), and if it's not, should we remove the
+	 *** line from htrRender() that does this?
+	 ***/
 	if (!s->Namespace->HasScriptInits)
 	    {
 	    /** No script inits for this namespace yet?  Issue the context
@@ -800,7 +804,7 @@ htrAddScriptInit_va(pHtSession s, char* fmt, ... )
 	     **/
 	    s->Namespace->HasScriptInits = 1;
 	    /*htrAddScriptInit_va(s, "\n    nodes = wgtrNodeList(%STR&SYM);\n", s->Namespace->DName);*/
-	    htrAddScriptInit_va(s, "\n    ns = \"%STR&SYM\";\n", s->Namespace->DName);
+	    htrAddScriptInit_va(s, "\tns = \"%STR&SYM\";\n", s->Namespace->DName);
 	    }
 
 	va_start(va, fmt);
@@ -1365,7 +1369,7 @@ htr_internal_GenInclude(pHtSession s, char* filename)
 	    }
 	strtcpy(path, filename, sizeof(path));
 	slash = strrchr(path, '/');
-	if (slash)
+	if (slash != NULL)
 	    {
 	    *slash = '\0';
 	    htrQPrintf(s, "\t<script src='%STR%[/CXDC:%STR%]/%STR'></script>\n", path, buf[0], buf, slash+1);
@@ -1805,12 +1809,8 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	s->DisableBody = 0;
 
 	/** first thing in the startup() function should be calling build_wgtr **/
-	htrAddScriptInit_va(s, "    build_wgtr_%STR&SYM();\n",
-		s->Namespace->DName);
-	/*htrAddScriptInit_va(s, "\n    var nodes = wgtrNodeList(%STR&SYM);\n",*/
-	htrAddScriptInit_va(s, "\n    var ns = \"%STR&SYM\";\n",
-			       /*"    var rootname = \"%STR&SYM\";\n", */
-		s->Namespace->DName /*, s->Namespace->DName */);
+	htrAddScriptInit_va(s, "\tvar ns = '%STR&SYM';\n", s->Namespace->DName);
+	htrAddScriptInit_va(s, "\tbuild_wgtr_%STR&SYM();\n", s->Namespace->DName);
 
 	/** Render the top-level widget -- the function that's run
 	  * underneath will be dependent upon what the widget
@@ -1852,7 +1852,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	/** Output the DOCTYPE for browsers supporting HTML 4.0 -- this will make them use HTML 4.0 Strict **/
 	/** FIXME: should probably specify the DTD.... **/
 	if(s->Capabilities.HTML40 && !s->Capabilities.Dom0IE)
-	    htrWrite(s, "<!doctype html>\n\n", -1);
+	    htrWrite(s, "<!doctype html>\n\n", 17);
 
 	/** Write the HTML out... **/
 	htrQPrintf(s,	"<!--\n"
@@ -1895,15 +1895,22 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	for(i=0;i<s->Page.Globals.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Globals.Items[i]);
-	    if (sv->Value[0])
-		qpfPrintf(NULL, sbuf,HT_SBUF_SIZE,"if (typeof %STR&SYM == 'undefined') var %STR&SYM = %STR;\n", sv->Name, sv->Name, sv->Value);
+	    if (sv->Value[0] != '\0')
+		{
+		qpfPrintf(NULL, sbuf, HT_SBUF_SIZE,
+		    "\t\tif (typeof %STR&SYM == 'undefined') var %STR&SYM = %STR;\n",
+		    sv->Name, sv->Name, sv->Value
+		);
+		}
 	    else
-		qpfPrintf(NULL, sbuf,HT_SBUF_SIZE,"var %STR&SYM;\n", sv->Name);
+		{
+		qpfPrintf(NULL, sbuf, HT_SBUF_SIZE, "\t\tvar %STR&SYM;\n", sv->Name);
+		}
 	    htrWrite(s, sbuf, -1);
 	    }
 
 	/** Write the includes **/
-	htrWrite(s, "\n</script>\n\n", -1);
+	htrWrite(s, "\t</script>\n\n", 12);
 
 	/** include ht_render.js **/
 	htr_internal_GenInclude(s, "/sys/js/ht_render.js");
@@ -1941,10 +1948,15 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    }
 
 
-	/** Write the event capture lines **/
-	htrQPrintf(s,"\nfunction events_%STR()\n    {\n",s->Namespace->DName);
+	/** Start writing the event registration function. **/
+	htrQPrintf(s," \nfunction events_%STR()\n\t{\n", s->Namespace->DName);
+
+	/** Write the event captures. **/
 	cnt = xaCount(&s->Page.EventHandlers);
-	strcpy(sbuf,"    if(window.Event)\n        htr_captureevents(");
+	strcpy(sbuf,
+	    "\tif (window.Event)\n"
+		"\t\t{\n"
+		"\t\thtr_captureevents(");
 	for(i=0;i<cnt;i++)
 	    {
 	    e = (pHtDomEvent)xaGetItem(&s->Page.EventHandlers,i);
@@ -1952,8 +1964,10 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    strcat(sbuf,"Event.");
 	    strcat(sbuf,e->DomEvent);
 	    }
-	strcat(sbuf,");\n");
+	strcat(sbuf,");\n\t\t}\n");
 	htrWrite(s, sbuf, -1);
+
+	/** Write event handlers and listeners. **/
 	for(i=0;i<cnt;i++)
 	    {
 	    e = (pHtDomEvent)xaGetItem(&s->Page.EventHandlers,i);
@@ -1964,18 +1978,29 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    cnt2 = xaCount(&e->Handlers);
 	    for(j=0;j<cnt2;j++)
 		{
-		htrQPrintf(s, "    htr_addeventhandler(%STR&DQUOT,%STR&DQUOT);\n",
-			ename, xaGetItem(&e->Handlers, j));
+		htrQPrintf(s,
+		    "\thtr_addeventhandler(%STR&DQUOT,%STR&DQUOT);\n",
+		    ename, xaGetItem(&e->Handlers, j)
+		);
 		}
-	    if (!strcmp(ename,"mousemove"))
-		htrQPrintf(s, "    htr_addeventlistener(%STR&DQUOT, document, htr_mousemovehandler);\n",
-			ename);
+	    if (strcmp(ename, "mousemove") == 0)
+		{
+		htrQPrintf(s,
+		    "\thtr_addeventlistener(%STR&DQUOT, document, htr_mousemovehandler);\n",
+		    ename
+		);
+		}
 	    else
-		htrQPrintf(s, "    htr_addeventlistener(%STR&DQUOT, document, htr_eventhandler);\n",
-			ename);
+		{
+		htrQPrintf(s,
+		    "\thtr_addeventlistener(%STR&DQUOT, document, htr_eventhandler);\n",
+		    ename
+		);
+		}
 	    }
 
-	htrWrite(s,"    }\n",-1);
+	/** Finish writing the event registration function. **/
+	htrWrite(s, "\t}\n", 3);
 
 	/** Write the expression initializations **/
 	htrQPrintf(s,"\nfunction expinit_%STR()\n    {\n",s->Namespace->DName);
@@ -1999,8 +2024,9 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	htrWrite(s, "    }\n", -1);
 
 	/** Write the initialization lines **/
-	htrQPrintf(s,"\nfunction startup_%STR()\n    {\n", s->Namespace->DName);
+	htrQPrintf(s, "\nfunction startup_%STR()\n\t{\n", s->Namespace->DName);
 	htr_internal_writeCxCapabilities(s); //TODO: (by Seth) this really only needs to happen during first-load.
+	htrWrite(s, "\n", 1);
 
 	for(i=0;i<s->Page.Inits.nItems;i++)
 	    {
@@ -2008,9 +2034,9 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    n = *(int*)ptr;
 	    htrWrite(s, ptr+8, n);
 	    }
-	htrQPrintf(s,"    events_%STR();\n", s->Namespace->DName);
-	htrQPrintf(s,"    expinit_%STR();\n", s->Namespace->DName);
-	htrWrite(s,"    }\n",-1);
+	htrQPrintf(s, "\tevents_%STR();\n", s->Namespace->DName);
+	htrQPrintf(s, "\texpinit_%STR();\n", s->Namespace->DName);
+	htrWrite(s, "\t}\n", -1);
 
 	/** Write the cleanup lines **/
 	htrWrite(s,"\nfunction cleanup()\n    {\n",-1);

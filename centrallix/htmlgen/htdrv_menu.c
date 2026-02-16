@@ -121,9 +121,19 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	    }
 
 	if (is_submenu) 
-	    htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").AddItem({%STR});\n", nptr, xs->String);
+	    {
+	    htrAddScriptInit_va(s,
+		"\twgtrGetNodeRef(ns, '%STR&SYM').AddItem({ %STR });\n",
+		nptr, xs->String
+	    );
+	    }
 	else
-	    htrAddScriptInit_va(s, "    wgtrReplaceNode(wgtrGetNodeRef(\"%STR&SYM\",\"%STR&SYM\"), wgtrGetNodeRef(ns,\"%STR&SYM\").AddItem({%STR}));\n", wgtrGetNamespace(menu_item), name, nptr, xs->String);
+	    {
+	    htrAddScriptInit_va(s,
+		"\twgtrReplaceNode(wgtrGetNodeRef('%STR&SYM', '%STR&SYM'), wgtrGetNodeRef(ns, '%STR&SYM').AddItem({ %STR }));\n",
+		wgtrGetNamespace(menu_item), name, nptr, xs->String
+	    );
+	    }
 
     return 0;
     }
@@ -147,7 +157,7 @@ htmenu_internal_AddSep(pHtSession s, int is_horizontal, int row_h, int mcnt, cha
 	    {
 	    htrAddBodyItem(s, "<td colspan=\"4\" height=\"4\" background=\"/sys/images/menu_sep.gif\"><img src=\"/sys/images/trans_1.gif\" height=\"4\" width=\"1\"></td></tr>");
 	    }
-	htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").AddItem({sep:true});\n", nptr);
+	htrAddScriptInit_va(s, "\twgtrGetNodeRef(ns, '%STR&SYM').AddItem({ sep:true });\n", nptr);
 
     return 0;
     }
@@ -167,7 +177,7 @@ htmenu_internal_AddTitle(pHtSession s, pWgtrNode menu_title, int is_horizontal, 
 	    ptr = "";
 
 	htrAddBodyItem_va(s, "<td colspan=\"4\" align=\"center\"><b>%STR&HTE</b></td></tr>", ptr);
-	htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").AddItem({sep:true});\n", nptr);
+	htrAddScriptInit_va(s, "\twgtrGetNodeRef(ns, '%STR&SYM').AddItem({ sep:true });\n", nptr);
 
     return 0;
     }
@@ -398,12 +408,14 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
 	htrAddScriptInclude(s, "/sys/js/htdrv_menu.js", 0);
 
-	/** Initialization **/
-	htrAddScriptInit_va(s,
+	/** Write script initialization. **/
+	htrAddScriptInit_va(s, "\t{ "
+	    "const layer = wgtrGetNodeRef(ns, '%STR&SYM'); "
 	    "mn_init({ "
-	        "layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
-		"clayer:wgtrGetContainer(wgtrGetNodeRef(ns,'%STR&SYM')), "
-		"hlayer:htr_subel(wgtrGetNodeRef(ns,'%STR&SYM'), 'mn%POShigh'), "
+	        "layer, "
+		"clayer:wgtrGetContainer(layer), "
+		"hlayer:htr_subel(layer, 'mn%POShigh'), "
+		"name:'%STR&SYM', "
 		"bgnd:'%STR&JSSTR', "
 		"high:'%STR&JSSTR', "
 		"actv:'%STR&JSSTR', "
@@ -412,20 +424,11 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		"h:%INT, "
 		"horiz:%INT, "
 		"pop:%INT, "
-		"name:'%STR&SYM', "
-	    "});\n", 
-	    name,
-	    name,
-	    name, id, 
-	    bgstr,
-	    highlight,
-	    active,
-	    textcolor, 
-	    w,
-	    h,
-	    is_horizontal,
-	    is_popup,
-	    name
+	    "}); }\n", 
+	    name, id, name, 
+	    bgstr, highlight, active, textcolor, 
+	    w, h,
+	    is_horizontal, is_popup
 	);
 
 	/** Event handlers **/
