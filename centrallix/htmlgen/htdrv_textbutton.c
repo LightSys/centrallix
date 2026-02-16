@@ -313,12 +313,13 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	);
 
 	/** Script initialization call. **/
-	//htrAddScriptInit_va(s, "    tb_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), span:document.getElementById(\"tb%POSspan\"), ena:%INT, c1:\"%STR&JSSTR\", c2:\"%STR&JSSTR\", dc1:\"%STR&JSSTR\", top:null, bottom:null, right:null, left:null, width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&JSSTR'});\n",
-		//name, id, is_enabled, fgcolor1, fgcolor2, disable_color, w, h, is_ts, name, text);
 	htrAddScriptInit_va(s,
-	    "tb_init({ "
+	    "\ttb_init({ "
 		"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"name:'%STR&SYM', "
+		"text:'%STR&JSSTR', "
 		"ena:%INT, "
+		"tristate:%INT, "
 		"c1:'%STR&JSSTR', "
 		"c2:'%STR&JSSTR', "
 		"dc1:'%STR&JSSTR', "
@@ -328,20 +329,12 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 		"left:null, "
 		"width:%INT, "
 		"height:%INT, "
-		"tristate:%INT, "
-		"name:'%STR&SYM', "
-		"text:'%STR&JSSTR', "
 	    "});\n",
-	    name,
-	    is_enabled,
-	    fgcolor1,
-	    fgcolor2,
+	    name, name, text,
+	    is_enabled, is_ts,
+	    fgcolor1, fgcolor2,
 	    disable_color,
-	    w,
-	    h,
-	    is_ts,
-	    name,
-	    text
+	    w, h
 	);
 
 	/** Add event handlers. **/

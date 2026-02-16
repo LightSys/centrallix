@@ -216,8 +216,26 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrObjLinkage_va(s, tree, "tv%POSroot",id);
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    tv_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fname:\"%STR&JSSTR\", loader:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")),\"tv%POSload\"), width:%INT, newroot:null, branches:%INT, use3d:%INT, showrb:%INT, icon:\"%STR&JSSTR\", divclass:\"tv%POS\", sbg:\"%STR&JSSTR\", desc:%INT});\n",
-		name, src, name, id, w, show_branches, use_3d_lines, show_root_branch, icon, id, selected_bg, order_desc);
+	htrAddScriptInit_va(s, "\t{ "
+	    "const layer = wgtrGetNodeRef(ns, '%STR&SYM'); "
+	    "tv_init({ "
+		"layer, "
+		"loader:htr_subel(wgtrGetParentContainer(layer),'tv%POSload'), "
+		"divclass:'tv%POS', "
+		"fname:'%STR&JSSTR', "
+		"width:%INT, "
+		"newroot:null, "
+		"branches:%INT, "
+		"use3d:%INT, "
+		"showrb:%INT, "
+		"icon:'%STR&JSSTR', "
+		"sbg:'%STR&JSSTR', "
+		"desc:%INT, "
+	    "}); }\n",
+	    name, id, id, src, w,
+	    show_branches, use_3d_lines, show_root_branch,
+	    icon, selected_bg, order_desc
+	);
 
 	/** Script includes **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_treeview.js", 0);

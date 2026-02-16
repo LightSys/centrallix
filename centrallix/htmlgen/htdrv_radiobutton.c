@@ -135,7 +135,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
     /** Script initialization call. **/
     if (strlen(main_background) > 0)
 	{
-	htrAddScriptInit_va(s, "{ "
+	htrAddScriptInit_va(s, "\t{ "
 	    "const parentPane = wgtrGetNodeRef(ns, '%STR&SYM'); "
 	    "const borderPane = htr_subel(parentPane, 'rb%POSborder'); "
 	    "const coverPane = htr_subel(borderPane, 'rb%POScover'); "
@@ -158,7 +158,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
     else
 	{
 	htrAddScriptInit_va(s,
-	    "radiobuttonpanel_init({ "
+	    "\tradiobuttonpanel_init({ "
 		"parentPane:wgtrGetNodeRef(ns, '%STR&SYM'), "
 		"fieldname:'%STR&JSSTR', "
 		"borderPane:0, "
@@ -296,7 +296,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrObjLinkage_va(s, radio_button, "rb%POSoption%POS", id, i);
 	
 	/** Write the initialization call. **/
-	htrAddScriptInit_va(s, "{ "
+	htrAddScriptInit_va(s, "\t{ "
 	    "const rbitem = wgtrGetNodeRef('%STR&SYM', '%STR&SYM');"
 	    "add_radiobutton(rbitem, { "
 		"selected:%POS, "

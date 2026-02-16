@@ -162,10 +162,10 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	
 	/** Initialize image scripts. **/
 	htrAddScriptInit_va(s,
-	    "im_init("
-		"wgtrGetNodeRef(ns,'%STR&SYM'), "
-		"{field:'%STR&JSSTR', form:'%STR&JSSTR'}"
-	    ");\n", 
+	    "\tim_init(wgtrGetNodeRef(ns, '%STR&SYM'), { "
+		"field:'%STR&JSSTR', "
+		"form:'%STR&JSSTR', "
+	    "});\n", 
 	    name,
 	    fieldname, form
 	);
