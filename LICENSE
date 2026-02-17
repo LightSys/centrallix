@@ -1,0 +1,20 @@
+Welcome to the Centrallix Application Platform project!
+
+The components of this project are under a couple of different licenses, all
+of which are open source.
+
+The main Centrallix application platform C code, in the centrallix/ subfolder,
+is licensed under the GNU GPL v2, or any later version of the GNU GPL released
+by the Free Software Foundation, at your option.  See centrallix/LICENSE for
+details.
+
+The Centrallix library code, in the centrallix-lib/ folder, is licensed under
+the GNU LGPL v2.1.  The JavaScript and other code in centrallix-os/sys is also
+licensed under the GNU LGPL v2.1.
+
+Centrallix samples in centrallix-os/samples are distributed under a 3-clause
+BSD license, which is compatible with the GNU GPL.
+
+Third-party code, for example in centrallix-os/sys/js/chartjs and so forth, is
+distributed under the corresponding open source licenses for those projects.
+See those folders for details.
