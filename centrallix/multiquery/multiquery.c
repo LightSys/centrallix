@@ -1047,11 +1047,14 @@ mq_internal_ParseSelectItem(pQueryStructure item_qs, pLxSession lxs)
 	n_tok = 0;
 	while(1)
 	    {
+	    /** Get the next token. **/
 	    t = mlxNextToken(lxs);
 	    if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
 		break;
 	    n_tok++;
-	    if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_COMMA || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
+	    
+	    /** Special handling for certain token types. **/
+	    if ((t == MLX_TOK_COMMA || t == MLX_TOK_SEMICOLON) && parenlevel <= 0)
 		break;
 	    if (t == MLX_TOK_OPENPAREN) 
 		parenlevel++;
@@ -1062,9 +1065,19 @@ mq_internal_ParseSelectItem(pQueryStructure item_qs, pLxSession lxs)
 		    break;
 		}
 
-	    /** Copy it to the raw data **/
+	    /** Get the token string. **/
 	    ptr = mlxStringVal(lxs,NULL);
 	    if (!ptr) break;
+
+	    /** Skip all reserved words except log(). **/
+	    if (t == MLX_TOK_RESERVEDWD && parenlevel <= 0)
+		{
+		/** Treat "log" as a keyword to allow the log function to be handled properly. **/
+		if (strcmp(ptr, "log") == 0) t = MLX_TOK_KEYWORD;
+		else break;
+		};
+
+	    /** Copy the token string into item_qs->RawData. **/
 	    if (t == MLX_TOK_STRING)
 		xsConcatQPrintf(&item_qs->RawData, "%STR&DQUOT", ptr);
 	    else
@@ -2087,6 +2100,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 					mssError(1,"MQ","Expected equals after EXEC parameter");
 					mlxNoteError(lxs);
 					xsFree(xs);
+					xs = NULL;
 					break;
 					}
 
@@ -2099,6 +2113,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 					mssError(1,"MQ","Error in EXEC parameter");
 					mlxNoteError(lxs);
 					xsFree(xs);
+					xs = NULL;
 					xsFree(param);
 					break;
 					}
@@ -2109,6 +2124,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 					mssError(1,"MQ","Could not evaluate EXEC parameter");
 					mlxNoteError(lxs);
 					xsFree(xs);
+					xs = NULL;
 					xsFree(param);
 					break;
 					}
@@ -2121,8 +2137,11 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 					}
 				    }
 
-				strtcpy(new_qs->Source, xs->String, sizeof(new_qs->Source));
-				next_state = LookForClause;
+				if (xs != NULL)
+				    {
+				    strtcpy(new_qs->Source, xs->String, sizeof(new_qs->Source));
+				    next_state = LookForClause;
+				    }
 				}
 			    else
 				{
@@ -4787,5 +4806,3 @@ mqInitialize()
 
     return 0;
     }
-
-
