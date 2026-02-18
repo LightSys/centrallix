@@ -41,6 +41,20 @@
 #include "magic.h"
 #include "newmalloc.h"
 
+/** Temporary implementations until the ones from the dups branch is available. **/
+/** TODO: Israel - Remove once the dups branch is merged. **/
+#define min(a, b) \
+    ({ \
+    __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    (_a < _b) ? _a : _b; \
+    })
+#define max(a, b) \
+    ({ \
+    __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    (_a > _b) ? _a : _b; \
+    })
 
 /*** BUFFER_OVERFLOW_CHECKING adds 4 bytes of magic data to either end of
  *** the memory buffer returned to the user by nmMalloc().  This allows us
@@ -73,7 +87,8 @@ pMemStruct startMemList;
 #endif
 
 /** List of overlay structs, used for caching allocated memory. **/
-pOverlay lists[MAX_SIZE+1]; /* TODO: Greg - Is this 65KB global variable a problem? (On the stack, it would be...) */
+/** TODO: Greg - This is nearly 200 KB of variables, is that a problem? (On the stack, this would be a seg fault!!) **/
+pOverlay lists[MAX_SIZE+1];
 int listcnt[MAX_SIZE+1];
 int outcnt[MAX_SIZE+1];
 int outcnt_delta[MAX_SIZE+1];
@@ -95,15 +110,29 @@ int (*err_fn)() = NULL;
 int nmsys_outcnt[MAX_SIZE+1];
 int nmsys_outcnt_delta[MAX_SIZE+1];
 
+/*** The registration data that associates a name with a specific block size
+ *** of data stored in memory. Used to create a linked list for each possible
+ *** block size.
+ *** 
+ *** Memory Stats:
+ ***   - Padding: 0 bytes
+ ***   - Total size: 80 bytes
+ *** 
+ *** @param Size The size of the memory block.
+ *** @param Name The name associated with the memory block.
+ *** @param Next The next block of this size in the linked list.
+ *** @param Magic A magic value for detecting corrupted memory.
+ ***/
 typedef struct _RB
     {
     int		Magic;
+    int		Size;
     struct _RB*	Next;
     char	Name[64];
-    int		Size;
     }
     RegisteredBlockType, *pRegisteredBlockType;
 
+/** Heads of registered-block linked lists, where index = block size. **/
 pRegisteredBlockType blknames[MAX_SIZE+1];
 
 
@@ -289,7 +318,7 @@ nmDebugRealloc(void* ptr, int new_size)
 	
 	/** Move the old data. **/
 	int old_size = MEMDATATOSTRUCT(ptr)->size;
-	memmove(new_ptr, ptr, old_size);
+	memmove(new_ptr, ptr, min(new_size, old_size));
 	
 	/** Free the old allocation. **/
 	nmDebugFree(ptr);
@@ -594,7 +623,7 @@ nmRegister(int size, char* name)
 	/** Initialize values for this record. **/
 	blk->Magic = MGK_REGISBLK;
 	blk->Size = size;
-	strcpy(blk->Name, name);
+	strtcpy(blk->Name, name, sizeof(blk->Name) / sizeof(char));
     
     return;
     }
@@ -633,7 +662,7 @@ nmDebug(void)
 	    if (usagecnt[size] == 0) continue;
 	    
 	    /** Print stats about this block size. **/
-	    printf("%ld\t%d\t%d\t%d\t", size, outcnt[size], listcnt[size], usagecnt[size]);
+	    printf("%zu\t%d\t%d\t%d\t", size, outcnt[size], listcnt[size], usagecnt[size]);
 	    
 	    /** Print each name for this block size. **/
 	    nmPrintNames(size);
@@ -652,7 +681,7 @@ nmDebug(void)
 	    if (nmsys_outcnt[size] == 0) continue;
 	    
 	    /** Print the nmSysXYZ() block information. **/
-	    printf("%ld\t%d\n", size, nmsys_outcnt[size]);
+	    printf("%zu\t%d\n", size, nmsys_outcnt[size]);
 	    }
 	printf("\n");
     
@@ -675,7 +704,7 @@ nmDeltas(void)
 	    if (outcnt[size] == outcnt_delta[size]) continue;
 	    
 	    /** Print the change and add it to the total_delta. **/
-	    printf("%ld\t%d\t", size, outcnt[size] - outcnt_delta[size]);
+	    printf("%zu\t%d\t", size, outcnt[size] - outcnt_delta[size]);
 	    total_delta += (size * (outcnt[size] - outcnt_delta[size]));
 	    
 	    /** Print each name for this block size from the linked list. **/
@@ -696,7 +725,7 @@ nmDeltas(void)
 	    if (nmsys_outcnt[size] == nmsys_outcnt_delta[size]) continue;
 	    
 	    /** Print the results. **/
-	    printf("%ld\t%d\n", size, nmsys_outcnt[size] - nmsys_outcnt_delta[size]);
+	    printf("%zu\t%d\n", size, nmsys_outcnt[size] - nmsys_outcnt_delta[size]);
 	    total_delta += (size * (nmsys_outcnt[size] - nmsys_outcnt_delta[size]));
 	    nmsys_outcnt_delta[size] = nmsys_outcnt[size];
 	    }
@@ -886,6 +915,11 @@ nmSysGetSize(void* ptr)
     return -1; /* Value not stored. */
 #else
     if (ptr == NULL) return -1;
-    return *(int*)(ptr - sizeof(int));
-#endif	
+    
+    /*** Create a pointer to the start of the allocated buffer, which stores
+     *** the allocated size.
+     ***/
+    int* buffer_ptr = ((char*)ptr) - sizeof(int);
+    return *buffer_ptr;
+#endif
     }

@@ -44,9 +44,10 @@ typedef struct _ov
 #define SIZED_BLK_COUNTING	1
 #endif
 
-/*** nmMalloc block caching causes Valgrind to lose track of the call stack
- *** where the developer allocated the block.  If we are using Valgrind, this
- *** caching is disabled. ALso, the nmSysXyz() call are simply pass-throughs.
+/*** nmMalloc() block caching reuses memory blocks, causing Valgrind to loose
+ *** track of where the developer actually allocated them.  Thus, we disable
+ *** it if Valgrind is in use.  Also, we disable the nmSysXyz() calls, causing
+ *** them to be replaced with pass-through wrappers.
  ***/
 #ifdef USING_VALGRIND
 #define NO_BLK_CACHE	1
