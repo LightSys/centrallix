@@ -55,7 +55,7 @@ typedef struct _ov
 #endif
 
 #define OVERLAY(x)	((pOverlay)(x))
-#define MAX_SIZE	(8192)
+#define MAX_SIZE	(8192lu)
 #define MIN_SIZE	(sizeof(Overlay))
 
 #ifdef BLK_LEAK_CHECK
@@ -69,18 +69,18 @@ void nmInitialize();
 void nmSetErrFunction(int (*error_fn)());
 void nmClear();
 void nmCheckAll(); // checks for buffer overflows
-void* nmMalloc(int size);
-void nmFree(void* ptr, int size);
+void* nmMalloc(size_t size);
+void nmFree(void* ptr, size_t size);
 void nmStats();
-void nmRegister(int size, char* name);
-void nmPrintNames(int size);
+void nmRegister(size_t size, char* name);
+void nmPrintNames(size_t size);
 void nmDebug();
 void nmDeltas();
-void* nmSysMalloc(int size);
+void* nmSysMalloc(size_t size);
 void nmSysFree(void* ptr);
-void* nmSysRealloc(void* ptr, int new_size);
+void* nmSysRealloc(void* ptr, size_t new_size);
 char* nmSysStrdup(const char* str);
-int nmSysGetSize(void* ptr);
+size_t nmSysGetSize(void* ptr);
 
 /** Tagging system (not implemented). **/
 void nmEnableTagging();

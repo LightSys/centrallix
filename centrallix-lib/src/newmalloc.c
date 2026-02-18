@@ -32,6 +32,7 @@
 #include "cxlibconfig-internal.h"
 #endif
 
+#include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,6 +41,7 @@
 
 #include "magic.h"
 #include "newmalloc.h"
+#include "strtcpy.h"
 
 /** Temporary implementations until the ones from the dups branch is available. **/
 /** TODO: Israel - Remove once the dups branch is merged. **/
@@ -70,7 +72,7 @@
 #ifdef BUFFER_OVERFLOW_CHECKING
 typedef struct _mem
     {
-    int size;
+    size_t size;
     struct _mem *next;
     int magic_start;
     /** not 'really' here **/
@@ -87,17 +89,17 @@ pMemStruct startMemList;
 #endif
 
 /** List of overlay structs, used for caching allocated memory. **/
-/** TODO: Greg - This is nearly 200 KB of variables, is that a problem? (On the stack, this would be a seg fault!!) **/
+/** TODO: Greg - This is over 327 KB of variables, is that a problem? (On the stack, this would be a seg fault!!) **/
 pOverlay lists[MAX_SIZE+1];
-int listcnt[MAX_SIZE+1];
-int outcnt[MAX_SIZE+1];
-int outcnt_delta[MAX_SIZE+1];
-int usagecnt[MAX_SIZE+1];
-int nmFreeCnt;
-int nmMallocCnt;
-int nmMallocHits;
-int nmMallocTooBig;
-int nmMallocLargest;
+unsigned long long int listcnt[MAX_SIZE+1];
+unsigned long long int outcnt[MAX_SIZE+1];
+unsigned long long int outcnt_delta[MAX_SIZE+1];
+unsigned long long int usagecnt[MAX_SIZE+1];
+unsigned long long int nmFreeCnt;
+unsigned long long int nmMallocCnt;
+unsigned long long int nmMallocHits;
+unsigned long long int nmMallocTooBig;
+size_t nmMallocLargest;
 
 #ifdef BLK_LEAK_CHECK
 void* blks[MAX_BLOCKS];
@@ -107,8 +109,8 @@ int blksiz[MAX_BLOCKS];
 bool is_init = false;
 int (*err_fn)() = NULL;
 
-int nmsys_outcnt[MAX_SIZE+1];
-int nmsys_outcnt_delta[MAX_SIZE+1];
+unsigned long long int nmsys_outcnt[MAX_SIZE+1];
+unsigned long long int nmsys_outcnt_delta[MAX_SIZE+1];
 
 /*** The registration data that associates a name with a specific block size
  *** of data stored in memory. Used to create a linked list for each possible
@@ -186,7 +188,7 @@ nmCheckItem(pMemStruct mem)
 	if (mem->magic_start != MGK_MEMSTART)
 	    {
 	    fprintf(stderr,
-		"Bad magic_start at %p (%p) -- 0x%08x != 0x%08x\n",
+		"ERROR: Bad magic_start at %p (%p) -- 0x%08x != 0x%08x\n",
 		MEMDATA(mem), mem, mem->magic_start, MGK_MEMSTART
 	    );
 	    ret = -1;
@@ -196,7 +198,7 @@ nmCheckItem(pMemStruct mem)
 	if (ENDMAGIC(mem) != MGK_MEMEND)
 	    {
 	    fprintf(stderr,
-		"Bad magic_end at %p (%p) -- 0x%08x != 0x%08x\n",
+		"ERROR: Bad magic_end at %p (%p) -- 0x%08x != 0x%08x\n",
 		MEMDATA(mem), mem, ENDMAGIC(mem), MGK_MEMEND
 	    );
 	    ret = -1;
@@ -239,7 +241,7 @@ nmCheckAll(void)
  *** @returns A pointer to the start of the allocated memory buffer.
  ***/
 void*
-nmDebugMalloc(int size)
+nmDebugMalloc(size_t size)
     {
 	/** Allocate space for the data. **/
 	pMemStruct tmp = (pMemStruct)malloc(size + EXTRA_MEM);
@@ -307,7 +309,7 @@ nmDebugFree(void* ptr)
  *** @returns The new buffer, or NULL if an error occurs.
  ***/
 void*
-nmDebugRealloc(void* ptr, int new_size)
+nmDebugRealloc(void* ptr, size_t new_size)
     {
 	/** Behaves as nmDebugMalloc() if there is no target pointer. **/
 	if (ptr == NULL) return nmDebugMalloc(new_size);
@@ -317,7 +319,7 @@ nmDebugRealloc(void* ptr, int new_size)
 	if (new_ptr == NULL) return NULL;	
 	
 	/** Move the old data. **/
-	int old_size = MEMDATATOSTRUCT(ptr)->size;
+	size_t old_size = MEMDATATOSTRUCT(ptr)->size;
 	memmove(new_ptr, ptr, min(new_size, old_size));
 	
 	/** Free the old allocation. **/
@@ -379,7 +381,7 @@ nmClear(void)
  *** @returns A pointer to the start of the allocated memory block.
  ***/
 void*
-nmMalloc(int size)
+nmMalloc(size_t size)
     {
     void* tmp = NULL;
     
@@ -423,6 +425,13 @@ nmMalloc(int size)
 		
 /** Handle counting. **/
 #ifdef SIZED_BLK_COUNTING
+		if (listcnt[size] == 0u)
+		    {
+		    fprintf(stderr,
+			"ERROR: Removed block from cache when stats show that "
+			"it should be empty!! Expect broken statistics.\n"
+		    );
+		    }
 		listcnt[size]--;
 #endif
 		}
@@ -493,7 +502,7 @@ nmMalloc(int size)
  *** 	available to us, so it must be provided for this function to run.)
  ***/
 void
-nmFree(void* ptr, int size)
+nmFree(void* ptr, size_t size)
     {
 	if (!is_init) nmInitialize();
 	
@@ -542,7 +551,7 @@ nmFree(void* ptr, int size)
 		ASSERTMAGIC(OVERLAY(tmp),MGK_FREEMEM);
 		if (OVERLAY(tmp) == OVERLAY(ptr))
 		    {
-		    fprintf(stderr, "Duplicate nmFree()!!!  Size = %d, Address = %p\n", size, ptr);
+		    fprintf(stderr, "ERROR: Duplicate nmFree()!!!  Size = %d, Address = %p\n", size, ptr);
 		    if (err_fn) err_fn("Internal error - duplicate nmFree() occurred.");
 		    return;
 		    }
@@ -557,6 +566,13 @@ nmFree(void* ptr, int size)
 	    
 /** Handle counting. **/
  #ifdef SIZED_BLK_COUNTING
+	    if (outcnt[size] == 0u)
+		{
+		fprintf(stderr,
+		    "ERROR: Call to nmFree() memory of a size that has no "
+		    "valid allocated memory!! Expect broken statistics.\n"
+		);
+		}
 	    outcnt[size]--;
 	    listcnt[size]++;
  #endif
@@ -593,10 +609,10 @@ nmStats(void)
 	/** Print subsystem stats. **/
 	printf(
 	    "NewMalloc subsystem statistics:\n"
-	    "   nmMalloc: %d calls, %d hits (%3.3f%%)\n"
-	    "   nmFree: %d calls\n"
-	    "   bigblks: %d too big, %d largest size\n\n",
-	    nmMallocCnt, nmMallocHits, (float)nmMallocHits / (float)nmMallocCnt * 100.0,
+	    "   nmMalloc: %llu calls, %llu hits (%3.3lf%%)\n"
+	    "   nmFree: %llu calls\n"
+	    "   bigblks: %llu too big, %zu largest size\n\n",
+	    nmMallocCnt, nmMallocHits, (double)nmMallocHits / (double)nmMallocCnt * 100.0,
 	    nmFreeCnt,
 	    nmMallocTooBig, nmMallocLargest
 	    );
@@ -607,7 +623,7 @@ nmStats(void)
 
 /** Register a new memory size with a name, for debugging. **/
 void
-nmRegister(int size, char* name)
+nmRegister(size_t size, char* name)
     {
     pRegisteredBlockType blk = NULL;
     
@@ -633,11 +649,9 @@ nmRegister(int size, char* name)
  *** @param size The size of block to query.
  ***/
 void
-nmPrintNames(int size)
+nmPrintNames(size_t size)
     {
-	/*** Traverse the linked list that holds all registered names for the given
- 	*** size and print each one.
- 	**/
+	/** Traverse the linked list of registered structs to print each name. **/
 	for (pRegisteredBlockType blk = blknames[size]; blk != NULL; blk = blk->Next)
 	    {
 	    ASSERTMAGIC(blk, MGK_REGISBLK);
@@ -659,10 +673,13 @@ nmDebug(void)
 	for (size_t size = MIN_SIZE; size < MAX_SIZE; size++)
 	    {
 	    /** Skip unused block sizes. **/
-	    if (usagecnt[size] == 0) continue;
+	    if (usagecnt[size] == 0llu) continue;
 	    
 	    /** Print stats about this block size. **/
-	    printf("%zu\t%d\t%d\t%d\t", size, outcnt[size], listcnt[size], usagecnt[size]);
+	    printf(
+		"%zu\t%llu\t%lld\t%llu\t",
+		size, outcnt[size], listcnt[size], usagecnt[size]
+	    );
 	    
 	    /** Print each name for this block size. **/
 	    nmPrintNames(size);
@@ -671,17 +688,20 @@ nmDebug(void)
 	    }
 	
 	/** Print the header for the nmSysXYZ() info table. **/
-	printf("\n-----\n");
-	printf("size\toutcnt\n-------\t-------\n");
+	printf(
+	    "\n-----\n"
+	    "size\toutcnt\n"
+	    "-------\t-------\n"
+	);
 	
 	/** Iterate through each possible block size. **/
 	for (size_t size = MIN_SIZE; size <= MAX_SIZE; size++)
 	    {
 	    /** Skip unused block sizes. **/
-	    if (nmsys_outcnt[size] == 0) continue;
+	    if (nmsys_outcnt[size] == 0llu) continue;
 	    
 	    /** Print the nmSysXYZ() block information. **/
-	    printf("%zu\t%d\n", size, nmsys_outcnt[size]);
+	    printf("%zu\t%llu\n", size, nmsys_outcnt[size]);
 	    }
 	printf("\n");
     
@@ -694,17 +714,20 @@ void
 nmDeltas(void)
     {
 	/** Print the header for the block size deltas table. **/
-	printf("size\tdelta\tnames\n-------\t-------\t-------\n");
+	printf(
+	    "size\tdelta\tnames\n"
+	    "-------\t-------\t-------\n"
+	);
 	
 	/** Iterate through each possible block size. **/
-	int total_delta = 0;
+	unsigned long long int total_delta = 0llu;
 	for (size_t size = MIN_SIZE; size <= MAX_SIZE; size++)
 	    {
 	    /** Skip entries where there is no change. **/
 	    if (outcnt[size] == outcnt_delta[size]) continue;
 	    
 	    /** Print the change and add it to the total_delta. **/
-	    printf("%zu\t%d\t", size, outcnt[size] - outcnt_delta[size]);
+	    printf("%zu\t%lld\t", size, outcnt[size] - outcnt_delta[size]);
 	    total_delta += (size * (outcnt[size] - outcnt_delta[size]));
 	    
 	    /** Print each name for this block size from the linked list. **/
@@ -718,14 +741,17 @@ nmDeltas(void)
 	    }
 	
 	/** Print the header for the nmSysXYZ() info table. **/
-	printf("\nsize\tdelta\n-------\t-------\n");
+	printf(
+	    "\nsize\tdelta\n"
+	    "-------\t-------\n"
+	);
 	for (size_t size = MIN_SIZE; size <= MAX_SIZE; size++)
 	    {
 	    /** Skip sizes where no change in memory occurred. **/
 	    if (nmsys_outcnt[size] == nmsys_outcnt_delta[size]) continue;
 	    
 	    /** Print the results. **/
-	    printf("%zu\t%d\n", size, nmsys_outcnt[size] - nmsys_outcnt_delta[size]);
+	    printf("%zu\t%llu\n", size, nmsys_outcnt[size] - nmsys_outcnt_delta[size]);
 	    total_delta += (size * (nmsys_outcnt[size] - nmsys_outcnt_delta[size]));
 	    nmsys_outcnt_delta[size] = nmsys_outcnt[size];
 	    }
@@ -733,7 +759,7 @@ nmDeltas(void)
 	
 	/** Print the total delta. **/
 	/** TODO: Israel - Change this to use snprint_bytes() once that function is available. **/
-	printf("delta %d total bytes\n", total_delta);
+	printf("delta %llu total bytes\n", total_delta);
     
     return;
     }
@@ -751,7 +777,7 @@ nmDeltas(void)
  *** @returns A pointer to the start of the allocated memory block.
  ***/
 void*
-nmSysMalloc(int size)
+nmSysMalloc(size_t size)
     {
 /** Fallback if sysMalloc() is disabled. **/
 #ifndef NM_USE_SYSMALLOC
@@ -759,19 +785,30 @@ nmSysMalloc(int size)
 #else
 	
 	/** Allocate the requested space, plus the initial size int. **/
-	char* ptr = (char*)nmDebugMalloc(sizeof(int) + size);
+	char* ptr = (char*)nmDebugMalloc(sizeof(unsigned int) + size);
 	if (ptr == NULL) return NULL;
 	
-	/** Set the size int. **/
-	*(int*)ptr = size;
+	/** Convert the provided size to an unsigned int. **/
+	/** TODO: Greg - Can we modify nmSys blocks to start with a size_t to avoid this? **/
+	if (size > UINT_MAX)
+	    {
+	    fprintf(stderr,
+		"ERROR: Requested buffer size (%zu) > UINT MAX (%u).\n",
+		size, UINT_MAX
+	    );
+	    return NULL;
+	    }
+	
+	/** Set the size uint. **/
+	*(unsigned int*)(ptr) = (unsigned int)size;
 	
  /** Update sized block counting, if necessary. **/
  #ifdef SIZED_BLK_COUNTING
 	if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]++;
  #endif
 	
-	/** Return the allocated memory (starting after the size int). **/
-	return (void*)(sizeof(int) + ptr);
+	/** Return the allocated memory (starting after the size uint). **/
+	return (void*)(sizeof(unsigned int) + ptr);
 #endif
     
     return NULL; /** Unreachable. **/
@@ -799,13 +836,12 @@ nmSysFree(void* ptr)
 	
  /** Count sized blocks, if enabled. **/
  #ifdef SIZED_BLK_COUNTING
-	int size;
-	size = *(int*)(((char*)ptr)-sizeof(int));
+	const size_t size = nmSysGetSize(ptr);
 	if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]--;
  #endif
 	
-	/** Free the initial size int, as well as the rest of the allocated memory. **/
-	nmDebugFree(((char*)ptr) - sizeof(int));
+	/** Free the initial unsigned int, as well as the rest of the allocated memory. **/
+	nmDebugFree(((char*)ptr) - sizeof(unsigned int));
 #endif
     
     return;
@@ -822,7 +858,7 @@ nmSysFree(void* ptr)
  *** @returns The new buffer, or NULL if an error occurs.
  ***/
 void*
-nmSysRealloc(void* ptr, int new_size)
+nmSysRealloc(void* ptr, size_t new_size)
     {
 /** Fallback if sysMalloc() is disabled. **/
 #ifndef NM_USE_SYSMALLOC
@@ -832,17 +868,16 @@ nmSysRealloc(void* ptr, int new_size)
 	/** Behaves as nmSysMalloc() if there is no target pointer. **/
 	if (ptr == NULL) return nmSysMalloc(new_size);
 	
-	/** If no work needs to be done, do nothing. **/
-	void* buffer_ptr = ((char*)ptr) - sizeof(int);
-	const int size = *(int*)buffer_ptr;
-	if (size == new_size) return ptr;
+	/** If the memory block size does not change, do nothing. **/
+	if (nmSysGetSize(ptr) == new_size) return ptr;
 	
-	/** Realloc the given memory with space for the initial size int. **/
-	char* new_ptr = (char*)nmDebugRealloc(buffer_ptr, sizeof(int) + new_size);
+	/** Realloc the given memory with space for the initial uint. **/
+	void* buffer_ptr = ((char*)ptr) - sizeof(unsigned int);
+	char* new_ptr = (char*)nmDebugRealloc(buffer_ptr, sizeof(unsigned int) + new_size);
 	if (new_ptr == NULL) return NULL;
 	
-	/** Update the initial size int. **/
-	*(int*)new_ptr = new_size;
+	/** Update the initial size uint. **/
+	*(unsigned int*)new_ptr = new_size;
 	
  /** Handle counting. **/
  #ifdef SIZED_BLK_COUNTING
@@ -851,7 +886,7 @@ nmSysRealloc(void* ptr, int new_size)
  #endif
 	
 	/** Return the pointer to the new memory. **/
-	return (void*)(sizeof(int) + new_ptr);
+	return (void*)(sizeof(unsigned int) + new_ptr);
 #endif
 	
     return NULL; /** Unreachable. **/
@@ -905,21 +940,22 @@ nmSysStrdup(const char* str)
  *** 	behavior is undefined if this pointer is a nonNULL value which does
  *** 	NOT point to the start of a valid memory block from an `nmSysXYZ()`.
  *** @returns The size of the memory buffer, if it can be found, or
- *** 	-1 if the size of the buffere was not stored, or
- *** 	-1 if `ptr` is NULL.
+ *** 	0 if the size of the buffer was not stored, or
+ *** 	0 if `ptr` is NULL.
  ***/
-int
+size_t
 nmSysGetSize(void* ptr)
     {
 #ifndef NM_USE_SYSMALLOC
-    return -1; /* Value not stored. */
+    return 0lu; /* Value not stored. */
 #else
-    if (ptr == NULL) return -1;
+    if (ptr == NULL) return 0lu;
     
-    /*** Create a pointer to the start of the allocated buffer, which stores
-     *** the allocated size.
+    /*** Create a pointer to the start of the allocated buffer and read the
+     *** allocation size stored there.
      ***/
-    int* buffer_ptr = ((char*)ptr) - sizeof(int);
-    return *buffer_ptr;
+    const void* buffer_ptr = ((char*)ptr) - sizeof(unsigned int);
+    const unsigned int raw_size_value = *(unsigned int*)buffer_ptr;
+    return (size_t)raw_size_value;
 #endif
     }
