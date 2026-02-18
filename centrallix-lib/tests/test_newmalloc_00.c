@@ -96,7 +96,7 @@ static bool do_tests(void)
 	    {
 	    success &= EXPECT_NOT_NULL(test[i] = nmSysMalloc(i));
 	    data[i] = random_init(check_ptr(malloc(i)), i);
-	    memcpy(test[i], data[i], i);
+	    memcpy(test[i], data[i], i); /* Write test data into test memory. */
 	    }
 	for (size_t i = TEST_LIMIT - 1lu; i > 0lu; i--)
 	    success &= EXPECT_EQL(memcmp(data[i], test[i], i), 0, "%d");
@@ -107,7 +107,7 @@ static bool do_tests(void)
 	    
 	/** Reallocate all variably sized memory to a different size. **/
 	for (size_t i = TEST_LIMIT - 1lu; i > 0lu; i--)
-	    success &= EXPECT_NOT_NULL(test[i] = nmSysRealloc(test[i], i));
+	    success &= EXPECT_NOT_NULL(test[i] = nmSysRealloc(test[i], TEST_LIMIT - i));
 	for (size_t i = 1lu; i < TEST_LIMIT; i++)
 	    success &= EXPECT_EQL(memcmp(data[i], test[i], min(i, TEST_LIMIT - i)), 0, "%d");
 	
