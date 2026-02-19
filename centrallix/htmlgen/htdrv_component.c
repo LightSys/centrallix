@@ -464,11 +464,10 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    /** Write template paths. **/
 	    for (int i = 0; i < WGTR_MAX_TEMPLATE; i++)
 		{
-		if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
-		    htrAddScriptInit_va(s,
-			"\t\tnode.templates.push('%STR&JSSTR');\n",
-			name, path
-		    );
+		path = wgtrGetTemplatePath(tree, i);
+		if (path == NULL) continue;
+		
+		htrAddScriptInit_va(s, "\t\tnode.templates.push('%STR&JSSTR');\n", path);
 		}
 
 	    /** Write params. **/

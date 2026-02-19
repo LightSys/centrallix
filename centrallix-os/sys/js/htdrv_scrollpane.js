@@ -122,13 +122,6 @@ function sp_init({ layer: pane, area_name, thumb_name })
     thumb_image.thumb = thumb;
     thumb_image.area = area;
     
-    /** Setup clipping. **/
-    const area_width = getClipWidth(pane) - 18;
-    setClipWidth(area, area_width);
-    area.maxwidth = area_width;
-    area.minwidth = area_width;
-    disableClippingCSS(area); /* Clipping breaks responsive pages and is not required for modern browers. */
-    
     /** Init layers and widget. **/
     htr_init_layer(pane, pane, 'sp');
     htr_init_layer(thumb, pane, 'sp');

@@ -57,9 +57,7 @@ function al_reflow()
     var width = wgtrGetServerProperty(this,"width");
     var height = wgtrGetServerProperty(this,"height");
     var spacing = wgtrGetServerProperty(this,"spacing",0);
-    // var cellsize = wgtrGetServerProperty(this,"cellsize",-1); // Unused
     var align = wgtrGetServerProperty(this,"align","left");
-    // var justify_mode = wgtrGetServerProperty(this,"justify","none"); // Unused
     var type = "vbox";
     if (wgtrGetServerProperty(this,"style") == "hbox" || wgtrGetType(this) == "widget/hbox")
 	type = "hbox";
