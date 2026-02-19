@@ -413,7 +413,6 @@ function ca_init({
     l.keyhandler = ca_keyhandler;
     l.getfocushandler = ca_getfocus;
     l.losefocushandler = ca_losefocus;
-    //pg_addarea(l, -1,-1,l.clip.width+1,l.clip.height+1, 'ebox', 'ebox', is_readonly?0:3);
 
     // Internal functions
     l.Redraw = ca_redraw;

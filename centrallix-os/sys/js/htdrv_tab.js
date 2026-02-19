@@ -227,8 +227,8 @@ function tc_add_tab(param)
 	const style    = (is_top_level) ? undefined          : getComputedStyle(l_tab.parentElement);
 	const parent_w = (is_top_level) ? innerWidth  + 'px' : style.width;
 	const parent_h = (is_top_level) ? innerHeight + 'px' : style.height;
-	if (x) setRelativeX(l_tab, `calc(${x}px + (100% - ${parent_w}) * ${l.tab_fl_x})`);
-	if (y) setRelativeY(l_tab, `calc(${y}px + (100% - ${parent_h}) * ${l.tab_fl_y})`);
+	if (x) setRelativeX(l_tab, `calc(${x}px + (100% - ${parent_w}) * ${tabctl.tab_fl_x})`);
+	if (y) setRelativeY(l_tab, `calc(${y}px + (100% - ${parent_h}) * ${tabctl.tab_fl_y})`);
 	}
 
     // Indicate that we generate reveal/obscure notifications
