@@ -306,9 +306,10 @@ nht_i_SendRefreshDocument(pNhtConn conn, char* url)
 	/** This is a simple HTML document that loads the url we give it. **/
 	nht_i_QPrintfConn(conn, 0,
 		"<!doctype html>\r\n"
-		"<html>\r\n"
+		"<html lang='en'>\r\n"
 		"    <head>\r\n"
-		"         <script language=\"JavaScript\">\r\n"
+		"         <title>Loading...</title>\r\n"
+		"         <script>\r\n"
 		"             var url = '%STR&JSSTR';\r\n"
 		"         </script>\r\n"
 		"    </head>\r\n"
@@ -1192,4 +1193,3 @@ nht_i_Handler(void* v)
 
     thExit();
     }
-
