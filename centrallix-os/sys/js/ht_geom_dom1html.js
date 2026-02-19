@@ -32,7 +32,11 @@ Math.isBetween = (lowerBound, num, upperBound) =>
     return lowerBound < num && num < upperBound;
     }
 
-
+/*** Whether to enable noclip (which disables generation of clipping CSS) by
+ *** default. This requires code to explicitly call enableClippingCSS() to
+ *** generate clipping CSS.
+ ***/
+const default_noclip_value = true;
 
 /*** Experimental system for turning off clipping CSS.
  *** The clip values are still stored and can be queried
@@ -73,13 +77,13 @@ function getClipWidth(l)
     }
 
 function setClipWidth(l, value) 
-    { 
+    {
     l.clip.width = value; 
     }
 
 // Clip Height
 function getClipHeight(l) 
-    { 
+    {
     return l.clip.height; 
     }
 
@@ -89,7 +93,7 @@ function getRuntimeClipHeight(l)
     }
 
 function setClipHeight(l, value) 
-    { 
+    {
     l.clip.height = value; 
     }
 
@@ -526,7 +530,6 @@ function getHeight(l)
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-Window.clipped = new Set(); // Debug set for saving clipped dom nodes.
 function ClipObject_SetAll(top,right,bottom,left)
     {
     var str = "rect(" 
@@ -535,17 +538,8 @@ function ClipObject_SetAll(top,right,bottom,left)
 	    + bottom + "px, "
 	    + left + "px)";
     this.arr = {1:top,2:right,3:bottom,4:left};
-    if (this.noclip)
-	{
-	Window.clipped.delete(this.obj.id); // debug
-	this.obj.style.setProperty('clip', "");
-	}
-    else
-	{
-	Window.clipped.add(this.obj.id); // debug
-	this.obj.style.setProperty('clip', str, "");
-	}
-
+    if (!this.hasOwnProperty('noclip')) this.noclip = default_noclip_value;
+    this.obj.style.setProperty('clip', (this.noclip) ? "" : str);
     }
 
 var ClipRegexp = /rect\((.*), (.*), (.*), (.*)\)/;
