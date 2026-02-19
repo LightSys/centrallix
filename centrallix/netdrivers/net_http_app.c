@@ -24,7 +24,8 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	net_http.h, net_http.c, net_http_conn.c, net_http_sess.c, net_http_osml.c, net_http_app.c			*/
+/* Module: 	net_http.h, net_http.c, net_http_conn.c,		*/
+/* 		net_http_sess.c, net_http_osml.c, net_http_app.c	*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	December 8, 1998  					*/
 /* Description:	Network handler providing an HTTP interface to the 	*/
@@ -58,11 +59,11 @@ nht_i_GetGeom(pObject target_obj, pNhtConn output)
 	/** Do we have a bgcolor / background? **/
 	if (objGetAttrValue(target_obj, "bgcolor", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
-	    snprintf(bgnd, sizeof(bgnd), "bgcolor='%.100s'", ptr);
+	    snprintf(bgnd, sizeof(bgnd), "background-color:%.100s", ptr);
 	    }
 	else if (objGetAttrValue(target_obj, "background", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
-	    snprintf(bgnd, sizeof(bgnd), "background='%.100s'", ptr);
+	    snprintf(bgnd, sizeof(bgnd), "background:url(%.100s)", ptr);
 	    }
 	else
 	    {
@@ -70,22 +71,30 @@ nht_i_GetGeom(pObject target_obj, pNhtConn output)
 	    }
 
 	/** Generate the snippet **/
-	nht_i_QPrintfConn(output, 0, "<html>\n"
-			 "<head>\n"
-			 "    <meta http-equiv=\"Pragma\" CONTENT=\"no-cache\">\n"
-			 "    <style type=\"text/css\">\n"
-			 "        #l1 { POSITION:absolute; VISIBILITY: hidden; left:0px; top:0px; }\n"
-			 "        #l2 { POSITION:absolute; VISIBILITY: hidden; left:0px; top:0px; }\n"
-			 "        body { %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n"
-			 "    </style>\n"
-			 "<script type=\"text/javascript\" language=\"javascript\" src=\"/sys/js/startup.js\"></script>\n"
-			 "</head>\n"
-			 "<body %STR onload='startup();'>\n"
-			 "    <img src='/sys/images/loading.gif'>\n"
-			 "    <div id=\"l1\">x<br>x</div>\n"
-			 "    <div id=\"l2\">xx</div>\n"
-			 "</body>\n"
-			 "</html>\n", font_size > 0, font_size, *font_name, font_name, bgnd);
+	nht_i_QPrintfConn(output, 0,
+	    "<!DOCTYPE html>\n"
+	    "<html lang='en'>\n"
+	    "  <head>\n"
+	    "    <title>Loading...</title>\n"
+	    "    <meta charset='utf-8'>\n"
+	    "    <meta http-equiv='Pragma' content='no-cache'>\n"
+	    "    <style>\n"
+	    "      #l1 { position:absolute; visibility: hidden; left:0px; top:0px; }\n"
+	    "      #l2 { position:absolute; visibility: hidden; left:0px; top:0px; }\n"
+	    "      body { %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n"
+	    "    </style>\n"
+	    "    <script src='/sys/js/startup.js'></script>\n"
+	    "  </head>\n"
+	    "  <body style='%STR&ESCQ;' onload='startup();'>\n"
+	    "    <img src='/sys/images/loading.gif'>\n"
+	    "    <div id='l1'>x<br>x</div>\n"
+	    "    <div id='l2'>xx</div>\n"
+	    "  </body>\n"
+	    "</html>\n",
+	    (font_size > 0), font_size,
+	    (font_name != NULL && font_name[0] != '\0'), font_name,
+	    bgnd
+	);
 
     return 0;
     }
@@ -149,4 +158,3 @@ nhtRenderApp(pNhtConn conn, pObjSession s, pObject obj, pStruct url_inf, pWgtrCl
     return rval;
 
     }
-
