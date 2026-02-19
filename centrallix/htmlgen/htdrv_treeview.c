@@ -263,7 +263,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 			"z-index:%POS; "
 		    "\""
 		">"
-		    "<img src=\"%STR&HTE\" align=left>"
+		    "<img src=\"%STR&HTE\">"
 		    "&nbsp;%STR&HTE"
 		"</div>\n",
 		id, /* class */
