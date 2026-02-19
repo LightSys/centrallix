@@ -185,7 +185,7 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 		    "%[loader:htr_subel(layer_container, 'ht%POSloader'), %]"
 		"}); }\n",
 		name, id, id, src, w, h,
-		(s->Capabilities.Dom1HTML), name, id
+		(s->Capabilities.Dom1HTML), id
 	    );
     
             /** HTML body <DIV> element for the layer. **/

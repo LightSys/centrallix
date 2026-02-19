@@ -240,10 +240,6 @@ function ht_init(param)
 	{
 	setClipHeight(l, getdocHeight(l));
 	}
-    /*** This break's responsive design, and it looks like it's
-     *** put in for compatibility and is no longer necessary.
-     ***/
-    // pg_set_style(l, 'height', getdocHeight(l));
     if (param.width != -1)
 	{
 	setClipWidth(l, param.width);
@@ -253,12 +249,8 @@ function ht_init(param)
 	{
 	setClipWidth(l, getdocWidth(l));
 	}
-    /*** This break's responsive design, and it looks like it's
-     *** put in for compatibility and is no longer necessary.
-     ***/
-    // pg_set_style(l, 'width', getdocWidth(l));
 
-    /** Clipping breaks responsive pages and is not required in modern browers. **/
+    /** Clipping breaks responsive pages and is not required in modern browsers. **/
     disableClippingCSS(l);
     disableClippingCSS(l2);
 
