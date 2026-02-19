@@ -73,18 +73,23 @@
 typedef struct _mem
     {
     size_t size;
-    struct _mem *next;
-    int magic_start;
-    /** not 'really' here **/
-    // char data[size];
-    // int magic_end;
+    struct _mem* next;
+    Magic_t magic_start;
+    /** Data after the struct. **/
+    // char data[size]; /* The wrapped memory buffer. */
+    // Magic_t magic_end;
     }
     MemStruct, *pMemStruct;
-#define EXTRA_MEM (3*sizeof(int)+sizeof(void*))
-#define MEMSTRUCT(x) ((pMemStruct)(x))
-#define MEMDATA(x) ((void*)((char*)(x)+(sizeof(int)*2+sizeof(void*))))
-#define ENDMAGIC(x) (*((int*)((char*)(MEMDATA(x))+MEMSTRUCT(x)->size)))
-#define MEMDATATOSTRUCT(x) ((pMemStruct)((char*)(x)-(sizeof(int)*2+sizeof(void*))))
+/*** The amount of additional memory consumed by each memory buffer, in bytes,
+ *** when the buffer overflow checking wrapper is enabled.
+ ***/
+#define EXTRA_MEM (sizeof(MemStruct) + sizeof(Magic_t))
+/** Converts a MemStruct pointer to a pointer to the wrapped data. **/
+#define MEMDATA(x) ((void*)((char*)(x) + sizeof(MemStruct)))
+/** Gets the magic value from the end of a wrapped data buffer. **/
+#define ENDMAGIC(x) (*(int*)((char*)MEMDATA(x) + ((pMemStruct)(x))->size))
+/** Converts a data buffer to a pointer to the wrapping MemStruct. **/
+#define MEMDATATOSTRUCT(x) ((pMemStruct)((char*)(x) - sizeof(MemStruct)))
 pMemStruct startMemList;
 #endif
 
@@ -127,8 +132,8 @@ unsigned long long int nmsys_outcnt_delta[MAX_SIZE+1];
  ***/
 typedef struct _RB
     {
-    int		Magic;
-    int		Size;
+    Magic_t	Magic;
+    size_t	Size;
     struct _RB*	Next;
     char	Name[64];
     }
@@ -551,7 +556,7 @@ nmFree(void* ptr, size_t size)
 		ASSERTMAGIC(OVERLAY(tmp),MGK_FREEMEM);
 		if (OVERLAY(tmp) == OVERLAY(ptr))
 		    {
-		    fprintf(stderr, "ERROR: Duplicate nmFree()!!!  Size = %d, Address = %p\n", size, ptr);
+		    fprintf(stderr, "ERROR: Duplicate nmFree()!!!  Size = %zu, Address = %p\n", size, ptr);
 		    if (err_fn) err_fn("Internal error - duplicate nmFree() occurred.");
 		    return;
 		    }
@@ -677,7 +682,7 @@ nmDebug(void)
 	    
 	    /** Print stats about this block size. **/
 	    printf(
-		"%zu\t%llu\t%lld\t%llu\t",
+		"%zu\t%llu\t%llu\t%llu\t",
 		size, outcnt[size], listcnt[size], usagecnt[size]
 	    );
 	    
@@ -784,31 +789,20 @@ nmSysMalloc(size_t size)
 	return (void*)nmDebugMalloc(size);
 #else
 	
-	/** Allocate the requested space, plus the initial size int. **/
-	char* ptr = (char*)nmDebugMalloc(sizeof(unsigned int) + size);
+	/** Allocate the requested space, plus the initial size number. **/
+	char* ptr = (char*)nmDebugMalloc(sizeof(size_t) + size);
 	if (ptr == NULL) return NULL;
 	
-	/** Convert the provided size to an unsigned int. **/
-	/** TODO: Greg - Can we modify nmSys blocks to start with a size_t to avoid this? **/
-	if (size > UINT_MAX)
-	    {
-	    fprintf(stderr,
-		"ERROR: Requested buffer size (%zu) > UINT MAX (%u).\n",
-		size, UINT_MAX
-	    );
-	    return NULL;
-	    }
-	
-	/** Set the size uint. **/
-	*(unsigned int*)(ptr) = (unsigned int)size;
+	/** Set the size number. **/
+	*(size_t*)(ptr) = size;
 	
  /** Update sized block counting, if necessary. **/
  #ifdef SIZED_BLK_COUNTING
 	if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]++;
  #endif
 	
-	/** Return the allocated memory (starting after the size uint). **/
-	return (void*)(sizeof(unsigned int) + ptr);
+	/** Return the allocated memory (starting after the size number). **/
+	return (void*)(sizeof(size_t) + ptr);
 #endif
     
     return NULL; /** Unreachable. **/
@@ -840,8 +834,8 @@ nmSysFree(void* ptr)
 	if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]--;
  #endif
 	
-	/** Free the initial unsigned int, as well as the rest of the allocated memory. **/
-	nmDebugFree(((char*)ptr) - sizeof(unsigned int));
+	/** Free the initial size_t, as well as the rest of the allocated memory. **/
+	nmDebugFree(((char*)ptr) - sizeof(size_t));
 #endif
     
     return;
@@ -869,15 +863,16 @@ nmSysRealloc(void* ptr, size_t new_size)
 	if (ptr == NULL) return nmSysMalloc(new_size);
 	
 	/** If the memory block size does not change, do nothing. **/
-	if (nmSysGetSize(ptr) == new_size) return ptr;
+	const size_t size = nmSysGetSize(ptr);
+	if (size == new_size) return ptr;
 	
-	/** Realloc the given memory with space for the initial uint. **/
-	void* buffer_ptr = ((char*)ptr) - sizeof(unsigned int);
-	char* new_ptr = (char*)nmDebugRealloc(buffer_ptr, sizeof(unsigned int) + new_size);
+	/** Realloc the given memory with space for the initial size number. **/
+	void* buffer_ptr = ((char*)ptr) - sizeof(size_t);
+	char* new_ptr = (char*)nmDebugRealloc(buffer_ptr, sizeof(size_t) + new_size);
 	if (new_ptr == NULL) return NULL;
 	
-	/** Update the initial size uint. **/
-	*(unsigned int*)new_ptr = new_size;
+	/** Update the initial size number. **/
+	*(size_t*)(new_ptr) = new_size;
 	
  /** Handle counting. **/
  #ifdef SIZED_BLK_COUNTING
@@ -886,7 +881,7 @@ nmSysRealloc(void* ptr, size_t new_size)
  #endif
 	
 	/** Return the pointer to the new memory. **/
-	return (void*)(sizeof(unsigned int) + new_ptr);
+	return (void*)(sizeof(size_t) + new_ptr);
 #endif
 	
     return NULL; /** Unreachable. **/
@@ -951,11 +946,8 @@ nmSysGetSize(void* ptr)
 #else
     if (ptr == NULL) return 0lu;
     
-    /*** Create a pointer to the start of the allocated buffer and read the
-     *** allocation size stored there.
-     ***/
-    const void* buffer_ptr = ((char*)ptr) - sizeof(unsigned int);
-    const unsigned int raw_size_value = *(unsigned int*)buffer_ptr;
-    return (size_t)raw_size_value;
+    /** Read the size from the start of the nmSys block. **/
+    const void* buffer_ptr = ((char*)ptr) - sizeof(size_t);
+    return *(size_t*)buffer_ptr;
 #endif
     }
