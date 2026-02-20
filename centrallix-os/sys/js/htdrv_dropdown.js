@@ -9,6 +9,18 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+
+// A resize observer to update dropdowns when they are resized.
+const dd_resize_observer = new ResizeObserver(e => e.forEach(({ target }) => {
+    // Ignore widgets that don't have a visible panelayer in need of updating.
+    if (htr_getvisibility(target.PaneLayer) !== 'inherit') return;
+    
+    // Reopen the dropdown to rerender it.
+    dd_collapse(target);
+    dd_expand(target);
+}));
+
+
 // Form manipulation
 
 function dd_getvalue() 
@@ -513,17 +525,6 @@ function dd_select_item(l,i,from)
     l.HidLayer.index = i;
     moveTo(l.HidLayer, 2, ((l.h-2) - pg_parah)/2);
     resizeTo(l.HidLayer, l.w, l.h);
-    
-    // Set up responsive handling.
-    if (!l.HidLayer.resize_observer)
-	{
-	const { HidLayer } = l;
-	const resize_observer = HidLayer.resize_observer = new ResizeObserver(_ => {
-	    moveTo(HidLayer, 2, ((l.h - 2) - pg_parah) / 2);
-	    resizeTo(HidLayer, l.w, l.h);
-	});
-	resize_observer.observe(l);
-	}
     
     htr_setvisibility(l.HidLayer, 'inherit');
     setClipWidth(l.HidLayer, l.w-21);
@@ -1328,18 +1329,7 @@ function dd_init(param)
     l.area = pg_addarea(l, -1, -1, () => l.w + 3, () => l.h + 3, 'dd', 'dd', 3);
     
     // Resize dropdown automatically.
-    const resize_handler = (layer) =>
-	{
-	if (layer.PaneLayer && htr_getvisibility(layer.PaneLayer) === 'inherit')
-	    {
-	    dd_collapse(layer);
-	    dd_expand(layer);
-	    }
-	};
-    const resize_observer = new ResizeObserver(entries => {
-	for (const entry of entries) resize_handler(entry.target);
-    });
-    resize_observer.observe(l);
+    dd_resize_observer.observe(l);
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);

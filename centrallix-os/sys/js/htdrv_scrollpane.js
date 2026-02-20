@@ -53,21 +53,23 @@ let sp_drag_img = undefined;
 let sp_button_img = undefined;
 
 /*** Stores the mainlayer that the mouse is currently over. Equals undefined if
- *** the mouse is not over a scroll pane.
+ *** the mouse is not over a scrollpane.
  ***/
 let sp_target_mainlayer = undefined;
 
 /*** True if a click might be in progress.
  *** 
  *** A click requires the user to generate a MouseDown event and a MouseUp
- *** event in succession that are both on the scroll pane widget.
+ *** event in succession that are both on the scrollpane widget.
  ***/
 let sp_click_in_progress = false;
 
 
-/** Event handler to updates the thumb when the scroll pane resizes. **/
-const sp_handle_resize = ({ target: layer }) => layer.UpdateThumb();
-const sp_resize_observer = new ResizeObserver((entries) => entries.forEach(sp_handle_resize));
+/** A resize observer to update the scroll thumb when the scrollpane is resized. **/
+const sp_resize_observer = new ResizeObserver(e => e.forEach(({ target }) => {
+    target.UpdateThumb();
+}));
+
 
 function sp_init({ layer: pane, area_name, thumb_name })
     {
@@ -131,6 +133,9 @@ function sp_init({ layer: pane, area_name, thumb_name })
     pane.area = area;
     pane.UpdateThumb = sp_update_thumb;
     
+    /** Observe the scrollpane so it can update when resized. **/
+    sp_resize_observer.observe(pane);
+    
     /** Register actions with Centrallix. **/
     const ia = pane.ifcProbeAdd(ifAction);
     ia.Add("ScrollTo", sp_action_ScrollTo);
@@ -168,27 +173,24 @@ function sp_init({ layer: pane, area_name, thumb_name })
 	area.clip.pane = pane;
 	area.clip.watch("height", sp_WatchHeight);
 	}
-    
-    /** Watch for changes in the size of the scroll pane. **/
-    sp_resize_observer.observe(pane);
     }
 
 /** ========== Getter functions ========== **/
 /** Functions to compute common values needed often in this code. **/
 
-/** @returns The height of content inside the scroll pane (even if not all of it is visible). **/
+/** @returns The height of content inside the scrollpane (even if not all of it is visible). **/
 function sp_get_content_height(area)
     {
     return area.content_height;
     }
 
-/** @returns The height of visible area available to the scroll pane. **/
+/** @returns The height of visible area available to the scrollpane. **/
 function sp_get_available_height(pane)
     {
     return parseInt(getComputedStyle(pane).height);
     }
 
-/** @returns The height of the content outside the available visible area of the scroll pane. **/
+/** @returns The height of the content outside the available visible area of the scrollpane. **/
 function sp_get_nonvisible_height(pane)
     {
     return sp_get_content_height(pane.area) - sp_get_available_height(pane);
@@ -201,14 +203,14 @@ function sp_get_scrollbar_height(pane)
     return sp_get_available_height(pane) - (3*18);
     }
 
-/** @returns The distance down that the scroll pane has been scrolled. **/
+/** @returns The distance down that the scrollpane has been scrolled. **/
 function sp_get_scroll_dist(area)
     {
     return -getRelativeY(area);	
     }
 
 
-/*** Update the scroll pane to handle the height of its contained content
+/*** Update the scrollpane to handle the height of its contained content
  *** (aka. its child widgets) changing.
  *** 
  *** @param property Unused
@@ -284,7 +286,7 @@ function sp_update_thumb()
     let scroll_dist = sp_get_scroll_dist(area);
     if (scroll_dist > nonvisible_height)
 	{
-	/** Scroll down to fill the new space at the bottom of the scroll pane. **/
+	/** Scroll down to fill the new space at the bottom of the scrollpane. **/
 	setRelativeY(area, -nonvisible_height);
 	scroll_dist = nonvisible_height;
 	}
@@ -295,9 +297,9 @@ function sp_update_thumb()
     setRelativeY(thumb, progress_scaled);
     }
 
-/*** Scroll the scroll pane to the specified `scroll_height`.
+/*** Scroll the scrollpane to the specified `scroll_height`.
  *** 
- *** @param pane The affected scroll pane DOM node.
+ *** @param pane The affected scrollpane DOM node.
  *** @param scroll_height The new height, in pixels, that the content should
  *** 	 be scrolled to as a result of this scroll.
  ***/
@@ -329,9 +331,9 @@ function sp_scroll_to(pane, scroll_height)
     setTimeout(() => cn_activate(pane, 'Scroll', param), 0);
     }
 
-/*** Scroll the scroll pane down by the specified amount.
+/*** Scroll the scrollpane down by the specified amount.
  *** 
- *** @param pane The affected scroll pane DOM node.
+ *** @param pane The affected scrollpane DOM node.
  *** @param amount The amount, in pixels, that the content should move up as a
  *** 	result of this scroll.
  ***/
@@ -363,11 +365,11 @@ function sp_get_event_params(event)
     }
 
 /*** Extract a node from an event, then traverse up the parent tree of the node
- *** to search for a valid pane from a scroll pane widget, returning undefined
+ *** to search for a valid pane from a scrollpane widget, returning undefined
  *** if it cannot be found.
  *** 
  *** @param event The event in which to search for the pane.
- *** @returns The scroll pane, if it can be found, or undefined otherwise.
+ *** @returns The scrollpane, if it can be found, or undefined otherwise.
  ***/
 function sp_get_pane(event)
     {
@@ -403,7 +405,7 @@ function sp_wheel(e)
     {
     const { ctrlKey, shiftKey, altKey, deltaMode, deltaY } = e.Dom2Event;
     
-    /** Ignore events on other DOM nodes if we can't find a scroll pane. **/
+    /** Ignore events on other DOM nodes if we can't find a scrollpane. **/
     if (!(pane = sp_get_pane(e)))
 	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     
