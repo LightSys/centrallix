@@ -2776,83 +2776,31 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 
 
 int
-ht_get_parent_w__INTERNAL(pWgtrNode widget) {
-    /** Check to see if the value was already cached by a previous call. **/
-    int cached_value = widget->fl_parent_w;
-    if (cached_value != -1) {
-//	printf(
-//	    "Got total width available to '%s' (%s) from cache: %dpx\n",
-//	    widget->Name, widget->Type, cached_value
-//	);
-	return cached_value;
-    }
+ht_get_parent_w__INTERNAL(pWgtrNode widget)
+    {
+    /** Check for a cached value. **/
+    const int cached_value = widget->fl_parent_w;
+    if (cached_value != -1) return cached_value;
 
-    // DEBUG
-    if (widget->Parent == NULL) {
-	printf("\nPANIC: Call to ht_get_parent_w__INTERNAL() on widget with no parent!\n\n");
-	wgtrPrint(widget, 1);
+    /** Check for a width value on the parent. **/
+    const pWgtrNode parent = widget->Parent;
+    const int parentWidth = parent->width;
+    return widget->fl_parent_w = (parentWidth >= 0)
+	? parentWidth - (parent->left + parent->right) /* Width found! */
+	: ht_get_parent_w__INTERNAL(parent); /* Width not found: search recursively. */
     }
-
-    /** Cache miss, we'll need to traverse to the parent and find its width manually. */
-    pWgtrNode parent = widget->Parent;
-    int parentWidth = parent->width;
-//    int isParentVisual = !(parent->Flags & WGTR_F_NONVISUAL);
-//    printf(
-//	"Getting total width available to '%s' (%s), child of '%s' (%s) - %dpx %d\n",
-//	widget->Name, widget->Type, parent->Name, parent->Type, parentWidth, isParentVisual
-//    );
-
-    /** Check if the parent has a width value. **/
-    if (parentWidth >= 0 /* && isParentVisual */) {
-	int offset = parent->left + parent->right, ret = parentWidth - offset;
-	// printf("Returning %d-%d=%d\n", parentWidth, offset, ret);
-	return (widget->fl_parent_w = ret);
-    } else {
-	if (parent->Parent == NULL) {
-	    printf("Recursive call would segfault! Guessing %dpx instead.\n", parentWidth);
-	    return (widget->fl_parent_w = parentWidth);
-	}
-	return (widget->fl_parent_w = ht_get_parent_w(parent));
-    }
-}
 
 int
-ht_get_parent_h__INTERNAL(pWgtrNode widget) {
-    /** Check to see if the value was already cached by a previous call. **/
-    int cached_value = widget->fl_parent_h;
-    if (cached_value != -1) {
-//	printf(
-//	    "Got total height available to '%s' (%s) from cache: %dpx\n",
-//	    widget->Name, widget->Type, cached_value
-//	);
-	return cached_value;
-    }
+ht_get_parent_h__INTERNAL(pWgtrNode widget)
+    {
+    /** Check for a cached value. **/
+    const int cached_value = widget->fl_parent_h;
+    if (cached_value != -1) return cached_value;
 
-    // DEBUG
-    if (widget->Parent == NULL) {
-	printf("\nPANIC: Call to ht_get_parent_h__INTERNAL() on widget with no parent!\n\n");
-	wgtrPrint(widget, 1);
+    /** Check for a height value on the parent. **/
+    const pWgtrNode parent = widget->Parent;
+    const int parentHeight = parent->height;
+    return widget->fl_parent_h = (parentHeight >= 0)
+	? parentHeight - (parent->top + parent->bottom) /* Height found! */
+	: ht_get_parent_h__INTERNAL(parent); /* Height not found: search recursively. */
     }
-
-    /** Cache miss, we'll need to traverse to the parent and find its height manually. */
-    pWgtrNode parent = widget->Parent;
-    int parentHeight = parent->height;
-//    int isParentVisual = !(parent->Flags & WGTR_F_NONVISUAL);
-//    printf(
-//	"Getting total height available to '%s' (%s), child of '%s' (%s) - %dpx %d\n",
-//	widget->Name, widget->Type, parent->Name, parent->Type, parentHeight, isParentVisual
-//    );
-
-    /** Check if the parent has a height value. **/
-    if (parentHeight >= 0 /* && isParentVisual */) {
-	int offset = parent->top + parent->bottom, ret = parentHeight - offset;
-	// printf("Returning %d-%d=%d\n", parentHeight, offset, ret);
-	return (widget->fl_parent_h = ret);
-    } else {
-	if (parent->Parent == NULL) {
-	    printf("Recursive call would segfault! Guessing %dpx instead.\n", parentHeight);
-	    return (widget->fl_parent_h = parentHeight);
-	}
-	return (widget->fl_parent_h = ht_get_parent_h__INTERNAL(parent));
-    }
-}
