@@ -2729,8 +2729,8 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 	    "\t\t%STR { "
 		"left:"ht_flex_format"; "
 		"top:"ht_flex_format"; "
-		"%[width:"ht_flex_format"; %]" // BUG!
-		"%[height:"ht_flex_format"; %]"// BUG!
+		"%[width:"ht_flex_format"; %]"
+		"%[height:"ht_flex_format"; %]"
 		"%[z-index:%POS; %]"
 		"%[color:%STR&CSSVAL; %]"
 		"%[font-weight:bold; %]"
