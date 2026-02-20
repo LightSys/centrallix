@@ -20,11 +20,18 @@ function htutil_tag_images(d,t,l,ml)
 	}
     }
 
-/***
- *** @param bc BorderColor
- *** @param fc FillColor
- *** @param p1 Point 1
- *** @param p2 Point 2
+/*** Writes DOM nodes for a pointing UI element.
+ *** 
+ *** @param wthis The widget targetted by the point.
+ *** @param x The x value for where to point.
+ *** @param y The y value for where to point.
+ *** @param at True to point at a widget, false to point at the coordinates
+ *** 	specified above.
+ *** @param bc The border color of the point element.
+ *** @param fc The fill color of the point element.
+ *** @param p1 Point DOM node 1 (optional).
+ *** @param p2 Point DOM node 2 (optional).
+ *** @returns { p1, p2 } Pointers to the two possibly new DOM nodes.
  ***/
 function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
     {
@@ -103,12 +110,9 @@ function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
 	if (side == 'top') top -= 2;
 	}
 
-    // Create the "point divs" if needed
-    if (!p1)
-	{
-	p1 = htr_new_layer(size*2, document);
-	p2 = htr_new_layer(size*2, document);
-	}
+    // Create point DOM nodes, if needed.
+    if (!p1) p1 = htr_new_layer(size*2, document);
+    if (!p2) p2 = htr_new_layer(size*2, document);
 
     // Set the CSS to enable the point divs
     const { top: wtop, left: wleft } = $(wthis).offset();
