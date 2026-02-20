@@ -141,16 +141,16 @@ function wn_init(param)
     // was moved, allowing us to reuse them to call wn_do_move_internal(),
     // allowing that function to recalculate the window position based on the
     // new viewport size.
-    const resize_listener = l.resize_listener = {};
-    resize_listener.handler = () => 
-	{
-	const { pg_attract, wn_new_x, wn_new_y } = l.resize_listener.params;
-	wn_do_move_internal(l, pg_attract, wn_new_x, wn_new_y);
-	};
-    resize_listener.params = {
-	pg_attract: 0,
-	wn_new_x: getPageX(l),
-	wn_new_y: getPageY(l),
+    const resize_listener = l.resize_listener = {
+	params: {
+	    pg_attract: 0,
+	    wn_new_x: getPageX(l),
+	    wn_new_y: getPageY(l),
+	},
+	handler: () =>  {
+	    const { pg_attract, wn_new_x, wn_new_y } = l.resize_listener.params;
+	    wn_do_move_internal(l, pg_attract, wn_new_x, wn_new_y);
+	}
     };
     window.addEventListener('resize', resize_listener.handler);
 
