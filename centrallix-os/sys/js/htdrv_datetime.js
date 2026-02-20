@@ -9,6 +9,18 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+
+// A resize observer to update datetime dropdowns when they are resized.
+const dt_resize_observer = new ResizeObserver(e => e.forEach(({ target }) => {
+    // Ignore widgets that don't have a visible panelayer in need of updating.
+    if (htr_getvisibility(target.PaneLayer) !== 'inherit') return;
+    
+    // Reopen the datetime dropdown to rerender it.
+    dt_collapse(target);
+    dt_expand(target);
+}));
+
+
 function dt_getvalue() {
 	if(this.form && this.form.mode == 'Query' && this.sbr && this.DateObj)
 	    return new Array('>= ' + dt_formatdate(this, this.DateObj, 3),'<= ' + dt_formatdate(this, this.DateObj2, 3));
@@ -208,18 +220,7 @@ function dt_init(param){
 	l.area = pg_addarea(l, -1, -1, () => l.w + 3, () => l.h + 3, 'dt', 'dt', 3);
 	
 	// Resize date selection dropdown automatically.
-	const resize_handler = (layer) =>
-	    {
-	    if (layer.PaneLayer && htr_getvisibility(layer.PaneLayer) === 'inherit')
-		{
-		dt_collapse(layer);
-		dt_expand(layer);
-		}
-	    };
-	const resize_observer = new ResizeObserver(entries => {
-	    for (const entry of entries) resize_handler(entry.target);
-	});
-	resize_observer.observe(l);
+	dt_resize_observer.observe(l);
 
 	// Events
 	ifc_init_widget(l);

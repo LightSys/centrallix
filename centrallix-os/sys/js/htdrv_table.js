@@ -12,6 +12,7 @@
 
 window.tbld_touches = [];
 
+// A resize observer to update all table content when a table is resized.
 const tbld_resize_observer = new ResizeObserver((entries) => entries.forEach(({
     contentRect: { width, height },
     target: table
@@ -21,10 +22,10 @@ const tbld_resize_observer = new ResizeObserver((entries) => entries.forEach(({
     table.param_width = width;
     table.param_height = height;
     
-    // Update scroll thumb and reflow the columns.
+    // Update no data message, scroll thumb, and reflow columns.
+    table.UpdateNDM($(table).children('#ndm'));
     table.UpdateThumb(false);
     table.ReflowWidth(width);
-    table.UpdateNDM($(table).children('#ndm'));
     
     // Resize all rows.
     const { rows } = table;
