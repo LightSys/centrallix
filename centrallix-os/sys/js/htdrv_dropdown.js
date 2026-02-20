@@ -1324,10 +1324,8 @@ function dd_init(param)
     l.__defineGetter__('h', () => parseInt(getComputedStyle(l).height));
     l.__defineGetter__('popup_width', () => l.w * width_ratio);
     
-    /** Setup the hover area. **/
-    l.area = pg_addarea(l, -1, -1, l.w + 3, l.h + 3, 'dd', 'dd', 3);
-    l.area.__defineGetter__('width', () => l.w + 3);
-    l.area.__defineGetter__('height', () => l.h + 3);
+    // Setup the hover area.
+    l.area = pg_addarea(l, -1, -1, () => l.w + 3, () => l.h + 3, 'dd', 'dd', 3);
     
     // Resize dropdown automatically.
     const resize_handler = (layer) =>
