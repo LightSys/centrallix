@@ -204,10 +204,8 @@ function dt_init(param){
 	l.__defineGetter__('w', () => parseInt(getComputedStyle(l).width));
 	l.__defineGetter__('h', () => parseInt(getComputedStyle(l).height));
 
-	/** Setup the hover area. **/
-	l.area = pg_addarea(l, -1, -1, l.w + 3, l.h + 3, 'dt', 'dt', 3);
-	l.area.__defineGetter__('width', () => l.w + 3);
-	l.area.__defineGetter__('height', () => l.h + 3);
+	// Setup the hover area and set getters to allow responsive resizing.
+	l.area = pg_addarea(l, -1, -1, () => l.w + 3, () => l.h + 3, 'dt', 'dt', 3);
 	
 	// Resize date selection dropdown automatically.
 	const resize_handler = (layer) =>
