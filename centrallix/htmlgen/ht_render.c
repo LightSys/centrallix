@@ -2745,7 +2745,12 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 		"%[border-radius:%DBLpx; %]"
 		"%[text-align:%STR&CSSVAL; %]"
 		"%[white-space:nowrap; %]"
-		"%[box-shadow:%DBLpx %DBLpx %DBLpx %STR&CSSVAL%STR&CSSVAL; %]"
+		"%[box-shadow:"
+		    "%DBLpx "
+		    "%DBLpx "
+		    "%DBLpx "
+		    "%STR&CSSVAL%STR&CSSVAL; "
+		"%]"
 		"%[%STR %]"
 	    "}\n",
 	    id,
@@ -2767,8 +2772,12 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 	    (border_radius > 0), border_radius,
 	    (*align), align,
 	    (!wrap),
-	    (*shadow_color && shadow_radius > 0), sin(shadow_angle * M_PI/180) * shadow_offset, cos(shadow_angle * M_PI/180) *(-shadow_offset), shadow_radius, shadow_color, (!strcasecmp(shadow_location,"inside"))?" inset":"",
-	    (addl && *addl), addl
+	    (*shadow_color && shadow_radius > 0),
+	    sin(shadow_angle * M_PI/180) * shadow_offset,
+	    cos(shadow_angle * M_PI/180) *(-shadow_offset),
+	    shadow_radius,
+	    shadow_color, (strcasecmp(shadow_location, "inside") == 0) ? " inset" : "",
+	    (addl != NULL && addl[0] != '\0'), addl
 	);
 
     return 0;
