@@ -819,39 +819,68 @@ function htr_stylize_element(element, widget, prefix, defaults)
 	);
     }
 
-/*** When a point action is invoked the first time, a ResizeObserver is also
- *** created to update the location of the point element if the document is
- *** resized. The parameters from invocation of this function are saved and
- *** reused to update the point each time a resize occurs.
- */
-function htr_action_point(aparam)
+
+/** An array storing all points so they can be updated on resize. **/
+const htr_point_targets = [];
+window.addEventListener('resize', (e) => htr_point_targets.forEach(htr_update_point));
+
+/*** Updates a point when the page has been resized. Fails if the target does
+ *** not have a point element. (Call htr_action_point() to create a point,
+ *** this function is only intended to update existing points.)
+ *** 
+ *** @param point_target The target of the point being updated (necessary
+ *** 	because it stores the resize data for the point).
+ ***/
+function htr_update_point(point_target)
     {
-    const updatePoint = () =>
+    const resize_param = point_target?.resize?.param;
+    if (!resize_param)
 	{
-	/** Get the parameters from the resize observer object. **/
-	const { X, Y, AtWidget, BorderColor, FillColor } = this.resizeObserver.aparam;
-	const { p1, p2 } = htutil_point(this, X, Y, AtWidget, BorderColor, FillColor, this.point1, this.point2);
-	this.point1 = p1;
-	this.point2 = p2;
+	// Skip: No available resize data. Maybe this DOM node doesn't have an associated point?
+	console.warn('Failed to get resize data to update point on', point_target);
+	return;
 	}
     
-    if (!this.resizeObserver)
-	{
-	/*** There isn't a resize observer yet, so create a new one that will
-	 *** update the point when the document is resized.
-	 *** Note: ResizeObserver provides a list of resized entries to the
-	 *** callback (updatePoint()) and we ignore it because we only care
-	 *** that something has been resized, htutil_point() handles the rest. 
-	 ***/
-	const resizeObserver = this.resizeObserver = new ResizeObserver(updatePoint);
-	resizeObserver.observe(document.documentElement);
-	}
-    /** I really wanted to write the code below to show off how cleaver I am, but the if statement above is far more readable. **/
-    // (!this.resizeObserver) && (this.resizeObserver = new ResizeObserver(updatePoint)).observe(document.documentElement);
+    /** Update the point with data from the resize object. **/
+    const { X, Y, AtWidget, BorderColor, FillColor } = resize_param;
+    const { p1, p2 } = htutil_point(point_target,
+	X, Y, AtWidget, BorderColor, FillColor,
+	point_target.point1, point_target.point2
+    );
+    point_target.point1 = p1;
+    point_target.point2 = p2;
+    }
+
+/*** This function updates the pointing UI element that points from the point_target,
+ *** or creates one if it does not exist, and handles resize updates for it.
+ *** Often invoked when the point action is used.
+ *** 
+ *** @param point_target The point_target DOM node to be pointed at.
+ *** @param param Pointing parameters.
+ *** @param param.X The x value for where to point.
+ *** @param param.Y The y value for where to point.
+ *** @param param.AtWidget True to point at a widget, false to point at the
+ *** 	coordinates specified above.
+ *** @param param.BorderColor The border color of the point element.
+ *** @param param.FillColor The fill color of the point element.
+ ***/
+function htr_action_point(point_target, param)
+    {
+    // Get the resize data from the point_target (or create it, if needed).
+    if (!point_target.resize) point_target.resize = {};
+    const { resize } = point_target;
     
-    /** Save the parameters, then update the point. **/
-    this.resizeObserver.aparam = aparam;
-    updatePoint();
+    // Update the saved param.
+    resize.param = param;
+    
+    // Update the entry in htr_point_targets (or create it, if needed).
+    if (typeof(resize.index) === 'undefined')
+	resize.index = htr_point_targets.push(point_target) - 1;
+    else
+	htr_point_targets[resize.index] = point_target;
+
+    // (Re)render the new point.
+    htr_update_point(point_target);
     }
 
 function htr_alert(obj,maxlevels)
@@ -1185,6 +1214,8 @@ function htr_extract_bgimage(s)
 
 function htr_getvisibility(l)
     {
+    if (!l) return '';
+    
     var v = null;
     if (cx__capabilities.Dom0NS)
         {
