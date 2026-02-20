@@ -170,7 +170,7 @@ function wn_init(param)
 
 function wn_action_point(aparam)
     {
-    htr_action_point.call(this, aparam);
+    htr_action_point(this, aparam);
     }
 
 // Popup - pops up a window in the way that a menu might pop up.
