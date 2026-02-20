@@ -341,7 +341,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddStylesheetItem(s,
 		"\t\ttd img  { display: block; }\n"
 		"\t\t.pg     { position:absolute; visibility:hidden; }\n"
-		"\t\t.pgclip { clip:rect(0px, 0px, 0px, 0px); overflow:hidden; z-index:1000; }\n"
+		"\t\t.pgclip { overflow:hidden; z-index:1000; }\n"
 		"\t\t#pgtop  { left:-1000px; top:0px;     width:1152px; height:1px;   }\n"
 		"\t\t#pgbtm  { left:-1000px; top:0px;     width:1152px; height:1px;   }\n"
 		"\t\t#pgrgt  { left:0px;     top:-1000px; width:1px;    height:864px; }\n"
