@@ -733,88 +733,61 @@ function pg_isinlayer(outer,inner)
     return false;
     }
 
-/** Function to make four layers into a box  //SETH: ?? what's a 'box'?
-* pl - a layer
-* x,y - x,y-cord
-* w,h - widht, height
-* s - ?
-* tl - top layer
-* bl - bottom layer
-* rl - right layer
-* ll - left layer
-* c1 - color1, for tl and ll
-* c2 - color2, for bl and rl
-* z - zIndex
-**/
-function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
+/*** Helper function for pg_init_box() to initialize a side of a box.
+ *** 
+ *** @param layer The target layer (aka. dom node) for the side of the box.
+ *** @param parent_layer The target layer for which the box has been created.
+ *** @param x The x for this side of the box.
+ *** @param y The y for this side of the box.
+ *** @param w The width for this side of the box.
+ *** @param h The height for this side of the box.
+ *** @param color The color of this side of the box.
+ *** @param z The z-index for this side of the box.
+ ***/
+function pg_init_box_side(layer, parent_layer, x, y, w, h, color, z)
     {
+    resizeTo(layer, w, h);
+    setClipWidth(layer, w);
+    setClipHeight(layer, h);
+    moveAbove(layer, parent_layer);
+    $(layer).offset({ left:x, top:y });
+    htr_setbgcolor(layer, color);
+    htr_setzindex(layer, z);
+    htr_setvisibility(layer, 'inherit');
     
-    htr_setvisibility(tl, 'hidden');
-    htr_setvisibility(bl, 'hidden');
-    htr_setvisibility(rl, 'hidden');
-    htr_setvisibility(ll, 'hidden');
-    //abc();
-    if (cx__capabilities.Dom0NS || cx__capabilities.Dom1HTML)
-/*        {
-    	tl.bgColor = c1;
-    	ll.bgColor = c1;
-    	bl.bgColor = c2;
-    	rl.bgColor = c2;
-    	}
-    else if (cx__capabilities.Dom1HTML) */
-        {
-    	htr_setbgcolor(tl,c1);
-    	htr_setbgcolor(ll,c1);
-    	htr_setbgcolor(bl,c2);
-    	htr_setbgcolor(rl,c2);
-        }
-    //alert("x, y --" + x + " " + y);
+    return;
+    }
+
+/*** Initialize the four layers (dom nodes) of a box UI element. These are
+ *** commonly used when a user hovers over or selects certain UI elements,
+ *** such as dropdown widgets.
+ *** 
+ *** @param parent_layer The target layer for which the box has been created.
+ *** @param x The x coordinate of the top left corner of the box (in px).
+ *** @param y The y coordinate of the top left corner of the box (in px).
+ *** @param w The width of the box (in px).
+ *** @param h The height of the box (in px).
+ *** @param s The thickness of the box (in px)? Maybe?
+ *** @param top_layer The layer to be the line across the top of the box.
+ *** @param bottom_layer The layer to be the line across the bottom of the box.
+ *** @param right_layer The layer to be the line across the right side of the box.
+ *** @param left_layer The layer to be the line across the left side of the box.
+ *** @param color1 The "lit" color of the box (used for the top and left lines).
+ *** @param color2 The "unlit" color of the box (used for the bottom and right lines).
+ *** @param z The z-index for the sides of the box.
+ ***/
+function pg_init_box({
+    parent_layer,
+    x, y, w, h, s,
+    top_layer, bottom_layer, right_layer, left_layer,
+    color1, color2, z
+})
+    {
+    pg_init_box_side(top_layer, parent_layer, x, y, w, 1, color1, z);
+    pg_init_box_side(bottom_layer, parent_layer, x, x+h-s+1, w+s-1, 1, color2, z);
+    pg_init_box_side(right_layer, parent_layer, x+w-s+1, y, 1, h+1, color2, z);
+    pg_init_box_side(left_layer, parent_layer, x, y, 1, h, color1, z);
     
-    resizeTo(tl,w,1);
-    setClipWidth(tl,w);
-    setClipHeight(tl,1);
-    //if (cx__capabilities.Dom1HTML && pl)
-    //	pl.parentLayer.appendChild(tl);
-    moveAbove(tl,pl);
-    //moveToAbsolute(tl,x,y);
-    $(tl).offset({left:x, top:y});
-    htr_setzindex(tl,z);
-
-    resizeTo(bl,w+s-1,1);
-    setClipWidth(bl,w+s-1);
-    setClipHeight(bl,1);
-    //if (cx__capabilities.Dom1HTML && pl)
-    //	pl.parentLayer.appendChild(bl);
-    moveAbove(bl,pl);
-    //moveToAbsolute(bl,x,y+h-s+1);
-    $(bl).offset({left:x, top:y+h-s+1});
-    htr_setzindex(bl,z);
-
-    resizeTo(ll,1,h);
-    setClipHeight(ll,h);
-    setClipWidth(ll,1);
-    //if (cx__capabilities.Dom1HTML && pl)
-    //	pl.parentLayer.appendChild(ll);
-    moveAbove(ll,pl);
-    //moveToAbsolute(ll,x,y);
-    $(ll).offset({left:x, top:y});
-    htr_setzindex(ll,z);
-
-    resizeTo(rl,1,h+1);
-    setClipHeight(rl,h+1);
-    setClipWidth(rl,1);
-    //if (cx__capabilities.Dom1HTML && pl)
-    //	pl.parentLayer.appendChild(rl);
-    moveAbove(rl,pl);
-    //moveToAbsolute(rl,x+w-s+1,y);
-    $(rl).offset({left:x+w-s+1, top:y});
-    htr_setzindex(rl,z);
-    
-    htr_setvisibility(tl, 'inherit');
-    htr_setvisibility(bl, 'inherit');
-    htr_setvisibility(rl, 'inherit');
-    htr_setvisibility(ll, 'inherit');
-    //alert(rl.style.cssText);
     return;
     }
 
@@ -1991,27 +1964,30 @@ function pg_setmousefocus(l, xo, yo)
 		    
 		    if (cx__capabilities.Dom0NS)
 			{
-			pg_mkbox(l,
-			    x, y, w, h, 1,
-			    document.layers.pgtop,
-			    document.layers.pgbtm,
-			    document.layers.pgrgt,
-			    document.layers.pglft,
-			    page.mscolor1, page.mscolor2,
-			    document.layers.pgktop.zIndex - 1
-			);
+			pg_init_box({
+			    parent_layer: l,
+			    x, y, w, h, s: 1,
+			    top_layer:    document.layers.pgtop,
+			    bottom_layer: document.layers.pgbtm,
+			    right_layer:  document.layers.pgrgt,
+			    left_layer:   document.layers.pglft,
+			    color1: page.mscolor1,
+			    color2: page.mscolor2,
+			    z: document.layers.pgktop.zIndex - 1,
+			});
 			}
 		    else if (cx__capabilities.Dom1HTML)
 			{
-			pg_mkbox(l,
-			    x, y, w, h, 1,
-			    document.getElementById("pgtop"),
-			    document.getElementById("pgbtm"),
-			    document.getElementById("pgrgt"),
-			    document.getElementById("pglft"),
-			    page.mscolor1, page.mscolor2,
-			    htr_getzindex(document.getElementById("pgktop")) - 1
-			);
+			pg_init_box({
+			    parentLayer: l,
+			    x, y, w, h, s: 1,
+			    top_layer:    document.getElementById("pgtop"),
+			    bottom_layer: document.getElementById("pgbtm"),
+			    right_layer:  document.getElementById("pgrgt"),
+			    left_layer:   document.getElementById("pglft"),
+			    color1: page.mscolor1, color2: page.mscolor2,
+			    z: htr_getzindex(document.getElementById("pgktop")) - 1,
+			});
 			}
 		    };
 		
@@ -2036,11 +2012,29 @@ function pg_removekbdfocus(p)
 	pg_curkbdarea = null;
 	if (cx__capabilities.Dom0NS)
 	    {
-	    pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
+	    pg_init_box({
+		parent_layer: null,
+		x: 0, y: 0, w: 0, h: 0, s: 1,
+		top_layer:    document.layers.pgktop,
+		bottom_layer: document.layers.pgkbtm,
+		right_layer:  document.layers.pgkrgt,
+		left_layer:   document.layers.pgklft,
+		color1: page.kbcolor1, color2: page.kbcolor2,
+		z: document.layers.pgtop.zIndex + 100,
+	    });
 	    }
 	else if (cx__capabilities.Dom1HTML)
 	    {
-	    pg_mkbox(null,0,0,0,0, 1, document.getElementById("pgktop"),document.getElementById("pgkbtm"),document.getElementById("pgkrgt"),document.getElementById("pgklft"), page.kbcolor1, page.kbcolor2, pg_get_style(document.getElementById("pgtop"), 'zIndex')+100);
+	    pg_init_box({
+		parent_layer: null,
+		x: 0, y: 0, w: 0, h: 0, s: 1,
+		top_layer:    document.getElementById("pgktop"),
+		bottom_layer: document.getElementById("pgkbtm"),
+		right_layer:  document.getElementById("pgkrgt"),
+		left_layer:   document.getElementById("pgklft"),
+		color1: page.kbcolor1, color2: page.kbcolor2,
+		z: pg_get_style(document.getElementById("pgtop"), 'zIndex') + 100,
+	    });
 	    }
 	}
 	
@@ -2109,11 +2103,29 @@ function pg_setdatafocus(a)
     // draw new data focus box
     if (cx__capabilities.Dom0NS)
 	{	        
-	pg_mkbox(l,x-1,y-1,w+2,h+2, 1, l.pg_dttop,l.pg_dtbtm,l.pg_dtrgt,l.pg_dtlft, page.dtcolor1, page.dtcolor2, document.layers.pgtop.zIndex+100);
+	pg_init_box({
+	    parent_layer: l,
+	    x: x - 1, y: y - 1, w: w + 2, h: h + 2, s: 1,
+	    top_layer:    l.pg_dttop,
+	    bottom_layer: l.pg_dtbtm,
+	    right_layer:  l.pg_dtrgt,
+	    left_layer:   l.pg_dtlft,
+	    color1: page.dtcolor1, color2: page.dtcolor2,
+	    z: document.layers.pgtop.zIndex + 100,
+	});
 	}
     else if (cx__capabilities.Dom1HTML)
 	{
-	pg_mkbox(l,x-1,y-1,w+2,h+2, 1, l.pg_dttop,l.pg_dtbtm,l.pg_dtrgt,l.pg_dtlft, page.dtcolor1, page.dtcolor2, pg_get_style(document.getElementById("pgtop"),'zIndex')+100);
+	pg_init_box({
+	    parnet_layer: l,
+	    x: x - 1, y: y - 1, w: w + 2, h: h + 2, s: 1,
+	    top_layer:    l.pg_dttop,
+	    bottom_layer: l.pg_dtbtm,
+	    right_layer:  l.pg_dtrgt,
+	    left_layer:   l.pg_dtlft,
+	    color1: page.dtcolor1, color2: page.dtcolor2,
+	    z: pg_get_style(document.getElementById("pgtop"),'zIndex') + 100,
+	});
 	}
     }
 
@@ -2163,18 +2175,16 @@ function pg_setkbdfocus(l, a, xo, yo)
 	v=pg_curkbdlayer.getfocushandler(xo,yo,a.layer,a.cls,a.name,a,from_kbd);
 	if (v & 1)
 	    {
-	    // mk box for kbd focus
-	    //if (prevArea != a)
-	//	{
-	//	if (cx__capabilities.Dom0NS)
-	//	    {
-	//	    pg_mkbox(l ,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
-	//	    }
-	//	else if (cx__capabilities.Dom1HTML)
-	//	    {		    
-		    pg_mkbox(l ,x,y,w,h, 1, document.getElementById("pgktop"),document.getElementById("pgkbtm"),document.getElementById("pgkrgt"),document.getElementById("pgklft"), page.kbcolor1, page.kbcolor2, htr_getzindex(document.getElementById("pgtop"))+100);
-	//	    }
-	//	}
+	    pg_init_box({
+		parent_layer: l,
+		x, y, w, h, s: 1,
+		top_layer:    document.getElementById("pgktop"),
+		bottom_layer: document.getElementById("pgkbtm"),
+		right_layer:  document.getElementById("pgkrgt"),
+		left_layer:   document.getElementById("pgklft"),
+		color1: page.kbcolor1, color2: page.kbcolor2,
+		z: htr_getzindex(document.getElementById("pgtop")) + 100,
+	    });
 	    }
 	if (v & 2)
 	    {
