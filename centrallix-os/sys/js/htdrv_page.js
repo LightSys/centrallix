@@ -844,17 +844,49 @@ function pg_hidebox(tl,bl,rl,ll)
     return;
     }
 
-/** Function to make a new clickable "area" **INTERNAL** **/
-function pg_area(pl,x,y,w,h,cls,nm,f) //SETH: ?? what's an 'area'?
+/*** Internal constructor function to create a new clickable/hoverable "area".
+ *** 
+ *** Note: The x, y, w, and h params can all be specified as either a constant,
+ *** value or a function. The latter is useful because areas are rerendered
+ *** when the page resizes so a function allows the new value to be used.
+ *** 
+ *** @param parent The associated parent layer for which this area is rendered.
+ *** @param x The x coordinate of the area.
+ *** @param y The y coordinate of the area.
+ *** @param width The width of the area.
+ *** @param height The height of the area.
+ *** @param cls I could not find any place where this variable was clearly
+ *** 	used, so your guess is as good as mine in terms of what it is. It
+ *** 	might be some kind of selection name??? - Israel F.
+ *** @param name The name of the area.
+ *** @param f A flag that appears to hide the area if true??
+ ***/
+function pg_area(parent, x, y, width, height, cls, name, f)
     {
-    this.layer = pl;
-    this.x = x;
-    this.y = y;
-    this.width = w;
-    this.height = h;
-    this.name = nm;
+    // Function to handle params that might be functions.
+    const handle_param = (name, value) => {
+	if (typeof(value) === 'function')
+	    {
+	    // Set a base value and define a getter that calls the provided function.
+	    this[name] = value();
+	    this.__defineGetter__(name, value);
+	    }
+	
+	// If just a value is provided, simply set that.
+	else this[name] = value;
+    }
+    
+    // Handle each parameter for the class.
+    this.layer = parent;
+    handle_param('x', x);
+    handle_param('y', y);
+    handle_param('width', width);
+    handle_param('height', height);
+    this.name = name;
     this.cls = cls;
     this.flags = f;
+    
+    // Return the newly instantiated object.
     return this;
     }
 
@@ -929,9 +961,12 @@ function pg_resize_area(a,w,h,xo,yo)
 	}
     }
 
-/** Function to add a new area to the arealist **/
+/*** Function to add a new area to the area list.
+ *** Note that x, y, w, & h can all be provided as
+ *** function for responsive resizing.
+ ***/
 function pg_addarea(pl,x,y,w,h,cls,nm,f)
-    {    
+    {
     var a = new pg_area(pl,x,y,w,h,cls,nm,f);
     //pg_arealist.splice(0,0,a);
     pg_arealist.push(a);
