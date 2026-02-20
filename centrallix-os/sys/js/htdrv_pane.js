@@ -87,7 +87,7 @@ function pn_action_resize(aparam)
 
 function pn_action_point(aparam)
     {
-    htr_action_point.call(this, aparam);
+    htr_action_point(this, aparam);
     }
 
 function pn_init(param)
