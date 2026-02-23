@@ -818,21 +818,30 @@ function pg_hidebox(tl,bl,rl,ll)
     }
 
 /*** Internal constructor function to create a new clickable/hoverable "area".
+ *** This function has additional documentation in `HTFormInterface.md`.
  *** 
- *** Note: The x, y, w, and h params can all be specified as either a constant,
- *** value or a function. The latter is useful because areas are rerendered
- *** when the page resizes so a function allows the new value to be used.
+ *** Note: Many functions specify (x,y) as (0,0), or as (-1,-1) if the focus
+ ***       area should appear 1px outside the parent layer.
+ *** 
+ *** Note: The x, y, w, and h params can all be specified as either a single
+ ***       value or a function. The latter is useful because areas are redawn
+ ***       when the page resizes, so a function can provide an updated value
+ ***       for the new layout.
  *** 
  *** @param parent The associated parent layer for which this area is rendered.
- *** @param x The x coordinate of the area.
- *** @param y The y coordinate of the area.
+ *** 	This object should implement the `keyhandler()`, `getfocushandler()`,
+ *** 	and `losefocushandler()`, as described in `HTFormInterface.md`.
+ *** @param x The x coordinate of the area, relative to the parent layer.
+ *** @param y The y coordinate of the area, relative to the parent layer.
  *** @param width The width of the area.
  *** @param height The height of the area.
- *** @param cls I could not find any place where this variable was clearly
- *** 	used, so your guess is as good as mine in terms of what it is. It
- *** 	might be some kind of selection name??? - Israel F.
- *** @param name The name of the area.
- *** @param f A flag that appears to hide the area if true??
+ *** @param cls A mostly unused value for the "context" of an area, used for
+ *** 	the callback functions described in `HTFormatInterface.md`. (As for how
+ ***	"context" can be abbreviated to `cls`, your guess is as good as mine.)
+ *** @param name The name of the area, also used for callback functions.
+ *** @param f A bitmask representing zero or more of the following flags:
+ *** 	1: Allow the area to receive keyboard focus.
+ *** 	2: Allow the area to receive data focus.
  ***/
 function pg_area(parent, x, y, width, height, cls, name, f)
     {
