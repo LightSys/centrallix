@@ -701,10 +701,11 @@ function eb_init(param)
 	$(l.ContentLayer).prop('disabled', false);
 	}
     l.isFormStatusWidget = false;
-    if (cx__capabilities.CSSBox)
-	pg_addarea(l, -1,-1,$(l).width()+3,$(l).height()+3, 'ebox', 'ebox', param.isReadOnly?0:3);
-    else
-	pg_addarea(l, -1,-1,$(l).width()+1,$(l).height()+1, 'ebox', 'ebox', param.isReadOnly?0:3);
+    
+    // Add the hover area.
+    const area_adj = (cx__capabilities.CSSBox) ? 3 : 1;
+    pg_addarea(l, -1, -1, () => $(l).width() + area_adj, () => $(l).height() + area_adj, 'ebox', 'ebox', (param.isReadOnly) ? 0 : 3);
+
     if (param.form)
 	l.form = wgtrGetNode(l, param.form);
     else
