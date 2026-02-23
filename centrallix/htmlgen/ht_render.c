@@ -1409,12 +1409,39 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 			htrAddScriptWgtr_va(s, "%STR&SYM:%INT, ", propname, od.Integer);
 			break;
 
+		    case DATA_T_STRING:
+			htrAddScriptWgtr_va(s, "%STR&SYM:'%STR&JSSTR', ", propname, od.String);
+			break;
+
 		    case DATA_T_DOUBLE:
 			htrAddScriptWgtr_va(s, "%STR&SYM:%DBL, ", propname, od.Double);
 			break;
 
-		    case DATA_T_STRING:
-			htrAddScriptWgtr_va(s, "%STR&SYM:'%STR&JSSTR', ", propname, od.String);
+		    case DATA_T_DATETIME:
+			htrAddScriptWgtr_va(s,
+			    "%STR&SYM:new Date(%LL, %LL, %LL, %LL, %LL, %LL), ",
+			    propname,
+			    (long long)od.DateTime->Part.Year + 1900,
+			    (long long)od.DateTime->Part.Month,
+			    (long long)od.DateTime->Part.Day + 1,
+			    (long long)od.DateTime->Part.Hour,
+			    (long long)od.DateTime->Part.Minute,
+			    (long long)od.DateTime->Part.Second
+			);
+			break;
+
+		    case DATA_T_INTVEC:
+			htrAddScriptWgtr_va(s, "%STR&SYM:[", propname);
+			for (unsigned int i = 0; i < od.IntVec->nIntegers; i++)
+			    htrAddScriptWgtr_va(s, "%[, %]%INT", (i != 0), od.IntVec->Integers[i]);
+			htrAddScriptWgtr(s, "], ");
+			break;
+
+		    case DATA_T_STRINGVEC:
+			htrAddScriptWgtr_va(s, "%STR&SYM:[", propname);
+			for (unsigned int i = 0; i < od.StringVec->nStrings; i++)
+			    htrAddScriptWgtr_va(s, "%[, %]'%STR&JSSTR'", (i != 0), od.StringVec->Strings[i]);
+			htrAddScriptWgtr(s, "], ");
 			break;
 
 		    case DATA_T_CODE:
@@ -1423,13 +1450,13 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 			xsInit(&proptxt);
 			htrGetExpParams(code, &proptxt);
 			expGenerateText(code, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT);
-			htrAddScriptWgtr_va(s, "%STR&SYM:{val:null, exp:function(_this,_context){return ( %STR );}, props:%STR, revexp:null}, ", propname, exptxt.String, proptxt.String);
+			htrAddScriptWgtr_va(s, "%STR&SYM:{ val:null, exp:(_this, _context) => { return ( %STR ); }, props:%STR, revexp:null }, ", propname, exptxt.String, proptxt.String);
 			xsDeInit(&proptxt);
 			xsDeInit(&exptxt);
 			break;
 
 		    default:
-		        fprintf(stderr, "Failed to write widget property '%s': Unknown datatype %d (at %s:%d).\n", propname, t, __FILE__, __LINE__);
+			fprintf(stderr, "Failed to write widget property '%s' for widget \"%s\" : \"%s\": Unknown datatype %d (at %s:%d).\n", propname, tree->Name, tree->Type, t, __FILE__, __LINE__);
 			htrAddScriptWgtr_va(s, "%STR&SYM:'Unknown Datatype (%INT) - Add it to htr_internal_WriteWgtrProperty() in ht_render.c.', ", propname, t);
 			break;
 		    }
