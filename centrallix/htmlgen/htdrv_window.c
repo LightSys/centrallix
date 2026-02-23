@@ -369,7 +369,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 		    "left:0px; "
 		    "top:0px; "
 		    "height:%POSpx; "
-		    "width:calc(100%% - 4px); "
+		    "width:100%%; "
 		    "z-index:%POS; "
 		    "color:%STR&CSSVAL; "
 		    "cursor:default; "
