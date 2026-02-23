@@ -783,10 +783,10 @@ function pg_init_box({
     color1, color2, z
 })
     {
-    pg_init_box_side(top_layer, parent_layer, x, y, w, 1, color1, z);
-    pg_init_box_side(bottom_layer, parent_layer, x, x+h-s+1, w+s-1, 1, color2, z);
-    pg_init_box_side(right_layer, parent_layer, x+w-s+1, y, 1, h+1, color2, z);
-    pg_init_box_side(left_layer, parent_layer, x, y, 1, h, color1, z);
+    pg_init_box_side(top_layer,    parent_layer, x,       y,       w,     1,   color1, z);
+    pg_init_box_side(bottom_layer, parent_layer, x,       y+h-s+1, w+s-1, 1,   color2, z);
+    pg_init_box_side(right_layer,  parent_layer, x+w-s+1, y,       1,     h+1, color2, z);
+    pg_init_box_side(left_layer,   parent_layer, x,       y,       1,     h,   color1, z);
     
     return;
     }
