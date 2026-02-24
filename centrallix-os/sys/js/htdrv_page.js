@@ -1988,7 +1988,7 @@ function pg_setmousefocus(l, xo, yo)
 		    else if (cx__capabilities.Dom1HTML)
 			{
 			pg_init_box({
-			    parentLayer: l,
+			    parent_layer: l,
 			    x, y, w, h, s: 1,
 			    top_layer:    document.getElementById("pgtop"),
 			    bottom_layer: document.getElementById("pgbtm"),
