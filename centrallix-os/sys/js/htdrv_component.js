@@ -228,10 +228,6 @@ function cmp_instantiate(aparam)
     else
 	var path = this.path;
     var url = path + "?cx__geom=" + escape(geom) + "&cx__graft=" + escape(graft) + "&cx__akey=" + escape(akey);
-    if (this.orig_x != 0 || this.orig_y != 0)
-	{
-	url += "&cx__xoffset=" + escape(this.orig_x) + "&cx__yoffset=" + escape(this.orig_y);
-	}
 
     if (this.templates.length > 0)
 	{
