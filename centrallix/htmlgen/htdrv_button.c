@@ -259,10 +259,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	
 		{
 		/** box adjustment... arrgh **/
-		if (s->Capabilities.CSSBox)
-		    box_offset = 1;
-		else
-		    box_offset = 0;
+		box_offset = (s->Capabilities.CSSBox) ? 1 : 0;
 
 		htrAddScriptGlobal(s, "gb_current", "null", 0);
 
