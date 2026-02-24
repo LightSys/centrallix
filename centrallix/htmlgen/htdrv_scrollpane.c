@@ -179,6 +179,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 		    "src='/sys/images/ico13b.gif' "
 		    "style='"
 			"top:0px; "
+			"cursor:pointer; "
 		    "'"
 		"/>",
 		id,
@@ -212,6 +213,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 		    "src='/sys/images/ico12b.gif' "
 		    "style='"
 			"top:"ht_flex_format"; "
+			"cursor:pointer; "
 		    "'"
 		"/>",
 		id,

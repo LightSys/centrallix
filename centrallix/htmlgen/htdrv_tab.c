@@ -480,12 +480,12 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			"position:absolute; "
 			"visibility:inherit; "
 			"overflow:hidden; "
+			"cursor:pointer; "
 			"left:"ht_flex_format"; "
 			"top:"ht_flex_format"; "
 			"%[width:%POSpx; %]"  /* Tab width has 0 flexibility. */
 			"%[height:%POSpx; %]" /* Tab height has 0 flexibility. */
 			"z-index:%POS; "
-			"cursor:default; "
 			"clip-path:inset(%INTpx %INTpx %INTpx %INTpx); "
 			"border-radius:%POSpx %POSpx %POSpx %POSpx; "
 			"border-width:%POSpx %POSpx %POSpx %POSpx; "

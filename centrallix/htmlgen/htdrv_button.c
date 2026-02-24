@@ -525,7 +525,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 			}
 		    htrAddStylesheetItem_va(s,
 			"\t\t#gb%POSpane, #gb%POSpane2, #gb%POSpane3 { "
-			    "cursor:default; "
+			    "cursor:pointer; "
 			    "text-align:center; "
 			"}\n",
 			id, id, id
