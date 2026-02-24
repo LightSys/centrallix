@@ -38,20 +38,6 @@ MyPage "widget/page"
     
     paneA "widget/pane" { x=40; y=680;  width=890; height=220; bgcolor = "#620"; }
     
-    b "widget/button"
-	{
-	x=80; y=700;
-	width=40; height=20;
-	
-	type = "text";
-	text = "text button";
-	bgcolor = "#aee";
-	fgcolor1 = "white";
-	fgcolor2 = "red";
-	disable_color = "grey";
-	enabled = yes;
-	}
-    
     // Outline the visible area. 
     top_left0     "widget/pane" { x=0;   y=0;   width=10; height=10; bgcolor = "#f00"; }
     top_right0    "widget/pane" { x=990; y=0;   width=10; height=10; bgcolor = "#ff0"; }
