@@ -636,8 +636,8 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    /** Add DIV section to contane the tabpage. **/
 	    htrAddBodyItem_va(s,
 		"<div "
-		    "id=\"tc%POSpane%POS\" "
-		    "style=\""
+		    "id='tc%POSpane%POS' "
+		    "style='"
 			"position:absolute; "
 			"visibility:%STR&CSSVAL; "
 			"left:0px; "
@@ -645,7 +645,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			"width:100%%; "
 			"height:100%%; "
 			"z-index:%POS; "
-		    "\""
+		    "'"
 		">\n",
 		id, i + 1,
 		(is_selected) ? "inherit" : "hidden",
