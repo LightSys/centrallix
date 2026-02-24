@@ -410,6 +410,7 @@ function dt_drawmonth(l, d) {
 		moveTo(l.TimeVisLayer,0,rows*20+56);
 	    }
 	}
+	enableClippingCSS(l);
 	var v='<TABLE width=175 height='+rows*20  +' border=0 cellpadding=0 cellspacing=0>';
 	for (var i=0; i<7*rows; i++) {
 		if (i!=0 && i%7==0) v+='</TR>';
@@ -912,6 +913,7 @@ function dt_create_pane(ml,bg,w,h,h2,name) {
 	pg_stackpopup(l,ml);
 	setClipHeight(l,h);
 	setClipWidth(l,w);
+	enableClippingCSS(l);
 	
 	//l.HidLayer = new Layer(1024, l);
 	l.HidLayer = htr_new_layer(1024,l);
