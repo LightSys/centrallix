@@ -189,7 +189,8 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 		z
 	    );
 	    }
-	htrAddStylesheetItem_va(s, "\t\t#tv%POSload { "
+	htrAddStylesheetItem_va(s,
+	    "\t\t#tv%POSload { "
 		"position:absolute; "
 		"visibility:hidden; "
 		"overflow:hidden; "

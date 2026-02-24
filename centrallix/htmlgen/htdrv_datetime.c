@@ -187,16 +187,6 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	/** Get colors **/
 	htrGetBackground(tree, NULL, 1, bgcolor, sizeof(bgcolor));
 	if (!*bgcolor) strcpy(bgcolor,"background-color:white;");
-	//else strcpy(bgcolor, "bgcolor=green");
-
-///////////////////////////////////////
-//	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-//	    sprintf(bgcolor,"%.40s",ptr);
-//	else {
-	    //mssError(1,"HTDD","Date Time widget must have a 'bgcolor' property");
-	    //return -1;
-	    //strcpy(bgcolor,"blue");
-//	}
 	
 	if (wgtrGetPropertyValue(tree,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    strtcpy(fgcolor,ptr,sizeof(fgcolor));
