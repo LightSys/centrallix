@@ -205,6 +205,12 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	);
 	htrAddStylesheetItem_va(s, "\t\tdiv.tv%POS  a { %[color:%STR&CSSVAL;%] }\n", id, (*fgcolor),  fgcolor);
 	htrAddStylesheetItem_va(s, "\t\tdiv.tv%POSh a { %[color:%STR&CSSVAL;%] }\n", id, (*hfgcolor), hfgcolor);
+	htrAddStylesheetItem_va(s,
+	    "\t\t.tv%POS { "
+		"cursor:pointer; "
+	    "}\n",
+	    id
+	);
 
 	/** Write globals for internal use **/
 	htrAddScriptGlobal(s, "tv_tgt_layer", "null", 0);

@@ -366,13 +366,13 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 		    "position:absolute; "
 		    "visibility:inherit; "
 		    "overflow:hidden; "
+		    "cursor:grab;"
 		    "left:0px; "
 		    "top:0px; "
 		    "height:%POSpx; "
 		    "width:100%%; "
 		    "z-index:%POS; "
 		    "color:%STR&CSSVAL; "
-		    "cursor:default; "
 		    "border-style:solid; "
 		    "border-width:0px 0px 1px 0px; "
 		    "border-color:gray; "
@@ -388,7 +388,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 		"<div id='wn%POStitlebar' class='wntitlebar'>"
 		    "<img style='position:absolute; top:2px; left:4px; width:18px; height:18px;' name='icon' src='%STR&HTE'>"
 		    "<div style='position:absolute; top:4px; left:30px; color:%STR&HTE; font-weight:bold;'>%STR&HTE</div>"
-		    "<img style='position:relative; margin-top:3px; margin-right:3px; float:right;' name='close' src='/sys/images/01bigclose.gif'>"
+		    "<img style='position:relative; margin-top:3px; margin-right:3px; float:right; cursor:pointer;' name='close' src='/sys/images/01bigclose.gif'>"
 		"</div>\n",
 		id,
 		icon,

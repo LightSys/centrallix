@@ -2174,7 +2174,7 @@ function tbld_init(param)
 	    l.resizebdr = htr_new_layer(t.bdr_width*2 + t.colsep, t);
 	    $(l.resizebdr).css
 		({
-		"cursor": "move", 
+		"cursor": "col-resize", 
 		"height": (t.colsepmode == 0)?(((t.gridinemptyrows)?(t.param_height):t.rowheight) + "px"):(t.rowheight + "px"), 
 		"visibility": "inherit",
 		"width": t.colsep + t.bdr_width*2 + "px",

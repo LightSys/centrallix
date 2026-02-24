@@ -157,12 +157,12 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	    "position:absolute; "
 	    "visibility:inherit; "
 	    "overflow:hidden; "
+	    "cursor:pointer; "
 	    "left:"ht_flex_format"; "
 	    "top:"ht_flex_format"; "
 	    "width:"ht_flex_format"; "
 	    "height:"ht_flex_format"; "
 	    "z-index:%POS; "
-	    "cursor:default; "
 	    "background-color: %STR&CSSVAL; "
 	    "border:1px outset #e0e0e0; "
 	"}\n",

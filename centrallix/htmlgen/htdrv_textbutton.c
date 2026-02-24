@@ -221,13 +221,13 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    "\t\t#tb%POSpane { "
 		"position:absolute; "
 		"visibility:inherit; "
+		"cursor:pointer; "
+		"display:table; "
 		"left:"ht_flex_format"; "
 		"top:"ht_flex_format"; "
 		"width:"ht_flex_format"; "
 		"%[height:"ht_flex_format"; %]"
 		"z-index:%POS; "
-		"overflow:hidden; "
-		"display:table; "
 	    "}\n",
 	    id,
 	              ht_flex_x(x,       tree),
@@ -254,7 +254,6 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 		"display:table-cell; "
 		"padding:1px; "
 		"font-weight:bold; "
-		"cursor:default; "
 		"text-align:%STR; "
 		"border-width:1px; "
 		"border-style:%STR&CSSVAL; "
