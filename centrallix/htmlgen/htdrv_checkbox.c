@@ -96,6 +96,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
 	"\t\t#cb%POSmain { "
 	    "position:absolute; "
 	    "visibility:inherit; "
+	    "cursor:pointer; "
 	    "left:"ht_flex_format"; "
 	    "top:"ht_flex_format"; "
 	    "height:13px; "

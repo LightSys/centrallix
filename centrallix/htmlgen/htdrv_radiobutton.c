@@ -189,6 +189,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	    "position:absolute; "
 	    "visibility:inherit; "
 	    "overflow:hidden; "
+	    "cursor:default; "
 	    "left:"ht_flex_format"; "
 	    "top:"ht_flex_format"; "
 	    "width:"ht_flex_format"; "

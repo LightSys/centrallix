@@ -789,12 +789,14 @@ function wn_mousedown(e)
         else if ((e.mainlayer.has_titlebar && cx__capabilities.Dom0NS && e.pageY < e.mainlayer.pageY + 24) ||
                 (cx__capabilities.Dom1HTML && e.layer.subkind == 'titlebar' ))
             {
+	    /** Initiate a window drag. **/
             wn_current = e.mainlayer;
             wn_msx = e.pageX;
             wn_msy = e.pageY;
             wn_new_x = null;
             wn_new_y = null;
             wn_moved = 0;
+	    e.layer.style.cursor = 'grabbing';
 	    if (!cx__capabilities.Dom0IE) wn_windowshade_ns_moz(e.mainlayer);
 	    return EVENT_CONTINUE | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
@@ -829,9 +831,13 @@ function wn_mouseup(e)
     if (wn_current != null)
         {
         if (wn_moved == 0) wn_bring_top(wn_current);
+	e.layer.style.cursor = 'grab';
         }
     if (e.kind == 'wn') cn_activate(e.mainlayer, 'MouseUp');
+    
+    /** End the active window drag (if one exists). **/
     wn_current = null;
+    
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
