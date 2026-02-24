@@ -199,12 +199,12 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 		"position:absolute; "
 		"visibility:inherit; "
 		"overflow:hidden; "
+		"cursor:pointer; "
 		"left:"ht_flex_format"; "
 		"top:"ht_flex_format"; "
 		"width:"ht_flex_format"; "
 		"height:"ht_flex_format"; "
 		"z-index:%POS; "
-		"cursor:default; "
 		"border:1px outset #e0e0e0; "
 		"%STR "
 	    "}\n",
@@ -228,6 +228,12 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    "}\n",
 	    id,
 	    z + 1
+	);
+	htrAddStylesheetItem_va(s,
+	    "\t\t.dt_dropdown { "
+		"cursor:default; "
+	    "}\n",
+	    id
 	);
 
 	/** Write named global **/

@@ -141,12 +141,11 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	    "\t\t#ib%POSpane { "
 		"position:absolute; "
 		"visibility:inherit; "
-		"overflow:hidden;"
+		"overflow:hidden; "
 		"left:"ht_flex_format"; "
 		"top:"ht_flex_format"; "
 		"width:"ht_flex_format"; "
 		"z-index:%POS; "
-		"cursor:pointer; "
 	    "}\n",
 	    id,
 	    ht_flex_x(x, tree),
