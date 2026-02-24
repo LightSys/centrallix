@@ -7,9 +7,12 @@ tab_features "widget/page"
     title = "Tab Features Demonstrated";
     bgcolor = "#b0b0b0";
     
+    // Render values (used by the buttons below)
     tloc "widget/parameter" { type = "string"; default = "top"; }
     w    "widget/parameter" { type = "integer"; default = 220; }
     h    "widget/parameter" { type = "integer"; default = 70; }
+    tab_w "widget/parameter" { type = "integer"; default = null; }
+    tab_h "widget/parameter" { type = "integer"; default = null; }
     
     tloc_label "widget/label"
 	{
@@ -70,7 +73,7 @@ tab_features "widget/page"
 	    event = Click;
 	    target = tab_features;
 	    action = LoadPage;
-	    Source = "tab_features.app?tloc=left&w=140&h=90";
+	    Source = "tab_features.app?tloc=left&w=140&h=90&tab_w=80";
 	    }
 	}
 
@@ -88,7 +91,7 @@ tab_features "widget/page"
 	    event = Click;
 	    target = tab_features;
 	    action = LoadPage;
-	    Source = "tab_features.app?tloc=right&w=140&h=90";
+	    Source = "tab_features.app?tloc=right&w=140&h=90&tab_w=80";
 	    }
 	}
 
@@ -114,6 +117,8 @@ tab_features "widget/page"
 		x = 20; y = 60;
 		width = runserver(:this:w); height = 100;
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = runserver(:this:tab_h);
 		
 		background = "/sys/images/slate2.gif"; // "/sys/images/4Color.png"
 		inactive_background = "/sys/images/slate2_dark.gif";
@@ -138,6 +143,8 @@ tab_features "widget/page"
 		x = 260; y = 60;
 		width = runserver(:this:w); height = 100;
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = runserver(:this:tab_h);
 		
 		bgcolor = "#c0c0c0";
 		inactive_bgcolor = "#b8b8b8";
@@ -180,6 +187,8 @@ tab_features "widget/page"
 		x = 20; y = 100;
 		width = runserver(:this:w); height = runserver(:this:h);
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = runserver(:this:tab_h);
 		
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
@@ -205,6 +214,8 @@ tab_features "widget/page"
 		x = 260; y = 100;
 		width = runserver(:this:w); height = runserver(:this:h);
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = runserver(:this:tab_h);
 		
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
@@ -231,6 +242,8 @@ tab_features "widget/page"
 		x = 20; y = 240;
 		width = runserver(:this:w); height = runserver(:this:h);
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = runserver(:this:tab_h);
 		
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
@@ -257,6 +270,8 @@ tab_features "widget/page"
 		x = 260; y = 240;
 		width = runserver(:this:w); height = runserver(:this:h);
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = runserver(:this:tab_h);
 		
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
@@ -284,6 +299,8 @@ tab_features "widget/page"
 		x = 20; y = 380;
 		width = runserver(:this:w); height = runserver(:this:h);
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = runserver(:this:tab_h);
 		
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
@@ -311,6 +328,8 @@ tab_features "widget/page"
 		x = 260; y = 380;
 		width = runserver(:this:w); height = runserver(:this:h);
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = runserver(:this:tab_h);
 		
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
@@ -344,6 +363,7 @@ tab_features "widget/page"
 		x = 20; y = 100;
 		width = runserver(:this:w); height = runserver(:this:h);
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
 		
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
@@ -384,8 +404,10 @@ tab_features "widget/page"
 	    t13t3 "widget/tab"
 		{
 		x = 20; y = 240;
-		width = runserver(:this:w); height = runserver(:this:h);
+		width = runserver(:this:w); height = runserver(:this:h - 12);
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = 32;
 		
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
@@ -410,8 +432,10 @@ tab_features "widget/page"
 	    t13t4 "widget/tab"
 		{
 		x = 260; y = 240;
-		width = runserver(:this:w); height = runserver(:this:h);
+		width = runserver(:this:w); height = runserver(:this:h - 12);
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = 48;
 		
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
@@ -433,12 +457,13 @@ tab_features "widget/page"
 		}
 	    
 	    t13l5 "widget/label" { x=30; y=355; width=60; height=20; font_size=16; style="bold"; text="Tab Height 16px"; }
-	    t13l5a "widget/label" { x=90; y=357; width=runserver(:this:w-80); height=15; font_size=12; style="bold"; fgcolor="red"; text="(Negative values not supported)"; }
 	    t13t5 "widget/tab"
 		{
 		x = 20; y = 380;
 		width = runserver(:this:w); height = runserver(:this:h);
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = 16;
 		
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
@@ -460,12 +485,13 @@ tab_features "widget/page"
 		}
 	    
 	    t13l6 "widget/label" { x=270; y=355; width=60; height=20; font_size=16; style="bold"; text="Tab Spacing 8px"; }
-	    t13l6a "widget/label" { x=335; y=357; width=runserver(:this:w-80); height=15; font_size=12; style="bold"; fgcolor="red"; text="(Negative values not supported)"; }
 	    t13t6 "widget/tab"
 		{
 		x = 260; y = 380;
 		width = runserver(:this:w); height = runserver(:this:h);
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = 8;
 		
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
@@ -500,6 +526,8 @@ tab_features "widget/page"
 		x = 20; y = 100;
 		width = runserver(:this:w); height = runserver(:this:h);
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = runserver(:this:tab_h);
 		
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
@@ -525,6 +553,8 @@ tab_features "widget/page"
 		x = 260; y = 100;
 		width = runserver(:this:w); height = runserver(:this:h);
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = runserver(:this:tab_h);
 		
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
@@ -552,6 +582,8 @@ tab_features "widget/page"
 		x = 20; y = 240;
 		width = runserver(:this:w); height = runserver(:this:h);
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = runserver(:this:tab_h);
 		
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
@@ -579,6 +611,8 @@ tab_features "widget/page"
 		x = 260; y = 240;
 		width = runserver(:this:w); height = runserver(:this:h);
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = runserver(:this:tab_h);
 		
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
@@ -607,6 +641,8 @@ tab_features "widget/page"
 		x = 20; y = 380;
 		width = runserver(:this:w); height = runserver(:this:h);
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = runserver(:this:tab_h);
 		
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
@@ -635,6 +671,8 @@ tab_features "widget/page"
 		x = 260; y = 380;
 		width = runserver(:this:w); height = runserver(:this:h);
 		tab_location = runserver(:this:tloc);
+		tab_width = runserver(:this:tab_w);
+		tab_height = runserver(:this:tab_h);
 		
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
