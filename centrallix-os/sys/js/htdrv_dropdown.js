@@ -422,7 +422,10 @@ function dd_expand(l)
 	l.Values.splice(0,0,nullitem);
 	}
     if (l && !l.PaneLayer) 
+	{
 	l.PaneLayer = dd_create_pane(l);
+	l.PaneLayer.style.cursor = 'pointer';
+	}
     if (l && htr_getvisibility(l.PaneLayer) != 'inherit')
 	{
 	pg_stackpopup(l.PaneLayer, l);
