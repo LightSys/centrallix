@@ -146,19 +146,27 @@ function im_set_scale(a, v)
 
 function im_action_offset(aparam)
     {
-    /** This action is never used anywhere and looks hard to update, so it's deprecated for now. **/
-    console.error("The offset action is no longer supported. Using it may break responsive layouts.");
+    const { X, Y } = aparam;
     
-    im_set_x.call(this, "xoffset", aparam.X);
-    im_set_y.call(this, "yoffset", aparam.Y);
+    // Log warning.
+    console.warn('Offset action used: This breaks page responsiveness.');
+    console.log(`Action Info: X=${X} Y=${Y} Target=`, this);
+    
+    // Update the offset values.
+    im_set_x.call(this, "xoffset", X);
+    im_set_y.call(this, "yoffset", Y);
     }
 
 function im_action_scale(aparam)
     {
-    /** This action is never used anywhere and looks hard to update, so it's deprecated for now. **/
-    console.error("The scale action is no longer supported. Using it may break responsive layouts.");
+    const { Scale } = aparam;
     
-    im_set_scale.call(this, "scale", aparam.Scale);
+    // Log warning.
+    console.warn('Scale action used: This breaks page responsiveness.');
+    console.log(`Action Info: Scale=${Scale} Target=`, this);
+    
+    // Update the scale value.
+    im_set_scale.call(this, "scale", Scale);
     }
 
 function im_init(l)
