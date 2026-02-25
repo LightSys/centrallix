@@ -446,11 +446,4 @@ int ht_get_parent_h__INTERNAL(pWgtrNode widget);
 #define ht_flex_w(w, widget) ht_flex(w, ht_get_parent_w(widget), ht_get_fl_w(widget))
 #define ht_flex_h(h, widget) ht_flex(h, ht_get_parent_h(widget), ht_get_fl_h(widget))
 
-// Workaround because -lm isn't passed to my editor and this was the easiest way to fix it.
-// This code should not appear in a pull request. If you are a code reviewer, remove this
-// code or reject the PR.
-#ifndef M_PI
-#define M_PI 3.14159
-#endif
-
 #endif /* _HT_RENDER_H */
