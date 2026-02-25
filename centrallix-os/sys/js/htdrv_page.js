@@ -51,9 +51,9 @@ function pg_scriptavailable(s)
     }
 
 
-/** Quick and dirty resize handling tool. **/
-const resize_handlers = {};
-window.addEventListener('resize', (e) => Object.values(resize_handlers).forEach(f => f(e)));
+/** Resize handling for all types of area boxes (hover, select, data, etc). **/
+const pg_area_resize_handlers = {};
+window.addEventListener('resize', (e) => Object.values(pg_area_resize_handlers).forEach(f => f(e)));
 
 
 //START SECTION: DOM/CSS helper functions -----------------------------------
@@ -2009,11 +2009,11 @@ function pg_setmousefocus(l, xo, yo)
 		
 		// Responsive updates.
 		const area = pg_curarea; // Save value so we can create a closure below.
-		resize_handlers.mouse_focus = () => update_box(area);
+		pg_area_resize_handlers.mouse_focus = () => update_box(area);
 		}
 	    }
 	}
-    if (!a) delete resize_handlers.mouse_focus;
+    if (!a) delete pg_area_resize_handlers.mouse_focus;
     }
 
 function pg_removekbdfocus(p)
@@ -2052,9 +2052,9 @@ function pg_removekbdfocus(p)
 	}
 	
     // Clear resize handling.
-    delete resize_handlers.mouse_focus;
-    delete resize_handlers.data_focus;
-    delete resize_handlers.kbd_focus;
+    delete pg_area_resize_handlers.mouse_focus;
+    delete pg_area_resize_handlers.data_focus;
+    delete pg_area_resize_handlers.kbd_focus;
     
     return true;
     }
@@ -2070,7 +2070,7 @@ function pg_setdatafocus(a)
     var l = a.layer; 
     
     // Setup resize handling.
-    resize_handlers.data_focus = () => {
+    pg_area_resize_handlers.data_focus = () => {
 	// Recall function to update values.
 	pg_setdatafocus(a);
     };
@@ -2178,7 +2178,7 @@ function pg_setkbdfocus(l, a, xo, yo)
     pg_curkbdlayer = l;
 
     // Setup resize handling.
-    resize_handlers.kbd_focus = () => {
+    pg_area_resize_handlers.kbd_focus = () => {
 	// Recall function to update values.
 	pg_setkbdfocus(l, a, xo, yo);
     };

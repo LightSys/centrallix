@@ -68,4 +68,11 @@ MyPage "widget/page"
 	x=450; y=450; width=100; height=100; bgcolor = "orange";
 	centerer "widget/pane" { x=25; y=25; width=50; height=50; bgcolor = "purple"; } // Debug
 	}
+    
+    button "widget/textbutton"
+	{
+	x = 450; y = 380; width = 100; height = 30; font_size=16; bgcolor="#0c0447ff";
+	text = "Resize";
+	connector "widget/connector" { event=Click; target=center; action=Resize; }
+	}
     }
