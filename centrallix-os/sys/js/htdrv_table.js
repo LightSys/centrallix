@@ -22,9 +22,10 @@ const tbld_resize_observer = new ResizeObserver((entries) => entries.forEach(({
     table.param_width = width;
     table.param_height = height;
     
-    // Update no data message, scroll thumb, and reflow columns.
+    // Update update the scrollbar, no data message, and reflow the columns.
+    if (table.rows.first !== null) table.Scroll(table.scroll_y, false);
+    else table.UpdateThumb(false);
     table.UpdateNDM($(table).children('#ndm'));
-    table.UpdateThumb(false);
     table.ReflowWidth(width);
     
     // Resize all rows.
@@ -1205,23 +1206,34 @@ function tbld_scroll(y, animate)
     //this.log.push("tbld_scroll(" + y + ")");
     this.target_y = null;
 
+    // Current start and end of scrollable content
+    const { rows } = this;
+    this.rows._first = this.rows.first;
+    this.rows.__defineSetter__('first', (v) => {
+	console.error('Set', v);
+	rows._first = v;
+    });
+    this.rows.__defineGetter__('first', () => rows._first);
+    
+    console.log(this.rows);
+    const first_row = this.rows[this.rows.first];
+    const last_row = this.rows[this.rows.last];
+    const scroll_start = getRelativeY(first_row);
+    const scroll_end = getRelativeY(last_row) + $(last_row).height() + this.cellvspacing*2;
+
     // Not enough data to scroll?
-    if (this.thumb_height == this.thumb_avail && y != 0 - getRelativeY(this.rows[this.rows.first]))
+    if (this.thumb_height == this.thumb_avail && y != -scroll_start)
 	{
 	this.OsrcDispatch();
 	return;
 	}
 
     // No rows currently accessible?
-    if (!this.rows.first || !this.rows.last || !this.rows[this.rows.first] || !this.rows[this.rows.last])
+    if (!this.rows.first || !this.rows.last || !first_row || !last_row)
 	{
 	this.OsrcDispatch();
 	return;
 	}
-
-    // Current start and end of scrollable content
-    var scroll_start = getRelativeY(this.rows[this.rows.first]);
-    var scroll_end = getRelativeY(this.rows[this.rows.last]) + $(this.rows[this.rows.last]).height() + this.cellvspacing*2;
 
     // Clamp the scroll range
     if (this.rows.lastosrc == this.rows.last && (0-y) > scroll_end - this.vis_height)
