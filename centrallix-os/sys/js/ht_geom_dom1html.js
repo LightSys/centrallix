@@ -314,6 +314,12 @@ function getParentH(l)
  ***/
 function getRelative(l, d)
     {
+    if (!l)
+	{
+	console.error(`Call to getRelative${d.toUpperCase()}(`, l, ')');
+	return 0;
+	}
+    
     const val = parseInt(pg_get_style(l, d, NaN));
     return l['__pg_' + d] = (isNaN(val)) ? 0 : val;
     }
