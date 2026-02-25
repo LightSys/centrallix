@@ -1465,7 +1465,7 @@ function tbld_apply_row_geom(row, firstcol)
 	if (colsep > 0 || dragcols) new_w -= (bdr_width*2 + colsep);
 
 	$(target_col).width(new_w);
-	fast_setRelativeX(target_col, this_col.xoffset);
+	setRelativeX(target_col, this_col.xoffset);
 	
 	change_wrapped_cell |= (this_col.wrap != 'no');
 	}

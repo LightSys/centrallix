@@ -351,21 +351,6 @@ function setRelativeY(l, value) { return setRelative(l, value, 'top'); }
 function setRelativeW(l, value) { return setRelative(l, value, 'width'); }
 function setRelativeH(l, value) { return setRelative(l, value, 'height'); }
 
-/*** Use these functions only in situations where performances is required
- *** and you (a) value does not need to be parsed and (b) you do not need
- *** the return value of the function.
- ***/
-function fast_setRelativeX(l, value)
-    {
-    pg_set_style(l, 'left', value);
-    l['__pg_x_style'] = value;
-    }
-function fast_setRelativeY(l, value)
-    {
-    pg_set_style(l, 'top', value);
-    l['__pg_y_style'] = value;
-    }
-
 /*** Sets a dimension of a DOM element using coordinates in the server
  *** generated adaptive layout. It is RECOMMENDED to call a specific sub-
  *** function (aka. setResponsiveX(), setResponsiveY(), etc.) instead of
