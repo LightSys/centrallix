@@ -146,10 +146,14 @@ function add_radiobutton(optionPane, param) {
 		htr_setvisibility(optionPane.unsetPane, 'inherit');
 	}
 
-	optionPane.yOffset = getRelativeY(optionPane)+getRelativeY(rb.coverPane)+getRelativeY(rb.borderPane);
-	optionPane.area = pg_addarea(rb, getRelativeX(optionPane), optionPane.yOffset - 1, getClipWidth(optionPane), pg_parah+4, optionPane, 'rb', 3);
-	optionPane.area.__defineGetter__('width', () => parseInt(getComputedStyle(optionPane).width));
-	optionPane.area.__defineGetter__('height', () => parseInt(getComputedStyle(optionPane).height) + 3);
+	const yOffset = getRelativeY(rb.coverPane) + getRelativeY(rb.borderPane) - 1;
+	optionPane.area = pg_addarea(rb,
+	    () => getRelativeX(optionPane) + 2,
+	    () => getRelativeY(optionPane) + yOffset,
+	    () => getRelativeW(optionPane) + 2,
+	    () => getRelativeH(optionPane) + 3,
+	    optionPane, 'rb', 3
+	);
 }
 
 function rb_getfocus(xo,yo,l,c,n,a,from_kbd)
