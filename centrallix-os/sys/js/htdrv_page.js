@@ -851,7 +851,11 @@ function pg_area(parent, x, y, width, height, cls, name, f)
 	    {
 	    // Set a base value and define a getter that calls the provided function.
 	    this[name] = value();
-	    this.__defineGetter__(name, value);
+	    Object.defineProperty(this, name, {
+		get() { return value.call(this); },
+		configurable: true,
+		enumerable: true
+	    });
 	    }
 	
 	// If just a value is provided, simply set that.

@@ -1207,15 +1207,6 @@ function tbld_scroll(y, animate)
     this.target_y = null;
 
     // Current start and end of scrollable content
-    const { rows } = this;
-    this.rows._first = this.rows.first;
-    this.rows.__defineSetter__('first', (v) => {
-	console.error('Set', v);
-	rows._first = v;
-    });
-    this.rows.__defineGetter__('first', () => rows._first);
-    
-    console.log(this.rows);
     const first_row = this.rows[this.rows.first];
     const last_row = this.rows[this.rows.last];
     const scroll_start = getRelativeY(first_row);

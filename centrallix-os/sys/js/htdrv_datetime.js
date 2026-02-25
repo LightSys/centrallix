@@ -212,9 +212,19 @@ function dt_init(param){
 	    l.form = wgtrFindContainer(l,"widget/form");
 	if (l.form) l.form.Register(l);
 
-	// Setup getters widths and heights.
-	l.__defineGetter__('w', () => parseInt(getComputedStyle(l).width));
-	l.__defineGetter__('h', () => parseInt(getComputedStyle(l).height));
+	// Setup getters for widths and heights.
+	Object.defineProperties(l, {
+	    w: {
+		get() { return getRelativeW(l); },
+		configurable: true,
+		enumerable: true,
+	    },
+	    h: {
+		get() { return getRelativeH(l); },
+		configurable: true,
+		enumerable: true,
+	    },
+	});
 
 	// Setup the hover area and set getters to allow responsive resizing.
 	l.area = pg_addarea(l, -1, -1, () => l.w + 3, () => l.h + 3, 'dt', 'dt', 3);
