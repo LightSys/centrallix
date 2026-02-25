@@ -1322,11 +1322,25 @@ function dd_init(param)
     if (l.form) l.form.Register(l);
     l.init_items = false;
 
-    // Setup getters widths and heights.
+    // Setup getters for widths and heights.
     const width_ratio = param.popup_width / param.width;
-    l.__defineGetter__('w', () => parseInt(getComputedStyle(l).width));
-    l.__defineGetter__('h', () => parseInt(getComputedStyle(l).height));
-    l.__defineGetter__('popup_width', () => l.w * width_ratio);
+    Object.defineProperties(l, {
+	w: {
+	    get() { return getRelativeW(l); },
+	    configurable: true,
+	    enumerable: true,
+	},
+	h: {
+	    get() { return getRelativeH(l); },
+	    configurable: true,
+	    enumerable: true,
+	},
+	popup_width: {
+	    get() { return l.w * width_ratio; },
+	    configurable: true,
+	    enumerable: true,
+	},
+    });
     
     // Setup the hover area.
     l.area = pg_addarea(l, -1, -1, () => l.w + 3, () => l.h + 3, 'dd', 'dd', 3);
