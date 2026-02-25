@@ -320,7 +320,7 @@ function getRelative(l, d)
 	return 0;
 	}
     
-    const val = parseInt(pg_get_style(l, d, NaN));
+    const val = parseInt(pg_get_style(l, d, NaN), 10);
     return l['__pg_' + d] = (isNaN(val)) ? 0 : val;
     }
 
@@ -583,92 +583,55 @@ function ClipObject_GetPart(n)
 function ClipObject(o)
     {
     this.obj = o;
-
+    
     this.setall = ClipObject_SetAll;
     this.getpart = ClipObject_GetPart;
     }
 
-ClipObject.prototype.__defineGetter__("top", function () 
-	{
-	return this.getpart(1);
-	}
-    );
+Object.defineProperties(ClipObject.prototype, {
+    top: {
+	get() { return this.getpart(1); },
+	set(val) { this.setall(val, this.right, this.bottom, this.left); },
+	configurable: true,
+	enumerable: true,
+    },
+    right: {
+	get() { return this.getpart(2); },
+	set(val) { this.setall(this.top, val, this.bottom, this.left); },
+	configurable: true,
+	enumerable: true,
+    },
+    bottom: {
+	get() { return this.getpart(3); },
+	set(val) { this.setall(this.top, this.right, val, this.left); },
+	configurable: true,
+	enumerable: true,
+    },
+    left: {
+	get() { return this.getpart(4); },
+	set(val) { this.setall(this.top, this.right, this.bottom, val); },
+	configurable: true,
+	enumerable: true,
+    },
+    width: {
+	get() { return this.right - this.left; },
+	set(val) { this.right = this.left + val; },
+	configurable: true,
+	enumerable: true,
+    },
+    height: {
+	get() { return this.bottom - this.top; },
+	set(val) { this.bottom = this.top + val; },
+	configurable: true,
+	enumerable: true,
+    },
+});
 
-ClipObject.prototype.__defineGetter__("right", function () 
-	{
-	return this.getpart(2);
-	}
-    );
-
-ClipObject.prototype.__defineGetter__("width", function () 
-	{
-	return this.right - this.left;
-	}
-    );
-
-ClipObject.prototype.__defineGetter__("bottom", function () 
-	{
-	return this.getpart(3);
-	}
-    );
-
-ClipObject.prototype.__defineGetter__("height", function () 
-	{
-	return this.bottom - this.top;
-	}
-    );
-
-ClipObject.prototype.__defineGetter__("left", function () 
-	{
-	return this.getpart(4);
-	}
-    );
-
-ClipObject.prototype.__defineSetter__("top", function (val) 
-	{
-	this.setall(val,this.right,this.bottom,this.left);
-	}
-    );
-
-ClipObject.prototype.__defineSetter__("right", function (val) 
-	{
-	this.setall(this.top,val,this.bottom,this.left);
-	}
-    );
-
-ClipObject.prototype.__defineSetter__("width", function (val) 
-	{
-	this.right = this.left + val;
-	}
-    );
-
-ClipObject.prototype.__defineSetter__("bottom", function (val) 
-	{
-	this.setall(this.top,this.right,val,this.left);
-	}
-    );
-
-ClipObject.prototype.__defineSetter__("height", function (val) 
-	{
-	this.bottom = this.top + val;
-	}
-    );
-
-ClipObject.prototype.__defineSetter__("left", function (val) 
-	{
-	this.setall(this.top,this.right,this.bottom,val);
-	}
-    );
-
-HTMLElement.prototype.__defineGetter__("clip", function () 
-	{ 
-	/** keep the same ClipObject around -- that way we can use watches on it **/
-	if(this.cx__clip)
-	    return this.cx__clip;
-	else
-	    return this.cx__clip = new ClipObject(this);
-	}
-    );
+Object.defineProperty(HTMLElement.prototype, "clip", {
+    get() { return (this.cx__clip) ? this.cx__clip : (this.cx__clip = new ClipObject(this));},
+    configurable: true,
+    enumerable: true,
+});
 
 // Load indication
 if (window.pg_scripts) pg_scripts['ht_geom_dom1html.js'] = true;
