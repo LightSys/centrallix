@@ -437,7 +437,7 @@ function moveTo(l, x, y, responsive = false)
     if (responsive)
 	{
 	setResponsiveX(l, x);
-	setResponsiveY(l, x);
+	setResponsiveY(l, y);
 	}
     else
 	{
