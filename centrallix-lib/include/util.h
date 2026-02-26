@@ -30,5 +30,36 @@ extern "C" {
 }
 #endif
 
-#endif	/* UTILITY_H */
+/** TODO: ISRAEL - Remove these after the dups branch is merged. **/
 
+/*** @brief Returns the smaller of two values.
+ *** 
+ *** @param a The first value.
+ *** @param b The second value.
+ *** @return The smaller of the two values.
+ *** 
+ *** @note This macro uses GCC extensions to ensure type safety.
+ ***/
+#define min(a, b) \
+    ({ \
+    __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    (_a < _b) ? _a : _b; \
+    })
+
+/*** @brief Returns the larger of two values.
+ *** 
+ *** @param a The first value.
+ *** @param b The second value.
+ *** @return The larger of the two values.
+ *** 
+ *** @note This macro uses GCC extensions to ensure type safety.
+ ***/
+#define max(a, b) \
+    ({ \
+    __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    (_a > _b) ? _a : _b; \
+    })
+
+#endif	/* UTILITY_H */
