@@ -1581,7 +1581,6 @@ float TotalSum=0;
     return Extra;
 }
 
-/** TODO: Israel - Update widget flex scales to be 0 if design geometry is specified. **/
 /*** Adjusts widget positions and sizes to snap them to grid lines. This
  *** function should be called after updating grid lines to ensure that
  *** widgets properly reflect the changes.
