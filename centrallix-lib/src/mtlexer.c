@@ -254,10 +254,10 @@ mlxNextChar(pLxSession s)
     int ch, v;
 
 	v = mlx_internal_CheckBuffer(s, 0);
-	if (v < 0) return MLX_ERROR;
-	if (v == 0) return MLX_EOF;
+	if (UNLIKELY(v < 0)) return MLX_ERROR;
+	if (UNLIKELY(v == 0)) return MLX_EOF;
 
-	if (!(s->Flags & MLX_F_ALLOWNUL) && ((int)((unsigned char)(s->InpPtr[0]))) == 0)
+	if (UNLIKELY(!(s->Flags & MLX_F_ALLOWNUL) && ((int)((unsigned char)(s->InpPtr[0]))) == 0))
 	    {
 	    mssError(1,"MLX","Invalid NUL character in input data stream");
 	    return MLX_ERROR;

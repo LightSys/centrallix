@@ -1,4 +1,5 @@
 #include "memstr.h"
+#include "expect.h"
 
 /************************************************************************/
 /* Centrallix Application Server System                                 */
@@ -31,7 +32,7 @@ memstr(char* buffer, const char* substr, size_t buffer_len)
     size_t substr_len, i;
     
     substr_len = strlen(substr);
-    if(substr_len > buffer_len) return NULL;
+    if(UNLIKELY(substr_len > buffer_len)) return NULL;
     
     for(i = 0; i < buffer_len-substr_len; i++)
         {
