@@ -19,27 +19,21 @@
 /* 		the more likely branch to the compiler, including	*/
 /* 		fallbacks for compatibility with compilers that do not  */
 /* 		support these optimization hints.			*/
+/* 		LIKELY() indicates the passed boolean is likely to be	*/
+/* 		true, UNLIKELY() indicates it is likely to be false.	*/
 /************************************************************************/
 
 
-/*** Define macros for signalling the more likely branch to the compiler.
- *** 
- *** Note: The doc comments are written on the the fallback macros because
- *** this optimization is unlikely to be defined in the intellisense module
- *** for the developer's editor.
- ***/
-#ifdef __builtin_expect
+/** Define macros for signalling the more likely branch to the compiler. **/
+#if defined(__GNUC__) && __GNUC__ >= 3
 /** Use the GCC __builtin_expect() function for optimization. **/
-#define LIKELY(x)   __builtin_expect((x), 1)
-#define UNLIKELY(x) __builtin_expect((x), 0)
+#define LIKELY(x)   (__builtin_expect((x), 1))
+#define UNLIKELY(x) (__builtin_expect((x), 0))
 #else
 /*** Fallback: Define pass through functions to support compilers that don't
  *** have this feature.
  ***/
-
-/** Indicates that x is likely to be true. **/
 #define LIKELY(x)   (x)
-/** Indicates that x is likely to be false. **/
 #define UNLIKELY(x) (x)
 #endif
 
