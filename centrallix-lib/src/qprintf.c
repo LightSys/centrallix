@@ -15,6 +15,7 @@
 #include "newmalloc.h"
 #include "cxsec.h"
 #include "util.h"
+#include "expect.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -37,10 +38,6 @@
 /* See centrallix-sysdoc/QPrintf.md for more information. */
 /************************************************************************/
 
-
-#ifndef __builtin_expect
-#define __builtin_expect(e,c) (e)
-#endif
 
 /*** maximum # of externally-defined specifiers ***/
 #define QPF_MAX_EXTS		(64)
@@ -802,7 +799,7 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
 		/** Easy route - definitely enough space! **/
 		for(i=0;i<srcsize;i++)
 		    {
-		    if (__builtin_expect(((trans = table->Matrix[(unsigned char)(srcbuf[i])]) != NULL), 0))
+		    if (UNLIKELY(((trans = table->Matrix[(unsigned char)(srcbuf[i])]) != NULL)))
 			{
 			tlen = table->MatrixLen[(unsigned char)(srcbuf[i])];
 			while(*trans) (*dstbuf)[(*dstoffs)++] = *(trans++);
@@ -819,13 +816,13 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
 		/** Hard route - may or may not be enough space! **/
 		for(i=0;i<srcsize;i++)
 		    {
-		    if (__builtin_expect(((trans = table->Matrix[(unsigned char)(srcbuf[i])]) != NULL), 0))
+		    if (UNLIKELY(((trans = table->Matrix[(unsigned char)(srcbuf[i])]) != NULL)))
 			{
 			tlen = table->MatrixLen[(unsigned char)(srcbuf[i])];
-			if (__builtin_expect(limit >= tlen, 1))
+			if (LIKELY(limit >= tlen))
 			    {
 			    rval += (tlen-1);
-			    if (__builtin_expect(!nogrow,1) && (__builtin_expect((*dstoffs)+tlen+min_room <= (*dstsize), 1) || 
+			    if (LIKELY(!nogrow) && (LIKELY((*dstoffs)+tlen+min_room <= (*dstsize)) || 
 				  (grow_fn(dstbuf, dstsize, *dstoffs, grow_arg, (*dstoffs)+tlen+min_room))))
 				{
 				while(*trans) (*dstbuf)[(*dstoffs)++] = *(trans++);
@@ -845,9 +842,9 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
 			}
 		    else
 			{
-			if (__builtin_expect(limit > 0, 1))
+			if (LIKELY(limit > 0))
 			    {
-			    if (__builtin_expect(!nogrow,1) && (__builtin_expect((*dstoffs)+1+min_room <= (*dstsize), 1) || 
+			    if (LIKELY(!nogrow) && (LIKELY((*dstoffs)+1+min_room <= (*dstsize)) || 
 				  (grow_fn(dstbuf, dstsize, *dstoffs, grow_arg, (*dstoffs)+1+min_room))))
 				{
 				(*dstbuf)[(*dstoffs)++] = srcbuf[i];
@@ -941,21 +938,21 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 	    if (!ignore)
 		{
 		ptrdiff_cplen = (endptr - format);
-		if (__builtin_expect(ptrdiff_cplen < 0 || ptrdiff_cplen >= SIZE_MAX/4, 0))
+		if (UNLIKELY(ptrdiff_cplen < 0 || ptrdiff_cplen >= SIZE_MAX/4))
 		    {
 		    QPERR(QPF_ERR_T_BUFOVERFLOW);
 		    rval = -EINVAL;
 		    goto error;
 		    }
 		cplen = ptrdiff_cplen;
-		if (__builtin_expect(nogrow, 0)) cplen = 0;
-		if (__builtin_expect(cpoffset+cplen+1 > SIZE_MAX/2, 0))
+		if (UNLIKELY(nogrow)) cplen = 0;
+		if (UNLIKELY(cpoffset+cplen+1 > SIZE_MAX/2))
 		    {
 		    QPERR(QPF_ERR_T_BUFOVERFLOW);
 		    rval = -EINVAL;
 		    goto error;
 		    }
-		if (__builtin_expect(cpoffset+cplen+1 > *size, 0) && (nogrow || !grow_fn(str, size, cpoffset, grow_arg, cpoffset+cplen+1)))
+		if (UNLIKELY(cpoffset+cplen+1 > *size) && (nogrow || !grow_fn(str, size, cpoffset, grow_arg, cpoffset+cplen+1)))
 		    {
 		    QPERR(QPF_ERR_T_BUFOVERFLOW);
 		    cplen = (*size)-cpoffset-1;
@@ -973,9 +970,9 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 		format++;
 
 		/** Simple specifiers **/
-		if (__builtin_expect(format[0] == '%', 0))
+		if (UNLIKELY(format[0] == '%'))
 		    {
-		    if (__builtin_expect(!nogrow, 1) && (__builtin_expect(cpoffset+2 <= *size, 1) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+2))))
+		    if (LIKELY(!nogrow) && (LIKELY(cpoffset+2 <= *size) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+2))))
 			(*str)[cpoffset++] = '%';
 		    else
 			{
@@ -985,9 +982,9 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 		    copied++;
 		    format++;
 		    }
-		else if (__builtin_expect(format[0] == '&',0))
+		else if (UNLIKELY(format[0] == '&'))
 		    {
-		    if (__builtin_expect(!nogrow, 1) && (__builtin_expect(cpoffset+2 <= *size, 1) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+2))))
+		    if (LIKELY(!nogrow) && (LIKELY(cpoffset+2 <= *size) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+2))))
 			(*str)[cpoffset++] = '&';
 		    else
 			{
@@ -997,12 +994,12 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 		    copied++;
 		    format++;
 		    }
-		else if (__builtin_expect(format[0] == ']',0))
+		else if (UNLIKELY(format[0] == ']'))
 		    {
 		    format++;
 		    ignore = 0;
 		    }
-		else if (__builtin_expect(format[0] == '[',0))
+		else if (UNLIKELY(format[0] == '['))
 		    {
 		    format++;
 		    intval = va_arg(ap, int);
@@ -1063,7 +1060,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 			endspec = QPF_SPEC_T_ENDFILT;
 
 			/** Did we find it? **/
-			if (__builtin_expect(!found, 0))
+			if (UNLIKELY(!found))
 			    { 
 			    if (n_specs == 0)
 				{
@@ -1080,7 +1077,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 			/** More? **/
 			if (*format == '&')
 			    {
-			    if (__builtin_expect(n_specs == QPF_MAX_SPECS,0))
+			    if (UNLIKELY(n_specs == QPF_MAX_SPECS))
 				{ rval = -ENOMEM; QPERR(QPF_ERR_T_RESOURCE); goto error; }
 			    format++;
 			    }
@@ -1101,14 +1098,14 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 
 			case QPF_SPEC_T_STR:
 			    strval = va_arg(ap, const char*);
-			    if (__builtin_expect(strval == NULL && !ignore, 0))
+			    if (UNLIKELY(strval == NULL && !ignore))
 				{ rval = -EINVAL; QPERR(QPF_ERR_T_NULL); goto error; }
 			    cplen = strval?strlen(strval):0;
 			    break;
 
 			case QPF_SPEC_T_POS:
 			    intval = va_arg(ap, int);
-			    if (__builtin_expect(intval < 0 && !ignore, 0))
+			    if (UNLIKELY(intval < 0 && !ignore))
 				{ rval = -EINVAL; QPERR(QPF_ERR_T_NOTPOSITIVE); goto error; }
 			    cplen = qpf_internal_itoa(tmpbuf, sizeof(tmpbuf), intval);
 			    strval = tmpbuf;
@@ -1128,7 +1125,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 
 			case QPF_SPEC_T_NSTR:
 			    strval = va_arg(ap, const char*);
-			    if (__builtin_expect(strval == NULL && !ignore, 0))
+			    if (UNLIKELY(strval == NULL && !ignore))
 				{ rval = -EINVAL; QPERR(QPF_ERR_T_NULL); goto error; }
 			    cplen = specchain_n[0];
 			    break;
@@ -1148,7 +1145,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 		    if (!ignore)
 			{
 			/** Length problem? **/
-			if (__builtin_expect(cplen < 0, 0))
+			if (UNLIKELY(cplen < 0))
 			    { rval = -EINVAL; QPERR(QPF_ERR_T_BADLENGTH); goto error; }
 
 			/** Filters? **/
@@ -1334,7 +1331,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 					    }
 					if (quote)
 					    {
-					    if (__builtin_expect(!nogrow, 1) && (__builtin_expect(cpoffset+1+1 <= *size, 1) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+1+1))))
+					    if (LIKELY(!nogrow) && (LIKELY(cpoffset+1+1 <= *size) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+1+1))))
 						{
 						(*str)[cpoffset++] = quote;
 						}
@@ -1356,7 +1353,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 					if (n != cpoffset - oldcpoffset) nogrow = 1;
 					if (quote)
 					    {
-					    if ((__builtin_expect(cpoffset+1+1 <= *size, 1) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+1+1))))
+					    if ((LIKELY(cpoffset+1+1 <= *size) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+1+1))))
 						{
 						(*str)[cpoffset++] = quote;
 						}
@@ -1387,17 +1384,17 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 			    }
 
 			/** Copy it. **/
-			if (__builtin_expect(cplen != 0,1))
+			if (LIKELY(cplen != 0))
 			    {
 			    copied += cplen;
-			    if (__builtin_expect(cpoffset+cplen+1 > SIZE_MAX/2, 0))
+			    if (UNLIKELY(cpoffset+cplen+1 > SIZE_MAX/2))
 				{
 				QPERR(QPF_ERR_T_BUFOVERFLOW);
 				rval = -EINVAL;
 				goto error;
 				}
-			    if (__builtin_expect(nogrow, 0)) cplen = 0;
-			    if (__builtin_expect(cpoffset+cplen+1 > *size, 0) && (!grow_fn(str, size, cpoffset, grow_arg, cpoffset+cplen+1)))
+			    if (UNLIKELY(nogrow)) cplen = 0;
+			    if (UNLIKELY(cpoffset+cplen+1 > *size) && (!grow_fn(str, size, cpoffset, grow_arg, cpoffset+cplen+1)))
 				{
 				QPERR(QPF_ERR_T_BUFOVERFLOW);
 				cplen = (*size) - cpoffset - 1;
@@ -1448,5 +1445,3 @@ qpfRegisterExt(char* ext_spec, int (*ext_fn)(), int is_source)
 
     return;
     }
-
-

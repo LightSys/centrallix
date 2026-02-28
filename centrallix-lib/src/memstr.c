@@ -19,11 +19,6 @@
 /*		of null character for a delimiter.                              */
 /************************************************************************/
 
-/** branch prediction pseudo-macro - define if compiler doesn't support it **/
-#ifndef __builtin_expect
-#define __builtin_expect(e,c) (e)
-#endif
-
 /*** memstr() - fixed length string search
  *** 
  *** returns a pointer to the beginning of the substring

@@ -1,5 +1,6 @@
 #include <string.h>
 #include "strtcpy.h"
+#include "expect.h"
 
 /************************************************************************/
 /* Centrallix Application Server System                                 */
@@ -21,11 +22,6 @@
 /************************************************************************/
 
 
-/** branch prediction pseudo-macro - define if compiler doesn't support it **/
-#ifndef __builtin_expect
-#define __builtin_expect(e,c) (e)
-#endif
-
 /*** strtcat() - truncating string concatenation
  ***
  *** Appends to dst, being sure to not overflow the given dstlen size.
@@ -35,14 +31,14 @@
 int
 strtcat(char* dst, const char* src, size_t dstlen)
     {
-    if (__builtin_expect((!dstlen), 0)) 
+    if (UNLIKELY((!dstlen))) 
 	return 0;
 
     /** Find end of current string **/
     char* endptr = memchr(dst, '\0', dstlen);
-    if (__builtin_expect((!endptr), 0)) 
+    if (UNLIKELY((!endptr))) 
 	return 0;
-    if (__builtin_expect((endptr == dst+dstlen), 0)) 
+    if (UNLIKELY((endptr == dst+dstlen))) 
 	return 0;
 
     /** Call strtcpy to copy the bytes and null-terminate it. **/
@@ -59,13 +55,13 @@ int
 strtcpy(char* dst, const char* src, size_t dstlen)
     {
     size_t cnt = 0;
-    if (__builtin_expect((!dstlen), 0)) 
+    if (UNLIKELY((!dstlen))) 
 	return 0;
 
-    while (__builtin_expect(cnt < dstlen, 1) && __builtin_expect((dst[cnt] = src[cnt]) != '\0', 1)) 
+    while (LIKELY(cnt < dstlen) && LIKELY((dst[cnt] = src[cnt]) != '\0')) 
 	cnt++;
 
-    if (__builtin_expect(cnt == dstlen, 0)) 
+    if (UNLIKELY(cnt == dstlen)) 
 	{
 	dst[cnt-1] = '\0';
 	return -dstlen;
@@ -76,10 +72,8 @@ strtcpy(char* dst, const char* src, size_t dstlen)
     /** test suite says above is faster than the below **/
     while (--dstlen && ((*(dst++)) = (*(src++))));
     dst[0] = '\0';
-    if (__builtin_expect((!dstlen && (*dst != '\0')),0)) 
+    if (UNLIKELY((!dstlen && (*dst != '\0')))) 
             return -origlen;
     return origlen - dstlen;
 #endif
     }
-
-
