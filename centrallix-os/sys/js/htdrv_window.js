@@ -11,6 +11,16 @@
 
 //$(".wn")
 
+// An array of all initialized windows on the page.
+const wn_windows = [];
+
+// Resize listener that updates all windows so they remain on the page by
+// re-calling wn_do_move_internal() with whatever values were last used.
+window.addEventListener('resize', () => wn_windows.forEach((wn) => {
+    const { pg_attract, wn_new_x, wn_new_y } = wn.resize_data;
+    wn_do_move_internal(wn, pg_attract, wn_new_x, wn_new_y);
+}));
+
 var wn_popped = {};
 
 function wn_deinit()
@@ -41,6 +51,7 @@ function wn_init(param)
     ifc_init_widget(l);
     l.destroy_widget = wn_deinit;
 
+    // Determine titlebar.
     if (titlebar)
 	{
 	htr_init_layer(titlebar,l,"wn");
@@ -48,6 +59,7 @@ function wn_init(param)
 	}
     else
 	titlebar = l;
+    l.titlebar = titlebar;
 
     l.keep_kbd_focus = true;
     l.ContentLayer = param.clayer;
@@ -137,22 +149,11 @@ function wn_init(param)
 	}
 
     // Setup responsive movement.
-    // resize_listener.params stores the params from the last time the window
-    // was moved, allowing us to reuse them to call wn_do_move_internal(),
-    // allowing that function to recalculate the window position based on the
-    // new viewport size.
-    const resize_listener = l.resize_listener = {
-	params: {
-	    pg_attract: 0,
-	    wn_new_x: getPageX(l),
-	    wn_new_y: getPageY(l),
-	},
-	handler: () =>  {
-	    const { pg_attract, wn_new_x, wn_new_y } = l.resize_listener.params;
-	    wn_do_move_internal(l, pg_attract, wn_new_x, wn_new_y);
-	}
+    l.resize_data = {
+	pg_attract: 0,
+	wn_new_x: getPageX(l),
+	wn_new_y: getPageY(l),
     };
-    window.addEventListener('resize', resize_listener.handler);
 
     // force on page...
     if (getPageY(l) + l.orig_height > getInnerHeight())
@@ -164,6 +165,9 @@ function wn_init(param)
     l.showcontainer = wn_showcontainer;
 
     if (l.is_modal && l.is_visible) pg_setmodal(l, true);
+    
+    // Add the window to the global window list.
+    wn_windows.push(l);
 
     return l;
     }
@@ -735,11 +739,11 @@ function wn_do_move()
     /** No window is selected, so we don't have to move anything. **/   
     if (wn_current === null) return true;
 
-    /** Call the unresponsive version. */
+    /** Call the unresponsive version. **/
     wn_do_move_internal(wn_current, pg_attract, wn_new_x, wn_new_y);
 
-    /** Update params for future resize calls. */
-    wn_current.resize_listener.params = { pg_attract, wn_new_x, wn_new_y };
+    /** Update params for future resize calls. **/
+    wn_current.resize_data = { pg_attract, wn_new_x, wn_new_y };
     
     return true;
     }
@@ -831,7 +835,7 @@ function wn_mouseup(e)
     if (wn_current != null)
         {
         if (wn_moved == 0) wn_bring_top(wn_current);
-	e.layer.style.cursor = 'grab';
+	wn_current.titlebar.style.cursor = 'grab';
         }
     if (e.kind == 'wn') cn_activate(e.mainlayer, 'MouseUp');
     
