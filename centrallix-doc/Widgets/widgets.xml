@@ -2575,7 +2575,7 @@ myMenu "widget/menu"
 
 			<property name="receive_updates" type="yes/no">** This feature currently disabled in Centrallix 0.9.1 **  Default "no".  If set to "yes", the objectsource will ask the server to send it updates on any changes that occur on the server side (i.e., if the changes were made by another objectsource or by another user, they would be automatically refreshed into this objectsource in near real-time).</property>
 
-			<property name="refresh_interval" type="integer">The time between the data refreshing, if set to 0 it does not automatically refresh.</property>
+			<property name="refresh_interval" type="integer">The time in milliseconds between the data refreshing, if set to 0 it does not automatically refresh.</property>
 		
 			<property name="replicasize" type="integer">Represents the number of records to store in its replica.  This value should be larger than the maximum number of records that will be displayed at any one time.  At times, Centrallix may increase the number of records cached on the client beyond this number.</property>
 
