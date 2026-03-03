@@ -32,7 +32,15 @@
 
 #include <stdarg.h>
 
-typedef int (*qpf_grow_fn_t)(char**, size_t*, size_t, void*, size_t);
+/*** A function to grow a string buffer.
+ *** 
+ *** @param str    The string buffer being grown.
+ *** @param size   A pointer to the current size of the string buffer.
+ *** @param offset An offset up to which data must be preserved.
+ *** @param args   Arguments for growing the buffer.
+ *** @param req    The requested size.
+ ***/
+typedef int (*qpf_grow_fn_t)(char** str, size_t* size, size_t offset, void* args, size_t req);
 
 typedef struct _QPS
     {
