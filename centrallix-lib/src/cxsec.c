@@ -141,6 +141,7 @@ int
 cxsecVerifySymbol_n(const char* sym, size_t n)
     {
     const char* original_symbol = sym;
+    const size_t original_n = n;
 
 	/** First char must be alpha or underscore, and must exist (len >= 1).
 	 ** We don't use isalpha() et al here because symbols need to conform to
@@ -164,6 +165,6 @@ cxsecVerifySymbol_n(const char* sym, size_t n)
 	return 0;
 
 	err:
-	fprintf(stderr, "WARNING: '%s' is not a valid symbol!\n", original_symbol);
+	fprintf(stderr, "WARNING: '%.*s' is not a valid symbol!\n", (int)original_n, original_symbol);
 	return -1;
     }
