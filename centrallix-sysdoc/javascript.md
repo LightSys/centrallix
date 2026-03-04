@@ -12,7 +12,7 @@ Please edit this file if there are any mistakes.
 
 Also, online documentation can be found at http://www.centrallix.net/docs/docs.php.
 
-See `serverside_html_generation.txt` for more information on how the server side generates javascript.
+See `serverside_html_generation.md` for more information on how the server side generates javascript.
 
 ## Table of Contents
 - [JavaScript in Centrallix](#javascript-in-centrallix)
