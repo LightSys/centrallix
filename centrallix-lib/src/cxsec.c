@@ -116,6 +116,7 @@ cxsecUpdateDS(unsigned long* start, unsigned long* end, char* file, int line)
 int
 cxsecVerifySymbol(const char* sym)
     {
+    const char* original_symbol = sym;
 
 	/** First char must be alpha or underscore, and must exist (len >= 1).
 	 ** We don't use isalpha() et al here because symbols need to conform to
@@ -123,18 +124,22 @@ cxsecVerifySymbol(const char* sym)
 	 ** significant security risks in the event of a locale mismatch!!
 	 **/
 	if (*sym != '_' && (*sym < 'A' || *sym > 'Z') && (*sym < 'a' || *sym > 'z'))
-	    return -1;
+	    goto err;
 
 	/** Next chars may be 1) end of string, 2) digits, 3) alpha, or 4) underscore **/
 	sym++;
 	while(*sym)
 	    {
 	    if (*sym != '_' && (*sym < 'A' || *sym > 'Z') && (*sym < 'a' || *sym > 'z') && (*sym < '0' || *sym > '9'))
-		return -1;
+		goto err;
 	    sym++;
 	    }
 
-    return 0;
+	return 0;
+	
+	err:
+	fprintf(stderr, "WARNING: '%s' is not a valid symbol!\n", original_symbol);
+	return -1;
     }
 
 int
