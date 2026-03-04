@@ -25,12 +25,12 @@ typedef union _DT
     {
     struct
         {
-        unsigned int    Second:6;
-        unsigned int    Minute:6;
-        unsigned int    Hour:5;
-        unsigned int    Day:5;   /* 1-based */
-        unsigned int    Month:4; /* 0-based */
-        unsigned int    Year:12; /* 1900-based: so 2002 is 102. */
+        unsigned int    Second:6; /* 0-based */
+        unsigned int    Minute:6; /* 0-based */
+        unsigned int    Hour:5;   /* 0-based */
+        unsigned int    Day:5;    /* 0-based */
+        unsigned int    Month:4;  /* 0-based: so February is 1. */
+        unsigned int    Year:12;  /* 1900-based: so 2002 is 102. */
         }
         Part;
     long long		Value; /* NOT seconds since the epoch! */
