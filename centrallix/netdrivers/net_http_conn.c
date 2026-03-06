@@ -8,7 +8,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -28,7 +28,8 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	net_http.h, net_http.c, net_http_conn.c, net_http_sess.c, net_http_osml.c, net_http_app.c			*/
+/* Module: 	net_http.h, net_http.c, net_http_conn.c,		*/
+/* 		net_http_sess.c, net_http_osml.c, net_http_app.c	*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	December 8, 1998  					*/
 /* Description:	Network handler providing an HTTP interface to the 	*/
