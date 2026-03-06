@@ -3,6 +3,9 @@
 /* defined to 1 if -DCXLIB_SECH is being passed to the compiler */
 #undef CXLIB_SECURITY_HARDENING
 
+/* Define if __builtin_expect is available */
+#undef HAVE_BUILTIN_EXPECT
+
 /* Define to 1 if you have the `endservent' function. */
 #undef HAVE_ENDSERVENT
 
