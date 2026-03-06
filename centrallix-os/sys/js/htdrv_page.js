@@ -2130,7 +2130,7 @@ function pg_setdatafocus(a)
     else if (cx__capabilities.Dom1HTML)
 	{
 	pg_init_box({
-	    parnet_layer: l,
+	    parent_layer: l,
 	    x: x - 1, y: y - 1, w: w + 2, h: h + 2, s: 1,
 	    top_layer:    l.pg_dttop,
 	    bottom_layer: l.pg_dtbtm,
