@@ -34,6 +34,7 @@ centrallix/test_obj
 centrallix/test_prt
 centrallix-os/apps/kardia
 centrallix-lib/include/cxlib
+/centrallix-lib/autom4te.cache
 */nbproject/
 centrallix-lib/tests/test_*.bin
 centrallix/tests/*.out

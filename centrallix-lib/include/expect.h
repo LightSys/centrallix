@@ -25,7 +25,7 @@
 
 
 /** Define macros for signalling the more likely branch to the compiler. **/
-#if defined(__GNUC__) && __GNUC__ >= 3
+#ifdef HAVE_BUILTIN_EXPECT
 /** Use the GCC __builtin_expect() function for optimization. **/
 #define LIKELY(x)   (__builtin_expect((x), 1))
 #define UNLIKELY(x) (__builtin_expect((x), 0))
