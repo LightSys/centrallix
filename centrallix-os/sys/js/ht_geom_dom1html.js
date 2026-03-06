@@ -12,25 +12,8 @@
 // Cross browser Geometry DOM1HTML
 
 // Add some useful functions to Math that will be needed elsewhere.
-// Math.clamp = (min, val, max) => Math.min(Math.max(min, val), max);
-// Math.isBetween = (lowerBound, num, upperBound) => lowerBound < num && num < upperBound;
-
-// Dev debug versions.
-Math.clamp = (min, val, max) =>
-    {
-    if (min > max || isNaN(min) || isNaN(val) || isNaN(max))
-	{
-	console.warn(`Math.clamp(${min}, ${val}, ${max});`);
-	console.trace();
-	}
-    return Math.min(Math.max(min, val), max);
-    }
-Math.isBetween = (lowerBound, num, upperBound) =>
-    {
-    if (lowerBound > upperBound || isNaN(lowerBound) || isNaN(num) || isNaN(upperBound))
-        console.warn(`Math.isBetween(${lowerBound}, ${num}, ${upperBound});`);
-    return lowerBound < num && num < upperBound;
-    }
+Math.clamp = (min, val, max) => Math.min(Math.max(min, val), max);
+Math.isBetween = (lowerBound, num, upperBound) => (lowerBound < num && num < upperBound);
 
 /*** Whether to enable noclip (which disables generation of clipping CSS) by
  *** default. This requires code to explicitly call enableClippingCSS() to

@@ -2208,8 +2208,8 @@ thClearFlags(pThread thr, int flags)
 int
 thExcessiveRecursion()
     {
-    unsigned char buf[1];
-    return (MTASK.CurrentThread->Stack - buf > MT_STACK_HIGHWATER);
+    const unsigned char stack_ptr[1];
+    return (MTASK.CurrentThread->Stack - stack_ptr > MT_STACK_HIGHWATER);
     }
 
 
@@ -4265,4 +4265,3 @@ syGetSem(pSemaphore sem, int cnt, int flags)
 
     return code;
     }
-

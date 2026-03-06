@@ -1596,7 +1596,12 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 	node->fl_y = fly;
 	node->fl_width = flwidth;
 	node->fl_height = flheight;
-	node->fl_parent_h = node->fl_parent_w = -1;
+	node->fl_parent_h = -1;
+	node->fl_parent_w = -1;
+	node->fl_scale_x = 0.0;
+	node->fl_scale_y = 0.0;
+	node->fl_scale_w = 0.0;
+	node->fl_scale_h = 0.0;
 	node->ObjSession = s;
 	node->Parent = NULL;
 	node->min_height = node->min_width = 0;

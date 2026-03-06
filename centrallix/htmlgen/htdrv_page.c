@@ -379,13 +379,15 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	if (show == 1)
 	    {
 	    htrAddStylesheetItem(s, "\t\t#pgstat { position:absolute; visibility:visible; left:0;top:0;width:100%;height:99%; z-index:100000;}\n");
+	    
+	    /** Write the pgstat DOM nodes. **/
 	    htrAddBodyItemLayerStart(s,0,"pgstat",0, NULL);
+	    htrAddBodyItem_va(s, "<body style=\"%STR\">", bgstr);
 	    htrAddBodyItem   (s,
 		"<table width='100%' height='100%' cellpadding=20>"
 		    "<tr><td valign=top><img src='/sys/images/loading.gif' alt='loading'></td></tr>"
 		"</table></body>\n"
 	    );
-	    htrAddBodyItem_va(s, "<body style=\"%STR\">", bgstr);
 	    htrAddBodyItemLayerEnd(s,0);
 	    }
 

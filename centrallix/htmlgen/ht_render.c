@@ -1871,7 +1871,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    if (err_xs)
 		{
 		mssStringError(err_xs);
-		htrQPrintf(s, "<html><head><title>Error</title></head><body style='background-color:\"white\"'><h1>An Error occurred while attempting to render this document</h1><br><pre>%STR&HTE</pre></body></html>\r\n", xsString(err_xs));
+		htrQPrintf(s, "<html><head><title>Error</title></head><body style='background-color:white'><h1>An Error occurred while attempting to render this document</h1><br><pre>%STR&HTE</pre></body></html>\r\n", xsString(err_xs));
 		xsFree(err_xs);
 		}
 	    }
@@ -2329,7 +2329,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	    {
 	    if (strpbrk(ptr,"\"'\n\r\t")) return -1;
 	    if (as_style)
-		qpfPrintf(NULL, buf,buflen,"background-image: URL('%STR&CSSURL');",ptr);
+		qpfPrintf(NULL, buf,buflen,"background-image:URL('%STR&CSSURL');",ptr);
 	    else
 		qpfPrintf(NULL, buf,buflen,"background='%STR&HTE'",ptr);
 	    }
@@ -2338,7 +2338,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	    /** Background color **/
 	    if (strpbrk(ptr,"\"'\n\r\t;}<>&")) return -1;
 	    if (as_style)
-		qpfPrintf(NULL, buf,buflen,"background-color: %STR&CSSVAL;",ptr);
+		qpfPrintf(NULL, buf,buflen,"background-color:%STR&CSSVAL;",ptr);
 	    else
 		qpfPrintf(NULL, buf,buflen,"bgColor='%STR&HTE'",ptr);
 	    }
@@ -2814,12 +2814,34 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 int
 ht_get_parent_w__INTERNAL(pWgtrNode widget)
     {
+    /** Edge case checks. **/
+    if (widget == NULL) 
+	{
+	mssError(1, "HTR", "Failed to get width on NULL widget.\n");
+	return -1;
+	}
+	
+    /** Recursion check. **/
+    if (thExcessiveRecursion())
+	{
+	mssError(1, "HTR", "Resource exhaustion in ht_get_parent_w__INTERNAL()");
+	return 0;
+	}
+    
     /** Check for a cached value. **/
     const int cached_value = widget->fl_parent_w;
     if (cached_value != -1) return cached_value;
 
     /** Check for a width value on the parent. **/
     const pWgtrNode parent = widget->Parent;
+    if (parent == NULL) 
+	{
+	mssError(1, "HTR",
+	    "Failed to get parent width on widget \"%s\":\"%s\" because parent is NULL.\n",
+	    widget->Name, widget->Type
+	);
+	return -1;
+	}
     const int parentWidth = parent->width;
     return widget->fl_parent_w = (parentWidth >= 0)
 	? parentWidth - (parent->left + parent->right) /* Width found! */
@@ -2829,12 +2851,34 @@ ht_get_parent_w__INTERNAL(pWgtrNode widget)
 int
 ht_get_parent_h__INTERNAL(pWgtrNode widget)
     {
+    /** Edge case checks. **/
+    if (widget == NULL) 
+	{
+	mssError(1, "HTR", "Failed to get height on NULL widget.\n");
+	return -1;
+	}
+	
+    /** Recursion check. **/
+    if (thExcessiveRecursion())
+	{
+	mssError(1, "HTR", "Resource exhaustion in ht_get_parent_h__INTERNAL()");
+	return 0;
+	}
+    
     /** Check for a cached value. **/
     const int cached_value = widget->fl_parent_h;
     if (cached_value != -1) return cached_value;
 
     /** Check for a height value on the parent. **/
     const pWgtrNode parent = widget->Parent;
+    if (parent == NULL) 
+	{
+	mssError(1, "HTR",
+	    "Failed to get parent height on widget \"%s\":\"%s\" because parent is NULL.\n",
+	    widget->Name, widget->Type
+	);
+	return -1;
+	}
     const int parentHeight = parent->height;
     return widget->fl_parent_h = (parentHeight >= 0)
 	? parentHeight - (parent->top + parent->bottom) /* Height found! */
