@@ -345,7 +345,7 @@ tab_features "widget/page"
 		    {
 		    event = TabChanged;
 		    action = SetTab;
-		    target = t12t2;
+		    target = t12t1;
 		    TabIndex = runclient(:t12t6:selected_index);
 		    }
 		}

@@ -1181,12 +1181,20 @@ function htr_subel(l, id)
 
 function htr_extract_bgcolor(s)
     {
-    if (s.substr(0,17) == "background-color:")
+    // Handle edge cases.
+    if (typeof(s) !== 'string') return null;
+    s = s.toLocaleLowerCase();
+    
+    // Check for CSS rule.
+    if (s.startsWith("background-color:"))
 	{
-	var cp = s.indexOf(":");
-	return s.substr(cp+2,s.length-cp-3);
+	const color_start = s.indexOf(":") + 1;
+	const color_end = (s.endsWith(';')) ? -1 : 0; 
+	return s.slice(color_start, color_end).trim();
 	}
-    else if (s.substr(0,8) == "bgcolor=" || s.substr(0,8) == "bgColor=")
+    
+    // Check for HTML attribute (deprecated).
+    if (s.startsWith("bgcolor="))
 	{
 	var qp = s.indexOf("'");
 	if (qp < 1)
@@ -1194,6 +1202,8 @@ function htr_extract_bgcolor(s)
 	else
 	    return s.substr(qp+1,s.length-qp-2);
 	}
+    
+    // Fail: Color not found.
     return null;
     }
 

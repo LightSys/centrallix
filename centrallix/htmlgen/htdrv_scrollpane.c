@@ -358,7 +358,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	    /** Write the scroll area. **/
 	    htrAddBodyItem_va(s,
 		"<div ID=\"sp%POSarea\">"
-		    "<table"
+		    "<table "
 			"border='0' "
 			"cellpadding='0' "
 			"cellspacing='0' "

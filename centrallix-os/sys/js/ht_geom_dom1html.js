@@ -44,15 +44,6 @@ function updateClippingCSS(l)
     setClipTop(l, getClipTop(l));
     }
 
-/** Debug function for finding clipped dom nodes. **/
-function getClipped()
-    {
-    return Array
-	.from(Window.clipped)
-	.filter(id=>id)
-	.map(id=>document.getElementById(id));
-    }
-
 // Clip Width
 function getClipWidth(l) 
     { 

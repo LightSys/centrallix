@@ -56,12 +56,12 @@ int
 httabRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr; int tmp = 0;
-    char* type = NULL, *field;
+    char* page_type = NULL;
+    char* field = NULL;
     char name[64];
     char text_color[128];
     char main_bg[128];
     char inactive_bg[128];
-    char page_type[32];
     char fieldname[128];
     int sel_idx = -1;
     int x = -1, y = -1;
@@ -80,14 +80,14 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE &&(!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS))
 	    {
 	    mssError(1,"HTTAB","NS4 or W3C DOM Support required");
-	    return -1;
+	    goto err;
 	    }
 	
 	/** Reserve the next tab widget ID. **/
 	id = (HTTAB.idcnt++);
 	
 	/** Get the tab widget name. **/
-	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&ptr)) != 0) goto err;
 	strtcpy(name, ptr, sizeof(name));
 	
 	/** Get x, y, w, & h of this object. **/
@@ -96,12 +96,12 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree, "width", DATA_T_INTEGER, POD(&w)) != 0)
 	    {
 	    mssError(0, "HTTAB", "Tab widget must have a 'width' property");
-	    return -1;
+	    goto err;
 	    }
 	if (wgtrGetPropertyValue(tree, "height", DATA_T_INTEGER, POD(&h)) != 0)
 	    {
 	    mssError(0, "HTTAB", "Tab widget must have a 'height' property");
-	    return -1;
+	    goto err;
 	    }
 	
 	/** Get drop shadow data. **/
@@ -148,7 +148,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    else
 		{
 		mssError(1,"HTTAB","%s: '%s' is not a valid tab_location",name,ptr);
-		return -1;
+		goto err;
 		}
 	    }
 	
@@ -160,7 +160,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    wgtrGetPropertyType(tree, "selected_index") == DATA_T_INTEGER)
 	    {
 	    mssError(1,"HTTAB","%s: cannot specify both 'selected' and 'selected_index'", name);
-	    return -1;
+	    goto err;
 	    }
 	if (wgtrGetPropertyValue(tree, "selected", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
@@ -180,13 +180,15 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	        mssError(1, "HTTAB", "%s: cannot find tab with name '%s'", name, ptr);
 		
 		/** Attempt to give hint. **/
-		if (tab_count <= 0) return -1;
-		char* example_tab_name;
-		wgtrGetPropertyValue(children[0], "name", DATA_T_STRING, POD(&example_tab_name));
-		mssError(0, "HTTAB", "Hint: 'selected' should be a tab name, such as \"%s\".", example_tab_name);
+		if (tab_count > 0)
+		    {
+		    char* example_tab_name;
+		    wgtrGetPropertyValue(children[0], "name", DATA_T_STRING, POD(&example_tab_name));
+		    mssError(0, "HTTAB", "Hint: 'selected' should be a tab name, such as \"%s\".", example_tab_name);
+		    }
 		
 		/** Fail. **/
-	        return -1;
+	        goto err;
 		}
 	    }
 	else if (wgtrGetPropertyValue(tree, "selected_index", DATA_T_INTEGER, POD(&sel_idx)) == 0)
@@ -195,7 +197,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		{
 		mssError(1, "HTTAB", "Invalid value for 'selected_index': %d.", sel_idx);
 		if (sel_idx == 0) mssError(0, "HTTAB", "Hint: 'selected_index' is 1-based.");
-		return -1;
+		goto err;
 		}
 	    if (sel_idx > tab_count)
 		{
@@ -203,7 +205,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		    "Invalid value for 'selected_index': %d. Tab control only has %d tab%s.",
 		    sel_idx, tab_count, (tab_count == 1) ? "" : "s"
 		);
-		return -1;
+		goto err;
 		}
 	    }
 	else
@@ -237,14 +239,14 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    if (tmp <= 0)
 		{
 		mssError(1, "HTTAB", "%s: 'tab_width' expected positive nonzero int, got %d.", name, tmp);
-		return -1;
+		goto err;
 		}
 	    tab_w = tmp;
 	    }
 	else if (tloc == Right || tloc == Left)
 	    {
 	    mssError(1, "HTTAB", "%s: 'tab_width' must be specified for 'tab_location' of left or right", name);
-	    return -1;
+	    goto err;
 	    }
 	else
 	    {
@@ -257,7 +259,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    if (tmp <= 0)
 		{
 		mssError(1, "HTTAB", "%s: 'tab_height' expected positive nonzero int, got %d.", name, tmp);
-		return -1;
+		goto err;
 		}
 	    tab_h = tmp;
 	    }
@@ -288,6 +290,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    case Left:   xoffset = tab_w; yoffset = 0;     xtoffset = 0;   ytoffset = 0;   select_x_offset = -out;   select_y_offset = -along; break;
 	    case Right:  xoffset = 0;     yoffset = 0;     xtoffset = w-1; ytoffset = 0;   select_x_offset = +out;   select_y_offset = -along; break;
 	    case None:   xoffset = 0;     yoffset = 0;     xtoffset = 0;   ytoffset = 0;   select_x_offset =  0;     select_y_offset =  0;     break;
+	    default: mssError(1, "HTTAB", "Unexpected tab location value: %d", tloc); goto err;
 	    }
 	
 	/** Get coordinate-based selection translation values. **/
@@ -312,7 +315,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		{
 		mssError(1, "HTTAB", "%s: Unknown value for 'rendering': %s", name, ptr);
 		mssError(0, "HTTAB", "HINT: Should be either 'server-side' or 'client-size'.");
-		return -1;
+		goto err;
 		}
 	    }
 	if (!do_client_rendering && tab_w == 0 && (tloc == Top || tloc == Bottom))
@@ -340,7 +343,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	if (config_buf == NULL)
 	    {
 	    mssError(1, "HTTAB", "%s: nmSysMalloc(%d) failed.", name, bufsiz);
-	    return -1;
+	    goto err;
 	    }
 	snprintf(
 	    memset(config_buf, 0, bufsiz), bufsiz,
@@ -459,20 +462,14 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    /** Loop over each tab. **/
 	    for (i = 0; i < tab_count; i++)
 		{
-		pWgtrNode tab = children[i];
+		const pWgtrNode tab = children[i];
 		
-		/** Check if the tab is selected. **/
-		int is_selected = (i == sel_idx - 1);
-		
-		/** Get type. **/
-		wgtrGetPropertyValue(tab, "type", DATA_T_STRING, POD(&page_type));
-		if (type == NULL || strcmp(type, "dynamic") != 0) strcpy(page_type, "static");
-		
-		/** Use the tab title, defaulting to the tab name if it isn't specified. **/
+		/** Get the tab name, preferring to use the title attribute (if specified). **/
 		if (wgtrGetPropertyValue(tab, "title", DATA_T_STRING, POD(&tabname)) != 0)
 		    wgtrGetPropertyValue(tab, "name", DATA_T_STRING, POD(&tabname));
 		
 		/** Write tab CSS styles. **/
+		const int is_selected = (i == sel_idx - 1);
 		const int tab_x = (x + xtoffset) + (i_offset_x * i);
 		const int tab_y = (y + ytoffset) + (i_offset_y * i);
 		htrAddStylesheetItem_va(s,
@@ -500,8 +497,8 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			"%STR "
 		    "}\n",
 		    id, i + 1,
-		    ht_flex(tab_x, parent_w, tab_fl_x), // left
-		    ht_flex(tab_y, parent_h, tab_fl_y), // top
+		    ht_flex(tab_x, parent_w, tab_fl_x),
+		    ht_flex(tab_y, parent_h, tab_fl_y),
 		    (!is_auto_tab_w), tab_w, /* Tab width has 0 flexibility. */
 		    (tab_h > 0), tab_h, /* Tab height has 0 flexibility. */
 		    (is_selected) ? (z + 2) : z,
@@ -586,33 +583,48 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	);
 	htrAddBodyItem_va(s, "<div id='tc%POSctrl'>\n", id);
 	
-	/** Store values used during tab generation that are the same for all tabs. **/
 	/** Check for tab pages within the tab control entity, this time to do the pages themselves. **/
 	const char* widget_namespace = wgtrGetNamespace(tree);
 	for (i = 0; i < tab_count; i++)
 	    {
-	    pWgtrNode tab_page_tree = children[i];
+	    const pWgtrNode tab_page_tree = children[i];
 	    
 	    /** Handle namespace transition. **/
 	    htrCheckNSTransition(s, tree, tab_page_tree);
 	    
-	    /** First, render the tabpage and add stuff for it. **/
-	    wgtrGetPropertyValue(tab_page_tree,"name",DATA_T_STRING,POD(&ptr));
-	    
 	    /** Check if the tab is selected. **/
 	    int is_selected = (i == sel_idx - 1);
 	    
-	    /** Set type. **/
-	    wgtrGetPropertyValue(tab_page_tree, "type", DATA_T_STRING, POD(&page_type));
-	    if (type == NULL || strcmp(type, "dynamic") != 0) strcpy(page_type, "static");
+	    /** Get page type. **/
+	    if (wgtrGetPropertyValue(tab_page_tree, "type", DATA_T_STRING, POD(&ptr)) != 0)
+		page_type = "static"; /* Default: static page_type. */
+	    else if (ptr == NULL)
+		{
+		mssError(0, "HTTAB", "Failed to get attribute 'type'");
+		goto tab_page_err;
+		}
+	    else if (strcmp(ptr, "dynamic") == 0) page_type = "dynamic";
+	    else if (strcmp(ptr, "static") == 0) page_type = "static";
+	    else
+		{
+		mssError(1, "HTTAB", "Unknown value \"%s\" for attribute 'type'.", ptr);
+		goto tab_page_err;
+		}
 	    
-	    /** Set feildname. **/
-	    if (strcmp(page_type, "dynamic") == 0 &&
-	        wgtrGetPropertyValue(tab_page_tree, "fieldname", DATA_T_STRING, POD(&field)) == 0)
+	    /** Get feildname. **/
+	    if (page_type[0] == 'd'
+		&& wgtrGetPropertyValue(tab_page_tree, "fieldname", DATA_T_STRING, POD(&field)) == 0)
 		strtcpy(fieldname, field, sizeof(fieldname));
-	    else strcpy(fieldname, "");
+	    else fieldname[0] = '\0';
 	    
-	    /** Write the addTab() call (in a new scope). **/
+	    /** Get name. **/
+	    if (wgtrGetPropertyValue(tab_page_tree, "name", DATA_T_STRING, POD(&ptr)) != 0)
+		{
+		mssError(0, "HTTAB", "Failed to get attribute 'name'");
+		goto tab_page_err;
+		}
+	    
+	    /** Write the addTab() initialization call (in a new scope). **/
 	    const char* tab_page_namespace = wgtrGetNamespace(tab_page_tree);
 	    htrAddScriptInit_va(s, "\t{ "
 		"const tabctrl = wgtrGetNodeRef('%STR&SYM', '%STR&SYM'); "
@@ -663,6 +675,16 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    
 	    /** Handle namespace transition. **/
 	    htrCheckNSTransitionReturn(s, tree, tab_page_tree);
+	    
+	    continue;
+	    
+	    /** Error cases. **/
+    tab_page_err:
+	    mssError(0, "HTTAB",
+		"Failed to render tab page \"%s\":\"%s\".",
+		tree->Name, tree->Type
+	    );
+	    goto err;
 	    }
 	
 	/** Handle other subwidgets (connectors, etc.). **/
@@ -670,8 +692,15 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	
 	/** End the containing layer. **/
 	htrAddBodyItem(s, "</div>\n");
-    
-    return 0;
+	
+	return 0;
+	
+    err:
+	mssError(0, "HTTAB",
+	    "Failed to render widget \"%s\":\"%s\".",
+	    tree->Name, tree->Type
+	);
+	return -1;
     }
 
 int 
