@@ -92,9 +92,9 @@
  *** 	- `EXP_ARG_NON_EMPTY`: Expect string to be non-empty. Expect a
  *** 	   stringvec or intvec to have elements (does not check them).
  *** 	- `EXP_ARG_POSITIVE`: Expect a positive or zero value for int, double,
- *** 	   money, or datetime. (Includes NON_NAN: NAN is not positive).
+ *** 	   or money. (Includes NON_NAN: NAN is not positive).
  *** 	- `EXP_ARG_NEGATIVE`: Expect a negative or zero value for int, double,
- *** 	   money, or datetime. (Includes NON_NAN: NAN is not negative).
+ *** 	   or money. (Includes NON_NAN: NAN is not negative).
  *** 	- `EXP_ARG_NON_NAN`: Expect a double to be a number, not NAN.
  *** 
  *** @attention - Checks like `EXP_ARG_NON_EMPTY`, `EXP_ARG_NON_NAN`, etc. also
@@ -277,28 +277,6 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 		    mssErrorf(1, "EXP",
 			"%s(...): Expects string to contain characters, but got \"\".",
 			fn_name
-		    );
-		    return -1;
-		    }
-		break;
-		}
-	    
-	    case DATA_T_DATETIME:
-		{
-		pDateTime value = &arg->Types.Date;
-		if (arg_expect->Flags & EXP_ARG_POSITIVE && value->Value < 0)
-		    {
-		    mssErrorf(1, "EXP",
-			"%s(...): Expects positive date offset but got %llu.",
-			fn_name, value->Value
-		    );
-		    return -1;
-		    }
-		if (arg_expect->Flags & EXP_ARG_NEGATIVE && value->Value > 0)
-		    {
-		    mssErrorf(1, "EXP",
-			"%s(...): Expects negative date offset but got %llu.",
-			fn_name, value->Value
 		    );
 		    return -1;
 		    }

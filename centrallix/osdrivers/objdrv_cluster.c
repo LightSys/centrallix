@@ -3808,7 +3808,8 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		    pClusterData cluster_data = check_ptr(driver_data->TargetData);
 		    if (cluster_data == NULL) goto err;
 		    ASSERTMAGIC(cluster_data, MGK_CL_CLUSTER_DATA);
-		    val->DateTime = &cluster_data->DateCreated;
+		    if (cluster_data->DateCreated.Value == 0) return 1; /* DateCreated not set: return null - should never occur */
+		    else val->DateTime = &cluster_data->DateCreated;
 		    return 0;
 		    }
 		
@@ -3818,7 +3819,8 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		    pSearchData search_data = check_ptr(driver_data->TargetData);
 		    if (search_data == NULL) goto err;
 		    ASSERTMAGIC(search_data, MGK_CL_SEARCH_DATA);
-		    val->DateTime = &search_data->DateCreated;
+		    if (search_data->DateCreated.Value == 0) return 1; /* DateCreated not set: return null - should never occur */
+		    else val->DateTime = &search_data->DateCreated;
 		    return 0;
 		    }
 		}
@@ -3841,9 +3843,8 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		    pClusterData target = check_ptr((pClusterData)driver_data->TargetData);
 		    if (target == NULL) goto err;
 		    ASSERTMAGIC(target, MGK_CL_CLUSTER_DATA);
-		    pDateTime date_time = &target->DateComputed;
-		    if (date_time->Value == 0) return 1; /* null */
-		    else val->DateTime = date_time;
+		    if (target->DateComputed.Value == 0) return 1; /* DateComputed not set: return null */
+		    else val->DateTime = &target->DateComputed;
 		    return 0;
 		    }
 		
@@ -3853,9 +3854,8 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		    pSearchData target = check_ptr((pSearchData)driver_data->TargetData);
 		    if (target == NULL) goto err;
 		    ASSERTMAGIC(target, MGK_CL_SEARCH_DATA);
-		    pDateTime date_time = &target->DateComputed;
-		    if (date_time->Value == 0) return 1; /* null */
-		    else val->DateTime = date_time;
+		    if (target->DateComputed.Value == 0) return 1; /* DateComputed not set: return null */
+		    else val->DateTime = &target->DateComputed;
 		    return 0;
 		    }
 		}
