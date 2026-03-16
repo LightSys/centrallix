@@ -273,7 +273,7 @@ double (*ci_SimilarityMeasureToFunction(SimilarityMeasure similarity_measure))(v
 	}
     }
 
-/*** Enum representing the type of data targetted by the driver,
+/*** Enum representing the type of data targeted by the driver,
  *** set based on the path given when the driver is used to open
  *** a cluster file.
  *** 
@@ -569,7 +569,7 @@ typedef struct _NODE
  *** is guaranteed to be computed. These three types can be returned from
  *** clusterOpen(), based on the provided path.
  *** 
- *** Alternatively, a cluster entry or search entry can be targetted by calling
+ *** Alternatively, a cluster entry or search entry can be targeted by calling
  *** fetch on a query pointing to a driver instance that targets a cluster or
  *** search (respectively). These two entry target types ensure that the data
  *** they indicate has been computed, so the GetAttrType() and GetAttrValue()
@@ -578,12 +578,12 @@ typedef struct _NODE
  *** @param NodeData The associated node data struct. There can be many driver
  *** 	instances pointing to one NodeData at a time, but each driver instance
  *** 	always points to singular NodeData struct.
- *** @param TargetType The type of data targetted (see above).
+ *** @param TargetType The type of data targeted (see above).
  *** @param TargetData If target type is:
- *** ```csv 
+ *** ```txt
  *** 	Node:                    A pointer to the SourceData struct.
- *** 	Cluster or ClusterEntry: A pointer to the targetted cluster.
- *** 	Search or SearchEntry:   A pointer to the targetted search.
+ *** 	Cluster or ClusterEntry: A pointer to the targeted cluster.
+ *** 	Search or SearchEntry:   A pointer to the targeted search.
  *** ```
  *** @param TargetAttrIndex An index into an attribute list (for GetNextAttr()).
  *** @param TargetMethodIndex An index into an method list (for GetNextMethod()).
@@ -608,7 +608,7 @@ typedef struct _DRIVER
  ***   - Total size: 16 bytes
  ***
  *** @param DriverData The associated driver instance being queried.
- *** @param RowIndex The selected row of the data targetted by the driver.
+ *** @param RowIndex The selected row of the data targeted by the driver.
  *** @param Magic A magic value for detecting corrupted memory.
  ***/
 typedef struct
@@ -3303,7 +3303,7 @@ clusterClose(void* inf_v, pObjTrxTree* oxt)
 
 
 // LINK #functions
-/*** Opens a new query pointing to the first row of the data targetted by
+/*** Opens a new query pointing to the first row of the data targeted by
  *** the driver instance struct. The query has an internal index counter
  *** that starts at the first row and increments as data is fetched.
  *** 

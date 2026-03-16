@@ -1575,7 +1575,7 @@ int exp_fn_reverse(pExpression tree, pParamObjects objlist, pExpression i0, pExp
 
 /** Leading zero trim. */
 int
-exp_fn_lztrim(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+exp_fn_lztrim(pExpression tree)
     {
 	/** Expect one nullable string parameter. **/
 	if (exp_fn_i_verify_schema((ArgExpect[]){
@@ -4525,7 +4525,7 @@ int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 
 
 int
-exp_fn_metaphone(pExpression tree, pParamObjects obj_list)
+exp_fn_metaphone(pExpression tree)
     {
 	/** Verify function schema. **/
 	if (exp_fn_i_verify_schema((ArgExpect[]){
@@ -4574,15 +4574,16 @@ exp_fn_metaphone(pExpression tree, pParamObjects obj_list)
 
 /*** Computes cosine or Levenshtein similarity between two strings. These two
  *** tasks have a large amount of overlapping logic (mostly error checking),
- *** so doing them with one function greatly reduces code duplocation.
+ *** so doing them with one function greatly reduces code duplication.
+ *** 
+ *** Assumes that the function which caused this code to run was either
+ *** "cos_compare" or "lev_compare" (this value is read from `tree->Name`).
  *** 
  *** @param tree The tree resulting from this function.
- *** @param obj_list The evaluation "scope", including available variables.
- *** @param fn_name Either `cos_compare()` or `lev_compare()`.
  *** @returns 0 for success, -1 for failure.
  ***/
 static int
-exp_fn_compare(pExpression tree, pParamObjects obj_list, const char* fn_name)
+exp_fn_compare(pExpression tree)
     {
 	/** Verify function schema. **/
 	if (exp_fn_i_verify_schema((ArgExpect[]){
@@ -4591,7 +4592,7 @@ exp_fn_compare(pExpression tree, pParamObjects obj_list, const char* fn_name)
 	    EXP_ARG_END,
 	}, tree) != 0)
 	    {
-	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", fn_name);
+	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
 	    return -1;
 	    }
 	
@@ -4608,7 +4609,7 @@ exp_fn_compare(pExpression tree, pParamObjects obj_list, const char* fn_name)
 	char* str2 = check_ptr(maybe_str2->String);
 	
 	/** Handle either cos_compare() or lev_compare(). **/
-	if (fn_name[0] == 'c')
+	if (tree->Name[0] == 'c')
 	    { /* cos_compare() */
 	    int ret;
 	    
@@ -4619,7 +4620,7 @@ exp_fn_compare(pExpression tree, pParamObjects obj_list, const char* fn_name)
 		{
 		mssErrorf(1, "EXP",
 		    "%s(\"%s\", \"%s\"): Failed to build vectors.",
-		    fn_name, str1, str2
+		    tree->Name, str1, str2
 		);
 		ret = -1;
 		}
@@ -4655,19 +4656,7 @@ exp_fn_compare(pExpression tree, pParamObjects obj_list, const char* fn_name)
     }
 
 int
-exp_fn_cos_compare(pExpression tree, pParamObjects obj_list)
-    {
-    return exp_fn_compare(tree, obj_list, "cos_compare");
-    }
-
-int
-exp_fn_lev_compare(pExpression tree, pParamObjects obj_list)
-    {
-    return exp_fn_compare(tree, obj_list, "lev_compare");
-    }
-
-int
-exp_fn_levenshtein(pExpression tree, pParamObjects obj_list)
+exp_fn_levenshtein(pExpression tree)
     {
 	/** Verify function schema. **/
 	if (exp_fn_i_verify_schema((ArgExpect[]){
@@ -4893,15 +4882,15 @@ int exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
 	xhAdd(&EXP.Functions, "metaphone", (char*)exp_fn_metaphone);
 	xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
-	xhAdd(&EXP.Functions, "lev_compare", (char*)exp_fn_lev_compare);
-	xhAdd(&EXP.Functions, "cos_compare", (char*)exp_fn_cos_compare);
+	xhAdd(&EXP.Functions, "lev_compare", (char*)exp_fn_compare);
+	xhAdd(&EXP.Functions, "cos_compare", (char*)exp_fn_compare);
 	xhAdd(&EXP.Functions, "to_base64", (char*)exp_fn_to_base64);
 	xhAdd(&EXP.Functions, "from_base64", (char*)exp_fn_from_base64);
 	xhAdd(&EXP.Functions, "to_hex", (char*)exp_fn_to_hex);
 	xhAdd(&EXP.Functions, "from_hex", (char*)exp_fn_from_hex);
 	xhAdd(&EXP.Functions, "octet_length", (char*)exp_fn_octet_length);
 	xhAdd(&EXP.Functions, "argon2id",(char*)exp_fn_argon2id);
-
+	
 	/** Windowing **/
 	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
 	xhAdd(&EXP.Functions, "dense_rank", (char*)exp_fn_dense_rank);
