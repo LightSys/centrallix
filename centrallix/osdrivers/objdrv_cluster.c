@@ -60,6 +60,7 @@
 /** Defaults for unspecified optional attributes. **/
 #define CI_DEFAULT_MIN_IMPROVEMENT 0.0001
 #define CI_DEFAULT_MAX_ITERATIONS 64u
+#define CI_NO_SEED 0u
 
 /** ================ Stuff That Should Be Somewhere Else ================ **/
 /** ANCHOR[id=temp] **/
@@ -304,6 +305,7 @@ char* ATTR_CLUSTER[] =
     "num_clusters",
     "min_improvement",
     "max_iterations",
+    "seed",
     "date_created",
     "date_computed",
     END_OF_ARRAY,
@@ -459,6 +461,8 @@ typedef struct _CLUSTER
     char*             Key;
     ClusterAlgorithm  ClusterAlgorithm;
     SimilarityMeasure SimilarityMeasure;
+    /** 2 bytes of auto-padding. **/
+    unsigned int      Seed;
     double            MinImprovement;
     unsigned int      MaxIterations;
     unsigned int      nSubClusters;
@@ -1209,7 +1213,22 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    cluster_data->MaxIterations = (unsigned int)max_iterations;
 	    }
 	else cluster_data->MaxIterations = CI_DEFAULT_MAX_ITERATIONS;
-	
+
+	/** Get seed. **/
+	int seed;
+	result = ci_ParseAttribute(inf, "seed", DATA_T_INTEGER, POD(&seed), param_list, false, true);
+	if (result == -1) goto err_free;
+	if (result == 0)
+	    {
+	    if (seed < 1)
+		{
+		mssErrorf(1, "Cluster", "Invalid value for [seed : uint > 0]: %d", seed);
+		goto err_free;
+		}
+	    cluster_data->Seed = (unsigned int)seed;
+	    }
+	else cluster_data->Seed = CI_NO_SEED;
+
 	/** Search for sub-clusters. **/
 	if (!check(xaInit(&sub_clusters, 4u))) goto err_free;
 	for (unsigned int i = 0u; i < inf->nSubInf; i++)
@@ -1232,6 +1251,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 			"min_improvement",
 			"max_iterations",
 			"window_size",
+			"seed",
 		    };
 		    const unsigned int nattrs = sizeof(attrs) / sizeof(char*);
 		    
@@ -2711,8 +2731,12 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		const size_t lables_size = source_data->nVectors * sizeof(unsigned int);
 		unsigned int* labels = check_ptr(nmSysMalloc(lables_size));
 		if (labels == NULL) goto err_free;
-		
-		/** Run kmeans. **/
+
+		/** Handle seed for ca_kmeans(). **/
+		const bool auto_seed = (cluster_data->Seed == CI_NO_SEED);
+		if (!auto_seed) srand(cluster_data->Seed);
+
+		/** Run ca_kmeans(). **/
 		const bool successful = check(ca_kmeans(
 		    source_data->Vectors,
 		    source_data->nVectors,
@@ -2720,7 +2744,8 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		    cluster_data->MaxIterations,
 		    cluster_data->MinImprovement,
 		    labels,
-		    cluster_data->Sims
+		    cluster_data->Sims,
+		    auto_seed
 		));
 		if (!successful) goto err_free;
 		
@@ -3596,7 +3621,8 @@ clusterGetAttrType(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    || strcmp(attr_name, "similarity_measure") == 0)
 		    return DATA_T_STRING;
 		if (strcmp(attr_name, "num_clusters") == 0
-		    || strcmp(attr_name, "max_iterations") == 0)
+		    || strcmp(attr_name, "max_iterations") == 0
+		    || strcmp(attr_name, "seed") == 0)
 		    return DATA_T_INTEGER;
 		if (strcmp(attr_name, "min_improvement") == 0)
 		    return DATA_T_DOUBLE;
@@ -3926,6 +3952,11 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		if (strcmp(attr_name, "min_improvement") == 0)
 		    {
 		    val->Double = target->MinImprovement;
+		    return 0;
+		    }
+		if (strcmp(attr_name, "seed") == 0)
+		    {
+		    val->Integer = target->Seed;
 		    return 0;
 		    }
 		break;

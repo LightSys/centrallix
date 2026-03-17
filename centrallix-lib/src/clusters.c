@@ -767,6 +767,9 @@ get_cluster_size(
  *** @param vector_sims An array of num_vectors elements, allocated by the
  *** 	caller, where index i stores the similarity of vector i to its assigned
  *** 	cluster. Passing NULL skips evaluation of these values.
+ *** @param auto_seed If true, the function will set its own seed. Otherwise,
+ *** 	it will use rand() without setting a seed. In the latter case, srand()
+ *** 	should be used by the caller prior to calling this function.
  ***
  *** @attention - Assumes: num_vectors is the length of vectors.
  *** @attention - Assumes: num_clusters is the length of labels.
@@ -796,7 +799,8 @@ ca_kmeans(
     const unsigned int max_iter,
     const double min_improvement,
     unsigned int* labels,
-    double* vector_sims)
+    double* vector_sims,
+    bool auto_seed)
     {
     pCentroid* centroids = NULL;
     pCentroid* new_centroids = NULL;
@@ -826,7 +830,7 @@ ca_kmeans(
 	    }
 	
 	/** Select random vectors to use as the initial centroids. **/
-	srand(time(NULL));
+	if (auto_seed) srand(time(NULL));
 	for (unsigned int i = 0u; i < num_clusters; i++)
 	    {
 	    /** Pick a random vector. **/

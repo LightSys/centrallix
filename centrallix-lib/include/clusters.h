@@ -107,7 +107,8 @@ int ca_kmeans(
     const unsigned int max_iter,
     const double min_improvement,
     unsigned int* labels,
-    double* vector_sims);
+    double* vector_sims,
+    bool auto_seed);
 
 /** Vector helper macros. **/
 #define ca_is_empty(vector) (vector[0] == -CA_NUM_DIMS)
