@@ -4246,6 +4246,8 @@ mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTr
 	    case DATA_T_INTEGER: *(int*)value = exp->Integer; break;
 	    case DATA_T_STRING: *(char**)value = exp->String; break;
 	    case DATA_T_DOUBLE: *(double*)value = exp->Types.Double; break;
+	    case DATA_T_INTVEC: *(pIntVec*)value = &(exp->Types.IntVec); break;
+	    case DATA_T_STRINGVEC: *(pStringVec*)value = &(exp->Types.StrVec); break;
 	    case DATA_T_MONEY: *(pMoneyType*)value = &(exp->Types.Money); break;
 	    case DATA_T_DATETIME: *(pDateTime*)value = &(exp->Types.Date); break;
 	    case DATA_T_BINARY:
