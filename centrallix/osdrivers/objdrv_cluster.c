@@ -645,7 +645,7 @@ struct
     unsigned long long GetValCalls_key1;
     unsigned long long GetValCalls_key2;
     unsigned long long GetValCalls_sim;
-    } ClusterStatistics;
+    } ClusterStatistics = {0};
 
 
 /** ================ Function Declarations ================ **/
@@ -4975,9 +4975,6 @@ clusterInitialize(void)
 	if (!check(xhInit(&ClusterDriverCaches.SourceDataCache, 251, 0))) goto err_free;
 	if (!check(xhInit(&ClusterDriverCaches.ClusterDataCache, 251, 0))) goto err_free;
 	if (!check(xhInit(&ClusterDriverCaches.SearchDataCache, 251, 0))) goto err_free;
-	
-	/** Initialize statistics. **/
-	memset(&ClusterStatistics, 0, sizeof(ClusterStatistics));
 	
 	/** Setup the structure. **/
 	if (check_ptr(strcpy(drv->Name, "cluster - Clustering Driver")) == NULL) goto err_free;
