@@ -268,27 +268,28 @@ ca_free_vector(pVector sparse_vector)
     return;
     }
 
-/*** Parse a token from a sparsely allocated vector and write the param_value and
- *** number of remaining values to the passed locations.
+/*** Parse a token from a sparsely allocated vector and write its value to
+ *** `token_value`. The number of dimensions consumed in the process is written
+ *** `dims_consumed`.
  *** 
  *** @param token The sparse vector token being parsed.
- *** @param remaining The location to save the remaining number of characters.
- *** @param param_value The location to save the param_value of the token.
+ *** @param dims_consumed The location to save the dims_consumed number of characters.
+ *** @param token_value The location to save the token_value of the token.
  ***/
 static void
-ca_parse_vector_token(const int token, unsigned int* remaining, unsigned int* param_value)
+ca_parse_vector_token(const int token, unsigned int* dims_consumed, unsigned int* token_value)
     {
 	if (token < 0)
 	    {
 	    /** This run contains -token zeros. **/
-	    *remaining = (unsigned)(-token);
-	    *param_value = 0u;
+	    *dims_consumed = (unsigned)(-token);
+	    *token_value = 0u;
 	    }
 	else
 	    {
-	    /** This run contains one param_value. **/
-	    *remaining = 1u;
-	    *param_value = (unsigned)(token);
+	    /** This run contains one token_value. **/
+	    *dims_consumed = 1u;
+	    *token_value = (unsigned)(token);
 	    }
     
     return;
