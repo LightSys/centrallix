@@ -606,6 +606,8 @@ ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const
 double
 ca_cos_compare(void* v1, void* v2)
     {
+	/** Input validation checks. **/
+	if (v1 == NULL || v2 == NULL) return 0.0;
 	if (v1 == v2) return 1.0;
 	
 	/** Input validation checks. **/
@@ -672,8 +674,9 @@ ca_eql(pVector v1, pVector v2)
 	/** Edge cases. **/
 	if (v1 == v2) return true;
 	if (v1 == NULL || v2 == NULL) return false;
-    
+	
 	const unsigned int len = ca_sparse_len(v1);
+	if (len != ca_sparse_len(v2)) return false;
 	for (unsigned int i = 0u; i < len; i++)
 	    if (v1[i] != v2[i]) return false;
     
@@ -766,6 +769,7 @@ get_cluster_size(
  *** @param auto_seed If true, the function will set its own seed. Otherwise,
  *** 	it will use rand() without setting a seed. In the latter case, srand()
  *** 	should be used by the caller prior to calling this function.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***
  *** @attention - Assumes: num_vectors is the length of vectors.
  *** @attention - Assumes: num_clusters is the length of labels.
@@ -975,7 +979,7 @@ ca_most_similar(
     double best_sim = -INFINITY;
     
 	/** Iterate over all data options to find the one with the highest similarity. **/
-	for (unsigned int i = 0u; (num_data == 0u) ? (data[i] != NULL) : (i < num_data); i++)
+	for (unsigned int i = 0u; (num_data == 0u && data[i] != NULL) || (i < num_data); i++)
 	    {
 	    const double sim = check_double(similarity(target, data[i]));
 	    if (isnan(sim)) continue; /* Skip failed comparison. */
