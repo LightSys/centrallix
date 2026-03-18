@@ -2,7 +2,7 @@
 <!-- Centrallix Application Server System                                 -->
 <!-- Centrallix Core                                                      -->
 <!--                                                                      -->
-<!-- Copyright (C) 1998-2012 LightSys Technology Services, Inc.           -->
+<!-- Copyright (C) 1998-2026 LightSys Technology Services, Inc.           -->
 <!--                                                                      -->
 <!-- This program is free software; you can redistribute it and/or modify -->
 <!-- it under the terms of the GNU General Public License as published by -->
@@ -29,7 +29,7 @@
 <!--              newmalloc.c, including how to allocate and free memory, -->
 <!--              as well as features like caching and some debug tools.  -->
 <!--              This text was moved to here from OSDriver_Authoring.md  -->
-<!--              by Israel Fuller in November and Descember of 2025.     -->
+<!--              by Israel Fuller in November and December of 2025.      -->
 <!-------------------------------------------------------------------------->
 
 # Memory Management in Centrallix

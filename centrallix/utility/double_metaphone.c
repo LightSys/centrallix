@@ -68,7 +68,7 @@
 /* 		Lawrence Philips which he published in the June, 2000	*/
 /* 		issue of C/C++ Users Journal. Double Metaphone is an	*/
 /* 		improved version of the original Metaphone algorithm	*/
-/* 		written by Philips'. This implementaton was written by	*/
+/* 		written by Philips'. This implementation was written by	*/
 /* 		Maurice Aubrey for C/C++ with bug fixes provided by	*/
 /* 		Kevin Atkinson. It was revised by Israel Fuller to	*/
 /* 		better align with the Centrallix coding style and	*/

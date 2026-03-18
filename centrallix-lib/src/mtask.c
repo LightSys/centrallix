@@ -41,7 +41,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -54,7 +54,7 @@
 /* Description:								*/
 /*									*/
 /* The MTASK Multithreading Tasking Module provides non-preemptive	*/
-/* threading services for Centrallix.  It has been shown to be useable	*/
+/* threading services for Centrallix.  It has been shown to be usable	*/
 /* on a variety of platforms, although the values for MT_TASKSEP may	*/
 /* sometimes need to be adjusted.  This module does NOT provide for	*/
 /* kernel threads or for preemptive threading.				*/

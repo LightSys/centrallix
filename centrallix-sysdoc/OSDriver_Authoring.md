@@ -2,7 +2,7 @@
 <!-- Centrallix Application Server System                                 -->
 <!-- Centrallix Core                                                      -->
 <!--                                                                      -->
-<!-- Copyright (C) 1998-2012 LightSys Technology Services, Inc.           -->
+<!-- Copyright (C) 1998-2026 LightSys Technology Services, Inc.           -->
 <!--                                                                      -->
 <!-- This program is free software; you can redistribute it and/or modify -->
 <!-- it under the terms of the GNU General Public License as published by -->
@@ -28,7 +28,7 @@
 <!-- Description: Describes useful information and processes for writing  -->
 <!--              and designing new Centrallix Object System drivers.     -->
 <!--              Rewritten and expanded by Israel Fuller in November and -->
-<!--              Descember of 2025.                                      -->
+<!--              December of 2025.                                       -->
 <!-------------------------------------------------------------------------->
 
 # ObjectSystem Driver Interface

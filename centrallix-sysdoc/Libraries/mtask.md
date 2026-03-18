@@ -2,7 +2,7 @@
 <!-- Centrallix Application Server System                                 -->
 <!-- Centrallix Core                                                      -->
 <!--                                                                      -->
-<!-- Copyright (C) 1998-2012 LightSys Technology Services, Inc.           -->
+<!-- Copyright (C) 1998-2026 LightSys Technology Services, Inc.           -->
 <!--                                                                      -->
 <!-- This program is free software; you can redistribute it and/or modify -->
 <!-- it under the terms of the GNU General Public License as published by -->
@@ -28,7 +28,7 @@
 <!-- Description: Describes how to use the mtask module in centrallix-lib -->
 <!--              to manage network connections.                          -->
 <!--              This text was moved to here from OSDriver_Authoring.md  -->
-<!--              by Israel Fuller in November and Descember of 2025.     -->
+<!--              by Israel Fuller in November and December of 2025.      -->
 <!-------------------------------------------------------------------------->
 
 # Handling Network Connection
