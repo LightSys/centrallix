@@ -356,7 +356,7 @@ char* METHOD_NAMES[] =
  *** @param SourcePath The path to the data source from which to retrieve data.
  *** @param KeyAttr The name of the attribute to use when getting keys from
  *** 	the SourcePath.
- *** @param NameAttr The name of the attribute to use when getting data from
+ *** @param DataAttr The name of the attribute to use when getting data from
  *** 	the SourcePath.
  *** 
  *** @skip --> Computed data.
@@ -384,7 +384,7 @@ typedef struct _SOURCE
     char*        Key;
     char*        SourcePath;
     char*        KeyAttr;
-    char*        NameAttr;
+    char*        DataAttr;
     char**       Keys;
     char**       Strings;
     pVector*     Vectors;
@@ -1030,19 +1030,19 @@ ci_ParseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	
 	/** Get the attribute name to use for querying data from the source. **/
 	if (ci_ParseAttribute(inf, "data_attr", DATA_T_STRING, POD(&buf), param_list, true, true) != 0) goto err_free;
-	source_data->NameAttr = check_ptr(nmSysStrdup(buf));
-	if (source_data->NameAttr == NULL) goto err_free;
+	source_data->DataAttr = check_ptr(nmSysStrdup(buf));
+	if (source_data->DataAttr == NULL) goto err_free;
 	
 	/** Create cache entry key. **/
 	const size_t len = strlen(path)
 	    + strlen(source_data->SourcePath)
 	    + strlen(source_data->KeyAttr)
-	    + strlen(source_data->NameAttr) + 5lu;
+	    + strlen(source_data->DataAttr) + 5lu;
 	source_data->Key = check_ptr(nmSysMalloc(len * sizeof(char)));
 	if (source_data->Key == NULL) goto err_free;
 	snprintf(source_data->Key, len,
 	    "%s?%s->%s:%s",
-	    path, source_data->SourcePath, source_data->KeyAttr, source_data->NameAttr
+	    path, source_data->SourcePath, source_data->KeyAttr, source_data->DataAttr
 	);
 	
 	/** Check for a cached version. **/
@@ -1928,10 +1928,10 @@ ci_FreeSourceData(pSourceData source_data)
 	    nmSysFree(source_data->KeyAttr);
 	    source_data->KeyAttr = NULL;
 	    }
-	if (source_data->NameAttr != NULL)
+	if (source_data->DataAttr != NULL)
 	    {
-	    nmSysFree(source_data->NameAttr);
-	    source_data->NameAttr = NULL;
+	    nmSysFree(source_data->DataAttr);
+	    source_data->DataAttr = NULL;
 	    }
 	
 	/** Free fetched data, if it exists. **/
@@ -2196,7 +2196,7 @@ ci_SizeOfSourceData(pSourceData source_data)
 	if (source_data->Name != NULL) size += strlen(source_data->Name) * sizeof(char);
 	if (source_data->SourcePath != NULL) size += strlen(source_data->SourcePath) * sizeof(char);
 	if (source_data->KeyAttr != NULL) size += strlen(source_data->KeyAttr) * sizeof(char);
-	if (source_data->NameAttr != NULL) size += strlen(source_data->NameAttr) * sizeof(char);
+	if (source_data->DataAttr != NULL) size += strlen(source_data->DataAttr) * sizeof(char);
 	if (source_data->Strings != NULL)
 	    {
 	    for (unsigned int i = 0u; i < source_data->nVectors; i++)
@@ -2372,7 +2372,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    ASSERTMAGIC(entry, MGK_OBJECT);
 	    
 	    /** Data value: Type checking. **/
-	    const int data_datatype = objGetAttrType(entry, source_data->NameAttr);
+	    const int data_datatype = objGetAttrType(entry, source_data->DataAttr);
 	    if (data_datatype == -1)
 		{
 		mssErrorf(0, "Cluster",
@@ -2404,7 +2404,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    
 	    /** Data value: Get value from database. **/
 	    char* data;
-	    ret = objGetAttrValue(entry, source_data->NameAttr, DATA_T_STRING, POD(&data));
+	    ret = objGetAttrValue(entry, source_data->DataAttr, DATA_T_STRING, POD(&data));
 	    if (ret != 0)
 		{
 		mssErrorf(0, "Cluster",
@@ -3913,7 +3913,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		    }
 		if (strcmp(attr_name, "name_attr") == 0)
 		    {
-		    val->String = source_data->NameAttr;
+		    val->String = source_data->DataAttr;
 		    return 0;
 		    }
 		break;
