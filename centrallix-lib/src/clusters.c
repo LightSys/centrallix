@@ -268,6 +268,32 @@ ca_free_vector(pVector sparse_vector)
     return;
     }
 
+/*** Parse a token from a sparsely allocated vector and write the param_value and
+ *** number of remaining values to the passed locations.
+ *** 
+ *** @param token The sparse vector token being parsed.
+ *** @param remaining The location to save the remaining number of characters.
+ *** @param param_value The location to save the param_value of the token.
+ ***/
+static void
+ca_parse_vector_token(const int token, unsigned int* remaining, unsigned int* param_value)
+    {
+	if (token < 0)
+	    {
+	    /** This run contains -token zeros. **/
+	    *remaining = (unsigned)(-token);
+	    *param_value = 0u;
+	    }
+	else
+	    {
+	    /** This run contains one param_value. **/
+	    *remaining = 1u;
+	    *param_value = (unsigned)(token);
+	    }
+    
+    return;
+    }
+
 /*** Compute the actual number of ints stored in memory to store the given
  *** sparsely allocated vector.
  *** 
@@ -279,15 +305,14 @@ ca_sparse_len(const pVector vector)
     {
     unsigned int i = 0u;
     
-	for (unsigned int dim = 0u; dim < CA_NUM_DIMS;)
+	for (unsigned int dim = 0u; dim < CA_NUM_DIMS; i++)
 	    {
-	    const int val = vector[i++];
+	    /** Parse the vector token. **/
+	    unsigned int dims_consumed = 0u, val = 0u;
+	    ca_parse_vector_token(vector[i++], &dims_consumed, &val);
 	    
-	    /** Negative val represents -val 0s in the array, so skip that many values. **/
-	    if (val < 0) dim += (unsigned)(-val);
-	    
-	    /** We have a param_value, but we don't need to do anything with it. **/
-	    else dim++;
+	    /** Move ahead the requested number of dimensions. **/
+	    dim += dims_consumed;
 	    }
     
     return i;
@@ -328,13 +353,15 @@ ca_magnitude_sparse(const pVector vector)
     
 	for (unsigned int i = 0u, dim = 0u; dim < CA_NUM_DIMS;)
 	    {
-	    const int val = vector[i++];
+	    /** Parse the vector token. **/
+	    unsigned int dims_consumed = 0u, val = 0u;
+	    ca_parse_vector_token(vector[i++], &dims_consumed, &val);
 	    
-	    /** Negative val represents -val 0s in the array, so skip that many values. **/
-	    if (val < 0) dim += (unsigned)(-val);
+	    /** Increase magnitude. **/
+	    magnitude += val * val;
 	    
-	    /** We have a param_value, so square it and add it to the magnitude. **/
-	    else { magnitude += (unsigned)(val * val); dim++; }
+	    /** Move ahead the requested number of dimensions. **/
+	    dim += dims_consumed;
 	    }
     
     return sqrt((double)magnitude);
@@ -354,32 +381,6 @@ ca_magnitude_dense(const pCentroid centroid)
 	    magnitude += centroid[i] * centroid[i];
     
     return sqrt(magnitude);
-    }
-
-/*** Parse a token from a sparsely allocated vector and write the param_value and
- *** number of remaining values to the passed locations.
- *** 
- *** @param token The sparse vector token being parsed.
- *** @param remaining The location to save the remaining number of characters.
- *** @param param_value The location to save the param_value of the token.
- ***/
-static void
-ca_parse_vector_token(const int token, unsigned int* remaining, unsigned int* param_value)
-    {
-	if (token < 0)
-	    {
-	    /** This run contains -token zeros. **/
-	    *remaining = (unsigned)(-token);
-	    *param_value = 0u;
-	    }
-	else
-	    {
-	    /** This run contains one param_value. **/
-	    *remaining = 1u;
-	    *param_value = (unsigned)(token);
-	    }
-    
-    return;
     }
 
 /*** Calculate the similarity on sparsely allocated vectors.
@@ -447,13 +448,15 @@ ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c2)
     
 	for (unsigned int i = 0u, dim = 0u; dim < CA_NUM_DIMS;)
 	    {
-	    const int val = v1[i++];
+	    /** Parse the vector token. **/
+	    unsigned int dims_consumed = 0u, val = 0u;
+	    ca_parse_vector_token(v1[i++], &dims_consumed, &val);
 	    
-	    /** Negative val represents -val 0s in the array, so skip that many values. **/
-	    if (val < 0) dim += (unsigned)(-val);
+	    /** Increase dot product (skipped for zero-values). **/
+	    if (val > 0u) dot_product += (double)val * c2[dim];
 	    
-	    /** We have a param_value, so square it and add it to the magnitude. **/
-	    else dot_product += (double)val * c2[dim++];
+	    /** Move ahead the requested number of dimensions. **/
+	    dim += dims_consumed;
 	    }
     
     /** Return the difference score. **/
