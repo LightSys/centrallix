@@ -479,8 +479,8 @@ ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c2)
  *** 
  *** @param str1 The first string.
  *** @param str2 The second string.
- *** @param length1 The length of the first string.
- *** @param length1 The length of the first string.
+ *** @param str1_length The length of the first string.
+ *** @param str2_length The length of the second string.
  *** @returns The edit distance between the two strings, or a negative value on error.
  *** 
  *** @attention - `Tip`: Pass 0 for the length of either string to infer it
