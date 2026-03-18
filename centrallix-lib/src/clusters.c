@@ -126,7 +126,7 @@ ca_char_pair_cmp(const void *p1, const void *p2)
  *** input to get_char_pair_hash().
  *** 
  *** After hashing each character pair, we add some number from 1 to 13 to the
- *** coresponding dimension. However, for most names, this results in a lot of
+ *** corresponding dimension. However, for most names, this results in a lot of
  *** zeros and a FEW positive numbers. Thus, after creating the dense vector,
  *** we convert it to a sparse vector in which a negative number replaces a run
  *** of that many zeros. Consider the following example:
@@ -382,8 +382,7 @@ ca_parse_vector_token(const int token, unsigned int* remaining, unsigned int* pa
     return;
     }
 
-/*** Calculate the similarity on sparsely allocated vectors. Comparing
- *** any string to an empty string should always return 0.5 (untested).
+/*** Calculate the similarity on sparsely allocated vectors.
  *** 
  *** @param v1 Sparse vector #1.
  *** @param v2 Sparse vector #2.
@@ -422,8 +421,7 @@ ca_sparse_similarity(const pVector v1, const pVector v2)
     return (double)dot_product / (ca_magnitude_sparse(v1) * ca_magnitude_sparse(v2));
     }
 
-/*** Calculate the difference on sparsely allocated vectors. Comparing
- *** any string to an empty string should always return 0.5 (untested).
+/*** Calculate the difference on sparsely allocated vectors.
  *** 
  *** @param v1 Sparse vector #1.
  *** @param v2 Sparse vector #2.
@@ -434,8 +432,7 @@ ca_sparse_similarity(const pVector v1, const pVector v2)
 #define ca_sparse_dif(v1, v2) (1.0 - ca_sparse_similarity(v1, v2))
 
 /*** Calculate the similarity between a sparsely allocated vector and a densely
- *** allocated centroid using a dot product. Comparing any string to an empty
- *** string should always return 0.5 (untested).
+ *** allocated centroid using a dot product.
  *** 
  *** @param v1 Sparse vector #1.
  *** @param c1 Dense centroid #2.
@@ -464,8 +461,7 @@ ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c2)
     }
 
 /*** Calculate the difference between a sparsely allocated vector and a densely
- *** allocated centroid. Comparing any string to an empty string should always
- *** return 0.5 (untested).
+ *** allocated centroid.
  *** 
  *** @param v1 Sparse vector #1.
  *** @param c1 Dense centroid #2.
@@ -519,7 +515,7 @@ ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const
 	lev_matrix[0][0] = 0u;
 	
 	/*** Base case #1:
-	 *** Any source prefixe can be transformed into an empty string by
+	 *** Any source prefix can be transformed into an empty string by
 	 *** dropping each character.
 	 ***/
 	for (unsigned int i = 1u; i <= str1_len; i++)
@@ -541,7 +537,7 @@ ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const
 		if (str1[i - 1] == str2[j - 1])
 		    lev_matrix[i][j] = lev_matrix[i - 1][j - 1];
 		
-		/*** We need to make a change, so use the oppereration with the
+		/*** We need to make a change, so use the operation with the
 		 *** lowest cost out of delete, insert, replace, or swap.
 		 ***/
 		else 
@@ -591,7 +587,7 @@ ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const
     return result;
     }
 
-/*** Compares two strings using their cosie similarity, returning a value
+/*** Compares two strings using their cosine similarity, returning a value
  *** between `0.0` (completely different) and `1.0` (identical). If either
  *** OR BOTH strings are NULL, this function returns `0.0`.
  *** 

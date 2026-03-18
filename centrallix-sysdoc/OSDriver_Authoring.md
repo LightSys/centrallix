@@ -363,7 +363,7 @@ The `Open()` routine is called with five parameters:
 
     - `parent->SubPtr : short`: The number of components in the path that are a part of the path to the driver's node object, including the `.` for the top level directory and the driver's node object.  For example, in the above path of `/data/file.csv`, the path would be internally represented as `./ data/ file.csv`, so SubPtr is 3.
     
-      - For example, use `obj_internal_PathPart(parent->Pathname, parent->SubPtr - 1, 1)` to get the name of the file being openned, and use `obj_internal_PathPart(parent->Pathname, 0, parent->SubPtr)` to get the path.
+      - For example, use `obj_internal_PathPart(parent->Pathname, parent->SubPtr - 1, 1)` to get the name of the file being opened, and use `obj_internal_PathPart(parent->Pathname, 0, parent->SubPtr)` to get the path.
 
     - `parent->SubCnt : short`: _The driver should set this value_ to show the number of components it controls.  This includes the driver's node object, so `SubCnt` will always be at least 1.  For example, when opening `/data/file.csv/rows/1`, the CSV driver will read the `SubPtr` of 3 (see above), representing `./ data/ file.csv`. It will then set a `SubCnt` of 3, representing that it controls `file.csv /rows /1`.  (The driver only sets `SubCnt`; `SubPtr` is provided.)
 
@@ -409,7 +409,7 @@ The `OpenChild()` function is called with two parameters:
 |------------|--------------|---------------------------------------------------------------------------|
 | inf_v      | void*        | A driver instance pointer (returned from `Open()` or `QueryFetch()`).     |
 | obj        | pObject      | An object?                                                                |
-| child_name | char*        | The value for the name attribute of the child object to be openned.       |
+| child_name | char*        | The value for the name attribute of the child object to be opened.       |
 | mask       | int          | The permission mask to be given to the object (if created).*              |
 | sys_type   | pContentType | Indicates the content type of the node object as determined by the OSML.* |
 | usr_type   | char*        | The object type requested by the user.*                                   |
@@ -419,7 +419,7 @@ The `OpenChild()` function is called with two parameters:
 
 *See [`Open()`](#function-open) above for more info.
 
-The `OpenChild()` function should a pointer to the node object for the newly openned child on success or `NULL` on failure.  
+The `OpenChild()` function should a pointer to the node object for the newly opened child on success or `NULL` on failure.  
 
 ---
 ### Function: Close()
@@ -1082,9 +1082,9 @@ The expression (EXP) module is used for compiling, evaluating, reverse-evaluatin
 
 Expressions can be stand-alone expression trees, or they can take parameter objects.  A parameter object is an open object (from `objOpen()`) whose values (attributes) are referenced within the expression string.  By using such parameter objects, one expression can be compiled and then evaluated for many different objects with diverse attribute values.
 
-Expression evaluation results in the top-level expression tree node having the final value of the expression, which may be `NULL`, and may be an integer, string, datetime, money, or double data type.  For example, the final value of `:myobject:oneattribute == 'yes'` is the integer 1, `true`, if the attribute's value is indeed `'yes'` (and the integer 0, `false`, otherwise).
+Expression evaluation results in the top-level expression tree node having the final value of the expression, which may be `NULL`, and may be an integer, string, datetime, money, or double data type.  For example, the final value of `:my_object:oneattribute == 'yes'` is the integer 1, `true`, if the attribute's value is indeed `'yes'` (and the integer 0, `false`, otherwise).
 
-Expression reverse-evaluation takes a given final value and attempts to assign values to the parameter object attributes based on the structure of the expression tree.  It is akin to 'solving for X' in algebraic work, but isn't nearly that 'smart'.  For example, with the previous expression, if the final value was set to 1 (`true`), then an `objSetAttrValue()` function would be called to set myobject's `oneattribute` to `yes`.  Trying this with a final value of 0 (`false`) would result in no assignment to the attribute, since there would be no way of determining the proper value for that attribute (anything other than `yes` would work).
+Expression reverse-evaluation takes a given final value and attempts to assign values to the parameter object attributes based on the structure of the expression tree.  It is akin to 'solving for X' in algebraic work, but isn't nearly that 'smart'.  For example, with the previous expression, if the final value was set to 1 (`true`), then an `objSetAttrValue()` function would be called to set my_object's `oneattribute` to `yes`.  Trying this with a final value of 0 (`false`) would result in no assignment to the attribute, since there would be no way of determining the proper value for that attribute (anything other than `yes` would work).
 
 Reverse evaluation is typically very useful in updateable joins and views.
 

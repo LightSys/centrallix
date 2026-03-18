@@ -1592,7 +1592,7 @@ exp_fn_lztrim(pExpression tree)
 	if (maybe_str == NULL) return -1;
 	if (maybe_str->Flags & EXPR_F_NULL)
 	    {
-	    /** Propegate null values. **/
+	    /** Propagate null values. **/
 	    tree->Flags |= EXPR_F_NULL;
 	    tree->DataType = DATA_T_STRING;
 	    return 0;
@@ -1636,7 +1636,7 @@ exp_fn_ltrim(pExpression tree)
 	if (maybe_str == NULL) return -1;
 	if (maybe_str->Flags & EXPR_F_NULL)
 	    {
-	    /** Propegate null values. **/
+	    /** Propagate null values. **/
 	    tree->Flags |= EXPR_F_NULL;
 	    tree->DataType = DATA_T_STRING;
 	    return 0;
@@ -1649,7 +1649,7 @@ exp_fn_ltrim(pExpression tree)
 	 *** that isn't trimmed.
 	 ***/
 	
-	/** Iterate until we find the a charater that isn't a space. **/
+	/** Iterate until we find the a character that isn't a space. **/
 	/** Note: Only spaces are trimmed, as with similar trim functions in most SQL languages. **/
 	while (*str == ' ') str++;
 	
@@ -1681,7 +1681,7 @@ exp_fn_rtrim(pExpression tree)
 	if (maybe_str == NULL) return -1;
 	if (maybe_str->Flags & EXPR_F_NULL)
 	    {
-	    /** Propegate null values. **/
+	    /** Propagate null values. **/
 	    tree->Flags |= EXPR_F_NULL;
 	    tree->DataType = DATA_T_STRING;
 	    return 0;
@@ -1729,7 +1729,7 @@ exp_fn_trim(pExpression tree)
 	arg1->String = tree->String;
 	tree->Alloc = 0;
 	
-	/** Right trim the expression, which will use the overriden string above. **/
+	/** Right trim the expression, which will use the overridden string above. **/
 	exp_fn_rtrim(tree);
 	
 	/** Restore the arg1 tree. **/
@@ -4652,7 +4652,7 @@ exp_fn_compare(pExpression tree)
 	    double lev_sim = check_double(ca_lev_compare(str1, str2));
 	    if (isnan(lev_sim))
 		{
-		mssErrorf(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute levenstein edit distance.");
+		mssErrorf(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute Levenshtein edit distance.");
 		return -1;
 		}
 	    
