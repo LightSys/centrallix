@@ -67,12 +67,12 @@
 #define CA_NUM_DIMS 251
 
 /** The character used to create a pair with the first and last characters of a string. **/
-#define CA_BOUNDARY_CHAR (unsigned char)('a' - 1)
+#define CA_BOUNDARY_CHAR ((unsigned char)('a' - 1))
 
 /** Types. **/
 typedef int* pVector;      /* Sparse vector. */
 typedef double* pCentroid; /* Dense centroid. */
-#define pCentroidSize CA_NUM_DIMS * sizeof(double)
+#define CENTROID_SIZE (CA_NUM_DIMS * sizeof(double))
 
 /*** Information about detected matching pairs.
  ***
@@ -88,12 +88,6 @@ typedef struct
     }
     Pair, *pPair;
 
-/** Registering all defined types for debugging. **/
-#define ca_init() \
-	nmRegister(sizeof(pVector), "pVector"); \
-	nmRegister(sizeof(pCentroid), "pCentroid"); \
-	nmRegister(pCentroidSize, "Centroid"); \
-	nmRegister(sizeof(Pair), "Pair")
     
 /** Edit distance function. **/
 int ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length);
@@ -148,5 +142,8 @@ pXArray ca_complete_search(
     const double (*similarity)(void*, void*),
     const double threshold,
     pXArray maybe_pairs);
+
+/** Module management functions. **/
+void ca_init(void);
 
 #endif /* End of .h file. */

@@ -827,6 +827,10 @@ ca_kmeans(
 	    if (new_centroids[i] == NULL) goto end;
 	    memset(centroids[i], 0, pCentroidSize);
 	    memset(new_centroids[i], 0, pCentroidSize);
+	    centroids[i] = check_ptr(nmMalloc(CENTROID_SIZE));
+	    new_centroids[i] = check_ptr(nmMalloc(CENTROID_SIZE));
+	    memset(centroids[i], 0, CENTROID_SIZE);
+	    memset(new_centroids[i], 0, CENTROID_SIZE);
 	    }
 	
 	/** Select random vectors to use as the initial centroids. **/
@@ -935,7 +939,7 @@ ca_kmeans(
 	    {
 	    for (unsigned int i = 0u; i < num_clusters; i++)
 		{
-		if (centroids[i] != NULL) nmFree(centroids[i], pCentroidSize);
+		if (centroids[i] != NULL) nmFree(centroids[i], CENTROID_SIZE);
 		else break;
 		}
 	    nmFree(centroids, num_clusters * sizeof(pCentroid));
@@ -944,7 +948,7 @@ ca_kmeans(
 	    {
 	    for (unsigned int i = 0u; i < num_clusters; i++)
 		{
-		if (new_centroids[i] != NULL) nmFree(new_centroids[i], pCentroidSize);
+		if (new_centroids[i] != NULL) nmFree(new_centroids[i], CENTROID_SIZE);
 		else break;
 		}
 	    nmFree(new_centroids, num_clusters * sizeof(pCentroid));
@@ -1093,6 +1097,18 @@ ca_complete_search(
     pXArray maybe_pairs)
     {
     return ca_sliding_search(data, num_data, num_data, similarity, threshold, maybe_pairs);
+    }
+
+/** Initialize the module. **/
+void
+ca_init(void)
+    {
+	nmRegister(sizeof(pVector), "pVector");
+	nmRegister(sizeof(pCentroid), "pCentroid");
+	nmRegister(CENTROID_SIZE, "Centroid");
+	nmRegister(sizeof(Pair), "Pair");
+    
+    return;
     }
 
 /** Scope cleanup. **/
