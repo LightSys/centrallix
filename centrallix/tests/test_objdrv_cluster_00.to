@@ -1,0 +1,29 @@
+##NAME Cluster Driver
+
+# Test parameters and initialization.
+query select :algorithm, :similarity_measure, :num_clusters, :source, :threshold from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=2&threshold=0.75&sim=cosine ;
+
+# Test cluster.
+query select items_k1=:items from /tests/test_objdrv_cluster_00.cluster?algorithm=none&k=1&threshold=0.75&sim=cosine/cluster ;
+query select items_k2=:items from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=2&threshold=0.75&sim=cosine/cluster ;
+query select items_k3=:items from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=3&threshold=0.75&sim=cosine/cluster ;
+query select items_k4=:items from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=4&threshold=0.75&sim=cosine/cluster ;
+
+# Drop caches and retest clustering.
+exec /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=3&threshold=0.75&sim=cosine/cluster "cache" "drop_all"
+query select items_k1=:items from /tests/test_objdrv_cluster_00.cluster?algorithm=none&k=1&threshold=0.75&sim=cosine/cluster ;
+query select items_k2=:items from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=2&threshold=0.75&sim=cosine/cluster ;
+query select items_k3=:items from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=3&threshold=0.75&sim=cosine/cluster ;
+query select items_k4=:items from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=4&threshold=0.75&sim=cosine/cluster ;
+
+# Test searching.
+query select * from /tests/test_objdrv_cluster_00.cluster?algorithm=none&k=1&threshold=0.75&sim=cosine/search ;
+query select * from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=2&threshold=0.75&sim=cosine/search ;
+query select * from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=3&threshold=0.75&sim=cosine/search ;
+query select * from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=4&threshold=0.75&sim=cosine/search ;
+
+# Test searching with Levenshtein.
+query select * from /tests/test_objdrv_cluster_00.cluster?algorithm=none&k=1&threshold=0.75&sim=levenshtein/search ;
+query select * from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=2&threshold=0.75&sim=levenshtein/search ;
+query select * from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=3&threshold=0.75&sim=levenshtein/search ;
+query select * from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=4&threshold=0.75&sim=levenshtein/search ;

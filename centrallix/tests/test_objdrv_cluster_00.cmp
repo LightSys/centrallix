@@ -1,0 +1,96 @@
+Attribute [algorithm]:   string   "k-means" 
+Attribute [similarity_measure]:   string   "cosine" 
+Attribute [num_clusters]:  integer  2
+Attribute [source]:  integer  NULL
+Attribute [threshold]:  integer  NULL
+Attribute [algorithm]:  integer  NULL
+Attribute [similarity_measure]:   string   "cosine" 
+Attribute [num_clusters]:  integer  NULL
+Attribute [source]:   string   "cluster" 
+Attribute [threshold]:   double  0.75
+Attribute [items_k1]: stringve  "john","johnny","johns","mathew","MatTheW","mathews","math"
+Attribute [items_k2]: stringve  "john","johnny","johns"
+Attribute [items_k2]: stringve  "mathew","MatTheW","mathews","math"
+Attribute [items_k3]: stringve  "johnny"
+Attribute [items_k3]: stringve  "mathew","MatTheW","mathews","math"
+Attribute [items_k3]: stringve  "john","johns"
+Attribute [items_k4]: stringve  "johnny"
+Attribute [items_k4]: stringve  "MatTheW"
+Attribute [items_k4]: stringve  "john","johns"
+Attribute [items_k4]: stringve  "mathew","mathews","math"
+Attribute [items_k1]: stringve  "john","johnny","johns","mathew","MatTheW","mathews","math"
+Attribute [items_k2]: stringve  "john","johnny","johns"
+Attribute [items_k2]: stringve  "mathew","MatTheW","mathews","math"
+Attribute [items_k3]: stringve  "johnny"
+Attribute [items_k3]: stringve  "mathew","MatTheW","mathews","math"
+Attribute [items_k3]: stringve  "john","johns"
+Attribute [items_k4]: stringve  "johnny"
+Attribute [items_k4]: stringve  "MatTheW"
+Attribute [items_k4]: stringve  "john","johns"
+Attribute [items_k4]: stringve  "mathew","mathews","math"
+Attribute [key1]:   string   "0: john" 
+Attribute [key2]:   string   "2: johns" 
+Attribute [sim]:   double  0.757051
+Attribute [key1]:   string   "3: mathew" 
+Attribute [key2]:   string   "4: MatTheW" 
+Attribute [sim]:   double  0.922627
+Attribute [key1]:   string   "3: mathew" 
+Attribute [key2]:   string   "5: mathews" 
+Attribute [sim]:   double  0.947714
+Attribute [key1]:   string   "4: MatTheW" 
+Attribute [key2]:   string   "5: mathews" 
+Attribute [sim]:   double  0.874386
+Attribute [key1]:   string   "0: john" 
+Attribute [key2]:   string   "2: johns" 
+Attribute [sim]:   double  0.757051
+Attribute [key1]:   string   "3: mathew" 
+Attribute [key2]:   string   "4: MatTheW" 
+Attribute [sim]:   double  0.922627
+Attribute [key1]:   string   "3: mathew" 
+Attribute [key2]:   string   "5: mathews" 
+Attribute [sim]:   double  0.947714
+Attribute [key1]:   string   "4: MatTheW" 
+Attribute [key2]:   string   "5: mathews" 
+Attribute [sim]:   double  0.874386
+Attribute [key1]:   string   "3: mathew" 
+Attribute [key2]:   string   "4: MatTheW" 
+Attribute [sim]:   double  0.922627
+Attribute [key1]:   string   "3: mathew" 
+Attribute [key2]:   string   "5: mathews" 
+Attribute [sim]:   double  0.947714
+Attribute [key1]:   string   "4: MatTheW" 
+Attribute [key2]:   string   "5: mathews" 
+Attribute [sim]:   double  0.874386
+Attribute [key1]:   string   "0: john" 
+Attribute [key2]:   string   "2: johns" 
+Attribute [sim]:   double  0.757051
+Attribute [key1]:   string   "0: john" 
+Attribute [key2]:   string   "2: johns" 
+Attribute [sim]:   double  0.757051
+Attribute [key1]:   string   "3: mathew" 
+Attribute [key2]:   string   "5: mathews" 
+Attribute [sim]:   double  0.947714
+Attribute [key1]:   string   "0: john" 
+Attribute [key2]:   string   "2: johns" 
+Attribute [sim]:   double  0.8
+Attribute [key1]:   string   "3: mathew" 
+Attribute [key2]:   string   "5: mathews" 
+Attribute [sim]:   double  0.857143
+Attribute [key1]:   string   "0: john" 
+Attribute [key2]:   string   "2: johns" 
+Attribute [sim]:   double  0.8
+Attribute [key1]:   string   "3: mathew" 
+Attribute [key2]:   string   "5: mathews" 
+Attribute [sim]:   double  0.857143
+Attribute [key1]:   string   "3: mathew" 
+Attribute [key2]:   string   "5: mathews" 
+Attribute [sim]:   double  0.857143
+Attribute [key1]:   string   "0: john" 
+Attribute [key2]:   string   "2: johns" 
+Attribute [sim]:   double  0.8
+Attribute [key1]:   string   "0: john" 
+Attribute [key2]:   string   "2: johns" 
+Attribute [sim]:   double  0.8
+Attribute [key1]:   string   "3: mathew" 
+Attribute [key2]:   string   "5: mathews" 
+Attribute [sim]:   double  0.857143
