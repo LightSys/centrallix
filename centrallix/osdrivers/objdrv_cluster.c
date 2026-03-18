@@ -151,7 +151,7 @@ ci_xaToTrimmedArray(pXArray arr, int array_handling)
 	    case 1: check(xaDeInit(arr)); arr->nAlloc = 0; break; /* Failure ignored. */ 
 	    case 2: check(xaFree(arr)); break; /* Failure ignored. */
 	    default:
-		/** Uh oh, there might be a memory leak... **/
+		/** Uh oh, this might cause a memory leak... **/
 		fprintf(stderr,
 		    "Warning: ci_xaToTrimmedArray(%p, %d) - Unknown value (%d) for array_handling.\n",
 		    arr, array_handling, array_handling
@@ -267,7 +267,7 @@ double (*ci_SimilarityMeasureToFunction(SimilarityMeasure similarity_measure))(v
 	case SIMILARITY_LEVENSHTEIN: return ca_lev_compare;
 	default:
 	    mssErrorf(1, "Cluster",
-		"Unknown similarity meansure \"%s\".",
+		"Unknown similarity measure \"%s\".",
 		ci_SimilarityMeasureToString(similarity_measure)
 	    );
 	    return NULL;
@@ -417,7 +417,7 @@ typedef struct
 /*** Data for each cluster. Only attribute data is checked for caching.
  *** 
  *** Memory Stats:
- ***   - Padding: 6 bytes
+ ***   - Padding: 2 bytes
  ***   - Total size: 104 bytes
  *** 
  *** @skip --> Attribute Data.
@@ -452,7 +452,7 @@ typedef struct
  *** 
  *** @param Magic A magic value for detecting corrupted memory.
  ***/
-typedef struct _CLUSTER
+typedef struct _CD
     {
     Magic_t           Magic;
     unsigned int      nClusters;
@@ -465,8 +465,8 @@ typedef struct _CLUSTER
     double            MinImprovement;
     unsigned int      MaxIterations;
     unsigned int      nSubClusters;
-    struct _CLUSTER** SubClusters;
-    struct _CLUSTER*  Parent;
+    struct _CD**      SubClusters;
+    struct _CD*       Parent;
     pSourceData       SourceData;
     Cluster*          Clusters;
     double*           Sims;
@@ -505,6 +505,7 @@ typedef struct _CLUSTER
 typedef struct _SEARCH
     {
     Magic_t           Magic;
+    /** 4 bytes of auto-padding. **/
     char*             Name;
     char*             Key;
     pClusterData      SourceCluster;
@@ -512,6 +513,7 @@ typedef struct _SEARCH
     pPair*            Pairs;
     unsigned int      nPairs;
     SimilarityMeasure SimilarityMeasure;
+    /** 3 bytes of auto-padding. **/
     DateTime          DateCreated;
     DateTime          DateComputed;
     }
@@ -524,7 +526,7 @@ typedef struct _SEARCH
  ***   - Padding: 4 bytes
  ***   - Total size: 72 bytes
  *** 
- *** @note When a .cluster file is openned, there will be only one node for that
+ *** @note When a .cluster file is opened, there will be only one node for that
  *** file. However, in the course of the query, many driver instance structs
  *** may be created by functions like clusterQueryFetch(), and closed by the
  *** object system using clusterClose().
@@ -546,6 +548,7 @@ typedef struct _SEARCH
 typedef struct _NODE
     {
     Magic_t        Magic;
+    /** 4 bytes of auto-padding. **/
     pObject        Parent;
     pParam*        Params;
     pParamObjects  ParamList;
@@ -596,12 +599,14 @@ typedef struct _NODE
 typedef struct _DRIVER
     {
     Magic_t        Magic;
+    /** 4 bytes of auto-padding. **/
     pNodeData      NodeData;
     void*          TargetData;
     unsigned int   TargetIndex;
     unsigned char  TargetAttrIndex;
     unsigned char  TargetMethodIndex;
     TargetType     TargetType;
+    /** 1 bytes of auto-padding. **/
     }
     DriverData, *pDriverData;
 
@@ -799,7 +804,7 @@ ci_UnknownAttribute(char* attr_name, const int target_type)
 	while (specific_attrs[n_specific_attrs] != NULL) n_specific_attrs++;
 	
 	/** Collect general attributes. */
-	char** general_attrs = (char*[]){"name", "annoation", "content_type", "inner_type", "outer_type", "internal_type", "date_computed", "date_created", "last_modification"};
+	char** general_attrs = (char*[]){"name", "annotation", "content_type", "inner_type", "outer_type", "internal_type", "date_computed", "date_created", "last_modification"};
 	
 	/** Attempt to give hints. **/
 	if (ci_TryHint(attr_name, specific_attrs, n_specific_attrs));
@@ -817,7 +822,7 @@ ci_UnknownAttribute(char* attr_name, const int target_type)
  *** 
  *** TODO: Greg - Review carefully. I think this code is the reason that runserver()
  *** is NOT REQUIRED for dynamic attributes in the cluster driver. I had to debug
- *** and rewrite this for ages and it uses several functions I don't 100% understand. 
+ *** and rewrite this for ages and it uses several functions I don't 100% understand.
  ***/
 static int
 ci_ParseAttribute(
@@ -914,12 +919,12 @@ ci_ParseClusteringAlgorithm(pStructInf inf, pParamObjects param_list)
 	    }
 	
 	/** Parse known clustering algorithms. **/
-	if (!strcasecmp(algorithm, "none"))           return ALGORITHM_NONE;
-	if (!strcasecmp(algorithm, "sliding-window")) return ALGORITHM_SLIDING_WINDOW;
-	if (!strcasecmp(algorithm, "k-means"))        return ALGORITHM_KMEANS;
-	if (!strcasecmp(algorithm, "k-means++"))      return ALGORITHM_KMEANS_PLUS_PLUS;
-	if (!strcasecmp(algorithm, "k-medoids"))      return ALGORITHM_KMEDOIDS;
-	if (!strcasecmp(algorithm, "db-scan"))        return ALGORITHM_DB_SCAN;
+	if (strcasecmp(algorithm, "none") == 0)           return ALGORITHM_NONE;
+	if (strcasecmp(algorithm, "sliding-window") == 0) return ALGORITHM_SLIDING_WINDOW;
+	if (strcasecmp(algorithm, "k-means") == 0)        return ALGORITHM_KMEANS;
+	if (strcasecmp(algorithm, "k-means++") == 0)      return ALGORITHM_KMEANS_PLUS_PLUS;
+	if (strcasecmp(algorithm, "k-medoids") == 0)      return ALGORITHM_KMEDOIDS;
+	if (strcasecmp(algorithm, "db-scan") == 0)        return ALGORITHM_DB_SCAN;
 	
 	/** Unknown value for clustering algorithm. **/
 	mssErrorf(1, "Cluster", "Unknown \"clustering algorithm\": %s", algorithm);
@@ -1207,13 +1212,13 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    {
 	    if (max_iterations < 1)
 		{
-		mssErrorf(1, "Cluster", "Invalid value for [max_iterations : uint]: %d", max_iterations);
+		mssErrorf(1, "Cluster", "Invalid value for [max_iterations : uint > 0]: %d", max_iterations);
 		goto err_free;
 		}
 	    cluster_data->MaxIterations = (unsigned int)max_iterations;
 	    }
 	else cluster_data->MaxIterations = CI_DEFAULT_MAX_ITERATIONS;
-
+	
 	/** Get seed. **/
 	int seed;
 	result = ci_ParseAttribute(inf, "seed", DATA_T_INTEGER, POD(&seed), param_list, false, true);
@@ -1228,7 +1233,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    cluster_data->Seed = (unsigned int)seed;
 	    }
 	else cluster_data->Seed = CI_NO_SEED;
-
+	
 	/** Search for sub-clusters. **/
 	if (!check(xaInit(&sub_clusters, 4u))) goto err_free;
 	for (unsigned int i = 0u; i < inf->nSubInf; i++)
@@ -1253,11 +1258,11 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 			"window_size",
 			"seed",
 		    };
-		    const unsigned int nattrs = sizeof(attrs) / sizeof(char*);
+		    const unsigned int num_attrs = sizeof(attrs) / sizeof(char*);
 		    
 		    /** Ignore valid attribute names. **/
 		    bool is_valid = false;
-		    for (unsigned int i = 0u; i < nattrs; i++)
+		    for (unsigned int i = 0u; i < num_attrs; i++)
 			{
 			if (strcmp(name, attrs[i]) == 0)
 			    {
@@ -1269,7 +1274,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 		    
 		    /** Give the user a warning, and attempt to give them a hint. **/
 		    fprintf(stderr, "Warning: Unknown attribute '%s' in cluster \"%s\".\n", name, inf->Name);
-		    if (ci_TryHint(name, attrs, nattrs));
+		    if (ci_TryHint(name, attrs, num_attrs));
 		    else if (strcasecmp(name, "k") == 0) ci_GiveHint("num_clusters");
 		    else if (strcasecmp(name, "threshold") == 0) ci_GiveHint("min_improvement");
 		    
@@ -1504,11 +1509,11 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 			"threshold",
 			"similarity_measure",
 		    };
-		    const unsigned int nattrs = sizeof(attrs) / sizeof(char*);
+		    const unsigned int num_attrs = sizeof(attrs) / sizeof(char*);
 		    
 		    /** Ignore valid attribute names. **/
 		    bool is_valid = false;
-		    for (unsigned int i = 0u; i < nattrs; i++)
+		    for (unsigned int i = 0u; i < num_attrs; i++)
 			{
 			if (strcmp(name, attrs[i]) == 0)
 			    {
@@ -1520,7 +1525,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 		    
 		    /** Give the user a warning, and attempt to give them a hint. **/
 		    fprintf(stderr, "Warning: Unknown attribute '%s' in search \"%s\".\n", name, inf->Name);
-		    ci_TryHint(name, attrs, nattrs);
+		    ci_TryHint(name, attrs, num_attrs);
 		    
 		    break;
 		    }
@@ -1592,7 +1597,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 // LINK #functions
 /*** Allocates a new pNodeData struct from a parsed pStructInf.
  *** 
- *** @attention - Does not use caching directly, but uses subfunctions to
+ *** @attention - Does not use caching directly, but uses sub-functions to
  *** 	handle caching of substructures.
  *** @attention - Promises that mssError() will be invoked on failure, so the
  *** 	caller is not required to specify their own error message.
@@ -1674,11 +1679,11 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 			"key_attr",
 			"data_attr",
 		    };
-		    const unsigned int nattrs = sizeof(attrs) / sizeof(char*);
+		    const unsigned int num_attrs = sizeof(attrs) / sizeof(char*);
 		    
 		    /** Ignore valid attribute names. **/
 		    bool is_valid = false;
-		    for (unsigned int i = 0u; i < nattrs; i++)
+		    for (unsigned int i = 0u; i < num_attrs; i++)
 			{
 			if (strcmp(name, attrs[i]) == 0)
 			    {
@@ -1690,7 +1695,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 		    
 		    /** Give the user a warning, and attempt to give them a hint. **/
 		    fprintf(stderr, "Warning: Unknown attribute '%s' in cluster node \"%s\".\n", name, inf->Name);
-		    ci_TryHint(name, attrs, nattrs);
+		    ci_TryHint(name, attrs, num_attrs);
 		    
 		    break;
 		    }
@@ -2633,21 +2638,21 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		if (cluster_data->SimilarityMeasure != SIMILARITY_COSINE)
 		    {
 		    mssErrorf(1, "Cluster",
-			"The similarity measure \"%s\" is not implemented.",
+			"The similarity measure \"%s\" is not implemented for 'k-means' clusters.",
 			ci_SimilarityMeasureToString(cluster_data->SimilarityMeasure)
 		    );
 		    goto err_free;
 		    }
 		
-		/** Allocate lables. Note: kmeans does not require us to initialize them. **/
-		const size_t lables_size = source_data->nVectors * sizeof(unsigned int);
-		unsigned int* labels = check_ptr(nmSysMalloc(lables_size));
+		/** Allocate labels. Note: ca_kmeans() initializes labels for us. **/
+		const size_t labels_size = source_data->nVectors * sizeof(unsigned int);
+		unsigned int* labels = check_ptr(nmSysMalloc(labels_size));
 		if (labels == NULL) goto err_free;
-
+		
 		/** Handle seed for ca_kmeans(). **/
 		const bool auto_seed = (cluster_data->Seed == CI_NO_SEED);
 		if (!auto_seed) srand(cluster_data->Seed);
-
+		
 		/** Run ca_kmeans(). **/
 		const bool successful = check(ca_kmeans(
 		    source_data->Vectors,
@@ -2817,7 +2822,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		case SIMILARITY_LEVENSHTEIN: data = (void**)source_data->Strings; break;
 		default:
 		    mssErrorf(1, "Cluster",
-			"Unknown similarity meansure \"%s\".",
+			"Unknown similarity measure \"%s\".",
 			ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
 		    );
 		    goto err_free;
@@ -2863,7 +2868,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		    case SIMILARITY_LEVENSHTEIN: data = (void**)source_data->Strings; break;
 		    default:
 			mssErrorf(1, "Cluster",
-			    "Unknown similarity meansure \"%s\".",
+			    "Unknown similarity measure \"%s\".",
 			    ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
 			);
 			goto err_free;
@@ -2956,8 +2961,8 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 
 /*** Get the type of a parameter. Intended for expSetParamFunctions().
  *** 
- *** @param inf_v Node data containing the list of paramenters.
- *** @param attr_name The name of the requested paramenter.
+ *** @param inf_v Node data containing the list of parameters.
+ *** @param attr_name The name of the requested parameter.
  *** @returns The datatype, see datatypes.h for a list of valid datatypes.
  *** 
  *** LINK ../../centrallix-lib/include/datatypes.h:72
@@ -2991,8 +2996,8 @@ ci_GetParamType(void* inf_v, const char* attr_name)
  *** 	This is intended behavior, for consistency with other Centrallix
  *** 	functions, so keep it in mind so you're not surprised.
  *** 
- *** @param inf_v Node data containing the list of paramenters.
- *** @param attr_name The name of the requested paramenter.
+ *** @param inf_v Node data containing the list of parameters.
+ *** @param attr_name The name of the requested parameter.
  *** @param datatype The expected datatype of the parameter value.
  *** 	See datatypes.h	for a list of valid datatypes.
  *** @param val A pointer to a location where a pointer to the requested
@@ -3047,7 +3052,7 @@ ci_GetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
 static int
 ci_SetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
     {
-	mssErrorf(1, "Cluster", "SetParamValue() is not implemented because clusters are imutable.");
+	mssErrorf(1, "Cluster", "SetParamValue() is not implemented because clusters are immutable.");
     
     return -1;
     }
@@ -3060,11 +3065,11 @@ ci_SetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
 /*** Opens a new cluster driver instance by parsing a `.cluster` file found
  *** at the path provided in parent.
  *** 
- *** @param parent The parent of the object to be openned, including useful
+ *** @param parent The parent of the object to be opened, including useful
  *** 	information such as the pathname, session, etc.
  *** @param mask Driver permission mask (unused).
  *** @param sys_type ? (unused)
- *** @param usr_type The object system file type being openned. Should always
+ *** @param usr_type The object system file type being opened. Should always
  *** 	be "system/cluster" because this driver is only registered for that
  *** 	type of file.
  *** @param oxt The object system tree, similar to a kind of "scope" (unused).
@@ -3113,7 +3118,7 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	/** If there still isn't a node, fail early. **/
 	if (node_struct == NULL)
 	    {
-	    mssErrorf(0, "Cluster", "Failed to create node struct.");
+	    mssErrorf(0, "Cluster", "Failed to create node struct from provided cluster file.");
 	    goto err_free;
 	    }
 	
@@ -4773,8 +4778,8 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 	    /** 'drop_all'. **/
 	    if (strcmp(param->String, "drop_all") == 0)
 		{
-		printf("\nDropping cache for all files:\n");
 		ci_ClearCaches();
+		printf("Dropped cache for all cluster files.\n");
 		return 0;
 		}
 	    
@@ -4807,7 +4812,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 	    
 	    return 0;
 	    }
-    
+	
 	/** Unknown parameter. **/
 	mssErrorf(1, "Cluster", "Unknown command: \"%s\"", method_name);
 	
@@ -4868,7 +4873,7 @@ clusterRead(void* inf_v, char* buffer, int max_cnt, int offset, int flags, pObjT
 int
 clusterWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
-	mssErrorf(1, "Cluster", "clusterWrite() not implemented because clusters are imutable.");
+	mssErrorf(1, "Cluster", "clusterWrite() not implemented because clusters are immutable.");
     
     return -1;
     }
@@ -4877,7 +4882,7 @@ clusterWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxT
 int
 clusterSetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pObjTrxTree* oxt)
     {
-	mssErrorf(1, "Cluster", "clusterSetAttrValue() not implemented because clusters are imutable.");
+	mssErrorf(1, "Cluster", "clusterSetAttrValue() not implemented because clusters are immutable.");
     
     return -1;
     }
@@ -4886,7 +4891,7 @@ clusterSetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 int
 clusterAddAttr(void* inf_v, char* attr_name, int type, pObjData val, pObjTrxTree* oxt)
     {
-	mssErrorf(1, "Cluster", "clusterAddAttr() not implemented because clusters are imutable.");
+	mssErrorf(1, "Cluster", "clusterAddAttr() not implemented because clusters are immutable.");
     
     return -1;
     }
@@ -4904,7 +4909,7 @@ clusterOpenAttr(void* inf_v, char* attr_name, int mode, pObjTrxTree* oxt)
 int
 clusterCommit(void* inf_v, pObjTrxTree* oxt)
     {
-	mssErrorf(1, "Cluster", "clusterCommit() not implemented because clusters are imutable.");
+	mssErrorf(1, "Cluster", "clusterCommit() not implemented because clusters are immutable.");
     
     return 0;
     }
@@ -4912,7 +4917,7 @@ clusterCommit(void* inf_v, pObjTrxTree* oxt)
 
 // LINK #functions
 /*** Initialize the driver. This includes:
- *** - Registering the driver with the objectsystem.
+ *** - Registering the driver with the object system.
  *** - Registering structs with newmalloc for debugging.
  *** - Initializing global data needed for the driver.
  *** 
