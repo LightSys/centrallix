@@ -2333,13 +2333,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	obj = objOpen(session, source_data->SourcePath, OBJ_O_RDONLY, 0600, "system/directory");
 	if (obj == NULL)
 	    {
-	    mssErrorf(0, "Cluster",
-		"Failed to open object driver:\n"
-		"  > Attribute: ['%s':'%s' : String]\n"
-		"  > Source Path: %s\n",
-		source_data->KeyAttr, source_data->NameAttr,
-		source_data->SourcePath
-	    );
+	    mssErrorf(0, "Cluster", "Failed to open object driver.");
 	    goto end_free;
 	    }
 	
@@ -2347,15 +2341,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	query = objOpenQuery(obj, NULL, NULL, NULL, NULL, 0);
 	if (query == NULL)
 	    {
-	    mssErrorf(0, "Cluster",
-		"Failed to open query:\n"
-		"  > Attribute: ['%s':'%s' : String]\n"
-		"  > Source Path: %s\n"
-		"  > Driver Used: %s\n",
-		source_data->KeyAttr, source_data->NameAttr,
-		source_data->SourcePath,
-		obj->Driver->Name
-	    );
+	    mssErrorf(0, "Cluster", "Failed to open query.");
 	    goto end_free;
 	    }
 	
@@ -2376,28 +2362,16 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    if (data_datatype == -1)
 		{
 		mssErrorf(0, "Cluster",
-		    "Failed to get type for %uth entry:\n"
-		    "  > Attribute: ['%s':'%s' : String]\n"
-		    "  > Source Path: %s\n"
-		    "  > Driver Used: %s\n",
-		    vector_xarray.nItems,
-		    source_data->KeyAttr, source_data->NameAttr,
-		    source_data->SourcePath,
-		    obj->Driver->Name
+		    "Failed to get type for data of %uth entry.",
+		    vector_xarray.nItems
 		);
 		goto end_free;
 		}
 	    if (data_datatype != DATA_T_STRING)
 		{
 		mssErrorf(1, "Cluster",
-		    "Type for %uth entry was not a string:\n"
-		    "  > Attribute: ['%s':'%s' : %s]\n"
-		    "  > Source Path: %s\n"
-		    "  > Driver Used: %s\n",
-		    vector_xarray.nItems,
-		    source_data->KeyAttr, source_data->NameAttr, objTypeToStr(data_datatype),
-		    source_data->SourcePath,
-		    obj->Driver->Name
+		    "Type for data of %uth entry was %s instead of String:\n",
+		    vector_xarray.nItems, objTypeToStr(data_datatype)
 		);
 		goto end_free;
 		}
@@ -2408,45 +2382,30 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    if (ret != 0)
 		{
 		mssErrorf(0, "Cluster",
-		    "Failed to value for %uth entry:\n"
-		    "  > Attribute: ['%s':'%s' : String]\n"
-		    "  > Source Path: %s\n"
-		    "  > Driver Used: %s\n"
-		    "  > Error code: %d\n",
-		    vector_xarray.nItems,
-		    source_data->KeyAttr, source_data->NameAttr,
-		    source_data->SourcePath,
-		    obj->Driver->Name,
-		    ret
+		    "Failed to get attribute value for %uth data entry (error code: %d).",
+		    vector_xarray.nItems, ret
 		);
 		goto end_free;
 		}
 	    
 	    /** Skip empty strings. **/
-	    if (strlen(data) == 0)
-		{
-		check(fflush(stdout)); /* Failure ignored. */
-		continue;
-		}
+	    if (strlen(data) == 0) continue;
 	    
 	    /** Convert the string to a vector. **/
 	    pVector vector = ca_build_vector(data);
 	    if (vector == NULL)
 		{
 		mssErrorf(1, "Cluster", "Failed to build vectors for string \"%s\".", data);
-		successful = false;
 		goto end_free;
 		}
 	    if (ca_is_empty(vector))
 		{
 		mssErrorf(1, "Cluster", "Vector building for string \"%s\" produced no character pairs.", data);
-		successful = false;
 		goto end_free;
 		}
 	    if (ca_has_no_pairs(vector))
 		{
-		/** Skip pVector with no pairs. **/
-		check(fflush(stdout)); /* Failure ignored. */
+		/** Skip pVector with only a single pair of boundary characters. **/
 		ca_free_vector(vector);
 		continue;
 		}
@@ -2457,28 +2416,16 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    if (key_datatype == -1)
 		{
 		mssErrorf(0, "Cluster",
-		    "Failed to get type for key on %uth entry:\n"
-		    "  > Attribute: ['%s':'%s' : String]\n"
-		    "  > Source Path: %s\n"
-		    "  > Driver Used: %s\n",
-		    vector_xarray.nItems,
-		    source_data->KeyAttr, source_data->NameAttr,
-		    source_data->SourcePath,
-		    obj->Driver->Name
+		    "Failed to get type for key on %uth entry.",
+		    vector_xarray.nItems
 		);
 		goto end_free;
 		}
 	    if (key_datatype != DATA_T_STRING)
 		{
 		mssErrorf(1, "Cluster",
-		    "Type for key on %uth entry was not a string:\n"
-		    "  > Attribute: ['%s':'%s' : %s]\n"
-		    "  > Source Path: %s\n"
-		    "  > Driver Used: %s\n",
-		    vector_xarray.nItems,
-		    source_data->KeyAttr, source_data->NameAttr, objTypeToStr(key_datatype),
-		    source_data->SourcePath,
-		    obj->Driver->Name
+		    "Type for key on %uth entry was %s instead of String:",
+		    vector_xarray.nItems, objTypeToStr(key_datatype)
 		);
 		goto end_free;
 		}
@@ -2489,16 +2436,8 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    if (ret != 0)
 		{
 		mssErrorf(0, "Cluster",
-		    "Failed to value for key on %uth entry:\n"
-		    "  > Attribute: ['%s':'%s' : String]\n"
-		    "  > Source Path: %s\n"
-		    "  > Driver Used: %s\n"
-		    "  > Error code: %d\n",
-		    vector_xarray.nItems,
-		    source_data->KeyAttr, source_data->NameAttr,
-		    source_data->SourcePath,
-		    obj->Driver->Name,
-		    ret
+		    "Failed to value for key on %uth entry (error code: %d).",
+		    vector_xarray.nItems, ret
 		);
 		goto end_free;
 		}
@@ -2513,54 +2452,56 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    if (!check_neg(xaAddItem(&vector_xarray, (void*)vector))) goto end_free;
 	    
 	    /** Clean up. **/
-	    ret = objClose(entry);
-	    if (ret != 0)
-		{
-		mssErrorf(0, "Cluster", "Failed to close object entry (error code %d).", ret);
-		// success = false; // Fall-through: Failure ignored.
-		}
+	    check(objClose(entry)); /* Failure ignored. */
 	    }
 	
 	source_data->nVectors = vector_xarray.nItems;
 	if (source_data->nVectors == 0)
 	    {
-	    mssErrorf(0, "Cluster",
-		"Data source path did not contain any valid data:\n"
-		"  > Attribute: ['%s':'%s' : String]\n"
-		"  > Source Path: %s\n"
-		"  > Driver Used: %s\n",
-		vector_xarray.nItems,
-		source_data->KeyAttr, source_data->NameAttr,
-		source_data->SourcePath,
-		obj->Driver->Name
-	    );
+	    mssErrorf(0, "Cluster", "Data source path did not contain any valid data:\n");
+	    goto end_free;
 	    }
 	
 	/** Trim and store keys. **/
 	source_data->Keys = (char**)check_ptr(ci_xaToTrimmedArray(&key_xarray, 1));
-	if (source_data->Keys == NULL) goto err_free;
+	if (source_data->Keys == NULL) goto end_free;
 	key_xarray.nAlloc = 0;
 	
 	/** Trim and store data strings. **/
 	source_data->Strings = (char**)check_ptr(ci_xaToTrimmedArray(&data_xarray, 1));
-	if (source_data->Strings == NULL) goto err_free;
+	if (source_data->Strings == NULL) goto end_free;
 	data_xarray.nAlloc = 0;
 	
 	/** Trim and store vectors. **/
 	source_data->Vectors = (int**)check_ptr(ci_xaToTrimmedArray(&vector_xarray, 1));
-	if (source_data->Vectors == NULL) goto err_free;
+	if (source_data->Vectors == NULL) goto end_free; /* Should be unreachable. */
 	vector_xarray.nAlloc = 0;
 	
 	/** Success. **/
 	successful = true;
-	goto end_free;
-	
-    err_free:
-	if (source_data->Keys != NULL) nmSysFree(source_data->Keys);
-	if (source_data->Strings != NULL) nmSysFree(source_data->Strings);
-	if (source_data->Vectors != NULL) nmSysFree(source_data->Vectors);
-	
+
     end_free:
+	/** Print an error if the function failed. **/
+	if (!successful)
+	    {
+	    mssErrorf(0, "Cluster",
+		"SourceData computation failed:\n"
+		"  > Key Attribute: ['%s' : String]\n"
+		"  > Data Attribute: ['%s' : String]\n"
+		"  > Source Path: \"%s\"\n"
+		"  > Driver Used: %s",
+		source_data->KeyAttr,
+		source_data->DataAttr,
+		source_data->SourcePath,
+		(obj == NULL || obj->Driver == NULL) ? "Unavailable" : obj->Driver->Name
+	    );
+
+	    /** Free computed data. **/
+	    if (source_data->Keys != NULL) nmSysFree(source_data->Keys);
+	    if (source_data->Strings != NULL) nmSysFree(source_data->Strings);
+	    if (source_data->Vectors != NULL) nmSysFree(source_data->Vectors);
+	    }
+
 	/** Clean up xarrays. **/
 	if (key_xarray.nAlloc != 0)
 	    {
@@ -2593,31 +2534,10 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    check(xaDeInit(&vector_xarray)); /* Failure ignored. */
 	    }
 	
-	/** Clean up query. **/
-	if (query != NULL)
-	    {
-	    ret = objQueryClose(query);
-	    if (ret != 0)
-		{
-		mssErrorf(0, "Cluster", "Failed to close query (error code %d).", ret);
-		// success = false; // Fall-through: Failure ignored.
-		}
-	    }
-	
-	/** Clean up object. **/
-	if (obj != NULL)
-	    {
-	    ret = objClose(obj);
-	    if (ret != 0)
-		{
-		mssErrorf(0, "Cluster", "Failed to close object driver (error code %d).", ret);
-		// success = false; // Fall-through: Failure ignored.
-		}
-	    }
-	
-	/** Print an error if the function failed. **/
-	if (!successful) mssErrorf(0, "Cluster", "SourceData computation failed.");
-	
+	/** Clean up query & object structs. **/
+	if (query != NULL) check(objQueryClose(query)); /* Failure ignored. */
+	if (obj != NULL) check(objClose(obj)); /* Failure ignored. */
+
 	/** Return the function status code. **/
 	return (successful) ? 0 : -1;
     }
