@@ -163,14 +163,11 @@ ca_build_vector(const char* str)
 	    if (maybe_char < 0) fprintf(stderr, "Warning: Unexpected negative char '%c' in string: \"%s\"\n",     maybe_char, str);
 	    unsigned char c = (unsigned char)maybe_char;
 	    
-	    /** Always consider boundary character in string. **/
-	    if (c == CA_BOUNDARY_CHAR) goto skip_checks;
+	    /** Ignore insignificant characters. **/
+	    /** isspace(): space, \n, \v, \f, \r **/
+	    /** ispunct(): !"#$%&'()*+,-./:;<=>?@[\]^_{|}~ **/
+	    if (c != CA_BOUNDARY_CHAR && (isspace(c) || ispunct(c))) continue;
 	    
-	    /** Ignore insignificant characters: spaces and punctuation. **/
-	    if (isspace(c)) continue; /* space, \n, \v, \f, \r */
-	    if (ispunct(c)) continue; /* !"#$%&'()*+,-./:;<=>?@[\]^_{|}~ */
-	    
-    skip_checks:
 	    /** Shift numbers to the end of the lowercase letters. **/
 	    if ('0' <= c && c <= '9') c += 75u;
 	    
