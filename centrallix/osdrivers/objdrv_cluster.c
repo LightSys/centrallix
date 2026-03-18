@@ -3966,7 +3966,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		{
 		pSearchData target = check_ptr(driver_data->TargetData);
 		if (target == NULL) goto err;
-		ASSERTMAGIC(target, MGK_CL_CLUSTER_DATA);
+		ASSERTMAGIC(target, MGK_CL_SEARCH_DATA);
 		
 		if (strcmp(attr_name, "source") == 0)
 		    {
