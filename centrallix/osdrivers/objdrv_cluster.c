@@ -1918,6 +1918,7 @@ ci_FreeSourceData(pSourceData source_data)
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
 	
 	/** Free top level attributes, if they exist. **/
+	/** Note: The key field is handled by the caching system, so we shouldn't free it here. **/
 	if (source_data->Name != NULL)
 	    {
 	    nmSysFree(source_data->Name);
@@ -1939,15 +1940,31 @@ ci_FreeSourceData(pSourceData source_data)
 	    source_data->DataAttr = NULL;
 	    }
 	
+	/** Free fetched keys, if they exist. **/
+	if (source_data->Keys != NULL)
+	    {
+	    for (unsigned int i = 0u; i < source_data->nVectors; i++)
+		{
+		if (source_data->Keys[i] != NULL)
+		    {
+		    nmSysFree(source_data->Keys[i]);
+		    source_data->Keys[i] = NULL;
+		    }
+		}
+	    nmSysFree(source_data->Keys);
+	    source_data->Keys = NULL;
+	    }
+	
 	/** Free fetched data, if it exists. **/
 	if (source_data->Strings != NULL)
 	    {
 	    for (unsigned int i = 0u; i < source_data->nVectors; i++)
 		{
 		if (source_data->Strings[i] != NULL)
+		    {
 		    nmSysFree(source_data->Strings[i]);
-		else continue;
-		source_data->Strings[i] = NULL;
+		    source_data->Strings[i] = NULL;
+		    }
 		}
 	    nmSysFree(source_data->Strings);
 	    source_data->Strings = NULL;
@@ -1959,9 +1976,10 @@ ci_FreeSourceData(pSourceData source_data)
 	    for (unsigned int i = 0u; i < source_data->nVectors; i++)
 		{
 		if (source_data->Vectors[i] != NULL)
+		    {
 		    ca_free_vector(source_data->Vectors[i]);
-		else continue;
-		source_data->Vectors[i] = NULL;
+		    source_data->Vectors[i] = NULL;
+		    }
 		}
 	    nmSysFree(source_data->Vectors);
 	    source_data->Vectors = NULL;
@@ -2200,6 +2218,12 @@ ci_SizeOfSourceData(pSourceData source_data)
 	if (source_data->SourcePath != NULL) size += strlen(source_data->SourcePath) * sizeof(char);
 	if (source_data->KeyAttr != NULL) size += strlen(source_data->KeyAttr) * sizeof(char);
 	if (source_data->DataAttr != NULL) size += strlen(source_data->DataAttr) * sizeof(char);
+	if (source_data->Keys != NULL)
+	    {
+	    for (unsigned int i = 0u; i < source_data->nVectors; i++)
+		size += strlen(source_data->Keys[i]) * sizeof(char);
+	    size += source_data->nVectors * sizeof(char*);
+	    }
 	if (source_data->Strings != NULL)
 	    {
 	    for (unsigned int i = 0u; i < source_data->nVectors; i++)
