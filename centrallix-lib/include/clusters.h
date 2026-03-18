@@ -53,7 +53,7 @@
  *** This is also called the vector table size, if viewing the
  *** vector as a hash table of character pairs.
  *** 
- *** 2147483629 is the signed int max, and is also a prime number.
+ *** 2147483647 is the signed int max, and is also a prime number.
  *** Using this value ensures that the longest run of 0s will not
  *** cause an int underflow with the current encoding scheme.
  *** 
