@@ -74,21 +74,26 @@ typedef int* pVector;      /* Sparse vector. */
 typedef double* pCentroid; /* Dense centroid. */
 #define pCentroidSize CA_NUM_DIMS * sizeof(double)
 
-/** Duplocate information. **/
+/*** Information about detected matching pairs.
+ ***
+ *** @param i The index into the provided data for the first element of the pair.
+ *** @param j The index into the provided data for the second element of the pair.
+ *** @param similarity A number from 0 to 1, from a similarity function, showing
+ *** 	how similar the pairs are.
+ ***/
 typedef struct
     {
-    void* key1;
-    void* key2;
+    unsigned int i, j;
     double similarity;
     }
-    Dup, *pDup;
+    Pair, *pPair;
 
 /** Registering all defined types for debugging. **/
 #define ca_init() \
 	nmRegister(sizeof(pVector), "pVector"); \
 	nmRegister(sizeof(pCentroid), "pCentroid"); \
 	nmRegister(pCentroidSize, "Centroid"); \
-	nmRegister(sizeof(Dup), "Dup")
+	nmRegister(sizeof(Pair), "Pair")
     
 /** Edit distance function. **/
 int ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length);
@@ -99,7 +104,7 @@ unsigned int ca_sparse_len(const pVector vector);
 void ca_print_vector(const pVector vector);
 void ca_free_vector(pVector sparse_vector);
 
-/** Kmeans function. **/
+/** k-means function. **/
 int ca_kmeans(
     pVector* vectors,
     const unsigned int num_vectors,
@@ -135,15 +140,13 @@ pXArray ca_sliding_search(
     const unsigned int num_data,
     const unsigned int window_size,
     const double (*similarity)(void*, void*),
-    const double dupe_threshold,
-    void** maybe_keys,
-    pXArray dups);
+    const double threshold,
+    pXArray maybe_pairs);
 pXArray ca_complete_search(
     void** data,
     const unsigned int num_data,
     const double (*similarity)(void*, void*),
-    const double dupe_threshold,
-    void** maybe_keys,
-    pXArray dups);
+    const double threshold,
+    pXArray maybe_pairs);
 
 #endif /* End of .h file. */

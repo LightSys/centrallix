@@ -997,25 +997,19 @@ ca_most_similar(
 
 
 /*** Runs a sliding search over the provided data, comparing each element to
- *** the following `window_size` elements, invoking the passed comparison
- *** function just under `window_size * num_data` times. If any comparison
- *** yields a similarity greater than the threshold, it is stored in the
- *** xArray returned by this function.
+ *** the next `window_size` elements. If any comparison yields a similarity
+ *** greater than the threshold, it is stored in the returned xArray.
  *** 
  *** @param data The data to be searched.
- *** @param num_data The number of data items in data.
+ *** @param num_data The number of data items in `data`.
  *** @param window_size The size of the sliding window used for the search.
  *** @param similarity A function which takes two data items of the type of
- *** 	the data param and returns their similarity.
- *** @param threshold The minimum threshold required for a duplocate to be
- *** 	included in the returned xArray.
- *** @param maybe_keys A pointer to an array of keys, with one key per data.
- *** 	These will be used to fill in the key1 and key2 attributes for each
- *** 	struct. If this variable is null, these values are also left null.
- *** @param maybe_dups A pointer to an xArray in which dups should be found.
+ *** 	the `data` param and returns their similarity.
+ *** @param threshold The minimum threshold required for each pair.
+ *** @param maybe_pairs A pointer to an xArray to which pairs should be added.
  *** 	Pass NULL to allocate a new one.
- *** @returns An xArray holding all of the duplocates found, or NULL if an
- *** 	error occurs.
+ *** @returns An xArray of the pairs found. If `maybe_pairs` is not NULL, this
+ *** 	will be that xArray, to allow for chaining.
  ***/
 pXArray
 ca_sliding_search(
@@ -1024,22 +1018,21 @@ ca_sliding_search(
     const unsigned int window_size,
     const double (*similarity)(void*, void*),
     const double threshold,
-    void** maybe_keys,
-    pXArray maybe_dups)
+    pXArray maybe_pairs)
     {
-    pXArray dups = maybe_dups;
+    pXArray pairs = maybe_pairs;
     
-	/** Allocate space for dups (if necessary). **/
-	if (dups == NULL)
+	/** Allocate space for pairs (if it is not provided). **/
+	if (pairs == NULL)
 	    {
-	    /** Guess that we will need space for num_data * 2 dups. **/
+	    /** Guess that we will need space for num_data * 2 pairs. **/
 	    const int guess_size = num_data * 2;
-	    dups = check_ptr(xaNew(guess_size));
-	    if (dups == NULL) goto err;
+	    pairs = check_ptr(xaNew(guess_size));
+	    if (pairs == NULL) goto err;
 	    }
-	const int num_starting_dups = dups->nItems;
+	const int num_starting_pairs = pairs->nItems;
 	
-	/** Search for dups. **/
+	/** Search for pairs. **/
 	for (unsigned int i = 0u; i < num_data; i++)
 	    {
 	    const unsigned int window_start = i + 1u;
@@ -1050,54 +1043,46 @@ ca_sliding_search(
 		if (isnan(sim) || sim < 0.0 || 1.0 < sim)
 		    {
 		    fprintf(stderr, "Invalid similarity %g %lf.\n", sim, sim);
-		    goto err_free_dups;
+		    goto err_free;
 		    }
-		if (sim > threshold) /* Dup found! */
+		if (sim > threshold) /* Pair found! */
 		    {
-		    Dup* dup = (Dup*)check_ptr(nmMalloc(sizeof(Dup)));
-		    if (dup == NULL) goto err_free_dups;
-		    if (maybe_keys != NULL)
-			{
-			dup->key1 = maybe_keys[i];
-			dup->key2 = maybe_keys[j];
-			}
-		    dup->similarity = sim;
-		    if (!check_neg(xaAddItem(dups, (void*)dup))) goto err_free_dups;
+		    pPair pair = (pPair)check_ptr(nmMalloc(sizeof(Pair)));
+		    if (pair == NULL) goto err_free;
+		    pair->i = i;
+		    pair->j = j;
+		    pair->similarity = sim;
+		    if (!check_neg(xaAddItem(pairs, (void*)pair))) goto err_free;
 		    }
 		}
 	    }
 	
 	/** Success. **/
-	return dups;
+	return pairs;
 	
-    err_free_dups:
-	/** Error cleanup: Free the dups that we added to the XArray. **/
-	while (dups->nItems > num_starting_dups)
-	    nmFree(dups->Items[--dups->nItems], sizeof(Dup));
-	if (maybe_dups == NULL) check(xaDeInit(dups)); /* Failure ignored. */
+    err_free:
+	/** Error cleanup: Free the pairs that we added to the XArray. **/
+	while (pairs->nItems > num_starting_pairs)
+	    nmFree(pairs->Items[--pairs->nItems], sizeof(Pair));
+	if (maybe_pairs == NULL) check(xaDeInit(pairs)); /* Failure ignored. */
     
     err:
 	return NULL;
     }
 
 /*** Runs a complete search over the provided data, comparing each element to
- *** each other element, invoking the passed comparison function `num_data^2`
- *** times. If any comparison yields a similarity greater than the threshold,
- *** it is stored in the xArray returned by this function.
+ *** each other element. If any comparison yields a similarity greater than the
+ *** threshold, it is stored in the returned xArray.
  *** 
  *** @param data The data to be searched.
- *** @param num_data The number of data items in data.
+ *** @param num_data The number of data items in `data`.
  *** @param similarity A function which takes two data items of the type of
- *** 	the data param and returns their similarity.
- *** @param threshold The minimum threshold required for a duplocate to be
- *** 	included in the returned xArray.
- *** @param maybe_keys A pointer to an array of keys, with one key per data.
- *** 	These will be used to fill in the key1 and key2 attributes for each
- *** 	struct. If this variable is null, these values are also left null.
- *** @param maybe_dups A pointer to an xArray in which dups should be found.
+ *** 	the `data` param and returns their similarity.
+ *** @param threshold The minimum threshold required for each pair.
+ *** @param maybe_pairs A pointer to an xArray to which pairs should be added.
  *** 	Pass NULL to allocate a new one.
- *** @returns An xArray holding all of the duplocates found. If maybe_dups is
- *** 	not NULL, this will be that xArray, to allow for chaining.
+ *** @returns An xArray of the pairs found. If `maybe_pairs` is not NULL, this
+ *** 	will be that xArray, to allow for chaining.
  ***/
 pXArray
 ca_complete_search(
@@ -1105,10 +1090,9 @@ ca_complete_search(
     const unsigned int num_data,
     const double (*similarity)(void*, void*),
     const double threshold,
-    void** maybe_keys,
-    pXArray maybe_dups)
+    pXArray maybe_pairs)
     {
-    return ca_sliding_search(data, num_data, num_data, similarity, threshold, maybe_keys, maybe_dups);
+    return ca_sliding_search(data, num_data, num_data, similarity, threshold, maybe_pairs);
     }
 
 /** Scope cleanup. **/

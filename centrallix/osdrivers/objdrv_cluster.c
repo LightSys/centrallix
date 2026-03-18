@@ -398,19 +398,18 @@ typedef struct _SOURCE
  *** 
  *** Memory Stats:
  ***   - Padding: 0 bytes
- ***   - Total size: 24 bytes
+ ***   - Total size: 16 bytes
  *** 
  *** @param Size The number of items in the cluster.
- *** @param Strings The string values of each item.
- *** @param Vectors The cosine vectors for each item.
+ *** @param Indexes Represents the data points in the cluster, as indexes into
+ *** 	the SourceData Keys, Strings, and Vectors fields. NULL if `Size == 0`.
  *** @param Magic A magic value for detecting corrupted memory.
  ***/
 typedef struct
     {
-    Magic_t      Magic;
-    unsigned int Size;
-    char**       Strings;
-    pVector*     Vectors;
+    Magic_t       Magic;
+    unsigned int  Size;
+    unsigned int* Indexes;
     }
     Cluster, *pCluster;
 
@@ -492,9 +491,10 @@ typedef struct _CLUSTER
  *** 	included in the results of the search.
  *** 
  *** @skip --> Computed data.
- *** @param Dups An array holding the dups found by the search, or NULL if the
- *** 	search has not been computed.
- *** @param nDups The number of dups found.
+ *** @param Pairs An array holding the pair found by the search, or NULL if the
+ *** 	search has not been computed. The indexes stored in these pairs are
+ *** 	indexes into the SourceData data arrays.
+ *** @param nPairs The number of pairs found.
  *** 
  *** @skip --> Time.
  *** @param DateCreated The date and time that this object was created and initialized.
@@ -509,8 +509,8 @@ typedef struct _SEARCH
     char*             Key;
     pClusterData      SourceCluster;
     double            Threshold;
-    pDup*             Dups;
-    unsigned int      nDups;
+    pPair*            Pairs;
+    unsigned int      nPairs;
     SimilarityMeasure SimilarityMeasure;
     DateTime          DateCreated;
     DateTime          DateComputed;
@@ -2001,10 +2001,8 @@ ci_FreeClusterData(pClusterData cluster_data, bool recursive)
 		{
 		pCluster cluster = &cluster_data->Clusters[i];
 		if (cluster == NULL) continue;
-		if (cluster->Strings != NULL) nmSysFree(cluster->Strings);
-		if (cluster->Vectors != NULL) nmSysFree(cluster->Vectors);
-		cluster->Strings = NULL;
-		cluster->Vectors = NULL;
+		if (cluster->Indexes != NULL) nmSysFree(cluster->Indexes);
+		cluster->Indexes = NULL;
 		}
 	    nmSysFree(cluster_data->Clusters);
 	    nmSysFree(cluster_data->Sims);
@@ -2058,15 +2056,15 @@ ci_FreeSearchData(pSearchData search_data)
 	    }
 	
 	/** Free computed data. **/
-	if (search_data->Dups != NULL)
+	if (search_data->Pairs != NULL)
 	    {
-	    for (unsigned int i = 0; i < search_data->nDups; i++)
+	    for (unsigned int i = 0; i < search_data->nPairs; i++)
 		{
-		nmFree(search_data->Dups[i], sizeof(Dup));
-		search_data->Dups[i] = NULL;
+		nmFree(search_data->Pairs[i], sizeof(Pair));
+		search_data->Pairs[i] = NULL;
 		}
-	    nmSysFree(search_data->Dups);
-	    search_data->Dups = NULL;
+	    nmSysFree(search_data->Pairs);
+	    search_data->Pairs = NULL;
 	    }
 	
 	/** Free the search data struct. **/
@@ -2286,7 +2284,7 @@ ci_SizeOfSearchData(pSearchData search_data)
 	
 	unsigned int size = 0u;
 	if (search_data->Name != NULL) size += strlen(search_data->Name) * sizeof(char);
-	if (search_data->Dups != NULL) size += search_data->nDups * (sizeof(void*) + sizeof(Dup));
+	if (search_data->Pairs != NULL) size += search_data->nPairs * (sizeof(void*) + sizeof(Pair));
 	size += sizeof(SearchData);
     
     return size;
@@ -2297,8 +2295,8 @@ ci_SizeOfSearchData(pSearchData search_data)
 /** ANCHOR[id=computation] **/
 // LINK #functions
 
-/*** Ensures that the source_data->Data has been fetched from the data source
- *** and that source_data->nVectors has been computed from the fetched data.
+/*** Ensures that the `source_data->Data` has been fetched from the data source
+ *** and that `source_data->nVectors` has been computed from the fetched data.
  ***
  *** @attention - Promises that mssError() will be invoked on failure, so the
  *** 	caller is not required to specify their own error message.
@@ -2607,25 +2605,19 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 	    {
 	    case ALGORITHM_NONE:
 		{
-		/*** Put all the data into one cluster. Remember, in the
-		 *** no clustering case, there is only one cluster (see
-		 *** ci_ParseClusterData() above).
+		/** Use a single cluster. **/
+		/*** Note: There will only be a single cluster because `cluster_data->nClusters`
+		 *** is set to 1 during parsing when the clustering algorithm is NONE.
 		 ***/
+		pCluster only_cluster = &cluster_data->Clusters[0];
+		SETMAGIC(only_cluster, MGK_CL_CLUSTER);
 		
-		/** Initialize the cluster. **/
-		pCluster first_cluster = &cluster_data->Clusters[0];
-		SETMAGIC(first_cluster, MGK_CL_CLUSTER);
-		
-		/** Allocate space. **/
-		first_cluster->Size = source_data->nVectors;
-		first_cluster->Strings = check_ptr(nmSysMalloc(source_data->nVectors * sizeof(char*)));
-		if (first_cluster->Strings == NULL) goto err_free;
-		first_cluster->Vectors = check_ptr(nmSysMalloc(source_data->nVectors * sizeof(pVector)));
-		if (first_cluster->Vectors == NULL) goto err_free;
-		
-		/** Copy data. **/
-		memcpy(first_cluster->Strings, source_data->Strings, source_data->nVectors * sizeof(char*));
-		memcpy(first_cluster->Vectors, source_data->Vectors, source_data->nVectors * sizeof(pVector));
+		/** Add all data points to that cluster. **/
+		only_cluster->Size = source_data->nVectors;
+		only_cluster->Indexes = check_ptr(nmSysMalloc(only_cluster->Size * sizeof(int)));
+		if (only_cluster->Indexes == NULL) goto err_free;
+		for (unsigned int i = 0u; i < only_cluster->Size; i++)
+		    only_cluster->Indexes[i] = i;
 		
 		break;
 		}
@@ -2671,7 +2663,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		
 		/** Convert the labels into clusters. **/
 		
-		/** Allocate space for clusters. **/
+		/** Allocate temporary xArrays for tracking the indices stored in each cluster. **/
 		XArray indexes_in_cluster[cluster_data->nClusters];
 		for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
 		    if (!check(xaInit(&indexes_in_cluster[i], 8))) goto err_free;
@@ -2681,26 +2673,36 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		    if (!check_neg(xaAddItem(&indexes_in_cluster[labels[i]], (void*)i))) goto err_free;
 		nmSysFree(labels); /* Free unused data. */
 		
-		/** Iterate through each cluster, store it, and free the xArray. **/
+		/** Store the indices for each cluster and free the temporary xArray. **/
 		for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
 		    {
 		    pXArray indexes_in_this_cluster = &indexes_in_cluster[i];
 		    pCluster cluster = &cluster_data->Clusters[i];
 		    SETMAGIC(cluster, MGK_CL_CLUSTER);
 		    
-		    /** Allocate space. **/
+		    /** Store the data in the cluster. **/
 		    cluster->Size = indexes_in_this_cluster->nItems;
-		    cluster->Strings = check_ptr(nmSysMalloc(cluster->Size * sizeof(char*)));
-		    if (cluster->Strings == NULL) goto err_free;
-		    cluster->Vectors = check_ptr(nmSysMalloc(cluster->Size * sizeof(pVector)));
-		    if (cluster->Vectors == NULL) goto err_free;
-		    
-		    /** Add data to clusters. **/
-		    for (unsigned int j = 0u; j < cluster->Size; j++)
+		    if (cluster->Size == 0)
 			{
-			const unsigned long long index = (unsigned long long)indexes_in_this_cluster->Items[j];
-			cluster->Strings[j] = source_data->Strings[index];
-			cluster->Vectors[j] = source_data->Vectors[index];
+			cluster->Indexes = NULL;
+			continue;
+			}
+		    cluster->Indexes = check_ptr(nmSysMalloc(cluster->Size * sizeof(unsigned int*)));
+		    if (cluster->Indexes == NULL) goto err_free;
+		    for (unsigned int i = 0u; i < indexes_in_this_cluster->nItems; i++)
+			{
+			const unsigned long long index = (unsigned long long)indexes_in_this_cluster->Items[i];
+			if (index > __UINT32_MAX__)
+			    {
+			    mssErrorf(1, "Cluster",
+				"How did you try to cluster more than %u data points and ci_ComputeSearchData() "
+				"was the first thing to break?! Well... looks like it's time to update %s:%s to "
+				"handle a larger amount of data.",
+				__UINT32_MAX__, __FILE__, __LINE__
+			    );
+			    goto err_free;
+			    }
+			cluster->Indexes[i] = (unsigned int)index;
 			}
 		    check(xaDeInit(indexes_in_this_cluster)); /* Failure ignored. */
 		    }
@@ -2732,11 +2734,14 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		 *** directly in the cluster_data->Clusters array.
 		 *** Thus, this loop only frees each cluster's content.
 		 ***/
-		pCluster cluster = &cluster_data->Clusters[i];
+		const pCluster cluster = &cluster_data->Clusters[i];
+		
+		/** Skip the cluster if its data hasn't been set. **/
+		if (cluster_data->Clusters[i].Magic == 0) continue;
+		
+		/** Free the data for the cluster. **/
 		ASSERTMAGIC(cluster, MGK_CL_CLUSTER);
-		if (cluster->Strings != NULL) nmFree(cluster->Strings, cluster->Size * sizeof(char*));
-		else break;
-		if (cluster->Vectors != NULL) nmFree(cluster->Vectors, cluster->Size * sizeof(pVector));
+		if (cluster->Indexes != NULL) nmSysFree(cluster->Indexes);
 		else break;
 		}
 	    nmFree(cluster_data->Clusters, clusters_size);
@@ -2749,7 +2754,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 
 
 // LINK #functions
-/*** Ensures that the search_data->Dups has been computed, running the a
+/*** Ensures that the search_data->pairs has been computed, running the a
  *** search with the specified similarity measure if necessary.
  *** 
  *** @attention - Promises that mssError() will be invoked on failure, so the
@@ -2763,7 +2768,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 static int
 ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
     {
-    pXArray dups = NULL;
+    pXArray pairs = NULL;
     
 	/** Guard segfaults. **/
 	if (search_data == NULL || node_data == NULL) return -1;
@@ -2771,7 +2776,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
 	
 	/** If the clusters are already computed, we're done. **/
-	if (search_data->Dups != NULL) return 0;
+	if (search_data->Pairs != NULL) return 0;
 	
 	/** We need the cluster data to be computed before we search it. **/
 	pClusterData cluster_data = check_ptr(search_data->SourceCluster);
@@ -2798,7 +2803,6 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	const double (*similarity_function)(void *, void *) = ci_SimilarityMeasureToFunction(search_data->SimilarityMeasure);
 	
 	/** Execute the search using the specified algorithm. **/
-	pXArray dups_temp = NULL;
 	if (cluster_data->ClusterAlgorithm == ALGORITHM_SLIDING_WINDOW)
 	    {
 	    /*** Note: We don't need to examine the clusters because nothing
@@ -2820,16 +2824,15 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		}
 	    
 	    /** Execute sliding search. **/
-	    dups_temp = check_ptr(ca_sliding_search(
+	    pairs = check_ptr(ca_sliding_search(
 		data,
 		source_data->nVectors,
 		cluster_data->MaxIterations, /* Window size. */
 		similarity_function,
 		search_data->Threshold,
-		(void**)source_data->Keys,
-		dups
+		NULL
 	    ));
-	    if (dups_temp == NULL)
+	    if (pairs == NULL)
 		{
 		mssErrorf(1, "Cluster",
 		    "Failed to compute sliding search with %s similarity measure.",
@@ -2840,18 +2843,24 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	    }
 	else
 	    {
+	    /** Initialize the pairs array with a size of double the amount of data. **/
+	    const int guess_size = search_data->SourceCluster->SourceData->nVectors * 2;
+	    pairs = check_ptr(xaNew(guess_size));
+	    if (pairs == NULL) goto err_free;
+	    
+	    /** Iterate over each cluster. **/
 	    for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
 		{
 		/** Extract the struct for the cluster. **/
 		pCluster cluster = &cluster_data->Clusters[i];
 		ASSERTMAGIC(cluster, MGK_CL_CLUSTER);
 		
-		/** Get a pointer to the data that will be used for the search. **/
+		/** Get a pointer to the data of the type needed for the search. **/
 		void** data = NULL;
 		switch (search_data->SimilarityMeasure)
 		    {
-		    case SIMILARITY_COSINE: data = (void**)cluster->Vectors; break;
-		    case SIMILARITY_LEVENSHTEIN: data = (void**)cluster->Strings; break;
+		    case SIMILARITY_COSINE: data = (void**)source_data->Vectors; break;
+		    case SIMILARITY_LEVENSHTEIN: data = (void**)source_data->Strings; break;
 		    default:
 			mssErrorf(1, "Cluster",
 			    "Unknown similarity meansure \"%s\".",
@@ -2860,38 +2869,63 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 			goto err_free;
 		    }
 		
+		/** Filter the data to only include values in the current cluster. **/
+		void** filtered_data = data;
+		bool free_filtered_data = false;
+		if (cluster_data->nClusters > 1)
+		    {
+		    /** Allocate space. **/
+		    filtered_data = check_ptr(nmSysMalloc(cluster->Size * sizeof(void*)));
+		    if (filtered_data == NULL) goto err_free;
+		    free_filtered_data = true;
+		    
+		    /** Add filtered data. **/
+		    for (unsigned int i = 0u; i < cluster->Size; i++)
+			filtered_data[i] = data[cluster->Indexes[i]];
+		    }
+		
 		/** Execute complete search. **/
-		dups_temp = check_ptr(ca_complete_search(
-		    data,
+		const pXArray cluster_pairs = check_ptr(ca_complete_search(
+		    filtered_data,
 		    cluster->Size,
 		    similarity_function,
 		    search_data->Threshold,
-		    (void**)source_data->Keys,
-		    dups
+		    NULL
 		));
-		if (dups_temp == NULL)
+		if (free_filtered_data) nmSysFree(filtered_data);
+		if (cluster_pairs == NULL)
 		    {
 		    mssErrorf(1, "Cluster",
-			"Failed to compute complete search with %s similarity measure.",
+			"Failed to compute ca_complete_search() with %s similarity measure.",
 			ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
 		    );
 		    goto err_free;
 		    }
-		else dups = dups_temp;
+		
+		/** Remap the pairs to point to index into the SourceData arrays instead of filtered_data. **/
+		for (unsigned int i = 0u; i < cluster_pairs->nItems; i++)
+		    {
+		    const pPair pair = (pPair)cluster_pairs->Items[i];
+		    pair->i = cluster->Indexes[pair->i];
+		    pair->j = cluster->Indexes[pair->j];
+		    if (!check_neg(xaAddItem(pairs, pair))) goto err_free;
+		    }
+		check(xaFree(cluster_pairs)); /* Failure ignored. */
 		}
 	    }
 	
-	if (dups_temp == NULL) goto err_free;
-	else dups = dups_temp;
-	
-	/** Store dups. **/
-	search_data->nDups = dups->nItems;
-	search_data->Dups = (dups->nItems == 0)
-	    ? check_ptr(nmSysMalloc(0))
-	    : ci_xaToTrimmedArray(dups, 2);
-	if (search_data->Dups == NULL)
+	/** Store pairs. **/
+	search_data->nPairs = pairs->nItems;
+	if (pairs->nItems == 0)
+	    search_data->Pairs = check_ptr(nmSysMalloc(0));
+	else
 	    {
-	    mssErrorf(1, "Cluster", "Failed to store dups after computing search data.");
+	    search_data->Pairs = (pPair*)check_ptr(ci_xaToTrimmedArray(pairs, 2)); /* Contract promises this won't fail. */
+	    pairs = NULL; /* Freed by ci_xaToTrimmedArray(). */
+	    }
+	if (search_data->Pairs == NULL)
+	    {
+	    mssErrorf(1, "Cluster", "Failed to store pair after computing search data.");
 	    goto err_free;
 	    }
 	
@@ -2899,15 +2933,15 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	return 0;
 	
     err_free:
-	if (search_data->Dups != NULL) nmSysFree(search_data->Dups);
-	if (dups != NULL)
+	if (search_data->Pairs != NULL) nmSysFree(search_data->Pairs);
+	if (pairs != NULL)
 	    {
-	    for (unsigned int i = 0u; i < dups->nItems; i++)
+	    for (unsigned int i = 0u; i < pairs->nItems; i++)
 		{
-		if (dups->Items[i] != NULL) nmFree(dups->Items[i], sizeof(Dup));
+		if (pairs->Items[i] != NULL) nmFree(pairs->Items[i], sizeof(pairs));
 		else break;
 		}
-	    check(xaFree(dups)); /* Failure ignored. */
+	    check(xaFree(pairs)); /* Failure ignored. */
 	    }
 	
 	mssErrorf(0, "Cluster", "SearchData computation failed for \"%s\".", search_data->Name);
@@ -3412,7 +3446,7 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    }
 		
 		/** Stop iteration if the requested data does not exist. **/
-		if (query_data->RowIndex >= target->nDups) goto done_free;
+		if (query_data->RowIndex >= target->nPairs) goto done_free;
 		
 		/** Set the data being fetched. **/
 		result_data->TargetType = TARGET_SEARCH_ENTRY;
@@ -3915,19 +3949,22 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		
 		if (strcmp(attr_name, "items") == 0)
 		    {
-		    /** Extract target strings (the result). **/
-		    char** target_strings = check_ptr(target_cluster->Strings);
-		    if (target_strings == NULL) goto err;
-		    
-		    /** Static variable to prevent leaking StringVec from previous calls. **/
+		    /** Static variable to allow us to free the StringVecs from previous calls. **/
 		    static StringVec* vec = NULL;
-		    if (vec != NULL) nmFree(vec, sizeof(StringVec));
+		    if (vec != NULL)
+			{
+			if (vec->Strings != NULL) nmSysFree(vec->Strings);
+			nmFree(vec, sizeof(StringVec));
+			}
 		    
 		    /** Allocate and initialize the requested data. **/
-		    val->StringVec = vec = check_ptr(nmMalloc(sizeof(StringVec)));
-		    if (val->StringVec == NULL) return -1;
-		    val->StringVec->nStrings = target_cluster->Size;
-		    val->StringVec->Strings = target_strings;
+		    vec = val->StringVec = check_ptr(nmMalloc(sizeof(StringVec)));
+		    if (vec == NULL) return -1;
+		    memset(vec, 0, sizeof(StringVec));
+		    vec->nStrings = target_cluster->Size;
+		    vec->Strings = check_ptr(nmSysMalloc(target_cluster->Size * sizeof(char*)));
+		    for (unsigned int i = 0u; i < target_cluster->Size; i++)
+			vec->Strings[i] = target->SourceData->Strings[target_cluster->Indexes[i]];
 		    
 		    /** Success. **/
 		    return 0;
@@ -3940,7 +3977,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		pSearchData target = check_ptr(driver_data->TargetData);
 		if (target == NULL) goto err;
 		ASSERTMAGIC(target, MGK_CL_SEARCH_DATA);
-		pDup target_dup = check_ptr(target->Dups[driver_data->TargetIndex]);
+		pPair target_dup = check_ptr(target->Pairs[driver_data->TargetIndex]);
 		if (target_dup == NULL) goto err;
 		
 		if (strcmp(attr_name, "sim") == 0)
@@ -3952,13 +3989,13 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		if (strcmp(attr_name, "key1") == 0)
 		    {
 		    ClusterStatistics.GetValCalls_key1++;
-		    val->String = target_dup->key1;
+		    val->String = target->SourceCluster->SourceData->Keys[target_dup->i];
 		    return 0;
 		    }
 		if (strcmp(attr_name, "key2") == 0)
 		    {
 		    ClusterStatistics.GetValCalls_key2++;
-		    val->String = target_dup->key2;
+		    val->String = target->SourceCluster->SourceData->Keys[target_dup->j];
 		    return 0;
 		    }
 		break;
@@ -4410,9 +4447,9 @@ clusterInfo(void* inf_v, pObjectInfo info)
 		{
 		pSearchData search_data = (pSearchData)driver_data->TargetData;
 		info->Flags |= OBJ_INFO_F_CAN_HAVE_SUBOBJ;
-		if (search_data->Dups != NULL)
+		if (search_data->Pairs != NULL)
 		    {
-		    info->nSubobjects = search_data->nDups;
+		    info->nSubobjects = search_data->nPairs;
 		    info->Flags |= OBJ_INFO_F_SUBOBJ_CNT_KNOWN;
 		    info->Flags |= (info->nSubobjects > 0) ? OBJ_INFO_F_HAS_SUBOBJ : OBJ_INFO_F_NO_SUBOBJ;
 		    }
@@ -4549,7 +4586,7 @@ ci_PrintEntry(pXHashEntry entry, void* arg)
 		bytes = ci_SizeOfSearchData(search_data);
 		
 		/** If less is specified, skip uncomputed source. **/
-		if (*less_ptr > 0llu && search_data->Dups == NULL) goto no_print;
+		if (*less_ptr > 0llu && search_data->Pairs == NULL) goto no_print;
 		
 		/** Compute printing information. **/
 		type = "Search";
