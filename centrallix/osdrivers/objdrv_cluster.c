@@ -681,9 +681,9 @@ static void ci_ClearCaches(void);
 
 /** Deep Size Computation Functions. **/
 // LINK #sizing
-static unsigned int ci_SizeOfSourceData(pSourceData source_data);
-static unsigned int ci_SizeOfClusterData(pClusterData cluster_data, bool recursive);
-static unsigned int ci_SizeOfSearchData(pSearchData search_data);
+static size_t ci_SizeOfSourceData(pSourceData source_data);
+static size_t ci_SizeOfClusterData(pClusterData cluster_data, bool recursive);
+static size_t ci_SizeOfSearchData(pSearchData search_data);
 
 /** Computation Functions. (Ensure data is computed.) **/
 // LINK #computation
@@ -2202,7 +2202,7 @@ ci_ClearCaches(void)
  *** @param source_data The source data struct to be queried.
  *** @returns The size in bytes of the struct and all internal allocated data.
  ***/
-static unsigned int
+static size_t
 ci_SizeOfSourceData(pSourceData source_data)
     {
 	/** Guard segfaults. **/
@@ -2213,7 +2213,7 @@ ci_SizeOfSourceData(pSourceData source_data)
 	    }
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
 	
-	unsigned int size = 0u;
+	size_t size = 0u;
 	if (source_data->Name != NULL) size += strlen(source_data->Name) * sizeof(char);
 	if (source_data->SourcePath != NULL) size += strlen(source_data->SourcePath) * sizeof(char);
 	if (source_data->KeyAttr != NULL) size += strlen(source_data->KeyAttr) * sizeof(char);
@@ -2254,7 +2254,7 @@ ci_SizeOfSourceData(pSourceData source_data)
  *** @param recursive Whether to recursively free subclusters.
  *** @returns The size in bytes of the struct and all internal allocated data.
  ***/
-static unsigned int
+static size_t
 ci_SizeOfClusterData(pClusterData cluster_data, bool recursive)
     {
 	/** Guard segfaults. **/
@@ -2265,7 +2265,7 @@ ci_SizeOfClusterData(pClusterData cluster_data, bool recursive)
 	    }
 	ASSERTMAGIC(cluster_data, MGK_CL_CLUSTER_DATA);
 	
-	unsigned int size = 0u;
+	size_t size = 0u;
 	if (cluster_data->Name != NULL) size += strlen(cluster_data->Name) * sizeof(char);
 	if (cluster_data->Clusters != NULL)
 	    {
@@ -2300,7 +2300,7 @@ ci_SizeOfClusterData(pClusterData cluster_data, bool recursive)
  *** @param search_data The search data struct to be queried.
  *** @returns The size in bytes of the struct and all internal allocated data.
  ***/
-static unsigned int
+static size_t
 ci_SizeOfSearchData(pSearchData search_data)
     {
 	/** Guard segfaults. **/
@@ -4574,7 +4574,7 @@ ci_PrintEntry(pXHashEntry entry, void* arg)
 	/** Handle type. **/
 	char* type;
 	char* name;
-	unsigned int bytes;
+	size_t bytes;
 	switch (*type_id_ptr)
 	    {
 	    case 1u:
