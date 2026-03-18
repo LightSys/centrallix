@@ -1239,6 +1239,11 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	for (unsigned int i = 0u; i < inf->nSubInf; i++)
 	    {
 	    pStructInf sub_inf = check_ptr(inf->SubInf[i]);
+	    if (sub_inf == NULL)
+		{
+		mssErrorf(1, "Cluster", "Failed to get %uth subinf.", i);
+		goto err_free;
+		}
 	    ASSERTMAGIC(sub_inf, MGK_STRUCTINF);
 	    char* name = sub_inf->Name;
 	    
@@ -1494,6 +1499,11 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	for (unsigned int i = 0u; i < inf->nSubInf; i++)
 	    {
 	    pStructInf sub_inf = check_ptr(inf->SubInf[i]);
+	    if (sub_inf == NULL)
+		{
+		mssErrorf(1, "Cluster", "Failed to get %uth subinf.", i);
+		goto err_free;
+		}
 	    ASSERTMAGIC(sub_inf, MGK_STRUCTINF);
 	    char* name = sub_inf->Name;
 	    
@@ -1664,6 +1674,11 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 	for (unsigned int i = 0u; i < inf->nSubInf; i++)
 	    {
 	    pStructInf sub_inf = check_ptr(inf->SubInf[i]);
+	    if (sub_inf == NULL)
+		{
+		mssErrorf(1, "Cluster", "Failed to get %uth subinf.", i);
+		goto err_free;
+		}
 	    ASSERTMAGIC(sub_inf, MGK_STRUCTINF);
 	    char* name = sub_inf->Name;
 	    
@@ -2809,12 +2824,12 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	
 	/** We need the cluster data to be computed before we search it. **/
 	pClusterData cluster_data = check_ptr(search_data->SourceCluster);
-	ASSERTMAGIC(cluster_data, MGK_CL_CLUSTER_DATA);
 	if (cluster_data == NULL)
 	    {
 	    mssErrorf(1, "Cluster", "Failed to get cluster data for search computation.");
 	    goto err_free;
 	    }
+	ASSERTMAGIC(cluster_data, MGK_CL_CLUSTER_DATA);
 	if (ci_ComputeClusterData(cluster_data, node_data) != 0)
 	    {
 	    mssErrorf(0, "Cluster", "SearchData computation failed due to missing clusters.");
@@ -3988,10 +4003,11 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		    
 		    /** Allocate and initialize the requested data. **/
 		    vec = val->StringVec = check_ptr(nmMalloc(sizeof(StringVec)));
-		    if (vec == NULL) return -1;
+		    if (vec == NULL) goto err;
 		    memset(vec, 0, sizeof(StringVec));
 		    vec->nStrings = target_cluster->Size;
 		    vec->Strings = check_ptr(nmSysMalloc(target_cluster->Size * sizeof(char*)));
+		    if (vec->Strings == NULL) goto err;
 		    for (unsigned int i = 0u; i < target_cluster->Size; i++)
 			vec->Strings[i] = target->SourceData->Strings[target_cluster->Indexes[i]];
 		    

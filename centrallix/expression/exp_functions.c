@@ -1589,6 +1589,7 @@ exp_fn_lztrim(pExpression tree)
 	
 	/** Extract the arg string. **/
 	pExpression maybe_str = check_ptr(tree->Children.Items[0]);
+	if (maybe_str == NULL) return -1;
 	if (maybe_str->Flags & EXPR_F_NULL)
 	    {
 	    /** Propegate null values. **/
@@ -1596,7 +1597,8 @@ exp_fn_lztrim(pExpression tree)
 	    tree->DataType = DATA_T_STRING;
 	    return 0;
 	    }
-	char* str = maybe_str->String;
+	char* str = check_ptr(maybe_str->String);
+	if (str == NULL) return -1;
 	
 	/*** We don't need to allocate new memory or copy anything because we
 	 *** can simply point to the first character in the previous string
@@ -1631,6 +1633,7 @@ exp_fn_ltrim(pExpression tree)
 	
 	/** Extract the arg string. **/
 	pExpression maybe_str = check_ptr(tree->Children.Items[0]);
+	if (maybe_str == NULL) return -1;
 	if (maybe_str->Flags & EXPR_F_NULL)
 	    {
 	    /** Propegate null values. **/
@@ -1638,7 +1641,8 @@ exp_fn_ltrim(pExpression tree)
 	    tree->DataType = DATA_T_STRING;
 	    return 0;
 	    }
-	char* str = maybe_str->String;
+	char* str = check_ptr(maybe_str->String);
+	if (str == NULL) return -1;
 	
 	/*** We don't need to allocate new memory or copy anything because we
 	 *** can simply point to the first character in the previous string
@@ -1674,6 +1678,7 @@ exp_fn_rtrim(pExpression tree)
 	
 	/** Extract the arg string. **/
 	pExpression maybe_str = check_ptr(tree->Children.Items[0]);
+	if (maybe_str == NULL) return -1;
 	if (maybe_str->Flags & EXPR_F_NULL)
 	    {
 	    /** Propegate null values. **/
@@ -1681,7 +1686,8 @@ exp_fn_rtrim(pExpression tree)
 	    tree->DataType = DATA_T_STRING;
 	    return 0;
 	    }
-	char* str = maybe_str->String;
+	char* str = check_ptr(maybe_str->String);
+	if (str == NULL) return -1;
 	
 	/** Trim spaces from the end of the string. **/
 	/** Note: Only spaces are trimmed, as with similar trim functions in most SQL languages. **/
@@ -4543,6 +4549,7 @@ exp_fn_metaphone(pExpression tree)
 	
 	/** Extract string param. **/
 	pExpression maybe_str = check_ptr(tree->Children.Items[0]);
+	if (maybe_str == NULL) return -1;
 	if (maybe_str->Flags & EXPR_F_NULL)
 	    {
 	    tree->Flags |= EXPR_F_NULL;
@@ -4550,6 +4557,7 @@ exp_fn_metaphone(pExpression tree)
 	    return 0;
 	    }
 	const char* str = check_ptr(maybe_str->String);
+	if (str == NULL) return -1;
 	const size_t str_len = strlen(str);
 	if (str_len == 0u)
 	    {
@@ -4599,6 +4607,7 @@ exp_fn_compare(pExpression tree)
 	/** Extract strings. **/
 	pExpression maybe_str1 = check_ptr(tree->Children.Items[0]);
 	pExpression maybe_str2 = check_ptr(tree->Children.Items[1]);
+	if (maybe_str1 == NULL || maybe_str2) return -1;
 	if (maybe_str1->Flags & EXPR_F_NULL || maybe_str2->Flags & EXPR_F_NULL)
 	    {
 	    tree->Flags |= EXPR_F_NULL;
@@ -4607,6 +4616,7 @@ exp_fn_compare(pExpression tree)
 	    }
 	char* str1 = check_ptr(maybe_str1->String);
 	char* str2 = check_ptr(maybe_str2->String);
+	if (str1 == NULL || str2) return -1;
 	
 	/** Handle either cos_compare() or lev_compare(). **/
 	if (tree->Name[0] == 'c')
@@ -4672,6 +4682,7 @@ exp_fn_levenshtein(pExpression tree)
 	/** Extract strings. **/
 	pExpression maybe_str1 = check_ptr(tree->Children.Items[0]);
 	pExpression maybe_str2 = check_ptr(tree->Children.Items[1]);
+	if (maybe_str1 == NULL || maybe_str2 == NULL) return -1;
 	if (maybe_str1->Flags & EXPR_F_NULL || maybe_str2->Flags & EXPR_F_NULL)
 	    {
 	    tree->Flags |= EXPR_F_NULL;
@@ -4680,6 +4691,7 @@ exp_fn_levenshtein(pExpression tree)
 	    }
 	char* str1 = check_ptr(maybe_str1->String);
 	char* str2 = check_ptr(maybe_str2->String);
+	if (str1 == NULL || str2 == NULL) return -1;
 	
 	/** Compute edit distance. **/
 	/** Length 0 is provided for both strings so that the function will compute it for us. **/

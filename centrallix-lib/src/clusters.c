@@ -712,8 +712,7 @@ get_cluster_size(
 	 ***/
 	cluster_sums = check_ptr(nmMalloc(num_clusters * sizeof(double)));
 	cluster_counts = check_ptr(nmMalloc(num_clusters * sizeof(unsigned int)));
-	if (cluster_sums == NULL) goto end;
-	if (cluster_counts == NULL) goto end;
+	if (cluster_sums == NULL || cluster_counts == NULL) goto end;
 	for (unsigned int i = 0u; i < num_clusters; i++)
 	    {
 	    cluster_sums[i] = 0.0;
@@ -815,20 +814,14 @@ ca_kmeans(
 	const size_t centroids_size = num_clusters * sizeof(pCentroid);
 	centroids = check_ptr(nmMalloc(centroids_size));
 	new_centroids = check_ptr(nmMalloc(centroids_size));
-	if (centroids == NULL) goto end;
-	if (new_centroids == NULL) goto end;
+	if (centroids == NULL || new_centroids == NULL) goto end;
 	memset(centroids, 0, centroids_size);
 	memset(new_centroids, 0, centroids_size);
 	for (unsigned int i = 0u; i < num_clusters; i++)
 	    {
-	    centroids[i] = check_ptr(nmMalloc(pCentroidSize));
-	    new_centroids[i] = check_ptr(nmMalloc(pCentroidSize));
-	    if (centroids[i] == NULL) goto end;
-	    if (new_centroids[i] == NULL) goto end;
-	    memset(centroids[i], 0, pCentroidSize);
-	    memset(new_centroids[i], 0, pCentroidSize);
 	    centroids[i] = check_ptr(nmMalloc(CENTROID_SIZE));
 	    new_centroids[i] = check_ptr(nmMalloc(CENTROID_SIZE));
+	    if (centroids[i] == NULL || new_centroids[i] == NULL) goto end;
 	    memset(centroids[i], 0, CENTROID_SIZE);
 	    memset(new_centroids[i], 0, CENTROID_SIZE);
 	    }
