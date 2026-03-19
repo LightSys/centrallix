@@ -92,8 +92,7 @@ typedef unsigned char ClusterAlgorithm;
 #define ALGORITHM_KMEDOIDS         (ClusterAlgorithm)5u
 #define ALGORITHM_DB_SCAN          (ClusterAlgorithm)6u
 
-#define nClusteringAlgorithms 7u
-ClusterAlgorithm ALL_CLUSTERING_ALGORITHMS[nClusteringAlgorithms] =
+ClusterAlgorithm ALL_CLUSTERING_ALGORITHMS[] =
     {
     ALGORITHM_NULL,
     ALGORITHM_NONE,
@@ -103,6 +102,7 @@ ClusterAlgorithm ALL_CLUSTERING_ALGORITHMS[nClusteringAlgorithms] =
     ALGORITHM_KMEDOIDS,
     ALGORITHM_DB_SCAN,
     };
+#define N_CLUSTERING_ALGORITHMS ((unsigned int)(sizeof(ALL_CLUSTERING_ALGORITHMS) / sizeof(ClusterAlgorithm)))
 
 /** Converts a clustering algorithm to its string name. **/
 char*
@@ -129,13 +129,13 @@ typedef unsigned char SimilarityMeasure;
 #define SIMILARITY_COSINE          (SimilarityMeasure)1u
 #define SIMILARITY_LEVENSHTEIN     (SimilarityMeasure)2u
 
-#define nSimilarityMeasures 3u
-SimilarityMeasure ALL_SIMILARITY_MEASURES[nSimilarityMeasures] =
+SimilarityMeasure ALL_SIMILARITY_MEASURES[] =
     {
     SIMILARITY_NULL,
     SIMILARITY_COSINE,
     SIMILARITY_LEVENSHTEIN,
     };
+#define N_SIMILARITY_MEASURES ((unsigned int)(sizeof(ALL_SIMILARITY_MEASURES) / sizeof(SimilarityMeasure)))
 
 /*** Converts a similarity measure to its string name.
  *** 
@@ -195,6 +195,16 @@ typedef unsigned char TargetType;
 #define TARGET_SEARCH        (TargetType)3u
 #define TARGET_CLUSTER_ENTRY (TargetType)4u
 #define TARGET_SEARCH_ENTRY  (TargetType)5u
+
+TargetType ALL_TARGET_TYPES[] =
+    {
+    TARGET_NODE,
+    TARGET_CLUSTER,
+    TARGET_SEARCH,
+    TARGET_CLUSTER_ENTRY,
+    TARGET_SEARCH_ENTRY,
+    };
+#define N_TARGET_TYPES ((unsigned int)(sizeof(ALL_TARGET_TYPES) / sizeof(TargetType)))
 
 /** Attribute name lists by TargetType. **/
 #define END_OF_ARRAY NULL
@@ -837,10 +847,10 @@ ci_ParseClusteringAlgorithm(pStructInf inf, pParamObjects param_list)
 	mssError(1, "Cluster", "Unknown \"clustering algorithm\": %s", algorithm);
 	
 	/** Attempt to give a hint. **/
-	char* all_names[nClusteringAlgorithms] = {NULL};
-	for (unsigned int i = 1u; i < nClusteringAlgorithms; i++)
+	char* all_names[N_CLUSTERING_ALGORITHMS] = {NULL};
+	for (unsigned int i = 1u; i < N_CLUSTERING_ALGORITHMS; i++)
 	    all_names[i] = ci_ClusteringAlgorithmToString(ALL_CLUSTERING_ALGORITHMS[i]);
-	if (ci_TryHint(algorithm, all_names, nClusteringAlgorithms));
+	if (ci_TryHint(algorithm, all_names, N_CLUSTERING_ALGORITHMS));
 	else if (strcasecmp(algorithm, "sliding") == 0) ci_GiveHint(ci_ClusteringAlgorithmToString(ALGORITHM_SLIDING_WINDOW));
 	else if (strcasecmp(algorithm, "window")  == 0) ci_GiveHint(ci_ClusteringAlgorithmToString(ALGORITHM_SLIDING_WINDOW));
 	else if (strcasecmp(algorithm, "null")    == 0) ci_GiveHint(ci_ClusteringAlgorithmToString(ALGORITHM_NONE));
@@ -881,10 +891,10 @@ ci_ParseSimilarityMeasure(pStructInf inf, pParamObjects param_list)
 	mssError(1, "Cluster", "Unknown \"similarity measure\": %s", measure);
 	
 	/** Attempt to give a hint. **/
-	char* all_names[nSimilarityMeasures] = {NULL};
-	for (unsigned int i = 1u; i < nSimilarityMeasures; i++)
+	char* all_names[N_SIMILARITY_MEASURES] = {NULL};
+	for (unsigned int i = 1u; i < N_SIMILARITY_MEASURES; i++)
 	    all_names[i] = ci_SimilarityMeasureToString(ALL_SIMILARITY_MEASURES[i]);
-	if (ci_TryHint(measure, all_names, nSimilarityMeasures));
+	if (ci_TryHint(measure, all_names, N_SIMILARITY_MEASURES));
 	else if (strcasecmp(measure, "cos")           == 0) ci_GiveHint(ci_SimilarityMeasureToString(SIMILARITY_COSINE));
 	else if (strcasecmp(measure, "lev")           == 0) ci_GiveHint(ci_SimilarityMeasureToString(SIMILARITY_LEVENSHTEIN));
 	else if (strcasecmp(measure, "edit-dist")     == 0) ci_GiveHint(ci_SimilarityMeasureToString(SIMILARITY_LEVENSHTEIN));
@@ -4123,14 +4133,14 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		if (strcmp(attr_name, "algorithm") == 0)
 		    {
 		    /** Enum values. **/
-		    check(xaInit(&(hints->EnumList), nClusteringAlgorithms)); /* Failure ignored. */
-		    for (unsigned int i = 0u; i < nClusteringAlgorithms; i++)
+		    check(xaInit(&(hints->EnumList), N_CLUSTERING_ALGORITHMS)); /* Failure ignored. */
+		    for (unsigned int i = 0u; i < N_CLUSTERING_ALGORITHMS; i++)
 			check_neg(xaAddItem(&(hints->EnumList), &ALL_CLUSTERING_ALGORITHMS[i])); /* Failure ignored. */
 		    
 		    /** Min and max values. **/
 		    hints->MinValue = expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		    char buf[8];
-		    snprintf(buf, sizeof(buf), "%d", nClusteringAlgorithms);
+		    snprintf(buf, sizeof(buf), "%d", N_CLUSTERING_ALGORITHMS);
 		    hints->MaxValue = expCompileExpression(buf, tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		    
 		    /** Display flags. **/
@@ -4149,8 +4159,8 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		if (strcmp(attr_name, "similarity_measure") == 0)
 		    {
 		    /** Enum values. **/
-		    check(xaInit(&(hints->EnumList), nSimilarityMeasures)); /* Failure ignored. */
-		    for (unsigned int i = 0u; i < nSimilarityMeasures; i++)
+		    check(xaInit(&(hints->EnumList), N_SIMILARITY_MEASURES)); /* Failure ignored. */
+		    for (unsigned int i = 0u; i < N_SIMILARITY_MEASURES; i++)
 			check_neg(xaAddItem(&(hints->EnumList), &ALL_SIMILARITY_MEASURES[i])); /* Failure ignored. */
 			
 		    /** Display flags. **/
@@ -4160,7 +4170,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    /** Min and max values. **/
 		    hints->MinValue = expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		    char buf[8];
-		    snprintf(buf, sizeof(buf), "%d", nSimilarityMeasures);
+		    snprintf(buf, sizeof(buf), "%d", N_SIMILARITY_MEASURES);
 		    hints->MaxValue = expCompileExpression(buf, tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		    
 		    /** Other hints. **/
