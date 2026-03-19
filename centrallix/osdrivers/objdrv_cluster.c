@@ -62,45 +62,6 @@
 #define CI_DEFAULT_MAX_ITERATIONS 64u
 #define CI_NO_SEED 0u
 
-/** ================ Stuff That Should Be Somewhere Else ================ **/
-/** ANCHOR[id=temp] **/
-
-/** TODO: Greg - I think this should be moved to xarray. **/
-/*** Trims an xArray, returning a new array (with nmSysMalloc). 
- *** 
- *** @param arr The array to be trimmed.
- *** @param cleanup 0: No clean up.
- ***                1: DeInit arr.
- ***                2: Free arr.
- ***                *: Any other value prints a warning and does no clean up.
- *** @returns The new array, or NULL if and only if `arr` is empty.
- ***/
-static void**
-ci_xaToTrimmedArray(pXArray arr, int array_handling)
-    {
-	const size_t arr_size = arr->nItems * sizeof(void*);
-	void** result = check_ptr(nmSysMalloc(arr_size));
-	if (result == NULL) return NULL;
-	memcpy(result, arr->Items, arr_size);
-	
-	/** Handle the array. **/
-	switch (array_handling)
-	    {
-	    case 0: break;
-	    case 1: check(xaDeInit(arr)); arr->nAlloc = 0; break; /* Failure ignored. */ 
-	    case 2: check(xaFree(arr)); break; /* Failure ignored. */
-	    default:
-		/** Uh oh, this might cause a memory leak... **/
-		fprintf(stderr,
-		    "Warning: ci_xaToTrimmedArray(%p, %d) - Unknown value (%d) for array_handling.\n",
-		    arr, array_handling, array_handling
-		);
-		break;
-	    }
-    
-    return result;
-    }
-
 /** I got tired of forgetting how to do these. **/
 #define ci_file_name(obj) \
     ({ \
@@ -1262,7 +1223,9 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 		}
 	    }
 	cluster_data->nSubClusters = sub_clusters.nItems;
-	cluster_data->SubClusters = (pClusterData*)ci_xaToTrimmedArray(&sub_clusters, 1);
+	cluster_data->SubClusters = check_ptr(xaToArray(&sub_clusters));
+	if (cluster_data->SubClusters == NULL) goto err_free;
+	check(xaDeInit(&sub_clusters)); /* Failure ignored. */
 	sub_clusters.nAlloc = 0;
 	
 	/** Create the cache key. **/
@@ -2442,18 +2405,21 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    }
 	
 	/** Trim and store keys. **/
-	source_data->Keys = (char**)check_ptr(ci_xaToTrimmedArray(&key_xarray, 1));
+	source_data->Keys = check_ptr(xaToArray(&key_xarray));
 	if (source_data->Keys == NULL) goto end_free;
+	check(xaDeInit(&key_xarray)); /* Failure ignored. */
 	key_xarray.nAlloc = 0;
 	
 	/** Trim and store data strings. **/
-	source_data->Strings = (char**)check_ptr(ci_xaToTrimmedArray(&data_xarray, 1));
+	source_data->Strings = check_ptr(xaToArray(&data_xarray));
 	if (source_data->Strings == NULL) goto end_free;
+	check(xaDeInit(&data_xarray)); /* Failure ignored. */
 	data_xarray.nAlloc = 0;
 	
 	/** Trim and store vectors. **/
-	source_data->Vectors = (int**)check_ptr(ci_xaToTrimmedArray(&vector_xarray, 1));
-	if (source_data->Vectors == NULL) goto end_free; /* Should be unreachable. */
+	source_data->Vectors = check_ptr(xaToArray(&vector_xarray));
+	if (source_data->Vectors == NULL) goto end_free;
+	check(xaDeInit(&vector_xarray)); /* Failure ignored. */
 	vector_xarray.nAlloc = 0;
 	
 	/** Success. **/
@@ -2899,8 +2865,10 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	    search_data->Pairs = check_ptr(nmSysMalloc(0));
 	else
 	    {
-	    search_data->Pairs = (pPair*)check_ptr(ci_xaToTrimmedArray(pairs, 2)); /* Contract promises this won't fail. */
-	    pairs = NULL; /* Freed by ci_xaToTrimmedArray(). */
+	    search_data->Pairs = check_ptr(xaToArray(pairs));
+	    if (search_data->Pairs == NULL) goto err_free;
+	    check(xaFree(&pairs)); /* Failure ignored. */
+	    pairs = NULL;
 	    }
 	if (search_data->Pairs == NULL)
 	    {
