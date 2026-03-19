@@ -4601,13 +4601,13 @@ exp_fn_compare(pExpression tree)
 	}, tree) != 0)
 	    {
 	    mssError(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
-	    return -1;
+	    goto err;
 	    }
 	
 	/** Extract strings. **/
 	pExpression maybe_str1 = check_ptr(tree->Children.Items[0]);
 	pExpression maybe_str2 = check_ptr(tree->Children.Items[1]);
-	if (maybe_str1 == NULL || maybe_str2) return -1;
+	if (maybe_str1 == NULL || maybe_str2 == NULL) goto err;
 	if (maybe_str1->Flags & EXPR_F_NULL || maybe_str2->Flags & EXPR_F_NULL)
 	    {
 	    tree->Flags |= EXPR_F_NULL;
@@ -4616,7 +4616,7 @@ exp_fn_compare(pExpression tree)
 	    }
 	char* str1 = check_ptr(maybe_str1->String);
 	char* str2 = check_ptr(maybe_str2->String);
-	if (str1 == NULL || str2) return -1;
+	if (str1 == NULL || str2 == NULL) goto err;
 	
 	/** Handle either cos_compare() or lev_compare(). **/
 	if (tree->Name[0] == 'c')
@@ -4645,15 +4645,19 @@ exp_fn_compare(pExpression tree)
 	    /** Clean up. **/
 	    if (v1 != NULL) ca_free_vector(v1);
 	    if (v2 != NULL) ca_free_vector(v2);
-	    return ret;
+	    if (ret == -1) goto err;
+	    else return 0;
 	    }
 	else
 	    { /* lev_compare() */
-	    double lev_sim = check_double(ca_lev_compare(str1, str2));
+	    const double lev_sim = check_double(ca_lev_compare(str1, str2));
 	    if (isnan(lev_sim))
 		{
-		mssError(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute Levenshtein edit distance.");
-		return -1;
+		mssError(1, "EXP",
+		    "%s(\"%s\", \"%s\"): Failed to compute Levenshtein edit distance.",
+		    tree->Name, str1, str2
+		);
+		goto err;
 		}
 	    
 	    /** Return the computed result. **/
@@ -4661,8 +4665,10 @@ exp_fn_compare(pExpression tree)
 	    tree->DataType = DATA_T_DOUBLE;
 	    return 0;
 	    }
-    
-    return -1; /* Unreachable. */
+	
+	err:
+	mssError(0, "EXP", "%s(): Failed to compute Levenshtein edit distance.", tree->Name);
+	return -1;
     }
 
 int
