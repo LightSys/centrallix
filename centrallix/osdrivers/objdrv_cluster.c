@@ -90,7 +90,7 @@ ClusterAlgorithm ALL_CLUSTERING_ALGORITHMS[] =
     ALGORITHM_KMEDOIDS,
     ALGORITHM_DB_SCAN,
     };
-#define N_CLUSTERING_ALGORITHMS ((unsigned int)(sizeof(ALL_CLUSTERING_ALGORITHMS) / sizeof(ClusterAlgorithm)))
+#define N_CLUSTERING_ALGORITHMS ((unsigned int)(sizeof(ALL_CLUSTERING_ALGORITHMS) / sizeof(ALL_CLUSTERING_ALGORITHMS[0])))
 
 /** Converts a clustering algorithm to its string name. **/
 char*
@@ -123,7 +123,7 @@ SimilarityMeasure ALL_SIMILARITY_MEASURES[] =
     SIMILARITY_COSINE,
     SIMILARITY_LEVENSHTEIN,
     };
-#define N_SIMILARITY_MEASURES ((unsigned int)(sizeof(ALL_SIMILARITY_MEASURES) / sizeof(SimilarityMeasure)))
+#define N_SIMILARITY_MEASURES ((unsigned int)(sizeof(ALL_SIMILARITY_MEASURES) / sizeof(ALL_SIMILARITY_MEASURES[0])))
 
 /*** Converts a similarity measure to its string name.
  *** 
@@ -192,18 +192,23 @@ TargetType ALL_TARGET_TYPES[] =
     TARGET_CLUSTER_ENTRY,
     TARGET_SEARCH_ENTRY,
     };
-#define N_TARGET_TYPES ((unsigned int)(sizeof(ALL_TARGET_TYPES) / sizeof(TargetType)))
+#define N_TARGET_TYPES ((unsigned int)(sizeof(ALL_TARGET_TYPES) / sizeof(ALL_TARGET_TYPES[0])))
 
-/** Attribute name lists by TargetType. **/
-#define END_OF_ARRAY NULL
-char* ATTR_ROOT[] =
+/*** Attribute name lists by TargetType.
+ *** 
+ *** Promises that input attributes are listed first, before computed attributes.
+ ***/
+char* ROOT_ATTRS[] =
     {
     "source",
     "key_attr",
     "data_attr",
     END_OF_ARRAY,
     };
-char* ATTR_CLUSTER[] =
+#define N_ROOT_ATTRS ((unsigned int)(sizeof(ROOT_ATTRS) / sizeof(ROOT_ATTRS[0])))
+#define N_COMPUTED_ROOT_ATTRS 1u
+#define N_INPUT_ROOT_ATTRS (N_ROOT_ATTRS - N_COMPUTED_ROOT_ATTRS)
+char* CLUSTER_ATTRS[] =
     {
     "algorithm",
     "similarity_measure",
@@ -213,37 +218,46 @@ char* ATTR_CLUSTER[] =
     "seed",
     "date_created",
     "date_computed",
-    END_OF_ARRAY,
     };
-char* ATTR_SEARCH[] =
+#define N_CLUSTER_ATTRS ((unsigned int)(sizeof(CLUSTER_ATTRS) / sizeof(CLUSTER_ATTRS[0])))
+#define N_COMPUTED_CLUSTER_ATTRS 2u
+#define N_INPUT_CLUSTER_ATTRS (N_CLUSTER_ATTRS - N_COMPUTED_CLUSTER_ATTRS)
+char* SEARCH_ATTRS[] =
     {
     "source",
     "threshold",
     "similarity_measure",
     "date_created",
     "date_computed",
-    END_OF_ARRAY,
     };
-char* ATTR_CLUSTER_ENTRY[] =
+#define N_SEARCH_ATTRS ((unsigned int)(sizeof(SEARCH_ATTRS) / sizeof(SEARCH_ATTRS[0])))
+#define N_COMPUTED_SEARCH_ATTRS 2u
+#define N_INPUT_SEARCH_ATTRS (N_SEARCH_ATTRS - N_COMPUTED_SEARCH_ATTRS)
+char* CLUSTER_ENTRY_ATTRS[] =
     {
     "items",
     END_OF_ARRAY,
     };
-char* ATTR_SEARCH_ENTRY[] =
+#define N_CLUSTER_ENTRY_ATTRS ((unsigned int)(sizeof(CLUSTER_ENTRY_ATTRS) / sizeof(CLUSTER_ENTRY_ATTRS[0])))
+#define N_COMPUTED_CLUSTER_ENTRY_ATTRS 2u
+#define N_INPUT_CLUSTER_ENTRY_ATTRS (N_CLUSTER_ENTRY_ATTRS - N_COMPUTED_CLUSTER_ENTRY_ATTRS)
+char* SEARCH_ENTRY_ATTRS[] =
     {
     "key1",
     "key2",
     "sim",
-    END_OF_ARRAY,
     };
+#define N_SEARCH_ENTRY_ATTRS ((unsigned int)(sizeof(SEARCH_ENTRY_ATTRS) / sizeof(SEARCH_ENTRY_ATTRS[0])))
+#define N_COMPUTED_SEARCH_ENTRY_ATTRS 2u
+#define N_INPUT_SEARCH_ENTRY_ATTRS (N_SEARCH_ENTRY_ATTRS - N_COMPUTED_SEARCH_ENTRY_ATTRS)
 
 /** Method name list. **/
 char* METHOD_NAMES[] =
     {
     "cache",
     "stat",
-    END_OF_ARRAY,
     };
+#define METHOD_NAMES_COUNT ((unsigned int)(sizeof(METHOD_NAMES) / sizeof(METHOD_NAMES[0])))
 
 
 /** ================ Struct Declarations ================ **/
@@ -681,18 +695,19 @@ ci_TryHint(char* value, char** valid_values, const unsigned int n_valid_values)
 static void
 ci_UnknownAttribute(char* attr_name, const int target_type)
     {
-	/** Display the error message. */
+	/** Display the error message. **/
 	mssError(1, "Cluster", "Unknown attribute '%s'.", attr_name);
 	
 	/** Collect specific attributes based on target type. **/
-	char** specific_attrs = NULL;
+	char** my_attrs = NULL;
+	unsigned int n_my_attrs = 0u;
 	switch (target_type)
 	    {
-	    case TARGET_NODE:          specific_attrs = ATTR_ROOT; break;
-	    case TARGET_CLUSTER:       specific_attrs = ATTR_CLUSTER; break;
-	    case TARGET_SEARCH:        specific_attrs = ATTR_SEARCH; break;
-	    case TARGET_CLUSTER_ENTRY: specific_attrs = ATTR_CLUSTER_ENTRY; break;
-	    case TARGET_SEARCH_ENTRY:  specific_attrs = ATTR_SEARCH_ENTRY; break;
+	    case TARGET_NODE:          my_attrs = ROOT_ATTRS;          n_my_attrs = N_INPUT_ROOT_ATTRS; break;
+	    case TARGET_CLUSTER:       my_attrs = CLUSTER_ATTRS;       n_my_attrs = N_INPUT_CLUSTER_ATTRS; break;
+	    case TARGET_SEARCH:        my_attrs = SEARCH_ATTRS;        n_my_attrs = N_INPUT_SEARCH_ATTRS; break;
+	    case TARGET_CLUSTER_ENTRY: my_attrs = CLUSTER_ENTRY_ATTRS; n_my_attrs = N_INPUT_CLUSTER_ENTRY_ATTRS; break;
+	    case TARGET_SEARCH_ENTRY:  my_attrs = SEARCH_ENTRY_ATTRS;  n_my_attrs = N_INPUT_SEARCH_ENTRY_ATTRS; break;
 	    default:
 		mssError(0, "Cluster",
 		    "Unknown target type %u detected while attempting to generate hint.",
@@ -701,19 +716,9 @@ ci_UnknownAttribute(char* attr_name, const int target_type)
 		return;
 	    }
 	
-	/** Count specific attributes. **/
-	unsigned int n_specific_attrs = 0;
-	while (specific_attrs[n_specific_attrs] != NULL) n_specific_attrs++;
-	
-	/** Collect general attributes. */
-	char** general_attrs = (char*[]){
-	    "name", "annotation", "content_type", "inner_type", "outer_type",
-	    "internal_type", "date_computed", "date_created", "last_modification",
-	};
-	
 	/** Attempt to give hints. **/
-	if (ci_TryHint(attr_name, specific_attrs, n_specific_attrs));
-	else if (ci_TryHint(attr_name, general_attrs, 9));
+	if (ci_TryHint(attr_name, my_attrs, n_my_attrs));
+	else if (ci_TryHint(attr_name, DRIVER_ATTRIBUTE_NAMES, N_DRIVER_ATTRIBUTE_NAMES));
     }
 
 
@@ -4329,11 +4334,11 @@ clusterGetNextAttr(void* inf_v, pObjTrxTree* oxt)
 	const unsigned int i = driver_data->TargetAttrIndex++;
 	switch (driver_data->TargetType)
 	    {
-	    case TARGET_NODE:          return ATTR_ROOT[i];
-	    case TARGET_CLUSTER:       return ATTR_CLUSTER[i];
-	    case TARGET_SEARCH:        return ATTR_SEARCH[i];
-	    case TARGET_CLUSTER_ENTRY: return ATTR_CLUSTER_ENTRY[i];
-	    case TARGET_SEARCH_ENTRY:  return ATTR_SEARCH_ENTRY[i];
+	    case TARGET_NODE:          return (i < N_ROOT_ATTRS) ? ROOT_ATTRS[i] : NULL;
+	    case TARGET_CLUSTER:       return (i < N_CLUSTER_ATTRS) ? CLUSTER_ATTRS[i] : NULL;
+	    case TARGET_SEARCH:        return (i < N_SEARCH_ATTRS) ? SEARCH_ATTRS[i] : NULL;
+	    case TARGET_CLUSTER_ENTRY: return (i < N_CLUSTER_ENTRY_ATTRS) ? CLUSTER_ENTRY_ATTRS[i] : NULL;
+	    case TARGET_SEARCH_ENTRY:  return (i < N_SEARCH_ENTRY_ATTRS) ? SEARCH_ENTRY_ATTRS[i] : NULL;
 	    default:
 		mssError(1, "Cluster", "Unknown target type %u.", driver_data->TargetType);
 		return NULL;

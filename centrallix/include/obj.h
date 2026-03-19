@@ -644,6 +644,21 @@ typedef struct
 	obj_internal_PathPart(_obj->Pathname, 0, _obj->SubPtr); \
     })
 
+/*** An array of the names of the general attributes that must be implemented
+ *** for every object system driver.  See `OSDriver_Authoring.md` for more
+ *** information.
+ ***/
+#define DRIVER_ATTRIBUTE_NAMES \
+    ((char*[]){ \
+    "name", \
+    "annotation", \
+    "content_type", \
+    "inner_type", \
+    "outer_type", \
+    "last_modification", \
+    })
+#define N_DRIVER_ATTRIBUTE_NAMES ((unsigned int)(sizeof(DRIVER_ATTRIBUTE_NAMES) / sizeof(DRIVER_ATTRIBUTE_NAMES[0])))
+
 
 /** objectsystem main functions **/
 int objInitialize();
