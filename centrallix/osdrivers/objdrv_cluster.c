@@ -2881,7 +2881,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	    {
 	    search_data->Pairs = (pPair*)check_ptr(xaToArray(pairs));
 	    if (search_data->Pairs == NULL) goto err_free;
-	    check(xaFree(&pairs)); /* Failure ignored. */
+	    check(xaFree(pairs)); /* Failure ignored. */
 	    pairs = NULL;
 	    }
 	if (search_data->Pairs == NULL)
