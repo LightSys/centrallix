@@ -86,7 +86,7 @@
     - [st_node: snReadNode()](#st_node-snreadnode)
     - [st_node: snNewNode()](#st_node-snnewnode)
     - [st_node: snWriteNode()](#st_node-snwritenode)
-    - [st_node: snDelete()](#st_node-sndeletenode)
+    - [st_node: snDelete()](#st_node-sndelete)
     - [st_node: snGetSerial()](#st_node-sngetserial)
     - [st_node: snGetLastModification()](#st_node-sngetlastmodification)
     - [Module: stparse](#module-stparse)
@@ -100,8 +100,8 @@
     - [stparse: stAddValue()](#stparse-staddvalue)
     - [stparse: stFreeInf()](#stparse-stfreeinf)
     - [stparse: Using Fields Directly](#stparse-using-fields-directly)
-  - [IV Module: Expression](#viii-module-expression)
-    - [expCompileExpression())](#expallocexpression)
+  - [IV Module: Expression](#iv-module-expression)
+    - [expAllocExpression())](#expallocexpression)
     - [expFreeExpression()](#expfreeexpression)
     - [expCompileExpression()](#expcompileexpression)
     - [expCompileExpressionFromLxs()](#expcompileexpressionfromlxs)
@@ -117,12 +117,12 @@
     - [expRemoveParamFromList()](#expremoveparamfromlist)
     - [expSetParamFunctions()](#expsetparamfunctions)
     - [expReverseEvalTree()](#expreverseevaltree)
-  - [V Path Handling Functions](#x-path-handling-functions)
+  - [V Path Handling Functions](#v-path-handling-functions)
     - [obj_internal_PathPart()](#obj_internal_pathpart)
     - [obj_internal_AddToPath()](#obj_internal_addtopath)
     - [obj_internal_CopyPath](#obj_internal_copypath)
     - [obj_internal_FreePathStruct()](#obj_internal_freepathstruct)
-  - [VI Parsing Data](#xii-parsing-data)
+  - [VI Parsing Data](#vi-parsing-data)
     - [mlxOpenSession()](#mlxopensession)
     - [mlxStringSession()](#mlxstringsession)
     - [mlxCloseSession()](#mlxclosesession)
@@ -137,21 +137,21 @@
     - [mlxSetReservedWords()](#mlxsetreservedwords)
     - [mlxNoteError()](#mlxnoteerror)
     - [mlxNotePosition()](#mlxnoteposition)
-  - [VII Driver Testing](#xiii-driver-testing)
-    - [Object opening, closing, creation, and deletion](#aobject-opening-closing-creation-and-deletion)
-    - [Object attribute enumeration, getting, and setting.](#bobject-attribute-enumeration-getting-and-setting)
-    - [Object querying (for subobjects)](#cobject-querying-for-subobjects)
+  - [VII Driver Testing](#vii-driver-testing)
+    - [A. Opening, closing, creating, and deleting](#a-opening-closing-creating-and-deleting)
+    - [B. Attributes](#b-attributes)
+    - [C. Querying Subobjects](#c-querying-subobjects)
 
 
 
 ## I Introduction
 An objectsystem driver's purpose is to provide access to a particular type of local or network data/resource.  Specific information about the resource to be accessed (such as credentials for a database, queries for selecting data, the auth token for an API, etc.) is stored in a file that is opened by the relevant driver.  For example, the query driver (defined in `objdrv_query.c`) opens `.qy` files, which store one or more ObjectSQL queries used to fetch data.
 
-When the object system starts up, each driver registers one or more type names that it supports (e.g. `"system/query"` for the query driver).  When a file is opened, the object system uses the file's type name to select which driver to use. It finds this type name with one of two strategies.  If the file has an extension (e.g. `example.qy`), that extension can be mapped to a type name using `types.cfg` (e.g. `.qy` maps to `"system/query"`).  Althernatively, the file may reside in a directory containing a `.type` file which explicitly specifies the type name for all files in that directory without recognizable extensions.
+When the object system starts up, each driver registers one or more type names that it supports (e.g. `"system/query"` for the query driver).  When a file is opened, the object system uses the file's type name to select which driver to use. It finds this type name with one of two strategies.  If the file has an extension (e.g. `example.qy`), that extension can be mapped to a type name using `types.cfg` (e.g. `.qy` maps to `"system/query"`).  Alternatively, the file may reside in a directory containing a `.type` file which explicitly specifies the type name for all files in that directory without recognizable extensions.
 
 Once a file is opened, the driver should organize provided data into a tree-structured hierarchy, which becomes part of the path used by Centrallix's ObjectSystem.  For example, when opening `example.qy` in the ObjectSystem, the driver makes `/rows` and `/columns` available, allowing for paths such as `/apps/data/example.qy/rows`.  The root of a driver's tree (`example.qy`) is called the driver's "node" object, and most paths traverse the node objects of multiple drivers.  The root of the entire tree is a special driver called the root node which is used to begin traversal.  Within its tree, a driver author is free to define any manner of hierarchical structures for representing available data.  However, the structure should fit the basic ObjectSystem model of a hierarchy of objects, each having attributes, and optionally some methods and/or content.
 
-A driver can be opened multiple times, leading one driver to have multiple "node" objects, also called instances.  Typically, each "node" object relates to a particular instance of a resource.  For example, say you are designing a driver to access MySQL databases.  You could design the driver file to describe a MySQL instance.  Thus, the node object for this driver could have children for each database in that instance (e.g. `Kardia_DB`, `mysql`, and even the system databases used by MySQL to manage the database internals).  Another design would be for each driver file to describe one MySQL database.  Thus, you could make a `Kardia_DB` file to access that database, and the children of that node object would be each table in the database.  A third design option would be for each driver file to describe a MySQL table.  Thus, you make a `p_partner` file to access members of the partner table, a `p_contact_info` file to access contact info for parterners, etc. with each node object having children for the rows in the table.  This last option would require the developer to create a _lot_ of files (and would probably also make joins hard to implement), so in this case, it's probably not the best.  Ultimately, though, these design choices are up to the driver author.
+A driver can be opened multiple times, leading one driver to have multiple "node" objects, also called instances.  Typically, each "node" object relates to a particular instance of a resource.  For example, say you are designing a driver to access MySQL databases.  You could design the driver file to describe a MySQL instance.  Thus, the node object for this driver could have children for each database in that instance (e.g. `Kardia_DB`, `mysql`, and even the system databases used by MySQL to manage the database internals).  Another design would be for each driver file to describe one MySQL database.  Thus, you could make a `Kardia_DB` file to access that database, and the children of that node object would be each table in the database.  A third design option would be for each driver file to describe a MySQL table.  Thus, you make a `p_partner` file to access members of the partner table, a `p_contact_info` file to access contact info for partners, etc. with each node object having children for the rows in the table.  This last option would require the developer to create a _lot_ of files (and would probably also make joins hard to implement), so in this case, it's probably not the best.  Ultimately, though, these design choices are up to the driver author.
 
 an instance of a POP3 driver might represent a POP3 server on the network.  If the network had multiple POP3 servers, this driver could be used to access each of them through different node objects (e.g. `dev.pop3`, `prod.pop3`, etc.).  However, if somehow the OS driver were able to easily enumerate the various POP3 servers on the network (i.e., they responded to some kind of hypothetical broadcast query), then the OS driver author could also design the driver to list the POP3 servers under a single node for the whole network.
 
@@ -160,7 +160,7 @@ The structure of the subtree beneath the node object is entirely up to the drive
 - Content, which can be read similar to reading a file.
 - Query data, allowing the object to be queried for information.
 
-Thus, parent objects with child objects behave similarly to a directory, although they can still have separate readable data _and_ queryable data. This may seem foreign in the standard file system paradime, however, it is common for web servers, where opening a directory often returns `index.html` file in that directory, or some other form of information to allow further navigation.  Querying an object was originally intended as a way to quickly traversal of its child objects, although queries are not required to be implemented this way.
+Thus, parent objects with child objects behave similarly to a directory, although they can still have separate readable data _and_ queryable data. This may seem foreign in the standard file system paradigm, however, it is common for web servers, where opening a directory often returns `index.html` file in that directory, or some other form of information to allow further navigation.  Querying an object was originally intended as a way to quickly traversal of its child objects, although queries are not required to be implemented this way.
 
 Below is an example of the Sybase driver's node object and its subtrees of child objects (defined in `objdrv_sybase.c`):
 
@@ -197,7 +197,7 @@ Kardia_DB (type = "application/mysql")
 
 (... and so forth)
 
-In this case, the `OMSS_DB` file becomes the driver's node object. This file would contain the information necessary to access the database, such as server name, database name, max connections to pool, and so forth.
+In this case, the `Kardia_DB` file becomes the driver's node object.  This file on disk contains the information necessary to access the database (such as server name, database name, max connections to pool, etc.).
 
 OS Drivers support several primary areas of functionality:
 - Opening and closing objects.
@@ -207,7 +207,7 @@ OS Drivers support several primary areas of functionality:
 - Executing object methods (optional).
 - Querying data attributes (optional).
 
-Using the example above, we can query from the database using a statement like `select :title from /OMSS_DB/JNetHelp/rows`, which will open a sybase driver instance, then open a query and repeatedly fetch rows, getting the `title` attribute from each row.
+Using the example above, we can query from the database using a statement like `select :title from /Kardia_DB/p_partner/rows`, which will open a mysql driver instance, then open a query and repeatedly fetch rows, getting the `title` attribute from each row.
 
 
 
@@ -307,7 +307,7 @@ For example:
 ```c
 if (xaInit(&(drv->RootContentTypes), 2) != 0) goto error_handling;
 if (xaAddItem(&(drv->RootContentTypes), "application/sybase") < 0) goto error_handling;
-if (xaAddItem(&(drv->RootContentTypes), ""system/query"") < 0) goto error_handling;
+if (xaAddItem(&(drv->RootContentTypes), "system/query") < 0) goto error_handling;
 ```
 
 - 📖 **Note**: To make a specific file extension (like `.qy`) open in a driver, edit `types.cfg` to map that file extension to an available root content type supported by the driver (such as `"system/query"`).
@@ -342,13 +342,13 @@ The `Open()` function opens a given file to create a new driver instance. This p
 4.  Perform other opening operations (such as reading database table information, etc., when a db table's row is being accessed).
 5.  Return a pointer to the node instance as a void pointer.  This pointer will be passed as `void* inf_v` to the driver in subsequent calls involving this object (except the Query functions, discussed below).
 
-- 📖 **Note - Transactions**: If the os driver specified the `OBJDRV_C_TRANS` capability, it must respect the current state of the user's transaction.  If a new object is being created, an object is being deleted, or other modifications/additions are being performed, and if the OXT layer indicates a transaction is in process, the driver must either complete the current transaction and then complete the current call, or else add the current delete/create/modify call to the transaction tree (in which case the tree item is preallocated; all the driver needs to do is fill it in).  This is handled using the transaction tree parameter (`oxt : pObjTrxTree*`).
+- 📖 **Note - Transactions**: If the os driver specified the `OBJDRV_C_TRANS` capability, it must respect the current state of the user's transaction.  If a new object is being created, an object is being deleted, or other modifications/additions are being performed, and if the OXT layer indicates a transaction is in process, the driver must either complete the current transaction and then complete the current call, or else add the current delete/create/modify call to the transaction tree (in which case the tree item is pre-allocated; all the driver needs to do is fill it in).  This is handled using the transaction tree parameter (`oxt : pObjTrxTree*`).
 
 #### Accessing the Node Object
 If `O_CREAT` and `O_EXCL` are both specified in `parent->Mode`, the driver should **only** create a new file and fail if the file already exists (refusing to open and read it).  Otherwise, the driver should read an existing file, or create one if it does not exist and `O_CREAT` is specified, failing if no file can be read or created.
 
 #### Parsing Path Contents
-The task of parsing the provided path into the subtree beneath its node object is one of the more complex operations for a driver.  For example, the path to a driver's node object might be `/datasources/Kardia_DB` and the user opens an object called `/datasources/Kardia_DB/p_partner/rows/1`.  In this case, the OS driver must parse the meaning of the subtree path `p_partner/rows/1`, storing the data targetted by the user into the driver instance to allow later method calls to access the correct data.
+The task of parsing the provided path into the subtree beneath its node object is one of the more complex operations for a driver.  For example, the path to a driver's node object might be `/datasources/Kardia_DB` and the user opens an object called `/datasources/Kardia_DB/p_partner/rows/1`.  In this case, the OS driver must parse the meaning of the subtree path `p_partner/rows/1`, storing the data targeted by the user into the driver instance to allow later method calls to access the correct data.
 
 #### Parameters
 The `Open()` routine is called with five parameters:
@@ -361,7 +361,7 @@ The `Open()` routine is called with five parameters:
 
     - `parent->Pathname->OpenCtl : pStruct[]`: Parameters for the open() operation, as defined by the driver author. These are specified in the path in a similar way to URLs (`example.qy?param1=value&param2=other_value`).  Drivers typically only use `parent->Pathname->OpenCtl[parent->SubPtr]` (see SubPtr below) to retrieve their own parameters, ignoring parameters passed to other drivers in the path.
 
-    - `parent->SubPtr : short`: The number of components in the path that are a part of the path to the driver's node object, including the `.` for the top level directory and the driver's node object.  For example, in the above path of `/data/file.csv`, the path would be internally represented as `./ data/ file.csv`, so SubPtr is 3.
+    - `parent->SubPtr : short`: The number of components in the path that are a part of the path to the driver's node object, including the `.` for the top level directory and the driver's node object.  For example, in the path of `/data/file.csv`, the path would be internally represented as `./ data/ file.csv`, so SubPtr is 3.
     
       - For example, use `obj_internal_PathPart(parent->Pathname, parent->SubPtr - 1, 1)` to get the name of the file being opened, and use `obj_internal_PathPart(parent->Pathname, 0, parent->SubPtr)` to get the path.
 
@@ -403,23 +403,23 @@ void* xxxOpenChild(void* inf_v, pObject obj, char* child_name, int mask, pConten
 ```
 Opens a single child object of the provided object by name.  Conceptually, this is similar to querying the object for all children where the name attribute equals the passed `child_name` parameter and fetching only the first result.  This function is used to open children of a driver that do not map well into the driver's node object tree.  For example, the query file driver uses this function to allow the caller to open a temporary collection declared in that query file.
 
-The `OpenChild()` function is called with two parameters:
+The `OpenChild()` function is called with seven parameters:
 
 | Param      | Type         | Description                                                               |
 |------------|--------------|---------------------------------------------------------------------------|
 | inf_v      | void*        | A driver instance pointer (returned from `Open()` or `QueryFetch()`).     |
-| obj        | pObject      | An object?                                                                |
-| child_name | char*        | The value for the name attribute of the child object to be opened.       |
+| obj        | pObject      | The child object provided by the object system.                           |
+| child_name | char*        | The value for the name attribute of the child object to be opened.        |
 | mask       | int          | The permission mask to be given to the object (if created).*              |
 | sys_type   | pContentType | Indicates the content type of the node object as determined by the OSML.* |
 | usr_type   | char*        | The object type requested by the user.*                                   |
 | oxt        | pObjTrxTree* | The transaction tree pointer for the `OBJDRV_C_TRANS` capability.         |
 
-<!-- TODO: Greg - I assume the object above is the parent, similar to open... but how is it that different from `inf_v` in this case? -->
-
 *See [`Open()`](#function-open) above for more info.
 
-The `OpenChild()` function should a pointer to the node object for the newly opened child on success or `NULL` on failure.  
+The `OpenChild()` function should return a pointer to the node object for the newly opened child on success or `NULL` on failure.
+
+- 📖 **Note**: The object system stores the value returned from this function into `obj->Data`.
 
 ---
 ### Function: Close()
@@ -448,7 +448,7 @@ The `Close()` function should return 0 on success or -1 on failure.
 ```c
 int xxxCreate(pObject obj, int mask, pContentType sys_type, char* usr_type, pObjTrxTree* oxt);
 ```
-The `Create()` function is used to create a new object, and uses the same parameters and return value as `Open()` (documented in detail above).  This often means adding a new file to the file system to represent the object.  Many drivers do not implement this and recommend that driver end-users create files using a standard text editor or programatically using more general means, such as general structure file generation.  If implemented, this function frequently requires very similar path parsing functionality to `Open()`.
+The `Create()` function is used to create a new object, and uses the same parameters and return value as `Open()` (documented in detail above).  This often means adding a new file to the file system to represent the object.  Many drivers do not implement this and recommend that driver end-users create files using a standard text editor or programmatically using more general means, such as general structure file generation.  If implemented, this function frequently requires very similar path parsing functionality to `Open()`.
 
 - 📖 **Note**: For many drivers, the `Create()` function calls the driver's `Open()` function with `O_CREAT`, then calls its `Close()` function, although some drivers may manage this differently.
 
@@ -489,7 +489,7 @@ The parameters passed are intentionally similar to the `fdRead()` function in `m
 | buffer    | char*        | The buffer where read data should be stored.                                                                                 |
 | max_cnt   | int          | The maximum number of bytes to read into the buffer.                                                                         |
 | offset    | int          | An optional seek offset.                                                                                                     |
-| flags     | int          | Either `0` or `FD_U_SEEK`. If `FD_U_SEEK` is specified, the caller should specify a seek offset in the 5th argument (`arg`). |
+| flags     | int          | Either `0` or `FD_U_SEEK`. If `FD_U_SEEK` is specified, the caller should specify a seek offset in the 4th argument (`arg`). |
 | oxt       | pObjTrxTree* | The transaction tree pointer for the `OBJDRV_C_TRANS` capability.                                                            |
 
 - 📖 **Note**: Not all objects can be seekable and some of the objects handled by the driver may have limited seek functionality, even if others do not.
@@ -532,7 +532,7 @@ The `OBJ_QY_F_FULLQUERY` flag indicates that the driver will handle the full `wh
 
 The `OBJ_QY_F_FULLSORT` flag indicates that the driver will handle all sorting for the data specified in `query->SortBy[]`.
 
-If the driver can easily handle sorting/selection (as when querying an database), it should set these flags. Otherwise, it should let the OSML handle the ORDER BY and WHERE conditions to avoid unnecessary work for the driver author.
+If the driver can easily handle sorting/selection (as when querying a database), it should set these flags. Otherwise, it should let the OSML handle the ORDER BY and WHERE conditions to avoid unnecessary work for the driver author.
 
 The `OpenQuery()` function returns a `void*` for the query instance struct, which will be passed to the other query functions (`QueryDelete()`, `QueryFetch()`, and `QueryClose()`).  This structure normally points to the driver instance struct to allow easy access to queried data.  `OpenQuery()` returns `NULL` if the object does not support queries or if an error occurs, in which case `mssError()` should be called before returning.
 
@@ -667,14 +667,16 @@ The `GetAttrValue()` function takes four parameters:
 The value pointer points to a union struct which can hold one of several types of data in the same memory location.  Which type of data is expected depends on the value of the `datatype` parameter.
 | Field       | Datatype           | Description
 | ----------- | ------------------ | -----------
-| `Integer`   | `DATA_T_INTEGER`   | An int where the value should be written.
-| `String`    | `DATA_T_STRING`    | A `char*` where a pointer to the string should be written.
-| `Double`    | `DATA_T_DOUBLE`    | A double where the double should be written.
-| `DateTime`  | `DATA_T_DATETIME`  | A `pDateTime` where a pointer to the `DateTime` struct (see [`datatypes.h`](../centrallix/include/datatypes.h)) should be written.
-| `IntVec`    | `DATA_T_INTVEC`    | A `pIntVec` where a pointer to the `IntVec` struct (see [`datatypes.h`](../centrallix/include/datatypes.h)) should be written.
-| `StringVec` | `DATA_T_STRINGVEC` | A `pStringVec` where a pointer to the `StringVec` struct (see [`datatypes.h`](../centrallix/include/datatypes.h)) should be written.
-| `Money`     | `DATA_T_MONEY`     | A `pMoneyType` where a pointer to the `MoneyType` struct (see [`datatypes.h`](../centrallix/include/datatypes.h)) should be written.
-| `Generic`   | ?                  | A `void*` to somewhere where something should be written should be written (usually implementation dependant).
+| `Integer`   | `DATA_T_INTEGER`   | Store an `int` in the `val->Integer` field.
+| `String`    | `DATA_T_STRING`    | Store a `char*` in the `val->String` field.
+| `Double`    | `DATA_T_DOUBLE`    | Store a `double` in the `val->Double` field.
+| `DateTime`  | `DATA_T_DATETIME`  | Store a `pDateTime`* in the `val->DateTime` field.
+| `IntVec`    | `DATA_T_INTVEC`    | Store a `pIntVec`* in the `val->IntVec` field.
+| `StringVec` | `DATA_T_STRINGVEC` | Store a `pStringVec`* in the `val->StringVec` field.
+| `Money`     | `DATA_T_MONEY`     | Store a `pMoneyType`* in the `val->Money` field.
+| `Generic`   | ?                  | Store a `void*` in the `val->Generic` field (target data is usually implementation dependant).
+
+\*_See [`datatypes.h`](../centrallix-lib/include/datatypes.h) for more info about this datatype._
 
 In this way, `int`s and `double`s can be returned by value while other types are returned by reference.  Items returned by reference must be guaranteed to be valid until either the object is closed, or another `GetAttrValue()` or `SetAttrValue()` call is made on the same driver (which ever happens first).
 
@@ -688,14 +690,14 @@ This function should return 0 on success, 1 if the value is `NULL` or undefined 
     printf("Object name: \"%s\"\n", name);
     ```
 
-- 📖 **Note**: In legacy code, a typecasted `void*` was used instead of a `pObjData` pointer used today.  This method was binary compatible the current solution because of the union struct implementation (See [`datatypes.h`](../centrallix/include/datatypes.h) for more information).
+- 📖 **Note**: In legacy code, a type cast `void*` was used instead of a `pObjData` pointer used today.  This method was binary compatible the current solution because of the union struct implementation (See [`datatypes.h`](../centrallix/include/datatypes.h) for more information).
 
 
 ### Function: SetAttrValue()
 ```c
 int xxxSetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pObjTrxTree* oxt);
 ```
-The `SetAttrValue()` function is the same as `GetAttrValue()`, however it sets the value by reading it from the `val` parameter instead of getting the value by writing it to the `val` parameter.  The return value is also identical, and `mssError()` should be invoked on failure, or if setting attributes programatically is not implemented.
+The `SetAttrValue()` function is the same as `GetAttrValue()`, however it sets the value by reading it from the `val` parameter instead of getting the value by writing it to the `val` parameter.  The return value is also identical, and `mssError()` should be invoked on failure, or if setting attributes programmatically is not implemented.
 
 
 ### Function: GetFirstAttr() & GetNextAttr()
@@ -802,10 +804,10 @@ The return value, `hints : ObjPresentationHints`, contains the following useful 
 - ⚠️ **Warning**: Behavior is undefined if:
   - The data is longer than length.
 
-The `hints->Style` field can be set with several useful flags. To specify that a flag is not set (e.g. to specify explicitly that a field does allow `NULL`s), set the coresponding bit in the `hints->StyleMask` field while leaving the the bit in the `hints->Style` field set to 0.
+The `hints->Style` field can be set with several useful flags. To specify that a flag is not set (e.g. to specify explicitly that a field does allow `NULL`s), set the corresponding bit in the `hints->StyleMask` field while leaving the the bit in the `hints->Style` field set to 0.
 
 The following macros are provided for setting style flags:
-- `OBJ_PH_STYLE_BITMASK`: The items in `hints->EnumList` or `hints->EnumQuery` are bitmasked.
+- `OBJ_PH_STYLE_BITMASK`: The items in `hints->EnumList` or `hints->EnumQuery` are bit masked.
 - `OBJ_PH_STYLE_LIST`: List-style presentation should be used for the values of an enum attribute.
 - `OBJ_PH_STYLE_BUTTONS`: Radio buttons or check boxes should be used for the presentation of enum attribute values.
 - `OBJ_PH_STYLE_NOTNULL`: The attribute does not allow `NULL` values.
@@ -814,7 +816,7 @@ The following macros are provided for setting style flags:
 - `OBJ_PH_STYLE_READONLY`: The user is not allowed to modify this attribute.
 - `OBJ_PH_STYLE_HIDDEN`: This attribute should be hidden and not presented to the user.
 - `OBJ_PH_STYLE_PASSWORD`: Values in this attribute should be hidden, such as for passwords.
-- `OBJ_PH_STYLE_MULTILINE`: String values should allow multiline editting.
+- `OBJ_PH_STYLE_MULTILINE`: String values should allow multiline editing.
 - `OBJ_PH_STYLE_HIGHLIGHT`: This attribute should be highlighted when presented to the user.
 - `OBJ_PH_STYLE_LOWERCASE`: This attribute only allows lowercase characters.
 - `OBJ_PH_STYLE_UPPERCASE`: This attribute only allows uppercase characters.
@@ -822,7 +824,7 @@ The following macros are provided for setting style flags:
 - `OBJ_PH_STYLE_SEPWINDOW`: Prefer separate windows for grouped fields.
 - `OBJ_PH_STYLE_ALWAYSDEF`: Always reset the default value when this attribute is modified.
 - `OBJ_PH_STYLE_CREATEONLY`: This attribute is writeable only when created, after that it is read only.
-- `OBJ_PH_STYLE_MULTISEL`: This enum attribute can accept more than one value from the list of valid values.  Think of using checkboxes instead of radio buttons (although the flag does requirement this UI decision).
+- `OBJ_PH_STYLE_MULTISEL`: This enum attribute can accept more than one value from the list of valid values.  Think of using checkboxes instead of radio buttons (although the flag does not make any UI requirements).
 - `OBJ_PH_STYLE_KEY`: This attribute is a primary key.
 - `OBJ_PH_STYLE_APPLYCHG`: Presentation hints should be applied on DataChange instead of on DataModify.
 
@@ -838,7 +840,7 @@ The `Info()` function allows the caller to request extra information about a spe
 | inf_v     | void*         | A driver instance pointer (returned from `Open()` or `QueryFetch()`).
 | info      | pObjectInfo   | A driver info struct allocated by the caller which the driver sets with information.
 
-The `pObjectInfo` struct has two fields: `Flags` and `nSubobjects`.  This function should set `info->Flags` to 0 (to ensure no uninitialized noise gets into the data), then & it with all of the following flags that apply to that object.
+The `pObjectInfo` struct has two fields: `Flags` and `nSubobjects`.  This function should set `info->Flags` to 0 (to ensure no uninitialized noise gets into the data), then bitwise-or (`|`) it with all the following flags that apply to that object:
 - `OBJ_INFO_F_CAN_HAVE_SUBOBJ` / `OBJ_INFO_F_CANT_HAVE_SUBOBJ`: Indicates that the object can or cannot have subobjects.
 - `OBJ_INFO_F_HAS_SUBOBJ` / `OBJ_INFO_F_NO_SUBOBJ`: Indicates that the object has or does not have subobjects.
 - `OBJ_INFO_F_SUBOBJ_CNT_KNOWN`: Indicates that we know the number of subobjects.  If set, the count should be stored in `info->nSubobjects`.
@@ -893,11 +895,11 @@ A driver will commonly configure itself by reading text content from its node ob
 
 Although using the structure file format may be complex, it allows significant flexibility, as well as greater consistency across drivers.  The use of this shared syntax across different drivers makes learning to use a new driver far easier than it would be if they all used unique, custom syntax for specifying properties.  In the structure file syntax, data is structured in hierarchies where each sub-object can have named attributes as well as sub-objects.  Centrallix has many examples of this, including any `.qy`, `.app`, `.cmp`, or `.cluster` file.
 
-Structure files are accessed via the st_node (SN) and stparse (SP) modules.  The st_node module loads and saves the structure file heirarchies as a whole.  It also manages caching to reduce disk activity and eliminate repeated parsing of the same file.  The stparse module provides access to the individual attributes and groups of attributes within a node structure file.
+Structure files are accessed via the st_node (SN) and stparse (SP) modules.  The st_node module loads and saves the structure file hierarchies as a whole.  It also manages caching to reduce disk activity and eliminate repeated parsing of the same file.  The stparse module provides access to the individual attributes and groups of attributes within a node structure file.
 
-For example, if two sessions open two files, `/test1.rpt` and `/test2.rpt` the st_node module will cache the internal representations of these node object files, and for successive uses of these node objects, the physical file will not be re-parsed.  The file will be re-parsed if its timestamp changes.
+For example, if two sessions open two files, `/test1.rpt` and `/test2.rpt` the st_node module will cache the internal representations of these node object files, and for successive uses of these node objects, the physical file will not be reparsed.  The file will be reparsed if its timestamp changes.
 
-If the underlying object does not support the attribute "last_modification" (assumed to be the timestamp), then st_node prints a warning.  In essence, this warning indicates that changes to the underlying object will not trigger the st_node module to re-read the structure file defining the node object.  Otherwise, the st_node module keeps track of the timestamp, and if it changes, the node object is re-read and re-parsed.
+If the underlying object does not support the attribute "last_modification" (assumed to be the timestamp), then st_node prints a warning.  In essence, this warning indicates that changes to the underlying object will not trigger the st_node module to re-read the structure file defining the node object.  Otherwise, the st_node module keeps track of the timestamp, and if it changes, the node object is re-read and reparsed.
 
 ### Module: st_node
 To obtain node object data, the driver should first open the node object with the st_node module.  To use this module, include the file `st_node.h`, which provides the following functions (read `st_node.c` for more functions and additional information):
@@ -1042,15 +1044,13 @@ This function adds a node of type `ST_T_SUBGROUP` to either an `ST_T_SUBGROUP` o
 ```c
 int stAddValue(pStructInf inf, char* strval, int intval);
 ```
-This function adds a value to an attribute, and can be called multiple times on an attribute to add a list of values.  If `strval` is not null, a string value is added, otherwise an integer value is added.  The string is NOT copied, but is simply pointed-to.
-
-<!-- TODO: Greg - I just realized I didn't explain what this function returns and that info isn't clear from the implementation. Could you explain the meaning of the int that this function returns? -->
+This function adds a value to an attribute.  If there is already one value, it creates an `EXPR_N_LIST`, and if there's already a list it simply adds the new value to the list.  Thus, this function can be called multiple times on an attribute to add a list of multiple values.  If `strval` is not null, a string value is added, otherwise an integer value is added using `intval`.  The string is NOT copied, but is simply pointed-to.  This function returns the number of values stored on the attribute, including the new one.  No errors can occur, so it never returns -1.
 
 ### stparse: stFreeInf()
 ```c
 int stFreeInf(pStructInf this);
 ```
-This function is used to free a `StructInf` tree node.  This also recursively frees sub-tree nodes, so these should be disconnected before calling if they are still needed.  To do this, remove them from the SubInf array by appropriately adjusting the nSubInf counter and setting the SubInf array position to `NULL`.  This function also disconnects the tree node from its parent, if any, so if the parent is already `free()`'d, prevent this behavior by setting the node's Parent pointer to `NULL` before calling this function.  Any strings marked allocated with the StrAlloc flags will also be `free()`'d by this function, so update that flag if necessary.
+This function is used to free a `StructInf` tree node.  This also recursively frees sub-tree nodes, so these should be disconnected before calling if they are still needed.  To do this, remove them from the SubInf array by appropriately adjusting the nSubInf counter and setting the SubInf array position to `NULL`.  This function also disconnects the tree node from its parent, if any, so if the parent is already `free()`'d, prevent this behavior by setting the node's Parent pointer to `NULL` before calling this function.  Any strings marked allocated with the StrAlloc flags will also be `free()`'d by this function, so update that flag if necessary.  This function returns 0.
 
 
 ### stparse: Using Fields Directly
@@ -1221,12 +1221,18 @@ static int ci_GetParamValue(void* v, char* attr_name, int datatype, pObjData val
 static int ci_SetParamValue(void* v, char* attr_name, int datatype, pObjData val);
 ```
 
+The functions use the following parameters:
 - `v : void*` is the object provided in `expAddParamToList()` (or a similar function).
 - `attr_name : char*` is the string name for the requested attribute.
 - `datatype : int` is the data type for the requested attribute.
 - `val : pObjectData` is either a buffer in which to store the requested data (`ci_GetParamValue()`) or a buffer containing data that will be copied to the parameter `ci_SetParamValue()`.
 
-All three of these functions return 0 for success, 1 if the attribute is `NULL`, or -1 if an error occurs.  The `expSetParamFunctions()` function returns 0 if the functions were set successfully, or -1 if an error occurs.
+The functions return the following values:
+- The `ci_GetParamType()` function returns the datatype on success (e.g. `DATA_T_INTEGER`), or -1 if an error occurs.
+- The `ci_GetParamValue()` function returns 0 for success, 1 if the attribute is `NULL`, or -1 if an error occurs.
+- The `ci_SetParamValue()` function returns 0 for success (even if the value was set to `NULL`), or -1 if an error occurs.
+
+The `expSetParamFunctions()` function returns 0 if the functions were set successfully, or -1 if an error occurs.
 
 ### expReverseEvalTree()
 ```c
@@ -1295,7 +1301,7 @@ This function frees a pathname structure.
 
 
 ## VI Parsing Data
-The mtlexer (MLX) module is a lexical analyzer library provided by Centrallix for parsing many types of data.  It can parse data from either a `pFile` descriptor or from a string value.  This lexical analyzer is also used by the [expression compiler](#viii-module-expression).  In simple terms, it's a very fancy string tokenizer.
+The mtlexer (MLX) module is a lexical analyzer library provided by Centrallix for parsing many types of data.  It can parse data from either a `pFile` descriptor or from a string value.  This lexical analyzer is also used by the [expression compiler](#iv-module-expression).  In simple terms, it's a very fancy string tokenizer.
 
 ### mlxOpenSession()
 ```c
@@ -1307,7 +1313,7 @@ This function opens a lexer session, using a file descripter as its source.  Som
 | ----------------- | ------------
 | `MLX_F_ICASEK`    | Automatically convert all keywords (non-quoted strings) to lowercase.
 | `MLX_F_ICASER`    | Automatically convert all reserved words to lowercase.  This flag is highly recommended, and in some cases, required.
-| `MLX_F_ICASE`     | Same as MLX_F_ICASER | MLX_F_ICASEK.
+| `MLX_F_ICASE`     | Same as `MLX_F_ICASER` \| `MLX_F_ICASEK`.
 | `MLX_F_POUNDCOMM` | Respect # comment at the start of the line (`#comment`).
 | `MLX_F_CCOMM`     | Respect c-style comments (`/*comment*/`).
 | `MLX_F_CPPCOMM`   | Respect c-plus-plus comments (`//comment`).
@@ -1384,13 +1390,15 @@ Returns the type of the next token in the token stream.  Valid token types are:
 ```c
 char* mlxStringVal(pLxSession this, int* alloc);
 ```
-This function gets the string value of the current token.  If `alloc` is `NULL`, only the first 255 bytes of the string will be returned, and the rest will be discarded.  If `alloc` is non-null and set to 0, the routine will set `alloc` to 1 if it needed to allocate memory for a very long string, otherwise leave it as 0.  If `alloc` is non-null and set to 1, this routine will _always allocate memory for the string, whether long or short.
+This function gets the string value of the current token.  If `alloc` is `NULL`, an internal buffer is returned (which the caller _should not free_).  This may also cause an error if such a buffer is not available.  If `alloc` is non-null and set to 0, the routine will set `alloc` to 1 if it needed to allocate memory for a very long string, otherwise leave it as 0.  If `alloc` is non-null and set to 1, this routine will _always_ allocate memory for the string, whether long or short.
 
 This routine works no matter what the token type, and returns a string representation of the token if not `MLX_TOK_STRING`.
 
 This routine MAY NOT be called twice for the same token.
 
 - ⚠️ **Warning**: This function should not be called when `MLX_F_ALLOWNUL` is being used because it may return a null character, giving the caller no way to know whether it is the null-terminator or it simply existed in the input data stream.  In this case, `mlxCopyToken()` should be used instead, as it gives a definitive answer on the token length.  (`mlxStringVal()` can still be used on keywords, though, since they never contain a null, by definition).
+
+- ⚠️ **Warning**: This documentation might be slightly out of date from what the function currently does.  Double check `mtlexer.c`, if needed.
 
 ### mlxIntVal()
 ```c
@@ -1426,7 +1434,7 @@ This function sets the options (`MLX_F_xxx`) for an active lexer session.  The o
 ```c
 int mlxUnsetOptions(pLxSession this, int options);
 ```
-Clears options set by [`mlxSetOptions()`](#mlxsetoptions).  This function returns 0 if successful, or -1 if an error occurs.
+This function clears the same set of flags used by [`mlxSetOptions()`](#mlxsetoptions).  This function returns 0 if successful, or -1 if an error occurs.
 
 ### mlxSetReservedWords()
 ```c
@@ -1461,7 +1469,7 @@ MLX:  Error at line ##
 
 
 ## VII Driver Testing
-This section contains a list of things that can be done to test an objectsystem driver and ensure that it preforms all basic operations correctly, using the [test_obj command line interface](http://www.centrallix.net/docs/docs.php).
+This section contains a list of things that can be done to test an objectsystem driver and ensure that it preforms all basic operations correctly, using the [test_obj command line interface](https://www.centrallix.net/docs/docs.php?t=1.3.1%20test_obj%20Command-Line).
 
 It is strongly recommended to test for invalid reads, writes, frees, and memory leaks during each of these by watching memory utilization using nmDeltas() during repetitive operations (e.g., nmDeltas(), open, close, nmDeltas(), open, close, and then nmDeltas() again).
 
@@ -1543,11 +1551,11 @@ The term "**MAY**" refers to optional, but permissible, behavior.
 
 4.  Objects returned by `xxxQueryFetch()` MUST also be able to be passed to `xxxOpenQuery()` to check for the existence of further subobjects, though the `xxxOpenQuery()` call is permitted to fail as in (C)(1) above.
 
-5.  Any name returned by `xxxGetAttrValue(name)` on a queried subobject MUST be usable to open the same object using `xxxOpen()`.
+5.  Any name returned by `xxxGetAttrValue(name)` on a queried sub-object MUST be usable to open the same object using `xxxOpen()`.
 
 6.  Drivers which connect to resources which are able to perform sorting and/or selection (filtering) of records or objects SHOULD use the [`OBJ_QY_F_FULLSORT`](#function-openquery) and [`OBJ_QY_F_FULLQUERY`](#function-openquery) flags.  Further, they SHOULD pass on the sorting and filtering expressions to the remote resource so that resource can optimize sorting and/or filtering as needed.
 
-7.  If the driver's remote resource can filter and/or sort, but can only do so imperfectly (e.g., the resource cannot handle the potential complexity of all sorting/selection expressions, but can handle parts of them), then `OBJ_QY_F_FULLSORT` and/or `OBJ_QY_F_FULL`- QUERY MUST NOT be used.  However the remote resource MAY still provide partial sorting and/or selection of data.
+7.  If the driver's remote resource can filter and/or sort, but can only do so imperfectly (e.g., the resource cannot handle the potential complexity of all sorting/selection expressions, but can handle parts of them), then `OBJ_QY_F_FULLSORT` and/or `OBJ_QY_F_FULL`- QUERY MUST NOT be used.  However, the remote resource MAY still provide partial sorting and/or selection of data.
 
 8.  Drivers SHOULD NOT use `OBJ_QY_F_FULLSORT` and `OBJ_QY_F_FULLQUERY` if there is no advantage to letting the resource perform these operations (usually, however, if the resource provides such functionality, there is advantage to letting the resource perform those operations.  However, the coding burden to provide the filtering and sorting expressions to the resource, and in the correct format for the resource, may be not worth the work).
 
