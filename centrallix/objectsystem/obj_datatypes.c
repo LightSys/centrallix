@@ -205,7 +205,7 @@ objTypeToStr(const int type)
 	if (type < 0 || OBJ_TYPE_NAMES_CNT <= type)
 	    {
 	    /** Invalid type. **/
-	    mssErrorf(1, "Cluster", "Invalid type %d.\n", type);
+	    mssError(1, "Cluster", "Invalid type %d.\n", type);
 	    
 	    return "invalid"; /* Shall not parse to a valid type in ci_TypeFromStr(). */
 	    }

@@ -65,66 +65,6 @@
 /** ================ Stuff That Should Be Somewhere Else ================ **/
 /** ANCHOR[id=temp] **/
 
-/** TODO: Greg - I think this should be moved to mtsession. **/
-/*** I caused at least 10 bugs early in the project trying to pass format
- *** specifiers to mssError() without realizing that it didn't support them.
- *** Eventually, I got fed up enough having to write errors to a sting buffer
- *** and passing that buffer to mssError(), so I wrote this wrapper that does
- *** it for me.  It'd be better to add this to mssError(), though.
- ***/
-/*** Displays error text to the user (but no stack trace).  Does not exit the
- *** program, allowing the calling function to fail, generating a cascade of
- *** error messages which may provide useful info.
- *** 
- *** @param clr Whether to clear the current error stack.  As a rule of thumb,
- *** 	if you are the first one to detect the error, clear the stack so that
- *** 	other unrelated messages are not shown.  If you are detecting an error
- *** 	from another function that may also call an mssError() function, do
- *** 	not clear the stack.
- *** @param module The name or abbreviation of the module in which this 
- *** 	function is being called, to help developers narrow down the location
- *** 	of the error.
- *** @param format The format text for the error, which accepts any format
- *** 	specifier that would be accepted by printf().
- *** @param ... Variables matching format specifiers in the format.
- *** @returns Nothing, always succeeds.
- ***/
-void
-mssErrorf(int clr, char* module, const char* format, ...)
-    {
-	/** Prevent interlacing with stdout flushing at a weird time. **/
-	check(fflush(stdout)); /* Failure ignored. */
-	
-	/** Insert convenient newline before error stack begins. **/
-	if (clr == 1) fprintf(stderr, "\n");
-	
-	/** Process the format with all the same rules as printf(). **/
-	char buf[BUFSIZ];
-	va_list args;
-	va_start(args, format);
-	const int num_chars = vsnprintf(buf, sizeof(buf), format, args);
-	va_end(args);
-	
-	/** Error check vsnprintf, just to be safe. **/
-	if (num_chars < 0)
-	    {
-	    perror("vsnprintf() failed");
-	    fprintf(stderr, "FAIL: mssErrorf(%d, \"%s\", \"%s\", ...)\n", clr, module, format);
-	    return;
-	    }
-	if (num_chars > BUFSIZ)
-	    fprintf(stderr, "Warning: Error truncated (length %d > buffer size %d).\n", num_chars, BUFSIZ);
-	
-	/** Print the error. **/
-	const int ret = mssError(clr, module, "%s", buf);
-	
-	/** Not sure why you have to error check the error function... **/
-	if (ret != 0) fprintf(stderr, "FAIL %d: mssError(%d, \"%s\", \"%%s\", \"%s\")\n", ret, clr, module, buf);
-    
-    return;
-    }
-
-
 /** TODO: Greg - I think this should be moved to xarray. **/
 /*** Trims an xArray, returning a new array (with nmSysMalloc). 
  *** 
@@ -270,7 +210,7 @@ double (*ci_SimilarityMeasureToFunction(SimilarityMeasure similarity_measure))(v
 	case SIMILARITY_COSINE: return ca_cos_compare;
 	case SIMILARITY_LEVENSHTEIN: return ca_lev_compare;
 	default:
-	    mssErrorf(1, "Cluster",
+	    mssError(1, "Cluster",
 		"Unknown similarity measure \"%s\" (%d).",
 		ci_SimilarityMeasureToString(similarity_measure), similarity_measure
 	    );
@@ -779,7 +719,7 @@ static void
 ci_UnknownAttribute(char* attr_name, const int target_type)
     {
 	/** Display the error message. */
-	mssErrorf(1, "Cluster", "Unknown attribute '%s'.", attr_name);
+	mssError(1, "Cluster", "Unknown attribute '%s'.", attr_name);
 	
 	/** Collect specific attributes based on target type. **/
 	char** specific_attrs = NULL;
@@ -791,7 +731,7 @@ ci_UnknownAttribute(char* attr_name, const int target_type)
 	    case TARGET_CLUSTER_ENTRY: specific_attrs = ATTR_CLUSTER_ENTRY; break;
 	    case TARGET_SEARCH_ENTRY:  specific_attrs = ATTR_SEARCH_ENTRY; break;
 	    default:
-		mssErrorf(0, "Cluster",
+		mssError(0, "Cluster",
 		    "Unknown target type %u detected while attempting to generate hint.",
 		    target_type
 		);
@@ -843,7 +783,7 @@ ci_ParseAttribute(
 	pStructInf attr_info = stLookup(inf, attr_name);
 	if (attr_info == NULL)
 	     {
-	     if (required) mssErrorf(1, "Cluster", "'%s' must be specified for clustering.", attr_name);
+	     if (required) mssError(1, "Cluster", "'%s' must be specified for clustering.", attr_name);
 	     return 1;
 	     }
 	ASSERTMAGIC(attr_info, MGK_STRUCTINF);
@@ -860,14 +800,14 @@ ci_ParseAttribute(
 	ret = expEvalTree(exp, param_list);
 	    if (ret != 0)
 	    {
-	    mssErrorf(0, "Cluster", "Expression evaluation failed (error code %d).", ret);
+	    mssError(0, "Cluster", "Expression evaluation failed (error code %d).", ret);
 	    goto err;
 	    }
 	
 	/** Check for data type mismatch. **/
 	if (datatype != exp->DataType)
 	    {
-	    mssErrorf(1, "Cluster",
+	    mssError(1, "Cluster",
 		"Expected ['%s' : %s], but got type %s.",
 		attr_name, objTypeToStr(datatype), objTypeToStr(exp->DataType)
 	    );
@@ -878,7 +818,7 @@ ci_ParseAttribute(
 	ret = expExpressionToPod(exp, datatype, data);
 	if (ret != 0)
 	    {
-	    mssErrorf(1, "Cluster",
+	    mssError(1, "Cluster",
 		"Failed to get ['%s' : %s] using expression \"%s\" (error code %d).",
 		attr_name, objTypeToStr(datatype), exp->Name, ret
 	    );
@@ -889,7 +829,7 @@ ci_ParseAttribute(
 	return 0;
 	
     err:
-	mssErrorf(0, "Cluster",
+	mssError(0, "Cluster",
 	    "Failed to parse attribute \"%s\" from group \"%s\"",
 	    attr_name, inf->Name
 	);
@@ -916,7 +856,7 @@ ci_ParseClusteringAlgorithm(pStructInf inf, pParamObjects param_list)
 	char* algorithm;
 	if (ci_ParseAttribute(inf, "algorithm", DATA_T_STRING, POD(&algorithm), param_list, true, true) != 0)
 	    {
-	    mssErrorf(0, "Cluster", "Failed to parse attribute 'algorithm' in group \"%s\".", inf->Name);
+	    mssError(0, "Cluster", "Failed to parse attribute 'algorithm' in group \"%s\".", inf->Name);
 	    return ALGORITHM_NULL;
 	    }
 	
@@ -929,7 +869,7 @@ ci_ParseClusteringAlgorithm(pStructInf inf, pParamObjects param_list)
 	if (strcasecmp(algorithm, "db-scan") == 0)        return ALGORITHM_DB_SCAN;
 	
 	/** Unknown value for clustering algorithm. **/
-	mssErrorf(1, "Cluster", "Unknown \"clustering algorithm\": %s", algorithm);
+	mssError(1, "Cluster", "Unknown \"clustering algorithm\": %s", algorithm);
 	
 	/** Attempt to give a hint. **/
 	char* all_names[nClusteringAlgorithms] = {NULL};
@@ -964,7 +904,7 @@ ci_ParseSimilarityMeasure(pStructInf inf, pParamObjects param_list)
 	char* measure;
 	if (ci_ParseAttribute(inf, "similarity_measure", DATA_T_STRING, POD(&measure), param_list, true, true) != 0)
 	    {
-	    mssErrorf(0, "Cluster", "Failed to parse attribute 'similarity_measure' in group \"%s\".", inf->Name);
+	    mssError(0, "Cluster", "Failed to parse attribute 'similarity_measure' in group \"%s\".", inf->Name);
 	    return SIMILARITY_NULL;
 	    }
 	
@@ -973,7 +913,7 @@ ci_ParseSimilarityMeasure(pStructInf inf, pParamObjects param_list)
 	if (!strcasecmp(measure, "levenshtein")) return SIMILARITY_LEVENSHTEIN;
 	
 	/** Unknown similarity measure. **/
-	mssErrorf(1, "Cluster", "Unknown \"similarity measure\": %s", measure);
+	mssError(1, "Cluster", "Unknown \"similarity measure\": %s", measure);
 	
 	/** Attempt to give a hint. **/
 	char* all_names[nSimilarityMeasures] = {NULL};
@@ -1080,7 +1020,7 @@ ci_ParseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	    ci_FreeSourceData(source_data);
 	    }
 	
-	mssErrorf(0, "Cluster",
+	mssError(0, "Cluster",
 	    "Failed to parse source data from group \"%s\" in file: %s",
 	    inf->Name, path
 	);
@@ -1154,7 +1094,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 		goto err_free;
 	    if (window_size < 1)
 		{
-		mssErrorf(1, "Cluster", "Invalid value for [window_size : uint > 0]: %d", window_size);
+		mssError(1, "Cluster", "Invalid value for [window_size : uint > 0]: %d", window_size);
 		goto err_free;
 		}
 	    
@@ -1169,7 +1109,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    goto err_free;
 	if (num_clusters < 2)
 	    {
-	    mssErrorf(1, "Cluster", "Invalid value for [num_clusters : uint > 1]: %d", num_clusters);
+	    mssError(1, "Cluster", "Invalid value for [num_clusters : uint > 1]: %d", num_clusters);
 	    if (num_clusters == 1) fprintf(stderr, "HINT: Use algorithm=\"none\" to disable clustering.\n");
 	    goto err_free;
 	    }
@@ -1183,7 +1123,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    {
 	    if (improvement <= 0.0 || 1.0 <= improvement)
 		{
-		mssErrorf(1, "Cluster", "Invalid value for [min_improvement : 0.0 < x < 1.0 | \"none\"]: %g", improvement);
+		mssError(1, "Cluster", "Invalid value for [min_improvement : 0.0 < x < 1.0 | \"none\"]: %g", improvement);
 		goto err_free;
 		}
 	    
@@ -1197,7 +1137,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    if (result != 0) goto err_free;
 	    if (strcasecmp(str, "none") != 0)
 		{
-		mssErrorf(1, "Cluster", "Invalid value for [min_improvement : 0.0 < x < 1.0 | \"none\"]: %s", str);
+		mssError(1, "Cluster", "Invalid value for [min_improvement : 0.0 < x < 1.0 | \"none\"]: %s", str);
 		goto err_free;
 		}
 	    
@@ -1213,7 +1153,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    {
 	    if (max_iterations < 1)
 		{
-		mssErrorf(1, "Cluster", "Invalid value for [max_iterations : uint > 0]: %d", max_iterations);
+		mssError(1, "Cluster", "Invalid value for [max_iterations : uint > 0]: %d", max_iterations);
 		goto err_free;
 		}
 	    cluster_data->MaxIterations = (unsigned int)max_iterations;
@@ -1228,7 +1168,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    {
 	    if (seed < 1)
 		{
-		mssErrorf(1, "Cluster", "Invalid value for [seed : uint > 0]: %d", seed);
+		mssError(1, "Cluster", "Invalid value for [seed : uint > 0]: %d", seed);
 		goto err_free;
 		}
 	    cluster_data->Seed = (unsigned int)seed;
@@ -1242,7 +1182,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    pStructInf sub_inf = check_ptr(inf->SubInf[i]);
 	    if (sub_inf == NULL)
 		{
-		mssErrorf(1, "Cluster", "Failed to get %uth subinf.", i);
+		mssError(1, "Cluster", "Failed to get %uth subinf.", i);
 		goto err_free;
 		}
 	    ASSERTMAGIC(sub_inf, MGK_STRUCTINF);
@@ -1294,7 +1234,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 		    if (group_type == NULL) goto err_free;
 		    if (strcmp(group_type, "cluster/cluster") != 0)
 			{
-			mssErrorf(1, "Cluster",
+			mssError(1, "Cluster",
 			    "Warning: Unknown group [\"%s\" : \"%s\"] in cluster \"%s\".\n",
 			    name, group_type, inf->Name
 			);
@@ -1313,7 +1253,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 		
 		default:
 		    {
-		    mssErrorf(1, "Cluster",
+		    mssError(1, "Cluster",
 			"Warning: Unknown struct type %d in cluster \"%s\".",
 			struct_type, inf->Name
 		    );
@@ -1408,7 +1348,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	
 	if (cluster_data != NULL) ci_FreeClusterData(cluster_data, false);
 	
-	mssErrorf(0, "Cluster", "Failed to parse cluster from group \"%s\".", inf->Name);
+	mssError(0, "Cluster", "Failed to parse cluster from group \"%s\".", inf->Name);
 	return NULL;
     }
 
@@ -1469,7 +1409,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	if (search_data->SourceCluster == NULL)
 	    {
 	    /** Print error. **/
-	    mssErrorf(1, "Cluster", "Could not find cluster \"%s\" for search \"%s\".", source_cluster_name, search_data->Name);
+	    mssError(1, "Cluster", "Could not find cluster \"%s\" for search \"%s\".", source_cluster_name, search_data->Name);
 	    
 	    /** Attempt to give a hint. **/
 	    char* cluster_names[node_data->nClusterDatas];
@@ -1485,7 +1425,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	if (ci_ParseAttribute(inf, "threshold", DATA_T_DOUBLE, POD(&search_data->Threshold), param_list, true, true) != 0) goto err_free;
 	if (search_data->Threshold <= 0.0 || 1.0 <= search_data->Threshold)
 	    {
-	    mssErrorf(1, "Cluster",
+	    mssError(1, "Cluster",
 		"Invalid value for [threshold : 0.0 < x < 1.0 | \"none\"]: %g",
 		search_data->Threshold
 	    );
@@ -1502,7 +1442,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	    pStructInf sub_inf = check_ptr(inf->SubInf[i]);
 	    if (sub_inf == NULL)
 		{
-		mssErrorf(1, "Cluster", "Failed to get %uth subinf.", i);
+		mssError(1, "Cluster", "Failed to get %uth subinf.", i);
 		goto err_free;
 		}
 	    ASSERTMAGIC(sub_inf, MGK_STRUCTINF);
@@ -1555,7 +1495,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 		
 		default:
 		    {
-		    mssErrorf(1, "Cluster",
+		    mssError(1, "Cluster",
 			"Warning: Unknown struct type %d in search \"%s\".",
 			struct_type, inf->Name
 		    );
@@ -1599,7 +1539,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
     err_free:
 	if (search_data != NULL) ci_FreeSearchData(search_data);
 	
-	mssErrorf(0, "Cluster", "Failed to parse SearchData from group \"%s\".", inf->Name);
+	mssError(0, "Cluster", "Failed to parse SearchData from group \"%s\".", inf->Name);
 	
 	return NULL;
     }
@@ -1650,7 +1590,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 	ret = expAddParamToList(node_data->ParamList, "parameters", (void*)node_data, 0);
 	if (ret != 0)
 	    {
-	    mssErrorf(0, "Cluster", "Failed to add parameters to the param list scope (error code %d).", ret);
+	    mssError(0, "Cluster", "Failed to add parameters to the param list scope (error code %d).", ret);
 	    goto err_free;
 	    }
 	
@@ -1664,7 +1604,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 	);
 	if (ret != 0)
 	    {
-	    mssErrorf(0, "Cluster", "Failed to set param functions (error code %d).", ret);
+	    mssError(0, "Cluster", "Failed to set param functions (error code %d).", ret);
 	    goto err_free;
 	    }
 	
@@ -1677,7 +1617,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 	    pStructInf sub_inf = check_ptr(inf->SubInf[i]);
 	    if (sub_inf == NULL)
 		{
-		mssErrorf(1, "Cluster", "Failed to get %uth subinf.", i);
+		mssError(1, "Cluster", "Failed to get %uth subinf.", i);
 		goto err_free;
 		}
 	    ASSERTMAGIC(sub_inf, MGK_STRUCTINF);
@@ -1755,7 +1695,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 		
 		default:
 		    {
-		    mssErrorf(1, "Cluster",
+		    mssError(1, "Cluster",
 			"Warning: Unknown struct type %d in search \"%s\".",
 			struct_type, inf->Name
 		    );
@@ -1787,7 +1727,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 	    pParam param = paramCreateFromInf(param_infs.Items[i]);
 	    if (param == NULL)
 		{
-		mssErrorf(0, "Cluster",
+		mssError(0, "Cluster",
 		    "Failed to create param from inf for param #%u: %s",
 		    i, ((pStructInf)param_infs.Items[i])->Name
 		);
@@ -1808,7 +1748,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 		ret = paramSetValueFromInfNe(param, provided_param, 0, node_data->ParamList, node_data->ParamList->Session);
 		if (ret != 0)
 		    {
-		    mssErrorf(0, "Cluster",
+		    mssError(0, "Cluster",
 			"Failed to set param value from struct info.\n"
 			"  > Param #%u: %s\n"
 			"  > Provided Param #%u: %n\n"
@@ -1828,7 +1768,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 	    ret = paramEvalHints(param, node_data->ParamList, node_data->ParamList->Session);
 	    if (ret != 0)
 		{
-		mssErrorf(0, "Cluster",
+		mssError(0, "Cluster",
 		    "Failed to evaluate parameter hints for parameter \"%s\" (error code %d).",
 		    param->Name, ret
 		);
@@ -1911,7 +1851,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 	if (cluster_infs.nAlloc != 0) check(xaDeInit(&cluster_infs)); /* Failure ignored. */
 	if (search_infs.nAlloc  != 0) check(xaDeInit(&search_infs));  /* Failure ignored. */
 	if (node_data != NULL) ci_FreeNodeData(node_data);
-	mssErrorf(0, "Cluster", "Failed to parse node from group \"%s\" in file: %s", inf->Name, path);
+	mssError(0, "Cluster", "Failed to parse node from group \"%s\" in file: %s", inf->Name, path);
     
 	return NULL;
     }
@@ -2372,7 +2312,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	obj = objOpen(session, source_data->SourcePath, OBJ_O_RDONLY, 0600, "system/directory");
 	if (obj == NULL)
 	    {
-	    mssErrorf(0, "Cluster", "Failed to open object driver.");
+	    mssError(0, "Cluster", "Failed to open object driver.");
 	    goto end_free;
 	    }
 	
@@ -2380,7 +2320,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	query = objOpenQuery(obj, NULL, NULL, NULL, NULL, 0);
 	if (query == NULL)
 	    {
-	    mssErrorf(0, "Cluster", "Failed to open query.");
+	    mssError(0, "Cluster", "Failed to open query.");
 	    goto end_free;
 	    }
 	
@@ -2400,7 +2340,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    const int data_datatype = objGetAttrType(entry, source_data->DataAttr);
 	    if (data_datatype == -1)
 		{
-		mssErrorf(0, "Cluster",
+		mssError(0, "Cluster",
 		    "Failed to get type for data of %uth entry.",
 		    vector_xarray.nItems
 		);
@@ -2408,7 +2348,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 		}
 	    if (data_datatype != DATA_T_STRING)
 		{
-		mssErrorf(1, "Cluster",
+		mssError(1, "Cluster",
 		    "Type for data of %uth entry was %s instead of String:\n",
 		    vector_xarray.nItems, objTypeToStr(data_datatype)
 		);
@@ -2420,7 +2360,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    ret = objGetAttrValue(entry, source_data->DataAttr, DATA_T_STRING, POD(&data));
 	    if (ret != 0)
 		{
-		mssErrorf(0, "Cluster",
+		mssError(0, "Cluster",
 		    "Failed to get attribute value for %uth data entry (error code: %d).",
 		    vector_xarray.nItems, ret
 		);
@@ -2434,12 +2374,12 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    pVector vector = ca_build_vector(data);
 	    if (vector == NULL)
 		{
-		mssErrorf(1, "Cluster", "Failed to build vectors for string \"%s\".", data);
+		mssError(1, "Cluster", "Failed to build vectors for string \"%s\".", data);
 		goto end_free;
 		}
 	    if (ca_is_empty(vector))
 		{
-		mssErrorf(1, "Cluster", "Vector building for string \"%s\" produced no character pairs.", data);
+		mssError(1, "Cluster", "Vector building for string \"%s\" produced no character pairs.", data);
 		goto end_free;
 		}
 	    if (ca_has_no_pairs(vector))
@@ -2454,7 +2394,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    const int key_datatype = objGetAttrType(entry, source_data->KeyAttr);
 	    if (key_datatype == -1)
 		{
-		mssErrorf(0, "Cluster",
+		mssError(0, "Cluster",
 		    "Failed to get type for key on %uth entry.",
 		    vector_xarray.nItems
 		);
@@ -2462,7 +2402,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 		}
 	    if (key_datatype != DATA_T_STRING)
 		{
-		mssErrorf(1, "Cluster",
+		mssError(1, "Cluster",
 		    "Type for key on %uth entry was %s instead of String:",
 		    vector_xarray.nItems, objTypeToStr(key_datatype)
 		);
@@ -2474,7 +2414,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    ret = objGetAttrValue(entry, source_data->KeyAttr, DATA_T_STRING, POD(&key));
 	    if (ret != 0)
 		{
-		mssErrorf(0, "Cluster",
+		mssError(0, "Cluster",
 		    "Failed to value for key on %uth entry (error code: %d).",
 		    vector_xarray.nItems, ret
 		);
@@ -2497,7 +2437,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	source_data->nVectors = vector_xarray.nItems;
 	if (source_data->nVectors == 0)
 	    {
-	    mssErrorf(0, "Cluster", "Data source path did not contain any valid data:\n");
+	    mssError(0, "Cluster", "Data source path did not contain any valid data:\n");
 	    goto end_free;
 	    }
 	
@@ -2523,7 +2463,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	/** Print an error if the function failed. **/
 	if (!successful)
 	    {
-	    mssErrorf(0, "Cluster",
+	    mssError(0, "Cluster",
 		"SourceData computation failed:\n"
 		"  > Key Attribute: ['%s' : String]\n"
 		"  > Data Attribute: ['%s' : String]\n"
@@ -2611,7 +2551,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 	pSourceData source_data = check_ptr(node_data->SourceData);
 	if (source_data == NULL)
 	    {
-	    mssErrorf(1, "Cluster", "Failed to get source data for cluster computation.");
+	    mssError(1, "Cluster", "Failed to get source data for cluster computation.");
 	    goto err_free;
 	    }
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
@@ -2622,7 +2562,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 	ASSERTMAGIC(session, MGK_OBJSESSION);
 	if (ci_ComputeSourceData(source_data, session) != 0)
 	    {
-	    mssErrorf(0, "Cluster", "ClusterData computation failed due to missing SourceData.");
+	    mssError(0, "Cluster", "ClusterData computation failed due to missing SourceData.");
 	    goto err_free;
 	    }
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
@@ -2672,7 +2612,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		/** Check for unimplemented similarity measures. **/
 		if (cluster_data->SimilarityMeasure != SIMILARITY_COSINE)
 		    {
-		    mssErrorf(1, "Cluster",
+		    mssError(1, "Cluster",
 			"The similarity measure \"%s\" is not implemented for 'k-means' clusters.",
 			ci_SimilarityMeasureToString(cluster_data->SimilarityMeasure)
 		    );
@@ -2734,7 +2674,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 			const unsigned long long index = (unsigned long long)indexes_in_this_cluster->Items[i];
 			if (index > __UINT32_MAX__)
 			    {
-			    mssErrorf(1, "Cluster",
+			    mssError(1, "Cluster",
 				"How did you try to cluster more than %u data points and ci_ComputeSearchData() "
 				"was the first thing to break?! Well... looks like it's time to update %s:%s to "
 				"handle a larger amount of data.",
@@ -2752,7 +2692,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		}
 	    
 	    default:
-		mssErrorf(1, "Cluster",
+		mssError(1, "Cluster",
 		    "Clustering algorithm \"%s\" is not implemented.",
 		    ci_ClusteringAlgorithmToString(cluster_data->ClusterAlgorithm)
 		);
@@ -2787,7 +2727,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 	    nmFree(cluster_data->Clusters, clusters_size);
 	    }
 	
-	mssErrorf(0, "Cluster", "ClusterData computation failed for \"%s\".", cluster_data->Name);
+	mssError(0, "Cluster", "ClusterData computation failed for \"%s\".", cluster_data->Name);
 	
 	return -1;
     }
@@ -2821,13 +2761,13 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	pClusterData cluster_data = check_ptr(search_data->SourceCluster);
 	if (cluster_data == NULL)
 	    {
-	    mssErrorf(1, "Cluster", "Failed to get cluster data for search computation.");
+	    mssError(1, "Cluster", "Failed to get cluster data for search computation.");
 	    goto err_free;
 	    }
 	ASSERTMAGIC(cluster_data, MGK_CL_CLUSTER_DATA);
 	if (ci_ComputeClusterData(cluster_data, node_data) != 0)
 	    {
-	    mssErrorf(0, "Cluster", "SearchData computation failed due to missing clusters.");
+	    mssError(0, "Cluster", "SearchData computation failed due to missing clusters.");
 	    goto err_free;
 	    }
 	    
@@ -2855,7 +2795,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		case SIMILARITY_COSINE: data = (void**)source_data->Vectors; break;
 		case SIMILARITY_LEVENSHTEIN: data = (void**)source_data->Strings; break;
 		default:
-		    mssErrorf(1, "Cluster",
+		    mssError(1, "Cluster",
 			"Unknown similarity measure \"%s\".",
 			ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
 		    );
@@ -2873,7 +2813,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	    ));
 	    if (pairs == NULL)
 		{
-		mssErrorf(1, "Cluster",
+		mssError(1, "Cluster",
 		    "Failed to compute sliding search with %s similarity measure.",
 		    ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
 		);
@@ -2901,7 +2841,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		    case SIMILARITY_COSINE: data = (void**)source_data->Vectors; break;
 		    case SIMILARITY_LEVENSHTEIN: data = (void**)source_data->Strings; break;
 		    default:
-			mssErrorf(1, "Cluster",
+			mssError(1, "Cluster",
 			    "Unknown similarity measure \"%s\".",
 			    ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
 			);
@@ -2934,7 +2874,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		if (free_filtered_data) nmSysFree(filtered_data);
 		if (cluster_pairs == NULL)
 		    {
-		    mssErrorf(1, "Cluster",
+		    mssError(1, "Cluster",
 			"Failed to compute ca_complete_search() with %s similarity measure.",
 			ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
 		    );
@@ -2964,7 +2904,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	    }
 	if (search_data->Pairs == NULL)
 	    {
-	    mssErrorf(1, "Cluster", "Failed to store pair after computing search data.");
+	    mssError(1, "Cluster", "Failed to store pair after computing search data.");
 	    goto err_free;
 	    }
 	
@@ -2983,7 +2923,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	    check(xaFree(pairs)); /* Failure ignored. */
 	    }
 	
-	mssErrorf(0, "Cluster", "SearchData computation failed for \"%s\".", search_data->Name);
+	mssError(0, "Cluster", "SearchData computation failed for \"%s\".", search_data->Name);
 	
 	return -1;
     }
@@ -3062,7 +3002,7 @@ ci_GetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
 	    if (param->Value->Flags & DATA_TF_NULL) return 1;
 	    if (param->Value->DataType != datatype)
 		{
-		mssErrorf(1, "Cluster", "Type mismatch accessing parameter '%s'.", param->Name);
+		mssError(1, "Cluster", "Type mismatch accessing parameter '%s'.", param->Name);
 		return -1;
 		}
 	    
@@ -3072,7 +3012,7 @@ ci_GetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
 	    }
 	
     err:
-	mssErrorf(1, "Cluster",
+	mssError(1, "Cluster",
 	    "Failed to get parameter ['%s' : %s]",
 	    attr_name, objTypeToStr(datatype)
 	);
@@ -3085,7 +3025,7 @@ ci_GetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
 static int
 ci_SetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
     {
-	mssErrorf(1, "Cluster", "SetParamValue() is not implemented because clusters are immutable.");
+	mssError(1, "Cluster", "SetParamValue() is not implemented because clusters are immutable.");
     
     return -1;
     }
@@ -3135,7 +3075,7 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	    node_struct = snNewNode(parent->Prev, usr_type);
 	    if (node_struct == NULL)
 		{
-		mssErrorf(0, "Cluster", "Failed to exclusively create new node struct.");
+		mssError(0, "Cluster", "Failed to exclusively create new node struct.");
 		goto err_free;
 		}
 	    }
@@ -3151,7 +3091,7 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	/** If there still isn't a node, fail early. **/
 	if (node_struct == NULL)
 	    {
-	    mssErrorf(0, "Cluster", "Failed to create node struct from provided cluster file.");
+	    mssError(0, "Cluster", "Failed to create node struct from provided cluster file.");
 	    goto err_free;
 	    }
 	
@@ -3163,7 +3103,7 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	node_data = ci_ParseNodeData(node_struct->Data, parent);
 	if (node_data == NULL)
 	    {
-	    mssErrorf(0, "Cluster", "Failed to parse structure file \"%s\".", ci_file_name(parent));
+	    mssError(0, "Cluster", "Failed to parse structure file \"%s\".", ci_file_name(parent));
 	    goto err_free;
 	    }
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
@@ -3223,7 +3163,7 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 		    }
 		    
 		/** Path names sub-cluster that does not exist. **/
-		mssErrorf(1, "Cluster", "Sub-cluster \"%s\" does not exist.", path_part);
+		mssError(1, "Cluster", "Sub-cluster \"%s\" does not exist.", path_part);
 		goto err_free;
 		
 		continue_descent:;
@@ -3248,14 +3188,14 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	    char* extra_data = obj_internal_PathPart(parent->Pathname, parent->SubPtr + parent->SubCnt++, 1);
 	    if (extra_data != NULL)
 		{
-		mssErrorf(1, "Cluster", "Unknown path part %s.", extra_data);
+		mssError(1, "Cluster", "Unknown path part %s.", extra_data);
 		goto err_free;
 		}
 	    return (void*)driver_data; /* Success. */
 	    }
 	
 	/** We were unable to find the requested cluster or search. **/
-	mssErrorf(1, "Cluster", "\"%s\" is not the name of a declared cluster or search.", target_name);
+	mssError(1, "Cluster", "\"%s\" is not the name of a declared cluster or search.", target_name);
 	
 	/** Attempt to give a hint. **/
 	    {
@@ -3273,7 +3213,7 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	if (node_data != NULL) ci_FreeNodeData(node_data);
 	if (driver_data != NULL) nmFree(driver_data, sizeof(DriverData));
 	
-	mssErrorf(0, "Cluster",
+	mssError(0, "Cluster",
 	    "Failed to open cluster file \"%s\" at: %s",
 	    ci_file_name(parent), ci_file_path(parent)
 	);
@@ -3366,7 +3306,7 @@ clusterOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     err_free:
 	/** Error cleanup. **/
 	if (query_data != NULL) nmFree(query_data, sizeof(ClusterQuery));
-	mssErrorf(0, "Cluster", "Failed to open query.");
+	mssError(0, "Cluster", "Failed to open query.");
 	
     err:
 	return NULL;
@@ -3458,7 +3398,7 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		ASSERTMAGIC(target, MGK_CL_CLUSTER_DATA);
 		if (ci_ComputeClusterData(target, node_data) != 0)
 		    {
-		    mssErrorf(0, "Cluster", "Failed to compute ClusterData for query.");
+		    mssError(0, "Cluster", "Failed to compute ClusterData for query.");
 		    goto err_free;
 		    }
 		
@@ -3479,7 +3419,7 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		ASSERTMAGIC(target, MGK_CL_SEARCH_DATA);
 		if (ci_ComputeSearchData(target, node_data) != 0)
 		    {
-		    mssErrorf(0, "Cluster", "Failed to compute SearchData for query.");
+		    mssError(0, "Cluster", "Failed to compute SearchData for query.");
 		    goto err_free;
 		    }
 		
@@ -3495,11 +3435,11 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    
 	    case TARGET_CLUSTER_ENTRY:
 	    case TARGET_SEARCH_ENTRY:
-		mssErrorf(1, "Cluster", "Querying a query result is not allowed.");
+		mssError(1, "Cluster", "Querying a query result is not allowed.");
 		goto err_free;
 	    
 	    default:
-		mssErrorf(1, "Cluster", "Unknown target type %u.", target_type);
+		mssError(1, "Cluster", "Unknown target type %u.", target_type);
 		goto err_free;
 	    }
 	
@@ -3510,7 +3450,7 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	return result_data;
 
     err_free:
-	mssErrorf(0, "Cluster", "Failed to fetch query result.");
+	mssError(0, "Cluster", "Failed to fetch query result.");
 	
     done_free:
 	if (result_data != NULL) nmFree(result_data, sizeof(DriverData));
@@ -3642,7 +3582,7 @@ clusterGetAttrType(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		break;
 	    
 	    default:
-		mssErrorf(1, "Cluster", "Unknown target type %u.", target_type);
+		mssError(1, "Cluster", "Unknown target type %u.", target_type);
 		return DATA_T_UNAVAILABLE;
 	    }
 	
@@ -3703,7 +3643,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 	if (expected_datatype == DATA_T_UNAVAILABLE) goto unknown_attribute;
 	if (datatype != expected_datatype)
 	    {
-	    mssErrorf(1, "Cluster",
+	    mssError(1, "Cluster",
 		"Type mismatch: Accessing attribute ['%s' : %s] as type %s.",
 		attr_name, objTypeToStr(expected_datatype), objTypeToStr(datatype)
 	    );
@@ -3746,7 +3686,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		    }
 		
 		default:
-		    mssErrorf(1, "Cluster", "Unknown target type %u.", target_type);
+		    mssError(1, "Cluster", "Unknown target type %u.", target_type);
 		    return -1;
 		}
 	    
@@ -3765,7 +3705,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		case TARGET_SEARCH_ENTRY: val->String = "Clustering driver: Cluster Entry."; break;
 		
 		default:
-		    mssErrorf(1, "Cluster", "Unknown target type %u.", target_type);
+		    mssError(1, "Cluster", "Unknown target type %u.", target_type);
 		    return -1;
 		}
 	    return 0;
@@ -3793,7 +3733,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		case TARGET_SEARCH:        val->String = "cluster/search"; break;
 		case TARGET_SEARCH_ENTRY:  val->String = "search/entry"; break;
 		default:
-		    mssErrorf(1, "Cluster", "Unknown target type %u.", target_type);
+		    mssError(1, "Cluster", "Unknown target type %u.", target_type);
 		    return -1;
 		}
 	    
@@ -3879,7 +3819,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		}
 	    
 	    /** Default: Unknown type. **/
-	    mssErrorf(1, "Cluster", "Unknown target type %u.", target_type);
+	    mssError(1, "Cluster", "Unknown target type %u.", target_type);
 	    return -1;
 	    }
 	
@@ -4041,7 +3981,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		}
 	    
 	    default:
-		mssErrorf(1, "Cluster", "Unknown target type %u.", target_type);
+		mssError(1, "Cluster", "Unknown target type %u.", target_type);
 		return -1;
 	    }
 	
@@ -4051,7 +3991,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
     err:;
 	char* name;
 	clusterGetAttrValue(inf_v, "name", DATA_T_STRING, POD(&name), NULL);
-	mssErrorf(1, "Cluster",
+	mssError(1, "Cluster",
 	    "Failed to get attribute for cluster object %s (target type: %u, \"%s\").",
 	    driver_data->NodeData->SourceData->Name, target_type, name
 	);
@@ -4349,7 +4289,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		}
 	    
 	    default:
-		mssErrorf(1, "Cluster", "Unknown target type %u.", target_type);
+		mssError(1, "Cluster", "Unknown target type %u.", target_type);
 		goto err_free;
 	    }
 	
@@ -4366,7 +4306,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	char* internal_type = NULL;
 	check(clusterGetAttrValue(inf_v, "name", DATA_T_STRING, POD(&name), NULL)); /* Failure ignored. */
 	check(clusterGetAttrValue(inf_v, "internal_type", DATA_T_STRING, POD(&internal_type), NULL)); /* Failure ignored. */
-	mssErrorf(0, "Cluster",
+	mssError(0, "Cluster",
 	    "Failed to get presentation hints for object '%s' : \"%s\".",
 	    name, internal_type
 	);
@@ -4425,7 +4365,7 @@ clusterGetNextAttr(void* inf_v, pObjTrxTree* oxt)
 	    case TARGET_CLUSTER_ENTRY: return ATTR_CLUSTER_ENTRY[i];
 	    case TARGET_SEARCH_ENTRY:  return ATTR_SEARCH_ENTRY[i];
 	    default:
-		mssErrorf(1, "Cluster", "Unknown target type %u.", driver_data->TargetType);
+		mssError(1, "Cluster", "Unknown target type %u.", driver_data->TargetType);
 		return NULL;
 	    }
     
@@ -4505,14 +4445,14 @@ clusterInfo(void* inf_v, pObjectInfo info)
 		break;
 	    
 	    default:
-		mssErrorf(1, "Cluster", "Unknown target type %u.", driver_data->TargetType);
+		mssError(1, "Cluster", "Unknown target type %u.", driver_data->TargetType);
 		goto err;
 	    }
 	
 	return 0;
 	
     err:
-	mssErrorf(0, "Cluster", "Failed execute get info.");
+	mssError(0, "Cluster", "Failed execute get info.");
 	return -1;
     }
 
@@ -4633,7 +4573,7 @@ ci_PrintEntry(pXHashEntry entry, void* arg)
 		break;
 		}
 	    default:
-		mssErrorf(0, "Cluster", "Unknown type_id %u.", *type_id_ptr);
+		mssError(0, "Cluster", "Unknown type_id %u.", *type_id_ptr);
 		return -1;
 	    }
 	
@@ -4735,7 +4675,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 	    /** Second parameter is required. **/
 	    if (param->String == NULL)
 		{
-		mssErrorf(1, "Cluster",
+		mssError(1, "Cluster",
 		    "[param : \"show\" | \"show_less\" | \"show_all\" | \"drop_all\"] is required for the cache method."
 		);
 		goto err;
@@ -4783,7 +4723,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		));
 		if (failed)
 		    {
-		    mssErrorf(0, "Cluster", "Unexpected error occurred while showhing caches.");
+		    mssError(0, "Cluster", "Unexpected error occurred while showing caches.");
 		    ret = -1;
 		    }
 		    
@@ -4818,7 +4758,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		}
 	    
 	    /** Unknown parameter. **/
-	    mssErrorf(1, "Cluster",
+	    mssError(1, "Cluster",
 		"Expected [param : \"show\" | \"show_less\" | \"show_all\" | \"drop_all\"] for the cache method, but got: \"%s\"",
 		param->String
 	    );
@@ -4848,7 +4788,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 	    }
 	
 	/** Unknown parameter. **/
-	mssErrorf(1, "Cluster", "Unknown command: \"%s\"", method_name);
+	mssError(1, "Cluster", "Unknown command: \"%s\"", method_name);
 	
 	/** Attempt to give hint. **/
 	unsigned int n_methods = 0;
@@ -4856,7 +4796,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 	if (ci_TryHint(method_name, METHOD_NAMES, n_methods));
 	
     err:
-	mssErrorf(0, "Cluster", "Failed execute command.");
+	mssError(0, "Cluster", "Failed execute command.");
 	
 	return -1;
     }
@@ -4870,7 +4810,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 int
 clusterCreate(pObject obj, int mask, pContentType sys_type, char* usr_type, pObjTrxTree* oxt)
     {
-	mssErrorf(1, "Cluster", "clusterCreate() is not implemented.");
+	mssError(1, "Cluster", "clusterCreate() is not implemented.");
     
     return -ENOSYS;
     }
@@ -4879,7 +4819,7 @@ clusterCreate(pObject obj, int mask, pContentType sys_type, char* usr_type, pObj
 int
 clusterDelete(pObject obj, pObjTrxTree* oxt)
     {
-	mssErrorf(1, "Cluster", "clusterDelete() is not implemented.");
+	mssError(1, "Cluster", "clusterDelete() is not implemented.");
     
     return -1;
     }
@@ -4888,7 +4828,7 @@ clusterDelete(pObject obj, pObjTrxTree* oxt)
 int
 clusterDeleteObj(void* inf_v, pObjTrxTree* oxt)
     {
-	mssErrorf(1, "Cluster", "clusterDeleteObj() is not implemented.");
+	mssError(1, "Cluster", "clusterDeleteObj() is not implemented.");
     
     return -1;
     }
@@ -4897,7 +4837,7 @@ clusterDeleteObj(void* inf_v, pObjTrxTree* oxt)
 int
 clusterRead(void* inf_v, char* buffer, int max_cnt, int offset, int flags, pObjTrxTree* oxt)
     {
-	mssErrorf(1, "Cluster", "clusterRead() not implemented.");
+	mssError(1, "Cluster", "clusterRead() not implemented.");
 	fprintf(stderr, "HINT: Use queries instead, (e.g. clusterOpenQuery()).\n");
     
     return -1;
@@ -4907,7 +4847,7 @@ clusterRead(void* inf_v, char* buffer, int max_cnt, int offset, int flags, pObjT
 int
 clusterWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
-	mssErrorf(1, "Cluster", "clusterWrite() not implemented because clusters are immutable.");
+	mssError(1, "Cluster", "clusterWrite() not implemented because clusters are immutable.");
     
     return -1;
     }
@@ -4916,7 +4856,7 @@ clusterWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxT
 int
 clusterSetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pObjTrxTree* oxt)
     {
-	mssErrorf(1, "Cluster", "clusterSetAttrValue() not implemented because clusters are immutable.");
+	mssError(1, "Cluster", "clusterSetAttrValue() not implemented because clusters are immutable.");
     
     return -1;
     }
@@ -4925,7 +4865,7 @@ clusterSetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 int
 clusterAddAttr(void* inf_v, char* attr_name, int type, pObjData val, pObjTrxTree* oxt)
     {
-	mssErrorf(1, "Cluster", "clusterAddAttr() not implemented because clusters are immutable.");
+	mssError(1, "Cluster", "clusterAddAttr() not implemented because clusters are immutable.");
     
     return -1;
     }
@@ -4934,7 +4874,7 @@ clusterAddAttr(void* inf_v, char* attr_name, int type, pObjData val, pObjTrxTree
 void*
 clusterOpenAttr(void* inf_v, char* attr_name, int mode, pObjTrxTree* oxt)
     {
-	mssErrorf(1, "Cluster", "clusterOpenAttr() not implemented.");
+	mssError(1, "Cluster", "clusterOpenAttr() not implemented.");
     
     return NULL;
     }
@@ -4943,7 +4883,7 @@ clusterOpenAttr(void* inf_v, char* attr_name, int mode, pObjTrxTree* oxt)
 int
 clusterCommit(void* inf_v, pObjTrxTree* oxt)
     {
-	mssErrorf(1, "Cluster", "clusterCommit() not implemented because clusters are immutable.");
+	mssError(1, "Cluster", "clusterCommit() not implemented because clusters are immutable.");
     
     return 0;
     }
@@ -5034,7 +4974,7 @@ clusterInitialize(void)
 	    nmFree(drv, sizeof(ObjDriver));
 	    }
 	
-	mssErrorf(1, "Cluster", "Failed to initialize cluster driver.\n");
+	mssError(1, "Cluster", "Failed to initialize cluster driver.\n");
 	
 	return -1;
     }

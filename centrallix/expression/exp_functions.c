@@ -133,7 +133,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 	/** The expectation struct cannot be NULL. **/
 	if (arg_expect == NULL)
 	    {
-	    mssErrorf(1, "EXP",
+	    mssError(1, "EXP",
 		"%s(...): Expectation struct cannot be NULL",
 		fn_name
 	    );
@@ -149,7 +149,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 	    {
 	    if (arg_expect->Flags & EXP_ARG_NOT_NULL)
 		{
-		mssErrorf(1, "EXP",
+		mssError(1, "EXP",
 		    "%s(...): Expects a non-null value, but got NULL : %s (%d).",
 		    fn_name, objTypeToStr(actual_datatype), actual_datatype
 		);
@@ -166,7 +166,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 	/** Type checks requested, but no valid types given: Likely a mistake. **/
 	if (arg_expect->Datatypes[0] == -1)
 	    {
-	    mssErrorf(1, "EXP", "%s(...): Invalid Schema! Empty array of allowed datatypes.", fn_name);
+	    mssError(1, "EXP", "%s(...): Invalid Schema! Empty array of allowed datatypes.", fn_name);
 	    fprintf(stderr, "Hint: To skip type checks, pass NULL for the array of data types.\n");
 	    return -1;
 	    }
@@ -203,7 +203,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 	    
 	    /** Print error. **/
 	    int first_datatype = arg_expect->Datatypes[0];
-	    mssErrorf(1, "EXP",
+	    mssError(1, "EXP",
 		"%s(...): Expects type %s (%d)%s but got type %s (%d).",
 		fn_name, objTypeToStr(first_datatype), first_datatype, buf, objTypeToStr(actual_datatype), actual_datatype
 	    );
@@ -222,7 +222,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 		int value = arg->Integer;
 		if (arg_expect->Flags & EXP_ARG_POSITIVE && value < 0)
 		    {
-		    mssErrorf(1, "EXP",
+		    mssError(1, "EXP",
 			"%s(...): Expects positive int but got %d.",
 			fn_name, value
 		    );
@@ -230,7 +230,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 		    }
 		if (arg_expect->Flags & EXP_ARG_NEGATIVE && value > 0)
 		    {
-		    mssErrorf(1, "EXP",
+		    mssError(1, "EXP",
 			"%s(...): Expects negative int but got %d.",
 			fn_name, value
 		    );
@@ -244,7 +244,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 		double value = arg->Types.Double;
 		if (arg_expect->Flags & EXP_ARG_NON_NAN && isnan(value))
 		    {
-		    mssErrorf(1, "EXP",
+		    mssError(1, "EXP",
 			"%s(...): Expects non-nan double but got %g.",
 			fn_name, value
 		    );
@@ -252,7 +252,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 		    }
 		if (arg_expect->Flags & EXP_ARG_POSITIVE && value < 0)
 		    {
-		    mssErrorf(1, "EXP",
+		    mssError(1, "EXP",
 			"%s(...): Expects positive double but got %g.",
 			fn_name, value
 		    );
@@ -260,7 +260,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 		    }
 		if (arg_expect->Flags & EXP_ARG_NEGATIVE && value > 0)
 		    {
-		    mssErrorf(1, "EXP",
+		    mssError(1, "EXP",
 			"%s(...): Expects negative double but got %g.",
 			fn_name, value
 		    );
@@ -274,7 +274,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 		char* str = arg->String;
 		if (arg_expect->Flags & EXP_ARG_NON_EMPTY && str[0] == '\0')
 		    {
-		    mssErrorf(1, "EXP",
+		    mssError(1, "EXP",
 			"%s(...): Expects string to contain characters, but got \"\".",
 			fn_name
 		    );
@@ -288,7 +288,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 		pMoneyType value = &arg->Types.Money;
 		if (arg_expect->Flags & EXP_ARG_POSITIVE && value->WholePart < 0)
 		    {
-		    mssErrorf(1, "EXP",
+		    mssError(1, "EXP",
 			"%s(...): Expects positive money value but got $%d.%g.",
 			fn_name, value->WholePart, (double)value->FractionPart / 100.0
 		    );
@@ -296,7 +296,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 		    }
 		if (arg_expect->Flags & EXP_ARG_NEGATIVE && value->WholePart > 0)
 		    {
-		    mssErrorf(1, "EXP",
+		    mssError(1, "EXP",
 			"%s(...): Expects negative money value but got $%d.%d.",
 			fn_name, value->WholePart, (double)value->FractionPart / 100.0
 		    );
@@ -309,7 +309,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 		pStringVec str_vec = &arg->Types.StrVec;
 		if (arg_expect->Flags & EXP_ARG_NON_EMPTY && str_vec->nStrings == 0)
 		    {
-		    mssErrorf(1, "EXP",
+		    mssError(1, "EXP",
 			"%s(...): Expects StringVec to contain strings, but got [].",
 			fn_name
 		    );
@@ -323,7 +323,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 		pIntVec int_vec = &arg->Types.IntVec;
 		if (arg_expect->Flags & EXP_ARG_NON_EMPTY && int_vec->nIntegers == 0)
 		    {
-		    mssErrorf(1, "EXP",
+		    mssError(1, "EXP",
 			"%s(...): Expects IntVec to contain strings, but got [].",
 			fn_name
 		    );
@@ -362,7 +362,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
  ***     }, tree
  *** ) != 0)
  ***     {
- ***     mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
+ ***     mssError(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
  ***     return -1;
  ***     }
  *** ```
@@ -382,7 +382,7 @@ exp_fn_i_verify_schema(const ArgExpect* arg_expects, pExpression tree)
 	    else if (opt_args > 0)
 		{
 		/** Required argument follows optional argument (not allowed). **/
-		mssErrorf(1, "EXP", "%s(?): Invalid Schema! Required argument #%u after optional argument.", tree->Name, i);
+		mssError(1, "EXP", "%s(?): Invalid Schema! Required argument #%u after optional argument.", tree->Name, i);
 		return -1;
 		}
 	    else
@@ -396,7 +396,7 @@ exp_fn_i_verify_schema(const ArgExpect* arg_expects, pExpression tree)
 	    {
 	    if (actual_args != req_args)
 		{
-		mssErrorf(1, "EXP",
+		mssError(1, "EXP",
 		    "%s(?): Expects %u argument%s, got %d argument%s.",
 		    tree->Name, req_args, (req_args == 1) ? "" : "s", actual_args, (actual_args == 1) ? "" : "s"
 		);
@@ -407,7 +407,7 @@ exp_fn_i_verify_schema(const ArgExpect* arg_expects, pExpression tree)
 	    {
 	    if (actual_args < req_args || total_args < actual_args)
 		{
-		mssErrorf(1, "EXP",
+		mssError(1, "EXP",
 		    "%s(?): Expects between %u and %u arguments, got %d argument%s.",
 		    tree->Name, req_args, total_args, actual_args, (actual_args == 1) ? "" : "s"
 		);
@@ -420,7 +420,7 @@ exp_fn_i_verify_schema(const ArgExpect* arg_expects, pExpression tree)
 	    {
 	    if (exp_fn_i_verify_arg(tree->Name, tree->Children.Items[i], &arg_expects[i]) != 0)
 		{
-		mssErrorf(0, "EXP",
+		mssError(0, "EXP",
 		    "%s(...): Error while reading arg #%d/%d.",
 		    tree->Name, i + 1, max(i + 1, req_args)
 		);
@@ -1583,7 +1583,7 @@ exp_fn_lztrim(pExpression tree)
 	    EXP_ARG_END,
 	}, tree) != 0)
 	    {
-	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
+	    mssError(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
 	    return -1;
 	    }
 	
@@ -1627,7 +1627,7 @@ exp_fn_ltrim(pExpression tree)
 	    EXP_ARG_END,
 	}, tree) != 0)
 	    {
-	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
+	    mssError(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
 	    return -1;
 	    }
 	
@@ -1672,7 +1672,7 @@ exp_fn_rtrim(pExpression tree)
 	    EXP_ARG_END,
 	}, tree) != 0)
 	    {
-	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
+	    mssError(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
 	    return -1;
 	    }
 	
@@ -3773,7 +3773,7 @@ exp_fn_i_do_math(pExpression tree, double (*math)(), int arg_num)
 	expects[arg_num] = EXP_ARG_END;
 	if (exp_fn_i_verify_schema(expects, tree) != 0)
 	    {
-	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
+	    mssError(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
 	    return -1;
 	    }
 	
@@ -3792,7 +3792,7 @@ exp_fn_i_do_math(pExpression tree, double (*math)(), int arg_num)
 	/** Maximum supported args. **/
 	if (arg_num > 4)
 	    {
-	    mssErrorf(1, "EXP", "%s(...): exp_fn_i_do_math() does not support functions with more than 4 arguments. If this is an issue, please increase the number of arguments here: %s:%d", tree->Name, __FILE__, __LINE__);
+	    mssError(1, "EXP", "%s(...): exp_fn_i_do_math() does not support functions with more than 4 arguments. If this is an issue, please increase the number of arguments here: %s:%d", tree->Name, __FILE__, __LINE__);
 	    return -1;
 	    }
 	
@@ -3802,7 +3802,7 @@ exp_fn_i_do_math(pExpression tree, double (*math)(), int arg_num)
 	    {
 	    if (!check(exp_fn_i_get_number(tree->Children.Items[i], &(n[i]))))
 		{
-		mssErrorf(0, "EXP", "%s(...): Failed to get arg%d.", tree->Name, i);
+		mssError(0, "EXP", "%s(...): Failed to get arg%d.", tree->Name, i);
 		return -1;
 		}
 	    }
@@ -3842,7 +3842,7 @@ exp_fn_log(pExpression tree)
 	    EXP_ARG_END,
 	}, tree) != 0)
 	    {
-	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
+	    mssError(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
 	    return -1;
 	    }
 	
@@ -3850,14 +3850,14 @@ exp_fn_log(pExpression tree)
 	double number, base;
 	if (!check(exp_fn_i_get_number(check_ptr(tree->Children.Items[0]), &number)))
 	    {
-	    mssErrorf(0, "EXP", "%s(...): Failed to get arg1 (number).", tree->Name);
+	    mssError(0, "EXP", "%s(...): Failed to get arg1 (number).", tree->Name);
 	    return -1;
 	    }
 	if (tree->Children.nItems > 1)
 	    {
 	    if (!check(exp_fn_i_get_number(check_ptr(tree->Children.Items[1]), &base)))
 		{
-		mssErrorf(0, "EXP", "%s(...): Failed to get arg2 (base).", tree->Name);
+		mssError(0, "EXP", "%s(...): Failed to get arg2 (base).", tree->Name);
 		return -1;
 		}
 	    }
@@ -4539,7 +4539,7 @@ exp_fn_metaphone(pExpression tree)
 	    EXP_ARG_END,
 	}, tree) != 0)
 	    {
-	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
+	    mssError(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
 	    return -1;
 	    }
 	
@@ -4600,7 +4600,7 @@ exp_fn_compare(pExpression tree)
 	    EXP_ARG_END,
 	}, tree) != 0)
 	    {
-	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
+	    mssError(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
 	    return -1;
 	    }
 	
@@ -4628,7 +4628,7 @@ exp_fn_compare(pExpression tree)
 	    const pVector v2 = check_ptr(ca_build_vector(str2));
 	    if (v1 == NULL || v2 == NULL)
 		{
-		mssErrorf(1, "EXP",
+		mssError(1, "EXP",
 		    "%s(\"%s\", \"%s\"): Failed to build vectors.",
 		    tree->Name, str1, str2
 		);
@@ -4652,7 +4652,7 @@ exp_fn_compare(pExpression tree)
 	    double lev_sim = check_double(ca_lev_compare(str1, str2));
 	    if (isnan(lev_sim))
 		{
-		mssErrorf(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute Levenshtein edit distance.");
+		mssError(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute Levenshtein edit distance.");
 		return -1;
 		}
 	    
@@ -4675,7 +4675,7 @@ exp_fn_levenshtein(pExpression tree)
 	    EXP_ARG_END,
 	}, tree) != 0)
 	    {
-	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
+	    mssError(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
 	    return -1;
 	    }
 	
@@ -4698,7 +4698,7 @@ exp_fn_levenshtein(pExpression tree)
 	int edit_dist = ca_edit_dist(str1, str2, 0lu, 0lu);
 	if (!check_neg(edit_dist))
 	    {
-	    mssErrorf(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute edit distance.\n", tree->Name, str1, str2);
+	    mssError(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute edit distance.\n", tree->Name, str1, str2);
 	    return -1;
 	    }
 	
