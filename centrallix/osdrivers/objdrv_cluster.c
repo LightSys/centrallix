@@ -1237,7 +1237,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 		}
 	    }
 	cluster_data->nSubClusters = sub_clusters.nItems;
-	cluster_data->SubClusters = check_ptr(xaToArray(&sub_clusters));
+	cluster_data->SubClusters = (ClusterData**)check_ptr(xaToArray(&sub_clusters));
 	if (cluster_data->SubClusters == NULL) goto err_free;
 	check(xaDeInit(&sub_clusters)); /* Failure ignored. */
 	sub_clusters.nAlloc = 0;
@@ -2419,19 +2419,19 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    }
 	
 	/** Trim and store keys. **/
-	source_data->Keys = check_ptr(xaToArray(&key_xarray));
+	source_data->Keys = (char**)check_ptr(xaToArray(&key_xarray));
 	if (source_data->Keys == NULL) goto end_free;
 	check(xaDeInit(&key_xarray)); /* Failure ignored. */
 	key_xarray.nAlloc = 0;
 	
 	/** Trim and store data strings. **/
-	source_data->Strings = check_ptr(xaToArray(&data_xarray));
+	source_data->Strings = (char**)check_ptr(xaToArray(&data_xarray));
 	if (source_data->Strings == NULL) goto end_free;
 	check(xaDeInit(&data_xarray)); /* Failure ignored. */
 	data_xarray.nAlloc = 0;
 	
 	/** Trim and store vectors. **/
-	source_data->Vectors = check_ptr(xaToArray(&vector_xarray));
+	source_data->Vectors = (int**)check_ptr(xaToArray(&vector_xarray));
 	if (source_data->Vectors == NULL) goto end_free;
 	check(xaDeInit(&vector_xarray)); /* Failure ignored. */
 	vector_xarray.nAlloc = 0;
@@ -2879,7 +2879,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	    search_data->Pairs = check_ptr(nmSysMalloc(0));
 	else
 	    {
-	    search_data->Pairs = check_ptr(xaToArray(pairs));
+	    search_data->Pairs = (pPair*)check_ptr(xaToArray(pairs));
 	    if (search_data->Pairs == NULL) goto err_free;
 	    check(xaFree(&pairs)); /* Failure ignored. */
 	    pairs = NULL;
