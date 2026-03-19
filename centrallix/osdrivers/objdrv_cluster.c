@@ -296,9 +296,8 @@ typedef unsigned char TargetType;
 char* ATTR_ROOT[] =
     {
     "source",
-    "attr_name",
-    "date_created",
-    "date_computed",
+    "key_attr",
+    "data_attr",
     END_OF_ARRAY,
     };
 char* ATTR_CLUSTER[] =
@@ -318,13 +317,13 @@ char* ATTR_SEARCH[] =
     "source",
     "threshold",
     "similarity_measure",
+    "date_created",
+    "date_computed",
     END_OF_ARRAY,
     };
 char* ATTR_CLUSTER_ENTRY[] =
     {
     "items",
-    "date_created",
-    "date_computed",
     END_OF_ARRAY,
     };
 char* ATTR_SEARCH_ENTRY[] =
@@ -804,7 +803,10 @@ ci_UnknownAttribute(char* attr_name, const int target_type)
 	while (specific_attrs[n_specific_attrs] != NULL) n_specific_attrs++;
 	
 	/** Collect general attributes. */
-	char** general_attrs = (char*[]){"name", "annotation", "content_type", "inner_type", "outer_type", "internal_type", "date_computed", "date_created", "last_modification"};
+	char** general_attrs = (char*[]){
+	    "name", "annotation", "content_type", "inner_type", "outer_type",
+	    "internal_type", "date_computed", "date_created", "last_modification",
+	};
 	
 	/** Attempt to give hints. **/
 	if (ci_TryHint(attr_name, specific_attrs, n_specific_attrs));
