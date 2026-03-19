@@ -50,15 +50,15 @@
 /** This file has additional documentation in string_similarity.md. **/
 
 
-/*** Gets the hash, representing a pair of ASCII characters, represented by unsigned ints.
- *** Thank you to professor John Delano for this hashing algorithm.
+/*** Gets the hash for a pair of ASCII characters, represented by unsigned ints.
+ *** Thank you professor John Delano for this hashing algorithm.
  *** 
  *** @param c1 The first character in the pair.
  *** @param c2 The second character in the pair.
  *** @returns The resulting hash.
  ***/
 static unsigned int
-ca_hash_char_pair(const unsigned char c1, const unsigned char c2)
+ca_i_hash_char_pair(const unsigned char c1, const unsigned char c2)
     {
 	const double sum = (c1 * c1 * c1) + (c2 * c2 * c2);
 	const double scale = ((double)c1 + 1.0) / ((double)c2 + 1.0);
@@ -72,7 +72,7 @@ ca_hash_char_pair(const unsigned char c1, const unsigned char c2)
  *** @param c1 The first character in the character pair.
  *** @param c2 The second character in the character pair.
  *** @param hash The hash for the two characters, calculated by calling the 
- *** 	ca_hash_char_pair() function (above).
+ *** 	ca_i_hash_char_pair() function (above).
  **/
 typedef struct
     {
@@ -81,7 +81,7 @@ typedef struct
     }
     CharPair, *pCharPair;
 
-/*** Internal function to compare two character pairs to allow us to sort them
+/*** Internal function to compare two character pairs, allowing us to sort them
  *** by hash (ascending).
  *** 
  *** @param p1 The first pCharPair.
@@ -91,53 +91,55 @@ typedef struct
  ***          0 if p1 and p2 have identical hashes.
  ***/
 static int
-ca_char_pair_cmp(const void *p1, const void *p2)
+ca_i_char_pair_cmp(const void *p1, const void *p2)
     {
 	const CharPair *a = p1, *b = p2;
 	return a->hash - b->hash;
     }
 
-/*** Builds a vector using a string.
+/*** Builds a sparse vector for cosine compare using the provided string.
  *** 
  *** Vectors are based on the frequencies of character pairs in the string.
- *** Space characters and punctuation characters (see code for list) are ignored,
- *** and all characters are converted to lowercase. Character 96, which is just
- *** before 'a' in the ASCII table (and maps to '`') is used to make pairs on the
- *** start and end of strings. The only supported characters for the passed char*
- *** are spaces, punctuation, uppercase and lowercase letters, and numbers.
+ *** Insignificant characters like spaces or punctuation are ignored (see
+ *** code for more detail) and all characters are converted to lowercase.  
+ *** The boundary character (see `CA_BOUNDARY_CHAR`) is used to make pairs
+ *** on the start and end of strings.
  *** 
- *** This results in the following modified ASCII table:
+ *** The only supported characters for the passed `char*` are whitespace,
+ *** punctuation, uppercase and lowercase letters, and numbers. Passing
+ *** other characters results in undefined behavior.
+ *** 
+ *** The function uses the following modified ASCII table:
  *** ```csv
  *** #,   char, #,   char, #,   char
- *** 97,  a,    109, m,    121, y
- *** 98,  b,    110, n,    122, z
- *** 99,  c,    111, o,    123, 0
- *** 100, d,    112, p,    124, 1
- *** 101, e,    113, q,    125, 2
- *** 102, f,    114, r,    126, 3
- *** 103, g,    115, s,    127, 4
- *** 104, h,    116, t,    128, 5
- *** 105, i,    117, u,    129, 6
- *** 106, j,    118, v,    130, 7
- *** 107, k,    119, w,    131, 8
- *** 108, l,    120, x,    132, 9
+ *** 97,  'a',  109, 'm',  121, 'y'
+ *** 98,  'b',  110, 'n',  122, 'z'
+ *** 99,  'c',  111, 'o',  123, '0'
+ *** 100, 'd',  112, 'p',  124, '1'
+ *** 101, 'e',  113, 'q',  125, '2'
+ *** 102, 'f',  114, 'r',  126, '3'
+ *** 103, 'g',  115, 's',  127, '4'
+ *** 104, 'h',  116, 't',  128, '5'
+ *** 105, 'i',  117, 'u',  129, '6'
+ *** 106, 'j',  118, 'v',  130, '7'
+ *** 107, 'k',  119, 'w',  131, '8'
+ *** 108, 'l',  120, 'x',  132, '9'
  *** ```
- *** Thus, any number from 96 (the start/end character) to 132 ('9') is a valid
- *** input to get_char_pair_hash().
  *** 
  *** After hashing each character pair, we add some number from 1 to 13 to the
- *** corresponding dimension. However, for most names, this results in a lot of
- *** zeros and a FEW positive numbers. Thus, after creating the dense vector,
- *** we convert it to a sparse vector in which a negative number replaces a run
- *** of that many zeros. Consider the following example:
+ *** corresponding dimension based on the characters to improve performance in
+ *** cases where collisions occur.  However, for most names, this process gives
+ *** a lot of zeros and a FEW positive numbers.  Thus, we represent this vector
+ *** using a sparse abstraction where an entry of `-n` represents a run of `n`
+ *** consecutive zeros. Consider the following example:
  *** 
- *** Dense pVector: `[1,0,0,0,3,0]`
- *** 
- *** Sparse pVector: `[1,-3,3,-1]`
+ *** Dense Vector: `[1,0,0,0,3,0]`
+ *** Sparse Representation: `[1,-3,3,-1]`
  *** 
  *** Using these sparse vectors greatly reduces the required memory and gives
- *** approximately an x5 boost to performance when traversing vectors, at the
- *** cost of more algorithmically complex code.
+ *** approximately an x5 boost to performance on a test dataset with short
+ *** strings that rarely approached 32 characters (using 251 dimensions). The
+ *** only cost is more algorithmically complex code.
  *** 
  *** @param str The string to be divided into pairs and hashed to make the vector.
  *** @returns The sparse vector built using the hashed character pairs.
@@ -189,7 +191,7 @@ ca_build_vector(const char* str)
 	    
 	    /** Hash the character pair into an index (dimension).  **/
 	    /** Note that the passed value should always be between 97 ('a') and 132 ('9'). **/
-	    char_pairs[i].hash = ca_hash_char_pair(chars[i], chars[i + 1]);
+	    char_pairs[i].hash = ca_i_hash_char_pair(chars[i], chars[i + 1]);
 	    }
 	
 	/** Free unused memory. **/
@@ -198,7 +200,7 @@ ca_build_vector(const char* str)
 	
 	
 	/** Sort char_pairs by hash value. **/
-	qsort(char_pairs, num_pairs, sizeof(CharPair), ca_char_pair_cmp);
+	qsort(char_pairs, num_pairs, sizeof(CharPair), ca_i_char_pair_cmp);
 	
 	
 	/** Allocate space for the sparse vector. **/
@@ -269,12 +271,14 @@ ca_free_vector(pVector sparse_vector)
     }
 
 /*** Parse a token from a sparsely allocated vector and write its value to
- *** `token_value`. The number of dimensions consumed in the process is written
- *** `dims_consumed`.
+ *** `token_value`.  The number of dimensions consumed in the process is
+ *** written `dims_consumed`.
  *** 
- *** @param token The sparse vector token being parsed.
- *** @param dims_consumed The location to save the dims_consumed number of characters.
- *** @param token_value The location to save the token_value of the token.
+ *** @param token The sparse vector token to be parsed.
+ *** @param dims_consumed The location to store the number of dimensions
+ *** 	consumed, aka. how many indexes we would need to advance if this
+ *** 	were a densely allocated vector.
+ *** @param token_value The location to save the `token_value`.
  ***/
 static void
 ca_parse_vector_token(const int token, unsigned int* dims_consumed, unsigned int* token_value)
@@ -295,7 +299,7 @@ ca_parse_vector_token(const int token, unsigned int* dims_consumed, unsigned int
     return;
     }
 
-/*** Compute the actual number of ints stored in memory to store the given
+/*** Compute the actual number of ints stored in memory to hold the given
  *** sparsely allocated vector.
  *** 
  *** @param vector The vector.
@@ -306,6 +310,12 @@ ca_sparse_len(const pVector vector)
     {
     unsigned int i = 0u;
     
+	/*** TODO: Israel - Add code here to use nmSysGetSize(), if it is
+	 *** available, once the newmalloc branch is merged.  This would
+	 *** allow us to know the size immediately without needing to
+	 *** traverse the array.
+	 ***/
+	
 	for (unsigned int dim = 0u; dim < CA_NUM_DIMS; i++)
 	    {
 	    /** Parse the vector token. **/
@@ -322,7 +332,7 @@ ca_sparse_len(const pVector vector)
 /*** Print the underlying implementation-level values of a sparsely allocated
  *** vector (for debugging).
  *** 
- *** @param vector The vector.
+ *** @param vector The vector to print.
  ***/
 void
 ca_print_vector(const pVector vector)
@@ -378,13 +388,14 @@ ca_magnitude_dense(const pCentroid centroid)
     {
     double magnitude = 0.0;
     
-	for (int i = 0; i < CA_NUM_DIMS; i++)
+	for (unsigned int i = 0u; i < CA_NUM_DIMS; i++)
 	    magnitude += centroid[i] * centroid[i];
     
     return sqrt(magnitude);
     }
 
-/*** Calculate the similarity on sparsely allocated vectors.
+/*** Calculate the similarity between two sparsely allocated vectors by taking
+ *** their dot product.
  *** 
  *** @param v1 Sparse vector #1.
  *** @param v2 Sparse vector #2.
@@ -418,12 +429,13 @@ ca_sparse_similarity(const pVector v1, const pVector v2)
 	
 	/** Optimization: Skip computing magnitudes for completely different vectors. **/
 	if (dot_product == 0u) return 0.0;
-	
+    
     /** Return the difference score. **/
     return (double)dot_product / (ca_magnitude_sparse(v1) * ca_magnitude_sparse(v2));
     }
 
-/*** Calculate the difference on sparsely allocated vectors.
+/*** Calculate the difference between two sparsely allocated vectors by
+ *** subtracting their dot product from 1.0.
  *** 
  *** @param v1 Sparse vector #1.
  *** @param v2 Sparse vector #2.
@@ -434,7 +446,7 @@ ca_sparse_similarity(const pVector v1, const pVector v2)
 #define ca_sparse_dif(v1, v2) (1.0 - ca_sparse_similarity(v1, v2))
 
 /*** Calculate the similarity between a sparsely allocated vector and a densely
- *** allocated centroid using a dot product.
+ *** allocated centroid by taking their dot product.
  *** 
  *** @param v1 Sparse vector #1.
  *** @param c1 Dense centroid #2.
@@ -465,7 +477,7 @@ ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c2)
     }
 
 /*** Calculate the difference between a sparsely allocated vector and a densely
- *** allocated centroid.
+ *** allocated centroid by subtracting their dot product from 1.0.
  *** 
  *** @param v1 Sparse vector #1.
  *** @param c1 Dense centroid #2.
@@ -484,11 +496,8 @@ ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c2)
  *** @returns The edit distance between the two strings, or a negative value on error.
  *** 
  *** @attention - `Tip`: Pass 0 for the length of either string to infer it
- *** 	using the null terminating character. Conversely, character arrays
- *** 	with no null terminator are allowed if an explicit length is specified.
- *** 
- *** @attention - `Complexity`: O(nm), where n and m are the lengths of	str1
- *** 	and str2 (respectively).
+ *** 	using the null terminating character.  Conversely, character arrays
+ *** 	with no null terminator are allowed if an explicit length is passed.
  ***/
 int
 ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length)
@@ -592,12 +601,16 @@ ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const
     }
 
 /*** Compares two strings using their cosine similarity, returning a value
- *** between `0.0` (completely different) and `1.0` (identical). If either
+ *** between `0.0` (completely different) and `1.0` (identical).  If either
  *** OR BOTH strings are NULL, this function returns `0.0`.
+ *** 
+ *** @attention - Note: Punctuation, whitespace, etc. are ignored due to how
+ *** 	cosine vector hashing is implemented.
  *** 
  *** @attention - This function takes `void*` instead of `pVector` so that it
  *** 	can be used as the similarity function in the ca_search() function
  *** 	family without needing a messy typecast to avoid the compiler warning.
+ *** 	However, behavior is undefined if `v1` and `v2` do are not `pVector`s.
  *** 
  *** @param v1 A `pVector` to the first string to compare.
  *** @param v2 A `pVector` to the second string to compare.
@@ -624,16 +637,23 @@ ca_cos_compare(void* v1, void* v2)
 
 /*** Compares two strings using their Levenshtein edit distance to compute a
  *** similarity between `0.0` (completely different) and `1.0` (identical).
- *** If both strings are empty, this function returns `1.0` (identical). If
+ *** If both strings are empty, this function returns `1.0` (identical).  If
  *** either OR BOTH strings are NULL, this function returns `0.0`.
+ *** 
+ *** @attention - Note: Unlike `ca_cos_compare()`, punctuation, whitespace,
+ *** 	etc. are NOT ignored.  In fact, this functions supports strings that
+ *** 	contain ANY valid ASCII characters other than the NULL-terminator,
+ *** 	which is used to terminate the string.
  *** 
  *** @attention - This function takes `void*` instead of `char*` so that it
  *** 	can be used as the similarity function in the ca_search() function
  *** 	family without needing a messy typecast to avoid the compiler warning.
+ *** 	However, behavior is undefined if `v1` and `v2` do are not `char*`s.
  *** 
  *** @param str1 A `char*` to the first string to compare.
  *** @param str2 A `char*` to the second string to compare.
- *** @returns The levenshtein similarity between the two strings, or NAN on failure.
+ *** @returns The Levenshtein similarity between the two strings,
+ *** 	or NAN on failure.
  ***/
 double
 ca_lev_compare(void* str1, void* str2)
@@ -660,8 +680,9 @@ ca_lev_compare(void* str1, void* str2)
     return round(normalized_similarity * 1000000.0) / 1000000.0;
     }
 
-/*** Check if two sparse vectors are identical. True if both vectors are
- *** `NULL`, but false if one is and the other is not.
+/*** Check if two sparse vectors are identical, typically used for debugging
+ *** or testing.  True if both vectors are `NULL`, but false if one is and the
+ *** other is not.
  *** 
  *** @param v1 The first vector.
  *** @param v2 The second vector.
@@ -750,46 +771,37 @@ get_cluster_size(
     return result;
     }
 
-/*** Executes the k-means clustering algorithm. Selects NUM_CLUSTERS random
- *** vectors as initial centroids. Then points are assigned to the nearest
- *** centroid, after which centroids are moved to the center of their points.
+/*** Executes the k-means clustering algorithm.  Selects `num_clusters` random
+ *** vectors as initial centroids, using `rand()` (to set a seed, call srand()
+ *** pass false for `auto_seed`).  Each iteration, points are assigned to the
+ *** nearest centroid using cosine similarity on the provided sparse vectors.
+ *** After this, centroids are moved to the center of their points.  This
+ *** process repeats until the `min_improvement` threshold is not met, or
+ *** `max_iter` is reached (whichever happens first).
  *** 
- *** @param vectors The vectors to cluster.
- *** @param num_vectors The number of vectors to cluster.
- *** @param num_clusters The number of clusters to generate.
- *** @param max_iter The max number of iterations.
- *** @param min_improvement The minimum amount of improvement that must be met
- *** 	each clustering iteration. If there is less improvement, the algorithm
- *** 	will stop. Pass any value less than -1 to fully disable this feature.
- *** @param labels Stores the final cluster identities of the vectors after
- ***     clustering is completed. Each value will be `0 <= n < num_clusters`.
+ *** @attention - `num_vectors` must be the length of `vectors`.
+ *** @attention - `num_clusters` must be the length of `labels`.
+ *** 
+ *** @param vectors The sparse cosine similarity vectors representing the data
+ *** 	to cluster.
+ *** @param num_vectors The number of vectors (in `vectors`) to cluster.
+ *** @param num_clusters The number of clusters to generate (also called k).
+ *** @param max_iter A hard cutoff for the max number of iterations, applied
+ *** 	even if the `min_improvement` threshold is still met on each iteration.
+ *** @param min_improvement The minimum improvement threshold that must be met
+ *** 	each clustering iteration. If this is not met, the iterations stop.
+ *** 	Pass -1 to disable this and iterate for as long as the centroids keep
+ *** 	changing (or until `max_iter` is reached).
+ *** @param labels Initialized by this function to stores the final cluster
+ *** 	identities of the vectors after clustering is completed. Each value
+ *** 	will be `0 <= n < num_clusters`.  This buffer can be uninitialized.
  *** @param vector_sims An array of num_vectors elements, allocated by the
  *** 	caller, where index i stores the similarity of vector i to its assigned
  *** 	cluster. Passing NULL skips evaluation of these values.
- *** @param auto_seed If true, the function will set its own seed. Otherwise,
- *** 	it will use rand() without setting a seed. In the latter case, srand()
- *** 	should be used by the caller prior to calling this function.
+ *** @param auto_seed If true, the function will set its own seed.  Otherwise,
+ *** 	it will use rand() without setting a seed, so the caller should use
+ *** 	srand() to set a seed before calling.
  *** @returns 0 if successful, or -1 if an error occurs.
- ***
- *** @attention - Assumes: num_vectors is the length of vectors.
- *** @attention - Assumes: num_clusters is the length of labels.
- ***
- *** @attention - Issue: At larger numbers of clustering iterations, some
- ***     clusters have a size of    negative infinity. In this implementation,
- ***     the bug is mitigated by setting a small number of max iterations,
- ***     such as 16 instead of 100.
- *** @attention - Issue: Clusters do not appear to improve much after the first
- ***     iteration, which puts the efficacy of the algorithm into question. This
- ***     may be due to the uneven density of a typical dataset. However, the
- ***     clusters still offer useful information.
- *** 
- *** Complexity:
- *** 
- *** - `O(kd + k + i*(k + n*(k+d) + kd))`
- *** 
- *** - `O(kd + k + ik + ink + ind + ikd)`
- *** 
- *** - `O(nk + nd)`
  ***/
 int
 ca_kmeans(
@@ -910,7 +922,7 @@ ca_kmeans(
 	    
 	    /** Is there enough improvement? **/
 	    if (min_improvement < -1) continue; /** Skip check if it will never end the loop. **/
-	    const double average_cluster_size = check_double(get_cluster_size(vectors, num_vectors, labels,     centroids, num_clusters));
+	    const double average_cluster_size = check_double(get_cluster_size(vectors, num_vectors, labels, centroids, num_clusters));
 	    if (isnan(average_cluster_size)) goto end;
 	    const double improvement = old_average_cluster_size - average_cluster_size;
 	    if (improvement < min_improvement) break;
@@ -956,13 +968,12 @@ ca_kmeans(
  *** it if the similarity meets the threshold.
  *** 
  *** @param target The target data to compare to the rest of the data.
- *** @param data The rest of the data, compared against the target to
- *** 	find the data that is the most similar.
+ *** @param data The rest of the data, compared against the target.
  *** @param num_data The number of elements in data. Specify 0 to detect
  *** 	length on a null terminated array of data.
- *** @param similarity A function which takes two data items of the type
- *** 	of the data param and returns their similarity.
- *** @param threshold The minimum similarity threshold. If the most similar
+ *** @param similarity A function that takes two data items (aka. pointers
+ *** 	in the array pointed to by `data`) and returns their similarity.
+ *** @param threshold The minimum similarity threshold.  If the most similar
  *** 	data does not meet this threshold, the function returns NULL.
  *** @returns A pointer to the most similar piece of data found in the data
  *** 	array, or NULL if the most similar data did not meet the threshold.
@@ -995,7 +1006,7 @@ ca_most_similar(
 
 
 /*** Runs a sliding search over the provided data, comparing each element to
- *** the next `window_size` elements. If any comparison yields a similarity
+ *** the next `window_size` elements.  If any comparison yields a similarity
  *** greater than the threshold, it is stored in the returned xArray.
  *** 
  *** @param data The data to be searched.
@@ -1006,7 +1017,7 @@ ca_most_similar(
  *** @param threshold The minimum threshold required for each pair.
  *** @param maybe_pairs A pointer to an xArray to which pairs should be added.
  *** 	Pass NULL to allocate a new one.
- *** @returns An xArray of the pairs found. If `maybe_pairs` is not NULL, this
+ *** @returns An xArray of the pairs found.  If `maybe_pairs` is not NULL, this
  *** 	will be that xArray, to allow for chaining.
  ***/
 pXArray
@@ -1023,7 +1034,7 @@ ca_sliding_search(
 	/** Allocate space for pairs (if it is not provided). **/
 	if (pairs == NULL)
 	    {
-	    /** Guess that we will need space for num_data * 2 pairs. **/
+	    /** Guess that we will need space for two pairs per data point. **/
 	    const int guess_size = num_data * 2;
 	    pairs = check_ptr(xaNew(guess_size));
 	    if (pairs == NULL) goto err;
@@ -1069,7 +1080,7 @@ ca_sliding_search(
     }
 
 /*** Runs a complete search over the provided data, comparing each element to
- *** each other element. If any comparison yields a similarity greater than the
+ *** each other element.  If any comparison yields a similarity greater than the
  *** threshold, it is stored in the returned xArray.
  *** 
  *** @param data The data to be searched.
@@ -1079,7 +1090,7 @@ ca_sliding_search(
  *** @param threshold The minimum threshold required for each pair.
  *** @param maybe_pairs A pointer to an xArray to which pairs should be added.
  *** 	Pass NULL to allocate a new one.
- *** @returns An xArray of the pairs found. If `maybe_pairs` is not NULL, this
+ *** @returns An xArray of the pairs found.  If `maybe_pairs` is not NULL, this
  *** 	will be that xArray, to allow for chaining.
  ***/
 pXArray

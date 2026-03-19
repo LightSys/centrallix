@@ -66,7 +66,10 @@
  ***/
 #define CA_NUM_DIMS 251
 
-/** The character used to create a pair with the first and last characters of a string. **/
+/*** The character used to create a pair with the first and last characters
+ *** of a string.  Currently set to 96, the character just before 'a' (97)
+ *** in the ASCII table.
+ ***/
 #define CA_BOUNDARY_CHAR ((unsigned char)('a' - 1))
 
 /** Types. **/
@@ -88,7 +91,7 @@ typedef struct
     }
     Pair, *pPair;
 
-    
+
 /** Edit distance function. **/
 int ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length);
 

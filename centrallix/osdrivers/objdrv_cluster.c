@@ -70,16 +70,15 @@
  *** specifiers to mssError() without realizing that it didn't support them.
  *** Eventually, I got fed up enough having to write errors to a sting buffer
  *** and passing that buffer to mssError(), so I wrote this wrapper that does
- *** it for me. Adding this behavior to mssError() would be better, though.
+ *** it for me.  It'd be better to add this to mssError(), though.
  ***/
-/*** Displays error text to the user. Does not print a stack trace. Does not
- *** exit the program, allowing for the calling function to fail, generating
- *** an error cascade which may be useful to the user since a stack trace is
- *** not readily available.
+/*** Displays error text to the user (but no stack trace).  Does not exit the
+ *** program, allowing the calling function to fail, generating a cascade of
+ *** error messages which may provide useful info.
  *** 
- *** @param clr Whether to clear the current error stack. As a rule of thumb,
+ *** @param clr Whether to clear the current error stack.  As a rule of thumb,
  *** 	if you are the first one to detect the error, clear the stack so that
- *** 	other unrelated messages are not shown. If you are detecting an error
+ *** 	other unrelated messages are not shown.  If you are detecting an error
  *** 	from another function that may also call an mssError() function, do
  *** 	not clear the stack.
  *** @param module The name or abbreviation of the module in which this 
@@ -133,8 +132,8 @@ mssErrorf(int clr, char* module, const char* format, ...)
  *** @param cleanup 0: No clean up.
  ***                1: DeInit arr.
  ***                2: Free arr.
- ***                *: Any other value prints a warning and does nothing.
- *** @returns The new array, or null if and only if the passed pXArray has 0 items.
+ ***                *: Any other value prints a warning and does no clean up.
+ *** @returns The new array, or NULL if and only if `arr` is empty.
  ***/
 static void**
 ci_xaToTrimmedArray(pXArray arr, int array_handling)
@@ -178,7 +177,7 @@ ci_xaToTrimmedArray(pXArray arr, int array_handling)
 /** ================ Enum Declarations ================ **/
 /** ANCHOR[id=enums] **/
 
-/** Enum representing a clustering algorithm. **/
+/** Enum type representing a clustering algorithm. **/
 typedef unsigned char ClusterAlgorithm;
 #define ALGORITHM_NULL             (ClusterAlgorithm)0u
 #define ALGORITHM_NONE             (ClusterAlgorithm)1u
@@ -219,7 +218,7 @@ ci_ClusteringAlgorithmToString(ClusterAlgorithm clustering_algorithm)
     return NULL; /** Unreachable. **/
     }
 
-/** Enum representing a similarity measurement algorithm. **/
+/** Enum type representing a similarity measurement algorithm. **/
 typedef unsigned char SimilarityMeasure;
 #define SIMILARITY_NULL            (SimilarityMeasure)0u
 #define SIMILARITY_COSINE          (SimilarityMeasure)1u
@@ -233,7 +232,11 @@ SimilarityMeasure ALL_SIMILARITY_MEASURES[nSimilarityMeasures] =
     SIMILARITY_LEVENSHTEIN,
     };
 
-/** Converts a similarity measure to its string name. **/
+/*** Converts a similarity measure to its string name.
+ *** 
+ *** @param similarity_measure The similarity measure to convert.
+ *** @returns The corresponding name.
+ ***/
 char*
 ci_SimilarityMeasureToString(SimilarityMeasure similarity_measure)
     {
@@ -248,16 +251,17 @@ ci_SimilarityMeasureToString(SimilarityMeasure similarity_measure)
     return NULL; /** Unreachable. **/
     }
 
-/*** Converts a similarity measure to the function pointer to a comparison
- *** function. This function can be used to compute similarity between two
- *** values, or it can be passed to `clusters.c` which uses it for similar
- *** operations.
+/*** Converts a similarity measure to a function pointer that points to the
+ *** corresponding comparison function.  This function can be called directly
+ *** or passed to functions from `clusters.c`.
  *** 
  *** @param similarity_measure The similarity measure to be converted.
- *** @returns A similarity computation function. This function takes two void
- *** 	pointers, representing the data to be compared, and a double that
- *** 	represents how similar the data is. Or returns NULL if an error occurs,
- *** 	calling mssError() to provide an error message.
+ *** @returns A similarity computation function.  This function takes two void
+ *** 	pointers, representing the data to be compared, and returns a double
+ *** 	representing how similar the data is from 0.0 (no similarity) to 1.0
+ *** 	(identical), or NAN if an error occurs.  This function may return NULL
+ *** 	if an error occurs, in which case it always calls mssError() to give
+ *** 	an error message.
  ***/
 double (*ci_SimilarityMeasureToFunction(SimilarityMeasure similarity_measure))(void*, void*)
     {
@@ -267,19 +271,18 @@ double (*ci_SimilarityMeasureToFunction(SimilarityMeasure similarity_measure))(v
 	case SIMILARITY_LEVENSHTEIN: return ca_lev_compare;
 	default:
 	    mssErrorf(1, "Cluster",
-		"Unknown similarity measure \"%s\".",
-		ci_SimilarityMeasureToString(similarity_measure)
+		"Unknown similarity measure \"%s\" (%d).",
+		ci_SimilarityMeasureToString(similarity_measure), similarity_measure
 	    );
 	    return NULL;
 	}
     }
 
-/*** Enum representing the type of data targeted by the driver,
- *** set based on the path given when the driver is used to open
- *** a cluster file.
+/*** Enum representing the type of data targeted by the driver, set based on
+ *** the path given when the driver is used to open a cluster file.
  *** 
- *** `0u` is reserved for a possible `NULL` value in the future.
- *** However, there is currently no allowed `NULL` TargetType.
+ *** `0u` is reserved for a possible NULL value in the future.  However, NULL
+ *** values for TargetType are not currently allowed.
  ***/
 typedef unsigned char TargetType;
 #define TARGET_NODE          (TargetType)1u
@@ -352,26 +355,24 @@ char* METHOD_NAMES[] =
  *** 
  *** @skip --> Attribute Data.
  *** @param Name The source name, specified in the .cluster file.
- *** @param Key  The key associated with this object in the SourceDataCache.
+ *** @param Key The key associated with this object in the SourceDataCache.
  *** @param SourcePath The path to the data source from which to retrieve data.
  *** @param KeyAttr The name of the attribute to use when getting keys from
  *** 	the SourcePath.
  *** @param DataAttr The name of the attribute to use when getting data from
  *** 	the SourcePath.
  *** 
- *** @skip --> Computed data.
+ *** @skip --> Fetched/Computed Data.
  *** @param Strings The keys for each data string strings received from the
  *** 	database, allowing them to be lined up again when queried.
  *** @param Strings The data strings to be clustered and searched, or NULL if
  *** 	they have not been fetched from the source.
  *** @param Vectors The cosine comparison vectors from the fetched data, or
- *** 	NULL if they haven't been computed. Note that vectors are no longer
- *** 	needed once all clusters and searches have been computed, so they are
- *** 	automatically freed in that case to save memory.
+ *** 	NULL if they haven't been computed.
  *** @param nVectors The number of vectors and data strings.
  *** 
  *** @skip --> Time.
- *** @param DateCreated The date and time that this object was created and initialized.
+ *** @param DateCreated The date and time that this object was created/initialized.
  *** @param DateComputed The date and time that the computed attributes were computed.
  *** 
  *** @param Magic A magic value for detecting corrupted memory.
@@ -427,19 +428,17 @@ typedef struct
  *** @param SimilarityMeasure The similarity measure used to compare items.
  *** @param nClusters The number of clusters. 1 if algorithm = none.
  *** @param MinImprovement The minimum amount of improvement that must be met
- *** 	each clustering iteration. If there is less improvement, the algorithm
- *** 	will stop. The "max" in a .cluster file is represented by -inf.
- *** @param MaxIterations The maximum number of iterations that a clustering
- *** 	algorithm can run for. Note: Sliding window uses this attribute to store
- *** 	the window_size.
+ *** 	each clustering iteration.  -inf represents "max" in the .cluster file.
+ *** @param MaxIterations The maximum number of iterations to run clustering.
+ *** 	Note: Sliding window uses this attribute to store the window_size.
  *** 
- *** @skip --> Relationship Data.
+ *** @skip --> Relational Data.
  *** @param nSubClusters The number of subclusters of this cluster.
  *** @param SubClusters A pClusterData array, NULL if nSubClusters == 0.
  *** @param Parent This cluster's parent. NULL if it is not a subcluster.
  *** @param SourceData Pointer to the source data that this cluster uses.
  *** 
- *** @skip --> Computed data.
+ *** @skip --> Computed Data.
  *** @param Clusters An array of length num_clusters, NULL if the clusters
  *** 	have not yet been computed.
  *** @param Sims An array of num_vectors elements, where index i stores the
@@ -447,7 +446,7 @@ typedef struct
  *** 	if the clusters have not yet been computed.
  *** 
  *** @skip --> Time.
- *** @param DateCreated The date and time that this object was created and initialized.
+ *** @param DateCreated The date and time that this object was created/initialized.
  *** @param DateComputed The date and time that the computed attributes were computed.
  *** 
  *** @param Magic A magic value for detecting corrupted memory.
@@ -477,7 +476,7 @@ typedef struct _CD
 
 
 /*** Data for each search.
- ***
+ *** 
  *** Memory Stats:
  ***   - Padding: 7 bytes
  ***   - Total size: 72 bytes
@@ -491,13 +490,13 @@ typedef struct _CD
  *** 	included in the results of the search.
  *** 
  *** @skip --> Computed data.
- *** @param Pairs An array holding the pair found by the search, or NULL if the
- *** 	search has not been computed. The indexes stored in these pairs are
- *** 	indexes into the SourceData data arrays.
+ *** @param Pairs An array holding the pairs found by the search, or NULL if
+ *** 	the search has not been computed.  The indexes stored in these pairs
+ *** 	are indexes into the SourceData data arrays.
  *** @param nPairs The number of pairs found.
  *** 
  *** @skip --> Time.
- *** @param DateCreated The date and time that this object was created and initialized.
+ *** @param DateCreated The date and time that this object was created/initialized.
  *** @param DateComputed The date and time that the computed attributes were computed.
  *** 
  *** @param Magic A magic value for detecting corrupted memory.
@@ -526,10 +525,10 @@ typedef struct _SEARCH
  ***   - Padding: 4 bytes
  ***   - Total size: 72 bytes
  *** 
- *** @note When a .cluster file is opened, there will be only one node for that
- *** file. However, in the course of the query, many driver instance structs
- *** may be created by functions like clusterQueryFetch(), and closed by the
- *** object system using clusterClose().
+ *** @note When a .cluster file is opened, there will be only one node for
+ *** that file.  However, in the course of the query, many driver instance
+ *** structs using this one node may be created thanks to functions such as
+ ***`clusterQueryFetch()`, and closed by with functions like `clusterClose()`.
  *** 
  *** @param SourceData Data from the provided source.
  *** @param Params A pParam array storing the params in the .cluster file.
@@ -569,20 +568,21 @@ typedef struct _NODE
  ***   - Total size: 32 bytes
  ***  
  *** This struct can be thought of like a "pointer" to specific data accessible
- *** through the stored pNodeData struct. This struct also communicates whether
+ *** through the stored pNodeData struct.  This struct also communicates whether
  *** that data is guaranteed to have been computed.
  *** 
  *** For example, if target type is the root, a cluster, or a search, no data
- *** is guaranteed to be computed. These three types can be returned from
+ *** is guaranteed to be computed.  These three types can be returned from
  *** clusterOpen(), based on the provided path.
  *** 
  *** Alternatively, a cluster entry or search entry can be targeted by calling
  *** fetch on a query pointing to a driver instance that targets a cluster or
- *** search (respectively). These two entry target types ensure that the data
- *** they indicate has been computed, so the GetAttrType() and GetAttrValue()
- *** functions do not need to check this repeatedly each time they are called.
+ *** search (respectively).  These two entry target types ensure that the data
+ *** they indicate has been computed.  This makes the `clusterGetAttrType()`
+ *** and `clusterGetAttrValue()` functions faster and simpler because they do
+ *** not need to check that the data is computed every time they are called.
  *** 
- *** @param NodeData The associated node data struct. There can be many driver
+ *** @param NodeData The associated node data struct.  While many driver struct
  *** 	instances pointing to one NodeData at a time, but each driver instance
  *** 	always points to singular NodeData struct.
  *** @param TargetType The type of data targeted (see above).
@@ -747,7 +747,7 @@ static void ci_GiveHint(const char* hint)
 
 
 /*** Given the user a hint when they specify an invalid string for an attribute
- *** where we know the list of valid strings. The hint is only displayed if
+ *** where we know the list of valid strings.  The hint is only displayed if
  *** their string is close enough to a valid string.
  *** 
  *** @param value The value the user gave.
@@ -813,16 +813,17 @@ ci_UnknownAttribute(char* attr_name, const int target_type)
 
 
 // LINK #functions
-/*** Returns 0 for success and -1 on failure. Promises that mssError() will be
- *** invoked on failure, so the caller need not specify their own error message.
- *** Returns 1 if attribute is available, printing an error if the attribute was
- *** marked as required.
+/*** @returns 0 if a value is found,
+ ***         -1 if an error occurs, or
+ ***          1 if attribute is null, calling mssError() for required attributes.
  *** 
  *** @attention - Promises that a failure invokes mssError() at least once.
  *** 
- *** TODO: Greg - Review carefully. I think this code is the reason that runserver()
- *** is NOT REQUIRED for dynamic attributes in the cluster driver. I had to debug
- *** and rewrite this for ages and it uses several functions I don't 100% understand.
+ *** TODO: Greg - Review carefully. I think this code is the reason that
+ *** runserver() is sometimes not required for dynamic attributes in the
+ *** cluster driver, which I'm pretty sure is incorrect.
+ *** TODO: Israel - After Greg's review, update this doc comment to properly
+ *** describe the function parameters.
  ***/
 static int
 ci_ParseAttribute(
@@ -897,8 +898,7 @@ ci_ParseAttribute(
 
 
 // LINK #functions
-/*** Parses a ClusteringAlgorithm from the algorithm attribute in the pStructInf
- *** representing some structure with that attribute in a parsed structure file.
+/*** Parses a ClusteringAlgorithm from the algorithm attribute in the pStructInf.
  *** 
  *** @attention - Promises that a failure invokes mssError() at least once.
  *** 
@@ -946,8 +946,7 @@ ci_ParseClusteringAlgorithm(pStructInf inf, pParamObjects param_list)
 
 // LINK #functions
 /*** Parses a SimilarityMeasure from the similarity_measure attribute in the given
- *** pStructInf parameter, which represents some structure with that attribute
- *** in a parsed structure file.
+ *** pStructInf parameter.
  *** 
  *** @attention - Promises that a failure invokes mssError() at least once.
  *** 
@@ -2208,11 +2207,10 @@ ci_ClearCaches(void)
 // LINK #functions
 
 /*** Returns the deep size of a SourceData struct, including the size of all
- *** allocated substructures. As far as I can tell, this is probably only
- *** useful for cache management and debugging.
+ *** allocated substructures.
  *** 
- *** Note that Key is ignored because it is a pointer to data managed by the
- *** caching systems, so it is not technically part of the struct.
+ *** Note: The Key field points to data managed by the caching systems, so it
+ *** is ignored.
  *** 
  *** @param source_data The source data struct to be queried.
  *** @returns The size in bytes of the struct and all internal allocated data.
@@ -2259,11 +2257,10 @@ ci_SizeOfSourceData(pSourceData source_data)
 
 // LINK #functions
 /*** Returns the deep size of a ClusterData struct, including the size of all
- *** allocated substructures. As far as I can tell, this is probably only
- *** useful for cache management and debugging.
+ *** allocated substructures.
  *** 
- *** Note that Key is ignored because it is a pointer to data managed by the
- *** caching systems, so it is not technically part of the struct.
+ *** Note: The Key field points to data managed by the caching systems, so it
+ *** is ignored.
  *** 
  *** @param cluster_data The cluster data struct to be queried.
  *** @param recursive Whether to recursively free subclusters.
@@ -2306,11 +2303,10 @@ ci_SizeOfClusterData(pClusterData cluster_data, bool recursive)
 
 // LINK #functions
 /*** Returns the deep size of a SearchData struct, including the size of all
- *** allocated substructures. As far as I can tell, this is probably only
- *** useful for cache management and debugging.
+ *** allocated substructures.
  *** 
- *** Note that Key is ignored because it is a pointer to data managed by the
- *** caching systems, so it is not technically part of the struct.
+ *** Note: The Key field points to data managed by the caching systems, so it
+ *** is ignored.
  *** 
  *** @param search_data The search data struct to be queried.
  *** @returns The size in bytes of the struct and all internal allocated data.
@@ -2339,13 +2335,12 @@ ci_SizeOfSearchData(pSearchData search_data)
 /** ANCHOR[id=computation] **/
 // LINK #functions
 
-/*** Ensures that the `source_data->Data` has been fetched from the data source
- *** and that `source_data->nVectors` has been computed from the fetched data.
+/*** Ensures that the fetched/computed attributes for `source_data` have been
+ *** computed, fetching from the data source and computing vectors if needed.
  ***
- *** @attention - Promises that mssError() will be invoked on failure, so the
- *** 	caller is not required to specify their own error message.
+ *** @attention - Promises that mssError() will be invoked on failure.
  *** 
- *** @param source_data The pSourceData affected by the computation.
+ *** @param source_data The pSourceData who's attributes should be computed.
  *** @param session The current session, used to open the data source.
  *** @returns 0 if successful, or
  ***         -1 other value on failure.
@@ -2586,13 +2581,12 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 
 
 // LINK #functions
-/*** Ensures that the cluster_data->Labels has been computed, running the
- *** specified clustering algorithm if necessary.
+/*** Ensures that the computed attributes for `cluster_data` have been
+ *** computed, running the specified clustering algorithm if necessary.
  *** 
- *** @attention - Promises that mssError() will be invoked on failure, so the
- *** 	caller is not required to specify their own error message.
+ *** @attention - Promises that mssError() will be invoked on failure.
  *** 
- *** @param cluster_data The pClusterData affected by the computation.
+ *** @param cluster_data The pClusterData who's attributes should be computed.
  *** @param node_data The current pNodeData, used to get vectors to cluster.
  *** @returns 0 if successful, or
  ***         -1 other value on failure.
@@ -2798,13 +2792,12 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 
 
 // LINK #functions
-/*** Ensures that the search_data->pairs has been computed, running the a
- *** search with the specified similarity measure if necessary.
+/*** Ensures that the computed attributes for `search_data` are computed,
+ *** running the a search with the specified similarity measure if necessary.
  *** 
- *** @attention - Promises that mssError() will be invoked on failure, so the
- *** 	caller is not required to specify their own error message.
+ *** @attention - Promises that mssError() will be invoked on failure.
  *** 
- *** @param cluster_data The pClusterData affected by the computation.
+ *** @param cluster_data The pSearchData who's attributes should be computed.
  *** @param node_data The current pNodeData, used to get vectors to cluster.
  *** @returns 0 if successful, or
  ***         -1 other value on failure.
@@ -2998,7 +2991,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 /** ANCHOR[id=params] **/
 // LINK #functions
 
-/*** Get the type of a parameter. Intended for expSetParamFunctions().
+/*** Get the type of a parameter. Intended for use in `expSetParamFunctions()`.
  *** 
  *** @param inf_v Node data containing the list of parameters.
  *** @param attr_name The name of the requested parameter.
@@ -3028,12 +3021,11 @@ ci_GetParamType(void* inf_v, const char* attr_name)
 
 
 // LINK #functions
-/*** Get the value of a parameter. Intended for `expSetParamFunctions()`.
+/*** Get the value of a parameter. Intended for use in `expSetParamFunctions()`.
  *** 
  *** @attention - Warning: If the retrieved value is `NULL`, the pObjectData
- *** 	val is not updated, and the function returns 1, indicating `NULL`.
- *** 	This is intended behavior, for consistency with other Centrallix
- *** 	functions, so keep it in mind so you're not surprised.
+ *** 	val is not updated, and the function returns 1, indicating `NULL`,
+ *** 	similar to other Centrallix functions.
  *** 
  *** @param inf_v Node data containing the list of parameters.
  *** @param attr_name The name of the requested parameter.
@@ -3111,7 +3103,7 @@ ci_SetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
  *** @param usr_type The object system file type being opened. Should always
  *** 	be "system/cluster" because this driver is only registered for that
  *** 	type of file.
- *** @param oxt The object system tree, similar to a kind of "scope" (unused).
+ *** @param oxt The transaction tree (for the incomplete transaction system).
  *** 
  *** @returns A pDriverData struct representing a driver instance, or
  ***          NULL if an error occurs.
@@ -3293,11 +3285,11 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 
 // LINK #functions
 /*** Close a cluster driver instance object, releasing any necessary memory
- *** and closing any necessary underlying resources. However, most of that
+ *** and closing any necessary underlying resources.  However, most of that
  *** data will be cached and won't be freed unless the cache is dropped.
  *** 
  *** @param inf_v The affected driver instance.
- *** @param oxt The object system tree, similar to a kind of "scope" (unused).
+ *** @param oxt The transaction tree (for the incomplete transaction system).
  *** @returns 0, success.
  ***/
 int
@@ -3327,13 +3319,13 @@ clusterClose(void* inf_v, pObjTrxTree* oxt)
 
 // LINK #functions
 /*** Opens a new query pointing to the first row of the data targeted by
- *** the driver instance struct. The query has an internal index counter
+ *** the driver instance struct.  The query has an internal index counter
  *** that starts at the first row and increments as data is fetched.
  *** 
  *** @param inf_v The driver instance to be queried.
  *** @param query The query to use on this struct. This is assumed to be
  *** 	handled elsewhere, so we don't read it here (unused).
- *** @param oxt The object system tree, similar to a kind of "scope" (unused).
+ *** @param oxt The transaction tree (for the incomplete transaction system).
  *** @returns The cluster query, or
  ***          NULL if an error occurs.
  ***/
@@ -3372,7 +3364,7 @@ clusterOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     err_free:
 	/** Error cleanup. **/
 	if (query_data != NULL) nmFree(query_data, sizeof(ClusterQuery));
-        mssErrorf(0, "Cluster", "Failed to open query.");
+	mssErrorf(0, "Cluster", "Failed to open query.");
 	
     err:
 	return NULL;
@@ -3380,7 +3372,7 @@ clusterOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 
 
 // LINK #functions
-/*** Get the next entry as an open driver instance object.
+/*** Get the next entry of a query as an open driver instance object.
  *** 
  *** @param qy_v A query instance, storing an internal index which is
  *** 	incremented once that data has been fetched.
@@ -3388,8 +3380,8 @@ clusterOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
  *** @param mode Unused.
  *** @param oxt Unused.
  *** @returns pDriverData that is either a cluster entry or search entry,
- *** 	pointing to a specific target index into the relevant data.
- *** 	OR NULL, indicating that all data has been fetched.
+ *** 	pointing to a specific target index into the relevant data,
+ *** 	OR NULL if all data has been fetched or an error occurs.
  ***/
 void*
 clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
@@ -3526,11 +3518,11 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
 // LINK #functions
 /*** Close a cluster query instance, releasing any necessary memory and
- *** closing any necessary underlying resources. This does not close the
+ *** closing any necessary underlying resources.  This does not close the
  *** underlying driver instance, which must be closed with clusterClose().
  *** 
  *** @param qy_v The affected query instance.
- *** @param oxt The object system tree, similar to a kind of "scope" (unused).
+ *** @param oxt The transaction tree (for the incomplete transaction system).
  *** @returns 0, success.
  ***/
 int
@@ -3555,7 +3547,7 @@ clusterQueryClose(void* qy_v, pObjTrxTree* oxt)
  *** 
  *** @param inf_v The driver instance.
  *** @param attr_name The name of the requested attribute.
- *** @param oxt The object system tree, similar to a kind of "scope" (unused).
+ *** @param oxt The transaction tree (for the incomplete transaction system).
  *** @returns The datatype, see datatypes.h for a list of valid datatypes, or
  ***          -1 if an error occurs.
  *** 
@@ -3609,8 +3601,8 @@ clusterGetAttrType(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	    {
 	    case TARGET_NODE:
 		if (strcmp(attr_name, "source") == 0
-		    || strcmp(attr_name, "data_attr") == 0
-		    || strcmp(attr_name, "key_attr") == 0)
+		    || strcmp(attr_name, "key_attr") == 0
+		    || strcmp(attr_name, "data_attr") == 0)
 		    return DATA_T_STRING;
 		break;
 	    
@@ -3665,14 +3657,14 @@ clusterGetAttrType(void* inf_v, char* attr_name, pObjTrxTree* oxt)
  *** @param inf_v The driver instance to be read.
  *** @param attr_name The name of the requested attribute.
  *** @param datatype The expected datatype of the attribute value.
- *** 	See datatypes.h	for a list of valid datatypes.
- *** @param oxt The object system tree, similar to a kind of "scope" (unused).
+ *** 	See `datatypes.h` for a list of valid datatypes.
  *** @param val A pointer to a location where a pointer to the requested
- *** 	data should be stored. Typically, the caller creates a local variable
+ *** 	data should be stored.  Typically, the caller creates a local variable
  *** 	to store this pointer, then passes a pointer to that local variable
  ***    so that they will have a pointer to the data.
  *** 	This buffer will not be modified unless the data is successfully
- *** 	found. If a value other than 0 is returned, the buffer is not updated.
+ *** 	found.  If a value other than 0 is returned, the buffer is not updated.
+ *** @param oxt The transaction tree (for the incomplete transaction system).
  *** @returns 0 if successful,
  ***         -1 if an error occurs.
  *** 
@@ -3909,7 +3901,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		    val->String = source_data->KeyAttr;
 		    return 0;
 		    }
-		if (strcmp(attr_name, "name_attr") == 0)
+		if (strcmp(attr_name, "data_attr") == 0)
 		    {
 		    val->String = source_data->DataAttr;
 		    return 0;
@@ -4077,7 +4069,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
  *** 
  *** @param inf_v The driver instance to be read.
  *** @param attr_name The name of the requested attribute.
- *** @param oxt The object system tree, similar to a kind of "scope" (unused).
+ *** @param oxt The transaction tree (for the incomplete transaction system).
  *** @returns A presentation hints object, if successful,
  ***          NULL if an error occurs.
  ***/
@@ -4386,12 +4378,12 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 
 // LINK #functions
 /*** Returns the name of the first attribute that one can get from
- *** this driver instance (using GetAttrType() and GetAttrValue()).
- *** Resets the internal variable (TargetAttrIndex) used to maintain
- *** iteration state for clusterGetNextAttr().
+ *** this driver instance (using `GetAttrType()` and `GetAttrValue()`).
+ *** Resets the internal variable (`TargetAttrIndex`) used to maintain
+ *** iteration state for `clusterGetNextAttr()`.
  *** 
  *** @param inf_v The driver instance to be read.
- *** @param oxt Unused.
+ *** @param oxt The transaction tree (for the incomplete transaction system).
  *** @returns The name of the first attribute.
  ***/
 char*
@@ -4413,7 +4405,7 @@ clusterGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
  *** the state of this iteration over repeated calls.
  *** 
  *** @param inf_v The driver instance to be read.
- *** @param oxt Unused.
+ *** @param oxt The transaction tree (for the incomplete transaction system).
  *** @returns The name of the next attribute.
  ***/
 char*
@@ -4528,12 +4520,12 @@ clusterInfo(void* inf_v, pObjectInfo info)
 // LINK #functions
 
 /*** Returns the name of the first method that one can execute from
- *** this driver instance (using clusterExecuteMethod()). Resets the
- *** internal variable (TargetMethodIndex) used to maintain iteration
- *** state for clusterGetNextMethod().
+ *** this driver instance (using `clusterExecuteMethod()`). Resets the
+ *** internal variable (`TargetMethodIndex`) used to maintain iteration
+ *** state for `clusterGetNextMethod()`.
  *** 
  *** @param inf_v The driver instance to be read.
- *** @param oxt Unused.
+ *** @param oxt The transaction tree (for the incomplete transaction system).
  *** @returns The name of the first method.
  ***/
 char*
@@ -4550,8 +4542,8 @@ clusterGetFirstMethod(void* inf_v, pObjTrxTree* oxt)
 
 // LINK #functions
 /*** Returns the name of the next method that one can get from
- *** this driver instance (using GetAttrType() and GetAttrValue()).
- *** Uses an internal variable (TargetMethodIndex) used to maintain
+ *** this driver instance (using `GetAttrType()` and `GetAttrValue()`).
+ *** Uses an internal variable (`TargetMethodIndex`) used to maintain
  *** the state of this iteration over repeated calls.
  *** 
  *** @param inf_v The driver instance to be read.
@@ -4569,7 +4561,7 @@ clusterGetNextMethod(void* inf_v, pObjTrxTree* oxt)
 
 
 // LINK #functions
-/** Intended for use in xhForEach(). **/
+/** Intended for use in `xhForEach()`. **/
 static int
 ci_PrintEntry(pXHashEntry entry, void* arg)
     {
@@ -4660,7 +4652,7 @@ ci_PrintEntry(pXHashEntry entry, void* arg)
 
 
 // LINK #functions
-/** Intended for use in xhClearKeySafe(). **/
+/** Intended for use in `xhClearKeySafe()`. **/
 static void
 ci_CacheFreeSourceData(pXHashEntry entry, void* path)
     {
@@ -4680,7 +4672,7 @@ ci_CacheFreeSourceData(pXHashEntry entry, void* path)
 
 
 // LINK #functions
-/** Intended for use in xhClearKeySafe(). **/
+/** Intended for use in `xhClearKeySafe()`. **/
 static void
 ci_CacheFreeCluster(pXHashEntry entry, void* path)
     {
@@ -4700,7 +4692,7 @@ ci_CacheFreeCluster(pXHashEntry entry, void* path)
 
 
 // LINK #functions
-/** Intended for use in xhClearKeySafe(). **/
+/** Intended for use in `xhClearKeySafe()`. **/
 static void
 ci_CacheFreeSearch(pXHashEntry entry, void* path)
     {
@@ -4725,7 +4717,7 @@ ci_CacheFreeSearch(pXHashEntry entry, void* path)
  *** @param inf_v The affected driver instance.
  *** @param method_name The name of the method.
  *** @param param A possibly optional param passed to the method.
- *** @param oxt The object system tree, similar to a kind of "scope" (unused).
+ *** @param oxt The transaction tree (for the incomplete transaction system).
  ***/
 int
 clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree* oxt)
@@ -4956,7 +4948,7 @@ clusterCommit(void* inf_v, pObjTrxTree* oxt)
 
 
 // LINK #functions
-/*** Initialize the driver. This includes:
+/*** Initialize the driver, including:
  *** - Registering the driver with the object system.
  *** - Registering structs with newmalloc for debugging.
  *** - Initializing global data needed for the driver.
