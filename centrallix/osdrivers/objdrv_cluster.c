@@ -25,7 +25,11 @@
 /* Module:	objdrv_cluster.c					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	September 17, 2025					*/
-/* Description:	Cluster object driver.					*/
+/* Description:	Object driver for Centrallix cluster objects. This	*/
+/* 		driver handles cluster configuration and access so	*/
+/*		clustered resources can be opened, searched efficiently */
+/* 		with caching to prevent unnecessary re-computation, and	*/
+/* 		managed through the object system.			*/
 /************************************************************************/
 
 #include <ctype.h>
