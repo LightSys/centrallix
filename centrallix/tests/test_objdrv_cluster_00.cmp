@@ -1,13 +1,16 @@
 Attribute [algorithm]:   string   "k-means" 
 Attribute [similarity_measure]:   string   "cosine" 
 Attribute [num_clusters]:  integer  2
-Attribute [source]:  integer  NULL
-Attribute [threshold]:  integer  NULL
-Attribute [algorithm]:  integer  NULL
-Attribute [similarity_measure]:   string   "cosine" 
-Attribute [num_clusters]:  integer  NULL
+Attribute [min_improvement]:   double  0.0001
+Attribute [max_iterations]:  integer  16
+Attribute [seed]:  integer  1
+Attribute [date_created]: datetime   '01 Jan 1970 00:00' 
+Attribute [date_computed]: datetime   '01 Jan 1970 00:00' 
 Attribute [source]:   string   "cluster" 
 Attribute [threshold]:   double  0.75
+Attribute [similarity_measure]:   string   "cosine" 
+Attribute [date_created]: datetime   '01 Jan 1970 00:00' 
+Attribute [date_computed]: datetime   '01 Jan 1970 00:00' 
 Attribute [k1_items]: stringve  "john","johnny","johns","mathew","MatTheW","mathews","math"
 Attribute [k2_items]: stringve  "john","johnny","johns"
 Attribute [k2_items]: stringve  "mathew","MatTheW","mathews","math"
@@ -94,3 +97,26 @@ Attribute [k4_sim]:   double  0.8
 Attribute [k4_key1]:   string   "3: mathew" 
 Attribute [k4_key2]:   string   "5: mathews" 
 Attribute [k4_sim]:   double  0.857143
+Attribute [items]: stringve  "john","johnny","johns","mathew","MatTheW","mathews","math"
+Attribute [date_created]: datetime   '01 Jan 1970 00:00' 
+Attribute [date_computed]: datetime   '01 Jan 1970 00:00' 
+Attribute [key1]:   string   "0: john" 
+Attribute [key2]:   string   "2: johns" 
+Attribute [sim]:   double  0.757051
+Attribute [date_created]: datetime   '01 Jan 1970 00:00' 
+Attribute [date_computed]: datetime   '01 Jan 1970 00:00' 
+Attribute [key1]:   string   "3: mathew" 
+Attribute [key2]:   string   "4: MatTheW" 
+Attribute [sim]:   double  0.922627
+Attribute [date_created]: datetime   '01 Jan 1970 00:00' 
+Attribute [date_computed]: datetime   '01 Jan 1970 00:00' 
+Attribute [key1]:   string   "3: mathew" 
+Attribute [key2]:   string   "5: mathews" 
+Attribute [sim]:   double  0.947714
+Attribute [date_created]: datetime   '01 Jan 1970 00:00' 
+Attribute [date_computed]: datetime   '01 Jan 1970 00:00' 
+Attribute [key1]:   string   "4: MatTheW" 
+Attribute [key2]:   string   "5: mathews" 
+Attribute [sim]:   double  0.874386
+Attribute [date_created]: datetime   '01 Jan 1970 00:00' 
+Attribute [date_computed]: datetime   '01 Jan 1970 00:00' 
