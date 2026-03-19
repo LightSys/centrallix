@@ -66,18 +66,6 @@
 #define CI_DEFAULT_MAX_ITERATIONS 64u
 #define CI_NO_SEED 0u
 
-/** I got tired of forgetting how to do these. **/
-#define ci_file_name(obj) \
-    ({ \
-	__typeof__ (obj) _obj = (obj); \
-	obj_internal_PathPart(_obj->Pathname, _obj->SubPtr - 1, 1); \
-    })
-#define ci_file_path(obj) \
-    ({ \
-	__typeof__ (obj) _obj = (obj); \
-	obj_internal_PathPart(_obj->Pathname, 0, _obj->SubPtr); \
-    })
-
 
 /** ================ Enum Declarations ================ **/
 /** ANCHOR[id=enums] **/
@@ -1549,7 +1537,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 	ASSERTMAGIC(parent, MGK_OBJECT);
 	
 	/** Get file path. **/
-	char* path = check_ptr(ci_file_path(parent));
+	char* path = check_ptr(objFilePath(parent));
 	if (path == NULL) goto err_free;
 	
 	/** Allocate node struct data. **/
@@ -1768,7 +1756,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 		    goto next_provided_param;
 	    
 	    /** This param doesn't exist, warn the user and attempt to give them a hint. **/
-	    fprintf(stderr, "Warning: Unknown provided parameter '%s' for cluster file: %s.\n", provided_name, ci_file_name(parent));
+	    fprintf(stderr, "Warning: Unknown provided parameter '%s' for cluster file: %s.\n", provided_name, objFileName(parent));
 	    char** param_names = check_ptr(nmSysMalloc(node_data->nParams * sizeof(char*)));
 	    for (unsigned int j = 0u; j < node_data->nParams; j++)
 		param_names[j] = node_data->Params[j]->Name;
@@ -3085,7 +3073,7 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	node_data = ci_ParseNodeData(node_struct->Data, parent);
 	if (node_data == NULL)
 	    {
-	    mssError(0, "Cluster", "Failed to parse structure file \"%s\".", ci_file_name(parent));
+	    mssError(0, "Cluster", "Failed to parse structure file \"%s\".", objFileName(parent));
 	    goto err_free;
 	    }
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
@@ -3197,7 +3185,7 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	
 	mssError(0, "Cluster",
 	    "Failed to open cluster file \"%s\" at: %s",
-	    ci_file_name(parent), ci_file_path(parent)
+	    objFileName(parent), objFilePath(parent)
 	);
 	
 	return NULL;
@@ -4672,7 +4660,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 	    if (skip_uncomputed == 1ull || strcmp(param->String, "show") == 0)
 		{
 		show = true;
-		path = ci_file_path(driver_data->NodeData->Parent);
+		path = objFilePath(driver_data->NodeData->Parent);
 		}
 	    if (strcmp(param->String, "show_all") == 0) show = true;
 	    
