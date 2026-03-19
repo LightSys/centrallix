@@ -203,7 +203,7 @@ char* ROOT_ATTRS[] =
     "source",
     "key_attr",
     "data_attr",
-    END_OF_ARRAY,
+    "internal_type",
     };
 #define N_ROOT_ATTRS ((unsigned int)(sizeof(ROOT_ATTRS) / sizeof(ROOT_ATTRS[0])))
 #define N_COMPUTED_ROOT_ATTRS 1u
@@ -236,7 +236,8 @@ char* SEARCH_ATTRS[] =
 char* CLUSTER_ENTRY_ATTRS[] =
     {
     "items",
-    END_OF_ARRAY,
+    "date_computed",
+    "date_created",
     };
 #define N_CLUSTER_ENTRY_ATTRS ((unsigned int)(sizeof(CLUSTER_ENTRY_ATTRS) / sizeof(CLUSTER_ENTRY_ATTRS[0])))
 #define N_COMPUTED_CLUSTER_ENTRY_ATTRS 2u
@@ -246,6 +247,8 @@ char* SEARCH_ENTRY_ATTRS[] =
     "key1",
     "key2",
     "sim",
+    "date_computed",
+    "date_created",
     };
 #define N_SEARCH_ENTRY_ATTRS ((unsigned int)(sizeof(SEARCH_ENTRY_ATTRS) / sizeof(SEARCH_ENTRY_ATTRS[0])))
 #define N_COMPUTED_SEARCH_ENTRY_ATTRS 2u
@@ -3495,9 +3498,10 @@ clusterGetAttrType(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	/** Types for general attributes. **/
 	if (strcmp(attr_name, "name") == 0
 	    || strcmp(attr_name, "annotation") == 0
-	    || strcmp(attr_name,"content_type") == 0
+	    || strcmp(attr_name, "content_type") == 0
 	    || strcmp(attr_name, "inner_type") == 0
-	    || strcmp(attr_name,"outer_type") == 0)
+	    || strcmp(attr_name, "outer_type") == 0
+	    || strcmp(attr_name, "internal_type") == 0)
 	    return DATA_T_STRING;
 	if (strcmp(attr_name, "last_modification") == 0)
 	    return DATA_T_DATETIME;
