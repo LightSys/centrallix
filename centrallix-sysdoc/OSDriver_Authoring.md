@@ -254,11 +254,11 @@ _**Function is always required, but can always return NULL if queries are not su
 
 ---
 ### Abbreviation Prefix
-Each OS Driver will have an abbreviation prefix, such as `qy` for the query driver or `sydb` for the sybase database driver.  This prefix should be prepended to the start of every public function name within the OS driver for consistency and scope management (e.g. `qyInitialize()`, `sydbQueryFetch()`, etc.). Normally, a driver's abbreviation prefix is two to four characters, all lowercase and may be the same as a file extension the driver supports. However, this is not an absolute requirement (see the cluster driver in `objdrv_cluster.c` which supports `.cluster` files using an abbreviation prefix of `cluster`).
+Each OS Driver will have an abbreviation prefix, such as `qy` for the query driver or `rpt` for the report driver.  This prefix should be prepended to the start of every public function name within the OS driver for consistency and scope management (e.g. `qyInitialize()`, `rptOpen()`, etc.). Normally, a driver's abbreviation prefix is two to four characters, all lowercase and may be the same as a file extension the driver supports. However, this is not an absolute requirement (see the cluster driver in `objdrv_cluster.c` which supports `.cluster` files using an abbreviation prefix of `cluster`).
 
 This document uses `xxx` to refer to an unspecified abbreviation prefix.
 
-- 📖 **Note**: Once an abbreviation prefix has been selected, the driver author should add it to the [Prefixes.md](Prefixes.md) file.
+- 📖 **Note**: Once an abbreviation prefix has been selected, the driver author should add it to the [Prefixes.md](Prefixes.md) file.  It is advised never to pick a prefix longer than 7 characters, as doing so will this file's table style.
 
 
 ### Internal Functions
