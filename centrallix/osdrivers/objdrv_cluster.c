@@ -1934,8 +1934,11 @@ ci_FreeClusterData(pClusterData cluster_data, bool recursive)
 		    }
 		}
 	    nmSysFree(cluster_data->Clusters);
-	    nmSysFree(cluster_data->Sims);
 	    cluster_data->Clusters = NULL;
+	    }
+	if (cluster_data->Sims != NULL)
+	    {
+	    nmSysFree(cluster_data->Sims);
 	    cluster_data->Sims = NULL;
 	    }
 	
@@ -2174,10 +2177,9 @@ ci_SizeOfClusterData(pClusterData cluster_data, bool recursive)
 	if (cluster_data->Name != NULL) size += strlen(cluster_data->Name) * sizeof(char);
 	if (cluster_data->Clusters != NULL)
 	    {
-	    const unsigned int nDatas = cluster_data->SourceData->nDatas;
 	    for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
-		size += cluster_data->Clusters[i].Size * (sizeof(char*) + sizeof(pVector));
-	    size += nDatas * (sizeof(Cluster) + sizeof(double));
+		size += cluster_data->Clusters[i].Size * (sizeof(int));
+	    size += cluster_data->nClusters * (sizeof(Cluster) + sizeof(double));
 	    }
 	if (cluster_data->SubClusters != NULL)
 	    {
@@ -2186,7 +2188,7 @@ ci_SizeOfClusterData(pClusterData cluster_data, bool recursive)
 		for (unsigned int i = 0u; i < cluster_data->nSubClusters; i++)
 		    size += ci_SizeOfClusterData(cluster_data->SubClusters[i], recursive);
 		}
-	    size += cluster_data->nSubClusters * sizeof(void*);
+	    size += cluster_data->nSubClusters * sizeof(pClusterData);
 	    }
 	size += sizeof(ClusterData);
     
@@ -2217,7 +2219,7 @@ ci_SizeOfSearchData(pSearchData search_data)
 	
 	unsigned int size = 0u;
 	if (search_data->Name != NULL) size += strlen(search_data->Name) * sizeof(char);
-	if (search_data->Pairs != NULL) size += search_data->nPairs * (sizeof(void*) + sizeof(Pair));
+	if (search_data->Pairs != NULL) size += search_data->nPairs * (sizeof(pPair) + sizeof(Pair));
 	size += sizeof(SearchData);
     
     return size;
@@ -2281,10 +2283,9 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	if (!check(xaInit(&vector_xarray, 64))) goto end_free;
 	
 	/** Fetch data and build vectors. **/
-	while (true)
+	pObject entry;
+	while ((entry = objQueryFetch(query, O_RDONLY)) != NULL)
 	    {
-	    pObject entry = objQueryFetch(query, O_RDONLY);
-	    if (entry == NULL) break; /* Done. */
 	    ASSERTMAGIC(entry, MGK_OBJECT);
 	    
 	    /** Data value: Type checking. **/
@@ -2292,7 +2293,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    if (data_datatype == -1)
 		{
 		mssError(0, "Cluster",
-		    "Failed to get type for data of %uth entry.",
+		    "Failed to get type for data of entry #%u.",
 		    vector_xarray.nItems
 		);
 		goto end_free;
@@ -2300,7 +2301,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    if (data_datatype != DATA_T_STRING)
 		{
 		mssError(1, "Cluster",
-		    "Type for data of %uth entry was %s instead of String:\n",
+		    "Type for data of entry #%u was %s instead of String:\n",
 		    vector_xarray.nItems, objTypeToStr(data_datatype)
 		);
 		goto end_free;
@@ -2312,7 +2313,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    if (ret != 0)
 		{
 		mssError(0, "Cluster",
-		    "Failed to get attribute value for %uth data entry (error code: %d).",
+		    "Failed to get attribute value for data entry #%u (error code: %d).",
 		    vector_xarray.nItems, ret
 		);
 		goto end_free;
@@ -2346,7 +2347,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    if (key_datatype == -1)
 		{
 		mssError(0, "Cluster",
-		    "Failed to get type for key on %uth entry.",
+		    "Failed to get type of key on entry #%u.",
 		    vector_xarray.nItems
 		);
 		goto end_free;
@@ -2354,7 +2355,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    if (key_datatype != DATA_T_STRING)
 		{
 		mssError(1, "Cluster",
-		    "Type for key on %uth entry was %s instead of String:",
+		    "Type of key on entry #%u was %s instead of String:",
 		    vector_xarray.nItems, objTypeToStr(key_datatype)
 		);
 		goto end_free;
@@ -2366,7 +2367,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    if (ret != 0)
 		{
 		mssError(0, "Cluster",
-		    "Failed to value for key on %uth entry (error code: %d).",
+		    "Failed to value for key on entry #%u (error code: %d).",
 		    vector_xarray.nItems, ret
 		);
 		goto end_free;
@@ -2438,7 +2439,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	/** Clean up xarrays. **/
 	if (key_xarray.nAlloc != 0)
 	    {
-	    for (unsigned int i = 0u; i < vector_xarray.nItems; i++)
+	    for (unsigned int i = 0u; i < key_xarray.nItems; i++)
 		{
 		char* key = key_xarray.Items[i];
 		if (key != NULL) nmSysFree(key);
