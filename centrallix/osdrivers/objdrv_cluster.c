@@ -1237,7 +1237,8 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    case ALGORITHM_NONE:
 		{
 		const size_t len = strlen(source_data->Key) + strlen(cluster_data->Name) + 8lu;
-		key = nmSysMalloc(len * sizeof(char));
+		key = check_ptr(nmSysMalloc(len * sizeof(char)));
+		if (key == NULL) goto err_free;
 		snprintf(key, len, "%s/%s?%u",
 		    source_data->Key,
 		    cluster_data->Name,
@@ -1249,7 +1250,8 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    case ALGORITHM_SLIDING_WINDOW:
 		{
 		const size_t len = strlen(source_data->Key) + strlen(cluster_data->Name) + 16lu;
-		key = nmSysMalloc(len * sizeof(char));
+		key = check_ptr(nmSysMalloc(len * sizeof(char)));
+		if (key == NULL) goto err_free;
 		snprintf(key, len, "%s/%s?%u&%u&%u",
 		    source_data->Key,
 		    cluster_data->Name,
@@ -1263,7 +1265,8 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    default:
 		{
 		const size_t len = strlen(source_data->Key) + strlen(cluster_data->Name) + 32lu;
-		key = nmSysMalloc(len * sizeof(char));
+		key = check_ptr(nmSysMalloc(len * sizeof(char)));
+		if (key == NULL) goto err_free;
 		snprintf(key, len, "%s/%s?%u&%u&%u&%g&%u",
 		    source_data->Key,
 		    cluster_data->Name,
@@ -1326,8 +1329,6 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
  *** 	caller is not required to specify their own error message.
  *** 
  *** @param inf A parsed pStructInf for a search group in a structure file.
- *** @param param_list The param objects that function as a kind of "scope" for
- *** 	evaluating parameter variables in the structure file.
  *** @param node_data The pNodeData, used to get the param list and to look up
  *** 	the cluster pointed to by the source attribute.
  *** @returns A new pSearchData struct on success, or NULL on failure.
@@ -1411,7 +1412,8 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 		goto err_free;
 		}
 	    ASSERTMAGIC(sub_inf, MGK_STRUCTINF);
-	    char* name = sub_inf->Name;
+	    char* name = check_ptr(sub_inf->Name);
+	    if (name == NULL) goto err_free;
 	    
 	    /** Handle various struct types. **/
 	    const int struct_type = stStructType(sub_inf);
@@ -1466,7 +1468,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	const size_t len = strlen(source_key) + strlen(search_data->Name) + 16lu;
 	key = check_ptr(nmSysMalloc(len * sizeof(char)));
 	if (key == NULL) goto err_free;
-	    snprintf(key, len, "%s/%s?%g&%u",
+	snprintf(key, len, "%s/%s?%g&%u",
 	    source_key,
 	    search_data->Name,
 	    search_data->Threshold,
@@ -1607,7 +1609,6 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 		
 		case ST_T_SUBGROUP:
 		    {
-		    /** The spec does not specify any valid sub-groups for searches. **/
 		    char* group_type = check_ptr(sub_inf->UsrType);
 		    if (group_type == NULL) goto err_free;
 		    if (strcmp(group_type, "cluster/parameter") == 0)
@@ -1766,7 +1767,6 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 		{
 		node_data->ClusterDatas[i] = ci_ParseClusterData(cluster_infs.Items[i], node_data->ParamList, node_data->SourceData);
 		if (node_data->ClusterDatas[i] == NULL) goto err_free;
-		ASSERTMAGIC(node_data->ClusterDatas[i], MGK_CL_CLUSTER_DATA);
 		}
 	    }
 	else node_data->ClusterDatas = NULL;
@@ -1785,7 +1785,6 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 		{
 		node_data->SearchDatas[i] = ci_ParseSearchData(search_infs.Items[i], node_data);
 		if (node_data->SearchDatas[i] == NULL) goto err_free;
-		ASSERTMAGIC(node_data->SearchDatas[i], MGK_CL_SEARCH_DATA);
 		}
 	    }
 	else node_data->SearchDatas = NULL;
@@ -1928,9 +1927,11 @@ ci_FreeClusterData(pClusterData cluster_data, bool recursive)
 	    for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
 		{
 		pCluster cluster = &cluster_data->Clusters[i];
-		if (cluster == NULL) continue;
-		if (cluster->Indexes != NULL) nmSysFree(cluster->Indexes);
-		cluster->Indexes = NULL;
+		if (cluster->Indexes != NULL)
+		    {
+		    nmSysFree(cluster->Indexes);
+		    cluster->Indexes = NULL;
+		    }
 		}
 	    nmSysFree(cluster_data->Clusters);
 	    nmSysFree(cluster_data->Sims);
@@ -1946,9 +1947,10 @@ ci_FreeClusterData(pClusterData cluster_data, bool recursive)
 		for (unsigned int i = 0u; i < cluster_data->nSubClusters; i++)
 		    {
 		    if (cluster_data->SubClusters[i] != NULL)
+			{
 			ci_FreeClusterData(cluster_data->SubClusters[i], recursive);
-		    else continue;
-		    cluster_data->SubClusters[i] = NULL;
+			cluster_data->SubClusters[i] = NULL;
+			}
 		    }
 		}
 	    nmSysFree(cluster_data->SubClusters);
@@ -3092,10 +3094,15 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	    /** Target found: Cluster **/
 	    driver_data->TargetType = TARGET_CLUSTER;
 	    
+	    /** Sub-clusters are not fully implemented yet, skip the cluster logic below. **/
+	    parent->SubCnt++;
+	    driver_data->TargetData = (void*)cluster_data;
+	    goto success; /* Done! */
+	    
 	    /** Check for sub-clusters in the path. **/
 	    while (true)
 		{
-		/** Decend one path part deeper into the path. **/
+		/** Descend one path part deeper into the path. **/
 		const char* path_part = obj_internal_PathPart(parent->Pathname, parent->SubPtr + parent->SubCnt++, 1);
 		
 		/** If the path does not go any deeper, we're done. **/
