@@ -114,11 +114,20 @@ int ca_kmeans(
 
 /** Vector helper macros. **/
 #define ca_is_empty(vector) (vector[0] == -CA_NUM_DIMS)
+/*** Note: Given that CA_NUM_DIMS == 251, ca_build_vector("") will give the
+ *** vector we check for in the ca_has_no_pairs() macro, [-172, 11, -78],
+ *** which has a single pair of boundary characters.
+ *** If CA_NUM_DIMS is modified, this macro will need to be updated, hence the
+ *** compiler directive causing it to be undefined in this case, likely leading
+ *** to a lot of compiler or linker issues to remind the developer about this.
+ ***/
+#if CA_NUM_DIMS == 251
 #define ca_has_no_pairs(vector) \
     ({ \
 	__typeof__ (vector) _v = (vector); \
 	_v[0] == -172 && _v[1] == 11 && _v[2] == -78; \
     })
+#endif
 
 /** Comparison functions (see ca_search()). **/
 double ca_cos_compare(void* v1, void* v2);

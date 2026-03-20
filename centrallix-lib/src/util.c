@@ -10,7 +10,7 @@
 /* 									*/
 /* Module:	util.c, util.h						*/
 /* Author:	Micah Shennum and Israel Fuller				*/
-/* Date:	May 26, 2011						*/
+/* Date:	May 26, 2011 and October 13, 2025 (respectively)	*/
 /* Description:	Collection of utilities including:			*/
 /* 		- Utilities for parsing numbers.			*/
 /* 		- The timer utility for benchmarking code.		*/
@@ -95,9 +95,9 @@ unsigned int strtoui(const char *nptr, char **endptr, int base){
  *** Fun Fact: Windows uses kibibytes, but displays them as KB.
  ***/
 #define USE_METRIC false
-#define N_UNITS 6u
-static char* units_cs[N_UNITS] = {"bytes", "KiB", "MiB", "GiB"};
-static char* units_metric[N_UNITS] = {"bytes", "KB", "MB", "GB"};
+static char* units_cs[] = {"bytes", "KiB", "MiB", "GiB"};
+static char* units_metric[] = {"bytes", "KB", "MB", "GB"};
+#define N_UNITS ((unsigned int)(sizeof(units_cs) / sizeof(units_cs[0])))
 
 /*** Displays a size in bytes using the largest unit where the result would be
  *** at least 1.0. Note that units larger than GB and GiB are not supported
@@ -119,7 +119,7 @@ snprint_bytes(char* buf, const size_t buf_size, unsigned int bytes)
 	
 	/** Search for the largest unit where the value would be at least 1. **/
 	const double size = (double)bytes;
-	for (unsigned char i = N_UNITS; i >= 1u; i--)
+	for (unsigned char i = N_UNITS - 1; i >= 1u; i--)
 	    {
 	    const double denominator = pow(unit_size, i);
 	    if (size >= denominator)
@@ -140,14 +140,14 @@ snprint_bytes(char* buf, const size_t buf_size, unsigned int bytes)
     
     return buf;
     }
-#undef nUints
+#undef N_UNITS
 
 /*** Print a large number formatted with comas to a buffer.
  *** 
  *** @param buf The buffer to print the number into.
  *** @param buf_size The maximum number of characters to add to the buffer.
  *** @param value The value to write into the buffer.
- *** @returns `buf`, or `NULL` if `buf_size` is 0.
+ *** @returns `buf`, or NULL if `buf_size` is 0.
  */
 char*
 snprint_commas_llu(char* buf, size_t buf_size, unsigned long long value)
@@ -160,6 +160,9 @@ snprint_commas_llu(char* buf, size_t buf_size, unsigned long long value)
 	    return buf;
 	    }
 	
+	/*** Write the number to the string in reverse order, adding commas as
+	 *** they are needed.
+	 ***/
 	char tmp[32];
 	unsigned int ti = 0;
 	while (value > 0 && ti < sizeof(tmp) - 1)
@@ -177,12 +180,14 @@ snprint_commas_llu(char* buf, size_t buf_size, unsigned long long value)
     return buf;
     }
 
+/** Print summary the current memory in use to the file pointer. **/
 void
 fprint_mem(FILE* out)
     {
 	FILE* fp = fopen("/proc/self/statm", "r");
 	if (fp == NULL) { perror("fopen()"); return; }
 	
+	/** Get page counts. **/
 	long size, resident, share, text, lib, data, dt;
 	if (fscanf(fp, "%ld %ld %ld %ld %ld %ld %ld",
 	    &size, &resident, &share, &text, &lib, &data, &dt) != 7)
@@ -193,19 +198,33 @@ fprint_mem(FILE* out)
 	    }
 	check(fclose(fp)); /* Failure ignored. */
 	
-	long page_size = sysconf(_SC_PAGESIZE); // in bytes
-	long resident_bytes = resident * page_size;
+	/** Get page size. **/
+	const long page_size = sysconf(_SC_PAGESIZE); /* in bytes */
+	if (page_size == -1)
+	    {
+	    fprintf(stderr, "Failed to get page size.\n");
+	    return;
+	    }
 	
-	const size_t buf_siz = 16u;
-	char buf[buf_siz];
-	snprint_bytes(buf, buf_siz, (unsigned int)resident_bytes);
+	/** Get the number of resident bytes used. **/
+	const long resident_bytes = resident * page_size;
+	char buf[16];
+	snprint_bytes(buf, sizeof(buf), (unsigned int)(resident_bytes));
 	
+	/** fprintf() out data. **/
 	fprintf(out, "Memory used: %ld bytes (%s)\n", resident_bytes, buf);
-	fprintf(out, "Share %ldb, Text %ldb, Lib %ldb, Data %ldb\n", share, text, lib, data);
+	fprintf(out,
+	    "Share %ldb, Text %ldb, Lib %ldb, Data %ldb\n",
+	    share * page_size, text * page_size, lib * page_size, data * page_size
+	);
     
     return;
     }
 
+/*** Get the current monotonic time in seconds.
+ ***
+ *** @returns The current monotonic time as a fractional number of seconds.
+ ***/
 static double
 get_time(void)
     {
@@ -216,6 +235,11 @@ get_time(void)
     return (double)ts.tv_sec + (double)ts.tv_nsec / 1.0e9f;
     }
 
+/*** Initialize a timer struct.
+ ***
+ *** @param timer The timer to initialize.
+ *** @returns `timer`, for chaining.
+ ***/
 pTimer
 timer_init(pTimer timer)
     {
@@ -226,12 +250,21 @@ timer_init(pTimer timer)
     return timer;
     }
 
+/*** Allocate and initialize a new timer.
+ ***
+ *** @returns A newly allocated timer, or NULL if allocation fails.
+ ***/
 pTimer
 timer_new(void)
     {
-    return timer_init(nmMalloc(sizeof(Timer)));
+    return timer_init(check_ptr(nmMalloc(sizeof(Timer))));
     }
 
+/*** Start timing.
+ ***
+ *** @param timer The timer to start.
+ *** @returns `timer`, for chaining.
+ ***/
 pTimer
 timer_start(pTimer timer)
     {
@@ -241,6 +274,11 @@ timer_start(pTimer timer)
     return timer;
     }
 
+/*** Stop timing and add the elapsed time to the timer total.
+ ***
+ *** @param timer The timer to stop.
+ *** @returns `timer`, for chaining.
+ ***/
 pTimer
 timer_stop(pTimer timer)
     {
@@ -250,21 +288,41 @@ timer_stop(pTimer timer)
     return timer;
     }
 
+/*** Get the total accumulated time for a timer.
+ ***
+ *** @param timer The timer to read.
+ *** @returns The total accumulated time in seconds, or NAN if `timer`
+ *** 	is NULL.
+ ***/
 double
 timer_get(pTimer timer)
     {
     return (timer) ? timer->total : NAN;
     }
 
+/*** Reset a timer to its initial state so that it can be reused to time
+ *** something else.
+ ***
+ *** @param timer The timer to reset.
+ *** @returns `timer`, for chaining.
+ ***/
 pTimer
 timer_reset(pTimer timer)
     {
     return timer_init(timer);
     }
 
+/*** De-initialize a timer before it is freed.
+ ***
+ *** @param timer The timer to de-initialize.
+ ***/
 void
 timer_de_init(pTimer timer) {}
 
+/*** De-initialize and free a timer allocated by timer_new().
+ ***
+ *** @param timer The timer to free.
+ ***/
 void
 timer_free(pTimer timer)
     {

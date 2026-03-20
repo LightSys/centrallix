@@ -496,7 +496,7 @@ mssError(int clr, char* module, char* message, ...)
 	if (log_error) 
 	    {
 	    /** Start new error stacks with a newline to make them distinct. **/
-	    if (clr) fprintf(stderr, "\n");
+	    if (clr && MSS.LogMethod[0] != '\0') fprintf(stderr, "\n");
 	    
 	    /** Use the requested logging method. **/
 	    if (strcmp(MSS.LogMethod, "syslog") == 0)
@@ -509,12 +509,6 @@ mssError(int clr, char* module, char* message, ...)
 	    else if (strcmp(MSS.LogMethod, "stdout") == 0)
 		{
 		printf("%s: %s\n", (MSS.AppName[0]) ? MSS.AppName : "error", err_msg);
-		}
-	    else
-		{
-		/** Default to printing to stderr if no known logging method is given. **/
-		fprintf(stderr, "Unknown log method MSS.LogMethod \"%s\".\n", MSS.LogMethod);
-		fprintf(stderr, "mssError: %s\n", err_msg);
 		}
 	    }
 	    
