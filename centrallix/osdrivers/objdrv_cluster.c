@@ -266,7 +266,8 @@ char* METHOD_NAMES[] =
 /** ================ Struct Declarations ================ **/
 /** ANCHOR[id=structs] **/
 
-/*** Represents the data source which may have data already fetched.
+/*** Represents the data source which may have data already fetched.  Only
+ *** attribute data is checked for caching.
  *** 
  *** Memory Stats:
  ***   - Padding: 0 bytes
@@ -277,29 +278,31 @@ char* METHOD_NAMES[] =
  *** @param Key The key associated with this object in the SourceDataCache.
  *** @param SourcePath The path to the data source from which to retrieve data.
  *** @param KeyAttr The name of the attribute to use when getting keys from
- *** 	the SourcePath.
+ *** 	the driver represented by SourcePath.
  *** @param DataAttr The name of the attribute to use when getting data from
- *** 	the SourcePath.
+ *** 	the driver represented by SourcePath.
  *** 
  *** @skip --> Fetched/Computed Data.
- *** @param Strings The keys for each data string strings received from the
- *** 	database, allowing them to be lined up again when queried.
+ *** @param Keys The keys for each data string received from the database, used
+ *** 	when the results are queried, or NULL if the data has not been fetched.
  *** @param Strings The data strings to be clustered and searched, or NULL if
  *** 	they have not been fetched from the source.
  *** @param Vectors The cosine comparison vectors from the fetched data, or
- *** 	NULL if they haven't been computed.
- *** @param nVectors The number of vectors and data strings.
+ *** 	NULL if they haven't been computed yet.
+ *** @param nDatas The number of keys, data strings, and vectors that have been
+ *** 	fetched/computed, or 0 if no data has been fetched/computed yet.
  *** 
  *** @skip --> Time.
  *** @param DateCreated The date and time that this object was created/initialized.
- *** @param DateComputed The date and time that the computed attributes were computed.
+ *** @param DateComputed The date and time that the fetch/computed attributes
+ *** 	were fetched/computed.
  *** 
- *** @param Magic A magic value for detecting corrupted memory.
+ *** @param Magic A magic value for detecting memory corruption.
  ***/
 typedef struct _SOURCE
     {
     Magic_t      Magic;
-    unsigned int nVectors;
+    unsigned int nDatas;
     char*        Name;
     char*        Key;
     char*        SourcePath;
@@ -321,9 +324,10 @@ typedef struct _SOURCE
  ***   - Total size: 16 bytes
  *** 
  *** @param Size The number of items in the cluster.
- *** @param Indexes Represents the data points in the cluster, as indexes into
- *** 	the SourceData Keys, Strings, and Vectors fields. NULL if `Size == 0`.
- *** @param Magic A magic value for detecting corrupted memory.
+ *** @param Indexes The data points in the cluster, as indexes into SourceData.
+ *** 	Use these to access the Keys, Strings, or Vectors array fields. This
+ *** 	value is NULL if `Size == 0`.
+ *** @param Magic A magic value for detecting memory corruption.
  ***/
 typedef struct
     {
@@ -334,7 +338,8 @@ typedef struct
     Cluster, *pCluster;
 
 
-/*** Data for each cluster. Only attribute data is checked for caching.
+/*** Data for each cluster object defined in the .cluster file.  Only attribute
+ *** data is checked for caching.
  *** 
  *** Memory Stats:
  ***   - Padding: 2 bytes
@@ -345,30 +350,33 @@ typedef struct
  *** @param Key The key associated with this object in the ClusterDataCache.
  *** @param ClusterAlgorithm The clustering algorithm to be used.
  *** @param SimilarityMeasure The similarity measure used to compare items.
- *** @param nClusters The number of clusters. 1 if algorithm = none.
+ *** @param nClusters The number of clusters.  1 if `algorithm == none`.
  *** @param MinImprovement The minimum amount of improvement that must be met
- *** 	each clustering iteration.  -inf represents "max" in the .cluster file.
+ *** 	each clustering iteration.  -inf represents the "max" value in the
+ *** 	.cluster file.
  *** @param MaxIterations The maximum number of iterations to run clustering.
- *** 	Note: Sliding window uses this attribute to store the window_size.
+ *** @param WindowSize The size of the sliding window for sliding window
+ *** 	searches.  Shares memory with MaxIterations because the sliding window
+ *** 	clustering algorithm does not have any concept of "iterations".
  *** 
- *** @skip --> Relational Data.
- *** @param nSubClusters The number of subclusters of this cluster.
- *** @param SubClusters A pClusterData array, NULL if nSubClusters == 0.
- *** @param Parent This cluster's parent. NULL if it is not a subcluster.
+ *** @skip --> Relational Data. (Note: sub-clusters are not implemented.)
+ *** @param nSubClusters The number of sub-clusters for this cluster.
+ *** @param SubClusters A pClusterData array, NULL if `nSubClusters == 0`.
+ *** @param Parent This cluster's parent.  NULL if it is not a sub-cluster.
  *** @param SourceData Pointer to the source data that this cluster uses.
  *** 
  *** @skip --> Computed Data.
- *** @param Clusters An array of length num_clusters, NULL if the clusters
- *** 	have not yet been computed.
- *** @param Sims An array of num_vectors elements, where index i stores the
- *** 	similarity of vector i to its assigned cluster. This attribute is NULL
- *** 	if the clusters have not yet been computed.
+ *** @param Clusters An array of length nClusters, NULL if the clusters	have
+ *** 	been computed yet.
+ *** @param Sims An array of nClusters elements, where index i stores the
+ *** 	similarity of vector i to its assigned cluster, NULL if the clusters
+ *** 	have not been computed yet.
  *** 
  *** @skip --> Time.
  *** @param DateCreated The date and time that this object was created/initialized.
  *** @param DateComputed The date and time that the computed attributes were computed.
  *** 
- *** @param Magic A magic value for detecting corrupted memory.
+ *** @param Magic A magic value for detecting memory corruption.
  ***/
 typedef struct _CD
     {
@@ -381,7 +389,10 @@ typedef struct _CD
     /** 2 bytes of auto-padding. **/
     unsigned int      Seed;
     double            MinImprovement;
-    unsigned int      MaxIterations;
+    union {
+	unsigned int  MaxIterations;
+	unsigned int  WindowSize;
+    };
     unsigned int      nSubClusters;
     struct _CD**      SubClusters;
     struct _CD*       Parent;
@@ -410,15 +421,17 @@ typedef struct _CD
  *** 
  *** @skip --> Computed data.
  *** @param Pairs An array holding the pairs found by the search, or NULL if
- *** 	the search has not been computed.  The indexes stored in these pairs
- *** 	are indexes into the SourceData data arrays.
- *** @param nPairs The number of pairs found.
+ *** 	the search has not been computed yet.  The indexes stored in these
+ *** 	pairs are indexes into the SourceData data arrays (access with
+ *** 	`Source->SourceData->[DATA_ARRAY]`).
+ *** @param nPairs The number of pairs found, or 0 if the search has not been
+ *** 	computed yet.
  *** 
  *** @skip --> Time.
  *** @param DateCreated The date and time that this object was created/initialized.
  *** @param DateComputed The date and time that the computed attributes were computed.
  *** 
- *** @param Magic A magic value for detecting corrupted memory.
+ *** @param Magic A magic value for detecting memory corruption.
  ***/
 typedef struct _SEARCH
     {
@@ -453,15 +466,15 @@ typedef struct _SEARCH
  *** @param Params A pParam array storing the params in the .cluster file.
  *** @param nParams The number of specified params.
  *** @param ParamList A "scope" for resolving parameter values during parsing.
- *** @param ClusterDatas A pCluster array for the clusters in the .cluster file.
- *** 	Will be NULL if `nClusters = 0`.
+ *** @param ClusterDatas A pCluster array for the clusters in the .cluster file,
+ *** 	NULL if `nClusters == 0`.
  *** @param nClusterDatas The number of specified clusters.
  *** @param SearchDatas A SearchData array for the searches in the .cluster file.
  *** @param nSearches The number of specified searches.
  *** @param nSearchDatas The parent object used to open this NodeData instance.
  *** @param OpenCount The number of open driver instances that are using the
  *** 	NodeData struct.  When this reaches 0, the struct should be freed.
- *** @param Magic A magic value for detecting corrupted memory.
+ *** @param Magic A magic value for detecting memory corruption.
  ***/
 typedef struct _NODE
     {
@@ -486,9 +499,9 @@ typedef struct _NODE
  ***   - Padding: 5 bytes
  ***   - Total size: 32 bytes
  ***  
- *** This struct can be thought of like a "pointer" to specific data accessible
- *** through the stored pNodeData struct.  This struct also communicates whether
- *** that data is guaranteed to have been computed.
+ *** Think of this struct like a "pointer" to specific data accessible through
+ *** the pNodeData field.  This struct also tells us whether that data is
+ *** guaranteed to be computed already.
  *** 
  *** For example, if target type is the root, a cluster, or a search, no data
  *** is guaranteed to be computed.  These three types can be returned from
@@ -501,9 +514,14 @@ typedef struct _NODE
  *** and `clusterGetAttrValue()` functions faster and simpler because they do
  *** not need to check that the data is computed every time they are called.
  *** 
- *** @param NodeData The associated node data struct.  While many driver struct
- *** 	instances pointing to one NodeData at a time, but each driver instance
- *** 	always points to singular NodeData struct.
+ *** @attention - When allocating this struct, remember to increment the
+ *** 	`NodeData->OpenCount` value. When freeing this struct, remember to
+ *** 	decrement `NodeData->OpenCount`, freeing the NodeData struct as well
+ *** 	if it reaches 0, to prevent memory leaks.
+ *** 
+ *** @param NodeData The associated node data struct.  While many driver
+ *** 	struct instances pointing to one NodeData at a time, but each driver
+ *** 	instance always points to singular NodeData struct.
  *** @param TargetType The type of data targeted (see above).
  *** @param TargetData If target type is:
  *** ```txt
@@ -513,7 +531,7 @@ typedef struct _NODE
  *** ```
  *** @param TargetAttrIndex An index into an attribute list (for GetNextAttr()).
  *** @param TargetMethodIndex An index into an method list (for GetNextMethod()).
- *** @param Magic A magic value for detecting corrupted memory.
+ *** @param Magic A magic value for detecting memory corruption.
  ***/
 typedef struct _DRIVER
     {
@@ -537,7 +555,7 @@ typedef struct _DRIVER
  ***
  *** @param DriverData The associated driver instance being queried.
  *** @param RowIndex The selected row of the data targeted by the driver.
- *** @param Magic A magic value for detecting corrupted memory.
+ *** @param Magic A magic value for detecting memory corruption.
  ***/
 typedef struct
     {
@@ -548,7 +566,7 @@ typedef struct
     ClusterQuery, *pQueryData;
 
 
-/** Global storage for caches. **/
+/** Global storage for driver caches. **/
 struct
     {
     XHashTable SourceDataCache;
@@ -1070,7 +1088,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 		}
 	    
 	    /** Store value. **/
-	    cluster_data->MaxIterations = (unsigned int)window_size;
+	    cluster_data->WindowSize = (unsigned int)window_size;
 	    goto parsing_done;
 	    }
 	
@@ -1251,7 +1269,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 		    cluster_data->Name,
 		    ALGORITHM_SLIDING_WINDOW,
 		    cluster_data->SimilarityMeasure,
-		    cluster_data->MaxIterations
+		    cluster_data->WindowSize
 		);
 		break;
 		}
@@ -1844,7 +1862,7 @@ ci_FreeSourceData(pSourceData source_data)
 	/** Free fetched keys, if they exist. **/
 	if (source_data->Keys != NULL)
 	    {
-	    for (unsigned int i = 0u; i < source_data->nVectors; i++)
+	    for (unsigned int i = 0u; i < source_data->nDatas; i++)
 		{
 		if (source_data->Keys[i] != NULL)
 		    {
@@ -1859,7 +1877,7 @@ ci_FreeSourceData(pSourceData source_data)
 	/** Free fetched data, if it exists. **/
 	if (source_data->Strings != NULL)
 	    {
-	    for (unsigned int i = 0u; i < source_data->nVectors; i++)
+	    for (unsigned int i = 0u; i < source_data->nDatas; i++)
 		{
 		if (source_data->Strings[i] != NULL)
 		    {
@@ -1874,7 +1892,7 @@ ci_FreeSourceData(pSourceData source_data)
 	/** Free computed vectors, if they exist. **/
 	if (source_data->Vectors != NULL)
 	    {
-	    for (unsigned int i = 0u; i < source_data->nVectors; i++)
+	    for (unsigned int i = 0u; i < source_data->nDatas; i++)
 		{
 		if (source_data->Vectors[i] != NULL)
 		    {
@@ -2120,21 +2138,21 @@ ci_SizeOfSourceData(pSourceData source_data)
 	if (source_data->DataAttr != NULL) size += strlen(source_data->DataAttr) * sizeof(char);
 	if (source_data->Keys != NULL)
 	    {
-	    for (unsigned int i = 0u; i < source_data->nVectors; i++)
+	    for (unsigned int i = 0u; i < source_data->nDatas; i++)
 		size += strlen(source_data->Keys[i]) * sizeof(char);
-	    size += source_data->nVectors * sizeof(char*);
+	    size += source_data->nDatas * sizeof(char*);
 	    }
 	if (source_data->Strings != NULL)
 	    {
-	    for (unsigned int i = 0u; i < source_data->nVectors; i++)
+	    for (unsigned int i = 0u; i < source_data->nDatas; i++)
 		size += strlen(source_data->Strings[i]) * sizeof(char);
-	    size += source_data->nVectors * sizeof(char*);
+	    size += source_data->nDatas * sizeof(char*);
 	    }
 	if (source_data->Vectors != NULL)
 	    {
-	    for (unsigned int i = 0u; i < source_data->nVectors; i++)
+	    for (unsigned int i = 0u; i < source_data->nDatas; i++)
 		size += ca_sparse_len(source_data->Vectors[i]) * sizeof(int);
-	    size += source_data->nVectors * sizeof(pVector);
+	    size += source_data->nDatas * sizeof(pVector);
 	    }
 	size += sizeof(SourceData);
     
@@ -2168,10 +2186,10 @@ ci_SizeOfClusterData(pClusterData cluster_data, bool recursive)
 	if (cluster_data->Name != NULL) size += strlen(cluster_data->Name) * sizeof(char);
 	if (cluster_data->Clusters != NULL)
 	    {
-	    const unsigned int nVectors = cluster_data->SourceData->nVectors;
+	    const unsigned int nDatas = cluster_data->SourceData->nDatas;
 	    for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
 		size += cluster_data->Clusters[i].Size * (sizeof(char*) + sizeof(pVector));
-	    size += nVectors * (sizeof(Cluster) + sizeof(double));
+	    size += nDatas * (sizeof(Cluster) + sizeof(double));
 	    }
 	if (cluster_data->SubClusters != NULL)
 	    {
@@ -2379,8 +2397,8 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    check(objClose(entry)); /* Failure ignored. */
 	    }
 	
-	source_data->nVectors = vector_xarray.nItems;
-	if (source_data->nVectors == 0)
+	source_data->nDatas = vector_xarray.nItems;
+	if (source_data->nDatas == 0)
 	    {
 	    mssError(0, "Cluster", "Data source path did not contain any valid data:\n");
 	    goto end_free;
@@ -2520,7 +2538,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 	
 	/** Allocate static memory for finding clusters. **/
 	clusters_size = cluster_data->nClusters * sizeof(Cluster);
-	sims_size = source_data->nVectors * sizeof(double);
+	sims_size = source_data->nDatas * sizeof(double);
 	cluster_data->Clusters = check_ptr(nmSysMalloc(clusters_size));
 	cluster_data->Sims = check_ptr(nmSysMalloc(sims_size));
 	if (cluster_data->Clusters == NULL) goto err_free;
@@ -2541,7 +2559,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		SETMAGIC(only_cluster, MGK_CL_CLUSTER);
 		
 		/** Add all data points to that cluster. **/
-		only_cluster->Size = source_data->nVectors;
+		only_cluster->Size = source_data->nDatas;
 		only_cluster->Indexes = check_ptr(nmSysMalloc(only_cluster->Size * sizeof(int)));
 		if (only_cluster->Indexes == NULL) goto err_free;
 		for (unsigned int i = 0u; i < only_cluster->Size; i++)
@@ -2568,7 +2586,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		    }
 		
 		/** Allocate labels. Note: ca_kmeans() initializes labels for us. **/
-		const size_t labels_size = source_data->nVectors * sizeof(unsigned int);
+		const size_t labels_size = source_data->nDatas * sizeof(unsigned int);
 		unsigned int* labels = check_ptr(nmSysMalloc(labels_size));
 		if (labels == NULL) goto err_free;
 		
@@ -2579,7 +2597,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		/** Run ca_kmeans(). **/
 		const bool successful = check(ca_kmeans(
 		    source_data->Vectors,
-		    source_data->nVectors,
+		    source_data->nDatas,
 		    cluster_data->nClusters,
 		    cluster_data->MaxIterations,
 		    cluster_data->MinImprovement,
@@ -2597,7 +2615,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		    if (!check(xaInit(&indexes_in_cluster[i], 8))) goto err_free;
 		
 		/** Iterate through each label and add the index of the specified cluster to the xArray. **/
-		for (unsigned long long i = 0llu; i < source_data->nVectors; i++)
+		for (unsigned long long i = 0llu; i < source_data->nDatas; i++)
 		    if (!check_neg(xaAddItem(&indexes_in_cluster[labels[i]], (void*)i))) goto err_free;
 		nmSysFree(labels); /* Free unused data. */
 		
@@ -2753,8 +2771,8 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	    /** Execute sliding search. **/
 	    pairs = check_ptr(ca_sliding_search(
 		data,
-		source_data->nVectors,
-		cluster_data->MaxIterations, /* Window size. */
+		source_data->nDatas,
+		cluster_data->WindowSize,
 		similarity_function,
 		search_data->Threshold,
 		NULL
@@ -2771,7 +2789,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	else
 	    {
 	    /** Initialize the pairs array with a size of double the amount of data. **/
-	    const int guess_size = search_data->SourceCluster->SourceData->nVectors * 2;
+	    const int guess_size = search_data->SourceCluster->SourceData->nDatas * 2;
 	    pairs = check_ptr(xaNew(guess_size));
 	    if (pairs == NULL) goto err_free;
 	    
@@ -4384,7 +4402,7 @@ clusterInfo(void* inf_v, pObjectInfo info)
 		if (node_data->SourceData->Vectors != NULL)
 		    {
 		    info->Flags |= OBJ_INFO_F_SUBOBJ_CNT_KNOWN;
-		    info->nSubobjects = node_data->SourceData->nVectors;
+		    info->nSubobjects = node_data->SourceData->nDatas;
 		    }
 		break;
 	    
