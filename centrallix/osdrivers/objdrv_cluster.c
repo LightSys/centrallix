@@ -706,11 +706,11 @@ ci_UnknownAttribute(char* attr_name, const int target_type)
 	unsigned int n_my_attrs = 0u;
 	switch (target_type)
 	    {
-	    case TARGET_NODE:          my_attrs = ROOT_ATTRS;          n_my_attrs = N_INPUT_ROOT_ATTRS; break;
-	    case TARGET_CLUSTER:       my_attrs = CLUSTER_ATTRS;       n_my_attrs = N_INPUT_CLUSTER_ATTRS; break;
-	    case TARGET_SEARCH:        my_attrs = SEARCH_ATTRS;        n_my_attrs = N_INPUT_SEARCH_ATTRS; break;
-	    case TARGET_CLUSTER_ENTRY: my_attrs = CLUSTER_ENTRY_ATTRS; n_my_attrs = N_INPUT_CLUSTER_ENTRY_ATTRS; break;
-	    case TARGET_SEARCH_ENTRY:  my_attrs = SEARCH_ENTRY_ATTRS;  n_my_attrs = N_INPUT_SEARCH_ENTRY_ATTRS; break;
+	    case TARGET_NODE:          my_attrs = ROOT_ATTRS;          n_my_attrs = N_ROOT_ATTRS; break;
+	    case TARGET_CLUSTER:       my_attrs = CLUSTER_ATTRS;       n_my_attrs = N_CLUSTER_ATTRS; break;
+	    case TARGET_SEARCH:        my_attrs = SEARCH_ATTRS;        n_my_attrs = N_SEARCH_ATTRS; break;
+	    case TARGET_CLUSTER_ENTRY: my_attrs = CLUSTER_ENTRY_ATTRS; n_my_attrs = N_CLUSTER_ENTRY_ATTRS; break;
+	    case TARGET_SEARCH_ENTRY:  my_attrs = SEARCH_ENTRY_ATTRS;  n_my_attrs = N_SEARCH_ENTRY_ATTRS; break;
 	    default:
 		mssError(0, "Cluster",
 		    "Unknown target type %u detected while attempting to generate hint.",
@@ -1165,23 +1165,11 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 		{
 		case ST_T_ATTRIB:
 		    {
-		    /** Valid attribute names. **/
-		    char* attrs[] = {
-			"algorithm",
-			"similarity_measure",
-			"num_clusters",
-			"min_improvement",
-			"max_iterations",
-			"window_size",
-			"seed",
-		    };
-		    const unsigned int num_attrs = sizeof(attrs) / sizeof(char*);
-		    
 		    /** Ignore valid attribute names. **/
 		    bool is_valid = false;
-		    for (unsigned int i = 0u; i < num_attrs; i++)
+		    for (unsigned int i = 0u; i < N_INPUT_CLUSTER_ATTRS; i++)
 			{
-			if (strcmp(name, attrs[i]) == 0)
+			if (strcmp(name, CLUSTER_ATTRS[i]) == 0)
 			    {
 			    is_valid = true;
 			    break;
@@ -1191,7 +1179,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 		    
 		    /** Give the user a warning, and attempt to give them a hint. **/
 		    fprintf(stderr, "Warning: Unknown attribute '%s' in cluster \"%s\".\n", name, inf->Name);
-		    if (ci_TryHint(name, attrs, num_attrs));
+		    if (ci_TryHint(name, CLUSTER_ATTRS, N_INPUT_CLUSTER_ATTRS));
 		    else if (strcasecmp(name, "k") == 0) ci_GiveHint("num_clusters");
 		    else if (strcasecmp(name, "threshold") == 0) ci_GiveHint("min_improvement");
 		    
@@ -1427,19 +1415,11 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 		{
 		case ST_T_ATTRIB:
 		    {
-		    /** Valid attribute names. **/
-		    char* attrs[] = {
-			"source",
-			"threshold",
-			"similarity_measure",
-		    };
-		    const unsigned int num_attrs = sizeof(attrs) / sizeof(char*);
-		    
 		    /** Ignore valid attribute names. **/
 		    bool is_valid = false;
-		    for (unsigned int i = 0u; i < num_attrs; i++)
+		    for (unsigned int i = 0u; i < N_INPUT_SEARCH_ATTRS; i++)
 			{
-			if (strcmp(name, attrs[i]) == 0)
+			if (strcmp(name, SEARCH_ATTRS[i]) == 0)
 			    {
 			    is_valid = true;
 			    break;
@@ -1449,7 +1429,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 		    
 		    /** Give the user a warning, and attempt to give them a hint. **/
 		    fprintf(stderr, "Warning: Unknown attribute '%s' in search \"%s\".\n", name, inf->Name);
-		    ci_TryHint(name, attrs, num_attrs);
+		    ci_TryHint(name, SEARCH_ATTRS, N_INPUT_SEARCH_ATTRS);
 		    
 		    break;
 		    }
@@ -1602,19 +1582,11 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 		{
 		case ST_T_ATTRIB:
 		    {
-		    /** Valid attribute names. **/
-		    char* attrs[] = {
-			"source",
-			"key_attr",
-			"data_attr",
-		    };
-		    const unsigned int num_attrs = sizeof(attrs) / sizeof(char*);
-		    
 		    /** Ignore valid attribute names. **/
 		    bool is_valid = false;
-		    for (unsigned int i = 0u; i < num_attrs; i++)
+		    for (unsigned int i = 0u; i < N_INPUT_ROOT_ATTRS; i++)
 			{
-			if (strcmp(name, attrs[i]) == 0)
+			if (strcmp(name, ROOT_ATTRS[i]) == 0)
 			    {
 			    is_valid = true;
 			    break;
@@ -1623,8 +1595,8 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 		    if (is_valid) continue; /* Next inf. */
 		    
 		    /** Give the user a warning, and attempt to give them a hint. **/
-		    fprintf(stderr, "Warning: Unknown attribute '%s' in cluster node \"%s\".\n", name, inf->Name);
-		    ci_TryHint(name, attrs, num_attrs);
+		    fprintf(stderr, "Warning: Unknown attribute '%s' in cluster driver root node \"%s\".\n", name, inf->Name);
+		    ci_TryHint(name, ROOT_ATTRS, N_INPUT_ROOT_ATTRS);
 		    
 		    break;
 		    }
@@ -3810,7 +3782,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		{
 		pSourceData source_data = check_ptr(driver_data->TargetData);
 		if (source_data == NULL) goto err;
-		ASSERTMAGIC(source_data, MGK_CL_SEARCH_DATA);
+		ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
 		
 		if (strcmp(attr_name, "source") == 0)
 		    {
@@ -4041,6 +4013,21 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	    || strcmp(attr_name, "last_modification") == 0)
 	    {
 	    hints->VisualLength = 30;
+	    goto end;
+	    }
+	if (strcmp(attr_name, "internal_type") == 0)
+	    {
+	    check(xaInit(&(hints->EnumList), 5)); /* Failure ignored. */
+	    check_neg(xaAddItem(&(hints->EnumList), check_ptr(nmSysStrdup("system/cluster")))); /* Failure ignored. */
+	    check_neg(xaAddItem(&(hints->EnumList), check_ptr(nmSysStrdup("cluster/cluster")))); /* Failure ignored. */
+	    check_neg(xaAddItem(&(hints->EnumList), check_ptr(nmSysStrdup("cluster/entry")))); /* Failure ignored. */
+	    check_neg(xaAddItem(&(hints->EnumList), check_ptr(nmSysStrdup("cluster/search")))); /* Failure ignored. */
+	    check_neg(xaAddItem(&(hints->EnumList), check_ptr(nmSysStrdup("search/entry")))); /* Failure ignored. */
+	    hints->Length = 16;
+	    hints->VisualLength = 16;
+	    hints->FriendlyName = check_ptr(nmSysStrdup("Internal Type")); /* Failure ignored. */
+	    hints->Style     |= OBJ_PH_STYLE_HIDDEN | OBJ_PH_STYLE_LOWERCASE;
+	    hints->StyleMask |= OBJ_PH_STYLE_HIDDEN | OBJ_PH_STYLE_LOWERCASE;
 	    goto end;
 	    }
 	
@@ -4286,8 +4273,8 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	check(clusterGetAttrValue(inf_v, "name", DATA_T_STRING, POD(&name), NULL)); /* Failure ignored. */
 	check(clusterGetAttrValue(inf_v, "internal_type", DATA_T_STRING, POD(&internal_type), NULL)); /* Failure ignored. */
 	mssError(0, "Cluster",
-	    "Failed to get presentation hints for object '%s' : \"%s\".",
-	    name, internal_type
+	    "Failed to get presentation hints for '%s' on object '%s' : \"%s\".",
+	    attr_name, name, internal_type
 	);
 	
     end:
