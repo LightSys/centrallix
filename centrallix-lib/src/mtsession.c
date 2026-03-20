@@ -480,12 +480,12 @@ mssError(int clr, char* module, char* message, ...)
 	check(fflush(stdout)); /* Failure ignored. */
 	
 	/** Write the module to the start of the error message. */
-	i += snprintf(err_msg, sizeof(err_msg) - i, "%s: ", module);
+	i += snprintf(err_msg + i, sizeof(err_msg) - i, "%s: ", module);
 	
 	/** Process the message format with all the same rules as printf(). **/
 	va_list args;
 	va_start(args, message);
-	i += vsnprintf(err_msg, sizeof(err_msg) - i, message, args);
+	i += vsnprintf(err_msg + i, sizeof(err_msg) - i, message, args);
 	va_end(args);
 	
 	/** Get current session **/
