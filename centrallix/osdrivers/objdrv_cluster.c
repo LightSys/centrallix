@@ -275,7 +275,7 @@ char* METHOD_NAMES[] =
  *** 
  *** @skip --> Attribute Data.
  *** @param Name The source name, specified in the .cluster file.
- *** @param Key The key associated with this object in the SourceDataCache.
+ *** @param CacheKey The key associated with this object in the SourceDataCache.
  *** @param SourcePath The path to the data source from which to retrieve data.
  *** @param KeyAttr The name of the attribute to use when getting keys from
  *** 	the driver represented by SourcePath.
@@ -304,7 +304,7 @@ typedef struct _SOURCE
     Magic_t      Magic;
     unsigned int nDatas;
     char*        Name;
-    char*        Key;
+    char*        CacheKey;
     char*        SourcePath;
     char*        KeyAttr;
     char*        DataAttr;
@@ -347,7 +347,7 @@ typedef struct
  *** 
  *** @skip --> Attribute Data.
  *** @param Name The cluster name, specified in the .cluster file.
- *** @param Key The key associated with this object in the ClusterDataCache.
+ *** @param CacheKey The key associated with this object in the ClusterDataCache.
  *** @param ClusterAlgorithm The clustering algorithm to be used.
  *** @param SimilarityMeasure The similarity measure used to compare items.
  *** @param nClusters The number of clusters.  1 if `algorithm == none`.
@@ -383,7 +383,7 @@ typedef struct _CD
     Magic_t           Magic;
     unsigned int      nClusters;
     char*             Name;
-    char*             Key;
+    char*             CacheKey;
     ClusterAlgorithm  ClusterAlgorithm;
     SimilarityMeasure SimilarityMeasure;
     /** 2 bytes of auto-padding. **/
@@ -413,7 +413,7 @@ typedef struct _CD
  *** 
  *** @skip --> Attribute Data.
  *** @param Name The search name, specified in the .cluster file.
- *** @param Key The key associated with this object in the SearchDataCache.
+ *** @param CacheKey The key associated with this object in the SearchDataCache.
  *** @param Source The cluster from which this search is to be derived.
  *** @param SimilarityMeasure The similarity measure used to compare items.
  *** @param Threshold The minimum similarity threshold for elements to be
@@ -438,7 +438,7 @@ typedef struct _SEARCH
     Magic_t           Magic;
     /** 4 bytes of auto-padding. **/
     char*             Name;
-    char*             Key;
+    char*             CacheKey;
     pClusterData      SourceCluster;
     double            Threshold;
     pPair*            Pairs;
@@ -973,21 +973,21 @@ ci_ParseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	    + strlen(source_data->SourcePath)
 	    + strlen(source_data->KeyAttr)
 	    + strlen(source_data->DataAttr) + 5lu;
-	source_data->Key = check_ptr(nmSysMalloc(len * sizeof(char)));
-	if (source_data->Key == NULL) goto err_free;
-	snprintf(source_data->Key, len,
+	source_data->CacheKey = check_ptr(nmSysMalloc(len * sizeof(char)));
+	if (source_data->CacheKey == NULL) goto err_free;
+	snprintf(source_data->CacheKey, len,
 	    "%s?%s->%s:%s",
 	    path, source_data->SourcePath, source_data->KeyAttr, source_data->DataAttr
 	);
 	
 	/** Check for a cached version. **/
-	pSourceData source_maybe = (pSourceData)xhLookup(&ClusterDriverCaches.SourceDataCache, source_data->Key);
+	pSourceData source_maybe = (pSourceData)xhLookup(&ClusterDriverCaches.SourceDataCache, source_data->CacheKey);
 	if (source_maybe != NULL)
 	    { /* Cache hit. */
 	    ASSERTMAGIC(source_maybe, MGK_CL_SOURCE_DATA);
 	    
 	    /** Free data we don't need. **/
-	    nmSysFree(source_data->Key);
+	    nmSysFree(source_data->CacheKey);
 	    ci_FreeSourceData(source_data);
 	    
 	    /** Return the cached source data. **/
@@ -995,7 +995,7 @@ ci_ParseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	    }
 	
 	/** Cache miss: Add the new object to the cache for next time. **/
-	if (!check(xhAdd(&ClusterDriverCaches.SourceDataCache, source_data->Key, (void*)source_data)))
+	if (!check(xhAdd(&ClusterDriverCaches.SourceDataCache, source_data->CacheKey, (void*)source_data)))
 	    goto err_free;
 	
 	/** Success. **/
@@ -1005,7 +1005,7 @@ ci_ParseSourceData(pStructInf inf, pParamObjects param_list, char* path)
     err_free:
 	if (source_data != NULL)
 	    {
-	    if (source_data->Key != NULL) nmSysFree(source_data->Key);
+	    if (source_data->CacheKey != NULL) nmSysFree(source_data->CacheKey);
 	    ci_FreeSourceData(source_data);
 	    }
 	
@@ -1038,7 +1038,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
     int result;
     pClusterData cluster_data = NULL;
     XArray sub_clusters = {0};
-    char* key = NULL;
+    char* cache_key = NULL;
     
 	/** Verify source_data value. **/
 	if (source_data == NULL) goto err_free;
@@ -1230,17 +1230,17 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	check(xaDeInit(&sub_clusters)); /* Failure ignored. */
 	sub_clusters.nAlloc = 0;
 	
-	/** Create the cache key. **/
+	/** Create the cache_key. **/
     parsing_done:;
 	switch (cluster_data->ClusterAlgorithm)
 	    {
 	    case ALGORITHM_NONE:
 		{
-		const size_t len = strlen(source_data->Key) + strlen(cluster_data->Name) + 8lu;
-		key = check_ptr(nmSysMalloc(len * sizeof(char)));
-		if (key == NULL) goto err_free;
-		snprintf(key, len, "%s/%s?%u",
-		    source_data->Key,
+		const size_t len = strlen(source_data->CacheKey) + strlen(cluster_data->Name) + 8lu;
+		cache_key = check_ptr(nmSysMalloc(len * sizeof(char)));
+		if (cache_key == NULL) goto err_free;
+		snprintf(cache_key, len, "%s/%s?%u",
+		    source_data->CacheKey,
 		    cluster_data->Name,
 		    ALGORITHM_NONE
 		);
@@ -1249,11 +1249,11 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    
 	    case ALGORITHM_SLIDING_WINDOW:
 		{
-		const size_t len = strlen(source_data->Key) + strlen(cluster_data->Name) + 16lu;
-		key = check_ptr(nmSysMalloc(len * sizeof(char)));
-		if (key == NULL) goto err_free;
-		snprintf(key, len, "%s/%s?%u&%u&%u",
-		    source_data->Key,
+		const size_t len = strlen(source_data->CacheKey) + strlen(cluster_data->Name) + 16lu;
+		cache_key = check_ptr(nmSysMalloc(len * sizeof(char)));
+		if (cache_key == NULL) goto err_free;
+		snprintf(cache_key, len, "%s/%s?%u&%u&%u",
+		    source_data->CacheKey,
 		    cluster_data->Name,
 		    ALGORITHM_SLIDING_WINDOW,
 		    cluster_data->SimilarityMeasure,
@@ -1264,11 +1264,11 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    
 	    default:
 		{
-		const size_t len = strlen(source_data->Key) + strlen(cluster_data->Name) + 32lu;
-		key = check_ptr(nmSysMalloc(len * sizeof(char)));
-		if (key == NULL) goto err_free;
-		snprintf(key, len, "%s/%s?%u&%u&%u&%g&%u",
-		    source_data->Key,
+		const size_t len = strlen(source_data->CacheKey) + strlen(cluster_data->Name) + 32lu;
+		cache_key = check_ptr(nmSysMalloc(len * sizeof(char)));
+		if (cache_key == NULL) goto err_free;
+		snprintf(cache_key, len, "%s/%s?%u&%u&%u&%g&%u",
+		    source_data->CacheKey,
 		    cluster_data->Name,
 		    cluster_data->ClusterAlgorithm,
 		    cluster_data->SimilarityMeasure,
@@ -1279,29 +1279,29 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 		break;
 		}
 	    }
-	cluster_data->Key = key;
+	cluster_data->CacheKey = cache_key;
 	
 	/** Check for a cached version. **/
-	pClusterData cluster_maybe = (pClusterData)xhLookup(&ClusterDriverCaches.ClusterDataCache, key);
+	pClusterData cluster_maybe = (pClusterData)xhLookup(&ClusterDriverCaches.ClusterDataCache, cache_key);
 	if (cluster_maybe != NULL)
 	    { /* Cache hit. */
 	    ASSERTMAGIC(cluster_maybe, MGK_CL_CLUSTER_DATA);
 	    
 	    /** Free the parsed cluster that we no longer need. */
 	    ci_FreeClusterData(cluster_data, false);
-	    nmSysFree(key);
+	    nmSysFree(cache_key);
 	    
 	    /** Return the cached cluster. **/
 	    return cluster_maybe;
 	    }
 	
 	/** Cache miss. **/
-	if (!check(xhAdd(&ClusterDriverCaches.ClusterDataCache, key, (void*)cluster_data))) goto err_free;
+	if (!check(xhAdd(&ClusterDriverCaches.ClusterDataCache, cache_key, (void*)cluster_data))) goto err_free;
 	return cluster_data;
 	
 	/** Error cleanup. **/
     err_free:
-	if (key != NULL) nmSysFree(key);
+	if (cache_key != NULL) nmSysFree(cache_key);
 	
 	if (sub_clusters.nAlloc != 0)
 	    {
@@ -1464,7 +1464,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	    }
 	
 	/** Create cache entry key. **/
-	char* source_key = search_data->SourceCluster->Key;
+	char* source_key = search_data->SourceCluster->CacheKey;
 	const size_t len = strlen(source_key) + strlen(search_data->Name) + 16lu;
 	key = check_ptr(nmSysMalloc(len * sizeof(char)));
 	if (key == NULL) goto err_free;
@@ -2102,7 +2102,7 @@ ci_ClearCaches(void)
 /*** Returns the deep size of a SourceData struct, including the size of all
  *** allocated substructures.
  *** 
- *** Note: The Key field points to data managed by the caching systems, so it
+ *** Note: The CacheKey field points to data managed by the caching systems, so it
  *** is ignored.
  *** 
  *** @param source_data The source data struct to be queried.
@@ -2152,7 +2152,7 @@ ci_SizeOfSourceData(pSourceData source_data)
 /*** Returns the deep size of a ClusterData struct, including the size of all
  *** allocated substructures.
  *** 
- *** Note: The Key field points to data managed by the caching systems, so it
+ *** Note: The CacheKey field points to data managed by the caching systems, so it
  *** is ignored.
  *** 
  *** @param cluster_data The cluster data struct to be queried.
@@ -2198,7 +2198,7 @@ ci_SizeOfClusterData(pClusterData cluster_data, bool recursive)
 /*** Returns the deep size of a SearchData struct, including the size of all
  *** allocated substructures.
  *** 
- *** Note: The Key field points to data managed by the caching systems, so it
+ *** Note: The CacheKey field points to data managed by the caching systems, so it
  *** is ignored.
  *** 
  *** @param search_data The search data struct to be queried.
@@ -4680,7 +4680,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		printf("\nShowing cache for ");
 		if (path != NULL) printf("\"%s\":\n", path);
 		else printf("all files:\n");
-		printf("%-8s %-16s %-12s %s\n", "Type", "Name", "Size", "Cache Entry Key");
+		printf("%-8s %-16s %-12s %s\n", "Type", "Name", "Size", "Entry CacheKey");
 		failed |= !check(xhForEach(
 		    &ClusterDriverCaches.SourceDataCache,
 		    ci_PrintEntry,
