@@ -790,7 +790,7 @@ get_cluster_size(
  *** 	even if the `min_improvement` threshold is still met on each iteration.
  *** @param min_improvement The minimum improvement threshold that must be met
  *** 	each clustering iteration. If this is not met, the iterations stop.
- *** 	Pass -1 to disable this and iterate for as long as the centroids keep
+ *** 	Pass -1.0 to disable this and iterate for as long as the centroids keep
  *** 	changing (or until `max_iter` is reached).
  *** @param labels Initialized by this function to stores the final cluster
  *** 	identities of the vectors after clustering is completed. Each value
@@ -921,7 +921,7 @@ ca_kmeans(
 		}
 	    
 	    /** Is there enough improvement? **/
-	    if (min_improvement < -1) continue; /** Skip check if it will never end the loop. **/
+	    if (min_improvement <= -1.0) continue; /** Skip check if it will never end the loop. **/
 	    const double average_cluster_size = check_double(get_cluster_size(vectors, num_vectors, labels, centroids, num_clusters));
 	    if (isnan(average_cluster_size)) goto end;
 	    const double improvement = old_average_cluster_size - average_cluster_size;

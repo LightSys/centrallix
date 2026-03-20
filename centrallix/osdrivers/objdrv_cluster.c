@@ -1107,31 +1107,17 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	/** Get min_improvement. **/
 	double improvement;
 	result = ci_ParseAttribute(inf, "min_improvement", DATA_T_DOUBLE, POD(&improvement), param_list, false, false);
-	if (result == 1) cluster_data->MinImprovement = CI_DEFAULT_MIN_IMPROVEMENT;
+	if (result == -1) goto err_free;
+	else if (result == 1) cluster_data->MinImprovement = CI_DEFAULT_MIN_IMPROVEMENT;
 	else if (result == 0)
 	    {
-	    if (improvement <= 0.0 || 1.0 <= improvement)
+	    if (-1.0 <= improvement && improvement <= 1.0)
+		cluster_data->MinImprovement = improvement;
+	    else
 		{
-		mssError(1, "Cluster", "Invalid value for [min_improvement : 0.0 < x < 1.0 | \"none\"]: %g", improvement);
+		mssError(1, "Cluster", "Invalid value for [min_improvement : -1.0 <= x <= 1.0]: %g", improvement);
 		goto err_free;
 		}
-	    
-	    /** Successfully got value. **/
-	    cluster_data->MinImprovement = improvement;
-	    }
-	else if (result == -1)
-	    {
-	    char* str;
-	    result = ci_ParseAttribute(inf, "min_improvement", DATA_T_STRING, POD(&str), param_list, false, true);
-	    if (result != 0) goto err_free;
-	    if (strcasecmp(str, "none") != 0)
-		{
-		mssError(1, "Cluster", "Invalid value for [min_improvement : 0.0 < x < 1.0 | \"none\"]: %s", str);
-		goto err_free;
-		}
-	    
-	    /** Successfully got none. **/
-	    cluster_data->MinImprovement = -INFINITY;
 	    }
 	
 	/** Get max_iterations. **/
