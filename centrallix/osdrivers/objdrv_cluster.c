@@ -2434,9 +2434,21 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    );
 
 	    /** Free computed data. **/
-	    if (source_data->Keys != NULL) nmSysFree(source_data->Keys);
-	    if (source_data->Strings != NULL) nmSysFree(source_data->Strings);
-	    if (source_data->Vectors != NULL) nmSysFree(source_data->Vectors);
+	    if (source_data->Keys != NULL)
+		{
+		nmSysFree(source_data->Keys);
+		source_data->Keys = NULL;
+		}
+	    if (source_data->Strings != NULL)
+		{
+		nmSysFree(source_data->Strings);
+		source_data->Strings = NULL;
+		}
+	    if (source_data->Vectors != NULL)
+		{
+		nmSysFree(source_data->Vectors);
+		source_data->Vectors = NULL;
+		}
 	    }
 
 	/** Clean up xarrays. **/
@@ -2446,7 +2458,6 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 		{
 		char* key = key_xarray.Items[i];
 		if (key != NULL) nmSysFree(key);
-		else break;
 		}
 	    check(xaDeInit(&key_xarray)); /* Failure ignored. */
 	    }
@@ -2456,7 +2467,6 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 		{
 		char* str = data_xarray.Items[i];
 		if (str != NULL) nmSysFree(str);
-		else break;
 		}
 	    check(xaDeInit(&data_xarray)); /* Failure ignored. */
 	    }
@@ -2466,7 +2476,6 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 		{
 		pVector vec = vector_xarray.Items[i];
 		if (vec != NULL) ca_free_vector(vec);
-		else break;
 		}
 	    check(xaDeInit(&vector_xarray)); /* Failure ignored. */
 	    }
@@ -2661,7 +2670,11 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 	return 0;
 	
     err_free:
-	if (cluster_data->Sims != NULL) nmFree(cluster_data->Sims, sims_size);
+	if (cluster_data->Sims != NULL) 
+	    {
+	    nmFree(cluster_data->Sims, sims_size);
+	    cluster_data->Sims = NULL;
+	    }
 	
 	if (cluster_data->Clusters != NULL)
 	    {
@@ -2679,10 +2692,14 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		
 		/** Free the data for the cluster. **/
 		ASSERTMAGIC(cluster, MGK_CL_CLUSTER);
-		if (cluster->Indexes != NULL) nmSysFree(cluster->Indexes);
-		else break;
+		if (cluster->Indexes != NULL)
+		    {
+		    nmSysFree(cluster->Indexes);
+		    cluster->Indexes = NULL;
+		    }
 		}
 	    nmFree(cluster_data->Clusters, clusters_size);
+	    cluster_data->Clusters = NULL;
 	    }
 	
 	mssError(0, "Cluster", "ClusterData computation failed for \"%s\".", cluster_data->Name);
@@ -2854,7 +2871,10 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	/** Store pairs. **/
 	search_data->nPairs = pairs->nItems;
 	if (pairs->nItems == 0)
+	    {
 	    search_data->Pairs = check_ptr(nmSysMalloc(0));
+	    if (search_data->Pairs == NULL) goto err_free;
+	    }
 	else
 	    {
 	    search_data->Pairs = (pPair*)check_ptr(xaToArray(pairs));
@@ -2862,17 +2882,16 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	    check(xaFree(pairs)); /* Failure ignored. */
 	    pairs = NULL;
 	    }
-	if (search_data->Pairs == NULL)
-	    {
-	    mssError(1, "Cluster", "Failed to store pair after computing search data.");
-	    goto err_free;
-	    }
 	
 	/** Success. **/
 	return 0;
 	
     err_free:
-	if (search_data->Pairs != NULL) nmSysFree(search_data->Pairs);
+	if (search_data->Pairs != NULL)
+	    {
+	    nmSysFree(search_data->Pairs);
+	    search_data->Pairs = NULL;
+	    }
 	if (pairs != NULL)
 	    {
 	    for (unsigned int i = 0u; i < pairs->nItems; i++)
