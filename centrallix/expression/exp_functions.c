@@ -4533,6 +4533,9 @@ int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 int
 exp_fn_metaphone(pExpression tree)
     {
+    int ret = -1;
+    bool free_strs = true;
+    
 	/** Verify function schema. **/
 	if (exp_fn_i_verify_schema((ArgExpect[]){
 	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
@@ -4540,7 +4543,7 @@ exp_fn_metaphone(pExpression tree)
 	}, tree) != 0)
 	    {
 	    mssError(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
-	    return -1;
+	    goto end_free;
 	    }
 	
 	/** Allocate space to store metaphone pointers. **/
@@ -4549,20 +4552,21 @@ exp_fn_metaphone(pExpression tree)
 	
 	/** Extract string param. **/
 	pExpression maybe_str = check_ptr(tree->Children.Items[0]);
-	if (maybe_str == NULL) return -1;
+	if (maybe_str == NULL) goto end_free;
 	if (maybe_str->Flags & EXPR_F_NULL)
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    tree->DataType = DATA_T_STRING;
-	    return 0;
+	    goto end_free;
 	    }
 	const char* str = check_ptr(maybe_str->String);
-	if (str == NULL) return -1;
+	if (str == NULL) goto end_free;
 	const size_t str_len = strlen(str);
 	if (str_len == 0u)
 	    {
 	    primary = "";
 	    secondary = "";
+	    free_strs = false;
 	    goto store_data;
 	    }
 	
@@ -4574,11 +4578,15 @@ exp_fn_metaphone(pExpression tree)
 	const size_t length = strlen(primary) + 1lu + strlen(secondary) + 1lu;
 	if (!check(exp_fn_i_alloc_result_string(tree, length))) return -1;
 	sprintf(tree->String, "%s%c%s", primary, CA_BOUNDARY_CHAR, secondary);
-	nmSysFree(primary);
-	nmSysFree(secondary);
 	tree->DataType = DATA_T_STRING;
+	ret = 0;
     
-    return 0;
+    end_free:
+	if (free_strs && primary != NULL) nmSysFree(primary);
+	if (free_strs && secondary != NULL) nmSysFree(secondary);
+	if (ret == -1) mssError(0, "EXP", "%s(): Failed to execute function.", tree->Name);
+    
+    return ret;
     }
 
 
