@@ -78,6 +78,6 @@
 /* 		standards so that it could be included here.		*/
 /************************************************************************/
 
-void meta_double_metaphone(const char* str, char** primary_code, char** secondary_code);
+int meta_double_metaphone(const char* str, char** primary_code, char** secondary_code);
 
 #endif /* End of .h file. */

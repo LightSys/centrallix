@@ -4571,7 +4571,12 @@ exp_fn_metaphone(pExpression tree)
 	    }
 	
 	/** Compute DoubleMetaphone. **/
-	meta_double_metaphone(str, &primary, &secondary);
+	ret = meta_double_metaphone(str, &primary, &secondary);
+	if (ret != 0)
+	    {
+	    mssError(1, "EXP", "Double metaphone computation failed (error code %d).", ret);
+	    goto end_free;
+	    }
 	
 	/** Store the results. **/
     store_data:;
@@ -4584,7 +4589,7 @@ exp_fn_metaphone(pExpression tree)
     end_free:
 	if (free_strs && primary != NULL) nmSysFree(primary);
 	if (free_strs && secondary != NULL) nmSysFree(secondary);
-	if (ret == -1) mssError(0, "EXP", "%s(): Failed to execute function.", tree->Name);
+	if (ret != 0) mssError(0, "EXP", "%s(): Failed to execute function.", tree->Name);
     
     return ret;
     }

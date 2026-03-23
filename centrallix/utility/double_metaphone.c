@@ -94,7 +94,7 @@
  *** 
  *** If you have any questions, please feel free to reach out to me or Greg.
  *** 
- *** Original Source: https://github.com/gitpan/Text-meta_double_metaphone
+ *** Original Source: https://github.com/gitpan/Text-DoubleMetaphone
  ***/
 
 #include <assert.h>
@@ -104,58 +104,9 @@
 #include <stdio.h>
 #include <string.h>
 
-/*** If running in a testing environment, newmalloc is not
- *** available, so we fall back to default C memory allocation.
- ***/
-#ifndef TESTING
 #include "cxlib/newmalloc.h"
-#define META_MALLOC(size) nmSysMalloc(size)
-#define META_REALLOC(ptr, size) nmSysRealloc(ptr, size)
-#define META_FREE(ptr) nmSysFree(ptr)
-#else
-#include <stdlib.h>
-#define META_MALLOC(size) malloc(size)
-#define META_REALLOC(ptr, size) realloc(ptr, size)
-#define META_FREE(ptr) free(ptr)
-#endif
-
-/*** Helper function to handle checking for failed memory allocation
- *** Author: Israel Fuller.
- *** 
- *** @param ptr Pointer to the memory that should be allocated.
- *** @param fname The name of the function invoked to allocate memory.
- *** @param size The amount of memory being allocated.
- *** @returns The pointer, for chaining.
- ***/
-void*
-meta_check_allocation(void* ptr, const char* fname, const size_t size)
-    {
-	if (ptr == NULL)
-	    {
-	    /** Create the most descriptive error message we can. **/
-	    char error_buf[BUFSIZ];
-	    snprintf(error_buf, sizeof(error_buf), "exp_double_metaphone.c: Fail - %s(%lu)", fname, size);
-	    perror(error_buf);
-	    
-	    // Throw error for easier locating in a debugger.
-	    fprintf(stderr, "Program will now crash.\n");
-	    assert(0);
-	    }
-    
-    return ptr;
-    }
-
-/** Malloc shortcut macros. **/
-#define SAFE_MALLOC(size) \
-    ({ \
-	const size_t sz = (size); \
-	memset(meta_check_allocation(META_MALLOC(sz), "META_MALLOC", sz), 0, sz); \
-    })
-#define SAFE_REALLOC(ptr, size) \
-    ({ \
-	const size_t sz = (size); \
-	meta_check_allocation(META_REALLOC(ptr, sz), "META_REALLOC", sz); \
-    })
+#include "cxlib/strtcpy.h"
+#include "cxlib/util.h"
 
 typedef struct
     {
@@ -164,20 +115,21 @@ typedef struct
     size_t bufsize;
     int free_str_on_destroy;
     }
-MetaString;
+    MetaString, *pMetaString;
 
 /*** Allocates a new MetaString.
  *** 
  *** @param init_str The initial size of the string.
- *** @returns The new MetaString.
+ *** @returns The new MetaString, or NULL if an error occurs.
  ***/
-MetaString*
+pMetaString
 meta_new_string(const char* init_str)
     {
-    MetaString *s;
+    pMetaString s;
     char empty_string[] = "";
     
-	s = (MetaString*)SAFE_MALLOC(sizeof(MetaString));
+	s = (pMetaString)check_ptr(nmSysMalloc(sizeof(MetaString)));
+	if (s == NULL) goto err_free;
 	
 	if (init_str == NULL)
 	    init_str = empty_string;
@@ -186,12 +138,22 @@ meta_new_string(const char* init_str)
 	/** Preallocate a bit more for potential growth. **/
 	s->bufsize = s->length + 7u;
 	
-	s->str = (char*)SAFE_MALLOC(s->bufsize * sizeof(char));
+	s->str = (char*)check_ptr(nmSysMalloc(s->bufsize * sizeof(char)));
+	if (s->str == NULL) goto err_free;
 	
 	strtcpy(s->str, init_str, s->bufsize);
 	s->free_str_on_destroy = 1;
     
-    return s;
+	return s;
+	
+    err_free:
+	if (s != NULL)
+	    {
+	    if (s->str != NULL) nmSysFree(s->str);
+	    nmSysFree(s);
+	    }
+	
+	return NULL;
     }
 
 /*** Frees a MetaString.
@@ -199,31 +161,33 @@ meta_new_string(const char* init_str)
  *** @param s The MetaString.
  ***/
 void
-meta_destroy_string(MetaString* s)
+meta_destroy_string(pMetaString s)
     {
 	if (s == NULL)
 	    return;
 	
 	if (s->free_str_on_destroy && s->str != NULL)
-	    META_FREE(s->str);
+	    nmSysFree(s->str);
 	
-	META_FREE(s);
+	nmSysFree(s);
     
     return;
     }
 
 /*** Increases a MetaString's buffer size.
  *** 
- *** @param s The MetaString* being modified.
+ *** @param s The pMetaString being modified.
  *** @param chars_needed Minimum number of characters to increase buffer size.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
-void
-meta_increase_buffer(MetaString* s, const size_t chars_needed)
+int
+meta_increase_buffer(pMetaString s, const size_t chars_needed)
     {
 	s->bufsize += chars_needed + 8u;
-	s->str = SAFE_REALLOC(s->str, s->bufsize * sizeof(char));
+	s->str = check_ptr(nmSysRealloc(s->str, s->bufsize * sizeof(char)));
+	if (s->str == NULL) return -1;
     
-    return;
+    return 0;
     }
 
 /*** Convert all characters of a MetaString to uppercase.
@@ -231,7 +195,7 @@ meta_increase_buffer(MetaString* s, const size_t chars_needed)
  *** @param s The MetaString being modified.
  ***/
 void
-meta_make_upper(MetaString* s)
+meta_make_upper(pMetaString s)
     {
 	for (char* i = s->str; i[0] != '\0'; i++)
 	    *i = (char)toupper(*i);
@@ -245,7 +209,7 @@ meta_make_upper(MetaString* s)
  ***          0 otherwise.
  ***/
 bool
-meta_is_out_of_bounds(MetaString* s, unsigned int pos)
+meta_is_out_of_bounds(pMetaString s, unsigned int pos)
     {
     return (s->length <= pos);
     }
@@ -256,7 +220,7 @@ meta_is_out_of_bounds(MetaString* s, unsigned int pos)
  *** @param pos The character location to check within the MetaString.
  ***/
 bool
-meta_is_vowel(MetaString* s, unsigned int pos)
+meta_is_vowel(pMetaString s, unsigned int pos)
     {
 	if (meta_is_out_of_bounds(s, pos)) return 0;
 	
@@ -273,7 +237,7 @@ meta_is_vowel(MetaString* s, unsigned int pos)
  *** @returns 1 if the MetaString is Slavo Germanic, or 0 otherwise. 
  ***/
 bool
-meta_is_slavo_germanic(MetaString* s)
+meta_is_slavo_germanic(pMetaString s)
     {
     return (strstr(s->str, "W") != NULL)
 	|| (strstr(s->str, "K") != NULL)
@@ -287,7 +251,7 @@ meta_is_slavo_germanic(MetaString* s)
  ***          '\0' if the position is not in the MetaString.
  ***/
 char
-meta_get_char_at(MetaString* s, unsigned int pos)
+meta_get_char_at(pMetaString s, unsigned int pos)
     {
     return (meta_is_out_of_bounds(s, pos)) ? '\0' : ((char) *(s->str + pos));
     }
@@ -305,14 +269,14 @@ meta_get_char_at(MetaString* s, unsigned int pos)
  *** 	in the MetaString and 0 otherwise.
  ***/
 bool
-meta_is_str_at(MetaString* s, unsigned int start, ...)
+meta_is_str_at(pMetaString s, unsigned int start, ...)
     {
     va_list ap;
     bool found = false;
     
 	/** Should never happen. **/
 	if (meta_is_out_of_bounds(s, start))
-	    return 0;
+	    return false;
 	
 	const char* pos = (s->str + start);
 	va_start(ap, start);
@@ -338,23 +302,25 @@ meta_is_str_at(MetaString* s, unsigned int start, ...)
  *** 
  *** @param s The MetaString being modified.
  *** @param new_str The string being added.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
-void
-meta_add_str(MetaString* s, const char* new_str)
+int
+meta_add_str(pMetaString s, const char* new_str)
     {
 	if (new_str == NULL)
-	    return;
+	    return -1;
 	
 	/** Increase the buffer to the required size. **/
 	const size_t add_length = strlen(new_str);
-	if ((s->length + add_length) > (s->bufsize - 1))
-	    meta_increase_buffer(s, add_length);
+	const size_t new_length = s->length + add_length + 1;
+	if (new_length > s->bufsize && check(meta_increase_buffer(s, add_length)) != 0)
+	    return -1;
 	
 	/** Write the data to the buffer. **/
 	strtcat(s->str, new_str, s->bufsize);
 	s->length += add_length;
     
-    return;
+    return 0;
     }
     
 /*** Computes double metaphone.
@@ -371,45 +337,50 @@ meta_add_str(MetaString* s, const char* new_str)
  ***	containing the produced primary code will be stored.
  *** @param secondary_code A pointer to a buffer where the pointer to a string
  ***	containing the produced secondary code will be stored.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
-void
+int
 meta_double_metaphone(const char* str, char** primary_code, char** secondary_code)
     {
-    size_t length;
+    int ret = -1;
     
+	/** Edge cases. **/
+	if (str == NULL)
+	    {
+	    fprintf(stderr, "Error: Missing input string.\n");
+	    goto end_free;
+	    }
+	const size_t length = strlen(str);
+	if (length == 0lu)
+	    {
+	    fprintf(stderr, "Error: Empty input string.\n");
+	    goto end_free;
+	    }
 	if (primary_code == NULL)
 	    {
-	    fprintf(stderr, "Warning: Call to meta_double_metaphone() is missing a pointer to store primary code.\n");
-	    return;
+	    fprintf(stderr, "Error: Missing a pointer to store primary code.\n");
+	    goto end_free;
 	    }
-	
 	if (secondary_code == NULL)
 	    {
-	    fprintf(stderr, "Warning: Call to meta_double_metaphone() is missing a pointer to store secondary code.\n");
-	    return;
+	    fprintf(stderr, "Error: Missing a pointer to store secondary code.\n");
+	    goto end_free;
 	    }
-    
-	if (str == NULL || (length = strlen(str)) == 0u)
-	    {
-	    fprintf(stderr, "Warning: Call to meta_double_metaphone() with invalid string.\n");
-	    
-	    /** Double Metaphone on an invalid string yields two empty strings. **/
-	    *primary_code = (char*)SAFE_MALLOC(sizeof(char));
-	    *secondary_code = (char*)SAFE_MALLOC(sizeof(char));
-	    return;
-	    }
+	
+	/** Declare iteration variables. **/
 	unsigned int current = 0;
-	unsigned int last = (unsigned int)(length - 1);
+	const unsigned int last = (unsigned int)(length - 1);
 	
 	/** Pad original so we can index beyond end. **/
-	MetaString* original = meta_new_string(str);
+	pMetaString original = check_ptr(meta_new_string(str));
+	if (original == NULL) goto end_free;
 	meta_make_upper(original);
-	meta_add_str(original, "     ");
+	if (check(meta_add_str(original, "     ")) != 0) goto end_free;
 	
-	MetaString* primary = meta_new_string("");
-	MetaString* secondary = meta_new_string("");
-	primary->free_str_on_destroy = 0;
-	secondary->free_str_on_destroy = 0;
+	/** Allocate the primary and secondary output strings. **/
+	pMetaString primary = check_ptr(meta_new_string(""));
+	pMetaString secondary = check_ptr(meta_new_string(""));
+	if (primary == NULL || secondary == NULL) goto end_free;
 	
 	/** Skip these if they are at start of a word. **/
 	if (meta_is_str_at(original, 0, "GN", "KN", "PN", "WR", "PS", ""))
@@ -419,8 +390,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 	const char first_char = meta_get_char_at(original, 0);
 	if (first_char == 'X')
 	    {
-	    meta_add_str(primary, "S"); /* 'Z' maps to 'S' */
-	    meta_add_str(secondary, "S");
+	    if (check(meta_add_str(primary, "S")) != 0) goto end_free; /* 'Z' maps to 'S' */
+	    if (check(meta_add_str(secondary, "S")) != 0) goto end_free;
 	    current += 1;
 	    }
 	
@@ -444,8 +415,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    if (current == 0)
 			{
 			/** All init vowels now map to 'A'. **/
-			meta_add_str(primary, "A");
-			meta_add_str(secondary, "A");
+			if (check(meta_add_str(primary, "A") != 0)) goto end_free;
+			if (check(meta_add_str(secondary, "A") != 0)) goto end_free;
 			}
 		    current += 1;
 		    break;	
@@ -454,8 +425,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		case 'B':
 		    {
 		    /** "-mb", e.g", "dumb", already skipped over... **/
-		    meta_add_str(primary, "P");
-		    meta_add_str(secondary, "P");
+		    if (check(meta_add_str(primary, "P") != 0)) goto end_free;
+		    if (check(meta_add_str(secondary, "P") != 0)) goto end_free;
 		    
 		    current += (next_char == 'B') ? 2 : 1;
 		    break;
@@ -475,8 +446,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			)
 		       )
 			{
-			meta_add_str(primary, "K");
-			meta_add_str(secondary, "K");
+			if (check(meta_add_str(primary, "K") != 0)) goto end_free;
+			if (check(meta_add_str(secondary, "K") != 0)) goto end_free;
 			current += 2;
 			break;
 			}
@@ -484,8 +455,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    /** Special case 'caesar' **/
 		    if (current == 0 && meta_is_str_at(original, current, "CAESAR", ""))
 			{
-			meta_add_str(primary, "S");
-			meta_add_str(secondary, "S");
+			if (check(meta_add_str(primary, "S") != 0)) goto end_free;
+			if (check(meta_add_str(secondary, "S") != 0)) goto end_free;
 			current += 2;
 			break;
 			}
@@ -493,8 +464,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    /** Italian 'chianti' **/
 		    if (meta_is_str_at(original, current, "CHIA", ""))
 			{
-			meta_add_str(primary, "K");
-			meta_add_str(secondary, "K");
+			if (check(meta_add_str(primary, "K") != 0)) goto end_free;
+			if (check(meta_add_str(secondary, "K") != 0)) goto end_free;
 			current += 2;
 			break;
 			}
@@ -504,8 +475,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			/** Find 'michael' **/
 			if (current > 0 && meta_is_str_at(original, current, "CHAE", ""))
 			    {
-			    meta_add_str(primary, "K");
-			    meta_add_str(secondary, "X");
+			    if (check(meta_add_str(primary, "K") != 0)) goto end_free;
+			    if (check(meta_add_str(secondary, "X") != 0)) goto end_free;
 			    current += 2;
 			    break;
 			    }
@@ -517,8 +488,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			    && !meta_is_str_at(original, 0, "CHORE", "")
 			   )
 			    {
-			    meta_add_str(primary, "K");
-			    meta_add_str(secondary, "K");
+			    if (check(meta_add_str(primary, "K") != 0)) goto end_free;
+			    if (check(meta_add_str(secondary, "K") != 0)) goto end_free;
 			    current += 2;
 			    break;
 			    }
@@ -536,8 +507,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			       )
 			   )
 			    {
-			    meta_add_str(primary, "K");
-			    meta_add_str(secondary, "K");
+			    if (check(meta_add_str(primary, "K") != 0)) goto end_free;
+			    if (check(meta_add_str(secondary, "K") != 0)) goto end_free;
 			    }
 			else
 			    {
@@ -546,19 +517,19 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 				if (meta_is_str_at(original, 0, "MC", ""))
 				    {
 				    /* e.g., "McHugh" */
-				    meta_add_str(primary, "K");
-				    meta_add_str(secondary, "K");
+				    if (check(meta_add_str(primary, "K") != 0)) goto end_free;
+				    if (check(meta_add_str(secondary, "K") != 0)) goto end_free;
 				    }
 				else
 				    {
-				    meta_add_str(primary, "X");
-				    meta_add_str(secondary, "K");
+				    if (check(meta_add_str(primary, "X") != 0)) goto end_free;
+				    if (check(meta_add_str(secondary, "K") != 0)) goto end_free;
 				    }
 				}
 			    else
 				{
-				meta_add_str(primary, "X");
-				meta_add_str(secondary, "X");
+				if (check(meta_add_str(primary, "X") != 0)) goto end_free;
+				if (check(meta_add_str(secondary, "X") != 0)) goto end_free;
 				}
 			    }
 			    current += 2;
@@ -569,8 +540,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    if (meta_is_str_at(original, current, "CZ", "")
 			&& !meta_is_str_at(original, (current - 2), "WICZ", ""))
 			{
-			meta_add_str(primary, "S");
-			meta_add_str(secondary, "X");
+			if (check(meta_add_str(primary, "S") != 0)) goto end_free;
+			if (check(meta_add_str(secondary, "X") != 0)) goto end_free;
 			current += 2;
 			break;
 			}
@@ -578,8 +549,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    /** e.g., 'focaccia' **/
 		    if (meta_is_str_at(original, (current + 1), "CIA", ""))
 			{
-			meta_add_str(primary, "X");
-			meta_add_str(secondary, "X");
+			if (check(meta_add_str(primary, "X") != 0)) goto end_free;
+			if (check(meta_add_str(secondary, "X") != 0)) goto end_free;
 			current += 3;
 			break;
 			}
@@ -602,22 +573,22 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 				|| meta_is_str_at(original, (current - 1), "UCCEE", "UCCES", "")
 			       )
 				{
-				meta_add_str(primary, "KS");
-				meta_add_str(secondary, "KS");
+				if (check(meta_add_str(primary, "KS")) != 0) goto end_free;
+				if (check(meta_add_str(secondary, "KS")) != 0) goto end_free;
 				/** 'bacci', 'bertucci', other italian **/
 				}
 			    else
 				{
-				meta_add_str(primary, "X");
-				meta_add_str(secondary, "X");
+				if (check(meta_add_str(primary, "X")) != 0) goto end_free;
+				if (check(meta_add_str(secondary, "X")) != 0) goto end_free;
 				}
 			    current += 3;
 			    break;
 			    }
 			else
 			    { /** Pierce's rule **/
-			    meta_add_str(primary, "K");
-			    meta_add_str(secondary, "K");
+			    if (check(meta_add_str(primary, "K")) != 0) goto end_free;
+			    if (check(meta_add_str(secondary, "K")) != 0) goto end_free;
 			    current += 2;
 			    break;
 			    }
@@ -625,8 +596,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    
 		    if (meta_is_str_at(original, current, "CK", "CG", "CQ", ""))
 			{
-			meta_add_str(primary, "K");
-			meta_add_str(secondary, "K");
+			if (check(meta_add_str(primary, "K")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, "K")) != 0) goto end_free;
 			current += 2;
 			break;
 			}
@@ -636,21 +607,21 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			/* Italian vs. English */
 			if (meta_is_str_at(original, current, "CIO", "CIE", "CIA", ""))
 			    {
-			    meta_add_str(primary, "S");
-			    meta_add_str(secondary, "X");
+			    if (check(meta_add_str(primary, "S")) != 0) goto end_free;
+			    if (check(meta_add_str(secondary, "X")) != 0) goto end_free;
 			    }
 			else
 			    {
-			    meta_add_str(primary, "S");
-			    meta_add_str(secondary, "S");
+			    if (check(meta_add_str(primary, "S")) != 0) goto end_free;
+			    if (check(meta_add_str(secondary, "S")) != 0) goto end_free;
 			    }
 			current += 2;
 			break;
 			}
 		    
 		    /** else **/
-		    meta_add_str(primary, "K");
-		    meta_add_str(secondary, "K");
+		    if (check(meta_add_str(primary, "K")) != 0) goto end_free;
+		    if (check(meta_add_str(secondary, "K")) != 0) goto end_free;
 		    
 		    /** Name sent in 'mac caffrey', 'mac gregor **/
 		    if (meta_is_str_at(original, (current + 1), " C", " Q", " G", ""))
@@ -670,16 +641,16 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			if (meta_is_str_at(original, (current + 2), "I", "E", "Y", ""))
 			    {
 			    /** e.g. 'edge' **/
-			    meta_add_str(primary, "J");
-			    meta_add_str(secondary, "J");
+			    if (check(meta_add_str(primary, "J")) != 0) goto end_free;
+			    if (check(meta_add_str(secondary, "J")) != 0) goto end_free;
 			    current += 3;
 			    break;
 			    }
 			else
 			    {
 			    /** e.g. 'edgar' **/
-			    meta_add_str(primary, "TK");
-			    meta_add_str(secondary, "TK");
+			    if (check(meta_add_str(primary, "TK")) != 0) goto end_free;
+			    if (check(meta_add_str(secondary, "TK")) != 0) goto end_free;
 			    current += 2;
 			    break;
 			    }
@@ -687,15 +658,15 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    
 		    if (meta_is_str_at(original, current, "DT", "DD", ""))
 			{
-			meta_add_str(primary, "T");
-			meta_add_str(secondary, "T");
+			if (check(meta_add_str(primary, "T")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, "T")) != 0) goto end_free;
 			current += 2;
 			break;
 			}
 		    
 		    /** else **/
-		    meta_add_str(primary, "T");
-		    meta_add_str(secondary, "T");
+		    if (check(meta_add_str(primary, "T")) != 0) goto end_free;
+		    if (check(meta_add_str(secondary, "T")) != 0) goto end_free;
 		    current += 1;
 		    break;
 		    }
@@ -703,8 +674,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		case 'F':
 		    {
 		    current += (next_char == 'F') ? 2 : 1;
-		    meta_add_str(primary, "F");
-		    meta_add_str(secondary, "F");
+		    if (check(meta_add_str(primary, "F")) != 0) goto end_free;
+		    if (check(meta_add_str(secondary, "F")) != 0) goto end_free;
 		    break;
 		    }
 		
@@ -715,8 +686,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			/** 'Vghee' */
 			if (current > 0 && !meta_is_vowel(original, (current - 1)))
 			    {
-			    meta_add_str(primary, "K");
-			    meta_add_str(secondary, "K");
+			    if (check(meta_add_str(primary, "K")) != 0) goto end_free;
+			    if (check(meta_add_str(secondary, "K")) != 0) goto end_free;
 			    current += 2;
 			    break;
 			    }
@@ -728,13 +699,13 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 				{
 				if (meta_get_char_at(original, (current + 2)) == 'I')
 				    {
-				    meta_add_str(primary, "J");
-				    meta_add_str(secondary, "J");
+				    if (check(meta_add_str(primary, "J")) != 0) goto end_free;
+				    if (check(meta_add_str(secondary, "J")) != 0) goto end_free;
 				    }
 				else
 				    {
-				    meta_add_str(primary, "K");
-				    meta_add_str(secondary, "K");
+				    if (check(meta_add_str(primary, "K")) != 0) goto end_free;
+				    if (check(meta_add_str(secondary, "K")) != 0) goto end_free;
 				    }
 				current += 2;
 				break;
@@ -762,13 +733,13 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 				&& meta_is_str_at(original, (current - 3), "C", "G", "L", "R", "T", "")
 			       )
 				{
-				meta_add_str(primary, "F");
-				meta_add_str(secondary, "F");
+				if (check(meta_add_str(primary, "F")) != 0) goto end_free;
+				if (check(meta_add_str(secondary, "F")) != 0) goto end_free;
 				}
 			    else if (current > 0 && meta_get_char_at(original, (current - 1)) != 'I')
 				{
-				meta_add_str(primary, "K");
-				meta_add_str(secondary, "K");
+				if (check(meta_add_str(primary, "K")) != 0) goto end_free;
+				if (check(meta_add_str(secondary, "K")) != 0) goto end_free;
 				}
 			    
 			    current += 2;
@@ -780,8 +751,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			{
 			if (current == 1 && !is_slavo_germanic && meta_is_vowel(original, 0))
 			    {
-			    meta_add_str(primary, "KN");
-			    meta_add_str(secondary, "N");
+			    if (check(meta_add_str(primary, "KN")) != 0) goto end_free;
+			    if (check(meta_add_str(secondary, "N")) != 0) goto end_free;
 			    }
 			else
 			    /** not e.g. 'cagney' **/
@@ -791,13 +762,13 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 				&& !meta_is_str_at(original, (current + 2), "EY", "")
 			       )
 				{
-				meta_add_str(primary, "N");
-				meta_add_str(secondary, "KN");
+				if (check(meta_add_str(primary, "N")) != 0) goto end_free;
+				if (check(meta_add_str(secondary, "KN")) != 0) goto end_free;
 				}
 			else
 			    {
-			    meta_add_str(primary, "KN");
-			    meta_add_str(secondary, "KN");
+			    if (check(meta_add_str(primary, "KN")) != 0) goto end_free;
+			    if (check(meta_add_str(secondary, "KN")) != 0) goto end_free;
 			    }
 			current += 2;
 			break;
@@ -809,8 +780,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			&& meta_is_str_at(original, (current + 1), "LI", "")
 		       )
 			{
-			meta_add_str(primary, "KL");
-			meta_add_str(secondary, "L");
+			if (check(meta_add_str(primary, "KL")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, "L")) != 0) goto end_free;
 			current += 2;
 			break;
 			}
@@ -828,8 +799,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			   )
 		       )
 			{
-			meta_add_str(primary, "K");
-			meta_add_str(secondary, "J");
+			if (check(meta_add_str(primary, "K")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, "J")) != 0) goto end_free;
 			current += 2;
 			break;
 			}
@@ -842,8 +813,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			&& !meta_is_str_at(original, (current - 1), "E", "I", "RGY", "OGY", "")
 		       )
 			{
-			meta_add_str(primary, "K");
-			meta_add_str(secondary, "J");
+			if (check(meta_add_str(primary, "K")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, "J")) != 0) goto end_free;
 			current += 2;
 			break;
 			}
@@ -858,21 +829,21 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			if (meta_is_str_at(original, 0, "SCH", "VAN ", "VON ", "")
 			    || meta_is_str_at(original, (current + 1), "ET", ""))
 			    {
-			    meta_add_str(primary, "K");
-			    meta_add_str(secondary, "K");
+			    if (check(meta_add_str(primary, "K")) != 0) goto end_free;
+			    if (check(meta_add_str(secondary, "K")) != 0) goto end_free;
 			    }
 			else
 			    {
 			    /** Always soft, if french ending. **/
 			    if (meta_is_str_at(original, (current + 1), "IER ", ""))
 				{
-				meta_add_str(primary, "J");
-				meta_add_str(secondary, "J");
+				if (check(meta_add_str(primary, "J")) != 0) goto end_free;
+				if (check(meta_add_str(secondary, "J")) != 0) goto end_free;
 				}
 			    else
 				{
-				meta_add_str(primary, "J");
-				meta_add_str(secondary, "K");
+				if (check(meta_add_str(primary, "J")) != 0) goto end_free;
+				if (check(meta_add_str(secondary, "K")) != 0) goto end_free;
 				}
 			    }
 			current += 2;
@@ -880,8 +851,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    }
 		    
 		    current += (next_char == 'G') ? 2 : 1;
-		    meta_add_str(primary, "K");
-		    meta_add_str(secondary, "K");
+		    if (check(meta_add_str(primary, "K")) != 0) goto end_free;
+		    if (check(meta_add_str(secondary, "K")) != 0) goto end_free;
 		    break;
 		    }
 		
@@ -893,8 +864,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			&& meta_is_vowel(original, current + 1)
 		       )
 			{
-			meta_add_str(primary, "H");
-			meta_add_str(secondary, "H");
+			if (check(meta_add_str(primary, "H")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, "H")) != 0) goto end_free;
 			current += 2;
 			}
 		    else /* also takes care of 'HH' */
@@ -915,13 +886,13 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			    || (current == 0 && meta_get_char_at(original, current + 4) == ' ')
 			   )
 			    {
-			    meta_add_str(primary, "H");
-			    meta_add_str(secondary, "H");
+			    if (check(meta_add_str(primary, "H")) != 0) goto end_free;
+			    if (check(meta_add_str(secondary, "H")) != 0) goto end_free;
 			    }
 			else
 			    {
-			    meta_add_str(primary, "J");
-			    meta_add_str(secondary, "H");
+			    if (check(meta_add_str(primary, "J")) != 0) goto end_free;
+			    if (check(meta_add_str(secondary, "H")) != 0) goto end_free;
 			    }
 			current += 1;
 			break;
@@ -929,8 +900,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    
 		    if (current == 0 && !has_jose_next)
 			{
-			meta_add_str(primary, "J"); /* Yankelovich/Jankelowicz */
-			meta_add_str(secondary, "A");
+			if (check(meta_add_str(primary, "J")) != 0) goto end_free; /* Yankelovich/Jankelowicz */
+			if (check(meta_add_str(secondary, "A")) != 0) goto end_free;
 			}
 		    else
 			{
@@ -941,15 +912,15 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			    && meta_is_vowel(original, (current - 1))
 			   )
 			    {
-			    meta_add_str(primary, "J");
-			    meta_add_str(secondary, "H");
+			    if (check(meta_add_str(primary, "J")) != 0) goto end_free;
+			    if (check(meta_add_str(secondary, "H")) != 0) goto end_free;
 			    }
 			else
 			    {
 			    if (current == last)
 				{
-				meta_add_str(primary, "J");
-				meta_add_str(secondary, "");
+				if (check(meta_add_str(primary, "J")) != 0) goto end_free;
+				if (check(meta_add_str(secondary, "")) != 0) goto end_free;
 				}
 			    else
 				{
@@ -958,8 +929,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 				    && !meta_is_str_at(original, (current - 1), "S", "K", "L", "")
 				   )
 				    {
-				    meta_add_str(primary, "J");
-				    meta_add_str(secondary, "J");
+				    if (check(meta_add_str(primary, "J")) != 0) goto end_free;
+				    if (check(meta_add_str(secondary, "J")) != 0) goto end_free;
 				    }
 				}
 			    }
@@ -972,8 +943,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		case 'K':
 		    {
 		    current += (next_char == 'K') ? 2 : 1;
-		    meta_add_str(primary, "K");
-		    meta_add_str(secondary, "K");
+		    if (check(meta_add_str(primary, "K")) != 0) goto end_free;
+		    if (check(meta_add_str(secondary, "K")) != 0) goto end_free;
 		    break;
 		    }
 		
@@ -996,8 +967,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			       )
 			   )
 			    {
-			    meta_add_str(primary, "L");
-			    meta_add_str(secondary, "");
+			    if (check(meta_add_str(primary, "L")) != 0) goto end_free;
+			    if (check(meta_add_str(secondary, "")) != 0) goto end_free;
 			    current += 2;
 			    break;
 			    }
@@ -1005,8 +976,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			}
 		    else
 			current += 1;
-		    meta_add_str(primary, "L");
-		    meta_add_str(secondary, "L");
+		    if (check(meta_add_str(primary, "L")) != 0) goto end_free;
+		    if (check(meta_add_str(secondary, "L")) != 0) goto end_free;
 		    break;
 		    }
 		
@@ -1020,16 +991,16 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			/** 'dumb','thumb' **/
 			|| next_char == 'M'
 		    ) ? 2 : 1;
-		    meta_add_str(primary, "M");
-		    meta_add_str(secondary, "M");
+		    if (check(meta_add_str(primary, "M")) != 0) goto end_free;
+		    if (check(meta_add_str(secondary, "M")) != 0) goto end_free;
 		    break;
 		    }
 		
 		case 'N':
 		    {
 		    current += (next_char == 'N') ? 2 : 1;
-		    meta_add_str(primary, "N");
-		    meta_add_str(secondary, "N");
+		    if (check(meta_add_str(primary, "N")) != 0) goto end_free;
+		    if (check(meta_add_str(secondary, "N")) != 0) goto end_free;
 		    break;
 		    }
 		
@@ -1037,24 +1008,24 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    {
 		    if (next_char == 'H')
 			{
-			meta_add_str(primary, "F");
-			meta_add_str(secondary, "F");
+			if (check(meta_add_str(primary, "F")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, "F")) != 0) goto end_free;
 			current += 2;
 			break;
 			}
 		    
 		    /** Also account for "campbell", "raspberry" **/
 		    current += (meta_is_str_at(original, (current + 1), "P", "B", "")) ? 2 : 1;
-		    meta_add_str(primary, "P");
-		    meta_add_str(secondary, "P");
+		    if (check(meta_add_str(primary, "P")) != 0) goto end_free;
+		    if (check(meta_add_str(secondary, "P")) != 0) goto end_free;
 		    break;
 		    }
 		
 		case 'Q':
 		    {
 		    current += (next_char == 'Q') ? 2 : 1;
-		    meta_add_str(primary, "K");
-		    meta_add_str(secondary, "K");
+		    if (check(meta_add_str(primary, "K")) != 0) goto end_free;
+		    if (check(meta_add_str(secondary, "K")) != 0) goto end_free;
 		    break;
 		    }
 		
@@ -1068,8 +1039,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			&& !meta_is_str_at(original, (current - 4), "ME", "MA", "")
 		    );
 		    
-		    meta_add_str(primary, (no_primary) ? "" : "R");
-		    meta_add_str(secondary, "R");
+		    if (check(meta_add_str(primary, (no_primary) ? "" : "R")) != 0) goto end_free;
+		    if (check(meta_add_str(secondary, "R")) != 0) goto end_free;
 		    current += (next_char == 'R') ? 2 : 1;
 		    break;
 		}
@@ -1086,8 +1057,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    /** Special case 'sugar-' **/
 		    if (current == 0 && meta_is_str_at(original, current, "SUGAR", ""))
 			{
-			meta_add_str(primary, "X");
-			meta_add_str(secondary, "S");
+			if (check(meta_add_str(primary, "X")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, "S")) != 0) goto end_free;
 			current += 1;
 			break;
 			}
@@ -1096,8 +1067,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			{
 			const bool germanic = meta_is_str_at(original, (current + 1), "HEIM", "HOEK", "HOLM", "HOLZ", "");
 			const char* sound = (germanic) ? "S" : "X";
-			meta_add_str(primary, sound);
-			meta_add_str(secondary, sound);
+			if (check(meta_add_str(primary, sound)) != 0) goto end_free;
+			if (check(meta_add_str(secondary, sound)) != 0) goto end_free;
 			current += 2;
 			break;
 			}
@@ -1105,8 +1076,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    /** Italian & Armenian. **/
 		    if (meta_is_str_at(original, current, "SIO", "SIA", "SIAN", ""))
 			{
-			meta_add_str(primary, "S");
-			meta_add_str(secondary, (is_slavo_germanic) ? "S" : "X");
+			if (check(meta_add_str(primary, "S")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, (is_slavo_germanic) ? "S" : "X")) != 0) goto end_free;
 			current += 3;
 			break;
 			}
@@ -1115,15 +1086,15 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    /** also, -sz- in slavic language although in hungarian it is pronounced 's' **/
 		    if (current == 0 && meta_is_str_at(original, (current + 1), "M", "N", "L", "W", ""))
 			{
-			meta_add_str(primary, "S");
-			meta_add_str(secondary, "X");
+			if (check(meta_add_str(primary, "S")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, "X")) != 0) goto end_free;
 			current += 1;
 			break;
 			}
 		    if (meta_is_str_at(original, (current + 1), "Z", ""))
 			{
-			meta_add_str(primary, "S");
-			meta_add_str(secondary, "X");
+			if (check(meta_add_str(primary, "S")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, "X")) != 0) goto end_free;
 			current += 2;
 			break;
 			}
@@ -1138,8 +1109,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 				{
 				/** 'schermerhorn', 'schenker' **/
 				const bool x_sound = meta_is_str_at(original, (current + 3), "ER", "EN", "");
-				meta_add_str(primary, (x_sound) ? "X" : "SK");
-				meta_add_str(secondary, "SK");
+				if (check(meta_add_str(primary, (x_sound) ? "X" : "SK")) != 0) goto end_free;
+				if (check(meta_add_str(secondary, "SK")) != 0) goto end_free;
 				current += 3;
 				break;
 				}
@@ -1150,8 +1121,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 				    && !meta_is_vowel(original, 3)
 				    && meta_get_char_at(original, 3) != 'W'
 				);
-				meta_add_str(primary, "X");
-				meta_add_str(secondary, (s_sound) ? "S" : "X");
+				if (check(meta_add_str(primary, "X")) != 0) goto end_free;
+				if (check(meta_add_str(secondary, (s_sound) ? "S" : "X")) != 0) goto end_free;
 				current += 3;
 				break;
 				}
@@ -1159,16 +1130,16 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			
 			/** Default case. **/
 			const char* sound = (meta_is_str_at(original, (current + 2), "E", "I", "Y", "")) ? "S" : "SK";
-			meta_add_str(primary, sound);
-			meta_add_str(secondary, sound);
+			if (check(meta_add_str(primary, sound)) != 0) goto end_free;
+			if (check(meta_add_str(secondary, sound)) != 0) goto end_free;
 			current += 3;
 			break;
 			}
 		    
 		    /** French e.g. 'resnais', 'artois' **/
 		    const bool no_primary = (current == last && meta_is_str_at(original, (current - 2), "AI", "OI", ""));
-		    meta_add_str(primary, (no_primary) ? "" : "S");
-		    meta_add_str(secondary, "S");
+		    if (check(meta_add_str(primary, (no_primary) ? "" : "S")) != 0) goto end_free;
+		    if (check(meta_add_str(secondary, "S")) != 0) goto end_free;
 		    current += (meta_is_str_at(original, (current + 1), "S", "Z", "")) ? 2 : 1;
 		    break;
 		    }
@@ -1177,8 +1148,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    {
 		    if (meta_is_str_at(original, current, "TIA", "TCH", "TION", ""))
 			{
-			meta_add_str(primary, "X");
-			meta_add_str(secondary, "X");
+			if (check(meta_add_str(primary, "X")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, "X")) != 0) goto end_free;
 			current += 3;
 			break;
 			}
@@ -1186,28 +1157,27 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    if (meta_is_str_at(original, current, "TH", "TTH", ""))
 			{
 			/** Special case 'thomas', 'thames' or germanic. **/
-			if (
+			char* primary_char = (
 			    meta_is_str_at(original, (current + 2), "OM", "AM", "")
 			    || meta_is_str_at(original, 0, "SCH", "VAN ", "VON ", "")
-			   )
-			    meta_add_str(primary, "T");
-			else
-			    meta_add_str(primary, "0"); /* Yes, zero. */
-			meta_add_str(secondary, "T");
+			) ? "T" : "0"; /* Zero, not O. */
+			
+			if (check(meta_add_str(primary, primary_char)) != 0) goto end_free; 
+			if (check(meta_add_str(secondary, "T")) != 0) goto end_free;
 			current += 2;
 			break;
 			}
 		    
-		    meta_add_str(primary, "T");
-		    meta_add_str(secondary, "T");
+		    if (check(meta_add_str(primary, "T")) != 0) goto end_free;
+		    if (check(meta_add_str(secondary, "T")) != 0) goto end_free;
 		    current += (meta_is_str_at(original, (current + 1), "T", "D", "")) ? 2 : 1;
 		    break;
 		    }
 		
 		case 'V':
 		    {
-		    meta_add_str(primary, "F");
-		    meta_add_str(secondary, "F");
+		    if (check(meta_add_str(primary, "F")) != 0) goto end_free;
+		    if (check(meta_add_str(secondary, "F")) != 0) goto end_free;
 		    current += (next_char == 'V') ? 2 : 1;
 		    break;
 		    }
@@ -1217,8 +1187,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    /** Can also be in middle of word. **/
 		    if (meta_is_str_at(original, current, "WR", ""))
 			{
-			meta_add_str(primary, "R");
-			meta_add_str(secondary, "R");
+			if (check(meta_add_str(primary, "R")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, "R")) != 0) goto end_free;
 			current += 2;
 			break;
 			}
@@ -1227,8 +1197,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    if (current == 0 && (next_is_vowel || meta_is_str_at(original, current, "WH", "")))
 			{
 			/** Wasserman should match Vasserman. **/
-			meta_add_str(primary, "A");
-			meta_add_str(secondary, (next_is_vowel) ? "F" : "A");
+			if (check(meta_add_str(primary, "A")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, (next_is_vowel) ? "F" : "A")) != 0) goto end_free;
 			}
 		    
 		    /** Arnow should match Arnoff. **/
@@ -1237,8 +1207,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			|| meta_is_str_at(original, 0, "SCH", "")
 		       )
 			{
-			meta_add_str(primary, "");
-			meta_add_str(secondary, "F");
+			if (check(meta_add_str(primary, "")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, "F")) != 0) goto end_free;
 			current += 1;
 			break;
 			}
@@ -1246,8 +1216,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    /** Polish e.g. 'filipowicz' **/
 		    if (meta_is_str_at(original, current, "WICZ", "WITZ", ""))
 			{
-			meta_add_str(primary, "TS");
-			meta_add_str(secondary, "FX");
+			if (check(meta_add_str(primary, "TS")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, "FX")) != 0) goto end_free;
 			current += 4;
 			break;
 			}
@@ -1269,8 +1239,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    );
 		    if (!silent)
 			{
-			meta_add_str(primary, "KS");
-			meta_add_str(secondary, "KS");
+			if (check(meta_add_str(primary, "KS")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, "KS")) != 0) goto end_free;
 			}
 		    
 		    current += (meta_is_str_at(original, (current + 1), "C", "X", "")) ? 2 : 1;
@@ -1282,8 +1252,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    /** Chinese pinyin e.g. 'zhao' **/
 		    if (next_char == 'H')
 			{
-			meta_add_str(primary, "J");
-			meta_add_str(secondary, "J");
+			if (check(meta_add_str(primary, "J")) != 0) goto end_free;
+			if (check(meta_add_str(secondary, "J")) != 0) goto end_free;
 			current += 2;
 			break;
 			}
@@ -1292,8 +1262,8 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			meta_is_str_at(original, (current + 1), "ZO", "ZI", "ZA", "")
 			|| (is_slavo_germanic && current > 0 && meta_get_char_at(original, (current - 1)) != 'T')
 		    );
-		    meta_add_str(primary, "S");
-		    meta_add_str(secondary, (has_t_sound) ? "TS" : "S");
+		    if (check(meta_add_str(primary, "S")) != 0) goto end_free;
+		    if (check(meta_add_str(secondary, (has_t_sound) ? "TS" : "S")) != 0) goto end_free;
 		    current += (next_char == 'Z') ? 2 : 1;
 		    break;
 		    }
@@ -1303,277 +1273,18 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		}
 	    }
 	
+	/** Write the output strings. **/
 	*primary_code = primary->str;
 	*secondary_code = secondary->str;
+	primary->free_str_on_destroy = 0;
+	secondary->free_str_on_destroy = 0;
+	ret = 0;
 	
+    end_free:
+	if (ret != 0) fprintf(stderr, "Error: meta_double_metaphone() failed (error code %d).\n", ret);
 	meta_destroy_string(original);
 	meta_destroy_string(primary);
 	meta_destroy_string(secondary);
-    
-    return;
+	
+	return ret;
     }
-
-#ifdef TESTING
-/*** Built in test cases, written by Israel with inspiration from comments in
- *** the above code, test cases written by Maurice Aubrey, and some words
- *** suggested by AI.
- *** 
- *** These tests have been integrated into the Centrallix testing environment,
- *** where they can be run using `export TONLY=exp_fn_double_metaphone_00`,
- *** followed by make test, in the Centrallix directory.
- *** 
- *** The can also be run here by executing the following commands in the
- *** centrallix/expression directory, which aditionally generates a coverage
- *** report. These tests cover all parts of the double metaphone algorithm,
- *** although some of the error cases in various helper functions (such as
- *** meta_destroy_string(null)) are not covered by testing.
- *** 
- *** Commands:
- *** gcc exp_double_metaphone.c -o exp_double_metaphone.o -I .. -DTESTING -fprofile-arcs -ftest-coverage -O0
- *** ./exp_double_metaphone.o
- *** gcov exp_double_metaphone.c
- ***/
-
-unsigned int num_tests_passed = 0u, num_tests_failed = 0u;
-
-void
-test(const char* input, const char* expected_primary, const char* expected_secondary)
-    {
-    char* codes[2];
-	
-	/** Run DoubleMetaphone() and extract results. **/
-	char* actual_primary;
-	char* actual_secondary;
-	meta_double_metaphone(
-	    input,
-	    memset(&actual_primary, 0, sizeof(actual_primary)),
-	    memset(&actual_secondary, 0, sizeof(actual_secondary))
-	);
-	
-	/** Test for correct value. **/
-	if (!strcmp(expected_primary, actual_primary) &&
-	    !strcmp(expected_secondary, actual_secondary))
-	    num_tests_passed++;
-	else
-	    {
-	    printf(
-		"\nTEST FAILED: \"%s\"\n"
-		"Expected: %s %s\n"
-		"Actual: %s %s\n",
-		input,
-		expected_primary, expected_secondary,
-		actual_primary, actual_secondary
-	    );
-	    num_tests_failed++;
-	    }
-    
-    return;
-    }
-
-// Special thanks to the following websites for double checking the correct results:
-// 1: https://words.github.io/double-metaphone
-// 2: https://mainegenealogy.net/metaphone_converter.asp
-// 3: https://en.toolpage.org/tool/metaphone
-void
-run_tests(void)
-    {
-	printf("\nRunning tests...\n");
-	
-	/** Test that always fails. **/
-	// test("This", "test", "fails.");
-	
-	/** Invalid string tests, by Israel. **/
-	fprintf(stderr, "Expect two warnings between these two lines:\n");
-	fprintf(stderr, "----------------\n");
-	test(NULL, "", "");
-	test("", "", "");
-	fprintf(stderr, "----------------\n");
-	
-	/** Basic tests, by Israel. **/
-	test("Test", "TST", "TST");
-	test("Basic", "PSK", "PSK");
-	test("Centrallix", "SNTRLKS", "SNTRLKS");
-	test("Lawrence", "LRNS", "LRNS");
-	test("Philips", "FLPS", "FLPS");
-	test("Acceptingness", "AKSPTNNS", "AKSPTNKNS");
-	test("Supercalifragilisticexpialidocious", "SPRKLFRJLSTSKSPLTSS", "SPRKLFRKLSTSKSPLTXS");
-	test("Suoicodilaipxecitsiligarfilacrepus", "SKTLPKSSTSLKRFLKRPS", "SKTLPKSSTSLKRFLKRPS");	
-	
-	/** Match tests, from code comments above. **/
-	test("Smith", "SM0", "XMT");
-	test("Schmidt", "XMT", "SMT");
-	test("Snider", "SNTR", "XNTR");
-	test("Schneider", "XNTR", "SNTR");
-	test("Arnow", "ARN", "ARNF");
-	test("Arnoff", "ARNF", "ARNF");
-	
-	/** Example tests, from examples in code comments above. **/
-	test("Accede", "AKST", "AKST");
-	test("Accident", "AKSTNT", "AKSTNT");
-	test("Actually", "AKTL", "AKTL");
-	test("Arch", "ARX", "ARK");
-	test("Artois", "ART", "ARTS");
-	test("Bacchus", "PKS", "PKS");
-	test("Bacci", "PX", "PX");
-	test("Bajador", "PJTR", "PHTR");
-	test("Bellocchio", "PLX", "PLX");
-	test("Bertucci", "PRTX", "PRTX");
-	test("Biaggi", "PJ", "PK");
-	test("Bough", "P", "P");
-	test("Breaux", "PR", "PR");
-	test("Broughton", "PRTN", "PRTN");
-	test("Cabrillo", "KPRL", "KPR");
-	test("Caesar", "SSR", "SSR");
-	test("Cagney", "KKN", "KKN");
-	test("Campbell", "KMPL", "KMPL");
-	test("Carlisle", "KRLL", "KRLL");
-	test("Carlysle", "KRLL", "KRLL");
-	test("Chemistry", "KMSTR", "KMSTR");
-	test("Chianti", "KNT", "KNT");
-	test("Chorus", "KRS", "KRS");
-	test("Cough", "KF", "KF");
-	test("Czerny", "SRN", "XRN");
-	test("Dumb", "TM", "TM");
-	test("Edgar", "ATKR", "ATKR");
-	test("Edge", "AJ", "AJ");
-	test("Filipowicz", "FLPTS", "FLPFX");
-	test("Focaccia", "FKX", "FKX");
-	test("Gallegos", "KLKS", "KKS");
-	test("Germanic", "KRMNK", "JRMNK");
-	test("Ghiradelli", "JRTL", "JRTL");
-	test("Ghislane", "JLN", "JLN");
-	test("Gospel", "KSPL", "KSPL");
-	test("Gough", "KF", "KF");
-	test("Greek", "KRK", "KRK");
-	test("Hochmeier", "HKMR", "HKMR");
-	test("Hugh", "H", "H");
-	test("Island", "ALNT", "ALNT");
-	test("Isle", "AL", "AL");
-	test("Italian", "ATLN", "ATLN");
-	test("Jankelowicz", "JNKLTS", "ANKLFX");
-	test("Jose", "HS", "HS");
-	test("Laugh", "LF", "LF");
-	test("Mac Caffrey", "MKFR", "MKFR");
-	test("Mac Gregor", "MKRKR", "MKRKR");
-	test("Manager", "MNKR", "MNJR");
-	test("McHugh", "MK", "MK");
-	test("McLaughlin", "MKLFLN", "MKLFLN");
-	test("Michael", "MKL", "MXL");
-	test("Middle", "MTL", "MTL");
-	test("Orchestra", "ARKSTR", "ARKSTR");
-	test("Orchid", "ARKT", "ARKT");
-	test("Pinyin", "PNN", "PNN");
-	test("Raspberry", "RSPR", "RSPR");
-	test("Resnais", "RSN", "RSNS");
-	test("Rogier", "RJ", "RJR");
-	test("Rough", "RF", "RF");
-	test("Salvador", "SLFTR", "SLFTR");
-	test("San jacinto", "SNHSNT", "SNHSNT");
-	test("Schenker", "XNKR", "SKNKR");
-	test("Schermerhorn", "XRMRRN", "SKRMRRN");
-	test("Schlesinger", "XLSNKR", "SLSNJR");
-	test("School", "SKL", "SKL");
-	test("Schooner", "SKNR", "SKNR");
-	test("Succeed", "SKST", "SKST");
-	test("Sugar", "XKR", "SKR");
-	test("Sugary", "XKR", "SKR");
-	test("Tagliaro", "TKLR", "TLR");
-	test("Thames", "TMS", "TMS");
-	test("Thomas", "TMS", "TMS");
-	test("Thumb", "0M", "TM");
-	test("Tichner", "TXNR", "TKNR");
-	test("Tough", "TF", "TF");
-	test("Vghee", "FK", "FK");
-	test("Wachtler", "AKTLR", "FKTLR");
-	test("Wechsler", "AKSLR", "FKSLR");
-	test("Word", "ART", "FRT");
-	test("Xavier", "SF", "SFR");
-	test("Yankelovich", "ANKLFX", "ANKLFK");
-	test("Zhao", "J", "J");
-	
-	/** Interesting Edge Case: "McClellan" **/
-	/*** Note: Sources (1) and (3) both include a double K ("MKKLLN"), but the
-	 *** original code on GitHub and mainegenealogy.net do not. I chose "MKLLN"
-	 *** to be correct because I personally do not pronounce the second c.
-	 ***/
-	test("McClellan", "MKLLN", "MKLLN");
-	
-	/** Maurice Aubrey's Tests. **/
-	/** Source: https://github.com/gitpan/Text-DoubleMetaphone/blob/master/t/words.txt **/
-	test("maurice", "MRS", "MRS");
-	test("aubrey", "APR", "APR");
-	test("cambrillo", "KMPRL", "KMPR");
-	test("heidi", "HT", "HT");
-	test("katherine", "K0RN", "KTRN");
-	test("catherine", "K0RN", "KTRN");
-	test("richard", "RXRT", "RKRT");
-	test("bob", "PP", "PP");
-	test("eric", "ARK", "ARK");
-	test("geoff", "JF", "KF");
-	test("dave", "TF", "TF");
-	test("ray", "R", "R");
-	test("steven", "STFN", "STFN");
-	test("bryce", "PRS", "PRS");
-	test("randy", "RNT", "RNT");
-	test("bryan", "PRN", "PRN");
-	test("brian", "PRN", "PRN");
-	test("otto", "AT", "AT");
-	test("auto", "AT", "AT");
-	
-	/** GPT-5 Coverage Tests. **/
-	/*** GPT-5 mini (Preview) running in GitHub Copilot suggested the words
-	 *** after analizing a generated coverage report, and I (Israel) used
-	 *** them to write the tests below.  I kept the AI's reasoning for tests,
-	 *** while removing tests that did not contribute any coverage, but after
-	 *** a few reprompts, the AI started just giving words without reasoning.
-	 *** I guess we were both getting pretty tired of writing tests.
-	 ***/
-	test("Abbott", "APT", "APT"); /* double-B ("BB") handling. */
-	test("Back", "PK", "PK"); /* "CK"/"CG"/"CQ" branch. */
-	test("Bacher", "PKR", "PKR"); /* matches "...BACHER" / ACH special-case. */
-	test("Charles", "XRLS", "XRLS"); /* initial "CH" -> the branch that maps to "X"/"X" at start. */
-	test("Ghana", "KN", "KN"); /* initial "GH" special-start handling. */
-	test("Gnome", "NM", "NM"); /* "GN" sequence handling. */
-	test("Raj", "RJ", "R"); /* J at end (exercise J-last behavior). */
-	test("Quentin", "KNTN", "KNTN"); /* Q case (Q -> K mapping). */
-	test("Who", "A", "A"); /* "WH" at start handling. */
-	test("Shoemaker", "XMKR", "XMKR"); /* "SH" general mapping paths. */
-	test("Sian", "SN", "XN"); /* "SIO"/"SIA"/"SIAN" branch. */
-	test("Scold", "SKLT", "SKLT"); /* "SC" default / "SK" vs other SC subcases. */
-	test("Station", "STXN", "STXN"); /* "TION" -> X mapping. */
-	test("Match", "MX", "MX"); /* "TCH"/"TIA" -> X mapping. */
-	test("Pizza", "PS", "PTS"); /* double-Z ("ZZ") handling. */
-	test("Agnes", "AKNS", "ANS"); /* "GN" at index 1 (GN handling that yields KN / N). */
-	test("Science", "SNS", "SNS"); /* "SC" followed by I (SC + I/E/Y branch). */
-	test("Van Gogh", "FNKK", "FNKK");
-	test("Josef", "JSF", "HSF");
-	test("Object", "APJKT", "APJKT");
-	test("Sholz", "SLS", "SLS");
-	test("Scharf", "XRF", "XRF");
-	test("Kasia", "KS", "KS");
-	test("Van Geller", "FNKLR", "FNKLR");
-	
-	const unsigned int total_tests = num_tests_passed + num_tests_failed;
-	printf("\nTests completed!\n");
-	printf("    > Failed: %u\n", num_tests_failed);
-	printf("    > Skipped: %u\n", 0u); /* Implementation removed. */
-	printf("    > Passed: %u/%u\n", num_tests_passed, total_tests);
-    
-    return;
-    }
-
-int main(void)
-    {
-	run_tests();
-    
-    return 0;
-    }
-
-/** Prevent scope leak. **/
-#undef META_FREE
-#undef META_MALLOC
-#undef META_REALLOC
-#undef SAFE_MALLOC
-#undef SAFE_REALLOC
-
-#endif
