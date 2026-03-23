@@ -2874,7 +2874,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	    {
 	    for (unsigned int i = 0u; i < pairs->nItems; i++)
 		{
-		if (pairs->Items[i] != NULL) nmFree(pairs->Items[i], sizeof(pairs));
+		if (pairs->Items[i] != NULL) nmFree(pairs->Items[i], sizeof(Pair));
 		else break;
 		}
 	    check(xaFree(pairs)); /* Failure ignored. */

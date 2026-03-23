@@ -4574,6 +4574,8 @@ exp_fn_metaphone(pExpression tree)
 	const size_t length = strlen(primary) + 1lu + strlen(secondary) + 1lu;
 	if (!check(exp_fn_i_alloc_result_string(tree, length))) return -1;
 	sprintf(tree->String, "%s%c%s", primary, CA_BOUNDARY_CHAR, secondary);
+	nmSysFree(primary);
+	nmSysFree(secondary);
 	tree->DataType = DATA_T_STRING;
     
     return 0;

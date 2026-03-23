@@ -188,7 +188,7 @@ meta_new_string(const char* init_str)
 	
 	s->str = (char*)SAFE_MALLOC(s->bufsize * sizeof(char));
 	
-	strncpy(s->str, init_str, s->length + 1);
+	strtcpy(s->str, init_str, s->bufsize);
 	s->free_str_on_destroy = 1;
     
     return s;
@@ -308,6 +308,7 @@ bool
 meta_is_str_at(MetaString* s, unsigned int start, ...)
     {
     va_list ap;
+    bool found = false;
     
 	/** Should never happen. **/
 	if (meta_is_out_of_bounds(s, start))
@@ -320,14 +321,17 @@ meta_is_str_at(MetaString* s, unsigned int start, ...)
 	do
 	    {
 	    test = va_arg(ap, char*);
-	    if (*test && (strncmp(pos, test, strlen(test)) == 0))
-		return true;
+	    if (test[0] != '\0' && (strncmp(pos, test, strlen(test)) == 0))
+		{
+		found = true;
+		break;
+		}
 	    }
 	while (test[0] != '\0');
 	
 	va_end(ap);
     
-    return false;
+    return found;
     }
 
 /*** Adds a string to a MetaString, expanding the MetaString if needed.
@@ -341,11 +345,13 @@ meta_add_str(MetaString* s, const char* new_str)
 	if (new_str == NULL)
 	    return;
 	
+	/** Increase the buffer to the required size. **/
 	const size_t add_length = strlen(new_str);
 	if ((s->length + add_length) > (s->bufsize - 1))
 	    meta_increase_buffer(s, add_length);
 	
-	strcat(s->str, new_str);
+	/** Write the data to the buffer. **/
+	strtcat(s->str, new_str, s->bufsize);
 	s->length += add_length;
     
     return;
