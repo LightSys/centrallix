@@ -527,7 +527,7 @@ mssError(int clr, char* module, char* message, ...)
 		}
 	    
 	    /** Store the error. **/
-	    if (!check_neg(xaAddItem(&(s->ErrList), (void*)allocated_err_msg)))
+	    if (check_neg(xaAddItem(&(s->ErrList), (void*)allocated_err_msg)) < 0)
 		{
 		fprintf(stderr, "Failed to add error message to session error list: %s\n", err_msg);
 		return; /* Give up. */

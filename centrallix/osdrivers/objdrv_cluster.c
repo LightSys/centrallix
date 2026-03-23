@@ -787,7 +787,7 @@ ci_ParseAttribute(
 	
 	/** Evaluate expression. **/
 	ret = expEvalTree(exp, param_list);
-	    if (ret != 0)
+	if (ret != 0)
 	    {
 	    mssError(0, "Cluster", "Expression evaluation failed (error code %d).", ret);
 	    goto err;
@@ -951,7 +951,7 @@ ci_ParseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	/** Initialize obvious values for SourceData. **/
 	source_data->Name = check_ptr(nmSysStrdup(inf->Name));
 	if (source_data->Name == NULL) goto err_free;
-	if (!check(objCurrentDate(&source_data->DateCreated))) goto err_free;
+	if (check(objCurrentDate(&source_data->DateCreated)) != 0) goto err_free;
 	
 	/** Get source. **/
 	if (ci_ParseAttribute(inf, "source", DATA_T_STRING, POD(&buf), param_list, true, true) != 0) goto err_free;
@@ -995,7 +995,7 @@ ci_ParseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	    }
 	
 	/** Cache miss: Add the new object to the cache for next time. **/
-	if (!check(xhAdd(&ClusterDriverCaches.SourceDataCache, source_data->CacheKey, (void*)source_data)))
+	if (check(xhAdd(&ClusterDriverCaches.SourceDataCache, source_data->CacheKey, (void*)source_data)) != 0)
 	    goto err_free;
 	
 	/** Success. **/
@@ -1054,7 +1054,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	cluster_data->Name = check_ptr(nmSysStrdup(inf->Name));
 	if (cluster_data->Name == NULL) goto err_free;
 	cluster_data->SourceData = source_data;
-	if (!check(objCurrentDate(&cluster_data->DateCreated))) goto err_free;
+	if (check(objCurrentDate(&cluster_data->DateCreated)) != 0) goto err_free;
 	
 	/** Get algorithm. **/
 	cluster_data->ClusterAlgorithm = ci_ParseClusteringAlgorithm(inf, param_list);
@@ -1151,7 +1151,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	else cluster_data->Seed = CI_NO_SEED;
 	
 	/** Search for sub-clusters. **/
-	if (!check(xaInit(&sub_clusters, 4u))) goto err_free;
+	if (check(xaInit(&sub_clusters, 4u)) != 0) goto err_free;
 	for (unsigned int i = 0u; i < inf->nSubInf; i++)
 	    {
 	    pStructInf sub_inf = check_ptr(inf->SubInf[i]);
@@ -1209,7 +1209,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 		    pClusterData sub_cluster = ci_ParseClusterData(sub_inf, param_list, source_data);
 		    if (sub_cluster == NULL) goto err_free;
 		    sub_cluster->Parent = cluster_data;
-		    if (!check_neg(xaAddItem(&sub_clusters, sub_cluster))) goto err_free;
+		    if (check_neg(xaAddItem(&sub_clusters, sub_cluster)) < 0) goto err_free;
 		    
 		    break;
 		    }
@@ -1296,7 +1296,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    }
 	
 	/** Cache miss. **/
-	if (!check(xhAdd(&ClusterDriverCaches.ClusterDataCache, cache_key, (void*)cluster_data))) goto err_free;
+	if (check(xhAdd(&ClusterDriverCaches.ClusterDataCache, cache_key, (void*)cluster_data)) != 0) goto err_free;
 	return cluster_data;
 	
 	/** Error cleanup. **/
@@ -1352,7 +1352,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	/** Get basic information. **/
 	search_data->Name = check_ptr(nmSysStrdup(inf->Name));
 	if (search_data->Name == NULL) goto err_free;
-	if (!check(objCurrentDate(&search_data->DateCreated))) goto err_free;
+	if (check(objCurrentDate(&search_data->DateCreated)) != 0) goto err_free;
 	
 	/** Search for the source cluster. **/
 	char* source_cluster_name;
@@ -1491,7 +1491,10 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	    }
 	
 	/** Cache miss. **/
-	check(xhAdd(search_cache, key, (void*)search_data));
+	if (check(xhAdd(search_cache, key, (void*)search_data)) != 0)
+	    goto err_free;
+	
+	/** Done. **/
 	return search_data;
 	
 	/** Error cleanup. **/
@@ -1568,9 +1571,9 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 	    }
 	
 	/** Detect relevant groups. **/
-	if (!check(xaInit(&param_infs, 8))) goto err_free;
-	if (!check(xaInit(&cluster_infs, 8))) goto err_free;
-	if (!check(xaInit(&search_infs, 8))) goto err_free;
+	if (check(xaInit(&param_infs, 8)) != 0) goto err_free;
+	if (check(xaInit(&cluster_infs, 8)) != 0) goto err_free;
+	if (check(xaInit(&search_infs, 8)) != 0) goto err_free;
 	for (unsigned int i = 0u; i < inf->nSubInf; i++)
 	    {
 	    pStructInf sub_inf = check_ptr(inf->SubInf[i]);
@@ -1613,17 +1616,17 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 		    if (group_type == NULL) goto err_free;
 		    if (strcmp(group_type, "cluster/parameter") == 0)
 			{
-			if (!check_neg(xaAddItem(&param_infs, sub_inf)))
+			if (check_neg(xaAddItem(&param_infs, sub_inf) < 0))
 			    goto err_free;
 			}
 		    else if (strcmp(group_type, "cluster/cluster") == 0)
 			{
-			if (!check_neg(xaAddItem(&cluster_infs, sub_inf)))
+			if (check_neg(xaAddItem(&cluster_infs, sub_inf) < 0))
 			    goto err_free;
 			}
 		    else if (strcmp(group_type, "cluster/search") == 0)
 			{
-			if (!check_neg(xaAddItem(&search_infs, sub_inf)))
+			if (check_neg(xaAddItem(&search_infs, sub_inf) < 0))
 			    goto err_free;
 			}
 		    else
@@ -2259,7 +2262,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	if (source_data->Vectors != NULL) return 0;
 	
 	/** Record the date and time. **/
-	if (!check(objCurrentDate(&source_data->DateComputed))) goto end_free;
+	if (check(objCurrentDate(&source_data->DateComputed)) != 0) goto end_free;
 	
 	/** Open the source path specified by the .cluster file. **/
 	obj = objOpen(session, source_data->SourcePath, OBJ_O_RDONLY, 0600, "system/directory");
@@ -2278,9 +2281,9 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    }
 	
 	/** Initialize an xarray to store the retrieved data. **/
-	if (!check(xaInit(&key_xarray, 64))) goto end_free;
-	if (!check(xaInit(&data_xarray, 64))) goto end_free;
-	if (!check(xaInit(&vector_xarray, 64))) goto end_free;
+	if (check(xaInit(&key_xarray, 64)) != 0) goto end_free;
+	if (check(xaInit(&data_xarray, 64)) != 0) goto end_free;
+	if (check(xaInit(&vector_xarray, 64)) != 0) goto end_free;
 	
 	/** Fetch data and build vectors. **/
 	pObject entry;
@@ -2378,9 +2381,9 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    if (key_dup == NULL) goto end_free;
 	    char* data_dup = check_ptr(nmSysStrdup(data));
 	    if (data_dup == NULL) goto end_free;
-	    if (!check_neg(xaAddItem(&key_xarray, (void*)key_dup))) goto end_free;
-	    if (!check_neg(xaAddItem(&data_xarray, (void*)data_dup))) goto end_free;
-	    if (!check_neg(xaAddItem(&vector_xarray, (void*)vector))) goto end_free;
+	    if (check_neg(xaAddItem(&key_xarray, (void*)key_dup) < 0)) goto end_free;
+	    if (check_neg(xaAddItem(&data_xarray, (void*)data_dup) < 0)) goto end_free;
+	    if (check_neg(xaAddItem(&vector_xarray, (void*)vector) < 0)) goto end_free;
 	    
 	    /** Clean up. **/
 	    check(objClose(entry)); /* Failure ignored. */
@@ -2523,7 +2526,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
 	
 	/** Record the date and time. **/
-	if (!check(objCurrentDate(&cluster_data->DateComputed))) goto err_free;
+	if (check(objCurrentDate(&cluster_data->DateComputed)) != 0) goto err_free;
 	
 	/** Allocate static memory for finding clusters. **/
 	clusters_size = cluster_data->nClusters * sizeof(Cluster);
@@ -2584,7 +2587,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		if (!auto_seed) srand(cluster_data->Seed);
 		
 		/** Run ca_kmeans(). **/
-		const bool successful = check(ca_kmeans(
+		const bool successful = (check(ca_kmeans(
 		    source_data->Vectors,
 		    source_data->nDatas,
 		    cluster_data->nClusters,
@@ -2593,7 +2596,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		    labels,
 		    cluster_data->Sims,
 		    auto_seed
-		));
+		)) == 0);
 		if (!successful) goto err_free;
 		
 		/** Convert the labels into clusters. **/
@@ -2601,11 +2604,11 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		/** Allocate temporary xArrays for tracking the indices stored in each cluster. **/
 		XArray indexes_in_cluster[cluster_data->nClusters];
 		for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
-		    if (!check(xaInit(&indexes_in_cluster[i], 8))) goto err_free;
+		    if (check(xaInit(&indexes_in_cluster[i], 8)) != 0) goto err_free;
 		
 		/** Iterate through each label and add the index of the specified cluster to the xArray. **/
 		for (unsigned long long i = 0llu; i < source_data->nDatas; i++)
-		    if (!check_neg(xaAddItem(&indexes_in_cluster[labels[i]], (void*)i))) goto err_free;
+		    if (check_neg(xaAddItem(&indexes_in_cluster[labels[i]], (void*)i)) < 0) goto err_free;
 		nmSysFree(labels); /* Free unused data. */
 		
 		/** Store the indices for each cluster and free the temporary xArray. **/
@@ -2731,7 +2734,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
 	
 	/** Record the date and time. **/
-	if (!check(objCurrentDate(&search_data->DateComputed))) goto err_free;
+	if (check(objCurrentDate(&search_data->DateComputed)) != 0) goto err_free;
 	
 	/** Get the comparison function based on the similarity measure. **/
 	const double (*similarity_function)(void *, void *) = ci_SimilarityMeasureToFunction(search_data->SimilarityMeasure);
@@ -2842,7 +2845,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		    const pPair pair = (pPair)cluster_pairs->Items[i];
 		    pair->i = cluster->Indexes[pair->i];
 		    pair->j = cluster->Indexes[pair->j];
-		    if (!check_neg(xaAddItem(pairs, pair))) goto err_free;
+		    if (check_neg(xaAddItem(pairs, pair)) < 0) goto err_free;
 		    }
 		check(xaFree(cluster_pairs)); /* Failure ignored. */
 		}
@@ -2964,7 +2967,7 @@ ci_GetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
 		}
 	    
 	    /** Return param value. **/
-	    if (!check(objCopyData(&(param->Value->Data), val, datatype))) goto err;
+	    if (check(objCopyData(&(param->Value->Data), val, datatype)) != 0) goto err;
 	    return 0;
 	    }
 	
@@ -4682,23 +4685,23 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		if (path != NULL) printf("\"%s\":\n", path);
 		else printf("all files:\n");
 		printf("%-8s %-16s %-12s %s\n", "Type", "Name", "Size", "Entry CacheKey");
-		failed |= !check(xhForEach(
+		failed |= (check(xhForEach(
 		    &ClusterDriverCaches.SourceDataCache,
 		    ci_PrintEntry,
 		    (void*[]){&i, &source_bytes, (void*)&skip_uncomputed, path}
-		));
+		)) != 0);
 		i++;
-		failed |= !check(xhForEach(
+		failed |= (check(xhForEach(
 		    &ClusterDriverCaches.ClusterDataCache,
 		    ci_PrintEntry,
 		    (void*[]){&i, &cluster_bytes, (void*)&skip_uncomputed, path}
-		));
+		)) != 0);
 		i++;
-		failed |= !check(xhForEach(
+		failed |= (check(xhForEach(
 		    &ClusterDriverCaches.SearchDataCache,
 		    ci_PrintEntry,
 		    (void*[]){&i, &search_bytes, (void*)&skip_uncomputed, path}
-		));
+		)) != 0);
 		if (failed)
 		    {
 		    mssError(0, "Cluster", "Unexpected error occurred while showing caches.");
@@ -4886,14 +4889,15 @@ clusterInitialize(void)
 	
 	/** Initialize caches. **/
 	// memset(&ClusterDriverCaches, 0, sizeof(ClusterDriverCaches));
-	if (!check(xhInit(&ClusterDriverCaches.SourceDataCache, 251, 0))) goto err_free;
-	if (!check(xhInit(&ClusterDriverCaches.ClusterDataCache, 251, 0))) goto err_free;
-	if (!check(xhInit(&ClusterDriverCaches.SearchDataCache, 251, 0))) goto err_free;
+	if (check(xhInit(&ClusterDriverCaches.SourceDataCache, 251, 0)) != 0) goto err_free;
+	if (check(xhInit(&ClusterDriverCaches.ClusterDataCache, 251, 0)) != 0) goto err_free;
+	if (check(xhInit(&ClusterDriverCaches.SearchDataCache, 251, 0)) != 0) goto err_free;
 	
 	/** Setup the structure. **/
 	if (check_ptr(strcpy(drv->Name, "cluster - Clustering Driver")) == NULL) goto err_free;
-	if (!check(xaInit(&drv->RootContentTypes, 1))) goto err_free;
-	if (!check_neg(xaAddItem(&drv->RootContentTypes, "system/cluster"))) goto err_free;
+	if (check(xaInit(&drv->RootContentTypes, 1)) != 0) goto err_free;
+	if (check_neg(xaAddItem(&drv->RootContentTypes, "system/cluster")) < 0) goto err_free;
+	
 	drv->Capabilities = 0; /* TODO: Greg - Should I indicate any capabilities? */
 	
 	/** Setup the function references. **/
@@ -4926,7 +4930,7 @@ clusterInitialize(void)
 	drv->GetQueryIdentityPath = NULL;
 	
 	/** Register the driver. **/
-	if (!check(objRegisterDriver(drv))) goto err_free;
+	if (check(objRegisterDriver(drv)) != 0) goto err_free;
 	
 	/** Register structs used in this project with the newmalloc memory management system. **/
 	nmRegister(sizeof(SourceData), "ClusterSourceData");

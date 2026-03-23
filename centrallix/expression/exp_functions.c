@@ -1703,7 +1703,7 @@ exp_fn_rtrim(pExpression tree)
 	    }
 	
 	/** We need to copy to remove spaces. **/
-	if (!check(exp_fn_i_alloc_result_string(tree, n + 1))) return -1;
+	if (check(exp_fn_i_alloc_result_string(tree, n + 1)) != 0) return -1;
 	memcpy(tree->String, str, n);
 	tree->String[n] = '\0';
 	
@@ -3800,7 +3800,7 @@ exp_fn_i_do_math(pExpression tree, double (*math)(), int arg_num)
 	double n[4];
 	for (int i = 0; i < arg_num; i++)
 	    {
-	    if (!check(exp_fn_i_get_number(tree->Children.Items[i], &(n[i]))))
+	    if (check(exp_fn_i_get_number(tree->Children.Items[i], &(n[i]))) != 0)
 		{
 		mssError(0, "EXP", "%s(...): Failed to get arg%d.", tree->Name, i);
 		return -1;
@@ -3848,14 +3848,14 @@ exp_fn_log(pExpression tree)
 	
 	/** Extract args. **/
 	double number, base;
-	if (!check(exp_fn_i_get_number(check_ptr(tree->Children.Items[0]), &number)))
+	if (check(exp_fn_i_get_number(check_ptr(tree->Children.Items[0]), &number)) != 0)
 	    {
 	    mssError(0, "EXP", "%s(...): Failed to get arg1 (number).", tree->Name);
 	    return -1;
 	    }
 	if (tree->Children.nItems > 1)
 	    {
-	    if (!check(exp_fn_i_get_number(check_ptr(tree->Children.Items[1]), &base)))
+	    if (check(exp_fn_i_get_number(check_ptr(tree->Children.Items[1]), &base)) != 0)
 		{
 		mssError(0, "EXP", "%s(...): Failed to get arg2 (base).", tree->Name);
 		return -1;
@@ -4576,7 +4576,7 @@ exp_fn_metaphone(pExpression tree)
 	/** Store the results. **/
     store_data:;
 	const size_t length = strlen(primary) + 1lu + strlen(secondary) + 1lu;
-	if (!check(exp_fn_i_alloc_result_string(tree, length))) return -1;
+	if (check(exp_fn_i_alloc_result_string(tree, length)) != 0) return -1;
 	sprintf(tree->String, "%s%c%s", primary, CA_BOUNDARY_CHAR, secondary);
 	tree->DataType = DATA_T_STRING;
 	ret = 0;
@@ -4712,7 +4712,7 @@ exp_fn_levenshtein(pExpression tree)
 	/** Compute edit distance. **/
 	/** Length 0 is provided for both strings so that the function will compute it for us. **/
 	int edit_dist = ca_edit_dist(str1, str2, 0lu, 0lu);
-	if (!check_neg(edit_dist))
+	if (check_neg(edit_dist) < 0)
 	    {
 	    mssError(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute edit distance.\n", tree->Name, str1, str2);
 	    return -1;

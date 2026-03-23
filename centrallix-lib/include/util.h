@@ -98,10 +98,11 @@ extern "C" {
 void print_err(int code, const char* function_name, const char* file_name, const int line_number);
 
 /*** Ensures that developer diagnostics are printed if the result of the
- *** passed function call is not zero. Not intended for user errors.
- ***
- *** @param result The result of the function we're checking.
- *** @returns Whether the passed function succeeded.
+ *** passed function call is not zero.  Not intended for user errors.
+ *** 
+ *** @param result The expression to check.  The text of this expression is
+ *** 	included in the error message if an error occurs.
+ *** @returns The result of the checked expression.
  ***/
 #define check(result) \
     ({ \
@@ -109,14 +110,15 @@ void print_err(int code, const char* function_name, const char* file_name, const
 	__typeof__ (result) _r = (result); \
 	const bool success = (_r == 0); \
 	if (!success) print_err(_r, #result, __FILE__, __LINE__); \
-	success; \
+	_r; \
     })
 
 /*** Ensures that developer diagnostics are printed if the result of the
  *** passed function call is negative. Not intended for user errors.
  ***
- *** @param result The result of the function we're checking.
- *** @returns Whether the passed function succeeded.
+ *** @param result The expression to check.  The text of this expression is
+ *** 	included in the error message if an error occurs.
+ *** @returns The result of the checked expression.
  ***/
 #define check_neg(result) \
     ({ \
@@ -124,29 +126,15 @@ void print_err(int code, const char* function_name, const char* file_name, const
 	__typeof__ (result) _r = (result); \
 	const bool success = (_r >= 0); \
 	if (!success) print_err(_r, #result, __FILE__, __LINE__); \
-	success; \
-    })
-
-/*** Ensures that developer diagnostics are printed if the result of the
- *** passed function call is -1. Not intended for user errors.
- ***
- *** @param result The result of the function we're checking.
- *** @returns Whether the passed function succeeded.
- ***/
-#define check_weak(result) \
-    ({ \
-	errno = 0; /* Reset errno to prevent confusion. */ \
-	__typeof__ (result) _r = (result); \
-	const bool success = (_r != -1); \
-	if (!success) print_err(_r, #result, __FILE__, __LINE__); \
-	success; \
+	_r; \
     })
 
 /*** Ensures that developer diagnostics are printed if the result of the
  *** passed function call is a NAN double. Not intended for user errors.
  ***
- *** @param result The result of the function we're checking.
- *** @returns result
+ *** @param result The expression to check.  The text of this expression is
+ *** 	included in the error message if an error occurs.
+ *** @returns The result of the checked expression.
  ***/
 #define check_double(result) \
     ({ \
@@ -159,8 +147,9 @@ void print_err(int code, const char* function_name, const char* file_name, const
 /*** Ensures that developer diagnostics are printed if the result of the
  *** passed function call is a NULL pointer. Not intended for user errors.
  ***
- *** @param result The result of the function we're checking.
- *** @returns result
+ *** @param result The expression to check.  The text of this expression is
+ *** 	included in the error message if an error occurs.
+ *** @returns The result of the checked expression.
  ***/
 #define check_ptr(result) \
     ({ \

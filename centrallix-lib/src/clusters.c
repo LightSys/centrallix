@@ -670,8 +670,8 @@ ca_lev_compare(void* str1, void* str2)
 	if (len1 == 0lu && len2 != 0lu) return 0.0;
 	
 	/** Compute levenshtein edit distance. **/
-	const int edit_dist = ca_edit_dist((const char*)str1, (const char*)str2, len1, len2);
-	if (!check_neg(edit_dist)) return NAN;
+	const int edit_dist = check_neg(ca_edit_dist((const char*)str1, (const char*)str2, len1, len2));
+	if (edit_dist < 0) return NAN;
 	
 	/** Normalize edit distance into a similarity measure. **/
 	const double normalized_similarity = 1.0 - (double)edit_dist / (double)max(len1, len2);
@@ -1061,7 +1061,7 @@ ca_sliding_search(
 		    pair->i = i;
 		    pair->j = j;
 		    pair->similarity = sim;
-		    if (!check_neg(xaAddItem(pairs, (void*)pair))) goto err_free;
+		    if (check_neg(xaAddItem(pairs, (void*)pair)) < 0) goto err_free;
 		    }
 		}
 	    }
