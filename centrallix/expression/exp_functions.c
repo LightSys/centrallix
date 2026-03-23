@@ -4557,6 +4557,7 @@ exp_fn_metaphone(pExpression tree)
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    tree->DataType = DATA_T_STRING;
+	    ret = 0;
 	    goto end_free;
 	    }
 	const char* str = check_ptr(maybe_str->String);
@@ -4570,7 +4571,7 @@ exp_fn_metaphone(pExpression tree)
 	    goto store_data;
 	    }
 	
-	/** Compute DoubleMetaphone. **/
+	/** Compute Double Metaphone. **/
 	ret = meta_double_metaphone(str, &primary, &secondary);
 	if (ret != 0)
 	    {

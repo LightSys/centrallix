@@ -322,7 +322,7 @@ meta_add_str(pMetaString s, const char* new_str)
     
     return 0;
     }
-    
+
 /*** Computes double metaphone.
  *** 
  *** Example Usage:
@@ -431,7 +431,7 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 		    current += (next_char == 'B') ? 2 : 1;
 		    break;
 		    }
-	    
+		
 		case 'C':
 		    {
 		    /** Various germanic. **/
@@ -460,7 +460,7 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 			current += 2;
 			break;
 			}
-		
+		    
 		    /** Italian 'chianti' **/
 		    if (meta_is_str_at(original, current, "CHIA", ""))
 			{
