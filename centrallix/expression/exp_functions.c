@@ -487,7 +487,8 @@ exp_fn_i_free_result_string(pExpression tree)
 	/** Free the string, if it exists. **/
 	if (tree->String != NULL) nmSysFree(tree->String);
 	
-	/** No string is allocated anymore. */
+	/** No string is allocated anymore. **/
+	tree->String = tree->Types.StringBuf;
 	tree->Alloc = 0;
     
     return;
@@ -509,7 +510,7 @@ exp_fn_i_alloc_result_string(pExpression tree, const size_t required_space)
 	exp_fn_i_free_result_string(tree);
 	
 	/** Decide how to allocate space. **/
-	if (required_space <= 64)
+	if (required_space <= sizeof(tree->Types.StringBuf))
 	    {
 	    /** We can use the preallocated buffer. **/
 	    tree->String = tree->Types.StringBuf;
@@ -518,7 +519,7 @@ exp_fn_i_alloc_result_string(pExpression tree, const size_t required_space)
 	else
 	    {
 	    /** We need to allocate new memory. **/
-	    char* result = check_ptr(nmSysMalloc(required_space * sizeof(char*)));
+	    char* result = check_ptr(nmSysMalloc(required_space * sizeof(char)));
 	    if (result == NULL) return -1;
 	    tree->String = result;
 	    tree->Alloc = 1;
