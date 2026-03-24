@@ -215,6 +215,7 @@ char* CLUSTER_ATTRS[] =
     "num_clusters",
     "min_improvement",
     "max_iterations",
+    "window_size",
     "seed",
     "date_created",
     "date_computed",
@@ -3913,7 +3914,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		if (strcmp(attr_name, "items") == 0)
 		    {
 		    /** Static variable to allow us to free the StringVecs from previous calls. **/
-		    static StringVec* vec = NULL;
+		    static pStringVec vec = NULL;
 		    if (vec != NULL)
 			{
 			if (vec->Strings != NULL) nmSysFree(vec->Strings);

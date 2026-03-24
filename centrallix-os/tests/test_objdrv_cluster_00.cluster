@@ -20,6 +20,7 @@ test_objdrv_cluster_00 "system/cluster"
 	num_clusters = runserver(:parameters:k);
 	min_improvement = 0.0001;
 	max_iterations = 16;
+	window_size = 3;
 	seed = 1;
 	}
     
