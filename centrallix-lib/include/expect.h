@@ -27,8 +27,9 @@
 /** Define macros for signalling the more likely branch to the compiler. **/
 #ifdef HAVE_BUILTIN_EXPECT
 /** Use the GCC __builtin_expect() function for optimization. **/
-#define LIKELY(x)   (__builtin_expect((x), 1))
-#define UNLIKELY(x) (__builtin_expect((x), 0))
+/** Note: We use !!(x) which normalizes to 0 or 1 to help the compiler. **/
+#define LIKELY(x)   (__builtin_expect(!!(x), 1))
+#define UNLIKELY(x) (__builtin_expect(!!(x), 0))
 #else
 /*** Fallback: Define pass through functions to support compilers that don't
  *** have this feature.
