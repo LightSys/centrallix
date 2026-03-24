@@ -316,7 +316,7 @@ ca_sparse_len(const pVector vector)
 	 *** traverse the array.
 	 ***/
 	
-	for (unsigned int dim = 0u; dim < CA_NUM_DIMS; i++)
+	for (unsigned int dim = 0u; dim < CA_NUM_DIMS;)
 	    {
 	    /** Parse the vector token. **/
 	    unsigned int dims_consumed = 0u, val = 0u;
