@@ -3,6 +3,9 @@
 /* defined to 1 if -DCXLIB_SECH is being passed to the compiler */
 #undef CXLIB_SECURITY_HARDENING
 
+/* Define if __builtin_expect is available */
+#undef HAVE_BUILTIN_EXPECT
+
 /* Define to 1 if you have the `endservent' function. */
 #undef HAVE_ENDSERVENT
 
@@ -101,6 +104,9 @@
 
 /* Define to the one symbol short name of this package. */
 #undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
