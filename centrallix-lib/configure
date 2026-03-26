@@ -4098,7 +4098,6 @@ if ac_fn_c_try_compile "$LINENO"; then :
 
 $as_echo "#define HAVE_BUILTIN_EXPECT 1" >>confdefs.h
 
-		CFLAGS="$CFLAGS -DHAVE_BUILTIN_EXPECT"
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 

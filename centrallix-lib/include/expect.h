@@ -23,19 +23,26 @@
 /* 		true, UNLIKELY() indicates it is likely to be false.	*/
 /************************************************************************/
 
+#ifdef HAVE_CONFIG_H
+ #ifdef CXLIB_INTERNAL
+  #include "cxlibconfig.h"
+ #else
+  #include "cxlib/cxlibconfig.h"
+ #endif
+#endif
 
 /** Define macros for signalling the more likely branch to the compiler. **/
 #ifdef HAVE_BUILTIN_EXPECT
-/** Use the GCC __builtin_expect() function for optimization. **/
-/** Note: We use !!(x) which normalizes to 0 or 1 to help the compiler. **/
-#define LIKELY(x)   (__builtin_expect(!!(x), 1))
-#define UNLIKELY(x) (__builtin_expect(!!(x), 0))
+ /** Use the GCC __builtin_expect() function for optimization. **/
+ /** Note: We use !!(x) which normalizes to 0 or 1 to help the compiler. **/
+ #define LIKELY(x)   (__builtin_expect(!!(x), 1))
+ #define UNLIKELY(x) (__builtin_expect(!!(x), 0))
 #else
-/*** Fallback: Define pass through functions to support compilers that don't
- *** have this feature.
- ***/
-#define LIKELY(x)   (x)
-#define UNLIKELY(x) (x)
+ /*** Fallback: Define pass through functions to support compilers that don't
+  *** have this feature.
+  ***/
+ #define LIKELY(x)   (x)
+ #define UNLIKELY(x) (x)
 #endif
 
 #endif
