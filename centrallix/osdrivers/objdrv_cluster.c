@@ -742,6 +742,8 @@ ci_UnknownAttribute(char* attr_name, const int target_type)
 	/** Attempt to give hints. **/
 	if (ci_TryHint(attr_name, my_attrs, n_my_attrs));
 	else if (ci_TryHint(attr_name, DRIVER_ATTRIBUTE_NAMES, N_DRIVER_ATTRIBUTE_NAMES));
+    
+    return;
     }
 
 
@@ -1364,7 +1366,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	
 	/** Search for the source cluster. **/
 	char* source_cluster_name;
-	if (ci_ParseAttribute(inf, "source", DATA_T_STRING, POD(&source_cluster_name), param_list, true, true) != 0) return NULL;
+	if (ci_ParseAttribute(inf, "source", DATA_T_STRING, POD(&source_cluster_name), param_list, true, true) != 0) goto err_free;
 	for (unsigned int i = 0; i < node_data->nClusterDatas; i++)
 	    {
 	    pClusterData cluster_data = node_data->ClusterDatas[i];
@@ -2264,11 +2266,15 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
     XArray vector_xarray = {0};
     
 	/** Guard segfaults. **/
-	if (UNLIKELY(check_ptr(source_data) == NULL)) return -1;
+	if (UNLIKELY(check_ptr(source_data) == NULL)) goto end_free;
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
 	
 	/** If the vectors are already computed, we're done. **/
-	if (LIKELY(source_data->Vectors != NULL)) return 0;
+	if (LIKELY(source_data->Vectors != NULL))
+	    {
+	    successful = true;
+	    goto end_free;
+	    }
 	
 	/** Record the date and time. **/
 	if (check(objCurrentDate(&source_data->DateComputed)) != 0) goto end_free;
@@ -2517,7 +2523,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
     size_t sims_size = -1;
     
 	/** Guard segfaults. **/
-	if (UNLIKELY(check_ptr(cluster_data) == NULL || check_ptr(node_data) == NULL)) return -1;
+	if (UNLIKELY(check_ptr(cluster_data) == NULL || check_ptr(node_data) == NULL)) goto err_free;
 	ASSERTMAGIC(cluster_data, MGK_CL_CLUSTER_DATA);
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
 	
@@ -2735,7 +2741,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
     pXArray pairs = NULL;
     
 	/** Guard segfaults. **/
-	if (UNLIKELY(check_ptr(search_data) == NULL || check_ptr(node_data) == NULL)) return -1;
+	if (UNLIKELY(check_ptr(search_data) == NULL || check_ptr(node_data) == NULL)) goto err_free;
 	ASSERTMAGIC(search_data, MGK_CL_SEARCH_DATA);
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
 	
@@ -3057,7 +3063,7 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	if (UNLIKELY(parent == NULL))
 	    {
 	    mssError(0, "Cluster", "Warning: Call to clusterOpen(NULL, ...);\n");
-	    return NULL;
+	    goto err_free;
 	    }
 	ASSERTMAGIC(parent, MGK_OBJECT);
 	
@@ -3231,13 +3237,13 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
  *** 
  *** @param inf_v The affected driver instance.
  *** @param oxt The transaction tree (for the incomplete transaction system).
- *** @returns 0, success.
+ *** @returns 0 for success, or -1 if an error occurs.
  ***/
 int
 clusterClose(void* inf_v, pObjTrxTree* oxt)
     {
 	pDriverData driver_data = check_ptr(inf_v);
-	if (UNLIKELY(driver_data == NULL)) return 0;
+	if (UNLIKELY(driver_data == NULL)) return -1;
 	ASSERTMAGIC(driver_data, MGK_CL_DRIVER_DATA);
 	
 	/** Update statistics. **/
@@ -3464,7 +3470,7 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
  *** 
  *** @param qy_v The affected query instance.
  *** @param oxt The transaction tree (for the incomplete transaction system).
- *** @returns 0, success.
+ *** @returns 0 for success, or -1 if an error occurs.
  ***/
 int
 clusterQueryClose(void* qy_v, pObjTrxTree* oxt)
@@ -3645,7 +3651,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		"Type mismatch: Accessing attribute ['%s' : %s] as type %s.",
 		attr_name, objTypeToStr(expected_datatype), objTypeToStr(datatype)
 	    );
-	    return -1;
+	    goto err;
 	    }
 	
 	/** Handle name. **/
@@ -3685,7 +3691,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		
 		default:
 		    mssError(1, "Cluster", "Unknown target type %u.", target_type);
-		    return -1;
+		    goto err;
 		}
 	    
 	    return 0;
@@ -3704,7 +3710,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		
 		default:
 		    mssError(1, "Cluster", "Unknown target type %u.", target_type);
-		    return -1;
+		    goto err;
 		}
 	    return 0;
 	    }
@@ -3732,7 +3738,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		case TARGET_SEARCH_ENTRY:  val->String = "search/entry"; break;
 		default:
 		    mssError(1, "Cluster", "Unknown target type %u.", target_type);
-		    return -1;
+		    goto err;
 		}
 	    
 	    return 0;
@@ -3756,7 +3762,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		{
 		case TARGET_NODE:
 		    /** Attribute is not defined for this target type. **/
-		    return -1;
+		    goto err;
 		
 		case TARGET_CLUSTER:
 		case TARGET_CLUSTER_ENTRY:
@@ -3780,7 +3786,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		    return 0;
 		    }
 		}
-	    return -1;
+	    goto err;
 	    }
 	
 	/** Handle date_computed. **/
@@ -3791,7 +3797,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		{
 		case TARGET_NODE:
 		    /** Attribute is not defined for this target type. **/
-		    return -1;
+		    goto err;
 		
 		case TARGET_CLUSTER:
 		case TARGET_CLUSTER_ENTRY:
@@ -3818,7 +3824,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 	    
 	    /** Default: Unknown type. **/
 	    mssError(1, "Cluster", "Unknown target type %u.", target_type);
-	    return -1;
+	    goto err;
 	    }
 	
 	/** Handle attributes for specific data targets. **/
@@ -3980,7 +3986,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 	    
 	    default:
 		mssError(1, "Cluster", "Unknown target type %u.", target_type);
-		return -1;
+		goto err;
 	    }
 	
     unknown_attribute:
