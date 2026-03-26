@@ -92,9 +92,6 @@ CENTRALLIX_CHECK_SQLITE
 dnl Check for ncurses
 CENTRALLIX_CHECK_NCURSES
 
-dnl Check for __builtin_expect()
-CHECK_BUILTIN_EXPECT
-
 dnl Check for __ctype_b
 AH_TEMPLATE([HAVE_CTYPE_B], [Whether __ctype_b is present and usable])
 CHECK_CTYPE_B
@@ -188,6 +185,9 @@ CHECK_OPTIMIZE
 
 dnl Check for log method
 CHECK_LOGMETHOD
+
+dnl Check for __builtin_expect()
+CHECK_BUILTIN_EXPECT
 
 dnl Define WITH_DYNAMIC_LOAD in config.h
 if test "$WITH_DYNAMIC_LOAD" = "yes"; then
