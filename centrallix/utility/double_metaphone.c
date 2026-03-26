@@ -107,6 +107,7 @@
 #include "cxlib/newmalloc.h"
 #include "cxlib/strtcpy.h"
 #include "cxlib/util.h"
+#include "cxlib/expect.h"
 
 typedef struct
     {
@@ -129,7 +130,7 @@ meta_new_string(const char* init_str)
     char empty_string[] = "";
     
 	s = (pMetaString)check_ptr(nmSysMalloc(sizeof(MetaString)));
-	if (s == NULL) goto err_free;
+	if (UNLIKELY(s == NULL)) goto err_free;
 	
 	if (init_str == NULL)
 	    init_str = empty_string;
@@ -139,7 +140,7 @@ meta_new_string(const char* init_str)
 	s->bufsize = s->length + 7u;
 	
 	s->str = (char*)check_ptr(nmSysMalloc(s->bufsize * sizeof(char)));
-	if (s->str == NULL) goto err_free;
+	if (UNLIKELY(s->str == NULL)) goto err_free;
 	
 	strtcpy(s->str, init_str, s->bufsize);
 	s->free_str_on_destroy = 1;
@@ -163,7 +164,7 @@ meta_new_string(const char* init_str)
 void
 meta_destroy_string(pMetaString s)
     {
-	if (s == NULL)
+	if (UNLIKELY(s == NULL))
 	    return;
 	
 	if (s->free_str_on_destroy && s->str != NULL)
@@ -185,7 +186,7 @@ meta_increase_buffer(pMetaString s, const size_t chars_needed)
     {
 	s->bufsize += chars_needed + 8u;
 	s->str = check_ptr(nmSysRealloc(s->str, s->bufsize * sizeof(char)));
-	if (s->str == NULL) return -1;
+	if (UNLIKELY(s->str == NULL)) return -1;
     
     return 0;
     }
@@ -222,7 +223,7 @@ meta_is_out_of_bounds(pMetaString s, unsigned int pos)
 bool
 meta_is_vowel(pMetaString s, unsigned int pos)
     {
-	if (meta_is_out_of_bounds(s, pos)) return 0;
+	if (UNLIKELY(meta_is_out_of_bounds(s, pos))) return 0;
 	
 	const char c = *(s->str + pos);
     
@@ -253,7 +254,7 @@ meta_is_slavo_germanic(pMetaString s)
 char
 meta_get_char_at(pMetaString s, unsigned int pos)
     {
-    return (meta_is_out_of_bounds(s, pos)) ? '\0' : ((char) *(s->str + pos));
+    return (UNLIKELY(meta_is_out_of_bounds(s, pos))) ? '\0' : ((char) *(s->str + pos));
     }
 
 /*** Checks for to see if any of a list of strings appear in a the given
@@ -275,7 +276,7 @@ meta_is_str_at(pMetaString s, unsigned int start, ...)
     bool found = false;
     
 	/** Should never happen. **/
-	if (meta_is_out_of_bounds(s, start))
+	if (UNLIKELY(meta_is_out_of_bounds(s, start)))
 	    return false;
 	
 	const char* pos = (s->str + start);
@@ -307,13 +308,13 @@ meta_is_str_at(pMetaString s, unsigned int start, ...)
 int
 meta_add_str(pMetaString s, const char* new_str)
     {
-	if (new_str == NULL)
+	if (UNLIKELY(new_str == NULL))
 	    return -1;
 	
 	/** Increase the buffer to the required size. **/
 	const size_t add_length = strlen(new_str);
 	const size_t new_length = s->length + add_length + 1;
-	if (new_length > s->bufsize && check(meta_increase_buffer(s, add_length)) != 0)
+	if (UNLIKELY(new_length > s->bufsize) && check(meta_increase_buffer(s, add_length)) != 0)
 	    return -1;
 	
 	/** Write the data to the buffer. **/
@@ -345,23 +346,23 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
     int ret = -1;
     
 	/** Edge cases. **/
-	if (str == NULL)
+	if (UNLIKELY(str == NULL))
 	    {
 	    fprintf(stderr, "Error: Missing input string.\n");
 	    goto end_free;
 	    }
 	const size_t length = strlen(str);
-	if (length == 0lu)
+	if (UNLIKELY(length == 0lu))
 	    {
 	    fprintf(stderr, "Error: Empty input string.\n");
 	    goto end_free;
 	    }
-	if (primary_code == NULL)
+	if (UNLIKELY(primary_code == NULL))
 	    {
 	    fprintf(stderr, "Error: Missing a pointer to store primary code.\n");
 	    goto end_free;
 	    }
-	if (secondary_code == NULL)
+	if (UNLIKELY(secondary_code == NULL))
 	    {
 	    fprintf(stderr, "Error: Missing a pointer to store secondary code.\n");
 	    goto end_free;
@@ -373,14 +374,14 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 	
 	/** Pad original so we can index beyond end. **/
 	pMetaString original = check_ptr(meta_new_string(str));
-	if (original == NULL) goto end_free;
+	if (UNLIKELY(original == NULL)) goto end_free;
 	meta_make_upper(original);
 	if (check(meta_add_str(original, "     ")) != 0) goto end_free;
 	
 	/** Allocate the primary and secondary output strings. **/
 	pMetaString primary = check_ptr(meta_new_string(""));
 	pMetaString secondary = check_ptr(meta_new_string(""));
-	if (primary == NULL || secondary == NULL) goto end_free;
+	if (UNLIKELY(primary == NULL || secondary == NULL)) goto end_free;
 	
 	/** Skip these if they are at start of a word. **/
 	if (meta_is_str_at(original, 0, "GN", "KN", "PN", "WR", "PS", ""))
@@ -1281,7 +1282,7 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 	ret = 0;
 	
     end_free:
-	if (ret != 0) fprintf(stderr, "Error: meta_double_metaphone() failed (error code %d).\n", ret);
+	if (UNLIKELY(ret != 0)) fprintf(stderr, "Error: meta_double_metaphone() failed (error code %d).\n", ret);
 	meta_destroy_string(original);
 	meta_destroy_string(primary);
 	meta_destroy_string(secondary);

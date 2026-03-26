@@ -28,15 +28,16 @@
 
 #ifdef 	DBMAGIC
 #include <stdlib.h>
+#include "expect.h"
 
 #define ASSERTMAGIC(data, expect) \
     ({ \
-    pMagicHdr _data = (pMagicHdr)(data); \
-    Magic_t _expect = (expect); \
-    Magic_t _actual = (_data == NULL) ? 0xEE1EE100 : _data->Magic; \
-    if (_data != NULL && _actual != _expect) \
+    const pMagicHdr _data = (pMagicHdr)(data); \
+    const Magic_t _expect = (expect); \
+    const Magic_t _actual = (_data == NULL) ? 0xEE1EE100 : _data->Magic; \
+    if (UNLIKELY(_data != NULL && _actual != _expect)) \
 	{ \
-	printf( \
+	fprintf(stderr, \
 	    "%s:%d: Magic assertion failed, unexpected %u != %d for %8.8lX.\n", \
 	    __FILE__, __LINE__, _actual, _expect, (long)_data \
 	); \
@@ -47,12 +48,12 @@
 
 #define ASSERTNOTMAGIC(data, expect) \
     ({ \
-    pMagicHdr _data = (pMagicHdr)(data); \
-    Magic_t _expect = (expect); \
-    Magic_t _actual = (_data == NULL) ? 0xEE1EE100 : _data->Magic; \
-    if (_data != NULL && _actual == _expect) \
+    const pMagicHdr _data = (pMagicHdr)(data); \
+    const Magic_t _expect = (expect); \
+    const Magic_t _actual = (_data == NULL) ? 0xEE1EE100 : _data->Magic; \
+    if (UNLIKELY(_data != NULL && _actual == _expect)) \
 	{ \
-	printf( \
+	fprintf(stderr, \
 	    "%s:%d: Magic assertion failed, unexpected %d.\n", \
 	    __FILE__, __LINE__, _expect \
 	); \

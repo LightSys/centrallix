@@ -243,7 +243,7 @@ get_time(void)
 pTimer
 timer_init(pTimer timer)
     {
-	if (timer == NULL) return NULL;
+	if (UNLIKELY(timer == NULL)) return NULL;
 	timer->start = NAN;
 	timer->total = 0.0;
     
@@ -268,7 +268,7 @@ timer_new(void)
 pTimer
 timer_start(pTimer timer)
     {
-	if (!timer) return timer;
+	if (UNLIKELY(timer == NULL)) return NULL;
 	timer->start = get_time();
     
     return timer;
@@ -282,7 +282,7 @@ timer_start(pTimer timer)
 pTimer
 timer_stop(pTimer timer)
     {
-	if (!timer) return timer;
+	if (UNLIKELY(timer == NULL)) return NULL;
 	timer->total += get_time() - timer->start;
     
     return timer;
@@ -297,7 +297,9 @@ timer_stop(pTimer timer)
 double
 timer_get(pTimer timer)
     {
-    return (timer) ? timer->total : NAN;
+	if (UNLIKELY(timer == NULL)) return NAN;
+    
+    return timer->total;
     }
 
 /*** Reset a timer to its initial state so that it can be reused to time

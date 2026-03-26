@@ -57,6 +57,8 @@ extern "C" {
 #ifndef __cplusplus
 #include <errno.h>
 
+#include "expect.h"
+
 /*** @brief Returns the smaller of two values.
  *** 
  *** @param a The first value.
@@ -107,9 +109,8 @@ void print_err(int code, const char* function_name, const char* file_name, const
 #define check(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
-	__typeof__ (result) _r = (result); \
-	const bool success = (_r == 0); \
-	if (!success) print_err(_r, #result, __FILE__, __LINE__); \
+	int _r = (result); \
+	if (UNLIKELY(_r != 0)) print_err(_r, #result, __FILE__, __LINE__); \
 	_r; \
     })
 
@@ -123,9 +124,8 @@ void print_err(int code, const char* function_name, const char* file_name, const
 #define check_neg(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
-	__typeof__ (result) _r = (result); \
-	const bool success = (_r >= 0); \
-	if (!success) print_err(_r, #result, __FILE__, __LINE__); \
+	int _r = (result); \
+	if (UNLIKELY(_r < 0)) print_err(_r, #result, __FILE__, __LINE__); \
 	_r; \
     })
 
@@ -139,8 +139,8 @@ void print_err(int code, const char* function_name, const char* file_name, const
 #define check_double(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
-	__typeof__ (result) _r = (result); \
-	if (isnan(_r)) print_err(0, #result, __FILE__, __LINE__); \
+	double _r = (result); \
+	if (UNLIKELY(isnan(_r))) print_err(0, #result, __FILE__, __LINE__); \
 	_r; \
     })
 
@@ -154,8 +154,8 @@ void print_err(int code, const char* function_name, const char* file_name, const
 #define check_ptr(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
-	__typeof__ (result) _r = (result); \
-	if (_r == NULL) print_err(0, #result, __FILE__, __LINE__); \
+	void* _r = (result); \
+	if (UNLIKELY(_r == NULL)) print_err(0, #result, __FILE__, __LINE__); \
 	_r; \
     })
 

@@ -43,6 +43,7 @@
 #include <time.h>
 
 #include "clusters.h"
+#include "expect.h"
 #include "newmalloc.h"
 #include "util.h"
 #include "xarray.h"
@@ -155,14 +156,14 @@ ca_build_vector(const char* str)
 	/** Allocate memory to store the characters. **/
 	unsigned int num_chars = 0u;
 	chars = check_ptr(nmSysMalloc((strlen(str) + 2u) * sizeof(unsigned char)));
-	if (chars == NULL) goto err_free;
+	if (UNLIKELY(chars == NULL)) goto err_free;
 	
 	/** Store characters. **/
 	chars[num_chars++] = CA_BOUNDARY_CHAR; /* Starting boundary character. */
 	for (const char* char_ptr = str; *char_ptr != '\0'; char_ptr++)
 	    {
 	    char maybe_char = *char_ptr;
-	    if (maybe_char < 0) fprintf(stderr, "Warning: Unexpected negative char '%c' in string: \"%s\"\n",     maybe_char, str);
+	    if (maybe_char < 0) fprintf(stderr, "Warning: Unexpected negative char '%c' in string: \"%s\"\n", maybe_char, str);
 	    unsigned char c = (unsigned char)maybe_char;
 	    
 	    /** Ignore insignificant characters. **/
@@ -181,7 +182,7 @@ ca_build_vector(const char* str)
 	
 	/** Compute character pair hashes. **/
 	char_pairs = check_ptr(nmSysMalloc(num_chars * sizeof(CharPair)));
-	if (char_pairs == NULL) goto err_free;
+	if (UNLIKELY(char_pairs == NULL)) goto err_free;
 	const unsigned int num_pairs = num_chars - 1u;
 	for (unsigned int i = 0u; i < num_pairs; i++)
 	    {
