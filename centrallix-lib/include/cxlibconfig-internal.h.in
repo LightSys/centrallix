@@ -1,5 +1,10 @@
 /* include/cxlibconfig-internal.h.in.  Generated from configure.ac by autoheader.  */
 
+/*** cxlibconfig-internal.h.in lists defines that are used by centrallix-lib
+ *** internally and will not be needed in other modules.  For external
+ *** usecases, see cxlibconfig.h.in.
+ ***/
+
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
 
@@ -34,4 +39,3 @@
 
 /* defined to 1 if SIOCOUTQ is available */
 #undef HAVE_SIOCOUTQ
-

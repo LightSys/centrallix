@@ -186,9 +186,6 @@ CHECK_OPTIMIZE
 dnl Check for log method
 CHECK_LOGMETHOD
 
-dnl Check for __builtin_expect()
-CHECK_BUILTIN_EXPECT
-
 dnl Define WITH_DYNAMIC_LOAD in config.h
 if test "$WITH_DYNAMIC_LOAD" = "yes"; then
     AC_DEFINE(WITH_DYNAMIC_LOAD,1,[Use dynamic loading])
