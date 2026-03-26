@@ -298,11 +298,12 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 		if (arg_expect->Flags & EXP_ARG_NEGATIVE && value->WholePart > 0)
 		    {
 		    mssError(1, "EXP",
-			"%s(...): Expects negative money value but got $%d.%d.",
+			"%s(...): Expects negative money value but got $%d.%g.",
 			fn_name, value->WholePart, (double)value->FractionPart / 100.0
 		    );
 		    return -1;
 		    }
+		break;
 		}
 	    
 	    case DATA_T_STRINGVEC:
@@ -4585,7 +4586,7 @@ exp_fn_metaphone(pExpression tree)
 	/** Store the results. **/
     store_data:;
 	const size_t length = strlen(primary) + 1lu + strlen(secondary) + 1lu;
-	if (check(exp_fn_i_alloc_result_string(tree, length)) != 0) return -1;
+	if (check(exp_fn_i_alloc_result_string(tree, length)) != 0) goto end_free;
 	sprintf(tree->String, "%s%c%s", primary, CA_BOUNDARY_CHAR, secondary);
 	tree->DataType = DATA_T_STRING;
 	ret = 0;
