@@ -1042,6 +1042,12 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
     XArray sub_clusters = {0};
     char* cache_key = NULL;
     
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1, "Cluster", "Resource exhaustion occurred.");
+	    goto err_free;
+	    }
+	
 	/** Verify source_data value. **/
 	if (UNLIKELY(source_data == NULL)) goto err_free;
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
@@ -1143,7 +1149,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	if (UNLIKELY(result == -1)) goto err_free;
 	if (result == 0)
 	    {
-	    if (seed < 1)
+	    if (UNLIKELY(seed < 1))
 		{
 		mssError(1, "Cluster", "Invalid value for [seed : uint > 0]: %d", seed);
 		goto err_free;
@@ -1166,7 +1172,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    char* name = sub_inf->Name;
 	    
 	    /** Handle various struct types. **/
-	    const int struct_type = stStructType(sub_inf);
+	    const int struct_type = check_neg(stStructType(sub_inf));
 	    switch (struct_type)
 		{
 		case ST_T_ATTRIB:
@@ -1418,7 +1424,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	    if (UNLIKELY(name == NULL)) goto err_free;
 	    
 	    /** Handle various struct types. **/
-	    const int struct_type = stStructType(sub_inf);
+	    const int struct_type = check_neg(stStructType(sub_inf));
 	    switch (struct_type)
 		{
 		case ST_T_ATTRIB:
@@ -1588,7 +1594,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 	    char* name = sub_inf->Name;
 	    
 	    /** Handle various struct types. **/
-	    const int struct_type = stStructType(sub_inf);
+	    const int struct_type = check_neg(stStructType(sub_inf));
 	    switch (struct_type)
 		{
 		case ST_T_ATTRIB:

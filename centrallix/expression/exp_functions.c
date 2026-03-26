@@ -3801,7 +3801,7 @@ exp_fn_i_do_math(pExpression tree, double (*math)(), int arg_num)
 	    }
 	
 	/** Get the numbers for the args. **/
-	double n[4];
+	double n[4] = {0.0, 0.0, 0.0, 0.0};
 	for (int i = 0; i < arg_num; i++)
 	    {
 	    if (check(exp_fn_i_get_number(tree->Children.Items[i], &(n[i]))) != 0)

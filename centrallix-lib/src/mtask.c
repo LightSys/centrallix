@@ -61,6 +61,7 @@
 /************************************************************************/
 
 
+#include "expect.h"
 #include "newmalloc.h"
 #include "mtask.h"
 #include "xstring.h"
@@ -2208,8 +2209,8 @@ thClearFlags(pThread thr, int flags)
 int
 thExcessiveRecursion()
     {
-    unsigned char buf[1];
-    return (MTASK.CurrentThread->Stack - buf > MT_STACK_HIGHWATER);
+    unsigned char stack_ptr[1];
+    return UNLIKELY(MTASK.CurrentThread->Stack - stack_ptr > MT_STACK_HIGHWATER);
     }
 
 
