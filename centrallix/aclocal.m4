@@ -1181,9 +1181,10 @@ AC_DEFUN(CHECK_BUILTIN_EXPECT,
 	    [AC_LANG_PROGRAM([], [__builtin_expect(0, 0)])],
 	    [
 		AC_DEFINE([HAVE_BUILTIN_EXPECT], [1], [Define if __builtin_expect is available])
+		CFLAGS="$CFLAGS -DHAVE_BUILTIN_EXPECT"
 		AC_MSG_RESULT([yes])
 	    ],
-	    [AC_MSG_RESULT([no])],
+	    [AC_MSG_RESULT([no])]
 	)
     ]
 )
