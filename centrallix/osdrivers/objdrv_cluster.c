@@ -1046,7 +1046,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
     
 	if (thExcessiveRecursion())
 	    {
-	    mssError(1, "Cluster", "Resource exhaustion occurred.");
+	    mssError(1, "Cluster", "Resource exhaustion occurred while parsing cluster data.");
 	    goto err_free;
 	    }
 	
@@ -1920,6 +1920,12 @@ ci_FreeSourceData(pSourceData source_data)
 static void
 ci_FreeClusterData(pClusterData cluster_data, bool recursive)
     {
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1, "Cluster", "Resource exhaustion occurred while freeing cluster datas.");
+	    return;
+	    }
+	
 	/** Guard segfault. **/
 	if (UNLIKELY(cluster_data == NULL))
 	    {
@@ -2179,6 +2185,12 @@ ci_SizeOfSourceData(pSourceData source_data)
 static size_t
 ci_SizeOfClusterData(pClusterData cluster_data, bool recursive)
     {
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1, "Cluster", "Resource exhaustion occurred while counting size of cluster data structs.");
+	    return 0u;
+	    }
+	
 	/** Guard segfaults. **/
 	if (UNLIKELY(cluster_data == NULL))
 	    {
