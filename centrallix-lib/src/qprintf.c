@@ -204,10 +204,10 @@ qpf_internal_FindStr(const char* haystack, size_t haystacklen, const char* needl
     {
     int pos;
     char* ptr;
-    if (needlelen > haystacklen) return -1;
-    if (needlelen == 0) return 0;
     
     /** Edge cases. **/
+    if (UNLIKELY(needlelen > haystacklen)) return -1;
+    if (UNLIKELY(needlelen == 0)) return 0;
     
     /** Search for the needle. **/
     pos = 0;
@@ -466,13 +466,13 @@ qpfOpenSession(void)
     {
     pQPSession s = NULL;
 
-	if (!QPF.is_init) 
+	if (UNLIKELY(!QPF.is_init)) 
 	    {
-	    if (qpfInitialize() < 0) return NULL;
+	    if (UNLIKELY(qpfInitialize() < 0)) return NULL;
 	    }
 
 	s = (pQPSession)nmMalloc(sizeof(QPSession));
-	if (!s) return NULL;
+	if (UNLIKELY(!s)) return NULL;
 	s->Errors = 0;
 
     return s;
@@ -668,7 +668,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
     int req_size = (.75 * src_size) + *dst_offset + 1; /** fmul could truncate when cast to int hence +1 **/
 
 	/** Verify source data is correct length for base 64 **/
-	if (src_size % 4 != 0)
+	if (UNLIKELY(src_size % 4 != 0))
 	    {
 	    QPERR(QPF_ERR_T_BADCHAR);
 	    return -1;
@@ -691,7 +691,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 	    {
 	    /** First 6 bits. **/
 	    ptr = strchr(b64,src[0]);
-	    if (!ptr || !*ptr)
+	    if (UNLIKELY(!ptr || !*ptr))
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -701,7 +701,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 
 	    /** Second six bits are split between cursor[0] and cursor[1] **/
 	    ptr = strchr(b64,src[1]);
-	    if (!ptr || !*ptr)
+	    if (UNLIKELY(!ptr || !*ptr))
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -717,7 +717,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 		break;
 		}
 	    ptr = strchr(b64,src[2]);
-	    if (!ptr || !*ptr)
+	    if (UNLIKELY(!ptr || !*ptr))
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -733,7 +733,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 		break;
 		}
 	    ptr = strchr(b64,src[3]);
-	    if (!ptr || !*ptr)
+	    if (UNLIKELY(!ptr || !*ptr))
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -778,7 +778,7 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
     const char* orig_src = src;
 
 	/** Required size **/
-	if (src_size%2 == 1)
+	if (UNLIKELY(src_size%2 == 1))
 	    {
 	    QPERR(QPF_ERR_T_BADLENGTH);
 	    return -1;
@@ -802,7 +802,7 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
 	    {
 	    /** First 4 bits. **/
 	    ptr = strchr(hex, src[0]);
-	    if (!ptr)
+	    if (UNLIKELY(!ptr))
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -812,7 +812,7 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
 
 	    /** Second four bits  **/
 	    ptr = strchr(hex, src[1]);
-	    if (!ptr)
+	    if (UNLIKELY(!ptr))
 	        {
 		QPERR(QPF_ERR_T_BADCHAR);
 		return -1;
@@ -889,10 +889,10 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
     char* trans;
     int nogrow = (grow_fn == NULL);
 
-	if (srcsize >= SIZE_MAX/2/table->MaxExpand)
+	if (UNLIKELY(srcsize >= SIZE_MAX/2/table->MaxExpand))
 	    return -1;
 
-	if (srcsize)
+	if (LIKELY(srcsize))
 	    {
 	    rval += srcsize;
 	    if ((srcsize*table->MaxExpand) <= limit && (srcsize*table->MaxExpand + min_room) <= (*dstsize - *dstoffs))
@@ -1019,12 +1019,12 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
     size_t min_room;
     char quote;
 
-	if (!QPF.is_init) 
+	if (UNLIKELY(!QPF.is_init)) 
 	    {
 	    if (qpfInitialize() < 0) return -ENOMEM;
 	    }
 
-	if (!s)
+	if (UNLIKELY(!s))
 	    {
 	    null_session.Errors = 0;
 	    s=&null_session;
@@ -1033,7 +1033,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 	/** this all falls apart if there isn't at least room for the
 	 ** null terminator!
 	 **/
-	if ((!*str || *size < 1) && !grow_fn(str, size, cpoffset, grow_arg, 1)) 
+	if (UNLIKELY((!*str || *size < 1) && !grow_fn(str, size, cpoffset, grow_arg, 1))) 
 	    { rval = -EINVAL; QPERR(QPF_ERR_T_BUFOVERFLOW); goto error; }
 
 	/** search for %this-and-that (specifiers), copy everything else **/
@@ -1274,7 +1274,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 			    switch(specchain[i])
 				{
 				case QPF_SPEC_T_NLEN:
-				    if (cplen > specchain_n[i])
+				    if (UNLIKELY(cplen > specchain_n[i]))
 					{
 					QPERR(QPF_ERR_T_INSOVERFLOW);
 					cplen = specchain_n[i];
@@ -1284,61 +1284,64 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 				case QPF_SPEC_T_SYM:
 				    if (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN && cplen > specchain_n[i+1])
 					cplen = specchain_n[i+1];
-				    if (cxsecVerifySymbol_n(strval, cplen) < 0)
+				    if (UNLIKELY(cxsecVerifySymbol_n(strval, cplen) < 0))
 					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADSYMBOL); goto error; }
 				    break;
 
 				case QPF_SPEC_T_FILE:
 				    if (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN && cplen > specchain_n[i+1])
 					cplen = specchain_n[i+1];
-				    if ((cplen == 1 && strval[0] == '.') || 
+				    if (UNLIKELY((cplen == 1 && strval[0] == '.') || 
 					    (cplen == 2 && strval[0] == '.' && strval[1] == '.') ||
 					    memchr(strval, '/', cplen) || 
 					    memchr(strval, '\0', cplen) ||
-					    cplen == 0)
+					    cplen == 0))
 					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADFILE); goto error; }
 				    break;
 
 				case QPF_SPEC_T_PATH:
 				    if (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN && cplen > specchain_n[i+1])
 					cplen = specchain_n[i+1];
-				    if ((cplen == 2 && strval[0] == '.' && strval[1] == '.') ||
+				    if (UNLIKELY((cplen == 2 && strval[0] == '.' && strval[1] == '.') ||
 					    (cplen > 2 && strval[0] == '.' && strval[1] == '.' && strval[2] == '/') ||
 					    memchr(strval, '\0', cplen) ||
 					    cplen == 0 ||
 					    (cplen > 2 && strval[cplen-1] == '.' && strval[cplen-2] == '.' && strval[cplen-3] == '/') ||
-					    qpf_internal_FindStr(strval, cplen, "/../", 4) >= 0)
+					    qpf_internal_FindStr(strval, cplen, "/../", 4) >= 0))
 					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADPATH); goto error; }
 				    break;
 
 				case QPF_SPEC_T_B64:
-				    if((n=qpf_internal_base64encode(s, strval, cplen, str, size, &cpoffset, grow_fn, grow_arg))<0) 
-					{ rval = -EINVAL; goto error; } 
-				    else 
+				    n = qpf_internal_base64encode(s, strval, cplen, str, size, &cpoffset, grow_fn, grow_arg);
+				    if (UNLIKELY(n < 0))
 					{
-					copied+=n;
-					cplen=0; 
+					rval = -EINVAL;
+					goto error;
 					}
+				    copied += n;
+				    cplen = 0;
 				    break;
 				
 				case QPF_SPEC_T_DB64:
-				    if((n=qpf_internal_base64decode(s, strval, cplen, str, size, &cpoffset, grow_fn, grow_arg))<0) 
-					{ rval = -EINVAL; goto error; } 
-				    else 
+				    n = qpf_internal_base64decode(s, strval, cplen, str, size, &cpoffset, grow_fn, grow_arg);
+				    if (UNLIKELY(n < 0))
 					{
-					copied+=n;
-					cplen=0; 
+					rval = -EINVAL;
+					goto error;
 					}
+				    copied += n;
+				    cplen = 0;
 				    break;
 				
 				case QPF_SPEC_T_DHEX:
-				    if((n=qpf_internal_hexdecode(s, strval, cplen, str, size, &cpoffset, grow_fn, grow_arg))<0) 
-					{ rval = -EINVAL; goto error; } 
-				    else 
+				    n = qpf_internal_hexdecode(s, strval, cplen, str, size, &cpoffset, grow_fn, grow_arg);
+				    if (UNLIKELY(n < 0))
 					{
-					copied+=n;
-					cplen=0; 
+					rval = -EINVAL;
+					goto error;
 					}
+				    copied += n;
+				    cplen = 0;
 				    break;
 				
 				case QPF_SPEC_T_ESCQ:
@@ -1355,7 +1358,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 				case QPF_SPEC_T_HTENLBR:
 				case QPF_SPEC_T_HEX:
 				case QPF_SPEC_T_URL:
-				    if (n_specs-i == 1 || (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN))
+				    if (LIKELY(n_specs-i == 1 || (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN)))
 					{
 					if (n_specs-i == 2)
 					    maxdst = specchain_n[i+1];
@@ -1432,7 +1435,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 					if (quote && specchain[0] != QPF_SPEC_T_STR)
 					    {
 					    /** don't quote things other than strings **/
-					    if (cplen > maxdst)
+					    if (UNLIKELY(cplen > maxdst))
 						{
 						QPERR(QPF_ERR_T_INSOVERFLOW);
 						cplen = maxdst;
@@ -1441,7 +1444,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 					    }
 					if (quote)
 					    {
-					    if (maxdst < 2)
+					    if (UNLIKELY(maxdst < 2))
 						{
 						QPERR(QPF_ERR_T_BADFORMAT);
 						rval = -EINVAL;
@@ -1451,7 +1454,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 					    }
 					if (quote)
 					    {
-					    if (LIKELY(!nogrow) && (LIKELY(cpoffset+1+1 <= *size) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+1+1))))
+					    if (LIKELY(!nogrow && (cpoffset + 2 <= *size || grow_fn(str, size, cpoffset, grow_arg, cpoffset + 2))))
 						{
 						(*str)[cpoffset++] = quote;
 						}
@@ -1464,7 +1467,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 					    }
 					oldcpoffset = cpoffset;
 					n = qpf_internal_Translate(s, strval, cplen, str, &cpoffset, size, maxdst, table, nogrow?NULL:grow_fn, grow_arg, min_room);
-					if (n < 0) 
+					if (UNLIKELY(n < 0))
 					    {
 					    QPERR(QPF_ERR_T_INTERNAL);
 					    rval = n;
@@ -1473,7 +1476,7 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
 					if (n != cpoffset - oldcpoffset) nogrow = 1;
 					if (quote)
 					    {
-					    if ((LIKELY(cpoffset+1+1 <= *size) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+1+1))))
+					    if (LIKELY(cpoffset + 2 <= *size || grow_fn(str, size, cpoffset, grow_arg, cpoffset + 2)))
 						{
 						(*str)[cpoffset++] = quote;
 						}
@@ -1562,7 +1565,7 @@ qpfRegisterExt(char* ext_spec, int (*ext_fn)(), int is_source)
     {
 
 	/** Check if extension max has been reached. **/
-	if (QPF.n_ext >= QPF_MAX_EXTS)
+	if (UNLIKELY(QPF.n_ext >= QPF_MAX_EXTS))
 	    {
 	    fprintf(stderr, "warning: qpfRegisterExt: QPF_MAX_EXTS exceeded\n");
 	    return;
