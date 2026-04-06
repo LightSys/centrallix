@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdint.h>
+
 #include "qprintf.h"
 #include "mtask.h"
 #include "newmalloc.h"
@@ -56,7 +57,7 @@
 #define QPF_SPEC_T_DBL		(4)
 #define QPF_SPEC_T_NSTR		(5)
 #define QPF_SPEC_T_CHR		(6)
-#define QPF_SPEC_T_LL     (7)
+#define QPF_SPEC_T_LL		(7)
 #define QPF_SPEC_T_ENDSRC	(7)
 
 /*** builtin filtering specifiers ***/
@@ -105,42 +106,42 @@ qpf_spec_names[] =
     {
     NULL,	/* 0 */
     "INT",	/* 1 */
-    "STR",
-    "POS",
-    "DBL",
-    "nSTR",
-    "CHR",
-    "LL",
-    "QUOT",
-    "DQUOT",
-    "SYM",
-    "JSSTR",
-    "nLEN",
-    "WS",
-    "ESCWS",
-    "ESCSP",
-    "UNESC",
-    "SSYB",
-    "DSYB",
-    "FILE",
-    "PATH",
-    "HEX",
-    "DHEX",
-    "B64",
-    "DB64",
-    "RF",
-    "RR",
-    "HTENLBR",
-    "DHTE",
-    "URL",
-    "DURL",
-    "nLSET",
-    "nRSET",
-    "nZRSET",
-    "SQLARG",
-    "SQLSYM",
+    "STR",	/* 2 */
+    "POS",	/* 3 */
+    "DBL",	/* 4 */
+    "nSTR",	/* 5 */
+    "CHR",	/* 6 */
+    "LL",	/* 7 */
+    "QUOT",	/* 8 */
+    "DQUOT",	/* 9 */
+    "SYM",	/* 10 */
+    "JSSTR",	/* 11 */
+    "nLEN",	/* 12 */
+    "WS",	/* 13 */
+    "ESCWS",	/* 14 */
+    "ESCSP",	/* 15 */
+    "UNESC",	/* 16 */
+    "SSYB",	/* 17 */
+    "DSYB",	/* 18 */
+    "FILE",	/* 19 */
+    "PATH",	/* 20 */
+    "HEX",	/* 21 */
+    "DHEX",	/* 22 */
+    "B64",	/* 23 */
+    "DB64",	/* 24 */
+    "RF",	/* 25 */
+    "RR",	/* 26 */
+    "HTENLBR",	/* 27 */
+    "DHTE",	/* 28 */
+    "URL",	/* 29 */
+    "DURL",	/* 30 */
+    "nLSET",	/* 31 */
+    "nRSET",	/* 32 */
+    "nZRSET",	/* 33 */
+    "SQLARG",	/* 34 */
+    "SQLSYM",	/* 35 */
     "HTDATA",	/* 36 */
-    "HTE",
+    "HTE",	/* 37 */
     "ESCQWS",	/* 38 */
     "ESCQ",	/* 39 */
     "CSSVAL",	/* 40 */
@@ -166,24 +167,38 @@ typedef struct
     char*	ext_specs[QPF_MAX_EXTS];
     int		(*ext_fns[QPF_MAX_EXTS])();
     char	is_source[QPF_MAX_EXTS];
-    QPConvTable	quote_matrix;
-    QPConvTable	quote_ws_matrix;
-    QPConvTable	ws_matrix;
-    QPConvTable	hte_matrix;
-    QPConvTable	htenlbr_matrix;
-    QPConvTable	hex_matrix;
-    QPConvTable	url_matrix;
-    QPConvTable	jsstr_matrix;
-    QPConvTable	jsonstr_matrix;
-    QPConvTable	cssval_matrix;
-    QPConvTable	cssurl_matrix;
-    QPConvTable	dsyb_matrix;
-    QPConvTable	ssyb_matrix;
+    
+    /** Conversion matrices for various tasks. **/
+    QPConvTable	quote_matrix;    /* Escapes quotes. */
+    QPConvTable	quote_ws_matrix; /* Escapes quotes & whitespace. */
+    QPConvTable	ws_matrix;       /* Escapes whitespace. */
+    QPConvTable	hte_matrix;      /* Escapes characters for HTML. */
+    QPConvTable	htenlbr_matrix;  /* Escapes characters and line breaks for HTML. */
+    QPConvTable	cssval_matrix;   /* Escapes CSS values. */
+    QPConvTable	cssurl_matrix;   /* Escapes CSS URLs. */
+    QPConvTable	jsstr_matrix;    /* Escapes JavaScript strings. */
+    QPConvTable	jsonstr_matrix;  /* Escapes JSON strings. */
+    QPConvTable	hex_matrix;      /* Encodes strings into HEX. */
+    QPConvTable	url_matrix;      /* Encodes URLs. */
+    QPConvTable	dsyb_matrix;     /* Escapes double quotes sybase-style: " -> "" */
+    QPConvTable	ssyb_matrix;     /* Escapes single quotes sybase-style: ' -> '' */
     }
     QPF_t;
     
 static QPF_t QPF = { n_ext:0, is_init:0 };
 
+/*** Searches for a substring within a buffer.
+ *** Uses an optimized two-step approach: first locate the first character
+ *** using `memchr()`, then verify the full match with `memcmp()`.
+ ***
+ *** @param haystack    The buffer to search.
+ *** @param haystacklen The length of the haystack buffer (in bytes).
+ *** @param needle      The substring for which to search.
+ *** @param needlelen   The length of the needle substring (in bytes).
+ *** @return The byte offset to the first instance of `needle` in `haystack`,
+ ***         or -1 if not found (including when needlelen exceeds haystacklen).
+ ***         Returns 0 if needlelen is 0 (empty needle matches at haystack).
+ ***/
 int
 qpf_internal_FindStr(const char* haystack, size_t haystacklen, const char* needle, size_t needlelen)
     {
@@ -191,6 +206,10 @@ qpf_internal_FindStr(const char* haystack, size_t haystacklen, const char* needl
     char* ptr;
     if (needlelen > haystacklen) return -1;
     if (needlelen == 0) return 0;
+    
+    /** Edge cases. **/
+    
+    /** Search for the needle. **/
     pos = 0;
     while(pos <= haystacklen - needlelen)
 	{
@@ -200,10 +219,17 @@ qpf_internal_FindStr(const char* haystack, size_t haystacklen, const char* needl
 	    return (ptr - haystack);
 	pos = (ptr - haystack) + 1;
 	}
+    
+    /** Not found. **/
     return -1;
     }
 
-
+/*** Set up data in a conversion matrix (aka. table) data structure, called
+ *** after the matrix values have been set.
+ *** 
+ *** @param table The conversion matrix table data structure to set up.
+ *** @returns 0 if successful, or -1 if an error occurs.
+ ***/
 int
 qpf_internal_SetupTable(pQPConvTable table)
     {
@@ -226,21 +252,25 @@ qpf_internal_SetupTable(pQPConvTable table)
     }
 
 
-/*** qpfInitialize() - inits the QPF suite.
+/*** Initialize internal data structures for the QPF module.
+ *** 
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
-qpfInitialize()
+qpfInitialize(void)
     {
     int i;
     char buf[4];
     char hex[] = "0123456789abcdef";
 
+	/** Initialize matrix that: Escapes quotes. **/
 	memset(&QPF.quote_matrix, 0, sizeof(QPF.quote_matrix));
 	QPF.quote_matrix.Matrix['\''] = "\\'";
 	QPF.quote_matrix.Matrix['"'] = "\\\"";
 	QPF.quote_matrix.Matrix['\\'] = "\\\\";
 	qpf_internal_SetupTable(&QPF.quote_matrix);
 
+	/** Initialize matrix that: Escapes quotes & whitespace. **/
 	memset(&QPF.quote_ws_matrix, 0, sizeof(QPF.quote_ws_matrix));
 	QPF.quote_ws_matrix.Matrix['\''] = "\\'";
 	QPF.quote_ws_matrix.Matrix['"'] = "\\\"";
@@ -250,6 +280,72 @@ qpfInitialize()
 	QPF.quote_ws_matrix.Matrix['\r'] = "\\r";
 	qpf_internal_SetupTable(&QPF.quote_ws_matrix);
 
+	/** Initialize matrix that: Escapes whitespace. **/
+	memset(&QPF.ws_matrix, 0, sizeof(QPF.ws_matrix));
+	QPF.ws_matrix.Matrix['\n'] = "\\n";
+	QPF.ws_matrix.Matrix['\t'] = "\\t";
+	QPF.ws_matrix.Matrix['\r'] = "\\r";
+	qpf_internal_SetupTable(&QPF.ws_matrix);
+
+	/** Initialize matrix that: Escapes characters for HTML. **/
+	memset(&QPF.hte_matrix, 0, sizeof(QPF.hte_matrix));
+	QPF.hte_matrix.Matrix['<'] = "&lt;";
+	QPF.hte_matrix.Matrix['>'] = "&gt;";
+	QPF.hte_matrix.Matrix['&'] = "&amp;";
+	QPF.hte_matrix.Matrix['"'] = "&quot;";
+	QPF.hte_matrix.Matrix['\''] = "&#39;";
+	QPF.hte_matrix.Matrix[';'] = "&#59;";
+	QPF.hte_matrix.Matrix['}'] = "&#125;";
+	QPF.hte_matrix.Matrix['\0'] = "&#0;";
+	qpf_internal_SetupTable(&QPF.hte_matrix);
+
+	/** Initialize matrix that: Escapes characters and line breaks for HTML. **/
+	memset(&QPF.htenlbr_matrix, 0, sizeof(QPF.htenlbr_matrix));
+	QPF.htenlbr_matrix.Matrix['<'] = "&lt;";
+	QPF.htenlbr_matrix.Matrix['>'] = "&gt;";
+	QPF.htenlbr_matrix.Matrix['&'] = "&amp;";
+	QPF.htenlbr_matrix.Matrix['"'] = "&quot;";
+	QPF.htenlbr_matrix.Matrix['\''] = "&#39;";
+	QPF.htenlbr_matrix.Matrix[';'] = "&#59;";
+	QPF.htenlbr_matrix.Matrix['}'] = "&#125;";
+	QPF.htenlbr_matrix.Matrix['\0'] = "&#0;";
+	QPF.htenlbr_matrix.Matrix['\n'] = "<br>";
+	qpf_internal_SetupTable(&QPF.htenlbr_matrix);
+
+	/** Initialize matrix that: Escapes CSS values. **/
+	memset(&QPF.cssval_matrix, 0, sizeof(QPF.cssval_matrix));
+	QPF.cssval_matrix.Matrix[';'] = "\\;";
+	QPF.cssval_matrix.Matrix['}'] = "\\}";
+	QPF.cssval_matrix.Matrix['{'] = "\\{";
+	QPF.cssval_matrix.Matrix['<'] = "\\<";
+	QPF.cssval_matrix.Matrix['>'] = "\\>";
+	QPF.cssval_matrix.Matrix['/'] = "\\/";
+	QPF.cssval_matrix.Matrix['\\'] = "\\\\";
+	QPF.cssval_matrix.Matrix['"'] = "\\\"";
+	QPF.cssval_matrix.Matrix['\''] = "\\'";
+	qpf_internal_SetupTable(&QPF.cssval_matrix);
+
+	/** Initialize matrix that: Escapes CSS URLs. **/
+	memset(&QPF.cssurl_matrix, 0, sizeof(QPF.cssurl_matrix));
+	QPF.cssurl_matrix.Matrix[';'] = "\\;";
+	QPF.cssurl_matrix.Matrix['}'] = "\\}";
+	QPF.cssurl_matrix.Matrix['{'] = "\\{";
+	QPF.cssurl_matrix.Matrix['<'] = "\\<";
+	QPF.cssurl_matrix.Matrix['>'] = "\\>";
+	QPF.cssurl_matrix.Matrix['/'] = "\\/";
+	QPF.cssurl_matrix.Matrix['\\'] = "\\\\";
+	QPF.cssurl_matrix.Matrix['"'] = "\\\"";
+	QPF.cssurl_matrix.Matrix['\''] = "\\'";
+	QPF.cssurl_matrix.Matrix['('] = "\\(";
+	QPF.cssurl_matrix.Matrix[')'] = "\\)";
+	QPF.cssurl_matrix.Matrix[','] = "\\,";
+	QPF.cssurl_matrix.Matrix[' '] = "\\ ";
+	QPF.cssurl_matrix.Matrix['\t'] = "\\\t";
+	QPF.cssurl_matrix.Matrix['\n'] = "\\\n";
+	QPF.cssurl_matrix.Matrix['\r'] = "\\\r";
+	qpf_internal_SetupTable(&QPF.cssurl_matrix);
+
+	/** Initialize matrix that: Escapes JavaScript strings. **/
 	memset(&QPF.jsstr_matrix, 0, sizeof(QPF.jsstr_matrix));
 	QPF.jsstr_matrix.Matrix['\''] = "\\'";
 	QPF.jsstr_matrix.Matrix['"'] = "\\\"";
@@ -270,6 +366,7 @@ qpfInitialize()
 	    }
 	qpf_internal_SetupTable(&QPF.jsstr_matrix);
 
+	/** Initialize matrix that: Escapes JSON strings. **/
 	memset(&QPF.jsonstr_matrix, 0, sizeof(QPF.jsonstr_matrix));
 	QPF.jsonstr_matrix.Matrix['"'] = "\\\"";
 	QPF.jsonstr_matrix.Matrix['\\'] = "\\\\";
@@ -288,74 +385,7 @@ qpfInitialize()
 	    }
 	qpf_internal_SetupTable(&QPF.jsonstr_matrix);
 
-	memset(&QPF.ws_matrix, 0, sizeof(QPF.ws_matrix));
-	QPF.ws_matrix.Matrix['\n'] = "\\n";
-	QPF.ws_matrix.Matrix['\t'] = "\\t";
-	QPF.ws_matrix.Matrix['\r'] = "\\r";
-	qpf_internal_SetupTable(&QPF.ws_matrix);
-
-	memset(&QPF.dsyb_matrix, 0, sizeof(QPF.dsyb_matrix));
-	QPF.dsyb_matrix.Matrix['"'] = "\"\"";
-	qpf_internal_SetupTable(&QPF.dsyb_matrix);
-
-	memset(&QPF.ssyb_matrix, 0, sizeof(QPF.ssyb_matrix));
-	QPF.ssyb_matrix.Matrix['\''] = "''";
-	qpf_internal_SetupTable(&QPF.ssyb_matrix);
-
-	memset(&QPF.hte_matrix, 0, sizeof(QPF.hte_matrix));
-	QPF.hte_matrix.Matrix['<'] = "&lt;";
-	QPF.hte_matrix.Matrix['>'] = "&gt;";
-	QPF.hte_matrix.Matrix['&'] = "&amp;";
-	QPF.hte_matrix.Matrix['"'] = "&quot;";
-	QPF.hte_matrix.Matrix['\''] = "&#39;";
-	QPF.hte_matrix.Matrix[';'] = "&#59;";
-	QPF.hte_matrix.Matrix['}'] = "&#125;";
-	QPF.hte_matrix.Matrix['\0'] = "&#0;";
-	qpf_internal_SetupTable(&QPF.hte_matrix);
-
-	memset(&QPF.htenlbr_matrix, 0, sizeof(QPF.htenlbr_matrix));
-	QPF.htenlbr_matrix.Matrix['<'] = "&lt;";
-	QPF.htenlbr_matrix.Matrix['>'] = "&gt;";
-	QPF.htenlbr_matrix.Matrix['&'] = "&amp;";
-	QPF.htenlbr_matrix.Matrix['"'] = "&quot;";
-	QPF.htenlbr_matrix.Matrix['\''] = "&#39;";
-	QPF.htenlbr_matrix.Matrix[';'] = "&#59;";
-	QPF.htenlbr_matrix.Matrix['}'] = "&#125;";
-	QPF.htenlbr_matrix.Matrix['\0'] = "&#0;";
-	QPF.htenlbr_matrix.Matrix['\n'] = "<br>";
-	qpf_internal_SetupTable(&QPF.htenlbr_matrix);
-
-	memset(&QPF.cssval_matrix, 0, sizeof(QPF.cssval_matrix));
-	QPF.cssval_matrix.Matrix[';'] = "\\;";
-	QPF.cssval_matrix.Matrix['}'] = "\\}";
-	QPF.cssval_matrix.Matrix['{'] = "\\{";
-	QPF.cssval_matrix.Matrix['<'] = "\\<";
-	QPF.cssval_matrix.Matrix['>'] = "\\>";
-	QPF.cssval_matrix.Matrix['/'] = "\\/";
-	QPF.cssval_matrix.Matrix['\\'] = "\\\\";
-	QPF.cssval_matrix.Matrix['"'] = "\\\"";
-	QPF.cssval_matrix.Matrix['\''] = "\\'";
-	qpf_internal_SetupTable(&QPF.cssval_matrix);
-
-	memset(&QPF.cssurl_matrix, 0, sizeof(QPF.cssurl_matrix));
-	QPF.cssurl_matrix.Matrix[';'] = "\\;";
-	QPF.cssurl_matrix.Matrix['}'] = "\\}";
-	QPF.cssurl_matrix.Matrix['{'] = "\\{";
-	QPF.cssurl_matrix.Matrix['<'] = "\\<";
-	QPF.cssurl_matrix.Matrix['>'] = "\\>";
-	QPF.cssurl_matrix.Matrix['/'] = "\\/";
-	QPF.cssurl_matrix.Matrix['\\'] = "\\\\";
-	QPF.cssurl_matrix.Matrix['"'] = "\\\"";
-	QPF.cssurl_matrix.Matrix['\''] = "\\'";
-	QPF.cssurl_matrix.Matrix['('] = "\\(";
-	QPF.cssurl_matrix.Matrix[')'] = "\\)";
-	QPF.cssurl_matrix.Matrix[','] = "\\,";
-	QPF.cssurl_matrix.Matrix[' '] = "\\ ";
-	QPF.cssurl_matrix.Matrix['\t'] = "\\\t";
-	QPF.cssurl_matrix.Matrix['\n'] = "\\\n";
-	QPF.cssurl_matrix.Matrix['\r'] = "\\\r";
-	qpf_internal_SetupTable(&QPF.cssurl_matrix);
-
+	/** Initialize matrix that: Encodes strings into HEX. **/
 	for(i=0;i<QPF_MATRIX_SIZE;i++)
 	    {
 	    buf[0] = hex[(i>>4)&0x0F];
@@ -365,7 +395,7 @@ qpfInitialize()
 	    }
 	qpf_internal_SetupTable(&QPF.hex_matrix);
 
-	/* set up table for url encoding everything except 0-9, A-Z, and a-z */
+	/** Initialize matrix that: Encodes URLs (everything except 0-9, A-Z, and a-z). **/
 	memset(&QPF.url_matrix, 0, sizeof(QPF.url_matrix));
 	for(i=0;i<48;i++) /* escape until 0-9 */
 	    {
@@ -401,25 +431,38 @@ qpfInitialize()
 	    }
 	qpf_internal_SetupTable(&QPF.url_matrix);
 
-	
+	/** Initialize matrix that: Escapes double quotes sybase-style: " -> "". **/
+	memset(&QPF.dsyb_matrix, 0, sizeof(QPF.dsyb_matrix));
+	QPF.dsyb_matrix.Matrix['"'] = "\"\"";
+	qpf_internal_SetupTable(&QPF.dsyb_matrix);
+
+	/** Initialize matrix that: Escapes single quotes sybase-style: ' -> ''. **/
+	memset(&QPF.ssyb_matrix, 0, sizeof(QPF.ssyb_matrix));
+	QPF.ssyb_matrix.Matrix['\''] = "''";
+	qpf_internal_SetupTable(&QPF.ssyb_matrix);
+
+	/** Initialize the qpf_spec_len array. **/
 	for(i=0;i<=QPF_SPEC_T_MAXSPEC;i++)
 	    {
 	    if (qpf_spec_names[i]) 
 		qpf_spec_len[i] = strlen(qpf_spec_names[i]);
 	    }
 
+	/** Done. **/
 	QPF.is_init = 1;
 
     return 0;
     }
 
 
-/*** qpfOpenSession() - open a new qprintf session.  The session is used for
- *** storing cumulative error information, to make error handling much cleaner
- *** for any caller that wants to do so.
+/*** Open a new qprintf session.
+ *** The session is used for storing cumulative error information which makes
+ *** error handling much cleaner for callers that use this feature.
+ *** 
+ *** @returns A new, initialized pQPSession object, or NULL if an error occurs.
  ***/
 pQPSession
-qpfOpenSession()
+qpfOpenSession(void)
     {
     pQPSession s = NULL;
 
@@ -436,7 +479,12 @@ qpfOpenSession()
     }
 
 
-/*** qpfErrors() - return the current error mask.
+/*** Queries the current error mask, indicating errors that have occurred since
+ *** when the session was initialized or the last time that `qpfClearErrors()`
+ *** was called.
+ *** 
+ *** @param s The session to be queried.
+ *** @returns The current error mask (does not fail).
  ***/
 unsigned int
 qpfErrors(pQPSession s)
@@ -445,7 +493,10 @@ qpfErrors(pQPSession s)
     }
 
 
-/*** qpfClearErrors() - reset the errors mask.
+/*** Reset the errors mask, clearing all errors that have occurred.
+ *** 
+ *** @param s The session holding the error mask to be cleared.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 qpfClearErrors(pQPSession s)
@@ -455,7 +506,10 @@ qpfClearErrors(pQPSession s)
     }
 
 
-/*** qpfCloseSession() - close a qprintf session.
+/*** Closes a qprintf session and deallocates associated resources.
+ *** 
+ *** @param s The session to close.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 qpfCloseSession(pQPSession s)
@@ -467,9 +521,12 @@ qpfCloseSession(pQPSession s)
     }
 
 
-/*** qpf_internal_itoa() - convert an integer into a string representation.
- *** this seems to perform better than snprintf(%d), even without 
- *** optimization enabled.
+/*** Convert an integer into a string representation.  Seems to perform better
+ *** than `snprintf("%d")`, even without optimization enabled.
+ *** 
+ *** @param dst The destination string buffer.
+ *** @param dstlen The allocated length of the string buffer, used to avoid
+ *** 	buffer overflows.
  ***/
 static inline int
 qpf_internal_itoa(char* dst, size_t dstlen, int i)
@@ -504,7 +561,21 @@ qpf_internal_itoa(char* dst, size_t dstlen, int i)
     }
 
 
-/*** qpf_internal_base64encode() - convert string to base 64 representation
+/*** Convert string to its base 64 representation.
+ *** This function is the reverse of `qpf_internal_base64decode()`.
+ *** 
+ *** @param s The qprintf session in use.
+ *** @param src The source string to convert.
+ *** @param src_size The length of `src` in bytes.
+ *** @param dst A pointer to a location where the resulting string pointer
+ *** 	should be saved.
+ *** @param dst_size The size of the currently allocated string at `dst`.
+ *** @param dst_offset The number of bytes to skip at the start of `dst`
+ *** 	before writing the result.
+ *** @param grow_fn An optional grow function, used to grow the dst string if
+ *** 	more space is needed.
+ *** @param grow_arg The argument to be passed to the grow function.
+ *** @returns The number of bytes written.
  ***/
 int
 qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
@@ -570,7 +641,22 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
     }
 
 
-/*** qpf_internal_base64decode() - convert base 64 to a string representation
+/*** Convert the base 64 representation of a string back to the original
+ *** string.
+ *** This function is the reverse of `qpf_internal_base64encode()`.
+ *** 
+ *** @param s The qprintf session in use.
+ *** @param src The source string representation to convert.
+ *** @param src_size The length of `src` in bytes.
+ *** @param dst A pointer to a location where the resulting string pointer
+ *** 	should be saved.
+ *** @param dst_size The size of the currently allocated string at `dst`.
+ *** @param dst_offset The number of bytes to skip at the start of `dst`
+ *** 	before writing the result.
+ *** @param grow_fn An optional grow function, used to grow the dst string if
+ *** 	more space is needed.
+ *** @param grow_arg The argument to be passed to the grow function.
+ *** @returns The number of bytes written.
  ***/
 static inline int
 qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
@@ -664,7 +750,21 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
     }
 
 
-/*** qpf_internal_hexdecode() - convert base 64 to a string representation
+/*** Convert the base 16 (hex) representation of a string back to the
+ *** original string.
+ *** 
+ *** @param s The qprintf session in use.
+ *** @param src The source string representation to convert.
+ *** @param src_size The length of `src` in bytes.
+ *** @param dst A pointer to a location where the resulting string pointer
+ *** 	should be saved.
+ *** @param dst_size The size of the currently allocated string at `dst`.
+ *** @param dst_offset The number of bytes to skip at the start of `dst`
+ *** 	before writing the result.
+ *** @param grow_fn An optional grow function, used to grow the dst string if
+ *** 	more space is needed.
+ *** @param grow_arg The argument to be passed to the grow function.
+ *** @returns The number of bytes written.
  ***/
 static inline int
 qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
@@ -730,6 +830,16 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
     }
 
 
+/*** Returns the amount of additional size that will fit, but does not
+ *** reallocate the string to grow it to a larger size.
+ ***/
+int
+qpfPrintf_grow(char** str, size_t* size, size_t offs, void* arg, size_t req_size)
+    {
+    return (*size) >= req_size;
+    }
+
+
 /*** qpfPrintf() - do the quoting printf operation, given a standard vararg
  *** function call.
  ***/
@@ -745,15 +855,6 @@ qpfPrintf(pQPSession s, char* str, size_t size, const char* format, ...)
 	va_end(va);
 
     return rval;
-    }
-
-
-/*** qpfPrintf_grow() - returns whether the additional size will fit.
- ***/
-int
-qpfPrintf_grow(char** str, size_t* size, size_t offs, void* arg, size_t req_size)
-    {
-    return (*size) >= req_size;
     }
 
 
@@ -870,13 +971,12 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
     }
 
 
-/*** qpfPrintf_va_internal() - does all of the guts work of the qpfPrintf
- *** family of functions.
- ***
- *** A warning to those who would modify this:  the 'str' parameter may
- *** change out from under this function to a new buffer if a realloc is
- *** done by the grow_fn function.  Do not store pointers to 'str'.  Go
- *** solely by offsets.
+/*** Parse the provided format to apply all of the qprintf() format specifier
+ *** rules while printing the indicated characters.
+ *** 
+ *** Warning:  The 'str' parameter may change during the execution of this
+ *** function if grow_fn reallocates it.  Do not store pointers to 'str'!
+ *** Instead, use offsets.
  *** 
  *** NULL, &(s->Tmpbuf), &(s->TmpbufSize), htr_internal_GrowFn, (void*)s, fmt, va
  *** @param s Optional session struct.
@@ -1443,21 +1543,32 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
     }
 
 
-/*** qpfRegisterExt() - registers an extension with the QPF module, allowing
- *** outside modules to provide extra specifiers for processing data or for
- *** data sources.  If is_source is nonzero, the extension is treated as a
- *** source specifier, otherwise it is a filtering specifier.
+/*** Registers a new extension with the QPF module.  This allows outside
+ *** modules to provide extra specifiers for processing data or for data
+ *** sources.
+ *** 
+ *** Warning:  It appears that extensions are not currently implemented.
+ *** TODO: This comment should document the expected signature for ext_fn()
+ *** 	more clearly once it is used somewhere.
+ *** 
+ *** @param ext_spec The name of the extension (e.g. "STR" for `%str`).
+ *** @param ext_fn The function to call on data that meets the extension.
+ *** @param is_source If nonzero, the extension is treated as a source
+ *** 	specifier (also known as a format specifier, e.g. `%STR`), otherwise
+ *** 	it is a treated as a filtering specifier (e.g. `&QUOT`).
  ***/
 void
 qpfRegisterExt(char* ext_spec, int (*ext_fn)(), int is_source)
     {
 
-	/** Add to list of extensions **/
+	/** Check if extension max has been reached. **/
 	if (QPF.n_ext >= QPF_MAX_EXTS)
 	    {
 	    fprintf(stderr, "warning: qpfRegisterExt: QPF_MAX_EXTS exceeded\n");
 	    return;
 	    }
+	
+	/** Add to list of extensions **/
 	QPF.ext_specs[QPF.n_ext] = nmSysStrdup(ext_spec);
 	QPF.ext_fns[QPF.n_ext] = ext_fn;
 	QPF.is_source[QPF.n_ext] = is_source?1:0;

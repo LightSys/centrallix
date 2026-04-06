@@ -67,7 +67,7 @@ typedef struct _QPS
 #define QPERR(x) (s->Errors |= (x))
 
 /*** QPrintf methods ***/
-pQPSession qpfOpenSession();
+pQPSession qpfOpenSession(void);
 int qpfCloseSession(pQPSession s);
 int qpfClearErrors(pQPSession s);
 unsigned int qpfErrors(pQPSession s);
