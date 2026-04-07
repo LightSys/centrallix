@@ -25,11 +25,11 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&DQUOT...", "\"ain't\"");
-	    qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&DQUOT...", "\"ain't\"");
-	    qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&DQUOT...", "\"ain't\"");
-	    rval = qpfPrintf(NULL, buf+4, 36, "Here is the str: %STR&DQUOT...", "\"ain't\"");
-	    assert(!strcmp(buf+4, "Here is the str: \"\\\"ain\\'t\\\"\"..."));
+	    qpfPrintf(NULL, (char*)buf+4, 36, "Here is the str: %STR&DQUOT...", "\"ain't\"");
+	    qpfPrintf(NULL, (char*)buf+4, 36, "Here is the str: %STR&DQUOT...", "\"ain't\"");
+	    qpfPrintf(NULL, (char*)buf+4, 36, "Here is the str: %STR&DQUOT...", "\"ain't\"");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "Here is the str: %STR&DQUOT...", "\"ain't\"");
+	    assert(!strcmp((char*)buf+4, "Here is the str: \"\\\"ain\\'t\\\"\"..."));
 	    assert(rval == 32);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
@@ -43,4 +43,3 @@ test(char** tname)
 
     return iter*4;
     }
-
