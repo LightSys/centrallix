@@ -311,7 +311,7 @@ int rval;
 
     rval = aposSetLimits_r(Parent, &delta_w, &delta_h);
 
-    return 0;
+    return rval;
 }
 
 
@@ -682,8 +682,8 @@ pXArray FirstCross, LastCross;
     /**sanity check to make sure no widgets cross the border lines**/
     if(xaCount(HLines))	//don't test borderlines unless they exist
 	{
-	    FirstCross = &(((pAposLine)xaGetItem(HLines, 0))->CWidgets);
-	    LastCross  = &(((pAposLine)xaGetItem(HLines, (xaCount(HLines)-1)))->CWidgets);
+	//     FirstCross = &(((pAposLine)xaGetItem(HLines, 0))->CWidgets);
+	//     LastCross  = &(((pAposLine)xaGetItem(HLines, (xaCount(HLines)-1)))->CWidgets);
 	    /*if(xaCount(FirstCross))
 		mssError(1, "APOS", "%d widget(s) crossed the top borderline, including %s '%s'", xaCount(FirstCross),
 		    ((pWgtrNode)xaGetItem(FirstCross, 0))->Type, ((pWgtrNode)xaGetItem(FirstCross, 0))->Name);
@@ -692,8 +692,8 @@ pXArray FirstCross, LastCross;
 		    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);*/
 	}
 	
-    FirstCross = &(((pAposLine)xaGetItem(VLines, 0))->CWidgets);
-    LastCross  = &(((pAposLine)xaGetItem(VLines, (xaCount(VLines)-1)))->CWidgets);
+//     FirstCross = &(((pAposLine)xaGetItem(VLines, 0))->CWidgets);
+//     LastCross  = &(((pAposLine)xaGetItem(VLines, (xaCount(VLines)-1)))->CWidgets);
     /*if(xaCount(FirstCross))
 	mssError(1, "APOS", "%d widget(s) crossed the left borderline, including %s '%s'", xaCount(FirstCross), 
 	    ((pWgtrNode)xaGetItem(FirstCross, 0))->Type, ((pWgtrNode)xaGetItem(FirstCross, 0))->Name);
