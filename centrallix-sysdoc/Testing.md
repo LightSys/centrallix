@@ -21,12 +21,16 @@ Centrallix has various sets of tests and test suites for running them.  This fil
     - [Test Case Format: Standard](#test-case-format-standard)
     - [Test Case Format: Native C](#test-case-format-native-c)
     - [More About Test-obj Tests](#more-about-test-obj-tests)
-  - [Centrallix-Lib Tests](#centrallix-lib-tests)
+  - [Centrallix-lib Tests](#centrallix-lib-tests)
     - [Running Centrallix-lib Tests](#running-centrallix-lib-tests)
     - [Understanding Output](#understanding-output)
-    - [Test Case Format](#test-case-format)
+    - [Centrallix-lib Test Case Format](#centrallix-lib-test-case-format)
     - [Code Coverage](#code-coverage)
     - [More About Centrallix-lib Tests](#more-about-centrallix-lib-tests)
+  - [Selenium UI Tests](#selenium-ui-tests)
+    - [Running Selenium UI Tests](#running-selenium-ui-tests)
+    - [Selenium Test Case Format](#selenium-test-case-format)
+    - [More About Selenium UI Tests](#more-about-selenium-ui-tests)
 
 
 ## Test-obj Tests
@@ -113,7 +117,7 @@ As with the normal test target, `TONLY` can be used to focus coverage on one cat
 
 Note: In my own testing, I could not get coverage to work. I was able to generate a `lcov.info` file using lcov but the VSCode extension would not detect it.
 
-### Test Case Format
+### Centrallix-lib Test Case Format
 Each test is a C source file in `centrallix-lib/tests` named `test_{category}_{NN}.c` (for example `test_qprintf_12.c` or `test_mtlexer_05.c`).  There are also a few category-wide baseline tests such as `test_00baseline.c`.
 
 Each test file should implement:
@@ -134,3 +138,48 @@ Tests may include and use any `centrallix-lib` headers and code.  Some tests als
 
 ### More About Centrallix-lib Tests
 For more information, see [centrallix-lib/tests/README](../centrallix-lib/tests/README).
+
+
+## Selenium UI Tests
+The `centrallix-ui-test` project contains browser-based UI tests written as standalone Python scripts using Selenium and ChromeDriver.  These tests exercise UI applications in `centrallix-os/tests/ui` by loading them in a browser, performing interactions, and reporting pass/fail status based on the observed behavior.
+
+### Running Selenium UI Tests
+Before running these tests, make sure a Centrallix server is running and serving the UI test applications (check this in `kardia.sh`).  Then, from the `centrallix-ui-test` directory:
+
+1. Install the Python dependencies:
+
+```sh
+python3 -m pip install -r requirements.txt
+```
+
+2. Create a `config.toml` file in `centrallix-ui-test` containing the base URL for the test server, for example:
+
+```toml
+url = "https://user:password@localhost:8080"
+```
+
+3. Run an individual test script directly with Python, for example:
+
+```sh
+python3 tests/button_test.py
+```
+
+There is no single command in the repository for running the entire Selenium suite at once.  Each test is run individually by executing its corresponding script in `centrallix-ui-test/tests`.
+
+<!-- TODO: Israel - Think about adding a command to run all tests. -->
+
+### Selenium Test Case Format
+Each Selenium test is a Python source file in `centrallix-ui-test/tests` named `{component}_test.py` (for example `button_test.py` or `form_test.py`).
+
+Each test script should:
+
+- Load the base test server URL from `config.toml`.
+- Construct the URL for the corresponding UI test application in `centrallix-os/tests/ui`.
+- Launch a Chrome browser using Selenium and ChromeDriver.
+- Perform the interactions and assertions needed for the component under test.
+- Exit with status code 0 if the test passes and a nonzero status code if it fails.
+
+Shared output formatting helpers may be implemented directly in the script or by importing helpers such as `test_reporter.py`.
+
+### More About Selenium UI Tests
+For a high-level summary of current Selenium UI test coverage, see [UITestCoverage.md](./UITestCoverage.md).
