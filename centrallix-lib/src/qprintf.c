@@ -246,18 +246,20 @@ qpf_internal_FindStr(const char* haystack, size_t haystacklen, const char* needl
 int
 qpf_internal_SetupTable(pQPConvTable table)
     {
-    int i;
-    int mx = 1;
-    int n;
+    size_t mx = 1;
 
-	for(i=0;i<QPF_MATRIX_SIZE;i++)
+	for (size_t i = 0lu; i < QPF_MATRIX_SIZE; i++)
 	    {
-	    if (table->Matrix[i])
-		{
-		n = strlen(table->Matrix[i]);
-		if (n > mx) mx = n;
-		table->MatrixLen[i] = n;
-		}
+	    /*** Skip characters that don't map to different characters.
+	     *** LIKELY because most translation tables do not include
+	     *** most characters.
+	     ***/
+	    if (LIKELY(table->Matrix[i] == NULL)) continue;
+	    
+	    /** Compute the length of the string that this char maps to. **/
+	    const size_t n = strlen(table->Matrix[i]);
+	    if (n > mx) mx = n;
+	    table->MatrixLen[i] = n;
 	    }
 	table->MaxExpand = mx;
 
@@ -479,11 +481,10 @@ qpfOpenSession(void)
     {
     pQPSession s = NULL;
 
-	if (UNLIKELY(!QPF.is_init)) 
-	    {
-	    if (UNLIKELY(qpfInitialize() < 0)) return NULL;
-	    }
+	/** Ensure initialization. **/
+	if (UNLIKELY(!QPF.is_init) && UNLIKELY(qpfInitialize() < 0)) return NULL;
 
+	/** Allocate and initialize the new session. **/
 	s = (pQPSession)nmMalloc(sizeof(QPSession));
 	if (UNLIKELY(!s)) return NULL;
 	s->Errors = 0;
@@ -908,97 +909,94 @@ qpfPrintf_va(pQPSession s, char* str, size_t size, const char* format, va_list a
  *** `1`, to leave room for a null terminator, or `2` to leave room for a
  *** closing quote mark followed by a null terminator.
  *** @returns The number of chars placed in dstbuf (or the number that would
- *** have been placed if there was enough room.  Note: Does NOT return the
- *** number of chars pulled from the srcbuf!!!
+ *** have been placed if there was enough room), or -1 if an error occurs.
+ *** Note: Does NOT return the number of chars pulled from the srcbuf!!!
  ***/
 static inline int
-qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** dstbuf, size_t* dstoffs, size_t* dstsize, size_t limit, pQPConvTable table, qpf_grow_fn_t grow_fn, void* grow_arg, size_t min_room)
-    {
-    int rval = 0;
-    unsigned int tlen;
-    int i;
-    char* trans;
+qpf_internal_Translate(
+    pQPSession s,
+    const char* srcbuf,
+    size_t srcsize,
+    char** dstbuf,
+    size_t* dstoffs,
+    size_t* dstsize,
+    size_t limit,
+    pQPConvTable table,
+    qpf_grow_fn_t grow_fn,
+    void* grow_arg,
+    size_t min_room
+)   {
+    int n_chars_written = 0;
     int nogrow = (grow_fn == NULL);
 
-	if (UNLIKELY(srcsize >= SIZE_MAX/2/table->MaxExpand))
+	/** Check for sources that are FAR too large for us to handle. **/
+	if (UNLIKELY(srcsize >= (SIZE_MAX / 2) / table->MaxExpand))
 	    return -1;
 
-	if (LIKELY(srcsize))
+	if (LIKELY(srcsize != 0))
 	    {
-	    rval += srcsize;
-	    if ((srcsize*table->MaxExpand) <= limit && (srcsize*table->MaxExpand + min_room) <= (*dstsize - *dstoffs))
+	    n_chars_written += srcsize;
+	    const size_t max_chars_to_write = srcsize * table->MaxExpand;
+	    const size_t max_chars_needed = max_chars_to_write + min_room;
+	    const size_t chars_available = *dstsize - *dstoffs;
+	    if (max_chars_to_write <= limit && max_chars_needed <= chars_available)
 		{
 		/** Easy route - definitely enough space! **/
-		for(i=0;i<srcsize;i++)
+		for (size_t i = 0; i < srcsize; i++)
 		    {
-		    if (UNLIKELY(((trans = table->Matrix[(unsigned char)(srcbuf[i])]) != NULL)))
-			{
-			tlen = table->MatrixLen[(unsigned char)(srcbuf[i])];
-			while(*trans) (*dstbuf)[(*dstoffs)++] = *(trans++);
-			rval += (tlen-1);
-			}
-		    else
+		    const unsigned char c = (unsigned char)(srcbuf[i]);
+		    const char* translated_chars = table->Matrix[c];
+		    
+		    /*** Check if the translation table specifies to do nothing to this character.
+		     *** LIKELY because most translation tables do not include most characters.
+		     ***/
+		    if (LIKELY(translated_chars == NULL))
 			{
 			(*dstbuf)[(*dstoffs)++] = srcbuf[i];
+			continue;
 			}
+		    
+		    /** Write the translated characters to the destination buffer. **/
+		    const unsigned int translated_length = table->MatrixLen[c];
+		    while(*translated_chars) (*dstbuf)[(*dstoffs)++] = *(translated_chars++);
+		    n_chars_written += (translated_length-1);
 		    }
 		}
 	    else
 		{
 		/** Hard route - may or may not be enough space! **/
-		for(i=0;i<srcsize;i++)
+		for (size_t i = 0lu; i < srcsize; i++)
 		    {
-		    if (UNLIKELY(((trans = table->Matrix[(unsigned char)(srcbuf[i])]) != NULL)))
+		    const unsigned char c = (unsigned char)(srcbuf[i]);
+		    const char* translated_chars = table->Matrix[c];
+		    const unsigned int translated_length = (LIKELY(translated_chars == NULL)) ? 1 : table->MatrixLen[c];
+		    
+		    if (UNLIKELY(translated_length > limit))
 			{
-			tlen = table->MatrixLen[(unsigned char)(srcbuf[i])];
-			if (LIKELY(limit >= tlen))
-			    {
-			    rval += (tlen-1);
-			    if (LIKELY(!nogrow) && (LIKELY((*dstoffs)+tlen+min_room <= (*dstsize)) || 
-				  (grow_fn(dstbuf, dstsize, *dstoffs, grow_arg, (*dstoffs)+tlen+min_room))))
-				{
-				while(*trans) (*dstbuf)[(*dstoffs)++] = *(trans++);
-				limit -= tlen;
-				}
-			    else
-				{
-				QPERR(QPF_ERR_T_BUFOVERFLOW);
-				nogrow = 1;
-				}
-			    }
-			else
-			    {
-			    QPERR(QPF_ERR_T_INSOVERFLOW);
-			    rval--;
-			    }
+			QPERR(QPF_ERR_T_INSOVERFLOW);
+			n_chars_written--;
+			continue;
 			}
-		    else
+		    
+		    /** Check the available space in the destination buffer. **/
+		    n_chars_written += (translated_length-1);
+		    const size_t chars_needed = *dstoffs + translated_length + min_room;
+		    if (nogrow || (chars_needed > *dstsize && !grow_fn(dstbuf, dstsize, *dstoffs, grow_arg, chars_needed)))
 			{
-			if (LIKELY(limit > 0))
-			    {
-			    if (LIKELY(!nogrow) && (LIKELY((*dstoffs)+1+min_room <= (*dstsize)) || 
-				  (grow_fn(dstbuf, dstsize, *dstoffs, grow_arg, (*dstoffs)+1+min_room))))
-				{
-				(*dstbuf)[(*dstoffs)++] = srcbuf[i];
-				limit--;
-				}
-			    else
-				{
-				QPERR(QPF_ERR_T_BUFOVERFLOW);
-				nogrow = 1;
-				}
-			    }
-			else
-			    {
-			    QPERR(QPF_ERR_T_INSOVERFLOW);
-			    rval--;
-			    }
+			QPERR(QPF_ERR_T_BUFOVERFLOW);
+			nogrow = 1;
+			continue;
 			}
+		    
+		    /** Write the translated characters to the destination buffer. **/
+		    if (LIKELY(translated_chars == NULL)) (*dstbuf)[(*dstoffs)++] = srcbuf[i];
+		    else while(*translated_chars) (*dstbuf)[(*dstoffs)++] = *(translated_chars++);
+		    limit -= translated_length;
 		    }
 		}
 	    }
 
-    return rval;
+    return n_chars_written;
     }
 
 
@@ -1052,10 +1050,8 @@ qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow
     size_t min_room;
     char quote;
 
-	if (UNLIKELY(!QPF.is_init)) 
-	    {
-	    if (qpfInitialize() < 0) return -ENOMEM;
-	    }
+	/** Ensure initialization. **/
+	if (UNLIKELY(!QPF.is_init) && UNLIKELY(qpfInitialize() < 0)) return -ENOMEM;
 
 	if (UNLIKELY(!s))
 	    {
