@@ -152,6 +152,19 @@ qpf_spec_names[] =
 
 int qpf_spec_len[QPF_SPEC_T_MAXSPEC+1];
 
+/*** A QPConvTable expresses a way to translate characters.  For example, if a
+ *** QPConvTable expresses how to escape quotes in a string, it might contain
+ *** mappings that turn `'` into `\'` and `"` into `\"`. 
+ *** 
+ *** @param Matrix A matrix of mappings where `Matrix[c]` is the character(s)
+ *** 	that character `c` should map to.  Leave this NULL for characters that
+ *** 	do not need to be translated.   Thus, in our example, `Matrix['"']`
+ *** 	should equal the string `"\""`, but `Matrix['a']` should be NULL.
+ *** @param MatrixLen The length of each string pointed to in `Matrix`.  Thus,
+ *** 	in our example, `MatrixLen['"']` equal be 2.
+ *** @param MaxExpand The maximum number of characters that can result from
+ *** 	translating a single character.  In our example, this would be 2.
+ ***/
 typedef struct
     {
     char*	Matrix[QPF_MATRIX_SIZE];
@@ -763,7 +776,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
  *** 	before writing the result.
  *** @param grow_fn An optional grow function, used to grow the dst string if
  *** 	more space is needed.
- *** @param grow_arg The argument to be passed to the grow function.
+ *** @param grow_arg An argument, passed to`grow_fn`() when it is called.
  *** @returns The number of bytes written.
  ***/
 static inline int
@@ -868,17 +881,35 @@ qpfPrintf_va(pQPSession s, char* str, size_t size, const char* format, va_list a
     }
 
 
-/*** qpf_internal_Translate() - do a translation copy from one buffer to
- *** another, respecting a soft and hard limit, and using a given char
- *** translation table.  Returns the number of chars that would have been
- *** placed in dstbuf had there been enough room (or, if there was enough
- *** room, the actual # chars placed in dstbuf); NOTE - does NOT return
- *** the number of chars pulled from the srcbuf!!!
+/*** Copy characters to the new buffer, translating each character using the
+ *** given pQPConvTable.  Respects a soft and hard limit.
+ *** 
+ *** I'm not sure what this stuff about the "soft and hard limit" means, but
+ *** I think it has something do do with the `limit` parameter.  I'm also not
+ *** sure why that parameter is necessary. (Israel, 2026)
  ***
- *** min_room applies to 'dstsize' only -- we must leave at least that much
- *** room in dstbuf once we are done.  Often this is "1", to leave room for
- *** a null terminator, or "2" to leave room for a closing quote mark and a
- *** null terminator, for instance.
+ *** @param s The qprintf session in use.
+ *** @param srcbuf The source string representation to translate and copy.
+ *** @param srcsize The length of `srcbuf` in bytes.
+ *** @param dstbuf A pointer to a location where the resulting string pointer
+ *** 	should be saved.
+ *** @param dstoffs The number of bytes to skip at the start of `dstbuf`
+ *** 	before writing the result.
+ *** @param dstsize The size of the currently allocated string at `dstbuf`.
+ *** @param limit The maximum amount that the destination string can grow past
+ *** 	the size of the source string.  Causes  a `QPF_ERR_T_INSOVERFLOW`
+ *** 	error if this limit is exceeded.
+ *** @param table The translation table to apply when copying each character.
+ *** @param grow_fn An optional grow function, used to grow the dst string if
+ *** 	more space is needed.
+ *** @param grow_arg An argument, passed to`grow_fn`() when it is called.
+ *** @param min_room A required amount of space that must be available at the
+ *** end of the destination buffer when the function completes.  Often this is
+ *** `1`, to leave room for a null terminator, or `2` to leave room for a
+ *** closing quote mark followed by a null terminator.
+ *** @returns The number of chars placed in dstbuf (or the number that would
+ *** have been placed if there was enough room.  Note: Does NOT return the
+ *** number of chars pulled from the srcbuf!!!
  ***/
 static inline int
 qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** dstbuf, size_t* dstoffs, size_t* dstsize, size_t limit, pQPConvTable table, qpf_grow_fn_t grow_fn, void* grow_arg, size_t min_room)
@@ -971,18 +1002,20 @@ qpf_internal_Translate(pQPSession s, const char* srcbuf, size_t srcsize, char** 
     }
 
 
-/*** Parse the provided format to apply all of the qprintf() format specifier
- *** rules while printing the indicated characters.
+/*** Parse the provided format, apply all of the qprintf() format specifier
+ *** rules, and write the result to a string buffer.
  *** 
  *** Warning:  The 'str' parameter may change during the execution of this
  *** function if grow_fn reallocates it.  Do not store pointers to 'str'!
  *** Instead, use offsets.
  *** 
- *** NULL, &(s->Tmpbuf), &(s->TmpbufSize), htr_internal_GrowFn, (void*)s, fmt, va
  *** @param s Optional session struct.
- *** @param str Pointer to a string buffer where data will be written.
- *** @param size Pointer to the current size of the string buffer.
+ *** @param str A pointer to a string buffer where data will be written.
+ *** @param size A pointer to the current size of the string buffer.
  *** @param grow_fn A function to grow the string buffer.
+ *** @param grow_fn An optional grow function, used to grow `str` if more
+ *** 	space is needed.
+ *** @param grow_arg An argument, passed to`grow_fn`() when it is called.
  *** @param format The format of data which should be written.
  *** @param ap The arguments list to fulfill the provided format.
  ***/
