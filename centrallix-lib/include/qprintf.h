@@ -39,6 +39,7 @@
  *** @param offset An offset up to which data must be preserved.
  *** @param args   Arguments for growing the buffer.
  *** @param req    The requested size.
+ *** @returns True (1) if successful, and false (0) if an error occurs.
  ***/
 // typedef int (*qpf_grow_fn_t)(char** str, size_t* size, size_t offset, void* args, size_t req);
 typedef int (*qpf_grow_fn_t)(char**, size_t*, size_t, void*, size_t);
