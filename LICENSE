@@ -1,22 +1,53 @@
-Welcome to the Centrallix Application Platform project!
+Centrallix is Free and Open-Source Software.
 
-The components of this project are under a couple of different licenses, all
-of which are open source.
+== GPLv2 ==
 
-The main Centrallix application platform C code, in the centrallix/ subfolder,
-is licensed under the GNU GPL v2, or any later version of the GNU GPL released
-by the Free Software Foundation, at your option.  See centrallix/LICENSE for
-details.
+This software is made available under the GNU General Public
+License, version 2.  A copy is included in this distribution
+in the file "COPYING".  You may also use this software under
+any later version of the GNU GPL published by the Free Software
+Foundation.
+
+Copyright (C) 1998-2026 LightSys Technology Services, Inc.
+
+You may download the source to this software at:
+
+https://github.com/LightSys/centrallix
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+== Other Licenses and Permissions ==
+
+OpenSSL:  As a special additional permission, you may link this
+application with the OpenSSL cryptographic library.  If you
+copy or distribute Centrallix, you are not required to retain
+this additional permission.  In that case, simply delete it 
+from this LICENSE file when you make the copy.
+
+Sybase CT-Lib:  As a special additional permission, you may link
+this application (the objdrv_sybase.c driver) with Sybase CT
+Library, for access to Sybase ASE servers.  If you copy or
+distribute Centrallix, you are not required to retain this
+additional permission.  In that case, simply delete it from
+this LICENSE file when you make the copy.
+
+Third Party Components:  Components in the 'thirdparty' directory
+are under separate, but GPL2-compatible, licenses.  Please see
+the individual components under 'thirdparty/' for information about
+the licenses of each of them.  Other third-party code, for example in
+centrallix-os/sys/js/chartjs and so forth, is distributed under the
+corresponding open source licenses for those projects.  See those
+folders for details.
 
 The Centrallix library code, in the centrallix-lib/ folder, is licensed under
 the GNU LGPL v2.1.  The JavaScript and other code in centrallix-os/sys is also
-licensed under the GNU LGPL v2.1.
+licensed under the GNU LGPL v2.1.  You may also use any later version of the
+GNU LGPL released by the Free Software Foundation for those two subfolders.
 
 Centrallix samples in centrallix-os/samples are distributed under a 3-clause
 BSD license, which is compatible with the GNU GPL.
-
-Third-party code, for example in centrallix-os/sys/js/chartjs and so forth, is
-distributed under the corresponding open source licenses for those projects.
-See those folders for details.
 
 Centrallix is maintained by LightSys, a US 501(c)(3) nonprofit charity.
