@@ -200,6 +200,35 @@ typedef struct
     
 static QPF_t QPF = { n_ext:0, is_init:0 };
 
+/** TODO: Israel - Move to util.h after dups branch is merged. **/
+/*** Count the number of 0s until the first 1. If we pass 16 (aka. `1<<4`),
+ *** for example, the function returns 4.  Useful for converting bitmask
+ *** values to array indices.
+ *** 
+ *** @param n The number to be queried.
+ *** @returns The trailing zero count.
+ ***/
+static unsigned int
+qpf_internal_count_zeros(int n)
+    {
+    int shift = 0;
+    
+	while ((n & 1) == 0) 
+	    {
+	    n >>= 1;
+	    shift++;
+	    }
+    
+    return shift;
+    }
+
+#define QPERR(err) ({ \
+    unsigned int _err = (err); \
+    unsigned int _err_i = qpf_internal_count_zeros(_err); \
+    s->Errors |= _err; \
+    s->ErrorLines[_err_i] = __LINE__; \
+    })
+
 /*** Searches for a substring within a buffer.
  *** Uses an optimized two-step approach: first locate the first character
  *** using `memchr()`, then verify the full match with `memcmp()`.
@@ -488,6 +517,7 @@ qpfOpenSession(void)
 	s = (pQPSession)nmMalloc(sizeof(QPSession));
 	if (UNLIKELY(!s)) return NULL;
 	s->Errors = 0;
+	memset(s->ErrorLines, 0, sizeof(s->ErrorLines));
 
     return s;
     }
@@ -506,6 +536,55 @@ qpfErrors(pQPSession s)
     return s->Errors;
     }
 
+/*** Gives the error name for a qprintf error.
+ *** 
+ *** @param error A bitmask for a single error.
+ *** @return A string with the name for that error.
+ ***/
+static const char*
+qpf_internal_getErrorName(unsigned int error)
+    {
+	switch (error)
+	    {
+	    case QPF_ERR_T_NOTIMPL: return "Not Implemented";
+	    case QPF_ERR_T_BUFOVERFLOW: return "Buffer Overflow";
+	    case QPF_ERR_T_INSOVERFLOW: return "Limit Overflow";
+	    case QPF_ERR_T_NOTPOSITIVE: return "Not Positive";
+	    case QPF_ERR_T_BADSYMBOL: return "Bad Symbol";
+	    case QPF_ERR_T_MEMORY: return "Out of Memory";
+	    case QPF_ERR_T_BADLENGTH: return "Bad Length";
+	    case QPF_ERR_T_BADFORMAT: return "Bad Format";
+	    case QPF_ERR_T_RESOURCE: return "Resource Exhaustion";
+	    case QPF_ERR_T_NULL: return "Null Parameter";
+	    case QPF_ERR_T_INTERNAL: return "Internal Error";
+	    case QPF_ERR_T_BADFILE: return "Bad File Name";
+	    case QPF_ERR_T_BADPATH: return "Bad File Path";
+	    case QPF_ERR_T_BADCHAR: return "Bad Character";
+	    default: return "Unknown or mixed error";
+	    }
+    }
+
+/*** Prints a message to stderr containing all the errors that occurred in the
+ *** specified session.  If no errors have occurred, prints nothing.
+ ***/
+void
+qpfLogErrors(pQPSession s)
+    {
+	unsigned int errors = s->Errors;
+	if (!errors) return;
+	
+	fprintf(stderr, "qprintf() errors:\n");
+	for (unsigned int i = 0u; i < QPF_ERR_COUNT; i++)
+	    {
+	    const unsigned int err = (1 << i);
+	    if (errors & err)
+		{
+		const char* error_name = qpf_internal_getErrorName(err);
+		const unsigned int line_number = s->ErrorLines[i];
+		fprintf(stderr, "- %d: %s (%s:%d)\n", err, error_name, __FILE__, line_number);
+		}
+	    }
+    }
 
 /*** Reset the errors mask, clearing all errors that have occurred.
  *** 
@@ -1608,3 +1687,6 @@ qpfRegisterExt(char* ext_spec, int (*ext_fn)(), int is_source)
 
     return;
     }
+
+/** Scope cleanup. **/
+#undef QPERR
