@@ -979,7 +979,7 @@ qpfPrintf_va(pQPSession s, char* str, size_t size, const char* format, va_list a
  *** 	before writing the result.
  *** @param dstsize The size of the currently allocated string at `dstbuf`.
  *** @param limit The maximum amount that the destination string can grow past
- *** 	the size of the source string.  Causes  a `QPF_ERR_T_INSOVERFLOW`
+ *** 	the size of the source string.  Causes an `QPF_ERR_T_INSOVERFLOW`
  *** 	error if this limit is exceeded.
  *** @param table The translation table to apply when copying each character.
  *** @param grow_fn An optional grow function, used to grow the dst string if
@@ -1008,12 +1008,12 @@ qpf_internal_Translate(
     size_t min_room
 )   {
     int n_chars_written = 0;
-    int nogrow = (grow_fn == NULL);
-
+    bool no_grow = (grow_fn == NULL);
+	
 	/** Check for sources that are FAR too large for us to handle. **/
 	if (UNLIKELY(srcsize >= (SIZE_MAX / 2) / table->MaxExpand))
 	    return -1;
-
+	
 	if (LIKELY(srcsize != 0))
 	    {
 	    n_chars_written += srcsize;
@@ -1062,10 +1062,10 @@ qpf_internal_Translate(
 		    /** Check the available space in the destination buffer. **/
 		    n_chars_written += (translated_length-1);
 		    const size_t chars_needed = *dstoffs + translated_length + min_room;
-		    if (nogrow || (chars_needed > *dstsize && !grow_fn(dstbuf, dstsize, *dstoffs, grow_arg, chars_needed)))
+		    if (no_grow || (chars_needed > *dstsize && !grow_fn(dstbuf, dstsize, *dstoffs, grow_arg, chars_needed)))
 			{
 			QPERR(QPF_ERR_T_BUFOVERFLOW);
-			nogrow = 1;
+			no_grow = true;
 			continue;
 			}
 		    
@@ -1076,7 +1076,7 @@ qpf_internal_Translate(
 		    }
 		}
 	    }
-
+    
     return n_chars_written;
     }
 
@@ -1084,574 +1084,575 @@ qpf_internal_Translate(
 /*** Parse the provided format, apply all of the qprintf() format specifier
  *** rules, and write the result to a string buffer.
  *** 
- *** Warning:  The 'str' parameter may change during the execution of this
- *** function if grow_fn reallocates it.  Do not store pointers to 'str'!
+ *** Warning:  The 'dest' parameter may change during the execution of this
+ *** function if `grow_fn` reallocates it.  Do not store pointers to 'dest'!
  *** Instead, use offsets.
  *** 
  *** @param s Optional session struct.
- *** @param str A pointer to a string buffer where data will be written.
- *** @param size A pointer to the current size of the string buffer.
+ *** @param dest A pointer to a string buffer where data will be written.
+ *** @param dest_size A pointer to the current size of the string buffer.
  *** @param grow_fn A function to grow the string buffer.
- *** @param grow_fn An optional grow function, used to grow `str` if more
+ *** @param grow_fn An optional grow function, used to grow `dest` if more
  *** 	space is needed.
  *** @param grow_arg An argument, passed to`grow_fn`() when it is called.
  *** @param format The format of data which should be written.
  *** @param ap The arguments list to fulfill the provided format.
+ *** @returns The number of characters copied, or a negative number if an
+ *** 	error occurs. 
  ***/
 int
-qpfPrintf_va_internal(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, void* grow_arg, const char* format, va_list ap)
+qpfPrintf_va_internal(pQPSession s, char** dest, size_t* dest_size, qpf_grow_fn_t grow_fn, void* grow_arg, const char* format, va_list ap)
     {
-    const char* specptr;
-    const char* endptr;
-    size_t copied = 0;
+    size_t copied = 0lu;
+    size_t dest_offset = 0lu;
     int rval;
-    size_t cplen;
-    ptrdiff_t ptrdiff_cplen;
-    char specchain[QPF_MAX_SPECS];
-    int specchain_n[QPF_MAX_SPECS];
-    int n_specs;
-    int i;
-    int n;
-    int found;
-    int intval;
-    long long llval;
-    const char* strval;
-    double dblval;
-    char tmpbuf[64];
-    char chrval;
-    size_t cpoffset = 0;
-    size_t oldcpoffset;
-    int nogrow = 0;
-    int startspec;
-    int endspec;
-    size_t maxdst;
-    int ignore = 0;
-    pQPConvTable table;
-    QPSession null_session;
-    size_t min_room;
-    char quote;
-
+    
 	/** Ensure initialization. **/
 	if (UNLIKELY(!QPF.is_init) && UNLIKELY(qpfInitialize() < 0)) return -ENOMEM;
-
-	if (UNLIKELY(!s))
+	
+	/** Use a null session (that does nothing with errors) if no session is provided. **/
+	QPSession null_session;
+	if (s == NULL)
 	    {
 	    null_session.Errors = 0;
-	    s=&null_session;
+	    s = &null_session;
 	    }
-
-	/** this all falls apart if there isn't at least room for the
-	 ** null terminator!
-	 **/
-	if (UNLIKELY((!*str || *size < 1) && !grow_fn(str, size, cpoffset, grow_arg, 1))) 
-	    { rval = -EINVAL; QPERR(QPF_ERR_T_BUFOVERFLOW); goto error; }
-
-	/** search for %this-and-that (specifiers), copy everything else **/
-	do  {
-	    /** Find the end of the non-specifier string segment **/
-	    specptr = strchr(format, '%');
-	    endptr = specptr?specptr:(format+strlen(format));
-
-	    /** Copy the plain section of string **/
-	    if (!ignore)
+	
+	/** Ensure that there is at least enough room for the a null terminator. **/
+	if (UNLIKELY((!*dest || *dest_size < 1) && !grow_fn(dest, dest_size, dest_offset, grow_arg, 1))) 
+	    {
+	    rval = -EINVAL;
+	    QPERR(QPF_ERR_T_BUFOVERFLOW);
+	    goto error;
+	    }
+	
+	/** Search for format specifiers (e.g. %STR, %INT, etc.) and copy all other characters. **/
+	bool no_grow = false, ignore = false;
+	while (1)
+	    {
+	    /** Find the end of the non-specifier string segment. **/
+	    const char* spec_ptr = strchr(format, '%');
+	    const bool spec_found = LIKELY(spec_ptr != NULL);
+	    const ptrdiff_t plain_str_len = (spec_found) ? (spec_ptr - format) : strlen(format);
+	    
+	    /** Copy the plain section of string. **/
+	    if (LIKELY(!ignore))
 		{
-		ptrdiff_cplen = (endptr - format);
-		if (UNLIKELY(ptrdiff_cplen < 0 || ptrdiff_cplen >= SIZE_MAX/4))
+		if (UNLIKELY(plain_str_len < 0 || SIZE_MAX/4 <= plain_str_len))
 		    {
 		    QPERR(QPF_ERR_T_BUFOVERFLOW);
 		    rval = -EINVAL;
 		    goto error;
 		    }
-		cplen = ptrdiff_cplen;
-		if (UNLIKELY(nogrow)) cplen = 0;
-		if (UNLIKELY(cpoffset+cplen+1 > SIZE_MAX/2))
+		
+		/** Compute the length that we need to copy. */
+		size_t copy_len = (UNLIKELY(no_grow)) ? 0 : plain_str_len;
+		const size_t space_needed = dest_offset + copy_len + 1;
+		if (UNLIKELY(space_needed > SIZE_MAX/2))
 		    {
 		    QPERR(QPF_ERR_T_BUFOVERFLOW);
 		    rval = -EINVAL;
 		    goto error;
 		    }
-		if (UNLIKELY(cpoffset+cplen+1 > *size) && (nogrow || !grow_fn(str, size, cpoffset, grow_arg, cpoffset+cplen+1)))
+		
+		/** Ensure that we have enough space for the copy. **/
+		if (UNLIKELY(space_needed > *dest_size) && (no_grow || !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed)))
 		    {
 		    QPERR(QPF_ERR_T_BUFOVERFLOW);
-		    cplen = (*size)-cpoffset-1;
-		    nogrow = 1;
+		    no_grow = true;
+		    
+		    /** Reduce the copy length to the maximum we're able to copy. **/
+		    copy_len = (*dest_size) - dest_offset - 1;
 		    }
-		if (cplen) memcpy((*str) + cpoffset, format, cplen);
-		cpoffset += cplen;
-		copied += ptrdiff_cplen;
+		
+		/** Copy the plain string to the destination. **/
+		if (LIKELY(copy_len > 0)) memcpy(*dest + dest_offset, format, copy_len);
+		dest_offset += copy_len;
+		copied += plain_str_len;
 		}
-	    format = endptr;
-
-	    /** Handle specifiers **/
-	    if (format[0] == '%')
+	    format += plain_str_len;
+	    
+	    /** Check if there are no more format specifiers, we're done. **/
+	    if (!spec_found) break;
+	    format++; /** Consume the % character. */
+	    
+	    /** Parse simple, 1-character format specifiers. **/
+	    switch (format[0])
 		{
-		format++;
-
-		/** Simple specifiers **/
-		if (UNLIKELY(format[0] == '%'))
+		case '%':
 		    {
-		    if (ignore)
+		    /** Consume this character. **/
+		    format++;
+		    if (ignore) continue;
+		    
+		    /** Ensure that we have enough space. **/
+		    const size_t space_needed = dest_offset + 2lu;
+		    if (no_grow || (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed)))
 			{
-			format++;
+			QPERR(QPF_ERR_T_BUFOVERFLOW);
+			no_grow = true;
 			continue;
 			}
 		    
-		    if (LIKELY(!nogrow) && (LIKELY(cpoffset+2 <= *size) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+2))))
-			(*str)[cpoffset++] = '%';
-		    else
+		    /** Add the character to the output string. **/
+		    (*dest)[dest_offset++] = '%';
+		    copied++;
+		    continue;
+		    }
+		case '&':
+		    {
+		    /** Consume this character. **/
+		    format++;
+		    if (ignore) continue;
+		    
+		    /** Ensure that we have enough space. **/
+		    const size_t space_needed = dest_offset + 2lu;
+		    if (no_grow || (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed)))
 			{
 			QPERR(QPF_ERR_T_BUFOVERFLOW);
-			nogrow = 1;
-			}
-		    copied++;
-		    format++;
-		    }
-		else if (UNLIKELY(format[0] == '&'))
-		    {
-		    if (ignore)
-			{
-			format++;
+			no_grow = true;
 			continue;
 			}
 		    
-		    if (LIKELY(!nogrow) && (LIKELY(cpoffset+2 <= *size) || (grow_fn(str, size, cpoffset, grow_arg, cpoffset+2))))
-			(*str)[cpoffset++] = '&';
-		    else
-			{
-			QPERR(QPF_ERR_T_BUFOVERFLOW);
-			nogrow = 1;
-			}
+		    /** Add the character to the output string. **/
+		    (*dest)[dest_offset++] = '&';
 		    copied++;
-		    format++;
+		    continue;
 		    }
-		else if (UNLIKELY(format[0] == ']'))
+		case '[':
 		    {
 		    format++;
-		    ignore = 0;
+		    const int val = va_arg(ap, int);
+		    if (!val) ignore = true;
+		    continue;
 		    }
-		else if (UNLIKELY(format[0] == '['))
+		case ']':
 		    {
 		    format++;
-		    intval = va_arg(ap, int);
-		    if (!intval)
+		    ignore = false;
+		    continue;
+		    }
+		}
+	    
+	    /** Source data specifier.  Build the specifier chain **/
+	    unsigned int n_specs = 0u;
+	    char specchain[QPF_MAX_SPECS];
+	    int specchain_n[QPF_MAX_SPECS];
+	    
+	    /** Only support source format specifiers for the first iteration. **/
+	    unsigned int startspec = QPF_SPEC_T_STARTSRC;
+	    unsigned int endspec = QPF_SPEC_T_ENDSRC;
+	    do  {
+		/** Check if we've reached the maximum number of specifiers in the chain. **/
+		if (UNLIKELY(n_specs == QPF_MAX_SPECS))
+		    {
+		    rval = -ENOMEM;
+		    QPERR(QPF_ERR_T_RESOURCE);
+		    goto error;
+		    }
+		
+		/** Is this a numerically-constrained spec? (e.g. %nSTR, %nLSET, etc.) **/
+		int n = -1;
+		if ('0' <= format[0] && format[0] <= '9')
+		    {
+		    n = strtoi(format, (char**)&format, 10); /* cast is needed because format is const char* */
+		    if (n < 0) n = 0;
+		    }
+		else if (format[0] == '*')
+		    {
+		    format++;
+		    n = va_arg(ap, int);
+		    if (n < 0) n = 0;
+		    }
+		const bool has_n = (n != -1);
+		
+		/** Find this spec using qpf_spec_names. **/
+		bool found = 0;
+		for (unsigned int i = startspec; i <= endspec; i++)
+		    {
+		    /** Skip specs if their numerical constraint status does not match what we parsed. **/
+		    const int spec_uses_n = (qpf_spec_names[i][0] == 'n');
+		    if (has_n != spec_uses_n) continue;
+		    
+		    /** Check that the spec name (without any inital "n" constraint marker) matches. **/
+		    const char* spec_name = qpf_spec_names[i] + ((spec_uses_n) ? 1 : 0);
+		    const int spec_len = qpf_spec_len[i] - ((spec_uses_n) ? 1 : 0);
+		    if (strncmp(format, spec_name, spec_len) == 0)
 			{
-			/*while(*format && format[0] != '%' && format[1] != ']') 
-			    format++;
-			if (*format)
-			    format += 2;*/
-			ignore = 1;
+			/** Found it. **/
+			format += spec_len;
+			specchain_n[n_specs] = n;
+			specchain[n_specs++] = i;
+			found = true;
+			break;
 			}
 		    }
-		else
+		
+		/** Did we find the format specifier? **/
+		if (UNLIKELY(!found))
 		    {
-		    /** Source data specifier.  Build the specifier chain **/
-		    n_specs = 0;
-		    startspec = QPF_SPEC_T_STARTSRC;
-		    endspec = QPF_SPEC_T_ENDSRC;
-		    while(1)	
+		    if (UNLIKELY(n_specs == 0u))
 			{
-			n = -1;
-			found = 0;
-
-			/** Is this a numerically-constrained spec? **/
-			if (*format >= '0' && *format <= '9')
-			    {
-			    n = strtoi(format, (char**)&endptr, 10); /* cast is needed because endptr is const char* */
-			    format = endptr;
-			    if (n < 0) n = 0;
-			    }
-			else if (*format == '*')
-			    {
-			    format++;
-			    n = va_arg(ap, int);
-			    if (n < 0) n = 0;
-			    }
-
-			/** Look for which spec this is **/
-			for(i=startspec; i<=endspec; i++)
-			    {
-			    if ((n == -1 && 
-				    qpf_spec_names[i][0] != 'n' &&
-				    !strncmp(format, qpf_spec_names[i], qpf_spec_len[i])) || 
-				(n >= 0 && 
-				    qpf_spec_names[i][0] == 'n' && 
-				    !strncmp(format, qpf_spec_names[i]+1, qpf_spec_len[i]-1)))
-				{
-				/** Found it. **/
-				if (n == -1) format += qpf_spec_len[i];
-				else format += (qpf_spec_len[i]-1);
-				specchain_n[n_specs] = n;
-				specchain[n_specs++] = i;
-				found = 1;
-				break;
-				}
-			    }
-			startspec = QPF_SPEC_T_STARTFILT;
-			endspec = QPF_SPEC_T_ENDFILT;
-
-			/** Did we find it? **/
-			if (UNLIKELY(!found))
-			    { 
-			    if (n_specs == 0)
-				{
-				/** need at least one spec **/
-				rval = -EINVAL;
-				QPERR(QPF_ERR_T_BADFORMAT);
-				goto error;
-				}
-			    /** invalid spec, ignore and print **/
-			    format--;
-			    break;
-			    }
-
-			/** More? **/
-			if (*format == '&')
-			    {
-			    if (UNLIKELY(n_specs == QPF_MAX_SPECS))
-				{ rval = -ENOMEM; QPERR(QPF_ERR_T_RESOURCE); goto error; }
-			    format++;
-			    }
-			else
-			    {
-			    break;
-			    }
+			/** need at least one spec **/
+			rval = -EINVAL;
+			QPERR(QPF_ERR_T_BADFORMAT);
+			goto error;
 			}
-
-		    /** Get source **/
-		    switch(specchain[0])
+		    
+		    /** Invalid spec: Skip to printing. **/
+		    format--;
+		    break;
+		    }
+		
+		/** Later items in the specifier chain must be filter specifiers. **/
+		startspec = QPF_SPEC_T_STARTFILT;
+		endspec = QPF_SPEC_T_ENDFILT;
+		}
+	    while (format[0] == '&' && format++); /* Loop as long as there are '&' chars to consume. */
+	    
+	    /** Get the data using the source spec. **/
+	    char tmp_buf[318]; /* 318 characters are needed to print DBL_MAX. */
+	    const char* strval = NULL;
+	    const char format_specifier = specchain[0];
+	    size_t copy_len = 0lu;
+	    switch (format_specifier)
+		{
+		case QPF_SPEC_T_INT:
+		    {
+		    const int int_val = va_arg(ap, int);
+		    copy_len = qpf_internal_itoa(tmp_buf, sizeof(tmp_buf), int_val);
+		    strval = tmp_buf;
+		    break;
+		    }
+		
+		case QPF_SPEC_T_STR:
+		    {
+		    strval = va_arg(ap, const char*);
+		    if (UNLIKELY(strval == NULL && !ignore))
 			{
-			case QPF_SPEC_T_INT:
-			    intval = va_arg(ap, int);
-			    cplen = qpf_internal_itoa(tmpbuf, sizeof(tmpbuf), intval);
-			    strval = tmpbuf;
-			    break;
-
-			case QPF_SPEC_T_STR:
-			    strval = va_arg(ap, const char*);
-			    if (UNLIKELY(strval == NULL && !ignore))
-				{ rval = -EINVAL; QPERR(QPF_ERR_T_NULL); goto error; }
-			    cplen = strval?strlen(strval):0;
-			    break;
-
-			case QPF_SPEC_T_POS:
-			    intval = va_arg(ap, int);
-			    if (UNLIKELY(intval < 0 && !ignore))
-				{ rval = -EINVAL; QPERR(QPF_ERR_T_NOTPOSITIVE); goto error; }
-			    cplen = qpf_internal_itoa(tmpbuf, sizeof(tmpbuf), intval);
-			    strval = tmpbuf;
-			    break;
-
-            case QPF_SPEC_T_LL:
-                llval = va_arg(ap, long long);
-                cplen = snprintf(tmpbuf, sizeof(tmpbuf), "%lld", llval);
-                strval = tmpbuf;
-                break;
-                
-			case QPF_SPEC_T_DBL:
-			    dblval = va_arg(ap, double);
-			    cplen = snprintf(tmpbuf, sizeof(tmpbuf), "%lf", dblval);
-			    strval = tmpbuf;
-			    break;
-
-			case QPF_SPEC_T_NSTR:
-			    strval = va_arg(ap, const char*);
-			    if (UNLIKELY(strval == NULL && !ignore))
-				{ rval = -EINVAL; QPERR(QPF_ERR_T_NULL); goto error; }
-			    cplen = specchain_n[0];
-			    break;
-
-			case QPF_SPEC_T_CHR:
-			    chrval = va_arg(ap, int);
-			    cplen = 1;
-			    strval = &chrval;
-			    break;
-
-			default:
+			rval = -EINVAL;
+			QPERR(QPF_ERR_T_NULL);
+			goto error;
+			}
+		    copy_len = (strval) ? strlen(strval) : 0;
+		    break;
+		    }
+		
+		case QPF_SPEC_T_POS:
+		    {
+		    const int int_val = va_arg(ap, int);
+		    if (UNLIKELY(int_val < 0 && !ignore))
+			{
+			rval = -EINVAL;
+			QPERR(QPF_ERR_T_NOTPOSITIVE);
+			goto error;
+			}
+		    copy_len = qpf_internal_itoa(tmp_buf, sizeof(tmp_buf), int_val);
+		    strval = tmp_buf;
+		    break;
+		    }
+		
+		case QPF_SPEC_T_LL:
+		    {
+		    const long long ll_val = va_arg(ap, long long);
+		    copy_len = snprintf(tmp_buf, sizeof(tmp_buf), "%lld", ll_val);
+		    strval = tmp_buf;
+		    break;
+		    }
+		
+		case QPF_SPEC_T_DBL:
+		    {
+		    const double double_val = va_arg(ap, double);
+		    copy_len = snprintf(tmp_buf, sizeof(tmp_buf), "%lf", double_val);
+		    strval = tmp_buf;
+		    break;
+		    }
+		
+		case QPF_SPEC_T_NSTR:
+		    {
+		    strval = va_arg(ap, const char*);
+		    if (UNLIKELY(strval == NULL && !ignore))
+			{
+			rval = -EINVAL;
+			QPERR(QPF_ERR_T_NULL);
+			goto error;
+			}
+		    copy_len = specchain_n[0];
+		    break;
+		    }
+		
+		case QPF_SPEC_T_CHR:
+		    {
+		    tmp_buf[0] = va_arg(ap, int);
+		    copy_len = 1;
+		    strval = &tmp_buf[0];
+		    break;
+		    }
+		
+		default:
+		    {
+		    rval = -EINVAL;
+		    QPERR(QPF_ERR_T_BADFORMAT);
+		    goto error;
+		    }
+		}
+	    
+	    /** If this specifier is ignored, we're done. Skip all filtering/writing logic. **/
+	    if (UNLIKELY(ignore)) continue;
+	    
+	    /** Check for invalid length. **/
+	    if (UNLIKELY(copy_len < 0))
+		{
+		/** This error case appears to be unreachable. **/
+		rval = -EINVAL;
+		QPERR(QPF_ERR_T_BADLENGTH);
+		goto error;
+		}
+	    
+	    /** Handle filters. **/
+	    pQPConvTable table;
+	    size_t min_room = 1;
+	    char quote = 0;
+	    for (unsigned int i = 1; i < n_specs; i++)
+		{
+		const char filter_specifier = specchain[i];
+		switch (filter_specifier)
+		    {
+		    case QPF_SPEC_T_NLEN:
+			{
+			if (UNLIKELY(copy_len > specchain_n[i]))
+			    {
+			    QPERR(QPF_ERR_T_INSOVERFLOW);
+			    copy_len = specchain_n[i];
+			    }
+			break;
+			}
+		    
+		    case QPF_SPEC_T_SYM:
+			{
+			/** TODO: Fix code the duplication below. **/
+			if (n_specs-i == 2 && specchain[i + 1] == QPF_SPEC_T_NLEN && copy_len > specchain_n[i + 1])
+			    copy_len = specchain_n[i + 1];
+			if (UNLIKELY(cxsecVerifySymbol_n(strval, copy_len) < 0))
+			    {
 			    rval = -EINVAL;
-			    QPERR(QPF_ERR_T_BADFORMAT);
+			    QPERR(QPF_ERR_T_BADSYMBOL);
 			    goto error;
-			}
-
-		    if (!ignore)
-			{
-			/** Length problem? **/
-			if (UNLIKELY(cplen < 0))
-			    { rval = -EINVAL; QPERR(QPF_ERR_T_BADLENGTH); goto error; }
-
-			/** Filters? **/
-			for (i=1;i<n_specs;i++)
-			    {
-			    switch(specchain[i])
-				{
-				case QPF_SPEC_T_NLEN:
-				    if (UNLIKELY(cplen > specchain_n[i]))
-					{
-					QPERR(QPF_ERR_T_INSOVERFLOW);
-					cplen = specchain_n[i];
-					}
-				    break;
-
-				case QPF_SPEC_T_SYM:
-				    if (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN && cplen > specchain_n[i+1])
-					cplen = specchain_n[i+1];
-				    if (UNLIKELY(cxsecVerifySymbol_n(strval, cplen) < 0))
-					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADSYMBOL); goto error; }
-				    break;
-
-				case QPF_SPEC_T_FILE:
-				    if (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN && cplen > specchain_n[i+1])
-					cplen = specchain_n[i+1];
-				    if (UNLIKELY((cplen == 1 && strval[0] == '.') || 
-					    (cplen == 2 && strval[0] == '.' && strval[1] == '.') ||
-					    memchr(strval, '/', cplen) || 
-					    memchr(strval, '\0', cplen) ||
-					    cplen == 0))
-					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADFILE); goto error; }
-				    break;
-
-				case QPF_SPEC_T_PATH:
-				    if (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN && cplen > specchain_n[i+1])
-					cplen = specchain_n[i+1];
-				    if (UNLIKELY((cplen == 2 && strval[0] == '.' && strval[1] == '.') ||
-					    (cplen > 2 && strval[0] == '.' && strval[1] == '.' && strval[2] == '/') ||
-					    memchr(strval, '\0', cplen) ||
-					    cplen == 0 ||
-					    (cplen > 2 && strval[cplen-1] == '.' && strval[cplen-2] == '.' && strval[cplen-3] == '/') ||
-					    qpf_internal_FindStr(strval, cplen, "/../", 4) >= 0))
-					{ rval = -EINVAL; QPERR(QPF_ERR_T_BADPATH); goto error; }
-				    break;
-
-				case QPF_SPEC_T_B64:
-				    n = qpf_internal_base64encode(s, strval, cplen, str, size, &cpoffset, grow_fn, grow_arg);
-				    if (UNLIKELY(n < 0))
-					{
-					rval = -EINVAL;
-					goto error;
-					}
-				    copied += n;
-				    cplen = 0;
-				    break;
-				
-				case QPF_SPEC_T_DB64:
-				    n = qpf_internal_base64decode(s, strval, cplen, str, size, &cpoffset, grow_fn, grow_arg);
-				    if (UNLIKELY(n < 0))
-					{
-					rval = -EINVAL;
-					goto error;
-					}
-				    copied += n;
-				    cplen = 0;
-				    break;
-				
-				case QPF_SPEC_T_DHEX:
-				    n = qpf_internal_hexdecode(s, strval, cplen, str, size, &cpoffset, grow_fn, grow_arg);
-				    if (UNLIKELY(n < 0))
-					{
-					rval = -EINVAL;
-					goto error;
-					}
-				    copied += n;
-				    cplen = 0;
-				    break;
-				
-				case QPF_SPEC_T_ESCQ:
-				case QPF_SPEC_T_ESCQWS:
-				case QPF_SPEC_T_JSSTR:
-				case QPF_SPEC_T_JSONSTR:
-				case QPF_SPEC_T_DSYB:
-				case QPF_SPEC_T_CSSVAL:
-				case QPF_SPEC_T_CSSURL:
-				case QPF_SPEC_T_ESCWS:
-				case QPF_SPEC_T_QUOT:
-				case QPF_SPEC_T_DQUOT:
-				case QPF_SPEC_T_HTE:
-				case QPF_SPEC_T_HTENLBR:
-				case QPF_SPEC_T_HEX:
-				case QPF_SPEC_T_URL:
-				    if (LIKELY(n_specs-i == 1 || (n_specs-i == 2 && specchain[i+1] == QPF_SPEC_T_NLEN)))
-					{
-					if (n_specs-i == 2)
-					    maxdst = specchain_n[i+1];
-					else
-					    maxdst = INT_MAX;
-					switch(specchain[i])
-					    {
-					    case QPF_SPEC_T_ESCQ:	table = &QPF.quote_matrix;
-									min_room = 1;
-									quote = 0;
-									break;
-					    case QPF_SPEC_T_ESCQWS:	table = &QPF.quote_ws_matrix;
-									min_room = 1;
-									quote = 0;
-									break;
-					    case QPF_SPEC_T_JSSTR:	table = &QPF.jsstr_matrix;
-									min_room = 1;
-									quote = 0;
-									break;
-					    case QPF_SPEC_T_JSONSTR:	table = &QPF.jsonstr_matrix;
-									min_room = 1;
-									quote = 0;
-									break;
-					    case QPF_SPEC_T_DSYB:	table = &QPF.dsyb_matrix;
-									min_room = 1;
-									quote = 0;
-									break;
-					    case QPF_SPEC_T_SSYB:	table = &QPF.ssyb_matrix;
-									min_room = 1;
-									quote = 0;
-									break;
-					    case QPF_SPEC_T_CSSVAL:	table = &QPF.cssval_matrix;
-									min_room = 1;
-									quote = 0;
-									break;
-					    case QPF_SPEC_T_CSSURL:	table = &QPF.cssurl_matrix;
-									min_room = 1;
-									quote = 0;
-									break;
-					    case QPF_SPEC_T_ESCWS:	table = &QPF.ws_matrix;
-									min_room = 1;
-									quote = 0;
-									break;
-					    case QPF_SPEC_T_QUOT:	table = &QPF.quote_matrix; 
-									min_room = 2;
-									quote = '\'';
-									break;
-					    case QPF_SPEC_T_DQUOT:	table = &QPF.quote_matrix;
-									min_room = 2;
-									quote = '"';
-									break;
-					    case QPF_SPEC_T_HTE:	table = &QPF.hte_matrix;
-									min_room = 1;
-									quote = 0;
-									break;
-					    case QPF_SPEC_T_HTENLBR:	table = &QPF.htenlbr_matrix;
-									min_room = 1;
-									quote = 0;
-									break;
-					    case QPF_SPEC_T_HEX:	table = &QPF.hex_matrix;
-									min_room = 1;
-									quote = 0;
-									break;
-					    case QPF_SPEC_T_URL:	table = &QPF.url_matrix;
-									min_room = 1;
-									quote = 0;
-									break;
-					    default:			table = NULL; 
-									quote = 0;
-									min_room = 1;
-									QPERR(QPF_ERR_T_INTERNAL);
-									break;
-					    }
-					if (quote && specchain[0] != QPF_SPEC_T_STR)
-					    {
-					    /** don't quote things other than strings **/
-					    if (UNLIKELY(cplen > maxdst))
-						{
-						QPERR(QPF_ERR_T_INSOVERFLOW);
-						cplen = maxdst;
-						}
-					    break;
-					    }
-					if (quote)
-					    {
-					    if (UNLIKELY(maxdst < 2))
-						{
-						QPERR(QPF_ERR_T_BADFORMAT);
-						rval = -EINVAL;
-						goto error;
-						}
-					    maxdst -= 2;
-					    }
-					if (quote)
-					    {
-					    if (LIKELY(!nogrow && (cpoffset + 2 <= *size || grow_fn(str, size, cpoffset, grow_arg, cpoffset + 2))))
-						{
-						(*str)[cpoffset++] = quote;
-						}
-					    else
-						{
-						QPERR(QPF_ERR_T_BUFOVERFLOW);
-						nogrow = 1;
-						}
-					    copied++;
-					    }
-					oldcpoffset = cpoffset;
-					n = qpf_internal_Translate(s, strval, cplen, str, &cpoffset, size, maxdst, table, nogrow?NULL:grow_fn, grow_arg, min_room);
-					if (UNLIKELY(n < 0))
-					    {
-					    QPERR(QPF_ERR_T_INTERNAL);
-					    rval = n;
-					    goto error;
-					    }
-					if (n != cpoffset - oldcpoffset) nogrow = 1;
-					if (quote)
-					    {
-					    if (LIKELY(cpoffset + 2 <= *size || grow_fn(str, size, cpoffset, grow_arg, cpoffset + 2)))
-						{
-						(*str)[cpoffset++] = quote;
-						}
-					    else
-						{
-						QPERR(QPF_ERR_T_BUFOVERFLOW);
-						nogrow = 1;
-						}
-					    copied++;
-					    }
-					copied += n;
-					cplen = 0;
-					}
-				    else
-					{
-					QPERR(QPF_ERR_T_NOTIMPL);
-					rval = -ENOSYS;
-					goto error;
-					}
-				    break;
-
-				default:
-				    /** Unimplemented filter **/
-				    QPERR(QPF_ERR_T_NOTIMPL);
-				    rval = -ENOSYS;
-				    goto error;
-				}
 			    }
-
-			/** Copy it. **/
-			if (LIKELY(cplen != 0))
+			break;
+			}
+		    
+		    case QPF_SPEC_T_FILE:
+			{
+			if (n_specs-i == 2 && specchain[i + 1] == QPF_SPEC_T_NLEN && copy_len > specchain_n[i + 1])
+			    copy_len = specchain_n[i + 1];
+			if (UNLIKELY(
+				copy_len == 0 ||
+				(copy_len == 1 && strval[0] == '.') || 
+				(copy_len == 2 && strval[0] == '.' && strval[1] == '.') ||
+				memchr(strval, '/', copy_len) != NULL ||
+				memchr(strval, '\0', copy_len) != NULL
+			    ))
 			    {
-			    copied += cplen;
-			    if (UNLIKELY(cpoffset+cplen+1 > SIZE_MAX/2))
+			    rval = -EINVAL;
+			    QPERR(QPF_ERR_T_BADFILE);
+			    goto error;
+			    }
+			break;
+			}
+		    
+		    case QPF_SPEC_T_PATH:
+			{
+			if (n_specs-i == 2 && specchain[i + 1] == QPF_SPEC_T_NLEN && copy_len > specchain_n[i + 1])
+			    copy_len = specchain_n[i + 1];
+			if (UNLIKELY(
+				copy_len == 0 ||
+				(copy_len == 2 && strval[0] == '.' && strval[1] == '.') ||
+				(copy_len > 2 && strval[0] == '.' && strval[1] == '.' && strval[2] == '/') ||
+				(copy_len > 2 && strval[copy_len-1] == '.' && strval[copy_len-2] == '.' && strval[copy_len-3] == '/') ||
+				qpf_internal_FindStr(strval, copy_len, "/../", 4) >= 0 ||
+				memchr(strval, '\0', copy_len)
+			    ))
+			    {
+			    rval = -EINVAL;
+			    QPERR(QPF_ERR_T_BADPATH);
+			    goto error;
+			    }
+			break;
+			}
+		    
+		    case QPF_SPEC_T_B64:
+			{
+			const int num_bytes = qpf_internal_base64encode(s, strval, copy_len, dest, dest_size, &dest_offset, grow_fn, grow_arg);
+			if (UNLIKELY(num_bytes < 0))
+			    {
+			    rval = -EINVAL;
+			    goto error;
+			    }
+			copied += num_bytes;
+			copy_len = 0;
+			break;
+			}
+		    
+		    case QPF_SPEC_T_DB64:
+			{
+			const int num_bytes = qpf_internal_base64decode(s, strval, copy_len, dest, dest_size, &dest_offset, grow_fn, grow_arg);
+			if (UNLIKELY(num_bytes < 0))
+			    {
+			    rval = -EINVAL;
+			    goto error;
+			    }
+			copied += num_bytes;
+			copy_len = 0;
+			break;
+			}
+		    
+		    case QPF_SPEC_T_DHEX:
+			{
+			const int num_bytes = qpf_internal_hexdecode(s, strval, copy_len, dest, dest_size, &dest_offset, grow_fn, grow_arg);
+			if (UNLIKELY(num_bytes < 0))
+			    {
+			    rval = -EINVAL;
+			    goto error;
+			    }
+			copied += num_bytes;
+			copy_len = 0;
+			break;
+			}
+		    
+		    case QPF_SPEC_T_QUOT:    table = &QPF.quote_matrix;    min_room = 2; quote = '\''; goto use_table;
+		    case QPF_SPEC_T_DQUOT:   table = &QPF.quote_matrix;    min_room = 2; quote = '"';  goto use_table;
+		    case QPF_SPEC_T_ESCQ:    table = &QPF.quote_matrix;    goto use_table;
+		    case QPF_SPEC_T_ESCQWS:  table = &QPF.quote_ws_matrix; goto use_table;
+		    case QPF_SPEC_T_JSSTR:   table = &QPF.jsstr_matrix;    goto use_table;
+		    case QPF_SPEC_T_JSONSTR: table = &QPF.jsonstr_matrix;  goto use_table;
+		    case QPF_SPEC_T_DSYB:    table = &QPF.dsyb_matrix;     goto use_table;
+		    case QPF_SPEC_T_SSYB:    table = &QPF.ssyb_matrix;     goto use_table;
+		    case QPF_SPEC_T_CSSVAL:  table = &QPF.cssval_matrix;   goto use_table;
+		    case QPF_SPEC_T_CSSURL:  table = &QPF.cssurl_matrix;   goto use_table;
+		    case QPF_SPEC_T_ESCWS:   table = &QPF.ws_matrix;       goto use_table;
+		    case QPF_SPEC_T_HTE:     table = &QPF.hte_matrix;      goto use_table;
+		    case QPF_SPEC_T_HTENLBR: table = &QPF.htenlbr_matrix;  goto use_table;
+		    case QPF_SPEC_T_HEX:     table = &QPF.hex_matrix;      goto use_table;
+		    case QPF_SPEC_T_URL:     table = &QPF.url_matrix;      goto use_table;
+    use_table:		{
+			/** Skip this spec if the case doesn't meet any of the requirements to use it. **/
+			const int is_final_spec = (n_specs - i == 1);
+			const int is_only_followed_by_nlen = (n_specs - i == 2 || specchain[i + 1] == QPF_SPEC_T_NLEN);
+			if (!is_final_spec && !is_only_followed_by_nlen)
+			    {
+			    QPERR(QPF_ERR_T_NOTIMPL);
+			    rval = -ENOSYS;
+			    goto error;
+			    }
+			
+			/** Determine the max amount of characters that we can write. **/
+			size_t maxdst = (is_only_followed_by_nlen) ? specchain_n[i + 1] : INT_MAX;
+			
+			/** Skip quoting non-strings. **/
+			if (quote && specchain[0] != QPF_SPEC_T_STR)
+			    {
+			    if (UNLIKELY(copy_len > maxdst))
 				{
-				QPERR(QPF_ERR_T_BUFOVERFLOW);
+				QPERR(QPF_ERR_T_INSOVERFLOW);
+				copy_len = maxdst;
+				}
+			    break;
+			    }
+			
+			/** Add opening quote (if requested). **/
+			if (quote)
+			    {
+			    if (UNLIKELY(maxdst < 2))
+				{
+				QPERR(QPF_ERR_T_BADFORMAT);
 				rval = -EINVAL;
 				goto error;
 				}
-			    if (UNLIKELY(nogrow)) cplen = 0;
-			    if (UNLIKELY(cpoffset+cplen+1 > *size) && (!grow_fn(str, size, cpoffset, grow_arg, cpoffset+cplen+1)))
+			    maxdst -= 2;
+			    
+			    const size_t space_needed = dest_offset + 2lu;
+			    if (UNLIKELY(no_grow || (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed))))
 				{
 				QPERR(QPF_ERR_T_BUFOVERFLOW);
-				cplen = (*size) - cpoffset - 1;
-				nogrow = 1;
+				no_grow = true;
 				}
-			    memcpy((*str)+cpoffset, strval, cplen);
+			    else (*dest)[dest_offset++] = quote;
+			    copied++;
 			    }
-
-			/** Update string counters **/
-			cpoffset += cplen;
+			
+			/** Translate the string content using the table selected above. **/
+			const size_t old_cpoffset = dest_offset;
+			const qpf_grow_fn_t gf = (no_grow) ? NULL : grow_fn;
+			const int n_chars = qpf_internal_Translate(s, strval, copy_len, dest, &dest_offset, dest_size, maxdst, table, gf, grow_arg, min_room);
+			if (UNLIKELY(n_chars < 0))
+			    {
+			    /** Probably unreachable. **/
+			    QPERR(QPF_ERR_T_INTERNAL);
+			    rval = n_chars;
+			    goto error;
+			    }
+			if (UNLIKELY(n_chars != dest_offset - old_cpoffset)) no_grow = true;
+			
+			/** Add closing quote (if requested). **/
+			if (quote)
+			    {
+			    const size_t space_needed = dest_offset + 2lu;
+			    if (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed))
+				{
+				QPERR(QPF_ERR_T_BUFOVERFLOW);
+				no_grow = true;
+				}
+			    else (*dest)[dest_offset++] = quote;
+			    copied++;
+			    }
+			copied += n_chars;
+			copy_len = 0;
+			
+			break;
 			}
+		    
+		    default:
+			/** Unimplemented filter **/
+			QPERR(QPF_ERR_T_NOTIMPL);
+			rval = -ENOSYS;
+			goto error;
 		    }
 		}
+	    
+	    /** Copy the data into the buffer. **/
+	    if (UNLIKELY(copy_len == 0)) continue;
+	    copied += copy_len;
+	    const size_t space_needed = dest_offset + copy_len + 1lu;
+	    if (UNLIKELY(space_needed > SIZE_MAX/2))
+		{
+		QPERR(QPF_ERR_T_BUFOVERFLOW);
+		rval = -EINVAL;
+		goto error;
+		}
+	    if (UNLIKELY(no_grow)) copy_len = 0;
+	    if (UNLIKELY(space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed)))
+		{
+		QPERR(QPF_ERR_T_BUFOVERFLOW);
+		copy_len = *dest_size - dest_offset - 1;
+		no_grow = true;
+		}
+	    memcpy(*dest + dest_offset, strval, copy_len);
+	    
+	    /** Update string counters **/
+	    dest_offset += copy_len;
 	    }
-	    while (specptr);
-
+	
+	/** Success. **/
 	rval = copied;
-
+	
     error:
 	/** Null terminate.  Only case where this does not happen is
-	 ** if size == 0 on the initial call.  Terminator is not counted
+	 ** if dest_size == 0 on the initial call.  Terminator is not counted
 	 ** in the return value.
 	 **/
-	if ((*size) > cpoffset) (*str)[cpoffset] = '\0';
+	if ((*dest_size) > dest_offset) (*dest)[dest_offset] = '\0';
+    
     return rval;
     }
 
