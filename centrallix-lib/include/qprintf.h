@@ -1,14 +1,6 @@
 #ifndef _QPRINTF_H
 #define _QPRINTF_H
 
-#ifdef CXLIB_INTERNAL
-#include "cxsec.h"
-#include "magic.h"
-#else
-#include "cxlib/cxsec.h"
-#include "cxlib/magic.h"
-#endif
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
@@ -29,8 +21,15 @@
 /*		printf() library calls.					*/
 /************************************************************************/
 
-
 #include <stdarg.h>
+
+#ifdef CXLIB_INTERNAL
+#include "cxsec.h"
+#include "magic.h"
+#else
+#include "cxlib/cxsec.h"
+#include "cxlib/magic.h"
+#endif
 
 #define QPF_ERR_T_NO_ERRORS	(0)	/* a default error buffer value with no errors */
 #define QPF_ERR_T_NOTIMPL	(1<<0)	/* unimplemented feature */
