@@ -1,23 +1,3 @@
-#ifdef HAVE_CONFIG_H
-#include "cxlibconfig-internal.h"
-#endif
-#include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <errno.h>
-#include <limits.h>
-#include <stdint.h>
-
-#include "qprintf.h"
-#include "mtask.h"
-#include "newmalloc.h"
-#include "cxsec.h"
-#include "util.h"
-#include "expect.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
@@ -36,8 +16,30 @@
 /*		strings.  These functions do not support some of the	*/
 /*		more advanced (and dangerous) features of the normal	*/
 /*		printf() library calls.					*/
-/* See centrallix-sysdoc/QPrintf.md for more information. */
+/* 		See centrallix-sysdoc/QPrintf.md for more information.	*/
 /************************************************************************/
+
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#ifdef HAVE_CONFIG_H
+#include "cxlibconfig-internal.h"
+#endif
+
+#include "cxsec.h"
+#include "expect.h"
+#include "mtask.h"
+#include "newmalloc.h"
+#include "qprintf.h"
+#include "util.h"
 
 
 /*** maximum # of externally-defined specifiers ***/
