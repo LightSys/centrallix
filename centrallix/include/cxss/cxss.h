@@ -42,10 +42,22 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #define CXSS_ENTROPY_SIZE	1280
-#define CXSS_DEBUG_CONTEXTSTACK	1
 #define CXSS_IDENTIFIER_LENGTH	64
 #define CXSS_CIPHER_STRENGTH	(256 / 8)
+
+#ifdef USING_OPTIMIZATION
+/*** Context stack debugging can cause seg-faults if the compiler applies
+ *** certain optimizations.
+ ***/
+#define CXSS_DEBUG_CONTEXTSTACK	0
+#else
+#define CXSS_DEBUG_CONTEXTSTACK 1
+#endif
 
 #include "cxss/policy.h"
 
@@ -170,4 +182,3 @@ int cxssAuthorizeSpec(char* objectspec, int access_type, int log_mode);
 int cxssAuthorize(char* domain, char* type, char* path, char* attr, int access_type, int log_mode);
 
 #endif /* not defined _CXSS_H */
-
