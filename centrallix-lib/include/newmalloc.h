@@ -32,7 +32,7 @@ typedef struct _ov
     int		Magic;
     struct _ov 	*Next;
     }
-    Overlay,*pOverlay;
+    Overlay, *pOverlay;
 
 #ifdef NMMALLOC_DEBUG
 #define	BLK_LEAK_CHECK	1
@@ -44,18 +44,18 @@ typedef struct _ov
 #define SIZED_BLK_COUNTING	1
 #endif
 
-/** nmMalloc block caching causes Valgrind to lose track of what call
- ** stack actually allocated the block to begin with.  So if we're using
- ** valgrind, turn off block caching altogether, and make the nmSysXyz() calls
- ** just pass-throughs.
- **/
+/*** nmMalloc() block caching reuses memory blocks, causing Valgrind to loose
+ *** track of where the developer actually allocated them.  Thus, we disable
+ *** it if Valgrind is in use.  Also, we disable the nmSysXyz() calls, causing
+ *** them to be replaced with pass-through wrappers.
+ ***/
 #ifdef USING_VALGRIND
 #define NO_BLK_CACHE	1
 #undef NM_USE_SYSMALLOC
 #endif
 
 #define OVERLAY(x)	((pOverlay)(x))
-#define MAX_SIZE	(8192)
+#define MAX_SIZE	(8192lu)
 #define MIN_SIZE	(sizeof(Overlay))
 
 #ifdef BLK_LEAK_CHECK
@@ -69,17 +69,20 @@ void nmInitialize();
 void nmSetErrFunction(int (*error_fn)());
 void nmClear();
 void nmCheckAll(); // checks for buffer overflows
-void* nmMalloc(int size);
-void nmFree(void* ptr,int size);
+void* nmMalloc(size_t size);
+void nmFree(void* ptr, size_t size);
 void nmStats();
-void nmRegister(int size,char* name);
+void nmRegister(size_t size, char* name);
+void nmPrintNames(size_t size);
 void nmDebug();
 void nmDeltas();
-void* nmSysMalloc(int size);
+void* nmSysMalloc(size_t size);
 void nmSysFree(void* ptr);
-void* nmSysRealloc(void* ptr, int newsize);
-char* nmSysStrdup(const char* ptr);
+void* nmSysRealloc(void* ptr, size_t new_size);
+char* nmSysStrdup(const char* str);
+size_t nmSysGetSize(void* ptr);
 
+/** Tagging system (not implemented). **/
 void nmEnableTagging();
 void nmRegisterTagID(int tag_id, char* name);
 void nmSetTag(void* ptr, int tag_id, void* tag);
