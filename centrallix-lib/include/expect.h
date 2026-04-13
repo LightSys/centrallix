@@ -41,8 +41,8 @@
  /*** Fallback: Define pass through functions to support compilers that don't
   *** have this feature.
   ***/
- #define LIKELY(x)   (x)
- #define UNLIKELY(x) (x)
+ #define LIKELY(x)   !!(x)
+ #define UNLIKELY(x) !!(x)
 #endif
 
 #endif
