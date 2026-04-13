@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>Simple Showcase — Modern HTML Example</title>
+	<meta name="description"
+		content="A compact example HTML page demonstrating semantic structure, CSS, and a tiny script." />
+	<style>
+		:root {
+			--bg: #0f1724;
+			--card: #0b1220;
+			--muted: #9aa4b2;
+			--accent: #61dafb;
+			--glass: rgba(255, 255, 255, 0.03);
+			--radius: 12px;
+			--max-width: 880px;
+		}
+
+		html,
+		body {
+			height: 100%;
+			margin: 0;
+			font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+				Roboto, "Helvetica Neue", Arial;
+			background: linear-gradient(180deg, var(--bg), #071021 60%);
+			color: #e6eef6;
+			-webkit-font-smoothing: antialiased;
+			-moz-osx-font-smoothing: grayscale;
+		}
+
+		.wrap {
+			max-width: var(--max-width);
+			margin: 36px auto;
+			padding: 28px;
+		}
+
+		header.site-header {
+			display: flex;
+			gap: 16px;
+			align-items: center;
+			margin-bottom: 18px;
+		}
+
+		.logo {
+			width: 56px;
+			height: 56px;
+			background: linear-gradient(135deg, var(--accent), #7ee7a6);
+			border-radius: 12px;
+			display: grid;
+			place-items: center;
+			color: #04202a;
+			font-weight: 700;
+			font-size: 18px;
+			box-shadow: 0 6px 18px rgba(2, 8, 18, 0.6);
+		}
+
+		h1 {
+			font-size: 20px;
+			margin: 0;
+			line-height: 1.1;
+		}
+
+		p.lead {
+			margin: 6px 0 0;
+			color: var(--muted);
+			font-size: 13px;
+		}
+
+		nav.top-nav {
+			display: flex;
+			gap: 10px;
+			margin-left: auto;
+		}
+
+		nav a {
+			color: var(--muted);
+			text-decoration: none;
+			padding: 8px 10px;
+			border-radius: 8px;
+			font-size: 13px;
+		}
+
+		nav a:hover,
+		nav a:focus {
+			background: var(--glass);
+			color: var(--accent);
+			outline: none;
+		}
+
+		main {
+			display: grid;
+			grid-template-columns: 1fr 300px;
+			gap: 18px;
+			margin-top: 18px;
+		}
+
+		article.card,
+		aside.card {
+			background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.04));
+			border-radius: var(--radius);
+			padding: 16px;
+			box-shadow: 0 8px 30px rgba(4, 10, 20, 0.5);
+		}
+
+		article.card h2 {
+			margin-top: 0;
+			font-size: 16px;
+		}
+
+		.grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+			gap: 12px;
+			margin-top: 12px;
+		}
+
+		.tile {
+			background: rgba(255, 255, 255, 0.02);
+			padding: 10px;
+			border-radius: 10px;
+			font-size: 13px;
+			color: #d7e7f2;
+		}
+
+		footer.site-footer {
+			margin-top: 18px;
+			text-align: center;
+			color: var(--muted);
+			font-size: 12px;
+		}
+
+		.cta {
+			display: inline-flex;
+			gap: 8px;
+			align-items: center;
+			background: linear-gradient(90deg, var(--accent), #7ee7a6);
+			color: #04202a;
+			padding: 8px 12px;
+			border-radius: 10px;
+			font-weight: 600;
+			text-decoration: none;
+		}
+
+		@media (max-width: 840px) {
+			main {
+				grid-template-columns: 1fr;
+			}
+
+			nav.top-nav {
+				display: none;
+			}
+
+			.wrap {
+				padding: 18px;
+				margin: 18px;
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div class="wrap" role="document">
+		<header class="site-header" role="banner">
+			<div class="logo" aria-hidden="true">Ex</div>
+			<div>
+				<h1>Example Showcase</h1>
+				<p class="lead">A compact, standards-friendly HTML document with simple styling.</p>
+			</div>
+
+			<nav class="top-nav" role="navigation" aria-label="Main">
+				<a href="#features">Features</a>
+				<a href="#samples">Samples</a>
+				<a href="#about">About</a>
+			</nav>
+		</header>
+
+		<main role="main">
+			<article class="card" aria-labelledby="features">
+				<h2 id="features">Features</h2>
+				<p class="lead" style="margin-bottom:10px">
+					Semantic layout, responsive CSS, accessible markup, and minimal JS.
+				</p>
+
+				<section>
+					<div class="grid" id="samples">
+						<div class="tile">
+							<strong>Semantic HTML</strong>
+							<div style="color:var(--muted);font-size:12px">header, main,
+								article, aside, footer</div>
+						</div>
+						<div class="tile">
+							<strong>Responsive</strong>
+							<div style="color:var(--muted);font-size:12px">Grid and media
+								queries</div>
+						</div>
+						<div class="tile">
+							<strong>Accessible</strong>
+							<div style="color:var(--muted);font-size:12px">ARIA roles, focus
+								states</div>
+						</div>
+						<div class="tile">
+							<strong>Lightweight</strong>
+							<div style="color:var(--muted);font-size:12px">No frameworks,
+								small CSS</div>
+						</div>
+					</div>
+				</section>
+
+				<section style="margin-top:14px">
+					<h3 style="margin:0 0 8px 0">Interactive example</h3>
+					<p style="margin:0 0 12px 0;color:var(--muted);font-size:13px">
+						Click the button to toggle the sample panel in the sidebar.
+					</p>
+					<button id="toggleBtn" class="cta" type="button" aria-pressed="false">
+						Toggle Panel
+					</button>
+				</section>
+			</article>
+
+			<aside class="card" id="panel" aria-labelledby="about" role="complementary">
+				<h2 id="about">Quick Info</h2>
+				<p style="color:var(--muted);font-size:13px;margin-top:6px">
+					This sidebar can be shown or hidden by the button. It demonstrates a
+					small interactive behavior without external libraries.
+				</p>
+
+				<dl style="margin-top:12px;font-size:13px">
+					<dt style="color:var(--muted)">Author</dt>
+					<dd>Example Author</dd>
+					<dt style="color:var(--muted);margin-top:8px">License</dt>
+					<dd>CC0 / Public Domain</dd>
+				</dl>
+
+				<div style="margin-top:14px">
+					<a class="cta" href="#features">Learn More</a>
+				</div>
+			</aside>
+		</main>
+
+		<footer class="site-footer" role="contentinfo">
+			<div>Made with a focus on clarity and standards.</div>
+			<div style="margin-top:8px;color:var(--muted)">© Example Project</div>
+		</footer>
+	</div>
+
+	<script>
+		// Minimal script to toggle the sidebar visibility and update ARIA state.
+		(function () {
+			var btn = document.getElementById("toggleBtn");
+			var panel = document.getElementById("panel");
+			btn.addEventListener("click", function () {
+				var hidden = panel.getAttribute("data-hidden") === "true";
+				if (hidden) {
+					panel.style.display = "";
+					panel.setAttribute("data-hidden", "false");
+					btn.setAttribute("aria-pressed", "false");
+				} else {
+					panel.style.display = "none";
+					panel.setAttribute("data-hidden", "true");
+					btn.setAttribute("aria-pressed", "true");
+				}
+			});
+		})();
+	</script>
+</body>
+
+</html>
