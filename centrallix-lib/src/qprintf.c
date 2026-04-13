@@ -219,6 +219,7 @@ qpf_internal_count_zeros(int n)
     {
     int shift = 0;
     
+	if (UNLIKELY(n == 0)) return 0;
 	while ((n & 1) == 0) 
 	    {
 	    n >>= 1;
@@ -601,6 +602,7 @@ int
 qpfClearErrors(pQPSession s)
     {
     s->Errors = 0;
+    memset(&s->ErrorLines, 0, sizeof(s->ErrorLines));
     return 0;
     }
 
@@ -1125,7 +1127,7 @@ qpfPrintf_va_internal(
 	QPSession null_session;
 	if (s == NULL)
 	    {
-	    null_session.Errors = 0;
+	    memset(&null_session, 0, sizeof(QPSession));
 	    s = &null_session;
 	    }
 	
@@ -1549,7 +1551,7 @@ qpfPrintf_va_internal(
     use_table:		{
 			/** Skip this spec if the case doesn't meet any of the requirements to use it. **/
 			const int is_final_spec = (n_specs - i == 1);
-			const int is_only_followed_by_nlen = (n_specs - i == 2 || specchain[i + 1] == QPF_SPEC_T_NLEN);
+			const int is_only_followed_by_nlen = (n_specs - i == 2 && specchain[i + 1] == QPF_SPEC_T_NLEN);
 			if (!is_final_spec && !is_only_followed_by_nlen)
 			    {
 			    QPERR(QPF_ERR_T_NOTIMPL);
@@ -1593,7 +1595,6 @@ qpfPrintf_va_internal(
 			    }
 			
 			/** Translate the string content using the table selected above. **/
-			const size_t old_cpoffset = dest_offset;
 			const qpf_grow_fn_t gf = (no_grow) ? NULL : grow_fn;
 			const int n_chars = qpf_internal_Translate(s, strval, copy_len, dest, &dest_offset, dest_size, maxdst, table, gf, grow_arg, min_room);
 			if (UNLIKELY(n_chars < 0))
@@ -1603,18 +1604,21 @@ qpfPrintf_va_internal(
 			    rval = n_chars;
 			    goto error;
 			    }
-			if (UNLIKELY(n_chars != dest_offset - old_cpoffset)) no_grow = true;
+			if (UNLIKELY(s->Errors & QPF_ERR_T_BUFOVERFLOW)) no_grow = true;
 			
 			/** Add closing quote (if requested). **/
 			if (quote)
 			    {
 			    const size_t space_needed = dest_offset + 2lu;
-			    if (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed))
+			    if (UNLIKELY(no_grow || (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed))))
 				{
 				QPERR(QPF_ERR_T_BUFOVERFLOW);
 				no_grow = true;
 				}
-			    else (*dest)[dest_offset++] = quote;
+			
+			    /** Write the closing quote, even if a buffer overflow occurred. **/
+			    /** We passed min_room = 2, so there will be enough space for it. **/
+			    (*dest)[dest_offset++] = quote;
 			    copied++;
 			    }
 			copied += n_chars;
