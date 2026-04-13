@@ -27,9 +27,39 @@
 
 
 #ifdef 	DBMAGIC
+#include <stdlib.h>
 
-#define ASSERTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic == (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X != %X for %8.8lX\n",(x)?(((pMagicHdr)(x))->Magic):(0xEE1EE100),(y),(long)(x)),(*((int*)(8)) = *((int*)(0)))))
-#define ASSERTNOTMAGIC(x,y) ((!(x) || (((pMagicHdr)(x))->Magic != (y)))?0:(printf("LS-PANIC: Magic number assertion failed, unexpected %X\n",(y)),(*((int*)(8)) = *((int*)(0)))))
+#define ASSERTMAGIC(data, expect) \
+    ({ \
+    pMagicHdr _data = (pMagicHdr)(data); \
+    Magic_t _expect = (expect); \
+    Magic_t _actual = (_data == NULL) ? 0xEE1EE100 : _data->Magic; \
+    if (_data != NULL && _actual != _expect) \
+	{ \
+	printf( \
+	    "%s:%d: Magic assertion failed, unexpected %u != %d for %8.8lX.\n", \
+	    __FILE__, __LINE__, _actual, _expect, (long)_data \
+	); \
+	abort(); \
+	} \
+    0; \
+    })
+
+#define ASSERTNOTMAGIC(data, expect) \
+    ({ \
+    pMagicHdr _data = (pMagicHdr)(data); \
+    Magic_t _expect = (expect); \
+    Magic_t _actual = (_data == NULL) ? 0xEE1EE100 : _data->Magic; \
+    if (_data != NULL && _actual == _expect) \
+	{ \
+	printf( \
+	    "%s:%d: Magic assertion failed, unexpected %d.\n", \
+	    __FILE__, __LINE__, _expect \
+	); \
+	abort(); \
+	} \
+    0; \
+    })
 
 #else	/* defined DBMAGIC */
 
@@ -38,9 +68,9 @@
 
 #endif	/* defined DBMAGIC */
 
-#define ISMAGIC(x,y) (((pMagicHdr)(x))->Magic == (y))
-#define ISNTMAGIC(x,y) (((pMagicHdr)(x))->Magic != (y))
-#define SETMAGIC(x,y) (((pMagicHdr)(x))->Magic = (y))
+#define ISMAGIC(data, expect)   (((pMagicHdr)(data))->Magic == (expect))
+#define ISNTMAGIC(data, expect) (((pMagicHdr)(data))->Magic != (expect))
+#define SETMAGIC(data, expect)  (((pMagicHdr)(data))->Magic = (expect))
 
 typedef int Magic_t;
 
@@ -80,5 +110,13 @@ typedef struct
 
 #define MGK_SMREGION	0x1200345c	/* smmalloc.h::SmRegion */
 #define MGK_SMBLOCK	0x1200349a	/* smmalloc_private.h::SmBlock */
+
+#define	MGK_CL_SOURCE_DATA	0x12340c19	/* objdrv_cluster.c::SourceData */
+#define	MGK_CL_CLUSTER		0x12340c28	/* objdrv_cluster.c::Cluster */
+#define	MGK_CL_CLUSTER_DATA	0x12340c37	/* objdrv_cluster.c::ClusterData */
+#define	MGK_CL_SEARCH_DATA	0x12340c46	/* objdrv_cluster.c::SearchData */
+#define	MGK_CL_NODE_DATA	0x12340c55	/* objdrv_cluster.c::NodeData */
+#define	MGK_CL_DRIVER_DATA	0x12340c64	/* objdrv_cluster.c::DriverData */
+#define	MGK_CL_QUERY_DATA	0x12340c73	/* objdrv_cluster.c::QueryData */
 
 #endif /* not defined _MAGIC_H */

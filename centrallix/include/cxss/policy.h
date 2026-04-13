@@ -2,6 +2,7 @@
 #define _CXSS_POLICY_H
 
 #include "cxss/cxss.h"
+#include "obj.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -89,4 +90,3 @@ typedef struct _CXSSPOL
     CxssPolicy, *pCxssPolicy;
 
 #endif /* defined _CXSS_POLICY_H */
-

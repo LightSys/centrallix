@@ -1,27 +1,3 @@
-#define _GNU_SOURCE
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <time.h>
-#include <math.h>
-#include <stdlib.h>
-#include <errno.h>
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtlexer.h"
-#include "expression.h"
-#include "cxlib/mtsession.h"
-#include "cxss/cxss.h"
-#include <openssl/sha.h>
-#include <openssl/md5.h>
-#include <openssl/evp.h>
-#include <ctype.h>
-#include <argon2.h>
-
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -64,6 +40,514 @@
 /*		Careful when adding new functions!  See the note about	*/
 /*		that issue in exp_evaluate.c				*/
 /************************************************************************/
+
+#define _GNU_SOURCE
+#include <argon2.h>
+#include <ctype.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <float.h>
+#include <limits.h>
+#include <math.h>
+#include <openssl/evp.h>
+#include <openssl/md5.h>
+#include <openssl/sha.h>
+#include <pthread.h>
+#include <stdarg.h>
+#include <stdatomic.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+
+#include "cxlib/clusters.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtlexer.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/newmalloc.h"
+#include "cxlib/util.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxss/cxss.h"
+#include "double_metaphone.h"
+#include "expression.h"
+#include "obj.h"
+
+
+/*** Specifies expectations about an argument.
+ *** 
+ *** @param Datatypes An array of datatypes (terminated with a -1). Set to NULL
+ *** 	to accept any datatype as valid for this argument.
+ *** @param Flags Flags to require other properties about an argument. If the
+ *** 	flag a required behavior for specific types, the requirement will be
+ *** 	skipped for other types.
+ *** 
+ *** Valid Flags:
+ *** 	- `EXP_ARG_OPTIONAL`: The arg is optional. It is not valid a required
+ *** 	   argument after an optional one.
+ *** 	- `EXP_ARG_NOT_NULL`: Expect the arg to not be null.
+ *** 	- `EXP_ARG_FORCE_TYPE`: Run type check on null args (not recommended).
+ *** 	- `EXP_ARG_NON_EMPTY`: Expect string to be non-empty. Expect a
+ *** 	   stringvec or intvec to have elements (does not check them).
+ *** 	- `EXP_ARG_POSITIVE`: Expect a positive or zero value for int, double,
+ *** 	   money, or datetime. (Includes NON_NAN: NAN is not positive).
+ *** 	- `EXP_ARG_NEGATIVE`: Expect a negative or zero value for int, double,
+ *** 	   money, or datetime. (Includes NON_NAN: NAN is not negative).
+ *** 	- `EXP_ARG_NON_NAN`: Expect a double to be a number, not NAN.
+ *** 
+ *** @attention - Checks like `EXP_ARG_NON_EMPTY`, `EXP_ARG_NON_NAN`, etc. also
+ *** 	succeed for `NULL` values. To avoid this, specify `EXP_ARG_NOT_NULL`.
+ ***/
+typedef struct
+    {
+    int* Datatypes;
+    int Flags;
+    }
+    ArgExpect, *pArgExpect;
+
+#define EXP_ARG_END        (ArgExpect){NULL, -1}
+#define EXP_ARG_NO_FLAGS   (0)
+#define EXP_ARG_OPTIONAL   (1 << 0)
+#define EXP_ARG_NOT_NULL   (1 << 1)
+#define EXP_ARG_FORCE_TYPE (1 << 2)
+#define EXP_ARG_NON_EMPTY  (1 << 3)
+#define EXP_ARG_NEGATIVE   (1 << 4)
+#define EXP_ARG_POSITIVE   (1 << 5)
+#define EXP_ARG_NON_NAN    (1 << 6)
+
+/*** An internal function used by the schema verifier (below) to verify each
+ *** argument of the provided schema.
+ *** 
+ *** @param fn_name The name of the expression function to be verified.
+ *** @param arg The argument to be verified.
+ *** @param arg_expect The expectation struct which specifies the requirements
+ *** 	for this argument.
+ *** @returns 0 if the expectations are successfully met,
+ ***         -1 if an expectation is violated (and mssError() is called).
+ ***/
+static int
+exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_expect)
+    {
+	/** The expectation struct cannot be NULL. **/
+	if (arg_expect == NULL)
+	    {
+	    mssErrorf(1, "EXP",
+		"%s(...): Expectation struct cannot be NULL",
+		fn_name
+	    );
+	    return -1;
+	    }
+	
+	/** Extract values. **/
+	ASSERTMAGIC(arg, MGK_EXPRESSION);
+	int actual_datatype = arg->DataType;
+	
+	/** Check for a provided NULL value. **/
+	if (arg->Flags & EXPR_F_NULL)
+	    {
+	    if (arg_expect->Flags & EXP_ARG_NOT_NULL)
+		{
+		mssErrorf(1, "EXP",
+		    "%s(...): Expects a non-null value, but got NULL : %s (%d).",
+		    fn_name, objTypeToStr(actual_datatype), actual_datatype
+		);
+		return -1;
+		}
+	    
+	    /** Skip type checks for NULL values (unless they are forced). **/
+	    if (!(arg_expect->Flags & EXP_ARG_FORCE_TYPE)) goto skip_type_checks;
+	    }
+	
+	/** Skip type checks if none are requested. **/
+	if (arg_expect->Datatypes == NULL) goto skip_type_checks;
+	
+	/** Type checks requested, but no valid types given: Likely a mistake. **/
+	if (arg_expect->Datatypes[0] == -1)
+	    {
+	    mssErrorf(1, "EXP", "%s(...): Invalid Schema! Empty array of allowed datatypes.", fn_name);
+	    fprintf(stderr, "Hint: To skip type checks, pass NULL for the array of data types.\n");
+	    return -1;
+	    }
+	
+	/** Verify datatypes. **/
+	bool found = false;
+	for (int j = 0; arg_expect->Datatypes[j] != -1; j++)
+	    {
+	    const int expected_datatype = arg_expect->Datatypes[j];
+	    if (expected_datatype == actual_datatype)
+		{
+		found = true;
+		break;
+		}
+	    }
+	
+	/** Handle failure. **/
+	if (!found)
+	    {
+	    /** Accumulate additional valid types. **/
+	    char buf[256] = {'\0'};
+	    int cur = 0, j = 1;
+	    while (true)
+		{
+		int datatype = arg_expect->Datatypes[j++];
+		if (datatype == -1) break;
+		
+		cur += snprintf(
+		    buf + cur, 256 - cur,
+		    " or %s (%d)",
+		    objTypeToStr(datatype), datatype
+		);
+		}
+	    
+	    /** Print error. **/
+	    int first_datatype = arg_expect->Datatypes[0];
+	    mssErrorf(1, "EXP",
+		"%s(...): Expects type %s (%d)%s but got type %s (%d).",
+		fn_name, objTypeToStr(first_datatype), first_datatype, buf, objTypeToStr(actual_datatype), actual_datatype
+	    );
+	    return -1;
+	    }
+	
+    skip_type_checks:
+	/** All flag checks not implemented above should pass on NULL values. **/
+	if (arg->Flags & EXPR_F_NULL) return 0;
+	
+	/** Verify other Flags by type, if specified. **/
+	switch (actual_datatype)
+	    {
+	    case DATA_T_INTEGER:
+		{
+		int value = arg->Integer;
+		if (arg_expect->Flags & EXP_ARG_POSITIVE && value < 0)
+		    {
+		    mssErrorf(1, "EXP",
+			"%s(...): Expects positive int but got %d.",
+			fn_name, value
+		    );
+		    return -1;
+		    }
+		if (arg_expect->Flags & EXP_ARG_NEGATIVE && value > 0)
+		    {
+		    mssErrorf(1, "EXP",
+			"%s(...): Expects negative int but got %d.",
+			fn_name, value
+		    );
+		    return -1;
+		    }
+		break;
+		}
+	    
+	    case DATA_T_DOUBLE:
+		{
+		double value = arg->Types.Double;
+		if (arg_expect->Flags & EXP_ARG_NON_NAN && isnan(value))
+		    {
+		    mssErrorf(1, "EXP",
+			"%s(...): Expects non-nan double but got %g.",
+			fn_name, value
+		    );
+		    return -1;
+		    }
+		if (arg_expect->Flags & EXP_ARG_POSITIVE && value < 0)
+		    {
+		    mssErrorf(1, "EXP",
+			"%s(...): Expects positive double but got %g.",
+			fn_name, value
+		    );
+		    return -1;
+		    }
+		if (arg_expect->Flags & EXP_ARG_NEGATIVE && value > 0)
+		    {
+		    mssErrorf(1, "EXP",
+			"%s(...): Expects negative double but got %g.",
+			fn_name, value
+		    );
+		    return -1;
+		    }
+		break;
+		}
+	    
+	    case DATA_T_STRING:
+		{
+		char* str = arg->String;
+		if (arg_expect->Flags & EXP_ARG_NON_EMPTY && str[0] == '\0')
+		    {
+		    mssErrorf(1, "EXP",
+			"%s(...): Expects string to contain characters, but got \"\".",
+			fn_name
+		    );
+		    return -1;
+		    }
+		break;
+		}
+	    
+	    case DATA_T_DATETIME:
+		{
+		pDateTime value = &arg->Types.Date;
+		if (arg_expect->Flags & EXP_ARG_POSITIVE && value->Value < 0)
+		    {
+		    mssErrorf(1, "EXP",
+			"%s(...): Expects positive date offset but got %llu.",
+			fn_name, value->Value
+		    );
+		    return -1;
+		    }
+		if (arg_expect->Flags & EXP_ARG_NEGATIVE && value->Value > 0)
+		    {
+		    mssErrorf(1, "EXP",
+			"%s(...): Expects negative date offset but got %llu.",
+			fn_name, value->Value
+		    );
+		    return -1;
+		    }
+		break;
+		}
+	    
+	    case DATA_T_MONEY:
+		{
+		pMoneyType value = &arg->Types.Money;
+		if (arg_expect->Flags & EXP_ARG_POSITIVE && value->WholePart < 0)
+		    {
+		    mssErrorf(1, "EXP",
+			"%s(...): Expects positive money value but got $%d.%g.",
+			fn_name, value->WholePart, (double)value->FractionPart / 100.0
+		    );
+		    return -1;
+		    }
+		if (arg_expect->Flags & EXP_ARG_NEGATIVE && value->WholePart > 0)
+		    {
+		    mssErrorf(1, "EXP",
+			"%s(...): Expects negative money value but got $%d.%d.",
+			fn_name, value->WholePart, (double)value->FractionPart / 100.0
+		    );
+		    return -1;
+		    }
+		}
+	    
+	    case DATA_T_STRINGVEC:
+		{
+		pStringVec str_vec = &arg->Types.StrVec;
+		if (arg_expect->Flags & EXP_ARG_NON_EMPTY && str_vec->nStrings == 0)
+		    {
+		    mssErrorf(1, "EXP",
+			"%s(...): Expects StringVec to contain strings, but got [].",
+			fn_name
+		    );
+		    return -1;
+		    }
+		break;
+		}
+	    
+	    case DATA_T_INTVEC:
+		{
+		pIntVec int_vec = &arg->Types.IntVec;
+		if (arg_expect->Flags & EXP_ARG_NON_EMPTY && int_vec->nIntegers == 0)
+		    {
+		    mssErrorf(1, "EXP",
+			"%s(...): Expects IntVec to contain strings, but got [].",
+			fn_name
+		    );
+		    return -1;
+		    }
+		break;
+		}
+	    }
+    
+    return 0;
+    }
+
+/*** Verify that arguments passed to a function match some expected values.
+ *** 
+ *** @param arg_expects A pointer to an array of ArgExpect structs, each
+ *** 	representing expectations for a single argument, in the order they
+ *** 	are passed to the function.
+ *** @param num_args The number of arguments to expect to be passed to the
+ *** 	function (and the length of arg_expects).
+ *** @param tree The tree containing the actual arguments passed.
+ *** @param obj_list The object list scope which was passed to the function.
+ *** @returns 0 if verification passes, or
+ ***         -1 if an error occurs or arguments are incorrect.
+ *** 
+ *** @attention - Promises that an error message will be printed with a call
+ *** 	to mssError() if an error occurs.
+ *** 
+ *** Example:
+ *** ```c
+ *** if (exp_fn_i_verify_schema(
+ ***     (ArgExpect[]){
+ ***         {(int[]){DATA_T_INTEGER, DATA_T_DOUBLE, DATA_T_DATETIME, -1}, EXP_ARG_NOT_NULL},
+ ***         {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
+ ***         {(int[]){DATA_T_STRING, -1}, EXP_ARG_OPTIONAL},
+ ***         EXP_ARG_END
+ ***     }, tree
+ *** ) != 0)
+ ***     {
+ ***     mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
+ ***     return -1;
+ ***     }
+ *** ```
+ ***/
+static int
+exp_fn_i_verify_schema(const ArgExpect* arg_expects, pExpression tree)
+    {
+	/** Verify expression tree. **/
+	ASSERTMAGIC(tree, MGK_EXPRESSION);
+	
+	/** Count arguments. **/
+	unsigned int req_args = 0u, opt_args = 0u;
+	for (unsigned int i = 0; arg_expects[i].Flags != EXP_ARG_END.Flags; i++)
+	    {
+	    if (arg_expects[i].Flags & EXP_ARG_OPTIONAL)
+		opt_args++;
+	    else if (opt_args > 0)
+		{
+		/** Required argument follows optional argument (not allowed). **/
+		mssErrorf(1, "EXP", "%s(?): Invalid Schema! Required argument #%u after optional argument.", tree->Name, i);
+		return -1;
+		}
+	    else
+		req_args++;
+	    }
+	const unsigned int total_args = req_args + opt_args;
+	
+	/** Verify argument count. **/
+	const int actual_args = tree->Children.nItems;
+	if (opt_args == 0)
+	    {
+	    if (actual_args != req_args)
+		{
+		mssErrorf(1, "EXP",
+		    "%s(?): Expects %u argument%s, got %d argument%s.",
+		    tree->Name, req_args, (req_args == 1) ? "" : "s", actual_args, (actual_args == 1) ? "" : "s"
+		);
+		return -1;
+		}
+	    }
+	else
+	    {
+	    if (actual_args < req_args || total_args < actual_args)
+		{
+		mssErrorf(1, "EXP",
+		    "%s(?): Expects between %u and %u arguments, got %d argument%s.",
+		    tree->Name, req_args, total_args, actual_args, (actual_args == 1) ? "" : "s"
+		);
+		return -1;
+		}
+	    }
+	
+	/** Verify arguments. **/
+	for (int i = 0; i < actual_args; i++)
+	    {
+	    if (exp_fn_i_verify_arg(tree->Name, tree->Children.Items[i], &arg_expects[i]) != 0)
+		{
+		mssErrorf(0, "EXP",
+		    "%s(...): Error while reading arg #%d/%d.",
+		    tree->Name, i + 1, max(i + 1, req_args)
+		);
+		return -1;
+		}
+	    }
+    
+    /** Pass. **/
+    return 0;
+    }
+
+/*** Extract a number from a numeric expression.
+ *** 
+ *** @param numeric_expr The numeric expression to be extracted.
+ *** @param result_ptr A pointer to a double where the result is stored.
+ *** @returns 0 on success,
+ ***         -1 on failure,
+ ***          1 if the expression is NULL.
+ ***/
+static int
+exp_fn_i_get_number(pExpression numeric_expr, double* result_ptr)
+    {
+	/** Check for null values. **/
+	if (numeric_expr == NULL || numeric_expr->Flags & EXPR_F_NULL) return 1;
+	
+	/** Check for null destination. **/
+	if (result_ptr == NULL)
+	    {
+	    mssError(1, "EXP", "Null location provided to store numeric result.");
+	    return -1;
+	    }
+	
+	/** Get the numeric value. **/
+	double n;
+	switch(numeric_expr->DataType)
+	    {
+	    case DATA_T_INTEGER: n = numeric_expr->Integer; break;
+	    case DATA_T_DOUBLE:  n = numeric_expr->Types.Double; break;
+	    case DATA_T_MONEY:   n = objDataToDouble(DATA_T_MONEY, &(numeric_expr->Types.Money)); break;
+	    default:
+		mssError(1, "EXP",
+		    "%s (%d) is not a numeric type.",
+		    objTypeToStr(numeric_expr->DataType), numeric_expr->DataType
+		);
+		return -1;
+	    }
+	
+	/** Store the result. **/
+	*result_ptr = n;
+    
+    return 0;
+    }
+
+/*** Free the given tree's result string, if it has one.
+ *** 
+ *** @param tree The affected tree.
+ ***/
+static void
+exp_fn_i_free_result_string(pExpression tree)
+    {
+	/** If no string is allocated, no work is needed. **/
+	if (tree->Alloc == 0) return;
+	
+	/** Free the string, if it exists. **/
+	if (tree->String != NULL) nmSysFree(tree->String);
+	
+	/** No string is allocated anymore. */
+	tree->Alloc = 0;
+    
+    return;
+    }
+
+/*** Ensure that the allocated result string is long enough to store a given
+ *** amount of required data.  This function promises that `tree->String` will
+ *** point to at least `required_space` bytes after it returns 0.
+ *** 
+ *** @param tree The affected tree.
+ *** @param required_space The number of bytes required.
+ *** @returns 0 if successful, or
+ ***         -1 if an error occurs.
+ ***/
+static int
+exp_fn_i_alloc_result_string(pExpression tree, const size_t required_space)
+    {
+	/** Free the previous string (if needed) so we can store a new one. **/
+	exp_fn_i_free_result_string(tree);
+	
+	/** Decide how to allocate space. **/
+	if (required_space <= 64)
+	    {
+	    /** We can use the preallocated buffer. **/
+	    tree->String = tree->Types.StringBuf;
+	    tree->Alloc = 0;
+	    }
+	else
+	    {
+	    /** We need to allocate new memory. **/
+	    char* result = check_ptr(nmSysMalloc(required_space * sizeof(char*)));
+	    if (result == NULL) return -1;
+	    tree->String = result;
+	    tree->Alloc = 1;
+	    }
+    
+    return 0;
+    }
 
 
 /****** Evaluator functions follow for expEvalFunction ******/
@@ -1111,111 +1595,162 @@ int exp_fn_reverse(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     return 0;
     }
 
-
-int exp_fn_lztrim(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+/** Leading zero trim. */
+int
+exp_fn_lztrim(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-    char* ptr;
-
-    if (!i0 || i0->Flags & EXPR_F_NULL) 
-        {
-	tree->Flags |= EXPR_F_NULL;
+	/** Expect one nullable string parameter. **/
+	if (exp_fn_i_verify_schema((ArgExpect[]){
+	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
+	    EXP_ARG_END,
+	}, tree) != 0)
+	    {
+	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
+	    return -1;
+	    }
+	
+	/** Extract the arg string. **/
+	pExpression maybe_str = check_ptr(tree->Children.Items[0]);
+	if (maybe_str->Flags & EXPR_F_NULL)
+	    {
+	    /** Propegate null values. **/
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_STRING;
+	    return 0;
+	    }
+	char* str = maybe_str->String;
+	
+	/*** We don't need to allocate new memory or copy anything because we
+	 *** can simply point to the first character in the previous string
+	 *** that isn't trimmed.
+	 ***/
+	
+	/** Iterate over all the characters that need to be removed. **/
+	while (*str == '0' && (str[1] >= '0' && str[1] <= '9')) str++;
+	
+	/** Return the results using the tree. **/
+	exp_fn_i_free_result_string(tree);
 	tree->DataType = DATA_T_STRING;
-	return 0;
-	}
-    if (i0->DataType != DATA_T_STRING) 
-        {
-	mssError(1,"EXP","lztrim() only works on STRING data types");
-	return -1;
-	}
-    if (tree->Alloc && tree->String)
-	{
-	nmSysFree(tree->String);
-	}
-    tree->DataType = DATA_T_STRING;
-    ptr = i0->String;
-    while(*ptr == '0' && (ptr[1] >= '0' && ptr[1] <= '9')) ptr++;
-    tree->String = ptr;
-    tree->Alloc = 0;
+	tree->String = str;
+    
     return 0;
     }
 
 
-int exp_fn_ltrim(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+/** Left trim spaces. **/
+int
+exp_fn_ltrim(pExpression tree)
     {
-    char* ptr;
-
-    if (!i0 || i0->Flags & EXPR_F_NULL) 
-        {
-	tree->Flags |= EXPR_F_NULL;
+	/** Expect one nullable string parameter. **/
+	if (exp_fn_i_verify_schema((ArgExpect[]){
+	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
+	    EXP_ARG_END,
+	}, tree) != 0)
+	    {
+	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
+	    return -1;
+	    }
+	
+	/** Extract the arg string. **/
+	pExpression maybe_str = check_ptr(tree->Children.Items[0]);
+	if (maybe_str->Flags & EXPR_F_NULL)
+	    {
+	    /** Propegate null values. **/
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_STRING;
+	    return 0;
+	    }
+	char* str = maybe_str->String;
+	
+	/*** We don't need to allocate new memory or copy anything because we
+	 *** can simply point to the first character in the previous string
+	 *** that isn't trimmed.
+	 ***/
+	
+	/** Iterate until we find the a charater that isn't a space. **/
+	/** Note: Only spaces are trimmed, as with similar trim functions in most SQL languages. **/
+	while (*str == ' ') str++;
+	
+	/** Return the results using the tree. **/
+	exp_fn_i_free_result_string(tree);
 	tree->DataType = DATA_T_STRING;
-	return 0;
-	}
-    if (i0->DataType != DATA_T_STRING) 
-        {
-	mssError(1,"EXP","ltrim() only works on STRING data types");
-	return -1;
-	}
-    if (tree->Alloc && tree->String)
-	{
-	nmSysFree(tree->String);
-	}
-    tree->DataType = DATA_T_STRING;
-    ptr = i0->String;
-    while(*ptr == ' ') ptr++;
-    tree->String = ptr;
-    tree->Alloc = 0;
+	tree->String = str;
+    
     return 0;
     }
 
 
-int exp_fn_rtrim(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+/** Right trim spaces. **/
+int
+exp_fn_rtrim(pExpression tree)
     {
-    char* ptr;
-    int n;
-
-    if (!i0 || i0->Flags & EXPR_F_NULL) 
-        {
-	tree->Flags |= EXPR_F_NULL;
+	/** Expect one nullable string parameter. **/
+	if (exp_fn_i_verify_schema((ArgExpect[]){
+	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
+	    EXP_ARG_END,
+	}, tree) != 0)
+	    {
+	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
+	    return -1;
+	    }
+	
+	/** Extract the arg string. **/
+	pExpression maybe_str = check_ptr(tree->Children.Items[0]);
+	if (maybe_str->Flags & EXPR_F_NULL)
+	    {
+	    /** Propegate null values. **/
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_STRING;
+	    return 0;
+	    }
+	char* str = maybe_str->String;
+	
+	/** Trim spaces from the end of the string. **/
+	/** Note: Only spaces are trimmed, as with similar trim functions in most SQL languages. **/
+	const int len = strlen(str);
+	int n = len;
+	while (n > 0 && str[n - 1] == ' ') n--;
+	
+	/** Optimization for strings that are still the same. **/
+	if (n == len)
+	    {
+	    tree->String = str;
+	    goto end;
+	    }
+	
+	/** We need to copy to remove spaces. **/
+	if (!check(exp_fn_i_alloc_result_string(tree, n + 1))) return -1;
+	memcpy(tree->String, str, n);
+	tree->String[n] = '\0';
+	
+    end:
+	/** Return the results in the tree. **/
 	tree->DataType = DATA_T_STRING;
-	return 0;
-	}
-    if (i0->DataType != DATA_T_STRING) 
-        {
-	mssError(1,"EXP","rtrim() only works on STRING data types");
-	return -1;
-	}
-    if (tree->Alloc && tree->String)
-	{
-	nmSysFree(tree->String);
-	}
-    tree->Alloc = 0;
-    tree->DataType = DATA_T_STRING;
-    ptr = i0->String + strlen(i0->String);
-    while(ptr > i0->String && ptr[-1] == ' ') ptr--;
-    if (ptr == i0->String + strlen(i0->String))
-        {
-	/** optimization for strings are still the same **/
-	tree->String = i0->String;
-	}
-    else
-        {
-	/** have to copy because we removed spaces **/
-	n = ptr - i0->String;
-	if (n < 63)
-	    {
-	    tree->String = tree->Types.StringBuf;
-	    memcpy(tree->String, i0->String, n);
-	    tree->String[n] = '\0';
-	    tree->Alloc = 0;
-	    }
-	else
-	    {
-	    tree->String = (char*)nmSysMalloc(n+1);
-	    memcpy(tree->String, i0->String, n);
-	    tree->String[n] = '\0';
-	    tree->Alloc = 1;
-	    }
-	}
+	tree->Alloc = 0;
+    
+    return 0;
+    }
+
+
+/** Left and right trim spaces. **/
+int
+exp_fn_trim(pExpression tree)
+    {
+	/** Left trim the expression. **/
+	exp_fn_ltrim(tree);
+	
+	/** Temporarily override the arg1 str pointer with the result from ltrim(). **/
+	pExpression arg1 = tree->Children.Items[0];
+	char* arg1_str = arg1->String;
+	arg1->String = tree->String;
+	tree->Alloc = 0;
+	
+	/** Right trim the expression, which will use the overriden string above. **/
+	exp_fn_rtrim(tree);
+	
+	/** Restore the arg1 tree. **/
+	arg1->String = arg1_str;
+    
     return 0;
     }
 
@@ -2356,16 +2891,36 @@ int exp_fn_truncate(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 /*** constrain(value, min, max) ***/
 int exp_fn_constrain(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-    if (!i0 || !i1 || !i2 || (i0->DataType != i1->DataType) || i0->DataType != i2->DataType || !(i0->DataType == DATA_T_INTEGER || i0->DataType == DATA_T_MONEY || i0->DataType == DATA_T_DOUBLE))
-	{
-	mssError(1,"EXP","constrain() requires three numeric parameters of the same data type");
-	return -1;
-	}
+    /** Skip null value. **/
     tree->DataType = i0->DataType;
     if ((i0->Flags & EXPR_F_NULL))
 	{
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
+	}
+    
+    /** Verify parameters. **/
+    if (i0 == NULL || i1 == NULL || i2 == NULL)
+	{
+	mssError(1, "EXP", "constrain() expects three parameters.");
+	return -1;
+	}
+    if (i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE && i0->DataType != DATA_T_MONEY)
+	{
+	mssError(1, "EXP",
+	    "constrain() expects three numeric parameters: %s is not numeric.",
+	    objTypeToStr(i0->DataType)
+	);
+	if (i0->DataType == DATA_T_STRING) printf("Value: '%s'\n", i0->String);
+	return -1;
+	}
+    if (i0->DataType != i1->DataType || i1->DataType != i2->DataType)
+	{
+	mssError(1, "EXP",
+	    "constrain() expects three numeric parameters of the same data type but got types %s, %s, and %s.",
+	    objTypeToStr(i0->DataType), objTypeToStr(i1->DataType), objTypeToStr(i2->DataType)
+	);
+	return -1;
 	}
 
     /* check min */
@@ -3224,99 +3779,111 @@ int exp_fn_from_base64(pExpression tree, pParamObjects objlist, pExpression i0, 
 	return -1;
     }
 
-
-int exp_fn_log10(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+static int
+exp_fn_i_do_math(pExpression tree, double (*math)(), int arg_num)
     {
-    double n;
-
-	if (!i0)
+	/** Verify function schema: expect arg_num numeric values. **/
+	ArgExpect expects[arg_num + 1];
+	for (int i = 0; i < arg_num; i++)
+	    expects[i] = (ArgExpect){(int[]){DATA_T_INTEGER, DATA_T_DOUBLE, DATA_T_MONEY, -1}, EXP_ARG_NO_FLAGS};
+	expects[arg_num] = EXP_ARG_END;
+	if (exp_fn_i_verify_schema(expects, tree) != 0)
 	    {
-	    mssError(1, "EXP", "log10() requires a number as its first parameter");
-	    goto error;
+	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
+	    return -1;
 	    }
-	if (i0->Flags & EXPR_F_NULL)
+	
+	/** Null checks. **/
+	for (int i = 0; i < arg_num; i++)
 	    {
-	    tree->DataType = DATA_T_DOUBLE;
-	    tree->Flags |= EXPR_F_NULL;
-	    return 0;
+	    pExpression arg = tree->Children.Items[i];
+	    if (arg->Flags & EXPR_F_NULL)
+		{
+		tree->DataType = DATA_T_DOUBLE;
+		tree->Flags |= EXPR_F_NULL;
+		return 0;
+		}
 	    }
-	switch(i0->DataType)
+	
+	/** Maximum supported args. **/
+	if (arg_num > 4)
 	    {
-	    case DATA_T_INTEGER:
-		n = i0->Integer;
-		break;
-	    case DATA_T_DOUBLE:
-		n = i0->Types.Double;
-		break;
-	    case DATA_T_MONEY:
-		n = objDataToDouble(DATA_T_MONEY, &(i0->Types.Money));
-		break;
-	    default:
-		mssError(1, "EXP", "log10() requires a number as its first parameter");
-		goto error;
+	    mssErrorf(1, "EXP", "%s(...): exp_fn_i_do_math() does not support functions with more than 4 arguments. If this is an issue, please increase the number of arguments here: %s:%d", tree->Name, __FILE__, __LINE__);
+	    return -1;
 	    }
-	if (n < 0)
+	
+	/** Get the numbers for the args. **/
+	double n[4];
+	for (int i = 0; i < arg_num; i++)
 	    {
-	    mssError(1, "EXP", "log10(): cannot compute the logarithm of a negative number");
-	    goto error;
+	    if (!check(exp_fn_i_get_number(tree->Children.Items[i], &(n[i]))))
+		{
+		mssErrorf(0, "EXP", "%s(...): Failed to get arg%d.", tree->Name, i);
+		return -1;
+		}
 	    }
+	
+	/** Return results. **/
 	tree->DataType = DATA_T_DOUBLE;
-	tree->Types.Double = log10(n);
-	return 0;
-
-    error:
-	return -1;
+	tree->Types.Double = math(n[0], n[1], n[2], n[3]); /* Call function with all supported args. */
+    
+    return 0;
     }
 
-
-int exp_fn_power(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+int
+exp_fn_power(pExpression tree)
     {
-    double n, p;
+    return exp_fn_i_do_math(tree, pow, 2);
+    }
 
-	if (!i0 || !i1)
+int
+exp_fn_ln(pExpression tree)
+    {
+    return exp_fn_i_do_math(tree, log, 1);
+    }
+
+int
+exp_fn_log10(pExpression tree)
+    {
+    return exp_fn_i_do_math(tree, log10, 1);
+    }
+
+int
+exp_fn_log(pExpression tree)
+    {
+	/** Verify function schema: A number and an optional base. **/
+	if (exp_fn_i_verify_schema((ArgExpect[]){
+	    {(int[]){DATA_T_INTEGER, DATA_T_DOUBLE, DATA_T_MONEY, -1}, EXP_ARG_NO_FLAGS},
+	    {(int[]){DATA_T_INTEGER, DATA_T_DOUBLE, DATA_T_MONEY, -1}, EXP_ARG_OPTIONAL},
+	    EXP_ARG_END,
+	}, tree) != 0)
 	    {
-	    mssError(1, "EXP", "power() requires numbers as its first and second parameters");
-	    goto error;
+	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
+	    return -1;
 	    }
-	if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+	
+	/** Extract args. **/
+	double number, base;
+	if (!check(exp_fn_i_get_number(check_ptr(tree->Children.Items[0]), &number)))
 	    {
-	    tree->DataType = DATA_T_DOUBLE;
-	    tree->Flags |= EXPR_F_NULL;
-	    return 0;
+	    mssErrorf(0, "EXP", "%s(...): Failed to get arg1 (number).", tree->Name);
+	    return -1;
 	    }
-	switch(i0->DataType)
+	if (tree->Children.nItems > 1)
 	    {
-	    case DATA_T_INTEGER:
-		n = i0->Integer;
-		break;
-	    case DATA_T_DOUBLE:
-		n = i0->Types.Double;
-		break;
-	    case DATA_T_MONEY:
-		n = objDataToDouble(DATA_T_MONEY, &(i0->Types.Money));
-		break;
-	    default:
-		mssError(1, "EXP", "power() requires a number as its first parameter");
-		goto error;
+	    if (!check(exp_fn_i_get_number(check_ptr(tree->Children.Items[1]), &base)))
+		{
+		mssErrorf(0, "EXP", "%s(...): Failed to get arg2 (base).", tree->Name);
+		return -1;
+		}
 	    }
-	switch(i1->DataType)
-	    {
-	    case DATA_T_INTEGER:
-		p = i1->Integer;
-		break;
-	    case DATA_T_DOUBLE:
-		p = i1->Types.Double;
-		break;
-	    default:
-		mssError(1, "EXP", "power() requires an integer or double as its second parameter");
-		goto error;
-	    }
+	else base = M_E;
+	
+	/** Return the results in the tree. **/
 	tree->DataType = DATA_T_DOUBLE;
-	tree->Types.Double = pow(n, p);
-	return 0;
+	tree->Types.Double = log(number) / log(base);
     
-    error:
-	return -1;
+    return 0;
     }
 
 
@@ -3978,368 +4545,188 @@ int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
     return 0;
     }
 
-/* See centrallix-sysdoc/string_comparison.md for more information. */
-int exp_fn_levenshtein(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+
+int
+exp_fn_metaphone(pExpression tree, pParamObjects obj_list)
     {
-
-    if (!i0 || !i1)
-	{
-		mssError(1,"EXP","levenshtein() requires two parameters");
-		return -1;
-	}
-
-    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
-	{
-		tree->DataType = DATA_T_INTEGER;
-		tree->Flags |= EXPR_F_NULL;
-		return 0;
-	}
-
-    if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING))
-	{
-		mssError(1,"EXP","levenshtein() requires two string parameters");
-		return -1;
-	}
-
-	// for all i and j, d[i,j] will hold the Levenshtein distance between
-	// the first i characters of s and the first j characters of t
-	int length1 = strlen(i0->String);
-	int length2 = strlen(i1->String);
-	//int levMatrix[length1+1][length2+1];
-	int (*levMatrix)[length1+1][length2+1] = nmSysMalloc(sizeof(*levMatrix));
-	int i;
-	int j;
-    //set each element in d to zero
-    for (i = 0; i < length1; i++)
-    {
-        for (j = 0; j < length2; j++)
-        {
-            (*levMatrix)[i][j] = 0;
-        }        
-    }
+	/** Verify function schema. **/
+	if (exp_fn_i_verify_schema((ArgExpect[]){
+	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
+	    EXP_ARG_END,
+	}, tree) != 0)
+	    {
+	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
+	    return -1;
+	    }
+	
+	/** Allocate space to store metaphone pointers. **/
+	char* primary = NULL;
+	char* secondary = NULL;
+	
+	/** Extract string param. **/
+	pExpression maybe_str = check_ptr(tree->Children.Items[0]);
+	if (maybe_str->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_STRING;
+	    return 0;
+	    }
+	const char* str = check_ptr(maybe_str->String);
+	const size_t str_len = strlen(str);
+	if (str_len == 0u)
+	    {
+	    primary = "";
+	    secondary = "";
+	    goto store_data;
+	    }
+	
+	/** Compute DoubleMetaphone. **/
+	meta_double_metaphone(str, &primary, &secondary);
+	
+	/** Store the results. **/
+    store_data:;
+	const size_t length = strlen(primary) + 1lu + strlen(secondary) + 1lu;
+	if (!check(exp_fn_i_alloc_result_string(tree, length))) return -1;
+	sprintf(tree->String, "%s%c%s", primary, CA_BOUNDARY_CHAR, secondary);
+	tree->DataType = DATA_T_STRING;
     
-    // source prefixes can be transformed into empty string by
-    // dropping all characters
-    for (i = 0; i <= length1; i++)
-    {
-        (*levMatrix)[i][0] = i;
-    }
-     
-    // target prefixes can be reached from empty source prefix
-    // by inserting every character
-    for (j = 0; j <= length2; j++)
-    {
-        (*levMatrix)[0][j] = j;
-    }
-    
-	for (i = 1; i <= length1; i++)
-    {
-        for (j = 1; j <= length2; j++)
-        {
-            if (i0->String[i-1] == i1->String[j-1]) 
-            {
-                (*levMatrix)[i][j] = (*levMatrix)[i-1][j-1];
-            }
-            else 
-            {
-				int value1 = (*levMatrix)[i - 1][j] + 1;
-				int value2 = (*levMatrix)[i][j-1] + 1;
-				int value3 = (*levMatrix)[i-1][j-1] + 1;
-                (*levMatrix)[i][j] = (value1 < value2) ? 
-									  ((value1 < value3) ? value1 : value3) :
-									  (value2 < value3) ? value2 : value3;
-            }
-        }
-    }
-    tree->DataType = DATA_T_INTEGER;
-	tree->Integer = (*levMatrix)[length1][length2];
-    nmSysFree(levMatrix);
     return 0;
     }
 
-/* See centrallix-sysdoc/string_comparison.md for more information. */
-int exp_fn_lev_compare(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+
+/*** Computes cosine or Levenshtein similarity between two strings. These two
+ *** tasks have a large amount of overlapping logic (mostly error checking),
+ *** so doing them with one function greatly reduces code duplocation.
+ *** 
+ *** @param tree The tree resulting from this function.
+ *** @param obj_list The evaluation "scope", including available variables.
+ *** @param fn_name Either `cos_compare()` or `lev_compare()`.
+ *** @returns 0 for success, -1 for failure.
+ ***/
+static int
+exp_fn_compare(pExpression tree, pParamObjects obj_list, const char* fn_name)
     {
-
-    if (!i0 || !i1)
-	{
-		mssError(1,"EXP","lev_compare() requires two or three parameters");
-		return -1;
-	}
-
-    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL) || (i2 && (i2->Flags & EXPR_F_NULL)))
-	{
-		tree->DataType = DATA_T_DOUBLE;
-		tree->Flags |= EXPR_F_NULL;
-		return 0;
-	}
-
-    if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING) || (i2 && i2->DataType != DATA_T_INTEGER))
-	{
-		mssError(1,"EXP","lev_compare() requires two string and one optional integer parameters");
-		return -1;
-	}
+	/** Verify function schema. **/
+	if (exp_fn_i_verify_schema((ArgExpect[]){
+	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
+	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
+	    EXP_ARG_END,
+	}, tree) != 0)
+	    {
+	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", fn_name);
+	    return -1;
+	    }
 	
-	exp_fn_levenshtein(tree, objlist, i0, i1, i2);
-	//!!! I am not checking for errors here, because IN THEORY we have two strings... if we don't, big uh-oh.
-	int lev_dist = tree->Integer;
+	/** Extract strings. **/
+	pExpression maybe_str1 = check_ptr(tree->Children.Items[0]);
+	pExpression maybe_str2 = check_ptr(tree->Children.Items[1]);
+	if (maybe_str1->Flags & EXPR_F_NULL || maybe_str2->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_DOUBLE;
+	    return 0;
+	    }
+	char* str1 = check_ptr(maybe_str1->String);
+	char* str2 = check_ptr(maybe_str2->String);
 	
-	int length1 = strlen(i0->String);
-	int length2 = strlen(i1->String);
-
-	double clamped_dist = 1.0;
-
-	if (length1 == 0 || length2 == 0) //empty string
-	{
-		clamped_dist = 0.5;	
-	} 
-	else //normal case 
-	{
-		int max_len = (length1 > length2) ? length1 : length2;
-		clamped_dist = ((double) lev_dist) / max_len;
-	
-		if (abs(length1-length2) == lev_dist)  //only inserts. Maybe substring.
+	/** Handle either cos_compare() or lev_compare(). **/
+	if (fn_name[0] == 'c')
+	    { /* cos_compare() */
+	    int ret;
+	    
+	    /** Build vectors. **/
+	    const pVector v1 = check_ptr(ca_build_vector(str1));
+	    const pVector v2 = check_ptr(ca_build_vector(str2));
+	    if (v1 == NULL || v2 == NULL)
 		{
-			clamped_dist /= 2;
+		mssErrorf(1, "EXP",
+		    "%s(\"%s\", \"%s\"): Failed to build vectors.",
+		    fn_name, str1, str2
+		);
+		ret = -1;
 		}
-		
-		//use max_field_width if it was provided as a sensible value. If not, don't use it.
-		double max_field_width = i2?(i2->Integer):0;
-		if (max_field_width && max_field_width >= max_len) {
-			double mod = (lev_dist + max_field_width * 3/4) / max_field_width; 
-			if (mod < 1) { //don't make clamped_dist bigger
-				clamped_dist *= mod;
-			}
+	    else
+		{
+		/** Compute the similarity. **/
+		tree->Types.Double = ca_cos_compare(v1, v2);
+		tree->DataType = DATA_T_DOUBLE;
+		ret = 0;
 		}
-	}
-	
-	
-	tree->DataType = DATA_T_DOUBLE;
-	tree->Types.Double = 1.0 - clamped_dist;
-	return 0;
-}
-
-// This is the size of the vector table. It is also used in calculating the table indices.
-const int EXP_VECTOR_TABLE_SIZE = 251;
-
-/*
- * hash_char_pair
- * This method creates an vector table index based a given character pair. The characters are represented 
- * as their ASCII code points.
- *
- * Parameters:
- * 	num1 : first ASCII code point (double)
- * 	num2 : second ASCII code point (double)
- *
- * Returns:
- * 	vector table index (integer)
- */
-int exp_fn_i_hash_char_pair(double num1, double num2)
-    {
-    int func_result = round(((num1 * num1 * num1) + (num2 * num2 * num2)) * ((num1+1)/(num2+1))) -1;
-    return func_result % EXP_VECTOR_TABLE_SIZE;	
-    }
-
-
-/*
- * exp_fn_i_frequency_table
- * This method creates a vector frequency table based on a string of characters.
- *
- * Parameters:
- * 	table : integer pointer to vector frequency table (unsigned short)
- * 	term : the string of characters (char*)
- *
- * Returns:
- * 	0 	
- */
-int exp_fn_i_frequency_table(unsigned short *table, char *term)
-    {
-    int i;
-    // Initialize hash table with 0 values
-    for (i = 0; i < EXP_VECTOR_TABLE_SIZE; i++)
-	{
-	table[i] = 0;
-	}
-
-	int j = -1;
-    for(i = 0; i < strlen(term) + 1; i++)
-	{
-	// If latter character is punctuation or whitespace, skip it
-	if (ispunct(term[i]) || isspace(term[i]))
-	    {
-	    continue;
+	    
+	    /** Clean up. **/
+	    if (v1 != NULL) ca_free_vector(v1);
+	    if (v2 != NULL) ca_free_vector(v2);
+	    return ret;
 	    }
-
-	double temp1 = 0.0;
-	double temp2 = 0.0;
-
-	// If previous character is null
-	if (j == -1)
-	    {
-	    temp1 = 96;
-	    }
-
-	// Else character is not null
 	else
-	    {
-	    temp1 = (int)tolower(term[j]);
+	    { /* lev_compare() */
+	    double lev_sim = check_double(ca_lev_compare(str1, str2));
+	    if (isnan(lev_sim))
+		{
+		mssErrorf(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute levenstein edit distance.");
+		return -1;
+		}
+	    
+	    /** Return the computed result. **/
+	    tree->Types.Double = lev_sim;
+	    tree->DataType = DATA_T_DOUBLE;
+	    return 0;
 	    }
-
-	// If latter character is null
-	if (i == strlen(term))
-	    {
-	    temp2 = 96;
-	    }
-
-	// Else character is not null
-	else
-	    {
-	    temp2 = (int)tolower(term[i]);
-	    }
-
-	// Else character is not null	// If either character is a number, reassign the code point
-	if (temp1 >= 48 && temp1 <= 57)
-	    {
-	    temp1 += 75;
-	    }
-
-	if (temp2 >= 48 && temp2 <= 57)
-	    {
-	    temp2 += 75;
-	    }
-
-	// Hash the character pair into an index
-	int index = exp_fn_i_hash_char_pair(temp1, temp2);
-
-	// Increment Frequency Table value by number from 0 to 13
-	table[index] += ((unsigned short)temp1 + (unsigned short)temp2) % 13 + 1;
-
-	// Move j up to latter character before incrementing i
-	j = i;
-
-	}
-
-    return 0;	
-
-    }
-
-/*
- * exp_fn_i_dot_product
- * This method calculautes the dot product of two vectors.
- *
- * Parameters:
- * 	dot_product : the place where the result is stored (double)
- * 	r_freq_table1 : the first vector (unsigned short)
- * 	r_freq_table2 : the second vector (unsigned short)
- *
- * Returns:
- * 	0	
- */
-int exp_fn_i_dot_product(double *dot_product, unsigned short *r_freq_table1, unsigned short *r_freq_table2)
-    {
-    int i;
-    for (i = 0; i < EXP_VECTOR_TABLE_SIZE; i++) 
-        {
-	*dot_product = *dot_product + ((double)r_freq_table1[i] * (double)r_freq_table2[i]);
-	}
-    return 0;
-    }
-
-/*
- * exp_fn_i_magnitude
- * This method calculates the magnitude of a vector
- *
- * Parameters:
- * 	magnitude : the place where the result is stored (double)
- * 	r_freq_table : the vector (unsigned short)
- */
-int exp_fn_i_magnitude(double *magnitude, unsigned short *r_freq_table)
-    {
-    int i;
-    for (i = 0; i < EXP_VECTOR_TABLE_SIZE; i++)
-	{
-	*magnitude = *magnitude + ((double)r_freq_table[i] * (double)r_freq_table[i]);
-	}
-    *magnitude = sqrt(*magnitude);
-    return 0;
-    }
-
-/*
- * exp_fn_cos_compare
- * This method calculates the cosine similarity of two vector frequency tables
- * See centrallix-sysdoc/string_comparison.md for more information.
- *
- * Parameters:
- * 	tree : structure where output is stored
- *	objlist: 
- *	i0 : first data entry (pExpression)
- *	i1 : second data entry (pExpression)
- *	i2 :
- *
- * Returns:
- * 	0 	
- */
-int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
-    {
-    // Ensure function receives two non-null parameters
-    if (!i0 || !i1)
-	{
-	mssError(1,"EXP","cos_compare() requires two parameter.");
-	return -1;
-	}
-
-    // Ensure value passed in both parameters is not null
-    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
-	{
-	tree->DataType = DATA_T_DOUBLE;
-	tree->Flags |= EXPR_F_NULL;
-	return 0;
-	}
-
-    // Ensure both parameters contain string values
-    if ((i0->DataType != DATA_T_STRING) || (i1->DataType != DATA_T_STRING))
-	{
-	mssError(1,"EXP","cos_compare() requires two string parameters.");
-	return -1;
-	}
-
-    //If the two strings are identical, don't bother running cosine compare	
-    if (strcmp(i0->String, i1->String) == 0)
-	{
-	tree->DataType = DATA_T_DOUBLE;
-	tree->Types.Double = 1.0;
-	return 0;
-	}
-
-    // Allocate frequency tables (arrays of integers) for each term
-    unsigned short *table1 = nmMalloc(EXP_VECTOR_TABLE_SIZE * sizeof(unsigned short));
-    unsigned short *table2 = nmMalloc(EXP_VECTOR_TABLE_SIZE * sizeof(unsigned short));
-
-    if (table1 == NULL || table2 == NULL)
-	{
-	mssError(1,"EXP","Memory allocation failed.");
-	return -1;
-	}
-
-    // Calculate frequency tables for each term
-    exp_fn_i_frequency_table(table1, i0->String);
-    exp_fn_i_frequency_table(table2, i1->String);
-	
-    // Calculate dot product
-    double dot_product = 0;
-    exp_fn_i_dot_product(&dot_product, table1, table2);
-
-    // Calculate magnitudes of each relative frequency vector
-    double magnitude1 = 0;
-    double magnitude2 = 0;
-    exp_fn_i_magnitude(&magnitude1, table1);
-    exp_fn_i_magnitude(&magnitude2, table2);
     
-    tree->DataType = DATA_T_DOUBLE;
-    tree->Types.Double = dot_product / (magnitude1 * magnitude2);
-    nmFree(table1, EXP_VECTOR_TABLE_SIZE * sizeof(unsigned short));
-    nmFree(table2, EXP_VECTOR_TABLE_SIZE * sizeof(unsigned short));
+    return -1; /* Unreachable. */
+    }
 
+int
+exp_fn_cos_compare(pExpression tree, pParamObjects obj_list)
+    {
+    return exp_fn_compare(tree, obj_list, "cos_compare");
+    }
+
+int
+exp_fn_lev_compare(pExpression tree, pParamObjects obj_list)
+    {
+    return exp_fn_compare(tree, obj_list, "lev_compare");
+    }
+
+int
+exp_fn_levenshtein(pExpression tree, pParamObjects obj_list)
+    {
+	/** Verify function schema. **/
+	if (exp_fn_i_verify_schema((ArgExpect[]){
+	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
+	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
+	    EXP_ARG_END,
+	}, tree) != 0)
+	    {
+	    mssErrorf(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
+	    return -1;
+	    }
+	
+	/** Extract strings. **/
+	pExpression maybe_str1 = check_ptr(tree->Children.Items[0]);
+	pExpression maybe_str2 = check_ptr(tree->Children.Items[1]);
+	if (maybe_str1->Flags & EXPR_F_NULL || maybe_str2->Flags & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_INTEGER;
+	    return 0;
+	    }
+	char* str1 = check_ptr(maybe_str1->String);
+	char* str2 = check_ptr(maybe_str2->String);
+	
+	/** Compute edit distance. **/
+	/** Length 0 is provided for both strings so that the function will compute it for us. **/
+	int edit_dist = ca_edit_dist(str1, str2, 0lu, 0lu);
+	if (!check_neg(edit_dist))
+	    {
+	    mssErrorf(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute edit distance.\n", tree->Name, str1, str2);
+	    return -1;
+	    }
+	
+	/** Return the computed distance. **/
+	tree->Integer = edit_dist;
+	tree->DataType = DATA_T_INTEGER;
+    
     return 0;
     }
 
@@ -4351,7 +4738,7 @@ int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
  * Parameters:
  * 	pExpression tree: 
  * 	pParamObjects: 
- * 	pExpression passowrd: The password, passed as a pExpression
+ * 	pExpression password: The password, passed as a pExpression
  * 	pExpression salt: The salt, passed as a pExpression
  *
  * returns:
@@ -4466,7 +4853,9 @@ int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression passwor
 
 int exp_internal_DefineFunctions()
     {
-
+	/** Initialize clustering library. **/
+	ca_init();
+	
 	/** Function list for EXPR_N_FUNCTION nodes **/
 	xhAdd(&EXP.Functions, "getdate", (char*)exp_fn_getdate);
 	xhAdd(&EXP.Functions, "user_name", (char*)exp_fn_user_name);
@@ -4485,6 +4874,7 @@ int exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "ltrim", (char*)exp_fn_ltrim);
 	xhAdd(&EXP.Functions, "lztrim", (char*)exp_fn_lztrim);
 	xhAdd(&EXP.Functions, "rtrim", (char*)exp_fn_rtrim);
+	xhAdd(&EXP.Functions, "trim", (char*)exp_fn_trim);
 	xhAdd(&EXP.Functions, "substring", (char*)exp_fn_substring);
 	xhAdd(&EXP.Functions, "right", (char*)exp_fn_right);
 	xhAdd(&EXP.Functions, "ralign", (char*)exp_fn_ralign);
@@ -4519,8 +4909,11 @@ int exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "hash", (char*)exp_fn_hash);
 	xhAdd(&EXP.Functions, "hmac", (char*)exp_fn_hmac);
 	xhAdd(&EXP.Functions, "log10", (char*)exp_fn_log10);
+	xhAdd(&EXP.Functions, "ln", (char*)exp_fn_ln);
+	xhAdd(&EXP.Functions, "log", (char*)exp_fn_log);
 	xhAdd(&EXP.Functions, "power", (char*)exp_fn_power);
 	xhAdd(&EXP.Functions, "pbkdf2", (char*)exp_fn_pbkdf2);
+	xhAdd(&EXP.Functions, "metaphone", (char*)exp_fn_metaphone);
 	xhAdd(&EXP.Functions, "levenshtein", (char*)exp_fn_levenshtein);
 	xhAdd(&EXP.Functions, "lev_compare", (char*)exp_fn_lev_compare);
 	xhAdd(&EXP.Functions, "cos_compare", (char*)exp_fn_cos_compare);
@@ -4535,7 +4928,7 @@ int exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
 	xhAdd(&EXP.Functions, "dense_rank", (char*)exp_fn_dense_rank);
 	xhAdd(&EXP.Functions, "lag", (char*)exp_fn_lag);
-
+	
 	/** Aggregate **/
 	xhAdd(&EXP.Functions, "count", (char*)exp_fn_count);
 	xhAdd(&EXP.Functions, "avg", (char*)exp_fn_avg);
@@ -4545,9 +4938,9 @@ int exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "first", (char*)exp_fn_first);
 	xhAdd(&EXP.Functions, "last", (char*)exp_fn_last);
 	xhAdd(&EXP.Functions, "nth", (char*)exp_fn_nth);
-
+	
 	/** Reverse functions **/
 	xhAdd(&EXP.ReverseFunctions, "isnull", (char*)exp_fn_reverse_isnull);
-
+	
     return 0;
     }
