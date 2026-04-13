@@ -107,6 +107,8 @@ const char*
 qpf_spec_names[] = 
     {
     NULL,	/* 0 */
+    
+    /** Source specifiers. **/
     "INT",	/* 1 */
     "STR",	/* 2 */
     "POS",	/* 3 */
@@ -114,6 +116,8 @@ qpf_spec_names[] =
     "nSTR",	/* 5 */
     "CHR",	/* 6 */
     "LL",	/* 7 */
+    
+    /** Filter specifiers. **/
     "QUOT",	/* 8 */
     "DQUOT",	/* 9 */
     "SYM",	/* 10 */
@@ -1101,8 +1105,15 @@ qpf_internal_Translate(
  *** 	error occurs. 
  ***/
 int
-qpfPrintf_va_internal(pQPSession s, char** dest, size_t* dest_size, qpf_grow_fn_t grow_fn, void* grow_arg, const char* format, va_list ap)
-    {
+qpfPrintf_va_internal(
+    pQPSession s,
+    char** dest,
+    size_t* dest_size,
+    qpf_grow_fn_t grow_fn,
+    void* grow_arg,
+    const char* format,
+    va_list ap
+)   {
     size_t copied = 0lu;
     size_t dest_offset = 0lu;
     int rval;
@@ -1145,7 +1156,7 @@ qpfPrintf_va_internal(pQPSession s, char** dest, size_t* dest_size, qpf_grow_fn_
 		    goto error;
 		    }
 		
-		/** Compute the length that we need to copy. */
+		/** Compute the length that we need to copy. **/
 		size_t copy_len = (UNLIKELY(no_grow)) ? 0 : plain_str_len;
 		const size_t space_needed = dest_offset + copy_len + 1;
 		if (UNLIKELY(space_needed > SIZE_MAX/2))
@@ -1174,7 +1185,7 @@ qpfPrintf_va_internal(pQPSession s, char** dest, size_t* dest_size, qpf_grow_fn_
 	    
 	    /** Check if there are no more format specifiers, we're done. **/
 	    if (!spec_found) break;
-	    format++; /** Consume the % character. */
+	    format++; /* Consume the % character. */
 	    
 	    /** Parse simple, 1-character format specifiers. **/
 	    switch (format[0])
