@@ -230,8 +230,10 @@ qpf_internal_count_zeros(int n)
     }
 
 #define QPERR(err) ({ \
-    unsigned int _err = (err); \
-    unsigned int _err_i = qpf_internal_count_zeros(_err); \
+    const unsigned int _err = (err); \
+    const unsigned int _err_i = qpf_internal_count_zeros(_err); \
+    if (__LINE__ > USHRT_MAX) \
+	fprintf(stderr, "Failed to save code location %s:%d: File too long!!\n", __FILE__, __LINE__); \
     s->Errors |= _err; \
     s->ErrorLines[_err_i] = __LINE__; \
     })

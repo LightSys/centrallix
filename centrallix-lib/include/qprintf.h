@@ -60,10 +60,20 @@
 // typedef int (*qpf_grow_fn_t)(char** str, size_t* size, size_t offset, void* args, size_t req);
 typedef int (*qpf_grow_fn_t)(char**, size_t*, size_t, void*, size_t);
 
+/*** Stores information about a qprint session, including details about errors
+ *** such as parsing and formatting issues that have occurred.
+ *** 
+ *** @param Errors An error mask indicating any errors that have occurred, or
+ *** 	0 (aka. `QPF_ERR_T_NO_ERRORS`) if no errors have occurred.
+ *** @param ErrorLines An array where each index represents a type of error in
+ *** 	order (e.g. 0 represents `QPF_ERR_T_NOTIMPL`) and each value represents
+ *** 	the line number where the error occurred, or 0 if this error type has
+ *** 	not occurred during the session.
+ ***/
 typedef struct _QPS
     {
     unsigned int	Errors;		/* QPF_ERR_T_xxx */
-    unsigned int	ErrorLines[QPF_ERR_COUNT];
+    unsigned short	ErrorLines[QPF_ERR_COUNT];
     }
     QPSession, *pQPSession;
 
