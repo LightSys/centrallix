@@ -1615,9 +1615,15 @@ qpfPrintf_va_internal(
 				QPERR(QPF_ERR_T_BUFOVERFLOW);
 				no_grow = true;
 				}
-			
-			    /** Write the closing quote, even if a buffer overflow occurred. **/
-			    /** We passed min_room = 2, so there will be enough space for it. **/
+			     
+			    /*** Write the closing quote with space for the
+			     *** null-terminator, even if a buffer overflow
+			     *** has occurred, by moving the offset back and
+			     *** overwriting some of the end of the provided
+			     *** string, if needed.
+			     ***/
+			    if (space_needed > *dest_size)
+				dest_offset = *dest_size - 2;
 			    (*dest)[dest_offset++] = quote;
 			    copied++;
 			    }
