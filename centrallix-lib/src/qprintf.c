@@ -1646,7 +1646,7 @@ qpfPrintf_va_internal(
 		goto error;
 		}
 	    if (UNLIKELY(no_grow)) copy_len = 0;
-	    if (UNLIKELY(space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed)))
+	    if (UNLIKELY(no_grow || (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed))))
 		{
 		QPERR(QPF_ERR_T_BUFOVERFLOW);
 		copy_len = *dest_size - dest_offset - 1;
