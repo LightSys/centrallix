@@ -628,16 +628,17 @@ qpfCloseSession(pQPSession s)
  *** @param dst The destination string buffer.
  *** @param dstlen The allocated length of the string buffer, used to avoid
  *** 	buffer overflows.
+ *** @param i The value to be written.
+ *** @returns The number of characters written to the buffer.
  ***/
-static inline int
+static inline size_t
 qpf_internal_itoa(char* dst, size_t dstlen, int i)
     {
     char ibuf[sizeof(int)*8*3/10+4];
     char* iptr = ibuf;
     int r;
     int i2 = i;
-    int rval;
-    if (i2 == 0)
+    if (UNLIKELY(i2 == 0))
 	{
 	*(iptr++) = '0';
 	}
@@ -651,7 +652,7 @@ qpf_internal_itoa(char* dst, size_t dstlen, int i)
 	    }
 	if (i < 0) *(iptr++) = '-';
 	}
-    rval = iptr - ibuf;
+    const size_t rval = iptr - ibuf;
     while(iptr > ibuf && dstlen > 1)
 	{
 	*(dst++) = *(--iptr);
@@ -1368,7 +1369,7 @@ qpfPrintf_va_internal(
 		case QPF_SPEC_T_LL:
 		    {
 		    const long long ll_val = va_arg(ap, long long);
-		    copy_len = snprintf(tmp_buf, sizeof(tmp_buf), "%lld", ll_val);
+		    copy_len = (size_t)snprintf(tmp_buf, sizeof(tmp_buf), "%lld", ll_val);
 		    strval = tmp_buf;
 		    break;
 		    }
@@ -1376,7 +1377,7 @@ qpfPrintf_va_internal(
 		case QPF_SPEC_T_DBL:
 		    {
 		    const double double_val = va_arg(ap, double);
-		    copy_len = snprintf(tmp_buf, sizeof(tmp_buf), "%lf", double_val);
+		    copy_len = (size_t)snprintf(tmp_buf, sizeof(tmp_buf), "%lf", double_val);
 		    strval = tmp_buf;
 		    break;
 		    }
@@ -1412,15 +1413,6 @@ qpfPrintf_va_internal(
 	    
 	    /** If this specifier is ignored, we're done. Skip all filtering/writing logic. **/
 	    if (UNLIKELY(ignore)) continue;
-	    
-	    /** Check for invalid length. **/
-	    if (UNLIKELY(copy_len < 0))
-		{
-		/** This error case appears to be unreachable. **/
-		rval = -EINVAL;
-		QPERR(QPF_ERR_T_BADLENGTH);
-		goto error;
-		}
 	    
 	    /** Handle filters. **/
 	    pQPConvTable table;
