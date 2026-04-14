@@ -11,13 +11,14 @@ test(char** tname)
     int iter;
     unsigned char buf[16];
     
-	/*** This test verifies that, when printing quoted text to a buffer that
-	 *** is too small using %STR&QUOT, the string quoting is handled properly
-	 *** and the string is still null-terminated, even if the buffer is not
-	 *** large enough for any of the text.
+	/*** This test verifies that a bug was successfully fixed:  When
+	 *** printing quoted text to a buffer that was only one character
+	 *** long using %STR&QUOT, the function would underflow the buffer,
+	 *** clobbering the byte before the buffer with 0x27, aka. the '
+	 *** character, intended to be the closing quote.
 	 ***/
 	
-	*tname = "qprintf-69 %STR&QUOT small buffer quote & null termination";
+	*tname = "qprintf-70 %STR&QUOT buffer size underflow";
 	iter = 100000;
 	for(i=0;i<iter;i++)
 	    {
@@ -34,17 +35,17 @@ test(char** tname)
 	    buf[0]  = '\0';
 	    
 	    /** Test qpfPrintf(). **/
-	    rval = qpfPrintf(NULL, (char*)buf+4, 2, "%STR&QUOT", "ab");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 1, "%STR&QUOT", "ab");
 	    
-	    /** The 2-byte buffer have the first quote and the null-terminator. **/
-	    assert(buf[4] == '\'');
-	    assert(buf[5] == '\0');
+	    /** The 1-byte buffer have only the null-terminator. **/
+	    assert(buf[4] == '\0');
 	    
 	    /** Bytes outside the provided part of the buffer must not be clobbered. **/
 	    assert(buf[9] == '\n');
 	    assert(buf[8] == '\0');
 	    assert(buf[7] == 0xff);
 	    assert(buf[6] == 0xff);
+	    assert(buf[5] == 0xff);
 	    assert(buf[3] == '\n');
 	    assert(buf[2] == '\0');
 	    assert(buf[1] == 0xff);

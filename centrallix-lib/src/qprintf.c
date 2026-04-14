@@ -1609,14 +1609,17 @@ qpfPrintf_va_internal(
 				}
 			     
 			    /*** Write the closing quote with space for the
-			     *** null-terminator, even if a buffer overflow
-			     *** has occurred, by moving the offset back and
-			     *** overwriting some of the end of the provided
-			     *** string, if needed.
+			     *** null-terminator if at all possible, even if
+			     *** a buffer overflow has already occurred, by
+			     *** moving the offset back and overwriting some
+			     *** of the end of the provided string, if needed.
 			     ***/
-			    if (space_needed > *dest_size)
-				dest_offset = *dest_size - 2;
-			    (*dest)[dest_offset++] = quote;
+			    if (LIKELY(*dest_size >= 2))
+				{
+				if (UNLIKELY(space_needed > *dest_size))
+				    dest_offset = *dest_size - 2;
+				(*dest)[dest_offset++] = quote;
+				}
 			    copied++;
 			    }
 			copied += n_chars;
