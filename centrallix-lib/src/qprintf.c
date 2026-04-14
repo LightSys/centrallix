@@ -11,11 +11,10 @@
 /* Module: 	qprintf.c, qprintf.h					*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	January 31, 2006 					*/
-/* Description:	Quoting Printf routine, used to make sure that		*/
-/*		injection type attacks don't occur when building	*/
-/*		strings.  These functions do not support some of the	*/
-/*		more advanced (and dangerous) features of the normal	*/
-/*		printf() library calls.					*/
+/* Description:	Quoting Printf routine that helps to prevent injection	*/
+/* 		attacks when building strings.  These functions also do */
+/*		not support some of the more advanced (and dangerous)	*/
+/*		features found in the standard printf() library.	*/
 /* 		See centrallix-sysdoc/QPrintf.md for more information.	*/
 /************************************************************************/
 
@@ -31,7 +30,7 @@
 #include <unistd.h>
 
 #ifdef HAVE_CONFIG_H
-#include "cxlibconfig-internal.h"
+ #include "cxlibconfig-internal.h"
 #endif
 
 #include "cxsec.h"

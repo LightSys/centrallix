@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2006 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -14,21 +14,21 @@
 /* Module: 	qprintf.c, qprintf.h					*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	January 31, 2006 					*/
-/* Description:	Quoting Printf routine, used to make sure that		*/
-/*		injection type attacks don't occur when building	*/
-/*		strings.  These functions do not support some of the	*/
-/*		more advanced (and dangerous) features of the normal	*/
-/*		printf() library calls.					*/
+/* Description:	Quoting Printf routine that helps to prevent injection	*/
+/* 		attacks when building strings.  These functions also do */
+/*		not support some of the more advanced (and dangerous)	*/
+/*		features found in the standard printf() library.	*/
+/* 		See centrallix-sysdoc/QPrintf.md for more information.	*/
 /************************************************************************/
 
 #include <stdarg.h>
 
 #ifdef CXLIB_INTERNAL
-#include "cxsec.h"
-#include "magic.h"
+ #include "cxsec.h"
+ #include "magic.h"
 #else
-#include "cxlib/cxsec.h"
-#include "cxlib/magic.h"
+ #include "cxlib/cxsec.h"
+ #include "cxlib/magic.h"
 #endif
 
 #define QPF_ERR_T_NO_ERRORS	(0)	/* a default error buffer value with no errors */
@@ -57,8 +57,7 @@
  *** @param req    The requested size.
  *** @returns True (1) if successful, and false (0) if an error occurs.
  ***/
-// typedef int (*qpf_grow_fn_t)(char** str, size_t* size, size_t offset, void* args, size_t req);
-typedef int (*qpf_grow_fn_t)(char**, size_t*, size_t, void*, size_t);
+typedef int (*qpf_grow_fn_t)(char** str, size_t* size, size_t offset, void* args, size_t req);
 
 /*** Stores information about a qprint session, including details about errors
  *** such as parsing and formatting issues that have occurred.
