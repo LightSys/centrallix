@@ -54,13 +54,14 @@
 /* Description:								*/
 /*									*/
 /* The MTASK Multithreading Tasking Module provides non-preemptive	*/
-/* threading services for Centrallix.  It has been shown to be useable	*/
+/* threading services for Centrallix.  It has been shown to be usable	*/
 /* on a variety of platforms, although the values for MT_TASKSEP may	*/
 /* sometimes need to be adjusted.  This module does NOT provide for	*/
 /* kernel threads or for preemptive threading.				*/
 /************************************************************************/
 
 
+#include "expect.h"
 #include "newmalloc.h"
 #include "mtask.h"
 #include "xstring.h"
@@ -2224,7 +2225,7 @@ int
 thExcessiveRecursion()
     {
     const unsigned char stack_ptr[1];
-    return (MTASK.CurrentThread->Stack - stack_ptr > MT_STACK_HIGHWATER);
+    return UNLIKELY(MTASK.CurrentThread->Stack - stack_ptr > MT_STACK_HIGHWATER);
     }
 
 
@@ -3422,7 +3423,7 @@ netGetRemotePort(pFile net_filedesc)
     }
 
 
-/*** NETCONNECTTCP creats a client socket and connects it to a
+/*** NETCONNECTTCP creates a client socket and connects it to a
  *** server on a given TCP service/port and host name.  The flag
  *** NET_U_NOBLOCK causes the request to return immediately even
  *** if the connection is still trying to establish.  Further
