@@ -694,7 +694,10 @@ int
 r_mtRun_PokeStack()
     {
     char buf[MT_MAX_STACK - MT_TASKSEP*2];
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuninitialized"
     buf[0] = buf[0];
+#pragma GCC diagnostic pop
     return 0;
     }
 
@@ -705,9 +708,15 @@ r_mtRun_Spacer()
      ** it needs to be in order for MTASK to work.  DO NOT OPTIMIZE
      ** THIS MODULE!!!!  The bogus assignment is added to keep gcc -Wall
      ** happy (and silent)....
+     ** 
+     ** Edit (Israel): It wasn't very happy, so I added #pragma gcc directives
+     ** to silence this warning when compiling.
      **/
     char buf[MT_TASKSEP];
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuninitialized"
     buf[MT_TASKSEP-1] = buf[MT_TASKSEP-1];
+#pragma GCC diagnostic pop
 
     /*mprotect((char*)((int)(buf-MT_MAX_STACK+MT_TASKSEP*2+4095) & ~4095), MT_TASKSEP/2, PROT_NONE);*/
     MTASK.CurrentThread->Stack = (unsigned char*)buf;
@@ -730,9 +739,15 @@ r_mtRunStartFn()
      ** it needs to be in order for MTASK to work.  DO NOT OPTIMIZE
      ** THIS MODULE!!!!  The bogus assignment is added to keep gcc -Wall
      ** happy.
+     ** 
+     ** Edit (Israel): It wasn't very happy, so I added #pragma gcc directives
+     ** to silence this warning when compiling.
      **/
     char buf[MT_MAX_STACK];
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuninitialized"
     buf[MT_MAX_STACK-1] = buf[MT_MAX_STACK-1];
+#pragma GCC diagnostic pop
 
     /*if (r_newidx < 0) return 0;*/
     if (--r_newidx) r_mtRunStartFn();

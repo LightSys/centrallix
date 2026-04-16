@@ -41,20 +41,11 @@
 /************************************************************************/
 
 
-/** globals **/
-static struct 
-    {
-    int		idcnt;
-    }
-    HTUAWIN;
-
-
 /*** htuawinRender - generate the HTML code for the page.
  ***/
 int
 htuawinRender(pHtSession s, pWgtrNode tree, int z)
     {
-    int id;
     char name[64];
     int is_shared = 0;
     int is_multi = 0;
@@ -63,9 +54,6 @@ htuawinRender(pHtSession s, pWgtrNode tree, int z)
     int width = 640;
     int height = 480;
     char* ptr;
-
-    	/** Get an id for this. **/
-	id = (HTUAWIN.idcnt++);
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -144,8 +132,6 @@ htuawinInitialize()
 	htrRegisterDriver(drv);
 
 	htrAddSupport(drv, "dhtml");
-
-	HTUAWIN.idcnt = 0;
 
     return 0;
     }

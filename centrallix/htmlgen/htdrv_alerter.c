@@ -42,23 +42,11 @@
 /************************************************************************/
 
 
-/** globals **/
-static struct 
-    {
-    int		idcnt;
-    }
-    HTALRT;
-
-
 /*** htalrtRender - generate the HTML code for the alert -- not much..
  ***/
 int
 htalrtRender(pHtSession s, pWgtrNode tree, int z)
     {
-    int id;
-    
-    	/** Get an id for this. **/
-	id = (HTALRT.idcnt++);
 
 	/** Get name **/
 	htrAddScriptInit_va(s,"\talrt_init(wgtrGetNodeRef(ns, '%STR&SYM'));\n", wgtrGetName(tree));
@@ -75,8 +63,6 @@ int
 htalrtInitialize()
     {
     pHtDriver drv;
-
-	HTALRT.idcnt = 0;
 
     	/** Allocate the driver **/
 	drv = htrAllocDriver();

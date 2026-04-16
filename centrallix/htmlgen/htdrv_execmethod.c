@@ -44,14 +44,6 @@
 /************************************************************************/
 
 
-/** globals **/
-static struct 
-    {
-    int		idcnt;
-    }
-    HTEX;
-
-
 /*** htexRender - generate the HTML code for the timer nonvisual widget.
  ***/
 int
@@ -59,7 +51,6 @@ htexRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    int id;
     char* objname;
     char* methodname = NULL;
     char* methodparam = NULL;
@@ -69,9 +60,6 @@ htexRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTTEX","Netscape DOM support required");
 	    return -1;
 	    }
-
-    	/** Get an id for this. **/
-	id = (HTEX.idcnt++);
 
 	/** Get params. **/
 	if (wgtrGetPropertyValue(tree,"object",DATA_T_STRING,POD(&objname)) != 0) objname="";
@@ -128,8 +116,6 @@ htexInitialize()
 	htrRegisterDriver(drv);
 
 	htrAddSupport(drv, "dhtml");
-
-	HTEX.idcnt = 0;
 
     return 0;
     }

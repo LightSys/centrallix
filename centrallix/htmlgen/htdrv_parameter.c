@@ -45,14 +45,6 @@
 /************************************************************************/
 
 
-/** globals **/
-static struct 
-    {
-    int		idcnt;
-    }
-    HTPARAM;
-
-
 /*** htparamRender - generate the HTML code for the page.
  ***/
 int
@@ -63,7 +55,6 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
     char paramname[64];
     char type[32];
     char findcontainer[64];
-    int id;
     int i;
     XString xs;
     pObjPresentationHints hints;
@@ -75,9 +66,6 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTPARAM","Netscape DOM or W3C DOM1HTML support required");
 	    return -1;
 	    }
-
-    	/** Get an id for this. **/
-	id = (HTPARAM.idcnt++);
 
 	/** Get name and type **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0)
@@ -187,8 +175,6 @@ htparamInitialize()
 	htrRegisterDriver(drv);
 
 	htrAddSupport(drv, "dhtml");
-
-	HTPARAM.idcnt = 0;
 
     return 0;
     }

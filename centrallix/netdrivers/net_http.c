@@ -1821,7 +1821,6 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     char* slashptr;
     pNhtApp app = NULL;
     pNhtAppGroup group = NULL;
-    int rval;
     char* kname;
     pXString err_xs;
 
@@ -2332,7 +2331,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	else if (!strcmp(find_inf->StrVal,"rest"))
 	    {
 	    conn->StrictSameSite = 0;
-	    rval = nht_i_RestGet(conn, url_inf, target_obj);
+	    nht_i_RestGet(conn, url_inf, target_obj);
 	    }
 
 	/** Retrieve a new session/group/app key? **/

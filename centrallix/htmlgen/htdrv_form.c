@@ -44,14 +44,6 @@
 /************************************************************************/
 
 
-/** globals **/
-static struct 
-    {
-    int		idcnt;
-    }
-    HTFORM;
-
-
 /*** htformRender - generate the HTML code for the form 'glue'
  ***/
 int
@@ -66,7 +58,7 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
     char link_prev[64];
     char link_prev_within[64];
     char interlock_with[256];
-    int id, i, t;
+    int i, t;
     int allowquery, allownew, allowmodify, allowview, allownodata, multienter, allowdelete, confirmdelete;
     int confirmdiscard, allowmerge;
     int allowobscure = 0;
@@ -78,9 +70,6 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
     pStringVec sv;
 
 	/** form widget should work on any browser **/
-    
-    	/** Get an id for this. **/
-	id = (HTFORM.idcnt++);
 
 	/** Get params. **/
 	allowquery = htrGetBoolean(tree, "allow_query", 1);
@@ -327,8 +316,6 @@ htformInitialize()
 	htrRegisterDriver(drv);
 
 	htrAddSupport(drv, "dhtml");
-
-	HTFORM.idcnt = 0;
 
     return 0;
     }
