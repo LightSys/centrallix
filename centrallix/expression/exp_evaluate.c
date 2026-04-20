@@ -198,7 +198,6 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
     pExpression i0,i1;
     MoneyType m;
     int i;
-    int is_negative = 0;
     long long mv, mv2;
     double md;
 
@@ -234,7 +233,7 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 	/** Check for divide by zero **/
 	if ((i1->DataType == DATA_T_INTEGER && i1->Integer == 0) ||
 	    (i1->DataType == DATA_T_DOUBLE && i1->Types.Double == 0.0) ||
-	    (i1->DataType == DATA_T_MONEY && i1->Types.Money.WholePart == 0 && i1->Types.Money.FractionPart == 0))
+	    (i1->DataType == DATA_T_MONEY && i1->Types.Money.Value == 0))
 	    {
 	    mssError(1,"EXP","Attempted divide by zero");
 	    return -1;
@@ -287,38 +286,12 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 		    case DATA_T_INTEGER:
 		        tree->DataType = DATA_T_MONEY;
 			memcpy(&m, &(i0->Types.Money), sizeof(MoneyType));
-			if (m.WholePart < 0)
-		    	    {
-			    is_negative = !is_negative;
-			    if (m.FractionPart != 0)
-		        	{
-				m.WholePart = m.WholePart + 1;
-				m.FractionPart = 10000 - m.FractionPart;
-				}
-			    m.WholePart = -m.WholePart;
-		            }
-			i = i1->Integer;
-			if (i < 0) 
-			    {
-			    i = -i;
-			    is_negative = !is_negative;
-			    }
-			if (i == 0)
+			if (i1->Integer == 0)
 			    {
 			    mssError(1,"EXP","Attempted divide by zero");
 			    return -1;
 			    }
-			tree->Types.Money.WholePart = m.WholePart / i;
-			tree->Types.Money.FractionPart = (10000*(m.WholePart % i) + m.FractionPart)/i;
-			if (is_negative)
-			    {
-			    if (tree->Types.Money.FractionPart != 0)
-		        	{
-				tree->Types.Money.WholePart = tree->Types.Money.WholePart + 1;
-				tree->Types.Money.FractionPart = 10000 - tree->Types.Money.FractionPart;
-				}
-			    tree->Types.Money.WholePart = -tree->Types.Money.WholePart;
-			    }
+			tree->Types.Money.Value = (long long)(m.Value / i1->Integer);
 			break;
 		    case DATA_T_DOUBLE:
 			tree->DataType = DATA_T_MONEY;
@@ -327,23 +300,11 @@ expEvalDivide(pExpression tree, pParamObjects objlist)
 			    mssError(1,"EXP","Attempted divide by zero");
 			    return -1;
 			    }
-			mv = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
-			md = mv / i1->Types.Double;
-			if (md < 0) md -= 0.5;
-			else md += 0.5;
-			mv = md;
-			tree->Types.Money.WholePart = mv/10000;
-			mv = mv % 10000;
-			if (mv < 0)
-			    {
-			    mv += 10000;
-			    tree->Types.Money.WholePart -= 1;
-			    }
-			tree->Types.Money.FractionPart = mv;
+			tree->Types.Money.Value = llround(i0->Types.Money.Value/i1->Types.Double);
 			break;
 		    case DATA_T_MONEY:
-			mv = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
-			mv2 = ((long long)(i1->Types.Money.WholePart)) * 10000 + i1->Types.Money.FractionPart;
+			mv = i0->Types.Money.Value;
+			mv2 = i1->Types.Money.Value;
 			if (mv2 == 0)
 			    {
 			    mssError(1,"EXP","Attempted divide by zero");
@@ -438,8 +399,7 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 			break;
 		    case DATA_T_MONEY:
 			tree->DataType = DATA_T_MONEY;
-			mv = ((long long)(i1->Types.Money.WholePart)) * 10000 + i1->Types.Money.FractionPart;
-			mv *= i0->Integer;
+			mv = i1->Types.Money.Value * i0->Integer;
 			break;
 		    case DATA_T_STRING:
 			tree->DataType = DATA_T_STRING;
@@ -463,8 +423,7 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 		    {
 		    case DATA_T_MONEY:
 			tree->DataType = DATA_T_MONEY;
-			mv = ((long long)(i1->Types.Money.WholePart)) * 10000 + i1->Types.Money.FractionPart;
-			mv *= i0->Types.Double;
+			mv = i1->Types.Money.Value * i0->Types.Double;
 			break;
 		    default:
 			tree->Types.Double = i0->Types.Double * objDataToDouble(i1->DataType, dptr);
@@ -475,7 +434,7 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 
 	    case DATA_T_MONEY:
 		tree->DataType = DATA_T_MONEY;
-		mv = ((long long)(i0->Types.Money.WholePart)) * 10000 + i0->Types.Money.FractionPart;
+		mv = i0->Types.Money.Value;
 		switch(i1->DataType)
 		    {
 		    case DATA_T_INTEGER:
@@ -515,14 +474,7 @@ expEvalMultiply(pExpression tree, pParamObjects objlist)
 	/** Common processing **/
 	if (tree->DataType == DATA_T_MONEY)
 	    {
-	    tree->Types.Money.WholePart = mv/10000;
-	    mv = mv % 10000;
-	    if (mv < 0)
-		{
-		mv += 10000;
-		tree->Types.Money.WholePart -= 1;
-		}
-	    tree->Types.Money.FractionPart = mv;
+	    tree->Types.Money.Value = mv;
 	    }
 	else if (tree->DataType == DATA_T_STRING)
 	    {
@@ -614,17 +566,9 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 			tree->Types.Double = (double)(i0->Integer) - i1->Types.Double;
 			break;
 		    case DATA_T_MONEY:
+		        /** Treat Int as a dollar value **/
 		        tree->DataType = DATA_T_MONEY;
-			tree->Types.Money.WholePart = i0->Integer - i1->Types.Money.WholePart;
-			if (i1->Types.Money.FractionPart == 0)
-			    {
-			    tree->Types.Money.FractionPart = 0;
-			    }
-			else
-			    {
-			    tree->Types.Money.WholePart--;
-			    tree->Types.Money.FractionPart = 10000 - i1->Types.Money.FractionPart;
-			    }
+		        tree->Types.Money.Value = (i0->Integer * 10000ll) - i1->Types.Money.Value;
 			break;
 		    default:
 			tree->Integer = i0->Integer - objDataToInteger(i1->DataType, dptr, NULL);
@@ -645,7 +589,7 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 			break;
 		    case DATA_T_MONEY:
 		        tree->DataType = DATA_T_DOUBLE;
-			tree->Types.Double = i0->Types.Double - (i1->Types.Money.WholePart + i1->Types.Money.FractionPart/10000.0);
+			tree->Types.Double = i0->Types.Double - (i1->Types.Money.Value / 10000.0);
 			break;
 		    default:
 		        tree->DataType = DATA_T_DOUBLE;
@@ -659,25 +603,16 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 		    {
 		    case DATA_T_INTEGER:
 		        tree->DataType = DATA_T_MONEY;
-			tree->Types.Money.WholePart = i0->Types.Money.WholePart - i1->Integer;
-			tree->Types.Money.FractionPart = i0->Types.Money.FractionPart;
+		        /** Since Value is in 1/10000 of a dollar, integer must be multiplied to scale **/
+			tree->Types.Money.Value = i0->Types.Money.Value - (i1->Integer * 10000ll);
 			break;
 		    case DATA_T_DOUBLE:
 		        tree->DataType = DATA_T_DOUBLE;
-			tree->Types.Double = (i0->Types.Money.WholePart + i0->Types.Money.FractionPart/10000.0) - i1->Types.Double;
+			tree->Types.Double = (i0->Types.Money.Value / 10000.0) - i1->Types.Double;
 			break;
 		    case DATA_T_MONEY:
 		        tree->DataType = DATA_T_MONEY;
-			tree->Types.Money.WholePart = i0->Types.Money.WholePart - i1->Types.Money.WholePart;
-			tree->Types.Money.FractionPart = 10000 + i0->Types.Money.FractionPart - i1->Types.Money.FractionPart;
-			if (tree->Types.Money.FractionPart >= 10000)
-			    {
-			    tree->Types.Money.FractionPart -= 10000;
-			    }
-			else
-			    {
-			    tree->Types.Money.WholePart--;
-			    }
+		        tree->Types.Money.Value = i0->Types.Money.Value - i1->Types.Money.Value;
 		        break;
 		    default:
 			if (objDataToMoney(i1->DataType, dptr, &m) < 0)
@@ -686,12 +621,7 @@ expEvalMinus(pExpression tree, pParamObjects objlist)
 			    return -1;
 			    }
 		        tree->DataType = DATA_T_MONEY;
-			tree->Types.Money.WholePart = i0->Types.Money.WholePart - m.WholePart;
-			tree->Types.Money.FractionPart = 10000 + i0->Types.Money.FractionPart - m.FractionPart;
-			if (tree->Types.Money.FractionPart >= 10000)
-			    tree->Types.Money.FractionPart -= 10000;
-			else
-			    tree->Types.Money.WholePart--;
+			tree->Types.Money.Value = i0->Types.Money.Value - m.Value;
 			break;
 		    }
 		break;
@@ -816,8 +746,8 @@ expEvalPlus(pExpression tree, pParamObjects objlist)
 
 		    case DATA_T_MONEY:
 			tree->DataType = DATA_T_MONEY;
-			tree->Types.Money.WholePart = i1->Types.Money.WholePart + i0->Integer;
-			tree->Types.Money.FractionPart = i1->Types.Money.FractionPart;
+			/** Int must be converted to 1/10000 of a dollar **/
+			tree->Types.Money.Value = i1->Types.Money.Value + (i0->Integer * 10000ll);
 			break;
 
 		    default:
@@ -853,13 +783,7 @@ expEvalPlus(pExpression tree, pParamObjects objlist)
 
 	    case DATA_T_MONEY:
 	        objDataToMoney(i1->DataType, dptr, &m);
-		tree->Types.Money.WholePart = i0->Types.Money.WholePart + m.WholePart;
-		tree->Types.Money.FractionPart = i0->Types.Money.FractionPart + m.FractionPart;
-		if (tree->Types.Money.FractionPart >= 10000)
-		    {
-		    tree->Types.Money.FractionPart -= 10000;
-		    tree->Types.Money.WholePart++;
-		    }
+	        tree->Types.Money.Value = i0->Types.Money.Value + m.Value;
 		break;
 
 	    case DATA_T_DATETIME:
@@ -1569,8 +1493,7 @@ expRevEvalProperty(pExpression tree, pParamObjects objlist)
 		}
 	    else if (tree->DataType == DATA_T_INTEGER && attr_type == DATA_T_MONEY)
 	        {
-		tree->Types.Money.WholePart = tree->Integer;
-		tree->Types.Money.FractionPart = 0;
+		tree->Types.Money.Value = (tree->Integer * 10000ll);
 		}
 	    else if (tree->DataType == DATA_T_DOUBLE && attr_type == DATA_T_MONEY)
 	        {
