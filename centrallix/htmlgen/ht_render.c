@@ -2164,15 +2164,36 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 
 
 	/** Could not render? **/
-	if (rval < 0)
+	if (UNLIKELY(rval < 0))
 	    {
-	    err_xs = xsNew();
-	    if (err_xs)
-		{
-		mssStringError(err_xs);
-		htrQPrintf(s, "<html><head><title>Error</title></head><body style='background-color:white'><h1>An Error occurred while attempting to render this document</h1><br><pre>%STR&HTE</pre></body></html>\r\n", xsString(err_xs));
-		xsFree(err_xs);
-		}
+	    /** Get the error string. **/
+	    pXString err_xs = check_ptr(xsNew());
+	    if (err_xs == NULL) goto end_free;
+	    mssStringError(err_xs);
+	    
+	    /** Write an error HTML for the user. **/
+	    htrQPrintf(s,
+		"<!DOCTYPE html>"
+		"<html lang='en'>"
+		    "<head>"
+			"<title>Error</title>"
+			"<meta charset='utf-8'>"
+		    "</head>"
+		    "<body style='background-color:white'>"
+			"<h1>An Error occurred while attempting to render this document</h1>"
+			"<br>"
+			"<pre>%STR&HTE</pre>"
+		    "</body>"
+		"</html>\n",
+		xsString(err_xs)
+	    );
+	    xsFree(err_xs);
+	    
+	    /** Mark error as recovered. **/
+	    mssClearError();
+	    
+	    /** Done writing. **/
+	    goto end_free;
 	    }
 	
 	/** Output the DOCTYPE for browsers supporting HTML 4.0 -- this will make them use HTML 4.0 Strict **/
@@ -2416,6 +2437,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    htrWrite(s, "\n</HTML>\n",-1);
 	    }
 
+    end_free:
 	/** Deinitialize the session and page structures **/
 	for(i=0;i<s->Page.Functions.nItems;i++)
 	    {
