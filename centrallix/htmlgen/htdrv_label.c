@@ -66,8 +66,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
     int x=-1,y=-1,w,h;
-    int id;
-    /*int fontsize;*/
+    int rval = -1;
     int font_size;
     char *text;
     char* tooltip;
@@ -76,21 +75,20 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     int is_italic = 0;
     int allow_break = 0;
     int overflow_ellipsis = 0;
-    pExpression code;
-    int n;
     int auto_height=0;
 
-	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
+    	/** Get an id for this. **/
+	const int id = (HTLBL.idcnt++);
+
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1,"HTTBL","Netscape DOM support or W3C DOM Level 1 HTML required");
-	    return -1;
+	    mssError(1, "HTIMG", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto end;
 	    }
 
-    	/** Get an id for this. **/
-	id = (HTLBL.idcnt++);
-
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto end;
 	strtcpy(name,ptr,sizeof(name));
 
     	/** Get x,y,w,h of this object **/
@@ -99,18 +97,21 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTLBL","Label widget must have a 'width' property");
-	    return -1;
+	    goto end;
 	    }
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    mssError(1,"HTLBL","Label widget must have a 'height' property");
-	    return -1;
+	    goto end;
 	    }
 
 	/** auto height? **/
+	int n;
 	if (wgtrGetPropertyValue(tree,"r_height",DATA_T_INTEGER,POD(&n)) == 0 && n == -1)
 	    auto_height = 1;
 
+	/** Get label value. **/
+	pExpression code;
 	if (wgtrGetPropertyType(tree,"value") == DATA_T_CODE)
 	    {
 	    wgtrGetPropertyValue(tree,"value",DATA_T_CODE,POD(&code));
@@ -124,6 +125,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    text=nmSysStrdup("");
 
+	/** Get tooltip. **/
 	if(wgtrGetPropertyValue(tree,"tooltip",DATA_T_STRING,POD(&ptr)) == 0)
 	    tooltip=nmSysStrdup(ptr);
 	else
@@ -196,7 +198,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    form[0]='\0';
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#lbl%POS { "
 		"position:absolute; "
 		"visibility:inherit; "
@@ -229,23 +231,30 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    (!allow_break),
 	    (overflow_ellipsis),
 	    (is_italic)
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTLBL", "Failed to write base label CSS.");
+	    goto end;
+	    }
 
 	if (is_link)
 	    {
-	    htrAddStylesheetItem_va(s,
+	    if (htrAddStylesheetItem_va(s,
 		"\t\t#lbl%POS:hover { "
 		    "%[color:%STR&CSSVAL; %]"
 		    "text-decoration:underline; "
-		    "cursor:pointer; "
 		"}\n",
 		id,
 		(*pfgcolor), pfgcolor
-	    );
+	    ) != 0)
+		{
+		mssError(0, "HTLBL", "Failed to write label hover CSS.");
+		goto end;
+		}
 	    }
 	if (is_link && *cfgcolor)
 	    {
-	    htrAddStylesheetItem_va(s,
+	    if (htrAddStylesheetItem_va(s,
 		"\t\t#lbl%POS:active { "
 		    "color:%STR&CSSVAL; "
 		    "text-decoration:underline; "
@@ -253,10 +262,14 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 		"}\n",
 		id,
 		cfgcolor
-	    );
+	    ) != 0)
+		{
+		mssError(0, "HTLBL", "Failed to write active label (click) CSS.");
+		goto end;
+		}
 	    }
 
-	htrAddStylesheetItem_va(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#lbl%POS p { "
 		"text-align:%STR&CSSVAL; "
 		"%[position:relative; top:50%%; transform:translateY(-50%%); %]"
@@ -268,13 +281,17 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    id,
 	    align,
 	    (strcmp(valign, "middle") == 0)
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTLBL", "Failed to write label text CSS.");
+	    goto end;
+	    }
 
- 	/** Link the widget tree data to the DOM node. **/
-	htrAddWgtrObjLinkage_va(s, tree, "lbl%POS",id);
+ 	/** Link the widget to the DOM node. **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "lbl%POS", id) != 0) goto end;
 	
 	/** Write the initialization script call. **/
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "\tlbl_init(wgtrGetNodeRef(ns,'%STR&SYM'), { "
 		"field:'%STR&JSSTR', "
 		"form:'%STR&JSSTR', "
@@ -287,28 +304,49 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    name,
 	    fieldname, form, text,
 	    tooltip, is_link, pfgcolor
-	);
+	) != 0) 
+	    {
+	    mssError(0, "HTLBL", "Failed to write label text CSS.");
+	    goto end;
+	    }
 
 	/** Script include to get functions **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_label.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_label.js", 0) != 0) goto end;
 
 	/** Event Handlers **/
-	htrAddEventHandlerFunction(s, "document","MOUSEUP", "lbl", "lbl_mouseup");
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "lbl", "lbl_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "lbl", "lbl_mouseover");
-	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "lbl", "lbl_mouseout");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "lbl", "lbl_mousemove");
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "lbl", "lbl_mousedown") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "lbl", "lbl_mousemove") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "lbl", "lbl_mouseout") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "lbl", "lbl_mouseover") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "lbl", "lbl_mouseup") != 0) goto end;
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, NULL, "<p><span>%STR&HTENLBR</span></p>", text);
+	if (htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, NULL, "<p><span>%STR&HTENLBR</span></p>", text) != 0)
+	    {
+	    mssError(0, "HTIBTN", "Failed to write label HTML.");
+	    goto end;
+	    }
 
-	/** Check for more sub-widgets **/
-	htrRenderSubwidgets(s, tree, z+1);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto end;
 
-	nmSysFree(text);
-	nmSysFree(tooltip);
+	/** Success. **/
+	rval = 0;
 
-    return 0;
+    end:
+	if (rval != 0)
+	    {
+	    mssError(0, "HTIBTN",
+		"Failed to render \"%s\":\"%s\" (id: %d).",
+		tree->Name, tree->Type, id
+	    );
+	    }
+	
+	/** Clean up. **/
+	if (text != NULL) nmSysFree(text);
+	if (tooltip != NULL) nmSysFree(tooltip);
+	
+	return rval;
     }
 
 

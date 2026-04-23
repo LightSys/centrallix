@@ -69,9 +69,11 @@ htuawinRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Share this window with other references in the same session context? (no) **/
 	is_shared = htrGetBoolean(tree, "shared", 0);
+	if (is_shared < 0) goto err;
 
 	/** Allow multiple instances of the window? (no) **/
 	is_multi = htrGetBoolean(tree, "multiple_instantiation", 0);
+	if (is_multi < 0) goto err;
 
 	/** Routing of actions to windows when there are multiple of them **/
 	if (wgtrGetPropertyValue(tree, "action_routing", DATA_T_STRING, POD(&ptr)) == 0)
@@ -81,13 +83,13 @@ htuawinRender(pHtSession s, pWgtrNode tree, int z)
 	    else if (!strcmp(ptr, "all")) action_routing = 2;
 	    else
 		{
-		mssError(1, "HTUAWIN", "Invalid action_routing '%s' for widget '%s'", ptr, name);
-		return -1;
+		mssError(1, "HTUAWIN", "Invalid action_routing: \"%s\"", ptr);
+		goto err;
 		}
 	    }
 
 	/** widget init **/
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "\tuw_init(wgtrGetNodeRef(ns, '%STR&SYM'), { "
 		"shared:%INT, "
 		"multi:%INT, "
@@ -97,18 +99,30 @@ htuawinRender(pHtSession s, pWgtrNode tree, int z)
 		"h:%INT, "
 	    "});\n",
 	    name, is_shared, is_multi, action_routing, path, width, height
-	);
+	) != 0)
+	    {
+	    mssError(1, "HTUAWIN", "Failed to write JS init call.");
+	    goto err;
+	    }
 
 	/** JavaScript include file **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_uawindow.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_uawindow.js", 0) != 0) goto err;
 
-	/** object linkages **/
-	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
+	/** Link the widget to its container. **/
+	if (htrAddWgtrCtrLinkage(s, tree, "_parentctr") != 0) goto err;
 
-	/** Check for more sub-widgets within the vbl entity. **/
-	htrRenderSubwidgets(s, tree, z+2);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 2) != 0) goto err;
 
-    return 0;
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTUAWIN",
+	    "Failed to render \"%s\":\"%s\".",
+	    tree->Name, tree->Type
+	);
+	return -1;
     }
 
 

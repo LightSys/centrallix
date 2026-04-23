@@ -66,7 +66,6 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
     int sel_idx = -1;
     int x = -1, y = -1;
     int w, h; /* width & height of the tab control. */
-    int id, tab_count, i;
     int tab_w = 0, tab_h = 0;
     int is_auto_tab_w = 0; /* 1 if tab_w should be computed client-side. */
     int xoffset, yoffset, xtoffset, ytoffset;
@@ -76,18 +75,23 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
     char border_style[32];
     char border_color[64];
     int border_width;
+    
+	/** Reserve the next tab widget ID. **/
+	const int id = (HTTAB.idcnt++);
 	
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE &&(!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS))
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1,"HTTAB","NS4 or W3C DOM Support required");
+	    mssError(1, "HTTAB", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
 	    goto err;
 	    }
 	
-	/** Reserve the next tab widget ID. **/
-	id = (HTTAB.idcnt++);
-	
 	/** Get the tab widget name. **/
-	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&ptr)) != 0) goto err;
+	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&ptr)) != 0)
+	    {
+	    mssError(1, "HTTAB", "Tab widget has no name?!");
+	    goto err;
+	    }
 	strtcpy(name, ptr, sizeof(name));
 	
 	/** Get x, y, w, & h of this object. **/
@@ -95,12 +99,12 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree, "y", DATA_T_INTEGER, POD(&y)) != 0) y = 0;
 	if (wgtrGetPropertyValue(tree, "width", DATA_T_INTEGER, POD(&w)) != 0)
 	    {
-	    mssError(0, "HTTAB", "Tab widget must have a 'width' property");
+	    mssError(1, "HTTAB", "Tab widget must have a 'width' property");
 	    goto err;
 	    }
 	if (wgtrGetPropertyValue(tree, "height", DATA_T_INTEGER, POD(&h)) != 0)
 	    {
-	    mssError(0, "HTTAB", "Tab widget must have a 'height' property");
+	    mssError(1, "HTTAB", "Tab widget must have a 'height' property");
 	    goto err;
 	    }
 	
@@ -140,11 +144,11 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	enum httab_locations tloc = Top;
 	if (wgtrGetPropertyValue(tree, "tab_location", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
-	    if (strcasecmp(ptr, "top") == 0) tloc = Top;
+	    if (strcasecmp(ptr, "none") == 0) tloc = None;
+	    else if (strcasecmp(ptr, "top") == 0) tloc = Top;
 	    else if (strcasecmp(ptr, "bottom") == 0) tloc = Bottom;
 	    else if (strcasecmp(ptr, "left") == 0) tloc = Left;
 	    else if (strcasecmp(ptr, "right") == 0) tloc = Right;
-	    else if (strcasecmp(ptr, "none") == 0) tloc = None;
 	    else
 		{
 		mssError(1,"HTTAB","%s: '%s' is not a valid tab_location",name,ptr);
@@ -153,7 +157,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	
 	/** Count the number of tabs. **/
-	tab_count = wgtrGetMatchingChildList(tree, "widget/tabpage", children, sizeof(children) / sizeof(pWgtrNode));
+	const int tab_count = wgtrGetMatchingChildList(tree, "widget/tabpage", children, sizeof(children) / sizeof(pWgtrNode));
 	
 	/** Get the selected tab. **/
 	if (wgtrGetPropertyType(tree, "selected") == DATA_T_STRING &&
@@ -165,7 +169,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree, "selected", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
 	    /** Search for the tab with the indicated name. **/
-	    for (i = 0; i < tab_count; i++)
+	    for (unsigned int i = 0; i < tab_count; i++)
 		{
 		char* tab_name;
 		wgtrGetPropertyValue(children[i], "name", DATA_T_STRING, POD(&tab_name));
@@ -176,8 +180,8 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		    break;
 		    }
 		}
-	    if (i >= tab_count) {
-	        mssError(1, "HTTAB", "%s: cannot find tab with name '%s'", name, ptr);
+	    if (sel_idx == -1) {
+	        mssError(1, "HTTAB", "Failed to find tab named '%s'", ptr);
 		
 		/** Attempt to give hint. **/
 		if (tab_count > 0)
@@ -215,8 +219,8 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	
 	/** Handle user expressions for the selected tab. **/
-	htrCheckAddExpression(s, tree, name, "selected");
-	htrCheckAddExpression(s, tree, name, "selected_index");
+	if (htrCheckAddExpression(s, tree, name, "selected") < 0) goto err;
+	if (htrCheckAddExpression(s, tree, name, "selected_index") < 0) goto err;
 	
 	/** Get the background colors/images. **/
 	htrGetBackground(tree, NULL, s->Capabilities.Dom2CSS, main_bg, sizeof(main_bg));
@@ -304,7 +308,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	xtoffset -= select_x_offset;
 	ytoffset -= select_y_offset;
 	
-	/** Get the rendering type. **/
+	/** Get the rendering type (debugging feature). **/
 	/** Allows the developer to turn off JS client-side widget rendering for testing. **/
 	int do_client_rendering = 1;
 	if (wgtrGetPropertyValue(tree, "rendering", DATA_T_STRING, POD(&ptr)) == 0)
@@ -313,29 +317,32 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    else if (strcmp(ptr, "client-side") == 0) do_client_rendering = 1;
 	    else
 		{
-		mssError(1, "HTTAB", "%s: Unknown value for 'rendering': %s", name, ptr);
+		mssError(1, "HTTAB", "Unknown value for 'rendering': %s", ptr);
 		mssError(0, "HTTAB", "HINT: Should be either 'server-side' or 'client-size'.");
 		goto err;
 		}
 	    }
 	if (!do_client_rendering && tab_w == 0 && (tloc == Top || tloc == Bottom))
 	    {
-	    /*** The dev has specified server-side rendering for Top/Bottom tabs
+	    /*** The widget specifies server-side rendering for Top/Bottom tabs
 	     *** with dynamic width. This will probably look broken.
 	     ***/
-	    mssError(1, "HTTAB",
-		"%s: 'rendering' value of \"server-side\" will break on tabs "
-		"with dynamic widths because they cannot be calculated server-side!",
-		name
+	    fprintf(stderr, "WARNING: "
+		"'rendering' value of \"server-side\" will break on tabs with "
+		"dynamic widths because they cannot be calculated server-side!"
 	    );
-	    mssError(0, "HTTAB", "HINT: Specify 'tab_width' when using \"server-side\" rendering.");
+	    fprintf(stderr, "HINT: Specify the 'tab_width' attribute or use \"client-side\" rendering.");
 	    }
 	
-	/** Handle DOM linkages. **/
-	htrAddWgtrObjLinkage_va(s, tree, "tc%POSctrl", id);
+ 	/** Link the widget to the DOM node. **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "tc%POSctrl", id) != 0)
+	    {
+	    mssError(0, "HTTAB", "Failed to add object linkage to tab.");
+	    goto err;
+	    }
 	
 	/** Include the htdrv_tab.js script. **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_tab.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_tab.js", 0) != 0) goto err;
 	
 	/** Send globals variables to the client to avoid needing to hard code them. **/
 	const int bufsiz = 96;
@@ -350,20 +357,20 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    "{ tlocs: { Top:%d, Bottom:%d, Left:%d, Right:%d, None:%d } }",
 	    Top, Bottom, Left, Right, None
 	);
-	htrAddScriptGlobal(s, "tc_config", config_buf, HTR_F_VALUEALLOC);
+	if (htrAddScriptGlobal(s, "tc_config", config_buf, HTR_F_VALUEALLOC) != 0) goto err;
 	/*** TODO: Greg - config_buf is definitely leaked because I can't
 	 *** figure out how long it needs to remain in scope.
 	 ***/
 	
 	/** Add globals for the master tabs listing. **/
-	htrAddScriptGlobal(s, "tc_tabs", "null", 0);
-	htrAddScriptGlobal(s, "tc_cur_mainlayer", "null", 0);
+	if (htrAddScriptGlobal(s, "tc_cur_mainlayer", "null", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "tc_tabs", "null", 0) != 0) goto err;
 	
 	/** Add mouse event handlers. **/
-	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "tc", "tc_mousedown");
-	htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "tc", "tc_mouseup");
-	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "tc", "tc_mousemove");
-	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "tc", "tc_mouseover");
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "tc", "tc_mousedown") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "tc", "tc_mousemove") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "tc", "tc_mouseover") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "tc", "tc_mouseup")   != 0) goto err;
 	
 	/** Script initialization call. **/
 	char tloc_name[8];
@@ -375,7 +382,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    case Right:  strcpy(tloc_name, "Right");  break;
 	    case None:   strcpy(tloc_name, "None");   break;
 	    }
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "\ttc_init({"
 		"layer:wgtrGetNodeRef(ns,'%STR&SYM'), "
 		"tloc:'%STR', "
@@ -398,7 +405,11 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    (is_auto_tab_w) ? 0 : tab_w, /* 0 tells the front end that it should recalculate tab_w. */
 	    tab_h,
 	    (do_client_rendering) ? "true" : "false"
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTTAB", "Failed to write JS script call.");
+	    goto err;
+	    }
 	
 	/** Check for tabpages within the tab control, to do the tabs at the top. **/
 	if (tloc != None)
@@ -450,17 +461,21 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    const int parent_h = ht_get_parent_h(tree);
 	    
 	    /** Inject tab_fl values for client-side rendering. **/
-	    htrAddScriptInit_va(s,
+	    if (htrAddScriptInit_va(s,
 		"{ "
 		    "const node = wgtrGetNodeRef(ns, '%STR&SYM'); "
 		    "node.tab_fl_x = %DBL; "
 		    "node.tab_fl_y = %DBL; "
 		"}\n",
 		name, tab_fl_x, tab_fl_y
-	    );
+	    ) != 0)
+		{
+		mssError(0, "HTTAB", "Failed to write JS script call.");
+		goto err;
+		}
 	    
 	    /** Loop over each tab. **/
-	    for (i = 0; i < tab_count; i++)
+	    for (unsigned int i = 0; i < tab_count; i++)
 		{
 		const pWgtrNode tab = children[i];
 		
@@ -472,7 +487,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		const int is_selected = (i == sel_idx - 1);
 		const int tab_x = (x + xtoffset) + (i_offset_x * i);
 		const int tab_y = (y + ytoffset) + (i_offset_y * i);
-		htrAddStylesheetItem_va(s,
+		if (htrAddStylesheetItem_va(s,
 		    "\t\t#tc%POStab%POS { "
 			"position:absolute; "
 			"visibility:inherit; "
@@ -512,18 +527,26 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		    text_color,
 		    tab_x + 1, tab_y,
 		    (is_selected) ? main_bg : inactive_bg
-		);
+		) != 0)
+		    {
+		    mssError(0, "HTTAB", "Failed to write CSS for tab.");
+		    goto err_tab;
+		    }
 		
-		htrAddStylesheetItem_va(s,
+		if (htrAddStylesheetItem_va(s,
 		    "\t\t#tc%POStab%POS.tab_selected { "
 			"transform:translate(%INTpx, %INTpx); "
 		    "}\n",
 		    id, i + 1,
 		    select_x_offset, select_y_offset
-		);
+		) != 0)
+		    {
+		    mssError(0, "HTTAB", "Failed to write CSS for selected tab.");
+		    goto err_tab;
+		    }
 		
 		/** Write tab HTML content. **/
-		htrAddBodyItem_va(s,
+		if (htrAddBodyItem_va(s,
 		    "<div id='tc%POStab%POS' %[class='tab_selected'%]>"
 		        "<p style='"
 			    "white-space:nowrap; "
@@ -539,12 +562,23 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		    (tloc == Right), tabname,
 		    (is_selected) ? 2 : 3, tab_h,
 		    (tloc != Right), tabname
-		);
+		) != 0)
+		    {
+		    mssError(0, "HTTAB", "Failed to write HTML sheet for tab.");
+		    goto err_tab;
+		    }
+		
+		/** Tab written successfully. **/
+		continue;
+		
+    err_tab:    /** Handle errors. **/
+		mssError(0, "HTTAB", "Failed to write tab #%d.", i + 1);
+		goto err;
 		}
 	    }
 	
 	/** Write tab control CSS and HTML. **/
-	htrAddStylesheetItem_va(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#tc%POSctrl {"
 		"position:absolute; "
 		"overflow:hidden; "
@@ -580,17 +614,29 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    shadow_x, shadow_y, shadow_radius, shadow_color,
 	    x + xoffset, y + yoffset,
 	    main_bg
-	);
-	htrAddBodyItem_va(s, "<div id='tc%POSctrl'>\n", id);
+	) != 0)
+	    {
+	    mssError(0, "HTTAB", "Failed to write CSS for tab control.");
+	    goto err;
+	    }
+	if (htrAddBodyItem_va(s, "<div id='tc%POSctrl'>\n", id) != 0)
+	    {
+	    mssError(0, "HTTAB", "Failed to write HTML for tab control.");
+	    goto err;
+	    }
 	
 	/** Check for tab pages within the tab control entity, this time to do the pages themselves. **/
 	const char* widget_namespace = wgtrGetNamespace(tree);
-	for (i = 0; i < tab_count; i++)
+	for (unsigned int i = 0; i < tab_count; i++)
 	    {
 	    const pWgtrNode tab_page_tree = children[i];
 	    
 	    /** Handle namespace transition. **/
-	    htrCheckNSTransition(s, tree, tab_page_tree);
+	    if (htrCheckNSTransition(s, tree, tab_page_tree) != 0)
+		{
+		mssError(0, "HTTAB", "Failed to transition to namespace while writing tab page.");
+		goto tab_page_err;
+		}
 	    
 	    /** Check if the tab is selected. **/
 	    int is_selected = (i == sel_idx - 1);
@@ -626,7 +672,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    
 	    /** Write the addTab() initialization call (in a new scope). **/
 	    const char* tab_page_namespace = wgtrGetNamespace(tab_page_tree);
-	    htrAddScriptInit_va(s, "\t{ "
+	    if (htrAddScriptInit_va(s, "\t{ "
 		"const tabctrl = wgtrGetNodeRef('%STR&SYM', '%STR&SYM'); "
 		"tabctrl"
 		    ".addTab({ "
@@ -639,14 +685,26 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		(tloc != None), id, i + 1,
 		tab_page_namespace, ptr,
 		ptr, page_type, fieldname
-	    );
+	    ) != 0)
+		{
+		mssError(0, "HTTAB", "Failed to write JS to add tab page.");
+		goto tab_page_err;
+		}
 	    
 	    /** Add named global for the tabpage. **/
-	    htrAddWgtrObjLinkage_va(s, tab_page_tree, "tc%POSpane%POS", id, i+1);
-	    htrAddWgtrCtrLinkage_va(s, tab_page_tree, "htr_subel(_parentobj, \"tc%POSpane%POS\")", id, i + 1);
+	    if (htrAddWgtrObjLinkage_va(s, tab_page_tree, "tc%POSpane%POS", id, i+1) != 0)
+		{
+		mssError(0, "HTTAB", "Failed to add object linkage for tab page.");
+		goto tab_page_err;
+		}
+	    if (htrAddWgtrCtrLinkage_va(s, tab_page_tree, "htr_subel(_parentobj, \"tc%POSpane%POS\")", id, i + 1) != 0)
+		{
+		mssError(0, "HTTAB", "Failed to add container linkage for tab page.");
+		goto tab_page_err;
+		}
 	    
 	    /** Add DIV section to contane the tabpage. **/
-	    htrAddBodyItem_va(s,
+	    if (htrAddBodyItem_va(s,
 		"<div "
 		    "id='tc%POSpane%POS' "
 		    "style='"
@@ -662,43 +720,67 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		id, i + 1,
 		(is_selected) ? "inherit" : "hidden",
 		z + 2
-	    );
+	    ) != 0)
+		{
+		mssError(0, "HTTAB", "Failed to write HTML to add tab page.");
+		goto tab_page_err;
+		}
 	    
 	    /** Handle sub-items within the tabpage. **/
-	    htrRenderSubwidgets(s, tab_page_tree, z+3);
+	    if (htrRenderSubwidgets(s, tab_page_tree, z+3) != 0)
+		{
+		mssError(0, "HTTAB", "Failed to render subwidgets of tab page.");
+		goto tab_page_err;
+		}
 	    
 	    /** Close the tab page container. */
-	    htrAddBodyItem(s, "</div>\n");
+	    if (htrAddBodyItem(s, "</div>\n") != 0)
+		{
+		mssError(0, "HTTAB", "Failed to write closing div tag of tab page.");
+		goto tab_page_err;
+		}
 	    
 	    /** Add the visible property. **/
-	    htrCheckAddExpression(s, tab_page_tree, ptr, "visible");
+	    if (htrCheckAddExpression(s, tab_page_tree, ptr, "visible") < 0) goto tab_page_err;
 	    
 	    /** Handle namespace transition. **/
-	    htrCheckNSTransitionReturn(s, tree, tab_page_tree);
+	    if (htrCheckNSTransitionReturn(s, tree, tab_page_tree) != 0)
+		{
+		mssError(0, "HTTAB", "Failed to return from namespace.");
+		goto tab_page_err;
+		}
 	    
 	    continue;
 	    
 	    /** Error cases. **/
     tab_page_err:
 	    mssError(0, "HTTAB",
-		"Failed to render tab page \"%s\":\"%s\".",
-		tree->Name, tree->Type
+		"Failed to render tab page \"%s\":\"%s\", #%d.",
+		tree->Name, tree->Type, i + 1
 	    );
 	    goto err;
 	    }
 	
-	/** Handle other subwidgets (connectors, etc.). **/
-	htrRenderSubwidgets(s, tree, z + 1);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0)
+	    {
+	    mssError(0, "HTTAB", "Failed to render subwidgets.");
+	    goto err;
+	    }
 	
 	/** End the containing layer. **/
-	htrAddBodyItem(s, "</div>\n");
+	if (htrAddBodyItem(s, "</div>\n") != 0)
+	    {
+	    mssError(0, "HTTAB", "Failed to write closing div tag.");
+	    goto err;
+	    }
 	
 	return 0;
 	
     err:
 	mssError(0, "HTTAB",
-	    "Failed to render widget \"%s\":\"%s\".",
-	    tree->Name, tree->Type
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
 	);
 	return -1;
     }

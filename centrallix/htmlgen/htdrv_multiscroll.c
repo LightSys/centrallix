@@ -51,6 +51,8 @@ static struct
     }
     HTMS;
 
+#define HTMS_MAX_PARTS 32
+
 
 /*** htmsRender - generate the HTML code for the page.
  ***/
@@ -60,23 +62,20 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
     char* ptr;
     char name[64];
     char main_bg[128];
-    int x=-1,y=-1,w,h,ch,total_h,top_h,total_h_accum,cy;
-    int id;
-    int i, cnt;
     int always_visible;
-    pWgtrNode childlist[32];
-    pWgtrNode child;
 
-	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
+	/** Get an id for this. **/
+	const int id = (HTMS.idcnt++);
+
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1,"HTMS","Netscape DOM or W3C DOM1 HTML and CSS support required");
-	    return -1;
+	    mssError(1, "HTMS", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
 	    }
 
-    	/** Get an id for this. **/
-	id = (HTMS.idcnt++);
-
     	/** Get x,y,w,h of this object **/
+	int x = -1, y = -1, w, h;
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
 	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
@@ -98,91 +97,104 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Ok, write the style header items. **/
-	if(s->Capabilities.Dom0NS)
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#ms%POSmain { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"overflow:hidden; "
+		"left:%INTpx; "
+		"top:%INTpx; "
+		"width:%POSpx; "
+		"height:%POSpx; "
+		"z-index:%POS; "
+		"%STR "
+	    "}\n",
+	    id, x, y, w, h, z,
+	    main_bg
+	) != 0)
 	    {
-	    htrAddStylesheetItem_va(s,
-		"\t\t#ms%POSmain { "
-		    "position:absolute; "
-		    "visibility:inherit; "
-		    "left:%INTpx; "
-		    "top:%INTpx; "
-		    "width:%POSpx; "
-		    "height:%POSpx; "
-		    "z-index:%POS; "
-		"}\n",
-		id, x, y, w, h, z
-	    );
-	    }
-	else if(s->Capabilities.CSS1)
-	    {
-	    htrAddStylesheetItem_va(s,
-		"\t\t#ms%POSmain { "
-		    "position:absolute; "
-		    "visibility:inherit; "
-		    "overflow:hidden; "
-		    "left:%INTpx; "
-		    "top:%INTpx; "
-		    "width:%POSpx; "
-		    "height:%POSpx; "
-		    "z-index:%POS; "
-		    "%STR "
-		"}\n",
-		id, x, y, w, h, z,
-		main_bg
-	    );
-	    }
-	else
-	    {
-	    mssError(1,"HTMS","Cannot render - environment unsupported");
+	    mssError(0, "HTMS", "Failed to write main MultiScroll CSS.");
+	    goto err;
 	    }
 
-	/** DOM linkages **/
-	htrAddWgtrObjLinkage_va(s, tree, "ms%POSmain",id);
+ 	/** Link the widget to the DOM node. **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "ms%POSmain", id)) goto err;
 
-	/** Script include call **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_multiscroll.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
+	/** Include scripts. **/
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_multiscroll.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0) != 0) goto err;
 
-	/** Event Handlers **/
-	htrAddEventHandlerFunction(s, "document","MOUSEUP", "ms", "ms_mouseup");
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "ms", "ms_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "ms", "ms_mouseover");
-	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "ms", "ms_mouseout");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "ms", "ms_mousemove");
+	/** Add event handlers. **/
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "ms", "ms_mousedown") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "ms", "ms_mousemove") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "ms", "ms_mouseout")  != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "ms", "ms_mouseover") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "ms", "ms_mouseup")   != 0) goto err;
 
 	/** Script init **/
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "\tms_init(wgtrGetNodeRef(ns, '%STR&SYM'), {});\n", 
 	    name
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTMS", "Failed to write JS init call.");
+	    goto err;
+	    }
 
 	/** div for the main body of this widget **/
-	htrAddBodyItem_va(s,"<DIV ID=\"ms%POSmain\">\n",id);
-
-	/** Check for objects within the widget. **/
-	cnt = wgtrGetMatchingChildList(tree, "widget/multiscrollpart", childlist, sizeof(childlist)/sizeof(pWgtrNode));
-	top_h = total_h = 0;
-	for(i=0;i<cnt;i++)
+	if (htrAddBodyItem_va(s, "<div id='ms%POSmain'>\n", id) != 0)
 	    {
-	    child = childlist[i];
+	    mssError(0, "HTMS", "Failed to write HTML opening tag.");
+	    goto err;
+	    }
+
+	/** Get child widgets. **/
+	pWgtrNode childlist[HTMS_MAX_PARTS];
+	const int n_parts = wgtrGetMatchingChildList(tree, "widget/multiscrollpart", childlist, HTMS_MAX_PARTS);
+	if (n_parts < 0)
+	    {
+	    mssError(1, "HTMS", "Failed to query children.");
+	    goto err;
+	    }
+	
+	/** Calculate top height and total height of parts. **/
+	int top_h = 0, total_h = 0;
+	for (unsigned int i = 0u; i < n_parts; i++)
+	    {
+	    pWgtrNode child = childlist[i];
+	    int ch;
 	    if (wgtrGetPropertyValue(child,"height",DATA_T_INTEGER,POD(&ch)) != 0 || ch < 0) ch = 0;
 	    total_h += ch;
 	    if (ch && !top_h) top_h = ch;
 	    }
-	total_h_accum = 0;
-	for(i=0;i<cnt;i++)
+	
+	/** Render child widgets. **/
+	int total_h_accum = 0;
+	for (unsigned int i = 0u; i < n_parts; i++)
 	    {
-	    child = childlist[i];
-	    htrAddWgtrObjLinkage_va(s, child, "ms%POSpart%POS",id,i);
-	    htrAddBodyItem_va(s,"<DIV ID=\"ms%POSpart%POS\">\n",id,i);
-	    always_visible = htrGetBoolean(child, "always_visible", 0);
+	    pWgtrNode child = childlist[i];
+	    
+	    /** Height computations. **/
+	    int ch;
 	    if (wgtrGetPropertyValue(child,"height",DATA_T_INTEGER,POD(&ch)) != 0 || ch < 0) ch = 0;
-	    if (top_h >= total_h_accum + ch)
-		cy = total_h_accum;
-	    else
-		cy = h - total_h + total_h_accum;
+	    const int cy = (top_h >= total_h_accum + ch) ? total_h_accum : h - total_h + total_h_accum;
 	    total_h_accum += ch;
-	    htrAddStylesheetItem_va(s,
+	    
+	    /** Property handling. **/
+	    if (wgtrGetPropertyValue(child, "name", DATA_T_STRING,POD(&ptr)) != 0)
+		{
+		mssError(1, "HTMS", "Failed to get part name.");
+		goto err_part;
+		}
+	    always_visible = htrGetBoolean(child, "always_visible", 0);
+	    if (always_visible && ch == 0)
+		{
+		mssError(1, "HTMS", "Fail: MultiScroll parts with always_visible=true must have a height.");
+		goto err_part;
+		}
+	    
+	    /** Write CSS styles. **/
+	    if (htrAddStylesheetItem_va(s,
 		"\t\t#ms%POSpart%POS { "
 		    "position:absolute; "
 		    "visibility:inherit; "
@@ -195,32 +207,80 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 		    "clip:rect(0px, %INTpx, %INTpx, 0px); "
 		"}\n",
 		id, i, cy, w, ch, z + 1, w, ch
-	    );
-	    if (wgtrGetPropertyValue(child,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	    if (always_visible && ch == 0)
+	    ) != 0)
 		{
-		mssError(1, "HTMS", "MultiScroll part '%s' of '%s' set to always_visible=true must have a height", ptr, name);
-		return -1;
+		mssError(0, "HTMS", "Failed to write CSS.");
+		goto err_part;
 		}
-	    htrAddScriptInit_va(s,
+	    
+	    /** Write JS initialization call. **/
+	    if (htrAddScriptInit_va(s,
 		"\twgtrGetNodeRef(ns, '%STR&SYM')"
 		    ".addPart(wgtrGetNodeRef('%STR&SYM','%STR&SYM'), {av:%INT, h:%INT, y:%INT});\n",
 		name,
 		wgtrGetNamespace(child), ptr, always_visible, ch, cy
+	    ) != 0)
+		{
+		mssError(0, "HTMS", "Failed to write JS init call.");
+		goto err_part;
+		}
+		
+	    /** Write linked HTML opening tag. **/
+	    if (htrAddWgtrObjLinkage_va(s, child, "ms%POSpart%POS", id, i) != 0) goto err_part;
+	    if (htrAddBodyItem_va(s, "<div id='ms%POSpart%POS'>\n", id, i) != 0)
+		{
+		mssError(0, "HTMS", "Failed to write HTML closing tag.");
+		goto err_part;
+		}
+	    
+	    /** Write subwidgets. **/
+	    if (htrRenderSubwidgets(s, tree, z + 2) != 0)
+		{
+		mssError(0, "HTMS", "Failed to render child widgets of MultiScroll part.");
+		goto err_part;
+		}
+	    
+	    /** Write HTML closing tag. **/
+	    if (htrAddBodyItem(s, "</div>\n") != 0)
+		{
+		mssError(0, "HTMS", "Failed to write HTML closing tag.");
+		goto err_part;
+		}
+	    
+	    /** Success, go to next. **/
+	    continue;
+	    
+    err_part: /* Error handling. */
+	    mssError(0, "HTMS",
+		"Failed to render MultiScroll part #%u, aka. \"%s\":\"%s\".",
+		i + 1u, child->Name, child->Type
 	    );
-	    htrRenderSubwidgets(s, child, z+2);
-	    htrAddBodyItem(s, "</DIV>\n");
+	    goto err;
 	    }
-	htrRenderSubwidgets(s, tree, z+1);
+	
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto err;
 
 	/** End the containing layer. **/
-	htrAddBodyItem(s, "</DIV>\n");
+	if (htrAddBodyItem(s, "</div>\n") != 0)
+	    {
+	    mssError(0, "HTMS", "Failed to write HTML closing tag.");
+	    goto err;
+	    }
 
-    return 0;
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTMS",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
+	);
+	return -1;
     }
 
 
-/*** htmsRender_part - renderer for the multiscroll part subwidget.
+/*** htmsRender_part - renderer for the MultiScroll part subwidget.
  ***/
 int
 htmsRender_part(pHtSession s, pWgtrNode tree, int z)

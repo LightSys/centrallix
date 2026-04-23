@@ -210,11 +210,15 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name,ptr,sizeof(name));
 
 	/** create our instance variable **/
-	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
+	if (htrAddWgtrCtrLinkage(s, tree, "_parentctr") != 0) 
+	    {
+	    mssError(0, "HTFORM", "Failed to add container linkage.");
+	    goto err;
+	    }
 
 	/** Script include to add functions **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_form.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0)) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_form.js", 0)) goto err;
 
 	/** Write out the init line for this instance of the form
 	 **   the name of this instance was defined to be global up above
@@ -226,7 +230,7 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	const int no_link_next_within = (link_next_within == NULL || link_next_within[0] == '\0');
 	const int no_link_prev = (link_prev == NULL || link_prev[0] == '\0');
 	const int no_link_prev_within = (link_prev_within == NULL || link_prev_within[0] == '\0');
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "\t{ "
 		"const node = wgtrGetNodeRef(ns, '%STR&SYM'); "
 		"form_init(node, { "
@@ -256,19 +260,23 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	    (!no_link_prev), link_prev, (no_link_prev),
 	    (!no_link_prev_within), link_prev_within, (no_link_prev_within),
 	    interlock_with
-	);
-
-	/** Check for and render all subobjects. **/
-	/** non-visual, don't consume a z level **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
+	) != 0) 
 	    {
-	    if (strcmp(tree->Type, "widget/connector") == 0)
-		htrRenderWidget(s, xaGetItem(&(tree->Children), i), z);
-	    else
-		htrRenderWidget(s, xaGetItem(&(tree->Children), i), z);
+	    mssError(0, "HTFORM", "Failed to render child widgets.");
+	    goto err;
 	    }
-	
-    return 0;
+
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z) != 0) goto err;
+
+	return 0;
+
+    err:
+	mssError(0, "HTFORM",
+	    "Failed to render \"%s\":\"%s\".",
+	    tree->Name, tree->Type
+	);
+	return -1;
     }
 
 

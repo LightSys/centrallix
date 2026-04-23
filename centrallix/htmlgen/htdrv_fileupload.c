@@ -55,14 +55,13 @@ htfuRender(pHtSession s, pWgtrNode tree, int z)
 	{
 	char* ptr;
 	char name[64];
-    int id, i;
 	int multiselect;
 	char target[512];
 	char fieldname[HT_FIELDNAME_SIZE];
 	char form[64];
 
 	/** Get an id for this. **/
-	id = (HTFU.idcnt++);
+	const int id = (HTFU.idcnt++);
 	
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 		strtcpy(name,ptr,sizeof(name));
@@ -82,16 +81,20 @@ htfuRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    fieldname[0]='\0';
 	
-	/** Write named global **/
-	htrAddWgtrObjLinkage_va(s, tree, "fu%POSbase",id);
+ 	/** Link the widget to the DOM node. **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "fu%POSbase", id) != 0)
+	    {
+	    mssError(0, "HTFU", "Failed to add object linkage.");
+	    goto err;
+	    }
 	
-	htrAddEventHandlerFunction(s, "document","CHANGE", "fu", "fu_change");
+	if (htrAddEventHandlerFunction(s, "document", "CHANGE", "fu", "fu_change") != 0) goto err;
 	
 	/** Include the javascript code for the file uploader **/
-	htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
-	htrAddScriptInclude(s, "/sys/js/htdrv_fileupload.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_fileupload.js", 0) != 0) goto err;
 	
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "\tfu_init({ "
 		"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
 		"pane:document.getElementById('fu%POSform'), "
@@ -100,23 +103,50 @@ htfuRender(pHtSession s, pWgtrNode tree, int z)
 		"target:'%STR&JSSTR', "
 	    "});\n",
 	    name, id, id, id, target
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTFU", "Failed to write JS init call.");
+	    goto err;
+	    }
 	
 	/** style header items **/
-	htrAddStylesheetItem_va(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#fu%POSbase { "
 		"position:absolute; "
 		"visibility:hidden; "
 	    "}\n",
 	    id
-	);
-	htrAddBodyItem_va(s,"<DIV ID=\"fu%POSbase\"><FORM ID=\"fu%POSform\" METHOD=\"post\" ENCTYPE=\"multipart/form-data\" TARGET=\"fu%POSiframe\"><iframe ID=\"fu%POSiframe\" NAME=\"fu%POSiframe\"></iframe><INPUT ID=\"fu%POSinput\" TYPE=\"file\" NAME=\"fu%POSinput\" %STR/></FORM></DIV>", id, id, id, id, id, id, id, multiselect?"MULTIPLE":"");
+	) != 0)
+	    {
+	    mssError(0, "HTFU", "Failed to write base CSS.");
+	    goto err;
+	    }
+	if (htrAddBodyItem_va(s,
+	    "<div id='fu%POSbase'><form id='fu%POSform' method='post' enctype='multipart/form-data' target='fu%POSiframe'>"
+		"<iframe id='fu%POSiframe' name='fu%POSiframe'></iframe>"
+		"<input id='fu%POSinput' type='file' name='fu%POSinput' %[MULTIPLE%]/>"
+	    "</form></div>",
+	    id, id, id,
+	    id, id,
+	    id, id,
+	    (multiselect)
+	)!= 0)
+	    {
+	    mssError(0, "HTFU", "Failed to write base HTML.");
+	    goto err;
+	    }
 	
 	/** Check for more sub-widgets **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z);
+	if (htrRenderSubwidgets(s, tree, z) != 0) goto err;
 
 	return 0;
+
+    err:
+	mssError(0, "HTFU",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
+	);
+	return -1;
 	}//end htfuRender
 	
 	

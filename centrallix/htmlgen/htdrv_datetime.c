@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include "ht_render.h"
 #include "obj.h"
+#include "cxlib/util.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
@@ -66,7 +67,6 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
     char form[64];
     int type;
     int x,y,w,h,w2=184,h2=190;
-    int id, i;
     int rval;
     int search_by_range;
     int date_only = 0;
@@ -76,14 +76,15 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
     pObjQuery qy;
     pObject qy_obj;
 
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
-	    {
-	    mssError(1,"HTDT","Netscape or W3C DOM support required");
-	    return -1;
-	    }
-
 	/** Get an id for this. **/
-	id = (HTDT.idcnt++);
+	const int id = (HTDT.idcnt++);
+
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	    {
+	    mssError(1, "HTDT", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
+	    }
 
 	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0)
@@ -174,13 +175,31 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	if (strlen(initialdate))
 	    {
+	    /** Create a session to log errors. **/
+	    pQPSession error_session = check_ptr(qpfOpenSession());
+	    if (error_session == NULL) goto err;
+	    
+	    /** Print the initial date. **/
 	    objDataToDateTime(DATA_T_STRING, initialdate, &dt, NULL);
-	    qpfPrintf(NULL, initialdate, sizeof(initialdate), "%STR %INT %INT, %INT:%INT:%INT", obj_short_months[dt.Part.Month], 
-	                          dt.Part.Day+1,
-	                          dt.Part.Year+1900,
-	                          dt.Part.Hour,
-	                          dt.Part.Minute,
-	                          dt.Part.Second);
+	    if (qpfPrintf(error_session,
+		initialdate, sizeof(initialdate),
+		"%STR %INT %INT, %INT:%INT:%INT",
+		obj_short_months[dt.Part.Month], 
+	        dt.Part.Day + 1,
+	        dt.Part.Year + 1900,
+	        dt.Part.Hour,
+	        dt.Part.Minute,
+	        dt.Part.Second
+	    ) < 0)
+		{
+		mssError(1, "HTR", "qpfPrintf() failed print initial date.");
+		qpfLogErrors(error_session);
+		qpfCloseSession(error_session);
+		goto err;
+		}
+	    
+	    /** Clean up. **/
+	    qpfCloseSession(error_session);
 	    }
 	
 
@@ -194,7 +213,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    strcpy(fgcolor,"black");
 
 	/** Write style headers. **/
-	htrAddStylesheetItem_va(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#dt%POSbtn { "
 		"position:absolute; "
 		"visibility:inherit; "
@@ -215,8 +234,12 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    ht_flex_h(h, tree),
 	    z,
 	    bgcolor
-	);
-	htrAddStylesheetItem_va(s,
+	) != 0)
+	    {
+	    mssError(0, "HTDT", "Failed to write datetime button CSS.");
+	    goto err;
+	    }
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t.dt%POScon { "
 		"position:absolute; "
 		"overflow:hidden; "
@@ -228,30 +251,50 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    "}\n",
 	    id,
 	    z + 1
-	);
-	htrAddStylesheetItem_va(s,
+	) != 0)
+	    {
+	    mssError(0, "HTDT", "Failed to write datetime con CSS.");
+	    goto err;
+	    }
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t.dt_dropdown { "
 		"cursor:default; "
 	    "}\n",
 	    id
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTDT", "Failed to write datetime dropdown CSS.");
+	    goto err;
+	    }
 
-	/** Write named global **/
-	htrAddScriptGlobal(s, "dt_current", "null", 0);
-	htrAddScriptGlobal(s, "dt_timeout", "null", 0);
-	htrAddScriptGlobal(s, "dt_timeout_fn", "null", 0);
-	htrAddScriptGlobal(s, "dt_img_y", "0", 0);
+ 	/** Link the widget to the DOM node. **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "dt%POSbtn", id) != 0)
+	    {
+	    mssError(0, "HTDT", "Failed to add object linkage.");
+	    goto err;
+	    }
 
-	htrAddWgtrObjLinkage_va(s, tree, "dt%POSbtn",id);
+	/** Write named globals. **/
+	if (htrAddScriptGlobal(s, "dt_current", "null", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "dt_img_y", "0", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "dt_timeout_fn", "null", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "dt_timeout", "null", 0) != 0) goto err;
 
 	/** Script includes **/
-	htrAddScriptInclude(s, "/sys/js/ht_utils_date.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
-	htrAddScriptInclude(s, "/sys/js/htdrv_datetime.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_date.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_datetime.js", 0) != 0) goto err;
+
+	/** Add the event handling scripts. **/
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "dt","dt_mousedown") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "dt","dt_mousemove") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "dt","dt_mouseout")  != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "dt","dt_mouseover") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "dt","dt_mouseup")   != 0) goto err;
 
 	/** Write the initialization call in its own scope. **/
-	htrAddScriptInit_va(s, "\t{ "
+	if (htrAddScriptInit_va(s, "\t{ "
 	    "const layer = wgtrGetNodeRef(ns, '%STR&SYM'); "
 	    "dt_init({ "
 	        "layer, "
@@ -276,38 +319,40 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    w - 20, h, w2, h2,
 	    search_by_range,
 	    date_only, default_time
+	) != 0)
+	    {
+	    mssError(0, "HTDT", "Failed to render child widgets.");
+	    goto err;
+	    }
+
+	/** Write HTML. **/
+	if (htrAddBodyItem_va(s,
+	    "<div id='dt%POSbtn'>"
+		"<img src='/sys/images/ico17.gif' alt='icon' style='float:right;'>"
+		"<div id='dt%POScon1' class='dt%POScon' style='visibility:inherit;'></div>"
+		"<div id='dt%POScon2' class='dt%POScon' style='visibility:hidden;'></div>"
+	    "</div>\n",
+	    id,
+	    id, id,
+	    id, id
+	) != 0)
+	    {
+	    mssError(0, "HTDT", "Failed to write datetime HTML.");
+	    goto err;
+	    }
+
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto err;
+
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTDT",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
 	);
-
-	/** HTML body <DIV> elements for the layers. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"dt%POSbtn\">\n"
-			    "<IMG SRC=\"/sys/images/ico17.gif\" style=\"float:right;\">\n", id);
-	/*htrAddBodyItem_va(s,"<TABLE width=%POS cellspacing=0 cellpadding=0 border=0>\n",w);
-	htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
-	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%POS></TD>\n",w-2);
-	htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
-	htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=%POS width=1></TD>\n",h-2);
-	htrAddBodyItem(s,   "       <TD align=right valign=middle><IMG SRC=/sys/images/ico17.gif></TD>\n");
-	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=%POS width=1></TD></TR>\n",h-2);
-	htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD>\n");
-	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%POS></TD>\n",w-2);
-	htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
-	htrAddBodyItem(s,   "</TABLE>\n");*/
-	htrAddBodyItem_va(s,"<DIV ID='dt%POScon1' CLASS='dt%POScon' style='visibility:inherit;'></DIV>\n", id, id);
-	htrAddBodyItem_va(s,"<DIV ID='dt%POScon2' CLASS='dt%POScon' style='visibility:hidden;'></DIV>\n", id, id);
-	htrAddBodyItem(s,   "</DIV>\n");
-
-	/** Add the event handling scripts **/
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN","dt","dt_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEUP","dt","dt_mouseup");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE","dt","dt_mousemove");
-	htrAddEventHandlerFunction(s, "document","MOUSEOVER","dt","dt_mouseover");
-	htrAddEventHandlerFunction(s, "document","MOUSEOUT","dt","dt_mouseout");
-
-	/** Check for more sub-widgets within the datetime. **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
-
-    return 0;
+	return -1;
     }
 
 

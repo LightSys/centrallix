@@ -51,8 +51,7 @@ htvblRender(pHtSession s, pWgtrNode tree, int z)
     char name[64];
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
-    int t;
-    int i;
+    int rval = -1;
     int n = 0;
     char* vptr = NULL;
     int is_null = 1;
@@ -73,7 +72,7 @@ htvblRender(pHtSession s, pWgtrNode tree, int z)
 	    form[0]='\0';
 
 	/** Value of label **/
-	t = wgtrGetPropertyType(tree,"value");
+	int t = wgtrGetPropertyType(tree,"value");
 	if (t < 0 || t >= OBJ_TYPE_NAMES_CNT)
 	    {
 	    t = DATA_T_ANY;
@@ -95,7 +94,7 @@ htvblRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** widget init **/
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "\tvbl_init(wgtrGetNodeRef(ns, '%STR&SYM'), { "
 		"type:'%STR&JSSTR', "
 		"value:%['%STR&JSSTR'%]%[%INT%]%[null%], "
@@ -108,23 +107,38 @@ htvblRender(pHtSession s, pWgtrNode tree, int z)
 	    (!is_null && t == DATA_T_INTEGER), n,
 	    (is_null),
 	    fieldname, form
-	);
+	) != 0)
+	    {
+	    mssError(1, "HTVBL", "Failed to write JS init call.");
+	    goto end;
+	    }
 
 	/** JavaScript include file **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_variable.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0) != 0) goto end;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_variable.js", 0) != 0) goto end;
 
 	/** object linkages **/
-	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
+	if (htrAddWgtrCtrLinkage(s, tree, "_parentctr") != 0) goto end;
 
 	/** Check for more sub-widgets within the vbl entity. **/
-	htrRenderSubwidgets(s, tree, z+2);
+	if (htrRenderSubwidgets(s, tree, z + 2) != 0) goto end;
 
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (rval != 0)
+	    {
+	    mssError(0, "HTVBL",
+		"Failed to render \"%s\":\"%s\".",
+		tree->Name, tree->Type
+	    );
+	    }
+	
 	/** Clean up. **/
-	if (vptr)
-	    nmSysFree(vptr);
-
-    return 0;
+	if (vptr != NULL) nmSysFree(vptr);
+	
+	return rval;
     }
 
 

@@ -60,7 +60,6 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
     char elementid[16];
     //char main_bg[128];
     int x=-1,y=-1,w,h;
-    int id, i;
     int is_readonly = 0;
     int is_raised = 0;
     int mode = 0; /* 0=text, 1=html, 2=wiki */
@@ -69,14 +68,15 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
     char form[64];
     int box_offset;
 
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !s->Capabilities.Dom2Events)
-	    {
-	    mssError(1,"HTTX","Netscape, IE, or Dom2Events support required");
-	    return -1;
-	    }
+	/** Get an id for this. **/
+	const int id = (HTTX.idcnt++);
 
-    	/** Get an id for this. **/
-	id = (HTTX.idcnt++);
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	    {
+	    mssError(1, "HTTERM", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
+	    }
 
     	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
@@ -84,12 +84,12 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTTX","Textarea widget must have a 'width' property");
-	    return -1;
+	    goto err;
 	    }
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    mssError(1,"HTTX","Textarea widget must have a 'height' property");
-	    return -1;
+	    goto err;
 	    }
 	
 	/** Maximum characters to accept from the user **/
@@ -107,7 +107,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    else
 		{
 		mssError(1,"HTTX","Textarea widget 'mode' property must be either 'text','html', or 'wiki'");
-		return -1;
+		goto err;
 		}
 	    }
 
@@ -115,7 +115,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	//htrGetBackground(tree, NULL, 1, main_bg, sizeof(main_bg));
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto err;
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Style of Textarea - raised/lowered **/
@@ -139,32 +139,41 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Write Style header items. **/
 	snprintf(elementid, sizeof(elementid), "#tx%dbase", id);
-	htrFormatElement(s, tree, elementid, 0, 
-		x, y, w-2*box_offset, h-2*box_offset, z, "",
-		(char*[]){"border_color","#e0e0e0", "border_style",(is_raised?"outset":"inset"), NULL},
-		"overflow:hidden; position:absolute;");
+	const int offset = box_offset * 2;
+	if (htrFormatElement(s, tree, elementid, 0, 
+	    x, y, w - offset, h - offset, z, "",
+	    (char*[]){"border_color","#e0e0e0", "border_style", (is_raised ? "outset" : "inset"), NULL},
+	    "position:absolute; "
+	    "overflow:hidden; "
+	) != 0)
+	    {
+	    mssError(0, "HTTX", "Failed to write styles.");
+	    goto err;
+	    }
 
-	/** DOM Linkage **/
-	htrAddWgtrObjLinkage_va(s, tree, "tx%POSbase",id);
+	/** Link DOM node to widget data. **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "tx%POSbase", id) != 0) goto err;
 
-	/** Global for ibeam cursor layer **/
-	htrAddScriptGlobal(s, "text_metric", "null", 0);
-	htrAddScriptGlobal(s, "tx_current", "null", 0);
-	htrAddScriptGlobal(s, "tx_cur_mainlayer", "null", 0);
+	/** Write JS globals. **/
+	if (htrAddScriptGlobal(s, "text_metric",      "null", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "tx_current",       "null", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "tx_cur_mainlayer", "null", 0) != 0) goto err;
 
-	htrAddScriptInclude(s, "/sys/js/htdrv_textarea.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_cursor.js", 0);
+	/** Write JS script includes. **/
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_cursor.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_textarea.js",  0) != 0) goto err;
 
-	htrAddEventHandlerFunction(s, "document","MOUSEUP", "tx", "tx_mouseup");
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "tx","tx_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "tx", "tx_mouseover");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "tx", "tx_mousemove");
-	htrAddEventHandlerFunction(s, "document","PASTE", "tx", "tx_paste");
+	/** Register JS event handlers. **/
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "tx", "tx_mousedown") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "tx", "tx_mousemove") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "tx", "tx_mouseover") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "tx", "tx_mouseup")   != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "PASTE",     "tx", "tx_paste")     != 0) goto err;
 	    
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "\ttx_init({ "
 	        "layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
 		"fieldname:'%STR&JSSTR', "
@@ -173,19 +182,53 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 		"mode:%INT, "
 	    "});\n",
 	    name, fieldname, form, is_readonly, mode
+	) != 0)
+	    {
+	    mssError(0, "HTTX", "Failed to JS init call.");
+	    goto err;
+	    }
+
+	/** Write HTML container opening tag. **/
+	if (htrAddBodyItem_va(s, "<div id='tx%POSbase'>", id) != 0)
+	    {
+	    mssError(0, "HTTX", "Failed to write HTML container opening tag.");
+	    goto err;
+	    }
+	
+	/** Write HTML text area opening tag. */
+	if (htrAddBodyItem(s, 
+	    "<textarea style='"
+		"width:100%%; "
+		"height:100%%; "
+		"border:none; "
+		"outline:none; "
+		"font-family:inherit; "
+	    "'>\n"
+	) != 0)
+	    {
+	    mssError(0, "HTTX", "Failed to write HTML text area opening tag.");
+	    goto err;
+	    }
+
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto err;
+
+	/** Write HTML to close containers. **/
+	if (htrAddBodyItem(s, "</textarea></div>\n") != 0)
+	    {
+	    mssError(0, "HTTX", "Failed to write HTML closing tags.");
+	    goto err;
+	    }
+
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTTX",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
 	);
-
-	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<div id=\"tx%POSbase\"><textarea style=\"width:100%%; height:100%%; border:none; outline:none; font-family:inherit;\">\n",id);
-
-	/** Check for more sub-widgets **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
-
-	/** End the containing layer. **/
-	htrAddBodyItem(s, "</textarea></div>\n");
-
-    return 0;
+	return -1;
     }
 
 

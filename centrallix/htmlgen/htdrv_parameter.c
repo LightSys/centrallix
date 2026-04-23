@@ -1,9 +1,11 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include "ht_render.h"
 #include "obj.h"
+#include "cxlib/util.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
@@ -55,29 +57,31 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
     char paramname[64];
     char type[32];
     char findcontainer[64];
-    int i;
-    XString xs;
-    pObjPresentationHints hints;
     pStruct find_inf;
     int deploy_to_client;
 
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML )
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1,"HTPARAM","Netscape DOM or W3C DOM1HTML support required");
-	    return -1;
+	    mssError(1, "HTPARAM", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
 	    }
 
 	/** Get name and type **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0)
-	    return -1;
+	    {
+	    mssError(1, "HTPARAM", "Failed to get name.");
+	    goto err;
+	    }
 	strtcpy(name,ptr,sizeof(name));
 	if (wgtrGetPropertyValue(tree,"type",DATA_T_STRING,POD(&ptr)) != 0)
 	    ptr = "string";
 	strtcpy(type,ptr,sizeof(type));
-	if (objTypeID(type) < 0 && strcmp(type,"object"))
+	const int datatype = objTypeID(type);
+	if (datatype < 0 && strcmp(type, "object") != 0)
 	    {
-	    mssError(1,"HTPARAM","Invalid parameter data type for '%s'", name);
-	    return -1;
+	    mssError(1, "HTPARAM", "Invalid datatype %d.", datatype);
+	    goto err;
 	    }
 
 	/** Specify name of param (in case param widget name isn't the desired param name) **/
@@ -96,8 +100,8 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	    findcontainer[0] = '\0';
 
 	/** JavaScript include file **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_parameter.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_parameter.js", 0) != 0) goto err;
 
 	/** Value supplied? **/
 	if (deploy_to_client)
@@ -109,8 +113,12 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	const int has_find_inf = (find_inf != NULL && find_inf->StrVal != NULL && find_inf->StrVal[0] != '\0');
 	if (deploy_to_client)
 	    {
+	    bool successful = false;
+	    XString xs = { AllocLen: 0 };
+	    pObjPresentationHints hints = NULL;
+
 	    /** Script init **/
-	    htrAddScriptInit_va(s,
+	    if (htrAddScriptInit_va(s,
 		"\tpa_init(wgtrGetNodeRef(ns, '%STR&SYM'), { "
 		    "name:'%STR&JSSTR', "
 		    "type:'%STR&JSSTR', "
@@ -119,37 +127,77 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 		"});\n", 
 		name, paramname, type, findcontainer,
 		(has_find_inf), (has_find_inf) ? find_inf->StrVal : "null", (!has_find_inf)
-	    );
-
-	    hints = wgtrWgtToHints(tree);
-	    if (!hints)
+	    ) != 0)
 		{
-		mssError(0, "HTPARAM", "Error in parameter data");
-		return -1;
+		mssError(0, "HTPARAM", "Failed to write JS init call.");
+		goto err_deploy;
 		}
-	    xsInit(&xs);
-	    hntEncodeHints(hints, &xs);
-	    htrAddScriptInit_va(s,
+
+	    /** Get presentation hints. **/
+	    hints = wgtrWgtToHints(tree);
+	    if (hints == NULL)
+		{
+		mssError(0, "HTPARAM", "Failed to get presentation hints.");
+		goto err_deploy;
+		}
+
+	    /** Write presentation hints. **/
+	    if (check(xsInit(&xs)) != 0) goto err_deploy;
+	    if (hntEncodeHints(hints, &xs) < 0)
+		{
+		mssError(0, "HTPARAM", "Failed to encode presentation hints.");
+		goto err_deploy;
+		}
+	    if (htrAddScriptInit_va(s,
 		"\tcx_set_hints(wgtrGetNodeRef(ns, '%STR&SYM'), '%STR&JSSTR', 'app');\n",
 		name, xs.String
-	    );
-	    xsDeInit(&xs);
-	    objFreeHints(hints);
+	    ) != 0)
+		{
+		mssError(0, "HTPARAM", "Failed to write JS for presentation hints.");
+		goto err_deploy;
+		}
 
-	    htrAddScriptInit_va(s, "\twgtrGetNodeRef(ns, '%STR&SYM').Verify();\n", name);
+	    if (htrAddScriptInit_va(s, "\twgtrGetNodeRef(ns, '%STR&SYM').Verify();\n", name) != 0)
+		{
+		mssError(0, "HTPARAM", "Failed to write JS to verify presentation hints.");
+		goto err_deploy;
+		}
+
+	    /** Success. **/
+	    successful = true;
+
+    err_deploy:
+	    /** Clean up. **/
+	    if (check(xsDeInit(&xs)) != 0) goto err_deploy;
+	    if (objFreeHints(hints) != 0)
+		{
+		mssError(0, "HTPARAM", "Failed to free presentation hints.");
+		goto err_deploy;
+		}
+
+	    /** Handle errors. **/
+	    if (!successful) goto err;
 	    }
 	else
 	    {
 	    tree->RenderFlags |= HT_WGTF_NORENDER;
 	    }
 
+	/** Nonvisual widget. **/
 	tree->RenderFlags |= HT_WGTF_NOOBJECT;
 
-	/** Check for more sub-widgets within the param **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto err;
+	
+	/** Success. **/
+	return 0;
 
-    return 0;
+    err:
+	mssError(0, "HTPARAM",
+	    "Failed to render \"%s\":\"%s\".",
+	    tree->Name, tree->Type
+	);
+	return -1;
     }
 
 

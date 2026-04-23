@@ -69,43 +69,42 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
     char hfgcolor[64];
     char selected_bg[128];
     int x,y,w;
-    int id, i;
     int show_root = 1;
     int show_branches = 1;
     int show_root_branch = 1;
     int use_3d_lines;
     int order_desc = 0;
-    pWgtrNode sub_tree;
 
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
+	/** Get an id for this. **/
+	const int id = (HTTREE.idcnt++);
+
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1,"HTTREE","Netscape DOM or W3C DOM1 HTML and DOM2 CSS support required");
-	    return -1;
+	    mssError(1, "HTTERM", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
 	    }
-
-    	/** Get an id for this. **/
-	id = (HTTREE.idcnt++);
 
     	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) 
 	    {
 	    mssError(1,"HTTREE","TreeView widget must have an 'x' property");
-	    return -1;
+	    goto err;
 	    }
 	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0)
 	    {
 	    mssError(1,"HTTREE","TreeView widget must have a 'y' property");
-	    return -1;
+	    goto err;
 	    }
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0)
 	    {
 	    mssError(1,"HTTREE","TreeView widget must have a 'width' property");
-	    return -1;
+	    goto err;
 	    }
 
 	/** Are we showing root of tree or the trunk? **/
 	show_root = htrGetBoolean(tree, "show_root", 1);
-	if (show_root < 0) return -1;
+	if (show_root < 0) goto err;
 
 	/** How about branches? (branch decorations, etc.) **/
 	show_branches = htrGetBoolean(tree, "show_branches", 1);
@@ -136,7 +135,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto err;
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Selected item background color **/
@@ -165,31 +164,12 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTTREE","TreeView widget must have a 'source' property");
-	    return -1;
+	    goto err;
 	    }
 	strtcpy(src,ptr,sizeof(src));
 
-	/** Ok, write the style header items. **/
-	if (s->Capabilities.Dom0NS)
-	    {
-	    htrAddStylesheetItem_va(s,
-		"\t\t#tv%POSroot { "
-		    "position:absolute; "
-		    "visibility:%STR; "
-		    "left:"ht_flex_format"; "
-		    "top:"ht_flex_format"; "
-		    "width:"ht_flex_format"; "
-		    "z-index:%POS; "
-		"}\n",
-		id,
-		(show_root) ? "inherit" : "hidden",
-		ht_flex_x(x, tree),
-		ht_flex_y(y, tree),
-		ht_flex_w(w, tree),
-		z
-	    );
-	    }
-	htrAddStylesheetItem_va(s,
+	/** Write CSS. **/
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#tv%POSload { "
 		"position:absolute; "
 		"visibility:hidden; "
@@ -198,29 +178,49 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 		"top:0px; "
 		"width:0px; "
 		"height:0px; "
-		"clip-path:inset(0px 0px 0px 0px); "
 		"z-index:0; "
 	    "}\n",
 	    id
-	);
-	htrAddStylesheetItem_va(s, "\t\tdiv.tv%POS  a { %[color:%STR&CSSVAL;%] }\n", id, (*fgcolor),  fgcolor);
-	htrAddStylesheetItem_va(s, "\t\tdiv.tv%POSh a { %[color:%STR&CSSVAL;%] }\n", id, (*hfgcolor), hfgcolor);
-	htrAddStylesheetItem_va(s,
-	    "\t\t.tv%POS { "
-		"cursor:pointer; "
-	    "}\n",
+	) != 0)
+	    {
+	    mssError(0, "HTTREE", "Failed to write treeview loader CSS.");
+	    goto err;
+	    }
+	if (htrAddStylesheetItem_va(s,
+	    "\t\tdiv.tv%POS  a { %[color:%STR&CSSVAL;%] }\n"
+	    "\t\tdiv.tv%POSh a { %[color:%STR&CSSVAL;%] }\n"
+	    "\t\t.tv%POS { cursor:pointer; }\n",
+	    id, (*fgcolor),  fgcolor,
+	    id, (*hfgcolor), hfgcolor,
 	    id
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTTREE", "Failed to write treeview entry CSS.");
+	    goto err;
+	    }
+
+ 	/** Link the widget to the DOM node. **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "tv%POSroot", id) != 0) goto err;
 
 	/** Write globals for internal use **/
-	htrAddScriptGlobal(s, "tv_tgt_layer", "null", 0);
-	htrAddScriptGlobal(s, "tv_target_img","null",0);
-	htrAddScriptGlobal(s, "tv_layer_cache","null",0);
-	htrAddScriptGlobal(s, "tv_alloc_cnt","0",0);
-	htrAddScriptGlobal(s, "tv_cache_cnt","0",0);
+	if (htrAddScriptGlobal(s, "tv_alloc_cnt",   "0",    0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "tv_cache_cnt",   "0",    0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "tv_layer_cache", "null", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "tv_target_img",  "null", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "tv_tgt_layer",   "null", 0) != 0) goto err;
 
-	/** DOM Linkage on client **/
-	htrAddWgtrObjLinkage_va(s, tree, "tv%POSroot",id);
+	/** Write JS script includes. **/
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_info.js",   0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_treeview.js",  0) != 0) goto err;
+
+	/** Add the event handling scripts **/
+	if (htrAddEventHandlerFunction(s, "document", "CLICK",     "tv", "tv_click")     != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "tv", "tv_mousedown") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "tv", "tv_mousemove") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "tv", "tv_mouseout")  != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "tv", "tv_mouseover") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "tv", "tv_mouseup")   != 0) goto err;
 
 	/** Script initialization call. **/
 	htrAddScriptInit_va(s, "\t{ "
@@ -244,72 +244,54 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	    icon, selected_bg, order_desc
 	);
 
-	/** Script includes **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_treeview.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_info.js", 0);
-
-	/** HTML body <DIV> elements for the layers. **/
-	if (s->Capabilities.Dom0NS)
+	/** Write HTML. **/
+	if (htrAddBodyItem_va(s,
+	    "<div "
+		"class=\"tv%POS\" "
+		"id=\"tv%POSroot\" "
+		"style=\""
+		    "position:absolute; "
+		    "visibility:%STR; "
+		    "left:"ht_flex_format"; "
+		    "top:"ht_flex_format"; "
+		    "width:"ht_flex_format"; "
+		    "z-index:%POS; "
+		"\""
+	    ">"
+		"<img src=\"%STR&HTE\">"
+		"&nbsp;%STR&HTE"
+	    "</div>\n",
+	    id, /* class */
+	    id, /* id */
+	    (show_root) ? "inherit" : "hidden",
+	    ht_flex_x(x, tree),
+	    ht_flex_y(y, tree),
+	    ht_flex_w(w, tree),
+	    z,
+	    (*icon) ? icon : "/sys/images/ico02b.gif", src
+	) != 0) 
 	    {
-	    htrAddBodyItem_va(s, "<DIV class=\"tv%POS\" ID=\"tv%POSroot\"><IMG SRC=\"%STR&HTE\" align=left>&nbsp;%STR&HTE</DIV>\n", id, id, (*icon)?icon:"/sys/images/ico02b.gif", src);
-	    htrAddBodyItem_va(s, "<DIV ID=\"tv%POSload\"></DIV>\n",id);
+	    mssError(0, "HTTREE", "Failed to write HTML for treeview root.");
+	    goto err;
 	    }
-	else
+	if (htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "tv%POSload", id, NULL, "") != 0)
 	    {
-	    htrAddBodyItem_va(s,
-		"<div "
-		    "class=\"tv%POS\" "
-		    "id=\"tv%POSroot\" "
-		    "style=\""
-			"position:absolute; "
-			"visibility:%STR; "
-			"left:"ht_flex_format"; "
-			"top:"ht_flex_format"; "
-			"width:"ht_flex_format"; "
-			"z-index:%POS; "
-		    "\""
-		">"
-		    "<img src=\"%STR&HTE\">"
-		    "&nbsp;%STR&HTE"
-		"</div>\n",
-		id, /* class */
-		id, /* id */
-		(show_root) ? "inherit" : "hidden",
-		ht_flex_x(x, tree),
-		ht_flex_y(y, tree),
-		ht_flex_w(w, tree),
-		z,
-		(*icon) ? icon : "/sys/images/ico02b.gif", src
-	    );
-	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "tv%POSload", id, NULL, "");
+	    mssError(0, "HTTREE", "Failed to write HTML for treeview loader.");
+	    goto err;
 	    }
 
-	/** Event handler for click-on-url **/
-	htrAddEventHandlerFunction(s, "document","CLICK","tv","tv_click");
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 2) != 0) goto err;
 
-	/** Add the event handling scripts **/
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN","tv","tv_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEUP","tv","tv_mouseup");
-	htrAddEventHandlerFunction(s,"document","MOUSEOVER","tv","tv_mouseover");
-	htrAddEventHandlerFunction(s,"document","MOUSEMOVE","tv","tv_mousemove");
-	htrAddEventHandlerFunction(s,"document","MOUSEOUT","tv", "tv_mouseout");
+	/** Success. **/
+	return 0;
 
-	/** Check for more sub-widgets within the treeview. **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    {
-	    sub_tree = xaGetItem(&(tree->Children), i);
-	    /*if (wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr, "widget/osrc-rule"))
-		{
-		httree_internal_AddRule(s, tree, name, sub_tree);
-		}
-	    else
-		{*/
-		htrRenderWidget(s, sub_tree, z+2);
-		/*}*/
-	    }
-
-    return 0;
+    err:
+	mssError(0, "HTTM",
+	    "Failed to render \"%s\":\"%s\".",
+	    tree->Name, tree->Type
+	);
+	return -1;
     }
 
 

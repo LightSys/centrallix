@@ -136,15 +136,16 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
     {
     char* ptr;
 
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1,"HTTBL","Netscape 4 DOM or W3C DOM support required");
-	    return -1;
+	    mssError(1, "HTTBL", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
 	    }
 
 	/** Write CSS for the table base element. **/
 	const int content_width = (t->overlap_scrollbar) ? (t->w) : (t->w - 18);
-	htrAddStylesheetItem_va(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#tbld%POSbase { "
 		"position:absolute; "
 		"visibility:inherit; "
@@ -160,11 +161,15 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    ht_flex_w(content_width, tree),
 	    ht_flex_h(t->h, tree),
 	    z + 0
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTTBL", "Failed to write base table CSS.");
+	    goto err;
+	    }
 	
 	/** Write CSS for the table scrollbar. **/
 	const int row_start_y = (t->has_header) ? (t->min_rowheight + t->cellvspacing) : 0;
-	htrAddStylesheetItem_va(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#tbld%POSscroll { "
 		"position:absolute; "
 		"visibility:%STR; "
@@ -180,10 +185,14 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    ht_flex_y(t->y + row_start_y, tree),
 	    ht_flex_h(t->h - row_start_y, tree),
 	    z + 0
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTTBL", "Failed to write table scrollbar CSS.");
+	    goto err;
+	    }
 	
 	/** Write CSS for the table scroll thumb. **/
-	htrAddStylesheetItem_va(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#tbld%POSthumb { "
 		"position:absolute; "
 		"visibility:inherit; "
@@ -197,28 +206,36 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    "}\n",
 	    t->id,
 	    z + 1
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTTBL", "Failed to write table scroll thumb CSS.");
+	    goto err;
+	    }
 	
 	/** Link to the table base object. **/
-	htrAddWgtrObjLinkage_va(s, tree, "tbld%POSbase", t->id);
+	if (htrAddWgtrObjLinkage_va(s, tree, "tbld%POSbase", t->id) != 0) goto err;
 
 	/** Add globals for scripts. **/
-	htrAddScriptGlobal(s,"tbld_current","null",0);
-	htrAddScriptGlobal(s,"tbldb_current","null",0);
-	htrAddScriptGlobal(s,"tbldx_current","null",0);
-	htrAddScriptGlobal(s,"tbldb_start","null",0);
-	htrAddScriptGlobal(s,"tbldbdbl_current","null",0);
+	if (htrAddScriptGlobal(s, "tbld_current",     "null", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "tbldb_current",    "null", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "tbldb_start",      "null", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "tbldbdbl_current", "null", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "tbldx_current",    "null", 0) != 0) goto err;
 
 	/** Include scripts. **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_table.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_table.js", 0) != 0) goto err;
 	
 	/** Begin writing the js initialization call. **/
-	htrAddScriptInit_va(s, "\ttbld_init({");
+	if (htrAddScriptInit_va(s, "\ttbld_init({") != 0)
+	    {
+	    mssError(0, "HTTBL", "Failed to write JS to start table init call.");
+	    goto err;
+	    }
 	
 	/** Write identification data. **/
 	const int has_osrc = (t->osrc != NULL && t->osrc[0] != '\0');
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "name:'%STR&SYM', "
 	    "table:wgtrGetNodeRef(ns, '%STR&SYM'), "
 	    "scroll:htr_subel("
@@ -228,10 +245,14 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    "osrc:%['%STR&SYM'%]%[null%], ",
 	    t->name, t->name, t->name, t->id,
 	    (has_osrc), t->osrc, (!has_osrc)
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTTBL", "Failed to write JS table identification data.");
+	    goto err;
+	    }
 	
 	/** Write layout data. **/
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "height:%INT, "
 	    "width:%INT, "
 	    "innerpadding:%INT, "
@@ -243,10 +264,14 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    t->inner_padding,
 	    t->min_rowheight, t->max_rowheight,
 	    t->cellhspacing, t->cellvspacing
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTTBL", "Failed to write JS table layout data.");
+	    goto err;
+	    }
 	
 	/** Write selection data. **/
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "allow_selection:%INT, "
 	    "show_selection:%INT, "
 	    "initial_selection:%INT, "
@@ -255,18 +280,26 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    t->show_selection,
 	    t->initial_selection,
 	    t->allow_deselection
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTTBL", "Failed to write JS table selection data.");
+	    goto err;
+	    }
 	
 	/** Write scrollbar data. **/
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "thumb_name:'tbld%POSthumb', "
 	    "demand_sb:%INT, ",
 	    t->id,
 	    t->demand_scrollbar
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTTBL", "Failed to write JS table scrollbar data.");
+	    goto err;
+	    }
 	
 	/** Write theme data (colors, backgrounds, etc.). **/
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "textcolor:'%STR&JSSTR', "
 	    "textcolorhighlight:'%STR&JSSTR', "
 	    "titlecolor:'%STR&JSSTR', "
@@ -277,10 +310,14 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    t->textcolor, t->textcolorhighlight,
 	    t->titlecolor, t->colsep_bgnd, t->hdr_bgnd,
 	    t->newrow_bgnd, t->newrow_textcolor
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTTBL", "Failed to write JS table theme data.");
+	    goto err;
+	    }
 	
 	/** Write general row data. **/
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "dm:%INT, "
 	    "hdr:%INT, "
 	    "grid_in_empty_rows:%INT, "
@@ -291,23 +328,35 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    t->grid_in_empty_rows,
 	    t->windowsize,
 	    t->rowcache_size
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTTBL", "Failed to write JS table general row data.");
+	    goto err;
+	    }
 	
 	/** Write general column data. **/
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "dragcols:%INT, "
 	    "colsep:%INT, "
 	    "colsep_mode:%INT, ",
 	    t->dragcols, t->colsep, t->colsep_mode
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTTBL", "Failed to write JS table general column data.");
+	    goto err;
+	    }
 	
 	/** Write the cols array with data for each column. **/
 	/** ANCHOR[id=table-column] **/
-	htrAddScriptInit_va(s, "cols:[");
+	if (htrAddScriptInit_va(s, "cols:[") != 0)
+	    {
+	    mssError(0, "HTTBL", "Failed to write JS for the start of the table columns list.");
+	    goto err;
+	    }
 	for (int colid = 0; colid < t->ncols; colid++)
 	    {
 	    httbl_col* col = t->col_infs[colid];
-	    htrAddScriptInit_va(s,
+	    if (htrAddScriptInit_va(s,
 		"{ "
 		    "name:'%STR&JSSTR', "
 		    "ns:'%STR&JSSTR', "
@@ -338,18 +387,33 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		col->caption_textcolor,
 		col->image_maxwidth,
 		col->image_maxheight
-	    );
+	    ) != 0)
+		{
+		mssError(0, "HTTBL",
+		    "Failed to write JS for table column #%d/%d, aka. \"%s\".",
+		    colid + 1, t->ncols, col->wname
+		);
+		goto err;
+		}
 	    }
 
 	/** Null terminate the array, and finish writing the init call. **/
-	htrAddScriptInit(s,"null]});\n");
+	if (htrAddScriptInit(s, "null]});\n") != 0)
+	    {
+	    mssError(0, "HTTBL", "Failed to write JS to finish init call.");
+	    goto err;
+	    }
 
 	/** Write HTML for the table base container. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSbase\">\n",t->id);
+	if (htrAddBodyItem_va(s, "<div id='tbld%POSbase'>\n", t->id) != 0)
+	    {
+	    mssError(0, "HTTBL", "Failed to write HTML opening tag for table container.");
+	    goto err;
+	    }
 
 	/** Write the table row detail elements. **/
 	/** ANCHOR[id=table-row-detail] **/
-	int subcnt = 0;
+	int sub_count = 0;
 	pWgtrNode children[32]; /** Warning: Large local variable in stack. **/
 	const int detail_count = wgtrGetMatchingChildList(tree, "widget/table-row-detail", children, sizeof(children)/sizeof(pWgtrNode));
 	for (int i = 0; i < detail_count; i++)
@@ -360,12 +424,13 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING,POD(&ptr));
 	    if (strcmp(ptr, "widget/table-row-detail") == 0)
 		{
-		htrCheckNSTransition(s, tree, sub_tree);
+		sub_count++;
+		if (htrCheckNSTransition(s, tree, sub_tree) != 0) goto err_detail;
 
 		/** Write CSS for the table row detail. **/
 		int h;
 		if (wgtrGetPropertyValue(sub_tree, "height", DATA_T_INTEGER, POD(&h)) != 0) h = t->min_rowheight;
-		htrAddStylesheetItem_va(s,
+		if (htrAddStylesheetItem_va(s,
 		    "\t\t#tbld%POSsub%POS { "
 			"position:absolute; "
 			"visibility:hidden; "
@@ -375,34 +440,67 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 			"height:"ht_flex_format"; "
 			"z-index:%POS; "
 		    "}\n",
-		    t->id, ++subcnt,
+		    t->id, sub_count,
 		    ht_flex_w(t->w - (t->demand_scrollbar ? 0 : 18), tree),
 		    ht_flex_h(h, tree),
 		    z + 1
-		);
+		) != 0)
+		    {
+		    mssError(0, "HTTBL", "Failed to write HTML opening tag for table container.");
+		    goto err_detail;
+		    }
 		
 		/** Write HTML (including subwidgets). **/
-		htrAddBodyItem_va(s,"<DIV ID=\"tbld%POSsub%POS\">\n", t->id, subcnt);
-		htrRenderSubwidgets(s, sub_tree, z+2);
-		htrAddBodyItem(s,"</DIV>\n");
+		if (htrAddBodyItem_va(s, "<div id='tbld%POSsub%POS'>\n", t->id, sub_count) != 0)
+		    {
+		    mssError(0, "HTTBL", "Failed to write HTML opening tag for table row detail.");
+		    goto err_detail;
+		    }
+		if (htrRenderSubwidgets(s, sub_tree, z + 2) != 0)
+		    {
+		    mssError(0, "HTTBL", "Failed to write widgets in table row detail.");
+		    goto err_detail;
+		    }
+		if (htrAddBodyItem(s, "</div>\n") != 0)
+		    {
+		    mssError(0, "HTTBL", "Failed to write HTML closing tag for table container.");
+		    goto err_detail;
+		    }
 		
 		/** Add linkage. **/
-		htrAddWgtrObjLinkage_va(s, sub_tree, "tbld%POSsub%POS", t->id, subcnt);
+		if (htrAddWgtrObjLinkage_va(s, sub_tree, "tbld%POSsub%POS", t->id, sub_count)) goto err_detail;
 		
 		/** Add 'display_for'. **/
-		wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING,POD(&ptr));
-		htrCheckAddExpression(s, sub_tree, ptr, "display_for");
+		if (wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING, POD(&ptr)) != 0)
+		    {
+		    mssError(1, "HTTBL", "Failed to get name of table row detail widget.");
+		    goto err_detail;
+		    }
+		if (htrCheckAddExpression(s, sub_tree, ptr, "display_for") < 0) goto err;
 
-		htrCheckNSTransitionReturn(s, tree, sub_tree);
+		if (htrCheckNSTransitionReturn(s, tree, sub_tree) != 0) goto err;
 		}
+	    
+	    /** Success. **/
+	    continue;
+	    
+    err_detail:
+	    mssError(0, "HTTBL", "Failed to write HTML opening tag for table container.");
+	    goto err;
 	    }
-	htrRenderSubwidgets(s, tree, z+2);
+	
+	/** Render other children. **/
+	if (htrRenderSubwidgets(s, tree, z + 2) != 0) goto err;
 
 	/** Close the base container. **/
-	htrAddBodyItem(s,"</DIV>\n");
+	if (htrAddBodyItem(s, "</div>\n") != 0)
+	    {
+	    mssError(0, "HTTBL", "Failed to write HTML closing tag for table container.");
+	    goto err;
+	    }
 
 	/** Write HTML for the scrollbar. **/
-	htrAddBodyItem_va(s,
+	if (htrAddBodyItem_va(s,
 	    "<div id='tbld%POSscroll'>\n"
 		"<table border='0' cellspacing='0' cellpadding='0' width='18'>\n"
 		    "<tr><td><img src='/sys/images/ico13b.gif' name='u'></td></tr>\n"
@@ -411,25 +509,38 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		"</table>\n"
 		"<div id='tbld%POSthumb'></div>\n"
 	    "</div>\n",
-	    t->id, t->id, ht_flex_h(t->h - row_start_y - 2*18, tree), t->id
-	);
+	    t->id,
+	    t->id, ht_flex_h(t->h - row_start_y - 2*18, tree),
+	    t->id
+	) != 0)
+	    {
+	    mssError(0, "HTTBL", "Failed to write HTML for table scrollbar.");
+	    goto err;
+	    }
 
 	/** Register event handlers. **/
-	htrAddEventHandlerFunction(s,"document","MOUSEOVER","tbld","tbld_mouseover");
-	htrAddEventHandlerFunction(s,"document","MOUSEOUT","tbld","tbld_mouseout");
-	htrAddEventHandlerFunction(s,"document","MOUSEDOWN","tbld","tbld_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE","tbld","tbld_mousemove");
-	htrAddEventHandlerFunction(s, "document","MOUSEUP","tbld","tbld_mouseup");
-	htrAddEventHandlerFunction(s, "document","WHEEL","tbld","tbld_wheel");
-	htrAddEventHandlerFunction(s, "document","KEYDOWN","tbld","tbld_keydown");
-	htrAddEventHandlerFunction(s, "document","TOUCHSTART","tbld","tbld_touchstart");
-	htrAddEventHandlerFunction(s, "document","TOUCHEND","tbld","tbld_touchend");
-	htrAddEventHandlerFunction(s, "document","TOUCHMOVE","tbld","tbld_touchmove");
-	htrAddEventHandlerFunction(s, "document","TOUCHCANCEL","tbld","tbld_touchcancel");
-	if (s->Capabilities.Dom1HTML)
-	    htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "tbld", "tbld_contextmenu");
+	if (htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "tbld", "tbld_contextmenu") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "KEYDOWN",     "tbld", "tbld_keydown")     != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN",   "tbld", "tbld_mousedown")   != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE",   "tbld", "tbld_mousemove")   != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",    "tbld", "tbld_mouseout")    != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER",   "tbld", "tbld_mouseover")   != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",     "tbld", "tbld_mouseup")     != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "TOUCHCANCEL", "tbld", "tbld_touchcancel") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "TOUCHEND",    "tbld", "tbld_touchend")    != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "TOUCHMOVE",   "tbld", "tbld_touchmove")   != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "TOUCHSTART",  "tbld", "tbld_touchstart")  != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "WHEEL",       "tbld", "tbld_wheel")       != 0) goto err;
 
-    return 0;
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTTBL",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, t->id
+	);
+	return -1;
     }
 
 

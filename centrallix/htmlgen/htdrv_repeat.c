@@ -54,10 +54,18 @@ int
 htrptRender(pHtSession s, pWgtrNode tree, int z)
     {
 	/** Render Subwidgets **/
-	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
-	htrRenderSubwidgets(s,tree,z);
+	if (htrAddWgtrCtrLinkage(s, tree, "_parentctr") != 0) goto err;
+	if (htrRenderSubwidgets(s, tree, z) != 0) goto err;
 
-    return 0;
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTRPT",
+	    "Failed to render \"%s\":\"%s\".",
+	    tree->Name, tree->Type
+	);
+	return -1;
     }
 
 int

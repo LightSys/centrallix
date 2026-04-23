@@ -54,17 +54,18 @@ httmRender(pHtSession s, pWgtrNode tree, int z)
     int auto_reset = 0;
     int auto_start = 1;
 
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1,"HTTM","Netscape 4.x or W3C DOM support required");
-	    return -1;
+	    mssError(1, "HTTERM", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
 	    }
 
 	/** Get msec for timer countdown **/
 	if (wgtrGetPropertyValue(tree,"msec",DATA_T_INTEGER,POD(&msec)) != 0)
 	    {
 	    mssError(1,"HTTM","Timer widget must have 'msec' time specified");
-	    return -1;
+	    goto err;
 	    }
 
 	/** Get auto reset and auto start settings **/
@@ -72,13 +73,14 @@ httmRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"auto_start",DATA_T_INTEGER,POD(&auto_start)) != 0) auto_start = 1;
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto err;
 	strtcpy(name,ptr,sizeof(name));
 
-	htrAddScriptInclude(s, "/sys/js/htdrv_timer.js", 0);
+	/** Write JS include. **/
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_timer.js", 0) != 0) goto err;
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "\ttm_init({ "
 		"node:wgtrGetNodeRef(ns, '%STR&SYM'), "
 		"time:%INT, "
@@ -86,12 +88,24 @@ httmRender(pHtSession s, pWgtrNode tree, int z)
 		"autostart:%INT, "
 	    "});\n",
 	    name, msec, auto_reset, auto_start
+	) != 0)
+	    {
+	    mssError(0, "HTTM", "Failed to write JS init call.");
+	    goto err;
+	    }
+
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 2) != 0) goto err;
+
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTTM",
+	    "Failed to render \"%s\":\"%s\".",
+	    tree->Name, tree->Type
 	);
-
-	/** Check for objects within the timer. **/
-	htrRenderSubwidgets(s, tree, z+2);
-
-    return 0;
+	return -1;
     }
 
 

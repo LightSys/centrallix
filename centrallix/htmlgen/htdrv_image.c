@@ -87,20 +87,21 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
     char name[64];
     char src[256];
     int x=-1,y=-1,w,h;
-    int id, i;
+    int rval = -1;
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
     char* alt_text;
     char* aspect;
 
-	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
-	    {
-	    mssError(1,"HTTBL","Netscape DOM support or W3C DOM Level 1 HTML required");
-	    return -1;
-	    }
+	/** Get an id for this. **/
+	const int id = (HTIMG.idcnt++);
 
-    	/** Get an id for this. **/
-	id = (HTIMG.idcnt++);
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	    {
+	    mssError(1, "HTIMG", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto end;
+	    }
 
     	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
@@ -108,12 +109,12 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTIMG","Image widget must have a 'width' property");
-	    return -1;
+	    goto end;
 	    }
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    mssError(1,"HTIMG","Image widget must have a 'height' property");
-	    return -1;
+	    goto end;
 	    }
 
 	if(wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) == 0)
@@ -128,16 +129,10 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    aspect=nmSysStrdup("stretch");
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto end;
 	strtcpy(name,ptr,sizeof(name));
 
 	/** image source **/
-	/*if (!htrCheckAddExpression(s, tree, name, "source") && wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) != 0)
-	    {
-	    mssError(1,"HTIMG","Image widget must have a 'source' property");
-	    nmSysFree(alt_text);
-	    return -1;
-	    }*/
 	ptr = "";
 	htrCheckAddExpression(s, tree, name, "source");
 	wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr));
@@ -157,29 +152,33 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    form[0]='\0';
 
-	/** Initialize linkage. **/
-	htrAddWgtrObjLinkage_va(s, tree, "img%POS", id);
+ 	/** Link the widget to the DOM node. **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "img%POS", id) != 0) goto end;
 	
 	/** Initialize image scripts. **/
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_image.js", 0) != 0) goto end;
+	if (htrAddScriptInit_va(s,
 	    "\tim_init(wgtrGetNodeRef(ns, '%STR&SYM'), { "
 		"field:'%STR&JSSTR', "
 		"form:'%STR&JSSTR', "
 	    "});\n", 
 	    name,
 	    fieldname, form
-	);
-	htrAddScriptInclude(s, "/sys/js/htdrv_image.js", 0);
+	) != 0)
+	    {
+	    mssError(0, "HTDT", "Failed to write JS init call.");
+	    goto end;
+	    }
 
 	/** Event Handlers **/
-	htrAddEventHandlerFunction(s, "document","MOUSEUP", "img", "im_mouseup");
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "img", "im_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "img", "im_mouseover");
-	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "img", "im_mouseout");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "img", "im_mousemove");
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "img", "im_mousedown") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "img", "im_mousemove") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "img", "im_mouseout") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "img", "im_mouseover") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "img", "im_mouseup") != 0) goto end;
 	
 	/** Write the style for the image container div. **/
-	htrAddStylesheetItem_va(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#img%POS { "
 		"left:"ht_flex_format"; "
 		"top:"ht_flex_format"; "
@@ -194,7 +193,11 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    ht_flex_w(w, tree),
 	    ht_flex_h(h, tree),
 	    z
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTDT", "Failed to write image CSS.");
+	    goto end;
+	    }
 
 	/** Use a style that honors the aspect ratio attribute. **/
 	char* style = (strcmp(aspect, "stretch") == 0)
@@ -209,7 +212,7 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    "display:inline; ";
 	
 	/** Write image HTML, including the containing div. **/
-	htrAddBodyItemLayer_va(s, 0,
+	if (htrAddBodyItemLayer_va(s, 0,
 	    "img%POS", id, "wimage",
 	    "\n<img "
 		"class='wimage' "
@@ -226,17 +229,32 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    style,
 	    src,
 	    alt_text
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTDT", "Failed to write image HTML.");
+	    goto end;
+	    }
 
-	/** Check for more sub-widgets **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto end;
 
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (rval != 0)
+	    {
+	    mssError(0, "HTIMG",
+		"Failed to render \"%s\":\"%s\" (id: %d).",
+		tree->Name, tree->Type, id
+	    );
+	    }
+	
 	/** Clean up. **/
-	nmSysFree(alt_text);
-	nmSysFree(aspect);
-
-    return 0;
+	if (alt_text != NULL) nmSysFree(alt_text);
+	if (aspect != NULL) nmSysFree(aspect);
+	
+	return rval;
     }
 
 

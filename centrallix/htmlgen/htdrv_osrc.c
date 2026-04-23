@@ -11,6 +11,7 @@
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/util.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -121,35 +122,34 @@ htosrc_internal_AddRule(pHtSession s, pWgtrNode tree, char* treename, pWgtrNode 
 int
 htosrcRender(pHtSession s, pWgtrNode tree, int z)
    {
-   int id;
    char name[40];
    char *ptr;
    int readahead;
    int scrollahead;
    int replicasize;
-   char *sql;
-   char *filter;
-   char *baseobj;
-   pWgtrNode sub_tree;
-//   pObjQuery qy;
+   char* sql = NULL;
+   char* filter = NULL;
+   char* baseobj = NULL;
    enum htosrc_autoquery_types aq;
    int receive_updates;
    int send_updates;
    int refresh_interval;
-   int count, i;
+   int rval = -1;
    int ind_activity;
    int use_having;
    int qy_reveal_only;
    char key_objname[32];
+   char* empty_string = "";
 
-   if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
-       {
-       mssError(1,"HTOSRC","Netscape DOM or W3C DOM1 HTML support required");
-       return -1;
-       }
+    /** Get an id for this. **/
+    const int id = (HTOSRC.idcnt++);
 
-   /** Get an id for this. **/
-   id = (HTOSRC.idcnt++);
+    /** Verify browser capabilities. **/
+    if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	{
+	mssError(1, "HTOSRC", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	goto end;
+	}
 
    /** Get name **/
    if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -213,44 +213,44 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
 
    /** Get replication updates from server? **/
    receive_updates = htrGetBoolean(tree, "receive_updates", 0);
+   if (receive_updates < 0) goto end;
 
    /** Send updates to the server? **/
    send_updates = htrGetBoolean(tree, "send_updates", 1);
+   if (send_updates < 0) goto end;
 
+   /** Get osrc strings. **/
    if (wgtrGetPropertyValue(tree,"sql",DATA_T_STRING,POD(&ptr)) == 0)
       {
-      sql = nmSysStrdup(ptr);
+      sql = check_ptr(nmSysStrdup(ptr));
       }
    else
       {
       if (wgtrGetPropertyType(tree,"sql") != DATA_T_CODE)
          {
-         mssError(1,"HTOSRC","'sql' parameter required for objectsource '%s'", name);
+         mssError(1, "HTOSRC", "'sql' parameter required for object source: \"%s\"", name);
          return -1;
 	 }
       else
-         sql = nmSysStrdup("");
+         sql = empty_string;
       }
+    baseobj = (wgtrGetPropertyValue(tree, "baseobj", DATA_T_STRING, POD(&ptr)) == 0) ? check_ptr(nmSysStrdup(ptr)) : empty_string;
+    filter  = (wgtrGetPropertyValue(tree, "filter",  DATA_T_STRING, POD(&ptr)) == 0) ? check_ptr(nmSysStrdup(ptr)) : empty_string;
+    if (sql == NULL || baseobj == NULL || filter == NULL) goto end;
 
-   if (wgtrGetPropertyValue(tree,"baseobj",DATA_T_STRING,POD(&ptr)) == 0)
-      baseobj = nmSysStrdup(ptr);
-   else
-      baseobj = NULL;
+    /** Link the widget and container to their DOM nodes. **/
+    if (htrAddWgtrObjLinkage_va(s, tree, "osrc%POSloader", id) != 0) goto end;
+    if (htrAddWgtrCtrLinkage(s, tree, "_parentctr") != 0) goto end;
 
-   if (wgtrGetPropertyValue(tree,"filter",DATA_T_STRING,POD(&ptr)) == 0)
-      filter = nmSysStrdup(ptr);
-   else
-      filter = nmSysStrdup("");
+    /** Write JS globals & includes. **/
+    if (htrAddScriptGlobal(s, "osrc_relationships", "[]", 0) != 0) goto end;
+    if (htrAddScriptGlobal(s, "osrc_syncid", "0", 0) != 0) goto end;
+    if (htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0) != 0) goto end;
+    if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0) != 0) goto end;
+    if (htrAddScriptInclude(s, "/sys/js/htdrv_osrc.js", 0) != 0) goto end;
 
-   /** create our instance variable **/
-   htrAddWgtrObjLinkage_va(s, tree, "osrc%POSloader",id);
-   htrAddWgtrCtrLinkage(s, tree, "_parentctr");
-
-   htrAddScriptGlobal(s, "osrc_syncid", "0", 0);
-   htrAddScriptGlobal(s, "osrc_relationships", "[]", 0);
-
-   /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,
+    /** Write CSS. **/
+    if (htrAddStylesheetItem_va(s,
 	"\t\t#osrc%POSloader { "
 	    "position:absolute; "
 	    "visibility:hidden; "
@@ -262,10 +262,14 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
 	    "z-index:0; "
 	"}\n",
 	id
-    );
+    ) != 0)
+	{
+	mssError(0, "HTOSRC", "Failed to write loader CSS.");
+	goto end;
+	}
 
     /** Script initialization call. **/
-    htrAddScriptInit_va(s,
+    if (htrAddScriptInit_va(s,
 	"\tosrc_init({ "
 	    "loader:wgtrGetNodeRef(ns, '%STR&SYM'), "
 	    "name:'%STR&SYM', "
@@ -284,44 +288,54 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
 	    "key_objname:'%STR&JSSTR', "
 	    "refresh:%INT, "
 	"});\n",
-	name, name, readahead, scrollahead, replicasize, sql, filter,
-	(baseobj) ? baseobj : "", aq, receive_updates, ind_activity,
-	use_having, qy_reveal_only, send_updates, key_objname, refresh_interval
-    );
-
-   htrAddScriptInclude(s, "/sys/js/htdrv_osrc.js", 0);
-   htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
-   htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
-
-   /** HTML body element for the frame **/
-   htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"osrc%POSloader",id, NULL);
-   htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
-   htrAddBodyItem(s, "\n");
-
-    count = xaCount(&(tree->Children));
-    for (i=0;i<count;i++)
+	name, name, readahead, scrollahead, replicasize, sql, filter, baseobj,
+	aq, receive_updates, ind_activity, use_having, qy_reveal_only,
+	send_updates, key_objname, refresh_interval
+    ) != 0)
 	{
-	sub_tree = xaGetItem(&(tree->Children), i);
-#if 00
-	if (wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr, "widget/osrc-rule"))
-	    {
-	    htosrc_internal_AddRule(s, tree, name, sub_tree);
-	    }
-	else
-	    {
-#endif
-	    htrRenderWidget(s, sub_tree, z);
-#if 00
-	    }
-#endif
+	mssError(0, "HTOSRC", "Failed to write JS init call.");
+	goto end;
 	}
 
-    nmSysFree(filter);
-    if (baseobj) nmSysFree(baseobj);
-    nmSysFree(sql);
+   /** HTML body element for the frame **/
+    if (htrAddBodyItemLayerStart(s, HTR_LAYER_F_DYNAMIC, "osrc%POSloader", id, NULL) != 0)
+	{
+	mssError(0, "HTOSRC", "Failed to write HTML opening tag for osrc loader.");
+	goto end;
+	}
+    if (htrAddBodyItemLayerEnd(s, HTR_LAYER_F_DYNAMIC) != 0)
+	{
+	mssError(0, "HTOSRC", "Failed to write HTML closing tag for osrc loader.");
+	goto end;
+	}
+    if (htrAddBodyItem(s, "\n") != 0)
+	{
+	mssError(0, "HTOSRC", "Failed to write HTML newline.");
+	goto end;
+	}  
 
-   return 0;
-}
+    /** Render children. **/
+    if (htrRenderSubwidgets(s, tree, z) != 0) goto end;
+
+    /** Success. **/
+    rval = 0;
+
+    end:
+    if (rval != 0)
+	{
+	mssError(0, "HTOSRC",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
+	);
+	}
+
+    /** Clean up. **/
+    if (filter != NULL && filter != empty_string) nmSysFree(filter);
+    if (baseobj != NULL && baseobj != empty_string) nmSysFree(baseobj);
+    if (sql != NULL && sql != empty_string) nmSysFree(sql);
+
+    return rval;
+    }
 
 
 /* 

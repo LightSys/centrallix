@@ -69,17 +69,17 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
     int showampm = 1;
     int miltime = 0;
     int x=-1,y=-1,w,h;
-    int id, i;
     char fieldname[HT_FIELDNAME_SIZE];
 
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
-	    {
-	    mssError(1,"HTCL","Netscape 4 or W3C DOM support required");
-	    return -1;
-	    }
+	/** Get an id for this. **/
+	const int id = (HTCL.idcnt++);
 
-    	/** Get an id for this. **/
-	id = (HTCL.idcnt++);
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	    {
+	    mssError(1, "HTCL", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
+	    }
 
     	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
@@ -156,7 +156,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	    fieldname[0]='\0';
 
 	/** Write style headers. **/
-	htrAddStylesheetItem_va(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#cl%POSbase { "
 		"position:absolute; "
 		"visibility:inherit; "
@@ -170,8 +170,12 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	    ht_flex_y(y, tree),
 	    ht_flex_w(w, tree),
 	    z
-	);
-	htrAddStylesheetItem_va(s,
+	) != 0)
+	    {
+	    mssError(0, "HTCL", "Failed to write base CSS.");
+	    goto err;
+	    }
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t.cl%POScon { "
 		"position:absolute; "
 		"left:0px; "
@@ -181,24 +185,32 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	    "}\n",
 	    id,
 	    z + 2
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTCL", "Failed to write con CSS.");
+	    goto err;
+	    }
 
-	/** Setup linkage **/
-	htrAddWgtrObjLinkage_va(s, tree, "cl%POSbase",id);
+ 	/** Link the widget to the DOM node. **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "cl%POSbase", id) != 0)
+	    {
+	    mssError(0, "HTCL", "Failed to add object linkage.");
+	    goto err;
+	    }
 
 	/** Javascript include files **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_clock.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0)) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_clock.js", 0)) goto err;
 
 	/** Event Handlers **/
-	htrAddEventHandlerFunction(s, "document","MOUSEUP", "cl", "cl_mouseup");
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "cl", "cl_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "cl", "cl_mouseover");
-	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "cl", "cl_mouseout");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "cl", "cl_mousemove");
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "cl", "cl_mousedown")) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "cl", "cl_mousemove")) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "cl", "cl_mouseout"))  goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "cl", "cl_mouseover")) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "cl", "cl_mouseup"))   goto err;
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "\t{ "
+	if (htrAddScriptInit_va(s, "\t{ "
 	    "const layer = wgtrGetNodeRef(ns, '%STR&SYM'); "
 	    "cl_init({ "
 		"layer, "
@@ -222,7 +234,11 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	    main_bg, fgcolor1, fgcolor2,
 	    shadowed, shadowx, shadowy,
 	    showsecs, showampm, miltime
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTCL", "Failed to add JS init call.");
+	    goto err;
+	    }
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"cl%POSbase\">\n",id);
@@ -231,11 +247,18 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItem_va(s, "    <DIV ID='cl%POScon2' CLASS='cl%POScon' style='visibility:hidden;'></DIV>\n", id, id);
 	htrAddBodyItem(s,    "</DIV>\n");
 
-	/** Check for more sub-widgets **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto err;
 
-    return 0;
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTCL",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
+	);
+	return -1;
     }
 
 

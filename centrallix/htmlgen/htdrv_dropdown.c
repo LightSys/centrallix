@@ -72,7 +72,6 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
    char *attr;
    int type, rval, mode, flag=0;
    int x,y,w,h;
-   int id, i;
    int num_disp;
    int query_multiselect;
    int invalid_select_default;
@@ -83,14 +82,15 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
    pObject qy_obj;
    pWgtrNode subtree;
 
-   if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
-       {
-       mssError(1,"HTDD","Netscape or W3C DOM support required");
-       return -1;
-       }
+    /** Get an id for this. **/
+    const int id = (HTDD.idcnt++);
 
-   /** Get an id for this. **/
-   id = (HTDD.idcnt++);
+    /** Verify browser capabilities. **/
+    if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	{
+	mssError(1, "HTDD", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	goto err;
+	}
 
    /** Get x,y of this object **/
    if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
@@ -152,7 +152,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     strtcpy(name,ptr,sizeof(name));
 
     /** Write basic element CSS. **/
-    htrAddStylesheetItem_va(s,
+    if (htrAddStylesheetItem_va(s,
 	"\t\t#dd%POSbtn { "
 	    "position:absolute; "
 	    "visibility:inherit; "
@@ -173,18 +173,26 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	ht_flex_h(h, tree),
 	z,
 	bgstr
-    );
+    ) != 0)
+	{
+	mssError(0, "HTDD", "Failed to write base btn CSS.");
+	goto err;
+	}
     if (*textcolor)
         {
-	htrAddStylesheetItem_va(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#dd%POSbtn { "
 		"color:%STR&CSSVAL; "
 	    "}\n",
 	    id,
 	    textcolor
-        );
+        ) != 0)
+	    {
+	    mssError(0, "HTDD", "Failed to write btn CSS text color.");
+	    goto err;
+	    }
         }
-    htrAddStylesheetItem_va(s,
+    if (htrAddStylesheetItem_va(s,
 	"\t\t.dd%POScon { "
 	    "position:absolute; "
 	    "overflow:hidden; "
@@ -197,31 +205,43 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	id,
 	h - 2,
 	z + 1
-    );
+    ) != 0)
+	{
+	mssError(0, "HTDD", "Failed to write con CSS.");
+	goto err;
+	}
+    
+    /** Link the widget to the DOM node. **/
+    if (htrAddWgtrObjLinkage_va(s, tree, "dd%POSbtn", id) != 0)
+	{
+	mssError(0, "HTDD", "Failed to add object linkage.");
+	goto err;
+	}
 
-    htrAddScriptGlobal(s, "dd_current", "null", 0);
-    htrAddScriptGlobal(s, "dd_lastkey", "null", 0);
-    htrAddScriptGlobal(s, "dd_target_img", "null", 0);
-    htrAddScriptGlobal(s, "dd_thum_y","0",0);
-    htrAddScriptGlobal(s, "dd_timeout","null",0);
-    htrAddScriptGlobal(s, "dd_click_x","0",0);
-    htrAddScriptGlobal(s, "dd_click_y","0",0);
-    htrAddScriptGlobal(s, "dd_incr","0",0);
-    htrAddScriptGlobal(s, "dd_cur_mainlayer","null",0);
-    htrAddWgtrObjLinkage_va(s, tree, "dd%POSbtn", id);
+    /** Write JS globals. **/
+    if (htrAddScriptGlobal(s, "dd_click_x",       "0",    0) != 0) goto err;
+    if (htrAddScriptGlobal(s, "dd_click_y",       "0",    0) != 0) goto err;
+    if (htrAddScriptGlobal(s, "dd_cur_mainlayer", "null", 0) != 0) goto err;
+    if (htrAddScriptGlobal(s, "dd_current",       "null", 0) != 0) goto err;
+    if (htrAddScriptGlobal(s, "dd_incr",          "0",    0) != 0) goto err;
+    if (htrAddScriptGlobal(s, "dd_lastkey",       "null", 0) != 0) goto err;
+    if (htrAddScriptGlobal(s, "dd_target_img",    "null", 0) != 0) goto err;
+    if (htrAddScriptGlobal(s, "dd_thum_y",        "0",    0) != 0) goto err;
+    if (htrAddScriptGlobal(s, "dd_timeout",       "null", 0) != 0) goto err;
 
-    htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
-    htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
-    htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
-    htrAddScriptInclude(s, "/sys/js/htdrv_dropdown.js", 0);
+    /** Write JS script includes. **/
+    if (htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js",  0) != 0) goto err;
+    if (htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0) != 0) goto err;
+    if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0) != 0) goto err;
+    if (htrAddScriptInclude(s, "/sys/js/htdrv_dropdown.js",  0) != 0) goto err;
 
-    htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "dd", "dd_mousemove");
-    htrAddEventHandlerFunction(s, "document","MOUSEOVER", "dd", "dd_mouseover");
-    htrAddEventHandlerFunction(s, "document","MOUSEUP", "dd", "dd_mouseup");
-    htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "dd", "dd_mousedown");
-    htrAddEventHandlerFunction(s, "document","MOUSEOUT", "dd", "dd_mouseout");
-    if (s->Capabilities.Dom1HTML)
-       htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "dd", "dd_contextmenu");
+    /** Register JS event handlers. **/
+    if (htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "dd", "dd_contextmenu") != 0) goto err;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN",   "dd", "dd_mousedown")   != 0) goto err;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE",   "dd", "dd_mousemove")   != 0) goto err;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",    "dd", "dd_mouseout")    != 0) goto err;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER",   "dd", "dd_mouseover")   != 0) goto err;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",     "dd", "dd_mouseup")     != 0) goto err;
 
 
     /** Get the mode (default to 1, dynamicpage) **/
@@ -246,7 +266,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     htrCheckAddExpression(s,tree,name,"sql");
 
     /** Write the initialization call in its own scope. **/
-    htrAddScriptInit_va(s, "\t{ "
+    if (htrAddScriptInit_va(s, "\t{ "
 	"const layer = wgtrGetNodeRef(ns, '%STR&SYM'); "
 	"dd_init({ "
 	    "layer, "
@@ -273,7 +293,11 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	form, osrc, query_multiselect,
 	invalid_select_default,
 	w, h, pop_w
-    );
+    ) != 0)
+	{
+	mssError(0, "HTDD", "Failed to write JS init call.");
+	goto err;
+	}
 
     /** HTML body <DIV> element for the layers. **/
     htrAddBodyItem_va(s,"<DIV ID=\"dd%POSbtn\">\n"
@@ -392,7 +416,8 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 
 
     flag=0;
-    for (i=0;i<xaCount(&(tree->Children));i++)
+    const int n_children = xaCount(&(tree->Children));
+    for (unsigned int i = 0u; i < n_children; i++)
 	{
 	subtree = xaGetItem(&(tree->Children), i);
 	if (!strcmp(subtree->Type, "widget/dropdownitem")) 
@@ -435,7 +460,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	    } 
 	else 
 	    {
-	    htrRenderWidget(s, subtree, z+1);
+	    if (htrRenderWidget(s, subtree, z + 1) != 0) goto err;
 	    }
 	}
     if (flag) 
@@ -447,6 +472,13 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 
 
     return 0;
+
+    err:
+    mssError(0, "HTDD",
+	"Failed to render \"%s\":\"%s\" (id: %d).",
+	tree->Name, tree->Type, id
+    );
+    return -1;
 }
 
 

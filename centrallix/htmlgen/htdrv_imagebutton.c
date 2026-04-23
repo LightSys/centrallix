@@ -66,46 +66,46 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
     int is_enabled = 1;
     int button_repeat = 0;
     int x,y,w,h;
-    int id, i;
-    pExpression code;
+    int rval = -1;
     char* tooltip = NULL;
 
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
+	/** Get an id for this. **/
+	const int id = (HTIBTN.idcnt++);
+
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1,"HTIBTN","Netscape DOM or W3C DOM1 HTML and DOM2 CSS support required");
-	    return -1;
+	    mssError(1, "HTIMG", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto end;
 	    }
-
-    	/** Get an id for this. **/
-	id = (HTIBTN.idcnt++);
-
+	
     	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) 
 	    {
 	    mssError(1,"HTIBTN","ImageButton must have an 'x' property");
-	    return -1;
+	    goto end;
 	    }
 	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0)
 	    {
 	    mssError(1,"HTIBTN","ImageButton must have a 'y' property");
-	    return -1;
+	    goto end;
 	    }
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0)
 	    {
 	    mssError(1,"HTIBTN","ImageButton must have a 'width' property");
-	    return -1;
+	    goto end;
 	    }
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h = -1;
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto end;
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Get normal, point, and click images **/
 	if (wgtrGetPropertyValue(tree,"image",DATA_T_STRING,POD(&ptr)) != 0) 
 	    {
 	    mssError(1,"HTIBTN","ImageButton must have an 'image' property");
-	    return -1;
+	    goto end;
 	    }
 	strtcpy(n_img,ptr,sizeof(n_img));
 
@@ -137,7 +137,7 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	button_repeat = htrGetBoolean(tree, "repeat", 0);
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#ib%POSpane { "
 		"position:absolute; "
 		"visibility:inherit; "
@@ -152,23 +152,28 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	    ht_flex_y(y, tree),
 	    ht_flex_w(w, tree),
 	    z
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTIBTN", "Failed to write main CSS.");
+	    goto end;
+	    }
 
-	htrAddScriptGlobal(s, "ib_cur_img", "null", 0);
-	htrAddWgtrObjLinkage_va(s, tree, "ib%POSpane", id);
-
-	htrAddScriptInclude(s, "/sys/js/htdrv_imagebutton.js", 0);
+	/** Setup JS. **/
+	if (htrAddScriptGlobal(s, "ib_cur_img", "null", 0) != 0) goto end;
+	if (htrAddWgtrObjLinkage_va(s, tree, "ib%POSpane", id) != 0) goto end;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_imagebutton.js", 0) != 0) goto end;
 
 	/** User requesting expression for enabled? **/
 	if (wgtrGetPropertyType(tree,"enabled") == DATA_T_CODE)
 	    {
+	    pExpression code;
 	    wgtrGetPropertyValue(tree,"enabled",DATA_T_CODE,POD(&code));
 	    is_enabled = 0;
 	    htrAddExpression(s, name, "enabled", code);
 	    }
 
 	/** Write script initialization call. **/
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "\tib_init({ "
 		"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
 		"name:'%STR&SYM', "
@@ -186,34 +191,53 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	    n_img, p_img, c_img, d_img,
 	    w, h,
 	    is_enabled, tooltip, button_repeat
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTIBTN", "Failed to write JS init call.");
+	    goto end;
+	    }
 
-	/** HTML body <DIV> elements for the layers. **/
-	if (h < 0)
-	    if(is_enabled)
-		htrAddBodyItem_va(s,"<DIV ID=\"ib%POSpane\"><IMG SRC=\"%STR&HTE\" border=\"0\"></DIV>\n",id,n_img);
-	    else
-		htrAddBodyItem_va(s,"<DIV ID=\"ib%POSpane\"><IMG SRC=\"%STR&HTE\" border=\"0\"></DIV>\n",id,d_img);
-	else
-	    if(is_enabled)
-		htrAddBodyItem_va(s,"<DIV ID=\"ib%POSpane\"><IMG SRC=\"%STR&HTE\" border=\"0\" width=\"%POS\" height=\"%POS\"></DIV>\n",id,n_img,w,h);
-	    else
-		htrAddBodyItem_va(s,"<DIV ID=\"ib%POSpane\"><IMG SRC=\"%STR&HTE\" border=\"0\" width=\"%POS\" height=\"%POS\"></DIV>\n",id,d_img,w,h);
+	/** Write HTML. **/
+	if (htrAddBodyItem_va(s,
+	    "<div id='ib%POSpane'>"
+		"<img src='%STR&HTE' border='0' %[width='%POS' height='%POS'%]>"
+	    "</div>\n",
+	    id, (is_enabled) ? n_img : d_img, (h >= 0), w, h
+	) != 0)
+	    {
+	    mssError(0, "HTBTN",
+		"Failed to write HTML for %sabled image button.",
+		(is_enabled) ? "en" : "dis"
+	    );
+	    goto end;
+	    }
 
 	/** Add the event handling scripts **/
-	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "ib", "ib_mousedown");
-	htrAddEventHandlerFunction(s, "document", "MOUSEUP", "ib", "ib_mouseup");
-	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "ib", "ib_mouseover");
-	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "ib", "ib_mouseout");
-	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "ib", "ib_mousemove");
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "ib", "ib_mousedown") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "ib", "ib_mousemove") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "ib", "ib_mouseout")  != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "ib", "ib_mouseover") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "ib", "ib_mouseup")   != 0) goto end;
 
-	/** Check for more sub-widgets within the imagebutton. **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto end;
 
-	if (tooltip) nmSysFree(tooltip);
+	/** Success. **/
+	rval = 0;
 
-    return 0;
+    end:
+	if (rval != 0)
+	    {
+	    mssError(0, "HTIBTN",
+		"Failed to render \"%s\":\"%s\" (id: %d).",
+		tree->Name, tree->Type, id
+	    );
+	    }
+	
+	/** Clean up. **/
+	if (tooltip != NULL) nmSysFree(tooltip);
+	
+	return rval;
     }
 
 

@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -54,17 +55,19 @@ static struct
 /** htrbRender - generate the HTML code for the page.  **/
 int htrbRender(pHtSession s, pWgtrNode tree, int z)
     {
+    int rval = -1;
     char* ptr;
-    
-    /** Verify required capabilities. **/
-    if (!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
-	{
-	mssError(1, "HTRB", "Netscape 4.x or W3C DOM support required");
-	return -1;
-	}
+    XArray radio_buttons = { nAlloc: 0};
     
     /** Get an id for this widget. **/
     const int id = (HTRB.idcnt++);
+    
+    /** Verify browser capabilities. **/
+    if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	{
+	mssError(1, "HTRB", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	goto end_free;
+	}
     
     /** Get x,y,w,h of this object. **/
     int x, y, w, h, spacing;
@@ -73,12 +76,12 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
     if (wgtrGetPropertyValue(tree, "width", DATA_T_INTEGER, POD(&w)) != 0)
 	{
 	mssError(1,"HTRB","RadioButtonPanel widget must have a 'width' property");
-	return -1;
+	goto end_free;
 	}
    if (wgtrGetPropertyValue(tree, "height", DATA_T_INTEGER, POD(&h)) != 0)
 	{
 	mssError(1,"HTRB","RadioButtonPanel widget must have a 'height' property");
-	return -1;
+	goto end_free;
 	}
     if (wgtrGetPropertyValue(tree, "spacing", DATA_T_INTEGER, POD(&spacing)) != 0) spacing = 10;
     
@@ -87,13 +90,13 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
     if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&ptr)) != 0)
 	{
 	mssError(1, "HTRB", "RadioButtonPanel widget must have a 'name' property");
-	return -1;
+	goto end_free;
 	}
     strtcpy(name, ptr, sizeof(name));
     if (wgtrGetPropertyValue(tree, "title", DATA_T_STRING, POD(&ptr)) != 0)
 	{
 	mssError(1, "HTRB", "RadioButtonPanel widget must have a 'title' property");
-	return -1;
+	goto end_free;
 	}
     strtcpy(title, ptr, sizeof(title));
     
@@ -107,14 +110,14 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
     /** Get background attributes. **/
     char main_background[128] = "";
     char outline_background[128] = "";
-    htrGetBackground(tree, NULL, !s->Capabilities.Dom0NS, main_background, sizeof(main_background));
-    htrGetBackground(tree, "outline", !s->Capabilities.Dom0NS, outline_background, sizeof(outline_background));
+    if (htrGetBackground(tree, NULL, true, main_background, sizeof(main_background)) != 0) goto end_free;
+    if (htrGetBackground(tree, "outline", true, outline_background, sizeof(outline_background)) != 0) goto end_free;
     
     /** User requesting expression for selected tab? **/
-    htrCheckAddExpression(s, tree, name, "value");
+    if (htrCheckAddExpression(s, tree, name, "value") < 0) goto end_free;
     
     /** User requesting expression for selected tab using integer index value? **/
-    htrCheckAddExpression(s, tree, name, "value_index");
+    if (htrCheckAddExpression(s, tree, name, "value_index") < 0) goto end_free;
     
     /** Get fieldname and form attributes. **/
     char fieldname[32] = "", form[64] = "";
@@ -125,17 +128,17 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
     
     
     /** Include scripts. **/
-    htrAddScriptInclude(s, "/sys/js/htdrv_radiobutton.js", 0);
-    htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
+    if (htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0) != 0) goto end_free;
+    if (htrAddScriptInclude(s, "/sys/js/htdrv_radiobutton.js", 0) != 0) goto end_free;
     
     /** Link DOM node to widget data. **/
-    htrAddWgtrObjLinkage_va(s, tree, "rb%POSparent", id);
-    htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(htr_subel(_obj, 'rb%POSborder'), 'rb%POScover')", id, id);
+    if (htrAddWgtrObjLinkage_va(s, tree, "rb%POSparent", id) != 0) goto end_free;
+    if (htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(htr_subel(_obj, 'rb%POSborder'), 'rb%POScover')", id, id) != 0) goto end_free;
     
     /** Script initialization call. **/
     if (strlen(main_background) > 0)
 	{
-	htrAddScriptInit_va(s, "\t{ "
+	if (htrAddScriptInit_va(s, "\t{ "
 	    "const parentPane = wgtrGetNodeRef(ns, '%STR&SYM'); "
 	    "const borderPane = htr_subel(parentPane, 'rb%POSborder'); "
 	    "const coverPane = htr_subel(borderPane, 'rb%POScover'); "
@@ -153,11 +156,15 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	    main_background,
 	    outline_background,
 	    form
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTRB", "Failed to write JS init code.");
+	    goto end_free;
+	    }
 	}
     else
 	{
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "\tradiobuttonpanel_init({ "
 		"parentPane:wgtrGetNodeRef(ns, '%STR&SYM'), "
 		"fieldname:'%STR&JSSTR', "
@@ -171,24 +178,37 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	    name,
 	    fieldname,
 	    form
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTRB", "Failed to write JS init call.");
+	    goto end_free;
+	    }
 	}
     
     /** Add event listenners. **/
-    htrAddEventHandlerFunction(s, "document", "MOUSEUP", "radiobutton", "radiobutton_mouseup");
-    htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "radiobutton", "radiobutton_mousedown");
-    htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "radiobutton", "radiobutton_mouseover");
-    htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "radiobutton", "radiobutton_mousemove");
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "radiobutton", "radiobutton_mousedown") != 0) goto end_free;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "radiobutton", "radiobutton_mousemove") != 0) goto end_free;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "radiobutton", "radiobutton_mouseover") != 0) goto end_free;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "radiobutton", "radiobutton_mouseup")   != 0) goto end_free;
     
     
     /** Write style headers for container DOM nodes. **/
     const int para_height = s->ClientInfo->ParagraphHeight;
     const int top_offset = (para_height * 3) / 4 + 1;
-    htrAddStylesheetItem_va(s,
-	"\t\t#rb%POSparent { "
+    if (htrAddStylesheetItem_va(s,
+	"\t\t.rb%POSall { "
 	    "position:absolute; "
 	    "visibility:inherit; "
 	    "overflow:hidden; "
+	"}\n",
+	id, id, id, id
+    ) != 0)
+	{
+	mssError(0, "HTRB", "Failed to write shared CSS.");
+	goto end_free;
+	}
+    if (htrAddStylesheetItem_va(s,
+	"\t\t#rb%POSparent { "
 	    "cursor:default; "
 	    "left:"ht_flex_format"; "
 	    "top:"ht_flex_format"; "
@@ -202,12 +222,13 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	ht_flex_w(w, tree),
 	ht_flex_h(h, tree),
 	z
-    );
-    htrAddStylesheetItem_va(s,
+    ) != 0)
+	{
+	mssError(0, "HTRB", "Failed to write parent (container) CSS.");
+	goto end_free;
+	}
+    if (htrAddStylesheetItem_va(s,
 	"\t\t#rb%POSborder { "
-	    "position:absolute; "
-	    "visibility:inherit; "
-	    "overflow:hidden; "
 	    "left:3px; "
 	    "top:%POSpx; "
 	    "width:calc(100%% - 6px); "
@@ -218,12 +239,13 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	top_offset,
 	top_offset + 3,
 	z + 1
-    );
-    htrAddStylesheetItem_va(s,
+    ) != 0)
+	{
+	mssError(0, "HTRB", "Failed to write border CSS.");
+	goto end_free;
+	}
+    if (htrAddStylesheetItem_va(s,
 	"\t\t#rb%POScover { "
-	    "position:absolute; "
-	    "visibility:inherit; "
-	    "overflow:hidden; "
 	    "left:1px; "
 	    "top:1px; "
 	    "width:calc(100%% - 2px); "
@@ -232,12 +254,13 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	"}\n",
 	id,
 	z + 2
-    );
-    htrAddStylesheetItem_va(s,
+    ) != 0)
+	{
+	mssError(0, "HTRB", "Failed to write cover CSS.");
+	goto end_free;
+	}
+    if (htrAddStylesheetItem_va(s,
 	"\t\t#rb%POStitle { "
-	    "position:absolute; "
-	    "visibility:inherit; "
-	    "overflow:hidden; "
 	    "left:10px; "
 	    "top:1px; "
 	    "width:50%%; "
@@ -247,28 +270,46 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	id,
 	para_height,
 	z + 3
-    );
+    ) != 0)
+	{
+	mssError(0, "HTRB", "Failed to write title CSS.");
+	goto end_free;
+	}
     
     
     /** Write HTML to contain the radio buttons. **/
-    htrAddBodyItem_va(s, "<div id='rb%POSparent'>\n", id);
-    htrAddBodyItem_va(s, "  <div id='rb%POSborder'>\n", id);
-    htrAddBodyItem_va(s, "    <div id='rb%POScover'>\n", id);
+    if (htrAddBodyItem_va(s,
+	"<div id='rb%POSparent' class='rb%POSall'>"
+	"<div id='rb%POSborder' class='rb%POSall'>"
+	"<div id='rb%POScover' class='rb%POSall'>\n",
+	id, id, id, id, id, id
+    ) != 0)
+	{
+	mssError(0, "HTRB", "Failed to write HTML for containers.");
+	goto end_free;
+	}
     
     /** Search child array for radio buttons. **/
-    XArray radio_buttons;
-    xaInit(&radio_buttons, tree->Children.nItems);
+    if (check(xaInit(&radio_buttons, tree->Children.nItems)) != 0) goto end_free;
     for (int i = 0; i < tree->Children.nItems; i++)
 	{
-	pWgtrNode child = tree->Children.Items[i];
+	pWgtrNode child = check_ptr(tree->Children.Items[i]);
+	if (child == NULL)
+	    {
+	    mssError(1, "HTRB", "Child widget #%d/%d is NULL.", i + 1, tree->Children.nItems);
+	    goto end_free;
+	    }
 	
 	/** Mark child as no-object. **/
 	child->RenderFlags |= HT_WGTF_NOOBJECT;
 	
 	/** Add radio buttons to the array, render other widgets immediately (so we can forget about them). **/
 	wgtrGetPropertyValue(child, "outer_type", DATA_T_STRING, POD(&ptr));
-	if (strcmp(ptr, "widget/radiobutton") == 0) xaAddItem(&radio_buttons, child);
-	else htrRenderWidget(s, child, z + 1);
+	if (strcmp(ptr, "widget/radiobutton") == 0)
+	    {
+	    if (check_neg(xaAddItem(&radio_buttons, child)) < 0) goto end_free;
+	    }
+	else if (htrRenderWidget(s, child, z + 1) != 0) goto end_free;
 	}
     
     /** Write style for radio buttons. **/
@@ -294,10 +335,10 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	char* label = (label_buf[0] == '\0') ? value_buf : label_buf;
 	
 	/** Link the radio button DOM node to widget data. **/
-	htrAddWgtrObjLinkage_va(s, radio_button, "rb%POSoption%POS", id, i);
+	if (htrAddWgtrObjLinkage_va(s, radio_button, "rb%POSoption%POS", id, i) != 0) goto err_option;
 	
 	/** Write the initialization call. **/
-	htrAddScriptInit_va(s, "\t{ "
+	if (htrAddScriptInit_va(s, "\t{ "
 	    "const rbitem = wgtrGetNodeRef('%STR&SYM', '%STR&SYM');"
 	    "add_radiobutton(rbitem, { "
 		"selected:%POS, "
@@ -313,17 +354,18 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	    id, i, id, i,
 	    id, i, id, i,
 	    value, label
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTRB", "Failed to write JS add_radiobutton() call.");
+	    goto err_option;
+	    }
 	
 	/** Write CSS for the radio button container. **/
 	const int base_top = top_padding + (button_height * i);
 	const double percent_space_above = (100.0 / radio_buttons.nItems) * i;
 	const double content_above = ((double)content_height / radio_buttons.nItems) * i;
-	htrAddStylesheetItem_va(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#rb%POSoption%POS { "
-		"position:absolute; "
-		"visibility:inherit; "
-		"overflow:hidden; "
 		"left:7px; "
 		"top:calc(0px "
 		    "+ %POSpx "
@@ -338,10 +380,14 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	    percent_space_above, content_above, spacing * i,
 	    button_height,
 	    z + 2
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTRB", "Failed to write option CSS.");
+	    goto err_option;
+	    }
 	
 	/** Write CSS for the radio button elements. **/
-	htrAddStylesheetItem_va(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#rb%POSbuttonset%POS, "
 	    "#rb%POSbuttonunset%POS { "
 		"position:absolute; "
@@ -357,8 +403,12 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	    id, i,
 	    (para_height / 2) - 3,
 	    z + 2
-	);
-	htrAddStylesheetItem_va(s,
+	) != 0)
+	    {
+	    mssError(0, "HTRB", "Failed to write option set CSS.");
+	    goto err_option;
+	    }
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#rb%POSvalue%POS { "
 		"position:absolute; "
 		"visibility:hidden; "
@@ -371,8 +421,12 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	    "}\n",
 	    id, i,
 	    z + 2
-	);
-	htrAddStylesheetItem_va(s,
+	) != 0)
+	    {
+	    mssError(0, "HTRB", "Failed to write option value CSS.");
+	    goto err_option;
+	    }
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#rb%POSlabel%POS { "
 		"position:absolute; "
 		"visibility:inherit; "
@@ -386,26 +440,68 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	    "}\n",
 	    id, i,
 	    z + 2
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTRB", "Failed to write option label CSS.");
+	    goto err_option;
+	    }
 	
 	/** Write radio button HTML. **/
-	htrAddBodyItem_va(s, "      <div id='rb%POSoption%POS'>\n", id, i);
-	htrAddBodyItem_va(s, "        <div id='rb%POSbuttonset%POS' style='visibility:hidden;'><img src='/sys/images/radiobutton_set.gif'></div>\n", id, i);
-	htrAddBodyItem_va(s, "        <div id='rb%POSbuttonunset%POS' style='visibility:inherit;'><img src='/sys/images/radiobutton_unset.gif'></div>\n", id, i);
-	htrAddBodyItem_va(s, "        <div id='rb%POSlabel%POS' style='color:\"%STR&HTE\";' nowrap>%STR&HTE</div>\n", id, i, textcolor, label);
-	htrAddBodyItem_va(s, "        <div id='rb%POSvalue%POS' visibility='hidden'><a href='.'>%STR&HTE</a></div>\n", id, i, value);
-	htrAddBodyItem   (s, "      </div>\n");
+	if (htrAddBodyItem_va(s,
+	    "  <div id='rb%POSoption%POS' class='rb%POSall'>\n"
+	    "    <div id='rb%POSbuttonset%POS' style='visibility:hidden;'><img src='/sys/images/radiobutton_set.gif'></div>\n"
+	    "    <div id='rb%POSbuttonunset%POS' style='visibility:inherit;'><img src='/sys/images/radiobutton_unset.gif'></div>\n"
+	    "    <div id='rb%POSlabel%POS' style='color:\"%STR&HTE\";' nowrap>%STR&HTE</div>\n"
+	    "    <div id='rb%POSvalue%POS' style='visibility:hidden;'><a href='.'>%STR&HTE</a></div>\n"
+	    "  </div>\n",
+	    id, i, id,
+	    id, i,
+	    id, i,
+	    id, i, textcolor, label,
+	    id, i, value
+	) != 0)
+	    {
+	    mssError(0, "HTRB", "Failed to write option HTML.");
+	    goto err_option;
+	    }
+	
+	/** Success. **/
+	continue;
+	
+    err_option:
+	mssError(0, "HTRB", "Failed to write option #%d/%d.", i + 1, radio_buttons.nItems);
+	goto end_free;
 	}
     
-    htrAddBodyItem_va(s,
-	"    </div>\n"
-	"  </div>\n"
-	"  <div id=\"rb%POStitle\"><table><tr><td style='color:\"%STR&HTE\";' nowrap>%STR&HTE</td></tr></table></div>\n"
+    /** Close divs and write title. **/
+    if (htrAddBodyItem_va(s,
+	" </div></div>\n"
+	" <div id='rb%POStitle'><table><tr><td style='color:\"%STR&HTE\";' nowrap>%STR&HTE</td></tr></table></div>\n"
 	"</div>\n",
 	id, textcolor, title
-    );
+    ) != 0)
+	{
+	mssError(0, "HTRB", "Failed to write title and closing HTML tags.");
+	goto end_free;
+	}
     
-    return 0;
+    /** Success. **/
+    rval = 0;
+
+    end_free:
+    if (rval != 0)
+	{
+	mssError(0, "HTRB",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
+	);
+	return -1;
+	}
+    
+    /** Clean up. **/
+    if (radio_buttons.nAlloc != 0) xaDeInit(&radio_buttons);
+    
+    return rval;
     }
 
 

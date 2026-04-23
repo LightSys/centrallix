@@ -61,7 +61,6 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    int id, i;
     int visible = 1;
     char background_style[128] = "";
     char header_background_style[128] = "";
@@ -71,7 +70,6 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
     int is_dialog_style = 0;
     int gshade = 0;
     int closetype = 0;
-    int box_offset = 1;
     int is_toplevel = 0;
     int is_modal = 0;
     char icon[128];
@@ -82,20 +80,15 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
     char border_style[32];
     int border_width;
 
-	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
-	    {
-	    mssError(1,"HTWIN","Netscape DOM support or W3C DOM Level 1 support required");
-	    return -1;
-	    }
+	/** Get an id for this. **/
+	const int id = (HTWIN.idcnt++);
 
-	/** IE puts css box borders inside box width/height **/
-	if (!s->Capabilities.CSSBox)
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    box_offset = 0;
+	    mssError(1, "HTTERM", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
 	    }
-
-    	/** Get an id for this. **/
-	id = (HTWIN.idcnt++);
 
     	/** Get x,y,w,h of this object **/
 	int x, y, w, h;
@@ -214,7 +207,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	/*** We don't even bother making these styles flex responsively because
 	 *** they will be overwritten by the JS anyway.
 	 ***/
-	htrAddStylesheetItem_va(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#wn%POSbase { "
 		"position:absolute; "
 		"visibility:%STR; "
@@ -231,20 +224,21 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    "}\n",
 	    id,
 	    (visible) ? "inherit" : "hidden",
-	    x,
-	    y,
-	    w - 2 * box_offset,
-	    h - 2 * box_offset,
+	    x, y, w, h,
 	    z + 100,
 	    border_style,
 	    border_width,
 	    border_color,
 	    border_radius
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTWIN", "Failed to write CSS for window base.");
+	    goto err;
+	    }
 	if (shadow_radius > 0)
 	    {
 	    double shadow_angle_radians = (double)shadow_angle * M_PI/180;
-	    htrAddStylesheetItem_va(s,
+	    if (htrAddStylesheetItem_va(s,
 		"\t\t#wn%POSbase { "
 		    "box-shadow: "
 			"%DBLpx "
@@ -256,7 +250,11 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 		cos(shadow_angle_radians) * (-shadow_offset),
 		shadow_radius,
 		shadow_color
-	    );
+	    ) != 0)
+		{
+		mssError(0, "HTWIN", "Failed to write CSS for window shadow.");
+		goto err;
+		}
 	    }
 
 	/** inner structure depends on dialog vs. window style **/
@@ -274,13 +272,13 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    {
 	    /** window inner container -- window **/
-	    main_width = w - 2 * (box_offset + 1);
-	    main_height = h - title_bar_height - (box_offset + 1) * ((has_titlebar) ? 1 : 2);
-	    clip_height = h - title_bar_height + ((has_titlebar) ? 1 : 0) - 2 * box_offset;
+	    main_width = w - 2;
+	    main_height = h - title_bar_height - 1 * ((has_titlebar) ? 1 : 2);
+	    clip_height = h - title_bar_height + ((has_titlebar) ? 1 : 0);
 	    dialogue_width = 1;
 	    border_color_str = "gray white white gray";
 	    }
-	htrAddStylesheetItem_va(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#wn%POSmain { "
 		"position:absolute; "
 		"visibility:inherit; "
@@ -305,39 +303,42 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    (has_titlebar) ? 1 : 0, dialogue_width, dialogue_width, dialogue_width,
 	    z + 1,
 	    background_style
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTWIN", "Failed to write CSS for window main container.");
+	    goto err;
+	    }
 
-	/** Write globals for internal use **/
-	htrAddScriptGlobal(s, "wn_top_z","10000",0);
-	htrAddScriptGlobal(s, "wn_list","[]",0);
-	htrAddScriptGlobal(s, "wn_current","null",0);
-	htrAddScriptGlobal(s, "wn_newx","null",0);
-	htrAddScriptGlobal(s, "wn_newy","null",0);
-	htrAddScriptGlobal(s, "wn_topwin","null",0);
-	htrAddScriptGlobal(s, "wn_msx","null",0);
-	htrAddScriptGlobal(s, "wn_msy","null",0);
-	htrAddScriptGlobal(s, "wn_moved","0",0);
-	htrAddScriptGlobal(s, "wn_clicked","0",0);
+	/** Write JS globals and includes. **/
+	if (htrAddScriptGlobal(s, "wn_clicked", "0",     0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "wn_current", "null",  0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "wn_list",    "[]",    0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "wn_moved",   "0",     0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "wn_msx",     "null",  0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "wn_msy",     "null",  0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "wn_newx",    "null",  0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "wn_newy",    "null",  0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "wn_top_z",   "10000", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "wn_topwin",  "null",  0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_window.js",    0) != 0) goto err;
 
 	/** DOM Linkages **/
-	htrAddWgtrObjLinkage_va(s, tree, "wn%POSbase", id);
-	htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(_obj, \"wn%POSmain\")",id);
-
-	htrAddScriptInclude(s, "/sys/js/htdrv_window.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
+	if (htrAddWgtrObjLinkage_va(s, tree, "wn%POSbase", id) != 0) goto err;
+	if (htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(_obj, 'wn%POSmain')", id) != 0) goto err;
 
 	/** Event handler for mousedown/up/click/etc **/
-	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "wn", "wn_mousedown");
-	htrAddEventHandlerFunction(s, "document", "MOUSEUP", "wn", "wn_mouseup");
-	htrAddEventHandlerFunction(s, "document", "DBLCLICK", "wn", "wn_dblclick");
+	if (htrAddEventHandlerFunction(s, "document", "DBLCLICK",  "wn", "wn_dblclick")  != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "wn", "wn_mousedown") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "wn", "wn_mouseup")   != 0) goto err;
 
 	/** Mouse move event handler -- when user drags the window **/
-	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "wn", "wn_mousemove");
-	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "wn", "wn_mouseover");
-	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "wn", "wn_mouseout");
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "wn", "wn_mousemove") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "wn", "wn_mouseover") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "wn", "wn_mouseout")  != 0) goto err;
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "\twn_init({ "
 		"mainlayer:wgtrGetNodeRef(ns, '%STR&SYM'), "
 		"clayer:wgtrGetContainer(wgtrGetNodeRef(ns, '%STR&SYM')), "
@@ -354,14 +355,22 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    closetype,
 	    is_toplevel,
 	    is_modal
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTWIN", "Failed to write JS init call.");
+	    goto err;
+	    }
 
 	/** Write HTML for the child window. **/
-	htrAddBodyItem_va(s, "<div id='wn%POSbase' class='wnbase'>\n", id);
+	if (htrAddBodyItem_va(s, "<div id='wn%POSbase' class='wnbase'>\n", id) != 0) 
+	    {
+	    mssError(0, "HTWIN", "Failed to write HTML for window container.");
+	    goto err;
+	    }
 	if (has_titlebar)
 	    {
-	    /** Write styles and HTML for the title bar. **/
-	    htrAddStylesheetItem_va(s,
+	    /** Write CSS and HTML for the title bar. **/
+	    if (htrAddStylesheetItem_va(s,
 		"\t\t#wn%POStitlebar { "
 		    "position:absolute; "
 		    "visibility:inherit; "
@@ -379,12 +388,16 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 		    "%STR"
 		"}\n",
 		id,
-		title_bar_height - 1 - box_offset,
+		title_bar_height - 1,
 		z + 1,
 		text_color,
 		header_background_style
-	    );
-	    htrAddBodyItem_va(s,
+	    ) != 0)
+		{
+		mssError(0, "HTWIN", "Failed to write styles for window title bar.");
+		goto err;
+		}
+	    if (htrAddBodyItem_va(s,
 		"<div id='wn%POStitlebar' class='wntitlebar'>"
 		    "<img style='position:absolute; top:2px; left:4px; width:18px; height:18px;' name='icon' src='%STR&HTE'>"
 		    "<div style='position:absolute; top:4px; left:30px; color:%STR&HTE; font-weight:bold;'>%STR&HTE</div>"
@@ -393,27 +406,35 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 		id,
 		icon,
 		text_color, title
-	    );
-	    }
-
-	/** Write HTML for child widgets in the window. **/
-	htrAddBodyItem_va(s,"<div class='wnborder'><div id='wn%POSmain'>\n",id);
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    {
-	    /** TODO: Israel - Rewrite this using util.h, once its updated from the dups branch. **/
-	    const pWgtrNode child = xaGetItem(&(tree->Children), i);
-	    const int ret = htrRenderWidget(s, child, z + 2);
-	    if (ret != 0)
+	    ) != 0)
 		{
-		mssError(0, "HTWIN",
-		    "Failed to render child widget '%s:%s' with error code %d.",
-		    child->Namespace, child->Name, ret
-		);
+		mssError(0, "HTWIN", "Failed to write HTML for window title bar.");
+		goto err;
 		}
 	    }
-	htrAddBodyItem(s,"</div></div></div>\n");
 
-    return 0;
+	/** Render child widgets inside window container. **/
+	if (htrAddBodyItem_va(s,"<div class='wnborder'><div id='wn%POSmain'>\n",id) != 0)
+	    {
+	    mssError(0, "HTWIN", "Failed to write HTML opening tag for window container.");
+	    goto err;
+	    }
+	if (htrRenderSubwidgets(s, tree, z + 2) != 0) goto err;
+	if (htrAddBodyItem(s,"</div></div></div>\n") != 0)
+	    {
+	    mssError(0, "HTWIN", "Failed to write HTML closing tag for window container.");
+	    goto err;
+	    }
+
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTWIN",
+	    "Failed to render \"%s\":\"%s\".",
+	    tree->Name, tree->Type
+	);
+	return -1;
     }
 
 

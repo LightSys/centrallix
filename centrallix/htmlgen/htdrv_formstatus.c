@@ -52,21 +52,21 @@ static struct {
 */
 int htfsRender(pHtSession s, pWgtrNode tree, int z) {
    int x=-1,y=-1;
-   int id;
    char name[64];
    char form[64];
    char* ptr;
    char* style;
    int w;
 
-   if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
-       {
-       mssError(1,"HTFS","Netscape DOM or W3C DOM1 HTML and CSS1 support required");
-       return -1;
-       }
-
    /** Get an id for this. **/
-   id = (HTFS.idcnt++);
+   const int id = (HTFS.idcnt++);
+
+    /** Verify browser capabilities. **/
+    if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	{
+	mssError(1, "HTFS", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	goto err;
+	}
 
    /** Get x,y of this object **/
    if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
@@ -80,16 +80,22 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
        w = 13;
 
    /** Write named global **/
-   if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+   if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto err;
    strtcpy(name,ptr,sizeof(name));
    if (wgtrGetPropertyValue(tree,"form",DATA_T_STRING,POD(&ptr)) != 0)
        form[0] = '\0';
    else
        strtcpy(form,ptr,sizeof(form));
-   htrAddWgtrObjLinkage_va(s, tree, "fs%POSmain", id);
+
+    /** Link the widget to the DOM node. **/
+    if (htrAddWgtrObjLinkage_va(s, tree, "fs%POSmain", id) != 0)
+	{
+	mssError(0, "HTFS", "Failed to render object linkage.");
+	goto err;
+	}
 
    /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,
+    if (htrAddStylesheetItem_va(s,
 	"\t\t#fs%POSmain { "
 	    "position:absolute; "
 	    "visibility:inherit; "
@@ -104,37 +110,60 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
 	ht_flex_y(y, tree),
 	ht_flex_w(w, tree),
 	z
-    );
+    ) != 0)
+	{
+	mssError(0, "HTFS", "Failed to write main CSS.");
+	goto err;
+	}
 
-   htrAddScriptInclude(s, "/sys/js/htdrv_formstatus.js", 0);
+    if (htrAddScriptInclude(s, "/sys/js/htdrv_formstatus.js", 0) != 0) goto err;
 
    /** Script initialization call. **/
-   htrAddScriptInit_va(s,
+   if (htrAddScriptInit_va(s,
 	"\tfs_init({ "
 	    "layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
 	    "form:'%STR&JSSTR', "
 	    "style:'%STR&JSSTR', "
 	"});\n",
 	name, form, style
-    );
+    ) != 0)
+	{
+	mssError(0, "HTFS", "Failed to write JS init call.");
+	goto err;
+	}
 
    /** HTML body <DIV> element for the layers. **/
-   if (!strcmp(style,"large"))
-       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\"><IMG SRC=/sys/images/formstatL05.png></DIV>\n", id);
-   else if (!strcmp(style,"largeflat"))
-       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\"><IMG SRC=/sys/images/formstatLF05.png></DIV>\n", id);
-   else
-       htrAddBodyItem_va(s,"   <DIV ID=\"fs%POSmain\"><IMG SRC=/sys/images/formstat05.gif></DIV>\n", id);
+    const char* type = "";
+    if (strcmp(style, "large") == 0) type = "L";
+    else if (strcmp(style, "largeflat") == 0)  type = "LF";
+    if (htrAddBodyItem_va(s,
+	"   <div id=\"fs%POSmain\"><img src=/sys/images/formstat%STR05.png></div>\n",
+	id, type
+    ) != 0)
+	{
+	mssError(0, "HTFS", "Failed to render child widgets.");
+	goto err;
+	}
 
-   htrAddEventHandlerFunction(s,"document","MOUSEDOWN","fs","fs_mousedown");
-   htrAddEventHandlerFunction(s,"document","MOUSEUP",  "fs","fs_mouseup");
-   htrAddEventHandlerFunction(s,"document","MOUSEOVER","fs","fs_mouseover");
-   htrAddEventHandlerFunction(s,"document","MOUSEOUT", "fs","fs_mouseout");
-   htrAddEventHandlerFunction(s,"document","MOUSEMOVE","fs","fs_mousemove");
+    /** Register JS event handler functions. **/
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN","fs", "fs_mousedown") != 0) goto err;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE","fs", "fs_mousemove") != 0) goto err;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "fs", "fs_mouseout")  != 0) goto err;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER","fs", "fs_mouseover") != 0) goto err;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",  "fs", "fs_mouseup")   != 0) goto err;
 
-   htrRenderSubwidgets(s, tree, z+2);
+    /** Render children. **/
+    if (htrRenderSubwidgets(s, tree, z + 2) != 0) goto err;
 
-   return 0;
+    /** Success. **/
+    return 0;
+
+    err:
+    mssError(0, "HTFS",
+	"Failed to render \"%s\":\"%s\" (id: %d).",
+	tree->Name, tree->Type, id
+    );
+    return -1;
 }
 
 

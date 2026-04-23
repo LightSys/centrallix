@@ -58,15 +58,16 @@ int
 htspaneRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* str;
-    
-	if (!(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS) && !s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE)
-	    {
-	    mssError(1, "HTSPANE", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS or IE DOM or Netscape DOM required.");
-	    goto err;
-	    }
 	
 	/** Get an id for this scrollpane. **/
 	const int id = (HTSPANE.idcnt++);
+	
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	    {
+	    mssError(1, "HTSPANE", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
+	    }
 	
 	/** Get name. **/
 	char name[64];
@@ -116,286 +117,211 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	const int visible = htrGetBoolean(tree, "visible", 1);
 	if (visible == -1) goto err;
 	
-	/** DOM Linkages. **/
-	htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(_obj, \"sp%POSarea\")",id);
-	htrAddWgtrObjLinkage_va(s, tree, "sp%POSpane",id);
+ 	/** Link the widget and container to DOM nodes. **/
+	if (htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(_obj, 'sp%POSarea')", id) != 0)
+	    {
+	    mssError(0, "HTSPANE", "Failed to add container linkage.");
+	    goto err;
+	    }
+	if (htrAddWgtrObjLinkage_va(s, tree, "sp%POSpane", id) != 0)
+	    {
+	    mssError(0, "HTSPANE", "Failed to add object linkage.");
+	    goto err;
+	    }
 	
 	/** Include scrollpane script and its dependencies. **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_scrollpane.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js",  0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_scrollpane.js", 0) != 0) goto err;
+	
+	/** Add the event handling scripts **/
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "sp", "sp_mousedown") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "sp", "sp_mousemove") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "sp", "sp_mouseover") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "sp", "sp_mouseup")   != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "WHEEL",     "sp", "sp_wheel")     != 0) goto err;
 	
 	/** Init the JS scripts. **/
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "\tsp_init({"
 		"layer: wgtrGetNodeRef(ns, '%STR&SYM'), "
 		"area_name: 'sp%POSarea', "
 		"thumb_name: 'sp%POSthumb', "
 	    "});\n",
 	    name, id, id
-	);
-	
-	/** Write html and styles. **/
-	if (s->Capabilities.Dom1HTML)
+	) != 0)
 	    {
-	    /** Write the scrollpane. **/
-	    htrAddBodyItem_va(s,
-		"<div id='sp%POSpane' "
-		    "style='"
-			"position:absolute; "
-			"visibility:%STR; "
-			"left:"ht_flex_format"; "
-			"top:"ht_flex_format"; "
-			"width:"ht_flex_format"; "
-			"height:"ht_flex_format"; "
-			"overflow:clip; "
-			"z-index:%POS; "
-		    "'"
-		">\n",
-		id,
-		(visible) ? "inherit" : "hidden",
-		ht_flex_x(x, tree),
-		ht_flex_y(y, tree),
-		ht_flex_w(w, tree),
-		ht_flex_h(h, tree),
-		z
-	    );
-	    
-	    /** Write shared CSS for the following UI elements. **/
-	    htrAddStylesheetItem_va(s,
-		"\t\t.sp%POS_scroll { "
-		    "position:absolute; "
-		    "left:"ht_flex_format"; "
-		"}\n",
-		id,
-		ht_flex(w - 18, tree->width, 1.0)
-	    );
-	    
-	    /** Write the up button. **/
-	    htrAddBodyItem_va(s,
-		"<img "
-		    "name='u' "
-		    "id='sp%POSup' "
-		    "class='sp%POS_scroll' "
-		    "src='/sys/images/ico13b.gif' "
-		    "style='"
-			"top:0px; "
-			"cursor:pointer; "
-		    "'"
-		"/>",
-		id,
-		id
-	    );
-	    
-	    /** Write the scroll bar. **/
-	    htrAddBodyItem_va(s,
-		"<img "
-		    "name='b' "
-		    "id='sp%POSbar' "
-		    "class='sp%POS_scroll' "
-		    "src='/sys/images/trans_1.gif' "
-		    "style='"
-			"top:18px; "
-			"width:18px; "
-			"height:"ht_flex_format"; "
-		    "'"
-		"/>",
-		id,
-		id,
-		ht_flex(h - 36, tree->height, 1.0)
-	    );
-	    
-	    /** Write the down button. **/
-	    htrAddBodyItem_va(s,
-		"<img "
-		    "name='d' "
-		    "id='sp%POSdown' "
-		    "class='sp%POS_scroll' "
-		    "src='/sys/images/ico12b.gif' "
-		    "style='"
-			"top:"ht_flex_format"; "
-			"cursor:pointer; "
-		    "'"
-		"/>",
-		id,
-		id,
-		ht_flex(h - 18, tree->height, 1.0)
-	    );
-	    
-	    /** Write the scroll thumb. **/
-	    htrAddBodyItem_va(s,
-		"<div "
-		    "id='sp%POSthumb' "
-		    "class='sp%POS_scroll' "
-		    "style='"
-			"visibility:inherit; "
-			"top:18px; "
-			"width:18px; "
-			"z-index:%POS; "
-		    "'"
-		">"
-		    "<img name='t' src='/sys/images/ico14b.gif'>"
-		"</div>\n",
-		id,
-		id,
-		z + 1
-	    );
-	    
-	    /** Write the scroll area. **/
-	    htrAddBodyItem_va(s,
-		"<div "
-		    "id='sp%POSarea' "
-		    "style='"
-			"position:absolute; "
-			"visibility:inherit; "
-			"left:0px; "
-			"top:0px; "
-			"width:"ht_flex_format"; "
-			"height:"ht_flex_format"; "
-			"z-index:%POS; "
-		    "'"
-		">",
-		id,
-		ht_flex(w - 18, ht_get_parent_w(tree), 1.0),
-		ht_flex(h,      ht_get_parent_h(tree), 1.0),
-		z + 1
-	    );
+	    mssError(0, "HTSPANE", "Failed to write JS init call.");
+	    goto err;
 	    }
-	else if (s->Capabilities.Dom0NS)
-	    {
-	    /** Write CSS for everything. **/
-	    htrAddStylesheetItem_va(s,
-		"\t\t#sp%POSpane { "
+	
+	/** Write the scrollpane. **/
+	if (htrAddBodyItem_va(s,
+	    "<div id='sp%POSpane' "
+		"style='"
 		    "position:absolute; "
 		    "visibility:%STR; "
-		    "overflow:hidden; "
+		    "overflow:clip; "
 		    "left:"ht_flex_format"; "
 		    "top:"ht_flex_format"; "
 		    "width:"ht_flex_format"; "
 		    "height:"ht_flex_format"; "
 		    "z-index:%POS; "
-		"}\n",
-		id,
-		(visible) ? "inherit" : "hidden",
-		ht_flex_x(x, tree),
-		ht_flex_y(y, tree),
-		ht_flex_w(w, tree),
-		ht_flex_h(h, tree),
-		z
-	    );
-	    htrAddStylesheetItem_va(s,
-		"\t\t#sp%POSarea { "
+		"'"
+	    ">\n",
+	    id,
+	    (visible) ? "inherit" : "hidden",
+	    ht_flex_x(x, tree),
+	    ht_flex_y(y, tree),
+	    ht_flex_w(w, tree),
+	    ht_flex_h(h, tree),
+	    z
+	) != 0)
+	    {
+	    mssError(0, "HTSPANE", "Failed to write HTML for main scrollpane div.");
+	    goto err;
+	    }
+	
+	/** Write shared CSS for the following UI elements. **/
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t.sp%POS_scroll { "
+		"position:absolute; "
+		"left:"ht_flex_format"; "
+	    "}\n",
+	    id,
+	    ht_flex(w - 18, tree->width, 1.0)
+	) != 0)
+	    {
+	    mssError(0, "HTSPANE", "Failed to write shared CSS ui elements.");
+	    goto err;
+	    }
+	
+	/** Write the up button. **/
+	if (htrAddBodyItem_va(s,
+	    "<img "
+		"name='u' "
+		"id='sp%POSup' "
+		"class='sp%POS_scroll' "
+		"src='/sys/images/ico13b.gif' "
+		"style='"
+		    "top:0px; "
+		    "cursor:pointer; "
+		"'"
+	    "/>",
+	    id,
+	    id
+	) != 0)
+	    {
+	    mssError(0, "HTSPANE", "Failed to write HTML for the down button.");
+	    goto err;
+	    }
+	
+	/** Write the scroll bar. **/
+	if (htrAddBodyItem_va(s,
+	    "<img "
+		"name='b' "
+		"id='sp%POSbar' "
+		"class='sp%POS_scroll' "
+		"src='/sys/images/trans_1.gif' "
+		"style='"
+		    "top:18px; "
+		    "width:18px; "
+		    "height:"ht_flex_format"; "
+		"'"
+	    "/>",
+	    id,
+	    id,
+	    ht_flex(h - 36, tree->height, 1.0)
+	) != 0)
+	    {
+	    mssError(0, "HTSPANE", "Failed to write HTML for the scroll bar.");
+	    goto err;
+	    }
+	
+	/** Write the down button. **/
+	if (htrAddBodyItem_va(s,
+	    "<img "
+		"name='d' "
+		"id='sp%POSdown' "
+		"class='sp%POS_scroll' "
+		"src='/sys/images/ico12b.gif' "
+		"style='"
+		    "top:"ht_flex_format"; "
+		    "cursor:pointer; "
+		"'"
+	    "/>",
+	    id,
+	    id,
+	    ht_flex(h - 18, tree->height, 1.0)
+	) != 0)
+	    {
+	    mssError(0, "HTSPANE", "Failed to write HTML for the down button.");
+	    goto err;
+	    }
+	
+	/** Write the scroll thumb. **/
+	if (htrAddBodyItem_va(s,
+	    "<div "
+		"id='sp%POSthumb' "
+		"class='sp%POS_scroll' "
+		"style='"
+		    "visibility:inherit; "
+		    "top:18px; "
+		    "width:18px; "
+		    "z-index:%POS; "
+		"'"
+	    ">"
+		"<img name='t' src='/sys/images/ico14b.gif'>"
+	    "</div>\n",
+	    id,
+	    id,
+	    z + 1
+	) != 0)
+	    {
+	    mssError(0, "HTSPANE", "Failed to write HTML for the scroll thumb.");
+	    goto err;
+	    }
+	
+	/** Write the scroll area. **/
+	if (htrAddBodyItem_va(s,
+	    "<div "
+		"id='sp%POSarea' "
+		"style='"
 		    "position:absolute; "
 		    "visibility:inherit; "
 		    "left:0px; "
 		    "top:0px; "
 		    "width:"ht_flex_format"; "
+		    "height:"ht_flex_format"; "
 		    "z-index:%POS; "
-		"}\n",
-		id,
-		ht_flex(w - 18, ht_get_parent_w(tree), 1.0),
-		z + 1
-	    );
-	    htrAddStylesheetItem_va(s,
-		"\t\t#sp%POSthumb { "
-		    "position:absolute; "
-		    "visibility:inherit; "
-		    "left:"ht_flex_format"; "
-		    "top:18px; "
-		    "width:18px; "
-		    "z-index:%POS; "
-		"}\n",
-		id,
-		ht_flex(w - 18, tree->width, 1.0),
-		z + 1
-	    );
-	    
-	    /** Write the scrollpane. **/
-	    htrAddBodyItem_va(s,
-		"<div id=\"sp%POSpane\">"
-		    "<table "
-			"%[bgcolor=\"%STR&HTE\"%] "
-			"%[background=\"%STR&HTE\"%] "
-			"border='0' "
-			"cellspacing='0' "
-			"cellpadding='0' "
-			"width='%POS'"
-		    ">",
-		id,
-		*background_color, background_color,
-		*background_image, background_image,
-		w
-	    );
-	    
-	    htrAddBodyItem_va(s,
-		/** Write the up button. **/
-		"<tr><td align=right>"
-		    "<img name='u' src='/sys/images/ico13b.gif'>"
-		"</td></tr>"
-		
-		/** Write the scroll bar. **/
-		"<tr><td align=right>"
-		    "<img name='b' src='/sys/images/trans_1.gif' height='%POSpx' width='18px'>"
-		"</td></tr>"
-		
-		/** Write the down button. **/
-		"<tr><td align=right>"
-		    "<img name='d'src='/sys/images/ico12b.gif'>"
-		"</td></tr>"
-		
-		/** Close the scrollpane table (see above). **/
-		"</table> <!-- Easter Egg #3 -->\n",
-		h - 36
-	    );
-	    
-	    /** Write the scroll thumb. **/
-	    htrAddBodyItem_va(s,
-		"<div id=\"sp%POSthumb\">"
-		    "<img name='t' src='/sys/images/ico14b.gif'>"
-		"</div>\n",
-		id
-	    );
-	    
-	    /** Write the scroll area. **/
-	    htrAddBodyItem_va(s,
-		"<div ID=\"sp%POSarea\">"
-		    "<table "
-			"border='0' "
-			"cellpadding='0' "
-			"cellspacing='0' "
-			"width='%POSpx' "
-			"height='%POSpx' "
-		    "><tr><td>",
-		id,
-		w - 2,
-		h - 2
-	    );
+		"'"
+	    ">",
+	    id,
+	    ht_flex(w - 18, ht_get_parent_w(tree), 1.0),
+	    ht_flex(h,      ht_get_parent_h(tree), 1.0),
+	    z + 1
+	) != 0)
+	    {
+	    mssError(0, "HTSPANE", "Failed to write HTML for the scroll area.");
+	    goto err;
 	    }
 	
-	/** Render children/subwidgets. **/
-	for (int i = 0; i < xaCount(&(tree->Children)); i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z + 2);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 2) != 0) goto err;
 	
 	/** Close the final <div>s. **/
-	if (s->Capabilities.Dom1HTML)
+	if (htrAddBodyItem(s,"</div></div>\n") != 0)
 	    {
-	    htrAddBodyItem(s,"</div></div>\n");
+	    mssError(0, "HTSPANE", "Failed to write closing HTML tags.");
+	    goto err;
 	    }
-	else if (s->Capabilities.Dom0NS)
-	    {
-	    htrAddBodyItem(s,"</td></tr></table></div></div>\n");
-	    }
-	
-	/** Add the event handling scripts **/
-	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "sp", "sp_mousedown");
-	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "sp", "sp_mousemove");
-	htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "sp", "sp_mouseup");
-	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "sp", "sp_mouseover");
-	htrAddEventHandlerFunction(s, "document", "WHEEL",     "sp", "sp_wheel");
 	
 	return 0;
 	
     err:
-	mssError(0, "HTSPANE", "Failed to render widget/scrollpane.");
+	mssError(0, "HTTAB",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
+	);
 	return -1;
     }
 

@@ -65,18 +65,16 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
     {
     char name[64];
     int x=-1,y=-1,w,h;
-    int id;
-    pWgtrNode subtree;
-    int i;
 
-	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
+	/** Get an id for this. **/
+	const int id = (HTAL.idcnt++);
+
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1,"HTAL","Netscape DOM or W3C DOM1 HTML and CSS support required");
-	    return -1;
+	    mssError(1, "HTAL", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
 	    }
-
-    	/** Get an id for this. **/
-	id = (HTAL.idcnt++);
 
     	/** Get x,y,w,h of this object.  X and Y can be assumed to be zero if unset,
 	 ** but the wgtr Verify routine should have taken care of width/height for us
@@ -87,19 +85,19 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTAL","Bark! Autolayout widget must have a 'width' property");
-	    return -1;
+	    goto err;
 	    }
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    mssError(1,"HTAL","Bark! Autolayout widget must have a 'height' property");
-	    return -1;
+	    goto err;
 	    }
 
 	/** Get name **/
 	strtcpy(name,wgtrGetName(tree),sizeof(name));
 
 	/** Add the stylesheet for the layer **/
-	htrAddStylesheetItem_va(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\t#al%POSbase { "
 		"position:absolute; "
 		"visibility:inherit; "
@@ -116,47 +114,61 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 	    ht_flex_w(w, tree),
 	    ht_flex_h(h, tree),
 	    z
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTAL", "Failed to write CSS.");
+	    goto err;
+	    }
 
-	/** Linkage **/
-	htrAddWgtrObjLinkage_va(s, tree, "al%POSbase",id);
+ 	/** Link the widget to the DOM node. **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "al%POSbase", id) != 0)
+	    {
+	    mssError(0, "HTAL", "Failed to add object linkage.");
+	    goto err;
+	    }
 
 	/** Script include call **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_autolayout.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_autolayout.js", 0) != 0) goto err;
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "\tal_init(wgtrGetNodeRef(ns, '%STR&SYM'), {});\n", name);
+	if (htrAddScriptInit_va(s, "\tal_init(wgtrGetNodeRef(ns, '%STR&SYM'), {});\n", name) != 0)
+	    {
+	    mssError(0, "HTAL", "Failed to write JS init call.");
+	    goto err;
+	    }
 
 	/** Start of container **/
-	htrAddBodyItemLayerStart(s, 0, "al%POSbase", id, NULL);
+	if (htrAddBodyItemLayerStart(s, 0, "al%POSbase", id, NULL) != 0)
+	    {
+	    mssError(0, "HTAL", "Failed to start body container.");
+	    goto err;
+	    }
 
 	/** Check for objects within this autolayout widget. **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
+	const int n_children = xaCount(&(tree->Children));
+	for (unsigned int i = 0u; i < n_children; i++)
 	    {
-	    subtree = xaGetItem(&(tree->Children), i);
+	    pWgtrNode subtree = xaGetItem(&(tree->Children), i);
 	    if (!strcmp(subtree->Type, "widget/autolayoutspacer")) 
 		subtree->RenderFlags |= HT_WGTF_NOOBJECT;
-	    /*
-	    else if(!strcmp(subtree->Type, "widget/repeat"))
-		{
-		for(rpti=0;rpti<xaCount(&(subtree->Children));rpti++)
-		    {
-		    rptsubtree = xaGetItem(&(subtree->Children),rpti);
-		    htrRenderWidget(s,rptsubtree, z+1);
-		    //mssError(1,"HTAL","Found a subwidget to a repeat");
-		    }
-		    htrRenderWidget(s, subtree, z+1);
-		}*/
-	    else
-		{
-		htrRenderWidget(s, subtree, z+1);
-		//mssError(1,"HTAL","Found a subwidget");
-		}
+	    else if (htrRenderWidget(s, subtree, z + 1) != 0) goto err;
 	    }
+	
 	/** End of container **/
-	htrAddBodyItemLayerEnd(s, 0);
+	if (htrAddBodyItemLayerEnd(s, 0) != 0)
+	    {
+	    mssError(0, "HTAL", "Failed to end body container.");
+	    goto err;
+	    }
 
-    return 0;
+	return 0;
+	
+    err:
+	mssError(0, "HTAL",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
+	);
+	return -1;
     }
 
 
