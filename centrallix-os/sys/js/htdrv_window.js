@@ -9,14 +9,10 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-//$(".wn")
-
-// An array of all initialized windows on the page.
-const wn_windows = [];
 
 // Resize listener that updates all windows so they remain on the page by
 // re-calling wn_do_move_internal() with whatever values were last used.
-window.addEventListener('resize', () => wn_windows.forEach((wn) => {
+window.addEventListener('resize', () => wn_list.forEach((wn) => {
     const { pg_attract, wn_new_x, wn_new_y } = wn.resize_data;
     wn_do_move_internal(wn, pg_attract, wn_new_x, wn_new_y);
 }));
@@ -165,9 +161,6 @@ function wn_init(param)
     l.showcontainer = wn_showcontainer;
 
     if (l.is_modal && l.is_visible) pg_setmodal(l, true);
-    
-    // Add the window to the global window list.
-    wn_windows.push(l);
 
     return l;
     }
@@ -550,7 +543,6 @@ function wn_close(l)
     {
     if (l.is_modal) pg_setmodal(l, false);
     if (wn_popped[l.id]) delete wn_popped[l.id];
-    //l.is_modal = false;
     l.no_close = false;
     l.extended_region = null;
     if (l.popped_above)
@@ -562,7 +554,7 @@ function wn_close(l)
 	{
 	wn_close(l.has_popup);
 	}
-    if (l.closetype == 0 || !cx__capabilities.Dom0NS)
+    if (l.closetype == 0)
 	{
 	htr_setvisibility(l,'hidden');
 	$(l).css({display:"none"});
@@ -571,30 +563,8 @@ function wn_close(l)
 	l.is_visible = 0;
 	}
     else
-        {
-	if(cx__capabilities.Dom0NS)
-	    {
-	    st = new Date();
-	    var speed = 20;
-	    var duration = 150;
-	    var sizeX = 0;
-	    var sizeY = 0;
-	    if (l.closetype & 1)
-		{
-		var toX = Math.ceil(getClipWidth(l)/2);
-		sizeX = Math.ceil(toX*speed/duration);
-		}
-	    if (l.closetype & 2)
-		{
-		var toY = Math.ceil(getClipHeight(l)/2);
-		sizeY = Math.ceil(toY*speed/duration);
-		}
-	    wn_graphical_close(l,speed,sizeX,sizeY);
-	    }
-	else
-	    {
-	    alert("close type " + l.closetype + " is not implimented for this browser");
-	    }
+	{
+	alert("close type " + l.closetype + " is not implemented for this browser");
 	}
     }
 

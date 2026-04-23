@@ -11,7 +11,7 @@
 
 // Cross browser Geometry DOM1HTML
 
-// Add some useful functions to Math that will be needed elsewhere.
+// Add useful Math functions.
 Math.clamp = (min, val, max) => Math.min(Math.max(min, val), max);
 Math.isBetween = (lowerBound, num, upperBound) => (lowerBound < num && num < upperBound);
 
@@ -271,16 +271,6 @@ function getParentH(l)
     return getParentSize(l).height;
     }
 
-
-/*** Problem:
- *** If the programmer calls setRelativeX() (or a similar function, such as moveTo() or moveBy()),
- *** they might be using a value they got from the server, based on the resolution when the page
- *** was first loaded. However, they might also be using a value they got dynamically by calling
- *** some function to check the actual size of an element. Previously, this distinction did not
- *** matter because these values would be the same. However, now that pages can be resized on the
- *** client, it does matter.
- ***/
-
  
 /*** We ignore the current value of __pg_left in the following functions even
  *** though it might be correct and faster than querying the DOM. However, the
@@ -329,7 +319,7 @@ function setRelativeH(l, value) { return setRelative(l, value, 'height'); }
  *** generated adaptive layout. It is RECOMMENDED to call a specific sub-
  *** function (aka. setResponsiveX(), setResponsiveY(), etc.) instead of
  *** calling this function directly to avoid passing dimension directly.
- ***
+ *** 
  *** WARNING: Ensure that any value passed is calculated ENTIRELY using
  *** values from the server (e.g. widget properties) and no values from
  *** real page dimensions are used, as these change when the page is
@@ -348,7 +338,7 @@ function setResponsive(l, value, d) {
     /** Server-layout values are always numbers. **/
     if (typeof(value) !== 'number')
 	{
-	console.warn(`setResponsive(${l.id}, ?, '${d}'): Expected value to be a parseable number but got:`, value);
+	console.warn(`setResponsive(${l.id}, ?, '${d}'): Expected a parseable number but got:`, value);
 	return value;
 	}
     
@@ -484,7 +474,7 @@ function getHeight(l)
 	return getClipHeight(l);
     }
 
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the

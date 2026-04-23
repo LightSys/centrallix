@@ -43,13 +43,6 @@
 /************************************************************************/
 
 
-/** Globals **/
-
-static struct
-    {
-    int idcnt;
-    } HTRPT;
-
 int
 htrptRender(pHtSession s, pWgtrNode tree, int z)
     {
@@ -76,8 +69,6 @@ htrptInitialize()
     /** Allocate the driver **/
     drv = htrAllocDriver();
     if (!drv) return -1;
-
-    memset(&HTRPT, 0, sizeof(HTRPT));
     
     /** Fill in structure **/
     strcpy(drv->Name,"Repeat Object Driver");

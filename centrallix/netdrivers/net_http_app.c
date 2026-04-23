@@ -86,7 +86,7 @@ nht_i_GetGeom(pObject target_obj, pNhtConn output)
 	    "    <script src='/sys/js/startup.js'></script>\n"
 	    "  </head>\n"
 	    "  <body style='%STR&ESCQ;' onload='startup();'>\n"
-	    "    <img src='/sys/images/loading.gif'>\n"
+	    "    <img src='/sys/images/loading.gif' alt='loading...'>\n"
 	    "    <div id='l1'>x<br>x</div>\n"
 	    "    <div id='l2'>xx</div>\n"
 	    "  </body>\n"

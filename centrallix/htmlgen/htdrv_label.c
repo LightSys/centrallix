@@ -202,7 +202,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    "\t\t#lbl%POS { "
 		"position:absolute; "
 		"visibility:inherit; "
-		"cursor:default; "
+		"cursor:pointer; "
 		"left:"ht_flex_format"; "
 		"top:"ht_flex_format"; "
 		"width:"ht_flex_format"; "

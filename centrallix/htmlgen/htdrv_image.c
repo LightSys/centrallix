@@ -90,8 +90,10 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
     int rval = -1;
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
-    char* alt_text;
-    char* aspect;
+    char* alt_text = NULL;
+    char* aspect = NULL;
+    char* default_alt_text = "";
+    char* default_aspect = "stretch";
 
 	/** Get an id for this. **/
 	const int id = (HTIMG.idcnt++);
@@ -119,14 +121,12 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 
 	if(wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) == 0)
 	    alt_text=nmSysStrdup(ptr);
-	else
-	    alt_text=nmSysStrdup("");
+	if (alt_text == NULL) alt_text = default_alt_text;
 
 	/** Image aspect scaling: stretch or preserve **/
 	if(wgtrGetPropertyValue(tree,"aspect",DATA_T_STRING,POD(&ptr)) == 0)
 	    aspect=nmSysStrdup(ptr);
-	else
-	    aspect=nmSysStrdup("stretch");
+	if (aspect == NULL) aspect = default_aspect;
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto end;
@@ -251,8 +251,8 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	
 	/** Clean up. **/
-	if (alt_text != NULL) nmSysFree(alt_text);
-	if (aspect != NULL) nmSysFree(aspect);
+	if (alt_text != NULL && alt_text != default_alt_text) nmSysFree(alt_text);
+	if (aspect != NULL && aspect != default_aspect) nmSysFree(aspect);
 	
 	return rval;
     }

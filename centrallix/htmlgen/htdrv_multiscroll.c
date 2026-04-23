@@ -302,7 +302,7 @@ htmsInitialize()
 
 	/** Fill in the structure. **/
 	strcpy(drv->Name,"DHTML MultiScroll Driver");
-	strcpy(drv->WidgetName,"multiscroll");
+	strcpy(drv->WidgetName,"MultiScroll");
 	drv->Render = htmsRender;
 
 	htrAddEvent(drv,"Click");

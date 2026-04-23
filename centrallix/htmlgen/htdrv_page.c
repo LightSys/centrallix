@@ -466,7 +466,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    htrAddBodyItem_va(s, "<body style=\"%STR\">", bgstr);
 	    htrAddBodyItem   (s,
 		"<table width='100%' height='100%' cellpadding=20>"
-		    "<tr><td valign=top><img src='/sys/images/loading.gif' alt='loading'></td></tr>"
+		    "<tr><td valign=top><img src='/sys/images/loading.gif' alt='loading...'></td></tr>"
 		"</table></body>\n"
 	    );
 	    htrAddBodyItemLayerEnd(s,0);
