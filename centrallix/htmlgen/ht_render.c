@@ -1359,7 +1359,7 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* class
 	rval = 0;
 
 	end:
-	if (UNLIKELY(rval != 0)) mssError(0, "HTR", "Failed to add body item layer start for id format: \"%s\".", id);
+	if (UNLIKELY(rval != 0)) mssError(0, "HTR", "Failed to add starting body item with id: %d.", id);
 	
 	/** Clean up. **/
 	if (LIKELY(error_session != NULL)) qpfCloseSession(error_session);
