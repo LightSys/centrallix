@@ -720,9 +720,9 @@ function dd_create_pane(l)
 	moveTo(p.BarLayer, l.popup_width-20, 2);
 	htr_setvisibility(p.BarLayer, 'inherit');
 	c = '<TABLE border=0 cellpadding=0 cellspacing=0 width=18 height='+(l.h2-4)+'>';
-	c += '<TR><TD><IMG name=u src=/sys/images/ico13b.gif></TD></TR>';
-	c += '<TR><TD><IMG name=b src=/sys/images/trans_1.gif height='+(l.h2-40)+'></TD></TR>';
-	c += '<TR><TD><IMG name=d src=/sys/images/ico12b.gif></TD></TR>';
+	c += '<tr><td><img data-type="up"    alt="up"    src="/sys/images/ico13b.gif"></td></tr>';
+	c += '<tr><td><img data-type="trans" alt="trans" src="/sys/images/trans_1.gif" height='+(l.h2-40)+'></td></tr>';
+	c += '<tr><td><img data-type="down"  alt="down"  src="/sys/images/ico12b.gif"></td></tr>';
 	c += '</TABLE>';
 	htr_write_content(p.BarLayer, c);
 	//pg_serialized_write(p.BarLayer, c, null);
@@ -892,14 +892,14 @@ function dd_add_items(l,ary)
 function dd_mouseout(e)
     {
     var ti=dd_target_img;
-    if (ti && ti.name == 't' && dd_current)
+    if (ti && ti.dataset.type === 'trans' && dd_current)
         return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
     }
 
 function dd_mousemove(e)
     {
     var ti=dd_target_img;
-    if (ti != null && ti.name == 't' && dd_current && dd_current.enabled!='disabled')
+    if (ti != null && ti.dataset.type === 'trans' && dd_current && dd_current.enabled !== 'disabled')
         {
         var pl=ti.mainlayer.PaneLayer;
         var v=getClipHeight(pl)-(3*18)-4;
@@ -952,8 +952,11 @@ function dd_mouseup(e)
         }
     if (dd_target_img != null)
         {
-        if (dd_target_img.kind && dd_target_img.kind.substr(0,2) == 'dd' && (dd_target_img.name == 'u' || dd_target_img.name == 'd'))
-            pg_set(dd_target_img,'src',htutil_subst_last(dd_target_img.src,"b.gif"));
+        if (dd_target_img.kind && dd_target_img.kind.slice(0, 2) === 'dd'
+	    && (dd_target_img.dataset.type === 'up' || dd_target_img.dataset.type === 'down'))
+            {
+            pg_set(dd_target_img, 'src', htutil_subst_last(dd_target_img.src, "b.gif"));
+            }
         dd_target_img = null;
         }
     if ((e.kind == 'dd' || e.kind == 'ddtxt') && e.mainlayer.enabled != 'disabled')
@@ -1007,30 +1010,25 @@ function dd_mousedown(e)
         }
     else if (e.kind == 'dd_sc')
         {
-        switch(e.layer.name)
+        switch(e.layer.dataset.type)
             {
-            case 'u':
+            case 'up':
                 pg_set(e.layer,'src','/sys/images/ico13c.gif');
                 dd_incr = 8;
                 dd_scroll();
                 dd_timeout = setTimeout(dd_scroll_tm,300);
                 break;
-            case 'd':
+            case 'down':
                 pg_set(e.layer, 'src', '/sys/images/ico12c.gif');
                 dd_incr = -8;
                 dd_scroll();
                 dd_timeout = setTimeout(dd_scroll_tm,300);
                 break;
-            case 'b':
+            case 'thumb':
                 dd_incr = dd_target_img.height+36;
                 if (e.pageY > getPageY(dd_target_img.thum)+9) dd_incr = -dd_incr;
                 dd_scroll();
                 dd_timeout = setTimeout(dd_scroll_tm,300);
-                break;
-            case 't':
-                dd_click_x = e.pageX;
-                dd_click_y = e.pageY;
-                dd_thum_y = getPageY(dd_target_img.thum);
                 break;
             }
         }

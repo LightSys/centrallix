@@ -247,18 +247,18 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	/** Write HTML. **/
 	if (htrAddBodyItem_va(s,
 	    "<div "
-		"class=\"tv%POS\" "
-		"id=\"tv%POSroot\" "
-		"style=\""
+		"class='tv%POS' "
+		"id='tv%POSroot' "
+		"style='"
 		    "position:absolute; "
 		    "visibility:%STR; "
 		    "left:"ht_flex_format"; "
 		    "top:"ht_flex_format"; "
 		    "width:"ht_flex_format"; "
 		    "z-index:%POS; "
-		"\""
+		"'"
 	    ">"
-		"<img src=\"%STR&HTE\">"
+		"<img src='%STR&HTE' alt='folder'>"
 		"&nbsp;%STR&HTE"
 	    "</div>\n",
 	    id, /* class */

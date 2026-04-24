@@ -53,7 +53,7 @@ static struct
 int
 htmenu_internal_AddDot(pHtSession s, int mcnt, char* nptr, int is_horizontal, int row_height)
     {
-    htrAddBodyItem_va(s,"<td valign=\"%STR&HTE\"><img align=\"%STR&HTE\" name=\"xy_%STR&SYM%POS\" width=\"1\" height=\"%POS\" src=\"/sys/images/trans_1.gif\"></td>", ((mcnt&1) || !is_horizontal)?"top":"bottom", ((mcnt&1) || !is_horizontal)?"top":"bottom", nptr, mcnt, ((mcnt&1) || !is_horizontal)?(row_height?row_height:1):1);
+    htrAddBodyItem_va(s,"<td valign=\"%STR&HTE\"><img align=\"%STR&HTE\" id=\"xy_%STR&SYM%POS\" width=\"1\" height=\"%POS\" src=\"/sys/images/trans_1.gif\"></td>", ((mcnt&1) || !is_horizontal)?"top":"bottom", ((mcnt&1) || !is_horizontal)?"top":"bottom", nptr, mcnt, ((mcnt&1) || !is_horizontal)?(row_height?row_height:1):1);
     return 0;
     }
 
@@ -86,7 +86,7 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	/** checkbox **/
 	if ( (rval=htrGetBoolean(menu_item, "checked", -1)) >= 0)
 	    {
-	    htrAddBodyItem_va(s, "<td valign=\"middle\"><img name=\"cb_%POS\" src=\"/sys/images/checkbox_%STR&HTE.gif\"></td>", mcnt, rval?"checked":"unchecked");
+	    htrAddBodyItem_va(s, "<td valign=\"middle\"><img id=\"cb_%POS\" src=\"/sys/images/checkbox_%STR&HTE.gif\"></td>", mcnt, rval?"checked":"unchecked");
 	    xsConcatQPrintf(xs, ", check:%STR", rval?"true":"false");
 	    }
 	else

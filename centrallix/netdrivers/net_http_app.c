@@ -77,7 +77,6 @@ nht_i_GetGeom(pObject target_obj, pNhtConn output)
 	    "  <head>\n"
 	    "    <title>Loading...</title>\n"
 	    "    <meta charset='utf-8'>\n"
-	    "    <meta http-equiv='Pragma' content='no-cache'>\n"
 	    "    <style>\n"
 	    "      #l1 { position:absolute; visibility: hidden; left:0px; top:0px; }\n"
 	    "      #l2 { position:absolute; visibility: hidden; left:0px; top:0px; }\n"

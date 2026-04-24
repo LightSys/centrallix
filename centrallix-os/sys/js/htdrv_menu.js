@@ -425,25 +425,19 @@ function mn_init(param)
     var search;
     for(var i=0; i<imgs.length; i++)
 	{
-	if (imgs[i].name.substr(0,nmstr.length) == nmstr)
+	const img = imgs[i], { id } = img;
+	const len = nmstr.length;
+	if (id.slice(0, len) === nmstr)
 	    {
-	    var x = $(imgs[i]).position().left;
-	    var y = $(imgs[i]).position().top;
-	    /*var x = getRelativeX(imgs[i]);
-	    if (isNaN(x))
-		for(x=0,search=imgs[i];search.nodeName != 'DIV'; search = search.offsetParent)
-		    x += search.offsetLeft;
-	    var y = getRelativeY(imgs[i]);
-	    if (isNaN(y))
-		for(y=0,search=imgs[i];search.nodeName != 'DIV'; search = search.offsetParent)
-		    y += search.offsetTop;*/
-	    menu.coords.push(new Object());
-	    menu.coords[parseInt(imgs[i].name.substr(nmstr.length,255))].x = x;
-	    menu.coords[parseInt(imgs[i].name.substr(nmstr.length,255))].y = y;
+	    const { left, top } = $(img).position();
+	    const index = parseInt(id.slice(len, len + 255));
+	    menu.coords.push({});
+	    menu.coords[index].x = left;
+	    menu.coords[index].y = top;
 	    }
-	else if (imgs[i].name.substr(0,3) == "cb_")
+	else if (id.slice(0, 3) === "cb_")
 	    {
-	    menu.ckboxs[parseInt(imgs[i].name.substr(3,255))] = imgs[i];
+	    menu.ckboxs[parseInt(id.slice(3, 3 + 255))] = img;
 	    }
 	}
     menu.items = new Array();

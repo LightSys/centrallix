@@ -649,8 +649,9 @@ function eb_init(param)
     var imgs = pg_images(l);
     for(var i=0;i<imgs.length;i++)
 	{
-	if (imgs[i].name == 'l') l.l_img = imgs[i];
-	else if (imgs[i].name == 'r') l.r_img = imgs[i];
+	const img = imgs[i], { side } = img.dataset;
+	if (side === 'left') l.l_img = img;
+	else if (side === 'right') l.r_img = img;
 	}
     l.l_img_on = false;
     l.r_img_on = false;

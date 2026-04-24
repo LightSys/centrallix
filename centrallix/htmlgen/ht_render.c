@@ -1337,7 +1337,7 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* class
 
 	/** Pick a starting tag. **/
 	const int use_iframe = (s->Capabilities.HTML40 && (flags & HTR_LAYER_F_DYNAMIC)); 
-	const char* start_tag = (use_iframe) ? "iframe frameBorder='0'" : "div";
+	const char* start_tag = (use_iframe) ? "iframe style='border:0'" : "div";
 
 	/** Add the starting tag. **/
 	if (UNLIKELY(qpfPrintf(error_session, id_sbuf, sizeof(id_sbuf), id, cnt) < 0))
@@ -1376,7 +1376,7 @@ htrAddBodyItemLayerEnd(pHtSession s, int flags)
     {
 	/** Pick a starting tag. **/
 	const int use_iframe = (s->Capabilities.HTML40 && (flags & HTR_LAYER_F_DYNAMIC)); 
-	const char* end_tag = (use_iframe) ? "iframe frameBorder='0'" : "div";
+	const char* end_tag = (use_iframe) ? "iframe" : "div";
 	
 	/** Add it. **/
 	if (UNLIKELY(htrAddBodyItem_va(s, "</%STR>", end_tag) != 0))
@@ -2210,10 +2210,8 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    goto end_free;
 	    }
 	
-	/** Output the DOCTYPE for browsers supporting HTML 4.0 -- this will make them use HTML 4.0 Strict **/
-	/** FIXME: should probably specify the DTD.... **/
-	if(s->Capabilities.HTML40 && !s->Capabilities.Dom0IE)
-	    htrWrite(s, "<!doctype html>\n\n", 17);
+	/** Write the DOCTYPE header, enabling HTML 4.0 Strict mode. **/
+	htrWrite(s, "<!DOCTYPE HTML>\n\n", 17);
 
 	/** Write HTML header comment & license. **/
 	htrQPrintf(s,	"<!--\n"

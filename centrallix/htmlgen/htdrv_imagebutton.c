@@ -196,13 +196,17 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(0, "HTIBTN", "Failed to write JS init call.");
 	    goto end;
 	    }
+	
+	/** Generate alt text. **/
+	char alt_text[16];
+	snprintf(alt_text, sizeof(alt_text), "img%d", id);
 
 	/** Write HTML. **/
 	if (htrAddBodyItem_va(s,
 	    "<div id='ib%POSpane'>"
-		"<img src='%STR&HTE' border='0' %[width='%POS' height='%POS'%]>"
+		"<img src='%STR&HTE' alt='%STR&HTE' border='0' %[width='%POS' height='%POS'%]>"
 	    "</div>\n",
-	    id, (is_enabled) ? n_img : d_img, (h >= 0), w, h
+	    id, (is_enabled) ? n_img : d_img, alt_text, (h >= 0), w, h
 	) != 0)
 	    {
 	    mssError(0, "HTBTN",

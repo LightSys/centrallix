@@ -101,10 +101,10 @@ function sp_init({ layer: pane, area_name, thumb_name })
     const images = pg_images(pane);
     for (let image of images)
 	{
-	const { name } = image;
+	const { type } = image.dataset;
 	
 	/** Affect only the intended images. **/
-	if (name === 'd' || name === 'u' || name === 'b')
+	if (type === 'down' || type === 'up' || type === 'bar')
 	    {
 	    image.kind = 'sp';
 	    image.pane = pane;
@@ -462,13 +462,14 @@ function sp_mousedown(e)
 	{
 	/** Check what button is being targetted. **/
 	const target_img = e.target;
-	switch (target_img.name)
+	const target_type = target_img.dataset.type;
+	switch (target_type)
 	    {
 	    /** Up or down button was clicked. **/
-	    case 'u':
-	    case 'd':
+	    case 'up':
+	    case 'down':
 		{
-		const scroll_amount = (target_img.name === 'd') ? 16 : -16;
+		const scroll_amount = (target_type === 'down') ? 16 : -16;
 		sp_scroll(target_img.pane, scroll_amount);
 		
 		/** Update the button to appear pressed. **/
@@ -480,7 +481,7 @@ function sp_mousedown(e)
 		}
 	    
 	    /** Scroll bar was clicked. **/
-	    case 'b':
+	    case 'bar':
 		{
 		/** Move one page in the direction of the mouse pointer. **/
 		const up = (e.pageY < getPageY(target_img.thumb) + 9);
@@ -491,14 +492,21 @@ function sp_mousedown(e)
 		return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 		}
 	    
-	    /** Scroll thumb was clicked. */
-	    case 't':
+	    /** Scroll thumb was clicked. **/
+	    case 'thumb':
 		{
 		/** Start a drag. **/
 		sp_drag_img = target_img;
 		
 		/** Event handled. **/
 		return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+		}
+	    
+	    /** Unknown target image type. **/
+	    default:
+		{
+		console.error('Unknown target image type', target_type, "on image", target_img);
+		break;
 		}
 	    }
 	}
@@ -533,7 +541,7 @@ function sp_mousemove(e)
     
     /** Check if a drag is in progress (aka. the drag target exists and is a scroll thumb). **/
     const target_img = sp_drag_img;
-    if (target_img && target_img.kind === 'sp' && target_img.name === 't')
+    if (target_img && target_img.kind === 'sp' && target_img.dataset.type === 'thumb')
 	{
 	const { pane } = target_img;
 	

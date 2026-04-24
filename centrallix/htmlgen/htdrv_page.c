@@ -134,9 +134,14 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	
 	/** Auto-call startup and cleanup **/
-	if (htrAddBodyParam_va(s, " onLoad='startup_%STR&SYM();' onUnload='cleanup();'", s->Namespace->DName) != 0)
+	if (htrAddBodyParam_va(s, " onLoad='startup_%STR&SYM();'", s->Namespace->DName) != 0)
 	    {
-	    mssError(0, "HTPAGE", "Failed to register startup and cleanup functions.");
+	    mssError(0, "HTPAGE", "Failed to register startup function.");
+	    goto err;
+	    }
+	if (htrAddBodyParam(s, " onUnload='cleanup();'") != 0)
+	    {
+	    mssError(0, "HTPAGE", "Failed to register cleanup function.");
 	    goto err;
 	    }
 	if (htrAddScriptCleanup(s, "\tpg_cleanup();\n") != 0)
@@ -148,7 +153,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	/** Check for bgcolor. **/
 	if (htrGetBackground(tree, NULL, 1, bgstr, sizeof(bgstr)) == 0)
 	    {
-	    if (htrAddBodyParam_va(s, " style=\"%STR\"", bgstr) != 0)
+	    if (htrAddStylesheetItem_va(s, "\t\tbody { %STR }", bgstr) != 0)
 		{
 		mssError(0, "HTPAGE", "Failed to write page background color.");
 		goto err;
@@ -158,7 +163,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	/** Check for text color **/
 	if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    if (htrAddBodyParam_va(s, " text='%STR&HTE'", ptr) != 0)
+	    if (htrAddBodyParam_va(s, " text=\"%STR&HTE\"", ptr) != 0)
 		{
 		mssError(0, "HTPAGE", "Failed to write page text color.");
 		goto err;
@@ -168,7 +173,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	/** Check for link color **/
 	if (wgtrGetPropertyValue(tree,"linkcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    if (htrAddBodyParam_va(s, " link='%STR&HTE'", ptr) != 0)
+	    if (htrAddStylesheetItem_va(s, "\t\ta:link { color:%STR&HTE; }\n", ptr) != 0)
 		{
 		mssError(0, "HTPAGE", "Failed to write page link color.");
 		goto err;

@@ -268,9 +268,9 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	if (htrAddBodyItem_va(s,
-	    "<img name='l' src='/sys/images/eb_edg.gif' alt='' style='vertical-align:10%%'>"
+	    "<img data-side='left' src='/sys/images/eb_edg.gif' alt='' style='vertical-align:10%%'>"
 	    "<input id='eb%POScon1'>"
-	    "<img name='r' src='/sys/images/eb_edg.gif' alt='' style='vertical-align:10%%'>\n",
+	    "<img data-side='right' src='/sys/images/eb_edg.gif' alt='' style='vertical-align:10%%'>\n",
 	    id
 	) != 0)
 	    {

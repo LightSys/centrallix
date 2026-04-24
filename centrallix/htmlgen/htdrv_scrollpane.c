@@ -198,15 +198,16 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	/** Write the up button. **/
 	if (htrAddBodyItem_va(s,
 	    "<img "
-		"name='u' "
+		"data-type='up' "
 		"id='sp%POSup' "
 		"class='sp%POS_scroll' "
 		"src='/sys/images/ico13b.gif' "
+		"alt='up_button' "
 		"style='"
 		    "top:0px; "
 		    "cursor:pointer; "
 		"'"
-	    "/>",
+	    ">",
 	    id,
 	    id
 	) != 0)
@@ -218,16 +219,17 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	/** Write the scroll bar. **/
 	if (htrAddBodyItem_va(s,
 	    "<img "
-		"name='b' "
+		"data-type='bar' "
 		"id='sp%POSbar' "
 		"class='sp%POS_scroll' "
 		"src='/sys/images/trans_1.gif' "
+		"alt='scroll_bar' "
 		"style='"
 		    "top:18px; "
 		    "width:18px; "
 		    "height:"ht_flex_format"; "
 		"'"
-	    "/>",
+	    ">",
 	    id,
 	    id,
 	    ht_flex(h - 36, tree->height, 1.0)
@@ -240,15 +242,16 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	/** Write the down button. **/
 	if (htrAddBodyItem_va(s,
 	    "<img "
-		"name='d' "
+		"data-type='down' "
 		"id='sp%POSdown' "
 		"class='sp%POS_scroll' "
 		"src='/sys/images/ico12b.gif' "
+		"alt='down_button' "
 		"style='"
 		    "top:"ht_flex_format"; "
 		    "cursor:pointer; "
 		"'"
-	    "/>",
+	    ">",
 	    id,
 	    id,
 	    ht_flex(h - 18, tree->height, 1.0)
@@ -270,7 +273,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 		    "z-index:%POS; "
 		"'"
 	    ">"
-		"<img name='t' src='/sys/images/ico14b.gif'>"
+		"<img data-type='thumb' src='/sys/images/ico14b.gif' alt='scroll_thumb'>"
 	    "</div>\n",
 	    id,
 	    id,
