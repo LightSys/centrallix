@@ -1,9 +1,11 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include "ht_render.h"
 #include "obj.h"
+#include "cxlib/util.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
@@ -56,13 +58,6 @@ int
 hthtmlRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
-    char name[64];
-    char sbuf[320];
-    char src[128] = "";
-    int x=-1,y=-1,w,h;
-    int cnt;
-    int mode = 0;
-    pObject content_obj;
 
 	/** Get an id for this. **/
 	const int id = (HTHTML.idcnt++);
@@ -74,7 +69,8 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 	    goto err;
 	    }
 
-    	/** Get x,y,w,h of this object **/
+	/** Get x, y, w, & h. **/
+	int x = -1, y = -1, w, h;
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=-1;
 	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=-1;
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
@@ -84,16 +80,23 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h = -1;
 
-	/** Get source html objectsystem entry. **/
+	/** Get the HTML source path. **/
+	char src[256] = "";
 	if (wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    strtcpy(src,ptr,sizeof(src));
+	    if (strtcpy(src, ptr, sizeof(src)) < 0)
+		{
+		/** Data truncated: Send warning. **/
+		fprintf(stderr, "Warning! Source path truncated.");
+		}
 	    }
 
 	/** Check for a 'mode' - dynamic or static.  Default is static. **/
+	int mode = 0;
 	if (wgtrGetPropertyValue(tree,"mode",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"dynamic")) mode = 1;
 
 	/** Get name **/
+	char name[64];
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto err;
 	strtcpy(name,ptr,sizeof(name));
 
@@ -179,11 +182,27 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 		}
     
             /** HTML body <DIV> element for the layer. **/
-            htrAddBodyItem_va(s,"<DIV background=\"/sys/images/fade_lrwipe_01.gif\" ID=\"ht%POSfader\"></DIV>",id);
-	    htrAddBodyItemLayer_va(s, 0, "ht%POSpane2", id, NULL, "");
-	    if (!s->Capabilities.Dom0NS)
-		htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "ht%POSloader", id, NULL, "");
-	    htrAddBodyItemLayerStart(s, 0, "ht%POSpane", id, NULL);
+            if (htrAddBodyItem_va(s,
+		"<div "
+		    "id='ht%POSfader' "
+		    "background='/sys/images/fade_lrwipe_01.gif' "
+		"></div>",
+		id
+	    ) != 0)
+		{
+		mssError(0, "HTHTML", "Failed to write HTML background fader.");
+		goto err;
+		}
+	    if (htrAddBodyItemLayer_va(s, 0, "ht%POSpane2", id, NULL, "") != 0)
+		{
+		mssError(0, "HTHTML", "Failed to write HTML opening tag.");
+		goto err;
+		}
+	    if (htrAddBodyItemLayerStart(s, 0, "ht%POSpane", id, NULL) != 0)
+		{
+		mssError(0, "HTHTML", "Failed to write HTML start tag.");
+		goto err;
+		}
 	    }
 	else
 	    {
@@ -193,34 +212,124 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
         /** If prefix text given, put it. **/
         if (wgtrGetPropertyValue(tree, "prologue", DATA_T_STRING,POD(&ptr)) == 0)
             {
-            htrAddBodyItem(s, ptr);
+            if (htrAddBodyItem(s, ptr) != 0)
+		{
+		mssError(0, "HTHTML", "Failed to write prologue HTML.");
+		goto err;
+		}
             }
 
         /** If full text given, put it. **/
         if (wgtrGetPropertyValue(tree, "content", DATA_T_STRING,POD(&ptr)) == 0)
             {
-            htrAddBodyItem(s, ptr);
+            if (htrAddBodyItem(s, ptr) != 0)
+		{
+		mssError(0, "HTHTML", "Failed to write provided HTML content.");
+		goto err;
+		}
             }
 
         /** If source is an objectsystem entry... **/
         if (src[0] && strncmp(src, "http:", 5) != 0 && strncmp(src, "debug:", 6) != 0)
             {
-            content_obj = objOpen(s->ObjSession,src,O_RDONLY,0600,"text/html");
-            if (content_obj)
-                {
-                while ((cnt = objRead(content_obj, sbuf, 159, 0, 0)) > 0)
-                    {
-                    sbuf[cnt] = 0;
-                    htrAddBodyItem(s, sbuf);
-                    }
-                objClose(content_obj);
-                }
+	    pObject content_obj = NULL;
+	    char* page_buf = NULL;
+	    bool successful = false;
+
+	    /** Open the content object. **/
+	    content_obj = objOpen(s->ObjSession, src, O_RDONLY, 0600, "text/html");
+	    if (content_obj == NULL)
+		{
+		mssError(0, "HTHTML", "Failed to open content object.");
+		goto end_reading;
+		}
+	    
+	    /** Get object info. **/
+	    pObjectInfo obj_info = objInfo(content_obj);
+	    if (obj_info == NULL)
+		{
+		mssError(0, "HTHTML", "Failed to get content object info.");
+		goto end_reading;
+		}
+	    
+	    /** Inspect object info. **/
+	    if (obj_info->Flags & OBJ_INFO_F_CANT_HAVE_CONTENT)
+		{
+		mssError(1, "HTHTML", "FAIL: Provided object source cannot have content!");
+		goto err;
+		}
+	    if (obj_info->Flags & OBJ_INFO_F_NO_CONTENT)
+		{
+		/** Nothing to read. **/
+		successful = true;
+		goto end_reading;
+		}
+
+	    /** Allocate a buffer for reading HTML content. **/
+	    const size_t page_buf_len = BUFSIZ;
+	    page_buf = check_ptr(nmSysMalloc(page_buf_len * sizeof(char*)));
+	    
+	    /* read content until we run out.*/
+	    int n_chars_read = 0;
+	    while (1)
+		{
+		/** Read some data. **/
+		const int max_read = page_buf_len - 1lu;
+		n_chars_read = objRead(content_obj, page_buf, max_read, 0, 0);
+		
+		/** Edge cases. **/
+		if (n_chars_read == 0) break; /* Done! */
+		if (n_chars_read < 0)
+		    {
+		    char error_code[32] = {'\0'};
+		    if (n_chars_read != -1)
+			snprintf(error_code, sizeof(error_code), " (error code: %d)", n_chars_read);
+		    mssError(0, "HTHTML", "Failed to read from content object%s.", error_code);
+		    goto end_reading;
+		    }
+		if (n_chars_read > max_read)
+		    {
+		    mssError(1, "HTHTML",
+			"Driver read too many characters (%d/%d).",
+			n_chars_read, max_read
+		    );
+		    goto end_reading;
+		    }
+		
+		/** Write the data to the page. **/
+		page_buf[n_chars_read] = '\0';
+		fprintf(stderr, "Got: \"%s\"\n", page_buf);
+		if (htrAddBodyItem(s, page_buf) != 0)
+		    {
+		    mssError(0, "HTHTML", "Failed to write HTML chunk: \"%s\"", page_buf);
+		    goto end_reading;
+		    }
+		}
+	    
+	    /** Success. **/
+	    successful = true;
+	    
+    end_reading:
+	    /** Clean up. **/
+	    if (content_obj != NULL) objClose(content_obj);
+	    if (page_buf != NULL) nmSysFree(page_buf);
+	    
+	    /** Handle failure. **/
+	    if (!successful)
+		{
+		mssError(0, "HTHTML", "Failed to write HTML from object source: \"%s\"", src);
+		goto err;
+		}
             }
 
         /** If post text given, put it. **/
         if (wgtrGetPropertyValue(tree, "epilogue", DATA_T_STRING, POD(&ptr)) == 0)
             {
-            htrAddBodyItem(s, ptr);
+            if (htrAddBodyItem(s, ptr) != 0)
+		{
+		mssError(0, "HTHTML", "Failed to write epilogue HTML.");
+		goto err;
+		}
             }
 
 	/** Render children. **/
