@@ -10,6 +10,7 @@
 #include <openssl/pem.h>
 #include "cxss/crypto.h"
 #include "cxss/credentials_db.h"
+#include "cxlib/mtsession.h"
 
 static bool CSPRNG_Initialized = false;
 
@@ -502,4 +503,3 @@ cxssDestroyKey(char *key, size_t keylength)
         free(key);
     }
 }
-
