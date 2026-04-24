@@ -1,0 +1,2 @@
+"dates","monies","ints","strings","bits","floats","blobs"
+01 Sep 1991 00:00,$1991.0901,12,"this is a new string",1,19.91,"this works without a where because there is only one row"
