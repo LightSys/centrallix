@@ -1999,6 +1999,119 @@ htrQPrintf(pHtSession s, char* fmt, ...)
     return rval;
     }
 
+/** Renders an error page. Used as a fallback if an error occurs during rendering. **/
+static void
+htrRenderError(pHtSession s)
+    {
+    char* err_str = "Failed to fetch error.";
+    unsigned int n_lines = 1u;
+
+	/** Get the error string. **/
+	pXString err_xs = check_ptr(xsNew());
+	if (err_xs == NULL) goto write_err;
+	if (check(mssStringError(err_xs)) != 0) goto write_err;
+	if (check(xsTrim(err_xs)) != 0) goto write_err;
+	char* tmp_err_str = check_ptr(xsString(err_xs));
+	if (tmp_err_str == NULL) goto write_err;
+	err_str = tmp_err_str;
+
+	/** Count the number of lines in the error message. **/
+	for (unsigned int i = 0u; err_str[i] != '\0'; i++)
+	    {
+	    if (err_str[i] == '\n') n_lines++;
+	    }
+
+    write_err:
+	/** Write an error HTML for the user. **/
+	htrQPrintf(s,
+	    "<!DOCTYPE html>"
+	    "<html lang='en'>"
+	    "<head>"
+		"<title>Error</title>"
+		"<meta charset='utf-8'>"
+		"<meta name='viewport' content='width=device-width, initial-scale=1'>"
+		"<style>"
+		    "* { margin: 0; padding: 0; box-sizing: border-box; }"
+		    "body {"
+			"font-family: system-ui, -apple-system, sans-serif;"
+			"background: #fafafa;"
+			"color: #18181b;"
+			"min-height: 100vh;"
+			"display: flex;"
+			"flex-direction: column;"
+			"padding: 3rem 2rem;"
+		    "}"
+		    "body > * { font-weight: 400; margin-bottom: 0.5rem; }"
+		    "h1 { font-size: 1.5rem; font-weight: 600; }"
+		    "h2 { font-size: 0.9rem; margin-bottom: 1.5rem; color: #71717a; }"
+		    "p  { font-size: 1rem;   margin-bottom: 2.5rem; line-height: 1.5rem; }"
+		    "h3 { font-size: 0.9rem; font-weight: 550; color: #556; }"
+		    ".error {"
+			"background: #fff;"
+			"border-left: 3px solid #6080c0;"
+			"font-family: monospace;"
+			"font-size: 0.8125rem;"
+			"line-height: 1.6;"
+			"overflow: hidden;"
+			"position: relative;"
+		    "}"
+		    ".error .copy-button { visibility: hidden; }"
+		    ".error:hover .copy-button { visibility: inherit; }"
+		    ".copy-button {"
+			"background-color: white;"
+			"border: white 0.4rem;"
+			"cursor: pointer;"
+			"float: right;"
+			"font-size: 12px;"
+			"position: absolute;"
+			"right: 1rem;"
+			"top: 0.5rem;"
+		    "}"
+		    ".error_content {"
+			"animation-delay: 0.1s;"
+			"animation: type-lines 0.4s steps(%POS) forwards;"
+			"color: #445;"
+			"display:block;"
+			"max-height: 0;"
+			"overflow: hidden auto;"
+			"padding: 0.8rem 1.25rem;"
+			"white-space: pre-wrap;"
+			"word-break: break-word;"
+		    "}"
+		    "@keyframes type-lines { to { max-height:60vh; } }"
+		"</style>"
+		"<script>"
+		    "async function copy(btn) {"
+			"const content = btn.nextElementSibling.textContent;"
+			"await navigator.clipboard.writeText(content);"
+			"const cur_text = btn.textContent;"
+			"btn.textContent = 'Copied!';"
+			"setTimeout(() => (btn.textContent = cur_text), 1500);"
+		    "}"
+		"</script>"
+	    "</head>"
+	    "<body>"
+		"<h1>Uh oh!</h1>"
+		"<h2>An error occurred while rendering the application.</h2>"
+		"<p>"
+		    "Sorry for the inconvenience. If this issue persists, please contact"
+		    "your organization's tech support and provide the error below."
+		"</p>"
+		"<h3>Error message:</h3>"
+		"<div class='error'>"
+		    "<div class='copy-button' onclick='copy(this)'>Copy</div>"
+		    "<div class='error_content'>%STR&HTE</div>"
+		"</div>"
+	    "</body>"
+	    "</html>",
+	    (int)n_lines,
+	    err_str
+	);
+
+	/** Clean up. **/
+	if (err_xs != NULL) xsFree(err_xs);
+    }
+
 
 /*** htrRender - generate an HTML document given the app structure subtree
  *** as an open ObjectSystem object.
@@ -2180,33 +2293,9 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	/** Could not render? **/
 	if (UNLIKELY(rval < 0))
 	    {
-	    /** Get the error string. **/
-	    pXString err_xs = check_ptr(xsNew());
-	    if (err_xs == NULL) goto end_free;
-	    mssStringError(err_xs);
-	    
-	    /** Write an error HTML for the user. **/
-	    htrQPrintf(s,
-		"<!DOCTYPE html>"
-		"<html lang='en'>"
-		    "<head>"
-			"<title>Error</title>"
-			"<meta charset='utf-8'>"
-		    "</head>"
-		    "<body style='background-color:white'>"
-			"<h1>An Error occurred while attempting to render this document</h1>"
-			"<br>"
-			"<pre>%STR&HTE</pre>"
-		    "</body>"
-		"</html>\n",
-		xsString(err_xs)
-	    );
-	    xsFree(err_xs);
-	    
-	    /** Mark error as recovered. **/
+	    /** Render an error page to gracefully recover from the error. **/
+	    htrRenderError(s);
 	    mssClearError();
-	    
-	    /** Done writing. **/
 	    goto end_free;
 	    }
 	
