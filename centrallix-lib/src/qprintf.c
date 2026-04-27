@@ -573,13 +573,14 @@ qpf_internal_getErrorName(unsigned int error)
     }
 
 /*** Prints a message to stderr containing all the errors that occurred in the
- *** specified session.  If no errors have occurred, prints nothing.
+ *** specified session.  If no errors have occurred, print nothing.
  ***/
 void
 qpfLogErrors(pQPSession s)
     {
+	if (s == NULL) return;
 	unsigned int errors = s->Errors;
-	if (!errors) return;
+	if (errors == 0) return;
 	
 	fprintf(stderr, "qprintf() errors:\n");
 	for (unsigned int i = 0u; i < QPF_ERR_COUNT; i++)
@@ -1128,7 +1129,7 @@ qpfPrintf_va_internal(
 )   {
     size_t copied = 0lu;
     size_t dest_offset = 0lu;
-    int rval;
+    int rval = -1;
     
 	/** Ensure initialization. **/
 	if (UNLIKELY(!QPF.is_init) && UNLIKELY(qpfInitialize() < 0)) return -ENOMEM;
