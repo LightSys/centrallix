@@ -150,20 +150,20 @@ function tbld_format_cell(cell, color)
 	else
 	    {
 	    // Text
-	    txt = '<span onclick="function() {}">' + str + '</span>';
+	    txt = '<span onclick="() => {}">' + str + '</span>';
 	    }
 	style += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), null, {textcolor: color});
 	if (cell.capdata)
 	    {
 	    // Caption (added to any of the above types)
-	    captxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no') + '</span>';
+	    captxt = '<span onclick="() => {}">' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no') + '</span>';
 	    if (colinfo.wrap != 'no')
 		captxt = htutil_nlbr(captxt);
 	    capstyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "caption", {textcolor: color});
 	    }
 	if (cell.titledata)
 	    {
-	    titletxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.titledata), colinfo.wrap != 'no') + '</span>';
+	    titletxt = '<span onclick="() => {}">' + htutil_encode(htutil_obscure(cell.titledata), colinfo.wrap != 'no') + '</span>';
 	    if (colinfo.wrap != 'no')
 		titletxt = htutil_nlbr(titletxt);
 	    titlestyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "title", {textcolor: color});
@@ -2304,21 +2304,27 @@ function tbld_init(param)
 
     // Locate any row detail subwidgets
     t.detail_widgets = wgtrFindMatchingDescendents(t, 'widget/table-row-detail');
-    for(var i=0; i<t.detail_widgets.length; i++)
+    for (let i = 0; i < t.detail_widgets.length; i++)
 	{
-	var dw = t.detail_widgets[i];
+	const dw = t.detail_widgets[i];
+	
+	// Initialize row detail data.
 	dw.table = t;
-	dw.Reveal = tbld_cb_dw_reveal;
-	pg_reveal_register_triggerer(dw);
 	dw.display_for = 1;
 	dw.is_visible = 0;
+	dw.showcontainer = tbld_detail_showcontainer;
+	dw.Reveal = tbld_cb_dw_reveal;
+	pg_reveal_register_triggerer(dw);
 	ifc_init_widget(dw);
-	var ie = dw.ifcProbeAdd(ifEvent);
+	
+	// Add events.
+	const ie = dw.ifcProbeAdd(ifEvent);
 	ie.Add("Open");
 	ie.Add("Close");
-	var iv = dw.ifcProbeAdd(ifValue);
+	
+	// Add values.
+	const iv = dw.ifcProbeAdd(ifValue);
 	iv.Add("display_for", tbld_get_displayfor, tbld_set_displayfor);
-	dw.showcontainer = tbld_detail_showcontainer;
 	}
 
     // Easing function for touch drag

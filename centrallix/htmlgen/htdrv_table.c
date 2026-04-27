@@ -413,73 +413,74 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 
 	/** Write the table row detail elements. **/
 	/** ANCHOR[id=table-row-detail] **/
-	int sub_count = 0;
+	int sub_id = 0;
 	pWgtrNode children[32]; /** Warning: Large local variable in stack. **/
 	const int detail_count = wgtrGetMatchingChildList(tree, "widget/table-row-detail", children, sizeof(children)/sizeof(pWgtrNode));
 	for (int i = 0; i < detail_count; i++)
 	    {
-	    pWgtrNode sub_tree = children[i];
+	    pWgtrNode row_detail = children[i];
 	    
-	    /** Only affect table-row-detail widgets. **/
-	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING,POD(&ptr));
-	    if (strcmp(ptr, "widget/table-row-detail") == 0)
+	    /** Only handle table-row-detail widgets. **/
+	    wgtrGetPropertyValue(row_detail, "outer_type", DATA_T_STRING,POD(&ptr));
+	    if (strcmp(ptr, "widget/table-row-detail") != 0) continue;
+	    
+	    /** Prepare for the detail widget. **/
+	    const int detail_id = sub_id++;
+	    if (htrCheckNSTransition(s, tree, row_detail) != 0) goto err_detail;
+	    
+	    /** Write CSS. **/
+	    int h;
+	    if (wgtrGetPropertyValue(row_detail, "height", DATA_T_INTEGER, POD(&h)) != 0) h = t->min_rowheight;
+	    if (htrAddStylesheetItem_va(s,
+		"\t\t#tbld%POSsub%POS { "
+		    "position:absolute; "
+		    "visibility:hidden; "
+		    "left:0px; "
+		    "top:0px; "
+		    "width:"ht_flex_format"; "
+		    "height:"ht_flex_format"; "
+		    "z-index:%POS; "
+		"}\n",
+		t->id, detail_id,
+		ht_flex_w(t->w - (t->demand_scrollbar ? 0 : 18), tree),
+		ht_flex_h(h, tree),
+		z + 1
+	    ) != 0)
 		{
-		sub_count++;
-		if (htrCheckNSTransition(s, tree, sub_tree) != 0) goto err_detail;
-
-		/** Write CSS for the table row detail. **/
-		int h;
-		if (wgtrGetPropertyValue(sub_tree, "height", DATA_T_INTEGER, POD(&h)) != 0) h = t->min_rowheight;
-		if (htrAddStylesheetItem_va(s,
-		    "\t\t#tbld%POSsub%POS { "
-			"position:absolute; "
-			"visibility:hidden; "
-			"left:0px; "
-			"top:0px; "
-			"width:"ht_flex_format"; "
-			"height:"ht_flex_format"; "
-			"z-index:%POS; "
-		    "}\n",
-		    t->id, sub_count,
-		    ht_flex_w(t->w - (t->demand_scrollbar ? 0 : 18), tree),
-		    ht_flex_h(h, tree),
-		    z + 1
-		) != 0)
-		    {
-		    mssError(0, "HTTBL", "Failed to write HTML opening tag for table container.");
-		    goto err_detail;
-		    }
-		
-		/** Write HTML (including subwidgets). **/
-		if (htrAddBodyItem_va(s, "<div id='tbld%POSsub%POS'>\n", t->id, sub_count) != 0)
-		    {
-		    mssError(0, "HTTBL", "Failed to write HTML opening tag for table row detail.");
-		    goto err_detail;
-		    }
-		if (htrRenderSubwidgets(s, sub_tree, z + 2) != 0)
-		    {
-		    mssError(0, "HTTBL", "Failed to write widgets in table row detail.");
-		    goto err_detail;
-		    }
-		if (htrAddBodyItem(s, "</div>\n") != 0)
-		    {
-		    mssError(0, "HTTBL", "Failed to write HTML closing tag for table container.");
-		    goto err_detail;
-		    }
-		
-		/** Add linkage. **/
-		if (htrAddWgtrObjLinkage_va(s, sub_tree, "tbld%POSsub%POS", t->id, sub_count)) goto err_detail;
-		
-		/** Add 'display_for'. **/
-		if (wgtrGetPropertyValue(sub_tree, "name", DATA_T_STRING, POD(&ptr)) != 0)
-		    {
-		    mssError(1, "HTTBL", "Failed to get name of table row detail widget.");
-		    goto err_detail;
-		    }
-		if (htrCheckAddExpression(s, sub_tree, ptr, "display_for") < 0) goto err;
-
-		if (htrCheckNSTransitionReturn(s, tree, sub_tree) != 0) goto err;
+		mssError(0, "HTTBL", "Failed to write HTML opening tag for table container.");
+		goto err_detail;
 		}
+	    
+	    /** Write HTML for detail content (aka. sub-widgets). **/
+	    if (htrAddBodyItem_va(s, "<div id='tbld%POSsub%POS'>\n", t->id, detail_id) != 0)
+		{
+		mssError(0, "HTTBL", "Failed to write HTML opening tag for table row detail.");
+		goto err_detail;
+		}
+	    if (htrRenderSubwidgets(s, row_detail, z + 2) != 0)
+		{
+		mssError(0, "HTTBL", "Failed to write widgets in table row detail.");
+		goto err_detail;
+		}
+	    if (htrAddBodyItem(s, "</div>\n") != 0)
+		{
+		mssError(0, "HTTBL", "Failed to write HTML closing tag for table container.");
+		goto err_detail;
+		}
+	    
+	    /** Link detail widget to container DOM node. **/
+	    if (htrAddWgtrObjLinkage_va(s, row_detail, "tbld%POSsub%POS", t->id, detail_id)) goto err_detail;
+	    
+	    /** Add 'display_for' data. **/
+	    if (wgtrGetPropertyValue(row_detail, "name", DATA_T_STRING, POD(&ptr)) != 0)
+		{
+		mssError(1, "HTTBL", "Failed to get name of table row detail widget.");
+		goto err_detail;
+		}
+	    if (htrCheckAddExpression(s, row_detail, ptr, "display_for") < 0) goto err;
+
+	    /** Done. **/
+	    if (htrCheckNSTransitionReturn(s, tree, row_detail) != 0) goto err;
 	    
 	    /** Success. **/
 	    continue;
