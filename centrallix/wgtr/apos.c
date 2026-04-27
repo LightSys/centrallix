@@ -96,6 +96,7 @@
 #include "apos.h"
 #include "cxlib/xarray.h"
 #include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
 
 /*** Allocate space for a grid, section, and line using the custom allocation
  *** system. Note that register is similar to creating a new heap-allocated

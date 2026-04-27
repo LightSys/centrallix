@@ -8,6 +8,7 @@
 #include "cxlib/mtask.h"
 #include "cxlib/strtcpy.h"
 #include "cxlib/mtlexer.h"
+#include "cxlib/mtsession.h"
 #include "cxlib/xhash.h"
 #include "obj.h"
 #include "cxss/cxss.h"
@@ -1371,5 +1372,3 @@ obfObfuscateDataSess(pObfSession sess, pObjData srcval, pObjData dstval, int dat
 
     return rval;
     }
-
-
