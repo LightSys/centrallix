@@ -367,7 +367,7 @@ int htruleRegister(char* ruletype, ...);
  *** @param str A string literal known at compile time.  This must be a
  *** 	literal value and it may be applied multiple times.
  ***/
-#define htrWriteConst(s, str) htrWrite(s, (str), sizeof(str))
+#define htrWriteConst(s, str) htrWrite(s, (str), sizeof(str) - 1)
 
 /** ===================================================== **/
 /** Define macros for implementing responsive dimensions. **/
