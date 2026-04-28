@@ -362,6 +362,13 @@ int htrBuildClientWgtr(pHtSession s, pWgtrNode tree);
 /** For the rule module... **/
 int htruleRegister(char* ruletype, ...);
 
+/*** Write strings known at compile time slightly more efficiently.
+ *** 
+ *** @param str A string literal known at compile time.  This must be a
+ *** 	literal value and it may be applied multiple times.
+ ***/
+#define htrWriteConst(s, str) htrWrite(s, (str), sizeof(str))
+
 /** ===================================================== **/
 /** Define macros for implementing responsive dimensions. **/
 /** ===================================================== **/

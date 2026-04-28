@@ -2300,7 +2300,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    }
 	
 	/** Write the DOCTYPE header, enabling HTML 4.0 Strict mode. **/
-	htrWrite(s, "<!DOCTYPE HTML>\n\n", 17);
+	htrWriteConst(s, "<!DOCTYPE HTML>\n\n");
 
 	/** Write HTML header comment & license. **/
 	htrQPrintf(s,	"<!--\n"
@@ -2322,7 +2322,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 			    "\t<meta name='referrer' content='same-origin'>\n"
 			, cx__version);
 
-	htrWrite(s, "\t<style>\n", 9);
+	htrWriteConst(s, "\t<style>\n");
 	/** Write the HTML stylesheet items. **/
 	for(i=0;i<s->Page.HtmlStylesheet.nItems;i++)
 	    {
@@ -2330,7 +2330,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    n = *(int*)ptr;
 	    htrWrite(s, ptr+8, n);
 	    }
-	htrWrite(s, "\t</style>\n", -1);
+	htrWriteConst(s, "\t</style>\n");
 	/** Write the HTML header items. **/
 	for(i=0;i<s->Page.HtmlHeader.nItems;i++)
 	    {
@@ -2340,7 +2340,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    }
 
 	/** Write the script globals **/
-	htrWrite(s, "\t<script>\n", 10);
+	htrWriteConst(s, "\t<script>\n");
 	for(i=0;i<s->Page.Globals.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Globals.Items[i]);
@@ -2359,7 +2359,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    }
 
 	/** Write the includes **/
-	htrWrite(s, "\t</script>\n\n", 12);
+	htrWriteConst(s, "\t</script>\n\n");
 
 	/** include ht_render.js **/
 	htr_internal_GenInclude(s, "/sys/js/ht_render.js");
@@ -2387,7 +2387,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    sv = (pStrValue)(s->Page.Includes.Items[i]);
 	    htr_internal_GenInclude(s, sv->Name);
 	    }
-	htrWrite(s, "\n\t<script>", 10);
+	htrWriteConst(s, "\n\t<script>");
 
 	/** Write the script functions **/
 	for(i=0;i<s->Page.Functions.nItems;i++)
@@ -2449,7 +2449,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    }
 
 	/** Finish writing the event registration function. **/
-	htrWrite(s, "\t}\n", 3);
+	htrWriteConst(s, "\t}\n");
 
 	/** Write the expression initializations **/
 	htrQPrintf(s,"\nfunction expinit_%STR()\n    {\n",s->Namespace->DName);
@@ -2459,7 +2459,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    n = *(int*)ptr;
 	    htrWrite(s, ptr+8, n);
 	    }
-	htrWrite(s,"    }\n",-1);
+	htrWriteConst(s, "    }\n");
 
 	/** Write the wgtr declaration **/
 	htrQPrintf(s, "\nfunction build_wgtr_%STR()\n    {\n",
@@ -2470,12 +2470,12 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    n = *(int*)ptr;
 	    htrWrite(s, ptr+8, n);
 	    }
-	htrWrite(s, "    }\n", -1);
+	htrWriteConst(s, "    }\n");
 
 	/** Write the initialization lines **/
 	htrQPrintf(s, "\nfunction startup_%STR()\n\t{\n", s->Namespace->DName);
 	htr_internal_writeCxCapabilities(s); //TODO: (by Seth) this really only needs to happen during first-load.
-	htrWrite(s, "\n", 1);
+	htrWriteConst(s, "\n");
 
 	for(i=0;i<s->Page.Inits.nItems;i++)
 	    {
@@ -2485,25 +2485,25 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    }
 	htrQPrintf(s, "\tevents_%STR();\n", s->Namespace->DName);
 	htrQPrintf(s, "\texpinit_%STR();\n", s->Namespace->DName);
-	htrWrite(s, "\t}\n", -1);
+	htrWriteConst(s, "\t}\n");
 
 	/** Write the cleanup lines **/
-	htrWrite(s,"\nfunction cleanup()\n    {\n",-1);
+	htrWriteConst(s,"\nfunction cleanup()\n    {\n");
 	for(i=0;i<s->Page.Cleanups.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.Cleanups.Items[i]);
 	    n = *(int*)ptr;
 	    htrWrite(s, ptr+8, n);
 	    }
-	htrWrite(s,"    }\n",-1);
+	htrWriteConst(s, "    }\n");
 
 
 	/** If the body part is disabled, skip over body section generation **/
 	if (s->DisableBody == 0)
 	    {
 	    /** Write the HTML body params **/
-	    htrWrite(s, "\n</script>\n</head>",-1);
-	    htrWrite(s, "\n<body", -1);
+	    htrWriteConst(s, "\n</script>\n</head>");
+	    htrWriteConst(s, "\n<body");
 	    for(i=0;i<s->Page.HtmlBodyParams.nItems;i++)
 	        {
 	        ptr = (char*)(s->Page.HtmlBodyParams.Items[i]);
@@ -2513,13 +2513,13 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    /** work around the Netscape 4.x bug regarding page resizing **/
 	    if(s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
 		{
-		htrWrite(s, " onResize=\"location.reload()\"",-1);
+		htrWriteConst(s, " onResize=\"location.reload()\"");
 		}
-	    htrWrite(s, ">\n", -1);
+	    htrWriteConst(s, ">\n");
 	    }
 	else
 	    {
-	    htrWrite(s, "\n</script>\n",-1);
+	    htrWriteConst(s, "\n</script>\n");
 	    }
 
 	/** Write the HTML body. **/
@@ -2532,11 +2532,11 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 
 	if (s->DisableBody == 0)
 	    {
-	    htrWrite(s, "</body>\n</html>\n",-1);
+	    htrWriteConst(s, "</body>\n</html>\n");
 	    }
 	else
 	    {
-	    htrWrite(s, "\n</HTML>\n",-1);
+	    htrWriteConst(s, "\n</HTML>\n");
 	    }
 
     end_free:
