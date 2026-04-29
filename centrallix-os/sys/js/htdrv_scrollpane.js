@@ -74,24 +74,8 @@ const sp_resize_observer = new ResizeObserver(e => e.forEach(({ target }) => {
 function sp_init({ layer: pane, area_name, thumb_name })
     {
     /** Query the area and the thumb elements. **/
-    let area, thumb;
-    if (cx__capabilities.Dom1HTML)
-	{
-	area = document.getElementById(area_name);
-	thumb = document.getElementById(thumb_name);
-	}
-    else if (cx__capabilities.Dom0NS)
-	{
-	/** Netscape fallback to getElementById manually. **/
-	const layers = pg_layers(pane);
-	for (let i = 0; i < layers.length; i++)
-	    {
-	    const main_layer = layers[i];
-	    if (main_layer.name === area_name) area = main_layer;
-	    if (main_layer.name === thumb_name) thumb = main_layer;
-	    }
-	}
-    else alert('Browser not supported!!');
+    const area = document.getElementById(area_name);
+    const thumb = document.getElementById(thumb_name);
     
     /** Set values for the area and thumb elements. */
     area.nofocus = true;
