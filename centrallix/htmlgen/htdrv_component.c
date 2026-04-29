@@ -274,8 +274,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    for (int i = 0; i < params->nSubInf; i++)
 		{
-		/** TODO: Israel - Add error handling. **/
-		htrCheckAddExpression(s, tree, name, params->SubInf[i]->Name);
+		if (htrCheckAddExpression(s, tree, name, params->SubInf[i]->Name) < 0) goto end_free;
 		}
 	    }
 
