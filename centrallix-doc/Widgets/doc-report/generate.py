@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import os
 import re
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Set, Tuple
@@ -30,11 +31,16 @@ class RuntimeSignal:
         self.origins = set()
         self.confidence = "heuristic"
         self.params = set()
+        self.evidence = []
+        self.param_evidence = {}
 
     def merge(self, other: "RuntimeSignal") -> None:
         self.origins.update(other.origins)
         self.params.update(other.params)
         self.confidence = pick_confidence(self.confidence, other.confidence)
+        self.evidence.extend(other.evidence)
+        for param_name, refs in other.param_evidence.items():
+            self.param_evidence.setdefault(param_name, []).extend(refs)
 
 
 class WidgetDoc:
@@ -45,6 +51,11 @@ class WidgetDoc:
         self.actions = set()
         self.action_params = {}
         self.has_any_child = False
+        self.location = None
+        self.property_locations = {}
+        self.event_locations = {}
+        self.action_locations = {}
+        self.child_locations = {}
 
 
 class RuntimeWidget:
@@ -52,6 +63,7 @@ class RuntimeWidget:
         self.widget = widget
         self.events = {}
         self.actions = {}
+        self.sources = []
 
 
 def normalize_widget_name(name: str) -> str:
@@ -84,6 +96,112 @@ def sorted_list(values: Iterable[str]) -> List[str]:
     return sorted(set(values), key=lambda v: v.lower())
 
 
+def line_of_offset(text: str, offset: int) -> int:
+    return text.count("\n", 0, offset) + 1
+
+
+def make_ref(path: str, line: Optional[int], reason: str) -> Dict[str, object]:
+    return {"path": path, "line": line, "reason": reason}
+
+
+def fmt_ref(ref: Dict[str, object]) -> str:
+    if ref.get("line"):
+        return "`%s:%s` (%s)" % (ref["path"], ref["line"], ref["reason"])
+    return "`%s` (%s)" % (ref["path"], ref["reason"])
+
+
+def unique_refs(refs: Iterable[Dict[str, object]]) -> List[Dict[str, object]]:
+    seen = set()
+    out = []
+    for ref in refs:
+        key = (ref.get("path"), ref.get("line"), ref.get("reason"))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(ref)
+    return out
+
+
+def markdown_link_for_ref(report_dir: Path, repo_root: Path, ref: Dict[str, object]) -> str:
+    target_path = Path(str(ref.get("path", "")))
+    abs_target = (repo_root / target_path).resolve()
+    href = os.path.relpath(str(abs_target), str(report_dir.resolve())).replace("\\", "/")
+    line = ref.get("line")
+    if line:
+        href = "%s#L%s" % (href, line)
+    label = target_path.name
+    if line:
+        label = "%s:%s" % (label, line)
+    return "[%s](%s) (%s)" % (label, href, ref.get("reason", "source"))
+
+
+def normalize_js_widget_name(stem_name: str) -> str:
+    text = normalize_widget_name(stem_name)
+    aliases = {
+        "componentdecl": "component-decl",
+        "sys_osml": "sys-osml",
+        "page_js15": "page",
+        "checkbox_moz": "checkbox",
+    }
+    return aliases.get(text, text)
+
+
+def extract_widget_doc_locations(path: Path) -> Dict[str, Dict[str, object]]:
+    content = path.read_text(encoding="utf-8", errors="ignore")
+    results = {}
+    pattern = re.compile(r"<widget\b([^>]*)>", re.IGNORECASE)
+    attr_re = re.compile(r'([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*"([^"]*)"')
+    prop_re = re.compile(r'<property\b[^>]*\bname\s*=\s*"([^"]+)"', re.IGNORECASE)
+    event_re = re.compile(r'<event\b[^>]*\bname\s*=\s*"([^"]+)"', re.IGNORECASE)
+    action_re = re.compile(r'<action\b[^>]*\bname\s*=\s*"([^"]+)"', re.IGNORECASE)
+    child_re = re.compile(r'<child\b[^>]*\btype\s*=\s*"([^"]+)"', re.IGNORECASE)
+
+    for match in pattern.finditer(content):
+        attrs = dict(attr_re.findall(match.group(1)))
+        widget_name = normalize_widget_name(attrs.get("name") or attrs.get("type") or "")
+        if not widget_name:
+            continue
+        start = match.start()
+        end = content.find("</widget>", start)
+        if end < 0:
+            end = len(content)
+        block = content[start:end]
+        base_line = line_of_offset(content, start)
+        node = {
+            "location": make_ref(
+                "centrallix-doc/Widgets/widgets.xml", base_line, "widget definition"
+            ),
+            "properties": {},
+            "events": {},
+            "actions": {},
+            "children": {},
+        }
+        for pm in prop_re.finditer(block):
+            line = base_line + block.count("\n", 0, pm.start())
+            node["properties"][normalize_name(pm.group(1))] = make_ref(
+                "centrallix-doc/Widgets/widgets.xml", line, "documented property"
+            )
+        for em in event_re.finditer(block):
+            line = base_line + block.count("\n", 0, em.start())
+            node["events"][normalize_name(em.group(1))] = make_ref(
+                "centrallix-doc/Widgets/widgets.xml", line, "documented event"
+            )
+        for am in action_re.finditer(block):
+            line = base_line + block.count("\n", 0, am.start())
+            node["actions"][normalize_name(am.group(1))] = make_ref(
+                "centrallix-doc/Widgets/widgets.xml", line, "documented action"
+            )
+        for cm in child_re.finditer(block):
+            line = base_line + block.count("\n", 0, cm.start())
+            child_name = _normalize_child_type(cm.group(1))
+            if child_name:
+                node["children"][child_name] = make_ref(
+                    "centrallix-doc/Widgets/widgets.xml", line, "documented child type"
+                )
+        results[widget_name] = node
+    return results
+
+
 def _normalize_child_type(child_type: str) -> Optional[str]:
     text = normalize_widget_name(child_type)
     if not text:
@@ -104,6 +222,7 @@ def extract_documented_widgets(path: Path) -> Tuple[Dict[str, WidgetDoc], Set[st
     root = tree.getroot()
     docs: Dict[str, WidgetDoc] = {}
     covered_widget_types: Set[str] = set()
+    doc_locations = extract_widget_doc_locations(path)
     for widget in root.findall(".//widget"):
         widget_name = normalize_widget_name(
             widget.get("name") or widget.get("type") or ""
@@ -112,6 +231,12 @@ def extract_documented_widgets(path: Path) -> Tuple[Dict[str, WidgetDoc], Set[st
             continue
         node = WidgetDoc(widget=widget_name)
         covered_widget_types.add(widget_name)
+        if widget_name in doc_locations:
+            node.location = doc_locations[widget_name]["location"]
+            node.property_locations = doc_locations[widget_name]["properties"]
+            node.event_locations = doc_locations[widget_name]["events"]
+            node.action_locations = doc_locations[widget_name]["actions"]
+            node.child_locations = doc_locations[widget_name]["children"]
 
         for prop in widget.findall("./properties/property"):
             prop_name = normalize_name(prop.get("name") or "")
@@ -147,18 +272,29 @@ def extract_documented_widgets(path: Path) -> Tuple[Dict[str, WidgetDoc], Set[st
     return docs, covered_widget_types
 
 
-def extract_widget_types_from_wgtr(path: Path) -> Tuple[Set[str], Dict[str, Set[str]]]:
+def extract_widget_types_from_wgtr(
+    path: Path,
+) -> Tuple[Set[str], Dict[str, Set[str]], Dict[str, List[Dict[str, object]]]]:
     widget_types: Set[str] = set()
     families: Dict[str, Set[str]] = {}
+    refs: Dict[str, List[Dict[str, object]]] = {}
     pattern = re.compile(r'wgtrAddType\(\s*[^,]+,\s*"([^"]+)"\s*\)')
     for c_file in sorted(path.glob("wgtdrv_*.c")):
         content = c_file.read_text(encoding="utf-8", errors="ignore")
-        file_types = [normalize_widget_name(match) for match in pattern.findall(content)]
+        rel = "centrallix/wgtr/%s" % c_file.name
+        file_types = []
+        for m in pattern.finditer(content):
+            file_types.append(normalize_widget_name(m.group(1)))
+            widget = normalize_widget_name(m.group(1))
+            if widget:
+                refs.setdefault(widget, []).append(
+                    make_ref(rel, line_of_offset(content, m.start()), "wgtrAddType")
+                )
         file_set = set([name for name in file_types if name])
         for name in file_set:
             widget_types.add(name)
             families[name] = set(file_set)
-    return widget_types, families
+    return widget_types, families, refs
 
 
 def expand_any_child_coverage(
@@ -191,40 +327,53 @@ def extract_runtime_from_c(path: Path) -> Dict[str, RuntimeWidget]:
 
     for c_file in sorted(path.glob("htdrv_*.c")):
         content = c_file.read_text(encoding="utf-8", errors="ignore")
+        rel = "centrallix/htmlgen/%s" % c_file.name
         widget_match = widget_pat.search(content)
         if not widget_match:
             continue
         widget = normalize_widget_name(widget_match.group(1))
         node = _ensure_runtime_widget(runtime, widget)
+        node.sources.append(
+            make_ref(rel, line_of_offset(content, widget_match.start()), "C driver widget name")
+        )
 
-        for name in event_pat.findall(content):
-            event_name = normalize_name(name)
+        for event_m in event_pat.finditer(content):
+            event_name = normalize_name(event_m.group(1))
             signal = node.events.get(event_name) or RuntimeSignal(name=event_name)
             signal.origins.add("c")
             signal.confidence = pick_confidence(signal.confidence, "confirmed")
+            signal.evidence.append(
+                make_ref(rel, line_of_offset(content, event_m.start()), "htrAddEvent")
+            )
             node.events[event_name] = signal
 
-        for name in action_pat.findall(content):
-            action_name = normalize_name(name)
+        for action_m in action_pat.finditer(content):
+            action_name = normalize_name(action_m.group(1))
             signal = node.actions.get(action_name) or RuntimeSignal(name=action_name)
             signal.origins.add("c")
             signal.confidence = pick_confidence(signal.confidence, "confirmed")
+            signal.evidence.append(
+                make_ref(rel, line_of_offset(content, action_m.start()), "htrAddAction")
+            )
             node.actions[action_name] = signal
 
-        for action_name, param_name in param_pat.findall(content):
-            action_name = normalize_name(action_name)
-            param_name = normalize_name(param_name)
+        for param_m in param_pat.finditer(content):
+            action_name = normalize_name(param_m.group(1))
+            param_name = normalize_name(param_m.group(2))
             signal = node.actions.get(action_name) or RuntimeSignal(name=action_name)
             signal.origins.add("c")
             signal.confidence = pick_confidence(signal.confidence, "confirmed")
             if param_name:
                 signal.params.add(param_name)
+                signal.param_evidence.setdefault(param_name, []).append(
+                    make_ref(rel, line_of_offset(content, param_m.start()), "htrAddParam")
+                )
             node.actions[action_name] = signal
     return runtime
 
 
-def _extract_js_action_params(content: str, fn_name: str) -> Set[str]:
-    params: Set[str] = set()
+def _extract_js_action_params(content: str, fn_name: str) -> List[Tuple[str, int]]:
+    params: List[Tuple[str, int]] = []
     body_pat = re.compile(
         rf"function\s+{re.escape(fn_name)}\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)\s*\{{",
         re.MULTILINE,
@@ -243,8 +392,12 @@ def _extract_js_action_params(content: str, fn_name: str) -> Set[str]:
             depth -= 1
         idx += 1
     body = content[start.end() : max(start.end(), idx - 1)]
-    for item in re.findall(rf"\b{re.escape(arg_name)}\.([A-Za-z_][A-Za-z0-9_]*)", body):
-        params.add(item)
+    for pm in re.finditer(
+        rf"\b{re.escape(arg_name)}\.([A-Za-z_][A-Za-z0-9_]*)", body
+    ):
+        pname = pm.group(1)
+        pline = line_of_offset(content, start.end() + pm.start())
+        params.append((pname, pline))
     return params
 
 
@@ -258,15 +411,20 @@ def extract_runtime_from_js(path: Path) -> Dict[str, RuntimeWidget]:
     )
 
     for js_file in sorted(path.glob("htdrv_*.js")):
-        widget = normalize_widget_name(js_file.stem.replace("htdrv_", "", 1))
+        widget = normalize_js_widget_name(js_file.stem.replace("htdrv_", "", 1))
         node = _ensure_runtime_widget(runtime, widget)
         content = js_file.read_text(encoding="utf-8", errors="ignore")
+        rel = "centrallix-os/sys/js/%s" % js_file.name
+        node.sources.append(make_ref(rel, 1, "JS driver file"))
 
         iface_vars: Dict[str, str] = {}
         for var_name, iface in add_iface_pat.findall(content):
             iface_vars[var_name] = iface
 
-        for var_name, signal_name, fn_name in add_call_pat.findall(content):
+        for add_m in add_call_pat.finditer(content):
+            var_name = add_m.group(1)
+            signal_name = add_m.group(2)
+            fn_name = add_m.group(3)
             iface = iface_vars.get(var_name)
             if iface not in {"ifAction", "ifEvent"}:
                 continue
@@ -280,13 +438,23 @@ def extract_runtime_from_js(path: Path) -> Dict[str, RuntimeWidget]:
                 signal = node.events.get(signal_name) or RuntimeSignal(name=signal_name)
                 signal.origins.update(origins)
                 signal.confidence = pick_confidence(signal.confidence, confidence)
+                signal.evidence.append(
+                    make_ref(rel, line_of_offset(content, add_m.start()), "ifEvent.Add")
+                )
                 node.events[signal_name] = signal
             else:
                 signal = node.actions.get(signal_name) or RuntimeSignal(name=signal_name)
                 signal.origins.update(origins)
                 signal.confidence = pick_confidence(signal.confidence, confidence)
                 if fn_name:
-                    signal.params.update(_extract_js_action_params(content, fn_name))
+                    for param_name, param_line in _extract_js_action_params(content, fn_name):
+                        signal.params.add(param_name)
+                        signal.param_evidence.setdefault(param_name, []).append(
+                            make_ref(rel, param_line, "action param use in JS")
+                        )
+                signal.evidence.append(
+                    make_ref(rel, line_of_offset(content, add_m.start()), "ifAction.Add")
+                )
                 node.actions[signal_name] = signal
     return runtime
 
@@ -303,6 +471,7 @@ def merge_runtime(
         for source in (c_node, j_node):
             if not source:
                 continue
+            node.sources.extend(source.sources)
             for name, signal in source.events.items():
                 existing = node.events.get(name) or RuntimeSignal(name=name)
                 existing.merge(signal)
@@ -327,6 +496,7 @@ def compute_drift(
     docs: Dict[str, WidgetDoc],
     documented_coverage: Set[str],
     widget_types: Set[str],
+    widget_type_refs: Dict[str, List[Dict[str, object]]],
     runtime: Dict[str, RuntimeWidget],
     obsolete_widgets: Set[str],
 ) -> Dict[str, object]:
@@ -336,9 +506,20 @@ def compute_drift(
 
     missing_widget_docs = sorted_list(code_widgets - doc_widgets)
     stale_doc_widgets = sorted_list(doc_widgets - code_widgets)
+    missing_widget_doc_refs = {}
+    stale_widget_doc_refs = {}
+    for widget in missing_widget_docs:
+        refs = []
+        refs.extend(widget_type_refs.get(widget, []))
+        if widget in runtime:
+            refs.extend(runtime[widget].sources)
+        missing_widget_doc_refs[widget] = unique_refs(refs)
+    for widget in stale_doc_widgets:
+        doc = docs.get(widget)
+        stale_widget_doc_refs[widget] = [doc.location] if doc and doc.location else []
 
     per_widget: List[Dict[str, object]] = []
-    triage = sorted_list(fully_documented_widgets | code_widgets)
+    triage = sorted_list(fully_documented_widgets & code_widgets)
     for widget in triage:
         doc = docs.get(widget, WidgetDoc(widget=widget))
         run = runtime.get(widget, RuntimeWidget(widget=widget))
@@ -361,6 +542,17 @@ def compute_drift(
             missing_params = sorted_list(runtime_params - doc_params)
             extra_params = sorted_list(doc_params - runtime_params)
             if missing_params or extra_params:
+                runtime_ref = []
+                doc_ref = []
+                for p in missing_params:
+                    runtime_ref.extend(
+                        run.actions.get(action_name, RuntimeSignal(action_name)).param_evidence.get(
+                            p, []
+                        )
+                    )
+                for p in extra_params:
+                    if action_name in doc.action_locations:
+                        doc_ref.append(doc.action_locations[action_name])
                 action_param_drift.append(
                     {
                         "action": action_name,
@@ -376,6 +568,8 @@ def compute_drift(
                             run.actions.get(action_name, RuntimeSignal(action_name)).origins,
                             "param_mismatch",
                         ),
+                        "references_runtime": unique_refs(runtime_ref),
+                        "references_docs": unique_refs(doc_ref),
                     }
                 )
 
@@ -386,15 +580,26 @@ def compute_drift(
             or extra_actions
             or action_param_drift
             or extra_properties
-            or widget in missing_widget_docs
-            or widget in stale_doc_widgets
         ):
             per_widget.append(
                 {
                     "widget": widget,
+                    "links": {
+                        "docs": [doc.location] if doc.location else [],
+                        "c": [
+                            ref
+                            for ref in unique_refs(run.sources)
+                            if str(ref.get("path", "")).startswith("centrallix/htmlgen/")
+                        ],
+                        "js": [
+                            ref
+                            for ref in unique_refs(run.sources)
+                            if str(ref.get("path", "")).startswith("centrallix-os/sys/js/")
+                        ],
+                    },
                     "status": {
-                        "missing_widget_docs": widget in missing_widget_docs,
-                        "stale_doc_widget": widget in stale_doc_widgets,
+                        "missing_widget_docs": False,
+                        "stale_doc_widget": False,
                     },
                     "missing_events": [
                         {
@@ -402,21 +607,53 @@ def compute_drift(
                             "origin": slug_origin(run.events[name].origins),
                             "confidence": run.events[name].confidence,
                             "severity": severity_for(run.events[name].origins, "missing_event"),
+                            "references": unique_refs(run.events[name].evidence),
                         }
                         for name in missing_events
                     ],
-                    "extra_events": extra_events,
+                    "extra_events": [
+                        {
+                            "name": name,
+                            "references": [
+                                doc.event_locations[name]
+                            ]
+                            if name in doc.event_locations
+                            else [],
+                        }
+                        for name in extra_events
+                    ],
                     "missing_actions": [
                         {
                             "name": name,
                             "origin": slug_origin(run.actions[name].origins),
                             "confidence": run.actions[name].confidence,
                             "severity": severity_for(run.actions[name].origins, "missing_action"),
+                            "references": unique_refs(run.actions[name].evidence),
                         }
                         for name in missing_actions
                     ],
-                    "extra_actions": extra_actions,
-                    "extra_properties": extra_properties,
+                    "extra_actions": [
+                        {
+                            "name": name,
+                            "references": [
+                                doc.action_locations[name]
+                            ]
+                            if name in doc.action_locations
+                            else [],
+                        }
+                        for name in extra_actions
+                    ],
+                    "extra_properties": [
+                        {
+                            "name": name,
+                            "references": [
+                                doc.property_locations[name]
+                            ]
+                            if name in doc.property_locations
+                            else [],
+                        }
+                        for name in extra_properties
+                    ],
                     "action_param_drift": action_param_drift,
                 }
             )
@@ -434,8 +671,14 @@ def compute_drift(
             },
         },
         "global_findings": {
-            "missing_widget_docs": missing_widget_docs,
-            "stale_doc_widgets": stale_doc_widgets,
+            "missing_widget_docs": [
+                {"widget": w, "references": missing_widget_doc_refs.get(w, [])}
+                for w in missing_widget_docs
+            ],
+            "stale_doc_widgets": [
+                {"widget": w, "references": stale_widget_doc_refs.get(w, [])}
+                for w in stale_doc_widgets
+            ],
         },
         "per_widget": per_widget,
     }
@@ -448,8 +691,9 @@ def write_json(path: Path, report: Dict[str, object]) -> None:
         handle.write("\n")
 
 
-def write_markdown(path: Path, report: Dict[str, object]) -> None:
+def write_markdown(path: Path, report: Dict[str, object], repo_root: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    report_dir = path.parent
     lines: List[str] = []
     lines.append("# Widget Documentation Drift Report")
     lines.append("")
@@ -474,11 +718,23 @@ def write_markdown(path: Path, report: Dict[str, object]) -> None:
     lines.append("## Global Findings")
     lines.append("")
     lines.append("- Missing widget docs:")
-    for name in globals_findings["missing_widget_docs"]:
-        lines.append(f"  - `{name}`")
+    for entry in globals_findings["missing_widget_docs"]:
+        lines.append("  - `%s`" % entry["widget"])
+        refs = entry.get("references", [])
+        if refs:
+            for ref in refs:
+                lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
+        else:
+            lines.append("    - source: not found")
     lines.append("- Stale doc widgets:")
-    for name in globals_findings["stale_doc_widgets"]:
-        lines.append(f"  - `{name}`")
+    for entry in globals_findings["stale_doc_widgets"]:
+        lines.append("  - `%s`" % entry["widget"])
+        refs = entry.get("references", [])
+        if refs:
+            for ref in refs:
+                lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
+        else:
+            lines.append("    - docs: not found")
     lines.append("")
 
     lines.append("## Per-Widget Findings")
@@ -489,6 +745,26 @@ def write_markdown(path: Path, report: Dict[str, object]) -> None:
         status = item["status"]
         lines.append(f"- Missing widget docs: `{status['missing_widget_docs']}`")
         lines.append(f"- Stale doc widget: `{status['stale_doc_widget']}`")
+        links = item.get("links", {})
+        doc_refs = links.get("docs", [])
+        c_refs = links.get("c", [])
+        js_refs = links.get("js", [])
+        lines.append("- Locations:")
+        if doc_refs:
+            for ref in doc_refs:
+                lines.append("  - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
+        else:
+            lines.append("  - docs: not found")
+        if c_refs:
+            for ref in c_refs:
+                lines.append("  - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
+        else:
+            lines.append("  - c: not found")
+        if js_refs:
+            for ref in js_refs:
+                lines.append("  - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
+        else:
+            lines.append("  - js: not found")
         if item["missing_events"]:
             lines.append("- Missing events in docs:")
             for event in item["missing_events"]:
@@ -498,10 +774,15 @@ def write_markdown(path: Path, report: Dict[str, object]) -> None:
                     f"confidence: `{event['confidence']}`, "
                     f"severity: `{event['severity']}`)"
                 )
+                if event.get("references"):
+                    for ref in event["references"]:
+                        lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
         if item["extra_events"]:
             lines.append("- Extra events in docs:")
             for event in item["extra_events"]:
-                lines.append(f"  - `{event}`")
+                lines.append("  - `%s`" % event["name"])
+                for ref in event.get("references", []):
+                    lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
         if item["missing_actions"]:
             lines.append("- Missing actions in docs:")
             for action in item["missing_actions"]:
@@ -511,14 +792,21 @@ def write_markdown(path: Path, report: Dict[str, object]) -> None:
                     f"confidence: `{action['confidence']}`, "
                     f"severity: `{action['severity']}`)"
                 )
+                if action.get("references"):
+                    for ref in action["references"]:
+                        lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
         if item["extra_actions"]:
             lines.append("- Extra actions in docs:")
             for action in item["extra_actions"]:
-                lines.append(f"  - `{action}`")
+                lines.append("  - `%s`" % action["name"])
+                for ref in action.get("references", []):
+                    lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
         if item["extra_properties"]:
             lines.append("- Properties present only in docs:")
             for prop in item["extra_properties"]:
-                lines.append(f"  - `{prop}`")
+                lines.append("  - `%s`" % prop["name"])
+                for ref in prop.get("references", []):
+                    lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
         if item["action_param_drift"]:
             lines.append("- Action parameter differences:")
             for drift in item["action_param_drift"]:
@@ -530,10 +818,14 @@ def write_markdown(path: Path, report: Dict[str, object]) -> None:
                     lines.append(
                         f"    - missing in docs: {', '.join(f'`{x}`' for x in drift['missing_in_docs'])}"
                     )
+                    for ref in drift.get("references_runtime", []):
+                        lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
                 if drift["extra_in_docs"]:
                     lines.append(
                         f"    - extra in docs: {', '.join(f'`{x}`' for x in drift['extra_in_docs'])}"
                     )
+                    for ref in drift.get("references_docs", []):
+                        lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
         lines.append("")
 
     with path.open("w", encoding="utf-8") as handle:
@@ -578,7 +870,7 @@ def main() -> int:
     md_path = output_dir / "drift-report.md"
 
     docs, documented_coverage = extract_documented_widgets(doc_xml)
-    widget_types, widget_families = extract_widget_types_from_wgtr(wgtr_dir)
+    widget_types, widget_families, widget_type_refs = extract_widget_types_from_wgtr(wgtr_dir)
     documented_coverage = expand_any_child_coverage(
         docs, documented_coverage, widget_families
     )
@@ -586,10 +878,15 @@ def main() -> int:
     js_runtime = extract_runtime_from_js(js_driver_dir)
     runtime = merge_runtime(c_runtime, js_runtime)
     report = compute_drift(
-        docs, documented_coverage, widget_types, runtime, set(OBSOLETE_WIDGETS)
+        docs,
+        documented_coverage,
+        widget_types,
+        widget_type_refs,
+        runtime,
+        set(OBSOLETE_WIDGETS),
     )
     write_json(json_path, report)
-    write_markdown(md_path, report)
+    write_markdown(md_path, report, repo_root)
 
     print(f"Generated: {json_path}")
     print(f"Generated: {md_path}")
