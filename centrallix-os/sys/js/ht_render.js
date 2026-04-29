@@ -1189,7 +1189,7 @@ function htr_extract_bgcolor(s)
     if (s.startsWith("background-color:"))
 	{
 	const color_start = s.indexOf(":") + 1;
-	const color_end = (s.endsWith(';')) ? -1 : 0; 
+	const color_end = (s.endsWith(';')) ? -1 : undefined; 
 	return s.slice(color_start, color_end).trim();
 	}
     
