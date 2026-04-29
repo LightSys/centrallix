@@ -28,10 +28,10 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    strtcpy(buf+4, "this is a string non-overflow test.?", 0);
-	    strtcpy(buf+4, "this is a string non-overflow test.?", 0);
-	    strtcpy(buf+4, "this is a string non-overflow test.?", 0);
-	    rval = strtcpy(buf+4, "this is a string non-overflow test.?", 0);
+	    strtcpy((char*)buf+4, "this is a string non-overflow test.?", 0);
+	    strtcpy((char*)buf+4, "this is a string non-overflow test.?", 0);
+	    strtcpy((char*)buf+4, "this is a string non-overflow test.?", 0);
+	    rval = strtcpy((char*)buf+4, "this is a string non-overflow test.?", 0);
 	    assert(rval == 0);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
@@ -48,4 +48,3 @@ test(char** tname)
 
     return iter*4;
     }
-

@@ -14,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2004 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -43,25 +43,13 @@
 /************************************************************************/
 
 
-/** globals **/
-static struct 
-    {
-    int		idcnt;
-    }
-    HTHINT;
-
-
 /*** hthintRender - generate the HTML code for the page.
  ***/
 int
 hthintRender(pHtSession s, pWgtrNode tree, int z)
     {
-    int id;
     pObjPresentationHints hints;
     XString xs;
-
-    	/** Get an id for this. **/
-	id = (HTHINT.idcnt++);
 
 	/** Convert the object data into hints data **/
 	hints = wgtrWgtToHints(tree);
@@ -74,8 +62,10 @@ hthintRender(pHtSession s, pWgtrNode tree, int z)
 	/** Serialize the hints data and add the script init for it **/
 	xsInit(&xs);
 	hntEncodeHints(hints, &xs);
-	htrAddScriptInit_va(s, "    cx_set_hints(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")), '%STR&JSSTR', 'app');\n",
-		wgtrGetName(tree), xs.String);
+	htrAddScriptInit_va(s,
+	    "\tcx_set_hints(wgtrGetParent(wgtrGetNodeRef(ns, '%STR&SYM')), '%STR&JSSTR', 'app');\n",
+	    wgtrGetName(tree), xs.String
+	);
 	xsDeInit(&xs);
 
 	/** mark this node as not being associated with a DHTML object **/
@@ -108,8 +98,6 @@ hthintInitialize()
 	htrRegisterDriver(drv);
 
 	htrAddSupport(drv, "dhtml");
-
-	HTHINT.idcnt = 0;
 
     return 0;
     }

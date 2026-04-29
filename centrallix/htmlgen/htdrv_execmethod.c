@@ -14,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -44,14 +44,6 @@
 /************************************************************************/
 
 
-/** globals **/
-static struct 
-    {
-    int		idcnt;
-    }
-    HTEX;
-
-
 /*** htexRender - generate the HTML code for the timer nonvisual widget.
  ***/
 int
@@ -59,19 +51,16 @@ htexRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    int id;
     char* objname;
     char* methodname = NULL;
     char* methodparam = NULL;
 
-	if(!s->Capabilities.Dom0NS)
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1,"HTTEX","Netscape DOM support required");
-	    return -1;
+	    mssError(1, "HTEX", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
 	    }
-
-    	/** Get an id for this. **/
-	id = (HTEX.idcnt++);
 
 	/** Get params. **/
 	if (wgtrGetPropertyValue(tree,"object",DATA_T_STRING,POD(&objname)) != 0) objname="";
@@ -83,15 +72,34 @@ htexRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name, ptr, sizeof(name));
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    ex_init({node:wgtrGetNodeRef(ns,\"%STR&SYM\"), objname:'%STR&SYM', methname:'%STR&SYM', methparam:'%STR&JSSTR'});\n", 
-		name, objname, methodname, methodparam);
+	if (htrAddScriptInit_va(s,
+	    "\tex_init({ "
+		"node:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"objname:'%STR&SYM', "
+		"methname:'%STR&SYM', "
+		"methparam:'%STR&JSSTR', "
+	    "});\n", 
+	    name, objname, methodname, methodparam
+	) != 0)
+	    {
+	    mssError(1, "HTTEX", "Failed to allocate tooltip.");
+	    goto err;
+	    }
 
-	/** Check for objects within the exec method object. **/
-	htrRenderSubwidgets(s, tree, z+2);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 2) != 0) goto err;
 
-	htrAddScriptInclude(s,"/sys/js/htdrv_execmethod.js",0);
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_execmethod.js", 0) != 0) goto err;
 
-    return 0;
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTTEX",
+	    "Failed to render \"%s\":\"%s\".",
+	    tree->Name, tree->Type
+	);
+	return -1;
     }
 
 
@@ -121,8 +129,6 @@ htexInitialize()
 	htrRegisterDriver(drv);
 
 	htrAddSupport(drv, "dhtml");
-
-	HTEX.idcnt = 0;
 
     return 0;
     }

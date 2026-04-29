@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -362,5 +362,95 @@ int htrBuildClientWgtr(pHtSession s, pWgtrNode tree);
 /** For the rule module... **/
 int htruleRegister(char* ruletype, ...);
 
-#endif /* _HT_RENDER_H */
+/*** Write strings known at compile time slightly more efficiently.
+ *** 
+ *** @param str A string literal known at compile time.  This must be a
+ *** 	literal value and it may be applied multiple times.
+ ***/
+#define htrWriteConst(s, str) htrWrite(s, (str), sizeof(str) - 1)
 
+/** ===================================================== **/
+/** Define macros for implementing responsive dimensions. **/
+/** ===================================================== **/
+
+/*** Brief explanation of the responsiveness formula.
+ ***
+ *** Responsive dimensions in widgets use the following formula:
+ ***    Original px + (100% - Total px) * Flex
+ *** Where "Original" is the original size of the object in an adaptive layout,
+ ***       "Total" is the total size of the widget's parent container, and
+ ***       "Flex" is the widget flexibility (where all flexibilities add to 1).
+ *** All, with respect to the given dimension.
+ ***
+ *** The intuition behind this formula is that (100% - Total px) is 0px
+ *** if the parent container is the size intended by the adaptive design.
+ *** However, if the user resizes the window, (100% - Total px) is the
+ *** difference between the size in the adaptive design and the current
+ *** size, so the widget changes size with respect to that difference.
+ ***/
+
+/** @brief The qprintf format to specify a responsive dimension. **/
+#define ht_flex_format "calc(%INTpx + (100%% - %INTpx) * %DBL)"
+
+/*** @brief The function which generates the values that should be passed to
+ *** qprintf in order to satisfy an ht_flex_format.
+ ***
+ *** @param size The original size of the ui element.
+ *** @param total The total size of the ui element's container.
+ *** @param flex The flexibility of the ui element. It is strongly recommended
+ ***             to generate this with an ht_get_fl function call.
+ *** @returns Several values to serve as parameters for a qprintf call.
+ ***/
+#define ht_flex(size, total, flex) (size), (total), (flex)
+
+/** ====[ Macros for getting total container size ]==== **/
+int ht_get_parent_w__INTERNAL(pWgtrNode widget);
+int ht_get_parent_h__INTERNAL(pWgtrNode widget);
+
+#define ht_get_parent_w(widget) ht_get_parent_w__INTERNAL(widget)
+#define ht_get_parent_h(widget) ht_get_parent_h__INTERNAL(widget)
+
+/** ====[ Macros for getting total flexibilities ]==== **/
+
+/*** @param widget The widget to be queried.
+ *** @returns The flexibility of the widget in the x direction.
+ ***/
+#define ht_get_fl_x(widget) ((widget)->fl_scale_x)
+
+/*** @param widget The widget to be queried.
+ *** @returns The flexibility of the widget in the y direction.
+ ***/
+#define ht_get_fl_y(widget) ((widget)->fl_scale_y)
+
+/*** @param widget The widget to be queried.
+ *** @returns The flexibility of the widget in the width direction.
+ ***/
+#define ht_get_fl_w(widget) ((widget)->fl_scale_w)
+
+/*** @param widget The widget to be queried.
+ *** @returns The flexibility of the widget in the height direction.
+ ***/
+#define ht_get_fl_h(widget) ((widget)->fl_scale_h)
+
+/*** @brief A shortcut function to get the flexibility when writing the
+ ***        LEFT CSS attribute.
+ *** @param widget The widget to be queried.
+ *** @returns The flexibility of the widget in the left direction.
+ ***/
+#define ht_get_fl_l ht_get_fl_x
+
+/*** @brief A shortcut function to get the flexibility when writing the
+ ***        TOP CSS attribute.
+ *** @param widget The widget to be queried.
+ *** @returns The flexibility of the widget in the top direction.
+ ***/
+#define ht_get_fl_t ht_get_fl_y
+
+/** ====[ Macros for being lazy ]==== **/
+
+#define ht_flex_x(x, widget) ht_flex(x, ht_get_parent_w(widget), ht_get_fl_x(widget))
+#define ht_flex_y(y, widget) ht_flex(y, ht_get_parent_h(widget), ht_get_fl_y(widget))
+#define ht_flex_w(w, widget) ht_flex(w, ht_get_parent_w(widget), ht_get_fl_w(widget))
+#define ht_flex_h(h, widget) ht_flex(h, ht_get_parent_h(widget), ht_get_fl_h(widget))
+
+#endif /* _HT_RENDER_H */

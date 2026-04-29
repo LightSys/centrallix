@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -8,6 +8,18 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
+
+
+// A resize observer to update dropdowns when they are resized.
+const dd_resize_observer = new ResizeObserver(e => e.forEach(({ target }) => {
+    // Ignore widgets that don't have a visible panelayer in need of updating.
+    if (htr_getvisibility(target.PaneLayer) !== 'inherit') return;
+    
+    // Reopen the dropdown to rerender it.
+    dd_collapse(target);
+    dd_expand(target);
+}));
+
 
 // Form manipulation
 
@@ -390,6 +402,9 @@ function dd_collapse(l)
 	//pg_resize_area(l.area,getClipWidth(l)+1,getClipHeight(l)+1, -1, -1);
 	htr_setvisibility(l.PaneLayer, 'hidden');
 	dd_current = null;
+	
+	/** Remove the pane to avoid leaking DOM nodes. **/
+	dd_remove_pane(l);
 	}
     }
 
@@ -407,7 +422,10 @@ function dd_expand(l)
 	l.Values.splice(0,0,nullitem);
 	}
     if (l && !l.PaneLayer) 
+	{
 	l.PaneLayer = dd_create_pane(l);
+	l.PaneLayer.style.cursor = 'pointer';
+	}
     if (l && htr_getvisibility(l.PaneLayer) != 'inherit')
 	{
 	pg_stackpopup(l.PaneLayer, l);
@@ -702,9 +720,9 @@ function dd_create_pane(l)
 	moveTo(p.BarLayer, l.popup_width-20, 2);
 	htr_setvisibility(p.BarLayer, 'inherit');
 	c = '<TABLE border=0 cellpadding=0 cellspacing=0 width=18 height='+(l.h2-4)+'>';
-	c += '<TR><TD><IMG name=u src=/sys/images/ico13b.gif></TD></TR>';
-	c += '<TR><TD><IMG name=b src=/sys/images/trans_1.gif height='+(l.h2-40)+'></TD></TR>';
-	c += '<TR><TD><IMG name=d src=/sys/images/ico12b.gif></TD></TR>';
+	c += '<tr><td><img data-type="up"    alt="up"    src="/sys/images/ico13b.gif"></td></tr>';
+	c += '<tr><td><img data-type="trans" alt="trans" src="/sys/images/trans_1.gif" height='+(l.h2-40)+'></td></tr>';
+	c += '<tr><td><img data-type="down"  alt="down"  src="/sys/images/ico12b.gif"></td></tr>';
 	c += '</TABLE>';
 	htr_write_content(p.BarLayer, c);
 	//pg_serialized_write(p.BarLayer, c, null);
@@ -775,6 +793,41 @@ function dd_create_pane(l)
     return p;
     }
 
+/** Quick and dirty function to remove panes without leaking DOM nodes. **/
+function dd_remove_pane(l)
+    {
+    if (!l || !l.PaneLayer) return;
+    
+    const p = l.PaneLayer;
+    
+    // Function for removing elements.
+    const remove_node = (n) => { if (n && n.parentNode) n.parentNode.removeChild(n); }
+    
+    // Remove item DOM nodes if present.
+    if (l.Items && l.Items.length)
+	{
+	for (let i = 0; i < l.Items.length; i++)
+	    {
+	    remove_node(l.Items[i]);
+	    l.Items[i] = null;
+	    }
+	l.Items.length = 0;
+	l.Items = null;
+	}
+    
+    // Remove scrollbar/thumb layers if present.
+    remove_node(p.ScrLayer);
+    remove_node(p.BarLayer);
+    remove_node(p.TmbLayer);
+    
+    // Remove the pane root.
+    remove_node(p);
+    
+    // Clear references.
+    p.ScrLayer = p.BarLayer = p.TmbLayer = p.Items = p.mainlayer = null;
+    l.PaneLayer = null;
+    }
+
 
 /// REPLACE ITEMS IN DROPDOWN
 function dd_add_items(l,ary)
@@ -839,14 +892,14 @@ function dd_add_items(l,ary)
 function dd_mouseout(e)
     {
     var ti=dd_target_img;
-    if (ti && ti.name == 't' && dd_current)
+    if (ti && ti.dataset.type === 'trans' && dd_current)
         return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
     }
 
 function dd_mousemove(e)
     {
     var ti=dd_target_img;
-    if (ti != null && ti.name == 't' && dd_current && dd_current.enabled!='disabled')
+    if (ti != null && ti.dataset.type === 'trans' && dd_current && dd_current.enabled !== 'disabled')
         {
         var pl=ti.mainlayer.PaneLayer;
         var v=getClipHeight(pl)-(3*18)-4;
@@ -899,8 +952,11 @@ function dd_mouseup(e)
         }
     if (dd_target_img != null)
         {
-        if (dd_target_img.kind && dd_target_img.kind.substr(0,2) == 'dd' && (dd_target_img.name == 'u' || dd_target_img.name == 'd'))
-            pg_set(dd_target_img,'src',htutil_subst_last(dd_target_img.src,"b.gif"));
+        if (dd_target_img.kind && dd_target_img.kind.slice(0, 2) === 'dd'
+	    && (dd_target_img.dataset.type === 'up' || dd_target_img.dataset.type === 'down'))
+            {
+            pg_set(dd_target_img, 'src', htutil_subst_last(dd_target_img.src, "b.gif"));
+            }
         dd_target_img = null;
         }
     if ((e.kind == 'dd' || e.kind == 'ddtxt') && e.mainlayer.enabled != 'disabled')
@@ -954,30 +1010,25 @@ function dd_mousedown(e)
         }
     else if (e.kind == 'dd_sc')
         {
-        switch(e.layer.name)
+        switch(e.layer.dataset.type)
             {
-            case 'u':
+            case 'up':
                 pg_set(e.layer,'src','/sys/images/ico13c.gif');
                 dd_incr = 8;
                 dd_scroll();
                 dd_timeout = setTimeout(dd_scroll_tm,300);
                 break;
-            case 'd':
+            case 'down':
                 pg_set(e.layer, 'src', '/sys/images/ico12c.gif');
                 dd_incr = -8;
                 dd_scroll();
                 dd_timeout = setTimeout(dd_scroll_tm,300);
                 break;
-            case 'b':
+            case 'thumb':
                 dd_incr = dd_target_img.height+36;
                 if (e.pageY > getPageY(dd_target_img.thum)+9) dd_incr = -dd_incr;
                 dd_scroll();
                 dd_timeout = setTimeout(dd_scroll_tm,300);
-                break;
-            case 't':
-                dd_click_x = e.pageX;
-                dd_click_y = e.pageY;
-                dd_thum_y = getPageY(dd_target_img.thum);
                 break;
             }
         }
@@ -1194,7 +1245,6 @@ function dd_init(param)
     l.NumDisplay = param.numDisplay;
     l.Mode = param.mode;
     l.SQL = param.sql;
-    l.popup_width = param.popup_width?param.popup_width:param.width;
     l.VisLayer = param.c1;
     l.HidLayer = param.c2;
     htr_init_layer(l.VisLayer, l, 'ddtxt');
@@ -1244,7 +1294,6 @@ function dd_init(param)
     l.getfocushandler = dd_getfocus;
     l.bg = param.background;
     l.hl = param.highlight;
-    l.w = param.width; l.h = param.height;
     l.fieldname = param.fieldname;
     l.enabled = 'full';
     if (l.Mode != 3)
@@ -1268,10 +1317,34 @@ function dd_init(param)
 	else if (imgs[i].src.substr(-13,5) == 'white')
 	    imgs[i].upimg = true;
 	}
-    l.area = pg_addarea(l, -1, -1, getClipWidth(l)+3, 
-	    getClipHeight(l)+3, 'dd', 'dd', 3);
     if (l.form) l.form.Register(l);
     l.init_items = false;
+
+    // Setup getters for widths and heights.
+    const width_ratio = param.popup_width / param.width;
+    Object.defineProperties(l, {
+	w: {
+	    get() { return getRelativeW(l); },
+	    configurable: true,
+	    enumerable: true,
+	},
+	h: {
+	    get() { return getRelativeH(l); },
+	    configurable: true,
+	    enumerable: true,
+	},
+	popup_width: {
+	    get() { return l.w * width_ratio; },
+	    configurable: true,
+	    enumerable: true,
+	},
+    });
+    
+    // Setup the hover area.
+    l.area = pg_addarea(l, -1, -1, () => l.w + 3, () => l.h + 3, 'dd', 'dd', 3);
+    
+    // Resize dropdown automatically.
+    dd_resize_observer.observe(l);
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);

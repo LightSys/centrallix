@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2004 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -9,7 +9,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-//$(".wn")
+
+// Resize listener that updates all windows so they remain on the page by
+// re-calling wn_do_move_internal() with whatever values were last used.
+window.addEventListener('resize', () => wn_list.forEach((wn) => {
+    const { pg_attract, wn_new_x, wn_new_y } = wn.resize_data;
+    wn_do_move_internal(wn, pg_attract, wn_new_x, wn_new_y);
+}));
 
 var wn_popped = {};
 
@@ -41,6 +47,7 @@ function wn_init(param)
     ifc_init_widget(l);
     l.destroy_widget = wn_deinit;
 
+    // Determine titlebar.
     if (titlebar)
 	{
 	htr_init_layer(titlebar,l,"wn");
@@ -48,6 +55,7 @@ function wn_init(param)
 	}
     else
 	titlebar = l;
+    l.titlebar = titlebar;
 
     l.keep_kbd_focus = true;
     l.ContentLayer = param.clayer;
@@ -136,6 +144,13 @@ function wn_init(param)
 	pg_addsched_fn(window, "pg_reveal_event", [l,l,'Reveal'], 0);
 	}
 
+    // Setup responsive movement.
+    l.resize_data = {
+	pg_attract: 0,
+	wn_new_x: getPageX(l),
+	wn_new_y: getPageY(l),
+    };
+
     // force on page...
     if (getPageY(l) + l.orig_height > getInnerHeight())
 	{
@@ -152,9 +167,7 @@ function wn_init(param)
 
 function wn_action_point(aparam)
     {
-    var divs = htutil_point(this, aparam.X, aparam.Y, aparam.AtWidget, aparam.BorderColor, aparam.FillColor, this.point1, this.point2);
-    this.point1 = divs.p1;
-    this.point2 = divs.p2;
+    htr_action_point(this, aparam);
     }
 
 // Popup - pops up a window in the way that a menu might pop up.
@@ -530,7 +543,6 @@ function wn_close(l)
     {
     if (l.is_modal) pg_setmodal(l, false);
     if (wn_popped[l.id]) delete wn_popped[l.id];
-    //l.is_modal = false;
     l.no_close = false;
     l.extended_region = null;
     if (l.popped_above)
@@ -542,7 +554,7 @@ function wn_close(l)
 	{
 	wn_close(l.has_popup);
 	}
-    if (l.closetype == 0 || !cx__capabilities.Dom0NS)
+    if (l.closetype == 0)
 	{
 	htr_setvisibility(l,'hidden');
 	$(l).css({display:"none"});
@@ -551,30 +563,8 @@ function wn_close(l)
 	l.is_visible = 0;
 	}
     else
-        {
-	if(cx__capabilities.Dom0NS)
-	    {
-	    st = new Date();
-	    var speed = 20;
-	    var duration = 150;
-	    var sizeX = 0;
-	    var sizeY = 0;
-	    if (l.closetype & 1)
-		{
-		var toX = Math.ceil(getClipWidth(l)/2);
-		sizeX = Math.ceil(toX*speed/duration);
-		}
-	    if (l.closetype & 2)
-		{
-		var toY = Math.ceil(getClipHeight(l)/2);
-		sizeY = Math.ceil(toY*speed/duration);
-		}
-	    wn_graphical_close(l,speed,sizeX,sizeY);
-	    }
-	else
-	    {
-	    alert("close type " + l.closetype + " is not implimented for this browser");
-	    }
+	{
+	alert("close type " + l.closetype + " is not implemented for this browser");
 	}
     }
 
@@ -660,33 +650,71 @@ function wn_setvisibility(aparam)
 	}
     }
 
-function wn_domove2() 
+/*** This function does movement without worrying about global variables,
+ *** resize observers, etc. It just takes params and does movement.
+ *** 
+ *** This function does handle snapping to edges and preventing windows from
+ *** being moved too far outside the viewport.
+ ***
+ *** @param wn_current The window to affect.
+ *** @param pg_attract The number of pixels from the edge of the viewport at
+ *** which windows snap to the edge. (Seems to always be 0.)
+ *** @param wn_new_x The new x coordinate for moving the window.
+ *** @param wn_new_y The new y coordinate for moving the window.
+ ***/
+function wn_do_move_internal(wn_current, pg_attract, wn_new_x, wn_new_y) 
     {
+    /** Get useful values. **/
+    const { innerWidth, innerHeight } = window;
+    const window_width = getClipWidth(wn_current);
+    const window_height = getClipHeight(wn_current);
+
+    /** Calculate available width and height, taking the sizes of scrollbars into account. **/
+    const available_width = innerWidth - ((document.height - innerHeight - 2 >= 0) ? 15 : 0);
+    const available_height = innerHeight - ((document.width - innerWidth - 2 >= 0) ? 15 : 0);
+    let new_x, new_y;
+
+    /** X: Handle snapping to edges. **/
+    if (Math.isBetween(-pg_attract, wn_new_x, pg_attract)) new_x = 0;
+    else if (Math.isBetween(available_width - pg_attract, wn_new_x + window_width, available_width + pg_attract))
+	new_x = available_width - window_width;
+
+    /** X: Prevent windows getting lost off the left side of the page. **/
+    else if (wn_new_x + window_width < 24) new_x = 24 - window_width;
+    else if (wn_new_x > available_width - 32) new_x = available_width - 32;
     
+    /** X: Default case, no movement needed. **/
+    else new_x = wn_new_x;
+
+    /** Y: Handle snapping to edges. **/
+    if (Math.isBetween(-pg_attract, wn_new_y, pg_attract)) new_y = 0;
+    else if (Math.isBetween(available_height - pg_attract, wn_new_y + window_height, available_height + pg_attract))
+	new_y = available_height - window_height;
+
+    /** Y: Prevent windows from going too far off the screen. **/
+    else new_y = Math.clamp(0, wn_new_y, available_height - 24);
+
+    /** Move the window to the new location. **/
+    moveToAbsolute(wn_current, new_x, new_y);
+    
+    /** Clicking and dragging a window is not a click. **/
+    wn_current.clicked = 0;
     }
 
-function wn_domove()
+function wn_do_move()
     {
-    if (wn_current != null)
-        {
-        var ha=(document.height-window.innerHeight-2)>=0?15:0;
-        var va=(document.width-window.innerWidth-2)>=0?15:0;
-        var newx,newy;
-        if (wn_newx < pg_attract && wn_newx > -pg_attract) newx = 0;
-        else if (wn_newx+getClipWidth(wn_current) > window.innerWidth-ha-pg_attract && wn_newx+ getClipWidth(wn_current) < window.innerWidth-ha+pg_attract)
-		newx = window.innerWidth-ha-pg_get_style(wn_current,'clip.width');
-        else if (wn_newx+getClipWidth(wn_current) < 25) newx = 25-pg_get_style(wn_current,'clip.width');
-        else if (wn_newx > window.innerWidth-35-ha) newx = window.innerWidth-35-ha;
-	else newx = wn_newx;
-        if (wn_newy<0) newy = 0;
-        else if (wn_newy > window.innerHeight-12-va) newy = window.innerHeight-12-va;
-        else if (wn_newy < pg_attract) newy = 0;
-        else if (wn_newy+getClipHeight(wn_current) > window.innerHeight-va-pg_attract && wn_newy+getClipHeight(wn_current) < window.innerHeight-va+pg_attract)
-		newy = window.innerHeight-va-pg_get_style(wn_current,'clip.height');
-        else newy = wn_newy;
-        moveToAbsolute(wn_current,newx,newy);
-    	wn_current.clicked = 0;
-        }
+    /** Dereference globals once for performance. **/
+    const { wn_current, pg_attract, wn_new_x, wn_new_y } = window;
+
+    /** No window is selected, so we don't have to move anything. **/   
+    if (wn_current === null) return true;
+
+    /** Call the unresponsive version. **/
+    wn_do_move_internal(wn_current, pg_attract, wn_new_x, wn_new_y);
+
+    /** Update params for future resize calls. **/
+    wn_current.resize_data = { pg_attract, wn_new_x, wn_new_y };
+    
     return true;
     }
 
@@ -735,12 +763,14 @@ function wn_mousedown(e)
         else if ((e.mainlayer.has_titlebar && cx__capabilities.Dom0NS && e.pageY < e.mainlayer.pageY + 24) ||
                 (cx__capabilities.Dom1HTML && e.layer.subkind == 'titlebar' ))
             {
+	    /** Initiate a window drag. **/
             wn_current = e.mainlayer;
             wn_msx = e.pageX;
             wn_msy = e.pageY;
-            wn_newx = null;
-            wn_newy = null;
+            wn_new_x = null;
+            wn_new_y = null;
             wn_moved = 0;
+	    e.layer.style.cursor = 'grabbing';
 	    if (!cx__capabilities.Dom0IE) wn_windowshade_ns_moz(e.mainlayer);
 	    return EVENT_CONTINUE | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
@@ -775,9 +805,13 @@ function wn_mouseup(e)
     if (wn_current != null)
         {
         if (wn_moved == 0) wn_bring_top(wn_current);
+	wn_current.titlebar.style.cursor = 'grab';
         }
     if (e.kind == 'wn') cn_activate(e.mainlayer, 'MouseUp');
+    
+    /** End the active window drag (if one exists). **/
     wn_current = null;
+    
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
@@ -789,17 +823,17 @@ function wn_mousemove(e)
         wn_current.clicked = 0;
 	if (wn_current.tid) clearTimeout(wn_current.tid);
 	wn_current.tid = null;
-        if (wn_newx == null)
+        if (wn_new_x == null)
             {
-            wn_newx = getPageX(wn_current) + e.pageX-wn_msx;
-            wn_newy = getPageY(wn_current) + e.pageY-wn_msy;
+            wn_new_x = getPageX(wn_current) + e.pageX-wn_msx;
+            wn_new_y = getPageY(wn_current) + e.pageY-wn_msy;
             }
         else
             {
-            wn_newx += (e.pageX - wn_msx);
-            wn_newy += (e.pageY - wn_msy);
+            wn_new_x += (e.pageX - wn_msx);
+            wn_new_y += (e.pageY - wn_msy);
             }
-        setTimeout(wn_domove,60);
+        wn_do_move();
         wn_moved = 1;
         wn_msx = e.pageX;
         wn_msy = e.pageY;

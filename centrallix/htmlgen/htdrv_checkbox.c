@@ -14,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2000-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2000-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -47,23 +47,24 @@ static struct {
 } HTCB;
 
 
-int htcbRender(pHtSession s, pWgtrNode tree, int z) {
+int htcbRender(pHtSession s, pWgtrNode tree, int z)
+    {
    char fieldname[HT_FIELDNAME_SIZE];
    int x=-1,y=-1,checked=0;
-   int id, i;
    char *ptr;
    char name[64];
    char form[64];
    int enabled = 0;
 
-   if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
-      {
-      mssError(1,"HTCB","Netscape DOM support or W3C DOM Level 1 HTML required");
-      return -1;
-      }
-
    /** Get an id for this. **/
-   id = (HTCB.idcnt++);
+   const int id = (HTCB.idcnt++);
+
+    /** Verify browser capabilities. **/
+    if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	{
+	mssError(1, "HTCB", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	goto err;
+	}
 
    /** Get name **/
    if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -88,46 +89,104 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z) {
    /** Is it enabled? **/
    enabled = htrGetBoolean(tree, "enabled", 1);
 
-   /** Write named global **/
-   htrAddWgtrObjLinkage_va(s, tree, "cb%INTmain", id);
-
-   /** Ok, write the style header items. **/
-   htrAddStylesheetItem_va(s,"\t#cb%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:13px; WIDTH:13px; Z-INDEX:%POS; }\n",id,x,y,z);
-   htrAddScriptInclude(s,"/sys/js/htdrv_checkbox.js",0);
-   htrAddScriptInclude(s,"/sys/js/ht_utils_hints.js",0);
-
-   htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "checkbox", "checkbox_mousedown");
-   htrAddEventHandlerFunction(s, "document","MOUSEUP", "checkbox", "checkbox_mouseup");
-   htrAddEventHandlerFunction(s, "document","MOUSEOVER", "checkbox", "checkbox_mouseover");
-   htrAddEventHandlerFunction(s, "document","MOUSEOUT", "checkbox", "checkbox_mouseout");
-   htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "checkbox", "checkbox_mousemove");
-   
-   /** Script initialization call. **/
-   htrAddScriptInit_va(s,"    checkbox_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), fieldname:\"%STR&JSSTR\", checked:%INT, enabled:%INT, form:\"%STR&JSSTR\"});\n", name, fieldname,checked,enabled,form);
-
-   /** HTML body <DIV> element for the layers. **/
-   htrAddBodyItemLayerStart(s, 0, "cb%POSmain", id, NULL);
-   switch(checked)
+    /** Link the widget to the DOM node. **/
+    if (htrAddWgtrObjLinkage_va(s, tree, "cb%INTmain", id) != 0)
 	{
-	case 1:
-	    htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_checked%[_dis%].gif\">\n",!enabled);
-	    break;
-	case 0:
-	    htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_unchecked%[_dis%].gif\">\n",!enabled);
-	    break;
-	case -1: /* null */
-	    htrAddBodyItem_va(s,"     <IMG SRC=\"/sys/images/checkbox_null%[_dis%].gif\">\n",!enabled);
-	    break;
+	mssError(0, "HTCB", "Failed to add object linkage.");
+	goto err;
+	}
+   
+    /** Write style header. **/
+    if (htrAddStylesheetItem_va(s,
+	"\t\t#cb%POSmain { "
+	    "position:absolute; "
+	    "visibility:inherit; "
+	    "cursor:pointer; "
+	    "left:"ht_flex_format"; "
+	    "top:"ht_flex_format"; "
+	    "height:13px; "
+	    "width:13px; "
+	    "z-index:%POS; "
+	"}\n",
+	id,
+	ht_flex_x(x, tree),
+	ht_flex_y(y, tree),
+	z
+     ) != 0)
+	{
+	mssError(0, "HTCB", "Failed to write CSS.");
+	goto err;
+	}
+   
+    /** Include scripts. **/
+    if (htrAddScriptInclude(s,"/sys/js/ht_utils_hints.js", 0) != 0) goto err;
+    if (htrAddScriptInclude(s,"/sys/js/htdrv_checkbox.js", 0) != 0) goto err;
+
+    /** Register event handlers. **/
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "checkbox", "checkbox_mousedown") != 0) goto err;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "checkbox", "checkbox_mousemove") != 0) goto err;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "checkbox", "checkbox_mouseout")  != 0) goto err;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "checkbox", "checkbox_mouseover") != 0) goto err;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "checkbox", "checkbox_mouseup")   != 0) goto err;
+
+    /** Script initialization call. **/
+    if (htrAddScriptInit_va(s,
+	"\tcheckbox_init({ "
+	    "layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+	    "fieldname:'%STR&JSSTR', "
+	    "checked:%INT, "
+	    "enabled:%INT, "
+	    "form:'%STR&JSSTR', "
+	"});\n",
+	name, fieldname, checked, enabled, form
+    ) != 0)
+	{
+	mssError(0, "HTCB", "Failed to write JS init call.");
+	goto err;
 	}
 
-   htrAddBodyItemLayerEnd(s, 0);
+    /** Write HTML. **/
+    if (htrAddBodyItemLayerStart(s, 0, "cb%POSmain", id, NULL) != 0)
+	{
+	mssError(0, "HTCB", "Failed to write HTML layer start.");
+	goto err;
+	}
+    char* state_name;
+    switch (checked)
+	{
+	case  1: state_name = "checked"; break;
+	case  0: state_name = "unchecked"; break;
+	case -1: state_name = "null"; break;
+	default:
+	    mssError(0, "HTCB", "Unexpected value %d for 'checked'.", checked);
+	    goto err;
+	}
+    char src_path[48];
+    snprintf(src_path, sizeof(src_path), "/sys/images/checkbox_%s%s.gif", state_name, (enabled) ? "" : "_dis");
+    if (htrAddBodyItem_va(s, "     <img src='%STR'>\n", src_path) != 0)
+	{
+	mssError(0, "HTCB", "Failed to write HTML <img> tag.");
+	goto err;
+	}
+    if (htrAddBodyItemLayerEnd(s, 0) != 0)
+	{
+	mssError(0, "HTCB", "Failed to write HTML layer start.");
+	goto err;
+	}
 
-   /** Check for more sub-widgets **/
-    for (i=0;i<xaCount(&(tree->Children));i++)
-	 htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
+    /** Render children. **/
+    if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto err;
 
-   return 0;
-}
+    /** Success. **/
+    return 0;
+
+    err:
+    mssError(0, "HTCB",
+	"Failed to render \"%s\":\"%s\" (id: %d).",
+	tree->Name, tree->Type, id
+    );
+    return -1;
+    }
 
 
 /* 

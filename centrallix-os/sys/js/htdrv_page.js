@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -49,6 +49,11 @@ function pg_scriptavailable(s)
     var file = s_name.substr(pos+1);
     return pg_scripts[file]?true:false;
     }
+
+
+/** Resize handling for all types of area boxes (hover, select, data, etc). **/
+const pg_area_resize_handlers = {};
+window.addEventListener('resize', (e) => Object.values(pg_area_resize_handlers).forEach(f => f(e)));
 
 
 //START SECTION: DOM/CSS helper functions -----------------------------------
@@ -728,88 +733,61 @@ function pg_isinlayer(outer,inner)
     return false;
     }
 
-/** Function to make four layers into a box  //SETH: ?? what's a 'box'?
-* pl - a layer
-* x,y - x,y-cord
-* w,h - widht, height
-* s - ?
-* tl - top layer
-* bl - bottom layer
-* rl - right layer
-* ll - left layer
-* c1 - color1, for tl and ll
-* c2 - color2, for bl and rl
-* z - zIndex
-**/
-function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
+/*** Helper function for pg_init_box() to initialize a side of a box.
+ *** 
+ *** @param layer The target layer (aka. dom node) for the side of the box.
+ *** @param parent_layer The target layer for which the box has been created.
+ *** @param x The x for this side of the box.
+ *** @param y The y for this side of the box.
+ *** @param w The width for this side of the box.
+ *** @param h The height for this side of the box.
+ *** @param color The color of this side of the box.
+ *** @param z The z-index for this side of the box.
+ ***/
+function pg_init_box_side(layer, parent_layer, x, y, w, h, color, z)
     {
+    resizeTo(layer, w, h);
+    setClipWidth(layer, w);
+    setClipHeight(layer, h);
+    moveAbove(layer, parent_layer);
+    $(layer).offset({ left:x, top:y });
+    htr_setbgcolor(layer, color);
+    htr_setzindex(layer, z);
+    htr_setvisibility(layer, 'inherit');
     
-    htr_setvisibility(tl, 'hidden');
-    htr_setvisibility(bl, 'hidden');
-    htr_setvisibility(rl, 'hidden');
-    htr_setvisibility(ll, 'hidden');
-    //abc();
-    if (cx__capabilities.Dom0NS || cx__capabilities.Dom1HTML)
-/*        {
-    	tl.bgColor = c1;
-    	ll.bgColor = c1;
-    	bl.bgColor = c2;
-    	rl.bgColor = c2;
-    	}
-    else if (cx__capabilities.Dom1HTML) */
-        {
-    	htr_setbgcolor(tl,c1);
-    	htr_setbgcolor(ll,c1);
-    	htr_setbgcolor(bl,c2);
-    	htr_setbgcolor(rl,c2);
-        }
-    //alert("x, y --" + x + " " + y);
+    return;
+    }
+
+/*** Initialize the four layers (dom nodes) of a box UI element. These are
+ *** commonly used when a user hovers over or selects certain UI elements,
+ *** such as dropdown widgets.
+ *** 
+ *** @param parent_layer The target layer for which the box has been created.
+ *** @param x The x coordinate of the top left corner of the box (in px).
+ *** @param y The y coordinate of the top left corner of the box (in px).
+ *** @param w The width of the box (in px).
+ *** @param h The height of the box (in px).
+ *** @param s The thickness of the box (in px)? Maybe?
+ *** @param top_layer The layer to be the line across the top of the box.
+ *** @param bottom_layer The layer to be the line across the bottom of the box.
+ *** @param right_layer The layer to be the line across the right side of the box.
+ *** @param left_layer The layer to be the line across the left side of the box.
+ *** @param color1 The "lit" color of the box (used for the top and left lines).
+ *** @param color2 The "unlit" color of the box (used for the bottom and right lines).
+ *** @param z The z-index for the sides of the box.
+ ***/
+function pg_init_box({
+    parent_layer,
+    x, y, w, h, s,
+    top_layer, bottom_layer, right_layer, left_layer,
+    color1, color2, z
+})
+    {
+    pg_init_box_side(top_layer,    parent_layer, x,       y,       w,     1,   color1, z);
+    pg_init_box_side(bottom_layer, parent_layer, x,       y+h-s+1, w+s-1, 1,   color2, z);
+    pg_init_box_side(right_layer,  parent_layer, x+w-s+1, y,       1,     h+1, color2, z);
+    pg_init_box_side(left_layer,   parent_layer, x,       y,       1,     h,   color1, z);
     
-    resizeTo(tl,w,1);
-    setClipWidth(tl,w);
-    setClipHeight(tl,1);
-    //if (cx__capabilities.Dom1HTML && pl)
-    //	pl.parentLayer.appendChild(tl);
-    moveAbove(tl,pl);
-    //moveToAbsolute(tl,x,y);
-    $(tl).offset({left:x, top:y});
-    htr_setzindex(tl,z);
-
-    resizeTo(bl,w+s-1,1);
-    setClipWidth(bl,w+s-1);
-    setClipHeight(bl,1);
-    //if (cx__capabilities.Dom1HTML && pl)
-    //	pl.parentLayer.appendChild(bl);
-    moveAbove(bl,pl);
-    //moveToAbsolute(bl,x,y+h-s+1);
-    $(bl).offset({left:x, top:y+h-s+1});
-    htr_setzindex(bl,z);
-
-    resizeTo(ll,1,h);
-    setClipHeight(ll,h);
-    setClipWidth(ll,1);
-    //if (cx__capabilities.Dom1HTML && pl)
-    //	pl.parentLayer.appendChild(ll);
-    moveAbove(ll,pl);
-    //moveToAbsolute(ll,x,y);
-    $(ll).offset({left:x, top:y});
-    htr_setzindex(ll,z);
-
-    resizeTo(rl,1,h+1);
-    setClipHeight(rl,h+1);
-    setClipWidth(rl,1);
-    //if (cx__capabilities.Dom1HTML && pl)
-    //	pl.parentLayer.appendChild(rl);
-    moveAbove(rl,pl);
-    //moveToAbsolute(rl,x+w-s+1,y);
-    $(rl).offset({left:x+w-s+1, top:y});
-    htr_setzindex(rl,z);
-    
-    htr_setvisibility(tl, 'inherit');
-    htr_setvisibility(bl, 'inherit');
-    htr_setvisibility(rl, 'inherit');
-    htr_setvisibility(ll, 'inherit');
-    //alert(rl.style.cssText);
     return;
     }
 
@@ -839,17 +817,62 @@ function pg_hidebox(tl,bl,rl,ll)
     return;
     }
 
-/** Function to make a new clickable "area" **INTERNAL** **/
-function pg_area(pl,x,y,w,h,cls,nm,f) //SETH: ?? what's an 'area'?
+/*** Internal constructor function to create a new clickable/hoverable "area".
+ *** This function has additional documentation in `HTFormInterface.md`.
+ *** 
+ *** Note: Many functions specify (x,y) as (0,0), or as (-1,-1) if the focus
+ ***       area should appear 1px outside the parent layer.
+ *** 
+ *** Note: The x, y, w, and h params can all be specified as either a single
+ ***       value or a function. The latter is useful because areas are redawn
+ ***       when the page resizes, so a function can provide an updated value
+ ***       for the new layout.
+ *** 
+ *** @param parent The associated parent layer for which this area is rendered.
+ *** 	This object should implement the `keyhandler()`, `getfocushandler()`,
+ *** 	and `losefocushandler()`, as described in `HTFormInterface.md`.
+ *** @param x The x coordinate of the area, relative to the parent layer.
+ *** @param y The y coordinate of the area, relative to the parent layer.
+ *** @param width The width of the area.
+ *** @param height The height of the area.
+ *** @param cls A mostly unused value for the "context" of an area, used for
+ *** 	the callback functions described in `HTFormatInterface.md`. (As for how
+ ***	"context" can be abbreviated to `cls`, your guess is as good as mine.)
+ *** @param name The name of the area, also used for callback functions.
+ *** @param f A bitmask representing zero or more of the following flags:
+ *** 	1: Allow the area to receive keyboard focus.
+ *** 	2: Allow the area to receive data focus.
+ ***/
+function pg_area(parent, x, y, width, height, cls, name, f)
     {
-    this.layer = pl;
-    this.x = x;
-    this.y = y;
-    this.width = w;
-    this.height = h;
-    this.name = nm;
+    // Function to handle params that might be functions.
+    const handle_param = (name, value) => {
+	if (typeof(value) === 'function')
+	    {
+	    // Set a base value and define a getter that calls the provided function.
+	    this[name] = value();
+	    Object.defineProperty(this, name, {
+		get() { return value.call(this); },
+		configurable: true,
+		enumerable: true
+	    });
+	    }
+	
+	// If just a value is provided, simply set that.
+	else this[name] = value;
+    }
+    
+    // Handle each parameter for the class.
+    this.layer = parent;
+    handle_param('x', x);
+    handle_param('y', y);
+    handle_param('width', width);
+    handle_param('height', height);
+    this.name = name;
     this.cls = cls;
     this.flags = f;
+    
+    // Return the newly instantiated object.
     return this;
     }
 
@@ -924,9 +947,12 @@ function pg_resize_area(a,w,h,xo,yo)
 	}
     }
 
-/** Function to add a new area to the arealist **/
+/*** Function to add a new area to the area list.
+ *** Note that x, y, w, & h can all be provided as
+ *** function for responsive resizing.
+ ***/
 function pg_addarea(pl,x,y,w,h,cls,nm,f)
-    {    
+    {
     var a = new pg_area(pl,x,y,w,h,cls,nm,f);
     //pg_arealist.splice(0,0,a);
     pg_arealist.push(a);
@@ -1354,6 +1380,8 @@ function pg_init(l,a,gs,ct) //SETH: ??
     ia.Add("Launch", pg_launch);
     ia.Add("Close", pg_close);
     ia.Add("Alert", pg_alert);
+    ia.Add("Log", pg_log);
+    ia.Add("ReloadPage", pg_reload_page);
 
     // Events
     var ie = window.ifcProbeAdd(ifEvent);
@@ -1433,6 +1461,16 @@ function pg_alert(aparam)
     pg_keyschedid = 0;
     pg_keytimeoutid = 0;
     alert(aparam.Message);
+    }
+
+function pg_log({ Message })
+    {
+    console.log(Message);
+    }
+
+function pg_reload_page()
+    {
+    window.location.reload();
     }
 
 function pg_reveal_cb(e)
@@ -1917,7 +1955,9 @@ function pg_findfocusarea(l, xo, yo)
 
 function pg_setmousefocus(l, xo, yo)
     {
-    var a = pg_findfocusarea(l, xo, yo);
+    if (!l) return false;
+    
+    const a = pg_findfocusarea(l, xo, yo);
     if (a && a != pg_curarea)
 	{
 	pg_curarea = a;
@@ -1925,26 +1965,55 @@ function pg_setmousefocus(l, xo, yo)
 	    {
 	    if (!pg_curarea.layer.getmousefocushandler || pg_curarea.layer.getmousefocushandler(xo, yo, a.layer, a.cls, a.name, a))
 		{
-		// wants mouse focus
-		var offs = $(pg_curarea.layer).offset();
-		//var x = getPageX(pg_curarea.layer)+pg_curarea.x;
-		//var y = getPageY(pg_curarea.layer)+pg_curarea.y;
-		var x = offs.left+pg_curarea.x;
-		var y = offs.top+pg_curarea.y;
+		// Create a function to handle all box updates with this focus.
+		const update_box = (area) =>
+		    {
+		    // Compute layout data.
+		    const offs = $(area.layer).offset();
+		    const x = area.x + offs.left;
+		    const y = area.y + offs.top;
+		    const w = area.width;
+		    const h = area.height;
+		    
+		    if (cx__capabilities.Dom0NS)
+			{
+			pg_init_box({
+			    parent_layer: l,
+			    x, y, w, h, s: 1,
+			    top_layer:    document.layers.pgtop,
+			    bottom_layer: document.layers.pgbtm,
+			    right_layer:  document.layers.pgrgt,
+			    left_layer:   document.layers.pglft,
+			    color1: page.mscolor1,
+			    color2: page.mscolor2,
+			    z: document.layers.pgktop.zIndex - 1,
+			});
+			}
+		    else if (cx__capabilities.Dom1HTML)
+			{
+			pg_init_box({
+			    parent_layer: l,
+			    x, y, w, h, s: 1,
+			    top_layer:    document.getElementById("pgtop"),
+			    bottom_layer: document.getElementById("pgbtm"),
+			    right_layer:  document.getElementById("pgrgt"),
+			    left_layer:   document.getElementById("pglft"),
+			    color1: page.mscolor1, color2: page.mscolor2,
+			    z: htr_getzindex(document.getElementById("pgktop")) - 1,
+			});
+			}
+		    };
 		
-		var w = pg_curarea.width;
-		var h = pg_curarea.height;
-		if (cx__capabilities.Dom0NS)
-		    {
-		    pg_mkbox(l, x,y,w,h, 1, document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft, page.mscolor1, page.mscolor2, document.layers.pgktop.zIndex-1);
-		    }
-		else if (cx__capabilities.Dom1HTML)
-		    {
-		    pg_mkbox(l, x,y,w,h, 1, document.getElementById("pgtop"),document.getElementById("pgbtm"),document.getElementById("pgrgt"),document.getElementById("pglft"), page.mscolor1, page.mscolor2, htr_getzindex(document.getElementById("pgktop"))-1);
-		    }
+		// Initial update.
+		update_box(pg_curarea);
+		
+		// Responsive updates.
+		const area = pg_curarea; // Save value so we can create a closure below.
+		pg_area_resize_handlers.mouse_focus = () => update_box(area);
 		}
 	    }
 	}
+    if (!a) delete pg_area_resize_handlers.mouse_focus;
     }
 
 function pg_removekbdfocus(p)
@@ -1956,23 +2025,55 @@ function pg_removekbdfocus(p)
 	pg_curkbdarea = null;
 	if (cx__capabilities.Dom0NS)
 	    {
-	    pg_mkbox(null,0,0,0,0, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
+	    pg_init_box({
+		parent_layer: null,
+		x: 0, y: 0, w: 0, h: 0, s: 1,
+		top_layer:    document.layers.pgktop,
+		bottom_layer: document.layers.pgkbtm,
+		right_layer:  document.layers.pgkrgt,
+		left_layer:   document.layers.pgklft,
+		color1: page.kbcolor1, color2: page.kbcolor2,
+		z: document.layers.pgtop.zIndex + 100,
+	    });
 	    }
 	else if (cx__capabilities.Dom1HTML)
 	    {
-	    pg_mkbox(null,0,0,0,0, 1, document.getElementById("pgktop"),document.getElementById("pgkbtm"),document.getElementById("pgkrgt"),document.getElementById("pgklft"), page.kbcolor1, page.kbcolor2, pg_get_style(document.getElementById("pgtop"), 'zIndex')+100);
+	    pg_init_box({
+		parent_layer: null,
+		x: 0, y: 0, w: 0, h: 0, s: 1,
+		top_layer:    document.getElementById("pgktop"),
+		bottom_layer: document.getElementById("pgkbtm"),
+		right_layer:  document.getElementById("pgkrgt"),
+		left_layer:   document.getElementById("pgklft"),
+		color1: page.kbcolor1, color2: page.kbcolor2,
+		z: pg_get_style(document.getElementById("pgtop"), 'zIndex') + 100,
+	    });
 	    }
 	}
+	
+    // Clear resize handling.
+    delete pg_area_resize_handlers.mouse_focus;
+    delete pg_area_resize_handlers.data_focus;
+    delete pg_area_resize_handlers.kbd_focus;
+    
     return true;
     }
 
 function pg_setdatafocus(a)
     {
+    if (!a) return false;
+    
     var x = getPageX(a.layer)+a.x;
     var y = getPageY(a.layer)+a.y;
     var w = a.width;
     var h = a.height;
     var l = a.layer; 
+    
+    // Setup resize handling.
+    pg_area_resize_handlers.data_focus = () => {
+	// Recall function to update values.
+	pg_setdatafocus(a);
+    };
 
     // hide old data focus box
     if (l.pg_dttop != null)
@@ -2015,16 +2116,36 @@ function pg_setdatafocus(a)
     // draw new data focus box
     if (cx__capabilities.Dom0NS)
 	{	        
-	pg_mkbox(l,x-1,y-1,w+2,h+2, 1, l.pg_dttop,l.pg_dtbtm,l.pg_dtrgt,l.pg_dtlft, page.dtcolor1, page.dtcolor2, document.layers.pgtop.zIndex+100);
+	pg_init_box({
+	    parent_layer: l,
+	    x: x - 1, y: y - 1, w: w + 2, h: h + 2, s: 1,
+	    top_layer:    l.pg_dttop,
+	    bottom_layer: l.pg_dtbtm,
+	    right_layer:  l.pg_dtrgt,
+	    left_layer:   l.pg_dtlft,
+	    color1: page.dtcolor1, color2: page.dtcolor2,
+	    z: document.layers.pgtop.zIndex + 100,
+	});
 	}
     else if (cx__capabilities.Dom1HTML)
 	{
-	pg_mkbox(l,x-1,y-1,w+2,h+2, 1, l.pg_dttop,l.pg_dtbtm,l.pg_dtrgt,l.pg_dtlft, page.dtcolor1, page.dtcolor2, pg_get_style(document.getElementById("pgtop"),'zIndex')+100);
+	pg_init_box({
+	    parent_layer: l,
+	    x: x - 1, y: y - 1, w: w + 2, h: h + 2, s: 1,
+	    top_layer:    l.pg_dttop,
+	    bottom_layer: l.pg_dtbtm,
+	    right_layer:  l.pg_dtrgt,
+	    left_layer:   l.pg_dtlft,
+	    color1: page.dtcolor1, color2: page.dtcolor2,
+	    z: pg_get_style(document.getElementById("pgtop"),'zIndex') + 100,
+	});
 	}
     }
 
 function pg_setkbdfocus(l, a, xo, yo)
     {
+    if (!l) return false;
+    
     var from_kbd = false;
     if (xo == null && yo == null)
 	{
@@ -2056,23 +2177,27 @@ function pg_setkbdfocus(l, a, xo, yo)
     pg_curkbdarea = a;
     pg_curkbdlayer = l;
 
+    // Setup resize handling.
+    pg_area_resize_handlers.kbd_focus = () => {
+	// Recall function to update values.
+	pg_setkbdfocus(l, a, xo, yo);
+    };
+
     if (pg_curkbdlayer && pg_curkbdlayer.getfocushandler)
 	{
 	v=pg_curkbdlayer.getfocushandler(xo,yo,a.layer,a.cls,a.name,a,from_kbd);
 	if (v & 1)
 	    {
-	    // mk box for kbd focus
-	    //if (prevArea != a)
-	//	{
-	//	if (cx__capabilities.Dom0NS)
-	//	    {
-	//	    pg_mkbox(l ,x,y,w,h, 1, document.layers.pgktop,document.layers.pgkbtm,document.layers.pgkrgt,document.layers.pgklft, page.kbcolor1, page.kbcolor2, document.layers.pgtop.zIndex+100);
-	//	    }
-	//	else if (cx__capabilities.Dom1HTML)
-	//	    {		    
-		    pg_mkbox(l ,x,y,w,h, 1, document.getElementById("pgktop"),document.getElementById("pgkbtm"),document.getElementById("pgkrgt"),document.getElementById("pgklft"), page.kbcolor1, page.kbcolor2, htr_getzindex(document.getElementById("pgtop"))+100);
-	//	    }
-	//	}
+	    pg_init_box({
+		parent_layer: l,
+		x, y, w, h, s: 1,
+		top_layer:    document.getElementById("pgktop"),
+		bottom_layer: document.getElementById("pgkbtm"),
+		right_layer:  document.getElementById("pgkrgt"),
+		left_layer:   document.getElementById("pgklft"),
+		color1: page.kbcolor1, color2: page.kbcolor2,
+		z: htr_getzindex(document.getElementById("pgtop")) + 100,
+	    });
 	    }
 	if (v & 2)
 	    {
@@ -3028,9 +3153,12 @@ function pg_check_resize(l)
 	{
 	if (wgtrGetServerProperty(l, "height") != $(l).height())
 	    {
-	    if (wgtrGetParent(l).childresize)
+	    const parent = wgtrGetParent(l);
+	    if (parent.childresize)
 		{
-		var geom = wgtrGetParent(l).childresize(l, wgtrGetServerProperty(l, "width"), wgtrGetServerProperty(l, "height"), $(l).width(), $(l).height());
+		const width = wgtrGetServerProperty(l, "width");
+		const height = wgtrGetServerProperty(l, "height");
+		const geom = parent.childresize(l, width, height, $(l).width(), $(l).height());
 		if (geom)
 		    {
 		    wgtrSetServerProperty(l, "height", geom.height);

@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2003 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -359,7 +359,20 @@ function ca_mousemove(e)
     }
 
 // Widget initialization.
-function ca_init(l,main_bg,cell_bg,textcolor,dispmode,eventdatefield,eventdescfield,eventnamefield,eventpriofield,minprio,w,h)
+function ca_init({
+    l,
+    main_bg,
+    cell_bg,
+    textcolor,
+    dispmode,
+    eventdatefield,
+    eventdescfield,
+    eventnamefield,
+    eventpriofield,
+    minprio,
+    w,
+    h
+})
     {
     l.kind = 'ca';
     if (cx__capabilities.Dom0NS) 
@@ -400,7 +413,6 @@ function ca_init(l,main_bg,cell_bg,textcolor,dispmode,eventdatefield,eventdescfi
     l.keyhandler = ca_keyhandler;
     l.getfocushandler = ca_getfocus;
     l.losefocushandler = ca_losefocus;
-    //pg_addarea(l, -1,-1,l.clip.width+1,l.clip.height+1, 'ebox', 'ebox', is_readonly?0:3);
 
     // Internal functions
     l.Redraw = ca_redraw;

@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -20,6 +20,19 @@ function htutil_tag_images(d,t,l,ml)
 	}
     }
 
+/*** Writes DOM nodes for a pointing UI element.
+ *** 
+ *** @param wthis The widget targetted by the point.
+ *** @param x The x value for where to point.
+ *** @param y The y value for where to point.
+ *** @param at True to point at a widget, false to point at the coordinates
+ *** 	specified above.
+ *** @param bc The border color of the point element.
+ *** @param fc The fill color of the point element.
+ *** @param p1 Point DOM node 1 (optional).
+ *** @param p2 Point DOM node 2 (optional).
+ *** @returns { p1, p2 } Pointers to the two possibly new DOM nodes.
+ ***/
 function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
     {
     // Determine x/y to point at
@@ -97,14 +110,12 @@ function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
 	if (side == 'top') top -= 2;
 	}
 
-    // Create the "point divs" if needed
-    if (!p1)
-	{
-	p1 = htr_new_layer(size*2, document);
-	p2 = htr_new_layer(size*2, document);
-	}
+    // Create point DOM nodes, if needed.
+    if (!p1) p1 = htr_new_layer(size*2, document);
+    if (!p2) p2 = htr_new_layer(size*2, document);
 
     // Set the CSS to enable the point divs
+    const { top: wtop, left: wleft } = $(wthis).offset();
     $(p1).css
 	({
 	"position": "absolute",
@@ -114,8 +125,8 @@ function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
 	"border-style": "solid",
 	"box-sizing": "border-box",
 	"content": "",
-	"top": (top + $(wthis).offset().top) + "px",
-	"left": (left + $(wthis).offset().left) + "px",
+	"top": (top + wtop) + "px",
+	"left": (left + wleft) + "px",
 	"border-color": c1,
 	"visibility": "inherit",
 	"z-index": htr_getzindex(wthis) + 1
@@ -129,8 +140,8 @@ function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
 	"border-style": "solid",
 	"box-sizing": "border-box",
 	"content": "",
-	"top": (top + doffs.y + $(wthis).offset().top) + "px",
-	"left": (left + doffs.x + $(wthis).offset().left) + "px",
+	"top": (top + doffs.y + wtop) + "px",
+	"left": (left + doffs.x + wleft) + "px",
 	"border-color": c2,
 	"visibility": "inherit",
 	"z-index": htr_getzindex(wthis) + 2

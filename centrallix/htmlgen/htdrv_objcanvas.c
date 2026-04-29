@@ -14,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2004 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2004-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -59,17 +59,17 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
     char main_bg[128];
     char osrc[64];
     int x=-1,y=-1,w,h;
-    int id;
     int allow_select, show_select;
 
-	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
-	    {
-	    mssError(1,"HTOC","Netscape DOM or W3C DOM1 HTML and CSS support required");
-	    return -1;
-	    }
+	/** Get an id for this. **/
+	const int id = (HTOC.idcnt++);
 
-    	/** Get an id for this. **/
-	id = (HTOC.idcnt++);
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	    {
+	    mssError(1, "HTOC", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
+	    }
 
     	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(oc_node,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
@@ -77,12 +77,12 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 	if (wgtrGetPropertyValue(oc_node,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTOC","Pane widget must have a 'width' property");
-	    return -1;
+	    goto err;
 	    }
 	if (wgtrGetPropertyValue(oc_node,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    mssError(1,"HTOC","Pane widget must have a 'height' property");
-	    return -1;
+	    goto err;
 	    }
 
 	/** Background color/image? **/
@@ -96,50 +96,99 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 
 	/** allow selection of objects? **/
 	allow_select = htrGetBoolean(oc_node, "allow_selection", 0);
+	if (allow_select < 0) goto err;
 
 	/** show current selection? **/
 	show_select = htrGetBoolean(oc_node, "show_selection", 0);
+	if (show_select < 0) goto err;
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(oc_node,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(oc_node,"name",DATA_T_STRING,POD(&ptr)) != 0) goto err;
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Add css item for the layer **/
-	if (s->Capabilities.CSS2)
-	    htrAddStylesheetItem_va(s,"\t#oc%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; overflow: hidden; %STR}\n",id,x,y,w,h,z,main_bg);
-	else
-	    htrAddStylesheetItem_va(s,"\t#oc%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; HEIGHT:%POS; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#oc%POSbase { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"overflow:hidden; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"height:"ht_flex_format"; "
+		"z-index:%POS; "
+		"%STR "
+	    "}\n",
+	    id,
+	    ht_flex_x(x, oc_node),
+	    ht_flex_y(y, oc_node),
+	    ht_flex_w(w, oc_node),
+	    ht_flex_h(h, oc_node),
+	    z,
+	    main_bg
+	) != 0)
+	    {
+	    mssError(0, "HTOC", "Failed to write base CSS.");
+	    goto err;
+	    }
 
-	htrAddWgtrObjLinkage_va(s, oc_node, "oc%POSbase",id);
+ 	/** Link the widget to the DOM node. **/
+	if (htrAddWgtrObjLinkage_va(s, oc_node, "oc%POSbase", id)) goto err;
 
-	/** Include our necessary supporting js files **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_objcanvas.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
+	/** Include scripts. **/
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_objcanvas.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0) != 0) goto err;
 
-	/** Event Handlers **/
-	htrAddEventHandlerFunction(s, "document", "MOUSEUP", "oc", "oc_mouseup");
-	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "oc", "oc_mousedown");
-	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "oc", "oc_mouseover");
-	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "oc", "oc_mousemove");
-	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "oc", "oc_mouseout");
-   
+	/** Add event handlers. **/
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "oc", "ms_mousedown") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "oc", "ms_mousemove") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "oc", "ms_mouseout")  != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "oc", "ms_mouseover") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "oc", "ms_mouseup")   != 0) goto err;
+
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    oc_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), osrc:%[wgtrGetNodeRef(ns,\"%STR&SYM\")%]%[null%], allow_select:%INT, show_select:%INT, name:\"%STR&SYM\"});\n",
-		name, *osrc, osrc, !*osrc, allow_select, show_select, name);
+	if (htrAddScriptInit_va(s,
+	    "\toc_init({ "
+		"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"osrc:%[wgtrGetNodeRef(ns, '%STR&SYM')%]%[null%], "
+		"name:'%STR&SYM', "
+		"allow_select:%INT, "
+		"show_select:%INT, "
+	    "});\n",
+	    name, (osrc[0] != '\0'), osrc, (osrc[0] == '\0'), name,
+	    allow_select, show_select
+	) != 0)
+	    {
+	    mssError(0, "HTOC", "Failed to write JS init call.");
+	    goto err;
+	    }
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"oc%POSbase\">\n",id);
-	if (!s->Capabilities.CSS2) 
-	    htrAddBodyItem_va(s,"<BODY %STR><table width=%POS><tr><td>&nbsp;</td></tr></table>\n",main_bg,w);
+	if (htrAddBodyItem_va(s,"<div id='oc%POSbase'>\n", id) != 0)
+	    {
+	    mssError(0, "HTOC", "Failed to write HTML opening tag.");
+	    goto err;
+	    }
 
-	/** Check for objects within the pane. **/
-	htrRenderSubwidgets(s, oc_node, z+2);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, oc_node, z + 2) != 0) goto err;
 
 	/** End the containing layer. **/
-	if (!s->Capabilities.CSS2) htrAddBodyItem(s, "</BODY>");
-	htrAddBodyItem(s, "</DIV>\n");
+	if (htrAddBodyItem(s, "</div>\n") != 0)
+	    {
+	    mssError(0, "HTOC", "Failed to write HTML closing tag.");
+	    goto err;
+	    }
 
-    return 0;
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTOC",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    oc_node->Name, oc_node->Type, id
+	);
+	return -1;
     }
 
 

@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -46,6 +46,7 @@
 #include "cxlib/magic.h"
 #include "cxlib/xhash.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/mtsession.h"
 #include "ht_render.h"
 
 #define WGTR_MAX_PARAMS		(24)
@@ -1306,12 +1307,18 @@ wgtrGetPropertyType(pWgtrNode widget, char* name)
     pObjProperty prop;
 
 	ASSERTMAGIC(widget, MGK_WGTR);
-	if (!strcmp(name, "name")) return DATA_T_STRING;
-	else if (!strcmp(name, "outer_type")) return DATA_T_STRING;
-	else if (!strcmp(name, "x") || !strcmp(name, "y") || !strcmp(name, "width") || !strcmp(name, "height") ||
-		 !strcmp(name, "r_x") || !strcmp(name, "r_y") || !strcmp(name, "r_width") || !strcmp(name, "r_height") ||
-		 !strcmp(name, "fl_x") || !strcmp(name, "fl_y") || !strcmp(name, "fl_width") || !strcmp(name, "fl_height"))
+	if (strcmp(name, "name") == 0 || strcmp(name, "outer_type") == 0)
+	    return DATA_T_STRING;
+	else if (strcmp(name, "x") == 0 || strcmp(name, "y") == 0 || strcmp(name, "width") == 0 || strcmp(name, "height") == 0 ||
+		 strcmp(name, "r_x") == 0 || strcmp(name, "r_y") == 0 || strcmp(name, "r_width") == 0 || strcmp(name, "r_height") == 0 ||
+		 strcmp(name, "fl_x") == 0 || strcmp(name, "fl_y") == 0 || strcmp(name, "fl_width") == 0 || strcmp(name, "fl_height") == 0 ||
+		 strcmp(name, "fl_parent_w") == 0 || strcmp(name, "fl_parent_h") == 0)
 	    return DATA_T_INTEGER;
+	else if (strcmp(name, "fl_scale_x") == 0 || strcmp(name, "fl_scale_y") == 0 ||
+		 strcmp(name, "fl_scale_w") == 0 || strcmp(name, "fl_scale_h") == 0 ||
+		 strcmp(name, "fx") == 0 || strcmp(name, "fy") == 0 || strcmp(name, "fw") == 0 || strcmp(name, "fh") == 0)
+	    return DATA_T_DOUBLE;
+
 	count = xaCount(&(widget->Properties));
 	for (i=0;i<count;i++)
 	    {
@@ -1351,6 +1358,25 @@ wgtrGetPropertyValue(pWgtrNode widget, char* name, int datatype, pObjData val)
 		if (!strcmp(name+3, "y")) { val->Integer = widget->fl_y; return 0; }
 		if (!strcmp(name+3, "width")) { val->Integer = widget->fl_width; return 0; }
 		if (!strcmp(name+3, "height")) { val->Integer = widget->fl_height; return 0; }
+		if (!strcmp(name+3, "parent_w")) { val->Integer = widget->fl_parent_w; return 0; }
+		if (!strcmp(name+3, "parent_h")) { val->Integer = widget->fl_parent_h; return 0; }
+		}
+	    }
+	else if (datatype == DATA_T_DOUBLE)
+	    {
+	    if (strncmp(name, "fl_scale_", 9) == 0)
+		{
+		if 	(strcmp(name+9, "x") == 0) { val->Double = widget->fl_scale_x; return 0; }
+		else if (strcmp(name+9, "y") == 0) { val->Double = widget->fl_scale_y; return 0; }
+		else if (strcmp(name+9, "w") == 0) { val->Double = widget->fl_scale_w; return 0; }
+		else if (strcmp(name+9, "h") == 0) { val->Double = widget->fl_scale_h; return 0; }
+		}
+	    else if (strncmp(name, "f", 1) == 0)
+		{
+		if 	(strcmp(name+1, "x") == 0) { val->Double = widget->fx; return 0; }
+		else if (strcmp(name+1, "y") == 0) { val->Double = widget->fy; return 0; }
+		else if (strcmp(name+1, "w") == 0) { val->Double = widget->fw; return 0; }
+		else if (strcmp(name+1, "h") == 0) { val->Double = widget->fh; return 0; }
 		}
 	    }
 	else if (datatype == DATA_T_STRING)
@@ -1571,10 +1597,15 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 	node->fl_y = fly;
 	node->fl_width = flwidth;
 	node->fl_height = flheight;
+	node->fl_parent_h = -1;
+	node->fl_parent_w = -1;
+	node->fl_scale_x = 0.0;
+	node->fl_scale_y = 0.0;
+	node->fl_scale_w = 0.0;
+	node->fl_scale_h = 0.0;
 	node->ObjSession = s;
 	node->Parent = NULL;
-	node->min_height = 0;
-	node->min_width = 0;
+	node->min_height = node->min_width = 0;
 	node->LayoutGrid = NULL;
 	node->Root = node;  /* this will change when it is added as a child */
 	node->DMPrivate = NULL;
@@ -2573,5 +2604,3 @@ wgtrGetNamespace(pWgtrNode widget)
     {
     return widget->Namespace;
     }
-
-

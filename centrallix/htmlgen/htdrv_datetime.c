@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include "ht_render.h"
 #include "obj.h"
+#include "cxlib/util.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
@@ -15,7 +16,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -66,7 +67,6 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
     char form[64];
     int type;
     int x,y,w,h,w2=184,h2=190;
-    int id, i;
     int rval;
     int search_by_range;
     int date_only = 0;
@@ -76,14 +76,15 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
     pObjQuery qy;
     pObject qy_obj;
 
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
-	    {
-	    mssError(1,"HTDT","Netscape or W3C DOM support required");
-	    return -1;
-	    }
-
 	/** Get an id for this. **/
-	id = (HTDT.idcnt++);
+	const int id = (HTDT.idcnt++);
+
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	    {
+	    mssError(1, "HTDT", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
+	    }
 
 	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0)
@@ -174,94 +175,169 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	if (strlen(initialdate))
 	    {
-	    objDataToDateTime(DATA_T_STRING, initialdate, &dt, NULL);
-	    qpfPrintf(NULL, initialdate, sizeof(initialdate), "%STR %INT %INT, %INT:%INT:%INT", obj_short_months[dt.Part.Month], 
-	                          dt.Part.Day+1,
-	                          dt.Part.Year+1900,
-	                          dt.Part.Hour,
-	                          dt.Part.Minute,
-	                          dt.Part.Second);
+	    snprintf(
+		initialdate, sizeof(initialdate),
+		"%s %d %d, %d:%d%d",
+		obj_short_months[dt.Part.Month], 
+		dt.Part.Day + 1,
+		dt.Part.Year + 1900,
+		dt.Part.Hour,
+		dt.Part.Minute,
+		dt.Part.Second
+	    );
 	    }
 	
 
 	/** Get colors **/
 	htrGetBackground(tree, NULL, 1, bgcolor, sizeof(bgcolor));
 	if (!*bgcolor) strcpy(bgcolor,"background-color:white;");
-	//else strcpy(bgcolor, "bgcolor=green");
-
-///////////////////////////////////////
-//	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
-//	    sprintf(bgcolor,"%.40s",ptr);
-//	else {
-	    //mssError(1,"HTDD","Date Time widget must have a 'bgcolor' property");
-	    //return -1;
-	    //strcpy(bgcolor,"blue");
-//	}
 	
 	if (wgtrGetPropertyValue(tree,"fgcolor",DATA_T_STRING,POD(&ptr)) == 0)
 	    strtcpy(fgcolor,ptr,sizeof(fgcolor));
 	else
 	    strcpy(fgcolor,"black");
 
-	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#dt%POSbtn  { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; cursor:default; border:1px outset #e0e0e0; %STR }\n",id,x,y,w,h,z, bgcolor);
-	htrAddStylesheetItem_va(s,"\t#dt%POScon1 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:1px; TOP:1px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
-	htrAddStylesheetItem_va(s,"\t#dt%POScon2 { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:hidden; LEFT:1px; TOP:1px; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,w-20,h-2,z+1);
+	/** Write style headers. **/
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#dt%POSbtn { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"overflow:hidden; "
+		"cursor:pointer; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"height:"ht_flex_format"; "
+		"z-index:%POS; "
+		"border:1px outset #e0e0e0; "
+		"%STR "
+	    "}\n",
+	    id,
+	    ht_flex_x(x, tree),
+	    ht_flex_y(y, tree),
+	    ht_flex_w(w, tree),
+	    ht_flex_h(h, tree),
+	    z,
+	    bgcolor
+	) != 0)
+	    {
+	    mssError(0, "HTDT", "Failed to write datetime button CSS.");
+	    goto err;
+	    }
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t.dt%POScon { "
+		"position:absolute; "
+		"overflow:hidden; "
+		"left:1px; "
+		"top:1px; "
+		"width:calc(100%% - 20px); "
+		"height:calc(100%% - 2px); "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    z + 1
+	) != 0)
+	    {
+	    mssError(0, "HTDT", "Failed to write datetime con CSS.");
+	    goto err;
+	    }
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t.dt_dropdown { "
+		"cursor:default; "
+	    "}\n",
+	    id
+	) != 0)
+	    {
+	    mssError(0, "HTDT", "Failed to write datetime dropdown CSS.");
+	    goto err;
+	    }
 
-	/** Write named global **/
-	htrAddScriptGlobal(s, "dt_current", "null", 0);
-	htrAddScriptGlobal(s, "dt_timeout", "null", 0);
-	htrAddScriptGlobal(s, "dt_timeout_fn", "null", 0);
-	htrAddScriptGlobal(s, "dt_img_y", "0", 0);
+ 	/** Link the widget to the DOM node. **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "dt%POSbtn", id) != 0)
+	    {
+	    mssError(0, "HTDT", "Failed to add object linkage.");
+	    goto err;
+	    }
 
-	htrAddWgtrObjLinkage_va(s, tree, "dt%POSbtn",id);
+	/** Write named globals. **/
+	if (htrAddScriptGlobal(s, "dt_current", "null", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "dt_img_y", "0", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "dt_timeout_fn", "null", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "dt_timeout", "null", 0) != 0) goto err;
 
 	/** Script includes **/
-	htrAddScriptInclude(s, "/sys/js/ht_utils_date.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
-	htrAddScriptInclude(s, "/sys/js/htdrv_datetime.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_date.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_datetime.js", 0) != 0) goto err;
 
-	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    dt_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"),c1:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"dt%POScon1\"),c2:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"dt%POScon2\"),id:\"%STR&JSSTR\", background:\"%STR&JSSTR\", foreground:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", form:\"%STR&JSSTR\", width:%INT, height:%INT, width2:%INT, height2:%INT, sbr:%INT, donly:%INT, dtime:\"%STR&JSSTR\"})\n",
-	    name,
-	    name,id, 
-	    name,id, 
-	    initialdate, bgcolor, fgcolor, fieldname, form,
-	    w-20, h, w2,h2,
+	/** Add the event handling scripts. **/
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "dt","dt_mousedown") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "dt","dt_mousemove") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "dt","dt_mouseout")  != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "dt","dt_mouseover") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "dt","dt_mouseup")   != 0) goto err;
+
+	/** Write the initialization call in its own scope. **/
+	if (htrAddScriptInit_va(s, "\t{ "
+	    "const layer = wgtrGetNodeRef(ns, '%STR&SYM'); "
+	    "dt_init({ "
+	        "layer, "
+		"c1:htr_subel(layer, 'dt%POScon1'), "
+		"c2:htr_subel(layer, 'dt%POScon2'), "
+		"id:'%STR&JSSTR', "
+		"background:'%STR&JSSTR', "
+		"foreground:'%STR&JSSTR', "
+		"fieldname:'%STR&JSSTR', "
+		"form:'%STR&JSSTR', "
+		"width:%INT, "
+		"height:%INT, "
+		"width2:%INT, "
+		"height2:%INT, "
+		"sbr:%INT, "
+		"donly:%INT, "
+		"dtime:'%STR&JSSTR', "
+	    "}); }\n",
+	    name, id, id,
+	    initialdate,
+	    bgcolor, fgcolor, fieldname, form,
+	    w - 20, h, w2, h2,
 	    search_by_range,
-	    date_only, default_time);
+	    date_only, default_time
+	) != 0)
+	    {
+	    mssError(0, "HTDT", "Failed to render child widgets.");
+	    goto err;
+	    }
 
-	/** HTML body <DIV> elements for the layers. **/
-	htrAddBodyItem_va(s,"<DIV ID=\"dt%POSbtn\">\n"
-			    "<IMG SRC=\"/sys/images/ico17.gif\" style=\"float:right;\">\n", id);
-	/*htrAddBodyItem_va(s,"<TABLE width=%POS cellspacing=0 cellpadding=0 border=0>\n",w);
-	htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/white_1x1.png></TD>\n");
-	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/white_1x1.png height=1 width=%POS></TD>\n",w-2);
-	htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/white_1x1.png></TD></TR>\n");
-	htrAddBodyItem_va(s,"   <TR><TD><IMG SRC=/sys/images/white_1x1.png height=%POS width=1></TD>\n",h-2);
-	htrAddBodyItem(s,   "       <TD align=right valign=middle><IMG SRC=/sys/images/ico17.gif></TD>\n");
-	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=%POS width=1></TD></TR>\n",h-2);
-	htrAddBodyItem(s,   "   <TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD>\n");
-	htrAddBodyItem_va(s,"       <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width=%POS></TD>\n",w-2);
-	htrAddBodyItem(s,   "       <TD><IMG SRC=/sys/images/dkgrey_1x1.png></TD></TR>\n");
-	htrAddBodyItem(s,   "</TABLE>\n");*/
-	htrAddBodyItem_va(s,"<DIV ID=\"dt%POScon1\"></DIV>\n",id);
-	htrAddBodyItem_va(s,"<DIV ID=\"dt%POScon2\"></DIV>\n",id);
-	htrAddBodyItem(s,   "</DIV>\n");
+	/** Write HTML. **/
+	if (htrAddBodyItem_va(s,
+	    "<div id='dt%POSbtn'>"
+		"<img src='/sys/images/ico17.gif' alt='icon' style='float:right;'>"
+		"<div id='dt%POScon1' class='dt%POScon' style='visibility:inherit;'></div>"
+		"<div id='dt%POScon2' class='dt%POScon' style='visibility:hidden;'></div>"
+	    "</div>\n",
+	    id,
+	    id, id,
+	    id, id
+	) != 0)
+	    {
+	    mssError(0, "HTDT", "Failed to write datetime HTML.");
+	    goto err;
+	    }
 
-	/** Add the event handling scripts **/
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN","dt","dt_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEUP","dt","dt_mouseup");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE","dt","dt_mousemove");
-	htrAddEventHandlerFunction(s, "document","MOUSEOVER","dt","dt_mouseover");
-	htrAddEventHandlerFunction(s, "document","MOUSEOUT","dt","dt_mouseout");
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto err;
 
-	/** Check for more sub-widgets within the datetime. **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
+	/** Success. **/
+	return 0;
 
-    return 0;
+    err:
+	mssError(0, "HTDT",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
+	);
+	return -1;
     }
 
 
@@ -301,4 +377,3 @@ htdtInitialize()
 
     return 0;
     }
-

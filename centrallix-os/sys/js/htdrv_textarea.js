@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -318,10 +318,11 @@ function tx_init(param)
         }
     l.mode = param.mode; // 0=text, 1=html, 2=wiki
     l.isFormStatusWidget = false;
-    if (cx__capabilities.CSSBox)
-	pg_addarea(l, -1, -1, $(l).width()+3, $(l).height()+3, 'tbox', 'tbox', param.isReadonly?0:3);
-    else
-	pg_addarea(l, -1, -1, $(l).width()+1, $(l).height()+1, 'tbox', 'tbox', param.isReadonly?0:3);
+
+    // Add the hover area.
+    const area_adj = (cx__capabilities.CSSBox) ? 3 : 1;
+    pg_addarea(l, -1, -1, () => $(l).width() + area_adj, () => $(l).height() + area_adj, 'ebox', 'ebox', (param.isReadOnly) ? 0 : 3);
+
     if (param.form)
 	l.form = wgtrGetNode(l, param.form);
     else

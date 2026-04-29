@@ -9,7 +9,7 @@ test(char** tname)
     {
     int i;
     int iter;
-    int array[2];
+    int array[2] = {0};
 
 	*tname = "BASELINE - should pass";
 	iter = 1000*1000*300;
@@ -17,4 +17,3 @@ test(char** tname)
 
     return iter;
     }
-

@@ -15,7 +15,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -61,23 +61,24 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
     char descfg[64];
     char descr[128];
     int x=-1,y=-1,w,h;
-    int id, i;
+    int rval = -1;
     int is_readonly = 0;
     int is_raised = 0;
-    char* tooltip;
+    char* tooltip = NULL;
     int maxchars;
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
     int box_offset;
 
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !s->Capabilities.Dom2Events)
-	    {
-	    mssError(1,"HTEB","Netscape, IE, or Dom2Events support required");
-	    return -1;
-	    }
+	/** Get an id for this. **/
+	const int id = (HTEB.idcnt++);
 
-    	/** Get an id for this. **/
-	id = (HTEB.idcnt++);
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	    {
+	    mssError(1, "HTEB", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto end;
+	    }
 
     	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
@@ -137,6 +138,11 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    tooltip=nmSysStrdup(ptr);
 	else
 	    tooltip=nmSysStrdup("");
+	if (tooltip == NULL)
+	    {
+	    mssError(1, "HTEB", "Failed to allocate tooltip.");
+	    goto end;
+	    }
 
 	if (wgtrGetPropertyValue(tree,"form",DATA_T_STRING,POD(&ptr)) == 0)
 	    strtcpy(form,ptr,sizeof(form));
@@ -149,60 +155,155 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    box_offset = 0;
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#eb%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
-	htrAddStylesheetItem_va(s,"\t#eb%POScon1 { VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; border:none; }\n",id,5,0,w-10,z+1);
+	const int base_w = w - (2 * box_offset);
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#eb%POSbase { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"overflow:hidden; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    ht_flex(x,      ht_get_parent_w(tree), ht_get_fl_x(tree)),
+	    ht_flex(y,      ht_get_parent_h(tree), ht_get_fl_y(tree)),
+	    ht_flex(base_w, ht_get_parent_w(tree), ht_get_fl_w(tree)),
+	    z
+	) != 0)
+	    {
+	    mssError(0, "HTEB", "Failed to write base CSS.");
+	    goto end;
+	    }
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#eb%POScon1 { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"left:5px; "
+		"top:0px; "
+		"width:calc(100%% - 10px); "
+		"height:100%%; "
+		"border:none; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    z + 1
+	) != 0)
+	    {
+	    mssError(0, "HTEB", "Failed to write con1 CSS.");
+	    goto end;
+	    }
 
-	/** Write named global **/
-	htrAddWgtrObjLinkage_va(s, tree, "eb%POSbase",id);
+ 	/** Link the widget to the DOM node. **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "eb%POSbase", id) != 0) goto end;
 
-	/** Global for ibeam cursor layer **/
-	htrAddScriptGlobal(s, "text_metric", "null", 0);
-	htrAddScriptGlobal(s, "eb_current", "null", 0);
+	/** Write JS globals. **/
+	if (htrAddScriptGlobal(s, "eb_current", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "text_metric", "null", 0) != 0) goto end;
 
-	/** Script include to get functions **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_editbox.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_cursor.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
-
-	htrAddEventHandlerFunction(s, "document","MOUSEUP", "eb", "eb_mouseup");
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "eb", "eb_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "eb", "eb_mouseover");
-	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "eb", "eb_mouseout");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "eb", "eb_mousemove");
-	htrAddEventHandlerFunction(s, "document","PASTE", "eb", "eb_paste");
+	/** Write JS script includes. **/
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_cursor.js", 0) != 0) goto end;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js",  0) != 0) goto end;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0) != 0) goto end;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_editbox.js",   0) != 0) goto end;
+	
+	/** Register JS event handlers. **/
+	if (htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "eb", "eb_mousedown") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "eb", "eb_mousemove") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document","MOUSEOUT",  "eb", "eb_mouseout")  != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document","MOUSEOVER", "eb", "eb_mouseover") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document","MOUSEUP",   "eb", "eb_mouseup")   != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document","PASTE",     "eb", "eb_paste")     != 0) goto end;
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    eb_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), c1:document.getElementById(\"eb%POScon1\"), form:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", isReadOnly:%INT, mainBackground:\"%STR&JSSTR\", tooltip:\"%STR&JSSTR\", desc_fgcolor:\"%STR&JSSTR\", empty_desc:\"%STR&JSSTR\"});\n",
-	    name,  id,
-	    form, fieldname, is_readonly, main_bg,
-	    tooltip, descfg, descr);
+	if (htrAddScriptInit_va(s,
+	    "\teb_init({ "
+		"layer:wgtrGetNodeRef(ns,'%STR&SYM'), "
+		"c1:document.getElementById('eb%POScon1'), "
+		"form:'%STR&JSSTR', "
+		"fieldname:'%STR&JSSTR', "
+		"isReadOnly:%INT, "
+		"mainBackground:'%STR&JSSTR', "
+		"tooltip:'%STR&JSSTR', "
+		"desc_fgcolor:'%STR&JSSTR', "
+		"empty_desc:'%STR&JSSTR', "
+	    "});\n",
+	    name, id,
+	    form, fieldname,
+	    is_readonly,
+	    main_bg, tooltip,
+	    descfg, descr
+	) != 0)
+	    {
+	    mssError(0, "HTEB", "Failed to write JS init call.");
+	    goto end;
+	    }
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"eb%POSbase\">\n",id);
+	if (htrAddBodyItem_va(s, "<div id='eb%POSbase'>\n", id) != 0)
+	    {
+	    mssError(0, "HTEB", "Failed to write base HTML.");
+	    goto end;
+	    }
 
 	/** Use CSS border for drawing **/
-	if (is_raised)
-	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: white gray gray white; %STR }\n",id, main_bg);
-	else
-	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n",id, main_bg);
-	if (h >= 0)
-	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { height:%POSpx; }\n\t#eb%POScon1 { height:%POSpx; }\n", id, h-2*box_offset, id, h-2*box_offset-2);
+	const char* border_colors = (is_raised) ? "white gray gray white" : "gray white white gray";
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#eb%POSbase { "
+		"border-style:solid; "
+		"border-width:1px; "
+		"border-color:%STR; "
+		"%[height:"ht_flex_format"; %]"
+		"%STR "
+	    "}\n",
+	    id,
+	    border_colors,
+	    (h >= 0), ht_flex_h(h - (2 * box_offset), tree),
+	    main_bg
+	) != 0)
+	    {
+	    mssError(0, "HTEB", "Failed to write base CSS.");
+	    goto end;
+	    }
 
-	//htrAddBodyItem_va(s, "<table border='0' cellspacing='0' cellpadding='0' width='%POS'><tr><td align='left' valign='middle' height='%POS'><img name='l' src='/sys/images/eb_edg.gif'></td><td>&nbsp;</td><td align='right' valign='middle'><img name='r' src='/sys/images/eb_edg.gif'></td></tr></table>\n", w-2, h-2);
-	//htrAddBodyItem_va(s, "<DIV ID=\"eb%POScon1\"></DIV>\n",id);
-	htrAddBodyItem_va(s, "<img name=\"l\" src=\"/sys/images/eb_edg.gif\" style=\"vertical-align:10%%\" /><input id=\"eb%POScon1\" /><img name=\"r\" src=\"/sys/images/eb_edg.gif\" style=\"vertical-align:10%%\" />\n",id);
+	if (htrAddBodyItem_va(s,
+	    "<img data-side='left' src='/sys/images/eb_edg.gif' alt='' style='vertical-align:10%%'>"
+	    "<input id='eb%POScon1'>"
+	    "<img data-side='right' src='/sys/images/eb_edg.gif' alt='' style='vertical-align:10%%'>\n",
+	    id
+	) != 0)
+	    {
+	    mssError(0, "HTEB", "Failed to render child widgets.");
+	    goto end;
+	    }
 
-	/** Check for more sub-widgets **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto end;
 
 	/** End the containing layer. **/
-	htrAddBodyItem(s, "</DIV>\n");
+	if (htrAddBodyItem(s, "</div>") != 0)
+	    {
+	    mssError(0, "HTEB", "Failed to write HTML closing tag.");
+	    goto end;
+	    }
 
-	nmSysFree(tooltip);
+	/** Success. **/
+	rval = 0;
 
-    return 0;
+    end:
+	if (rval != 0)
+	    {
+	    mssError(0, "HTEB",
+		"Failed to render \"%s\":\"%s\" (id: %d).",
+		tree->Name, tree->Type, id
+	    );
+	    }
+	
+	/** Clean up. **/
+	if (tooltip != NULL) nmSysFree(tooltip);
+	
+	return rval;
     }
 
 

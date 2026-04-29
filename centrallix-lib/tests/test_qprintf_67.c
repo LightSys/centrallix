@@ -25,21 +25,21 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "4142434D4E4F#");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "%STR&DHEX", "4142434D4E4F#");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "414243#4D4E4F");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "%STR&DHEX", "414243#4D4E4F");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "41424#34D4E4F");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "%STR&DHEX", "41424#34D4E4F");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "#4142434D4E4F");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "%STR&DHEX", "#4142434D4E4F");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "4142434D4E4");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "%STR&DHEX", "4142434D4E4");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "4142434D4E4F");
-	    assert(strcmp(buf+4,"ABCMNO") == 0);
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "%STR&DHEX", "4142434D4E4F");
+	    assert(strcmp((char*)buf+4,"ABCMNO") == 0);
 	    assert(rval == 6);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "4142434d4e4f");
-	    assert(strcmp(buf+4,"ABCMNO") == 0);
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "%STR&DHEX", "4142434d4e4f");
+	    assert(strcmp((char*)buf+4,"ABCMNO") == 0);
 	    assert(rval == 6);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
@@ -53,4 +53,3 @@ test(char** tname)
 
     return iter*7;
     }
-

@@ -1,20 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -42,6 +30,19 @@
 /*		layer.  Can contain most objects, except for framesets.	*/
 /************************************************************************/
 
+#include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+
+#include "cxlib/mtask.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "ht_render.h"
+#include "obj.h"
+
 
 /** globals **/
 static struct 
@@ -56,145 +57,275 @@ static struct
 int
 htspaneRender(pHtSession s, pWgtrNode tree, int z)
     {
-    char* ptr;
-    char name[64];
-    int x,y,w,h;
-    int id, i;
-    int visible = 1;
-    char bcolor[64] = "";
-    char bimage[64] = "";
-
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE &&!(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
+    char* str;
+	
+	/** Get an id for this scrollpane. **/
+	const int id = (HTSPANE.idcnt++);
+	
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1,"HTSPANE","Netscape DOM or W3C DOM1 HTML and DOM2 CSS support required");
-	    return -1;
+	    mssError(1, "HTSPANE", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
 	    }
-
-    	/** Get an id for this. **/
-	id = (HTSPANE.idcnt++);
-
-    	/** Get x,y,w,h of this object **/
-	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) 
+	
+	/** Get name. **/
+	char name[64];
+	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&str)) != 0)
 	    {
-	    mssError(1,"HTSPANE","ScrollPane widget must have an 'x' property");
-	    return -1;
+	    mssError(1, "HTSPANE", "widget/scrollpane must have a 'name' property.");
+	    goto err;
 	    }
-	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0)
+	strtcpy(name, str, sizeof(name));
+	
+	/** Get layout data (required). **/
+	int x, y, w, h;
+	if (wgtrGetPropertyValue(tree, "x", DATA_T_INTEGER, POD(&x)) != 0) 
 	    {
-	    mssError(1,"HTSPANE","ScrollPane widget must have a 'y' property");
-	    return -1;
+	    mssError(1, "HTSPANE", "widget/scrollpane must have an 'x' property.");
+	    goto err;
 	    }
-	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0)
+	if (wgtrGetPropertyValue(tree, "y", DATA_T_INTEGER, POD(&y)) != 0)
 	    {
-	    mssError(1,"HTSPANE","ScrollPane widget must have a 'width' property");
-	    return -1;
+	    mssError(1, "HTSPANE", "widget/scrollpane must have a 'y' property.");
+	    goto err;
 	    }
-	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
+	if (wgtrGetPropertyValue(tree, "width", DATA_T_INTEGER, POD(&w)) != 0)
 	    {
-	    mssError(1,"HTSPANE","ScrollPane widget must have a 'height' property");
-	    return -1;
+	    mssError(1, "HTSPANE", "widget/scrollpane must have a 'width' property.");
+	    goto err;
 	    }
-
-	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	strtcpy(name,ptr,sizeof(name));
-
-	/** Check background color **/
-	if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0)
+	if (wgtrGetPropertyValue(tree, "height", DATA_T_INTEGER, POD(&h)) != 0)
 	    {
-	    strtcpy(bcolor,ptr,sizeof(bcolor));
+	    mssError(1, "HTSPANE", "widget/scrollpane must have a 'height' property.");
+	    goto err;
 	    }
-	if (wgtrGetPropertyValue(tree,"background",DATA_T_STRING,POD(&ptr)) == 0)
+	
+	/** Get the background color or image. **/
+	char background_color[64] = "";
+	if (wgtrGetPropertyValue(tree, "bgcolor", DATA_T_STRING, POD(&str)) == 0)
 	    {
-	    strtcpy(bimage,ptr,sizeof(bimage));
+	    strtcpy(background_color, str, sizeof(background_color));
 	    }
-
-	/** Marked not visible? **/
-	if (wgtrGetPropertyValue(tree,"visible",DATA_T_STRING,POD(&ptr)) == 0)
+	char background_image[64] = "";
+	if (wgtrGetPropertyValue(tree, "background", DATA_T_STRING, POD(&str)) == 0)
 	    {
-	    if (!strcmp(ptr,"false")) visible = 0;
+	    strtcpy(background_image, str, sizeof(background_image));
 	    }
-
-	/** Ok, write the style header items. **/
-	if (s->Capabilities.Dom0NS)
+	
+	/** Get visibility. **/
+	const int visible = htrGetBoolean(tree, "visible", 1);
+	if (visible == -1) goto err;
+	
+ 	/** Link the widget and container to DOM nodes. **/
+	if (htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(_obj, 'sp%POSarea')", id) != 0)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#sp%POSpane { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; clip:rect(0px,%POSpx,%POSpx,0px); Z-INDEX:%POS; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
-	    htrAddStylesheetItem_va(s,"\t#sp%POSarea { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,w-18,z+1);
-	    htrAddStylesheetItem_va(s,"\t#sp%POSthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:18px; WIDTH:18px; Z-INDEX:%POS; }\n",id,w-18,z+1);
+	    mssError(0, "HTSPANE", "Failed to add container linkage.");
+	    goto err;
 	    }
-
-	/** Write globals for internal use **/
-	htrAddScriptGlobal(s, "sp_target_img", "null", 0);
-	htrAddScriptGlobal(s, "sp_click_x","0",0);
-	htrAddScriptGlobal(s, "sp_click_y","0",0);
-	htrAddScriptGlobal(s, "sp_thum_y","0",0);
-	htrAddScriptGlobal(s, "sp_mv_timeout","null",0);
-	htrAddScriptGlobal(s, "sp_mv_incr","0",0);
-	htrAddScriptGlobal(s, "sp_cur_mainlayer","null",0);
-
-	/** DOM Linkages **/
-	htrAddWgtrObjLinkage_va(s, tree, "sp%POSpane",id);
-	htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(_obj, \"sp%POSarea\")",id);
-
-	htrAddScriptInclude(s, "/sys/js/htdrv_scrollpane.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
-
-	htrAddScriptInit_va(s,"    sp_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), aname:\"sp%POSarea\", tname:\"sp%POSthum\"});\n", name,id,id);
-
-	/** HTML body <DIV> elements for the layers. **/
-	if(s->Capabilities.Dom0NS)
+	if (htrAddWgtrObjLinkage_va(s, tree, "sp%POSpane", id) != 0)
 	    {
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSpane\"><TABLE %[bgcolor=\"%STR&HTE\"%] %[background=\"%STR&HTE\"%] border='0' cellspacing='0' cellpadding='0' width='%POS'>", id, *bcolor, bcolor, *bimage, bimage, w);
-	    htrAddBodyItem(s,   "<TR><TD align=right><IMG SRC='/sys/images/ico13b.gif' NAME='u'></TD></TR><TR><TD align=right>");
-	    htrAddBodyItem_va(s,"<IMG SRC='/sys/images/trans_1.gif' height='%POSpx' width='18px' name='b'>",h-36);
-	    htrAddBodyItem(s,   "</TD></TR><TR><TD align=right><IMG SRC='/sys/images/ico12b.gif' NAME='d'></TD></TR></TABLE>\n");
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSthum\"><IMG SRC='/sys/images/ico14b.gif' NAME='t'></DIV>\n<DIV ID=\"sp%POSarea\"><table border='0' cellpadding='0' cellspacing='0' width='%POSpx' height='%POSpx'><tr><td>",id,id,w-2,h-2);
+	    mssError(0, "HTSPANE", "Failed to add object linkage.");
+	    goto err;
 	    }
-	else if(s->Capabilities.Dom1HTML)
-	    {
-	    //htrAddStylesheetItem_va(s,"\t#sp%dpane { POSITION:absolute; VISIBILITY:%s; LEFT:%dpx; TOP:%dpx; WIDTH:%dpx; HEIGHT:%dpx; clip:rect(0px,%dpx,%dpx,0px); Z-INDEX:%d; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
-	    //htrAddStylesheetItem_va(s,"\t#sp%darea { HEIGHT: %dpx; WIDTH:%dpx; }\n",id, h, w-18);
-	    //htrAddStylesheetItem_va(s,"\t#sp%dthum { POSITION:absolute; VISIBILITY:inherit; LEFT:%dpx; TOP:18px; WIDTH:18px; Z-INDEX:%dpx; }\n",id,w-18,z+1);
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSpane\" style=\"POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; clip:rect(0px,%POSpx,%POSpx,0px); Z-INDEX:%POS;\">\n",id,visible?"inherit":"hidden",x,y,w,h,w,h,z);
-	    htrAddBodyItem_va(s,"<IMG ID=\"sp%POSup\" SRC='/sys/images/ico13b.gif' NAME='u'/>", id);
-	    htrAddBodyItem_va(s,"<IMG ID=\"sp%POSbar\" SRC='/sys/images/trans_1.gif' NAME='b'/>", id);
-	    htrAddBodyItem_va(s,"<IMG ID=\"sp%POSdown\" SRC='/sys/images/ico12b.gif' NAME='d'/>", id);
-	    htrAddStylesheetItem_va(s,"\t#sp%POSup { POSITION: absolute; LEFT: %INTpx; TOP: 0px; }\n",id, w-18);
-	    htrAddStylesheetItem_va(s,"\t#sp%POSbar { POSITION: absolute; LEFT: %INTpx; TOP: 18px; WIDTH: 18px; HEIGHT: %POSpx;}\n",id, w-18, h-36);
-	    htrAddStylesheetItem_va(s,"\t#sp%POSdown { POSITION: absolute; LEFT: %INTpx; TOP: %INTpx; }\n",id, w-18, h-18);
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSthum\" style=\"POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:18px; WIDTH:18px; Z-INDEX:%POS;\"><IMG SRC='/sys/images/ico14b.gif' NAME='t'></DIV>\n", id,w-18,z+1);
-	    htrAddBodyItem_va(s,"<DIV ID=\"sp%POSarea\" style=\"HEIGHT: %POSpx; POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:0px; WIDTH:%POSpx; Z-INDEX:%POS;\">",id,h,w-18,z+1);
-	    }
-	else
-	    {
-	    mssError(1,"HTSPNE","Browser not supported");
-	    }
-
+	
+	/** Include scrollpane script and its dependencies. **/
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js",  0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_scrollpane.js", 0) != 0) goto err;
+	
 	/** Add the event handling scripts **/
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN","sp","sp_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE","sp","sp_mousemove");
-	htrAddEventHandlerFunction(s, "document","MOUSEUP","sp","sp_mouseup");
-	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "sp","sp_mouseover");
-
-	/** Do subwidgets **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2);
-
-	/** Finish off the last <DIV> **/
-	if(s->Capabilities.Dom0NS)
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "sp", "sp_mousedown") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "sp", "sp_mousemove") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "sp", "sp_mouseover") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "sp", "sp_mouseup")   != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "WHEEL",     "sp", "sp_wheel")     != 0) goto err;
+	
+	/** Init the JS scripts. **/
+	if (htrAddScriptInit_va(s,
+	    "\tsp_init({"
+		"layer: wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"area_name: 'sp%POSarea', "
+		"thumb_name: 'sp%POSthumb', "
+	    "});\n",
+	    name, id, id
+	) != 0)
 	    {
-	    htrAddBodyItem(s,"</td></tr></table></DIV></DIV>\n");
+	    mssError(0, "HTSPANE", "Failed to write JS init call.");
+	    goto err;
 	    }
-	else if(s->Capabilities.Dom1HTML)
+	
+	/** Write the scrollpane. **/
+	if (htrAddBodyItem_va(s,
+	    "<div id='sp%POSpane' "
+		"style='"
+		    "position:absolute; "
+		    "visibility:%STR; "
+		    "overflow:clip; "
+		    "left:"ht_flex_format"; "
+		    "top:"ht_flex_format"; "
+		    "width:"ht_flex_format"; "
+		    "height:"ht_flex_format"; "
+		    "z-index:%POS; "
+		"'"
+	    ">\n",
+	    id,
+	    (visible) ? "inherit" : "hidden",
+	    ht_flex_x(x, tree),
+	    ht_flex_y(y, tree),
+	    ht_flex_w(w, tree),
+	    ht_flex_h(h, tree),
+	    z
+	) != 0)
 	    {
-	    htrAddBodyItem(s,"</DIV></DIV>\n");
+	    mssError(0, "HTSPANE", "Failed to write HTML for main scrollpane div.");
+	    goto err;
 	    }
-	else
+	
+	/** Write shared CSS for the following UI elements. **/
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t.sp%POS_scroll { "
+		"position:absolute; "
+		"left:"ht_flex_format"; "
+	    "}\n",
+	    id,
+	    ht_flex(w - 18, tree->width, 1.0)
+	) != 0)
 	    {
-	    mssError(1,"HTSPNE","browser not supported");
+	    mssError(0, "HTSPANE", "Failed to write shared CSS ui elements.");
+	    goto err;
 	    }
-
-    return 0;
+	
+	/** Write the up button. **/
+	if (htrAddBodyItem_va(s,
+	    "<img "
+		"data-type='up' "
+		"id='sp%POSup' "
+		"class='sp%POS_scroll' "
+		"src='/sys/images/ico13b.gif' "
+		"alt='up_button' "
+		"style='"
+		    "top:0px; "
+		    "cursor:pointer; "
+		"'"
+	    ">",
+	    id,
+	    id
+	) != 0)
+	    {
+	    mssError(0, "HTSPANE", "Failed to write HTML for the down button.");
+	    goto err;
+	    }
+	
+	/** Write the scroll bar. **/
+	if (htrAddBodyItem_va(s,
+	    "<img "
+		"data-type='bar' "
+		"id='sp%POSbar' "
+		"class='sp%POS_scroll' "
+		"src='/sys/images/trans_1.gif' "
+		"alt='scroll_bar' "
+		"style='"
+		    "top:18px; "
+		    "width:18px; "
+		    "height:"ht_flex_format"; "
+		"'"
+	    ">",
+	    id,
+	    id,
+	    ht_flex(h - 36, tree->height, 1.0)
+	) != 0)
+	    {
+	    mssError(0, "HTSPANE", "Failed to write HTML for the scroll bar.");
+	    goto err;
+	    }
+	
+	/** Write the down button. **/
+	if (htrAddBodyItem_va(s,
+	    "<img "
+		"data-type='down' "
+		"id='sp%POSdown' "
+		"class='sp%POS_scroll' "
+		"src='/sys/images/ico12b.gif' "
+		"alt='down_button' "
+		"style='"
+		    "top:"ht_flex_format"; "
+		    "cursor:pointer; "
+		"'"
+	    ">",
+	    id,
+	    id,
+	    ht_flex(h - 18, tree->height, 1.0)
+	) != 0)
+	    {
+	    mssError(0, "HTSPANE", "Failed to write HTML for the down button.");
+	    goto err;
+	    }
+	
+	/** Write the scroll thumb. **/
+	if (htrAddBodyItem_va(s,
+	    "<div "
+		"id='sp%POSthumb' "
+		"class='sp%POS_scroll' "
+		"style='"
+		    "visibility:inherit; "
+		    "top:18px; "
+		    "width:18px; "
+		    "z-index:%POS; "
+		"'"
+	    ">"
+		"<img data-type='thumb' src='/sys/images/ico14b.gif' alt='scroll_thumb'>"
+	    "</div>\n",
+	    id,
+	    id,
+	    z + 1
+	) != 0)
+	    {
+	    mssError(0, "HTSPANE", "Failed to write HTML for the scroll thumb.");
+	    goto err;
+	    }
+	
+	/** Write the scroll area. **/
+	if (htrAddBodyItem_va(s,
+	    "<div "
+		"id='sp%POSarea' "
+		"style='"
+		    "position:absolute; "
+		    "visibility:inherit; "
+		    "left:0px; "
+		    "top:0px; "
+		    "width:"ht_flex_format"; "
+		    "height:"ht_flex_format"; "
+		    "z-index:%POS; "
+		"'"
+	    ">",
+	    id,
+	    ht_flex(w - 18, ht_get_parent_w(tree), 1.0),
+	    ht_flex(h,      ht_get_parent_h(tree), 1.0),
+	    z + 1
+	) != 0)
+	    {
+	    mssError(0, "HTSPANE", "Failed to write HTML for the scroll area.");
+	    goto err;
+	    }
+	
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 2) != 0) goto err;
+	
+	/** Close the final <div>s. **/
+	if (htrAddBodyItem(s,"</div></div>\n") != 0)
+	    {
+	    mssError(0, "HTSPANE", "Failed to write closing HTML tags.");
+	    goto err;
+	    }
+	
+	return 0;
+	
+    err:
+	mssError(0, "HTTAB",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
+	);
+	return -1;
     }
 
 
@@ -204,29 +335,31 @@ int
 htspaneInitialize()
     {
     pHtDriver drv;
-
-    	/** Allocate the driver **/
+    
+	/** Allocate the driver **/
 	drv = htrAllocDriver();
 	if (!drv) return -1;
-
+	
 	/** Fill in the structure. **/
-	strcpy(drv->Name,"HTML ScrollPane Widget Driver");
+	strcpy(drv->Name,"HTML Widget/scrollpane Driver");
 	strcpy(drv->WidgetName,"scrollpane");
 	drv->Render = htspaneRender;
-
+	
 	/** Events **/ 
-	htrAddEvent(drv,"Click");
-	htrAddEvent(drv,"MouseUp");
-	htrAddEvent(drv,"MouseDown");
-	htrAddEvent(drv,"MouseOver");
-	htrAddEvent(drv,"MouseOut");
-	htrAddEvent(drv,"MouseMove");
-
+	htrAddEvent(drv, "Scroll");
+	htrAddEvent(drv, "Click");
+	htrAddEvent(drv, "Wheel");
+	htrAddEvent(drv, "MouseUp");
+	htrAddEvent(drv, "MouseDown");
+	htrAddEvent(drv, "MouseOver");
+	htrAddEvent(drv, "MouseOut");
+	htrAddEvent(drv, "MouseMove");
+	
 	/** Register. **/
 	htrRegisterDriver(drv);
-
+	
 	htrAddSupport(drv, "dhtml");
 	HTSPANE.idcnt = 0;
-
+    
     return 0;
     }

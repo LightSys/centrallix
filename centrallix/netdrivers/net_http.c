@@ -8,7 +8,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2004 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -1821,7 +1821,6 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     char* slashptr;
     pNhtApp app = NULL;
     pNhtAppGroup group = NULL;
-    int rval;
     char* kname;
     pXString err_xs;
 
@@ -2096,6 +2095,9 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    wgtr_params.CharWidth = 7;
 		    wgtr_params.CharHeight = 16;
 		    wgtr_params.ParagraphHeight = 16;
+		    
+		    /** Specify design geometry **/
+		    wgtr_params.IsDesign = 1; 
 		    }
 		else
 		    {
@@ -2329,7 +2331,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	else if (!strcmp(find_inf->StrVal,"rest"))
 	    {
 	    conn->StrictSameSite = 0;
-	    rval = nht_i_RestGet(conn, url_inf, target_obj);
+	    nht_i_RestGet(conn, url_inf, target_obj);
 	    }
 
 	/** Retrieve a new session/group/app key? **/
