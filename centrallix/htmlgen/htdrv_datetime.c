@@ -175,31 +175,16 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	if (strlen(initialdate))
 	    {
-	    /** Create a session to log errors. **/
-	    pQPSession error_session = check_ptr(qpfOpenSession());
-	    if (error_session == NULL) goto err;
-	    
-	    /** Print the initial date. **/
-	    objDataToDateTime(DATA_T_STRING, initialdate, &dt, NULL);
-	    if (qpfPrintf(error_session,
+	    snprintf(
 		initialdate, sizeof(initialdate),
-		"%STR %INT %INT, %INT:%INT:%INT",
+		"%s %d %d, %d:%d%d",
 		obj_short_months[dt.Part.Month], 
-	        dt.Part.Day + 1,
-	        dt.Part.Year + 1900,
-	        dt.Part.Hour,
-	        dt.Part.Minute,
-	        dt.Part.Second
-	    ) < 0)
-		{
-		mssError(1, "HTR", "qpfPrintf() failed print initial date.");
-		qpfLogErrors(error_session);
-		qpfCloseSession(error_session);
-		goto err;
-		}
-	    
-	    /** Clean up. **/
-	    qpfCloseSession(error_session);
+		dt.Part.Day + 1,
+		dt.Part.Year + 1900,
+		dt.Part.Hour,
+		dt.Part.Minute,
+		dt.Part.Second
+	    );
 	    }
 	
 
