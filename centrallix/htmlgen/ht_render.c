@@ -761,8 +761,9 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 
     retry:
 	/** Attempt to print the thing to the tmpbuf. **/
-	tmp = vsnprintf(s->Tmpbuf, s->TmpbufSize, fmt, va);
-	if (UNLIKELY(tmp < 0 || tmp > s->TmpbufSize - 1))
+	tmp = check_neg(vsnprintf(s->Tmpbuf, s->TmpbufSize, fmt, va));
+	if (tmp < 0) goto err;
+	if (UNLIKELY(tmp > s->TmpbufSize - 1))
 	    {
 	    /** Increase buffer size. **/
 	    size_t new_buf_size = s->TmpbufSize * 2lu;
