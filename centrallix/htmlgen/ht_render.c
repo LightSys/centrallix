@@ -770,7 +770,12 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 	    
 	    /** Allocate the new buffer. **/
 	    void* new_buf = check_ptr(nmSysMalloc(new_buf_size));
-	    if (s->Tmpbuf == NULL) return -1;
+	    if (new_buf == NULL)
+		{
+		/** Start a new error chain. **/
+		mssClearError();
+		goto err;
+		}
 	    nmSysFree(s->Tmpbuf); /* Clean up. */
 	    
 	    /** Set new buffer. **/
@@ -789,11 +794,15 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 	    char error_code[32] = {'\0'};
 	    if (UNLIKELY(tmp != -1)) snprintf(error_code, sizeof(error_code), " (error code: %d)", tmp);
 	    mssError(0, "HTR", "Provided callback function failed%s.", error_code);
-	    return -1;
+	    goto err;
 	    }
 	
 	/** Success. **/
 	return 0;
+	
+	err:
+	mssError(0, "HTR", "Failed to add text using format: \"%s\"", fmt);
+	return -1;
     }
 
 
