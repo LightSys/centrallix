@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Generate a deterministic widget documentation drift report."""
+from __future__ import annotations
 
 import argparse
 import json
 import os
 import re
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Set, Tuple
+from typing import Iterable, Optional, TypedDict
 from xml.etree import ElementTree as ET
 
 
@@ -24,18 +26,112 @@ SEVERITY_HIGH = "high"
 SEVERITY_MEDIUM = "medium"
 SEVERITY_LOW = "low"
 
+type Severity = str
+type Confidence = str
+
+
+class Ref(TypedDict):
+    path: str
+    line: int | None
+    reason: str
+
+
+class WidgetDocLocations(TypedDict):
+    location: Ref
+    properties: dict[str, Ref]
+    events: dict[str, Ref]
+    actions: dict[str, Ref]
+    children: dict[str, Ref]
+
+
+class StatusEntry(TypedDict):
+    missing_widget_docs: bool
+    stale_doc_widget: bool
+
+
+class SignalDiffEntry(TypedDict):
+    name: str
+    origin: str
+    confidence: str
+    severity: str
+    references: list[Ref]
+
+
+class DocOnlyEntry(TypedDict):
+    name: str
+    references: list[Ref]
+
+
+class ParamDriftEntry(TypedDict):
+    action: str
+    missing_in_docs: list[str]
+    extra_in_docs: list[str]
+    origin: str
+    confidence: str
+    severity: str
+    references_runtime: list[Ref]
+    references_docs: list[Ref]
+
+
+class WidgetLinks(TypedDict):
+    docs: list[Ref]
+    c: list[Ref]
+    js: list[Ref]
+
+
+class PerWidgetFinding(TypedDict):
+    widget: str
+    links: WidgetLinks
+    status: StatusEntry
+    missing_events: list[SignalDiffEntry]
+    extra_events: list[DocOnlyEntry]
+    missing_actions: list[SignalDiffEntry]
+    extra_actions: list[DocOnlyEntry]
+    extra_properties: list[DocOnlyEntry]
+    action_param_drift: list[ParamDriftEntry]
+
+
+class GlobalWidgetFinding(TypedDict):
+    widget: str
+    references: list[Ref]
+
+
+class ReportCounts(TypedDict):
+    documented_widgets: int
+    fully_documented_widgets: int
+    code_widgets: int
+    missing_widget_docs: int
+    stale_doc_widgets: int
+    widgets_with_findings: int
+
+
+class ReportMetadata(TypedDict):
+    obsolete_widgets: list[str]
+    counts: ReportCounts
+
+
+class GlobalFindings(TypedDict):
+    missing_widget_docs: list[GlobalWidgetFinding]
+    stale_doc_widgets: list[GlobalWidgetFinding]
+
+
+class DriftReport(TypedDict):
+    metadata: ReportMetadata
+    global_findings: GlobalFindings
+    per_widget: list[PerWidgetFinding]
+
 
 # Carries one runtime event/action plus provenance and parameter evidence.
+@dataclass
 class RuntimeSignal:
-    def __init__(self, name: str) -> None:
-        self.name = name
-        self.origins = set()
-        self.confidence = "heuristic"
-        self.params = set()
-        self.evidence = []
-        self.param_evidence = {}
+    name: str
+    origins: set[str] = field(default_factory=set)
+    confidence: Confidence = "heuristic"
+    params: set[str] = field(default_factory=set)
+    evidence: list[Ref] = field(default_factory=list)
+    param_evidence: dict[str, list[Ref]] = field(default_factory=dict)
 
-    def merge(self, other: "RuntimeSignal") -> None:
+    def merge(self, other: RuntimeSignal) -> None:
         self.origins.update(other.origins)
         self.params.update(other.params)
         self.confidence = pick_confidence(self.confidence, other.confidence)
@@ -45,28 +141,28 @@ class RuntimeSignal:
 
 
 # Captures one widget's documentation inventory and source locations.
+@dataclass
 class WidgetDoc:
-    def __init__(self, widget: str) -> None:
-        self.widget = widget
-        self.properties = set()
-        self.events = set()
-        self.actions = set()
-        self.action_params = {}
-        self.has_any_child = False
-        self.location = None
-        self.property_locations = {}
-        self.event_locations = {}
-        self.action_locations = {}
-        self.child_locations = {}
+    widget: str
+    properties: set[str] = field(default_factory=set)
+    events: set[str] = field(default_factory=set)
+    actions: set[str] = field(default_factory=set)
+    action_params: dict[str, set[str]] = field(default_factory=dict)
+    has_any_child: bool = False
+    location: Ref | None = None
+    property_locations: dict[str, Ref] = field(default_factory=dict)
+    event_locations: dict[str, Ref] = field(default_factory=dict)
+    action_locations: dict[str, Ref] = field(default_factory=dict)
+    child_locations: dict[str, Ref] = field(default_factory=dict)
 
 
 # Holds runtime-extracted data for a single widget type.
+@dataclass
 class RuntimeWidget:
-    def __init__(self, widget: str) -> None:
-        self.widget = widget
-        self.events = {}
-        self.actions = {}
-        self.sources = []
+    widget: str
+    events: dict[str, RuntimeSignal] = field(default_factory=dict)
+    actions: dict[str, RuntimeSignal] = field(default_factory=dict)
+    sources: list[Ref] = field(default_factory=list)
 
 
 # Normalize `widget/foo` style names into canonical widget keys.
@@ -83,13 +179,13 @@ def normalize_name(name: str) -> str:
 
 
 # Keep the strongest confidence when combining multiple sources.
-def pick_confidence(a: str, b: str) -> str:
+def pick_confidence(a: Confidence, b: Confidence) -> Confidence:
     order = {"confirmed": 3, "strong": 2, "heuristic": 1}
     return a if order.get(a, 0) >= order.get(b, 0) else b
 
 
 # Render compact origin tags used in reports.
-def slug_origin(origins: Set[str]) -> str:
+def slug_origin(origins: set[str]) -> str:
     if origins == {"c"}:
         return "c"
     if origins == {"js"}:
@@ -100,7 +196,7 @@ def slug_origin(origins: Set[str]) -> str:
 
 
 # Deterministic case-insensitive sorter for report arrays.
-def sorted_list(values: Iterable[str]) -> List[str]:
+def sorted_list(values: Iterable[str]) -> list[str]:
     return sorted(set(values), key=lambda v: v.lower())
 
 
@@ -110,21 +206,21 @@ def line_of_offset(text: str, offset: int) -> int:
 
 
 # Build a portable source-reference object.
-def make_ref(path: str, line: Optional[int], reason: str) -> Dict[str, object]:
+def make_ref(path: str, line: Optional[int], reason: str) -> Ref:
     return {"path": path, "line": line, "reason": reason}
 
 
 # Legacy text formatter (retained for potential plain-text output/debugging).
-def fmt_ref(ref: Dict[str, object]) -> str:
+def fmt_ref(ref: Ref) -> str:
     if ref.get("line"):
         return "`%s:%s` (%s)" % (ref["path"], ref["line"], ref["reason"])
     return "`%s` (%s)" % (ref["path"], ref["reason"])
 
 
 # De-duplicate references while preserving first-seen order.
-def unique_refs(refs: Iterable[Dict[str, object]]) -> List[Dict[str, object]]:
-    seen = set()
-    out = []
+def unique_refs(refs: Iterable[Ref]) -> list[Ref]:
+    seen: set[tuple[str, int | None, str]] = set()
+    out: list[Ref] = []
     for ref in refs:
         key = (ref.get("path"), ref.get("line"), ref.get("reason"))
         if key in seen:
@@ -135,7 +231,7 @@ def unique_refs(refs: Iterable[Dict[str, object]]) -> List[Dict[str, object]]:
 
 
 # Format a reference as a markdown link relative to report output.
-def markdown_link_for_ref(report_dir: Path, repo_root: Path, ref: Dict[str, object]) -> str:
+def markdown_link_for_ref(report_dir: Path, repo_root: Path, ref: Ref) -> str:
     target_path = Path(str(ref.get("path", "")))
     abs_target = (repo_root / target_path).resolve()
     href = os.path.relpath(str(abs_target), str(report_dir.resolve())).replace("\\", "/")
@@ -161,10 +257,10 @@ def normalize_js_widget_name(stem_name: str) -> str:
 
 
 # Regex-parse widget XML blocks to capture stable line-based references.
-def extract_widget_doc_locations(path: Path) -> Dict[str, Dict[str, object]]:
+def extract_widget_doc_locations(path: Path) -> dict[str, WidgetDocLocations]:
     # Compile block/attribute regexes once for full-file scanning.
     content = path.read_text(encoding="utf-8", errors="ignore")
-    results = {}
+    results: dict[str, WidgetDocLocations] = {}
     pattern = re.compile(r"<widget\b([^>]*)>", re.IGNORECASE)
     attr_re = re.compile(r'([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*"([^"]*)"')
     prop_re = re.compile(r'<property\b[^>]*\bname\s*=\s*"([^"]+)"', re.IGNORECASE)
@@ -236,12 +332,12 @@ def _normalize_child_type(child_type: str) -> Optional[str]:
 
 
 # Parse `widgets.xml` into documented widget inventory + child-type coverage.
-def extract_documented_widgets(path: Path) -> Tuple[Dict[str, WidgetDoc], Set[str]]:
+def extract_documented_widgets(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
     # Build base structures and pre-compute line references.
     tree = ET.parse(path)
     root = tree.getroot()
-    docs: Dict[str, WidgetDoc] = {}
-    covered_widget_types: Set[str] = set()
+    docs: dict[str, WidgetDoc] = {}
+    covered_widget_types: set[str] = set()
     doc_locations = extract_widget_doc_locations(path)
     # Walk widget entries and extract properties/events/actions/child coverage.
     for widget in root.findall(".//widget"):
@@ -298,10 +394,10 @@ def extract_documented_widgets(path: Path) -> Tuple[Dict[str, WidgetDoc], Set[st
 # Scan `wgtdrv_*.c` for widget type registration and type-family groupings.
 def extract_widget_types_from_wgtr(
     path: Path,
-) -> Tuple[Set[str], Dict[str, Set[str]], Dict[str, List[Dict[str, object]]]]:
-    widget_types: Set[str] = set()
-    families: Dict[str, Set[str]] = {}
-    refs: Dict[str, List[Dict[str, object]]] = {}
+) -> tuple[set[str], dict[str, set[str]], dict[str, list[Ref]]]:
+    widget_types: set[str] = set()
+    families: dict[str, set[str]] = {}
+    refs: dict[str, list[Ref]] = {}
     pattern = re.compile(r'wgtrAddType\(\s*[^,]+,\s*"([^"]+)"\s*\)')
     # Parse every driver file and record registration evidence.
     for c_file in sorted(path.glob("wgtdrv_*.c")):
@@ -324,10 +420,10 @@ def extract_widget_types_from_wgtr(
 
 # Expand docs coverage when a documented widget allows `child type="any"`.
 def expand_any_child_coverage(
-    docs: Dict[str, WidgetDoc],
-    covered_widget_types: Set[str],
-    widget_families: Dict[str, Set[str]],
-) -> Set[str]:
+    docs: dict[str, WidgetDoc],
+    covered_widget_types: set[str],
+    widget_families: dict[str, set[str]],
+) -> set[str]:
     expanded = set(covered_widget_types)
     for widget_name, node in docs.items():
         if not node.has_any_child:
@@ -337,15 +433,15 @@ def expand_any_child_coverage(
 
 
 # Create/get runtime widget bucket for incremental extractor merges.
-def _ensure_runtime_widget(store: Dict[str, RuntimeWidget], widget: str) -> RuntimeWidget:
+def _ensure_runtime_widget(store: dict[str, RuntimeWidget], widget: str) -> RuntimeWidget:
     if widget not in store:
         store[widget] = RuntimeWidget(widget=widget)
     return store[widget]
 
 
 # Parse C htmlgen drivers for runtime events/actions/params plus evidence links.
-def extract_runtime_from_c(path: Path) -> Dict[str, RuntimeWidget]:
-    runtime: Dict[str, RuntimeWidget] = {}
+def extract_runtime_from_c(path: Path) -> dict[str, RuntimeWidget]:
+    runtime: dict[str, RuntimeWidget] = {}
     widget_pat = re.compile(r'strcpy\(\s*drv->WidgetName\s*,\s*"([^"]+)"\s*\)')
     event_pat = re.compile(r'htrAddEvent\(\s*drv\s*,\s*"([^"]+)"\s*\)')
     action_pat = re.compile(r'htrAddAction\(\s*drv\s*,\s*"([^"]+)"\s*\)')
@@ -403,8 +499,8 @@ def extract_runtime_from_c(path: Path) -> Dict[str, RuntimeWidget]:
 
 
 # Infer JS action parameter names by scanning handler body member access.
-def _extract_js_action_params(content: str, fn_name: str) -> List[Tuple[str, int]]:
-    params: List[Tuple[str, int]] = []
+def _extract_js_action_params(content: str, fn_name: str) -> list[tuple[str, int]]:
+    params: list[tuple[str, int]] = []
     body_pat = re.compile(
         rf"function\s+{re.escape(fn_name)}\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)\s*\{{",
         re.MULTILINE,
@@ -434,8 +530,8 @@ def _extract_js_action_params(content: str, fn_name: str) -> List[Tuple[str, int
 
 
 # Parse JS drivers for event/action registrations and heuristic param usage.
-def extract_runtime_from_js(path: Path) -> Dict[str, RuntimeWidget]:
-    runtime: Dict[str, RuntimeWidget] = {}
+def extract_runtime_from_js(path: Path) -> dict[str, RuntimeWidget]:
+    runtime: dict[str, RuntimeWidget] = {}
     add_iface_pat = re.compile(
         r"([A-Za-z_][A-Za-z0-9_]*)\s*=\s*[^;]*ifcProbeAdd\(\s*(ifAction|ifEvent)\s*\)"
     )
@@ -452,7 +548,7 @@ def extract_runtime_from_js(path: Path) -> Dict[str, RuntimeWidget]:
         node.sources.append(make_ref(rel, 1, "JS driver file"))
 
         # First capture which local vars are event vs action interfaces.
-        iface_vars: Dict[str, str] = {}
+        iface_vars: dict[str, str] = {}
         for var_name, iface in add_iface_pat.findall(content):
             iface_vars[var_name] = iface
 
@@ -497,9 +593,9 @@ def extract_runtime_from_js(path: Path) -> Dict[str, RuntimeWidget]:
 
 # Merge C and JS runtime inventories while preserving strongest evidence.
 def merge_runtime(
-    c_runtime: Dict[str, RuntimeWidget], js_runtime: Dict[str, RuntimeWidget]
-) -> Dict[str, RuntimeWidget]:
-    merged: Dict[str, RuntimeWidget] = {}
+    c_runtime: dict[str, RuntimeWidget], js_runtime: dict[str, RuntimeWidget]
+) -> dict[str, RuntimeWidget]:
+    merged: dict[str, RuntimeWidget] = {}
     all_widgets = set(c_runtime) | set(js_runtime)
     for widget in all_widgets:
         node = RuntimeWidget(widget=widget)
@@ -522,7 +618,7 @@ def merge_runtime(
 
 
 # Assign severity from origin and finding category.
-def severity_for(origins: Set[str], category: str) -> str:
+def severity_for(origins: set[str], category: str) -> Severity:
     if "c" in origins:
         return SEVERITY_HIGH
     if category in {"missing_widget_docs", "missing_action", "missing_event"}:
@@ -532,13 +628,13 @@ def severity_for(origins: Set[str], category: str) -> str:
 
 # Compute global and per-widget drift, including evidence-rich details.
 def compute_drift(
-    docs: Dict[str, WidgetDoc],
-    documented_coverage: Set[str],
-    widget_types: Set[str],
-    widget_type_refs: Dict[str, List[Dict[str, object]]],
-    runtime: Dict[str, RuntimeWidget],
-    obsolete_widgets: Set[str],
-) -> Dict[str, object]:
+    docs: dict[str, WidgetDoc],
+    documented_coverage: set[str],
+    widget_types: set[str],
+    widget_type_refs: dict[str, list[Ref]],
+    runtime: dict[str, RuntimeWidget],
+    obsolete_widgets: set[str],
+) -> DriftReport:
     # Build normalized comparison sets with obsolete filtering applied.
     doc_widgets = set(documented_coverage) - obsolete_widgets
     fully_documented_widgets = set(docs) - obsolete_widgets
@@ -546,11 +642,11 @@ def compute_drift(
 
     missing_widget_docs = sorted_list(code_widgets - doc_widgets)
     stale_doc_widgets = sorted_list(doc_widgets - code_widgets)
-    missing_widget_doc_refs = {}
-    stale_widget_doc_refs = {}
+    missing_widget_doc_refs: dict[str, list[Ref]] = {}
+    stale_widget_doc_refs: dict[str, list[Ref]] = {}
     # Assemble global finding evidence for missing/stale widgets.
     for widget in missing_widget_docs:
-        refs = []
+        refs: list[Ref] = []
         refs.extend(widget_type_refs.get(widget, []))
         if widget in runtime:
             refs.extend(runtime[widget].sources)
@@ -559,7 +655,7 @@ def compute_drift(
         doc = docs.get(widget)
         stale_widget_doc_refs[widget] = [doc.location] if doc and doc.location else []
 
-    per_widget: List[Dict[str, object]] = []
+    per_widget: list[PerWidgetFinding] = []
     triage = sorted_list(fully_documented_widgets & code_widgets)
     # Build per-widget detailed diffs only for documented widgets present in code.
     for widget in triage:
@@ -578,15 +674,15 @@ def compute_drift(
         extra_properties = sorted_list(doc.properties if widget in stale_doc_widgets else [])
 
         # Compute action parameter mismatch details with runtime/doc references.
-        action_param_drift: List[Dict[str, object]] = []
+        action_param_drift: list[ParamDriftEntry] = []
         for action_name in sorted_list(runtime_actions | doc_actions):
             runtime_params = set(run.actions.get(action_name, RuntimeSignal(action_name)).params)
             doc_params = set(doc.action_params.get(action_name, set()))
             missing_params = sorted_list(runtime_params - doc_params)
             extra_params = sorted_list(doc_params - runtime_params)
             if missing_params or extra_params:
-                runtime_ref = []
-                doc_ref = []
+                runtime_ref: list[Ref] = []
+                doc_ref: list[Ref] = []
                 for p in missing_params:
                     runtime_ref.extend(
                         run.actions.get(action_name, RuntimeSignal(action_name)).param_evidence.get(
@@ -729,7 +825,7 @@ def compute_drift(
 
 
 # Write the machine-readable JSON artifact with stable formatting.
-def write_json(path: Path, report: Dict[str, object]) -> None:
+def write_json(path: Path, report: DriftReport) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
         json.dump(report, handle, indent=2, sort_keys=True)
@@ -737,11 +833,11 @@ def write_json(path: Path, report: Dict[str, object]) -> None:
 
 
 # Render the human-readable markdown report with clickable evidence links.
-def write_markdown(path: Path, report: Dict[str, object], repo_root: Path) -> None:
+def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
     # Emit high-level header and count summary.
     path.parent.mkdir(parents=True, exist_ok=True)
     report_dir = path.parent
-    lines: List[str] = []
+    lines: list[str] = []
     lines.append("# Widget Documentation Drift Report")
     lines.append("")
     lines.append(
@@ -882,7 +978,9 @@ def write_markdown(path: Path, report: Dict[str, object], repo_root: Path) -> No
 
 
 # Resolve standard input/output paths from repo-root context.
-def resolve_paths(repo_root: Path, out_dir: Optional[Path]) -> Tuple[Path, Path, Path, Path]:
+def resolve_paths(
+    repo_root: Path, out_dir: Optional[Path]
+) -> tuple[Path, Path, Path, Path, Path]:
     widgets_root = repo_root / "centrallix-doc" / "Widgets"
     doc_xml = widgets_root / "widgets.xml"
     wgtr_dir = repo_root / "centrallix" / "wgtr"
