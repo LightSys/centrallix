@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Generate a deterministic widget documentation drift report."""
+
 from __future__ import annotations
 
 import argparse
@@ -7,53 +8,664 @@ import json
 import os
 import re
 from dataclasses import dataclass, field
+from enum import StrEnum
 from pathlib import Path
 from typing import Iterable, Optional, TypedDict
-from xml.etree import ElementTree as ET
+from xml.etree import ElementTree
 
+# =============
+# Configs
 
-OBSOLETE_WIDGETS = {
-	"multiscroll",
-	"frameset",
+# The normalized names of widgets that should be completely ignored if they
+# appear in either source code or documentation.
+IGNORED_WIDGETS = set({
+	# Skipped
+	"window",
+	"childwindow",
+	"uawindow",
+	"formelement",
+	
+	# Obsolete
+	"alerter",
 	"calendar",
+	"formbar",
+	"frameset",
+	"multiscroll",
+	"multiscrollpart",
 	"spinner",
 	"terminal",
-	"alerter",
-	"formbar",
+})
+
+# Widgets that use other names in the code.  This dictionary maps normalized
+# widget alias(es) (e.g. "page_js15") to canonical widget names (e.g. "page").
+WIDGETS_ALIASES = {
+	"componentdecl": "component-decl",
+	"sys_osml": "sys-osml",
+	"page_js15": "page",
+	"checkbox_moz": "checkbox",
+	# "uawindow": "window",
+	# "window": "childwindow",
 }
 
-SEVERITY_HIGH = "high"
-SEVERITY_MEDIUM = "medium"
-SEVERITY_LOW = "low"
+# Whether to write unminified, human-readable JSON.  Minified JSON is typically
+# preferred because it is more readable to modern LLMs (it uses fewer tokens).
+HUMAN_JSON = False
 
-type Severity = str
-type Confidence = str
+# Whether to write the JSON report.  If false, the JSON structure is only used
+# internally and it is not written to disk.
+WRITE_REPORT_JSON = True
+
+# Whether to write the markdown report.  (Disabling both WRITE_REPORT_JSON and
+# WRITE_REPORT_MD may be useful when microbenching performance.)
+WRITE_REPORT_MD = True
 
 
+# =============
+# Regexes.
+
+# General Regexes
+identifier_re = r"^[a-z0-9][a-z0-9_-]*$"
+quoted_identifier_re = r"[\"'`]([A-Za-z_][A-Za-z0-9_]*)[\"'`]"
+
+
+# Regexes parsing for docs.
+doc_widget_re = re.compile(r"<widget\b([^>]*)>", re.IGNORECASE)
+doc_attr_re = re.compile(r'([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*"([^"]*)"')
+doc_prop_re = re.compile(r'<property\b[^>]*\bname\s*=\s*"([^"]+)"', re.IGNORECASE)
+doc_event_re = re.compile(r'<event\b[^>]*\bname\s*=\s*"([^"]+)"', re.IGNORECASE)
+doc_action_re = re.compile(r'<action\b[^>]*\bname\s*=\s*"([^"]+)"', re.IGNORECASE)
+doc_child_re = re.compile(r'<child\b[^>]*\btype\s*=\s*"([^"]+)"', re.IGNORECASE)
+
+
+# Regexes for parsing implementations.
+
+# Regex to find C wgtrAddType() calls and capture the type name (1).
+c_register_re = re.compile(r'wgtrAddType\(\s*[^,]+,\s*"([^"]+)"\s*\)')
+
+# Regex to find C strcpy() calls and capture the widget driver name (1).
+c_name_re = re.compile(r'strcpy\(\s*drv->WidgetName\s*,\s*"([^"]+)"\s*\)')
+
+# Regex to find C htrAddEvent() calls and capture the event name (1).
+c_event_re = re.compile(r'htrAddEvent\(\s*drv\s*,\s*"([^"]+)"\s*\)')
+
+# Regex to find C htrAddAction() calls and capture the action name (1).
+c_action_re = re.compile(r'htrAddAction\(\s*drv\s*,\s*"([^"]+)"\s*\)')
+
+# Regex to find C htrAddParam() calls and capture the action name (1) and param name (2).
+c_param_re = re.compile(
+	r'htrAddParam\(\s*drv\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*[^)]+\)'
+)
+
+# Regex to find JS ifcProbeAdd() calls and capture the returned variable name (1)
+# and list (ifEvent or ifAction) (2).
+js_add_iface_re = re.compile(
+	r"([A-Za-z_][A-Za-z0-9_]*)\s*=\s*[^;]*ifcProbeAdd\(\s*(ifEvent|ifAction)\s*\)"
+)
+
+# Regex to find JS Add() calls and capture the variable added (1) to and the
+# name of the event/action added (2).
+js_add_call_re = re.compile(
+	r"([A-Za-z_][A-Za-z0-9_]*)\.Add\(\s*[\"']([^\"']+)[\"']\s*(?:,\s*([A-Za-z_][A-Za-z0-9_]*))?"
+)
+
+# Regex to find a JS function (fn_name) that implements an action and capture
+# the first variable argument (1), even if it is an object deconstruction, and
+# then ignore all other parameters.
+js_action_impl_re = lambda fn_name: re.compile(
+	rf"function\s+{re.escape(fn_name)}\s*\(\s*(\{{[^{{}}]*\}}|[A-Za-z_][A-Za-z0-9_]*)(?=\s*[,)])[^)]*\)\s*\{{",
+	re.MULTILINE
+)
+
+# Regex to find JS that reads properties from var_name and capture the property names.
+js_property_re = lambda var_name: rf"\b{re.escape(var_name)}\.([A-Za-z_][A-Za-z0-9_]*)"
+
+
+# =============
+# Types
+
+class Confidence(StrEnum):
+	CONFIRMED = "confirmed"
+	STRONG = "strong"
+	HEURISTIC = "heuristic"
+
+# Reference a code location with a descrption of what is there.
 class Ref(TypedDict):
 	path: str
 	line: int | None
-	reason: str
+	desc: str
 
 
-class WidgetDocLocations(TypedDict):
-	location: Ref
-	properties: dict[str, Ref]
-	events: dict[str, Ref]
-	actions: dict[str, Ref]
-	children: dict[str, Ref]
+# Stores how a widget is documented.
+@dataclass
+class WidgetDoc:
+	name: str
+	properties: set[str] = field(default_factory=set)
+	events: set[str] = field(default_factory=set)
+	actions: set[str] = field(default_factory=set)
+	action_params: dict[str, set[str]] = field(default_factory=dict)
+	any_child: bool = False
+	
+	# Ref fields.
+	ref: Ref | None = None
+	property_refs: dict[str, Ref] = field(default_factory=dict)
+	event_refs: dict[str, Ref] = field(default_factory=dict)
+	action_refs: dict[str, Ref] = field(default_factory=dict)
+	child_refs: dict[str, Ref] = field(default_factory=dict)
 
 
-class StatusEntry(TypedDict):
-	missing_widget_docs: bool
-	stale_doc_widget: bool
+# Stores how a widget is implemented.
+@dataclass
+class WidgetImpl:
+	widget_name: str
+	events: dict[str, EventImpl] = field(default_factory=dict)
+	actions: dict[str, ActionImpl] = field(default_factory=dict)
+	definition_refs: list[Ref] = field(default_factory=list) # Code locations where this widget is defined.
+	
+	# Register a unique event.
+	def event(self, event_name):
+		self.events[event_name] = self.events.get(event_name) or EventImpl(name=event_name)
+		return self.events[event_name]
+	
+	# Register a unique action.
+	def action(self, action_name):
+		self.actions[action_name] = self.actions.get(action_name) or ActionImpl(name=action_name)
+		return self.actions[action_name]
+
+# Stores one implemented signal, aka. an event or action.
+@dataclass
+class SignalImpl:
+	name: str
+	confidence: Confidence = Confidence.HEURISTIC
+	ref_languages: set[str] = field(default_factory=set) # e.g. c, js, etc.
+	definition_refs: list[Ref] = field(default_factory=list)
+	params: set[str] = field(default_factory=set)
+	params_refs: dict[str, list[Ref]] = field(default_factory=dict)
+
+	# Merge two implementations into one.
+	def merge(self, other: SignalImpl) -> None:
+		self.update_confidence(other.confidence)
+		self.ref_languages.update(other.ref_languages)
+		self.definition_refs.extend(other.definition_refs)
+		self.params.update(other.params)
+		for param_name, refs in other.params_refs.items():
+			self.params_refs.setdefault(param_name, []).extend(refs)
+	
+	# Call when a new origin is found.
+	def found(self, ref_language : str, confidence : Confidence) -> None:
+		self.update_confidence(confidence)
+		self.ref_languages.add(ref_language)
+	
+	# Update confidence if we're more confident now.
+	def update_confidence(self, confidence: Confidence) -> None:
+		self.confidence = merge_confidence(self.confidence, confidence)
+	
+	def add_param_ref(self, param_name: str, ref: Ref):
+		return self.params_refs.setdefault(param_name, []).append(ref)
+
+@dataclass
+class EventImpl(SignalImpl):
+	pass
+
+@dataclass
+class ActionImpl(SignalImpl):
+	pass
+
+# Trim names (preserves case).
+def normalize_name(name: str | None) -> str:
+	return (name or "").strip()
+
+
+# Normalize `widget/foo` names to canonical keys.
+def normalize_widget_name(name: str | None) -> str:
+	text = normalize_name(name).lower()
+	if text.startswith("widget/"):
+		text = text.split("/", 1)[1]
+	canonical_name = WIDGETS_ALIASES.get(text, text)
+	return canonical_name if canonical_name not in IGNORED_WIDGETS else ""
+
+# Keep the strongest confidence when combining multiple sources.
+def merge_confidence(a: Confidence, b: Confidence) -> Confidence:
+	order = {
+		Confidence.CONFIRMED: 3,
+		Confidence.STRONG: 2,
+		Confidence.HEURISTIC: 1
+	}
+	return a if (order.get(a, 0) >= order.get(b, 0)) else b
+
+
+# Render compact origin tags used in reports.
+def slug_origin(ref_languages: set[str]) -> str:
+	return "+".join(sorted(ref_languages))
+
+
+# Sort arrays deterministically (ignores case).
+def sorted_list(values: Iterable[str]) -> list[str]:
+	return sorted(set(values), key=lambda v: v.lower())
+
+
+# Convert character offsets to 1-based line numbers.
+def get_line_number(text: str, offset: int) -> int:
+	return text.count("\n", 0, offset) + 1
+
+
+# Build a portable source-reference object.
+def make_ref(path: str, line: Optional[int], desc: str) -> Ref:
+	return {"path": path, "line": line, "desc": desc}
+
+
+# Legacy text formatter (retained for potential plain-text output/debugging).
+def fmt_ref(ref: Ref) -> str:
+	if ref.get("line"):
+		return "`%s:%s` (%s)" % (ref["path"], ref["line"], ref["desc"])
+	return "`%s` (%s)" % (ref["path"], ref["desc"])
+
+
+# De-duplicate references while preserving first-seen order.
+def unique_refs(refs: Iterable[Ref]) -> list[Ref]:
+	out: list[Ref] = []
+	for ref in refs:
+		if ref in out:
+			continue
+		out.append(ref)
+	return out
+
+
+# Format a reference as a markdown link relative to report output.
+def ref_to_markdown_link(report_dir: Path, repo_root: Path, ref: Ref) -> str:
+	target_path = Path(str(ref.get("path", "")))
+	abs_target = (repo_root / target_path).resolve()
+	href = os.path.relpath(str(abs_target), str(report_dir.resolve())).replace("\\", "/")
+	label = target_path.name
+	line = ref.get("line")
+	if line != None:
+		href = "%s#L%s" % (href, line)
+		label = "%s:%s" % (label, line)
+	return "[%s](%s) (%s)" % (label, href, ref.get("desc", "source"))
+
+
+# Validate/normalize child type declarations into concrete widget keys.
+def _normalize_child_type(child_type: str) -> Optional[str]:
+	text = normalize_widget_name(child_type)
+	if text in {"", "any" }: return None
+	if not re.match(identifier_re, text): return None
+	return text
+
+
+# Parse `widgets.xml`.
+def get_documented_widgets(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
+	# Allocate space for parsed documentation.
+	docs: dict[str, WidgetDoc] = {}
+	widget_types: set[str] = set()
+	
+	# Parse each widget entry to extract properties, events, actions, and children.
+	xml_tree = ElementTree.parse(path)
+	root = xml_tree.getroot()
+	for widget in root.findall(".//widget"):
+		widget_name = normalize_widget_name(widget.get("name") or widget.get("type"))
+		if widget_name == "":
+			continue
+		
+		# Create the widget doc structure.
+		doc = WidgetDoc(name=widget_name)
+		widget_types.add(widget_name)
+		docs[widget_name] = doc
+		
+		# Parse properties.
+		for prop in widget.findall("./properties/property"):
+			prop_name = normalize_name(prop.get("name"))
+			if prop_name:
+				doc.properties.add(prop_name)
+		
+		# Parse events.
+		for event in widget.findall("./events/event"):
+			event_name = normalize_name(event.get("name"))
+			if event_name:
+				doc.events.add(event_name)
+		
+		# Parse actions.
+		for action in widget.findall("./actions/action"):
+			action_name = normalize_name(action.get("name"))
+			if not action_name:
+				continue
+			doc.actions.add(action_name)
+			
+			# widgets.xml does not currently encode structured params, so use
+			# quoted text as a heuristic for detecting parameter names.
+			raw_text = "".join(action.itertext())
+			quoted = re.findall(quoted_identifier_re, raw_text)
+			if len(quoted) > 0:
+				doc.action_params[action_name] = set(quoted)
+		
+		# Parse children.
+		for child in widget.findall("./children/child"):
+			raw_child_type = normalize_name(child.get("type")).lower()
+			if raw_child_type == "any":
+				doc.any_child = True
+			child_type = _normalize_child_type(raw_child_type)
+			if child_type:
+				widget_types.add(child_type)
+	
+	# Walk through xml text to get widget references.
+	content = path.read_text(encoding="utf-8", errors="ignore")
+	for match in doc_widget_re.finditer(content):
+		# Get the doc for the current widget
+		attrs = dict(doc_attr_re.findall(match.group(1)))
+		widget_name = normalize_widget_name(attrs.get("name") or attrs.get("type") or "")
+		if widget_name == "":
+			continue
+		widget_doc = docs.get(widget_name)
+		if not widget_doc:
+			continue
+		
+		# Manually isolate this xml widget block.
+		start = match.start()
+		end = content.find("</widget>", start)
+		if end < 0:
+			end = len(content)
+		block = content[start:end]
+		base_line = get_line_number(content, start)
+		
+		# Manually parse the xml to get line numbers for refs in the widget block.
+		node = {
+			"ref": make_ref(
+				"centrallix-doc/Widgets/widgets.xml", base_line, "widget definition"
+			),
+			"properties": {},
+			"events": {},
+			"actions": {},
+			"children": {},
+		}
+		for pm in doc_prop_re.finditer(block):
+			line = base_line + block.count("\n", 0, pm.start())
+			node["properties"][normalize_name(pm.group(1))] = make_ref(
+				"centrallix-doc/Widgets/widgets.xml", line, "documented property"
+			)
+		for em in doc_event_re.finditer(block):
+			line = base_line + block.count("\n", 0, em.start())
+			node["events"][normalize_name(em.group(1))] = make_ref(
+				"centrallix-doc/Widgets/widgets.xml", line, "documented event"
+			)
+		for am in doc_action_re.finditer(block):
+			line = base_line + block.count("\n", 0, am.start())
+			node["actions"][normalize_name(am.group(1))] = make_ref(
+				"centrallix-doc/Widgets/widgets.xml", line, "documented action"
+			)
+		for cm in doc_child_re.finditer(block):
+			line = base_line + block.count("\n", 0, cm.start())
+			child_name = _normalize_child_type(cm.group(1))
+			if child_name:
+				node["children"][child_name] = make_ref(
+					"centrallix-doc/Widgets/widgets.xml", line, "documented child type"
+				)
+		
+		# Add refs to widget doc.
+		widget_doc.ref		   = node["ref"]
+		widget_doc.property_refs = node["properties"]
+		widget_doc.event_refs	= node["events"]
+		widget_doc.action_refs   = node["actions"]
+		widget_doc.child_refs	= node["children"]
+	
+	return docs, widget_types
+
+
+# Scan `wgtdrv_*.c` for widget type registrations and type-family groupings.
+def parse_widgets_in_wgtr(
+	path: Path,
+) -> tuple[set[str], dict[str, set[str]], dict[str, list[Ref]]]:
+	widget_types: set[str] = set()
+	widget_families: dict[str, set[str]] = {}
+	refs: dict[str, list[Ref]] = {}
+	
+	# Search every driver file for registrations.
+	for c_file in sorted(path.glob("wgtdrv_*.c")):
+		content = c_file.read_text(encoding="utf-8", errors="ignore")
+		rel = "centrallix/wgtr/%s" % c_file.name
+		widget_names = set()
+		
+		# Search for matching widget registrations.
+		for match in c_register_re.finditer(content):
+			widget_name = normalize_widget_name(match.group(1))
+			if widget_name == "":
+				continue
+			
+			# Add data.
+			widget_names.add(widget_name)
+			refs.setdefault(widget_name, []).append(
+				make_ref(rel, get_line_number(content, match.start()), "wgtrAddType")
+			)
+		
+		for name in widget_names:
+			widget_types.add(name)
+			widget_families[name] = set(widget_names)
+	
+	return widget_types, widget_families, refs
+
+
+# Expand docs coverage when a documented widget allows `child type="any"`.
+def expand_any_child_coverage(
+	docs: dict[str, WidgetDoc],
+	doc_types: set[str],
+	widget_families: dict[str, set[str]],
+) -> set[str]:
+	expanded_doc_types = set(doc_types)
+	for widget_name, node in docs.items():
+		if node.any_child:
+			expanded_doc_types.update(widget_families.get(widget_name, set()))
+	return expanded_doc_types
+
+
+# Parse C htmlgen drivers for events, actions, and params.
+def parse_c_impl(path: Path) -> dict[str, WidgetImpl]:
+	widget_impls: dict[str, WidgetImpl] = {}
+
+	# Parse each C driver and attach signal-level evidence.
+	for c_file in sorted(path.glob("htdrv_*.c")):
+		content = c_file.read_text(encoding="utf-8", errors="ignore")
+		
+		# Get the widget name.
+		widget_match = c_name_re.search(content)
+		if not widget_match:
+			continue
+		widget_name = normalize_widget_name(widget_match.group(1))
+		if widget_name == "":
+			continue
+		
+		# Store the widget implementation.
+		rel = "centrallix/htmlgen/%s" % c_file.name
+		widget_impl = widget_impls.setdefault(widget_name, WidgetImpl(widget_name=widget_name))
+		widget_impl.definition_refs.append(
+			make_ref(rel, get_line_number(content, widget_match.start()), "strcpy sets widget name")
+		)
+		
+		# Parse events.
+		for event_m in c_event_re.finditer(content):
+			event_name = normalize_name(event_m.group(1))
+			event = widget_impl.event(event_name)
+			event.found("c", Confidence.CONFIRMED)
+			event.definition_refs.append(
+				make_ref(rel, get_line_number(content, event_m.start()), "htrAddEvent")
+			)
+		
+		# Parse actions.
+		for action_m in c_action_re.finditer(content):
+			action_name = normalize_name(action_m.group(1))
+			action = widget_impl.action(action_name)
+			action.found("c", Confidence.CONFIRMED)
+			action.definition_refs.append(
+				make_ref(rel, get_line_number(content, action_m.start()), "htrAddAction")
+			)
+		
+		# Parse event/action params.
+		for param_m in c_param_re.finditer(content):
+			signal_name = normalize_name(param_m.group(1))
+			param_name = normalize_name(param_m.group(2))
+			signal : SignalImpl | None = widget_impl.events.get(signal_name) or widget_impl.actions.get(signal_name)
+			if signal == None:
+				continue
+			signal.found("c", Confidence.CONFIRMED)
+			if param_name:
+				signal.params.add(param_name)
+				signal.add_param_ref(param_name,
+					make_ref(rel, get_line_number(content, param_m.start()), "htrAddParam")
+				)
+	return widget_impls
+
+# Infer JS action parameters by scanning the handler body for param accesses.
+def _parse_js_action_params(js: str, fn_name: str) -> list[tuple[str, int]]:
+	params: list[tuple[str, int]] = []
+	
+	# Search for the start of the JS implementation function.
+	js_fn_decl = js_action_impl_re(fn_name).search(js)
+	if not js_fn_decl:
+		return params
+	param1 = js_fn_decl.group(1).strip()
+	body_start = js_fn_decl.end()
+	
+	# Basic check for parameter deconstruction.
+	if (param1.startswith("{") and param1.endswith("}")):
+		decl_line = get_line_number(js, js_fn_decl.start())
+		param_strs = param1[1:-1].split(",")
+		params = [(param_str.strip(), decl_line) for param_str in param_strs]
+		return params
+	
+	# Count braces to isolate the function body without a full JS parser.
+	idx = body_start
+	depth = 1
+	while idx < len(js) and depth > 0:
+		ch = js[idx]
+		
+		# Get next character.
+		next_ch = None
+		if idx + 1 < len(js):
+			next_ch = js[idx + 1]
+		
+		# Skip line comments.
+		if ch == "/" and next_ch == "/":
+			idx += 2
+			while idx < len(js) and js[idx] not in "\n":
+				idx += 1
+			continue
+		
+		# Skip block comments.
+		if ch == "/" and next_ch == "*":
+			idx += 2
+			while idx + 1 < len(js):
+				if js[idx] == "*" and js[idx + 1] == "/":
+					idx += 2
+					break
+				idx += 1
+			continue
+		
+		# Count braces
+		if ch == "{":
+			depth += 1
+		elif ch == "}":
+			depth -= 1
+		idx += 1
+	body = js[body_start : max(body_start, idx - 1)]
+	
+	# Search the function body to locate all properties that are read. 
+	for pm in re.finditer(js_property_re(param1), body):
+		param_name = pm.group(1)
+		param_line = get_line_number(js, body_start + pm.start())
+		params.append((param_name, param_line))
+	return params
+
+
+# Parse JS drivers for event and action registrations (and heuristic param usage).
+def parse_js_impl(path: Path) -> dict[str, WidgetImpl]:
+	widget_impls: dict[str, WidgetImpl] = {}
+	
+	# Parse each driver file and map interface variables to Add() calls.
+	for js_file in sorted(path.glob("htdrv_*.js")):
+		js = js_file.read_text(encoding="utf-8", errors="ignore")
+		
+		# Get the widget name (from the file name).
+		widget_name = normalize_widget_name(js_file.stem.replace("htdrv_", "", 1))
+		if widget_name == "":
+			continue
+		
+		# Store the widget.
+		rel = "centrallix-os/sys/js/%s" % js_file.name
+		widget_impl = widget_impls.setdefault(widget_name, WidgetImpl(widget_name=widget_name))
+		widget_impl.definition_refs.append(make_ref(rel, 1, "JS driver file"))
+		
+		# Search for local variables that store event or action interfaces.
+		iface_vars: dict[str, str] = {}
+		for var_name, iface in js_add_iface_re.findall(js):
+			iface_vars[var_name] = iface
+		
+		# Search for Add() calls on interfaces.
+		for add_m in js_add_call_re.finditer(js):
+			var_name = add_m.group(1)
+			signal_name = normalize_name(add_m.group(2))
+			fn_name = add_m.group(3) or ""
+			have_fn_name = (fn_name != "")
+			iface = iface_vars.get(var_name)
+			if not signal_name:
+				continue
+			
+			# Parse each relevant type of interface.
+			confidence = Confidence.STRONG if have_fn_name else Confidence.HEURISTIC
+			if iface == "ifEvent":
+				event = widget_impl.event(signal_name)
+				event.found("js", confidence)
+				event.definition_refs.append(
+					make_ref(rel, get_line_number(js, add_m.start()), "ifEvent.Add")
+				)
+			elif iface == "ifAction":
+				action = widget_impl.action(signal_name)
+				action.found("js", confidence)
+				if have_fn_name:
+					for param_name, param_line in _parse_js_action_params(js, fn_name):
+						# Ignore private params.
+						if (param_name.startswith('_')):
+							continue
+						
+						action.params.add(param_name)
+						action.add_param_ref(param_name,
+							make_ref(rel, param_line, "action param use in JS")
+						)
+				action.definition_refs.append(
+					make_ref(rel, get_line_number(js, add_m.start()), "ifAction.Add")
+				)
+			else: continue
+	return widget_impls
+
+# Merge two widget lists, preserving informaton from each.
+def merge_widget_lists(
+	widgets1: dict[str, WidgetImpl], widgets2: dict[str, WidgetImpl]
+) -> dict[str, WidgetImpl]:
+	merged: dict[str, WidgetImpl] = {}
+	
+	# Iterate over all widgets.
+	for widget_name in set(widgets1) | set(widgets2):
+		new_widget = WidgetImpl(widget_name=widget_name)
+		widget1 = widgets1.get(widget_name)
+		widget2 = widgets2.get(widget_name)
+		
+		# Iterate over all sources in each widget.
+		for source in (widget1, widget2):
+			if not source:
+				continue
+			new_widget.definition_refs.extend(source.definition_refs)
+			for name, signal in source.events.items():
+				existing = new_widget.events.get(name) or EventImpl(name=name)
+				existing.merge(signal)
+				new_widget.events[name] = existing
+			for name, signal in source.actions.items():
+				existing = new_widget.actions.get(name) or ActionImpl(name=name)
+				existing.merge(signal)
+				new_widget.actions[name] = existing
+		merged[widget_name] = new_widget
+	return merged
+
 
 
 class SignalDiffEntry(TypedDict):
 	name: str
 	origin: str
-	confidence: str
-	severity: str
+	confidence: Confidence
 	references: list[Ref]
 
 
@@ -64,13 +676,11 @@ class DocOnlyEntry(TypedDict):
 
 class ParamDriftEntry(TypedDict):
 	action: str
-	missing_in_docs: list[str]
 	extra_in_docs: list[str]
 	origin: str
-	confidence: str
-	severity: str
-	references_runtime: list[Ref]
-	references_docs: list[Ref]
+	confidence: Confidence
+	code_refs: dict[str, Ref]
+	doc_refs: list[Ref]
 
 
 class WidgetLinks(TypedDict):
@@ -82,7 +692,6 @@ class WidgetLinks(TypedDict):
 class PerWidgetFinding(TypedDict):
 	widget: str
 	links: WidgetLinks
-	status: StatusEntry
 	missing_events: list[SignalDiffEntry]
 	extra_events: list[DocOnlyEntry]
 	missing_actions: list[SignalDiffEntry]
@@ -99,20 +708,20 @@ class GlobalWidgetFinding(TypedDict):
 class ReportCounts(TypedDict):
 	documented_widgets: int
 	fully_documented_widgets: int
-	code_widgets: int
+	implemented_widgets: int
 	missing_widget_docs: int
-	stale_doc_widgets: int
-	widgets_with_findings: int
+	stale_widget_docs: int
+	widgets_with_errors: int
+	widget_errors: int
 
 
 class ReportMetadata(TypedDict):
-	obsolete_widgets: list[str]
 	counts: ReportCounts
 
 
 class GlobalFindings(TypedDict):
 	missing_widget_docs: list[GlobalWidgetFinding]
-	stale_doc_widgets: list[GlobalWidgetFinding]
+	stale_widget_docs: list[GlobalWidgetFinding]
 
 
 class DriftReport(TypedDict):
@@ -121,546 +730,52 @@ class DriftReport(TypedDict):
 	per_widget: list[PerWidgetFinding]
 
 
-# Carries one runtime event/action plus provenance and parameter evidence.
-@dataclass
-class RuntimeSignal:
-	name: str
-	origins: set[str] = field(default_factory=set)
-	confidence: Confidence = "heuristic"
-	params: set[str] = field(default_factory=set)
-	evidence: list[Ref] = field(default_factory=list)
-	param_evidence: dict[str, list[Ref]] = field(default_factory=dict)
-
-	def merge(self, other: RuntimeSignal) -> None:
-		self.origins.update(other.origins)
-		self.params.update(other.params)
-		self.confidence = pick_confidence(self.confidence, other.confidence)
-		self.evidence.extend(other.evidence)
-		for param_name, refs in other.param_evidence.items():
-			self.param_evidence.setdefault(param_name, []).extend(refs)
-
-
-# Captures one widget's documentation inventory and source locations.
-@dataclass
-class WidgetDoc:
-	widget: str
-	properties: set[str] = field(default_factory=set)
-	events: set[str] = field(default_factory=set)
-	actions: set[str] = field(default_factory=set)
-	action_params: dict[str, set[str]] = field(default_factory=dict)
-	has_any_child: bool = False
-	location: Ref | None = None
-	property_locations: dict[str, Ref] = field(default_factory=dict)
-	event_locations: dict[str, Ref] = field(default_factory=dict)
-	action_locations: dict[str, Ref] = field(default_factory=dict)
-	child_locations: dict[str, Ref] = field(default_factory=dict)
-
-
-# Holds runtime-extracted data for a single widget type.
-@dataclass
-class RuntimeWidget:
-	widget: str
-	events: dict[str, RuntimeSignal] = field(default_factory=dict)
-	actions: dict[str, RuntimeSignal] = field(default_factory=dict)
-	sources: list[Ref] = field(default_factory=list)
-
-
-# Normalize `widget/foo` style names into canonical widget keys.
-def normalize_widget_name(name: str) -> str:
-	text = (name or "").strip().lower()
-	if text.startswith("widget/"):
-		text = text.split("/", 1)[1]
-	return text
-
-
-# Trim and preserve case for signal/property/action names.
-def normalize_name(name: str) -> str:
-	return (name or "").strip()
-
-
-# Keep the strongest confidence when combining multiple sources.
-def pick_confidence(a: Confidence, b: Confidence) -> Confidence:
-	order = {"confirmed": 3, "strong": 2, "heuristic": 1}
-	return a if order.get(a, 0) >= order.get(b, 0) else b
-
-
-# Render compact origin tags used in reports.
-def slug_origin(origins: set[str]) -> str:
-	if origins == {"c"}:
-		return "c"
-	if origins == {"js"}:
-		return "js"
-	if origins == {"c", "js"}:
-		return "c+js"
-	return "unknown"
-
-
-# Deterministic case-insensitive sorter for report arrays.
-def sorted_list(values: Iterable[str]) -> list[str]:
-	return sorted(set(values), key=lambda v: v.lower())
-
-
-# Convert character offsets to 1-based line numbers.
-def line_of_offset(text: str, offset: int) -> int:
-	return text.count("\n", 0, offset) + 1
-
-
-# Build a portable source-reference object.
-def make_ref(path: str, line: Optional[int], reason: str) -> Ref:
-	return {"path": path, "line": line, "reason": reason}
-
-
-# Legacy text formatter (retained for potential plain-text output/debugging).
-def fmt_ref(ref: Ref) -> str:
-	if ref.get("line"):
-		return "`%s:%s` (%s)" % (ref["path"], ref["line"], ref["reason"])
-	return "`%s` (%s)" % (ref["path"], ref["reason"])
-
-
-# De-duplicate references while preserving first-seen order.
-def unique_refs(refs: Iterable[Ref]) -> list[Ref]:
-	seen: set[tuple[str, int | None, str]] = set()
-	out: list[Ref] = []
-	for ref in refs:
-		key = (ref.get("path"), ref.get("line"), ref.get("reason"))
-		if key in seen:
-			continue
-		seen.add(key)
-		out.append(ref)
-	return out
-
-
-# Format a reference as a markdown link relative to report output.
-def markdown_link_for_ref(report_dir: Path, repo_root: Path, ref: Ref) -> str:
-	target_path = Path(str(ref.get("path", "")))
-	abs_target = (repo_root / target_path).resolve()
-	href = os.path.relpath(str(abs_target), str(report_dir.resolve())).replace("\\", "/")
-	line = ref.get("line")
-	if line:
-		href = "%s#L%s" % (href, line)
-	label = target_path.name
-	if line:
-		label = "%s:%s" % (label, line)
-	return "[%s](%s) (%s)" % (label, href, ref.get("reason", "source"))
-
-
-# Collapse known JS filename aliases onto canonical widget names.
-def normalize_js_widget_name(stem_name: str) -> str:
-	text = normalize_widget_name(stem_name)
-	aliases = {
-		"componentdecl": "component-decl",
-		"sys_osml": "sys-osml",
-		"page_js15": "page",
-		"checkbox_moz": "checkbox",
-	}
-	return aliases.get(text, text)
-
-
-# Regex-parse widget XML blocks to capture stable line-based references.
-def extract_widget_doc_locations(path: Path) -> dict[str, WidgetDocLocations]:
-	# Compile block/attribute regexes once for full-file scanning.
-	content = path.read_text(encoding="utf-8", errors="ignore")
-	results: dict[str, WidgetDocLocations] = {}
-	pattern = re.compile(r"<widget\b([^>]*)>", re.IGNORECASE)
-	attr_re = re.compile(r'([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*"([^"]*)"')
-	prop_re = re.compile(r'<property\b[^>]*\bname\s*=\s*"([^"]+)"', re.IGNORECASE)
-	event_re = re.compile(r'<event\b[^>]*\bname\s*=\s*"([^"]+)"', re.IGNORECASE)
-	action_re = re.compile(r'<action\b[^>]*\bname\s*=\s*"([^"]+)"', re.IGNORECASE)
-	child_re = re.compile(r'<child\b[^>]*\btype\s*=\s*"([^"]+)"', re.IGNORECASE)
-
-	# Walk each widget block and collect reference locations for members.
-	for match in pattern.finditer(content):
-		attrs = dict(attr_re.findall(match.group(1)))
-		widget_name = normalize_widget_name(attrs.get("name") or attrs.get("type") or "")
-		if not widget_name:
-			continue
-		start = match.start()
-		end = content.find("</widget>", start)
-		if end < 0:
-			end = len(content)
-		block = content[start:end]
-		base_line = line_of_offset(content, start)
-		node = {
-			"location": make_ref(
-				"centrallix-doc/Widgets/widgets.xml", base_line, "widget definition"
-			),
-			"properties": {},
-			"events": {},
-			"actions": {},
-			"children": {},
-		}
-		for pm in prop_re.finditer(block):
-			line = base_line + block.count("\n", 0, pm.start())
-			node["properties"][normalize_name(pm.group(1))] = make_ref(
-				"centrallix-doc/Widgets/widgets.xml", line, "documented property"
-			)
-		for em in event_re.finditer(block):
-			line = base_line + block.count("\n", 0, em.start())
-			node["events"][normalize_name(em.group(1))] = make_ref(
-				"centrallix-doc/Widgets/widgets.xml", line, "documented event"
-			)
-		for am in action_re.finditer(block):
-			line = base_line + block.count("\n", 0, am.start())
-			node["actions"][normalize_name(am.group(1))] = make_ref(
-				"centrallix-doc/Widgets/widgets.xml", line, "documented action"
-			)
-		for cm in child_re.finditer(block):
-			line = base_line + block.count("\n", 0, cm.start())
-			child_name = _normalize_child_type(cm.group(1))
-			if child_name:
-				node["children"][child_name] = make_ref(
-					"centrallix-doc/Widgets/widgets.xml", line, "documented child type"
-				)
-		results[widget_name] = node
-	return results
-
-
-# Validate/normalize child type declarations into concrete widget keys.
-def _normalize_child_type(child_type: str) -> Optional[str]:
-	text = normalize_widget_name(child_type)
-	if not text:
-		return None
-	if text in {"any", "formelement"}:
-		return None
-	if text.startswith("/"):
-		return None
-	if re.search(r"[\s()]", text):
-		return None
-	if not re.match(r"^[a-z0-9][a-z0-9_-]*$", text):
-		return None
-	return text
-
-
-# Parse `widgets.xml` into documented widget inventory + child-type coverage.
-def extract_documented_widgets(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
-	# Build base structures and pre-compute line references.
-	tree = ET.parse(path)
-	root = tree.getroot()
-	docs: dict[str, WidgetDoc] = {}
-	covered_widget_types: set[str] = set()
-	doc_locations = extract_widget_doc_locations(path)
-	# Walk widget entries and extract properties/events/actions/child coverage.
-	for widget in root.findall(".//widget"):
-		widget_name = normalize_widget_name(
-			widget.get("name") or widget.get("type") or ""
-		)
-		if not widget_name:
-			continue
-		node = WidgetDoc(widget=widget_name)
-		covered_widget_types.add(widget_name)
-		if widget_name in doc_locations:
-			node.location = doc_locations[widget_name]["location"]
-			node.property_locations = doc_locations[widget_name]["properties"]
-			node.event_locations = doc_locations[widget_name]["events"]
-			node.action_locations = doc_locations[widget_name]["actions"]
-			node.child_locations = doc_locations[widget_name]["children"]
-
-		# Extract documented properties/events/actions.
-		for prop in widget.findall("./properties/property"):
-			prop_name = normalize_name(prop.get("name") or "")
-			if prop_name:
-				node.properties.add(prop_name)
-
-		for event in widget.findall("./events/event"):
-			event_name = normalize_name(event.get("name") or "")
-			if event_name:
-				node.events.add(event_name)
-
-		for action in widget.findall("./actions/action"):
-			action_name = normalize_name(action.get("name") or "")
-			if not action_name:
-				continue
-			node.actions.add(action_name)
-			# widgets.xml currently does not encode structured params, so infer a
-			# weak signal from quoted parameter names in prose.
-			raw_text = "".join(action.itertext())
-			quoted = re.findall(r"[\"']([A-Za-z_][A-Za-z0-9_]*)[\"']", raw_text)
-			if quoted:
-				node.action_params[action_name] = set(quoted)
-
-		# Track child declarations as additional "documented coverage".
-		for child in widget.findall("./children/child"):
-			raw_child_type = normalize_name(child.get("type") or "").lower()
-			if raw_child_type == "any":
-				node.has_any_child = True
-			child_type = _normalize_child_type(raw_child_type)
-			if child_type:
-				covered_widget_types.add(child_type)
-
-		docs[widget_name] = node
-	return docs, covered_widget_types
-
-
-# Scan `wgtdrv_*.c` for widget type registration and type-family groupings.
-def extract_widget_types_from_wgtr(
-	path: Path,
-) -> tuple[set[str], dict[str, set[str]], dict[str, list[Ref]]]:
-	widget_types: set[str] = set()
-	families: dict[str, set[str]] = {}
-	refs: dict[str, list[Ref]] = {}
-	pattern = re.compile(r'wgtrAddType\(\s*[^,]+,\s*"([^"]+)"\s*\)')
-	# Parse every driver file and record registration evidence.
-	for c_file in sorted(path.glob("wgtdrv_*.c")):
-		content = c_file.read_text(encoding="utf-8", errors="ignore")
-		rel = "centrallix/wgtr/%s" % c_file.name
-		file_types = []
-		for m in pattern.finditer(content):
-			file_types.append(normalize_widget_name(m.group(1)))
-			widget = normalize_widget_name(m.group(1))
-			if widget:
-				refs.setdefault(widget, []).append(
-					make_ref(rel, line_of_offset(content, m.start()), "wgtrAddType")
-				)
-		file_set = set([name for name in file_types if name])
-		for name in file_set:
-			widget_types.add(name)
-			families[name] = set(file_set)
-	return widget_types, families, refs
-
-
-# Expand docs coverage when a documented widget allows `child type="any"`.
-def expand_any_child_coverage(
-	docs: dict[str, WidgetDoc],
-	covered_widget_types: set[str],
-	widget_families: dict[str, set[str]],
-) -> set[str]:
-	expanded = set(covered_widget_types)
-	for widget_name, node in docs.items():
-		if not node.has_any_child:
-			continue
-		expanded.update(widget_families.get(widget_name, set()))
-	return expanded
-
-
-# Create/get runtime widget bucket for incremental extractor merges.
-def _ensure_runtime_widget(store: dict[str, RuntimeWidget], widget: str) -> RuntimeWidget:
-	if widget not in store:
-		store[widget] = RuntimeWidget(widget=widget)
-	return store[widget]
-
-
-# Parse C htmlgen drivers for runtime events/actions/params plus evidence links.
-def extract_runtime_from_c(path: Path) -> dict[str, RuntimeWidget]:
-	runtime: dict[str, RuntimeWidget] = {}
-	widget_pat = re.compile(r'strcpy\(\s*drv->WidgetName\s*,\s*"([^"]+)"\s*\)')
-	event_pat = re.compile(r'htrAddEvent\(\s*drv\s*,\s*"([^"]+)"\s*\)')
-	action_pat = re.compile(r'htrAddAction\(\s*drv\s*,\s*"([^"]+)"\s*\)')
-	param_pat = re.compile(
-		r'htrAddParam\(\s*drv\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*[^)]+\)'
-	)
-
-	# Parse each C driver and attach signal-level evidence.
-	for c_file in sorted(path.glob("htdrv_*.c")):
-		content = c_file.read_text(encoding="utf-8", errors="ignore")
-		rel = "centrallix/htmlgen/%s" % c_file.name
-		widget_match = widget_pat.search(content)
-		if not widget_match:
-			continue
-		widget = normalize_widget_name(widget_match.group(1))
-		node = _ensure_runtime_widget(runtime, widget)
-		node.sources.append(
-			make_ref(rel, line_of_offset(content, widget_match.start()), "C driver widget name")
-		)
-
-		# Extract events/actions/params with line-level references.
-		for event_m in event_pat.finditer(content):
-			event_name = normalize_name(event_m.group(1))
-			signal = node.events.get(event_name) or RuntimeSignal(name=event_name)
-			signal.origins.add("c")
-			signal.confidence = pick_confidence(signal.confidence, "confirmed")
-			signal.evidence.append(
-				make_ref(rel, line_of_offset(content, event_m.start()), "htrAddEvent")
-			)
-			node.events[event_name] = signal
-
-		for action_m in action_pat.finditer(content):
-			action_name = normalize_name(action_m.group(1))
-			signal = node.actions.get(action_name) or RuntimeSignal(name=action_name)
-			signal.origins.add("c")
-			signal.confidence = pick_confidence(signal.confidence, "confirmed")
-			signal.evidence.append(
-				make_ref(rel, line_of_offset(content, action_m.start()), "htrAddAction")
-			)
-			node.actions[action_name] = signal
-
-		for param_m in param_pat.finditer(content):
-			action_name = normalize_name(param_m.group(1))
-			param_name = normalize_name(param_m.group(2))
-			signal = node.actions.get(action_name) or RuntimeSignal(name=action_name)
-			signal.origins.add("c")
-			signal.confidence = pick_confidence(signal.confidence, "confirmed")
-			if param_name:
-				signal.params.add(param_name)
-				signal.param_evidence.setdefault(param_name, []).append(
-					make_ref(rel, line_of_offset(content, param_m.start()), "htrAddParam")
-				)
-			node.actions[action_name] = signal
-	return runtime
-
-
-# Infer JS action parameter names by scanning handler body member access.
-def _extract_js_action_params(content: str, fn_name: str) -> list[tuple[str, int]]:
-	params: list[tuple[str, int]] = []
-	body_pat = re.compile(
-		rf"function\s+{re.escape(fn_name)}\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)\s*\{{",
-		re.MULTILINE,
-	)
-	start = body_pat.search(content)
-	if not start:
-		return params
-	arg_name = start.group(1)
-	idx = start.end()
-	depth = 1
-	# Walk braces to isolate the function body without a full parser.
-	while idx < len(content) and depth > 0:
-		ch = content[idx]
-		if ch == "{":
-			depth += 1
-		elif ch == "}":
-			depth -= 1
-		idx += 1
-	body = content[start.end() : max(start.end(), idx - 1)]
-	for pm in re.finditer(
-		rf"\b{re.escape(arg_name)}\.([A-Za-z_][A-Za-z0-9_]*)", body
-	):
-		pname = pm.group(1)
-		pline = line_of_offset(content, start.end() + pm.start())
-		params.append((pname, pline))
-	return params
-
-
-# Parse JS drivers for event/action registrations and heuristic param usage.
-def extract_runtime_from_js(path: Path) -> dict[str, RuntimeWidget]:
-	runtime: dict[str, RuntimeWidget] = {}
-	add_iface_pat = re.compile(
-		r"([A-Za-z_][A-Za-z0-9_]*)\s*=\s*[^;]*ifcProbeAdd\(\s*(ifAction|ifEvent)\s*\)"
-	)
-	add_call_pat = re.compile(
-		r"([A-Za-z_][A-Za-z0-9_]*)\.Add\(\s*[\"']([^\"']+)[\"']\s*(?:,\s*([A-Za-z_][A-Za-z0-9_]*))?"
-	)
-
-	# Parse each driver file and map interface variables to Add() calls.
-	for js_file in sorted(path.glob("htdrv_*.js")):
-		widget = normalize_js_widget_name(js_file.stem.replace("htdrv_", "", 1))
-		node = _ensure_runtime_widget(runtime, widget)
-		content = js_file.read_text(encoding="utf-8", errors="ignore")
-		rel = "centrallix-os/sys/js/%s" % js_file.name
-		node.sources.append(make_ref(rel, 1, "JS driver file"))
-
-		# First capture which local vars are event vs action interfaces.
-		iface_vars: dict[str, str] = {}
-		for var_name, iface in add_iface_pat.findall(content):
-			iface_vars[var_name] = iface
-
-		# Then extract Add() registrations and optional handler evidence.
-		for add_m in add_call_pat.finditer(content):
-			var_name = add_m.group(1)
-			signal_name = add_m.group(2)
-			fn_name = add_m.group(3)
-			iface = iface_vars.get(var_name)
-			if iface not in {"ifAction", "ifEvent"}:
-				continue
-			signal_name = normalize_name(signal_name)
-			if not signal_name:
-				continue
-
-			confidence = "strong" if fn_name else "heuristic"
-			origins = {"js"}
-			if iface == "ifEvent":
-				signal = node.events.get(signal_name) or RuntimeSignal(name=signal_name)
-				signal.origins.update(origins)
-				signal.confidence = pick_confidence(signal.confidence, confidence)
-				signal.evidence.append(
-					make_ref(rel, line_of_offset(content, add_m.start()), "ifEvent.Add")
-				)
-				node.events[signal_name] = signal
-			else:
-				signal = node.actions.get(signal_name) or RuntimeSignal(name=signal_name)
-				signal.origins.update(origins)
-				signal.confidence = pick_confidence(signal.confidence, confidence)
-				if fn_name:
-					for param_name, param_line in _extract_js_action_params(content, fn_name):
-						signal.params.add(param_name)
-						signal.param_evidence.setdefault(param_name, []).append(
-							make_ref(rel, param_line, "action param use in JS")
-						)
-				signal.evidence.append(
-					make_ref(rel, line_of_offset(content, add_m.start()), "ifAction.Add")
-				)
-				node.actions[signal_name] = signal
-	return runtime
-
-
-# Merge C and JS runtime inventories while preserving strongest evidence.
-def merge_runtime(
-	c_runtime: dict[str, RuntimeWidget], js_runtime: dict[str, RuntimeWidget]
-) -> dict[str, RuntimeWidget]:
-	merged: dict[str, RuntimeWidget] = {}
-	all_widgets = set(c_runtime) | set(js_runtime)
-	for widget in all_widgets:
-		node = RuntimeWidget(widget=widget)
-		c_node = c_runtime.get(widget)
-		j_node = js_runtime.get(widget)
-		for source in (c_node, j_node):
-			if not source:
-				continue
-			node.sources.extend(source.sources)
-			for name, signal in source.events.items():
-				existing = node.events.get(name) or RuntimeSignal(name=name)
-				existing.merge(signal)
-				node.events[name] = existing
-			for name, signal in source.actions.items():
-				existing = node.actions.get(name) or RuntimeSignal(name=name)
-				existing.merge(signal)
-				node.actions[name] = existing
-		merged[widget] = node
-	return merged
-
-
-# Assign severity from origin and finding category.
-def severity_for(origins: set[str], category: str) -> Severity:
-	if "c" in origins:
-		return SEVERITY_HIGH
-	if category in {"missing_widget_docs", "missing_action", "missing_event"}:
-		return SEVERITY_MEDIUM
-	return SEVERITY_LOW
-
-
 # Compute global and per-widget drift, including evidence-rich details.
 def compute_drift(
 	docs: dict[str, WidgetDoc],
-	documented_coverage: set[str],
+	doc_types: set[str],
 	widget_types: set[str],
 	widget_type_refs: dict[str, list[Ref]],
-	runtime: dict[str, RuntimeWidget],
-	obsolete_widgets: set[str],
+	widgets: dict[str, WidgetImpl],
 ) -> DriftReport:
-	# Build normalized comparison sets with obsolete filtering applied.
-	doc_widgets = set(documented_coverage) - obsolete_widgets
-	fully_documented_widgets = set(docs) - obsolete_widgets
-	code_widgets = (set(widget_types) | set(runtime)) - obsolete_widgets
+	total_errors = 0
+	
+	# Build normalized comparison.
+	doc_widgets = set(doc_types)
+	fully_documented_widgets = set(docs)
+	implemented_widgets = (set(widget_types) | set(widgets))
 
-	missing_widget_docs = sorted_list(code_widgets - doc_widgets)
-	stale_doc_widgets = sorted_list(doc_widgets - code_widgets)
+	# Get missing/stale widgets.
+	missing_widget_docs = sorted_list(implemented_widgets - doc_widgets)
+	stale_widget_docs = sorted_list(doc_widgets - implemented_widgets)
+	
+	# Get refs for missing/stale widgets.
 	missing_widget_doc_refs: dict[str, list[Ref]] = {}
 	stale_widget_doc_refs: dict[str, list[Ref]] = {}
-	# Assemble global finding evidence for missing/stale widgets.
 	for widget in missing_widget_docs:
 		refs: list[Ref] = []
 		refs.extend(widget_type_refs.get(widget, []))
-		if widget in runtime:
-			refs.extend(runtime[widget].sources)
+		if widget in widgets:
+			refs.extend(widgets[widget].definition_refs)
 		missing_widget_doc_refs[widget] = unique_refs(refs)
-	for widget in stale_doc_widgets:
-		doc = docs.get(widget)
-		stale_widget_doc_refs[widget] = [doc.location] if doc and doc.location else []
+	for widget_name in stale_widget_docs:
+		doc = docs.get(widget_name)
+		if doc != None and doc.ref != None:
+			stale_widget_doc_refs[widget_name] = [doc.ref]
+			continue
+		
+		# Fallback: search for a child of this name.
+		for widget_doc in docs.values():
+			for child_name, child_ref in widget_doc.child_refs.items():
+				if child_name == widget_name:
+					stale_widget_doc_refs[widget_name] = [child_ref]
 
-	per_widget: list[PerWidgetFinding] = []
-	triage = sorted_list(fully_documented_widgets & code_widgets)
 	# Build per-widget detailed diffs only for documented widgets present in code.
+	per_widget: list[PerWidgetFinding] = []
+	triage = sorted_list(fully_documented_widgets & implemented_widgets)
 	for widget in triage:
-		doc = docs.get(widget, WidgetDoc(widget=widget))
-		run = runtime.get(widget, RuntimeWidget(widget=widget))
+		doc = docs.get(widget, WidgetDoc(name=widget))
+		run = widgets.get(widget, WidgetImpl(widget_name=widget))
 
 		runtime_events = set(run.events)
 		runtime_actions = set(run.actions)
@@ -671,143 +786,133 @@ def compute_drift(
 		extra_events = sorted_list(doc_events - runtime_events)
 		missing_actions = sorted_list(runtime_actions - doc_actions)
 		extra_actions = sorted_list(doc_actions - runtime_actions)
-		extra_properties = sorted_list(doc.properties if widget in stale_doc_widgets else [])
+		extra_properties = sorted_list(doc.properties if widget in stale_widget_docs else [])
 
 		# Compute action parameter mismatch details with runtime/doc references.
 		action_param_drift: list[ParamDriftEntry] = []
 		for action_name in sorted_list(runtime_actions | doc_actions):
-			runtime_params = set(run.actions.get(action_name, RuntimeSignal(action_name)).params)
+			runtime_params = set(run.actions.get(action_name, ActionImpl(action_name)).params)
 			doc_params = set(doc.action_params.get(action_name, set()))
 			missing_params = sorted_list(runtime_params - doc_params)
 			extra_params = sorted_list(doc_params - runtime_params)
 			if missing_params or extra_params:
-				runtime_ref: list[Ref] = []
-				doc_ref: list[Ref] = []
-				for p in missing_params:
-					runtime_ref.extend(
-						run.actions.get(action_name, RuntimeSignal(action_name)).param_evidence.get(
-							p, []
-						)
-					)
-				for p in extra_params:
-					if action_name in doc.action_locations:
-						doc_ref.append(doc.action_locations[action_name])
-				action_param_drift.append(
-					{
-						"action": action_name,
-						"missing_in_docs": missing_params,
-						"extra_in_docs": extra_params,
-						"origin": slug_origin(
-							run.actions.get(action_name, RuntimeSignal(action_name)).origins
-						),
-						"confidence": run.actions.get(
-							action_name, RuntimeSignal(action_name)
-						).confidence,
-						"severity": severity_for(
-							run.actions.get(action_name, RuntimeSignal(action_name)).origins,
-							"param_mismatch",
-						),
-						"references_runtime": unique_refs(runtime_ref),
-						"references_docs": unique_refs(doc_ref),
-					}
-				)
+				code_refs: dict[str, Ref] = {}
+				doc_refs: list[Ref] = []
+				
+				# Missing params.
+				for missing_param in missing_params:
+					for param_ref in (run
+						.actions
+						.get(action_name, ActionImpl(action_name))
+						.params_refs
+						.get(missing_param, [])
+					):
+						code_refs.setdefault(missing_param, param_ref)
+				
+				# Extra params.
+				if len(extra_params) > 0 and action_name in doc.action_refs:
+					doc_refs.append(doc.action_refs[action_name])
+				
+				action_param_drift.append({
+					"action": action_name,
+					"extra_in_docs": extra_params,
+					"origin": slug_origin(
+						run.actions.get(action_name, ActionImpl(action_name)).ref_languages
+					),
+					"confidence": run.actions.get(action_name, ActionImpl(action_name)).confidence,
+					"code_refs": code_refs,
+					"doc_refs": unique_refs(doc_refs),
+				})
 
 		# Emit entry only when at least one drift category is present.
 		if (
-			missing_events
+			extra_properties
+			or missing_events
 			or extra_events
 			or missing_actions
 			or extra_actions
 			or action_param_drift
-			or extra_properties
 		):
-			per_widget.append(
-				{
-					"widget": widget,
-					"links": {
-						"docs": [doc.location] if doc.location else [],
-						"c": [
-							ref
-							for ref in unique_refs(run.sources)
-							if str(ref.get("path", "")).startswith("centrallix/htmlgen/")
-						],
-						"js": [
-							ref
-							for ref in unique_refs(run.sources)
-							if str(ref.get("path", "")).startswith("centrallix-os/sys/js/")
-						],
-					},
-					"status": {
-						"missing_widget_docs": False,
-						"stale_doc_widget": False,
-					},
-					"missing_events": [
-						{
-							"name": name,
-							"origin": slug_origin(run.events[name].origins),
-							"confidence": run.events[name].confidence,
-							"severity": severity_for(run.events[name].origins, "missing_event"),
-							"references": unique_refs(run.events[name].evidence),
-						}
-						for name in missing_events
+			per_widget.append({
+				"widget": widget,
+				"links": {
+					"docs": [doc.ref] if doc.ref else [],
+					"c": [
+						ref
+						for ref in unique_refs(run.definition_refs)
+						if str(ref.get("path", "")).startswith("centrallix/htmlgen/")
 					],
-					"extra_events": [
-						{
-							"name": name,
-							"references": [
-								doc.event_locations[name]
-							]
-							if name in doc.event_locations
-							else [],
-						}
-						for name in extra_events
+					"js": [
+						ref
+						for ref in unique_refs(run.definition_refs)
+						if str(ref.get("path", "")).startswith("centrallix-os/sys/js/")
 					],
-					"missing_actions": [
-						{
-							"name": name,
-							"origin": slug_origin(run.actions[name].origins),
-							"confidence": run.actions[name].confidence,
-							"severity": severity_for(run.actions[name].origins, "missing_action"),
-							"references": unique_refs(run.actions[name].evidence),
-						}
-						for name in missing_actions
-					],
-					"extra_actions": [
-						{
-							"name": name,
-							"references": [
-								doc.action_locations[name]
-							]
-							if name in doc.action_locations
-							else [],
-						}
-						for name in extra_actions
-					],
-					"extra_properties": [
-						{
-							"name": name,
-							"references": [
-								doc.property_locations[name]
-							]
-							if name in doc.property_locations
-							else [],
-						}
-						for name in extra_properties
-					],
-					"action_param_drift": action_param_drift,
-				}
-			)
+				},
+				"extra_properties": [
+					{
+						"name": name,
+						"references": [
+							doc.property_refs[name]
+						]
+						if name in doc.property_refs
+						else [],
+					}
+					for name in extra_properties
+				],
+				"missing_events": [
+					{
+						"name": name,
+						"origin": slug_origin(run.events[name].ref_languages),
+						"confidence": run.events[name].confidence,
+						"references": unique_refs(run.events[name].definition_refs),
+					}
+					for name in missing_events
+				],
+				"extra_events": [
+					{
+						"name": name,
+						"references": [
+							doc.event_refs[name]
+						]
+						if name in doc.event_refs
+						else [],
+					}
+					for name in extra_events
+				],
+				"missing_actions": [
+					{
+						"name": name,
+						"origin": slug_origin(run.actions[name].ref_languages),
+						"confidence": run.actions[name].confidence,
+						"references": unique_refs(run.actions[name].definition_refs),
+					}
+					for name in missing_actions
+				],
+				"extra_actions": [
+					{
+						"name": name,
+						"references": [
+							doc.action_refs[name]
+						]
+						if name in doc.action_refs
+						else [],
+					}
+					for name in extra_actions
+				],
+				"action_param_drift": action_param_drift,
+			})
+		total_errors += len(missing_events) + len(extra_events) + len(missing_actions) + len(extra_actions) + len(extra_properties)
 
 	return {
 		"metadata": {
-			"obsolete_widgets": sorted_list(obsolete_widgets),
 			"counts": {
 				"documented_widgets": len(doc_widgets),
 				"fully_documented_widgets": len(fully_documented_widgets),
-				"code_widgets": len(code_widgets),
+				"implemented_widgets": len(implemented_widgets),
 				"missing_widget_docs": len(missing_widget_docs),
-				"stale_doc_widgets": len(stale_doc_widgets),
-				"widgets_with_findings": len(per_widget),
+				"stale_widget_docs": len(stale_widget_docs),
+				"widgets_with_errors": len(per_widget),
+				"widget_errors": total_errors,
 			},
 		},
 		"global_findings": {
@@ -815,9 +920,9 @@ def compute_drift(
 				{"widget": w, "references": missing_widget_doc_refs.get(w, [])}
 				for w in missing_widget_docs
 			],
-			"stale_doc_widgets": [
+			"stale_widget_docs": [
 				{"widget": w, "references": stale_widget_doc_refs.get(w, [])}
-				for w in stale_doc_widgets
+				for w in stale_widget_docs
 			],
 		},
 		"per_widget": per_widget,
@@ -826,151 +931,142 @@ def compute_drift(
 
 # Write the machine-readable JSON artifact with stable formatting.
 def write_json(path: Path, report: DriftReport) -> None:
-	path.parent.mkdir(parents=True, exist_ok=True)
 	with path.open("w", encoding="utf-8") as handle:
-		json.dump(report, handle, indent=2, sort_keys=True)
+		json.dump(report, handle, indent=2 if HUMAN_JSON else None, sort_keys=True)
 		handle.write("\n")
 
 
 # Render the human-readable markdown report with clickable evidence links.
 def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
-	# Emit high-level header and count summary.
-	path.parent.mkdir(parents=True, exist_ok=True)
 	report_dir = path.parent
 	lines: list[str] = []
-	lines.append("# Widget Documentation Drift Report")
-	lines.append("")
+	
+	# Write header.
 	lines.append(
-		"This report is generated by `doc-report/generate.py` and is report-only."
+		"# Widget Documentation Drift Report\n"
+		"Report generated by [generate.py](generate.py).\n"
 	)
+	
+	# Get stats.
+	stats = report["metadata"]["counts"]
+	n_documented_widgets = stats['documented_widgets']
+	n_implemented_widgets = stats['implemented_widgets']
+	n_stale_widget_docs = stats['stale_widget_docs']
+	n_widgets_with_errors = stats['widgets_with_errors']
+	n_widget_errors = stats['widget_errors']
+	
+	# Write stats.
+	documented_widgets_strict = n_documented_widgets - n_stale_widget_docs
+	progress = documented_widgets_strict / n_implemented_widgets
+	error_percent = n_widgets_with_errors / documented_widgets_strict
+	error_rate = n_widget_errors / documented_widgets_strict
 	lines.append(
-		"Fixing documentation issues is intentionally deferred to a future project."
+		"## Widget Stats\n"
+		f"- **Documented**: {documented_widgets_strict}/{n_implemented_widgets} widgets ({progress:.0%})\n"
+		f"- **Missing docs**: {stats['missing_widget_docs']}\n"
+		f"- **Stale docs**: {n_stale_widget_docs}\n"
+		f"- **Ignored widgets**: {len(IGNORED_WIDGETS)}\n"
+		f"- **Widget docs with errors**: {n_widgets_with_errors} ({error_percent:.0%})\n"
+		f"- **Widget doc errors**: {n_widget_errors} (~{error_rate:.2}/widget)\n"
 	)
-	lines.append("")
-	counts = report["metadata"]["counts"]
-	lines.append("## Counts")
-	lines.append("")
-	lines.append(f"- Documented widgets: {counts['documented_widgets']}")
-	lines.append(f"- Code widgets: {counts['code_widgets']}")
-	lines.append(f"- Missing widget docs: {counts['missing_widget_docs']}")
-	lines.append(f"- Stale doc widgets: {counts['stale_doc_widgets']}")
-	lines.append(f"- Widgets with findings: {counts['widgets_with_findings']}")
-	lines.append("")
 
-	# Emit global missing/stale widget findings with provenance links.
+	# Write global findings (aka. missing & stale widget docs).
 	globals_findings = report["global_findings"]
-	lines.append("## Global Findings")
-	lines.append("")
-	lines.append("- Missing widget docs:")
-	for entry in globals_findings["missing_widget_docs"]:
-		lines.append("  - `%s`" % entry["widget"])
-		refs = entry.get("references", [])
-		if refs:
-			for ref in refs:
-				lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
-		else:
-			lines.append("    - source: not found")
-	lines.append("- Stale doc widgets:")
-	for entry in globals_findings["stale_doc_widgets"]:
-		lines.append("  - `%s`" % entry["widget"])
-		refs = entry.get("references", [])
-		if refs:
-			for ref in refs:
-				lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
-		else:
-			lines.append("    - docs: not found")
-	lines.append("")
-
-	lines.append("## Per-Widget Findings")
-	lines.append("")
-	# Emit detailed per-widget differences grouped by finding type.
-	for item in report["per_widget"]:
-		lines.append(f"### `{item['widget']}`")
+	for title, entries in [
+		("Missing Widget Docs", globals_findings["missing_widget_docs"]),
+		("Stale Widgets Docs",  globals_findings["stale_widget_docs"]),
+	]:
+		if title:
+			lines.append(f"## {title}")
+		for entry in entries:
+			lines.append(f"- `{entry['widget']}`")
+			refs = entry.get("references") or []
+			lines.extend(f"  - {ref_to_markdown_link(report_dir, repo_root, r)}" for r in refs)
+			if not refs:
+				lines.append("  - source: unknown")
 		lines.append("")
-		status = item["status"]
-		lines.append(f"- Missing widget docs: `{status['missing_widget_docs']}`")
-		lines.append(f"- Stale doc widget: `{status['stale_doc_widget']}`")
+	
+	# Write per-widget differences by type.
+	lines.append("## Widget Errors")
+	for item in report["per_widget"]:
+		# Write general issues with source links.
 		links = item.get("links", {})
-		doc_refs = links.get("docs", [])
-		c_refs = links.get("c", [])
-		js_refs = links.get("js", [])
-		lines.append("- Locations:")
-		if doc_refs:
-			for ref in doc_refs:
-				lines.append("  - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
-		else:
-			lines.append("  - docs: not found")
-		if c_refs:
-			for ref in c_refs:
-				lines.append("  - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
-		else:
-			lines.append("  - c: not found")
-		if js_refs:
-			for ref in js_refs:
-				lines.append("  - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
-		else:
-			lines.append("  - js: not found")
-		if item["missing_events"]:
-			lines.append("- Missing events in docs:")
-			for event in item["missing_events"]:
-				lines.append(
-					f"  - `{event['name']}` "
-					f"(origin: `{event['origin']}`, "
-					f"confidence: `{event['confidence']}`, "
-					f"severity: `{event['severity']}`)"
-				)
-				if event.get("references"):
-					for ref in event["references"]:
-						lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
-		if item["extra_events"]:
-			lines.append("- Extra events in docs:")
-			for event in item["extra_events"]:
-				lines.append("  - `%s`" % event["name"])
-				for ref in event.get("references", []):
-					lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
-		if item["missing_actions"]:
-			lines.append("- Missing actions in docs:")
-			for action in item["missing_actions"]:
-				lines.append(
-					f"  - `{action['name']}` "
-					f"(origin: `{action['origin']}`, "
-					f"confidence: `{action['confidence']}`, "
-					f"severity: `{action['severity']}`)"
-				)
-				if action.get("references"):
-					for ref in action["references"]:
-						lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
-		if item["extra_actions"]:
-			lines.append("- Extra actions in docs:")
-			for action in item["extra_actions"]:
-				lines.append("  - `%s`" % action["name"])
-				for ref in action.get("references", []):
-					lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
+		lines.append(
+			f"### `{item['widget']}`\n"
+			"- **Sources**"
+		)
+		for name, refs in (
+			# Source link providers:
+			("docs", links.get("docs", [])),
+			("c",	links.get("c",	[])),
+			("js",   links.get("js",   [])),
+		):
+			if refs != []:
+				lines.extend(f"  - {ref_to_markdown_link(report_dir, repo_root, r)}" for r in refs)
+			else:
+				lines.append(f"  - {name}: not found")
+		
+		# Write property issues.
 		if item["extra_properties"]:
-			lines.append("- Properties present only in docs:")
+			lines.append("- **Properties only in docs**")
 			for prop in item["extra_properties"]:
 				lines.append("  - `%s`" % prop["name"])
 				for ref in prop.get("references", []):
-					lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
+					lines.append("	- %s" % ref_to_markdown_link(report_dir, repo_root, ref))
+		
+		# Write event issues.
+		if item["missing_events"]:
+			lines.append("- **Undocumented events**")
+			for event in item["missing_events"]:
+				lines.append(f"  - `{event['name']}` ("
+					f"origin: `{event['origin']}`, "
+					f"confidence: `{event['confidence']}`"
+				")")
+				if event.get("references"):
+					for ref in event["references"]:
+						lines.append("	- %s" % ref_to_markdown_link(report_dir, repo_root, ref))
+		if item["extra_events"]:
+			lines.append("- **Stale event docs**")
+			for event in item["extra_events"]:
+				lines.append("  - `%s`" % event["name"])
+				for ref in event.get("references", []):
+					lines.append("	- %s" % ref_to_markdown_link(report_dir, repo_root, ref))
+		
+		# Write action issues.
+		if item["missing_actions"]:
+			lines.append("- **Undocumented actions**")
+			for action in item["missing_actions"]:
+				lines.append(f"  - `{action['name']}` ("
+					f"origin: `{action['origin']}`, "
+					f"confidence: `{action['confidence']}`"
+				")")
+				if action.get("references"):
+					for ref in action["references"]:
+						lines.append("	- %s" % ref_to_markdown_link(report_dir, repo_root, ref))
+		if item["extra_actions"]:
+			lines.append("- **Stale action docs**")
+			for action in item["extra_actions"]:
+				lines.append("  - `%s`" % action["name"])
+				for ref in action.get("references", []):
+					lines.append("	- %s" % ref_to_markdown_link(report_dir, repo_root, ref))
+		
+		# Write action param issues.
 		if item["action_param_drift"]:
-			lines.append("- Action parameter differences:")
+			lines.append("- **Incorrect action parameter docs**")
 			for drift in item["action_param_drift"]:
-				lines.append(
-					f"  - `{drift['action']}` (origin: `{drift['origin']}`, "
-					f"confidence: `{drift['confidence']}`, severity: `{drift['severity']}`)"
-				)
-				if drift["missing_in_docs"]:
-					lines.append(
-						f"    - missing in docs: {', '.join(f'`{x}`' for x in drift['missing_in_docs'])}"
-					)
-					for ref in drift.get("references_runtime", []):
-						lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
+				lines.append(f"  - `{drift['action']}` ("
+					f"origin: `{drift['origin']}`, "
+					f"confidence: `{drift['confidence']}`"
+				")")
+				if drift.get("code_refs"):
+					lines.append(f"	- Undocumented parameters:")
+					for name, ref in drift.get("code_refs", {}).items():
+						lines.append(f"	  - `{name}`: {ref_to_markdown_link(report_dir, repo_root, ref)}")
 				if drift["extra_in_docs"]:
-					lines.append(
-						f"    - extra in docs: {', '.join(f'`{x}`' for x in drift['extra_in_docs'])}"
-					)
-					for ref in drift.get("references_docs", []):
-						lines.append("    - %s" % markdown_link_for_ref(report_dir, repo_root, ref))
+					stale_params = ', '.join(f'`{x}`' for x in drift['extra_in_docs'])
+					lines.append(f"	- Stale parameter docs: {stale_params}")
+					for ref in drift.get("doc_refs", []):
+						lines.append(f"	  - {ref_to_markdown_link(report_dir, repo_root, ref)}")
 		lines.append("")
 
 	with path.open("w", encoding="utf-8") as handle:
@@ -1009,9 +1105,9 @@ def parse_args() -> argparse.Namespace:
 	return parser.parse_args()
 
 
-# Orchestrate extract -> normalize -> diff -> write pipeline.
+# Orchestrate parse -> normalize -> diff -> write pipeline.
 def main() -> int:
-	# Resolve locations and output targets.
+	# Resolve refs and output targets.
 	args = parse_args()
 	repo_root = args.repo_root.resolve()
 	doc_xml, wgtr_dir, c_driver_dir, js_driver_dir, output_dir = resolve_paths(
@@ -1021,33 +1117,28 @@ def main() -> int:
 	md_path = output_dir / "drift-report.md"
 
 	# Build documented + runtime inventories.
-	docs, documented_coverage = extract_documented_widgets(doc_xml)
-	widget_types, widget_families, widget_type_refs = extract_widget_types_from_wgtr(wgtr_dir)
-	documented_coverage = expand_any_child_coverage(
-		docs, documented_coverage, widget_families
-	)
-	c_runtime = extract_runtime_from_c(c_driver_dir)
-	js_runtime = extract_runtime_from_js(js_driver_dir)
-	runtime = merge_runtime(c_runtime, js_runtime)
-	# Compute drift and write deterministic artifacts.
+	docs, doc_types = get_documented_widgets(doc_xml)
+	widget_types, widget_families, widget_type_refs = parse_widgets_in_wgtr(wgtr_dir)
+	doc_types = expand_any_child_coverage(docs, doc_types, widget_families)
+	c_widgets = parse_c_impl(c_driver_dir)
+	js_widgets = parse_js_impl(js_driver_dir)
+	widgets = merge_widget_lists(c_widgets, js_widgets)
+	
+	# Compute drift and write reports.
 	report = compute_drift(
 		docs,
-		documented_coverage,
+		doc_types,
 		widget_types,
 		widget_type_refs,
-		runtime,
-		set(OBSOLETE_WIDGETS),
+		widgets,
 	)
-	write_json(json_path, report)
-	write_markdown(md_path, report, repo_root)
-
-	# Print concise handoff output for make/CI logs.
-	print(f"Generated: {json_path}")
-	print(f"Generated: {md_path}")
-	print(
-		"Documentation fixes are deferred; this tool only reports drift "
-		"between docs and source/runtime."
-	)
+	if (WRITE_REPORT_JSON):
+		write_json(json_path, report)
+		print(f"Generated: {json_path}")
+	if (WRITE_REPORT_MD):
+		write_markdown(md_path, report, repo_root)
+		print(f"Generated: {md_path}")
+	
 	return 0
 
 
