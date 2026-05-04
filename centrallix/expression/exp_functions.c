@@ -7,6 +7,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <iconv.h>
 #include "obj.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
@@ -94,52 +95,213 @@ int exp_fn_user_name(pExpression tree, pParamObjects objlist, pExpression i0, pE
     }
 
 
-int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+/*** exp_fn_internal_encoding_convert - Convert a string from one encoding to another
+ ***   @param tree The expression tree node to store the results in
+ ***   @param from_code_exp A string expression of the encoding to convert from
+ ***   @param to_code_exp A string expression of the encoding to convert to
+ ***   @param data_exp The expression with the data to be converted
+ ***   @returns 0 on success and -1 on error
+ ***/
+int exp_fn_internal_encoding_convert(pExpression tree, pExpression from_code_exp, pExpression to_code_exp, pExpression data_exp)
+    {
+    char* ret_buf = NULL;
+    iconv_t conv_desc = NULL;
+
+	/** check the params are valid **/
+	if ( from_code_exp == NULL || (from_code_exp->Flags & EXPR_F_NULL) != 0 || from_code_exp->DataType != DATA_T_STRING
+	    || to_code_exp == NULL || (to_code_exp->Flags & EXPR_F_NULL) != 0   || to_code_exp->DataType != DATA_T_STRING
+	    || data_exp == NULL    || (data_exp->Flags & EXPR_F_NULL) != 0      
+	    || (data_exp->DataType != DATA_T_STRING && data_exp->DataType != DATA_T_BINARY) )
+	    {
+	    mssError(1, "EXP", "convert(): conversion to character encoding requires (STRING, STRING, STRING|BINARY)");
+	    goto error;
+	    }
+	
+
+	/** Assign the encoding to translate from **/
+	char* from_code;
+	switch(objStringToEncoding(from_code_exp->String))
+	    {
+	    case ENCODING_ASCII:
+		from_code = "ascii";
+		break;
+	    case ENCODING_LATIN_1:
+		from_code = "latin1";
+		break;
+	    case ENCODING_UTF_8:
+		from_code = "utf8";
+		break;
+	    case ENCODING_CP_1252:
+		from_code = "cp1252";
+		break;
+	    default:
+		mssError(1,"EXP","convert(): Cannot convert from character encoding '%s'", from_code_exp->String);
+		goto error;
+	    }
+	
+	/** Assign the encoding to translate to **/
+	char* to_code;
+	switch(objStringToEncoding(to_code_exp->String))
+	    {
+	    case ENCODING_ASCII:
+		to_code = "ascii//TRANSLIT";
+		break;
+	    case ENCODING_LATIN_1:
+		to_code = "latin1//TRANSLIT";
+		break;
+	    case ENCODING_UTF_8:
+		to_code = "utf8//TRANSLIT";
+		break;
+	    case ENCODING_CP_1252:
+		to_code = "cp1252//TRANSLIT";
+		break;
+	    default:
+		mssError(1,"EXP","convert(): Cannot convert to character encoding '%s'", to_code_exp->String);
+		goto error;
+	    }
+	
+	
+	/** Open a session to hanlde the conversion **/
+	conv_desc = iconv_open(to_code, from_code);
+	if(conv_desc == (iconv_t)-1)
+	    {
+	    mssError(1,"EXP","convert(): Cannot start conversion session from '%s' to '%s'. Errno %d", from_code, to_code, errno);
+	    conv_desc = NULL;
+	    goto error;
+	    }
+	
+	/** Assume the converted size will be the same, and realloc to fit more as needed **/
+	char* in_buf = data_exp->String;
+	size_t data_len = (data_exp->DataType == DATA_T_BINARY)?data_exp->Size : strlen(in_buf);
+	size_t in_len = data_len;
+	size_t out_len = in_len;
+	size_t ret_len = in_len; /* We will return the data as binary, so we do not need a null terminator */
+	if((ret_buf = nmSysMalloc(ret_len)) == NULL)
+	    {
+	    mssError(1,"EXP","convert(): Out of memory");
+	    goto error;
+	    }
+	char* out_buf = ret_buf;
+	
+	/** Keep going until the conversion is complete **/
+	while(in_len > 0)
+	    {
+	    if(iconv(conv_desc, &in_buf, &in_len, &out_buf, &out_len) == (size_t)(-1))
+		{
+		/** Read errno to find error **/
+		switch (errno)
+		    {
+		    case EILSEQ:
+			mssError(1,"EXP","convert(): Invalid multibyte sequnece or character in string '%s' at index %d from encoding '%s'", 
+				data_exp->String, (int)(data_exp->String - in_buf), from_code);
+			break;
+		    case EINVAL: 
+			mssError(1,"EXP","convert(): String '%s' ends with an incomplete multibyte sequence starting at index %d from encoding '%s'", 
+				data_exp->String, (int)(data_exp->String - in_buf), from_code);
+			break;
+		    case E2BIG:
+			{
+			const size_t new_len = ret_len*2;
+			/** reallocate to twice the length **/
+			ret_buf = nmSysRealloc(ret_buf, new_len);
+			if(ret_buf == NULL)
+			    {
+			    mssError(1,"EXP","convert(): Out of memory");
+			    goto error;
+			    }
+			out_buf = ret_buf + (ret_len - out_len);
+			out_len += new_len - ret_len;
+			ret_len = new_len;
+			}
+			continue;
+		    default:
+			mssError(1,"EXP","convert(): Unknown error converting string '%s' from '%s' to '%s'. errno = %d", 
+				data_exp->String, from_code, to_code, errno);
+		    }
+		goto error;
+		}
+	    }
+	errno = 0;
+	/** close the session **/
+	iconv_close(conv_desc);
+	conv_desc = NULL;
+
+	/** if there was space leftover, shrink it back */
+	if(out_len > 0)
+	    {
+	    ret_buf = nmSysRealloc(ret_buf, ret_len - out_len);
+	    ret_len -= out_len;
+	    }
+
+	/** set up the tree **/
+	tree->DataType = DATA_T_BINARY;
+	tree->String = ret_buf;
+	tree->Alloc = 1;
+	tree->Size = ret_len;
+
+	return 0;
+
+    error:
+	if(ret_buf != NULL) nmSysFree(ret_buf);
+	if(conv_desc != NULL) iconv_close(conv_desc);
+	errno = 0;
+    return -1;
+    }
+
+
+
+/*** exp_fn_internal_type_convert - Convert an expression from one datatype to another
+ ***   @param tree The expression tree node to store the results in
+ ***   @param data_type A string expression with the type to convert to
+ ***   @param data An expression with the data to be converted
+ ***   @returns 0 on success and -1 on error
+ ***/
+int exp_fn_internal_type_convert(pExpression tree, pExpression data_type, pExpression data)
     {
     void* vptr;
     char* ptr;
     Binary b;
-
-    if (!i0 || !i1 || i0->DataType != DATA_T_STRING || (i0->Flags & EXPR_F_NULL))
+	if (!data_type || !data || data_type->DataType != DATA_T_STRING || (data_type->Flags & EXPR_F_NULL))
+	    {
+	    mssError(1,"EXP","convert() requires data type and value to be converted");
+	    return -1;
+	    }
+	
+    switch(data->DataType)
         {
-	mssError(1,"EXP","convert() requires data type and value to be converted");
-	return -1;
-	}
-    switch(i1->DataType)
-        {
-	case DATA_T_INTEGER: vptr = &(i1->Integer); break;
-	case DATA_T_STRING: vptr = i1->String; break;
+	case DATA_T_INTEGER: vptr = &(data->Integer); break;
+	case DATA_T_STRING: vptr = data->String; break;
 	case DATA_T_BINARY:
-	    b.Size = i1->Size;
-	    b.Data = (unsigned char*)i1->String;
+	    b.Size = data->Size;
+	    b.Data = (unsigned char*)data->String;
 	    vptr = &b;
 	    break;
-	case DATA_T_DOUBLE: vptr = &(i1->Types.Double); break;
-	case DATA_T_DATETIME: vptr = &(i1->Types.Date); break;
-	case DATA_T_MONEY: vptr = &(i1->Types.Money); break;
+	case DATA_T_DOUBLE: vptr = &(data->Types.Double); break;
+	case DATA_T_DATETIME: vptr = &(data->Types.Date); break;
+	case DATA_T_MONEY: vptr = &(data->Types.Money); break;
 	default:
 	    mssError(1,"EXP","convert(): unsupported arg 2 datatype");
 	    return -1;
 	}
-    if (!strcmp(i0->String,"integer"))
+    if (!strcmp(data_type->String,"integer"))
         {
 	tree->DataType = DATA_T_INTEGER;
-	if (i1->Flags & EXPR_F_NULL) 
+	if (data->Flags & EXPR_F_NULL) 
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
 	    }
-	tree->Integer = objDataToInteger(i1->DataType, vptr, NULL);
+	tree->Integer = objDataToInteger(data->DataType, vptr, NULL);
 	}
-    else if (!strcmp(i0->String,"string"))
+    else if (!strcmp(data_type->String,"string"))
         {
 	tree->DataType = DATA_T_STRING;
-	if (i1->Flags & EXPR_F_NULL) 
+	if (data->Flags & EXPR_F_NULL) 
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
 	    }
-	ptr = objDataToStringTmp(i1->DataType, vptr, 0);
+	ptr = objDataToStringTmp(data->DataType, vptr, 0);
 	if (tree->Alloc && tree->String)
 	    {
 	    nmSysFree(tree->String);
@@ -156,39 +318,39 @@ int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExp
 	    strcpy(tree->String, ptr);
 	    }
 	}
-    else if (!strcmp(i0->String,"double"))
+    else if (!strcmp(data_type->String,"double"))
         {
 	tree->DataType = DATA_T_DOUBLE;
-	if (i1->Flags & EXPR_F_NULL) 
+	if (data->Flags & EXPR_F_NULL) 
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
 	    }
-	tree->Types.Double = objDataToDouble(i1->DataType, vptr);
+	tree->Types.Double = objDataToDouble(data->DataType, vptr);
 	}
-    else if (!strcmp(i0->String,"money"))
+    else if (!strcmp(data_type->String,"money"))
         {
 	tree->DataType = DATA_T_MONEY;
-	if (i1->Flags & EXPR_F_NULL) 
+	if (data->Flags & EXPR_F_NULL) 
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
 	    }
-	if (objDataToMoney(i1->DataType, vptr, &(tree->Types.Money)) < 0)
+	if (objDataToMoney(data->DataType, vptr, &(tree->Types.Money)) < 0)
 	    {
 	    mssError(1,"EXP","convert(): invalid conversion to money value");
 	    return -1;
 	    }
 	}
-    else if (!strcmp(i0->String,"datetime"))
+    else if (!strcmp(data_type->String,"datetime"))
         {
 	tree->DataType = DATA_T_DATETIME;
-	if (i1->Flags & EXPR_F_NULL) 
+	if (data->Flags & EXPR_F_NULL) 
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
 	    }
-	if (objDataToDateTime(i1->DataType, vptr, &(tree->Types.Date), NULL) < 0)
+	if (objDataToDateTime(data->DataType, vptr, &(tree->Types.Date), NULL) < 0)
 	    {
 	    mssError(1,"EXP","convert(): invalid conversion to datetime value");
 	    return -1;
@@ -196,10 +358,20 @@ int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExp
 	}
     else
         {
-	mssError(1,"EXP","convert(): datatype '%s' is invalid", i0->String);
+	mssError(1,"EXP","convert(): datatype '%s' is invalid", data_type->String);
 	return -1;
 	}
     return 0;
+    }
+
+ 
+int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+	/** Determine if this is a type or encoding conversion **/
+	if (tree->Children.nItems == 2) return exp_fn_internal_type_convert(tree, i0, i1);
+	else if(tree->Children.nItems == 3) return exp_fn_internal_encoding_convert(tree, i0, i1, i2);
+	else mssError(1,"EXP","convert(): valid forms are (type, data) or (from_encoding, to_encoding, data)");
+    return -1;
     }
 
 

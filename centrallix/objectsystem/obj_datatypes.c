@@ -127,6 +127,32 @@ char* obj_default_money_fmt = "$0.00";
 char* obj_default_null_fmt = "NULL";
 
 
+/*** Encoding Constants 
+ ***   Lists out names accepted by the object system for each of the 
+ ***   Supported Encodings defined in datatypes.h
+ ***/
+
+typedef struct _ENN
+    {
+    int Id;
+    const char** Names;
+    int Size;
+    }
+    EncodingNames, pEncodingNames;
+
+const char* obj_ascii_names[] =	{"ascii"};
+const char* obj_latin_1_names[] = {"latin1", "latin-1", "ISO 8859-1", "ISO-8859-1","EIC 8859-1", "EIC-8859-1", "ISO/IEC 8859-1"};
+const char* obj_utf_8_names[] = {"utf8", "utf-8", "unicode"};
+const char* obj_cp1252_names[] = {"cp1252", "windows-1252", "windows1252"};
+
+EncodingNames obj_encoding_names[] = {
+	{.Id = ENCODING_ASCII,		.Names = obj_ascii_names,	.Size = sizeof(obj_ascii_names)/sizeof(char*)},
+	{.Id = ENCODING_LATIN_1,	.Names = obj_latin_1_names,	.Size = sizeof(obj_latin_1_names)/sizeof(char*)},
+	{.Id = ENCODING_UTF_8,		.Names = obj_utf_8_names,	.Size = sizeof(obj_utf_8_names)/sizeof(char*)},
+	{.Id = ENCODING_CP_1252,	.Names = obj_cp1252_names,	.Size = sizeof(obj_cp1252_names)/sizeof(char*)}
+};
+
+
 /*** obj_internal_ParseDateLang - looks up a list of language internationalization
  *** strings inside the date format.  WARNING - modifies the "srcptr" data in
  *** place.
@@ -2548,4 +2574,26 @@ objDateAdd(pDateTime dt, int diff_sec, int diff_min, int diff_hr, int diff_day, 
 	}
 
     return 0;
+    }
+
+/*** objStringToEncoding - Convert a string to an encoding ID
+ ***   @param code_str The encoding string to be compared against accepted name. Case insensitive. 
+ ***   @return The ID of the encoding matched, or `ENCODING_INVALID` on error. 
+ ***/
+int 
+objStringToEncoding(char* code_str)
+    {
+    int num_lists = sizeof(obj_encoding_names)/sizeof(EncodingNames);
+    for(int i = 0 ; i < num_lists ; i++)
+	{
+	int list_len = obj_encoding_names[i].Size;
+	for(int j = 0 ; j < list_len ; j++)
+	    {
+	    if(strcasecmp(obj_encoding_names[i].Names[j], code_str) == 0)
+		{
+		return obj_encoding_names[i].Id;
+		}
+	    }
+	}
+    return ENCODING_INVALID;
     }
