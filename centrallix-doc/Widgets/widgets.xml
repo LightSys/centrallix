@@ -1,101 +1,74 @@
-<?xml version='1.0'?>
+<?xml version='1.0' encoding="UTF-8"?>
 
 <!DOCTYPE widgets [
+	<!-- Define the widgets elements. -->
+	<!ELEMENT widgets (widget*)>
+	<!ELEMENT widget (
+		overview, usage, properties, clientprops?,
+		children?, events?, actions?, sample?
+	)>
+	
+	<!-- Define widget elements. -->
+	<!ELEMENT overview (#PCDATA | p | b | i | ul | ol)*>
+	<!ELEMENT usage (#PCDATA | p | b | i | ul | ol)*>
+	<!ELEMENT properties (property | note)*>
+	<!ELEMENT property (#PCDATA | ni)*>
+	<!ELEMENT clientprops (clientprop | note)*>
+	<!ELEMENT clientprop (#PCDATA | ni)*>
+	<!ELEMENT children (child | note)*>
+	<!ELEMENT child (childproperty | note)*>
+	<!ELEMENT childproperty (#PCDATA | ni)*>
+	<!ELEMENT events ((event | note)*)>
+	<!ELEMENT event (#PCDATA | ni)*>
+	<!ELEMENT actions (action | note)*>
+	<!ELEMENT action (#PCDATA | ni)*>
+	<!ELEMENT sample (#PCDATA)>
+	
+	<!-- Adds context for all properties/events/action/etc. -->
+	<!ELEMENT note (#PCDATA | ni)*>
+	
+	<!-- Define HTML elements -->
+	<!ELEMENT p (#PCDATA | b | i | ul | ol)*>
+	<!ELEMENT b (#PCDATA)*>
+	<!ELEMENT i (#PCDATA)*>
+	<!ELEMENT ul (li)*>
+	<!ELEMENT ol (li)*>
+	<!ELEMENT li (#PCDATA | b | i)*>
+	<!ELEMENT ni (#PCDATA)>
 
-	  <!ELEMENT widgets (widget*)>
-
-	  <!ELEMENT widget (overview,usage,properties,children,events,actions,clientprops,sample)>
-
-	  <!ELEMENT overview (ANY)>
-
-	  <!ELEMENT usage (ANY)>
-
-	  <!ELEMENT properties (property*)>
-
-	  <!ELEMENT property (ANY)>
-
-	  <!ELEMENT children (child*)>
-
-	  <!ELEMENT child (childproperty*)>
-
-	  <!ELEMENT childproperty (ANY)>
-
-	  <!ELEMENT events (event*)>
-
-	  <!ELEMENT event (ANY)>
-
-	  <!ELEMENT actions (action*)>
-
-	  <!ELEMENT action (ANY)>
-
-	  <!ELEMENT clientprops (clientprop*)>
-
-	  <!ELEMENT clientprop (ANY)>
-
-	  <!ELEMENT sample (#PCDATA)>
-
-
-
-	  <!ATTLIST widget    
-
-		    name           ID         #REQUIRED
-
-		    type           CDATA      #REQUIRED
-
-		    description    CDATA      #IMPLIED
-
-		    visual         (yes|no)   #IMPLIED
-
-		    formelement    (yes|no)   #IMPLIED
-
-		    container      (yes|no)   #IMPLIED
-
-		    osrcclient     (yes|no)   #IMPLIED
-
-		    >
-
-	  <!ATTLIST property
-
-		    name           CDATA      #REQUIRED
-
-		    type           CDATA      #REQUIRED
-
-		    >
-
-	  <!ATTLIST child
-
-		    type           CDATA      #REQUIRED
-
-		    >
-
-	  <!ATTLIST childproperty
-
-		    name           CDATA      #REQUIRED
-
-		    type           CDATA      #REQUIRED
-
-		    >
-
-	  <!ATTLIST event
-
-		    name           CDATA      #REQUIRED
-
-		    >
-
-	  <!ATTLIST action
-
-		    name           CDATA      #REQUIRED
-
-		    >
-
-	  <!ATTLIST clientprop
-
-		    name           CDATA      #REQUIRED
-
-		    type           CDATA      #REQUIRED
-
-		    >
-
+	<!-- Define attribute lists for widget elements. -->
+	<!ATTLIST widget    
+		name           ID         #REQUIRED
+		type           CDATA      #REQUIRED
+		description    CDATA      #IMPLIED
+		visual         (yes|no)   #IMPLIED
+		formelement    (yes|no)   #IMPLIED
+		container      (yes|no)   #IMPLIED
+		osrcclient     (yes|no)   #IMPLIED
+	>
+	<!ATTLIST property
+		name           CDATA      #REQUIRED
+		type           CDATA      #REQUIRED
+		subtype        CDATA      #IMPLIED
+		enum           CDATA      #IMPLIED
+	>
+	<!ATTLIST child
+		type           CDATA      #REQUIRED
+	>
+	<!ATTLIST childproperty
+		name           CDATA      #REQUIRED
+		type           CDATA      #REQUIRED
+	>
+	<!ATTLIST event
+		name           CDATA      #REQUIRED
+	>
+	<!ATTLIST action
+		name           CDATA      #REQUIRED
+	>
+	<!ATTLIST clientprop
+		name           CDATA      #REQUIRED
+		type           CDATA      #REQUIRED
+	>
 ]>
 
 <widgets>
@@ -160,7 +133,7 @@
 
 		</children>
 
-		<!--<events>
+		<events>
 
 		</events>
 
@@ -170,7 +143,7 @@
 
 		<clientprops>
 
-		</clientprops>-->
+		</clientprops>
 
 		<sample>
 
@@ -250,9 +223,9 @@ vbox1 "widget/vbox"
 
 	    </properties>
 		
-		<!--<children>
+		<children>
 
-		</children>-->
+		</children>
 
 		<events>
 		
@@ -270,13 +243,13 @@ vbox1 "widget/vbox"
 
 		</events>
 
-		<!--<actions>
+		<actions>
 
 		</actions>
 
 		<clientprops>
 
-		</clientprops>-->
+		</clientprops>
 
 		<sample>
 
@@ -346,9 +319,9 @@ vbox1 "widget/vbox"
 
 		</properties>
 
-		<!--<children>
+		<children>
 
-		</children>-->
+		</children>
 
 		<events>
 		
@@ -364,13 +337,13 @@ vbox1 "widget/vbox"
 
 		</events>
 
-		<!--<actions>
+		<actions>
 
 		</actions>
 
 		<clientprops>
 
-		</clientprops>-->
+		</clientprops>
 
 		<sample>
 
@@ -481,9 +454,9 @@ chart "widget/chart"
 
 		</properties>
 
-		<!--<children>
+		<children>
 
-		</children>-->
+		</children>
 
 		<events>
 
@@ -509,9 +482,9 @@ chart "widget/chart"
 
 		</actions>
 
-		<!--<clientprops>
+		<clientprops>
 
-		</clientprops>-->
+		</clientprops>
 
 		<sample>
 
@@ -1591,7 +1564,7 @@ mySoundPlayer "widget/execmethod"
 
 			<property name="next_form_within" type="string" subtype="widget"><ni/>Similar to "next_form", but searches for the next form after this one within a given widget or component.  Transitioning from one component context to another is permitted (you could specify a "widget/page" widget here, and cause focus to transfer to another form in the same application, regardless of level of component nesting; this may or may not be desired behavior).</property>
 
-			<property name="objectsource">Represents the widget object source (transfers data to and from server).</property>
+			<property name="objectsource" type="string">Represents the widget object source (transfers data to and from server).</property>
 			
 			<property name="ReadOnly" type="integer"><ni/>Allow changes.</property>
 
@@ -1754,9 +1727,9 @@ form1 "widget/form"
 
 		</properties>
 
-		<!--<children>
+		<children>
 
-		</children>-->
+		</children>
 
 		<events>
 
@@ -1772,9 +1745,9 @@ form1 "widget/form"
 
 		</events>
 
-		<!--<actions>
+		<actions>
 		
-		</actions>-->
+		</actions>
 
 		<sample>
 
@@ -1905,6 +1878,10 @@ BigFrameset "widget/frameset"
 			<p>An autolayout widget with style set to "hbox".  See "widget/autolayout".</p>
 
 		</overview>
+		
+		<usage>See "widget/autolayout"</usage>
+
+		<properties/>
 
 	</widget>
 	
@@ -1959,7 +1936,7 @@ BigFrameset "widget/frameset"
 			
 		</properties>
 
-		<!--<children>
+		<children>
 
 		</children>
 
@@ -1973,7 +1950,7 @@ BigFrameset "widget/frameset"
 
 		<clientprops>
 
-		</clientprops>-->
+		</clientprops>
 
 		<sample>
 
@@ -2219,9 +2196,9 @@ HTMLArea "widget/html"
 
 		</properties>
 
-		<!--<children>
+		<children>
 
-		</children>-->
+		</children>
 
 		<events>
 
@@ -2247,11 +2224,11 @@ HTMLArea "widget/html"
 
 		</actions>
 		
-		<clientprop>
+		<clientprops>
 		
 			<clientprop name="enabled" type="yes/no or expr">Whether or not the imagebutton should be enabled.  Defaults to 'yes'.  Can be an expression that if uses runclient() will cause the enabled status of the imagebutton to 'follow' the value of that expression while the application is running.</clientprop>
 
-		</clientprop>
+		</clientprops>
 
 		<sample>
 
@@ -2902,9 +2879,9 @@ MyPage "widget/page"
 
 		</properties>
 
-		<!--<children>
+		<children>
 
-		</children>-->
+		</children>
 		
 		<clientprops>
 		
@@ -3168,6 +3145,8 @@ testradio "widget/radiobuttonpanel"
 
 		</usage>
 
+		<properties/>
+
 		<sample>
 
 		<![CDATA[
@@ -3197,6 +3176,8 @@ testradio "widget/radiobuttonpanel"
 			<p>The remote control manager widget is a nonvisual widget and thus cannot contain visual widgets.It is normally located at the top-level of an application, within a "widget/page" object.</p>
 
 		</usage>
+
+		<properties/>
 
 		<sample>
 
@@ -3405,6 +3386,8 @@ $Version=2$
 			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
 
 			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
+			
+			<note>The Click, Wheel, MouseDown, and MouseUp events provide several pieces of useful information, including :shiftKey, :ctrlKey, :altKey, and :metaKey, which are 1 if the respective key is held down and 0 otherwise. These events also provide :button, a number representing the button number that the user used to execute the event (which appears to always be 0 for wheel).</note>
 
 		</events>
 		
@@ -3597,7 +3580,7 @@ myTabControl "widget/tab"
 
 			<p>A table widget is used to display data in a tabular format. It consists of a header row with column labels, followed by any number of rows containing data.The header may have a different color or image scheme than the rows, and the rows may or may not be configured to alternate between two colors or background images.</p>
 
-		<span class='__TEXT__'>Table widgets come in three different flavors: static, dynamicpage, and dynamicrow.Static table widgets are built on the server and write their data directly into the container in which they reside, which is usually a scrollpane widget.  Dynamicpage table widgets load their data once they initialize on the client, by activating a query through an ObjectSource nonvisual widget.Dynamicpage table widgets do not support modification, but can be reloaded through an ObjectSource at will.Dynamicrow table widgets, on the other hand, display each row as an individual layer, and thus are modifiable on the client. Dynamicrow table widgets also load their contents through an ObjectSource widget query.As of the time of writing of this document, only <i>static</i> mode and <i>dynamicrow</i> mode were supported.</span>
+		<p>Table widgets come in three different flavors: static, dynamicpage, and dynamicrow.Static table widgets are built on the server and write their data directly into the container in which they reside, which is usually a scrollpane widget.  Dynamicpage table widgets load their data once they initialize on the client, by activating a query through an ObjectSource nonvisual widget.Dynamicpage table widgets do not support modification, but can be reloaded through an ObjectSource at will.Dynamicrow table widgets, on the other hand, display each row as an individual layer, and thus are modifiable on the client. Dynamicrow table widgets also load their contents through an ObjectSource widget query.As of the time of writing of this document, only <i>static</i> mode and <i>dynamicrow</i> mode were supported.</p>
 
 			<p>Table widgets allow the selection (keyboard, mouse, and data focus) of individual rows.</p>
 
@@ -3819,12 +3802,11 @@ tblFileList "widget/table"
 
 		</usage>
 
-		<!--
 		<properties>
 
-		  <property name="" type=""></property>
+			<property name="" type=""/>
 
-		</properties>-->
+		</properties>
 
 		<children>
 
@@ -3836,7 +3818,7 @@ tblFileList "widget/table"
 
 		</children>
 
-		<!--<events>
+		<events>
 
 		</events>
 
@@ -3846,7 +3828,7 @@ tblFileList "widget/table"
 
 		<clientprops>
 
-		</clientprops>-->
+		</clientprops>
 
 		<sample>
 
@@ -3932,9 +3914,9 @@ objcanvas_test "widget/template"
 
 		</properties>
 
-		<!--<children>
+		<children>
 
-		</children>-->
+		</children>
 
 		<events>
 			
@@ -3976,9 +3958,9 @@ objcanvas_test "widget/template"
 		
 		</actions>
 
-		<!--<clientprops>
+		<clientprops>
 
-		</clientprops>-->
+		</clientprops>
 
 		<sample>
 
@@ -4401,6 +4383,10 @@ counter "widget/variable"
 			<p>An autolayout widget with style set to "vbox".  See "widget/autolayout".</p>
 
 		</overview>
+		
+		<usage>See "widget/autolayout"</usage>
+
+		<properties/>
 
 	</widget>
 
