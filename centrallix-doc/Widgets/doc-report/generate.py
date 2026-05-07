@@ -48,10 +48,7 @@ IGNORED_ERRORS = set({
 # appear in either source code or documentation.
 IGNORED_WIDGETS = set({
     # Skipped
-    "window",
-    "childwindow",
-    "uawindow",
-    "formelement",
+    # "",
     
     # Obsolete
     "alerter",
@@ -60,8 +57,10 @@ IGNORED_WIDGETS = set({
     "frameset",
     "multiscroll",
     "multiscrollpart",
+    "remotectl",
+    "remotemgr",
     "spinner",
-    "terminal",
+    "uawindow",
 })
 
 # Widgets that use other names in the code.  This dictionary maps normalized
@@ -71,8 +70,8 @@ WIDGETS_ALIASES = {
     "sys_osml": "sys-osml",
     "page_js15": "page",
     "checkbox_moz": "checkbox",
-    # "uawindow": "window",
-    # "window": "childwindow",
+    "radiobutton": "radiobuttonpanel", # May cause issues with the radiobutton widget (child of radiobuttonpanel).
+    "window": "childwindow", # May cause issues with window widgets implemented in uawindow files.
 }
 
 # Whether to write unminified, human-readable JSON.  Minified JSON is typically
