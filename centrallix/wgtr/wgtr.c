@@ -2086,7 +2086,6 @@ wgtrInitialize()
 	wgtsbInitialize();
 	wgtspaneInitialize();
 	wgtspnrInitialize();
-	wgtosmlInitialize();
 	wgttabInitialize();
 	wgttblInitialize();
 	wgttermInitialize();
@@ -2573,5 +2572,3 @@ wgtrGetNamespace(pWgtrNode widget)
     {
     return widget->Namespace;
     }
-
-
