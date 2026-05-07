@@ -13,8 +13,36 @@ from pathlib import Path
 from typing import Iterable, Optional, TypedDict
 from xml.etree import ElementTree
 
+id = 1
+def get_id():
+	global id
+	cur_id = id
+	id += 1
+	return cur_id
+
+IGNORE_MISSING_WIDGET_DOCS = get_id()
+IGNORE_STALE_WIDGET_DOCS = get_id()
+IGNORE_STALE_PROPERTY_DOCS = get_id()
+IGNORE_MISSING_EVENT_DOCS = get_id()
+IGNORE_STALE_EVENT_DOCS = get_id()
+IGNORE_MISSING_ACTION_DOCS = get_id()
+IGNORE_STALE_ACTION_DOCS = get_id()
+IGNORE_INCORRECT_ACTION_PARAM_DOCS = get_id()
+
 # =============
 # Configs
+
+# Uncomment any of the strings below to ignore that type of issue.
+IGNORED_ERRORS = set({
+	# IGNORE_MISSING_WIDGET_DOCS,		 # Ignore all undocumented widgets. (Not recommended.)
+	# IGNORE_STALE_WIDGET_DOCS,		   # Ignore all docs for unimplemented widgets. (Not recommended.)
+	# IGNORE_STALE_PROPERTY_DOCS,		 # Ignore docs for unimplemented properties.
+	# IGNORE_MISSING_EVENT_DOCS,		  # Ignore events with no docs.
+	# IGNORE_STALE_EVENT_DOCS,			# Ignore docs for unimplemented events.
+	# IGNORE_MISSING_ACTION_DOCS,		 # Ignore actions with no docs.
+	# IGNORE_STALE_ACTION_DOCS,		   # Ignore docs for unimplemented actions.
+	IGNORE_INCORRECT_ACTION_PARAM_DOCS, # Ignore incorrect 
+})
 
 # The normalized names of widgets that should be completely ignored if they
 # appear in either source code or documentation.
@@ -713,6 +741,7 @@ class ReportCounts(TypedDict):
 	stale_widget_docs: int
 	widgets_with_errors: int
 	widget_errors: int
+	ignored_errors: int
 
 
 class ReportMetadata(TypedDict):
@@ -739,6 +768,7 @@ def compute_drift(
 	widgets: dict[str, WidgetImpl],
 ) -> DriftReport:
 	total_errors = 0
+	ignored_errors = 0
 	
 	# Build normalized comparison.
 	doc_widgets = set(doc_types)
@@ -782,11 +812,11 @@ def compute_drift(
 		doc_events = set(doc.events)
 		doc_actions = set(doc.actions)
 
+		extra_properties = sorted_list(doc.properties if widget in stale_widget_docs else [])
 		missing_events = sorted_list(runtime_events - doc_events)
 		extra_events = sorted_list(doc_events - runtime_events)
 		missing_actions = sorted_list(runtime_actions - doc_actions)
 		extra_actions = sorted_list(doc_actions - runtime_actions)
-		extra_properties = sorted_list(doc.properties if widget in stale_widget_docs else [])
 
 		# Compute action parameter mismatch details with runtime/doc references.
 		action_param_drift: list[ParamDriftEntry] = []
@@ -823,6 +853,27 @@ def compute_drift(
 					"code_refs": code_refs,
 					"doc_refs": unique_refs(doc_refs),
 				})
+		
+		# Handle ignored errors.
+		if IGNORE_STALE_PROPERTY_DOCS in IGNORED_ERRORS:
+			ignored_errors += len(extra_properties)
+			extra_properties : list[str] = list()
+		if IGNORE_MISSING_EVENT_DOCS in IGNORED_ERRORS:
+			ignored_errors += len(missing_events)
+			missing_events : list[str] = list()
+		if IGNORE_STALE_EVENT_DOCS in IGNORED_ERRORS:
+			ignored_errors += len(extra_events)
+			extra_events : list[str] = list()
+		if IGNORE_MISSING_ACTION_DOCS in IGNORED_ERRORS:
+			ignored_errors += len(missing_actions)
+			missing_actions : list[str] = list()
+		if IGNORE_STALE_EVENT_DOCS in IGNORED_ERRORS:
+			ignored_errors += len(extra_actions)
+			extra_actions : list[str] = list()
+		if IGNORE_INCORRECT_ACTION_PARAM_DOCS in IGNORED_ERRORS:
+			ignored_errors += len(action_param_drift)
+			action_param_drift : list[ParamDriftEntry] = list()
+			
 
 		# Emit entry only when at least one drift category is present.
 		if (
@@ -901,7 +952,15 @@ def compute_drift(
 				],
 				"action_param_drift": action_param_drift,
 			})
-		total_errors += len(missing_events) + len(extra_events) + len(missing_actions) + len(extra_actions) + len(extra_properties)
+			total_errors += len(extra_properties) + len(missing_events) + len(extra_events) + len(missing_actions) + len(extra_actions) + len(action_param_drift)
+
+	# Handle ignored errors.
+	if IGNORE_MISSING_WIDGET_DOCS in IGNORED_ERRORS:
+		ignored_errors += len(missing_widget_docs)
+		missing_widget_docs : list[str] = list()
+	if IGNORE_STALE_WIDGET_DOCS in IGNORED_ERRORS:
+		ignored_errors += len(stale_widget_docs)
+		stale_widget_docs : list[str] = list()
 
 	return {
 		"metadata": {
@@ -913,6 +972,7 @@ def compute_drift(
 				"stale_widget_docs": len(stale_widget_docs),
 				"widgets_with_errors": len(per_widget),
 				"widget_errors": total_errors,
+				"ignored_errors": ignored_errors,
 			},
 		},
 		"global_findings": {
@@ -954,6 +1014,7 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
 	n_stale_widget_docs = stats['stale_widget_docs']
 	n_widgets_with_errors = stats['widgets_with_errors']
 	n_widget_errors = stats['widget_errors']
+	n_ignored_errors = stats['ignored_errors']
 	
 	# Write stats.
 	documented_widgets_strict = n_documented_widgets - n_stale_widget_docs
@@ -963,11 +1024,12 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
 	lines.append(
 		"## Widget Stats\n"
 		f"- **Documented**: {documented_widgets_strict}/{n_implemented_widgets} widgets ({progress:.0%})\n"
-		f"- **Missing docs**: {stats['missing_widget_docs']}\n"
-		f"- **Stale docs**: {n_stale_widget_docs}\n"
+		f"- **Missing widget docs**: {stats['missing_widget_docs']}\n"
+		f"- **Stale widget docs**: {n_stale_widget_docs}\n"
 		f"- **Ignored widgets**: {len(IGNORED_WIDGETS)}\n"
 		f"- **Widget docs with errors**: {n_widgets_with_errors} ({error_percent:.0%})\n"
 		f"- **Widget doc errors**: {n_widget_errors} (~{error_rate:.2}/widget)\n"
+		f"- **Ignored errors**: {n_ignored_errors}\n"
 	)
 
 	# Write global findings (aka. missing & stale widget docs).
