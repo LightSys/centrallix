@@ -839,7 +839,7 @@ formctl "widget/component"
 			<p>A widget/component-decl widget must occur at the top level of a component (.cmp) file.</p>
 
 			<p>Other visual and nonvisual widgets may be placed inside a component-decl, in addition to parameters and declarations of Events and Actions that the component generates and handles.</p>
-			
+
 			<p>To declare a client-side property on the component's external interface, place a "widget/component-decl-cprop" inside the component at the top level.  When the external property is changed, a MODIFY event with the same property name is activated inside the component to update its property so that it will match.</p>
 
 			<p>To declare that a component generates an Event, place a "widget/component-decl-event" inside the component at the top level.  No parameters are needed for that Event.  To cause the component to generate the Event, trigger an Action with the same name on the component-decl from inside, and the event will be activated for the containing application or component.</p>
@@ -865,27 +865,27 @@ formctl "widget/component"
 			<property name="visual" type="string">Indicates if the component is seen (not = -1).</property>
 
 		</properties>
-		
+
 		<children>
-			
+
 			<child type="component-decl-cprop">
 
 				<childproperty name="name" type="string">The name of the client-side property to expose.</childproperty>
 
 			</child>
-			
+
 			<child type="component-decl-event">
 
 				<childproperty name="name" type="string">The name of the event to expose.</childproperty>
 
 			</child>
-			
+
 			<child type="component-decl-action">
 
 				<childproperty name="name" type="string">The name of the action to expose.</childproperty>
 
 			</child>
-			
+
 		</children>
 
 		<events>
@@ -1390,7 +1390,6 @@ myDropDown2 "widget/dropdown"
 
 			<action name="Enable">The Enable action allows an edit box to be written in, and takes no parameters x from being written in, and takes no parameters.</action>
 
-
 			<action name="Disable">The Disable action prevents an edit box from being written in. This action takes no parameters.</action>
 
 			<action name="SetFocus">The SetFocus action selects and gives control to an edit box at the specified "X" and "Y" coordinates (even if its not the target?).</action>
@@ -1440,7 +1439,7 @@ my_editbox "widget/editbox"
 
 		<overview>
 
-			<p>The execmethod widget is a nonvisual widget which is used to call ObjectSystem methods on objects on the server.This widget may become deprecated in the future when more advanced OSML API widgets become available.</p>
+			<p>The execmethod widget is a nonvisual widget which is used to call ObjectSystem methods on objects on the server.  This widget may become deprecated in the future when more advanced OSML API widgets become available.</p>
 
 			<p>These widgets are used via the activation of their "ExecuteMethod" action.</p>
 
@@ -1520,7 +1519,7 @@ mySoundPlayer "widget/execmethod"
 			<property name="fieldname" type="string">Unused.</property>
 
 		</properties>
-		
+
 		<events>
 
 			<event name="DataChange">This event occurs when the uploaded file(s) is changed, either because the user selected new file(s) or because the file upload widget was cleared.  It provides two parameters: "NewValue" is the new file name, or an empty string ("") if the widget was cleared, and "OldValue" is the value before the data was changed.</event>
@@ -1542,7 +1541,7 @@ mySoundPlayer "widget/execmethod"
 			<action name="Submit">This action submits the selected file to be uploaded, possibly causing an UploadComplete, UploadError, or DataChange event.  It takes no parameters.</action>
 
 		</actions>
-	
+
 	</widget>
 
 
@@ -2572,7 +2571,7 @@ myMenu "widget/menu"
 
 	bgcolor="#808080";
 
-	
+
 
 	m1 "widget/menuitem" { label="One"; }
 
@@ -3120,7 +3119,7 @@ my_cmp "widget/component-decl"
 
 	width=200; height=32;
 
-	
+
 
 	field_name "widget/parameter"
 
@@ -3886,7 +3885,7 @@ myTabControl "widget/tab"
 				<childproperty name="wrap" type="string">Determines if text can wrap around an obstacle.</childproperty>
 
 			</child>
-			
+
 			<child type="table-row-detail" />
 
 		</children>
