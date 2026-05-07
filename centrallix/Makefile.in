@@ -183,7 +183,6 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_scrollbar.o \
 	wgtdrv_scrollpane.o \
 	wgtdrv_spinner.o \
-	wgtdrv_sys_osml.o \
 	wgtdrv_tab.o \
 	wgtdrv_table.o \
 	wgtdrv_template.o \
