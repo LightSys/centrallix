@@ -491,7 +491,7 @@ def parse_c_impl(path: Path) -> dict[str, WidgetImpl]:
 		for event_m in c_event_re.finditer(content):
 			event_name = normalize_name(event_m.group(1))
 			event = widget_impl.event(event_name)
-			event.found("c", Confidence.CONFIRMED)
+			event.found("c", Confidence.STRONG)
 			event.definition_refs.append(
 				make_ref(rel, get_line_number(content, event_m.start()), "htrAddEvent")
 			)
@@ -500,7 +500,7 @@ def parse_c_impl(path: Path) -> dict[str, WidgetImpl]:
 		for action_m in c_action_re.finditer(content):
 			action_name = normalize_name(action_m.group(1))
 			action = widget_impl.action(action_name)
-			action.found("c", Confidence.CONFIRMED)
+			action.found("c", Confidence.STRONG)
 			action.definition_refs.append(
 				make_ref(rel, get_line_number(content, action_m.start()), "htrAddAction")
 			)
@@ -512,7 +512,7 @@ def parse_c_impl(path: Path) -> dict[str, WidgetImpl]:
 			signal : SignalImpl | None = widget_impl.events.get(signal_name) or widget_impl.actions.get(signal_name)
 			if signal == None:
 				continue
-			signal.found("c", Confidence.CONFIRMED)
+			signal.found("c", Confidence.STRONG)
 			if param_name:
 				signal.params.add(param_name)
 				signal.add_param_ref(param_name,
@@ -606,7 +606,7 @@ def parse_js_impl(path: Path) -> dict[str, WidgetImpl]:
 				continue
 			
 			# Parse each relevant type of interface.
-			confidence = Confidence.STRONG if have_fn_name else Confidence.HEURISTIC
+			confidence = Confidence.CONFIRMED if have_fn_name else Confidence.STRONG
 			if iface == "ifEvent":
 				event = widget_impl.event(signal_name)
 				event.found("js", confidence)
@@ -1055,8 +1055,7 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
 			lines.append("- **Incorrect action parameter docs**")
 			for drift in item["action_param_drift"]:
 				lines.append(f"  - `{drift['action']}` ("
-					f"origin: `{drift['origin']}`, "
-					f"confidence: `{drift['confidence']}`"
+					f"origin: `{drift['origin']}`"
 				")")
 				if drift.get("code_refs"):
 					lines.append(f"	- Undocumented parameters:")
