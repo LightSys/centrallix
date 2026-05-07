@@ -2589,6 +2589,57 @@ myMenu "widget/menu"
 	</widget>
 
 
+	<widget name="objcanvas" type="widget/objcanvas" visual="yes" formelement="no" container="yes" description="A visual widget for advanced canvas-based graphics.">
+
+		<overview>
+
+			<p>The objcanvas widget is a visual widget for displaying advanced canvas graphics.</p>
+
+		</overview>
+
+		<usage>
+
+			<p>The objcanvas widget is a visual that contains Centrallix objects.  I honestly don't really understand how to use it or what it does (-Israel).</p>
+
+		</usage>
+
+		<properties>
+
+			<property name="width" type="integer">Width (in pixels) of the objcanvas.</property>
+
+			<property name="x" type="integer">X-coordinate of the upper left corner of the objcanvas (in pixels), relative to its container.</property>
+
+			<property name="y" type="integer">Y-coordinate of the upper left corner of the objcanvas (in pixels), relative to its container.</property>
+
+			<property name="height" type="integer">Height (in pixels) of the objcanvas.</property>
+
+			<property name="source" type="string">A Centrallix object source path that we open to get the objects that will be rendered in the objcanvas widget.</property>
+
+			<property name="allow_selection" type="integer">Not implemented yet: Specify 1 to enable something... (default: 0)</property>
+
+			<property name="show_selection" type="integer">Not implemented yet: Specify 1 to enable something... (default: 0)</property>
+
+		</properties>
+
+		<events>
+
+			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
+
+			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+
+			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.</event>
+
+			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
+
+			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
+
+			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
+
+		</events>
+
+	</widget>
+
+
 	<widget name="osrc" type="widget/osrc" visual="no" formelement="no" container="yes" description="A nonvisual widget which handles data communication between forms/tables and the Centrallix server.">
 
 		<overview>
