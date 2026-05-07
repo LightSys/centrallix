@@ -239,9 +239,11 @@ htebInitialize()
 	htrAddParam(drv,"SetValue","Trigger",DATA_T_INTEGER);	/* whether to trigger the Modified event */
 
 	/** Value-modified event **/
-	htrAddEvent(drv,"Modified");
-	htrAddParam(drv,"Modified","NewValue",DATA_T_STRING);
-	htrAddParam(drv,"Modified","OldValue",DATA_T_STRING);
+	htrAddEvent(drv,"DataModify");
+	htrAddParam(drv,"DataModify","NewValue",DATA_T_STRING);
+	htrAddParam(drv,"DataModify","OldValue",DATA_T_STRING);
+	htrAddParam(drv,"DataModify","FromKeyboard",DATA_T_STRING);
+	htrAddParam(drv,"DataModify","FromOSRC",DATA_T_STRING);
 
 	/** Register. **/
 	htrRegisterDriver(drv);

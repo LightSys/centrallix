@@ -374,7 +374,6 @@ htwinInitialize()
 	htrAddAction(drv,"ToggleVisibility");
 	htrAddAction(drv,"SetVisibility");
 	htrAddParam(drv,"SetVisibility","IsVisible",DATA_T_INTEGER);
-	htrAddParam(drv,"SetVisibility","NoInit",DATA_T_INTEGER);
 
 	/** Add the 'window closed' event **/
 	htrAddEvent(drv,"Close");
