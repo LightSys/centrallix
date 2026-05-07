@@ -3219,6 +3219,34 @@ my_cmp "widget/component-decl"
 
 		</children>
 
+		<events>
+
+			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
+
+			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+
+			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.</event>
+
+			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
+
+			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
+
+			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
+
+			<event name="DataChange">This event occurs when a new option is selected in the dropdown widget.  It provides the "Value" parameter, which indicates the new selected option.</event>
+
+			<event name="GetFocus">This event occurs when the parent pane gains the user's focus.</event>
+
+			<event name="LoseFocus">This event occurs when the parent pane looses the user's focus.</event>
+
+		</events>
+
+		<actions>
+
+			<action name="SetValue">Sets the selected option for the radio button panel to the new option specified with the "Value" parameter, or unsets the dropdown if no value is specified.</action>
+
+		</actions>
+
 		<sample>
 
 			<![CDATA[
