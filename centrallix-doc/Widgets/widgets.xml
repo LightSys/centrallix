@@ -2070,7 +2070,13 @@ f_trx_mod "widget/checkbox"
 
 		<actions>
 
-			<action name="LoadPage">The LoadPage action takes two parameters.  "Source" contains the URL for the new page to be loaded into the HTML area.The optional parameter "Transition" indicates the type of fade to be used between one page and the next.Currently supported values are "pixelate", "rlwipe", and "lrwipe".</action>
+			<action name="LoadPage">Loads a new page into the HTML widget using two parameters.  The "Source" parameter specifies the URL for the new page to be loaded into the HTML area and the optional "Mode" parameter can specify a new value for the mode property.  The optional parameter "Transition" indicates the type of fade to be used between one page and the next.  This currently supports: rlwipe, lrwipe, and pixelate.</action>
+
+			<action name="AddText">Appends content from the specified "Text" string parameter to the end of the content in an HTML widget.  If the "ContentType" string parameter is specified with a value that differs from the current content type, all HTML content in the widget is overwritten.</action>
+
+			<action name="SetValue">Replaces the current HTML content with the specified "Value" (or clears it if no Value is specified), and sets the current content type using the "ContentType" string parameter, if it is specified (otherwise, the previous content type is preserved).</action>
+
+			<action name="ShowText">Causes plain text content in the widget to be escaped properly so it can be shown using HTML, protecting from cross-site scripting attacks.  This action takes no parameters.</action>
 
 		</actions>
 
@@ -2543,13 +2549,19 @@ f_trx_mod_l "widget/label" { width=86; text="User Edit?"; align=right; font_size
 
 			<event name="MouseUp">This event occurs when the user releases the mouse button on the checkbox.</event>
 
-			<event name="Select">This event fires when a menu item is selected.  It can be placed in the menu itself, or inside the menu item widget.  When on a menu item, it only fires when that item is selected.  When on a menu, it passes the selected item's value as a parameter named 'Item' (string).</event>
+			<event name="Select">This event fires when a menu item is selected.  It can be placed in the menu itself, or inside the menu item widget.  When on a menu item, it only fires when that item is selected.  When on a menu, it passes the selected item's value as a parameter named 'Item' (string).  This event also provides the "Value" and "Label" parameters to represent what was selected.</event>
+
+			<event name="SelectItem">This event occurs when an item in the menu is selected.  It provides the same parameters as the Select event.</event>
+
+			<event name="Activate">This event occurs when the dropdown appears.  It provides two parameters, "X" and "Y", which are the the (integer) positions (in pixels) on the page for the menu has appeared.</event>
+
+			<event name="Deactivate">This event occurs when the dropdown disappears, and it provides no parameters.</event>
 
 		</events>
 
 		<actions>
 
-			<action name="Activate">This action causes a popup-type menu to become visible and appear at a selected (x,y) position on the page.  When the user selects an item on the menu or clicks elsewhere on the page, the menu then disappears.  Takes two parameters - X and Y, the (integer) positions on the page for the menu to appear.</action>
+			<action name="Popup">This action causes a popup-type menu to become visible and appear at a selected (x,y) position on the page.  When the user selects an item on the menu or clicks elsewhere on the page, the menu then disappears.  Takes two parameters - "X" and "Y", which are the (integer) positions (in pixels) on the page for the menu to appear.</action>
 
 		</actions>
 
@@ -3888,6 +3900,8 @@ myTabControl "widget/tab"
 
 			<action name="Clear">Drops all elements from the table.</action>
 
+			<action name="ShowSelection">Enables the initial_selection property and redraws the table.</action>
+
 		</actions>
 
 		<sample>
@@ -4179,6 +4193,12 @@ objcanvas_test "widget/template"
 
 			<action name="SetText">Called from a connector, this action sets the button's text to the value passed in through connector's "Text" parameter.</action>
 
+			<action name="Click">Triggers a Click event on the textbutton with the "from_action" parameter set to 1.</action>
+
+			<action name="Disable">This action causes the textbutton to enter its disabled state, displaying the disable_color, if specified.</action>
+
+			<action name="Enable">This action causes the textbutton to enter its enabled state, possibly changing its normal colors.</action>
+
 		</actions>
 
 		<sample>
@@ -4238,7 +4258,7 @@ MyButton "widget/textbutton"
 
 		<events>
 
-			<event name="expire">This occurs when the timer hits its timeout and the auto reset is not enabled.</event>
+			<event name="Expire">This occurs when the timer hits its timeout and the auto reset is not enabled.</event>
 
 		</events>
 
