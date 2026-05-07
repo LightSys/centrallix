@@ -1495,6 +1495,57 @@ mySoundPlayer "widget/execmethod"
 	</widget>
 
 
+	<widget name="fileupload" type="widget/fileupload" visual="no" formelement="no" container="no" description="A nonvisual widget to manage file uploads to the Centrallix server.">
+
+		<overview>
+
+			<p>The fileupload widget is a nonvisual widget that allows the client to upload files to the server.</p>
+
+		</overview>
+
+		<usage>
+
+			<p>The fileupload widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type "widget/page") to improve clarity.  It has no effect on its container.  This widget does cannot contain any visual widgets.</p>
+
+		</usage>
+
+		<properties>
+
+			<property name="target" type="string">The Centrallix object system path to the directory where uploaded files should be placed. (Causes undefined behavior if unspecified.)</property>
+
+			<property name="multiselect" type="integer">Set to 1 to allow the user to pass multiple files at once instead of only selecting a single file (default: 0).</property>
+
+			<property name="form" type="string">Unused.</property>
+
+			<property name="fieldname" type="string">Unused.</property>
+
+		</properties>
+		
+		<events>
+
+			<event name="DataChange">This event occurs when the uploaded file(s) is changed, either because the user selected new file(s) or because the file upload widget was cleared.  It provides two parameters: "NewValue" is the new file name, or an empty string ("") if the widget was cleared, and "OldValue" is the value before the data was changed.</event>
+
+			<event name="UploadComplete">This event occurs when an upload is successfully completed by the user.  It provides several parameters called "OrigNameX" and "NewNameX" where X is a number greater than 0 that appear to relate to the files names that the user has uploaded.</event>
+
+			<event name="UploadError">This event occurs when there is an error during a file upload.  It provides no parameters.</event>
+
+			<event name="Change">This event is registered, but it looks like it never occurs.</event>
+
+		</events>
+
+		<actions>
+
+			<action name="Clear">This action clears whatever file was selected and uploaded by the user.  This action causes a DataChange event with the NewValue parameter set to an empty string ("").  It takes no parameters.</action>
+
+			<action name="Prompt">This action prompts the user to select a file.  It takes no parameters.</action>
+
+			<action name="Submit">This action submits the selected file to be uploaded, possibly causing an UploadComplete, UploadError, or DataChange event.  It takes no parameters.</action>
+
+		</actions>
+	
+	</widget>
+
+
 	<widget name="form" type="widget/form" visual="no" formelement="no" container="yes" description="A nonvisual container used to group a set of form element widgets into a single record or object">
 
 		<overview>
