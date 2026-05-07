@@ -1360,7 +1360,7 @@ myDropDown2 "widget/dropdown"
 
 			<event name="DataChange">This event occurs when the user has modified the data value of the widget (clicked or unclicked it).</event>
 
-			<event name="DataModify">This event occurs when the data is changed (occurs when key press or button changes things).  It provides four parameters. "NewValue" represents the now current value after the modification. "OldValue" representing the previous value.  "FromKeyboard" is 1 if the event is caused by the user typing into the editbox with their keyboard.  "FromOSRC" is 1 if the event is caused by an OSRC modifying the edit box data.</event>
+			<event name="DataModify">This event occurs when the data is changed (occurs when key press or button changes things).  It provides four parameters. "Value" represents the now current value after the modification. "OldValue" representing the previous value.  "FromKeyboard" is 1 if the event is caused by the user typing into the editbox with their keyboard.  "FromOSRC" is 1 if the event is caused by an OSRC modifying the edit box data.</event>
 
 			<event name="EscapePressed">This event occurs when the user presses the escape key.</event>
 

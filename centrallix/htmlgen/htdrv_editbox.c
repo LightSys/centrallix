@@ -240,7 +240,7 @@ htebInitialize()
 
 	/** Value-modified event **/
 	htrAddEvent(drv,"DataModify");
-	htrAddParam(drv,"DataModify","NewValue",DATA_T_STRING);
+	htrAddParam(drv,"DataModify","Value",DATA_T_STRING);
 	htrAddParam(drv,"DataModify","OldValue",DATA_T_STRING);
 	htrAddParam(drv,"DataModify","FromKeyboard",DATA_T_STRING);
 	htrAddParam(drv,"DataModify","FromOSRC",DATA_T_STRING);

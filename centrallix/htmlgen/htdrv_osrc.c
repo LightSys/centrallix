@@ -50,69 +50,6 @@ static struct {
 
 enum htosrc_autoquery_types { Unset=-1, Never=0, OnLoad=1, OnFirstReveal=2, OnEachReveal=3  };
 
-#if 00
-/*** AddRule: add a declarative osrc rule to the generated document.
- ***/
-int
-htosrc_internal_AddRule(pHtSession s, pWgtrNode tree, char* treename, pWgtrNode sub_tree)
-    {
-    char ruletype[32];
-    int query_delay;
-    int min_chars;
-    int trailing_wildcard;
-    int leading_wildcard;
-    char fieldname[64];
-    char* ptr;
-    pExpression code;
-
-	/** Get type of rule **/
-	if (wgtrGetPropertyValue(sub_tree, "ruletype", DATA_T_STRING, POD(&ptr)) != 0)
-	    {
-	    mssError(1, "HTOSRC", "ruletype is required for widget/osrc-rule");
-	    return -1;
-	    }
-	strtcpy(ruletype, ptr, sizeof(ruletype));
-
-	/** Handle the rule based on the type **/
-	if (!strcmp(ruletype, "relationship"))
-	    {
-	    }
-	else if (!strcmp(ruletype, "filter"))
-	    {
-	    trailing_wildcard = htrGetBoolean(sub_tree, "trailing_wildcard", 1);
-	    leading_wildcard = htrGetBoolean(sub_tree, "leading_wildcard", 0);
-	    if (wgtrGetPropertyValue(sub_tree, "min_chars", DATA_T_INTEGER, POD(&min_chars)) != 0)
-		min_chars = 3;
-	    if (wgtrGetPropertyValue(sub_tree, "query_delay", DATA_T_INTEGER, POD(&query_delay)) != 0)
-		query_delay = 500;
-	    if (wgtrGetPropertyValue(sub_tree, "fieldname", DATA_T_STRING, POD(&ptr)) == 0)
-		strtcpy(fieldname, ptr, sizeof(fieldname));
-	    else
-		{
-		mssError(1, "HTOSRC", "fieldname is required for widget/osrc-rule of type 'filter'");
-		return -1;
-		}
-
-	    /** Get target **/
-	    if (wgtrGetPropertyType(sub_tree,"value") == DATA_T_CODE)
-		{
-		wgtrGetPropertyValue(sub_tree,"value",DATA_T_CODE,POD(&code));
-		htrAddExpression(s, treename, wgtrGetDName(sub_tree), code);
-		}
-
-	    /** Write the init line **/
-	    htrAddScriptInit_va(s, "    nodes[\"%STR&SYM\"].AddRule('%STR&SYM', {dname:'%STR&SYM', field:'%STR&ESCQ', qd:%INT, mc:%INT, tw:%INT, lw:%INT});\n",
-		    treename, ruletype, wgtrGetDName(sub_tree), fieldname, 
-		    query_delay, min_chars, trailing_wildcard, leading_wildcard);
-	    }
-	else if (!strcmp(ruletype, "keying"))
-	    {
-	    }
-
-    return 0;
-    }
-#endif
-
 /* 
    htosrcRender - generate the HTML code for the page.
    
@@ -131,7 +68,6 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    char *filter;
    char *baseobj;
    pWgtrNode sub_tree;
-//   pObjQuery qy;
    enum htosrc_autoquery_types aq;
    int receive_updates;
    int send_updates;
@@ -272,18 +208,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
     for (i=0;i<count;i++)
 	{
 	sub_tree = xaGetItem(&(tree->Children), i);
-#if 00
-	if (wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr, "widget/osrc-rule"))
-	    {
-	    htosrc_internal_AddRule(s, tree, name, sub_tree);
-	    }
-	else
-	    {
-#endif
-	    htrRenderWidget(s, sub_tree, z);
-#if 00
-	    }
-#endif
+	htrRenderWidget(s, sub_tree, z);
 	}
 
     nmSysFree(filter);
