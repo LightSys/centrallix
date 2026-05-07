@@ -530,34 +530,14 @@ def _parse_js_action_params(js: str, fn_name: str) -> list[tuple[str, int]]:
         return params
     
     # Count braces to isolate the function body without a full JS parser.
+    # Note: Comments are parsed as code to let programmers use them to patch
+    # edge cases manually.  For example, see cases the editbox widget's
+    # SetValue action, which accesses the Description parameter outside the
+    # body of the function that implements that action.
     idx = body_start
     depth = 1
     while idx < len(js) and depth > 0:
         ch = js[idx]
-        
-        # Get next character.
-        next_ch = None
-        if idx + 1 < len(js):
-            next_ch = js[idx + 1]
-        
-        # Skip line comments.
-        if ch == "/" and next_ch == "/":
-            idx += 2
-            while idx < len(js) and js[idx] not in "\n":
-                idx += 1
-            continue
-        
-        # Skip block comments.
-        if ch == "/" and next_ch == "*":
-            idx += 2
-            while idx + 1 < len(js):
-                if js[idx] == "*" and js[idx + 1] == "/":
-                    idx += 2
-                    break
-                idx += 1
-            continue
-        
-        # Count braces
         if ch == "{":
             depth += 1
         elif ch == "}":
