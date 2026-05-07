@@ -346,14 +346,17 @@ htspaneInitialize()
 	drv->Render = htspaneRender;
 	
 	/** Events **/ 
-	htrAddEvent(drv, "Scroll");
 	htrAddEvent(drv, "Click");
-	htrAddEvent(drv, "Wheel");
-	htrAddEvent(drv, "MouseUp");
 	htrAddEvent(drv, "MouseDown");
-	htrAddEvent(drv, "MouseOver");
-	htrAddEvent(drv, "MouseOut");
 	htrAddEvent(drv, "MouseMove");
+	htrAddEvent(drv, "MouseOut");
+	htrAddEvent(drv, "MouseOver");
+	htrAddEvent(drv, "MouseUp");
+	htrAddEvent(drv, "Scroll");
+	htrAddEvent(drv, "Wheel");
+	
+	/** Actions **/
+	htrAddAction(drv, "ScrollTo");
 	
 	/** Register. **/
 	htrRegisterDriver(drv);

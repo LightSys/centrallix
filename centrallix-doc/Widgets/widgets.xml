@@ -363,6 +363,14 @@ vbox1 "widget/vbox"
 
 		</children>
 
+		<events>
+
+			<event name="Click">This event occurs when the user clicks the chart. No parameters are available from this event.</event>
+
+			<event name="DblClick">This event occurs when the user double-clicks the chart. No parameters are available from this event.</event>
+
+		</events>
+
 		<sample>
 
 			<![CDATA[
@@ -448,7 +456,7 @@ chart "widget/chart"
 
 		<actions>
 
-			<action name="SetValue">This takes a given value and sets the check box value to it.</action>
+			<action name="SetValue">Sets the checkbox using a given number: "Value". Use Value=1 for checked or Value=0 for unchecked.</action>
 
 		</actions>
 
@@ -587,13 +595,13 @@ checkbox_test "widget/page"
 
 			<action name="Close">Closes the window.  Note that widgets inside the window may choose to veto the Close operation: for example, if there is unsaved data in a form.</action>
 
-			<action name="Open">Opens the window.  If the parameter IsModal is set to 1, then the window becomes modal (only the window's contents are accessible to the user until the window is closed).  If the parameter NoClose is set to 1, then the close button in the upper right corner of the window becomes inactive and the window will only close via the Close, SetVisibility, and ToggleVisibility actions.</action>
+			<action name="Open">Opens the window.  Set the "X" and "Y" parameters to the coordinates of the upper-left corner of the window to open it at that location.  If the parameter "Center" is set to any value other than no (the default), the window is centered on the specified coordinates instead.  Set the "PointAt" parameter with a widget name to make the new window point at that widget.  Set the "PointSide" parameter with a value of top, bottom, left, or right to force the window to point from that side.  Set the "PointOffset" parameter to the distance in pixels that the window should be from the widget it points at.  This action also takes the "IsModal","NoClose", and "Cascade" parameters, described in the SetVisibility action.</action>
 
 			<action name="Point">Creates a triangular pointer on the edge of the window to point at a given (X,Y) coordinate.</action>
 
-			<action name="Popup">Opens a window like a pop-up.</action>
+			<action name="Popup">Opens a window like a pop-up at the specified "X" and "Y" with the specified "Width" and "Height" (in pixels).  Or, set the "PopTo" parameter with a widget name to copy those properties from it.  In either case, the "OffsetX" and "OffsetY" parameters move the popup right and down respectively.  Finally, specify the "ExtendTo" parameter with a widget name to ensure that the popup extends to that parameter.</action>
 
-			<action name="SetVisibility">One parameter, "is_visible", which is set to 0 or 1 to hide or show the window, respectively.</action>
+			<action name="SetVisibility">Sets data about how the window displays.  Set the "IsVisible" parameter to 0 (hide) or 1 (show).  Set the "IsModal" parameter to 1 to make the window a modal (only the window's contents are accessible to the user until it is closed). Set the "NoClose" parameter to 1 to make the close button in the upper right corner of the window inactive (the window can only be closed via the Close, SetVisibility, and ToggleVisibility actions).  Set the "Cascade" parameter to 1 to cause multiple appearing windows to autopossition themselves in a cascading pattern.</action>
 
 			<action name="Shade">Turns the gshade property(see above) on.</action>
 
@@ -831,10 +839,12 @@ formctl "widget/component"
 			<p>A widget/component-decl widget must occur at the top level of a component (.cmp) file.</p>
 
 			<p>Other visual and nonvisual widgets may be placed inside a component-decl, in addition to parameters and declarations of Events and Actions that the component generates and handles.</p>
+			
+			<p>To declare a client-side property on the component's external interface, place a "widget/component-decl-cprop" inside the component at the top level.  When the external property is changed, a MODIFY event with the same property name is activated inside the component to update its property so that it will match.</p>
 
 			<p>To declare that a component generates an Event, place a "widget/component-decl-event" inside the component at the top level.  No parameters are needed for that Event.  To cause the component to generate the Event, trigger an Action with the same name on the component-decl from inside, and the event will be activated for the containing application or component.</p>
 
-			<p>Similarly, to declare that a component can receive an Action, place a "widget/component-decl-action" inside the component at the top level.  Again, no parameters are needed.  The containing application or component can then trigger the Action, which will cause an event to occur inside the component.  The event occurs on the component-decl widget (top level of the component), and can be caught with a connector widget.</p>
+			<p>To declare that a component can receive an Action, place a "widget/component-decl-action" inside the component at the top level.  Again, no parameters are needed.  The containing application or component can then trigger the Action, which will cause an event to occur inside the component.  The event occurs on the component-decl widget (top level of the component), and can be caught with a connector widget.</p>
 
 			<p>Components can take parameters just like applications can.  See the "widget/parameter" widget for details on how to declare parameters on applications and components.</p>
 
@@ -855,6 +865,28 @@ formctl "widget/component"
 			<property name="visual" type="string">Indicates if the component is seen (not = -1).</property>
 
 		</properties>
+		
+		<children>
+			
+			<child type="component-decl-cprop">
+
+				<childproperty name="name" type="string">The name of the client-side property to expose.</childproperty>
+
+			</child>
+			
+			<child type="component-decl-event">
+
+				<childproperty name="name" type="string">The name of the event to expose.</childproperty>
+
+			</child>
+			
+			<child type="component-decl-action">
+
+				<childproperty name="name" type="string">The name of the action to expose.</childproperty>
+
+			</child>
+			
+		</children>
 
 		<events>
 
@@ -1066,7 +1098,7 @@ cn1 "widget/connector"
 
 		<actions>
 
-			<action name="SetValue">Generates an internal data object using the data specified or the current time.</action>
+			<action name="SetValue">Set the time of the clock to a new time, specified using "Value".</action>
 
 		</actions>
 
@@ -1185,11 +1217,11 @@ cn1 "widget/connector"
 
 			<action name="ClearItems">Deletes all the widgets in the dropdown menu.</action>
 
-			<action name="SetGroup">This causes the dropdown to display a different Group of items (use the Group parameter).  It can also restrict what items are displayed based on a minimum or maximum value (use Min and Max parameters).</action>
+			<action name="SetGroup">This causes the dropdown to display a different Group of items (use the "Group" parameter).  It can also restrict what items are displayed based on a minimum or maximum value (use "Min" and "Max" parameters).</action>
 
-			<action name="SetItems">This specifies a SQL (use "SQL" parameter) query to use to re-load the contents of the dropdown.  It should have between two and five columns, in this order: label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).</action>
+			<action name="SetItems">This specifies a SQL (use "SQL" parameter) query to use when reloading the contents of the dropdown.  The query should produce between two and five columns the order: label, value, selected (1 for the default selected item, 0 for all others), grp (group name), hidden (1 to hide the item from the dropdown UI even though it's still valid, 0 to show it).  Use the "RowLimit" parameter to specify a maximum number of options that the query should fetch (defaults to 100).</action>
 
-			<action name="SetValue">Changes the child property "value".</action>
+			<action name="SetValue">Changes the child property "Value".</action>
 
 		</actions>
 
@@ -1328,7 +1360,7 @@ myDropDown2 "widget/dropdown"
 
 			<event name="DataChange">This event occurs when the user has modified the data value of the widget (clicked or unclicked it).</event>
 
-			<event name="DataModify">This event occurs when the data is changed (occurs when key press or button changes things).</event>
+			<event name="DataModify">This event occurs when the data is changed (occurs when key press or button changes things).  It provides four parameters. "NewValue" represents the now current value after the modification. "OldValue" representing the previous value.  "FromKeyboard" is 1 if the event is caused by the user typing into the editbox with their keyboard.  "FromOSRC" is 1 if the event is caused by an OSRC modifying the edit box data.</event>
 
 			<event name="EscapePressed">This event occurs when the user presses the escape key.</event>
 
@@ -1358,9 +1390,12 @@ myDropDown2 "widget/dropdown"
 
 			<action name="Enable">The Enable action allows an edit box to be written in, and takes no parameters x from being written in, and takes no parameters.</action>
 
-			<action name="SetFocus">The SetFocus action selects and gives control to an edit box.</action>
 
-			<action name="SetValue">The SetValue action modifies the contents of an editbox, and takes a single parameter, 'Value' (string).</action>
+			<action name="Disable">The Disable action prevents an edit box from being written in. This action takes no parameters.</action>
+
+			<action name="SetFocus">The SetFocus action selects and gives control to an edit box at the specified "X" and "Y" coordinates (even if its not the target?).</action>
+
+			<action name="SetValue">The SetValue action modifies the contents of an editbox, and takes three parameters.  The 'Value' (string) parameter represents the new value of the edit box.  The 'Trigger' (int) parameter is supposed to control whether to trigger the Modified event, however, this event is always triggered regardless of the Trigger value.  The 'Description' parameter is identical to that of the SetValueDescription event.</action>
 
 			<action name="SetValueDescription">This action modifies the "value description" of the editbox, and takes a single parameter, 'Description' (string).</action>
 
@@ -1556,7 +1591,7 @@ mySoundPlayer "widget/execmethod"
 
 			<child type="formelement">
 
-				<childproperty name="fieldname" type="string"><ni />Fieldname (from the dataset) to bind this element to.</childproperty>
+				<childproperty name="fieldname" type="string"><ni />Field name (from the dataset) to bind this element to.</childproperty>
 
 			</child>
 
@@ -1586,9 +1621,9 @@ mySoundPlayer "widget/execmethod"
 
 			<event name="New">This event occurs if and only if there was a mode change and the new mode is the 'New' state (always occurs with both a statusChange event and a ModeChange Event).</event>
 
-			<event name="NoData">This event occurs if and only if there was a mode change and the new mode is the 'NoData' state (always occurs with both a statusChange event and a ModeChange Event.</event>
+			<event name="NoData">This event occurs if and only if there was a mode change and the new mode is the 'NoData' state (always occurs with both a statusChange event and a ModeChange Event.)</event>
 
-			<event name="Query">This event occurs if and only if there was a mode change and the new mode is the 'Query' state (always occurs with both a statusChange event and a ModeChange Event.</event>
+			<event name="Query">This event occurs if and only if there was a mode change and the new mode is the 'Query' state (always occurs with both a statusChange event and a ModeChange Event.)</event>
 
 			<event name="StatusChange">The even occurs when the form changes modes or when a child control changes its data.</event>
 
@@ -1598,23 +1633,23 @@ mySoundPlayer "widget/execmethod"
 
 		<actions>
 
-			<action name="Clear"><ni />Clears the form to a 'no data'state.</action>
+			<action name="Clear"><ni />Clears the form to a 'no data' -state. Specify 1 for the 'force' parameter to clear data even if it is has not been saved.</action>
 
 			<action name="Delete"><ni />Deletes the current object displayed.</action>
 
-			<action name="Discard">Cancels an edit of form contents.</action>
+			<action name="Discard">Cancels an edit of form contents.  Specify 1 for the 'FromKeyboard' or 'FromOSRC' parameters to indicate that the action is caused by a keyboard input or an osrc, respectively (both default to 0).</action>
 
-			<action name="Disable">Prevents interaction with the entire form.</action>
+			<action name="Disable">Prevents interaction with the entire form.  Specify any value other than no for the 'Enabled' parameter to enable it instead.</action>
 
 			<action name="Edit">Allows editing of form's contents.</action>
 
-			<action name="Enable">Allows interaction with the form.</action>
+			<action name="Enable">Allows interaction with the form.   Specify 0 or no for the 'Enabled' parameter to disable it instead.</action>
 
 			<action name="First">Moves the form to the first object in the objectsource.</action>
 
 			<action name="Last">Moves the form to the last object in the objectsource.</action>
 
-			<action name="New"><ni />Allows creation of new form contents.</action>
+			<action name="New"><ni />Allows creation of new form contents.  Specify the 'Multi' parameter to set the MultiEnter field.</action>
 
 			<action name="Next">Moves the form to the next object in the objectsource.</action>
 
@@ -1622,15 +1657,15 @@ mySoundPlayer "widget/execmethod"
 
 			<action name="Query">Allows entering of query criteria.</action>
 
-			<action name="QueryExec">the query and returns data.</action>
+			<action name="QueryExec">Executes the query and returns data.</action>
 
 			<action name="QueryToggle">Either executes a query or allows one to be made depending on the previous state.</action>
 
-			<action name="Save">Saves the form's contents.</action>
+			<action name="Save">Saves the form's contents.  Use the 'completion' parameter to specify a JavaScript function that will run after the action completes. (I don't understand how this works, I just guessed from the JS implementation because I've never seen an app specify this parameter.)</action>
 
-			<action name="SetValue">Modifies a field and puts the form into a new modify or search mode if appropriate.</action>
+			<action name="SetValue">Modifies the specified 'Field' to the specified 'Value', then puts the form into a new modify or search mode, if appropriate.</action>
 
-			<action name="Submit">Attemps to save data, if there is an error it returns false.</action>
+			<action name="Submit">Attempts to save data, if there is an error it returns false.  Specify the 'Target' parameter to set a target page other than the one containing the form widget.  Specify any truthy value for the 'NewPage' parameter to allow launching a new page.</action>
 
 			<action name="test3bconfirm">Debugging tool to test the 3bcomfirm method (only use if you know what this method is).</action>
 
@@ -1661,7 +1696,7 @@ form1 "widget/form"
 
 		<overview>
 
-			<p>Many times with multi-mode forms like those offered by Centrallix, the end-user can become confused as to what the form is currently "doing" (for instance, is a blank form with a blinking cursor in a "new" state or "enter query" state?).  Centrallix helps to address this issue using the form status widget.  A form status widget displays the current mode of operation that a form is in, as well as whether the form is busy processing a query, save, or delete operation.  This clear presentation of the form's mode is intended to clear up any confusion created by a multi-mode form.  This widget is a special-case form element.</p>
+			<p>Many times with multimodal forms like those offered by Centrallix, the end-user can become confused as to what the form is currently "doing" (for instance, is a blank form with a blinking cursor in a "new" state or "enter query" state?).  Centrallix helps to address this issue using the form status widget.  A form status widget displays the current mode of operation that a form is in, as well as whether the form is busy processing a query, save, or delete operation.  This clear presentation of the form's mode is intended to clear up any confusion created by a multimodal form.  This widget is a special-case form element.</p>
 
 		</overview>
 
@@ -1688,6 +1723,8 @@ form1 "widget/form"
 		</children>
 
 		<events>
+
+			<event name="Click">This event occurs when the user clicks the formstatus widget. No parameters are available from this event.</event>
 
 			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
@@ -1844,7 +1881,7 @@ BigFrameset "widget/frameset"
 
 		<overview>
 
-			<p>The hints widget stores default values and other component modifying properties.</p>
+			<p>The hints widget stores default values and properties that affect data in other widgets, such as input validation data.</p>
 
 		</overview>
 
@@ -3293,7 +3330,7 @@ $Version=2$
 
 		<events>
 
-			<event name="Scroll">This event occurs any time the user scrolls the scroll pane.  This includes scrolling by clicking the scroll buttons, clicking on the scroll bar, dragging the scroll thumb, turning the scroll wheel, or when the ScrollTo action is used.  This event does not occur when the scroll pane moves because the contained content changed in length, or when the scroll pane is forced to scroll because the available visible area was resized.  This event will never occur if the content within the scroll pane is shorter than the available visible area because then the content cannot be scrolled.  This event provides the :Percent attribute, a number from 0 to 100 (the same as the ScrollTo action above) representing the percentage that the user has now scrolled down the page as of the event occuring.  This event also provides :Change, representing how much the user's scroll location has changed in the same unit as above (although this value will be negative if the user scrolled up).</event>
+			<event name="Scroll">This event occurs any time the user scrolls the scroll pane.  This includes scrolling by clicking the scroll buttons, clicking on the scroll bar, dragging the scroll thumb, turning the scroll wheel, or when the ScrollTo action is used.  This event does not occur when the scroll pane moves because the contained content changed in length, or when the scroll pane is forced to scroll because the available visible area was resized.  This event will never occur if the content within the scroll pane is shorter than the available visible area because then the content cannot be scrolled.  This event provides the :Percent attribute, a number from 0 to 100 (the same as the ScrollTo action above) representing the percentage that the user has now scrolled down the page as of the event occurring.  This event also provides :Change, representing how much the user's scroll location has changed in the same unit as above (although this value will be negative if the user scrolled up).</event>
 
 			<event name="Click">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
 
@@ -3662,6 +3699,8 @@ myTabControl "widget/tab"
 				<childproperty name="wrap" type="string">Determines if text can wrap around an obstacle.</childproperty>
 
 			</child>
+			
+			<child type="table-row-detail" />
 
 		</children>
 
