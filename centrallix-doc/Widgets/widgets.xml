@@ -211,7 +211,7 @@ vbox1 "widget/vbox"
 
 		<events>
 
-			<event name="Click">This event occurs when the user clicks the widget.  No parameters are available from this event.</event>
+			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
 			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
@@ -365,9 +365,9 @@ vbox1 "widget/vbox"
 
 		<events>
 
-			<event name="Click">This event occurs when the user clicks the chart. No parameters are available from this event.</event>
+			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
-			<event name="DblClick">This event occurs when the user double-clicks the chart. No parameters are available from this event.</event>
+			<event name="DblClick">This event occurs when the user double-clicks the mouse pointer (equivalent to two Click events occuring on the widget within a required time period) while it is over this widget.</event>
 
 		</events>
 
@@ -438,7 +438,7 @@ chart "widget/chart"
 
 		<events>
 
-			<event name="Click">This event occurs when the user clicks the checkbox.  No parameters are available from this event.</event>
+			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
 			<event name="DataChange">This event occurs when the user has modified the data value of the checkbox (clicked or unclicked it).</event>
 
@@ -1076,7 +1076,7 @@ cn1 "widget/connector"
 
 		<events>
 
-			<event name="Click">This event occurs when the user clicks the widget.  No parameters are available from this event.</event>
+			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
 			<event name="DataChange">This event occurs when the user has modified the data value of the widget (clicked or unclicked it).</event>
 
@@ -1356,7 +1356,7 @@ myDropDown2 "widget/dropdown"
 
 			<event name="BeforeKeyPress">This event occurs before the key press event is fired and can stop the key press event.</event>
 
-			<event name="Click">This event occurs when the user clicks the widget.  No parameters are available from this event.</event>
+			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
 			<event name="DataChange">This event occurs when the user has modified the data value of the widget (clicked or unclicked it).</event>
 
@@ -1775,7 +1775,7 @@ form1 "widget/form"
 
 		<events>
 
-			<event name="Click">This event occurs when the user clicks the formstatus widget. No parameters are available from this event.</event>
+			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
 			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
@@ -2152,7 +2152,7 @@ HTMLArea "widget/html"
 
 		<events>
 
-			<event name="Click">This event occurs when the user clicks the checkbox.  No parameters are available from this event.</event>
+			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
 			<event name="MouseDown">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
@@ -2231,7 +2231,7 @@ HTMLArea "widget/html"
 
 		<events>
 
-			<event name="Click">This event occurs when the user clicks the button.  No parameters are available from this event.</event>
+			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
 			<event name="MouseDown">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
@@ -2348,7 +2348,7 @@ MyButton "widget/imagebutton"
 
 		<events>
 
-			<event name="Click">This event occurs when the user clicks the checkbox.  No parameters are available from this event.</event>
+			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
 			<event name="DataChange">This event occurs when the user has modified the data value of the checkbox (clicked or unclicked it).</event>
 
@@ -3009,7 +3009,7 @@ MyPage "widget/page"
 
 		<events>
 
-			<event name="Click">This event occurs when the user clicks the checkbox.  No parameters are available from this event.</event>
+			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
 			<event name="MouseDown">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
@@ -3424,6 +3424,8 @@ $Version=2$
 
 		<events>
 
+			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
+
 			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
 			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
@@ -3483,7 +3485,7 @@ $Version=2$
 
 			<event name="Scroll">This event occurs any time the user scrolls the scroll pane.  This includes scrolling by clicking the scroll buttons, clicking on the scroll bar, dragging the scroll thumb, turning the scroll wheel, or when the ScrollTo action is used.  This event does not occur when the scroll pane moves because the contained content changed in length, or when the scroll pane is forced to scroll because the available visible area was resized.  This event will never occur if the content within the scroll pane is shorter than the available visible area because then the content cannot be scrolled.  This event provides the :Percent attribute, a number from 0 to 100 (the same as the ScrollTo action above) representing the percentage that the user has now scrolled down the page as of the event occurring.  This event also provides :Change, representing how much the user's scroll location has changed in the same unit as above (although this value will be negative if the user scrolled up).</event>
 
-			<event name="Click">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
 			<event name="Wheel">This event occurs when the user moves the scroll wheel while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.</event>
 
@@ -4039,6 +4041,8 @@ objcanvas_test "widget/template"
 
 			<event name="LoseFocus">This event occurs when the editbox loses keyboard focus (if the user tabs off of it, for instance).</event>
 
+			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
+
 			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
 			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
@@ -4130,7 +4134,7 @@ objcanvas_test "widget/template"
 
 		<events>
 
-			<event name="Click">This event occurs when the user clicks the button.  No parameters are available from this event.</event>
+			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.  This event also has the "from_action" parameter, which is set to 1 if it was triggered by the click action.</event>
 
 			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
