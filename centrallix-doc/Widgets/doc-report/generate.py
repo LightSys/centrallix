@@ -92,7 +92,7 @@ WRITE_REPORT_MD = True
 # Regexes.
 
 # General Regexes
-identifier_re = r"^[a-z0-9][a-z0-9_-]*$"
+identifier_re = r"^[A-Za-z0-9][A-Za-z0-9_-]*$"
 quoted_identifier_re = r"[\"'`]([A-Za-z_][A-Za-z0-9_]*)[\"'`]"
 
 
@@ -156,7 +156,7 @@ class Confidence(StrEnum):
     STRONG = "strong"
     HEURISTIC = "heuristic"
 
-# Reference a code location with a descrption of what is there.
+# Reference a code location with a description of what is there.
 class Ref(TypedDict):
     path: str
     line: int | None
@@ -321,7 +321,7 @@ def _normalize_child_type(child_type: str) -> Optional[str]:
 
 
 # Parse `widgets.xml`.
-def get_documented_widgets(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
+def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
     # Allocate space for parsed documentation.
     docs: dict[str, WidgetDoc] = {}
     widget_types: set[str] = set()
@@ -370,6 +370,7 @@ def get_documented_widgets(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
             raw_child_type = normalize_name(child.get("type")).lower()
             if raw_child_type == "any":
                 doc.any_child = True
+                continue
             child_type = _normalize_child_type(raw_child_type)
             if child_type:
                 widget_types.add(child_type)
@@ -484,7 +485,7 @@ def expand_any_child_coverage(
 
 
 # Parse C htmlgen drivers for events, actions, and params.
-def parse_c_impl(path: Path) -> dict[str, WidgetImpl]:
+def parse_c(path: Path) -> dict[str, WidgetImpl]:
     widget_impls: dict[str, WidgetImpl] = {}
 
     # Parse each C driver and attach signal-level evidence.
@@ -592,7 +593,7 @@ def _parse_js_action_params(js: str, fn_name: str) -> list[tuple[str, int]]:
 
 
 # Parse JS drivers for event and action registrations (and heuristic param usage).
-def parse_js_impl(path: Path) -> dict[str, WidgetImpl]:
+def parse_js(path: Path) -> dict[str, WidgetImpl]:
     widget_impls: dict[str, WidgetImpl] = {}
     
     # Parse each driver file and map interface variables to Add() calls.
@@ -1182,11 +1183,11 @@ def main() -> int:
     md_path = output_dir / "drift-report.md"
 
     # Build documented + runtime inventories.
-    docs, doc_types = get_documented_widgets(doc_xml)
+    docs, doc_types = parse_docs(doc_xml)
     widget_types, widget_families, widget_type_refs = parse_widgets_in_wgtr(wgtr_dir)
     doc_types = expand_any_child_coverage(docs, doc_types, widget_families)
-    c_widgets = parse_c_impl(c_driver_dir)
-    js_widgets = parse_js_impl(js_driver_dir)
+    c_widgets = parse_c(c_driver_dir)
+    js_widgets = parse_js(js_driver_dir)
     widgets = merge_widget_lists(c_widgets, js_widgets)
     
     # Compute drift and write reports.
