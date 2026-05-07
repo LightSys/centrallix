@@ -461,6 +461,13 @@ def parse_c_impl(path: Path) -> dict[str, WidgetImpl]:
 
     # Parse each C driver and attach signal-level evidence.
     for c_file in sorted(path.glob("htdrv_*.c")):
+        # Check if the file name indicates that we should skip it.
+        file_name = c_file.name
+        eager_widget_name = normalize_widget_name(file_name[6:-2])
+        if eager_widget_name == "":
+            continue
+        
+        # Read file content.
         content = c_file.read_text(encoding="utf-8", errors="ignore")
         
         # Get the widget name.
@@ -468,11 +475,14 @@ def parse_c_impl(path: Path) -> dict[str, WidgetImpl]:
         if not widget_match:
             continue
         widget_name = normalize_widget_name(widget_match.group(1))
+        if widget_name != eager_widget_name:
+            print(f"Warning: File {file_name} used to declare widget {widget_name}.")
+            print(f"  Should `\"{eager_widget_name}\": \"{widget_name}\",` be added to WIDGETS_ALIASES?") 
         if widget_name == "":
             continue
         
         # Store the widget implementation.
-        rel = "centrallix/htmlgen/%s" % c_file.name
+        rel = "centrallix/htmlgen/%s" % file_name
         widget_impl = widget_impls.setdefault(widget_name, WidgetImpl(widget_name=widget_name))
         widget_impl.definition_refs.append(
             make_ref(rel, get_line_number(content, widget_match.start()), "strcpy sets widget name")
@@ -559,15 +569,25 @@ def parse_js_impl(path: Path) -> dict[str, WidgetImpl]:
     
     # Parse each driver file and map interface variables to Add() calls.
     for js_file in sorted(path.glob("htdrv_*.js")):
+        # Check if the file name indicates that we should skip it.
+        file_name = js_file.name
+        eager_widget_name = normalize_widget_name(file_name[6:-3])
+        if eager_widget_name == "":
+            continue
+        
+        # Read file content.
         js = js_file.read_text(encoding="utf-8", errors="ignore")
         
         # Get the widget name (from the file name).
         widget_name = normalize_widget_name(js_file.stem.replace("htdrv_", "", 1))
+        if widget_name != eager_widget_name:
+            print(f"Warning: File {file_name} used to declare widget {widget_name}.")
+            print(f"  Should `\"{eager_widget_name}\": \"{widget_name}\",` be added to WIDGETS_ALIASES?") 
         if widget_name == "":
             continue
         
         # Store the widget.
-        rel = "centrallix-os/sys/js/%s" % js_file.name
+        rel = "centrallix-os/sys/js/%s" % file_name
         widget_impl = widget_impls.setdefault(widget_name, WidgetImpl(widget_name=widget_name))
         widget_impl.definition_refs.append(make_ref(rel, 1, "JS driver file"))
         
