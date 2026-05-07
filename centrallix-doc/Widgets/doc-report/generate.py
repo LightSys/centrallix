@@ -1040,6 +1040,8 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
         ("Missing Widget Docs", globals_findings["missing_widget_docs"]),
         ("Stale Widgets Docs",  globals_findings["stale_widget_docs"]),
     ]:
+        if len(entries) == 0:
+            continue
         if title:
             lines.append(f"## {title}")
         for entry in entries:
@@ -1051,7 +1053,7 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
         lines.append("")
     
     # Write per-widget differences by type.
-    lines.append("## Widget Errors")
+    if len(report["per_widget"]) > 0: lines.append("## Widget Errors")
     for item in report["per_widget"]:
         # Write general issues with source links.
         links = item.get("links", {})
