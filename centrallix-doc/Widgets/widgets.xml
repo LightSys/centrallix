@@ -1645,9 +1645,7 @@ mySoundPlayer "widget/execmethod"
 
 			</child>
 
-			<child type="formstatus">
-
-			</child>
+			<child type="formstatus"/>
 
 		</children>
 
@@ -2173,7 +2171,7 @@ HTMLArea "widget/html"
 
 		<actions>
 
-			<action name="LoadImage">Displays the image to user.</action>
+			<action name="LoadImage">Displays the new image from the provided "Source" path to user.  Specify 1 or yes for the "LinkApp" parameter to pass the full akey session link on in the url request.</action>
 
 			<action name="Offset">Reloads the image with new offset values.</action>
 
@@ -2252,9 +2250,9 @@ HTMLArea "widget/html"
 
 		<actions>
 
-			<action name="Disable">This action causes the image button to enter its 'disabled' state, displaying the 'disabledimage' if specified.</action>
+			<action name="Disable">This action causes the image button to enter its disabled state, displaying the disabledimage if specified.</action>
 
-			<action name="Enable">This action causes the image button to enter its 'enabled' state, possibly changing its appearance if a 'disabledimage' was explicitly specified.</action>
+			<action name="Enable">This action causes the image button to enter its enabled state, possibly changing its appearance if a disabledimage was explicitly specified.</action>
 
 		</actions>
 
@@ -2371,7 +2369,7 @@ MyButton "widget/imagebutton"
 
 		<actions>
 
-			<action name="SetValue">Sets the value property to the given parameter.</action>
+			<action name="SetValue">This sets the value property to the specified "Value".</action>
 
 		</actions>
 
@@ -2931,11 +2929,11 @@ osrc1 "widget/osrc"
 
 			<action name="Close">Closes the page.</action>
 
-			<action name="Launch">Starts a new app in a new window.</action>
+			<action name="Launch">Loads the app at the specified "Source" in a new window of the specified "Width" and "Height".  Specify 1 or yes for "LinkApp" to link the new app into the same group as the current page for permissions.  Specify any value other than no for the "UseragentMenu", "UseragentResize", or "UseragentScroll" parameters to allow the user to see the menu bar, resize the window, or scroll it (respectively).</action>
 
 			<action name="Log">Logs data to the console (using console.log()), for testing and debugging.  Set the 'Message' to specify a text string that should appear in the log.  Might be useful for logging Easter Egg #8.</action>
 
-			<action name="LoadPage">Loads the page.</action>
+			<action name="LoadPage">Loads the page at the specified "Source".</action>
 
 			<action name="ReloadPage">Reloads the page in the user's browser.  Note: This event forces a reload, even if the original content could be loaded without one.</action>
 
@@ -3044,7 +3042,7 @@ MyPage "widget/page"
 
 			<action name="Resize">Changes the width and height of the pane to the given (Width,Height).</action>
 
-			<action name="SetBackground">Sets the background image or color of the pane, using the attribute Color or Image.</action>
+			<action name="SetBackground">Sets the background to the specified "Image" path or "Color" of the pane.</action>
 
 		</actions>
 
@@ -3111,7 +3109,7 @@ my_pane "widget/pane"
 
 		<actions>
 
-			<action name="SetValue">This sets the value of the parameter.</action>
+			<action name="SetValue">This sets the value property to the specified "Value".</action>
 
 		</actions>
 
@@ -3485,7 +3483,7 @@ $Version=2$
 
 		<actions>
 
-			<action name="MoveTo">Sets the scroll bar to a specific location determined by the parameter.</action>
+			<action name="MoveTo">Sets the scrollbar to a specific location determined by the "Value" parameter.</action>
 
 		</actions>
 
@@ -3713,7 +3711,7 @@ MyScrollPane "widget/scrollpane"
 
 		<actions>
 
-			<action name="SetTab">Sets the selected tab according to the parameter given (the tab itself or its index).</action>
+			<action name="SetTab">Sets the selected tab to the tab with the index specified by the "TabIndex" parameter, or the tab with the name specified by the "Tab" parameter.  ("Tab" takes priority if both are specified.  Does nothing if neither is specified.)</action>
 
 		</actions>
 
@@ -4116,11 +4114,11 @@ objcanvas_test "widget/template"
 
 		<actions>
 
-			<action name="InsertText">Checks to see if things need to be changed (new is different from old) then calls set value.</action>
+			<action name="InsertText">Checks to see if things need to be changed (new is different from old) then calls SetValue with the provided "Text".  Specify 1 for the "SetFocus" parameter to cause this textarea to become the focus when the text is inserted.</action>
 
-			<action name="SetFocus">Sets the focus on a selected widget.</action>
+			<action name="SetFocus">Sets the focus on a selected widget.  Specify the optional "X" or "Y" parameters to move the focus box that appears on the textarea.</action>
 
-			<action name="SetValue">Sets the content to the text parameter sent.</action>
+			<action name="SetValue">Sets the content to the specified "Value" parameter.  You should be able to specify 0 for the "Trigger" parameter to prevent a DataChange event from being triggered, however, this parameter is ignored and the event is always triggered.</action>
 
 		</actions>
 
