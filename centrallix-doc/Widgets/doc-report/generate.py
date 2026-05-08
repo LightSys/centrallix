@@ -725,10 +725,6 @@ class PerWidgetFinding(TypedDict):
 	extra_actions: list[SignalDiffEntry]
 	incorrect_action_params: list[SignalDiffsEntry]
 
-class GlobalWidgetFinding(TypedDict):
-	widget: str
-	references: list[Ref]
-
 class ReportStats(TypedDict):
 	documented_widgets: int
 	implemented_widgets: int
@@ -740,8 +736,8 @@ class ReportStats(TypedDict):
 
 class DriftReport(TypedDict):
 	stats: ReportStats
-	missing_widget_docs: list[GlobalWidgetFinding]
-	stale_widget_docs: list[GlobalWidgetFinding]
+	missing_widget_docs: list[SignalDiffEntry]
+	stale_widget_docs: list[SignalDiffEntry]
 	per_widget: list[PerWidgetFinding]
 
 
@@ -944,14 +940,16 @@ def compute_drift(
 	# Return report.
 	return {
 		"stats": stats,
-		"missing_widget_docs": [
-			{"widget": w, "references": missing_widget_doc_refs.get(w, [])}
-			for w in missing_widget_docs
-		],
-		"stale_widget_docs": [
-			{"widget": w, "references": stale_widget_doc_refs.get(w, [])}
-			for w in stale_widget_docs
-		],
+		"missing_widget_docs": [{
+			"name": name,
+			"confidence": Confidence.CONFIRMED,
+			"refs": missing_widget_doc_refs.get(name, [])
+		} for name in missing_widget_docs],
+		"stale_widget_docs": [{
+			"name": name,
+			"confidence": Confidence.CONFIRMED,
+			"refs": stale_widget_doc_refs.get(name, [])
+		} for name in stale_widget_docs],
 		"per_widget": per_widget,
 	}
 
@@ -1001,8 +999,8 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
 		if title:
 			lines.append(f"## {title}")
 		for entry in entries:
-			lines.append(f"- `{entry['widget']}`")
-			refs = entry.get("references") or []
+			refs = entry.get("refs") or []
+			lines.append(f"- `{entry['name']}` (origins: `{get_origins(refs)}`)")
 			lines.extend(f"  - {ref_to_markdown_link(report_dir, repo_root, r)}" for r in refs)
 			if not refs:
 				lines.append("  - source: unknown")
@@ -1023,7 +1021,7 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
 			lines.append("- **Properties only in docs**")
 			for prop in item["extra_properties"]:
 				lines.append("  - `%s`" % prop["name"])
-				for ref in prop.get("references", []):
+				for ref in prop.get("refs", []):
 					lines.append("	- %s" % ref_to_markdown_link(report_dir, repo_root, ref))
 		
 		# Write event issues.
