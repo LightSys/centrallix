@@ -712,14 +712,9 @@ class ParamDriftEntry(TypedDict):
 	code_refs: dict[str, Ref]
 	doc_refs: list[Ref]
 
-class WidgetLinks(TypedDict):
-	docs: list[Ref]
-	c: list[Ref]
-	js: list[Ref]
-
 class PerWidgetFinding(TypedDict):
 	widget: str
-	links: WidgetLinks
+	refs: list[Ref]
 	extra_properties: list[SignalDiffEntry]
 	missing_events: list[SignalDiffEntry]
 	extra_events: list[SignalDiffEntry]
@@ -800,10 +795,17 @@ def compute_drift(
 	all_widgets = sorted_list(doc_widgets & implemented_widgets)
 	for widget in all_widgets:
 		doc = docs.get(widget, WidgetDoc(name=widget))
-		run = widgets.get(widget, WidgetImpl(widget_name=widget))
+		impl = widgets.get(widget, WidgetImpl(widget_name=widget))
 		
-		impl_events = set(run.events)
-		impl_actions = set(run.actions)
+		# Ref list
+		widget_refs: list[Ref] = []
+		if doc.ref:
+			widget_refs.append(doc.ref)
+		widget_refs.extend(unique_refs(impl.definition_refs))
+		
+		# Event and action sets.
+		impl_events = set(impl.events)
+		impl_actions = set(impl.actions)
 		doc_events = set(doc.events)
 		doc_actions = set(doc.actions)
 		
@@ -817,7 +819,7 @@ def compute_drift(
 		# Compute action parameter mismatch details with runtime/doc references.
 		action_param_drift: list[ParamDriftEntry] = []
 		for action_name in sorted_list(impl_actions | doc_actions):
-			impl_params = set(run.actions.get(action_name, ActionImpl(action_name)).params)
+			impl_params = set(impl.actions.get(action_name, ActionImpl(action_name)).params)
 			doc_params = set(doc.action_params.get(action_name, set()))
 			missing_params = sorted_list(impl_params - doc_params)
 			extra_params = sorted_list(doc_params - impl_params)
@@ -827,7 +829,7 @@ def compute_drift(
 				
 				# Missing params.
 				for missing_param in missing_params:
-					for param_ref in (run
+					for param_ref in (impl
 						.actions
 						.get(action_name, ActionImpl(action_name))
 						.params_refs
@@ -843,9 +845,9 @@ def compute_drift(
 					"action": action_name,
 					"extra_in_docs": extra_params,
 					"origin": get_origin(
-						run.actions.get(action_name, ActionImpl(action_name)).ref_languages
+						impl.actions.get(action_name, ActionImpl(action_name)).ref_languages
 					),
-					"confidence": run.actions.get(action_name, ActionImpl(action_name)).confidence,
+					"confidence": impl.actions.get(action_name, ActionImpl(action_name)).confidence,
 					"code_refs": code_refs,
 					"doc_refs": unique_refs(doc_refs),
 				})
@@ -869,7 +871,7 @@ def compute_drift(
 		if IGNORE_INCORRECT_ACTION_PARAM_DOCS in IGNORED_ERRORS:
 			stats["ignored_errors"] += len(action_param_drift)
 			action_param_drift : list[ParamDriftEntry] = list()
-			
+		
 		
 		# Emit entry only when at least one drift category is present.
 		if (
@@ -882,19 +884,7 @@ def compute_drift(
 		):
 			per_widget.append({
 				"widget": widget,
-				"links": {
-					"docs": [doc.ref] if doc.ref else [],
-					"c": [
-						ref
-						for ref in unique_refs(run.definition_refs)
-						if str(ref.get("path", "")).startswith("centrallix/htmlgen/")
-					],
-					"js": [
-						ref
-						for ref in unique_refs(run.definition_refs)
-						if str(ref.get("path", "")).startswith("centrallix-os/sys/js/")
-					],
-				},
+				"refs": widget_refs,
 				"extra_properties": [
 					{
 						"name": name,
@@ -909,9 +899,9 @@ def compute_drift(
 				"missing_events": [
 					{
 						"name": name,
-						"origin": get_origin(run.events[name].ref_languages),
-						"confidence": run.events[name].confidence,
-						"references": unique_refs(run.events[name].definition_refs),
+						"origin": get_origin(impl.events[name].ref_languages),
+						"confidence": impl.events[name].confidence,
+						"references": unique_refs(impl.events[name].definition_refs),
 					}
 					for name in missing_events
 				],
@@ -931,9 +921,9 @@ def compute_drift(
 				"missing_actions": [
 					{
 						"name": name,
-						"origin": get_origin(run.actions[name].ref_languages),
-						"confidence": run.actions[name].confidence,
-						"references": unique_refs(run.actions[name].definition_refs),
+						"origin": get_origin(impl.actions[name].ref_languages),
+						"confidence": impl.actions[name].confidence,
+						"references": unique_refs(impl.actions[name].definition_refs),
 					}
 					for name in missing_actions
 				],
@@ -1039,22 +1029,13 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
 	# Write per-widget differences by type.
 	if len(report["per_widget"]) > 0: lines.append("## Widget Errors")
 	for item in report["per_widget"]:
-		# Write general issues with source links.
-		links = item.get("links", {})
+		# Write general issues with source refs.
+		refs = item.get("refs", {})
 		lines.append(
 			f"### `{item['widget']}`\n"
 			"- **Sources**"
 		)
-		for name, refs in (
-			# Source link providers:
-			("docs", links.get("docs", [])),
-			("c",	links.get("c",	[])),
-			("js",   links.get("js",   [])),
-		):
-			if refs != []:
-				lines.extend(f"  - {ref_to_markdown_link(report_dir, repo_root, r)}" for r in refs)
-			else:
-				lines.append(f"  - {name}: not found")
+		lines.extend(f"  - {ref_to_markdown_link(report_dir, repo_root, r)}" for r in refs)
 		
 		# Write property issues.
 		if item["extra_properties"]:
