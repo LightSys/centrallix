@@ -736,7 +736,7 @@ class ReportStats(TypedDict):
     widget_errors: int
     ignored_errors: int
 
-class DriftReport(TypedDict):
+class Report(TypedDict):
     stats: ReportStats
     missing_widget_docs: list[SignalDiffEntry]
     stale_widget_docs: list[SignalDiffEntry]
@@ -750,7 +750,7 @@ def compute_drift(
     widget_types: set[str],
     widget_type_refs: dict[str, list[Ref]],
     widgets: dict[str, WidgetImpl],
-) -> DriftReport:
+) -> Report:
     stats : ReportStats = {
         "documented_widgets": 0,
         "implemented_widgets": 0,
@@ -933,7 +933,7 @@ def compute_drift(
         stale_widget_docs : list[str] = list()
     
     # Set other stats.
-    stats["documented_widgets"]  = len(doc_widgets)
+    stats["documented_widgets"]  = len(doc_widgets_and_children)
     stats["implemented_widgets"] = len(implemented_widgets)
     stats["missing_widget_docs"] = len(missing_widget_docs)
     stats["stale_widget_docs"]   = len(stale_widget_docs)
@@ -957,14 +957,14 @@ def compute_drift(
 
 
 # Write the machine-readable JSON artifact with stable formatting.
-def write_json(path: Path, report: DriftReport) -> None:
+def write_json(path: Path, report: Report) -> None:
     with path.open("w", encoding="utf-8") as handle:
         json.dump(report, handle, indent=2 if HUMAN_JSON else None, sort_keys=True)
         handle.write("\n")
 
 
 # Render the human-readable markdown report with clickable evidence links.
-def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
+def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
     report_dir = path.parent
     lines: list[str] = []
     
