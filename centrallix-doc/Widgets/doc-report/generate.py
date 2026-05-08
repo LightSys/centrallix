@@ -705,12 +705,10 @@ class SignalDiffEntry(TypedDict):
 	references: list[Ref]
 
 class ParamDriftEntry(TypedDict):
-	action: str
-	extra_in_docs: list[str]
-	origin: str
+	action_name: str
 	confidence: Confidence
 	code_refs: dict[str, Ref]
-	doc_refs: list[Ref]
+	doc_refs: dict[str, Ref]
 
 class PerWidgetFinding(TypedDict):
 	widget: str
@@ -819,37 +817,34 @@ def compute_drift(
 		# Compute action parameter mismatch details with runtime/doc references.
 		action_param_drift: list[ParamDriftEntry] = []
 		for action_name in sorted_list(impl_actions | doc_actions):
-			impl_params = set(impl.actions.get(action_name, ActionImpl(action_name)).params)
+			action = impl.actions.get(action_name, ActionImpl(action_name)) # TODO: ActionImpl("")
+			if action.name == "":
+				continue
+			
+			# Determine missing/extra action parameters.
+			impl_params = set(action.params)
 			doc_params = set(doc.action_params.get(action_name, set()))
 			missing_params = sorted_list(impl_params - doc_params)
 			extra_params = sorted_list(doc_params - impl_params)
+			
 			if missing_params or extra_params:
 				code_refs: dict[str, Ref] = {}
-				doc_refs: list[Ref] = []
+				doc_refs: dict[str, Ref] = {}
 				
-				# Missing params.
+				# Missing params. TODO: Optimize code
 				for missing_param in missing_params:
-					for param_ref in (impl
-						.actions
-						.get(action_name, ActionImpl(action_name))
-						.params_refs
-						.get(missing_param, [])
-					):
+					for param_ref in action.params_refs.get(missing_param, []):
 						code_refs.setdefault(missing_param, param_ref)
 				
 				# Extra params.
 				if len(extra_params) > 0 and action_name in doc.action_refs:
-					doc_refs.append(doc.action_refs[action_name])
+					doc_refs["action_name"] = doc.action_refs[action_name]
 				
 				action_param_drift.append({
-					"action": action_name,
-					"extra_in_docs": extra_params,
-					"origin": get_origin(
-						impl.actions.get(action_name, ActionImpl(action_name)).ref_languages
-					),
-					"confidence": impl.actions.get(action_name, ActionImpl(action_name)).confidence,
+					"action_name": action_name,
+					"confidence": action.confidence,
 					"code_refs": code_refs,
-					"doc_refs": unique_refs(doc_refs),
+					"doc_refs": doc_refs,
 				})
 		
 		# Handle ignored errors.
@@ -1084,19 +1079,16 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
 		# Write action param issues.
 		if item["action_param_drift"]:
 			lines.append("- **Incorrect action parameter docs**")
-			for drift in item["action_param_drift"]:
-				lines.append(f"  - `{drift['action']}` ("
-					f"origin: `{drift['origin']}`"
-				")")
-				if drift.get("code_refs"):
+			for action_param_drift in item["action_param_drift"]:
+				lines.append(f"  - `{action_param_drift['action_name']}`")
+				if action_param_drift.get("code_refs"):
 					lines.append(f"	- Undocumented parameters:")
-					for name, ref in drift.get("code_refs", {}).items():
+					for name, ref in action_param_drift.get("code_refs", {}).items():
 						lines.append(f"	  - `{name}`: {ref_to_markdown_link(report_dir, repo_root, ref)}")
-				if drift["extra_in_docs"]:
-					stale_params = ', '.join(f'`{x}`' for x in drift['extra_in_docs'])
-					lines.append(f"	- Stale parameter docs: {stale_params}")
-					for ref in drift.get("doc_refs", []):
-						lines.append(f"	  - {ref_to_markdown_link(report_dir, repo_root, ref)}")
+				if action_param_drift.get("doc_refs"):
+					lines.append(f"	- Stale parameter docs:")
+					for name, ref in action_param_drift.get("doc_refs", {}).items():
+						lines.append(f"	  - `{name}`: {ref_to_markdown_link(report_dir, repo_root, ref)}")
 		lines.append("")
 
 	with path.open("w", encoding="utf-8") as handle:
