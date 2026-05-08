@@ -270,7 +270,7 @@ def merge_confidence(a: Confidence, b: Confidence) -> Confidence:
 
 
 # Render compact origin tags used in reports.
-def slug_origin(ref_languages: set[str]) -> str:
+def get_origin(ref_languages: set[str]) -> str:
 	return "+".join(sorted(ref_languages))
 
 
@@ -322,7 +322,7 @@ def ref_to_markdown_link(report_dir: Path, repo_root: Path, ref: Ref) -> str:
 # Validate/normalize child type declarations into concrete widget keys.
 def _normalize_child_type(child_type: str) -> Optional[str]:
 	text = normalize_widget_name(child_type)
-	if text in {"", "any" }: return None
+	if text in {"", "any"}: return None
 	if not re.match(identifier_re, text): return None
 	return text
 
@@ -698,18 +698,11 @@ def merge_widget_lists(
 	return merged
 
 
-
 class SignalDiffEntry(TypedDict):
 	name: str
 	origin: str
 	confidence: Confidence
 	references: list[Ref]
-
-
-class DocOnlyEntry(TypedDict):
-	name: str
-	references: list[Ref]
-
 
 class ParamDriftEntry(TypedDict):
 	action: str
@@ -719,32 +712,27 @@ class ParamDriftEntry(TypedDict):
 	code_refs: dict[str, Ref]
 	doc_refs: list[Ref]
 
-
 class WidgetLinks(TypedDict):
 	docs: list[Ref]
 	c: list[Ref]
 	js: list[Ref]
 
-
 class PerWidgetFinding(TypedDict):
 	widget: str
 	links: WidgetLinks
+	extra_properties: list[SignalDiffEntry]
 	missing_events: list[SignalDiffEntry]
-	extra_events: list[DocOnlyEntry]
+	extra_events: list[SignalDiffEntry]
 	missing_actions: list[SignalDiffEntry]
-	extra_actions: list[DocOnlyEntry]
-	extra_properties: list[DocOnlyEntry]
+	extra_actions: list[SignalDiffEntry]
 	action_param_drift: list[ParamDriftEntry]
-
 
 class GlobalWidgetFinding(TypedDict):
 	widget: str
 	references: list[Ref]
 
-
-class ReportCounts(TypedDict):
+class ReportStats(TypedDict):
 	documented_widgets: int
-	fully_documented_widgets: int
 	implemented_widgets: int
 	missing_widget_docs: int
 	stale_widget_docs: int
@@ -752,19 +740,10 @@ class ReportCounts(TypedDict):
 	widget_errors: int
 	ignored_errors: int
 
-
-class ReportMetadata(TypedDict):
-	counts: ReportCounts
-
-
-class GlobalFindings(TypedDict):
+class DriftReport(TypedDict):
+	stats: ReportStats
 	missing_widget_docs: list[GlobalWidgetFinding]
 	stale_widget_docs: list[GlobalWidgetFinding]
-
-
-class DriftReport(TypedDict):
-	metadata: ReportMetadata
-	global_findings: GlobalFindings
 	per_widget: list[PerWidgetFinding]
 
 
@@ -776,17 +755,24 @@ def compute_drift(
 	widget_type_refs: dict[str, list[Ref]],
 	widgets: dict[str, WidgetImpl],
 ) -> DriftReport:
-	total_errors = 0
-	ignored_errors = 0
+	stats : ReportStats = {
+		"documented_widgets": 0,
+		"implemented_widgets": 0,
+		"missing_widget_docs": 0,
+		"stale_widget_docs": 0,
+		"widgets_with_errors": 0,
+		"widget_errors": 0,
+		"ignored_errors": 0,
+	}
 	
 	# Build normalized comparison.
-	doc_widgets = set(doc_types)
-	fully_documented_widgets = set(docs)
+	doc_widgets_and_children = set(doc_types)
+	doc_widgets = set(docs)
 	implemented_widgets = (set(widget_types) | set(widgets))
-
+	
 	# Get missing/stale widgets.
-	missing_widget_docs = sorted_list(implemented_widgets - doc_widgets)
-	stale_widget_docs = sorted_list(doc_widgets - implemented_widgets)
+	missing_widget_docs = sorted_list(implemented_widgets - doc_widgets_and_children)
+	stale_widget_docs = sorted_list(doc_widgets_and_children - implemented_widgets)
 	
 	# Get refs for missing/stale widgets.
 	missing_widget_doc_refs: dict[str, list[Ref]] = {}
@@ -808,32 +794,33 @@ def compute_drift(
 			for child_name, child_ref in widget_doc.child_refs.items():
 				if child_name == widget_name:
 					stale_widget_doc_refs[widget_name] = [child_ref]
-
+	
 	# Build per-widget detailed diffs only for documented widgets present in code.
 	per_widget: list[PerWidgetFinding] = []
-	triage = sorted_list(fully_documented_widgets & implemented_widgets)
-	for widget in triage:
+	all_widgets = sorted_list(doc_widgets & implemented_widgets)
+	for widget in all_widgets:
 		doc = docs.get(widget, WidgetDoc(name=widget))
 		run = widgets.get(widget, WidgetImpl(widget_name=widget))
-
-		runtime_events = set(run.events)
-		runtime_actions = set(run.actions)
+		
+		impl_events = set(run.events)
+		impl_actions = set(run.actions)
 		doc_events = set(doc.events)
 		doc_actions = set(doc.actions)
-
-		extra_properties = sorted_list(doc.properties if widget in stale_widget_docs else [])
-		missing_events = sorted_list(runtime_events - doc_events)
-		extra_events = sorted_list(doc_events - runtime_events)
-		missing_actions = sorted_list(runtime_actions - doc_actions)
-		extra_actions = sorted_list(doc_actions - runtime_actions)
-
+		
+		extra_properties = []
+		# extra_properties = sorted_list(doc.properties if widget in stale_widget_docs else [])
+		missing_events = sorted_list(impl_events - doc_events)
+		extra_events = sorted_list(doc_events - impl_events)
+		missing_actions = sorted_list(impl_actions - doc_actions)
+		extra_actions = sorted_list(doc_actions - impl_actions)
+		
 		# Compute action parameter mismatch details with runtime/doc references.
 		action_param_drift: list[ParamDriftEntry] = []
-		for action_name in sorted_list(runtime_actions | doc_actions):
-			runtime_params = set(run.actions.get(action_name, ActionImpl(action_name)).params)
+		for action_name in sorted_list(impl_actions | doc_actions):
+			impl_params = set(run.actions.get(action_name, ActionImpl(action_name)).params)
 			doc_params = set(doc.action_params.get(action_name, set()))
-			missing_params = sorted_list(runtime_params - doc_params)
-			extra_params = sorted_list(doc_params - runtime_params)
+			missing_params = sorted_list(impl_params - doc_params)
+			extra_params = sorted_list(doc_params - impl_params)
 			if missing_params or extra_params:
 				code_refs: dict[str, Ref] = {}
 				doc_refs: list[Ref] = []
@@ -855,7 +842,7 @@ def compute_drift(
 				action_param_drift.append({
 					"action": action_name,
 					"extra_in_docs": extra_params,
-					"origin": slug_origin(
+					"origin": get_origin(
 						run.actions.get(action_name, ActionImpl(action_name)).ref_languages
 					),
 					"confidence": run.actions.get(action_name, ActionImpl(action_name)).confidence,
@@ -865,25 +852,25 @@ def compute_drift(
 		
 		# Handle ignored errors.
 		if IGNORE_STALE_PROPERTY_DOCS in IGNORED_ERRORS:
-			ignored_errors += len(extra_properties)
+			stats["ignored_errors"] += len(extra_properties)
 			extra_properties : list[str] = list()
 		if IGNORE_MISSING_EVENT_DOCS in IGNORED_ERRORS:
-			ignored_errors += len(missing_events)
+			stats["ignored_errors"] += len(missing_events)
 			missing_events : list[str] = list()
 		if IGNORE_STALE_EVENT_DOCS in IGNORED_ERRORS:
-			ignored_errors += len(extra_events)
+			stats["ignored_errors"] += len(extra_events)
 			extra_events : list[str] = list()
 		if IGNORE_MISSING_ACTION_DOCS in IGNORED_ERRORS:
-			ignored_errors += len(missing_actions)
+			stats["ignored_errors"] += len(missing_actions)
 			missing_actions : list[str] = list()
 		if IGNORE_STALE_EVENT_DOCS in IGNORED_ERRORS:
-			ignored_errors += len(extra_actions)
+			stats["ignored_errors"] += len(extra_actions)
 			extra_actions : list[str] = list()
 		if IGNORE_INCORRECT_ACTION_PARAM_DOCS in IGNORED_ERRORS:
-			ignored_errors += len(action_param_drift)
+			stats["ignored_errors"] += len(action_param_drift)
 			action_param_drift : list[ParamDriftEntry] = list()
 			
-
+		
 		# Emit entry only when at least one drift category is present.
 		if (
 			extra_properties
@@ -911,9 +898,9 @@ def compute_drift(
 				"extra_properties": [
 					{
 						"name": name,
-						"references": [
-							doc.property_refs[name]
-						]
+						"origin": "xml",
+						"confidence": Confidence.CONFIRMED,
+						"references": [doc.property_refs[name]]
 						if name in doc.property_refs
 						else [],
 					}
@@ -922,7 +909,7 @@ def compute_drift(
 				"missing_events": [
 					{
 						"name": name,
-						"origin": slug_origin(run.events[name].ref_languages),
+						"origin": get_origin(run.events[name].ref_languages),
 						"confidence": run.events[name].confidence,
 						"references": unique_refs(run.events[name].definition_refs),
 					}
@@ -931,6 +918,8 @@ def compute_drift(
 				"extra_events": [
 					{
 						"name": name,
+						"origin": "xml",
+						"confidence": Confidence.CONFIRMED,
 						"references": [
 							doc.event_refs[name]
 						]
@@ -942,7 +931,7 @@ def compute_drift(
 				"missing_actions": [
 					{
 						"name": name,
-						"origin": slug_origin(run.actions[name].ref_languages),
+						"origin": get_origin(run.actions[name].ref_languages),
 						"confidence": run.actions[name].confidence,
 						"references": unique_refs(run.actions[name].definition_refs),
 					}
@@ -951,6 +940,8 @@ def compute_drift(
 				"extra_actions": [
 					{
 						"name": name,
+						"origin": "xml",
+						"confidence": Confidence.CONFIRMED,
 						"references": [
 							doc.action_refs[name]
 						]
@@ -961,39 +952,34 @@ def compute_drift(
 				],
 				"action_param_drift": action_param_drift,
 			})
-			total_errors += len(extra_properties) + len(missing_events) + len(extra_events) + len(missing_actions) + len(extra_actions) + len(action_param_drift)
-
+			stats["widget_errors"] += len(extra_properties) + len(missing_events) + len(extra_events) + len(missing_actions) + len(extra_actions) + len(action_param_drift)
+	
 	# Handle ignored errors.
 	if IGNORE_MISSING_WIDGET_DOCS in IGNORED_ERRORS:
-		ignored_errors += len(missing_widget_docs)
+		stats["ignored_errors"] += len(missing_widget_docs)
 		missing_widget_docs : list[str] = list()
 	if IGNORE_STALE_WIDGET_DOCS in IGNORED_ERRORS:
-		ignored_errors += len(stale_widget_docs)
+		stats["ignored_errors"] += len(stale_widget_docs)
 		stale_widget_docs : list[str] = list()
-
+	
+	# Set other stats.
+	stats["documented_widgets"]  = len(doc_widgets)
+	stats["implemented_widgets"] = len(implemented_widgets)
+	stats["missing_widget_docs"] = len(missing_widget_docs)
+	stats["stale_widget_docs"]   = len(stale_widget_docs)
+	stats["widgets_with_errors"] = len(per_widget)
+	
+	# Return report.
 	return {
-		"metadata": {
-			"counts": {
-				"documented_widgets": len(doc_widgets),
-				"fully_documented_widgets": len(fully_documented_widgets),
-				"implemented_widgets": len(implemented_widgets),
-				"missing_widget_docs": len(missing_widget_docs),
-				"stale_widget_docs": len(stale_widget_docs),
-				"widgets_with_errors": len(per_widget),
-				"widget_errors": total_errors,
-				"ignored_errors": ignored_errors,
-			},
-		},
-		"global_findings": {
-			"missing_widget_docs": [
-				{"widget": w, "references": missing_widget_doc_refs.get(w, [])}
-				for w in missing_widget_docs
-			],
-			"stale_widget_docs": [
-				{"widget": w, "references": stale_widget_doc_refs.get(w, [])}
-				for w in stale_widget_docs
-			],
-		},
+		"stats": stats,
+		"missing_widget_docs": [
+			{"widget": w, "references": missing_widget_doc_refs.get(w, [])}
+			for w in missing_widget_docs
+		],
+		"stale_widget_docs": [
+			{"widget": w, "references": stale_widget_doc_refs.get(w, [])}
+			for w in stale_widget_docs
+		],
 		"per_widget": per_widget,
 	}
 
@@ -1016,36 +1002,27 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
 		"Report generated by [generate.py](generate.py).\n"
 	)
 	
-	# Get stats.
-	stats = report["metadata"]["counts"]
-	n_documented_widgets = stats['documented_widgets']
-	n_implemented_widgets = stats['implemented_widgets']
-	n_stale_widget_docs = stats['stale_widget_docs']
-	n_widgets_with_errors = stats['widgets_with_errors']
-	n_widget_errors = stats['widget_errors']
-	n_ignored_errors = stats['ignored_errors']
-	
 	# Write stats.
-	documented_widgets_strict = n_documented_widgets - n_stale_widget_docs
-	progress = documented_widgets_strict / n_implemented_widgets
-	error_percent = n_widgets_with_errors / documented_widgets_strict
-	error_rate = n_widget_errors / documented_widgets_strict
+	s = report["stats"]
+	doc_widgets_strict = s["documented_widgets"] - s["stale_widget_docs"]
+	progress = doc_widgets_strict / s["implemented_widgets"]
+	error_percent = s["widgets_with_errors"] / doc_widgets_strict
+	error_rate = s["widget_errors"] / doc_widgets_strict
 	lines.append(
 		"## Widget Stats\n"
-		f"- **Documented**: {documented_widgets_strict}/{n_implemented_widgets} widgets ({progress:.0%})\n"
-		f"- **Missing widget docs**: {stats['missing_widget_docs']}\n"
-		f"- **Stale widget docs**: {n_stale_widget_docs}\n"
+		f"- **Documented**: {doc_widgets_strict}/{s["implemented_widgets"]} widgets ({progress:.0%})\n"
+		f"- **Missing widget docs**: {s["missing_widget_docs"]}\n"
+		f"- **Stale widget docs**: {s["stale_widget_docs"]}\n"
 		f"- **Ignored widgets**: {len(IGNORED_WIDGETS)}\n"
-		f"- **Widget docs with errors**: {n_widgets_with_errors} ({error_percent:.0%})\n"
-		f"- **Widget doc errors**: {n_widget_errors} (~{error_rate:.2}/widget)\n"
-		f"- **Ignored errors**: {n_ignored_errors}\n"
+		f"- **Widget docs with errors**: {s["widgets_with_errors"]} ({error_percent:.0%})\n"
+		f"- **Widget doc errors**: {s["widget_errors"]} (~{error_rate:.2}/widget)\n"
+		f"- **Ignored errors**: {s["ignored_errors"]}\n"
 	)
 
 	# Write global findings (aka. missing & stale widget docs).
-	globals_findings = report["global_findings"]
 	for title, entries in [
-		("Missing Widget Docs", globals_findings["missing_widget_docs"]),
-		("Stale Widgets Docs",  globals_findings["stale_widget_docs"]),
+		("Missing Widget Docs", report["missing_widget_docs"]),
+		("Stale Widgets Docs",  report["stale_widget_docs"]),
 	]:
 		if len(entries) == 0:
 			continue
