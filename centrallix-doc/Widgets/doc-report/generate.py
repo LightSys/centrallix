@@ -34,7 +34,8 @@ IGNORE_MISSING_EVENT_DOCS = get_id()
 IGNORE_STALE_EVENT_DOCS = get_id()
 IGNORE_MISSING_ACTION_DOCS = get_id()
 IGNORE_STALE_ACTION_DOCS = get_id()
-IGNORE_INCORRECT_ACTION_PARAM_DOCS = get_id()
+IGNORE_MISSING_ACTION_PARAM_DOCS = get_id()
+IGNORE_STALE_ACTION_PARAM_DOCS = get_id()
 
 
 # =============
@@ -80,7 +81,8 @@ IGNORED_ERRORS = set({
 	# IGNORE_STALE_EVENT_DOCS,			# Ignore events with no implementation.
 	# IGNORE_MISSING_ACTION_DOCS,		 # Ignore actions with no docs.
 	# IGNORE_STALE_ACTION_DOCS,		   # Ignore actions with no implementation.
-	# IGNORE_INCORRECT_ACTION_PARAM_DOCS, # Ignore incorrect action parameter docs.
+	# IGNORE_MISSING_ACTION_PARAM_DOCS,   # Ignore action parameter with no docs.
+	# IGNORE_STALE_ACTION_PARAM_DOCS,	 # Ignore action parameter with no implementations.
 })
 
 # Whether to write unminified, human-readable JSON.  Minified JSON is typically
@@ -887,6 +889,19 @@ def compute_drift(
 				for extra_param in extra_params:
 					doc_refs[extra_param] = ref
 			
+			# Handle ignored errors.
+			if IGNORE_MISSING_ACTION_PARAM_DOCS in IGNORED_ERRORS:
+				stats["ignored_errors"] += len(code_refs)
+				code_refs.clear()
+			if IGNORE_STALE_ACTION_PARAM_DOCS in IGNORED_ERRORS:
+				stats["ignored_errors"] += len(doc_refs)
+				doc_refs.clear()
+			if not code_refs and not doc_refs:
+				continue
+			
+			# Add errors.
+			stats["widget_errors"] += len(code_refs)
+			stats["widget_errors"] += len(doc_refs)
 			findings["incorrect_action_params"].append({
 				"signal_name": action_name,
 				"signal_refs": action.definition_refs,
@@ -909,7 +924,7 @@ def compute_drift(
 		if IGNORE_MISSING_ACTION_DOCS in IGNORED_ERRORS:
 			stats["ignored_errors"] += len(findings["missing_actions"])
 			findings["missing_actions"].clear()
-		if IGNORE_STALE_EVENT_DOCS in IGNORED_ERRORS:
+		if IGNORE_STALE_ACTION_DOCS in IGNORED_ERRORS:
 			stats["ignored_errors"] += len(findings["extra_actions"])
 			findings["extra_actions"].clear()
 		
@@ -919,7 +934,7 @@ def compute_drift(
 				  + len(findings["extra_events"])
 				  + len(findings["missing_actions"])
 				  + len(findings["extra_actions"]))
-		if (errors > 0):
+		if (errors > 0 or findings["incorrect_action_params"]):
 			stats["widget_errors"] += errors
 			per_widget.append(findings)
 	
