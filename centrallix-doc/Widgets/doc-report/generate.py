@@ -73,16 +73,16 @@ IGNORED_WIDGETS = set({
 
 # Uncomment any of the strings below to ignore that type of issue.
 IGNORED_ERRORS = set({
-	# IGNORE_MISSING_WIDGET_DOCS,		 # Ignore all undocumented widgets. (Not recommended.)
-	# IGNORE_STALE_WIDGET_DOCS,		   # Ignore all docs for unimplemented widgets. (Not recommended.)
-	# IGNORE_MISSING_PROPERTY_DOCS,	   # Ignore properties with no docs.
-	# IGNORE_STALE_PROPERTY_DOCS,		 # Ignore properties with no implementation.
-	# IGNORE_MISSING_EVENT_DOCS,		  # Ignore events with no docs.
-	# IGNORE_STALE_EVENT_DOCS,			# Ignore events with no implementation.
-	# IGNORE_MISSING_ACTION_DOCS,		 # Ignore actions with no docs.
-	# IGNORE_STALE_ACTION_DOCS,		   # Ignore actions with no implementation.
-	# IGNORE_MISSING_ACTION_PARAM_DOCS,   # Ignore action parameter with no docs.
-	# IGNORE_STALE_ACTION_PARAM_DOCS,	 # Ignore action parameter with no implementations.
+	# IGNORE_MISSING_WIDGET_DOCS,       # Ignore all undocumented widgets. (Not recommended.)
+	# IGNORE_STALE_WIDGET_DOCS,         # Ignore all docs for unimplemented widgets. (Not recommended.)
+	# IGNORE_MISSING_PROPERTY_DOCS,     # Ignore properties with no docs.
+	# IGNORE_STALE_PROPERTY_DOCS,       # Ignore properties with no implementation.
+	# IGNORE_MISSING_EVENT_DOCS,        # Ignore events with no docs.
+	# IGNORE_STALE_EVENT_DOCS,          # Ignore events with no implementation.
+	# IGNORE_MISSING_ACTION_DOCS,       # Ignore actions with no docs.
+	# IGNORE_STALE_ACTION_DOCS,         # Ignore actions with no implementation.
+	# IGNORE_MISSING_ACTION_PARAM_DOCS, # Ignore action parameter with no docs.
+	# IGNORE_STALE_ACTION_PARAM_DOCS,   # Ignore action parameter with no implementations.
 })
 
 # Whether to write unminified, human-readable JSON.  Minified JSON is typically
@@ -217,7 +217,7 @@ class SignalImpl:
 	definition_refs: list[Ref] = field(default_factory=list)
 	params: set[str] = field(default_factory=set)
 	params_refs: dict[str, list[Ref]] = field(default_factory=dict)
-
+	
 	# Merge two implementations into one.
 	def merge(self, other: SignalImpl) -> None:
 		self.update_confidence(other.confidence)
@@ -1022,7 +1022,7 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 			for prop in item["extra_properties"]:
 				lines.append("  - `%s`" % prop["name"])
 				for ref in prop.get("refs", []):
-					lines.append("	- %s" % ref_to_markdown_link(report_dir, repo_root, ref))
+					lines.append("    - %s" % ref_to_markdown_link(report_dir, repo_root, ref))
 		
 		# Write event issues.
 		if item["missing_events"]:
@@ -1034,13 +1034,13 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 				")")
 				if event.get("refs"):
 					for ref in event["refs"]:
-						lines.append("	- %s" % ref_to_markdown_link(report_dir, repo_root, ref))
+						lines.append("    - %s" % ref_to_markdown_link(report_dir, repo_root, ref))
 		if item["extra_events"]:
 			lines.append("- **Stale event docs**")
 			for event in item["extra_events"]:
 				lines.append("  - `%s`" % event["name"])
 				for ref in event.get("refs", {}):
-					lines.append("	- %s" % ref_to_markdown_link(report_dir, repo_root, ref))
+					lines.append("    - %s" % ref_to_markdown_link(report_dir, repo_root, ref))
 		
 		# Write action issues.
 		if item["missing_actions"]:
@@ -1052,13 +1052,13 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 				")")
 				if action.get("refs"):
 					for ref in action["refs"]:
-						lines.append("	- %s" % ref_to_markdown_link(report_dir, repo_root, ref))
+						lines.append("    - %s" % ref_to_markdown_link(report_dir, repo_root, ref))
 		if item["extra_actions"]:
 			lines.append("- **Stale action docs**")
 			for action in item["extra_actions"]:
 				lines.append("  - `%s`" % action["name"])
 				for ref in action.get("refs", {}):
-					lines.append("	- %s" % ref_to_markdown_link(report_dir, repo_root, ref))
+					lines.append("    - %s" % ref_to_markdown_link(report_dir, repo_root, ref))
 		
 		# Write action param issues.
 		if item["incorrect_action_params"]:
@@ -1068,9 +1068,9 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 				
 				# Write signal sources.
 				signal_refs = incorrect_action_params["signal_refs"]
-				lines.append(f"	- **Sources** (origin: `{get_origins(signal_refs)}`)")
+				lines.append(f"    - **Sources** (origin: `{get_origins(signal_refs)}`)")
 				for signal_ref in signal_refs:
-					lines.append(f"	  - {ref_to_markdown_link(report_dir, repo_root, signal_ref)}")
+					lines.append(f"      - {ref_to_markdown_link(report_dir, repo_root, signal_ref)}")
 				
 				# Write signal param issues.
 				for title, refs in [
@@ -1079,11 +1079,11 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 				]:
 					if not refs:
 						continue
-					lines.append(f"	- **{title}**")
+					lines.append(f"    - **{title}**")
 					for name, ref in refs.items():
-						lines.append(f"	  - `{name}`: {ref_to_markdown_link(report_dir, repo_root, ref)}")
+						lines.append(f"      - `{name}`: {ref_to_markdown_link(report_dir, repo_root, ref)}")
 		lines.append("")
-
+	
 	with path.open("w", encoding="utf-8") as handle:
 		handle.write("\n".join(lines).rstrip() + "\n")
 
@@ -1130,7 +1130,7 @@ def main() -> int:
 	)
 	json_path = output_dir / "drift-report.json"
 	md_path = output_dir / "drift-report.md"
-
+	
 	# Build documented + runtime inventories.
 	docs, doc_types = parse_docs(doc_xml)
 	widget_types, widget_families, widget_type_refs = parse_widgets_in_wgtr(wgtr_dir)
