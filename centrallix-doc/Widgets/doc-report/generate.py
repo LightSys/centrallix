@@ -1068,20 +1068,21 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
 			for incorrect_action_params in item["incorrect_action_params"]:
 				lines.append(f"  - `{incorrect_action_params['signal_name']}`")
 				
-				# Write action sources.
+				# Write signal sources.
 				signal_refs = incorrect_action_params["signal_refs"]
 				lines.append(f"	- **Sources** (origin: `{get_origins(signal_refs)}`)")
 				for signal_ref in signal_refs:
 					lines.append(f"	  - {ref_to_markdown_link(report_dir, repo_root, signal_ref)}")
 				
-				# Write action issues.
-				if incorrect_action_params["code_refs"]:
-					lines.append(f"	- **Undocumented params**")
-					for name, ref in incorrect_action_params["code_refs"].items():
-						lines.append(f"	  - `{name}`: {ref_to_markdown_link(report_dir, repo_root, ref)}")
-				if incorrect_action_params["doc_refs"]:
-					lines.append(f"	- **Stale param docs**")
-					for name, ref in incorrect_action_params["doc_refs"].items():
+				# Write signal param issues.
+				for title, refs in [
+					("Undocumented params", incorrect_action_params["code_refs"]),
+					("Stale param docs",  incorrect_action_params["doc_refs"]),
+				]:
+					if not refs:
+						continue
+					lines.append(f"	- **{title}**")
+					for name, ref in refs.items():
 						lines.append(f"	  - `{name}`: {ref_to_markdown_link(report_dir, repo_root, ref)}")
 		lines.append("")
 
