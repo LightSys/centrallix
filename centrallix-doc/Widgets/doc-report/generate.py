@@ -214,7 +214,6 @@ class WidgetImpl:
 class SignalImpl:
     name: str
     confidence: Confidence = Confidence.HEURISTIC
-    ref_languages: set[str] = field(default_factory=set) # e.g. c, js, etc.
     definition_refs: list[Ref] = field(default_factory=list)
     params: set[str] = field(default_factory=set)
     params_refs: dict[str, list[Ref]] = field(default_factory=dict)
@@ -222,22 +221,22 @@ class SignalImpl:
     # Merge two implementations into one.
     def merge(self, other: SignalImpl) -> None:
         self.update_confidence(other.confidence)
-        self.ref_languages.update(other.ref_languages)
         self.definition_refs.extend(other.definition_refs)
         self.params.update(other.params)
         for param_name, refs in other.params_refs.items():
             self.params_refs.setdefault(param_name, []).extend(refs)
     
     # Call when a new origin is found.
-    def found(self, ref_language : str, confidence : Confidence) -> None:
+    def found(self, confidence : Confidence, ref: Ref) -> None:
         self.update_confidence(confidence)
-        self.ref_languages.add(ref_language)
+        self.definition_refs.append(ref)
     
     # Update confidence if we're more confident now.
     def update_confidence(self, confidence: Confidence) -> None:
         self.confidence = merge_confidence(self.confidence, confidence)
     
-    def add_param_ref(self, param_name: str, ref: Ref):
+    def add_param(self, param_name: str, ref: Ref):
+        self.params.add(param_name)
         return self.params_refs.setdefault(param_name, []).append(ref)
 
 @dataclass
@@ -273,15 +272,12 @@ def merge_confidence(a: Confidence, b: Confidence) -> Confidence:
 
 
 # Render compact origin tags used in reports.
-def get_origin(ref_languages: set[str]) -> str:
-    return "+".join(sorted(ref_languages))
-
-# def get_origin2(refs: set[Ref]) -> str:
-# 	return "+".join(sorted({
-# 		r["path"].rsplit(".", 1)[-1]
-# 		for r in refs
-# 		if "." in r["path"]
-# 	}))
+def get_origins(refs: Iterable[Ref]) -> str:
+	return "+".join(sorted({
+		r["path"].rsplit(".", 1)[-1]
+		for r in refs
+		if "." in r["path"]
+	}))
 
 # Sort arrays deterministically (ignores case).
 def sorted_list(values: Iterable[str]) -> list[str]:
@@ -537,8 +533,7 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
         for event_m in c_event_re.finditer(content):
             event_name = normalize_name(event_m.group(1))
             event = widget_impl.event(event_name)
-            event.found("c", Confidence.STRONG)
-            event.definition_refs.append(
+            event.found(Confidence.STRONG,
                 make_ref(rel, get_line_number(content, event_m.start()), "htrAddEvent")
             )
         
@@ -546,8 +541,7 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
         for action_m in c_action_re.finditer(content):
             action_name = normalize_name(action_m.group(1))
             action = widget_impl.action(action_name)
-            action.found("c", Confidence.STRONG)
-            action.definition_refs.append(
+            action.found(Confidence.STRONG,
                 make_ref(rel, get_line_number(content, action_m.start()), "htrAddAction")
             )
         
@@ -556,14 +550,12 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
             signal_name = normalize_name(param_m.group(1))
             param_name = normalize_name(param_m.group(2))
             signal : SignalImpl | None = widget_impl.events.get(signal_name) or widget_impl.actions.get(signal_name)
-            if signal == None:
+            if signal == None or not param_name:
                 continue
-            signal.found("c", Confidence.STRONG)
-            if param_name:
-                signal.params.add(param_name)
-                signal.add_param_ref(param_name,
-                    make_ref(rel, get_line_number(content, param_m.start()), "htrAddParam")
-                )
+            signal.update_confidence(Confidence.STRONG)
+            signal.add_param(param_name,
+                make_ref(rel, get_line_number(content, param_m.start()), "htrAddParam")
+            )
     return widget_impls
 
 # Infer JS action parameters by scanning the handler body for param accesses.
@@ -655,26 +647,30 @@ def parse_js(path: Path) -> dict[str, WidgetImpl]:
             confidence = Confidence.CONFIRMED if have_fn_name else Confidence.STRONG
             if iface == "ifEvent":
                 event = widget_impl.event(signal_name)
-                event.found("js", confidence)
-                event.definition_refs.append(
+                event.found(confidence,
                     make_ref(rel, get_line_number(js, add_m.start()), "ifEvent.Add")
                 )
+                if not have_fn_name:
+                    continue
+                # TODO: Handle event params here.
             elif iface == "ifAction":
                 action = widget_impl.action(signal_name)
-                action.found("js", confidence)
-                if have_fn_name:
-                    for param_name, param_line in _parse_js_action_params(js, fn_name):
-                        # Ignore private params.
-                        if (param_name.startswith('_')):
-                            continue
-                        
-                        action.params.add(param_name)
-                        action.add_param_ref(param_name,
-                            make_ref(rel, param_line, "action param use in JS")
-                        )
-                action.definition_refs.append(
+                action.found(confidence,
                     make_ref(rel, get_line_number(js, add_m.start()), "ifAction.Add")
                 )
+                if not have_fn_name:
+                    continue
+                
+                # Handle action params.
+                for param_name, param_line in _parse_js_action_params(js, fn_name):
+                    # Ignore private params.
+                    if (param_name.startswith('_')):
+                        continue
+                    
+                    # Add param.
+                    action.add_param(param_name,
+                        make_ref(rel, param_line, "action param use in JS")
+                    )
             else: continue
     return widget_impls
 
@@ -710,7 +706,6 @@ def merge_widget_lists(
 # Stores an event or action that differs between the docs and implementation.
 class SignalDiffEntry(TypedDict):
     name: str
-    origin: str
     confidence: Confidence
     refs: list[Ref]
 
@@ -718,7 +713,6 @@ class SignalDiffEntry(TypedDict):
 class SignalDiffsEntry(TypedDict):
     signal_name: str # Associated event/action with these diffs.
     signal_refs: list[Ref]
-    origin: str
     confidence: Confidence
     code_refs: dict[str, Ref] # Named diffs.
     doc_refs: dict[str, Ref] # Named diffs.
@@ -826,31 +820,26 @@ def compute_drift(
             "refs": widget_refs,
             "extra_properties": [{
                 "name": name,
-                "origin": "xml",
                 "confidence": Confidence.CONFIRMED,
                 "refs": [doc.property_refs[name]] if name in doc.property_refs else [],
             } for name in []],
             "missing_events": [{
                 "name": name,
-                "origin": get_origin(impl.events[name].ref_languages),
                 "confidence": impl.events[name].confidence,
                 "refs": unique_refs(impl.events[name].definition_refs),
             } for name in sorted_list(event_impl_names - event_doc_names)],
             "extra_events": [{
                 "name": name,
-                "origin": "xml",
                 "confidence": Confidence.CONFIRMED,
                 "refs": [doc.event_refs[name]] if name in doc.event_refs else [],
             } for name in sorted_list(event_doc_names - event_impl_names)],
             "missing_actions": [{
                 "name": name,
-                "origin": get_origin(impl.actions[name].ref_languages),
                 "confidence": impl.actions[name].confidence,
                 "refs": unique_refs(impl.actions[name].definition_refs),
             } for name in sorted_list(action_impl_names - action_doc_names)],
             "extra_actions": [{
                 "name": name,
-                "origin": "xml",
                 "confidence": Confidence.CONFIRMED,
                 "refs": [doc.action_refs[name]] if name in doc.action_refs else [],
             } for name in sorted_list(action_doc_names - action_impl_names)],
@@ -907,7 +896,6 @@ def compute_drift(
             findings["incorrect_action_params"].append({
                 "signal_name": action_name,
                 "signal_refs": action.definition_refs,
-                "origin": get_origin(set("?")),
                 "confidence": Confidence.HEURISTIC,
                 "code_refs": code_refs,
                 "doc_refs": doc_refs,
@@ -1029,7 +1017,7 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
         lines.append(f"### `{item['widget']}`")
         
         # Write sources.
-        lines.append("- **Sources**")
+        lines.append(f"- **Sources** (origin: `{get_origins(refs)}`)")
         lines.extend(f"  - {ref_to_markdown_link(report_dir, repo_root, r)}" for r in refs)
         
         # Write property issues.
@@ -1045,7 +1033,7 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
             lines.append("- **Undocumented events**")
             for event in item["missing_events"]:
                 lines.append(f"  - `{event['name']}` ("
-                    f"origin: `{event['origin']}`, "
+                    f"origin: `{get_origins(event["refs"])}`, "
                     f"confidence: `{event['confidence']}`"
                 ")")
                 if event.get("refs"):
@@ -1063,7 +1051,7 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
             lines.append("- **Undocumented actions**")
             for action in item["missing_actions"]:
                 lines.append(f"  - `{action['name']}` ("
-                    f"origin: `{action['origin']}`, "
+                    f"origin: `{get_origins(action["refs"])}`, "
                     f"confidence: `{action['confidence']}`"
                 ")")
                 if action.get("refs"):
@@ -1083,9 +1071,10 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
                 lines.append(f"  - `{incorrect_action_params['signal_name']}`")
                 
                 # Write action sources.
-                lines.append(f"    - **Sources**")
-                for ref in incorrect_action_params["signal_refs"]:
-                    lines.append(f"      - {ref_to_markdown_link(report_dir, repo_root, ref)}")
+                signal_refs = incorrect_action_params["signal_refs"]
+                lines.append(f"    - **Sources** (origin: `{get_origins(signal_refs)}`)")
+                for signal_ref in signal_refs:
+                    lines.append(f"      - {ref_to_markdown_link(report_dir, repo_root, signal_ref)}")
                 
                 # Write action issues.
                 if incorrect_action_params["code_refs"]:
