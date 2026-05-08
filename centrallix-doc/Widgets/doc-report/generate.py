@@ -273,6 +273,12 @@ def merge_confidence(a: Confidence, b: Confidence) -> Confidence:
 def get_origin(ref_languages: set[str]) -> str:
 	return "+".join(sorted(ref_languages))
 
+# def get_origin2(refs: set[Ref]) -> str:
+# 	return "+".join(sorted({
+# 		r["path"].rsplit(".", 1)[-1]
+# 		for r in refs
+# 		if "." in r["path"]
+# 	}))
 
 # Sort arrays deterministically (ignores case).
 def sorted_list(values: Iterable[str]) -> list[str]:
@@ -697,18 +703,21 @@ def merge_widget_lists(
 		merged[widget_name] = new_widget
 	return merged
 
-
+# Stores an event or action that differs between the docs and implementation.
 class SignalDiffEntry(TypedDict):
 	name: str
 	origin: str
 	confidence: Confidence
-	references: list[Ref]
+	refs: list[Ref]
 
-class ParamDriftEntry(TypedDict):
-	action_name: str
+# Stores multiple diffs for events or actions, such as incorrect parameters.
+class SignalDiffsEntry(TypedDict):
+	signal_name: str # Associated event/action with these diffs.
+	signal_refs: list[Ref]
+	origin: str
 	confidence: Confidence
-	code_refs: dict[str, Ref]
-	doc_refs: dict[str, Ref]
+	code_refs: dict[str, Ref] # Named diffs.
+	doc_refs: dict[str, Ref] # Named diffs.
 
 class PerWidgetFinding(TypedDict):
 	widget: str
@@ -718,7 +727,7 @@ class PerWidgetFinding(TypedDict):
 	extra_events: list[SignalDiffEntry]
 	missing_actions: list[SignalDiffEntry]
 	extra_actions: list[SignalDiffEntry]
-	action_param_drift: list[ParamDriftEntry]
+	incorrect_action_params: list[SignalDiffsEntry]
 
 class GlobalWidgetFinding(TypedDict):
 	widget: str
@@ -802,22 +811,51 @@ def compute_drift(
 		widget_refs.extend(unique_refs(impl.definition_refs))
 		
 		# Event and action sets.
-		impl_events = set(impl.events)
-		impl_actions = set(impl.actions)
-		doc_events = set(doc.events)
-		doc_actions = set(doc.actions)
+		event_impl_names = set(impl.events)
+		action_impl_names = set(impl.actions)
+		event_doc_names = set(doc.events)
+		action_doc_names = set(doc.actions)
 		
-		extra_properties = []
-		# extra_properties = sorted_list(doc.properties if widget in stale_widget_docs else [])
-		missing_events = sorted_list(impl_events - doc_events)
-		extra_events = sorted_list(doc_events - impl_events)
-		missing_actions = sorted_list(impl_actions - doc_actions)
-		extra_actions = sorted_list(doc_actions - impl_actions)
+		# Compile top-level per-widget findings.
+		findings: PerWidgetFinding = {
+			"widget": widget,
+			"refs": widget_refs,
+			"extra_properties": [{
+				"name": name,
+				"origin": "xml",
+				"confidence": Confidence.CONFIRMED,
+				"refs": [doc.property_refs[name]] if name in doc.property_refs else [],
+			} for name in []],
+			"missing_events": [{
+				"name": name,
+				"origin": get_origin(impl.events[name].ref_languages),
+				"confidence": impl.events[name].confidence,
+				"refs": unique_refs(impl.events[name].definition_refs),
+			} for name in sorted_list(event_impl_names - event_doc_names)],
+			"extra_events": [{
+				"name": name,
+				"origin": "xml",
+				"confidence": Confidence.CONFIRMED,
+				"refs": [doc.event_refs[name]] if name in doc.event_refs else [],
+			} for name in sorted_list(event_doc_names - event_impl_names)],
+			"missing_actions": [{
+				"name": name,
+				"origin": get_origin(impl.actions[name].ref_languages),
+				"confidence": impl.actions[name].confidence,
+				"refs": unique_refs(impl.actions[name].definition_refs),
+			} for name in sorted_list(action_impl_names - action_doc_names)],
+			"extra_actions": [{
+				"name": name,
+				"origin": "xml",
+				"confidence": Confidence.CONFIRMED,
+				"refs": [doc.action_refs[name]] if name in doc.action_refs else [],
+			} for name in sorted_list(action_doc_names - action_impl_names)],
+			"incorrect_action_params": [],
+		}
 		
 		# Compute action parameter mismatch details with runtime/doc references.
-		action_param_drift: list[ParamDriftEntry] = []
-		for action_name in sorted_list(impl_actions | doc_actions):
-			action = impl.actions.get(action_name, ActionImpl(action_name)) # TODO: ActionImpl("")
+		for action_name in sorted_list(action_impl_names | action_doc_names):
+			action = impl.actions.get(action_name, ActionImpl(""))
 			if action.name == "":
 				continue
 			
@@ -827,117 +865,63 @@ def compute_drift(
 			missing_params = sorted_list(impl_params - doc_params)
 			extra_params = sorted_list(doc_params - impl_params)
 			
-			if missing_params or extra_params:
-				code_refs: dict[str, Ref] = {}
-				doc_refs: dict[str, Ref] = {}
-				
-				# Missing params. TODO: Optimize code
+			# Skip if no errors.
+			if not missing_params and not extra_params:
+				continue
+			
+			# Check for missing params.
+			code_refs: dict[str, Ref] = {}
+			if missing_params:
 				for missing_param in missing_params:
-					for param_ref in action.params_refs.get(missing_param, []):
-						code_refs.setdefault(missing_param, param_ref)
-				
-				# Extra params.
-				if len(extra_params) > 0 and action_name in doc.action_refs:
-					doc_refs["action_name"] = doc.action_refs[action_name]
-				
-				action_param_drift.append({
-					"action_name": action_name,
-					"confidence": action.confidence,
-					"code_refs": code_refs,
-					"doc_refs": doc_refs,
-				})
+					refs = action.params_refs.get(missing_param, [])
+					if refs:
+						code_refs[missing_param] = refs[0]
+			
+			# Check for extra params.
+			doc_refs: dict[str, Ref] = {}
+			if extra_params:
+				doc_refs: dict[str, Ref] = {}
+				ref = doc.action_refs[action_name]
+				if not ref:
+					continue
+				for extra_param in extra_params:
+					doc_refs[extra_param] = ref
+			
+			findings["incorrect_action_params"].append({
+				"signal_name": action_name,
+				"signal_refs": action.definition_refs,
+				"origin": get_origin(set("?")),
+				"confidence": Confidence.HEURISTIC,
+				"code_refs": code_refs,
+				"doc_refs": doc_refs,
+			})
 		
 		# Handle ignored errors.
 		if IGNORE_STALE_PROPERTY_DOCS in IGNORED_ERRORS:
-			stats["ignored_errors"] += len(extra_properties)
-			extra_properties : list[str] = list()
+			stats["ignored_errors"] += len(findings["extra_properties"])
+			findings["extra_properties"].clear()
 		if IGNORE_MISSING_EVENT_DOCS in IGNORED_ERRORS:
-			stats["ignored_errors"] += len(missing_events)
-			missing_events : list[str] = list()
+			stats["ignored_errors"] += len(findings["missing_events"])
+			findings["missing_events"].clear()
 		if IGNORE_STALE_EVENT_DOCS in IGNORED_ERRORS:
-			stats["ignored_errors"] += len(extra_events)
-			extra_events : list[str] = list()
+			stats["ignored_errors"] += len(findings["extra_events"])
+			findings["extra_events"].clear()
 		if IGNORE_MISSING_ACTION_DOCS in IGNORED_ERRORS:
-			stats["ignored_errors"] += len(missing_actions)
-			missing_actions : list[str] = list()
+			stats["ignored_errors"] += len(findings["missing_actions"])
+			findings["missing_actions"].clear()
 		if IGNORE_STALE_EVENT_DOCS in IGNORED_ERRORS:
-			stats["ignored_errors"] += len(extra_actions)
-			extra_actions : list[str] = list()
-		if IGNORE_INCORRECT_ACTION_PARAM_DOCS in IGNORED_ERRORS:
-			stats["ignored_errors"] += len(action_param_drift)
-			action_param_drift : list[ParamDriftEntry] = list()
+			stats["ignored_errors"] += len(findings["extra_actions"])
+			findings["extra_actions"].clear()
 		
-		
-		# Emit entry only when at least one drift category is present.
-		if (
-			extra_properties
-			or missing_events
-			or extra_events
-			or missing_actions
-			or extra_actions
-			or action_param_drift
-		):
-			per_widget.append({
-				"widget": widget,
-				"refs": widget_refs,
-				"extra_properties": [
-					{
-						"name": name,
-						"origin": "xml",
-						"confidence": Confidence.CONFIRMED,
-						"references": [doc.property_refs[name]]
-						if name in doc.property_refs
-						else [],
-					}
-					for name in extra_properties
-				],
-				"missing_events": [
-					{
-						"name": name,
-						"origin": get_origin(impl.events[name].ref_languages),
-						"confidence": impl.events[name].confidence,
-						"references": unique_refs(impl.events[name].definition_refs),
-					}
-					for name in missing_events
-				],
-				"extra_events": [
-					{
-						"name": name,
-						"origin": "xml",
-						"confidence": Confidence.CONFIRMED,
-						"references": [
-							doc.event_refs[name]
-						]
-						if name in doc.event_refs
-						else [],
-					}
-					for name in extra_events
-				],
-				"missing_actions": [
-					{
-						"name": name,
-						"origin": get_origin(impl.actions[name].ref_languages),
-						"confidence": impl.actions[name].confidence,
-						"references": unique_refs(impl.actions[name].definition_refs),
-					}
-					for name in missing_actions
-				],
-				"extra_actions": [
-					{
-						"name": name,
-						"origin": "xml",
-						"confidence": Confidence.CONFIRMED,
-						"references": [
-							doc.action_refs[name]
-						]
-						if name in doc.action_refs
-						else [],
-					}
-					for name in extra_actions
-				],
-				"action_param_drift": action_param_drift,
-			})
-			stats["widget_errors"] += len(extra_properties) + len(missing_events) + len(extra_events) + len(missing_actions) + len(extra_actions) + len(action_param_drift)
+		# Add entry if errors are found.
+		errors = (len(findings["extra_properties"])
+				  + len(findings["missing_events"])
+				  + len(findings["extra_events"])
+				  + len(findings["missing_actions"])
+				  + len(findings["extra_actions"]))
+		if (errors > 0):
+			stats["widget_errors"] += errors
+			per_widget.append(findings)
 	
 	# Handle ignored errors.
 	if IGNORE_MISSING_WIDGET_DOCS in IGNORED_ERRORS:
@@ -1024,12 +1008,11 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
 	# Write per-widget differences by type.
 	if len(report["per_widget"]) > 0: lines.append("## Widget Errors")
 	for item in report["per_widget"]:
-		# Write general issues with source refs.
 		refs = item.get("refs", {})
-		lines.append(
-			f"### `{item['widget']}`\n"
-			"- **Sources**"
-		)
+		lines.append(f"### `{item['widget']}`")
+		
+		# Write sources.
+		lines.append("- **Sources**")
 		lines.extend(f"  - {ref_to_markdown_link(report_dir, repo_root, r)}" for r in refs)
 		
 		# Write property issues.
@@ -1048,14 +1031,14 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
 					f"origin: `{event['origin']}`, "
 					f"confidence: `{event['confidence']}`"
 				")")
-				if event.get("references"):
-					for ref in event["references"]:
+				if event.get("refs"):
+					for ref in event["refs"]:
 						lines.append("	- %s" % ref_to_markdown_link(report_dir, repo_root, ref))
 		if item["extra_events"]:
 			lines.append("- **Stale event docs**")
 			for event in item["extra_events"]:
 				lines.append("  - `%s`" % event["name"])
-				for ref in event.get("references", []):
+				for ref in event.get("refs", {}):
 					lines.append("	- %s" % ref_to_markdown_link(report_dir, repo_root, ref))
 		
 		# Write action issues.
@@ -1066,28 +1049,35 @@ def write_markdown(path: Path, report: DriftReport, repo_root: Path) -> None:
 					f"origin: `{action['origin']}`, "
 					f"confidence: `{action['confidence']}`"
 				")")
-				if action.get("references"):
-					for ref in action["references"]:
+				if action.get("refs"):
+					for ref in action["refs"]:
 						lines.append("	- %s" % ref_to_markdown_link(report_dir, repo_root, ref))
 		if item["extra_actions"]:
 			lines.append("- **Stale action docs**")
 			for action in item["extra_actions"]:
 				lines.append("  - `%s`" % action["name"])
-				for ref in action.get("references", []):
+				for ref in action.get("refs", {}):
 					lines.append("	- %s" % ref_to_markdown_link(report_dir, repo_root, ref))
 		
 		# Write action param issues.
-		if item["action_param_drift"]:
-			lines.append("- **Incorrect action parameter docs**")
-			for action_param_drift in item["action_param_drift"]:
-				lines.append(f"  - `{action_param_drift['action_name']}`")
-				if action_param_drift.get("code_refs"):
-					lines.append(f"	- Undocumented parameters:")
-					for name, ref in action_param_drift.get("code_refs", {}).items():
+		if item["incorrect_action_params"]:
+			lines.append("- **Incorrect action parameters**")
+			for incorrect_action_params in item["incorrect_action_params"]:
+				lines.append(f"  - `{incorrect_action_params['signal_name']}`")
+				
+				# Write action sources.
+				lines.append(f"	- **Sources**")
+				for ref in incorrect_action_params["signal_refs"]:
+					lines.append(f"	  - {ref_to_markdown_link(report_dir, repo_root, ref)}")
+				
+				# Write action issues.
+				if incorrect_action_params["code_refs"]:
+					lines.append(f"	- **Undocumented params**")
+					for name, ref in incorrect_action_params["code_refs"].items():
 						lines.append(f"	  - `{name}`: {ref_to_markdown_link(report_dir, repo_root, ref)}")
-				if action_param_drift.get("doc_refs"):
-					lines.append(f"	- Stale parameter docs:")
-					for name, ref in action_param_drift.get("doc_refs", {}).items():
+				if incorrect_action_params["doc_refs"]:
+					lines.append(f"	- **Stale param docs**")
+					for name, ref in incorrect_action_params["doc_refs"].items():
 						lines.append(f"	  - `{name}`: {ref_to_markdown_link(report_dir, repo_root, ref)}")
 		lines.append("")
 
