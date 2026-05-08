@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Generate a deterministic widget documentation drift report."""
+"""
+Generate a deterministic widget documentation report. For more info, see
+centrallix-doc/Widgets/doc-report/doc-reports-guide.md
+"""
 
 from __future__ import annotations
 
@@ -13,6 +16,9 @@ from pathlib import Path
 from typing import Iterable, Optional, TypedDict
 from xml.etree import ElementTree
 
+
+# =============
+# Magic Value Setup
 id = 1
 def get_id():
 	global id
@@ -22,6 +28,7 @@ def get_id():
 
 IGNORE_MISSING_WIDGET_DOCS = get_id()
 IGNORE_STALE_WIDGET_DOCS = get_id()
+IGNORE_MISSING_PROPERTY_DOCS = get_id()
 IGNORE_STALE_PROPERTY_DOCS = get_id()
 IGNORE_MISSING_EVENT_DOCS = get_id()
 IGNORE_STALE_EVENT_DOCS = get_id()
@@ -29,20 +36,20 @@ IGNORE_MISSING_ACTION_DOCS = get_id()
 IGNORE_STALE_ACTION_DOCS = get_id()
 IGNORE_INCORRECT_ACTION_PARAM_DOCS = get_id()
 
+
 # =============
 # Configs
 
-# Uncomment any of the strings below to ignore that type of issue.
-IGNORED_ERRORS = set({
-	# IGNORE_MISSING_WIDGET_DOCS,		 # Ignore all undocumented widgets. (Not recommended.)
-	# IGNORE_STALE_WIDGET_DOCS,		   # Ignore all docs for unimplemented widgets. (Not recommended.)
-	# IGNORE_STALE_PROPERTY_DOCS,		 # Ignore docs for unimplemented properties.
-	# IGNORE_MISSING_EVENT_DOCS,		  # Ignore events with no docs.
-	# IGNORE_STALE_EVENT_DOCS,			# Ignore docs for unimplemented events.
-	# IGNORE_MISSING_ACTION_DOCS,		 # Ignore actions with no docs.
-	# IGNORE_STALE_ACTION_DOCS,		   # Ignore docs for unimplemented actions.
-	IGNORE_INCORRECT_ACTION_PARAM_DOCS, # Ignore incorrect 
-})
+# Widgets that use other names in the code.  This dictionary maps normalized
+# widget alias(es) (e.g. "page_js15") to canonical widget names (e.g. "page").
+WIDGETS_ALIASES = {
+	"componentdecl": "component-decl",
+	"sys_osml": "sys-osml",
+	"page_js15": "page",
+	"checkbox_moz": "checkbox",
+	"radiobutton": "radiobuttonpanel", # May cause issues with the radiobutton widget (child of radiobuttonpanel).
+	"window": "childwindow", # May cause issues with window widgets implemented in uawindow files.
+}
 
 # The normalized names of widgets that should be completely ignored if they
 # appear in either source code or documentation.
@@ -63,16 +70,18 @@ IGNORED_WIDGETS = set({
 	"uawindow",
 })
 
-# Widgets that use other names in the code.  This dictionary maps normalized
-# widget alias(es) (e.g. "page_js15") to canonical widget names (e.g. "page").
-WIDGETS_ALIASES = {
-	"componentdecl": "component-decl",
-	"sys_osml": "sys-osml",
-	"page_js15": "page",
-	"checkbox_moz": "checkbox",
-	"radiobutton": "radiobuttonpanel", # May cause issues with the radiobutton widget (child of radiobuttonpanel).
-	"window": "childwindow", # May cause issues with window widgets implemented in uawindow files.
-}
+# Uncomment any of the strings below to ignore that type of issue.
+IGNORED_ERRORS = set({
+	# IGNORE_MISSING_WIDGET_DOCS,		 # Ignore all undocumented widgets. (Not recommended.)
+	# IGNORE_STALE_WIDGET_DOCS,		   # Ignore all docs for unimplemented widgets. (Not recommended.)
+	# IGNORE_MISSING_PROPERTY_DOCS,	   # Ignore properties with no docs.
+	# IGNORE_STALE_PROPERTY_DOCS,		 # Ignore properties with no implementation.
+	# IGNORE_MISSING_EVENT_DOCS,		  # Ignore events with no docs.
+	# IGNORE_STALE_EVENT_DOCS,			# Ignore events with no implementation.
+	# IGNORE_MISSING_ACTION_DOCS,		 # Ignore actions with no docs.
+	# IGNORE_STALE_ACTION_DOCS,		   # Ignore actions with no implementation.
+	# IGNORE_INCORRECT_ACTION_PARAM_DOCS, # Ignore incorrect action parameter docs.
+})
 
 # Whether to write unminified, human-readable JSON.  Minified JSON is typically
 # preferred because it is more readable to modern LLMs (it uses fewer tokens).
