@@ -12,15 +12,14 @@ License: Copyright (C) 2026 LightSys Technology Services.  See LICENSE.txt.
   - [Using Doc Reports](#using-doc-reports)
     - [Generating Reports](#generating-reports)
     - [Customizing Reports](#customizing-reports)
+    - [Links and Line Numbers](#links-and-line-numbers)
+    - [Confidence](#confidence)
   - [Reading Doc Reports](#reading-doc-reports)
     - [Widget Stats](#widget-stats)
     - [Missing Widget Docs](#missing-widget-docs)
     - [Stale Widgets Docs](#stale-widgets-docs)
     - [Widget Errors](#widget-errors)
-  - [Other Notes](#other-notes)
-    - [Links and Line Numbers](#links-and-line-numbers)
-    - [Confidence](#confidence)
-
+  - [Future Improvement](#future-improvement)
 
 ## Using Doc Reports
 Documentation reports (or doc reports, for short) are generated files that show discrepancies between [widgets.xml](../widgets.xml) where widgets are documented and the real widget implementations in files like `wgtdrv_*.c`, `htdrv_*.c`, and `htdrv_*.js`.  Generating these reports uses various xml and regex-based parsing techniques to detect widget documentations and implementations.
@@ -38,6 +37,12 @@ compgen -ac | grep -i python | sort -u
 To generate reports, the `makefile` runs a python script at `centrallix-doc/Widgets/doc-report/generate.py` which includes a few configuration variables near the top of the file. These variables customize how the script runs, including which widgets should be ignored, what widget name aliases exist, etc. Specific information is given in the python file to avoid information duplication.
 
 The regexes used in parsing can also be edited in the section just below the configuration variables.
+
+### Links and Line Numbers
+When detecting issues, the script attempts to provide link(s) to relevant file locations.  For example, if an event is undocumented, the script will attempt to include a link to the location where the event was registered.  This process is pretty good and line numbers usually link near the source of the issue, however, this may sometimes fail if code or docs are written in unexpected ways.
+
+### Confidence
+Issues detected in the report typically include a confidence score.  This is usually either `confirmed`, `strong`, or `heuristic`, with `confirmed` being the most confident and `heuristic` being the least.  These values are estimates, at best, based on the estimated accuracy of the various detection methods in use.  Thus, confidence should be taken with a grain of salt, although it still provides useful insight when troubleshooting documentation issues.
 
 
 ## Reading Doc Reports
@@ -60,12 +65,13 @@ The stale widget docs section lists all widgets that are documented in some way,
 The widget errors section lists all widgets that appear to be documented incorrectly.  Possible widget doc errors include:
 - **Undocumented events/actions**: An event or action implementation is detected in the code, but not in the docs.
 - **Stale events/actions**: An event or action was detected in the docs, but no implementation was detected in the code.
-- **Incorrect action parameter docs**: Heuristics detected action parameters being used in the code that were not documented, or failed to detect documented action parameters being accessed in the code. 
+- **Incorrect action parameter docs**: Heuristics detected action parameters being used in the code that were not documented, or failed to detect documented action parameters being accessed in the code.
 
-## Other Notes
 
-### Links and Line Numbers
-When detecting issues, the script attempts to provide link(s) to relevant file locations.  For example, if an event is undocumented, the script will attempt to include a link to the location where the event was registered.  This process is pretty good and line numbers usually link near the source of the issue, however, this may sometimes fail if code or docs are written in unexpected ways.
+## Future Improvement
 
-### Confidence
-Issues detected in the report typically include a confidence score.  This is usually either `confirmed`, `strong`, or `heuristic`, with `confirmed` being the most confident and `heuristic` being the least.  These values are estimates, at best, based on the estimated accuracy of the various detection methods in use.  Thus, confidence should be taken with a grain of salt, although it still provides useful insight when troubleshooting documentation issues.
+- Parameters of undocumented actions should be ignored.
+- Property Docs
+  - **DONE**: Detect property docs.
+  - Detect property implementations.
+  - Report undocumented properties and stale property docs.
