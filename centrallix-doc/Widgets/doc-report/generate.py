@@ -832,10 +832,17 @@ def compute_report(
 			"incorrect_action_params": [],
 		}
 		
+		# Make a list of the names of actions that already have known issues.
+		issue_action_names = {a["name"] for a in (*findings["missing_actions"], *findings["extra_actions"])}
+		
 		# Compute action parameter mismatch details with runtime/doc references.
 		for action_name in sorted_list(action_impl_names | action_doc_names):
 			action = impl.actions.get(action_name, ActionImpl(""))
 			if action.name == "":
+				continue
+			
+			# Skip param issues for actions that already have known issues.
+			if action.name in issue_action_names:
 				continue
 			
 			# Determine missing/extra action parameters.

@@ -100,7 +100,6 @@ The original script was written by Cursor across 4 commits, although every line 
 
 ## Future Improvement
 
-- Parameters of undocumented actions should be ignored.
 - Property Docs
   - **DONE**: Detect property docs.
   - Detect property implementations.
