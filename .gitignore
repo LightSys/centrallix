@@ -65,6 +65,6 @@ perf.data.old
 .vscode/
 centrallix-os/tmp/*
 centrallix-os/datasets/
-centrallix-doc/Widgets/doc-report/drift-report.json
-centrallix-doc/Widgets/doc-report/drift-report.md
+centrallix-doc/Widgets/doc-report/doc-report.json
+centrallix-doc/Widgets/doc-report/doc-report.md
 __pycache__/
