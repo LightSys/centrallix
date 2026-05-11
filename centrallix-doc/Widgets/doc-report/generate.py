@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import re
+from bisect import bisect_right
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
@@ -246,6 +247,16 @@ class EventImpl(SignalImpl):
 class ActionImpl(SignalImpl):
 	pass
 
+
+# Map character offsets to 1-based line number.
+class LineMap:
+	def __init__(self, text: str) -> None:
+		self.newline_offsets = [match.start() for match in re.finditer("\n", text)]
+
+	def line_number(self, offset: int) -> int:
+		return bisect_right(self.newline_offsets, offset) + 1
+
+
 # Report: Stores an event or action that differs between the docs and implementation.
 class SignalIssueEntry(TypedDict):
 	name: str
@@ -425,9 +436,10 @@ def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 	
 	# Walk through xml text to get widget references.
 	content = path.read_text(encoding="utf-8", errors="ignore")
+	line_map = LineMap(content)
 	for match in doc_widget_re.finditer(content):
 		# Get the doc for the current widget
-		attrs = dict(doc_attr_re.findall(match.group(1)))
+		attrs = {m.group(1): m.group(3) for m in doc_attr_re.finditer(match.group(1))}
 		widget_name = normalize_widget_name(attrs.get("name") or attrs.get("type"))
 		if widget_name == "":
 			continue
@@ -441,31 +453,31 @@ def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 		if end < 0:
 			end = len(content)
 		block = content[start:end]
-		base_line = get_line_number(content, start)
+		base_line = line_map.line_number(start)
 		
 		# Manually parse the xml to get line numbers for refs in the widget block.
 		widget_doc.ref = make_ref(WIDGET_XML_PATH, base_line, "widget definition")
 		for property_match in doc_prop_re.finditer(block):
-			line = base_line + block.count("\n", 0, property_match.start())
-			name = normalize_name(property_match.group(1))
+			line = line_map.line_number(start + property_match.start())
+			name = normalize_name(property_match.group(2))
 			widget_doc.property_refs[name] = make_ref(
 				WIDGET_XML_PATH, line, "documented property"
 			)
 		for event_match in doc_event_re.finditer(block):
-			line = base_line + block.count("\n", 0, event_match.start())
-			name = normalize_name(event_match.group(1))
+			line = line_map.line_number(start + event_match.start())
+			name = normalize_name(event_match.group(2))
 			widget_doc.event_refs[name] = make_ref(
 				WIDGET_XML_PATH, line, "documented event"
 			)
 		for action_match in doc_action_re.finditer(block):
-			line = base_line + block.count("\n", 0, action_match.start())
-			name = normalize_name(action_match.group(1))
+			line = line_map.line_number(start + action_match.start())
+			name = normalize_name(action_match.group(2))
 			widget_doc.action_refs[name] = make_ref(
 				WIDGET_XML_PATH, line, "documented action"
 			)
 		for cm in doc_child_re.finditer(block):
-			line = base_line + block.count("\n", 0, cm.start())
-			child_name = normalize_child_name(cm.group(1))
+			line = line_map.line_number(start + cm.start())
+			child_name = normalize_child_name(cm.group(2))
 			if child_name:
 				widget_doc.child_refs[child_name] = make_ref(
 					WIDGET_XML_PATH, line, "documented child type"
@@ -489,6 +501,7 @@ def parse_widgets_in_wgtr(
 		widget_names: set[str] = set()
 		
 		# Search for matching widget registrations.
+		line_map = LineMap(content)
 		for match in c_register_re.finditer(content):
 			widget_name = normalize_widget_name(match.group(1))
 			if widget_name == "":
@@ -497,7 +510,7 @@ def parse_widgets_in_wgtr(
 			# Add data.
 			widget_names.add(widget_name)
 			refs.setdefault(widget_name, []).append(
-				make_ref(rel, get_line_number(content, match.start()), "wgtrAddType")
+				make_ref(rel, line_map.line_number(match.start()), "wgtrAddType")
 			)
 		
 		for name in widget_names:
@@ -534,6 +547,7 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
 		
 		# Read file content.
 		content = c_file.read_text(encoding="utf-8", errors="ignore")
+		line_map = LineMap(content)
 		
 		# Get the widget name.
 		widget_match = c_name_re.search(content)
@@ -550,7 +564,7 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
 		rel = "centrallix/htmlgen/%s" % file_name
 		widget_impl = widget_impls.setdefault(widget_name, WidgetImpl(widget_name=widget_name))
 		widget_impl.definition_refs.append(
-			make_ref(rel, get_line_number(content, widget_match.start()), "strcpy sets widget name")
+			make_ref(rel, line_map.line_number(widget_match.start()), "strcpy sets widget name")
 		)
 		
 		# Parse events.
@@ -558,7 +572,7 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
 			event_name = normalize_name(event_m.group(1))
 			event = widget_impl.event(event_name)
 			event.found(Confidence.STRONG,
-				make_ref(rel, get_line_number(content, event_m.start()), "htrAddEvent")
+				make_ref(rel, line_map.line_number(event_m.start()), "htrAddEvent")
 			)
 		
 		# Parse actions.
@@ -566,7 +580,7 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
 			action_name = normalize_name(action_m.group(1))
 			action = widget_impl.action(action_name)
 			action.found(Confidence.STRONG,
-				make_ref(rel, get_line_number(content, action_m.start()), "htrAddAction")
+				make_ref(rel, line_map.line_number(action_m.start()), "htrAddAction")
 			)
 		
 		# Parse event/action params.
@@ -578,12 +592,12 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
 				continue
 			signal.update_confidence(Confidence.STRONG)
 			signal.add_param(param_name,
-				make_ref(rel, get_line_number(content, param_m.start()), "htrAddParam")
+				make_ref(rel, line_map.line_number(param_m.start()), "htrAddParam")
 			)
 	return widget_impls
 
 # Infer JS action parameters by scanning the handler body for param accesses.
-def parse_js_action_params(js: str, fn_name: str) -> list[tuple[str, int]]:
+def parse_js_action_params(js: str, js_line_map: LineMap, fn_name: str) -> list[tuple[str, int]]:
 	params: list[tuple[str, int]] = []
 	
 	# Search for the start of the JS function.
@@ -595,7 +609,7 @@ def parse_js_action_params(js: str, fn_name: str) -> list[tuple[str, int]]:
 	
 	# Basic check for parameter deconstruction.
 	if (param1.startswith("{") and param1.endswith("}")):
-		decl_line = get_line_number(js, js_fn_decl.start())
+		decl_line = js_line_map.line_number(js_fn_decl.start())
 		param_strs = param1[1:-1].split(",")
 		params = [(param_str.strip(), decl_line) for param_str in param_strs]
 		return params
@@ -619,7 +633,7 @@ def parse_js_action_params(js: str, fn_name: str) -> list[tuple[str, int]]:
 	# Search the function body to locate all properties that are read. 
 	for pm in re.finditer(js_property_re(param1), body):
 		param_name = pm.group(1)
-		param_line = get_line_number(js, body_start + pm.start())
+		param_line = js_line_map.line_number(body_start + pm.start())
 		params.append((param_name, param_line))
 	return params
 
@@ -638,6 +652,7 @@ def parse_js(path: Path) -> dict[str, WidgetImpl]:
 		
 		# Read file content.
 		js = js_file.read_text(encoding="utf-8", errors="ignore")
+		line_map = LineMap(js)
 		
 		# Get the widget name (from the file name).
 		widget_name = normalize_widget_name(js_file.stem.replace("htdrv_", "", 1))
@@ -672,7 +687,7 @@ def parse_js(path: Path) -> dict[str, WidgetImpl]:
 			if iface == "ifEvent":
 				event = widget_impl.event(signal_name)
 				event.found(confidence,
-					make_ref(rel, get_line_number(js, add_m.start()), "ifEvent.Add")
+					make_ref(rel, line_map.line_number(add_m.start()), "ifEvent.Add")
 				)
 				if not have_fn_name:
 					continue
@@ -680,13 +695,13 @@ def parse_js(path: Path) -> dict[str, WidgetImpl]:
 			elif iface == "ifAction":
 				action = widget_impl.action(signal_name)
 				action.found(confidence,
-					make_ref(rel, get_line_number(js, add_m.start()), "ifAction.Add")
+					make_ref(rel, line_map.line_number(add_m.start()), "ifAction.Add")
 				)
 				if not have_fn_name:
 					continue
 				
 				# Handle action params.
-				for param_name, param_line in parse_js_action_params(js, fn_name):
+				for param_name, param_line in parse_js_action_params(js, line_map, fn_name):
 					# Ignore private params.
 					if (param_name.startswith('_')):
 						continue
