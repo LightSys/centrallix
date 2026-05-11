@@ -257,8 +257,8 @@ class SignalIssuesEntry(TypedDict):
 	signal_name: str # Associated event/action with these diffs.
 	signal_refs: list[Ref]
 	confidence: Confidence
-	code_refs: dict[str, Ref] # Named diffs.
-	doc_refs: dict[str, Ref] # Named diffs.
+	missing_param_refs: dict[str, Ref] # Named diffs.
+	extra_param_refs: dict[str, Ref] # Named diffs.
 
 # Report: Stores all findings for each widget in the report.
 class PerWidgetFinding(TypedDict):
@@ -826,60 +826,60 @@ def compute_report(
 		
 		# Compute action parameter mismatch details with runtime/doc references.
 		for action_name in sorted_list(action_impl_names | action_doc_names):
-			action = impl.actions.get(action_name, ActionImpl(""))
-			if action.name == "":
+			action_impl = impl.actions.get(action_name, ActionImpl(""))
+			if action_impl.name == "":
 				continue
 			
 			# Skip param issues for actions that already have known issues.
-			if action.name in issue_action_names:
+			if action_impl.name in issue_action_names:
 				continue
 			
-			# Determine missing/extra action parameters.
-			impl_params = set(action.params)
-			doc_params = set(doc.action_params.get(action_name, []))
-			missing_params = sorted_list(impl_params - doc_params)
-			extra_params = sorted_list(doc_params - impl_params)
+			# Determine missing/extra action_impl parameters.
+			impl_param_names = set(action_impl.params)
+			doc_param_names = set(doc.action_params.get(action_name, []))
+			missing_param_names = sorted_list(impl_param_names - doc_param_names)
+			extra_param_names = sorted_list(doc_param_names - impl_param_names)
 			
 			# Skip if no errors.
-			if not missing_params and not extra_params:
+			if not missing_param_names and not extra_param_names:
 				continue
 			
+			# Collect relevant sources.
+			action_doc_ref = doc.action_refs.get(action_name) or doc.ref
+			signal_refs = action_impl.definition_refs + ([action_doc_ref] if action_doc_ref else [])
+			
 			# Check for missing params.
-			code_refs: dict[str, Ref] = {}
-			if missing_params:
-				for missing_param in missing_params:
-					refs = action.params_refs.get(missing_param, [])
-					if refs:
-						code_refs[missing_param] = refs[0]
+			missing_param_refs: dict[str, Ref] = {}
+			for missing_param_name in missing_param_names:
+				refs = action_impl.params_refs.get(missing_param_name, [])
+				if refs:
+					missing_param_refs[missing_param_name] = refs[0]
 			
 			# Check for extra params.
-			doc_refs: dict[str, Ref] = {}
-			if extra_params:
-				ref = doc.action_refs[action_name]
-				if not ref:
-					continue
-				for extra_param in extra_params:
-					doc_refs[extra_param] = ref
+			extra_param_refs: dict[str, Ref] = {}
+			if action_doc_ref:
+				for extra_param_name in extra_param_names:
+					extra_param_refs[extra_param_name] = action_doc_ref
 			
 			# Handle ignored errors.
 			if IGNORE_MISSING_ACTION_PARAM_DOCS in IGNORED_ERRORS:
-				stats["ignored_errors"] += len(code_refs)
-				code_refs.clear()
+				stats["ignored_errors"] += len(missing_param_refs)
+				missing_param_refs.clear()
 			if IGNORE_STALE_ACTION_PARAM_DOCS in IGNORED_ERRORS:
-				stats["ignored_errors"] += len(doc_refs)
-				doc_refs.clear()
-			if not code_refs and not doc_refs:
+				stats["ignored_errors"] += len(extra_param_refs)
+				extra_param_refs.clear()
+			if not missing_param_refs and not extra_param_refs:
 				continue
 			
 			# Add errors.
-			stats["widget_errors"] += len(code_refs)
-			stats["widget_errors"] += len(doc_refs)
+			stats["widget_errors"] += len(missing_param_refs)
+			stats["widget_errors"] += len(extra_param_refs)
 			findings["incorrect_action_params"].append({
 				"signal_name": action_name,
-				"signal_refs": action.definition_refs,
+				"signal_refs": signal_refs,
 				"confidence": Confidence.HEURISTIC,
-				"code_refs": code_refs,
-				"doc_refs": doc_refs,
+				"missing_param_refs": missing_param_refs,
+				"extra_param_refs": extra_param_refs,
 			})
 		
 		# Handle ignored errors.
@@ -1047,8 +1047,8 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 				
 				# Write signal param issues.
 				for title, refs in [
-					("Undocumented params", incorrect_action_params["code_refs"]),
-					("Stale param docs",  incorrect_action_params["doc_refs"]),
+					("Undocumented params", incorrect_action_params["missing_param_refs"]),
+					("Stale param docs",  incorrect_action_params["extra_param_refs"]),
 				]:
 					if not refs:
 						continue
