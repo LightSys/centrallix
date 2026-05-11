@@ -1104,6 +1104,7 @@ def main() -> int:
 	)
 	json_path = output_dir / "doc-report.json"
 	md_path = output_dir / "doc-report.md"
+	output_dir.mkdir(parents=True, exist_ok=True)
 	
 	# Build documented + implemented widget lists.
 	docs, doc_types = parse_docs(doc_xml)
