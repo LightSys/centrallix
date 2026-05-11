@@ -99,8 +99,3 @@ The original script was written by Cursor across 4 commits, although every line 
 
 
 ## Future Improvement
-
-- Property Docs
-  - **DONE**: Detect property docs.
-  - Detect property implementations.
-  - Report undocumented properties and stale property docs.
