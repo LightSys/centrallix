@@ -109,7 +109,7 @@ identifier_re = r"^[A-Za-z0-9][A-Za-z0-9_-]*$"
 quoted_identifier_re = r"[\"'`]([A-Za-z_][A-Za-z0-9_]*)[\"'`]"
 
 
-# Regexes parsing for docs.
+# Regexes for parsing line numbers in docs.
 doc_widget_re = re.compile(r"<widget\b([^>]*)>", re.IGNORECASE)
 doc_attr_re = re.compile(r'([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*"([^"]*)"')
 doc_prop_re = re.compile(r'<property\b[^>]*\bname\s*=\s*"([^"]+)"', re.IGNORECASE)
@@ -124,17 +124,17 @@ doc_child_re = re.compile(r'<child\b[^>]*\btype\s*=\s*"([^"]+)"', re.IGNORECASE)
 c_register_re = re.compile(r'wgtrAddType\(\s*[^,]+,\s*"([^"]+)"\s*\)')
 
 # Regex to find C strcpy() calls and capture the widget driver name (1).
-c_name_re = re.compile(r'strcpy\(\s*drv->WidgetName\s*,\s*"([^"]+)"\s*\)')
+c_name_re = re.compile(r'strcpy\(\s*(?:[A-Za-z_][A-Za-z0-9_]\w*)\s*->\s*WidgetName\s*,\s*"([^"]+)"\s*\)')
 
 # Regex to find C htrAddEvent() calls and capture the event name (1).
-c_event_re = re.compile(r'htrAddEvent\(\s*drv\s*,\s*"([^"]+)"\s*\)')
+c_event_re = re.compile(r'htrAddEvent\(\s*(?:[A-Za-z_][A-Za-z0-9_]\w*)\s*,\s*"([^"]+)"\s*\)')
 
 # Regex to find C htrAddAction() calls and capture the action name (1).
-c_action_re = re.compile(r'htrAddAction\(\s*drv\s*,\s*"([^"]+)"\s*\)')
+c_action_re = re.compile(r'htrAddAction\(\s*(?:[A-Za-z_][A-Za-z0-9_]\w*)\s*,\s*"([^"]+)"\s*\)')
 
 # Regex to find C htrAddParam() calls and capture the action name (1) and param name (2).
 c_param_re = re.compile(
-	r'htrAddParam\(\s*drv\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*[^)]+\)'
+	r'htrAddParam\(\s*(?:[A-Za-z_][A-Za-z0-9_]\w*)\s*,\s*"([A-Za-z_][A-Za-z0-9_]+)"\s*,\s*"([A-Za-z_][A-Za-z0-9_]+)"\s*,\s*[^)]+\)'
 )
 
 # Regex to find JS ifcProbeAdd() calls and capture the returned variable name (1)
@@ -334,7 +334,8 @@ def normalize_child_name(child_type: str) -> Optional[str]:
 	return text
 
 
-# Parse `widgets.xml`.
+# Parse `widgets.xml`, returning a dict mapping widget names to their docs and
+# a set of widget types (including children).
 def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 	# Allocate space for parsed documentation.
 	docs: dict[str, WidgetDoc] = {}
