@@ -97,6 +97,9 @@ WRITE_REPORT_JSON = True
 # WRITE_REPORT_MD may be useful when microbenching performance.)
 WRITE_REPORT_MD = True
 
+# Widgets XML
+WIDGET_XML_PATH = "centrallix-doc/Widgets/widgets.xml"
+
 
 # =============
 # Regexes.
@@ -324,7 +327,7 @@ def ref_to_markdown_link(report_dir: Path, repo_root: Path, ref: Ref) -> str:
 
 
 # Validate/normalize child type declarations into concrete widget keys.
-def _normalize_child_type(child_type: str) -> Optional[str]:
+def normalize_child_name(child_type: str) -> Optional[str]:
 	text = normalize_widget_name(child_type)
 	if text in {"", "any"}: return None
 	if not re.match(identifier_re, text): return None
@@ -382,7 +385,7 @@ def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 			if raw_child_type == "any":
 				doc.any_child = True
 				continue
-			child_type = _normalize_child_type(raw_child_type)
+			child_type = normalize_child_name(raw_child_type)
 			if child_type:
 				widget_types.add(child_type)
 	
@@ -407,44 +410,32 @@ def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 		base_line = get_line_number(content, start)
 		
 		# Manually parse the xml to get line numbers for refs in the widget block.
-		node = {
-			"ref": make_ref(
-				"centrallix-doc/Widgets/widgets.xml", base_line, "widget definition"
-			),
-			"properties": {},
-			"events": {},
-			"actions": {},
-			"children": {},
-		}
-		for pm in doc_prop_re.finditer(block):
-			line = base_line + block.count("\n", 0, pm.start())
-			node["properties"][normalize_name(pm.group(1))] = make_ref(
-				"centrallix-doc/Widgets/widgets.xml", line, "documented property"
+		widget_doc.ref = make_ref(WIDGET_XML_PATH, base_line, "widget definition")
+		for property_match in doc_prop_re.finditer(block):
+			line = base_line + block.count("\n", 0, property_match.start())
+			name = normalize_name(property_match.group(1))
+			widget_doc.property_refs[name] = make_ref(
+				WIDGET_XML_PATH, line, "documented property"
 			)
-		for em in doc_event_re.finditer(block):
-			line = base_line + block.count("\n", 0, em.start())
-			node["events"][normalize_name(em.group(1))] = make_ref(
-				"centrallix-doc/Widgets/widgets.xml", line, "documented event"
+		for event_match in doc_event_re.finditer(block):
+			line = base_line + block.count("\n", 0, event_match.start())
+			name = normalize_name(event_match.group(1))
+			widget_doc.event_refs[name] = make_ref(
+				WIDGET_XML_PATH, line, "documented event"
 			)
-		for am in doc_action_re.finditer(block):
-			line = base_line + block.count("\n", 0, am.start())
-			node["actions"][normalize_name(am.group(1))] = make_ref(
-				"centrallix-doc/Widgets/widgets.xml", line, "documented action"
+		for action_match in doc_action_re.finditer(block):
+			line = base_line + block.count("\n", 0, action_match.start())
+			name = normalize_name(action_match.group(1))
+			widget_doc.action_refs[name] = make_ref(
+				WIDGET_XML_PATH, line, "documented action"
 			)
 		for cm in doc_child_re.finditer(block):
 			line = base_line + block.count("\n", 0, cm.start())
-			child_name = _normalize_child_type(cm.group(1))
+			child_name = normalize_child_name(cm.group(1))
 			if child_name:
-				node["children"][child_name] = make_ref(
-					"centrallix-doc/Widgets/widgets.xml", line, "documented child type"
+				widget_doc.child_refs[child_name] = make_ref(
+					WIDGET_XML_PATH, line, "documented child type"
 				)
-		
-		# Add refs to widget doc.
-		widget_doc.ref		   = node["ref"]
-		widget_doc.property_refs = node["properties"]
-		widget_doc.event_refs	= node["events"]
-		widget_doc.action_refs   = node["actions"]
-		widget_doc.child_refs	= node["children"]
 	
 	return docs, widget_types
 
