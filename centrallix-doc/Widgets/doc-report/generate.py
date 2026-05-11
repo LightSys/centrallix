@@ -19,11 +19,11 @@ from xml.etree import ElementTree
 
 # =============
 # Magic Value Setup
-id = 1
+id_val = 1
 def get_id():
-	global id
-	cur_id = id
-	id += 1
+	global id_val
+	cur_id = id_val
+	id_val += 1
 	return cur_id
 
 IGNORE_MISSING_WIDGET_DOCS = get_id()
@@ -175,7 +175,6 @@ class Ref(TypedDict):
 	line: int | None
 	desc: str
 
-
 # Stores how a widget is documented.
 @dataclass
 class WidgetDoc:
@@ -193,7 +192,6 @@ class WidgetDoc:
 	action_refs: dict[str, Ref] = field(default_factory=dict)
 	child_refs: dict[str, Ref] = field(default_factory=dict)
 
-
 # Stores how a widget is implemented.
 @dataclass
 class WidgetImpl:
@@ -204,13 +202,15 @@ class WidgetImpl:
 	
 	# Register a unique event.
 	def event(self, event_name):
-		self.events[event_name] = self.events.get(event_name) or EventImpl(name=event_name)
-		return self.events[event_name]
+		event = self.events.get(event_name) or EventImpl(name=event_name)
+		self.events[event_name] = event
+		return event
 	
 	# Register a unique action.
 	def action(self, action_name):
-		self.actions[action_name] = self.actions.get(action_name) or ActionImpl(name=action_name)
-		return self.actions[action_name]
+		action = self.actions.get(action_name) or ActionImpl(name=action_name)
+		self.actions[action_name] = action
+		return action
 
 # Stores one implemented signal, aka. an event or action.
 @dataclass
@@ -342,18 +342,13 @@ def make_ref(path: str, line: Optional[int], desc: str) -> Ref:
 # Legacy text formatter (retained for potential plain-text output/debugging).
 def fmt_ref(ref: Ref) -> str:
 	if ref.get("line"):
-		return "`%s:%s` (%s)" % (ref["path"], ref["line"], ref["desc"])
-	return "`%s` (%s)" % (ref["path"], ref["desc"])
+		return f"`{ref['path']}:{ref['line']}` ({ref['desc']})"
+	return f"`{ref['path']}` ({ref['desc']})"
 
 
 # De-duplicate references while preserving first-seen order.
 def unique_refs(refs: Iterable[Ref]) -> list[Ref]:
-	out: list[Ref] = []
-	for ref in refs:
-		if ref in out:
-			continue
-		out.append(ref)
-	return out
+	return list({(r["path"], r["line"]): r for r in refs}.values())
 
 
 # Format a reference as a markdown link relative to report output.
@@ -364,9 +359,9 @@ def ref_to_markdown_link(report_dir: Path, repo_root: Path, ref: Ref) -> str:
 	label = target_path.name
 	line = ref.get("line")
 	if line != None:
-		href = "%s#L%s" % (href, line)
-		label = "%s:%s" % (label, line)
-	return "[%s](%s) (%s)" % (label, href, ref.get("desc", "source"))
+		href = f"{href}#L{line}"
+		label = f"{label}:{line}"
+	return f"[{label}]({href}) ({ref.get('desc', 'source')})"
 
 
 # Validate/normalize child type declarations into concrete widget keys.
@@ -556,7 +551,7 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
 		if widget_name == "":
 			continue
 		
-		# Store the widget implementation.
+		# Store the widget code.
 		rel = "centrallix/htmlgen/%s" % file_name
 		widget_impl = widget_impls.setdefault(widget_name, WidgetImpl(widget_name=widget_name))
 		widget_impl.definition_refs.append(
@@ -593,10 +588,10 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
 	return widget_impls
 
 # Infer JS action parameters by scanning the handler body for param accesses.
-def _parse_js_action_params(js: str, fn_name: str) -> list[tuple[str, int]]:
+def parse_js_action_params(js: str, fn_name: str) -> list[tuple[str, int]]:
 	params: list[tuple[str, int]] = []
 	
-	# Search for the start of the JS implementation function.
+	# Search for the start of the JS function.
 	js_fn_decl = js_action_impl_re(fn_name).search(js)
 	if not js_fn_decl:
 		return params
@@ -696,7 +691,7 @@ def parse_js(path: Path) -> dict[str, WidgetImpl]:
 					continue
 				
 				# Handle action params.
-				for param_name, param_line in _parse_js_action_params(js, fn_name):
+				for param_name, param_line in parse_js_action_params(js, fn_name):
 					# Ignore private params.
 					if (param_name.startswith('_')):
 						continue
@@ -811,7 +806,7 @@ def compute_report(
 			"extra_properties": [{
 				"name": name,
 				"confidence": Confidence.CONFIRMED,
-				"refs": [doc.property_refs[name]] if name in doc.property_refs else [],
+				"refs": unique_refs([doc.property_refs[name]]) if name in doc.property_refs else [],
 			} for name in []],
 			"missing_events": [{
 				"name": name,
@@ -870,7 +865,6 @@ def compute_report(
 			# Check for extra params.
 			doc_refs: dict[str, Ref] = {}
 			if extra_params:
-				doc_refs: dict[str, Ref] = {}
 				ref = doc.action_refs[action_name]
 				if not ref:
 					continue
@@ -928,10 +922,10 @@ def compute_report(
 	# Handle ignored errors.
 	if IGNORE_MISSING_WIDGET_DOCS in IGNORED_ERRORS:
 		stats["ignored_errors"] += len(missing_widget_docs)
-		missing_widget_docs : list[str] = list()
+		missing_widget_docs.clear()
 	if IGNORE_STALE_WIDGET_DOCS in IGNORED_ERRORS:
 		stats["ignored_errors"] += len(stale_widget_docs)
-		stale_widget_docs : list[str] = list()
+		stale_widget_docs.clear()
 	
 	# Set other stats.
 	stats["documented_widgets"]  = len(doc_widgets_and_children)
@@ -978,17 +972,17 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 	# Write stats.
 	s = report["stats"]
 	doc_widgets_strict = s["documented_widgets"] - s["stale_widget_docs"]
-	progress = doc_widgets_strict / s["implemented_widgets"]
-	error_percent = s["widgets_with_errors"] / doc_widgets_strict
-	error_rate = s["widget_errors"] / doc_widgets_strict
+	progress = doc_widgets_strict / (float(s["implemented_widgets"]) or 1)
+	error_percent = s["widgets_with_errors"] / (float(doc_widgets_strict) or 1)
+	error_rate = s["widget_errors"] / (float(doc_widgets_strict) or 1)
 	lines.append(
 		"## Widget Stats\n"
-		f"- **Documented**: {doc_widgets_strict}/{s["implemented_widgets"]} widgets ({progress:.0%})\n"
-		f"- **Missing widget docs**: {s["missing_widget_docs"]}\n"
-		f"- **Stale widget docs**: {s["stale_widget_docs"]}\n"
+		f"- **Documented**: {doc_widgets_strict}/{s['implemented_widgets']} widgets ({progress:.0%})\n"
+		f"- **Missing widget docs**: {s['missing_widget_docs']}\n"
+		f"- **Stale widget docs**: {s['stale_widget_docs']}\n"
 		f"- **Ignored widgets**: {len(IGNORED_WIDGETS)}\n"
-		f"- **Widget docs with errors**: {s["widgets_with_errors"]} ({error_percent:.0%})\n"
-		f"- **Widget doc errors**: {s["widget_errors"]} (~{error_rate:.2}/widget)\n"
+		f"- **Widget docs with errors**: {s['widgets_with_errors']} ({error_percent:.0%})\n"
+		f"- **Widget doc errors**: {s['widget_errors']} (~{error_rate:.2}/widget)\n"
 		f"- **Ignored errors**: {s["ignored_errors"]}\n"
 	)
 
@@ -1032,7 +1026,7 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 			lines.append("- **Undocumented events**")
 			for event in item["missing_events"]:
 				lines.append(f"  - `{event['name']}` ("
-					f"origin: `{get_origins(event["refs"])}`, "
+					f"origin: `{get_origins(event['refs'])}`, "
 					f"confidence: `{event['confidence']}`"
 				")")
 				if event.get("refs"):
@@ -1050,7 +1044,7 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 			lines.append("- **Undocumented actions**")
 			for action in item["missing_actions"]:
 				lines.append(f"  - `{action['name']}` ("
-					f"origin: `{get_origins(action["refs"])}`, "
+					f"origin: `{get_origins(action['refs'])}`, "
 					f"confidence: `{action['confidence']}`"
 				")")
 				if action.get("refs"):
@@ -1059,9 +1053,9 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 		if item["extra_actions"]:
 			lines.append("- **Stale action docs**")
 			for action in item["extra_actions"]:
-				lines.append("  - `%s`" % action["name"])
-				for ref in action.get("refs", {}):
-					lines.append("    - %s" % ref_to_markdown_link(report_dir, repo_root, ref))
+				lines.append(f"  - `{action['name']}`")
+				for ref in action.get("refs", []):
+					lines.append(f"    - {ref_to_markdown_link(report_dir, repo_root, ref)}")
 		
 		# Write action param issues.
 		if item["incorrect_action_params"]:
