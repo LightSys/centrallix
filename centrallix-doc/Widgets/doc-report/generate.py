@@ -250,6 +250,49 @@ class EventImpl(SignalImpl):
 class ActionImpl(SignalImpl):
 	pass
 
+# Report: Stores an event or action that differs between the docs and implementation.
+class SignalIssueEntry(TypedDict):
+	name: str
+	confidence: Confidence
+	refs: list[Ref]
+
+# Report: Stores multiple diffs for events or actions, such as incorrect parameters.
+class SignalIssuesEntry(TypedDict):
+	signal_name: str # Associated event/action with these diffs.
+	signal_refs: list[Ref]
+	confidence: Confidence
+	code_refs: dict[str, Ref] # Named diffs.
+	doc_refs: dict[str, Ref] # Named diffs.
+
+# Report: Stores all findings for each widget in the report.
+class PerWidgetFinding(TypedDict):
+	widget: str
+	refs: list[Ref]
+	extra_properties: list[SignalIssueEntry]
+	missing_events: list[SignalIssueEntry]
+	extra_events: list[SignalIssueEntry]
+	missing_actions: list[SignalIssueEntry]
+	extra_actions: list[SignalIssueEntry]
+	incorrect_action_params: list[SignalIssuesEntry]
+
+# Report: Stores general summary statistics (see the top of doc-report.md).
+class ReportStats(TypedDict):
+	documented_widgets: int
+	implemented_widgets: int
+	missing_widget_docs: int
+	stale_widget_docs: int
+	widgets_with_errors: int
+	widget_errors: int
+	ignored_errors: int
+
+# Report: Stores a report showing all issues detected between docs and code.
+class Report(TypedDict):
+	stats: ReportStats
+	missing_widget_docs: list[SignalIssueEntry]
+	stale_widget_docs: list[SignalIssueEntry]
+	per_widget: list[PerWidgetFinding]
+
+
 # Trim names (preserves case).
 def normalize_name(name: str | None) -> str:
 	return (name or "").strip()
@@ -692,45 +735,6 @@ def merge_widget_lists(
 				new_widget.actions[name] = existing
 		merged[widget_name] = new_widget
 	return merged
-
-# Stores an event or action that differs between the docs and implementation.
-class SignalDiffEntry(TypedDict):
-	name: str
-	confidence: Confidence
-	refs: list[Ref]
-
-# Stores multiple diffs for events or actions, such as incorrect parameters.
-class SignalDiffsEntry(TypedDict):
-	signal_name: str # Associated event/action with these diffs.
-	signal_refs: list[Ref]
-	confidence: Confidence
-	code_refs: dict[str, Ref] # Named diffs.
-	doc_refs: dict[str, Ref] # Named diffs.
-
-class PerWidgetFinding(TypedDict):
-	widget: str
-	refs: list[Ref]
-	extra_properties: list[SignalDiffEntry]
-	missing_events: list[SignalDiffEntry]
-	extra_events: list[SignalDiffEntry]
-	missing_actions: list[SignalDiffEntry]
-	extra_actions: list[SignalDiffEntry]
-	incorrect_action_params: list[SignalDiffsEntry]
-
-class ReportStats(TypedDict):
-	documented_widgets: int
-	implemented_widgets: int
-	missing_widget_docs: int
-	stale_widget_docs: int
-	widgets_with_errors: int
-	widget_errors: int
-	ignored_errors: int
-
-class Report(TypedDict):
-	stats: ReportStats
-	missing_widget_docs: list[SignalDiffEntry]
-	stale_widget_docs: list[SignalDiffEntry]
-	per_widget: list[PerWidgetFinding]
 
 
 # Compute global and per-widget drift, including evidence-rich details.
