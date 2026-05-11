@@ -107,11 +107,11 @@ quoted_identifier_re = r"[\"'`]([A-Za-z_][A-Za-z0-9_]*)[\"'`]"
 
 # Regexes for parsing line numbers in docs.
 doc_widget_re = re.compile(r"<widget\b([^>]*)>", re.IGNORECASE)
-doc_attr_re = re.compile(r'([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*"([^"]*)"')
-doc_prop_re = re.compile(r'<property\b[^>]*\bname\s*=\s*"([^"]+)"', re.IGNORECASE)
-doc_event_re = re.compile(r'<event\b[^>]*\bname\s*=\s*"([^"]+)"', re.IGNORECASE)
-doc_action_re = re.compile(r'<action\b[^>]*\bname\s*=\s*"([^"]+)"', re.IGNORECASE)
-doc_child_re = re.compile(r'<child\b[^>]*\btype\s*=\s*"([^"]+)"', re.IGNORECASE)
+doc_attr_re = re.compile(r"([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*(['\"])(.*?)\2")
+doc_prop_re = re.compile(r"<property\b[^>]*\bname\s*=\s*(['\"])([^'\"]+)\1", re.IGNORECASE)
+doc_event_re = re.compile(r"<event\b[^>]*\bname\s*=\s*(['\"])([^'\"]+)\1", re.IGNORECASE)
+doc_action_re = re.compile(r"<action\b[^>]*\bname\s*=\s*(['\"])([^'\"]+)\1", re.IGNORECASE)
+doc_child_re = re.compile(r"<child\b[^>]*\btype\s*=\s*(['\"])([^'\"]+)\1", re.IGNORECASE)
 
 
 # Regexes for parsing implementations.
