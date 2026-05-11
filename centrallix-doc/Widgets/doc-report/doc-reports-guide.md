@@ -19,6 +19,7 @@ License: Copyright (C) 2026 LightSys Technology Services.  See LICENSE.txt.
     - [Missing Widget Docs](#missing-widget-docs)
     - [Stale Widgets Docs](#stale-widgets-docs)
     - [Widget Errors](#widget-errors)
+  - [Script Design](#script-design)
   - [Future Improvement](#future-improvement)
 
 ## Using Doc Reports
@@ -66,6 +67,35 @@ The widget errors section lists all widgets that appear to be documented incorre
 - **Undocumented events/actions**: An event or action implementation is detected in the code, but not in the docs.
 - **Stale events/actions**: An event or action was detected in the docs, but no implementation was detected in the code.
 - **Incorrect action parameter docs**: Heuristics detected action parameters being used in the code that were not documented, or failed to detect documented action parameters being accessed in the code.
+
+
+## Script Design
+The original script was written by Cursor across 4 commits, although every line of code in `generate.py` has been edited since then, as the code benefited from extensive clean up and refactoring.  The current design generally follows these steps to create a report:
+- **Step 1**: Parse `widgets.xml` (using regexes & `ElementTree`).
+  - Parse XML content using Python's builtin `ElementTree` library.
+  - Extract line numbers using manual regex parsing.
+    - I wish ElementTree provided line numbers, but it doesn't, and this is simpler than adding a dependency for a library that does support line numbers.
+- **Step 2**: Parse Implementations (using regexes).
+  - Parse C registrations in `wgtdrv_*.c` files.
+    - Search for `wgtrAddType()` calls to capture the widget name.
+  - Parse C HTML generation in `htdrv_*.c` files.
+    - Search for `strcpy(<symbol>->WidgetName, <name>)` calls to capture registered widget names.
+    - Search for `htrAddEvent(<symbol>, <name>)` calls to capture registered event names.
+    - Search for `htrAddAction(<symbol>, <name>)` calls to capture registered action names.
+  - Parse JS implementations in `htdrv_*.js` files.
+    - Search for `ifcProbAdd()` calls using `ifEvent` or `ifAction` and capture the probe variable name.
+    - Search for `.Add()` calls on probe variables to capture event and action names (and action implementation function names).
+    - Parse action implementation functions (from `.Add()` calls) to find accesses for the param variable (the first variable).
+      - Supports functions that take a param variable with a name (e.g. `function action(aparam)`) and access properties on it (e.g. `aparam.Value`).
+      - Supports functions that deconstruct params immediately (e.g. `function action({ Value })`).
+      - Searches in comments to allow graceful handling when param variable are passed to other functions.
+  - Expand child coverage to handle any-type children.
+- **Step 3**: Generate report (JSON).
+  - Analyze collected lists of documented and implemented widgets, properties, events, actions, and children to detect differences.
+  - Stores differences in a Report data type, containing various JSON-like subtypes (using `TypedDict`).
+- **Step 4**: Write reports.
+  - Writing `doc-report.json` is easy since the data structure is already in a JSON-like format.
+  - To write `doc-report.md`, the code iterates over the internal JSON and writes human-readable markdown content from that data.
 
 
 ## Future Improvement
