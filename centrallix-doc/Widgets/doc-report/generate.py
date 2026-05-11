@@ -28,8 +28,6 @@ def get_id():
 
 IGNORE_MISSING_WIDGET_DOCS = get_id()
 IGNORE_STALE_WIDGET_DOCS = get_id()
-IGNORE_MISSING_PROPERTY_DOCS = get_id()
-IGNORE_STALE_PROPERTY_DOCS = get_id()
 IGNORE_MISSING_EVENT_DOCS = get_id()
 IGNORE_STALE_EVENT_DOCS = get_id()
 IGNORE_MISSING_ACTION_DOCS = get_id()
@@ -75,8 +73,6 @@ IGNORED_WIDGETS = set({
 IGNORED_ERRORS: set[int] = set({
 	# IGNORE_MISSING_WIDGET_DOCS,       # Ignore all undocumented widgets. (Not recommended.)
 	# IGNORE_STALE_WIDGET_DOCS,         # Ignore all docs for unimplemented widgets. (Not recommended.)
-	# IGNORE_MISSING_PROPERTY_DOCS,     # Ignore properties with no docs.
-	# IGNORE_STALE_PROPERTY_DOCS,       # Ignore properties with no implementation.
 	# IGNORE_MISSING_EVENT_DOCS,        # Ignore events with no docs.
 	# IGNORE_STALE_EVENT_DOCS,          # Ignore events with no implementation.
 	# IGNORE_MISSING_ACTION_DOCS,       # Ignore actions with no docs.
@@ -268,7 +264,6 @@ class SignalIssuesEntry(TypedDict):
 class PerWidgetFinding(TypedDict):
 	widget: str
 	refs: list[Ref]
-	extra_properties: list[SignalIssueEntry]
 	missing_events: list[SignalIssueEntry]
 	extra_events: list[SignalIssueEntry]
 	missing_actions: list[SignalIssueEntry]
@@ -803,11 +798,6 @@ def compute_report(
 		findings: PerWidgetFinding = {
 			"widget": widget,
 			"refs": widget_refs,
-			"extra_properties": [{
-				"name": name,
-				"confidence": Confidence.CONFIRMED,
-				"refs": unique_refs([doc.property_refs[name]]) if name in doc.property_refs else [],
-			} for name in []],
 			"missing_events": [{
 				"name": name,
 				"confidence": impl.events[name].confidence,
@@ -893,9 +883,6 @@ def compute_report(
 			})
 		
 		# Handle ignored errors.
-		if IGNORE_STALE_PROPERTY_DOCS in IGNORED_ERRORS:
-			stats["ignored_errors"] += len(findings["extra_properties"])
-			findings["extra_properties"].clear()
 		if IGNORE_MISSING_EVENT_DOCS in IGNORED_ERRORS:
 			stats["ignored_errors"] += len(findings["missing_events"])
 			findings["missing_events"].clear()
@@ -910,8 +897,7 @@ def compute_report(
 			findings["extra_actions"].clear()
 		
 		# Add entry if errors are found.
-		errors = (len(findings["extra_properties"])
-				  + len(findings["missing_events"])
+		errors = (len(findings["missing_events"])
 				  + len(findings["extra_events"])
 				  + len(findings["missing_actions"])
 				  + len(findings["extra_actions"]))
@@ -1012,14 +998,6 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 		# Write sources.
 		lines.append(f"- **Sources** (origin: `{get_origins(refs)}`)")
 		lines.extend(f"  - {ref_to_markdown_link(report_dir, repo_root, r)}" for r in refs)
-		
-		# Write property issues.
-		if item["extra_properties"]:
-			lines.append("- **Properties only in docs**")
-			for prop in item["extra_properties"]:
-				lines.append("  - `%s`" % prop["name"])
-				for ref in prop.get("refs", []):
-					lines.append("    - %s" % ref_to_markdown_link(report_dir, repo_root, ref))
 		
 		# Write event issues.
 		if item["missing_events"]:
@@ -1127,7 +1105,7 @@ def main() -> int:
 	json_path = output_dir / "doc-report.json"
 	md_path = output_dir / "doc-report.md"
 	
-	# Build documented + runtime inventories.
+	# Build documented + implemented widget lists.
 	docs, doc_types = parse_docs(doc_xml)
 	widget_types, widget_families, widget_type_refs = parse_widgets_in_wgtr(wgtr_dir)
 	doc_types = expand_any_child_coverage(docs, doc_types, widget_families)
