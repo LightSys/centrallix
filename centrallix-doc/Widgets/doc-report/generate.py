@@ -193,17 +193,17 @@ class WidgetDoc:
 class WidgetImpl:
 	widget_name: str
 	events: dict[str, EventImpl] = field(default_factory=dict) # type: ignore (EventImpl is defined later)
-	actions: dict[str, ActionImpl] = field(default_factory=dict[str])  # type: ignore (ActionImpl is defined later)
+	actions: dict[str, ActionImpl] = field(default_factory=dict)  # type: ignore (ActionImpl is defined later)
 	definition_refs: list[Ref] = field(default_factory=list[Ref]) # Code locations where this widget is defined.
 	
 	# Register a unique event.
-	def event(self, event_name: str):
+	def event(self, event_name: str) -> EventImpl:
 		event = self.events.get(event_name) or EventImpl(name=event_name)
 		self.events[event_name] = event
 		return event
 	
 	# Register a unique action.
-	def action(self, action_name: str):
+	def action(self, action_name: str)  -> ActionImpl:
 		action = self.actions.get(action_name) or ActionImpl(name=action_name)
 		self.actions[action_name] = action
 		return action
