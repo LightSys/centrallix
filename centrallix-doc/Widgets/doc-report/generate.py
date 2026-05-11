@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import Iterable, Optional, TypedDict
+from typing import Callable, Iterable, Optional, Pattern, TypedDict
 from xml.etree import ElementTree
 
 
@@ -72,7 +72,7 @@ IGNORED_WIDGETS = set({
 })
 
 # Uncomment any of the strings below to ignore that type of issue.
-IGNORED_ERRORS = set({
+IGNORED_ERRORS: set[int] = set({
 	# IGNORE_MISSING_WIDGET_DOCS,       # Ignore all undocumented widgets. (Not recommended.)
 	# IGNORE_STALE_WIDGET_DOCS,         # Ignore all docs for unimplemented widgets. (Not recommended.)
 	# IGNORE_MISSING_PROPERTY_DOCS,     # Ignore properties with no docs.
@@ -152,13 +152,13 @@ js_add_call_re = re.compile(
 # Regex to find a JS function (fn_name) that implements an action and capture
 # the first variable argument (1), even if it is an object deconstruction, and
 # then ignore all other parameters.
-js_action_impl_re = lambda fn_name: re.compile(
+js_action_impl_re: Callable[[str], Pattern[str]] = lambda fn_name: re.compile(
 	rf"function\s+{re.escape(fn_name)}\s*\(\s*(\{{[^{{}}]*\}}|[A-Za-z_][A-Za-z0-9_]*)(?=\s*[,)])[^)]*\)\s*\{{",
 	re.MULTILINE
 )
 
 # Regex to find JS that reads properties from var_name and capture the property names.
-js_property_re = lambda var_name: rf"\b{re.escape(var_name)}\.([A-Za-z_][A-Za-z0-9_]*)"
+js_property_re: Callable[[str], str] = lambda var_name: rf"\b{re.escape(var_name)}\.([A-Za-z_][A-Za-z0-9_]*)"
 
 
 # =============
@@ -179,35 +179,35 @@ class Ref(TypedDict):
 @dataclass
 class WidgetDoc:
 	name: str
-	properties: set[str] = field(default_factory=set)
-	events: set[str] = field(default_factory=set)
-	actions: set[str] = field(default_factory=set)
-	action_params: dict[str, set[str]] = field(default_factory=dict)
+	properties: set[str] = field(default_factory=set[str])
+	events: set[str] = field(default_factory=set[str])
+	actions: set[str] = field(default_factory=set[str])
+	action_params: dict[str, set[str]] = field(default_factory=dict[str, set[str]])
 	any_child: bool = False
 	
 	# Ref fields.
 	ref: Ref | None = None
-	property_refs: dict[str, Ref] = field(default_factory=dict)
-	event_refs: dict[str, Ref] = field(default_factory=dict)
-	action_refs: dict[str, Ref] = field(default_factory=dict)
-	child_refs: dict[str, Ref] = field(default_factory=dict)
+	property_refs: dict[str, Ref] = field(default_factory=dict[str, Ref])
+	event_refs: dict[str, Ref] = field(default_factory=dict[str, Ref])
+	action_refs: dict[str, Ref] = field(default_factory=dict[str, Ref])
+	child_refs: dict[str, Ref] = field(default_factory=dict[str, Ref])
 
 # Stores how a widget is implemented.
 @dataclass
 class WidgetImpl:
 	widget_name: str
-	events: dict[str, EventImpl] = field(default_factory=dict)
-	actions: dict[str, ActionImpl] = field(default_factory=dict)
-	definition_refs: list[Ref] = field(default_factory=list) # Code locations where this widget is defined.
+	events: dict[str, EventImpl] = field(default_factory=dict) # type: ignore (EventImpl is defined later)
+	actions: dict[str, ActionImpl] = field(default_factory=dict[str])  # type: ignore (ActionImpl is defined later)
+	definition_refs: list[Ref] = field(default_factory=list[Ref]) # Code locations where this widget is defined.
 	
 	# Register a unique event.
-	def event(self, event_name):
+	def event(self, event_name: str):
 		event = self.events.get(event_name) or EventImpl(name=event_name)
 		self.events[event_name] = event
 		return event
 	
 	# Register a unique action.
-	def action(self, action_name):
+	def action(self, action_name: str):
 		action = self.actions.get(action_name) or ActionImpl(name=action_name)
 		self.actions[action_name] = action
 		return action
@@ -217,9 +217,9 @@ class WidgetImpl:
 class SignalImpl:
 	name: str
 	confidence: Confidence = Confidence.HEURISTIC
-	definition_refs: list[Ref] = field(default_factory=list)
-	params: set[str] = field(default_factory=set)
-	params_refs: dict[str, list[Ref]] = field(default_factory=dict)
+	definition_refs: list[Ref] = field(default_factory=list[Ref])
+	params: set[str] = field(default_factory=set[str])
+	params_refs: dict[str, list[Ref]] = field(default_factory=dict[str, list[Ref]])
 	
 	# Merge two implementations into one.
 	def merge(self, other: SignalImpl) -> None:
@@ -433,7 +433,7 @@ def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 	for match in doc_widget_re.finditer(content):
 		# Get the doc for the current widget
 		attrs = dict(doc_attr_re.findall(match.group(1)))
-		widget_name = normalize_widget_name(attrs.get("name") or attrs.get("type") or "")
+		widget_name = normalize_widget_name(attrs.get("name") or attrs.get("type"))
 		if widget_name == "":
 			continue
 		widget_doc = docs.get(widget_name)
@@ -491,7 +491,7 @@ def parse_widgets_in_wgtr(
 	for c_file in sorted(path.glob("wgtdrv_*.c")):
 		content = c_file.read_text(encoding="utf-8", errors="ignore")
 		rel = "centrallix/wgtr/%s" % c_file.name
-		widget_names = set()
+		widget_names: set[str] = set()
 		
 		# Search for matching widget registrations.
 		for match in c_register_re.finditer(content):
@@ -846,7 +846,7 @@ def compute_report(
 			
 			# Determine missing/extra action parameters.
 			impl_params = set(action.params)
-			doc_params = set(doc.action_params.get(action_name, set()))
+			doc_params = set(doc.action_params.get(action_name, []))
 			missing_params = sorted_list(impl_params - doc_params)
 			extra_params = sorted_list(doc_params - impl_params)
 			
@@ -940,12 +940,12 @@ def compute_report(
 		"missing_widget_docs": [{
 			"name": name,
 			"confidence": Confidence.CONFIRMED,
-			"refs": missing_widget_doc_refs.get(name, [])
+			"refs": unique_refs(missing_widget_doc_refs.get(name, [])),
 		} for name in missing_widget_docs],
 		"stale_widget_docs": [{
 			"name": name,
 			"confidence": Confidence.CONFIRMED,
-			"refs": stale_widget_doc_refs.get(name, [])
+			"refs": unique_refs(stale_widget_doc_refs.get(name, [])),
 		} for name in stale_widget_docs],
 		"per_widget": per_widget,
 	}
@@ -996,7 +996,7 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 		if title:
 			lines.append(f"## {title}")
 		for entry in entries:
-			refs = entry.get("refs") or []
+			refs = entry.get("refs", [])
 			lines.append(f"- `{entry['name']}` (origins: `{get_origins(refs)}`)")
 			lines.extend(f"  - {ref_to_markdown_link(report_dir, repo_root, r)}" for r in refs)
 			if not refs:
@@ -1006,7 +1006,7 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 	# Write per-widget differences by type.
 	if len(report["per_widget"]) > 0: lines.append("## Widget Errors")
 	for item in report["per_widget"]:
-		refs = item.get("refs", {})
+		refs = item.get("refs", [])
 		lines.append(f"### `{item['widget']}`")
 		
 		# Write sources.
@@ -1029,14 +1029,13 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 					f"origin: `{get_origins(event['refs'])}`, "
 					f"confidence: `{event['confidence']}`"
 				")")
-				if event.get("refs"):
-					for ref in event["refs"]:
-						lines.append("    - %s" % ref_to_markdown_link(report_dir, repo_root, ref))
+				for ref in event.get("refs", []):
+					lines.append("    - %s" % ref_to_markdown_link(report_dir, repo_root, ref))
 		if item["extra_events"]:
 			lines.append("- **Stale event docs**")
 			for event in item["extra_events"]:
 				lines.append("  - `%s`" % event["name"])
-				for ref in event.get("refs", {}):
+				for ref in event.get("refs", []):
 					lines.append("    - %s" % ref_to_markdown_link(report_dir, repo_root, ref))
 		
 		# Write action issues.
@@ -1047,9 +1046,8 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 					f"origin: `{get_origins(action['refs'])}`, "
 					f"confidence: `{action['confidence']}`"
 				")")
-				if action.get("refs"):
-					for ref in action["refs"]:
-						lines.append("    - %s" % ref_to_markdown_link(report_dir, repo_root, ref))
+				for ref in action.get("refs", []):
+					lines.append("    - %s" % ref_to_markdown_link(report_dir, repo_root, ref))
 		if item["extra_actions"]:
 			lines.append("- **Stale action docs**")
 			for action in item["extra_actions"]:
@@ -1081,6 +1079,7 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 						lines.append(f"      - `{name}`: {ref_to_markdown_link(report_dir, repo_root, ref)}")
 		lines.append("")
 	
+	# Write report data.
 	with path.open("w", encoding="utf-8") as handle:
 		handle.write("\n".join(lines).rstrip() + "\n")
 
