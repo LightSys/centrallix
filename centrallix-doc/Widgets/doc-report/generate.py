@@ -131,7 +131,7 @@ c_action_re = re.compile(r'htrAddAction\(\s*(?:[A-Za-z_]\w*)\s*,\s*"([^"]+)"\s*\
 
 # Regex to find C htrAddParam() calls and capture the action name (1) and param name (2).
 c_param_re = re.compile(
-	r'htrAddParam\(\s*(?:[A-Za-z_]\w*)\s*,\s*"([A-Za-z_]\w*)"\s*,\s*"([A-Za-z_][A-Za-z0-9_]+)"\s*,\s*[^)]+\)'
+	r'htrAddParam\(\s*(?:[A-Za-z_]\w*)\s*,\s*"([A-Za-z_]\w*)"\s*,\s*"([A-Za-z_]\w*)"\s*,\s*[^)]+\)'
 )
 
 # Regex to find JS ifcProbeAdd() calls and capture the returned variable name (1)
