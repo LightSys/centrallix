@@ -160,7 +160,7 @@ js_property_re: Callable[[str], str] = lambda var_name: rf"\b{re.escape(var_name
 
 
 # =============
-# Types
+# Types & Classes
 
 class Confidence(StrEnum):
 	CONFIRMED = "confirmed"
@@ -248,7 +248,6 @@ class EventImpl(SignalImpl):
 class ActionImpl(SignalImpl):
 	pass
 
-
 # Map character offsets to 1-based line number.
 class LineMap:
 	def __init__(self, text: str) -> None:
@@ -256,7 +255,6 @@ class LineMap:
 
 	def line_number(self, offset: int) -> int:
 		return bisect_right(self.newline_offsets, offset) + 1
-
 
 # Report: Stores an event or action that differs between the docs and implementation.
 class SignalIssueEntry(TypedDict):
@@ -299,6 +297,8 @@ class Report(TypedDict):
 	stale_widget_docs: list[SignalIssueEntry]
 	per_widget: list[PerWidgetFinding]
 
+# =============
+# Functions
 
 # Trim names (preserves case).
 def normalize_name(name: Optional[str]) -> str:
@@ -312,6 +312,15 @@ def normalize_widget_name(name: Optional[str]) -> str:
 		text = text.split("/", 1)[1]
 	canonical_name = WIDGETS_ALIASES.get(text, text)
 	return canonical_name if canonical_name not in IGNORED_WIDGETS else ""
+
+
+# Validate/normalize child type declarations into concrete widget keys.
+def normalize_child_name(child_type: str) -> str:
+	text = normalize_widget_name(child_type)
+	if text in {"", "any"}: return ""
+	if not re.match(identifier_re, text): return ""
+	return text
+
 
 # Keep the strongest confidence when combining multiple sources.
 def merge_confidence(a: Confidence, b: Confidence) -> Confidence:
@@ -330,6 +339,7 @@ def get_origins(refs: Iterable[Ref]) -> str:
 		for r in refs
 		if "." in r["path"]
 	}))
+
 
 # Sort arrays deterministically (ignores case).
 def sorted_list(values: Iterable[str]) -> list[str]:
@@ -357,14 +367,6 @@ def ref_to_markdown_link(report_dir: Path, repo_root: Path, ref: Ref) -> str:
 		href = f"{href}#L{line}"
 		label = f"{label}:{line}"
 	return f"[{label}]({href}) ({ref.get('desc', 'source')})"
-
-
-# Validate/normalize child type declarations into concrete widget keys.
-def normalize_child_name(child_type: str) -> str:
-	text = normalize_widget_name(child_type)
-	if text in {"", "any"}: return ""
-	if not re.match(identifier_re, text): return ""
-	return text
 
 
 # Parse `widgets.xml`, returning a dict mapping widget names to their docs and
@@ -604,6 +606,7 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
 			)
 	return widget_impls
 
+
 # Infer JS action parameters by scanning the handler body for param accesses.
 # Returns the params list (list[tuple[str, int]] - each param maps name -> line number)
 # and returns the declaration line (int), or -1 on failure.
@@ -729,6 +732,7 @@ def parse_js(path: Path) -> dict[str, WidgetImpl]:
 					)
 			else: continue
 	return widget_impls
+
 
 # Merge two widget lists, preserving information from each.
 def merge_widget_lists(
