@@ -544,28 +544,40 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
 		eager_widget_name = normalize_widget_name(file_name[6:-2])
 		if eager_widget_name == "":
 			continue
+		rel = "centrallix/htmlgen/%s" % file_name
 		
 		# Read file content.
 		content = c_file.read_text(encoding="utf-8", errors="ignore")
 		line_map = LineMap(content)
 		
 		# Get the widget name.
-		widget_match = c_name_re.search(content)
-		if not widget_match:
-			continue
-		widget_name = normalize_widget_name(widget_match.group(1))
-		if widget_name != eager_widget_name:
-			print(f"Warning: File {file_name} used to declare widget {widget_name}.")
-			print(f"  Should `\"{eager_widget_name}\": \"{widget_name}\",` be added to WIDGETS_ALIASES?") 
-		if widget_name == "":
-			continue
+		parent_widget_impl = None
+		for widget_match in c_name_re.finditer(content):
+			widget_name = normalize_widget_name(widget_match.group(1))
+			if widget_name == "":
+				continue
+			
+			# Store the widget implementation.
+			widget_impl = widget_impls.setdefault(widget_name, WidgetImpl(widget_name=widget_name))
+			widget_impl.definition_refs.append(
+				make_ref(rel, line_map.line_number(widget_match.start()), "strcpy sets widget name")
+			)
+			
+			# There's no way to know which widget is the parent, so
+			# assume that the first widget is the parent.
+			if not parent_widget_impl:
+				parent_widget_impl = widget_impl
 		
-		# Store the widget code.
-		rel = "centrallix/htmlgen/%s" % file_name
-		widget_impl = widget_impls.setdefault(widget_name, WidgetImpl(widget_name=widget_name))
-		widget_impl.definition_refs.append(
-			make_ref(rel, line_map.line_number(widget_match.start()), "strcpy sets widget name")
-		)
+		# Proceed with the parent widget.
+		if not parent_widget_impl:
+			continue
+		widget_impl = parent_widget_impl
+		widget_name = widget_impl.widget_name
+		
+		# Handle warning.
+		if widget_name != eager_widget_name:
+			print(f"Warning: File {file_name} used to declare widget parent {widget_name}.")
+			print(f"  Should `\"{eager_widget_name}\": \"{widget_name}\",` be added to WIDGETS_ALIASES?")
 		
 		# Parse events.
 		for event_m in c_event_re.finditer(content):

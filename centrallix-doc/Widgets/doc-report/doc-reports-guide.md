@@ -14,6 +14,7 @@ License: Copyright (C) 2026 LightSys Technology Services.  See LICENSE.txt.
     - [Customizing Reports](#customizing-reports)
     - [Links and Line Numbers](#links-and-line-numbers)
     - [Confidence](#confidence)
+    - [Child Widgets](#child-widgets)
   - [Reading Doc Reports](#reading-doc-reports)
     - [Widget Stats](#widget-stats)
     - [Missing Widget Docs](#missing-widget-docs)
@@ -43,6 +44,27 @@ When detecting issues, the script attempts to provide link(s) to relevant file l
 
 ### Confidence
 Issues detected in the report typically include a confidence score.  This is usually either `confirmed`, `strong`, or `heuristic`, with `confirmed` being the most confident and `heuristic` being the least.  These values are estimates, at best, based on the estimated accuracy of the various detection methods in use.  Thus, confidence should be taken with a grain of salt, although it still provides useful insight when troubleshooting documentation issues.
+
+### Child Widgets
+In the `htdrv_*.c` files, there isn't a reliable way to detect which registered widget is the parent and which widgets are children.  For example, see the abridged code example below that registers the tab widget driver and its tabpage child widget.
+```c
+pHtDriver drv;
+
+drv = htrAllocDriver();
+if (drv == NULL) return -1;
+strcpy(drv->Name, "DHTML Tab Control Driver");
+strcpy(drv->WidgetName, "tab");
+drv->Render = httabRender;
+htrRegisterDriver(drv);
+
+drv = htrAllocDriver();
+if (drv == NULL) return -1;
+strcpy(drv->Name, "DHTML Tab Page Driver");
+strcpy(drv->WidgetName, "tabpage");
+drv->Render = httabRender_page;
+htrRegisterDriver(drv);
+```
+Due to this ambiguity, the doc report **assumes the first widget in an `htdrv_*.c` file is the parent** and all widget declared afterword are children.  As of the time of this writing (May 12th, 2026), this assumption is true for all the implemented widgets.
 
 
 ## Reading Doc Reports
@@ -79,6 +101,7 @@ The original script was written by Cursor across 4 commits, although every line 
     - Search for `wgtrAddType()` calls to capture the widget name.
   - Parse C HTML generation in `htdrv_*.c` files.
     - Search for `strcpy(<symbol>->WidgetName, <name>)` calls to capture registered widget names.
+      - The first widget is assumed to be the parent, following widgets are assumed to be children.
     - Search for `htrAddEvent(<symbol>, <name>)` calls to capture registered event names.
     - Search for `htrAddAction(<symbol>, <name>)` calls to capture registered action names.
   - Parse JS implementations in `htdrv_*.js` files.
