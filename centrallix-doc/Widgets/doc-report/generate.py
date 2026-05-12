@@ -21,7 +21,7 @@ from xml.etree import ElementTree
 # =============
 # Magic Value Setup
 id_val = 1
-def get_id():
+def get_id() -> int:
 	global id_val
 	cur_id = id_val
 	id_val += 1
@@ -42,7 +42,7 @@ IGNORE_STALE_ACTION_PARAM_DOCS = get_id()
 
 # Widgets that use other names in the code.  This dictionary maps normalized
 # widget alias(es) (e.g. "page_js15") to canonical widget names (e.g. "page").
-WIDGETS_ALIASES = {
+WIDGETS_ALIASES: dict[str, str] = {
 	"componentdecl": "component-decl",
 	"sys_osml": "sys-osml",
 	"page_js15": "page",
@@ -53,7 +53,7 @@ WIDGETS_ALIASES = {
 
 # The normalized names of widgets that should be completely ignored if they
 # appear in either source code or documentation.
-IGNORED_WIDGETS = set({
+IGNORED_WIDGETS: set[str] = {
 	# Skipped
 	# "",
 	
@@ -68,10 +68,10 @@ IGNORED_WIDGETS = set({
 	"remotemgr",
 	"spinner",
 	"uawindow",
-})
+}
 
 # Uncomment any of the strings below to ignore that type of issue.
-IGNORED_ERRORS: set[int] = set({
+IGNORED_ERRORS: set[int] = {0, # Empty set marker.
 	# IGNORE_MISSING_WIDGET_DOCS,       # Ignore all undocumented widgets. (Not recommended.)
 	# IGNORE_STALE_WIDGET_DOCS,         # Ignore all docs for unimplemented widgets. (Not recommended.)
 	# IGNORE_MISSING_EVENT_DOCS,        # Ignore events with no docs.
@@ -80,22 +80,22 @@ IGNORED_ERRORS: set[int] = set({
 	# IGNORE_STALE_ACTION_DOCS,         # Ignore actions with no implementation.
 	# IGNORE_MISSING_ACTION_PARAM_DOCS, # Ignore action parameter with no docs.
 	# IGNORE_STALE_ACTION_PARAM_DOCS,   # Ignore action parameter with no implementations.
-})
+}
 
 # Whether to write unminified, human-readable JSON.  Minified JSON is typically
 # preferred because it is more readable to modern LLMs (it uses fewer tokens).
-HUMAN_JSON = False
+HUMAN_JSON: bool = False
 
 # Whether to write the JSON report.  If false, the JSON structure is only used
 # internally and it is not written to disk.
-WRITE_REPORT_JSON = True
+WRITE_REPORT_JSON: bool = True
 
 # Whether to write the markdown report.  (Disabling both WRITE_REPORT_JSON and
 # WRITE_REPORT_MD may be useful when microbenching performance.)
-WRITE_REPORT_MD = True
+WRITE_REPORT_MD: bool = True
 
 # Widgets XML
-WIDGET_XML_PATH = "centrallix-doc/Widgets/widgets.xml"
+WIDGET_XML_PATH: str = "centrallix-doc/Widgets/widgets.xml"
 
 
 # =============
@@ -108,7 +108,8 @@ quoted_identifier_re = r"[\"'`]([A-Za-z_]\w*)[\"'`]"
 
 # Regexes for parsing line numbers in docs.
 doc_widget_re = re.compile(r"<widget\b([^>]*)>", re.IGNORECASE)
-doc_attr_re = re.compile(r"([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*(['\"])(.*?)\2")
+doc_widget_end_re = re.compile(r"</widget>", re.IGNORECASE)
+doc_attr_re = re.compile(r"([A-Za-z_]\w*)\s*=\s*(['\"])(.*?)\2")
 doc_prop_re = re.compile(r"<property\b[^>]*\bname\s*=\s*(['\"])([^'\"]+)\1", re.IGNORECASE)
 doc_event_re = re.compile(r"<event\b[^>]*\bname\s*=\s*(['\"])([^'\"]+)\1", re.IGNORECASE)
 doc_action_re = re.compile(r"<action\b[^>]*\bname\s*=\s*(['\"])([^'\"]+)\1", re.IGNORECASE)
@@ -169,7 +170,7 @@ class Confidence(StrEnum):
 # Reference a code location with a description of what is there.
 class Ref(TypedDict):
 	path: str
-	line: int | None
+	line: Optional[int]
 	desc: str
 
 # Stores how a widget is documented.
@@ -183,7 +184,7 @@ class WidgetDoc:
 	any_child: bool = False
 	
 	# Ref fields.
-	ref: Ref | None = None
+	ref: Optional[Ref] = None
 	property_refs: dict[str, Ref] = field(default_factory=dict[str, Ref])
 	event_refs: dict[str, Ref] = field(default_factory=dict[str, Ref])
 	action_refs: dict[str, Ref] = field(default_factory=dict[str, Ref])
@@ -235,9 +236,9 @@ class SignalImpl:
 	def update_confidence(self, confidence: Confidence) -> None:
 		self.confidence = merge_confidence(self.confidence, confidence)
 	
-	def add_param(self, param_name: str, ref: Ref):
+	def add_param(self, param_name: str, ref: Ref) -> None:
 		self.params.add(param_name)
-		return self.params_refs.setdefault(param_name, []).append(ref)
+		self.params_refs.setdefault(param_name, []).append(ref)
 
 @dataclass
 class EventImpl(SignalImpl):
@@ -300,12 +301,12 @@ class Report(TypedDict):
 
 
 # Trim names (preserves case).
-def normalize_name(name: str | None) -> str:
+def normalize_name(name: Optional[str]) -> str:
 	return (name or "").strip()
 
 
 # Normalize `widget/foo` names to canonical keys.
-def normalize_widget_name(name: str | None) -> str:
+def normalize_widget_name(name: Optional[str]) -> str:
 	text = normalize_name(name).lower()
 	if text.startswith("widget/"):
 		text = text.split("/", 1)[1]
@@ -335,24 +336,12 @@ def sorted_list(values: Iterable[str]) -> list[str]:
 	return sorted(set(values), key=lambda v: v.lower())
 
 
-# Convert character offsets to 1-based line numbers.
-def get_line_number(text: str, offset: int) -> int:
-	return text.count("\n", 0, offset) + 1
-
-
 # Build a portable source-reference object.
 def make_ref(path: str, line: Optional[int], desc: str) -> Ref:
 	return {"path": path, "line": line, "desc": desc}
 
 
-# Legacy text formatter (retained for potential plain-text output/debugging).
-def fmt_ref(ref: Ref) -> str:
-	if ref.get("line"):
-		return f"`{ref['path']}:{ref['line']}` ({ref['desc']})"
-	return f"`{ref['path']}` ({ref['desc']})"
-
-
-# De-duplicate references while preserving first-seen order.
+# Fast de-dup references.
 def unique_refs(refs: Iterable[Ref]) -> list[Ref]:
 	return list({(r["path"], r["line"]): r for r in refs}.values())
 
@@ -371,10 +360,10 @@ def ref_to_markdown_link(report_dir: Path, repo_root: Path, ref: Ref) -> str:
 
 
 # Validate/normalize child type declarations into concrete widget keys.
-def normalize_child_name(child_type: str) -> Optional[str]:
+def normalize_child_name(child_type: str) -> str:
 	text = normalize_widget_name(child_type)
-	if text in {"", "any"}: return None
-	if not re.match(identifier_re, text): return None
+	if text in {"", "any"}: return ""
+	if not re.match(identifier_re, text): return ""
 	return text
 
 
@@ -431,8 +420,9 @@ def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 				doc.any_child = True
 				continue
 			child_type = normalize_child_name(raw_child_type)
-			if child_type:
-				widget_types.add(child_type)
+			if child_type == "":
+				continue
+			widget_types.add(child_type)
 	
 	# Walk through xml text to get widget references.
 	content = path.read_text(encoding="utf-8", errors="ignore")
@@ -449,9 +439,8 @@ def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 		
 		# Manually isolate this xml widget block.
 		start = match.start()
-		end = content.find("</widget>", start)
-		if end < 0:
-			end = len(content)
+		match = doc_widget_end_re.search(content, start)
+		end = match.end() if match else len(content)
 		block = content[start:end]
 		base_line = line_map.line_number(start)
 		
@@ -460,28 +449,35 @@ def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 		for property_match in doc_prop_re.finditer(block):
 			line = line_map.line_number(start + property_match.start())
 			name = normalize_name(property_match.group(2))
+			if name == "":
+				continue
 			widget_doc.property_refs[name] = make_ref(
 				WIDGET_XML_PATH, line, "documented property"
 			)
 		for event_match in doc_event_re.finditer(block):
 			line = line_map.line_number(start + event_match.start())
 			name = normalize_name(event_match.group(2))
+			if name == "":
+				continue
 			widget_doc.event_refs[name] = make_ref(
 				WIDGET_XML_PATH, line, "documented event"
 			)
 		for action_match in doc_action_re.finditer(block):
 			line = line_map.line_number(start + action_match.start())
 			name = normalize_name(action_match.group(2))
+			if name == "":
+				continue
 			widget_doc.action_refs[name] = make_ref(
 				WIDGET_XML_PATH, line, "documented action"
 			)
 		for cm in doc_child_re.finditer(block):
 			line = line_map.line_number(start + cm.start())
 			child_name = normalize_child_name(cm.group(2))
-			if child_name:
-				widget_doc.child_refs[child_name] = make_ref(
-					WIDGET_XML_PATH, line, "documented child type"
-				)
+			if child_name == "":
+				continue
+			widget_doc.child_refs[child_name] = make_ref(
+				WIDGET_XML_PATH, line, "documented child type"
+			)
 	
 	return docs, widget_types
 
@@ -599,8 +595,8 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
 		for param_match in c_param_re.finditer(content):
 			signal_name = normalize_name(param_match.group(1))
 			param_name = normalize_name(param_match.group(2))
-			signal : SignalImpl | None = widget_impl.events.get(signal_name) or widget_impl.actions.get(signal_name)
-			if signal == None or not param_name:
+			signal: Optional[SignalImpl] = widget_impl.events.get(signal_name) or widget_impl.actions.get(signal_name)
+			if not signal or not param_name:
 				continue
 			signal.update_confidence(Confidence.STRONG)
 			signal.add_param(param_name,
@@ -805,11 +801,16 @@ def compute_report(
 			stale_widget_doc_refs[widget_name] = [doc.ref]
 			continue
 		
-		# Fallback: search for a child of this name.
+		# Fallback: Search for a child of this name.
+		found = False
 		for widget_doc in docs.values():
 			for child_name, child_ref in widget_doc.child_refs.items():
 				if child_name == widget_name:
 					stale_widget_doc_refs[widget_name] = [child_ref]
+					found = True
+					break
+			if found:
+				break
 	
 	# Build per-widget detailed diffs only for documented widgets present in code.
 	per_widget: list[PerWidgetFinding] = []
@@ -888,8 +889,11 @@ def compute_report(
 			missing_param_refs: dict[str, Ref] = {}
 			for missing_param_name in missing_param_names:
 				refs = action_impl.params_refs.get(missing_param_name, [])
-				if refs:
-					missing_param_refs[missing_param_name] = refs[0]
+				if not refs:
+					print(f"Warning: Dropped missing param \"{missing_param_name}\""
+						" on action \"{action_impl.name}\" due to missing ref.")
+					continue
+				missing_param_refs[missing_param_name] = refs[0]		
 			
 			# Check for extra params.
 			extra_param_refs: dict[str, Ref] = {}
@@ -933,10 +937,8 @@ def compute_report(
 			findings["extra_actions"].clear()
 		
 		# Add entry if errors are found.
-		errors = (len(findings["missing_events"])
-				  + len(findings["extra_events"])
-				  + len(findings["missing_actions"])
-				  + len(findings["extra_actions"]))
+		errors = (len(findings["missing_events"]) + len(findings["extra_events"])
+				+ len(findings["missing_actions"]) + len(findings["extra_actions"]))
 		if (errors > 0 or findings["incorrect_action_params"]):
 			stats["widget_errors"] += errors
 			per_widget.append(findings)
