@@ -103,7 +103,7 @@ WIDGET_XML_PATH = "centrallix-doc/Widgets/widgets.xml"
 
 # General Regexes
 identifier_re = r"^[A-Za-z0-9][A-Za-z0-9_-]*$"
-quoted_identifier_re = r"[\"'`]([A-Za-z_][A-Za-z0-9_]*)[\"'`]"
+quoted_identifier_re = r"[\"'`]([A-Za-z_]\w*)[\"'`]"
 
 
 # Regexes for parsing line numbers in docs.
@@ -121,41 +121,41 @@ doc_child_re = re.compile(r"<child\b[^>]*\btype\s*=\s*(['\"])([^'\"]+)\1", re.IG
 c_register_re = re.compile(r'wgtrAddType\(\s*[^,]+,\s*"([^"]+)"\s*\)')
 
 # Regex to find C strcpy() calls and capture the widget driver name (1).
-c_name_re = re.compile(r'strcpy\(\s*(?:[A-Za-z_][A-Za-z0-9_]\w*)\s*->\s*WidgetName\s*,\s*"([^"]+)"\s*\)')
+c_name_re = re.compile(r'strcpy\(\s*(?:[A-Za-z_]\w*)\s*->\s*WidgetName\s*,\s*"([^"]+)"\s*\)')
 
 # Regex to find C htrAddEvent() calls and capture the event name (1).
-c_event_re = re.compile(r'htrAddEvent\(\s*(?:[A-Za-z_][A-Za-z0-9_]\w*)\s*,\s*"([^"]+)"\s*\)')
+c_event_re = re.compile(r'htrAddEvent\(\s*(?:[A-Za-z_]\w*)\s*,\s*"([^"]+)"\s*\)')
 
 # Regex to find C htrAddAction() calls and capture the action name (1).
-c_action_re = re.compile(r'htrAddAction\(\s*(?:[A-Za-z_][A-Za-z0-9_]\w*)\s*,\s*"([^"]+)"\s*\)')
+c_action_re = re.compile(r'htrAddAction\(\s*(?:[A-Za-z_]\w*)\s*,\s*"([^"]+)"\s*\)')
 
 # Regex to find C htrAddParam() calls and capture the action name (1) and param name (2).
 c_param_re = re.compile(
-	r'htrAddParam\(\s*(?:[A-Za-z_][A-Za-z0-9_]\w*)\s*,\s*"([A-Za-z_][A-Za-z0-9_]+)"\s*,\s*"([A-Za-z_][A-Za-z0-9_]+)"\s*,\s*[^)]+\)'
+	r'htrAddParam\(\s*(?:[A-Za-z_]\w*)\s*,\s*"([A-Za-z_]\w*)"\s*,\s*"([A-Za-z_][A-Za-z0-9_]+)"\s*,\s*[^)]+\)'
 )
 
 # Regex to find JS ifcProbeAdd() calls and capture the returned variable name (1)
 # and list (ifEvent or ifAction) (2).
 js_add_iface_re = re.compile(
-	r"([A-Za-z_][A-Za-z0-9_]*)\s*=\s*[^;]*ifcProbeAdd\(\s*(ifEvent|ifAction)\s*\)"
+	r"([A-Za-z_]\w*)\s*=\s*[^;]*ifcProbeAdd\(\s*(ifEvent|ifAction)\s*\)"
 )
 
 # Regex to find JS Add() calls and capture the variable added (1) to and the
 # name of the event/action added (2).
 js_add_call_re = re.compile(
-	r"([A-Za-z_][A-Za-z0-9_]*)\.Add\(\s*[\"']([^\"']+)[\"']\s*(?:,\s*([A-Za-z_][A-Za-z0-9_]*))?"
+	r"([A-Za-z_]\w*)\.Add\(\s*[\"']([^\"']+)[\"']\s*(?:,\s*([A-Za-z_]\w*))?"
 )
 
 # Regex to find a JS function (fn_name) that implements an action and capture
 # the first variable argument (1), even if it is an object deconstruction, and
 # then ignore all other parameters.
 js_action_impl_re: Callable[[str], Pattern[str]] = lambda fn_name: re.compile(
-	rf"function\s+{re.escape(fn_name)}\s*\(\s*(\{{[^{{}}]*\}}|[A-Za-z_][A-Za-z0-9_]*)(?=\s*[,)])[^)]*\)\s*\{{",
+	rf"function\s+{re.escape(fn_name)}\s*\(\s*(\{{[^{{}}]*\}}|[A-Za-z_]\w*)(?=\s*[,)])[^)]*\)\s*\{{",
 	re.MULTILINE
 )
 
 # Regex to find JS that reads properties from var_name and capture the property names.
-js_property_re: Callable[[str], str] = lambda var_name: rf"\b{re.escape(var_name)}\.([A-Za-z_][A-Za-z0-9_]*)"
+js_property_re: Callable[[str], str] = lambda var_name: rf"\b{re.escape(var_name)}\.([A-Za-z_]\w*)"
 
 
 # =============
@@ -281,7 +281,7 @@ class PerWidgetFinding(TypedDict):
 	extra_actions: list[SignalIssueEntry]
 	incorrect_action_params: list[SignalIssuesEntry]
 
-# Report: Stores general summary statistics (see the top of doc-report.md).
+# Report: Stores general summary statistics (see the top of report.md).
 class ReportStats(TypedDict):
 	documented_widgets: int
 	implemented_widgets: int
@@ -984,7 +984,7 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 		f"- **Ignored widgets**: {len(IGNORED_WIDGETS)}\n"
 		f"- **Widget docs with errors**: {s['widgets_with_errors']} ({error_percent:.0%})\n"
 		f"- **Widget doc errors**: {s['widget_errors']} (~{error_rate:.2}/widget)\n"
-		f"- **Ignored errors**: {s["ignored_errors"]}\n"
+		f"- **Ignored errors**: {s['ignored_errors']}\n"
 	)
 
 	# Write global findings (aka. missing & stale widget docs).
@@ -1117,8 +1117,8 @@ def main() -> int:
 	doc_xml, wgtr_dir, c_driver_dir, js_driver_dir, output_dir = resolve_paths(
 		repo_root, args.out_dir
 	)
-	json_path = output_dir / "doc-report.json"
-	md_path = output_dir / "doc-report.md"
+	json_path = output_dir / "report.json"
+	md_path = output_dir / "report.md"
 	output_dir.mkdir(parents=True, exist_ok=True)
 	
 	# Build documented + implemented widget lists.
