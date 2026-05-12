@@ -544,7 +544,7 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
 		eager_widget_name = normalize_widget_name(file_name[6:-2])
 		if eager_widget_name == "":
 			continue
-		rel = "centrallix/htmlgen/%s" % file_name
+		relative_path = "centrallix/htmlgen/%s" % file_name
 		
 		# Read file content.
 		content = c_file.read_text(encoding="utf-8", errors="ignore")
@@ -560,7 +560,7 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
 			# Store the widget implementation.
 			widget_impl = widget_impls.setdefault(widget_name, WidgetImpl(widget_name=widget_name))
 			widget_impl.definition_refs.append(
-				make_ref(rel, line_map.line_number(widget_match.start()), "strcpy sets widget name")
+				make_ref(relative_path, line_map.line_number(widget_match.start()), "strcpy sets widget name")
 			)
 			
 			# There's no way to know which widget is the parent, so
@@ -580,31 +580,31 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
 			print(f"  Should `\"{eager_widget_name}\": \"{widget_name}\",` be added to WIDGETS_ALIASES?")
 		
 		# Parse events.
-		for event_m in c_event_re.finditer(content):
-			event_name = normalize_name(event_m.group(1))
+		for event_match in c_event_re.finditer(content):
+			event_name = normalize_name(event_match.group(1))
 			event = widget_impl.event(event_name)
 			event.found(Confidence.STRONG,
-				make_ref(rel, line_map.line_number(event_m.start()), "htrAddEvent")
+				make_ref(relative_path, line_map.line_number(event_match.start()), "htrAddEvent")
 			)
 		
 		# Parse actions.
-		for action_m in c_action_re.finditer(content):
-			action_name = normalize_name(action_m.group(1))
+		for action_match in c_action_re.finditer(content):
+			action_name = normalize_name(action_match.group(1))
 			action = widget_impl.action(action_name)
 			action.found(Confidence.STRONG,
-				make_ref(rel, line_map.line_number(action_m.start()), "htrAddAction")
+				make_ref(relative_path, line_map.line_number(action_match.start()), "htrAddAction")
 			)
 		
 		# Parse event/action params.
-		for param_m in c_param_re.finditer(content):
-			signal_name = normalize_name(param_m.group(1))
-			param_name = normalize_name(param_m.group(2))
+		for param_match in c_param_re.finditer(content):
+			signal_name = normalize_name(param_match.group(1))
+			param_name = normalize_name(param_match.group(2))
 			signal : SignalImpl | None = widget_impl.events.get(signal_name) or widget_impl.actions.get(signal_name)
 			if signal == None or not param_name:
 				continue
 			signal.update_confidence(Confidence.STRONG)
 			signal.add_param(param_name,
-				make_ref(rel, line_map.line_number(param_m.start()), "htrAddParam")
+				make_ref(relative_path, line_map.line_number(param_match.start()), "htrAddParam")
 			)
 	return widget_impls
 
