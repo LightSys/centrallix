@@ -118,3 +118,9 @@ The original script was written by Cursor across 4 commits, although every line 
 - **Step 4**: Write reports.
   - Writing `doc-report.json` is easy since the data structure is already in a JSON-like format.
   - To write `doc-report.md`, the code iterates over the internal JSON and writes human-readable markdown content from that data.
+
+
+## Future Improvement
+- Implement a better way document action params.
+  - Currently, the script guesses by looking for quoted identifiers in action descriptions.
+- Detect event param issues the same way action param issues are detected.
