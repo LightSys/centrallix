@@ -609,22 +609,25 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
 	return widget_impls
 
 # Infer JS action parameters by scanning the handler body for param accesses.
-def parse_js_action_params(js: str, js_line_map: LineMap, fn_name: str) -> list[tuple[str, int]]:
+# Returns the params list (list[tuple[str, int]] - each param maps name -> line number)
+# and returns the declaration line (int), or -1 on failure.
+def parse_js_action_params(js: str, js_line_map: LineMap, fn_name: str) -> tuple[list[tuple[str, int]], int]:
 	params: list[tuple[str, int]] = []
+	decl_line: int = -1
 	
 	# Search for the start of the JS function.
 	js_fn_decl = js_action_impl_re(fn_name).search(js)
 	if not js_fn_decl:
-		return params
+		return params, decl_line
 	param1 = js_fn_decl.group(1).strip()
 	body_start = js_fn_decl.end()
+	decl_line = js_line_map.line_number(js_fn_decl.start())
 	
 	# Basic check for parameter deconstruction.
 	if (param1.startswith("{") and param1.endswith("}")):
-		decl_line = js_line_map.line_number(js_fn_decl.start())
 		param_strs = param1[1:-1].split(",")
 		params = [(param_str.strip(), decl_line) for param_str in param_strs]
-		return params
+		return params, decl_line
 	
 	# Count braces to isolate the function body without a full JS parser.
 	# Note: Comments are parsed as code to let programmers use them to patch
@@ -647,7 +650,7 @@ def parse_js_action_params(js: str, js_line_map: LineMap, fn_name: str) -> list[
 		param_name = pm.group(1)
 		param_line = js_line_map.line_number(body_start + pm.start())
 		params.append((param_name, param_line))
-	return params
+	return params, decl_line
 
 
 # Parse JS drivers for event and action registrations (and heuristic param usage).
@@ -712,8 +715,14 @@ def parse_js(path: Path) -> dict[str, WidgetImpl]:
 				if not have_fn_name:
 					continue
 				
+				# Get action params.
+				params, decl_line = parse_js_action_params(js, line_map, fn_name)
+				if decl_line == -1:
+					continue
+				action.definition_refs.append(make_ref(rel, decl_line, "JS action implementation"))
+				
 				# Handle action params.
-				for param_name, param_line in parse_js_action_params(js, line_map, fn_name):
+				for param_name, param_line in params:
 					# Ignore private params.
 					if (param_name.startswith('_')):
 						continue
@@ -725,7 +734,7 @@ def parse_js(path: Path) -> dict[str, WidgetImpl]:
 			else: continue
 	return widget_impls
 
-# Merge two widget lists, preserving informaton from each.
+# Merge two widget lists, preserving information from each.
 def merge_widget_lists(
 	widgets1: dict[str, WidgetImpl], widgets2: dict[str, WidgetImpl]
 ) -> dict[str, WidgetImpl]:
