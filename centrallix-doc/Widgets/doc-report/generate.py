@@ -895,7 +895,7 @@ def compute_report(
 				refs = action_impl.params_refs.get(missing_param_name, [])
 				if not refs:
 					print(f"Warning: Dropped missing param \"{missing_param_name}\""
-						" on action \"{action_impl.name}\" due to missing ref.")
+						f" on action \"{action_impl.name}\" due to missing ref.")
 					continue
 				missing_param_refs[missing_param_name] = refs[0]		
 			
