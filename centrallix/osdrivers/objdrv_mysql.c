@@ -328,7 +328,7 @@ mysd_internal_GetConn(pMysdNode node)
 		    result = mysd_internal_RunQuery_conn(conn, node, "SET PASSWORD = PASSWORD('?')", password);
 		    if (result == MYSD_RUNQUERY_ERROR)
 			{
-			mssError(0, "MYSD", "Failed to update password for user [%s]: %s", username);
+			mssError(0, "MYSD", "Failed to update password for user \"%s\".", username);
 			goto err;
 			}
 		    }
@@ -1290,7 +1290,7 @@ mysd_internal_UpdateRow(pMysdData data, char* newval, int col)
 	    {
 	    mssError(0, "MYSD",
 		"Failed to update row \"%s\" (%d) to \"%s\"",
-		col, data->TData->Cols[col], newval
+		data->TData->Cols[col], col, newval
 	    );
 	    return -1;
 	    }
