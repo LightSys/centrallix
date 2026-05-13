@@ -596,6 +596,7 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
 		"MySQL Database ERROR %d: %s",
 		err, mysql_error(&conn->Handle)
 	    );
+	    /** We can't print the query.String here because it might contain credentials. **/
 	    mssError(0, "MYSD", "Failed to store MySQL query result.");
 
 	    /** Clean up. **/
@@ -691,7 +692,8 @@ mysd_internal_SafeAppend(MYSQL* conn, pXString dst, char* src)
     end:
 	if (rval != 0)
 	    {
-	    mssError(clear, "MYSD", "Failed to escape string: \"%s\".", src);
+	    /** We can't print the string because it might contain credentials. **/
+	    mssError(clear, "MYSD", "Failed to escape string.");
 	    }
 	
 	/** Clean up. **/
