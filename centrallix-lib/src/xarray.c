@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include "xarray.h"
+#include "util.h"
 #include "newmalloc.h"
 
 /************************************************************************/
@@ -408,4 +409,41 @@ int xaInsertAfter(pXArray this, int index, void* item)
     return index+1;
     }
 
+/*** Trims an xArray so that the allocated space matches the number of items
+ *** in the array.
+ *** 
+ *** @param this The array to be trimmed.
+ *** @returns 0 if successful, or -1 if an error occurs.
+ ***/
+int
+xaTrim(pXArray this)
+    {
+	/** Allocate the new internal items array. **/
+	const size_t new_size = this->nItems * sizeof(void*);
+	void* new_items = check_ptr(nmSysRealloc(this->Items, new_size));
+	if (new_items == NULL) return -1;
+	
+	/** Update the struct. **/
+	this->Items = new_items;
+	this->nAlloc = this->nItems;
+    
+    return 0;
+    }
 
+/*** Returns a new array with a shallow copy of the data of the xArray.  This
+ *** new array is allocated with `nmSysMalloc()` and is the exact length that
+ *** is needed to store the items in the xArray.
+ *** 
+ *** @param this The array to be read.
+ *** @returns The new array, or NULL if an error occurs.
+ ***/
+void**
+xaToArray(pXArray this)
+    {
+	const size_t size = this->nItems * sizeof(void*);
+	void** result = check_ptr(nmSysMalloc(size));
+	if (result == NULL) return NULL;
+	memcpy(result, this->Items, size);
+    
+    return result;
+    }
