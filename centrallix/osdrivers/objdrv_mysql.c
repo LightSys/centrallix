@@ -584,7 +584,6 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
 		"MySQL Database ERROR %d: %s",
 		mysql_errno(&conn->Handle), mysql_error(&conn->Handle)
 	    );
-	    mssError(0, "MYSD", "MySQL query failed: %s", query.String);
 	    goto query_error;
 	    }
 
@@ -597,7 +596,7 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
 		"MySQL Database ERROR %d: %s",
 		err, mysql_error(&conn->Handle)
 	    );
-	    mssError(0, "MYSD", "Failed to store result of MySQL query: %s", query.String);
+	    mssError(0, "MYSD", "Failed to store MySQL query result.");
 
 	    /** Clean up. **/
 	    if (query_result != NULL) mysql_free_result(query_result);
