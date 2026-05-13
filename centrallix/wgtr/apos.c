@@ -36,6 +36,7 @@
 #include "apos.h"
 #include "cxlib/xarray.h"
 #include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
 
 int
 aposInit()
