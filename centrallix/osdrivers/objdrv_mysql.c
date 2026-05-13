@@ -1020,7 +1020,7 @@ mysd_internal_GetRowByKey(char* key, pMysdData data)
 		data->TData->Name,
 		data
 		);
-	if (UNLIKELY(!result || result == MYSD_RUNQUERY_ERROR))
+	if (UNLIKELY(result == NULL || result == MYSD_RUNQUERY_ERROR))
 	    {
 	    mssError(0, "MYSD", "Failed to get row by key \"%s\".", key);
 	    result = NULL;
@@ -1286,7 +1286,9 @@ mysd_internal_UpdateRow(pMysdData data, char* newval, int col)
 		use_quotes,
 		data
 		);
-	if (UNLIKELY(result == NULL || result == MYSD_RUNQUERY_ERROR))
+
+	/** Note: result == null is fine because UPDATE queries don't usually return results. **/
+	if (UNLIKELY(result == MYSD_RUNQUERY_ERROR))
 	    {
 	    mssError(0, "MYSD",
 		"Failed to update row \"%s\" (%d) to \"%s\"",
@@ -1317,7 +1319,9 @@ mysd_internal_DeleteRow(pMysdData data)
 		data->TData->Name,
 		data
 		);
-	if (UNLIKELY(result == NULL || result == MYSD_RUNQUERY_ERROR))
+
+	/** Note: result == null is fine because DELETE queries don't usually return results. **/
+	if (UNLIKELY(result == MYSD_RUNQUERY_ERROR))
 	    {
 	    mssError(0, "MYSD", "Failed to delete row.");
 	    return -1;
@@ -1501,7 +1505,7 @@ mysd_internal_InsertRow(pMysdData inf, pObjTrxTree oxt)
 	    nmFree(insbuf,sizeof(XString));
 	    }
 
-    return (UNLIKELY(result == NULL || result == MYSD_RUNQUERY_ERROR))?(-1):0;
+    return (UNLIKELY(result == MYSD_RUNQUERY_ERROR))?(-1):0;
     }
 
 
@@ -2767,7 +2771,7 @@ mysdQueryDelete(void* qy_v, pObjTrxTree* oxt)
 
 	/** Run the delete. **/
 	result = mysd_internal_RunQuery(qy->Data->Node, "DELETE FROM `?` ?q", qy->Data->TData->Name, qy->Clause.String);
-	if (UNLIKELY(result == NULL || result == MYSD_RUNQUERY_ERROR))
+	if (UNLIKELY(result == MYSD_RUNQUERY_ERROR))
 	    {
 	    mssError(0, "MYSD", "Failed to run delete query.");
 	    return -1;
