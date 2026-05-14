@@ -907,16 +907,17 @@ xs_internal_QPrintf(pXString this, char* fmt, va_list vl)
 	CXSEC_VERIFY(*this);
 	str = this->String + this->Length;
 	len = this->AllocLen - this->Length;
-	pQPSession error_session = check_ptr(qpfOpenSession());
+	pQPSession error_session = qpfOpenSession(); /* Failure ignored. */
 	rval = qpfPrintf_va_internal(error_session, &str, &len, xs_internal_Grow, this, fmt, vl);
 	if (rval < 0)
 	    {
 	    fprintf(stderr, "Warning: qpfPrintf failed (error code %d) on format: \"%s\"\n", rval, fmt);
-	    qpfLogErrors(error_session);
+	    if (error_session != NULL) qpfLogErrors(error_session);
+	    else fprintf(stderr, "Detailed error info is not available.\n");
 	    }
 	else if (rval + this->Length + 1 <= this->AllocLen)
 	    this->Length += rval;
-	qpfCloseSession(error_session);
+	if (error_session != NULL) qpfCloseSession(error_session);
 	CXSEC_UPDATE(*this);
 
     CXSEC_EXIT(XS_FN_KEY);
