@@ -37,6 +37,20 @@ AC_DEFUN(CHECK_MAKEDEPEND,
     ]
 )
 
+dnl check if gcc allows __builtin_expect()
+AC_DEFUN(CHECK_BUILTIN_EXPECT,
+    [
+	AC_MSG_CHECKING(if __builtin_expect is available)
+	AC_COMPILE_IFELSE(
+	    [AC_LANG_PROGRAM([], [__builtin_expect(0, 0)])],
+	    [
+		AC_DEFINE([HAVE_BUILTIN_EXPECT], [1], [Define if __builtin_expect is available])
+		AC_MSG_RESULT([yes])
+	    ],
+	    [AC_MSG_RESULT([no])],
+	)
+    ]
+)
 
 dnl check if gcc allows -fPIC and -pg at the same time
 AC_DEFUN(CHECK_PROFILE,
