@@ -89,6 +89,7 @@ typedef struct _BN
 #define ENCODING_LATIN_1	 1
 #define ENCODING_UTF_8		 2
 #define ENCODING_CP_1252	 3
+#define ENCODING_VANCO_UTF8	 4	/* treats Windows-1252 characters as UTF-8 code points */
 
 
 /** structure used to handle data pointers (GetAttrValue, etc) **/
