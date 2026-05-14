@@ -105,19 +105,30 @@ int exp_fn_user_name(pExpression tree, pParamObjects objlist, pExpression i0, pE
 int exp_fn_internal_encoding_convert(pExpression tree, pExpression from_code_exp, pExpression to_code_exp, pExpression data_exp)
     {
     char* ret_buf = NULL;
+    char* pre_buf = NULL;
     iconv_t conv_desc = NULL;
 
 	/** check the params are valid **/
 	if ( from_code_exp == NULL || (from_code_exp->Flags & EXPR_F_NULL) != 0 || from_code_exp->DataType != DATA_T_STRING
-	    || to_code_exp == NULL || (to_code_exp->Flags & EXPR_F_NULL) != 0   || to_code_exp->DataType != DATA_T_STRING
-	    || data_exp == NULL    || (data_exp->Flags & EXPR_F_NULL) != 0      
+	    || to_code_exp == NULL || (to_code_exp->Flags   & EXPR_F_NULL) != 0 || to_code_exp->DataType   != DATA_T_STRING
 	    || (data_exp->DataType != DATA_T_STRING && data_exp->DataType != DATA_T_BINARY) )
 	    {
 	    mssError(1, "EXP", "convert(): conversion to character encoding requires (STRING, STRING, STRING|BINARY)");
 	    goto error;
 	    }
 	
+	/* If the string is null, just return NULL and exit */
+	if( data_exp == NULL || (data_exp->Flags & EXPR_F_NULL) != 0 )
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    tree->DataType = DATA_T_BINARY;
+	    return 0;
+	    }
 
+	/** Assume the converted size will be the same, and realloc to fit more as needed **/
+	char* in_buf = data_exp->String;
+	size_t data_len = (data_exp->DataType == DATA_T_BINARY)?data_exp->Size : strlen(in_buf);
+	
 	/** Assign the encoding to translate from **/
 	char* from_code;
 	switch(objStringToEncoding(from_code_exp->String))
@@ -131,6 +142,16 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression from_code_exp
 	    case ENCODING_UTF_8:
 		from_code = "utf8";
 		break;
+	    case ENCODING_VANCO_UTF8:
+		/** preprocess the input into a format usable by the conversion **/
+		if(objUnwrapUTF8(in_buf, data_len, &pre_buf, &data_len) < 0)
+		    {
+		    mssError(0,"EXP","convert(): failed to properly handle encoding '%s'", from_code_exp->String);
+		    goto error;
+		    }
+		in_buf = pre_buf;
+
+		/** fall through and continue as ENCODING_CP_1252 **/
 	    case ENCODING_CP_1252:
 		from_code = "cp1252";
 		break;
@@ -170,9 +191,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression from_code_exp
 	    goto error;
 	    }
 	
-	/** Assume the converted size will be the same, and realloc to fit more as needed **/
-	char* in_buf = data_exp->String;
-	size_t data_len = (data_exp->DataType == DATA_T_BINARY)?data_exp->Size : strlen(in_buf);
+	/** assign variables for output and to track the conversion progress **/
 	size_t in_len = data_len;
 	size_t out_len = in_len;
 	size_t ret_len = in_len; /* We will return the data as binary, so we do not need a null terminator */
@@ -192,12 +211,12 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression from_code_exp
 		switch (errno)
 		    {
 		    case EILSEQ:
-			mssError(1,"EXP","convert(): Invalid multibyte sequnece or character in string '%s' at index %d from encoding '%s'", 
-				data_exp->String, (int)(data_exp->String - in_buf), from_code);
+			mssError(1,"EXP","convert(): Invalid multibyte sequnece or character in string '%s' from encoding '%s'", 
+				data_exp->String, from_code);
 			break;
 		    case EINVAL: 
-			mssError(1,"EXP","convert(): String '%s' ends with an incomplete multibyte sequence starting at index %d from encoding '%s'", 
-				data_exp->String, (int)(data_exp->String - in_buf), from_code);
+			mssError(1,"EXP","convert(): String '%s' ends with an incomplete multibyte sequence from encoding '%s'", 
+				data_exp->String, from_code);
 			break;
 		    case E2BIG:
 			{
@@ -225,6 +244,9 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression from_code_exp
 	/** close the session **/
 	iconv_close(conv_desc);
 	conv_desc = NULL;
+	
+	/** if the encoding required preprocessing, need to free the buffer */
+	if(pre_buf != NULL) nmSysFree(pre_buf);
 
 	/** if there was space leftover, shrink it back */
 	if(out_len > 0)
@@ -244,6 +266,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression from_code_exp
     error:
 	if(ret_buf != NULL) nmSysFree(ret_buf);
 	if(conv_desc != NULL) iconv_close(conv_desc);
+	if(pre_buf != NULL) nmSysFree(pre_buf);
 	errno = 0;
     return -1;
     }
