@@ -82,8 +82,12 @@ int qpfCloseSession(pQPSession s);
 int qpfClearErrors(pQPSession s);
 unsigned int qpfErrors(pQPSession s);
 void qpfLogErrors(pQPSession s);
+int qpfNoGrow(char** str, size_t* size, size_t offs, void* arg, size_t req_size);
+int qpfSysMallocGrow(char** str, size_t* size, size_t offset, void* args, size_t req_size);
 int qpfPrintf(pQPSession s, char* str, size_t size, const char* format, ...);
 int qpfPrintf_va(pQPSession s, char* str, size_t size, const char* format, va_list ap);
+int qpfPrintf_g(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, void* grow_arg, const char* format, ...);
+int qpfPrintf_gva(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, void* grow_arg, const char* format, va_list ap);
 void qpfRegisterExt(char* ext_spec, int (*ext_fn)(), int is_source);
 
 /*** Raw interface - should only be used internally by cxlib **/
