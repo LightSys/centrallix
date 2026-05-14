@@ -347,6 +347,7 @@ int htrAddBodyItemLayerEnd(pHtSession s, int flags);
 /** Administrative functions **/
 int htrRegisterDriver(pHtDriver drv);
 int htrInitialize();
+char* htrGetErrorHTML(char* title);
 int htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSession s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info);
 int htrWrite(pHtSession s, char* buf, int len);
 int htrQPrintf(pHtSession s, char* fmt, ...);

@@ -1586,7 +1586,7 @@ htrRenderSubwidgets(pHtSession s, pWgtrNode widget, int z_level)
 		{
 		mssError(0, "HTR",
 		    "Failed to render \"%s\":\"%s\", "
-		    "child #%d/%d of \"%s\":\"%s\" (z: %d)",
+		    "child #%d/%d of \"%s\":\"%s\" (z: %d).",
 		    sub_widget->Name, sub_widget->Type,
 		    i + 1, n_sub_widgets, widget->Name, widget->Type, z_level
 		);
@@ -2019,15 +2019,28 @@ htrQPrintf(pHtSession s, char* fmt, ...)
     return rval;
     }
 
-/** Renders an error page. Used as a fallback if an error occurs during rendering. **/
-static void
-htrRenderError(pHtSession s)
+/*** Generates HTML for an error page.  Used as a fallback if an error occurs
+ *** during normal rendering.
+ *** 
+ *** @param title The title of the error page. e.g. "An error occurred!"
+ *** @returns A pointer to a new string buffer allocated with nmSysMalloc(),
+ *** 	containing data that can be sent to a browser as HTML, or NULL in the
+ *** 	rare case that an error page absolutely could not be generated.
+ ***/
+char*
+htrGetErrorHTML(char* title)
     {
     char* err_str = "Failed to fetch error.";
+    char* page_buf = NULL;
+    pXString err_xs = NULL;
     unsigned int n_lines = 1u;
+    pQPSession error_session = NULL;
+	    
+	/** Default title. **/
+	if (title == NULL) title = "An error occurred!";
 
 	/** Get the error string. **/
-	pXString err_xs = check_ptr(xsNew());
+	err_xs = check_ptr(xsNew());
 	if (err_xs == NULL) goto write_err;
 	if (check(mssStringError(err_xs)) != 0) goto write_err;
 	if (check(xsTrim(err_xs)) != 0) goto write_err;
@@ -2041,10 +2054,8 @@ htrRenderError(pHtSession s)
 	    if (err_str[i] == '\n') n_lines++;
 	    }
 
-    write_err:
-	/** Write an error HTML for the user. **/
-	if (htrQPrintf(s,
-	    "<!DOCTYPE html>"
+    write_err:;
+	const char* page_format = "<!DOCTYPE html>"
 	    "<html lang='en'>"
 	    "<head>"
 		"<title>Error</title>"
@@ -2112,9 +2123,9 @@ htrRenderError(pHtSession s)
 	    "</head>"
 	    "<body>"
 		"<h1>Uh oh!</h1>"
-		"<h2>An error occurred while rendering the application.</h2>"
+		"<h2>%STR&HTE</h2>"
 		"<p>"
-		    "Sorry for the inconvenience. If this issue persists, please contact"
+		    "Sorry for the inconvenience. If this issue persists, please contact "
 		    "your organization's tech support and provide the error below."
 		"</p>"
 		"<h3>Error message:</h3>"
@@ -2123,13 +2134,50 @@ htrRenderError(pHtSession s)
 		    "<div class='error_content'>%STR&HTE</div>"
 		"</div>"
 	    "</body>"
-	    "</html>",
-	    (int)n_lines,
-	    err_str
-	) < 0) fprintf(stderr, "Failed to send error page for error:\n%s", err_str);
+	    "</html>";
 
+	/** Allocate space for page. **/
+	size_t page_buf_size = 0lu
+	    + strlen(page_format)
+	    + 10lu /* %POS (n_lines) */
+	    + strlen(title)
+	    + strlen(err_str)
+	    + 1lu; /* Null terminator. */
+	page_buf = check_ptr(nmSysMalloc(page_buf_size));
+	if (page_buf == NULL) goto clean_up;
+
+	/** Write an error HTML for the user. **/
+	error_session = check_ptr(qpfOpenSession()); /* Failure ignored. */
+	// nmSysFree(check_ptr(nmSysMalloc(8)));
+	if (check_neg(qpfPrintf_g(
+	    error_session, &page_buf, &page_buf_size, &qpfSysMallocGrow, NULL, page_format,
+	    n_lines, title, err_str
+	)) < 0)
+	    {
+	    if (LIKELY(error_session != NULL)) qpfLogErrors(error_session);
+	    goto fail;
+	    }
+	// nmSysFree(check_ptr(nmSysMalloc(8)));
+
+	/** Success. **/
+	goto clean_up;
+
+    fail:
+	fprintf(stderr, "Failed to print error page. (Continuing...)");
+	if (LIKELY(page_buf != NULL)) nmSysFree(page_buf);
+	page_buf = NULL;
+
+    clean_up:
 	/** Clean up. **/
-	if (err_xs != NULL) xsFree(err_xs);
+	if (LIKELY(err_xs != NULL)) xsFree(err_xs);
+	if (LIKELY(error_session != NULL)) check(qpfCloseSession(error_session)); /* Failure ignored. */
+	
+	/** Final fallback chain if we STILL couldn't create an error page. **/
+	if (UNLIKELY(page_buf == NULL)) page_buf = check_ptr(nmSysStrdup("See server logs"));
+	if (UNLIKELY(page_buf == NULL)) page_buf = check_ptr(nmSysStrdup("err"));
+	if (UNLIKELY(page_buf == NULL)) page_buf = check_ptr(nmSysStrdup("!"));
+	
+	return page_buf;
     }
 
 
@@ -2314,7 +2362,11 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	if (UNLIKELY(rval < 0))
 	    {
 	    /** Render an error page to gracefully recover from the error. **/
-	    htrRenderError(s);
+	    char* error_title = "An error occurred while rendering the page.";
+	    char* error_html = check_ptr(htrGetErrorHTML(error_title));
+	    if (UNLIKELY(error_html == NULL)) error_html = error_title;
+	    check_neg(htrQPrintf(s, "%STR", error_html)); /* Failure ignored. */
+	    if (LIKELY(error_html != error_title)) nmSysFree(error_html);
 	    check(mssClearError()); /* Failure ignored. */
 	    goto end_free;
 	    }
