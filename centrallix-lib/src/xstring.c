@@ -18,7 +18,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -907,11 +907,17 @@ xs_internal_QPrintf(pXString this, char* fmt, va_list vl)
 	CXSEC_VERIFY(*this);
 	str = this->String + this->Length;
 	len = this->AllocLen - this->Length;
-	rval = qpfPrintf_va_internal(NULL, &str, &len, xs_internal_Grow, this, fmt, vl);
+	pQPSession error_session = qpfOpenSession(); /* Failure ignored. */
+	rval = qpfPrintf_va_internal(error_session, &str, &len, xs_internal_Grow, this, fmt, vl);
 	if (rval < 0)
-	    printf("WARN:  qpfPrintf returned < 0 for format '%s'\n", fmt);
+	    {
+	    fprintf(stderr, "Warning: qpfPrintf failed (error code %d) on format: \"%s\"\n", rval, fmt);
+	    if (error_session != NULL) qpfLogErrors(error_session);
+	    else fprintf(stderr, "Detailed error info is not available.\n");
+	    }
 	else if (rval + this->Length + 1 <= this->AllocLen)
 	    this->Length += rval;
+	if (error_session != NULL) qpfCloseSession(error_session);
 	CXSEC_UPDATE(*this);
 
     CXSEC_EXIT(XS_FN_KEY);
@@ -970,4 +976,3 @@ xsConcatQPrintf(pXString this, char* fmt, ...)
     CXSEC_EXIT(XS_FN_KEY);
     return rval;
     }
-
