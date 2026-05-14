@@ -112,7 +112,7 @@ function tbld_format_cell(cell, color)
 			'">' +
 			    htutil_encode(innertxt) + 
 			'</div>' +
-			((outertxt) ? ('<span style="padding:' + pad + 'px;>' + htutil_encode(outertxt) + '</span>') : '') + 
+			((outertxt) ? ('<span style="padding:' + pad + 'px;">' + htutil_encode(outertxt) + '</span>') : '') + 
 		    '</div>';
 		}
 	    else
@@ -959,7 +959,8 @@ function tbld_detail_showcontainer()
 /** @param dw The detail widget DOM node. **/
 function tbld_update_detail(dw)
     {
-    if (dw.display_for && ((dw.on_new) ? (this.table.initselect !== 2) : wgtrGetServerProperty(dw, 'show_on_new', 0)))
+    const expand = (this.table.initselect !== 2);
+    if (dw.display_for && ((dw.on_new) ? wgtrGetServerProperty(dw, 'show_on_new', 0) : expand))
 	{
 	var found=false;
 	for(var j=0; j<this.detail.length; j++)
