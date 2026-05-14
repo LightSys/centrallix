@@ -369,15 +369,20 @@ htr_internal_AddTextToArray(pXArray arr, char* txt)
     {
     int l,n,cnt;
     char* ptr;
+    const size_t block_size = 2048lu;
 
     	/** Need new block? **/
 	if (arr->nItems == 0)
 	    {
-	    ptr = (char*)check_ptr(nmMalloc(2048));
+	    ptr = (char*)check_ptr(nmMalloc(block_size));
 	    if (ptr == NULL) goto err;
 	    *(int*)ptr = 0;
 	    l = 0;
-	    if (check_neg(xaAddItem(arr, ptr)) < 0) goto err;
+	    if (check_neg(xaAddItem(arr, ptr)) < 0)
+		{
+		nmFree(ptr, block_size);
+		goto err;
+		}
 	    }
 	else
 	    {
@@ -398,11 +403,15 @@ htr_internal_AddTextToArray(pXArray arr, char* txt)
 	    *(int*)ptr = l;
 	    if (n)
 	        {
-		ptr = (char*)check_ptr(nmMalloc(2048));
+		ptr = (char*)check_ptr(nmMalloc(block_size));
 		if (ptr == NULL) goto err;
 		*(int*)ptr = 0;
 		l = 0;
-		if (check_neg(xaAddItem(arr, ptr)) < 0) goto err;
+		if (check_neg(xaAddItem(arr, ptr)) < 0)
+		    {
+		    nmFree(ptr, block_size);
+		    goto err;
+		    }
 		}
 	    }
 
