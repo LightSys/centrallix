@@ -3,6 +3,7 @@
 #include "cxlib/memstr.h"
 #include "cxlib/strtcpy.h"
 #include "json/json.h"
+#include "ht_render.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -768,25 +769,19 @@ nht_i_QPrintfConn(pNhtConn conn, int is_hdr, char* fmt, ...)
 void
 nht_i_ErrorExit(pNhtConn conn, int code, char* text)
     {
-    pXString err_message;
-
 	/** Write the standard HTTP response **/
 	nht_i_WriteResponse(conn, code, text, NULL);
 
 	/** Display error info **/
-	err_message = xsNew();
-	if (err_message)
-	    {
-	    mssStringError(err_message);
-	    fdQPrintf(conn->ConnFD, "<!doctype html>\r\n<html>\r\n<head><title>Error</title></head>\r\n<body>\r\n<h1>%POS %STR&HTE</h1>\r\n<hr>\r\n<pre>%STR&HTE</pre>\r\n</body>\r\n</html>\r\n",
-		    code,
-		    text,
-		    xsString(err_message)
-		    );
-	    xsFree(err_message);
-	    }
+	mssError(0, "NHT", "Net HTTP driver failed (error code: %d): %s", code, text);
+	char* error_title = "Error!";
+	char* error_html = check_ptr(htrGetErrorHTML(error_title));
+	if (UNLIKELY(error_html == NULL)) error_html = error_title;
+	check_neg(nht_i_WriteConn(conn, error_html, -1, 0)); /* Failure ignored. */
+	check(mssClearError()); /* Failure ignored. */
 
 	/** Shutdown the connection and free memory **/
+	if (LIKELY(error_html != error_title)) nmSysFree(error_html);
 	nht_i_FreeConn(conn);
 
     thExit(); /* no return */
@@ -1822,7 +1817,6 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
     pNhtApp app = NULL;
     pNhtAppGroup group = NULL;
     char* kname;
-    pXString err_xs;
 
 	acceptencoding=(char*)mssGetParam("Accept-Encoding");
 
@@ -2222,13 +2216,16 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		if (nhtRenderApp(conn, target_obj->Session, target_obj, url_inf, &wgtr_params, "DHTML", nsess) < 0)
 		    {
 		    mssError(0, "HTTP", "Unable to render application %s of type %s", url_inf->StrVal, ptr);
-		    err_xs = xsNew();
-		    if (err_xs)
-			{
-			mssStringError(err_xs);
-			nht_i_QPrintfConn(conn, 0, "<h1>An error occurred while constructing the application:</h1><pre>%STR&HTE\r\n</pre>", xsString(err_xs));
-			xsFree(err_xs);
-			}
+
+		    /** Render an error page to gracefully recover from the error. **/
+		    char* error_title = "An error occurred while constructing the application.";
+		    char* error_html = check_ptr(htrGetErrorHTML(error_title));
+		    if (UNLIKELY(error_html == NULL)) error_html = error_title;
+		    check_neg(nht_i_WriteConn(conn, error_html, -1, 0)); /* Failure ignored. */
+		    check(mssClearError()); /* Failure ignored. */
+
+		    /** Clean up. **/
+		    if (LIKELY(error_html != error_title)) nmSysFree(error_html);
 		    objClose(target_obj);
 		    if (tptr) nmSysFree(tptr);
 		    if (lptr) nmSysFree(lptr);
