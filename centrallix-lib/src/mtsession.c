@@ -471,13 +471,16 @@ mssEndSession(pMtSession s)
  *** @param ... Variables matching format specifiers in the format.
  ***/
 void 
-mssError(int clr, char* module, char* message, ...)
+mssError_internal(int clr, char* module, char* file, int line, char* message, ...)
     {
     char err_msg[BUFSIZ];
     unsigned int i = 0u;
     
 	/** Prevent issues from interlacing this function with prints to stdout. **/
 	check(fflush(stdout)); /* Failure ignored. */
+	
+	/** Add line number to error message. **/
+	i += snprintf(err_msg + i, sizeof(err_msg) - i, "%s:%d: ", file, line);
 	
 	/** Write the module to the start of the error message. */
 	i += snprintf(err_msg + i, sizeof(err_msg) - i, "%s: ", module);
@@ -495,9 +498,6 @@ mssError(int clr, char* module, char* message, ...)
 	/** Use standard logging without a session context, if needed. **/
 	if (log_error) 
 	    {
-	    /** Start new error stacks with a newline to make them distinct. **/
-	    if (clr && MSS.LogMethod[0] != '\0') fprintf(stderr, "\n");
-	    
 	    /** Use the requested logging method. **/
 	    if (strcmp(MSS.LogMethod, "syslog") == 0)
 		{
