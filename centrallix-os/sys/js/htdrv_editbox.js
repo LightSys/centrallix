@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2004 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -162,8 +162,10 @@ function eb_setdesc(txt)
 	({
 	"z-index":"-1",
 	"color":this.desc_fgcolor?this.desc_fgcolor:"#808080",
-	"top":($(this).height() - $(this.DescLayer).height())/2 + "px",
+	"top":"0px",
 	"left":(this.input_width() + ((this.content || this.has_focus)?4:0) + 5) + "px",
+	"height":"100%",
+	"align-content":"center",
 	"visibility":"inherit",
 	"white-space":"nowrap",
 	});
@@ -647,8 +649,9 @@ function eb_init(param)
     var imgs = pg_images(l);
     for(var i=0;i<imgs.length;i++)
 	{
-	if (imgs[i].name == 'l') l.l_img = imgs[i];
-	else if (imgs[i].name == 'r') l.r_img = imgs[i];
+	const img = imgs[i], { side } = img.dataset;
+	if (side === 'left') l.l_img = img;
+	else if (side === 'right') l.r_img = img;
 	}
     l.l_img_on = false;
     l.r_img_on = false;
@@ -699,10 +702,11 @@ function eb_init(param)
 	$(l.ContentLayer).prop('disabled', false);
 	}
     l.isFormStatusWidget = false;
-    if (cx__capabilities.CSSBox)
-	pg_addarea(l, -1,-1,$(l).width()+3,$(l).height()+3, 'ebox', 'ebox', param.isReadOnly?0:3);
-    else
-	pg_addarea(l, -1,-1,$(l).width()+1,$(l).height()+1, 'ebox', 'ebox', param.isReadOnly?0:3);
+    
+    // Add the hover area.
+    const area_adj = (cx__capabilities.CSSBox) ? 3 : 1;
+    pg_addarea(l, -1, -1, () => $(l).width() + area_adj, () => $(l).height() + area_adj, 'ebox', 'ebox', (param.isReadOnly) ? 0 : 3);
+
     if (param.form)
 	l.form = wgtrGetNode(l, param.form);
     else

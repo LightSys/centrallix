@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -205,7 +205,6 @@ function tb_setmode(layer,mode)
 	switch(mode)
 	    {
 	    case 0: /* no point no click */
-		moveTo(layer,layer.orig_x,layer.orig_y);
 		$(layer).find(".cell").css({'border-style':'solid', 'border-color':'transparent'});
 		/*if(cx__capabilities.Dom2CSS)
 		    {
@@ -226,7 +225,6 @@ function tb_setmode(layer,mode)
 		break;
 
 	    case 1: /* point, but no click */
-		moveTo(layer,layer.orig_x,layer.orig_y);
 		$(layer).find(".cell").css({'border-style':wgtrGetServerProperty(layer, 'border_style', 'outset'), 'border-color':wgtrGetServerProperty(layer, 'border_color', '#c0c0c0')});
 		/*if(cx__capabilities.Dom2CSS)
 		    {
@@ -259,7 +257,6 @@ function tb_setmode(layer,mode)
 		break;
 
 	    case 2: /* point and click */
-		moveTo(layer,layer.orig_x+1,layer.orig_y+1);
 		var bstyle = wgtrGetServerProperty(layer, 'border_style', 'outset');
 		if (bstyle == 'outset')
 		    bstyle = 'inset';

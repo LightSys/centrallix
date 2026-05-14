@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include "ht_render.h"
 #include "obj.h"
+#include "cxlib/util.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
@@ -18,7 +19,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2006 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -172,7 +173,6 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    int id;
     char cmp_path[256];
     pObject cmp_obj = NULL;
     pWgtrNode cmp_tree = NULL;
@@ -185,7 +185,6 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     char sbuf[128];
     pStruct params = NULL;
     pStruct old_params = NULL;
-    int i;
     char* path;
     int is_toplevel;
     int old_is_dynamic = 0;
@@ -194,15 +193,15 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
     char* slashptr;
     int new_sec_context = 0;
 
-	/** Verify capabilities **/
-	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
+	/** Get an id for this. **/
+	const int id = (HTCMP.idcnt++);
+	
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1,"HTCMP","Either Netscape DOM or W3C DOM1 HTML and W3C CSS support required");
-	    return -1;
+	    mssError(1, "HTCMP", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto end_free;
 	    }
-
-    	/** Get an id for this. **/
-	id = (HTCMP.idcnt++);
 
 	/** Is this a toplevel component? **/
 	is_toplevel = htrGetBoolean(tree, "toplevel", 0);
@@ -212,10 +211,6 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
         if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y = 0;
 	if (is_toplevel)
 	    {
-/*	    if (wgtrGetPropertyValue(wgtrGetRoot(tree),"width",DATA_T_INTEGER,POD(&w)) != 0)
-		w = wgtrGetContainerWidth(tree) - x;
-	    if (wgtrGetPropertyValue(wgtrGetRoot(tree),"height",DATA_T_INTEGER,POD(&h)) != 0) 
-		h = wgtrGetContainerHeight(tree) - y;*/
 	    if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0)
 		w = s->ClientInfo->AppMaxWidth - x;
 	    if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) 
@@ -275,15 +270,67 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	params = htcmp_internal_CreateParams(s, tree);
 
 	/** Any params have expressions? **/
-	if (params)
+	if (params != NULL)
 	    {
-	    for(i=0;i<params->nSubInf;i++)
+	    for (int i = 0; i < params->nSubInf; i++)
 		{
-		htrCheckAddExpression(s, tree, name, params->SubInf[i]->Name);
+		if (htrCheckAddExpression(s, tree, name, params->SubInf[i]->Name) < 0) goto end_free;
 		}
 	    }
 
-	/** If static mode, load the component **/
+
+	/** Write styles for the enclosing div. **/
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#cmp%POSbase { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"overflow:visible; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"height:"ht_flex_format"; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    ht_flex_x(x, tree),
+	    ht_flex_y(y, tree),
+	    ht_flex_w(w, tree),
+	    ht_flex_h(h, tree),
+	    z
+	) != 0)
+	    {
+	    mssError(0, "HTCMP", "Failed to write base CSS.");
+	    goto end_free;
+	    }
+	
+	/** Write enclosing div event CSS. **/
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#cmp%POSbase { "
+		"pointer-events:none; "
+	    "}\n"
+	    "\t\t#cmp%POSbase > * { "
+		"pointer-events:auto; "
+	    "}\n",
+	    id, id
+	) != 0)
+	    {
+	    mssError(0, "HTCMP", "Failed to write pointer CSS.");
+	    goto end_free;
+	    }
+	
+	/** Write linked container div to isolate children. **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "cmp%POSbase", id) != 0)
+	    {
+	    mssError(0, "HTCMP", "Failed to add object linkage.");
+	    goto end_free;
+	    }
+	if (htrAddBodyItem_va(s, "<div id=\"cmp%POSbase\">\n", id) != 0)
+	    {
+	    mssError(0, "HTCMP", "Failed to write container HTML.");
+	    goto end_free;
+	    }
+
+	/** If static mode, render the component now. **/
 	if (is_static)
 	    {
 	    /** Copy in cx__scripts value **/
@@ -304,14 +351,29 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    s->IsDynamic = 0;
 
 	    /** Init component **/
-	    htrAddScriptInit_va(s, 
-		    "    cmp_init({node:wgtrGetNodeRef(ns,\"%STR&SYM\"), is_static:true, allow_multi:false, auto_destroy:false, width:%INT, height:%INT, xpos:%INT, ypos:%INT});\n",
-		    name, w,h,x,y);
+	    if (htrAddScriptInit_va(s, 
+		"\tcmp_init({ "
+		    "node:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		    "is_static:true, "
+		    "allow_multi:false, "
+		    "auto_destroy:false, "
+		    "width:%INT, "
+		    "height:%INT, "
+		    "xpos:%INT, "
+		    "ypos:%INT, "
+		"});\n",
+		name,
+		w, h, x, y
+	    ) != 0)
+		{
+		mssError(0, "HTCMP", "Failed to write JS init call.");
+		goto end_free;
+		}
 
 	    /** Are there any templates we should use **/
 	    memcpy(&wgtr_params, s->ClientInfo, sizeof(wgtr_params));
 	    memset(wgtr_params.Templates, 0, sizeof(wgtr_params.Templates));
-	    for(i=0;i<WGTR_MAX_TEMPLATE;i++)
+	    for (int i = 0; i < WGTR_MAX_TEMPLATE; i++)
 		if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
 		    wgtr_params.Templates[i] = path;
 
@@ -330,17 +392,28 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    if (!cmp_obj)
 		{
 		mssError(0,"HTCMP","Could not open component for widget '%s'",name);
-		goto out;
+		goto end_free;
 		}
 	    cmp_tree = wgtrParseOpenObject(cmp_obj, params, &wgtr_params, 0);
 	    if (!cmp_tree)
 		{
 		mssError(0,"HTCMP","Invalid component for widget '%s'",name);
-		goto out;
+		goto end_free;
 		}
 
 	    /** Set base dir **/
-	    wgtr_params.BaseDir = nmSysStrdup(objGetPathname(cmp_obj));
+	    char* tmp = objGetPathname(cmp_obj);
+	    if (tmp == NULL)
+		{
+		mssError(0, "HTCMP", "Failed to get path name.");
+		goto end_free;
+		}
+	    wgtr_params.BaseDir = nmSysStrdup(tmp);
+	    if (wgtr_params.BaseDir == NULL)
+		{
+		mssError(1, "HTCMP", "Failed to allocate space for base dir string: \"%s\".", tmp);
+		goto end_free;
+		}
 	    slashptr = strrchr(wgtr_params.BaseDir, '/');
 	    if (slashptr && slashptr != wgtr_params.BaseDir)
 		{
@@ -351,26 +424,46 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    if (wgtrVerify(cmp_tree, &wgtr_params) < 0)
 		{
 		mssError(0,"HTCMP","Invalid component for widget '%s'",name);
-		goto out;
+		goto end_free;
 		}
-	    wgtrMoveChildren(cmp_tree, x, y);
-
+	    
 	    /** Check param references **/
 	    htcmp_internal_CheckReferences(cmp_tree, params, s->Namespace->DName);
 
 	    /** Switch namespaces **/
-	    htrAddNamespace(s, tree, wgtrGetRootDName(cmp_tree), 0);
+	    char* namespace_name = wgtrGetRootDName(cmp_tree);
+	    if (htrAddNamespace(s, tree, namespace_name, 0) != 0)
+		{
+		mssError(0, "HTCMP", "Failed to add namespace.");
+		goto end_free;
+		}
 
-	    /** Generate the component **/
-	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
-	    htrRenderWidget(s, cmp_tree, z+10);
-	    htrBuildClientWgtr(s, cmp_tree);
+	    /** Render the component-decl widget. **/
+	    if (htrAddWgtrCtrLinkage(s, tree, "_parentctr") != 0) goto end_free;
+	    if (htrRenderWidget(s, cmp_tree, z + 10) != 0)
+		{
+		mssError(0, "HTCMP", "Failed to render component tree.");
+		goto end_free;
+		}
+	    if (htrBuildClientWgtr(s, cmp_tree) != 0)
+		{
+		mssError(0, "HTCMP", "Failed to build client widget tree.");
+		goto end_free;
+		}
 
 	    /** Switch the namespace back **/
-	    htrLeaveNamespace(s);
+	    if (htrLeaveNamespace(s) != 0)
+		{
+		mssError(0, "HTCMP", "Failed to leave namespace.");
+		goto end_free;
+		}
 
 	    /** End Init component **/
-	    htrAddScriptInit_va(s, "    cmp_endinit(wgtrGetNodeRef(ns,\"%STR&SYM\"));\n", name);
+	    if (htrAddScriptInit_va(s, "\tcmp_endinit(wgtrGetNodeRef(ns, '%STR&SYM'));\n", name) != 0)
+		{
+		mssError(0, "HTCMP", "Failed to write JS init call.");
+		goto end_free;
+		}
 
 	    /** Return to previous security context **/
 	    if (new_sec_context) cxssPopContext();
@@ -385,49 +478,136 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    s->IsDynamic = old_is_dynamic;
 	    old_is_dynamic = 0;
 	    }
+	
+	/** Dynamic mode, component is loaded later by the client. **/
 	else
 	    {
-	    /** Init component **/
-	    htrAddScriptInit_va(s, 
-		    "    cmp_init({node:wgtrGetNodeRef(ns,\"%STR&SYM\"), is_top:%POS, is_static:false, allow_multi:%POS, auto_destroy:%POS, path:\"%STR&JSSTR\", loader:htr_subel(wgtrGetParentContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")), \"cmp%POS\"), width:%INT, height:%INT, xpos:%INT, ypos:%INT});\n",
-		    name, is_toplevel, allow_multi, auto_destroy, cmp_path,
-		    name, id,
-		    w, h, x, y);
-
-	    /** Add template paths **/
-	    for(i=0;i<WGTR_MAX_TEMPLATE;i++)
+	    /** Write a new scope to store variables used below. **/
+	    if (htrAddScriptInit_va(s, "\t\t{\n"
+		"\t\tconst node = wgtrGetNodeRef(ns, '%STR&SYM');\n"
+		"\t\tconst loader = htr_subel(wgtrGetParentContainer(node), 'cmp%POS');\n",
+		name, id
+	    ) != 0)
 		{
-		if ((path = wgtrGetTemplatePath(tree, i)) != NULL)
-		    htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,'%STR&SYM').templates.push('%STR&JSSTR');\n",
-			name, path);
+		mssError(0, "HTCMP", "Failed to write JS.");
+		goto end_free;
+		}
+	    
+	    /** Write initialization call. **/
+	    if (htrAddScriptInit_va(s,
+		"\t\tcmp_init({ "
+		    "node, "
+		    "loader, "
+		    "path:'%STR&JSSTR', "
+		    "is_top:%POS, "
+		    "is_static:false, "
+		    "allow_multi:%POS, "
+		    "auto_destroy:%POS, "
+		    "width:%INT, "
+		    "height:%INT, "
+		    "xpos:%INT, "
+		    "ypos:%INT, "
+		"});\n",
+		cmp_path,
+		is_toplevel, allow_multi, auto_destroy,
+		w, h, x, y
+	    ) != 0)
+		{
+		mssError(0, "HTCMP", "Failed to write JS init call.");
+		goto end_free;
 		}
 
-	    /** Set Params **/
-	    if (params)
+	    /** Write template paths. **/
+	    for (int i = 0; i < WGTR_MAX_TEMPLATE; i++)
 		{
-		for(i=0;i<params->nSubInf;i++)
+		path = wgtrGetTemplatePath(tree, i);
+		if (path == NULL) continue;
+		
+		if (htrAddScriptInit_va(s, "\t\tnode.templates.push('%STR&JSSTR');\n", path) != 0)
 		    {
-		    htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").AddParam(\"%STR&SYM\",%[null%]%[\"%STR&HEX\"%]);\n",
-			name, params->SubInf[i]->Name, !params->SubInf[i]->StrVal, params->SubInf[i]->StrVal,
-			params->SubInf[i]->StrVal);
+		    mssError(0, "HTCMP", "Failed to write JS template #%d: \"%s\".", i + 1, path);
+		    goto end_free;
 		    }
 		}
 
+	    /** Write params. **/
+	    if (params != NULL)
+		{
+		for (int i = 0; i < params->nSubInf; i++)
+		    {
+		    pStruct param = params->SubInf[i];
+		    const int is_empty_str = (param->StrVal == NULL || param->StrVal[0] == '\0');
+		    if (htrAddScriptInit_va(s,
+			"\t\tnode.AddParam('%STR&SYM', %[null%]%['%STR&HEX'%]);\n",
+			param->Name, (is_empty_str), (!is_empty_str), param->StrVal
+		    ) != 0)
+			{
+			mssError(0, "HTCMP", "Failed to write JS.");
+			goto end_free;
+			}
+		    }
+		}
+	    
+	    /** Write data to close the scope above. **/
+	    if (htrAddScriptInit(s, "\t\t}\n") != 0)
+		{
+		mssError(0, "HTCMP", "Failed to write end of JS code block.");
+		goto end_free;
+		}
+
 	    /** Dynamic mode -- load from client **/
-	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
-	    htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "cmp%POS", id, NULL, "");
-	    htrAddStylesheetItem_va(s,"\t#cmp%POS { POSITION:absolute; VISIBILITY:hidden; LEFT:0px; TOP:0px; WIDTH:0px; HEIGHT:0px; Z-INDEX:0;}\n", id);
+	    if (htrAddWgtrCtrLinkage(s, tree, "_parentctr") != 0)
+		{
+		mssError(0, "HTCMP", "Failed to add dynamic component container linkage.");
+		goto end_free;
+		}
+	    if (htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "cmp%POS", id, NULL, "") != 0)
+		{
+		mssError(0, "HTCMP", "Failed to write dynamic component HTML container.");
+		goto end_free;
+		}
+	    if (htrAddStylesheetItem_va(s,
+		"\t\t#cmp%POS { "
+		    "position:absolute; "
+		    "visibility:hidden; "
+		    "left:0px; "
+		    "top:0px; "
+		    "width:0px; "
+		    "height:0px; "
+		    "z-index:0; "
+		"}\n",
+		id
+	    ) != 0)
+		{
+		mssError(0, "HTCMP", "Failed to write dynamic component CSS.");
+		goto end_free;
+		}
 	    }
 
-	htrRenderSubwidgets(s, tree, z+1);
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto end_free;
+	
+	/** End the enclosing div. **/
+	if (htrAddBodyItem(s, "</div>") != 0)
+	    {
+	    mssError(0, "HTCMP", "Failed to write HTML closing tag.");
+	    goto end_free;
+	    }
 
+	/** Success. **/
 	rval = 0;
 
-    out:
+    end_free:
+	if (rval != 0)
+	    {
+	    mssError(0, "HTCMP",
+		"Failed to render \"%s\":\"%s\" (id: %d).",
+		tree->Name, tree->Type, id
+	    );
+	    }
+	
 	/** Clean up **/
-	if (new_sec_context) cxssPopContext();
-	if (params)
-	    stFreeInf_ne(params);
+	if (new_sec_context) check(cxssPopContext()); /* Failure ignored. */
+	if (params) check(stFreeInf_ne(params)); /* Failure ignored. */
 	if (s->IsDynamic == 0 && old_is_dynamic)
 	    s->IsDynamic = 1;
 	if (s->GraftPoint && old_graft)
@@ -441,10 +621,10 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    s->Params = old_params;
 	    old_params = NULL;
 	    }
-	if (cmp_obj) objClose(cmp_obj);
-	if (cmp_tree) wgtrFree(cmp_tree);
+	if (cmp_obj != NULL) check(objClose(cmp_obj)); /* Failure ignored. */
+	if (cmp_tree != NULL) wgtrFree(cmp_tree);
 
-    return rval;
+	return rval;
     }
 
 
@@ -481,4 +661,3 @@ htcmpInitialize()
 
     return 0;
     }
-

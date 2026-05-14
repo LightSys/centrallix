@@ -25,19 +25,19 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH&8LEN/name", "file/..\0");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/%STR&PATH&8LEN/name", "file/..\0");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH&8LEN/name", "files/../");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/%STR&PATH&8LEN/name", "files/../");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH&8LEN/name", "one/t/..");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/%STR&PATH&8LEN/name", "one/t/..");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH&8LEN/name", "one/t/...");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/%STR&PATH&8LEN/name", "one/t/...");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH&8LEN/name", "one/two/");
-	    assert(strcmp(buf+4,"/path/one/two//name") == 0);
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/%STR&PATH&8LEN/name", "one/two/");
+	    assert(strcmp((char*)buf+4,"/path/one/two//name") == 0);
 	    assert(rval == 19);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH&8LEN/name", "one/two//");
-	    assert(strcmp(buf+4,"/path/one/two//name") == 0);
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/%STR&PATH&8LEN/name", "one/two//");
+	    assert(strcmp((char*)buf+4,"/path/one/two//name") == 0);
 	    assert(rval == 19);
 	    assert(buf[26] == '\n');
 	    assert(buf[25] == '\0');
@@ -51,4 +51,3 @@ test(char** tname)
 
     return iter*6;
     }
-

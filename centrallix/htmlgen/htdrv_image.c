@@ -14,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2017 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -56,10 +56,23 @@ htimgSetup(pHtSession s)
     {
 
 	/** Global style code for all image widget "img" tags **/
-	htrAddStylesheetItem(s, "    img.wimage { display:block; position:relative; left:0px; top:0px; }\n");
+	htrAddStylesheetItem(s,
+	    "\t\timg.wimage { "
+		"display:block; "
+		"position:relative; "
+		"left:0px; "
+		"top:0px; "
+	    "}\n"
+	);
 
 	/** Global style code for all image widget "div" containers **/
-	htrAddStylesheetItem(s, "    div.wimage { visibility:inherit; position:absolute; overflow:hidden; }\n");
+	htrAddStylesheetItem(s,
+	    "\t\tdiv.wimage { "
+		"visibility:inherit; "
+		"position:absolute; "
+		"overflow:hidden; "
+	    "}\n"
+	);
 
     return 0;
     }
@@ -74,20 +87,23 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
     char name[64];
     char src[256];
     int x=-1,y=-1,w,h;
-    int id, i;
-    char *text;
+    int rval = -1;
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
-    char* aspect;
+    char* alt_text = NULL;
+    char* aspect = NULL;
+    char* default_alt_text = "";
+    char* default_aspect = "stretch";
 
-	if(!(s->Capabilities.Dom0NS || s->Capabilities.Dom1HTML))
+	/** Get an id for this. **/
+	const int id = (HTIMG.idcnt++);
+
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1,"HTTBL","Netscape DOM support or W3C DOM Level 1 HTML required");
-	    return -1;
+	    mssError(1, "HTIMG", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto end;
 	    }
-
-    	/** Get an id for this. **/
-	id = (HTIMG.idcnt++);
 
     	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
@@ -95,36 +111,28 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTIMG","Image widget must have a 'width' property");
-	    return -1;
+	    goto end;
 	    }
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    mssError(1,"HTIMG","Image widget must have a 'height' property");
-	    return -1;
+	    goto end;
 	    }
 
 	if(wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) == 0)
-	    text=nmSysStrdup(ptr);
-	else
-	    text=nmSysStrdup("");
+	    alt_text=nmSysStrdup(ptr);
+	if (alt_text == NULL) alt_text = default_alt_text;
 
 	/** Image aspect scaling: stretch or preserve **/
 	if(wgtrGetPropertyValue(tree,"aspect",DATA_T_STRING,POD(&ptr)) == 0)
 	    aspect=nmSysStrdup(ptr);
-	else
-	    aspect=nmSysStrdup("stretch");
+	if (aspect == NULL) aspect = default_aspect;
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto end;
 	strtcpy(name,ptr,sizeof(name));
 
 	/** image source **/
-	/*if (!htrCheckAddExpression(s, tree, name, "source") && wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr)) != 0)
-	    {
-	    mssError(1,"HTIMG","Image widget must have a 'source' property");
-	    nmSysFree(text);
-	    return -1;
-	    }*/
 	ptr = "";
 	htrCheckAddExpression(s, tree, name, "source");
 	wgtrGetPropertyValue(tree,"source",DATA_T_STRING,POD(&ptr));
@@ -144,43 +152,109 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    form[0]='\0';
 
-	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#img%POS { left:%INTpx; top:%INTpx; width:%POSpx; height:%POSpx; z-index:%POS; text-align:center; }\n",id,x,y,w,h,z);
-
-	/** Init image widget (?) **/
-	htrAddWgtrObjLinkage_va(s, tree, "img%POS",id);
-	htrAddScriptInit_va(s, "    im_init(wgtrGetNodeRef(ns,'%STR&SYM'), {field:'%STR&JSSTR', form:'%STR&JSSTR'});\n", 
-		name, fieldname, form);
-	htrAddScriptInclude(s, "/sys/js/htdrv_image.js", 0);
+ 	/** Link the widget to the DOM node. **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "img%POS", id) != 0) goto end;
+	
+	/** Initialize image scripts. **/
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_image.js", 0) != 0) goto end;
+	if (htrAddScriptInit_va(s,
+	    "\tim_init(wgtrGetNodeRef(ns, '%STR&SYM'), { "
+		"field:'%STR&JSSTR', "
+		"form:'%STR&JSSTR', "
+	    "});\n", 
+	    name,
+	    fieldname, form
+	) != 0)
+	    {
+	    mssError(0, "HTDT", "Failed to write JS init call.");
+	    goto end;
+	    }
 
 	/** Event Handlers **/
-	htrAddEventHandlerFunction(s, "document","MOUSEUP", "img", "im_mouseup");
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "img", "im_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "img", "im_mouseover");
-	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "img", "im_mouseout");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "img", "im_mousemove");
-
-	/** HTML body <DIV> element for the base layer. **/
-	if (!strcmp(aspect, "stretch"))
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "img", "im_mousedown") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "img", "im_mousemove") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "img", "im_mouseout") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "img", "im_mouseover") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "img", "im_mouseup") != 0) goto end;
+	
+	/** Write the style for the image container div. **/
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#img%POS { "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"height:"ht_flex_format"; "
+		"z-index:%POS; "
+		"text-align:center; "
+	    "}\n",
+	    id,
+	    ht_flex_x(x, tree),
+	    ht_flex_y(y, tree),
+	    ht_flex_w(w, tree),
+	    ht_flex_h(h, tree),
+	    z
+	) != 0)
 	    {
-	    htrAddBodyItemLayer_va(s, 0, "img%POS", id, "wimage",
-		"\n<img class=\"wimage\" id=\"im%POS\" width=\"%POS\" height=\"%POS\" src=\"%STR&HTE\">\n",
-		id, w, h, src);
+	    mssError(0, "HTDT", "Failed to write image CSS.");
+	    goto end;
 	    }
-	else // "preserve"
+
+	/** Use a style that honors the aspect ratio attribute. **/
+	char* style = (strcmp(aspect, "stretch") == 0)
+	    ? /* "stretch" */
+	    "width:100%; "
+	    "height:100%; "
+	    : /* "preserve" */
+	    "width:100%; "
+	    "height:auto; "
+	    "max-width:fit-content; "
+	    "max-height:fit-content; "
+	    "display:inline; ";
+	
+	/** Write image HTML, including the containing div. **/
+	if (htrAddBodyItemLayer_va(s, 0,
+	    "img%POS", id, "wimage",
+	    "\n<img "
+		"class='wimage' "
+		"id='im%POS' "
+		"width='%POS' "
+		"height='%POS' "
+		"style='%STR' "
+		"src='%STR&HTE' "
+		"alt='%STR&HTE' "
+	    ">\n",
+	    id,
+	    w,
+	    h,
+	    style,
+	    src,
+	    alt_text
+	) != 0)
 	    {
-	    htrAddBodyItemLayer_va(s, 0, "img%POS", id, "wimage",
-		"\n<img class=\"wimage\" id=\"im%POS\" width=\"%POS\" height=\"%POS\" style=\"max-width:fit-content; max-height:fit-content; display:inline;\" src=\"%STR&HTE\">\n",
-		id, w, h, src);
+	    mssError(0, "HTDT", "Failed to write image HTML.");
+	    goto end;
 	    }
 
-	/** Check for more sub-widgets **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto end;
 
-	nmSysFree(text);
+	/** Success. **/
+	rval = 0;
 
-    return 0;
+    end:
+	if (rval != 0)
+	    {
+	    mssError(0, "HTIMG",
+		"Failed to render \"%s\":\"%s\" (id: %d).",
+		tree->Name, tree->Type, id
+	    );
+	    }
+	
+	/** Clean up. **/
+	if (alt_text != NULL && alt_text != default_alt_text) nmSysFree(alt_text);
+	if (aspect != NULL && aspect != default_aspect) nmSysFree(aspect);
+	
+	return rval;
     }
 
 

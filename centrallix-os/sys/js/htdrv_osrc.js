@@ -2330,8 +2330,6 @@ function osrc_open_query_startat()
     else
 	this.querysize = this.replicasize;
     this.query_ended = false;
-    //this.LogStatus();
-    //console.log('OSRC ' + this.__WgtrName + ': startat ' + this.startat + ', rowcount ' + this.querysize);
     this.DoRequest('multiquery', '/', {ls__startat:this.startat, ls__autoclose_sr:1, ls__autofetch:1, ls__objmode:0, ls__notify:this.request_updates, ls__rowcount:this.querysize, ls__sql:this.query, ls__sqlparam:this.EncodeParams()}, osrc_get_qid_startat);
     }
 

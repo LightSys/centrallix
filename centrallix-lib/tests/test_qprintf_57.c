@@ -25,15 +25,15 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/to/%8STR&FILE/file", "file\0ame");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/to/%8STR&FILE/file", "file\0ame");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/to/%8STR&FILE/file", "filenam\0");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/to/%8STR&FILE/file", "filenam\0");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/to/%8STR&FILE/file", "\0ilename");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/to/%8STR&FILE/file", "\0ilename");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/to/%2STR&FILE/file", "...");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/to/%2STR&FILE/file", "...");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/to/%8STR&FILE/file", "filename");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/to/%8STR&FILE/file", "filename");
 	    assert(rval == 22);
 	    assert(buf[35] == '\n');
 	    assert(buf[34] == '\0');
@@ -47,4 +47,3 @@ test(char** tname)
 
     return iter*5;
     }
-

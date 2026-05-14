@@ -14,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -42,14 +42,6 @@
 /************************************************************************/
 
 
-/** globals **/
-static struct 
-    {
-    int		idcnt;
-    }
-    HTVBL;
-
-
 /*** htvblRender - generate the HTML code for the page.
  ***/
 int
@@ -59,15 +51,11 @@ htvblRender(pHtSession s, pWgtrNode tree, int z)
     char name[64];
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
-    int t;
-    int id, i;
+    int rval = -1;
     int n = 0;
     char* vptr = NULL;
     int is_null = 1;
     pExpression code;
-
-    	/** Get an id for this. **/
-	id = (HTVBL.idcnt++);
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -84,7 +72,7 @@ htvblRender(pHtSession s, pWgtrNode tree, int z)
 	    form[0]='\0';
 
 	/** Value of label **/
-	t = wgtrGetPropertyType(tree,"value");
+	int t = wgtrGetPropertyType(tree,"value");
 	if (t < 0 || t >= OBJ_TYPE_NAMES_CNT)
 	    {
 	    t = DATA_T_ANY;
@@ -106,29 +94,51 @@ htvblRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** widget init **/
-	htrAddScriptInit_va(s, "    vbl_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {type:\"%STR&JSSTR\", value:%[null%]%[\"%STR&JSSTR\"%]%[%INT%], field:\"%STR&JSSTR\", form:\"%STR&JSSTR\"} );\n",
-		name,
-		obj_type_names[t],
-		is_null,
-		(!is_null) && t == DATA_T_STRING, vptr,
-		(!is_null) && t == DATA_T_INTEGER, n,
-		fieldname, form);
+	if (htrAddScriptInit_va(s,
+	    "\tvbl_init(wgtrGetNodeRef(ns, '%STR&SYM'), { "
+		"type:'%STR&JSSTR', "
+		"value:%['%STR&JSSTR'%]%[%INT%]%[null%], "
+		"field:'%STR&JSSTR', "
+		"form:'%STR&JSSTR', "
+	    "});\n",
+	    name,
+	    obj_type_names[t],
+	    (!is_null && t == DATA_T_STRING), vptr,
+	    (!is_null && t == DATA_T_INTEGER), n,
+	    (is_null),
+	    fieldname, form
+	) != 0)
+	    {
+	    mssError(1, "HTVBL", "Failed to write JS init call.");
+	    goto end;
+	    }
 
 	/** JavaScript include file **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_variable.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0) != 0) goto end;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_variable.js", 0) != 0) goto end;
 
 	/** object linkages **/
-	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
+	if (htrAddWgtrCtrLinkage(s, tree, "_parentctr") != 0) goto end;
 
 	/** Check for more sub-widgets within the vbl entity. **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2);
+	if (htrRenderSubwidgets(s, tree, z + 2) != 0) goto end;
 
-	if (vptr)
-	    nmSysFree(vptr);
+	/** Success. **/
+	rval = 0;
 
-    return 0;
+    end:
+	if (rval != 0)
+	    {
+	    mssError(0, "HTVBL",
+		"Failed to render \"%s\":\"%s\".",
+		tree->Name, tree->Type
+	    );
+	    }
+	
+	/** Clean up. **/
+	if (vptr != NULL) nmSysFree(vptr);
+	
+	return rval;
     }
 
 
@@ -154,8 +164,6 @@ htvblInitialize()
 	htrRegisterDriver(drv);
 
 	htrAddSupport(drv, "dhtml");
-
-	HTVBL.idcnt = 0;
 
     return 0;
     }

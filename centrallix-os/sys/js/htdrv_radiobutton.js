@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -37,7 +37,6 @@ function rb_setvalue(v) {
 		}
 	}
 	this.clearvalue();
-	//alert('Warning: "'+v+'" is not in the radio button list.');
 }
 
 function rb_cb_getvalue(p) {
@@ -104,12 +103,8 @@ function add_radiobutton(optionPane, param) {
 	var rb = wgtrGetParent(optionPane);
 	rb.rbCount++;
 	optionPane.valueIndex = rb.rbCount;
-	/*optionPane.kind = 'radiobutton';
-	optionPane.document.layer = optionPane;*/
 	htr_init_layer(optionPane, rb, 'radiobutton');
-	//optionPane.mainlayer = rb;
 	optionPane.optionPane = optionPane;
-	optionPane.isSelected = param.selected;
 	optionPane.valueStr = param.valuestr;
 	optionPane.labelStr = param.labelstr;
 
@@ -151,8 +146,14 @@ function add_radiobutton(optionPane, param) {
 		htr_setvisibility(optionPane.unsetPane, 'inherit');
 	}
 
-	optionPane.yOffset = getRelativeY(optionPane)+getRelativeY(rb.coverPane)+getRelativeY(rb.borderPane);
-	pg_addarea(rb, getRelativeX(optionPane), optionPane.yOffset, getClipWidth(optionPane), pg_parah+4, optionPane, 'rb', 3);
+	const yOffset = getRelativeY(rb.coverPane) + getRelativeY(rb.borderPane) - 1;
+	optionPane.area = pg_addarea(rb,
+	    () => getRelativeX(optionPane) + 2,
+	    () => getRelativeY(optionPane) + yOffset,
+	    () => getRelativeW(optionPane) + 2,
+	    () => getRelativeH(optionPane) + 3,
+	    optionPane, 'rb', 3
+	);
 }
 
 function rb_getfocus(xo,yo,l,c,n,a,from_kbd)
@@ -347,8 +348,6 @@ function rb_changemode(){
 	for (var i=0;i<this.buttonList.length;i++) {
 		pg_set(this.buttonList[i].setImage, 'src', '/sys/images/checkbox_checked.gif');
 		pg_set(this.buttonList[i].unsetImage, 'src', '/sys/images/checkbox_unchecked.gif');
-		//htutil_tag_images(this.buttonList[i].optionPane.setPane, 'radiobutton', this.buttonList[i].optionPane.setPane, 'rb');	
-		//htutil_tag_images(this.buttonList[i].optionPane.unsetPane, 'radiobutton', this.buttonList[i].optionPane.unsetPane, 'rb');
 	}
 	//clear the value
 	if(this.mainlayer.selectedOption){
@@ -389,10 +388,8 @@ function rb_changemode(){
 }
 
 function radiobuttonpanel_init(param) {
-	var parentPane = param.parentPane;
-	var borderpane = param.borderPane;
-	var coverpane = param.coverPane;
-	var titlepane = param.titlePane;
+	const { parentPane, borderPane: borderpane, coverPane: coverpane, titlePane: titlepane } = param;
+
 	if (cx__capabilities.Dom1HTML)
 	    titlepane.styleobj = titlepane.getElementsByTagName('table')[0];
 	else
@@ -457,12 +454,15 @@ function radiobuttonpanel_init(param) {
 	    parentPane.form.ifcProbe(ifEvent).Hook("StatusChange",rb_changemode,parentPane);
 	}
 
+	// Values
 	var iv = parentPane.ifcProbeAdd(ifValue);
 	iv.Add("value", rb_cb_getvalue, rb_cb_setvalue);
 	iv.Add("valueindex", 'valueIndex');
 
+	// Actions
 	var ia = parentPane.ifcProbeAdd(ifAction);
 	ia.Add("SetValue", rb_action_setvalue);
+
 	return parentPane;
 }
 

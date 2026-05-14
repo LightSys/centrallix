@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -79,16 +79,21 @@ function pn_setbackground(aparam)
 
 function pn_action_resize(aparam)
     {
-    var w = aparam.Width?aparam.Width:pg_get_style(this, 'width');
-    var h = aparam.Height?aparam.Height:pg_get_style(this, 'height');
+    const { Width, Height } = aparam;
+    
+    // Log warning.
+    console.warn('Resize action used: This breaks page responsiveness.');
+    console.log(`Action Info: Width=${Width} Height=${Height} Target=`, this);
+    
+    // Resize the pane.
+    const w = Width  ?? pg_get_style(this, 'width');
+    const h = Height ?? pg_get_style(this, 'height');
     resizeTo(this, w, h);
     }
 
 function pn_action_point(aparam)
     {
-    var divs = htutil_point(this, aparam.X, aparam.Y, aparam.AtWidget, aparam.BorderColor, aparam.FillColor, this.point1, this.point2);
-    this.point1 = divs.p1;
-    this.point2 = divs.p2;
+    htr_action_point(this, aparam);
     }
 
 function pn_init(param)

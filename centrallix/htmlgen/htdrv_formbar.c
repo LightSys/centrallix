@@ -14,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2000-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2000-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -46,25 +46,41 @@
 /* 
    htfbRender - generate the HTML code for the page.
 */
-int htfbRender(pHtSession s, pWgtrNode tree, int z) {
-   int i;
+int htfbRender(pHtSession s, pWgtrNode tree, int z)
+    {
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
+	    {
+	    mssError(1,"HTFS","Netscape DOM or W3C DOM1 HTML and CSS1 support required");
+	    goto err;
+	    }
 
-   if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
-       {
-       mssError(1,"HTFS","Netscape DOM or W3C DOM1 HTML and CSS1 support required");
-       return -1;
-       }
+	/** Add container linkage. **/
+	if (htrAddWgtrCtrLinkage(s, tree, "_parentctr") != 0)
+	    {
+	    mssError(0, "HTFS", "Failed to add container linkage.");
+	    goto err;
+	    }
 
-    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
+	/** Mark this widget as not associated with a DHTML object. **/
+	tree->RenderFlags |= HT_WGTF_NOOBJECT;
 
-    /** mark this node as not being associated with a DHTML object **/
-    tree->RenderFlags |= HT_WGTF_NOOBJECT;
+	/** Render subwidgets. **/
+	if (htrRenderSubwidgets(s, tree, z + 2) != 0)
+	    {
+	    mssError(0, "HTFS", "Failed to render child widgets.");
+	    goto err;
+	    }
 
-    for (i=0;i<xaCount(&(tree->Children));i++)
-	htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2);
+	return 0;
 
-   return 0;
-}
+    err:
+	mssError(0, "HTFS",
+	    "Failed to render \"%s\":\"%s\".",
+	    tree->Name, tree->Type
+	);
+	return -1;
+    }
 
 
 /* 
@@ -72,8 +88,6 @@ int htfbRender(pHtSession s, pWgtrNode tree, int z) {
 */
 int htfbInitialize() {
    pHtDriver drv;
-   /*pHtEventAction action;
-   pHtParam param;*/
 
    /** Allocate the driver **/
    drv = htrAllocDriver();
@@ -84,14 +98,6 @@ int htfbInitialize() {
    strcpy(drv->WidgetName,"formbar");
    drv->Render = htfbRender;
 
-/*
-   htrAddEvent(drv,"Click");
-   htrAddEvent(drv,"MouseUp");
-   htrAddEvent(drv,"MouseDown");
-   htrAddEvent(drv,"MouseOver");
-   htrAddEvent(drv,"MouseOut");
-   htrAddEvent(drv,"MouseMove");
-*/
    /** Register. **/
    htrRegisterDriver(drv);
 

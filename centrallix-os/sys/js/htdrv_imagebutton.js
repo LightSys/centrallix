@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -211,6 +211,7 @@ function ib_init(param)
     l.img.kind = 'ib';
     l.cursrc = param.n;
     setClipWidth(l, w);
+    disableClippingCSS(l);
 
     l.trigger = ib_trigger;
 

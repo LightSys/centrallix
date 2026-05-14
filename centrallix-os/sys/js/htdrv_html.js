@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -240,7 +240,6 @@ function ht_init(param)
 	{
 	setClipHeight(l, getdocHeight(l));
 	}
-    pg_set_style(l, 'height', getdocHeight(l));
     if (param.width != -1)
 	{
 	setClipWidth(l, param.width);
@@ -250,7 +249,11 @@ function ht_init(param)
 	{
 	setClipWidth(l, getdocWidth(l));
 	}
-    pg_set_style(l, 'width', getdocWidth(l));
+
+    /** Clipping breaks responsive pages and is not required in modern browsers. **/
+    disableClippingCSS(l);
+    disableClippingCSS(l2);
+
     if (source.substr(0,5) == 'http:')
 	{
 	//pg_serialized_load(l, source, ht_reloaded);
@@ -289,6 +292,8 @@ function ht_init(param)
     
     //l.watch('source', ht_sourcechanged);
     pg_resize(l.parentLayer);
+    disableClippingCSS(l.parentLayer);
+    
     return l;
     }    
 

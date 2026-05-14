@@ -17,7 +17,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2007 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -65,7 +65,6 @@ typedef struct _RD
 /** globals **/
 static struct 
     {
-    int			idcnt;
     pHtRuleDefinition	RuletypeList;
     }
     HTRULE;
@@ -76,7 +75,6 @@ static struct
 int
 htruleRender(pHtSession s, pWgtrNode tree, int z)
     {
-    int id;
     char* nptr;
     char* ptr;
     pXString xs = NULL;
@@ -89,9 +87,6 @@ htruleRender(pHtSession s, pWgtrNode tree, int z)
     pExpression code;
     pHtRuleDefinition def;
     int i, found;
-
-    	/** Get an id for this. **/
-	id = (HTRULE.idcnt++);
 
 	xs = (pXString)nmMalloc(sizeof(XString));
 	if (!xs) goto error;
@@ -196,8 +191,8 @@ htruleRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 
 	/** Script Init **/
-	htrAddScriptInit_va(s, "    rl_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"%STR&JSSTR\", %STR);\n", nptr, ruletype, xs->String);
-	htrAddScriptInit_va(s, "    wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")).addRule(wgtrGetNodeRef(ns,\"%STR&SYM\"));\n", nptr, nptr);
+	htrAddScriptInit_va(s, "\trl_init(wgtrGetNodeRef(ns, '%STR&SYM'), '%STR&JSSTR', %STR);\n", nptr, ruletype, xs->String);
+	htrAddScriptInit_va(s, "\twgtrGetParent(wgtrGetNodeRef(ns, '%STR&SYM')).addRule(wgtrGetNodeRef(ns,'%STR&SYM'));\n", nptr, nptr);
 
 	/** mark this node as not being associated with a DHTML object **/
 	tree->RenderFlags |= HT_WGTF_NOOBJECT;
@@ -275,7 +270,6 @@ htruleInitialize()
 
 	htrAddSupport(drv, "dhtml");
 
-	HTRULE.idcnt = 0;
 	HTRULE.RuletypeList = NULL;
 
     return 0;

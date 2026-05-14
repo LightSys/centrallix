@@ -1,6 +1,6 @@
 //
 // Widget Tree module
-// (c) 2004-2014 LightSys Technology Services, Inc.
+// (c) 2004-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -363,7 +363,7 @@ function wgtrIsUndefined(prop)
 // wgtrGetServerProperty() - return a server-supplied property value
 function wgtrGetServerProperty(node, prop_name, def)
     {
-    var val = node.__WgtrParams[prop_name];
+    var val = node?.__WgtrParams?.[prop_name];
     if (typeof val == 'undefined')
 	return def;
     else if (typeof val == 'object' && val && val.exp)

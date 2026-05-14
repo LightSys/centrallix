@@ -14,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -59,7 +59,6 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     char main_bg[128];
     char bdr[64];
     int x=-1,y=-1,w,h;
-    int id;
     int style = 1; /* 0 = lowered, 1 = raised, 2 = none, 3 = bordered */
     char* c1;
     char* c2;
@@ -68,14 +67,15 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     int shadow_offset, shadow_radius;
     char shadow_color[128];
 
-	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
-	    {
-	    mssError(1,"HTPN","Netscape DOM or W3C DOM1 HTML and CSS support required");
-	    return -1;
-	    }
+	/** Get an id for this. **/
+	const int id = (HTPN.idcnt++);
 
-    	/** Get an id for this. **/
-	id = (HTPN.idcnt++);
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	    {
+	    mssError(1, "HTPN", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
+	    }
 
     	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
@@ -123,9 +123,9 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	strtcpy(name,ptr,sizeof(name));
 
-	htrCheckAddExpression(s, tree, name, "enabled");
-	htrCheckAddExpression(s, tree, name, "background");
-	htrCheckAddExpression(s, tree, name, "bgcolor");
+	if (htrCheckAddExpression(s, tree, name, "enabled") < 0) goto err;
+	if (htrCheckAddExpression(s, tree, name, "background") < 0) goto err;
+	if (htrCheckAddExpression(s, tree, name, "bgcolor") < 0) goto err;
 
 	/** Style of pane - raised/lowered **/
 	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0)
@@ -135,6 +135,8 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    if (!strcmp(ptr,"flat")) style = 2;
 	    if (!strcmp(ptr,"bordered")) style = 3;
 	    }
+	    
+	/** Computes styling colors. **/
 	if (style == 1) /* raised */
 	    {
 	    c1 = "white";
@@ -153,56 +155,147 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 		strtcpy(bdr,ptr,sizeof(bdr));
 	    }
 
-	/** Ok, write the style header items. **/
-	if (style == 2) /* flat */
-	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-radius: %INTpx; %STR}\n",id,border_radius,main_bg);
-	    }
+	/** Write the CSS for borders on the pane dom node. **/
+	int offset = 0;
+	if (style == 2) { /* flat, the default style, nothing to do */ }
 	else if (style == 0 || style == 1) /* lowered or raised */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color: %STR %STR %STR %STR; border-radius: %INTpx; %STR}\n",id,c1,c2,c2,c1,border_radius,main_bg);
+	    offset = -2 * box_offset;
+	    if (htrAddStylesheetItem_va(s,
+		"\t\t#pn%POSmain {"
+		    "border-style: solid; "
+		    "border-width: 1px; "
+		    "border-color: %STR %STR %STR %STR; "
+		"}\n",
+		id,
+		c1, c2, c2, c1
+	    ) != 0)
+		{
+		mssError(0, "HTPN",
+		    "Failed to write %s pane CSS.",
+		    (style == 0) ? "lowered" : "raised"
+		);
+		goto err;
+		}
 	    }
 	else if (style == 3) /* bordered */
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { POSITION:absolute; VISIBILITY:inherit; overflow: hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w-2*box_offset,h-2*box_offset,z);
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { border-style: solid; border-width: 1px; border-color:%STR&CSSVAL; border-radius: %INTpx; %STR}\n",id,bdr,border_radius,main_bg);
+	    offset = -2 * box_offset;
+	    if (htrAddStylesheetItem_va(s,
+		"\t\t#pn%POSmain {"
+		    "border-style: solid;"
+		    "border-width: 1px; "
+		    "border-color:%STR&CSSVAL; "
+		"}\n",
+		id,
+		bdr
+	    ) != 0)
+		{
+		mssError(0, "HTPN", "Failed to write bordered pane CSS.");
+		goto err;
+		}
 	    }
+	
+	/** Apply the offset to the width and height. **/
+	w += offset;
+	h += offset;
+	
+	/** Write the main CSS for the pane DOM node. **/
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#pn%POSmain {"
+		"position:absolute; "
+		"visibility:inherit; "
+		"overflow:hidden; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"height:"ht_flex_format"; "
+		"z-index:%POS; "
+		"border-radius:%INTpx; "
+		"%STR "
+	    "}\n",
+	    id,
+	    ht_flex_x(x, tree),
+	    ht_flex_y(y, tree),
+	    ht_flex_w(w, tree),
+	    ht_flex_h(h, tree),
+	    z,
+	    border_radius,
+	    main_bg
+	) != 0)
+	    {
+	    mssError(0, "HTPN", "Failed to write main CSS.");
+	    goto err;
+	    }
+
 	if (shadow_radius > 0)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#pn%POSmain { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_radius, shadow_color);
+	    if (htrAddStylesheetItem_va(s,
+		"\t\t#pn%POSmain { "
+		    "box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; "
+		"}\n",
+		id,
+		shadow_offset, shadow_offset, shadow_radius, shadow_color
+	    ) != 0)
+		{
+		mssError(0, "HTPN", "Failed to write shadow CSS.");
+		goto err;
+		}
 	    }
 
 	/** DOM linkages **/
-	htrAddWgtrObjLinkage_va(s, tree, "pn%POSmain",id);
+	if (htrAddWgtrObjLinkage_va(s, tree, "pn%POSmain", id) != 0) goto err;
 
 	/** Script include call **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_pane.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_pane.js", 0) != 0) goto err;
 
 	/** Event Handlers **/
-	htrAddEventHandlerFunction(s, "document","MOUSEUP", "pn", "pn_mouseup");
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "pn", "pn_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "pn", "pn_mouseover");
-	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "pn", "pn_mouseout");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "pn", "pn_mousemove");
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "pn", "pn_mousedown") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "pn", "pn_mousemove") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "pn", "pn_mouseout")  != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "pn", "pn_mouseover") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "pn", "pn_mouseup")   != 0) goto err;
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    pn_init({mainlayer:wgtrGetNodeRef(ns,\"%STR&SYM\"), layer:wgtrGetNodeRef(ns,\"%STR&SYM\")});\n",
-		name, name);
+	if (htrAddScriptInit_va(s,
+	    "\tpn_init({"
+		"mainlayer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+	    "});\n",
+	    name, name
+	) != 0)
+	    {
+	    mssError(0, "HTPN", "Failed to write JS init call.");
+	    goto err;
+	    }
 
 	/** HTML body <DIV> element for the base layer. **/
-	//htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\"><table width=%POS height=%POS cellspacing=0 cellpadding=0 border=0><tr><td></td></tr></table>\n",id, w-2, h-2);
-	htrAddBodyItem_va(s,"<DIV ID=\"pn%POSmain\">\n",id, w-2, h-2);
+	if (htrAddBodyItem_va(s,"<div id='pn%POSmain'>\n", id) != 0)
+	    {
+	    mssError(0, "HTPN", "Failed to write HTML opening tag.");
+	    goto err;
+	    }
 
-	/** Check for objects within the pane. **/
-	htrRenderSubwidgets(s, tree, z+2);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto err;
 
-	/** End the containing layer. **/
-	htrAddBodyItem(s, "</DIV>\n");
+	/** Write the end of the container. **/
+	if (htrAddBodyItem(s, "</div>\n") != 0)
+	    {
+	    mssError(0, "HTPN", "Failed to write HTML closing tag.");
+	    goto err;
+	    }
 
-    return 0;
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTPN",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
+	);
+	return -1;
     }
 
 

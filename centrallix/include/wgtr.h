@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2006 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -69,6 +69,7 @@ typedef struct
     int		CharWidth;
     int		CharHeight;
     int		ParagraphHeight;	/* total height of one line of text */
+    int         IsDesign;               /* 1 if the page is rendered with cx__geom=design, 0 otherwise. */
     char	AKey[256];
     char*	Templates[WGTR_MAX_TEMPLATE];
     char*	Overlays[WGTR_MAX_OVERLAY];
@@ -100,14 +101,17 @@ typedef struct _WN
     char	Namespace[64];			/** Namespace this widget and subwidgets are in **/
     int		r_x, r_y, r_width, r_height;	/** Requested geometry **/
     int		pre_x, pre_y, pre_width, pre_height;  /** pre-layout geom. **/
-    int		fl_x, fl_y, fl_width, fl_height;/** Flexibility **/
-    double  	fx, fy, fw, fh;			/** internal flexibility calculations **/
+    int		fl_x, fl_y, fl_width, fl_height;/** Flexibilities as specified by the designer **/
+    double	fx, fy, fw, fh;			/** internal flexibility calculations **/
+    double	fl_scale_x, fl_scale_y;		/** Scaled x and y flexibilities calculated for this layout. */
+    double	fl_scale_w, fl_scale_h;		/** Scaled w and h flexibilities calculated for this layout. */
+    int		fl_parent_w, fl_parent_h;	/** The expected size of the parent container, used when it flexes. */
     int		min_width, min_height;		/** absolute minimums **/
     int		x, y, width, height;		/** actual geometry **/
     int		top, bottom, left, right;	/** container offsets **/
     XArray	Properties;			/** Array of widget properties **/
     XArray	Children;			/** Array of child widgets **/
-    struct _WN* Parent;
+    struct _WN*	Parent;
     struct _WN*	Root;
     int		CurrProperty;			/** Property to return on next call to wgtNextProperty **/
     int		CurrChild;			/** Child to return on next call to wgtrNextChild **/

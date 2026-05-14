@@ -41,7 +41,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -54,13 +54,14 @@
 /* Description:								*/
 /*									*/
 /* The MTASK Multithreading Tasking Module provides non-preemptive	*/
-/* threading services for Centrallix.  It has been shown to be useable	*/
+/* threading services for Centrallix.  It has been shown to be usable	*/
 /* on a variety of platforms, although the values for MT_TASKSEP may	*/
 /* sometimes need to be adjusted.  This module does NOT provide for	*/
 /* kernel threads or for preemptive threading.				*/
 /************************************************************************/
 
 
+#include "expect.h"
 #include "newmalloc.h"
 #include "mtask.h"
 #include "xstring.h"
@@ -694,7 +695,10 @@ int
 r_mtRun_PokeStack()
     {
     char buf[MT_MAX_STACK - MT_TASKSEP*2];
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuninitialized"
     buf[0] = buf[0];
+#pragma GCC diagnostic pop
     return 0;
     }
 
@@ -705,9 +709,15 @@ r_mtRun_Spacer()
      ** it needs to be in order for MTASK to work.  DO NOT OPTIMIZE
      ** THIS MODULE!!!!  The bogus assignment is added to keep gcc -Wall
      ** happy (and silent)....
+     ** 
+     ** Edit (Israel): It wasn't very happy, so I added #pragma gcc directives
+     ** to silence this warning when compiling.
      **/
     char buf[MT_TASKSEP];
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuninitialized"
     buf[MT_TASKSEP-1] = buf[MT_TASKSEP-1];
+#pragma GCC diagnostic pop
 
     /*mprotect((char*)((int)(buf-MT_MAX_STACK+MT_TASKSEP*2+4095) & ~4095), MT_TASKSEP/2, PROT_NONE);*/
     MTASK.CurrentThread->Stack = (unsigned char*)buf;
@@ -730,9 +740,15 @@ r_mtRunStartFn()
      ** it needs to be in order for MTASK to work.  DO NOT OPTIMIZE
      ** THIS MODULE!!!!  The bogus assignment is added to keep gcc -Wall
      ** happy.
+     ** 
+     ** Edit (Israel): It wasn't very happy, so I added #pragma gcc directives
+     ** to silence this warning when compiling.
      **/
     char buf[MT_MAX_STACK];
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuninitialized"
     buf[MT_MAX_STACK-1] = buf[MT_MAX_STACK-1];
+#pragma GCC diagnostic pop
 
     /*if (r_newidx < 0) return 0;*/
     if (--r_newidx) r_mtRunStartFn();
@@ -2208,8 +2224,8 @@ thClearFlags(pThread thr, int flags)
 int
 thExcessiveRecursion()
     {
-    unsigned char buf[1];
-    return (MTASK.CurrentThread->Stack - buf > MT_STACK_HIGHWATER);
+    const unsigned char stack_ptr[1];
+    return UNLIKELY(MTASK.CurrentThread->Stack - stack_ptr > MT_STACK_HIGHWATER);
     }
 
 
@@ -3407,7 +3423,7 @@ netGetRemotePort(pFile net_filedesc)
     }
 
 
-/*** NETCONNECTTCP creats a client socket and connects it to a
+/*** NETCONNECTTCP creates a client socket and connects it to a
  *** server on a given TCP service/port and host name.  The flag
  *** NET_U_NOBLOCK causes the request to return immediately even
  *** if the connection is still trying to establish.  Further
@@ -4265,4 +4281,3 @@ syGetSem(pSemaphore sem, int cnt, int flags)
 
     return code;
     }
-

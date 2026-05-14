@@ -25,11 +25,11 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 31, "/path/to/%STR&FILE/file", "myfilename.sbd");
-	    qpfPrintf(NULL, buf+4, 31, "/path/to/%STR&FILE/file", "myfilename.sbd");
-	    qpfPrintf(NULL, buf+4, 31, "/path/to/%STR&FILE/file", "myfilename.sbd");
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/to/%STR&FILE/file", "myfilename.sbd");
-	    assert(!strcmp(buf+4, "/path/to/myfilename.sbd/file"));
+	    qpfPrintf(NULL, (char*)buf+4, 31, "/path/to/%STR&FILE/file", "myfilename.sbd");
+	    qpfPrintf(NULL, (char*)buf+4, 31, "/path/to/%STR&FILE/file", "myfilename.sbd");
+	    qpfPrintf(NULL, (char*)buf+4, 31, "/path/to/%STR&FILE/file", "myfilename.sbd");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/to/%STR&FILE/file", "myfilename.sbd");
+	    assert(!strcmp((char*)buf+4, "/path/to/myfilename.sbd/file"));
 	    assert(rval == 28);
 	    assert(buf[35] == '\n');
 	    assert(buf[34] == '\0');
@@ -43,4 +43,3 @@ test(char** tname)
 
     return iter*4;
     }
-
