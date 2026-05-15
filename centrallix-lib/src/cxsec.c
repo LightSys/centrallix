@@ -1,3 +1,4 @@
+#define __STDC_WANT_LIB_EXT1__ 1
 #ifdef HAVE_CONFIG_H
 #include "cxlibconfig-internal.h"
 #endif
@@ -185,13 +186,13 @@ cxsecVerifySymbol_n(const char* sym, size_t n)
 void
 cxsecShred(void* data, size_t n_bytes)
     {
-#ifdef MEMSET_EXPLICIT
+#ifdef HAVE_MEMSET_EXPLICIT
 #define CXSEC_FOUND
 	memset_explicit(data, 0, n_bytes);
 	return;
 #endif
 
-#ifdef MEMSET_S
+#ifdef HAVE_MEMSET_S
 #define CXSEC_FOUND
 	memset_s(data, n_bytes, 0, n_bytes);
 	return;
