@@ -185,8 +185,29 @@ cxsecVerifySymbol_n(const char* sym, size_t n)
 void
 cxsecShred(void* data, size_t n_bytes)
     {
+#ifdef MEMSET_EXPLICIT
+#define CXSEC_FOUND
+	memset_explicit(data, 0, n_bytes);
+	return;
+#endif
+
+#ifdef MEMSET_S
+#define CXSEC_FOUND
+	memset_s(data, n_bytes, 0, n_bytes);
+	return;
+#endif
+
+#ifdef HAVE_EXPLICIT_BZERO
+#define CXSEC_FOUND
+	explicit_bzero(data, n_bytes);
+	return;
+#endif
+
+#ifndef CXSEC_FOUND
+#undef CXSEC_FOUND
 	memset(data, 0, n_bytes);
 	*(volatile uint8_t*)data = *(volatile uint8_t*)data;
-    
+#endif
+
     return;
     }
