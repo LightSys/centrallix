@@ -4,6 +4,9 @@
 #include "cxsec.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <string.h>
 #include <ctype.h>
 
 /************************************************************************/
@@ -68,6 +71,7 @@ cxsecInitDS(unsigned long* start, unsigned long* end)
     return;
     }
 
+
 void
 cxsecVerifyDS(unsigned long* start, unsigned long* end, char* file, int line)
     {
@@ -86,6 +90,7 @@ cxsecVerifyDS(unsigned long* start, unsigned long* end, char* file, int line)
 	}
     return;
     }
+
 
 void
 cxsecUpdateDS(unsigned long* start, unsigned long* end, char* file, int line)
@@ -137,6 +142,7 @@ cxsecVerifySymbol(const char* sym)
     return 0;
     }
 
+
 int
 cxsecVerifySymbol_n(const char* sym, size_t n)
     {
@@ -163,3 +169,24 @@ cxsecVerifySymbol_n(const char* sym, size_t n)
     return 0;
     }
 
+
+/*** cxssShred() - Erase the given data so that it is no longer readable
+ *** even in raw memory.  This is the same as calling memset_explicit(),
+ *** except that this function works before C23, when memset_explicit()
+ *** was added.
+ *** 
+ *** Also, using this function signifies the intent to scrub possibly
+ *** sensitive data, which makes code more readable.
+ *** 
+ *** @param data A pointer to the data buffer to be erased.
+ *** @param n_bytes The number of bytes allocated to the data buffer.
+ *** 	Causes undefined behavior if incorrect.
+ ***/
+void
+cxsecShred(void* data, size_t n_bytes)
+    {
+	memset(data, 0, n_bytes);
+	*(volatile uint8_t*)data = *(volatile uint8_t*)data;
+    
+    return;
+    }
