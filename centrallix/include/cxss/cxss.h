@@ -129,7 +129,7 @@ int cxssHexify(unsigned char* bindata, size_t bindatalen, char* hexdata, size_t 
 int cxss_i_Hexify(unsigned char* bindata, size_t bindatalen, char* hexdata, size_t hexdatalen);
 int cxssGenerateKey(unsigned char* key, size_t n_bytes);
 int cxssGenerateHexKey(char* hexkey, size_t len);
-int cxssShred(unsigned char* data, size_t n_bytes);
+void cxssShred(void* data, size_t n_bytes);
 int cxssAddEntropy(unsigned char* data, size_t n_bytes, int entropy_bits_estimate);
 
 /*** Context/Authentication/Endorsement stack functions ***/
@@ -170,4 +170,3 @@ int cxssAuthorizeSpec(char* objectspec, int access_type, int log_mode);
 int cxssAuthorize(char* domain, char* type, char* path, char* attr, int access_type, int log_mode);
 
 #endif /* not defined _CXSS_H */
-
