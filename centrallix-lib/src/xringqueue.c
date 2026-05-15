@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include "cxsec.h"
 #include "xringqueue.h"
 #include "newmalloc.h"
 
@@ -53,7 +54,7 @@ xrqDeInit(pXRingQueue this)
 
 	/** Free the items **/
 	nmSysFree(this->Items);
-	memset(this,0,sizeof(XRingQueue));
+	cxsecShred(this,sizeof(XRingQueue));
 
     return 0;
     }
@@ -81,7 +82,7 @@ xrqEnqueue(pXRingQueue this, void* item)
 		memcpy(ptr+this->nAlloc,ptr,(this->nextIn)*sizeof(void*));
 
 		/** zero out it's old location to be safe **/
-		memset(ptr,0,sizeof(void*)*this->nextIn);
+		cxsecShred(ptr,sizeof(void*)*this->nextIn);
 
 		/** update the location of nextIn **/
 		this->nextIn+=this->nAlloc;
@@ -138,4 +139,3 @@ xrqCount(pXRingQueue this)
     {
     return ((this->nextIn-this->nextOut)+this->nAlloc)%this->nAlloc;
     }
-
