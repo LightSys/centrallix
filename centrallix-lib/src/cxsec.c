@@ -205,8 +205,9 @@ cxsecShred(void* data, size_t n_bytes)
 
 #ifndef CXSEC_FOUND
 #undef CXSEC_FOUND
-	memset(data, 0, n_bytes);
-	*(volatile uint8_t*)data = *(volatile uint8_t*)data;
+	volatile uint8_t* ptr = (volatile uint8_t*)data;
+	for (size_t i = 0; i < n_bytes; i++)
+	    ptr[i] = 0;
 #endif
 
     return;
