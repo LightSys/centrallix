@@ -52,6 +52,62 @@ AC_DEFUN(CHECK_BUILTIN_EXPECT,
     ]
 )
 
+dnl check if memset_explicit(), memset_s(), explicit_bzero() are available.
+AC_DEFUN(CHECK_MEMSET,
+    [
+	AC_MSG_CHECKING(if memset_explicit is available)
+	AC_COMPILE_IFELSE(
+	    [AC_LANG_PROGRAM(
+		[#include <string.h>],
+		[
+		    char buf[16];
+		    memset_explicit(buf, 0, sizeof(buf));
+		]
+	    )],
+	    [
+		AC_DEFINE([HAVE_MEMSET_EXPLICIT], [1], [Define if memset_explicit is available])
+		AC_MSG_RESULT([yes])
+	    ],
+	    [AC_MSG_RESULT([no])]
+	)
+	
+	AC_MSG_CHECKING(if memset_s is available)
+	AC_COMPILE_IFELSE(
+	    [AC_LANG_PROGRAM(
+		[
+		    #define __STDC_WANT_LIB_EXT1__ 1
+		    #include <string.h>
+		],
+		[
+		    char buf[16];
+		    memset_s(buf, sizeof(buf), 0, sizeof(buf));
+		]
+	    )],
+	    [
+		AC_DEFINE([HAVE_MEMSET_S], [1], [Define if memset_s is available])
+		AC_MSG_RESULT([yes])
+	    ],
+	    [AC_MSG_RESULT([no])]
+	)
+	
+	AC_MSG_CHECKING(if explicit_bzero is available)
+	    AC_COMPILE_IFELSE(
+		[AC_LANG_PROGRAM(
+		    [#include <string.h>],
+		    [
+			char buf[16];
+			explicit_bzero(buf, sizeof(buf));
+		    ]
+		)],
+		[
+		    AC_DEFINE([HAVE_EXPLICIT_BZERO], [1], [Define if explicit_bzero is available])
+		    AC_MSG_RESULT([yes])
+		],
+		[AC_MSG_RESULT([no])]
+	    )
+    ]
+)
+
 dnl check if gcc allows -fPIC and -pg at the same time
 AC_DEFUN(CHECK_PROFILE,
     [
