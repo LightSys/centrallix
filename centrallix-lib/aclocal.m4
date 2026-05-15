@@ -56,12 +56,17 @@ dnl check if memset_explicit(), memset_s(), explicit_bzero() are available.
 AC_DEFUN(CHECK_MEMSET,
     [
 	AC_MSG_CHECKING(if memset_explicit is available)
-	AC_COMPILE_IFELSE(
+	AC_RUN_IFELSE(
 	    [AC_LANG_PROGRAM(
 		[#include <string.h>],
 		[
-		    char buf[16];
+		    char buf[[16]];
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			buf[[i]] = i;
 		    memset_explicit(buf, 0, sizeof(buf));
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			if (buf[[i]] != 0)
+			    return -1;
 		]
 	    )],
 	    [
@@ -72,15 +77,20 @@ AC_DEFUN(CHECK_MEMSET,
 	)
 	
 	AC_MSG_CHECKING(if memset_s is available)
-	AC_COMPILE_IFELSE(
+	AC_RUN_IFELSE(
 	    [AC_LANG_PROGRAM(
 		[
 		    #define __STDC_WANT_LIB_EXT1__ 1
 		    #include <string.h>
 		],
 		[
-		    char buf[16];
+		    char buf[[16]];
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			buf[[i]] = i;
 		    memset_s(buf, sizeof(buf), 0, sizeof(buf));
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			if (buf[[i]] != 0)
+			    return -1;
 		]
 	    )],
 	    [
@@ -91,20 +101,25 @@ AC_DEFUN(CHECK_MEMSET,
 	)
 	
 	AC_MSG_CHECKING(if explicit_bzero is available)
-	    AC_COMPILE_IFELSE(
-		[AC_LANG_PROGRAM(
-		    [#include <string.h>],
-		    [
-			char buf[16];
-			explicit_bzero(buf, sizeof(buf));
-		    ]
-		)],
+	AC_RUN_IFELSE(
+	    [AC_LANG_PROGRAM(
+		[#include <string.h>],
 		[
-		    AC_DEFINE([HAVE_EXPLICIT_BZERO], [1], [Define if explicit_bzero is available])
-		    AC_MSG_RESULT([yes])
-		],
-		[AC_MSG_RESULT([no])]
-	    )
+		    char buf[[16]];
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			buf[[i]] = i;
+		    explicit_bzero(buf, sizeof(buf));
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			if (buf[[i]] != 0)
+			    return -1;
+		]
+	    )],
+	    [
+		AC_DEFINE([HAVE_EXPLICIT_BZERO], [1], [Define if explicit_bzero is available])
+		AC_MSG_RESULT([yes])
+	    ],
+	    [AC_MSG_RESULT([no])]
+	)
     ]
 )
 
