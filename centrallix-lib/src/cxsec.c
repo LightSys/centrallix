@@ -185,9 +185,9 @@ cxsecVerifySymbol_n(const char* sym, size_t n)
 void
 cxsecShred(void* data, size_t n_bytes)
     {
-	memset(data, 0, n_bytes);
-	if (n_bytes > 0)
-	    ((volatile uint8_t*)data)[n_bytes - 1];
+	volatile uint8_t* ptr = (volatile uint8_t*)data;
+	for (size_t i = 0; i < n_bytes; i++)
+	    ptr[i] = 0;
 
     return;
     }
