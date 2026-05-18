@@ -4330,6 +4330,8 @@ else
 
 fi
 
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $WITH_VALGRIND" >&5
+$as_echo "$WITH_VALGRIND" >&6; }
     if test "$WITH_VALGRIND" = "yes"; then
 	if test "$WITH_OPTIMIZATION" = "yes"; then
 	    as_fn_error $? "Valgrind integration and Optimization are mutually exclusive; please at most specify one or the other but not both" "$LINENO" 5
