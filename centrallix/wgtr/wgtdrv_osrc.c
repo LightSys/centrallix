@@ -75,7 +75,6 @@ wgtosrcInitialize()
 
 	wgtrRegisterDriver(name, wgtosrcVerify, wgtosrcNew);
 	wgtrAddType(name, "osrc");
-	wgtrAddType(name, "osrc-rule");
 
 	return 0;
     }

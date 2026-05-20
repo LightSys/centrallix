@@ -123,17 +123,17 @@ htfuInitialize()
 	drv->Render = htfuRender;
 	
 	/** Add actions **/
-	htrAddAction(drv,"Reset");
+	htrAddAction(drv,"Clear");
 	htrAddAction(drv,"Prompt");
 	htrAddAction(drv,"Submit");
 	
-	/** Add event **/
+	/** Add events **/
 	htrAddEvent(drv,"DataChange");
 	htrAddParam(drv,"DataChange","NewValue",DATA_T_STRING);
 	htrAddParam(drv,"DataChange","OldValue",DATA_T_STRING);
-    
-	htrAddEvent(drv,"Success");
-	htrAddParam(drv,"Success","data",DATA_T_ARRAY);
+	htrAddEvent(drv,"UploadComplete");
+	htrAddEvent(drv,"UploadError");
+	htrAddEvent(drv,"Change");
 
 	/** Register. **/
 	htrRegisterDriver(drv);
