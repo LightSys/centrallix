@@ -16,7 +16,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2010 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -277,7 +277,8 @@ mqobAnalyzeAfterGroup(pQueryStatement stmt)
 			mssError(1, "MQOB", "Too many ORDER BY expressions (max %d)", MQ_MAX_ORDERBY);
 			goto error;
 			}
-		    qe->OrderBy[n_orderby++] = exp_internal_CopyTree(order_item->Expr);
+		    pExpression expr = order_item->Expr;
+		    qe->OrderBy[n_orderby++] = (expr != NULL) ? exp_internal_CopyTree(expr) : NULL;
 		    }
 		}
 	    }
