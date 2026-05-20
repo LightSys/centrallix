@@ -277,8 +277,8 @@ mqobAnalyzeAfterGroup(pQueryStatement stmt)
 			mssError(1, "MQOB", "Too many ORDER BY expressions (max %d)", MQ_MAX_ORDERBY);
 			goto error;
 			}
-		    pExpression expr = order_item->Expr;
-		    qe->OrderBy[n_orderby++] = (expr != NULL) ? exp_internal_CopyTree(expr) : NULL;
+		    if (order_item->Expr == NULL) continue;
+		    qe->OrderBy[n_orderby++] = exp_internal_CopyTree(order_item->Expr);
 		    }
 		}
 	    }
