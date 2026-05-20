@@ -3860,11 +3860,27 @@ myTabControl "widget/tab"
 
 			<child type="widget/table-column">
 
-				<childproperty name="align" type="string">The alignment of the column: "left" or "right".</childproperty>
+				<childproperty name="align" type="string">The alignment of the column: "left", "center", or "right".</childproperty>
 
-				<childproperty name="caption_fieldname" type="string">It is a pseudonym for the fieldname.</childproperty>
+				<childproperty name="fieldname" type="string">The field name that this column will use to get data.</childproperty>
 
-				<childproperty name="caption_textcolor" type="string">The color of the caption_fieldname.</childproperty>
+				<childproperty name="value" type="string">Not documented.</childproperty>
+
+				<childproperty name="textcolor" type="string">The color of the text displayed in this column.</childproperty>
+
+				<childproperty name="caption_align" type="string">The alignment of the caption in the column: "left", "center", or "right".</childproperty>
+
+				<childproperty name="caption_fieldname" type="string">The field name that this column will use to get caption data.</childproperty>
+
+				<childproperty name="caption_value" type="string">Not documented.</childproperty>
+
+				<childproperty name="caption_textcolor" type="string">The color of the captions in this column.</childproperty>
+
+				<childproperty name="caption_font_size" type="string">The font size of thecaption text.</childproperty>
+
+				<childproperty name="caption_style" type="string">Not documented.</childproperty>
+
+				<childproperty name="caption_wrap" type="string">Determines if the caption text will wrap around obstacles.</childproperty>
 
 				<childproperty name="group_by" type="string">Acts as a boolean to determine if items are group able.</childproperty>
 
@@ -3874,9 +3890,17 @@ myTabControl "widget/tab"
 
 				<childproperty name="type" type="string">The type of the column: "text", "check", or "image".  "text" is a normal column, and displays the textual value of the data element.  "check" displays a checkmark if the data is non-zero (integers) or for strings if the value is non-empty and not "N" or "No".  "image" displays the image referred to by the pathname contained in the data value.</childproperty>
 
+				<childproperty name="image_maxwidth" type="integer">The max width of the image displayed when type=image.</childproperty>
+
+				<childproperty name="image_maxheight" type="integer">The max height of the image displayed when type=image.</childproperty>
+
+				<childproperty name="style" type="string">Not documented.</childproperty>
+
 				<childproperty name="width" type="integer">width of the column.</childproperty>
 
 				<childproperty name="wrap" type="string">Determines if text can wrap around an obstacle.</childproperty>
+
+				<childproperty name="visible" type="integer">Set this to 0 to hide the column from the table.</childproperty>
 
 			</child>
 
