@@ -3904,7 +3904,17 @@ myTabControl "widget/tab"
 
 			</child>
 
-			<child type="table-row-detail" />
+			<child type="table-row-detail">
+
+				<childproperty name="width" type="integer">Not documented.</childproperty>
+
+				<childproperty name="height" type="integer">The height of the table row detail. (This will expand the height of the selected row when the widget appears.)</childproperty>
+
+				<childproperty name="display_for" type="integer">Specify 0 to hide the row-detail (useful for creating multiple widgets and picking between them dynamically). Support run_client().</childproperty>
+
+				<childproperty name="show_on_new" type="integer">Specify 1 to make new rows show their table-row-detail when added (deault: 0).</childproperty>
+
+			</child>
 
 		</children>
 
