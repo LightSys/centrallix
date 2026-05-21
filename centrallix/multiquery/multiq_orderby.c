@@ -271,7 +271,7 @@ mqobAnalyzeAfterGroup(pQueryStatement stmt)
 		order_item = (pQueryStructure)(order_qs->Children.Items[i]);
 		if (order_item == NULL || order_item->Expr == NULL) continue;
 		
-		if (sep_groupby || (order_item->Expr && order_item->Expr->AggLevel == 1))
+		if (sep_groupby || order_item->Expr->AggLevel == 1)
 		    {
 		    /** Found one.  Squirrel it away in our order-by list. **/
 		    if (n_orderby >= MQ_MAX_ORDERBY)
