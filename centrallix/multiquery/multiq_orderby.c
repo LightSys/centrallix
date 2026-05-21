@@ -269,6 +269,8 @@ mqobAnalyzeAfterGroup(pQueryStatement stmt)
 	    for(i=0;i<order_qs->Children.nItems;i++)
 		{
 		order_item = (pQueryStructure)(order_qs->Children.Items[i]);
+		if (order_item == NULL || order_item->Expr == NULL) continue;
+		
 		if (sep_groupby || (order_item->Expr && order_item->Expr->AggLevel == 1))
 		    {
 		    /** Found one.  Squirrel it away in our order-by list. **/
@@ -277,7 +279,6 @@ mqobAnalyzeAfterGroup(pQueryStatement stmt)
 			mssError(1, "MQOB", "Too many ORDER BY expressions (max %d)", MQ_MAX_ORDERBY);
 			goto error;
 			}
-		    if (order_item->Expr == NULL) continue;
 		    qe->OrderBy[n_orderby++] = exp_internal_CopyTree(order_item->Expr);
 		    }
 		}
