@@ -22,11 +22,18 @@
 /************************************************************************/
 
 
-/*** strtcat() - truncating string concatenation
- ***
- *** Appends to dst, being sure to not overflow the given dstlen size.
- *** Returns number of bytes actually copied, including null terminator.
- *** If truncated, returns -(bytes copied).
+/*** Truncating string concatenation.
+ *** 
+ *** Appends the source string to the destination string, truncating the data
+ *** if needed to avoid overflowing the destination buffer.
+ *** 
+ *** @param dst A pointer to the destination buffer.
+ *** @param src A pointer to the source buffer to read from.
+ *** @param dstlen The total allocated memory of the destination buffer (not
+ *** 	the length of available space), used to avoid writing off the end of
+ *** 	the buffer.
+ *** @returns number of bytes actually copied, including null terminator.  If
+ *** 	truncated, returns `-(bytes copied)`.
  ***/
 int
 strtcat(char* dst, const char* src, size_t dstlen)
@@ -46,10 +53,18 @@ strtcat(char* dst, const char* src, size_t dstlen)
     }
 
 
-/*** strtcpy() - truncating string copy
- ***
- *** returns number of bytes actually copied (including null terminator)
- *** if truncated, returns -(bytes copied), which is the same as -(dstlen).
+/*** Truncating string copy.
+ *** 
+ *** Truncates written data if the source data is too long to fit into the
+ *** allocated destination buffer.
+ *** 
+ *** @param dst A pointer to the destination buffer.
+ *** @param src A pointer to the source buffer to read from.
+ *** @param dstlen The length of the destination buffer, used to avoid writing
+ *** 	off the end of the allocated memory.
+ *** @returns The number of bytes actually copied (including null terminator).
+ *** 	If the data is truncated, returns `-(bytes copied)`, which is the same
+ *** 	as `-(dstlen)`.
  ***/
 int
 strtcpy(char* dst, const char* src, size_t dstlen)
