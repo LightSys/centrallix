@@ -1313,7 +1313,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		if (objClose(obj) < 0) mssPrintError(TESTOBJ.Output);
 		rl_bind_key ('\t', handle_tab);
 		}
-	    else if (!strcmp(cmdname,"quit"))
+	    else if (!strcmp(cmdname,"quit") || !strcmp(cmdname,"exit"))
 		{
 		mlxCloseSession(ls);
 		return 1;
@@ -1487,7 +1487,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		printf("  print     - Displays an object's content.\n");
 		printf("  printshow - Displays an object's content, followed by its attributes and methods.\n");
 		printf("  query     - Runs a SQL query.\n");
-		printf("  quit      - Exits this application.\n");
+		printf("  quit/exit - Exits this application.\n");
 		printf("  show      - Displays an object's attributes and methods.\n");
 		printf("  test      - Enables test suite output for the given list of ids.\n");
 		printf("  trunc     - Truncates an object's content to a given point.\n");
