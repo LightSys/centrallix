@@ -175,12 +175,13 @@ nht_i_AddLoginHashCookie(pNhtConn conn)
 	SHA256_Final(hash, &hashctx);
 
 	/** Send the header **/
-	nht_i_AddResponseHeaderQPrintf(conn, "Set-Cookie", "CXLH%INT=%8STR&HEX%8STR&HEX%*STR&HEX; Max-Age=60; HttpOnly; SameSite=Strict; Path=/",
+	nht_i_AddResponseHeaderQPrintf(conn, "Set-Cookie", "CXLH%INT=%8STR&HEX%8STR&HEX%*STR&HEX; Max-Age=60; HttpOnly; SameSite=Strict; Path=/%[; Secure%]",
 		(incr + 10),
 		nonce,
 		(unsigned char*)&timestamp,
 		SHA256_DIGEST_LENGTH,
-		hash
+		hash,
+		conn->UsingTLS
 		);
 
     return 0;
@@ -1192,4 +1193,3 @@ nht_i_Handler(void* v)
 
     thExit();
     }
-
