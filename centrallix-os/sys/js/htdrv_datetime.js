@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -8,6 +8,18 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
+
+
+// A resize observer to update datetime dropdowns when they are resized.
+const dt_resize_observer = new ResizeObserver(e => e.forEach(({ target }) => {
+    // Ignore widgets that don't have a visible panelayer in need of updating.
+    if (htr_getvisibility(target.PaneLayer) !== 'inherit') return;
+    
+    // Reopen the datetime dropdown to rerender it.
+    dt_collapse(target);
+    dt_expand(target);
+}));
+
 
 function dt_getvalue() {
 	if(this.form && this.form.mode == 'Query' && this.sbr && this.DateObj)
@@ -163,7 +175,6 @@ function dt_init(param){
 	htr_init_layer(c2,l,'dt');
 	//dt_tag_images(l.document, 'dt', l);
 	htutil_tag_images(l,'dt',l,l);
-	l.w = w; l.h = h;
 	l.bg = htr_extract_bgcolor(bg);
 	l.ubg = bg;
 	l.fg = param.foreground;
@@ -200,7 +211,26 @@ function dt_init(param){
 	else
 	    l.form = wgtrFindContainer(l,"widget/form");
 	if (l.form) l.form.Register(l);
-	pg_addarea(l, -1, -1, getClipWidth(l)+3, getClipHeight(l)+3, 'dt', 'dt', 3);
+
+	// Setup getters for widths and heights.
+	Object.defineProperties(l, {
+	    w: {
+		get() { return getRelativeW(l); },
+		configurable: true,
+		enumerable: true,
+	    },
+	    h: {
+		get() { return getRelativeH(l); },
+		configurable: true,
+		enumerable: true,
+	    },
+	});
+
+	// Setup the hover area and set getters to allow responsive resizing.
+	l.area = pg_addarea(l, -1, -1, () => l.w + 3, () => l.h + 3, 'dt', 'dt', 3);
+	
+	// Resize date selection dropdown automatically.
+	dt_resize_observer.observe(l);
 
 	// Events
 	ifc_init_widget(l);
@@ -251,6 +281,7 @@ function dt_prepare(l) {
 		l.PaneLayer.HidLayer.getfocushandler = dt_getfocus_day;
 		l.PaneLayer.VisLayer.losefocushandler = dt_losefocus_day;
 		l.PaneLayer.HidLayer.losefocushandler = dt_losefocus_day;
+		l.PaneLayer.classList.add('dt_dropdown');
 	}
 	if (!l.PaneLayer2) {
 	    l.PaneLayer2 = dt_create_pane(l,l.ubg,l.w2,l.h2,l.h,"End");
@@ -261,7 +292,6 @@ function dt_prepare(l) {
 	    l.PaneLayer2.HidLayer.getfocushandler = dt_getfocus_day;
 	    l.PaneLayer2.VisLayer.losefocushandler = dt_losefocus_day;
 	    l.PaneLayer2.HidLayer.losefocushandler = dt_losefocus_day;
-		
 	}
 	// redraw the month & time.
 	if(l.form && l.form.mode == 'Query' && l.sbr){
@@ -391,11 +421,12 @@ function dt_drawmonth(l, d) {
 		moveTo(l.TimeVisLayer,0,rows*20+56);
 	    }
 	}
+	enableClippingCSS(l);
 	var v='<TABLE width=175 height='+rows*20  +' border=0 cellpadding=0 cellspacing=0>';
 	for (var i=0; i<7*rows; i++) {
 		if (i!=0 && i%7==0) v+='</TR>';
 		if (i%7==0) {v+='<TR>\n';r++}
-		v+='<TD width=25 height=18 valign=middle align=right>';
+		v += '<td width=25 height=18 valign=middle align=right style="cursor:pointer">';
 		if (i>=col && dy<num) {
 			l.HidLayer.Areas[dy]=pg_addarea(l.HidLayer, 1+((i%7)*25), (1+(r*18)), 25, 18, 'dt', 'dt_day', 3);
 			l.HidLayer.Areas[dy].parentPaneId = l.myid;
@@ -412,7 +443,9 @@ function dt_drawmonth(l, d) {
 	//for (;i <= 31; i++) {  }
 
 	// write items for No Date (null) and Today.
-	v+='</tr><tr><td colspan=4 align=center height=18 valign=middle><i>(<u>N</u>o Date)</i></td><td colspan=3 align=center height=18 valign=middle><i>(<u>T</u>oday)</i></td>';
+	v += '</tr><tr>'
+	    + '<td colspan=4 align=center height=18 valign=middle style="cursor:pointer"><i>(<u>N</u>o Date)</i></td>'
+	    + '<td colspan=3 align=center height=18 valign=middle style="cursor:pointer"><i>(<u>T</u>oday)</i></td>';
 	l.HidLayer.NullArea = pg_addarea(l.HidLayer, 1, 1+(r+1)*18, 100, 16, 'dt', 'dt_null', 3);
 	l.HidLayer.NullArea.DateVal = null;
 	l.HidLayer.NullArea.parentPaneId = l.myid;
@@ -451,7 +484,12 @@ function dt_inittime(l) {
 
 	// build the structure for the time
 	v = "<table border=0 cellspacing=0 cellpadding=0><tr><td><img src=/sys/images/dkgrey_1x1.png width=183 height=1></td></tr><tr><td><img src=/sys/images/white_1x1.png width=183 height=1></td></tr><tr><td height=5></td></tr></table>";
-	v += "<table border=0 cellspacing=0 cellpadding=0><tr><td valign=middle><img src=/sys/images/trans_1.gif height=1 width=38></td><td><img src=/sys/images/spnr_both.gif width=10 height=20></td><td valign=middle><img src=/sys/images/trans_1.gif height=1 width=30></td><td><img src=/sys/images/spnr_both.gif width=10 height=20></td><td valign=middle><img src=/sys/images/trans_1.gif height=1 width=30></td><td><img src=/sys/images/spnr_both.gif width=10 height=20></td><td valign=middle align=center>&nbsp;&nbsp;(24h)</td></tr></table>\n";
+	v += "<table border=0 cellspacing=0 cellpadding=0><tr>"
+	    + "<td valign=middle><img src=/sys/images/trans_1.gif height=1 width=38></td><td style='cursor:pointer'><img src=/sys/images/spnr_both.gif width=10 height=20></td>"
+	    + "<td valign=middle><img src=/sys/images/trans_1.gif height=1 width=30></td><td style='cursor:pointer'><img src=/sys/images/spnr_both.gif width=10 height=20></td>"
+	    + "<td valign=middle><img src=/sys/images/trans_1.gif height=1 width=30></td><td style='cursor:pointer'><img src=/sys/images/spnr_both.gif width=10 height=20></td>"
+	    + "<td valign=middle align=center>&nbsp;&nbsp;(24h)</td>"
+	+ "</tr></table>\n";
 	htr_write_content(l.TimeHidLayer, v);
 	htr_setvisibility(l.TimeHidLayer, 'inherit');
 	htr_setvisibility(l.TimeVisLayer, 'hidden');
@@ -866,11 +904,11 @@ function dt_create_pane(ml,bg,w,h,h2,name) {
 	    h+=20;
 	}
 	str += "	<TABLE height=25 cellpadding=0 cellspacing=0 border=0>";
-	str += "	<TR><TD width=18><IMG SRC=/sys/images/ico16aa.gif></TD>";
-	str += "		<TD width=18><IMG SRC=/sys/images/ico16ba.gif></TD>";
-	str += "		<TD width="+(w-72)+"></TD>";
-	str += "		<TD width=18><IMG SRC=/sys/images/ico16ca.gif></TD>";
-	str += "		<TD width=18><IMG SRC=/sys/images/ico16da.gif></TD></TR>";
+	str += "	<TR><TD style='cursor:pointer' width=18><IMG SRC=/sys/images/ico16aa.gif></TD>";
+	str += "		<TD style='cursor:pointer' width=18><IMG SRC=/sys/images/ico16ba.gif></TD>";
+	str += "		<TD style='cursor:pointer' width="+(w-72)+"></TD>";
+	str += "		<TD style='cursor:pointer' width=18><IMG SRC=/sys/images/ico16ca.gif></TD>";
+	str += "		<TD style='cursor:pointer' width=18><IMG SRC=/sys/images/ico16da.gif></TD></TR>";
 	str += "	</TABLE>";
 	str += "	<TABLE width="+w+" cellpadding=0 cellspacing=0 border=0>";
 	str += "	<TR><TD align=center><B>S</B></TD>";
@@ -893,6 +931,7 @@ function dt_create_pane(ml,bg,w,h,h2,name) {
 	pg_stackpopup(l,ml);
 	setClipHeight(l,h);
 	setClipWidth(l,w);
+	enableClippingCSS(l);
 	
 	//l.HidLayer = new Layer(1024, l);
 	l.HidLayer = htr_new_layer(1024,l);

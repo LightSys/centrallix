@@ -25,11 +25,11 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 36, "HTML: '%STR&HTE&25LEN'.", "<b c=\"w\">");
-	    qpfPrintf(NULL, buf+4, 36, "HTML: '%STR&HTE&25LEN'.", "<b c=\"w\">");
-	    qpfPrintf(NULL, buf+4, 36, "HTML: '%STR&HTE&25LEN'.", "<b c=\"w\">");
-	    rval = qpfPrintf(NULL, buf+4, 36, "HTML: '%STR&HTE&25LEN'.", "<b c=\"w\">");
-	    assert(!strcmp(buf+4, "HTML: '&lt;b c=&quot;w&quot;&gt;'."));
+	    qpfPrintf(NULL, (char*)buf+4, 36, "HTML: '%STR&HTE&25LEN'.", "<b c=\"w\">");
+	    qpfPrintf(NULL, (char*)buf+4, 36, "HTML: '%STR&HTE&25LEN'.", "<b c=\"w\">");
+	    qpfPrintf(NULL, (char*)buf+4, 36, "HTML: '%STR&HTE&25LEN'.", "<b c=\"w\">");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "HTML: '%STR&HTE&25LEN'.", "<b c=\"w\">");
+	    assert(!strcmp((char*)buf+4, "HTML: '&lt;b c=&quot;w&quot;&gt;'."));
 	    assert(rval == 34);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
@@ -43,4 +43,3 @@ test(char** tname)
 
     return iter*4;
     }
-

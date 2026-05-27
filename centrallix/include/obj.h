@@ -307,7 +307,7 @@ typedef struct _OA
 #define OBJ_INFO_F_NO_CONTENT		(1<<13)	/* object does not have content, objRead() would fail */
 #define OBJ_INFO_F_SUPPORTS_INHERITANCE	(1<<14)	/* object can support inheritance attr cx__inherit, etc. */
 #define OBJ_INFO_F_FORCED_LEAF		(1<<15)	/* object is forced to be a 'leaf' unless ls__type used. */
-#define OBJ_INFO_F_TEMPORARY		(1<<16)	/* this is a temporary object without a vaoid pathname. */
+#define OBJ_INFO_F_TEMPORARY		(1<<16)	/* this is a temporary object without a valid pathname. */
 
 
 /** object virtual attribute - these are attributes which persist only while
@@ -631,6 +631,34 @@ typedef struct
 #define OBJ_MQ_F_NOUPDATE	(1<<1)		/* disallow any updates in this query */
 #define	OBJ_MQ_F_ONEROW		(1<<2)		/* only need first row from results */
 
+/** @returns The file name for the provided object. **/
+#define objFileName(obj) \
+    ({ \
+	__typeof__ (obj) _obj = (obj); \
+	obj_internal_PathPart(_obj->Pathname, _obj->SubPtr - 1, 1); \
+    })
+/** @returns The file path to the provided object. **/
+#define objFilePath(obj) \
+    ({ \
+	__typeof__ (obj) _obj = (obj); \
+	obj_internal_PathPart(_obj->Pathname, 0, _obj->SubPtr); \
+    })
+
+/*** An array of the names of the general attributes that must be implemented
+ *** for every object system driver.  See `OSDriver_Authoring.md` for more
+ *** information.
+ ***/
+#define DRIVER_ATTRIBUTE_NAMES \
+    ((char*[]){ \
+    "name", \
+    "annotation", \
+    "content_type", \
+    "inner_type", \
+    "outer_type", \
+    "last_modification", \
+    })
+#define N_DRIVER_ATTRIBUTE_NAMES ((unsigned int)(sizeof(DRIVER_ATTRIBUTE_NAMES) / sizeof(DRIVER_ATTRIBUTE_NAMES[0])))
+
 
 /** objectsystem main functions **/
 int objInitialize();
@@ -737,6 +765,8 @@ void obj_internal_OpenCtlToString(pPathname pathinfo, int pathstart, int pathend
 int obj_internal_PathToText(pPathname pathinfo, int pathend, pXString str);
 
 /** objectsystem datatype functions **/
+int objTypeFromStr(const char* str);
+char* objTypeToStr(const int type);
 int objDataToString(pXString dest, int data_type, void* data_ptr, int flags);
 double objDataToDouble(int data_type, void* data_ptr);
 int objDataToInteger(int data_type, void* data_ptr, char* format);

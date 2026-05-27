@@ -14,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2012 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2012-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -55,17 +55,17 @@ int htmapRender(pHtSession s, pWgtrNode map_node, int z)
 	char main_bg[128];
 	char osrc[64];
 	int x = -1, y = -1, w, h;
-	int id;
 	int allow_select, show_select;
 
-	if (!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
-	{
-		mssError(1, "HTMAP", "Netscape DOM or W3C DOM1 HTML and CSS support required");
-		return -1;
-	}
-
 	/** Get an id for this. **/
-	id = (HTMAP.idcnt++);
+	const int id = (HTMAP.idcnt++);
+
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	    {
+	    mssError(1, "HTMAP", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
+	    }
 
 	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(map_node, "x", DATA_T_INTEGER, POD(&x)) != 0)
@@ -104,39 +104,86 @@ int htmapRender(pHtSession s, pWgtrNode map_node, int z)
 	strtcpy(name, ptr, sizeof(name));
 
 	/** Add css item for the layer **/
-	htrAddStylesheetItem_va(s, "\t#map%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; overflow: hidden; %STR}\n", id, x, y, w, h, z, main_bg);
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#map%POSbase { "
+	        "position:absolute; "
+		"visibility:inherit; "
+		"overflow:hidden; "
+		"left:%INTpx; "
+		"top:%INTpx; "
+		"width:%POSpx; "
+		"height:%POSpx; "
+		"z-index:%POS; "
+		"%STR "
+	    "}\n",
+	    id, x, y, w, h, z, main_bg
+	) != 0) 
+	    {
+	    mssError(0, "HTMAP", "Failed to write base CSS.");
+	    goto err;
+	    }
 
-	htrAddWgtrObjLinkage_va(s, map_node, "map%POSbase", id);
+ 	/** Link the widget to the DOM node. **/
+	if (htrAddWgtrObjLinkage_va(s, map_node, "map%POSbase", id) != 0) goto err;
 
-	/** Include our necessary supporting js files **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_map.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
-	htrAddScriptInclude(s, "/sys/js/openlayers/build/ol.js", 0);
-	htrAddScriptInclude(s, "/sys/js/openlayers/build/ol.js.map", 0);
-	//htrAddScriptInclude(s, "https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js", 0);
-	//htrAddScriptInclude(s, "https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js", 0);
+	/** Include supporting JS files, **/
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_map.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/openlayers/build/ol.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/openlayers/build/ol.js.map", 0) != 0) goto err;
+	//if (htrAddScriptInclude(s, "https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js", 0) != 0) goto err;
+	//if (htrAddScriptInclude(s, "https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js", 0) != 0) goto err;
 
-	/** Event Handlers **/
-	htrAddEventHandlerFunction(s, "document", "MOUSEUP", "map", "map_mouseup");
-	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "map", "map_mousedown");
-	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "map", "map_mouseover");
-	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "map", "map_mousemove");
-	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "map", "map_mouseout");
+	/** Add event handlers. **/
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP", "map", "map_mouseup") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "map", "map_mousedown") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "map", "map_mouseover") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "map", "map_mousemove") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "map", "map_mouseout") != 0) goto err;
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    map_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), osrc:%[wgtrGetNodeRef(ns,\"%STR&SYM\")%]%[null%], allow_select:%INT, show_select:%INT, name:\"%STR&SYM\"});\n",
-						name, *osrc, osrc, !*osrc, allow_select, show_select, name);
+	if (htrAddScriptInit_va(s,
+	    "\tmap_init({ "
+		"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"osrc:%[wgtrGetNodeRef(ns, '%STR&SYM')%]%[null%], "
+		"name:'%STR&SYM', "
+		"allow_select:%INT, "
+		"show_select:%INT, "
+	    "});\n",
+	    name, (osrc[0] != '\0'), osrc, (osrc[0] == '\0'), name,
+	    allow_select, show_select
+	) != 0)
+	    {
+	    mssError(0, "HTMAP", "Failed to write JS init call.");
+	    goto err;
+	    }
 
 	/** HTML body <DIV> element to be used by the OpenLayers map. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"map%POSbase\">\n", id);
+	if (htrAddBodyItem_va(s, "<div id='map%POSbase'>\n", id) != 0)
+	    {
+	    mssError(0, "HTMAP", "Failed to write HTML for map open tag.");
+	    goto err;
+	    }
 
-	/** Check for widgets within the map. **/
-	htrRenderSubwidgets(s, map_node, z + 2);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, map_node, z + 2) != 0) goto err;
 
 	/** End the containing div. **/
-	htrAddBodyItem(s, "</DIV>\n");
+	if (htrAddBodyItem(s, "</div>\n") != 0)
+	    {
+	    mssError(0, "HTMAP", "Failed to write HTML for map closing tag.");
+	    goto err;
+	    }
 
+	/** Success. **/
 	return 0;
+    
+	err:
+	mssError(0, "HTMAP",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    map_node->Name, map_node->Type, id
+	);
+	return -1;
 }
 
 /*** htmapInitialize - register with the ht_render module.

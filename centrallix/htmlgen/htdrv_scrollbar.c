@@ -14,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2003 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -58,21 +58,21 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
     char* ptr;
     char name[64];
     int x,y,w,h,r;
-    int id, i, t;
     int visible = 1;
     char bcolor[64] = "";
     char bimage[64] = "";
     int is_horizontal = 0;
     pExpression code;
 
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !s->Capabilities.Dom1HTML)
-	    {
-	    mssError(1,"HTSB","Netscape 4.x, IE, or W3C DOM support required");
-	    return -1;
-	    }
+	/** Get an id for this. **/
+	const int id = (HTSB.idcnt++);
 
-    	/** Get an id for this. **/
-	id = (HTSB.idcnt++);
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	    {
+	    mssError(1, "HTSB", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
+	    }
 
 	/** Which direction? **/
 	if (wgtrGetPropertyValue(tree,"direction",DATA_T_STRING,POD(&ptr)) == 0)
@@ -85,19 +85,19 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) 
 	    {
 	    mssError(1,"HTSB","Scrollbar widget must have an 'x' property");
-	    return -1;
+	    goto err;
 	    }
 	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0)
 	    {
 	    mssError(1,"HTSB","Scrollbar widget must have a 'y' property");
-	    return -1;
+	    goto err;
 	    }
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0)
 	    {
 	    if (is_horizontal)
 		{
 		mssError(1,"HTSB","Horizontal scrollbar widgets must have a 'width' property");
-		return -1;
+		goto err;
 		}
 	    else
 		{
@@ -107,14 +107,14 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	if (is_horizontal && w <= 18*3)
 	    {
 	    mssError(1,"HTSB","Horizontal scrollbar width must be greater than %d", 18*3);
-	    return -1;
+	    goto err;
 	    }
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    if (!is_horizontal)
 		{
 		mssError(1,"HTSB","Vertical scrollbar widgets must have a 'height' property");
-		return -1;
+		goto err;
 		}
 	    else
 		{
@@ -124,11 +124,15 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	if (!is_horizontal && h <= 18*3)
 	    {
 	    mssError(1,"HTSB","Vertical scrollbar height must be greater than %d", 18*3);
-	    return -1;
+	    goto err;
 	    }
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&ptr)) != 0)
+	    {
+	    mssError(1, "HTSB", "Failed to get widget name.");
+	    goto err;
+	    }
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Range of scrollbar (static or dynamic property) **/
@@ -136,6 +140,7 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	    r = w;
 	else
 	    r = h;
+	int t;
 	if ((t = wgtrGetPropertyType(tree,"range")) == DATA_T_INTEGER)
 	    {
 	    wgtrGetPropertyValue(tree,"range",DATA_T_INTEGER,POD(&r));
@@ -163,30 +168,72 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#sb%POSpane { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; clip:rect(0px,%POSpx,%POSpx,0px); Z-INDEX:%POS; }\n",id,visible?"inherit":"hidden",x,y,w,h,w,h, z);
-	if (is_horizontal)
-	    htrAddStylesheetItem_va(s,"\t#sb%POSthum { POSITION:absolute; VISIBILITY:inherit; LEFT:18px; TOP:0px; WIDTH:18px; Z-INDEX:%POS; }\n",id,z+1);
-	else
-	    htrAddStylesheetItem_va(s,"\t#sb%POSthum { POSITION:absolute; VISIBILITY:inherit; LEFT:0px; TOP:18px; WIDTH:18px; Z-INDEX:%POS; }\n",id,z+1);
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#sb%POSpane { "
+		"position:absolute; "
+		"visibility:%STR; "
+		"overflow:hidden; "
+		"left:%INTpx; "
+		"top:%INTpx; "
+		"width:%POSpx; "
+		"height:%POSpx; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    (visible) ? "inherit" : "hidden",
+	    x, y, w, h,
+	    z
+	) != 0)
+	    {
+	    mssError(0, "HTSB", "Failed to write scrollbar pane CSS.");
+	    goto err;
+	    }
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#sb%POSthum { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"left:%POSpx; "
+		"top:%POSpx; "
+		"width:18px; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    (is_horizontal) ? 18 : 0,
+	    (is_horizontal) ? 0 : 18,
+	    z + 1
+	) != 0)
+	    {
+	    mssError(0, "HTSB", "Failed to write scrollbar thumb CSS.");
+	    goto err;
+	    }
 
-	/** Write globals for internal use **/
-	htrAddScriptGlobal(s, "sb_target_img", "null", 0);
-	htrAddScriptGlobal(s, "sb_click_x","0",0);
-	htrAddScriptGlobal(s, "sb_click_y","0",0);
-	htrAddScriptGlobal(s, "sb_thum_x","0",0);
-	htrAddScriptGlobal(s, "sb_thum_y","0",0);
-	htrAddScriptGlobal(s, "sb_mv_timeout","null",0);
-	htrAddScriptGlobal(s, "sb_mv_incr","0",0);
-	htrAddScriptGlobal(s, "sb_cur_mainlayer","null",0);
-
-	/** DOM Linkage **/
-	htrAddWgtrObjLinkage_va(s, tree, "sb%POSpane",id);
-
-	htrAddScriptInclude(s, "/sys/js/htdrv_scrollbar.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
+	/** Write JS globals, linking, includes, etc. **/
+	if (htrAddScriptGlobal(s, "sb_click_x","0", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "sb_click_y","0", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "sb_cur_mainlayer","null", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "sb_mv_incr","0", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "sb_mv_timeout","null", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "sb_target_img", "null", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "sb_thum_x","0", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "sb_thum_y","0", 0) != 0) goto err;
+	if (htrAddWgtrObjLinkage_va(s, tree, "sb%POSpane", id) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_scrollbar.js", 0) != 0) goto err;
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,"    sb_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), tname:\"sb%POSthum\", isHorizontal:%INT, range:%INT});\n", name, id, is_horizontal, r);
+	if (htrAddScriptInit_va(s,
+	    "\tsb_init({ "
+		"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"tname:'sb%POSthum', "
+		"isHorizontal:%INT, "
+		"range:%INT, "
+	    "});\n",
+	    name, id, is_horizontal, r
+	) != 0)
+	    {
+	    mssError(0, "HTSB", "Failed to write JS init call.");
+	    goto err;
+	    }
 
 	/** HTML body <DIV> elements for the layers. **/
 	htrAddBodyItem_va(s,"<DIV ID=\"sb%POSpane\"><TABLE %[bgcolor=\"%STR&HTE\"%] %[background=\"%STR&HTE\"%] border=0 cellspacing=0 cellpadding=0 width=%POS>", id, *bcolor, bcolor, *bimage, bimage, w);
@@ -206,19 +253,30 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Add the event handling scripts **/
 
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN","sb","sb_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE","sb","sb_mousemove");
-	htrAddEventHandlerFunction(s, "document","MOUSEUP","sb","sb_mouseup");
-	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "sb","sb_mouseover");
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "sb", "sb_mouseover") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "sb", "sb_mousedown") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "sb", "sb_mousemove") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "sb", "sb_mouseup")   != 0) goto err;
 
-	/** Check for more sub-widgets within the scrollbar (visual ones not allowed). **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+2);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 2) != 0) goto err;
 
-	/** Finish off the last <DIV> **/
-	htrAddBodyItem(s,"</DIV>\n");
+	/** Write the closing HTML <div> tag. **/
+	if (htrAddBodyItem(s, "</div>\n") != 0)
+	    {
+	    mssError(0, "HTSB", "Failed to write HTML closing tag.");
+	    goto err;
+	    }
 
-    return 0;
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTSB",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
+	);
+	return -1;
     }
 
 

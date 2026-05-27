@@ -25,11 +25,11 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 36, "Here is the char: %CHR...", 'c');
-	    qpfPrintf(NULL, buf+4, 36, "Here is the char: %CHR...", 'c');
-	    qpfPrintf(NULL, buf+4, 36, "Here is the char: %CHR...", 'c');
-	    rval = qpfPrintf(NULL, buf+4, 36, "Here is the char: %CHR...", 'c');
-	    assert(!strcmp(buf+4, "Here is the char: c..."));
+	    qpfPrintf(NULL, (char*)buf+4, 36, "Here is the char: %CHR...", 'c');
+	    qpfPrintf(NULL, (char*)buf+4, 36, "Here is the char: %CHR...", 'c');
+	    qpfPrintf(NULL, (char*)buf+4, 36, "Here is the char: %CHR...", 'c');
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "Here is the char: %CHR...", 'c');
+	    assert(!strcmp((char*)buf+4, "Here is the char: c..."));
 	    assert(rval == 22);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
@@ -43,4 +43,3 @@ test(char** tname)
 
     return iter*4;
     }
-

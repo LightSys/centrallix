@@ -14,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2010 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -41,20 +41,11 @@
 /************************************************************************/
 
 
-/** globals **/
-static struct 
-    {
-    int		idcnt;
-    }
-    HTUAWIN;
-
-
 /*** htuawinRender - generate the HTML code for the page.
  ***/
 int
 htuawinRender(pHtSession s, pWgtrNode tree, int z)
     {
-    int id;
     char name[64];
     int is_shared = 0;
     int is_multi = 0;
@@ -63,9 +54,6 @@ htuawinRender(pHtSession s, pWgtrNode tree, int z)
     int width = 640;
     int height = 480;
     char* ptr;
-
-    	/** Get an id for this. **/
-	id = (HTUAWIN.idcnt++);
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -81,9 +69,11 @@ htuawinRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Share this window with other references in the same session context? (no) **/
 	is_shared = htrGetBoolean(tree, "shared", 0);
+	if (is_shared < 0) goto err;
 
 	/** Allow multiple instances of the window? (no) **/
 	is_multi = htrGetBoolean(tree, "multiple_instantiation", 0);
+	if (is_multi < 0) goto err;
 
 	/** Routing of actions to windows when there are multiple of them **/
 	if (wgtrGetPropertyValue(tree, "action_routing", DATA_T_STRING, POD(&ptr)) == 0)
@@ -93,26 +83,46 @@ htuawinRender(pHtSession s, pWgtrNode tree, int z)
 	    else if (!strcmp(ptr, "all")) action_routing = 2;
 	    else
 		{
-		mssError(1, "HTUAWIN", "Invalid action_routing '%s' for widget '%s'", ptr, name);
-		return -1;
+		mssError(1, "HTUAWIN", "Invalid action_routing: \"%s\"", ptr);
+		goto err;
 		}
 	    }
 
 	/** widget init **/
-	htrAddScriptInit_va(s, "    uw_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {shared:%INT, multi:%INT, routing:%INT, path:\"%STR&JSSTR\", w:%INT, h:%INT} );\n",
-		name, is_shared, is_multi, action_routing, path, width, height
-		);
+	if (htrAddScriptInit_va(s,
+	    "\tuw_init(wgtrGetNodeRef(ns, '%STR&SYM'), { "
+		"shared:%INT, "
+		"multi:%INT, "
+		"routing:%INT, "
+		"path:'%STR&JSSTR', "
+		"w:%INT, "
+		"h:%INT, "
+	    "});\n",
+	    name, is_shared, is_multi, action_routing, path, width, height
+	) != 0)
+	    {
+	    mssError(1, "HTUAWIN", "Failed to write JS init call.");
+	    goto err;
+	    }
 
 	/** JavaScript include file **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_uawindow.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_uawindow.js", 0) != 0) goto err;
 
-	/** object linkages **/
-	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
+	/** Link the widget to its container. **/
+	if (htrAddWgtrCtrLinkage(s, tree, "_parentctr") != 0) goto err;
 
-	/** Check for more sub-widgets within the vbl entity. **/
-	htrRenderSubwidgets(s, tree, z+2);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 2) != 0) goto err;
 
-    return 0;
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTUAWIN",
+	    "Failed to render \"%s\":\"%s\".",
+	    tree->Name, tree->Type
+	);
+	return -1;
     }
 
 
@@ -136,8 +146,6 @@ htuawinInitialize()
 	htrRegisterDriver(drv);
 
 	htrAddSupport(drv, "dhtml");
-
-	HTUAWIN.idcnt = 0;
 
     return 0;
     }
