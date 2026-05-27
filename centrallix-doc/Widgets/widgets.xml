@@ -1159,7 +1159,7 @@ cn1 "widget/connector"
 
 			<property name="mode" type="string">If this is set to objectsource then the dropdown acts an objectsource client.</property>
 
-			<property name="num_disp" type="integer">Number of widgets displayed at once in the dropdown box.</property>
+			<property name="numdisplay" type="integer">Number of widgets displayed at once in the dropdown box.</property>
 
 			<property name="objectsource" type="string">Represents the widget object source (transfers data to and from server).</property>
 
@@ -1219,7 +1219,7 @@ cn1 "widget/connector"
 
 			<action name="SetGroup">This causes the dropdown to display a different Group of items (use the "Group" parameter).  It can also restrict what items are displayed based on a minimum or maximum value (use "Min" and "Max" parameters).</action>
 
-			<action name="SetItems">This specifies a SQL (use "SQL" parameter) query to use when reloading the contents of the dropdown.  The query should produce between two and five columns the order: label, value, selected (1 for the default selected item, 0 for all others), grp (group name), hidden (1 to hide the item from the dropdown UI even though it's still valid, 0 to show it).  Use the "RowLimit" parameter to specify a maximum number of options that the query should fetch (defaults to 100).</action>
+			<action name="SetItems">This specifies a SQL (see "SQL" parameter) query to use when reloading the contents of the dropdown.  Use the "RowLimit" parameter to specify a maximum number of options that the query should fetch (defaults to 100).</action>
 
 			<action name="SetValue">Changes the child property "Value".</action>
 
@@ -2688,6 +2688,7 @@ myMenu "widget/menu"
 			<property name="receive_updates" type="yes/no">** This feature currently disabled in Centrallix 0.9.1 ** Default "no".  If set to "yes", the objectsource will ask the server to send it updates on any changes that occur on the server side (i.e., if the changes were made by another objectsource or by another user, they would be automatically refreshed into this objectsource in near real-time).</property>
 
 			<property name="refresh_interval" type="integer">The time between the data refreshing, if set to 0 it does not automatically refresh.</property>
+
 			<property name="replicasize" type="integer">Represents the number of records to store in its replica.  This value should be larger than the maximum number of records that will be displayed at any one time.  At times, Centrallix may increase the number of records cached on the client beyond this number.</property>
 
 			<property name="revealed_only" type="string">Acts as a boolean and delays query until the osrc is visable (if "true").</property>
@@ -2706,7 +2707,7 @@ myMenu "widget/menu"
 
 			<child type="rule with ruletype=osrc_relationship (replaces the deprecated: sync and double sync)">
 
-				<childproperty name="autoquery" type="true/false">When autoquery is set to true, when the master changes, the slave automatially requeries (otherwise have to explicitly call requery or refresh on the slave osrc).  When autoquery is false, it causes relationships to be in enforced, but doesn't cause a re-query when the master's osrc refreshes / requeries.</childproperty>
+				<childproperty name="autoquery" type="true/false">When autoquery is set to true, when the master changes, the slave automatically re-queries its data.  Otherwise, it will not re-query unless an action is explicitly called to do so.  When autoquery is false, it causes relationships to be in enforced, but doesn't cause a re-query when the master's osrc refreshes or re-queries.</childproperty>
 
 				<childproperty name="is_slave" type="yes/no">Defaults to 'yes'.  If it is set to 'no', then this osrc is set up to be a master of the target, otherwise the default is for it to be a slave of the target.</childproperty>
 
