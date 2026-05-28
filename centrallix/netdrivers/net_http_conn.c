@@ -8,7 +8,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -175,12 +175,13 @@ nht_i_AddLoginHashCookie(pNhtConn conn)
 	SHA256_Final(hash, &hashctx);
 
 	/** Send the header **/
-	nht_i_AddResponseHeaderQPrintf(conn, "Set-Cookie", "CXLH%INT=%8STR&HEX%8STR&HEX%*STR&HEX; Max-Age=60; HttpOnly; SameSite=Strict; Path=/",
+	nht_i_AddResponseHeaderQPrintf(conn, "Set-Cookie", "CXLH%INT=%8STR&HEX%8STR&HEX%*STR&HEX; Max-Age=60; HttpOnly; SameSite=Strict; Path=/%[; Secure%]",
 		(incr + 10),
 		nonce,
 		(unsigned char*)&timestamp,
 		SHA256_DIGEST_LENGTH,
-		hash
+		hash,
+		conn->UsingTLS
 		);
 
     return 0;
@@ -1192,4 +1193,3 @@ nht_i_Handler(void* v)
 
     thExit();
     }
-
