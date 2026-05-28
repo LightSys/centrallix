@@ -13,6 +13,9 @@ While it may be very useful to read the following generated files, do not edit t
 - Centrallix/configure(.sh)
 - Centrallix-lib/configure(.sh)
 
+## Symlinks
+This project includes symlinks (both to files and directories), so ensure they are traversed when searching.
+
 # Terms
 - **Centrallix** - An open-source web application server and data management engine developed by LightSys. It provides data abstraction, structural embedding, and dynamic widget-based HTML generation (DHTML), serving as the platform on which apps like Kardia are built.
 - **Kardia** - A web-based nonprofit ministry management application built on the Centrallix platform. It provides donor tracking, financial management, and ministry operations for Christian mission organizations.
