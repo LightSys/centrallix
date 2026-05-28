@@ -14,7 +14,7 @@ While it may be very useful to read the following generated files, do not edit t
 - Centrallix-lib/configure(.sh)
 
 ## Searching
-Instead of searching with `grep`, use `rg` (if available). It's faster, but remember that it ignores `.gitignored` files, hidden files, binaries, etc. This project includes symlinks (both to files and directories), so ensure they are traversed when searching (aka. with `rg -L` or alternatives).
+Instead of searching with `grep`, use `rg` (if available). It's faster, but remember that it ignores `.gitignored` files, hidden files, binaries, etc. This project includes symlinks (both to files and directories), so ensure they are traversed when searching (aka. with `rg -L` or alternatives). Many centrallix structure files (e.g. `.app`, `.cmp`, etc.) are treated as binary files by `rg`, add `-a` when searching them. You may need to combine both flags to navigate these challenges, e.g. `rg -Lra "pattern"`, or fall back to `grep` if you encounter issues.
 
 # Terms
 - **Centrallix** - An open-source web application server and data management engine developed by LightSys. It provides data abstraction, structural embedding, and dynamic widget-based HTML generation (DHTML), serving as the platform on which apps like Kardia are built.
