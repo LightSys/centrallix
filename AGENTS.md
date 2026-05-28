@@ -13,8 +13,8 @@ While it may be very useful to read the following generated files, do not edit t
 - Centrallix/configure(.sh)
 - Centrallix-lib/configure(.sh)
 
-## Symlinks
-This project includes symlinks (both to files and directories), so ensure they are traversed when searching.
+## Searching
+Instead of searching with `grep`, use `rg` (if available). It's faster, but remember that it ignores `.gitignored` files, hidden files, binaries, etc. This project includes symlinks (both to files and directories), so ensure they are traversed when searching (aka. with `rg -L` or alternatives).
 
 # Terms
 - **Centrallix** - An open-source web application server and data management engine developed by LightSys. It provides data abstraction, structural embedding, and dynamic widget-based HTML generation (DHTML), serving as the platform on which apps like Kardia are built.
