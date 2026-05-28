@@ -756,8 +756,8 @@ int objCurrentDate(pDateTime dt);
 int objBuildBinaryImage(char* buf, int buflen, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist, int asciz);
 int objBuildBinaryImageXString(pXString str, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist, int asciz);
 int objDateAdd(pDateTime dt, int diff_sec, int diff_min, int diff_hr, int diff_day, int diff_mo, int diff_yr);
-
-
+int objStringToEncoding(char* code_str);
+int objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_len);
 /** objectsystem replication services - open object notification (Rn) system **/
 int objRequestNotify(pObject this, int (*callback_fn)(), void* context, int what);
 int obj_internal_RnDelete(pObjReqNotifyItem item);

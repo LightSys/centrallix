@@ -1,4 +1,4 @@
-##NAME convert() function
+##NAME convert() function - Data Types
 # There is a bug for conversion to int
 query select 'convert(integer, 100)' = convert(integer, 100)
 query select 'convert(integer, " 2.9")' = convert(integer, " 2.9")
