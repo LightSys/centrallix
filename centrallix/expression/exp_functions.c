@@ -97,12 +97,12 @@ int exp_fn_user_name(pExpression tree, pParamObjects objlist, pExpression i0, pE
 
 /*** exp_fn_internal_encoding_convert - Convert a string from one encoding to another
  ***   @param tree The expression tree node to store the results in
- ***   @param from_code_exp A string expression of the encoding to convert from
- ***   @param to_code_exp A string expression of the encoding to convert to
  ***   @param data_exp The expression with the data to be converted
+ ***   @param to_code_exp A string expression of the encoding to convert to
+ ***   @param from_code_exp A string expression of the encoding to convert from
  ***   @returns 0 on success and -1 on error
  ***/
-int exp_fn_internal_encoding_convert(pExpression tree, pExpression from_code_exp, pExpression to_code_exp, pExpression data_exp)
+int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pExpression to_code_exp, pExpression from_code_exp)
     {
     char* ret_buf = NULL;
     char* pre_buf = NULL;
@@ -113,7 +113,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression from_code_exp
 	    || to_code_exp == NULL || (to_code_exp->Flags   & EXPR_F_NULL) != 0 || to_code_exp->DataType   != DATA_T_STRING
 	    || (data_exp->DataType != DATA_T_STRING && data_exp->DataType != DATA_T_BINARY) )
 	    {
-	    mssError(1, "EXP", "convert(): conversion to character encoding requires (STRING, STRING, STRING|BINARY)");
+	    mssError(1, "EXP", "convert(): conversion to character encoding requires (STRING|BINARY, STRING, STRING)");
 	    goto error;
 	    }
 	
@@ -393,7 +393,7 @@ int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExp
 	/** Determine if this is a type or encoding conversion **/
 	if (tree->Children.nItems == 2) return exp_fn_internal_type_convert(tree, i0, i1);
 	else if(tree->Children.nItems == 3) return exp_fn_internal_encoding_convert(tree, i0, i1, i2);
-	else mssError(1,"EXP","convert(): valid forms are (type, data) or (from_encoding, to_encoding, data)");
+	else mssError(1,"EXP","convert(): valid forms are (type, data) or (data, to_encoding, from_encoding)");
     return -1;
     }
 

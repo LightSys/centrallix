@@ -10,45 +10,45 @@ query SELECT :data:cp1252	= convert('string', from_hex('0102030405060708090a0b0c
 query SELECT :data:vanco	= convert('string', from_hex('c280c282c283c284c285c286c287c289c289c28ac28bc28cc28ec28ec291c292c293c294c295c296c297c298c299c29ac29bc29cc29ec29f')) + :data:ascii + "¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"
 
 # Convert from ASCII
-csv SELECT "ascii to ascii"	= convert('string', convert('ascii',		'ascii',	:data:ascii))
-csv SELECT "ascii to latin1"	= convert('string', convert('AsCiI',		'latin1',	:data:ascii))
-csv SELECT "ascii to cp1252"	= convert('string', convert('aScIi',		'cp1252',	:data:ascii))
-csv SELECT "ascii to utf8"	= convert('string', convert('ASCII',		'utf8',		:data:ascii))
+csv SELECT "ascii to ascii"	= convert(:data:ascii,	'ascii',	'ascii')
+csv SELECT "ascii to latin1"	= convert(:data:ascii,	'latin1',	'AsCiI')
+csv SELECT "ascii to cp1252"	= convert(:data:ascii,	'cp1252',	'aScIi')
+csv SELECT "ascii to utf8"	= convert(:data:ascii,	'utf8',		'ASCII')
 
 # Convert from Latin-1
-csv SELECT "latin1 to ascii"	= convert('string', convert('latin1',		'ascii',	:data:latin1))
-csv SELECT "latin1 to latin1"	= convert('string', convert('LATIN-1',		'latin1',	:data:latin1))
-csv SELECT "latin1 to cp1252"	= convert('string', convert('ISO-8859-1',	'cp1252',	:data:latin1))
-csv SELECT "latin1 to utf8"	= convert('string', convert('ISO/IEC 8859-1',	'utf8',		:data:latin1))
+csv SELECT "latin1 to ascii"	= convert(:data:latin1,	'ascii',	'latin1')
+csv SELECT "latin1 to latin1"	= convert(:data:latin1,	'latin1',	'LATIN-1')
+csv SELECT "latin1 to cp1252"	= convert(:data:latin1,	'cp1252',	'ISO-8859-1')
+csv SELECT "latin1 to utf8"	= convert(:data:latin1,	'utf8',		'ISO/IEC 8859-1')
 # test more names 
-csv select "latin1 names test" = convert('string', convert('ISO 8859-1', 'EIC 8859-1', convert('EIC-8859-1', 'iso/iec 8859-1', 'Test')))
+csv select "latin1 names test" = convert(convert('Test', 'EIC-8859-1', 'iso/iec 8859-1'), 'ISO 8859-1', 'EIC 8859-1')
 
 # Convert from UTF-8
-csv SELECT "utf8 to ascii"	= convert('string', convert('utf8',		'ascii',	:data:utf8))
-csv SELECT "utf8 to latin1"	= convert('string', convert('UTF-8',		'latin1',	:data:utf8))
-csv SELECT "utf8 to cp1252"	= convert('string', convert('Unicode',		'cp1252',	:data:utf8))
-csv SELECT "utf8 to utf8"	= convert('string', convert('uniCode',		'utf8',		:data:utf8))
+csv SELECT "utf8 to ascii"	= convert(:data:utf8,	'ascii',	'utf8')
+csv SELECT "utf8 to latin1"	= convert(:data:utf8,	'latin1',	'UTF-8')
+csv SELECT "utf8 to cp1252"	= convert(:data:utf8,	'cp1252',	'Unicode')
+csv SELECT "utf8 to utf8"	= convert(:data:utf8,	'utf8',		'uniCode')
 
-# Convert from CP125
-csv SELECT "cp1250 to ascii"	= convert('string', convert('cp1252',		'ascii',	:data:cp1252))
-csv SELECT "cp1250 to latin1"	= convert('string', convert('CP1252',		'latin1',	:data:cp1252))
-csv SELECT "cp1250 to cp1252"	= convert('string', convert('windows-1252',	'cp1252',	:data:cp1252))
-csv SELECT "cp1250 to utf8"	= convert('string', convert('Windows1252',	'utf8',		:data:cp1252))
+# Convert from CP1252
+csv SELECT "cp1252 to ascii"	= convert(:data:cp1252,	'ascii',	'cp1252')
+csv SELECT "cp1252 to latin1"	= convert(:data:cp1252,	'latin1',	'CP1252')
+csv SELECT "cp1252 to cp1252"	= convert(:data:cp1252,	'cp1252',	'windows-1252')
+csv SELECT "cp1252 to utf8"	= convert(:data:cp1252,	'utf8',		'Windows1252')
 
 # Convert from Vanco
-csv SELECT "vanco to ascii"	= convert('string', convert('vanco',		'ascii',	:data:vanco))
-csv SELECT "vanco to latin1"	= convert('string', convert('Vanco',		'latin1',	:data:vanco))
-csv SELECT "vanco to cp1252"	= convert('string', convert('VANCO',		'cp1252',	:data:vanco))
-csv SELECT "vanco to utf8"	= convert('string', convert('vAnCo',		'utf8',		:data:vanco))
+csv SELECT "vanco to ascii"	= convert(:data:vanco,	'ascii',	'vanco')
+csv SELECT "vanco to latin1"	= convert(:data:vanco,	'latin1',	'Vanco')
+csv SELECT "vanco to cp1252"	= convert(:data:vanco,	'cp1252',	'VANCO')
+csv SELECT "vanco to utf8"	= convert(:data:vanco,	'utf8',		'vAnCo')
 
 # check converting from single byte to multiple 
-csv SELECT "one byte to multi" = to_hex(convert('cp1252', 'utf8', from_hex('92')))
+csv SELECT "one byte to multi" = to_hex(convert(from_hex('92'), 'utf8', 'cp1252'))
 
 # convert multiple bytes into single 
-csv SELECT "multi to one byte" = to_hex(convert('utf8', 'cp1252', '’'))
+csv SELECT "multi to one byte" = to_hex(convert('’', 'cp1252', 'utf8'))
 
 # convert a null 
-csv SELECT "NULL value" = to_hex(convert('utf8', 'Latin-1', NULL))
+csv SELECT "NULL value" = to_hex(convert(NULL, 'Latin-1', 'utf8',))
 
 
 
