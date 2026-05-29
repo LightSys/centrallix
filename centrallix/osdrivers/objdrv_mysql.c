@@ -1609,9 +1609,169 @@ mysd_internal_DetermineType(pObject obj, pMysdData inf)
     return 0;
     }
 
+/*** mysd_internal_function_Convert - handles transforming a cxSQL convert 
+ *** into a MySQL convert
+ *** @param tree The node structure to convert. MUST point to the convert function
+ *** @param tdata Information about the table being queried
+ *** @param where_clause The string to append the converted query to
+ *** @param conn The active connection to the database 
+ *** @returns the datatype converted to on success or -1 on error
+ ***/
+int
+mysd_internal_function_Convert(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
+    {
+	/** check whether convert the type (2), encoding (3), or else error **/
+	if (tree->Children.nItems == 2)
+	    {
+	    /** MySQL convert() params are reversed to what CX, Sybase, and MS SQL expect; convert(<VALUE>, <TYPE>) **/
+	    xsConcatenate(where_clause, " convert(", -1);
+	    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+	    xsConcatenate(where_clause, " , ", 3);
+	    
+	    /** check for a valid type to convert to **/
+	    pExpression type_exp = (pExpression)(tree->Children.Items[0]);
+	    if(type_exp->DataType != DATA_T_STRING || type_exp->String == NULL)
+		{
+		mssError(1,"MYSD","Error: convert data type must be a string literal.");
+		goto error;
+		}
+
+	    if (!strcmp(type_exp->String,"integer"))
+		{
+		/// FIXME: need new beahvior to handle doubles and datetimes...? But I don't know what type I'm dealing with
+		xsConcatenate(where_clause," signed integer ",-1);
+		tree->DataType = DATA_T_INTEGER;
+		} 
+	    else if (!strcmp(type_exp->String,"string"))
+		{
+		xsConcatenate(where_clause," char ",-1);
+		tree->DataType = DATA_T_STRING;
+		}
+	    else if (!strcmp(type_exp->String,"double"))
+		{
+		xsConcatenate(where_clause," double ",-1);
+		tree->DataType = DATA_T_DOUBLE;
+		}
+	    else if (!strcmp(type_exp->String,"money"))
+		{
+		xsConcatenate(where_clause," decimal(14,4) ",-1);
+		tree->DataType = DATA_T_MONEY;
+		}
+	    else if (!strcmp(type_exp->String,"datetime"))
+		{
+		xsConcatenate(where_clause," datetime ",-1);
+		tree->DataType = DATA_T_DATETIME;
+		}
+	    else 
+		{
+		mssError(1,"MYSD","Error: data type \"%s\" not supported.", type_exp->String);
+		goto error;
+		}
+	    xsConcatenate(where_clause, ") ", 2);
+	    }
+	else if (tree->Children.nItems == 3)
+	    {
+	    /** TODO: encoding convert plz **/
+	    }
+	else 
+	    {
+	    mssError(1,"MYSD","convert usage: convert(datatype, value) or convert(from_encoding, to_encoding, string|data)");
+	    goto error;
+	    }
+
+	return 0;
+
+    error:
+    return -1;
+    }
+
+/*** mysd_internal_function_Datepart - handles the datepart function from cxSQL 
+ *** into a MySQL datepart
+ *** @param tree The node structure to convert. MUST point to the convert function
+ *** @param tdata Information about the table being queried
+ *** @param where_clause The string to append the converted query to
+ *** @param conn The active connection to the database 
+ *** @returns 0 on success or -1 on error
+ ***/
+int
+mysd_internal_function_Datepart(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
+    {
+    XString date_buf;
+
+	xsInit(&date_buf);
+
+	/** MySQL uses year(), month(), day(), hour(), minute(), second() **/
+	if(tree->Children.nItems != 2)
+	    {
+	    mssError(1,"MYSD","datepart usage: datepart(part, date)");
+	    goto error;
+	    }
+	
+	pExpression part_exp = (pExpression)(tree->Children.Items[0]);
+	if(part_exp->DataType != DATA_T_STRING || part_exp->String == NULL)
+	    {
+	    mssError(1,"MYSD","datepart part must be a string literal");
+	    goto error;
+	    }
+	
+	/** MySQL uses year(), month(), day(), hour(), minute(), second() **/
+	if (!strcmp(part_exp->String, "year")	|| !strcmp(part_exp->String, "month") 
+		|| !strcmp(part_exp->String, "day")	|| !strcmp(part_exp->String, "hour") 
+		|| !strcmp(part_exp->String, "minute")	|| !strcmp(part_exp->String, "second"))
+	    {
+	    xsConcatenate(where_clause, " ", 1);
+	    xsConcatenate(where_clause, part_exp->String, -1);
+	    xsConcatenate(where_clause, "(", 1);
+	    }
+	else if (!strcmp(part_exp->String, "weekday"))
+	    {
+	    xsConcatenate(where_clause, " dayofweek(", -1);
+	    }
+	else
+	    {
+	    mssError(1,"MYSD","Invalid date part for datepart \"%s\"", part_exp->String);
+	    goto error;
+	    }
+	pExpression date_exp = tree->Children.Items[1];
+	if(date_exp->DataType == DATA_T_STRING)
+	    {
+	    if(date_exp->String == NULL)
+		{
+		mssError(1,"MYSD","date expression cannot be a NULL string");
+		goto error;
+		}
+	    if (strpbrk(date_exp->String,"\"' \t\r\n") != 0)
+		{
+		mssError(1,"mysd","Invalid datepart() parameters in Expression Tree");\
+		goto error;
+		}
+	    objDataToString(&date_buf, DATA_T_STRING, date_exp->String, 0);
+	    xsConcatenate(where_clause, "\'", 1);
+	    mysd_internal_SafeAppend(conn,where_clause,date_buf.String);
+	    xsConcatenate(where_clause, "\'", 1);
+	    }
+	else
+	    {
+	    /** allow any expression for the date **/
+	    mysd_internal_TreeToClause(date_exp, tdata,  where_clause, conn);
+	    }
+	xsConcatenate(where_clause, ") ", 2);
+	
+	xsDeInit(&date_buf);
+	return 0;
+
+    error:
+	xsDeInit(&date_buf);
+    return -1;
+    }
+
 /*** mysd_internal_TreeToClause - convert an expression tree to the appropriate
  *** clause for the SQL statement.
  ***/
+/// FIXME: all of the calls to children need to do bound checking
+/// FIXME: maybe check return values on recurrsive calls?
+/// FIXME: lengths declared with strings dont always match 
+/// FIXME: set the DataType on each node before returning (if that breaks, do in return type)
 int
 mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
     {
@@ -1674,39 +1834,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
             case EXPR_N_STRING:
           mysd_DO_STRING:
 		quote = '\'';
-                if (tree->Parent && tree->Parent->NodeType == EXPR_N_FUNCTION && 
-                    (!strcmp(tree->Parent->Name,"convert") || !strcmp(tree->Parent->Name,"datepart")) &&
-                    (void*)tree == (void*)(tree->Parent->Children.Items[0]))
-                    {
-                    if (!strcmp(tree->Parent->Name,"convert"))
-                        {
-			quote = ' ';
-                        if (!strcmp(tree->String,"integer")) xsConcatenate(&tmp,"signed integer",-1);
-                        else if (!strcmp(tree->String,"string"))
-			    {
-			    xsConcatenate(&tmp,"char",-1);
-			    tree->Parent->DataType = DATA_T_STRING;
-			    }
-                        else if (!strcmp(tree->String,"double")) xsConcatenate(&tmp,"double",6);
-                        else if (!strcmp(tree->String,"money")) xsConcatenate(&tmp,"decimal(14,4)",13);
-                        else if (!strcmp(tree->String,"datetime")) xsConcatenate(&tmp,"datetime",8);
-                        }
-                    else
-                        {
-                        if (strpbrk(tree->String,"\"' \t\r\n"))
-                            {
-                            mssError(1,"mysd","Invalid datepart() parameters in Expression Tree");
-                            }
-                        else
-                            {
-                            objDataToString(&tmp, DATA_T_STRING, tree->String, 0);
-                            }
-                        }
-                    }
-                else
-                    {
-                    objDataToString(&tmp, DATA_T_STRING, tree->String, 0);
-                    }
+                objDataToString(&tmp, DATA_T_STRING, tree->String, 0);
                 xsConcatenate(where_clause, &quote, 1);
                 mysd_internal_SafeAppend(conn,where_clause,tmp.String);
                 xsConcatenate(where_clause, &quote, 1);
@@ -1728,6 +1856,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                         xsConcatenate(where_clause, " NULL ", 6);
                         break;
                         }
+		///FIXME: are these gotos crossing init/deinit?
                     if (tree->DataType == DATA_T_INTEGER) goto mysd_DO_INTEGER;
                     else if (tree->DataType == DATA_T_STRING) goto mysd_DO_STRING;
                     else if (tree->DataType == DATA_T_DATETIME) goto mysd_DO_DATETIME;
@@ -1751,6 +1880,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                         }
                     else if (tree->DataType == DATA_T_STRING)
                         {
+				/// FIXME: claude things this is a possible inject
                         objDataToString(where_clause, DATA_T_STRING, &(tree->String), DATA_F_QUOTED | DATA_F_SYBQUOTE);
                         }
                     else if (tree->DataType == DATA_T_DOUBLE)
@@ -1867,12 +1997,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    }
 		else if (!strcmp(tree->Name,"convert"))
 		    {
-		    /** MySQL convert() params are reversed to what CX, Sybase, and MS SQL expect. **/
-		    xsConcatenate(where_clause, " convert(", -1);
-                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
-		    xsConcatenate(where_clause, " , ", 3);
-                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
-		    xsConcatenate(where_clause, ") ", 2);
+		    if(mysd_internal_function_Convert((pExpression)(tree), tdata,  where_clause, conn) < 0) return -1;
 		    }
 		else if (!strcmp(tree->Name,"upper") || !strcmp(tree->Name, "lower"))
 		    {
@@ -1895,6 +2020,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 			if(tempTdata->Node->DatabaseCollation[0] != '\0')
 			    {
 			    xsConcatenate(where_clause, ") collate ", -1);
+		/// FIXME: verify that the collation is either a) sanitized, or b) is a string literal and not from user/file
 			    xsConcatenate(where_clause, tempTdata->Node->DatabaseCollation, -1);
 			    xsConcatenate(where_clause, ") ", -1);
 			    } 
@@ -1986,6 +2112,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     }
                 else if (!strcmp(tree->Name,"eval"))
                     {
+	///FIXME: do we really want this to return -1?? It's an error, but it recovers...
                     mssError(1,"MYSD","MySQL does not support eval() CXSQL function");
                     /* just put silly thing as text instead of evaluated */
                     if (tree->Children.nItems == 1) mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
@@ -1993,27 +2120,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     }
 		else if (!strcmp(tree->Name,"datepart"))
 		    {
-		    /** MySQL uses year(), month(), day(), hour(), minute(), second() **/
-		    subtree = (pExpression)(tree->Children.Items[0]);
-		    if (subtree->DataType == DATA_T_STRING && subtree->String && (!strcmp(subtree->String, "year") || !strcmp(subtree->String, "month") || !strcmp(subtree->String, "day") || !strcmp(subtree->String, "hour") || !strcmp(subtree->String, "minute") || !strcmp(subtree->String, "second")))
-			{
-			xsConcatenate(where_clause, " ", 1);
-			xsConcatenate(where_clause, subtree->String, -1);
-			xsConcatenate(where_clause, "(", 1);
-			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
-			xsConcatenate(where_clause, ") ", 2);
-			}
-		    else if (subtree->DataType == DATA_T_STRING && subtree->String && (!strcmp(subtree->String, "weekday")))
-			{
-			xsConcatenate(where_clause, " dayofweek(", -1);
-			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
-			xsConcatenate(where_clause, ") ", 2);
-			}
-		    else
-			{
-			mssError(1,"MYSD","Invalid date part for datepart()");
-			return -1;
-			}
+		    if(mysd_internal_function_Datepart(tree, tdata, where_clause, conn) < 0) return -1;
 		    }
 		else if (!strcmp(tree->Name, "replace"))
 		    {
@@ -2212,6 +2319,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     }
                 xsConcatenate(where_clause, ") ) ", 4);
                 break;
+	/// FIXME: defakt case for switch?
             }
 
         if (tree->Flags & EXPR_F_DESC) xsConcatenate(where_clause, " DESC ", 6);
