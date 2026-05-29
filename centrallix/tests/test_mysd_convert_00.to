@@ -1,0 +1,15 @@
+##NAME MySQL datatype convert function
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'test', c = 'test'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+csv SELECT test_01 = "convert integer to integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer, 1) = 1  AND convert(integer, 10000) = 10000 
+csv SELECT test_02 = "convert double to integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer, 12345.54321) = 12346 AND convert(integer, 0.9999) = 1 AND convert(integer, 123.00) = 123 AND convert(integer, 123.456) = 123
+csv SELECT test_03 = "convert string to integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer, "12345") = 12345 AND convert(integer, "0000") = 0 AND convert(integer, "123") = 123 AND convert(integer, "-123") = -123
+csv SELECT test_04 = "convert string with decimal to integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer, "12345.54321") = 12345 AND convert(integer, "0.9999") = 0 AND convert(integer, "-123.00") = -123 AND convert(integer, "123.456") = 123
+csv SELECT test_05 = "convert money to integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer, $12345.5432) = 12346 AND convert(integer, $0.9999) = 1 AND convert(integer, $-123.00) = -123 AND convert(integer, $123.456) = 123
+
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows
