@@ -621,19 +621,27 @@ function cxjs_datepart(part, datestr)
     return null;
     }
 
+// Signed difference (d2-d1) in part units; part: "year","month","day","hour","minute","second"; returns int or null.
 function cxjs_datediff(part, d1, d2)
     {
+    // Validate and parse.
     if (part == null || d1 == null || d2 == null) return null;
     var dt1 = cxjs__parsedate(d1);
     var dt2 = cxjs__parsedate(d2);
     if (!dt1 || !dt2) return null;
+
+    // Normalize order; get part name.
     var sign = 1;
     if (dt2 < dt1) { sign = -1; var tmp = dt2; dt2 = dt1; dt1 = tmp; }
     part = String(part).toLowerCase();
+
+    // Year and month parts.
     if (part == "year")
 	return sign * (dt2.getFullYear() - dt1.getFullYear());
     if (part == "month")
 	return sign * ((dt2.getFullYear()-dt1.getFullYear())*12 + dt2.getMonth()-dt1.getMonth());
+
+    // Day, hour, minute, second parts.
     var m1 = new Date(dt1.getFullYear(), dt1.getMonth(), dt1.getDate());
     var m2 = new Date(dt2.getFullYear(), dt2.getMonth(), dt2.getDate());
     var days = Math.round((m2 - m1) / 86400000);
@@ -646,17 +654,24 @@ function cxjs_datediff(part, d1, d2)
     if (part == "second") return sign * seconds;
     return null;
     }
+
+// Format date string datestr using fmt (see centrallix-sysdoc format chars); returns null on invalid input.
 function cxjs_dateformat(datestr, fmt)
     {
+    // Validate and parse.
     if (datestr == null || fmt == null) return null;
     var d = cxjs__parsedate(datestr);
     if (!d) return null;
+
+    // Month name tables and state vars.
     var sm = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     var lm = ["January","February","March","April","May","June","July","August","September","October","November","December"];
     var result = "";
     var append_ampm = 0;
     var c, day, mo, hr, sfx, end;
     var i = 0;
+
+    // Scan format string.
     while (i < fmt.length)
 	{
 	c = fmt[i];
@@ -741,29 +756,43 @@ function cxjs_dateformat(datestr, fmt)
 	}
     return result;
     }
+
+// Absolute value of v; returns null if v is null.
 function cxjs_abs(v)
     {
     if (v == null) return null;
     return Math.abs(v);
     }
+
+// Round v to dec decimal places (default 0), toward nearest; returns null if v is null.
 function cxjs_round(v, dec)
     {
+    // Validate; normalize dec.
     if (v == null) return null;
     if (dec == null) dec = 0;
     dec = Math.round(dec);
+
+    // Scale, round, unscale.
     var factor = Math.pow(10, dec);
     var scaled = v * factor;
     return (v > 0 ? Math.floor(scaled+0.5) : Math.ceil(scaled-0.5)) / factor;
     }
+
+// Truncate v toward zero to dec decimal places (default 0); returns null if v is null.
 function cxjs_truncate(v, dec)
     {
+    // Validate; normalize dec.
     if (v == null) return null;
     if (dec == null) dec = 0;
     dec = Math.round(dec);
+
+    // Scale, truncate, unscale.
     var factor = Math.pow(10, dec);
     var scaled = v * factor;
     return (v > 0 ? Math.floor(scaled+0.000001) : Math.ceil(scaled-0.000001)) / factor;
     }
+
+// Clamp v to [mn, mx]; either bound may be null (unbounded); returns null if v is null.
 function cxjs_constrain(v, mn, mx)
     {
     if (v == null) return null;
@@ -771,38 +800,53 @@ function cxjs_constrain(v, mn, mx)
     if (mx != null && v > mx) return mx;
     return v;
     }
+
+// Return a random float in [0,1); seed is accepted but ignored.
 function cxjs_rand(seed)
     {
     return Math.random();
     }
+
+// Square root of v; returns null if v is null or negative.
 function cxjs_sqrt(v)
     {
     if (v == null) return null;
     var r = Math.sqrt(v);
     return isNaN(r) ? null : r;
     }
+
+// v squared; returns null if v is null.
 function cxjs_square(v)
     {
     if (v == null) return null;
     return v * v;
     }
+
+// n raised to power p; returns null if either is null.
 function cxjs_power(n, p)
     {
     if (n == null || p == null) return null;
     return Math.pow(n, p);
     }
+
+// Convert radians to degrees; returns null if v is null.
 function cxjs_degrees(v)
     {
     if (v == null) return null;
     return v * 180.0 / Math.PI;
     }
+
+// Convert degrees to radians; returns null if v is null.
 function cxjs_radians(v)
     {
     if (v == null) return null;
     return v * Math.PI / 180.0;
     }
+
+// Format number v as money using fmt format string (see centrallix-sysdoc format chars); returns null on invalid input.
 function cxjs_moneyformat(v, fmt)
     {
+    // Validate and parse number.
     if (v == null || fmt == null) return null;
     var num = parseFloat(v);
     if (isNaN(num)) return null;
@@ -811,6 +855,8 @@ function cxjs_moneyformat(v, fmt)
     var pw = Math.floor(abs_v);
     var pf = Math.round((abs_v - pw) * 10000);
     if (pf >= 10000) { pw++; pf = 0; }
+
+    // Init state; scan pre-decimal format for width and sign options.
     var decimal_char = '.';
     var comma_char = ',';
     var zero_type = 0;
@@ -830,6 +876,8 @@ function cxjs_moneyformat(v, fmt)
     if (tm > 1) tm /= 10;
     if (/[+\-\(\)\[\]]/.test(fmt)) automatic_sign = 0;
     if (pw === 0 && pf === 0 && zero_type !== 0) return zero_strings[zero_type];
+
+    // Format result string.
     var result = '';
     var suppressing_zeros = 1;
     var in_decimal_part = 0;
