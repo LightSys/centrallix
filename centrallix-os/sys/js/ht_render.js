@@ -310,14 +310,6 @@ function cxjs_right(s,l)
     if (s == null || l == null) return null;
     return s.substr(s.length-l);
     }
-function cxjs_eval(x)
-    {
-    var _this = null;
-    var _context = null;
-    if (x == null) return null;
-    if (typeof x == 'object') x = x.toString();
-    return eval(x);
-    }
 function cxjs_isnull(v,d)
     {
     if (v == null)
