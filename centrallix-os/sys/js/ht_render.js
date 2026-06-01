@@ -592,55 +592,55 @@ function cxjs_replicate(s, n)
     }
 
 // Internal: parse M/D/YYYY H:MM:SS date string into a Date; returns null on failure.
-function cxjs__parsedate(s)
+function cxjs__parsedate(date_str)
     {
-    if (s == null) return null;
+    if (date_str == null) return null;
     
-    const m = String(s).match(/^(\d+)\/(\d+)\/(\d+)(?:\s+(\d+):(\d+)(?::(\d+))?)?/);
-    if (!m) return null;
+    const match = String(date_str).match(/^(\d+)\/(\d+)\/(\d+)(?:\s+(\d+):(\d+)(?::(\d+))?)?/);
+    if (!match) return null;
     
     return new Date(
-	parseInt(m[3], 10),
-	parseInt(m[1], 10) - 1,
-	parseInt(m[2], 10),
-	(m[4]) ? parseInt(m[4], 10) : 0,
-	(m[5]) ? parseInt(m[5], 10) : 0,
-	(m[6]) ? parseInt(m[6], 10) : 0,
+	parseInt(match[3], 10),
+	parseInt(match[1], 10) - 1,
+	parseInt(match[2], 10),
+	(match[4]) ? parseInt(match[4], 10) : 0,
+	(match[5]) ? parseInt(match[5], 10) : 0,
+	(match[6]) ? parseInt(match[6], 10) : 0,
 	0
     );
     }
 
-// Extract year/month/day/hour/minute/second/weekday from a date string; returns int or null.
-function cxjs_datepart(part, datestr)
+// Extract year/month/day/hour/minute/second/weekday from date_str; returns int or null.
+function cxjs_datepart(part, date_str)
     {
-    if (part == null || datestr == null) return null;
+    if (part == null || date_str == null) return null;
     
-    const d = cxjs__parsedate(datestr);
-    if (!d) return null;
+    const datetime = cxjs__parsedate(date_str);
+    if (!datetime) return null;
     
     switch (String(part).toLowerCase())
 	{
-	case "year":    return d.getFullYear();
-	case "month":   return d.getMonth() + 1;
-	case "day":     return d.getDate();
-	case "hour":    return d.getHours();
-	case "minute":  return d.getMinutes();
-	case "second":  return d.getSeconds();
-	case "weekday": return d.getDay() + 1;
+	case "year":    return datetime.getFullYear();
+	case "month":   return datetime.getMonth() + 1;
+	case "day":     return datetime.getDate();
+	case "hour":    return datetime.getHours();
+	case "minute":  return datetime.getMinutes();
+	case "second":  return datetime.getSeconds();
+	case "weekday": return datetime.getDay() + 1;
 	}
     
     return null;
     }
 
-// Calculate the signed difference (d2-d1) between dates and return the
+// Calculate the signed difference (date2-date1) between dates and return the
 // requested datetime part (e.g. "year", "month", "day", "hour", "minute",
 // "second"), or null on failure.
-function cxjs_datediff(part, d1, d2)
+function cxjs_datediff(part, date1, date2)
     {
     // Validate and parse dates.
-    if (part == null || d1 == null || d2 == null) return null;
-    let dt1 = cxjs__parsedate(d1);
-    let dt2 = cxjs__parsedate(d2);
+    if (part == null || date1 == null || date2 == null) return null;
+    let dt1 = cxjs__parsedate(date1);
+    let dt2 = cxjs__parsedate(date2);
     if (!dt1 || !dt2) return null;
 
     // Normalize order; get part name.
@@ -658,7 +658,7 @@ function cxjs_datediff(part, d1, d2)
     if (part === "year")
 	return sign * (dt2.getFullYear() - dt1.getFullYear());
     if (part === "month")
-	return sign * ((dt2.getFullYear()-dt1.getFullYear())*12 + dt2.getMonth()-dt1.getMonth());
+	return sign * ((dt2.getFullYear() - dt1.getFullYear())*12 + dt2.getMonth()-dt1.getMonth());
 
     // Day, hour, minute, second parts.
     const m1 = new Date(dt1.getFullYear(), dt1.getMonth(), dt1.getDate());
@@ -675,12 +675,12 @@ function cxjs_datediff(part, d1, d2)
     return null;
     }
 
-// Format date string datestr using fmt (see centrallix-sysdoc format chars); returns null on invalid input.
-function cxjs_dateformat(datestr, fmt)
+// Format date string date_str using format (see centrallix-sysdoc format chars); returns null on invalid input.
+function cxjs_dateformat(date_str, format)
     {
     // Validate and parse.
-    if (datestr == null || fmt == null) return null;
-    const d = cxjs__parsedate(datestr);
+    if (date_str == null || format == null) return null;
+    const d = cxjs__parsedate(date_str);
     if (!d) return null;
 
     // Month name tables.
@@ -709,7 +709,7 @@ function cxjs_dateformat(datestr, fmt)
     const check_append_am_pm = () =>
 	{
 	if (!append_am_pm) return;
-	if (i >= fmt.length || fmt[i]===' ' || fmt[i]===',')
+	if (i >= format.length || format[i]===' ' || format[i]===',')
 	    {
 	    result += (d.getHours() >= 12) ? "PM" : "AM";
 	    append_am_pm = 0;
@@ -717,16 +717,16 @@ function cxjs_dateformat(datestr, fmt)
 	}
     
     // Scan format string.
-    while (i < fmt.length)
+    while (i < format.length)
 	{
-	const c = fmt[i];
+	const c = format[i];
 	switch (c)
 	    {
 	    case 'D': i++; break;
 	    case 'd':
 		{
 		const day = d.getDate();
-		if (fmt[i+1] === 'd' && fmt[i+2] === 'd')
+		if (format[i+1] === 'd' && format[i+2] === 'd')
 		    {
 		    const suffix =
 		        (day === 1 || day === 21 || day === 31) ? "st" :
@@ -735,7 +735,7 @@ function cxjs_dateformat(datestr, fmt)
 			"th";
 		    append(day + suffix, 3);
 		    }
-		else if (fmt[i+1] === 'd')
+		else if (format[i+1] === 'd')
 		    {
 		    append(((day < 10) ? "0" : "") + day, 2);
 		    }
@@ -750,13 +750,13 @@ function cxjs_dateformat(datestr, fmt)
 		const month = d.getMonth() + 1;
 		
 		// MMMM
-		if (fmt[i+1] === 'M' && fmt[i+2] === 'M' && fmt[i+3] === 'M')
+		if (format[i+1] === 'M' && format[i+2] === 'M' && format[i+3] === 'M')
 		    append(month_names[month], 4);
 		// MMM
-		else if (fmt[i+1] === 'M' && fmt[i+2] === 'M')
+		else if (format[i+1] === 'M' && format[i+2] === 'M')
 		    append(month_abbrevs[month], 3);
 		// MM
-		else if (fmt[i+1] === 'M')
+		else if (format[i+1] === 'M')
 		    append(((month < 10) ? "0" : "") + (month), 2);
 		// M
 		else
@@ -766,16 +766,16 @@ function cxjs_dateformat(datestr, fmt)
 		}
 	    case 'y':
 		{
-		if (fmt[i+1] === 'y' && fmt[i+2] === 'y' && fmt[i+3] === 'y')
+		if (format[i+1] === 'y' && format[i+2] === 'y' && format[i+3] === 'y')
 		    append(("000" + d.getFullYear()).slice(-4), 4);
-		else if (fmt[i+1] === 'y')
+		else if (format[i+1] === 'y')
 		    append(("0" + (d.getFullYear()%100)).slice(-2), 2);
 		else i++;
 		break;
 		}
 	    case 'H':
 		{
-		if (fmt[i+1] === 'H')
+		if (format[i+1] === 'H')
 		    append(((d.getHours() < 10) ? "0" : "") + d.getHours(), 1);
 		i++;
 		append_am_pm = 0;
@@ -783,7 +783,7 @@ function cxjs_dateformat(datestr, fmt)
 		}
 	    case 'h':
 		{
-		if (fmt[i+1] === 'h')
+		if (format[i+1] === 'h')
 		    {
 		    const hr = d.getHours() % 12 || 12;
 		    append(((hr < 10) ? "0" : "") + hr, 1);
@@ -795,7 +795,7 @@ function cxjs_dateformat(datestr, fmt)
 		}
 	    case 'm':
 		{
-		if (fmt[i+1] === 'm')
+		if (format[i+1] === 'm')
 		    append(((d.getMinutes() < 10) ? "0" : "") + d.getMinutes(), 1);
 		i++;
 		check_append_am_pm();
@@ -803,7 +803,7 @@ function cxjs_dateformat(datestr, fmt)
 		}
 	    case 's':
 		{
-		if (fmt[i+1] === 's')
+		if (format[i+1] === 's')
 		    append(((d.getSeconds() < 10) ? "0" : "") + d.getSeconds(), 1);
 		i++;
 		check_append_am_pm();
@@ -811,20 +811,20 @@ function cxjs_dateformat(datestr, fmt)
 		}
 	    case 'I':
 		{
-		if (fmt[i+1] === 'I')
+		if (format[i+1] === 'I')
 		    i++;
 		i++;
 		break;
 		}
 	    case 'L': if (
-		i + 2 < fmt.length && (
-		    fmt[i+1] === 'm' ||
-		    fmt[i+1] === 'M' ||
-		    fmt[i+1] === 'w' ||
-		    fmt[i+1] === 'W'
-		) && fmt[i+2] === '[')
+		i + 2 < format.length && (
+		    format[i+1] === 'm' ||
+		    format[i+1] === 'M' ||
+		    format[i+1] === 'w' ||
+		    format[i+1] === 'W'
+		) && format[i+2] === '[')
 		{
-		const end = fmt.indexOf(']', i);
+		const end = format.indexOf(']', i);
 		i = (end >= 0) ? end+1 : i+1;
 		break;
 		} // Fallthrough
@@ -839,25 +839,25 @@ function cxjs_dateformat(datestr, fmt)
     return result;
     }
 
-// Absolute value of v; returns null if v is null.
-function cxjs_abs(v)
+// Absolute value of n; returns null if n is null.
+function cxjs_abs(n)
     {
-    if (v == null) return null;
-    return Math.abs(v);
+    if (n == null) return null;
+    return Math.abs(n);
     }
 
-// Round v to dec decimal places (default 0), toward nearest; returns null if v is null.
-function cxjs_round(v, dec)
+// Round n to dec decimal places (default 0), toward nearest; returns null if n is null.
+function cxjs_round(n, dec)
     {
     // Validate; normalize dec.
-    if (v == null) return null;
+    if (n == null) return null;
     if (dec == null) dec = 0;
     dec = Math.round(dec);
 
     // Scale, round, unscale.
     var factor = Math.pow(10, dec);
-    var scaled = v * factor;
-    return (v > 0 ? Math.floor(scaled+0.5) : Math.ceil(scaled-0.5)) / factor;
+    var scaled = n * factor;
+    return (n > 0 ? Math.floor(scaled+0.5) : Math.ceil(scaled-0.5)) / factor;
     }
 
 // Truncate v toward zero to dec decimal places (default 0); returns null if v is null.
