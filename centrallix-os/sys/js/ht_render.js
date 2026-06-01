@@ -513,7 +513,7 @@ function cxjs_replace(str, srch, rep)
 // Convert integer number (n) to English words, with a trailing space.
 function cxjs_wordify(n)
     {
-    if (n == null) return null;
+    if (n === null) return null;
     
     // Declare word tables.
     const digits = [
@@ -576,7 +576,7 @@ function cxjs_wordify(n)
 // Repeat string s n times (up to 255); returns null if n < 0.
 function cxjs_replicate(s, n)
     {
-    if (s == null || n == null) return null;
+    if (s === null || n === null) return null;
     
     // Process parameters.
     const str = String(s);
@@ -594,7 +594,7 @@ function cxjs_replicate(s, n)
 // Internal: parse M/D/YYYY H:MM:SS date string into a Date; returns null on failure.
 function cxjs__parsedate(date_str)
     {
-    if (date_str == null) return null;
+    if (date_str === null) return null;
     
     const match = String(date_str).match(/^(\d+)\/(\d+)\/(\d+)(?:\s+(\d+):(\d+)(?::(\d+))?)?/);
     if (!match) return null;
@@ -613,7 +613,7 @@ function cxjs__parsedate(date_str)
 // Extract year/month/day/hour/minute/second/weekday from date_str; returns int or null.
 function cxjs_datepart(part, date_str)
     {
-    if (part == null || date_str == null) return null;
+    if (part === null || date_str === null) return null;
     
     const datetime = cxjs__parsedate(date_str);
     if (!datetime) return null;
@@ -638,7 +638,7 @@ function cxjs_datepart(part, date_str)
 function cxjs_datediff(part, date1, date2)
     {
     // Validate and parse parameters.
-    if (part == null || date1 == null || date2 == null) return null;
+    if (part === null || date1 === null || date2 === null) return null;
     let dt1 = cxjs__parsedate(date1);
     let dt2 = cxjs__parsedate(date2);
     if (!dt1 || !dt2) return null;
@@ -679,7 +679,7 @@ function cxjs_datediff(part, date1, date2)
 function cxjs_dateformat(date_str, format)
     {
     // Validate and parse parameters.
-    if (date_str == null || format == null) return null;
+    if (date_str === null || format === null) return null;
     const d = cxjs__parsedate(date_str);
     if (!d) return null;
 
@@ -842,7 +842,7 @@ function cxjs_dateformat(date_str, format)
 // Absolute value of n. Returns null if n is null.
 function cxjs_abs(n)
     {
-    if (n == null) return null;
+    if (n === null) return null;
     return Math.abs(n);
     }
 
@@ -851,8 +851,8 @@ function cxjs_abs(n)
 function cxjs_round(n, dec)
     {
     // Validate parameters.
-    if (n == null) return null;
-    if (dec == null) dec = 0;
+    if (n === null) return null;
+    if (dec === null) dec = 0;
     dec = Math.round(dec); // Normalize.
     
     // Scale, round, unscale.
@@ -867,8 +867,8 @@ function cxjs_round(n, dec)
 function cxjs_truncate(n, dec)
     {
     // Validate parameters.
-    if (n == null) return null;
-    if (dec == null) dec = 0;
+    if (n === null) return null;
+    if (dec === null) dec = 0;
     dec = Math.round(dec); // Normalize.
 
     // Scale, truncate, unscale.
@@ -899,7 +899,7 @@ function cxjs_rand(seed)
 // Returns the square root of n, or null if n is null or negative.
 function cxjs_sqrt(n)
     {
-    if (n == null) return null;
+    if (n === null) return null;
     const result = Math.sqrt(n);
     return isNaN(result) ? null : result;
     }
@@ -907,28 +907,28 @@ function cxjs_sqrt(n)
 // Returns the square of n, or null if n is null.
 function cxjs_square(n)
     {
-    if (n == null) return null;
+    if (n === null) return null;
     return n * n;
     }
 
 // Returns n raised to power p, or null if either parameter is null.
 function cxjs_power(n, p)
     {
-    if (n == null || p == null) return null;
+    if (n === null || p === null) return null;
     return Math.pow(n, p);
     }
 
 // Converts radians to degrees, or returns null if radians is null.
 function cxjs_degrees(radians)
     {
-    if (radians == null) return null;
+    if (radians === null) return null;
     return (radians * 180.0) / Math.PI;
     }
 
 // Converts degrees to radians, or returns null if degrees is null.
 function cxjs_radians(degrees)
     {
-    if (degrees == null) return null;
+    if (degrees === null) return null;
     return (degrees * Math.PI) / 180.0;
     }
 
