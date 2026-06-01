@@ -516,10 +516,21 @@ function cxjs_wordify(n)
     if (n == null) return null;
     
     // Declare word tables.
-    const digits = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
-    const teens = ["Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
-    const tens = ["Ten", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
-    const multiples = ["", "Thousand", "Million", "Billion", "Trillion", "Quadrillion"];
+    const digits = [
+	"Zero", "One", "Two", "Three", "Four", "Five",
+	"Six", "Seven", "Eight", "Nine", "Ten"
+    ];
+    const teens = [
+	"Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen",
+	"Sixteen", "Seventeen", "Eighteen", "Nineteen"
+    ];
+    const tens = [
+	"Ten", "Twenty", "Thirty", "Forty", "Fifty",
+	"Sixty", "Seventy", "Eighty", "Ninety"
+    ];
+    const multiples = ["",
+	"Thousand", "Million", "Billion", "Trillion", "Quadrillion"
+    ];
     
     // Handle negative values and normalize n.
     n = Math.round(n);
@@ -673,8 +684,16 @@ function cxjs_dateformat(datestr, fmt)
     if (!d) return null;
 
     // Month name tables.
-    const month_abbrevs = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const month_names = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const month_abbrevs = ["",
+	"Jan", "Feb", "Mar", "Apr",
+	"May", "Jun", "Jul", "Aug",
+	"Sep", "Oct", "Nov", "Dec"
+    ];
+    const month_names = ["",
+	"January", "February", "March", "April",
+	"May", "June", "July", "August",
+	"September", "October", "November", "December"
+    ];
 
     // Declare state variables.
     let result = "";
