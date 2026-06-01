@@ -509,6 +509,357 @@ function cxjs_replace(str, srch, rep)
 		rep);
     }
 
+// Convert integer n to English words; result has a trailing space.
+function cxjs_wordify(n)
+    {
+    if (n == null) return null;
+
+    // Word tables
+    var digits = ["Zero","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten"];
+    var teens = ["Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+    var tens_w = ["Ten","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+    var mults = ["","Thousand","Million","Billion","Trillion","Quadrillion"];
+
+    // Normalize; handle sign
+    n = Math.round(n);
+    if (isNaN(n)) return null;
+    var abs_n = Math.abs(n);
+    var result = n < 0 ? "Negative " : "";
+
+    // Walk thousands-groups high to low
+    if (abs_n === 0)
+	{
+	result += "Zero ";
+	}
+    else
+	{
+	for (var mult = 5; mult >= 0; mult--)
+	    {
+	    var chunk = Math.floor(abs_n / Math.pow(1000, mult)) % 1000;
+	    if (chunk === 0) continue;
+	    if (chunk >= 100)
+		result += digits[Math.floor(chunk/100)] + " Hundred ";
+	    var rem = chunk % 100;
+	    if (rem > 19)
+		{
+		result += tens_w[Math.floor(rem/10)-1];
+		if (rem%10 !== 0) result += "-" + digits[rem%10] + " ";
+		else result += " ";
+		}
+	    else if (rem > 10) result += teens[rem-11] + " ";
+	    else if (rem > 0) result += digits[rem] + " ";
+	    if (chunk !== 0) result += mults[mult];
+	    if (chunk !== 0 && chunk > 10 && (chunk%10 !== 0 || chunk > 100) && mult !== 0)
+		result += ", ";
+	    else if (mult !== 0 && chunk !== 0)
+		result += " ";
+	    }
+	}
+    return result;
+    }
+
+// Repeat string s n times (capped at 255); returns null if n < 0.
+function cxjs_replicate(s, n)
+    {
+    if (s == null || n == null) return null;
+    s = String(s);
+    n = Math.floor(n);
+    if (n < 0) return null;
+    if (n > 255) n = 255;
+    var result = "";
+    for (var i = 0; i < n; i++) result += s;
+    return result;
+    }
+
+// Internal: parse M/D/YYYY H:MM:SS date string into a Date; returns null on failure.
+function cxjs__parsedate(s)
+    {
+    if (s == null) return null;
+    var m = String(s).match(/^(\d+)\/(\d+)\/(\d+)(?:\s+(\d+):(\d+)(?::(\d+))?)?/);
+    if (!m) return null;
+    return new Date(parseInt(m[3],10), parseInt(m[1],10)-1, parseInt(m[2],10),
+	m[4]?parseInt(m[4],10):0, m[5]?parseInt(m[5],10):0, m[6]?parseInt(m[6],10):0, 0);
+    }
+
+// Extract year/month/day/hour/minute/second/weekday from a date string; returns int or null.
+function cxjs_datepart(part, datestr)
+    {
+    if (part == null || datestr == null) return null;
+    var d = cxjs__parsedate(datestr);
+    if (!d) return null;
+    switch(String(part).toLowerCase())
+	{
+	case "year":    return d.getFullYear();
+	case "month":   return d.getMonth() + 1;
+	case "day":     return d.getDate();
+	case "hour":    return d.getHours();
+	case "minute":  return d.getMinutes();
+	case "second":  return d.getSeconds();
+	case "weekday": return d.getDay() + 1;
+	}
+    return null;
+    }
+function cxjs_datediff(part, d1, d2)
+    {
+    if (part == null || d1 == null || d2 == null) return null;
+    var dt1 = cxjs__parsedate(d1);
+    var dt2 = cxjs__parsedate(d2);
+    if (!dt1 || !dt2) return null;
+    var sign = 1;
+    if (dt2 < dt1) { sign = -1; var tmp = dt2; dt2 = dt1; dt1 = tmp; }
+    part = String(part).toLowerCase();
+    if (part == "year")
+	return sign * (dt2.getFullYear() - dt1.getFullYear());
+    if (part == "month")
+	return sign * ((dt2.getFullYear()-dt1.getFullYear())*12 + dt2.getMonth()-dt1.getMonth());
+    var m1 = new Date(dt1.getFullYear(), dt1.getMonth(), dt1.getDate());
+    var m2 = new Date(dt2.getFullYear(), dt2.getMonth(), dt2.getDate());
+    var days = Math.round((m2 - m1) / 86400000);
+    if (part == "day") return sign * days;
+    var hours = days*24 + dt2.getHours() - dt1.getHours();
+    if (part == "hour") return sign * hours;
+    var minutes = hours*60 + dt2.getMinutes() - dt1.getMinutes();
+    if (part == "minute") return sign * minutes;
+    var seconds = minutes*60 + dt2.getSeconds() - dt1.getSeconds();
+    if (part == "second") return sign * seconds;
+    return null;
+    }
+function cxjs_dateformat(datestr, fmt)
+    {
+    if (datestr == null || fmt == null) return null;
+    var d = cxjs__parsedate(datestr);
+    if (!d) return null;
+    var sm = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    var lm = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    var result = "";
+    var append_ampm = 0;
+    var c, day, mo, hr, sfx, end;
+    var i = 0;
+    while (i < fmt.length)
+	{
+	c = fmt[i];
+	if (c == 'D')
+	    { i++; }
+	else if (c == 'd')
+	    {
+	    day = d.getDate();
+	    if (fmt[i+1]=='d' && fmt[i+2]=='d')
+		{
+		sfx = (day==1||day==21||day==31)?"st":(day==2||day==22)?"nd":(day==3||day==23)?"rd":"th";
+		result += day + sfx;
+		i += 3;
+		}
+	    else if (fmt[i+1]=='d')
+		{ result += (day<10?"0":"")+day; i += 2; }
+	    else
+		{ result += day; i++; }
+	    }
+	else if (c == 'M')
+	    {
+	    mo = d.getMonth();
+	    if (fmt[i+1]=='M' && fmt[i+2]=='M' && fmt[i+3]=='M')
+		{ result += lm[mo]; i += 4; }
+	    else if (fmt[i+1]=='M' && fmt[i+2]=='M')
+		{ result += sm[mo]; i += 3; }
+	    else if (fmt[i+1]=='M')
+		{ result += (mo+1<10?"0":"")+(mo+1); i += 2; }
+	    else
+		{ result += mo+1; i++; }
+	    }
+	else if (c == 'y')
+	    {
+	    if (fmt[i+1]=='y' && fmt[i+2]=='y' && fmt[i+3]=='y')
+		{ result += ("000"+d.getFullYear()).slice(-4); i += 4; }
+	    else if (fmt[i+1]=='y')
+		{ result += ("0"+(d.getFullYear()%100)).slice(-2); i += 2; }
+	    else { i++; }
+	    }
+	else if (c == 'H')
+	    {
+	    if (fmt[i+1]=='H')
+		{ result += (d.getHours()<10?"0":"")+d.getHours(); i++; }
+	    i++;
+	    append_ampm = 0;
+	    }
+	else if (c == 'h')
+	    {
+	    if (fmt[i+1]=='h')
+		{ hr = d.getHours()%12||12; result += (hr<10?"0":"")+hr; i++; }
+	    i++;
+	    append_ampm = 1;
+	    if (i >= fmt.length || fmt[i]==' ' || fmt[i]==',')
+		{ result += d.getHours()>=12?"PM":"AM"; append_ampm = 0; }
+	    }
+	else if (c == 'm')
+	    {
+	    if (fmt[i+1]=='m')
+		{ result += (d.getMinutes()<10?"0":"")+d.getMinutes(); i++; }
+	    i++;
+	    if (append_ampm && (i >= fmt.length || fmt[i]==' ' || fmt[i]==','))
+		{ result += d.getHours()>=12?"PM":"AM"; append_ampm = 0; }
+	    }
+	else if (c == 's')
+	    {
+	    if (fmt[i+1]=='s')
+		{ result += (d.getSeconds()<10?"0":"")+d.getSeconds(); i++; }
+	    i++;
+	    if (append_ampm && (i >= fmt.length || fmt[i]==' ' || fmt[i]==','))
+		{ result += d.getHours()>=12?"PM":"AM"; append_ampm = 0; }
+	    }
+	else if (c == 'I')
+	    { if (fmt[i+1]=='I') i++; i++; }
+	else if (c=='L' && i+2<fmt.length &&
+		 (fmt[i+1]=='m'||fmt[i+1]=='M'||fmt[i+1]=='w'||fmt[i+1]=='W') && fmt[i+2]=='[')
+	    {
+	    end = fmt.indexOf(']', i);
+	    i = (end >= 0) ? end+1 : i+1;
+	    }
+	else
+	    { result += c; i++; }
+	}
+    return result;
+    }
+function cxjs_abs(v)
+    {
+    if (v == null) return null;
+    return Math.abs(v);
+    }
+function cxjs_round(v, dec)
+    {
+    if (v == null) return null;
+    if (dec == null) dec = 0;
+    dec = Math.round(dec);
+    var factor = Math.pow(10, dec);
+    var scaled = v * factor;
+    return (v > 0 ? Math.floor(scaled+0.5) : Math.ceil(scaled-0.5)) / factor;
+    }
+function cxjs_truncate(v, dec)
+    {
+    if (v == null) return null;
+    if (dec == null) dec = 0;
+    dec = Math.round(dec);
+    var factor = Math.pow(10, dec);
+    var scaled = v * factor;
+    return (v > 0 ? Math.floor(scaled+0.000001) : Math.ceil(scaled-0.000001)) / factor;
+    }
+function cxjs_constrain(v, mn, mx)
+    {
+    if (v == null) return null;
+    if (mn != null && v < mn) return mn;
+    if (mx != null && v > mx) return mx;
+    return v;
+    }
+function cxjs_rand(seed)
+    {
+    return Math.random();
+    }
+function cxjs_sqrt(v)
+    {
+    if (v == null) return null;
+    var r = Math.sqrt(v);
+    return isNaN(r) ? null : r;
+    }
+function cxjs_square(v)
+    {
+    if (v == null) return null;
+    return v * v;
+    }
+function cxjs_power(n, p)
+    {
+    if (n == null || p == null) return null;
+    return Math.pow(n, p);
+    }
+function cxjs_degrees(v)
+    {
+    if (v == null) return null;
+    return v * 180.0 / Math.PI;
+    }
+function cxjs_radians(v)
+    {
+    if (v == null) return null;
+    return v * Math.PI / 180.0;
+    }
+function cxjs_moneyformat(v, fmt)
+    {
+    if (v == null || fmt == null) return null;
+    var num = parseFloat(v);
+    if (isNaN(num)) return null;
+    var is_neg = num < 0;
+    var abs_v = Math.abs(num);
+    var pw = Math.floor(abs_v);
+    var pf = Math.round((abs_v - pw) * 10000);
+    if (pf >= 10000) { pw++; pf = 0; }
+    var decimal_char = '.';
+    var comma_char = ',';
+    var zero_type = 0;
+    var zero_strings = [null, '-0-', '0', ''];
+    var automatic_sign = 1;
+    var tm = 1;
+    var pc, nc, pc2, c;
+    for (var pi = 0; pi < fmt.length && fmt[pi] != '.'; pi++)
+	{
+	pc = fmt[pi];
+	if (pc=='0'||pc=='#'||pc=='^'||pc==' '||pc=='*') tm *= 10;
+	else if (pc=='I') { decimal_char = ','; comma_char = '.'; }
+	else if (pc=='Z') zero_type = 1;
+	else if (pc=='z') zero_type = 2;
+	else if (pc=='B') zero_type = 3;
+	}
+    if (tm > 1) tm /= 10;
+    if (/[+\-\(\)\[\]]/.test(fmt)) automatic_sign = 0;
+    if (pw === 0 && pf === 0 && zero_type !== 0) return zero_strings[zero_type];
+    var result = '';
+    var suppressing_zeros = 1;
+    var in_decimal_part = 0;
+    var d;
+    var i = 0;
+    while (i < fmt.length)
+	{
+	c = fmt[i];
+	if (automatic_sign) { automatic_sign = 0; if (is_neg) result += '-'; }
+	switch(c)
+	    {
+	    case '$': result += '$'; break;
+	    case ' ': case '*': case '0': case '^': case '#':
+		if (!tm) break;
+		if (in_decimal_part)
+		    { d = Math.floor(pf/tm)%10; tm = Math.floor(tm/10); }
+		else
+		    { d = Math.floor(pw/tm); pw -= d*tm; tm = Math.floor(tm/10); }
+		if (d !== 0 || c=='0' || c=='^') suppressing_zeros = 0;
+		if (suppressing_zeros) { if (c==' '||c=='*') result += ' '; }
+		else result += d;
+		break;
+	    case ',':
+		if (!suppressing_zeros) result += comma_char;
+		else if (!((i>0 && fmt[i-1]=='#') || (i+1<fmt.length && fmt[i+1]=='#'))) result += ' ';
+		break;
+	    case '.':
+		if (pw !== 0) result += ''+pw;
+		in_decimal_part = 1; suppressing_zeros = 0; tm = 1000; result += decimal_char;
+		break;
+	    case '-': result += is_neg?'-':' '; break;
+	    case '+': result += is_neg?'-':'+'; break;
+	    case '[': result += !is_neg?'(':' '; break;
+	    case ']': result += !is_neg?')':' '; break;
+	    case '(': result += is_neg?'(':' '; break;
+	    case ')': result += is_neg?')':' '; break;
+	    default: break;
+	    }
+	i++;
+	nc = i < fmt.length ? fmt[i] : '\0';
+	pc2 = fmt[i-1];
+	if (nc==='\0'||nc===']'||nc===')'||
+	    ((nc==='+'||nc==='-')&&(pc2===' '||pc2==='*'||pc2==='#'||pc2==='0'||pc2==='^')))
+	    {
+	    if (pf && !in_decimal_part) { in_decimal_part=1; tm=1000; result+=decimal_char; }
+	    while (pf && in_decimal_part && tm && (pf%(tm*10))!==0)
+		{ d=Math.floor(pf/tm)%10; tm=Math.floor(tm/10); result+=''+d; }
+	    }
+	}
+    return result;
+    }
+
 function htr_boolean(v)
     {
     return !(v === null || v == undefined || v==0 || String(v).toLowerCase()=='no' || String(v).toLowerCase() == 'false' || String(v).toLowerCase() == 'off' || v == '0');
