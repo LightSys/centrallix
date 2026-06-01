@@ -578,7 +578,7 @@ function cxjs_replicate(s, n)
     {
     if (s == null || n == null) return null;
     
-    // Process inputs.
+    // Process parameters.
     const str = String(s);
     let num = Math.floor(n);
     if (num < 0) return null;
@@ -637,7 +637,7 @@ function cxjs_datepart(part, date_str)
 // "second"), or null on failure.
 function cxjs_datediff(part, date1, date2)
     {
-    // Validate and parse dates.
+    // Validate and parse parameters.
     if (part == null || date1 == null || date2 == null) return null;
     let dt1 = cxjs__parsedate(date1);
     let dt2 = cxjs__parsedate(date2);
@@ -678,7 +678,7 @@ function cxjs_datediff(part, date1, date2)
 // Format date string date_str using format (see centrallix-sysdoc format chars); returns null on invalid input.
 function cxjs_dateformat(date_str, format)
     {
-    // Validate and parse.
+    // Validate and parse parameters.
     if (date_str == null || format == null) return null;
     const d = cxjs__parsedate(date_str);
     if (!d) return null;
@@ -839,90 +839,97 @@ function cxjs_dateformat(date_str, format)
     return result;
     }
 
-// Absolute value of n; returns null if n is null.
+// Absolute value of n. Returns null if n is null.
 function cxjs_abs(n)
     {
     if (n == null) return null;
     return Math.abs(n);
     }
 
-// Round n to dec decimal places (default 0), toward nearest; returns null if n is null.
+// Round n to dec decimal places (default 0), toward nearest.
+// Returns null if n is null.
 function cxjs_round(n, dec)
     {
-    // Validate; normalize dec.
+    // Validate parameters.
     if (n == null) return null;
     if (dec == null) dec = 0;
-    dec = Math.round(dec);
-
+    dec = Math.round(dec); // Normalize.
+    
     // Scale, round, unscale.
-    var factor = Math.pow(10, dec);
-    var scaled = n * factor;
-    return (n > 0 ? Math.floor(scaled+0.5) : Math.ceil(scaled-0.5)) / factor;
+    const factor = Math.pow(10, dec);
+    const scaled = n * factor;
+    const rounded = ((n > 0) ? Math.floor(scaled+0.5) : Math.ceil(scaled-0.5));
+    return rounded / factor;
     }
 
-// Truncate v toward zero to dec decimal places (default 0); returns null if v is null.
-function cxjs_truncate(v, dec)
+// Truncate n toward zero to dec decimal places (default 0).
+// Returns null if n is null.
+function cxjs_truncate(n, dec)
     {
-    // Validate; normalize dec.
-    if (v == null) return null;
+    // Validate parameters.
+    if (n == null) return null;
     if (dec == null) dec = 0;
-    dec = Math.round(dec);
+    dec = Math.round(dec); // Normalize.
 
     // Scale, truncate, unscale.
-    var factor = Math.pow(10, dec);
-    var scaled = v * factor;
-    return (v > 0 ? Math.floor(scaled+0.000001) : Math.ceil(scaled-0.000001)) / factor;
+    const factor = Math.pow(10, dec);
+    const scaled = n * factor;
+    const truncated = (n > 0) ? Math.floor(scaled+0.000001) : Math.ceil(scaled-0.000001);
+    return truncated / factor;
     }
 
-// Clamp v to [mn, mx]; either bound may be null (unbounded); returns null if v is null.
-function cxjs_constrain(v, mn, mx)
+// Clamp n to range [min, max]. Either bound may be null to unbound results.
+// Returns null if n is null.
+function cxjs_constrain(n, min, max)
     {
-    if (v == null) return null;
-    if (mn != null && v < mn) return mn;
-    if (mx != null && v > mx) return mx;
-    return v;
+    if (n === null) return null;
+    if (min !== null && n < min) return min;
+    if (max !== null && n > max) return max;
+    return n;
     }
 
-// Return a random float in [0,1); seed is accepted but ignored.
+// Returns a random float in range [0,1). Seed is accepted, but it is
+// ignored because ecma262* does not provide a way to specify a seed.
+// *see: https://tc39.es/ecma262/#sec-math.random.
 function cxjs_rand(seed)
     {
     return Math.random();
     }
 
-// Square root of v; returns null if v is null or negative.
-function cxjs_sqrt(v)
+// Returns the square root of n, or null if n is null or negative.
+function cxjs_sqrt(n)
     {
-    if (v == null) return null;
-    var r = Math.sqrt(v);
-    return isNaN(r) ? null : r;
+    if (n == null) return null;
+    const result = Math.sqrt(n);
+    return isNaN(result) ? null : result;
     }
 
-// v squared; returns null if v is null.
-function cxjs_square(v)
+// Returns the square of n, or null if n is null.
+function cxjs_square(n)
     {
-    if (v == null) return null;
-    return v * v;
+    if (n == null) return null;
+    return n * n;
     }
 
-// n raised to power p; returns null if either is null.
+// Returns n raised to power p, or null if either parameter is null.
 function cxjs_power(n, p)
     {
     if (n == null || p == null) return null;
     return Math.pow(n, p);
     }
 
-// Convert radians to degrees; returns null if v is null.
-function cxjs_degrees(v)
+// Converts radians to degrees, or returns null if radians is null.
+function cxjs_degrees(radians)
     {
-    if (v == null) return null;
-    return v * 180.0 / Math.PI;
+    if (radians == null) return null;
+    return (radians * 180.0) / Math.PI;
     }
 
-// Convert degrees to radians; returns null if v is null.
-function cxjs_radians(v)
+// Converts degrees to radians, or returns null if degrees is null.
+function cxjs_radians(degrees)
     {
-    if (v == null) return null;
-    return v * Math.PI / 180.0;
+    if (degrees == null) return null;
+    return (degrees * Math.PI) / 180.0;
     }
 
 // Format number v as money using fmt format string (see centrallix-sysdoc format chars); returns null on invalid input.
