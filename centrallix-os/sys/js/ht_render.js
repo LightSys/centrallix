@@ -509,65 +509,74 @@ function cxjs_replace(str, srch, rep)
 		rep);
     }
 
-// Convert integer n to English words; result has a trailing space.
+
+// Convert integer number (n) to English words, with a trailing space.
 function cxjs_wordify(n)
     {
     if (n == null) return null;
-
-    // Word tables
-    var digits = ["Zero","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten"];
-    var teens = ["Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
-    var tens_w = ["Ten","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
-    var mults = ["","Thousand","Million","Billion","Trillion","Quadrillion"];
-
-    // Normalize; handle sign
+    
+    // Declare word tables.
+    const digits = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
+    const teens = ["Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+    const tens = ["Ten", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+    const multiples = ["", "Thousand", "Million", "Billion", "Trillion", "Quadrillion"];
+    
+    // Handle negative values and normalize n.
     n = Math.round(n);
     if (isNaN(n)) return null;
-    var abs_n = Math.abs(n);
-    var result = n < 0 ? "Negative " : "";
-
-    // Walk thousands-groups high to low
+    const abs_n = Math.abs(n);
+    let result = (n < 0) ? "Negative " : "";
+    
+    // Handle zero.
     if (abs_n === 0)
 	{
 	result += "Zero ";
+	return result;
 	}
-    else
+    
+    // Traverse thousands-chunks from highest to lowest.
+    for (let multiple = 5; multiple >= 0; multiple--)
 	{
-	for (var mult = 5; mult >= 0; mult--)
+	const chunk = Math.floor(abs_n / Math.pow(1000, multiple)) % 1000;
+	
+	if (chunk === 0) continue;
+	if (chunk >= 100)
+	    result += digits[Math.floor(chunk/100)] + " Hundred ";
+	
+	const rem = chunk % 100;
+	if (rem > 19)
 	    {
-	    var chunk = Math.floor(abs_n / Math.pow(1000, mult)) % 1000;
-	    if (chunk === 0) continue;
-	    if (chunk >= 100)
-		result += digits[Math.floor(chunk/100)] + " Hundred ";
-	    var rem = chunk % 100;
-	    if (rem > 19)
-		{
-		result += tens_w[Math.floor(rem/10)-1];
-		if (rem%10 !== 0) result += "-" + digits[rem%10] + " ";
-		else result += " ";
-		}
-	    else if (rem > 10) result += teens[rem-11] + " ";
-	    else if (rem > 0) result += digits[rem] + " ";
-	    if (chunk !== 0) result += mults[mult];
-	    if (chunk !== 0 && chunk > 10 && (chunk%10 !== 0 || chunk > 100) && mult !== 0)
-		result += ", ";
-	    else if (mult !== 0 && chunk !== 0)
-		result += " ";
+	    result += tens[Math.floor(rem/10)-1];
+	    if (rem%10 !== 0) result += "-" + digits[rem%10] + " ";
+	    else result += " ";
 	    }
+	else if (rem > 10) result += teens[rem-11] + " ";
+	else if (rem > 0) result += digits[rem] + " ";
+	
+	result += multiples[multiple];
+	if (chunk > 10 && (chunk%10 !== 0 || chunk > 100) && multiple !== 0)
+	    result += ", ";
+	else if (multiple !== 0 && chunk !== 0)
+	    result += " ";
 	}
     return result;
     }
 
-// Repeat string s n times (capped at 255); returns null if n < 0.
+// Repeat string s n times (up to 255); returns null if n < 0.
 function cxjs_replicate(s, n)
     {
     if (s == null || n == null) return null;
-    s = String(s);
-    n = Math.floor(n);
-    if (n < 0) return null;
-    if (n > 255) n = 255;
-    var result = "";
-    for (var i = 0; i < n; i++) result += s;
+    
+    // Process inputs.
+    const str = String(s);
+    let num = Math.floor(n);
+    if (num < 0) return null;
+    if (num > 255) num = 255;
+    
+    // Replicate string.
+    let result = "";
+    for (let i = 0; i < num; i++) result += str;
+    
     return result;
     }
 
@@ -575,19 +584,30 @@ function cxjs_replicate(s, n)
 function cxjs__parsedate(s)
     {
     if (s == null) return null;
-    var m = String(s).match(/^(\d+)\/(\d+)\/(\d+)(?:\s+(\d+):(\d+)(?::(\d+))?)?/);
+    
+    const m = String(s).match(/^(\d+)\/(\d+)\/(\d+)(?:\s+(\d+):(\d+)(?::(\d+))?)?/);
     if (!m) return null;
-    return new Date(parseInt(m[3],10), parseInt(m[1],10)-1, parseInt(m[2],10),
-	m[4]?parseInt(m[4],10):0, m[5]?parseInt(m[5],10):0, m[6]?parseInt(m[6],10):0, 0);
+    
+    return new Date(
+	parseInt(m[3], 10),
+	parseInt(m[1], 10) - 1,
+	parseInt(m[2], 10),
+	(m[4]) ? parseInt(m[4], 10) : 0,
+	(m[5]) ? parseInt(m[5], 10) : 0,
+	(m[6]) ? parseInt(m[6], 10) : 0,
+	0
+    );
     }
 
 // Extract year/month/day/hour/minute/second/weekday from a date string; returns int or null.
 function cxjs_datepart(part, datestr)
     {
     if (part == null || datestr == null) return null;
+    
     var d = cxjs__parsedate(datestr);
     if (!d) return null;
-    switch(String(part).toLowerCase())
+    
+    switch (String(part).toLowerCase())
 	{
 	case "year":    return d.getFullYear();
 	case "month":   return d.getMonth() + 1;
@@ -597,8 +617,10 @@ function cxjs_datepart(part, datestr)
 	case "second":  return d.getSeconds();
 	case "weekday": return d.getDay() + 1;
 	}
+    
     return null;
     }
+
 function cxjs_datediff(part, d1, d2)
     {
     if (part == null || d1 == null || d2 == null) return null;
