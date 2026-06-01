@@ -675,7 +675,8 @@ function cxjs_datediff(part, date1, date2)
     return null;
     }
 
-// Format date string date_str using format (see centrallix-sysdoc format chars); returns null on invalid input.
+// Format date_str using format (see centrallix-sysdoc format chars).
+// Returns the formatted date string, or null if the input is invalid.
 function cxjs_dateformat(date_str, format)
     {
     // Validate and parse parameters.
