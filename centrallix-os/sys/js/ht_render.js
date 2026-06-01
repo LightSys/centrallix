@@ -570,6 +570,10 @@ function cxjs_wordify(n)
 	else if (multiple !== 0 && chunk !== 0)
 	    result += " ";
 	}
+	
+	// Strip trailing comma left when the highest group needs no separator.
+	if (result.endsWith(", ")) result = result.slice(0, -2) + " ";
+	
     return result;
     }
 
@@ -657,7 +661,7 @@ function cxjs_datediff(part, date1, date2)
 	const tmp = dt2;
 	dt2 = dt1;
 	dt1 = tmp;
-    }
+	}
     part = String(part).toLowerCase();
 
     // Year and month parts.
