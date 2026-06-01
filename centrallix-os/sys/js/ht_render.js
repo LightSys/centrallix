@@ -604,7 +604,7 @@ function cxjs_datepart(part, datestr)
     {
     if (part == null || datestr == null) return null;
     
-    var d = cxjs__parsedate(datestr);
+    const d = cxjs__parsedate(datestr);
     if (!d) return null;
     
     switch (String(part).toLowerCase())
@@ -621,37 +621,46 @@ function cxjs_datepart(part, datestr)
     return null;
     }
 
-// Signed difference (d2-d1) in part units; part: "year","month","day","hour","minute","second"; returns int or null.
+// Calculate the signed difference (d2-d1) between dates and return the
+// requested datetime part (e.g. "year", "month", "day", "hour", "minute",
+// "second"), or null on failure.
 function cxjs_datediff(part, d1, d2)
     {
-    // Validate and parse.
+    // Validate and parse dates.
     if (part == null || d1 == null || d2 == null) return null;
-    var dt1 = cxjs__parsedate(d1);
-    var dt2 = cxjs__parsedate(d2);
+    let dt1 = cxjs__parsedate(d1);
+    let dt2 = cxjs__parsedate(d2);
     if (!dt1 || !dt2) return null;
 
     // Normalize order; get part name.
-    var sign = 1;
-    if (dt2 < dt1) { sign = -1; var tmp = dt2; dt2 = dt1; dt1 = tmp; }
+    let sign = 1;
+    if (dt2 < dt1)
+	{
+	sign = -1;
+	const tmp = dt2;
+	dt2 = dt1;
+	dt1 = tmp;
+    }
     part = String(part).toLowerCase();
 
     // Year and month parts.
-    if (part == "year")
+    if (part === "year")
 	return sign * (dt2.getFullYear() - dt1.getFullYear());
-    if (part == "month")
+    if (part === "month")
 	return sign * ((dt2.getFullYear()-dt1.getFullYear())*12 + dt2.getMonth()-dt1.getMonth());
 
     // Day, hour, minute, second parts.
-    var m1 = new Date(dt1.getFullYear(), dt1.getMonth(), dt1.getDate());
-    var m2 = new Date(dt2.getFullYear(), dt2.getMonth(), dt2.getDate());
-    var days = Math.round((m2 - m1) / 86400000);
-    if (part == "day") return sign * days;
-    var hours = days*24 + dt2.getHours() - dt1.getHours();
-    if (part == "hour") return sign * hours;
-    var minutes = hours*60 + dt2.getMinutes() - dt1.getMinutes();
-    if (part == "minute") return sign * minutes;
-    var seconds = minutes*60 + dt2.getSeconds() - dt1.getSeconds();
-    if (part == "second") return sign * seconds;
+    const m1 = new Date(dt1.getFullYear(), dt1.getMonth(), dt1.getDate());
+    const m2 = new Date(dt2.getFullYear(), dt2.getMonth(), dt2.getDate());
+    const days = Math.round((m2 - m1) / 86400000);
+    if (part === "day") return sign * days;
+    const hours = days*24 + dt2.getHours() - dt1.getHours();
+    if (part === "hour") return sign * hours;
+    const minutes = hours*60 + dt2.getMinutes() - dt1.getMinutes();
+    if (part === "minute") return sign * minutes;
+    const seconds = minutes*60 + dt2.getSeconds() - dt1.getSeconds();
+    if (part === "second") return sign * seconds;
+    
     return null;
     }
 
@@ -660,100 +669,154 @@ function cxjs_dateformat(datestr, fmt)
     {
     // Validate and parse.
     if (datestr == null || fmt == null) return null;
-    var d = cxjs__parsedate(datestr);
+    const d = cxjs__parsedate(datestr);
     if (!d) return null;
 
-    // Month name tables and state vars.
-    var sm = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    var lm = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-    var result = "";
-    var append_ampm = 0;
-    var c, day, mo, hr, sfx, end;
-    var i = 0;
+    // Month name tables.
+    const month_abbrevs = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const month_names = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
+    // Declare state variables.
+    let result = "";
+    let i = 0;
+    const append = (str, n) =>
+	{
+	result += str;
+	i += n;
+	}
+    
+    // Handle AM & PM.
+    let append_am_pm = 0;
+    const check_append_am_pm = () =>
+	{
+	if (!append_am_pm) return;
+	if (i >= fmt.length || fmt[i]===' ' || fmt[i]===',')
+	    {
+	    result += (d.getHours() >= 12) ? "PM" : "AM";
+	    append_am_pm = 0;
+	    }
+	}
+    
     // Scan format string.
     while (i < fmt.length)
 	{
-	c = fmt[i];
-	if (c == 'D')
-	    { i++; }
-	else if (c == 'd')
+	const c = fmt[i];
+	switch (c)
 	    {
-	    day = d.getDate();
-	    if (fmt[i+1]=='d' && fmt[i+2]=='d')
+	    case 'D': i++; break;
+	    case 'd':
 		{
-		sfx = (day==1||day==21||day==31)?"st":(day==2||day==22)?"nd":(day==3||day==23)?"rd":"th";
-		result += day + sfx;
-		i += 3;
+		const day = d.getDate();
+		if (fmt[i+1] === 'd' && fmt[i+2] === 'd')
+		    {
+		    const suffix =
+		        (day === 1 || day === 21 || day === 31) ? "st" :
+			(day === 2 || day === 22) ? "nd" :
+			(day === 3 || day === 23) ? "rd" :
+			"th";
+		    append(day + suffix, 3);
+		    }
+		else if (fmt[i+1] === 'd')
+		    {
+		    append(((day < 10) ? "0" : "") + day, 2);
+		    }
+		else
+		    {
+		    append(day, 1);
+		    }
+		break;
 		}
-	    else if (fmt[i+1]=='d')
-		{ result += (day<10?"0":"")+day; i += 2; }
-	    else
-		{ result += day; i++; }
+	    case 'M':
+		{
+		const month = d.getMonth() + 1;
+		
+		// MMMM
+		if (fmt[i+1] === 'M' && fmt[i+2] === 'M' && fmt[i+3] === 'M')
+		    append(month_names[month], 4);
+		// MMM
+		else if (fmt[i+1] === 'M' && fmt[i+2] === 'M')
+		    append(month_abbrevs[month], 3);
+		// MM
+		else if (fmt[i+1] === 'M')
+		    append(((month < 10) ? "0" : "") + (month), 2);
+		// M
+		else
+		    append(month, 1);
+		
+		break;
+		}
+	    case 'y':
+		{
+		if (fmt[i+1] === 'y' && fmt[i+2] === 'y' && fmt[i+3] === 'y')
+		    append(("000" + d.getFullYear()).slice(-4), 4);
+		else if (fmt[i+1] === 'y')
+		    append(("0" + (d.getFullYear()%100)).slice(-2), 2);
+		else i++;
+		break;
+		}
+	    case 'H':
+		{
+		if (fmt[i+1] === 'H')
+		    append(((d.getHours() < 10) ? "0" : "") + d.getHours(), 1);
+		i++;
+		append_am_pm = 0;
+		break;
+		}
+	    case 'h':
+		{
+		if (fmt[i+1] === 'h')
+		    {
+		    const hr = d.getHours() % 12 || 12;
+		    append(((hr < 10) ? "0" : "") + hr, 1);
+		    }
+		i++;
+		append_am_pm = 1;
+		check_append_am_pm();
+		break;
+		}
+	    case 'm':
+		{
+		if (fmt[i+1] === 'm')
+		    append(((d.getMinutes() < 10) ? "0" : "") + d.getMinutes(), 1);
+		i++;
+		check_append_am_pm();
+		break;
+		}
+	    case 's':
+		{
+		if (fmt[i+1] === 's')
+		    append(((d.getSeconds() < 10) ? "0" : "") + d.getSeconds(), 1);
+		i++;
+		check_append_am_pm();
+		break;
+		}
+	    case 'I':
+		{
+		if (fmt[i+1] === 'I')
+		    i++;
+		i++;
+		break;
+		}
+	    case 'L': if (
+		i + 2 < fmt.length && (
+		    fmt[i+1] === 'm' ||
+		    fmt[i+1] === 'M' ||
+		    fmt[i+1] === 'w' ||
+		    fmt[i+1] === 'W'
+		) && fmt[i+2] === '[')
+		{
+		const end = fmt.indexOf(']', i);
+		i = (end >= 0) ? end+1 : i+1;
+		break;
+		} // Fallthrough
+	    default:
+		{
+		append(c, 1);
+		break;
+		}
 	    }
-	else if (c == 'M')
-	    {
-	    mo = d.getMonth();
-	    if (fmt[i+1]=='M' && fmt[i+2]=='M' && fmt[i+3]=='M')
-		{ result += lm[mo]; i += 4; }
-	    else if (fmt[i+1]=='M' && fmt[i+2]=='M')
-		{ result += sm[mo]; i += 3; }
-	    else if (fmt[i+1]=='M')
-		{ result += (mo+1<10?"0":"")+(mo+1); i += 2; }
-	    else
-		{ result += mo+1; i++; }
-	    }
-	else if (c == 'y')
-	    {
-	    if (fmt[i+1]=='y' && fmt[i+2]=='y' && fmt[i+3]=='y')
-		{ result += ("000"+d.getFullYear()).slice(-4); i += 4; }
-	    else if (fmt[i+1]=='y')
-		{ result += ("0"+(d.getFullYear()%100)).slice(-2); i += 2; }
-	    else { i++; }
-	    }
-	else if (c == 'H')
-	    {
-	    if (fmt[i+1]=='H')
-		{ result += (d.getHours()<10?"0":"")+d.getHours(); i++; }
-	    i++;
-	    append_ampm = 0;
-	    }
-	else if (c == 'h')
-	    {
-	    if (fmt[i+1]=='h')
-		{ hr = d.getHours()%12||12; result += (hr<10?"0":"")+hr; i++; }
-	    i++;
-	    append_ampm = 1;
-	    if (i >= fmt.length || fmt[i]==' ' || fmt[i]==',')
-		{ result += d.getHours()>=12?"PM":"AM"; append_ampm = 0; }
-	    }
-	else if (c == 'm')
-	    {
-	    if (fmt[i+1]=='m')
-		{ result += (d.getMinutes()<10?"0":"")+d.getMinutes(); i++; }
-	    i++;
-	    if (append_ampm && (i >= fmt.length || fmt[i]==' ' || fmt[i]==','))
-		{ result += d.getHours()>=12?"PM":"AM"; append_ampm = 0; }
-	    }
-	else if (c == 's')
-	    {
-	    if (fmt[i+1]=='s')
-		{ result += (d.getSeconds()<10?"0":"")+d.getSeconds(); i++; }
-	    i++;
-	    if (append_ampm && (i >= fmt.length || fmt[i]==' ' || fmt[i]==','))
-		{ result += d.getHours()>=12?"PM":"AM"; append_ampm = 0; }
-	    }
-	else if (c == 'I')
-	    { if (fmt[i+1]=='I') i++; i++; }
-	else if (c=='L' && i+2<fmt.length &&
-		 (fmt[i+1]=='m'||fmt[i+1]=='M'||fmt[i+1]=='w'||fmt[i+1]=='W') && fmt[i+2]=='[')
-	    {
-	    end = fmt.indexOf(']', i);
-	    i = (end >= 0) ? end+1 : i+1;
-	    }
-	else
-	    { result += c; i++; }
 	}
+     
     return result;
     }
 
