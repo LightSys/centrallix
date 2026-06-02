@@ -1,7 +1,7 @@
 # Editing Files
 
 ## Styling
-Understand and match the surrounding style when editing a file. If that style is unclear, read `centrallix-sysdoc/BeeleyCodingStyle.md` for clarification.
+When editing/writing files, follow the best practices of the language in use. For styling, understand and match the surrounding style when editing a file, but keep in mind that many files are styled badly or incorrectly. If user instructions, coding best practices, or your memory conflict with styles in a file, they take precedence over the file. If styling is unclear, read `centrallix-sysdoc/BeeleyCodingStyle.md` for clarification.
 
 ## Copyright notices
 When editing a file, update the copyright notice at the top of the file to extend to the current year.
