@@ -576,6 +576,8 @@ function cxjs_constrain(n, min, max)
 // *see: https://tc39.es/ecma262/#sec-math.random.
 function cxjs_rand(seed)
     {
+    if (seed !== null && seed !== undefined)
+	console.warn(`Ignoring seed "${seed}" because ecma262 does not define how to specify a seed.`);
     return Math.random();
     }
 
