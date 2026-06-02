@@ -554,18 +554,12 @@ function cxjs_round(n, dec)
 
 // Truncate n toward zero to dec decimal places (default 0).
 // Returns null if n is null.
-function cxjs_truncate(n, dec)
+function cxjs_truncate(n, dec = 0)
     {
-    // Validate parameters.
     if (n === null || n === undefined) return null;
-    if (dec === null || dec === undefined) dec = 0;
-    dec = Math.round(dec); // Normalize.
-
-    // Scale, truncate, unscale.
-    const factor = Math.pow(10, dec);
-    const scaled = n * factor;
-    const truncated = (n > 0) ? Math.floor(scaled+0.000001) : Math.ceil(scaled-0.000001);
-    return truncated / factor;
+    
+    const factor = 10 ** Math.round(dec);
+    return Math.trunc(n * factor) / factor;
     }
 
 // Clamp n to range [min, max]. Either bound may be null to unbound results.
