@@ -538,15 +538,14 @@ function cxjs_abs(n)
 
 // Round n to dec decimal places (default 0), toward nearest.
 // Returns null if n is null.
-function cxjs_round(n, dec)
+function cxjs_round(n, dec = 0)
     {
     // Validate parameters.
     if (n === null || n === undefined) return null;
-    if (dec === null || dec === undefined) dec = 0;
     dec = Math.round(dec); // Normalize.
     
     // Scale, round, unscale.
-    const factor = Math.pow(10, dec);
+    const factor = 10 ** dec;
     const scaled = n * factor;
     const rounded = ((n > 0) ? Math.floor(scaled+0.5) : Math.ceil(scaled-0.5));
     return rounded / factor;
@@ -599,7 +598,7 @@ function cxjs_square(n)
 function cxjs_power(n, p)
     {
     if (n === null || p === null || n === undefined || p === undefined) return null;
-    return Math.pow(n, p);
+    return n ** p;
     }
 
 // Converts radians to degrees, or returns null if radians is null.
