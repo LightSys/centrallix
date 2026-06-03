@@ -8,10 +8,10 @@ When making meaningful changes to a file (more than a few lines), update the cop
 
 ## Generated files
 While it may be very useful to read the following generated files, do not edit them since changes will be overwritten by builds.
-- Centrallix/Makefile
-- Centrallix-lib/Makefile
-- Centrallix/configure(.sh)
-- Centrallix-lib/configure(.sh)
+- centrallix/Makefile
+- centrallix-lib/Makefile
+- centrallix/configure
+- centrallix-lib/configure
 
 ## Searching
 Instead of searching with `grep`, use `rg` (if available). It's faster, but remember that it ignores `.gitignored` files, hidden files, binaries, etc. This project includes symlinks (both to files and directories), so ensure they are traversed when searching (aka. with `rg -L` or alternatives). Many centrallix structure files (e.g. `.app`, `.cmp`, etc.) are treated as binary files by `rg`, add `-a` when searching them. You may need to combine both flags to navigate these challenges, e.g. `rg -La "pattern"`, or fall back to `grep` if you encounter issues.
