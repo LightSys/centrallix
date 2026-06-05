@@ -310,14 +310,64 @@ function cxjs_right(s,l)
     if (s == null || l == null) return null;
     return s.substr(s.length-l);
     }
-function cxjs_eval(x)
+
+function cxjs_eval(_context, _this, expr, permflags)
     {
-    var _this = null;
-    var _context = null;
-    if (x == null) return null;
-    if (typeof x == 'object') x = x.toString();
-    return eval(x);
+    console.log('eval', _context, _this, expr, permflags);
+    if (expr === null || expr === undefined) return null;
+    expr_str = String(expr).trim();
+    if (expr_str === '') return null;
+    
+    const first_char = expr_str.charAt(0);
+    const last_char = expr_str.charAt(expr_str.length - 1);
+    
+    // Eval integer.
+    if (/^-?\d+$/.test(expr_str))
+	return parseInt(expr_str, 10);
+    
+    // Eval floating point.
+    if (/^-?\d+\.\d*$/.test(expr_str) || /^-?\d*\.\d+$/.test(expr_str))
+	return parseFloat(expr_str);
+    
+    // Eval double-quoted string.
+    if (expr_str.length >= 2 && first_char === '"' && last_char === '"')
+	return expr_str.substring(1, expr_str.length - 1);
+    
+    // Eval single-quoted string.
+    if (expr_str.length >= 2 && first_char === "'" && last_char === "'")
+	return expr_str.substring(1, expr_str.length - 1);
+    
+    // Eval :property or :object:property
+    if (first_char === ':')
+	{
+	const rest = expr_str.substring(1);
+	const colon2 = rest.indexOf(':');
+	if (colon2 < 0)
+	    {
+	    // :property - current object (event params) reference
+	    if (_this != null && (!permflags || permflags.indexOf('C') >= 0))
+		{
+		const v = _this[rest];
+		return (typeof v !== 'undefined') ? v : null;
+		}
+	    }
+	else
+	    {
+	    // :object:property
+	    if (_context != null && (!permflags || permflags.indexOf('O') >= 0))
+		{
+		const objname = rest.substring(0, colon2);
+		const propname = rest.substring(colon2 + 1);
+		const obj = wgtrGetNode(_context, objname);
+		if (obj) return wgtrGetProperty(obj, propname);
+		}
+	    }
+	}
+    
+    console.warn("Failed to eval expression: \"" + expr_str + "\"");
+    return null;
     }
+
 function cxjs_isnull(v,d)
     {
     if (v == null)
