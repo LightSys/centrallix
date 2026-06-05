@@ -1,0 +1,3 @@
+##NAME min() function on money type
+
+query select 'min(:f_money)' = min(:f_money) from /tests/Datatypes.csv/rows
