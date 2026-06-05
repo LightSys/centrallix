@@ -41,6 +41,8 @@ For other terminology or to find more detailed info, read `centrallix-sysdoc/Ter
 
 ## Key patterns
 
+Widget names must be unique.
+
 **Data flow**:
 - User interaction → event → `widget/connector` → action on any widget.
 - Form or OSRC updated by action → HTTP to OSML → OSRC replica updated → form or table re-renders.
