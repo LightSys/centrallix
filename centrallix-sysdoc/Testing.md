@@ -8,7 +8,7 @@ License:   Copyright (C) 2026 LightSys Technology Services.  See LICENSE.txt.
 
 
 ## Overview
-Centrallix has various sets of tests and test suites for running them.  This file contains a complete list of all such testing and instructions for how to run tests.  When making changes in Centrallix, this file may be helpful to ensure that all relevant tests have been run before committing code or putting it up for review.
+Centrallix has various sets of tests and test suites for running them.  This file contains a complete list of all such testing and instructions for how to run tests.  When making changes in Centrallix, this file may be helpful to ensure that all relevant tests are run before committing or reviewing code.
 <!-- TODO: Greg - Above, I've claimed that this file represents a COMPLETE list of the tests in Centrallix. Could you verify that and let me know if there's any test suites lying around that I forgot to include? -->
 
 
@@ -34,12 +34,12 @@ Centrallix has various sets of tests and test suites for running them.  This fil
 
 
 ## Test-obj Tests
-The test-obj test suite uses `test_obj` to run commands (including SQL queries using the `query` or `csv` commands) and compares the output against the "correct" output specified for the test.  It detects failures, crashes, and lockups.  This test suite does not measure performance.
+The test-obj test suite uses test-obj to run commands (including SQL queries using the `query` or `csv` commands) and compares the output against the "correct" output specified for the test.  It also supports writing tests for Centrallix code in native C files.  It detects failures, crashes, and lockups, but does not measure performance.
 
 ### Running Test-obj Tests
-After configuring and building `centrallix` and `centrallix-lib`, run the test-obj test suite by using `make test` in the `centrallix` directory. When running tests with `make test`, both standard and native C tests will be run together (see below for info on test case formats), and results will be reported together.
+After configuring and building `centrallix` and `centrallix-lib`, run the test-obj test suite by using `make test` in the `centrallix` directory. When running tests with `make test`, both standard and native C tests are run together (see below test formats), and results are reported together.
 
-To run only a subset of tests, set `TONLY` to the desired test category prefix.  For example, either of the following will run only object system driver tests:
+To run only a subset of tests, set the `TONLY` environment variable to the desired test category prefix.  For example, either of the following commands will run only object system driver tests:
 
 ```sh
 export TONLY=objdrv
@@ -50,23 +50,24 @@ make test
 make test TONLY=objdrv
 ```
 
-The `00baseline` tests are special sanity checks for the test harness itself.  They are intended to demonstrate and validate the suite's ability to report passing, failing, crashing, and lockup behavior.
+The `00baseline` tests are special sanity checks for the test system itself.  They are intended to demonstrate and validate the suite's ability to correctly report test results.
 
 ### Test Case Format: Standard
-Each test is composed of two or more files in the `centrallix/tests` directory, and each test has a category name (e.g. `objdrv_cluster` for testing the cluster driver) and a test case number (incrementing from `00`), which are used for naming test files.  The first test file is the `test_{category}_NN.to` script file which specifies a list of commands to be run in test-obj, each on their own line.  Lines starting with a `#` are treated as comments.  By convention, the first line of this file should be `##NAME <Test Name>`.  The second is a `test_{category}_NN.cmp` file, which lists the expected output from running the specified commands.  Additional files used by the test (e.g. file accessed by the `.to` script file) should be placed in `centrallix-os/tests` so that they will be accessible to the object system from the script.  These files should follow the same naming convention as the test that uses them to avoid confusion.
+Each test is composed of two or more files in the `centrallix/tests` directory, and each test has a category name (e.g. `objdrv_cluster` for testing the cluster driver) and a test case number (incrementing from `00`), which are used for naming test files.  The first test file is the `test_{category}_NN.to` script file which specifies a list of commands to be run in test-obj, each on their own line.  Lines starting with a `#` are treated as comments.  By convention, the first line of this file should be `##NAME <Test Name>`.  The second file is `test_{category}_NN.cmp`, which lists the expected output from running the specified commands.  Additional files used by the test (e.g. file accessed by the `.to` script file) should be placed in `centrallix-os/tests` so that they will be accessible to the object system from the script.  These files should follow the same naming convention as the test that uses them to avoid confusion.
+
 When tests are run, the results are saved in a corresponding `.out` file of the same name as the test.
 
-A common strategy is to create a `.to` file and a blank `.cmp` file, then run the test and copy the `.out` file to the `.cmp`.  When doing so, the developer should *carefully* verify that every part of the resulting `.cmp` file represents a correct output.  In general, writing `.cmp` files "by hand" is safer since it this makes differences between what the developer expects and what the program does (aka. what we want the test to detect) far easier to notice.  However, copying the `.out` file can be much faster, and is usually safe if done carefully.
+A common strategy is to create a `.to` file and a blank `.cmp` file, then run the test and copy the `.out` file to the `.cmp`.  When doing so, the developer should *carefully* verify that every part of the resulting `.cmp` file represents a correct output.  In general, writing `.cmp` files "by hand" is safer since it this makes differences between what the developer expects and what the program does (which is what tests are made to detect) far easier to notice.  However, copying the `.out` file can be much faster, and is *usually* safe if done carefully.
 
 ### Test Case Format: Native C
-The TestObj test suite also supports writing tests in native C by creating `test_{category}_NN.c` in the same directory.  This file should implement `long long test(char** name)`, which returns 0 if the test passes and returns a negative value *or* aborts using assert() (or something similar) if it fails.  If the test is skipped (e.g. an integration test using the Sybase object-system driver that automatically skips when Sybase isn't enabled), return 1.  The `name` parameter should be set to the name of the test (e.g. "test_obj native C test for cluster driver").  These tests have no associated `.to`, `.cmp`, or `.out` files.
+The test-obj test suite also supports writing tests in native C by creating a `test_{category}_NN.c` file, also in the `centrallix/tests` directory.  This file should implement the `long long test(char** name);` function, which returns 0 if the test passes and returns a negative value *or* aborts using `assert()` (or something similar) if the test fails.  If the test is skipped (e.g. an integration test using the Sybase object-system driver that automatically skips when Sybase isn't enabled), return 1.  The `name` parameter should be set to the name of the test (e.g. `"test_obj native C test for cluster driver"`).  These tests have no associated `.to`, `.cmp`, or `.out` files.
 
 ### More About Test-obj Tests
 For more information, see [centrallix/tests/README](../centrallix/tests/README).
 
 
 ## Centrallix-lib Tests
-The `centrallix-lib` project has its own native C regression and microbenchmark-style test suite in `centrallix-lib/tests`.  Each test is compiled as a standalone binary and linked with a shared test driver (`tests/t_driver.c`) and binaries generated for every `.c` file in centrallix-lib.  The driver runs the test inside the mtask environment, reports pass/fail/crash/abort/lockup status, and prints a simple operations-per-second figure based on the iteration count returned by the test.
+The `centrallix-lib` project has its own native C regression and microbench-style test suite in `centrallix-lib/tests`.  Each test is compiled as a standalone binary and linked with a shared test driver (`tests/t_driver.c`), so binaries are generated for test.  This shared test driver runs the tests inside the mtask environment, reports pass/fail/crash/abort/lockup status, and prints a simple operations-per-second number based on the iteration count returned by the test.
 
 ### Running Centrallix-lib Tests
 After configuring and building `centrallix-lib`, run this test suite by using `make test` in the `centrallix-lib` directory.
@@ -84,7 +85,7 @@ make test TONLY=mtlexer
 
 There is also a `make valtest` target, which runs the same compiled test programs under Valgrind instead of running them directly.
 
-The `00baseline` tests are special sanity checks for the test harness itself.  They are intended to demonstrate and validate the suite's ability to report passing, failing, crashing, and lockup behavior.
+The `00baseline` tests are special sanity checks for the test system itself.  They are intended to demonstrate and validate the suite's ability to correctly report test results.
 
 ### Understanding Output
 The `make test` output begins with a two-column header:
@@ -94,11 +95,11 @@ The `make test` output begins with a two-column header:
 
 When a test finishes, the driver prints one of the following statuses:
 
-- `PASS`: the test completed successfully.
-- `FAIL`: the test returned a negative value.
-- `CRASH`: the test triggered `SIGSEGV`.
-- `ABORT`: the test triggered `SIGABRT`, which commonly happens when an `assert()` fails.
-- `LOCKUP`: the test exceeded the driver's 10-second alarm timeout.
+- `PASS`: The test completed successfully.
+- `FAIL`: The test returned a negative value.
+- `CRASH`: The test triggered `SIGSEGV`.
+- `ABORT`: The test triggered `SIGABRT`. (Usually because an `assert()` failed).
+- `LOCKUP`: The test exceeded the driver's 10-second alarm timeout.
 
 Because the driver computes performance from the test's returned iteration count, tests should execute enough iterations that runtime is measurable.  Otherwise, the calculated throughput may be misleading or may even fail due to division by zero.
 
@@ -115,7 +116,7 @@ This produces `.gcda` and `.gcno` files that can be processed with tools such as
 
 As with the normal test target, `TONLY` can be used to focus coverage on one category of tests.  Be aware that coverage data accumulates across runs until `make cov-clean` is used.
 
-Note: In my own testing, I could not get coverage to work. I was able to generate a `lcov.info` file using lcov but the VSCode extension would not detect it.
+Note: In my own testing, I could not get coverage to work.  I was able to generate a `lcov.info` file using lcov, but I couldn't get any tool to read it.
 
 ### Centrallix-lib Test Case Format
 Each test is a C source file in `centrallix-lib/tests` named `test_{category}_{NN}.c` (for example `test_qprintf_12.c` or `test_mtlexer_05.c`).  There are also a few category-wide baseline tests such as `test_00baseline.c`.
@@ -123,13 +124,13 @@ Each test is a C source file in `centrallix-lib/tests` named `test_{category}_{N
 Each test file should implement:
 
 ```c
-long long test(char **name)
+long long test(char **name);
 ```
 
 The test should:
 
 - Set `*name` to a descriptive test name that will appear in the output.
-- Perform whatever setup is needed, including initializing any required Centrallix-Lib subsystems.
+- Perform whatever setup is needed, including initializing any required centrallix-lib subsystems.
 - Execute the behavior being tested in a loop so the suite can report performance.
 - Return the total number of logical operations performed if the test passes.
 - Return a negative value to report failure, or abort (for example via `assert()`).
@@ -148,25 +149,25 @@ Before running these tests, make sure a Centrallix server is running and serving
 
 1. Install the Python dependencies:
 
-```sh
-python3 -m pip install -r requirements.txt
-```
+	```sh
+	python3 -m pip install -r requirements.txt
+	```
 
 2. Create a `config.toml` file in `centrallix-ui-test` containing the base URL for the test server, for example:
 
-```toml
-url = "https://user:password@localhost:8080"
-```
+	```toml
+	url = "https://user:password@localhost:8080"
+	```
 
 3. Run an individual test script directly with Python, for example:
 
-```sh
-python3 tests/button_test.py
-```
+	```sh
+	python3 tests/button_test.py
+	```
 
 There is no single command in the repository for running the entire Selenium suite at once.  Each test is run individually by executing its corresponding script in `centrallix-ui-test/tests`.
 
-<!-- TODO: Israel - Think about adding a command to run all tests. -->
+<!-- TODO: Israel - Think about adding a command or script to run all tests. -->
 
 ### Selenium Test Case Format
 Each Selenium test is a Python source file in `centrallix-ui-test/tests` named `{component}_test.py` (for example `button_test.py` or `form_test.py`).
