@@ -313,13 +313,18 @@ function cxjs_right(s,l)
 
 function cxjs_eval(_context, _this, expr, permflags)
     {
-    console.log('eval', _context, _this, expr, permflags);
     if (expr === null || expr === undefined) return null;
-    expr_str = String(expr).trim();
+    const expr_str = String(expr).trim();
     if (expr_str === '') return null;
     
     const first_char = expr_str.charAt(0);
     const last_char = expr_str.charAt(expr_str.length - 1);
+    
+    // Eval boolean and null literals.
+    const expr_lower = expr_str.toLowerCase();
+    if (expr_lower === 'true') return true;
+    if (expr_lower === 'false') return false;
+    if (expr_lower === 'null') return null;
     
     // Eval integer.
     if (/^-?\d+$/.test(expr_str))
@@ -365,6 +370,7 @@ function cxjs_eval(_context, _this, expr, permflags)
 	}
     
     console.warn("Failed to eval expression: \"" + expr_str + "\"");
+    
     return null;
     }
 
