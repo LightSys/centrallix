@@ -33,7 +33,7 @@ For other terminology or to find more detailed info, read `centrallix-sysdoc/Ter
 # Building Apps
 
 ## Where to look
-- **Widget properties, children, events, actions**: `centrallix-doc/Widgets/widgets.xml` covers all widgets.
+- **Widget properties, children, events, actions**: `centrallix-doc/Widgets/widgets.xml` covers all widgets. `report.xml` in that dir covers report widgets.
 - **Structure file syntax** (.app, .cmp, and others): `centrallix-doc/StructureFile.txt`.
 - **Forms** (form modes, element callbacks): `centrallix-sysdoc/HTFormsInterface.md`.
 - **Widget tree / Wgtr module** (server-side tree building, verification, component loading): `centrallix-sysdoc/WidgetTree.md`.
