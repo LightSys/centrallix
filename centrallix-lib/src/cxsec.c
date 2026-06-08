@@ -1,9 +1,15 @@
+#ifdef HAVE_MEMSET_S
+#define __STDC_WANT_LIB_EXT1__ 1
+#endif
 #ifdef HAVE_CONFIG_H
 #include "cxlibconfig-internal.h"
 #endif
 #include "cxsec.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <string.h>
 #include <ctype.h>
 
 /************************************************************************/
@@ -68,6 +74,7 @@ cxsecInitDS(unsigned long* start, unsigned long* end)
     return;
     }
 
+
 void
 cxsecVerifyDS(unsigned long* start, unsigned long* end, char* file, int line)
     {
@@ -86,6 +93,7 @@ cxsecVerifyDS(unsigned long* start, unsigned long* end, char* file, int line)
 	}
     return;
     }
+
 
 void
 cxsecUpdateDS(unsigned long* start, unsigned long* end, char* file, int line)
@@ -142,6 +150,7 @@ cxsecVerifySymbol(const char* sym)
 	return -1;
     }
 
+
 int
 cxsecVerifySymbol_n(const char* sym, size_t n)
     {
@@ -172,4 +181,48 @@ cxsecVerifySymbol_n(const char* sym, size_t n)
 	err:
 	fprintf(stderr, "WARNING: '%.*s' is not a valid symbol!\n", (int)original_n, original_symbol);
 	return -1;
+    }
+
+
+/*** cxssShred() - Erase the given data so that it is no longer readable
+ *** even in raw memory.  This is the same as calling memset_explicit(),
+ *** except that this function works before C23, when memset_explicit()
+ *** was added.
+ *** 
+ *** Also, using this function signifies the intent to scrub possibly
+ *** sensitive data, which makes code more readable.
+ *** 
+ *** @param data A pointer to the data buffer to be erased.
+ *** @param n_bytes The number of bytes allocated to the data buffer.
+ *** 	Causes undefined behavior if incorrect.
+ ***/
+void
+cxsecShred(void* data, size_t n_bytes)
+    {
+#ifdef HAVE_MEMSET_EXPLICIT
+#define CXSEC_FOUND
+	memset_explicit(data, 0, n_bytes);
+	return;
+#endif
+
+#ifdef HAVE_MEMSET_S
+#define CXSEC_FOUND
+	memset_s(data, n_bytes, 0, n_bytes);
+	return;
+#endif
+
+#ifdef HAVE_EXPLICIT_BZERO
+#define CXSEC_FOUND
+	explicit_bzero(data, n_bytes);
+	return;
+#endif
+
+#ifndef CXSEC_FOUND
+#undef CXSEC_FOUND
+	volatile uint8_t* ptr = (volatile uint8_t*)data;
+	for (size_t i = 0; i < n_bytes; i++)
+	    ptr[i] = 0;
+#endif
+
+    return;
     }

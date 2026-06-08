@@ -37,6 +37,91 @@ AC_DEFUN(CHECK_MAKEDEPEND,
     ]
 )
 
+dnl check if gcc allows __builtin_expect()
+AC_DEFUN(CHECK_BUILTIN_EXPECT,
+    [
+	AC_MSG_CHECKING(if __builtin_expect is available)
+	AC_COMPILE_IFELSE(
+	    [AC_LANG_PROGRAM([], [__builtin_expect(0, 0)])],
+	    [
+		AC_DEFINE([HAVE_BUILTIN_EXPECT], [1], [Define if __builtin_expect is available])
+		AC_MSG_RESULT([yes])
+	    ],
+	    [AC_MSG_RESULT([no])],
+	)
+    ]
+)
+
+dnl check if memset_explicit(), memset_s(), explicit_bzero() are available.
+AC_DEFUN(CHECK_MEMSET,
+    [
+	AC_MSG_CHECKING(if memset_explicit is available)
+	AC_RUN_IFELSE(
+	    [AC_LANG_PROGRAM(
+		[#include <string.h>],
+		[
+		    char buf[[16]];
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			buf[[i]] = i;
+		    memset_explicit(buf, 0, sizeof(buf));
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			if (buf[[i]] != 0)
+			    return -1;
+		]
+	    )],
+	    [
+		AC_DEFINE([HAVE_MEMSET_EXPLICIT], [1], [Define if memset_explicit is available])
+		AC_MSG_RESULT([yes])
+	    ],
+	    [AC_MSG_RESULT([no])]
+	)
+	
+	AC_MSG_CHECKING(if memset_s is available)
+	AC_RUN_IFELSE(
+	    [AC_LANG_PROGRAM(
+		[
+		    #define __STDC_WANT_LIB_EXT1__ 1
+		    #include <string.h>
+		],
+		[
+		    char buf[[16]];
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			buf[[i]] = i;
+		    memset_s(buf, sizeof(buf), 0, sizeof(buf));
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			if (buf[[i]] != 0)
+			    return -1;
+		]
+	    )],
+	    [
+		AC_DEFINE([HAVE_MEMSET_S], [1], [Define if memset_s is available])
+		AC_MSG_RESULT([yes])
+	    ],
+	    [AC_MSG_RESULT([no])]
+	)
+	
+	AC_MSG_CHECKING(if explicit_bzero is available)
+	AC_RUN_IFELSE(
+	    [AC_LANG_PROGRAM(
+		[#include <string.h>],
+		[
+		    char buf[[16]];
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			buf[[i]] = i;
+		    explicit_bzero(buf, sizeof(buf));
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			if (buf[[i]] != 0)
+			    return -1;
+		]
+	    )],
+	    [
+		AC_DEFINE([HAVE_EXPLICIT_BZERO], [1], [Define if explicit_bzero is available])
+		AC_MSG_RESULT([yes])
+	    ],
+	    [AC_MSG_RESULT([no])]
+	)
+    ]
+)
 
 dnl check if gcc allows -fPIC and -pg at the same time
 AC_DEFUN(CHECK_PROFILE,
