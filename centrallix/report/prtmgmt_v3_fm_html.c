@@ -4,19 +4,17 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include "barcode.h"
-#include "report.h"
-#include "cxlib/mtask.h"
-#include "cxlib/magic.h"
-#include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
 #include "prtmgmt_v3/prtmgmt_v3_fm_html.h"
 #include "prtmgmt_v3/ht_font_metrics.h"
-#include "htmlparse.h"
 #include "cxlib/mtsession.h"
 #include "centrallix.h"
 #include "double.h"
+#include "prtmgmt_v3/prtmgmt_v3_lm_text.h"
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/buffer.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -62,7 +60,7 @@
 
 
 /*** Document header ***/
-#define	PRT_HTMLFM_HEADER	"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">\n" \
+#define	PRT_HTMLFM_HEADER	"<!DOCTYPE html>\n" \
 				"<html>\n" \
 				"<head>\n" \
 				"    <title>Centrallix HTML Document</title>\n" \
@@ -156,6 +154,16 @@ struct _PSFI
     int			Flags;			/* PRT_HTMLFM_F_xxx */
     };
 
+
+#define MAX_IMAGE_SIZE (10 * 1024 * 1024) // 10 MB for image buffer
+
+/*** Struct that holds a raw file and its size
+ ***/
+typedef struct {
+	char *buffer;
+	size_t size;
+	size_t capacity;
+} ImageBuffer;
 
 
 /*** prt_htmlfm_Output() - outputs a string of text into the HTML
@@ -388,13 +396,25 @@ prt_htmlfm_Close(void* context_v)
     }
 
 
+/*** prt_htmlfm_GetFont() - get the text style's font
+ ***/
+const char *
+prt_htmlfm_GetFont(pPrtTextStyle style) {
+	const char* fonts[3] = { "Courier New,Courier,fixed", "Arial,Helvetica,MS Sans Serif", "Times New Roman,Times,MS Serif"};
+
+	/*htmlfontsize = style->FontSize - PRT_HTMLFM_FONTSIZE_DEFAULT + PRT_HTMLFM_FONTSIZE_OFFSET;*/
+	int fontid = style->FontID - 1;
+	if (fontid < 0 || fontid > 2) fontid = 0;
+	return fonts[fontid];
+}
+
+
 /*** prt_htmlfm_SetStyle() - output the html to change the text style
  ***/
 int
 prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
     {
-    char* fonts[3] = { "Courier New,Courier,fixed", "Arial,Helvetica,MS Sans Serif", "Times New Roman,Times,MS Serif"};
-    int htmlfontsize, fontid;
+    int htmlfontsize;
     char stylebuf[128];
     int boldchanged, italicchanged, underlinechanged, fontchanged;
     int i;
@@ -408,9 +428,6 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 		break;
 		}
 	    }
-	/*htmlfontsize = style->FontSize - PRT_HTMLFM_FONTSIZE_DEFAULT + PRT_HTMLFM_FONTSIZE_OFFSET;*/
-	fontid = style->FontID - 1;
-	if (fontid < 0 || fontid > 2) fontid = 0;
 
 	/** Close out current style settings? **/
 	boldchanged = (style->Attr ^ context->CurStyle.Attr) & PRT_OBJ_A_BOLD;
@@ -447,7 +464,7 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 		    if (context->InitStyle || fontchanged)
 			{
 			snprintf(stylebuf, sizeof(stylebuf), "<font face=\"%s\" color=\"#%6.6X\" size=\"%d\">",
-				fonts[fontid], style->Color, htmlfontsize);
+				prt_htmlfm_GetFont(style), style->Color, htmlfontsize);
 			prt_htmlfm_Output(context, stylebuf, -1);
 			}
 		    if (style->Attr & PRT_OBJ_A_UNDERLINE) prt_htmlfm_Output(context, "<u>", 3);
@@ -460,6 +477,16 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 
     return 0;
     }
+
+/*** prt_htmlfm_CompareStyles() - compares two text styles for equality
+ ***/
+int
+prt_htmlfm_CompareStyles(pPrtTextStyle style1, pPrtTextStyle style2) {
+	return style1->Attr == style2->Attr
+			&& style1->Color == style2->Color
+			&& style1->FontID == style2->FontID
+			&& style1->FontSize == style2->FontSize;
+}
 
 
 /*** prt_htmlfm_InitStyle() - initialize style settings, as if we are 
@@ -587,167 +614,274 @@ prt_htmlfm_EndBorder(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj
     return 0;
     }
 
+/** Gets size of image file */
+int ImageWriteFn(void *arg, const void *data, size_t len) {
+	ImageBuffer *imgBuf = (ImageBuffer *)arg;
+	if (imgBuf->size + len > imgBuf->capacity) {
+		return -1;  // Buffer overflow
+	}
+	memcpy(imgBuf->buffer + imgBuf->size, data, len);
+	imgBuf->size += len;
+	return len;
+}
+    
 
-/*** prt_htmlfm_Generate_r() - recursive worker routine to do the bulk
- *** of page generation.
+/** Encodes a char* input to base64 */
+char *base64_encode(const unsigned char *input, size_t len) {
+	const char b64_table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	size_t out_len = 4 * ((len + 2) / 3);
+	char *output = (char *)nmMalloc(out_len + 1);
+	if (!output) return NULL;
+
+	char *p = output;
+	for (size_t i = 0; i < len; i += 3) {
+		int val = (input[i] << 16) | ((i + 1 < len ? input[i + 1] : 0) << 8) | (i + 2 < len ? input[i + 2] : 0);
+		*p++ = b64_table[(val >> 18) & 0x3F];
+		*p++ = b64_table[(val >> 12) & 0x3F];
+		*p++ = (i + 1 < len) ? b64_table[(val >> 6) & 0x3F] : '=';
+		*p++ = (i + 2 < len) ? b64_table[val & 0x3F] : '=';
+	}
+	*p = '\0';
+	return output;
+}
+
+/*** prt_htmlfm_Generate_r() - recurses through the document tree printing its
+ *** output to context
+ *** Programmer's note: Recursion happens in each of the methods this method
+ *** calls.
  ***/
 int
-prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
-    {
-    char* path;
-    void* arg;
-    int w,h;
-    unsigned long id;
-    int rval;
-
-	/** Check recursion **/
-	if (thExcessiveRecursion())
-	    {
+prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj) {
+	// Check that the recursion on this method isn't too deep.
+	if (thExcessiveRecursion()) {
 	    mssError(1,"PRT","Could not generate page: resource exhaustion occurred");
 	    return -1;
-	    }
+	}
 
-	/** Select the type of object we're formatting **/
-	switch(obj->ObjType->TypeID)
-	    {
+	switch(obj->ObjType->TypeID) {
 	    case PRT_OBJ_T_STRING:
-		prt_htmlfm_SetStyle(context, &(obj->TextStyle));
-		if (obj->URL && !strchr(obj->URL, '"'))
-		    {
-		    prt_htmlfm_Output(context, "<a href=\"", 9);
-		    prt_htmlfm_OutputEncoded(context, obj->URL, -1);
-		    prt_htmlfm_Output(context, "\">", 2);
-		    }
-		prt_htmlfm_OutputEncoded(context, (char*)obj->Content, -1);
-		if (obj->URL && !strchr(obj->URL, '"'))
-		    {
-		    prt_htmlfm_Output(context, "</a>", 4);
-		    }
-		break;
+			if (strlen((const char*)obj->Content) == 0 && obj->Flags & PRT_OBJ_F_NEWLINE) {
+				prt_htmlfm_Output(context, "<br>", -1);
+			}
+			
+			if (obj->URL && !strchr(obj->URL, '"')) {
+				prt_htmlfm_Output(context, "<a href=\"", 9);
+				prt_htmlfm_OutputEncoded(context, obj->URL, -1);
+				prt_htmlfm_Output(context, "\">", 2);
+			}
+			if (context->Flags & PRT_HTMLFM_F_PAGINATED) {
+				prt_htmlfm_OutputEncoded(context, (char*)obj->Content, -1);
+			} else {
+				switch (obj->Justification) {
+					default: 
+						prt_htmlfm_Output(context, "<div style=\"text-align: left;", -1);
+						break;
+					case 1: 
+						prt_htmlfm_Output(context, "<div style=\"text-align: right;", -1);
+						break;
+					case 2: 
+						prt_htmlfm_Output(context, "<div style=\"text-align: center;", -1);
+						break;
+					case 3: 
+						prt_htmlfm_Output(context, "<div style=\"text-align: justify;", -1);
+						break;
+				}
+
+				prt_htmlfm_Output(context, " line-height: 0.6;\"><span style=\" white-space: pre-wrap;", -1);
+
+				char stylebuf[128];
+				snprintf(stylebuf, sizeof(stylebuf), " font-family: %s; color: #%6.6X; font-size: %dpx; line-height: %f;\">",
+						prt_htmlfm_GetFont(&obj->TextStyle), obj->TextStyle.Color, (int) obj->TextStyle.FontSize, obj->LineHeight);
+				prt_htmlfm_Output(context, stylebuf, -1);
+
+				int attr = obj->TextStyle.Attr;
+
+				if (attr & PRT_OBJ_A_BOLD) {
+					prt_htmlfm_Output(context, "<b>", -1);
+				}
+				if (attr & PRT_OBJ_A_ITALIC) {
+					prt_htmlfm_Output(context, "<i>", -1);
+				}
+				if (attr & PRT_OBJ_A_UNDERLINE) {
+					prt_htmlfm_Output(context, "<u>", -1);
+				}
+
+				prt_htmlfm_Output(context, (char*)obj->Content, -1);
+				
+
+				printf("%s: %d\n", (char*)obj->Content, (obj->Flags & (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET)));
+
+				pPrtObjStream firstObj = obj;
+				/*
+				 * Logic for appending other string objects to the current one:
+				 * 1. don't append if there is no next
+				 * 2. only append if next is a string
+				 * 3. only append if next string has the same justification
+				 * 4. don't append if next string has absolute positioning
+				 * 5. don't append if next string has new line and first string was absolutely positioned
+				 */
+				while (obj->Next
+						&& obj->Next->ObjType->TypeID == PRT_OBJ_T_STRING
+						&& obj->Next->Justification == obj->Justification
+						&& !(obj->Next->Flags & (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET))
+						&& (!(obj->Next->Flags & (PRT_OBJ_F_NEWLINE)) || !(firstObj->Flags & (PRT_OBJ_F_XSET | PRT_OBJ_F_YSET)))) {
+					
+					if (obj->Flags & PRT_OBJ_F_SOFTNEWLINE && obj->Flags & PRT_TEXTLM_F_RMSPACE) {
+						prt_htmlfm_Output(context, " ", -1);
+					}
+		
+					if (obj->Flags & PRT_OBJ_F_NEWLINE) {
+						prt_htmlfm_Output(context, "<br>", -1);
+						if (strlen((const char *)obj->Content) == 0) {
+							break;
+						}
+					}
+
+					// compare text styles to see if there was a change
+					if (prt_htmlfm_CompareStyles(&obj->TextStyle, &obj->Next->TextStyle)) {
+						// same style, no need to change div
+						obj = obj->Next;
+					} else {
+						// new style!
+						if (attr & PRT_OBJ_A_UNDERLINE) {
+							prt_htmlfm_Output(context, "</u>", -1);
+						}
+						if (attr & PRT_OBJ_A_ITALIC) {
+							prt_htmlfm_Output(context, "</i>", -1);
+						}
+						if (attr & PRT_OBJ_A_BOLD) {
+							prt_htmlfm_Output(context, "</b>", -1);
+						}
+
+						prt_htmlfm_Output(context, "</span>", -1);
+
+						obj = obj->Next;
+
+						prt_htmlfm_Output(context, "<span style=\" white-space: pre-wrap;", -1);
+	
+						snprintf(stylebuf, sizeof(stylebuf), " font-family: %s; color: #%6.6X; font-size: %dpx; line-height: %f;\">",
+						prt_htmlfm_GetFont(&obj->TextStyle), obj->TextStyle.Color, (int) obj->TextStyle.FontSize, obj->LineHeight);
+						prt_htmlfm_Output(context, stylebuf, -1);
+	
+						attr = obj->TextStyle.Attr;
+	
+						if (attr & PRT_OBJ_A_BOLD) {
+							prt_htmlfm_Output(context, "<b>", -1);
+						}
+						if (attr & PRT_OBJ_A_ITALIC) {
+							prt_htmlfm_Output(context, "<i>", -1);
+						}
+						if (attr & PRT_OBJ_A_UNDERLINE) {
+							prt_htmlfm_Output(context, "<u>", -1);
+						}
+					}
+
+					prt_htmlfm_Output(context, (char*)obj->Content, -1);
+				}
+
+				if (attr & PRT_OBJ_A_UNDERLINE) {
+					prt_htmlfm_Output(context, "</u>", -1);
+				}
+				if (attr & PRT_OBJ_A_ITALIC) {
+					prt_htmlfm_Output(context, "</i>", -1);
+				}
+				if (attr & PRT_OBJ_A_BOLD) {
+					prt_htmlfm_Output(context, "</b>", -1);
+				}
+				
+				prt_htmlfm_Output(context, "</span>", -1);
+
+				prt_htmlfm_Output(context, "</div>", -1);
+			}
+			if (obj->URL && !strchr(obj->URL, '"')) {
+				prt_htmlfm_Output(context, "</a>", 4);
+			}
+			break;
 
 	    case PRT_OBJ_T_AREA:
-		prt_htmlfm_GenerateArea(context, obj);
-		break;
+			prt_htmlfm_GenerateArea(context, obj);
+			break;
 
 	    case PRT_OBJ_T_SECTION:
-		prt_htmlfm_GenerateMultiCol(context, obj);
-		break;
+			prt_htmlfm_GenerateMultiCol(context, obj);
+			break;
 
 	    case PRT_OBJ_T_RECT:
-		/** Don't output rectangles that are container decorations added
-		 ** by finalize routines in the layout managers.  We really need a 
-		 ** better way to tell this than the conditional below.
-		 **/
-		if (obj->Parent && obj->Parent->ObjType->TypeID != PRT_OBJ_T_SECTION && !(obj->Flags & PRT_OBJ_F_MARGINRELEASE))
-		    {
-		    w = obj->Width*PRT_HTMLFM_XPIXEL;
-		    h = obj->Height*PRT_HTMLFM_YPIXEL;
-		    prt_htmlfm_OutputPrintf(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\"><tr><td bgcolor=\"#%6.6X\" width=\"%d\" height=\"%d\"><table border=\"0\" cellspacing=\"0\" cellpadding=\"0\"><tr><td></td></tr></table></td></tr></table>\n",
-			    obj->TextStyle.Color, w, h);
-		    }
-		break;
+			/** Don't output rectangles that are container decorations added
+			** by finalize routines in the layout managers.  We really need a 
+			** better way to tell this than the conditional below.
+			**/
+			if (obj->Parent && obj->Parent->ObjType->TypeID != PRT_OBJ_T_SECTION && !(obj->Flags & PRT_OBJ_F_MARGINRELEASE))
+				{
+				int w = obj->Width*PRT_HTMLFM_XPIXEL;
+				int h = obj->Height*PRT_HTMLFM_YPIXEL;
+				prt_htmlfm_OutputPrintf(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\"><tr><td bgcolor=\"#%6.6X\" width=\"%d\" height=\"%d\"><table border=\"0\" cellspacing=\"0\" cellpadding=\"0\"><tr><td></td></tr></table></td></tr></table>\n",
+					obj->TextStyle.Color, w, h);
+				}
+			break;
 
-	    case PRT_OBJ_T_IMAGE:
-		/** We need an image store location in order to handle these **/
-		if (context->Session->ImageOpenFn)
-		    {
-		    id = PRT_HTMLFM.ImageID++;
-		    w = obj->Width*PRT_HTMLFM_XPIXEL;
-		    h = obj->Height*PRT_HTMLFM_YPIXEL;
-		    if (w <= 0) w = 1;
-		    if (h <= 0) h = 1;
-		    path = (char*)nmMalloc(OBJSYS_MAX_PATH);
-		    if (!path) 
-                        {
-                        mssError(1, "PRT", "nmMalloc() failed\n");
-                        return -1;
-                        }
-                    rval = snprintf(path, OBJSYS_MAX_PATH, "%sprt_htmlfm_%8.8lX.png", context->Session->ImageSysDir, id);
-		    if (rval < 0 || rval >= OBJSYS_MAX_PATH)
-			{
-                        mssError(1, "PRT", "Internal representation exceeded for image pathname\n");
-			nmFree(path, OBJSYS_MAX_PATH);
-                        return -1;
-			}
-		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/png");
-		    if (!arg)
-			{
-			mssError(0,"PRT","Failed to open new linked image '%s'",path);
-			nmFree(path, OBJSYS_MAX_PATH);
-			return -1;
-			}
-		    prt_internal_WriteImageToPNG(context->Session->ImageWriteFn, arg, (pPrtImage)(obj->Content), w, h);
-		    context->Session->ImageCloseFn(arg);
-		    nmFree(path, OBJSYS_MAX_PATH);
-		    if (obj->URL && !strchr(obj->URL, '"'))
-			{
-			prt_htmlfm_Output(context, "<a href=\"", 9);
-			prt_htmlfm_OutputEncoded(context, obj->URL, -1);
-			prt_htmlfm_Output(context, "\">", 2);
-			}
-		    prt_htmlfm_OutputPrintf(context, "<img src=\"%sprt_htmlfm_%8.8X.png\" border=\"0\" width=\"%d\" height=\"%d\">", 
-			    context->Session->ImageExtDir, id, w, h);
-		    if (obj->URL && !strchr(obj->URL, '"'))
-			{
-			prt_htmlfm_Output(context, "</a>", 4);
-			}
-		    }
-		break;
+		case PRT_OBJ_T_IMAGE:
+		case PRT_OBJ_T_SVG:
+			if (context->Session->ImageOpenFn) {
+			    int w = obj->Width * PRT_HTMLFM_XPIXEL;
+			    int h = obj->Height * PRT_HTMLFM_YPIXEL;
+			    if (w <= 0) w = 1;
+			    if (h <= 0) h = 1;
 
-            case PRT_OBJ_T_SVG:
-		/** We need an image store location in order to handle these **/
-		if (context->Session->ImageOpenFn)
-		    {
-		    id = PRT_HTMLFM.ImageID++;
-		    w = obj->Width*PRT_HTMLFM_XPIXEL;
-		    h = obj->Height*PRT_HTMLFM_YPIXEL;
-		    if (w <= 0) w = 1;
-		    if (h <= 0) h = 1;
-		    path = (char*)nmMalloc(OBJSYS_MAX_PATH);
-		    if (!path) 
-                        {
-                        mssError(1, "PRT", "nmMalloc() failed\n");
-                        return -1;
-                        }
-                    rval = snprintf(path, OBJSYS_MAX_PATH, "%sprt_htmlfm_%8.8lX.svg", context->Session->ImageSysDir, id);
-		    if (rval < 0 || rval >= OBJSYS_MAX_PATH)
-			{
-                        mssError(1, "PRT", "Internal representation exceeded for image pathname\n");
-			nmFree(path, OBJSYS_MAX_PATH);
-                        return -1;
+				// lifetime start: buf
+			    ImageBuffer imgBuf = { (char *)nmMalloc(MAX_IMAGE_SIZE), 0, MAX_IMAGE_SIZE };
+			    if (!imgBuf.buffer) {
+			        mssError(1, "PRT", "nmMalloc() failed\n");
+			        return -1;
+			    }
+
+			    // Capture image to buffer
+			    prt_internal_WriteImageToPNG(ImageWriteFn, &imgBuf, (pPrtImage)(obj->Content), w, h);
+
+			    // Encode image to base64
+				// copy out of lifetime: buf into img
+			    char *base64Image = base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size);
+				// lifetime end: buf
+			    nmFree(imgBuf.buffer, MAX_IMAGE_SIZE);
+			    if (!base64Image) {
+			        mssError(1, "PRT", "Base64 encoding failed\n");
+			        return -1;
+			    }
+
+			    // Output the image as a base64 Data URL
+			    if (obj->URL && !strchr(obj->URL, '"')) {
+			        prt_htmlfm_Output(context, "<a href=\"", 9);
+			        prt_htmlfm_OutputEncoded(context, obj->URL, -1);
+			        prt_htmlfm_Output(context, "\">", 2);
+			    }
+
+				// Justification: All cases in which it is not an image, it is a SVG.
+				if(obj->ObjType->TypeID == PRT_OBJ_T_IMAGE) {
+					prt_htmlfm_OutputPrintf(context, 
+						"<img src=\"data:image/png;base64,%s\" width=\"%d\" height=\"%d\" border=\"0\" style=\"padding: 3px 0 0 0\">",
+						base64Image, w, h);
+				} else {
+					prt_htmlfm_OutputPrintf(context,
+						"<img src=\"data:image/svg+xml;base64,%s\" width=\"%d\" height=\"%d\" border=\"0\" style=\"padding: 3px 0 0 0\">",
+						base64Image, w, h);
+				}
+
+			    if (obj->URL && !strchr(obj->URL, '"')) {
+			        prt_htmlfm_Output(context, "</a>", 4);
+			    }
+
+				// lifetime end: img
+			    nmFree(base64Image, strlen(base64Image));
 			}
-		    arg = context->Session->ImageOpenFn(context->Session->ImageContext, path, O_CREAT | O_WRONLY | O_TRUNC, 0600, "image/svg+xml");
-		    if (!arg)
-			{
-			mssError(0,"PRT","Failed to open new linked image '%s'",path);
-			nmFree(path, OBJSYS_MAX_PATH);
-			return -1;
-			}
-		    prt_internal_WriteSvgToFile(context->Session->ImageWriteFn, arg, (pPrtSvg)(obj->Content), w, h);
-		    context->Session->ImageCloseFn(arg);
-		    nmFree(path, OBJSYS_MAX_PATH);
-		    if (obj->URL && !strchr(obj->URL, '"'))
-			{
-			prt_htmlfm_Output(context, "<a href=\"", 9);
-			prt_htmlfm_OutputEncoded(context, obj->URL, -1);
-			prt_htmlfm_Output(context, "\">", 2);
-			}
-		    prt_htmlfm_OutputPrintf(context, "<img src=\"%sprt_htmlfm_%8.8X.svg\" border=\"0\" width=\"%d\" height=\"%d\">", 
-			    context->Session->ImageExtDir, id, w, h);
-		    if (obj->URL && !strchr(obj->URL, '"'))
-			{
-			prt_htmlfm_Output(context, "</a>", 4);
-			}
-		    }
-		break;
+			break;
 
 	    case PRT_OBJ_T_TABLE:
-		prt_htmlfm_GenerateTable(context, obj);
-		break;
-	    }
+			prt_htmlfm_GenerateTable(context, obj);
+			break;
+	}
 
     return 0;
-    }
+}
 
 
 /*** prt_htmlfm_Generate() - generate the html for the page.  Basically,
@@ -756,149 +890,150 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
  *** overlapping objects on a page.
  ***/
 int
-prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
-    {
+prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj) {
     pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;
-    pPrtObjStream subobj;
-    double colpos[PRT_HTMLFM_MAXCOLS];
-    double rowpos[PRT_HTMLFM_MAXROWS];
-    int n_cols=0, n_rows=0;
-    int found;
-    int i;
-    int w;
-    int cur_row, cur_col;
-    int rs,cs;
 
 	/** Write the page header **/
-	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
+	if (context->Flags & PRT_HTMLFM_F_PAGINATED) {
 	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_PAGEHEADER, (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001)+34);
+	}
 
-	/** Write a table to handle page margins **/
-	prt_htmlfm_Output(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n", -1);
-	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", (int)(page_obj->MarginLeft*PRT_HTMLFM_XPIXEL+0.001));
-	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", (int)((page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight+0.001)*PRT_HTMLFM_XPIXEL));
-	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", (int)(page_obj->MarginRight*PRT_HTMLFM_XPIXEL+0.001));
-	prt_htmlfm_OutputPrintf(context, "<tr><td height=\"%d\"></td><td></td><td></td></tr><tr><td></td><td>\n", 
-		(int)((page_obj->MarginTop+0.001)*PRT_HTMLFM_YPIXEL));
+	/** Write div to handle page margins **/
+	prt_htmlfm_OutputPrintf(context, "<div style=\"max-width: %dpx; padding: %dpx %dpx %dpx %dpx\">\n", 
+		(int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001),
+		(int)((page_obj->MarginTop+0.001)*PRT_HTMLFM_YPIXEL), 
+		(int)((page_obj->MarginRight+0.001)*PRT_HTMLFM_YPIXEL),
+		(int)((page_obj->MarginBottom+0.001)*PRT_HTMLFM_YPIXEL), 
+		(int)((page_obj->MarginLeft+0.001)*PRT_HTMLFM_YPIXEL));
 
-	/** We need to scan the absolute-positioned content to figure out how many
-	 ** "columns" and "rows" we need to put in the "table" used for layout
-	 ** purposes.
-	 **/
-	for(subobj=page_obj->ContentHead; subobj; subobj=subobj->Next)
-	    {
-	    if (n_cols < PRT_HTMLFM_MAXCOLS)
-		{
-		/** Search for the X position in the 'colpos' list **/
-		found = n_cols;
-		for(i=0;i<n_cols;i++)
-		    {
-		    if (subobj->X == colpos[i]) 
-			{
-			found = -1;
-			break;
+	// Paginated mode is older and less responsive - generally not recommended.
+	// If at all possible, eventually replace with proper HTML formatting.
+	if(context->Flags & PRT_HTMLFM_F_PAGINATED) {
+		/** We need to scan the absolute-positioned content to figure out how many
+		** "columns" and "rows" we need to put in the "table" used for layout
+		** purposes.
+		**/
+		int n_cols=0, n_rows=0;
+		double colpos[PRT_HTMLFM_MAXCOLS];
+		double rowpos[PRT_HTMLFM_MAXROWS];
+		for(pPrtObjStream subobj=page_obj->ContentHead; subobj; subobj=subobj->Next) {
+			if (n_cols < PRT_HTMLFM_MAXCOLS) {
+				/** Search for the X position in the 'colpos' list **/
+				int found = n_cols;
+				for(int i = 0; i < n_cols; i++) {
+					if (subobj->X == colpos[i]) {
+						found = -1;
+						break;
+					}
+					if (subobj->X < colpos[i]) {
+						found=i;
+						break;
+					}
+				}
+				if (found != -1) {
+					for(int i = n_cols-1 ; i >= found; i--) colpos[i+1] = colpos[i];
+					colpos[found] = subobj->X;
+					n_cols++;
+				}
 			}
-		    if (subobj->X < colpos[i])
-			{
-			found=i;
-			break;
+
+			if (n_rows < PRT_HTMLFM_MAXROWS) {
+				/** Search for the Y position in the 'rowpos' list **/
+				int found = n_rows;
+				for(int i = 0; i < n_rows; i++) {
+					if (subobj->Y == rowpos[i]) {
+						found = -1;
+						break;
+					}
+					if (subobj->Y < rowpos[i]) {
+						found=i;
+						break;
+					}
+				}
+				if (found != -1) {
+					for(int i = n_rows-1; i>=found; i--) rowpos[i+1] = rowpos[i];
+					rowpos[found] = subobj->Y;
+					n_rows++;
+				}
 			}
-		    }
-		if (found != -1)
-		    {
-		    for(i=n_cols-1;i>=found;i--) colpos[i+1] = colpos[i];
-		    colpos[found] = subobj->X;
-		    n_cols++;
-		    }
 		}
-	    if (n_rows < PRT_HTMLFM_MAXROWS)
-		{
-		/** Search for the Y position in the 'rowpos' list **/
-		found = n_rows;
-		for(i=0;i<n_rows;i++)
-		    {
-		    if (subobj->Y == rowpos[i]) 
-			{
-			found = -1;
-			break;
+
+		/** Write the layout table **/
+		prt_htmlfm_Output(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n", -1);
+		for(int i = 0; i < n_cols; i++) {
+			int w;
+			if (i == n_cols-1) {
+				w = (page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight - colpos[i])*PRT_HTMLFM_XPIXEL;
+			} else {
+				w = (colpos[i+1] - colpos[i]) * PRT_HTMLFM_XPIXEL;
 			}
-		    if (subobj->Y < rowpos[i])
-			{
-			found=i;
-			break;
-			}
-		    }
-		if (found != -1)
-		    {
-		    for(i=n_rows-1;i>=found;i--) rowpos[i+1] = rowpos[i];
-		    rowpos[found] = subobj->Y;
-		    n_rows++;
-		    }
+			prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", w);
 		}
-	    }
 
-	/** Write the layout table **/
-	prt_htmlfm_Output(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n", -1);
-	for(i=0;i<n_cols;i++)
-	    {
-	    if (i == n_cols-1)
-		w = (page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight - colpos[i])*PRT_HTMLFM_XPIXEL;
-	    else
-		w = (colpos[i+1] - colpos[i])*PRT_HTMLFM_XPIXEL;
-	    prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", w);
-	    }
+		/** Generate the body of the page, by selectively walking the YPrev/YNext chain **/
+		int cur_row = 0;
+		int cur_col = 0;
+		prt_htmlfm_Output(context, "<tr>", 4);
+		for(pPrtObjStream subobj=page_obj; subobj; subobj=subobj->YNext) {
+			if (subobj->Parent == page_obj) {
+				/** Next row? **/
+				if (subobj->Y > rowpos[cur_row]) {
+					while(subobj->Y > (rowpos[cur_row]+0.001) && cur_row < PRT_HTMLFM_MAXROWS-1) cur_row++;
+					prt_htmlfm_Output(context, "</tr>\n<tr>", 10);
+					cur_col = 0;
+				}
 
-	/** Generate the body of the page, by selectively walking the YPrev/YNext chain **/
-	cur_row = 0;
-	cur_col = 0;
-	prt_htmlfm_Output(context, "<tr>", 4);
-	for(subobj=page_obj; subobj; subobj=subobj->YNext)
-	    {
-	    if (subobj->Parent == page_obj)
-		{
-		/** Next row? **/
-		if (subobj->Y > rowpos[cur_row])
-		    {
-		    while(subobj->Y > (rowpos[cur_row]+0.001) && cur_row < PRT_HTMLFM_MAXROWS-1) cur_row++;
-		    prt_htmlfm_Output(context, "</tr>\n<tr>", 10);
-		    cur_col = 0;
-		    }
+				/** Skip cols? **/
+				if (subobj->X > colpos[cur_col]) {
+					int i=0;
+					while(subobj->X > (colpos[cur_col]+0.001) && cur_col < PRT_HTMLFM_MAXCOLS-1) {
+						i++;
+						cur_col++;
+					}
+					prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\">&nbsp;</td>", i);
+				}
 
-		/** Skip cols? **/
-		if (subobj->X > colpos[cur_col])
-		    {
-		    i=0;
-		    while(subobj->X > (colpos[cur_col]+0.001) && cur_col < PRT_HTMLFM_MAXCOLS-1)
-			{
-			i++;
-			cur_col++;
+				/** Figure rowspan and colspan **/
+				int cs=1;
+				while(cur_col+cs < n_cols && (colpos[cur_col+cs]+0.001) < subobj->X + subobj->Width) cs++;
+				int rs=1;
+				while(cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height) rs++;
+				prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\" rowspan=\"%d\" valign=\"top\" align=\"left\">", cs, rs);
+				prt_htmlfm_Generate_r(context, subobj);
+				prt_htmlfm_Output(context, "</td>", 5);
+				cur_col += cs;
+				if (cur_col >= n_cols) cur_col = n_cols-1;
 			}
-		    prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\">&nbsp;</td>", i);
-		    }
-
-		/** Figure rowspan and colspan **/
-		cs=1;
-		while(cur_col+cs < n_cols && (colpos[cur_col+cs]+0.001) < subobj->X + subobj->Width) cs++;
-		rs=1;
-		while(cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height) rs++;
-		prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\" rowspan=\"%d\" valign=\"top\" align=\"left\">", cs, rs);
-		prt_htmlfm_Generate_r(context, subobj);
-		prt_htmlfm_Output(context, "</td>", 5);
-		cur_col += cs;
-		if (cur_col >= n_cols) cur_col = n_cols-1;
 		}
-	    }
-	prt_htmlfm_Output(context, "</tr></table>\n", 14);
+		prt_htmlfm_Output(context, "</tr></table>\n", 14);
+	} else {
+		double cur_row = -1;
+		for(pPrtObjStream subobj=page_obj; subobj; subobj=subobj->YNext)	{
+			if (subobj->Parent == page_obj) {
+				// Move to next row if next item is greater than 10 pixels away.
+				if ((subobj->Y-cur_row) * 12 > 10) {
+					// Only put in a div ender if this is a new div.
+					if(cur_row != -1) {
+						prt_htmlfm_Output(context, "</div>\n", -1);
+					}
+					prt_htmlfm_Output(context, "<div style=\"display: flex; padding-bottom: 2px; justify-content: center\">", -1);
+					cur_row = subobj->Y;
+				}
 
+				// No need to worry about columns because of flexbox.
+				prt_htmlfm_Generate_r(context, subobj);
+			}
+		}
+	}
 
 	/** Write the page footer **/
-	prt_htmlfm_OutputPrintf(context, "</td><td></td></tr><tr><td height=\"%d\"></td><td></td><td></td></tr></table>\n", 
-		(int)((page_obj->MarginBottom+0.001)*PRT_HTMLFM_YPIXEL));
-	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
+	prt_htmlfm_Output(context, "</div>", -1);
+	if (context->Flags & PRT_HTMLFM_F_PAGINATED) {
 	    prt_htmlfm_Output(context, PRT_HTMLFM_PAGEFOOTER, -1);
+	}
 
     return 0;
-    }
+}
 
 
 int
@@ -959,5 +1094,3 @@ prt_htmlfm_Initialize()
 
     return 0;
     }
-
-
