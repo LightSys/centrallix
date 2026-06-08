@@ -280,6 +280,8 @@ htformInitialize()
 	htrAddAction(drv,"Clear");
 	htrAddAction(drv,"Delete");
 	htrAddAction(drv,"Discard");
+	htrAddAction(drv,"Disable");
+	htrAddAction(drv,"Enable");
 	htrAddAction(drv,"Edit");
 	htrAddAction(drv,"First");
 	htrAddAction(drv,"Last");
@@ -298,7 +300,6 @@ htformInitialize()
 	htrAddEvent(drv,"View");
 	htrAddEvent(drv,"Modify");
 	htrAddEvent(drv,"Query");
-	htrAddEvent(drv,"QueryExec");
 
 	/** Register. **/
 	htrRegisterDriver(drv);

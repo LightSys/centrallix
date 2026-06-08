@@ -642,8 +642,7 @@ function wn_togglevisibility(aparam)
 
 function wn_closewin(aparam)
     {
-    aparam.IsVisible = 0;
-    return this.ifcProbe(ifAction).Invoke('SetVisibility',aparam);
+    return this.ifcProbe(ifAction).Invoke('SetVisibility', ({ ...aparam, IsVisible: 0}) );
     }
 
 function wn_openwin(aparam)
@@ -654,12 +653,13 @@ function wn_openwin(aparam)
 	this.point_at = wgtrGetNode(this, this.point_at);
     this.point_offset = aparam.PointOffset;
     this.point_side = aparam.PointSide;
-    aparam.IsVisible = 1;
     if (aparam.X !== undefined && aparam.Y !== undefined)
 	moveToAbsolute(this, aparam.X, aparam.Y);
     else if (aparam.Center && aparam.Center != 'no')
 	moveToAbsolute(this, (pg_width - $(this).width())/2, (pg_height - $(this).height())/2);
-    return this.ifcProbe(ifAction).Invoke('SetVisibility',aparam);
+
+    // Passes aparam.IsModal, aparam.NoClose, and aparam.Cascade on to the SetVisibility action.
+    return this.ifcProbe(ifAction).Invoke('SetVisibility', ({ ...aparam, IsVisible: 1}));
     }
 
 function wn_setvisibility(aparam)
