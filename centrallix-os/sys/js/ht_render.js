@@ -311,8 +311,9 @@ function cxjs_right(s,l)
     return s.substr(s.length-l);
     }
 
-function cxjs_eval(_context, _this, expr, permflags)
+function cxjs_eval(_context, _this, expr, permflags, cur_obj_name, par_obj_name)
     {
+    console.log(_context, _this, expr, permflags, cur_obj_name, par_obj_name);
     if (expr === null || expr === undefined) return null;
     const expr_str = String(expr).trim();
     if (expr_str === '') return null;
@@ -341,24 +342,44 @@ function cxjs_eval(_context, _this, expr, permflags)
     // Eval single-quoted string.
     if (expr_str.length >= 2 && first_char === "'" && last_char === "'")
 	return expr_str.substring(1, expr_str.length - 1);
-    
-    // Eval :property or :object:property
+
+    // Eval :property, ::property, or :object:property
     if (first_char === ':')
 	{
 	const rest = expr_str.substring(1);
 	const colon2 = rest.indexOf(':');
 	if (colon2 < 0)
 	    {
-	    // :property - current object (event params) reference
-	    if (_this != null && (!permflags || permflags.indexOf('C') >= 0))
+	    // :property - current object reference
+	    if (!permflags || permflags.indexOf('C') >= 0)
 		{
-		const v = _this[rest];
-		return (typeof v !== 'undefined') ? v : null;
+		if (cur_obj_name !== null && cur_obj_name !== undefined)
+		    {
+		    const cur_node = wgtrGetNode(_context, cur_obj_name);
+		    if (cur_node) return wgtrGetProperty(cur_node, rest);
+		    }
+		else if (_this !== null && _this !== undefined)
+		    {
+		    const v = _this[rest];
+		    return (typeof v === 'undefined') ? null : v;
+		    }
+		}
+	    }
+	else if (colon2 < 1)
+	    {
+	    // ::property - parent object reference (C's ParentID)
+	    if (!permflags || permflags.indexOf('P') >= 0)
+		{
+		const prop = rest.substring(1);
+		const par_node = (par_obj_name !== null && par_obj_name !== undefined)
+		    ? wgtrGetNode(_context, par_obj_name)
+		    : wgtrGetParent(_context);
+		if (par_node) return wgtrGetProperty(par_node, prop);
 		}
 	    }
 	else
 	    {
-	    // :object:property
+	    // :object:property - named object reference
 	    if (_context != null && (!permflags || permflags.indexOf('O') >= 0))
 		{
 		const objname = rest.substring(0, colon2);
