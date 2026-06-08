@@ -12,9 +12,6 @@
 /* Define to 1 if you have the `basename' function. */
 #undef HAVE_BASENAME
 
-/* Define if __builtin_expect is available */
-#undef HAVE_BUILTIN_EXPECT
-
 /* Whether __ctype_b is present and usable */
 #undef HAVE_CTYPE_B
 

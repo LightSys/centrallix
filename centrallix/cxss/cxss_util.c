@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include "cxss/util.h"
+#include "cxlib/mtsession.h"
 
 /** @brief Duplicate a string
  *
@@ -84,4 +85,3 @@ cxssGetTimestamp(void)
     }
     return timestamp;
 }
-

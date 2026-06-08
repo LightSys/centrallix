@@ -6,6 +6,7 @@
 #include <sqlite3.h>
 #include "cxss/credentials_db.h"
 #include "cxss/util.h"
+#include "cxlib/mtsession.h"
 
 /* Private functions (credentials_db) */
 static int cxss_i_SetupCredentialsDatabase(CXSS_DB_Context_t dbcontext);
@@ -1043,4 +1044,3 @@ cxss_i_FinalizeSqliteStatements(CXSS_DB_Context_t dbcontext)
     sqlite3_finalize(dbcontext->update_resc_stmt);
     sqlite3_finalize(dbcontext->delete_resc_stmt);
 }
-

@@ -81,7 +81,9 @@ void* mssGetParam(char* paramname);
 
 /** Error handling functions **/
 int mssLog(int level, char* msg);
-int mssError(int clr, char* module, char* message, ...);
+void mssError_internal(int clr, char* module, char* file, int line, char* message, ...);
+#define mssError(clear, module, message, ...) \
+    mssError_internal(clear, module, __FILE__, __LINE__, message, ##__VA_ARGS__)
 int mssErrorErrno(int clr, char* module, char* message, ...);
 int mssClearError();
 int mssPrintError(pFile fd);
