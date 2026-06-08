@@ -85,6 +85,12 @@ typedef struct
     int image_maxwidth;
     int image_maxheight;
     char group[64];
+    char item_separator[16];
+    char item_type[16];
+    char item_source[16];
+    int item_width;
+    int item_height;
+    int item_spacing;
     }
     httbl_col;
 
@@ -195,7 +201,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	for(colid=0;colid<t->ncols;colid++)
 	    {
 	    col = t->col_infs[colid];
-	    htrAddScriptInit_va(s,"{name:\"%STR&JSSTR\",ns:\"%STR&JSSTR\",fieldname:\"%STR&JSSTR\",sort_fieldname:\"%STR&JSSTR\",title:\"%STR&JSSTR\",width:%INT,type:\"%STR&JSSTR\",group:%POS,align:\"%STR&JSSTR\",wrap:\"%STR&JSSTR\",caption_fieldname:\"%STR&JSSTR\",caption_textcolor:\"%STR&JSSTR\",image_maxwidth:%POS,image_maxheight:%POS},",
+	    htrAddScriptInit_va(s,"{name:\"%STR&JSSTR\",ns:\"%STR&JSSTR\",fieldname:\"%STR&JSSTR\",sort_fieldname:\"%STR&JSSTR\",title:\"%STR&JSSTR\",width:%INT,type:\"%STR&JSSTR\",group:%POS,align:\"%STR&JSSTR\",wrap:\"%STR&JSSTR\",caption_fieldname:\"%STR&JSSTR\",caption_textcolor:\"%STR&JSSTR\",image_maxwidth:%POS,image_maxheight:%POS,item_separator:\"%STR&JSSTR\",item_type:\"%STR&JSSTR\",item_source:\"%STR&JSSTR\",item_width:%POS,item_height:%POS,item_spacing:%POS},",
 		    col->wname,
 		    col->wnamespace,
 		    col->fieldname,
@@ -209,7 +215,13 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		    col->caption_fieldname,
 		    col->caption_textcolor,
 		    col->image_maxwidth,
-		    col->image_maxheight
+		    col->image_maxheight,
+		    col->item_separator,
+		    col->item_type,
+		    col->item_source,
+		    col->item_width,
+		    col->item_height,
+		    col->item_spacing
 		    );
 	    }
 
@@ -480,12 +492,39 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		    strtcpy(col->wrap, ptr, sizeof(col->wrap));
 		else
 		    strcpy(col->wrap, "no");
-		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check") || !strcmp(ptr,"checkbox") || !strcmp(ptr,"image") || !strcmp(ptr,"code") || !strcmp(ptr,"link") || !strcmp(ptr,"progress")))
+		if (wgtrGetPropertyValue(sub_tree, "type", DATA_T_STRING,POD(&ptr)) == 0 && (!strcmp(ptr,"text") || !strcmp(ptr,"check") || !strcmp(ptr,"checkbox") || !strcmp(ptr,"image") || !strcmp(ptr,"code") || !strcmp(ptr,"link") || !strcmp(ptr,"progress") || !strcmp(ptr,"itemlist")))
 		    strtcpy(col->type, ptr, sizeof(col->type));
 		else
 		    strcpy(col->type, "text");
 		if (htrGetBoolean(sub_tree, "group_by", 0) == 1)
 		    strcpy(col->group, "yes");
+
+		// ItemList column type properties
+		if (!strcmp(col->type, "itemlist"))
+		    {
+		    if (wgtrGetPropertyValue(sub_tree, "item_separator", DATA_T_STRING,POD(&ptr)) == 0)
+			strtcpy(col->item_separator, ptr, sizeof(col->item_separator));
+		    else
+			strcpy(col->item_separator, ",");
+		    
+		    if (wgtrGetPropertyValue(sub_tree, "item_type", DATA_T_STRING,POD(&ptr)) == 0)
+			strtcpy(col->item_type, ptr, sizeof(col->item_type));
+		    else
+			strcpy(col->item_type, "text");
+		    
+		    if (wgtrGetPropertyValue(sub_tree, "item_source", DATA_T_STRING,POD(&ptr)) == 0)
+			strtcpy(col->item_source, ptr, sizeof(col->item_source));
+		    else
+			strcpy(col->item_source, "field");
+		   
+		    col->item_width = 0;
+		    col->item_height = 0;
+		    wgtrGetPropertyValue(sub_tree, "item_width", DATA_T_INTEGER,POD(&(col->item_width)));
+		    wgtrGetPropertyValue(sub_tree, "item_height", DATA_T_INTEGER,POD(&(col->item_height)));
+		    
+		    if (wgtrGetPropertyValue(sub_tree, "item_spacing", DATA_T_INTEGER,POD(&(col->item_spacing))) != 0)
+			col->item_spacing = 2;
+		    }
 		}
 	    }
 

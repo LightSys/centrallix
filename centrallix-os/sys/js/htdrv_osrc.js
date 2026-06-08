@@ -1021,8 +1021,11 @@ function osrc_action_create_cb()
 	for(var i in this.child)
 	    this.child[i].ObjectCreated(recnum, this);
 	this.GiveAllCurrentRecord('create');
-	this.ifcProbe(ifEvent).Activate("Created", {});
-	this.ifcProbe(ifEvent).Activate("DataSaved", {});
+	if (!this.initiating_client)
+	    {
+	    this.ifcProbe(ifEvent).Activate("Created", {});
+	    this.ifcProbe(ifEvent).Activate("DataSaved", {});
+	    }
 	//if (this.create_focus)
 	//    this.MoveToRecord(this.LastRecord, true);
 	}

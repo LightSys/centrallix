@@ -11,6 +11,7 @@
 //
 
 window.tbld_touches = [];
+window.tbld_itemlist_drag_table = null;
 
 function tbld_log_status()
     {
@@ -85,6 +86,58 @@ function tbld_format_cell(cell, color)
 	    else
 		txt = '';
 	    }
+	else if (cell.subkind != 'headercell' && colinfo.type == 'itemlist')
+	    {
+	    // ItemList
+	    txt = '';
+	    if (cell.data && cell.data != 'null' && cell.data != '')
+		{
+		// Parse the item separator with proper escape handling
+		var sep = colinfo.item_separator || ',';
+		var items = this.ParseItemlist(cell, String(cell.data), sep);
+		cell.itemlist = items;
+		
+		if (items.length > 0)
+		    {
+		    var item_html = '<div style="display:flex; flex-wrap:wrap; gap:' + (colinfo.item_spacing || 2) + 'px;">';
+		    
+		    for (var k = 0; k < items.length; k++)
+			{
+			var item_text = htutil_nlbr(htutil_encode(String(items[k].item), true));
+			
+			var item_style = 'display:inline-block; ';
+			var item_width = wgtrGetServerProperty(wgtrFindDescendent(cell.table, colinfo.name, colinfo.ns), 'item_width') || 0;
+			var item_height = wgtrGetServerProperty(wgtrFindDescendent(cell.table, colinfo.name, colinfo.ns), 'item_height') || 0;
+			if (item_width)
+			    item_style += 'width:' + item_width + 'px; ';
+			if (item_height)
+			    item_style += 'height:' + item_height + 'px; overflow:hidden; ';
+			
+			// Apply styling from widget properties (including item_wrap)
+			//item_style = htutil_encode(item_style + htutil_getstyle(wgtrFindDescendent(cell.table, colinfo.name, colinfo.ns), 'item', {}));
+			item_style = item_style + htutil_getstyle(wgtrFindDescendent(cell.table, colinfo.name, colinfo.ns), 'item', {});
+			
+			if (colinfo.item_type == 'image')
+			    {
+			    // Image item
+			    var img_url = items[k];
+			    if (img_url && !(img_url.indexOf(':') >= 0 || img_url.indexOf('//') >= 0 || img_url.charAt(0) != '/'))
+				{
+				item_html += '<div style="' + item_style + '"><img src="' + htutil_encode(img_url) + '" style="max-width:100%; max-height:100%;"></div>';
+				}
+			    }
+			else
+			    {
+			    // Text item (default)
+			    item_html += '<div style="' + item_style + '">' + item_text + '</div>';
+			    }
+			}
+		    
+		    item_html += '</div>';
+		    txt = item_html;
+		    }
+		}
+	    }
 	else if (cell.subkind != 'headercell' && colinfo.type == 'checkbox')
 	    {
 	    // Checkbox
@@ -154,7 +207,11 @@ function tbld_format_cell(cell, color)
 	$(p).attr("style", style);
 	$(p).css({'margin':'0px'});
 	if (txt)
+	    {
+	    var tbl = this;
 	    $(p).append(txt);
+	    $(p).find('div').each(function(i) { this.kind = 'tabledynamic'; this.subkind = 'cell'; this.table = tbl; this.colnum = cell.colnum; this.row = cell.row; this.cell = cell; });
+	    }
 	if (imgsrc)
 	    {
 	    var ie = document.createElement('img');
@@ -447,6 +504,58 @@ function tbld_check_bottom()
     }
 
 
+// tbld_parse_itemlist - Parse an itemlist string with Centrallix escape() compatible handling
+// This function handles separator characters that have been escaped with Centrallix escape()
+// Centrallix escape() uses backslashes (e.g., "," becomes "\,")
+// Backslashes themselves are always escaped as "\\"
+//
+function tbld_parse_itemlist(cell, str, separator)
+    {
+    var items = [];
+    var current_item = '';
+    var current_key = '';
+    var i = 0;
+
+    var has_keys = htr_boolean(wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'item_keys'));
+    
+    while (i < str.length)
+	{
+	if (str[i] == '\\' && i + 1 < str.length)
+	    {
+	    // Backslash escape sequence - add the next character literally
+	    current_item += str[i + 1];
+	    i += 2;
+	    }
+	else if (str[i] == separator)
+	    {
+	    // Un-escaped separator - save current item and start new one
+	    if (!current_key && has_keys)
+		{
+		current_key = current_item;
+		}
+	    else
+		{
+		items.push({item:current_item, key:current_key});
+		current_key = '';
+		}
+	    current_item = '';
+	    i++;
+	    }
+	else
+	    {
+	    current_item += str[i];
+	    i++;
+	    }
+	}
+    
+    // Add the last item if there is one
+    if (current_item !== '' || items.length > 0)
+	items.push({item:current_item, key:current_key});
+    
+    return items;
+    }
+
+
 function tbld_find_osrc_value(rowslot, attrname)
     {
     var txt = '';
@@ -549,11 +658,21 @@ function tbld_setup_row_data(rowslot, is_new)
 
 function tbld_get_selected_column_geom()
     {
-    if (this.table.cr && this.table.rows[this.table.cr])
-	var obj = this.table.rows[this.table.cr];
+    var t = this.table;
+    if (t.last_clicked && t.last_clicked.cell && t.last_clicked.cell != t.last_clicked && this.colnum && t.cols[this.colnum].type == 'itemlist')
+	{
+	// Itemlist item geometry
+	return { x:$(t.last_clicked).offset().left, y:$(t.last_clicked).offset().top, width:$(t.last_clicked).width(), height:$(t.last_clicked).height() };
+	}
     else
-	var obj = this.table;
-    return { x:$(obj).offset().left + this.col.xoffset, y:$(obj).offset().top, width:this.col.width, height:$(obj).height() };
+	{
+	// Normal cell geometry
+	if (this.table.cr && this.table.rows[this.table.cr])
+	    var obj = this.table.rows[this.table.cr];
+	else
+	    var obj = this.table;
+	return { x:$(obj).offset().left + this.col.xoffset, y:$(obj).offset().top, width:this.col.width, height:$(obj).height() };
+	}
     }
 
 
@@ -2059,6 +2178,9 @@ function tbld_init(param)
     t.ReflowWidth = tbld_reflow_width;
     t.ShowSelection = tbld_show_selection;
     t.LogStatus = tbld_log_status;
+    t.ParseItemlist = tbld_parse_itemlist;
+    t.FindClickedItem = tbld_find_clicked_item;
+    t.UpdateDragOutline = tbld_update_drag_outline;
 
     // ObjectSource integration
     t.IsDiscardReady = new Function('return true;');
@@ -2251,6 +2373,10 @@ function tbld_init(param)
     ie.Add("Click");
     ie.Add("DblClick");
     ie.Add("RightClick");
+    ie.Add("ClickItem");
+    ie.Add("DragStartItem");
+    ie.Add("DragDropItem");
+    ie.Add("DragCancelItem");
 
     // Actions
     var ia = t.ifcProbeAdd(ifAction);
@@ -2397,7 +2523,7 @@ function tbld_mouseover(e)
 	else if ((ly.subkind == 'cell' || ly.subkind == 'headercell') && (!ly.table || ly.table.cols[ly.colnum].type != 'image'))
 	    {
 	    var t = ly.table;
-	    if (ly.firstChild && ly.firstChild.firstChild)
+	    if (ly.firstChild && ly.firstChild.firstChild && ly.firstChild.firstChild.nodeType != Node.TEXT_NODE)
 		{
 		//var cell_width = getdocWidth(ly.firstChild.firstChild);
 		var cell_width = $(ly.firstChild.firstChild).width();
@@ -2409,12 +2535,26 @@ function tbld_mouseover(e)
 	    }
         if(ly.subkind=='row' || ly.subkind=='cell')
             {
+	    var orig_ly = ly;
             if(ly.row) ly=ly.row;
 	    if (ly.table.allowselect)
 		{
 		if(tbld_current) tbld_current.mouseout();
-		tbld_current=ly;
-		tbld_current.mouseover();
+		if (ly.mouseover)
+		    {
+		    tbld_current=ly;
+		    tbld_current.mouseover();
+		    }
+		}
+	    if (orig_ly.subkind == 'cell' && orig_ly.cell && orig_ly.cell != ly)
+		{
+		// itemlist item mouseover
+		var colinfo = orig_ly.table.cols[orig_ly.colnum];
+		if (colinfo && colinfo.type == 'itemlist')
+		    {
+		    var item = orig_ly.cell.itemlist[$(orig_ly).index()];
+		    orig_ly.tipid = pg_tooltip(item.item, e.pageX, e.pageY);
+		    }
 		}
             }
         }
@@ -2522,6 +2662,109 @@ function tbld_check_highlight(cell, str)
     return false;
     }
 
+
+// tbld_find_clicked_item - Determine which item in an itemlist was clicked
+//
+function tbld_find_clicked_item(cell, e)
+    {
+    // working with a subelement of the cell?
+    if (cell.cell)
+	cell = cell.cell;
+    if (!cell.data || cell.data == 'null' || cell.data == '')
+	return null;
+    
+    var items = cell.itemlist;
+    
+    // Find the item container div
+    var container = cell.firstChild;
+    if (!container || container.tagName != 'P')
+	return null;
+    var flex_div = container.firstChild;
+    if (!flex_div || flex_div.tagName != 'DIV')
+	return null;
+    
+    // Check each item div
+    var item_divs = $(flex_div).children('div');
+    for (var i = 0; i < item_divs.length && i < items.length; i++)
+	{
+	var item_div = item_divs[i];
+	var offset = $(item_div).offset();
+	var width = $(item_div).outerWidth();
+	var height = $(item_div).outerHeight();
+	
+	if (e.pageX >= offset.left && e.pageX < offset.left + width &&
+	    e.pageY >= offset.top && e.pageY < offset.top + height)
+	    {
+	    return {
+		text: items[i].item,
+		key: items[i].key,
+		index: i,
+		element: item_div
+	    };
+	    }
+	}
+    
+    return null;
+    }
+
+// tbld_create_drag_outline - Create a visual outline of the dragged item
+//
+function tbld_create_drag_outline(item_element, table)
+    {
+    var outline = document.createElement('div');
+    var rect = $(item_element).get(0).getBoundingClientRect();
+    
+    $(outline).css({
+	'position': 'fixed',
+	'left': rect.left + 'px',
+	'top': rect.top + 'px',
+	'width': rect.width + 'px',
+	'height': rect.height + 'px',
+	'border': '2px dashed #666',
+	'background-color': 'rgba(200, 200, 200, 0.5)',
+	'pointer-events': 'none',
+	'z-index': 10000,
+	'box-sizing': 'border-box'
+    });
+    
+    // Copy the text content
+    var content = $(item_element).clone();
+    $(content).css({
+	'opacity': '0.7',
+	'pointer-events': 'none'
+    });
+    $(outline).append(content);
+    
+    document.body.appendChild(outline);
+    return outline;
+    }
+
+
+// tbld_update_drag_outline - Update the position of the drag outline
+//
+function tbld_update_drag_outline(outline, x, y)
+    {
+    if (outline)
+	{
+	$(outline).css({
+	    'left': x + 'px',
+	    'top': y + 'px'
+	});
+	}
+    }
+
+
+// tbld_remove_drag_outline - Remove the drag outline
+//
+function tbld_remove_drag_outline(outline)
+    {
+    if (outline && outline.parentNode)
+	{
+	outline.parentNode.removeChild(outline);
+	}
+    }
+
+
 function tbld_keydown(e)
     {
     e = e.Dom2Event;
@@ -2548,14 +2791,20 @@ function tbld_keydown(e)
 	else if (e.keyCode == e.DOM_VK_PAGE_UP || e.key == 'PageUp')
 	    {
 	    var target_row = t.rows[t.rows.firstvis];
-	    var target_y = t.vis_height - getRelativeY(target_row);
-	    t.Scroll(target_y, true);
+	    if (target_row)
+		{
+		var target_y = t.vis_height - getRelativeY(target_row);
+		t.Scroll(target_y, true);
+		}
 	    }
 	else if (e.keyCode == e.DOM_VK_PAGE_DOWN || e.key == 'PageDown' || (e.key == ' ' && !t.ttf_string))
 	    {
 	    var target_row = t.rows[t.rows.lastvis];
-	    var target_y = 0 - (getRelativeY(target_row) + $(target_row).height() + t.cellvspacing*2);
-	    t.Scroll(target_y, true);
+	    if (target_row)
+		{
+		var target_y = 0 - (getRelativeY(target_row) + $(target_row).height() + t.cellvspacing*2);
+		t.Scroll(target_y, true);
+		}
 	    }
 	else if (e.keyCode == e.DOM_VK_UP || e.key == 'ArrowUp')
 	    {
@@ -2643,6 +2892,7 @@ function tbld_contextmenu(e)
 			}
 		    }
 		ly.table.dta=event.data;
+		ly.table.last_clicked = orig_ly;
 		cn_activate(ly.table,'RightClick', event);
 		delete event;
 		return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
@@ -2682,6 +2932,7 @@ function tbld_mousedown(e)
 	    tbldx_tstart = $(ly).position().top;
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
+
         if(ly.subkind=='row' || ly.subkind=='cell')
             {
 	    var orig_ly = ly;
@@ -2711,6 +2962,35 @@ function tbld_mousedown(e)
 		    toggle_row = true;
 		    }
 		}
+
+	    // Check if click is on an itemlist item
+	    if (orig_ly.subkind == 'cell')
+		{
+		var colinfo = ly.table.cols[orig_ly.colnum];
+		if (colinfo && colinfo.type == 'itemlist')
+		    {
+		    // Find which item was clicked
+		    var clicked_item = ly.table.FindClickedItem(orig_ly, e);
+		    if (clicked_item !== null)
+			{
+			// Store drag info for potential drag operation
+			ly.table.itemlist_drag_pending = {
+			    cell: orig_ly,
+			    item: clicked_item,
+			    start_x: e.pageX,
+			    start_y: e.pageY,
+			    row: orig_ly.row.rownum,
+			    column: orig_ly.colnum
+			};
+
+			// Set global reference to this table
+			window.tbld_itemlist_drag_table = ly.table;
+
+			return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+			}
+		    }
+		}
+
 	    if(e.which == 1 && ly.table.ifcProbe(ifEvent).Exists("Click"))
 		{
 		var event = new Object();
@@ -2735,6 +3015,7 @@ function tbld_mousedown(e)
 			}
 		    }
 		ly.table.dta=event.data;
+		ly.table.last_clicked = orig_ly;
 		if (e.target && e.target.src && e.target.src.indexOf('/sys/images/checkbox_unchecked.png') >= 0)
 		    {
 		    event.checkbox = 1;
@@ -2786,6 +3067,7 @@ function tbld_mousedown(e)
 			    }
 			}
 		    ly.table.dta=event.data;
+		    ly.table.last_clicked = orig_ly;
 		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('DblClick', event)))
 			toggle_row = false;
 		    }
@@ -2876,6 +3158,52 @@ function tbld_mousemove(e)
 	    t.SchedScroll((-t.scroll_minheight) - Math.floor((tbldx_tstart + incr - 18)*t.thumb_sh/(t.thumb_avail - t.thumb_height)));
 	    }
 	}
+
+    // Check for itemlist drag operation
+    var t = window.tbld_itemlist_drag_table;
+    if (t && t.itemlist_drag_pending)
+	{
+	var dx = e.pageX - t.itemlist_drag_pending.start_x;
+	var dy = e.pageY - t.itemlist_drag_pending.start_y;
+	
+	// Drag threshold of 5 pixels
+	if (Math.abs(dx) > 5 || Math.abs(dy) > 5)
+	    {
+	    // Create the drag outline
+	    var outline = tbld_create_drag_outline(t.itemlist_drag_pending.item.element, t);
+	    
+	    // Start the drag
+	    t.ifcProbe(ifEvent).Activate("DragStartItem", {
+		Item: t.itemlist_drag_pending.item.text,
+		ItemKey: t.itemlist_drag_pending.item.key,
+		ItemIndex: t.itemlist_drag_pending.item.index,
+		Row: t.itemlist_drag_pending.row,
+		Column: t.cols[t.itemlist_drag_pending.column].fieldname,
+		ColumnName: t.cols[t.itemlist_drag_pending.column].name,
+		OffsetX: dx,
+		OffsetY: dy
+	    });
+	    
+	    // Track active drag
+	    t.itemlist_drag_active = t.itemlist_drag_pending;
+	    t.itemlist_drag_active.outline = outline;
+	    t.itemlist_drag_active.offset_x = e.pageX - $(outline).offset().left;
+	    t.itemlist_drag_active.offset_y = e.pageY - $(outline).offset().top;
+	    t.itemlist_drag_pending = null;
+	    }
+	}
+    
+    // Update drag outline position
+    if (t && t.itemlist_drag_active && t.itemlist_drag_active.outline)
+	{
+	t.UpdateDragOutline(
+	    t.itemlist_drag_active.outline,
+	    e.pageX - t.itemlist_drag_active.offset_x,
+	    e.pageY - t.itemlist_drag_active.offset_y
+	);
+	return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
+
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
@@ -2926,6 +3254,98 @@ function tbld_mouseup(e)
                 }
             }
         }
+
+    // Check for itemlist drag drop
+    var t = window.tbld_itemlist_drag_table;
+    if (t)
+	{
+	if (t.itemlist_drag_active)
+	    {
+	    // Check if dropped on a valid cell
+	    if (ly && ly.kind == 'tabledynamic' && ly.subkind == 'row' && ly.table)
+		{
+		for(var c in ly.cols)
+		    {
+		    if (e.pageX >= getPageX(ly.cols[c]) && e.pageX <= getPageX(ly.cols[c]) + $(ly.cols[c]).width())
+			{
+			ly = ly.cols[c];
+			break;
+			}
+		    }
+		}
+	    if (ly && ly.kind == 'tabledynamic' && ly.subkind == 'cell' && ly.table)
+		{
+		var drop_colinfo = ly.table.cols[ly.colnum];
+		if (drop_colinfo && drop_colinfo.type == 'itemlist')
+		    {
+		    // Find drop position within the itemlist
+		    var drop_item = ly.table.FindClickedItem(ly, e);
+		    
+		    t.ifcProbe(ifEvent).Activate("DragDropItem", {
+			Item: t.itemlist_drag_active.item.text,
+			ItemKey: t.itemlist_drag_active.item.key,
+			ItemIndex: t.itemlist_drag_active.item.index,
+			SourceRow: t.itemlist_drag_active.row,
+			SourceColumn: t.cols[t.itemlist_drag_active.column].fieldname,
+			SourceColumnName: t.cols[t.itemlist_drag_active.column].name,
+			TargetRow: ly.row.rownum,
+			TargetColumn: t.cols[ly.colnum].fieldname,
+			TargetColumnName: drop_colinfo.name,
+			BeforeItem: drop_item ? drop_item.text : null,
+			AfterItem: null // Could be enhanced to determine before/after
+		    });
+		    }
+		else
+		    {
+		    // Dropped on non-itemlist cell - cancel
+		    t.ifcProbe(ifEvent).Activate("DragCancelItem", {
+			Item: t.itemlist_drag_active.item.text,
+			ItemKey: t.itemlist_drag_active.item.key,
+			ItemIndex: t.itemlist_drag_active.item.index,
+			Row: t.itemlist_drag_active.row,
+			Column: t.cols[t.itemlist_drag_active.column].fieldname,
+			ColumnName: t.cols[t.itemlist_drag_active.column].name
+		    });
+		    }
+		}
+	    else
+		{
+		// Dropped outside valid target - cancel
+		t.ifcProbe(ifEvent).Activate("DragCancelItem", {
+		    Item: t.itemlist_drag_active.item.text,
+		    ItemKey: t.itemlist_drag_active.item.key,
+		    ItemIndex: t.itemlist_drag_active.item.index,
+		    Row: t.itemlist_drag_active.row,
+		    Column: t.cols[t.itemlist_drag_active.column].fieldname,
+		    ColumnName: t.cols[t.itemlist_drag_active.column].name
+		});
+		}
+	    
+	    // Remove the drag outline
+	    tbld_remove_drag_outline(t.itemlist_drag_active.outline);
+	    t.itemlist_drag_active = null;
+	    }
+	else
+	    {
+	    ly.table.last_clicked = ly;
+	    t.ifcProbe(ifEvent).Activate("ClickItem", {
+		Item: t.itemlist_drag_pending.item.text,
+		ItemKey: t.itemlist_drag_pending.item.key,
+		ItemIndex: t.itemlist_drag_pending.item.index,
+		Row: t.itemlist_drag_pending.row,
+		Column: t.cols[t.itemlist_drag_pending.column].fieldname,
+		ColumnName: t.cols[t.itemlist_drag_pending.column].name
+	    });
+	    }
+	
+	// Clear pending drag if click didn't turn into drag
+	if (t.itemlist_drag_pending)
+	    t.itemlist_drag_pending = null;
+	
+	// Clear the global reference
+	window.tbld_itemlist_drag_table = null;
+	}
+
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
