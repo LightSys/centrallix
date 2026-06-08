@@ -256,6 +256,8 @@ mqobAnalyzeAfterGroup(pQueryStatement stmt)
 			{
 			order_item = (pQueryStructure)(order_qs->Children.Items[i]);
 			group_item = (pQueryStructure)(group_qs->Children.Items[i]);
+			if (order_item == NULL || order_item->Expr == NULL) continue;
+			if (group_item == NULL || group_item->Expr == NULL) continue;
 			if (!expCompareExpressions(order_item->Expr, group_item->Expr))
 			    {
 			    sep_groupby = 1;
