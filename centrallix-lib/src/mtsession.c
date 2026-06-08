@@ -25,6 +25,7 @@
 #include "xhash.h"
 #include "strtcpy.h"
 #include "util.h"
+#include "cxsec.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -274,7 +275,7 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 	if (strchr(username,':'))
 	    {
 	    mssError(1, "MSS", "Attempt to use invalid username '%s'", username);
-	    memset(s, 0, sizeof(MtSession));
+	    cxsecShred(s, sizeof(MtSession));
 	    nmFree(s,sizeof(MtSession));
 	    return -1;
 	    }
@@ -286,7 +287,7 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 	    pw = getpwnam(s->UserName);
 	    if (!pw)
 		{
-		memset(s, 0, sizeof(MtSession));
+		cxsecShred(s, sizeof(MtSession));
 		nmFree(s,sizeof(MtSession));
 		return -1;
 		}
@@ -311,7 +312,7 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 		encrypted_pwd = (char*)crypt(s->Password,pwd);
 		if (!encrypted_pwd || strcmp(encrypted_pwd,pwd))
 		    {
-		    memset(s, 0, sizeof(MtSession));
+		    cxsecShred(s, sizeof(MtSession));
 		    nmFree(s,sizeof(MtSession));
 		    return -1;
 		    }
@@ -324,7 +325,7 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 	    if (!altpass_fd)
 		{
 		mssErrorErrno(1, "MSS", "Could not open auth file '%s'", MSS.AuthFile);
-		memset(s, 0, sizeof(MtSession));
+		cxsecShred(s, sizeof(MtSession));
 		nmFree(s,sizeof(MtSession));
 		return -1;
 		}
@@ -337,7 +338,7 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 		if (t == MLX_TOK_ERROR)
 		    {
 		    mssError(0, "MSS", "Could not read auth file '%s'", MSS.AuthFile);
-		    memset(s, 0, sizeof(MtSession));
+		    cxsecShred(s, sizeof(MtSession));
 		    nmFree(s,sizeof(MtSession));
 		    mlxCloseSession(altpass_lxs);
 		    fdClose(altpass_fd, 0);
@@ -367,7 +368,7 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 		    encrypted_pwd = (char*)crypt(s->Password,pwd);
 		    if (strcmp(encrypted_pwd,pwd))
 			{
-			memset(s, 0, sizeof(MtSession));
+			cxsecShred(s, sizeof(MtSession));
 			nmFree(s,sizeof(MtSession));
 			return -1;
 			}
@@ -375,7 +376,7 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 		}
 	    else
 		{
-		memset(s, 0, sizeof(MtSession));
+		cxsecShred(s, sizeof(MtSession));
 		nmFree(s,sizeof(MtSession));
 		return -1;
 		}
@@ -447,7 +448,7 @@ mssEndSession(pMtSession s)
 	xhDeInit(&s->Params);
 	xaDeInit(&(s->ErrList));
 	xaRemoveItem(&(MSS.Sessions),xaFindItem(&(MSS.Sessions),(void*)s));
-	memset(s, 0, sizeof(MtSession));
+	cxsecShred(s, sizeof(MtSession));
 	nmFree(s,sizeof(MtSession));
 
     return 0;
