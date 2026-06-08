@@ -47,7 +47,7 @@ AC_DEFUN(CHECK_BUILTIN_EXPECT,
 		AC_DEFINE([HAVE_BUILTIN_EXPECT], [1], [Define if __builtin_expect is available])
 		AC_MSG_RESULT([yes])
 	    ],
-	    [AC_MSG_RESULT([no])],
+	    [AC_MSG_RESULT([no])]
 	)
     ]
 )
@@ -298,6 +298,7 @@ AC_DEFUN(CHECK_VALGRIND,
 	WITH_VALGRIND="$enableval",
 	WITH_VALGRIND="no"
     )
+    AC_MSG_RESULT($WITH_VALGRIND)
     if test "$WITH_VALGRIND" = "yes"; then
 	if test "$WITH_OPTIMIZATION" = "yes"; then
 	    AC_MSG_ERROR([Valgrind integration and Optimization are mutually exclusive; please at most specify one or the other but not both])
