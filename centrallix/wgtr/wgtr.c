@@ -1561,7 +1561,7 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 	SETMAGIC(node, MGK_WGTR);
 
 	strtcpy(node->Name, name, sizeof(node->Name));
-	strtcpy(node->Type, type, sizeof(node->Name));
+	strtcpy(node->Type, type, sizeof(node->Type));
 	snprintf(node->DName, sizeof(node->DName), "w%8.8lx", WGTR.SerialID++);
 	node->x = node->r_x = rx;
 	node->y = node->r_y = ry;
