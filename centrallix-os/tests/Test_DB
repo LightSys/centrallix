@@ -1,0 +1,16 @@
+$Version=2$
+Kardia_DB "application/sybase"
+    {
+    server = "<SERVER-NAME>";
+    database = "Test_DB";
+    max_connections = 200;
+    annot_table = "ra";
+
+    // Use centrallix login credentials.
+    use_system_auth = "no";
+    username = "<TEST_USER>";
+    password = "<TEST_PASS>";
+
+    // Migrate centrallix password to mysql password.
+    set_passwords = "no";
+    }
