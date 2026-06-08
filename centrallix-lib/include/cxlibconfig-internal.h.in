@@ -35,3 +35,11 @@
 /* defined to 1 if SIOCOUTQ is available */
 #undef HAVE_SIOCOUTQ
 
+/* defined to 1 if memset_explict() is available */
+#undef HAVE_MEMSET_EXPLICIT
+
+/* defined to 1 if memset_s() is available */
+#undef HAVE_MEMSET_S
+
+/* defined to 1 if explicit_bzero() is available */
+#undef HAVE_EXPLICIT_BZERO

@@ -1,3 +1,6 @@
+#ifdef HAVE_MEMSET_S
+#define __STDC_WANT_LIB_EXT1__ 1
+#endif
 #ifdef HAVE_CONFIG_H
 #include "cxlibconfig-internal.h"
 #endif
@@ -185,9 +188,30 @@ cxsecVerifySymbol_n(const char* sym, size_t n)
 void
 cxsecShred(void* data, size_t n_bytes)
     {
+#ifdef HAVE_MEMSET_EXPLICIT
+#define CXSEC_FOUND
+	memset_explicit(data, 0, n_bytes);
+	return;
+#endif
+
+#ifdef HAVE_MEMSET_S
+#define CXSEC_FOUND
+	memset_s(data, n_bytes, 0, n_bytes);
+	return;
+#endif
+
+#ifdef HAVE_EXPLICIT_BZERO
+#define CXSEC_FOUND
+	explicit_bzero(data, n_bytes);
+	return;
+#endif
+
+#ifndef CXSEC_FOUND
+#undef CXSEC_FOUND
 	volatile uint8_t* ptr = (volatile uint8_t*)data;
 	for (size_t i = 0; i < n_bytes; i++)
 	    ptr[i] = 0;
+#endif
 
     return;
     }
