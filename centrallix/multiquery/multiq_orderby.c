@@ -16,7 +16,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2010 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -269,7 +269,9 @@ mqobAnalyzeAfterGroup(pQueryStatement stmt)
 	    for(i=0;i<order_qs->Children.nItems;i++)
 		{
 		order_item = (pQueryStructure)(order_qs->Children.Items[i]);
-		if (sep_groupby || (order_item->Expr && order_item->Expr->AggLevel == 1))
+		if (order_item == NULL || order_item->Expr == NULL) continue;
+		
+		if (sep_groupby || order_item->Expr->AggLevel == 1)
 		    {
 		    /** Found one.  Squirrel it away in our order-by list. **/
 		    if (n_orderby >= MQ_MAX_ORDERBY)
