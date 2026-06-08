@@ -1325,8 +1325,6 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     pQytQuery qy = ((pQytQuery)(qy_v));
     pQytData inf;
     pObject llobj = NULL;
-    pStructInf find_inf;
-    char* ptr;
     char* objname = NULL;
     int cur_id = -1;
 
@@ -1883,4 +1881,3 @@ qytInitialize()
 
     return 0;
     }
-

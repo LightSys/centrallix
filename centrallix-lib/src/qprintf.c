@@ -675,7 +675,7 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
     char* cursor;
     int ix;
     int req_size;
-    char* orig_src = src;
+    const char* orig_src = src;
 
 	/** Required size **/
 	if (src_size%2 == 1)

@@ -25,11 +25,11 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 36, "Encode: '%STR&HEX'.", "<b c=\"w\">");
-	    qpfPrintf(NULL, buf+4, 36, "Encode: '%STR&HEX'.", "<b c=\"w\">");
-	    qpfPrintf(NULL, buf+4, 36, "Encode: '%STR&HEX'.", "<b c=\"w\">");
-	    rval = qpfPrintf(NULL, buf+4, 36, "Encode: '%STR&HEX'.", "<b c=\"w\">");
-	    assert(!strcmp(buf+4, "Encode: '3c6220633d2277223e'."));
+	    qpfPrintf(NULL, (char*)buf+4, 36, "Encode: '%STR&HEX'.", "<b c=\"w\">");
+	    qpfPrintf(NULL, (char*)buf+4, 36, "Encode: '%STR&HEX'.", "<b c=\"w\">");
+	    qpfPrintf(NULL, (char*)buf+4, 36, "Encode: '%STR&HEX'.", "<b c=\"w\">");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "Encode: '%STR&HEX'.", "<b c=\"w\">");
+	    assert(!strcmp((char*)buf+4, "Encode: '3c6220633d2277223e'."));
 	    assert(rval == 29);
 	    assert(buf[36] == '\n');
 	    assert(buf[35] == '\0');
@@ -43,4 +43,3 @@ test(char** tname)
 
     return iter*4;
     }
-

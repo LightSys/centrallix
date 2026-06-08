@@ -311,7 +311,7 @@ int rval;
 
     rval = aposSetLimits_r(Parent, &delta_w, &delta_h);
 
-    return 0;
+    return rval;
 }
 
 
@@ -682,8 +682,8 @@ pXArray FirstCross, LastCross;
     /**sanity check to make sure no widgets cross the border lines**/
     if(xaCount(HLines))	//don't test borderlines unless they exist
 	{
-	    FirstCross = &(((pAposLine)xaGetItem(HLines, 0))->CWidgets);
-	    LastCross  = &(((pAposLine)xaGetItem(HLines, (xaCount(HLines)-1)))->CWidgets);
+	//     FirstCross = &(((pAposLine)xaGetItem(HLines, 0))->CWidgets);
+	//     LastCross  = &(((pAposLine)xaGetItem(HLines, (xaCount(HLines)-1)))->CWidgets);
 	    /*if(xaCount(FirstCross))
 		mssError(1, "APOS", "%d widget(s) crossed the top borderline, including %s '%s'", xaCount(FirstCross),
 		    ((pWgtrNode)xaGetItem(FirstCross, 0))->Type, ((pWgtrNode)xaGetItem(FirstCross, 0))->Name);
@@ -692,8 +692,8 @@ pXArray FirstCross, LastCross;
 		    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);*/
 	}
 	
-    FirstCross = &(((pAposLine)xaGetItem(VLines, 0))->CWidgets);
-    LastCross  = &(((pAposLine)xaGetItem(VLines, (xaCount(VLines)-1)))->CWidgets);
+//     FirstCross = &(((pAposLine)xaGetItem(VLines, 0))->CWidgets);
+//     LastCross  = &(((pAposLine)xaGetItem(VLines, (xaCount(VLines)-1)))->CWidgets);
     /*if(xaCount(FirstCross))
 	mssError(1, "APOS", "%d widget(s) crossed the left borderline, including %s '%s'", xaCount(FirstCross), 
 	    ((pWgtrNode)xaGetItem(FirstCross, 0))->Type, ((pWgtrNode)xaGetItem(FirstCross, 0))->Name);
@@ -1260,7 +1260,7 @@ pWgtrNode Widget;
 int
 aposProcessWindows(pWgtrNode VisualRef, pWgtrNode Parent)
 {
-int i=0, changed=0, isWin=0, isSP=0;
+int i=0, isWin=0, isSP=0;
 int childCount=xaCount(&(Parent->Children));
 pWgtrNode Child;
 int rw, rh, rpw, rph;
@@ -1302,32 +1302,25 @@ int ival;
 			{
 			    Child->x = (rw - Child->width)/2;
 			    if (Child->x < 0) Child->x = 0;
-			    changed = 1;
 			}
 		    if (abs(Child->pre_y - (rph - (Child->pre_y + Child->pre_height))) < 10)
 			{
 			    Child->y = (rh - Child->height)/2;
 			    if (Child->y < 0) Child->y = 0;
-			    changed = 1;
 			}
 
 		    /**if it's larger than its container, shrink it and set flag**/
 		    if(Child->width > (rw - isSP*18))
 		        {
 			    Child->width = (rw - isSP*18);
-			    changed = 1;
 			}
 		    if(Child->height > (rh - isWin*24))
 			{
 			    Child->height = (rh - isWin*24);
-			    changed = 1;
 			}
 		    
 		    /**if the window changed width or height, process it like a widget tree**/
-		    //if(changed) 
 		    aposAutoPositionWidgetTree(Child);
-		    /*Child->width = Child->pre_width;
-		    Child->height = Child->pre_height;*/
 
 		    /**if it's outside the top left corner pull the whole window in**/
 		    if(Child->x < 0) Child->x = 0;

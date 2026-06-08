@@ -25,19 +25,19 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/to/%STR&FILE/file", "..");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/to/%STR&FILE/file", "..");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/to/%STR&FILE/file", "../otherdir");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/to/%STR&FILE/file", "../otherdir");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/to/%STR&FILE/file", "dir/..");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/to/%STR&FILE/file", "dir/..");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/to/%STR&FILE/file", "file/subfile");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/to/%STR&FILE/file", "file/subfile");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/to/%STR&FILE/file", "a/../b");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/to/%STR&FILE/file", "a/../b");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/to/%STR&FILE/file", ".");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/to/%STR&FILE/file", ".");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/to/%STR&FILE/file", "");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/to/%STR&FILE/file", "");
 	    assert(rval < 0);
 	    assert(buf[35] == '\n');
 	    assert(buf[34] == '\0');
@@ -51,4 +51,3 @@ test(char** tname)
 
     return iter*7;
     }
-

@@ -25,11 +25,11 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 36, "Here is the string: %8STR...", "STRINGSTR");
-	    qpfPrintf(NULL, buf+4, 36, "Here is the string: %8STR...", "STRINGSTR");
-	    qpfPrintf(NULL, buf+4, 36, "Here is the string: %8STR...", "STRINGSTR");
-	    rval = qpfPrintf(NULL, buf+4, 36, "Here is the string: %8STR...", "STRINGSTR");
-	    assert(!strcmp(buf+4, "Here is the string: STRINGST..."));
+	    qpfPrintf(NULL, (char*)buf+4, 36, "Here is the string: %8STR...", "STRINGSTR");
+	    qpfPrintf(NULL, (char*)buf+4, 36, "Here is the string: %8STR...", "STRINGSTR");
+	    qpfPrintf(NULL, (char*)buf+4, 36, "Here is the string: %8STR...", "STRINGSTR");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "Here is the string: %8STR...", "STRINGSTR");
+	    assert(!strcmp((char*)buf+4, "Here is the string: STRINGST..."));
 	    assert(rval == 31);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
@@ -43,4 +43,3 @@ test(char** tname)
 
     return iter*4;
     }
-
