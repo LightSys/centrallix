@@ -117,7 +117,8 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 		for(i=0;i<qs->Children.nItems;i++)
 		    {
 		    item = (pQueryStructure)(qs->Children.Items[i]);
-		    if (item->Expr && item->Expr->AggLevel == 0)
+		    if (item == NULL || item->Expr == NULL) continue;
+		    if (item->Expr->AggLevel == 0)
 			{
 			mask = item->Expr->ObjCoverageMask;
 			total_mask |= mask;
@@ -144,7 +145,8 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 		     ** 2d.  Order item not on the primary side of a join
 		     **/
 		    item = (pQueryStructure)(qs->Children.Items[i]);
-		    if (item->Expr && item->Expr->AggLevel == 0)
+		    if (item == NULL || item->Expr == NULL) continue;
+		    if (item->Expr->AggLevel == 0)
 			{
 			mask = item->Expr->ObjCoverageMask;
 			for(n_sources = 0; mask; mask >>= 1)
