@@ -201,9 +201,8 @@ cxssKeystreamFree(pCxssKeystreamState kstate)
 
 	if (kstate->Context)
 	    EVP_CIPHER_CTX_free(kstate->Context);
-	memset(kstate, 0, sizeof(CxssKeystreamState));
+	cxssShred(kstate, sizeof(CxssKeystreamState));
 	nmFree(kstate, sizeof(CxssKeystreamState));
 
     return 0;
     }
-

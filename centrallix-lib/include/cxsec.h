@@ -31,6 +31,8 @@ void cxsecInitialize();
 int cxsecVerifySymbol(const char* sym);
 int cxsecVerifySymbol_n(const char* sym, size_t n);
 
+void cxsecShred(void* data, size_t n_bytes);
+
 #ifndef __GNUC__
 #define __attribute__(a) /* hide function attributes from non-GCC compilers */
 #endif

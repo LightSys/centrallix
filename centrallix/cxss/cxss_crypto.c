@@ -8,6 +8,7 @@
 #include <openssl/crypto.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
+#include "cxss/cxss.h"
 #include "cxss/crypto.h"
 #include "cxss/credentials_db.h"
 #include "cxlib/mtsession.h"
@@ -499,7 +500,7 @@ void
 cxssDestroyKey(char *key, size_t keylength)
 {
     if (key && keylength >= 0) {
-        memset(key, 0, keylength);
+        cxssShred(key, keylength);
         free(key);
     }
 }
