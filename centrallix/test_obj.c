@@ -33,7 +33,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -811,7 +811,13 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 			    fdQPrintf(TESTOBJ.Output, "%[,%]%STR", i!=0, ptr);
 			else
 			    {
-			    while (strpbrk(ptr, "\r\n")) *(strpbrk(ptr, "\r\n")) = ' ';
+			    char* cur;
+			    while (1)
+				{
+				cur = strpbrk(ptr, "\r\n");
+				if (cur == NULL) break;
+				else *cur = ' ';
+				}
 			    fdQPrintf(TESTOBJ.Output, "%[,%]\"%STR&DSYB\"", i!=0, ptr);
 			    }
 
@@ -905,6 +911,14 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 				    case DATA_T_INTEGER:
 				    case DATA_T_DOUBLE:
 					fdPrintf(TESTOBJ.Output,"%s", objDataToStringTmp(type, &od, 0));
+					break;
+					
+				    case DATA_T_STRINGVEC:
+					fdPrintf(TESTOBJ.Output,"%s", objDataToStringTmp(type, od.StringVec, DATA_F_QUOTED & DATA_F_BRACKETS));
+					break;
+				    
+				    case DATA_T_INTVEC:
+					fdPrintf(TESTOBJ.Output,"%s", objDataToStringTmp(type, od.IntVec, DATA_F_QUOTED & DATA_F_BRACKETS));
 					break;
 
 				    case DATA_T_STRING:
@@ -1495,6 +1509,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 	    else
 		{
 		printf("Unknown command '%s'\n",cmdname);
+		mlxCloseSession(ls);
 		return -1;
 		}
 	

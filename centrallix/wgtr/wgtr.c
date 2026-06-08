@@ -46,6 +46,7 @@
 #include "cxlib/magic.h"
 #include "cxlib/xhash.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/mtsession.h"
 #include "ht_render.h"
 
 #define WGTR_MAX_PARAMS		(24)
