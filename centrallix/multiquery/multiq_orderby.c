@@ -256,11 +256,13 @@ mqobAnalyzeAfterGroup(pQueryStatement stmt)
 		    {
 		    for(i=0; i<order_qs->Children.nItems; i++)
 			{
+			pExpression order_expr, group_expr;
 			order_item = (pQueryStructure)(order_qs->Children.Items[i]);
 			group_item = (pQueryStructure)(group_qs->Children.Items[i]);
-			if (order_item == NULL || order_item->Expr == NULL ||
-			    group_item == NULL || group_item->Expr == NULL ||
-			    !expCompareExpressions(order_item->Expr, group_item->Expr))
+			order_expr = (order_item == NULL) ? NULL : order_item->Expr;
+			group_expr = (group_item == NULL) ? NULL : group_item->Expr;
+			if (!order_expr && !group_expr) continue;
+			if (!order_expr || !group_expr || !expCompareExpressions(order_expr, group_expr))
 			    {
 			    sep_groupby = 1;
 			    break;
