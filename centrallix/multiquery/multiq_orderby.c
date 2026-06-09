@@ -233,7 +233,7 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 int
 mqobAnalyzeAfterGroup(pQueryStatement stmt)
     {
-    pQueryStructure order_qs, group_qs, order_item, group_item;
+    pQueryStructure order_qs, group_qs;
     pQueryElement qe = NULL, child;
     int i, n_orderby = 0;
     int sep_groupby = 0;
@@ -256,13 +256,15 @@ mqobAnalyzeAfterGroup(pQueryStatement stmt)
 		    {
 		    for(i=0; i<order_qs->Children.nItems; i++)
 			{
-			pExpression order_expr, group_expr;
-			order_item = (pQueryStructure)(order_qs->Children.Items[i]);
-			group_item = (pQueryStructure)(group_qs->Children.Items[i]);
-			order_expr = (order_item == NULL) ? NULL : order_item->Expr;
-			group_expr = (group_item == NULL) ? NULL : group_item->Expr;
-			if (!order_expr && !group_expr) continue;
-			if (!order_expr || !group_expr || !expCompareExpressions(order_expr, group_expr))
+			pQueryStructure order_item = (pQueryStructure)(order_qs->Children.Items[i]);
+			pQueryStructure group_item = (pQueryStructure)(group_qs->Children.Items[i]);
+			
+			pExpression order_expr = (order_item == NULL) ? NULL : order_item->Expr;
+			pExpression group_expr = (group_item == NULL) ? NULL : group_item->Expr;
+			
+			if (order_expr == NULL && group_expr == NULL) continue;
+			if (order_expr == NULL || group_expr == NULL
+			    || expCompareExpressions(order_expr, group_expr) == 0)
 			    {
 			    sep_groupby = 1;
 			    break;
@@ -274,7 +276,7 @@ mqobAnalyzeAfterGroup(pQueryStatement stmt)
 	    /** Look for ORDER BY items with an Aggregate Level of 1 **/
 	    for(i=0;i<order_qs->Children.nItems;i++)
 		{
-		order_item = (pQueryStructure)(order_qs->Children.Items[i]);
+		pQueryStructure order_item = (pQueryStructure)(order_qs->Children.Items[i]);
 		if (order_item == NULL || order_item->Expr == NULL) continue;
 		
 		if (sep_groupby || order_item->Expr->AggLevel == 1)
