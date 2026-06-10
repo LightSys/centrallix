@@ -500,6 +500,328 @@ function cxjs_reverse(s)
     return rs;
     }
 
+// Convert integer number (n) to English words, with a trailing space.
+function cxjs_wordify(n)
+    {
+    if (n === null || n === undefined) return null;
+    
+    // Declare word tables.
+    const digits = [
+	"Zero", "One", "Two", "Three", "Four", "Five",
+	"Six", "Seven", "Eight", "Nine", "Ten"
+    ];
+    const teens = [
+	"Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen",
+	"Sixteen", "Seventeen", "Eighteen", "Nineteen"
+    ];
+    const tens = [
+	"Ten", "Twenty", "Thirty", "Forty", "Fifty",
+	"Sixty", "Seventy", "Eighty", "Ninety"
+    ];
+    const multiples = ["",
+	"Thousand", "Million", "Billion", "Trillion", "Quadrillion"
+    ];
+    
+    // Handle negative values and normalize n.
+    n = Math.round(n);
+    if (isNaN(n)) return null;
+    const abs_n = Math.abs(n);
+    let result = (n < 0) ? "Negative " : "";
+    
+    // Handle zero.
+    if (abs_n === 0)
+	{
+	result += "Zero ";
+	return result;
+	}
+    
+    // Traverse thousands-chunks from highest to lowest.
+    for (let multiple = 5; multiple >= 0; multiple--)
+	{
+	const chunk = Math.floor(abs_n / Math.pow(1000, multiple)) % 1000;
+	
+	if (chunk === 0) continue;
+	if (chunk >= 100)
+	    result += digits[Math.floor(chunk/100)] + " Hundred ";
+	
+	const rem = chunk % 100;
+	if (rem > 19)
+	    {
+	    result += tens[Math.floor(rem/10)-1];
+	    if (rem%10 !== 0) result += "-" + digits[rem%10] + " ";
+	    else result += " ";
+	    }
+	else if (rem > 10) result += teens[rem-11] + " ";
+	else if (rem > 0) result += digits[rem] + " ";
+	
+	result += multiples[multiple];
+	if (chunk > 10 && (chunk%10 !== 0 || chunk > 100) && multiple !== 0)
+	    result += ", ";
+	else if (multiple !== 0 && chunk !== 0)
+	    result += " ";
+	}
+	
+	// Strip trailing comma left when the highest group needs no separator.
+	if (result.endsWith(", ")) result = result.slice(0, -2) + " ";
+	
+    return result;
+    }
+
+// Internal: parse M/D/YYYY H:MM:SS date string into a Date; returns null on failure.
+function cxjs__parsedate(date_str)
+    {
+    if (date_str === null || date_str === undefined) return null;
+    
+    const match = String(date_str).match(/^(\d+)\/(\d+)\/(\d+)(?:\s+(\d+):(\d+)(?::(\d+))?)?/);
+    if (!match) return null;
+    
+    return new Date(
+	parseInt(match[3], 10),
+	parseInt(match[1], 10) - 1,
+	parseInt(match[2], 10),
+	(match[4]) ? parseInt(match[4], 10) : 0,
+	(match[5]) ? parseInt(match[5], 10) : 0,
+	(match[6]) ? parseInt(match[6], 10) : 0,
+	0
+    );
+    }
+
+// Extract year/month/day/hour/minute/second/weekday from date_str; returns int or null.
+function cxjs_datepart(part, date_str)
+    {
+    if (part === null || date_str === null ||
+	part === undefined || date_str === undefined
+    ) return null;
+    
+    const datetime = cxjs__parsedate(date_str);
+    if (!datetime) return null;
+    
+    switch (String(part).toLowerCase())
+	{
+	case "year":    return datetime.getFullYear();
+	case "month":   return datetime.getMonth() + 1;
+	case "day":     return datetime.getDate();
+	case "hour":    return datetime.getHours();
+	case "minute":  return datetime.getMinutes();
+	case "second":  return datetime.getSeconds();
+	case "weekday": return datetime.getDay() + 1;
+	}
+    
+    return null;
+    }
+
+// Calculate the signed difference (date2-date1) between dates and return the
+// requested datetime part (e.g. "year", "month", "day", "hour", "minute",
+// "second"), or null on failure.
+function cxjs_datediff(part, date1, date2)
+    {
+    // Validate and parse parameters.
+    if (part === null || date1 === null || date2 === null ||
+	part === undefined || date1 === undefined || date2 === undefined
+    ) return null;
+    let dt1 = cxjs__parsedate(date1);
+    let dt2 = cxjs__parsedate(date2);
+    if (!dt1 || !dt2) return null;
+
+    // Normalize order; get part name.
+    let sign = 1;
+    if (dt2 < dt1)
+	{
+	sign = -1;
+	const tmp = dt2;
+	dt2 = dt1;
+	dt1 = tmp;
+	}
+    part = String(part).toLowerCase();
+
+    // Year and month parts.
+    if (part === "year")
+	return sign * (dt2.getFullYear() - dt1.getFullYear());
+    if (part === "month")
+	return sign * ((dt2.getFullYear() - dt1.getFullYear())*12 + dt2.getMonth()-dt1.getMonth());
+
+    // Day, hour, minute, second parts.
+    const m1 = new Date(dt1.getFullYear(), dt1.getMonth(), dt1.getDate());
+    const m2 = new Date(dt2.getFullYear(), dt2.getMonth(), dt2.getDate());
+    const days = Math.round((m2 - m1) / 86400000);
+    if (part === "day") return sign * days;
+    const hours = days*24 + dt2.getHours() - dt1.getHours();
+    if (part === "hour") return sign * hours;
+    const minutes = hours*60 + dt2.getMinutes() - dt1.getMinutes();
+    if (part === "minute") return sign * minutes;
+    const seconds = minutes*60 + dt2.getSeconds() - dt1.getSeconds();
+    if (part === "second") return sign * seconds;
+    
+    return null;
+    }
+
+// Format date_str using format (see centrallix-sysdoc format chars).
+// Returns the formatted date string, or null if the input is invalid.
+function cxjs_dateformat(date_str, format)
+    {
+    // Validate and parse parameters.
+    if (date_str === null || format === null ||
+	date_str === undefined || format === undefined
+    ) return null;
+    const d = cxjs__parsedate(date_str);
+    if (!d) return null;
+
+    // Month name tables.
+    const month_abbrevs = ["",
+	"Jan", "Feb", "Mar", "Apr",
+	"May", "Jun", "Jul", "Aug",
+	"Sep", "Oct", "Nov", "Dec"
+    ];
+    const month_names = ["",
+	"January", "February", "March", "April",
+	"May", "June", "July", "August",
+	"September", "October", "November", "December"
+    ];
+
+    // Declare state variables.
+    let result = "";
+    let i = 0;
+    const append = (str, n) =>
+	{
+	result += str;
+	i += n;
+	}
+    
+    // Handle AM & PM.
+    let append_am_pm = 0;
+    const check_append_am_pm = () =>
+	{
+	if (!append_am_pm) return;
+	if (i >= format.length || format[i]===' ' || format[i]===',')
+	    {
+	    result += (d.getHours() >= 12) ? "PM" : "AM";
+	    append_am_pm = 0;
+	    }
+	}
+    
+    // Scan format string.
+    while (i < format.length)
+	{
+	const c = format[i];
+	switch (c)
+	    {
+	    case 'D': i++; break;
+	    case 'd':
+		{
+		const day = d.getDate();
+		if (format[i+1] === 'd' && format[i+2] === 'd')
+		    {
+		    const suffix =
+		        (day === 1 || day === 21 || day === 31) ? "st" :
+			(day === 2 || day === 22) ? "nd" :
+			(day === 3 || day === 23) ? "rd" :
+			"th";
+		    append(day + suffix, 3);
+		    }
+		else if (format[i+1] === 'd')
+		    {
+		    append(((day < 10) ? "0" : "") + day, 2);
+		    }
+		else
+		    {
+		    append(day, 1);
+		    }
+		break;
+		}
+	    case 'M':
+		{
+		const month = d.getMonth() + 1;
+		
+		// MMMM
+		if (format[i+1] === 'M' && format[i+2] === 'M' && format[i+3] === 'M')
+		    append(month_names[month], 4);
+		// MMM
+		else if (format[i+1] === 'M' && format[i+2] === 'M')
+		    append(month_abbrevs[month], 3);
+		// MM
+		else if (format[i+1] === 'M')
+		    append(((month < 10) ? "0" : "") + (month), 2);
+		// M
+		else
+		    append(month, 1);
+		
+		break;
+		}
+	    case 'y':
+		{
+		if (format[i+1] === 'y' && format[i+2] === 'y' && format[i+3] === 'y')
+		    append(("000" + d.getFullYear()).slice(-4), 4);
+		else if (format[i+1] === 'y')
+		    append(("0" + (d.getFullYear()%100)).slice(-2), 2);
+		else i++;
+		break;
+		}
+	    case 'H':
+		{
+		if (format[i+1] === 'H')
+		    append(((d.getHours() < 10) ? "0" : "") + d.getHours(), 1);
+		i++;
+		append_am_pm = 0;
+		break;
+		}
+	    case 'h':
+		{
+		if (format[i+1] === 'h')
+		    {
+		    const hr = d.getHours() % 12 || 12;
+		    append(((hr < 10) ? "0" : "") + hr, 1);
+		    }
+		i++;
+		append_am_pm = 1;
+		check_append_am_pm();
+		break;
+		}
+	    case 'm':
+		{
+		if (format[i+1] === 'm')
+		    append(((d.getMinutes() < 10) ? "0" : "") + d.getMinutes(), 1);
+		i++;
+		check_append_am_pm();
+		break;
+		}
+	    case 's':
+		{
+		if (format[i+1] === 's')
+		    append(((d.getSeconds() < 10) ? "0" : "") + d.getSeconds(), 1);
+		i++;
+		check_append_am_pm();
+		break;
+		}
+	    case 'I':
+		{
+		if (format[i+1] === 'I')
+		    i++;
+		i++;
+		break;
+		}
+	    case 'L': if (
+		i + 2 < format.length && (
+		    format[i+1] === 'm' ||
+		    format[i+1] === 'M' ||
+		    format[i+1] === 'w' ||
+		    format[i+1] === 'W'
+		) && format[i+2] === '[')
+		{
+		const end = format.indexOf(']', i);
+		i = (end >= 0) ? end+1 : i+1;
+		break;
+		} // Fallthrough
+	    default:
+		{
+		append(c, 1);
+		break;
+		}
+	    }
+	}
+     
+    return result;
+    }
+
 function cxjs_replace(str, srch, rep)
     {
     if (str == null || srch == null) return null;
