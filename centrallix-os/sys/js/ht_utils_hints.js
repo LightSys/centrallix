@@ -159,9 +159,8 @@ function cx_merge_two_hints(h1,h2)
 	if (!h1 && !h2) return null;
 	if (!h1) return h2;
 	if (!h2) return h1;
+	
 	nh.Constraint = cx_merge_hint_expr(h1.Constraint, h2.Constraint, 'cx_AND');
-	nh.DefaultExpr = cx_merge_hint_expr(h1.DefaultExpr, h2.DefaultExpr, 'cx_FIRST');
-	nh.Context = h1.DefaultExpr ? h1.Context : (h2.DefaultExpr ? h2.Context : null);
 	nh.MinValue = cx_merge_hint_expr(h1.MinValue, h2.MinValue, 'min');
 	nh.MaxValue = cx_merge_hint_expr(h1.MaxValue, h2.MaxValue, 'max');
 	nh.EnumList = cx_merge_hint_array(h1.EnumList, h2.EnumList);
@@ -179,6 +178,20 @@ function cx_merge_two_hints(h1,h2)
 	nh.OrderID = cx_merge_hint_integer_min(h1.OrderID, h2.OrderID);
 	nh.GroupName = cx_merge_hint_string(h1.GroupNAme, h2.GroupName);
 	nh.FriendlyName = cx_merge_hint_string(h1.FriendlyName, h2.FriendlyName);
+	
+	// Note: If both layers carry a DefaultExpr from different namespaces,
+	// we can't safely combine them with cx_FIRST.  Thus, we keep h1
+	// (which already wins under cx_FIRST priority) and drop h2's default.
+	if (h1.DefaultExpr && h2.DefaultExpr && h1.Context !== h2.Context)
+	    {
+	    nh.DefaultExpr = h1.DefaultExpr;
+	    nh.Context = h1.Context;
+	    }
+	else
+	    {
+	    nh.DefaultExpr = cx_merge_hint_expr(h1.DefaultExpr, h2.DefaultExpr, 'cx_FIRST');
+	    nh.Context = h1.DefaultExpr ? h1.Context : (h2.DefaultExpr ? h2.Context : null);
+	    }
 
     return nh;
     }
