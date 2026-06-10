@@ -299,8 +299,11 @@ function cxjs_convert(dt,v)
     }
 function cxjs_substring(s,p,l)
     {
-    if (s == null || p == null) return null;
-    if (typeof s != 'string' || !Number.isInteger(p) || (l != null && !Number.isInteger(l)))
+    if (s == null || p == null
+	|| (typeof s != 'string' && !(s instanceof String))
+	|| !Number.isInteger(p)
+	|| (l != null && !Number.isInteger(l))
+    )
 	return null;
     
     let i = p - 1;
