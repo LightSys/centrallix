@@ -299,11 +299,23 @@ function cxjs_convert(dt,v)
     }
 function cxjs_substring(s,p,l)
     {
-    if (s == null || p == null) return null;
-    if (l == null)
-	return (String(s)).substr(p-1);
-    else
-	return (String (s)).substr(p-1,l);
+    if (s == null || p == null
+	|| (typeof s != 'string' && !(s instanceof String))
+	|| !Number.isInteger(p)
+	|| (l != null && !Number.isInteger(l))
+    )
+	return null;
+    
+    let i = p - 1;
+    if (i < 0) i = 0;
+    if (i > s.length) i = s.length;
+
+    const rest = s.slice(i);
+    let len = (l == null) ? rest.length : l;
+    if (len < 0) len = 0;
+    if (len > rest.length) len = rest.length;
+
+    return rest.slice(0, len);
     }
 function cxjs_right(s,l)
     {
