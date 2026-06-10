@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2004 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -37,8 +37,9 @@ cx_hints_style.key = 262144;
 cx_hints_style.applyonchange = 524288;
 
 // cx_set_hints() - initializes hints information for a given
-// form field.
-function cx_set_hints(element, hstr, hinttype, applydef)
+// form field.  'context' preserves the namespace where hints
+// expressions were authored when hints are applied in components.
+function cx_set_hints(element, hstr, hinttype, applydef, context)
     {
     if (!element.cx_hints) element.cx_hints = {};
     if (element.cx_hints.hstr == hstr) 
@@ -47,13 +48,15 @@ function cx_set_hints(element, hstr, hinttype, applydef)
 	    element.cx_hints['all'] = cx_parse_hints('');
 	return;
 	}
+    if (!context) context = wgtrGetRoot(element);
     element.cx_hints[hinttype] = cx_parse_hints(hstr);
+    element.cx_hints[hinttype].Context = context;
     var old_default = null;
     if (element.cx_hints && element.cx_hints['all']) old_default = element.cx_hints['all'].DefaultExpr;
     cx_merge_hints(element);
     if (element.hintschanged) element.hintschanged(hinttype);
     if (element.cx_hints_applyto)
-	cx_set_hints(element.cx_hints_applyto, hstr, hinttype, applydef);
+	cx_set_hints(element.cx_hints_applyto, hstr, hinttype, applydef, context);
     if (element.form && element.form.mode == 'New' && applydef && old_default != element.cx_hints['all'].DefaultExpr)
 	cx_hints_startnew(element);
     }
@@ -68,7 +71,7 @@ function cx_copy_hints(src, dst)
 	for(var h in src.cx_hints)
 	    {
 	    if ((h == 'app' || h == 'data' || h == 'widget') && src.cx_hints[h].hstr)
-		cx_set_hints(dst, src.cx_hints[h].hstr, h, true);
+		cx_set_hints(dst, src.cx_hints[h].hstr, h, true, src.cx_hints[h].Context);
 	    }
 	}
     }
@@ -156,8 +159,8 @@ function cx_merge_two_hints(h1,h2)
 	if (!h1 && !h2) return null;
 	if (!h1) return h2;
 	if (!h2) return h1;
+	
 	nh.Constraint = cx_merge_hint_expr(h1.Constraint, h2.Constraint, 'cx_AND');
-	nh.DefaultExpr = cx_merge_hint_expr(h1.DefaultExpr, h2.DefaultExpr, 'cx_FIRST');
 	nh.MinValue = cx_merge_hint_expr(h1.MinValue, h2.MinValue, 'min');
 	nh.MaxValue = cx_merge_hint_expr(h1.MaxValue, h2.MaxValue, 'max');
 	nh.EnumList = cx_merge_hint_array(h1.EnumList, h2.EnumList);
@@ -175,6 +178,20 @@ function cx_merge_two_hints(h1,h2)
 	nh.OrderID = cx_merge_hint_integer_min(h1.OrderID, h2.OrderID);
 	nh.GroupName = cx_merge_hint_string(h1.GroupNAme, h2.GroupName);
 	nh.FriendlyName = cx_merge_hint_string(h1.FriendlyName, h2.FriendlyName);
+	
+	// Note: If both layers carry a DefaultExpr from different namespaces,
+	// we can't safely combine them with cx_FIRST.  Thus, we keep h1
+	// (which already wins under cx_FIRST priority) and drop h2's default.
+	if (h1.DefaultExpr && h2.DefaultExpr && h1.Context !== h2.Context)
+	    {
+	    nh.DefaultExpr = h1.DefaultExpr;
+	    nh.Context = h1.Context;
+	    }
+	else
+	    {
+	    nh.DefaultExpr = cx_merge_hint_expr(h1.DefaultExpr, h2.DefaultExpr, 'cx_FIRST');
+	    nh.Context = h1.DefaultExpr ? h1.Context : (h2.DefaultExpr ? h2.Context : null);
+	    }
 
     return nh;
     }
@@ -227,6 +244,7 @@ function cx_parse_hints(hstr)
 	ph.MaxValue = null;
 	ph.Constraint = null;
 	ph.DefaultExpr = null;
+	ph.Context = null;
 
 	// get the information array first.
 	if (!hstr || !hstr.charAt) return ph;
@@ -373,7 +391,7 @@ function cx_hints_startnew(e)
 function cx_hints_setdefault(e)
     {
 
-	var _context = wgtrGetRoot(e);
+	var _context = (e.cx_hints && e.cx_hints['all'] && e.cx_hints['all'].Context) || wgtrGetRoot(e);
 	var _this = e;
 	e.setvalue(eval(e.cx_hints['all'].DefaultExpr));
 	if (e.form) e.form.DataNotify(e);
