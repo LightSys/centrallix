@@ -28,29 +28,29 @@ function osrc_strip_trailing_orderby(sql)
     let last_idx = -1;
     const len = sql.length;
     
-    // Iterate over each character of the sql.
+    // Iterate over each character in the SQL.
     for (let i = 0; i < len; i++)
 	{
 	const c = sql[i];
 	
+	// Handle strings.
 	if (in_str)
 	    {
 	    if (c === "'") in_str = false;
 	    continue;
 	    }
-	
 	if (c === "'")
 	    {
 	    in_str = true;
 	    continue;
 	    }
 	
+	// Skip over comments entirely.
 	if (c === '-' && sql[i + 1] === '-')
 	    {
 	    while (i < len && sql[i] !== '\n' && sql[i] !== '\r') i++;
 	    continue;
 	    }
-	
 	if (c === '/' && sql[i + 1] === '*')
 	    {
 	    i += 2;
@@ -59,22 +59,22 @@ function osrc_strip_trailing_orderby(sql)
 	    continue;
 	    }
 	
+	// Handle parentheses (which may be nested (like this)).
 	if (c === '(')
 	    {
 	    depth++;
 	    continue;
 	    }
-	
 	if (c === ')')
 	    {
 	    if (depth > 0)
 		depth--;
 	    continue;
 	    }
-	
 	if (depth !== 0)
 	    continue;
 	
+	// Check for an ORDER BY clause.
 	if (c === ' ' || c === '\t' || c === '\n' || c === '\r')
 	    {
 	    const m = ORDER_BY_RE.exec(sql.slice(i));
