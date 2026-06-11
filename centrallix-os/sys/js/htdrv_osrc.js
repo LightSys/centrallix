@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2014 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -15,6 +15,67 @@ function osrc_init_query()
 	return;
     this.init=true;
     this.ifcProbe(ifAction).Invoke("QueryObject", {query:[], client:null, ro:this.readonly});
+    }
+
+// Strip a trailing top-level ORDER BY clause from a SQL statement.
+const ORDER_BY_RE = /^\s+ORDER\s+BY\s/i;
+function osrc_strip_trailing_orderby(sql)
+    {
+    if (!sql) return sql;
+    
+    let depth = 0;
+    let in_str = false;
+    let last_idx = -1;
+    const len = sql.length;
+    
+    // Iterate over each character of the sql.
+    for (let i = 0; i < len; i++)
+	{
+	const c = sql[i];
+	
+	if (in_str)
+	    {
+	    if (c === "'") in_str = false;
+	    continue;
+	    }
+	
+	if (c === "'")
+	    {
+	    in_str = true;
+	    continue;
+	    }
+	
+	if (c === '(')
+	    {
+	    depth++;
+	    continue;
+	    }
+	
+	if (c === ')')
+	    {
+	    if (depth > 0)
+		depth--;
+	    continue;
+	    }
+	
+	if (depth !== 0)
+	    continue;
+	
+	if (c === ' ' || c === '\t' || c === '\n' || c === '\r')
+	    {
+	    const m = ORDER_BY_RE.exec(sql.slice(i));
+	    if (m)
+		{
+		last_idx = i;
+		i += m[0].length - 1;
+		}
+	    }
+	}
+    
+    if (last_idx >= 0)
+	return sql.substring(0, last_idx);
+    
+    return sql;
     }
 
 
@@ -275,9 +336,12 @@ function osrc_query_text_handler(aparam)
 	firstone = false;
 	}
 
-    // add any order-by
+    // add any order-by; stripping the user-supplied ORDER BY first so we can
+    // replace it without causing invalid SQL.
     var firstone=true;
     if(this.pendingorderobject && is_select)
+	{
+	statement = osrc_strip_trailing_orderby(statement);
 	for(var i in this.pendingorderobject)
 	    {
 	    if(firstone)
@@ -290,6 +354,7 @@ function osrc_query_text_handler(aparam)
 		statement+=', '+this.pendingorderobject[i];
 		}
 	    }
+	}
 
     this.querytext = aparam.query;
     this.querytext_fields = aparam.field_list;
@@ -407,6 +472,8 @@ function osrc_query_object_handler(aparam)
     
     firstone=true;
     if(this.pendingorderobject && is_select)
+	{
+	statement = osrc_strip_trailing_orderby(statement);
 	for(var i in this.pendingorderobject)
 	    {
 	    if(firstone)
@@ -419,6 +486,7 @@ function osrc_query_object_handler(aparam)
 		statement+=', '+this.pendingorderobject[i];
 		}
 	    }
+	}
     if (!readonly && is_select)
 	statement += ' FOR UPDATE'
     this.ifcProbe(ifAction).Invoke("Query", {query:statement, client:initiating_client, appendrows:appendrows});
