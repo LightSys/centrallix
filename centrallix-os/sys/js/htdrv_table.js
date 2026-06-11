@@ -3087,7 +3087,7 @@ function tbld_mousedown(e)
 		    }
 		}
 	    }
-        if(ly.subkind=='headercell' && ly.row.table.cols[ly.colnum].allow_sort)
+        if(ly.subkind=='headercell' && ly.row.table.cols[ly.colnum].allow_sorting)
             {
             var neworder=new Array();
             for(var i in ly.row.table.osrc.orderobject)

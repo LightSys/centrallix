@@ -3613,7 +3613,7 @@ myTabControl "widget/tab"
 
 			<property name="allow_selection" type="yes/no">Whether to permit the user to select rows in the table.  Default "yes".</property>
 
-			<property name="allow_sort" type="yes/no">Whether clicking a column header sorts the table by that column.  Acts as the default for all columns; individual columns may override via their own "allow_sort" property.  Default "yes".</property>
+			<property name="allow_sorting" type="yes/no">Whether clicking a column header sorts the table by that column.  Acts as the default for all columns; individual columns may override via their own "allow_sorting" property.  Default "yes".</property>
 
 			<property name="background" type="string">A background image for the table. This "shows through" between table cells.</property>
 
@@ -3723,7 +3723,7 @@ myTabControl "widget/tab"
 
 				<childproperty name="align" type="string">The alignment of the column:  "left" or "right".</childproperty>
 
-				<childproperty name="allow_sort" type="yes/no">Whether clicking this column's header sorts the table by this column.  Defaults to the table's "allow_sort" value (which defaults to "yes").</childproperty>
+				<childproperty name="allow_sorting" type="yes/no">Whether clicking this column's header sorts the table by this column.  Defaults to the table's "allow_sorting" value (which defaults to "yes").</childproperty>
 
 				<childproperty name="caption_fieldname" type="string">It is a pseudonym for the fieldname.</childproperty>
 				
