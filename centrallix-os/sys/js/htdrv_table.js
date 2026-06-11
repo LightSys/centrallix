@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2014 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -3087,7 +3087,7 @@ function tbld_mousedown(e)
 		    }
 		}
 	    }
-        if(ly.subkind=='headercell')
+        if(ly.subkind=='headercell' && ly.row.table.cols[ly.colnum].allow_sorting)
             {
             var neworder=new Array();
             for(var i in ly.row.table.osrc.orderobject)
