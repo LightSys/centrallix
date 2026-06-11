@@ -91,6 +91,7 @@ typedef struct
     int item_width;
     int item_height;
     int item_spacing;
+    int allow_sort;
     }
     httbl_col;
 
@@ -144,6 +145,7 @@ typedef struct
     int demand_scrollbar;	/* only show scrollbar when needed */
     int has_header;		/* table has header/title row? */
     int rowcache_size;		/* number of rows the table caches for display */
+    int allow_sort;		/* allow header-click column sort */
     } httbl_struct;
 
 int
@@ -201,7 +203,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	for(colid=0;colid<t->ncols;colid++)
 	    {
 	    col = t->col_infs[colid];
-	    htrAddScriptInit_va(s,"{name:\"%STR&JSSTR\",ns:\"%STR&JSSTR\",fieldname:\"%STR&JSSTR\",sort_fieldname:\"%STR&JSSTR\",title:\"%STR&JSSTR\",width:%INT,type:\"%STR&JSSTR\",group:%POS,align:\"%STR&JSSTR\",wrap:\"%STR&JSSTR\",caption_fieldname:\"%STR&JSSTR\",caption_textcolor:\"%STR&JSSTR\",image_maxwidth:%POS,image_maxheight:%POS,item_separator:\"%STR&JSSTR\",item_type:\"%STR&JSSTR\",item_source:\"%STR&JSSTR\",item_width:%POS,item_height:%POS,item_spacing:%POS},",
+	    htrAddScriptInit_va(s,"{name:\"%STR&JSSTR\",ns:\"%STR&JSSTR\",fieldname:\"%STR&JSSTR\",sort_fieldname:\"%STR&JSSTR\",title:\"%STR&JSSTR\",width:%INT,type:\"%STR&JSSTR\",group:%POS,align:\"%STR&JSSTR\",wrap:\"%STR&JSSTR\",caption_fieldname:\"%STR&JSSTR\",caption_textcolor:\"%STR&JSSTR\",image_maxwidth:%POS,image_maxheight:%POS,item_separator:\"%STR&JSSTR\",item_type:\"%STR&JSSTR\",item_source:\"%STR&JSSTR\",item_width:%POS,item_height:%POS,item_spacing:%POS,allow_sort:%INT},",
 		    col->wname,
 		    col->wnamespace,
 		    col->fieldname,
@@ -221,7 +223,8 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		    col->item_source,
 		    col->item_width,
 		    col->item_height,
-		    col->item_spacing
+		    col->item_spacing,
+		    col->allow_sort
 		    );
 	    }
 
@@ -380,6 +383,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	t->hide_scrollbar = htrGetBoolean(tree, "hide_scrollbar", 0);
 	t->demand_scrollbar = htrGetBoolean(tree, "demand_scrollbar", 0);
 	t->has_header = htrGetBoolean(tree, "titlebar", 1);
+	t->allow_sort = htrGetBoolean(tree, "allow_sort", 1);
 
 	/** Which data mode to use? **/
 	if (wgtrGetPropertyValue(tree,"data_mode", DATA_T_STRING, POD(&ptr)) == 0)
@@ -498,6 +502,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		    strcpy(col->type, "text");
 		if (htrGetBoolean(sub_tree, "group_by", 0) == 1)
 		    strcpy(col->group, "yes");
+		col->allow_sort = htrGetBoolean(sub_tree, "allow_sort", t->allow_sort);
 
 		// ItemList column type properties
 		if (!strcmp(col->type, "itemlist"))
