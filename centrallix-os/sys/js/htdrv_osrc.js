@@ -18,7 +18,7 @@ function osrc_init_query()
     }
 
 // Strip a trailing top-level ORDER BY clause from a SQL statement.
-const ORDER_BY_RE = /^\s+ORDER\s+BY\s/i;
+const ORDER_BY_RE = /^\s+ORDER\s+BY(\s|$)/i;
 function osrc_strip_trailing_orderby(sql)
     {
     if (!sql) return sql;
@@ -42,6 +42,20 @@ function osrc_strip_trailing_orderby(sql)
 	if (c === "'")
 	    {
 	    in_str = true;
+	    continue;
+	    }
+	
+	if (c === '-' && sql[i + 1] === '-')
+	    {
+	    while (i < len && sql[i] !== '\n' && sql[i] !== '\r') i++;
+	    continue;
+	    }
+	
+	if (c === '/' && sql[i + 1] === '*')
+	    {
+	    i += 2;
+	    while (i < len - 1 && !(sql[i] === '*' && sql[i + 1] === '/')) i++;
+	    i++;
 	    continue;
 	    }
 	
