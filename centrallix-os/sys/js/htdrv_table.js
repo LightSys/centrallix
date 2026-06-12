@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2014 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -3087,6 +3087,7 @@ function tbld_mousedown(e)
 		    }
 		}
 	    }
+	
         if(ly.subkind=='headercell')
             {
             var neworder=new Array();
@@ -3096,20 +3097,29 @@ function tbld_mousedown(e)
             var colname=ly.row.table.cols[ly.colnum].sort_fieldname;
 	    if (!colname)
 		colname=ly.row.table.cols[ly.colnum].fieldname;
-	    /** check for the this field already in the sort criteria **/
-            if(':"'+colname+'" asc'==neworder[0])
-                neworder[0]=':"'+colname+'" desc';
-            else if (':"'+colname+'" desc'==neworder[0])
-                neworder[0]=':"'+colname+'" asc';
+	    
+	    // Bare names get wrapped as :"name", but a name with a ':'
+	    // (e.g. :t:a_field) should pass through verbatim.
+	    const sort_key = (colname.indexOf(':') >= 0) ? colname : ':"' + colname + '"';
+	    const sort_asc = sort_key + ' asc';
+	    const sort_desc = sort_key + ' desc';
+	    
+	    // Invert the existing sort, if it exists.
+	    if (neworder[0] === sort_asc) neworder[0] = sort_desc;
+	    else if (neworder[0] === sort_desc) neworder[0] = sort_asc;
             else
                 {
+		// No relevant sort exists, specify a new one.
                 for(var i in neworder)
-                    if(neworder[i]==':"'+colname+'" asc' || neworder[i]==':"'+colname+'" desc')
+		    if (neworder[i] === sort_asc || neworder[i] === sort_desc)
                         neworder.splice(i,1);
-                neworder.unshift(':"'+colname+'" asc');
+		neworder.unshift(sort_asc);
                 }
+	    
+	    // Update the table order.
 	    ly.row.table.osrc.ifcProbe(ifAction).Invoke("OrderObject", {orderobj:neworder});
             }
+	
         if(ly.subkind=='up' || ly.subkind=='bar' || ly.subkind=='down' || ly.subkind=='box')
             {
 	    ly.Click(e);
