@@ -17,79 +17,77 @@ function osrc_init_query()
     this.ifcProbe(ifAction).Invoke("QueryObject", {query:[], client:null, ro:this.readonly});
     }
 
-// Strip a trailing top-level ORDER BY clause from a SQL statement.
-const ORDER_BY_RE = /^\s+ORDER\s+BY(\s|$)/i;
-function osrc_strip_trailing_orderby(sql)
+// Replace the top-level ORDER BY clause of a SQL statement with one built
+// from orderby_items (array/object of expression strings).  Centrallix SQL's
+// flat clause grammar (see multiquery.c LookForClause) lets any reserved
+// word follow ORDER BY, so the new clause is spliced over any pre-existing
+// ORDER BY (the last one, if somehow there are several). If no ORDER BY
+// exists, the new clause is inserted just before the first post-ORDER-BY
+// clause (or at the end of the SQL string).
+//
+// The tokenizing regex matches only tokens that affect clause boundaries.
+// Capture groups distinguish keyword classes so the dispatch loop doesn't
+// have to re-inspect the matched text:
+//   group 1: ORDER BY itself - Marks the start of the clause to replace.
+//   group 2: post-ORDER-BY keyword (LIMIT/WITH/CROSSTAB/FOR) - Terminates
+//            an existing ORDER BY, or marks the insertion point if none.
+//   group 3: pre-ORDER-BY keyword (SELECT/FROM/WHERE/GROUP/HAVING/...) -
+//            Only meaningful as a terminator. Never an insertion point.
+// Uncaptured alternatives (quoted strings, line/block comments, parens, ';')
+// are detected by their first character.
+const ORDER_BY_TOKEN_RE = /'[^']*'?|--[^\n\r]*|\/\*[\s\S]*?\*\/|[()]|\s+(ORDER)\s+BY\b|\s+(LIMIT|WITH|CROSSTAB|FOR)\b|\s+(SELECT|FROM|WHERE|GROUP|HAVING|DECLARE|INSERT|UPDATE|DELETE|SET)\b|;/gi;
+function osrc_replace_orderby(sql, orderby_items)
     {
     if (!sql) return sql;
     
-    let depth = 0;
-    let in_str = false;
-    let last_idx = -1;
-    const len = sql.length;
-    
-    // Iterate over each character in the SQL.
-    for (let i = 0; i < len; i++)
+    // Build the replacement ORDER BY clause.
+    let clause = '';
+    let sep = ' ORDER BY ';
+    for (let i in orderby_items)
 	{
-	const c = sql[i];
-	
-	// Handle strings.
-	if (in_str)
-	    {
-	    if (c === "'") in_str = false;
-	    continue;
-	    }
-	if (c === "'")
-	    {
-	    in_str = true;
-	    continue;
-	    }
-	
-	// Skip over comments entirely.
-	if (c === '-' && sql[i + 1] === '-')
-	    {
-	    while (i < len && sql[i] !== '\n' && sql[i] !== '\r') i++;
-	    continue;
-	    }
-	if (c === '/' && sql[i + 1] === '*')
-	    {
-	    i += 2;
-	    while (i < len - 1 && !(sql[i] === '*' && sql[i + 1] === '/')) i++;
-	    i++;
-	    continue;
-	    }
-	
-	// Handle parentheses (which may be nested (like this)).
-	if (c === '(')
-	    {
-	    depth++;
-	    continue;
-	    }
-	if (c === ')')
-	    {
-	    if (depth > 0)
-		depth--;
-	    continue;
-	    }
-	if (depth !== 0)
-	    continue;
-	
-	// Check for an ORDER BY clause.
-	if (c === ' ' || c === '\t' || c === '\n' || c === '\r')
-	    {
-	    const m = ORDER_BY_RE.exec(sql.slice(i));
-	    if (m)
-		{
-		last_idx = i;
-		i += m[0].length - 1;
-		}
-	    }
+	clause += sep + orderby_items[i];
+	sep = ', ';
 	}
     
-    if (last_idx >= 0)
-	return sql.substring(0, last_idx);
-    
-    return sql;
+    // Locate the existing ORDER BY clause (or the insertion point, if none).
+    let depth = 0, clause_start = -1, clause_end = -1, match;
+    ORDER_BY_TOKEN_RE.lastIndex = 0;
+    while ((match = ORDER_BY_TOKEN_RE.exec(sql)) !== null)
+	{
+	const ch = match[0][0];
+	
+	// Handle parentheses (even nested ones (like this)).
+	if (ch === '(') { depth++; continue; }
+	if (ch === ')') { if (depth > 0) depth--; continue; }
+	
+	// Skip noise.
+	if (depth !== 0 || ch === "'" || ch === '-' || ch === '/') continue;
+	
+	// Handle capturing groups.
+	if (match[1]) // ORDER BY
+	    {
+	    clause_start = match.index;
+	    clause_end = -1;
+	    }
+	else if (match[3]) // pre-ORDER-BY keyword
+	    {
+	    if (clause_start >= 0 && clause_end < 0) clause_end = match.index;
+	    }
+	else if (clause_end < 0) // post-ORDER-BY keyword (or no ORDER BY yet)
+	    {
+	    if (clause_start < 0) clause_start = match.index;
+	    clause_end = match.index;
+	    }
+	}
+
+    // No clauses found: append.
+    if (clause_start < 0) return sql + clause;
+
+    // ORDER BY runs to EOL: extend the range to match.
+    if (clause_end < 0) clause_end = sql.length;
+
+    // Replace the range (or insert if empty).
+    return sql.substring(0, clause_start) + clause + sql.substring(clause_end);
     }
 
 
@@ -350,25 +348,10 @@ function osrc_query_text_handler(aparam)
 	firstone = false;
 	}
 
-    // add any order-by; stripping the user-supplied ORDER BY first so we can
-    // replace it without causing invalid SQL.
-    var firstone=true;
+    // Replace any user-supplied ORDER BY with the pending one (splicing
+    // before any trailing LIMIT/WITH/etc. to keep clause order valid).
     if(this.pendingorderobject && is_select)
-	{
-	statement = osrc_strip_trailing_orderby(statement);
-	for(var i in this.pendingorderobject)
-	    {
-	    if(firstone)
-		{
-		statement+=' ORDER BY '+this.pendingorderobject[i];
-		firstone=false;
-		}
-	    else
-		{
-		statement+=', '+this.pendingorderobject[i];
-		}
-	    }
-	}
+	statement = osrc_replace_orderby(statement, this.pendingorderobject);
 
     this.querytext = aparam.query;
     this.querytext_fields = aparam.field_list;
@@ -484,23 +467,8 @@ function osrc_query_object_handler(aparam)
 	    }
 	}
     
-    firstone=true;
     if(this.pendingorderobject && is_select)
-	{
-	statement = osrc_strip_trailing_orderby(statement);
-	for(var i in this.pendingorderobject)
-	    {
-	    if(firstone)
-		{
-		statement+=' ORDER BY '+this.pendingorderobject[i];
-		firstone=false;
-		}
-	    else
-		{
-		statement+=', '+this.pendingorderobject[i];
-		}
-	    }
-	}
+	statement = osrc_replace_orderby(statement, this.pendingorderobject);
     if (!readonly && is_select)
 	statement += ' FOR UPDATE'
     this.ifcProbe(ifAction).Invoke("Query", {query:statement, client:initiating_client, appendrows:appendrows});
