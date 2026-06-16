@@ -360,8 +360,7 @@ function cxjs_eval(_context, _this, expr, permflags, cur_obj_name, par_obj_name)
 		    }
 		else if (_this !== null && _this !== undefined)
 		    {
-		    const v = _this[rest];
-		    return (typeof v === 'undefined') ? null : v;
+		    return wgtrGetProperty(_this, rest);
 		    }
 		}
 	    }
@@ -373,7 +372,7 @@ function cxjs_eval(_context, _this, expr, permflags, cur_obj_name, par_obj_name)
 		const prop = rest.substring(1);
 		const par_node = (par_obj_name !== null && par_obj_name !== undefined)
 		    ? wgtrGetNode(_context, par_obj_name)
-		    : wgtrGetParent(_context);
+		    : wgtrGetParent(_this);
 		if (par_node) return wgtrGetProperty(par_node, prop);
 		}
 	    }
