@@ -360,7 +360,9 @@ function cxjs_eval(_context, _this, expr, permflags, cur_obj_name, par_obj_name)
 		    }
 		else if (_this !== null && _this !== undefined)
 		    {
-		    return wgtrGetProperty(_this, rest);
+		    return (wgtrIsNode(_this))
+			? wgtrGetProperty(_this, rest)
+			: (_this[rest] ?? null);
 		    }
 		}
 	    }
