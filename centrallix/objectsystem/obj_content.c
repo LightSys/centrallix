@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include "obj.h"
 #include "cxlib/mtask.h"
+#include "cxlib/mtsession.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/magic.h"
@@ -88,4 +89,3 @@ objWrite(pObject this, char* buffer, int cnt, int offset, int flags)
 	}
     return this->Driver->Write(this->Data, buffer, cnt, offset, flags, &(this->Session->Trx));
     }
-

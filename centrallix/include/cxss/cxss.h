@@ -42,10 +42,22 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #define CXSS_ENTROPY_SIZE	1280
-#define CXSS_DEBUG_CONTEXTSTACK	1
 #define CXSS_IDENTIFIER_LENGTH	64
 #define CXSS_CIPHER_STRENGTH	(256 / 8)
+
+#ifdef USING_OPTIMIZATION
+/*** Context stack debugging can cause seg-faults if the compiler applies
+ *** certain optimizations.
+ ***/
+#define CXSS_DEBUG_CONTEXTSTACK	0
+#else
+#define CXSS_DEBUG_CONTEXTSTACK 1
+#endif
 
 #include "cxss/policy.h"
 
@@ -129,7 +141,7 @@ int cxssHexify(unsigned char* bindata, size_t bindatalen, char* hexdata, size_t 
 int cxss_i_Hexify(unsigned char* bindata, size_t bindatalen, char* hexdata, size_t hexdatalen);
 int cxssGenerateKey(unsigned char* key, size_t n_bytes);
 int cxssGenerateHexKey(char* hexkey, size_t len);
-int cxssShred(unsigned char* data, size_t n_bytes);
+void cxssShred(void* data, size_t n_bytes);
 int cxssAddEntropy(unsigned char* data, size_t n_bytes, int entropy_bits_estimate);
 
 /*** Context/Authentication/Endorsement stack functions ***/
@@ -170,4 +182,3 @@ int cxssAuthorizeSpec(char* objectspec, int access_type, int log_mode);
 int cxssAuthorize(char* domain, char* type, char* path, char* attr, int access_type, int log_mode);
 
 #endif /* not defined _CXSS_H */
-
