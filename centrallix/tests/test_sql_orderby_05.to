@@ -1,9 +1,9 @@
 ##NAME ORDER BY, multiple clauses with DEFAULT (override vs extend)
 
-csv SELECT :f_id, :f_desc, :f_count FROM /tests/Testdata1.csv/rows ORDER BY :f_id
-csv SELECT :f_id, :f_desc, :f_count FROM /tests/Testdata1.csv/rows ORDER BY :f_desc
-csv SELECT :f_id, :f_desc, :f_count FROM /tests/Testdata1.csv/rows ORDER BY :f_id ORDER BY :f_desc
+csv SELECT :f_id, :f_desc, :f_count FROM /tests/Testdata1.csv/rows ORDER BY         :f_id
+csv SELECT :f_id, :f_desc, :f_count FROM /tests/Testdata1.csv/rows ORDER BY         :f_desc
+csv SELECT :f_id, :f_desc, :f_count FROM /tests/Testdata1.csv/rows ORDER BY         :f_id ORDER BY :f_desc
 csv SELECT :f_id, :f_desc, :f_count FROM /tests/Testdata1.csv/rows ORDER BY DEFAULT :f_id ORDER BY :f_desc
 csv SELECT :f_id, :f_desc, :f_count FROM /tests/Testdata1.csv/rows ORDER BY DEFAULT :f_desc
 csv SELECT :f_id, :f_desc, :f_count FROM /tests/Testdata1.csv/rows ORDER BY DEFAULT :f_id ORDER BY DEFAULT :f_desc
-csv SELECT :f_id, :f_desc, :f_count FROM /tests/Testdata1.csv/rows ORDER BY :f_id ORDER BY DEFAULT :f_desc ORDER BY :f_id
+csv SELECT :f_id, :f_desc, :f_count FROM /tests/Testdata1.csv/rows ORDER BY         :f_id ORDER BY DEFAULT :f_desc ORDER BY :f_id
