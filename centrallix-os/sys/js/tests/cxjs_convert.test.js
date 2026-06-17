@@ -34,9 +34,10 @@ describe('cxjs_convert', () =>
 	    });
 	}
 
-    // Conversion to integer. Note the '$' is only stripped when it is
-    // the *second* character (e.g. 'x$5'); a leading '$5' is not, so it
-    // parses to NaN. Stripping the '$' also drops a leading sign.
+    // Conversion to integer.
+    // Note:  The '$' is only stripped when it is the *second* character
+    // (e.g. 'x$5').  A leading '$5' is not, so it parses to NaN. Stripping
+    // the '$' also drops a leading sign.
     for (const [ dt, v, result ] of [
 	// Datatype    Value      Result
 	[ 'integer',   0,         0    ],
@@ -45,9 +46,9 @@ describe('cxjs_convert', () =>
 	[ 'integer',   5.9,       5    ],
 	[ 'integer',   '42',      42   ],
 	[ 'integer',   '42abc',   42   ],
-	[ 'integer',   '  10',    10   ],
-	[ 'integer',   '0x1F',    31   ],
-	[ 'integer',   '1e3',     1    ],
+	[ 'integer',   '  10',    10   ],  // Whitespace is stripped.
+	[ 'integer',   '0x1F',    31   ],  // Hex notation is handled.
+	[ 'integer',   '1e3',     1    ],  // Scientific notation is ignored.
 	[ 'integer',   'x$5',     5    ],
 	[ 'integer',   '-$5',     5    ],
 	[ 'integer',   '$5',      NaN  ],
@@ -61,9 +62,10 @@ describe('cxjs_convert', () =>
 	    });
 	}
 
-    // Conversion to double. A leading currency marker is stripped in
-    // several forms ('$', ' $', '+$', '$ ', '-$'); '-$' negates the
-    // result. Anything else falls through to parseFloat.
+    // Conversion to double.
+    // A leading currency marker is stripped in several forms ('$', ' $',
+    // '+$', '$ ', '-$'). '-$' negates the result. Anything else is passed
+    // through to parseFloat.
     for (const [ dt, v, result ] of [
 	// Datatype   Value        Result
 	[ 'double',   0,           0    ],
