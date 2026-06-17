@@ -17,23 +17,23 @@ const env                = require('./_setup');
 describe('cxjs_right', () =>
     {
     for (const [ s, l, result ] of [
-	// String          Length  Result
-	[ "hello",         2,      "lo"      ],
-	[ "hello",         1,      "o"       ],
-	[ "hello",         5,      "hello"   ], // l equals length: whole string
-	[ "hello",         10,     "hello"   ], // l exceeds length: whole string
-	[ "hello",         0,      ""        ], // zero length: empty
-	[ "hello",        -2,      ""        ], // negative length: empty
-	[ "",              3,      ""        ], // empty string stays empty
-	[ "",              0,      ""        ],
-	[ "x",             1,      "x"       ], // single char
-	[ "  ab ",         2,      "b "      ], // trailing whitespace preserved
-	[ "  ab ",         4,      " ab "    ], // preceding whitespace preserved
-	[ "abc",           null,   null      ], // null length
-	[ "abc",           undefined, null   ], // undefined length
-	[ null,            2,      null      ], // null string
-	[ undefined,       2,      null      ], // undefined string
-	[ null,            null,   null      ],
+	// String          Length     Result
+	[ "hello",         2,         "lo"    ],
+	[ "hello",         1,         "o"     ],
+	[ "hello",         5,         "hello" ], // l equals length: whole string
+	[ "hello",         10,        "hello" ], // l exceeds length: whole string
+	[ "hello",         0,         ""      ], // zero length: empty
+	[ "hello",        -2,         ""      ], // negative length: empty
+	[ "",              3,         ""      ], // empty string stays empty
+	[ "",              0,         ""      ],
+	[ "x",             1,         "x"     ], // single char
+	[ "  ab ",         2,         "b "    ], // trailing whitespace preserved
+	[ "  ab ",         4,         " ab "  ], // preceding whitespace preserved
+	[ "abc",           null,      null    ], // null length
+	[ "abc",           undefined, null    ], // undefined length
+	[ null,            2,         null    ], // null string
+	[ undefined,       2,         null    ], // undefined string
+	[ null,            null,      null    ],
     ])	{
 	test(`cxjs_right(${JSON.stringify(s)}, ${l}) = ${JSON.stringify(result)}`, () =>
 	    {
