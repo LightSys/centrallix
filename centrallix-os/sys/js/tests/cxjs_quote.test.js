@@ -37,6 +37,8 @@ describe('cxjs_quote', () =>
 	[ undefined,            '"undefined"'         ],  // undefined coerced
 	[ NaN,                  '"NaN"'               ],  // NaN coerced
 	[ [1, 2],               '"1,2"'               ],  // array coerced (with no spaces)
+	[ {},                   '"[object Object]"'   ],  // plain object coerced
+	[ { a: 1 },             '"[object Object]"'   ],  // object contents are irrelevant to String()
     ])	{
 	test(`cxjs_quote(${JSON.stringify(input)}) = ${JSON.stringify(result)}`, () =>
 	    {

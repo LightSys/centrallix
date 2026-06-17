@@ -38,6 +38,7 @@ describe('cxjs_upper', () =>
 	[ '\tn\r',             '\tN\r'            ],  // whitespace preserved
 	[ 'café',              'CAFÉ'             ],  // accented letter uppercases
 	[ 'ß',                 'SS'               ],  // sharp-s expands to two chars
+	[ 'ﬁ',                 'FI'               ],  // fi ligature expands to two chars
 
 	// Non-strings are String()-coerced first, then uppercased. Only strict
 	// null short-circuits to null; undefined does not.
@@ -49,6 +50,8 @@ describe('cxjs_upper', () =>
 	[ false,               'FALSE'            ],
 	[ NaN,                 'NAN'              ],
 	[ Infinity,            'INFINITY'         ],
+	[ -Infinity,           '-INFINITY'        ],
+	[ [],                  ''                 ],  // empty array coerces to ''
 	[ ['a', 'b'],          'A,B'              ],  // Joins with ',' and no spaces
 	[ {},                  '[OBJECT OBJECT]'  ],  // plain object stringifies
     ])	{

@@ -58,6 +58,8 @@ describe('cxjs_lower', () =>
 	[ false,        'false'           ],
 	[ NaN,          'nan'             ],
 	[ Infinity,     'infinity'        ],
+	[ -Infinity,    '-infinity'       ],
+	[ [],           ''                ],  // empty array coerces to ''
 	[ ['A', 'B'],   'a,b'             ],  // Joins with ',' and no spaces
 	[ {},           '[object object]' ],
     ])	{

@@ -56,6 +56,18 @@ describe('cxjs_plus', () =>
 	[ 0,              '',            '0'         ], // string branch beats numeric 0
 	[ 'n',            Infinity,      'nInfinity' ],
 	[ 'a',            NaN,           'aNaN'      ],
+
+	// NaN is a number, so two non-string operands still add (to NaN).
+	[ NaN,            1,             NaN         ],
+	[ NaN,            NaN,           NaN         ],
+
+	// Booleans treated as numbers (true->1, false->0),
+	// unless a string operand forces concatenation.
+	[ true,           1,             2           ],
+	[ true,           false,         1           ],
+	[ false,          false,         0           ],
+	[ true,           'x',           'truex'     ],
+	[ 'x',            true,          'xtrue'     ],
     ])	{
 	test(`cxjs_plus(${fmt(a)}, ${fmt(b)}) = ${fmt(result)}`, () =>
 	    {

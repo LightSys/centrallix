@@ -44,6 +44,14 @@ describe('cxjs_charindex', () =>
 	[ undefined,   'hello',    0    ], // searches for 'undefined': absent
 	[ 'u',         undefined,  1    ], // haystack becomes 'undefined'
 	[ 'x',         undefined,  0    ], // 'x' absent from 'undefined'
+	[ undefined,   undefined,  1    ], // both -> 'undefined'; found at start
+	// A null in EITHER position short-circuits first, even when the other
+	// argument is undefined (which would otherwise be coerced).
+	[ undefined,   null,       null ], // null haystack wins
+	[ null,        undefined,  null ], // null needle wins
+	// Non-string needle/haystack coerce via indexOf()/new String().
+	[ true,        'xtrueb',   2    ], // boolean needle coerced to 'true'
+	[ 'b',         true,       0    ], // boolean haystack coerced to 'true'; 'b' absent
     ])	{
 	test(`cxjs_charindex(${JSON.stringify(needle)}, ${JSON.stringify(haystack)}) = ${JSON.stringify(result)}`, () =>
 	    {

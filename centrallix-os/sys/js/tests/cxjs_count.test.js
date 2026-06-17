@@ -39,6 +39,9 @@ describe('cxjs_count', () =>
 	[ ['', 6],                                 2 ],
 	[ ['abc', 6],                              1 ],
 	[ ['abc', 'def'],                          0 ],
+	// Booleans are numeric under isNaN (true -> 1, false -> 0), so both count.
+	[ [true],                                  1 ],
+	[ [true, false],                           2 ],
     ])	{
 	test(`cxjs_count(${JSON.stringify(input)}) = ${result}`, () =>
 	    {
@@ -69,6 +72,8 @@ describe('cxjs_count', () =>
 	[ { U: '', V: 6 },                         2 ],
 	[ { W: 'abc', X: 6 },                      1 ],
 	[ { Y: 'abc', Z: 'def' },                  0 ],
+	// Booleans are numeric under isNaN (true -> 1, false -> 0), so both count.
+	[ { a: true, b: false },                   2 ],
     ])	{
 	test(`cxjs_count(${JSON.stringify(input)}) = ${result}`, () =>
 	    {

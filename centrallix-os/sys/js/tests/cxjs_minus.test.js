@@ -32,6 +32,8 @@ describe('cxjs_minus', () =>
 	[ -Infinity,   -Infinity,   NaN       ],
 	[ NaN,          1,          NaN       ],
 	[ 1,            NaN,        NaN       ],
+	[ true,         1,          0         ],  // Booleans are not strings: true -> 1.
+	[ false,        false,      0         ],  // false -> 0.
     ])	{
 	test(`cxjs_minus(${JSON.stringify(a)}, ${JSON.stringify(b)}) = ${JSON.stringify(result)}`, () =>
 	    {
@@ -68,6 +70,9 @@ describe('cxjs_minus', () =>
 	[ 100,          '0',        '10'      ],  // Coercion: 100 -> '100'.
 	[ '5',          5,          ''        ],
 	[ 5,            '5',        ''        ],
+	// Only a suffix is stripped: the match must sit at the very end.
+	[ 'abcabc',     'bc',       'abca'    ],  // trailing 'bc' removed (lastIndexOf is at the end).
+	[ 'aXbXc',      'X',        'aXbXc'   ],  // 'X' occurs, but not at the end: unchanged.
     ])	{
 	test(`cxjs_minus(${JSON.stringify(a)}, ${JSON.stringify(b)}) = ${JSON.stringify(result)}`, () =>
 	    {

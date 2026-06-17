@@ -40,8 +40,10 @@ describe('cxjs_char_length', () =>
 	[ true,              4    ],   // coerced: "true"
 	[ NaN,               3    ],   // coerced: "NaN"
 	[ Infinity,          8    ],   // coerced: "Infinity"
+	[ -Infinity,         9    ],   // coerced: "-Infinity" (sign counts)
 	[ [],                0    ],   // coerced: ""
 	[ [1, 2],            3    ],   // coerced: "1,2"
+	[ [1, [2, 3]],       5    ],   // nested array flattens: "1,2,3"
 	[ {},                15   ],   // coerced: "[object Object]"
     ])	{
 	test(`cxjs_char_length(${JSON.stringify(input)}) = ${result}`, () =>

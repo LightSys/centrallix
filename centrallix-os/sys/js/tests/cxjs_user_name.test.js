@@ -19,6 +19,7 @@ describe('cxjs_user_name', () =>
     for (const name of [
 	'alice',
 	'bob',
+	'',
 	' !@#$%^&*()":;\' ',
     ])	{
 	it(`returns pg_username (\"${name}\")`, () =>

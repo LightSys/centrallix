@@ -55,6 +55,11 @@ describe('cxjs_convert', () =>
 	[ 'integer',   '',        NaN  ],
 	[ 'integer',   'abc',     NaN  ],
 	[ 'integer',   true,      NaN  ],
+	[ 'integer',   '-42',    -42   ],  // Leading sign kept when '$' is not the 2nd char.
+	[ 'integer',   '  -42',  -42   ],  // Whitespace stripped, sign kept.
+	[ 'integer',   'a$bc',    NaN  ],  // 2nd char '$' stripped, but 'bc' isn't numeric.
+	[ 'integer',   Infinity,  NaN  ],  // parseInt('Infinity') is NaN.
+	[ 'integer',   false,     NaN  ],
     ])	{
 	test(`cxjs_convert(${JSON.stringify(dt)}, ${JSON.stringify(v)}) = ${result}`, () =>
 	    {
@@ -81,6 +86,9 @@ describe('cxjs_convert', () =>
 	[ 'double',   '-$ 5',     -5    ],
 	[ 'double',   '-$2.5',    -2.5  ],
 	[ 'double',   '$1,000',    1    ],
+	[ 'double',   '-5.5',     -5.5  ],  // Plain negative, no currency marker.
+	[ 'double',   Infinity,    Infinity ],  // parseFloat('Infinity') is Infinity.
+	[ 'double',   'Infinity',  Infinity ],
 	[ 'double',   '$',         NaN  ],
 	[ 'double',   'abc',       NaN  ],
     ])	{

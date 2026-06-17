@@ -14,6 +14,20 @@ const { describe, test } = require('node:test');
 const assert             = require('node:assert/strict');
 const env                = require('./_setup');
 
+// JSON.stringify collapses NaN/Infinity to "null" and omits undefined, which
+// would make distinct edge-case rows share a test name; fmt renders those
+// values verbatim (and otherwise matches JSON.stringify) so names stay unique.
+function fmt(v)
+    {
+    if (Array.isArray(v))
+	return '[' + v.map(fmt).join(',') + ']';
+    if (v !== null && typeof v === 'object')
+	return '{' + Object.keys(v).map((k) => JSON.stringify(k) + ':' + fmt(v[k])).join(',') + '}';
+    if (typeof v === 'number' || v === undefined)
+	return String(v);
+    return JSON.stringify(v);
+    }
+
 describe('cxjs_sum', () =>
     {
     for (const [ input, result ] of [
@@ -75,6 +89,45 @@ describe('cxjs_sum', () =>
 	[ { V: 1, W: 2, X: undefined, Y: 3 },     6         ],
     ])	{
 	test(`cxjs_sum(${JSON.stringify(input)}) = ${result}`, () =>
+	    {
+	    assert.equal(env.cxjs_sum(input), result);
+	    });
+	}
+
+    // Scalar (non-array, non-object) inputs hit.
+    for (const [ input, result ] of [
+	// Input        Result
+	[ 5,            5         ],
+	[ 0,            0         ],
+	[ -3.5,        -3.5       ],
+	[ Infinity,     Infinity  ],
+	[ 'abc',        'abc'     ],  // returned as-is, not parsed
+	[ true,         true      ],  // boolean pass through
+	[ false,        false     ],
+	[ NaN,          NaN       ],  // scalar NaN is kept (cnt is 1, not 0)
+	[ null,         null      ],  // typeof null is "object", but v !== null is false
+	[ undefined,    undefined ],
+    ])	{
+	test(`cxjs_sum(${fmt(input)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_sum(input), result);
+	    });
+	}
+
+    // String and boolean coercion.
+    for (const [ input, result ] of [
+	// Input               Result
+	[ ['5', 6],            '056'   ],  // 0 + '5' -> '05', then '05' + 6 -> '056'
+	[ [1, '2'],            '12'    ],  // 0 + 1 -> 1, then 1 + '2' -> '12'
+	[ [''],                '0'     ],  // '' is numeric (0); 0 + '' -> '0'
+	[ ['', 5],             '05'    ],
+	[ [true],              1       ],  // true coerces to 1
+	[ [true, false],       1       ],  // false coerces to 0
+	[ [1, true],           2       ],
+	[ { a: '5', b: 6 },    '056'   ],  // same concatenation in object form
+	[ { a: true },         1       ],
+    ])	{
+	test(`cxjs_sum(${fmt(input)}) = ${fmt(result)}`, () =>
 	    {
 	    assert.equal(env.cxjs_sum(input), result);
 	    });
