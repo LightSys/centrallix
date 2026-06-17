@@ -51,6 +51,7 @@ AWK = @AWK@
 CC = @CC@
 STRIP = @STRIP@
 SED = @SED@
+NODE = @NODE@
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
@@ -413,6 +414,7 @@ V3LSOBJS=$(V3BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)
 .PHONY:	manpages_install
 .PHONY:	test_install
 .PHONY:	test
+.PHONY:	test-js
 
 all:	centrallix mods config manpages cxpasswd test_obj linksign
 
@@ -581,6 +583,16 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 		fi; \
 	    fi \
 	done 
+
+test-js:
+	@NODE_BIN="$(NODE)"; \
+	[ -n "$$NODE_BIN" ] || NODE_BIN=$$(command -v node); \
+	if [ -z "$$NODE_BIN" ]; then \
+		echo "Error: node not found (not detected by configure, not on PATH)."; \
+		echo "Install Node.js (or load it in nvm with 'nvm use'), then try again."; \
+		exit 1; \
+	fi; \
+	"$$NODE_BIN" --test '../centrallix-os/sys/js/tests/*.test.js' 2>&1
 
 sfeditor/sfedit.o: sfeditor/sfedit.c sfeditor/*.xpm
 	$(CC) $(CFLAGS) `gtk-config --cflags` $< -c -o $@
