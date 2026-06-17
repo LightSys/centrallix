@@ -1500,7 +1500,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 				/*** Optional DEFAULT keyword: Marks this ORDER BY
 				 *** to be replaced by later ORDER BYs, instead of
 				 *** appended to. (see mq_internal_PostProcess()).
-				 **/
+				 ***/
 				if ((t = mlxNextToken(lxs)) == MLX_TOK_KEYWORD &&
 				    (ptr = mlxStringVal(lxs, NULL)) != NULL && 
 				    strcasecmp(ptr, "default") == 0)
