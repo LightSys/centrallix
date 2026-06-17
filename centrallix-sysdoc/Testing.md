@@ -27,6 +27,9 @@ Centrallix has various sets of tests and test suites for running them.  This fil
     - [Centrallix-lib Test Case Format](#centrallix-lib-test-case-format)
     - [Code Coverage](#code-coverage)
     - [More About Centrallix-lib Tests](#more-about-centrallix-lib-tests)
+  - [CXJS Tests](#cxjs-tests)
+    - [Running CXJS Tests](#running-cxjs-tests)
+    - [Test Format](#test-format)
   - [Selenium UI Tests](#selenium-ui-tests)
     - [Running Selenium UI Tests](#running-selenium-ui-tests)
     - [Selenium Test Case Format](#selenium-test-case-format)
@@ -139,6 +142,25 @@ Tests may include and use any `centrallix-lib` headers and code.  Some tests als
 
 ### More About Centrallix-lib Tests
 For more information, see [centrallix-lib/tests/README](../centrallix-lib/tests/README).
+
+
+## CXJS Tests
+The cxjs test suite tests JS sent to the client, especially Centrallix functions when they are run on the client.  This test suite uses [`node:test`](https://nodejs.org/api/test.html) instead of a hand-written testing harness.
+
+### Running CXJS Tests
+The cxjs tests can be run by using `make test-js` in the `centrallix` directory.  This requires `node 20` or later to be installed, although `node 26` or later is recommended because that version was used when building these tests.  While this test suite does not support the `TONLY` environment variable for limiting tests, the [`--test-only`](https://nodejs.org/api/cli.html#--test-only) option can be used to limit tests, as documented in the `node:test` docs.
+
+### Test Format
+All tests use the `node:test` API documented online, typically beginning with a copywrite statement and some variation of the following code:
+
+```js
+'use strict';
+const { describe, it, test } = require('node:test');
+const assert                 = require('node:assert/strict');
+const env                    = require('./_setup');
+```
+
+Test suites are used with `describe()` to help organize tests.  Many tests call `test()`/`it()` in a loop (since parameterized testing is not available in `node:test`) to allow for compact definitions of many test cases that have different inputs and outputs but identical testing logic.
 
 
 ## Selenium UI Tests
