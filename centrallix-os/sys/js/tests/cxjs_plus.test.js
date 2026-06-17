@@ -55,6 +55,7 @@ describe('cxjs_plus', () =>
 	[ '1',            2,             '12'        ],
 	[ 0,              '',            '0'         ], // string branch beats numeric 0
 	[ 'n',            Infinity,      'nInfinity' ],
+	[ 'a',            NaN,           'aNaN'      ],
     ])	{
 	test(`cxjs_plus(${fmt(a)}, ${fmt(b)}) = ${fmt(result)}`, () =>
 	    {
