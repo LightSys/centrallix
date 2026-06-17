@@ -83,6 +83,7 @@ describe('cxjs_getdate', () =>
 	[ utc(2026,  6, 15,  0,  0, 30),    60000,  '6/14/2026 23:59:30'  ],  // back across the day boundary
 	[ utc(2026,  1,  1,  0,  0, 30),    60000,  '12/31/2025 23:59:30' ],  // back across the month and year boundary
 	[ utc(2026,  6, 15,  0,  0,  0),      500,  '6/14/2026 23:59:59'  ],  // sub-second offset still rolls the day back
+	[ utc(2026,  6, 15, 23, 59, 59),    -2000,  '6/16/2026 0:00:01'   ],  // forward across the day boundary
 	[ utc(2025, 12, 31, 23, 59, 59),    -1000,  '1/1/2026 0:00:00'    ],  // forward 1s across the year boundary
     ])	{
 	test(`cxjs_getdate() with pg_clockoffset ${offset}ms = "${result}"`, () =>
