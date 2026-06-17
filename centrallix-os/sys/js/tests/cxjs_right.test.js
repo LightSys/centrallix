@@ -27,7 +27,8 @@ describe('cxjs_right', () =>
 	[ "",              3,      ""        ], // empty string stays empty
 	[ "",              0,      ""        ],
 	[ "x",             1,      "x"       ], // single char
-	[ " ab ",          2,      "b "      ], // trailing whitespace preserved
+	[ "  ab ",         2,      "b "      ], // trailing whitespace preserved
+	[ "  ab ",         4,      " ab "    ], // preceding whitespace preserved
 	[ "abc",           null,   null      ], // null length
 	[ "abc",           undefined, null   ], // undefined length
 	[ null,            2,      null      ], // null string
