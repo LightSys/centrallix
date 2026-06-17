@@ -1,7 +1,7 @@
 Document:  Centrallix SQL Language Specification
 Author:    Greg Beeley (GRB)
 Date:      July 3, 2001
-License:   Copyright (C) 2001 LightSys Technology Services.  See "LICENSE".
+License:   Copyright (C) 2001-2026 LightSys Technology Services.  See "LICENSE".
 -------------------------------------------------------------------------------
 
 I   OVERVIEW....
