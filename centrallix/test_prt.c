@@ -63,7 +63,7 @@ void* my_ptr;
 
 /*** Instantiate the globals from centrallix.h 
  ***/
-CxGlobals_t CxGlobals;
+extern CxGlobals_t CxGlobals;
 
 /*** Test prt globals
  ***/

@@ -265,7 +265,7 @@ nht_i_UnlinkSess(pNhtSessionData sess)
 	    xhDeInit(sess->CachedApps);
 	    nmFree(sess->CachedApps, sizeof(XHashTable));
 	    xhnDeInitContext(&(sess->Hctx));
-	    memset(sess, 0, sizeof(NhtSessionData));
+	    cxssShred(sess, sizeof(NhtSessionData));
 	    nmFree(sess, sizeof(NhtSessionData));
 	    }
 
@@ -906,4 +906,3 @@ nht_i_LookupApp(char* akey, pNhtSessionData *sess, pNhtAppGroup *group, pNhtApp 
 
     return -1;
     }
-
