@@ -38,22 +38,22 @@ describe('cxjs_convert', () =>
     // the *second* character (e.g. 'x$5'); a leading '$5' is not, so it
     // parses to NaN. Stripping the '$' also drops a leading sign.
     for (const [ dt, v, result ] of [
-	// Datatype    Value       Result
-	[ 'integer',   0,          0    ],
-	[ 'integer',   5,          5    ],
-	[ 'integer',  -7,         -7    ],
-	[ 'integer',   5.9,        5    ],
-	[ 'integer',   '42',       42   ],
-	[ 'integer',   '42abc',    42   ],
-	[ 'integer',   '  10',     10   ],
-	[ 'integer',   '0x1F',     31   ],
-	[ 'integer',   '1e3',      1    ],
-	[ 'integer',   'x$5',      5    ],
-	[ 'integer',   '-$5',      5    ],
-	[ 'integer',   '$5',       NaN  ],
-	[ 'integer',   '',         NaN  ],
-	[ 'integer',   'abc',      NaN  ],
-	[ 'integer',   true,       NaN  ],
+	// Datatype    Value      Result
+	[ 'integer',   0,         0    ],
+	[ 'integer',   5,         5    ],
+	[ 'integer',  -7,        -7    ],
+	[ 'integer',   5.9,       5    ],
+	[ 'integer',   '42',      42   ],
+	[ 'integer',   '42abc',   42   ],
+	[ 'integer',   '  10',    10   ],
+	[ 'integer',   '0x1F',    31   ],
+	[ 'integer',   '1e3',     1    ],
+	[ 'integer',   'x$5',     5    ],
+	[ 'integer',   '-$5',     5    ],
+	[ 'integer',   '$5',      NaN  ],
+	[ 'integer',   '',        NaN  ],
+	[ 'integer',   'abc',     NaN  ],
+	[ 'integer',   true,      NaN  ],
     ])	{
 	test(`cxjs_convert(${JSON.stringify(dt)}, ${JSON.stringify(v)}) = ${result}`, () =>
 	    {
@@ -65,21 +65,21 @@ describe('cxjs_convert', () =>
     // several forms ('$', ' $', '+$', '$ ', '-$'); '-$' negates the
     // result. Anything else falls through to parseFloat.
     for (const [ dt, v, result ] of [
-	// Datatype    Value        Result
-	[ 'double',    0,           0    ],
-	[ 'double',    5.5,         5.5  ],
-	[ 'double',    '5.5',       5.5  ],
-	[ 'double',    '3.14abc',   3.14 ],
-	[ 'double',    '$5',        5    ],
-	[ 'double',    '$5.50',     5.5  ],
-	[ 'double',    ' $5',       5    ],
-	[ 'double',    '+$5',       5    ],
-	[ 'double',    '$ 5',       5    ],
-	[ 'double',    '-$5',      -5    ],
-	[ 'double',    '-$2.5',    -2.5  ],
-	[ 'double',    '$1,000',    1    ],
-	[ 'double',    '$',         NaN  ],
-	[ 'double',    'abc',       NaN  ],
+	// Datatype   Value        Result
+	[ 'double',   0,           0    ],
+	[ 'double',   5.5,         5.5  ],
+	[ 'double',   '5.5',       5.5  ],
+	[ 'double',   '3.14abc',   3.14 ],
+	[ 'double',   '$5',        5    ],
+	[ 'double',   '$5.50',     5.5  ],
+	[ 'double',   ' $5',       5    ],
+	[ 'double',   '+$5',       5    ],
+	[ 'double',   '$ 5',       5    ],
+	[ 'double',   '-$5',      -5    ],
+	[ 'double',   '-$2.5',    -2.5  ],
+	[ 'double',   '$1,000',    1    ],
+	[ 'double',   '$',         NaN  ],
+	[ 'double',   'abc',       NaN  ],
     ])	{
 	test(`cxjs_convert(${JSON.stringify(dt)}, ${JSON.stringify(v)}) = ${result}`, () =>
 	    {
