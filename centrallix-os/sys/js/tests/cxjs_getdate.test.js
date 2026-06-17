@@ -14,13 +14,8 @@ const { describe, test } = require('node:test');
 const assert             = require('node:assert/strict');
 const env                = require('./_setup');
 
-// cxjs_getdate() reads the current time, shifts it backward by pg_clockoffset
-// milliseconds, and formats it as "M/D/YYYY H:MM:SS" -- the month, day, and
-// hour are NOT zero-padded, but the minute and second always are. new Date()
-// is non-deterministic, so each call runs against a fake Date swapped into the
-// sandbox: it wraps a genuine Date built from a fixed epoch and answers the
-// getters/setter cxjs_getdate() uses in UTC, which keeps the test independent
-// of the host timezone while preserving native setMilliseconds() rollover.
+// Run cxjs_getdate() at a fixed instant: swap in a fake Date pinned to epochMs
+// that answers in UTC, so results don't depend on the host timezone.
 function getdateAt(epochMs, clockoffset)
     {
     class FakeDate
@@ -57,7 +52,10 @@ function utc(year, month, day, hour, min, sec, ms)
 
 describe('cxjs_getdate', () =>
     {
-    // Formatting, with no clock offset.
+    // Format is "M/D/YYYY H:MM:SS". Hour is unpadded,
+    // but minute and second are always zero-padded.
+
+    // Test dates with no pg_clockoffset.
     for (const [ when, result ] of [
 	// When                              Result
 	[ utc(2026,  1,  1,  0,  5,  9),     '1/1/2026 0:05:09'    ],  // midnight; single-digit min/sec padded, hour not
@@ -77,8 +75,7 @@ describe('cxjs_getdate', () =>
 	    });
 	}
 
-    // pg_clockoffset shifts the reported time backward by that many ms (a
-    // negative offset therefore shifts it forward).
+    // Test dates with pg_clockoffset, which shifts the time backward in ms (negative = forward).
     for (const [ when, offset, result ] of [
 	// When                            Offset    Result
 	[ utc(2026,  6, 15, 12,  0, 30),    60000,  '6/15/2026 11:59:30'  ],  // back 60s, crossing the minute and hour
