@@ -16,9 +16,7 @@ const env                = require('./_setup');
 
 describe('cxjs_isnull', () =>
     {
-    // When the value is null or undefined, the default is returned.
-    // cxjs_isnull uses loose equality (v == null), so both null and
-    // undefined are treated as "null".
+    // null/undefined values use the default.
     for (const [ value, dflt, result ] of [
 	// Value       Default      Result
 	[ null,        5,           5         ],
@@ -42,9 +40,8 @@ describe('cxjs_isnull', () =>
 	    });
 	}
 
-    // When the value is not null/undefined, it is returned unchanged and
-    // the default is ignored. Falsy-but-defined values (0, "", false, NaN)
-    // are NOT treated as null.
+    // Non null/undefined pass through unchanged. Falsy-but-defined values
+    // (0, "", false, NaN) are NOT treated as null.
     for (const [ value, dflt, result ] of [
 	// Value       Default      Result
 	[ 0,           5,           0         ],
@@ -67,7 +64,7 @@ describe('cxjs_isnull', () =>
 	    });
 	}
 
-    // Objects and arrays are not null, so they pass through by reference.
+    // Objects and arrays are treated as not null.
     for (const value of [
 	{},
 	{ a: 1 },
