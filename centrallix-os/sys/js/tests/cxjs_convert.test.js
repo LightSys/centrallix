@@ -78,6 +78,7 @@ describe('cxjs_convert', () =>
 	[ 'double',   '+$5',       5    ],
 	[ 'double',   '$ 5',       5    ],
 	[ 'double',   '-$5',      -5    ],
+	[ 'double',   '-$ 5',     -5    ],
 	[ 'double',   '-$2.5',    -2.5  ],
 	[ 'double',   '$1,000',    1    ],
 	[ 'double',   '$',         NaN  ],
@@ -89,7 +90,7 @@ describe('cxjs_convert', () =>
 	    });
 	}
 
-    // Conversion to string is just '' + v, so every value is coerced.
+    // Conversion to string (using standard JS coercion).
     for (const [ dt, v, result ] of [
 	// Datatype    Value       Result
 	[ 'string',    0,          '0'      ],
