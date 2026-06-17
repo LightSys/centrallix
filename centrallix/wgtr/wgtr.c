@@ -46,6 +46,7 @@
 #include "cxlib/magic.h"
 #include "cxlib/xhash.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/mtsession.h"
 #include "ht_render.h"
 
 #define WGTR_MAX_PARAMS		(24)
@@ -1561,7 +1562,7 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 	SETMAGIC(node, MGK_WGTR);
 
 	strtcpy(node->Name, name, sizeof(node->Name));
-	strtcpy(node->Type, type, sizeof(node->Name));
+	strtcpy(node->Type, type, sizeof(node->Type));
 	snprintf(node->DName, sizeof(node->DName), "w%8.8lx", WGTR.SerialID++);
 	node->x = node->r_x = rx;
 	node->y = node->r_y = ry;

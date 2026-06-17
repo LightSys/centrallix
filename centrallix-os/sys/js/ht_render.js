@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2015 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -310,14 +310,6 @@ function cxjs_right(s,l)
     if (s == null || l == null) return null;
     return s.substr(s.length-l);
     }
-function cxjs_eval(x)
-    {
-    var _this = null;
-    var _context = null;
-    if (x == null) return null;
-    if (typeof x == 'object') x = x.toString();
-    return eval(x);
-    }
 function cxjs_isnull(v,d)
     {
     if (v == null)
@@ -517,9 +509,117 @@ function cxjs_replace(str, srch, rep)
 		rep);
     }
 
+// Repeat string s n times (up to 255); returns null if n < 0.
+function cxjs_replicate(s, n)
+    {
+    if (s === null || n === null ||
+	s === undefined || n === undefined
+    ) return null;
+    
+    // Process parameters.
+    const str = String(s);
+    let num = Math.floor(n);
+    if (num < 0) return null;
+    if (num > 255) num = 255;
+    
+    // Replicate string.
+    let result = "";
+    for (let i = 0; i < num; i++) result += str;
+    
+    return result;
+    }
+
+// Absolute value of n. Returns null if n is null.
+function cxjs_abs(n)
+    {
+    if (n === null || n === undefined) return null;
+    return Math.abs(n);
+    }
+
+// Round n to dec decimal places (default 0), toward nearest.
+// Returns null if n is null.
+function cxjs_round(n, dec = 0)
+    {
+    // Validate parameters.
+    if (n === null || n === undefined) return null;
+    dec = Math.round(dec); // Normalize.
+    
+    // Scale, round, unscale.
+    const factor = 10 ** dec;
+    const scaled = n * factor;
+    const rounded = ((n > 0) ? Math.floor(scaled+0.5) : Math.ceil(scaled-0.5));
+    return rounded / factor;
+    }
+
+// Truncate n toward zero to dec decimal places (default 0).
+// Returns null if n is null.
+function cxjs_truncate(n, dec = 0)
+    {
+    if (n === null || n === undefined) return null;
+    
+    const factor = 10 ** Math.round(dec);
+    return Math.trunc(n * factor) / factor;
+    }
+
+// Clamp n to range [min, max]. Either bound may be null to unbound results.
+// Returns null if n is null.
+function cxjs_constrain(n, min, max)
+    {
+    if (n === null || n === undefined) return null;
+    if (min !== null && min !== undefined && n < min) return min;
+    if (max !== null && max !== undefined && n > max) return max;
+    return n;
+    }
+
+// Returns a random float in range [0,1). Seed is accepted, but it is
+// ignored because ecma262* does not provide a way to specify a seed.
+// *see: https://tc39.es/ecma262/#sec-math.random.
+function cxjs_rand(seed)
+    {
+    if (seed !== null && seed !== undefined)
+	console.warn(`Ignoring seed "${seed}" because ecma262 does not define how to specify a seed.`);
+    return Math.random();
+    }
+
+// Returns the square root of n, or null if n is null or negative.
+function cxjs_sqrt(n)
+    {
+    if (n === null || n === undefined) return null;
+    const result = Math.sqrt(n);
+    return isNaN(result) ? null : result;
+    }
+
+// Returns the square of n, or null if n is null.
+function cxjs_square(n)
+    {
+    if (n === null || n === undefined) return null;
+    return n * n;
+    }
+
+// Returns n raised to power p, or null if either parameter is null.
+function cxjs_power(n, p)
+    {
+    if (n === null || p === null || n === undefined || p === undefined) return null;
+    return n ** p;
+    }
+
+// Converts radians to degrees, or returns null if radians is null.
+function cxjs_degrees(radians)
+    {
+    if (radians === null || radians === undefined) return null;
+    return (radians * 180.0) / Math.PI;
+    }
+
+// Converts degrees to radians, or returns null if degrees is null.
+function cxjs_radians(degrees)
+    {
+    if (degrees === null || degrees === undefined) return null;
+    return (degrees * Math.PI) / 180.0;
+    }
+
 function htr_boolean(v)
     {
-    return !(v==0 || String(v).toLowerCase()=='no' || String(v).toLowerCase() == 'false' || String(v).toLowerCase() == 'off' || v == '0');
+    return !(v === null || v == undefined || v==0 || String(v).toLowerCase()=='no' || String(v).toLowerCase() == 'false' || String(v).toLowerCase() == 'off' || v == '0');
     }
 
 function htr_code_to_keyname(k)

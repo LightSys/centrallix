@@ -318,6 +318,23 @@ function wn_setvisibility_bh(v)
 		var geom = wgtrGetGeom(this.point_at);
 	    var using_offset = (this.point_offset != undefined && this.point_offset != null);
 
+	    // No point side specified?
+	    if (!this.point_side)
+		{
+		var space_t = geom.y;
+		var space_b = pg_height - geom.height - space_t;
+		var space_l = geom.x;
+		var space_r = pg_width - geom.width - space_l;
+		if (space_t >= space_b && space_t >= space_r && space_t >= space_l)
+		    this.point_side = 'bottom';
+		else if (space_b >= space_r && space_b >= space_l)
+		    this.point_side = 'top';
+		else if (space_r >= space_l)
+		    this.point_side = 'left';
+		else
+		    this.point_side = 'right';
+		}
+
 	    // Compute based on which side of the window the point will be on
 	    switch(this.point_side)
 		{
@@ -338,7 +355,7 @@ function wn_setvisibility_bh(v)
 		    win_x = (min_win_x + max_win_x)/2;
 
 		    // Compute point x from there
-		    pt_x = geom.x + (using_offset?this.point_offset:(geom.width/2)) - win_x;
+		    var pt_x = geom.x + (using_offset?this.point_offset:(geom.width/2)) - win_x;
 		    pt_x = Math.min(Math.max(pt_x, min_pt_x), max_pt_x);
 		    break;
 
@@ -359,7 +376,7 @@ function wn_setvisibility_bh(v)
 		    win_x = (min_win_x + max_win_x)/2;
 
 		    // Compute point x from there
-		    pt_x = geom.x + (using_offset?this.point_offset:(geom.width/2)) - win_x;
+		    var pt_x = geom.x + (using_offset?this.point_offset:(geom.width/2)) - win_x;
 		    pt_x = Math.min(Math.max(pt_x, min_pt_x), max_pt_x);
 		    break;
 
@@ -380,7 +397,7 @@ function wn_setvisibility_bh(v)
 		    win_y = (min_win_y + max_win_y)/2;
 
 		    // Compute point y from there
-		    pt_y = geom.y + (using_offset?this.point_offset:(geom.height/2)) - win_y;
+		    var pt_y = geom.y + (using_offset?this.point_offset:(geom.height/2)) - win_y;
 		    pt_y = Math.min(Math.max(pt_y, min_pt_y), max_pt_y);
 		    break;
 
@@ -401,7 +418,7 @@ function wn_setvisibility_bh(v)
 		    win_y = (min_win_y + max_win_y)/2;
 
 		    // Compute point y from there
-		    pt_y = geom.y + (using_offset?this.point_offset:(geom.height/2)) - win_y;
+		    var pt_y = geom.y + (using_offset?this.point_offset:(geom.height/2)) - win_y;
 		    pt_y = Math.min(Math.max(pt_y, min_pt_y), max_pt_y);
 		    break;
 		}
