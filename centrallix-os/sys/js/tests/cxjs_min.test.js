@@ -33,7 +33,7 @@ describe('cxjs_min', () =>
 	[ [undefined],             undefined ],
 	[ [undefined, 0],          0         ],
     ])	{
-	test(`cxjs_min(${input}) = ${result}`, () =>
+	test(`cxjs_min(${JSON.stringify(input)}) = ${result}`, () =>
 	    {
 	    assert.equal(env.cxjs_min(input), result);
 	    });

@@ -33,7 +33,7 @@ describe('cxjs_max', () =>
 	[ [undefined],             undefined ],
 	[ [undefined, 0],          0         ],
     ])	{
-	test(`cxjs_max(${input}) = ${result}`, () =>
+	test(`cxjs_max(${JSON.stringify(input)}) = ${result}`, () =>
 	    {
 	    assert.equal(env.cxjs_max(input), result);
 	    });
