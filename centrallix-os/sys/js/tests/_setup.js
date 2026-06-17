@@ -30,12 +30,12 @@ const sandbox =
     pg_expaddpart:  () => {},
     window:         {},
     document:
-        {
-        getElementsByTagName: () => [],
-        addEventListener:     () => {},
-        releaseEvents:        () => {},
-        captureEvents:        () => {},
-        },
+	{
+	getElementsByTagName: () => [],
+	addEventListener:     () => {},
+	releaseEvents:        () => {},
+	captureEvents:        () => {},
+	},
     console:        console,
     };
 sandbox.globalThis = sandbox;

@@ -16,19 +16,15 @@ const env              = require('./_setup');
 
 describe('cxjs_user_name', () =>
     {
-    const cases =
-        [
-        'alice',
-        'bob',
-        ' !@#$%^&*()":;\' ',
-        ];
-
-    for (const name of cases)
-        {
-        it(`returns pg_username (\"${name}\")`, () =>
-            {
-            env.pg_username = name;
-            assert.equal(env.cxjs_user_name(), name);
-            });
-        }
+    for (const name of [
+	'alice',
+	'bob',
+	' !@#$%^&*()":;\' ',
+    ])	{
+	it(`returns pg_username (\"${name}\")`, () =>
+	    {
+	    env.pg_username = name;
+	    assert.equal(env.cxjs_user_name(), name);
+	    });
+	}
     });
