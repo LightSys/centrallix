@@ -34,11 +34,11 @@ describe('cxjs_count', () =>
 	[ [NaN],                                   0 ],
 	[ [NaN, 1],                                1 ],
 	[ [NaN, null, undefined, 5],               1 ],
-	// Numeric strings count; non-numeric strings do not. "" is numeric (0).
-	[ ["5", 6],                                2 ],
-	[ ["", 6],                                 2 ],
-	[ ["abc", 6],                              1 ],
-	[ ["abc", "def"],                          0 ],
+	// Numeric strings count; non-numeric strings do not. '' is numeric (0).
+	[ ['5', 6],                                2 ],
+	[ ['', 6],                                 2 ],
+	[ ['abc', 6],                              1 ],
+	[ ['abc', 'def'],                          0 ],
     ])	{
 	test(`cxjs_count(${JSON.stringify(input)}) = ${result}`, () =>
 	    {
@@ -64,11 +64,11 @@ describe('cxjs_count', () =>
 	[ { L: NaN },                              0 ],
 	[ { M: NaN, N: 1 },                        1 ],
 	[ { O: NaN, P: null, Q: undefined, R: 5 }, 1 ],
-	// Numeric strings count; non-numeric strings do not. "" is numeric (0).
-	[ { S: "5", T: 6 },                        2 ],
-	[ { U: "", V: 6 },                         2 ],
-	[ { W: "abc", X: 6 },                      1 ],
-	[ { Y: "abc", Z: "def" },                  0 ],
+	// Numeric strings count; non-numeric strings do not. '' is numeric (0).
+	[ { S: '5', T: 6 },                        2 ],
+	[ { U: '', V: 6 },                         2 ],
+	[ { W: 'abc', X: 6 },                      1 ],
+	[ { Y: 'abc', Z: 'def' },                  0 ],
     ])	{
 	test(`cxjs_count(${JSON.stringify(input)}) = ${result}`, () =>
 	    {
@@ -84,8 +84,8 @@ describe('cxjs_count', () =>
 	[ 42,           1 ],
 	[ -1.1,         1 ],
 	[ Infinity,     1 ],
-	[ "foo",        1 ],
-	[ "",           1 ],
+	[ 'foo',        1 ],
+	[ '',           1 ],
 	[ true,         1 ],
 	[ NaN,          1 ],
 	[ null,         1 ],

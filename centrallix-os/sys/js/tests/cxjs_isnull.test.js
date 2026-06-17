@@ -21,10 +21,10 @@ describe('cxjs_isnull', () =>
 	// Value       Default      Result
 	[ null,        5,           5         ],
 	[ undefined,   5,           5         ],
-	[ null,        "default",   "default" ],
-	[ undefined,   "default",   "default" ],
+	[ null,        'default',   'default' ],
+	[ undefined,   'default',   'default' ],
 	[ null,        0,           0         ],
-	[ null,        "",          ""        ],
+	[ null,        '',          ''        ],
 	[ null,        false,       false     ],
 	[ null,        Infinity,    Infinity  ],
 	[ null,        NaN,         NaN       ],
@@ -40,23 +40,23 @@ describe('cxjs_isnull', () =>
 	    });
 	}
 
-    // Non null/undefined pass through unchanged. Falsy-but-defined values
-    // (0, "", false, NaN) are NOT treated as null.
+    // Non-null/undefined pass through unchanged. Falsy-but-defined values
+    // (0, '', false, NaN) are NOT treated as null.
     for (const [ value, dflt, result ] of [
 	// Value       Default      Result
 	[ 0,           5,           0         ],
-	[ "",          5,           ""        ],
+	[ '',          5,           ''        ],
 	[ false,       5,           false     ],
 	[ NaN,         5,           NaN       ],
 	[ 42,          5,           42        ],
 	[ -1.1,        5,          -1.1       ],
 	[ Infinity,    5,           Infinity  ],
 	[ -Infinity,   5,          -Infinity  ],
-	[ "foo",       "bar",       "foo"     ],
+	[ 'foo',       'bar',       'foo'     ],
 	[ true,        false,       true      ],
 	// The value is returned even when the default is null/undefined.
 	[ 0,           undefined,   0         ],
-	[ "",          null,        ""        ],
+	[ '',          null,        ''        ],
     ])	{
 	test(`cxjs_isnull(${JSON.stringify(value)}, ${JSON.stringify(dflt)}) = ${JSON.stringify(result)}`, () =>
 	    {
@@ -71,9 +71,9 @@ describe('cxjs_isnull', () =>
 	[],
 	[1, 2, 3],
     ])	{
-	test(`cxjs_isnull(${JSON.stringify(value)}, "default") returns the value itself`, () =>
+	test(`cxjs_isnull(${JSON.stringify(value)}, 'default') returns the value itself`, () =>
 	    {
-	    assert.equal(env.cxjs_isnull(value, "default"), value);
+	    assert.equal(env.cxjs_isnull(value, 'default'), value);
 	    });
 	}
 
