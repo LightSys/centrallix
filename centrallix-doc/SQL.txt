@@ -120,9 +120,9 @@ V   SORTING....
 
     A query may contain more than one ORDER BY clause.  Later ORDER BY clauses
     append their columns the first ORDER BY.  However, ORDER BY marked with the
-    keyword DEFAULT keyword is overwritten by any later ORDER BY, even if that
-    ORDER BY also uses the DEFAULT keyword.  Its columns are only appended if
-    is the last ORDER BY in its SQL query.
+    DEFAULT keyword is overwritten by any later ORDER BY, even if that ORDER BY
+    also uses the DEFAULT keyword.  An ORDER BY is only appended if it is the
+    last ORDER BY in its SQL query.
     This allows a query to offer a default ordering which can be discarded if
     a more relevant order is appended to the query.
 
