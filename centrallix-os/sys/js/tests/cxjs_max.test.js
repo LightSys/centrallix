@@ -14,15 +14,18 @@ const { describe, test } = require('node:test');
 const assert             = require('node:assert/strict');
 const env                = require('./_setup');
 
-// JSON.stringify collapses NaN/Infinity to "null" and omits undefined, which
-// would make distinct edge-case rows share a test name; fmt renders those
-// values verbatim (and otherwise matches JSON.stringify) so names stay unique.
+// JSON.stringify collapses NaN/Infinity to "null", omits undefined, and renders
+// -0 as "0", which would make distinct edge-case rows share a test name; fmt
+// renders those values verbatim, distinguishes -0 from 0, and otherwise matches
+// JSON.stringify, so names stay unique.
 function fmt(v)
     {
     if (Array.isArray(v))
 	return '[' + v.map(fmt).join(',') + ']';
     if (v !== null && typeof v === 'object')
 	return '{' + Object.keys(v).map((k) => JSON.stringify(k) + ':' + fmt(v[k])).join(',') + '}';
+    if (Object.is(v, -0))
+	return '-0';
     if (typeof v === 'number' || v === undefined)
 	return String(v);
     return JSON.stringify(v);
@@ -47,7 +50,7 @@ describe('cxjs_max', () =>
 	[ [undefined],             undefined ],
 	[ [undefined, 0],          0         ],
     ])	{
-	test(`cxjs_max(${JSON.stringify(input)}) = ${result}`, () =>
+	test(`cxjs_max(${fmt(input)}) = ${fmt(result)}`, () =>
 	    {
 	    assert.equal(env.cxjs_max(input), result);
 	    });
@@ -70,14 +73,13 @@ describe('cxjs_max', () =>
 	[ { D: undefined },                  undefined ],
 	[ { E: undefined, F: 0 },            0         ],
     ])	{
-	test(`cxjs_max(${JSON.stringify(input)}) = ${result}`, () =>
+	test(`cxjs_max(${fmt(input)}) = ${fmt(result)}`, () =>
 	    {
 	    assert.equal(env.cxjs_max(input), result);
 	    });
 	}
 
-    // Scalar (non-array, non-object) inputs hit the else branch and are
-    // returned verbatim, with no comparison performed.
+    // Scalar are returned as is.
     for (const [ input, result ] of [
 	// Input        Result
 	[ 5,            5         ],
@@ -131,4 +133,91 @@ describe('cxjs_max', () =>
 	    assert.equal(env.cxjs_max(input), result);
 	    });
 	}
+
+    // Lists with NaNs.
+    for (const [ input, result ] of [
+	// Input                 Result
+	[ [5, NaN, 3],           5   ],  // 5 retained, NaN never beats it, then 3<5
+	[ [NaN, NaN, 5],         5   ],  // NaN survives until a real value replaces it
+	[ [1, NaN, 2, NaN, 3],   3   ],  // running max walks 1 -> 2 -> 3 across the NaNs
+	[ [3, NaN, 5, NaN, 1],   5   ],
+    ])	{
+	test(`cxjs_max(${fmt(input)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_max(input), result);
+	    });
+	}
+
+    // null comparisons to 1 and -1.
+    for (const [ input, result ] of [
+	// Input          Result
+	[ [1, null],      1     ],  // 1 > null(0), so 1 wins
+	[ [null, 1],      1     ],
+	[ [-1, null],     null  ],  // -1 not > null(0), so null wins and is preserved
+	[ [null, -1],     null  ],
+    ])	{
+	test(`cxjs_max(${fmt(input)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_max(input), result);
+	    });
+	}
+
+    // Misc edge cases.
+    for (const [ input, result ] of [
+	// Input                       Result
+	[ [Infinity, -Infinity],       Infinity  ],
+	[ [-Infinity, Infinity],       Infinity  ],
+	[ [-0, 0],                    -0         ],  // -0 < 0 is false, so -0 is kept
+	[ [0, -0],                     0         ],  // 0 < -0 is false, so 0 is kept
+	[ [-0],                       -0         ],
+	[ [true, false],               true      ],  // true(1) > false(0)
+	[ [false, true],               true      ],
+	[ [2, true],                   2         ],  // 2 > true(1), returned as number
+	[ [0, false],                  0         ],  // false(0) not > 0, so 0 kept
+    ])	{
+	test(`cxjs_max(${fmt(input)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_max(input), result);
+	    });
+	}
+
+    // Numbers mixed with numeric strings.
+    for (const [ input, result ] of [
+	// Input              Result
+	[ [2, '10'],          '10' ],  // numeric compare: 10 > 2, kept as a string
+	[ ['10', 2],          '10' ],
+	[ [5, '3', 4],        5    ],  // 5 is numerically greatest
+    ])	{
+	test(`cxjs_max(${fmt(input)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_max(input), result);
+	    });
+	}
+
+    // Sparse arrays.
+    for (const [ input, result ] of [
+	// Input            Result
+	[ [1, , 3],         3 ],  // 3 > 1, the hole is skipped
+	[ [, , 5],          5 ],
+    ])	{
+	test(`cxjs_max(${fmt(input)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_max(input), result);
+	    });
+	}
+
+    test('cxjs_max(array with extra non-index prop) = 3', () =>
+	{
+	const a = [1, 2, 3];
+	a.foo = 99;             // ignored: numeric-index loop only
+	assert.equal(env.cxjs_max(a), 3);
+	});
+
+    // Value on the prototype participates in the comparison.
+    test('cxjs_max(object with inherited enumerable prop) = 3', () =>
+	{
+	function Proto() { this.a = 3; }
+	Proto.prototype.b = 1;
+	assert.equal(env.cxjs_max(new Proto()), 3);
+	});
     });

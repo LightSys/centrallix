@@ -14,10 +14,26 @@ const { describe, test } = require('node:test');
 const assert             = require('node:assert/strict');
 const env                = require('./_setup');
 
+// JSON.stringify collapses NaN/Infinity to "null", drops undefined, and
+// renders -0 as "0", which would make distinct edge-case rows share a test
+// name; fmt renders those verbatim so names stay unique.
+function fmt(v)
+    {
+    if (Array.isArray(v))
+	return '[' + v.map(fmt).join(',') + ']';
+    if (v !== null && typeof v === 'object')
+	return '{' + Object.keys(v).map((k) => JSON.stringify(k) + ':' + fmt(v[k])).join(',') + '}';
+    if (Object.is(v, -0))
+	return '-0';
+    if (typeof v === 'number' || v === undefined)
+	return String(v);
+    return JSON.stringify(v);
+    }
+
 describe('cxjs_isnull', () =>
     {
     // null/undefined values use the default.
-    for (const [ value, dflt, result ] of [
+    for (const [ value, default_value, result ] of [
 	// Value       Default      Result
 	[ null,        5,           5         ],
 	[ undefined,   5,           5         ],
@@ -34,15 +50,15 @@ describe('cxjs_isnull', () =>
 	[ undefined,   null,        null      ],
 	[ undefined,   undefined,   undefined ],
     ])	{
-	test(`cxjs_isnull(${JSON.stringify(value)}, ${JSON.stringify(dflt)}) = ${JSON.stringify(result)}`, () =>
+	test(`cxjs_isnull(${fmt(value)}, ${fmt(default_value)}) = ${fmt(result)}`, () =>
 	    {
-	    assert.equal(env.cxjs_isnull(value, dflt), result);
+	    assert.equal(env.cxjs_isnull(value, default_value), result);
 	    });
 	}
 
     // Non-null/undefined pass through unchanged. Falsy-but-defined values
     // (0, '', false, NaN) are NOT treated as null.
-    for (const [ value, dflt, result ] of [
+    for (const [ value, default_value, result ] of [
 	// Value       Default      Result
 	[ 0,           5,           0         ],
 	[ '',          5,           ''        ],
@@ -58,9 +74,9 @@ describe('cxjs_isnull', () =>
 	[ 0,           undefined,   0         ],
 	[ '',          null,        ''        ],
     ])	{
-	test(`cxjs_isnull(${JSON.stringify(value)}, ${JSON.stringify(dflt)}) = ${JSON.stringify(result)}`, () =>
+	test(`cxjs_isnull(${fmt(value)}, ${fmt(default_value)}) = ${fmt(result)}`, () =>
 	    {
-	    assert.equal(env.cxjs_isnull(value, dflt), result);
+	    assert.equal(env.cxjs_isnull(value, default_value), result);
 	    });
 	}
 
@@ -71,7 +87,7 @@ describe('cxjs_isnull', () =>
 	[],
 	[1, 2, 3],
     ])	{
-	test(`cxjs_isnull(${JSON.stringify(value)}, 'default') returns the value itself`, () =>
+	test(`cxjs_isnull(${fmt(value)}, 'default') returns the value itself`, () =>
 	    {
 	    assert.equal(env.cxjs_isnull(value, 'default'), value);
 	    });
@@ -86,5 +102,15 @@ describe('cxjs_isnull', () =>
     test('cxjs_isnull(0) = 0 (default omitted)', () =>
 	{
 	assert.equal(env.cxjs_isnull(0), 0);
+	});
+
+    // Signed zero is preserved in both positions.
+    test('cxjs_isnull(-0, 5) = -0 (value not null, passes through)', () =>
+	{
+	assert.equal(env.cxjs_isnull(-0, 5), -0);
+	});
+    test('cxjs_isnull(null, -0) = -0 (default returned verbatim)', () =>
+	{
+	assert.equal(env.cxjs_isnull(null, -0), -0);
 	});
     });

@@ -14,15 +14,18 @@ const { describe, test } = require('node:test');
 const assert             = require('node:assert/strict');
 const env                = require('./_setup');
 
-// JSON.stringify collapses NaN/Infinity to "null" and omits undefined, which
-// would make distinct edge-case rows share a test name; fmt renders those
-// values verbatim (and otherwise matches JSON.stringify) so names stay unique.
+// JSON.stringify collapses NaN/Infinity to "null", omits undefined, and renders
+// -0 as "0", which would make distinct edge-case rows share a test name; fmt
+// renders those values verbatim (and -0 distinctly from 0) while otherwise
+// matching JSON.stringify, so names stay unique.
 function fmt(v)
     {
     if (Array.isArray(v))
 	return '[' + v.map(fmt).join(',') + ']';
     if (v !== null && typeof v === 'object')
 	return '{' + Object.keys(v).map((k) => JSON.stringify(k) + ':' + fmt(v[k])).join(',') + '}';
+    if (Object.is(v, -0))
+	return '-0';
     if (typeof v === 'number' || v === undefined)
 	return String(v);
     return JSON.stringify(v);
@@ -31,18 +34,21 @@ function fmt(v)
 describe('cxjs_square', () =>
     {
     for (const [ input, result ] of [
-	// Input        Result
-	[ 4,            16        ],
-	[ 3,            9         ],
-	[ 0.5,          0.25      ],
-	[ 1,            1         ],
-	[ 0,            0         ],
-	[ -0,          +0         ],  // (-0)^2 is +0
-	[ -2,           4         ],  // negatives square to positives
-	[ -1.5,         2.25      ],
-	[ Infinity,     Infinity  ],
-	[ -Infinity,    Infinity  ],
-	[ 1e200,        Infinity  ],  // overflows to Infinity
+	// Input            Result
+	[ 4,                16        ],
+	[ 3,                9         ],
+	[ 0.5,              0.25      ],
+	[ 1,                1         ],
+	[ 0,                0         ],
+	[ -0,              +0         ],  // (-0)^2 is +0
+	[ -2,               4         ],  // negatives square to positives
+	[ -1.5,             2.25      ],
+	[ Infinity,         Infinity  ],
+	[ -Infinity,        Infinity  ],
+	[ 1e200,            Infinity  ],  // overflows to Infinity
+	[ Number.MAX_VALUE, Infinity  ],  // also overflows
+	[ 1e-200,           0         ],  // underflows to 0
+	[ Number.MIN_VALUE, 0         ],  // also underflows
     ])	{
 	test(`cxjs_square(${fmt(input)}) = ${fmt(result)}`, () =>
 	    {
@@ -71,6 +77,7 @@ describe('cxjs_square', () =>
 	// Input        Result
 	[ '4',          16    ],
 	[ '2.5',        6.25  ],
+	[ '-2',         4     ],  // negative string coerces to -2, squares positive
 	[ '',           0     ],  // empty string coerces to 0
 	[ 'foo',        NaN   ],  // non-numeric string coerces to NaN
 	[ true,         1     ],

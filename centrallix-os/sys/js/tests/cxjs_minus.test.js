@@ -14,6 +14,22 @@ const { describe, test } = require('node:test');
 const assert             = require('node:assert/strict');
 const env                = require('./_setup');
 
+// JSON.stringify collapses NaN/Infinity to "null", drops undefined, and
+// renders -0 as "0", which would make distinct edge-case rows share a test
+// name; fmt renders those verbatim so names stay unique.
+function fmt(v)
+    {
+    if (Array.isArray(v))
+	return '[' + v.map(fmt).join(',') + ']';
+    if (v !== null && typeof v === 'object')
+	return '{' + Object.keys(v).map((k) => JSON.stringify(k) + ':' + fmt(v[k])).join(',') + '}';
+    if (Object.is(v, -0))
+	return '-0';
+    if (typeof v === 'number' || v === undefined)
+	return String(v);
+    return JSON.stringify(v);
+    }
+
 describe('cxjs_minus', () =>
     {
     // Numeric operands subtract. NaN propagates.
@@ -34,8 +50,12 @@ describe('cxjs_minus', () =>
 	[ 1,            NaN,        NaN       ],
 	[ true,         1,          0         ],  // Booleans are not strings: true -> 1.
 	[ false,        false,      0         ],  // false -> 0.
+	[ 5,            0,          5         ],
+	[ 0,            5,         -5         ],
+	[ true,         false,      1         ],  // 1 - 0.
+	[ 5e-324,       5e-324,     0         ],  // smallest denormals cancel to 0.
     ])	{
-	test(`cxjs_minus(${JSON.stringify(a)}, ${JSON.stringify(b)}) = ${JSON.stringify(result)}`, () =>
+	test(`cxjs_minus(${fmt(a)}, ${fmt(b)}) = ${fmt(result)}`, () =>
 	    {
 	    assert.equal(env.cxjs_minus(a, b), result);
 	    });
@@ -49,7 +69,7 @@ describe('cxjs_minus', () =>
 	[ undefined, 5         ],
 	[ 5,         undefined ],
     ])	{
-	test(`cxjs_minus(${JSON.stringify(a)}, ${JSON.stringify(b)}) = null`, () =>
+	test(`cxjs_minus(${fmt(a)}, ${fmt(b)}) = null`, () =>
 	    {
 	    assert.equal(env.cxjs_minus(a, b), null);
 	    });
@@ -70,13 +90,36 @@ describe('cxjs_minus', () =>
 	[ 100,          '0',        '10'      ],  // Coercion: 100 -> '100'.
 	[ '5',          5,          ''        ],
 	[ 5,            '5',        ''        ],
+
 	// Only a suffix is stripped: the match must sit at the very end.
+	// a            b           Result
 	[ 'abcabc',     'bc',       'abca'    ],  // trailing 'bc' removed (lastIndexOf is at the end).
 	[ 'aXbXc',      'X',        'aXbXc'   ],  // 'X' occurs, but not at the end: unchanged.
+
+	// Overlapping/repeated suffix.
+	// a            b           Result
+	[ 'aaa',        'aa',       'a'       ],  // lastIndexOf('aa') = 1 = len-2: strips one.
+	[ 'aaaa',       'aa',       'aa'      ],  // lastIndexOf('aa') = 2 = len-2: strips one.
+	[ '',           'abc',      ''        ],  // empty a, longer b: lastIndexOf = -1, but -1 != 0-3, so a unchanged ('').
+
+	// Coercion by only one string.
+	// a            b           Result
+	[ true,         'e',        'tru'     ],
+	[ 'true',       true,       ''        ],
+	[ '12',         2,          '1'       ],
+	[ NaN,          'N',        'Na'      ],
     ])	{
-	test(`cxjs_minus(${JSON.stringify(a)}, ${JSON.stringify(b)}) = ${JSON.stringify(result)}`, () =>
+	test(`cxjs_minus(${fmt(a)}, ${fmt(b)}) = ${fmt(result)}`, () =>
 	    {
 	    assert.equal(env.cxjs_minus(a, b), result);
 	    });
 	}
+
+    // Signed-zero: subtracting equal values gives +0, even -0 - -0.
+    // JSON.stringify(-0) is "0", so name these explicitly (Object.is
+    // distinguishes -0 from +0 in assert/strict).
+    test('cxjs_minus(-0, -0) = +0', () =>
+	{
+	assert.equal(env.cxjs_minus(-0, -0), 0);
+	});
     });

@@ -10,22 +10,46 @@
 // GNU Lesser General Public License for more details.
 
 'use strict';
-const { describe, it } = require('node:test');
-const assert           = require('node:assert/strict');
-const env              = require('./_setup');
+const { describe, it, after } = require('node:test');
+const assert                  = require('node:assert/strict');
+const env                     = require('./_setup');
+
+let sandbox_username = env.pg_username;
 
 describe('cxjs_user_name', () =>
     {
+    // pg_username is a shared sandbox global; save and restore
+    // the the username to prevent affects on other suites.
+    after(()  => { env.pg_username = sandbox_username; });
+
     for (const name of [
-	'alice',
-	'bob',
-	'',
-	' !@#$%^&*()":;\' ',
+	// Label          Value
+	['alice'],
+	['bob'],
+	[''],
+	[' !@#$%^&*()":;\' '],
+	[ 'null',         null      ],
+	[ 'undefined',    undefined ],
+	[ 'number 42',    42        ],
+	[ 'number 0',     0         ],
+	[ 'false',        false     ],
+	[ 'array',        ['a','b'] ],
+	[ 'object',       { x: 1 }  ],
     ])	{
 	it(`returns pg_username (\"${name}\")`, () =>
 	    {
 	    env.pg_username = name;
 	    assert.equal(env.cxjs_user_name(), name);
+	    });
+	}
+
+    // Username edgecases 
+    for (const [ label, value ] of [
+    ])	{
+	it(`returns pg_username unchanged (${label})`, () =>
+	    {
+	    env.pg_username = value;
+	    assert.equal(env.cxjs_user_name(), value);
 	    });
 	}
     });

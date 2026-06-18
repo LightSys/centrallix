@@ -61,11 +61,10 @@ describe('cxjs_rand', () =>
 	});
 
     // A fixed seed is ignored, so it does not pin the output to one value.
-    // (Warnings are suppressed here; warn behavior is checked separately.)
     test('ignores the seed (output stays non-deterministic)', () =>
 	{
 	const seen = new Set();
-	captureWarningCount(() =>
+	captureWarningCount(() => // Warnings suppressed (tested later).
 	    {
 	    for (let i = 0; i < 1000; i++) seen.add(env.cxjs_rand(42));
 	    });
@@ -81,6 +80,7 @@ describe('cxjs_rand', () =>
 	    let result;
 	    const warnings = captureWarningCount(() => { result = env.cxjs_rand(seed); });
 	    assert.equal(warnings, 1);
+	    assert.equal(typeof result, 'number');
 	    assert.ok(result >= 0 && result < 1, `${result} not in [0,1)`);
 	    });
 	}

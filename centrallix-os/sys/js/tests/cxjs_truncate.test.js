@@ -86,6 +86,34 @@ describe('cxjs_truncate', () =>
 	[ [0.1],            +0        ],
 	[ [-0.1],           -0        ],
 	[ [-0.9],           -0        ],
+	[ [-0],             -0        ],  // -0 input passes through
+	[ [-Number.MIN_VALUE], -0     ],  // tiny negative subnormal -> -0
+
+	// Float traps.
+	// Args             Result
+	[ [1.005, 2],       1         ],  // stored just under 1.005 -> 1.00
+	[ [2.349999, 2],    2.34      ],
+
+	// Precision is lost before truncation when n*factor exceeds 2^53, and a
+	// large n*factor can overflow to Infinity..
+	// Args                        Result
+	[ [123456789012.3456, 2],      123456789012.34  ],
+	[ [Number.MAX_VALUE, 2],       Infinity         ],  // n*100 overflows
+	[ [Number.MAX_VALUE],          Number.MAX_VALUE ],
+	[ [Number.MIN_VALUE],          0                ],  // smallest subnormal -> +0
+
+	// factor = 10**Math.round(dec) underflows to 0 for a large negative dec,
+	// so n*0 = 0 then 0/0 = NaN (the large positive dec case is covered above).
+	// Args             Result
+	[ [5, -400],        NaN       ],  // 10**-400 underflows to 0
+
+	// dec coercion.
+	// Args             Result
+	[ [1.5, '2'],       1.5       ],  // dec "2" -> 2, no change
+	[ [1.555, '2'],     1.55      ],  // truncated, not rounded
+	[ [1.5, NaN],       NaN       ],
+	[ [1.5, Infinity],  NaN       ],
+	[ [1.5, -Infinity], NaN       ],
 
 	// n is coerced to a number before truncating (matching JS arithmetic).
 	// Args             Result

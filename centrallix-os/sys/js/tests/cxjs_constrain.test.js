@@ -16,9 +16,11 @@ const env                = require('./_setup');
 
 // JSON.stringify collapses NaN/Infinity to "null" and omits undefined, which
 // would make distinct edge-case rows share a test name; fmt renders those
-// values verbatim so names stay unique.
+// values verbatim (and distinguishes -0 from +0) so names stay unique.
 function fmt(v)
     {
+    if (Object.is(v, -0))
+	return '-0';
     if (typeof v === 'number' || v === undefined)
 	return String(v);
     return JSON.stringify(v);
@@ -90,6 +92,38 @@ describe('cxjs_constrain', () =>
 	[ 5,          10,        0,         10        ],
 	[ 100,        10,        0,         0         ],
 	[ -5,         10,        0,         10        ],
+
+	// Inverted bounds with n equal to a bound: equality is not "<" or ">",
+	// so n == min still falls through to the max check (and vice versa).
+	[ 10,         10,        0,         0         ],  // n == min, then 10 > 0 -> max
+	[ 0,          10,        0,         10        ],  // n == max, but 0 < 10 -> min
+
+	// Sign of zero: comparisons treat -0 and +0 as equal, so neither bound
+	// fires and the original (signed) n passes through unchanged.
+	[ -0,         0,         10,        -0        ],  // -0 < 0 false, -0 > 10 false
+	[ -0,         0,         0,         -0        ],  // both bounds == -0 numerically
+	[ 0,          -0,        10,        0         ],
+	// A signed-zero bound is returned verbatim when n falls outside it.
+	[ -5,         -0,        10,        -0        ],  // -5 < -0 -> returns min -0
+
+	// Bounds are returned without coercion, so a numeric-string bound that
+	// clamps is returned as the original string (compared numerically).
+	[ 3,          '5',       10,        '5'       ],  // 3 < "5" -> returns "5"
+	[ 7,          '5',       10,        7         ],  // 7 < "5" false -> n
+	[ 15,         0,         '10',      '10'      ],  // 15 > "10" -> returns "10"
+	[ 5,          0,         '10',      5         ],
+
+	// Infinite bounds and n: an infinity within infinite bounds is unclamped.
+	[ Infinity,  -Infinity,  Infinity,  Infinity  ],
+	[ -Infinity, -Infinity,  Infinity,  -Infinity ],
+	[ Infinity,   0,         Infinity,  Infinity  ],
+
+	// Both bounds NaN with NaN n: NaN bounds never fire and NaN passes through.
+	[ NaN,        NaN,       NaN,       NaN       ],
+
+	// Extreme finite magnitudes clamp like any other value.
+	[ Number.MAX_VALUE, 0,   1,         1         ],
+	[ 1e308,      0,         1e308,     1e308     ],
     ])	{
 	test(`cxjs_constrain(${fmt(n)}, ${fmt(min)}, ${fmt(max)}) = ${fmt(result)}`, () =>
 	    {

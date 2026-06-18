@@ -68,10 +68,34 @@ describe('cxjs_plus', () =>
 	[ false,          false,         0           ],
 	[ true,           'x',           'truex'     ],
 	[ 'x',            true,          'xtrue'     ],
+
+	// Object/array handling.
+	[ [1],            2,             '12'                ],
+	[ 2,              [1],           '21'                ],
+	[ [1, 2],         [3],           '1,23'              ],
+	[ [],             [],            ''                  ], // both arrays -> '' + '' = ''
+	[ {},             1,             '[object Object]1'  ],
+	[ 1,              {},            '1[object Object]'  ],
+	[ [1],            'x',           '1x'                ], // string branch: String([1]) = '1'
+	[ false,          0,             0                   ], // both numeric: 0 + 0 = 0
+	[ '',             0,             '0'                 ], // empty-string branch beats numeric 0
+
+	// Large magnitudes overflow to Infinity rather than wrapping.
+	[ 1e308,          1e308,         Infinity            ],
     ])	{
 	test(`cxjs_plus(${fmt(a)}, ${fmt(b)}) = ${fmt(result)}`, () =>
 	    {
 	    assert.equal(env.cxjs_plus(a, b), result);
 	    });
 	}
+
+    // Signed-zero edge cases.
+    test('cxjs_plus(-0, -0) = -0', () =>
+	{
+	assert.equal(env.cxjs_plus(-0, -0), -0);
+	});
+    test('cxjs_plus(-0, 0) = +0', () =>
+	{
+	assert.equal(env.cxjs_plus(-0, 0), 0);
+	});
     });

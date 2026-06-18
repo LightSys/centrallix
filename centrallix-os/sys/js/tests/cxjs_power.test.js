@@ -14,15 +14,18 @@ const { describe, test } = require('node:test');
 const assert             = require('node:assert/strict');
 const env                = require('./_setup');
 
-// JSON.stringify collapses NaN/Infinity to "null" and omits undefined, which
-// would make distinct edge-case rows share a test name; fmt renders those
-// values verbatim (and otherwise matches JSON.stringify) so names stay unique.
+// JSON.stringify collapses NaN/Infinity to "null", omits undefined, and renders
+// -0 as "0", which would make distinct edge-case rows share a test name; fmt
+// renders those values verbatim (and recurses into arrays/objects) so names
+// stay unique.
 function fmt(v)
     {
     if (Array.isArray(v))
 	return '[' + v.map(fmt).join(',') + ']';
     if (v !== null && typeof v === 'object')
 	return '{' + Object.keys(v).map((k) => JSON.stringify(k) + ':' + fmt(v[k])).join(',') + '}';
+    if (Object.is(v, -0))
+	return '-0';
     if (typeof v === 'number' || v === undefined)
 	return String(v);
     return JSON.stringify(v);
@@ -100,12 +103,46 @@ describe('cxjs_power', () =>
 	[ 0.5,         Infinity,   0         ],
 	[ 0,           Infinity,   0         ],
 	[ 0,          -1,          Infinity  ],
-	[ -0,         -1,         -Infinity  ],
+	[ 0,          -2,          Infinity  ],
 	[ 1,           Infinity,   NaN       ],
 	[ -1,          Infinity,   NaN       ],
+	[ 1,          -Infinity,   NaN       ],
+	[ -1,         -Infinity,   NaN       ],
+	[ 0.5,        -Infinity,   Infinity  ],  // |base|<1 with -Infinity exp blows up
 	[ -Infinity,   2,          Infinity  ],
 	[ -Infinity,   3,         -Infinity  ],
 	[ -Infinity,  -1,         -0         ],
+	[ -Infinity,  -2,          0         ],  // even negative exp gives +0
+    ])	{
+	test(`cxjs_power(${fmt(n)}, ${fmt(p)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_power(n, p), result);
+	    });
+	}
+
+    // A base of -0 keeps the sign only for odd positive exponents; negative
+    // exponents give a signed infinity (odd -> -Infinity, even -> +Infinity).
+    for (const [ n, p, result ] of [
+	// n     p     Result
+	[ -0,    2,    0          ],  // even exponent -> +0
+	[ -0,    3,   -0          ],  // odd exponent keeps the sign
+	[ -0,   -1,   -Infinity   ],  // odd negative exponent
+	[ -0,   -2,    Infinity   ],  // even negative exponent
+    ])	{
+	test(`cxjs_power(${fmt(n)}, ${fmt(p)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_power(n, p), result);
+	    });
+	}
+
+    // Overflow saturates to Infinity and a fractional exponent on a negative
+    // base has no real value (NaN), regardless of the base's magnitude.
+    for (const [ n, p, result ] of [
+	// n                 p      Result
+	[ 2,                 1024,  Infinity ],  // overflows to Infinity
+	[ Number.MAX_VALUE,  2,     Infinity ],
+	[ 2,                -1074,  5e-324   ],  // smallest positive subnormal
+	[ -0.5,              0.5,   NaN      ],  // negative fractional base -> NaN
     ])	{
 	test(`cxjs_power(${fmt(n)}, ${fmt(p)}) = ${fmt(result)}`, () =>
 	    {
@@ -115,11 +152,12 @@ describe('cxjs_power', () =>
 
     // NaN propagates.
     for (const [ n, p, result ] of [
-	// n     p      Result
-	[ NaN,   2,     NaN ],
-	[ 2,     NaN,   NaN ],
-	[ NaN,   NaN,   NaN ],
-	[ NaN,   0,     1   ], // Exception: 0 exponent yields 1.
+	// n     p         Result
+	[ NaN,   2,        NaN ],
+	[ 2,     NaN,      NaN ],
+	[ NaN,   NaN,      NaN ],
+	[ NaN,   Infinity, NaN ],
+	[ NaN,   0,        1   ], // Exception: 0 exponent yields 1.
     ])	{
 	test(`cxjs_power(${fmt(n)}, ${fmt(p)}) = ${fmt(result)}`, () =>
 	    {

@@ -14,15 +14,18 @@ const { describe, test } = require('node:test');
 const assert             = require('node:assert/strict');
 const env                = require('./_setup');
 
-// JSON.stringify collapses NaN/Infinity to "null" and omits undefined, which
-// would make distinct edge-case rows share a test name; fmt renders those
-// values verbatim (and otherwise matches JSON.stringify) so names stay unique.
+// JSON.stringify collapses NaN/Infinity to "null", omits undefined, and renders
+// -0 as "0", which would make distinct edge-case rows share a test name; fmt
+// renders those values verbatim, distinguishes -0 from 0, and otherwise matches
+// JSON.stringify, so names stay unique.
 function fmt(v)
     {
     if (Array.isArray(v))
 	return '[' + v.map(fmt).join(',') + ']';
     if (v !== null && typeof v === 'object')
 	return '{' + Object.keys(v).map((k) => JSON.stringify(k) + ':' + fmt(v[k])).join(',') + '}';
+    if (Object.is(v, -0))
+	return '-0';
     if (typeof v === 'number' || v === undefined)
 	return String(v);
     return JSON.stringify(v);
@@ -56,7 +59,7 @@ describe('cxjs_sum', () =>
 	[ [NaN, 2],                    2         ],
 	[ [1, 2, undefined, 3],        6         ],
     ])	{
-	test(`cxjs_sum(${JSON.stringify(input)}) = ${result}`, () =>
+	test(`cxjs_sum(${fmt(input)}) = ${fmt(result)}`, () =>
 	    {
 	    assert.equal(env.cxjs_sum(input), result);
 	    });
@@ -88,7 +91,7 @@ describe('cxjs_sum', () =>
 	[ { T: NaN, U: 2 },                       2         ],
 	[ { V: 1, W: 2, X: undefined, Y: 3 },     6         ],
     ])	{
-	test(`cxjs_sum(${JSON.stringify(input)}) = ${result}`, () =>
+	test(`cxjs_sum(${fmt(input)}) = ${fmt(result)}`, () =>
 	    {
 	    assert.equal(env.cxjs_sum(input), result);
 	    });
@@ -132,4 +135,90 @@ describe('cxjs_sum', () =>
 	    assert.equal(env.cxjs_sum(input), result);
 	    });
 	}
+
+    // Order-dependent concatenation with type coercions.
+    for (const [ input, result ] of [
+	// Input              Result
+	[ [1, '2', 3],        '123' ],  // 0+1->1, 1+'2'->'12', '12'+3->'123'
+	[ ['a', 1, 2],        3     ],  // 'a' skipped, then 0+1+2
+	[ [1, 2, 'a'],        3     ],  // 'a' skipped at the end
+	[ ['x', 'y'],         null  ],  // all values are non-numeric
+	[ ['x', true, 'y'],   1     ],  // wrapped coercion
+	[ [true, true, 1],    3     ],  // booleans coerce to 1 and add numerically
+    ])	{
+	test(`cxjs_sum(${fmt(input)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_sum(input), result);
+	    });
+	}
+
+    // All-null and all-NaN collections count as nothing.
+    for (const [ input, result ] of [
+	// Input                       Result
+	[ [null, null],                null ],
+	[ [NaN, NaN],                  null ],
+	[ { a: null, b: null },        null ],
+	[ { a: NaN, b: NaN },          null ],
+    ])	{
+	test(`cxjs_sum(${fmt(input)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_sum(input), result);
+	    });
+	}
+
+    // Sign of zero and floating-point accumulation.
+    for (const [ input, result ] of [
+	// Input              Result
+	[ [-0],               0                   ],  // 0 + -0 -> +0
+	[ [-0, -0],           0                   ],
+	[ [-0, 0],            0                   ],
+	[ [0.1, 0.2],         0.30000000000000004 ],  // binary float rounding
+	[ [1e308, 1e308],     Infinity            ],  // overflow to Infinity
+    ])	{
+	test(`cxjs_sum(${fmt(input)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_sum(input), result);
+	    });
+	}
+
+    // Nested array behaviors.
+    for (const [ input, result ] of [
+	// Input              Result
+	[ [[1], 2],           '012' ],  // 0+[1]->'01', '01'+2->'012'
+	[ [[1], [2]],         '012' ],  // 0+[1]->'01', '01'+[2]->'012'
+	[ [[], 5],            '05'  ],  // [] coerces to 0 but 0+[]->'0', '0'+5->'05'
+	[ [[1, 2], 3],        3     ],  // [1,2] is NaN -> skipped, then 0+3
+    ])	{
+	test(`cxjs_sum(${fmt(input)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_sum(input), result);
+	    });
+	}
+
+    // Sparse arrays.
+    for (const [ input, result ] of [
+	// Input            Result
+	[ [1, , 3],         4 ],  // hole between two values
+	[ [, , 5],          5 ],  // two holes, one value
+    ])	{
+	test(`cxjs_sum(${fmt(input)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_sum(input), result);
+	    });
+	}
+
+    test('cxjs_sum(array with extra non-index prop) = 6', () =>
+	{
+	const a = [1, 2, 3];
+	a.foo = 99;             // ignored: numeric-index loop only
+	assert.equal(env.cxjs_sum(a), 6);
+	});
+
+    // Value on the prototype is summed alongside other properties.
+    test('cxjs_sum(object with inherited enumerable prop) = 4', () =>
+	{
+	function Proto() { this.a = 3; }
+	Proto.prototype.b = 1;
+	assert.equal(env.cxjs_sum(new Proto()), 4);
+	});
     });

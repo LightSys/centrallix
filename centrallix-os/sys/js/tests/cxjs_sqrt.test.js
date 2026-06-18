@@ -14,15 +14,18 @@ const { describe, test } = require('node:test');
 const assert             = require('node:assert/strict');
 const env                = require('./_setup');
 
-// JSON.stringify collapses NaN/Infinity to "null" and omits undefined, which
-// would make distinct edge-case rows share a test name; fmt renders those
-// values verbatim (and otherwise matches JSON.stringify) so names stay unique.
+// JSON.stringify collapses NaN/Infinity to "null", omits undefined, and renders
+// -0 as "0", which would make distinct edge-case rows share a test name; fmt
+// renders those values verbatim (and -0 distinctly from 0) while otherwise
+// matching JSON.stringify, so names stay unique.
 function fmt(v)
     {
     if (Array.isArray(v))
 	return '[' + v.map(fmt).join(',') + ']';
     if (v !== null && typeof v === 'object')
 	return '{' + Object.keys(v).map((k) => JSON.stringify(k) + ':' + fmt(v[k])).join(',') + '}';
+    if (Object.is(v, -0))
+	return '-0';
     if (typeof v === 'number' || v === undefined)
 	return String(v);
     return JSON.stringify(v);
@@ -40,10 +43,20 @@ describe('cxjs_sqrt', () =>
 	[ 0,            0          ],
 	[ -0,          -0          ],  // preserved: Math.sqrt(-0) is -0, not NaN
 	[ Infinity,     Infinity   ],
+	[ 625,          25         ],  // larger perfect square
     ])	{
 	test(`cxjs_sqrt(${fmt(input)}) = ${fmt(result)}`, () =>
 	    {
 	    assert.equal(env.cxjs_sqrt(input), result);
+	    });
+	}
+
+    // Extreme magnitudes stay finite.
+    for (const input of [ 1e308, Number.MAX_VALUE, 1e-200, Number.MIN_VALUE ])
+	{
+	test(`cxjs_sqrt(${fmt(input)}) = Math.sqrt(${fmt(input)})`, () =>
+	    {
+	    assert.equal(env.cxjs_sqrt(input), Math.sqrt(input));
 	    });
 	}
 
@@ -71,6 +84,7 @@ describe('cxjs_sqrt', () =>
 	// Input        Result
 	[ '4',          2     ],
 	[ '2.25',       1.5   ],
+	[ '-1',         null  ],  // string coerces to -1, which has no real root
 	[ '',           0     ],  // empty string coerces to 0
 	[ 'foo',        null  ],  // non-numeric string coerces to NaN
 	[ true,         1     ],

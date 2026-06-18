@@ -14,15 +14,18 @@ const { describe, test } = require('node:test');
 const assert             = require('node:assert/strict');
 const env                = require('./_setup');
 
-// JSON.stringify collapses NaN/Infinity to "null" and omits undefined, which
-// would make distinct edge-case rows share a test name; fmt renders those
-// values verbatim (and otherwise matches JSON.stringify) so names stay unique.
+// JSON.stringify collapses NaN/Infinity to "null", omits undefined, and renders
+// -0 as "0", which would make distinct edge-case rows share a test name; fmt
+// renders those values verbatim, distinguishes -0 from 0, and otherwise matches
+// JSON.stringify, so names stay unique.
 function fmt(v)
     {
     if (Array.isArray(v))
 	return '[' + v.map(fmt).join(',') + ']';
     if (v !== null && typeof v === 'object')
 	return '{' + Object.keys(v).map((k) => JSON.stringify(k) + ':' + fmt(v[k])).join(',') + '}';
+    if (Object.is(v, -0))
+	return '-0';
     if (typeof v === 'number' || v === undefined)
 	return String(v);
     return JSON.stringify(v);
@@ -47,7 +50,7 @@ describe('cxjs_min', () =>
 	[ [undefined],             undefined ],
 	[ [undefined, 0],          0         ],
     ])	{
-	test(`cxjs_min(${JSON.stringify(input)}) = ${result}`, () =>
+	test(`cxjs_min(${fmt(input)}) = ${fmt(result)}`, () =>
 	    {
 	    assert.equal(env.cxjs_min(input), result);
 	    });
@@ -70,14 +73,13 @@ describe('cxjs_min', () =>
 	[ { D: undefined },                  undefined ],
 	[ { E: undefined, F: 0 },            0         ],
     ])	{
-	test(`cxjs_min(${JSON.stringify(input)}) = ${result}`, () =>
+	test(`cxjs_min(${fmt(input)}) = ${fmt(result)}`, () =>
 	    {
 	    assert.equal(env.cxjs_min(input), result);
 	    });
 	}
 
-    // Scalar (non-array, non-object) inputs hit the else branch and are
-    // returned verbatim, with no comparison performed.
+    // Scalar (non-array, non-object) inputs.
     for (const [ input, result ] of [
 	// Input        Result
 	[ 5,            5         ],
@@ -96,9 +98,7 @@ describe('cxjs_min', () =>
 	    });
 	}
 
-    // null and NaN within a collection are handled specially: a NaN running
-    // minimum is discarded via the isNaN(lowest) guard, and null compares as 0
-    // (so it wins as the minimum) but is preserved in the result.
+    // null and NaN list edge cases.
     for (const [ input, result ] of [
 	// Input               Result
 	[ [5],                 5         ],  // single element
@@ -121,19 +121,105 @@ describe('cxjs_min', () =>
 	    });
 	}
 
-    // Non-numeric strings make isNaN(lowest) true on every pass, so the
-    // comparison is bypassed and the last element is always returned -- min
-    // does not actually order non-numeric strings. Numeric strings, by
-    // contrast, are compared lexically (not by numeric value).
+    // Non-numeric strings.
     for (const [ input, result ] of [
 	// Input                    Result
-	[ ['b', 'a', 'c'],          'c'    ],  // last element wins, not 'a'
+	[ ['b', 'a', 'c'],          'c'      ],  // last element wins, not 'a'
 	[ ['apple', 'banana'],      'banana' ],
-	[ ['10', '9', '100'],       '10'   ],  // lexical compare: '10' < '9' < '100'
+	[ ['10', '9', '100'],       '10'     ],  // lexical compare: '10' < '9' < '100'
     ])	{
 	test(`cxjs_min(${fmt(input)}) = ${fmt(result)}`, () =>
 	    {
 	    assert.equal(env.cxjs_min(input), result);
 	    });
 	}
+
+    // Lists with NaNs.
+    for (const [ input, result ] of [
+	// Input                 Result
+	[ [5, NaN, 3],           3   ], 
+	[ [NaN, NaN, 5],         5   ],
+	[ [3, NaN, 1],           1   ],
+	[ [1, NaN, 2, NaN, 3],   1   ],
+	[ [5, NaN, 3, NaN, 1],   1   ],
+    ])	{
+	test(`cxjs_min(${fmt(input)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_min(input), result);
+	    });
+	}
+
+    // null compares as 0.
+    for (const [ input, result ] of [
+	// Input          Result
+	[ [-1, null],    -1     ],  // -1 < null(0), so -1 wins
+	[ [null, -1],    -1     ],
+	[ [1, null],      null  ],  // null(0) < 1, so null wins and is preserved
+	[ [null, 1],      null  ],
+    ])	{
+	test(`cxjs_min(${fmt(input)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_min(input), result);
+	    });
+	}
+
+    // Misc edge cases.
+    for (const [ input, result ] of [
+	// Input                       Result
+	[ [Infinity, -Infinity],      -Infinity  ],
+	[ [-Infinity, Infinity],      -Infinity  ],
+	[ [-0, 0],                    -0         ],  // -0 > 0 is false, so -0 is kept
+	[ [0, -0],                     0         ],  // 0 > -0 is false, so 0 is kept
+	[ [-0],                       -0         ],
+	[ [true, false],               false     ],  // false(0) < true(1)
+	[ [false, true],               false     ],
+	[ [2, true],                   true      ],  // true(1) < 2, returned as boolean
+	[ [0, false],                  0         ],  // false(0) not < 0, so 0 kept
+    ])	{
+	test(`cxjs_min(${fmt(input)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_min(input), result);
+	    });
+	}
+
+    // Numbers mixed with numeric strings.
+    for (const [ input, result ] of [
+	// Input              Result
+	[ [2, '10'],          2    ],  // numeric compare: 2 < 10
+	[ ['10', 2],          2    ],
+	[ [5, '3', 4],        '3'  ],  // '3' is numerically least, kept as a string
+    ])	{
+	test(`cxjs_min(${fmt(input)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_min(input), result);
+	    });
+	}
+
+    // Sparse arrays.
+    for (const [ input, result ] of [
+	// Input            Result
+	[ [1, , 3],         1 ],  // 1 < 3, the hole is skipped
+	[ [, , 5],          5 ],
+    ])	{
+	test(`cxjs_min(${fmt(input)}) = ${fmt(result)}`, () =>
+	    {
+	    assert.equal(env.cxjs_min(input), result);
+	    });
+	}
+
+    test('cxjs_min(array with extra non-index prop) = 1', () =>
+	{
+	const a = [1, 2, 3];
+	a.foo = 99;             // ignored: numeric-index loop only
+	assert.equal(env.cxjs_min(a), 1);
+	});
+
+    // for...in over an object visits inherited enumerable properties too, so a
+    // value on the prototype participates in the comparison.
+    test('cxjs_min(object with inherited enumerable prop) = 1', () =>
+	{
+	function Proto() { this.a = 3; }
+	Proto.prototype.b = 1;
+	assert.equal(env.cxjs_min(new Proto()), 1);
+	});
     });

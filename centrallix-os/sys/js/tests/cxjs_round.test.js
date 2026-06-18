@@ -86,18 +86,50 @@ describe('cxjs_round', () =>
 	
 	// Sign of a zero: strictly positive inputs give +0, while zero and
 	// negative inputs give -0.
-	// Args        Result
-	[ [0.1],       0  ],
-	[ [0.4],       0  ],
-	[ [0],        -0  ],
-	[ [-0.1],     -0  ],
-	[ [-0.4],     -0  ],
+	// Args             Result
+	[ [0.1],            0  ],
+	[ [0.4],            0  ],
+	[ [0],             -0  ],
+	[ [-0.1],          -0  ],
+	[ [-0.4],          -0  ],
 	
 	// Values that are exact halves in decimal are not always representable in
 	// binary, so they might be rounded down rather than up.
 	// Args            Result
 	[ [1.005, 2],      1    ],  // not 1.01
 	[ [1.255, 2],      1.25 ],  // not 1.26
+	[ [2.675, 2],      2.68 ],  // stored slightly above 2.675 -> up
+	[ [0.615, 2],      0.62 ],  // stored slightly above 0.615 -> up
+	[ [8.575, 2],      8.57 ],  // stored slightly below 8.575 -> down
+
+	// -0 is preserved across nonzero dec.
+	// Args            Result
+	[ [-0, 2],        -0    ],
+	[ [-0, 5],        -0    ],
+	[ [0, -2],        -0    ],  // zero takes the ceil branch -> -0
+
+	// Extreme magnitudes: scaling can overflow to Infinity, and tiny
+	// subnormals round to a signed zero.
+	// Args                  Result
+	[ [Number.MAX_VALUE, 2], Infinity         ],  // n*100 overflows
+	[ [Number.MAX_VALUE],    Number.MAX_VALUE ],
+	[ [Number.MIN_VALUE],    0                ],  // smallest subnormal -> +0
+	[ [-Number.MIN_VALUE],  -0                ],
+
+	// factor = 10**dec can itself overflow/underflow if |dec| is large.
+	// Args            Result
+	[ [5, -400],       NaN  ],
+	[ [1e300, -400],   NaN  ],
+
+	// dec coercion.
+	// Args              Result
+	[ [1.555, '2'],      1.56 ],  // dec "2" -> 2
+	[ [1.5, ''],         2    ],  // dec "" -> 0
+	[ [1.5, 'foo'],      NaN  ],  // dec NaN -> factor NaN -> NaN
+	[ [1.5, NaN],        NaN  ],
+	[ [1.5, Infinity],   NaN  ],  // 10**Infinity = Infinity, n*Inf=Inf, /Inf=NaN
+	[ [1.5, -Infinity],  NaN  ],  // 10**-Infinity = 0
+	[ [1.5, -2.5],       0    ],  // Math.round(-2.5) = -2 (ties toward +Inf)
 	
 	// n is coerced to a number before rounding (matching JS arithmetic rules).
 	// Args        Result
