@@ -1402,7 +1402,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
     pXString xs, param;
     pTObjData ptod;
     char sourcetype[64];
-    static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
+    static char* reserved_wds[] = {"where","select","from","order","by","default","set","rowcount","group",
     				   "crosstab","as","having","into","update","delete","insert",
 				   "values","with","limit","for","on","duplicate", "declare",
 				   "showplan", "multistatement", "if", "modified", "exec", 
@@ -1506,9 +1506,9 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 				 *** to be replaced by later ORDER BYs, instead of
 				 *** appended to. (see mq_internal_PostProcess()).
 				 ***/
-				if ((t = mlxNextToken(lxs)) == MLX_TOK_KEYWORD &&
+				if ((t = mlxNextToken(lxs)) == MLX_TOK_RESERVEDWD &&
 				    (ptr = mlxStringVal(lxs, NULL)) != NULL && 
-				    strcasecmp(ptr, "default") == 0)
+				    strcmp(ptr, "default") == 0)
 				    orderby_cls->Flags |= MQ_SF_DEFAULTORDER;
 				else
 				    mlxHoldToken(lxs);
