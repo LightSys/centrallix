@@ -593,7 +593,7 @@ test-js:
 		echo "Install Node.js (or load it in nvm with 'nvm use'), then try again."; \
 		exit 1; \
 	fi; \
-	"$$NODE_BIN" --test '../centrallix-os/sys/js/tests/*.test.js' 2>&1
+	"$$NODE_BIN" --test ../centrallix-os/sys/js/tests/*.test.js 2>&1
 
 test-js-coverage:
 	@NODE_BIN="$(NODE)"; \
@@ -607,7 +607,7 @@ test-js-coverage:
 	"$$NODE_BIN" --test --experimental-test-coverage \
 		--test-reporter=lcov --test-reporter-destination=lcov.info \
 		--test-reporter=spec --test-reporter-destination=stdout \
-		'centrallix-os/sys/js/tests/*.test.js'
+		centrallix-os/sys/js/tests/*.test.js
 
 sfeditor/sfedit.o: sfeditor/sfedit.c sfeditor/*.xpm
 	$(CC) $(CFLAGS) `gtk-config --cflags` $< -c -o $@
