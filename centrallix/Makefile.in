@@ -415,6 +415,7 @@ V3LSOBJS=$(V3BASEOBJS) $(HTDRIVERS) $(NETDRIVERS) $(WGTRDRIVERS)
 .PHONY:	test_install
 .PHONY:	test
 .PHONY:	test-js
+.PHONY:	test-js-coverage
 
 all:	centrallix mods config manpages cxpasswd test_obj linksign
 
@@ -593,6 +594,20 @@ test-js:
 		exit 1; \
 	fi; \
 	"$$NODE_BIN" --test '../centrallix-os/sys/js/tests/*.test.js' 2>&1
+
+test-js-coverage:
+	@NODE_BIN="$(NODE)"; \
+	[ -n "$$NODE_BIN" ] || NODE_BIN=$$(command -v node); \
+	if [ -z "$$NODE_BIN" ]; then \
+		echo "Error: node not found (not detected by configure, not on PATH)."; \
+		echo "Install Node.js (or load it in nvm with 'nvm use'), then try again."; \
+		exit 1; \
+	fi; \
+	cd .. && \
+	"$$NODE_BIN" --test --experimental-test-coverage \
+		--test-reporter=lcov --test-reporter-destination=lcov.info \
+		--test-reporter=spec --test-reporter-destination=stdout \
+		'centrallix-os/sys/js/tests/*.test.js'
 
 sfeditor/sfedit.o: sfeditor/sfedit.c sfeditor/*.xpm
 	$(CC) $(CFLAGS) `gtk-config --cflags` $< -c -o $@
