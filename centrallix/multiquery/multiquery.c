@@ -660,7 +660,7 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 	    subtree = (pQueryStructure)xaGetItem(&qs->Children, i);
 	    const bool is_last = (subtree == last_orderby);
 
-	     /** Skip non ORDER BY clauses. **/
+	    /** Skip non ORDER BY clauses. **/
 	    if (subtree->NodeType != MQ_T_ORDERBYCLAUSE)
 		{
 		i++;
@@ -669,7 +669,13 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 
 	    /** Drop a DEFAULT clause that isn't the last one. **/
 	    if ((subtree->Flags & MQ_SF_DEFAULTORDER) && !is_last)
-		goto remove_order_by_element;
+		{
+		/** Remove ORDER BY element. **/
+		xaRemoveItem(&qs->Children, i);
+		mq_internal_FreeQS(subtree);
+		cnt = xaCount(&qs->Children);
+		continue;
+		}
 
 	    /** Keep the first surviving clause. **/
 	    if (ob == NULL)
@@ -688,8 +694,7 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		}
 	    xaClear(&subtree->Children, NULL, NULL);
 
-	    /** Remove the folded ORDER BY element. **/
-    remove_order_by_element:
+	    /** Remove ORDER BY element. **/
 	    xaRemoveItem(&qs->Children, i);
 	    mq_internal_FreeQS(subtree);
 	    cnt = xaCount(&qs->Children);
