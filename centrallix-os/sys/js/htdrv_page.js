@@ -2735,8 +2735,6 @@ function pg_dotip_complete()
 // Is the DIV or LAYER "l" restricted due to a modal dialog?
 function pg_checkmodal(l)
     {
-    // Let events through while a window drag is in progress.
-    if (window.wn_current) return false;
     var restricted = pg_modallayer && !pg_isinlayer(pg_modallayer, l) && !(wgtrIsNode(l) && wgtrIsNode(pg_modallayer) && wgtrIsChild(pg_modallayer, l));
     if (restricted && l.kind == 'dt_pn' && ((l.ml && wgtrIsNode(l.ml) && wgtrIsNode(pg_modallayer) && wgtrIsChild(pg_modallayer, l.ml)) || (l.parentElement && l.parentElement.ml && wgtrIsNode(l.parentElement.ml) && wgtrIsNode(pg_modallayer) && wgtrIsChild(pg_modallayer, l.parentElement.ml))))
 	restricted = false;
@@ -2754,7 +2752,8 @@ function pg_mousemove(e)
 	pg_tipinfo.x = e.pageX;
 	pg_tipinfo.y = e.pageY;
 	}
-    if (pg_checkmodal(ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+    // A window drag must keep tracking the cursor when it moves off the modal.
+    if (pg_checkmodal(ly) && !window.wn_current) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
     /*if (pg_modallayer)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
@@ -2882,7 +2881,8 @@ function pg_mouseup(e)
     {
     var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
-    if (pg_checkmodal(ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+    // A window drag must be able to terminate when released off the modal.
+    if (pg_checkmodal(ly) && !window.wn_current) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
     /*if (pg_modallayer)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
