@@ -169,6 +169,7 @@ struct _PSFI
     pPrtHTMLfmSubtype	Subtype;
     int			Flags;			/* PRT_HTMLFM_F_xxx */
     int			StyleFlags;		/* PRT_HTMLFM_SF_xxx */
+    pXArray		Attachments;
     };
 
 #define MAX_IMAGE_SIZE (10 * 1024 * 1024) // 10 MB for image buffer
@@ -292,6 +293,8 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	if (!context->Subtype)
 	    goto error;
 
+	context->Attachments = xaNew(10);
+
 	/** Write the document header **/
 	if(context->Flags & PRT_HTMLFM_F_EMAIL) {
 	    prt_htmlfm_Output(context, PRT_HTMLFM_EMAIL_HEADER, -1);
@@ -414,7 +417,19 @@ prt_htmlfm_Close(void* context_v)
 	/** Write the document footer **/
 	prt_htmlfm_Output(context, PRT_HTMLFM_FOOTER, -1);
 
+	/**if email, print attachments**/
+	if(context->Flags & PRT_HTMLFM_F_EMAIL) {
+	    int i = 0;
+	    for(i = 0; i < xaCount(context->Attachments); i++){
+		prt_htmlfm_Output(context, xsString(xaGetItem(context->Attachments, i)), -1);
+	    }
+	}
+
 	/** Free memory used **/
+	if(context->Attachments) {
+	    xaClear(context->Attachments, (void*) xsFree, NULL);
+	    xaFree(context->Attachments);
+	}
 	nmFree(context, sizeof(PrtHTMLfmInf));
 
     return 0;
@@ -681,7 +696,6 @@ int ImageWriteFn(void *arg, const void *data, size_t len) {
 }
 
 //TODO CSMITH put in .h
-//TODO CSMITH remember to free()
 /** Encodes a char* input to base64 */
 char *base64_encode(const unsigned char *input, size_t len) {
 	const char b64_table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -822,11 +836,15 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 	
 		if(context->Flags & PRT_HTMLFM_F_EMAIL) {
 		    prt_htmlfm_OutputPrintf(context, "<img src=\"cid:image_%d\"", id);
-		    //TODO CSMITH: now buffer attachments
-		    //prt_htmlfm_Output("\n\n--" PRT_HTMLFM_EMAIL_BOUNDARY "\n", -1);
-		    //prt_htmlfm_Output("Content-Type: image/png\n", -1); //how to specify base64?
-		    //prt_htmlfm_OutputPrintf("Content-ID: image_%d\n", id);
-		    //prt_htmlfm_Output(base64Image);
+		    //New XString
+		    pXString attachment = xsNew();
+		    //Print attachment
+		    xsConcatPrintf(attachment, "\n\n--" PRT_HTMLFM_EMAIL_BOUNDARY "\n");
+		    xsConcatPrintf(attachment, "Content-Type: image/png\n"); //how to specify base64? SVG??
+		    xsConcatPrintf(attachment, "Content-ID: image_%d\n", id);
+		    xsConcatPrintf(attachment, "%s\n", base64Image);
+		    //add to context->Attachments
+		    xaAddItem(context->Attachments, attachment);
 		} else {
 
 		    if(obj->ObjType->TypeID == PRT_OBJ_T_IMAGE) {
