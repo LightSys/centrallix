@@ -2735,6 +2735,8 @@ function pg_dotip_complete()
 // Is the DIV or LAYER "l" restricted due to a modal dialog?
 function pg_checkmodal(l)
     {
+    // Let events through while a window drag is in progress.
+    if (window.wn_current) return false;
     var restricted = pg_modallayer && !pg_isinlayer(pg_modallayer, l) && !(wgtrIsNode(l) && wgtrIsNode(pg_modallayer) && wgtrIsChild(pg_modallayer, l));
     if (restricted && l.kind == 'dt_pn' && ((l.ml && wgtrIsNode(l.ml) && wgtrIsNode(pg_modallayer) && wgtrIsChild(pg_modallayer, l.ml)) || (l.parentElement && l.parentElement.ml && wgtrIsNode(l.parentElement.ml) && wgtrIsNode(pg_modallayer) && wgtrIsChild(pg_modallayer, l.parentElement.ml))))
 	restricted = false;
