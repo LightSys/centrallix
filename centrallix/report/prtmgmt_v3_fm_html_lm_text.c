@@ -286,5 +286,3 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 
     return 0;
     }
-
-

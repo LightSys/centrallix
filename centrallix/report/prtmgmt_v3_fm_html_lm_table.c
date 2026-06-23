@@ -184,5 +184,3 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 
     return 0;
     }
-
-

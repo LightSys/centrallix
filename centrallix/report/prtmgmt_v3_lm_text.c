@@ -1311,5 +1311,3 @@ prt_textlm_Initialize()
 
     return 0;
     }
-
-

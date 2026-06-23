@@ -80,4 +80,3 @@ int prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section);
 
 
 #endif /* not defined _PRTMGMT_V3_FM_HTML_H */
-
