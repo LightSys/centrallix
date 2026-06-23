@@ -116,11 +116,11 @@
 /*** this puts the min size at 9 (1), max size at 26 (7), and standard size at 12 (3) ***/
 static int prt_htmlfm_fontsize_to_htmlsize[] = {8,9,10,12,15,19,22,26};
 #define PRT_HTMLFM_MINFONTSIZE	(1)
-#define	PRT_HTMLFM_MAXFONTSIZE	(7)
+#define	PRT_HTMLFM_MAXFONTSIZE	(sizeof(prt_htmlfm_fontsize_to_htmlsize) / sizeof(prt_htmlfm_fontsize_to_htmlsize[0]) - 1)
 
 static char* prt_htmlfm_fontstyles[3] = { "Courier New,Courier,fixed", "Arial,Helvetica,MS Sans Serif", "Times New Roman,Times,MS Serif"};
 #define PRT_HTMLFM_MINFONTSTYLE	(0)
-#define PRT_HTMLFM_MAXFONTSTYLE	(2)
+#define PRT_HTMLFM_MAXFONTSTYLE	(sizeof(prt_htmlfm_fontstyles) / sizeof(prt_htmlfm_fontstyles[0]) - 1)
 
 /*** MIME media types ***/
 typedef struct
@@ -160,8 +160,8 @@ struct _PSFI
     int			InitStyle;
     int			ExitStyle;
     pPrtHTMLfmSubtype	Subtype;
-    int			Flags;			/* PRT_HTMLFM_F_xxx */
-    int			StyleFlags;		/* PRT_HTMLFM_SF_xxx */
+    SessionFlags	Flags;
+    StyleFlags		StyleFlags;
     pXArray		Attachments;
     };
 
