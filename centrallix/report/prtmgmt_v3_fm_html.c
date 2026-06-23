@@ -541,6 +541,8 @@ prt_htmlfm_WriteStyle(pPrtHTMLfmInf context) {
     /*Clear the dirty flags*/
     context->StyleFlags &= ~ (PRT_HTMLFM_SF_FONTDIRTY | PRT_HTMLFM_SF_UNDERLINEDIRTY |
 	    PRT_HTMLFM_SF_ITALICDIRTY | PRT_HTMLFM_SF_BOLDDIRTY);
+    
+    return 0;
 }
 
 /*** prt_htmlfm_InitStyle() - initialize style settings, as if we are 
@@ -715,11 +717,9 @@ char *base64_encode(const unsigned char *input, size_t len) {
 int
 prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
     {
-    char* path;
-    void* arg;
     int w,h;
     unsigned long id;
-    int rval, justif = 0;
+    int justif = 0;
     char* justifytypes[] = { "left", "right", "center", "justify" };
 
 	/** Check recursion **/
