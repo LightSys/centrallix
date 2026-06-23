@@ -48,6 +48,13 @@
 #define PRT_HTMLFM_F_PAGINATED          1
 #define PRT_HTMLFM_F_EMAIL              2
 
+/*** Style Flags ***/
+#define PRT_HTMLFM_SF_KEEPSPACES	1 //used after newlines to keep space-padding
+#define PRT_HTMLFM_SF_FONTDIRTY		2
+#define PRT_HTMLFM_SF_UNDERLINEDIRTY	4
+#define PRT_HTMLFM_SF_ITALICDIRTY	8
+#define PRT_HTMLFM_SF_BOLDDIRTY		16
+
 /** incomplete struct def'n - don't need whole thing here **/
 typedef struct _PSFI PrtHTMLfmInf, *pPrtHTMLfmInf;
 

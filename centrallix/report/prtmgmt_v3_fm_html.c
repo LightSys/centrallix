@@ -122,13 +122,6 @@ static char* prt_htmlfm_fontstyles[3] = { "Courier New,Courier,fixed", "Arial,He
 #define PRT_HTMLFM_MINFONTSTYLE	(0)
 #define PRT_HTMLFM_MAXFONTSTYLE	(2)
 
-/*** Style Flags ***/
-#define PRT_HTMLFM_SF_KEEPSPACES	1 //used after newlines to keep space-padding
-#define PRT_HTMLFM_SF_FONTDIRTY		2
-#define PRT_HTMLFM_SF_UNDERLINEDIRTY	4
-#define PRT_HTMLFM_SF_ITALICDIRTY	8
-#define PRT_HTMLFM_SF_BOLDDIRTY		16
-
 /*** MIME media types ***/
 typedef struct
     {
