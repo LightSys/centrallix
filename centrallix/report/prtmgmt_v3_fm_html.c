@@ -122,22 +122,12 @@ static char* prt_htmlfm_fontstyles[3] = { "Courier New,Courier,fixed", "Arial,He
 #define PRT_HTMLFM_MINFONTSTYLE	(0)
 #define PRT_HTMLFM_MAXFONTSTYLE	(sizeof(prt_htmlfm_fontstyles) / sizeof(prt_htmlfm_fontstyles[0]) - 1)
 
-/*** MIME media types ***/
-typedef struct
-    {
-    char*		MimeType;
-    char*		OutputMimeType;
-    int			SessionFlags;
-    }
-    PrtHTMLfmSubtype, *pPrtHTMLfmSubtype;
-
 static PrtHTMLfmSubtype prt_htmlfm_subtypes[] =
     {
     { "text/vnd.cx.paginated+html", "text/html", PRT_HTMLFM_F_PAGINATED },
     { "text/html", "text/html", 0 },
     { "multipart/vnd.cx.htmlemail+mixed", "multipart/mixed", PRT_HTMLFM_F_EMAIL },
     };
-
 
 /*** GLOBAL DATA FOR THIS MODULE ***/
 typedef struct _PSF
@@ -148,22 +138,6 @@ typedef struct _PSF
 
 PRT_HTMLFM_t PRT_HTMLFM;
 
-
-/*** Formatter internal structure (pPrtHTMLfmInf).  Typedef incomplete
- *** def'n is in the header file.  This completes it. 
- ***/
-struct _PSFI
-    {
-    pPrtSession		Session;
-    pPrtResolution	SelectedRes;
-    PrtTextStyle	CurStyle;
-    int			InitStyle;
-    int			ExitStyle;
-    pPrtHTMLfmSubtype	Subtype;
-    SessionFlags	Flags;
-    StyleFlags		StyleFlags;
-    pXArray		Attachments;
-    };
 
 #define MAX_IMAGE_SIZE (10 * 1024 * 1024) // 10 MB for image buffer
 

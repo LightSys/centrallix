@@ -44,13 +44,13 @@
 #define PRT_HTMLFM_XPIXEL               (7)
 #define PRT_HTMLFM_YPIXEL               (12)
 
-/*** Session flags ***/
+/** Session flags **/
 typedef unsigned char SessionFlags; /* A type holding 0 or more session flags. */
 #define PRT_HTMLFM_F_NO_FLAGS		((SessionFlags)0u)
 #define PRT_HTMLFM_F_PAGINATED          ((SessionFlags)1u)
 #define PRT_HTMLFM_F_EMAIL              ((SessionFlags)2u)
 
-/*** Style Flags ***/
+/** Style Flags **/
 typedef unsigned char StyleFlags; /* A type holding 0 or more style flags. */
 #define PRT_HTMLFM_SF_NO_FLAGS		((StyleFlags)0u)
 #define PRT_HTMLFM_SF_KEEPSPACES	((StyleFlags)1u) //used after newlines to keep space-padding
@@ -59,8 +59,29 @@ typedef unsigned char StyleFlags; /* A type holding 0 or more style flags. */
 #define PRT_HTMLFM_SF_ITALICDIRTY	((StyleFlags)8u)
 #define PRT_HTMLFM_SF_BOLDDIRTY		((StyleFlags)16u)
 
-/** incomplete struct def'n - don't need whole thing here **/
-typedef struct _PSFI PrtHTMLfmInf, *pPrtHTMLfmInf;
+/*** MIME media types ***/
+typedef struct
+    {
+    char*		MimeType;
+    char*		OutputMimeType;
+    int			SessionFlags;
+    }
+    PrtHTMLfmSubtype, *pPrtHTMLfmSubtype;
+
+/** HTML Report Inf **/
+typedef struct _PSFI
+    {
+    pPrtSession		Session;
+    pPrtResolution	SelectedRes;
+    PrtTextStyle	CurStyle;
+    int			InitStyle;
+    int			ExitStyle;
+    pPrtHTMLfmSubtype	Subtype;
+    SessionFlags	Flags;
+    StyleFlags		StyleFlags;
+    pXArray		Attachments;
+    }
+    PrtHTMLfmInf, *pPrtHTMLfmInf;
 
 
 /** Component generator support functions **/
