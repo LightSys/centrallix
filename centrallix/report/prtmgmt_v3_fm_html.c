@@ -141,11 +141,12 @@ struct _PSF
 
 /*** Struct that holds a raw file and its size
  ***/
-typedef struct {
-	char *buffer;
-	size_t size;
-	size_t capacity;
-} ImageBuffer;
+typedef struct
+    {
+    char*      buffer;
+    size_t     size;
+    size_t     capacity;
+    } ImageBuffer;
 
 
 /*** prt_htmlfm_Output() - outputs a string of text into the HTML
@@ -194,7 +195,7 @@ prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len)
 	if (len < 0) len = strlen(str);
 
 	/** Output with care... **/
-	while(str[offset] && offset < len)
+	while (str[offset] && offset < len)
 	    {
 	    badcharpos = strpbrk(str+offset, "<>& ");
 	    if (badcharpos)
@@ -204,14 +205,14 @@ prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len)
 	    if (endoffset - offset > 0)
 		prt_htmlfm_Output(context, str+offset, endoffset - offset);
 
-	    if(str[offset] != ' ')
-	    {
-	    /* we are no longer in our leading spaces, so don't &nbsp them */
+	    if (str[offset] != ' ')
+		{
+		/* we are no longer in our leading spaces, so don't &nbsp them */
 		context->StyleFlags &= (~PRT_HTMLFM_SF_KEEPSPACES);
-	    }
+		}
 	    if (badcharpos)
 		{
-		switch(*badcharpos)
+		switch (*badcharpos)
 		    {
 		    case '<': repl = "&lt;"; break;
 		    case '>': repl = "&gt;"; break;
@@ -246,7 +247,7 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	context->Session = s;
 
 	/** Is it an html type we can handle? **/
-	for(i=0; i<sizeof(prt_htmlfm_subtypes)/sizeof(PrtHTMLfmSubtype); i++)
+	for (i=0; i<sizeof(prt_htmlfm_subtypes)/sizeof(PrtHTMLfmSubtype); i++)
 	    {
 	    if (strcasecmp(output_type, prt_htmlfm_subtypes[i].MimeType) == 0)
 		{
@@ -261,9 +262,10 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	context->Attachments = xaNew(10);
 
 	/** Write the document header **/
-	if(context->Flags & PRT_HTMLFM_F_EMAIL) {
+	if (context->Flags & PRT_HTMLFM_F_EMAIL)
+	    {
 	    prt_htmlfm_Output(context, PRT_HTMLFM_EMAIL_HEADER, -1);
-	}
+	    }
 	prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, (context->Flags & PRT_HTMLFM_F_PAGINATED)?"#c0c0c0":"#ffffff");
 
 	return (void*)context;
@@ -304,12 +306,12 @@ prt_htmlfm_GetNearestFontSize(void* context_v, double req_size)
 	    return prt_htmlfm_fontsize_to_htmlsize[PRT_HTMLFM_MINFONTSIZE];
 
 	/** Grab size from the list **/
-	for(i=PRT_HTMLFM_MINFONTSIZE;i<=PRT_HTMLFM_MAXFONTSIZE;i++)
+	for (i=PRT_HTMLFM_MINFONTSIZE;i<=PRT_HTMLFM_MAXFONTSIZE;i++)
 	    {
 	    if (req_size <= prt_htmlfm_fontsize_to_htmlsize[i])
 		return prt_htmlfm_fontsize_to_htmlsize[i];
 	    }
-    
+
     return req_size;
     }
 
@@ -339,7 +341,7 @@ prt_htmlfm_GetCharacterMetric(void* context_v, char* str, pPrtTextStyle style, d
 
 	/** Ok, using times or helvetica. **/
 	n = 0.0;
-	while(*str)
+	while (*str)
 	    {
 	    if (*str < 0x20 || *str > 0x7E)
 		n += 1.0;
@@ -383,18 +385,20 @@ prt_htmlfm_Close(void* context_v)
 	prt_htmlfm_Output(context, PRT_HTMLFM_FOOTER, -1);
 
 	/**if email, print attachments**/
-	if(context->Flags & PRT_HTMLFM_F_EMAIL) {
-	    int i = 0;
-	    for(i = 0; i < xaCount(context->Attachments); i++){
+	if (context->Flags & PRT_HTMLFM_F_EMAIL)
+	    {
+	    for (int i = 0; i < xaCount(context->Attachments); i++)
+		{
 		prt_htmlfm_Output(context, xsString(xaGetItem(context->Attachments, i)), -1);
+		}
 	    }
-	}
 
 	/** Free memory used **/
-	if(context->Attachments) {
+	if (context->Attachments)
+	    {
 	    xaClear(context->Attachments, (void*) xsFree, NULL);
 	    xaFree(context->Attachments);
-	}
+	    }
 	nmFree(context, sizeof(PrtHTMLfmInf));
 
     return 0;
@@ -423,7 +427,6 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 		realComparePrecision(style->FontSize, context->CurStyle.FontSize, 0.5) != 0 || 
 		style->Color != context->CurStyle.Color);
 
-	
 	if ((!context->InitStyle) && (context->ExitStyle || boldchanged || italicchanged || underlinechanged || fontchanged))
 	    {
 	    /*For each thing, check dirty flag is clear to ensure opening tag was actually written*/
@@ -447,75 +450,76 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 	    }
 	if (context->ExitStyle) return 0;
 
-
 	/*Set the dirty flags as appropriate*/
 	if (context->InitStyle || boldchanged || italicchanged || underlinechanged || fontchanged)
 	    {
 	    if (context->InitStyle || italicchanged || underlinechanged || fontchanged)
 		{
 		if (context->InitStyle || underlinechanged || fontchanged)
-		{
-		    if (context->InitStyle || fontchanged)
 		    {
+		    if (context->InitStyle || fontchanged)
+			{
 			context->StyleFlags |= PRT_HTMLFM_SF_FONTDIRTY;
-		    }
+			}
 		    if (style->Attr & PRT_OBJ_A_UNDERLINE)
 			context->StyleFlags |= PRT_HTMLFM_SF_UNDERLINEDIRTY;
-		}
+		    }
 		if (style->Attr & PRT_OBJ_A_ITALIC)
 		    context->StyleFlags |= PRT_HTMLFM_SF_ITALICDIRTY;
-	    }
+		}
 	    if (style->Attr & PRT_OBJ_A_BOLD)
 		context->StyleFlags |= PRT_HTMLFM_SF_BOLDDIRTY;
 
 	    memcpy(&(context->CurStyle), style, sizeof(PrtTextStyle));
-	}
+	    }
+
     return 0;
     }
 
 int
-prt_htmlfm_WriteStyle(pPrtHTMLfmInf context) {
+prt_htmlfm_WriteStyle(pPrtHTMLfmInf context)
+    {
     pPrtTextStyle style = &(context->CurStyle);
     int htmlfontsize;
     int i;
     char stylebuf[128];
     
     /** Figure the size **/
-    for(i=PRT_HTMLFM_MINFONTSIZE;i<=PRT_HTMLFM_MAXFONTSIZE;i++)
-    {
-        if (realComparePrecision(prt_htmlfm_fontsize_to_htmlsize[i], style->FontSize, 0.5) == 0)
+    for (i=PRT_HTMLFM_MINFONTSIZE;i<=PRT_HTMLFM_MAXFONTSIZE;i++)
 	{
+        if (realComparePrecision(prt_htmlfm_fontsize_to_htmlsize[i], style->FontSize, 0.5) == 0)
+	    {
 	    htmlfontsize = i;
 	    break;
+	    }
 	}
-    }
     /*htmlfontsize = style->FontSize - PRT_HTMLFM_FONTSIZE_DEFAULT + PRT_HTMLFM_FONTSIZE_OFFSET;*/
     
-    if(context->StyleFlags & PRT_HTMLFM_SF_FONTDIRTY)
-    {
+    if (context->StyleFlags & PRT_HTMLFM_SF_FONTDIRTY)
+	{
 	snprintf(stylebuf, sizeof(stylebuf), "<font face=\"%s\" color=\"#%6.6X\" size=\"%d\">",
 	    prt_htmlfm_GetFont(style), style->Color, htmlfontsize);
 	prt_htmlfm_Output(context, stylebuf, -1);
-    }
-    if(context->StyleFlags & PRT_HTMLFM_SF_UNDERLINEDIRTY)
-    {
+	}
+    if (context->StyleFlags & PRT_HTMLFM_SF_UNDERLINEDIRTY)
+	{
 	prt_htmlfm_Output(context, "<u>", 3);
-    }
-    if(context->StyleFlags & PRT_HTMLFM_SF_ITALICDIRTY)
-    {
+	}
+    if (context->StyleFlags & PRT_HTMLFM_SF_ITALICDIRTY)
+	{
 	prt_htmlfm_Output(context, "<i>", 3);
-    }
-    if(context->StyleFlags & PRT_HTMLFM_SF_BOLDDIRTY)
-    {
+	}
+    if (context->StyleFlags & PRT_HTMLFM_SF_BOLDDIRTY)
+	{
 	prt_htmlfm_Output(context, "<b>", 3);
-    }
+	}
 
     /*Clear the dirty flags*/
     context->StyleFlags &= ~ (PRT_HTMLFM_SF_FONTDIRTY | PRT_HTMLFM_SF_UNDERLINEDIRTY |
 	    PRT_HTMLFM_SF_ITALICDIRTY | PRT_HTMLFM_SF_BOLDDIRTY);
     
     return 0;
-}
+    }
 
 /*** prt_htmlfm_InitStyle() - initialize style settings, as if we are 
  *** entering a new subcontainer.
@@ -584,9 +588,10 @@ prt_htmlfm_EndStyle(pPrtHTMLfmInf context)
  *** the next non-space character 
  ***/
 void
-prt_htmlfm_SetKeepSpaces(pPrtHTMLfmInf context) {
+prt_htmlfm_SetKeepSpaces(pPrtHTMLfmInf context)
+    {
     context->StyleFlags |= PRT_HTMLFM_SF_KEEPSPACES;
-}
+    }
 
 
 /*** prt_htmlfm_Border() - use nested tables to create a border matching
@@ -603,7 +608,7 @@ prt_htmlfm_Border(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj)
 	m = (obj->MarginTop + obj->MarginBottom + obj->MarginLeft + obj->MarginRight)*PRT_HTMLFM_XPIXEL/4;
 
 	/** Construct the border for each element **/
-	for(i=0;i<border->nLines;i++)
+	for (i=0;i<border->nLines;i++)
 	    {
 	    /** Output border line itself **/
 	    bw = border->Width[i]*PRT_HTMLFM_XPIXEL + 0.5;
@@ -637,7 +642,7 @@ prt_htmlfm_EndBorder(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj
     int i;
 
 	/** Construct the end-border for each element **/
-	for(i=0;i<border->nLines;i++)
+	for (i=0;i<border->nLines;i++)
 	    {
 	    /** Output border line itself **/
 	    prt_htmlfm_Output(context, "</td></tr></table></td></tr></table>\n",-1);
@@ -652,35 +657,42 @@ prt_htmlfm_EndBorder(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj
 
 //TODO CSMITH put in .h
 /** Gets size of image file */
-int ImageWriteFn(void *arg, const void *data, size_t len) {
+int
+ImageWriteFn(void *arg, const void *data, size_t len)
+    {
 	ImageBuffer *imgBuf = (ImageBuffer *)arg;
-	if (imgBuf->size + len > imgBuf->capacity) {
-		return -1;  // Buffer overflow
-	}
+	if (imgBuf->size + len > imgBuf->capacity)
+	    {
+	    return -1;  // Buffer overflow
+	    }
+
 	memcpy(imgBuf->buffer + imgBuf->size, data, len);
 	imgBuf->size += len;
 	return len;
-}
+    }
 
 //TODO CSMITH put in .h
 /** Encodes a char* input to base64 */
-char *base64_encode(const unsigned char *input, size_t len) {
+char*
+base64_encode(const unsigned char *input, size_t len)
+    {
 	const char b64_table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 	size_t out_len = 4 * ((len + 2) / 3);
 	char *output = (char *)nmMalloc(out_len + 1);
 	if (!output) return NULL;
 
 	char *p = output;
-	for (size_t i = 0; i < len; i += 3) {
-		int val = (input[i] << 16) | ((i + 1 < len ? input[i + 1] : 0) << 8) | (i + 2 < len ? input[i + 2] : 0);
-		*p++ = b64_table[(val >> 18) & 0x3F];
-		*p++ = b64_table[(val >> 12) & 0x3F];
-		*p++ = (i + 1 < len) ? b64_table[(val >> 6) & 0x3F] : '=';
-		*p++ = (i + 2 < len) ? b64_table[val & 0x3F] : '=';
-	}
+	for (size_t i = 0; i < len; i += 3)
+	    {
+	    int val = (input[i] << 16) | ((i + 1 < len ? input[i + 1] : 0) << 8) | (i + 2 < len ? input[i + 2] : 0);
+	    *p++ = b64_table[(val >> 18) & 0x3F];
+	    *p++ = b64_table[(val >> 12) & 0x3F];
+	    *p++ = (i + 1 < len) ? b64_table[(val >> 6) & 0x3F] : '=';
+	    *p++ = (i + 2 < len) ? b64_table[val & 0x3F] : '=';
+	    }
 	*p = '\0';
 	return output;
-}
+    }
 
 
 /*** prt_htmlfm_Generate_r() - recursive worker routine to do the bulk
@@ -702,15 +714,15 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 	    }
 
 	/** Select the type of object we're formatting **/
-	switch(obj->ObjType->TypeID)
+	switch (obj->ObjType->TypeID)
 	    {
 	    case PRT_OBJ_T_STRING:
 		prt_htmlfm_SetStyle(context, &(obj->TextStyle));
 
-		if(strlen((char*) obj->Content))
-		{
+		if (strlen((char*) obj->Content))
+		    {
 		    prt_htmlfm_WriteStyle(context);
-    		}
+		    }
 
 		if (obj->URL && !strchr(obj->URL, '"'))
 		    {
@@ -720,9 +732,10 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    }
 		prt_htmlfm_OutputEncoded(context, (char*)obj->Content, -1);
 
-		if ((obj->Flags & PRT_OBJ_F_SOFTNEWLINE) && (obj->Flags & PRT_TEXTLM_F_RMSPACE)) {
+		if ((obj->Flags & PRT_OBJ_F_SOFTNEWLINE) && (obj->Flags & PRT_TEXTLM_F_RMSPACE))
+		    {
 		    prt_htmlfm_OutputEncoded(context, " ", 1);
-		}
+		    }
 
 		if (obj->URL && !strchr(obj->URL, '"'))
 		    {
@@ -754,11 +767,13 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 	    case PRT_OBJ_T_IMAGE:
 	    case PRT_OBJ_T_SVG:
 		justif=0;
-		if(obj->Parent) {
-		    if (obj->X > 0.1 && obj->Parent->Width - obj->Parent->MarginLeft - obj->Parent->MarginRight - obj->Width - 0.1 <= obj->X) {
+		if (obj->Parent)
+		    {
+		    if (obj->X > 0.1 && obj->Parent->Width - obj->Parent->MarginLeft - obj->Parent->MarginRight - obj->Width - 0.1 <= obj->X)
+			{
 			justif = 1;
+			}
 		    }
-		}
 		
 		id = PRT_HTMLFM.ImageID++;
 		w = obj->Width*PRT_HTMLFM_XPIXEL;
@@ -768,29 +783,34 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		
 		// lifetime start: buf
 		ImageBuffer imgBuf = { (char *)nmMalloc(MAX_IMAGE_SIZE), 0, MAX_IMAGE_SIZE };
-		if (!imgBuf.buffer) {
+		if (!imgBuf.buffer)
+		    {
 		    mssError(1, "PRT", "nmMalloc() failed\n");
 		    return -1;
-		}
+		    }
 		
 		// Capture image to buffer
 		//TODO we weren't supposed to replace context->Session->ImageWriteFn with ImageWriteFn,
 		// except the former references the image store I think which we don't want anymore...
-		if(obj->ObjType->TypeID == PRT_OBJ_T_IMAGE) {
+		if(obj->ObjType->TypeID == PRT_OBJ_T_IMAGE)
+		    {
 		    prt_internal_WriteImageToPNG(ImageWriteFn, &imgBuf, (pPrtImage)(obj->Content), w, h);
-		} else {
+		    }
+		else
+		    {
 		    prt_internal_WriteSvgToFile(ImageWriteFn, &imgBuf, (pPrtSvg)(obj->Content), w, h);
-		}
+		    }
 
 		// Encode image to base64
 		// copy out of lifetime: buf into img
 		char *base64Image = base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size);
 		// lifetime end: buf
 		nmFree(imgBuf.buffer, MAX_IMAGE_SIZE);
-		if (!base64Image) {
+		if (!base64Image)
+		    {
 		    mssError(1, "PRT", "Base64 encoding failed\n");
 		    return -1;
-		}
+		    }
 		
 		if (obj->URL && !strchr(obj->URL, '"'))
 		    {
@@ -799,7 +819,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    prt_htmlfm_Output(context, "\">", 2);
 		    }
 	
-		if(context->Flags & PRT_HTMLFM_F_EMAIL) {
+		if (context->Flags & PRT_HTMLFM_F_EMAIL)
+		    {
 		    prt_htmlfm_OutputPrintf(context, "<img src=\"cid:image_%d\"", id);
 		    //New XString
 		    pXString attachment = xsNew();
@@ -810,16 +831,20 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    xsConcatPrintf(attachment, "%s\n", base64Image);
 		    //add to context->Attachments
 		    xaAddItem(context->Attachments, attachment);
-		} else {
-
-		    if(obj->ObjType->TypeID == PRT_OBJ_T_IMAGE) {
+		    }
+		else
+		    {
+		    if (obj->ObjType->TypeID == PRT_OBJ_T_IMAGE)
+			{
 			prt_htmlfm_OutputPrintf(context, "<img src=\"data:image/png;base64,%s\"", 
 			    base64Image, justifytypes[justif], w, h);
-		    } else {
+			}
+		    else
+			{
 			prt_htmlfm_OutputPrintf(context, "<img src=\"data:image/svg+xml;base64,%s\"", 
 			    base64Image, justifytypes[justif], w, h);
+			}
 		    }
-		}
 		prt_htmlfm_OutputPrintf(context, " align=\"%s\" border=\"0\" width=\"%d\" height=\"%d\">", 
 		    justifytypes[justif], w, h);
 
@@ -891,7 +916,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	 ** "columns" and "rows" we need to put in the "table" used for layout
 	 ** purposes.
 	 **/
-	for(subobj=page_obj->ContentHead; subobj; subobj=subobj->Next)
+	for (subobj=page_obj->ContentHead; subobj; subobj=subobj->Next)
 	    {
 	    if (n_cols < PRT_HTMLFM_MAXCOLS)
 		{
@@ -945,7 +970,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 
 	/** Write the layout table **/
 	prt_htmlfm_Output(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n", -1);
-	for(i=0;i<n_cols;i++)
+	for (i=0;i<n_cols;i++)
 	    {
 	    if (i == n_cols-1)
 		w = (page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight - colpos[i])*PRT_HTMLFM_XPIXEL;
@@ -959,7 +984,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	cur_col = 0;
 	last_height = 0.0;
 	prt_htmlfm_Output(context, "<tr>", 4);
-	for(subobj=page_obj; subobj; subobj=subobj->YNext)
+	for (subobj=page_obj; subobj; subobj=subobj->YNext)
 	    {
 	    if (subobj->Parent == page_obj)
 		{
@@ -990,10 +1015,10 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 
 		/** Figure rowspan and colspan **/
 		cs=1;
-		while(cur_col+cs < n_cols && (colpos[cur_col+cs]+0.001) < subobj->X + subobj->Width) cs++;
+		while (cur_col+cs < n_cols && (colpos[cur_col+cs]+0.001) < subobj->X + subobj->Width) cs++;
 		rs=1;
-		while(cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height) {
-		    if(subobj->Height <= subobj->ConfigHeight+1.5 && 
+		while (cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height) {
+		    if (subobj->Height <= subobj->ConfigHeight+1.5 && 
 			(rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->ConfigHeight) rs++;
 		    else break;
 		}
@@ -1063,7 +1088,7 @@ prt_htmlfm_Initialize()
 	prtRegisterFormatter(fmtdrv);
 
 	/** Register with the cx.sysinfo /prtmgmt/output_types dir **/
-	for(i=0; i<sizeof(prt_htmlfm_subtypes)/sizeof(PrtHTMLfmSubtype); i++)
+	for (i=0; i<sizeof(prt_htmlfm_subtypes)/sizeof(PrtHTMLfmSubtype); i++)
 	    {
 	    ptr = strchr(prt_htmlfm_subtypes[i].MimeType, '/');
 	    if (!ptr) return -1;

@@ -362,4 +362,3 @@ prtGetOutputType(pPrtSession s)
     {
     return s->Formatter->GetOutputType(s->FormatterData);
     }
-
