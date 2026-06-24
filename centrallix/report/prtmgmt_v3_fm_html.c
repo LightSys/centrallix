@@ -130,13 +130,11 @@ static PrtHTMLfmSubtype prt_htmlfm_subtypes[] =
     };
 
 /*** GLOBAL DATA FOR THIS MODULE ***/
-typedef struct _PSF
+struct _PSF
     {
     unsigned long	ImageID;
     }
-    PRT_HTMLFM_t;
-
-PRT_HTMLFM_t PRT_HTMLFM;
+    PRT_HTMLFM;
 
 
 #define MAX_IMAGE_SIZE (10 * 1024 * 1024) // 10 MB for image buffer
