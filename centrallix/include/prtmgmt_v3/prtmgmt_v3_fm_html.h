@@ -46,18 +46,18 @@
 
 /** Session flags **/
 typedef unsigned char SessionFlags; /* A type holding 0 or more session flags. */
-#define PRT_HTMLFM_F_NO_FLAGS		((SessionFlags)0u)
-#define PRT_HTMLFM_F_PAGINATED          ((SessionFlags)1u)
-#define PRT_HTMLFM_F_EMAIL              ((SessionFlags)2u)
+#define PRT_HTMLFM_F_NO_FLAGS		((SessionFlags)0b00000000u)
+#define PRT_HTMLFM_F_PAGINATED          ((SessionFlags)0b00000001u)
+#define PRT_HTMLFM_F_EMAIL              ((SessionFlags)0b00000010u)
 
 /** Style Flags **/
 typedef unsigned char StyleFlags; /* A type holding 0 or more style flags. */
-#define PRT_HTMLFM_SF_NO_FLAGS		((StyleFlags)0u)
-#define PRT_HTMLFM_SF_KEEPSPACES	((StyleFlags)1u) //used after newlines to keep space-padding
-#define PRT_HTMLFM_SF_FONTDIRTY		((StyleFlags)2u)
-#define PRT_HTMLFM_SF_UNDERLINEDIRTY	((StyleFlags)4u)
-#define PRT_HTMLFM_SF_ITALICDIRTY	((StyleFlags)8u)
-#define PRT_HTMLFM_SF_BOLDDIRTY		((StyleFlags)16u)
+#define PRT_HTMLFM_SF_NO_FLAGS		((StyleFlags)0b00000000u)
+#define PRT_HTMLFM_SF_KEEPSPACES	((StyleFlags)0b00000001u) //used after newlines to keep space-padding
+#define PRT_HTMLFM_SF_FONTDIRTY		((StyleFlags)0b00000010u)
+#define PRT_HTMLFM_SF_UNDERLINEDIRTY	((StyleFlags)0b00000100u)
+#define PRT_HTMLFM_SF_ITALICDIRTY	((StyleFlags)0b00001000u)
+#define PRT_HTMLFM_SF_BOLDDIRTY		((StyleFlags)0b00010000u)
 
 /*** MIME media types ***/
 typedef struct
