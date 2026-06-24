@@ -68,6 +68,11 @@
 				"<html lang=\"en\" width=\"100%\">\n" \
 				"<head>\n" \
 				"    <title>Centrallix HTML Document</title>\n" \
+				"    <meta charset=\"utf-8\">\n" \
+				"    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n" \
+				"    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" \
+				"    <meta name=\"pragma\" content=\"no-cache\">\n" \
+				"    <meta name=\"referrer\" content=\"same-origin\">\n" \
 				"    <meta name=\"Generator\" content=\"Centrallix PRTMGMT v3.0\">\n" \
 				"</head>\n" \
 				"<body bgcolor=\"%s\">\n"
