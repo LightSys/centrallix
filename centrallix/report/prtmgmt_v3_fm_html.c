@@ -83,10 +83,48 @@
 				"</html>\n"
 
 #define PRT_HTMLFM_EMAIL_BOUNDARY "cx-email-boundary"
+#define PRT_HTMLFM_ALT_BOUNDARY "cx-alt-boundary"
 
 //TODO CSMITH multipart/related?
-#define PRT_HTMLFM_EMAIL_HEADER "Content-Type: multipart/mixed; boundary=" PRT_HTMLFM_EMAIL_BOUNDARY "\n" \
-				"Content-Type: text/html\n"
+// TODO: Israel - Should some of these come from the mime type driver?
+#define PRT_HTMLFM_EMAIL_HEADER \
+    /** Email file header. **/ \
+    "MIME-Version: 1.0\n" \
+    "Content-Type: multipart/mixed; boundary="PRT_HTMLFM_EMAIL_BOUNDARY"\n" \
+    "\n" \
+    /** Declare fallback header. **/ \
+    "--"PRT_HTMLFM_EMAIL_BOUNDARY"\n" \
+    "Content-Type: multipart/alternative; boundary="PRT_HTMLFM_ALT_BOUNDARY"\n" \
+    "\n" \
+    /** Text fallback header. **/ \
+    "--"PRT_HTMLFM_ALT_BOUNDARY"\n" \
+    "Content-Type: text/plain; charset=utf-8\n" \
+    "Content-Transfer-Encoding: 7bit\n" \
+    "\n" \
+    "Oops! Your email client could not render this HTML.\n"
+
+#define PRT_HTMLFM_EMAIL_CONTENT_HEADER "\n" \
+    "--"PRT_HTMLFM_ALT_BOUNDARY"\n" \
+    "Content-Type: text/html; charset=utf-8\n" \
+    "Content-Transfer-Encoding: 7bit\n"
+
+#define PRT_HTMLFM_EMAIL_CONTENT_FOOTER \
+    "--"PRT_HTMLFM_ALT_BOUNDARY"--\n"
+
+#define PRT_HTMLFM_IMG_HEADER_FORMAT "\n" \
+    "--"PRT_HTMLFM_EMAIL_BOUNDARY"\n" \
+    "Content-Type: image/png\n" \
+    "Content-Transfer-Encoding: base64\n" \
+    "Content-Disposition: inline; filename=image_%d.png\n" \
+    "Content-ID: <image_%d>\n"
+
+#define PRT_HTMLFM_IMG_HEADER_VALUES(id) id, id
+
+#define PRT_HTMLFM_IMG_FOOTER ""
+
+#define PRT_HTMLFM_EMAIL_FOOTER \
+    "--"PRT_HTMLFM_EMAIL_BOUNDARY"--\n"
+
 
 /*** Page header - build the graphical layout showing the 'page'
  ***
@@ -266,11 +304,14 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 
 	context->Attachments = xaNew(10);
 
-	/** Write the document header **/
+	/** Write email headers. **/
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
 	    {
 	    prt_htmlfm_Output(context, PRT_HTMLFM_EMAIL_HEADER, -1);
+	    prt_htmlfm_Output(context, PRT_HTMLFM_EMAIL_CONTENT_HEADER, -1);
 	    }
+	
+	/** Write HTML header. **/
 	prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, (context->Flags & PRT_HTMLFM_F_PAGINATED)?"#c0c0c0":"#ffffff");
 
 	return (void*)context;
@@ -386,10 +427,14 @@ prt_htmlfm_Close(void* context_v)
     {
     pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;
 
-	/** Write the document footer **/
+	/** Write HTML footer. **/
 	prt_htmlfm_Output(context, PRT_HTMLFM_FOOTER, -1);
 
-	/**if email, print attachments**/
+	/** Write the email content footer (for email reports). **/
+	if (context->Flags & PRT_HTMLFM_F_EMAIL)
+	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_EMAIL_CONTENT_FOOTER);
+
+	/** Write attachments for emails. **/
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
 	    {
 	    for (int i = 0; i < xaCount(context->Attachments); i++)
@@ -397,6 +442,10 @@ prt_htmlfm_Close(void* context_v)
 		prt_htmlfm_Output(context, xsString(xaGetItem(context->Attachments, i)), -1);
 		}
 	    }
+
+	/** Write email footer. **/
+	if (context->Flags & PRT_HTMLFM_F_EMAIL)
+	    prt_htmlfm_Output(context, PRT_HTMLFM_EMAIL_FOOTER, -1);
 
 	/** Free memory used **/
 	if (context->Attachments)
@@ -827,14 +876,16 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		if (context->Flags & PRT_HTMLFM_F_EMAIL)
 		    {
 		    prt_htmlfm_OutputPrintf(context, "<img src=\"cid:image_%d\"", id);
-		    //New XString
+		    
+		    /** Add this attachment to the context. **/
 		    pXString attachment = xsNew();
-		    //Print attachment
-		    xsConcatPrintf(attachment, "\n\n--" PRT_HTMLFM_EMAIL_BOUNDARY "\n");
-		    xsConcatPrintf(attachment, "Content-Type: image/png\n"); //how to specify base64? SVG??
-		    xsConcatPrintf(attachment, "Content-ID: image_%d\n", id);
-		    xsConcatPrintf(attachment, "%s\n", base64Image);
-		    //add to context->Attachments
+		    xsConcatPrintf(attachment,
+			PRT_HTMLFM_IMG_HEADER_FORMAT
+			"%s\n"
+			PRT_HTMLFM_IMG_FOOTER,
+			PRT_HTMLFM_IMG_HEADER_VALUES(id),
+			base64Image
+		    );
 		    xaAddItem(context->Attachments, attachment);
 		    }
 		else
@@ -893,7 +944,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
     double last_height;
     int rs,cs;
 
-	/** Write the page header **/
+	/** Write the page HTML (for paginated reports). **/
 	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
 	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_PAGEHEADER, (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001)+34);
 
@@ -1038,7 +1089,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	prt_htmlfm_Output(context, "</tr></table>\n", 14);
 
 
-	/** Write the page footer **/
+	/** Write page footer (for paginated reports). **/
 	prt_htmlfm_OutputPrintf(context, "</td><td></td></tr><tr><td height=\"%d\"></td><td></td><td></td></tr></table>\n", 
 		(int)((page_obj->MarginBottom+0.001)*PRT_HTMLFM_YPIXEL));
 	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
