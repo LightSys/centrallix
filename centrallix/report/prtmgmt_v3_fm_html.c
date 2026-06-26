@@ -321,9 +321,10 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	    prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_EMAIL_HEADER);
 	    prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_EMAIL_CONTENT_HEADER);
 	    }
-	
+
 	/** Write HTML header. **/
-	prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, (context->Flags & PRT_HTMLFM_F_PAGINATED)?"#c0c0c0":"#ffffff");
+	const char* background_color = (context->Flags & PRT_HTMLFM_F_PAGINATED) ? "#c0c0c0" : "#ffffff";
+	prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, background_color);
 
 	return (void*)context;
 
@@ -450,7 +451,8 @@ prt_htmlfm_Close(void* context_v)
 	    {
 	    for (int i = 0; i < xaCount(context->Attachments); i++)
 		{
-		prt_htmlfm_Output(context, xsString(xaGetItem(context->Attachments, i)), -1);
+		char* attachment_str = xsString(xaGetItem(context->Attachments, i));
+		prt_htmlfm_Output(context, attachment_str, -1);
 		}
 	    }
 
@@ -469,12 +471,15 @@ prt_htmlfm_Close(void* context_v)
     return 0;
     }
 
-const char *
-prt_htmlfm_GetFont(pPrtTextStyle style) {
+const char*
+prt_htmlfm_GetFont(pPrtTextStyle style)
+    {
     int fontid = style->FontID - 1;
-    if (fontid < PRT_HTMLFM_MINFONTSTYLE || fontid > PRT_HTMLFM_MAXFONTSTYLE) fontid = PRT_HTMLFM_MINFONTSTYLE;
-	return prt_htmlfm_fontstyles[fontid];
-}
+    if (fontid < PRT_HTMLFM_MINFONTSTYLE || fontid > PRT_HTMLFM_MAXFONTSTYLE)
+	fontid = PRT_HTMLFM_MINFONTSTYLE;
+    
+    return prt_htmlfm_fontstyles[fontid];
+    }
 
 
 /*** prt_htmlfm_SetStyle() - output the html to change the text style
