@@ -21,13 +21,7 @@
 /* 		- fprint_mem() for printing memory stats.		*/
 /************************************************************************/
 
-
 #include <stdio.h>
-
-/** Temporary stub to include refactored libraries until dependent code is updated. **/
-#include "timer.h"
-#include "check.h"
-#include "range.h"
 
 #ifdef	__cplusplus
 extern "C" {

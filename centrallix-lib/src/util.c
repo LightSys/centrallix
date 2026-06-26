@@ -26,7 +26,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "check.h"
 #include "newmalloc.h"
+#include "range.h"
+
 #include "util.h"
 
 /**

@@ -18,9 +18,10 @@
 #include <math.h>
 #include <time.h>
 
-#include "util.h"
+#include "check.h"
 #include "expect.h"
 #include "newmalloc.h"
+
 #include "timer.h"
 
 /*** Get the current monotonic time in seconds.
