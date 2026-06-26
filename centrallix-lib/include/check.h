@@ -45,14 +45,14 @@ void print_err_internal(const int error_code, const char* c_str, const char* fil
 #define check(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
-	const int _r = (result); \
+	int _r = (result); \
 	if (UNLIKELY(_r != 0)) print_err(_r, #result); \
 	_r; \
     })
 
 /*** Ensures that developer diagnostics are printed if the result of the
  *** passed function call is negative. Not intended for user errors.
- ***
+ *** 
  *** @param result The expression to check.  The text of this expression is
  *** 	included in the error message if an error occurs.
  *** @returns The result of the checked expression.
@@ -60,14 +60,14 @@ void print_err_internal(const int error_code, const char* c_str, const char* fil
 #define check_neg(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
-	const int _r = (result); \
+	int _r = (result); \
 	if (UNLIKELY(_r < 0)) print_err(_r, #result); \
 	_r; \
     })
 
 /*** Ensures that developer diagnostics are printed if the result of the
  *** passed function call is a NAN double. Not intended for user errors.
- ***
+ *** 
  *** @param result The expression to check.  The text of this expression is
  *** 	included in the error message if an error occurs.
  *** @returns The result of the checked expression.
@@ -75,14 +75,14 @@ void print_err_internal(const int error_code, const char* c_str, const char* fil
 #define check_double(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
-	const double _r = (result); \
+	double _r = (result); \
 	if (UNLIKELY(isnan(_r))) print_err(0, #result); \
 	_r; \
     })
 
 /*** Ensures that developer diagnostics are printed if the result of the
  *** passed function call is a NULL pointer. Not intended for user errors.
- ***
+ *** 
  *** @param result The expression to check.  The text of this expression is
  *** 	included in the error message if an error occurs.
  *** @returns The result of the checked expression.
@@ -90,7 +90,7 @@ void print_err_internal(const int error_code, const char* c_str, const char* fil
 #define check_ptr(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
-	const void* _r = (result); \
+	void* _r = (result); \
 	if (UNLIKELY(_r == NULL)) print_err(0, #result); \
 	_r; \
     })
