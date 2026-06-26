@@ -15,8 +15,7 @@
 /* Author:      Israel Fuller                                           */
 /* Date:        October 13, 2025                                        */
 /* Description: Adds some useful numerical range functions/macros that  */
-/*              C does not provide by default, such as min(), max(),    */
-/*              clamp(), etc.                                           */
+/*              C does not provide by default.                          */
 /************************************************************************/
 
 /*** Returns the smaller of two values.
@@ -44,5 +43,17 @@
     __typeof__ (b) _b = (b); \
     (_a > _b) ? _a : _b; \
     })
+
+/*** Clamps the value between a minimum and maximum bound.
+ *** 
+ *** If minimum > maximum, always returns maximum.
+ *** 
+ *** @param minimum The smallest allowed value.
+ *** @param value   The value to clamp.
+ *** @param maximum The largest allowed value.
+ *** @return The value clamped within the range [minimum, maximum].
+ ***/
+#define clamp(minimum, value, maximum) \
+    max(minimum, min(value, maximum))
 
 #endif	/* RANGE_H */
