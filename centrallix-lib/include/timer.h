@@ -33,4 +33,15 @@ pTimer timer_reset(pTimer timer);
 void timer_de_init(pTimer timer);
 void timer_free(pTimer timer);
 
+/*** Debug function for quickly benchmarking the speed of C code. Do not use
+ *** this function in production code.
+ ***/
+#define timer_benchmark(timer, c_code) \
+    { \
+    pTimer _timer = (timer); \
+    timer_start(_timer); \
+    { c_code }; \
+    timer_stop(_timer); \
+    }
+
 #endif /* TIMER_H */
