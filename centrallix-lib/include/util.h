@@ -36,21 +36,6 @@ extern "C" {
     char* snprint_bytes(char* buf, const size_t buf_size, unsigned int bytes);
     char* snprint_commas_llu(char* buf, size_t buf_size, unsigned long long value);
     void fprint_mem(FILE* out);
-    
-    typedef struct
-	{
-	double start, total;
-	}
-	Timer, *pTimer;
-    
-    pTimer timer_init(pTimer timer);
-    pTimer timer_new(void);
-    pTimer timer_start(pTimer timer);
-    pTimer timer_stop(pTimer timer);
-    double timer_get(pTimer timer);
-    pTimer timer_reset(pTimer timer);
-    void timer_de_init(pTimer timer);
-    void timer_free(pTimer timer);
 
 #ifdef	__cplusplus
 }
