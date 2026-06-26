@@ -218,20 +218,3 @@ fprint_mem(FILE* out)
     
     return;
     }
-
-/*** Function for failing on error, assuming the error came from a library or
- *** system function call, so that the error buffer is set to a valid value.
- ***/
-void print_err(int code, const char* function_name, const char* file_name, const int line_number)
-    {
-	/** Create a descriptive error message. **/
-	char error_buf[BUFSIZ];
-	snprintf(error_buf, sizeof(error_buf), "%s:%d: %s failed", file_name, line_number, function_name);
-	
-	/** Print it with as much info as we can reasonably find. **/
-	if (errno != 0) perror(error_buf);
-	else if (code != 0) fprintf(stderr, "%s (error code %d).\n", error_buf, code);
-	else fprintf(stderr, "%s.\n", error_buf);
-    
-    return;
-    }
