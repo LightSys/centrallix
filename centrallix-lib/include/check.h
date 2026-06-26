@@ -48,7 +48,7 @@ void print_err_internal(const int error_code, const char* c_str, const char* fil
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
 	int _r = (result); \
-	if (UNLIKELY(_r != 0)) print_err(_r, #result); \
+	if (UNLIKELY(_r != 0)) print_err(_r, #result" failed"); \
 	_r; \
     })
 
@@ -63,7 +63,7 @@ void print_err_internal(const int error_code, const char* c_str, const char* fil
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
 	int _r = (result); \
-	if (UNLIKELY(_r < 0)) print_err(_r, #result); \
+	if (UNLIKELY(_r < 0)) print_err(_r, #result" failed"); \
 	_r; \
     })
 
@@ -78,7 +78,7 @@ void print_err_internal(const int error_code, const char* c_str, const char* fil
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
 	double _r = (result); \
-	if (UNLIKELY(isnan(_r))) print_err(0, #result); \
+	if (UNLIKELY(isnan(_r))) print_err(0, #result" failed"); \
 	_r; \
     })
 
@@ -93,7 +93,7 @@ void print_err_internal(const int error_code, const char* c_str, const char* fil
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
 	void* _r = (result); \
-	if (UNLIKELY(_r == NULL)) print_err(0, #result); \
+	if (UNLIKELY(_r == NULL)) print_err(0, #result" failed"); \
 	_r; \
     })
 
