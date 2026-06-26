@@ -26,6 +26,10 @@
 
 #include <stdio.h>
 
+/** Temporary stub to include refactored libraries until dependent code is updated. **/
+#include "timer.h"
+#include "check.h"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
