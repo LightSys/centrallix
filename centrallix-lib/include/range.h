@@ -19,13 +19,11 @@
 /*              clamp(), etc.                                           */
 /************************************************************************/
 
-/*** @brief Returns the smaller of two values.
+/*** Returns the smaller of two values.
  *** 
  *** @param a The first value.
  *** @param b The second value.
  *** @return The smaller of the two values.
- *** 
- *** @note This macro uses GCC extensions to ensure type safety.
  ***/
 #define min(a, b) \
     ({ \
@@ -34,13 +32,11 @@
     (_a < _b) ? _a : _b; \
     })
 
-/*** @brief Returns the larger of two values.
+/*** Returns the larger of two values.
  *** 
  *** @param a The first value.
  *** @param b The second value.
  *** @return The larger of the two values.
- *** 
- *** @note This macro uses GCC extensions to ensure type safety.
  ***/
 #define max(a, b) \
     ({ \
