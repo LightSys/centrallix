@@ -32,7 +32,7 @@ print_err_internal(const int error_code, const char* c_str, const char* file_nam
     {
 	/** Create a clear, concise, and descriptive error message. **/
 	char error_buf[BUFSIZ];
-	snprintf(error_buf, sizeof(error_buf), "%s:%d: %s failed", file_name, line_number, c_str);
+	snprintf(error_buf, sizeof(error_buf), "%s:%d: %s", file_name, line_number, c_str);
 	
 	/** Print it with as much info as we can reasonably find. **/
 	if (errno != 0) perror(error_buf);

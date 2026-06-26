@@ -204,7 +204,7 @@ fprint_mem(FILE* out)
 	    if (resident != -1)
 		fprintf(stderr, "Unexpected value for resident page count: %ld.\n", resident);
 	    
-	    print_fail("Get resident page count");
+	    print_fail("Failed to get resident page count");
 	    return;
 	    }
 	
@@ -215,7 +215,7 @@ fprint_mem(FILE* out)
 	    if (page_size != -1)
 		fprintf(stderr, "Unexpected value for page size: %ld.\n", page_size);
 	    
-	    print_fail("Get page size");
+	    print_fail("Failed to get page size");
 	    return;
 	    }
 	
