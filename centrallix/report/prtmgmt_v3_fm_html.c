@@ -1,24 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include "barcode.h"
-#include "report.h"
-#include "cxlib/mtask.h"
-#include "cxlib/magic.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xstring.h"
-#include "prtmgmt_v3/prtmgmt_v3.h"
-#include "prtmgmt_v3/prtmgmt_v3_fm_html.h"
-#include "prtmgmt_v3/prtmgmt_v3_lm_text.h"
-#include "prtmgmt_v3/ht_font_metrics.h"
-#include "htmlparse.h"
-#include "cxlib/mtsession.h"
-#include "centrallix.h"
-#include "double.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -52,6 +31,28 @@
 /*		separate from the html formatter because HTML is not	*/
 /*		a html formatting language.				*/
 /************************************************************************/
+
+#include <fcntl.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#include "barcode.h"
+#include "centrallix.h"
+#include "cxlib/magic.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xstring.h"
+#include "double.h"
+#include "htmlparse.h"
+#include "prtmgmt_v3/ht_font_metrics.h"
+#include "prtmgmt_v3/prtmgmt_v3_fm_html.h"
+#include "prtmgmt_v3/prtmgmt_v3_lm_text.h"
+#include "prtmgmt_v3/prtmgmt_v3.h"
+#include "report.h"
 
 
 
