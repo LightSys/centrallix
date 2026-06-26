@@ -13,22 +13,21 @@
 /* 									*/
 /* Module:	util.c, util.h						*/
 /* Author:	Micah Shennum and Israel Fuller				*/
-/* Date:	May 26, 2011						*/
+/* Date:	May 26, 2011 and October 13, 2025 (respectively)	*/
 /* Description:	Collection of utilities including:			*/
 /* 		- Utilities for parsing numbers.			*/
-/* 		- The timer utility for benchmarking code.		*/
 /* 		- snprint_bytes() for formatting a byte count.		*/
 /* 		- snprint_commas_llu() for formatting large numbers.	*/
 /* 		- fprint_mem() for printing memory stats.		*/
-/* 		- min() and max() for handling numbers.			*/
-/* 		- The check functions for reliably printing debug data.	*/
 /************************************************************************/
+
 
 #include <stdio.h>
 
 /** Temporary stub to include refactored libraries until dependent code is updated. **/
 #include "timer.h"
 #include "check.h"
+#include "range.h"
 
 #ifdef	__cplusplus
 extern "C" {
@@ -44,39 +43,5 @@ extern "C" {
 #ifdef	__cplusplus
 }
 #endif
-
-#ifndef __cplusplus
-
-/*** @brief Returns the smaller of two values.
- *** 
- *** @param a The first value.
- *** @param b The second value.
- *** @return The smaller of the two values.
- *** 
- *** @note This macro uses GCC extensions to ensure type safety.
- ***/
-#define min(a, b) \
-    ({ \
-    __typeof__ (a) _a = (a); \
-    __typeof__ (b) _b = (b); \
-    (_a < _b) ? _a : _b; \
-    })
-
-/*** @brief Returns the larger of two values.
- *** 
- *** @param a The first value.
- *** @param b The second value.
- *** @return The larger of the two values.
- *** 
- *** @note This macro uses GCC extensions to ensure type safety.
- ***/
-#define max(a, b) \
-    ({ \
-    __typeof__ (a) _a = (a); \
-    __typeof__ (b) _b = (b); \
-    (_a > _b) ? _a : _b; \
-    })
-
-#endif  /* __cplusplus */
 
 #endif	/* UTILITY_H */

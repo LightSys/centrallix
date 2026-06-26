@@ -16,8 +16,6 @@
 /* 		- snprint_bytes() for formatting a byte count.		*/
 /* 		- snprint_commas_llu() for formatting large numbers.	*/
 /* 		- fprint_mem() for printing memory stats.		*/
-/* 		- min() and max() for handling numbers.			*/
-/* 		- The check functions for reliably printing debug data.	*/
 /************************************************************************/
 
 #include <errno.h>
