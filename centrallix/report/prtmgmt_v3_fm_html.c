@@ -192,6 +192,17 @@ typedef struct
     } ImageBuffer;
 
 
+/*** prt_htmlfm_OutputStrLiteral() - outputs a statically defined string literal
+ *** into the HTML document.
+ *** 
+ *** For str literals, the length is known at compile time, so we have the
+ *** compiler output the length (-1 to skip the null character), saving a
+ *** strlen() call at runtime.  Also, we don't have to worry about multi-eval
+ *** of str_literal because the caller promises it is a string literal.
+ ***/
+#define prt_htmlfm_OutputStrLiteral(context, str_literal) \
+    prt_htmlfm_Output((context), (str_literal), sizeof(str_literal) - 1);
+
 /*** prt_htmlfm_Output() - outputs a string of text into the HTML
  *** document.
  ***/
@@ -307,8 +318,8 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	/** Write email headers. **/
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
 	    {
-	    prt_htmlfm_Output(context, PRT_HTMLFM_EMAIL_HEADER, -1);
-	    prt_htmlfm_Output(context, PRT_HTMLFM_EMAIL_CONTENT_HEADER, -1);
+	    prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_EMAIL_HEADER);
+	    prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_EMAIL_CONTENT_HEADER);
 	    }
 	
 	/** Write HTML header. **/
@@ -428,11 +439,11 @@ prt_htmlfm_Close(void* context_v)
     pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;
 
 	/** Write HTML footer. **/
-	prt_htmlfm_Output(context, PRT_HTMLFM_FOOTER, -1);
+	prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_FOOTER);
 
 	/** Write the email content footer (for email reports). **/
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
-	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_EMAIL_CONTENT_FOOTER);
+	    prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_EMAIL_CONTENT_FOOTER);
 
 	/** Write attachments for emails. **/
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
@@ -445,7 +456,7 @@ prt_htmlfm_Close(void* context_v)
 
 	/** Write email footer. **/
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
-	    prt_htmlfm_Output(context, PRT_HTMLFM_EMAIL_FOOTER, -1);
+	    prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_EMAIL_FOOTER);
 
 	/** Free memory used **/
 	if (context->Attachments)
@@ -485,19 +496,19 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 	    {
 	    /*For each thing, check dirty flag is clear to ensure opening tag was actually written*/
 	    if ((context->CurStyle.Attr & PRT_OBJ_A_BOLD) && 
-		!(context->StyleFlags & PRT_HTMLFM_SF_BOLDDIRTY)) prt_htmlfm_Output(context, "</b>", 4);
+		!(context->StyleFlags & PRT_HTMLFM_SF_BOLDDIRTY)) prt_htmlfm_OutputStrLiteral(context, "</b>");
 	    if (context->ExitStyle || italicchanged || underlinechanged || fontchanged)
 		{
 		if (context->CurStyle.Attr & PRT_OBJ_A_ITALIC &&
-		    !(context->StyleFlags & PRT_HTMLFM_SF_ITALICDIRTY)) prt_htmlfm_Output(context, "</i>", 4);
+		    !(context->StyleFlags & PRT_HTMLFM_SF_ITALICDIRTY)) prt_htmlfm_OutputStrLiteral(context, "</i>");
 		if (context->ExitStyle || underlinechanged || fontchanged)
 		    {
 		    if (context->CurStyle.Attr & PRT_OBJ_A_UNDERLINE && 
-			!(context->StyleFlags & PRT_HTMLFM_SF_UNDERLINEDIRTY)) prt_htmlfm_Output(context, "</u>", 4);
+			!(context->StyleFlags & PRT_HTMLFM_SF_UNDERLINEDIRTY)) prt_htmlfm_OutputStrLiteral(context, "</u>");
 		    if ((context->ExitStyle || fontchanged) &&
 			!(context->StyleFlags & PRT_HTMLFM_SF_FONTDIRTY))
 			{
-			prt_htmlfm_Output(context, "</font>",7);
+			prt_htmlfm_OutputStrLiteral(context, "</font>");
 			}
 		    }
 		}
@@ -557,15 +568,15 @@ prt_htmlfm_WriteStyle(pPrtHTMLfmInf context)
 	}
     if (context->StyleFlags & PRT_HTMLFM_SF_UNDERLINEDIRTY)
 	{
-	prt_htmlfm_Output(context, "<u>", 3);
+	prt_htmlfm_OutputStrLiteral(context, "<u>");
 	}
     if (context->StyleFlags & PRT_HTMLFM_SF_ITALICDIRTY)
 	{
-	prt_htmlfm_Output(context, "<i>", 3);
+	prt_htmlfm_OutputStrLiteral(context, "<i>");
 	}
     if (context->StyleFlags & PRT_HTMLFM_SF_BOLDDIRTY)
 	{
-	prt_htmlfm_Output(context, "<b>", 3);
+	prt_htmlfm_OutputStrLiteral(context, "<b>");
 	}
 
     /*Clear the dirty flags*/
@@ -699,11 +710,11 @@ prt_htmlfm_EndBorder(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj
 	for (i=0;i<border->nLines;i++)
 	    {
 	    /** Output border line itself **/
-	    prt_htmlfm_Output(context, "</td></tr></table></td></tr></table>\n",-1);
+	    prt_htmlfm_OutputStrLiteral(context, "</td></tr></table></td></tr></table>\n");
 	    }
 	if (border->nLines == 0)
 	    {
-	    prt_htmlfm_Output(context, "</td></tr></table>\n",-1);
+	    prt_htmlfm_OutputStrLiteral(context, "</td></tr></table>\n");
 	    }
 
     return 0;
@@ -780,9 +791,9 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 
 		if (obj->URL && !strchr(obj->URL, '"'))
 		    {
-		    prt_htmlfm_Output(context, "<a href=\"", 9);
+		    prt_htmlfm_OutputStrLiteral(context, "<a href=\"");
 		    prt_htmlfm_OutputEncoded(context, obj->URL, -1);
-		    prt_htmlfm_Output(context, "\">", 2);
+		    prt_htmlfm_OutputStrLiteral(context, "\">");
 		    }
 		prt_htmlfm_OutputEncoded(context, (char*)obj->Content, -1);
 
@@ -793,7 +804,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 
 		if (obj->URL && !strchr(obj->URL, '"'))
 		    {
-		    prt_htmlfm_Output(context, "</a>", 4);
+		    prt_htmlfm_OutputStrLiteral(context, "</a>");
 		    }
 		break;
 	    case PRT_OBJ_T_AREA:
@@ -868,9 +879,9 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		
 		if (obj->URL && !strchr(obj->URL, '"'))
 		    {
-		    prt_htmlfm_Output(context, "<a href=\"", 9);
+		    prt_htmlfm_OutputStrLiteral(context, "<a href=\"");
 		    prt_htmlfm_OutputEncoded(context, obj->URL, -1);
-		    prt_htmlfm_Output(context, "\">", 2);
+		    prt_htmlfm_OutputStrLiteral(context, "\">");
 		    }
 	
 		if (context->Flags & PRT_HTMLFM_F_EMAIL)
@@ -906,7 +917,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 
 		if (obj->URL && !strchr(obj->URL, '"'))
 		    {
-		    prt_htmlfm_Output(context, "</a>", 4);
+		    prt_htmlfm_OutputStrLiteral(context, "</a>");
 		    }
 		
 		// lifetime end: img
@@ -953,12 +964,12 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	int center_width = (int)((page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight+0.001)*PRT_HTMLFM_XPIXEL);
 	int right_margin = (int)(page_obj->MarginRight*PRT_HTMLFM_XPIXEL+0.001);
 	int top_margin = (int)((page_obj->MarginTop+0.001)*PRT_HTMLFM_YPIXEL);
-	prt_htmlfm_Output(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n", -1);
-	prt_htmlfm_Output(context, "<colgroup>", -1);
+	prt_htmlfm_OutputStrLiteral(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n");
+	prt_htmlfm_OutputStrLiteral(context, "<colgroup>");
 	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", left_margin);
 	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", center_width);
 	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", right_margin);
-	prt_htmlfm_Output(context, "</colgroup>", -1);
+	prt_htmlfm_OutputStrLiteral(context, "</colgroup>");
 	/* Print the first row, empty with appropriate margins*/
 	prt_htmlfm_OutputPrintf(context, "<tr><td height=\"%dpx\" width=\"%dpx\"></td><td height=\"%dpx\" width=\"%dpx\"></td><td height=\"%dpx\" width=\"%dpx\"></td></tr>", 
 		top_margin, left_margin,
@@ -1025,7 +1036,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    }
 
 	/** Write the layout table **/
-	prt_htmlfm_Output(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n", -1);
+	prt_htmlfm_OutputStrLiteral(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n");
 	for (i=0;i<n_cols;i++)
 	    {
 	    if (i == n_cols-1)
@@ -1039,7 +1050,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	cur_row = 0;
 	cur_col = 0;
 	last_height = 0.0;
-	prt_htmlfm_Output(context, "<tr>", 4);
+	prt_htmlfm_OutputStrLiteral(context, "<tr>");
 	for (subobj=page_obj; subobj; subobj=subobj->YNext)
 	    {
 	    if (subobj->Parent == page_obj)
@@ -1053,7 +1064,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 			prt_htmlfm_OutputPrintf(context, "</tr><tr><td height=\"%dpx\" style=\"line-height:0;\">&nbsp;</td>",
 			   (int) ((subobj->Y - last_height) * PRT_HTMLFM_YPIXEL));
 		    }
-		    prt_htmlfm_Output(context, "</tr>\n<tr>", 10);
+		    prt_htmlfm_OutputStrLiteral(context, "</tr>\n<tr>");
 		    cur_col = 0;
 		    }
 
@@ -1081,19 +1092,19 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		last_height = subobj->Y + subobj->Height;
 		prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\" rowspan=\"%d\" valign=\"top\" align=\"%s\">", cs, rs, justifytypes[subobj->Justification]);
 		prt_htmlfm_Generate_r(context, subobj);
-		prt_htmlfm_Output(context, "</td>", 5);
+		prt_htmlfm_OutputStrLiteral(context, "</td>");
 		cur_col += cs;
 		if (cur_col >= n_cols) cur_col = n_cols-1;
 		}
 	    }
-	prt_htmlfm_Output(context, "</tr></table>\n", 14);
+	prt_htmlfm_OutputStrLiteral(context, "</tr></table>\n");
 
 
 	/** Write page footer (for paginated reports). **/
 	prt_htmlfm_OutputPrintf(context, "</td><td></td></tr><tr><td height=\"%d\"></td><td></td><td></td></tr></table>\n", 
 		(int)((page_obj->MarginBottom+0.001)*PRT_HTMLFM_YPIXEL));
 	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
-	    prt_htmlfm_Output(context, PRT_HTMLFM_PAGEFOOTER, -1);
+	    prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_PAGEFOOTER);
 
     return 0;
     }
