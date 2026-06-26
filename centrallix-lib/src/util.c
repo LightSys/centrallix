@@ -94,24 +94,26 @@ unsigned int strtoui(const char *nptr, char **endptr, int base){
  *** Fun Fact: Windows uses kibibytes, but displays them as KB.
  ***/
 #define USE_METRIC false
-static char* units_cs[] = {"bytes", "KiB", "MiB", "GiB"};
-static char* units_metric[] = {"bytes", "KB", "MB", "GB"};
+static char* units_cs[] = {"bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"};
+static char* units_metric[] = {"bytes", "KB", "MB", "GB", "TB", "PB", "EB"};
 #define N_UNITS ((unsigned int)(sizeof(units_cs) / sizeof(units_cs[0])))
 
 /*** Displays a size in bytes using the largest unit where the result would be
- *** at least 1.0. Note that units larger than GB and GiB are not supported
- *** because the largest possible unsigned int is 4,294,967,295, which is
- *** exactly 4 GiB (or approximately 4.29 GB).
+ *** at least 1.0.  Units up to the exbibyte (EiB) and exabyte (EB) are
+ *** supported, which is enough for any unsigned long: the largest possible
+ *** value is 18,446,744,073,709,551,615, which is just under 16 EiB (or
+ *** approximately 18.45 EB).
  *** 
  *** @param buf The buffer to which new text will be written, using snprintf().
  *** @param buf_size The amount of space in the buffer, passed to snprintf().
- *** 	It is recommended to have at least 12 characters available.
+ *** 	It is recommended to provide a buffer that is at least 12 characters
+ *** 	long to avoid truncation.
  *** @param bytes The number of bytes, which will be formatted and written
- *** 	to the buffer..
+ *** 	to the buffer.
  *** @returns buf, for chaining.
  ***/
 char*
-snprint_bytes(char* buf, const size_t buf_size, unsigned int bytes)
+snprint_bytes(char* buf, const size_t buf_size, unsigned long bytes)
     {
 	char** units = (USE_METRIC) ? units_metric : units_cs;
 	const double unit_size = (USE_METRIC) ? 1000.0 : 1024.0;
@@ -135,7 +137,7 @@ snprint_bytes(char* buf, const size_t buf_size, unsigned int bytes)
 	    }
 	
 	/** None of the larger units work, so we just use bytes. **/
-	snprintf(buf, buf_size, "%u %s", bytes, units[0]);
+	snprintf(buf, buf_size, "%lu %s", bytes, units[0]);
     
     return buf;
     }
@@ -197,18 +199,30 @@ fprint_mem(FILE* out)
 	    }
 	check(fclose(fp)); /* Failure ignored. */
 	
+	if (resident < 0)
+	    {
+	    if (resident != -1)
+		fprintf(stderr, "Unexpected value for resident page count: %ld.\n", resident);
+	    
+	    print_fail("Get resident page count");
+	    return;
+	    }
+	
 	/** Get page size. **/
 	const long page_size = sysconf(_SC_PAGESIZE); /* in bytes */
-	if (page_size == -1)
+	if (page_size < 0)
 	    {
-	    fprintf(stderr, "Failed to get page size.\n");
+	    if (page_size != -1)
+		fprintf(stderr, "Unexpected value for page size: %ld.\n", page_size);
+	    
+	    print_fail("Get page size");
 	    return;
 	    }
 	
 	/** Get the number of resident bytes used. **/
-	const long resident_bytes = resident * page_size;
+	const unsigned long resident_bytes = (unsigned long)resident * (unsigned long)page_size;
 	char buf[16];
-	snprint_bytes(buf, sizeof(buf), (unsigned int)(resident_bytes));
+	snprint_bytes(buf, sizeof(buf), resident_bytes);
 	
 	/** fprintf() out data. **/
 	fprintf(out, "Memory used: %ld bytes (%s)\n", resident_bytes, buf);

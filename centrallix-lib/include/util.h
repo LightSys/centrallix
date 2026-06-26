@@ -30,7 +30,7 @@ extern "C" {
     int strtoi(const char *nptr, char **endptr, int base);
     unsigned int strtoui(const char *nptr, char **endptr, int base);
 
-    char* snprint_bytes(char* buf, const size_t buf_size, unsigned int bytes);
+    char* snprint_bytes(char* buf, const size_t buf_size, unsigned long bytes);
     char* snprint_commas_llu(char* buf, size_t buf_size, unsigned long long value);
     void fprint_mem(FILE* out);
 
