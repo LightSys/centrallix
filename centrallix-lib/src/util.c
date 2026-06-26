@@ -225,7 +225,7 @@ fprint_mem(FILE* out)
 	snprint_bytes(buf, sizeof(buf), resident_bytes);
 	
 	/** fprintf() out data. **/
-	fprintf(out, "Memory used: %ld bytes (%s)\n", resident_bytes, buf);
+	fprintf(out, "Memory used: %lu bytes (%s)\n", resident_bytes, buf);
 	fprintf(out,
 	    "Share %ldb, Text %ldb, Lib %ldb, Data %ldb\n",
 	    share * page_size, text * page_size, lib * page_size, data * page_size
