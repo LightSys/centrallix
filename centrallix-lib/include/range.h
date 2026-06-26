@@ -18,6 +18,7 @@
 /*              C does not provide by default.                          */
 /************************************************************************/
 
+#ifndef min
 /*** Returns the smaller of two values.
  *** 
  *** @param a The first value.
@@ -30,7 +31,9 @@
     __typeof__ (b) _b = (b); \
     (_a < _b) ? _a : _b; \
     })
+#endif
 
+#ifndef max
 /*** Returns the larger of two values.
  *** 
  *** @param a The first value.
@@ -43,6 +46,7 @@
     __typeof__ (b) _b = (b); \
     (_a > _b) ? _a : _b; \
     })
+#endif
 
 /*** Clamps the value between a minimum and maximum bound.
  *** 

@@ -19,6 +19,7 @@
 /************************************************************************/
 
 #include <errno.h>
+#include <string.h>
 
 #include "expect.h"
 
@@ -33,7 +34,7 @@
 void print_err_internal(const int error_code, const char* c_str, const char* file_name, const int line_number);
 
 #define print_err(error_code, c_str) print_err_internal(error_code, (c_str), __FILE__, __LINE__)
-#define print_fail(c_str) errno = 0; print_err(-1, (c_str))
+#define print_fail(c_str) { errno = 0; print_err(-1, (c_str)); }
 
 /*** Ensures that developer diagnostics are printed if the result of the
  *** passed function call is not zero.  Not intended for user errors.

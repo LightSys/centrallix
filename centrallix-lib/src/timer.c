@@ -33,7 +33,8 @@ get_time(void)
     {
     struct timespec ts;
     
-	clock_gettime(CLOCK_MONOTONIC, &ts);
+	if (check(clock_gettime(CLOCK_MONOTONIC, &ts)) != 0)
+	    return NAN;
     
     return (double)ts.tv_sec + (double)ts.tv_nsec / 1.0e9f;
     }
@@ -131,6 +132,8 @@ timer_de_init(pTimer timer) {}
 void
 timer_free(pTimer timer)
     {
+	if (UNLIKELY(timer == NULL)) return;
+	
 	timer_de_init(timer);
 	nmFree(timer, sizeof(Timer));
     
