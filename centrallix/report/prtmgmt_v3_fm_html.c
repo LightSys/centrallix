@@ -41,6 +41,8 @@
 
 #include "barcode.h"
 #include "centrallix.h"
+#include "cxlib/check.h"
+#include "cxlib/expect.h"
 #include "cxlib/magic.h"
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
@@ -172,6 +174,7 @@ static PrtHTMLfmSubtype prt_htmlfm_subtypes[] =
     { "text/html", "text/html", 0 },
     { "multipart/vnd.cx.htmlemail+mixed", "multipart/mixed", PRT_HTMLFM_F_EMAIL },
     };
+#define PRT_HTMLFM_N_SUBTYPES (sizeof(prt_htmlfm_subtypes) / sizeof(prt_htmlfm_subtypes[0]))
 
 /*** GLOBAL DATA FOR THIS MODULE ***/
 struct _PSF
@@ -292,17 +295,14 @@ prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len)
 void*
 prt_htmlfm_Probe(pPrtSession s, char* output_type)
     {
-    pPrtHTMLfmInf context;
-    int i;
-
 	/** Allocate our context inf structure **/
-	context = (pPrtHTMLfmInf)nmMalloc(sizeof(PrtHTMLfmInf));
-	if (!context) goto error;
+	pPrtHTMLfmInf context = check_ptr(nmMalloc(sizeof(PrtHTMLfmInf)));
+	if (context == NULL) goto reject;
 	memset(context, 0, sizeof(PrtHTMLfmInf));
 	context->Session = s;
 
 	/** Is it an html type we can handle? **/
-	for (i=0; i<sizeof(prt_htmlfm_subtypes)/sizeof(PrtHTMLfmSubtype); i++)
+	for (int i = 0; i < PRT_HTMLFM_N_SUBTYPES; i++)
 	    {
 	    if (strcasecmp(output_type, prt_htmlfm_subtypes[i].MimeType) == 0)
 		{
@@ -311,10 +311,12 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 		break;
 		}
 	    }
-	if (!context->Subtype)
-	    goto error;
+	if (context->Subtype == NULL)
+	    goto reject;
 
-	context->Attachments = xaNew(10);
+	/** Allocate attachments. */
+	context->Attachments = check_ptr(xaNew(10));
+	if (context->Attachments == NULL) goto reject;
 
 	/** Write email headers. **/
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
@@ -327,10 +329,12 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	const char* background_color = (context->Flags & PRT_HTMLFM_F_PAGINATED) ? "#c0c0c0" : "#ffffff";
 	prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, background_color);
 
+	/** Success, we can print this content type. **/
 	return (void*)context;
 
-    error:
-	if (context) nmFree(context, sizeof(PrtHTMLfmInf));
+    reject: /* We cannot print this content type. */
+	if (context->Attachments != NULL) xaFree(context->Attachments);
+	if (LIKELY(context != NULL)) nmFree(context, sizeof(PrtHTMLfmInf));
 
 	return NULL;
     }
@@ -439,6 +443,7 @@ int
 prt_htmlfm_Close(void* context_v)
     {
     pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;
+    int rval = -1;
 
 	/** Write HTML footer. **/
 	prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_FOOTER);
@@ -450,9 +455,13 @@ prt_htmlfm_Close(void* context_v)
 	/** Write attachments for emails. **/
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
 	    {
+	    if (UNLIKELY(context->Attachments == NULL))
+		print_fail("Warning: Attachments array missing for email.");
+
 	    for (int i = 0; i < xaCount(context->Attachments); i++)
 		{
-		char* attachment_str = xsString(xaGetItem(context->Attachments, i));
+		char* attachment_str = check_ptr(xsString(xaGetItem(context->Attachments, i)));
+		if (attachment_str == NULL) goto end;
 		prt_htmlfm_Output(context, attachment_str, -1);
 		}
 	    }
@@ -461,15 +470,25 @@ prt_htmlfm_Close(void* context_v)
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
 	    prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_EMAIL_FOOTER);
 
-	/** Free memory used **/
-	if (context->Attachments)
-	    {
-	    xaClear(context->Attachments, (void*) xsFree, NULL);
-	    xaFree(context->Attachments);
-	    }
-	nmFree(context, sizeof(PrtHTMLfmInf));
+	/** Success. **/
+	rval = 0;
 
-    return 0;
+    end:
+	if (UNLIKELY(rval != 0))
+	    mssError(1, "PRT", "Failed to close HTML report formatter.");
+
+	/** Free memory used **/
+	if (LIKELY(context != NULL))
+	    {
+	    if (LIKELY(context->Attachments != NULL))
+		{
+		xaClear(context->Attachments, (void*)xsFree, NULL);
+		xaFree(context->Attachments);
+		}
+	    nmFree(context, sizeof(PrtHTMLfmInf));
+	    }
+
+    return rval;
     }
 
 const char*
@@ -1135,19 +1154,18 @@ prt_htmlfm_GetType(void* ctx, char* objname, char* attrname, void* val_v)
 int
 prt_htmlfm_Initialize()
     {
-    pPrtFormatter fmtdrv;
-    pSysInfoData si;
-    int i;
-    char sbuf[256];
-    char* ptr;
-
 	/** Init our globals **/
 	memset(&PRT_HTMLFM, 0, sizeof(PRT_HTMLFM));
 	PRT_HTMLFM.ImageID = rand();
 
 	/** Allocate the formatter structure, and init it **/
-	fmtdrv = prtAllocFormatter();
-	if (!fmtdrv) return -1;
+	pPrtFormatter fmtdrv = check_ptr(prtAllocFormatter());
+	if (fmtdrv == NULL)
+	    {
+	    mssError(0, "RPT", "Failed to allocate formatter struct.");
+	    goto err;
+	    }
+
 	strcpy(fmtdrv->Name, "html");
 	fmtdrv->Probe = prt_htmlfm_Probe;
 	fmtdrv->GetOutputType = prt_htmlfm_GetOutputType;
@@ -1158,19 +1176,47 @@ prt_htmlfm_Initialize()
 	fmtdrv->Close = prt_htmlfm_Close;
 
 	/** Register with the main prtmgmt system **/
-	prtRegisterFormatter(fmtdrv);
-
-	/** Register with the cx.sysinfo /prtmgmt/output_types dir **/
-	for (i=0; i<sizeof(prt_htmlfm_subtypes)/sizeof(PrtHTMLfmSubtype); i++)
+	if (prtRegisterFormatter(fmtdrv) != 0)
 	    {
-	    ptr = strchr(prt_htmlfm_subtypes[i].MimeType, '/');
-	    if (!ptr) return -1;
-	    snprintf(sbuf, sizeof(sbuf), "/prtmgmt/output_types/%s", ptr+1);
-	    si = sysAllocData(sbuf, NULL, NULL, NULL, NULL, prt_htmlfm_GetType, NULL, 0);
-	    if (!si) return -1;
-	    sysAddAttrib(si, "type", DATA_T_STRING);
-	    sysRegister(si, &prt_htmlfm_subtypes[i]);
+	    mssError(0, "RPT", "Failed to register formatter.");
+	    goto err;
 	    }
 
-    return 0;
+	/** Register with the cx.sysinfo /prtmgmt/output_types dir **/
+	for (int i = 0; i < PRT_HTMLFM_N_SUBTYPES; i++)
+	    {
+	    char* subtype = check_ptr(strchr(prt_htmlfm_subtypes[i].MimeType, '/'));
+	    if (subtype == NULL) goto err_type;
+
+	    /** Allocate subtype data. **/
+	    char path_buf[256];
+	    snprintf(path_buf, sizeof(path_buf), "/prtmgmt/output_types/%s", subtype + 1);
+	    pSysInfoData si = check_ptr(sysAllocData(path_buf, NULL, NULL, NULL, NULL, prt_htmlfm_GetType, NULL, 0));
+	    if (si == NULL) goto err_type;
+
+	    /** Register subtype. */
+	    if (sysAddAttrib(si, "type", DATA_T_STRING) != 0)
+		{
+		mssError(0, "RPT", "Failed to add 'type' attribute.");
+		goto err_type;
+		}
+	    if (sysRegister(si, &prt_htmlfm_subtypes[i]) != 0)
+		{
+		mssError(0, "RPT", "Failed to register subtype.");
+		goto err_type;
+		}
+
+    err_type:
+		mssError(0, "RPT",
+		    "Failed to add subtype #%d/%d: \"\"",
+		    i + 1, PRT_HTMLFM_N_SUBTYPES, prt_htmlfm_subtypes[i].MimeType
+		);
+		goto err;
+	    }
+
+	return 0;
+
+    err:
+	mssError(0, "RPT", "Failed to initialize HTML formatter.");
+	return -1;
     }
