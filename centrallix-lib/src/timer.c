@@ -91,7 +91,7 @@ timer_stop(pTimer timer)
     {
 	if (UNLIKELY(timer == NULL)) return NULL;
 	if (isnan(timer->start)) return timer;
-	timer->total = get_time() - timer->start;
+	timer->total += get_time() - timer->start;
 	timer->start = NAN;
     
     return timer;

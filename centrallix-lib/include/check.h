@@ -19,6 +19,7 @@
 /************************************************************************/
 
 #include <errno.h>
+#include <math.h>
 #include <string.h>
 
 #include "expect.h"
