@@ -29,8 +29,11 @@
     ((last_directory != NULL) ? last_directory + 1 : __FILE__); \
     })
 
-/** Error Handling. **/
-void print_err(int code, const char* function_name, const char* file_name, const int line_number);
+/** Internal error printer (forward declaration). **/
+void print_err_internal(const int error_code, const char* c_str, const char* file_name, const int line_number);
+
+#define print_err(error_code, c_str) print_err_internal(error_code, (c_str), __FILE__, __LINE__)
+#define print_fail(c_str) errno = 0; print_err(-1, (c_str))
 
 /*** Ensures that developer diagnostics are printed if the result of the
  *** passed function call is not zero.  Not intended for user errors.
@@ -42,8 +45,8 @@ void print_err(int code, const char* function_name, const char* file_name, const
 #define check(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
-	int _r = (result); \
-	if (UNLIKELY(_r != 0)) print_err(_r, #result, __FILE__, __LINE__); \
+	const int _r = (result); \
+	if (UNLIKELY(_r != 0)) print_err(_r, #result); \
 	_r; \
     })
 
@@ -57,8 +60,8 @@ void print_err(int code, const char* function_name, const char* file_name, const
 #define check_neg(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
-	int _r = (result); \
-	if (UNLIKELY(_r < 0)) print_err(_r, #result, __FILE__, __LINE__); \
+	const int _r = (result); \
+	if (UNLIKELY(_r < 0)) print_err(_r, #result); \
 	_r; \
     })
 
@@ -72,8 +75,8 @@ void print_err(int code, const char* function_name, const char* file_name, const
 #define check_double(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
-	double _r = (result); \
-	if (UNLIKELY(isnan(_r))) print_err(0, #result, __FILE__, __LINE__); \
+	const double _r = (result); \
+	if (UNLIKELY(isnan(_r))) print_err(0, #result); \
 	_r; \
     })
 
@@ -87,8 +90,8 @@ void print_err(int code, const char* function_name, const char* file_name, const
 #define check_ptr(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
-	void* _r = (result); \
-	if (UNLIKELY(_r == NULL)) print_err(0, #result, __FILE__, __LINE__); \
+	const void* _r = (result); \
+	if (UNLIKELY(_r == NULL)) print_err(0, #result); \
 	_r; \
     })
 
