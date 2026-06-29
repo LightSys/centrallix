@@ -88,12 +88,12 @@
 #define PRT_HTMLFM_EMAIL_BOUNDARY "cx-email-boundary"
 #define PRT_HTMLFM_ALT_BOUNDARY "cx-alt-boundary"
 
-//TODO CSMITH multipart/related?
 // TODO: Israel - Should some of these come from the mime type driver?
 #define PRT_HTMLFM_EMAIL_HEADER \
     /** Email file header. **/ \
     "MIME-Version: 1.0\n" \
-    "Content-Type: multipart/mixed; boundary="PRT_HTMLFM_EMAIL_BOUNDARY"\n" \
+    /** multipart/related allows HTML to use cid: for inline images. **/ \
+    "Content-Type: multipart/related; type=\"multipart/alternative\"; boundary="PRT_HTMLFM_EMAIL_BOUNDARY"\n" \
     "\n" \
     /** Declare fallback header. **/ \
     "--"PRT_HTMLFM_EMAIL_BOUNDARY"\n" \
@@ -174,7 +174,7 @@ static PrtHTMLfmSubtype prt_htmlfm_subtypes[] =
     {
     { "text/vnd.cx.paginated+html", "text/html", PRT_HTMLFM_F_PAGINATED },
     { "text/html", "text/html", 0 },
-    { "multipart/vnd.cx.htmlemail+mixed", "multipart/mixed", PRT_HTMLFM_F_EMAIL },
+    { "multipart/vnd.cx.htmlemail+mixed", "multipart/related", PRT_HTMLFM_F_EMAIL },
     };
 #define PRT_HTMLFM_N_SUBTYPES (sizeof(prt_htmlfm_subtypes) / sizeof(prt_htmlfm_subtypes[0]))
 
