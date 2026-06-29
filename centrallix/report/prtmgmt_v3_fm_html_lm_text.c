@@ -20,7 +20,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2003 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -63,7 +63,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
     int i,j,cur_xset,next_xset;
     double w, cur_x;
     int last_needed_cols, cur_needs_cols, need_new_row, in_td, in_tr;
-    PrtTextStyle oldstyle;
+    PrtHTMLfmSavedStyle oldstyle;
     char* justifytypes[] = { "left", "right", "center", "justify" };
     pPrtTextLMData lm_inf = (pPrtTextLMData)(area->LMData);
 
@@ -275,7 +275,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    }
     
 	if(area->ContentTail && (area->ContentTail->Y + area->ContentTail->Height + 0.01 < area->Height)) {
-	    prt_htmlfm_OutputPrintf(context, "<tr><td height=\"%dpx\" style=\"line-height:0;\">&nbsp;</td></tr>",
+	    prt_htmlfm_OutputPrintf(context, "<tr><td style=\"height: %dpx;line-height:0;\">&nbsp;</td></tr>",
 		(int) ((area->Height - area->ContentTail->Y - area->ContentTail->Height + 0.001) * PRT_HTMLFM_YPIXEL));
 	}
 

@@ -20,7 +20,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2003 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -57,7 +57,7 @@ int
 prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
     {
     pPrtObjStream column, subobj;
-    PrtTextStyle oldstyle;
+    PrtHTMLfmSavedStyle oldstyle;
     double end_y = 0.0;
 
 	/** Write the section prologue **/
@@ -91,4 +91,3 @@ prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
 
     return 0;
     }
-

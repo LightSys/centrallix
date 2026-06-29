@@ -84,6 +84,15 @@ typedef struct _PSFI
     PrtHTMLfmInf, *pPrtHTMLfmInf;
 
 
+/** Snapshot of the style rendering state, including the text style and dirty flags. **/
+typedef struct
+    {
+    PrtTextStyle	Style;
+    StyleFlags		Flags;
+    }
+    PrtHTMLfmSavedStyle, *pPrtHTMLfmSavedStyle;
+
+
 /** Component generator support functions **/
 int prt_htmlfm_Output(pPrtHTMLfmInf context, char* str, int len);
 int prt_htmlfm_OutputPrintf(pPrtHTMLfmInf context, char* fmt, ...);
@@ -91,8 +100,8 @@ int prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len);
 
 int prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj);
 
-int prt_htmlfm_SaveStyle(pPrtHTMLfmInf context, pPrtTextStyle origstyle);
-int prt_htmlfm_ResetStyle(pPrtHTMLfmInf context, pPrtTextStyle origstyle);
+int prt_htmlfm_SaveStyle(pPrtHTMLfmInf context, pPrtHTMLfmSavedStyle saved);
+int prt_htmlfm_ResetStyle(pPrtHTMLfmInf context, pPrtHTMLfmSavedStyle saved);
 void prt_htmlfm_SetKeepSpaces(pPrtHTMLfmInf context);
 
 const char * prt_htmlfm_GetFont(pPrtTextStyle style);

@@ -20,7 +20,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2003 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -50,6 +50,31 @@
 
 
 
+/*** prt_htmlfm_OutputBorder() - Writes a single CSS "border-<side>" declaration
+ *** with an integer pixel width.  Rounding widths to the nearest integer reduces
+ *** HTML bloat and improves rendering consistency (especially for some email
+ *** HTML).  Also, 0-width borders are skipped to reduce HTML bloat.
+ *** 
+ *** @param context The report formatter context in which to print.
+ *** @param side The side to print (one of top, right, bottom, left).
+ *** @param width_units The unrounded border width.
+ *** @param color The color of the border, -1 to not use color.
+ ***/
+static void
+prt_htmlfm_OutputBorder(pPrtHTMLfmInf context, const char* side, double width_units, int color)
+    {
+    int border_width;
+
+	if (width_units == 0.0) return;
+	border_width = (int)(width_units * PRT_HTMLFM_XPIXEL + 0.5);
+	if (border_width < 1) border_width = 1;
+	if (color == -1)
+	    prt_htmlfm_OutputPrintf(context, " border-%s: %dpx solid;", side, border_width);
+	else
+	    prt_htmlfm_OutputPrintf(context, " border-%s: %dpx solid #%6.6X;", side, border_width, color);
+    }
+
+
 /*** prt_htmlfm_GenerateTable() - output a tabular data section,
  *** including its rows and cells, into html
  ***/
@@ -57,7 +82,7 @@ int
 prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
     {
     pPrtObjStream row, cell, subobj;
-    PrtTextStyle oldstyle;
+    PrtHTMLfmSavedStyle oldstyle;
     int n_rows = 0, n_cols = 0, cur_row = 0, cur_col = 0;
     pPrtTabLMData lm_data = (pPrtTabLMData)(table->LMData);
 
@@ -65,15 +90,14 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 	prt_htmlfm_SaveStyle(context, &oldstyle);
 
 
-	prt_htmlfm_OutputPrintf(context,"<table width=\"100%\" height=\"%fpx\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\"", table->Height * PRT_HTMLFM_YPIXEL);
-
-	char borderbuf[256];
-	snprintf(borderbuf, sizeof(borderbuf), " style=\"border-top: %fpx solid #%6.6X; border-right: %fpx solid #%6.6X; border-bottom: %fpx solid #%6.6X; border-left: %fpx solid #%6.6X;\">",
-	    lm_data->TopBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->TopBorder.Color[0],
-	    lm_data->RightBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->RightBorder.Color[0],
-	    lm_data->BottomBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->BottomBorder.Color[0],
-	    lm_data->LeftBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->LeftBorder.Color[0]);
-	prt_htmlfm_Output(context, borderbuf, -1);
+	/** Write the container HTML with borders. **/
+	prt_htmlfm_OutputPrintf(context,"<table width=\"100%\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\" style=\"height: %dpx;",
+	    (int)(table->Height * PRT_HTMLFM_YPIXEL + 0.5));
+	prt_htmlfm_OutputBorder(context, "top", lm_data->TopBorder.Width[0], lm_data->TopBorder.Color[0]);
+	prt_htmlfm_OutputBorder(context, "right", lm_data->RightBorder.Width[0], lm_data->RightBorder.Color[0]);
+	prt_htmlfm_OutputBorder(context, "bottom", lm_data->BottomBorder.Width[0], lm_data->BottomBorder.Color[0]);
+	prt_htmlfm_OutputBorder(context, "left", lm_data->LeftBorder.Width[0], lm_data->LeftBorder.Color[0]);
+	prt_htmlfm_Output(context, "\">", 2);
 
 	/* Count rows for style purposes */
 	for(row = table->ContentHead; row; row=row->Next) {
@@ -112,7 +136,7 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 		    if (cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
 			{
 			cur_col++;
-			prt_htmlfm_OutputPrintf(context,"<td width=\"%d\" align=\"left\" valign=\"top\" bgcolor=\"#%6.6X\"; style=\"padding:%dpx;" ,
+			prt_htmlfm_OutputPrintf(context,"<td width=\"%d\" align=\"left\" valign=\"top\" bgcolor=\"#%6.6X\" style=\"padding:%dpx;" ,
 				(int)(cell->Width*PRT_HTMLFM_XPIXEL),
     				cell->BGColor,
 				(int)(lm_data->ColSep * PRT_HTMLFM_XPIXEL / 2));
@@ -120,32 +144,30 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 			/* top border */
 			if (cell->BorderTop != 0 || row->BorderTop != 0) {
 			    if (cell->BorderTop != 0) {
-				prt_htmlfm_OutputPrintf(context, " border-top: %fpx solid;", cell->BorderTop * PRT_HTMLFM_XPIXEL);
+				prt_htmlfm_OutputBorder(context, "top", cell->BorderTop, -1);
 			    } else {
-				prt_htmlfm_OutputPrintf(context, " border-top: %fpx solid;", row->BorderTop * PRT_HTMLFM_XPIXEL);
+				prt_htmlfm_OutputBorder(context, "top", row->BorderTop, -1);
 			    }
 			} else if(cur_row != 1) {
-			    prt_htmlfm_OutputPrintf(context, " border-top: %fpx solid #%6.6X;",
-	    			lm_data->InnerBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->InnerBorder.Color[0]);
+			    prt_htmlfm_OutputBorder(context, "top", lm_data->InnerBorder.Width[0], lm_data->InnerBorder.Color[0]);
 			}
 			/* bottom border */
 			if (cell->BorderBottom != 0 || row->BorderBottom != 0) {
 			    if (cell->BorderBottom != 0) {
-				prt_htmlfm_OutputPrintf(context, " border-bottom: %fpx solid;", cell->BorderBottom * PRT_HTMLFM_XPIXEL);
+				prt_htmlfm_OutputBorder(context, "bottom", cell->BorderBottom, -1);
 			    } else {
-				prt_htmlfm_OutputPrintf(context," border-bottom: %fpx solid;", row->BorderBottom * PRT_HTMLFM_XPIXEL);
+				prt_htmlfm_OutputBorder(context, "bottom", row->BorderBottom, -1);
 			    }
 			} 
 			/* left border */
 			if (cell->BorderLeft != 0) {
-			    prt_htmlfm_OutputPrintf(context, " border-left: %fpx solid;", cell->BorderLeft * PRT_HTMLFM_XPIXEL);
+			    prt_htmlfm_OutputBorder(context, "left", cell->BorderLeft, -1);
 			} else if(cur_col != 1) {
-			    prt_htmlfm_OutputPrintf(context, " border-left: %fpx solid #%6.6X;", 
-				lm_data->InnerBorder.Width[0] * PRT_HTMLFM_XPIXEL, lm_data->InnerBorder.Color[0]);
+			    prt_htmlfm_OutputBorder(context, "left", lm_data->InnerBorder.Width[0], lm_data->InnerBorder.Color[0]);
 			}
 			/* right border */
 			if (cell->BorderRight != 0) {
-			    prt_htmlfm_OutputPrintf(context, " border-right: %fpx solid;", cell->BorderRight * PRT_HTMLFM_XPIXEL);
+			    prt_htmlfm_OutputBorder(context, "right", cell->BorderRight, -1);
 			}
 			
 			prt_htmlfm_Output(context, "\">", 2);

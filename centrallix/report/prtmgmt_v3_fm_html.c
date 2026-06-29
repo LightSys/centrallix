@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2003 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -68,7 +68,7 @@
 /*** Document header ***/
 /* CLS 2025-03-28: Note that changing the HTML version may change spacing between lines/wrapped text.*/
 #define PRT_HTMLFM_HEADER       "<!DOCTYPE html>\n" \
-				"<html lang=\"en\" width=\"100%\">\n" \
+				"<html lang=\"en\">\n" \
 				"<head>\n" \
 				"    <title>Centrallix HTML Document</title>\n" \
 				"    <meta charset=\"utf-8\">\n" \
@@ -78,7 +78,7 @@
 				"    <meta name=\"referrer\" content=\"same-origin\">\n" \
 				"    <meta name=\"Generator\" content=\"Centrallix PRTMGMT v3.0\">\n" \
 				"</head>\n" \
-				"<body bgcolor=\"%s\">\n"
+				"<body style=\"background-color: %s;\">\n"
 
 
 /*** Document footer ***/
@@ -109,7 +109,8 @@
 #define PRT_HTMLFM_EMAIL_CONTENT_HEADER "\n" \
     "--"PRT_HTMLFM_ALT_BOUNDARY"\n" \
     "Content-Type: text/html; charset=utf-8\n" \
-    "Content-Transfer-Encoding: 7bit\n"
+    "Content-Transfer-Encoding: 7bit\n" \
+    "\n"
 
 #define PRT_HTMLFM_EMAIL_CONTENT_FOOTER \
     "--"PRT_HTMLFM_ALT_BOUNDARY"--\n"
@@ -119,7 +120,8 @@
     "Content-Type: image/png\n" \
     "Content-Transfer-Encoding: base64\n" \
     "Content-Disposition: inline; filename=image_%d.png\n" \
-    "Content-ID: <image_%d>\n"
+    "Content-ID: <image_%d>\n" \
+    "\n"
 
 #define PRT_HTMLFM_IMG_HEADER_VALUES(id) id, id
 
@@ -630,30 +632,33 @@ prt_htmlfm_InitStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
     }
 
 
-/*** prt_htmlfm_ResetStyle() - reset a style setting to that which
- *** was used previously in a container before a subcontainer was 
- *** entered.  This is used when a subcontainer was just closed.
+/*** prt_htmlfm_ResetStyle() - reset the rendering state to the saved state,
+ *** typically called when closing a container.
  ***/
 int
-prt_htmlfm_ResetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
+prt_htmlfm_ResetStyle(pPrtHTMLfmInf context, pPrtHTMLfmSavedStyle saved)
     {
 
 	/** Set style settings, and do nothing else **/
-	memcpy(&(context->CurStyle), style, sizeof(PrtTextStyle));
+	memcpy(&(context->CurStyle), &(saved->Style), sizeof(PrtTextStyle));
+	context->StyleFlags = saved->Flags;
 
     return 0;
     }
 
 
-/*** prt_htmlfm_SaveStyle() - save the current text style in a given
- *** style structure
+/*** prt_htmlfm_SaveStyle() - save the current rendering state to the save
+ *** struct so that it can be restored later by prt_htmlfm_ResetStyle().
+ *** Commonly used when entering a container so the state can be restored
+ *** when exitting the container.
  ***/
 int
-prt_htmlfm_SaveStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
+prt_htmlfm_SaveStyle(pPrtHTMLfmInf context, pPrtHTMLfmSavedStyle saved)
     {
 
 	/** Save style settings **/
-	memcpy(style, &(context->CurStyle), sizeof(PrtTextStyle));
+	memcpy(&(saved->Style), &(context->CurStyle), sizeof(PrtTextStyle));
+	saved->Flags = context->StyleFlags;
 
     return 0;
     }
@@ -705,16 +710,16 @@ prt_htmlfm_Border(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj)
 	    if (bw == 0) bw = 1;
 	    iw = ((i==border->nLines-1)?m:(border->Sep*PRT_HTMLFM_XPIXEL)) + 0.5;
 	    if (iw == 0 && i!=border->nLines-1) iw = 1;
-	    prt_htmlfm_OutputPrintf(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"%d\"><tr><td bgcolor=\"%6.6X\">",
+	    prt_htmlfm_OutputPrintf(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">",
 		    (int)(bw),
 		    (int)(border->Color[i]));
-	    prt_htmlfm_OutputPrintf(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"%d\"><tr><td bgcolor=\"%6.6X\">\n",
+	    prt_htmlfm_OutputPrintf(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">\n",
 		    (int)(iw),
 		    (int)(obj->BGColor));
 	    }
 	if (border->nLines == 0)
 	    {
-	    prt_htmlfm_OutputPrintf(context, "<table border=\"0\" width=\"100%\" cellspacing=\"0\" cellpadding=\"%d\"><tr><td bgcolor=\"%6.6X\">\n",
+	    prt_htmlfm_OutputPrintf(context, "<table border=\"0\" width=\"100%\" cellspacing=\"0\" cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">\n",
 		    (int)(m),
 		    (int)(obj->BGColor));
 	    }
@@ -996,12 +1001,12 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", right_margin);
 	prt_htmlfm_OutputStrLiteral(context, "</colgroup>");
 	/* Print the first row, empty with appropriate margins*/
-	prt_htmlfm_OutputPrintf(context, "<tr><td height=\"%dpx\" width=\"%dpx\"></td><td height=\"%dpx\" width=\"%dpx\"></td><td height=\"%dpx\" width=\"%dpx\"></td></tr>", 
+	prt_htmlfm_OutputPrintf(context, "<tr><td style=\"height: %dpx; width: %dpx;\"></td><td style=\"height: %dpx;width: %dpx;\"></td><td style=\"height: %dpx;width: %dpx;\"></td></tr>",
 		top_margin, left_margin,
 		top_margin, center_width,
 		top_margin, right_margin);
 	/* Start the second row (with appropriate margin) */
-	prt_htmlfm_OutputPrintf(context, "<tr><td width=\"%dpx\"></td><td>\n", left_margin);
+	prt_htmlfm_OutputPrintf(context, "<tr><td style=\"width: %dpx;\"></td><td>\n", left_margin);
 
 
 	/** We need to scan the absolute-positioned content to figure out how many
@@ -1086,7 +1091,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    while(subobj->Y > (rowpos[cur_row]+0.001) && cur_row < PRT_HTMLFM_MAXROWS-1) cur_row++;
 		    
 		    if(last_height + 0.001 < subobj->Y) {
-			prt_htmlfm_OutputPrintf(context, "</tr><tr><td height=\"%dpx\" style=\"line-height:0;\">&nbsp;</td>",
+			prt_htmlfm_OutputPrintf(context, "</tr><tr><td style=\"height: %dpx;line-height:0;\">&nbsp;</td>",
 			   (int) ((subobj->Y - last_height) * PRT_HTMLFM_YPIXEL));
 		    }
 		    prt_htmlfm_OutputStrLiteral(context, "</tr>\n<tr>");
