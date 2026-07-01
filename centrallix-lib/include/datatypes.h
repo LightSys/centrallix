@@ -70,6 +70,7 @@ typedef struct _BN
     Binary, *pBinary;
 
 /** Data Types. **/
+#define DATA_T_INVALID         -1	/* error, or a value that is not meant to be a typed object */
 #define DATA_T_UNAVAILABLE      0
 #define DATA_T_ANY		0
 #define DATA_T_INTEGER          1
