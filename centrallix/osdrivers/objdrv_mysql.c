@@ -1609,6 +1609,116 @@ mysd_internal_DetermineType(pObject obj, pMysdData inf)
     return 0;
     }
 
+
+/*** mysd_internal_free_validate_params - frees the strings created by `mysd_internal_validate_params` 
+ *** @param arg_strings the list of xStrings returned by `mysd_internal_free_validate_params` to free
+*/
+
+void
+mysd_internal_free_processed_args(pXArray arg_strings)
+    {
+	if(arg_strings)
+	    {
+	    for(int i = 0 ; i < arg_strings->nItems ; i++)
+		if(arg_strings->Items[i] != NULL) xsFree(arg_strings->Items[i]);
+	    xaFree(arg_strings);
+	    }
+    return;
+    }
+////FIXME: may need to have allowed node types (to require literals) and whether nullable (to avoid NULL strings literals?)
+/*** mysd_internal_process_params - verifies the parameters of a function
+ *** based on the specified types and argument count. 
+ *** @note: this function evaluates all parameters with mysd_internal_TreeToClause
+ *** @param tree The node structure to convert. MUST point to the convert function
+ *** @param tdata Information about the table being queried
+ *** @param conn The active connection to the database 
+ *** @param types a list of DATA_T type constants, using DATA_T_INVALID as a delimter. If DATA_T_ANY is 
+ ***   one of the allowed types, the type check is skipped for that argument. MUST include types for 
+ ***   all `max` possible args. If set to NULL, all type checking is skipped
+ *** @param min the minimum number of arguments allowable. Can be 0 to allow no args. Any args after 
+ ***   `min` are considered optional.
+ *** @param max the maximum number of arguments allowable. Make the same as `min` to specificy a single
+ ***   valid number of arguments. 
+ *** @returns a list of strings returned by runing mysd_internal_TreeToClause on each of the children, 
+ ***    or NULL on error
+ */
+pXArray
+mysd_internal_process_params(pExpression tree, pMysdTable *tdata, MYSQL * conn, int types[], int min, int max)
+    {
+    pXArray arg_strings = NULL;
+    pXString cur_string = NULL;
+    int* cur_type = types;
+	/** make sure the number of args falls in the range **/
+	if(tree->Children.nItems < min || max < tree->Children.nItems)
+	    {
+	///TODO: consider using info to print a usage message
+	    if(tree->Name != NULL)
+		{
+		mssError(1,"MYSD","Error: wrong number of args for function %s.", tree->Name);
+		}
+	    else
+		{
+		mssError(1,"MYSD","Error: invalid number of inputs for expression node of type %d", tree->NodeType);
+		}
+	    goto error;
+	    }
+
+	if((arg_strings = xaNew(tree->Children.nItems)) == NULL)
+	    {
+	    mssError(1,"MYSD","Error: validate out of memory", tree->Name);
+	    goto error;
+	    }
+
+	/** now itterate over the list to verify the types match **/
+	for(int i = 0 ; i < tree->Children.nItems ; i++)
+	    {
+	    /** evaluate the child to make sure the data type is accurate **/
+	    if((cur_string = xsNew()) == NULL)
+		{
+		mssError(1,"MYSD","Error: validate out of memory", tree->Name);
+		goto error;
+		}
+	
+	    pExpression cur_child = tree->Children.Items[i];
+	    if(mysd_internal_TreeToClause(cur_child, tdata,  cur_string, conn) < 0)
+		{
+		mssError(0,"mysd","failed to parse argument at index %d for function %s", i, tree->Name);
+		goto error;
+		}
+
+	    /** loop through all valid types and look for a match **/
+	    if(types != NULL)
+		{
+		int is_valid = 0;
+		while(*cur_type != DATA_T_INVALID)
+		    {
+		    if(*cur_type == cur_child->DataType || *cur_type == DATA_T_ANY)
+			is_valid = 1;
+		    cur_type++;
+		    }
+		cur_type++; /* move past the DATA_T_INVALID delimiter */
+
+		if(is_valid == 0)
+		    {
+		    mssError(1,"MYSD","Error: invalid argument type %d for argument at index %d for function %s", 
+		    cur_child->DataType, i, tree->Name);
+		    goto error;
+		    }
+		}
+	    xaAddItem(arg_strings, cur_string);
+	    cur_string = NULL;
+	    }
+	
+	return arg_strings; 
+    error:
+	mysd_internal_free_processed_args(arg_strings);
+	if(cur_string != NULL) xsFree(cur_string);
+    return NULL;
+    }
+
+#define get_arg_string(arg_strings, index) ( ((pXString)arg_strings->Items[index])->String )
+
+
 /*** mysd_internal_function_Convert - handles transforming a cxSQL convert 
  *** into a MySQL convert
  *** @param tree The node structure to convert. MUST point to the convert function
@@ -1620,40 +1730,56 @@ mysd_internal_DetermineType(pObject obj, pMysdData inf)
 int
 mysd_internal_function_Convert(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
     {
+    pXArray arg_strings = NULL;
 	/** check whether convert the type (2), encoding (3), or else error **/
 	if (tree->Children.nItems == 2)
 	    {
+	    /** params line up differently for the 2 and 3 arg versions, so handle separately */
+	    int types [] = { /** datatype **/ DATA_T_STRING, DATA_T_INVALID,
+			     /** value **/ DATA_T_ANY, DATA_T_INVALID};
+	    arg_strings = mysd_internal_process_params(tree, tdata, conn, types, 2, 2);
+	    if(arg_strings == NULL)
+		{
+		mssError(0,"MYSD","convert usage: convert(datatype, value) or convert(from_encoding, to_encoding, string|data)");
+		goto error;
+		}
+
 	    /** MySQL convert() params are reversed to what CX, Sybase, and MS SQL expect; convert(<VALUE>, <TYPE>) **/
 	    xsConcatenate(where_clause, " convert(", -1);
-	    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+	    xsConcatenate(where_clause, ((pXString)arg_strings->Items[1])->String, -1);
 	    xsConcatenate(where_clause, " , ", 3);
 	    
 	    /** check for a valid type to convert to **/
 	    pExpression type_exp = (pExpression)(tree->Children.Items[0]);
-	    if(type_exp->DataType != DATA_T_STRING || type_exp->String == NULL)
+	    if(type_exp->String == NULL)
 		{
-		mssError(1,"MYSD","Error: convert data type must be a string literal.");
+		mssError(1,"MYSD","Error: convert data type must not be NULL.");
 		goto error;
 		}
 
 	    if (!strcmp(type_exp->String,"integer"))
 		{
-		/// FIXME: need new beahvior to handle doubles and datetimes...? But I don't know what type I'm dealing with
+		/// FIXME: change to handle doubles and datetimes the way the object system does it (truncate and custom representation, respectively)
+		/** Note that datetimes can be converted as is, but do not match how the object system converts them **/
 		xsConcatenate(where_clause," signed integer ",-1);
 		tree->DataType = DATA_T_INTEGER;
 		} 
 	    else if (!strcmp(type_exp->String,"string"))
 		{
+		/// FIXME: if its a money data type, need to append a $
 		xsConcatenate(where_clause," char ",-1);
 		tree->DataType = DATA_T_STRING;
 		}
 	    else if (!strcmp(type_exp->String,"double"))
 		{
+		/// FIXME: don't allow conversion from datetime
 		xsConcatenate(where_clause," double ",-1);
 		tree->DataType = DATA_T_DOUBLE;
 		}
 	    else if (!strcmp(type_exp->String,"money"))
 		{
+		/// FIXME: don't allow conversion from datetime
+		/** FIXME: need to use replace to remove any $ in a string (maybe TRIM leading? but need -$ to work too... **/
 		xsConcatenate(where_clause," decimal(14,4) ",-1);
 		tree->DataType = DATA_T_MONEY;
 		}
@@ -1668,23 +1794,83 @@ mysd_internal_function_Convert(pExpression tree, pMysdTable *tdata, pXString whe
 		goto error;
 		}
 	    xsConcatenate(where_clause, ") ", 2);
+
+	    mysd_internal_free_processed_args(arg_strings);
+	    arg_strings = NULL;
 	    }
 	else if (tree->Children.nItems == 3)
 	    {
 	    /** TODO: encoding convert plz **/
+	    ///TODO: if from vanco, cast as UTF-8, convert to UTF-16, and cast that to CP-1252, remove the NULL bytes from ascii characters...? then convert as desired.
+	    //TODO: if to vanco, 
 	    }
 	else 
 	    {
 	    mssError(1,"MYSD","convert usage: convert(datatype, value) or convert(from_encoding, to_encoding, string|data)");
 	    goto error;
 	    }
-
+	
 	return 0;
 
     error:
+	if(arg_strings) mysd_internal_free_processed_args(arg_strings);
     return -1;
     }
 
+/*** mysd_internal_function_Datepart - handles the Upper and Lower cxSQL 
+ *** into a MySQL datepart
+ *** @param tree The node structure to convert. MUST point to either a Upper or Lower function call
+ *** @param tdata Information about the table being queried
+ *** @param where_clause The string to append the converted query to
+ *** @param conn The active connection to the database 
+ *** @returns 0 on success or -1 on error
+ ***/
+int
+mysd_internal_function_Case(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
+    {
+    pXArray arg_strings = NULL;
+    pMysdTable tempTdata = *tdata;
+    int types[] = { DATA_T_STRING, DATA_T_INVALID };
+
+	/** verify args **/
+	arg_strings = mysd_internal_process_params(tree, tdata, conn, types, 1, 1);
+	if(arg_strings == NULL)
+	    {
+	    mssError(0,"MYSD","convert usage: convert(datatype, value) or convert(from_encoding, to_encoding, string|data)");
+	    goto error;
+	    }
+
+	/** check if database is using an expected character set **/
+	/** need to change collation to guarantee the result is case sensitive (in case it is used in compares) **/
+	xsConcatPrintf(where_clause, " (%s(", tree->Name);
+	xsConcatenate(where_clause, get_arg_string(arg_strings, 0), -1);
+	if (strlen(get_arg_string(arg_strings, 0)) == 6 && !strcmp(get_arg_string(arg_strings, 0), " NULL "))
+	    {
+	    /** upper()/lower() param evaluated to NULL, don't use collation. **/
+	    xsConcatenate(where_clause, ")) ", 3);
+	    }
+	else
+	    {
+	    /** only change collation if found one **/
+	    if(tempTdata->Node->DatabaseCollation[0] != '\0')
+		{
+		xsConcatenate(where_clause, ") collate ", 10);
+	    /// FIXME: verify that the collation is either a) sanitized, or b) is a string literal and not from user/file
+		mysd_internal_SafeAppend(conn, where_clause, tempTdata->Node->DatabaseCollation);
+		xsConcatenate(where_clause, ") ", -1);
+		}
+	    else
+		xsConcatenate(where_clause, ")) ", 3);
+	    }
+	return 0; 
+
+    error:
+	if(arg_strings) mysd_internal_free_processed_args(arg_strings);
+    return -1;
+    }
+
+
+///TODO: circle back and see if validate params can simplify any of the checks afterall
 /*** mysd_internal_function_Datepart - handles the datepart function from cxSQL 
  *** into a MySQL datepart
  *** @param tree The node structure to convert. MUST point to the convert function
@@ -1697,6 +1883,7 @@ int
 mysd_internal_function_Datepart(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
     {
     XString date_buf;
+    pXArray arg_strings = NULL;
 
 	xsInit(&date_buf);
 
@@ -1708,7 +1895,7 @@ mysd_internal_function_Datepart(pExpression tree, pMysdTable *tdata, pXString wh
 	    }
 	
 	pExpression part_exp = (pExpression)(tree->Children.Items[0]);
-	if(part_exp->DataType != DATA_T_STRING || part_exp->String == NULL)
+	if(part_exp->NodeType != EXPR_N_STRING || part_exp->String == NULL)
 	    {
 	    mssError(1,"MYSD","datepart part must be a string literal");
 	    goto error;
@@ -1733,16 +1920,17 @@ mysd_internal_function_Datepart(pExpression tree, pMysdTable *tdata, pXString wh
 	    goto error;
 	    }
 	pExpression date_exp = tree->Children.Items[1];
-	if(date_exp->DataType == DATA_T_STRING)
+	if(date_exp->NodeType == EXPR_N_STRING)
 	    {
 	    if(date_exp->String == NULL)
 		{
 		mssError(1,"MYSD","date expression cannot be a NULL string");
 		goto error;
 		}
-	    if (strpbrk(date_exp->String,"\"' \t\r\n") != 0)
+	/// FIXME: I am pretty sure this strpbrk is redundant for mysd_internal_SafeAppend, and also breaks the logic in general
+	    if (strpbrk(date_exp->String,"\"'\t\r\n") != 0)
 		{
-		mssError(1,"mysd","Invalid datepart() parameters in Expression Tree");\
+		mssError(1,"mysd","cannot parse string \"%s\" as a date", date_exp->String);
 		goto error;
 		}
 	    objDataToString(&date_buf, DATA_T_STRING, date_exp->String, 0);
@@ -1757,16 +1945,24 @@ mysd_internal_function_Datepart(pExpression tree, pMysdTable *tdata, pXString wh
 	    }
 	xsConcatenate(where_clause, ") ", 2);
 	
+	/** always returns a string **/
+	tree->DataType = DATA_T_STRING;
+	
 	xsDeInit(&date_buf);
+	mysd_internal_free_processed_args(arg_strings);
 	return 0;
 
     error:
 	xsDeInit(&date_buf);
+	if(arg_strings) mysd_internal_free_processed_args(arg_strings);
     return -1;
     }
 
 /*** mysd_internal_TreeToClause - convert an expression tree to the appropriate
  *** clause for the SQL statement.
+ *** Note the following limitations this adds to CxSQL
+ ***   - The hmac, pbkdf2, and argon2id functions are not supported
+ ***
  ***/
 /// FIXME: all of the calls to children need to do bound checking
 /// FIXME: maybe check return values on recurrsive calls?
@@ -1778,6 +1974,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
     pExpression subtree;
     int i,id = 0;
     XString tmp;
+    pXArray arg_strings = NULL;
     char* fn_use_name;
     int use_stock_fn_call;
     char quote;
@@ -1813,6 +2010,12 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
             case EXPR_N_DOUBLE:
           mysd_DO_DOUBLE:
                 objDataToString(where_clause, DATA_T_DOUBLE, &(tree->Types.Double), DATA_F_QUOTED);
+		/** clear any trailing 0s **/
+		int trailIndex = where_clause->Length - 1; /* quoted, so skip the space) */
+		while(where_clause->String[trailIndex - 1] == '0' && trailIndex > 0) trailIndex --;
+		if(trailIndex >= where_clause->Length - 7 && trailIndex != where_clause->Length - 1)
+		    xsSubst(where_clause, trailIndex, where_clause->Length - trailIndex - 1, "", 0);
+///FIXME: does this put the trailing space back? Surely there's a better way to do this anyway? maybe a flag for objDataToString?
                   break;
 
             case EXPR_N_INTEGER:
@@ -1833,6 +2036,14 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 
             case EXPR_N_STRING:
           mysd_DO_STRING:
+		/** check for a NULL literal **/
+		if( tree->Flags & EXPR_F_PERMNULL && tree->String != NULL && strcasecmp("NULL", tree->String) == 0)
+		    {
+		    xsConcatenate(where_clause, " NULL ", 6);
+		    break;
+		    }
+		
+		/** its a normal string, treat as such **/
 		quote = '\'';
                 objDataToString(&tmp, DATA_T_STRING, tree->String, 0);
                 xsConcatenate(where_clause, &quote, 1);
@@ -1880,7 +2091,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                         }
                     else if (tree->DataType == DATA_T_STRING)
                         {
-				/// FIXME: claude things this is a possible inject
+				/// FIXME: claude thinks this is a possible inject
                         objDataToString(where_clause, DATA_T_STRING, &(tree->String), DATA_F_QUOTED | DATA_F_SYBQUOTE);
                         }
                     else if (tree->DataType == DATA_T_DOUBLE)
@@ -1914,10 +2125,28 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     else if (!strcmp(tree->Name,"annotation"))
                         {
                         /** no anotation support atm **/
+			///FIXME: shouldn't this err?
                         }
                     else
                         {
                         /** "Normal" type of object... **/
+
+			/** Confirm column exists and determine the datatype of the column **/
+			int column_type = DATA_T_INVALID;
+			for(i = 0 ; i < tdata[id]->nCols ; i++)
+			    {
+			    if(strcmp(tree->Name, tdata[id]->Cols[i]))
+				{
+				column_type = tdata[id]->ColCxTypes[i];
+				break;
+				}
+			    }
+			if(column_type == DATA_T_INVALID)
+			    {
+			    mssError(1, "MYSD", "Invalid column '%s' in where clause", tree->Name);
+			    return -1;
+			    }
+			tree->DataType = column_type;
                         xsConcatenate(where_clause, " `", 2);
 			mysd_internal_SafeAppend(conn, where_clause, tree->Name);
                         xsConcatenate(where_clause, "` ", 2);
@@ -1926,107 +2155,144 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                 break;
 
             case EXPR_N_COMPARE:
+		/** Verify Arguments **/
+		arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 2, 2);
+		if(arg_strings == NULL)
+		    {
+		    mssError(0,"MYSD","comparison opperators require two arguments");
+		    return -1;
+		    }
+		
+		/** build clause **/
                 xsConcatenate(where_clause, " (", 2);
-                subtree = (pExpression)(tree->Children.Items[0]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+		xsConcatenate(where_clause, get_arg_string(arg_strings, 0), -1);
                 xsConcatenate(where_clause, " ", 1);
                 if (tree->CompareType & MLX_CMP_LESS) xsConcatenate(where_clause,"<",1);
                 if (tree->CompareType & MLX_CMP_GREATER) xsConcatenate(where_clause,">",1);
                 if (tree->CompareType & MLX_CMP_EQUALS) xsConcatenate(where_clause,"=",1);
                 xsConcatenate(where_clause, " ", 1);
-                subtree = (pExpression)(tree->Children.Items[1]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+                xsConcatenate(where_clause, get_arg_string(arg_strings, 1), -1);
                 xsConcatenate(where_clause, ") ", 2);
+
+		mysd_internal_free_processed_args(arg_strings);
                 break;
 
             case EXPR_N_AND:
+		/** Verify Arguments **/
+		arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 2, 2);
+		if(arg_strings == NULL)
+		    {
+		    mssError(0,"MYSD","AND requires two clauses");
+		    return -1;
+		    }
+		    
+		/** build clause **/
                 xsConcatenate(where_clause, " (",2);
-                subtree = (pExpression)(tree->Children.Items[0]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+		xsConcatenate(where_clause, get_arg_string(arg_strings, 0), -1);
                 xsConcatenate(where_clause, " AND ",5);
-                subtree = (pExpression)(tree->Children.Items[1]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+		xsConcatenate(where_clause, get_arg_string(arg_strings, 1), -1);
                 xsConcatenate(where_clause, ") ",2);
+
+		mysd_internal_free_processed_args(arg_strings);
                 break;
 
             case EXPR_N_OR:
+		/** Verify Arguments **/
+		arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 2, 2);
+		if(arg_strings == NULL)
+		    {
+		    mssError(0,"MYSD","OR requires two clauses");
+		    return -1;
+		    }
+		
+		/** build clause **/
                 xsConcatenate(where_clause, " (",2);
-                subtree = (pExpression)(tree->Children.Items[0]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+		xsConcatenate(where_clause, get_arg_string(arg_strings, 0), -1);
                 xsConcatenate(where_clause, " OR ",4);
-                subtree = (pExpression)(tree->Children.Items[1]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+		xsConcatenate(where_clause, get_arg_string(arg_strings, 1), -1);
                 xsConcatenate(where_clause, ") ",2);
+
+		mysd_internal_free_processed_args(arg_strings);
                 break;
 
             case EXPR_N_ISNOTNULL:
+		/** Verify Arguments **/
+		arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		if(arg_strings == NULL)
+		    {
+		    mssError(0,"MYSD","IS NOT NULL requires one clause");
+		    return -1;
+		    }
+		
+		/** build clause **/
                 xsConcatenate(where_clause, " (",2);
-                subtree = (pExpression)(tree->Children.Items[0]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+		xsConcatenate(where_clause, get_arg_string(arg_strings, 0), -1);
                 xsConcatenate(where_clause, " IS NOT NULL) ",14);
+
+		mysd_internal_free_processed_args(arg_strings);
                 break;
 
             case EXPR_N_ISNULL:
+		/** Verify Arguments **/
+		arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		if(arg_strings == NULL)
+		    {
+		    mssError(0,"MYSD","IS NULL requires one clause");
+		    return -1;
+		    }
+		
+		/** build clause **/
                 xsConcatenate(where_clause, " (",2);
-                subtree = (pExpression)(tree->Children.Items[0]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+		xsConcatenate(where_clause, get_arg_string(arg_strings, 0), -1);
                 xsConcatenate(where_clause, " IS NULL) ",10);
+
+		mysd_internal_free_processed_args(arg_strings);
                 break;
 
             case EXPR_N_NOT:
+		/** Verify Arguments **/
+		arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		if(arg_strings == NULL)
+		    {
+		    mssError(0,"MYSD","NOT requires one clause");
+		    return -1;
+		    }
+		
+		/** build clause **/
                 xsConcatenate(where_clause, " ( NOT ( ",9);
-                subtree = (pExpression)(tree->Children.Items[0]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+                xsConcatenate(where_clause, get_arg_string(arg_strings, 0), -1);
                 xsConcatenate(where_clause, " ) ) ",5);
+
+		mysd_internal_free_processed_args(arg_strings);
                 break;
 
             case EXPR_N_FUNCTION:
-                /** Special case functions which MySQL doesn't have. **/
+                /** Check for special case functions which MySQL doesn't have. **/
+		/** Otherwise, check against whitelist of supported functions **/
 		fn_use_name = tree->Name;
 		use_stock_fn_call = 0;
-                if (!strcmp(tree->Name,"condition") && tree->Children.nItems == 3)
+                if (!strcmp(tree->Name,"condition"))
                     {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 3, 3);
+		    if(arg_strings == NULL) return -1;
 		    fn_use_name = "if";
 		    use_stock_fn_call = 1;
                     }
 		else if (!strcmp(tree->Name,"isnull"))
 		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 2, 2);
+		    if(arg_strings == NULL) return -1;
 		    /** MySQL isnull() does something different than CX isnull().  Use ifnull() instead. **/
 		    fn_use_name = "ifnull";
 		    use_stock_fn_call = 1;
 		    }
 		else if (!strcmp(tree->Name,"convert"))
 		    {
-		    if(mysd_internal_function_Convert((pExpression)(tree), tdata,  where_clause, conn) < 0) return -1;
+		    if(mysd_internal_function_Convert((tree), tdata,  where_clause, conn) < 0) return -1;
 		    }
 		else if (!strcmp(tree->Name,"upper") || !strcmp(tree->Name, "lower"))
 		    {
-		    /** check if database is using an expected character set **/
-		    pMysdTable tempTdata = *tdata;
-
-		    /** need to change collation to guarantee the result is case sensitive (in case it is used in compares) **/
-		    xsConcatPrintf(where_clause, " (%s(", tree->Name);
-		    len = xsLength(where_clause);
-		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, where_clause, conn);
-
-		    if (xsLength(where_clause) - len == 6 && !strcmp(xsString(where_clause)+len, " NULL "))
-			{
-			/** upper()/lower() param evaluated to NULL, don't use collation. **/
-			xsConcatenate(where_clause, ")) ", 3);
-			}
-		    else
-			{
-			/** only change collation if found one **/
-			if(tempTdata->Node->DatabaseCollation[0] != '\0')
-			    {
-			    xsConcatenate(where_clause, ") collate ", -1);
-		/// FIXME: verify that the collation is either a) sanitized, or b) is a string literal and not from user/file
-			    xsConcatenate(where_clause, tempTdata->Node->DatabaseCollation, -1);
-			    xsConcatenate(where_clause, ") ", -1);
-			    } 
-			else
-			    xsConcatenate(where_clause, ")) ", 3);
-			}
+		    if(mysd_internal_function_Case(tree, tdata, where_clause, conn) < 0) return -1;
 		    }
 		else if (!strcmp(tree->Name,"charindex"))
 		    {
@@ -2101,6 +2367,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    }
                 else if (!strcmp(tree->Name,"ralign") && tree->Children.nItems == 2)
                     {
+			///FIXME: this just prints spaces and not the thing to be aligned
                     xsConcatenate(where_clause, " substring('", -1);
                     for(i=0;i<255 && i<((pExpression)(tree->Children.Items[1]))->Integer;i++)
                         xsConcatenate(where_clause, " ", 1);
@@ -2319,7 +2586,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     }
                 xsConcatenate(where_clause, ") ) ", 4);
                 break;
-	/// FIXME: defakt case for switch?
+	/// FIXME: default case for switch?
             }
 
         if (tree->Flags & EXPR_F_DESC) xsConcatenate(where_clause, " DESC ", 6);
