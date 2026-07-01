@@ -1,0 +1,31 @@
+##NAME MySQL upper and lower functions
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'test', c = 'test'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+
+# upper
+csv SELECT case_upper_01 = "basic lowercase string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND upper('hello') = 'HELLO'
+csv SELECT case_upper_02 = "already uppercase" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND upper('HELLO') = 'HELLO'
+csv SELECT case_upper_03 = "mixed case" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND upper('Hello World') = 'HELLO WORLD'
+csv SELECT case_upper_04 = "column value" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND upper(:b) = 'TEST'
+csv SELECT case_upper_05 = "null input" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull(upper(NULL), 'was_null') = 'was_null'
+csv SELECT case_upper_06 = "characters without cases" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND upper('1234567890!@#$%^&*()-=_+') = '1234567890!@#$%^&*()-=_+'
+# Verify a case sensitive collation is used
+csv SELECT test_upper_07 = "confirm compares work properly" FROM /tests/Test_DB/stringTests/rows WHERE upper('hello world') != 'hello world'
+
+# lower
+csv SELECT case_lower_01 = "basic uppercase string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND lower('HELLO') = 'hello'
+csv SELECT case_lower_02 = "already lowercase" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND lower('hello') = 'hello'
+csv SELECT case_lower_03 = "mixed case" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND lower('Hello World') = 'hello world'
+csv SELECT case_lower_04 = "column value" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND lower(:c) = 'test'
+csv SELECT case_lower_05 = "null input" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull(lower(NULL), 'was_null') = 'was_null'
+csv SELECT case_lower_06 = "characters without cases" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND lower('1234567890!@#$%^&*()-=_+') = '1234567890!@#$%^&*()-=_+'
+# Verify a case sensitive collation is used
+csv SELECT test_lower_07 = "confirm compares work properly" FROM /tests/Test_DB/stringTests/rows WHERE lower('HELLO WORLD') != 'HELLO WORLD'
+
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows

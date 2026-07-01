@@ -1,0 +1,22 @@
+##NAME MySQL char_length function
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query INSERT INTO /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'hello world', c = 'HELLO WORLD'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+
+csv SELECT test_char_length_01 = "char_length: empty string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND char_length('') = 0
+csv SELECT test_char_length_02 = "char_length: basic string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND char_length('hello') = 5
+csv SELECT test_char_length_03 = "char_length: string with spaces" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND char_length('hello world') = 11
+csv SELECT test_char_length_04 = "char_length: multibyte utf8 characters currently count bytes (consistency with object system)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND char_length('ぁあ') = 6
+csv SELECT test_char_length_05 = "char_length: column value" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND char_length(:b) = 11
+csv SELECT test_char_length_06 = "char_length: NULL value" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND char_length(NULL) IS NULL
+
+# errors 
+csv SELECT test_char_length_error_1 = "char_length: too many args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND char_length("test", "test") IS NOT NULL
+csv SELECT test_char_length_error_2 = "char_length: too few args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND char_length() IS NOT NULL
+csv SELECT test_char_length_error_3 = "char_length: incorrect data type" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND char_length(123456) IS NOT NULL
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows

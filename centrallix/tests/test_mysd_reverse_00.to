@@ -1,0 +1,20 @@
+##NAME MySQL reverse function
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'hello world', c = 'HELLO WORLD'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+
+csv SELECT test_reverse_01 = "reverse: basic string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND reverse('hello') = 'olleh'
+csv SELECT test_reverse_02 = "reverse: palindrome unchanged" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND reverse('racecar') = 'racecar'
+csv SELECT test_reverse_03 = "reverse: empty string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND reverse('') = ''
+csv SELECT test_reverse_04 = "reverse: single character" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND reverse('x') = 'x'
+csv SELECT test_reverse_05 = "reverse: double reverse returns original" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND reverse(reverse('hello world')) = 'hello world'
+
+# errors
+csv SELECT test_reverse_error_01 = "reverse: too many args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND reverse('hello', 'there') IS NOT NULL
+csv SELECT test_reverse_error_02 = "reverse: too few args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND reverse() IS NOT NULL
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows

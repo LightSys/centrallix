@@ -1,0 +1,19 @@
+##NAME MySQL nullif function
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'hello world', c = 'HELLO WORLD'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+csv SELECT test_nullif_01 = "nullif: equal values returns null" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND nullif('hello', 'hello') IS NULL
+csv SELECT test_nullif_02 = "nullif: unequal values returns first arg" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND nullif('hello', 'world') = 'hello'
+csv SELECT test_nullif_03 = "nullif: integer equal values returns null" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND nullif(42, 42) IS NULL
+csv SELECT test_nullif_04 = "nullif: integer unequal returns first arg" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND nullif(42, 99) = 42
+csv SELECT test_nullif_05 = "nullif: first arg already null" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND nullif(NULL, 'hello') IS NULL
+
+# errors
+csv SELECT test_nullif_error_01 = "nullif: too many args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND nullif('hello', 'hello', 'hello') OR 1=1
+csv SELECT test_nullif_error_02 = "nullif: too few args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND nullif('hello') OR 1=1
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows

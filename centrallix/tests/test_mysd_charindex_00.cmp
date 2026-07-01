@@ -1,0 +1,12 @@
+"charindex_01"
+"substring found at start"
+"charindex_02"
+"substring found mid-string"
+"charindex_03"
+"substring not found returns 0"
+"charindex_04"
+"empty search string"
+"charindex_05"
+"single character"
+charindex_06
+"confirm is case sensitive"

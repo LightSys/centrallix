@@ -1,0 +1,128 @@
+##NAME MySQL Mathematical functions
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'hello world', c = 'HELLO WORLD'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+
+# abs
+csv SELECT test_abs_01 = "abs: negative integer"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND abs(-42) = 42
+csv SELECT test_abs_02 = "abs: positive integer"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND abs(42) = 42
+csv SELECT test_abs_03 = "abs: zero"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND abs(0) = 0
+csv SELECT test_abs_04 = "abs: negative double" 	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND abs(-3.14) = 3.14
+csv SELECT test_abs_error_01 = "abs: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND abs(-42, -12) = 42
+csv SELECT test_abs_error_02 = "abs: too few args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND abs() = 42
+
+# round
+csv SELECT test_round_01 = "round: round down"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(4.4, 0) = 4
+csv SELECT test_round_02 = "round: round up"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(4.5, 0) = 5
+csv SELECT test_round_03 = "round: two decimal places"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(3.14159, 2) = 3.14
+csv SELECT test_round_04 = "round: negative value"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(-4.5, 0) = -5
+csv SELECT test_round_05 = "round: zero"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(0.0, 0) = 0
+csv SELECT test_round_06 = "round: single arg"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(4.4) = 4
+csv SELECT test_round_error_01 = "round: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(4.4, 0, 0) = 4 OR 1=1
+csv SELECT test_round_error_02 = "round: too few args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round() OR 1=1
+
+# truncate
+csv SELECT test_truncate_01 = "truncate: drops decimals"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND truncate(4.9, 0) = 4
+csv SELECT test_truncate_02 = "truncate: two decimal places"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND truncate(3.14159, 2) = 3.14
+csv SELECT test_truncate_03 = "truncate: negative value"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND truncate(-4.9, 0) = -4
+csv SELECT test_truncate_04 = "truncate: single value"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND truncate(-4.9) = -4
+csv SELECT test_truncate_error_01 = "truncate: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND truncate(-4.9, 0, 0) OR 1=1
+csv SELECT test_truncate_error_02 = "truncate: too few args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND truncate() OR 1=1
+
+# sqrt
+csv SELECT test_sqrt_01 = "sqrt: perfect square"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND sqrt(9) = 3
+csv SELECT test_sqrt_02 = "sqrt: zero"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND sqrt(0) = 0
+csv SELECT test_sqrt_03 = "sqrt: non-perfect square"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(sqrt(2), 4) = 1.4142
+csv SELECT test_sqrt_04 = "sqrt: negative number"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND sqrt(-25) IS NULL
+csv SELECT test_sqrt_error_01 = "sqrt: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND sqrt(9, 2) OR 1=1
+csv SELECT test_sqrt_error_02 = "sqrt: too few args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND sqrt() OR 1=1
+
+# power
+csv SELECT test_power_01 = "power: basic exponent"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND power(2, 10) = 1024
+csv SELECT test_power_02 = "power: exponent zero = 1"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND power(99, 0) = 1
+csv SELECT test_power_03 = "power: base zero returns 0"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND power(0, 5) = 0
+csv SELECT test_power_04 = "power: fractional exponent"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(power(8, 0.333333), 0) = 2
+csv SELECT test_power_error_01 = "power: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND power(2, 10, 2) OR 1=1
+csv SELECT test_power_error_02 = "power: too few args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND power(2) OR 1=1
+
+# log10
+csv SELECT test_log10_01 = "log10: log of 1 is 0"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND log10(1) = 0
+csv SELECT test_log10_02 = "log10: log of 10 is 1"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND log10(10) = 1
+csv SELECT test_log10_03 = "log10: log of 100 is 2"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND log10(100) = 2
+csv SELECT test_log10_error_01 = "log10: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND log10(1, 2) OR 1=1
+csv SELECT test_log10_error_02 = "log10: too few args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND log10() OR 1=1
+
+# square
+csv SELECT test_square_01 = "square: basic square"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND square(5) = 25
+csv SELECT test_square_02 = "square: zero"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND square(0) = 0
+csv SELECT test_square_03 = "square: negative value"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND square(-4) = 16
+csv SELECT test_square_error_01 = "square: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND square(5, 6) OR 1=1
+csv SELECT test_square_error_02 = "square: too few args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND square() OR 1=1
+
+# degrees
+csv SELECT test_degrees_01 = "degrees: pi radians = 180 degrees"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(degrees(radians(180)), 4) = 180
+csv SELECT test_degrees_error_01 = "degrees: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND degrees(180, 123) OR 1=1
+csv SELECT test_degrees_error_02 = "degrees: too few args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND degrees() OR 1=1
+
+# radians
+csv SELECT test_radians_01 = "radians: 180 degrees = pi radians"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(radians(180), 6) = 3.141593
+csv SELECT test_radians_error_01 = "radians: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND radians(180, 123) OR 1=1
+csv SELECT test_radians_error_02 = "radians: too few args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND radians() OR 1=1
+
+# sin
+csv SELECT test_sin_01 = "sin: sin(0) = 0"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND sin(0) = 0
+csv SELECT test_sin_02 = "sin: sin(pi/2) = 1"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(sin(radians(90)), 4) = 1
+csv SELECT test_sin_error_01 = "sin: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND sin(0, "degrees") OR 1=1
+csv SELECT test_sin_error_02 = "sin: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND sin() OR 1=1
+
+# cos
+csv SELECT test_cos_01 = "cos: cos(0) = 1"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND cos(0) = 1
+csv SELECT test_cos_02 = "cos: cos(pi) = -1"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(cos(radians(180)), 4) = -1
+csv SELECT test_cos_error_01 = "cos: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND cos(0, "degrees") OR 1=1
+csv SELECT test_cos_error_02 = "cos: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND cos() OR 1=1
+
+# tan
+csv SELECT test_tan_01 = "tan: tan(0) = 0"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND tan(0) = 0
+csv SELECT test_tan_02 = "tan: tan(45 degrees) = 1"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(tan(radians(45)), 4) = 1
+csv SELECT test_tan_error_01 = "tan: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND tan(0, "degrees") OR 1=1
+csv SELECT test_tan_error_02 = "tan: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND tan() OR 1=1
+
+# asin
+csv SELECT test_asin_01 = "asin: asin(0) = 0		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND asin(0) = 0
+csv SELECT test_asin_02 = "asin: asin(1) = pi/2"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(degrees(asin(1)), 4) = 90
+csv SELECT test_asin_error_01 = "asin: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND asin(0, "degrees") OR 1=1
+csv SELECT test_asin_error_02 = "asin: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND asin() OR 1=1
+
+# acos
+csv SELECT test_acos_01 = "acos: acos(1) = 0"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND acos(1) = 0
+csv SELECT test_acos_02 = "acos: acos(0) = pi/2"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(degrees(acos(0)), 4) = 90
+csv SELECT test_acos_error_01 = "acos: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND acos(1, "degrees") OR 1=1
+csv SELECT test_acos_error_02 = "acos: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND acos() OR 1=1
+
+# atan
+csv SELECT test_atan_01 = "atan: atan(0) = 0"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND atan(0) = 0
+csv SELECT test_atan_02 = "atan: atan(1) = 45 degrees"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(degrees(atan(1)), 4) = 45
+csv SELECT test_atan_error_01 = "atan: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND atan(0, "degrees") OR 1=1
+csv SELECT test_atan_error_02 = "atan: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND atan() OR 1=1
+
+# atan2
+csv SELECT test_atan2_01 = "atan2: (1, 1) = 45 degrees"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND round(degrees(atan2(1, 1)), 4) = 45
+csv SELECT test_atan2_02 = "atan2: (0, 1) = 0 degrees"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND atan2(0, 1) = 0
+csv SELECT test_atan2_error_01 = "atan2: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND atan2(1, 1, "degrees") OR 1=1
+csv SELECT test_atan2_error_02 = "atan2: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND atan2(0) OR 1=1
+
+# cosntrain
+csv SELECT test_constrain_01 = "constrain: value within range"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND constrain(5, 1, 10) = 5
+csv SELECT test_constrain_02 = "constrain: value below min"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND constrain(0, 1, 10) = 1
+csv SELECT test_constrain_03 = "constrain: value above max"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND constrain(15, 1, 10) = 10
+csv SELECT test_constrain_04 = "constrain: value equal to min"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND constrain(1, 1, 10) = 1
+csv SELECT test_constrain_05 = "constrain: value equal to max"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND constrain(10, 1, 10) = 10
+csv SELECT test_constrain_error_01 = "constrain: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND constrain(5, 1, 10, 5) OR 1=1
+csv SELECT test_constrain_error_02 = "constrain: too few args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND constrain(0, 1) OR 1=1
+
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows

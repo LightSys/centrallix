@@ -1,0 +1,17 @@
+##NAME MySQL isnull function
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'hello world', c = 'HELLO WORLD'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+
+csv SELECT replace_01 = "basic substitution" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replace('hello world', 'world', 'there') = 'hello there'
+csv SELECT replace_02 = "no match leaves string unchanged" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replace('hello world', 'xyz', 'abc') = 'hello world'
+csv SELECT replace_03 = "replace all occurrences" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replace('aaa', 'a', 'b') = 'bbb'
+csv SELECT replace_04 = "NULL replacement uses empty string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replace('hello world', 'world', NULL) = 'hello '
+csv SELECT replace_05 = "replace with empty string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replace('hello world', ' ', '') = 'helloworld'
+csv SELECT replace_06 = "column value as source" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replace(:b, 'world', 'there') = 'hello there'
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows

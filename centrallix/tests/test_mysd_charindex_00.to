@@ -1,0 +1,18 @@
+##NAME MySQL charindex function
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'test', c = 'test'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+
+csv SELECT charindex_01 = "substring found at start" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND charindex('hello', 'hello world') = 1
+csv SELECT charindex_02 = "substring found mid-string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND charindex('world', 'hello world') = 7
+csv SELECT charindex_03 = "substring not found returns 0" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND charindex('xyz', 'hello world') = 0
+csv SELECT charindex_04 = "empty search string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND charindex('', 'hello world') = 1
+csv SELECT charindex_05 = "single character" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND charindex('o', 'hello world') = 5
+csv SELECT charindex_06 = "confirm is case sensitive" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND charindex('HELLO', 'hello world') = 0
+
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows

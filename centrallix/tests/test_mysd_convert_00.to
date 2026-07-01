@@ -4,11 +4,58 @@ query DELETE FROM /tests/Test_DB/stringTests/rows
 query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'test', c = 'test'
 
 # check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
-csv SELECT test_01 = "convert integer to integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer, 1) = 1  AND convert(integer, 10000) = 10000 
-csv SELECT test_02 = "convert double to integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer, 12345.54321) = 12346 AND convert(integer, 0.9999) = 1 AND convert(integer, 123.00) = 123 AND convert(integer, 123.456) = 123
-csv SELECT test_03 = "convert string to integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer, "12345") = 12345 AND convert(integer, "0000") = 0 AND convert(integer, "123") = 123 AND convert(integer, "-123") = -123
-csv SELECT test_04 = "convert string with decimal to integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer, "12345.54321") = 12345 AND convert(integer, "0.9999") = 0 AND convert(integer, "-123.00") = -123 AND convert(integer, "123.456") = 123
-csv SELECT test_05 = "convert money to integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer, $12345.5432) = 12346 AND convert(integer, $0.9999) = 1 AND convert(integer, $-123.00) = -123 AND convert(integer, $123.456) = 123
+
+# TODO: add a convert datetime to X on each of these...
+
+# Convert to integer
+csv SELECT convert_int_01 = "convert integer to integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer, 1) = 1  AND convert(integer, 10000) = 10000 AND convert(integer, -123456) = -123456
+csv SELECT convert_int_02 = "convert double to integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer, 12345.54321) = 12345 AND convert(integer, 0.9999) = 0 AND convert(integer, 123.00) = 123 AND convert(integer, 123.456) = 123
+## ERROR: Doubles should always round down, but fail to here
+csv SELECT convert_int_03 = "convert string to integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer, "12345") = 12345 AND convert(integer, "0000") = 0 AND convert(integer, "123") = 123 AND convert(integer, "-123") = -123 AND convert(integer, "-12345") = -12345
+csv SELECT convert_int_04 = "convert string with decimal to integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer, "12345.54321") = 12345 AND convert(integer, "0.9999") = 0 AND convert(integer, "-123.00") = -123 AND convert(integer, "123.456") = 123
+csv SELECT convert_int_05 = "convert money to integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer, $12345.5432) = 12346 AND convert(integer, $0.9999) = 1 AND convert(integer, $-123.00) = -123 AND convert(integer, $123.456) = 123
+# have to make the ints doubles so the object system can handle them; too large for 32 bit
+csv SELECT convert_int_06 = "convert datetime to integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer, convert(datetime, "2026-01-10 12:34:56")) = 20260110123456.0 AND convert(integer, convert(datetime, "1970-01-01")) = 19700101000000.0 AND convert(integer, convert(datetime, "9999-12-31 23:59:59")) = 99991231235959.0
+
+# Convert to double 
+csv SELECT convert_double_01 = "convert integer to double" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(double, 1) = 1  AND convert(double, 10000) = 10000 AND convert(double, -123456) = -123456
+csv SELECT convert_double_02 = "convert double to double" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(double, 12345.54321) = 12345.54321 AND convert(double, 0.9999) = 0.9999 AND convert(double, 123.00) = 123 AND convert(double, 123.456) = 123.456
+csv SELECT convert_double_03 = "convert string to double" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(double, "12345") = 12345 AND convert(double, "0000") = 0 AND convert(double, "123") = 123 AND convert(double, "-123") = -123 AND convert(double, -12345.67891) = -12345.67891
+csv SELECT convert_double_04 = "convert string with decimal to integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(double, "12345.54321") = 12345.54321 AND convert(double, "0.9999") = 0.9999 AND convert(double, "-123.00") = -123 AND convert(double, "123.456") = 123.456
+csv SELECT convert_double_05 = "convert money to double" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(double, $12345.5432) = 12345.5432 AND convert(double, $0.9999) = 0.9999 AND convert(double, $-123.00) = -123 AND convert(double, $123.456) = 123.456
+csv SELECT convert_double_06 = "convert datetime to double" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(double, convert(datetime, "2026-01-10 12:34:56")) = 20260110123456.0 AND convert(double, convert(datetime, "1970-01-01")) = 19700101000000.0 AND convert(double, convert(datetime, "9999-12-31 23:59:59")) = 99991231235959.0
+
+
+# convert to string
+csv SELECT convert_string_01 = "convert integer to string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(string, 1) = "1"  AND convert(string, 10000) = "10000" AND convert(string, -123456) = "-123456"
+csv SELECT convert_string_02 = "convert double to string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(string, 12345.54321) = "12345.54321" AND convert(string, 0.9999) = "0.9999" AND convert(string, 123.00) = "123" AND convert(string, 123.456) = "123.456" AND convert(string, -12345.67891) = "-12345.67891"
+csv SELECT convert_string_03 = "convert string to string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(string, "12345") = "12345" AND convert(string, "0000") = "0000" AND convert(string, "123") = "123" AND convert(string, "-123") = "-123"
+csv SELECT convert_string_04 = "convert string with decimal to string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(string, "12345.54321") = "12345.54321" AND convert(string, "0.9999") = "0.9999" AND convert(string, "-123.00") =  "-123.00" AND convert(string, "123.456") = "123.456"
+csv SELECT convert_string_05 = "convert string with utf8 to string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(string, "AaBbCc010203,!\"'-- ¡¢¥ÆÃぁあぃいぅうぇえぉ🨀🨁🨂🨃🨄🨅") = "AaBbCc010203,!\"'-- ¡¢¥ÆÃぁあぃいぅうぇえぉ🨀🨁🨂🨃🨄🨅"
+csv SELECT convert_string_06 = "convert money to string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(string, $12345.5432) = "$12345.5432" AND convert(string, $0.9999) = "$0.9999" AND convert(string, $-123.00) = "-$123.0000" AND convert(string, $123.456) = "$123.4560"
+# FIXME: for some reason mysql is adding a 0 to the end. Could trim, but that creates other problems
+csv SELECT convert_string_07 = "convert datetime to string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(string, convert(datetime, "2026-01-10 12:34:56")) = "2026-01-10 12:34:56" AND convert(string, convert(datetime, "1970-01-01")) = "1970-01-01 00:00:00" AND convert(string, convert(datetime, "9999-12-31 23:59:59")) = "9999-12-31 23:59:59"
+
+
+# convert to money
+csv SELECT convert_money_01 = "convert integer to money" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(money, 1) = $1  AND convert(money, 10000) = $10000 AND convert(money, -123456) = $-123456
+csv SELECT convert_money_02 = "convert double to money" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(money, 12345.54321) = $12345.5432 AND convert(money, 0.9999) = $0.9999 AND convert(money, 123.00) = $123 AND convert(money, 123.456) = $123.456
+csv SELECT convert_money_03 = "convert string to money" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(money, "12345") = 12345 AND convert(money, "0000") = 0 AND convert(money, "123") = 123 AND convert(money, "-123") = -123 AND convert(money, -12345) = -12345
+csv SELECT convert_money_04 = "convert string with decimal to money" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(money, "12345.54321") = 12345.5432 AND convert(money, "0.9999") = 0.9999 AND convert(money, "-123.00") = -123.0000 AND convert(money, "123.456") = 123.4560
+csv SELECT convert_money_05 = "convert string with $ to money" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(money, "$12345") = 12345.0000 AND convert(money, "$0000") = 0 AND convert(money, "$123") = 123 AND convert(money, "-$123") = -123 AND convert(money, "-$12345.67891") = -12345.6789
+csv SELECT convert_money_06 = "convert money to money" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(money, $12345.5432) = 12345.5432 AND convert(money, $0.9999) = 0.9999 AND convert(money, $-123.00) = -123 AND convert(money, $123.456) = 123.456
+# Disallow converting datetime to money; it does not work properly in object system, nor in MySQL
+
+# convert to datetime
+csv SELECT convert_datetime_01 = "convert integer to datetime" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(datetime, convert(integer, 20260110123456.0)) = convert(datetime, "2026-01-10 12:34:56") AND  convert(datetime, convert(integer, 19700101000000.0)) = convert(datetime, "1970-01-01") AND convert(datetime, convert(integer, 99991231235959.0)) = convert(datetime, "9999-12-31 23:59:59")
+csv SELECT convert_datetime_02 = "convert double to datetime" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(datetime, 20260110123456.0) = convert(datetime, "2026-01-10 12:34:56") AND  convert(datetime, 19700101000000.0) = convert(datetime, "1970-01-01") AND convert(datetime, 99991231235959.0) = convert(datetime, "9999-12-31 23:59:59")
+csv SELECT convert_datetime_03 = "convert string to datetime" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(datetime, "26,01.10 12?34!56") = convert(datetime, "2026-01-10 12:34:56") AND  convert(datetime, "70/01/01") = convert(datetime, "1970-01-01") AND convert(datetime, "9999&12^31 23#59@59") = convert(datetime, "9999-12-31 23:59:59")
+# Disallow converting money to datetime. Does not work well in object system either
+csv SELECT convert_datetime_04 = "convert datetime to datetime" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(datetime, convert(datetime, "26,01.10 12?34!56")) = convert(datetime, "2026-01-10 12:34:56") AND convert(datetime, convert(datetime, "70/01/01")) = convert(datetime, "1970-01-01") AND convert(datetime, convert(datetime, "9999&12^31 23#59@59")) = convert(datetime, "9999-12-31 23:59:59")
+
+# errors
+csv SELECT convert_error_01 = "too many args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer, 1234.5678, 1234, 123) OR 1=1  
+csv SELECT convert_error_02 = "too few args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(integer) OR 1=1  
 
 
 # cleanup

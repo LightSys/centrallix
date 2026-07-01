@@ -1,0 +1,44 @@
+##NAME MySQL isnull function
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'test', c = 'test'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+
+# Test integer 
+csv SELECT isnull_string_01 = "string returned as is" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull('hello world', 'fallback') = 'hello world'
+csv SELECT isnull_string_02 = "empty string returned as-is" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull('', 'fallback') = ''
+csv SELECT isnull_string_03 = "NULL string returns fallback" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull(convert(string, NULL), 'fallback') = 'fallback'
+#FIXME: NULL gets passed by the object system as 'NULL'...
+
+# Test string 
+csv SELECT isnull_integer_01 = "integer returned as-is" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull(12345, 71) = 12345
+csv SELECT isnull_integer_02 = "zero integer returned as-is" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull(0, 38) = 0
+csv SELECT isnull_integer_03 = "NULL integer returns fallback" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull(convert(integer, NULL), -123) = -123
+
+# Test double 
+csv SELECT isnull_double_01 = "double returned as-is" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull(-1234.567, 3.1416) = -1234.567
+csv SELECT isnull_double_02 = "zero double returned as-is" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull(0.0, 1.00001) = 0.0
+csv SELECT isnull_double_03 = "NULL double returns fallback" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull(convert(double, NULL), -123.321) = -123.321
+
+# Test money
+csv SELECT isnull_money_01 = "money returned as-is" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull($-1234.567, $3.14159) = $-1234.567
+csv SELECT isnull_money_02 = "zero money returned as-is" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull($0.0, 'fallback') = $0.0
+csv SELECT isnull_money_03 = "NULL money returns fallback" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull(convert(money, NULL), $-123.321) = $-123.321
+
+# Test datetime 
+csv SELECT isnull_datetime_01 = "datetime returned as-is" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull(convert(datetime, '2026-05-04 03:02:01'), 'fallback') = convert(datetime, '2026-05-04 03:02:01')
+csv SELECT isnull_datetime_02 = "epoch datetime returned as-is" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull(convert(datetime, '1970-01-01'), 'fallback') = convert(datetime, '1970-01-01')
+csv SELECT isnull_datetime_03 = "NULL datetime returns fallback" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull(convert(datetime, NULL), convert(datetime, '2026-05-04 03:02:01')) = convert(datetime, '2026-05-04 03:02:01')
+
+# General tests
+csv SELECT isnull_general_01 = "standard NULL retruns fallback" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull(NULL, 'fallback') = 'fallback'
+csv SELECT isnull_general_02 = "nested isnull retruns fallback" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND isnull(NULL, isnull(NULL, 'nested')) = 'nested'
+
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows
+
+
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'test', c = 'test'

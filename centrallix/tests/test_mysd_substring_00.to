@@ -1,0 +1,22 @@
+##NAME MySQL substring function
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'hello world', c = 'HELLO WORLD'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+csv SELECT test_substring_01 = "substring: middle of string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND substring('hello world', 7, 5) = 'world'
+csv SELECT test_substring_02 = "substring: from start" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND substring('hello world', 1, 5) = 'hello'
+csv SELECT test_substring_03 = "substring: single character" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND substring('hello', 1, 1) = 'h'
+csv SELECT test_substring_04 = "substring: length longer than remaining string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND substring('hello', 3, 100) = 'llo'
+csv SELECT test_substring_05 = "substring: result length is correct" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND char_length(substring('hello world', 1, 5)) = 5
+csv SELECT test_substring_06 = "substring: column value" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND substring(:b, 1, 5) = 'hello'
+csv SELECT test_substring_07 = "substring: start is longer than length" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND substring('hello world', 100, 5) = ''
+csv SELECT test_substring_08 = "substring: shortcut" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND substring('hello world', 7) = 'world'
+
+# errors 
+csv SELECT test_substring_error_01 = "substring: too many args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND substring('hello world', 1, 2, 3) OR 1 = 1 
+csv SELECT test_substring_error_02 = "substring: too few args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND substring('hello world') OR 1 = 1
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows

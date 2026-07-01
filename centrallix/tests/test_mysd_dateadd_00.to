@@ -1,0 +1,56 @@
+##NAME MySQL dateadd function
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'hello world', c = 'HELLO WORLD'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+
+# Datetime
+csv SELECT dateadd_datetime_01 = "add days"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		10,	convert(datetime, "2026-01-01"))		= convert(datetime, "2026-01-11")
+csv SELECT dateadd_datetime_02 = "subtract days (negative)"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		-5,	convert(datetime, "2026-01-10"))		= convert(datetime, "2026-01-05")
+csv SELECT dateadd_datetime_03 = "add months"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(month,	3,	convert(datetime, "2026-01-01"))		= convert(datetime, "2026-04-01")
+csv SELECT dateadd_datetime_04 = "add years"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(year,	2,	convert(datetime, "2024-06-01"))		= convert(datetime, "2026-06-01")
+csv SELECT dateadd_datetime_05 = "add hours"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(hour,	6,	convert(datetime, "2026-01-01 00:00:00"))	= convert(datetime, "2026-01-01 06:00:00")
+csv SELECT dateadd_datetime_06 = "add minutes"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(minute,	45,	convert(datetime, "2026-01-01 00:00:00"))	= convert(datetime, "2026-01-01 00:45:00")
+csv SELECT dateadd_datetime_07 = "add seconds"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(second,	30,	convert(datetime, "2026-01-01 00:00:00"))	= convert(datetime, "2026-01-01 00:00:30")
+csv SELECT dateadd_datetime_08 = "add days changing month"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		1,	convert(datetime, "2026-01-31"))		= convert(datetime, "2026-02-01")
+csv SELECT dateadd_datetime_09 = "add days changing year"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		1,	convert(datetime, "2025-12-31"))		= convert(datetime, "2026-01-01")
+csv SELECT dateadd_datetime_10 = "add months changing year"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(month,	1,	convert(datetime, "2025-12-31"))		= convert(datetime, "2026-01-31")
+csv SELECT dateadd_datetime_11 = "subtract days changing month"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		-10,	convert(datetime, "2026-02-05"))		= convert(datetime, "2026-01-26")
+csv SELECT dateadd_datetime_12 = "subtract days changing year"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		-10,	convert(datetime, "2026-01-05"))		= convert(datetime, "2025-12-26")
+csv SELECT dateadd_datetime_13 = "subtract month changing year"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(month,	-10,	convert(datetime, "2026-05-09"))		= convert(datetime, "2025-07-09")
+csv SELECT dateadd_datetime_14 = "add days with leap year"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		365,	convert(datetime, "2024-01-01"))		= convert(datetime, "2024-12-31")
+csv SELECT dateadd_datetime_15 = "add days with skip leap year"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		365,	convert(datetime, "2100-01-01"))		= convert(datetime, "2101-01-01")
+csv SELECT dateadd_datetime_16 = "add days with 2000 leap year"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		365,	convert(datetime, "2000-01-01"))		= convert(datetime, "2000-12-31")
+
+# string
+csv SELECT dateadd_string_01 = "add days"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		10,	"2026-01-01")		= "2026-01-11"
+csv SELECT dateadd_string_02 = "subtract days (negative)"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		-5,	"2026-01-10")		= "2026-01-05"
+csv SELECT dateadd_string_03 = "add months"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(month,	3,	"2026-01-01")		= "2026-04-01"
+csv SELECT dateadd_string_04 = "add years"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(year,	2,	"2024-06-01")		= "2026-06-01"
+csv SELECT dateadd_string_05 = "add hours"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(hour,	6,	"2026-01-01 00:00:00")	= "2026-01-01 06:00:00"
+csv SELECT dateadd_string_06 = "add minutes"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(minute,	45,	"2026-01-01 00:00:00")	= "2026-01-01 00:45:00"
+csv SELECT dateadd_string_07 = "add seconds"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(second,	30,	"2026-01-01 00:00:00")	= "2026-01-01 00:00:30"
+csv SELECT dateadd_string_08 = "add days changing month"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		1,	"2026-01-31")		= "2026-02-01"
+csv SELECT dateadd_string_09 = "add days changing year"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		1,	"2025-12-31")		= "2026-01-01"
+csv SELECT dateadd_string_10 = "add months changing year"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(month,	1,	"2025-12-31")		= "2026-01-31"
+csv SELECT dateadd_string_11 = "subtract days changing month"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		-10,	"2026-02-05")		= "2026-01-26"
+csv SELECT dateadd_string_12 = "subtract days changing year"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		-10,	"2026-01-05")		= "2025-12-26"
+csv SELECT dateadd_string_13 = "subtract month changing year"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(month,	-10,	"2026-05-09")		= "2025-07-09"
+csv SELECT dateadd_string_14 = "add days with leap year"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		365,	"2024-01-01")		= "2024-12-31"
+csv SELECT dateadd_string_15 = "add days with skip leap year"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		365,	"2100-01-01")		= "2101-01-01"
+csv SELECT dateadd_string_16 = "add days with 2000 leap year"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		365,	"2000-01-01")		= "2000-12-31"
+
+# invalid argumnets
+csv SELECT dateadd_error_01 = "non string date part"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(123,		1,	"2026-01-01")		= "2026-01-11" OR 1=1
+csv SELECT dateadd_error_02 = "incorrect date part"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(quarter,	1,	"2026-01-01")		= "2026-01-11" OR 1=1
+csv SELECT dateadd_error_03 = "non integer number"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		"test",	"2026-01-01")		= "2026-01-11" OR 1=1
+csv SELECT dateadd_error_04 = "incorrect date"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		1,	"Hello world")		= "2026-01-11" OR 1=1
+csv SELECT dateadd_error_05 = "too many args"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		1,	"2026-01-01", "TEST")	= "2026-01-11" OR 1=1
+csv SELECT dateadd_error_06 = "too few args"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND dateadd(day,		1)				= "2026-01-11" OR 1=1
+
+
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows
