@@ -1,0 +1,44 @@
+##NAME MySQL datepart function
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'hello world', c = 'HELLO WORLD'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+
+# Test using datetimes
+csv SELECT datepart_datetime_01 = "datepart: year" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(year, convert(datetime, "2026-03-15 10:30:45")) = 2026
+csv SELECT datepart_datetime_02 = "datepart: month" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(month, convert(datetime, "2026-03-15 10:30:45")) = 3
+csv SELECT datepart_datetime_03 = "datepart: day" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(day, convert(datetime, "2026-03-15 10:30:45")) = 15
+csv SELECT datepart_datetime_04 = "datepart: hour" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(hour, convert(datetime, "2026-03-15 10:30:45")) = 10
+csv SELECT datepart_datetime_05 = "datepart: minute" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(minute, convert(datetime, "2026-03-15 10:30:45")) = 30
+csv SELECT datepart_datetime_06 = "datepart: second" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(second, convert(datetime, "2026-03-15 10:30:45")) = 45
+# 2026-03-15 is a Sunday; MySQL dayofweek() returns 1=Sunday
+csv SELECT datepart_07 = "datepart: weekday (Sunday = 1 in MySQL)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(weekday, convert(datetime, "2026-03-15 10:30:45")) = 1
+# 2026-03-16 is a Monday
+csv SELECT test_datepart_datetime_08 = "datepart: weekday (Monday = 2 in MySQL)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(weekday, convert(datetime, "2026-03-16 00:00:00")) = 2
+csv SELECT test_datepart_datetime_09 = "datepart: boundary — midnight" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(hour, convert(datetime, "2026-01-01 00:00:00")) = 0 AND datepart(minute, convert(datetime, "2026-01-01 00:00:00")) = 0 AND datepart(second, convert(datetime, "2026-01-01 00:00:00")) = 0
+
+# Test using date formated strings
+csv SELECT datepart_string_01 = "datepart: year" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(year, "2026-03-15 10:30:45") = 2026
+csv SELECT datepart_string_02 = "datepart: month" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(month, "2026-03-15 10:30:45") = 3
+csv SELECT datepart_string_03 = "datepart: day" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(day, "2026-03-15 10:30:45") = 15
+csv SELECT datepart_string_04 = "datepart: hour" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(hour, "2026-03-15 10:30:45") = 10
+csv SELECT datepart_string_05 = "datepart: minute" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(minute, "2026-03-15 10:30:45") = 30
+csv SELECT datepart_string_06 = "datepart: second" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(second, "2026-03-15 10:30:45") = 45
+# 2026-03-15 is a Sunday; MySQL dayofweek() returns 1=Sunday
+csv SELECT datepart_07 = "datepart: weekday (Sunday = 1 in MySQL)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(weekday, "2026-03-15 10:30:45") = 1
+# 2026-03-16 is a Monday
+csv SELECT test_datepart_string_08 = "datepart: weekday (Monday = 2 in MySQL)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(weekday, "2026-03-16 00:00:00") = 2
+csv SELECT test_datepart_string_09 = "datepart: boundary — midnight" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(hour, "2026-01-01 00:00:00") = 0 AND datepart(minute, convert(datetime, "2026-01-01 00:00:00")) = 0 AND datepart(second, convert(datetime, "2026-01-01 00:00:00")) = 0
+
+
+
+## ERROR: invalid datepart unit should return an error, not silently produce a result
+csv SELECT test_datepart_err_01 = "datepart: invalid unit 'quarter' should error" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(quarter, convert(datetime, "2026-03-15")) OR 1=1
+csv SELECT test_datepart_err_02 = "datepart: too many args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(day, convert(datetime, "2026-03-15"), "hello") OR 1=1
+csv SELECT test_datepart_err_03 = "datepart: too few args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(day) OR 1=1
+
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows

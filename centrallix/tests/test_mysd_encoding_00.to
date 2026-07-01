@@ -1,0 +1,43 @@
+##NAME MySQL encoding function
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'hello world', c = 'HELLO WORLD'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+
+# to hex
+csv SELECT test_to_hex_01 = "to_hex: basic string"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND to_hex('ABC') = '414243'
+csv SELECT test_to_hex_02 = "to_hex: empty string"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND to_hex('') = ''
+csv SELECT test_to_hex_03 = "to_hex: check result len"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND char_length(to_hex('hello')) = 10
+csv SELECT test_to_hex_error_01 = "to_hex: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND to_hex('ABC', 'EFG') OR 1=1
+csv SELECT test_to_hex_error_02 = "to_hex: too few args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND to_hex() OR 1=1
+
+
+# from hex
+csv SELECT test_from_hex_01 = "from_hex:decode known value"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_hex('414243') = 'ABC'
+csv SELECT test_from_hex_02 = "from_hex: round-trip"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_hex(to_hex('hello world')) = 'hello world'
+csv SELECT test_from_hex_03 = "from_hex: empty string"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_hex('') = ''
+csv SELECT test_from_hex_error_01 = "from_hex: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_hex('414243', '444546') OR 1=1
+csv SELECT test_from_hex_error_02 = "from_hex: too few args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_hex() OR 1=1
+csv SELECT test_from_hex_error_03 = "from_hex: invalid hex"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_hex('xyz') OR 1=1
+
+
+# to base 64
+csv SELECT test_to_base64_01 = "to_base64: known encoding"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND to_base64('hello') = 'aGVsbG8='
+csv SELECT test_to_base64_02 = "to_base64: empty string"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND to_base64('') = ''
+csv SELECT test_to_base64_error_01 = "to_base64: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND to_base64('hello', 'there') OR 1=1
+csv SELECT test_to_base64_error_02 = "to_base64: too few args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND to_base64() OR 1=1
+
+
+# from base 64
+csv SELECT test_from_base64_01 = "from_base64: known decoding"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_base64('aGVsbG8=') = 'hello'
+csv SELECT test_from_base64_02 = "from_base64: round-trip"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_base64(to_base64('hello world')) = 'hello world'
+csv SELECT test_from_base64_03 = "from_base64: empty string"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_base64('') = ''
+csv SELECT test_from_base64_01 = "from_base64: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_base64('aGVsbG8=', 'aGVsbG8=') OR 1=1
+csv SELECT test_from_base64_02 = "from_base64: too few args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_base64() OR 1=1
+csv SELECT test_from_base64_03 = "from_base64: invalid base 64"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_base64('!@#$%^')
+
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows

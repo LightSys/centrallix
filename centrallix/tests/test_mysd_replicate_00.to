@@ -1,0 +1,19 @@
+##NAME MySQL Replicate function
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'hello world', c = 'HELLO WORLD'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+csv SELECT test_replicate_01 = "replicate: basic repeat" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replicate('ab', 3) = 'ababab'
+csv SELECT test_replicate_02 = "replicate: repeat once" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replicate('hello', 1) = 'hello'
+csv SELECT test_replicate_03 = "replicate: repeat zero times" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replicate('hello', 0) = ''
+csv SELECT test_replicate_04 = "replicate: single character" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replicate('x', 5) = 'xxxxx'
+csv SELECT test_replicate_05 = "replicate: result length is correct" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND char_length(replicate('ab', 4)) = 8
+
+# errors
+csv SELECT test_replicate_error_01 = "replicate: too many args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replicate('ab', 3, 4) OR 1 = 1
+csv SELECT test_replicate_error_02 = "replicate: too few args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replicate('hello') OR 1 = 1
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows

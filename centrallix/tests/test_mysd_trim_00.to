@@ -1,0 +1,35 @@
+##NAME MySQL trim functions
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'hello world', c = 'HELLO WORLD'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+
+# ltrim
+csv SELECT test_ltrim_01 = "ltrim: removes leading spaces"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ltrim('   hello') = 'hello'
+csv SELECT test_ltrim_02 = "ltrim: no leading spaces unchanged"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ltrim('hello   ') = 'hello   '
+csv SELECT test_ltrim_03 = "ltrim: only spaces returns empty string"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ltrim('   ') = ''
+csv SELECT test_ltrim_04 = "ltrim: empty string"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ltrim('') = ''
+
+csv SELECT test_ltrim_error_01 = "ltrim: too many args"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ltrim('    1234', "test") IS NOT NULL
+csv SELECT test_ltrim_error_02 = "ltrim: too few args"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ltrim() IS NOT NULL
+csv SELECT test_ltrim_error_03 = "ltrim: non string argument"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ltrim(1234) IS NOT NULL
+
+
+
+# rtrim
+csv SELECT test_rtrim_01 = "rtrim: removes trailing spaces" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND rtrim('hello   ') = 'hello'
+csv SELECT test_rtrim_02 = "rtrim: no trailing spaces unchanged" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND rtrim('   hello') = '   hello'
+csv SELECT test_rtrim_03 = "rtrim: only spaces returns empty string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND rtrim('   ') = ''
+csv SELECT test_rtrim_04 = "rtrim: ltrim and rtrim combined" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ltrim(rtrim('  hello  ')) = 'hello'
+
+csv SELECT test_rtrim_error_01 = "rtrim: too many args"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND rtrim('    1234', "test") IS NOT NULL
+csv SELECT test_rtrim_error_02 = "rtrim: too few args"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND rtrim() IS NOT NULL
+csv SELECT test_rtrim_error_03 = "rtrim: non string argument"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND rtrim(1234) IS NOT NULL
+
+
+
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows

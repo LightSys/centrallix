@@ -1,0 +1,55 @@
+##NAME MySQL Operator Tests 
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'hello world', c = 'HELLO WORLD'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+
+# Plus
+csv SELECT test_plus_01 = "plus: integer addition"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 10 + 5 = 15
+csv SELECT test_plus_02 = "plus: negative addition"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 10 + -3 = 7
+csv SELECT test_plus_03 = "plus: double addition"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 123.456 + 876.543 = 999.999
+csv SELECT test_plus_04 = "plus: money addition"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND $123.456 + $876.543 = $999.999
+csv SELECT test_plus_05 = "plus: negative money addition"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND $999.999 + $-876.543 = $123.456
+
+csv SELECT test_plus_06 = "plus: string concatenation via string literal operand"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 'hello' + ' world' = 'hello world'
+csv SELECT test_plus_07 = "plus: string concat with column"				FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 'say: ' + :b = 'say: hello world'
+csv SELECT test_plus_08 = "plus: string and integer"					FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "test " + 8 = 'test 8'
+
+# Verify the retroactive CONCAT patch (ambiguous type resolved after first child evaluated)
+csv SELECT test_plus_09 = "plus: concat result via substring (string-returning function)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND substring(b, 1, 5) + '!' = 'hello!'
+
+csv SELECT test_plus_error_01 = "plus: add datetime"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(datetime, '2026-01-01') + 1 IS NOT NULL
+csv SELECT test_plus_error_02 = "plus: missing first opperand"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND + 1 IS NOT NULL
+csv SELECT test_plus_error_02 = "plus: missing second opperand"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + IS NOT NULL
+
+# Test other simple opperators
+
+# minus
+csv SELECT test_minus_01 = "minus: integer subtraction"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 10 - 5 = 5
+csv SELECT test_minus_02 = "minus: negative subtraction"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 10 - -3 = 13
+
+csv SELECT test_minus_error_01 = "minus: subtract datetime"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(datetime, '2026-01-01') - 1 IS NOT NULL
+csv SELECT test_minus_error_02 = "minus: no first opperand"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND - 1 IS NOT NULL
+csv SELECT test_minus_error_02 = "minus: no second opperand"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 - IS NOT NULL
+
+# multiply
+csv SELECT test_multiply_01 = "multiply: integer multiplication"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 10 * 5 = 50
+csv SELECT test_multiply_02 = "multiply: negative multiplication"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 10 * -3 = -30
+
+csv SELECT test_multiply_error_01 = "multiply: multiply datetime"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(datetime, '2026-01-01') * 1 IS NOT NULL
+csv SELECT test_multiply_error_02 = "multiply: no first opperand"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND * 1 IS NOT NULL
+csv SELECT test_multiply_error_02 = "multiply: no second opperand"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 * IS NOT NULL
+
+# divide
+csv SELECT test_divide_01 = "divide: integer division"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 10 / 5 = 2
+csv SELECT test_divide_02 = "divide: negative division"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 10 / -2 = -5
+
+csv SELECT test_divide_error_01 = "divide: divide datetime"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND convert(datetime, '2026-01-01') / 1 IS NOT NULL
+csv SELECT test_divide_error_02 = "divide: no first opperand"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND / 1 IS NOT NULL
+csv SELECT test_divide_error_02 = "divide: no second opperand"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 / IS NOT NULL
+
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows

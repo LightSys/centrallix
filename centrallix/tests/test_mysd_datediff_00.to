@@ -1,0 +1,40 @@
+##NAME MySQL datediff function
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'hello world', c = 'HELLO WORLD'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+
+# datetime 
+csv SELECT datediff_datetime_01 = "day difference"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(day,	convert(datetime, "2026-01-01"),	  convert(datetime, "2026-01-11"))	    = 10
+csv SELECT datediff_datetime_02 = "negative day difference"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(day,	convert(datetime, "2026-01-11"),	  convert(datetime, "2026-01-01"))	    = -10
+csv SELECT datediff_datetime_03 = "month difference"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(month,	convert(datetime, "2026-01-01"),	  convert(datetime, "2026-04-01"))	    = 3
+csv SELECT datediff_datetime_04 = "year difference"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(year,	convert(datetime, "2020-01-01"),	  convert(datetime, "2026-01-01"))	    = 6
+csv SELECT datediff_datetime_05 = "hour difference"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(hour,	convert(datetime, "2026-01-01 00:00:00"), convert(datetime, "2026-01-01 06:00:00")) = 6
+csv SELECT datediff_datetime_06 = "minute difference"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(minute,	convert(datetime, "2026-01-01 00:00:00"), convert(datetime, "2026-01-01 00:45:00")) = 45
+csv SELECT datediff_datetime_07 = "second difference"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(second,	convert(datetime, "2026-01-01 00:00:00"), convert(datetime, "2026-01-01 00:00:30")) = 30
+csv SELECT datediff_datetime_08 = "same date returns 0"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(day,	convert(datetime, "2026-06-01"),	  convert(datetime, "2026-06-01"))	    = 0
+
+# string 
+csv SELECT datediff_string_01 = "day difference"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(day,	"2026-01-01",		"2026-01-11")		= 10
+csv SELECT datediff_string_02 = "negative day difference"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(day,	"2026-01-11",		"2026-01-01")		= -10
+csv SELECT datediff_string_03 = "month difference"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(month,	"2026-01-01",		"2026-04-01")		= 3
+csv SELECT datediff_string_04 = "year difference"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(year,	"2020-01-01",		"2026-01-01")		= 6
+csv SELECT datediff_string_05 = "hour difference"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(hour,	"2026-01-01 00:00:00",	"2026-01-01 06:00:00")	= 6
+csv SELECT datediff_string_06 = "minute difference"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(minute,	"2026-01-01 00:00:00",	"2026-01-01 00:45:00")	= 45
+csv SELECT datediff_string_07 = "second difference"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(second,	"2026-01-01 00:00:00",	"2026-01-01 00:00:30")	= 30
+csv SELECT datediff_string_08 = "same date returns 0"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(day,	"2026-06-01",		"2026-06-01")		= 0
+
+# invalid argumnets
+csv SELECT datediff_error_01 = "non string datepart"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(123, "2026-06-01", "2026-06-01") = 0 OR 1=1
+csv SELECT datediff_error_02 = "incorrect datepart"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(quarter, "2026-06-01", "2026-06-01") = 0 OR 1=1
+csv SELECT datediff_error_03 = "incorrect date 1"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(quarter, "test", "2026-06-01") = 0 OR 1=1
+csv SELECT datediff_error_04 = "incorrect date 2"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(quarter, "2026-06-01", "test") = 0 OR 1=1
+csv SELECT datediff_error_05 = "too many args"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(day, "2026-06-01", "2026-06-01", "2026-06-01") = 0 OR 1=1
+csv SELECT datediff_error_06 = "too few args"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(day) = 0 OR 1=1
+
+
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows

@@ -1,0 +1,15 @@
+##NAME MySQL condition function
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'test', c = 'test'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+csv SELECT condition_01 = "true branch taken" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND condition(1 = 1, 'yes', 'no') = 'yes'
+csv SELECT condition_02 = "false branch taken" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND condition(1 = 2, 'yes', 'no') = 'no'
+csv SELECT condition_03 = "numeric result true" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND condition('yes' = 'yes', 1, 0) = 1
+csv SELECT condition_04 = "numeric result false" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND condition('yes' = 'no', 1, 0) = 0
+csv SELECT condition_05 = "nested conditions" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND condition(1 = 2, 'first', condition(2 = 2, 'second', 'third')) = 'second'
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows

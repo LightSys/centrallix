@@ -1,0 +1,21 @@
+##NAME MySQL right function
+
+# empty table, and insert a single row to indicate a success
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'hello world', c = 'HELLO WORLD'
+
+# check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
+csv SELECT test_right_01 = "right: last 5 chars" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND right('hello world', 5) = 'world'
+csv SELECT test_right_02 = "right: 1 char" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND right('hello', 1) = 'o'
+csv SELECT test_right_03 = "right: length equals string length returns whole string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND right('hello', 5) = 'hello'
+csv SELECT test_right_04 = "right: more characters than available" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND right('world', 10) = 'world'
+csv SELECT test_right_05 = "right: length 0 returns empty string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND right('hello', 0) = ''
+csv SELECT test_right_06 = "right: column value" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND right(:b, 5) = 'world'
+
+# errors
+csv SELECT test_right_error_01 = "right: too many args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND right('hello world', 5, 6) OR 1 = 1 
+csv SELECT test_right_error_02 = "right: too few args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND right('hello world') OR 1 = 1 
+
+
+# cleanup
+query DELETE FROM /tests/Test_DB/stringTests/rows
