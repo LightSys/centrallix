@@ -12,6 +12,17 @@ csv SELECT charindex_03 = "substring not found returns 0" FROM /tests/Test_DB/st
 csv SELECT charindex_04 = "empty search string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND charindex('', 'hello world') = 1
 csv SELECT charindex_05 = "single character" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND charindex('o', 'hello world') = 5
 csv SELECT charindex_06 = "confirm is case sensitive" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND charindex('HELLO', 'hello world') = 0
+csv SELECT charindex_07 = "NULL haystack" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND charindex('HELLO', NULL) IS NULL
+csv SELECT charindex_08 = "NULL needle" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND charindex(NULL, 'hello world') IS NULL
+
+
+
+# errors
+csv SELECT charindex_error_01 = "too few args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND charindex('c') IS NOT NULL
+csv SELECT charindex_error_02 = "too many args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND charindex('c', 'abc', 3) IS NOT NULL
+csv SELECT charindex_error_03 = "blank args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND charindex( , ) IS NOT NULL
+csv SELECT charindex_error_04 = "incorrect type needle" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND charindex(1, "12345") IS NOT NULL
+csv SELECT charindex_error_05 = "incorrect type haystack" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND charindex("1", 12345) IS NOT NULL
 
 
 # cleanup

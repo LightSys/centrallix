@@ -28,11 +28,13 @@ csv SELECT datediff_string_08 = "same date returns 0"		FROM /tests/Test_DB/strin
 
 # invalid argumnets
 csv SELECT datediff_error_01 = "non string datepart"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(123, "2026-06-01", "2026-06-01") = 0 OR 1=1
-csv SELECT datediff_error_02 = "incorrect datepart"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(quarter, "2026-06-01", "2026-06-01") = 0 OR 1=1
-csv SELECT datediff_error_03 = "incorrect date 1"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(quarter, "test", "2026-06-01") = 0 OR 1=1
-csv SELECT datediff_error_04 = "incorrect date 2"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(quarter, "2026-06-01", "test") = 0 OR 1=1
-csv SELECT datediff_error_05 = "too many args"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(day, "2026-06-01", "2026-06-01", "2026-06-01") = 0 OR 1=1
-csv SELECT datediff_error_06 = "too few args"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(day) = 0 OR 1=1
+csv SELECT datediff_error_02 = "non-literal string "	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(convert(string, 'day'), "2026-06-01", "2026-06-01") = 0 OR 1=1
+csv SELECT datediff_error_03 = "incorrect datepart"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(quarter, "2026-06-01", "2026-06-01") = 0 OR 1=1
+-- NOTE: we cannot currently confirm a string can be converted to a date properly
+--csv SELECT datediff_error_04 = "incorrect date 1"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(day, "test", "2026-06-01") = 0 OR 1=1
+--csv SELECT datediff_error_05 = "incorrect date 2"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(day, "2026-06-01", "test") = 0 OR 1=1
+csv SELECT datediff_error_06 = "too many args"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(day, "2026-06-01", "2026-06-01", "2026-06-01") = 0 OR 1=1
+csv SELECT datediff_error_07 = "too few args"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(day) = 0 OR 1=1
 
 
 

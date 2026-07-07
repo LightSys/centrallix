@@ -12,6 +12,18 @@ csv SELECT replace_03 = "replace all occurrences" FROM /tests/Test_DB/stringTest
 csv SELECT replace_04 = "NULL replacement uses empty string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replace('hello world', 'world', NULL) = 'hello '
 csv SELECT replace_05 = "replace with empty string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replace('hello world', ' ', '') = 'helloworld'
 csv SELECT replace_06 = "column value as source" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replace(:b, 'world', 'there') = 'hello there'
+csv SELECT replace_07 = "NULL source" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replace(NULL, 'world', 'there') IS NULL
+csv SELECT replace_08 = "NULL find" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replace('hello world', NULL, 'there') IS NULL
+csv SELECT replace_09 = "NULL replace" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replace('hello world', 'world', NULL) = 'hello '
+
+
+# errors 
+csv SELECT replace_error_01 = "too many args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replace('hello world', 'world', 'there', 'test') = 'hello there' OR 1=1
+csv SELECT replace_error_02 = "too few args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replace('hello world', 'world') = 'hello there' OR 1=1
+csv SELECT replace_error_03 = "incorrect type arg 1" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replace(123, 'world', 'there') = 'hello there' OR 1=1
+csv SELECT replace_error_04 = "incorrect type arg 2" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replace('hello world', 123, 'there') = 'hello there' OR 1=1
+csv SELECT replace_error_05 = "incorrect type arg 3" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND replace('hello world', 'world', 123) = 'hello there' OR 1=1
+
 
 # cleanup
 query DELETE FROM /tests/Test_DB/stringTests/rows
