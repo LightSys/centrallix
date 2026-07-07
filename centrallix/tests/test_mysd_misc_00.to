@@ -6,19 +6,20 @@ query insert into /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'hello 
 
 # check a single row to get the object system to pass the query to the driver, then perform actual conversion to test
 
-# get date
-csv SELECT test_getdate_01 = "getdate: result is close to now (within 60 seconds)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datediff(second, getdate(), dateadd(minute, 1, getdate())) = 60
+# get date - passing function with no args to DB requires a column is directly involved 
+csv SELECT test_getdate_01 = "getdate: result is close to now (within 60 seconds)" FROM /tests/Test_DB/stringTests/rows WHERE datediff(second, getdate(), dateadd(minute, char_length(:a), getdate())) = 60 * 4
 csv SELECT test_getdate_error_01 = "getdate: test with arguments" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND getdate(1, "test") IS NOT NULL
 
-csv SELECT test_user_name_01 = "user_name: result is non-empty string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND length(user_name()) >= 1
-csv SELECT test_user_name_error_01 = "user_name: test with arguments" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND length(user_name()) >= 1
+# user_name - passing function with no args to DB requires a column is directly involved 
+csv SELECT test_user_name_01 = "user_name: result is non-empty string" FROM /tests/Test_DB/stringTests/rows WHERE char_length(:a + user_name()) >= 5
+csv SELECT test_user_name_error_01 = "user_name: test with arguments" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND length(user_name(123)) >= 1
 
 # ralign
 csv SELECT test_ralign_01 = "ralign: short string padded to width" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ralign('hi', 6) = '    hi'
 csv SELECT test_ralign_02 = "ralign: string exactly fills width" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ralign('hello', 5) = 'hello'
-csv SELECT test_ralign_03 = "ralign: zero width" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ralign('hi', 0) = ''
+csv SELECT test_ralign_03 = "ralign: zero width" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ralign('hi', 0) = 'hi'
 csv SELECT test_ralign_04 = "ralign: single character" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ralign('x', 4) = '   x'
-csv SELECT test_ralign_05 = "ralign: empty character" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ralign('', 4) = '   x'
+csv SELECT test_ralign_05 = "ralign: empty character" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ralign('', 4) = '    '
 csv SELECT test_ralign_error_01 = "ralign: too many args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ralign('abc', 4, 123) IS NOT NULL
 csv SELECT test_ralign_error_02 = "ralign: too few args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ralign('abc') IS NOT NULL
 
@@ -34,7 +35,7 @@ csv SELECT test_ascii_02 = "ascii: lowercase a" FROM /tests/Test_DB/stringTests/
 csv SELECT test_ascii_03 = "ascii: space character" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ascii(' ') = 32
 csv SELECT test_ascii_04 = "ascii: only first character used" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ascii('ABC') = 65
 csv SELECT test_ascii_05 = "ascii: digit character" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ascii('0') = 48
-csv SELECT test_ascii_05 = "ascii:utf-8 character" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ascii('0') = 48
+csv SELECT test_ascii_06 = "ascii:utf-8 character" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ascii('0') = 48
 csv SELECT test_ascii_error_01 = "ascii: too few args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ascii() IS NOT NULL
 csv SELECT test_ascii_error_02 = "ascii: too many args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ascii('0', 123) IS NOT NULL
 

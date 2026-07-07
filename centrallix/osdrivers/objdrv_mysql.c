@@ -1613,7 +1613,6 @@ mysd_internal_DetermineType(pObject obj, pMysdData inf)
 /*** mysd_internal_free_validate_params - frees the strings created by `mysd_internal_validate_params` 
  *** @param arg_strings the list of xStrings returned by `mysd_internal_free_validate_params` to free
 */
-
 void
 mysd_internal_free_processed_args(pXArray arg_strings)
     {
@@ -1625,6 +1624,7 @@ mysd_internal_free_processed_args(pXArray arg_strings)
 	    }
     return;
     }
+
 ////FIXME: may need to have allowed node types (to require literals) and whether nullable (to avoid NULL strings literals?)
 /*** mysd_internal_process_params - verifies the parameters of a function
  *** based on the specified types and argument count. 
@@ -1634,7 +1634,8 @@ mysd_internal_free_processed_args(pXArray arg_strings)
  *** @param conn The active connection to the database 
  *** @param types a list of DATA_T type constants, using DATA_T_INVALID as a delimter. If DATA_T_ANY is 
  ***   one of the allowed types, the type check is skipped for that argument. MUST include types for 
- ***   all `max` possible args. If set to NULL, all type checking is skipped
+ ***   all `max` possible args. If set to NULL, all type checking is skipped. Arguments of type 
+ ***   DATA_T_UNAVAILABLE cannot be disallowed, since the type is unknown.
  *** @param min the minimum number of arguments allowable. Can be 0 to allow no args. Any args after 
  ***   `min` are considered optional.
  *** @param max the maximum number of arguments allowable. Make the same as `min` to specificy a single
@@ -1682,7 +1683,7 @@ mysd_internal_process_params(pExpression tree, pMysdTable *tdata, MYSQL * conn, 
 	    pExpression cur_child = tree->Children.Items[i];
 	    if(mysd_internal_TreeToClause(cur_child, tdata,  cur_string, conn) < 0)
 		{
-		mssError(0,"mysd","failed to parse argument at index %d for function %s", i, tree->Name);
+		mssError(0,"MYSD","failed to parse argument at index %d for function %s", i, tree->Name);
 		goto error;
 		}
 
@@ -1698,7 +1699,7 @@ mysd_internal_process_params(pExpression tree, pMysdTable *tdata, MYSQL * conn, 
 		    }
 		cur_type++; /* move past the DATA_T_INVALID delimiter */
 
-		if(is_valid == 0)
+		if(is_valid == 0 && cur_child->DataType != DATA_T_UNAVAILABLE)
 		    {
 		    mssError(1,"MYSD","Error: invalid argument type %d for argument at index %d for function %s", 
 		    cur_child->DataType, i, tree->Name);
@@ -1817,7 +1818,7 @@ mysd_internal_function_Convert(pExpression tree, pMysdTable *tdata, pXString whe
     return -1;
     }
 
-/*** mysd_internal_function_Datepart - handles the Upper and Lower cxSQL 
+/*** mysd_internal_function_Case - handles the Upper and Lower cxSQL 
  *** into a MySQL datepart
  *** @param tree The node structure to convert. MUST point to either a Upper or Lower function call
  *** @param tdata Information about the table being queried
@@ -1836,7 +1837,7 @@ mysd_internal_function_Case(pExpression tree, pMysdTable *tdata, pXString where_
 	arg_strings = mysd_internal_process_params(tree, tdata, conn, types, 1, 1);
 	if(arg_strings == NULL)
 	    {
-	    mssError(0,"MYSD","convert usage: convert(datatype, value) or convert(from_encoding, to_encoding, string|data)");
+	    mssError(0,"MYSD","%s usage: %s(STRING)", tree->Name, tree->Name);
 	    goto error;
 	    }
 
@@ -1854,14 +1855,17 @@ mysd_internal_function_Case(pExpression tree, pMysdTable *tdata, pXString where_
 	    /** only change collation if found one **/
 	    if(tempTdata->Node->DatabaseCollation[0] != '\0')
 		{
-		xsConcatenate(where_clause, ") collate ", 10);
-	    /// FIXME: verify that the collation is either a) sanitized, or b) is a string literal and not from user/file
+		xsConcatenate(where_clause, ") collate ", 9);
 		mysd_internal_SafeAppend(conn, where_clause, tempTdata->Node->DatabaseCollation);
-		xsConcatenate(where_clause, ") ", -1);
+		xsConcatenate(where_clause, ") ", 2);
 		}
 	    else
 		xsConcatenate(where_clause, ")) ", 3);
 	    }
+
+	mysd_internal_free_processed_args(arg_strings);
+	arg_strings = NULL;
+	tree->DataType = DATA_T_STRING;
 	return 0; 
 
     error:
@@ -1869,11 +1873,164 @@ mysd_internal_function_Case(pExpression tree, pMysdTable *tdata, pXString where_
     return -1;
     }
 
+/*** mysd_internal_function_Charindex - converts charindex from cxSQL into a MySQL locate
+ *** @param tree The node structure to convert. MUST point to a charindex function call
+ *** @param tdata Information about the table being queried
+ *** @param where_clause The string to append the converted query to
+ *** @param conn The active connection to the database 
+ *** @returns 0 on success or -1 on error
+ ***/
+int
+mysd_internal_function_Charindex(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
+    {
+    pXArray arg_strings = NULL;
+    pMysdTable tempTdata = *tdata;
+    int types[] = { /* needle */ DATA_T_STRING, DATA_T_INVALID,
+		  /* haystack */ DATA_T_STRING, DATA_T_INVALID };
+
+	/** verify arguments **/
+	arg_strings = mysd_internal_process_params(tree, tdata, conn, types, 2, 2);
+	if(arg_strings == NULL) goto error;
+
+	char* needle = get_arg_string(arg_strings, 0);
+	char* haystack = get_arg_string(arg_strings, 1);
+	/** MySQL locate() function is the equivalent of CX charindex() **/
+	xsConcatPrintf(where_clause, " ( locate(%s, %s", needle, haystack);
+	
+	/** check if we can make the collation case sensitive */
+	if (strcmp(haystack, " NULL ") != 0 && tempTdata->Node->DatabaseCollation[0] != '\0')
+	    {
+	    xsConcatenate(where_clause, " collate ", 9);
+	    mysd_internal_SafeAppend(conn, where_clause, tempTdata->Node->DatabaseCollation);
+	    }
+
+	xsConcatenate(where_clause, ") ) ", 4);
+
+	tree->DataType = DATA_T_INTEGER;
+	
+	mysd_internal_free_processed_args(arg_strings);
+	arg_strings = NULL;
+	return 0;
+
+    error:
+	if(arg_strings) mysd_internal_free_processed_args(arg_strings);
+    return -1;
+    }
+
+/*** mysd_internal_function_Datediff - datepart CxSQL into mysql
+ *** @param tree The node structure to convert. MUST point to a datepart function call
+ *** @param tdata Information about the table being queried
+ *** @param where_clause The string to append the converted query to
+ *** @param conn The active connection to the database 
+ *** @returns 0 on success or -1 on error
+ ***/
+int
+mysd_internal_function_Datediff(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
+    {
+    pXArray arg_strings = NULL;
+    int types[] = { /* part */ DATA_T_STRING, DATA_T_INVALID,
+		/* start date */ DATA_T_STRING, DATA_T_DATETIME, DATA_T_INVALID, /* allow strings since datetime literals appear that way */
+		/* end date */ DATA_T_STRING, DATA_T_DATETIME, DATA_T_INVALID };
+
+	/* verify args. First arg musrt be a string literal */
+	arg_strings = mysd_internal_process_params(tree, tdata, conn, types, 3, 3);
+	pExpression subtree = (pExpression)(tree->Children.Items[0]);
+	if(arg_strings == NULL || subtree->NodeType != EXPR_N_STRING || subtree->Flags & EXPR_F_NULL)
+	    {
+	    mssError(0,"MYSD","Datediff usage: datediff(PART, START_DATE, END_DATE)");
+	    goto error;
+	    }
+	
+	/** MySQL uses timestampdiff() **/
+	char* date1_str = get_arg_string(arg_strings, 1);
+	char* date2_str = get_arg_string(arg_strings, 2);
+	if (!strcmp(subtree->String,"day") || !strcmp(subtree->String,"month")
+		|| !strcmp(subtree->String,"year") || !strcmp(subtree->String, "hour")
+		|| !strcmp(subtree->String,"minute") || !strcmp(subtree->String, "second"))
+	    {
+	    xsConcatPrintf(where_clause, " timestampdiff(%s, %s, %s) ", subtree->String, date1_str, date2_str);
+	    }
+	else
+	    {
+	    mssError(1,"MYSD","Invalid date part to datediff()");
+	    goto error;
+	    }
+	
+	tree->DataType = DATA_T_INTEGER;
+	
+	mysd_internal_free_processed_args(arg_strings);
+	arg_strings = NULL;
+	return 0; 
+
+    error:
+	if(arg_strings) mysd_internal_free_processed_args(arg_strings);
+    return -1;
+    }
+
+/*** mysd_internal_function_dateadd - dateadd CxSQL into mysql
+ *** @param tree The node structure to convert. MUST point to a dateadd function call
+ *** @param tdata Information about the table being queried
+ *** @param where_clause The string to append the converted query to
+ *** @param conn The active connection to the database 
+ *** @returns 0 on success or -1 on error
+ ***/
+int
+mysd_internal_function_dateadd(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
+    {
+    pXArray arg_strings = NULL;
+    int types[] = { /* part */ DATA_T_STRING, DATA_T_INVALID,
+		/* amount*/ DATA_T_INTEGER, DATA_T_INVALID,
+		/* date */ DATA_T_STRING, DATA_T_DATETIME, DATA_T_INVALID };
+
+	/** verify args. **/
+	arg_strings = mysd_internal_process_params(tree, tdata, conn, types, 3, 3);
+	
+	if(arg_strings == NULL)
+	    {
+	    mssError(0,"MYSD","Datediff usage: datediff(PART, ADD, END_DATE)");
+	    goto error;
+	    }
+	
+	/** First arg must be a string literal **/
+	pExpression subtree = (pExpression)(tree->Children.Items[0]);
+	if(subtree->NodeType != EXPR_N_STRING || subtree->Flags & EXPR_F_NULL)
+	    {
+	    mssError(0,"MYSD","Datediff: datepart must be a string literal");
+	    goto error;
+	    }
+
+
+	char* amount_str = get_arg_string(arg_strings, 1); 
+	char* date_str = get_arg_string(arg_strings, 2); 
+	
+	/** MySQL uses date_add(date, INTERVAL increment datepart) instead of dateadd(datepart, increment, date) **/
+	if (!strcmp(subtree->String,"day") || !strcmp(subtree->String,"month") ||
+		!strcmp(subtree->String,"year") || !strcmp(subtree->String, "hour") ||
+		!strcmp(subtree->String,"minute") || !strcmp(subtree->String, "second"))
+	    {
+	    xsConcatPrintf(where_clause, " date_add(%s, INTERVAL %s %s) ", date_str, amount_str, subtree->String);
+	    }
+	else
+	    {
+	    mssError(1,"MYSD","Invalid date part to dateadd()");
+	    goto error;
+	    }
+	
+	tree->DataType = DATA_T_DATETIME;
+	
+	mysd_internal_free_processed_args(arg_strings);
+	arg_strings = NULL;
+	return 0; 
+
+    error:
+	if(arg_strings) mysd_internal_free_processed_args(arg_strings);
+    return -1;
+    }
 
 ///TODO: circle back and see if validate params can simplify any of the checks afterall
 /*** mysd_internal_function_Datepart - handles the datepart function from cxSQL 
  *** into a MySQL datepart
- *** @param tree The node structure to convert. MUST point to the convert function
+ *** @param tree The node structure to convert. MUST point to the datpart function
  *** @param tdata Information about the table being queried
  *** @param where_clause The string to append the converted query to
  *** @param conn The active connection to the database 
@@ -1930,7 +2087,7 @@ mysd_internal_function_Datepart(pExpression tree, pMysdTable *tdata, pXString wh
 	/// FIXME: I am pretty sure this strpbrk is redundant for mysd_internal_SafeAppend, and also breaks the logic in general
 	    if (strpbrk(date_exp->String,"\"'\t\r\n") != 0)
 		{
-		mssError(1,"mysd","cannot parse string \"%s\" as a date", date_exp->String);
+		mssError(1,"MYSD","cannot parse string \"%s\" as a date", date_exp->String);
 		goto error;
 		}
 	    objDataToString(&date_buf, DATA_T_STRING, date_exp->String, 0);
@@ -1958,6 +2115,150 @@ mysd_internal_function_Datepart(pExpression tree, pMysdTable *tdata, pXString wh
     return -1;
     }
 
+/*** mysd_internal_function_ralign - converts ralign from cxSQL into MySQL
+ *** @param tree The node structure to convert. MUST point to a ralign function call
+ *** @param tdata Information about the table being queried
+ *** @param where_clause The string to append the converted query to
+ *** @param conn The active connection to the database 
+ *** @returns 0 on success or -1 on error
+ ***/
+int
+mysd_internal_function_ralign(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
+    {
+    pXArray arg_strings = NULL;
+    int types[] = { /* string */ DATA_T_STRING, DATA_T_INVALID,
+		    /* number */ DATA_T_INTEGER, DATA_T_INVALID };
+
+	/** verify arguments **/
+	arg_strings = mysd_internal_process_params(tree, tdata, conn, types, 2, 2);
+	if(arg_strings == NULL)
+	    {
+	    mssError(0,"MYSD","ralign usage: ralign(string, size)");
+	    goto error;
+	    }
+	
+	/** use repeat to generated the required number of spaces, and append to start **/
+	char* string_str = get_arg_string(arg_strings, 0);
+	char* number_str = get_arg_string(arg_strings, 1);
+	xsConcatPrintf(where_clause, " concat(repeat(' ', %s - char_length(%s)), %s) ", 
+		number_str, string_str, string_str);
+
+	tree->DataType = DATA_T_STRING;
+	
+	mysd_internal_free_processed_args(arg_strings);
+	arg_strings = NULL;
+	return 0;
+
+    error:
+	if(arg_strings != NULL) mysd_internal_free_processed_args(arg_strings);
+    return -1;
+    }
+
+/*** mysd_internal_function_replace - converts ralign from cxSQL into MySQL
+ *** @param tree The node structure to convert. MUST point to a replace function call
+ *** @param tdata Information about the table being queried
+ *** @param where_clause The string to append the converted query to
+ *** @param conn The active connection to the database 
+ *** @returns 0 on success or -1 on error
+ ***/
+int
+mysd_internal_function_replace(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
+    {
+    pXArray arg_strings = NULL;
+    int types[] = { /* string */ DATA_T_STRING, DATA_T_INVALID,
+		      /* find */ DATA_T_STRING, DATA_T_INVALID,
+		   /* replace */ DATA_T_STRING, DATA_T_INVALID };
+
+	/** verify arguments **/
+	arg_strings = mysd_internal_process_params(tree, tdata, conn, types, 3, 3);
+	if(arg_strings == NULL)
+	    {
+	    mssError(0,"MYSD","replace usage: replace(string, find, replace)");
+	    goto error;
+	    }
+	
+	char* string_str = get_arg_string(arg_strings, 0);
+	char* find_str = get_arg_string(arg_strings, 1);
+	
+	/** MySQL does not accept NULL for the replacement, use "" instead **/
+	pExpression subtree = tree->Children.Items[2];
+	char* replace_str = (subtree && (subtree->Flags & EXPR_F_NULL))? "\"\"" : get_arg_string(arg_strings, 2);
+	
+	xsConcatPrintf(where_clause, " replace(%s, %s, %s) ", string_str, find_str, replace_str);
+
+	tree->DataType = DATA_T_STRING;
+	
+	mysd_internal_free_processed_args(arg_strings);
+	arg_strings = NULL;
+	return 0;
+
+    error:
+	if(arg_strings != NULL) mysd_internal_free_processed_args(arg_strings);
+    return -1;
+    }
+
+/*** mysd_internal_function_hash - converts hash from cxSQL into MySQL
+ *** @param tree The node structure to convert. MUST point to a hash function call
+ *** @param tdata Information about the table being queried
+ *** @param where_clause The string to append the converted query to
+ *** @param conn The active connection to the database 
+ *** @returns 0 on success or -1 on error
+ ***/
+int
+mysd_internal_function_hash(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
+    {
+    pXArray arg_strings = NULL;
+    int types[] = { /* algorithm */ DATA_T_STRING, DATA_T_INVALID,
+		      /* string */ DATA_T_BINARY, DATA_T_STRING, DATA_T_INVALID };
+
+	/** verify arguments **/
+	arg_strings = mysd_internal_process_params(tree, tdata, conn, types, 2, 2);
+	if(arg_strings == NULL)
+	    {
+	    mssError(0,"MYSD","hash usage: replace(algorithm, string|binary)");
+	    goto error;
+	    }
+	
+	pExpression algorithm_exp = tree->Children.Items[0];
+
+	/** check algorithm is a string literal **/
+	if (algorithm_exp->String == NULL)
+	    {
+	    mssError(0,"MYSD","hash requires a string literal for the algorithm name");
+	    goto error;
+	    }
+	
+	char* data_str = get_arg_string(arg_strings, 1);
+	
+	/** MySQL uses MD5(), SHA1(), SHA2(data, bitsize) **/
+	/** Function call itself **/
+	if (!strcmp(algorithm_exp->String, "md5"))
+	    xsConcatPrintf(where_clause, " MD5(%s) ", data_str);
+	else if (!strcmp(algorithm_exp->String, "sha1"))
+	    xsConcatPrintf(where_clause, " SHA1(%s) ", data_str);
+	/** SHA2 uses a bit length **/
+	else if (!strcmp(algorithm_exp->String, "sha256") 
+		|| !strcmp(algorithm_exp->String, "sha384") 
+		|| !strcmp(algorithm_exp->String, "sha512"))
+	    xsConcatPrintf(where_clause, " SHA2(%s, %s) ", data_str, algorithm_exp->String+3);
+	else 
+	    {
+	    mssError(1,"MYSD","Invalid algorithm for hash()");
+	    goto error;
+	    }
+
+	tree->DataType = DATA_T_STRING;
+	
+	mysd_internal_free_processed_args(arg_strings);
+	arg_strings = NULL;
+	return 0;
+
+    error:
+	if(arg_strings != NULL) mysd_internal_free_processed_args(arg_strings);
+    return -1;
+    }
+
+
 /*** mysd_internal_TreeToClause - convert an expression tree to the appropriate
  *** clause for the SQL statement.
  *** Note the following limitations this adds to CxSQL
@@ -1968,6 +2269,7 @@ mysd_internal_function_Datepart(pExpression tree, pMysdTable *tdata, pXString wh
 /// FIXME: maybe check return values on recurrsive calls?
 /// FIXME: lengths declared with strings dont always match 
 /// FIXME: set the DataType on each node before returning (if that breaks, do in return type)
+/// FIXME: the caller still passes query on error, which means sometimes you send just "... WHERE ;" to the db...
 int
 mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
     {
@@ -1985,7 +2287,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 	if (thExcessiveRecursion())
 	    {
 	    mssError(1,"MYSD","Failed to run query: resource exhaustion occurred");
-	    return -1;
+	    goto error;
 	    }
     
         xsInit(&tmp);
@@ -2040,6 +2342,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		if( tree->Flags & EXPR_F_PERMNULL && tree->String != NULL && strcasecmp("NULL", tree->String) == 0)
 		    {
 		    xsConcatenate(where_clause, " NULL ", 6);
+		    ///TODO: should this be DATA_T_ANY? Since its fits for all technically...?
 		    break;
 		    }
 		
@@ -2056,6 +2359,8 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
             case EXPR_N_OBJECT:
                 subtree = (pExpression)(tree->Children.Items[0]);
                 mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+		/** propigate datatype from child **/
+		tree->DataType = subtree->DataType; 
                 break;
 
             case EXPR_N_PROPERTY:
@@ -2121,11 +2426,13 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                             xsConcatenate(where_clause, "` as char)", 10);
                             }
                         xsConcatenate(where_clause, ") ",2);
+			tree->DataType = DATA_T_STRING;
                         }
                     else if (!strcmp(tree->Name,"annotation"))
                         {
                         /** no anotation support atm **/
-			///FIXME: shouldn't this err?
+			mssError(0, "MYSD", "Error: annotations not currently supported");
+			goto error;
                         }
                     else
                         {
@@ -2144,7 +2451,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 			if(column_type == DATA_T_INVALID)
 			    {
 			    mssError(1, "MYSD", "Invalid column '%s' in where clause", tree->Name);
-			    return -1;
+			    goto error;
 			    }
 			tree->DataType = column_type;
                         xsConcatenate(where_clause, " `", 2);
@@ -2160,7 +2467,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		if(arg_strings == NULL)
 		    {
 		    mssError(0,"MYSD","comparison opperators require two arguments");
-		    return -1;
+		    goto error;
 		    }
 		
 		/** build clause **/
@@ -2173,8 +2480,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                 xsConcatenate(where_clause, " ", 1);
                 xsConcatenate(where_clause, get_arg_string(arg_strings, 1), -1);
                 xsConcatenate(where_clause, ") ", 2);
-
-		mysd_internal_free_processed_args(arg_strings);
+		tree->DataType = DATA_T_INTEGER;
                 break;
 
             case EXPR_N_AND:
@@ -2183,7 +2489,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		if(arg_strings == NULL)
 		    {
 		    mssError(0,"MYSD","AND requires two clauses");
-		    return -1;
+		    goto error;
 		    }
 		    
 		/** build clause **/
@@ -2192,8 +2498,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                 xsConcatenate(where_clause, " AND ",5);
 		xsConcatenate(where_clause, get_arg_string(arg_strings, 1), -1);
                 xsConcatenate(where_clause, ") ",2);
-
-		mysd_internal_free_processed_args(arg_strings);
+		tree->DataType = DATA_T_INTEGER;
                 break;
 
             case EXPR_N_OR:
@@ -2202,7 +2507,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		if(arg_strings == NULL)
 		    {
 		    mssError(0,"MYSD","OR requires two clauses");
-		    return -1;
+		    goto error;
 		    }
 		
 		/** build clause **/
@@ -2211,8 +2516,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                 xsConcatenate(where_clause, " OR ",4);
 		xsConcatenate(where_clause, get_arg_string(arg_strings, 1), -1);
                 xsConcatenate(where_clause, ") ",2);
-
-		mysd_internal_free_processed_args(arg_strings);
+		tree->DataType = DATA_T_INTEGER;
                 break;
 
             case EXPR_N_ISNOTNULL:
@@ -2221,15 +2525,14 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		if(arg_strings == NULL)
 		    {
 		    mssError(0,"MYSD","IS NOT NULL requires one clause");
-		    return -1;
+		    goto error;
 		    }
 		
 		/** build clause **/
                 xsConcatenate(where_clause, " (",2);
 		xsConcatenate(where_clause, get_arg_string(arg_strings, 0), -1);
                 xsConcatenate(where_clause, " IS NOT NULL) ",14);
-
-		mysd_internal_free_processed_args(arg_strings);
+		tree->DataType = DATA_T_INTEGER;
                 break;
 
             case EXPR_N_ISNULL:
@@ -2238,15 +2541,14 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		if(arg_strings == NULL)
 		    {
 		    mssError(0,"MYSD","IS NULL requires one clause");
-		    return -1;
+		    goto error;
 		    }
 		
 		/** build clause **/
                 xsConcatenate(where_clause, " (",2);
 		xsConcatenate(where_clause, get_arg_string(arg_strings, 0), -1);
                 xsConcatenate(where_clause, " IS NULL) ",10);
-
-		mysd_internal_free_processed_args(arg_strings);
+		tree->DataType = DATA_T_INTEGER;
                 break;
 
             case EXPR_N_NOT:
@@ -2255,15 +2557,14 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		if(arg_strings == NULL)
 		    {
 		    mssError(0,"MYSD","NOT requires one clause");
-		    return -1;
+		    goto error;
 		    }
 		
 		/** build clause **/
                 xsConcatenate(where_clause, " ( NOT ( ",9);
                 xsConcatenate(where_clause, get_arg_string(arg_strings, 0), -1);
                 xsConcatenate(where_clause, " ) ) ",5);
-
-		mysd_internal_free_processed_args(arg_strings);
+		tree->DataType = DATA_T_INTEGER;
                 break;
 
             case EXPR_N_FUNCTION:
@@ -2274,108 +2575,61 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                 if (!strcmp(tree->Name,"condition"))
                     {
 		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 3, 3);
-		    if(arg_strings == NULL) return -1;
+		    if(arg_strings == NULL) goto error;
 		    fn_use_name = "if";
 		    use_stock_fn_call = 1;
+		    ///FIXME: we really don't know what type this should be lol
                     }
 		else if (!strcmp(tree->Name,"isnull"))
 		    {
 		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 2, 2);
-		    if(arg_strings == NULL) return -1;
+		    if(arg_strings == NULL) goto error;
 		    /** MySQL isnull() does something different than CX isnull().  Use ifnull() instead. **/
 		    fn_use_name = "ifnull";
 		    use_stock_fn_call = 1;
+		    ///FIXME: we really don't know what type this should be lol
 		    }
 		else if (!strcmp(tree->Name,"convert"))
 		    {
-		    if(mysd_internal_function_Convert((tree), tdata,  where_clause, conn) < 0) return -1;
+		    if(mysd_internal_function_Convert(tree, tdata,  where_clause, conn) < 0) goto error;
 		    }
 		else if (!strcmp(tree->Name,"upper") || !strcmp(tree->Name, "lower"))
 		    {
-		    if(mysd_internal_function_Case(tree, tdata, where_clause, conn) < 0) return -1;
+		    if(mysd_internal_function_Case(tree, tdata, where_clause, conn) < 0) goto error;
 		    }
 		else if (!strcmp(tree->Name,"charindex"))
 		    {
-		    /** MySQL locate() function is the equivalent of CX charindex() **/
-		    fn_use_name = "locate";
-		    use_stock_fn_call = 1;
+		    if(mysd_internal_function_Charindex(tree, tdata,  where_clause, conn) < 0) goto error;
 		    }
 		else if (!strcmp(tree->Name,"getdate"))
 		    {
 		    /** MySQL now() function is the equivalent of CX getdate() **/
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 0, 0);
+		    if(arg_strings == NULL) goto error;
 		    fn_use_name = "now";
 		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_DATETIME;
 		    }
 		else if (!strcmp(tree->Name,"user_name"))
 		    {
 		    /** MySQL equivalent is substring_index(current_user(),'@',1) **/
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 0, 0);
+		    if(arg_strings == NULL) goto error;
+		    /** ///NOTE: this only works for as long as user accounts are directly tied to DB accounts **/
 		    xsConcatenate(where_clause, " substring_index(current_user(),'@',1) ", -1);
+		    tree->DataType = DATA_T_STRING;
 		    }
 		else if (!strcmp(tree->Name,"datediff"))
 		    {
-		    /** MySQL uses timestampdiff() **/
-		    subtree = (pExpression)(tree->Children.Items[0]);
-		    if (subtree->DataType != DATA_T_STRING || subtree->Flags & EXPR_F_NULL)
-			{
-			mssError(1,"MYSD","Invalid date part for datediff()");
-			return -1;
-			}
-		    if (!strcmp(subtree->String,"day") || !strcmp(subtree->String,"month") ||
-			    !strcmp(subtree->String,"year") || !strcmp(subtree->String, "hour") ||
-			    !strcmp(subtree->String,"minute") || !strcmp(subtree->String, "second"))
-			{
-			xsConcatenate(where_clause, " timestampdiff(", -1);
-			xsConcatenate(where_clause, subtree->String, -1);
-			xsConcatenate(where_clause, ", ", -1);
-			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
-			xsConcatenate(where_clause, ", ", -1);
-			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), tdata,  where_clause,conn);
-			xsConcatenate(where_clause, ") ", -1);
-			}
-		    else
-			{
-			mssError(1,"MYSD","Invalid date part to datediff()");
-			return -1;
-			}
+		    if(mysd_internal_function_Datediff(tree, tdata, where_clause, conn) < 0) goto error;
 		    }
 		else if (!strcmp(tree->Name,"dateadd"))
 		    {
-		    /** MySQL uses date_add(date, interval increment datepart) instead of dateadd(datepart, increment, date) **/
-		    xsConcatenate(where_clause, " date_add(", -1);
-                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), tdata,  where_clause,conn);
-		    xsConcatenate(where_clause, ", interval ", -1);
-                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
-		    xsConcatenate(where_clause, " ", 1);
-		    subtree = (pExpression)(tree->Children.Items[0]);
-		    if (subtree->DataType != DATA_T_STRING || subtree->Flags & EXPR_F_NULL)
-			{
-			mssError(1,"MYSD","Invalid date part to dateadd()");
-			return -1;
-			}
-		    if (!strcmp(subtree->String,"day") || !strcmp(subtree->String,"month") ||
-			    !strcmp(subtree->String,"year") || !strcmp(subtree->String, "hour") ||
-			    !strcmp(subtree->String,"minute") || !strcmp(subtree->String, "second"))
-			{
-			xsConcatenate(where_clause,subtree->String,-1);
-			}
-		    else
-			{
-			mssError(1,"MYSD","Invalid date part to dateadd()");
-			return -1;
-			}
-		    xsConcatenate(where_clause, ") ", 2);
+		    if(mysd_internal_function_dateadd(tree, tdata, where_clause, conn) < 0) goto error;
 		    }
                 else if (!strcmp(tree->Name,"ralign") && tree->Children.nItems == 2)
                     {
-			///FIXME: this just prints spaces and not the thing to be aligned
-                    xsConcatenate(where_clause, " substring('", -1);
-                    for(i=0;i<255 && i<((pExpression)(tree->Children.Items[1]))->Integer;i++)
-                        xsConcatenate(where_clause, " ", 1);
-                    xsConcatenate(where_clause, "',1,", 4);
-                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
-                    xsConcatenate(where_clause, " - char_length(", -1);
-                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
-                    xsConcatenate(where_clause, ")) ", 3);
+		    if(mysd_internal_function_ralign(tree, tdata, where_clause, conn) < 0) goto error;
                     }
                 else if (!strcmp(tree->Name,"eval"))
                     {
@@ -2383,62 +2637,30 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     mssError(1,"MYSD","MySQL does not support eval() CXSQL function");
                     /* just put silly thing as text instead of evaluated */
                     if (tree->Children.nItems == 1) mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
-                    return -1;
                     }
 		else if (!strcmp(tree->Name,"datepart"))
 		    {
-		    if(mysd_internal_function_Datepart(tree, tdata, where_clause, conn) < 0) return -1;
+		    if(mysd_internal_function_Datepart(tree, tdata, where_clause, conn) < 0) goto error;
 		    }
 		else if (!strcmp(tree->Name, "replace"))
 		    {
-		    xsConcatenate(where_clause, " replace(", -1);
-		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, where_clause, conn);
-		    xsConcatenate(where_clause, ",", 1);
-		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata, where_clause, conn);
-		    xsConcatenate(where_clause, ",", 1);
-		    subtree = (pExpression)tree->Children.Items[2];
-
-		    /** MySQL does not accept NULL for the replacement, use "" instead **/
-		    if (subtree && (subtree->Flags & EXPR_F_NULL))
-			xsConcatenate(where_clause, "\"\") ", 4);
-		    else
-			{
-			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), tdata, where_clause, conn);
-			xsConcatenate(where_clause, ") ", 2);
-			}
+		    if(mysd_internal_function_replace(tree, tdata, where_clause, conn) < 0) goto error;
 		    }
 		else if (!strcmp(tree->Name, "hash"))
 		    {
-		    /** MySQL uses MD5(), SHA1(), SHA2(data, bitsize) **/
-		    subtree = (pExpression)(tree->Children.Items[0]);
-		    if (subtree->DataType == DATA_T_STRING && subtree->String && (!strcmp(subtree->String, "md5") || !strcmp(subtree->String, "sha1") || !strcmp(subtree->String, "sha256") || !strcmp(subtree->String, "sha384") || !strcmp(subtree->String, "sha512")))
-			{
-			/** Function call itself **/
-			if (!strcmp(subtree->String, "md5"))
-			    xsConcatenate(where_clause, " MD5(", 5);
-			else if (!strcmp(subtree->String, "sha1"))
-			    xsConcatenate(where_clause, " SHA1(", 6);
-			else if (!strcmp(subtree->String, "sha256") || !strcmp(subtree->String, "sha384") || !strcmp(subtree->String, "sha512"))
-			    xsConcatenate(where_clause, " SHA2(", 6);
-
-			/** Data **/
-			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata, where_clause, conn);
-
-			/** Bit length, if needed **/
-			if (!strcmp(subtree->String, "sha256") || !strcmp(subtree->String, "sha384") || !strcmp(subtree->String, "sha512"))
-			    {
-			    xsConcatQPrintf(where_clause, ", %POS", strtoi(subtree->String+3, NULL, 10));
-			    }
-			xsConcatenate(where_clause, ") ", 2);
-			}
-		    else
-			{
-			mssError(1,"MYSD","Invalid algorithm for hash()");
-			return -1;
-			}
+		    if(mysd_internal_function_hash(tree, tdata, where_clause, conn) < 0) goto error;
+		    }
+		else if (!strcmp(tree->Name, "char_length"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if(arg_strings == NULL) goto error;
+		    fn_use_name = "char_length";
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_INTEGER;
 		    }
                 else
                     {
+///FIXME: whitelist only! goto error for unsupported functions
 		    use_stock_fn_call = 1;
 		    }
 
@@ -2470,7 +2692,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		if (tree->Children.nItems < 2)
 		    {
 		    mssError(1,"MYSD","Insufficient arguments to + operator");
-		    return -1;
+		     goto error;
 		    }
 		subtree = (pExpression)tree->Children.Items[0];
 		if (subtree->NodeType == EXPR_N_PROPERTY && !(subtree->Flags & EXPR_F_FREEZEEVAL) && subtree->DataType == DATA_T_UNAVAILABLE)
@@ -2590,8 +2812,14 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
             }
 
         if (tree->Flags & EXPR_F_DESC) xsConcatenate(where_clause, " DESC ", 6);
+	
+	mysd_internal_free_processed_args(arg_strings);
+	arg_strings = NULL;
+	return 0;
 
-    return 0;
+    error:
+	if(arg_strings != NULL) mysd_internal_free_processed_args(arg_strings);
+    return -1;
     }
 
 /*** mysdOpen() - open an object.

@@ -8,5 +8,9 @@
 "empty search string"
 "charindex_05"
 "single character"
-charindex_06
+"charindex_06"
 "confirm is case sensitive"
+"charindex_07"
+"NULL haystack"
+"charindex_08"
+"NULL needle"
