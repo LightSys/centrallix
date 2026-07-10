@@ -100,8 +100,8 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 
 	/** Issue column width info **/
 	/* If only one, specify 100% instead */
-	//TODO CSMITH verify that skipping it actually calculates size properly in email!! If it doesn't, you can test not throwing a col in at all?...
 	if(n_xset == 1) {
+	    widths[0] = area->Width - area->MarginLeft - area->MarginRight;
 	    prt_htmlfm_OutputPrintf(context,"<col width=\"100%\">\n");
 	} else {
 	    for(i=0;i<n_xset;i++)
