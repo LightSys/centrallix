@@ -57,7 +57,6 @@
 #include "report.h"
 
 
-
 /*** The following are for layout purposes at the page level, not for
  *** tables themselves!
  ***/
@@ -65,28 +64,9 @@
 #define PRT_HTMLFM_MAXROWS	(64)
 
 
-/*** Document header ***/
-/* CLS 2025-03-28: Note that changing the HTML version may change spacing between lines/wrapped text.*/
-#define PRT_HTMLFM_HEADER       "<!DOCTYPE html>\n" \
-				"<html lang=\"en\">\n" \
-				"<head>\n" \
-				"    <title>Centrallix HTML Document</title>\n" \
-				"    <meta charset=\"utf-8\">\n" \
-				"    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n" \
-				"    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" \
-				"    <meta name=\"pragma\" content=\"no-cache\">\n" \
-				"    <meta name=\"referrer\" content=\"same-origin\">\n" \
-				"    <meta name=\"Generator\" content=\"Centrallix PRTMGMT v3.0\">\n" \
-				"</head>\n" \
-				"<body style=\"background-color: %s;\">\n"
-
-
-/*** Document footer ***/
-#define PRT_HTMLFM_FOOTER	"</body>\n" \
-				"</html>\n"
-
+/** HTML email headers. **/
 #define PRT_HTMLFM_EMAIL_BOUNDARY "cx-email-boundary"
-#define PRT_HTMLFM_ALT_BOUNDARY "cx-alt-boundary"
+#define PRT_HTMLFM_ALT_BOUNDARY   "cx-alt-boundary"
 
 // TODO: Israel - Should some of these come from the mime type driver?
 #define PRT_HTMLFM_EMAIL_HEADER \
@@ -129,6 +109,27 @@
 
 #define PRT_HTMLFM_EMAIL_FOOTER \
     "--"PRT_HTMLFM_EMAIL_BOUNDARY"--\n"
+
+
+/** HTML document headers. **/
+/* CLS 2025-03-28: Note that changing the HTML version may change spacing between lines/wrapped text.*/
+#define PRT_HTMLFM_HEADER \
+    "<!DOCTYPE html>\n" \
+    "<html lang=\"en\">\n" \
+    "<head>\n" \
+    "    <title>Centrallix HTML Document</title>\n" \
+    "    <meta charset=\"utf-8\">\n" \
+    "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n" \
+    "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" \
+    "    <meta name=\"pragma\" content=\"no-cache\">\n" \
+    "    <meta name=\"referrer\" content=\"same-origin\">\n" \
+    "    <meta name=\"Generator\" content=\"Centrallix PRTMGMT v3.0\">\n" \
+    "</head>\n" \
+    "<body style=\"background-color: %s;\">\n"
+
+/*** Document footer ***/
+#define PRT_HTMLFM_FOOTER	"</body>\n" \
+				"</html>\n"
 
 
 /*** Page header - build the graphical layout showing the 'page'
