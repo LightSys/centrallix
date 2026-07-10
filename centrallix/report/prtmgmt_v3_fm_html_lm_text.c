@@ -119,14 +119,6 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    }
 	}
 
-	//TODO CLS it might be a mistake to remove this, but I'm not sure why it's here; these have no height and no content
-/*	prt_htmlfm_Output(context,"<tr>",4);
-	for(i=0;i<n_xset;i++)
-	    {
-	    prt_htmlfm_OutputPrintf(context,"<td width=\"%d\"></td>",(int)(widths[i]*PRT_HTMLFM_XPIXEL+0.0001));
-	    }
-	prt_htmlfm_Output(context,"</tr>\n",6);
-*/
 	/** Walk the area's content **/
 	scan = area->ContentHead;
 	last_needed_cols = 0;
