@@ -91,21 +91,41 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		}
 	    }
 
-	/** Output the area prologue **/
+	/** Output the area prologue. **/
 	prt_htmlfm_SaveStyle(context, &oldstyle);
-	prt_htmlfm_Border(context, &(lm_inf->AreaBorder), area);
-	prt_htmlfm_OutputStrLiteral(context, "<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\">\n");
+	if (lm_inf->AreaBorder.nLines > 0)
+	    {
+	    /** Draw the border. **/
+	    prt_htmlfm_Border(context, &(lm_inf->AreaBorder), area);
+	    prt_htmlfm_OutputStrLiteral(context, "<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\">\n");
+	    }
+	else
+	    {
+	    /** No border: Draw the padding and background directly. **/
+	    const int pad = (area->MarginTop + area->MarginBottom + area->MarginLeft + area->MarginRight) * PRT_HTMLFM_XPIXEL/4;
+	    prt_htmlfm_OutputPrintf(context,
+		"<table width=\"100%\" cellspacing=\"0\" cellpadding=\"%d\" border=\"0\" bgcolor=\"#%6.6X\">\n",
+		pad, (int)(area->BGColor)
+	    );
+	    }
 	in_tr = 0;
 	in_td = 0;
 
-	/** Issue column width info **/
-	/* If only one, specify 100% instead */
-	if(n_xset == 1) {
-	    widths[0] = area->Width - area->MarginLeft - area->MarginRight;
-	    prt_htmlfm_OutputPrintf(context,"<col width=\"100%\">\n");
-	} else {
-	    for(i=0;i<n_xset;i++)
+	/*** Issue column width info.  A single column spans the whole area by
+	 *** default, so we only need explicit <col> elements when there is more
+	 *** than one tabstop.
+	 ***/
+	if (n_xset == 1)
 	    {
+	    /*** Note a single column spans the whole area by default,
+	     *** so no HTML is needed.
+	     ***/
+	    widths[0] = area->Width - area->MarginLeft - area->MarginRight;
+	    }
+	else
+	    {
+	    for (i=0;i<n_xset;i++)
+		{
 		if (i == n_xset-1)
 		    widths[i] = area->Width - area->MarginLeft - area->MarginRight - xset[i];
 		else 
@@ -116,8 +136,8 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		 ** with newer browsers.
 		 **/
 		prt_htmlfm_OutputPrintf(context,"<col width=\"%d*\">\n",(int)(widths[i]*PRT_HTMLFM_XPIXEL+0.0001));
+		}
 	    }
-	}
 
 	/** Walk the area's content **/
 	scan = area->ContentHead;
@@ -273,7 +293,8 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 
 	/** Output the area epilogue **/
 	prt_htmlfm_OutputStrLiteral(context, "</table>\n");
-	prt_htmlfm_EndBorder(context, &(lm_inf->AreaBorder), area);
+	if (lm_inf->AreaBorder.nLines > 0)
+	    prt_htmlfm_EndBorder(context, &(lm_inf->AreaBorder), area);
 	prt_htmlfm_ResetStyle(context, &oldstyle);
 
     return 0;

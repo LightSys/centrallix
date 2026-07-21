@@ -686,7 +686,8 @@ prt_htmlfm_SetKeepSpaces(pPrtHTMLfmInf context)
 
 /*** prt_htmlfm_Border() - use nested tables to create a border matching
  *** the given border structure, with an appropriate margin setting from
- *** the given prt object
+ *** the given prt object.  Zero-width borders (those with no lines) are
+ *** skipped to reduce HTML size.
  ***/
 int
 prt_htmlfm_Border(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj)
@@ -712,12 +713,6 @@ prt_htmlfm_Border(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj)
 		    (int)(iw),
 		    (int)(obj->BGColor));
 	    }
-	if (border->nLines == 0)
-	    {
-	    prt_htmlfm_OutputPrintf(context, "<table border=\"0\" width=\"100%\" cellspacing=\"0\" cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">\n",
-		    (int)(m),
-		    (int)(obj->BGColor));
-	    }
 
     return 0;
     }
@@ -736,10 +731,6 @@ prt_htmlfm_EndBorder(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj
 	    {
 	    /** Output border line itself **/
 	    prt_htmlfm_OutputStrLiteral(context, "</td></tr></table></td></tr></table>\n");
-	    }
-	if (border->nLines == 0)
-	    {
-	    prt_htmlfm_OutputStrLiteral(context, "</td></tr></table>\n");
 	    }
 
     return 0;
