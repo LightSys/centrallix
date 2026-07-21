@@ -1855,7 +1855,7 @@ mysd_internal_function_Case(pExpression tree, pMysdTable *tdata, pXString where_
 	    /** only change collation if found one **/
 	    if(tempTdata->Node->DatabaseCollation[0] != '\0')
 		{
-		xsConcatenate(where_clause, ") collate ", 9);
+		xsConcatenate(where_clause, ") collate ", 10);
 		mysd_internal_SafeAppend(conn, where_clause, tempTdata->Node->DatabaseCollation);
 		xsConcatenate(where_clause, ") ", 2);
 		}
@@ -2261,8 +2261,11 @@ mysd_internal_function_hash(pExpression tree, pMysdTable *tdata, pXString where_
 
 /*** mysd_internal_TreeToClause - convert an expression tree to the appropriate
  *** clause for the SQL statement.
- *** Note the following limitations this adds to CxSQL
- ***   - The hmac, pbkdf2, and argon2id functions are not supported
+ *** NOTE the following limitations with regards to CxSQL
+ ***   - Unsupported functions: hmac, pbkdf2, argon2id, first, last, nth, lztrim, constrain, 
+ ***       lev_compare, levenshtein, cos_compare, square, wordify
+ ***   - aggregate functions are not properly split off into a having clause
+ ***   - 
  ***
  ***/
 /// FIXME: all of the calls to children need to do bound checking
@@ -2650,18 +2653,237 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    {
 		    if(mysd_internal_function_hash(tree, tdata, where_clause, conn) < 0) goto error;
 		    }
+		else if (!strcmp(tree->Name, "ascii"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_INTEGER;
+		    }
 		else if (!strcmp(tree->Name, "char_length"))
 		    {
 		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
 		    if(arg_strings == NULL) goto error;
-		    fn_use_name = "char_length";
 		    use_stock_fn_call = 1;
 		    tree->DataType = DATA_T_INTEGER;
 		    }
+		else if (!strcmp(tree->Name, "ltrim"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_STRING;
+		    }
+		else if (!strcmp(tree->Name, "rtrim"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_STRING;
+		    }
+		else if (!strcmp(tree->Name, "reverse"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_STRING;
+		    }
+		else if (!strcmp(tree->Name, "right"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 2, 2);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_STRING;
+		    }
+		else if (!strcmp(tree->Name, "substring"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 2, 3);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_STRING;
+		    }
+		else if (!strcmp(tree->Name, "replicate"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 2, 2);
+		    if (arg_strings == NULL) goto error;
+		    fn_use_name = "repeat";
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_STRING;
+		    }
+		else if (!strcmp(tree->Name, "quote"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_STRING;
+		    }
+		else if (!strcmp(tree->Name, "escape"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 2);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_STRING;
+		    }
+		else if (!strcmp(tree->Name, "to_hex"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if(arg_strings == NULL) goto error;
+		    fn_use_name = "hex";
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_STRING;
+		    }
+		else if (!strcmp(tree->Name, "from_hex"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if(arg_strings == NULL) goto error;
+		    fn_use_name = "unhex";
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_BINARY;
+		    }
+		else if (!strcmp(tree->Name, "to_base64"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_STRING;
+		    }
+		else if (!strcmp(tree->Name, "from_base64"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_BINARY;
+		    }
+		else if (!strcmp(tree->Name, "abs"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    /** return type is string or double depending on the child's type **/
+		    subtree = tree->Children.Items[0];
+		    tree->DataType = subtree->DataType; 
+		    }
+		else if (!strcmp(tree->Name, "round"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 2);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_INTEGER;
+		    }
+		else if (!strcmp(tree->Name, "truncate"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 2);
+		    if (arg_strings == NULL) goto error;
+
+		    /** if truncate has one argument, assume 0 **/
+		    ptr = (tree->Children.nItems == 2)? get_arg_string(arg_strings, 1) : "0";
+		    xsConcatPrintf(where_clause, " ( truncate( %s, %s ) ) ", get_arg_string(arg_strings, 0), ptr);
+		    /** TODO: truncating to <= 0 produces an int **/
+		    tree->DataType = DATA_T_DOUBLE; 
+		    }
+		else if (!strcmp(tree->Name, "sqrt"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_DOUBLE;
+		    }
+		else if (!strcmp(tree->Name, "power"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 2, 2);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_DOUBLE;
+		    }
+		else if (!strcmp(tree->Name, "log10"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_DOUBLE;
+		    }
+		else if (!strcmp(tree->Name, "degrees"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_DOUBLE;
+		    }
+		else if (!strcmp(tree->Name, "radians"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_DOUBLE;
+		    }
+		else if (!strcmp(tree->Name, "sin"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_DOUBLE;
+		    }
+		else if (!strcmp(tree->Name, "cos"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_DOUBLE;
+		    }
+		else if (!strcmp(tree->Name, "tan"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_DOUBLE;
+		    }
+		else if (!strcmp(tree->Name, "asin"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_DOUBLE;
+		    }
+		else if (!strcmp(tree->Name, "acos"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_DOUBLE;
+		    }
+		else if (!strcmp(tree->Name, "atan"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_DOUBLE;
+		    }
+		else if (!strcmp(tree->Name, "atan2"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 2, 2);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_DOUBLE;
+		    }
+		else if (!strcmp(tree->Name, "rand"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 0, 1);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    tree->DataType = DATA_T_DOUBLE;
+		    }
+		else if (!strcmp(tree->Name, "nullif"))
+		    {
+		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 2, 2);
+		    if (arg_strings == NULL) goto error;
+		    use_stock_fn_call = 1;
+		    subtree = tree->Children.Items[0];
+		    tree->DataType = subtree->DataType;
+		    }
                 else
                     {
-///FIXME: whitelist only! goto error for unsupported functions
-		    use_stock_fn_call = 1;
+		    mssError(1,"MYSD","Function '%s' is unsuported", tree->Name);
+		    goto error;
 		    }
 
 		if (use_stock_fn_call)
@@ -2672,14 +2894,15 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     for(i=0;i<tree->Children.nItems;i++)
                         {
                         if (i != 0) xsConcatenate(where_clause,",",1);
-                        subtree = (pExpression)(tree->Children.Items[i]);
-                        mysd_internal_TreeToClause(subtree, tdata,  where_clause,conn);
+                        xsConcatenate(where_clause, get_arg_string(arg_strings, i), -1);
                         }
                     xsConcatenate(where_clause, ") ", 2);
                     }
                 break;
 
             case EXPR_N_PLUS:
+	    ///TODO: refector this to just use string_args and the fact that tree tracks types now
+	///FIXME: disallow addition of datetimes (also fix -/*)
 		/** This is a toughie.  In Centrallix and Sybase/MSSQL, the + operator
 		 ** can be used for addition or for string concatenation, and so the
 		 ** behavior depends on the run-time type of the operands.  In MySQL

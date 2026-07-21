@@ -41,6 +41,7 @@ if [ ${1,,} = "sybase" ]; then
 	printf "GRANT all ON stringTests TO $DB_TEST_USER\nGO\n" | isql -U$DB_USER -P$DB_PASS -S$DB_NAME -DTest_DB
 elif [ ${1,,} = "mysql" ]; then
 	# create the new database and add the tables
+	#the other branch uses "typeTests" to test a broad number of types 
 	echo "running against mysql"
 	mysql -u$DB_USER -p$DB_PASS -e 'CREATE DATABASE Test_DB'
 	mysql -u$DB_USER -p$DB_PASS -DTest_DB -e 'CREATE TABLE typeTests (dates datetime, monies decimal(14,4), ints int, strings varchar(30), bits bit, floats float NULL, blobs blob NULL, PRIMARY KEY(dates, monies, ints, strings))'

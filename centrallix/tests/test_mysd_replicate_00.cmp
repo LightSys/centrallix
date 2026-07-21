@@ -1,10 +1,10 @@
-test_replicate_01
+"test_replicate_01"
 "replicate: basic repeat"
-test_replicate_02
+"test_replicate_02"
 "replicate: repeat once"
-test_replicate_03
+"test_replicate_03"
 "replicate: repeat zero times"
-test_replicate_04
+"test_replicate_04"
 "replicate: single character"
-test_replicate_05
+"test_replicate_05"
 "replicate: result length is correct"

@@ -14,14 +14,14 @@
 "double returned as-is"
 "isnull_double_02"
 "zero double returned as-is"
-isnull_money_03
-"NULL money returns fallback"
+"isnull_double_03"
+"NULL double returns fallback"
 "isnull_money_01"
 "money returned as-is"
 "isnull_money_02"
 "zero money returned as-is"
-isnull_datetime_03
-"NULL datetime returns fallback"
+"isnull_money_03"
+"NULL money returns fallback"
 "isnull_datetime_01"
 "datetime returned as-is"
 "isnull_datetime_02"

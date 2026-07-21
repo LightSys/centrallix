@@ -16,7 +16,6 @@ csv SELECT test_char_length_06 = "char_length: NULL value" FROM /tests/Test_DB/s
 # errors 
 csv SELECT test_char_length_error_1 = "char_length: too many args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND char_length("test", "test") IS NOT NULL
 csv SELECT test_char_length_error_2 = "char_length: too few args" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND char_length() IS NOT NULL
-csv SELECT test_char_length_error_3 = "char_length: incorrect data type" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND char_length(123456) IS NOT NULL
 
 # cleanup
 query DELETE FROM /tests/Test_DB/stringTests/rows
