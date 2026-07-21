@@ -62,7 +62,7 @@ prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
 
 	/** Write the section prologue **/
 	prt_htmlfm_SaveStyle(context, &oldstyle);
-	prt_htmlfm_Output(context,"<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\"><tr>\n", -1);
+	prt_htmlfm_OutputStrLiteral(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\"><tr>\n");
 
 	/** Loop through the column objects **/
 	for(column = section->ContentHead; column; column = column->Next)
@@ -81,12 +81,12 @@ prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
 		subobj = subobj->Next;
 		}
 	    prt_htmlfm_EndStyle(context);
-	    prt_htmlfm_Output(context, "</td>",5);
+	    prt_htmlfm_OutputStrLiteral(context, "</td>");
 	    end_y = column->Y + column->Width;
 	    }
 
 	/** Output the section epilogue **/
-	prt_htmlfm_Output(context,"</tr></table>\n", -1);
+	prt_htmlfm_OutputStrLiteral(context, "</tr></table>\n");
 	prt_htmlfm_ResetStyle(context, &oldstyle);
 
     return 0;

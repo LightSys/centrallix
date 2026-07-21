@@ -97,7 +97,7 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 	prt_htmlfm_OutputBorder(context, "right", lm_data->RightBorder.Width[0], lm_data->RightBorder.Color[0]);
 	prt_htmlfm_OutputBorder(context, "bottom", lm_data->BottomBorder.Width[0], lm_data->BottomBorder.Color[0]);
 	prt_htmlfm_OutputBorder(context, "left", lm_data->LeftBorder.Width[0], lm_data->LeftBorder.Color[0]);
-	prt_htmlfm_Output(context, "\">", 2);
+	prt_htmlfm_OutputStrLiteral(context, "\">");
 
 	/* Count rows for style purposes */
 	for(row = table->ContentHead; row; row=row->Next) {
@@ -127,9 +127,9 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 		/** Got a cell.  Emit list of cells in the row **/
 		/* Arbitrarily specify a restricted height for table header if it has one */
 		if(cur_row == 1 && lm_data->HeaderRow) {
-		    prt_htmlfm_Output(context, "<tr height=10>", -1);
+		    prt_htmlfm_OutputStrLiteral(context, "<tr height=10>");
 		} else {
-		    prt_htmlfm_Output(context, "<tr>", 4);
+		    prt_htmlfm_OutputStrLiteral(context, "<tr>");
 		}
 		while(cell)
 		    {
@@ -170,18 +170,18 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 			    prt_htmlfm_OutputBorder(context, "right", cell->BorderRight, -1);
 			}
 			
-			prt_htmlfm_Output(context, "\">", 2);
+			prt_htmlfm_OutputStrLiteral(context, "\">");
 			prt_htmlfm_InitStyle(context, &(cell->TextStyle));
 			for(subobj=cell->ContentHead;subobj;subobj=subobj->Next)
 			    {
 			    prt_htmlfm_Generate_r(context, subobj);
 			    }
 			prt_htmlfm_EndStyle(context);
-			prt_htmlfm_Output(context,"</td>",5);
+			prt_htmlfm_OutputStrLiteral(context, "</td>");
 			}
 		    cell=cell->Next;
 		    }
-		prt_htmlfm_Output(context, "</tr>\n", 6);
+		prt_htmlfm_OutputStrLiteral(context, "</tr>\n");
 		}
 	    else
 		{
@@ -196,12 +196,12 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 		    prt_htmlfm_Generate_r(context, subobj);
 		    }
 		prt_htmlfm_EndStyle(context);
-		prt_htmlfm_Output(context,"</td></tr>\n",11);
+		prt_htmlfm_OutputStrLiteral(context, "</td></tr>\n");
 		}
 	    }
 
 	/** Output the section epilogue **/
-	prt_htmlfm_Output(context,"</table>\n", 9);
+	prt_htmlfm_OutputStrLiteral(context, "</table>\n");
 	prt_htmlfm_ResetStyle(context, &oldstyle);
 
     return 0;

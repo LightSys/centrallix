@@ -94,7 +94,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	/** Output the area prologue **/
 	prt_htmlfm_SaveStyle(context, &oldstyle);
 	prt_htmlfm_Border(context, &(lm_inf->AreaBorder), area);
-	prt_htmlfm_Output(context, "<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\">\n", -1);
+	prt_htmlfm_OutputStrLiteral(context, "<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\">\n");
 	in_tr = 0;
 	in_td = 0;
 
@@ -142,18 +142,18 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		if (in_td)
 		    {
 		    prt_htmlfm_EndStyle(context);
-		    prt_htmlfm_Output(context,"</td>", 5);
+		    prt_htmlfm_OutputStrLiteral(context, "</td>");
 		    in_td = 0;
 		    }
 		if (in_tr)
 		    {
-		    prt_htmlfm_Output(context,"</tr>\n", 6);
+		    prt_htmlfm_OutputStrLiteral(context, "</tr>\n");
 		    in_tr = 0;
 		    }
 		}
 	    if (!in_tr)
 		{
-		prt_htmlfm_Output(context,"<tr>", 4);
+		prt_htmlfm_OutputStrLiteral(context, "<tr>");
 		in_tr = 1;
 		}
 
@@ -234,19 +234,19 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		/** Nothing printed? **/
 		if (w == 0.0)
 		    {
-		    prt_htmlfm_Output(context, "&nbsp;", 6);
+		    prt_htmlfm_OutputStrLiteral(context, "&nbsp;");
 		    }
 
 		/** Emit the closing td? **/
 		if (cur_needs_cols && in_td)
 		    {
 		    prt_htmlfm_EndStyle(context);
-		    prt_htmlfm_Output(context, "</td>", 5);
+		    prt_htmlfm_OutputStrLiteral(context, "</td>");
 		    in_td = 0;
 		    }
 		else if (in_td && scan)
 		    {
-		    prt_htmlfm_Output(context,"<br>\n",5);
+		    prt_htmlfm_OutputStrLiteral(context, "<br>\n");
 		    }
 		cur_xset = next_xset;
 		}
@@ -257,12 +257,12 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	if (in_td)
 	    {
 	    prt_htmlfm_EndStyle(context);
-	    prt_htmlfm_Output(context, "</td>", 5);
+	    prt_htmlfm_OutputStrLiteral(context, "</td>");
 	    in_td = 0;
 	    }
 	if (in_tr)
 	    {
-	    prt_htmlfm_Output(context,"</tr>\n", 6);
+	    prt_htmlfm_OutputStrLiteral(context, "</tr>\n");
 	    in_tr = 0;
 	    }
     
@@ -272,7 +272,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	}
 
 	/** Output the area epilogue **/
-	prt_htmlfm_Output(context,"</table>\n", -1);
+	prt_htmlfm_OutputStrLiteral(context, "</table>\n");
 	prt_htmlfm_EndBorder(context, &(lm_inf->AreaBorder), area);
 	prt_htmlfm_ResetStyle(context, &oldstyle);
 
