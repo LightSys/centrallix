@@ -185,8 +185,13 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		    {
 		    if (in_tr && !in_td)
 			{
-			prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\" width=\"%d\">&nbsp;</td>", 
-				cur_xset, (int)(widths[cur_xset]*PRT_HTMLFM_XPIXEL+0.001));
+			prt_htmlfm_OutputStrLiteral(context, "<td");
+			if (cur_xset > 1)
+			    prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", cur_xset);
+			prt_htmlfm_OutputPrintf(context,
+			    " width=\"%d\">&nbsp;</td>",
+			    (int)(widths[cur_xset]*PRT_HTMLFM_XPIXEL+0.001)
+			);
 			}
 		    }
 		}
@@ -233,9 +238,19 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 
 
 		    for(w=0.0,i=cur_xset;i<next_xset;i++) w += widths[i];
-		    prt_htmlfm_OutputPrintf(context, "<td align=\"%s\" valign=\"top\" colspan=\"%d\" width=\"%d\" style=\"line-height:1;\">",
-			    justifytypes[justif_subscan->Justification], next_xset - cur_xset,
-			    (int)(w*PRT_HTMLFM_XPIXEL+0.001));
+		    /*** Write HTML, skipping defaults (align="left", colspan="1")
+		     *** to reduce HTML size.  These cells are written very often.
+		     **/
+		    prt_htmlfm_OutputStrLiteral(context, "<td valign=\"top\"");
+		    if (justif_subscan->Justification != PRT_JUST_T_LEFT)
+			prt_htmlfm_OutputPrintf(context, " align=\"%s\"", justifytypes[justif_subscan->Justification]);
+		    const int n_cols = next_xset - cur_xset;
+		    if (n_cols > 1)
+			prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", n_cols);
+		    prt_htmlfm_OutputPrintf(context,
+			" width=\"%d\" style=\"line-height:1;\">",
+			(int)(w*PRT_HTMLFM_XPIXEL+0.001)
+		    );
 		    prt_htmlfm_InitStyle(context, &(scan->TextStyle));
 		    in_td = 1;
 		    }

@@ -1101,7 +1101,10 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 			i++;
 			cur_col++;
 			}
-		    prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\">&nbsp;</td>", i);
+		    if (i > 1)
+			prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\">&nbsp;</td>", i);
+		    else
+			prt_htmlfm_OutputStrLiteral(context, "<td>&nbsp;</td>");
 		    }
 
 		/** Figure rowspan and colspan **/
@@ -1114,9 +1117,23 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    else break;
 		}
 		last_height = subobj->Y + subobj->Height;
-		prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\" rowspan=\"%d\" valign=\"top\" align=\"%s\">", cs, rs, justifytypes[subobj->Justification]);
+		
+		/*** Write container HTML, skipping default values
+		 *** (colspan/rowspan="1", align="left") to reduce HTML size.
+		 ***/
+		prt_htmlfm_OutputStrLiteral(context, "<td valign=\"top\"");
+		if (cs > 1) prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", cs);
+		if (rs > 1) prt_htmlfm_OutputPrintf(context, " rowspan=\"%d\"", rs);
+		if (subobj->Justification != PRT_JUST_T_LEFT)
+		    prt_htmlfm_OutputPrintf(context, " align=\"%s\"", justifytypes[subobj->Justification]);
+		prt_htmlfm_OutputStrLiteral(context, ">");
+		
+		/** Write child content. **/
 		prt_htmlfm_Generate_r(context, subobj);
+		
+		/** Close container. **/
 		prt_htmlfm_OutputStrLiteral(context, "</td>");
+		
 		cur_col += cs;
 		if (cur_col >= n_cols) cur_col = n_cols-1;
 		}

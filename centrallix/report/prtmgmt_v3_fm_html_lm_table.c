@@ -136,7 +136,7 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 		    if (cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
 			{
 			cur_col++;
-			prt_htmlfm_OutputPrintf(context,"<td width=\"%d\" align=\"left\" valign=\"top\" bgcolor=\"#%6.6X\" style=\"padding:%dpx;" ,
+			prt_htmlfm_OutputPrintf(context,"<td width=\"%d\" valign=\"top\" bgcolor=\"#%6.6X\" style=\"padding:%dpx;" ,
 				(int)(cell->Width*PRT_HTMLFM_XPIXEL),
     				cell->BGColor,
 				(int)(lm_data->ColSep * PRT_HTMLFM_XPIXEL / 2));
@@ -185,16 +185,23 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 		}
 	    else
 		{
-		/** Row containing arbitrary stuff.  Emit entire row **/
-		prt_htmlfm_OutputPrintf(context, "<tr><td width=\"%d\" align=\"left\" valign=\"top\" colspan=\"%d\" bgcolor=\"#%6.6X\">", 
-			(int)(row->Width*PRT_HTMLFM_XPIXEL),
-			lm_data->nColumns,
-			row->BGColor);
+		/** Write row container opening tags. **/
+		prt_htmlfm_OutputPrintf(context,
+		    "<tr><td width=\"%d\" valign=\"top\" bgcolor=\"#%6.6X\"",
+		    (int)(row->Width*PRT_HTMLFM_XPIXEL), row->BGColor
+		);
+		if (lm_data->nColumns > 1)
+		    prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", lm_data->nColumns);
+		prt_htmlfm_OutputStrLiteral(context, ">");
 		prt_htmlfm_InitStyle(context, cell?(&(cell->TextStyle)):(&(row->TextStyle)));
+		
+		/** Write child content. **/
 		for(subobj=row->ContentHead;subobj;subobj=subobj->Next)
 		    {
 		    prt_htmlfm_Generate_r(context, subobj);
 		    }
+		
+		/** Write row container closing tags. */
 		prt_htmlfm_EndStyle(context);
 		prt_htmlfm_OutputStrLiteral(context, "</td></tr>\n");
 		}
