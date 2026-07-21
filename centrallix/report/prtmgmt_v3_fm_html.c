@@ -107,6 +107,11 @@
 
 #define PRT_HTMLFM_IMG_FOOTER ""
 
+/** Max base64 characters per line in a MIME part.  RFC 2045 caps encoded
+ ** lines at 76 chars.
+ **/
+#define PRT_HTMLFM_B64_LINE_LEN 76
+
 #define PRT_HTMLFM_EMAIL_FOOTER \
     "--"PRT_HTMLFM_EMAIL_BOUNDARY"--\n"
 
@@ -919,15 +924,23 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    {
 		    prt_htmlfm_OutputPrintf(context, "<img src=\"cid:image_%d\"", id);
 		    
-		    /** Add this attachment to the context. **/
+		    /*** Add this attachment to the context.  The base64 data
+		     *** is wrapped at PRT_HTMLFM_B64_LINE_LEN chars per line.
+		     ***/
 		    pXString attachment = xsNew();
 		    xsConcatPrintf(attachment,
-			PRT_HTMLFM_IMG_HEADER_FORMAT
-			"%s\n"
-			PRT_HTMLFM_IMG_FOOTER,
-			PRT_HTMLFM_IMG_HEADER_VALUES(id),
-			base64Image
+			PRT_HTMLFM_IMG_HEADER_FORMAT,
+			PRT_HTMLFM_IMG_HEADER_VALUES(id)
 		    );
+		    size_t b64_len = strlen(base64Image);
+		    for (size_t off = 0; off < b64_len; off += PRT_HTMLFM_B64_LINE_LEN)
+			{
+			size_t chunk = b64_len - off;
+			if (chunk > PRT_HTMLFM_B64_LINE_LEN) chunk = PRT_HTMLFM_B64_LINE_LEN;
+			xsConcatenate(attachment, base64Image + off, chunk);
+			xsConcatenate(attachment, "\n", 1);
+			}
+		    xsConcatenate(attachment, PRT_HTMLFM_IMG_FOOTER, -1);
 		    xaAddItem(context->Attachments, attachment);
 		    }
 		else
