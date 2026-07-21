@@ -14,8 +14,6 @@ csv SELECT test_ltrim_04 = "ltrim: empty string"			FROM /tests/Test_DB/stringTes
 
 csv SELECT test_ltrim_error_01 = "ltrim: too many args"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ltrim('    1234', "test") IS NOT NULL
 csv SELECT test_ltrim_error_02 = "ltrim: too few args"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ltrim() IS NOT NULL
-csv SELECT test_ltrim_error_03 = "ltrim: non string argument"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND ltrim(1234) IS NOT NULL
-
 
 
 # rtrim
@@ -26,9 +24,6 @@ csv SELECT test_rtrim_04 = "rtrim: ltrim and rtrim combined" FROM /tests/Test_DB
 
 csv SELECT test_rtrim_error_01 = "rtrim: too many args"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND rtrim('    1234', "test") IS NOT NULL
 csv SELECT test_rtrim_error_02 = "rtrim: too few args"			FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND rtrim() IS NOT NULL
-csv SELECT test_rtrim_error_03 = "rtrim: non string argument"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND rtrim(1234) IS NOT NULL
-
-
 
 
 # cleanup

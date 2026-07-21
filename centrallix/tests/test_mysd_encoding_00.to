@@ -20,7 +20,7 @@ csv SELECT test_from_hex_02 = "from_hex: round-trip"		FROM /tests/Test_DB/string
 csv SELECT test_from_hex_03 = "from_hex: empty string"		FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_hex('') = ''
 csv SELECT test_from_hex_error_01 = "from_hex: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_hex('414243', '444546') OR 1=1
 csv SELECT test_from_hex_error_02 = "from_hex: too few args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_hex() OR 1=1
-csv SELECT test_from_hex_error_03 = "from_hex: invalid hex"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_hex('xyz') OR 1=1
+csv SELECT test_from_hex_error_03 = "from_hex: invalid hex"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_hex('xyz') IS NOT NULL
 
 
 # to base 64
@@ -36,7 +36,7 @@ csv SELECT test_from_base64_02 = "from_base64: round-trip"	FROM /tests/Test_DB/s
 csv SELECT test_from_base64_03 = "from_base64: empty string"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_base64('') = ''
 csv SELECT test_from_base64_01 = "from_base64: too many args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_base64('aGVsbG8=', 'aGVsbG8=') OR 1=1
 csv SELECT test_from_base64_02 = "from_base64: too few args"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_base64() OR 1=1
-csv SELECT test_from_base64_03 = "from_base64: invalid base 64"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_base64('!@#$%^')
+csv SELECT test_from_base64_03 = "from_base64: invalid base 64"	FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND from_base64('!@#$%^') IS NOT NULL
 
 
 # cleanup
