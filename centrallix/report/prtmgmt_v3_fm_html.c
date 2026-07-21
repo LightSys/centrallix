@@ -128,7 +128,7 @@
     "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" \
     "    <meta name=\"pragma\" content=\"no-cache\">\n" \
     "    <meta name=\"referrer\" content=\"same-origin\">\n" \
-    "    <meta name=\"Generator\" content=\"Centrallix PRTMGMT v3.0\">\n" \
+    "    <meta name=\"generator\" content=\"Centrallix PRTMGMT v3.0\">\n" \
     "</head>\n" \
     "<body style=\"background-color: %s;\">\n"
 
@@ -203,17 +203,6 @@ typedef struct
     size_t     capacity;
     } ImageBuffer;
 
-
-/*** prt_htmlfm_OutputStrLiteral() - outputs a statically defined string literal
- *** into the HTML document.
- *** 
- *** For str literals, the length is known at compile time, so we have the
- *** compiler output the length (-1 to skip the null character), saving a
- *** strlen() call at runtime.  Also, we don't have to worry about multi-eval
- *** of str_literal because the caller promises it is a string literal.
- ***/
-#define prt_htmlfm_OutputStrLiteral(context, str_literal) \
-    prt_htmlfm_Output((context), (str_literal), sizeof(str_literal) - 1);
 
 /*** prt_htmlfm_Output() - outputs a string of text into the HTML
  *** document.

@@ -120,4 +120,16 @@ int prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table);
 int prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section);
 
 
+/*** prt_htmlfm_OutputStrLiteral() - Helper function to output a statically
+ *** defined string literal into an HTML document.
+ *** 
+ *** For str literals, the length is known at compile time, so we have the
+ *** compiler output the length (-1 to skip the null character), saving a
+ *** strlen() call at runtime.  Also, we don't have to worry about multi-eval
+ *** of str_literal because the caller promises it is a string literal.
+ ***/
+#define prt_htmlfm_OutputStrLiteral(context, str_literal) \
+    prt_htmlfm_Output((context), (str_literal), sizeof(str_literal) - 1);
+
+
 #endif /* not defined _PRTMGMT_V3_FM_HTML_H */
