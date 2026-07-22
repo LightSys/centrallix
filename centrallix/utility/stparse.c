@@ -266,6 +266,7 @@ stAddInf(pStructInf main_inf, pStructInf sub_inf)
 	/** Add it. **/
 	main_inf->SubInf[main_inf->nSubInf++] = sub_inf;
 	sub_inf->Parent = main_inf;
+	sub_inf->Flags |= (main_inf->Flags | ST_F_VERSION2);
 	sub_inf->LinkCnt--;
 
     return 0;
@@ -664,12 +665,31 @@ stStructType(pStructInf this)
     }
 
 
+/*** stSetVersion - set the version on a structinf.  Currently valid
+ *** values are 1 and 2.
+ ***/
+int
+stSetVersion(pStructInf this, int version)
+    {
+    if (version == 1)
+	this->Flags &= (~ST_F_VERSION2);
+    else if (version == 2)
+	this->Flags |= ST_F_VERSION2;
+    else
+	return -1;
+    return 0;
+    }
+
+
 /*** stSetAttrValue - sets the nth value of an attribute.
  ***/
 int 
 stSetAttrValue(pStructInf inf, int type, pObjData value, int nval)
     {
     pExpression new_exp, list_exp;
+
+	if (!inf)
+	    return -1;
 
 	/** Create the new expression node **/
 	if (type == DATA_T_ANY) return -1;
@@ -1366,9 +1386,21 @@ int
 st_internal_GenerateGroup(pStructInf info, pXString xs, int level, pParamObjects objlist)
     {
     int i;
+    char* quote = "";
+
+	/** Need to quote the group name? **/
+	if (strlen(info->Name) > strspn(info->Name, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") || (info->Name[0] >= '0' && info->Name[0] <= '9'))
+	    {
+	    quote = "\"";
+	    }
 
 	/** Print the header line. **/
-	xsConcatPrintf(xs,"%*.*s%s \"%s\"\r\n%*.*s{\r\n",level*4,level*4,"",info->Name,info->UsrType,level*4+4,level*4+4,"");
+	xsConcatQPrintf(xs,"%STR&*LEN%STR%STR&ESCQ%STR \"%STR&ESCQ\"\r\n%STR&*LEN{\r\n",
+	    level*4,"                                        ",
+	    quote,info->Name,quote,
+	    info->UsrType,
+	    level*4+4,"                                            "
+	    );
 
 	/** Print any sub-info parts and attributes **/
 	for(i=0;i<info->nSubInf;i++)
@@ -1432,8 +1464,15 @@ stGenerateMsgGeneric(void* dst, int (*write_fn)(), pStructInf info, int flags)
     int i;
     pXString xs;
     pParamObjects objlist;
+    char* quote = "";
 
 	ASSERTMAGIC(info,MGK_STRUCTINF);
+
+	/** Need to quote the group name? **/
+	if (strlen(info->Name) > strspn(info->Name, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") || (info->Name[0] >= '0' && info->Name[0] <= '9'))
+	    {
+	    quote = "\"";
+	    }
 
 	/** Allocate our initial buffer **/
 	xs = (pXString)nmMalloc(sizeof(XString));
@@ -1445,7 +1484,10 @@ stGenerateMsgGeneric(void* dst, int (*write_fn)(), pStructInf info, int flags)
 	if (info->Flags & ST_F_VERSION2) xsConcatenate(xs,"$Version=2$\r\n",-1);
 
 	/** Start the structure header. **/
-	xsConcatPrintf(xs, "%s \"%s\"\r\n    {\r\n", info->Name, info->UsrType);
+	xsConcatQPrintf(xs,"%STR%STR&ESCQ%STR \"%STR&ESCQ\"\r\n    {\r\n",
+	    quote,info->Name,quote,
+	    info->UsrType
+	    );
 
 	/** Print any sub-info parts and attributes **/
 	for(i=0;i<info->nSubInf;i++)
