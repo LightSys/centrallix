@@ -96,13 +96,13 @@
 
 #define PRT_HTMLFM_IMG_HEADER_FORMAT "\n" \
     "--"PRT_HTMLFM_EMAIL_BOUNDARY"\n" \
-    "Content-Type: image/png\n" \
+    "Content-Type: %s\n" \
     "Content-Transfer-Encoding: base64\n" \
-    "Content-Disposition: inline; filename=image_%d.png\n" \
+    "Content-Disposition: inline; filename=image_%d.%s\n" \
     "Content-ID: <image_%d>\n" \
     "\n"
 
-#define PRT_HTMLFM_IMG_HEADER_VALUES(id) id, id
+#define PRT_HTMLFM_IMG_HEADER_VALUES(id, mimetype, ext) mimetype, id, ext, id
 
 #define PRT_HTMLFM_IMG_FOOTER ""
 
@@ -953,15 +953,28 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 	
 		if (context->Flags & PRT_HTMLFM_F_EMAIL)
 		    {
+		    char* img_mimetype;
+		    char* img_ext;
+		    if (obj->ObjType->TypeID == PRT_OBJ_T_IMAGE)
+			{
+			img_mimetype = "image/png";
+			img_ext = "png";
+			}
+		    else
+			{
+			img_mimetype = "image/svg+xml";
+			img_ext = "svg";
+			}
+
 		    prt_htmlfm_OutputPrintf(context, "<img src=\"cid:image_%d\"", id);
-		    
+
 		    /*** Add this attachment to the context.  The base64 data
 		     *** is wrapped at PRT_HTMLFM_B64_LINE_LEN chars per line.
 		     ***/
 		    pXString attachment = xsNew();
 		    xsConcatPrintf(attachment,
 			PRT_HTMLFM_IMG_HEADER_FORMAT,
-			PRT_HTMLFM_IMG_HEADER_VALUES(id)
+			PRT_HTMLFM_IMG_HEADER_VALUES(id, img_mimetype, img_ext)
 		    );
 		    size_t b64_len = strlen(base64Image);
 		    for (size_t off = 0; off < b64_len; off += PRT_HTMLFM_B64_LINE_LEN)
