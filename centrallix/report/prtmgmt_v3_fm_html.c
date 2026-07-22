@@ -334,7 +334,12 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	    prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_EMAIL_CONTENT_HEADER);
 	    }
 
-	/** Write HTML header. **/
+	/*** Write HTML header.  Report content always sits on a white page area
+	 *** (white body, or the white page cell in paginated mode), so white is
+	 *** the current background, letting us skip setting the background on
+	 *** white cells, reducing the HTML size.
+	 ***/
+	context->BGColor = 0xFFFFFF;
 	const char* background_color = (context->Flags & PRT_HTMLFM_F_PAGINATED) ? "#c0c0c0" : "#ffffff";
 	prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, background_color);
 
@@ -709,6 +714,24 @@ void
 prt_htmlfm_SetKeepSpaces(pPrtHTMLfmInf context)
     {
     context->StyleFlags |= PRT_HTMLFM_SF_KEEPSPACES;
+    }
+
+
+/*** prt_htmlfm_OutputBGColor() - Write a bgcolor attribute, but only when the
+ *** color differs from the background.  The new background is remembered.
+ *** This method reduces HTML size.
+ *** Returns the previous background color (useful if you return to it later).
+ ***/
+int
+prt_htmlfm_OutputBGColor(pPrtHTMLfmInf context, int bgcolor)
+    {
+    int prev = context->BGColor;
+    if (bgcolor != prev)
+	{
+	prt_htmlfm_OutputPrintf(context, " bgcolor=\"#%6.6X\"", bgcolor);
+	context->BGColor = bgcolor;
+	}
+    return prev;
     }
 
 

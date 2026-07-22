@@ -79,6 +79,7 @@ typedef struct _PSFI
     pPrtHTMLfmSubtype	Subtype;
     SessionFlags	Flags;
     StyleFlags		StyleFlags;
+    int			BGColor;	/* The current background color showing through. */
     pXArray		Attachments;
     }
     PrtHTMLfmInf, *pPrtHTMLfmInf;
@@ -110,6 +111,7 @@ int prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle newstyle);
 int prt_htmlfm_WriteStyle(pPrtHTMLfmInf context);
 int prt_htmlfm_EndStyle(pPrtHTMLfmInf context);
 
+int prt_htmlfm_OutputBGColor(pPrtHTMLfmInf context, int bgcolor);
 int prt_htmlfm_Border(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj);
 int prt_htmlfm_EndBorder(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj);
 

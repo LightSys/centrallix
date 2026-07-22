@@ -136,9 +136,10 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 		    if (cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
 			{
 			cur_col++;
-			prt_htmlfm_OutputPrintf(context,"<td width=\"%d\" bgcolor=\"#%6.6X\" style=\"padding:%dpx;" ,
-				(int)(cell->Width*PRT_HTMLFM_XPIXEL),
-    				cell->BGColor,
+			prt_htmlfm_OutputPrintf(context, "<td width=\"%d\"",
+				(int)(cell->Width*PRT_HTMLFM_XPIXEL));
+			int saved_bg = prt_htmlfm_OutputBGColor(context, cell->BGColor);
+			prt_htmlfm_OutputPrintf(context, " style=\"padding:%dpx;",
 				(int)(lm_data->ColSep * PRT_HTMLFM_XPIXEL / 2));
 
 			/* top border */
@@ -178,6 +179,7 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 			    }
 			prt_htmlfm_EndStyle(context);
 			prt_htmlfm_OutputStrLiteral(context, "</td>");
+			context->BGColor = saved_bg;
 			}
 		    cell=cell->Next;
 		    }
@@ -186,10 +188,9 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 	    else
 		{
 		/** Write row container opening tags. **/
-		prt_htmlfm_OutputPrintf(context,
-		    "<tr><td width=\"%d\" bgcolor=\"#%6.6X\"",
-		    (int)(row->Width*PRT_HTMLFM_XPIXEL), row->BGColor
-		);
+		prt_htmlfm_OutputPrintf(context, "<tr><td width=\"%d\"",
+		    (int)(row->Width*PRT_HTMLFM_XPIXEL));
+		int saved_bg = prt_htmlfm_OutputBGColor(context, row->BGColor);
 		if (lm_data->nColumns > 1)
 		    prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", lm_data->nColumns);
 		prt_htmlfm_OutputStrLiteral(context, ">");
@@ -204,6 +205,7 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 		/** Write row container closing tags. */
 		prt_htmlfm_EndStyle(context);
 		prt_htmlfm_OutputStrLiteral(context, "</td></tr>\n");
+		context->BGColor = saved_bg; /* Restore background color. */
 		}
 	    }
 

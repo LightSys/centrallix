@@ -93,10 +93,12 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 
 	/** Output the area prologue. **/
 	prt_htmlfm_SaveStyle(context, &oldstyle);
+	int saved_bg = context->BGColor;
 	if (lm_inf->AreaBorder.nLines > 0)
 	    {
 	    /** Draw the border. **/
 	    prt_htmlfm_Border(context, &(lm_inf->AreaBorder), area);
+	    context->BGColor = area->BGColor;
 	    prt_htmlfm_OutputStrLiteral(context, "<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\">\n");
 	    }
 	else
@@ -104,9 +106,11 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    /** No border: Draw the padding and background directly. **/
 	    const int pad = (area->MarginTop + area->MarginBottom + area->MarginLeft + area->MarginRight) * PRT_HTMLFM_XPIXEL/4;
 	    prt_htmlfm_OutputPrintf(context,
-		"<table width=\"100%\" cellspacing=\"0\" cellpadding=\"%d\" border=\"0\" bgcolor=\"#%6.6X\">\n",
-		pad, (int)(area->BGColor)
+		"<table width=\"100%\" cellspacing=\"0\" cellpadding=\"%d\" border=\"0\"",
+		pad
 	    );
+	    prt_htmlfm_OutputBGColor(context, area->BGColor);
+	    prt_htmlfm_OutputStrLiteral(context, ">\n");
 	    }
 	in_tr = 0;
 	in_td = 0;
@@ -310,6 +314,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	prt_htmlfm_OutputStrLiteral(context, "</table>\n");
 	if (lm_inf->AreaBorder.nLines > 0)
 	    prt_htmlfm_EndBorder(context, &(lm_inf->AreaBorder), area);
+	context->BGColor = saved_bg; /* Restore background color. */
 	prt_htmlfm_ResetStyle(context, &oldstyle);
 
     return 0;
