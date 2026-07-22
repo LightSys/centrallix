@@ -363,6 +363,7 @@ typedef struct _OF
 #define	OBJ_F_METAONLY		16	/* user opened '?' object */
 #define OBJ_F_UNMANAGED		32	/* don't auto-close on session closure */
 #define OBJ_F_TEMPORARY		64	/* created by objCreateTempObject() */
+#define OBJ_F_NOCASCADE		128	/* OSML should not attempt to layer another driver */
 
 
 /** temporary collection indexes **/
@@ -665,6 +666,8 @@ int objGetQueryIdentityPath(pObjQuery this, char* buf, int maxlen);
 /** objectsystem content functions **/
 int objRead(pObject this, char* buffer, int maxcnt, int offset, int flags);
 int objWrite(pObject this, char* buffer, int cnt, int offset, int flags);
+int objTransfer(void* src, int (*src_read)(), void* dst, int (*dst_write)(), int max_xfer);
+int objSeek(pObject this, int offset);
 
 /** objectsystem attribute functions **/
 int objGetAttrType(pObject this, char* attrname);

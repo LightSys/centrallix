@@ -132,6 +132,7 @@ pExpression stGetExpression(pStructInf this, int nval);
 void* stGetValueList(pStructInf this, int type, unsigned int* nval);
 int stAttrIsList(pStructInf this);
 pStructInf stFind(pStructInf this, char* name);
+int stSetVersion(pStructInf this, int version);
 
 #endif /* _STPARSE_H */
 

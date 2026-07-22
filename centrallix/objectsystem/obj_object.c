@@ -724,6 +724,10 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    /** If the driver "claimed" the last path element, we're done. **/
 	    if (this->SubPtr + this->SubCnt - 1 > this->Pathname->nElements) break;
 
+	    /** Driver telling us not to cascade another driver on during the open? **/
+	    if (this->SubPtr + this->SubCnt - 1 == this->Pathname->nElements && this->Flags & OBJ_F_NOCASCADE)
+		break;
+
 	    /** Determine the apparent/perceived type from the name **/
 	    apparent_type = NULL;
 
@@ -1586,9 +1590,11 @@ objCommitObject(pObject this)
     }
 
 
-/*** objOpenChild - open a child object for access to its content, attributes, and
- *** methods.  Optionally create a new object.  Open 'mode' uses flags like the
- *** UNIX open() call.
+/*** objOpenChild - open a child object for access to its content, attributes,
+ *** and methods.  Optionally create a new object.  Open 'mode' uses flags like
+ *** the UNIX open() call.  This method is particularly useful when we need to
+ *** open an object that is not directly addressable in the OSML, for example
+ *** an element within a temporary collection.
  ***/
 pObject 
 objOpenChild(pObject parent, char* childname, int mode, int permission_mask, char* type)
