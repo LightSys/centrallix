@@ -72,7 +72,7 @@ prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
 		{
 		prt_htmlfm_OutputPrintf(context, "<td width=\"%d\">&nbsp;</td>", (int)(column->Y - end_y + 0.001));
 		}
-	    prt_htmlfm_OutputPrintf(context, "<td valign=\"top\" width=\"%d\">", (int)(column->Width*PRT_HTMLFM_XPIXEL + 0.001));
+	    prt_htmlfm_OutputPrintf(context, "<td width=\"%d\">", (int)(column->Width*PRT_HTMLFM_XPIXEL + 0.001));
 	    prt_htmlfm_InitStyle(context, &(column->TextStyle));
 	    subobj = column->ContentHead;
 	    while(subobj)

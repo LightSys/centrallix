@@ -129,6 +129,11 @@
     "    <meta name=\"pragma\" content=\"no-cache\">\n" \
     "    <meta name=\"referrer\" content=\"same-origin\">\n" \
     "    <meta name=\"generator\" content=\"Centrallix PRTMGMT v3.0\">\n" \
+    /** Universal email styles. **/ \
+    "    <style>\n" \
+    "        body { font-family: \"Courier New\",Courier,fixed; }\n" \
+    "        td { vertical-align: top; line-height: 1; }\n" \
+    "    </style>\n" \
     "</head>\n" \
     "<body style=\"background-color: %s;\">\n"
 
@@ -172,9 +177,16 @@ static int prt_htmlfm_fontsize_to_htmlsize[] = {8,9,10,12,15,19,22,26};
 #define PRT_HTMLFM_MINFONTSIZE	(1)
 #define	PRT_HTMLFM_MAXFONTSIZE	(sizeof(prt_htmlfm_fontsize_to_htmlsize) / sizeof(prt_htmlfm_fontsize_to_htmlsize[0]) - 1)
 
+/*** Declare supported font family styles.
+ *** 
+ *** PRT_HTMLFM_DEFAULT_FONTSTYLE is an index into prt_htmlfm_fontstyles[] for
+ *** the report's most common font. This is set in the head tag, so that later
+ *** styling can skip setting it, reducing HTML size.
+ ***/
 static char* prt_htmlfm_fontstyles[3] = { "Courier New,Courier,fixed", "Arial,Helvetica,MS Sans Serif", "Times New Roman,Times,MS Serif"};
 #define PRT_HTMLFM_MINFONTSTYLE	(0)
 #define PRT_HTMLFM_MAXFONTSTYLE	(sizeof(prt_htmlfm_fontstyles) / sizeof(prt_htmlfm_fontstyles[0]) - 1)
+#define PRT_HTMLFM_DEFAULT_FONTSTYLE	(0)
 
 static PrtHTMLfmSubtype prt_htmlfm_subtypes[] =
     {
@@ -584,8 +596,24 @@ prt_htmlfm_WriteStyle(pPrtHTMLfmInf context)
     
     if (context->StyleFlags & PRT_HTMLFM_SF_FONTDIRTY)
 	{
-	snprintf(stylebuf, sizeof(stylebuf), "<font face=\"%s\" color=\"#%6.6X\" size=\"%d\">",
-	    prt_htmlfm_GetFont(style), style->Color, htmlfontsize);
+	/** Write the font, omitting face= if the font is the document default. **/
+	const char* face = prt_htmlfm_GetFont(style);
+	if (strcmp(face, prt_htmlfm_fontstyles[PRT_HTMLFM_DEFAULT_FONTSTYLE]) == 0)
+	    {
+	    snprintf(
+		stylebuf, sizeof(stylebuf),
+	    	"<font color=\"#%6.6X\" size=\"%d\">",
+		style->Color, htmlfontsize
+	    );
+	    }
+	else
+	    {
+	    snprintf(
+		stylebuf, sizeof(stylebuf),
+		"<font face=\"%s\" color=\"#%6.6X\" size=\"%d\">",
+		face, style->Color, htmlfontsize
+	    );
+	    }
 	prt_htmlfm_Output(context, stylebuf, -1);
 	}
     if (context->StyleFlags & PRT_HTMLFM_SF_UNDERLINEDIRTY)
@@ -1121,7 +1149,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		/*** Write container HTML, skipping default values
 		 *** (colspan/rowspan="1", align="left") to reduce HTML size.
 		 ***/
-		prt_htmlfm_OutputStrLiteral(context, "<td valign=\"top\"");
+		prt_htmlfm_OutputStrLiteral(context, "<td");
 		if (cs > 1) prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", cs);
 		if (rs > 1) prt_htmlfm_OutputPrintf(context, " rowspan=\"%d\"", rs);
 		if (subobj->Justification != PRT_JUST_T_LEFT)

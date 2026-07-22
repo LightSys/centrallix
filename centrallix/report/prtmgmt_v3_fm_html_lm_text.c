@@ -241,14 +241,14 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		    /*** Write HTML, skipping defaults (align="left", colspan="1")
 		     *** to reduce HTML size.  These cells are written very often.
 		     **/
-		    prt_htmlfm_OutputStrLiteral(context, "<td valign=\"top\"");
+		    prt_htmlfm_OutputStrLiteral(context, "<td");
 		    if (justif_subscan->Justification != PRT_JUST_T_LEFT)
 			prt_htmlfm_OutputPrintf(context, " align=\"%s\"", justifytypes[justif_subscan->Justification]);
 		    const int n_cols = next_xset - cur_xset;
 		    if (n_cols > 1)
 			prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", n_cols);
 		    prt_htmlfm_OutputPrintf(context,
-			" width=\"%d\" style=\"line-height:1;\">",
+			" width=\"%d\">",
 			(int)(w*PRT_HTMLFM_XPIXEL+0.001)
 		    );
 		    prt_htmlfm_InitStyle(context, &(scan->TextStyle));
