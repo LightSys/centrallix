@@ -84,8 +84,9 @@
 
 #define PRT_HTMLFM_EMAIL_CONTENT_HEADER "\n" \
     "--"PRT_HTMLFM_EMAIL_BOUNDARY"\n" \
+    /** Report data (e.g. donor names) may contain raw UTF-8 octets >127. **/ \
     "Content-Type: text/html; charset=utf-8\n" \
-    "Content-Transfer-Encoding: 7bit\n" \
+    "Content-Transfer-Encoding: 8bit\n" \
     "\n"
 
 /*** The HTML part is closed by the next --cx-email-boundary delimiter (in an
