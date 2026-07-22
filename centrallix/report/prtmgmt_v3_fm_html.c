@@ -145,29 +145,31 @@
  *** Params:
  ***    (1) %d	Width of table, pixels
  ***/
-#define PRT_HTMLFM_PAGEHEADER	"    <center>\n" \
-				"    <table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" bgcolor=\"#606060\">\n" \
-				"        <tr>\n" \
-				"            <td bgcolor=\"#000000\">\n" \
-				"            <table width=\"%d\" border=\"0\" cellspacing=\"1\" cellpadding=\"16\">\n" \
-				"                <tr><td width=\"100%\" bgcolor=\"#ffffff\">\n" \
-				"<!------------------------------PAGE BEGIN------------------------------>\n" \
-				"\n"
+#define PRT_HTMLFM_PAGEHEADER \
+    "    <center>\n" \
+    "    <table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" bgcolor=\"#606060\">\n" \
+    "        <tr>\n" \
+    "            <td bgcolor=\"#000000\">\n" \
+    "            <table width=\"%d\" border=\"0\" cellspacing=\"1\" cellpadding=\"16\">\n" \
+    "                <tr><td width=\"100%\" bgcolor=\"#ffffff\">\n" \
+    "<!------------------------------PAGE BEGIN------------------------------>\n" \
+    "\n"
 
 
 /*** Page footer - end the page ***/
-#define PRT_HTMLFM_PAGEFOOTER	"\n" \
-				"<!------------------------------PAGE END-------------------------------->\n" \
-				"                </td></tr>\n" \
-				"            </table>\n" \
-				"            </td><td valign=\"top\" align=\"left\" width=\"8\"><table width=\"8\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\" bgcolor=\"#c0c0c0\"><tr><td height=\"8\" width=\"8\">&nbsp;</td></tr></table></td>\n" \
-				"        </tr><tr>\n" \
-				"            <td width=\"8\" align=\"left\" valign=\"top\"><table width=\"8\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\" bgcolor=\"#c0c0c0\"><tr><td height=\"8\" width=\"8\">&nbsp;</td></tr></table></td>\n" \
-				"            <td><small>&nbsp;</small></td>\n" \
-				"        </tr>\n" \
-				"    </table>\n" \
-				"    </center>\n" \
-				"    <br>\n"
+#define PRT_HTMLFM_PAGEFOOTER \
+    "\n" \
+    "<!------------------------------PAGE END-------------------------------->\n" \
+    "                </td></tr>\n" \
+    "            </table>\n" \
+    "            </td><td valign=\"top\" align=\"left\" width=\"8\"><table width=\"8\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\" bgcolor=\"#c0c0c0\"><tr><td height=\"8\" width=\"8\">&nbsp;</td></tr></table></td>\n" \
+    "        </tr><tr>\n" \
+    "            <td width=\"8\" align=\"left\" valign=\"top\"><table width=\"8\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\" bgcolor=\"#c0c0c0\"><tr><td height=\"8\" width=\"8\">&nbsp;</td></tr></table></td>\n" \
+    "            <td><small>&nbsp;</small></td>\n" \
+    "        </tr>\n" \
+    "    </table>\n" \
+    "    </center>\n" \
+    "    <br>\n"
 
 
 /*** this puts the min size at 9 (1), max size at 26 (7), and standard size at 12 (3) ***/
