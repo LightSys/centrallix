@@ -453,16 +453,8 @@ libmime_SaveTemporaryFile(pFile fd, pObject obj, int truncSeek)
 int
 libmime_internal_MakeARandomFilename(char* name, int len)
     {
-    int i;
-    int nameLen = strlen(name);
-    unsigned char randomByte;
 
-	for (i = nameLen; i < nameLen + len; i++)
-	    {
-	    cxssGenerateKey(&randomByte, 1);
-	    name[i] = 'a' + (randomByte % 26);
-	    }
-	name[i] = '\0';
+	cxssGenerateHexKey(name + strlen(name), len);
 
     return 0;
     }

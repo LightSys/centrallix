@@ -91,6 +91,8 @@ typedef struct
     char*	Name;
     pTObjData	Ptod;
     XHashTable	Params;
+    long	AttrSeekStart;
+    long	AttrSeekEnd;
     long	ValueSeekStart;
     long	ValueSeekEnd;
     }

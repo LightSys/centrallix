@@ -53,12 +53,14 @@ libmime_DecodeQP()
 
 
 int
-libmime_EncodeBase64(unsigned char* dst, unsigned char* src, int maxdst)
+libmime_EncodeBase64(unsigned char* dst, unsigned char* src, int maxdst, int srclen)
     {
     static unsigned char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    unsigned char* orig_dst = dst;
+    unsigned char* orig_src = src;
 
     /** Step through src 3 bytes at a time, generating 4 dst bytes for each 3 src **/
-    while(*src)
+    while((srclen == -1 && *src) || (srclen >= 0 && (src - orig_src) >= srclen))
 	{
 	/** First 6 bits of source[0] --> first byte dst. **/
 	if (maxdst < 5)
@@ -69,7 +71,7 @@ libmime_EncodeBase64(unsigned char* dst, unsigned char* src, int maxdst)
 	dst[0] = b64[src[0]>>2];
 
 	/** Second dst byte from last 2 bits of src[0] and first 4 of src[1] **/
-	if (src[1] == '\0')
+	if ((srclen == -1 && src[1] == '\0') || (src+1 - orig_src) >= srclen)
 	    {
 	    dst[1] = b64[(src[0]&0x03)<<4];
 	    dst[2] = '=';
@@ -80,7 +82,7 @@ libmime_EncodeBase64(unsigned char* dst, unsigned char* src, int maxdst)
 	dst[1] = b64[((src[0]&0x03)<<4) | (src[1]>>4)];
 
 	/** Third dst byte from second 4 bits of src[1] and first 2 of src[2] **/
-	if (src[2] == '\0')
+	if ((srclen == -1 && src[2] == '\0') || (src+2 - orig_src) >= srclen)
 	    {
 	    dst[2] = b64[(src[1]&0x0F)<<2];
 	    dst[3] = '=';
@@ -101,7 +103,7 @@ libmime_EncodeBase64(unsigned char* dst, unsigned char* src, int maxdst)
     /** Null-terminate the thing **/
     *dst = '\0';
 
-    return 0;
+    return dst - orig_dst;
     }
 
 int

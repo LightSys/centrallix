@@ -45,6 +45,7 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
     char* token = NULL;
     char* currentOffset = NULL;
     char* val_ptr;
+    pMimeAttr attr;
 
 	/** Append all data up to the next semicolon. **/
 	token  = strtok_r(data, ";", &currentOffset);
@@ -99,8 +100,11 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 	    }
 
 	/** Set the offset values in the attribute structure. **/
-	libmime_GetMimeAttr(this, name)->ValueSeekStart = seekStart;
-	libmime_GetMimeAttr(this, name)->ValueSeekEnd = seekEnd;
+	attr = libmime_GetMimeAttr(this, name);
+	attr->ValueSeekStart = seekStart;
+	attr->ValueSeekEnd = seekEnd;
+	attr->AttrSeekStart = attrSeekStart;
+	attr->AttrSeekEnd = attrSeekEnd;
 
 	/** Attempt to find the first parameter. **/
 
@@ -114,6 +118,7 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 		*val_ptr = '\0';
 		val_ptr++;
 		libmime_StringTrim(val_ptr);
+		val_ptr = libmime_StringUnquote(val_ptr);
 		}
 
 	    /** Store the parameter name. **/

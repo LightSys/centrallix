@@ -323,11 +323,15 @@ int
 libmime_SetFilename(pMimeHeader msg, char *defaultName)
     {
     char *fileName = NULL;
+    char name[128];
 
 	/** Get the name from the message-id **/
 	if (!libmime_GetStringAttr(msg, "Message-ID", NULL, &fileName))
 	    {
-	    if (libmime_SetStringAttr(msg, "Name", NULL, fileName, 0))
+	    strtcpy(name, (fileName[0] == '<')?(fileName+1):fileName, sizeof(name));
+	    if (strrchr(name, '>'))
+		*(strrchr(name, '>')) = '\0';
+	    if (libmime_SetStringAttr(msg, "Name", NULL, name, 0))
 		{
 		mssError(0, "MIME", "Failed to create the name attribute.");
 		return -1;
@@ -346,10 +350,11 @@ libmime_SetFilename(pMimeHeader msg, char *defaultName)
 	    return 0;
 	    }
 
-	/** Get the name from the Content-Distribution attribute. **/
-	if (!libmime_GetStringAttr(msg, "Content-Disposition", "Filename", &fileName))
+	/** Get the name from the Content-Disposition attribute. **/
+	if (libmime_GetStringAttr(msg, "Content-Disposition", "Filename", &fileName) < 0)
 	    {
-	    libmime_GetStringAttr(msg, "Content-Disposition", "Name", &fileName);
+	    if (libmime_GetStringAttr(msg, "Content-Disposition", "Name", &fileName) < 0)
+		libmime_GetStringAttr(msg, "Content-Type", "Name", &fileName);
 	    }
 
 	/** If found, store the name in the Name attribute. **/
@@ -451,7 +456,7 @@ libmime_ParseHeaderElement(char *buf, char* hdr, int hdrsize, long* attrSeekStar
 	    {
 	    memcpy(hdr, buf, ((count-1)>(hdrsize-1)?(hdrsize-1):(count-1)));
 	    hdr[((count-1)>(hdrsize-1)?(hdrsize-1):(count-1))] = '\0';
-	    memmove(buf, buf+count+1, strlen(buf+count+1)+1);
+	    memmove(buf, buf+count, strlen(buf+count)+1);
 	    ptr = hdr; /* Shanghai'ed or rather, captured/destroyed/pillaged */
 	    libmime_StringTrim(hdr);
 	    libmime_StringTrim(buf);
@@ -473,7 +478,7 @@ libmime_ParseHeaderElement(char *buf, char* hdr, int hdrsize, long* attrSeekStar
 	    {
 	    memcpy(hdr, buf, ((count-1)>(hdrsize-1)?(hdrsize-1):(count-1)));
 	    hdr[((count-1)>(hdrsize-1)?(hdrsize-1):(count-1))] = '\0';
-	    memmove(buf, buf+count+1, strlen(buf+count+1)+1);
+	    memmove(buf, buf+count, strlen(buf+count)+1);
 	    ptr = hdr; /* Shanghai'ed or rather, captured/destroyed/pillaged */
 	    libmime_StringTrim(hdr);
 	    libmime_StringTrim(buf);
@@ -486,6 +491,7 @@ libmime_ParseHeaderElement(char *buf, char* hdr, int hdrsize, long* attrSeekStar
 
 	    return 0;
 	    }
+
     return -1;
     }
 
