@@ -1167,7 +1167,10 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 			(rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->ConfigHeight) rs++;
 		    else break;
 		}
-		last_height = subobj->Y + subobj->Height;
+		
+		/** Update the lowest bottom edge for this row. **/
+		if (subobj->Y + subobj->Height > last_height)
+		    last_height = subobj->Y + subobj->Height;
 		
 		/*** Write container HTML, skipping default values
 		 *** (colspan/rowspan="1", align="left") to reduce HTML size.
