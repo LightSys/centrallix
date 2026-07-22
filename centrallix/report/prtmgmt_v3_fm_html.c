@@ -152,7 +152,7 @@
 	    "<tr>\n" \
 		"<td bgcolor=\"#000000\">\n" \
 		"<table width=\"%d\" cellspacing=\"1\" cellpadding=\"16\" style=\"border-collapse:separate;\">\n" \
-		    "<tr><td width=\"100%\" bgcolor=\"#ffffff\">\n\n"
+		    "<tr><td width=\"100%\" bgcolor=\"#ffffff\">\n"
 
 
 /*** Page footer - end the page ***/
@@ -1038,11 +1038,11 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	int center_width = (int)((page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight+0.001)*PRT_HTMLFM_XPIXEL);
 	int right_margin = (int)(page_obj->MarginRight*PRT_HTMLFM_XPIXEL+0.001);
 	int top_margin = (int)((page_obj->MarginTop+0.001)*PRT_HTMLFM_YPIXEL);
-	prt_htmlfm_OutputStrLiteral(context, "<table cellpadding=\"0\" width=\"100%\">\n");
+	prt_htmlfm_OutputStrLiteral(context, "<table cellpadding=\"0\" width=\"100%\">");
 	prt_htmlfm_OutputStrLiteral(context, "<colgroup>");
-	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", left_margin);
-	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", center_width);
-	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", right_margin);
+	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">", left_margin);
+	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">", center_width);
+	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">", right_margin);
 	prt_htmlfm_OutputStrLiteral(context, "</colgroup>");
 	/* Print the first row, empty with appropriate margins*/
 	prt_htmlfm_OutputPrintf(context, "<tr><td style=\"height: %dpx; width: %dpx;\"></td><td style=\"height: %dpx;width: %dpx;\"></td><td style=\"height: %dpx;width: %dpx;\"></td></tr>",
@@ -1110,7 +1110,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    }
 
 	/** Write the layout table **/
-	prt_htmlfm_OutputStrLiteral(context, "<table cellpadding=\"0\" width=\"100%\">\n");
+	prt_htmlfm_OutputStrLiteral(context, "<table cellpadding=\"0\" width=\"100%\">");
 	for (i=0;i<n_cols;i++)
 	    {
 	    if (i == n_cols-1)
