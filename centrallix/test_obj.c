@@ -1195,7 +1195,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    mlxCloseSession(ls);
 		    return -1;
 		    }
-		if (!strcmp(ptr,"*"))
+		if (strstr(ptr,"*") && strlen(strstr(ptr,"*")) == 1)
 		    obj = objOpen(s, ptr, O_RDWR | O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
 		else
 		    obj = objOpen(s, ptr, O_RDWR | O_CREAT, 0600, "system/object");
