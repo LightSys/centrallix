@@ -29,18 +29,18 @@ USAGE
     Further modification of the email object will be accomplished through the
     MIME driver.
 
-    Before an email can be sent, the "env_from" attribute must be set.
+    Before an email can be sent, the "envelope_from" attribute must be set.
     Otherwise, the sent email will be registered as from the user running
     Centrallix. As this is normally blocked by most email servers, this will
     cause the email to fail to send.
 
     Email recipients should be determined from the email message itself;
-    however, additional recipients may be added by using the "env_to"
+    however, additional recipients may be added by using the "envelope_to"
     attribute.
 
-    When an email is ready to send, the "is_ready" attribute should be set to
-    1. This will cause the SMTP driver to begin a sendmail process to send the
-    email with the appropriate parameters.
+    When an email is ready to send, the "is_ready" attribute should be set
+    to 1. This will cause the SMTP driver to begin a sendmail process to send
+    the email with the appropriate parameters.
 
 INTERFACE AND IMPLEMENTATION
 
@@ -203,7 +203,7 @@ INTERFACE AND IMPLEMENTATION
 
 	    message_id	    The Message-ID of the email message being created.
 
-	    env_from	    The envelope From address of the email (return-path).
+	    envelope_from   The envelope From address of the email (return-path).
 			    Because of the way the SMTP driver currently uses
 			    sendmail, this attribute determines the outgoing From
 			    address received by the foreign email server. If this
@@ -211,7 +211,7 @@ INTERFACE AND IMPLEMENTATION
 			    user currently running Centrallix. This will generally
 			    be blocked by most email receiving servers.
 
-	    env_to	    The envelope recipient (or recipient list) of the email.
+	    envelope_to	    The envelope recipient (or recipient list) of the email.
 
 	    status	    The status of the email: Draft, Pending, Sent, Error.
 			    Status updates are not yet implemented in the SMTP
