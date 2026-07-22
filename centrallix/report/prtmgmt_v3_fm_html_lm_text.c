@@ -304,11 +304,21 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    prt_htmlfm_OutputStrLiteral(context, "</tr>\n");
 	    in_tr = 0;
 	    }
-    
-	if(area->ContentTail && (area->ContentTail->Y + area->ContentTail->Height + 0.01 < area->Height)) {
+
+	/** Detect the bottom of the rendered content. **/
+	double content_bottom = 0.0;
+	for (scan = area->ContentHead; scan != NULL; scan = scan->Next)
+	    {
+	    if (scan->Y + scan->Height > content_bottom)
+		content_bottom = scan->Y + scan->Height;
+	    }
+
+	/** Pad the area out to the content bottom with a trailing spacer row. **/
+	if (area->ContentTail && (content_bottom + 0.01 < area->Height))
+	    {
 	    prt_htmlfm_OutputPrintf(context, "<tr><td style=\"height: %dpx;line-height:0;\">&nbsp;</td></tr>",
-		(int) ((area->Height - area->ContentTail->Y - area->ContentTail->Height + 0.001) * PRT_HTMLFM_YPIXEL));
-	}
+		(int) ((area->Height - content_bottom + 0.001) * PRT_HTMLFM_YPIXEL));
+	    }
 
 	/** Output the area epilogue **/
 	prt_htmlfm_OutputStrLiteral(context, "</table>\n");
