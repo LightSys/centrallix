@@ -62,7 +62,7 @@ prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
 
 	/** Write the section prologue **/
 	prt_htmlfm_SaveStyle(context, &oldstyle);
-	prt_htmlfm_OutputStrLiteral(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\"><tr>\n");
+	prt_htmlfm_OutputStrLiteral(context, "<table cellpadding=\"0\"><tr>\n");
 
 	/** Loop through the column objects **/
 	for(column = section->ContentHead; column; column = column->Next)

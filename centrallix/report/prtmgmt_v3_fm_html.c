@@ -131,9 +131,10 @@
 	"<style>\n" \
 	    "body { font-family: \"Courier New\",Courier,fixed; }\n" \
 	    "td { vertical-align: top; line-height: 1; }\n" \
+	    "table { border-collapse: collapse; }\n" \
 	"</style>\n" \
     "</head>\n" \
-    "<body style=\"background-color: %s;\">\n"
+    "<body style=\"background-color: %s; color: #000;\">\n"
 
 /*** Document footer ***/
 #define PRT_HTMLFM_FOOTER	"</body>\n" \
@@ -147,10 +148,10 @@
  ***/
 #define PRT_HTMLFM_PAGEHEADER \
 	"<center>\n" \
-	"<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" bgcolor=\"#606060\">\n" \
+	"<table cellpadding=\"0\" bgcolor=\"#606060\">\n" \
 	    "<tr>\n" \
 		"<td bgcolor=\"#000000\">\n" \
-		"<table width=\"%d\" border=\"0\" cellspacing=\"1\" cellpadding=\"16\">\n" \
+		"<table width=\"%d\" cellspacing=\"1\" cellpadding=\"16\" style=\"border-collapse:separate;\">\n" \
 		    "<tr><td width=\"100%\" bgcolor=\"#ffffff\">\n\n"
 
 
@@ -158,9 +159,9 @@
 #define PRT_HTMLFM_PAGEFOOTER "\n" \
 		    "</td></tr>\n" \
 		"</table>\n" \
-		"</td><td valign=\"top\" align=\"left\" width=\"8\"><table width=\"8\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\" bgcolor=\"#c0c0c0\"><tr><td height=\"8\" width=\"8\">&nbsp;</td></tr></table></td>\n" \
+		"</td><td valign=\"top\" align=\"left\" width=\"8\"><table width=\"8\" cellpadding=\"0\" bgcolor=\"#c0c0c0\"><tr><td height=\"8\" width=\"8\">&nbsp;</td></tr></table></td>\n" \
 	    "</tr><tr>\n" \
-		"<td width=\"8\" align=\"left\" valign=\"top\"><table width=\"8\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\" bgcolor=\"#c0c0c0\"><tr><td height=\"8\" width=\"8\">&nbsp;</td></tr></table></td>\n" \
+		"<td width=\"8\" align=\"left\" valign=\"top\"><table width=\"8\" cellpadding=\"0\" bgcolor=\"#c0c0c0\"><tr><td height=\"8\" width=\"8\">&nbsp;</td></tr></table></td>\n" \
 		"<td><small>&nbsp;</small></td>\n" \
 	    "</tr>\n" \
 	"</table>\n" \
@@ -582,7 +583,6 @@ prt_htmlfm_WriteStyle(pPrtHTMLfmInf context)
     pPrtTextStyle style = &(context->CurStyle);
     int htmlfontsize;
     int i;
-    char stylebuf[128];
     
     /** Figure the size **/
     for (i=PRT_HTMLFM_MINFONTSIZE;i<=PRT_HTMLFM_MAXFONTSIZE;i++)
@@ -597,25 +597,28 @@ prt_htmlfm_WriteStyle(pPrtHTMLfmInf context)
     
     if (context->StyleFlags & PRT_HTMLFM_SF_FONTDIRTY)
 	{
-	/** Write the font, omitting face= if the font is the document default. **/
+	/*** Build the font tag, omitting face= or color= if they are the
+	 *** default value, to reduce HTML size.
+	 ***/
+	int len = 0;
+	char stylebuf[128];
 	const char* face = prt_htmlfm_GetFont(style);
-	if (strcmp(face, prt_htmlfm_fontstyles[PRT_HTMLFM_DEFAULT_FONTSTYLE]) == 0)
+	len += snprintf(stylebuf + len, sizeof(stylebuf) - len, "<font");
+	if (strcmp(face, prt_htmlfm_fontstyles[PRT_HTMLFM_DEFAULT_FONTSTYLE]) != 0)
+	    len += snprintf(stylebuf + len, sizeof(stylebuf) - len, " face=\"%s\"", face);
+	if (style->Color != 0)
+	    len += snprintf(stylebuf + len, sizeof(stylebuf) - len, " color=\"#%6.6X\"", style->Color);
+	len += snprintf(stylebuf + len, sizeof(stylebuf) - len, " size=\"%d\">", htmlfontsize);
+	
+	/** Detect content clipping. **/
+	if (len >= (int)sizeof(stylebuf))
 	    {
-	    snprintf(
-		stylebuf, sizeof(stylebuf),
-	    	"<font color=\"#%6.6X\" size=\"%d\">",
-		style->Color, htmlfontsize
-	    );
+	    len = sizeof(stylebuf) - 1;
+	    mssError(1, "PRT", "Font style tag overflowed %zu-byte buffer.", sizeof(stylebuf));
 	    }
-	else
-	    {
-	    snprintf(
-		stylebuf, sizeof(stylebuf),
-		"<font face=\"%s\" color=\"#%6.6X\" size=\"%d\">",
-		face, style->Color, htmlfontsize
-	    );
-	    }
-	prt_htmlfm_Output(context, stylebuf, -1);
+	
+	/** Write the completed font tag. **/
+	prt_htmlfm_Output(context, stylebuf, len);
 	}
     if (context->StyleFlags & PRT_HTMLFM_SF_UNDERLINEDIRTY)
 	{
@@ -753,10 +756,10 @@ prt_htmlfm_Border(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj)
 	    if (bw == 0) bw = 1;
 	    iw = ((i==border->nLines-1)?m:(border->Sep*PRT_HTMLFM_XPIXEL)) + 0.5;
 	    if (iw == 0 && i!=border->nLines-1) iw = 1;
-	    prt_htmlfm_OutputPrintf(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">",
+	    prt_htmlfm_OutputPrintf(context, "<table cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">",
 		    (int)(bw),
 		    (int)(border->Color[i]));
-	    prt_htmlfm_OutputPrintf(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">\n",
+	    prt_htmlfm_OutputPrintf(context, "<table cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">\n",
 		    (int)(iw),
 		    (int)(obj->BGColor));
 	    }
@@ -887,7 +890,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    {
 		    w = obj->Width*PRT_HTMLFM_XPIXEL;
 		    h = obj->Height*PRT_HTMLFM_YPIXEL;
-		    prt_htmlfm_OutputPrintf(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\"><tr><td bgcolor=\"#%6.6X\" width=\"%d\" height=\"%d\"><table border=\"0\" cellspacing=\"0\" cellpadding=\"0\"><tr><td></td></tr></table></td></tr></table>\n",
+		    prt_htmlfm_OutputPrintf(context, "<table cellpadding=\"0\"><tr><td bgcolor=\"#%6.6X\" width=\"%d\" height=\"%d\"><table cellpadding=\"0\"><tr><td></td></tr></table></td></tr></table>\n",
 			    obj->TextStyle.Color, w, h);
 		    }
 		break;
@@ -1035,7 +1038,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	int center_width = (int)((page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight+0.001)*PRT_HTMLFM_XPIXEL);
 	int right_margin = (int)(page_obj->MarginRight*PRT_HTMLFM_XPIXEL+0.001);
 	int top_margin = (int)((page_obj->MarginTop+0.001)*PRT_HTMLFM_YPIXEL);
-	prt_htmlfm_OutputStrLiteral(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n");
+	prt_htmlfm_OutputStrLiteral(context, "<table cellpadding=\"0\" width=\"100%\">\n");
 	prt_htmlfm_OutputStrLiteral(context, "<colgroup>");
 	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", left_margin);
 	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", center_width);
@@ -1107,7 +1110,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    }
 
 	/** Write the layout table **/
-	prt_htmlfm_OutputStrLiteral(context, "<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n");
+	prt_htmlfm_OutputStrLiteral(context, "<table cellpadding=\"0\" width=\"100%\">\n");
 	for (i=0;i<n_cols;i++)
 	    {
 	    if (i == n_cols-1)
