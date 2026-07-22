@@ -64,36 +64,34 @@
 #define PRT_HTMLFM_MAXROWS	(64)
 
 
+/*** Note: Email reports are HTML-only email (no text/plain alternative).
+ *** Every mainstream client (Thunderbird, Gmail, Outlook, Apple Mail) renders
+ *** HTML natively, and clients forced to plain text down-convert the HTML on
+ *** their own, so a text/plain isn't needed.  In fact, some spam filters may
+ *** flag messages with a "mismatched-alternative" (where the fallback has
+ *** different content than the email) as junk. HTML-only avoids this trap.
+ ***/
+
 /** HTML email headers. **/
 #define PRT_HTMLFM_EMAIL_BOUNDARY "cx-email-boundary"
-#define PRT_HTMLFM_ALT_BOUNDARY   "cx-alt-boundary"
 
 // TODO: Israel - Should some of these come from the mime type driver?
 #define PRT_HTMLFM_EMAIL_HEADER \
     /** Email file header. **/ \
     "MIME-Version: 1.0\n" \
-    /** multipart/related allows HTML to use cid: for inline images. **/ \
-    "Content-Type: multipart/related; type=\"multipart/alternative\"; boundary="PRT_HTMLFM_EMAIL_BOUNDARY"\n" \
-    "\n" \
-    /** Declare fallback header. **/ \
-    "--"PRT_HTMLFM_EMAIL_BOUNDARY"\n" \
-    "Content-Type: multipart/alternative; boundary="PRT_HTMLFM_ALT_BOUNDARY"\n" \
-    "\n" \
-    /** Text fallback header. **/ \
-    "--"PRT_HTMLFM_ALT_BOUNDARY"\n" \
-    "Content-Type: text/plain; charset=utf-8\n" \
-    "Content-Transfer-Encoding: 7bit\n" \
-    "\n" \
-    "Oops! Your email client could not render this HTML.\n"
+    /** multipart/related allows HTML to use "cid:" for inline images. **/ \
+    "Content-Type: multipart/related; type=\"text/html\"; boundary="PRT_HTMLFM_EMAIL_BOUNDARY"\n"
 
 #define PRT_HTMLFM_EMAIL_CONTENT_HEADER "\n" \
-    "--"PRT_HTMLFM_ALT_BOUNDARY"\n" \
+    "--"PRT_HTMLFM_EMAIL_BOUNDARY"\n" \
     "Content-Type: text/html; charset=utf-8\n" \
     "Content-Transfer-Encoding: 7bit\n" \
     "\n"
 
-#define PRT_HTMLFM_EMAIL_CONTENT_FOOTER \
-    "--"PRT_HTMLFM_ALT_BOUNDARY"--\n"
+/*** The HTML part is closed by the next --cx-email-boundary delimiter (in an
+ *** inline image part, or the email footer), so no explicit footer is needed.
+ ***/
+#define PRT_HTMLFM_EMAIL_CONTENT_FOOTER ""
 
 #define PRT_HTMLFM_IMG_HEADER_FORMAT "\n" \
     "--"PRT_HTMLFM_EMAIL_BOUNDARY"\n" \
