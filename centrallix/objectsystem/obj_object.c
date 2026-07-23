@@ -1526,7 +1526,7 @@ obj_internal_DumpSession(pObjSession session)
 int
 objImportFile(pObjSession sess, char* source_filename, char* dest_osml_dir, char* new_osml_name, int new_osml_name_len)
     {
-    pFile source_fd;
+    pFile source_fd = NULL;
     pObject dest_obj;
     /*char buf[256];
     int rcnt;

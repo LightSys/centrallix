@@ -50,7 +50,7 @@ int
 htsetRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
-    pWgtrNode sub_tree;
+    pWgtrNode sub_tree = NULL;
     char geom_str[64] = "";
     int t,n,bdr=0,direc=0, i;
     char nbuf[16];

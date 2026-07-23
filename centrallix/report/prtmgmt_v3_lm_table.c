@@ -62,7 +62,7 @@
 int
 prt_tablm_Break(pPrtObjStream this, pPrtObjStream *new_this)
     {
-    pPrtObjStream new_parent, cur_parent, new_obj, search_obj;
+    pPrtObjStream new_parent, cur_parent, new_obj = NULL, search_obj;
     pPrtTabLMData lm_inf = (pPrtTabLMData)(this->LMData);
     pPrtTabLMData new_lm_inf;
     pPrtObjStream new_cells[PRT_TABLM_MAXCOLS];

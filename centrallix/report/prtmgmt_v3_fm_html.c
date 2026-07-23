@@ -394,7 +394,7 @@ int
 prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
     {
     char* fonts[3] = { "Courier New,Courier,fixed", "Arial,Helvetica,MS Sans Serif", "Times New Roman,Times,MS Serif"};
-    int htmlfontsize, fontid;
+    int htmlfontsize = 0, fontid;
     char stylebuf[128];
     int boldchanged, italicchanged, underlinechanged, fontchanged;
     int i;

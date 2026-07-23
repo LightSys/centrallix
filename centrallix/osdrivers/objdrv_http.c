@@ -1406,8 +1406,8 @@ http_internal_GetPageStream(pHttpData inf)
 #define BUF_SIZE 256
     char buf[BUF_SIZE];
     char *fullpath = NULL; // the path to be send to the server
-    char *ptr;
-    char *ptr2;
+    char *ptr = NULL;
+    char *ptr2 = NULL;
     int alloc = 0;
     char *p1;
     pStructInf attr;

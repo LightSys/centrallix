@@ -3277,7 +3277,7 @@ mq_internal_FinalizeAppData(void* appdata_v)
 void*
 mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int flags)
     {
-    pMultiQuery this;
+    pMultiQuery this = NULL;
     pQueryAppData appdata;
     int i;
 

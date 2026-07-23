@@ -301,6 +301,7 @@ prt_textlm_JustifyLine(pPrtObjStream starting_point, int jtype)
     int n_items, items_so_far, n_fj_items;;
 
 	/** Locate the beginning and end of the line **/
+	start = starting_point;
 	for(scan=starting_point; scan; scan=scan->Prev)
 	    {
 	    start = scan;

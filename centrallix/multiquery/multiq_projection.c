@@ -1052,7 +1052,7 @@ mqp_internal_EvaluateSource(pQueryElement qe, pQueryStatement stmt, pMqpInf mi)
     {
     pExpression source_exp;
     int rval;
-    pObject oldobj;
+    pObject oldobj = NULL;
 
 	/** Evaluate source expression? **/
 	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION)

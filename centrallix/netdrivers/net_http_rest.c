@@ -769,7 +769,7 @@ int
 nht_i_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
     {
     char* ptr;
-    pObject target_obj;
+    pObject target_obj = NULL;
     struct json_tokener* jtok = NULL;
     enum json_tokener_error jerr;
     char rbuf[256];
@@ -780,8 +780,8 @@ nht_i_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
     char* msg;
     int code;
     nhtResType_t res_type = ResTypeElement;
-    nhtResFormat_t res_format;
-    nhtResAttrs_t res_attrs;
+    nhtResFormat_t res_format = -1;
+    nhtResAttrs_t res_attrs = -1;
     struct json_object_iter iter;
     struct json_object* j_attr_obj;
     char* attrname;

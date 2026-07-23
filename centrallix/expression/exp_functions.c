@@ -3903,7 +3903,7 @@ int exp_fn_min(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 
 int exp_fn_first(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-    int rval;
+    int rval = 0;
 
     if (!i0)
 	{
