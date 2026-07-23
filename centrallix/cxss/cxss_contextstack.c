@@ -269,7 +269,6 @@ int
 cxssPopContext()
     {
     pCxssCtxStack sptr, del;
-    void* ret_addr;
 
 	/** Get auth stack pointer **/
 	sptr = (pCxssCtxStack)thGetSecParam(NULL);
