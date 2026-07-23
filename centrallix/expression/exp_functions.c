@@ -2883,6 +2883,15 @@ int exp_fn_hash(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
 	    SHA512((unsigned char*)i1->String, strlen(i1->String), hashvalue);
 	    hashlen = 64;
 	    }
+	else
+	    {
+	    mssError(1, "EXP",
+		"%s(): Unsupported hashing algorithm \"%s\".",
+		tree->Name, i0->String
+	    );
+	    goto error;
+	    }
+
 	if (tree->Alloc && tree->String) nmSysFree(tree->String);
 	tree->String = nmSysMalloc(hashlen * 2 + 1);
 	tree->Alloc = 1;

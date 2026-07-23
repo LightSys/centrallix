@@ -2011,6 +2011,9 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
 			case DATA_T_STRING:
 			    s = 1;
 			    break;
+			default:
+			    mssError(1, "DAT", "Unknown data type: %d", inf->TData->ColTypes[i]);
+			    return NULL;
 			}
 		    if (inf->RowBufSize + s <= maxlen)
 			{
