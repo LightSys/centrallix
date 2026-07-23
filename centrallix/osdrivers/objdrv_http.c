@@ -32,7 +32,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -3225,4 +3225,3 @@ MODULE_PREFIX("http");
 MODULE_DESC("HTTP/HTTPS ObjectSystem Driver");
 MODULE_VERSION(0,1,0);
 MODULE_IFACE(CX_CURRENT_IFACE);
-
