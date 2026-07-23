@@ -3909,6 +3909,8 @@ mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
     pQueryDeclaredObject qdo;
     pQueryDeclaredCollection qdc;
 
+	if (qy == NULL) return 0;
+
     	/** Check the link cnt **/
 	if ((--qy->LinkCnt) > 0) return 0;
 
