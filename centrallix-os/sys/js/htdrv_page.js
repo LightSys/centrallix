@@ -2752,7 +2752,8 @@ function pg_mousemove(e)
 	pg_tipinfo.x = e.pageX;
 	pg_tipinfo.y = e.pageY;
 	}
-    if (pg_checkmodal(ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+    // A window drag must keep tracking the cursor when it moves off the modal.
+    if (pg_checkmodal(ly) && !window.wn_current) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
     /*if (pg_modallayer)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
@@ -2880,7 +2881,8 @@ function pg_mouseup(e)
     {
     var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
-    if (pg_checkmodal(ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+    // A window drag must be able to terminate when released off the modal.
+    if (pg_checkmodal(ly) && !window.wn_current) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
     /*if (pg_modallayer)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;

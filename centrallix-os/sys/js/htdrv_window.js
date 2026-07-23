@@ -749,8 +749,8 @@ function wn_mousedown(e)
         {
         if (e.target.name == 'close')
             pg_set(e.target,'src','/sys/images/02bigclose.gif');
-        else if ((e.mainlayer.has_titlebar && cx__capabilities.Dom0NS && e.pageY < e.mainlayer.pageY + 24) ||
-                (cx__capabilities.Dom1HTML && e.layer.subkind == 'titlebar' ))
+        else if (e.which == 1 && ((e.mainlayer.has_titlebar && cx__capabilities.Dom0NS && e.pageY < e.mainlayer.pageY + 24) ||
+                (cx__capabilities.Dom1HTML && e.layer.subkind == 'titlebar' )))
             {
             wn_current = e.mainlayer;
             wn_msx = e.pageX;
