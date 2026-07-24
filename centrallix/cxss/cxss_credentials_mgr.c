@@ -11,6 +11,7 @@
 #include "cxss/credentials_mgr.h"
 #include "cxss/credentials_db.h"
 #include "cxss/crypto.h"
+#include "cxss/cxss.h"
 #include <assert.h>
 
 /* Database context */
@@ -285,7 +286,7 @@ cxssAddResource(const char *cxss_userid, const char *resource_id, const char *au
     }
 
     /* Erase plaintext random key from memory */
-    memset(rand_key, 0, sizeof(rand_key));
+    cxssShred(rand_key, sizeof(rand_key));
 
     /* Build struct */
     UserResc.CXSS_UserID = cxss_userid;
@@ -442,4 +443,3 @@ cxssDeleteResource(const char *cxss_userid, const char *resource_id)
     }
     return CXSS_MGR_SUCCESS;
 }
-

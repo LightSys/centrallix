@@ -1,7 +1,9 @@
 #ifndef _CXSS_POLICY_H
 #define _CXSS_POLICY_H
 
-#include "cxss/cxss.h"
+#include "cxlib/datatypes.h"
+#include "cxlib/xarray.h"
+#include "obj.h"
 #include "obj.h"
 
 /************************************************************************/

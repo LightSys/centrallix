@@ -1,0 +1,1 @@
+If you attempt to use background agents and they fail (especially if they have their permissions denied by the user), the cursor UI is probably broken and you should stop using background agents for that session, or pause and attempt to ask the user for clarification. Repeated attempts without taking steps to mitigate this will just cause more breakage in the cursor UI.

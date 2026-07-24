@@ -203,6 +203,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 		"border:none; "
 		"outline:none; "
 		"font-family:inherit; "
+		"font-size:inherit; "
 	    "'>\n"
 	) != 0)
 	    {
