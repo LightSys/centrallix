@@ -68,8 +68,8 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     int x=-1,y=-1,w,h;
     int rval = -1;
     int font_size;
-    char *text;
-    char* tooltip;
+    char *text = NULL;
+    char* tooltip = NULL;
     int is_bold = 0;
     int is_link = 0;
     int is_italic = 0;
@@ -83,7 +83,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	/** Verify browser capabilities. **/
 	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1, "HTIMG", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    mssError(1, "HTLBL", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
 	    goto end;
 	    }
 
@@ -304,9 +304,9 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    name,
 	    fieldname, form, text,
 	    tooltip, is_link, pfgcolor
-	) != 0) 
+	) != 0)
 	    {
-	    mssError(0, "HTLBL", "Failed to write label text CSS.");
+	    mssError(0, "HTLBL", "Failed to write label init script.");
 	    goto end;
 	    }
 
@@ -323,7 +323,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	/** HTML body <DIV> element for the base layer. **/
 	if (htrAddBodyItemLayer_va(s, 0, "lbl%POS", id, NULL, "<p><span>%STR&HTENLBR</span></p>", text) != 0)
 	    {
-	    mssError(0, "HTIBTN", "Failed to write label HTML.");
+	    mssError(0, "HTLBL", "Failed to write label HTML.");
 	    goto end;
 	    }
 
@@ -336,7 +336,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     end:
 	if (rval != 0)
 	    {
-	    mssError(0, "HTIBTN",
+	    mssError(0, "HTLBL",
 		"Failed to render \"%s\":\"%s\" (id: %d).",
 		tree->Name, tree->Type, id
 	    );
