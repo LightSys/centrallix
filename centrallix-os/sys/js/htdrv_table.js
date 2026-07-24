@@ -1466,7 +1466,7 @@ function tbld_change_width(move, compensate)
     {
     const { colnum, resizebdr, table: t } = this;
     const { colcount, cols, rows } = t;
-    const rw = $(resizebdr).width();
+    const rw = $(resizebdr).width() ?? 0;
     const { width: col_info_width, xoffset: col_info_xoffset } = cols[colnum];
 
     // Sanity checks on column resizing...
@@ -1486,12 +1486,12 @@ function tbld_change_width(move, compensate)
     for (let i = colnum, total_move = move; i < colcount; i++)
 	{
 	const col = cols[i];
-	if (i === colnum) // First iterations.
+	if (i === colnum) // First iterations
 	    {
 	    // Column to the left of adjustment
 	    col.width += move;
 	    }
-	else if (compensate) // Later iterations.
+	else if (compensate) // Later iterations
 	    {
 	    // Columns to the right of adjustment
 	    const adj = move * col.width / total_right_width;
