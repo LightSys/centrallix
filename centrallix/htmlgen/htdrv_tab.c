@@ -344,24 +344,6 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	/** Include the htdrv_tab.js script. **/
 	if (htrAddScriptInclude(s, "/sys/js/htdrv_tab.js", 0) != 0) goto err;
 	
-	/** Send globals variables to the client to avoid needing to hard code them. **/
-	const int bufsiz = 96;
-	char* config_buf = nmSysMalloc(bufsiz);
-	if (config_buf == NULL)
-	    {
-	    mssError(1, "HTTAB", "%s: nmSysMalloc(%d) failed.", name, bufsiz);
-	    goto err;
-	    }
-	snprintf(
-	    memset(config_buf, 0, bufsiz), bufsiz,
-	    "{ tlocs: { Top:%d, Bottom:%d, Left:%d, Right:%d, None:%d } }",
-	    Top, Bottom, Left, Right, None
-	);
-	if (htrAddScriptGlobal(s, "tc_config", config_buf, HTR_F_VALUEALLOC) != 0) goto err;
-	/*** TODO: Greg - config_buf is definitely leaked because I can't
-	 *** figure out how long it needs to remain in scope.
-	 ***/
-	
 	/** Add globals for the master tabs listing. **/
 	if (htrAddScriptGlobal(s, "tc_cur_mainlayer", "null", 0) != 0) goto err;
 	if (htrAddScriptGlobal(s, "tc_tabs", "null", 0) != 0) goto err;
