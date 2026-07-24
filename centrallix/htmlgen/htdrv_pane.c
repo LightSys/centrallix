@@ -83,12 +83,12 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTPN","Pane widget must have a 'width' property");
-	    return -1;
+	    goto err;
 	    }
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    mssError(1,"HTPN","Pane widget must have a 'height' property");
-	    return -1;
+	    goto err;
 	    }
 
 	/** Border radius, for raised/lowered/bordered panes **/
@@ -120,7 +120,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto err;
 	strtcpy(name,ptr,sizeof(name));
 
 	if (htrCheckAddExpression(s, tree, name, "enabled") < 0) goto err;
