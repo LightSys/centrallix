@@ -722,7 +722,7 @@ aposAutoPositionContainers(pWgtrNode Parent)
 pAposGrid theGrid;
 pWgtrNode Child;
 int i=0, childCount = xaCount(&(Parent->Children));
-int rows_extra=0, cols_extra=0;
+// int rows_extra=0, cols_extra=0;
 
     /** Check recursion **/
     if (thExcessiveRecursion())
@@ -739,9 +739,11 @@ int rows_extra=0, cols_extra=0;
 	{
 	    /**Adjust the spaces between lines to fit the grid to the container**/
 	    if (!(Parent->Flags & WGTR_F_VSCROLLABLE))
-		rows_extra = aposSpaceOutLines(&(theGrid->HLines), &(theGrid->Rows), (Parent->height - Parent->pre_height));	//rows
+		// rows_extra =
+		aposSpaceOutLines(&(theGrid->HLines), &(theGrid->Rows), (Parent->height - Parent->pre_height));	//rows
 	    if (!(Parent->Flags & WGTR_F_HSCROLLABLE))
-		cols_extra = aposSpaceOutLines(&(theGrid->VLines), &(theGrid->Cols), (Parent->width - Parent->pre_width));	 //columns
+		// cols_extra =
+		aposSpaceOutLines(&(theGrid->VLines), &(theGrid->Cols), (Parent->width - Parent->pre_width));	 //columns
 	    
 	    /**modify the widgets' x,y,w, and h values to snap to their adjusted lines**/
 	    if (!(Parent->Flags & WGTR_F_VSCROLLABLE))
@@ -839,7 +841,7 @@ aposAddLinesToGrid(pWgtrNode Parent, pXArray HLines, pXArray VLines)
 {
 int i=0, count=0, isWin=0, isSP=0, height_adj=0, width_adj=0;
 pAposLine CurrLine, PrevLine;
-pXArray FirstCross, LastCross;
+// pXArray FirstCross, LastCross;
 
     /** Check if this node a scrollbar or window that needs an offset. **/
     aposSetOffsetBools(Parent, &isSP, &isWin, NULL, NULL, NULL, NULL);
