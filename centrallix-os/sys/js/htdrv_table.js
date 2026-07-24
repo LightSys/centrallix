@@ -1969,7 +1969,7 @@ function tbld_init(param)
     t.colsep = param.colsep;
     t.colsepbg = param.colsep_bgnd;
     t.colsepmode = param.colsep_mode;
-    t.gridinemptyrows = param.gridinemptyrows;
+    t.gridinemptyrows = param.grid_in_empty_rows;
     t.allowselect = param.allow_selection;
     t.showselect = param.show_selection;
     t.initselect = param.initial_selection;
@@ -2601,14 +2601,20 @@ function tbld_keydown(e)
 	else if (e.keyCode == e.DOM_VK_PAGE_UP || e.key == 'PageUp')
 	    {
 	    var target_row = t.rows[t.rows.firstvis];
-	    var target_y = t.vis_height - getRelativeY(target_row);
-	    t.Scroll(target_y, true);
+	    if (target_row)
+		{
+		var target_y = t.vis_height - getRelativeY(target_row);
+		t.Scroll(target_y, true);
+		}
 	    }
 	else if (e.keyCode == e.DOM_VK_PAGE_DOWN || e.key == 'PageDown' || (e.key == ' ' && !t.ttf_string))
 	    {
 	    var target_row = t.rows[t.rows.lastvis];
-	    var target_y = 0 - (getRelativeY(target_row) + $(target_row).height() + t.cellvspacing*2);
-	    t.Scroll(target_y, true);
+	    if (target_row)
+		{
+		var target_y = 0 - (getRelativeY(target_row) + $(target_row).height() + t.cellvspacing*2);
+		t.Scroll(target_y, true);
+		}
 	    }
 	else if (e.keyCode == e.DOM_VK_UP || e.key == 'ArrowUp')
 	    {
