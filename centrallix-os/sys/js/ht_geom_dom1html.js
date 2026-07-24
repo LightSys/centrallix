@@ -328,7 +328,7 @@ function setRelativeH(l, value) { return setRelative(l, value, 'height'); }
  *** @param l The DOM node being set. (Assumed to be defined.)
  *** @param value The new location in server-side px. This value must be
  *** 		  parseable as a number.
- *** @param {'x'|'y'|'w'|'h'} d The letter for the dimension being set.
+ *** @param {'left'|'top'|'width'|'height'} d The dimension being set.
  ***/
 function setResponsive(l, value, d) {
     /** Convert the value to a number, if possible. **/
@@ -370,15 +370,14 @@ function setResponsive(l, value, d) {
 
     /** Generate and set the CSS. **/
     const css = `calc(${value}px + (100% - ${fl_parent}px) * ${fl_scale})`;
-    const prop = { x:'left', y:'top', w:'width', h:'height' }[d];
-    return setRelative(l, css, prop);
+    return setRelative(l, css, d);
 }
 
 /** Call these functions instead of calling setResponsive() directly, which leads to less readable code. **/
-function setResponsiveX(l, value) { return setResponsive(l, value, 'x'); }
-function setResponsiveY(l, value) { return setResponsive(l, value, 'y'); }
-function setResponsiveW(l, value) { return setResponsive(l, value, 'w'); }
-function setResponsiveH(l, value) { return setResponsive(l, value, 'h'); }
+function setResponsiveX(l, value) { return setResponsive(l, value, 'left'); }
+function setResponsiveY(l, value) { return setResponsive(l, value, 'top'); }
+function setResponsiveW(l, value) { return setResponsive(l, value, 'width'); }
+function setResponsiveH(l, value) { return setResponsive(l, value, 'height'); }
 
 /** Moves a DOM node to a location within the window. **/
 function moveToAbsolute(l, x, y)
