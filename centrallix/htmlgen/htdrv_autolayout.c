@@ -146,7 +146,7 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Check for objects within this autolayout widget. **/
 	const int n_children = xaCount(&(tree->Children));
-	for (unsigned int i = 0u; i < n_children; i++)
+	for (int i = 0; i < n_children; i++)
 	    {
 	    pWgtrNode subtree = xaGetItem(&(tree->Children), i);
 	    if (!strcmp(subtree->Type, "widget/autolayoutspacer")) 
