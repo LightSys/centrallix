@@ -212,7 +212,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	    id
 	) != 0)
 	    {
-	    mssError(0, "HTSPANE", "Failed to write HTML for the down button.");
+	    mssError(0, "HTSPANE", "Failed to write HTML for the up button.");
 	    goto err;
 	    }
 	
@@ -299,8 +299,8 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 		"'"
 	    ">",
 	    id,
-	    ht_flex(w - 18, ht_get_parent_w(tree), 1.0),
-	    ht_flex(h,      ht_get_parent_h(tree), 1.0),
+	    ht_flex(w - 18, tree->width,  1.0),
+	    ht_flex(h,      tree->height, 1.0),
 	    z + 1
 	) != 0)
 	    {
@@ -321,7 +321,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	return 0;
 	
     err:
-	mssError(0, "HTTAB",
+	mssError(0, "HTSPANE",
 	    "Failed to render \"%s\":\"%s\" (id: %d).",
 	    tree->Name, tree->Type, id
 	);

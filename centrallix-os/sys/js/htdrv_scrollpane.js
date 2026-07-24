@@ -390,8 +390,8 @@ function sp_wheel(e)
     const { ctrlKey, shiftKey, altKey, deltaMode, deltaY } = e.Dom2Event;
     
     /** Ignore events on other DOM nodes if we can't find a scrollpane. **/
-    if (!(pane = sp_get_pane(e)))
-	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    const pane = sp_get_pane(e);
+    if (!pane) return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     
     /** Trigger Centrallix events. **/
     cn_activate(pane, 'Wheel', sp_get_event_params(e));
@@ -401,15 +401,18 @@ function sp_wheel(e)
 	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     
     /** Handle deltaMode. **/
+    const delta_pixels = 0;
+    const delta_lines  = 1;
+    const delta_pages  = 2;
     let deltaYpx = 0;
     switch (deltaMode)
 	{
-	case 0: deltaYpx = deltaY;               break; /* Pixels. */
-	case 1: deltaYpx = deltaY * 16;          break; /* Lines. */
-	case 2: deltaYpx = deltaY * pane.height; break; /* Pages. */
+	case delta_pixels: deltaYpx = deltaY;                                 break;
+	case delta_lines:  deltaYpx = deltaY * 16;                            break;
+	case delta_pages:  deltaYpx = deltaY * sp_get_available_height(pane); break;
 	default:
 	    {
-	    /** Unknown units, so assume px and clamp to prevent chaos. **/
+	    /** Unknown units, so assume px and clamp to limit any possible chaos. **/
 	    console.warn('Unknown deltaMode', deltaMode, '(value ' + deltaY + ')');
 	    deltaYpx = Math.clamp(10, deltaY, 100);
 	    }
@@ -595,7 +598,7 @@ function sp_mouseup(e)
 function sp_mouseover(e)
     {
     /** Check for mouse over on an sp element. **/
-    if (sp_target_mainlayer && e.kind === 'sp')
+    if (!sp_target_mainlayer && e.kind === 'sp')
 	{
 	/** Begin a mouse over. **/
 	cn_activate(e.mainlayer, 'MouseOver');
