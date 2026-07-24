@@ -154,6 +154,13 @@ function add_radiobutton(optionPane, param) {
 	    () => getRelativeH(optionPane) + 3,
 	    optionPane, 'rb', 3
 	);
+
+	// Track the y position of this option within the panel, used by rb_keyhandler().
+	Object.defineProperty(optionPane, 'yOffset', {
+	    get() { return getRelativeY(optionPane) + yOffset; },
+	    configurable: true,
+	    enumerable: true,
+	});
 }
 
 function rb_getfocus(xo,yo,l,c,n,a,from_kbd)
