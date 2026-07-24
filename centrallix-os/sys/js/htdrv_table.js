@@ -959,8 +959,7 @@ function tbld_detail_showcontainer()
 /** @param dw The detail widget DOM node. **/
 function tbld_update_detail(dw)
     {
-    const expand = (this.table.initselect !== 2);
-    if (dw.display_for && ((dw.on_new) ? wgtrGetServerProperty(dw, 'show_on_new', 0) : expand))
+    if (dw.display_for && ((dw.on_new) ? wgtrGetServerProperty(dw, 'show_on_new', 0) : (this.table.initselect !== 2)))
 	{
 	var found=false;
 	for(var j=0; j<this.detail.length; j++)

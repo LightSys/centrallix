@@ -438,12 +438,12 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		    "left:0px; "
 		    "top:0px; "
 		    "width:"ht_flex_format"; "
-		    "height:"ht_flex_format"; "
+		    "height:%POSpx; "
 		    "z-index:%POS; "
 		"}\n",
 		t->id, detail_id,
 		ht_flex_w(t->w - (t->demand_scrollbar ? 0 : 18), tree),
-		ht_flex_h(h, tree),
+		h,
 		z + 1
 	    ) != 0)
 		{
