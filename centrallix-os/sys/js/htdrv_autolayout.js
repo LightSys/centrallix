@@ -57,7 +57,7 @@ function al_reflow()
     var width = wgtrGetServerProperty(this,"width");
     var height = wgtrGetServerProperty(this,"height");
     var spacing = wgtrGetServerProperty(this,"spacing",0);
-    var align = wgtrGetServerProperty(this,"align","left");
+    var align = wgtrGetServerProperty(this,"align") || "left";
     var type = "vbox";
     if (wgtrGetServerProperty(this,"style") == "hbox" || wgtrGetType(this) == "widget/hbox")
 	type = "hbox";
