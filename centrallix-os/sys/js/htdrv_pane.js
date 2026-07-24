@@ -100,10 +100,7 @@ function pn_init(param)
     {
     var l = param.layer;
     var ml = param.mainlayer;
-    if((!cx__capabilities.Dom0NS) && cx__capabilities.CSS1)
-	{
-	ml = l;
-	}
+    if (cx__capabilities.CSS1) ml = l;
 
     htr_init_layer(ml,ml,"pn");
     if (ml != l) htr_init_layer(l,ml,"pn");
