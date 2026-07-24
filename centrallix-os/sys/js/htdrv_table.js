@@ -18,10 +18,17 @@ const tbld_resize_observer = new ResizeObserver((entries) => entries.forEach(({
     target: table
 }) =>
     {
+    // Skip the initial event: the page should only reflow on change.
+    if (!table.resize_observed)
+	{
+	table.resize_observed = true;
+	return;
+	}
+
     // Set the new size.
     table.param_width = width;
     table.param_height = height;
-    
+
     // The columns and rows span the content width (inside the cell spacing).
     const row_width = width - table.cellhspacing*2;
 
@@ -30,7 +37,7 @@ const tbld_resize_observer = new ResizeObserver((entries) => entries.forEach(({
     else table.UpdateThumb(false);
     table.UpdateNDM($(table).children('#ndm'));
     table.ReflowWidth(row_width);
-    
+
     // Resize all rows.
     const { rows } = table;
     for (let i = (table.has_header) ? 0 : rows.first; i <= rows.last; i++)
@@ -1420,16 +1427,13 @@ function tbld_change_width(move, compensate)
 function tbld_reflow_width(new_width)
     {
     // Compute the width adjustment factor for each row, based on the space
-    // excess or deficit.
-    // WARNING: I can't accurately explain why the value for `correction` is
-    //          correct or even necessary, but it seems to work in each case
-    //          I've tested so far. If you know a better value, or have any
-    //          way to describe why it is necessary, please update this code.
+    // excess or deficit.  The columns currently span up to the right edge of
+    // the last column; scale them so that edge lands on new_width (the row's
+    // content width).
     const table = this;
     const { colcount, cols } = table;
     const last_col = cols[colcount - 1];
-    const correction = cols.length - table.colsep;
-    const cur_width = last_col.xoffset + last_col.width + correction;
+    const cur_width = last_col.xoffset + last_col.width;
     const adj = new_width - cur_width;
     const adj_factor = adj / cur_width;
     
