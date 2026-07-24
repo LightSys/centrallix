@@ -22,11 +22,14 @@ const tbld_resize_observer = new ResizeObserver((entries) => entries.forEach(({
     table.param_width = width;
     table.param_height = height;
     
+    // The columns and rows span the content width (inside the cell spacing).
+    const row_width = width - table.cellhspacing*2;
+
     // Update update the scrollbar, no data message, and reflow the columns.
     if (table.rows.first !== null) table.Scroll(table.scroll_y, false);
     else table.UpdateThumb(false);
     table.UpdateNDM($(table).children('#ndm'));
-    table.ReflowWidth(width);
+    table.ReflowWidth(row_width);
     
     // Resize all rows.
     const { rows } = table;
@@ -34,7 +37,7 @@ const tbld_resize_observer = new ResizeObserver((entries) => entries.forEach(({
 	{
 	const row = rows[i];
 	if (!row) continue;
-	$(row).css({ width: (row.w = width) });
+	$(row).css({ width: (row.w = row_width) });
 	}
     }
 ));
@@ -112,7 +115,7 @@ function tbld_format_cell(cell, color)
 			'">' +
 			    htutil_encode(innertxt) + 
 			'</div>' +
-			((outertxt) ? ('<span style="padding:' + pad + 'px;">' + htutil_encode(outertxt) + '</span>') : '') + 
+			((outertxt) ? ('<span style="padding:' + pad + 'px;">' + htutil_encode(outertxt) + '</span>') : '') +
 		    '</div>';
 		}
 	    else
@@ -336,7 +339,7 @@ function tbld_redraw_all(dataobj, force_datafetch)
     // Redraw the no data message.
     var $ndm = $(this).children('#ndm');
     if (max >= min) $ndm.hide();
-    else this.UpdateNDM($ndm);
+    else { $ndm.show(); this.UpdateNDM($ndm); }
 
     // (re)draw the loaded records
     var selected_position_changed = false;
