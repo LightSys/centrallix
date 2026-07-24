@@ -2051,7 +2051,6 @@ function tbld_update_geom()
     this.max_display = Math.ceil(this.vis_height / this.min_rowheight);
     if (this.rowcache_size < this.max_display*2)
 	this.rowcache_size = this.max_display*2;
-    this.target_range = {start:1, end:this.rowcache_size};
     $(this.scrollctr).css
 	({
 	"visibility": "inherit",
@@ -2378,6 +2377,9 @@ function tbld_init(param)
 
     // set working area height and scrollbar size
     t.UpdateGeom();
+
+    // Initially display the first cache-worth of records.
+    t.target_range = { start: 1, end: t.rowcache_size };
 
     // Initialize the scrollbar.
     t.scrolldiv = htr_new_layer(t.param_width, t.scrollctr);
