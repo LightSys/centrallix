@@ -261,6 +261,8 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	}
     if (htrAddStylesheetItem_va(s,
 	"\t\t#rb%POStitle { "
+	    "position:absolute; "
+	    "visibility:inherit; "
 	    "left:10px; "
 	    "top:1px; "
 	    "width:50%%; "
@@ -451,7 +453,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	    "  <div id='rb%POSoption%POS' class='rb%POSall'>\n"
 	    "    <div id='rb%POSbuttonset%POS' style='visibility:hidden;'><img src='/sys/images/radiobutton_set.gif'></div>\n"
 	    "    <div id='rb%POSbuttonunset%POS' style='visibility:inherit;'><img src='/sys/images/radiobutton_unset.gif'></div>\n"
-	    "    <div id='rb%POSlabel%POS' style='color:\"%STR&HTE\";' nowrap>%STR&HTE</div>\n"
+	    "    <div id='rb%POSlabel%POS' style='color:%STR&CSSVAL;' nowrap>%STR&HTE</div>\n"
 	    "    <div id='rb%POSvalue%POS' style='visibility:hidden;'><a href='.'>%STR&HTE</a></div>\n"
 	    "  </div>\n",
 	    id, i, id,
@@ -476,7 +478,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
     /** Close divs and write title. **/
     if (htrAddBodyItem_va(s,
 	" </div></div>\n"
-	" <div id='rb%POStitle'><table><tr><td style='color:\"%STR&HTE\";' nowrap>%STR&HTE</td></tr></table></div>\n"
+	" <div id='rb%POStitle'><table><tr><td style='color:%STR&CSSVAL;' nowrap>%STR&HTE</td></tr></table></div>\n"
 	"</div>\n",
 	id, textcolor, title
     ) != 0)
@@ -489,6 +491,9 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
     rval = 0;
 
     end_free:
+    /** Clean up. **/
+    if (radio_buttons.nAlloc != 0) xaDeInit(&radio_buttons);
+
     if (rval != 0)
 	{
 	mssError(0, "HTRB",
@@ -497,10 +502,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	);
 	return -1;
 	}
-    
-    /** Clean up. **/
-    if (radio_buttons.nAlloc != 0) xaDeInit(&radio_buttons);
-    
+
     return rval;
     }
 
