@@ -32,7 +32,11 @@ const tbld_resize_observer = new ResizeObserver((entries) => entries.forEach(({
     // The columns and rows span the content width (inside the cell spacing).
     const row_width = width - table.cellhspacing*2;
 
-    // Update update the scrollbar, no data message, and reflow the columns.
+    // Recompute the visible-area geometry: vis_height, scroll container, and
+    // scrollbar area.
+    table.UpdateGeom();
+
+    // Update the scroll thumb, no data message, and reflow the columns.
     if (table.rows.first !== null) table.Scroll(table.scroll_y, false);
     else table.UpdateThumb(false);
     table.UpdateNDM($(table).children('#ndm'));
@@ -1213,17 +1217,14 @@ function tbld_scroll(y, animate)
     {
     if (animate == true)
 	animate = 'swing';
-    //this.log.push("tbld_scroll(" + y + ")");
+
     this.target_y = null;
 
-    // Current start and end of scrollable content
     const first_row = this.rows[this.rows.first];
     const last_row = this.rows[this.rows.last];
-    const scroll_start = getRelativeY(first_row);
-    const scroll_end = getRelativeY(last_row) + $(last_row).height() + this.cellvspacing*2;
 
     // Not enough data to scroll?
-    if (this.thumb_height == this.thumb_avail && y != -scroll_start)
+    if (this.thumb_height == this.thumb_avail && y != -getRelativeY(first_row))
 	{
 	this.OsrcDispatch();
 	return;
@@ -1235,6 +1236,10 @@ function tbld_scroll(y, animate)
 	this.OsrcDispatch();
 	return;
 	}
+
+    // Current start and end of scrollable content (rows exist by now).
+    const scroll_start = getRelativeY(first_row);
+    const scroll_end = getRelativeY(last_row) + $(last_row).height() + this.cellvspacing*2;
 
     // Clamp the scroll range
     if (this.rows.lastosrc == this.rows.last && (0-y) > scroll_end - this.vis_height)
