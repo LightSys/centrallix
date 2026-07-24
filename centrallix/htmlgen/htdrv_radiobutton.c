@@ -331,9 +331,10 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	const int is_selected = (htrGetBoolean(radio_button, "selected", 0) > 0);
 	wgtrGetPropertyValue(radio_button, "name", DATA_T_STRING, POD(&ptr));
 	
-	/** Create pointers to data. **/
+	/*** Create str pointers. value & label each default to the other.
+	 ***/
 	char* name = ptr; /* Name temporarily stored in the wgtrGetPropertyValue() buffer. */
-	char* value = value_buf;
+	char* value = (value_buf[0] == '\0') ? label_buf : value_buf;
 	char* label = (label_buf[0] == '\0') ? value_buf : label_buf;
 	
 	/** Link the radio button DOM node to widget data. **/
