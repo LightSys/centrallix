@@ -110,8 +110,8 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
     /** Get background attributes. **/
     char main_background[128] = "";
     char outline_background[128] = "";
-    if (htrGetBackground(tree, NULL, true, main_background, sizeof(main_background)) != 0) goto end_free;
-    if (htrGetBackground(tree, "outline", true, outline_background, sizeof(outline_background)) != 0) goto end_free;
+    htrGetBackground(tree, NULL, true, main_background, sizeof(main_background));
+    htrGetBackground(tree, "outline", true, outline_background, sizeof(outline_background));
     
     /** User requesting expression for selected tab? **/
     if (htrCheckAddExpression(s, tree, name, "value") < 0) goto end_free;
