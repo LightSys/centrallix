@@ -36,6 +36,9 @@ These rules apply to every language in Centrallix, unless a section states other
 - Language constructs (e.g. `if ()`, `for ()`, `while ()`, `switch ()`, etc.) should always be separated from their parentheses with a space.
 - Function calls (e.g. `mssError()`) and function declarations should *not* be separated from their parentheses by a space.
 - Pointer types attach the `*` to the type, not to the identifier: `char* p`, not `char *p`.  A pointer is part of the type, so it belongs with the type.
+- Do not put a space just inside parentheses or brackets.
+- Commas and semicolons are followed by a space (or line break), never preceded by one.
+- Unary operators, `->`, `.`, `[]`, and casts are written against their operand, e.g. `!found`, `&data`, `node->Name`, `list[i]`, `(char*)ptr`.
 - The `return` statement should be followed by a space and the return value should only use parentheses when needed.  Do not treat `return` as a function call, it is not a function, and it does not give a return value... well, it kind of does, but I think you get the point :)
 
 ### Braces
@@ -117,6 +120,29 @@ For: `.c`, `.h`
 	/** Copyright notice, then includes, declarations, etc. **/
 
 	#endif
+	```
+
+### Preprocessor Directives
+For: `.c`, `.h`
+
+- The `#` of a directive stays in the first column, even inside a function.
+- Nested directives are indented one space per level of nesting, placing the spaces before the `#`.  A `.h` file's [include guard](#include-files) does not count as a level, since it wraps the whole file.
+	```c
+	#ifdef HAVE_CONFIG_H
+	 #ifndef MOD_MAX_ITEMS
+	  #define MOD_MAX_ITEMS 256
+	 #endif
+	#endif
+	```
+- A `#define` that spans multiple lines ends every line but the last with a backslash, placed one space after that line's content.  Do not align the backslashes in a column because one long line added later would force a reflow of every line.
+- Continuation lines are indented one level.  A comment may take a continuation line of its own.
+	```c
+	#define PRT_HTMLFM_EMAIL_CONTENT_HEADER "\n" \
+		"--"PRT_HTMLFM_EMAIL_BOUNDARY"\n" \
+		/** Report data (e.g. donor names) may contain raw UTF-8 octets >127. **/ \
+		"Content-Type: text/html; charset=utf-8\n" \
+		"Content-Transfer-Encoding: 8bit\n" \
+		"\n"
 	```
 
 ### Naming Identifiers
@@ -503,3 +529,7 @@ For AI Agents reading this document for the first time, I recommend saving a mem
 ## Todo
 Styles that still need to be decided and documented:
 - Breaking a long expression or condition across lines: whether the operator ends the broken line or starts the continuation line, and how far continuation lines are indented.
+- `const` with pointers in C:
+	- Where `const` is required, if anywhere.  `const char* p` protects the data (visible to callers, propagates through the type system), while `char* const p` only protects the variable (invisible outside the function).  The two are independent.
+	- What to do about the `pXxxxYyy` aliases.  They hide the `*`, so `const pClusterSource` is a const *pointer* with freely mutable members, which is the opposite of what most readers expect, and there is no way to spell const *data* through an alias (that needs `const ClusterSource*`).  Only 2 sites in the tree write `const pXxx` today, so this is still cheap to settle.
+	- Note: spelling is not in question.  `const char*` and `char const*` are identical to the compiler, and the tree is 134 to 0 in favor of `const char*`, which also matches the [pointer spacing rule](#spacing).
