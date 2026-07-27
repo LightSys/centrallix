@@ -29,7 +29,7 @@ These rules apply to every language in Centrallix, unless a section states other
 ### Indentation
 - Code is always indented using 1 tab, not with spaces.
 - You can set your editor tab length to any size you prefer.  However, code should look reasonable with any tab length up to 8 spaces.
-- Prefer tabs, but always use spaces aligning characters, such as in a copyright notice.
+- Prefer tabs, but always use spaces for aligning characters, such as in a copyright notice or a column of struct members.  Tabs break alignment when the viewer uses a different tab length.
 - Lines should not have trailing whitespace.  Thus, blank lines are not indented.
 
 ### Spacing
@@ -138,8 +138,8 @@ All identifiers should be spelled correctly and avoid using non-obvious abbrevia
 ### Struct & Union Declarations
 For: `.c`, `.h`
 
-- A struct or union is declared together with its `typedef` in a single statement, which declares both the type name and the pointer alias.
-	- The alias is written `*pXxxxYyy` (C syntax requires the `*` to attach to the name here).  This is an exception to the [pointer spacing rule](#spacing).
+- A struct or union is declared together with its `typedef` in a single statement (see [naming identifiers](#naming-identifiers) for the names used).
+- C syntax requires the `*` of the pointer alias to attach to the name, so this is an exception to the [pointer spacing rule](#spacing).
 - Each member is declared on its own line.
 - Member names are aligned in a column, padded with spaces (never tabs, see [indentation](#indentation)).
 	- Leave a few extra spaces of padding where a longer type may be added later, especially in a struct whose types are all short or which has many members.  This allows adding the type later without a reflow on every line that buries the real change in git-blame.  In isolation of other context, padding to column 20 is probably a good idea.
@@ -257,13 +257,13 @@ caKMeans(
 - Use explicit equality checks to reduce confusion, especially for programmers less familiar with the language.
 - Correct example:
 	```c
-	void* data = nmMalloc(sizeof(ModDataT));
-	if (data == NULL) goto error;
+	if (source->nDatas != 0) processDatas(source);
+	if (source->Name != NULL) printName(source->Name);
 	```
 - Incorrect example:
 	```c
-	void* data = nmMalloc(sizeof(ModDataT));
-	if (!data) goto error;
+	if (source->nDatas) processDatas(source);
+	if (source->Name) printName(source->Name);
 	```
 - **Exception**:  This rule may be held loosely or ignored in `js`, where explicit truthiness checks can be cumbersome and confusing.
 
@@ -434,9 +434,9 @@ All code should begin with a copyright notice using the language's commenting sy
 **Exception**: A copyright notice is optional for any file in `centrallix-os`.
 
 Copyright notices should follow these rules:
-- The copyright notice is placed as early in the file as possible (to the extent the language allows), even before `#include` or other import statements. The only exception is the `#ifndef` headers in `.h` files, which are treated as headers for the `.h` file and placed before the copyright notice.
+- The copyright notice is placed as early in the file as possible (to the extent the language allows), even before `#include` or other import statements.  The only exception is the `#ifndef` header in a `.h` file (see [file organization](#file-organization)).
 - Copyright notices are 74 characters wide, so a cursor on the right edge of one is in column 75.  This may need to vary slightly depending on the language's comment syntax.
-- Use spaces when spacing out a copyright notice, not tabs.  Tabs break the layout if the viewer uses a different tab length.
+- Use spaces when spacing out a copyright notice, not tabs (see [indentation](#indentation)).
 
 This is the format in C:
 ```c
