@@ -19,7 +19,12 @@ All modules have an assigned prefix. This is usually (but not always!) a two-to-
 
 
 ## Style Rules
-All code should follow a consistent style when possible (regardless of language).  This helps developers to read it quickly and accurately without being tripped up by abrupt changes in style or unfamiliar coding practices.
+All code should follow a consistent style when possible.  This helps developers to read it quickly and accurately without being tripped up by abrupt changes in style or unfamiliar coding practices.
+
+These rules apply to every language in Centrallix, unless a section states otherwise.  A section that only covers certain file types is marked with a `For:` line listing them.  Examples use C, the most common language in the codebase.
+
+<!-- TODO: Israel - Document the deltas for cxjs `.js` files and structure files (`.app`, `.cmp`). -->
+
 
 ### Indentation
 - Code is always indented using 1 tab, not with spaces.
@@ -78,6 +83,7 @@ switch (algorithm) {
 
 ### Include Files
 For: `.c`, `.h`
+
 - If a `.c` file uses an identifier from a `.h` or C standard library not available by default, that file must `#include` the correct `.h` file or library.
 - For example, the `mssError()` function is defined in `mtsession.h`, so that file must have a `#include` in every C file that uses `mssError()`
 	```c
@@ -133,6 +139,10 @@ All identifiers should be spelled correctly and avoid using non-obvious abbrevia
 - Code should rarely be indented more than 3-4 nested blocks within the enclosing function.  For example, if you write an `if` statement in an `if` statement in a `for` loop in an `if` statement, consider refactoring code into a helper function and double check that you're using [guard clauses](#error-checking-format) properly.
 
 ### Function Declarations
+For: `.c`, `.h`
+
+*The layout rules below (short declarations on one line, long parameter lists one per line) are worth following in any language.  The rest is specific to C.*
+
 - A function's return type should be written on its own line, and the function name begins on the line below it.  This makes a definition easy to find, because a search for `^name` matches the definition and nothing else.
 	- This applies to definitions only.  Prototype declarations, such as those in a `.h` file, keep the return type on the same line as the name because they should not appear in searches for definitions.
 - Macro functions are declared on one line because they do not have an explicit return type.
@@ -223,12 +233,16 @@ All code is "tech debt", although I prefer the term "tech cost".  "Code clutter"
 - All files should end with a blank line (makes writing to the end easier).
 
 ### Flags
+For: `.c`, `.h`
+
 - Flags are always stored in full-length integers, and never as single-bit bitfields (i.e., `Flag:1;`).  This allows bulk editing and passing multiple flags as one parameter.
 - Modules should define flag values using macros.  These macros follow the naming scheme `MOD_STRUCT_F_XXX` where "`MOD`" is the module prefix, "`STRUCT`" is a short abbreviation for the structure that the flags serve, and "`XXX`" is the name of the individual flag value itself.  Use these macro values; DO NOT USE MAGIC VALUES.
 - Flag comparisons should use `flags & MOD_STRUCT_F_XXX`, which is considered a boolean for the purposes of the [Truthiness](#truthiness) rule.
 
 ### Multi-Type Structures
-- If a structure can represent kinds or types (not data types, this is a conceptual thing), macors are used to list those types.
+For: `.c`, `.h`
+
+- If a structure can represent kinds or types (not data types, this is a conceptual thing), macros are used to list those types.
 - These use the naming scheme: `MOD_STRUCT_T_XXX` (see above [flags](#flags) for more info).
 
 
@@ -343,6 +357,8 @@ Any English sentence should use two spaces (or a newline/similar whitespace) bet
 Also called *license comments*.
 
 All code should begin with a copyright notice using the language's commenting syntax.  Copyright comments use their own style (documented below) which may be different from the general commenting style.
+
+**Exception**: A copyright notice is optional for any file in `centrallix-os`.
 
 Copyright notices should follow these rules:
 - The copyright notice is placed as early in the file as possible (to the extent the language allows), even before `#include` or other import statements. The only exception is the `#ifndef` headers in `.h` files, which are treated as headers for the `.h` file and placed before the copyright notice.
