@@ -181,6 +181,11 @@ typedef struct _ClusterSource {
 } ClusterSource, *pClusterSource;
 ```
 
+#### Magic Structs
+If a struct supports `magic.h` by beginning with a magic field of type `Magic_t`, the following rules should be followed:
+- When creating the struct, call `SETMAGIC()` with the appropriate magic value (e.g. `MGK_FILE`).
+- When a new scope first gains access to the struct (e.g. the first time a function reads and stores a pointer to it) and intends to read any field from it (rather than just passing the pointer to another scope), it must call `ASSERTMAGIC()` immediately (after verifying that the struct is not null, if needed).  No data should be read from the struct or used before `ASSERTMAGIC()` is called.
+
 ### File Organization
 For: `.c`, `.h`
 
