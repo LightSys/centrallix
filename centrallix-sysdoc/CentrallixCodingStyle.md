@@ -163,7 +163,7 @@ All identifiers should be spelled correctly and avoid using non-obvious abbrevia
 	- Both the struct type (`XxxxYyy`) and a pointer alias (`pXxxxYyy`) are declared in the same typedef.
 	- Structs reachable from outside the module start their name with the module prefix.  (As with functions, the prefix is optional for internal structs.)
 	- Members of a struct or union use PascalCase.
-		- **Exception**:  A count member may take a lowercase `n` prefix, and a pointer member a lowercase `p` prefix, before the PascalCase name.  (e.g. `nDatas`, `pCluster`)
+		- **Exception**:  A count member may take a lowercase `n` prefix, and a pointer member a lowercase `p` prefix, before the PascalCase name.  (e.g. `nData`, `pCluster`)
 - In C, value macros are treated as globals and follow the naming style of the global struct.
 - In C, function macros are treated as functions, following those styles.
 - In a structure file, the name of a group, such as a widget, uses snake_case.
@@ -181,7 +181,7 @@ For example:
 ```c
 typedef struct _ClusterSource {
 	Magic_t          Magic;
-	unsigned int     nDatas;
+	unsigned int     nData;
 	char*            Name;
 	pVector*         Vectors;
 	DateTime         DateCreated;
@@ -291,6 +291,9 @@ caKMeans(
 ### Local Variables
 - Local variables should be declared as close to where they are used as possible, and especially within the narrowest scope.  This reduces the amount of worrying about side effects and scrolling around that a programmer must do when seeing them.
 - Variables should be declared using `const` (or the equivalent keyword for the relevant language) when their value is not changed.  This serves as a note to the reader so they know that the value won't change.
+- In `js`, declare with `const`, or with `let` when the value changes.
+	- Never use `var`.  It is scoped to the entire function, so it cannot be declared in the narrowest scope.
+	- Never assign to a name that was not declared.  This does not create a local variable, it creates a global one that outlives the function and is visible to every other file, possibly causing far-reaching side-effects.
 - A struct must be fully zeroed/initialized when allocated.  Memory a function receives may hold stale data that still looks valid, such as an old `Magic` value or a pointer into live memory.  In C, use `memset()` when the struct's padding matters, such as when it is written to a file or the network, or compared with `memcmp()`.
 - **Exception**:  C dynamic arrays are their own flavor of fun that sometimes require exceptions to the above rules.
 
@@ -315,7 +318,12 @@ For: `.c`, `.h`
 	if (source->Name) printName(source->Name);
 	if (!strcmp(source->Title, "None")) queryTitle(source->Title);
 	```
-- **Exception**:  This rule may be held loosely or ignored in `js`, where explicit truthiness checks can be cumbersome and confusing.
+
+### Equality
+For: `js`
+
+- Compare with `===` and `!==`, not `==` and `!=`.  The loose operators convert their operands before comparing, which surprises readers and hides bugs.
+- **Exception**:  `x == null` (or `x != null`) as an idiomatic way to test for `null` and `undefined` together is allowed.
 
 ### Returning
 - Any function that returns a non-void type must terminate all paths with a `return`.
@@ -582,6 +590,9 @@ Styles that still need to be decided and documented:
 	- Where `const` is required, if anywhere.  `const char* p` protects the data (visible to callers, propagates through the type system), while `char* const p` only protects the variable (invisible outside the function).  The two are independent.
 	- What to do about the `pXxxxYyy` aliases.  They hide the `*`, so `const pClusterSource` is a const *pointer* with freely mutable members, which is the opposite of what most readers expect, and there is no way to spell const *data* through an alias (that needs `const ClusterSource*`).  Only 2 sites in the tree write `const pXxx` today, so this is still cheap to settle.
 	- Note: spelling is not in question.  `const char*` and `char const*` are identical to the compiler, and the tree is 134 to 0 in favor of `const char*`, which also matches the [pointer spacing rule](#spacing).
+- How `js` functions are named.
+	- [Naming identifiers](#naming-identifiers) calls for camelCase after the module prefix, but `centrallix-os/sys/js` is 1296 to 188 in favor of the prefix followed by snake_case (e.g. `ca_redraw_year()`).
+	- Which version of ECMAScript `js` files may assume?  Requiring `let` and `const` already sets the floor at ES6 (2015), but the tree also uses arrow functions, spread, `async`, template literals, and `class` without a stated target.
 - Whether the C `enum` keyword should be used instead of the macro pattern in [constant sets](#constant-sets).  It is allowed for now.
 	- `enum` Pros:  The compiler assigns the values, it can warn about an unhandled case in a `switch`, and debuggers show the value's name.
   - Macro Pattern Pros:  An `enum`'s underlying type is implementation-defined, so it cannot be sized for a struct member or a wire format, and in C it gives no type checking anyway.
