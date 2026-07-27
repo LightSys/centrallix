@@ -585,17 +585,17 @@ For AI Agents reading this document for the first time, I recommend saving a mem
 
 ## Todo
 Styles that still need to be decided and documented:
-- Breaking a long expression or condition across lines: whether the operator ends the broken line or starts the continuation line, and how far continuation lines are indented.
-- `const` with pointers in C:
+- How XML and XSL files are styled.  There are 8 of them, mostly in `centrallix-doc`, and they include `Widgets/widgets.xml` and `Report/report.xml`, which document every widget and are edited often.
+- How Python files are styled.  The 26 files in `centrallix-ui-test/tests` have no rules today, and several here do not fit them.
+- How Markdown files are styled, beyond their [copyright notice](#markdown-files) and the two sections on the `centrallix-doc` and `centrallix-sysdoc` trees.
+- Decide how to break up a long expression or condition across lines: whether the operator ends the broken line or starts the continuation line, and how far continuation lines are indented.
+- Add rules for `const` with pointers in C:
 	- Where `const` is required, if anywhere.  `const char* p` protects the data (visible to callers, propagates through the type system), while `char* const p` only protects the variable (invisible outside the function).  The two are independent.
 	- What to do about the `pXxxxYyy` aliases.  They hide the `*`, so `const pClusterSource` is a const *pointer* with freely mutable members, which is the opposite of what most readers expect, and there is no way to spell const *data* through an alias (that needs `const ClusterSource*`).  Only 2 sites in the tree write `const pXxx` today, so this is still cheap to settle.
 	- Note: spelling is not in question.  `const char*` and `char const*` are identical to the compiler, and the tree is 134 to 0 in favor of `const char*`, which also matches the [pointer spacing rule](#spacing).
 - How `js` functions are named.
 	- [Naming identifiers](#naming-identifiers) calls for camelCase after the module prefix, but `centrallix-os/sys/js` is 1296 to 188 in favor of the prefix followed by snake_case (e.g. `ca_redraw_year()`).
 	- Which version of ECMAScript `js` files may assume?  Requiring `let` and `const` already sets the floor at ES6 (2015), but the tree also uses arrow functions, spread, `async`, template literals, and `class` without a stated target.
-- How XML and XSL files are styled.  There are 8 of them, mostly in `centrallix-doc`, and they include `Widgets/widgets.xml` and `Report/report.xml`, which document every widget and are edited often.
-- How Python files are styled.  The 26 files in `centrallix-ui-test/tests` have no rules today, and several here do not fit them.
-- How Markdown files are styled, beyond their [copyright notice](#markdown-files) and the two sections on the `centrallix-doc` and `centrallix-sysdoc` trees.
-- Whether the C `enum` keyword should be used instead of the macro pattern in [constant sets](#constant-sets).  It is allowed for now.
+- Decide whether the C `enum` keyword should be used instead of the macro pattern in [constant sets](#constant-sets).  It is allowed for now.
 	- `enum` Pros:  The compiler assigns the values, it can warn about an unhandled case in a `switch`, and debuggers show the value's name.
-  - Macro Pattern Pros:  An `enum`'s underlying type is implementation-defined, so it cannot be sized for a struct member or a wire format, and in C it gives no type checking anyway.
+	- Macro Pattern Pros:  An `enum`'s underlying type is implementation-defined, so it cannot be sized for a struct member or a wire format, and in C it gives no type checking anyway.
