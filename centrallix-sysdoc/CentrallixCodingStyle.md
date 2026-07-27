@@ -281,7 +281,15 @@ caKMeans(
 ### Local Variables
 - Local variables should be declared as close to where they are used as possible, and especially within the narrowest scope.  This reduces the amount of worrying about side effects and scrolling around that a programmer must do when seeing them.
 - Variables should be declared using `const` (or the equivalent keyword for the relevant language) when their value is not changed.  This serves as a note to the reader so they know that the value won't change.
+- A struct must be fully zeroed/initialized when allocated.  Memory a function receives may hold stale data that still looks valid, such as an old `Magic` value or a pointer into live memory.  In C, use `memset()` when the struct's padding matters, such as when it is written to a file or the network, or compared with `memcmp()`.
 - **Exception**: C dynamic arrays are their own flavor of fun that sometimes require exceptions to the above rules.
+
+### Sensitive Data
+For: `.c`, `.h`
+
+- Potentially sensitive data, such as a password, a key, or any other credential, must be shredded before the memory holding it is freed or goes out of scope.
+- Use `cxssShred()` in `centrallix` and `cxsecShred()` in `centrallix-lib`.  A plain `memset()` is not enough: the compiler is free to optimize it away if it thinks the memory won't be read.
+- Every path out of the scope must shred, including error paths, so the [error handler](#error-checking-format) is usually responsible for shredding.
 
 ### Truthiness
 - Do not check the truthiness of any value other than a boolean.
