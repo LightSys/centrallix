@@ -29,6 +29,7 @@ These rules apply to every language in Centrallix, unless a section states other
 - You can set your editor tab length to any size you prefer.  However, code should look reasonable with any tab length up to 8 spaces.
 - Prefer tabs, but always use spaces for aligning characters, such as in a copyright notice or a column of struct members.  Tabs break alignment when the viewer uses a different tab length.
 - Lines should not have trailing whitespace.  Thus, blank lines are not indented.
+- In a makefile, the tab that begins a recipe line is required by the syntax, so it must be a literal tab.  Replacing it with spaces breaks the build.
 
 ### Spacing
 - Language constructs (e.g. `if ()`, `for ()`, `while ()`, `switch ()`, etc.) should always be separated from their parentheses with a space.
@@ -37,6 +38,7 @@ These rules apply to every language in Centrallix, unless a section states other
 - Do not put a space just inside parentheses or brackets.
 - Commas and semicolons are followed by a space (or line break), never preceded by one.
 - Unary operators, `->`, `.`, `[]`, and casts are written against their operand, e.g. `!found`, `&data`, `node->Name`, `list[i]`, `(char*)ptr`.
+- In a makefile, an assignment is spaced like any other binary operator, e.g. `CC = @CC@`.
 - The `return` statement should be followed by a space and the return value should only use parentheses when needed.  Do not treat `return` as a function call, it is not a function, and it does not give a return value... well, it kind of does, but I think you get the point :)
 
 ### Braces
@@ -86,7 +88,7 @@ switch (algorithm) {
 	 *** parameters.
 	 ***/
 	```
-- **Exception**:  A structure file may only use the comment syntax its parser accepts (such as `//` for `.app` and `.cmp` files).  Follow the rules above to the extent the file's parser allows.
+- **Exception**:  A file may only use the comment syntax its language accepts, such as `//` in an `.app` file or `#` in a makefile.  Follow the rules above to the extent that syntax allows.
 
 ### Include Files
 For: `.c`, `.h`
@@ -432,10 +434,10 @@ ciLoadSource(char* path) {
 
 	return 0;
 
-	error:
-		mssError(0, "CI", "Could not load source '%s'", path);
-		nmFree(src, sizeof(ClusterSource));
-		return -1;
+ error:
+	mssError(0, "CI", "Could not load source '%s'", path);
+	nmFree(src, sizeof(ClusterSource));
+	return -1;
 }
 ```
 
