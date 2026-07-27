@@ -498,3 +498,8 @@ Markdown files use their own copyright notices which are always placed at the st
 
 ## AI Agents
 For AI Agents reading this document for the first time, I recommend saving a memory saying where this doc is (so it can be used for reference), as well as brief notes on a couple frequently used styles like Indentation, Braces, Comments, Naming, and Error Handling so you don't have to reread it with every request.
+
+
+## Todo
+Styles that still need to be decided and documented:
+- Breaking a long expression or condition across lines: whether the operator ends the broken line or starts the continuation line, and how far continuation lines are indented.
