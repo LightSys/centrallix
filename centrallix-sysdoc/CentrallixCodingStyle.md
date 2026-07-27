@@ -49,6 +49,11 @@ These rules apply to every language in Centrallix, unless a section states other
 	- More than one line of code.
 	- Another such structure.
 - An `else` or `else if` starts on the line of the closing brace of the block before it, not on the line after that brace.
+- **Exception**:  In a structure file, braces group data rather than code, so every group is braced regardless of its number of attributes.
+	- A group with no child groups may be written on one line, which is sometimes clearer in data-heavy files.
+		```
+		id "system/querypivot" { type=integer; usage=key; }
+		```
 
 ### Switch Statements
 - `case` and `default` labels are indented one level inside the `switch`.
@@ -83,6 +88,7 @@ switch (algorithm) {
 	 *** parameters.
 	 ***/
 	```
+- **Exception**:  A structure file may only use the comment syntax its parser accepts (such as `//` for `.app` and `.cmp` files).  Follow the rules above to the extent the file's parser allows.
 
 ### Include Files
 For: `.c`, `.h`
@@ -157,9 +163,10 @@ All identifiers should be spelled correctly and avoid using non-obvious abbrevia
 	- Both the struct type (`XxxxYyy`) and a pointer alias (`pXxxxYyy`) are declared in the same typedef.
 	- Structs reachable from outside the module start their name with the module prefix.  (As with functions, the prefix is optional for internal structs.)
 	- Members of a struct or union use PascalCase.
-		- **Exception**: A count member may take a lowercase `n` prefix, and a pointer member a lowercase `p` prefix, before the PascalCase name.  (e.g. `nDatas`, `pCluster`)
+		- **Exception**:  A count member may take a lowercase `n` prefix, and a pointer member a lowercase `p` prefix, before the PascalCase name.  (e.g. `nDatas`, `pCluster`)
 - In C, value macros are treated as globals and follow the naming style of the global struct.
 - In C, function macros are treated as functions, following those styles.
+- In a structure file, the name of a group, such as a widget, uses snake_case.
 
 ### Struct & Union Declarations
 For: `.c`, `.h`
@@ -187,15 +194,18 @@ If a struct supports `magic.h` by beginning with a magic field of type `Magic_t`
 - When a new scope first gains access to the struct (e.g. the first time a function reads and stores a pointer to it) and intends to read any field from it (rather than just passing the pointer to another scope), it must call `ASSERTMAGIC()` immediately (after verifying that the struct is not null, if needed).  No data should be read from the struct or used before `ASSERTMAGIC()` is called.
 
 ### File Organization
-For: `.c`, `.h`
+For: `.c`, `.h`, structure files
 
-It is recommended to order the top level of a file in the following order, for consistency with other files, unless there is a good reason to do otherwise (such as a forward reference):
-1. Copyright notice (after the include guard in a `.h` file).
-2. `#include` groups.
-3. Macros.
-4. `Typedef`s, structs, and unions.
-5. Prototypes for functions defined later in the same file.
-6. Function definitions (`.c` files).
+In a structure file, `$Version=2$` is always the first line, placed before the copyright notice (optional for files in `centrallix-os`).
+
+In a `.c` or `.h` file, it is recommended to order the top level of the file as follows, for consistency with other files, unless there is a good reason to do otherwise (such as a forward reference):
+1. `#include` guards (in a `.h` file).
+2. Copyright notice.
+3. `#include` groups.
+4. Macros.
+5. `Typedef`s, structs, and unions.
+6. Prototypes for functions defined later in the same file.
+7. Function definitions (`.c` files).
 
 **Note**: Many files may not have all of these sections.
 
@@ -282,7 +292,7 @@ caKMeans(
 - Local variables should be declared as close to where they are used as possible, and especially within the narrowest scope.  This reduces the amount of worrying about side effects and scrolling around that a programmer must do when seeing them.
 - Variables should be declared using `const` (or the equivalent keyword for the relevant language) when their value is not changed.  This serves as a note to the reader so they know that the value won't change.
 - A struct must be fully zeroed/initialized when allocated.  Memory a function receives may hold stale data that still looks valid, such as an old `Magic` value or a pointer into live memory.  In C, use `memset()` when the struct's padding matters, such as when it is written to a file or the network, or compared with `memcmp()`.
-- **Exception**: C dynamic arrays are their own flavor of fun that sometimes require exceptions to the above rules.
+- **Exception**:  C dynamic arrays are their own flavor of fun that sometimes require exceptions to the above rules.
 
 ### Sensitive Data
 For: `.c`, `.h`
@@ -497,10 +507,10 @@ Also called *license comments*.
 
 All code should begin with a copyright notice using the language's commenting syntax.  Copyright comments use their own style (documented below) which may be different from the general commenting style.
 
-**Exception**: A copyright notice is optional for any file in `centrallix-os`.
+**Exception**:  A copyright notice is optional for any file in `centrallix-os`.
 
 Copyright notices should follow these rules:
-- The copyright notice is placed as early in the file as possible (to the extent the language allows), even before `#include` or other import statements.  The only exception is the `#ifndef` header in a `.h` file (see [file organization](#file-organization)).
+- The copyright notice is placed as early in the file as possible (to the extent the language allows), even before `#include` or other import statements.  A few things may come first, though, as described in [file organization](#file-organization).
 - Copyright notices are 74 characters wide, so a cursor on the right edge of one is in column 75.  This may need to vary slightly depending on the language's comment syntax.
 - Use spaces when spacing out a copyright notice, not tabs (see [indentation](#indentation)).
 
