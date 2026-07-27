@@ -23,8 +23,6 @@ All code should follow a consistent style when possible.  This helps developers 
 
 These rules apply to every language in Centrallix, unless a section states otherwise.  A section that only covers certain file types is marked with a `For:` line listing them.  Examples use C, the most common language in the codebase.
 
-<!-- TODO: Israel - Document the deltas for `js` files and structure files (`.app`, `.cmp`). -->
-
 
 ### Indentation
 - Code is always indented using 1 tab, not with spaces.
