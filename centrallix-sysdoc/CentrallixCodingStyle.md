@@ -254,16 +254,17 @@ caKMeans(
 
 ### Truthiness
 - Do not check the truthiness of any value other than a boolean.
+- This includes using the not operator (`!` in C), which also checks truthiness.
 - Use explicit equality checks to reduce confusion, especially for programmers less familiar with the language.
 - Correct example:
 	```c
-	if (source->nDatas != 0) processDatas(source);
 	if (source->Name != NULL) printName(source->Name);
+	if (strcmp(source->Title, "None") == 0) queryTitle(source->Title);
 	```
 - Incorrect example:
 	```c
-	if (source->nDatas) processDatas(source);
 	if (source->Name) printName(source->Name);
+	if (!strcmp(source->Title, "None")) queryTitle(source->Title);
 	```
 - **Exception**:  This rule may be held loosely or ignored in `js`, where explicit truthiness checks can be cumbersome and confusing.
 
