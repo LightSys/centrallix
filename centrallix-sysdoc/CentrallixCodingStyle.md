@@ -65,7 +65,7 @@ switch (algorithm) {
 	}
 	default: {
 		mssError(1, "CA", "Unknown clustering algorithm (%d)", algorithm);
-		goto err;
+		goto error;
 	}
 }
 ```
@@ -209,12 +209,12 @@ caKMeans(
 - Correct example:
 	```c
 	void* data = nmMalloc(sizeof(ModDataT));
-	if (data == NULL) goto err;
+	if (data == NULL) goto error;
 	```
 - Incorrect example:
 	```c
 	void* data = nmMalloc(sizeof(ModDataT));
-	if (!data) goto err;
+	if (!data) goto error;
 	```
 - **Exception**:  This rule may be held loosely or ignored in `js`, where explicit truthiness checks can be cumbersome and confusing.
 
@@ -263,11 +263,11 @@ Error checks should use guard clauses.  These reduce indentation, and with it, t
 **Correct**
 ```c
 void* data = nmMalloc(sizeof(ModDataT));
-if (data == NULL) goto err;
+if (data == NULL) goto error;
 void* data2 = nmMalloc(sizeof(ModDataT));
-if (data2 == NULL) goto err;
+if (data2 == NULL) goto error;
 void* data3 = nmMalloc(sizeof(ModDataT));
-if (data3 == NULL) goto err;
+if (data3 == NULL) goto error;
 /** Some logic... **/
 ```
 
@@ -280,12 +280,33 @@ if (data != NULL) {
 		void* data3 = nmMalloc(sizeof(ModDataT));
 		if (data3 != NULL) {
 			/** Some logic... **/
-		} else goto err;
-	} else goto err;
-} else goto err;
+		} else goto error;
+	} else goto error;
+} else goto error;
 ```
 
 Typically, errors in C code will `goto` an error handler at the end of the current scope or function.  This code is responsible for clearing up memory.  It also usually logs an error message with any helpful info available in that scope so that individual error sites don't need to specify that info.
+
+In C, the error handler follows these rules:
+- The handler is labeled `error:` or `end:` (if it also handles a success case), placed at the end of the function or scope, and indented only once (typically the level of the function body).
+- The handler's code is indented one level inside its label.
+
+```c
+int
+ciLoadSource(char* path) {
+	pClusterSource src = nmMalloc(sizeof(ClusterSource));
+	if (src == NULL) goto error;
+
+	/** Some logic... **/
+
+	return 0;
+
+	error:
+		mssError(0, "CI", "Could not load source '%s'", path);
+		nmFree(src, sizeof(ClusterSource));
+		return -1;
+}
+```
 
 ### If an error occurs...
 - Always print an error message if your context can add information about the error.
