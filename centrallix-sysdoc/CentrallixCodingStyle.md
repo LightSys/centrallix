@@ -316,18 +316,44 @@ All code is "tech debt", although I prefer the term "tech cost".  "Code clutter"
 - All files should have LF line endings.
 - All files should end with a newline, so the last line of content is complete (this also makes writing to the end easier).
 
-### Flags
+### Constant Sets
 For: `.c`, `.h`
 
+A constant set is a named group of numerical values, such as the algorithms a module supports or the flags a structure carries.  Every set follows these rules:
+- The set should have a `typedef` of an unsigned numerical type, so declarations using this type will show what the value means.
+  - The underlying numerical type should be the minimum size necessary for the number of values defined.
+	- Valid numerical types include at least: `unsigned char`, `unsigned short`, `unsigned int`, `unsigned long`, and possibly others.  Unsigned types are required to prevent signed issues.
+- Each value is defined as a macro, cast to the set's type with an unsigned literal.  The cast carries the type into comparisons and `switch` statements, which a bare number would not.
+- Values are aligned in a column (see [struct & union declarations](#struct--union-declarations) for the alignment rules, which apply here too).
+- Macro names use the scheme `MOD_SET_XXX`, where "`MOD`" is the module prefix, "`SET`" is a short abbreviation for the set, and "`XXX`" is the name of the individual value.
+- Use these macros when interacting with the set.  DO NOT USE MAGIC VALUES.
+- A [section comment](#section-comments) above the set says what it represents.
+
+#### Enums
+- An enum holds exactly one of its values at a time, so the values simply increment.
+- The value `0` is reserved to mean unset, and is named `MOD_SET_NULL`.
+	```c
+	/** Enum type representing a clustering algorithm. **/
+	typedef unsigned char ClusterAlgorithm;
+	#define CA_ALG_NULL             ((ClusterAlgorithm)0u)
+	#define CA_ALG_NONE             ((ClusterAlgorithm)1u)
+	#define CA_ALG_SLIDING_WINDOW   ((ClusterAlgorithm)2u)
+	#define CA_ALG_KMEANS           ((ClusterAlgorithm)3u)
+	#define CA_ALG_KMEANS_PLUS_PLUS ((ClusterAlgorithm)4u)
+	#define CA_ALG_KMEDOIDS         ((ClusterAlgorithm)5u)
+	#define CA_ALG_DB_SCAN          ((ClusterAlgorithm)6u)
+	```
+
+#### Flags
+- A flag set can hold any number of its values at once, so each value is a distinct power of two.
 - Flags are always stored in full-length integers, and never as single-bit bitfields (i.e., `Flag:1;`).  This allows bulk editing and passing multiple flags as one parameter.
-- Modules should define flag values using macros.  These macros follow the naming scheme `MOD_STRUCT_F_XXX` where "`MOD`" is the module prefix, "`STRUCT`" is a short abbreviation for the structure that the flags serve, and "`XXX`" is the name of the individual flag value itself.  Use these macro values; DO NOT USE MAGIC VALUES.
+- Flag names insert an `F` tag: `MOD_STRUCT_F_XXX`, where "`STRUCT`" is the structure the flags serve.
 - Flag comparisons should use `flags & MOD_STRUCT_F_XXX`, which is considered a boolean for the purposes of the [Truthiness](#truthiness) rule.
 
-### Multi-Type Structures
-For: `.c`, `.h`
-
-- If a structure can represent kinds or types (not data types, this is a conceptual thing), macros are used to list those types.
-- These use the naming scheme: `MOD_STRUCT_T_XXX` (see above [flags](#flags) for more info).
+#### Multi-Type Structures
+- If a structure can represent kinds or types (not data types, this is a conceptual thing), an enum lists those types.
+- The struct almost always includes a field holding this enum to indicate the type that the struct holds. 
+- These names insert a `T` tag: `MOD_STRUCT_T_XXX`.
 
 
 ## Error Handling
@@ -538,3 +564,6 @@ Styles that still need to be decided and documented:
 	- Where `const` is required, if anywhere.  `const char* p` protects the data (visible to callers, propagates through the type system), while `char* const p` only protects the variable (invisible outside the function).  The two are independent.
 	- What to do about the `pXxxxYyy` aliases.  They hide the `*`, so `const pClusterSource` is a const *pointer* with freely mutable members, which is the opposite of what most readers expect, and there is no way to spell const *data* through an alias (that needs `const ClusterSource*`).  Only 2 sites in the tree write `const pXxx` today, so this is still cheap to settle.
 	- Note: spelling is not in question.  `const char*` and `char const*` are identical to the compiler, and the tree is 134 to 0 in favor of `const char*`, which also matches the [pointer spacing rule](#spacing).
+- Whether the C `enum` keyword should be used instead of the macro pattern in [constant sets](#constant-sets).  It is allowed for now.
+	- `enum` Pros:  The compiler assigns the values, it can warn about an unhandled case in a `switch`, and debuggers show the value's name.
+  - Macro Pattern Pros:  An `enum`'s underlying type is implementation-defined, so it cannot be sized for a struct member or a wire format, and in C it gives no type checking anyway.
