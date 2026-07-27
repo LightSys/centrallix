@@ -135,6 +135,55 @@ All identifiers should be spelled correctly and avoid using non-obvious abbrevia
 - In C, value macros are treated as globals and follow the naming style of the global struct.
 - In C, function macros are treated as functions, following those styles.
 
+### Struct & Union Declarations
+For: `.c`, `.h`
+
+- A struct or union is declared together with its `typedef` in a single statement, which declares both the type name and the pointer alias.
+	- The alias is written `*pXxxxYyy` (C syntax requires the `*` to attach to the name here).  This is an exception to the [pointer spacing rule](#spacing).
+- Each member is declared on its own line.
+- Member names are aligned in a column, padded with spaces (never tabs, see [indentation](#indentation)).
+	- Leave a few extra spaces of padding where a longer type may be added later, especially in a struct whose types are all short or which has many members.  This allows adding the type later without a reflow on every line that buries the real change in git-blame.  In isolation of other context, padding to column 20 is probably a good idea.
+
+For example:
+```c
+typedef struct _ClusterSource {
+	Magic_t          Magic;
+	unsigned int     nDatas;
+	char*            Name;
+	pVector*         Vectors;
+	DateTime         DateCreated;
+} ClusterSource, *pClusterSource;
+```
+
+### File Organization
+For: `.c`, `.h`
+
+It is recommended to order the top level of a file in the following order, for consistency with other files, unless there is a good reason to do otherwise (such as a forward reference):
+1. Copyright notice (after the include guard in a `.h` file).
+2. `#include` groups.
+3. Macros.
+4. `Typedef`s, structs, and unions.
+5. Prototypes for functions defined later in the same file.
+6. Function definitions (`.c` files).
+
+**Note**: Many files may not have all of these sections.
+
+### Types
+For: `.c`, `.h`
+
+- C code should work for any C of C99 or later, so `<stdbool.h>` and variable declarations inside a `for` statement are always available.
+- Use `NULL` for null pointers, never `0`.
+- Use `bool` with `true` and `false` for boolean values, never an `int` holding `0` or `1`.
+- `int` and `unsigned int` are the default integer types.  Use the fixed-width types in `<stdint.h>` (e.g. `uint32_t`) only where the exact width matters, such as data written to a file, a database, or the network.
+
+For example:
+```c
+bool auto_seed = false;    /* Not an int holding 0. */
+char* name = NULL;         /* Not 0. */
+unsigned int n_items = 0;  /* Default integer type. */
+uint32_t wire_value;       /* Width matters on the wire. */
+```
+
 ### Line Length
 - There's no hard line length limit, but it is recommended to wrap lines at 80 characters.
 - Code should rarely be indented more than 3-4 nested blocks within the enclosing function.  For example, if you write an `if` statement in an `if` statement in a `for` loop in an `if` statement, consider refactoring code into a helper function and double check that you're using [guard clauses](#error-checking-format) properly.
