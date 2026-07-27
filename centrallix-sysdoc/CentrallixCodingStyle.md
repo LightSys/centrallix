@@ -125,7 +125,7 @@ For: `.c`, `.h`
 ### Preprocessor Directives
 For: `.c`, `.h`
 
-- The `#` of a directive stays in the first column, even inside a function.
+- A directive at the outermost level starts in the first column, even inside a function.
 - Nested directives are indented one space per level of nesting, placing the spaces before the `#`.  A `.h` file's [include guard](#include-files) does not count as a level, since it wraps the whole file.
 	```c
 	#ifdef HAVE_CONFIG_H
