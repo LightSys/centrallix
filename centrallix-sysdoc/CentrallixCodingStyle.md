@@ -4,7 +4,7 @@
 
 **Date**: June 24th, 2026
 
-**License**: Copyright (C) 2026 LightSys Technology Services.  See `LICENSE.txt`.
+**License**: Copyright (C) 2026 LightSys Technology Services.  See `LICENSE`.
 
 
 ## Introduction
@@ -23,7 +23,7 @@ All code should follow a consistent style when possible.  This helps developers 
 
 These rules apply to every language in Centrallix, unless a section states otherwise.  A section that only covers certain file types is marked with a `For:` line listing them.  Examples use C, the most common language in the codebase.
 
-<!-- TODO: Israel - Document the deltas for cxjs `.js` files and structure files (`.app`, `.cmp`). -->
+<!-- TODO: Israel - Document the deltas for `js` files and structure files (`.app`, `.cmp`). -->
 
 
 ### Indentation
@@ -34,7 +34,7 @@ These rules apply to every language in Centrallix, unless a section states other
 
 ### Spacing
 - Language constructs (e.g. `if ()`, `for ()`, `while ()`, `switch ()`, etc.) should always be separated from their parentheses with a space.
-- Functions calls (e.g. `mssError()`) and function declarations should *not* be separated from their parentheses by a space.
+- Function calls (e.g. `mssError()`) and function declarations should *not* be separated from their parentheses by a space.
 - Pointer types attach the `*` to the type, not to the identifier: `char* p`, not `char *p`.  A pointer is part of the type, so it belongs with the type.
 - The `return` statement should be followed by a space and the return value should only use parentheses when needed.  Do not treat `return` as a function call, it is not a function, and it does not give a return value... well, it kind of does, but I think you get the point :)
 
@@ -76,7 +76,7 @@ switch (algorithm) {
 - Multiline comments (including function comments) use three asterisks, which continue on each line, e.g.
 	```c
 	/*** myFunFunction - this is a function
-	 *** that does some fun stuff with its 
+	 *** that does some fun stuff with its
 	 *** parameters.
 	 ***/
 	```
@@ -126,17 +126,19 @@ All identifiers should be spelled correctly and avoid using non-obvious abbrevia
 	- Internal functions prepend `_internal_` or `_i_`. (e.g. `xyz_i_HiddenStuff()`)
 - Local variables and function parameters are named with snake_case.
 - Every global variable in a module lives in a single module-wide global struct named with SCREAMING_SNAKE_CASE with the module name prepended (for easy identification).  The recommended name is `MOD_GLOBALS` (where `MOD` is the module prefix).
-- Typedef names & structs:
-	- Any value named with typedef names uses PascalCase.
+- `Typedef` names & structs:
+	- `Typedef`ed names use PascalCase (except for the module prefix).
 	- Both the struct type (`XxxxYyy`) and a pointer alias (`pXxxxYyy`) are declared in the same typedef.
 	- Structs reachable from outside the module start their name with the module prefix.  (As with functions, the prefix is optional for internal structs.)
-	- Members of a struct or union use camelCase.
+	- Members of a struct or union use PascalCase.
+		- **Exception**: A count member may take a lowercase `n` prefix, and a pointer member a lowercase `p` prefix, before the PascalCase name.  (e.g. `nDatas`, `pCluster`)
 - In C, value macros are treated as globals and follow the naming style of the global struct.
 - In C, function macros are treated as functions, following those styles.
 
 ### Line Length
 - There's no hard line length limit, but it is recommended to wrap lines at 80 characters.
 - Code should rarely be indented more than 3-4 nested blocks within the enclosing function.  For example, if you write an `if` statement in an `if` statement in a `for` loop in an `if` statement, consider refactoring code into a helper function and double check that you're using [guard clauses](#error-checking-format) properly.
+- **Exception**:  Markdown files should use longer lines, otherwise reflowing a line in a markdown file can quickly turn a small edit into a huge git-blame.
 
 ### Function Declarations
 For: `.c`, `.h`
@@ -174,7 +176,8 @@ caKMeans(
 ### Function Calls
 *When in doubt, use similar styling to [function declarations](#function-declarations).*
 
-- Short function calls should also be placed on one line: `get_time(&timer)`.
+- Short function calls should also be placed on one line: `getTime(&timer)`.
+- `sizeof` is an operator, not a function, but it is styled as a function call: write `sizeof(ModDataT)`, with no space before the parenthesis.
 - Function calls with many or long parameters may span multiple lines.  Literal parameters (especially string literals) may even be split across lines.  Situations vary, so use discernment and consistency to write the most clear code.  The most common example of this is the C calls to write inline `HTML` and `CSS`:
 	```c
 	htrAddStylesheetItem_va(s,
@@ -197,7 +200,7 @@ caKMeans(
 
 ### Local Variables
 - Local variables should be declared as close to where they are used as possible, and especially within the narrowest scope.  This reduces the amount of worrying about side effects and scrolling around that a programmer must do when seeing them.
-- Variables should be declared `const` or `final` when their value is not changed.  This serves as a note the reader so they know that the value won't change.
+- Variables should be declared using `const` (or the equivalent keyword for the relevant language) when their value is not changed.  This serves as a note to the reader so they know that the value won't change.
 - **Exception**: C dynamic arrays are their own flavor of fun that sometimes require exceptions to the above rules.
 
 ### Truthiness
@@ -230,7 +233,7 @@ All code is "tech debt", although I prefer the term "tech cost".  "Code clutter"
 ### File Encoding
 - All files should be encoded using UTF8.
 - All files should have LF line endings.
-- All files should end with a blank line (makes writing to the end easier).
+- All files should end with a newline, so the last line of content is complete (this also makes writing to the end easier).
 
 ### Flags
 For: `.c`, `.h`
@@ -282,7 +285,7 @@ if (data != NULL) {
 } else goto err;
 ```
 
-Typically, errors in C code will `goto` an error handler at the end of the current scope of function.  This code is responsible for clearing up memory.  It also usually logs an error message with any helpful info available in that scope so that individual error sites don't need to specify that info.
+Typically, errors in C code will `goto` an error handler at the end of the current scope or function.  This code is responsible for clearing up memory.  It also usually logs an error message with any helpful info available in that scope so that individual error sites don't need to specify that info.
 
 ### If an error occurs...
 - Always print an error message if your context can add information about the error.
@@ -322,7 +325,7 @@ Any English sentence should use two spaces (or a newline/similar whitespace) bet
 		if (strcmp(param->Name, attr_name) != 0) continue;
 
 		/** Parameter found. **/
-		return (param->Value == NULL) ? ModDATA_T_UNAVAILABT : param->Value->DataType;
+		return (param->Value == NULL) ? MOD_DATA_T_UNAVAILABLE : param->Value->DataType;
 	}
 	```
 
@@ -369,9 +372,9 @@ This is the format in C:
 ```c
 /************************************************************************/
 /* Centrallix Application Server System                                 */
-/* Centrallix Core                                                      */
+/* <Subsystem>                                                          */
 /*                                                                      */
-/* Copyright (C) 1998-<year> LightSys Technology Services, Inc.         */
+/* Copyright (C) <created>-<year> LightSys Technology Services, Inc.    */
 /*                                                                      */
 /* This program is free software; you can redistribute it and/or modify */
 /* it under the terms of the GNU General Public License as published by */
@@ -400,7 +403,8 @@ This is the format in C:
 /************************************************************************/
 ```
 - Replace the values in angle brackets (`<...>`).
-- `<year>` is the year that the file was last modified, so update the copyright notice when modifying a file with anything more than trivial changes.
+- `<Subsystem>` names the part of the project the file belongs to, such as `Centrallix Core` for `centrallix/` or `Centrallix Base Library` for `centrallix-lib/`.  The line above it, `Centrallix Application Server System`, is the same in every file.
+- `<created>` is the year the file was created and `<year>` is the year it was last modified, so update the copyright notice when modifying a file with anything more than trivial changes.  When both are the same year, only write that year itself.
 
 ### Markdown Files
 Markdown files use their own copyright notices which are always placed at the start of the file.  Interestingly enough, these are not comments because the entire markdown file is considered to be documentation so markdown comments are rarely needed.
@@ -412,7 +416,7 @@ Markdown files use their own copyright notices which are always placed at the st
 
 **Date**: <date created, e.g. June 24th, 2026>
 
-**License**: Copyright (C) <year> LightSys Technology Services.  See `LICENSE.txt`.
+**License**: Copyright (C) <year> LightSys Technology Services.  See `LICENSE`.
 ```
 - Replace the values in angle brackets (`<...>`).  For more info, see above.
 
