@@ -411,7 +411,9 @@ Error checks should use guard clauses.  These reduce indentation, and with it, t
 
 **Correct**
 ```c
-void* data1 = NULL, data1 = NULL, data2 = NULL;
+void* data1 = NULL;
+void* data2 = NULL;
+void* data3 = NULL;
 
 data1 = nmMalloc(sizeof(ModDataT));
 if (data1 == NULL) goto error;
@@ -425,10 +427,12 @@ return 0;
 
 **Incorrect** ("The Pyramid of Doom")
 ```c
-void* data, data1, data2;
+void* data1;
+void* data2;
+void* data3;
 
-data = nmMalloc(sizeof(ModDataT));
-if (data != NULL) {
+data1 = nmMalloc(sizeof(ModDataT));
+if (data1 != NULL) {
 	data2 = nmMalloc(sizeof(ModDataT));
 	if (data2 != NULL) {
 		data3 = nmMalloc(sizeof(ModDataT));
@@ -458,7 +462,7 @@ ciInitSearch(char* path) {
 
 	/** Some logic... **/
 
-	search = nmMalloc(sizeof(Search))
+	search = nmMalloc(sizeof(Search));
 	if (search == NULL) goto error;
 
 	/** More logic... **/
