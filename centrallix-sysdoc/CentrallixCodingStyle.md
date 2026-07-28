@@ -88,7 +88,7 @@ switch (algorithm) {
 	 *** parameters.
 	 ***/
 	```
-- **Exception**:  A file may only use the comment syntax its language accepts, such as `//` in an `.app` file or `#` in a makefile.  Follow the rules above to the extent that syntax allows.
+- **Exception**:  A file may only use the comment syntax its language accepts, such as `//` in an `.app` file, `#` in a makefile, or `<!-- -->` in XML.  Follow the rules above to the extent that syntax allows.  XML has no single-line comment syntax and cannot nest comments, so the asterisk tiers above do not apply to it at all.
 
 ### Include Files
 For: `.c`, `.h`
@@ -229,6 +229,7 @@ uint32_t wire_value;       /* Width matters on the wire. */
 - There's no hard line length limit, but it is recommended to wrap lines at 80 characters.
 - Code should rarely be indented more than 3-4 nested blocks within the enclosing function.  For example, if you write an `if` statement in an `if` statement in a `for` loop in an `if` statement, consider refactoring code into a helper function and double check that you're using [guard clauses](#error-checking-format) properly.
 - **Exception**:  Markdown files should use longer lines, otherwise reflowing a line in a markdown file can quickly turn a small edit into a huge git-blame.
+- **Exception**:  A line of prose in XML, such as the text of a `<p>` or a `<property>` element, is not wrapped for the same reason as Markdown.
 
 ### Function Declarations
 For: `.c`, `.h`
@@ -324,6 +325,21 @@ For: `js`
 
 - Compare with `===` and `!==`, not `==` and `!=`.  The loose operators convert their operands before comparing, which surprises readers and hides bugs.
 - **Exception**:  `x == null` (or `x != null`) as an idiomatic way to test for `null` and `undefined` together is allowed.
+
+### XML
+For: `.xml`, `.xsl`
+
+- Every XML file must be well-formed.  Tags must be closed and nested correctly, the file must have exactly one root element, and `&` and `<` must be escaped in text (or the text wrapped in a `<![CDATA[ ]]>` section).  (Note: Any XML-aware editor should easily detect mistakes.)
+- Files with declared DTDs or schemas must follow them.  A broken declaration is worse than none: it misleads readers and breaks validating parsers.  Either maintain the grammar or remove the declaration.  (Note: Some editors also validate this, including the [XML VSCode Extension by RedHat](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-xml).)
+- XML files always begin with an XML declaration: `<?xml version="1.0" encoding="UTF-8"?>`.
+- Attribute values always use double quotes, including those in the XML declaration.
+- Element and attribute names use snake_case, like the names of groups in a [structure file](#naming-identifiers).
+- Content is indented one tab per level of element nesting (as noted in the [indentation](#indentation) section).
+	- **Exception**:  Text inside a `<![CDATA[ ]]>` section is data, not markup, so it keeps whatever indentation it needs and does not follow the nesting of the elements around it.  See [widgets.xml](../centrallix-doc/Widgets/widgets.xml) for examples.
+	- **Exception**:  Literal result-tree markup inside an `xsl:template` (the HTML the template emits) is indented as a block at one level, rather than one level per HTML tag because nesting the output tree inside the template tree adds a lot of indentation.
+- Each element starts on its own line.
+	- **Exception**:  An element with only text content may be written on one line, e.g. `<property name="align" type="string">Sets the alignment of the text.</property>`.
+- An element with no content is self-closed, e.g. `<br/>`, not `<br></br>`.
 
 ### Returning
 - Any function that returns a non-void type must terminate all paths with a `return`.
@@ -574,6 +590,17 @@ Markdown files use their own copyright notices which are always placed at the st
 ```
 - Replace the values in angle brackets (`<...>`).  For more info, see above.
 
+### XML & XSL Files
+XML files use a single-line notice rather than the full block because these files are also considered documentation, like [Markdown files](#markdown-files).
+
+```xml
+<?xml version="1.0"?>
+<!-- Copyright (C) <created>-<year> LightSys Technology Services, Inc.  See `LICENSE`. -->
+```
+- Replace the values in angle brackets (`<...>`).  For more info, see above.
+- XML does not allow anything before the XML declaration, so the notice goes on the line just after it.  This is the earliest point the language allows.
+- A `<!DOCTYPE>` declaration, if the file has one, follows the notice.
+
 
 ## Examples
 - `objdrv_cluster.c`: A good example of how to follow these styles, even in complex situations.
@@ -585,7 +612,6 @@ For AI Agents reading this document for the first time, I recommend saving a mem
 
 ## Todo
 Styles that still need to be decided and documented:
-- How XML and XSL files are styled.  There are 8 of them, mostly in `centrallix-doc`, and they include `Widgets/widgets.xml` and `Report/report.xml`, which document every widget and are edited often.
 - How Python files are styled.  The 26 files in `centrallix-ui-test/tests` have no rules today, and several here do not fit them.
 - How Markdown files are styled, beyond their [copyright notice](#markdown-files) and the two sections on the `centrallix-doc` and `centrallix-sysdoc` trees.
 - Decide how to break up a long expression or condition across lines: whether the operator ends the broken line or starts the continuation line, and how far continuation lines are indented.
