@@ -411,22 +411,27 @@ Error checks should use guard clauses.  These reduce indentation, and with it, t
 
 **Correct**
 ```c
-void* data = nmMalloc(sizeof(ModDataT));
-if (data == NULL) goto error;
-void* data2 = nmMalloc(sizeof(ModDataT));
+void* data1 = NULL, data1 = NULL, data2 = NULL;
+
+data1 = nmMalloc(sizeof(ModDataT));
+if (data1 == NULL) goto error;
+data2 = nmMalloc(sizeof(ModDataT));
 if (data2 == NULL) goto error;
-void* data3 = nmMalloc(sizeof(ModDataT));
+data3 = nmMalloc(sizeof(ModDataT));
 if (data3 == NULL) goto error;
 /** Some logic... **/
+return 0;
 ```
 
 **Incorrect** ("The Pyramid of Doom")
 ```c
-void* data = nmMalloc(sizeof(ModDataT));
+void* data, data1, data2;
+
+data = nmMalloc(sizeof(ModDataT));
 if (data != NULL) {
-	void* data2 = nmMalloc(sizeof(ModDataT));
+	data2 = nmMalloc(sizeof(ModDataT));
 	if (data2 != NULL) {
-		void* data3 = nmMalloc(sizeof(ModDataT));
+		data3 = nmMalloc(sizeof(ModDataT));
 		if (data3 != NULL) {
 			/** Some logic... **/
 		} else goto error;
@@ -440,19 +445,34 @@ In C, the error handler follows these rules:
 - The handler is labeled `error:` or `end:` (if it also handles a success case), placed at the end of the function or scope, and indented only once (typically the level of the function body).
 - The handler's code is indented one level inside its label.
 
+
+### Full Error Handling Example
 ```c
 int
-ciLoadSource(char* path) {
-	pClusterSource src = nmMalloc(sizeof(ClusterSource));
-	if (src == NULL) goto error;
+ciInitSearch(char* path) {
+	pCluster cluster = NULL;
+	pSearch search = NULL;
+
+	cluster = nmMalloc(sizeof(Cluster));
+	if (cluster == NULL) goto error;
 
 	/** Some logic... **/
 
+	search = nmMalloc(sizeof(Search))
+	if (search == NULL) goto error;
+
+	/** More logic... **/
+
+	/** Success. **/
 	return 0;
 
- error:
+	error:
 	mssError(0, "CI", "Could not load source '%s'", path);
-	nmFree(src, sizeof(ClusterSource));
+
+	/** Clean up. **/
+	if (cluster != NULL) nmFree(cluster, sizeof(Cluster));
+	if (search != NULL) nmFree(search, sizeof(Search));
+
 	return -1;
 }
 ```
