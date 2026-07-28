@@ -32,6 +32,7 @@
 /*		a html formatting language.				*/
 /************************************************************************/
 
+#include <stdbool.h>
 #include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -514,66 +515,66 @@ prt_htmlfm_GetFont(pPrtTextStyle style)
     }
 
 
-/*** prt_htmlfm_SetStyle() - output the html to change the text style
+/*** prt_htmlfm_SetStyle() - output the html to change the text style.
+ *** 
+ *** Note: Only closing tags are written here.  The opening tags are deferred
+ *** to prt_htmlfm_WriteStyle().  This function only sets the dirty flags,
+ *** which mean "the opening tag for this style hasn't been written yet."
  ***/
 int
 prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
     {
-    int boldchanged, italicchanged, underlinechanged, fontchanged;
+	/** Compute some data from the context. **/
+	const int cur_attr = context->CurStyle.Attr;
+	const bool init_style = (context->InitStyle != 0); /* Entering new container. */
+	const bool exit_style = (context->ExitStyle != 0); /* Leaving old container. */
 
-	/** Close out current style settings? **/
-	boldchanged = (style->Attr ^ context->CurStyle.Attr) & PRT_OBJ_A_BOLD;
-	italicchanged = (style->Attr ^ context->CurStyle.Attr) & PRT_OBJ_A_ITALIC;
-	underlinechanged = (style->Attr ^ context->CurStyle.Attr) & PRT_OBJ_A_UNDERLINE;
-	fontchanged = (style->FontID != context->CurStyle.FontID || 
-		realComparePrecision(style->FontSize, context->CurStyle.FontSize, 0.5) != 0 || 
-		style->Color != context->CurStyle.Color);
+	/** Compute which styles changed. **/
+	const bool bold_changed      = ((style->Attr ^ cur_attr) & PRT_OBJ_A_BOLD);
+	const bool italic_changed    = ((style->Attr ^ cur_attr) & PRT_OBJ_A_ITALIC);
+	const bool underline_changed = ((style->Attr ^ cur_attr) & PRT_OBJ_A_UNDERLINE);
+	const bool font_changed =
+	    style->FontID != context->CurStyle.FontID ||
+	    style->Color != context->CurStyle.Color ||
+	    realComparePrecision(style->FontSize, context->CurStyle.FontSize, 0.5) != 0;
 
-	if ((!context->InitStyle) && (context->ExitStyle || boldchanged || italicchanged || underlinechanged || fontchanged))
+	/*** The tags nest as <font><u><i><b>, so changing any one of them
+	 *** also requires rewriting every nested tag.  Entering or leaving
+	 *** a container rewrites every tag.
+	 ***/
+	const bool rewrite_font      = (init_style || exit_style || font_changed);
+	const bool rewrite_underline = (rewrite_font || underline_changed);
+	const bool rewrite_italic    = (rewrite_underline || italic_changed);
+	const bool rewrite_bold      = (rewrite_italic || bold_changed);
+
+	/*** Shortcut: The innermost tag (<b>) is rewritten for every change,
+	 *** so if it doesn't need rewriting, nothing does.
+	 ***/
+	if (!rewrite_bold) return 0;
+
+	/** Write HTML to disable the styles being removed. **/
+	if (!init_style) /* During init, there's no style to remove. */
 	    {
-	    /*For each thing, check dirty flag is clear to ensure opening tag was actually written*/
-	    if ((context->CurStyle.Attr & PRT_OBJ_A_BOLD) && 
-		!(context->StyleFlags & PRT_HTMLFM_SF_BOLDDIRTY)) prt_htmlfm_OutputStrLiteral(context, "</b>");
-	    if (context->ExitStyle || italicchanged || underlinechanged || fontchanged)
-		{
-		if (context->CurStyle.Attr & PRT_OBJ_A_ITALIC &&
-		    !(context->StyleFlags & PRT_HTMLFM_SF_ITALICDIRTY)) prt_htmlfm_OutputStrLiteral(context, "</i>");
-		if (context->ExitStyle || underlinechanged || fontchanged)
-		    {
-		    if (context->CurStyle.Attr & PRT_OBJ_A_UNDERLINE && 
-			!(context->StyleFlags & PRT_HTMLFM_SF_UNDERLINEDIRTY)) prt_htmlfm_OutputStrLiteral(context, "</u>");
-		    if ((context->ExitStyle || fontchanged) &&
-			!(context->StyleFlags & PRT_HTMLFM_SF_FONTDIRTY))
-			{
-			prt_htmlfm_OutputStrLiteral(context, "</font>");
-			}
-		    }
-		}
+	    if (rewrite_bold && (cur_attr & PRT_OBJ_A_BOLD) && !(context->StyleFlags & PRT_HTMLFM_SF_BOLDDIRTY))
+		prt_htmlfm_OutputStrLiteral(context, "</b>");
+	    if (rewrite_italic && (cur_attr & PRT_OBJ_A_ITALIC) && !(context->StyleFlags & PRT_HTMLFM_SF_ITALICDIRTY))
+		prt_htmlfm_OutputStrLiteral(context, "</i>");
+	    if (rewrite_underline && (cur_attr & PRT_OBJ_A_UNDERLINE) && !(context->StyleFlags & PRT_HTMLFM_SF_UNDERLINEDIRTY))
+		prt_htmlfm_OutputStrLiteral(context, "</u>");
+	    if (rewrite_font && !(context->StyleFlags & PRT_HTMLFM_SF_FONTDIRTY))
+		prt_htmlfm_OutputStrLiteral(context, "</font>");
 	    }
-	if (context->ExitStyle) return 0;
+	if (exit_style) return 0; /* Done exiting. */
 
-	/*Set the dirty flags as appropriate*/
-	if (context->InitStyle || boldchanged || italicchanged || underlinechanged || fontchanged)
-	    {
-	    if (context->InitStyle || italicchanged || underlinechanged || fontchanged)
-		{
-		if (context->InitStyle || underlinechanged || fontchanged)
-		    {
-		    if (context->InitStyle || fontchanged)
-			{
-			context->StyleFlags |= PRT_HTMLFM_SF_FONTDIRTY;
-			}
-		    if (style->Attr & PRT_OBJ_A_UNDERLINE)
-			context->StyleFlags |= PRT_HTMLFM_SF_UNDERLINEDIRTY;
-		    }
-		if (style->Attr & PRT_OBJ_A_ITALIC)
-		    context->StyleFlags |= PRT_HTMLFM_SF_ITALICDIRTY;
-		}
-	    if (style->Attr & PRT_OBJ_A_BOLD)
-		context->StyleFlags |= PRT_HTMLFM_SF_BOLDDIRTY;
-
-	    memcpy(&(context->CurStyle), style, sizeof(PrtTextStyle));
-	    }
+	/** Set the dirty flags for styles that need to be rewritten. **/
+	if (rewrite_bold && (style->Attr & PRT_OBJ_A_BOLD))
+	    context->StyleFlags |= PRT_HTMLFM_SF_BOLDDIRTY;
+	if (rewrite_italic && (style->Attr & PRT_OBJ_A_ITALIC))
+	    context->StyleFlags |= PRT_HTMLFM_SF_ITALICDIRTY;
+	if (rewrite_underline && (style->Attr & PRT_OBJ_A_UNDERLINE))
+	    context->StyleFlags |= PRT_HTMLFM_SF_UNDERLINEDIRTY;
+	if (rewrite_font) context->StyleFlags |= PRT_HTMLFM_SF_FONTDIRTY;
+	memcpy(&(context->CurStyle), style, sizeof(PrtTextStyle));
 
     return 0;
     }
