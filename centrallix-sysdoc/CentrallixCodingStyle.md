@@ -88,6 +88,7 @@ switch (algorithm) {
 	 *** parameters.
 	 ***/
 	```
+- In a `.c` or `.h` file, never use a `//` comment.  C99 permits it, but it does not match with the asterisk tiers above.
 - **Exception**:  A file may only use the comment syntax its language accepts, such as `//` in an `.app` file, `#` in a makefile, or `<!-- -->` in XML.  Follow the rules above to the extent that syntax allows.  XML has no single-line comment syntax and cannot nest comments, so the asterisk tiers above do not apply to it at all.
 
 ### Include Files
@@ -216,6 +217,7 @@ For: `.c`, `.h`
 - Use `NULL` for null pointers, never `0`.
 - Use `bool` with `true` and `false` for boolean values, never an `int` holding `0` or `1`.
 - `int` and `unsigned int` are the default integer types.  Use the fixed-width types in `<stdint.h>` (e.g. `uint32_t`) only where the exact width matters, such as data written to a file, a database, or the network.
+- A struct must be fully zeroed/initialized when allocated.  Memory a function receives may hold stale data that still looks valid, such as an old `Magic` value or a pointer into live memory.  In C, use `memset()` when the padding of the struct matters, such as when it is written to a file or the network, or compared with `memcmp()`.
 
 For example:
 ```c
@@ -294,8 +296,7 @@ caKMeans(
 - Variables should be declared using `const` (or the equivalent keyword for the relevant language) when their value is not changed.  This serves as a note to the reader so they know that the value won't change.
 - In `js`, declare with `const`, or with `let` when the value changes.
 	- Never use `var`.  It is scoped to the entire function, so it cannot be declared in the narrowest scope.
-	- Never assign to a name that was not declared.  This does not create a local variable, it creates a global one that outlives the function and is visible to every other file, possibly causing far-reaching side-effects.
-- A struct must be fully zeroed/initialized when allocated.  Memory a function receives may hold stale data that still looks valid, such as an old `Magic` value or a pointer into live memory.  In C, use `memset()` when the struct's padding matters, such as when it is written to a file or the network, or compared with `memcmp()`.
+	- Never assign to a name that was not declared.  This does not create a local variable, it creates a global one that outlives the function and is visible to every other file, possibly causing far-reaching side effects.
 - **Exception**:  C dynamic arrays are their own flavor of fun that sometimes require exceptions to the above rules.
 
 ### Sensitive Data
@@ -334,8 +335,9 @@ For: `.xml`, `.xsl`
 - XML files always begin with an XML declaration: `<?xml version="1.0" encoding="UTF-8"?>`.
 - Attribute values always use double quotes, including those in the XML declaration.
 - Element and attribute names use snake_case, like the names of groups in a [structure file](#naming-identifiers).
+	- **Exception**:  A name the file does not own is written exactly as the vocabulary that defines it spells it.  This covers `xsl:` elements and their attributes, the HTML a template emits, and any name a DTD or schema requires (if it cannot be updated to allow/require the style specified here).  These names cannot be renamed, so matching them is the only valid choice.
 - Content is indented one tab per level of element nesting (as noted in the [indentation](#indentation) section).
-	- **Exception**:  Text inside a `<![CDATA[ ]]>` section is data, not markup, so it keeps whatever indentation it needs and does not follow the nesting of the elements around it.  See [widgets.xml](../centrallix-doc/Widgets/widgets.xml) for examples.
+	- **Exception**:  Text inside a `<![CDATA[ ]]>` section is data, not markup, so it keeps whatever indentation it needs and does not follow the nesting of the surrounding elements.  See [widgets.xml](../centrallix-doc/Widgets/widgets.xml) for examples.
 	- **Exception**:  Literal result-tree markup inside an `xsl:template` (the HTML the template emits) is indented as a block at one level, rather than one level per HTML tag because nesting the output tree inside the template tree adds a lot of indentation.
 - Each element starts on its own line.
 	- **Exception**:  An element with only text content may be written on one line, e.g. `<property name="align" type="string">Sets the alignment of the text.</property>`.
@@ -524,9 +526,10 @@ Any English sentence should use two spaces (or a newline/similar whitespace) bet
 ### Function Comments
 - Functions should begin with a javadoc-style comment.
 - These tell a developer how to call the function without reading its implementation.
+- The comment opens with the function's name, then ` - `, then the description.
 - For example:
 	```c
-	/*** Allocates a new pNodeData struct with data from `inf`.
+	/*** ci_ParseNodeData - allocates a new pNodeData struct with data from `inf`.
 	 ***
 	 *** @param inf A parsed pStructInf, representing the top-level group in a
 	 *** 	.cluster structure file.
@@ -608,7 +611,7 @@ Markdown files use their own copyright notices which are always placed at the st
 
 **Date**: <date created, e.g. June 24th, 2026>
 
-**License**: Copyright (C) <year> LightSys Technology Services.  See `LICENSE`.
+**License**: Copyright (C) <created>-<year> LightSys Technology Services.  See `LICENSE`.
 ```
 - Replace the values in angle brackets (`<...>`).  For more info, see above.
 
