@@ -449,7 +449,6 @@ Typically, errors in C code will `goto` an error handler at the end of the curre
 
 In C, the error handler follows these rules:
 - The handler is labeled `error:` or `end:` (if it also handles a success case), placed at the end of the function or scope, and indented only once (typically the level of the function body).
-- The handler's code is indented one level inside its label.
 
 
 ### Full Error Handling Example
