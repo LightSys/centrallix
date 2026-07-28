@@ -63,8 +63,8 @@ These rules apply to every language in Centrallix, unless a section states other
 For example:
 ```c
 switch (algorithm) {
-	case CA_ALG_KMEANS2: {
-		preKMeans(&vectors);
+	case CA_ALG_KMEANS_PLUS_PLUS: {
+		caAssignInitialLabels(&vectors, &labels);
 		/** Fallthrough. **/
 	}
 	case CA_ALG_KMEANS: {
@@ -155,7 +155,7 @@ For: `.c`, `.h`
 All identifiers should be spelled correctly and avoid using non-obvious abbreviations.  The very common `i`, `j`, and `rval` local variables are exceptions to this general rule.
 - Functions are named with camelCase.
 	- The module prefix is prepended if the function is reachable from outside the module. (The prefix is optional for internal & unreachable functions.)
-	- Internal functions prepend `_internal_` or `_i_`. (e.g. `xyz_i_HiddenStuff()`)
+	- Internal functions prepend `_internal_` or `_i_`. (e.g. `xyz_i_hiddenStuff()`)
 - Local variables and function parameters are named with snake_case.
 - Every global variable in a module lives in a single module-wide global struct named with SCREAMING_SNAKE_CASE with the module name prepended (for easy identification).  The recommended name is `MOD_GLOBALS` (where `MOD` is the module prefix).
 - `Typedef` names & structs:
@@ -175,16 +175,16 @@ For: `.c`, `.h`
 - C syntax requires the `*` of the pointer alias to attach to the name, so this is an exception to the [pointer spacing rule](#spacing).
 - Each member is declared on its own line.
 - Member names are aligned in a column, padded with spaces (never tabs, see [indentation](#indentation)).
-	- Leave a few extra spaces of padding where a longer type may be added later, especially in a struct whose types are all short or which has many members.  This allows adding the type later without a reflow on every line that buries the real change in git-blame.  In isolation of other context, padding to column 20 is probably a good idea.
+	- Leave a few extra spaces of padding where a longer type may be added later, especially in a struct whose types are all short or which has many members.  This allows adding the type later without a reflow on every line that buries the real change in git-blame.
 
 For example:
 ```c
 typedef struct _ClusterSource {
-	Magic_t          Magic;
-	unsigned int     nData;
-	char*            Name;
-	pVector*         Vectors;
-	DateTime         DateCreated;
+	Magic_t         Magic;
+	unsigned int    nData;
+	char*           Name;
+	pVector*        Vectors;
+	DateTime        DateCreated;
 } ClusterSource, *pClusterSource;
 ```
 
@@ -321,7 +321,7 @@ For: `.c`, `.h`
 	```
 
 ### Equality
-For: `js`
+For: `.js`
 
 - Compare with `===` and `!==`, not `==` and `!=`.  The loose operators convert their operands before comparing, which surprises readers and hides bugs.
 - **Exception**:  `x == null` (or `x != null`) as an idiomatic way to test for `null` and `undefined` together is allowed.
@@ -363,7 +363,7 @@ For: `.c`, `.h`
 
 A constant set is a named group of numerical values, such as the algorithms a module supports or the flags a structure carries.  Every set follows these rules:
 - The set should have a `typedef` of an unsigned numerical type, so declarations using this type will show what the value means.
-  - The underlying numerical type should be the minimum size necessary for the number of values defined.
+	- The underlying numerical type should be the minimum size necessary for the number of values defined.
 	- Valid numerical types include at least: `unsigned char`, `unsigned short`, `unsigned int`, `unsigned long`, and possibly others.  Unsigned types are required to prevent signed issues.
 - Each value is defined as a macro, cast to the set's type with an unsigned literal.  The cast carries the type into comparisons and `switch` statements, which a bare number would not.
 - Values are aligned in a column (see [struct & union declarations](#struct--union-declarations) for the alignment rules, which apply here too).
@@ -394,7 +394,7 @@ A constant set is a named group of numerical values, such as the algorithms a mo
 
 #### Multi-Type Structures
 - If a structure can represent kinds or types (not data types, this is a conceptual thing), an enum lists those types.
-- The struct almost always includes a field holding this enum to indicate the type that the struct holds. 
+- The struct almost always includes a field holding this enum to indicate the type that the struct holds.
 - These names insert a `T` tag: `MOD_STRUCT_T_XXX`.
 
 
@@ -483,15 +483,13 @@ ciInitSearch(char* path) {
 	- In most cases, you can add new information, but avoid cluttering the error log when you genuinely can't.
 - Use `mssError()` to print errors and only to print errors.  (For warnings, use `fprintf(stderr, ...)`).
 	- See the [function comment](#function-comments) above the `mssError_internal()` definition in [mtsession.c](../centrallix-lib/src/mtsession.c) for info about calling `mssError()`.
-- Use `check.h` shortcut functions only for unlikely library failures (especially memory allocation).
-	- These functions do not add values to the error stack so they are invisible to non-console users.
 
 ### Recovering From Errors
 When you gracefully handle an error, if `mssError()` or similar functions are called (or likely to be called) during an error, call `mssClearError()` to mark the error as handled.  This prevents messages from this error from appearing at the start of the error stack for a later error.
 
 
 ## Comments & Documentation
-Code should use a few types of documentation, where applicable. See [comments](#comments) for commenting style.
+Code should use a few types of documentation, where applicable.  See [comments](#comments) for commenting style.
 
 Any English sentence should use two spaces (or a newline/similar whitespace) between a period and the following sentence.  This makes it easy to visually jump between sentences and skim text.  This is not required for string literals, such as error messages in code, although these rarely have more than a single sentence anyway.
 
@@ -614,7 +612,7 @@ Markdown files use their own copyright notices which are always placed at the st
 XML files use a single-line notice rather than the full block because these files are also considered documentation, like [Markdown files](#markdown-files).
 
 ```xml
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!-- Copyright (C) <created>-<year> LightSys Technology Services, Inc.  See `LICENSE`. -->
 ```
 - Replace the values in angle brackets (`<...>`).  For more info, see above.
