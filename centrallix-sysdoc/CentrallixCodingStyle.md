@@ -8,9 +8,9 @@
 
 
 ## Introduction
-The following style rules should be followed in every applicable file in Centrallix.  Note that many files may break style rules, however, any new changes committed should follow these rules.
+The number one rule is to write readable code, but "readable code" is an inconsistent and subjective concept, so the rules in this document should help you do that effectively.  The following style rules should be followed in every applicable file in Centrallix, including `.c`, `.h`, `.md`, `.xml`, structure files, makefiles, etc.  Note that many files may break style rules, however, any new changes committed should still follow them.
 
-Many of them are enforced by the style linter, however, this file is the source of truth.  Thus, where the lint rules and this file disagree, update the lint rules.  Keep in mind that some styles documented here may not have lint rules due to linter limitations, but they should still be followed to the best of your ability.
+Many of these style rules are enforced by the style linter, however, this file is the source of truth.  Thus, where the lint rules and this file disagree, update the lint rules.  Keep in mind that some styles documented here may not have lint rules due to linter limitations, but they should still be followed to the best of your ability.
 
 <!-- TODO: Israel - Add info about the style linter after it's set up. -->
 
