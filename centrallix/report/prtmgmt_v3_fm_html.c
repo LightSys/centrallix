@@ -77,7 +77,6 @@
 /** HTML email headers. **/
 #define PRT_HTMLFM_EMAIL_BOUNDARY "cx-email-boundary"
 
-// TODO: Israel - Should some of these come from the mime type driver?
 #define PRT_HTMLFM_EMAIL_HEADER \
     /** Email file header. **/ \
     "MIME-Version: 1.0\n" \
@@ -118,7 +117,6 @@
 
 
 /** HTML document headers. **/
-/* CLS 2025-03-28: Note that changing the HTML version may change spacing between lines/wrapped text.*/
 #define PRT_HTMLFM_HEADER \
     "<!DOCTYPE html>\n" \
     "<html lang=\"en\">\n" \
