@@ -137,7 +137,8 @@
 	"</style>\n" \
     "</head>\n" \
     "<body style=\"background-color: %s; color: #000;\">\n" \
-    "<div style=\"font-family: %s;\">\n"
+    /** Repeat body styles in case client discards the body tag. **/ \
+    "<div style=\"background-color: %s; color: #000; font-family: %s;\">\n"
 
 /*** Document footer ***/
 #define PRT_HTMLFM_FOOTER	"</div>\n" \
@@ -347,7 +348,7 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	context->BGColor = 0xFFFFFF;
 	const char* background_color = (context->Flags & PRT_HTMLFM_F_PAGINATED) ? "#c0c0c0" : "#ffffff";
 	const char* font_family = prt_htmlfm_fontstyles[PRT_HTMLFM_DEFAULT_FONTSTYLE];
-	prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, background_color, font_family);
+	prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, background_color, background_color, font_family);
 
 	/** Success, we can print this content type. **/
 	return (void*)context;
