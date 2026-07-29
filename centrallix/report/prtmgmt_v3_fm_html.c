@@ -1058,24 +1058,42 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
 	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_PAGEHEADER, (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001)+34);
 
-	/** Write a table to handle page margins **/
-	int left_margin = (int)(page_obj->MarginLeft*PRT_HTMLFM_XPIXEL+0.001);
-	int center_width = (int)((page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight+0.001)*PRT_HTMLFM_XPIXEL);
-	int right_margin = (int)(page_obj->MarginRight*PRT_HTMLFM_XPIXEL+0.001);
-	int top_margin = (int)((page_obj->MarginTop+0.001)*PRT_HTMLFM_YPIXEL);
+	/** Compute page margins. **/
+	/** Note: Margins in reports are similar to the concept of CSS padding. **/
+	const int top_margin   = (int)((page_obj->MarginTop + 0.001) * PRT_HTMLFM_YPIXEL);
+	const int left_margin  = (int)(page_obj->MarginLeft  * PRT_HTMLFM_XPIXEL + 0.001);
+	const int right_margin = (int)(page_obj->MarginRight * PRT_HTMLFM_XPIXEL + 0.001);
+	const int center_width = (int)((page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight + 0.001) * PRT_HTMLFM_XPIXEL);
+
+	/** Write the opening tag for a table to set margins. **/
 	prt_htmlfm_OutputStrLiteral(context, "<table cellpadding=\"0\" width=\"100%\">");
-	prt_htmlfm_OutputStrLiteral(context, "<colgroup>");
-	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">", left_margin);
-	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">", center_width);
-	prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">", right_margin);
-	prt_htmlfm_OutputStrLiteral(context, "</colgroup>");
-	/* Print the first row, empty with appropriate margins*/
-	prt_htmlfm_OutputPrintf(context, "<tr><td style=\"height: %dpx; width: %dpx;\"></td><td style=\"height: %dpx;width: %dpx;\"></td><td style=\"height: %dpx;width: %dpx;\"></td></tr>",
-		top_margin, left_margin,
-		top_margin, center_width,
-		top_margin, right_margin);
-	/* Start the second row (with appropriate margin) */
-	prt_htmlfm_OutputPrintf(context, "<tr><td style=\"width: %dpx;\"></td><td>\n", left_margin);
+
+	/** Write the table column sizes. **/
+	prt_htmlfm_OutputPrintf(context,
+	    "<colgroup>"
+		"<col width=\"%d*\">"
+		"<col width=\"%d*\">"
+		"<col width=\"%d*\">"
+	    "</colgroup>",
+	    left_margin,
+	    center_width,
+	    right_margin
+	);
+
+	/** Write an empty first row with correct margins. **/
+	prt_htmlfm_OutputPrintf(context,
+	    "<tr>"
+		"<td style=\"height:%dpx;width:%dpx;\"></td>"
+		"<td style=\"height:%dpx;width:%dpx;\"></td>"
+		"<td style=\"height:%dpx;width:%dpx;\"></td>"
+	    "</tr>",
+	    top_margin, left_margin,
+	    top_margin, center_width,
+	    top_margin, right_margin
+	);
+	
+	/** Write the start of the second row with correct margins. **/
+	prt_htmlfm_OutputPrintf(context, "<tr><td style=\"width:%dpx;\"></td><td>\n", left_margin);
 
 
 	/** We need to scan the absolute-positioned content to figure out how many
@@ -1159,10 +1177,14 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    {
 		    while(subobj->Y > (rowpos[cur_row]+0.001) && cur_row < PRT_HTMLFM_MAXROWS-1) cur_row++;
 		    
-		    if(last_height + 0.001 < subobj->Y) {
-			prt_htmlfm_OutputPrintf(context, "</tr><tr><td style=\"height: %dpx;line-height:0;\">&nbsp;</td>",
-			   (int) ((subobj->Y - last_height) * PRT_HTMLFM_YPIXEL));
-		    }
+		    if (last_height + 0.001 < subobj->Y)
+			{
+			prt_htmlfm_OutputPrintf(context,
+			    "</tr><tr>"
+			    "<td style=\"height:%dpx;line-height:0;\">&nbsp;</td>",
+			   (int)((subobj->Y - last_height) * PRT_HTMLFM_YPIXEL)
+			);
+			}
 		    prt_htmlfm_OutputStrLiteral(context, "</tr>\n<tr>");
 		    cur_col = 0;
 		    }
@@ -1176,21 +1198,20 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 			i++;
 			cur_col++;
 			}
-		    if (i > 1)
-			prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\">&nbsp;</td>", i);
-		    else
-			prt_htmlfm_OutputStrLiteral(context, "<td>&nbsp;</td>");
+		    if (i > 1) prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\">&nbsp;</td>", i);
+		    else       prt_htmlfm_OutputStrLiteral(context, "<td>&nbsp;</td>");
 		    }
 
-		/** Figure rowspan and colspan **/
+		/** Compute rowspan and colspan. **/
 		cs=1;
 		while (cur_col+cs < n_cols && (colpos[cur_col+cs]+0.001) < subobj->X + subobj->Width) cs++;
 		rs=1;
-		while (cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height) {
+		while (cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height)
+		    {
 		    if (subobj->Height <= subobj->ConfigHeight+1.5 && 
 			(rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->ConfigHeight) rs++;
 		    else break;
-		}
+		    }
 		
 		/** Update the lowest bottom edge for this row. **/
 		if (subobj->Y + subobj->Height > last_height)
@@ -1219,9 +1240,19 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	prt_htmlfm_OutputStrLiteral(context, "</tr></table>\n");
 
 
-	/** Write page footer (for paginated reports). **/
-	prt_htmlfm_OutputPrintf(context, "</td><td></td></tr><tr><td height=\"%d\"></td><td></td><td></td></tr></table>\n", 
-		(int)((page_obj->MarginBottom+0.001)*PRT_HTMLFM_YPIXEL));
+	/** Write page footer(s). **/
+	prt_htmlfm_OutputPrintf(context,
+		    "</td>"
+		    "<td></td>"
+		"</tr>"
+		"<tr>"
+		    "<td height=\"%d\"></td>"
+		    "<td></td>"
+		    "<td></td>"
+		"</tr>"
+	    "</table>\n",
+	    (int)((page_obj->MarginBottom + 0.001) * PRT_HTMLFM_YPIXEL)
+	);
 	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
 	    prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_PAGEFOOTER);
 
