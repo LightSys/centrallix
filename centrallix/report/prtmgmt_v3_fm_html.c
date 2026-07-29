@@ -132,15 +132,16 @@
 	"<meta name=\"generator\" content=\"Centrallix PRTMGMT v3.0\">\n" \
 	/** Universal email styles. **/ \
 	"<style>\n" \
-	    "body { font-family: \"Courier New\",Courier,fixed; }\n" \
 	    "td { vertical-align: top; line-height: 1; }\n" \
 	    "table { border-collapse: collapse; }\n" \
 	"</style>\n" \
     "</head>\n" \
-    "<body style=\"background-color: %s; color: #000;\">\n"
+    "<body style=\"background-color: %s; color: #000;\">\n" \
+    "<div style=\"font-family: %s;\">\n"
 
 /*** Document footer ***/
-#define PRT_HTMLFM_FOOTER	"</body>\n" \
+#define PRT_HTMLFM_FOOTER	"</div>\n" \
+				"</body>\n" \
 				"</html>\n"
 
 
@@ -184,8 +185,8 @@
 /*** Declare supported font family styles.
  *** 
  *** PRT_HTMLFM_DEFAULT_FONTSTYLE is an index into prt_htmlfm_fontstyles[] for
- *** the report's most common font. This is set in the head tag, so that later
- *** styling can skip setting it, reducing HTML size.
+ *** the report's most common font. This is set on the body's wrapper element,
+ *** so that later styling can skip setting it, reducing HTML size.
  ***/
 static char* prt_htmlfm_fontstyles[3] = { "Courier New,Courier,fixed", "Arial,Helvetica,MS Sans Serif", "Times New Roman,Times,MS Serif"};
 #define PRT_HTMLFM_MINFONTSTYLE	(0)
@@ -345,7 +346,8 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	 ***/
 	context->BGColor = 0xFFFFFF;
 	const char* background_color = (context->Flags & PRT_HTMLFM_F_PAGINATED) ? "#c0c0c0" : "#ffffff";
-	prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, background_color);
+	const char* font_family = prt_htmlfm_fontstyles[PRT_HTMLFM_DEFAULT_FONTSTYLE];
+	prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, background_color, font_family);
 
 	/** Success, we can print this content type. **/
 	return (void*)context;
