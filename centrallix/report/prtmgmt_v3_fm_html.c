@@ -175,8 +175,8 @@
 /*** Font size range, in CSS points.  Points are honored exactly by every
  *** mainstream email client.
  ***/
-#define PRT_HTMLFM_MINFONTSIZE	(9.0)
-#define	PRT_HTMLFM_MAXFONTSIZE	(26.0)
+#define PRT_HTMLFM_MINFONTSIZE	(10.0)
+#define	PRT_HTMLFM_MAXFONTSIZE	(96.0)
 
 /** Points within which two font sizes are considered equal. **/
 #define PRT_HTMLFM_FONTSIZE_PRECISION	(0.1)
