@@ -141,9 +141,10 @@
     "<div style=\"background-color: %s; color: #000; font-family: %s;\">\n"
 
 /*** Document footer ***/
-#define PRT_HTMLFM_FOOTER	"</div>\n" \
-				"</body>\n" \
-				"</html>\n"
+#define PRT_HTMLFM_FOOTER \
+    "</div>\n" \
+    "</body>\n" \
+    "</html>\n"
 
 
 /*** Page header - build the graphical layout showing the 'page'
@@ -208,7 +209,6 @@ struct _PSF
     unsigned long	ImageID;
     }
     PRT_HTMLFM;
-
 
 #define MAX_IMAGE_SIZE (10 * 1024 * 1024) // 10 MB for image buffer
 
