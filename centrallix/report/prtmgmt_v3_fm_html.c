@@ -47,6 +47,7 @@
 #include "cxlib/magic.h"
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/range.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 #include "double.h"
@@ -171,10 +172,14 @@
 	"<br>\n"
 
 
-/*** this puts the min size at 9 (1), max size at 26 (7), and standard size at 12 (3) ***/
-static int prt_htmlfm_fontsize_to_htmlsize[] = {8,9,10,12,15,19,22,26};
-#define PRT_HTMLFM_MINFONTSIZE	(1)
-#define	PRT_HTMLFM_MAXFONTSIZE	(sizeof(prt_htmlfm_fontsize_to_htmlsize) / sizeof(prt_htmlfm_fontsize_to_htmlsize[0]) - 1)
+/*** Font size range, in CSS points.  Points are honored exactly by every
+ *** mainstream email client.
+ ***/
+#define PRT_HTMLFM_MINFONTSIZE	(9.0)
+#define	PRT_HTMLFM_MAXFONTSIZE	(26.0)
+
+/** Points within which two font sizes are considered equal. **/
+#define PRT_HTMLFM_FONTSIZE_PRECISION	(0.1)
 
 /*** Declare supported font family styles.
  *** 
@@ -369,29 +374,12 @@ prt_htmlfm_GetOutputType(void* context_v)
 
 
 /*** prt_htmlfm_GetNearestFontSize - return the nearest font size that this
- *** driver supports.  In this case, this just queries the underlying output
- *** driver for the information.
+ *** driver supports.
  ***/
 double
 prt_htmlfm_GetNearestFontSize(void* context_v, double req_size)
     {
-    /*pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;*/
-    int i;
-
-	/** Check min/max **/
-	if (req_size > prt_htmlfm_fontsize_to_htmlsize[PRT_HTMLFM_MAXFONTSIZE])
-	    return prt_htmlfm_fontsize_to_htmlsize[PRT_HTMLFM_MAXFONTSIZE];
-	if (req_size < prt_htmlfm_fontsize_to_htmlsize[PRT_HTMLFM_MINFONTSIZE])
-	    return prt_htmlfm_fontsize_to_htmlsize[PRT_HTMLFM_MINFONTSIZE];
-
-	/** Grab size from the list **/
-	for (i=PRT_HTMLFM_MINFONTSIZE;i<=PRT_HTMLFM_MAXFONTSIZE;i++)
-	    {
-	    if (req_size <= prt_htmlfm_fontsize_to_htmlsize[i])
-		return prt_htmlfm_fontsize_to_htmlsize[i];
-	    }
-
-    return req_size;
+    return clamp(PRT_HTMLFM_MINFONTSIZE, req_size, PRT_HTMLFM_MAXFONTSIZE);
     }
 
 
@@ -539,9 +527,9 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 	const bool font_changed =
 	    style->FontID != context->CurStyle.FontID ||
 	    style->Color != context->CurStyle.Color ||
-	    realComparePrecision(style->FontSize, context->CurStyle.FontSize, 0.5) != 0;
+	    realComparePrecision(style->FontSize, context->CurStyle.FontSize, PRT_HTMLFM_FONTSIZE_PRECISION) != 0;
 
-	/*** The tags nest as <font><u><i><b>, so changing any one of them
+	/*** The tags nest as <span><u><i><b>, so changing any one of them
 	 *** also requires rewriting every nested tag.  Entering or leaving
 	 *** a container rewrites every tag.
 	 ***/
@@ -565,7 +553,7 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 	    if (rewrite_underline && (cur_attr & PRT_OBJ_A_UNDERLINE) && !(context->StyleFlags & PRT_HTMLFM_SF_UNDERLINEDIRTY))
 		prt_htmlfm_OutputStrLiteral(context, "</u>");
 	    if (rewrite_font && !(context->StyleFlags & PRT_HTMLFM_SF_FONTDIRTY))
-		prt_htmlfm_OutputStrLiteral(context, "</font>");
+		prt_htmlfm_OutputStrLiteral(context, "</span>");
 	    }
 	if (exit_style) return 0; /* Done exiting. */
 
@@ -586,42 +574,30 @@ int
 prt_htmlfm_WriteStyle(pPrtHTMLfmInf context)
     {
     pPrtTextStyle style = &(context->CurStyle);
-    int htmlfontsize;
-    int i;
-    
-    /** Figure the size **/
-    for (i=PRT_HTMLFM_MINFONTSIZE;i<=PRT_HTMLFM_MAXFONTSIZE;i++)
-	{
-        if (realComparePrecision(prt_htmlfm_fontsize_to_htmlsize[i], style->FontSize, 0.5) == 0)
-	    {
-	    htmlfontsize = i;
-	    break;
-	    }
-	}
-    /*htmlfontsize = style->FontSize - PRT_HTMLFM_FONTSIZE_DEFAULT + PRT_HTMLFM_FONTSIZE_OFFSET;*/
-    
+
     if (context->StyleFlags & PRT_HTMLFM_SF_FONTDIRTY)
 	{
-	/*** Build the font tag, omitting face= or color= if they are the
-	 *** default value, to reduce HTML size.
+	/*** Build the font tag.  The size always appears since it drives the
+	 *** layout; family and color appear only when they differ from the
+	 *** default, to reduce HTML size.
 	 ***/
 	int len = 0;
 	char stylebuf[128];
 	const char* face = prt_htmlfm_GetFont(style);
-	len += snprintf(stylebuf + len, sizeof(stylebuf) - len, "<font");
+	len += snprintf(stylebuf + len, sizeof(stylebuf) - len, "<span style=\"font-size:%.4gpt", style->FontSize);
 	if (strcmp(face, prt_htmlfm_fontstyles[PRT_HTMLFM_DEFAULT_FONTSTYLE]) != 0)
-	    len += snprintf(stylebuf + len, sizeof(stylebuf) - len, " face=\"%s\"", face);
+	    len += snprintf(stylebuf + len, sizeof(stylebuf) - len, ";font-family:%s", face);
 	if (style->Color != 0)
-	    len += snprintf(stylebuf + len, sizeof(stylebuf) - len, " color=\"#%6.6X\"", style->Color);
-	len += snprintf(stylebuf + len, sizeof(stylebuf) - len, " size=\"%d\">", htmlfontsize);
-	
+	    len += snprintf(stylebuf + len, sizeof(stylebuf) - len, ";color:#%6.6X", style->Color);
+	len += snprintf(stylebuf + len, sizeof(stylebuf) - len, "\">");
+
 	/** Detect content clipping. **/
 	if (len >= (int)sizeof(stylebuf))
 	    {
 	    len = sizeof(stylebuf) - 1;
 	    mssError(1, "PRT", "Font style tag overflowed %zu-byte buffer.", sizeof(stylebuf));
 	    }
-	
+
 	/** Write the completed font tag. **/
 	prt_htmlfm_Output(context, stylebuf, len);
 	}
