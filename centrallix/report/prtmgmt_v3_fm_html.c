@@ -907,8 +907,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		const bool is_img = (type_id == PRT_OBJ_T_IMAGE);
 
 		/** Compute justification type. **/
-		char* justify_types[] = { "left", "right", "center", "justify" };
-		const char* justify_type = justify_types[0];
+		const char* justify_type = "left";
 		if (obj->Parent)
 		    {
 		    /*** Compute the X offset at which the image is flush with
@@ -924,7 +923,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    if (realComparePrecision(obj->X, rightAlignedX, 0.1) >= 0 &&
 			realComparePrecision(obj->X, 0.0, 0.1) > 0)
 			{
-			justify_type = justify_types[1];
+			justify_type = "right";
 			}
 		    }
 
@@ -1043,7 +1042,6 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 int
 prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
     {
-    char* justifytypes[] = { "left", "right", "center", "justify" };
     pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;
     pPrtObjStream subobj;
     double colpos[PRT_HTMLFM_MAXCOLS];
@@ -1205,7 +1203,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		if (cs > 1) prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", cs);
 		if (rs > 1) prt_htmlfm_OutputPrintf(context, " rowspan=\"%d\"", rs);
 		if (subobj->Justification != PRT_JUST_T_LEFT)
-		    prt_htmlfm_OutputPrintf(context, " align=\"%s\"", justifytypes[subobj->Justification]);
+		    prt_htmlfm_OutputPrintf(context, " align=\"%s\"", PRT_JUST_STR[subobj->Justification]);
 		prt_htmlfm_OutputStrLiteral(context, ">");
 		
 		/** Write child content. **/

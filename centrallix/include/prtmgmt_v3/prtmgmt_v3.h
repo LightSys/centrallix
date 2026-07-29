@@ -420,6 +420,9 @@ extern PrtGlobals PRTMGMT;
 #define PRT_JUST_T_CENTER	    2
 #define PRT_JUST_T_FULL		    3
 
+/** CSS justification values, indexed by PRT_JUSTIFY_MODE_xxx. **/
+#define PRT_JUST_STR ((const char*[]){ "left", "right", "center", "justify" })
+
 #define PRT_EVENT_T_REFLOW	    0		/* reflow the contents of a container */
 
 #define PRT_DRV_F_NOZ		    1		/* driver does not support Z-layering */
@@ -573,4 +576,3 @@ int prtEndObject(int handle_id);
 
 
 #endif /* defined _PRTMGMT_V3_H */
-
