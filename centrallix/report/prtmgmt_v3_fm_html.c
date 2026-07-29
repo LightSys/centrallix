@@ -103,7 +103,7 @@
     "Content-ID: <image_%d>\n" \
     "\n"
 
-#define PRT_HTMLFM_IMG_HEADER_VALUES(id, mimetype, ext) mimetype, id, ext, id
+#define PRT_HTMLFM_IMG_HEADER_VALUES(id, mime_type, ext) mime_type, id, ext, id
 
 #define PRT_HTMLFM_IMG_FOOTER ""
 
@@ -208,7 +208,8 @@ struct _PSF
     }
     PRT_HTMLFM;
 
-#define MAX_IMAGE_SIZE (10 * 1024 * 1024) // 10 MB for image buffer
+/** Specify 10MB image buffer. **/
+#define MAX_IMAGE_SIZE ((size_t)(10 * 1024 * 1024))
 
 /*** Struct that holds a raw file and its size
  ***/
@@ -816,47 +817,53 @@ base64_encode(const unsigned char *input, size_t len)
 int
 prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
     {
-    int w,h;
-    unsigned long id;
-    int justif = 0;
-    char* justifytypes[] = { "left", "right", "center", "justify" };
-
 	/** Check recursion **/
-	if (thExcessiveRecursion())
+	if (UNLIKELY(thExcessiveRecursion()))
 	    {
 	    mssError(1,"PRT","Could not generate page: resource exhaustion occurred");
 	    return -1;
 	    }
 
 	/** Select the type of object we're formatting **/
-	switch (obj->ObjType->TypeID)
+	const int type_id = obj->ObjType->TypeID;
+	switch (type_id)
 	    {
 	    case PRT_OBJ_T_STRING:
+		{
+		/** Compute string properties. **/
+		const bool has_content = (strlen((char*)obj->Content) > 0);
+		const bool has_url = (obj->URL != NULL && strchr(obj->URL, '"') == NULL);
+
+		/** Write style, if needed. **/
 		prt_htmlfm_SetStyle(context, &(obj->TextStyle));
+		if (has_content) prt_htmlfm_WriteStyle(context);
 
-		if (strlen((char*) obj->Content))
-		    {
-		    prt_htmlfm_WriteStyle(context);
-		    }
-
-		if (obj->URL && !strchr(obj->URL, '"'))
+		/** Write opening URL tag. **/
+		if (has_url)
 		    {
 		    prt_htmlfm_OutputStrLiteral(context, "<a href=\"");
 		    prt_htmlfm_OutputEncoded(context, obj->URL, -1);
 		    prt_htmlfm_OutputStrLiteral(context, "\">");
 		    }
+
+		/** Write string content. **/
 		prt_htmlfm_OutputEncoded(context, (char*)obj->Content, -1);
 
+		/** Write spacing. **/
 		if ((obj->Flags & PRT_OBJ_F_SOFTNEWLINE) && (obj->Flags & PRT_TEXTLM_F_RMSPACE))
 		    {
 		    prt_htmlfm_OutputEncoded(context, " ", 1);
 		    }
 
-		if (obj->URL && !strchr(obj->URL, '"'))
+		/** Write opening URL closing tag. **/
+		if (has_url)
 		    {
 		    prt_htmlfm_OutputStrLiteral(context, "</a>");
 		    }
+
 		break;
+		}
+
 	    case PRT_OBJ_T_AREA:
 		prt_htmlfm_GenerateArea(context, obj);
 		break;
@@ -866,136 +873,159 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		break;
 
 	    case PRT_OBJ_T_RECT:
+		{
 		/** Don't output rectangles that are container decorations added
 		 ** by finalize routines in the layout managers.  We really need a 
 		 ** better way to tell this than the conditional below.
 		 **/
 		if (obj->Parent && obj->Parent->ObjType->TypeID != PRT_OBJ_T_SECTION && !(obj->Flags & PRT_OBJ_F_MARGINRELEASE))
 		    {
-		    w = obj->Width*PRT_HTMLFM_XPIXEL;
-		    h = obj->Height*PRT_HTMLFM_YPIXEL;
-		    prt_htmlfm_OutputPrintf(context, "<table cellpadding=\"0\"><tr><td bgcolor=\"#%6.6X\" width=\"%d\" height=\"%d\"><table cellpadding=\"0\"><tr><td></td></tr></table></td></tr></table>\n",
-			    obj->TextStyle.Color, w, h);
+		    const int w = max(obj->Width * PRT_HTMLFM_XPIXEL, 1);
+		    const int h = max(obj->Height * PRT_HTMLFM_YPIXEL, 1);
+		    prt_htmlfm_OutputPrintf(context,
+			"<table cellpadding=\"0\">"
+			    "<tr><td bgcolor=\"#%6.6X\" width=\"%d\" height=\"%d\">"
+				"<table cellpadding=\"0\">"
+				    "<tr><td></td></tr>"
+				"</table>"
+			    "</td></tr>"
+			"</table>\n",
+			obj->TextStyle.Color, w, h
+		    );
 		    }
 		break;
+		}
 
 	    case PRT_OBJ_T_IMAGE:
 	    case PRT_OBJ_T_SVG:
-		justif=0;
+		{
+		ImageBuffer imgBuf = { NULL, 0, MAX_IMAGE_SIZE };
+		char* base64Image = NULL;
+
+		/** Compute image properties. **/
+		const bool has_url = (obj->URL != NULL && strchr(obj->URL, '"') == NULL);
+		const bool is_img = (type_id == PRT_OBJ_T_IMAGE);
+
+		/** Compute justification type. **/
+		char* justify_types[] = { "left", "right", "center", "justify" };
+		const char* justify_type = justify_types[0];
 		if (obj->Parent)
 		    {
-		    if (obj->X > 0.1 && obj->Parent->Width - obj->Parent->MarginLeft - obj->Parent->MarginRight - obj->Width - 0.1 <= obj->X)
+		    /*** Compute the X offset at which the image is flush with
+		     *** parent's right content edge.  Note: The parent's
+		     *** "margin" is similar to padding in CSS.
+		     ***/
+		    double rightAlignedX = obj->Parent->Width
+			- obj->Parent->MarginLeft
+			- obj->Parent->MarginRight
+			- obj->Width;
+
+		    /** If a nonzero X reaches the right edge, the image is right-justified. **/
+		    if (realComparePrecision(obj->X, rightAlignedX, 0.1) >= 0 &&
+			realComparePrecision(obj->X, 0.0, 0.1) > 0)
 			{
-			justif = 1;
+			justify_type = justify_types[1];
 			}
 		    }
-		
-		id = PRT_HTMLFM.ImageID++;
-		w = obj->Width*PRT_HTMLFM_XPIXEL;
-		h = obj->Height*PRT_HTMLFM_YPIXEL;
-		if (w <= 0) w = 1;
-		if (h <= 0) h = 1;
-		
-		// lifetime start: buf
-		ImageBuffer imgBuf = { (char *)nmMalloc(MAX_IMAGE_SIZE), 0, MAX_IMAGE_SIZE };
-		if (!imgBuf.buffer)
-		    {
-		    mssError(1, "PRT", "nmMalloc() failed\n");
-		    return -1;
-		    }
-		
-		// Capture image to buffer
+
+		/** Get image id, width, and height. **/
+		const unsigned long id = PRT_HTMLFM.ImageID++;
+		const int w = max(obj->Width * PRT_HTMLFM_XPIXEL, 1);
+		const int h = max(obj->Height * PRT_HTMLFM_YPIXEL, 1);
+
+		// Allocate image buffer.
+		imgBuf.buffer = (char*)check_ptr(nmMalloc(MAX_IMAGE_SIZE));
+		if (imgBuf.buffer == NULL) goto error_image;
+
+		/** Capture the image into the image buffer. **/
 		//TODO we weren't supposed to replace context->Session->ImageWriteFn with ImageWriteFn,
 		// except the former references the image store I think which we don't want anymore...
-		if(obj->ObjType->TypeID == PRT_OBJ_T_IMAGE)
-		    {
-		    prt_internal_WriteImageToPNG(ImageWriteFn, &imgBuf, (pPrtImage)(obj->Content), w, h);
-		    }
-		else
-		    {
-		    prt_internal_WriteSvgToFile(ImageWriteFn, &imgBuf, (pPrtSvg)(obj->Content), w, h);
-		    }
+		if (is_img) prt_internal_WriteImageToPNG(ImageWriteFn, &imgBuf, (pPrtImage)(obj->Content), w, h);
+		else        prt_internal_WriteSvgToFile(ImageWriteFn, &imgBuf, (pPrtSvg)(obj->Content), w, h);
 
-		// Encode image to base64
-		// copy out of lifetime: buf into img
-		char *base64Image = base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size);
-		// lifetime end: buf
+		/** Encode the image to base64. **/
+		base64Image = check_ptr(base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size));
+		if (UNLIKELY(base64Image == NULL)) goto error_image;
+
+		/** Clean up unused buffer. **/
 		nmFree(imgBuf.buffer, MAX_IMAGE_SIZE);
-		if (!base64Image)
-		    {
-		    mssError(1, "PRT", "Base64 encoding failed\n");
-		    return -1;
-		    }
-		
-		if (obj->URL && !strchr(obj->URL, '"'))
+		imgBuf.buffer = NULL;
+
+		/** Write opening URL tag. **/
+		if (has_url)
 		    {
 		    prt_htmlfm_OutputStrLiteral(context, "<a href=\"");
 		    prt_htmlfm_OutputEncoded(context, obj->URL, -1);
 		    prt_htmlfm_OutputStrLiteral(context, "\">");
 		    }
-	
+
+		/** Write the start of the image tag. **/
+		prt_htmlfm_OutputStrLiteral(context, "<img src=\"");
+
+		/** Write image src (based on how we have to embed it). **/
 		if (context->Flags & PRT_HTMLFM_F_EMAIL)
-		    {
-		    char* img_mimetype;
-		    char* img_ext;
-		    if (obj->ObjType->TypeID == PRT_OBJ_T_IMAGE)
-			{
-			img_mimetype = "image/png";
-			img_ext = "png";
-			}
-		    else
-			{
-			img_mimetype = "image/svg+xml";
-			img_ext = "svg";
-			}
+		    { /* Email: Use embedded attachment. */
+		    char* mime_type = (is_img) ? "image/png" : "image/svg+xml";
+		    char* extension = (is_img) ? "png"       : "svg";
 
-		    prt_htmlfm_OutputPrintf(context, "<img src=\"cid:image_%d\"", id);
+		    /** Write the src value. **/
+		    prt_htmlfm_OutputPrintf(context, "cid:image_%d", id);
 
-		    /*** Add this attachment to the context.  The base64 data
-		     *** is wrapped at PRT_HTMLFM_B64_LINE_LEN chars per line.
-		     ***/
+		    /** Allocate a new attachment and write the headers. **/
 		    pXString attachment = xsNew();
 		    xsConcatPrintf(attachment,
 			PRT_HTMLFM_IMG_HEADER_FORMAT,
-			PRT_HTMLFM_IMG_HEADER_VALUES(id, img_mimetype, img_ext)
+			PRT_HTMLFM_IMG_HEADER_VALUES(id, mime_type, extension)
 		    );
+		    
+		    /** Write the base64 image with line wrap. **/
 		    size_t b64_len = strlen(base64Image);
 		    for (size_t off = 0; off < b64_len; off += PRT_HTMLFM_B64_LINE_LEN)
 			{
-			size_t chunk = b64_len - off;
-			if (chunk > PRT_HTMLFM_B64_LINE_LEN) chunk = PRT_HTMLFM_B64_LINE_LEN;
-			xsConcatenate(attachment, base64Image + off, chunk);
+			const size_t line_len = min(b64_len - off, PRT_HTMLFM_B64_LINE_LEN);
+			xsConcatenate(attachment, base64Image + off, line_len);
 			xsConcatenate(attachment, "\n", 1);
 			}
-		    xsConcatenate(attachment, PRT_HTMLFM_IMG_FOOTER, -1);
+
+		    /** Write the attachment footer. **/
+		    xsConcatenate(attachment, PRT_HTMLFM_IMG_FOOTER, sizeof(PRT_HTMLFM_IMG_FOOTER) - 1);
+
+		    /** Add the attachment to the context. **/
 		    xaAddItem(context->Attachments, attachment);
 		    }
 		else
-		    {
-		    if (obj->ObjType->TypeID == PRT_OBJ_T_IMAGE)
-			{
-			prt_htmlfm_OutputPrintf(context, "<img src=\"data:image/png;base64,%s\"", 
-			    base64Image, justifytypes[justif], w, h);
-			}
-		    else
-			{
-			prt_htmlfm_OutputPrintf(context, "<img src=\"data:image/svg+xml;base64,%s\"", 
-			    base64Image, justifytypes[justif], w, h);
-			}
+		    { /* Non-email: Use inline source. */
+		    if (is_img) prt_htmlfm_OutputStrLiteral(context, "data:image/png;base64,");
+		    else        prt_htmlfm_OutputStrLiteral(context, "data:image/svg+xml;base64,");
+		    prt_htmlfm_Output(context, base64Image, -1);
 		    }
-		prt_htmlfm_OutputPrintf(context, " align=\"%s\" border=\"0\" width=\"%d\" height=\"%d\">", 
-		    justifytypes[justif], w, h);
 
-		if (obj->URL && !strchr(obj->URL, '"'))
+		/** Write the rest of the image tag. **/
+		prt_htmlfm_OutputPrintf(context,
+		    "\" align=\"%s\" border=\"0\" width=\"%d\" height=\"%d\">",
+		    justify_type, w, h
+		);
+
+		/** Write opening URL closing tag. **/
+		if (has_url)
 		    {
 		    prt_htmlfm_OutputStrLiteral(context, "</a>");
 		    }
-		
-		// lifetime end: img
+
+		// Clean up.
 		nmFree(base64Image, strlen(base64Image));
-		
+		base64Image = NULL;
+
+		/** Success. **/
 		break;
-	    
+
+    error_image:
+		mssError(1, "PRT", "Failed to write %s.", (is_img) ? "image" : "svg");
+		if (imgBuf.buffer != NULL) nmFree(imgBuf.buffer, MAX_IMAGE_SIZE);
+		if (base64Image != NULL) nmFree(base64Image, strlen(base64Image));
+		return -1;
+		}
+
 	    case PRT_OBJ_T_TABLE:
 		prt_htmlfm_GenerateTable(context, obj);
 		break;

@@ -131,7 +131,7 @@ int prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section);
  *** of str_literal because the caller promises it is a string literal.
  ***/
 #define prt_htmlfm_OutputStrLiteral(context, str_literal) \
-    prt_htmlfm_Output((context), (str_literal), sizeof(str_literal) - 1);
+    prt_htmlfm_Output((context), (str_literal), sizeof(str_literal) - 1)
 
 
 #endif /* not defined _PRTMGMT_V3_FM_HTML_H */
