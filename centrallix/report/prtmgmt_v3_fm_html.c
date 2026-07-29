@@ -346,8 +346,11 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	return (void*)context;
 
     reject: /* We cannot print this content type. */
-	if (context->Attachments != NULL) xaFree(context->Attachments);
-	if (LIKELY(context != NULL)) nmFree(context, sizeof(PrtHTMLfmInf));
+	if (LIKELY(context != NULL))
+	    {
+	    if (context->Attachments != NULL) xaFree(context->Attachments);
+	    nmFree(context, sizeof(PrtHTMLfmInf));
+	    }
 
 	return NULL;
     }
@@ -699,10 +702,12 @@ prt_htmlfm_SaveStyle(pPrtHTMLfmInf context, pPrtHTMLfmSavedStyle saved)
 int
 prt_htmlfm_EndStyle(pPrtHTMLfmInf context)
     {
-    PrtTextStyle dummy_style;
 
+	/*** In exit mode, prt_htmlfm_SetStyle() closes every open tag and
+	 *** ignores the style passed to it, so we just hand it the current one.
+	 ***/
 	context->ExitStyle = 1;
-	prt_htmlfm_SetStyle(context, &dummy_style);
+	prt_htmlfm_SetStyle(context, &(context->CurStyle));
 	context->ExitStyle = 0;
 
     return 0;

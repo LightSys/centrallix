@@ -53,7 +53,7 @@ typedef unsigned char SessionFlags; /* A type holding 0 or more session flags. *
 /** Style Flags **/
 typedef unsigned char StyleFlags; /* A type holding 0 or more style flags. */
 #define PRT_HTMLFM_SF_NO_FLAGS		((StyleFlags)0b00000000u)
-#define PRT_HTMLFM_SF_KEEPSPACES	((StyleFlags)0b00000001u) //used after newlines to keep space-padding
+#define PRT_HTMLFM_SF_KEEPSPACES	((StyleFlags)0b00000001u) /** Set after newlines to keep space-padding. **/
 #define PRT_HTMLFM_SF_FONTDIRTY		((StyleFlags)0b00000010u)
 #define PRT_HTMLFM_SF_UNDERLINEDIRTY	((StyleFlags)0b00000100u)
 #define PRT_HTMLFM_SF_ITALICDIRTY	((StyleFlags)0b00001000u)
