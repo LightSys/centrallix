@@ -191,7 +191,7 @@ static PrtHTMLfmSubtype prt_htmlfm_subtypes[] =
     {
     { "text/vnd.cx.paginated+html", "text/html", PRT_HTMLFM_F_PAGINATED },
     { "text/html", "text/html", 0 },
-    { "multipart/vnd.cx.htmlemail+mixed", "multipart/related", PRT_HTMLFM_F_EMAIL },
+    { "multipart/vnd.cx.htmlemail+related", "multipart/related", PRT_HTMLFM_F_EMAIL },
     };
 #define PRT_HTMLFM_N_SUBTYPES (sizeof(prt_htmlfm_subtypes) / sizeof(prt_htmlfm_subtypes[0]))
 
