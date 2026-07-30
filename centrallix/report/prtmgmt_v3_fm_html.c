@@ -158,26 +158,34 @@
  ***    (1) %d	Width of table, pixels
  ***/
 #define PRT_HTMLFM_PAGEHEADER_FORMAT \
-	"<center>\n" \
-	"<table cellpadding=\"0\" bgcolor=\"#606060\">\n" \
-	    "<tr>\n" \
-		"<td bgcolor=\"#000000\">\n" \
-		"<table width=\"%d\" cellspacing=\"1\" cellpadding=\"16\" style=\"border-collapse:separate;\">\n" \
-		    "<tr><td width=\"100%%\" bgcolor=\"#ffffff\">\n"
+    "<center><table cellpadding=\"0\" bgcolor=\"#606060\">" \
+	"<tr>" \
+	    "<td bgcolor=\"#000000\">" \
+	    "<table width=\"%d\" cellspacing=\"1\" cellpadding=\"16\" style=\"border-collapse:separate;\">" \
+		"<tr><td width=\"100%%\" bgcolor=\"#ffffff\">\n"
 
 
 /*** Page footer - end the page ***/
 #define PRT_HTMLFM_PAGEFOOTER "\n" \
-		    "</td></tr>\n" \
-		"</table>\n" \
-		"</td><td valign=\"top\" align=\"left\" width=\"8\"><table width=\"8\" cellpadding=\"0\" bgcolor=\"#c0c0c0\"><tr><td height=\"8\" width=\"8\">&nbsp;</td></tr></table></td>\n" \
-	    "</tr><tr>\n" \
-		"<td width=\"8\" align=\"left\" valign=\"top\"><table width=\"8\" cellpadding=\"0\" bgcolor=\"#c0c0c0\"><tr><td height=\"8\" width=\"8\">&nbsp;</td></tr></table></td>\n" \
-		"<td><small>&nbsp;</small></td>\n" \
-	    "</tr>\n" \
-	"</table>\n" \
-	"</center>\n" \
-	"<br>\n"
+		"</td></tr>" \
+	    "</table>" \
+	    "</td>" \
+	    "<td valign=\"top\" align=\"left\" width=\"8\">" \
+		"<table width=\"8\" cellpadding=\"0\" bgcolor=\"#c0c0c0\">" \
+		    "<tr><td height=\"8\" width=\"8\">&nbsp;</td></tr>" \
+		"</table>" \
+	    "</td>" \
+	"</tr>" \
+	"<tr>" \
+	    "<td width=\"8\" align=\"left\" valign=\"top\">" \
+		"<table width=\"8\" cellpadding=\"0\" bgcolor=\"#c0c0c0\">" \
+		    "<tr><td height=\"8\" width=\"8\">&nbsp;</td></tr>" \
+		"</table>" \
+	    "</td>" \
+	    "<td><small>&nbsp;</small></td>" \
+	"</tr>" \
+    "</table></center>" \
+    "<br>\b"
 
 
 /*** Font size range, in CSS pixels.
