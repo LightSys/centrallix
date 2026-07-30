@@ -158,10 +158,10 @@
  ***    (1) %d	Width of table, pixels
  ***/
 #define PRT_HTMLFM_PAGEHEADER_FORMAT \
-    "<center><table cellpadding=\"0\" bgcolor=\"#606060\">" \
+    "<center><table role=\"presentation\" cellpadding=\"0\" bgcolor=\"#606060\">" \
 	"<tr>" \
 	    "<td bgcolor=\"#000000\">" \
-	    "<table width=\"%d\" cellspacing=\"1\" cellpadding=\"16\" style=\"border-collapse:separate;\">" \
+	    "<table role=\"presentation\" width=\"%d\" cellspacing=\"1\" cellpadding=\"16\" style=\"border-collapse:separate;\">" \
 		"<tr><td width=\"100%%\" bgcolor=\"#ffffff\">\n"
 
 
@@ -171,14 +171,14 @@
 	    "</table>" \
 	    "</td>" \
 	    "<td valign=\"top\" align=\"left\" width=\"8\">" \
-		"<table width=\"8\" cellpadding=\"0\" bgcolor=\"#c0c0c0\">" \
+		"<table role=\"presentation\" width=\"8\" cellpadding=\"0\" bgcolor=\"#c0c0c0\">" \
 		    "<tr><td height=\"8\" width=\"8\">&nbsp;</td></tr>" \
 		"</table>" \
 	    "</td>" \
 	"</tr>" \
 	"<tr>" \
 	    "<td width=\"8\" align=\"left\" valign=\"top\">" \
-		"<table width=\"8\" cellpadding=\"0\" bgcolor=\"#c0c0c0\">" \
+		"<table role=\"presentation\" width=\"8\" cellpadding=\"0\" bgcolor=\"#c0c0c0\">" \
 		    "<tr><td height=\"8\" width=\"8\">&nbsp;</td></tr>" \
 		"</table>" \
 	    "</td>" \
@@ -759,10 +759,10 @@ prt_htmlfm_Border(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj)
 	    if (bw == 0) bw = 1;
 	    iw = ((i==border->nLines-1)?m:(border->Sep*PRT_HTMLFM_XPIXEL)) + 0.5;
 	    if (iw == 0 && i!=border->nLines-1) iw = 1;
-	    prt_htmlfm_OutputPrintf(context, "<table cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">",
+	    prt_htmlfm_OutputPrintf(context, "<table role=\"presentation\" cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">",
 		    (int)(bw),
 		    (int)(border->Color[i]));
-	    prt_htmlfm_OutputPrintf(context, "<table cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">\n",
+	    prt_htmlfm_OutputPrintf(context, "<table role=\"presentation\" cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">\n",
 		    (int)(iw),
 		    (int)(obj->BGColor));
 	    }
@@ -901,9 +901,9 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    const int w = max(obj->Width * PRT_HTMLFM_XPIXEL, 1);
 		    const int h = max(obj->Height * PRT_HTMLFM_YPIXEL, 1);
 		    prt_htmlfm_OutputPrintf(context,
-			"<table cellpadding=\"0\">"
+			"<table role=\"presentation\" cellpadding=\"0\">"
 			    "<tr><td bgcolor=\"#%6.6X\" width=\"%d\" height=\"%d\">"
-				"<table cellpadding=\"0\">"
+				"<table role=\"presentation\" cellpadding=\"0\">"
 				    "<tr><td></td></tr>"
 				"</table>"
 			    "</td></tr>"
@@ -1089,7 +1089,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	const int center_width = (int)((page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight + 0.001) * PRT_HTMLFM_XPIXEL);
 
 	/** Write the opening tag for a table to set margins. **/
-	prt_htmlfm_OutputStrLiteral(context, "<table cellpadding=\"0\" width=\"100%\">");
+	prt_htmlfm_OutputStrLiteral(context, "<table role=\"presentation\" cellpadding=\"0\" width=\"100%\">");
 
 	/** Write the table column sizes. **/
 	prt_htmlfm_OutputPrintf(context,
@@ -1176,7 +1176,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    }
 
 	/** Write the layout table **/
-	prt_htmlfm_OutputStrLiteral(context, "<table cellpadding=\"0\" width=\"100%\">");
+	prt_htmlfm_OutputStrLiteral(context, "<table role=\"presentation\" cellpadding=\"0\" width=\"100%\">");
 	for (i=0;i<n_cols;i++)
 	    {
 	    if (i == n_cols-1)

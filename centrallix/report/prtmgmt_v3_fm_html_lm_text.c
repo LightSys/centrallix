@@ -99,13 +99,13 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    /** Draw the border. **/
 	    prt_htmlfm_Border(context, &(lm_inf->AreaBorder), area);
 	    context->BGColor = area->BGColor;
-	    prt_htmlfm_OutputStrLiteral(context, "<table width=\"100%\" cellpadding=\"0\">\n");
+	    prt_htmlfm_OutputStrLiteral(context, "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\">\n");
 	    }
 	else
 	    {
 	    /** No border: Draw the padding and background directly. **/
 	    const int pad = (area->MarginTop + area->MarginBottom + area->MarginLeft + area->MarginRight) * PRT_HTMLFM_XPIXEL/4;
-	    prt_htmlfm_OutputPrintf(context, "<table width=\"100%%\" cellpadding=\"%d\"", pad);
+	    prt_htmlfm_OutputPrintf(context, "<table role=\"presentation\" width=\"100%%\" cellpadding=\"%d\"", pad);
 	    prt_htmlfm_OutputBGColor(context, area->BGColor);
 	    prt_htmlfm_OutputStrLiteral(context, ">\n");
 	    }
