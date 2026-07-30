@@ -128,8 +128,12 @@
 	"<meta name=\"pragma\" content=\"no-cache\">\n" \
 	"<meta name=\"referrer\" content=\"same-origin\">\n" \
 	"<meta name=\"generator\" content=\"Centrallix PRTMGMT v3.0\">\n" \
+	/** Indicate that this output only supports light mode. **/ \
+	"<meta name=\"color-scheme\" content=\"light\">\n" \
+	"<meta name=\"supported-color-schemes\" content=\"light\">\n" \
 	/** Universal email styles. **/ \
 	"<style>\n" \
+	    ":root { color-scheme: light; }\n" \
 	    "td { vertical-align: top; line-height: 1; }\n" \
 	    "table { border-collapse: collapse; }\n" \
 	"</style>\n" \
@@ -143,6 +147,7 @@
 	/** Prevent mobile clients from inflating text, breaking the layout. **/ \
 	"-webkit-text-size-adjust: 100%%; " \
 	"text-size-adjust: 100%%; " \
+	"color-scheme: light; " \
     "\">\n"
 
 /*** Document footer ***/
