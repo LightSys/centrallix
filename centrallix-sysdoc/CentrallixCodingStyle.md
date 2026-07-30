@@ -245,23 +245,6 @@ A constant set is a named group of numerical values, such as the algorithms a mo
 - The struct almost always includes a field holding this enum to indicate the type that the struct holds.
 - These names insert a `T` tag: `PRE_STRUCT_T_XXX`.
 
-### File Organization
-For: `.c`, `.h`, structure files
-
-In a structure file, `$Version=2$` is always the first line, placed before the copyright notice (optional for files in `centrallix-os`).
-
-In a `.c` or `.h` file, it is recommended to order the top level of the file as follows (for consistency):
-1. `#include` guards (in a `.h` file).
-2. Copyright notice.
-3. `#include` groups.
-4. Macros.
-5. `Typedef`, `struct`, and `union` declarations.
-6. Prototypes for functions defined later in the same file.
-7. Function definitions (`.c` files).
-
-**Note**: Many files may not have all of these sections.
-**Exception**: Some patterns may force you to break this order, such as forward declarations.
-
 ### Types
 For: `.c`, `.h`
 
@@ -279,6 +262,23 @@ char* name = NULL;         /* Not 0. */
 unsigned int n_items = 0;  /* Default integer type. */
 uint32_t wire_value;       /* Width matters on the wire. */
 ```
+
+### File Organization
+For: `.c`, `.h`, structure files
+
+In a structure file, `$Version=2$` is always the first line, placed before the copyright notice (optional for files in `centrallix-os`).
+
+In a `.c` or `.h` file, it is recommended to order the top level of the file as follows (for consistency):
+1. `#include` guards (in a `.h` file).
+2. Copyright notice.
+3. `#include` groups.
+4. Macros.
+5. `Typedef`, `struct`, and `union` declarations.
+6. Prototypes for functions defined later in the same file.
+7. Function definitions (`.c` files).
+
+**Note**: Many files may not have all of these sections.
+**Exception**: Some patterns may force you to break this order, such as forward declarations.
 
 ### Line Length
 - There's no hard line length limit, but it is recommended to wrap lines at 80 characters.
