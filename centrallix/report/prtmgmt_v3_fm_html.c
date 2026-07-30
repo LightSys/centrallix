@@ -182,7 +182,7 @@
 
 /*** Font size range, in CSS pixels.
  ***/
-#define PRT_HTMLFM_MINFONTSIZE	(9.0)
+#define PRT_HTMLFM_MINFONTSIZE	(10.0)
 #define	PRT_HTMLFM_MAXFONTSIZE	(96.0)
 
 /** Pixels within which two font sizes are considered equal. **/
