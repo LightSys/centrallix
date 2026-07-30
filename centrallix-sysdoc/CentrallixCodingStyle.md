@@ -203,6 +203,48 @@ If a struct supports `magic.h` by beginning with a magic field of type `Magic_t`
 - When creating the struct, call `SETMAGIC()` with the appropriate magic value (e.g. `MGK_FILE`).
 - When a new scope first gains access to the struct (e.g. the first time a function reads and stores a pointer to it) and intends to read any field from it (rather than just passing the pointer to another scope), it must call `ASSERTMAGIC()` immediately (after verifying that the struct is not null, if needed).  No data should be read from the struct or used before `ASSERTMAGIC()` is called.
 
+### Constant Sets
+For: `.c`, `.h`
+
+A constant set is a named group of numerical values, such as the algorithms a module supports or the flags a structure carries.  Every set follows these rules:
+- The set should have a `typedef` of a numerical type, so declarations using this type will show what the value means.
+	- The underlying numerical type should be the minimum size necessary for values defined.
+	- Typically, unsigned numerical types like `unsigned char`, `unsigned short`, or `unsigned int` are used.
+	- Signed types are less common (especially for flags!), however, they have uses when making some enum values negative communicates useful information, such as positive success values vs. negative error-code values.
+	- The `typedef` should be preceded by a brief comment explaining the information stored with this type.
+- Each value is defined using a macro with a literal value cast to the set's type to improve type checking.
+- Values are aligned in a column (see [struct & union declarations](#struct--union-declarations) for the alignment rules, which apply here too).
+- Macro names use the scheme `PRE_SET_XXX`, where `PRE` is the module prefix, `SET` is a short abbreviation for the set, and `XXX` is the name of the individual value.
+- Use these macros when interacting with the set.  DO NOT USE MAGIC VALUES.
+- A [section comment](#section-comments) above the set says what it represents.
+
+#### Enums
+- An enum holds exactly one of its values at a time, so the values simply increment.
+- The value `0` is reserved to mean unset, and is named `PRE_SET_NULL` (where `PRE` is the module prefix).
+- For example:
+	```c
+	/** Enum type representing a clustering algorithm. **/
+	typedef unsigned char ClusterAlgorithm;
+	#define CA_ALG_NULL             ((ClusterAlgorithm)0u)
+	#define CA_ALG_NONE             ((ClusterAlgorithm)1u)
+	#define CA_ALG_SLIDING_WINDOW   ((ClusterAlgorithm)2u)
+	#define CA_ALG_KMEANS           ((ClusterAlgorithm)3u)
+	#define CA_ALG_KMEANS_PLUS_PLUS ((ClusterAlgorithm)4u)
+	#define CA_ALG_KMEDOIDS         ((ClusterAlgorithm)5u)
+	#define CA_ALG_DB_SCAN          ((ClusterAlgorithm)6u)
+	```
+
+#### Flags
+- A flag set can hold any number of its values at once, so each value is a distinct power of two.
+- Flags are always stored in full-length integers, and never as single-bit bitfields (i.e., `Flag:1;`).  This allows bulk editing and passing multiple flags as one parameter.
+- Flag names insert an `F` tag: `PRE_STRUCT_F_XXX`, where `PRE` is the module prefix and `STRUCT` is the structure the flags serve.
+- Flag comparisons should use `flags & PRE_STRUCT_F_XXX`, which is considered a boolean for the purposes of the [Truthiness](#truthiness) rule.
+
+#### Multi-Type Structures
+- If a structure can represent kinds or types (not data types, this is a conceptual thing), an enum lists those types.
+- The struct almost always includes a field holding this enum to indicate the type that the struct holds.
+- These names insert a `T` tag: `PRE_STRUCT_T_XXX`.
+
 ### File Organization
 For: `.c`, `.h`, structure files
 
@@ -367,48 +409,6 @@ All code is "tech debt", although I prefer the term "tech cost".  "Code clutter"
 - All files should be encoded using UTF8.
 - All files should have LF line endings.
 - All files should end with a newline, so the last line of content is complete (this also makes writing to the end easier).
-
-### Constant Sets
-For: `.c`, `.h`
-
-A constant set is a named group of numerical values, such as the algorithms a module supports or the flags a structure carries.  Every set follows these rules:
-- The set should have a `typedef` of a numerical type, so declarations using this type will show what the value means.
-	- The underlying numerical type should be the minimum size necessary for values defined.
-	- Typically, unsigned numerical types like `unsigned char`, `unsigned short`, or `unsigned int` are used.
-	- Signed types are less common (especially for flags!), however, they have uses when making some enum values negative communicates useful information, such as positive success values vs. negative error-code values.
-	- The `typedef` should be preceded by a brief comment explaining the information stored with this type.
-- Each value is defined using a macro with a literal value cast to the set's type to improve type checking.
-- Values are aligned in a column (see [struct & union declarations](#struct--union-declarations) for the alignment rules, which apply here too).
-- Macro names use the scheme `PRE_SET_XXX`, where `PRE` is the module prefix, `SET` is a short abbreviation for the set, and `XXX` is the name of the individual value.
-- Use these macros when interacting with the set.  DO NOT USE MAGIC VALUES.
-- A [section comment](#section-comments) above the set says what it represents.
-
-#### Enums
-- An enum holds exactly one of its values at a time, so the values simply increment.
-- The value `0` is reserved to mean unset, and is named `PRE_SET_NULL` (where `PRE` is the module prefix).
-- For example:
-	```c
-	/** Enum type representing a clustering algorithm. **/
-	typedef unsigned char ClusterAlgorithm;
-	#define CA_ALG_NULL             ((ClusterAlgorithm)0u)
-	#define CA_ALG_NONE             ((ClusterAlgorithm)1u)
-	#define CA_ALG_SLIDING_WINDOW   ((ClusterAlgorithm)2u)
-	#define CA_ALG_KMEANS           ((ClusterAlgorithm)3u)
-	#define CA_ALG_KMEANS_PLUS_PLUS ((ClusterAlgorithm)4u)
-	#define CA_ALG_KMEDOIDS         ((ClusterAlgorithm)5u)
-	#define CA_ALG_DB_SCAN          ((ClusterAlgorithm)6u)
-	```
-
-#### Flags
-- A flag set can hold any number of its values at once, so each value is a distinct power of two.
-- Flags are always stored in full-length integers, and never as single-bit bitfields (i.e., `Flag:1;`).  This allows bulk editing and passing multiple flags as one parameter.
-- Flag names insert an `F` tag: `PRE_STRUCT_F_XXX`, where `PRE` is the module prefix and `STRUCT` is the structure the flags serve.
-- Flag comparisons should use `flags & PRE_STRUCT_F_XXX`, which is considered a boolean for the purposes of the [Truthiness](#truthiness) rule.
-
-#### Multi-Type Structures
-- If a structure can represent kinds or types (not data types, this is a conceptual thing), an enum lists those types.
-- The struct almost always includes a field holding this enum to indicate the type that the struct holds.
-- These names insert a `T` tag: `PRE_STRUCT_T_XXX`.
 
 ### XML
 For: `.xml`, `.xsl`
