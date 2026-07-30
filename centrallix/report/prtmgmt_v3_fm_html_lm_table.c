@@ -91,8 +91,10 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 
 
 	/** Write the container HTML with borders. **/
-	prt_htmlfm_OutputPrintf(context,"<table width=\"100%\" cellpadding=\"0\" style=\"height: %dpx;",
-	    (int)(table->Height * PRT_HTMLFM_YPIXEL + 0.5));
+	prt_htmlfm_OutputPrintf(context,
+	    "<table width=\"100%%\" cellpadding=\"0\" style=\"height: %dpx;",
+	    (int)(table->Height * PRT_HTMLFM_YPIXEL + 0.5)
+	);
 	prt_htmlfm_OutputBorder(context, "top", lm_data->TopBorder.Width[0], lm_data->TopBorder.Color[0]);
 	prt_htmlfm_OutputBorder(context, "right", lm_data->RightBorder.Width[0], lm_data->RightBorder.Color[0]);
 	prt_htmlfm_OutputBorder(context, "bottom", lm_data->BottomBorder.Width[0], lm_data->BottomBorder.Color[0]);

@@ -157,13 +157,13 @@
  *** Params:
  ***    (1) %d	Width of table, pixels
  ***/
-#define PRT_HTMLFM_PAGEHEADER \
+#define PRT_HTMLFM_PAGEHEADER_FORMAT \
 	"<center>\n" \
 	"<table cellpadding=\"0\" bgcolor=\"#606060\">\n" \
 	    "<tr>\n" \
 		"<td bgcolor=\"#000000\">\n" \
 		"<table width=\"%d\" cellspacing=\"1\" cellpadding=\"16\" style=\"border-collapse:separate;\">\n" \
-		    "<tr><td width=\"100%\" bgcolor=\"#ffffff\">\n"
+		    "<tr><td width=\"100%%\" bgcolor=\"#ffffff\">\n"
 
 
 /*** Page footer - end the page ***/
@@ -622,10 +622,14 @@ prt_htmlfm_WriteStyle(pPrtHTMLfmInf context)
 	prt_htmlfm_OutputStrLiteral(context, "<b>");
 	}
 
-    /*Clear the dirty flags*/
-    context->StyleFlags &= ~ (PRT_HTMLFM_SF_FONTDIRTY | PRT_HTMLFM_SF_UNDERLINEDIRTY |
-	    PRT_HTMLFM_SF_ITALICDIRTY | PRT_HTMLFM_SF_BOLDDIRTY);
-    
+    /** Clear the dirty flags. **/
+    context->StyleFlags &= ~(
+	PRT_HTMLFM_SF_FONTDIRTY |
+	PRT_HTMLFM_SF_UNDERLINEDIRTY |
+	PRT_HTMLFM_SF_ITALICDIRTY |
+	PRT_HTMLFM_SF_BOLDDIRTY
+    );
+
     return 0;
     }
 
@@ -1062,7 +1066,12 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 
 	/** Write the page HTML (for paginated reports). **/
 	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
-	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_PAGEHEADER, (int)(page_obj->Width*PRT_HTMLFM_XPIXEL+0.001)+34);
+	    {
+	    prt_htmlfm_OutputPrintf(context,
+		PRT_HTMLFM_PAGEHEADER_FORMAT,
+		(int)(page_obj->Width * PRT_HTMLFM_XPIXEL + 0.001) + 34
+	    );
+	    }
 
 	/** Compute page margins. **/
 	/** Note: Margins in reports are similar to the concept of CSS padding. **/
