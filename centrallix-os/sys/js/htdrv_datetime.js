@@ -10,15 +10,16 @@
 // GNU Lesser General Public License for more details.
 
 
-// A resize observer to update datetime dropdowns when they are resized.
-const dt_resize_observer = new ResizeObserver(e => e.forEach(({ target }) => {
-    // Ignore widgets that don't have a visible panelayer in need of updating.
-    if (htr_getvisibility(target.PaneLayer) !== 'inherit') return;
-    
-    // Reopen the datetime dropdown to rerender it.
-    dt_collapse(target);
-    dt_expand(target);
-}));
+// A list of every datetime widget on the page.
+const dt_list = [];
+
+// A resize observer to move datetime dropdowns when their widget is resized,
+// whether the page itself was resized.
+const dt_resize_observer = new ResizeObserver(e => e.forEach(({ target }) => dt_reposition(target)));
+
+// Resizing the page may move the widget without resizing it, detected here.
+// Updates are deferred to the next frame to wait for other widgets to settle.
+window.addEventListener('resize', () => requestAnimationFrame(() => dt_list.forEach(dt_reposition)));
 
 
 function dt_getvalue() {
@@ -152,7 +153,21 @@ function dt_init(param){
 	l.enabled = 'full';
 
 	l.sbr = param.sbr;
-	
+
+	// Setup getters for widths and heights.
+	Object.defineProperties(l, {
+	    w: {
+		get() { return getRelativeW(l); },
+		configurable: true,
+		enumerable: true,
+	    },
+	    h: {
+		get() { return getRelativeH(l); },
+		configurable: true,
+		enumerable: true,
+	    },
+	});
+
 	//l.mainlayer = l;
 	//c1.mainlayer = l;
 	//c2.mainlayer = l;
@@ -212,25 +227,12 @@ function dt_init(param){
 	    l.form = wgtrFindContainer(l,"widget/form");
 	if (l.form) l.form.Register(l);
 
-	// Setup getters for widths and heights.
-	Object.defineProperties(l, {
-	    w: {
-		get() { return getRelativeW(l); },
-		configurable: true,
-		enumerable: true,
-	    },
-	    h: {
-		get() { return getRelativeH(l); },
-		configurable: true,
-		enumerable: true,
-	    },
-	});
-
 	// Setup the hover area and set getters to allow responsive resizing.
 	l.area = pg_addarea(l, -1, -1, () => l.w + 3, () => l.h + 3, 'dt', 'dt', 3);
 	
-	// Resize date selection dropdown automatically.
+	// Set up responsive resizing.
 	dt_resize_observer.observe(l);
+	dt_list.push(l);
 
 	// Events
 	ifc_init_widget(l);
@@ -1002,19 +1004,32 @@ function dt_create_pane(ml,bg,w,h,h2,name) {
 	return l;
 }
 
+// Position the pane(s) of the date/time control next to the control itself.
+// This is done when the dropdown is opened and whenever the control is
+// resized, so that the pane follows it without being rebuilt.
+function dt_position(l) {
+	if (!l.PaneLayer) return;
+	const offset = $(l).offset();
+	pg_positionpopup(l.PaneLayer, offset.left, offset.top, l.h, l.w);
+	if (l.PaneLayer2 && l.form && l.form.mode == 'Query' && l.sbr)
+	    pg_positionpopup(l.PaneLayer2, offset.left + getClipWidth(l.PaneLayer) + 5, offset.top, l.h, l.w);
+}
+
+// Update the position of open datetimes, ignoring those that are closed.
+function dt_reposition(l) {
+	if (htr_getvisibility(l.PaneLayer) === 'inherit') dt_position(l);
+}
+
 // expand the date/time control
 function dt_expand(l) {
 	dt_prepare(l);
 	pg_stackpopup(l.PaneLayer, l);
-	pg_positionpopup(l.PaneLayer, $(l).offset().left, $(l).offset().top, l.h, l.w);
-	//pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), l.h, l.w);
-	htr_setvisibility(l.PaneLayer, 'inherit');
-	if(l.form && l.form.mode == 'Query' && l.sbr){
+	if(l.form && l.form.mode == 'Query' && l.sbr)
 	    pg_stackpopup(l.PaneLayer2, l);
-	    pg_positionpopup(l.PaneLayer2, $(l).offset().left + getClipWidth(l.PaneLayer) + 5, $(l).offset().top, l.h, l.w);
-	    //pg_positionpopup(l.PaneLayer2, getPageX(l)+getClipWidth(l.PaneLayer)+5, getPageY(l), l.h, l.w);
+	dt_position(l);
+	htr_setvisibility(l.PaneLayer, 'inherit');
+	if(l.form && l.form.mode == 'Query' && l.sbr)
 	    htr_setvisibility(l.PaneLayer2, 'inherit');
-	}
 	l.typed_content = '';
 }
 
