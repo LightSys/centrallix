@@ -175,6 +175,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	if (strlen(initialdate))
 	    {
+	    objDataToDateTime(DATA_T_STRING, initialdate, &dt, NULL);
 	    snprintf(
 		initialdate, sizeof(initialdate),
 		"%s %d %d, %d:%d%d",
