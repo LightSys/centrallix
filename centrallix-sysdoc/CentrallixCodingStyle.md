@@ -203,7 +203,7 @@ If a struct supports `magic.h` by beginning with a magic field of type `Magic_t`
 - When creating the struct, call `SETMAGIC()` with the appropriate magic value (e.g. `MGK_FILE`).
 - When a new scope first gains access to the struct (e.g. the first time a function reads and stores a pointer to it) and intends to read any field from it (rather than just passing the pointer to another scope), it must call `ASSERTMAGIC()` immediately (after verifying that the struct is not null, if needed).  No data should be read from the struct or used before `ASSERTMAGIC()` is called.
 
-### Constant Sets
+### Set Types
 For: `.c`, `.h`
 
 A constant set is a named group of numerical values, such as the algorithms a module supports or the flags a structure carries.  Every set follows these rules:
