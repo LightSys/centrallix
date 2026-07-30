@@ -1814,7 +1814,7 @@ mysd_internal_function_Convert(pExpression tree, pMysdTable *tdata, pXString whe
 	return 0;
 
     error:
-	if(arg_strings) mysd_internal_free_processed_args(arg_strings);
+	mysd_internal_free_processed_args(arg_strings);
     return -1;
     }
 
@@ -1869,7 +1869,7 @@ mysd_internal_function_Case(pExpression tree, pMysdTable *tdata, pXString where_
 	return 0; 
 
     error:
-	if(arg_strings) mysd_internal_free_processed_args(arg_strings);
+	mysd_internal_free_processed_args(arg_strings);
     return -1;
     }
 
@@ -1913,7 +1913,7 @@ mysd_internal_function_Charindex(pExpression tree, pMysdTable *tdata, pXString w
 	return 0;
 
     error:
-	if(arg_strings) mysd_internal_free_processed_args(arg_strings);
+	mysd_internal_free_processed_args(arg_strings);
     return -1;
     }
 
@@ -1963,7 +1963,7 @@ mysd_internal_function_Datediff(pExpression tree, pMysdTable *tdata, pXString wh
 	return 0; 
 
     error:
-	if(arg_strings) mysd_internal_free_processed_args(arg_strings);
+	mysd_internal_free_processed_args(arg_strings);
     return -1;
     }
 
@@ -2023,7 +2023,7 @@ mysd_internal_function_dateadd(pExpression tree, pMysdTable *tdata, pXString whe
 	return 0; 
 
     error:
-	if(arg_strings) mysd_internal_free_processed_args(arg_strings);
+	mysd_internal_free_processed_args(arg_strings);
     return -1;
     }
 
@@ -2111,7 +2111,7 @@ mysd_internal_function_Datepart(pExpression tree, pMysdTable *tdata, pXString wh
 
     error:
 	xsDeInit(&date_buf);
-	if(arg_strings) mysd_internal_free_processed_args(arg_strings);
+	mysd_internal_free_processed_args(arg_strings);
     return -1;
     }
 
@@ -2150,7 +2150,7 @@ mysd_internal_function_ralign(pExpression tree, pMysdTable *tdata, pXString wher
 	return 0;
 
     error:
-	if(arg_strings != NULL) mysd_internal_free_processed_args(arg_strings);
+	mysd_internal_free_processed_args(arg_strings);
     return -1;
     }
 
@@ -2193,7 +2193,7 @@ mysd_internal_function_replace(pExpression tree, pMysdTable *tdata, pXString whe
 	return 0;
 
     error:
-	if(arg_strings != NULL) mysd_internal_free_processed_args(arg_strings);
+	mysd_internal_free_processed_args(arg_strings);
     return -1;
     }
 
@@ -2254,10 +2254,112 @@ mysd_internal_function_hash(pExpression tree, pMysdTable *tdata, pXString where_
 	return 0;
 
     error:
-	if(arg_strings != NULL) mysd_internal_free_processed_args(arg_strings);
+	mysd_internal_free_processed_args(arg_strings);
     return -1;
     }
 
+/*** mysd_internal_opperator_plus - handles the + opperator, deciding whether to use 
+ *** + (numbers) or CONCAT() (strings) based on the first argument
+ *** @param tree The node structure to convert. MUST point to a plus opperator
+ *** @param tdata Information about the table being queried
+ *** @param where_clause The string to append the converted query to
+ *** @param conn The active connection to the database 
+ *** @returns 0 on success or -1 on error
+ *** @NOTE: if the type of addition (+ or CONCAT) is ambiguos, + is assumed
+ *** @NOTE: money always has 4 decimal points and no '$', whereas in the object system 
+ ***    it only shows more than two decimal places if there is a non zero value.
+ ***    That is, here 1 + $0.2 = 1.2000, object system = $1.20. 
+ *** @NOTE: 1 + "2.12345" + 3.3 works differently here than in object system
+ ***/
+int
+mysd_internal_opperator_plus(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
+    {
+    
+    XString opp1_str;
+    XString opp2_str;
+
+	xsInit(&opp1_str);
+	xsInit(&opp2_str);
+
+	/** handle error checking directly - too many edge cases for mysd_internal_process_params **/
+	if(tree->Children.nItems != 2)
+	    {
+	    mssError(1, "MYSD", "Error: Plus opperator requires exactly two arguments");
+	    goto error;
+	    }
+	 
+	pExpression opp1_exp = (pExpression)tree->Children.Items[0];
+	pExpression opp2_exp = (pExpression)tree->Children.Items[1];
+	
+	/**  In Centrallix and Sybase/MSSQL, the + operator can be used for 
+	 ** addition or for string concatenation, and so the behavior depends
+	 ** on the run-time type of the operands.  In MySQL
+	 ** we have to make this decision in advance, and use CONCAT() for
+	 ** strings and + for numbers.
+	 **
+	 ** If we know the type of operand 1 in advance, we choose + or CONCAT()
+	 ** statically.  Otherwise, we just have to punt...
+	 **/
+
+	/** check if parent is part of a chain of +. If so, follow suit; 
+	 ** the whole addition tree will be that type 
+	 **/
+	if (tree->Parent && tree->Parent->NodeType == EXPR_N_PLUS )
+	    tree->DataType = tree->Parent->DataType;
+	
+	/** process params **/
+	mysd_internal_TreeToClause(opp1_exp, tdata, &opp1_str, conn);
+	/** use first opperand to decide type if don't have one yet **/
+	if(tree->DataType == DATA_T_ANY) tree->DataType = opp1_exp->DataType;
+	mysd_internal_TreeToClause(opp2_exp, tdata, &opp2_str, conn);
+
+	/** datetimes do not work  */
+	if(tree->DataType == DATA_T_DATETIME)
+	    {
+	    mssError(1, "MYSD", "Error: cannot perform datetime addition. Use dateadd to add values to a datetime.");
+	    goto error;
+	    }
+
+	/** if the type is currently integer, overwrite with double/money if either opperand was one **/
+	if(tree->DataType == DATA_T_INTEGER)
+	    {
+	    if(opp1_exp->DataType == DATA_T_DOUBLE || opp1_exp->DataType == DATA_T_MONEY) 
+		tree->DataType = opp1_exp->DataType;
+	    else if (opp2_exp->DataType == DATA_T_DOUBLE || opp2_exp->DataType == DATA_T_MONEY) 
+		tree->DataType = opp2_exp->DataType;
+	    }
+	
+	if (tree->DataType == DATA_T_STRING)
+	    {
+	    /** Had a string type, use CONCAT **/
+	    xsConcatenate(where_clause, " CONCAT( ", 9);
+
+	    if(opp1_exp->DataType == DATA_T_MONEY) xsConcatenate(where_clause, "'$', ", 5);
+	    xsConcatenate(where_clause, opp1_str.String, -1);
+	    xsConcatenate(where_clause, ", ", 2);
+
+	    if(opp2_exp->DataType == DATA_T_MONEY) xsConcatenate(where_clause, "'$', ", 5);
+	    xsConcatenate(where_clause, opp2_str.String, -1);
+	    xsConcatenate(where_clause, " ) ", 3);
+	    }
+	else
+	    {
+	    /** as best we can tell, the opperation should use "+"
+	     ** This assumption can be wrong if an opperand's type was ambiguous, as in cases like the following: 
+	     *** condition(:a == 2, 123, "123") + 321
+	     **/
+	    xsConcatPrintf(where_clause, " ( %s + %s ) ", opp1_str.String, opp2_str.String);
+	    }	
+
+	xsDeInit(&opp1_str);
+	xsDeInit(&opp2_str);
+	return 0;
+
+    error:
+	xsDeInit(&opp1_str);
+	xsDeInit(&opp2_str);
+    return -1;
+    }
 
 /*** mysd_internal_TreeToClause - convert an expression tree to the appropriate
  *** clause for the SQL statement.
@@ -2270,7 +2372,7 @@ mysd_internal_function_hash(pExpression tree, pMysdTable *tdata, pXString where_
  ***/
 /// FIXME: all of the calls to children need to do bound checking
 /// FIXME: maybe check return values on recurrsive calls?
-/// FIXME: lengths declared with strings dont always match 
+/// FIXME: lengths declared with concat strings dont always match 
 /// FIXME: set the DataType on each node before returning (if that breaks, do in return type)
 /// FIXME: the caller still passes query on error, which means sometimes you send just "... WHERE ;" to the db...
 int
@@ -2307,21 +2409,29 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 
             case EXPR_N_MONEY:
           mysd_DO_MONEY:
-		ptr = objFormatMoneyTmp(&(tree->Types.Money), "0.0000");
+		/** match object system formating, so $2.00 and $2.10 both print properly **/
+		ptr = objFormatMoneyTmp(&(tree->Types.Money), "0.00");
 		xsConcatenate(where_clause, ptr, -1);
                 /*objDataToString(where_clause, DATA_T_MONEY, &(tree->Types.Money), DATA_F_QUOTED);*/
                 break;
 
             case EXPR_N_DOUBLE:
           mysd_DO_DOUBLE:
-                objDataToString(where_clause, DATA_T_DOUBLE, &(tree->Types.Double), DATA_F_QUOTED);
-		/** clear any trailing 0s **/
-		int trailIndex = where_clause->Length - 1; /* quoted, so skip the space) */
-		while(where_clause->String[trailIndex - 1] == '0' && trailIndex > 0) trailIndex --;
-		if(trailIndex >= where_clause->Length - 7 && trailIndex != where_clause->Length - 1)
-		    xsSubst(where_clause, trailIndex, where_clause->Length - trailIndex - 1, "", 0);
-///FIXME: does this put the trailing space back? Surely there's a better way to do this anyway? maybe a flag for objDataToString?
-                  break;
+		/** Trim any trailing zeroes to format as "0.0" **/
+                objDataToString(&tmp, DATA_T_DOUBLE, &(tree->Types.Double), DATA_F_QUOTED);
+		/** string is formated as " 0.000000 " **/
+		ptr = tmp.String + tmp.Length - 1; /* start pointing at the trailing ' ' */
+		while(ptr > tmp.String && ptr[-1] == '0') ptr--;
+		
+		if(ptr[-1] == '.') ptr++; /* leave at least one decimal */
+		/** ptr points to the last '0' it found, or the ' '. At worst, this is redundant **/
+		ptr[0] = ' ';
+		ptr[1] = '\0';
+
+		xsConcatenate(where_clause, tmp.String, -1);
+		xsDeInit(&tmp);
+		xsInit(&tmp);
+                break;
 
             case EXPR_N_INTEGER:
           mysd_DO_INTEGER:
@@ -2581,7 +2691,12 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    if(arg_strings == NULL) goto error;
 		    fn_use_name = "if";
 		    use_stock_fn_call = 1;
-		    ///FIXME: we really don't know what type this should be lol
+
+		    /** If the types match, change it to that. Otherwise, we cannot predict **/
+		    pExpression true_exp = tree->Children.Items[1];
+		    pExpression false_exp = tree->Children.Items[1];
+		    if(true_exp->DataType == false_exp->DataType)
+			tree->DataType = true_exp->DataType;
                     }
 		else if (!strcmp(tree->Name,"isnull"))
 		    {
@@ -2590,7 +2705,12 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    /** MySQL isnull() does something different than CX isnull().  Use ifnull() instead. **/
 		    fn_use_name = "ifnull";
 		    use_stock_fn_call = 1;
-		    ///FIXME: we really don't know what type this should be lol
+
+		    /** If the types match, change it to that. Otherwise, we cannot predict **/
+		    pExpression value_exp = tree->Children.Items[0];
+		    pExpression default_exp = tree->Children.Items[0];
+		    if(value_exp->DataType == default_exp->DataType)
+			tree->DataType = value_exp->DataType;
 		    }
 		else if (!strcmp(tree->Name,"convert"))
 		    {
@@ -2618,7 +2738,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    /** MySQL equivalent is substring_index(current_user(),'@',1) **/
 		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 0, 0);
 		    if(arg_strings == NULL) goto error;
-		    /** ///NOTE: this only works for as long as user accounts are directly tied to DB accounts **/
+		    /** NOTE: this only works when user accounts are directly tied to DB accounts **/
 		    xsConcatenate(where_clause, " substring_index(current_user(),'@',1) ", -1);
 		    tree->DataType = DATA_T_STRING;
 		    }
@@ -2636,10 +2756,8 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     }
                 else if (!strcmp(tree->Name,"eval"))
                     {
-	///FIXME: do we really want this to return -1?? It's an error, but it recovers...
-                    mssError(1,"MYSD","MySQL does not support eval() CXSQL function");
-                    /* just put silly thing as text instead of evaluated */
-                    if (tree->Children.nItems == 1) mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
+                    mssError(1,"MYSD","ERROR: MySQL does not support eval() CXSQL function");
+		    goto error;
                     }
 		else if (!strcmp(tree->Name,"datepart"))
 		    {
@@ -2901,91 +3019,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                 break;
 
             case EXPR_N_PLUS:
-	    ///TODO: refector this to just use string_args and the fact that tree tracks types now
-	///FIXME: disallow addition of datetimes (also fix -/*)
-		/** This is a toughie.  In Centrallix and Sybase/MSSQL, the + operator
-		 ** can be used for addition or for string concatenation, and so the
-		 ** behavior depends on the run-time type of the operands.  In MySQL
-		 ** we have to make this decision in advance, and use CONCAT() for
-		 ** strings and + for numbers.
-		 **
-		 ** If we know the type of operand 1 in advance, we choose + or CONCAT()
-		 ** statically.  Otherwise, we just have to punt...
-		 **/
-		if (tree->Children.nItems < 2)
-		    {
-		    mssError(1,"MYSD","Insufficient arguments to + operator");
-		     goto error;
-		    }
-		subtree = (pExpression)tree->Children.Items[0];
-		if (subtree->NodeType == EXPR_N_PROPERTY && !(subtree->Flags & EXPR_F_FREEZEEVAL) && subtree->DataType == DATA_T_UNAVAILABLE)
-		    {
-		    /** A property under our control **/
-		    for(i=0;i<tdata[0]->nCols;i++)
-			{
-			if (!strcmp(subtree->Name, tdata[0]->Cols[i]))
-			    {
-			    if (tdata[0]->ColCxTypes[i] == DATA_T_STRING)
-				subtree->DataType = DATA_T_STRING;
-			    }
-			}
-		    }
-		if (tree->Parent && tree->Parent->NodeType == EXPR_N_PLUS && tree->Parent->DataType == DATA_T_STRING)
-		    {
-		    /** We're within a string concatenation expression already... **/
-		    subtree->DataType = DATA_T_STRING;
-		    }
-		if (subtree->NodeType == EXPR_N_FUNCTION && (!strcmp(subtree->Name, "user_name") || !strcmp(subtree->Name, "substring") || !strcmp(subtree->Name, "right")))
-		    {
-		    /** These functions always invariably return a string... **/
-		    subtree->DataType = DATA_T_STRING;
-		    }
-		if (subtree->NodeType == EXPR_N_FUNCTION && (!strcmp(subtree->Name, "charindex")))
-		    {
-		    /** These functions always invariably return an integer... **/
-		    subtree->DataType = DATA_T_INTEGER;
-		    }
-		if (subtree->NodeType == EXPR_N_FUNCTION && (!strcmp(subtree->Name, "sin") || !strcmp(subtree->Name, "cos") || !strcmp(subtree->Name, "power") || !strcmp(subtree->Name, "sqrt") || !strcmp(subtree->Name, "atan2") || !strcmp(subtree->Name, "radians")))
-		    {
-		    /** These functions always invariably return a floating point type **/
-		    subtree->DataType = DATA_T_DOUBLE;
-		    }
-		if (subtree->DataType == DATA_T_STRING)
-		    {
-		    /** We get here if 1) op 1 is a constant STRING, 2) op 1 is one of
-		     ** of our properties and we know it is a string, 3) the parent
-		     ** node of this + operator is another + operator and it used CONCAT,
-		     ** or 4) op 1 is a function call that is known to return a string.
-		     **/
-		    tree->DataType = DATA_T_STRING;
-		    xsConcatenate(where_clause, " CONCAT(", -1);
-		    mysd_internal_TreeToClause(subtree, tdata,  where_clause,conn);
-		    xsConcatenate(where_clause, " , ", 3);
-		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
-		    xsConcatenate(where_clause, ") ", 2);
-		    }
-		else
-		    {
-		    /** Let's leave room to change this into a CONCAT if after building
-		     ** the first subexpression we find out that it is a string.  After all,
-		     ** this needs to work, but it doesn't need to look pretty.
-		     **/
-		    i = strlen(where_clause->String);
-		    xsConcatenate(where_clause, "       (", -1);
-		    mysd_internal_TreeToClause(subtree, tdata,  where_clause,conn);
-		    if (subtree->DataType == DATA_T_STRING)
-			{
-			tree->DataType = DATA_T_STRING;
-			xsSubst(where_clause, i+1, 6, "CONCAT", 6);
-			xsConcatenate(where_clause, " , ", 3);
-			}
-		    else
-			{
-			xsConcatenate(where_clause, " + ", 3);
-			}
-		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
-		    xsConcatenate(where_clause, ") ", 2);
-		    }
+		if(mysd_internal_opperator_plus(tree, tdata, where_clause, conn) < 0) goto error;
                 break;
 
             case EXPR_N_MINUS:
@@ -3038,10 +3072,12 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 	
 	mysd_internal_free_processed_args(arg_strings);
 	arg_strings = NULL;
+	xsDeInit(&tmp);
 	return 0;
 
     error:
-	if(arg_strings != NULL) mysd_internal_free_processed_args(arg_strings);
+	mysd_internal_free_processed_args(arg_strings);
+	xsDeInit(&tmp);
     return -1;
     }
 
