@@ -166,7 +166,7 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    fieldname, form
 	) != 0)
 	    {
-	    mssError(0, "HTDT", "Failed to write JS init call.");
+	    mssError(0, "HTIMG", "Failed to write JS init call.");
 	    goto end;
 	    }
 
@@ -195,7 +195,7 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    z
 	) != 0)
 	    {
-	    mssError(0, "HTDT", "Failed to write image CSS.");
+	    mssError(0, "HTIMG", "Failed to write image CSS.");
 	    goto end;
 	    }
 
@@ -231,7 +231,7 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    alt_text
 	) != 0)
 	    {
-	    mssError(0, "HTDT", "Failed to write image HTML.");
+	    mssError(0, "HTIMG", "Failed to write image HTML.");
 	    goto end;
 	    }
 
