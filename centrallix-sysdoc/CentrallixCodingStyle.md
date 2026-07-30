@@ -351,22 +351,6 @@ For: `.js`
 - Compare with `===` and `!==`.  Do not use `==` and `!=`, as loose operators convert their operands before comparing, which surprises readers and hides bugs.
 - **Exception**:  `x == null` (or `x != null`) as an idiomatic way to test for `null` and `undefined` together is allowed.
 
-### XML
-For: `.xml`, `.xsl`
-
-- Every XML file must be well-formed.  Tags must be closed and nested correctly, the file must have exactly one root element, and `&` and `<` must be escaped in text (or the text wrapped in a `<![CDATA[ ]]>` section).  (Note: Any XML-aware editor should easily detect mistakes.)
-- Files with declared DTDs or schemas must follow them.  A broken declaration is worse than none: it misleads readers and breaks validating parsers.  Either maintain the grammar or remove the declaration.  (Note: Some editors also validate this, including the [XML VSCode Extension by RedHat](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-xml).)
-- XML files always begin with an XML declaration: `<?xml version="1.0" encoding="UTF-8"?>`.
-- Attribute values always use double quotes, including those in the XML declaration.
-- Element and attribute names use snake_case, like the names of groups in a [structure file](#naming-identifiers).
-	- **Exception**:  A name the file does not own is written exactly as the vocabulary that defines it spells it.  This covers `xsl:` elements and their attributes, the HTML a template emits, and any name a DTD or schema requires (if it cannot be updated to allow/require the style specified here).  These names cannot be renamed, so matching them is the only valid choice.
-- Content is indented one tab per level of element nesting (as noted in the [indentation](#indentation) section).
-	- **Exception**:  Text inside a `<![CDATA[ ]]>` section is data, not markup, so it keeps whatever indentation it needs and does not follow the nesting of the surrounding elements.  See [widgets.xml](../centrallix-doc/Widgets/widgets.xml) for examples.
-	- **Exception**:  Literal result-tree markup inside an `xsl:template` (the HTML the template emits) is indented as a block at one level, rather than one level per HTML tag because nesting the output tree inside the template tree adds a lot of indentation.
-- Each element starts on its own line.
-	- **Exception**:  An element with only text content may be written on one line, e.g. `<property name="align" type="string">Sets the alignment of the text.</property>`.
-- An element with no content is self-closed, e.g. `<br/>`, not `<br></br>`.
-
 ### Returning
 - Any function that returns a non-void type must terminate all paths with a `return`.
 - Functions that do return void may allow execution to reach the end of scope without an explicit return.
@@ -425,6 +409,22 @@ A constant set is a named group of numerical values, such as the algorithms a mo
 - If a structure can represent kinds or types (not data types, this is a conceptual thing), an enum lists those types.
 - The struct almost always includes a field holding this enum to indicate the type that the struct holds.
 - These names insert a `T` tag: `PRE_STRUCT_T_XXX`.
+
+### XML
+For: `.xml`, `.xsl`
+
+- Every XML file must be well-formed.  Tags must be closed and nested correctly, the file must have exactly one root element, and `&` and `<` must be escaped in text (or the text wrapped in a `<![CDATA[ ]]>` section).  (Note: Any XML-aware editor should easily detect mistakes.)
+- Files with declared DTDs or schemas must follow them.  A broken declaration is worse than none: it misleads readers and breaks validating parsers.  Either maintain the grammar or remove the declaration.  (Note: Some editors also validate this, including the [XML VSCode Extension by RedHat](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-xml).)
+- XML files always begin with an XML declaration: `<?xml version="1.0" encoding="UTF-8"?>`.
+- Attribute values always use double quotes, including those in the XML declaration.
+- Element and attribute names use snake_case, like the names of groups in a [structure file](#naming-identifiers).
+	- **Exception**:  A name the file does not own is written exactly as the vocabulary that defines it spells it.  This covers `xsl:` elements and their attributes, the HTML a template emits, and any name a DTD or schema requires (if it cannot be updated to allow/require the style specified here).  These names cannot be renamed, so matching them is the only valid choice.
+- Content is indented one tab per level of element nesting (as noted in the [indentation](#indentation) section).
+	- **Exception**:  Text inside a `<![CDATA[ ]]>` section is data, not markup, so it keeps whatever indentation it needs and does not follow the nesting of the surrounding elements.  See [widgets.xml](../centrallix-doc/Widgets/widgets.xml) for examples.
+	- **Exception**:  Literal result-tree markup inside an `xsl:template` (the HTML the template emits) is indented as a block at one level, rather than one level per HTML tag because nesting the output tree inside the template tree adds a lot of indentation.
+- Each element starts on its own line.
+	- **Exception**:  An element with only text content may be written on one line, e.g. `<property name="align" type="string">Sets the alignment of the text.</property>`.
+- An element with no content is self-closed, e.g. `<br/>`, not `<br></br>`.
 
 
 ## Error Handling
