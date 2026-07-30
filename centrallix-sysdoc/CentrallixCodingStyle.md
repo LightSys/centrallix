@@ -7,6 +7,8 @@
 **License**: Copyright (C) 2026 LightSys Technology Services.  See `LICENSE`.
 
 
+<!-- TODO: Israel - Add table of contents. -->
+
 ## Introduction
 The number one rule is to write readable code, but "readable code" is an inconsistent and subjective concept, so the rules in this document should help you do that effectively.  The following style rules should be followed in every applicable file in Centrallix, including `.c`, `.h`, `.md`, `.xml`, structure files, makefiles, etc.  Note that many files may break style rules, however, any new changes committed should still follow them.
 
@@ -17,6 +19,8 @@ Many of these style rules are enforced by the style linter, however, this file i
 ## Module Prefixes
 All modules have an assigned prefix. This is usually (but not always!) a two-to-four-character abbreviation of the module name.  These prefixes are listed in [Prefixes.md](Prefixes.md).  This prefix is used frequently in identifiers for functions and globals when they are accessible from outside the module.
 
+In this document, we use `PRE` in examples to indicate when an example should include a prefix, such as `PRE_internal_xyz()`.
+
 
 ## Style Rules
 All code should follow a consistent style when possible.  This helps developers to read it quickly and accurately without being tripped up by abrupt changes in style or unfamiliar coding practices.
@@ -25,20 +29,22 @@ These rules apply to every language in Centrallix, unless a section states other
 
 
 ### Indentation
-- Code is always indented using 1 tab, not with spaces.
+- Each level of indentation should use a single tab.  Do not use spaces for general indentation.
 - You can set your editor tab length to any size you prefer.  However, code should look reasonable with any tab length up to 8 spaces.
 - Prefer tabs, but always use spaces for aligning characters, such as in a copyright notice or a column of struct members.  Tabs break alignment when the viewer uses a different tab length.
 - Lines should not have trailing whitespace.  Thus, blank lines are not indented.
-- In a makefile, the tab that begins a recipe line is required by the syntax, so it must be a literal tab.  Replacing it with spaces breaks the build.
+- **Exception**:  Language syntax that requires literal tabs and/or spaces must be followed.
 
 ### Spacing
 - Language constructs (e.g. `if ()`, `for ()`, `while ()`, `switch ()`, etc.) should always be separated from their parentheses with a space.
 - Function calls (e.g. `mssError()`) and function declarations should *not* be separated from their parentheses by a space.
+- `sizeof` is an operator, not a function, but it behaves like a function call so it is styled as one: write `sizeof(PreDataT)`, with no space before the parenthesis.
 - Pointer types attach the `*` to the type, not to the identifier: `char* p`, not `char *p`.  A pointer is part of the type, so it belongs with the type.
+- In C, a pointer must not be declared on the same line as another variable.  For example, `char* a, b;` is not allowed because it's easy to think that `b` is a pointer here and it's not.
 - Do not put a space just inside parentheses or brackets.
 - Commas and semicolons are followed by a space (or line break), never preceded by one.
 - Unary operators, `->`, `.`, `[]`, and casts are written against their operand, e.g. `!found`, `&data`, `node->Name`, `list[i]`, `(char*)ptr`.
-- In a makefile, an assignment is spaced like any other binary operator, e.g. `CC = @CC@`.
+- Binary operators and assignments should have a space on either side of the operator.
 - The `return` statement should be followed by a space and the return value should only use parentheses when needed.  Do not treat `return` as a function call, it is not a function, and it does not give a return value... well, it kind of does, but I think you get the point :)
 
 ### Braces
@@ -48,7 +54,19 @@ These rules apply to every language in Centrallix, unless a section states other
 - Any `if` statement, `for` loop, `switch` statement, or similar structure must use braces if it contains:
 	- More than one line of code.
 	- Another such structure.
+- It's recommended to include braces even when they are not required, but use your discernment and skip them if it improves readability.
 - An `else` or `else if` starts on the line of the closing brace of the block before it, not on the line after that brace.
+- For example:
+	```c
+	if (node->Type == CA_NODE_T_LEAF) { /* Required braces. */
+		for (unsigned int i = 0; i < node->nItems; i++) { /* Required braces. */
+			if (node->Items[i] == NULL) continue; /* Optional braces (skipped). */
+			caFreeItem(node->Items[i]);
+		}
+	} else if (node->Type == CA_NODE_T_BRANCH) { /* Optional braces (included). */
+		caFreeNode(node->Child);
+	} else return 0; /* Optional braces (skipped). */
+	```
 - **Exception**:  In a structure file, braces group data rather than code, so every group is braced regardless of its number of attributes.
 	- A group with no child groups may be written on one line, which is sometimes clearer in data-heavy files.
 		```
@@ -62,17 +80,17 @@ These rules apply to every language in Centrallix, unless a section states other
 
 For example:
 ```c
-switch (algorithm) {
-	case CA_ALG_KMEANS_PLUS_PLUS: {
-		caAssignInitialLabels(&vectors, &labels);
+switch (access) {
+	case EX_ACCESS_READ_WRITE: {
+		can_write = true;
 		/** Fallthrough. **/
 	}
-	case CA_ALG_KMEANS: {
-		rval = caKMeans(vectors, n_vectors, n_clusters, n_iters, 0.01, &labels, &sims, false);
+	case EX_ACCESS_READ: {
+		can_read = true;
 		break;
 	}
 	default: {
-		mssError(1, "CA", "Unknown clustering algorithm (%d)", algorithm);
+		mssError(1, "EX", "Unknown access level (%d)", access);
 		goto error;
 	}
 }
@@ -95,17 +113,7 @@ switch (algorithm) {
 For: `.c`, `.h`
 
 - If a `.c` file uses an identifier from a `.h` or C standard library not available by default, that file must `#include` the correct `.h` file or library.
-- For example, the `mssError()` function is defined in `mtsession.h`, so that file must have a `#include` in every C file that uses `mssError()`
-	```c
-	#include "mtsession.h" /* Required. */
-
-	...
-
-	if (rval < 0) {
-		mssError(0, "Example", "The function failed (error code: %d)", rval);
-		return rval;
-	}
-	```
+- For example, the `mssError()` function is defined in `mtsession.h`, so that file must be `#include`d by every C file that calls `mssError()`.
 - Angle bracket includes (`<...>`) come first, then quoted includes (`"..."`), separated by a blank line between the two groups.
 - Within each group, includes are sorted in ascending alphabetical order.
 	```c
@@ -133,23 +141,24 @@ For: `.c`, `.h`
 For: `.c`, `.h`
 
 - A directive at the outermost level starts in the first column, even inside a function.
-- Nested directives are indented one space per level of nesting, placing the spaces before the `#`.  A `.h` file's [include guard](#include-files) does not count as a level, since it wraps the whole file.
+- Nested directives are indented one space per level of nesting, placing the spaces before the `#`.
+	- A `.h` file's [include guard](#include-files) does not count as a level, since it wraps the whole file.
+- For example:
 	```c
 	#ifdef HAVE_CONFIG_H
-	 #ifndef MOD_MAX_ITEMS
-	  #define MOD_MAX_ITEMS 256
+	 #ifndef PRE_MAX_ITEMS
+	  #define PRE_MAX_ITEMS 256
 	 #endif
 	#endif
 	```
-- A `#define` that spans multiple lines ends every line but the last with a backslash, placed one space after that line's content.  Do not align the backslashes in a column because one long line added later would force a reflow of every line.
+- A `#define` that spans multiple lines ends every line but the last with a backslash, placed one space after that line's content.
+- Do not align the backslashes in a column because a long line added later forces a reflow of every line, clobbering git blame history.
 - Continuation lines are indented one level.  A comment may take a continuation line of its own.
+- For example:
 	```c
-	#define PRT_HTMLFM_EMAIL_CONTENT_HEADER "\n" \
-		"--"PRT_HTMLFM_EMAIL_BOUNDARY"\n" \
-		/** Report data (e.g. donor names) may contain raw UTF-8 octets >127. **/ \
-		"Content-Type: text/html; charset=utf-8\n" \
-		"Content-Transfer-Encoding: 8bit\n" \
-		"\n"
+	#define PRE_ITEM_BUF_SIZE \
+		/** One byte per item, plus a null terminator. **/ \
+		(PRE_MAX_ITEMS + 1)
 	```
 
 ### Naming Identifiers
@@ -158,14 +167,14 @@ All identifiers should be spelled correctly and avoid using non-obvious abbrevia
 	- The module prefix is prepended if the function is reachable from outside the module. (The prefix is optional for internal & unreachable functions.)
 	- Internal functions prepend `_internal_` or `_i_`. (e.g. `xyz_i_hiddenStuff()`)
 - Local variables and function parameters are named with snake_case.
-- Every global variable in a module lives in a single module-wide global struct named with SCREAMING_SNAKE_CASE with the module name prepended (for easy identification).  The recommended name is `MOD_GLOBALS` (where `MOD` is the module prefix).
+- Every global variable in a module lives in a single module-wide global struct named with SCREAMING_SNAKE_CASE with the module name prepended (for easy identification).  The recommended name is `PRE_GLOBALS` (where `PRE` is the module prefix).
 - `Typedef` names & structs:
 	- `Typedef`ed names use PascalCase (except for the module prefix).
 	- Both the struct type (`XxxxYyy`) and a pointer alias (`pXxxxYyy`) are declared in the same typedef.
 	- Structs reachable from outside the module start their name with the module prefix.  (As with functions, the prefix is optional for internal structs.)
 	- Members of a struct or union use PascalCase.
 		- **Exception**:  A count member may take a lowercase `n` prefix, and a pointer member a lowercase `p` prefix, before the PascalCase name.  (e.g. `nData`, `pCluster`)
-- In C, value macros are treated as globals and follow the naming style of the global struct.
+- In C, value macros are treated as globals, and use SCREAMING_SNAKE_CASE with a module prefix for any values used outside the module.
 - In C, function macros are treated as functions, following those styles.
 - In a structure file, the name of a group, such as a widget, uses snake_case.
 
@@ -199,22 +208,24 @@ For: `.c`, `.h`, structure files
 
 In a structure file, `$Version=2$` is always the first line, placed before the copyright notice (optional for files in `centrallix-os`).
 
-In a `.c` or `.h` file, it is recommended to order the top level of the file as follows, for consistency with other files, unless there is a good reason to do otherwise (such as a forward reference):
+In a `.c` or `.h` file, it is recommended to order the top level of the file as follows (for consistency):
 1. `#include` guards (in a `.h` file).
 2. Copyright notice.
 3. `#include` groups.
 4. Macros.
-5. `Typedef`s, structs, and unions.
+5. `Typedef`, `struct`, and `union` declarations.
 6. Prototypes for functions defined later in the same file.
 7. Function definitions (`.c` files).
 
 **Note**: Many files may not have all of these sections.
+**Exception**: Some patterns may force you to break this order, such as forward declarations.
 
 ### Types
 For: `.c`, `.h`
 
-- C code should work for any C of C99 or later, so `<stdbool.h>` and variable declarations inside a `for` statement are always available.
-- Use `NULL` for null pointers, never `0`.
+- C code should work for C99, so it cannot assume the compiler uses any later standards.
+	- Note: This means `<stdbool.h>` and variable declarations inside a `for` statement are always available.
+- Use `NULL` as the value for null pointers, never `0`.
 - Use `bool` with `true` and `false` for boolean values, never an `int` holding `0` or `1`.
 - `int` and `unsigned int` are the default integer types.  Use the fixed-width types in `<stdint.h>` (e.g. `uint32_t`) only where the exact width matters, such as data written to a file, a database, or the network.
 - A struct must be fully zeroed/initialized when allocated.  Memory a function receives may hold stale data that still looks valid, such as an old `Magic` value or a pointer into live memory.  In C, use `memset()` when the padding of the struct matters, such as when it is written to a file or the network, or compared with `memcmp()`.
@@ -269,32 +280,45 @@ caKMeans(
 ### Function Calls
 *When in doubt, use similar styling to [function declarations](#function-declarations).*
 
-- Short function calls should also be placed on one line: `getTime(&timer)`.
-- `sizeof` is an operator, not a function, but it is styled as a function call: write `sizeof(ModDataT)`, with no space before the parenthesis.
-- Function calls with many or long parameters may span multiple lines.  Literal parameters (especially string literals) may even be split across lines.  Situations vary, so use discernment and consistency to write the most clear code.  The most common example of this is the C calls to write inline `HTML` and `CSS`:
-	```c
-	htrAddStylesheetItem_va(s,
-		"\t\t#tbld%POSsub%POS { "
-			"position:absolute; "
-			"visibility:hidden; "
-			"left:0px; "
-			"top:0px; "
-			"width:"ht_flex_format"; "
-			"height:%POSpx; "
-			"z-index:%POS; "
-		"}\n",
-		t->id, detail_id,
-		ht_flex_w(t->w, tree),
-		h,
-		z + 1
-	);
-	```
-	- Unsurprisingly, writing such calls clearly can be a real struggle!
+#### Single Line Calls
+Short function calls should also be placed on one line: `getTime(&timer)`.
+
+#### Multiple Line Calls
+Function calls with many or long parameters may span multiple lines.
+- Literal parameters (especially string literals) may even be split across lines.
+- Parameters usually start on the line after the function name.  However, "unimportant" parameters (such as a repeated context variable or output buffer) may be placed on the same line.
+- Style rules for function calls are flexible because situations vary, so use discernment and consistency to write the clearest possible code.
+
+The most common example of a complex multi-line function call is the C calls to write inline `HTML` and `CSS`:
+```c
+htrAddStylesheetItem_va(s,
+	"\t\t#tbld%POSsub%POS { "
+		"position:absolute; "
+		"visibility:hidden; "
+		"left:0px; "
+		"top:0px; "
+		"width:"ht_flex_format"; "
+		"height:%POSpx; "
+		"z-index:%POS; "
+	"}\n",
+	t->id, detail_id,
+	ht_flex_w(t->w, tree),
+	h,
+	z + 1
+);
+```
+In this example, multi-line strings are used to format the CSS block in the C code (even though the written CSS uses a single line to optimize HTML length).  Parameters are grouped by their use in the format: `t->id` and `detail_id` are passed on one line because they're both used on the first line of the format while `h` and `z + 1` are passed on separate lines because the format uses them on separate lines.
+
+Note: `ht_flex_format` is a string-literal macro for a very commonly used format string and `ht_flex_w()` is a function macro that expands to satisfy it by passing multiple parameters to the function call.  Because this pattern may be unintuitive, it should be avoided unless strictly necessary.  In this case, it solves the need to duplicate flex format logic possibly 100 times, making modifying it later *much* easier.
+
+Unsurprisingly, writing such calls can clearly be a real struggle!
 
 ### Local Variables
-- Local variables should be declared as close to where they are used as possible, and especially within the narrowest scope.  This reduces the amount of worrying about side effects and scrolling around that a programmer must do when seeing them.
+- Local variables should be declared as close to where they are used as possible, and especially within the narrowest scope.  This reduces the risk of side effects and the amount of scrolling a programmer must do when reading code.
+- Local variables should not be reused for multiple purposes.  Each variable should have a single purpose so it can be precisely named to describe that purpose.
+- In C, variables that store pointers to memory allocated during the scope should be declared at the start of the scope and initialized to `NULL`.  That way, if an error occurs, the error handler can check a variable's value to determine if it should be freed without worrying that it might not be declared/initialized at all yet.  See [error handling](#error-handling) for more information.
 - Variables should be declared using `const` (or the equivalent keyword for the relevant language) when their value is not changed.  This serves as a note to the reader so they know that the value won't change.
-- In `js`, declare with `const`, or with `let` when the value changes.
+- In `js`, declare with `const`, or with `let` if the value changes.
 	- Never use `var`.  It is scoped to the entire function, so it cannot be declared in the narrowest scope.
 	- Never assign to a name that was not declared.  This does not create a local variable, it creates a global one that outlives the function and is visible to every other file, possibly causing far-reaching side effects.
 - **Exception**:  C dynamic arrays are their own flavor of fun that sometimes require exceptions to the above rules.
@@ -324,7 +348,7 @@ For: `.c`, `.h`
 ### Equality
 For: `.js`
 
-- Compare with `===` and `!==`, not `==` and `!=`.  The loose operators convert their operands before comparing, which surprises readers and hides bugs.
+- Compare with `===` and `!==`.  Do not use `==` and `!=`, as loose operators convert their operands before comparing, which surprises readers and hides bugs.
 - **Exception**:  `x == null` (or `x != null`) as an idiomatic way to test for `null` and `undefined` together is allowed.
 
 ### XML
@@ -364,18 +388,21 @@ All code is "tech debt", although I prefer the term "tech cost".  "Code clutter"
 For: `.c`, `.h`
 
 A constant set is a named group of numerical values, such as the algorithms a module supports or the flags a structure carries.  Every set follows these rules:
-- The set should have a `typedef` of an unsigned numerical type, so declarations using this type will show what the value means.
-	- The underlying numerical type should be the minimum size necessary for the number of values defined.
-	- Valid numerical types include at least: `unsigned char`, `unsigned short`, `unsigned int`, `unsigned long`, and possibly others.  Unsigned types are required to prevent signed issues.
-- Each value is defined as a macro, cast to the set's type with an unsigned literal.  The cast carries the type into comparisons and `switch` statements, which a bare number would not.
+- The set should have a `typedef` of a numerical type, so declarations using this type will show what the value means.
+	- The underlying numerical type should be the minimum size necessary for values defined.
+	- Typically, unsigned numerical types like `unsigned char`, `unsigned short`, or `unsigned int` are used.
+	- Signed types are less common (especially for flags!), however, they have uses when making some enum values negative communicates useful information, such as positive success values vs. negative error-code values.
+	- The `typedef` should be preceded by a brief comment explaining the information stored with this type.
+- Each value is defined using a macro with a literal value cast to the set's type to improve type checking.
 - Values are aligned in a column (see [struct & union declarations](#struct--union-declarations) for the alignment rules, which apply here too).
-- Macro names use the scheme `MOD_SET_XXX`, where "`MOD`" is the module prefix, "`SET`" is a short abbreviation for the set, and "`XXX`" is the name of the individual value.
+- Macro names use the scheme `PRE_SET_XXX`, where `PRE` is the module prefix, `SET` is a short abbreviation for the set, and `XXX` is the name of the individual value.
 - Use these macros when interacting with the set.  DO NOT USE MAGIC VALUES.
 - A [section comment](#section-comments) above the set says what it represents.
 
 #### Enums
 - An enum holds exactly one of its values at a time, so the values simply increment.
-- The value `0` is reserved to mean unset, and is named `MOD_SET_NULL`.
+- The value `0` is reserved to mean unset, and is named `PRE_SET_NULL` (where `PRE` is the module prefix).
+- For example:
 	```c
 	/** Enum type representing a clustering algorithm. **/
 	typedef unsigned char ClusterAlgorithm;
@@ -391,13 +418,13 @@ A constant set is a named group of numerical values, such as the algorithms a mo
 #### Flags
 - A flag set can hold any number of its values at once, so each value is a distinct power of two.
 - Flags are always stored in full-length integers, and never as single-bit bitfields (i.e., `Flag:1;`).  This allows bulk editing and passing multiple flags as one parameter.
-- Flag names insert an `F` tag: `MOD_STRUCT_F_XXX`, where "`STRUCT`" is the structure the flags serve.
-- Flag comparisons should use `flags & MOD_STRUCT_F_XXX`, which is considered a boolean for the purposes of the [Truthiness](#truthiness) rule.
+- Flag names insert an `F` tag: `PRE_STRUCT_F_XXX`, where `PRE` is the module prefix and `STRUCT` is the structure the flags serve.
+- Flag comparisons should use `flags & PRE_STRUCT_F_XXX`, which is considered a boolean for the purposes of the [Truthiness](#truthiness) rule.
 
 #### Multi-Type Structures
 - If a structure can represent kinds or types (not data types, this is a conceptual thing), an enum lists those types.
 - The struct almost always includes a field holding this enum to indicate the type that the struct holds.
-- These names insert a `T` tag: `MOD_STRUCT_T_XXX`.
+- These names insert a `T` tag: `PRE_STRUCT_T_XXX`.
 
 
 ## Error Handling
@@ -445,10 +472,12 @@ if (data1 != NULL) {
 } else goto error;
 ```
 
-Typically, errors in C code will `goto` an error handler at the end of the current scope or function.  This code is responsible for clearing up memory.  It also usually logs an error message with any helpful info available in that scope so that individual error sites don't need to specify that info.
+Typically, errors in C code will `goto` an error handler at the end of the current scope or function.  This code is responsible for clearing up memory and ensuring that at least one error message was printed, regardless of how the function failed.  Context available anywhere in the function (such as parameters) is typically included in this error message so that every individual error site doesn't need logic to print the same information.
 
 In C, the error handler follows these rules:
-- The handler is labeled `error:` or `end:` (if it also handles a success case), placed at the end of the function or scope, and indented only once (typically the level of the function body).
+- The handler is labeled `error:` or `end:` (if it also handles a success case).
+- It is placed at the end of the scope or function.
+- The label is not indented at all, but the handler is indented the normal amount for its scope.
 
 ### Full Error Handling Example
 ```c
@@ -470,7 +499,7 @@ ciInitSearch(char* path) {
 	/** Success. **/
 	return 0;
 
-	error:
+error:
 	mssError(0, "CI", "Failed to initialize search with path: '%s'", path);
 
 	/** Clean up. **/
@@ -498,8 +527,8 @@ Code should use a few types of documentation, where applicable.  See [comments](
 Any English sentence should use two spaces (or a newline/similar whitespace) between a period and the following sentence.  This makes it easy to visually jump between sentences and skim text.  This is not required for string literals, such as error messages in code, although these rarely have more than a single sentence anyway.
 
 ### Warning Comments
-- Unintuitive warnings and "foot-guns" should be called out in brief, concise comments.
-- These should be very rare, only used if there isn't a better way to communicate the information.
+- Warnings for unintuitive code and "foot-guns" should be called out in brief, concise comments.
+- These should be very rare, only used if there isn't a better way to communicate the information or rewrite the unintuitive code.
 
 ### Section Comments
 - Divide code into logical sections that start with brief comments for skimming code.
@@ -507,7 +536,6 @@ Any English sentence should use two spaces (or a newline/similar whitespace) bet
 - These comments should start with a capital letter and end with a period.
 - These comments should be concise, only a few words.  They are to make code more skimmable, not to describe every detail.
 - Code that is intuitively obvious when skimming (such as variable declarations or simple error checks at the start of a scope) does not need a section comment.
-- Avoid overusing section comments when they do not actually make code easier to skim.
 - For example:
 	```c
 	/** Find the parameter. **/
@@ -517,9 +545,10 @@ Any English sentence should use two spaces (or a newline/similar whitespace) bet
 		if (strcmp(param->Name, attr_name) != 0) continue;
 
 		/** Parameter found. **/
-		return (param->Value == NULL) ? MOD_DATA_T_UNAVAILABLE : param->Value->DataType;
+		return (param->Value == NULL) ? PRE_DATA_T_UNAVAILABLE : param->Value->DataType;
 	}
 	```
+- Warning: Avoid overusing section comments when they do not actually make code easier to skim.  Avoid long or overly wordy section comments.  Never write a section comment that says what code *does not do*: section comments should exclusively say what code does do!
 
 ### Function Comments
 - Functions should begin with a javadoc-style comment.
@@ -565,9 +594,9 @@ This is the format in C:
 ```c
 /************************************************************************/
 /* Centrallix Application Server System                                 */
-/* <Subsystem>                                                          */
+/* <subsystem>                                                          */
 /*                                                                      */
-/* Copyright (C) <created>-<year> LightSys Technology Services, Inc.    */
+/* Copyright (C) <created>-<changed> LightSys Technology Services, Inc. */
 /*                                                                      */
 /* This program is free software; you can redistribute it and/or modify */
 /* it under the terms of the GNU General Public License as published by */
@@ -596,11 +625,11 @@ This is the format in C:
 /************************************************************************/
 ```
 - Replace the values in angle brackets (`<...>`).
-- `<Subsystem>` names the part of the project the file belongs to, such as `Centrallix Core` for `centrallix/` or `Centrallix Base Library` for `centrallix-lib/`.  The line above it, `Centrallix Application Server System`, is the same in every file.
-- `<created>` is the year the file was created and `<year>` is the year it was last modified, so update the copyright notice when modifying a file with anything more than trivial changes.  When both are the same year, only write that year itself.
+- `<subsystem>` names the part of the project the file belongs to, such as `Centrallix Core` for `centrallix/` or `Centrallix Base Library` for `centrallix-lib/`.  The line above it, `Centrallix Application Server System`, is the same in every file.
+- `<created>` is the year the file was created and `<changed>` is the year it was last changed, so update the copyright notice when modifying a file with anything more than trivial changes.  When both are the same year, only write that year itself.
 
 ### Markdown Files
-Markdown files use their own copyright notices which are always placed at the start of the file.  Interestingly enough, these are not comments because the entire markdown file is considered to be documentation so markdown comments are rarely needed.
+Markdown files use their own copyright notices which are always placed at the start of the file, not in a comment.  Comments are rarely used in markdown because their typical purpose (hiding inline documentation in code) is unnecessary in a file with only documentation.
 
 ```md
 # <Document Title>
@@ -609,16 +638,16 @@ Markdown files use their own copyright notices which are always placed at the st
 
 **Date**: <date created, e.g. June 24th, 2026>
 
-**License**: Copyright (C) <created>-<year> LightSys Technology Services.  See `LICENSE`.
+**License**: Copyright (C) <created>-<changed> LightSys Technology Services.  See `LICENSE`.
 ```
 - Replace the values in angle brackets (`<...>`).  For more info, see above.
 
 ### XML & XSL Files
-XML files use a single-line notice rather than the full block because these files are also considered documentation, like [Markdown files](#markdown-files).
+XML files use a single-line notice rather than the full block because these files are considered documentation.  However, this line is still a comment to avoid breaking XML parsing.
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Copyright (C) <created>-<year> LightSys Technology Services, Inc.  See `LICENSE`. -->
+<!-- Copyright (C) <created>-<changed> LightSys Technology Services, Inc.  See `LICENSE`. -->
 ```
 - Replace the values in angle brackets (`<...>`).  For more info, see above.
 - XML does not allow anything before the XML declaration, so the notice goes on the line just after it.  This is the earliest point the language allows.
