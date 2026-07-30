@@ -136,7 +136,14 @@
     "</head>\n" \
     "<body style=\"background-color: %s; color: #000;\">\n" \
     /** Repeat body styles in case client discards the body tag. **/ \
-    "<div style=\"background-color: %s; color: #000; font-family: %s;\">\n"
+    "<div style=\"" \
+	"background-color: %s; " \
+	"color: #000; " \
+	"font-family: %s; " \
+	/** Prevent mobile clients from inflating text, breaking the layout. **/ \
+	"-webkit-text-size-adjust: 100%%; " \
+	"text-size-adjust: 100%%; " \
+    "\">\n"
 
 /*** Document footer ***/
 #define PRT_HTMLFM_FOOTER \
