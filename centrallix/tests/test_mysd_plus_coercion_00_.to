@@ -1,0 +1,96 @@
+##NAME Plus operator type coercion tests
+
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query INSERT INTO /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'test', c = 'test'
+
+
+# ─────────────────────────────────────────────────────────────
+# GROUP 1 — String-first: all additions treated as concatenation
+# ─────────────────────────────────────────────────────────────
+
+# Basic string-first concatenation
+csv SELECT test_plus_str_01 = "string + string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + "2" = "12"
+csv SELECT test_plus_str_02 = "string + integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + 2 = "12"
+csv SELECT test_plus_str_03 = "string + double" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + 2.0 = "12.0"
+csv SELECT test_plus_str_04 = "string + money" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + $2 = "1$2.00"
+
+# Multi-term string-first chains
+csv SELECT test_plus_str_05 = "string + integer + string + integer = concatenation" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + 2 + "3" + 4 = "1234"
+csv SELECT test_plus_str_06 = "string + double + string + integer = concatenation" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + 2.0 + "3" + 4 = "12.034"
+csv SELECT test_plus_str_07 = "string + integer + double + money = concatenation" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + 2 + 3.14 + $4 = "123.14$4.00"
+
+
+# ─────────────────────────────────────────────────────────────
+# GROUP 2 — Integer-first with all integer operands
+# ─────────────────────────────────────────────────────────────
+
+csv SELECT test_plus_int_01 = "integer + integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + 2 = 3
+csv SELECT test_plus_int_02 = "integer + string integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + "2" = 3
+csv SELECT test_plus_int_03 = "integer + string integer + string integer + integer = integer addition" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + "2" + "3" + 4 = 10
+csv SELECT test_plus_int_04 = "integer + negative integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 10 + -3 = 7
+csv SELECT test_plus_int_05 = "integer + string negative integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 10 + "-3" = 7
+
+
+# ─────────────────────────────────────────────────────────────
+# GROUP 3 — Integer-first promoted to double by first double operand
+# ─────────────────────────────────────────────────────────────
+
+csv SELECT test_plus_dbl_01 = "integer + double = double" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + 2.5 = 3.5
+csv SELECT test_plus_dbl_02 = "integer + string + double = double" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + "2" + 3.5 = 6.5
+csv SELECT test_plus_dbl_03 = "integer + string + double + money = double (double seen first)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + "2" + 3.12345 + $4 = 10.12345
+csv SELECT test_plus_dbl_04 = "integer + double preserves decimal precision" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + 0.00001 = 1.00001
+csv SELECT test_plus_dbl_05 = "integer + string + double + string integer = double" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + "2" + 3.5 + "4" = 10.5
+csv SELECT test_plus_dbl_06 = "integer + negative double = double" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 5 + -1.5 = 3.5
+
+
+# ─────────────────────────────────────────────────────────────
+# GROUP 4 — Integer-first promoted to money by first money operand
+# ─────────────────────────────────────────────────────────────
+
+csv SELECT test_plus_mny_01 = "integer + money = money" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + $2 = $3.00
+-- object system gets $6.00, mysql gets 6.12345... Ignore for now
+--csv SELECT test_plus_mny_02 = "integer + string + money = money (money seen first)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + "2.12345" + $3 = $6.1234
+csv SELECT test_plus_mny_03 = "integer + money truncates to 4 decimal places" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + $2.99999 = $3.9999
+-- object system handles correctly, mysql does not
+--csv SELECT test_plus_mny_04 = "integer + string + money + double = money" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + "2" + $3 + 4.12345 = $10.1234
+csv SELECT test_plus_mny_05 = "integer + money + double: all additions treated as money" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + $2.5 + 3.7 = $7.20
+csv SELECT test_plus_mny_06 = "integer + negative money = money" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 5 + $-1.5 = $3.50
+
+
+# ─────────────────────────────────────────────────────────────
+# GROUP 5 — Money vs double - which type is used is determined purely by order of appearance
+# ─────────────────────────────────────────────────────────────
+
+# double before money → result is double
+csv SELECT test_plus_ord_01 = "integer + double + money = double (double first)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + 2.12345 + $3 = 6.12345
+# money before double → result is money (truncated to 4dp)
+csv SELECT test_plus_ord_02 = "integer + money + double = money (money first)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + $2 + 3.1234 = $6.1234
+# string before double or money → result is string regardless
+csv SELECT test_plus_ord_03 = "string before double and money = concatenation" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + 2.5 + $3 = "12.5$3.00"
+
+
+# ─────────────────────────────────────────────────────────────
+# GROUP 6 — Edge cases
+# ─────────────────────────────────────────────────────────────
+
+# Zero values
+csv SELECT test_plus_edg_01 = "integer + zero = integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 5 + 0 = 5
+csv SELECT test_plus_edg_02 = "double + zero = double" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 5 + 0.0 = 5.0
+csv SELECT test_plus_edg_03 = "money + zero = money" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 5 + $0 = $5.00
+
+# Negative results
+csv SELECT test_plus_edg_04 = "integer addition resulting in negative" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + "2" + -10 = -7
+csv SELECT test_plus_edg_05 = "double addition resulting in negative" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + 2.5 + -10 = -6.5
+csv SELECT test_plus_edg_06 = "money addition resulting in negative" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + $2 + -10 = $-7.00
+
+# String concatenation with empty string
+csv SELECT test_plus_edg_07 = "string + empty string = unchanged" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "hello" + "" = "hello"
+csv SELECT test_plus_edg_08 = "empty string + integer = string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "" + 42 = "42"
+
+
+# ─────────────────────────────────────────────────────────────
+# cleanup
+# ─────────────────────────────────────────────────────────────
+
+query DELETE FROM /tests/Test_DB/stringTests/rows
+query INSERT INTO /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'test', c = 'test'
