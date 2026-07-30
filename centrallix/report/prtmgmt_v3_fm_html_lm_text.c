@@ -313,7 +313,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	/** Pad the area out to the content bottom with a trailing spacer row. **/
 	if (area->ContentTail && (content_bottom + 0.01 < area->Height))
 	    {
-	    prt_htmlfm_OutputPrintf(context, "<tr><td style=\"height: %dpx;line-height:0;\">&nbsp;</td></tr>",
+	    prt_htmlfm_OutputPrintf(context, "<tr><td style=\"height: %dpx;line-height:0;mso-line-height-rule:exactly;\">&nbsp;</td></tr>",
 		(int) ((area->Height - content_bottom + 0.001) * PRT_HTMLFM_YPIXEL));
 	    }
 

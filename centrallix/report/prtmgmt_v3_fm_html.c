@@ -134,7 +134,7 @@
 	/** Universal email styles. **/ \
 	"<style>\n" \
 	    ":root { color-scheme: light; }\n" \
-	    "td { vertical-align: top; line-height: 1; }\n" \
+	    "td { vertical-align: top; line-height: 1; mso-line-height-rule: exactly; }\n" \
 	    "table { border-collapse: collapse; }\n" \
 	"</style>\n" \
     "</head>\n" \
@@ -1209,7 +1209,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 			{
 			prt_htmlfm_OutputPrintf(context,
 			    "</tr><tr>"
-			    "<td style=\"height:%dpx;line-height:0;\">&nbsp;</td>",
+			    "<td style=\"height:%dpx;line-height:0;mso-line-height-rule:exactly;\">&nbsp;</td>",
 			   (int)((subobj->Y - last_height) * PRT_HTMLFM_YPIXEL)
 			);
 			}
