@@ -109,6 +109,23 @@ switch (access) {
 - In a `.c` or `.h` file, never use a `//` comment.  C99 permits it, but it does not match with the asterisk tiers above.
 - **Exception**:  A file may only use the comment syntax its language accepts, such as `//` in an `.app` file, `#` in a makefile, or `<!-- -->` in XML.  Follow the rules above to the extent that syntax allows.  XML has no single-line comment syntax and cannot nest comments, so the asterisk tiers above do not apply to it at all.
 
+### File Organization
+For: `.c`, `.h`, structure files
+
+In a structure file, `$Version=2$` is always the first line, placed before the copyright notice (optional for files in `centrallix-os`).
+
+In a `.c` or `.h` file, it is recommended to order the top level of the file as follows (for consistency):
+1. `#include` guards (in a `.h` file).
+2. Copyright notice.
+3. `#include` groups.
+4. Macros.
+5. `Typedef`, `struct`, and `union` declarations.
+6. Prototypes for functions defined later in the same file.
+7. Function definitions (`.c` files).
+
+**Note**: Many files may not have all of these sections.
+**Exception**: Some patterns may force you to break this order, such as forward declarations.
+
 ### Include Files
 For: `.c`, `.h`
 
@@ -262,23 +279,6 @@ char* name = NULL;         /* Not 0. */
 unsigned int n_items = 0;  /* Default integer type. */
 uint32_t wire_value;       /* Width matters on the wire. */
 ```
-
-### File Organization
-For: `.c`, `.h`, structure files
-
-In a structure file, `$Version=2$` is always the first line, placed before the copyright notice (optional for files in `centrallix-os`).
-
-In a `.c` or `.h` file, it is recommended to order the top level of the file as follows (for consistency):
-1. `#include` guards (in a `.h` file).
-2. Copyright notice.
-3. `#include` groups.
-4. Macros.
-5. `Typedef`, `struct`, and `union` declarations.
-6. Prototypes for functions defined later in the same file.
-7. Function definitions (`.c` files).
-
-**Note**: Many files may not have all of these sections.
-**Exception**: Some patterns may force you to break this order, such as forward declarations.
 
 ### Line Length
 - There's no hard line length limit, but it is recommended to wrap lines at 80 characters.
