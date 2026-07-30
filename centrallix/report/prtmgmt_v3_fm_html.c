@@ -173,13 +173,12 @@
 	"<br>\n"
 
 
-/*** Font size range, in CSS points.  Points are honored exactly by every
- *** mainstream email client.
+/*** Font size range, in CSS pixels.
  ***/
 #define PRT_HTMLFM_MINFONTSIZE	(9.0)
 #define	PRT_HTMLFM_MAXFONTSIZE	(96.0)
 
-/** Points within which two font sizes are considered equal. **/
+/** Pixels within which two font sizes are considered equal. **/
 #define PRT_HTMLFM_FONTSIZE_PRECISION	(0.1)
 
 /*** Declare supported font family styles.
@@ -586,7 +585,7 @@ prt_htmlfm_WriteStyle(pPrtHTMLfmInf context)
 	int len = 0;
 	char stylebuf[128];
 	const char* face = prt_htmlfm_GetFont(style);
-	len += snprintf(stylebuf + len, sizeof(stylebuf) - len, "<span style=\"font-size:%.4gpt", style->FontSize);
+	len += snprintf(stylebuf + len, sizeof(stylebuf) - len, "<span style=\"font-size:%.4gpx", style->FontSize);
 	if (strcmp(face, prt_htmlfm_fontstyles[PRT_HTMLFM_DEFAULT_FONTSTYLE]) != 0)
 	    len += snprintf(stylebuf + len, sizeof(stylebuf) - len, ";font-family:%s", face);
 	if (style->Color != 0)
