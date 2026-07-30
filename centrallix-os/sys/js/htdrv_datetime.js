@@ -292,6 +292,7 @@ function dt_prepare(l) {
 	    l.PaneLayer2.HidLayer.getfocushandler = dt_getfocus_day;
 	    l.PaneLayer2.VisLayer.losefocushandler = dt_losefocus_day;
 	    l.PaneLayer2.HidLayer.losefocushandler = dt_losefocus_day;
+	    l.PaneLayer2.classList.add('dt_dropdown');
 	}
 	// redraw the month & time.
 	if(l.form && l.form.mode == 'Query' && l.sbr){
