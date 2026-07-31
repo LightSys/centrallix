@@ -165,7 +165,8 @@ function eb_setdesc(txt)
 	"top":"0px",
 	"left":(this.input_width() + ((this.content || this.has_focus)?4:0) + 6) + "px",
 	"height":"100%",
-	"align-content":"center",
+	"display":"flex",
+	"align-items":"center",
 	"visibility":"inherit",
 	"white-space":"nowrap",
 	});
