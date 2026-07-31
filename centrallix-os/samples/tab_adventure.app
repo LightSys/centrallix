@@ -407,7 +407,32 @@ FourTabs "widget/page" {
 				Scene15Option1C "widget/connector" { event=Click; target=MainTab; action=SetTab; TabIndex=1; }
 			}
 			
-			Scene15Option2 "widget/textbutton" { x = 70; y = 180; width = 50; height = 30; font_size=18; bgcolor="#470404ff"; text = "Give up"; }
+			Scene15Option2 "widget/textbutton" {
+				x = 70; y = 180; width = 50; height = 30; font_size=18; bgcolor="#470404ff";
+				text = "Give up";
+				Scene15Option2C "widget/connector" { event=Click; target=MainTab; action=SetTab; TabIndex=16; }
+			}
+		}
+		
+		Scene16 "widget/tabpage" {
+			height=300;
+
+			Scene16Title "widget/label" { x=10; y=10; width=250; height=32; font_size=32; fgcolor="#d9e97dff"; text=runserver("Ea"+"st"+"er Eg"+"g #"+"3"); }
+			Scene16Text "widget/label" {
+				x=10; y=50; width=250; height=80;
+				font_size=18; fgcolor="#fff1df";
+				text="
+					You gave up, wandered off the map, and found the room nobody was meant to reach.
+					Quitting paid off exactly once. Don't make a habit of it.
+				";
+			}
+			Scene16Ask "widget/label" { x=10; y=130; width=250; height=32; font_size=18; fgcolor="#ffc67cff"; text="What do you do?"; }
+
+			Scene16Option1 "widget/textbutton" {
+				x = 10; y = 180; width = 50; height = 30; font_size=18; bgcolor="#0c0447ff";
+				text = "Start over, and do it properly this time.";
+				Scene16Option1C "widget/connector" { event=Click; target=MainTab; action=SetTab; TabIndex=1; }
+			}
 		}
 	}
 }
