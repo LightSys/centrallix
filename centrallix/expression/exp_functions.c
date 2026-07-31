@@ -3426,6 +3426,15 @@ int exp_fn_hash(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
 	    SHA512((unsigned char*)i1->String, strlen(i1->String), hashvalue);
 	    hashlen = 64;
 	    }
+	else
+	    {
+	    mssError(1, "EXP",
+		"%s(): Unsupported hashing algorithm \"%s\".",
+		tree->Name, i0->String
+	    );
+	    goto error;
+	    }
+
 	if (tree->Alloc && tree->String) nmSysFree(tree->String);
 	tree->String = nmSysMalloc(hashlen * 2 + 1);
 	tree->Alloc = 1;
@@ -4458,7 +4467,7 @@ int exp_fn_min(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 
 int exp_fn_first(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-    int rval;
+    int rval = 0;
 
     if (!i0)
 	{

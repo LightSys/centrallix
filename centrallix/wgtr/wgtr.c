@@ -958,7 +958,7 @@ wgtr_internal_ParseOpenObject(pObject obj, pWgtrNode templates[], pWgtrNode root
     pObjQuery qy = NULL,rptqy = NULL;
     pWgtrNode my_templates[WGTR_MAX_TEMPLATE];
     pParam paramlist[WGTR_MAX_PARAMS];
-    int n_params;
+    int n_params = 0;
     int created_objlist = 0;
     int i;
     ObjData rptqysql;
@@ -1304,7 +1304,7 @@ int
 wgtrGetPropertyType(pWgtrNode widget, char* name)
     {
     int i, count;
-    pObjProperty prop;
+    pObjProperty prop = NULL;
 
 	ASSERTMAGIC(widget, MGK_WGTR);
 	if (strcmp(name, "name") == 0 || strcmp(name, "outer_type") == 0)
@@ -1335,7 +1335,7 @@ int
 wgtrGetPropertyValue(pWgtrNode widget, char* name, int datatype, pObjData val)
     {
 	int i, count;
-	pObjProperty prop;
+	pObjProperty prop = NULL;
 
 	ASSERTMAGIC(widget, MGK_WGTR);
 	/** first check for values we have aliased **/
@@ -1503,7 +1503,7 @@ int
 wgtrDeleteProperty(pWgtrNode widget, char* name)
     {
     int i, count;
-    pObjProperty prop;
+    pObjProperty prop = NULL;
 
 	ASSERTMAGIC(widget, MGK_WGTR);
 	count = xaCount(&(widget->Properties));
@@ -1525,7 +1525,7 @@ int
 wgtrSetProperty(pWgtrNode widget, char* name, int datatype, pObjData val)
     {
     int i, count;
-    pObjProperty prop;
+    pObjProperty prop = NULL;
 
 	ASSERTMAGIC(widget, MGK_WGTR);
 	count = xaCount(&(widget->Properties));
@@ -1644,7 +1644,7 @@ int
 wgtrDeleteChild(pWgtrNode widget, char* child_name)
     {
     int i;
-    pWgtrNode child;
+    pWgtrNode child = NULL;
 
 	ASSERTMAGIC(widget, MGK_WGTR);
 	for (i=0;i<xaCount(&(widget->Children));i++)
@@ -2177,7 +2177,7 @@ wgtrRegisterDriver(char* name, int (*Verify)(), int (*New)())
 int 
 wgtrAddType(char* name, char* type_name)
     {
-    pWgtrDriver drv;
+    pWgtrDriver drv = NULL;
     int i;
 
 	for (i=0;i<xaCount(&(WGTR.Drivers));i++)

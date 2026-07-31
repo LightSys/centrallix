@@ -561,7 +561,7 @@ int
 libmime_ParseHeaderElement(char *buf, char* hdr)
     {
     int count=0, state=0;
-    char *ptr;
+    // char* ptr;
     char ch;
 
     while (count < strlen(buf))
@@ -572,7 +572,7 @@ libmime_ParseHeaderElement(char *buf, char* hdr)
 	    {
 	    if (ch == ':')
 		{
-		ptr = buf+count+1;
+		// ptr = buf+count+1;
 		state = 2;
 		}
 	    else if (ch==' ' || ch=='\t')
@@ -585,7 +585,7 @@ libmime_ParseHeaderElement(char *buf, char* hdr)
 	    {
 	    if (ch == ':')
 		{
-		ptr = buf+count+1;
+		// ptr = buf+count+1;
 		state = 2;
 		}
 	    else if (ch!=' ' && ch!='\t')
@@ -624,7 +624,9 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     pMimeHeader l_msg;
     int flag=1, alloc, toktype, p_count=0, count=0, s=0, num=0;
     int l_pos=0;
-    char bound[80], bound_end[82], ext[5];
+    char bound[sizeof(msg->Boundary) + 2];	/* "--" + boundary */
+    char bound_end[sizeof(msg->Boundary) + 4];	/* "--" + boundary + "--" */
+    char ext[5];
 
     if (!lex)
 	{
@@ -633,10 +635,8 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     mlxSetOffset(lex, msg->MsgSeekStart);
     count = msg->MsgSeekStart;
 
-    snprintf(bound, 79, "--%s", msg->Boundary);
-    snprintf(bound_end, 81, "--%s--", msg->Boundary);
-    bound[79] = 0;
-    bound_end[81] = 0;
+    snprintf(bound, sizeof(bound), "--%s", msg->Boundary);
+    snprintf(bound_end, sizeof(bound_end), "--%s--", msg->Boundary);
 
     while (flag)
 	{

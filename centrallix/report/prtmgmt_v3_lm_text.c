@@ -19,7 +19,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2001-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -301,6 +301,7 @@ prt_textlm_JustifyLine(pPrtObjStream starting_point, int jtype)
     int n_items, items_so_far, n_fj_items;;
 
 	/** Locate the beginning and end of the line **/
+	start = starting_point;
 	for(scan=starting_point; scan; scan=scan->Prev)
 	    {
 	    start = scan;
@@ -574,7 +575,7 @@ prt_textlm_WordWrap(pPrtObjStream area, pPrtObjStream* curobj)
     pPrtObjStream oldcurobj;
     int rval,n;
     int sep,worstcasesep=-1;
-    double sepw,worstcasesepw;
+    double sepw,worstcasesepw=0.0;
 
 	/** First, temporarily add the curobj to the area's content **/
 	oldcurobj = *curobj;
@@ -1311,5 +1312,3 @@ prt_textlm_Initialize()
 
     return 0;
     }
-
-
