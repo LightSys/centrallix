@@ -203,6 +203,7 @@ For: `.c`, `.h`
 - Each member is declared on its own line.
 - Member names are aligned in a column, padded with spaces (never tabs, see [indentation](#indentation)).
 	- Leave a few extra spaces of padding where a longer type may be added later, especially in a struct whose types are all short or which has many members.  This allows adding the type later without a reflow on every line that buries the real change in git-blame.
+- If a structure can represent kinds or types (not data types, this is a conceptual thing), it almost always holds a field using a [set type](#set-types) (typically an [enum](#enums)) to store data has been stored.
 
 For example:
 ```c
@@ -230,8 +231,10 @@ A constant set is a named group of numerical values, such as the algorithms a mo
 	- Signed types are less common (especially for flags!), however, they have uses when making some enum values negative communicates useful information, such as positive success values vs. negative error-code values.
 	- The `typedef` should be preceded by a brief comment explaining the information stored with this type.
 - Each value is defined using a macro with a literal value cast to the set's type to improve type checking.
-- Values are aligned in a column (see [struct & union declarations](#struct--union-declarations) for the alignment rules, which apply here too).
-- Macro names use the scheme `PRE_SET_XXX`, where `PRE` is the module prefix, `SET` is a short abbreviation for the set, and `XXX` is the name of the individual value.
+	- Values are aligned in a column (see [struct & union declarations](#struct--union-declarations) for the alignment rules, which apply here too).
+	- Macro names use the scheme `PRE_SET_XXX`, where `PRE` is the module prefix, `SET` is a short abbreviation for the set, and `XXX` is the name of the individual value.
+	- When a structure could represent one of multiple types, the type being used is typically stored with a set type.
+		- The names of value macros for such set types insert a `T` tag: `PRE_STRUCT_T_XXX`.
 - Use these macros when interacting with the set.  DO NOT USE MAGIC VALUES.
 - A [section comment](#section-comments) above the set says what it represents.
 
@@ -256,11 +259,6 @@ A constant set is a named group of numerical values, such as the algorithms a mo
 - Flags are always stored in full-length integers, and never as single-bit bitfields (i.e., `Flag:1;`).  This allows bulk editing and passing multiple flags as one parameter.
 - Flag names insert an `F` tag: `PRE_STRUCT_F_XXX`, where `PRE` is the module prefix and `STRUCT` is the structure the flags serve.
 - Flag comparisons should use `flags & PRE_STRUCT_F_XXX`, which is considered a boolean for the purposes of the [Truthiness](#truthiness) rule.
-
-#### Multi-Type Structures
-- If a structure can represent kinds or types (not data types, this is a conceptual thing), an enum lists those types.
-- The struct almost always includes a field holding this enum to indicate the type that the struct holds.
-- These names insert a `T` tag: `PRE_STRUCT_T_XXX`.
 
 ### Types
 For: `.c`, `.h`
