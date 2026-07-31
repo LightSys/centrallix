@@ -298,7 +298,6 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 		
 		/** Write the data to the page. **/
 		page_buf[n_chars_read] = '\0';
-		fprintf(stderr, "Got: \"%s\"\n", page_buf);
 		if (htrAddBodyItem(s, page_buf) != 0)
 		    {
 		    mssError(0, "HTHTML", "Failed to write HTML chunk: \"%s\"", page_buf);
