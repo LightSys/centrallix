@@ -86,12 +86,12 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0)
 	    {
 	    mssError(1,"HTEB","Editbox widget must have a 'width' property");
-	    return -1;
+	    goto end;
 	    }
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    mssError(1,"HTEB","Editbox widget must have a 'height' property");
-	    return -1;
+	    goto end;
 	    }
 
 	/** Maximum characters to accept from the user **/
@@ -105,7 +105,11 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	htrGetBackground(tree, NULL, s->Capabilities.CSS2?1:0, main_bg, sizeof(main_bg));
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0)
+	    {
+	    mssError(1,"HTEB","Editbox widget must have a 'name' property");
+	    goto end;
+	    }
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Get description color **/
