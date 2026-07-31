@@ -63,7 +63,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
     int is_readonly = 0;
     int is_raised = 0;
     int mode = 0; /* 0=text, 1=html, 2=wiki */
-    int maxchars;
+    int max_chars;
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
     int box_offset;
@@ -92,8 +92,8 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    goto err;
 	    }
 	
-	/** Maximum characters to accept from the user **/
-	if (wgtrGetPropertyValue(tree,"maxchars",DATA_T_INTEGER,POD(&maxchars)) != 0) maxchars=255;
+	/** Maximum characters to accept from the user.  Negative means no limit. **/
+	if (wgtrGetPropertyValue(tree,"max_chars",DATA_T_INTEGER,POD(&max_chars)) != 0) max_chars = -1;
 
 	/** Readonly flag **/
 	if (wgtrGetPropertyValue(tree,"readonly",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"yes")) is_readonly = 1;
@@ -196,15 +196,16 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	
 	/** Write HTML text area opening tag. */
-	if (htrAddBodyItem(s, 
-	    "<textarea style='"
+	if (htrAddBodyItem_va(s,
+	    "<textarea%[ maxlength='%POS'%] style='"
 		"width:100%%; "
 		"height:100%%; "
 		"border:none; "
 		"outline:none; "
 		"font-family:inherit; "
 		"font-size:inherit; "
-	    "'>\n"
+	    "'>\n",
+	    (max_chars > 0), max_chars
 	) != 0)
 	    {
 	    mssError(0, "HTTX", "Failed to write HTML text area opening tag.");

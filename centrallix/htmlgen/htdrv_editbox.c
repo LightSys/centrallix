@@ -65,7 +65,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
     int is_readonly = 0;
     int is_raised = 0;
     char* tooltip = NULL;
-    int maxchars;
+    int max_chars;
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
     int box_offset;
@@ -94,8 +94,8 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    goto end;
 	    }
 
-	/** Maximum characters to accept from the user **/
-	if (wgtrGetPropertyValue(tree,"maxchars",DATA_T_INTEGER,POD(&maxchars)) != 0) maxchars=255;
+	/** Maximum characters to accept from the user.  Negative means no limit. **/
+	if (wgtrGetPropertyValue(tree,"max_chars",DATA_T_INTEGER,POD(&max_chars)) != 0) max_chars = -1;
 
 	/** Readonly flag **/
 	if (wgtrGetPropertyValue(tree,"readonly",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"yes")) is_readonly = 1;
@@ -295,9 +295,10 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 
 	if (htrAddBodyItem_va(s,
 	    "<img data-side='left' src='/sys/images/eb_edg.gif' alt=''>"
-	    "<input id='eb%POScon1'>"
+	    "<input id='eb%POScon1'%[ maxlength='%POS'%]>"
 	    "<img data-side='right' src='/sys/images/eb_edg.gif' alt=''>",
-	    id
+	    id,
+	    (max_chars > 0), max_chars
 	) != 0)
 	    {
 	    mssError(0, "HTEB", "Failed to render child widgets.");

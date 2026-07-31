@@ -65,7 +65,6 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
     int is_raised = 1;
     char* c1;
     char* c2;
-    int maxchars;
 
 	if(!s->Capabilities.Dom0NS)
 	    {
@@ -89,9 +88,6 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTSPNR","Spinner widget must have a 'height' property");
 	    return -1;
 	    }
-	
-	/** Maximum characters to accept from the user **/
-	if (wgtrGetPropertyValue(tree,"maxchars",DATA_T_INTEGER,POD(&maxchars)) != 0) maxchars=255;
 
 	/** Background color/image? **/
 	htrGetBackground(tree,NULL,!s->Capabilities.Dom0NS, main_bg, sizeof(main_bg));
