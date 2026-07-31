@@ -22,7 +22,7 @@ This document should, ideally, provide standards for every text file type and pr
 - `.js`
 - `.xml`/`.xsl`
 - Makefile
-- Structure Files (`.app`, `.cmp`, `.rpt`, `.qy`, etc.)
+- Structure files (`.app`, `.cmp`, `.rpt`, `.qy`, etc.)
 
 When using a language not explicitly covered here, use discernment to attempt to apply these styles within the restrictions of that language so that your code will be styled consistently with other code in the codebase written using supported languages.
 
@@ -118,7 +118,13 @@ switch (access) {
 	 ***/
 	```
 - In a `.c` or `.h` file, never use a `//` comment.  C99 permits it, but it does not match with the asterisk tiers above.
-- **Exception**:  A file may only use the comment syntax its language accepts, such as `//` in an `.app` file, `#` in a makefile, or `<!-- -->` in XML.  Follow the rules above to the extent that syntax allows.  XML has no single-line comment syntax and cannot nest comments, so the asterisk tiers above do not apply to it at all.
+
+**Exception**:  While several languages (e.g. `js`) support C-style multi-line comment syntax, many languages in the codebase do not.  In such languages (listed below), fall back to the specified comment syntax for all comments:
+- `xml`/`xsl` files: `<!--` & `-->`
+- Makefiles: `#`
+- Structure files\*: `//`
+
+\*Fall back only when the parser is configured to not allow C-style multi-line comments.  This is usually the case, but the parser might be configured to support this syntax, so it is still required in those cases.
 
 ### File Organization
 For: `.c`, `.h`, structure files
