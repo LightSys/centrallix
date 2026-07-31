@@ -614,25 +614,29 @@ ObjData val;
 	}
     
     /** isTopTab and isSideTab are used to compensate for tabs. **/
-    if((isTopTab != NULL || isSideTab != NULL) && strcmp(W->Type, "widget/tab") == 0)
-        {
-	    /*** Set isTopTab and isSideTab. If the node does not specify the
-	     *** tab location, assume it has a top tab and leave side-tab unset.
+    if(strcmp(W->Type, "widget/tab") == 0)
+	{
+	if(isTopTab != NULL || isSideTab != NULL)
+	    {
+	    /*** Set isTopTab and isSideTab.  If the node does not specify the
+	     *** tab location, assume it has a top tab and no side-tab unset.
 	     **/
 	    if(wgtrGetPropertyValue(W, "tab_location", DATA_T_STRING, &val) < 0)
 		{
-	        if (isTopTab != NULL) *isTopTab = 1;	// Property not found, assume it has a top tab only.
+		if(isTopTab  != NULL) *isTopTab = 1;
+		if(isSideTab != NULL) *isSideTab = 0;
 		}
 	    else 
 		{
-		    *isTopTab = (!strcmp(val.String, "top") || !strcmp(val.String, "bottom"));
-		    *isSideTab = (!strcmp(val.String, "left") || (!strcmp(val.String, "right")));
+		if(isTopTab  != NULL) *isTopTab  = (strcmp(val.String, "top")  == 0 || strcmp(val.String, "bottom") == 0);
+		if(isSideTab != NULL) *isSideTab = (strcmp(val.String, "left") == 0 || strcmp(val.String, "right")  == 0);
 		}
+	    }
+
+	/** Set the tab width and height (if needed), defaulting to 80 and 24 if unspecified. **/
+	if(tabWidth != NULL)  *tabWidth  = (wgtrGetPropertyValue(W, "tab_width",  DATA_T_INTEGER, &val) == 0) ? val.Integer : 80;
+	if(tabHeight != NULL) *tabHeight = (wgtrGetPropertyValue(W, "tab_height", DATA_T_INTEGER, &val) == 0) ? val.Integer : 24;
 	}
-    
-    /** Set the tab width and height (if needed), defaulting to 24 and 80 if unspecified. **/
-    if(tabWidth != NULL)  *tabWidth  = (wgtrGetPropertyValue(W, "tab_width",  DATA_T_INTEGER, &val) == 0) ? val.Integer : 80;
-    if(tabHeight != NULL) *tabHeight = (wgtrGetPropertyValue(W, "tab_height", DATA_T_INTEGER, &val) == 0) ? val.Integer : 24;
 	
     return 0;
 }
