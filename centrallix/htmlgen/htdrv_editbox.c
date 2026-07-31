@@ -180,11 +180,13 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    "\t\t#eb%POScon1 { "
 		"position:absolute; "
 		"visibility:inherit; "
-		"left:5px; "
+		"box-sizing:border-box; "
+		"left:6px; "
 		"top:0px; "
-		"width:calc(100%% - 10px); "
+		"width:calc(100%% - 12px); "
 		"height:100%%; "
 		"border:none; "
+		"padding:0px; "
 		"z-index:%POS; "
 	    "}\n",
 	    id,
@@ -192,6 +194,26 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	) != 0)
 	    {
 	    mssError(0, "HTEB", "Failed to write con1 CSS.");
+	    goto end;
+	    }
+
+	/*** Write CSS for the "more text this way" arrows.  These are pinned
+	 *** to the edges of the base layer, since the input above is out of
+	 *** the normal flow.
+	 ***/
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#eb%POSbase > img[data-side] { "
+		"position:absolute; "
+		"top:0px; "
+		"bottom:0px; "
+		"margin:auto 0px; "
+	    "}\n"
+	    "\t\t#eb%POSbase > img[data-side='left'] { left:0px; }\n"
+	    "\t\t#eb%POSbase > img[data-side='right'] { right:0px; }\n",
+	    id, id, id
+	) != 0)
+	    {
+	    mssError(0, "HTEB", "Failed to write edge arrow CSS.");
 	    goto end;
 	    }
 
@@ -241,7 +263,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** HTML body <DIV> element for the base layer. **/
-	if (htrAddBodyItem_va(s, "<div id='eb%POSbase'>\n", id) != 0)
+	if (htrAddBodyItem_va(s, "<div id='eb%POSbase'>", id) != 0)
 	    {
 	    mssError(0, "HTEB", "Failed to write base HTML.");
 	    goto end;
@@ -268,9 +290,9 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	if (htrAddBodyItem_va(s,
-	    "<img data-side='left' src='/sys/images/eb_edg.gif' alt='' style='vertical-align:10%%'>"
+	    "<img data-side='left' src='/sys/images/eb_edg.gif' alt=''>"
 	    "<input id='eb%POScon1'>"
-	    "<img data-side='right' src='/sys/images/eb_edg.gif' alt='' style='vertical-align:10%%'>\n",
+	    "<img data-side='right' src='/sys/images/eb_edg.gif' alt=''>",
 	    id
 	) != 0)
 	    {
@@ -282,7 +304,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto end;
 
 	/** End the containing layer. **/
-	if (htrAddBodyItem(s, "</div>") != 0)
+	if (htrAddBodyItem(s, "</div>\n") != 0)
 	    {
 	    mssError(0, "HTEB", "Failed to write HTML closing tag.");
 	    goto end;
