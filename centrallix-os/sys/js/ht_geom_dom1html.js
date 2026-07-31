@@ -283,9 +283,15 @@ function getRelative(l, d)
 	console.error(`Call to getRelative${d.toUpperCase()}(`, l, ')');
 	return 0;
 	}
-    
-    const val = parseInt(pg_get_style(l, d, NaN), 10);
-    return l['__pg_' + d] = (isNaN(val)) ? 0 : val;
+
+    /*** A node with no layout box (display:none, or not in the document yet)
+     *** as a length of 'auto', not a number.  In this case, report the cached
+     *** and skip caching a 'auto'.
+     ***/
+    const val = parseInt(pg_get_style(l, d), 10);
+    if (isNaN(val)) return l['__pg_' + d] ?? 0;
+
+    return l['__pg_' + d] = val;
     }
 
 function getRelativeX(l) { return getRelative(l, 'left'); }
@@ -307,7 +313,16 @@ function setRelative(l, value, d)
 
     pg_set_style(l, d, value);
     l['__pg_' + d + '_style'] = value;
-    return l['__pg_' + d] = parseInt(pg_get_style(l, d));
+
+    /*** Read back the value the browser actually used, which may differ from
+     *** the one we asked for (a percentage or a calc(), for instance).  If the
+     *** node has no layout box to measure, cache the number we asked for when
+     *** we have one, so that getRelative() has something usable to report.
+     ***/
+    const used = parseInt(pg_get_style(l, d));
+    if (!isNaN(used)) return l['__pg_' + d] = used;
+    if (!isNaN(parsedValue)) return l['__pg_' + d] = parsedValue;
+    return l['__pg_' + d] ?? 0;
     }
 
 function setRelativeX(l, value) { return setRelative(l, value, 'left'); }
