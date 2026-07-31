@@ -283,7 +283,7 @@ cxssPopContext()
 	    {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wframe-address"
-	    ret_addr = __builtin_return_address(1);
+	    void* ret_addr = __builtin_return_address(1);
 #pragma GCC diagnostic pop
 	    if (sptr->CallerReturnAddr != ret_addr)
 		printf("WARNING - unbalanced cxssPopContext / cxssPushContext\n");
