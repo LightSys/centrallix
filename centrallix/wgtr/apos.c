@@ -169,7 +169,8 @@ pWgtrNode child;
 return 0;
 }
 
-/*** Automatically positions widgets in a widget tree.
+/*** Automatically positions widgets in a widget tree.  This function is
+ *** assumed to be called at-most once per subtree.
  ***
  *** Note: You can think of this as the main entry point for the file.
  ***
@@ -894,8 +895,8 @@ pAposLine CurrLine, PrevLine;
 	}
 	
     /** Sanity check to make sure no widgets cross the border lines. **/
-    if(xaCount(HLines))	// Only check borderlines if they exist.
-	{
+//     if(xaCount(HLines))	// Only check borderlines if they exist.
+// 	{
 	//     FirstCross = &(((pAposLine)xaGetItem(HLines, 0))->CWidgets);
 	//     LastCross  = &(((pAposLine)xaGetItem(HLines, (xaCount(HLines)-1)))->CWidgets);
 	    /*if(xaCount(FirstCross))
@@ -904,7 +905,7 @@ pAposLine CurrLine, PrevLine;
 	    if(xaCount(LastCross))
 		mssError(1, "APOS", "%d widget(s) crossed the bottom borderline, including %s '%s'", xaCount(LastCross),
 		    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);*/
-	}
+	// }
 	
 //     FirstCross = &(((pAposLine)xaGetItem(VLines, 0))->CWidgets);
 //     LastCross  = &(((pAposLine)xaGetItem(VLines, (xaCount(VLines)-1)))->CWidgets);
@@ -1285,14 +1286,14 @@ pAposSection NewSect;
 /*** Determines if a section between two lines is a spacer.
  ***
  *** If a section is a spacer, the assumption is that the designer probably put
- *** that space there to provide visual breathing room in their design. Thus, we
+ *** that space there to provide visual breathing room in their design.   Thus, we
  *** should avoid resizing it as this may interfere with their design.
  *** 
- *** @param StartL   The line starting the section. (I think this is always the left/top.)
- *** @param EndL     The line starting the section. (I think this is always the right/bottom.)
+ *** @param StartL   The line starting the section.  (I think this is always the left/top.)
+ *** @param EndL     The line ending the section.  (I think this is always the right/bottom.)
  *** @param type     Whether the section is a row (APOS_ROW) or a column (APOS_COL).
  *** @param isBorder Whether the section is on the border of the page.
- *** @returns 0 if successful, -1 otherwise.
+ *** @returns 1 if the section is a spacer, or 0 if not.
  ***/
 int
 aposIsSpacer(pAposLine StartL, pAposLine EndL, int type, int isBorder)
@@ -1406,7 +1407,7 @@ int cCount = xaCount(&(L->CWidgets));
 	        TotalFlex += ((pWgtrNode)xaGetItem(&(L->CWidgets), i))->fl_width;
 	}
     
-    /** Return the average flexibility with an aditional fudge factor. **/
+    /** Return the average flexibility with an additional fudge factor. **/
     return (int)(APOS_FUDGEFACTOR + ((float)TotalFlex)/((float)sCount+(float)cCount));
 }
 
@@ -1634,7 +1635,7 @@ pWgtrNode Widget;
 		    if(flag==APOS_ROW  &&  Widget->fl_height)
 			{
 			    /** Calculate the new size, taking APOS_MINWIDTH into account. **/
-			    newsize = CurrLine->Loc - Widget->y - isTopTab*24;
+			    newsize = CurrLine->Loc - Widget->y - isTopTab*tabHeight;
 			    if (newsize < APOS_MINWIDTH && Widget->pre_height >= APOS_MINWIDTH)
 				Widget->height = APOS_MINWIDTH;
 			    else if(newsize >= APOS_MINWIDTH || newsize >= Widget->pre_height)
@@ -1774,8 +1775,12 @@ int ival;
 			Child->y = (rh - isWin*24) - Child->height;
 		}
 	    
-	    /**recursive call on visual containers; new visual reference is passed**/
-	    if((Child->Flags & WGTR_F_CONTAINER) && !(Child->Flags & WGTR_F_NONVISUAL))
+	    /*** Recursive call on visual child containers with a new visual
+	     *** reference.  Skips floating children because the call to
+	     *** aposAutoPositionWidgetTree() in the previous if statement
+	     *** already processed those subtrees.
+	     ***/
+	    else if((Child->Flags & WGTR_F_CONTAINER) && !(Child->Flags & WGTR_F_NONVISUAL))
 		{
 		    if (aposProcessWindows(Child, Child) < 0)
 			return -1;
