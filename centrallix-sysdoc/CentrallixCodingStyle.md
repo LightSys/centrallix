@@ -124,6 +124,7 @@ In a `.c` or `.h` file, it is recommended to order the top level of the file as 
 7. Function definitions (`.c` files).
 
 **Note**: Many files may not have all of these sections.
+
 **Exception**: Some patterns may force you to break this order, such as forward declarations.
 
 ### Include Files
