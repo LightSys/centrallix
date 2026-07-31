@@ -1264,7 +1264,7 @@ int
 htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype)
     {
     pHtEventAction ea = NULL;
-    pHtParam p;
+    pHtParam p = NULL;
 
 	/** Look for a matching event/action **/
 	for (unsigned int i = 0u; i < drv->Actions.nItems; i++)
