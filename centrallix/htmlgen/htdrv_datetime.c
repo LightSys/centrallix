@@ -242,11 +242,10 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(0, "HTDT", "Failed to write datetime con CSS.");
 	    goto err;
 	    }
-	if (htrAddStylesheetItem_va(s,
+	if (id == 0 && htrAddStylesheetItem(s, /* Only written once. */
 	    "\t\t.dt_dropdown { "
 		"cursor:default; "
-	    "}\n",
-	    id
+	    "}\n"
 	) != 0)
 	    {
 	    mssError(0, "HTDT", "Failed to write datetime dropdown CSS.");
@@ -307,7 +306,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    date_only, default_time
 	) != 0)
 	    {
-	    mssError(0, "HTDT", "Failed to render child widgets.");
+	    mssError(0, "HTDT", "Failed to write datetime initialization script.");
 	    goto err;
 	    }
 
