@@ -120,7 +120,7 @@ In a `.c` or `.h` file, it is recommended to order the top level of the file as 
 3. `#include` groups.
 4. Macros.
 5. `Typedef`, `struct`, and `union` declarations.
-6. Prototypes for functions defined later in the same file.
+6. Function declarations.
 7. Function definitions (`.c` files).
 
 **Note**: Many files may not have all of these sections.
