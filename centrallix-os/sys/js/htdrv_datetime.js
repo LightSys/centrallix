@@ -140,6 +140,18 @@ function dt_changemode(){
     //get rid of old pane layers because they will need to be relabeled
 }
 
+// Release everything the widget registered elsewhere on the page, so that a
+// destroyed widget (in a dynamic component, for instance) is not kept alive and
+// is no longer visited by the resize handlers or the mouse handlers.
+function dt_deinit() {
+	dt_resize_observer.unobserve(this);
+	var i = dt_list.indexOf(this);
+	if (i >= 0) dt_list.splice(i, 1);
+	pg_removearea(this.area);
+	if (this.form) this.form.DeRegister(this);
+	if (dt_current == this) dt_current = null;
+}
+
 // Date/Time Functions
 function dt_init(param){
 	var l = param.layer;
@@ -233,6 +245,7 @@ function dt_init(param){
 	// Set up responsive resizing.
 	dt_resize_observer.observe(l);
 	dt_list.push(l);
+	l.destroy_widget = dt_deinit;
 
 	// Events
 	ifc_init_widget(l);
