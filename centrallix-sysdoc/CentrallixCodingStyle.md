@@ -10,11 +10,22 @@
 <!-- TODO: Israel - Add table of contents. -->
 
 ## Introduction
-The number one rule is to write readable code, but "readable code" is an inconsistent and subjective concept, so the rules in this document should help you do that effectively.  The following style rules should be followed in every applicable file in Centrallix, including `.c`, `.h`, `.md`, `.xml`, structure files, makefiles, etc.  Note that many files may break style rules, however, any new changes committed should still follow them.
+The number one rule is to write readable code, but "readable code" is an inconsistent and subjective concept, so the rules in this document should help you do that effectively.  The following style rules should be followed in every applicable file in Centrallix.  Note that many files may break style rules, however, any new changes committed should still follow them.
 
 Many of these style rules are enforced by the style linter, however, this file is the source of truth.  Thus, where the lint rules and this file disagree, update the lint rules.  Keep in mind that some styles documented here may not have lint rules due to linter limitations, but they should still be followed to the best of your ability.
 
 <!-- TODO: Israel - Add info about the style linter after it's set up. -->
+
+## Supported Languages
+This document should, ideally, provide standards for every text file type and programming language used in Centrallix.  However, it currently only supports the languages listed below:
+- `.c`/`.h`
+- `.js`
+- `.xml`/`.xsl`
+- Makefile
+- Structure Files (`.app`, `.cmp`, `.rpt`, `.qy`, etc.)
+
+When using a language not explicitly covered here, use discernment to attempt to apply these styles within the restrictions of that language so that your code will be styled consistently with other code in the codebase written using supported languages.
+
 
 ## Module Prefixes
 All modules have an assigned prefix. This is usually (but not always!) a two-to-four-character abbreviation of the module name.  These prefixes are listed in [Prefixes.md](Prefixes.md).  This prefix is used frequently in identifiers for functions and globals when they are accessible from outside the module.
