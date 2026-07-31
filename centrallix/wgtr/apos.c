@@ -1492,12 +1492,11 @@ float TotalSum=0;
 		}
 	}
     
-    /*** If there is no flexibility (no expansion or contraction), we can't
-     *** space anything out. Return the original difference so this can be
-     *** spaced out elsewhere.
+    /*** If there is no flex or flex space, we can't space anything out.
+     *** Return the original difference so this can be spaced out elsewhere.
      ***/
-    if(TotalFlex == 0) return Diff;
-    
+    if(TotalFlex == 0 || TotalFlexibleSpace <= 0) return Diff;
+
     /** Sum the flex weights of all sections, weighted by their size. **/
     count = xaCount(Lines);
     for(i=1; i<count; ++i)
@@ -1508,6 +1507,13 @@ float TotalSum=0;
 
 	    TotalSum += (FlexWeight * SizeWeight);
 	}
+
+    /*** TotalSum normalizes the per-section weights so that they add up to 1.
+     *** Zero therefore means no section has both flexibility and size, and a
+     *** negative value means some section has a negative width.  Neither can
+     *** be spaced out, so hand the difference back to the caller.
+     ***/
+    if(TotalSum <= 0) return Diff;
 
     /** The initial borders do not adjust. **/
     pAposLine leftBorder = (pAposLine)xaGetItem(Lines, 0);
