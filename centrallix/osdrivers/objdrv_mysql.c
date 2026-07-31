@@ -2361,6 +2361,61 @@ mysd_internal_opperator_plus(pExpression tree, pMysdTable *tdata, pXString where
     return -1;
     }
 
+/*** mysd_internal_opperator_math - handles the *, \, and - operators.
+ *** @param tree The node structure to convert. MUST point to a math opperator
+ *** @param tdata Information about the table being queried
+ *** @param where_clause The string to append the converted query to
+ *** @param conn The active connection to the database 
+ *** @returns 0 on success or -1 on error
+ ***/
+int
+mysd_internal_opperator_math(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
+    {
+    pXArray arg_strings = NULL;
+    int types[] = { /* left */ DATA_T_INTEGER, DATA_T_MONEY, DATA_T_DOUBLE, DATA_T_INVALID, 
+		      /* right */ DATA_T_ANY, DATA_T_INVALID };
+
+	/** determine argument **/
+	char* opperator;
+	switch(tree->NodeType)
+	    {
+	    case EXPR_N_MINUS:
+		opperator = "-";
+		break;
+	    case EXPR_N_MULTIPLY:
+		opperator = "*";
+		break;
+	    case EXPR_N_DIVIDE:
+		opperator = "/";
+		break;
+	    default:
+		mssError(0,"MYSD","Invalid math opperator type %d", tree->NodeType);
+		goto error;
+		break;
+	    }
+	
+	/** verify arguments **/
+	arg_strings = mysd_internal_process_params(tree, tdata, conn, types, 2, 2);
+	if(arg_strings == NULL)
+	    {
+	    mssError(0,"MYSD","opperator %s usage: <number type> %s <any>", opperator, opperator);
+	    goto error;
+	    }
+	char* left_str = get_arg_string(arg_strings, 0);
+	char* right_str = get_arg_string(arg_strings, 1);
+	
+	xsConcatPrintf(where_clause, " (%s %s %s) ", left_str, opperator, right_str);
+
+	mysd_internal_free_processed_args(arg_strings);
+	arg_strings = NULL;
+
+	return 0;
+
+    error:
+	mysd_internal_free_processed_args(arg_strings);
+    return -1;
+    }
+
 /*** mysd_internal_TreeToClause - convert an expression tree to the appropriate
  *** clause for the SQL statement.
  *** NOTE the following limitations with regards to CxSQL
@@ -3023,27 +3078,10 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                 break;
 
             case EXPR_N_MINUS:
-                xsConcatenate(where_clause, " (", 2);
-                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
-                xsConcatenate(where_clause, " - ", 3);
-                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
-                xsConcatenate(where_clause, ") ", 2);
-                break;
-
             case EXPR_N_DIVIDE:
-                xsConcatenate(where_clause, " (", 2);
-                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
-                xsConcatenate(where_clause, " / ", 3);
-                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
-                xsConcatenate(where_clause, ") ", 2);
-                break;
-
             case EXPR_N_MULTIPLY:
-                xsConcatenate(where_clause, " (", 2);
-                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
-                xsConcatenate(where_clause, " * ", 3);
-                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
-                xsConcatenate(where_clause, ") ", 2);
+		/** Handle all 3 the same way **/
+		if(mysd_internal_opperator_math(tree, tdata, where_clause, conn) < 0) goto error;
                 break;
 
             case EXPR_N_IN:
