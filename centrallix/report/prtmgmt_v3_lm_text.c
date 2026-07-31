@@ -575,7 +575,7 @@ prt_textlm_WordWrap(pPrtObjStream area, pPrtObjStream* curobj)
     pPrtObjStream oldcurobj;
     int rval,n;
     int sep,worstcasesep=-1;
-    double sepw,worstcasesepw;
+    double sepw,worstcasesepw=0.0;
 
 	/** First, temporarily add the curobj to the area's content **/
 	oldcurobj = *curobj;
