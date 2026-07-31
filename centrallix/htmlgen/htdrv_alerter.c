@@ -48,12 +48,35 @@ int
 htalrtRender(pHtSession s, pWgtrNode tree, int z)
     {
 
-	/** Get name **/
-	htrAddScriptInit_va(s,"\talrt_init(wgtrGetNodeRef(ns, '%STR&SYM'));\n", wgtrGetName(tree));
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	    {
+	    mssError(1, "HTALRT", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
+	    }
 
-	htrAddScriptInclude(s,"/sys/js/htdrv_alerter.js",0);
+	/** Script include call **/
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_alerter.js", 0) != 0)
+	    {
+	    mssError(0, "HTALRT", "Failed to include JS.");
+	    goto err;
+	    }
 
-    return 0;
+	/** Script initialization call. **/
+	if (htrAddScriptInit_va(s, "\talrt_init(wgtrGetNodeRef(ns, '%STR&SYM'));\n", wgtrGetName(tree)) != 0)
+	    {
+	    mssError(0, "HTALRT", "Failed to write JS init call.");
+	    goto err;
+	    }
+
+	return 0;
+
+    err:
+	mssError(0, "HTALRT",
+	    "Failed to render \"%s\":\"%s\".",
+	    tree->Name, tree->Type
+	);
+	return -1;
     }
 
 

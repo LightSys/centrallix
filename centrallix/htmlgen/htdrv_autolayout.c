@@ -149,6 +149,7 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 	for (int i = 0; i < n_children; i++)
 	    {
 	    pWgtrNode subtree = xaGetItem(&(tree->Children), i);
+	    if (subtree == NULL) continue; /* Not our problem. */
 	    if (!strcmp(subtree->Type, "widget/autolayoutspacer")) 
 		subtree->RenderFlags |= HT_WGTF_NOOBJECT;
 	    else if (htrRenderWidget(s, subtree, z + 1) != 0) goto err;
