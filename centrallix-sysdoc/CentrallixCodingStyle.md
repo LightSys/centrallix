@@ -41,8 +41,8 @@ These rules apply to every language in Centrallix, unless a section states other
 
 ### Indentation
 - Each level of indentation should use a single tab.  Do not use spaces for general indentation.
-- You can set your editor tab length to any size you prefer.  However, code should look reasonable with any tab length up to 8 spaces.
-- Prefer tabs, but always use spaces for aligning characters, such as in a copyright notice or a column of struct members.  Tabs break alignment when the viewer uses a different tab length.
+- It is highly recommended to set your editor tab length to 4 spaces.  When writing code, you may assume that all readers will view it using 4-space tabs.
+- Prefer tabs, but always use spaces for aligning characters, such as in a copyright notice or a column of struct members.
 - Lines should not have trailing whitespace.  Thus, blank lines are not indented.
 - **Exception**:  Language syntax that requires literal tabs and/or spaces must be followed.
 
