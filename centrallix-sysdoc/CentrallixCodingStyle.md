@@ -225,14 +225,14 @@ If a struct supports `magic.h` by beginning with a magic field of type `Magic_t`
 ### Set Types
 For: `.c`, `.h`
 
-A constant set is a named group of numerical values, such as the algorithms a module supports or the flags a structure carries.  Every set follows these rules:
-- The set should have a `typedef` of a numerical type, so declarations using this type will show what the value means.
+A set type is a named type that represents [one](#enums) or [multiple](#flags) of a collection of numerical available values, such as the algorithms a module supports or the flags a structure carries.  Every set follows these rules:
+- The set type should have a `typedef` specifying a numerical type.  This makes declarations using this type more explicit and obvious.
 	- The underlying numerical type should be the minimum size necessary for values defined.
 	- Typically, unsigned numerical types like `unsigned char`, `unsigned short`, or `unsigned int` are used.
-	- Signed types are less common (especially for flags!), however, they have uses when making some enum values negative communicates useful information, such as positive success values vs. negative error-code values.
-	- The `typedef` should be preceded by a brief comment explaining the information stored with this type.
+	- Signed types are less common (especially for flags), however, they have uses when defining some [enum](#enums) values as positive and others as negative communicates useful information, such as positive success values vs. negative error-code values.
+	- The `typedef` should be preceded by a brief comment explaining what information is stored with this type.
 - Each value is defined using a macro with a literal value cast to the set's type to improve type checking.
-	- Values are aligned in a column (see [struct & union declarations](#struct--union-declarations) for the alignment rules, which apply here too).
+	- Values are aligned in a column (see [struct & union declarations](#struct--union-declarations) for the alignment rules, which apply here, too).
 	- Macro names use the scheme `PRE_SET_XXX`, where `PRE` is the module prefix, `SET` is a short abbreviation for the set, and `XXX` is the name of the individual value.
 	- When a structure could represent one of multiple types, the type being used is typically stored with a set type.
 		- The names of value macros for such set types insert a `T` tag: `PRE_STRUCT_T_XXX`.
@@ -241,7 +241,7 @@ A constant set is a named group of numerical values, such as the algorithms a mo
 
 #### Enums
 - An enum holds exactly one of its values at a time, so the values simply increment.
-- The value `0` is reserved to mean unset, and is named `PRE_SET_NULL` (where `PRE` is the module prefix).
+- The value `0` should be reserved to mean unset with a value name of `NULL`.
 - For example:
 	```c
 	/** Enum type representing a clustering algorithm. **/
@@ -258,8 +258,21 @@ A constant set is a named group of numerical values, such as the algorithms a mo
 #### Flags
 - A flag set can hold any number of its values at once, so each value is a distinct power of two.
 - Flags are always stored in full-length integers, and never as single-bit bitfields (i.e., `Flag:1;`).  This allows bulk editing and passing multiple flags as one parameter.
-- Flag names insert an `F` tag: `PRE_STRUCT_F_XXX`, where `PRE` is the module prefix and `STRUCT` is the structure the flags serve.
 - Flag comparisons should use `flags & PRE_STRUCT_F_XXX`, which is considered a boolean for the purposes of the [Truthiness](#truthiness) rule.
+- Values should be defined in binary (`0b0010`).
+	- Leading 0s for all the bits available in the type should be explicitly included to prevent a reflow if new flag values are added later.
+- The value `0` should be reserved to mean no flags with a value name of `NONE`.
+- For example:
+	```c
+	/** Flags describing the state of a cluster. **/
+	typedef unsigned char ClusterFlags;
+	#define CA_CLU_NONE      ((ClusterFlags)0b00000000)
+	#define CA_CLU_ALLOCATED ((ClusterFlags)0b00000001)
+	#define CA_CLU_SEEDED    ((ClusterFlags)0b00000010)
+	#define CA_CLU_CONVERGED ((ClusterFlags)0b00000100)
+	#define CA_CLU_DIRTY     ((ClusterFlags)0b00001000)
+	#define CA_CLU_READONLY  ((ClusterFlags)0b00010000)
+	```
 
 ### Types
 For: `.c`, `.h`
