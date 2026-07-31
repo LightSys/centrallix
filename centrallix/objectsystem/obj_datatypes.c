@@ -13,6 +13,7 @@
 #endif
 #include "obj.h"
 #include "expression.h"
+#include "cxlib/expect.h"
 #include "cxlib/xstring.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
@@ -1948,6 +1949,15 @@ objDataToWords(int data_type, void* data_ptr)
 	else if (data_type == DATA_T_MONEY)
 	    {
 	    m = (pMoneyType)data_ptr;
+	    if (UNLIKELY(m->FractionPart > 9999))
+	        {
+		fprintf(stderr,
+		    "Warning: Attempted to convert money value %d.%04u, "
+		    "with fractional part exceeding 9999, to words. "
+		    "Cents will be truncated to the low two digits.\n",
+		    m->WholePart, m->FractionPart
+		);
+		}
 	    if (m->WholePart < 0)
 	        {
 		if (m->FractionPart == 0)
@@ -2046,7 +2056,7 @@ objDataToWords(int data_type, void* data_ptr)
 		}
 	    else
 	        {
-	        sprintf(nbuf, "And %2.2ld/100 ", fraction_part/100);
+	        sprintf(nbuf, "And %2.2d/100 ", (int)(fraction_part/100) % 100);
 		xsConcatenate(&tmpbuf, nbuf, -1);
 		}
 	    }
