@@ -10,15 +10,22 @@
 // GNU Lesser General Public License for more details.
 
 
-// A resize observer to update dropdowns when they are resized.
+// A list of every dropdown widget on the page.
+const dd_list = [];
+
+// A resize observer to rebuild dropdown panes when their widget is resized,
+// which is needed because the pane scales with the widget.
 const dd_resize_observer = new ResizeObserver(e => e.forEach(({ target }) => {
     // Ignore widgets that don't have a visible panelayer in need of updating.
     if (htr_getvisibility(target.PaneLayer) !== 'inherit') return;
-    
-    // Reopen the dropdown to rerender it.
-    dd_collapse(target);
-    dd_expand(target);
+
+    // Rebuild the dropdown at its new size.
+    dd_resize(target);
 }));
+
+// Resizing the page may move the widget without resizing it, detected here.
+// Updates are deferred to the next frame to wait for other widgets to settle.
+window.addEventListener('resize', () => requestAnimationFrame(() => dd_list.forEach(dd_reposition)));
 
 
 // Form manipulation
@@ -408,6 +415,51 @@ function dd_collapse(l)
 	}
     }
 
+/*** Position the pane of a dropdown next to the widget itself.  This is done
+ *** when the dropdown is opened and whenever the widget moves.
+ ***/
+function dd_position(l)
+    {
+    if (!l || !l.PaneLayer) return;
+    var offset = $(l).offset();
+    pg_positionpopup(l.PaneLayer, offset.left, offset.top, l.h, getClipWidth(l));
+    }
+
+/*** Move the pane of an open dropdown to follow its widget, ignoring dropdowns
+ *** that are closed.
+ ***/
+function dd_reposition(l)
+    {
+    if (htr_getvisibility(l.PaneLayer) == 'inherit') dd_position(l);
+    }
+
+/*** Rebuild the pane of an open dropdown after the widget has been resized.
+ *** The pane scales with the widget, so it has to be rebuilt, but the
+ *** highlighted item and any in progress type ahead search are preserved.
+ ***/
+function dd_resize(l)
+    {
+    /** Save the state that dd_collapse() and dd_expand() would discard. **/
+    var hilighted = l.SelectedItem;
+    var keystring = l.keystring;
+    var match = l.match;
+    var lastmatch = l.lastmatch;
+    var time_start = l.time_start;
+    var time_stop = l.time_stop;
+
+    /** Rebuild the pane at the new size. **/
+    dd_collapse(l);
+    dd_expand(l);
+
+    /** Restore the saved state. **/
+    l.keystring = keystring;
+    l.match = match;
+    l.lastmatch = lastmatch;
+    l.time_start = time_start;
+    l.time_stop = time_stop;
+    if (hilighted != null) dd_hilight_item(l, hilighted);
+    }
+
 function dd_expand(l)
     {
     var offs;
@@ -429,8 +481,7 @@ function dd_expand(l)
     if (l && htr_getvisibility(l.PaneLayer) != 'inherit')
 	{
 	pg_stackpopup(l.PaneLayer, l);
-	pg_positionpopup(l.PaneLayer, $(l).offset().left, $(l).offset().top, l.h, 
-		getClipWidth(l));
+	dd_position(l);
 	htr_setvisibility(l.PaneLayer, 'inherit');
 	dd_current = l;
 	if (getPageY(l.PaneLayer) < getPageY(l))
@@ -1233,6 +1284,10 @@ function dd_cb_reveal(e)
 function dd_deinit()
     {
     dd_collapse(this);
+    dd_resize_observer.unobserve(this);
+    var i = dd_list.indexOf(this);
+    if (i >= 0) dd_list.splice(i, 1);
+    pg_removearea(this.area);
     if (this.form)
 	this.form.DeRegister(this);
     if (dd_current == this)
@@ -1343,8 +1398,9 @@ function dd_init(param)
     // Setup the hover area.
     l.area = pg_addarea(l, -1, -1, () => l.w + 3, () => l.h + 3, 'dd', 'dd', 3);
     
-    // Resize dropdown automatically.
+    // Set up responsive resizing.
     dd_resize_observer.observe(l);
+    dd_list.push(l);
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
