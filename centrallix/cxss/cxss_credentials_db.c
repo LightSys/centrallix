@@ -6,6 +6,7 @@
 #include <sqlite3.h>
 #include "cxss/credentials_db.h"
 #include "cxss/util.h"
+#include "cxlib/expect.h"
 #include "cxlib/mtsession.h"
 
 /* Private functions (credentials_db) */
@@ -477,20 +478,35 @@ int
 cxssRetrieveUserAuthLL(CXSS_DB_Context_t dbcontext, const char *cxss_userid, 
                        CXSS_UserAuth_LLNode **node)
 {
-    CXSS_UserAuth_LLNode *head, *prev, *current;
+    CXSS_UserAuth_LLNode* head = NULL;
+    CXSS_UserAuth_LLNode* prev;
+    CXSS_UserAuth_LLNode* current;
     const char *privatekey, *salt, *iv;
     const char *date_created, *date_last_updated;
     size_t keylength, salt_length, iv_length;
     bool removal_flag;
+    int rval = CXSS_DB_QUERY_ERROR;
 
     /* Bind data with sqlite3 stmt */
     sqlite3_reset(dbcontext->retrieve_user_auths_stmt);
-    if (sqlite3_bind_text(dbcontext->retrieve_user_auths_stmt, 1, cxss_userid, -1, NULL) != SQLITE_OK) {
-        goto bind_error;
+    const int bind_status = sqlite3_bind_text(dbcontext->retrieve_user_auths_stmt, 1, cxss_userid, -1, NULL);
+    if (UNLIKELY(bind_status != SQLITE_OK)) {
+	mssError(0, "CXSS",
+	    "Failed to bind value with SQLite statement: %s",
+	    sqlite3_errmsg(dbcontext->db)
+	);
+	rval = CXSS_DB_BIND_ERROR;
+        goto end;
     }
 
     /* Allocate head (dummy node) */
     head = malloc(sizeof(CXSS_UserAuth_LLNode));
+    if (UNLIKELY(head == NULL))
+	{
+	mssError(1, "CXSS", "Failed to allocate UserAuth Linked List Node (head node).");
+	goto end;
+	}
+    head->next = NULL;
     prev = head;
 
     /* Execute query */
@@ -498,6 +514,12 @@ cxssRetrieveUserAuthLL(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
         
         /* Allocate and chain new node */
         current = malloc(sizeof(CXSS_UserAuth_LLNode));       
+	if (UNLIKELY(current == NULL))
+	    {
+	    mssError(1, "CXSS", "Failed to allocate UserAuth Linked List Node.");
+	    goto end;
+	    }
+        current->next = NULL;
         prev->next = current;
         
         /* Retrieve results */
@@ -527,13 +549,20 @@ cxssRetrieveUserAuthLL(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
         prev = current;
     }
 
-    current->next = NULL;
+    /* Success. */
     *(node) = head;
-    return CXSS_DB_SUCCESS;
+    rval = CXSS_DB_SUCCESS;
 
-bind_error:
-    mssError(0, "CXSS", "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
-    return CXSS_DB_BIND_ERROR;
+end:
+    if (rval != CXSS_DB_SUCCESS) {
+	mssError(0, "CXSS", "Failed to retrieve user auth.");
+
+	/* Clean up the partially built list, if any. */
+	if (head) cxssFreeUserAuthLL(head);
+	*(node) = NULL;
+    }
+
+    return rval;
 }
 
 /** @brief Retrieve user resource
