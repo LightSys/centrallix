@@ -66,7 +66,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
     int type;
-    int x,y,w,h,w2=184,h2=190;
+    int x,y,w,h;
     int rval;
     int search_by_range;
     int date_only = 0;
@@ -120,7 +120,6 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Is this a date-only control rather than date-time combined? **/
 	date_only = htrGetBoolean(tree, "date_only", 0);
-	if (date_only == 1) h2 = 156;
 
 	/** If no time is entered (or if date-only), what is the default time? **/
 	if (wgtrGetPropertyValue(tree,"default_time",DATA_T_STRING,POD(&ptr)) == 0)
@@ -225,6 +224,9 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(0, "HTDT", "Failed to write datetime button CSS.");
 	    goto err;
 	    }
+	/*** The text area of the control.  We use 1px padding around the 18px
+	 *** icon.  The client reads these sizes from the CSS.
+	 ***/
 	if (htrAddStylesheetItem_va(s,
 	    "\t\t.dt%POScon { "
 		"position:absolute; "
@@ -290,10 +292,6 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 		"foreground:'%STR&JSSTR', "
 		"fieldname:'%STR&JSSTR', "
 		"form:'%STR&JSSTR', "
-		"width:%INT, "
-		"height:%INT, "
-		"width2:%INT, "
-		"height2:%INT, "
 		"sbr:%INT, "
 		"donly:%INT, "
 		"dtime:'%STR&JSSTR', "
@@ -301,7 +299,6 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    name, id, id,
 	    initialdate,
 	    bgcolor, fgcolor, fieldname, form,
-	    w - 20, h, w2, h2,
 	    search_by_range,
 	    date_only, default_time
 	) != 0)
