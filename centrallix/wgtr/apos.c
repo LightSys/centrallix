@@ -103,17 +103,13 @@
 /*** Allocate space for a grid, section, and line using the custom allocation
  *** system. Note that register is similar to creating a new heap-allocated
  *** variable, then binding it to a name.
- *** 
- *** @returns 0, success.
  ***/
-int
-aposInit()
+void
+aposInit(void)
 {
     nmRegister(sizeof(AposGrid), "AposGrid");
     nmRegister(sizeof(AposSection), "AposSection");
     nmRegister(sizeof(AposLine), "AposLine");
-    
-    return 0;
 }
 
 /*** Dumps the grid content of a widget node and its floating children. This
@@ -122,9 +118,8 @@ aposInit()
  *** @param tree   The widget tree from which to extract the layout grid.
  *** @param indent The number of 4-space indentations to indent the output.
  *** 	Note: Included for the sake of recursion; just pass 0.
- *** @returns 0, success.
  ***/
-int
+void
 aposDumpGrid(pWgtrNode tree, int indent)
 {
 int i, childCnt, sectionCnt;
@@ -167,17 +162,13 @@ pWgtrNode child;
 	    aposDumpGrid(child, indent+1);
 	}
     printf("%*.*s*** END %s ***\n", indent*4, indent*4, "", tree->Name);
-
-return 0;
 }
 
 /*** Automatically positions widgets in a widget tree.  This function is
  *** assumed to be called at-most once per subtree.
  ***
- *** Note: You can think of this as the main entry point for the file.
- ***
- *** @param tree The tree being autopositioned.
- *** @returns 0 if successful, -1 otherwise.
+ *** @param tree The tree being auto-positioned.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 aposAutoPositionWidgetTree(pWgtrNode tree)
@@ -185,22 +176,23 @@ aposAutoPositionWidgetTree(pWgtrNode tree)
 XArray PatchedWidgets;
 int i=0, count=0;
 
-    xaInit(&(PatchedWidgets),16);
+    if (xaInit(&(PatchedWidgets), 16) < 0) goto error;
 
     /** Handle children with unspecified heights. **/
-    aposPrepareTree(tree, &PatchedWidgets);
+    if (aposPrepareTree(tree, &PatchedWidgets) < 0) goto error;
 
     /** Recursively build the layout grids, including lines and sections, for this tree. **/
     if (aposBuildGrid(tree) < 0)
 	{
-	    mssError(0, "APOS", "aposAutoPositionWidgetTree: Couldn't build layout grid for '%s'", tree->Name);
-	    return -1;
+	    mssError(0, "APOS", "Failed to build layout grid.");
+	    goto error;
 	}
 
     /** Set flexibilities on containers. **/
     if (aposSetFlexibilities(tree) < 0)
 	{
-	    return -1;
+	    mssError(0, "APOS", "Failed to set flex grid.");
+	    goto error;
 	}
 
     /*aposDumpGrid(tree, 0);*/
@@ -208,7 +200,8 @@ int i=0, count=0;
     /** Detect and honor minimum/maximum space requirements. **/
     if (aposSetLimits(tree) < 0)
 	{
-	    return -1;
+	    mssError(0, "APOS", "Failed to set limits grid.");
+	    goto error;
 	}
     
     /*aposDumpGrid(tree, 0);*/
@@ -216,8 +209,8 @@ int i=0, count=0;
     /**Iteration 2**/
     if(aposAutoPositionContainers(tree) < 0)
         {
-	    mssError(0, "APOS", "aposAutoPositionWidgetTree: Couldn't auto-position contents of '%s'", tree->Name);
-	    return -1;
+	    mssError(0, "APOS", "Failed to auto-position containers.");
+	    goto error;
 	}
    
     /*aposDumpGrid(tree, 0);*/
@@ -226,7 +219,11 @@ int i=0, count=0;
     aposFreeGrids(tree);
 
     /**makes a final pass through the tree and processes html windows**/
-    aposProcessWindows(tree, tree);
+    if (aposProcessWindows(tree, tree) < 0)
+	{
+	mssError(0, "APOS", "Failed to process windows.");
+	goto error;
+	}
     
     /** Unpatches the heights specified by aposPrepareTree(). **/
     count=xaCount(&PatchedWidgets);
@@ -240,12 +237,16 @@ int i=0, count=0;
     xaDeInit(&PatchedWidgets);
     
     return 0;
+    
+error:
+    mssError(0, "APOS", "Failed to auto possition widget tree '%s'", tree->Name);
+    return -1;
 }
 
 /*** Recursively sets flexibility values for containers and their children.
  *** 
  *** @param Parent The parent node who's flexibilities are being set.
- *** @returns 0 if successful, -1 otherwise.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 aposSetFlexibilities(pWgtrNode Parent)
@@ -259,7 +260,7 @@ int sectCount;
     /** Check recursion. **/
     if (thExcessiveRecursion())
 	{
-	    mssError(1,"APOS","Could not layout application: resource exhaustion occurred");
+	    mssError(1, "APOS", "Failed to layout application: resource exhaustion occurred.");
 	    return -1;
 	}
 
@@ -293,11 +294,7 @@ int sectCount;
 
     /** Set the flexibility of the given container, if it is visual. **/
     if(!(Parent->Flags & WGTR_F_NONVISUAL))
-	if(aposSetContainerFlex(Parent) < 0)
-	    {
-		mssError(0, "APOS", "aposPrepareTree: Couldn't set %s's flexibility", Parent->Name);
-		return -1;
-	    }
+	aposSetContainerFlex(Parent);
 
     return 0;
 }
@@ -307,7 +304,7 @@ int sectCount;
  *** @param Parent  The widget node parent who's limits are being calculated.
  *** @param delta_w The change in width required to accommodate children.
  *** @param delta_h The change in height required to accommodate children.
- *** @returns 0 if successful, -1 otherwise.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 aposSetLimits_r(pWgtrNode Parent, int* delta_w, int* delta_h)
@@ -323,7 +320,7 @@ pWgtrNode Child;
     /** Check recursion. **/
     if (thExcessiveRecursion())
 	{
-	    mssError(1,"APOS","Could not layout application: resource exhaustion occurred");
+	    mssError(1, "APOS", "Failed to layout application: resource exhaustion occurred.");
 	    return -1;
 	}
 
@@ -416,7 +413,7 @@ pWgtrNode Child;
 /*** Adjusts space to accommodate children, somehow? I think?
  ***
  *** @param Parent  The widget node parent who's limits are being calculated.
- *** @returns 0, success.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 aposSetLimits(pWgtrNode Parent)
@@ -438,7 +435,7 @@ int rval;
  *** 
  *** @param Parent         The parent node who's childen should be patched.
  *** @param PatchedWidgets The widget children which have been patched.
- *** @returns 0 if successful, -1 otherwise.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 aposPrepareTree(pWgtrNode Parent, pXArray PatchedWidgets)
@@ -449,7 +446,7 @@ int i=0, childCount=xaCount(&(Parent->Children));
     /** Check recursion. **/
     if (thExcessiveRecursion())
 	{
-	    mssError(1,"APOS","Could not layout application: resource exhaustion occurred");
+	    mssError(1, "APOS", "Failed to layout application: resource exhaustion occurred.");
 	    return -1;
 	}
 
@@ -463,7 +460,14 @@ int i=0, childCount=xaCount(&(Parent->Children));
 	     ***/
 	    if((Child->height < 0) && !(Child->Flags & WGTR_F_NONVISUAL) && 
 	        !isScrollpane(Parent))
-	        aposPatchNegativeHeight(Child, PatchedWidgets);
+	        {
+		if (aposPatchNegativeHeight(Child, PatchedWidgets) < 0)
+		    {
+		    mssError(0, "APOS", "Failed to patch negative height for %s.", Child->Name);
+		    return -1;
+		    }
+		
+		}
 	    
 	    /** If child is a container, but not a floating window, recursively prepare it as well. **/
 	    if((Child->Flags & WGTR_F_CONTAINER) && !(Child->Flags & WGTR_F_FLOATING))
@@ -478,7 +482,7 @@ int i=0, childCount=xaCount(&(Parent->Children));
  *** 
  *** @param Widget         The widget child who's height is unspecified.
  *** @param PatchedWidgets The array to add the widget to after patching it.
- *** @returns 0 if successful, -1 otherwise.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 aposPatchNegativeHeight(pWgtrNode Widget, pXArray PatchedWidgets)
@@ -525,7 +529,14 @@ ObjData val;
 	}
 
     /** Add the widget to the provided array. **/
-    xaAddItem(PatchedWidgets, Widget);
+    if (xaAddItem(PatchedWidgets, Widget) < 0)
+	{
+	mssError(1, "APOS",
+	    "Failed to add %s to the patched widgets XArray (x%d widgets).",
+	    Widget->Name, PatchedWidgets->nItems
+	);
+	return -1;
+	}
 
     /** Overwrite the "prepositioning" height because it's most likely also invalid. **/
     Widget->pre_height = Widget->height;
@@ -537,16 +548,15 @@ ObjData val;
  *** averages in each direction.
  *** 
  *** @param W The container to be set.
- *** @returns 0, success.
  ***/
-int
+void
 aposSetContainerFlex(pWgtrNode W)
 {
 pAposGrid theGrid = AGRID(W->LayoutGrid);
 pAposSection Sect;
 int i=0, sectCount=0, TotalWidth=0, ProductSum=0;
 
-    if (!theGrid) return 0;
+    if (theGrid == NULL) return;
 
     /*** Calculate average row flexibility, weighted by height.
      *** Note: Section height is called width here because rows
@@ -572,8 +582,6 @@ int i=0, sectCount=0, TotalWidth=0, ProductSum=0;
 	    ProductSum += Sect->Flex * Sect->Width;
         }
     if(TotalWidth) W->fl_width = APOS_FUDGEFACTOR + (float)ProductSum / (float)TotalWidth;
-
-    return 0;
 }
 
 /*** Determines offset booleans for scrollpanes, windows, and tabs. Only
@@ -594,9 +602,8 @@ int i=0, sectCount=0, TotalWidth=0, ProductSum=0;
  *** @param isSideTab Receives a boolean that is true if this node has side tabs.
  *** @param tabWidth  Int pointer to receive the tab width.
  *** @param tabHeight Int pointer to receive the tab height.
- *** @returns 0, success.
  ***/
-int
+void
 aposSetOffsetBools(pWgtrNode W, bool* isSP, bool* isWin, bool* isTopTab, bool* isSideTab, int* tabWidth, int* tabHeight)
 {
 ObjData val;
@@ -648,15 +655,13 @@ ObjData val;
 	if(tabWidth  != NULL) *tabWidth  = (wgtrGetPropertyValue(W, "tab_width",  DATA_T_INTEGER, &val) == 0) ? val.Integer : 80;
 	if(tabHeight != NULL) *tabHeight = (wgtrGetPropertyValue(W, "tab_height", DATA_T_INTEGER, &val) == 0) ? val.Integer : 24;
 	}
-	
-    return 0;
 }
 
 /*** Builds the layout grid for recursively for this container and all of its
  *** children, including the lines and sections required for positioning.
  *** 
  *** @param Parent The parent node who's grid is being built.
- *** @returns 0 if successful, -1 otherwise.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 aposBuildGrid(pWgtrNode Parent)
@@ -668,7 +673,7 @@ pAposGrid theGrid = NULL;
     /** Check recursion. **/
     if (thExcessiveRecursion())
 	{
-	    mssError(1,"APOS","Could not layout application: resource exhaustion occurred");
+	    mssError(1, "APOS", "Failed to layout application: resource exhaustion occurred.");
 	    return -1;
 	}
 
@@ -679,14 +684,17 @@ pAposGrid theGrid = NULL;
 		{
 		    /** Allocate and initialize a new pAposGrid. **/
 		    theGrid = Parent->LayoutGrid = (pAposGrid)nmMalloc(sizeof(AposGrid));
-		    if (!Parent->LayoutGrid) goto error;
-		    aposInitiallizeGrid(theGrid);
+		    if (!Parent->LayoutGrid) return -1;
+		    if (aposInitiallizeGrid(theGrid) < 0)
+			{
+			mssError(1, "APOS", "Failed to initialize grid.");
+			return -1;
+			}
 
 		    /** Add lines for children to the grid. **/
 		    if(aposAddLinesToGrid(Parent, &(theGrid->HLines), &(theGrid->VLines)) < 0)
 			{
-			    mssError(0, "APOS", "aposBuildGrid: Couldn't add lines to %s's grid",
-				    Parent->Name);
+			    mssError(0, "APOS", "Failed to add lines to %s's grid", Parent->Name);
 			    return -1;
 			}
 
@@ -695,12 +703,11 @@ pAposGrid theGrid = NULL;
 			    (Parent->height-Parent->pre_height), 
 			    (Parent->width-Parent->pre_width)) < 0)
 			{
-			    mssError(0, "APOS", "aposBuildGrid: Couldn't add rows and columns to %s's grid",
-				    Parent->Name);
+			    mssError(0, "APOS", "Failed to add rows and columns to %s's grid", Parent->Name);
 			    return -1;
 			}
 		}
-    
+
 	    /** Recursively build this grid for all children of this widget. **/
 	    childCount = xaCount(&(Parent->Children));
 	    for(i=0; i<childCount; ++i)
@@ -711,26 +718,19 @@ pAposGrid theGrid = NULL;
 		    if(!(Child->Flags & WGTR_F_FLOATING))
 			if(aposBuildGrid(Child) < 0)
 			    {
-				/*mssError(0, "APOS", "aposBuildGrid: Couldn't build layout grid for '%s'", Child->Name);*/
+				mssError(0, "APOS", "Failed to build layout grid for '%s'", Child->Name);
 				return -1;
 			    }
 		}
 	}
 
     return 0;
-
-error:
-    return -1;
 }
 
 /*** Recursively auto-positions containers and their children based on their grids.
  *** 
- *** Note: Assumes that the grid was already built with a call to aposBuildGrid().
- *** 
  *** @param Parent The parent node who's containers are being autopositioned.
- *** @returns 0 if successful, -1 otherwise.
- *** 
- *** @see aposBuildGrid()
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 aposAutoPositionContainers(pWgtrNode Parent)
@@ -743,15 +743,15 @@ int i=0, childCount = xaCount(&(Parent->Children));
     /** Check recursion **/
     if (thExcessiveRecursion())
 	{
-	    mssError(1,"APOS","Could not layout application: resource exhaustion occurred");
+	    mssError(1, "APOS", "Failed to layout application: resource exhaustion occurred.");
 	    return -1;
 	}
 
-    /** Grid is pre-built by aposBuildGrid **/
+    /** Grid is pre-built by aposBuildGrid() **/
     theGrid = (pAposGrid)(Parent->LayoutGrid);
 
     /** Autoposition anything with a grid setup **/
-    if (theGrid)
+    if (theGrid != NULL)
 	{
 	    /**Adjust the spaces between lines to fit the grid to the container**/
 	    if (!(Parent->Flags & WGTR_F_VSCROLLABLE))
@@ -782,7 +782,7 @@ int i=0, childCount = xaCount(&(Parent->Children));
 	    /**looks under nonvisual containers for more visual containers**/
 	    if(aposAutoPositionContainers(Child) < 0)
 		{
-		    mssError(0, "APOS", "aposAutoPositionContainers: Couldn't auto-position contents of '%s'", Child->Name);
+		    mssError(0, "APOS", "Failed to auto-position contents of '%s'", Child->Name);
 		    return -1;
 		}
 	}
@@ -793,9 +793,8 @@ int i=0, childCount = xaCount(&(Parent->Children));
 /*** Frees memory used by all grids in the widget tree.
  *** 
  *** @param tree The tree containing the grids to be freed.
- *** @returns 0, success.
  ***/
-int
+void
 aposFreeGrids(pWgtrNode tree)
 {
 int childCount, i;
@@ -814,24 +813,23 @@ pWgtrNode Child;
 	    nmFree(AGRID(tree->LayoutGrid), sizeof(AposGrid));
 	    tree->LayoutGrid = NULL;
 	}
-
-    return 0;
 }
 
 /*** Initialize an AposGrid with empty arrays.
  *** 
  *** @param theGrid The grid to be initialized.
- *** @returns 0, success.
+ *** @returns 0 for success, or -1 if an error occurs.  Does not call mssError().
  ***/
 int
 aposInitiallizeGrid(pAposGrid theGrid)
 {
-    xaInit(&(theGrid->Rows),16);
-    xaInit(&(theGrid->Cols),16);
-    xaInit(&(theGrid->HLines),16);
-    xaInit(&(theGrid->VLines),16);
+    bool successful = true;
+    successful &= (xaInit(&(theGrid->Rows),   16) == 0);
+    successful &= (xaInit(&(theGrid->Cols),   16) == 0);
+    successful &= (xaInit(&(theGrid->HLines), 16) == 0);
+    successful &= (xaInit(&(theGrid->VLines), 16) == 0);
 
-    return 0;
+    return (successful) ? 0 : -1;
 }
 
 /*** Adds 4 border lines around the edges of the grid. Then recursively adds 4
@@ -850,7 +848,7 @@ aposInitiallizeGrid(pAposGrid theGrid)
  *** @param Parent The parent who's grid is being populated with lines.
  *** @param HLines The array of horizontal lines, populated by this function.
  *** @param VLines The array of vertical lines, populated by this function.
- *** @returns 0 if successful, -1 otherwise.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 aposAddLinesToGrid(pWgtrNode Parent, pXArray HLines, pXArray VLines)
@@ -896,8 +894,9 @@ pAposLine CurrLine, PrevLine;
         {
 	    CurrLine = (pAposLine)xaGetItem(HLines, i);
 	    PrevLine = (pAposLine)xaGetItem(HLines, (i-1));
-	    aposFillInCWidget(&(PrevLine->SWidgets), &(CurrLine->EWidgets), &(CurrLine->CWidgets));
-	    aposFillInCWidget(&(PrevLine->CWidgets), &(CurrLine->EWidgets), &(CurrLine->CWidgets));
+	    if ((aposFillInCWidget(&(PrevLine->SWidgets), &(CurrLine->EWidgets), &(CurrLine->CWidgets)) < 0) ||
+		(aposFillInCWidget(&(PrevLine->CWidgets), &(CurrLine->EWidgets), &(CurrLine->CWidgets)) < 0))
+		goto error;
 	}
 
     /** Record the widgets that cross each vertical line in its CWidgets XArray. **/
@@ -906,8 +905,9 @@ pAposLine CurrLine, PrevLine;
         {
 	    CurrLine = (pAposLine)xaGetItem(VLines, i);
 	    PrevLine = (pAposLine)xaGetItem(VLines, (i-1));
-	    aposFillInCWidget(&(PrevLine->SWidgets), &(CurrLine->EWidgets), &(CurrLine->CWidgets));
-	    aposFillInCWidget(&(PrevLine->CWidgets), &(CurrLine->EWidgets), &(CurrLine->CWidgets));
+	    if ((aposFillInCWidget(&(PrevLine->SWidgets), &(CurrLine->EWidgets), &(CurrLine->CWidgets)) < 0) ||
+		(aposFillInCWidget(&(PrevLine->CWidgets), &(CurrLine->EWidgets), &(CurrLine->CWidgets)) < 0))
+		goto error;
 	}
 	
     /** Sanity check to make sure no widgets cross the border lines. **/
@@ -934,9 +934,12 @@ pAposLine CurrLine, PrevLine;
 
     return 0;
     
-    CreateLineError:
-        mssError(0, "APOS", "aposAddLinesToGrid: Couldn't create a border line");
-        return -1;
+CreateLineError:
+    mssError(0, "APOS", "Failed to add border line.");
+
+error:
+    mssError(0, "APOS", "Failed to add lines to grid.");
+    return -1;
 }
 
 /*** Adds 4 lines for the edges of each visual child. Searches nonvisual
@@ -947,7 +950,7 @@ pAposLine CurrLine, PrevLine;
  *** @param Parent The parent who's children are being given lines.
  *** @param HLines The array to which horizontal lines should be added.
  *** @param VLines The array to which vertical lines should be added.
- *** @returns 0 if successful, -1 otherwise.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 aposAddLinesForChildren(pWgtrNode Parent, pXArray HLines, pXArray VLines)
@@ -961,7 +964,7 @@ pWgtrNode C;
     /** Check recursion. **/
     if (thExcessiveRecursion())
 	{
-	    mssError(1,"APOS","Could not layout application: resource exhaustion occurred");
+	    mssError(1, "APOS", "Failed to layout application: resource exhaustion occurred.");
 	    return -1;
 	}
 
@@ -1023,7 +1026,7 @@ pWgtrNode C;
     return 0;
     
     CreateLineError:
-    mssError(0, "APOS", "aposAddLinesForChildren: Couldn't create a new line");
+    mssError(0, "APOS", "Failed to create a new line for children.");
     return -1;
 }
 
@@ -1049,7 +1052,7 @@ pWgtrNode C;
  *** @param is_vert  A boolean that is true if this line is vertical.
  *** 		   See APOS_VERTICAL and APOS_HORIZONTAL.
  *** 
- *** @returns 0, success.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 aposCreateLine(pWgtrNode Widget, pXArray Lines, int Loc, int type, int isBorder, int adj, int is_vert)
@@ -1073,7 +1076,7 @@ pAposLine Line = aposExistingLine(Lines, Loc);
 	    /** There's not already a line, so we allocate a new one. **/    
 	    if((Line = (pAposLine)nmMalloc(sizeof(AposLine))) < 0)
 		{
-		    mssError(1, "APOS", "aposCreateLine: Couldn't allocate memory for new grid line");
+		    mssError(1, "APOS", "Failed to allocate memory for new grid line.");
 		    return -1;
 		}
 	    
@@ -1146,8 +1149,8 @@ int i, count = xaCount(Lines);
  *** 
  *** @param PrevList The list of previous widgets being checked.
  *** @param EWidgets The list of widgets ending on the line in question.
- *** @param CWidgets The list to which widgets that cross should be added.
- *** @returns 0, success.
+ *** @param CWidgets The list where we add widgets that cross this line.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 aposFillInCWidget(pXArray PrevList, pXArray EWidgets, pXArray CWidgets)
@@ -1179,7 +1182,14 @@ int found=0, i=0, j=0, pCount=xaCount(PrevList), eCount=xaCount(EWidgets);
 	    /*** If a match was NOT found among EWidgets, the widget must
 	     *** continue across the line, so add it to CWidgets.
 	     ***/
-	    if(!found) xaAddItem(CWidgets, AddCandidate);
+	    if(!found)
+		{
+		if (xaAddItem(CWidgets, AddCandidate) < 0)
+		    {
+		    mssError(1, "APOS", "Failed to add candidate widget.");
+		    return -1;
+		    }
+		}
 	}
     return 0;
 }
@@ -1189,7 +1199,7 @@ int found=0, i=0, j=0, pCount=xaCount(PrevList), eCount=xaCount(EWidgets);
  *** @param theGrid The grid to which sections should be added.
  *** @param VDiff   I had a hard time figuring out what this means.
  *** @param HDiff   I had a hard time figuring out what this means.
- *** @returns 0 if successful, -1 otherwise.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 aposAddSectionsToGrid(pAposGrid theGrid, int VDiff, int HDiff)
@@ -1202,7 +1212,7 @@ int count=0, i=0;
 	if(aposCreateSection(&(theGrid->Rows), ((pAposLine)xaGetItem(&(theGrid->HLines),(i-1))),
 	    ((pAposLine)xaGetItem(&(theGrid->HLines),(i))), VDiff, APOS_ROW) < 0)
 	    {
-		mssError(1, "APOS", "aposCreateSection(): Couldn't create a new row or column");
+		mssError(1, "APOS", "Failed to create a new row or column.");
 		return -1;
 	    }
     
@@ -1212,7 +1222,7 @@ int count=0, i=0;
 	if(aposCreateSection(&(theGrid->Cols), ((pAposLine)xaGetItem(&(theGrid->VLines),(i-1))),  
 	    ((pAposLine)xaGetItem(&(theGrid->VLines),(i))), HDiff, APOS_COL) < 0)
 	    {
-		mssError(1, "APOS", "aposCreateSection(): Couldn't create a new row or column");
+		mssError(1, "APOS", "Failed to create a new row or column.");
 		return -1;
 	    }
 
@@ -1224,14 +1234,14 @@ int count=0, i=0;
  *** 
  *** @param sect The section being set.
  *** @param type The type of section (either APOS_ROW or APOS_COL).
- *** @returns 0 if successful or -1 if a default value should be used instead
+ *** @returns 0 if successful or -1 if a default value should be used instead.
  ***/
 int
 aposSetSectionFlex(pAposSection sect, int type)
 {
 /*** Note:
  *** sCount + cCount includes all widgets intersecting this section because a
- *** widget cannot begin inside a section. It always starts or eds at the edge
+ *** widget cannot begin inside a section. It always starts or ends at the edge
  *** of a section.
  ***/
 int sCount = xaCount(&(sect->StartLine->SWidgets));
@@ -1259,7 +1269,7 @@ int cCount = xaCount(&(sect->StartLine->CWidgets));
  *** @param EndL     The line which ends this section (typically the bottom/right line).
  *** @param Diff     I had a hard time figuring out what this means.
  *** @param type     Whether the section is a row (APOS_ROW) or a column (APAS_COL).
- *** @returns 0 if successful, -1 otherwise.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 aposCreateSection(pXArray Sections, pAposLine StartL, pAposLine EndL, int Diff, int type)
@@ -1269,7 +1279,7 @@ pAposSection NewSect;
     /** Allocate and initialize a new section. **/
     if((NewSect = (pAposSection)(nmMalloc(sizeof(AposSection)))) < 0)
 	{
-	    mssError(1, "APOS", "nmMalloc(): Couldn't allocate memory for new row or column");
+	    mssError(1, "APOS", "Failed to allocate memory for new row or column.");
 	    return -1;
 	}
     memset(NewSect, 0, sizeof(AposSection));
@@ -1295,8 +1305,12 @@ pAposSection NewSect;
 	    NewSect->Flex = APOS_EGAPFLEX;
 	}
 
-    xaAddItem(Sections, NewSect);
-    
+    if (xaAddItem(Sections, NewSect) < 0)
+	{
+	mssError(1, "APOS", "Failed to add new section.");
+	return -1;
+	}
+
     return 0;
 }
 
@@ -1310,9 +1324,9 @@ pAposSection NewSect;
  *** @param EndL     The line ending the section.  (I think this is always the right/bottom.)
  *** @param type     Whether the section is a row (APOS_ROW) or a column (APOS_COL).
  *** @param isBorder Whether the section is on the border of the page.
- *** @returns 1 if the section is a spacer, or 0 if not.
+ *** @returns true if the section is a spacer, or false if not.
  ***/
-int
+bool
 aposIsSpacer(pAposLine StartL, pAposLine EndL, int type, int isBorder)
 {
 pWgtrNode SW, EW;
@@ -1325,7 +1339,7 @@ int eCount=xaCount(&(StartL->EWidgets));
     if((EndL->Loc - StartL->Loc) <= APOS_MINSPACE)	// If section is sufficiently narrow.
 	{
 	    /** Gaps between the border and any widget(s) are spacers. **/
-	    if(isBorder && (sCount || eCount)) return 1;
+	    if(isBorder && (sCount || eCount)) return true;
 	    
 	    /** Checks every widget ending on one side to see if a widget
 	    *** starts directly across from it on the other side.
@@ -1343,11 +1357,11 @@ int eCount=xaCount(&(StartL->EWidgets));
 			    ***/
 			    if((type == APOS_ROW) && (((EW->x >= SW->x) && (EW->x < (SW->x + SW->width))) || 
 				(((EW->x + EW->width) > SW->x) && ((EW->x + EW->width) <= (SW->x + SW->width)))))
-				return 1;
+				return true;
 			    
 			    else if((type == APOS_COL) && (((EW->y >= SW->y) && (EW->y < (SW->y + SW->height))) || 
 				(((EW->y + EW->height) > SW->y) && ((EW->y + EW->height) <= (SW->y + SW->height)))))
-				return 1;
+				return true;
 			}
 		}
 	}
@@ -1360,10 +1374,10 @@ int eCount=xaCount(&(StartL->EWidgets));
  ***
  *** @param L    The line along which to check.
  *** @param type Specifies the relevant dimension using APOS_ROW or APOS_COL.
- *** @returns    1 if any child widget is non-flexible in the relevant dimension,
- ***             0 otherwise.
+ *** @returns    true if any child widget is non-flexible in the relevant dimension,
+ ***             false otherwise.
  ***/
-int
+bool
 aposNonFlexChildren(pAposLine L, int type)
 {
 int i=0;
@@ -1377,22 +1391,22 @@ int cCount = xaCount(&(L->CWidgets));
         {
 	    for(i=0; i<sCount; ++i) 
 	        if(((pWgtrNode)(xaGetItem(&(L->SWidgets), i)))->fl_height == 0)
-		    return 1;
+		    return true;
 	    for(i=0; i<cCount; ++i)	
 	        if(((pWgtrNode)(xaGetItem(&(L->CWidgets), i)))->fl_height == 0)
-		    return 1;
+		    return true;
         }
     else // type == APOS_COL
         {
 	    for(i=0; i<sCount; ++i)
 	        if(((pWgtrNode)(xaGetItem(&(L->SWidgets), i)))->fl_width == 0)
-		    return 1;
+		    return true;
 	    for(i=0; i<cCount; ++i)
 	        if(((pWgtrNode)(xaGetItem(&(L->CWidgets), i)))->fl_width == 0)
-		    return 1;
+		    return true;
 	}
     
-    return 0;
+    return false;
 }
 
 /*** Calculates the average flexibility of widgets on a line.
@@ -1479,6 +1493,7 @@ int cCount = xaCount(&(L->CWidgets));
  *** @param Sections The array of sections in the relevant direction on this grid.
  *** @param Diff The space difference from how the elements are currently spaced.
  *** @returns The remaining space difference after spacing out elements as much as possible.
+ ***          Never fails or returns an error code.
  ***/
 int
 aposSpaceOutLines(pXArray Lines, pXArray Sections, int Diff)
@@ -1616,9 +1631,8 @@ float TotalSum=0;
  *** @param flag Either APOS_ROW or APOS_COL.
  *** @param info Info about the page design, currently used to determine if
  *** 	flexibility should be used.
- *** @returns 0, success.
  ***/
-int
+void
 aposSnapWidgetsToGrid(pXArray Lines, int flag, pWgtrClientInfo info)
 {
 const int is_design = info->IsDesign;
@@ -1709,10 +1723,7 @@ pWgtrNode Widget;
 			    Widget->fl_scale_w += (is_design) ? 0.0 : CurrLine->my_fl;
 		    }
 		}
-
 	}
-	
-    return 0;
 }
 
 /***
@@ -1721,7 +1732,7 @@ pWgtrNode Widget;
  ***
  *** @param VisualRef The last visual container up the inheritance tree.
  *** @param Parent The widget being scanned for windows.
- *** @returns 0 if successful, -1 otherwise.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 aposProcessWindows(pWgtrNode VisualRef, pWgtrNode Parent)
@@ -1737,7 +1748,7 @@ int ival;
     /** Check recursion **/
     if (thExcessiveRecursion())
 	{
-	    mssError(1,"APOS","Could not layout application: resource exhaustion occurred");
+	    mssError(1, "APOS", "Failed to layout application: resource exhaustion occurred.");
 	    return -1;
 	}
 
@@ -1791,7 +1802,8 @@ int ival;
 			}
 		    
 		    /**if the window changed width or height, process it like a widget tree**/
-		    aposAutoPositionWidgetTree(Child);
+		    if (aposAutoPositionWidgetTree(Child) < 0)
+			return -1;
 
 		    /**if it's outside the top left corner pull the whole window in**/
 		    if(Child->x < 0) Child->x = 0;
@@ -1831,7 +1843,7 @@ int ival;
  *** 
  *** @param theGrid The grid being freed.
  ***/
-int
+void
 aposFree(pAposGrid theGrid)
 {
 int count=0, i=0;
@@ -1846,7 +1858,7 @@ pAposLine Line;
     count = xaCount(&(theGrid->Cols));
     for(i=0; i<count; ++i)
 	nmFree((pAposSection)(xaGetItem(&(theGrid->Cols), i)), sizeof(AposSection));
-    
+
     /** free horizontal lines **/
     count = xaCount(&(theGrid->HLines));
     for(i=0; i<count; ++i)
@@ -1857,7 +1869,7 @@ pAposLine Line;
 	    xaDeInit(&(Line->CWidgets));
 	    nmFree((pAposLine)(xaGetItem(&(theGrid->HLines), i)), sizeof(AposLine));
 	}
-    
+
     /** free vertical lines **/
     count = xaCount(&(theGrid->VLines));
     for(i=0; i<count; ++i)
@@ -1868,12 +1880,10 @@ pAposLine Line;
 	    xaDeInit(&(Line->CWidgets));
 	    nmFree((pAposLine)(xaGetItem(&(theGrid->VLines), i)), sizeof(AposLine));
 	}
-    
+
     /** DeInit XArrays **/
     xaDeInit(&(theGrid->Rows));
     xaDeInit(&(theGrid->Cols));
     xaDeInit(&(theGrid->HLines));
     xaDeInit(&(theGrid->VLines));
-    
-    return 0;
 }

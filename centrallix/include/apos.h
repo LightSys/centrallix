@@ -89,18 +89,18 @@ typedef struct
 /**Function Definitions**/
 int aposAutoPositionWidgetTree(pWgtrNode);	/**top-level function, called from wgtr module**/
 int aposAutoPositionContainers (pWgtrNode);	/**Auto-positions all widgets inside a container**/
-int aposInit();					/**Registers datastructures used in auto-positioning**/
+void aposInit();					/**Registers datastructures used in auto-positioning**/
 int aposInitiallizeGrid (pAposGrid);		/**Initiallizes the XArrays in the grid object**/
-int aposFree(pAposGrid);				/**Frees dynamically allocated memory**/
-int aposFreeGrids(pWgtrNode);				/**Frees dynamically allocated memory**/
-int aposSetOffsetBools(pWgtrNode, bool*, bool*, bool*, bool*, int*, int*); /**sets bools used to offset widgets**/
+void aposFree(pAposGrid);			/**Frees dynamically allocated memory**/
+void aposFreeGrids(pWgtrNode);			/**Frees dynamically allocated memory**/
+void aposSetOffsetBools(pWgtrNode, bool*, bool*, bool*, bool*, int*, int*); /**sets bools used to offset widgets**/
 int aposBuildGrid(pWgtrNode);			/** builds the layout grids **/
 int aposSetLimits(pWgtrNode);			/** enforce min/max sizing **/
 
 /**Tree Preparation**/
 int aposPrepareTree(pWgtrNode, pXArray);	/**Prepares widget tree for auto-positioning**/
 int aposPatchNegativeHeight(pWgtrNode, pXArray);/**Temporarily sets unspecified heights**/
-int aposSetContainerFlex(pWgtrNode);		/**Determines a container's flexibility**/
+void aposSetContainerFlex(pWgtrNode);		/**Determines a container's flexibility**/
 int aposSetFlexibilities(pWgtrNode);		/**Determines a container's flexibility**/
 int aposSetSectionFlex(pAposSection sect, int type);
 
@@ -114,14 +114,14 @@ int aposFillInCWidget(pXArray, pXArray, pXArray);	/**Fills in the CWidget array 
 /**Section Creation**/
 int aposAddSectionsToGrid(pAposGrid, int, int);	 /**Adds all of the necessary sections to the grid**/
 int aposCreateSection(pXArray, pAposLine, pAposLine, int, int); /**Creates a section object**/
-int aposIsSpacer(pAposLine, pAposLine, int, int);/**Determines if a section is a space between widgets**/
-int aposNonFlexChildren(pAposLine, int);	 /**Checks section after line for non-flexible widgets**/
+bool aposIsSpacer(pAposLine, pAposLine, int, int);/**Determines if a section is a space between widgets**/
+bool aposNonFlexChildren(pAposLine, int);	 /**Checks section after line for non-flexible widgets**/
 int aposAverageChildFlex(pAposLine, int);	 /**Returns average flexibility of widgets**/
 int aposMinimumChildFlex(pAposLine, int);	 /**Returns minimum flexibility of widgets**/
 
 /**Resizing and Repositioning**/
 int aposSpaceOutLines(pXArray, pXArray, int);	/**Adjusts spaces between lines to expand or contract grid**/
-int aposSnapWidgetsToGrid(pXArray, int, pWgtrClientInfo); /**Refreshes widget dimensions to match adjusted grid**/
+void aposSnapWidgetsToGrid(pXArray, int, pWgtrClientInfo); /**Refreshes widget dimensions to match adjusted grid**/
 int aposProcessWindows(pWgtrNode, pWgtrNode);	/**Makes a pass through the tree to process windows**/
 
 
