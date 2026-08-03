@@ -90,9 +90,11 @@
  *** 	in the CWidgets list.
  ***/
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "apos.h"
 #include "cxlib/xarray.h"
 #include "cxlib/datatypes.h"
@@ -595,7 +597,7 @@ int i=0, sectCount=0, TotalWidth=0, ProductSum=0;
  *** @returns 0, success.
  ***/
 int
-aposSetOffsetBools(pWgtrNode W, int *isSP, int *isWin, int *isTopTab, int *isSideTab, int *tabWidth, int *tabHeight)
+aposSetOffsetBools(pWgtrNode W, bool* isSP, bool* isWin, bool* isTopTab, bool* isSideTab, int* tabWidth, int* tabHeight)
 {
 ObjData val;
 
@@ -629,8 +631,8 @@ ObjData val;
 		 **/
 		if(wgtrGetPropertyValue(W, "tab_location", DATA_T_STRING, &val) < 0)
 		    {
-		    if(isTopTab  != NULL) *isTopTab = 1;
-		    if(isSideTab != NULL) *isSideTab = 0;
+		    if(isTopTab  != NULL) *isTopTab  = true;
+		    if(isSideTab != NULL) *isSideTab = false;
 		    }
 		else 
 		    {
@@ -646,8 +648,8 @@ ObjData val;
 	else
 	    {
 	    /** Set default values for nontabs. **/
-	    if(isTopTab  != NULL) *isTopTab  = 0;
-	    if(isSideTab != NULL) *isSideTab = 0;
+	    if(isTopTab  != NULL) *isTopTab  = false;
+	    if(isSideTab != NULL) *isSideTab = false;
 	    if(tabWidth  != NULL) *tabWidth  = 0;
 	    if(tabHeight != NULL) *tabHeight = 0;
 	    }
@@ -859,7 +861,8 @@ aposInitiallizeGrid(pAposGrid theGrid)
 int
 aposAddLinesToGrid(pWgtrNode Parent, pXArray HLines, pXArray VLines)
 {
-int i=0, count=0, isWin=0, isSP=0, height_adj=0, width_adj=0;
+int i=0, count=0, height_adj=0, width_adj=0;
+bool isWin=false, isSP=false;
 pAposLine CurrLine, PrevLine;
 // pXArray FirstCross, LastCross;
 
@@ -875,7 +878,7 @@ pAposLine CurrLine, PrevLine;
     /** Add the 2 horizontal border lines, unless parent is a scrollpane. **/
     if(!isScrollpane(Parent))
         {
-	    int minHeightLoc = 0, maxHeightLoc = Parent->pre_height - isWin * 24;
+	    int minHeightLoc = 0, maxHeightLoc = Parent->pre_height - ((isWin) ? 24 : 0);
 	    if(aposCreateLine(NULL, HLines, minHeightLoc, APOS_NOT_LINKED, APOS_IS_BORDER, 0, APOS_HORIZONTAL) < 0)
 	        goto CreateLineError;
 	    if(aposCreateLine(NULL, HLines, maxHeightLoc, APOS_NOT_LINKED, APOS_IS_BORDER, height_adj, APOS_HORIZONTAL) < 0)
@@ -883,7 +886,7 @@ pAposLine CurrLine, PrevLine;
         }
 
     /** Add the 2 vertical border lines. **/
-    int minWidthLoc = 0, maxWidthLoc = (Parent->pre_width-isSP*18);
+    int minWidthLoc = 0, maxWidthLoc = (Parent->pre_width - ((isSP) ? 18 : 0));
     if(aposCreateLine(NULL, VLines, minWidthLoc, APOS_NOT_LINKED, APOS_IS_BORDER, 0, APOS_VERTICAL) < 0)
         goto CreateLineError;
     if(aposCreateLine(NULL, VLines, maxWidthLoc, APOS_NOT_LINKED, APOS_IS_BORDER, width_adj, APOS_VERTICAL) < 0)
@@ -956,7 +959,8 @@ int
 aposAddLinesForChildren(pWgtrNode Parent, pXArray HLines, pXArray VLines)
 {
 int i=0, childCount=xaCount(&(Parent->Children));
-int isTopTab=0, isSideTab=0, tabWidth=0, tabHeight=0;
+bool isTopTab=false, isSideTab=false;
+int tabWidth=0, tabHeight=0;
 int height_adj, width_adj;
 pWgtrNode C;
 
@@ -999,7 +1003,7 @@ pWgtrNode C;
 			     *** start line and the bottom line is the end line
 			     *** because Y increases as we decend the page.
 			     ***/
-			    int minY = (C->y), maxY = (C->y + C->height + isTopTab*tabHeight);
+			    int minY = (C->y), maxY = (C->y + C->height + ((isTopTab) ? tabHeight : 0));
 			    if(aposCreateLine(C, HLines, minY, APOS_SWIDGETS, APOS_NOT_BORDER, 0, APOS_HORIZONTAL) < 0)
 			        goto CreateLineError;
 			    if(aposCreateLine(C, HLines, maxY, APOS_EWIDGETS, APOS_NOT_BORDER, height_adj, APOS_HORIZONTAL) < 0)
@@ -1014,7 +1018,7 @@ pWgtrNode C;
 		     *** right along the page.
 		     ***/
 		    /** Add vertical lines. **/
-		    int minX = (C->x), maxX = (C->x + C->width + isSideTab*tabWidth);
+		    int minX = (C->x), maxX = (C->x + C->width + ((isSideTab) ? tabWidth : 0));
 		    if(aposCreateLine(C, VLines, minX, APOS_SWIDGETS, APOS_NOT_BORDER, 0, APOS_VERTICAL) < 0)
 			goto CreateLineError;
 		    if(aposCreateLine(C, VLines, maxX, APOS_EWIDGETS, APOS_NOT_BORDER, width_adj, APOS_VERTICAL) < 0)
@@ -1625,7 +1629,8 @@ aposSnapWidgetsToGrid(pXArray Lines, int flag, pWgtrClientInfo info)
 {
 const int is_design = info->IsDesign;
 int i=0, j=0, count=0, lineCount = xaCount(Lines);
-int isTopTab=0, isSideTab=0, tabWidth=0, tabHeight=0;
+bool isTopTab=false, isSideTab=false;
+int tabWidth=0, tabHeight=0;
 int newsize;
 pAposLine CurrLine;
 pWgtrNode Widget;
@@ -1660,7 +1665,7 @@ pWgtrNode Widget;
 		    if(flag==APOS_ROW  &&  Widget->fl_height)
 			{
 			    /** Calculate the new size, taking APOS_MINWIDTH into account. **/
-			    newsize = CurrLine->Loc - Widget->y - isTopTab*tabHeight;
+			    newsize = CurrLine->Loc - Widget->y - ((isTopTab) ? tabHeight : 0);
 			    if (newsize < APOS_MINWIDTH && Widget->pre_height >= APOS_MINWIDTH)
 				Widget->height = APOS_MINWIDTH;
 			    else if(newsize >= APOS_MINWIDTH || newsize >= Widget->pre_height)
@@ -1677,7 +1682,7 @@ pWgtrNode Widget;
 		    else if(flag==APOS_COL  &&  Widget->fl_width)
 		        {
 			    /** Calculate the new size, taking APOS_MINWIDTH into account. **/
-			    newsize = CurrLine->Loc - Widget->x - isSideTab*tabWidth;
+			    newsize = CurrLine->Loc - Widget->x - ((isSideTab) ? tabWidth : 0);
 			    
 			    /** If the new size is now smaller than the minimum, clamp it. **/
 			    if (newsize < APOS_MINWIDTH && Widget->pre_width >= APOS_MINWIDTH)
@@ -1727,7 +1732,8 @@ pWgtrNode Widget;
 int
 aposProcessWindows(pWgtrNode VisualRef, pWgtrNode Parent)
 {
-int i=0, isWin=0, isSP=0;
+int i=0;
+bool isWin=false, isSP=false;
 int childCount=xaCount(&(Parent->Children));
 pWgtrNode Child;
 int rw, rh, rpw, rph;
@@ -1775,15 +1781,19 @@ int ival;
 			    Child->y = (rh - Child->height)/2;
 			    if (Child->y < 0) Child->y = 0;
 			}
+		    
+		    /** Computer container height and width. **/
+		    const int container_width  = rw - ((isSP) ? 18 : 0);
+		    const int container_height = rh - ((isWin) ? 24 : 0);
 
 		    /**if it's larger than its container, shrink it and set flag**/
-		    if(Child->width > (rw - isSP*18))
+		    if(Child->width > container_width)
 		        {
-			    Child->width = (rw - isSP*18);
+			    Child->width = container_width;
 			}
-		    if(Child->height > (rh - isWin*24))
+		    if(Child->height > container_height)
 			{
-			    Child->height = (rh - isWin*24);
+			    Child->height = container_height;
 			}
 		    
 		    /**if the window changed width or height, process it like a widget tree**/
@@ -1794,10 +1804,10 @@ int ival;
 		    if(Child->y < 0) Child->y = 0;
 		    
 		    /**if it's outside the bottom right corner, pull the whole window in**/
-		    if((Child->x + Child->width) > (rw - isSP*18))
-			Child->x = (rw - isSP*18) - Child->width;
-		    if((Child->y + Child->height) > (rh - isWin*24))
-			Child->y = (rh - isWin*24) - Child->height;
+		    if((Child->x + Child->width) > container_width)
+			Child->x = container_width - Child->width;
+		    if((Child->y + Child->height) > container_height)
+			Child->y = container_height - Child->height;
 		}
 	    
 	    /*** Recursive call on visual child containers with a new visual

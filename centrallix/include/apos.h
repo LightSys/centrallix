@@ -31,6 +31,7 @@
 /* Description:	Applies layout logic to the widgets of an application.	*/
 /************************************************************************/
 
+#include <stdbool.h>
 
 #include "wgtr.h"
 #include "cxlib/xarray.h"
@@ -92,7 +93,7 @@ int aposInit();					/**Registers datastructures used in auto-positioning**/
 int aposInitiallizeGrid (pAposGrid);		/**Initiallizes the XArrays in the grid object**/
 int aposFree(pAposGrid);				/**Frees dynamically allocated memory**/
 int aposFreeGrids(pWgtrNode);				/**Frees dynamically allocated memory**/
-int aposSetOffsetBools(pWgtrNode, int*, int*, int*, int*, int*, int*); /**sets bools used to offset widgets**/
+int aposSetOffsetBools(pWgtrNode, bool*, bool*, bool*, bool*, int*, int*); /**sets bools used to offset widgets**/
 int aposBuildGrid(pWgtrNode);			/** builds the layout grids **/
 int aposSetLimits(pWgtrNode);			/** enforce min/max sizing **/
 
