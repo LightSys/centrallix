@@ -60,7 +60,7 @@ struct _APOS_L
      ***/
     float   loc_fl, my_fl;
     };
-    
+
 /**Section Structure (used for both rows and columns)**/
 struct _APOS_S
     {
@@ -168,6 +168,6 @@ int aposProcessWindows(pWgtrNode, pWgtrNode);	/**Makes a pass through the tree t
 #define APOS_CGAPFLEX 50
 
 /** Macros for readability and anticipation-of-change. **/
-#define isScrollpane(Parent) (!strcmp((Parent)->Type, "widget/scrollpane"))
+#define isScrollpane(widget) (strcmp((widget)->Type, "widget/scrollpane") == 0)
 
 #endif
