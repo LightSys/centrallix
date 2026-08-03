@@ -194,14 +194,14 @@ int i=0, count=0, rval = -1;
     /** Set flexibilities on containers. **/
     if (aposSetFlexibilities(tree) < 0)
 	{
-	    mssError(0, "APOS", "Failed to set flex grid.");
+	    mssError(0, "APOS", "Failed to set flexibilities.");
 	    goto end;
 	}
 
     /** Detect and honor minimum/maximum space requirements. **/
     if (aposSetLimits(tree) < 0)
 	{
-	    mssError(0, "APOS", "Failed to set limits grid.");
+	    mssError(0, "APOS", "Failed to set limits.");
 	    goto end;
 	}
 
