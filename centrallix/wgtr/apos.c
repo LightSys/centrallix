@@ -603,7 +603,7 @@ ObjData val;
 
     /** Set isSP to compensate for scrollpane scrollbars. **/
     if(isSP != NULL) *isSP = (isScrollpane(W));
-    
+
     /** Set isWin to compensate windows' titlebars, if any. **/
     if(isWin != NULL)
 	{
@@ -618,41 +618,35 @@ ObjData val;
 	    }
 	else *isWin = 0;
 	}
-    
-    /** isTopTab and isSideTab are used to compensate for tabs. **/
-    if (isTopTab != NULL || isSideTab != NULL || tabWidth != NULL || tabHeight != NULL)
+
+    /** Set default values for non-tabs. **/
+    if(isTopTab  != NULL) *isTopTab  = false;
+    if(isSideTab != NULL) *isSideTab = false;
+    if(tabWidth  != NULL) *tabWidth  = 0;
+    if(tabHeight != NULL) *tabHeight = 0;
+
+    if(strcmp(W->Type, "widget/tab") == 0)
 	{
-	if(strcmp(W->Type, "widget/tab") == 0)
+	if(isTopTab != NULL || isSideTab != NULL)
 	    {
-	    if(isTopTab != NULL || isSideTab != NULL)
+	    /*** Set isTopTab and isSideTab.  If the node does not specify the
+	     *** tab location, assume it has a top tab and no side-tab unset.
+	     **/
+	    if(wgtrGetPropertyValue(W, "tab_location", DATA_T_STRING, &val) < 0)
 		{
-		/*** Set isTopTab and isSideTab.  If the node does not specify the
-		 *** tab location, assume it has a top tab and no side-tab unset.
-		 **/
-		if(wgtrGetPropertyValue(W, "tab_location", DATA_T_STRING, &val) < 0)
-		    {
-		    if(isTopTab  != NULL) *isTopTab  = true;
-		    if(isSideTab != NULL) *isSideTab = false;
-		    }
-		else 
-		    {
-		    if(isTopTab  != NULL) *isTopTab  = (strcmp(val.String, "top")  == 0 || strcmp(val.String, "bottom") == 0);
-		    if(isSideTab != NULL) *isSideTab = (strcmp(val.String, "left") == 0 || strcmp(val.String, "right")  == 0);
-		    }
+		if(isTopTab  != NULL) *isTopTab  = true;
+		if(isSideTab != NULL) *isSideTab = false;
 		}
-    
-	    /** Set the tab width and height (if needed), defaulting to 80 and 24 if unspecified. **/
-	    if(tabWidth  != NULL) *tabWidth  = (wgtrGetPropertyValue(W, "tab_width",  DATA_T_INTEGER, &val) == 0) ? val.Integer : 80;
-	    if(tabHeight != NULL) *tabHeight = (wgtrGetPropertyValue(W, "tab_height", DATA_T_INTEGER, &val) == 0) ? val.Integer : 24;
+	    else 
+		{
+		if(isTopTab  != NULL) *isTopTab  = (strcmp(val.String, "top")  == 0 || strcmp(val.String, "bottom") == 0);
+		if(isSideTab != NULL) *isSideTab = (strcmp(val.String, "left") == 0 || strcmp(val.String, "right")  == 0);
+		}
 	    }
-	else
-	    {
-	    /** Set default values for nontabs. **/
-	    if(isTopTab  != NULL) *isTopTab  = false;
-	    if(isSideTab != NULL) *isSideTab = false;
-	    if(tabWidth  != NULL) *tabWidth  = 0;
-	    if(tabHeight != NULL) *tabHeight = 0;
-	    }
+
+	/** Set the tab width and height (if needed), defaulting to 80 and 24 if unspecified. **/
+	if(tabWidth  != NULL) *tabWidth  = (wgtrGetPropertyValue(W, "tab_width",  DATA_T_INTEGER, &val) == 0) ? val.Integer : 80;
+	if(tabHeight != NULL) *tabHeight = (wgtrGetPropertyValue(W, "tab_height", DATA_T_INTEGER, &val) == 0) ? val.Integer : 24;
 	}
 	
     return 0;
