@@ -96,6 +96,7 @@
 #include <string.h>
 
 #include "apos.h"
+#include "cxlib/expect.h"
 #include "cxlib/xarray.h"
 #include "cxlib/datatypes.h"
 #include "cxlib/mtsession.h"
@@ -178,35 +179,35 @@ int i=0, count=0, rval = -1;
 
     /** Note: If xaInit() fails, it leaves the XArray unusable. **/
     XArray patched_widgets_buf;
-    if (xaInit(&patched_widgets_buf, 16) < 0) goto end;
+    if (UNLIKELY(xaInit(&patched_widgets_buf, 16) < 0)) goto end;
     patched_widgets = &patched_widgets_buf;
 
     /** Handle children with unspecified heights. **/
-    if (aposPrepareTree(tree, patched_widgets) < 0) goto end;
+    if (UNLIKELY(aposPrepareTree(tree, patched_widgets) < 0)) goto end;
 
     /** Recursively build the layout grids, including lines and sections, for this tree. **/
-    if (aposBuildGrid(tree) < 0)
+    if (UNLIKELY(aposBuildGrid(tree) < 0))
 	{
 	    mssError(0, "APOS", "Failed to build layout grid.");
 	    goto end;
 	}
 
     /** Set flexibilities on containers. **/
-    if (aposSetFlexibilities(tree) < 0)
+    if (UNLIKELY(aposSetFlexibilities(tree) < 0))
 	{
 	    mssError(0, "APOS", "Failed to set flexibilities.");
 	    goto end;
 	}
 
     /** Detect and honor minimum/maximum space requirements. **/
-    if (aposSetLimits(tree) < 0)
+    if (UNLIKELY(aposSetLimits(tree) < 0))
 	{
 	    mssError(0, "APOS", "Failed to set limits.");
 	    goto end;
 	}
 
     /**Iteration 2**/
-    if(aposAutoPositionContainers(tree) < 0)
+    if(UNLIKELY(aposAutoPositionContainers(tree) < 0))
         {
 	    mssError(0, "APOS", "Failed to auto-position containers.");
 	    goto end;
@@ -216,7 +217,7 @@ int i=0, count=0, rval = -1;
     aposFreeGrids(tree);
 
     /**makes a final pass through the tree and processes html windows**/
-    if (aposProcessWindows(tree, tree) < 0)
+    if (UNLIKELY(aposProcessWindows(tree, tree) < 0))
 	{
 	mssError(0, "APOS", "Failed to process windows.");
 	goto end;
@@ -226,7 +227,7 @@ int i=0, count=0, rval = -1;
     rval = 0;
 
 end:
-    if (rval != 0)
+    if (UNLIKELY(rval != 0))
 	{
 	mssError(0, "APOS", "Failed to auto position widget tree '%s'", tree->Name);
 	}
@@ -266,7 +267,7 @@ int i=0, childCount=xaCount(&(Parent->Children));
 int sectCount;
 
     /** Check recursion. **/
-    if (thExcessiveRecursion())
+    if (UNLIKELY(thExcessiveRecursion()))
 	{
 	    mssError(1, "APOS", "Failed to layout application: resource exhaustion occurred.");
 	    return -1;
@@ -277,7 +278,7 @@ int sectCount;
         {
 	    Child = (pWgtrNode)xaGetItem(&(Parent->Children), i);
 	    
-	    if (aposSetFlexibilities(Child) < 0)
+	    if (UNLIKELY(aposSetFlexibilities(Child) < 0))
 		{
 		    return -1;
 		}
@@ -326,7 +327,7 @@ pAposSection s;
 pWgtrNode Child;
 
     /** Check recursion. **/
-    if (thExcessiveRecursion())
+    if (UNLIKELY(thExcessiveRecursion()))
 	{
 	    mssError(1, "APOS", "Failed to layout application: resource exhaustion occurred.");
 	    return -1;
@@ -338,7 +339,7 @@ pWgtrNode Child;
     for(i=0;i<childCount;i++)
 	{
 	    Child = (pWgtrNode)xaGetItem(&(Parent->Children), i);
-	    if (aposSetLimits_r(Child, &child_delta_w, &child_delta_h) < 0)
+	    if (UNLIKELY(aposSetLimits_r(Child, &child_delta_w, &child_delta_h) < 0))
 		return -1;
 	    total_child_delta_w += child_delta_w;
 	    total_child_delta_h += child_delta_h;
@@ -448,7 +449,7 @@ pWgtrNode Child;
 int i=0, childCount=xaCount(&(Parent->Children));
 
     /** Check recursion. **/
-    if (thExcessiveRecursion())
+    if (UNLIKELY(thExcessiveRecursion()))
 	{
 	    mssError(1, "APOS", "Failed to layout application: resource exhaustion occurred.");
 	    return -1;
@@ -465,7 +466,7 @@ int i=0, childCount=xaCount(&(Parent->Children));
 	    if((Child->height < 0) && !(Child->Flags & WGTR_F_NONVISUAL) && 
 	        !isScrollpane(Parent))
 	        {
-		if (aposPatchNegativeHeight(Child, PatchedWidgets) < 0)
+		if (UNLIKELY(aposPatchNegativeHeight(Child, PatchedWidgets) < 0))
 		    {
 		    mssError(0, "APOS", "Failed to patch negative height for %s.", Child->Name);
 		    return -1;
@@ -475,7 +476,7 @@ int i=0, childCount=xaCount(&(Parent->Children));
 	    
 	    /** If child is a container, but not a floating window, recursively prepare it as well. **/
 	    if((Child->Flags & WGTR_F_CONTAINER) && !(Child->Flags & WGTR_F_FLOATING))
-		if (aposPrepareTree(Child, PatchedWidgets) < 0)
+		if (UNLIKELY(aposPrepareTree(Child, PatchedWidgets) < 0))
 		    return -1;
 	}
     
@@ -533,7 +534,7 @@ ObjData val;
 	}
 
     /** Add the widget to the provided array. **/
-    if (xaAddItem(PatchedWidgets, Widget) < 0)
+    if (UNLIKELY(xaAddItem(PatchedWidgets, Widget) < 0))
 	{
 	mssError(1, "APOS",
 	    "Failed to add %s to the patched widgets XArray (x%d widgets).",
@@ -676,7 +677,7 @@ pWgtrNode Child;
 pAposGrid theGrid = NULL;
 
     /** Check recursion. **/
-    if (thExcessiveRecursion())
+    if (UNLIKELY(thExcessiveRecursion()))
 	{
 	    mssError(1, "APOS", "Failed to layout application: resource exhaustion occurred.");
 	    return -1;
@@ -689,8 +690,8 @@ pAposGrid theGrid = NULL;
 		{
 		    /** Allocate and initialize a new pAposGrid. **/
 		    theGrid = (pAposGrid)nmMalloc(sizeof(AposGrid));
-		    if (theGrid == NULL) return -1;
-		    if (aposInitializeGrid(theGrid) < 0)
+		    if (UNLIKELY(theGrid == NULL)) return -1;
+		    if (UNLIKELY(aposInitializeGrid(theGrid) < 0))
 			{
 			mssError(1, "APOS", "Failed to initialize grid.");
 			nmFree(theGrid, sizeof(AposGrid));
@@ -699,16 +700,16 @@ pAposGrid theGrid = NULL;
 		    Parent->LayoutGrid = theGrid;
 
 		    /** Add lines for children to the grid. **/
-		    if(aposAddLinesToGrid(Parent, &(theGrid->HLines), &(theGrid->VLines)) < 0)
+		    if(UNLIKELY(aposAddLinesToGrid(Parent, &(theGrid->HLines), &(theGrid->VLines)) < 0))
 			{
 			    mssError(0, "APOS", "Failed to add lines to %s's grid", Parent->Name);
 			    return -1;
 			}
 
 		    /** Add the sections to the grid. **/
-		    if(aposAddSectionsToGrid(theGrid, 
+		    if(UNLIKELY(aposAddSectionsToGrid(theGrid, 
 			    (Parent->height-Parent->pre_height), 
-			    (Parent->width-Parent->pre_width)) < 0)
+			    (Parent->width-Parent->pre_width)) < 0))
 			{
 			    mssError(0, "APOS", "Failed to add rows and columns to %s's grid", Parent->Name);
 			    return -1;
@@ -723,7 +724,7 @@ pAposGrid theGrid = NULL;
 		    
 		    /**auto-positions subsequent visual container**/
 		    if(!(Child->Flags & WGTR_F_FLOATING))
-			if(aposBuildGrid(Child) < 0)
+			if(UNLIKELY(aposBuildGrid(Child) < 0))
 			    {
 				mssError(0, "APOS", "Failed to build layout grid for '%s'", Child->Name);
 				return -1;
@@ -748,7 +749,7 @@ int i=0, childCount = xaCount(&(Parent->Children));
 // int rows_extra=0, cols_extra=0;
 
     /** Check recursion **/
-    if (thExcessiveRecursion())
+    if (UNLIKELY(thExcessiveRecursion()))
 	{
 	    mssError(1, "APOS", "Failed to layout application: resource exhaustion occurred.");
 	    return -1;
@@ -787,7 +788,7 @@ int i=0, childCount = xaCount(&(Parent->Children));
 	    Child = (pWgtrNode)xaGetItem(&(Parent->Children), i);
 	    
 	    /**looks under nonvisual containers for more visual containers**/
-	    if(aposAutoPositionContainers(Child) < 0)
+	    if(UNLIKELY(aposAutoPositionContainers(Child) < 0))
 		{
 		    mssError(0, "APOS", "Failed to auto-position contents of '%s'", Child->Name);
 		    return -1;
@@ -834,16 +835,16 @@ aposInitializeGrid(pAposGrid theGrid)
 pXArray rows = NULL, cols = NULL, h_lines = NULL, v_lines = NULL;
 int rval = -1;
 
-    if (xaInit(&(theGrid->Rows), 16) < 0) goto end;
+    if (UNLIKELY(xaInit(&(theGrid->Rows), 16) < 0)) goto end;
     rows = &(theGrid->Rows);
 
-    if (xaInit(&(theGrid->Cols), 16) < 0) goto end;
+    if (UNLIKELY(xaInit(&(theGrid->Cols), 16) < 0)) goto end;
     cols = &(theGrid->Cols);
 
-    if (xaInit(&(theGrid->HLines), 16) < 0) goto end;
+    if (UNLIKELY(xaInit(&(theGrid->HLines), 16) < 0)) goto end;
     h_lines = &(theGrid->HLines);
 
-    if (xaInit(&(theGrid->VLines), 16) < 0) goto end;
+    if (UNLIKELY(xaInit(&(theGrid->VLines), 16) < 0)) goto end;
     v_lines = &(theGrid->VLines);
 
     /** Success. **/
@@ -851,7 +852,7 @@ int rval = -1;
 
 end:
     /** Free data that was allocated successfully. **/
-    if (rval != 0)
+    if (UNLIKELY(rval != 0))
 	{
 	if (v_lines != NULL) xaDeInit(v_lines);
 	if (h_lines != NULL) xaDeInit(h_lines);
@@ -901,21 +902,21 @@ pAposLine CurrLine, PrevLine;
     if(!isScrollpane(Parent))
         {
 	    int minHeightLoc = 0, maxHeightLoc = Parent->pre_height - ((isWin) ? 24 : 0);
-	    if(aposCreateLine(NULL, HLines, minHeightLoc, APOS_NOT_LINKED, APOS_IS_BORDER, 0, APOS_HORIZONTAL) < 0)
+	    if(UNLIKELY(aposCreateLine(NULL, HLines, minHeightLoc, APOS_NOT_LINKED, APOS_IS_BORDER, 0, APOS_HORIZONTAL) < 0))
 	        goto CreateLineError;
-	    if(aposCreateLine(NULL, HLines, maxHeightLoc, APOS_NOT_LINKED, APOS_IS_BORDER, height_adj, APOS_HORIZONTAL) < 0)
+	    if(UNLIKELY(aposCreateLine(NULL, HLines, maxHeightLoc, APOS_NOT_LINKED, APOS_IS_BORDER, height_adj, APOS_HORIZONTAL) < 0))
 	        goto CreateLineError;
         }
 
     /** Add the 2 vertical border lines. **/
     int minWidthLoc = 0, maxWidthLoc = (Parent->pre_width - ((isSP) ? 18 : 0));
-    if(aposCreateLine(NULL, VLines, minWidthLoc, APOS_NOT_LINKED, APOS_IS_BORDER, 0, APOS_VERTICAL) < 0)
+    if(UNLIKELY(aposCreateLine(NULL, VLines, minWidthLoc, APOS_NOT_LINKED, APOS_IS_BORDER, 0, APOS_VERTICAL) < 0))
         goto CreateLineError;
-    if(aposCreateLine(NULL, VLines, maxWidthLoc, APOS_NOT_LINKED, APOS_IS_BORDER, width_adj, APOS_VERTICAL) < 0)
+    if(UNLIKELY(aposCreateLine(NULL, VLines, maxWidthLoc, APOS_NOT_LINKED, APOS_IS_BORDER, width_adj, APOS_VERTICAL) < 0))
         goto CreateLineError;
 
     /** Recursively add the nonborder lines for all child nodes. **/
-    if(aposAddLinesForChildren(Parent, HLines, VLines) < 0)
+    if(UNLIKELY(aposAddLinesForChildren(Parent, HLines, VLines) < 0))
 	goto CreateLineError;
 
     /** Record the widgets that cross each horizontal line in its CWidgets XArray. **/
@@ -924,8 +925,8 @@ pAposLine CurrLine, PrevLine;
         {
 	    CurrLine = (pAposLine)xaGetItem(HLines, i);
 	    PrevLine = (pAposLine)xaGetItem(HLines, (i-1));
-	    if ((aposFillInCWidget(&(PrevLine->SWidgets), &(CurrLine->EWidgets), &(CurrLine->CWidgets)) < 0) ||
-		(aposFillInCWidget(&(PrevLine->CWidgets), &(CurrLine->EWidgets), &(CurrLine->CWidgets)) < 0))
+	    if (UNLIKELY(aposFillInCWidget(&(PrevLine->SWidgets), &(CurrLine->EWidgets), &(CurrLine->CWidgets)) < 0) ||
+		UNLIKELY(aposFillInCWidget(&(PrevLine->CWidgets), &(CurrLine->EWidgets), &(CurrLine->CWidgets)) < 0))
 		goto error;
 	}
 
@@ -935,8 +936,8 @@ pAposLine CurrLine, PrevLine;
         {
 	    CurrLine = (pAposLine)xaGetItem(VLines, i);
 	    PrevLine = (pAposLine)xaGetItem(VLines, (i-1));
-	    if ((aposFillInCWidget(&(PrevLine->SWidgets), &(CurrLine->EWidgets), &(CurrLine->CWidgets)) < 0) ||
-		(aposFillInCWidget(&(PrevLine->CWidgets), &(CurrLine->EWidgets), &(CurrLine->CWidgets)) < 0))
+	    if (UNLIKELY(aposFillInCWidget(&(PrevLine->SWidgets), &(CurrLine->EWidgets), &(CurrLine->CWidgets)) < 0) ||
+		UNLIKELY(aposFillInCWidget(&(PrevLine->CWidgets), &(CurrLine->EWidgets), &(CurrLine->CWidgets)) < 0))
 		goto error;
 	}
 	
@@ -992,7 +993,7 @@ int height_adj, width_adj;
 pWgtrNode C;
 
     /** Check recursion. **/
-    if (thExcessiveRecursion())
+    if (UNLIKELY(thExcessiveRecursion()))
 	{
 	    mssError(1, "APOS", "Failed to layout application: resource exhaustion occurred.");
 	    return -1;
@@ -1014,7 +1015,7 @@ pWgtrNode C;
 	    /** If the child (C) is a nonvisual container, recursively add lines for any grandchildren. **/
 	    if((C->Flags & WGTR_F_NONVISUAL) && (C->Flags & WGTR_F_CONTAINER))
 		{
-		    if (aposAddLinesForChildren(C, HLines, VLines) < 0)
+		    if (UNLIKELY(aposAddLinesForChildren(C, HLines, VLines) < 0))
 			goto CreateLineError;
 		}
 	    /** Otherwise, if child (C) is visual and not a floating window, add 4 lines for it. **/
@@ -1031,9 +1032,9 @@ pWgtrNode C;
 			     *** because Y increases as we decend the page.
 			     ***/
 			    int minY = (C->y), maxY = (C->y + C->height + ((isTopTab) ? tabHeight : 0));
-			    if(aposCreateLine(C, HLines, minY, APOS_SWIDGETS, APOS_NOT_BORDER, 0, APOS_HORIZONTAL) < 0)
+			    if(UNLIKELY(aposCreateLine(C, HLines, minY, APOS_SWIDGETS, APOS_NOT_BORDER, 0, APOS_HORIZONTAL) < 0))
 			        goto CreateLineError;
-			    if(aposCreateLine(C, HLines, maxY, APOS_EWIDGETS, APOS_NOT_BORDER, height_adj, APOS_HORIZONTAL) < 0)
+			    if(UNLIKELY(aposCreateLine(C, HLines, maxY, APOS_EWIDGETS, APOS_NOT_BORDER, height_adj, APOS_HORIZONTAL) < 0))
 			        goto CreateLineError;
 			}
 
@@ -1046,9 +1047,9 @@ pWgtrNode C;
 		     ***/
 		    /** Add vertical lines. **/
 		    int minX = (C->x), maxX = (C->x + C->width + ((isSideTab) ? tabWidth : 0));
-		    if(aposCreateLine(C, VLines, minX, APOS_SWIDGETS, APOS_NOT_BORDER, 0, APOS_VERTICAL) < 0)
+		    if(UNLIKELY(aposCreateLine(C, VLines, minX, APOS_SWIDGETS, APOS_NOT_BORDER, 0, APOS_VERTICAL) < 0))
 			goto CreateLineError;
-		    if(aposCreateLine(C, VLines, maxX, APOS_EWIDGETS, APOS_NOT_BORDER, width_adj, APOS_VERTICAL) < 0)
+		    if(UNLIKELY(aposCreateLine(C, VLines, maxX, APOS_EWIDGETS, APOS_NOT_BORDER, width_adj, APOS_VERTICAL) < 0))
 			goto CreateLineError;
 	        }
 	}
@@ -1104,7 +1105,7 @@ pAposLine Line = aposExistingLine(Lines, Loc);
 	{
     
 	    /** There's not already a line, so we allocate a new one. **/    
-	    if((Line = (pAposLine)nmMalloc(sizeof(AposLine))) < 0)
+	    if(UNLIKELY((Line = (pAposLine)nmMalloc(sizeof(AposLine))) < 0))
 		{
 		    mssError(1, "APOS", "Failed to allocate memory for new grid line.");
 		    return -1;
@@ -1214,7 +1215,7 @@ int found=0, i=0, j=0, pCount=xaCount(PrevList), eCount=xaCount(EWidgets);
 	     ***/
 	    if(!found)
 		{
-		if (xaAddItem(CWidgets, AddCandidate) < 0)
+		if (UNLIKELY(xaAddItem(CWidgets, AddCandidate) < 0))
 		    {
 		    mssError(1, "APOS", "Failed to add candidate widget.");
 		    return -1;
@@ -1239,8 +1240,8 @@ int count=0, i=0;
     /** Add rows sections between horizontal lines. **/
     count = xaCount(&(theGrid->HLines));
     for(i=1; i<count; ++i)
-	if(aposCreateSection(&(theGrid->Rows), ((pAposLine)xaGetItem(&(theGrid->HLines),(i-1))),
-	    ((pAposLine)xaGetItem(&(theGrid->HLines),(i))), VDiff, APOS_ROW) < 0)
+	if(UNLIKELY(aposCreateSection(&(theGrid->Rows), ((pAposLine)xaGetItem(&(theGrid->HLines),(i-1))),
+	    ((pAposLine)xaGetItem(&(theGrid->HLines),(i))), VDiff, APOS_ROW) < 0))
 	    {
 		mssError(1, "APOS", "Failed to create a new row or column.");
 		return -1;
@@ -1249,8 +1250,8 @@ int count=0, i=0;
     /** Add column sections between vertical lines. **/
     count = xaCount(&(theGrid->VLines));
     for(i=1; i<count; ++i)
-	if(aposCreateSection(&(theGrid->Cols), ((pAposLine)xaGetItem(&(theGrid->VLines),(i-1))),  
-	    ((pAposLine)xaGetItem(&(theGrid->VLines),(i))), HDiff, APOS_COL) < 0)
+	if(UNLIKELY(aposCreateSection(&(theGrid->Cols), ((pAposLine)xaGetItem(&(theGrid->VLines),(i-1))),  
+	    ((pAposLine)xaGetItem(&(theGrid->VLines),(i))), HDiff, APOS_COL) < 0))
 	    {
 		mssError(1, "APOS", "Failed to create a new row or column.");
 		return -1;
@@ -1307,7 +1308,7 @@ aposCreateSection(pXArray Sections, pAposLine StartL, pAposLine EndL, int Diff, 
 pAposSection NewSect;
     
     /** Allocate and initialize a new section. **/
-    if((NewSect = (pAposSection)(nmMalloc(sizeof(AposSection)))) < 0)
+    if(UNLIKELY((NewSect = (pAposSection)(nmMalloc(sizeof(AposSection)))) < 0))
 	{
 	    mssError(1, "APOS", "Failed to allocate memory for new row or column.");
 	    return -1;
@@ -1335,7 +1336,7 @@ pAposSection NewSect;
 	    NewSect->Flex = APOS_EGAPFLEX;
 	}
 
-    if (xaAddItem(Sections, NewSect) < 0)
+    if (UNLIKELY(xaAddItem(Sections, NewSect) < 0))
 	{
 	mssError(1, "APOS", "Failed to add new section.");
 	return -1;
@@ -1794,7 +1795,7 @@ char* val;
 int ival;
 
     /** Check recursion **/
-    if (thExcessiveRecursion())
+    if (UNLIKELY(thExcessiveRecursion()))
 	{
 	    mssError(1, "APOS", "Failed to layout application: resource exhaustion occurred.");
 	    return -1;
@@ -1850,7 +1851,7 @@ int ival;
 			}
 		    
 		    /**if the window changed width or height, process it like a widget tree**/
-		    if (aposAutoPositionWidgetTree(Child) < 0)
+		    if (UNLIKELY(aposAutoPositionWidgetTree(Child) < 0))
 			return -1;
 
 		    /**if it's outside the top left corner pull the whole window in**/
@@ -1871,14 +1872,14 @@ int ival;
 	     ***/
 	    else if((Child->Flags & WGTR_F_CONTAINER) && !(Child->Flags & WGTR_F_NONVISUAL))
 		{
-		    if (aposProcessWindows(Child, Child) < 0)
+		    if (UNLIKELY(aposProcessWindows(Child, Child) < 0))
 			return -1;
 		}
 	    
 	    /**recursive call on nonvisual containers; old visual reference is maintained**/
 	    if((Child->Flags & WGTR_F_CONTAINER) && (Child->Flags & WGTR_F_NONVISUAL))
 		{
-		    if (aposProcessWindows(VisualRef, Child) < 0)
+		    if (UNLIKELY(aposProcessWindows(VisualRef, Child) < 0))
 			return -1;
 		}
 	
