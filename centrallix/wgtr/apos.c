@@ -683,13 +683,15 @@ pAposGrid theGrid = NULL;
 	    if (!(Parent->Flags & WGTR_F_NONVISUAL) || !Parent->Parent)
 		{
 		    /** Allocate and initialize a new pAposGrid. **/
-		    theGrid = Parent->LayoutGrid = (pAposGrid)nmMalloc(sizeof(AposGrid));
-		    if (!Parent->LayoutGrid) return -1;
+		    theGrid = (pAposGrid)nmMalloc(sizeof(AposGrid));
+		    if (theGrid == NULL) return -1;
 		    if (aposInitiallizeGrid(theGrid) < 0)
 			{
 			mssError(1, "APOS", "Failed to initialize grid.");
+			nmFree(theGrid, sizeof(AposGrid));
 			return -1;
 			}
+		    Parent->LayoutGrid = theGrid;
 
 		    /** Add lines for children to the grid. **/
 		    if(aposAddLinesToGrid(Parent, &(theGrid->HLines), &(theGrid->VLines)) < 0)
@@ -815,7 +817,8 @@ pWgtrNode Child;
 	}
 }
 
-/*** Initialize an AposGrid with empty arrays.
+/*** Initialize an AposGrid with empty arrays.  On failure, none of the grid
+ *** is initialized, and it should not be used.
  *** 
  *** @param theGrid The grid to be initialized.
  *** @returns 0 for success, or -1 if an error occurs.  Does not call mssError().
@@ -823,13 +826,35 @@ pWgtrNode Child;
 int
 aposInitiallizeGrid(pAposGrid theGrid)
 {
-    bool successful = true;
-    successful &= (xaInit(&(theGrid->Rows),   16) == 0);
-    successful &= (xaInit(&(theGrid->Cols),   16) == 0);
-    successful &= (xaInit(&(theGrid->HLines), 16) == 0);
-    successful &= (xaInit(&(theGrid->VLines), 16) == 0);
+pXArray rows = NULL, cols = NULL, h_lines = NULL, v_lines = NULL;
+int rval = -1;
 
-    return (successful) ? 0 : -1;
+    if (xaInit(&(theGrid->Rows), 16) < 0) goto end;
+    rows = &(theGrid->Rows);
+
+    if (xaInit(&(theGrid->Cols), 16) < 0) goto end;
+    cols = &(theGrid->Cols);
+
+    if (xaInit(&(theGrid->HLines), 16) < 0) goto end;
+    h_lines = &(theGrid->HLines);
+
+    if (xaInit(&(theGrid->VLines), 16) < 0) goto end;
+    v_lines = &(theGrid->VLines);
+
+    /** Success. **/
+    rval = 0;
+
+end:
+    /** Free data that was allocated successfully. **/
+    if (rval != 0)
+	{
+	if (v_lines != NULL) xaDeInit(v_lines);
+	if (h_lines != NULL) xaDeInit(h_lines);
+	if (cols != NULL) xaDeInit(cols);
+	if (rows != NULL) xaDeInit(rows);
+	}
+
+    return rval;
 }
 
 /*** Adds 4 border lines around the edges of the grid. Then recursively adds 4
