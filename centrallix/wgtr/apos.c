@@ -207,7 +207,7 @@ int i=0, count=0, rval = -1;
 	}
 
     /**Iteration 2**/
-    if(UNLIKELY(aposAutoPositionContainers(tree) < 0))
+    if (UNLIKELY(aposAutoPositionContainers(tree) < 0))
         {
 	    mssError(0, "APOS", "Failed to auto-position containers.");
 	    goto end;
@@ -302,7 +302,7 @@ int sectCount;
 	}
 
     /** Set the flexibility of the given container, if it is visual. **/
-    if(!(Parent->Flags & WGTR_F_NONVISUAL))
+    if (!(Parent->Flags & WGTR_F_NONVISUAL))
 	aposSetContainerFlex(Parent);
 
     return 0;
@@ -463,7 +463,7 @@ int i=0, childCount=xaCount(&(Parent->Children));
 	    /*** If a visual child has an unspecified height, patch it, unless it is in a scrollpane
 	     *** Remember here that strcmp() returns 0 (false) if the strings are equal.
 	     ***/
-	    if((Child->height < 0) && !(Child->Flags & WGTR_F_NONVISUAL) && 
+	    if ((Child->height < 0) && !(Child->Flags & WGTR_F_NONVISUAL) && 
 	        !isScrollpane(Parent))
 	        {
 		if (UNLIKELY(aposPatchNegativeHeight(Child, PatchedWidgets) < 0))
@@ -475,7 +475,7 @@ int i=0, childCount=xaCount(&(Parent->Children));
 		}
 	    
 	    /** If child is a container, but not a floating window, recursively prepare it as well. **/
-	    if((Child->Flags & WGTR_F_CONTAINER) && !(Child->Flags & WGTR_F_FLOATING))
+	    if ((Child->Flags & WGTR_F_CONTAINER) && !(Child->Flags & WGTR_F_FLOATING))
 		if (UNLIKELY(aposPrepareTree(Child, PatchedWidgets) < 0))
 		    return -1;
 	}
@@ -495,36 +495,36 @@ aposPatchNegativeHeight(pWgtrNode Widget, pXArray PatchedWidgets)
 ObjData val;
 
     /** Try to guess the height based on the type of widget. **/
-    if(!strcmp(Widget->Type, "widget/editbox"))
+    if (!strcmp(Widget->Type, "widget/editbox"))
 	{
 	    Widget->height = 16;
 	}
-    else if(!strcmp(Widget->Type, "widget/textbutton"))
+    else if (!strcmp(Widget->Type, "widget/textbutton"))
 	{
 	    wgtrGetPropertyValue(Widget, "text", DATA_T_STRING, &val);
 	    Widget->height = 13.0 * (0.5 + (float)(strlen(val.String) * 7) / (float)(Widget->width));
-	    if(Widget->height < 20) Widget->height = 20;
+	    if (Widget->height < 20) Widget->height = 20;
 	}
-    else if(!strcmp(Widget->Type, "widget/treeview"))
+    else if (!strcmp(Widget->Type, "widget/treeview"))
 	{
 	    Widget->height = 100;
 	}
-    else if(!strcmp(Widget->Type, "widget/html"))
+    else if (!strcmp(Widget->Type, "widget/html"))
 	{
 	    Widget->height = Widget->width;
 	}
-    else if(!strcmp(Widget->Type, "widget/dropdown"))
+    else if (!strcmp(Widget->Type, "widget/dropdown"))
 	{
-	    /*if(xaCount(&(Widget->Children)) < 4) 
+	    /*if (xaCount(&(Widget->Children)) < 4) 
 	         Widget->height = 40+16*xaCount(&(Widget->Children));
 	    else Widget->height = 104;*/
 	    Widget->height = Widget->min_height;
 	}
-    else if(!strcmp(Widget->Type, "widget/table"))
+    else if (!strcmp(Widget->Type, "widget/table"))
 	{
 	    Widget->height = 100;
 	}
-    else if(!strcmp(Widget->Type, "widget/menu"))
+    else if (!strcmp(Widget->Type, "widget/menu"))
 	{
 	    Widget->height = 20;
 	}
@@ -574,7 +574,7 @@ int i=0, sectCount=0, TotalWidth=0, ProductSum=0;
 	    TotalWidth += Sect->Width;
 	    ProductSum += Sect->Flex * Sect->Width;
         }
-    if(TotalWidth) W->fl_height = APOS_FUDGEFACTOR + (float)ProductSum / (float)TotalWidth;
+    if (TotalWidth) W->fl_height = APOS_FUDGEFACTOR + (float)ProductSum / (float)TotalWidth;
     
     TotalWidth = ProductSum = 0;
     
@@ -586,7 +586,7 @@ int i=0, sectCount=0, TotalWidth=0, ProductSum=0;
 	    TotalWidth += Sect->Width;
 	    ProductSum += Sect->Flex * Sect->Width;
         }
-    if(TotalWidth) W->fl_width = APOS_FUDGEFACTOR + (float)ProductSum / (float)TotalWidth;
+    if (TotalWidth) W->fl_width = APOS_FUDGEFACTOR + (float)ProductSum / (float)TotalWidth;
 }
 
 /*** Determines offset booleans for scrollpanes, windows, and tabs. Only
@@ -614,12 +614,12 @@ aposSetOffsetBools(pWgtrNode W, bool* isSP, bool* isWin, bool* isTopTab, bool* i
 ObjData val;
 
     /** Set isSP to compensate for scrollpane scrollbars. **/
-    if(isSP != NULL) *isSP = (isScrollpane(W));
+    if (isSP != NULL) *isSP = (isScrollpane(W));
 
     /** Set isWin to compensate windows' titlebars, if any. **/
-    if(isWin != NULL)
+    if (isWin != NULL)
 	{
-	if(strcmp(W->Type, "widget/childwindow") == 0)
+	if (strcmp(W->Type, "widget/childwindow") == 0)
 	    {
 	    /*** Set isWin (is window) to compensate for a titlebar. If the
 	     *** node does not specify if it has a titlebar, assume it does.
@@ -633,33 +633,33 @@ ObjData val;
 	}
 
     /** Set default values for non-tabs. **/
-    if(isTopTab  != NULL) *isTopTab  = false;
-    if(isSideTab != NULL) *isSideTab = false;
-    if(tabWidth  != NULL) *tabWidth  = 0;
-    if(tabHeight != NULL) *tabHeight = 0;
+    if (isTopTab  != NULL) *isTopTab  = false;
+    if (isSideTab != NULL) *isSideTab = false;
+    if (tabWidth  != NULL) *tabWidth  = 0;
+    if (tabHeight != NULL) *tabHeight = 0;
 
-    if(strcmp(W->Type, "widget/tab") == 0)
+    if (strcmp(W->Type, "widget/tab") == 0)
 	{
-	if(isTopTab != NULL || isSideTab != NULL)
+	if (isTopTab != NULL || isSideTab != NULL)
 	    {
 	    /*** Set isTopTab and isSideTab.  If the node does not specify the
 	     *** tab location, assume it has a top tab and no side-tab unset.
 	     **/
-	    if(wgtrGetPropertyValue(W, "tab_location", DATA_T_STRING, &val) == 0)
+	    if (wgtrGetPropertyValue(W, "tab_location", DATA_T_STRING, &val) == 0)
 		{
-		if(isTopTab  != NULL) *isTopTab  = (strcmp(val.String, "top")  == 0 || strcmp(val.String, "bottom") == 0);
-		if(isSideTab != NULL) *isSideTab = (strcmp(val.String, "left") == 0 || strcmp(val.String, "right")  == 0);
+		if (isTopTab  != NULL) *isTopTab  = (strcmp(val.String, "top")  == 0 || strcmp(val.String, "bottom") == 0);
+		if (isSideTab != NULL) *isSideTab = (strcmp(val.String, "left") == 0 || strcmp(val.String, "right")  == 0);
 		}
 	    else 
 		{
-		if(isTopTab  != NULL) *isTopTab  = true;
-		if(isSideTab != NULL) *isSideTab = false;
+		if (isTopTab  != NULL) *isTopTab  = true;
+		if (isSideTab != NULL) *isSideTab = false;
 		}
 	    }
 
 	/** Set the tab width and height (if needed), defaulting to 80 and 24 if unspecified. **/
-	if(tabWidth  != NULL) *tabWidth  = (wgtrGetPropertyValue(W, "tab_width",  DATA_T_INTEGER, &val) == 0) ? val.Integer : 80;
-	if(tabHeight != NULL) *tabHeight = (wgtrGetPropertyValue(W, "tab_height", DATA_T_INTEGER, &val) == 0) ? val.Integer : 24;
+	if (tabWidth  != NULL) *tabWidth  = (wgtrGetPropertyValue(W, "tab_width",  DATA_T_INTEGER, &val) == 0) ? val.Integer : 80;
+	if (tabHeight != NULL) *tabHeight = (wgtrGetPropertyValue(W, "tab_height", DATA_T_INTEGER, &val) == 0) ? val.Integer : 24;
 	}
 }
 
@@ -700,14 +700,14 @@ pAposGrid theGrid = NULL;
 		    Parent->LayoutGrid = theGrid;
 
 		    /** Add lines for children to the grid. **/
-		    if(UNLIKELY(aposAddLinesToGrid(Parent, &(theGrid->HLines), &(theGrid->VLines)) < 0))
+		    if (UNLIKELY(aposAddLinesToGrid(Parent, &(theGrid->HLines), &(theGrid->VLines)) < 0))
 			{
 			    mssError(0, "APOS", "Failed to add lines to %s's grid", Parent->Name);
 			    return -1;
 			}
 
 		    /** Add the sections to the grid. **/
-		    if(UNLIKELY(aposAddSectionsToGrid(theGrid, 
+		    if (UNLIKELY(aposAddSectionsToGrid(theGrid, 
 			    (Parent->height-Parent->pre_height), 
 			    (Parent->width-Parent->pre_width)) < 0))
 			{
@@ -723,8 +723,8 @@ pAposGrid theGrid = NULL;
 		    Child = (pWgtrNode)xaGetItem(&(Parent->Children), i);
 		    
 		    /**auto-positions subsequent visual container**/
-		    if(!(Child->Flags & WGTR_F_FLOATING))
-			if(UNLIKELY(aposBuildGrid(Child) < 0))
+		    if (!(Child->Flags & WGTR_F_FLOATING))
+			if (UNLIKELY(aposBuildGrid(Child) < 0))
 			    {
 				mssError(0, "APOS", "Failed to build layout grid for '%s'", Child->Name);
 				return -1;
@@ -788,7 +788,7 @@ int i=0, childCount = xaCount(&(Parent->Children));
 	    Child = (pWgtrNode)xaGetItem(&(Parent->Children), i);
 	    
 	    /**looks under nonvisual containers for more visual containers**/
-	    if(UNLIKELY(aposAutoPositionContainers(Child) < 0))
+	    if (UNLIKELY(aposAutoPositionContainers(Child) < 0))
 		{
 		    mssError(0, "APOS", "Failed to auto-position contents of '%s'", Child->Name);
 		    return -1;
@@ -899,24 +899,24 @@ pAposLine CurrLine, PrevLine;
 	height_adj = Parent->min_height - Parent->pre_height;
 
     /** Add the 2 horizontal border lines, unless parent is a scrollpane. **/
-    if(!isScrollpane(Parent))
+    if (!isScrollpane(Parent))
         {
 	    int minHeightLoc = 0, maxHeightLoc = Parent->pre_height - ((isWin) ? 24 : 0);
-	    if(UNLIKELY(aposCreateLine(NULL, HLines, minHeightLoc, APOS_NOT_LINKED, APOS_IS_BORDER, 0, APOS_HORIZONTAL) < 0))
+	    if (UNLIKELY(aposCreateLine(NULL, HLines, minHeightLoc, APOS_NOT_LINKED, APOS_IS_BORDER, 0, APOS_HORIZONTAL) < 0))
 	        goto CreateLineError;
-	    if(UNLIKELY(aposCreateLine(NULL, HLines, maxHeightLoc, APOS_NOT_LINKED, APOS_IS_BORDER, height_adj, APOS_HORIZONTAL) < 0))
+	    if (UNLIKELY(aposCreateLine(NULL, HLines, maxHeightLoc, APOS_NOT_LINKED, APOS_IS_BORDER, height_adj, APOS_HORIZONTAL) < 0))
 	        goto CreateLineError;
         }
 
     /** Add the 2 vertical border lines. **/
     int minWidthLoc = 0, maxWidthLoc = (Parent->pre_width - ((isSP) ? 18 : 0));
-    if(UNLIKELY(aposCreateLine(NULL, VLines, minWidthLoc, APOS_NOT_LINKED, APOS_IS_BORDER, 0, APOS_VERTICAL) < 0))
+    if (UNLIKELY(aposCreateLine(NULL, VLines, minWidthLoc, APOS_NOT_LINKED, APOS_IS_BORDER, 0, APOS_VERTICAL) < 0))
         goto CreateLineError;
-    if(UNLIKELY(aposCreateLine(NULL, VLines, maxWidthLoc, APOS_NOT_LINKED, APOS_IS_BORDER, width_adj, APOS_VERTICAL) < 0))
+    if (UNLIKELY(aposCreateLine(NULL, VLines, maxWidthLoc, APOS_NOT_LINKED, APOS_IS_BORDER, width_adj, APOS_VERTICAL) < 0))
         goto CreateLineError;
 
     /** Recursively add the nonborder lines for all child nodes. **/
-    if(UNLIKELY(aposAddLinesForChildren(Parent, HLines, VLines) < 0))
+    if (UNLIKELY(aposAddLinesForChildren(Parent, HLines, VLines) < 0))
 	goto CreateLineError;
 
     /** Record the widgets that cross each horizontal line in its CWidgets XArray. **/
@@ -942,24 +942,24 @@ pAposLine CurrLine, PrevLine;
 	}
 	
     /** Sanity check to make sure no widgets cross the border lines. **/
-//     if(xaCount(HLines))	// Only check borderlines if they exist.
+//     if (xaCount(HLines))	// Only check borderlines if they exist.
 // 	{
 	//     FirstCross = &(((pAposLine)xaGetItem(HLines, 0))->CWidgets);
 	//     LastCross  = &(((pAposLine)xaGetItem(HLines, (xaCount(HLines)-1)))->CWidgets);
-	    /*if(xaCount(FirstCross))
+	    /*if (xaCount(FirstCross))
 		mssError(1, "APOS", "%d widget(s) crossed the top borderline, including %s '%s'", xaCount(FirstCross),
 		    ((pWgtrNode)xaGetItem(FirstCross, 0))->Type, ((pWgtrNode)xaGetItem(FirstCross, 0))->Name);
-	    if(xaCount(LastCross))
+	    if (xaCount(LastCross))
 		mssError(1, "APOS", "%d widget(s) crossed the bottom borderline, including %s '%s'", xaCount(LastCross),
 		    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);*/
 	// }
 	
 //     FirstCross = &(((pAposLine)xaGetItem(VLines, 0))->CWidgets);
 //     LastCross  = &(((pAposLine)xaGetItem(VLines, (xaCount(VLines)-1)))->CWidgets);
-    /*if(xaCount(FirstCross))
+    /*if (xaCount(FirstCross))
 	mssError(1, "APOS", "%d widget(s) crossed the left borderline, including %s '%s'", xaCount(FirstCross), 
 	    ((pWgtrNode)xaGetItem(FirstCross, 0))->Type, ((pWgtrNode)xaGetItem(FirstCross, 0))->Name);
-    if(xaCount(LastCross))
+    if (xaCount(LastCross))
 	mssError(1, "APOS", "%d widget(s) crossed the right borderline, including %s '%s'", xaCount(LastCross), 
 	    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);*/
 
@@ -1013,16 +1013,16 @@ pWgtrNode C;
 		height_adj = C->min_height - C->pre_height;
 
 	    /** If the child (C) is a nonvisual container, recursively add lines for any grandchildren. **/
-	    if((C->Flags & WGTR_F_NONVISUAL) && (C->Flags & WGTR_F_CONTAINER))
+	    if ((C->Flags & WGTR_F_NONVISUAL) && (C->Flags & WGTR_F_CONTAINER))
 		{
 		    if (UNLIKELY(aposAddLinesForChildren(C, HLines, VLines) < 0))
 			goto CreateLineError;
 		}
 	    /** Otherwise, if child (C) is visual and not a floating window, add 4 lines for it. **/
-	    else if(!(C->Flags & WGTR_F_NONVISUAL) && !(C->Flags & WGTR_F_FLOATING))
+	    else if (!(C->Flags & WGTR_F_NONVISUAL) && !(C->Flags & WGTR_F_FLOATING))
 	        {
 		    /** Add horizontal lines, unless parent is a scrollpane. **/
-		    if(!isScrollpane(Parent))
+		    if (!isScrollpane(Parent))
 			{
 			    /*** Note:
 			     *** From this code, we see that the start line is
@@ -1032,9 +1032,9 @@ pWgtrNode C;
 			     *** because Y increases as we decend the page.
 			     ***/
 			    int minY = (C->y), maxY = (C->y + C->height + ((isTopTab) ? tabHeight : 0));
-			    if(UNLIKELY(aposCreateLine(C, HLines, minY, APOS_SWIDGETS, APOS_NOT_BORDER, 0, APOS_HORIZONTAL) < 0))
+			    if (UNLIKELY(aposCreateLine(C, HLines, minY, APOS_SWIDGETS, APOS_NOT_BORDER, 0, APOS_HORIZONTAL) < 0))
 			        goto CreateLineError;
-			    if(UNLIKELY(aposCreateLine(C, HLines, maxY, APOS_EWIDGETS, APOS_NOT_BORDER, height_adj, APOS_HORIZONTAL) < 0))
+			    if (UNLIKELY(aposCreateLine(C, HLines, maxY, APOS_EWIDGETS, APOS_NOT_BORDER, height_adj, APOS_HORIZONTAL) < 0))
 			        goto CreateLineError;
 			}
 
@@ -1047,9 +1047,9 @@ pWgtrNode C;
 		     ***/
 		    /** Add vertical lines. **/
 		    int minX = (C->x), maxX = (C->x + C->width + ((isSideTab) ? tabWidth : 0));
-		    if(UNLIKELY(aposCreateLine(C, VLines, minX, APOS_SWIDGETS, APOS_NOT_BORDER, 0, APOS_VERTICAL) < 0))
+		    if (UNLIKELY(aposCreateLine(C, VLines, minX, APOS_SWIDGETS, APOS_NOT_BORDER, 0, APOS_VERTICAL) < 0))
 			goto CreateLineError;
-		    if(UNLIKELY(aposCreateLine(C, VLines, maxX, APOS_EWIDGETS, APOS_NOT_BORDER, width_adj, APOS_VERTICAL) < 0))
+		    if (UNLIKELY(aposCreateLine(C, VLines, maxX, APOS_EWIDGETS, APOS_NOT_BORDER, width_adj, APOS_VERTICAL) < 0))
 			goto CreateLineError;
 	        }
 	}
@@ -1091,7 +1091,7 @@ aposCreateLine(pWgtrNode Widget, pXArray Lines, int Loc, int type, int isBorder,
 pAposLine Line = aposExistingLine(Lines, Loc);
     
     /** If there is already a line, we upgrade it instead of creating a new one. **/
-    if(Line != NULL)	
+    if (Line != NULL)	
         {
 
 	    /** Change the line position Adjustment value if needed **/
@@ -1105,7 +1105,7 @@ pAposLine Line = aposExistingLine(Lines, Loc);
 	{
     
 	    /** There's not already a line, so we allocate a new one. **/    
-	    if(UNLIKELY((Line = (pAposLine)nmMalloc(sizeof(AposLine))) < 0))
+	    if (UNLIKELY((Line = (pAposLine)nmMalloc(sizeof(AposLine))) < 0))
 		{
 		    mssError(1, "APOS", "Failed to allocate memory for new grid line.");
 		    return -1;
@@ -1167,7 +1167,7 @@ aposExistingLine(pXArray Lines, int Loc)
 int i, count = xaCount(Lines);
 
     for(i=0; i<count; ++i)
-	if(((pAposLine)(xaGetItem(Lines, i)))->Loc == Loc)
+	if (((pAposLine)(xaGetItem(Lines, i)))->Loc == Loc)
 	    return (pAposLine)xaGetItem(Lines, i);
     
     return NULL;
@@ -1201,7 +1201,7 @@ int found=0, i=0, j=0, pCount=xaCount(PrevList), eCount=xaCount(EWidgets);
 	     ***/
 	    found = 0;
 	    for(j=0; j<eCount; ++j)
-		if(AddCandidate == (pWgtrNode)xaGetItem(EWidgets, j))
+		if (AddCandidate == (pWgtrNode)xaGetItem(EWidgets, j))
 		    {
 			/*** The widget was found in the EWidgets array.
 			 *** Thus, it ends on this line and does not cross it.
@@ -1213,7 +1213,7 @@ int found=0, i=0, j=0, pCount=xaCount(PrevList), eCount=xaCount(EWidgets);
 	    /*** If a match was NOT found among EWidgets, the widget must
 	     *** continue across the line, so add it to CWidgets.
 	     ***/
-	    if(!found)
+	    if (!found)
 		{
 		if (UNLIKELY(xaAddItem(CWidgets, AddCandidate) < 0))
 		    {
@@ -1240,7 +1240,7 @@ int count=0, i=0;
     /** Add rows sections between horizontal lines. **/
     count = xaCount(&(theGrid->HLines));
     for(i=1; i<count; ++i)
-	if(UNLIKELY(aposCreateSection(&(theGrid->Rows), ((pAposLine)xaGetItem(&(theGrid->HLines),(i-1))),
+	if (UNLIKELY(aposCreateSection(&(theGrid->Rows), ((pAposLine)xaGetItem(&(theGrid->HLines),(i-1))),
 	    ((pAposLine)xaGetItem(&(theGrid->HLines),(i))), VDiff, APOS_ROW) < 0))
 	    {
 		mssError(1, "APOS", "Failed to create a new row or column.");
@@ -1250,7 +1250,7 @@ int count=0, i=0;
     /** Add column sections between vertical lines. **/
     count = xaCount(&(theGrid->VLines));
     for(i=1; i<count; ++i)
-	if(UNLIKELY(aposCreateSection(&(theGrid->Cols), ((pAposLine)xaGetItem(&(theGrid->VLines),(i-1))),  
+	if (UNLIKELY(aposCreateSection(&(theGrid->Cols), ((pAposLine)xaGetItem(&(theGrid->VLines),(i-1))),  
 	    ((pAposLine)xaGetItem(&(theGrid->VLines),(i))), HDiff, APOS_COL) < 0))
 	    {
 		mssError(1, "APOS", "Failed to create a new row or column.");
@@ -1283,9 +1283,9 @@ int cCount = xaCount(&(sect->StartLine->CWidgets));
     *** of those apply it must be a wide, widgetless gap. In this case,
     *** return -1 to prompt the caller to determine a default flexibility.
     ***/
-    if((sect->isSpacer) || (aposNonFlexChildren(sect->StartLine, type)))
+    if ((sect->isSpacer) || (aposNonFlexChildren(sect->StartLine, type)))
         sect->Flex = 0;
-    else if(sCount || cCount) 
+    else if (sCount || cCount) 
         sect->Flex = aposMinimumChildFlex(sect->StartLine, type);
     else
 	return -1;
@@ -1308,7 +1308,7 @@ aposCreateSection(pXArray Sections, pAposLine StartL, pAposLine EndL, int Diff, 
 pAposSection NewSect;
     
     /** Allocate and initialize a new section. **/
-    if(UNLIKELY((NewSect = (pAposSection)(nmMalloc(sizeof(AposSection)))) < 0))
+    if (UNLIKELY((NewSect = (pAposSection)(nmMalloc(sizeof(AposSection)))) < 0))
 	{
 	    mssError(1, "APOS", "Failed to allocate memory for new row or column.");
 	    return -1;
@@ -1367,10 +1367,10 @@ int sCount=xaCount(&(EndL->SWidgets));
 /** @brief The number of widgets ending at the start of this section. **/
 int eCount=xaCount(&(StartL->EWidgets));
 
-    if((EndL->Loc - StartL->Loc) <= APOS_MINSPACE)	// If section is sufficiently narrow.
+    if ((EndL->Loc - StartL->Loc) <= APOS_MINSPACE)	// If section is sufficiently narrow.
 	{
 	    /** Gaps between the border and any widget(s) are spacers. **/
-	    if(isBorder && (sCount || eCount)) return true;
+	    if (isBorder && (sCount || eCount)) return true;
 	    
 	    /** Checks every widget ending on one side to see if a widget
 	    *** starts directly across from it on the other side.
@@ -1386,11 +1386,11 @@ int eCount=xaCount(&(StartL->EWidgets));
 			    *** between the two corners of a widget on the
 			    *** other side, this is a spacer.
 			    ***/
-			    if((type == APOS_ROW) && (((EW->x >= SW->x) && (EW->x < (SW->x + SW->width))) || 
+			    if ((type == APOS_ROW) && (((EW->x >= SW->x) && (EW->x < (SW->x + SW->width))) || 
 				(((EW->x + EW->width) > SW->x) && ((EW->x + EW->width) <= (SW->x + SW->width)))))
 				return true;
 			    
-			    else if((type == APOS_COL) && (((EW->y >= SW->y) && (EW->y < (SW->y + SW->height))) || 
+			    else if ((type == APOS_COL) && (((EW->y >= SW->y) && (EW->y < (SW->y + SW->height))) || 
 				(((EW->y + EW->height) > SW->y) && ((EW->y + EW->height) <= (SW->y + SW->height)))))
 				return true;
 			}
@@ -1418,22 +1418,22 @@ int cCount = xaCount(&(L->CWidgets));
     /*** Return 1 if the widgets starting on or crossing the given line have
      *** children that are completely non-flexible.
      ***/
-    if(type == APOS_ROW)
+    if (type == APOS_ROW)
         {
 	    for(i=0; i<sCount; ++i) 
-	        if(((pWgtrNode)(xaGetItem(&(L->SWidgets), i)))->fl_height == 0)
+	        if (((pWgtrNode)(xaGetItem(&(L->SWidgets), i)))->fl_height == 0)
 		    return true;
 	    for(i=0; i<cCount; ++i)	
-	        if(((pWgtrNode)(xaGetItem(&(L->CWidgets), i)))->fl_height == 0)
+	        if (((pWgtrNode)(xaGetItem(&(L->CWidgets), i)))->fl_height == 0)
 		    return true;
         }
     else // type == APOS_COL
         {
 	    for(i=0; i<sCount; ++i)
-	        if(((pWgtrNode)(xaGetItem(&(L->SWidgets), i)))->fl_width == 0)
+	        if (((pWgtrNode)(xaGetItem(&(L->SWidgets), i)))->fl_width == 0)
 		    return true;
 	    for(i=0; i<cCount; ++i)
-	        if(((pWgtrNode)(xaGetItem(&(L->CWidgets), i)))->fl_width == 0)
+	        if (((pWgtrNode)(xaGetItem(&(L->CWidgets), i)))->fl_width == 0)
 		    return true;
 	}
     
@@ -1454,7 +1454,7 @@ int sCount = xaCount(&(L->SWidgets));
 int cCount = xaCount(&(L->CWidgets));
 
     /** Sum the flexibilities. **/
-    if(type == APOS_ROW)
+    if (type == APOS_ROW)
         {
 	    for(i=0; i<sCount; ++i)
 	        TotalFlex += ((pWgtrNode)xaGetItem(&(L->SWidgets), i))->fl_height;
@@ -1487,7 +1487,7 @@ int sCount = xaCount(&(L->SWidgets));
 int cCount = xaCount(&(L->CWidgets));
 
     /** Find the min flexibility. **/
-    if(type == APOS_ROW)
+    if (type == APOS_ROW)
         {
 	    for(i=0; i<sCount; ++i)
 		{
@@ -1554,21 +1554,21 @@ float FlexWeight=0, SizeWeight=0;
 float TotalSum=0;
 
     /** If there are no sections, we have nothing to space out. **/
-    if(!count) return Diff;
+    if (!count) return Diff;
     
     /**Sum the flexibilities of the sections**/
     for(i=0; i<count; ++i)
 	{
 	    CurrSect = ((pAposSection)xaGetItem(Sections, i));
 	    TotalFlex += CurrSect->Flex;
-	    if(CurrSect->Flex)
+	    if (CurrSect->Flex)
 		TotalFlexibleSpace += CurrSect->Width;
 	}
     
     /*** If there is no flex or flex space, we can't space anything out.
      *** Return the original difference so this can be spaced out elsewhere.
      ***/
-    if(TotalFlex == 0 || TotalFlexibleSpace <= 0) return Diff;
+    if (TotalFlex == 0 || TotalFlexibleSpace <= 0) return Diff;
 
     /** Sum the flex weights of all sections, weighted by their size. **/
     count = xaCount(Lines);
@@ -1586,7 +1586,7 @@ float TotalSum=0;
      *** negative value means some section has a negative width.  Neither can
      *** be spaced out, so hand the difference back to the caller.
      ***/
-    if(TotalSum <= 0) return Diff;
+    if (TotalSum <= 0) return Diff;
 
     /** The initial borders do not adjust. **/
     if (store_flex)
@@ -1617,7 +1617,7 @@ float TotalSum=0;
 		}
 
 	    /** Expand lines. **/
-	    if(Diff > 0)
+	    if (Diff > 0)
 	        {
 		    /** Calculate adjustment using the adjustment weight. **/
 		    Adj = (float)(Diff) * fl + APOS_FUDGEFACTOR;
@@ -1627,18 +1627,18 @@ float TotalSum=0;
 		    CurrLine->Loc = PrevLine->Loc + PrevSect->Width;
 		}
 	    /** Contract lines. **/
-	    else if(Diff < 0)
+	    else if (Diff < 0)
 		{
 		    /** Calculate adjustment using the adjustment weight. **/
 		    Adj = (float)(Diff) * fl - APOS_FUDGEFACTOR;
 
 		    /** if the section width will be unacceptably 
 		    *** narrow or negative after the adjustment **/
-		    if((Adj + PrevSect->Width) <= APOS_MINSPACE)
+		    if ((Adj + PrevSect->Width) <= APOS_MINSPACE)
 			{
 			    /** if its width was unacceptable to begin with, pass the
 			    *** entire adjustment on to the next recursive call **/
-			    if(PrevSect->Width <= APOS_MINSPACE)
+			    if (PrevSect->Width <= APOS_MINSPACE)
 			        {
 				    Extra += Adj;	
 				    CurrLine->Loc = PrevLine->Loc + PrevSect->Width;
@@ -1666,7 +1666,7 @@ float TotalSum=0;
     /*** Spread any homeless extra space out over the remaining flexible
      *** sections.  This pass does not record flex weights; see above.
      ***/
-    if(Extra < 0)
+    if (Extra < 0)
 	return aposSpaceOutLines_r(Lines, Sections, Extra, false);
 	
     return Extra;
@@ -1701,7 +1701,7 @@ pWgtrNode Widget;
 	    for(j=0; j<count; ++j)
 	        {
 	            Widget = (pWgtrNode)xaGetItem(&(CurrLine->SWidgets), j);
-		    if(flag == APOS_ROW)
+		    if (flag == APOS_ROW)
 			{
 			    Widget->y = CurrLine->Loc;
 			    Widget->fl_scale_y = (is_design) ? 0.0 : CurrLine->loc_fl;
@@ -1719,13 +1719,13 @@ pWgtrNode Widget;
 	        {
 	            Widget = (pWgtrNode)xaGetItem(&(CurrLine->EWidgets), j);
 		    aposSetOffsetBools(Widget, NULL, NULL, &isTopTab, &isSideTab, &tabWidth, &tabHeight);
-		    if(flag==APOS_ROW  &&  Widget->fl_height)
+		    if (flag==APOS_ROW  &&  Widget->fl_height)
 			{
 			    /** Calculate the new size, taking APOS_MINWIDTH into account. **/
 			    newsize = CurrLine->Loc - Widget->y - ((isTopTab) ? tabHeight : 0);
 			    if (newsize < APOS_MINWIDTH && Widget->pre_height >= APOS_MINWIDTH)
 				Widget->height = APOS_MINWIDTH;
-			    else if(newsize >= APOS_MINWIDTH || newsize >= Widget->pre_height)
+			    else if (newsize >= APOS_MINWIDTH || newsize >= Widget->pre_height)
 				Widget->height = newsize;
 			    else 
 				/*Widget->height = APOS_MINWIDTH;*/
@@ -1736,7 +1736,7 @@ pWgtrNode Widget;
 			     ***/
 			    Widget->fl_scale_h += (is_design) ? 0.0 : CurrLine->my_fl;
 			}
-		    else if(flag==APOS_COL  &&  Widget->fl_width)
+		    else if (flag==APOS_COL  &&  Widget->fl_width)
 		        {
 			    /** Calculate the new size, taking APOS_MINWIDTH into account. **/
 			    newsize = CurrLine->Loc - Widget->x - ((isSideTab) ? tabWidth : 0);
@@ -1766,9 +1766,9 @@ pWgtrNode Widget;
 		for(j=0; j<count; ++j)
 		    {
 			Widget = (pWgtrNode)xaGetItem(&(CurrLine->CWidgets), j);
-			if(flag==APOS_ROW  &&  Widget->fl_height)
+			if (flag==APOS_ROW  &&  Widget->fl_height)
 			    Widget->fl_scale_h += (is_design) ? 0.0 : CurrLine->my_fl;
-			else if(flag==APOS_COL  &&  Widget->fl_width)
+			else if (flag==APOS_COL  &&  Widget->fl_width)
 			    Widget->fl_scale_w += (is_design) ? 0.0 : CurrLine->my_fl;
 		    }
 		}
@@ -1807,7 +1807,7 @@ int ival;
     for(i=0; i<childCount; ++i)
 	{
 	    Child = (pWgtrNode)(xaGetItem(&(Parent->Children), i));
-	    if(Child->Flags & WGTR_F_FLOATING)
+	    if (Child->Flags & WGTR_F_FLOATING)
 		{
 
 		    /** Top level or local reference for container? **/
@@ -1841,11 +1841,11 @@ int ival;
 		    const int container_height = rh - ((isWin) ? 24 : 0);
 
 		    /**if it's larger than its container, shrink it and set flag**/
-		    if(Child->width > container_width)
+		    if (Child->width > container_width)
 		        {
 			    Child->width = container_width;
 			}
-		    if(Child->height > container_height)
+		    if (Child->height > container_height)
 			{
 			    Child->height = container_height;
 			}
@@ -1855,13 +1855,13 @@ int ival;
 			return -1;
 
 		    /**if it's outside the top left corner pull the whole window in**/
-		    if(Child->x < 0) Child->x = 0;
-		    if(Child->y < 0) Child->y = 0;
+		    if (Child->x < 0) Child->x = 0;
+		    if (Child->y < 0) Child->y = 0;
 		    
 		    /**if it's outside the bottom right corner, pull the whole window in**/
-		    if((Child->x + Child->width) > container_width)
+		    if ((Child->x + Child->width) > container_width)
 			Child->x = container_width - Child->width;
-		    if((Child->y + Child->height) > container_height)
+		    if ((Child->y + Child->height) > container_height)
 			Child->y = container_height - Child->height;
 		}
 	    
@@ -1870,14 +1870,14 @@ int ival;
 	     *** aposAutoPositionWidgetTree() in the previous if statement
 	     *** already processed those subtrees.
 	     ***/
-	    else if((Child->Flags & WGTR_F_CONTAINER) && !(Child->Flags & WGTR_F_NONVISUAL))
+	    else if ((Child->Flags & WGTR_F_CONTAINER) && !(Child->Flags & WGTR_F_NONVISUAL))
 		{
 		    if (UNLIKELY(aposProcessWindows(Child, Child) < 0))
 			return -1;
 		}
 	    
 	    /**recursive call on nonvisual containers; old visual reference is maintained**/
-	    if((Child->Flags & WGTR_F_CONTAINER) && (Child->Flags & WGTR_F_NONVISUAL))
+	    if ((Child->Flags & WGTR_F_CONTAINER) && (Child->Flags & WGTR_F_NONVISUAL))
 		{
 		    if (UNLIKELY(aposProcessWindows(VisualRef, Child) < 0))
 			return -1;
