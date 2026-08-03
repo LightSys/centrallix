@@ -699,7 +699,7 @@ pAposGrid theGrid = NULL;
 		    /** Allocate and initialize a new pAposGrid. **/
 		    theGrid = (pAposGrid)nmMalloc(sizeof(AposGrid));
 		    if (theGrid == NULL) return -1;
-		    if (aposInitiallizeGrid(theGrid) < 0)
+		    if (aposInitializeGrid(theGrid) < 0)
 			{
 			mssError(1, "APOS", "Failed to initialize grid.");
 			nmFree(theGrid, sizeof(AposGrid));
@@ -838,7 +838,7 @@ pWgtrNode Child;
  *** @returns 0 for success, or -1 if an error occurs.  Does not call mssError().
  ***/
 int
-aposInitiallizeGrid(pAposGrid theGrid)
+aposInitializeGrid(pAposGrid theGrid)
 {
 pXArray rows = NULL, cols = NULL, h_lines = NULL, v_lines = NULL;
 int rval = -1;

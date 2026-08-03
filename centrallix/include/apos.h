@@ -90,7 +90,7 @@ typedef struct
 int aposAutoPositionWidgetTree(pWgtrNode);	/**top-level function, called from wgtr module**/
 int aposAutoPositionContainers (pWgtrNode);	/**Auto-positions all widgets inside a container**/
 void aposInit();					/**Registers datastructures used in auto-positioning**/
-int aposInitiallizeGrid (pAposGrid);		/**Initiallizes the XArrays in the grid object**/
+int aposInitializeGrid(pAposGrid);		/**Initializes the XArrays in the grid object**/
 void aposFree(pAposGrid);			/**Frees dynamically allocated memory**/
 void aposFreeGrids(pWgtrNode);			/**Frees dynamically allocated memory**/
 void aposSetOffsetBools(pWgtrNode, bool*, bool*, bool*, bool*, int*, int*); /**sets bools used to offset widgets**/
