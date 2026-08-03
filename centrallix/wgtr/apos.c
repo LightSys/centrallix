@@ -1,6 +1,6 @@
 /************************************************************************/
 /* Centrallix Application Server System 				*/
-/* Centrallix Core       						*/
+/* Centrallix Core							*/
 /* 									*/
 /* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
@@ -22,11 +22,11 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	Auto-Positioning					*/
+/* Module:	Auto-Positioning					*/
 /* Author:	Nathaniel Colson					*/
 /* Creation:	August 9, 2005						*/
 /* Description:	Applies layout logic to the widgets of an application.	*/
-/* See centrallix-sysdoc/Auto-Positioning.md for more information. 	*/
+/* See centrallix-sysdoc/Auto-Positioning.md for more information.	*/
 /************************************************************************/
 
 /*** Author: Israel Fuller
