@@ -1531,7 +1531,6 @@ aposSpaceOutLines(pXArray Lines, pXArray Sections, int Diff)
 pAposLine CurrLine, PrevLine;
 pAposSection PrevSect, CurrSect;
 int TotalFlex=0, TotalFlexibleSpace=0, Adj=0, i=0, Extra=0, count=xaCount(Sections);
-int FlexibleSections=0;
 float FlexWeight=0, SizeWeight=0;
 float TotalSum=0;
 
@@ -1544,10 +1543,7 @@ float TotalSum=0;
 	    CurrSect = ((pAposSection)xaGetItem(Sections, i));
 	    TotalFlex += CurrSect->Flex;
 	    if(CurrSect->Flex)
-		{
-		    FlexibleSections++;
-		    TotalFlexibleSpace += CurrSect->Width;
-		}
+		TotalFlexibleSpace += CurrSect->Width;
 	}
     
     /*** If there is no flex or flex space, we can't space anything out.
