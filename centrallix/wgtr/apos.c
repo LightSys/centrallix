@@ -623,11 +623,12 @@ ObjData val;
 	    /*** Set isWin (is window) to compensate for a titlebar. If the
 	     *** node does not specify if it has a titlebar, assume it does.
 	     ***/
-	    if(wgtrGetPropertyValue(W, "titlebar", DATA_T_STRING, &val) < 0)
-	        *isWin = 1;	// Property not found, assume it has a titlebar.
-	    else *isWin = (strcmp(val.String, "yes") == 0);
+	    if (wgtrGetPropertyValue(W, "titlebar", DATA_T_STRING, &val) == 0
+		&& strcmp(val.String, "no") == 0)
+		*isWin = false;
+	    else *isWin = true;
 	    }
-	else *isWin = 0;
+	else *isWin = false;
 	}
 
     /** Set default values for non-tabs. **/
@@ -643,15 +644,15 @@ ObjData val;
 	    /*** Set isTopTab and isSideTab.  If the node does not specify the
 	     *** tab location, assume it has a top tab and no side-tab unset.
 	     **/
-	    if(wgtrGetPropertyValue(W, "tab_location", DATA_T_STRING, &val) < 0)
-		{
-		if(isTopTab  != NULL) *isTopTab  = true;
-		if(isSideTab != NULL) *isSideTab = false;
-		}
-	    else 
+	    if(wgtrGetPropertyValue(W, "tab_location", DATA_T_STRING, &val) == 0)
 		{
 		if(isTopTab  != NULL) *isTopTab  = (strcmp(val.String, "top")  == 0 || strcmp(val.String, "bottom") == 0);
 		if(isSideTab != NULL) *isSideTab = (strcmp(val.String, "left") == 0 || strcmp(val.String, "right")  == 0);
+		}
+	    else 
+		{
+		if(isTopTab  != NULL) *isTopTab  = true;
+		if(isSideTab != NULL) *isSideTab = false;
 		}
 	    }
 
