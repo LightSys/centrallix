@@ -198,16 +198,12 @@ int i=0, count=0, rval = -1;
 	    goto end;
 	}
 
-    /*aposDumpGrid(tree, 0);*/
-
     /** Detect and honor minimum/maximum space requirements. **/
     if (aposSetLimits(tree) < 0)
 	{
 	    mssError(0, "APOS", "Failed to set limits grid.");
 	    goto end;
 	}
-    
-    /*aposDumpGrid(tree, 0);*/
 
     /**Iteration 2**/
     if(aposAutoPositionContainers(tree) < 0)
@@ -215,9 +211,7 @@ int i=0, count=0, rval = -1;
 	    mssError(0, "APOS", "Failed to auto-position containers.");
 	    goto end;
 	}
-   
-    /*aposDumpGrid(tree, 0);*/
-    
+
     /** Release grid memory **/
     aposFreeGrids(tree);
 
@@ -378,7 +372,6 @@ pWgtrNode Child;
 			    if (s->DesiredWidth >= 0)
 				{
 				    *delta_h += (s->DesiredWidth - s->Width);
-				    /*printf("Changing height of row section at %d from %d to %d\n", s->StartLine->Loc, s->Width, s->DesiredWidth);*/
 				    s->Width = s->DesiredWidth;
 				}
 			}
@@ -392,7 +385,6 @@ pWgtrNode Child;
 			    if (s->DesiredWidth >= 0)
 				{
 				    *delta_w += (s->DesiredWidth - s->Width);
-				    /*printf("Changing width of column section at %d from %d to %d\n", s->StartLine->Loc, s->Width, s->DesiredWidth);*/
 				    s->Width = s->DesiredWidth;
 				}
 			}
@@ -408,7 +400,6 @@ pWgtrNode Child;
 		}
 
 	    Parent->pre_width += *delta_w;
-	    /*printf("Adjusting width of %s by %d\n", Parent->Name, *delta_w);*/
 	}
     if (*delta_h)
 	{
@@ -418,7 +409,6 @@ pWgtrNode Child;
 		}
 
 	    Parent->pre_height += *delta_h;
-	    /*printf("Adjusting height of %s by %d\n", Parent->Name, *delta_h);*/
 	}
 
     return 0;
@@ -1610,8 +1600,6 @@ float TotalSum=0;
 		    /** Calculate adjustment using the adjustment weight. **/
 		    Adj = (float)(Diff) * fl + APOS_FUDGEFACTOR;
 
-		//     printf("Expanding lines by %d*%f=%d\n", Diff, fl, Adj);
-
 		    /** Apply the calculated adjustment. **/
 		    PrevSect->Width += Adj;
 		    CurrLine->Loc = PrevLine->Loc + PrevSect->Width;
@@ -1621,9 +1609,7 @@ float TotalSum=0;
 		{
 		    /** Calculate adjustment using the adjustment weight. **/
 		    Adj = (float)(Diff) * fl - APOS_FUDGEFACTOR;
-		    
-		//     printf("Contracting lines by %d*%f=%d\n", Diff, fl, Adj);
-		    
+
 		    /** if the section width will be unacceptably 
 		    *** narrow or negative after the adjustment **/
 		    if((Adj + PrevSect->Width) <= APOS_MINSPACE)
