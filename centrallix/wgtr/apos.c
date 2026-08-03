@@ -173,26 +173,29 @@ pWgtrNode child;
 int
 aposAutoPositionWidgetTree(pWgtrNode tree)
 {    
-XArray PatchedWidgets;
-int i=0, count=0;
+pXArray patched_widgets = NULL;
+int i=0, count=0, rval = -1;
 
-    if (xaInit(&(PatchedWidgets), 16) < 0) goto error;
+    /** Note: If xaInit() fails, it leaves the XArray unusable. **/
+    XArray patched_widgets_buf;
+    if (xaInit(&patched_widgets_buf, 16) < 0) goto end;
+    patched_widgets = &patched_widgets_buf;
 
     /** Handle children with unspecified heights. **/
-    if (aposPrepareTree(tree, &PatchedWidgets) < 0) goto error;
+    if (aposPrepareTree(tree, patched_widgets) < 0) goto end;
 
     /** Recursively build the layout grids, including lines and sections, for this tree. **/
     if (aposBuildGrid(tree) < 0)
 	{
 	    mssError(0, "APOS", "Failed to build layout grid.");
-	    goto error;
+	    goto end;
 	}
 
     /** Set flexibilities on containers. **/
     if (aposSetFlexibilities(tree) < 0)
 	{
 	    mssError(0, "APOS", "Failed to set flex grid.");
-	    goto error;
+	    goto end;
 	}
 
     /*aposDumpGrid(tree, 0);*/
@@ -201,7 +204,7 @@ int i=0, count=0;
     if (aposSetLimits(tree) < 0)
 	{
 	    mssError(0, "APOS", "Failed to set limits grid.");
-	    goto error;
+	    goto end;
 	}
     
     /*aposDumpGrid(tree, 0);*/
@@ -210,7 +213,7 @@ int i=0, count=0;
     if(aposAutoPositionContainers(tree) < 0)
         {
 	    mssError(0, "APOS", "Failed to auto-position containers.");
-	    goto error;
+	    goto end;
 	}
    
     /*aposDumpGrid(tree, 0);*/
@@ -222,25 +225,36 @@ int i=0, count=0;
     if (aposProcessWindows(tree, tree) < 0)
 	{
 	mssError(0, "APOS", "Failed to process windows.");
-	goto error;
+	goto end;
 	}
-    
-    /** Unpatches the heights specified by aposPrepareTree(). **/
-    count=xaCount(&PatchedWidgets);
-    for(i=0; i<count; ++i)
+
+    /** Success. **/
+    rval = 0;
+
+end:
+    if (rval != 0)
 	{
-	((pWgtrNode)xaGetItem(&PatchedWidgets, i))->height = -1;
-	((pWgtrNode)xaGetItem(&PatchedWidgets, i))->pre_height = -1;
+	mssError(0, "APOS", "Failed to auto position widget tree '%s'", tree->Name);
 	}
-    
-    /** Free the PatchedWidgets XArray. **/
-    xaDeInit(&PatchedWidgets);
-    
-    return 0;
-    
-error:
-    mssError(0, "APOS", "Failed to auto possition widget tree '%s'", tree->Name);
-    return -1;
+
+    /*** Clean up: Release any grids aposBuildGrid() left behind.  This is a
+     *** no-op on the success path, where the grids were already freed above.
+     ***/
+    aposFreeGrids(tree);
+
+    /** Clean up: Unpatch the heights from aposPrepareTree(). **/
+    if (patched_widgets != NULL)
+	{
+	count = xaCount(patched_widgets);
+	for(i = 0; i < count; i++)
+	    {
+	    ((pWgtrNode)xaGetItem(patched_widgets, i))->height = -1;
+	    ((pWgtrNode)xaGetItem(patched_widgets, i))->pre_height = -1;
+	    }
+	xaDeInit(patched_widgets);
+	}
+
+    return rval;
 }
 
 /*** Recursively sets flexibility values for containers and their children.
