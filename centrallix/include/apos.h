@@ -121,6 +121,7 @@ int aposMinimumChildFlex(pAposLine, int);	 /**Returns minimum flexibility of wid
 
 /**Resizing and Repositioning**/
 int aposSpaceOutLines(pXArray, pXArray, int);	/**Adjusts spaces between lines to expand or contract grid**/
+int aposSpaceOutLines_r(pXArray, pXArray, int, bool);	/**Recursive worker for aposSpaceOutLines()**/
 void aposSnapWidgetsToGrid(pXArray, int, pWgtrClientInfo); /**Refreshes widget dimensions to match adjusted grid**/
 int aposProcessWindows(pWgtrNode, pWgtrNode);	/**Makes a pass through the tree to process windows**/
 

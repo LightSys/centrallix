@@ -1517,16 +1517,34 @@ int cCount = xaCount(&(L->CWidgets));
     return MinFlex;
 }
 
-/*** Distributes extra or missing space among grid lines based on section flexibility.
- *** 
- *** @param Lines The array of lines in the relevant direction on this grid.
- *** @param Sections The array of sections in the relevant direction on this grid.
- *** @param Diff The space difference from how the elements are currently spaced.
- *** @returns The remaining space difference after spacing out elements as much as possible.
- ***          Never fails or returns an error code.
+/*** Distributes extra/missing space among grid lines by section flexibility.
+ ***
+ *** @param Lines The array of lines in the relevant direction.
+ *** @param Sections The array of sections in the relevant direction.
+ *** @param Diff The current space difference requested.
+ *** @returns The remaining space difference after spacing out elements as
+ ***          much as possible.  Never fails or returns an error code.
  ***/
 int
 aposSpaceOutLines(pXArray Lines, pXArray Sections, int Diff)
+{
+    return aposSpaceOutLines_r(Lines, Sections, Diff, true);
+}
+
+/*** Distributes extra/missing space among grid lines by section flexibility.
+ ***
+ *** Recursive calls don't store loc_fl and my_fl.  They are to redistribute
+ *** space freed by clamping a section to APOS_MINSPACE, and would report
+ *** affected sections as rigid, even though they're only rigid at that size.
+ ***
+ *** @param Lines The array of lines in the relevant direction.
+ *** @param Sections The array of sections in the relevant direction.
+ *** @param Diff The current space difference requested.
+ *** @returns The remaining space difference after spacing out elements as
+ ***          much as possible.  Never fails or returns an error code.
+ ***/
+int
+aposSpaceOutLines_r(pXArray Lines, pXArray Sections, int Diff, bool store_flex)
 {
 pAposLine CurrLine, PrevLine;
 pAposSection PrevSect, CurrSect;
@@ -1570,8 +1588,11 @@ float TotalSum=0;
     if(TotalSum <= 0) return Diff;
 
     /** The initial borders do not adjust. **/
-    pAposLine leftBorder = (pAposLine)xaGetItem(Lines, 0);
-    leftBorder->loc_fl = leftBorder->my_fl = 0.0f;
+    if (store_flex)
+	{
+	pAposLine leftBorder = (pAposLine)xaGetItem(Lines, 0);
+	leftBorder->loc_fl = leftBorder->my_fl = 0.0f;
+	}
 
     for(i=1; i<count; ++i)	//starts at i=1 to skip the first borderline
         {
@@ -1588,9 +1609,12 @@ float TotalSum=0;
 	    float fl = (float)(FlexWeight * SizeWeight) / TotalSum;
 
 	    /** Store the line adjustment weight for responsive CSS later. **/
-	    CurrLine->loc_fl = PrevLine->loc_fl + fl;
-	    CurrLine->my_fl = fl;
-	    
+	    if (store_flex)
+		{
+		CurrLine->loc_fl = PrevLine->loc_fl + fl;
+		CurrLine->my_fl = fl;
+		}
+
 	    /** Expand lines. **/
 	    if(Diff > 0)
 	        {
@@ -1638,9 +1662,11 @@ float TotalSum=0;
 		}
 	}
 
-    /** Spread any homeless extra space out over the remaining flexible sections**/
+    /*** Spread any homeless extra space out over the remaining flexible
+     *** sections.  This pass does not record flex weights; see above.
+     ***/
     if(Extra < 0)
-	return aposSpaceOutLines(Lines, Sections, Extra);
+	return aposSpaceOutLines_r(Lines, Sections, Extra, false);
 	
     return Extra;
 }
