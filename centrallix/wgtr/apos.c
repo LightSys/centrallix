@@ -290,8 +290,8 @@ int sectCount;
 /*** Adjusts space to accommodate children, somehow? I think?
  ***
  *** @param Parent  The widget node parent who's limits are being calculated.
- *** @param delta_w The change in width required to accommodate children.
- *** @param delta_h The change in height required to accommodate children.
+ *** @param delta_w The change in width required for children (not set on error).
+ *** @param delta_h The change in height required for children (not set on error).
  *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
@@ -402,15 +402,10 @@ pWgtrNode Child;
 int
 aposSetLimits(pWgtrNode Parent)
 {
+/** Discard: The root does not need to report deltas. **/
 int delta_w, delta_h;
-int rval;
 
-    delta_w = 0;
-    delta_h = 0;
-
-    rval = aposSetLimits_r(Parent, &delta_w, &delta_h);
-
-    return rval;
+    return aposSetLimits_r(Parent, &delta_w, &delta_h);
 }
 
 /*** Calculates and sets the flexibility for a container by taking weighted
@@ -536,7 +531,6 @@ aposAutoPositionContainers(pWgtrNode Parent)
 pAposGrid theGrid;
 pWgtrNode Child;
 int i=0, childCount = xaCount(&(Parent->Children));
-// int rows_extra=0, cols_extra=0;
 
     /** Check recursion **/
     if (UNLIKELY(thExcessiveRecursion()))
@@ -553,23 +547,15 @@ int i=0, childCount = xaCount(&(Parent->Children));
 	{
 	    /**Adjust the spaces between lines to fit the grid to the container**/
 	    if (!(Parent->Flags & WGTR_F_VSCROLLABLE))
-		// rows_extra =
-		aposSpaceOutLines(&(theGrid->HLines), &(theGrid->Rows), (Parent->height - Parent->pre_height));	//rows
+		aposSpaceOutLines(&(theGrid->HLines), &(theGrid->Rows), (Parent->height - Parent->pre_height));
 	    if (!(Parent->Flags & WGTR_F_HSCROLLABLE))
-		// cols_extra =
-		aposSpaceOutLines(&(theGrid->VLines), &(theGrid->Cols), (Parent->width - Parent->pre_width));	 //columns
+		aposSpaceOutLines(&(theGrid->VLines), &(theGrid->Cols), (Parent->width - Parent->pre_width));
 	    
 	    /**modify the widgets' x,y,w, and h values to snap to their adjusted lines**/
 	    if (!(Parent->Flags & WGTR_F_VSCROLLABLE))
-		aposSnapWidgetsToGrid(&(theGrid->HLines), APOS_ROW, Parent->Root->ClientInfo);	//rows
+		aposSnapWidgetsToGrid(&(theGrid->HLines), APOS_ROW, Parent->Root->ClientInfo);
 	    if (!(Parent->Flags & WGTR_F_HSCROLLABLE))
-		aposSnapWidgetsToGrid(&(theGrid->VLines), APOS_COL, Parent->Root->ClientInfo);	//columns
-
-	    /** did not resize? **/
-	    /*if (rows_extra < 0)
-		Parent->height += -rows_extra;
-	    if (cols_extra < 0)
-		Parent->width += -cols_extra;*/
+		aposSnapWidgetsToGrid(&(theGrid->VLines), APOS_COL, Parent->Root->ClientInfo);
 	}
     
     /**recursive call to auto-position subsequent visual containers, except windows**/
@@ -856,22 +842,22 @@ pWgtrNode C;
  *** on them (SWidgets), end on them (EWidgets), and cross them (CWidgets).
  *** 
  *** Note: This function all lines in the given array are oriented in the same
- *** 	 direction as the new line. At the time of this writing (June 2025),
- *** 	 all known calling functions upheld by maintaining an HLines and a
- *** 	 VLines array to store horizontal and vertical lines separately.
+ ***       direction as the new line. At the time of this writing (June 2025),
+ ***       all known calling functions upheld by maintaining an HLines and a
+ ***       VLines array to store horizontal and vertical lines separately.
  *** 
  *** @param Widget   The widget which determined the location of this line,
- *** 		   which we add to the SWidgets or EWidgets array.
+ ***                 which we add to the SWidgets or EWidgets array.
  *** @param Lines    The array that stores the lines.
  *** @param Loc      The location of the line. Only a single coordinate in
- *** 		   one dimension is needed since lines span the entire grid.
+ ***                 one dimension is needed since lines span the entire grid.
  *** @param type     The type, indicating whether the associated widget starts
- *** 		   or ends on this line.
+ ***                 or ends on this line.
  *** @param isBorder A boolean that is true if this is a grid border line.
  *** @param adj      An adjustment added to or subtracted from the line to
- *** 		   satisfy min or max constraints (respectively).
+ ***                 satisfy min or max constraints (respectively).
  *** @param is_vert  A boolean that is true if this line is vertical.
- *** 		   See APOS_VERTICAL and APOS_HORIZONTAL.
+ ***                 See APOS_VERTICAL and APOS_HORIZONTAL.
  *** 
  *** @returns 0 if successful, or -1 if an error occurs.
  ***/
@@ -881,7 +867,7 @@ aposCreateLine(pWgtrNode Widget, pXArray Lines, int Loc, int type, int isBorder,
 pAposLine Line = aposExistingLine(Lines, Loc);
     
     /** If there is already a line, we upgrade it instead of creating a new one. **/
-    if (Line != NULL)	
+    if (Line != NULL)
         {
 	    /*** Change the line position adjustment value, if needed.  An Adj
 	     *** of 0 means no requested adjustment, so it is always replaced.
@@ -890,11 +876,9 @@ pAposLine Line = aposExistingLine(Lines, Loc);
 	     ***/
 	    if (Line->Adj == 0 || adj > Line->Adj)
 		Line->Adj = adj;
-
 	}
     else
 	{
-    
 	    /** There's not already a line, so we allocate a new one. **/    
 	    if (UNLIKELY((Line = (pAposLine)nmMalloc(sizeof(AposLine))) < 0))
 		{
@@ -910,8 +894,6 @@ pAposLine Line = aposExistingLine(Lines, Loc);
 	    Line->Loc = Loc;
 	    Line->isBorder = isBorder;
 	    Line->Adj = adj;
-	    Line->SSection = NULL;
-	    Line->ESection = NULL;
 
 	    /** Add the new line, to the list of lines, sorted by location. **/
 	    xaAddItemSortedInt32(Lines, Line, 0);
@@ -1483,7 +1465,6 @@ pWgtrNode Widget;
 			    else if (newsize >= APOS_MINWIDTH || newsize >= Widget->pre_height)
 				Widget->height = newsize;
 			    else 
-				/*Widget->height = APOS_MINWIDTH;*/
 				Widget->height = Widget->pre_height;
 			    
 			    /*** The widget copies the adjustment weight of the
@@ -1504,7 +1485,6 @@ pWgtrNode Widget;
 				Widget->width = newsize;
 			    /** Otherwise, we can't update the size. **/
 			    else
-				/*Widget->width = APOS_MINWIDTH;*/
 				Widget->width = Widget->pre_width;
 
 			    /*** The widget copies the adjustment weight of the
@@ -1522,9 +1502,9 @@ pWgtrNode Widget;
 		    {
 			Widget = (pWgtrNode)xaGetItem(&(CurrLine->CWidgets), j);
 			if (flag==APOS_ROW  &&  Widget->fl_height)
-			    Widget->fl_scale_h += (is_design) ? 0.0 : CurrLine->my_fl;
+			    Widget->fl_scale_h += CurrLine->my_fl;
 			else if (flag==APOS_COL  &&  Widget->fl_width)
-			    Widget->fl_scale_w += (is_design) ? 0.0 : CurrLine->my_fl;
+			    Widget->fl_scale_w += CurrLine->my_fl;
 		    }
 		}
 	}
