@@ -63,11 +63,19 @@ htfuRender(pHtSession s, pWgtrNode tree, int z)
 	/** Get an id for this. **/
 	const int id = (HTFU.idcnt++);
 	
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-		strtcpy(name,ptr,sizeof(name));
-		
-	if (wgtrGetPropertyValue(tree,"target",DATA_T_STRING,POD(&ptr)) == 0)
-		strtcpy(target,ptr,sizeof(target));
+	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&ptr)) != 0)
+	    {
+	    mssError(1, "HTFU", "Fileupload widget must have a 'name' property.");
+	    goto err;
+	    }
+	strtcpy(name, ptr, sizeof(name));
+	
+	if (wgtrGetPropertyValue(tree, "target", DATA_T_STRING, POD(&ptr)) != 0)
+	    {
+	    mssError(1, "HTFU", "Fileupload widget must have a 'target' property.");
+	    goto err;
+	    }
+	strtcpy(target, ptr, sizeof(target));
 	
 	multiselect = htrGetBoolean(tree, "multiselect", 0); //default = 0;
 	
@@ -81,7 +89,7 @@ htfuRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    fieldname[0]='\0';
 	
- 	/** Link the widget to the DOM node. **/
+	/** Link the widget to the DOM node. **/
 	if (htrAddWgtrObjLinkage_va(s, tree, "fu%POSbase", id) != 0)
 	    {
 	    mssError(0, "HTFU", "Failed to add object linkage.");
@@ -130,7 +138,7 @@ htfuRender(pHtSession s, pWgtrNode tree, int z)
 	    id, id,
 	    id, id,
 	    (multiselect)
-	)!= 0)
+	) != 0)
 	    {
 	    mssError(0, "HTFU", "Failed to write base HTML.");
 	    goto err;

@@ -1169,7 +1169,7 @@ htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv
 	    if (strcmp(function, handler) == 0)
 		return 0;
 	    }
-	if (check_neg(xaAddItem(&e->Handlers, function) < 0)) goto err;
+	if (check_neg(xaAddItem(&e->Handlers, function)) < 0) goto err;
 
 	/** Success. **/
 	return 0;
@@ -2479,7 +2479,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 
 
 	/** Start writing the event registration function. **/
-	htrQPrintf(s," \nfunction events_%STR()\n\t{\n", s->Namespace->DName);
+	htrQPrintf(s, "\nfunction events_%STR()\n\t{\n", s->Namespace->DName);
 
 	/** Write the event captures. **/
 	cnt = xaCount(&s->Page.EventHandlers);
