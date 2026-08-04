@@ -883,11 +883,12 @@ pAposLine Line = aposExistingLine(Lines, Loc);
     /** If there is already a line, we upgrade it instead of creating a new one. **/
     if (Line != NULL)	
         {
-
-	    /** Change the line position Adjustment value if needed **/
-	    if (Line->Adj != 0 && adj > Line->Adj)
-		Line->Adj = adj;
-	    else if (Line->Adj == 0 && adj)
+	    /*** Change the line position adjustment value, if needed.  An Adj
+	     *** of 0 means no requested adjustment, so it is always replaced.
+	     *** Otherwise the largest request wins, which favors growing the
+	     *** line (positive adj) over shrinking it (negative).
+	     ***/
+	    if (Line->Adj == 0 || adj > Line->Adj)
 		Line->Adj = adj;
 
 	}
