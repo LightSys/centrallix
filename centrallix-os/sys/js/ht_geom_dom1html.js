@@ -344,6 +344,10 @@ function setRelativeH(l, value) { return setRelative(l, value, 'height'); }
  *** @param value The new location in server-side px. This value must be
  *** 		  parseable as a number.
  *** @param {'left'|'top'|'width'|'height'} d The dimension being set.
+ *** @returns The size in px that the browser actually used, as read back by
+ ***          setRelative().  This may differ from the px in the generated
+ ***          calc(), which is only the size in the server's adaptive layout.
+ ***          On the failure paths, nothing is set and `value` is returned.
  ***/
 function setResponsive(l, value, d) {
     /** Convert the value to a number, if possible. **/
@@ -357,13 +361,22 @@ function setResponsive(l, value, d) {
 	return value;
 	}
     
+    /** The server names its flexibilities x/y/w/h, not by CSS dimension. **/
+    const fl_d = { left:'x', top:'y', width:'w', height:'h' }[d];
+    if (!fl_d)
+	{
+	console.warn(`setResponsive() - FAIL: Unknown dimension ${d} (should be left, top, width, or height)`);
+	/** We can't set or even query the dimension, so nothing changed. **/
+	return value;
+	}
+
     /** The flexibility specified by the server. **/
-    var fl_scale = l['__fl_scale_' + d] ?? wgtrGetServerProperty(l, 'fl_scale_' + d);
-    if (fl_scale == undefined || fl_scale == null)
+    let fl_scale = l['__fl_scale_' + fl_d] ?? wgtrGetServerProperty(l, 'fl_scale_' + fl_d);
+    if (fl_scale == undefined)
 	{
 	/** The server did not specify a flexibility, even though one was expected. **/
-	const warningMsg = 'setResponsive() - FAIL: Missing ' + ((wgtrIsNode(l)) ? 'wgtr.' : '__') + 'fl_scale_' + d;
-	console.warn(warningMsg, l);
+	const missing_attr_name = ((wgtrIsNode(l)) ? 'wgtr.' : '__') + 'fl_scale_' + fl_d;
+	console.warn('setResponsive() - FAIL: Missing ' + missing_attr_name + ' for', l);
 	fl_scale = 0;
 	}
     
@@ -371,16 +384,16 @@ function setResponsive(l, value, d) {
     if (fl_scale <= 0) return setRelative(l, value, d);
     
     /** The parent width expected by the server in the adaptive layout. **/
-    var d2 = d;
-    if (d2 == 'x') d2 = 'w';
-    if (d2 == 'y') d2 = 'h';
+    let fl_d2 = fl_d;
+    if (fl_d2 === 'x') fl_d2 = 'w';
+    if (fl_d2 === 'y') fl_d2 = 'h';
 
-    var fl_parent = l['__fl_parent_' + d2] ?? wgtrGetServerProperty(l, 'fl_parent_' + d2);
-    if (fl_parent == undefined || fl_parent == null)
+    const fl_parent = l['__fl_parent_' + fl_d2] ?? wgtrGetServerProperty(l, 'fl_parent_' + fl_d2);
+    if (fl_parent == undefined)
 	{
 	/** I wonder if anyone reviewers will see this: Easter egg #7. **/
-	const warningMsg = 'setResponsive() - FAIL: Missing ' + ((wgtrIsNode(l)) ? 'wgtr.' : '__') + 'fl_parent_' + d2;
-	console.warn(warningMsg, l);
+	const missing_attr_name = ((wgtrIsNode(l)) ? 'wgtr.' : '__') + 'fl_parent_' + fl_d2;
+	console.warn('setResponsive() - FAIL: Missing ' + missing_attr_name + ' for', l);
 	}
 
     /** Generate and set the CSS. **/
