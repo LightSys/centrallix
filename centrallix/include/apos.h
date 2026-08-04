@@ -113,7 +113,6 @@ int aposAddSectionsToGrid(pAposGrid, int, int);	 /**Adds all of the necessary se
 int aposCreateSection(pXArray, pAposLine, pAposLine, int, int); /**Creates a section object**/
 bool aposIsSpacer(pAposLine, pAposLine, int, int);/**Determines if a section is a space between widgets**/
 bool aposNonFlexChildren(pAposLine, int);	 /**Checks section after line for non-flexible widgets**/
-int aposAverageChildFlex(pAposLine, int);	 /**Returns average flexibility of widgets**/
 int aposMinimumChildFlex(pAposLine, int);	 /**Returns minimum flexibility of widgets**/
 
 /**Resizing and Repositioning**/

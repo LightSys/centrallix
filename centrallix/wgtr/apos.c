@@ -1231,39 +1231,6 @@ int cCount = xaCount(&(L->CWidgets));
     return false;
 }
 
-/*** Calculates the average flexibility of widgets on a line.
- ***
- *** @param L    The line along which to check.
- *** @param type Specifies the relevant dimension using APOS_ROW or APOS_COL.
- *** @returns    The average flexibility of children on the line.
- ***/
-int
-aposAverageChildFlex(pAposLine L, int type)
-{
-int TotalFlex=0, i=0;
-int sCount = xaCount(&(L->SWidgets));
-int cCount = xaCount(&(L->CWidgets));
-
-    /** Sum the flexibilities. **/
-    if (type == APOS_ROW)
-        {
-	    for(i=0; i<sCount; ++i)
-	        TotalFlex += ((pWgtrNode)xaGetItem(&(L->SWidgets), i))->fl_height;
-	    for(i=0; i<cCount; ++i)
-	        TotalFlex += ((pWgtrNode)xaGetItem(&(L->CWidgets), i))->fl_height;
-        }
-    else //type == APOS_COL
-        {
-	    for(i=0; i<sCount; ++i)
-	        TotalFlex += ((pWgtrNode)xaGetItem(&(L->SWidgets), i))->fl_width;
-	    for(i=0; i<cCount; ++i)
-	        TotalFlex += ((pWgtrNode)xaGetItem(&(L->CWidgets), i))->fl_width;
-	}
-    
-    /** Return the average flexibility with an additional fudge factor. **/
-    return (int)(APOS_FUDGEFACTOR + ((float)TotalFlex)/((float)sCount+(float)cCount));
-}
-
 /*** Calculates the minimum flexibility of widgets on a line.
  ***
  *** @param L    The line along which to check.

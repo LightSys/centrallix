@@ -42,7 +42,7 @@ This document specifies the way in which the auto-positioning module resizes and
     - [int aposAddSectionsToGrid(pAposGrid, int, int)](#int-aposaddsectionstogridpaposgrid-int-int)
     - [int aposCreateSection(pXArray, pAposLine, pAposLine, int, int)](#int-aposcreatesectionpxarray-paposline-paposline-int-int)
     - [int aposIsSpacer(pAposLine, pAposLine, int, int)](#int-aposisspacerpaposline-paposline-int-int)
-    - [int aposAverageChildFlex(pAposLine, int)](#int-aposaveragechildflexpaposline-int)
+    - [int aposMinimumChildFlex(pAposLine, int)](#int-aposminimumchildflexpaposline-int)
     - [int aposSpaceOutLines(pXArray, pXArray, int)](#int-aposspaceoutlinespxarray-pxarray-int)
     - [int aposSnapWidgetsToGrid(pXArray, int)](#int-apossnapwidgetstogridpxarray-int)
     - [int aposProcessWindows(pWgtrNode, pWgtrNode)](#int-aposprocesswindowspwgtrnode-pwgtrnode)
@@ -164,8 +164,9 @@ aposAutoPositionWidgetTree
     |    |-aposAddSectionsToGrid
     |    |    |-aposCreateSection
     |    |    |-aposIsSpacer
-    |    |    |-aposNonFlexChildren
-    |    |    |-aposAverageChildFlex
+    |    |    |-aposSetSectionFlex
+    |    |    |    |-aposNonFlexChildren
+    |    |    |    |-aposMinimumChildFlex
     |    |
     |    |-aposSpaceOutLines(R)
     |    |-aposSnapWidgetsToGrid
@@ -313,7 +314,7 @@ Creates a new row or column section using the two given lines as boundaries.
 A pointer to the array of sections to be added to (either Rows or Cols of the current grid), two pointers to the two lines that define the new section, an integer whose sign indicates whether the new section will be expanded or contracted, and a flag indicating if it is a row or column.
 
 #### Method: 
-Memory for a new section is allocated and initiallized. The properties are filled out using the given lines, aposNonFlexChildren, aposIsSpacer, and aposAverageChildFlex. If the section is a spacer or contains non-flexible children, its flexibility is set to 0; otherwise if it has flexible children its flexibility is set to their average. If neither of those apply it must be a wide, widgetless gap, and a default flexibility is assigned. Finally the new section is added to the given section array.
+Memory for a new section is allocated and initialized. The properties are filled out using the given lines and `aposIsSpacer()` before `aposSetSectionFlex()` is called. A non-spacer section's flexibility is set to the minimum of its children (spacers have 0 flexibility). If it has no children, it must be a wide, widgetless gap, so a default flexibility is assigned. Finally, we add the new section to the section array.
     
 ### int aposIsSpacer(pAposLine, pAposLine, int, int)
 #### Description: 
@@ -328,18 +329,18 @@ Two pointers to the section's two defining lines (a starting line and an ending 
 #### Method: 
 If the space between the lines is sufficiently narrow, nested for-loops are used to compare every widget ending on the first line to every widget starting on the second line. If the corner of a widget on one side is found to fall between the two corners of a widget on the other side, then the two are indeed across from each other and 1 is returned.
 
-### int aposAverageChildFlex(pAposLine, int)
+### int aposMinimumChildFlex(pAposLine, int)
 #### Description: 
-Averages the flexibility of widgets beginning on or crossing the given line, because they are the ones that fall within the section proceeding the line.
+Finds the least flexibility among the widgets beginning on or crossing the given line, because they are the ones that fall within the section proceeding the line.
 
 #### Inputs: 
 A pointer to the line preceding the section whose flexibility is being calculated, a flag indicating whether the line is horizontal or vertical.
 
 #### Results: 
-The average flexibility of the widgets within the mentioned section is returned.
+The minimum flexibility of the widgets within the mentioned section is returned. If no widgets start on or cross the line, 100 is returned.
 
 #### Method: 
-The widgets that start on or cross the given line are looped through, and their fl_widths or fl_heights are summed. The average is calculated and returned, using the total width and a fudge factor for proper rounding.
+The widgets that start on or cross the given line are looped through, and the smallest of their fl_widths or fl_heights is tracked and returned.
 
 ### int aposSpaceOutLines(pXArray, pXArray, int)
 #### Description:
