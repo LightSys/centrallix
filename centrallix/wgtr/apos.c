@@ -96,9 +96,9 @@
 #include <string.h>
 
 #include "apos.h"
+#include "ht_render.h"
 #include "cxlib/expect.h"
 #include "cxlib/xarray.h"
-#include "cxlib/datatypes.h"
 #include "cxlib/mtsession.h"
 
 /*** Allocate space for a grid, section, and line using the custom allocation
@@ -1525,8 +1525,6 @@ int i=0;
 int childCount=xaCount(&(Parent->Children));
 pWgtrNode Child;
 int rw, rh, rpw, rph;
-char* val;
-int ival;
 
     /** Check recursion **/
     if (UNLIKELY(thExcessiveRecursion()))
@@ -1543,7 +1541,7 @@ int ival;
 		{
 
 		    /** Top level or local reference for container? **/
-		    if ((wgtrGetPropertyValue(Child, "toplevel", DATA_T_STRING, POD(&val)) == 0 && (!strcasecmp(val, "yes") || !strcasecmp(val, "true") || !strcasecmp(val, "1") || !strcmp(val, "on"))) || (wgtrGetPropertyValue(Child, "toplevel", DATA_T_INTEGER, POD(&ival)) == 0 && ival == 1))
+		    if (htrGetBoolean(Child, "toplevel", 0) == 1)
 			{
 			rpw = rw = Parent->Root->ClientInfo->AppMaxWidth;
 			rph = rh = Parent->Root->ClientInfo->AppMaxHeight;
