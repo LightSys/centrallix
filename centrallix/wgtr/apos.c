@@ -589,80 +589,6 @@ int i=0, sectCount=0, TotalWidth=0, ProductSum=0;
     if (TotalWidth) W->fl_width = APOS_FUDGEFACTOR + (float)ProductSum / (float)TotalWidth;
 }
 
-/*** Determines offset booleans for scrollpanes, windows, and tabs. Only
- *** requested data is calculated. If an argument is NULL, the function skips
- *** calculating that value. The contract assumes pWgtrNode W is not NULL.
- *** 
- *** isSP (is scrollpane) is used to compensate for scrollpane scrollbars.
- *** isWin (is window) is used to compensate for the titlebar (if any).
- *** isTopTab and isSideTab are used to compensate for tabs, if they exist.
- *** 
- *** Remember: A variable with a name that starts with "is" (e.g. isSP)
- *** 	     pretty much always represents a boolean.
- *** 
- *** @param W         The widget node to inspect.
- *** @param isSP      Is scrollpane, used to compensate for scrollpane scrollbars.
- *** @param isWin     Is window, used to compensate for the titlebar (if any).
- *** @param isTopTab  Receives a boolean that is true if this node has top tabs.
- *** @param isSideTab Receives a boolean that is true if this node has side tabs.
- *** @param tabWidth  Int pointer to receive the tab width.
- *** @param tabHeight Int pointer to receive the tab height.
- ***/
-void
-aposSetOffsetBools(pWgtrNode W, bool* isSP, bool* isWin, bool* isTopTab, bool* isSideTab, int* tabWidth, int* tabHeight)
-{
-ObjData val;
-
-    /** Set isSP to compensate for scrollpane scrollbars. **/
-    if (isSP != NULL) *isSP = (isScrollpane(W));
-
-    /** Set isWin to compensate windows' titlebars, if any. **/
-    if (isWin != NULL)
-	{
-	if (strcmp(W->Type, "widget/childwindow") == 0)
-	    {
-	    /*** Set isWin (is window) to compensate for a titlebar. If the
-	     *** node does not specify if it has a titlebar, assume it does.
-	     ***/
-	    if (wgtrGetPropertyValue(W, "titlebar", DATA_T_STRING, &val) == 0
-		&& strcmp(val.String, "no") == 0)
-		*isWin = false;
-	    else *isWin = true;
-	    }
-	else *isWin = false;
-	}
-
-    /** Set default values for non-tabs. **/
-    if (isTopTab  != NULL) *isTopTab  = false;
-    if (isSideTab != NULL) *isSideTab = false;
-    if (tabWidth  != NULL) *tabWidth  = 0;
-    if (tabHeight != NULL) *tabHeight = 0;
-
-    if (strcmp(W->Type, "widget/tab") == 0)
-	{
-	if (isTopTab != NULL || isSideTab != NULL)
-	    {
-	    /*** Set isTopTab and isSideTab.  If the node does not specify the
-	     *** tab location, assume it has a top tab and no side-tab unset.
-	     **/
-	    if (wgtrGetPropertyValue(W, "tab_location", DATA_T_STRING, &val) == 0)
-		{
-		if (isTopTab  != NULL) *isTopTab  = (strcmp(val.String, "top")  == 0 || strcmp(val.String, "bottom") == 0);
-		if (isSideTab != NULL) *isSideTab = (strcmp(val.String, "left") == 0 || strcmp(val.String, "right")  == 0);
-		}
-	    else 
-		{
-		if (isTopTab  != NULL) *isTopTab  = true;
-		if (isSideTab != NULL) *isSideTab = false;
-		}
-	    }
-
-	/** Set the tab width and height (if needed), defaulting to 80 and 24 if unspecified. **/
-	if (tabWidth  != NULL) *tabWidth  = (wgtrGetPropertyValue(W, "tab_width",  DATA_T_INTEGER, &val) == 0) ? val.Integer : 80;
-	if (tabHeight != NULL) *tabHeight = (wgtrGetPropertyValue(W, "tab_height", DATA_T_INTEGER, &val) == 0) ? val.Integer : 24;
-	}
-}
-
 /*** Builds the layout grid for recursively for this container and all of its
  *** children, including the lines and sections required for positioning.
  *** 
@@ -885,12 +811,8 @@ int
 aposAddLinesToGrid(pWgtrNode Parent, pXArray HLines, pXArray VLines)
 {
 int i=0, count=0, height_adj=0, width_adj=0;
-bool isWin=false, isSP=false;
 pAposLine CurrLine, PrevLine;
 // pXArray FirstCross, LastCross;
-
-    /** Check if this node a scrollbar or window that needs an offset. **/
-    aposSetOffsetBools(Parent, &isSP, &isWin, NULL, NULL, NULL, NULL);
 
     /** Does this widget need more room than it was given? **/
     if (Parent->pre_width < Parent->min_width && Parent->min_width != 0)
@@ -898,10 +820,17 @@ pAposLine CurrLine, PrevLine;
     if (Parent->pre_height < Parent->min_height && Parent->min_height != 0)
 	height_adj = Parent->min_height - Parent->pre_height;
 
+    /*** Border lines enclose the parent's client area (its box minus its
+     *** reserved insets).  Apos works in client area coordinates, so it
+     *** never applies the insets to a child's position; the parent's HTML
+     *** rendering driver does this when it writes the client area container
+     *** in its HTML.
+     ***/
+
     /** Add the 2 horizontal border lines, unless parent is a scrollpane. **/
     if (!isScrollpane(Parent))
         {
-	    int minHeightLoc = 0, maxHeightLoc = Parent->pre_height - ((isWin) ? 24 : 0);
+	    int minHeightLoc = 0, maxHeightLoc = Parent->pre_height - (Parent->inset_top + Parent->inset_bottom);
 	    if (UNLIKELY(aposCreateLine(NULL, HLines, minHeightLoc, APOS_NOT_LINKED, APOS_IS_BORDER, 0, APOS_HORIZONTAL) < 0))
 	        goto CreateLineError;
 	    if (UNLIKELY(aposCreateLine(NULL, HLines, maxHeightLoc, APOS_NOT_LINKED, APOS_IS_BORDER, height_adj, APOS_HORIZONTAL) < 0))
@@ -909,7 +838,7 @@ pAposLine CurrLine, PrevLine;
         }
 
     /** Add the 2 vertical border lines. **/
-    int minWidthLoc = 0, maxWidthLoc = (Parent->pre_width - ((isSP) ? 18 : 0));
+    int minWidthLoc = 0, maxWidthLoc = Parent->pre_width - (Parent->inset_left + Parent->inset_right);
     if (UNLIKELY(aposCreateLine(NULL, VLines, minWidthLoc, APOS_NOT_LINKED, APOS_IS_BORDER, 0, APOS_VERTICAL) < 0))
         goto CreateLineError;
     if (UNLIKELY(aposCreateLine(NULL, VLines, maxWidthLoc, APOS_NOT_LINKED, APOS_IS_BORDER, width_adj, APOS_VERTICAL) < 0))
@@ -987,8 +916,6 @@ int
 aposAddLinesForChildren(pWgtrNode Parent, pXArray HLines, pXArray VLines)
 {
 int i=0, childCount=xaCount(&(Parent->Children));
-bool isTopTab=false, isSideTab=false;
-int tabWidth=0, tabHeight=0;
 int height_adj, width_adj;
 pWgtrNode C;
 
@@ -1003,8 +930,7 @@ pWgtrNode C;
     for(i=0; i<childCount; ++i)
         {
 	    C = (pWgtrNode)xaGetItem(&(Parent->Children), i);
-	    aposSetOffsetBools(C, NULL, NULL, &isTopTab, &isSideTab, &tabWidth, &tabHeight);
-	    
+
 	    /** Does this widget need more room than it was given? **/
 	    height_adj = width_adj = 0;
 	    if (C->pre_width < C->min_width && C->min_width != 0)
@@ -1031,7 +957,7 @@ pWgtrNode C;
 			     *** start line and the bottom line is the end line
 			     *** because Y increases as we decend the page.
 			     ***/
-			    int minY = (C->y), maxY = (C->y + C->height + ((isTopTab) ? tabHeight : 0));
+			    int minY = (C->y), maxY = (C->y + C->height);
 			    if (UNLIKELY(aposCreateLine(C, HLines, minY, APOS_SWIDGETS, APOS_NOT_BORDER, 0, APOS_HORIZONTAL) < 0))
 			        goto CreateLineError;
 			    if (UNLIKELY(aposCreateLine(C, HLines, maxY, APOS_EWIDGETS, APOS_NOT_BORDER, height_adj, APOS_HORIZONTAL) < 0))
@@ -1046,7 +972,7 @@ pWgtrNode C;
 		     *** right along the page.
 		     ***/
 		    /** Add vertical lines. **/
-		    int minX = (C->x), maxX = (C->x + C->width + ((isSideTab) ? tabWidth : 0));
+		    int minX = (C->x), maxX = (C->x + C->width);
 		    if (UNLIKELY(aposCreateLine(C, VLines, minX, APOS_SWIDGETS, APOS_NOT_BORDER, 0, APOS_VERTICAL) < 0))
 			goto CreateLineError;
 		    if (UNLIKELY(aposCreateLine(C, VLines, maxX, APOS_EWIDGETS, APOS_NOT_BORDER, width_adj, APOS_VERTICAL) < 0))
@@ -1686,8 +1612,6 @@ aposSnapWidgetsToGrid(pXArray Lines, int flag, pWgtrClientInfo info)
 {
 const int is_design = info->IsDesign;
 int i=0, j=0, count=0, lineCount = xaCount(Lines);
-bool isTopTab=false, isSideTab=false;
-int tabWidth=0, tabHeight=0;
 int newsize;
 pAposLine CurrLine;
 pWgtrNode Widget;
@@ -1718,11 +1642,10 @@ pWgtrNode Widget;
 	    for(j=0; j<count; ++j)
 	        {
 	            Widget = (pWgtrNode)xaGetItem(&(CurrLine->EWidgets), j);
-		    aposSetOffsetBools(Widget, NULL, NULL, &isTopTab, &isSideTab, &tabWidth, &tabHeight);
 		    if (flag==APOS_ROW  &&  Widget->fl_height)
 			{
 			    /** Calculate the new size, taking APOS_MINWIDTH into account. **/
-			    newsize = CurrLine->Loc - Widget->y - ((isTopTab) ? tabHeight : 0);
+			    newsize = CurrLine->Loc - Widget->y;
 			    if (newsize < APOS_MINWIDTH && Widget->pre_height >= APOS_MINWIDTH)
 				Widget->height = APOS_MINWIDTH;
 			    else if (newsize >= APOS_MINWIDTH || newsize >= Widget->pre_height)
@@ -1739,8 +1662,8 @@ pWgtrNode Widget;
 		    else if (flag==APOS_COL  &&  Widget->fl_width)
 		        {
 			    /** Calculate the new size, taking APOS_MINWIDTH into account. **/
-			    newsize = CurrLine->Loc - Widget->x - ((isSideTab) ? tabWidth : 0);
-			    
+			    newsize = CurrLine->Loc - Widget->x;
+
 			    /** If the new size is now smaller than the minimum, clamp it. **/
 			    if (newsize < APOS_MINWIDTH && Widget->pre_width >= APOS_MINWIDTH)
 				Widget->width = APOS_MINWIDTH;
@@ -1787,7 +1710,6 @@ int
 aposProcessWindows(pWgtrNode VisualRef, pWgtrNode Parent)
 {
 int i=0;
-bool isWin=false, isSP=false;
 int childCount=xaCount(&(Parent->Children));
 pWgtrNode Child;
 int rw, rh, rpw, rph;
@@ -1800,8 +1722,6 @@ int ival;
 	    mssError(1, "APOS", "Failed to layout application: resource exhaustion occurred.");
 	    return -1;
 	}
-
-    aposSetOffsetBools(Parent, &isSP, &isWin, NULL, NULL, NULL, NULL);
 
     /**loop through children and process any windows**/
     for(i=0; i<childCount; ++i)
@@ -1836,9 +1756,11 @@ int ival;
 			    if (Child->y < 0) Child->y = 0;
 			}
 		    
-		    /** Computer container height and width. **/
-		    const int container_width  = rw - ((isSP) ? 18 : 0);
-		    const int container_height = rh - ((isWin) ? 24 : 0);
+		    /*** Compute the container's client height and width, aka.
+		     *** the space where child widgets are placed.
+		     ***/
+		    const int container_width  = rw - (Parent->inset_left + Parent->inset_right);
+		    const int container_height = rh - (Parent->inset_top + Parent->inset_bottom);
 
 		    /**if it's larger than its container, shrink it and set flag**/
 		    if (Child->width > container_width)

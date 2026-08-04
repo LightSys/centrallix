@@ -10,7 +10,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -61,12 +61,20 @@ wgtpnVerify(pWgtrVerifySession s)
 int
 wgtpnNew(pWgtrNode node)
     {
-	node->Flags |= WGTR_F_CONTAINER;   
+    int border_width = 1;
+    char* ptr;
+
+	node->Flags |= WGTR_F_CONTAINER;
 	if(node->fl_width < 0) node->fl_width = 100;
 	if(node->fl_height < 0) node->fl_height = 100;
 
-	node->top = node->bottom = node->left = node->right = 1;
-	
+	/*** Declare a 1px inset for the border that htdrv_pane.c draws with
+	 *** every style except "flat".
+	 ***/
+	if (wgtrGetPropertyValue(node,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"flat"))
+	    border_width = 0;
+	wgtrSetInsets(node, border_width, border_width, border_width, border_width);
+
     return 0;
     }
 

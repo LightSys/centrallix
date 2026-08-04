@@ -47,6 +47,8 @@
 #include "cxlib/xhash.h"
 #include "cxlib/strtcpy.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/util.h"
+#include "cxlib/expect.h"
 #include "ht_render.h"
 
 #define WGTR_MAX_PARAMS		(24)
@@ -783,8 +785,8 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[
 			    /** compute actual offsets that would have been used had the
 			     ** widget really been rendered.
 			     **/
-			    nxo = child_node->x + child_node->left;
-			    nyo = child_node->y + child_node->top;
+			    nxo = child_node->x + child_node->inset_left;
+			    nyo = child_node->y + child_node->inset_top;
 
 			    /** Now we no longer need the widget. **/
 			    wgtrFree(child_node);
@@ -1609,7 +1611,10 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 	node->LayoutGrid = NULL;
 	node->Root = node;  /* this will change when it is added as a child */
 	node->DMPrivate = NULL;
-	node->top = node->bottom = node->right = node->left = 0;
+	node->inset_top = 0;
+	node->inset_bottom = 0;
+	node->inset_right = 0;
+	node->inset_left = 0;
 	node->Verified = 0;
 
 	xaInit(&(node->Properties), 16);
@@ -1640,6 +1645,49 @@ wgtrSetupNode(pWgtrNode node)
     }
 
     
+/*** wgtrSetInsets() - Declares the space that a widget needs in its outer box
+ *** (x/y/width/height) for its UI (e.g. title bars, tabs, or scrollbars).
+ *** The remaining space is the widget's client area where children are laid
+ *** out.  Widget drivers should call this from their New() function, using
+ *** values based on what their rendering driver needs to draw.
+ ***
+ *** Insets shrink the client area but do not alter its coordinate space.
+ *** Children always render from (0,0), although the top and left insets may
+ *** shift where that point is rendered.
+ ***
+ *** A widget cannot be laid out in a space too small for its insets, so this
+ *** function raises min_width/min_height to cover the insets.
+ ***
+ *** @param node   The widget node on which insets are to be set.
+ *** @param top    The number of px required at the top of the widget.
+ *** @param bottom The number of px required at the bottom of the widget.
+ *** @param left   The number of px required at the left of the widget.
+ *** @param right  The number of px required at the right of the widget.
+ ***/
+void
+wgtrSetInsets(pWgtrNode node, int top, int bottom, int left, int right)
+    {
+	if (UNLIKELY(node == NULL))
+	    {
+	    fprintf(stderr,
+		"Warning: Call to wgtrSetInsets(null, %d, %d, %d, %d) with null widget tree node?!\n",
+		top, bottom, left, right
+	    );
+	    return;
+	    }
+	ASSERTMAGIC(node, MGK_WGTR);
+
+	node->inset_top = top;
+	node->inset_bottom = bottom;
+	node->inset_left = left;
+	node->inset_right = right;
+
+	/** Raise min_width and min_height to cover insets (if needed). **/
+	node->min_width  = max(node->min_width,  left + right);
+	node->min_height = max(node->min_height, top + bottom);
+    }
+
+
 int 
 wgtrDeleteChild(pWgtrNode widget, char* child_name)
     {

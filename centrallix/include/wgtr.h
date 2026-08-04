@@ -107,8 +107,13 @@ typedef struct _WN
     double	fl_scale_w, fl_scale_h;		/** Scaled w and h flexibilities calculated for this layout. */
     int		fl_parent_w, fl_parent_h;	/** The expected size of the parent container, used when it flexes. */
     int		min_width, min_height;		/** absolute minimums **/
-    int		x, y, width, height;		/** actual geometry **/
-    int		top, bottom, left, right;	/** container offsets **/
+    int		x, y, width, height;		/** actual geometry (outer box) **/
+    /*** The space that a widget needs in its outer box (x/y/width/height) for
+     *** its UI (e.g. title bars, tabs, or scrollbars).  The remaining space is
+     *** the widget's client area where children are laid out.
+     *** @see wgtrSetInsets()
+     ***/
+    int		inset_top, inset_bottom, inset_left, inset_right;
     XArray	Properties;			/** Array of widget properties **/
     XArray	Children;			/** Array of child widgets **/
     struct _WN*	Parent;
@@ -176,6 +181,7 @@ pWgtrNode wgtrNewNode(	char* name, char* type, pObjSession s,
 			int rx, int ry, int rwidth, int rheight,
 			int flx, int fly, int flwidth, int flheight);   /** create a new widget node **/
 int wgtrSetupNode(pWgtrNode node);
+void wgtrSetInsets(pWgtrNode node, int top, int bottom, int left, int right);	/** declare the widget's own reserved space **/
 int wgtrMergeOverlays(pWgtrNode node, char* objpath, char* app_path, char* overlays[], char* templates[]);
 
 /** wgtr iterator functions **/

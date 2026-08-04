@@ -93,7 +93,6 @@ void aposInit();					/**Registers datastructures used in auto-positioning**/
 int aposInitializeGrid(pAposGrid);		/**Initializes the XArrays in the grid object**/
 void aposFree(pAposGrid);			/**Frees dynamically allocated memory**/
 void aposFreeGrids(pWgtrNode);			/**Frees dynamically allocated memory**/
-void aposSetOffsetBools(pWgtrNode, bool*, bool*, bool*, bool*, int*, int*); /**sets bools used to offset widgets**/
 int aposBuildGrid(pWgtrNode);			/** builds the layout grids **/
 int aposSetLimits(pWgtrNode);			/** enforce min/max sizing **/
 

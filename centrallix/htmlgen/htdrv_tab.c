@@ -279,6 +279,13 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree, "select_translate_along", DATA_T_INTEGER, POD(&along)) != 0) along = 0;
 	if (wgtrGetPropertyValue(tree, "select_translate_out",   DATA_T_INTEGER, POD(&out))   != 0) out = 2;
 	
+	/*** Tab strip thickness along whichever edge has it.  The strip is
+	 *** inside our box, using space given to the tab control by apos.c.
+	 *** See inset declarations in wgtdrv_tab.c.
+	 ***/
+	const int strip_w = (tloc == Left || tloc == Right)  ? tab_w : 0;
+	const int strip_h = (tloc == Top  || tloc == Bottom) ? tab_h : 0;
+
 	/** Determine offset to actual tab pages and offsets for selected tabs. **/
 	int select_x_offset = 0, select_y_offset = 0;
 	switch (tloc)
@@ -289,11 +296,11 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	     *** Left:   xtoffset +1
 	     *** Right:  xtoffset -2
 	     ***/
-	    case Top:    xoffset = 0;     yoffset = tab_h; xtoffset = 0;   ytoffset = 0;   select_x_offset = -along; select_y_offset = -out;   break;
-	    case Bottom: xoffset = 0;     yoffset = 0;     xtoffset = 0;   ytoffset = h-1; select_x_offset = -along; select_y_offset = +out;   break;
-	    case Left:   xoffset = tab_w; yoffset = 0;     xtoffset = 0;   ytoffset = 0;   select_x_offset = -out;   select_y_offset = -along; break;
-	    case Right:  xoffset = 0;     yoffset = 0;     xtoffset = w-1; ytoffset = 0;   select_x_offset = +out;   select_y_offset = -along; break;
-	    case None:   xoffset = 0;     yoffset = 0;     xtoffset = 0;   ytoffset = 0;   select_x_offset =  0;     select_y_offset =  0;     break;
+	    case Top:    xoffset = 0;       yoffset = strip_h; xtoffset = 0;           ytoffset = 0;           select_x_offset = -along; select_y_offset = -out;   break;
+	    case Bottom: xoffset = 0;       yoffset = 0;       xtoffset = 0;           ytoffset = h-strip_h-1; select_x_offset = -along; select_y_offset = +out;   break;
+	    case Left:   xoffset = strip_w; yoffset = 0;       xtoffset = 0;           ytoffset = 0;           select_x_offset = -out;   select_y_offset = -along; break;
+	    case Right:  xoffset = 0;       yoffset = 0;       xtoffset = w-strip_w-1; ytoffset = 0;           select_x_offset = +out;   select_y_offset = -along; break;
+	    case None:   xoffset = 0;       yoffset = 0;       xtoffset = 0;           ytoffset = 0;           select_x_offset =  0;     select_y_offset =  0;     break;
 	    default: mssError(1, "HTTAB", "Unexpected tab location value: %d", tloc); goto err;
 	    }
 	
@@ -584,8 +591,8 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    id,
 	    ht_flex_x(x + xoffset, tree),
 	    ht_flex_y(y + yoffset, tree),
-	    ht_flex_w(w - border_width * 2, tree),
-	    ht_flex_h(h - border_width * 2, tree),
+	    ht_flex_w(w - strip_w - border_width * 2, tree),
+	    ht_flex_h(h - strip_h - border_width * 2, tree),
 	    z + 1,
 	    border_style,
 	    border_color,

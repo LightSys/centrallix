@@ -3555,9 +3555,9 @@ ht_get_parent_w__INTERNAL(pWgtrNode widget)
 	);
 	return -1;
 	}
-    const int parentWidth = parent->width;
-    return widget->fl_parent_w = (parentWidth >= 0)
-	? parentWidth - (parent->left + parent->right) /* Width found! */
+
+    return widget->fl_parent_w = (parent->width >= 0)
+	? parent->width - (parent->inset_left + parent->inset_right) /* Width found! */
 	: ht_get_parent_w__INTERNAL(parent); /* Width not found: search recursively. */
     }
 
@@ -3592,8 +3592,8 @@ ht_get_parent_h__INTERNAL(pWgtrNode widget)
 	);
 	return -1;
 	}
-    const int parentHeight = parent->height;
-    return widget->fl_parent_h = (parentHeight >= 0)
-	? parentHeight - (parent->top + parent->bottom) /* Height found! */
+
+    return widget->fl_parent_h = (parent->height >= 0)
+	? parent->height - (parent->inset_top + parent->inset_bottom) /* Height found! */
 	: ht_get_parent_h__INTERNAL(parent); /* Height not found: search recursively. */
     }
