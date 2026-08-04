@@ -79,6 +79,7 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 	    goto err;
 	    }
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h = -1;
+	if (tree->Flags & WGTR_F_AUTOHEIGHT) h = -1;	/** let htdrv_html.js fit the document **/
 
 	/** Get the HTML source path. **/
 	char src[256] = "";

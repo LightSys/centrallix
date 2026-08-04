@@ -10,7 +10,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -74,6 +74,15 @@ wgtmenuVerify(pWgtrVerifySession s)
 	    }
 	else if (wgtrGetPropertyValue(menu, "popup", DATA_T_INTEGER, POD(&i)) == 0 && i)
 	    menu->Flags |= WGTR_F_FLOATING;
+
+	/*** A menu with no height sizes itself to its rows in the browser, so
+	 *** estimate that it's the min_height.
+	 ***/
+	if (menu->height < 0)
+	    {
+	    menu->Flags |= WGTR_F_AUTOHEIGHT;
+	    menu->height = menu->pre_height = min_height;
+	    }
 
     return 0;
     }

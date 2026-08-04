@@ -173,17 +173,8 @@ pWgtrNode child;
  ***/
 int
 aposAutoPositionWidgetTree(pWgtrNode tree)
-{    
-pXArray patched_widgets = NULL;
-int i=0, count=0, rval = -1;
-
-    /** Note: If xaInit() fails, it leaves the XArray unusable. **/
-    XArray patched_widgets_buf;
-    if (UNLIKELY(xaInit(&patched_widgets_buf, 16) < 0)) goto end;
-    patched_widgets = &patched_widgets_buf;
-
-    /** Handle children with unspecified heights. **/
-    if (UNLIKELY(aposPrepareTree(tree, patched_widgets) < 0)) goto end;
+{
+int rval = -1;
 
     /** Recursively build the layout grids, including lines and sections, for this tree. **/
     if (UNLIKELY(aposBuildGrid(tree) < 0))
@@ -236,18 +227,6 @@ end:
      *** no-op on the success path, where the grids were already freed above.
      ***/
     aposFreeGrids(tree);
-
-    /** Clean up: Unpatch the heights from aposPrepareTree(). **/
-    if (patched_widgets != NULL)
-	{
-	count = xaCount(patched_widgets);
-	for(i = 0; i < count; i++)
-	    {
-	    ((pWgtrNode)xaGetItem(patched_widgets, i))->height = -1;
-	    ((pWgtrNode)xaGetItem(patched_widgets, i))->pre_height = -1;
-	    }
-	xaDeInit(patched_widgets);
-	}
 
     return rval;
 }
@@ -432,121 +411,6 @@ int rval;
     rval = aposSetLimits_r(Parent, &delta_w, &delta_h);
 
     return rval;
-}
-
-/*** Patch children of the given Parent node with unspecified heights. Searches
- *** recursively within containers. Patched children are logged in the given
- *** PatchedWidgets array.
- *** 
- *** @param Parent         The parent node who's childen should be patched.
- *** @param PatchedWidgets The widget children which have been patched.
- *** @returns 0 if successful, or -1 if an error occurs.
- ***/
-int
-aposPrepareTree(pWgtrNode Parent, pXArray PatchedWidgets)
-{
-pWgtrNode Child;
-int i=0, childCount=xaCount(&(Parent->Children));
-
-    /** Check recursion. **/
-    if (UNLIKELY(thExcessiveRecursion()))
-	{
-	    mssError(1, "APOS", "Failed to layout application: resource exhaustion occurred.");
-	    return -1;
-	}
-
-    /** Loop through each child. **/
-    for(i=0; i<childCount; ++i)
-        {
-	    Child = (pWgtrNode)xaGetItem(&(Parent->Children), i);
-	    
-	    /*** If a visual child has an unspecified height, patch it, unless it is in a scrollpane
-	     *** Remember here that strcmp() returns 0 (false) if the strings are equal.
-	     ***/
-	    if ((Child->height < 0) && !(Child->Flags & WGTR_F_NONVISUAL) && 
-	        !isScrollpane(Parent))
-	        {
-		if (UNLIKELY(aposPatchNegativeHeight(Child, PatchedWidgets) < 0))
-		    {
-		    mssError(0, "APOS", "Failed to patch negative height for %s.", Child->Name);
-		    return -1;
-		    }
-		
-		}
-	    
-	    /** If child is a container, but not a floating window, recursively prepare it as well. **/
-	    if ((Child->Flags & WGTR_F_CONTAINER) && !(Child->Flags & WGTR_F_FLOATING))
-		if (UNLIKELY(aposPrepareTree(Child, PatchedWidgets) < 0))
-		    return -1;
-	}
-    
-    return 0;
-}
-
-/*** Try to guess the height of a widget with an unspecified height.
- *** 
- *** @param Widget         The widget child who's height is unspecified.
- *** @param PatchedWidgets The array to add the widget to after patching it.
- *** @returns 0 if successful, or -1 if an error occurs.
- ***/
-int
-aposPatchNegativeHeight(pWgtrNode Widget, pXArray PatchedWidgets)
-{
-ObjData val;
-
-    /** Try to guess the height based on the type of widget. **/
-    if (!strcmp(Widget->Type, "widget/editbox"))
-	{
-	    Widget->height = 16;
-	}
-    else if (!strcmp(Widget->Type, "widget/textbutton"))
-	{
-	    wgtrGetPropertyValue(Widget, "text", DATA_T_STRING, &val);
-	    Widget->height = 13.0 * (0.5 + (float)(strlen(val.String) * 7) / (float)(Widget->width));
-	    if (Widget->height < 20) Widget->height = 20;
-	}
-    else if (!strcmp(Widget->Type, "widget/treeview"))
-	{
-	    Widget->height = 100;
-	}
-    else if (!strcmp(Widget->Type, "widget/html"))
-	{
-	    Widget->height = Widget->width;
-	}
-    else if (!strcmp(Widget->Type, "widget/dropdown"))
-	{
-	    /*if (xaCount(&(Widget->Children)) < 4) 
-	         Widget->height = 40+16*xaCount(&(Widget->Children));
-	    else Widget->height = 104;*/
-	    Widget->height = Widget->min_height;
-	}
-    else if (!strcmp(Widget->Type, "widget/table"))
-	{
-	    Widget->height = 100;
-	}
-    else if (!strcmp(Widget->Type, "widget/menu"))
-	{
-	    Widget->height = 20;
-	}
-    else
-	{
-	return 0;
-	}
-
-    /** Add the widget to the provided array. **/
-    if (UNLIKELY(xaAddItem(PatchedWidgets, Widget) < 0))
-	{
-	mssError(1, "APOS",
-	    "Failed to add %s to the patched widgets XArray (x%d widgets).",
-	    Widget->Name, PatchedWidgets->nItems
-	);
-	return -1;
-	}
-
-    /** Overwrite the "prepositioning" height because it's most likely also invalid. **/
-    Widget->pre_height = Widget->height;
-
-    return 0;
 }
 
 /*** Calculates and sets the flexibility for a container by taking weighted

@@ -97,8 +97,6 @@ int aposBuildGrid(pWgtrNode);			/** builds the layout grids **/
 int aposSetLimits(pWgtrNode);			/** enforce min/max sizing **/
 
 /**Tree Preparation**/
-int aposPrepareTree(pWgtrNode, pXArray);	/**Prepares widget tree for auto-positioning**/
-int aposPatchNegativeHeight(pWgtrNode, pXArray);/**Temporarily sets unspecified heights**/
 void aposSetContainerFlex(pWgtrNode);		/**Determines a container's flexibility**/
 int aposSetFlexibilities(pWgtrNode);		/**Determines a container's flexibility**/
 int aposSetSectionFlex(pAposSection sect, int type);

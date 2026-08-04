@@ -254,6 +254,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	if (wgtrGetPropertyValue(menu,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
 	if (wgtrGetPropertyValue(menu,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
 	if (wgtrGetPropertyValue(menu,"height",DATA_T_INTEGER,POD(&h)) != 0) h = -1;
+	if (menu->Flags & WGTR_F_AUTOHEIGHT) h = -1;	/** let htdrv_menu.js fit the rows **/
 	if (wgtrGetPropertyValue(menu,"width",DATA_T_INTEGER,POD(&w)) != 0) w = -1;
 	if (wgtrGetPropertyValue(menu,"column_width",DATA_T_INTEGER,POD(&col_w)) != 0) col_w = 0;
 	if (wgtrGetPropertyValue(menu,"row_height",DATA_T_INTEGER,POD(&row_h)) != 0) row_h = 0;

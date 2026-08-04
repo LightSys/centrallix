@@ -48,6 +48,7 @@
 #define WGTR_F_CONTROL	    8		/** control structure (i.e. repeat) that should be 'looked through' to its subobjects **/
 #define	WGTR_F_VSCROLLABLE  16		/** contents are vertically scrollable.  Do not resize Y/height **/
 #define	WGTR_F_HSCROLLABLE  32		/** contents are horiz scrollable.  Do not resize X/width **/
+#define	WGTR_F_AUTOHEIGHT   64		/** height was unspecified; the widget sizes itself to its content **/
 
 #define WGTR_PF_NOTEMPLATE  1		/** Don't handle templates on this wgtr Parse operation **/
 #define WGTR_PF_NOSECURITY  2		/** Don't handle security settings on this wgtr Parse operation **/

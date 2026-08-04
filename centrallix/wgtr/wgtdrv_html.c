@@ -11,7 +11,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -73,6 +73,15 @@ wgthtmlVerify(pWgtrVerifySession s)
                 s->CurrWidget->fl_height = 0;
             else
                 s->CurrWidget->fl_height = 100;
+	}
+
+    /*** An html widget with no height grows to fit the loaded document. We
+     *** don't know what height that will be, so we guess that it's a square.
+     ***/
+    if (s->CurrWidget->height < 0 && s->CurrWidget->width >= 0)
+	{
+	s->CurrWidget->Flags |= WGTR_F_AUTOHEIGHT;
+	s->CurrWidget->height = s->CurrWidget->pre_height = s->CurrWidget->width;
 	}
 	
     return 0;

@@ -10,7 +10,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -50,6 +50,11 @@ wgtebVerify(pWgtrVerifySession s)
     int min_height = s->ClientInfo->ParagraphHeight + 2;
 
 	if (this->min_height < min_height) this->min_height = min_height;
+
+	/*** If no height is given, estimate the height for one line of text
+	 *** (since htdrv_editbox.c requires one).
+	 ***/
+	if (this->height < 0) this->height = this->pre_height = min_height;
 
     return 0;
     }

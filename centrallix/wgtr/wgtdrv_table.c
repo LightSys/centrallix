@@ -10,7 +10,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2008 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -37,6 +37,8 @@
 /************************************************************************/
 
 
+#define WGTTBL_DEFAULT_HEIGHT	(100)	/** height to give a table when none is specified, in px **/
+
 
 /*** wgttblVerify - allows the driver to check elsewhere in the tree
  *** to make sure that the conditions it requires for proper functioning
@@ -55,6 +57,10 @@ wgttblVerify(pWgtrVerifySession s)
 	    tbl->y = tbl->r_y = tbl->pre_y = 0;
 	    //tbl->Flags |= WGTR_F_FLOATING;
 	    }
+
+	/** Default an unspecified height, since htdrv_table.c requires one. **/
+	if (strcmp(tbl->Type, "widget/table") == 0 && tbl->height < 0)
+	    tbl->height = tbl->pre_height = WGTTBL_DEFAULT_HEIGHT;
 
     return 0;
     }

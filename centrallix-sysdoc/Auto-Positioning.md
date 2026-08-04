@@ -31,8 +31,6 @@ This document specifies the way in which the auto-positioning module resizes and
       - [Description:](#description)
       - [Method:](#method)
     - [int aposAutoPositionWidgetTree(pWgtrNode)](#int-aposautopositionwidgettreepwgtrnode)
-    - [int aposPrepareTree(pWgtrNode)](#int-apospreparetreepwgtrnode)
-    - [int aposPatchNegativeHeights(pWgtrNode, pXArray)](#int-apospatchnegativeheightspwgtrnode-pxarray)
     - [int aposSetContainerFlex (pWgtrNode)](#int-apossetcontainerflex-pwgtrnode)
     - [int aposAutoPositionContainers (pWgtrNode)](#int-aposautopositioncontainers-pwgtrnode)
     - [int aposInitiallizeGrid (pAposGrid)](#int-aposinitiallizegrid-paposgrid)
@@ -53,14 +51,14 @@ This document specifies the way in which the auto-positioning module resizes and
 ## Overview
 The auto-positioning module is run during the verification of the widget tree in the widget tree module. It makes one final pass through the tree to assess the dimensions, types, and structure of the widgets within, and adjusts the size and position of each of them to scale the layout of the application up or down as is necessary to fit the desired application window. This process is guided by the flexibility property of each widget, either default or author defined, which specifies how much space a widget can absorb or give up. A container widget's flexibility is greatly dependent on the flexibility of the widgets it contains.
 
-The auto-positioning process is carried out in two iterations. The first climbs through the tree from the bottom up and prepares it to be auto-positioned, which involves handling widgets with unspecified heights and setting the flexibility property of each container.
+The auto-positioning process is carried out in two iterations. The first climbs through the tree from the bottom up and prepares it to be auto-positioned, which involves setting the flexibility property of each container.
 
 Once the tree is prepared, the second iteration climbs through the tree, this time from the top down, and sets up a "grid" within each container it encounters. The lines of this grid outline the edges of all the children widgets in their design positions, as well as the borders of the container itself. Each row or column of the grid is then intelligently expanded or contracted based on the flexibility of the widgets that fall within it, until the grid fits the desired size of its container. Once the dimensions of the adjusted grid are defined it is used to determine the new sizes and positions of the widgets associated with it. This establishes the dimensions of the next level of containers, and the same process can take place within them, setting up grids and resizing their widgets, continuing recursively down the widget tree until all the widgets are adjusted. 
 
 ## Preparing the Tree
-The first step of preparing the tree is handling widgets like treeviews, dropdowns, and autoheight buttons that allow their heights to go unspecified. These widgets will get a height eventually, it's just not calculated until they are being rendered. In the meantime the auto-positioning module must have a height of some kind, so a temporary one is assigned based on the widget's type and properties. These "patched" widgets are then stored in the PatchedWidgets XArray, and at the end of the auto-positioning process they are iterated through and reverted back to their unspecified height of -1. If any additional widgets are created that allow their height to go unspecified, an additional case will need to be added to aposPatchNegativeHeight, which assigns a reasonable height to that widget. If this isn't done the error "a widget crossed the border line" will show up.
+Some widgets, such as treeviews, menus, and buttons, allow their heights to be unspecified and size themselves to their content when the browser renders them. The auto-positioning module still needs a height for them, so each widget driver estimates one in its Verify() function and raises the WGTR_F_AUTOHEIGHT flag, which tells the widget's rendering driver to write an unspecified height into the page so the browser does the final sizing. Widgets whose rendering driver requires a height, such as editboxes and tables, set their height field for use in modules like apos, but don't use the flag. Any new widget that allows an unspecified height must do the same in its own driver (errors like "a widget crossed the border line" typically indicate failure to do this).
 
-The second step of preparing the tree is calculating the flexibility of the containers in the tree, which is done by setting up a preliminary grid in the container to analyze the flexibility and orientation of the widgets it contains. The fl_width and fl_height assigned to the container are found by averaging the flexibility of all the columns and all the rows, weighted by column/row size.
+The other step of preparing the tree is calculating the flexibility of the containers in the tree, which is done by setting up a preliminary grid in the container to analyze the flexibility and orientation of the widgets it contains. The fl_width and fl_height assigned to the container are found by averaging the flexibility of all the columns and all the rows, weighted by column/row size.
 
 ## Setting Up the Grids
 The grids are represented by a grid object, which contains sections and line objects. The section object is used to represent both rows and columns, and likewise the line object is used to represent both horizontal and vertical lines. Each section is defined by the two line objects that it points to, and every line save the border lines is pointed to by two sections, either two rows or two columns. One grid is constructed for each container in the widget tree, with four empty XArrays called HLines, VLines, Rows, and Cols.
@@ -150,8 +148,7 @@ There are several constants defined in apos.h that may be tweaked as necessary i
 
 ```
 aposAutoPositionWidgetTree
-    |-aposPrepareTree(R)
-    |    |-aposPatchNegativeHeight
+    |-aposSetFlexibilities(R)
     |    |-aposSetContainerFlex
     |
     |-aposAutoPositionContainers(R)
@@ -197,29 +194,6 @@ A pointer to the head node of the widget tree.
 #### Method:
 After a few things in the tree are prepared, a call is made to a recursive function that does most of the auto-positioning, and a second function is called to process window widgets.
     
-### int aposPrepareTree(pWgtrNode)
-#### Description:
-Recursively traverses the widget tree from the bottom up and sets the flexibility property of each containers according to the flexibility of its contents. Also patches any widgets with unspecified heights.
-
-#### Inputs: 
-A pointer to the container to be prepared, an XArray pointer to the PatchedWidgets array.
-
-#### Results: 
-All containers in the widget tree have a reasonable flexibility value based on their contents, and all widgets have a specified height.
-
-#### Method: 
-As all the children of the given node are looped through, each one is tested to see if its height is specified; if not it is passed to aposPatchNegativeHeight, with the exception of nonvisuals and scrollpanes. A recursive call is then made to prepare any container children, with the exception windows. After all children in the container have been addressed, the flexibility of the container is set using aposSetContainerFlex.
-
-### int aposPatchNegativeHeights(pWgtrNode, pXArray)
-#### Description:
-Sets the height of the given widget to an educated guess.
-
-#### Inputs:  
-A pointer to the container of the widgets to be patched, and a pointer to the PatchedWidgets array.
-
-#### Method:  
-A switch statement determines the type of the given widget, and uses this along with the widget's properties to set the actual (not requested) height to an estimate of what the height will be at render time.
-
 ### int aposSetContainerFlex (pWgtrNode)
 #### Description:
 Sets up the preliminary grid in containers during the preparation of the tree to analyze the contents of the container and produce reasonable flexibility values.

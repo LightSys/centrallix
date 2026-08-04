@@ -10,7 +10,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -48,8 +48,25 @@ wgttbtnVerify(pWgtrVerifySession s)
     {
     pWgtrNode this = s->CurrWidget;
     int min_height = s->ClientInfo->ParagraphHeight + 4;
+    int est_height;
+    int line_count = 1;
+    char* text;
 
 	if (this->min_height < min_height) this->min_height = min_height;
+
+	/*** A button with no height sizes itself to its text in the browser, so
+	 *** estimate how many lines that text wraps onto at the button's width.
+	 ***/
+	if (this->height < 0)
+	    {
+	    if (this->width > 0 && wgtrGetPropertyValue(this, "text", DATA_T_STRING, POD(&text)) == 0)
+		/** Guess line count, adding `this->width - 1` so the int division rounds up. **/
+		line_count = (strlen(text) * s->ClientInfo->CharWidth + this->width - 1) / this->width;
+
+	    est_height = min_height + (line_count - 1) * s->ClientInfo->ParagraphHeight;
+	    this->Flags |= WGTR_F_AUTOHEIGHT;
+	    this->height = this->pre_height = (est_height > min_height) ? est_height : min_height;
+	    }
 
     return 0;
     }
