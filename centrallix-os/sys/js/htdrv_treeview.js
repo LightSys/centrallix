@@ -18,7 +18,7 @@ function tv_show_obj(obj)
     }
 */
 
-function tv_new_layer(width,pdoc,l)
+function tv_new_layer(pdoc,l)
     {
     var nl;
     if (pdoc.tv_layer_cache.length > 0)
@@ -33,14 +33,16 @@ function tv_new_layer(width,pdoc,l)
 	{
 	if(cx__capabilities.Dom0NS)
 	    {
-	    nl = new Layer(width,pdoc.tv_layer_tgt);
+	    nl = new Layer(getClipWidth(l),pdoc.tv_layer_tgt);
 	    }
 	else if(cx__capabilities.Dom1HTML)
 	    {
+	    /*** The row's class positions its right edge, so only the left edge
+	     *** needs to be set (by the caller) to give the row its width.
+	     ***/
 	    nl = document.createElement('DIV');
 	    nl.className = l.divclass;
 	    pg_set_style(nl, 'position','absolute');
-	    pg_set_style(nl, 'overflow','hidden');
 	    pdoc.appendChild(nl);
 	    }
 	else
@@ -50,10 +52,6 @@ function tv_new_layer(width,pdoc,l)
 	tv_alloc_cnt++;
 	}
     htr_init_layer(nl, l, 'tv');
-
-    /** Set the width here rather than above, since cached layers skip that. **/
-    if (width) pg_set_style(nl, 'width', width + 'px');
-
     return nl;
     }
 
@@ -90,8 +88,7 @@ function tv_action_setroot(aparam)
     // Set the root
     if (!aparam.NewRoot) aparam.NewRoot = 'javascript:window';
     if (!aparam.NewRootObj) aparam.NewRootObj = null;
-    tv_init({layer:this.root, fname:aparam.NewRoot, loader:this.root.ld, width:getClipWidth(this.root), newroot:aparam.NewRootObj, branches:this.show_branches, use3d:this.use3d, showrb:this.show_root_branch, icon:this.icon, divclass:this.divclass, sbg:this.sel_bg, desc:this.ord_desc});
-    //tv_init({layer:this.root, fname:aparam.NewRoot, loader:this.root.ld, pdoc:this.root.pdoc, width:getClipWidth(this.root), newroot:aparam.NewRootObj, branches:this.show_branches});
+    tv_init({layer:this.root, fname:aparam.NewRoot, loader:this.root.ld, newroot:aparam.NewRootObj, branches:this.show_branches, use3d:this.use3d, showrb:this.show_root_branch, icon:this.icon, divclass:this.divclass, sbg:this.sel_bg, desc:this.ord_desc});
     if (aparam.Expand == 'yes') this.root.expand(null);
     }
 
@@ -385,8 +382,6 @@ function tv_clear_objs(l) { for(var i = 2; i<l.pdoc.layers.length;i++) l.pdoc.la
 function tv_BuildNewLayers(l, linkcnt)
     {
     /** pre-load some variables **/
-    //var tgtClipWidth = tv_tgt_layer.clip.width;
-    var tgtClipWidth = l.mainlayer.setwidth - (getRelativeX(l) - getRelativeX(l.mainlayer)) - l.root.iconwidth;
     var tgtX = getRelativeX(l);
     var tgtY = getRelativeY(l);
     var jsProps = null;
@@ -413,7 +408,7 @@ function tv_BuildNewLayers(l, linkcnt)
 
 	var link_bold = 0;
 	var one_link;
-	var one_layer = tv_new_layer(l.mainlayer.setwidth,l.pdoc,l.mainlayer);
+	var one_layer = tv_new_layer(l.pdoc,l.mainlayer);
 	setClipHeight(one_layer, l.root.rowheight);
 	var im;
 	can_expand = null;
@@ -820,8 +815,6 @@ function tv_init(param)
 	{
 	alert('browser not supported');
 	}
-    setClipWidth(l, param.width);
-    l.setwidth = param.width;
     l.childimgs = '';
 
     l.collapse=tv_collapse;

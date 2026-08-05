@@ -168,6 +168,15 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	strtcpy(src,ptr,sizeof(src));
 
+	/** Width of the treeview's parent container. **/
+	const int parent_w = ht_get_parent_w(tree);
+
+	/** The gap from the treeview's right edge to the container's right edge. **/
+	const int right = parent_w - x - w;
+
+	/** How much of the parent container's flexibility that right gap absorbs. **/
+	const double fl_right = 1.0 - ht_get_fl_x(tree) - ht_get_fl_w(tree);
+
 	/** Write CSS. **/
 	if (htrAddStylesheetItem_va(s,
 	    "\t\t#tv%POSload { "
@@ -186,13 +195,23 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(0, "HTTREE", "Failed to write treeview loader CSS.");
 	    goto err;
 	    }
+
+	/*** htdrv_treeview.js gives each row its indentation (left edge), so
+	 *** we set the right edge here and the browser derives the width.
+	 *** The right rule is ignored by .tv%POS because it has a width.
+	 ***/
 	if (htrAddStylesheetItem_va(s,
 	    "\t\tdiv.tv%POS  a { %[color:%STR&CSSVAL;%] }\n"
 	    "\t\tdiv.tv%POSh a { %[color:%STR&CSSVAL;%] }\n"
-	    "\t\t.tv%POS { cursor:pointer; white-space:nowrap; }\n",
+	    "\t\t.tv%POS, .tv%POSh { "
+		"cursor:pointer; "
+		"overflow:hidden; "
+		"white-space:nowrap; "
+		"right:"ht_flex_format"; "
+	    "}\n",
 	    id, (*fgcolor),  fgcolor,
 	    id, (*hfgcolor), hfgcolor,
-	    id
+	    id, id, ht_flex(right, parent_w, fl_right)
 	) != 0)
 	    {
 	    mssError(0, "HTTREE", "Failed to write treeview entry CSS.");
@@ -230,7 +249,6 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 		"loader:htr_subel(wgtrGetParentContainer(layer),'tv%POSload'), "
 		"divclass:'tv%POS', "
 		"fname:'%STR&JSSTR', "
-		"width:%INT, "
 		"newroot:null, "
 		"branches:%INT, "
 		"use3d:%INT, "
@@ -239,7 +257,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 		"sbg:'%STR&JSSTR', "
 		"desc:%INT, "
 	    "}); }\n",
-	    name, id, id, src, w,
+	    name, id, id, src,
 	    show_branches, use_3d_lines, show_root_branch,
 	    icon, selected_bg, order_desc
 	);
