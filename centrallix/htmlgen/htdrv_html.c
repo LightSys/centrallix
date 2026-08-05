@@ -88,7 +88,7 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 	    if (strtcpy(src, ptr, sizeof(src)) < 0)
 		{
 		/** Data truncated: Send warning. **/
-		fprintf(stderr, "Warning! Source path truncated.");
+		fprintf(stderr, "Warning! Source path truncated.\n");
 		}
 	    }
 
@@ -114,13 +114,15 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 		    "top:"ht_flex_format"; %]"
 		    "width:"ht_flex_format"; "
 		    "z-index:%POS; "
-		"}\n",
+		"}\n"
+		"\t\t#ht%POSpane2, #ht%POSfader { visibility:hidden; }\n",
 		id, id, id,
-		(x < 0 || y < 0),
+		(x >= 0 && y >= 0),
 		ht_flex_x(x, tree),
 		ht_flex_y(y, tree),
 		ht_flex_w(w, tree),
-		z
+		z,
+		id, id
 	    ) != 0)
 		{
 		mssError(0, "HTHTML", "Failed to add CSS.");
@@ -262,7 +264,7 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 	    if (obj_info->Flags & OBJ_INFO_F_CANT_HAVE_CONTENT)
 		{
 		mssError(1, "HTHTML", "FAIL: Provided object source cannot have content!");
-		goto err;
+		goto end_reading;
 		}
 	    if (obj_info->Flags & OBJ_INFO_F_NO_CONTENT)
 		{
@@ -273,7 +275,8 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** Allocate a buffer for reading HTML content. **/
 	    const size_t page_buf_len = BUFSIZ;
-	    page_buf = check_ptr(nmSysMalloc(page_buf_len * sizeof(char*)));
+	    page_buf = check_ptr(nmSysMalloc(page_buf_len * sizeof(char)));
+	    if (page_buf == NULL) goto end_reading;
 	    
 	    /* read content until we run out.*/
 	    int n_chars_read = 0;
