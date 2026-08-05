@@ -199,6 +199,11 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 		mssError(0, "HTHTML", "Failed to write HTML opening tag.");
 		goto err;
 		}
+	    if (htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "ht%POSloader", id, NULL, "") != 0)
+		{
+		mssError(0, "HTHTML", "Failed to write HTML loader.");
+		goto err;
+		}
 	    if (htrAddBodyItemLayerStart(s, 0, "ht%POSpane", id, NULL) != 0)
 		{
 		mssError(0, "HTHTML", "Failed to write HTML start tag.");
