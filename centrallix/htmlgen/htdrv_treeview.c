@@ -189,7 +189,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	if (htrAddStylesheetItem_va(s,
 	    "\t\tdiv.tv%POS  a { %[color:%STR&CSSVAL;%] }\n"
 	    "\t\tdiv.tv%POSh a { %[color:%STR&CSSVAL;%] }\n"
-	    "\t\t.tv%POS { cursor:pointer; }\n",
+	    "\t\t.tv%POS { cursor:pointer; white-space:nowrap; }\n",
 	    id, (*fgcolor),  fgcolor,
 	    id, (*hfgcolor), hfgcolor,
 	    id

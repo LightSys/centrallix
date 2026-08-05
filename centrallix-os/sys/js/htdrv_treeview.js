@@ -39,9 +39,8 @@ function tv_new_layer(width,pdoc,l)
 	    {
 	    nl = document.createElement('DIV');
 	    nl.className = l.divclass;
-	    //setClip(0, width, 0, 0);
 	    pg_set_style(nl, 'position','absolute');
-	    pg_set_style(nl, 'overflow','visible');
+	    pg_set_style(nl, 'overflow','hidden');
 	    pdoc.appendChild(nl);
 	    }
 	else
@@ -51,6 +50,10 @@ function tv_new_layer(width,pdoc,l)
 	tv_alloc_cnt++;
 	}
     htr_init_layer(nl, l, 'tv');
+
+    /** Set the width here rather than above, since cached layers skip that. **/
+    if (width) pg_set_style(nl, 'width', width + 'px');
+
     return nl;
     }
 
@@ -410,11 +413,7 @@ function tv_BuildNewLayers(l, linkcnt)
 
 	var link_bold = 0;
 	var one_link;
-	//var one_layer = tv_new_layer(tgtClipWidth,l.pdoc,l.mainlayer);
-	//var one_layer = tv_new_layer(null,l.pdoc,l.mainlayer);
 	var one_layer = tv_new_layer(l.mainlayer.setwidth,l.pdoc,l.mainlayer);
-	//setClipWidth(one_layer, tgtClipWidth);
-	setClipWidth(one_layer, l.mainlayer.setwidth);
 	setClipHeight(one_layer, l.root.rowheight);
 	var im;
 	can_expand = null;
