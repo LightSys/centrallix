@@ -81,7 +81,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	/** Verify browser capabilities. **/
 	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1, "HTTERM", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    mssError(1, "HTTREE", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
 	    goto err;
 	    }
 
@@ -242,7 +242,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "tv", "tv_mouseup")   != 0) goto err;
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "\t{ "
+	if (htrAddScriptInit_va(s, "\t{ "
 	    "const layer = wgtrGetNodeRef(ns, '%STR&SYM'); "
 	    "tv_init({ "
 		"layer, "
@@ -260,7 +260,11 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	    name, id, id, src,
 	    show_branches, use_3d_lines, show_root_branch,
 	    icon, selected_bg, order_desc
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTTREE", "Failed to write script init call.");
+	    goto err;
+	    }
 
 	/** Write HTML. **/
 	if (htrAddBodyItem_va(s,
@@ -276,7 +280,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 		    "z-index:%POS; "
 		"'"
 	    ">"
-		"<img src='%STR&HTE' alt='folder'>"
+		"<img src='%STR&HTE' alt='folder' style='float:left;'>"
 		"&nbsp;%STR&HTE"
 	    "</div>\n",
 	    id, /* class */
@@ -287,7 +291,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	    ht_flex_w(w, tree),
 	    z,
 	    (*icon) ? icon : "/sys/images/ico02b.gif", src
-	) != 0) 
+	) != 0)
 	    {
 	    mssError(0, "HTTREE", "Failed to write HTML for treeview root.");
 	    goto err;
@@ -305,7 +309,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	return 0;
 
     err:
-	mssError(0, "HTTM",
+	mssError(0, "HTTREE",
 	    "Failed to render \"%s\":\"%s\".",
 	    tree->Name, tree->Type
 	);

@@ -244,7 +244,7 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
 	{
 	var tvtext = "<nobr>";
 	for(var i = start_img; i<=l.tree_depth; i++)
-	    tvtext += "<IMG width='" + l.root.iconwidth + "' SRC='" + l.imgs[i] + "' align='left'>";
+	    tvtext += "<img width='" + l.root.iconwidth + "' src='" + l.imgs[i] + "' style='float:left;'>";
 	tvtext += "&nbsp;<A HREF='" + link_href + "'>" +
 	    (link_bold?"<b>":"") + htutil_encode(htutil_obscure(link_text)) + (link_bold?"<b>":"") + "</A></nobr>";
 	if (l.tvtext != tvtext)
@@ -278,7 +278,7 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
 	    var img = document.createElement('img');
 	    img.setAttribute('width', '' + l.root.iconwidth);
 	    img.setAttribute('src',l.imgs[i]);
-	    img.setAttribute('align','left');
+	    img.style.cssFloat = 'left';
 	    nobr.appendChild(img);
 	    }
 
