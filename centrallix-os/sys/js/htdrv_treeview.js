@@ -1295,7 +1295,8 @@ function tv_mouseover(e)
     if (e.kind == 'tv')
 	{
 	cn_activate(e.mainlayer, 'MouseOver');
-	if (e.layer.link_txt)
+	/** Only tip if the label is too wide for the row and thus truncated. **/
+	if (e.layer.link_txt && e.layer.scrollWidth > e.layer.clientWidth)
 	    e.layer.tipid = pg_tooltip(e.layer.link_txt, e.pageX, e.pageY);
 	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
