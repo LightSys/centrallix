@@ -235,6 +235,8 @@ function cht_chartjs_init() {
         type: this.params.chart_type,
         data: {},
         options: {
+            responsive: true,
+            maintainAspectRatio: false,
             scales: this.GetScales(),
             title: {
                 display: this.params.title?true:false,
@@ -387,12 +389,6 @@ function cht_init(params) {
     this.update_soon = false; //see cht_object_available
 
     chart_wgt.ChartJsInit();
-    
-    // Set ChartJS options.
-    const { options } = chart_wgt.chart;
-    options.responsive = false;
-    options.maintainAspectRatio = false;
-    options.resizeDelay = 10;
 }
 
 // Load indication

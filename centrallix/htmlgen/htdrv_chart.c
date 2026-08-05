@@ -374,17 +374,14 @@ htchtGenHTML(pHtSession session, pWgtrNode tree, int z)
 	);
 	
 	/** Write the canvas HTML. **/
-	/*** Israel: Dark magic and sorcery beyond my comprehension somehow
-	 ***         cause "CHART HERE" to render as the label for the chart.
-	 ***/
 	htrAddBodyItem_va(session,
 	    "<div id='%STR&SYMdiv'>"
 	        "<canvas "
 		    "id='%STR&SYM' "
 		    "width='%POS' "
-		    "height='%POS' "
-		    "style='width:100%%; height:100%%;'"
+		    "height='%POS'"
 		">"
+		    /** Fallback used when <canvas> is not supported. **/
 		    "<p>CHART HERE</p>"
 		"</canvas>"
 	    "</div>",
