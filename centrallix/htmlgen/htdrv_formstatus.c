@@ -74,10 +74,7 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
 
    /** Get optional style **/
    if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&style)) != 0) style = "";
-   if (!strcmp(style,"large") || !strcmp(style,"largeflat"))
-       w = 90;
-   else
-       w = 13;
+   w = (strcmp(style, "large") == 0 || strcmp(style, "largeflat") == 0) ? 90 : 13;
 
    /** Write named global **/
    if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto err;
@@ -101,14 +98,14 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
 	    "visibility:inherit; "
 	    "left:"ht_flex_format"; "
 	    "top:"ht_flex_format"; "
-	    "width:"ht_flex_format"; "
+	    "width:%POSpx; "
 	    "height:13px; "
 	    "z-index:%POS; "
 	"}\n",
 	id,
 	ht_flex_x(x, tree),
 	ht_flex_y(y, tree),
-	ht_flex_w(w, tree),
+	w,
 	z
     ) != 0)
 	{
@@ -134,14 +131,15 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
 
    /** HTML body <DIV> element for the layers. **/
     const char* type = "";
-    if (strcmp(style, "large") == 0) type = "L";
-    else if (strcmp(style, "largeflat") == 0)  type = "LF";
+    const char* ext = "gif";
+    if (strcmp(style, "large") == 0)		{ type = "L";  ext = "png"; }
+    else if (strcmp(style, "largeflat") == 0)	{ type = "LF"; ext = "png"; }
     if (htrAddBodyItem_va(s,
-	"   <div id=\"fs%POSmain\"><img src=/sys/images/formstat%STR05.png></div>\n",
-	id, type
+	"   <div id=\"fs%POSmain\"><img src=\"/sys/images/formstat%STR05.%STR\"></div>\n",
+	id, type, ext
     ) != 0)
 	{
-	mssError(0, "HTFS", "Failed to render child widgets.");
+	mssError(0, "HTFS", "Failed to write HTML for the status image.");
 	goto err;
 	}
 
