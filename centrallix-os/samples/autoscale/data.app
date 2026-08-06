@@ -175,7 +175,7 @@ data "widget/page"
 		{
 		x=336; y=2; width=328; height=352;
 		chart_type="line";
-		title="line: single bump"; titlecolor="black"; title_size=12;
+		title="line: asymmetric bump"; titlecolor="black"; title_size=12;
 		legend_position="bottom";
 		start_at_zero=yes;
 
