@@ -76,7 +76,7 @@ index "widget/page"
     rings_title "widget/label"
 	{
 	x=8; y=58; width=330; height=18;
-	text="Concentric rings: every margin should stay equal";
+	text="Concentric rings (margins should stay equal)";
 	font_size=12; align=left; valign=middle;
 	}
     rings "widget/pane"
@@ -122,7 +122,7 @@ index "widget/page"
     markers_title "widget/label"
 	{
 	x=346; y=58; width=330; height=18;
-	text="Markers: fixed size, pinned to edges; bars stay centered";
+	text="Markers (fixed size, pinned to edges, bars stay centered)";
 	font_size=12; align=left; valign=middle;
 	}
     markers "widget/pane"
@@ -170,7 +170,7 @@ index "widget/page"
     links_title "widget/label"
 	{
 	x=684; y=58; width=310; height=18;
-	text="Other apps worth resizing (open in a new window)";
+	text="Other resizable apps";
 	font_size=12; align=left; valign=middle;
 	}
     links "widget/pane"
@@ -178,82 +178,87 @@ index "widget/page"
 	x=684; y=78; width=310; height=610;
 	style=lowered; bgcolor="#b0b0b0";
 
-	l1 "widget/textbutton"
+	links_box "widget/vbox"
 	    {
-	    x=8; y=8; width=292; height=20; text="autoscale_test  (flex grid)"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
-	    l1_c "widget/connector"
-		{ event=Click; target=index; action=Launch; Width=900; Height=700; Source="/samples/autoscale_test.app"; }
-	    }
-	l2 "widget/textbutton"
-	    {
-	    x=8; y=34; width=292; height=20; text="autoscale_test2  (minimal flex)"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
-	    l2_c "widget/connector"
-		{ event=Click; target=index; action=Launch; Width=900; Height=700; Source="/samples/autoscale_test2.app"; }
-	    }
-	l3 "widget/textbutton"
-	    {
-	    x=8; y=60; width=292; height=20; text="tab_features  (tab layout by URL param)"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
-	    l3_c "widget/connector"
-		{ event=Click; target=index; action=Launch; Width=800; Height=600; Source="/samples/tab_features.app"; }
-	    }
-	l4 "widget/textbutton"
-	    {
-	    x=8; y=86; width=292; height=20; text="connector_test  (densest page in repo)"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
-	    l4_c "widget/connector"
-		{ event=Click; target=index; action=Launch; Width=1000; Height=760; Source="/tests/ui/connector/connector_test.app"; }
-	    }
-	l5 "widget/textbutton"
-	    {
-	    x=8; y=112; width=292; height=20; text="ors  (tabs, tree, forms, scrollpane)"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
-	    l5_c "widget/connector"
-		{ event=Click; target=index; action=Launch; Width=1000; Height=760; Source="/samples/ors.app"; }
-	    }
-	l6 "widget/textbutton"
-	    {
-	    x=8; y=138; width=292; height=20; text="repeat_test  (widget gallery)"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
-	    l6_c "widget/connector"
-		{ event=Click; target=index; action=Launch; Width=900; Height=700; Source="/tests/ui/repeat/repeat_test.app"; }
-	    }
-	l7 "widget/textbutton"
-	    {
-	    x=8; y=164; width=292; height=20; text="chart_table_test  (chart + table)"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
-	    l7_c "widget/connector"
-		{ event=Click; target=index; action=Launch; Width=1000; Height=760; Source="/samples/chart_table_test.app"; }
-	    }
-	l8 "widget/textbutton"
-	    {
-	    x=8; y=190; width=292; height=20; text="FourTabs  (linked tab controls)"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
-	    l8_c "widget/connector"
-		{ event=Click; target=index; action=Launch; Width=800; Height=600; Source="/samples/FourTabs.app"; }
-	    }
-	l9 "widget/textbutton"
-	    {
-	    x=8; y=216; width=292; height=20; text="scrollpane_test  (scroll + resize)"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
-	    l9_c "widget/connector"
-		{ event=Click; target=index; action=Launch; Width=800; Height=600; Source="/samples/scrollpane_test.app"; }
-	    }
-	l10 "widget/textbutton"
-	    {
-	    x=8; y=242; width=292; height=20; text="window_test  (overlapping windows)"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
-	    l10_c "widget/connector"
-		{ event=Click; target=index; action=Launch; Width=900; Height=700; Source="/samples/window_test.app"; }
-	    }
-	l11 "widget/textbutton"
-	    {
-	    x=8; y=268; width=292; height=20; text="samples index  (treeview + html)"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
-	    l11_c "widget/connector"
-		{ event=Click; target=index; action=Launch; Width=800; Height=600; Source="/samples/index.app"; }
+	    x=8; y=8; width=292; cellsize=20; spacing=5;
+
+	    lnk_autoscale "widget/textbutton"
+		{
+		text="autoscale_test  (flex grid)"; tristate=no;
+		background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+		lnk_autoscale_c "widget/connector"
+		    { event=Click; target=index; action=Launch; Width=900; Height=700; Source="/samples/autoscale_test.app"; }
+		}
+	    lnk_autoscale2 "widget/textbutton"
+		{
+		text="autoscale_test2  (minimal flex)"; tristate=no;
+		background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+		lnk_autoscale2_c "widget/connector"
+		    { event=Click; target=index; action=Launch; Width=900; Height=700; Source="/samples/autoscale_test2.app"; }
+		}
+	    lnk_tabfeat "widget/textbutton"
+		{
+		text="tab_features  (tab layout by URL param)"; tristate=no;
+		background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+		lnk_tabfeat_c "widget/connector"
+		    { event=Click; target=index; action=Launch; Width=800; Height=600; Source="/samples/tab_features.app"; }
+		}
+	    lnk_connector "widget/textbutton"
+		{
+		text="connector_test  (densest page in repo)"; tristate=no;
+		background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+		lnk_connector_c "widget/connector"
+		    { event=Click; target=index; action=Launch; Width=1000; Height=760; Source="/tests/ui/connector/connector_test.app"; }
+		}
+	    lnk_ors "widget/textbutton"
+		{
+		text="ors  (tabs, tree, forms, scrollpane)"; tristate=no;
+		background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+		lnk_ors_c "widget/connector"
+		    { event=Click; target=index; action=Launch; Width=1000; Height=760; Source="/samples/ors.app"; }
+		}
+	    lnk_repeat "widget/textbutton"
+		{
+		text="repeat_test  (widget gallery)"; tristate=no;
+		background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+		lnk_repeat_c "widget/connector"
+		    { event=Click; target=index; action=Launch; Width=900; Height=700; Source="/tests/ui/repeat/repeat_test.app"; }
+		}
+	    lnk_charttable "widget/textbutton"
+		{
+		text="chart_table_test  (chart + table)"; tristate=no;
+		background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+		lnk_charttable_c "widget/connector"
+		    { event=Click; target=index; action=Launch; Width=1000; Height=760; Source="/samples/chart_table_test.app"; }
+		}
+	    lnk_fourtabs "widget/textbutton"
+		{
+		text="FourTabs  (linked tab controls)"; tristate=no;
+		background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+		lnk_fourtabs_c "widget/connector"
+		    { event=Click; target=index; action=Launch; Width=800; Height=600; Source="/samples/FourTabs.app"; }
+		}
+	    lnk_scrollpane "widget/textbutton"
+		{
+		text="scrollpane_test  (scroll + resize)"; tristate=no;
+		background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+		lnk_scrollpane_c "widget/connector"
+		    { event=Click; target=index; action=Launch; Width=800; Height=600; Source="/samples/scrollpane_test.app"; }
+		}
+	    lnk_window "widget/textbutton"
+		{
+		text="window_test  (overlapping windows)"; tristate=no;
+		background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+		lnk_window_c "widget/connector"
+		    { event=Click; target=index; action=Launch; Width=900; Height=700; Source="/samples/window_test.app"; }
+		}
+	    lnk_samples "widget/textbutton"
+		{
+		text="samples index  (treeview + html)"; tristate=no;
+		background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+		lnk_samples_c "widget/connector"
+		    { event=Click; target=index; action=Launch; Width=800; Height=600; Source="/samples/index.app"; }
+		}
 	    }
 	}
     }
