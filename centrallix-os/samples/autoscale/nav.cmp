@@ -1,0 +1,200 @@
+$Version=2$
+
+// Shared navigation strip for the autoscale visual test harness.
+//
+// Every page in this directory instantiates exactly one of these at the top.
+// It provides two rows:
+//
+//   1. Links to each test page.
+//   2. "Render at" links that reload the CURRENT page at a fixed server-side
+//      geometry.
+//
+// The second row is the point of the harness.  Centrallix normally lays a
+// page out on the SERVER at whatever size the browser reported, so resizing
+// the window afterwards is handled entirely by client-side code.  Rendering
+// the same page at a known server geometry and then stretching the window to
+// match a different one lets you compare "scaled to size X" against "rendered
+// at size X" directly.  Any difference is a client-side autoscaling bug.
+//
+// cx__geom is 20 hex digits: width, height, char width, char height and
+// paragraph height, 4 digits each.  The char metrics below (7/16/16) are the
+// same defaults the server uses for cx__geom=design, so the fixed-size
+// renders stay directly comparable to the design render.  Omitting cx__geom
+// entirely (the "browser" link) makes the server ask the browser to measure
+// itself, which is what normally happens.
+nav "widget/component-decl"
+    {
+    // 692 wide, not the full 1000: each page puts its own "server render"
+    // note in the strip of space to the right of this component.  That note
+    // has to read the geometry off the page widget itself, which only a
+    // widget in the page's own tree can do reliably.
+    visual = yes;
+    width = 692;
+    height = 52;
+
+    // Resolved automatically to the enclosing page; not passed at the
+    // instantiation site.
+    page "widget/parameter" { type=object; find_container="widget/page"; }
+
+    // Each page passes its own filename so the "render at" links can reload
+    // that same page.  Read with runserver(), which the expression generator
+    // bakes into a literal string when the connector is written out.
+    page_file "widget/parameter" { type=string; default="index.app"; }
+
+    bar "widget/pane"
+	{
+	x=0; y=0; width=692; height=52;
+	style=raised; bgcolor="#b8b8b8";
+
+	// ---- row 1: the test pages ----
+
+	go_index "widget/textbutton"
+	    {
+	    x=6; y=5; width=78; height=20;
+	    text="Overview"; tristate=no;
+	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    go_index_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="index.app"; }
+	    }
+	go_layout "widget/textbutton"
+	    {
+	    x=90; y=5; width=68; height=20;
+	    text="Layout"; tristate=no;
+	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    go_layout_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="layout.app"; }
+	    }
+	go_containers "widget/textbutton"
+	    {
+	    x=164; y=5; width=90; height=20;
+	    text="Containers"; tristate=no;
+	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    go_containers_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="containers.app"; }
+	    }
+	go_forms "widget/textbutton"
+	    {
+	    x=260; y=5; width=64; height=20;
+	    text="Forms"; tristate=no;
+	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    go_forms_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="forms.app"; }
+	    }
+	go_data "widget/textbutton"
+	    {
+	    x=330; y=5; width=58; height=20;
+	    text="Data"; tristate=no;
+	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    go_data_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="data.app"; }
+	    }
+	go_misc "widget/textbutton"
+	    {
+	    x=394; y=5; width=58; height=20;
+	    text="Misc"; tristate=no;
+	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    go_misc_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="misc.app"; }
+	    }
+
+	// Legacy / low-use widgets are quarantined on their own page so a
+	// failure there cannot obscure one in a widget that matters.
+	go_legacy "widget/textbutton"
+	    {
+	    x=458; y=5; width=72; height=20;
+	    text="Legacy"; tristate=no;
+	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    go_legacy_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="legacy.app"; }
+	    }
+
+	// ---- row 2: server-side render geometry ----
+
+	geom_label "widget/label"
+	    {
+	    x=6; y=30; width=68; height=18;
+	    text="Render at:"; font_size=12; align=left; valign=middle;
+	    }
+
+	geom_browser "widget/textbutton"
+	    {
+	    x=78; y=29; width=66; height=20;
+	    text="browser"; tristate=no;
+	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    geom_browser_c "widget/connector"
+		{
+		event=Click; target=page; action=LoadPage;
+		Source=runserver(:this:page_file);
+		}
+	    }
+	geom_design "widget/textbutton"
+	    {
+	    x=150; y=29; width=60; height=20;
+	    text="design"; tristate=no;
+	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    geom_design_c "widget/connector"
+		{
+		event=Click; target=page; action=LoadPage;
+		Source=runserver(:this:page_file + "?cx__geom=design");
+		}
+	    }
+	geom_640 "widget/textbutton"
+	    {
+	    x=216; y=29; width=66; height=20;
+	    text="640x480"; tristate=no;
+	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    geom_640_c "widget/connector"
+		{
+		event=Click; target=page; action=LoadPage;
+		Source=runserver(:this:page_file + "?cx__geom=028001e0000700100010");
+		}
+	    }
+	geom_800 "widget/textbutton"
+	    {
+	    x=288; y=29; width=66; height=20;
+	    text="800x600"; tristate=no;
+	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    geom_800_c "widget/connector"
+		{
+		event=Click; target=page; action=LoadPage;
+		Source=runserver(:this:page_file + "?cx__geom=03200258000700100010");
+		}
+	    }
+	geom_1024 "widget/textbutton"
+	    {
+	    x=360; y=29; width=72; height=20;
+	    text="1024x768"; tristate=no;
+	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    geom_1024_c "widget/connector"
+		{
+		event=Click; target=page; action=LoadPage;
+		Source=runserver(:this:page_file + "?cx__geom=04000300000700100010");
+		}
+	    }
+	geom_1280 "widget/textbutton"
+	    {
+	    x=438; y=29; width=78; height=20;
+	    text="1280x1024"; tristate=no;
+	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    geom_1280_c "widget/connector"
+		{
+		event=Click; target=page; action=LoadPage;
+		Source=runserver(:this:page_file + "?cx__geom=05000400000700100010");
+		}
+	    }
+	geom_1920 "widget/textbutton"
+	    {
+	    x=522; y=29; width=78; height=20;
+	    text="1920x1080"; tristate=no;
+	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    geom_1920_c "widget/connector"
+		{
+		event=Click; target=page; action=LoadPage;
+		Source=runserver(:this:page_file + "?cx__geom=07800438000700100010");
+		}
+	    }
+
+	// Pinned to the right edge of the component.  If the component scales
+	// correctly this marker stays flush with its right edge at every window
+	// size; drifting inward or clipping means the component itself is
+	// mis-scaled, independently of the page around it.
+	edge_marker "widget/pane"
+	    {
+	    x=678; y=5; width=8; height=42;
+	    style=flat; bgcolor="#d00000"; fl_width=0; fl_height=0;
+	    }
+	}
+    }

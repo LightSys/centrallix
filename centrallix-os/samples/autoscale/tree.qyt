@@ -1,0 +1,80 @@
+$Version=2$
+
+// Tree source for the treeview on the data page of the autoscale harness.
+//
+// Three branches, each testing something different:
+//
+//   Bands  - a real two-level query tree built from the CSV files, whose
+//            leaf labels come from rows.spec's row_annot_exp and are long
+//            enough to truncate.  Tests label clipping and tooltips.
+//   Depth  - static nodes nested eight deep.  Each level indents further,
+//            so the usable label width shrinks as you descend.  Tests the
+//            right-edge clip calculation at every indent level at once.
+//   Short  - labels far shorter than the widget, which must NOT truncate
+//            and must NOT show a tooltip.
+autoscale_tree "system/querytree"
+    {
+    Bands "system/querytree"
+	{
+	// Kept short and free of spaces: a node's 'text' becomes its name in the
+	// ObjectSystem path, so a wordy label here makes the branch awkward to
+	// address from test_obj or a URL.  The long labels that exercise
+	// truncation live on the leaves below and in the Depth branch.
+	text = "Bands";
+	content = "<h1>Bands</h1>Two-level tree: each band, then the rows in it.";
+	content_type = "text/html";
+
+	Band_List "system/querytree"
+	    {
+	    source = "/samples/autoscale/bands.csv/rows";
+	    where = "1 == 1";
+
+	    Band_Rows "system/querytree"
+		{
+		source = "/samples/autoscale/rows.csv/rows";
+		where = ":band == ::band";
+		}
+	    }
+	}
+
+    Depth "system/querytree"
+	{
+	text = "Depth 1 -- 0....5...10...15...20...25...30...35...40 END-1";
+	D2 "system/querytree"
+	    {
+	    text = "Depth 2 -- 0....5...10...15...20...25...30...35...40 END-2";
+	    D3 "system/querytree"
+		{
+		text = "Depth 3 -- 0....5...10...15...20...25...30...35...40 END-3";
+		D4 "system/querytree"
+		    {
+		    text = "Depth 4 -- 0....5...10...15...20...25...30...35...40 END-4";
+		    D5 "system/querytree"
+			{
+			text = "Depth 5 -- 0....5...10...15...20...25...30...35...40 END-5";
+			D6 "system/querytree"
+			    {
+			    text = "Depth 6 -- 0....5...10...15...20...25...30...35...40 END-6";
+			    D7 "system/querytree"
+				{
+				text = "Depth 7 -- 0....5...10...15...20...25...30...35...40 END-7";
+				D8 "system/querytree"
+				    {
+				    text = "Depth 8 -- 0....5...10...15...20...25...30...35...40 END-8";
+				    }
+				}
+			    }
+			}
+		    }
+		}
+	    }
+	}
+
+    Short "system/querytree"
+	{
+	text = "Short labels";
+	S1 "system/querytree" { text = "aaa"; }
+	S2 "system/querytree" { text = "bbb"; }
+	S3 "system/querytree" { text = "ccc"; }
+	}
+    }
