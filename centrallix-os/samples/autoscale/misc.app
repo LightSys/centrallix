@@ -7,6 +7,11 @@ $Version=2$
 // rather than purely from the layout engine, so they are where a resize
 // tends to produce wrong wrapping, wrong clipping or a wrong aspect ratio
 // rather than a wrong rectangle.
+//
+// Several of those drivers default to fl_width=0 (widget/image,
+// widget/button, widget/imagebutton and widget/clock), and one rigid widget
+// pins the whole layout column it sits in or crosses.  The panes below are
+// packed edge to edge so they can easily become completely inflexible.
 misc "widget/page"
     {
     title = "Autoscale Harness -- Misc";
@@ -141,12 +146,14 @@ misc "widget/page"
 	    {
 	    x=6; y=102; width=150; height=26; type=text; text="button type=text";
 	    bgcolor="#a8b0a8"; fgcolor1=black; fgcolor2=white; tristate=no;
+	    fl_width=1;
 	    }
 	bt_over "widget/button"
 	    {
 	    x=164; y=102; width=158; height=26; type=textoverimage; text="textoverimage";
 	    image="/sys/images/grey_gradient.png";
 	    bgcolor="#a8b0a8"; fgcolor1=black; fgcolor2=white; tristate=no;
+	    fl_width=1;
 	    }
 
 	ib_first "widget/imagebutton"
@@ -191,12 +198,14 @@ misc "widget/page"
 	    x=6; y=22; width=140; height=90;
 	    source="/samples/collegiate_peaks.jpg"; aspect=stretch;
 	    text="stretched test image";
+	    fl_width=1;
 	    }
 	img_preserve "widget/image"
 	    {
 	    x=154; y=22; width=140; height=90;
 	    source="/samples/collegiate_peaks.jpg"; aspect=preserve;
 	    text="aspect-preserved test image";
+	    fl_width=1;
 	    }
 
 	img_logo "widget/image"
@@ -204,6 +213,7 @@ misc "widget/page"
 	    x=6; y=120; width=288; height=52;
 	    source="/sys/images/centrallix_374x66.png"; aspect=preserve;
 	    text="Centrallix logo";
+	    fl_width=1;
 	    }
 
 	img_tiny "widget/image"
@@ -312,6 +322,7 @@ misc "widget/page"
 	    x=6; y=24; width=240; height=44;
 	    size=18; seconds=yes; ampm=yes;
 	    fgcolor1="#000000";
+	    fl_width=1;
 	    }
 
 	clock_24_l "widget/label" { x=258; y=6; width=240; height=16; text="24 hour, shadowed"; font_size=11; align=left; valign=middle; }
@@ -320,16 +331,17 @@ misc "widget/page"
 	    x=258; y=24; width=240; height=44;
 	    size=18; seconds=yes; hrtype=24;
 	    shadowed=yes; fgcolor1="#000000"; fgcolor2="#909090"; shadowx=2; shadowy=2;
+	    fl_width=1;
 	    }
 
 	// Fires every two seconds and stamps the time onto the button.
 	the_timer "widget/timer"
 	    {
-	    msec=2000; auto_start=1; auto_reset=1;
+	    msec=1000; auto_start=1; auto_reset=1;
 	    t_conn "widget/connector"
 		{ event=Expire; target=tick_btn; action=SetText; Text=runclient(getdate()); }
 	    }
-	tick_l "widget/label" { x=510; y=6; width=240; height=16; text="timer, every 2s"; font_size=11; align=left; valign=middle; }
+	tick_l "widget/label" { x=510; y=6; width=240; height=16; text="timer"; font_size=11; align=left; valign=middle; }
 	tick_btn "widget/textbutton"
 	    {
 	    x=510; y=24; width=240; height=24; text="waiting for first tick"; tristate=no;
