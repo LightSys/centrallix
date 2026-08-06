@@ -66,272 +66,32 @@ function pg_get_style(element,attr)
 	alert("NULL ELEMENT, attr " + attr + "is unknown.");
 	return null;
 	}
-    if(cx__capabilities.Dom1HTML && cx__capabilities.Dom2CSS)
-	{
-	if(attr == 'zIndex') attr = 'z-index';
-	if(attr.substring(0,5) == 'clip.')
-	    {
-	    //return eval('element.' + attr);
-	    return element.clip[attr.substr(5)];
-	    }	
-	var comp_style = window.getComputedStyle(element,null);
-	if (comp_style.getPropertyCSSValue)
-	    {
-	    var cssValue = comp_style.getPropertyCSSValue(attr);
-	    if (!cssValue) alert(element.id + '.' + attr);
-	    if(cssValue.cssValueType != CSSValue.CSS_PRIMITIVE_VALUE)
-		{
-		alert(attr + ': ' + cssValue.cssValueType);
-		return null;
-		}
-	    if(cssValue.primitiveType >= CSSPrimitiveValue.CSS_STRING)
-		return cssValue.getStringValue();
-	    if (cssValue.primitiveType == CSSPrimitiveValue.CSS_NUMBER)
-		return cssValue.getFloatValue(CSSPrimitiveValue.CSS_NUMBER);
-	    return cssValue.getFloatValue(CSSPrimitiveValue.CSS_PX);
-	    }
-	else
-	    {
-	    var val = comp_style[attr];
-	    var num = parseFloat(val);
-	    if (isNaN(num))
-		return val;
-	    else
-		return num;
-	    }
-	}
-    else if(cx__capabilities.Dom0NS)
-	{
-	return eval('element.' + attr);
-	}
-    else if(cx__capabilities.Dom0IE)
-        {        
-        if(attr.substr(0,5) == 'clip.')
-            {
-            if(attr == 'clip.width')
-                {
-                return getClipWidth(element);
-                }
-            else if(attr == 'clip.height')
-                {
-                return getClipHeight(element);
-                }
-            else if(attr == 'clip.top')
-                {
-                return getClipTop(element);
-                }
-            else if(attr == 'clip.right')
-                {
-                return getClipRight(element);
-                }
-            else if(attr == 'clip.bottom')
-                {
-                return getClipBottom(element);
-                }
-            else if(attr == 'clip.left')
-                {
-                return getClipLeft(element);
-                }
-            else
-                {
-                alert("clip property " + attr + " is undefined in " + element);
-                return null;
-                }                
-            }
-        else if(attr == 'width')
-            {
-            var _w = parseInt(element.currentStyle.width);
-            if (isNaN(_w))
-            	return element.offsetWidth;
-            return _w;
-            }
-        else if(attr == 'height')
-            {
-            var _h = parseInt(element.currentStyle.height);
-            if (isNaN(_h))
-            	return element.offsetHeight;
-            return _h;
-            }
-        else if(attr == 'top')
-            {            
-            return element.currentStyle.top;
-            }
-        else if(attr == 'visibility')
-            {            
-            return element.currentStyle.visibility;
-            }
-        else if(attr == 'zIndex')
-            {            
-            return element.currentStyle.zIndex;
-            }
-        else 
-            {
-            alert(" attr " + attr + " need to be implemeneted in pg_get_style of htdrv_page.js");
-            }
-        return null;
-        }
-    else
-	{
-	alert('cannot calculate CSS values for this browser');
-	}
+
+    if (attr == 'zIndex') attr = 'z-index';
+    if (attr.substring(0, 5) == 'clip.')
+	return element.clip[attr.substr(5)];
+
+    const val = window.getComputedStyle(element, null)[attr];
+    const num = parseFloat(val);
+    return (isNaN(num)) ? val : num;
     }
 
-function pg_set_style(element,attr, value)
+function pg_set_style(element, attr, value)
     {
-    if(cx__capabilities.Dom1HTML && cx__capabilities.Dom2CSS)
-	{
-	if(attr.substr(0,5) == 'clip.')
-	    {
-	    element[attr] = value;
-	    return;
-	    }
-	if (isNaN(parseInt(value)) || (String(value)).indexOf(" ") >= 0)
-	    element.style.setProperty(attr,value,"");
-	else
-	    element.style.setProperty(attr,parseInt(value) + "px","");
-	return;
-	}
-    else if(cx__capabilities.Dom0NS)
+    if(attr.substr(0,5) == 'clip.')
 	{
 	element[attr] = value;
 	return;
 	}
-    // Jason Yip
-    else if(cx__capabilities.Dom0IE)
-	{
-	if(attr == 'visibility') 
-	    {
-	    element.runtimeStyle.visibility = value;
-	    return;
-	    }
-	else if(attr == 'left')
-	    {
-	    element.style.pixelLeft = value;
-	    return;
-	    }
-	else if(attr == 'top')
-	    {
-	    element.style.pixelTop = value;
-	    return;
-	    }
-	else if(attr == 'clip.top')
-	    {
-	    setClipTop(element, value);
-	    return;
-	    }
-	else if(attr == 'clip.right')
-	    {
-	    setClipRight(element, value);
-	    return;
-	    }
-	else if(attr == 'clip.bottom')
-	    {
-	    setClipBottom(element, value);
-	    return;
-	    }
-	else if(attr == 'clip.left')
-	    {
-	    setClipLeft(element, value);
-	    return;
-	    }	    
-	else if(attr == 'clip.height')
-	    {
-	    setClipHeight(element, value);
-	    return;
-	    }
-	else if(attr == 'clip.width')
-	    {
-	    setClipWidth(element, value);
-	    return;
-	    }
-	else if(attr == 'pageX')
-	    {
-	    setPageX(element, value);
-	    return;
-	    }
-	else if(attr == 'pageY')
-	    {
-	    setPageY(element, value);	    
-	    return;
-	    }
-	else if(attr == 'zIndex')
-	    {
-	    element.runtimeStyle.zIndex = value;
-	    return;
-	    }
-	else if(attr == 'bgColor')
-	    {
-	    element.runtimeStyle.backgroundColor = value;
-	    return;
-	    }
-	else if(attr == 'position')
-	    {
-	    element.runtimeStyle.position = value;
-	    return;
-	    }	    
-	else if(attr == 'width')
-	    {
-	    element.runtimeStyle.width = value;
-	    return;
-	    }	    
-	else if(attr == 'height')
-	    {
-	    element.runtimeStyle.height = value;
-	    return;
-	    }	    
-	else
-	    {
-	    alert(attr + " is not implemented.");
-	    return;
-	    }
-	return;
-	}	
+    if (isNaN(parseInt(value)) || (String(value)).indexOf(" ") >= 0)
+	element.style.setProperty(attr, value, "");
     else
-	{
-	alert('cannot set CSS values for this browser');
-	return;
-	}
+	element.style.setProperty(attr, parseInt(value) + "px", "");
     }
 
 function pg_set_style_string(element,attr, value)
     {
-    if(cx__capabilities.Dom1HTML && cx__capabilities.Dom2CSS)
-	{
-	element.style.setProperty(attr,value,"");
-	return;
-	}
-    else if(cx__capabilities.Dom0NS)
-	{
-	element[attr] = value;
-	return;
-	}
-    else if(cx__capabilities.Dom0IE)
-	{
-	if(attr == 'visibility') 
-	    {
-	    element.runtimeStyle.visibility = value;
-	    return;
-	    }
-	else if(attr == 'position')
-	    {
-	    element.runtimeStyle.position = value;
-	    return;
-	    }
-	else if(attr == 'width')
-	    {
-	    element.runtimeStyle.width = value;
-	    return;
-	    }	    
-	else
-	    {
-	    alert(attr + " is not implemented in set_style_string in htdrv_page.js.");
-	    }
-	}	
-    else
-	{
-	alert('cannot set CSS values for this browser');
-	return;
-	}
+    element.style.setProperty(attr,value,"");
     }
 
 // pg_show_containers() - makes sure containers, from innermost to
@@ -360,20 +120,11 @@ function pg_show_containers(l, x, y)
 // the current one.
 function pg_get_container(l)
     {
-    if (cx__capabilities.Dom0NS)
-	{
-	if (typeof l.parentLayer == 'undefined') return l;
-	else return l.parentLayer;
-	}
-    else if (cx__capabilities.Dom1HTML)
-	{
-	if (!l) return null;
-	do  {
-	    l = l.parentNode;
-	    } while (l && l != window && l.tagName != 'BODY' && l.tagName != 'DIV' && l.tagName != 'IFRAME');
-	return l;
-	}
-    return null;
+    if (!l) return null;
+    do  {
+	l = l.parentNode;
+	} while (l && l != window && l.tagName != 'BODY' && l.tagName != 'DIV' && l.tagName != 'IFRAME');
+    return l;
     }
 
 
@@ -381,16 +132,11 @@ function pg_get_container(l)
 // one, at the top level (i.e., a direct child of the page itself)
 function pg_toplevel_layer(l)
     {
-    if (cx__capabilities.Dom0NS)
-	{
-	while (l != window && l.parentLayer != window) l = l.parentLayer;
-	}
-    else
-	{
-	while (l.tagName != 'BODY' && l.parentNode.tagName != 'BODY' && 
-		l != window && l.parentNode != window) 
-	    l = l.parentNode;
-	}
+    while (l.tagName != 'BODY'
+	&& l.parentNode.tagName != 'BODY'
+	&& l != window
+	&& l.parentNode != window
+    ) l = l.parentNode;
     return l;
     }
 
@@ -398,25 +144,9 @@ function pg_toplevel_layer(l)
 /** Function to get the links attached to a layer **/
 function pg_links(o)
     {
-    if(cx__capabilities.Dom1HTML)
-	{
-	if(o.contentDocument)
-	    {
-	    return o.contentDocument.getElementsByTagName("a");
-	    }
-	else
-	    {
-	    return o.getElementsByTagName("a");
-	    }
-	}
-    else if(cx__capabilities.Dom0NS || cx__capabilities.Dom0IE)
-	{
-	return o.document.links;
-	}
-    else
-	{
-	return null;
-	}
+    return (o.contentDocument)
+	? o.contentDocument.getElementsByTagName("a")
+	: o.getElementsByTagName("a");
     }
 
 /** Function to get the layers attached to a layer **/
@@ -424,23 +154,8 @@ function pg_layers(o)
     {
     if(!o)
 	return null;
-    if(cx__capabilities.Dom1HTML)
-	{
-	var divs = o.getElementsByTagName("DIV");
-	return divs;
-	}
-    else if(cx__capabilities.Dom0NS || cx__capabilities.Dom0IE)
-	{
-	if(!o.document)
-	    {
-	    return o.layers;
-	    }
-	return o.document.layers;
-	}
-    else
-	{
-	return null;
-	}
+
+    return o.getElementsByTagName("DIV");
     }
 
 /** Function to get the images attached to a layer **/
@@ -448,47 +163,19 @@ function pg_images(o)
     {
     if(!o)
 	return null;
-    if(cx__capabilities.Dom1HTML)
-	{
-	return o.getElementsByTagName("img");
-	}
-    else if(cx__capabilities.Dom0NS || cx__capabilities.Dom0IE)
-	{
-	if(!o.document)
-	    {
-	    return o.images;
-	    }
-	return o.document.images;
-	}
-    else
-	{
-	return null;
-	}
+
+    return o.getElementsByTagName("img");
     }
 
 /** function to set an attribute **/
 function pg_set(o,a,v)
     {
-    if(cx__capabilities.Dom1HTML)
-	{
-	return o.setAttribute(a,v);
-	}
-    else
-	{
-	o[a]=v;
-	}
+    return o.setAttribute(a,v);
     }
 
 function pg_get(o,a)
     {
-    if(cx__capabilities.Dom1HTML)
-	{
-	return o.getAttribute(a);
-	}
-    else
-	{
-	return o[a];
-	}
+    return o.getAttribute(a);
     }
 
 //END SECTION: DOM/CSS helper functions -----------------------------------
@@ -532,7 +219,6 @@ function pg_ping_receive()
 
 	// Inactivity timeout imminent?  We catch this a bit early so the user
 	// doesn't get a 401 on a normal data request.
-	//
 	if (parseInt(link.text) > 0 && parseInt(link.text) < pg_interval + 2000)
 	    {
 	    clearInterval(this.tid);
@@ -569,80 +255,6 @@ function pg_logout(all)
 	}
     }
 
-function pg_get_computed_clip(o) //SETH: ??
-    {
-    if(cx__capabilities.Dom2CSS)
-	return getComputedStyle(o,null).getPropertyCSSValue('clip').getRectValue();
-    else if(cx__capabilities.Dom0NS)
-	return o.clip;
-    else if(cx__capabilities.Dom0IE)
-	return o.runtimeStyle.clip;
-    else
-	return null;
-    }
-
-function pg_get_clip(o)
-    {
-    if(cx__capabilities.Dom2CSS2)
-	{
-	var clip = o.style.getPropertyCSSValue('clip');
-	if(clip)
-	    return clip.getRectValue();
-	else
-	    {
-	    var computed = getComputedStyle(o,null).getPropertyCSSValue('clip').cssText;
-	    o.style.setProperty('clip',computed,"");
-	    clip = o.style.getPropertyValue('clip');	    
-	    clip = o.style.getPropertyCSSValue('clip');	    
-	    return clip.getRectValue;
-	    }
-	}
-    else if(cx__capabilities.Dom0NS)
-	return o.clip;
-    else if(cx__capabilities.Dom0IE)
-	return o.runtimeStyle.clip;	
-    else
-	return null;
-    }
-
-
-/** Function to emulate getElementById **/
-function pg_getelementbyid(nm)
-    {
-    if (this.layers)
-	return this.layers[nm];
-    else if (this.all)
-	return this.all[nm];
-    else
-	return null;
-    }
-
-/** Function to walk the DOM and set up getElementById emulation **/
-function pg_set_emulation(d)
-    {
-    var a = null;
-    var i = 0;
-    d.getElementById = pg_getelementbyid;
-    if (d.document) 
-	{
-	d = d.document;
-	d.getElementById = pg_getelementbyid;
-	}
-    if (d.layers)
-	a = d.layers;
-    else if (d.all)
-	a = d.all;
-    else
-	a = null;
-    if (a)
-	{
-	for(i=0;i<a.length;i++)
-	    {
-	    pg_set_emulation(a[i]);
-	    }
-	}
-    }
-
 /** Function to set modal mode to a layer. **/
 function pg_setmodal(l, is_modal)
     {
@@ -670,21 +282,13 @@ function pg_setmodal(l, is_modal)
 	    pg_modallayer = l;
 	    }
 	}
-    /*if (pg_modallist.length && !l)
-	l = pg_modallist.pop();
-    else if (l && pg_modallayer)
-	pg_modallist.push(pg_modallayer);
-    pg_modallayer = l;*/
     if (!window.pg_masklayer)
         {
 	pg_masklayer = htr_new_layer(pg_width, null);
 	setClipWidth(pg_masklayer, pg_width);
 	setClipHeight(pg_masklayer, pg_height);
 	resizeTo(pg_masklayer, pg_width, pg_height);
-	if (cx__capabilities.CSS2)
-	    htr_setbgimage(pg_masklayer, "/sys/images/black_trans_50.png");
-	else
-	    htr_setbgimage(pg_masklayer, "/sys/images/black_trans_2x2.gif");
+	htr_setbgimage(pg_masklayer, "/sys/images/black_trans_50.png");
 	}
     if (pg_modallayer)
 	{
@@ -703,33 +307,18 @@ function pg_setmodal(l, is_modal)
     }
 
 /** Function to find out whether image or layer is in a layer **/
-function pg_isinlayer(outer,inner)
+function pg_isinlayer(outer, inner)
     {
     if (inner == outer) return true;
-    if(!outer) return true;
-    if(!inner) return false;
-    var i = 0;
-    if(cx__capabilities.Dom1HTML)
-        {
-	while(inner)
-	    {
-	    if (inner == outer) return true;
-	    if (inner == window || inner == document) break;
-	    inner = inner.parentNode;
-	    }
-        }
-    else
-        {
-		for(i=0;i<outer.layers.length;i++)
-	        {
-			if (outer.layers[i] == inner) return true;
-			if (pg_isinlayer(outer.layers[i], inner)) return true;
-			}
+    if (!outer) return true;
+    if (!inner) return false;
+
+    while (inner)
+	{
+	if (inner == outer) return true;
+	if (inner == window || inner == document) break;
+	inner = inner.parentNode;
 	}
-//    for(i=0;i<outer.document.images.length;i++)
-//		{
-//		if (outer.document.images[i] == inner) return true;
-//		}
     return false;
     }
 
@@ -791,30 +380,18 @@ function pg_init_box({
     return;
     }
 
-/** To hide a box **/
-function pg_hidebox(tl,bl,rl,ll)
+/** Hides a box **/
+function pg_hidebox(tl, bl, rl, ll)
     {
-    htr_setvisibility(tl,'hidden');
-    htr_setvisibility(bl,'hidden');
-    htr_setvisibility(rl,'hidden');
-    htr_setvisibility(ll,'hidden');
-    
-    if (cx__capabilities.Dom0NS)
-        {    
-        tl.moveAbove(document.layers.pgtvl);
-        bl.moveAbove(document.layers.pgtvl);
-        rl.moveAbove(document.layers.pgtvl);
-        ll.moveAbove(document.layers.pgtvl);
-        }
-    else if (cx__capabilities.Dom1HTML)
-        {
-        moveAbove(tl, document.getElementById("pgtvl"));
-        moveAbove(bl, document.getElementById("pgtvl"));
-        moveAbove(rl, document.getElementById("pgtvl"));
-        moveAbove(ll, document.getElementById("pgtvl"));
-        }
-        
-    return;
+    htr_setvisibility(tl, 'hidden');
+    htr_setvisibility(bl, 'hidden');
+    htr_setvisibility(rl, 'hidden');
+    htr_setvisibility(ll, 'hidden');
+
+    moveAbove(tl, document.getElementById("pgtvl"));
+    moveAbove(bl, document.getElementById("pgtvl"));
+    moveAbove(rl, document.getElementById("pgtvl"));
+    moveAbove(ll, document.getElementById("pgtvl"));
     }
 
 /*** Internal constructor function to create a new clickable/hoverable "area".
@@ -877,73 +454,43 @@ function pg_area(parent, x, y, width, height, cls, name, f)
     }
 
 /** Function to resize a given page area **/
-function pg_resize_area(a,w,h,xo,yo)
+function pg_resize_area(a, w, h, xo, yo)
     {
     if (xo == null) xo = a.x;
     if (yo == null) yo = a.y;
-    var x=getPageX(a.layer)+xo;
-    var y=getPageY(a.layer)+yo;
-    if (cx__capabilities.Dom0NS)
-	{
-	var tl=document.layers.pgtop;
-	var bl=document.layers.pgbtm;
-	var ll=document.layers.pglft;
-	var rl=document.layers.pgrgt;
-	}
-    else if (cx__capabilities.Dom1HTML)
-	{
-	var tl=document.getElementById("pgtop");
-	var bl=document.getElementById("pgbtm");
-	var ll=document.getElementById("pglft");
-	var rl=document.getElementById("pgrgt");
-	}
+
+    const x = getPageX(a.layer) + xo;
+    const y = getPageY(a.layer) + yo;
+
     a.width = w;
     a.height = h;
     a.x = xo;
     a.y = yo;
-    if (htr_getvisibility(tl) == 'inherit')
+
+    for (const prefix of ['pg', 'pgk'])
 	{
-	resizeTo(tl, w,1);
-	setClipWidth(tl, w);
-	resizeTo(bl, w+1,1);
-	setClipWidth(bl, w+1);
-	resizeTo(rl, 1,h+1);
-	setClipHeight(rl, h+1);
-	resizeTo(ll, 1,h);
-	setClipHeight(ll, h);
-	moveToAbsolute(tl, x,y);
-	moveToAbsolute(bl, x,y+h);
-	moveToAbsolute(ll, x,y);
-	moveToAbsolute(rl, x+w,y);
-	}
-    if (cx__capabilities.Dom0NS)
-	{
-	tl=document.layers.pgktop;
-	bl=document.layers.pgkbtm;
-	ll=document.layers.pgklft;
-	rl=document.layers.pgkrgt;
-	}
-    else
-	{
-	tl=document.getElementById("pgktop");
-	bl=document.getElementById("pgkbtm");
-	ll=document.getElementById("pgklft");
-	rl=document.getElementById("pgkrgt");
-	}
-    if (htr_getvisibility(tl) == 'inherit')
-	{
-	resizeTo(tl, w,1);
-	setClipWidth(tl, w);
-	resizeTo(bl, w+1,1);
-	setClipWidth(bl, w+1);
-	resizeTo(rl, 1,h+1);
-	setClipHeight(rl, h+1);
-	resizeTo(ll, 1,h);
-	setClipHeight(ll, h);
-	moveToAbsolute(tl, x,y);
-	moveToAbsolute(bl, x,y+h);
-	moveToAbsolute(ll, x,y);
-	moveToAbsolute(rl, x+w,y);
+	// Get layers.
+	const top = document.getElementById(prefix + 'top');
+	if (htr_getvisibility(top) != 'inherit') continue;
+	const bottom = document.getElementById(prefix + 'btm');
+	const left   = document.getElementById(prefix + 'lft');
+	const right  = document.getElementById(prefix + 'rgt');
+
+	resizeTo      (top, w, 1);
+	setClipWidth  (top, w);
+	moveToAbsolute(top, x, y);
+
+	resizeTo      (bottom, w + 1, 1);
+	setClipWidth  (bottom, w + 1);
+	moveToAbsolute(bottom, x, y + h);
+
+	resizeTo      (left, 1, h);
+	setClipHeight (left, h);
+	moveToAbsolute(left, x, y);
+
+	resizeTo      (right, 1, h + 1);
+	setClipHeight (right, h + 1);
+	moveToAbsolute(right, x + w, y);
 	}
     }
 
@@ -1130,12 +677,6 @@ function pg_togglecursor()
     if (pg_curkbdlayer != null && pg_curkbdlayer.cursorlayer != null)
 	{
 	var cl = pg_curkbdlayer.cursorlayer;
-
-	//status = cl.currentStyle.visibility;
-	//status = cl.style.left + " " + cl.style.top;
-	//resizeTo(cl, 100, 100);
-	
-	//status = cl.runtimeStyle.zIndex;
 	
 	if (htr_getvisibility(cl) != 'inherit')
 	    htr_setvisibility(cl,'inherit');
@@ -1202,41 +743,11 @@ function pg_keyuphandler(k,m,e)
 
 function pg_keypresshandler(k,m,e)
     {
-    return pg_keyhandler_internal(k,m,e);
+    return pg_keyhandler(k,m,e);
     }
 
 function pg_keyhandler(k,m,e)
     {
-    //alert(this.caller);
-
-    // block non-special codes for IE here - handle em in keypress, not keydown.
-    //if (cx__capabilities.Dom0IE || cx__capabilities.Dom2Events)
-    if (cx__capabilities.Dom0IE)
-	{
-	if (k >= 32 && k != 46)
-	    return true;
-
-	// IE passes DEL in as code 46 for keydown.  ASC(46), the period,
-	// is passed as code 190 here but code 46 in the keypress event.  
-	// Go figure.
-	if (k == 46) 
-	    k = 127;
-	}
-
-    var r = pg_keyhandler_internal(k,m,e);
-    return  r;
-    }
-
-function pg_keyhandler_internal(k,m,e)
-    {
-    // can't capture ctrl-V, ctrl-C, ctrl-X as keypresses.
-    //if (e.ctrlKey && (k == 118 || k == 99 || k == 120))
-    //	return true;
-
-    //htr_alert_obj(e,1);
-    // layer.keyhandler is a callback routine that is optional 
-    // on any layer requesting focus with pg_addarea().
-    // It is set up in the corresponding widget drivers.
     if (pg_curkbdlayer != null && 
 	pg_curkbdlayer.keyhandler != null)
 	{
@@ -1261,22 +772,7 @@ function pg_keyhandler_internal(k,m,e)
 function pg_status_init() //SETH: ??
     {
     pg_status = null;
-    if(cx__capabilities.Dom1HTML)
-	{
-	pg_status = document.getElementById("pgstat");
-	}
-    else if(cx__capabilities.Dom0NS)
-	{
-	pg_status = document.layers.pgstat;
-	}
-    else if(cx__capabilities.Dom0IE)
-	{
-	pg_status = document.all.pgstat;
-	}
-    else
-	{
-	return false;
-	}
+    pg_status = document.getElementById("pgstat");
     
     if (!pg_status)
 	return false;
@@ -1345,7 +841,6 @@ function pg_init(l,a,gs,ct) //SETH: ??
     window.windowlist = {};
     window.pg_appwindows = {};
     pg_attract = a;
-    if (cx__capabilities.Dom0NS) pg_set_emulation(document);
     htr_init_layer(window,window,"window");
     if (typeof window.name == 'undefined')
 	window.name = 'window';
@@ -1627,11 +1122,7 @@ function pg_launch(aparam)
 
 function pg_mvpginpt(ly)
     {
-
-    if (!cx__capabilities.Dom0IE)
-        {
-        pg_layer = ly;
-        }
+    pg_layer = ly;
     var a=(getdocHeight()-getInnerHeight()-2)>=0?16:1;
     var b=(getdocWidth()-getInnerWidth()-2)>=0?22:5;
     
@@ -1826,13 +1317,10 @@ function pg_expression(o,p,e,l,c)
     expobj.Expression = e;
     expobj.ParamList = l;
     expobj.Context = c;
-    //var _context = window[c];
     var _context = c;
-    //var nodelist = wgtrNodeList(_context);
     var node = wgtrGetNode(_context, expobj.Objname);
     var _this = node;
     window.__cur_exp = expobj;
-    //wgtrSetProperty(node, expobj.Propname, eval(expobj.Expression));
     wgtrSetProperty(node, expobj.Propname, expobj.Expression(_context,_this));
     pg_explist.push(expobj);
     for(var i=0; i<l.length; i++)
@@ -1840,7 +1328,6 @@ function pg_expression(o,p,e,l,c)
 	var item = l[i];
 	var ref;
 	if (item[0] == "*") continue; // cannot handle global listening yet
-	//item[2] = nodelist[item[0]]; // get obj reference
 	item[2] = wgtrGetNodeUnchecked(_context, item[0]); // get obj reference
 	if (item[2])
 	    {
@@ -1853,61 +1340,33 @@ function pg_expression(o,p,e,l,c)
 
 function pg_expchange_cb(exp) //SETH: ??
     {
-    //var _context = window[exp.Context];
     var _context = exp.Context;
     var node = wgtrGetNode(_context, exp.Objname);
     var _this = node;
     window.__cur_exp = exp;
-    //var v = eval(exp.Expression);
     var v = exp.Expression(_context,_this);
-    //pg_explog.push('assign: obj ' + node.__WgtrName + ', prop ' + exp.Propname + ', nv ' + v + ', exp ' + exp.Expression);
     wgtrSetProperty(node, exp.Propname, v);
     }
 
 function pg_expchange(p,o,n)
     {
     if (o==n) return n;
-    /*if (this && this.__WgtrName == 'donor_osrc' && p == 'p_given_name' && pg_username == 'dbeeley')
-	{
-	pg_explog.push('expchange: id ' + this.id + ' ' + p + ' => ' + o + ' to ' + n + ' pg_explist len ' + pg_explist.length + ' paramlist len ' + pg_explist[8].ParamList.length);
-	if (!pg_explist[8]) pg_explog.push('no exp');
-	else if (!pg_explist[8].ParamList[0]) pg_explog.push('no param');
-	else if (!pg_explist[8].ParamList[0][2]) pg_explog.push('no ref');
-	else if (pg_explist[8].ParamList[0][2] != this) pg_explog.push('obj discrep ' + this.__WgtrName + ' != ' + pg_explist[8].ParamList[0][2].__WgtrName);
-	else if (pg_explist[8].ParamList[0][1] != p) pg_explog.push('attr discrep ' + p + ' != ' + pg_explist[8].ParamList[0][1]);
-	else pg_explog.push('no prob found');
-	}*/
     var str = '';
     for(var i=0;i<pg_explist.length;i++)
 	{
-	//str += '' + i + ':';
 	var exp = pg_explist[i];
 	for(var j=0;j<exp.ParamList.length;j++)
 	    {
-	    //str += '' + j + ',';
 	    var item = exp.ParamList[j];
-	    //if (this == item[2]) str += 't';
-	    //if (p == item[1]) str += 'p';
-	    //if (this && this.__WgtrName == 'donor_osrc' && p == 'p_given_name' && pg_username == 'dbeeley' && i == 8 && j == 0)
-	//	str += ' ' + this.id + ' ';
-	    //var prevcmp = (this == item[2]);
+
 	    // THE BELOW LINE IS NEEDED TO WORK AROUND A FIREFOX BUG
 	    var str = this?(' ' + this.id + ' ' + this.__WgtrName):'';
-	    //if (!prevcmp && this == item[2]) pg_explog.push('wow!');
 	    if (this == item[2] && p == item[1])
 		{
-		//alert("eval " + exp.Objname + "." + exp.Propname + " = " + exp.Expression);
-		//pg_explog.push('change: obj ' + ((this && this.__WgtrName)?this.__WgtrName:'(unknown)') + ', prop ' + p + ', ov ' + o + ', nv ' + n + ', exp ' + exp.Expression);
 		pg_addsched_fn(window, 'pg_expchange_cb', [exp], 0);
 		}
 	    }
-	//str += '.  ';
 	}
-    /*if (this && this.__WgtrName == 'donor_osrc' && p == 'p_given_name' && pg_username == 'dbeeley')
-	{
-	pg_explog.push(str);
-	pg_explog.push('expchange end: ' + p + ' => ' + o + ' to ' + n);
-	}*/
     return n;
     }
 
@@ -1925,14 +1384,15 @@ function pg_removemousefocus()
     {
     if (pg_curarea.layer.losemousefocushandler) 
 	pg_curarea.layer.losemousefocushandler(pg_curarea.layer, pg_curarea.cls, pg_curarea.name, pg_curarea);
-    if (cx__capabilities.Dom0NS)
-        {
-    	if (pg_curarea.flags & 1) pg_hidebox(document.layers.pgtop,document.layers.pgbtm,document.layers.pgrgt,document.layers.pglft);
-    	}
-    else if (cx__capabilities.Dom1HTML)
-    	{
-    	if (pg_curarea.flags & 1) pg_hidebox(document.getElementById("pgtop"),document.getElementById("pgbtm"),document.getElementById("pgrgt"),document.getElementById("pglft"));
-    	}    
+    if (pg_curarea.flags & 1)
+	{
+	pg_hidebox(
+	    document.getElementById("pgtop"),
+	    document.getElementById("pgbtm"),
+	    document.getElementById("pgrgt"),
+	    document.getElementById("pglft")
+	);
+	}
     pg_curarea = null;
     return true;
     }
@@ -1946,7 +1406,6 @@ function pg_findfocusarea(l, xo, yo)
 	    yo < pg_arealist[i].y+pg_arealist[i].height && l != pg_arealist[i])))
 	    {
 	    if (l == pg_arealist[i]) break;
-	    //alert("focus area -- " + i);
 	    return pg_arealist[i];
 	    }
 	}
@@ -1968,40 +1427,22 @@ function pg_setmousefocus(l, xo, yo)
 		// Create a function to handle all box updates with this focus.
 		const update_box = (area) =>
 		    {
-		    // Compute layout data.
-		    const offs = $(area.layer).offset();
-		    const x = area.x + offs.left;
-		    const y = area.y + offs.top;
-		    const w = area.width;
-		    const h = area.height;
-		    
-		    if (cx__capabilities.Dom0NS)
-			{
-			pg_init_box({
-			    parent_layer: l,
-			    x, y, w, h, s: 1,
-			    top_layer:    document.layers.pgtop,
-			    bottom_layer: document.layers.pgbtm,
-			    right_layer:  document.layers.pgrgt,
-			    left_layer:   document.layers.pglft,
-			    color1: page.mscolor1,
-			    color2: page.mscolor2,
-			    z: document.layers.pgktop.zIndex - 1,
-			});
-			}
-		    else if (cx__capabilities.Dom1HTML)
-			{
-			pg_init_box({
-			    parent_layer: l,
-			    x, y, w, h, s: 1,
-			    top_layer:    document.getElementById("pgtop"),
-			    bottom_layer: document.getElementById("pgbtm"),
-			    right_layer:  document.getElementById("pgrgt"),
-			    left_layer:   document.getElementById("pglft"),
-			    color1: page.mscolor1, color2: page.mscolor2,
-			    z: htr_getzindex(document.getElementById("pgktop")) - 1,
-			});
-			}
+		    const { left: left_offset, top: top_offset } = $(area.layer).offset();
+		    pg_init_box({
+			parent_layer: l,
+			x: area.x + left_offset,
+			y: area.y + top_offset,
+			w: area.width,
+			h: area.height,
+			s: 1,
+			top_layer:    document.getElementById("pgtop"),
+			bottom_layer: document.getElementById("pgbtm"),
+			right_layer:  document.getElementById("pgrgt"),
+			left_layer:   document.getElementById("pglft"),
+			color1:       page.mscolor1,
+			color2:       page.mscolor2,
+			z: htr_getzindex(document.getElementById("pgktop")) - 1,
+		    });
 		    };
 		
 		// Initial update.
@@ -2023,32 +1464,17 @@ function pg_removekbdfocus(p)
 	if (pg_curkbdlayer.losefocushandler && !pg_curkbdlayer.losefocushandler(p)) return false;
 	pg_curkbdlayer = null;
 	pg_curkbdarea = null;
-	if (cx__capabilities.Dom0NS)
-	    {
-	    pg_init_box({
-		parent_layer: null,
-		x: 0, y: 0, w: 0, h: 0, s: 1,
-		top_layer:    document.layers.pgktop,
-		bottom_layer: document.layers.pgkbtm,
-		right_layer:  document.layers.pgkrgt,
-		left_layer:   document.layers.pgklft,
-		color1: page.kbcolor1, color2: page.kbcolor2,
-		z: document.layers.pgtop.zIndex + 100,
-	    });
-	    }
-	else if (cx__capabilities.Dom1HTML)
-	    {
-	    pg_init_box({
-		parent_layer: null,
-		x: 0, y: 0, w: 0, h: 0, s: 1,
-		top_layer:    document.getElementById("pgktop"),
-		bottom_layer: document.getElementById("pgkbtm"),
-		right_layer:  document.getElementById("pgkrgt"),
-		left_layer:   document.getElementById("pgklft"),
-		color1: page.kbcolor1, color2: page.kbcolor2,
-		z: pg_get_style(document.getElementById("pgtop"), 'zIndex') + 100,
-	    });
-	    }
+	pg_init_box({
+	    parent_layer: null,
+	    x: 0, y: 0, w: 0, h: 0, s: 1,
+	    top_layer:    document.getElementById("pgktop"),
+	    bottom_layer: document.getElementById("pgkbtm"),
+	    right_layer:  document.getElementById("pgkrgt"),
+	    left_layer:   document.getElementById("pgklft"),
+	    color1:       page.kbcolor1,
+	    color2:       page.kbcolor2,
+	    z: pg_get_style(document.getElementById("pgtop"), 'zIndex') + 100,
+	});
 	}
 	
     // Clear resize handling.
@@ -2083,28 +1509,6 @@ function pg_setdatafocus(a)
 	}
     else
 	{
-//THESE NEEDED TO USE htr_new_layer(w,p) FUNCTION FROM ht_render.js
-//also, this was not working correctly for the DOM1 anyway.
-//htr_new_layer seems to get it right
-//	if (cx__capabilities.Dom1HTML)
-//	    {
-//	    l.pg_dttop = document.createElement("div");
-//	    l.pg_dttop.style.width = 1;
-//	    l.pg_dtbtm = document.createElement("div");
-//	    l.pg_dtbtm.style.width = 1;
-//	    l.pg_dtrgt = document.createElement("div");
-//	    l.pg_dtrgt.style.width = 2;
-//	    l.pg_dtlft = document.createElement("div");
-//	    l.pg_dtlft.style.width = 2;
-//	    }
-//	else if (cx__capabilities.Dom0NS)
-//	    {
-//	    l.pg_dttop = new Layer(1152);
-//	    l.pg_dtbtm = new Layer(1152);
-//	    l.pg_dtrgt = new Layer(2);
-//	    l.pg_dtlft = new Layer(2);
-//	    }
-	
 	// mk new data focus box for this control.
 	// the htr_new_layer function takes care of Dom0 vs Dom1 differences
 	l.pg_dttop = htr_new_layer(1,l);
@@ -2114,32 +1518,21 @@ function pg_setdatafocus(a)
 	}
 
     // draw new data focus box
-    if (cx__capabilities.Dom0NS)
-	{	        
-	pg_init_box({
-	    parent_layer: l,
-	    x: x - 1, y: y - 1, w: w + 2, h: h + 2, s: 1,
-	    top_layer:    l.pg_dttop,
-	    bottom_layer: l.pg_dtbtm,
-	    right_layer:  l.pg_dtrgt,
-	    left_layer:   l.pg_dtlft,
-	    color1: page.dtcolor1, color2: page.dtcolor2,
-	    z: document.layers.pgtop.zIndex + 100,
-	});
-	}
-    else if (cx__capabilities.Dom1HTML)
-	{
-	pg_init_box({
-	    parent_layer: l,
-	    x: x - 1, y: y - 1, w: w + 2, h: h + 2, s: 1,
-	    top_layer:    l.pg_dttop,
-	    bottom_layer: l.pg_dtbtm,
-	    right_layer:  l.pg_dtrgt,
-	    left_layer:   l.pg_dtlft,
-	    color1: page.dtcolor1, color2: page.dtcolor2,
-	    z: pg_get_style(document.getElementById("pgtop"),'zIndex') + 100,
-	});
-	}
+    pg_init_box({
+	parent_layer: l,
+	x: x - 1,
+	y: y - 1,
+	w: w + 2,
+	h: h + 2,
+	s: 1,
+	top_layer:    l.pg_dttop,
+	bottom_layer: l.pg_dtbtm,
+	right_layer:  l.pg_dtrgt,
+	left_layer:   l.pg_dtlft,
+	color1:       page.dtcolor1,
+	color2:       page.dtcolor2,
+	z: pg_get_style(document.getElementById("pgtop"),'zIndex') + 100,
+    });
     }
 
 function pg_setkbdfocus(l, a, xo, yo)
@@ -2164,16 +1557,6 @@ function pg_setkbdfocus(l, a, xo, yo)
     if (!a)
 	return false;
 
-    var offs=$(a.layer).offset();
-    //var x = getPageX(a.layer)+a.x;
-    //var y = getPageY(a.layer)+a.y;
-    var x = offs.left+a.x;
-    var y = offs.top+a.y;
-    var w = a.width;
-    var h = a.height;
-    var prevLayer = pg_curkbdlayer;
-    var prevArea = pg_curkbdarea;
-    var v = 0;
     pg_curkbdarea = a;
     pg_curkbdlayer = l;
 
@@ -2183,14 +1566,20 @@ function pg_setkbdfocus(l, a, xo, yo)
 	pg_setkbdfocus(l, a, xo, yo);
     };
 
+    let v = 0;
     if (pg_curkbdlayer && pg_curkbdlayer.getfocushandler)
 	{
 	v=pg_curkbdlayer.getfocushandler(xo,yo,a.layer,a.cls,a.name,a,from_kbd);
 	if (v & 1)
 	    {
+	    const { left: left_offset, top: top_offset } = $(a.layer).offset();
 	    pg_init_box({
 		parent_layer: l,
-		x, y, w, h, s: 1,
+		x: a.x + left_offset,
+		y: a.y + top_offset,
+		w: a.width,
+		h: a.height,
+		s: 1,
 		top_layer:    document.getElementById("pgktop"),
 		bottom_layer: document.getElementById("pgkbtm"),
 		right_layer:  document.getElementById("pgkrgt"),
@@ -2268,10 +1657,7 @@ function pg_loadqueue_remove(item)
 // we don't have the document open while stuff is happening from the server.
 function pg_serialized_write(l, text, cb)
     {
-    //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + ': ' + l.name + ' loads "' + text.substring(0,100) + '"\n');
-    //pg_loadqueue.push({lyr:l, text:text, cb:cb});
     pg_loadqueue_additem({level:1, type:'write', lyr:l, text:text, cb:cb, retry_cnt:0, silent:true, active:false});
-    //pg_debug('pg_serialized_write: ' + pg_loadqueue.length + '\n');
     pg_serialized_load_doone();
     }
 
@@ -2282,7 +1668,6 @@ function pg_serialized_write(l, text, cb)
 function pg_serialized_func(level, obj, func, params)
     {
     pg_loadqueue_additem({level:level, type:'func', lyr:obj, cb:func, params:params, retry_cnt:0, silent:true, active:false});
-    //pg_serialized_load_doone();
     pg_loadqueue_check();
     }
 
@@ -2368,8 +1753,6 @@ function pg_serialized_load_doone()
 function pg_serialized_load_cb(item)
     {
     pg_loadqueue_remove(item);
-    //if (pg_loadqueue_busy < 0)
-//	pg_loadqueue_busy = 0;
 
     if (item.lyr && item.lyr.__pg_onload) 
 	item.lyr.__pg_onload();
@@ -2381,8 +1764,6 @@ function pg_serialized_load_cb(item)
 function pg_serialized_load_error_cb(item)
     {
     pg_loadqueue_remove(item);
-    //if (pg_loadqueue_busy < 0)
-//	pg_loadqueue_busy = 0;
     pg_loadqueue_check();
     }
 
@@ -2642,13 +2023,6 @@ function pg_reveal_check_ok(e)
 	    }
 	else
 	    {
-	    // update visibility
-	    //if (e.origName == 'Reveal') e.triggerer.__pg_reveal_visible = true;
-	    //else e.triggerer.__pg_reveal_visible = false;
-
-	    // notify listeners
-	    //pg_reveal_send_events(e.triggerer.__pg_reveal, e.origName);
-
 	    // notify triggerer
 	    var triggerer_e = new Object();
 	    if (e.origName == 'RevealCheck') triggerer_e.eventName = 'RevealOK';
@@ -2811,7 +2185,6 @@ function pg_tooltip(msg, x, y)
 	pg_tiplayer = htr_new_layer(pg_width);
     pg_set_style(pg_tiplayer, "width", pg_width + "px");
     htr_setvisibility(pg_tiplayer, "hidden");
-    //pg_set_style(pg_tiplayer, "box-shadow", "2px 2px 4px black");
     pg_tipindex++;
     pg_tipinfo = {msg:msg, x:x, y:y};
     if (pg_tiptmout) pg_delsched(pg_tiptmout);
@@ -2878,17 +2251,12 @@ function pg_mousemove(e)
 	pg_tipinfo.y = e.pageY;
 	}
     if (pg_checkmodal(ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-    /*if (pg_modallayer)
-        {
-        if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-        }*/
     if (pg_curlayer != null)
         {
 	var offs = $(pg_curlayer).offset();
-        //pg_setmousefocus(pg_curlayer, e.pageX - getPageX(pg_curlayer), e.pageY - getPageY(pg_curlayer));
         pg_setmousefocus(pg_curlayer, e.pageX - offs.left, e.pageY - offs.top);
         }
-    if (e.target != null && pg_curarea != null && ((e.mainlayer && e.mainlayer != pg_curarea.layer) /*|| (e.target == pg_curarea.layer)*/))
+    if (e.target != null && pg_curarea != null && ((e.mainlayer && e.mainlayer != pg_curarea.layer)))
         {
         pg_removemousefocus();
         }
@@ -2900,10 +2268,6 @@ function pg_mouseout(e)
     var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
     if (pg_checkmodal(ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-    /*if (pg_modallayer)
-        {
-        if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-        }*/
     if (ibeam_current && e.target == ibeam_current)
         {
         pg_curlayer = pg_curkbdlayer;
@@ -2911,7 +2275,7 @@ function pg_mouseout(e)
         return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         }
     if (e.target == pg_curlayer) pg_curlayer = null;
-    if (e.target != null && pg_curarea != null && ((e.mainlayer && e.mainlayer == pg_curarea.layer) /*|| (e.target == pg_curarea.layer)*/))
+    if (e.target != null && pg_curarea != null && ((e.mainlayer && e.mainlayer == pg_curarea.layer)))
         {
         pg_removemousefocus();
         }
@@ -2923,10 +2287,6 @@ function pg_mouseover(e)
     var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
     if (pg_checkmodal(ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-    /*if (pg_modallayer)
-        {
-        if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-        }*/
     if (ibeam_current && e.target == ibeam_current)
         {
         pg_curlayer = pg_curkbdlayer;
@@ -2947,13 +2307,8 @@ function pg_mousedown(e)
     if (ly.mainlayer) ly = ly.mainlayer;
     pg_canceltip(pg_tipindex);
     if (pg_checkmodal(ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-    /*if (pg_modallayer)
-        {
-        if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-        }*/
-    //if (pg_curlayer) alert('cur layer kind = ' + e.mainkind + ' ' + e.mainlayer.id);
     if (ibeam_current && e.target.layer == ibeam_current) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-    if (e.target != null && pg_curarea != null && ((e.mainlayer && e.mainlayer != pg_curarea.layer) /*|| (e.target == pg_curarea.layer)*/))
+    if (e.target != null && pg_curarea != null && ((e.mainlayer && e.mainlayer != pg_curarea.layer)))
         {
         pg_removemousefocus();
         }
@@ -2979,7 +2334,6 @@ function pg_mousedown(e)
 		}
 	    }
 	}
-    //window.paste_input.focus();
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
@@ -2992,13 +2346,6 @@ function pg_contextmenu(e)
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
 	}
-    //window.paste_input.focus();
-    }
-
-function pg_mouseup_ns4(e)
-    {
-    setTimeout('document.layers.pginpt.document.tmpform.x.focus()',10);
-    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
 function pg_mouseup(e)
@@ -3006,140 +2353,40 @@ function pg_mouseup(e)
     var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
     if (pg_checkmodal(ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-    /*if (pg_modallayer)
-        {
-        if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
-        }*/
-    //window.paste_input.focus();
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
 function pg_keydown(e)
     {
     pg_canceltip(pg_tipindex);
-    if (cx__capabilities.Dom0NS)
-	{
-        var k = e.which;
-        if (k > 65280) k -= 65280;
-        if (k >= 128) k -= 128;
-        if (k == pg_lastkey && e.modifiers == pg_lastmodifiers) 
-	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-        pg_lastkey = k;
-	pg_lastmodifiers = e.modifiers;
-        if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
-	if (pg_keyschedid) pg_delsched(pg_keyschedid);
-        pg_keyschedid = pg_addsched_fn(window, function() { pg_keytimeoutid = setTimeout(pg_keytimeout, 200); }, [], 0);
-        if (pg_keyhandler(k, e.modifiers, e))
-	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
-	else
-	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-	}
-    else if (cx__capabilities.Dom0IE)
-	{
-        var k = e.keyCode;
-        if (k > 65280) k -= 65280;
-        //if (k >= 128) k -= 128;
-        if (k == pg_lastkey && e.modifiers == pg_lastmodifiers) 
-	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-        pg_lastkey = k;
-	pg_lastmodifiers = e.modifiers;
-        if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
-	if (pg_keyschedid) pg_delsched(pg_keyschedid);
-        pg_keyschedid = pg_addsched_fn(window, function() { pg_keytimeoutid = setTimeout(pg_keytimeout, 200); }, [], 0);
-        if (pg_keyhandler(k, e.modifiers, e))
-	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
-	else
-	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-	}
-    else if (cx__capabilities.Dom2Events)
-	{
-	var k = e.Dom2Event.which;
-        /*if (k == pg_lastkey && e.Dom2Event.modifiers == pg_lastmodifiers) 
-	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-        pg_lastkey = k;
-	pg_lastmodifiers = e.Dom2Event.modifiers;
-        if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
-	if (pg_keyschedid) pg_delsched(pg_keyschedid);
-        pg_keyschedid = pg_addsched_fn(window, function() { pg_keytimeoutid = setTimeout(pg_keytimeout, 200); }, [], 0);*/
-        //if (pg_keyhandler(k, e.Dom2Event.modifiers, e.Dom2Event))
-	//if (e.ctrlKey && k == 17)
-	//    window.paste_input.focus();
-        if (pg_keyhandler(k, e.modifiers, e))
-	    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
-	else
-	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-	}
-    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    if (pg_keyhandler(e.Dom2Event.which, e.modifiers, e))
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    else
+	return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
     }
 
 function pg_keyup(e)
     {
-    if (cx__capabilities.Dom0NS)
-	{
-        var k = e.which;
-        if (k > 65280) k -= 65280;
-        if (k >= 128) k -= 128;
-        if (k == pg_lastkey) pg_lastkey = -1;
-        if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
-        pg_keytimeoutid = null;
-	}
-    else if (cx__capabilities.Dom0IE)
-	{
-        var k = e.keyCode;
-        if (k > 65280) k -= 65280;
-        //if (k >= 128) k -= 128;
-        if (k == pg_lastkey) pg_lastkey = -1;
-        if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
-        pg_keytimeoutid = null;
-        if (pg_keyuphandler(k, e.modifiers, e))
-	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
-	else
-	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-	}
-    else if (cx__capabilities.Dom2Events)
-	{
-	var k = e.Dom2Event.which;
-        if (k == pg_lastkey) pg_lastkey = -1;
-        if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
-        pg_keytimeoutid = null;
-        if (pg_keyuphandler(k, e.modifiers, e))
-	    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
-	else
-	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-	}
-    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    const k = e.Dom2Event.which;
+    if (k == pg_lastkey) pg_lastkey = -1;
+    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
+    pg_keytimeoutid = null;
+    if (pg_keyuphandler(k, e.modifiers, e))
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    else
+	return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
     }
 
 function pg_keypress(e)
     {
-    if (cx__capabilities.Dom0IE)
-	{
-        var k = e.keyCode;
-        if (k > 65280) k -= 65280;
-        //if (k >= 128) k -= 128;
-        if (k == pg_lastkey) pg_lastkey = -1;
-        if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
-        pg_keytimeoutid = null;
-        if (pg_keypresshandler(k, e.modifiers, e))
-	    return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
-	else
-	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-	}
-    else if (cx__capabilities.Dom2Events)
-	{
-	var k = e.Dom2Event.which;
-	//if ((k == 8 || k == 13) && k == pg_lastkey) 
-	//    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-        if (k == pg_lastkey) pg_lastkey = -1;
-        if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
-	pg_keytimeoutid = null;
-        //if (pg_keypresshandler(k, e.Dom2Event.modifiers, e.Dom2Event))
-        if (pg_keypresshandler(k, e.modifiers, e))
-	    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
-	else
-	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
-	}
-    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    var k = e.Dom2Event.which;
+    if (k == pg_lastkey) pg_lastkey = -1;
+    if (pg_keytimeoutid) clearTimeout(pg_keytimeoutid);
+    pg_keytimeoutid = null;
+    if (pg_keypresshandler(k, e.modifiers, e))
+	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    else
+	return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
     }
 
 
@@ -3159,7 +2406,6 @@ function pg_check_resize(l)
 		if (geom)
 		    {
 		    wgtrSetServerProperty(l, "height", geom.height);
-		    //$(l).height(geom.height);
 		    }
 		return geom;
 		}
