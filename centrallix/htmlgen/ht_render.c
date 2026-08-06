@@ -2894,7 +2894,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 		}
 	    
 	    /** Write background color. **/
-	    const char* format = (as_style) ? "background-color:%STR&CSSVAL;" : "bgColor='%STR&HTE";
+	    const char* format = (as_style) ? "background-color:%STR&CSSVAL;" : "bgColor='%STR&HTE'";
 	    if (qpfPrintf(error_session, buf, buflen, format, ptr) < 0)
 		{
 		mssError(1, "HTR", "Failed to write background color using format: \"%s\"", format);
