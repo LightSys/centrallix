@@ -216,7 +216,7 @@ htchtAddSeriesProperties(pHtSession session, pWgtrNode tree)
 		"});\n",
 		label,
 		color,
-		htrGetBoolean(tree, "fill", 1),
+		htrGetBoolean(sub_tree, "fill", 1),
 		x_column,
 		y_column,
 		chart_type
