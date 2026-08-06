@@ -108,13 +108,13 @@ htcaRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree, "eventdatefield", DATA_T_STRING, POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTCA","Calendar widget must have an 'eventdatefield' property");
-	    return -1;
+	    goto err;
 	    }
 	strtcpy(eventdatefield, ptr, sizeof(eventdatefield));
 	if (wgtrGetPropertyValue(tree, "eventnamefield", DATA_T_STRING, POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTCA","Calendar widget must have an 'eventnamefield' property");
-	    return -1;
+	    goto err;
 	    }
 	strtcpy(eventnamefield,ptr,sizeof(eventnamefield));
 	if (wgtrGetPropertyValue(tree, "eventpriofield", DATA_T_STRING, POD(&ptr)) == 0)
@@ -133,10 +133,10 @@ htcaRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** minimum priority **/
-	wgtrGetPropertyValue(tree, "displaymode", DATA_T_STRING, POD(&minpriority));
+	if (wgtrGetPropertyValue(tree, "minpriority", DATA_T_INTEGER, POD(&minpriority)) != 0) minpriority = 0;
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto err;
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Ok, write the style header items. **/
@@ -177,16 +177,18 @@ htcaRender(pHtSession s, pWgtrNode tree, int z)
 		"textcolor:'%STR&JSSTR', "
 		"dispmode:'%STR&JSSTR', "
 		"eventdatefield:'%STR&SYM', "
-		"eventdescfield:'%STR&SYM', "
 		"eventnamefield:'%STR&SYM', "
-		"eventpriofield:'%STR&SYM', "
+		"%[eventpriofield:'%STR&SYM', %]"
+		"%[eventdescfield:'%STR&SYM', %]"
 		"minprio:%INT, "
 		"w:%INT, "
 		"h:%INT, "
 	    "});\n",
 	    name,
 	    main_bg, cell_bg, textcolor, dispmode,
-	    eventdatefield, eventdescfield, eventnamefield, eventpriofield,
+	    eventdatefield, eventnamefield,
+	    (eventpriofield[0] != '\0'), eventpriofield,
+	    (eventdescfield[0] != '\0'), eventdescfield,
 	    minpriority, w, h
 	) != 0)
 	    {
