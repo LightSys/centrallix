@@ -268,14 +268,16 @@ containers "widget/page"
 	x=8; y=540; width=984; height=150;
 	style=lowered; bgcolor="#8c8c8c";
 
-	win_std "widget/childwindow"
+	win_bare "widget/childwindow"
 	    {
-	    x=12; y=12; width=300; height=124;
-	    style=window; titlebar=yes; title="style=window";
-	    bgcolor="#c0c0c0"; hdr_bgcolor="#4060a0"; textcolor="white";
+	    x=660; y=12; width=300; height=124;
+	    style=window; titlebar=no;
+	    bgcolor="#c0c0c0";
 
-	    ws_tl "widget/pane" { x=0;   y=0;  width=12; height=12; style=flat; bgcolor="#e00000"; fl_width=0; fl_height=0; }
-	    ws_br "widget/pane" { x=285; y=88; width=12; height=12; style=flat; bgcolor="#0000e0"; fl_width=0; fl_height=0; }
+	    wb_tl "widget/pane" { x=0;   y=0;   width=12; height=12; style=flat; bgcolor="#e00000"; fl_width=0; fl_height=0; }
+	    wb_br "widget/pane" { x=285; y=110; width=12; height=12; style=flat; bgcolor="#0000e0"; fl_width=0; fl_height=0; }
+	    wb_note "widget/label"
+		{ x=20; y=48; width=250; height=18; text="titlebar=no"; font_size=11; align=center; valign=middle; }
 	    }
 
 	win_dlg "widget/childwindow"
@@ -288,16 +290,14 @@ containers "widget/page"
 	    wd_br "widget/pane" { x=286; y=87; width=12; height=12; style=flat; bgcolor="#0000e0"; fl_width=0; fl_height=0; }
 	    }
 
-	win_bare "widget/childwindow"
+	win_std "widget/childwindow"
 	    {
-	    x=660; y=12; width=300; height=124;
-	    style=window; titlebar=no;
-	    bgcolor="#c0c0c0";
+	    x=12; y=12; width=300; height=124;
+	    style=window; titlebar=yes; title="style=window";
+	    bgcolor="#c0c0c0"; hdr_bgcolor="#4060a0"; textcolor="white";
 
-	    wb_tl "widget/pane" { x=0;   y=0;   width=12; height=12; style=flat; bgcolor="#e00000"; fl_width=0; fl_height=0; }
-	    wb_br "widget/pane" { x=285; y=110; width=12; height=12; style=flat; bgcolor="#0000e0"; fl_width=0; fl_height=0; }
-	    wb_note "widget/label"
-		{ x=20; y=48; width=250; height=18; text="titlebar=no"; font_size=11; align=center; valign=middle; }
+	    ws_tl "widget/pane" { x=0;   y=0;  width=12; height=12; style=flat; bgcolor="#e00000"; fl_width=0; fl_height=0; }
+	    ws_br "widget/pane" { x=285; y=88; width=12; height=12; style=flat; bgcolor="#0000e0"; fl_width=0; fl_height=0; }
 	    }
 	}
     }
