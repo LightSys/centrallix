@@ -287,8 +287,6 @@ function cxjs_convert(dt,v)
 	    return parseFloat(String(v).substr(1));
 	else if (String(v).substr(0,2) == ' $' || String(v).substr(0,2) == '+$')
 	    return parseFloat(String(v).substr(2));
-	else if (String(v).substr(0,2) == '$ ')
-	    return parseFloat(String(v).substr(2));
 	else if (String(v).substr(0,2) == '-$')
 	    return -parseFloat(String(v).substr(2));
 	else
