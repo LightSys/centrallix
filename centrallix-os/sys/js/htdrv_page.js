@@ -24,8 +24,6 @@ var pg_init_ts = (new Date()).valueOf();
 var pg_spinner_id = null;
 var pg_spinner = null;
 
-var pg_layer = null;
-
 var pg_modallist = [];
 
 var pg_msg = {};
@@ -423,12 +421,12 @@ function pg_hidebox(tl, bl, rl, ll)
 function pg_area(parent, x, y, width, height, cls, name, f)
     {
     // Function to handle params that might be functions.
-    const handle_param = (name, value) => {
+    const handle_param = (key, value) => {
 	if (typeof(value) === 'function')
 	    {
 	    // Set a base value and define a getter that calls the provided function.
-	    this[name] = value();
-	    Object.defineProperty(this, name, {
+	    this[key] = value();
+	    Object.defineProperty(this, key, {
 		get() { return value.call(this); },
 		configurable: true,
 		enumerable: true
@@ -436,7 +434,7 @@ function pg_area(parent, x, y, width, height, cls, name, f)
 	    }
 	
 	// If just a value is provided, simply set that.
-	else this[name] = value;
+	else this[key] = value;
     }
     
     // Handle each parameter for the class.
@@ -451,47 +449,6 @@ function pg_area(parent, x, y, width, height, cls, name, f)
     
     // Return the newly instantiated object.
     return this;
-    }
-
-/** Function to resize a given page area **/
-function pg_resize_area(a, w, h, xo, yo)
-    {
-    if (xo == null) xo = a.x;
-    if (yo == null) yo = a.y;
-
-    const x = getPageX(a.layer) + xo;
-    const y = getPageY(a.layer) + yo;
-
-    a.width = w;
-    a.height = h;
-    a.x = xo;
-    a.y = yo;
-
-    for (const prefix of ['pg', 'pgk'])
-	{
-	// Get layers.
-	const top = document.getElementById(prefix + 'top');
-	if (htr_getvisibility(top) != 'inherit') continue;
-	const bottom = document.getElementById(prefix + 'btm');
-	const left   = document.getElementById(prefix + 'lft');
-	const right  = document.getElementById(prefix + 'rgt');
-
-	resizeTo      (top, w, 1);
-	setClipWidth  (top, w);
-	moveToAbsolute(top, x, y);
-
-	resizeTo      (bottom, w + 1, 1);
-	setClipWidth  (bottom, w + 1);
-	moveToAbsolute(bottom, x, y + h);
-
-	resizeTo      (left, 1, h);
-	setClipHeight (left, h);
-	moveToAbsolute(left, x, y);
-
-	resizeTo      (right, 1, h + 1);
-	setClipHeight (right, h + 1);
-	moveToAbsolute(right, x + w, y);
-	}
     }
 
 /*** Function to add a new area to the area list.
@@ -1120,16 +1077,6 @@ function pg_launch(aparam)
 	}
     }
 
-function pg_mvpginpt(ly)
-    {
-    pg_layer = ly;
-    var a=(getdocHeight()-getInnerHeight()-2)>=0?16:1;
-    var b=(getdocWidth()-getInnerWidth()-2)>=0?22:5;
-    
-    moveTo(pg_layer,getInnerWidth()-a+getpageXOffset(), getInnerHeight()-b+getpageYOffset());
-    if (a>1||b>5) 
-    	setTimeout(pg_mvpginpt, 500, pg_layer);
-    }
 
 //START SECTION: setTimout wrappers ------------------------------------------
 //these are wrappers for setTimeout as a NS4 hack since NS4 had a small, limited number of timers that could run simultaniously.
@@ -1393,6 +1340,7 @@ function pg_removemousefocus()
 	    document.getElementById("pglft")
 	);
 	}
+    delete pg_area_resize_handlers.mouse_focus;
     pg_curarea = null;
     return true;
     }
@@ -1419,6 +1367,10 @@ function pg_setmousefocus(l, xo, yo)
     const a = pg_findfocusarea(l, xo, yo);
     if (a && a != pg_curarea)
 	{
+	// The focused area is changing, so any handler for the old area is
+	// stale.  Only re-register it below if the new area takes the focus.
+	delete pg_area_resize_handlers.mouse_focus;
+
 	pg_curarea = a;
 	if (pg_curarea.flags & 1)
 	    {
@@ -1449,8 +1401,7 @@ function pg_setmousefocus(l, xo, yo)
 		update_box(pg_curarea);
 		
 		// Responsive updates.
-		const area = pg_curarea; // Save value so we can create a closure below.
-		pg_area_resize_handlers.mouse_focus = () => update_box(area);
+		pg_area_resize_handlers.mouse_focus = () => update_box(a);
 		}
 	    }
 	}
@@ -1476,12 +1427,10 @@ function pg_removekbdfocus(p)
 	    z: pg_get_style(document.getElementById("pgtop"), 'zIndex') + 100,
 	});
 	}
-	
+
     // Clear resize handling.
-    delete pg_area_resize_handlers.mouse_focus;
-    delete pg_area_resize_handlers.data_focus;
     delete pg_area_resize_handlers.kbd_focus;
-    
+
     return true;
     }
 
@@ -1557,36 +1506,44 @@ function pg_setkbdfocus(l, a, xo, yo)
     if (!a)
 	return false;
 
+    // The focused area is changing: Drop the old focus handler.
+    delete pg_area_resize_handlers.kbd_focus;
+
     pg_curkbdarea = a;
     pg_curkbdlayer = l;
-
-    // Setup resize handling.
-    pg_area_resize_handlers.kbd_focus = () => {
-	// Recall function to update values.
-	pg_setkbdfocus(l, a, xo, yo);
-    };
 
     let v = 0;
     if (pg_curkbdlayer && pg_curkbdlayer.getfocushandler)
 	{
-	v=pg_curkbdlayer.getfocushandler(xo,yo,a.layer,a.cls,a.name,a,from_kbd);
-	if (v & 1)
+	// Create a function to handle all box updates with this focus.
+	const update_box = (area) =>
 	    {
-	    const { left: left_offset, top: top_offset } = $(a.layer).offset();
+	    const { left: left_offset, top: top_offset } = $(area.layer).offset();
 	    pg_init_box({
 		parent_layer: l,
-		x: a.x + left_offset,
-		y: a.y + top_offset,
-		w: a.width,
-		h: a.height,
+		x: area.x + left_offset,
+		y: area.y + top_offset,
+		w: area.width,
+		h: area.height,
 		s: 1,
 		top_layer:    document.getElementById("pgktop"),
 		bottom_layer: document.getElementById("pgkbtm"),
 		right_layer:  document.getElementById("pgkrgt"),
 		left_layer:   document.getElementById("pgklft"),
-		color1: page.kbcolor1, color2: page.kbcolor2,
+		color1:       page.kbcolor1,
+		color2:       page.kbcolor2,
 		z: htr_getzindex(document.getElementById("pgtop")) + 100,
 	    });
+	    };
+
+	v = pg_curkbdlayer.getfocushandler(xo,yo,a.layer,a.cls,a.name,a,from_kbd);
+	if (v & 1)
+	    {
+	    // Initial update.
+	    update_box(a);
+
+	    // Responsive updates.
+	    pg_area_resize_handlers.kbd_focus = () => update_box(a);
 	    }
 	if (v & 2)
 	    {

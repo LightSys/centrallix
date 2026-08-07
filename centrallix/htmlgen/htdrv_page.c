@@ -55,7 +55,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
     char *ptr;
     char name[64];
     int attract = 0;
-    int watchdogtimer;
+    int watchdogtimer = 180;
     char bgstr[128];
     int show, i;
     char kbfocus1[64];	/* kb focus = 3d raised */
@@ -73,15 +73,16 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
     time_t t;
     struct tm* timeptr;
     char timestr[80];
-    XArray endorsements = { nAlloc: 0 };
-    XArray contexts  = { nAlloc: 0 };
+    pXArray endorsements = NULL;
+    pXArray contexts = NULL;
     int max_requests = 1;
+    int rval = -1;
 
 	/** Verify browser capabilities. **/
 	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
 	    mssError(1, "HTPAGE", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
-	    goto err;
+	    goto end;
 	    }
 
 	/** Set default focus colors. **/
@@ -94,7 +95,11 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 
     	/** If not at top-level, don't render the page. **/
 	/** Z is set to 10 for the top-level page. **/
-	if (z != 10) return 0;
+	if (z != 10)
+	    {
+	    rval = 0;
+	    goto end;
+	    }
 
 	/** These are always set for a page widget **/
 	wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w));
@@ -109,7 +114,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    if (htrAddHeaderItem_va(s, "\t<link rel='shortcut icon' href='%STR&HTE'>\n",ptr) != 0)
 		{
 		mssError(0, "HTPAGE", "Failed to write HTML for page icon.");
-		goto err;
+		goto end;
 		}
 	    }
 
@@ -119,13 +124,13 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    if (htrAddHeaderItem_va(s, "\t<title>%STR&HTE</title>\n", ptr) != 0)
 		{
 		mssError(0, "HTPAGE", "Failed to write HTML for page title.");
-		goto err;
+		goto end;
 		}
 	    }
 
     	/** Check for page load status **/
 	show = htrGetBoolean(tree, "loadstatus", 0);
-	if (show < 0) goto err;
+	if (show < 0) goto end;
 
 	/** Initialize the html-related interface stuff **/
 	if (ifcHtmlInit(s, tree) < 0)
@@ -137,26 +142,26 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	if (htrAddBodyParam_va(s, " onLoad='startup_%STR&SYM();'", s->Namespace->DName) != 0)
 	    {
 	    mssError(0, "HTPAGE", "Failed to register startup function.");
-	    goto err;
+	    goto end;
 	    }
 	if (htrAddBodyParam(s, " onUnload='cleanup();'") != 0)
 	    {
 	    mssError(0, "HTPAGE", "Failed to register cleanup function.");
-	    goto err;
+	    goto end;
 	    }
 	if (htrAddScriptCleanup(s, "\tpg_cleanup();\n") != 0)
 	    {
 	    mssError(0, "HTPAGE", "Failed to write page cleanup JS.");
-	    goto err;
+	    goto end;
 	    }
 
 	/** Check for bgcolor. **/
 	if (htrGetBackground(tree, NULL, 1, bgstr, sizeof(bgstr)) == 0)
 	    {
-	    if (htrAddStylesheetItem_va(s, "\t\tbody { %STR }", bgstr) != 0)
+	    if (htrAddStylesheetItem_va(s, "\t\tbody { %STR }\n", bgstr) != 0)
 		{
 		mssError(0, "HTPAGE", "Failed to write page background color.");
-		goto err;
+		goto end;
 		}
 	    }
 
@@ -166,7 +171,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    if (htrAddBodyParam_va(s, " text=\"%STR&HTE\"", ptr) != 0)
 		{
 		mssError(0, "HTPAGE", "Failed to write page text color.");
-		goto err;
+		goto end;
 		}
 	    }
 
@@ -176,7 +181,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    if (htrAddStylesheetItem_va(s, "\t\ta:link { color:%STR&HTE; }\n", ptr) != 0)
 		{
 		mssError(0, "HTPAGE", "Failed to write page link color.");
-		goto err;
+		goto end;
 		}
 	    }
 
@@ -227,83 +232,87 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    strcpy(font_name, "");
 
 	/** Add global for page metadata **/
-	if (htrAddScriptGlobal(s, "page", "{}", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "page", "{}", 0) != 0) goto end;
 
 	/** Add a list of highlightable areas **/
 	/** These are javascript global variables**/
-	if (htrAddScriptGlobal(s, "pg_arealist", "[]", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_keylist", "[]", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_curarea", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_curlayer", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_curkbdlayer", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_curkbdarea", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_lastkey", "-1", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_lastmodifiers", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_keytimeoutid", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_keyschedid", "0", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_modallayer", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_key_ie_shifted", "false", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_attract", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_gshade", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_closetype", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_explist", "[]", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_schedtimeout", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_schedtimeoutlist", "[]", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_schedtimeoutid", "0", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_schedtimeoutstamp", "0", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_insame", "false", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "cn_browser", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "ibeam_current", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "util_cur_mainlayer", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_loadqueue", "[]", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_loadqueue_busy", "999999", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_debug_log", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_isloaded", "false", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_username", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_msg_handlers", "[]", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_msg_layer", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_msg_timeout", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_diag", (show_diag) ? "true" : "false", 0) != 0) goto err; /* Use pop-ups for certain non-fatal warnings */
-	if (htrAddScriptGlobal(s, "pg_dpi_scaling", (dpi_scaling) ? "true" : "false", 0) != 0) goto err; /* Scale launched windows using display dots-per-inch */
-	if (htrAddScriptGlobal(s, "pg_width", "0", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_height", "0", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_charw", "0", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_charh", "0", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_parah", "0", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_namespaces", "{}", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_handlertimeout", "null", 0) != 0) goto err; /* Used by htr_mousemovehandler() in ht_render.js. */
-	if (htrAddScriptGlobal(s, "pg_mousemoveevents", "[]", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_handlers", "[]", 0) != 0) goto err; /* List of handlers for basic document events (click, mousemove, keypress, etc.). */
-	if (htrAddScriptGlobal(s, "pg_capturedevents", "0", 0) != 0) goto err; /* Binary OR of all event flags currently registered on the document. */
-	if (htrAddScriptGlobal(s, "pg_tiplayer", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_tipindex", "0", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_tiptmout", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_waitlyr", "null", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_appglobals", "[]", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_sessglobals", "[]", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_scripts", "[]", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_endorsements", "[]", 0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "pg_max_requests", "1", 0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "pg_arealist", "[]", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_keylist", "[]", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_curarea", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_curlayer", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_curkbdlayer", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_curkbdarea", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_lastkey", "-1", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_lastmodifiers", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_keytimeoutid", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_keyschedid", "0", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_modallayer", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_key_ie_shifted", "false", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_attract", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_gshade", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_closetype", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_explist", "[]", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_schedtimeout", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_schedtimeoutlist", "[]", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_schedtimeoutid", "0", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_schedtimeoutstamp", "0", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_insame", "false", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "cn_browser", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "ibeam_current", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "util_cur_mainlayer", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_loadqueue", "[]", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_loadqueue_busy", "999999", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_debug_log", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_isloaded", "false", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_username", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_msg_handlers", "[]", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_msg_layer", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_msg_timeout", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_diag", (show_diag) ? "true" : "false", 0) != 0) goto end; /* Use pop-ups for certain non-fatal warnings */
+	if (htrAddScriptGlobal(s, "pg_dpi_scaling", (dpi_scaling) ? "true" : "false", 0) != 0) goto end; /* Scale launched windows using display dots-per-inch */
+	if (htrAddScriptGlobal(s, "pg_width", "0", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_height", "0", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_charw", "0", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_charh", "0", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_parah", "0", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_namespaces", "{}", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_handlertimeout", "null", 0) != 0) goto end; /* Used by htr_mousemovehandler() in ht_render.js. */
+	if (htrAddScriptGlobal(s, "pg_mousemoveevents", "[]", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_handlers", "[]", 0) != 0) goto end; /* List of handlers for basic document events (click, mousemove, keypress, etc.). */
+	if (htrAddScriptGlobal(s, "pg_capturedevents", "0", 0) != 0) goto end; /* Binary OR of all event flags currently registered on the document. */
+	if (htrAddScriptGlobal(s, "pg_tiplayer", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_tipindex", "0", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_tiptmout", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_waitlyr", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_appglobals", "[]", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_sessglobals", "[]", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_scripts", "[]", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_endorsements", "[]", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_max_requests", "1", 0) != 0) goto end;
 
 	/** Include necessary scripts. **/
-	if (htrAddScriptInclude(s, "/sys/js/htdrv_page.js", 0) != 0) goto err;
-	if (htrAddScriptInclude(s, "/sys/js/htdrv_connector.js", 0) != 0) goto err;
-	if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0) != 0) goto err;
-	if (htrAddScriptInclude(s, "/sys/js/jquery/jquery-1.11.1.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_page.js", 0) != 0) goto end;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_connector.js", 0) != 0) goto end;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0) != 0) goto end;
+	if (htrAddScriptInclude(s, "/sys/js/jquery/jquery-1.11.1.js", 0) != 0) goto end;
 
 	/** Write named global **/
-	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&ptr)) != 0) goto err;
+	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&ptr)) != 0) goto end;
 	strtcpy(name,ptr,sizeof(name));
 
  	/** Link the window and document to widgets. **/
-	if (htrAddWgtrObjLinkage(s, tree, "window") != 0) goto err;
-	if (htrAddWgtrCtrLinkage(s, tree, "document") != 0) goto err;
+	if (htrAddWgtrObjLinkage(s, tree, "window") != 0) goto end;
+	if (htrAddWgtrCtrLinkage(s, tree, "document") != 0) goto end;
 
 	/** Set the application key **/
 	/*** TODO: Greg - This should be a call to htrAddScriptGlobal(), but I
 	 *** do not know how to do that with a the dynamic, formatted value.
 	 ***/
-	htrAddScriptInit_va(s, "\tif (typeof window.akey == 'undefined') window.akey = '%STR&JSSTR';\n", s->ClientInfo->AKey);
+	if (htrAddScriptInit_va(s, "\tif (typeof window.akey == 'undefined') window.akey = '%STR&JSSTR';\n", s->ClientInfo->AKey) != 0)
+	    {
+	    mssError(0, "HTPAGE", "Failed to write JS to set the application key.");
+	    goto end;
+	    }
 
 	/** Send server's time to the client. **/
 	t = time(NULL);
@@ -316,26 +325,26 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 		if (htrAddScriptInit_va(s, "\tpg_servertime = new Date(%STR&DQUOT);\n", timestr))
 		    {
 		    mssError(0, "HTPAGE", "Failed to write server time in JS.");
-		    goto err;
+		    goto end;
 		    }
 		if (strftime(timestr, sizeof(timestr), "%Y %m %d %T", timeptr) > 0)
 		    {
 		    if (htrAddScriptInit_va(s, "\tpg_servertime_notz = new Date(%STR&DQUOT);\n", timestr) != 0)
 			{
 			mssError(0, "HTPAGE", "Failed to write server time notz in JS.");
-			goto err;
+			goto end;
 			}
 		    }
 		if (htrAddScriptInit(s, "\tpg_clienttime = new Date();\n") != 0)
 		    {
 		    mssError(0, "HTPAGE", "Failed to write client time in JS.");
-		    goto err;
+		    goto end;
 		    }
 		}
 	    }
 
 	/** Write JS to initialize page variables. **/
-	htrAddScriptInit_va(s,
+	if (htrAddScriptInit_va(s,
 	    "\tif (typeof(pg_status_init) === 'function') pg_status_init();\n"
 	    "\tpg_init(wgtrGetNodeRef(ns,'%STR&SYM'),%INT);\n"
 	    "\tpg_username = '%STR&JSSTR';\n"
@@ -352,7 +361,11 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    s->ClientInfo->CharWidth,
 	    s->ClientInfo->CharHeight,
 	    s->ClientInfo->ParagraphHeight
-	);
+	) != 0)
+	    {
+	    mssError(0, "HTPAGE", "Failed to write JS to initialize page variables.");
+	    goto end;
+	    }
 	
 	/** Write obscore_data. **/
 	pStruct c_param = stLookup_ne(s->Params, "cx__obscure");
@@ -362,7 +375,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	) != 0)
 	    {
 	    mssError(0, "HTPAGE", "Failed to write obscure_data variable in JS.");
-	    goto err;
+	    goto end;
 	    }
 
 	/** Add template paths **/
@@ -382,20 +395,26 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 		    "Failed to write JS for template path #%d: \"%s\"",
 		    i + 1, path
 		);
-		goto err;
+		goto end;
 		}
 	    }
 
-	/** Endorsements **/
+	/** Allocate and init endorsement xarrays. **/
+	XArray endorsements_buf;
+	if (check(xaInit(&endorsements_buf, 16)) != 0) goto end;
+	endorsements = &endorsements_buf;
+	XArray contexts_buf;
+	if (check(xaInit(&contexts_buf, 16)) != 0) goto end;
+	contexts = &contexts_buf;
+	if (check_neg(cxssGetEndorsementList(endorsements, contexts)) < 0) goto end;
+
+	/** Write endorsements. **/
 	bool error = false;
-	if (check(xaInit(&endorsements, 16) != 0)) goto err;
-	if (check(xaInit(&contexts, 16) != 0)) goto err;
-	if (check_neg(cxssGetEndorsementList(&endorsements, &contexts)) < 0) goto err;
-	for (unsigned int i = 0; i < endorsements.nItems; i++)
+	for (unsigned int i = 0; i < endorsements->nItems; i++)
 	    {
-	    char* endorsement = endorsements.Items[i];
-	    char* context = contexts.Items[i];
-	    
+	    char* endorsement = endorsements->Items[i];
+	    char* context = contexts->Items[i];
+
 	    /** Write endorsement. **/
 	    if (htrAddScriptInit_va(s,
 		"\tpg_endorsements.push({ e:'%STR&JSSTR', ctx:'%STR&JSSTR' });\n",
@@ -403,24 +422,16 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    ) != 0)
 		{
 		mssError(0, "HTPAGE",
-		    "Failed to write endorsement #%d: \"%s\" of \"%s\" (continuing...)",
+		    "Failed to write endorsement #%u: \"%s\" of \"%s\" (continuing...)",
 		    i + 1, endorsement, context
 		);
 		error = true;
 		}
-	    
-	    /** Clean up. **/
-	    nmSysFree(endorsement);
-	    nmSysFree(context);
 	    }
-	if (check(xaDeInit(&endorsements)) != 0) goto err;
-	endorsements.nAlloc = 0;
-	if (check(xaDeInit(&contexts)) != 0) goto err;
-	contexts.nAlloc = 0;
 	if (error)
 	    {
 	    mssError(0, "HTPAGE", "Failed to write one or more endorsement(s) (failing).");
-	    goto err;
+	    goto end;
 	    }
 
 	/** Add focus box. **/
@@ -437,13 +448,12 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    "\t\t#pgkrgt { left:0px;     top:-1000px; width:1px;    height:864px; }\n"
 	    "\t\t#pgklft { left:0px;     top:-1000px; width:1px;    height:864px; }\n"
 	    "\t\t#pgtvl  { left:0px;     top:0px;     width:1px;    height:1px;   z-index:0;  }\n"
-	    "\t\t#pginpt { left:0px;     top:20px;                                z-index:20; }\n"
 	    "\t\t#pgping { left:0px;     top:0px;     width:0px;    height:0px;   z-index:0;  }\n"
 	    "\t\t#pgmsg  { left:0px;     top:0px;     width:0px;    height:0px;   z-index:0;  }\n"
 	) != 0)
 	    {
 	    mssError(0, "HTPAGE", "Failed to write focus box CSS.");
-	    goto err;
+	    goto end;
 	    }
 
 	/** Write pgstat. **/
@@ -462,19 +472,23 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    ) != 0)
 		{
 		mssError(0, "HTPAGE", "Failed to write CSS for pgstat.");
-		goto err;
+		goto end;
 		
 		}
 	    
 	    /** Write the pgstat DOM nodes. **/
-	    htrAddBodyItemLayerStart(s,0,"pgstat",0, NULL);
-	    htrAddBodyItem_va(s, "<body style=\"%STR\">", bgstr);
-	    htrAddBodyItem   (s,
-		"<table width='100%' height='100%' cellpadding=20>"
-		    "<tr><td valign=top><img src='/sys/images/loading.gif' alt='loading...'></td></tr>"
-		"</table></body>\n"
-	    );
-	    htrAddBodyItemLayerEnd(s,0);
+	    if (htrAddBodyItemLayerStart(s, 0, "pgstat", 0, NULL) != 0
+		|| htrAddBodyItem_va(s, "<body style=\"%STR\">", bgstr) != 0
+		|| htrAddBodyItem(s,
+		    "<table width='100%' height='100%' cellpadding=20>"
+			"<tr><td valign=top><img src='/sys/images/loading.gif' alt='loading...'></td></tr>"
+		    "</table></body>\n"
+		) != 0
+		|| htrAddBodyItemLayerEnd(s, 0) != 0)
+		{
+		mssError(0, "HTPAGE", "Failed to write HTML for pgstat DOM node.");
+		goto end;
+		}
 	    }
 
 	if (htrAddStylesheetItem(s,
@@ -484,7 +498,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	) != 0)
 	    {
 	    mssError(0, "HTPAGE", "Failed to write CSS for main <HTML> tag.");
-	    goto err;
+	    goto end;
 	    }
 	if (htrAddStylesheetItem_va(s,
 	    "\t\tbody { "
@@ -497,7 +511,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	) != 0)
 	    {
 	    mssError(0, "HTPAGE", "Failed to write CSS for main <body> tag.");
-	    goto err;
+	    goto end;
 	    }
 	if (htrAddStylesheetItem(s,
 	    "\t\tpre {"
@@ -506,7 +520,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	) != 0)
 	    {
 	    mssError(0, "HTPAGE", "Failed to write CSS for all <pre> tags.");
-	    goto err;
+	    goto end;
 	    }
 
 	/** Write trans divs. **/
@@ -529,50 +543,52 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	if (!trans_success)
 	    {
 	    mssError(0, "HTPAGE", "Failed to write page trans div.");
-	    goto err;
+	    goto end;
 	    }
 
 	/** Write ping HTML. **/
-	if (htrAddBodyItemLayerStart(s, HTR_LAYER_F_DYNAMIC, "pgping", 0, NULL) != 0
+	if (htrAddBodyItemLayerStart(s, HTR_LAYER_F_DYNAMIC, "pgping", 0, "pg") != 0
 	    || htrAddBodyItemLayerEnd(s, HTR_LAYER_F_DYNAMIC) != 0
 	    || htrAddBodyItem(s, "\n") != 0)
 	    {
 	    mssError(0, "HTPAGE", "Failed to write HTML for page ping DOM node.");
-	    goto err;
+	    goto end;
 	    }
 	
 	/** Write message HTML. **/
-	if (htrAddBodyItemLayerStart(s,HTR_LAYER_F_DYNAMIC,"pgmsg",0, NULL) != 0
-	    || htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC) != 0
+	if (htrAddBodyItemLayerStart(s, HTR_LAYER_F_DYNAMIC, "pgmsg", 0, "pg") != 0
+	    || htrAddBodyItemLayerEnd(s, HTR_LAYER_F_DYNAMIC) != 0
 	    || htrAddBodyItem(s, "\n") != 0)
 	    {
 	    mssError(0, "HTPAGE", "Failed to write HTML for page message DOM node.");
-	    goto err;
+	    goto end;
 	    }
 
 	/** Write JS call to initialize the pinging system. **/
-	stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "net_http"),"session_watchdog_timer"),&watchdogtimer,NULL,0);
+	pStructInf net_http_config = stLookup(CxGlobals.ParsedConfig, "net_http");
+	pStructInf watchdog_timer_attr = stLookup(net_http_config, "session_watchdog_timer");
+	stAttrValue(watchdog_timer_attr, &watchdogtimer, NULL, 0);
 	if (htrAddScriptInit_va(s,
 	    "\tpg_ping_init(htr_subel(wgtrGetNodeRef(ns, '%STR&SYM'), 'pgping'), %INT);\n",
 	    name, watchdogtimer * 500
 	) != 0)
 	    {
 	    mssError(0, "HTPAGE", "Failed to write JS ping init call.");
-	    goto err;
+	    goto end;
 	    }
 
 
 	/** Write event handling functions. **/
-	if (htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "pg", "pg_contextmenu") != 0) goto err;
-	if (htrAddEventHandlerFunction(s, "document", "KEYDOWN",     "pg", "pg_keydown")     != 0) goto err;
-	if (htrAddEventHandlerFunction(s, "document", "KEYPRESS",    "pg", "pg_keypress")    != 0) goto err;
-	if (htrAddEventHandlerFunction(s, "document", "KEYUP",       "pg", "pg_keyup")       != 0) goto err;
-	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN",   "pg", "pg_mousedown")   != 0) goto err;
-	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE",   "pg", "pg_mousemove")   != 0) goto err;
-	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",    "pg", "pg_mouseout")    != 0) goto err;
-	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER",   "pg", "pg_mouseover")   != 0) goto err;
-	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",     "pg", "pg_mouseup")     != 0) goto err;
-	if (htrAddEventHandlerFunction(s, "document", "SCROLL",      "pg", "pg_scroll")      != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "pg", "pg_contextmenu") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "KEYDOWN",     "pg", "pg_keydown")     != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "KEYPRESS",    "pg", "pg_keypress")    != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "KEYUP",       "pg", "pg_keyup")       != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN",   "pg", "pg_mousedown")   != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE",   "pg", "pg_mousemove")   != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",    "pg", "pg_mouseout")    != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER",   "pg", "pg_mouseover")   != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",     "pg", "pg_mouseup")     != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "SCROLL",      "pg", "pg_scroll")      != 0) goto end;
 
 	/** Set colors for the focus layers **/
 	if (htrAddScriptInit_va(s,
@@ -588,18 +604,18 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	) != 0)
 	    {
 	    mssError(0, "HTPAGE", "Failed to write JS to set focus box colors.");
-	    goto err;
+	    goto end;
 	    }
 
 	/** Write code to ensure cursor updating starts. **/
 	if (htrAddScriptInit(s, "\tpg_togglecursor();\n") != 0)
 	    {
 	    mssError(0, "HTPAGE", "Failed to write JS call to start cursor updating.");
-	    goto err;
+	    goto end;
 	    }
 
 	/** Render children. **/
-	if (htrRenderSubwidgets(s, tree, z) != 0) goto err;
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto end;
 
 	/** Write JS to signal that the page is done loading. **/
 	if (htrAddScriptInit(s,
@@ -609,18 +625,37 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	) != 0)
 	    {
 	    mssError(0, "HTPAGE", "Failed to write JS to signal that loading is done.");
-	    goto err;
+	    goto end;
 	    }
 	
 	/** Success. **/
-	return 0;
+	rval = 0;
 
-    err:
-	mssError(0, "HTPAGE",
-	    "Failed to render \"%s\":\"%s\".",
-	    tree->Name, tree->Type
-	);
-	return -1;
+    end:
+	/** Log the failure. **/
+	if (rval != 0)
+	    {
+	    mssError(0, "HTPAGE",
+		"Failed to render \"%s\":\"%s\".",
+		tree->Name, tree->Type
+	    );
+	    }
+
+	/** Free the endorsement list. **/
+	if (endorsements != NULL)
+	    {
+	    for (unsigned int i = 0; i < endorsements->nItems; i++)
+		nmSysFree(endorsements->Items[i]);
+	    xaDeInit(endorsements);
+	    }
+	if (contexts != NULL)
+	    {
+	    for (unsigned int i = 0; i < contexts->nItems; i++)
+		nmSysFree(contexts->Items[i]);
+	    xaDeInit(contexts);
+	    }
+
+	return rval;
     }
 
 /*** htpageInitialize - register with the ht_render module.
