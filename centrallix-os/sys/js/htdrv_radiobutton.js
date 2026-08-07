@@ -146,11 +146,13 @@ function add_radiobutton(optionPane, param) {
 		htr_setvisibility(optionPane.unsetPane, 'inherit');
 	}
 
-	const yOffset = getRelativeY(rb.coverPane) + getRelativeY(rb.borderPane) - 1;
+	// Areas are positioned relative to rb, so step out through both panes.
+	const xOffset = getRelativeX(rb.coverPane) + getRelativeX(rb.borderPane);
+	const yOffset = getRelativeY(rb.coverPane) + getRelativeY(rb.borderPane) - 2;
 	optionPane.area = pg_addarea(rb,
-	    () => getRelativeX(optionPane) + 2,
+	    () => getRelativeX(optionPane) + xOffset,
 	    () => getRelativeY(optionPane) + yOffset,
-	    () => getRelativeW(optionPane) + 2,
+	    () => getRelativeW(optionPane),
 	    () => getRelativeH(optionPane) + 3,
 	    optionPane, 'rb', 3
 	);

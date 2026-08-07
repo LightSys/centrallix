@@ -57,7 +57,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
     {
     int rval = -1;
     char* ptr;
-    XArray radio_buttons = { nAlloc: 0};
+    XArray radio_buttons = { .nAlloc = 0 };
     
     /** Get an id for this widget. **/
     const int id = (HTRB.idcnt++);
@@ -83,7 +83,13 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	mssError(1,"HTRB","RadioButtonPanel widget must have a 'height' property");
 	goto end_free;
 	}
-    if (wgtrGetPropertyValue(tree, "spacing", DATA_T_INTEGER, POD(&spacing)) != 0) spacing = 10;
+    if (wgtrGetPropertyValue(tree, "spacing", DATA_T_INTEGER, POD(&spacing)) != 0)
+	spacing = 10;
+    if (spacing < 0)
+	{
+	mssError(1, "HTRB", "RadioButtonPanel widget's 'spacing' property cannot be negative.");
+	goto end_free;
+	}
     
     /** Get the name and title attributes. **/
     char name[64] = "", title[64] = "";
@@ -110,8 +116,8 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
     /** Get background attributes. **/
     char main_background[128] = "";
     char outline_background[128] = "";
-    htrGetBackground(tree, NULL, true, main_background, sizeof(main_background));
-    htrGetBackground(tree, "outline", true, outline_background, sizeof(outline_background));
+    if (htrGetBackground(tree, NULL, true, main_background, sizeof(main_background)) < 0) goto end_free;
+    if (htrGetBackground(tree, "outline", true, outline_background, sizeof(outline_background)) < 0) goto end_free;
     
     /** User requesting expression for selected tab? **/
     if (htrCheckAddExpression(s, tree, name, "value") < 0) goto end_free;
@@ -136,53 +142,28 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
     if (htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(htr_subel(_obj, 'rb%POSborder'), 'rb%POScover')", id, id) != 0) goto end_free;
     
     /** Script initialization call. **/
-    if (strlen(main_background) > 0)
+    if (htrAddScriptInit_va(s, "\t{ "
+	"const parentPane = wgtrGetNodeRef(ns, '%STR&SYM'); "
+	"const borderPane = htr_subel(parentPane, 'rb%POSborder'); "
+	"const coverPane = htr_subel(borderPane, 'rb%POScover'); "
+	"const titlePane = htr_subel(parentPane, 'rb%POStitle'); "
+	"const easterEgg2 = 'Easter Egg #2';"
+	"radiobuttonpanel_init({ "
+	    "parentPane, borderPane, coverPane, titlePane, "
+	    "fieldname:'%STR&JSSTR', "
+	    "mainBackground:'%STR&JSSTR', "
+	    "outlineBackground:'%STR&JSSTR', "
+	    "form:'%STR&JSSTR', "
+	"}); }\n",
+	name, id, id, id,
+	fieldname,
+	main_background,
+	outline_background,
+	form
+    ) != 0)
 	{
-	if (htrAddScriptInit_va(s, "\t{ "
-	    "const parentPane = wgtrGetNodeRef(ns, '%STR&SYM'); "
-	    "const borderPane = htr_subel(parentPane, 'rb%POSborder'); "
-	    "const coverPane = htr_subel(borderPane, 'rb%POScover'); "
-	    "const titlePane = htr_subel(parentPane, 'rb%POStitle'); "
-	    "const easterEgg2 = 'Easter Egg #2';"
-	    "radiobuttonpanel_init({ "
-		"parentPane, borderPane, coverPane, titlePane, "
-		"fieldname:'%STR&JSSTR', "
-		"mainBackground:'%STR&JSSTR', "
-		"outlineBackground:'%STR&JSSTR', "
-		"form:'%STR&JSSTR', "
-	    "}); }\n",
-	    name, id, id, id,
-	    fieldname,
-	    main_background,
-	    outline_background,
-	    form
-	) != 0)
-	    {
-	    mssError(0, "HTRB", "Failed to write JS init code.");
-	    goto end_free;
-	    }
-	}
-    else
-	{
-	if (htrAddScriptInit_va(s,
-	    "\tradiobuttonpanel_init({ "
-		"parentPane:wgtrGetNodeRef(ns, '%STR&SYM'), "
-		"fieldname:'%STR&JSSTR', "
-		"borderPane:0, "
-		"coverPane:0, "
-		"titlePane:0, "
-		"mainBackground:0, "
-		"outlineBackground:0, "
-		"form:'%STR&JSSTR', "
-	    "});\n",
-	    name,
-	    fieldname,
-	    form
-	) != 0)
-	    {
-	    mssError(0, "HTRB", "Failed to write JS init call.");
-	    goto end_free;
-	    }
+	mssError(0, "HTRB", "Failed to write JS init code.");
+	goto end_free;
 	}
     
     /** Add event listenners. **/
@@ -201,7 +182,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	    "visibility:inherit; "
 	    "overflow:hidden; "
 	"}\n",
-	id, id, id, id
+	id
     ) != 0)
 	{
 	mssError(0, "HTRB", "Failed to write shared CSS.");
@@ -331,11 +312,10 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	const int is_selected = (htrGetBoolean(radio_button, "selected", 0) > 0);
 	wgtrGetPropertyValue(radio_button, "name", DATA_T_STRING, POD(&ptr));
 	
-	/*** Create str pointers. value & label each default to the other.
-	 ***/
-	char* name = ptr; /* Name temporarily stored in the wgtrGetPropertyValue() buffer. */
-	char* value = (value_buf[0] == '\0') ? label_buf : value_buf;
-	char* label = (label_buf[0] == '\0') ? value_buf : label_buf;
+	/** Create str pointers. value & label each default to the other. **/
+	char* radio_button_name = ptr; /* Name temporarily stored in the wgtrGetPropertyValue() buffer. */
+	char* radio_button_value = (value_buf[0] == '\0') ? label_buf : value_buf;
+	char* radio_button_label = (label_buf[0] == '\0') ? value_buf : label_buf;
 	
 	/** Link the radio button DOM node to widget data. **/
 	if (htrAddWgtrObjLinkage_va(s, radio_button, "rb%POSoption%POS", id, i) != 0) goto err_option;
@@ -351,28 +331,29 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 		"label:htr_subel(rbitem, 'rb%POSlabel%POS'), "
 		"valuestr:'%STR&JSSTR', "
 		"labelstr:'%STR&JSSTR', "
-	    "}); }\n", 
-	    wgtrGetNamespace(radio_button), name,
+	    "}); }\n",
+	    wgtrGetNamespace(radio_button), radio_button_name,
 	    is_selected,
 	    id, i, id, i,
 	    id, i, id, i,
-	    value, label
+	    radio_button_value, radio_button_label
 	) != 0)
 	    {
 	    mssError(0, "HTRB", "Failed to write JS add_radiobutton() call.");
 	    goto err_option;
 	    }
 	
-	/** Write CSS for the radio button container. **/
+	/*** Write CSS for the radio button container.  The 0px lower bound keeps
+	 *** buttons from overlapping when the panel is shorter than its content.
+	 ***/
 	const int base_top = top_padding + (button_height * i);
 	const double percent_space_above = (100.0 / radio_buttons.nItems) * i;
 	const double content_above = ((double)content_height / radio_buttons.nItems) * i;
 	if (htrAddStylesheetItem_va(s,
 	    "\t\t#rb%POSoption%POS { "
 		"left:7px; "
-		"top:calc(0px "
-		    "+ %POSpx "
-		    "+ min(%DBL%% - %DBLpx, %POSpx) "
+		"top:calc(%POSpx "
+		    "+ clamp(0px, %DBL%% - %DBLpx, %POSpx)"
 		"); "
 		"width:calc(100%% - 14px); "
 		"height:%POSpx; "
@@ -404,7 +385,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	    "}\n",
 	    id, i,
 	    id, i,
-	    (para_height / 2) - 3,
+	    (para_height / 2) - 4,
 	    z + 2
 	) != 0)
 	    {
@@ -435,9 +416,9 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 		"visibility:inherit; "
 		"overflow:hidden; "
 		"left:27px; "
-		"top:3px; "
+		"top:2px; "
 		"width:calc(100%% - 27px); "
-		"height:calc(100%% - 1px); "
+		"height:calc(100%% - 2px); "
 		"z-index:%POS; "
 		"cursor:pointer; "
 	    "}\n",
@@ -460,8 +441,8 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	    id, i, id,
 	    id, i,
 	    id, i,
-	    id, i, textcolor, label,
-	    id, i, value
+	    id, i, textcolor, radio_button_label,
+	    id, i, radio_button_value
 	) != 0)
 	    {
 	    mssError(0, "HTRB", "Failed to write option HTML.");
