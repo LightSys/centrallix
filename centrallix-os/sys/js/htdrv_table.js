@@ -1510,6 +1510,21 @@ function tbld_change_width(move, compensate)
 	    }
 	}
 
+    t.ReflowRows(colnum);
+
+    return move;
+    }
+
+
+// tbld_reflow_rows - Applies the settled column geometry to every rendered row,
+// repositioning any rows that a height change displaced.  Pass the leftmost
+// column whose geometry changed.
+//
+function tbld_reflow_rows(firstcol)
+    {
+    const t = this;
+    const { rows } = t;
+
     // Adjust the actual header and data rows and columns
     const updated_rows = [];
     const { first, last } = rows;
@@ -1519,7 +1534,7 @@ function tbld_change_width(move, compensate)
 	if (i < first && i !== 0) continue;
 	
 	const rowi = rows[i];
-	if (!t.ApplyRowGeom(rowi, colnum) || inflexible_row_height) continue;
+	if (!t.ApplyRowGeom(rowi, firstcol) || inflexible_row_height) continue;
 	
 	// Need to update height of row?
 	if (!t.UpdateHeight(rowi)) continue;
@@ -1543,8 +1558,6 @@ function tbld_change_width(move, compensate)
 
     // Update overall table geometry based on header size changes
     t.UpdateGeom();
-
-    return move;
     }
 
 
@@ -1555,7 +1568,7 @@ function tbld_reflow_width(new_width)
     // the last column; scale them so that edge lands on new_width (the row's
     // content width).
     const table = this;
-    const { colcount, cols } = table;
+    const { colcount, cols, rows } = table;
     const last_col = cols[colcount - 1];
     const cur_width = last_col.xoffset + last_col.width;
     const adj = new_width - cur_width;
@@ -1565,18 +1578,35 @@ function tbld_reflow_width(new_width)
     table.cell_width_adj = undefined;
     
     // Go through the columns and proportion the excess/deficit to them.
+    let shift = 0;
     for (let i = 0; i < colcount; i++)
 	{
 	const col = cols[i];
 	
-	// Bodge together a ChangeWidth() function for an arbitrary column.
-	col.colnum = i;
-	col.table = table;
-	col.ChangeWidth = tbld_change_width;
-	
-	// Updated the width to the correct value.
-	col.ChangeWidth(col.width * adj_factor, false);
+	// Slide the column to account for columns to the left widening.
+	col.xoffset += shift;
+
+	let move = col.width * adj_factor;
+
+	// Sanity checks on column resizing...
+	if (col.xoffset + col.width + move < 0)
+	    move = 0 - col.xoffset;
+	if (col.width + move < 3)
+	    move = 3 - col.width;
+
+	col.width += move;
+	shift += move;
+
+	// Adjust the resize border lines.
+	const resize_boarder = rows?.[0]?.cols?.[i]?.resizebdr;
+	if (resize_boarder)
+	    {
+	    resize_boarder.xoffset += shift;
+	    setRelativeX(resize_boarder, resize_boarder.xoffset);
+	    }
 	}
+
+    table.ReflowRows(0);
     }
 
 
@@ -2232,6 +2262,7 @@ function tbld_init(param)
     t.CheckHighlight = tbld_check_highlight;
     t.UpdateGeom = tbld_update_geom;
     t.ReflowWidth = tbld_reflow_width;
+    t.ReflowRows = tbld_reflow_rows;
     t.ShowSelection = tbld_show_selection;
     t.LogStatus = tbld_log_status;
     t.ParseItemlist = tbld_parse_itemlist;
