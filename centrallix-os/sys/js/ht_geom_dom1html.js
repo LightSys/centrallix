@@ -314,6 +314,10 @@ function setRelative(l, value, d)
     pg_set_style(l, d, value);
     l['__pg_' + d + '_style'] = value;
 
+    /** Offsets read back as written, so skip rereading (which forces an expensive layout flush). **/
+    if (!isNaN(parsedValue) && (d === 'left' || d === 'top'))
+	return l['__pg_' + d] = parsedValue;
+
     /*** Read back the value the browser actually used, which may differ from
      *** the one we asked for (a percentage or a calc(), for instance).  If the
      *** node has no layout box to measure, cache the number we asked for when
