@@ -239,6 +239,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	if (htrAddScriptGlobal(s, "pg_arealist", "[]", 0) != 0) goto end;
 	if (htrAddScriptGlobal(s, "pg_keylist", "[]", 0) != 0) goto end;
 	if (htrAddScriptGlobal(s, "pg_curarea", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "pg_curboxarea", "null", 0) != 0) goto end;
 	if (htrAddScriptGlobal(s, "pg_curlayer", "null", 0) != 0) goto end;
 	if (htrAddScriptGlobal(s, "pg_curkbdlayer", "null", 0) != 0) goto end;
 	if (htrAddScriptGlobal(s, "pg_curkbdarea", "null", 0) != 0) goto end;

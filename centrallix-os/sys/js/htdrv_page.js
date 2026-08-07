@@ -470,7 +470,7 @@ function pg_removearea(a)
 	{
 	if (pg_arealist[i] == a)
 	    {
-	    if (a == pg_curarea) pg_removemousefocus();
+	    if (a == pg_curarea || a == pg_curboxarea) pg_removemousefocus();
 	    if (a == pg_curkbdarea) pg_removekbdfocus();
 	    pg_arealist.splice(i,1);
 	    return 1;
@@ -1321,26 +1321,36 @@ function pg_expchange(p,o,n)
 
 function pg_reclaim_objects()
     {
-    pg_hidebox(document.getElementById("pgtop"),document.getElementById("pgbtm"),document.getElementById("pgrgt"),document.getElementById("pglft"));
-    pg_hidebox(document.getElementById("pgktop"),document.getElementById("pgkbtm"),document.getElementById("pgkrgt"),document.getElementById("pgklft"));
+    pg_removemousefocus();
+    pg_hidebox(
+	document.getElementById("pgktop"),
+	document.getElementById("pgkbtm"),
+	document.getElementById("pgkrgt"),
+	document.getElementById("pgklft")
+    );
+    delete pg_area_resize_handlers.kbd_focus;
     if (ibeam_current) moveAbove(ibeam_current, document.getElementById("pgtvl"));
     }
 
 //SETH: this function seems to implement the 'blur' event.
 function pg_removemousefocus()
     {
-    if (pg_curarea.layer.losemousefocushandler) 
-	pg_curarea.layer.losemousefocushandler(pg_curarea.layer, pg_curarea.cls, pg_curarea.name, pg_curarea);
-    if (pg_curarea.flags & 1)
+    // The box can outline an area the pointer has already left, so tear down
+    // the area that owns the box rather than the one under the pointer.
+    if (pg_curboxarea)
 	{
+	const a = pg_curboxarea;
+	if (a.layer.losemousefocushandler)
+	    a.layer.losemousefocushandler(a.layer, a.cls, a.name, a);
 	pg_hidebox(
 	    document.getElementById("pgtop"),
 	    document.getElementById("pgbtm"),
 	    document.getElementById("pgrgt"),
 	    document.getElementById("pglft")
 	);
+	pg_curboxarea = null;
+	delete pg_area_resize_handlers.mouse_focus;
 	}
-    delete pg_area_resize_handlers.mouse_focus;
     pg_curarea = null;
     return true;
     }
@@ -1367,10 +1377,6 @@ function pg_setmousefocus(l, xo, yo)
     const a = pg_findfocusarea(l, xo, yo);
     if (a && a != pg_curarea)
 	{
-	// The focused area is changing, so any handler for the old area is
-	// stale.  Only re-register it below if the new area takes the focus.
-	delete pg_area_resize_handlers.mouse_focus;
-
 	pg_curarea = a;
 	if (pg_curarea.flags & 1)
 	    {
@@ -1398,14 +1404,14 @@ function pg_setmousefocus(l, xo, yo)
 		    };
 		
 		// Initial update.
-		update_box(pg_curarea);
-		
+		pg_curboxarea = a;
+		update_box(a);
+
 		// Responsive updates.
 		pg_area_resize_handlers.mouse_focus = () => update_box(a);
 		}
 	    }
 	}
-    if (!a) delete pg_area_resize_handlers.mouse_focus;
     }
 
 function pg_removekbdfocus(p)
