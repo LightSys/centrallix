@@ -1560,6 +1560,9 @@ function tbld_reflow_width(new_width)
     const cur_width = last_col.xoffset + last_col.width;
     const adj = new_width - cur_width;
     const adj_factor = adj / cur_width;
+
+    // Drop cached cell box adjustment because the cells may have been rebuilt.
+    table.cell_width_adj = undefined;
     
     // Go through the columns and proportion the excess/deficit to them.
     for (let i = 0; i < colcount; i++)
@@ -1577,6 +1580,26 @@ function tbld_reflow_width(new_width)
     }
 
 
+// tbld_cell_width_adj - Returns the padding and border that jQuery's .width()
+// setter would add to a cell of this table.  This operation is expensive so
+// the value is cached in table.cell_width_adj.  If the width of the cell is
+// changed, this must be invalidated by setting it to undefined.
+//
+function tbld_cell_width_adj(table, cell)
+    {
+    if (table.cell_width_adj !== undefined) return table.cell_width_adj;
+    if (!cell) return 0;
+
+    // Get jQuery width to learn what how much padding + border it adds.
+    const probe = 1000, saved = cell.style.width;
+    $(cell).width(probe);
+    const adj = parseInt(cell.style.width) - probe;
+    cell.style.width = saved;
+
+    return table.cell_width_adj = (isNaN(adj)) ? 0 : adj;
+    }
+
+
 // Applies the computed row geometry to a given row, and returns
 // true if we might need to adjust the row's height.
 //
@@ -1586,6 +1609,7 @@ function tbld_apply_row_geom(row, firstcol)
     
     const { colcount, cols: this_cols, colsep, dragcols, bdr_width } = this;
     const target_cols = row.cols;
+    const width_adj = tbld_cell_width_adj(this, target_cols[firstcol]);
  
     let change_wrapped_cell = false;
     for(let i = firstcol; i < colcount; i++)
@@ -1595,7 +1619,7 @@ function tbld_apply_row_geom(row, firstcol)
 
 	if (colsep > 0 || dragcols) new_w -= (bdr_width*2 + colsep);
 
-	$(target_col).width(new_w);
+	target_col.style.width = (new_w + width_adj) + 'px';
 	setRelativeX(target_col, this_col.xoffset);
 	
 	change_wrapped_cell |= (this_col.wrap != 'no');
