@@ -42,7 +42,7 @@ These rules apply to every language in Centrallix, unless a section states other
 ### Indentation
 - Each level of indentation should use a single tab.  Do not use spaces for general indentation.
 - It is highly recommended to set your editor tab length to 4 spaces.  When writing code, you may assume that all readers will view it using 4-space tabs.
-- Prefer tabs, but always use spaces for aligning characters, such as in a copyright notice or a column of struct members.
+- Use spaces for aligning characters, such as in a copyright notice or a column of struct members.
 - Lines should not have trailing whitespace.  Thus, blank lines are not indented.
 - **Exception**:  Language syntax that requires literal tabs and/or spaces must be followed.
 
@@ -221,7 +221,7 @@ For: `.c`, `.h`
 - Each member is declared on its own line.
 - Member names are aligned in a column, padded with spaces (never tabs, see [indentation](#indentation)).
 	- Leave a few extra spaces of padding where a longer type may be added later, especially in a struct whose types are all short or which has many members.  This allows adding the type later without a reflow on every line that buries the real change in git-blame.
-- If a structure can represent kinds or types (not data types, this is a conceptual thing), it almost always holds a field using a [set type](#set-types) (typically an [enum](#enums)) to store data has been stored.
+- If a structure can represent multiple kinds or types (not data types, this is a conceptual thing), it almost always holds a field using a [set type](#set-types) (typically an [enum](#enums)) to indicate the type/kind of the stored data.
 
 For example:
 ```c
