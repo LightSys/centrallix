@@ -2800,26 +2800,28 @@ htrInitialize()
     }
 
 
-/*** htrGetBackground - gets the background image or color from the config
- *** and converts it into a string we can use in the DHTML
+/*** htrGetBackground - Gets the background color/image the from the bgcolor
+ *** or background attributes on the provided widget node, then writes a CSS
+ *** rule or HTML attribute for the background into the provided buffer.
  ***
- *** obj - an open Object for the config data
- *** prefix - the prefix to add to 'bgcolor' and 'background' for the attrs
- *** as_style - set to 1 to build the string as a style rather than as HTML
- *** buf - the buffer to print into
- *** buflen - the buffer length we can use
- ***
- *** returns with buf set to "" if any error occurs.
+ *** @param tree     The widget node to query for attributes.
+ *** @param prefix   The prefix, prepended with an underscore (`_`) to any
+ ***                 attribute queried from the widget by this function.
+ *** @param as_style If true, writes a CSS rule (recommended).  If false,
+ ***                 writes an HTML attribute, which is usually deprecated in
+ ***                 functionality in modern browsers.
+ *** @param buf      The buffer where the written output should be stored.
+ ***                 A value or `""` is always written to buf as long as at
+ ***                 least one character of space was allocated.
+ *** @param buflen   The allocated length of `buf`.
+ *** @returns 0 if successful, 1 if no background attribute was provided, or
+ ***         -1 if an error occurs (and calls `mssError()`).
  ***/
 int
 htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int buflen)
     {
-    char bgcolor_name[64];
-    char background_name[128];
-    char* bgcolor = "bgcolor";
-    char* background = "background";
-    char* ptr;
     pQPSession error_session = NULL;
+    char* ptr;
     int rval = -1;
 
 	/** Initialize the buffer. **/
@@ -2833,19 +2835,33 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	/** Create a pQPSession to track errors from qpfPrintf. **/
 	error_session = check_ptr(qpfOpenSession());
 	if (error_session == NULL) goto end;
+	
+	/** Allocate space for attribute names. **/
+	char bgcolor_buf[64];
+	char background_buf[128];
+	char* bgcolor = "bgcolor";
+	char* background = "background";
 
 	/** Prefix supplied? **/
 	if (prefix != NULL && prefix[0] != '\0')
 	    {
-	    /** Initialize buffers with prefixed attribute names. **/
-	    if (qpfPrintf(error_session, bgcolor_name, sizeof(bgcolor_name), "%STR&SYM_bgcolor", prefix) < 0)
+	    /** Write bgcolor_buf. **/
+	    if (UNLIKELY(qpfPrintf(error_session,
+		bgcolor_buf, sizeof(bgcolor_buf),
+		"%STR&SYM_bgcolor", prefix
+	    ) < 0))
 		{
 		mssError(1, "HTR", "Failed to write background color attribute name.");
 		qpfLogErrors(error_session);
 		goto end;
 		}
 	    else qpfClearErrors(error_session);
-	    if (qpfPrintf(error_session, background_name, sizeof(background_name), "%STR&SYM_background", prefix) < 0)
+
+	    /** Write background_buf. **/
+	    if (UNLIKELY(qpfPrintf(error_session,
+		    background_buf, sizeof(background_buf),
+		    "%STR&SYM_background", prefix
+		) < 0))
 		{
 		mssError(1, "HTR", "Failed to write background color attribute name.");
 		qpfLogErrors(error_session);
@@ -2854,15 +2870,15 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	    else qpfClearErrors(error_session);
 	    
 	    /** Update attribute name pointers. **/
-	    bgcolor = bgcolor_name;
-	    background = background_name;
+	    bgcolor = bgcolor_buf;
+	    background = background_buf;
 	    }
 
 	/** Search for different background types. **/
 	if (wgtrGetPropertyValue(tree, background, DATA_T_STRING, POD(&ptr)) == 0)
 	    { /* Background image. */
 	    /** Check for invalid characters in the string. **/
-	    if (strpbrk(ptr, "\"'\n\r\t") != NULL)
+	    if (UNLIKELY(strpbrk(ptr, "\"'\n\r\t") != NULL))
 		{
 		mssError(1, "HTR",
 		    "Value for attribute '%s' contains invalid characters: \"%s\"",
@@ -2873,7 +2889,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	    
 	    /** Write background image. **/
 	    const char* format = (as_style) ? "background-image:URL('%STR&CSSURL');" : "background='%STR&HTE'";
-	    if (qpfPrintf(error_session, buf, buflen, format, ptr) < 0)
+	    if (UNLIKELY(qpfPrintf(error_session, buf, buflen, format, ptr) < 0))
 		{
 		mssError(1, "HTR", "Failed to write background image using format: \"%s\"", format);
 		qpfLogErrors(error_session);
@@ -2884,7 +2900,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	else if (wgtrGetPropertyValue(tree, bgcolor, DATA_T_STRING, POD(&ptr)) == 0)
 	    { /* Background color. */
 	    /** Check for invalid characters in the string. **/
-	    if (strpbrk(ptr, "\"'\n\r\t;}<>&") != NULL)
+	    if (UNLIKELY(strpbrk(ptr, "\"'\n\r\t;}<>&") != NULL))
 		{
 		mssError(1, "HTR",
 		    "Value for attribute '%s' contains invalid characters: \"%s\"",
@@ -2895,7 +2911,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	    
 	    /** Write background color. **/
 	    const char* format = (as_style) ? "background-color:%STR&CSSVAL;" : "bgColor='%STR&HTE'";
-	    if (qpfPrintf(error_session, buf, buflen, format, ptr) < 0)
+	    if (UNLIKELY(qpfPrintf(error_session, buf, buflen, format, ptr) < 0))
 		{
 		mssError(1, "HTR", "Failed to write background color using format: \"%s\"", format);
 		qpfLogErrors(error_session);
@@ -2903,8 +2919,12 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 		}
 	    else qpfClearErrors(error_session);
 	    }
-	/** Fail quietly, as this may be intended behavior. **/
-	else goto free;
+	/** Null background: return 1. **/
+	else
+	    {
+	    rval = 1;
+	    goto free;
+	    }
 
 	/** Success. **/
 	rval = 0;

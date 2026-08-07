@@ -275,11 +275,11 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	    }
 
 	/** Colors/Backgrounds **/
-	if (htrGetBackground(menu, NULL, s->Capabilities.CSS2, bgstr, sizeof(bgstr)) < 0)
+	if (htrGetBackground(menu, NULL, s->Capabilities.CSS2, bgstr, sizeof(bgstr)) != 0)
 	    strcpy(bgstr, "");
-	if (htrGetBackground(menu, "highlight", s->Capabilities.CSS2, highlight, sizeof(highlight)) < 0)
+	if (htrGetBackground(menu, "highlight", s->Capabilities.CSS2, highlight, sizeof(highlight)) != 0)
 	    strcpy(highlight, bgstr);
-	if (htrGetBackground(menu, "active", s->Capabilities.CSS2, active, sizeof(highlight)) < 0)
+	if (htrGetBackground(menu, "active", s->Capabilities.CSS2, active, sizeof(highlight)) != 0)
 	    strcpy(active, highlight);
 	if (wgtrGetPropertyValue(menu, "fgcolor", DATA_T_STRING, POD(&ptr)) != 0)
 	    strcpy(textcolor, "black");

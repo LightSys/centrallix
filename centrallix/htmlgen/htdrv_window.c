@@ -152,7 +152,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	htrGetBackground(tree, NULL, 1, background_style, sizeof(background_style));
 
 	/** Check header background color/image **/
-	if (htrGetBackground(tree, "hdr", 1, header_background_style, sizeof(header_background_style)) < 0)
+	if (htrGetBackground(tree, "hdr", 1, header_background_style, sizeof(header_background_style)) != 0)
 	    strcpy(header_background_style, background_style);
 
 	/** Check title text color. **/
