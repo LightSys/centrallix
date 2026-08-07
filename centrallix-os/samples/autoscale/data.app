@@ -86,7 +86,8 @@ data "widget/page"
 		allow_selection = yes;
 		demand_scrollbar = yes;
 		gridinemptyrows = 1;
-		colsep = 0;
+		colsep = 1; // Give drag handles width.
+		dragcols = yes;
 
 		tc_tag    "widget/table-column" { fieldname=tag;    title="tag";    width=52;  }
 		tc_band   "widget/table-column" { fieldname=band;   title="band";   width=74;  }
