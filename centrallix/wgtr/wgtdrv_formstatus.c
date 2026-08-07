@@ -71,9 +71,25 @@ wgtfsVerify(pWgtrVerifySession s)
 int
 wgtfsNew(pWgtrNode node)
     {
-	if(node->fl_width < 0) node->fl_width = 0;
-	if(node->fl_height < 0) node->fl_height = 0;
-	
+	/** Set widget to be inflexible. **/
+	if (node->fl_width > 0)
+	    {
+	    fprintf(stderr,
+		"Warning: widget/formstatus does not flex. Dropping fl_width: %d.\n",
+		node->fl_width
+	    );
+	    }
+	node->fl_width = 0;
+
+	if (node->fl_height > 0)
+	    {
+	    fprintf(stderr,
+		"Warning: widget/formstatus does not flex. Dropping fl_height: %d.\n",
+		node->fl_height
+	    );
+	    }
+	node->fl_height = 0;
+
     return 0;
     }
 
