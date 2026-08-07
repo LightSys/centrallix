@@ -562,9 +562,9 @@ Any English sentence should use two spaces (or a newline/similar whitespace) bet
 ### Section Comments
 - Divide code into logical sections that start with brief comments for skimming code.
 - Sections should be separated by blank lines.
-- These comments should start with a capital letter and end with a period.
-- These comments should be concise, only a few words.  They are to make code more skimmable, not to describe every detail.
-- Code that is intuitively obvious when skimming (such as variable declarations or simple error checks at the start of a scope) does not need a section comment.
+- Section comments should start with a capital letter.
+- Section comments should be concise, only a few words.  They are to make code more skimmable, not to describe every detail.
+- Code that is quickly and intuitively obvious when skimming (such as variable declarations or simple error checks at the start of a scope) does not need a section comment.
 - For example:
 	```c
 	/** Find the parameter. **/
