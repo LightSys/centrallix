@@ -161,6 +161,7 @@ xsCheckAlloc(pXString this, int addl_needed)
 /*** xsConcatenate - adds text data to the end of the existing string, and
  *** allocs more memory as needed.  If 'len' is -1, then the length is 
  *** calculated using strlen(), otherwise the given length is enforced.
+ *** Concatenating 0 characters is fine.
  ***/
 int 
 xsConcatenate(pXString this, char* text, int len)
@@ -172,6 +173,9 @@ xsConcatenate(pXString this, char* text, int len)
 
     	/** Determine length. **/
 	if (len == -1) len = strlen(text);
+
+	/** Performance shortcut. **/
+	if (len == 0) goto end;
 
     	/** Check memory **/
 	if (xsCheckAlloc(this,len) < 0) 
@@ -187,6 +191,7 @@ xsConcatenate(pXString this, char* text, int len)
 	this->String[this->Length] = '\0';
 	CXSEC_UPDATE(*this);
 
+    end:
     CXSEC_EXIT(XS_FN_KEY);
     return 0;
     }
@@ -955,7 +960,6 @@ xsQPrintf(pXString this, char* fmt, ...)
     CXSEC_EXIT(XS_FN_KEY);
     return rval;
     }
-
 
 /*** xsConcatQPrintf - append a quoting printf to the xstring
  ***/
