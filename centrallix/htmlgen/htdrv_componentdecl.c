@@ -4,13 +4,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
-#include "hints.h"
 #include "cxlib/cxsec.h"
 #include "cxlib/util.h"
 
@@ -55,16 +51,6 @@ static struct
     unsigned int id_count;
     }
     HTCMPD = {0u};
-
-/** structure defining a param to the component **/
-typedef struct
-    {
-    pObjPresentationHints	Hints;
-    TObjData			TypedObjData;
-    char*			StrVal;
-    char*			Name;
-    }
-    HTCmpdParam, *pHTCmpdParam;
 
 
 /*** htcmpdRender - generate the HTML code for the component.
@@ -185,7 +171,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
     graft_done:
 	    if (!graft_successful)
 		{
-		mssError(0, "HTCMPD", "Failed to mount graft point: \"%s\"", gbuf);
+		mssError(0, "HTCMPD", "Failed to mount graft point: \"%s\"", s->GraftPoint);
 		goto err;
 		}
 	    }
@@ -204,35 +190,9 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	if (gname[0] == '\0')
 	    {
 	    fprintf(stderr,
-		"Warning: No value specified for gname, which is required to "
-		"be a valid symbol. Expect a printing failure.\n"
+		"Warning: No graft point, so gname is empty, but it is required "
+		"to be a valid symbol. Expect this component to fail to render.\n"
 	    );
-	    }
-
-	/** Init component **/
-	const int has_gbuf = (gbuf != NULL && gbuf[0] != '\0');
-	if (htrAddScriptInit_va(s,
-	    "\tcmpd_init(wgtrGetNodeRef(ns, '%STR&SYM'), { "
-		"vis:%POS, "
-		"gns:%['%STR&SYM'%]%[null%], "
-		"gname:'%STR&SYM', "
-		"%[expe:'%STR&SYM', %]"
-		"%[expa:'%STR&SYM', %]"
-		"%[expp:'%STR&SYM', %]"
-		"%[applyhint:'%STR&SYM', %]"
-	    "});\n", 
-	    name,
-	    is_visual,
-	    (has_gbuf), gbuf, (!has_gbuf),
-	    gname,
-	    (expose_events_for  != NULL && expose_events_for[0]  != '\0'), expose_events_for,
-	    (expose_actions_for != NULL && expose_actions_for[0] != '\0'), expose_actions_for,
-	    (expose_props_for   != NULL && expose_props_for[0]   != '\0'), expose_props_for,
-	    (apply_hints_to     != NULL && apply_hints_to[0]     != '\0'), apply_hints_to
-	) != 0)
-	    {
-	    mssError(0, "HTCMPD", "Failed to write JS init call.");
-	    goto err;
 	    }
 
 	/** Write the declNAME variable. **/
@@ -242,6 +202,32 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	) != 0)
 	    {
 	    mssError(0, "HTCMPD", "Failed to write the start of the JS init call.");
+	    goto err;
+	    }
+
+	/** Init component **/
+	const bool has_gbuf = (gbuf[0] != '\0');
+	if (htrAddScriptInit_va(s,
+	    "\tcmpd_init(wgtrGetNodeRef(ns, '%STR&SYM'), { "
+		"vis:%POS, "
+		"gns:%['%STR&SYM'%]%[null%], "
+		"gname:'%STR&SYM'"
+		"%[, expe:'%STR&SYM'%]"
+		"%[, expa:'%STR&SYM'%]"
+		"%[, expp:'%STR&SYM'%]"
+		"%[, applyhint:'%STR&SYM'%]"
+	    "});\n", 
+	    name,
+	    is_visual,
+	    (has_gbuf), gbuf, (!has_gbuf),
+	    gname,
+	    (expose_events_for[0]  != '\0'), expose_events_for,
+	    (expose_actions_for[0] != '\0'), expose_actions_for,
+	    (expose_props_for[0]   != '\0'), expose_props_for,
+	    (apply_hints_to[0]     != '\0'), apply_hints_to
+	) != 0)
+	    {
+	    mssError(0, "HTCMPD", "Failed to write JS init call.");
 	    goto err;
 	    }
 
@@ -260,19 +246,9 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 		goto err;
 		}
 
-	    /** Handle sub-widgets based ont he outer type. **/
+	    /** Handle sub-widgets based on the outer type. **/
 	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr));
-	    if (strncmp(ptr, "widget/component-decl-", 22) != 0)
-	        {
-		/** Widget is not a component-decl-TYPE, render normally. **/
-		if (htrRenderWidget(s, sub_tree, z + 2) != 0)
-		    {
-		    mssError(0, "HTCMPD", "Failed to render widget in declared component.");
-		    goto err;
-		    }
-		continue;
-		}
-	    char* decl_type = ptr + 22;
+	    char* decl_type = (strncmp(ptr, "widget/component-decl-", 22) == 0) ? ptr + 22 : "";
 
 	    /** Pick the function to call to handle this. **/
 	    char* fn_name;
@@ -290,13 +266,22 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 			{
 			if (htrRenderWidget(s, conn_tree, z + 2) != 0)
 			    {
-			    mssError(0, "HTCMPD", "Failed to render connector in component-decl action.");
+			    mssError(0, "HTCMPD", "Failed to render connector in component-decl-action widget.");
 			    goto err;
 			    }
 			}
 		    }
 		}
-	    else continue;
+	    else
+		{
+		/** Widget isn't a component-decl type we handle, render normally. **/
+		if (htrRenderWidget(s, sub_tree, z + 2) != 0)
+		    {
+		    mssError(0, "HTCMPD", "Failed to render widget in declared component.");
+		    goto err;
+		    }
+		continue;
+		}
 
 	    /** Write the requested function call. **/
 	    if (htrAddScriptInit_va(s, "\tdecl%POS.%STR('%STR&SYM');\n", id, fn_name, subobj_name) != 0)
@@ -310,7 +295,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	/** Write JS init call. **/
 	if (htrAddScriptInit_va(s, "\tcmpd_endinit(decl%POS);\n", id) != 0)
 	    {
-	    mssError(0, "HTCMPD", "Failed to write the err of the JS init call.");
+	    mssError(0, "HTCMPD", "Failed to write the end of the JS init call.");
 	    goto err;
 	    }
 
@@ -319,7 +304,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 
     err:
 	mssError(0, "HTCMPD",
-	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    "Failed to render \"%s\":\"%s\" (id: %u).",
 	    tree->Name, tree->Type, id
 	);
 	return -1;
