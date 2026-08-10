@@ -47,47 +47,65 @@ nav "widget/component-decl"
 	style=raised; bgcolor="#b8b8b8";
 
 	// ---- row 1: the test pages ----
+	//
+	// The button for the page you are already on is drawn on a solid dark
+	// grey with white text instead of the light grey gradient, and is
+	// disabled so it cannot reload the page you are already looking at.
+	// Both are decided server-side from page_file, so the strip needs no
+	// client-side code to know where it is.
 
 	go_index "widget/textbutton"
 	    {
 	    x=6; y=5; width=78; height=20;
 	    text="Overview"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    background=runserver(condition(:this:page_file == "index.app", "/sys/images/dkgrey_1x1.png", "/sys/images/grey_gradient.png"));
+	    enabled=runserver(condition(:this:page_file == "index.app", "no", "yes"));
+	    fgcolor1=black; fgcolor2=white; disable_color=white;
 	    go_index_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="index.app"; }
 	    }
 	go_layout "widget/textbutton"
 	    {
 	    x=90; y=5; width=68; height=20;
 	    text="Layout"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    background=runserver(condition(:this:page_file == "layout.app", "/sys/images/dkgrey_1x1.png", "/sys/images/grey_gradient.png"));
+	    enabled=runserver(condition(:this:page_file == "layout.app", "no", "yes"));
+	    fgcolor1=black; fgcolor2=white; disable_color=white;
 	    go_layout_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="layout.app"; }
 	    }
 	go_containers "widget/textbutton"
 	    {
 	    x=164; y=5; width=90; height=20;
 	    text="Containers"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    background=runserver(condition(:this:page_file == "containers.app", "/sys/images/dkgrey_1x1.png", "/sys/images/grey_gradient.png"));
+	    enabled=runserver(condition(:this:page_file == "containers.app", "no", "yes"));
+	    fgcolor1=black; fgcolor2=white; disable_color=white;
 	    go_containers_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="containers.app"; }
 	    }
 	go_forms "widget/textbutton"
 	    {
 	    x=260; y=5; width=64; height=20;
 	    text="Forms"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    background=runserver(condition(:this:page_file == "forms.app", "/sys/images/dkgrey_1x1.png", "/sys/images/grey_gradient.png"));
+	    enabled=runserver(condition(:this:page_file == "forms.app", "no", "yes"));
+	    fgcolor1=black; fgcolor2=white; disable_color=white;
 	    go_forms_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="forms.app"; }
 	    }
 	go_data "widget/textbutton"
 	    {
 	    x=330; y=5; width=58; height=20;
 	    text="Data"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    background=runserver(condition(:this:page_file == "data.app", "/sys/images/dkgrey_1x1.png", "/sys/images/grey_gradient.png"));
+	    enabled=runserver(condition(:this:page_file == "data.app", "no", "yes"));
+	    fgcolor1=black; fgcolor2=white; disable_color=white;
 	    go_data_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="data.app"; }
 	    }
 	go_misc "widget/textbutton"
 	    {
 	    x=394; y=5; width=58; height=20;
 	    text="Misc"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    background=runserver(condition(:this:page_file == "misc.app", "/sys/images/dkgrey_1x1.png", "/sys/images/grey_gradient.png"));
+	    enabled=runserver(condition(:this:page_file == "misc.app", "no", "yes"));
+	    fgcolor1=black; fgcolor2=white; disable_color=white;
 	    go_misc_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="misc.app"; }
 	    }
 
@@ -97,7 +115,9 @@ nav "widget/component-decl"
 	    {
 	    x=458; y=5; width=72; height=20;
 	    text="Legacy"; tristate=no;
-	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    background=runserver(condition(:this:page_file == "legacy.app", "/sys/images/dkgrey_1x1.png", "/sys/images/grey_gradient.png"));
+	    enabled=runserver(condition(:this:page_file == "legacy.app", "no", "yes"));
+	    fgcolor1=black; fgcolor2=white; disable_color=white;
 	    go_legacy_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="legacy.app"; }
 	    }
 
