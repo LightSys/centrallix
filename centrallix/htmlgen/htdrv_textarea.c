@@ -5,7 +5,6 @@
 #include "ht_render.h"
 #include "obj.h"
 #include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
@@ -74,7 +73,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	/** Verify browser capabilities. **/
 	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1, "HTTERM", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    mssError(1, "HTTX", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
 	    goto err;
 	    }
 
@@ -184,7 +183,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    name, fieldname, form, is_readonly, mode
 	) != 0)
 	    {
-	    mssError(0, "HTTX", "Failed to JS init call.");
+	    mssError(0, "HTTX", "Failed to write JS init call.");
 	    goto err;
 	    }
 
@@ -195,7 +194,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    goto err;
 	    }
 	
-	/** Write HTML text area opening tag. */
+	/** Write HTML text area opening tag. **/
 	if (htrAddBodyItem_va(s,
 	    "<textarea%[ maxlength='%POS'%] style='"
 		"width:100%%; "
