@@ -53,6 +53,27 @@ static struct
     HTCMPD = {0u};
 
 
+/*** htcmpd_internal_GetJSFnName - get the name for the JS function to declare
+ *** the given component-decl-TYPE sub-widget.  Returns NULL if the widget
+ *** type isn't handled here.
+ ***/
+static char*
+htcmpd_internal_GetJSFnName(pWgtrNode node)
+    {
+    char* ptr;
+
+	wgtrGetPropertyValue(node, "outer_type", DATA_T_STRING, POD(&ptr));
+	if (strncmp(ptr, "widget/component-decl-", 22) != 0) return NULL;
+	char* decl_type = ptr + 22;
+
+	if (strcmp(decl_type, "action") == 0) return "addAction";
+	if (strcmp(decl_type, "event") == 0) return "addEvent";
+	if (strcmp(decl_type, "cprop") == 0) return "addProp";
+
+    return NULL;
+    }
+
+
 /*** htcmpdRender - generate the HTML code for the component.
  ***/
 int
@@ -231,7 +252,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    goto err;
 	    }
 
-	/** Render sub-widgets. **/
+	/** Declare actions, events, and cprops for use in connectors. **/
 	const unsigned int n_sub_trees = xaCount(&(tree->Children));
 	for (unsigned int i = 0u; i < n_sub_trees; i++)
 	    {
@@ -246,35 +267,28 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 		goto err;
 		}
 
-	    /** Handle sub-widgets based on the outer type. **/
-	    wgtrGetPropertyValue(sub_tree, "outer_type", DATA_T_STRING, POD(&ptr));
-	    char* decl_type = (strncmp(ptr, "widget/component-decl-", 22) == 0) ? ptr + 22 : "";
+	    /** Only component-decl-TYPE sub-widgets are declared here. **/
+	    char* fn_name = htcmpd_internal_GetJSFnName(sub_tree);
+	    if (fn_name == NULL) continue;
 
-	    /** Pick the function to call to handle this. **/
-	    char* fn_name;
-	    if (strcmp(decl_type, "event") == 0) fn_name = "addEvent";
-	    else if (strcmp(decl_type, "cprop") == 0) fn_name = "addProp";
-	    else if (strcmp(decl_type, "action") == 0)
+	    /** Write the requested declaration function call. **/
+	    if (htrAddScriptInit_va(s, "\tdecl%POS.%STR('%STR&SYM');\n", id, fn_name, subobj_name) != 0)
 		{
-		fn_name = "addAction";
-		const unsigned int n_con_trees = xaCount(&(sub_tree->Children));
-		for (unsigned int j = 0u; j < n_con_trees; j++)
-		    {
-		    conn_tree = xaGetItem(&(sub_tree->Children), j);
-		    wgtrGetPropertyValue(conn_tree, "outer_type", DATA_T_STRING, POD(&ptr));
-		    if (strcmp(ptr,"widget/connector") == 0)
-			{
-			if (htrRenderWidget(s, conn_tree, z + 2) != 0)
-			    {
-			    mssError(0, "HTCMPD", "Failed to render connector in component-decl-action widget.");
-			    goto err;
-			    }
-			}
-		    }
+		mssError(0, "HTCMPD", "Failed to write JS function init call.");
+		goto err;
 		}
-	    else
+	    sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
+	    }
+
+	/** Render sub-widgets. **/
+	for (unsigned int i = 0u; i < n_sub_trees; i++)
+	    {
+	    sub_tree = xaGetItem(&(tree->Children), i);
+	    char* fn_name = htcmpd_internal_GetJSFnName(sub_tree);
+
+	    /** Widget isn't a component-decl type we handle, render normally. **/
+	    if (fn_name == NULL)
 		{
-		/** Widget isn't a component-decl type we handle, render normally. **/
 		if (htrRenderWidget(s, sub_tree, z + 2) != 0)
 		    {
 		    mssError(0, "HTCMPD", "Failed to render widget in declared component.");
@@ -283,13 +297,25 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 		continue;
 		}
 
-	    /** Write the requested function call. **/
-	    if (htrAddScriptInit_va(s, "\tdecl%POS.%STR('%STR&SYM');\n", id, fn_name, subobj_name) != 0)
+	    /** Search for connectors inside component-decl-action widgets. **/
+	    if (strcmp(fn_name, "addAction") == 0)
 		{
-		mssError(0, "HTCMPD", "Failed to write JS function init call.");
-		goto err;
+		const unsigned int n_con_trees = xaCount(&(sub_tree->Children));
+		for (unsigned int j = 0u; j < n_con_trees; j++)
+		    {
+		    conn_tree = xaGetItem(&(sub_tree->Children), j);
+		    wgtrGetPropertyValue(conn_tree, "outer_type", DATA_T_STRING, POD(&ptr));
+		    if (strcmp(ptr,"widget/connector") == 0)
+			{
+			/** Render connector. **/
+			if (htrRenderWidget(s, conn_tree, z + 2) != 0)
+			    {
+			    mssError(0, "HTCMPD", "Failed to render connector in component-decl-action widget.");
+			    goto err;
+			    }
+			}
+		    }
 		}
-	    sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
 	    }
 
 	/** Write JS init call. **/
