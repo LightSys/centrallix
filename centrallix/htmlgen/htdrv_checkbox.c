@@ -67,7 +67,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z)
 	}
 
    /** Get name **/
-   if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+   if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto err;
    strtcpy(name, ptr, sizeof(name));
 
    /** Get x,y of this object **/
@@ -101,7 +101,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z)
 	"\t\t#cb%POSmain { "
 	    "position:absolute; "
 	    "visibility:inherit; "
-	    "cursor:pointer; "
+	    "cursor:%STR; "
 	    "left:"ht_flex_format"; "
 	    "top:"ht_flex_format"; "
 	    "height:13px; "
@@ -109,6 +109,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z)
 	    "z-index:%POS; "
 	"}\n",
 	id,
+	(enabled) ? "pointer" : "default",
 	ht_flex_x(x, tree),
 	ht_flex_y(y, tree),
 	z
@@ -157,7 +158,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z)
 	case  1: state_name = "checked"; break;
 	case  0: state_name = "unchecked"; break;
 	case -1: state_name = "null"; break;
-	default:
+	default: /* Should be unreachable. */
 	    mssError(0, "HTCB", "Unexpected value %d for 'checked'.", checked);
 	    goto err;
 	}
@@ -170,7 +171,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z)
 	}
     if (htrAddBodyItemLayerEnd(s, 0) != 0)
 	{
-	mssError(0, "HTCB", "Failed to write HTML layer start.");
+	mssError(0, "HTCB", "Failed to write HTML layer end.");
 	goto err;
 	}
 

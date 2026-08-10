@@ -10,7 +10,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -58,8 +58,11 @@ wgtcbVerify(pWgtrVerifySession s)
 int
 wgtcbNew(pWgtrNode node)
     {   
-	if(node->r_width < 0) node->r_width = 12;
-	if(node->r_height < 0) node->r_height = 12;
+	/*** 13px, not 12px: the 12x12 gif has a 1px border on its top and left
+	 *** but not its bottom and right, so a 13px box centers the glyph.
+	 ***/
+	if(node->r_width < 0) node->r_width = 13;
+	if(node->r_height < 0) node->r_height = 13;
 	if(node->fl_width < 0) node->fl_width = 0;
 	if(node->fl_height < 0) node->fl_height = 0;
     return 0;
