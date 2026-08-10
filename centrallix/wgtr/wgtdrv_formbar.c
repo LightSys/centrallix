@@ -110,7 +110,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	wgtrScheduleVerify(s, subtree);
 	/** Next the formstatus widget **/
 	snprintf(name, 32, "fb%dformstatus%d", WGTFB.fb_cnt, WGTFB.fs_cnt++);
-	if ( (newnode = wgtrNewNode(name, "widget/formstatus", os, 72, 4, -1, -1, 100, 100, 100, 100)) == NULL)
+	if ( (newnode = wgtrNewNode(name, "widget/formstatus", os, 72, 4, -1, -1, 100, 100, -1, -1)) == NULL)
 	    {
 	    mssError(0, "WGTFB", "Couldn't create formstatus for form bar '%s'", this->Name);
 	    return -1;
