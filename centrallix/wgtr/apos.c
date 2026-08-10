@@ -1510,8 +1510,7 @@ pWgtrNode Widget;
 	}
 }
 
-/***
- *** Processes floating windows and recursively positions visual and
+/*** Processes floating windows and recursively positions visual and
  *** nonvisual containers.
  ***
  *** @param VisualRef The last visual container up the inheritance tree.
