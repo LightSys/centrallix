@@ -65,7 +65,6 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
     int max_chars;
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
-    int box_offset;
 
 	/** Get an id for this. **/
 	const int id = (HTTX.idcnt++);
@@ -131,16 +130,10 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	else 
 	    fieldname[0]='\0';
 
-	if (s->Capabilities.CSSBox)
-	    box_offset = 1;
-	else
-	    box_offset = 0;
-
 	/** Write Style header items. **/
 	snprintf(elementid, sizeof(elementid), "#tx%dbase", id);
-	const int offset = box_offset * 2;
-	if (htrFormatElement(s, tree, elementid, 0, 
-	    x, y, w - offset, h - offset, z, "",
+	if (htrFormatElement(s, tree, elementid, 0,
+	    x, y, w, h, z, "",
 	    (char*[]){"border_color","#e0e0e0", "border_style", (is_raised ? "outset" : "inset"), NULL},
 	    "position:absolute; "
 	    "overflow:hidden; "

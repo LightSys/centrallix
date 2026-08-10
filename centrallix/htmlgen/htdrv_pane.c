@@ -62,7 +62,6 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
     int style = 1; /* 0 = lowered, 1 = raised, 2 = none, 3 = bordered */
     char* c1;
     char* c2;
-    int box_offset;
     int border_radius;
     int shadow_offset, shadow_radius;
     char shadow_color[128];
@@ -97,12 +96,6 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Background color/image? **/
 	htrGetBackground(tree,NULL,!s->Capabilities.Dom0NS,main_bg,sizeof(main_bg));
-
-	/** figure out box offset fudge factor... stupid box model... **/
-	if (s->Capabilities.CSSBox)
-	    box_offset = 1;
-	else
-	    box_offset = 0;
 
 	/** Drop shadow **/
 	shadow_offset=0;
@@ -156,11 +149,9 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Write the CSS for borders on the pane dom node. **/
-	int offset = 0;
 	if (style == 2) { /* flat, the default style, nothing to do */ }
 	else if (style == 0 || style == 1) /* lowered or raised */
 	    {
-	    offset = -2 * box_offset;
 	    if (htrAddStylesheetItem_va(s,
 		"\t\t#pn%POSmain {"
 		    "border-style: solid; "
@@ -180,7 +171,6 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	else if (style == 3) /* bordered */
 	    {
-	    offset = -2 * box_offset;
 	    if (htrAddStylesheetItem_va(s,
 		"\t\t#pn%POSmain {"
 		    "border-style: solid;"
@@ -195,11 +185,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 		goto err;
 		}
 	    }
-	
-	/** Apply the offset to the width and height. **/
-	w += offset;
-	h += offset;
-	
+
 	/** Write the main CSS for the pane DOM node. **/
 	if (htrAddStylesheetItem_va(s,
 	    "\t\t#pn%POSmain {"

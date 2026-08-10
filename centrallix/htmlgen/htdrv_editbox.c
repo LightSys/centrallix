@@ -68,7 +68,6 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
     int max_chars;
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
-    int box_offset;
 
 	/** Get an id for this. **/
 	const int id = (HTEB.idcnt++);
@@ -153,13 +152,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    form[0]='\0';
 
-	if (s->Capabilities.CSSBox)
-	    box_offset = 1;
-	else
-	    box_offset = 0;
-
 	/** Ok, write the style header items. **/
-	const int base_w = w - (2 * box_offset);
 	if (htrAddStylesheetItem_va(s,
 	    "\t\t#eb%POSbase { "
 		"position:absolute; "
@@ -171,9 +164,9 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 		"z-index:%POS; "
 	    "}\n",
 	    id,
-	    ht_flex(x,      ht_get_parent_w(tree), ht_get_fl_x(tree)),
-	    ht_flex(y,      ht_get_parent_h(tree), ht_get_fl_y(tree)),
-	    ht_flex(base_w, ht_get_parent_w(tree), ht_get_fl_w(tree)),
+	    ht_flex(x, ht_get_parent_w(tree), ht_get_fl_x(tree)),
+	    ht_flex(y, ht_get_parent_h(tree), ht_get_fl_y(tree)),
+	    ht_flex(w, ht_get_parent_w(tree), ht_get_fl_w(tree)),
 	    z
 	) != 0)
 	    {
@@ -285,7 +278,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    "}\n",
 	    id,
 	    border_colors,
-	    (h >= 0), ht_flex_h(h - (2 * box_offset), tree),
+	    (h >= 0), ht_flex_h(h, tree),
 	    main_bg
 	) != 0)
 	    {
