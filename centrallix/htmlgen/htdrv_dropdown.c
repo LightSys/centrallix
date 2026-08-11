@@ -78,9 +78,11 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
    int pop_w;
    ObjData od;
    XString xs;
-   pObjQuery qy;
-   pObject qy_obj;
+   pXString items_xs = NULL;
+   pObjQuery qy = NULL;
+   pObject qy_obj = NULL;
    pWgtrNode subtree;
+   int ret = -1;
 
     /** Get an id for this. **/
     const int id = (HTDD.idcnt++);
@@ -89,7 +91,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	{
 	mssError(1, "HTDD", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
-	goto err;
+	goto end;
 	}
 
    /** Get x,y of this object **/
@@ -100,7 +102,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	h = s->ClientInfo->ParagraphHeight+2;
    if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) {
 	mssError(1,"HTDD","Drop Down widget must have a 'width' property");
-	return -1;
+	goto end;
    }
    pop_w = w;
 
@@ -116,14 +118,14 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	strtcpy(hilight,ptr,sizeof(hilight));
    } else {
 	mssError(1,"HTDD","Drop Down widget must have a 'hilight' property");
-	return -1;
+	goto end;
    }
 
    if (wgtrGetPropertyValue(tree,"bgcolor",DATA_T_STRING,POD(&ptr)) == 0) {
 	strtcpy(bgstr,ptr,sizeof(bgstr));
    } else {
 	mssError(1,"HTDD","Drop Down widget must have a 'bgcolor' property");
-	return -1;
+	goto end;
    }
 
    if (wgtrGetPropertyValue(tree,"textcolor",DATA_T_STRING,POD(&ptr)) == 0) {
@@ -148,7 +150,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	osrc[0]='\0';
 
     /** Get name **/
-    if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+    if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto end;
     strtcpy(name,ptr,sizeof(name));
 
     /** Write basic element CSS. **/
@@ -176,7 +178,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     ) != 0)
 	{
 	mssError(0, "HTDD", "Failed to write base btn CSS.");
-	goto err;
+	goto end;
 	}
     if (*textcolor)
         {
@@ -189,7 +191,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
         ) != 0)
 	    {
 	    mssError(0, "HTDD", "Failed to write btn CSS text color.");
-	    goto err;
+	    goto end;
 	    }
         }
     if (htrAddStylesheetItem_va(s,
@@ -208,61 +210,64 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     ) != 0)
 	{
 	mssError(0, "HTDD", "Failed to write con CSS.");
-	goto err;
+	goto end;
 	}
     
     /** Link the widget to the DOM node. **/
     if (htrAddWgtrObjLinkage_va(s, tree, "dd%POSbtn", id) != 0)
 	{
 	mssError(0, "HTDD", "Failed to add object linkage.");
-	goto err;
+	goto end;
 	}
 
     /** Write JS globals. **/
-    if (htrAddScriptGlobal(s, "dd_click_x",       "0",    0) != 0) goto err;
-    if (htrAddScriptGlobal(s, "dd_click_y",       "0",    0) != 0) goto err;
-    if (htrAddScriptGlobal(s, "dd_cur_mainlayer", "null", 0) != 0) goto err;
-    if (htrAddScriptGlobal(s, "dd_current",       "null", 0) != 0) goto err;
-    if (htrAddScriptGlobal(s, "dd_incr",          "0",    0) != 0) goto err;
-    if (htrAddScriptGlobal(s, "dd_lastkey",       "null", 0) != 0) goto err;
-    if (htrAddScriptGlobal(s, "dd_target_img",    "null", 0) != 0) goto err;
-    if (htrAddScriptGlobal(s, "dd_thum_y",        "0",    0) != 0) goto err;
-    if (htrAddScriptGlobal(s, "dd_timeout",       "null", 0) != 0) goto err;
+    if (htrAddScriptGlobal(s, "dd_click_x",       "0",    0) != 0) goto end;
+    if (htrAddScriptGlobal(s, "dd_click_y",       "0",    0) != 0) goto end;
+    if (htrAddScriptGlobal(s, "dd_cur_mainlayer", "null", 0) != 0) goto end;
+    if (htrAddScriptGlobal(s, "dd_current",       "null", 0) != 0) goto end;
+    if (htrAddScriptGlobal(s, "dd_incr",          "0",    0) != 0) goto end;
+    if (htrAddScriptGlobal(s, "dd_lastkey",       "null", 0) != 0) goto end;
+    if (htrAddScriptGlobal(s, "dd_target_img",    "null", 0) != 0) goto end;
+    if (htrAddScriptGlobal(s, "dd_thum_y",        "0",    0) != 0) goto end;
+    if (htrAddScriptGlobal(s, "dd_timeout",       "null", 0) != 0) goto end;
 
     /** Write JS script includes. **/
-    if (htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js",  0) != 0) goto err;
-    if (htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0) != 0) goto err;
-    if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0) != 0) goto err;
-    if (htrAddScriptInclude(s, "/sys/js/htdrv_dropdown.js",  0) != 0) goto err;
+    if (htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js",  0) != 0) goto end;
+    if (htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0) != 0) goto end;
+    if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0) != 0) goto end;
+    if (htrAddScriptInclude(s, "/sys/js/htdrv_dropdown.js",  0) != 0) goto end;
 
     /** Register JS event handlers. **/
-    if (htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "dd", "dd_contextmenu") != 0) goto err;
-    if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN",   "dd", "dd_mousedown")   != 0) goto err;
-    if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE",   "dd", "dd_mousemove")   != 0) goto err;
-    if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",    "dd", "dd_mouseout")    != 0) goto err;
-    if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER",   "dd", "dd_mouseover")   != 0) goto err;
-    if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",     "dd", "dd_mouseup")     != 0) goto err;
+    if (htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "dd", "dd_contextmenu") != 0) goto end;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN",   "dd", "dd_mousedown")   != 0) goto end;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE",   "dd", "dd_mousemove")   != 0) goto end;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",    "dd", "dd_mouseout")    != 0) goto end;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER",   "dd", "dd_mouseover")   != 0) goto end;
+    if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",     "dd", "dd_mouseup")     != 0) goto end;
 
 
     /** Get the mode (default to 1, dynamicpage) **/
     mode = HTDD_STATIC;
-    if (wgtrGetPropertyValue(tree,"mode",DATA_T_STRING,POD(&ptr)) == 0) {
+    if (wgtrGetPropertyValue(tree,"mode",DATA_T_STRING,POD(&ptr)) == 0)
+	{
 	if (strcmp(ptr, "static") == 0)              mode = HTDD_STATIC;
 	else if (strcmp(ptr, "dynamic_server") == 0) mode = HTDD_DYNAMIC_SERVER;
 	else if (strcmp(ptr, "dynamic") == 0)        mode = HTDD_DYNAMIC;
 	else if (strcmp(ptr, "dynamic_client") == 0) mode = HTDD_DYNAMIC_CLIENT;
 	else if (strcmp(ptr, "objectsource") == 0)   mode = HTDD_OBJECTSOURCE;
-	else {
+	else
+	    {
 	    mssError(1, "HTDD", "Invalid dropdown widget 'mode' value: \"%s\"", ptr);
-	    return -1;
+	    goto end;
+	    }
 	}
-    }
 
     sql = NULL;
-    if (wgtrGetPropertyValue(tree,"sql",DATA_T_STRING,POD(&sql)) != 0 && mode != 0 && mode != 3) {
+    if (wgtrGetPropertyValue(tree,"sql",DATA_T_STRING,POD(&sql)) != 0 && mode != HTDD_STATIC && mode != HTDD_OBJECTSOURCE)
+	{
 	mssError(1, "HTDD", "SQL parameter was not specified for dropdown widget");
-	return -1;
-    }
+	goto end;
+	}
     htrCheckAddExpression(s,tree,name,"sql");
 
     /** Write the initialization call in its own scope. **/
@@ -296,7 +301,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     ) != 0)
 	{
 	mssError(0, "HTDD", "Failed to write JS init call.");
-	goto err;
+	goto end;
 	}
 
     /** HTML body <DIV> element for the layers. **/
@@ -331,10 +336,8 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 		// Label
 		attr = objGetFirstAttr(qy_obj);
 		if (!attr) {
-		    objClose(qy_obj);
-		    objQueryClose(qy);
 		    mssError(1, "HTDD", "SQL query must have at least two attributes: label and value.");
-		    return -1;
+		    goto end;
 		}
 		type = objGetAttrType(qy_obj, attr);
 		rval = objGetAttrValue(qy_obj, attr, type,&od);
@@ -342,9 +345,10 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
                 // Check if anything was returned
                 if(rval != 0){
                     objClose(qy_obj);
+		    qy_obj = NULL;
                     continue;
                 }
-                
+
 		if (type == DATA_T_INTEGER || type == DATA_T_DOUBLE) {
 		    str = objDataToStringTmp(type, (void*)(&od), DATA_F_QUOTED);
 		} else {
@@ -352,13 +356,12 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 		}
 		if (flag) htrAddScriptInit(s,",");
 		htrAddScriptInit_va(s,"{wname:null, label:%STR,",str);
+
 		// Value
 		attr = objGetNextAttr(qy_obj);
 		if (!attr) {
-		    objClose(qy_obj);
-		    objQueryClose(qy);
 		    mssError(1, "HTDD", "SQL query must have at least two attributes: label and value.");
-		    return -1;
+		    goto end;
 		}
 
 		type = objGetAttrType(qy_obj, attr);
@@ -404,10 +407,12 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 		}
 
 		objClose(qy_obj);
+		qy_obj = NULL;
 		flag=1;
 	    }
 	    htrAddScriptInit(s,"]);\n");
 	    objQueryClose(qy);
+	    qy = NULL;
 	}
     }
     else if (mode == HTDD_OBJECTSOURCE) {
@@ -415,9 +420,8 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     }
 
 
-    flag=0;
     const int n_children = xaCount(&(tree->Children));
-    for (unsigned int i = 0u; i < n_children; i++)
+    for (int i = 0; i < n_children; i++)
 	{
 	subtree = xaGetItem(&(tree->Children), i);
 	if (!strcmp(subtree->Type, "widget/dropdownitem")) 
@@ -429,18 +433,18 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	    if (wgtrGetPropertyValue(subtree,"label",DATA_T_STRING,POD(&ptr)) != 0) 
 		{
 		mssError(1,"HTDD","Drop Down widget must have a 'width' property");
-		return -1;
+		goto end;
 		}
 	    strtcpy(string, ptr, sizeof(string));
-	    if (flag) 
+	    if (items_xs != NULL)
 		{
 		xsConcatenate(&xs, ",", 1);
 		}
-	    else 
+	    else
 		{
-		xsInit(&xs);
+		if (xsInit(&xs) < 0) goto end;
+		items_xs = &xs;
 		xsConcatQPrintf(&xs, "    dd_add_items(wgtrGetNodeRef(ns,\"%STR&SYM\"), [", name);
-		flag=1;
 		}
 	    wgtrGetPropertyValue(subtree,"name",DATA_T_STRING,POD(&ptr));
 	    xsConcatQPrintf(&xs,"{wname:'%STR&SYM', label:'%STR&JSSTR',", ptr, string);
@@ -453,32 +457,37 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	    if (wgtrGetPropertyValue(subtree,"value",DATA_T_STRING,POD(&ptr)) != 0) 
 		{
 		mssError(1,"HTDD","Drop Down widget must have a 'value' property");
-		return -1;
+		goto end;
 		}
 	    strtcpy(string,ptr, sizeof(string));
 	    xsConcatQPrintf(&xs,"value:'%STR&JSSTR'}", string);
 	    } 
 	else 
 	    {
-	    if (htrRenderWidget(s, subtree, z + 1) != 0) goto err;
+	    if (htrRenderWidget(s, subtree, z + 1) != 0) goto end;
 	    }
 	}
-    if (flag) 
+    if (items_xs != NULL)
 	{
 	xsConcatenate(&xs, "]);\n", 4);
 	htrAddScriptInit(s,xs.String);
-	xsDeInit(&xs);
 	}
 
+    /** Success. **/
+    ret = 0;
 
-    return 0;
-
-    err:
-    mssError(0, "HTDD",
-	"Failed to render \"%s\":\"%s\" (id: %d).",
-	tree->Name, tree->Type, id
-    );
-    return -1;
+    end:
+    if (ret != 0)
+	{
+	mssError(0, "HTDD",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
+	);
+	}
+    if (qy_obj != NULL) objClose(qy_obj);
+    if (qy != NULL) objQueryClose(qy);
+    if (items_xs != NULL) xsDeInit(items_xs);
+    return ret;
 }
 
 
