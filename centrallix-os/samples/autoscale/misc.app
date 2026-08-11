@@ -12,6 +12,13 @@ $Version=2$
 // widget/button, widget/imagebutton and widget/clock), and one rigid widget
 // pins the whole layout column it sits in or crosses.  The panes below are
 // packed edge to edge so they can easily become completely inflexible.
+//
+// widget/label defaults to fl_height=0, so the same thing happens row by row.
+// The fl_height=10 properties below mark the widgets that are meant to stretch.
+// fl_* is an unbounded int ratio that the drivers scale over roughly 0-100
+// (label 1, textbutton 5, dropdown 10, editbox 40, dynamic html 100), so a 1
+// here would barely register against the html widget in the middle row.
+// ib_first and img_tiny stay rigid because their images are a fixed size.
 misc "widget/page"
     {
     title = "Autoscale Harness -- Misc";
@@ -68,17 +75,18 @@ misc "widget/page"
 	x=8; y=78; width=330; height=202;
 	style=lowered; bgcolor="#d8d8d8";
 
-	l_left   "widget/label" { x=6; y=6;  width=316; height=18; text="align left";   font_size=12; align=left;   valign=middle; }
-	l_center "widget/label" { x=6; y=26; width=316; height=18; text="align center"; font_size=12; align=center; valign=middle; }
-	l_right  "widget/label" { x=6; y=46; width=316; height=18; text="align right";  font_size=12; align=right;  valign=middle; }
-	l_bold   "widget/label" { x=6; y=66; width=316; height=18; text="style bold";   font_size=12; align=left;   valign=middle; style=bold; }
-	l_ital   "widget/label" { x=6; y=86; width=316; height=18; text="style italic"; font_size=12; align=left;   valign=middle; style=italic; }
+	l_left   "widget/label" { x=6; y=6;  width=316; height=18; text="align left";   font_size=12; align=left;   valign=middle; fl_height=10; }
+	l_center "widget/label" { x=6; y=26; width=316; height=18; text="align center"; font_size=12; align=center; valign=middle; fl_height=10; }
+	l_right  "widget/label" { x=6; y=46; width=316; height=18; text="align right";  font_size=12; align=right;  valign=middle; fl_height=10; }
+	l_bold   "widget/label" { x=6; y=66; width=316; height=18; text="style bold";   font_size=12; align=left;   valign=middle; style=bold; fl_height=10; }
+	l_ital   "widget/label" { x=6; y=86; width=316; height=18; text="style italic"; font_size=12; align=left;   valign=middle; style=italic; fl_height=10; }
 
 	// Wraps: the number of lines must change as the window widens.
 	l_wrap "widget/label"
 	    {
 	    x=6; y=106; width=316; height=40; allow_break=yes; font_size=11; align=left; valign=top;
 	    text="WRAPPING FILLER 0....5...10...15...20...25...30...35...40...45...50...55...60 END OF WRAP";
+	    fl_height=10;
 	    }
 
 	// Does not wrap: must clip cleanly at the right edge.
@@ -86,15 +94,17 @@ misc "widget/page"
 	    {
 	    x=6; y=150; width=150; height=18; allow_break=no; font_size=11; align=left; valign=middle;
 	    text="CLIP 0....5...10...15...20...25 END";
+	    fl_height=10;
 	    }
 	l_ellip "widget/label"
 	    {
 	    x=6; y=172; width=150; height=18; allow_break=no; overflow_ellipsis=yes; font_size=11; align=left; valign=middle;
 	    text="ELLIPSIS 0....5...10...15...20 END";
+	    fl_height=10;
 	    }
 
-	l_f10 "widget/label" { x=166; y=150; width=156; height=18; text="font_size 10"; font_size=10; align=left; valign=middle; }
-	l_f16 "widget/label" { x=166; y=170; width=156; height=22; text="font_size 16"; font_size=16; align=left; valign=middle; }
+	l_f10 "widget/label" { x=166; y=150; width=156; height=18; text="font_size 10"; font_size=10; align=left; valign=middle; fl_height=10; }
+	l_f16 "widget/label" { x=166; y=170; width=156; height=22; text="font_size 16"; font_size=16; align=left; valign=middle; fl_height=10; }
 	}
 
     // ---------------------------------------------------------------
@@ -116,11 +126,13 @@ misc "widget/page"
 	    {
 	    x=6; y=6; width=150; height=22; text="tristate=no"; tristate=no;
 	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    fl_height=10;
 	    }
 	tb_tri "widget/textbutton"
 	    {
 	    x=164; y=6; width=158; height=22; text="tristate=yes"; tristate=yes;
 	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    fl_height=10;
 	    }
 	tb_round "widget/textbutton"
 	    {
@@ -146,14 +158,14 @@ misc "widget/page"
 	    {
 	    x=6; y=102; width=150; height=26; type=text; text="button type=text";
 	    bgcolor="#a8b0a8"; fgcolor1=black; fgcolor2=white; tristate=no;
-	    fl_width=1;
+	    fl_width=1; fl_height=10;
 	    }
 	bt_over "widget/button"
 	    {
 	    x=164; y=102; width=158; height=26; type=textoverimage; text="textoverimage";
 	    image="/sys/images/grey_gradient.png";
 	    bgcolor="#a8b0a8"; fgcolor1=black; fgcolor2=white; tristate=no;
-	    fl_width=1;
+	    fl_width=1; fl_height=10;
 	    }
 
 	ib_first "widget/imagebutton"
@@ -165,12 +177,13 @@ misc "widget/page"
 	    disabledimage="/sys/images/ico16ad.gif";
 	    }
 	ib_l "widget/label"
-	    { x=32; y=140; width=290; height=18; text="imagebutton (fixed 18x18)"; font_size=11; align=left; valign=middle; }
+	    { x=32; y=140; width=290; height=18; text="imagebutton (fixed 18x18)"; font_size=11; align=left; valign=middle; fl_height=10; }
 
 	btn_note "widget/label"
 	    {
 	    x=6; y=166; width=316; height=30; allow_break=yes; font_size=11; align=left; valign=top;
 	    text="textbutton ignores font_size entirely, so its text never scales.";
+	    fl_height=10;
 	    }
 	}
 
@@ -190,22 +203,22 @@ misc "widget/page"
 	x=684; y=78; width=308; height=202;
 	style=lowered; bgcolor="#d8d8d8";
 
-	img_s_l "widget/label" { x=6;   y=4; width=140; height=16; text="stretch";  font_size=11; align=center; valign=middle; }
-	img_p_l "widget/label" { x=154; y=4; width=140; height=16; text="preserve"; font_size=11; align=center; valign=middle; }
+	img_s_l "widget/label" { x=6;   y=4; width=140; height=16; text="stretch";  font_size=11; align=center; valign=middle; fl_height=10; }
+	img_p_l "widget/label" { x=154; y=4; width=140; height=16; text="preserve"; font_size=11; align=center; valign=middle; fl_height=10; }
 
 	img_stretch "widget/image"
 	    {
 	    x=6; y=22; width=140; height=90;
 	    source="/samples/collegiate_peaks.jpg"; aspect=stretch;
 	    text="stretched test image";
-	    fl_width=1;
+	    fl_width=1; fl_height=10;
 	    }
 	img_preserve "widget/image"
 	    {
 	    x=154; y=22; width=140; height=90;
 	    source="/samples/collegiate_peaks.jpg"; aspect=preserve;
 	    text="aspect-preserved test image";
-	    fl_width=1;
+	    fl_width=1; fl_height=10;
 	    }
 
 	img_logo "widget/image"
@@ -213,7 +226,7 @@ misc "widget/page"
 	    x=6; y=120; width=288; height=52;
 	    source="/sys/images/centrallix_374x66.png"; aspect=preserve;
 	    text="Centrallix logo";
-	    fl_width=1;
+	    fl_width=1; fl_height=10;
 	    }
 
 	img_tiny "widget/image"
@@ -223,7 +236,7 @@ misc "widget/page"
 	    text="24x24 icon";
 	    }
 	img_tiny_l "widget/label"
-	    { x=36; y=180; width=258; height=18; text="24x24 source, drawn 1:1"; font_size=11; align=left; valign=middle; }
+	    { x=36; y=180; width=258; height=18; text="24x24 source, drawn 1:1"; font_size=11; align=left; valign=middle; fl_height=10; }
 	}
 
     // ---------------------------------------------------------------
@@ -316,22 +329,22 @@ misc "widget/page"
 	x=8; y=530; width=984; height=160;
 	style=lowered; bgcolor="#b0b0b0";
 
-	clock_12_l "widget/label" { x=6; y=6; width=240; height=16; text="12 hour, with seconds"; font_size=11; align=left; valign=middle; }
+	clock_12_l "widget/label" { x=6; y=6; width=240; height=16; text="12 hour, with seconds"; font_size=11; align=left; valign=middle; fl_height=10; }
 	clock_12 "widget/clock"
 	    {
 	    x=6; y=24; width=240; height=44;
 	    size=18; seconds=yes; ampm=yes;
 	    fgcolor1="#000000";
-	    fl_width=1;
+	    fl_width=1; fl_height=10;
 	    }
 
-	clock_24_l "widget/label" { x=258; y=6; width=240; height=16; text="24 hour, shadowed"; font_size=11; align=left; valign=middle; }
+	clock_24_l "widget/label" { x=258; y=6; width=240; height=16; text="24 hour, shadowed"; font_size=11; align=left; valign=middle; fl_height=10; }
 	clock_24 "widget/clock"
 	    {
 	    x=258; y=24; width=240; height=44;
 	    size=18; seconds=yes; hrtype=24;
 	    shadowed=yes; fgcolor1="#000000"; fgcolor2="#909090"; shadowx=2; shadowy=2;
-	    fl_width=1;
+	    fl_width=1; fl_height=10;
 	    }
 
 	// Fires every two seconds and stamps the time onto the button.
@@ -341,21 +354,23 @@ misc "widget/page"
 	    t_conn "widget/connector"
 		{ event=Expire; target=tick_btn; action=SetText; Text=runclient(getdate()); }
 	    }
-	tick_l "widget/label" { x=510; y=6; width=240; height=16; text="timer"; font_size=11; align=left; valign=middle; }
+	tick_l "widget/label" { x=510; y=6; width=240; height=16; text="timer"; font_size=11; align=left; valign=middle; fl_height=10; }
 	tick_btn "widget/textbutton"
 	    {
 	    x=510; y=24; width=240; height=24; text="waiting for first tick"; tristate=no;
 	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    fl_height=10;
 	    }
 
 	// Nonvisual; driven entirely by the two buttons below.
 	the_alerter "widget/alerter" { }
 
-	alert_l "widget/label" { x=762; y=6; width=216; height=16; text="alerter"; font_size=11; align=left; valign=middle; }
+	alert_l "widget/label" { x=762; y=6; width=216; height=16; text="alerter"; font_size=11; align=left; valign=middle; fl_height=10; }
 	alert_btn "widget/textbutton"
 	    {
 	    x=762; y=24; width=104; height=24; text="Alert"; tristate=no;
 	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    fl_height=10;
 	    alert_btn_c "widget/connector"
 		{ event=Click; target=the_alerter; action=Alert; Parameter=runclient("alerter test message"); }
 	    }
@@ -363,6 +378,7 @@ misc "widget/page"
 	    {
 	    x=874; y=24; width=104; height=24; text="Confirm"; tristate=no;
 	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
+	    fl_height=10;
 	    confirm_btn_c "widget/connector"
 		{ event=Click; target=the_alerter; action=Confirm; Parameter=runclient("alerter confirm test"); }
 	    }
@@ -371,6 +387,7 @@ misc "widget/page"
 	    {
 	    x=6; y=80; width=972; height=44; allow_break=yes; font_size=11; align=left; valign=top;
 	    text="Drag the window edge while these are running. The clocks should keep ticking in place and the timer button should keep updating; freezing or drifting text after a resize is the bug to look for. The alerter discards the Confirm result, so only the dialog itself is testable.";
+	    fl_height=10;
 	    }
 	}
     }

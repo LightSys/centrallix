@@ -162,12 +162,16 @@ forms "widget/page"
 	text="Unbound: static dropdown, checkboxes, datetime";
 	font_size=12; align=left; valign=middle;
 	}
+    // The captions below carry fl_height=1.  widget/label defaults to 0, and
+    // a rigid widget pins every row it crosses, which left this pane with too
+    // little flexible height to grow at all -- freezing bound_frame too, since
+    // they share a page row.  The checkboxes and datetime stay rigid.
     unbound_frame "widget/pane"
 	{
 	x=616; y=78; width=376; height=250;
 	style=raised; bgcolor="#b8b8b8";
 
-	u_dd_l "widget/label" { x=8; y=10; width=110; height=20; text="static dropdown"; font_size=12; align=left; valign=middle; }
+	u_dd_l "widget/label" { x=8; y=10; width=110; height=20; text="static dropdown"; font_size=12; align=left; valign=middle; fl_height=1; }
 	u_dd "widget/dropdown"
 	    {
 	    x=8; y=32; width=356; height=22;
@@ -182,7 +186,7 @@ forms "widget/page"
 
 	// Checkboxes are a fixed 13x13 image in the driver, so these must
 	// stay exactly the same size however the window is resized.
-	u_cb_l "widget/label" { x=8; y=64; width=200; height=20; text="checkboxes (fixed 13x13)"; font_size=12; align=left; valign=middle; }
+	u_cb_l "widget/label" { x=8; y=64; width=200; height=20; text="checkboxes (fixed 13x13)"; font_size=12; align=left; valign=middle; fl_height=1; }
 	u_cb_on "widget/checkbox"    { x=10; y=88; checked=yes; }
 	u_cb_on_l "widget/label"     { x=30; y=86; width=90; height=18; text="checked"; font_size=11; align=left; valign=middle; }
 	u_cb_off "widget/checkbox"   { x=130; y=88; checked=no; }
@@ -190,7 +194,7 @@ forms "widget/page"
 	u_cb_null "widget/checkbox"  { x=250; y=88; }
 	u_cb_null_l "widget/label"   { x=270; y=86; width=90; height=18; text="null"; font_size=11; align=left; valign=middle; }
 
-	u_dt_l "widget/label" { x=8; y=116; width=200; height=20; text="datetime"; font_size=12; align=left; valign=middle; }
+	u_dt_l "widget/label" { x=8; y=116; width=200; height=20; text="datetime"; font_size=12; align=left; valign=middle; fl_height=1; }
 	u_dt "widget/datetime"
 	    {
 	    x=8; y=138; width=356; height=44;
@@ -200,7 +204,7 @@ forms "widget/page"
 	    }
 
 	// Presentation hints attach to the widget they sit inside.
-	u_hint_l "widget/label" { x=8; y=190; width=200; height=20; text="editbox with hints (max 10 chars)"; font_size=12; align=left; valign=middle; }
+	u_hint_l "widget/label" { x=8; y=190; width=200; height=20; text="editbox with hints (max 10 chars)"; font_size=12; align=left; valign=middle; fl_height=1; }
 	u_hint_eb "widget/editbox"
 	    {
 	    x=8; y=212; width=356; height=22;

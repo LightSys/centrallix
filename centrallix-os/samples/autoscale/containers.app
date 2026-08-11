@@ -78,7 +78,7 @@ containers "widget/page"
     tab_top "widget/tab"
 	{
 	x=8; y=80; width=320; height=180;
-	tab_location=top; tab_height=24;
+	tab_location=top; tab_height=24; fl_height=50;
 	bgcolor="#b0b0b0"; inactive_bgcolor="#8c8c8c"; textcolor="black";
 
 	tt_p1 "widget/tabpage"
@@ -110,7 +110,7 @@ containers "widget/page"
     tab_bot "widget/tab"
 	{
 	x=340; y=80; width=300; height=180;
-	tab_location=bottom; tab_height=24;
+	tab_location=bottom; tab_height=24; fl_height=50;
 	bgcolor="#b0b0b0"; inactive_bgcolor="#8c8c8c"; textcolor="black";
 
 	tb_p1 "widget/tabpage"
@@ -139,7 +139,7 @@ containers "widget/page"
     tab_left "widget/tab"
 	{
 	x=652; y=80; width=270; height=180;
-	tab_location=left; tab_width=68; tab_height=24;
+	tab_location=left; tab_width=68; tab_height=24; fl_height=50;
 	bgcolor="#b0b0b0"; inactive_bgcolor="#8c8c8c"; textcolor="black";
 
 	tl_p1 "widget/tabpage"
@@ -174,6 +174,7 @@ containers "widget/page"
 	{
 	x=8; y=320; width=240; height=190;
 	style=lowered; bgcolor="#909090";
+	fl_height=40;
 
 	the_sp "widget/scrollpane"
 	    {
@@ -213,6 +214,7 @@ containers "widget/page"
 	{
 	x=256; y=320; width=300; height=190;
 	style=lowered; bgcolor="#909090";
+	fl_height=40;
 
 	sb_vert "widget/scrollbar"
 	    { x=12; y=12; height=160; direction=vertical; range=100; }
@@ -240,6 +242,7 @@ containers "widget/page"
 	{
 	x=564; y=320; width=428; height=190;
 	style=lowered; bgcolor="#909090";
+	fl_height=40;
 
 	cmp_tl "widget/pane" { x=0;   y=0;   width=12; height=12; style=flat; bgcolor="#e00000"; fl_width=0; fl_height=0; }
 	cmp_br "widget/pane" { x=414; y=176; width=12; height=12; style=flat; bgcolor="#0000e0"; fl_width=0; fl_height=0; }
@@ -267,6 +270,7 @@ containers "widget/page"
 	{
 	x=8; y=540; width=984; height=150;
 	style=lowered; bgcolor="#8c8c8c";
+	fl_height=30;
 
 	win_bare "widget/childwindow"
 	    {
