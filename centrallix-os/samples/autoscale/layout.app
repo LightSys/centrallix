@@ -114,14 +114,14 @@ layout "widget/page"
 	x=502; y=78; width=490; height=202;
 	style=lowered; bgcolor="#909090";
 
-	fl_l0   "widget/label" { x=24;  y=8; width=48; height=16; text="0";   font_size=11; align=center; valign=middle; }
-	fl_l1   "widget/label" { x=80;  y=8; width=48; height=16; text="1";   font_size=11; align=center; valign=middle; }
-	fl_l5   "widget/label" { x=136; y=8; width=48; height=16; text="5";   font_size=11; align=center; valign=middle; }
-	fl_l10  "widget/label" { x=192; y=8; width=48; height=16; text="10";  font_size=11; align=center; valign=middle; }
-	fl_l25  "widget/label" { x=248; y=8; width=48; height=16; text="25";  font_size=11; align=center; valign=middle; }
-	fl_l50  "widget/label" { x=304; y=8; width=48; height=16; text="50";  font_size=11; align=center; valign=middle; }
-	fl_l100 "widget/label" { x=360; y=8; width=48; height=16; text="100"; font_size=11; align=center; valign=middle; }
-	fl_l200 "widget/label" { x=416; y=8; width=48; height=16; text="200"; font_size=11; align=center; valign=middle; }
+	fl_l0   "widget/label" { x=24;  y=8; width=48; height=16; text="0";   font_size=11; align=center; valign=middle; fl_width=0; }
+	fl_l1   "widget/label" { x=80;  y=8; width=48; height=16; text="1";   font_size=11; align=center; valign=middle; fl_width=1; }
+	fl_l5   "widget/label" { x=136; y=8; width=48; height=16; text="5";   font_size=11; align=center; valign=middle; fl_width=5; }
+	fl_l10  "widget/label" { x=192; y=8; width=48; height=16; text="10";  font_size=11; align=center; valign=middle; fl_width=10; }
+	fl_l25  "widget/label" { x=248; y=8; width=48; height=16; text="25";  font_size=11; align=center; valign=middle; fl_width=25; }
+	fl_l50  "widget/label" { x=304; y=8; width=48; height=16; text="50";  font_size=11; align=center; valign=middle; fl_width=50; }
+	fl_l100 "widget/label" { x=360; y=8; width=48; height=16; text="100"; font_size=11; align=center; valign=middle; fl_width=100; }
+	fl_l200 "widget/label" { x=416; y=8; width=48; height=16; text="200"; font_size=11; align=center; valign=middle; fl_width=200; }
 
 	fl_b0   "widget/pane" { x=24;  y=34; width=48; height=152; style=flat; bgcolor="#803030"; fl_width=0;   fl_height=100; }
 	fl_b1   "widget/pane" { x=80;  y=34; width=48; height=152; style=flat; bgcolor="#904040"; fl_width=1;   fl_height=100; }
