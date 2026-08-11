@@ -104,7 +104,7 @@ typedef struct _WN
     char	Namespace[64];			/** Namespace this widget and subwidgets are in **/
     int		r_x, r_y, r_width, r_height;	/** Requested geometry **/
     int		pre_x, pre_y, pre_width, pre_height;  /** pre-layout geom. **/
-    int		fl_x, fl_y, fl_width, fl_height;/** Flexibilities as specified by the designer **/
+    int		fl_width, fl_height;		/** Flexibilities as specified by the designer **/
     double	fx, fy, fw, fh;			/** internal flexibility calculations **/
     double	fl_scale_x, fl_scale_y;		/** Scaled x and y flexibilities calculated for this layout. */
     double	fl_scale_w, fl_scale_h;		/** Scaled w and h flexibilities calculated for this layout. */
@@ -182,7 +182,7 @@ pWgtrNode wgtrParseOpenObject(pObject obj, pStruct app_params, pWgtrClientInfo c
 void wgtrFree(pWgtrNode tree);	/** frees memory associated with a widget tree **/
 pWgtrNode wgtrNewNode(	char* name, char* type, pObjSession s,
 			int rx, int ry, int rwidth, int rheight,
-			int flx, int fly, int flwidth, int flheight);   /** create a new widget node **/
+			int flwidth, int flheight);   /** create a new widget node **/
 int wgtrSetupNode(pWgtrNode node);
 void wgtrSetInsets(pWgtrNode node, int top, int bottom, int left, int right);	/** declare the widget's own reserved space **/
 int wgtrMergeOverlays(pWgtrNode node, char* objpath, char* app_path, char* overlays[], char* templates[]);

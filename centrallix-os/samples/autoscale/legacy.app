@@ -19,8 +19,6 @@ $Version=2$
 //
 //   - Legacy and low-use widgets are quarantined here so their failures
 //     cannot mask a real one on the pages that matter.
-//   - fl_x and fl_y are not tested anywhere in the harness, because the
-//     layout engine reads only fl_width and fl_height.
 //   - The "Deliberately not included" pane below lists the widgets that
 //     were left out entirely, and why.
 legacy "widget/page"

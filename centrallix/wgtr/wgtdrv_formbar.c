@@ -96,7 +96,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 
 	/** First create the pane - that's the parent **/
 	snprintf(name, 32, "fb%dpane%d", WGTFB.fb_cnt, WGTFB.pane_cnt++);
-	if ( (subtree = wgtrNewNode(name, "widget/pane", os, x, y, width, height, 100, 100, 100, 100)) == NULL)
+	if ( (subtree = wgtrNewNode(name, "widget/pane", os, x, y, width, height, 100, 100)) == NULL)
 	    {
 	    mssError(0, "WGTFB", "Couldn't create pane for form bar '%s'", this->Name);
 	    return -1;
@@ -110,7 +110,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	wgtrScheduleVerify(s, subtree);
 	/** Next the formstatus widget **/
 	snprintf(name, 32, "fb%dformstatus%d", WGTFB.fb_cnt, WGTFB.fs_cnt++);
-	if ( (newnode = wgtrNewNode(name, "widget/formstatus", os, 72, 4, -1, -1, 100, 100, -1, -1)) == NULL)
+	if ( (newnode = wgtrNewNode(name, "widget/formstatus", os, 72, 4, -1, -1, -1, -1)) == NULL)
 	    {
 	    mssError(0, "WGTFB", "Couldn't create formstatus for form bar '%s'", this->Name);
 	    return -1;
@@ -123,7 +123,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 
 	/** Now the 'first' button **/
 	snprintf(name, 32, "fb%dfirst", WGTFB.fb_cnt);
-	if ( (newnode = wgtrNewNode(name, "widget/imagebutton", os, 8, 5, 18, 18, 100, 100, 100, 100)) == NULL)
+	if ( (newnode = wgtrNewNode(name, "widget/imagebutton", os, 8, 5, 18, 18, 100, 100)) == NULL)
 	    {
 	    mssError(0, "WGTFB", "Couldn't create imagebutton for form bar '%s'", this->Name);
 	    return -1;
@@ -146,7 +146,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 
 	/** and the connector for the 'first' button **/
 	snprintf(name, 32, "fb%dfirstcn", WGTFB.fb_cnt);
-	if ( (newcn = wgtrNewNode(name, "widget/connector", os, 0, 0, 0, 0, 0, 0, 0, 0)) == NULL)
+	if ( (newcn = wgtrNewNode(name, "widget/connector", os, 0, 0, 0, 0, 0, 0)) == NULL)
 	    {
 	    mssError(0, "WGTFB", "Couldn't create connector for form bar '%s'", this->Name);
 	    return -1;
@@ -160,7 +160,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 
 	/** And the 'prev' button **/
 	snprintf(name, 32, "fb%dprev", WGTFB.fb_cnt);
-	if ( (newnode = wgtrNewNode(name, "widget/imagebutton", os, 28, 5, 18, 18, 100, 100, 100, 100)) == NULL)
+	if ( (newnode = wgtrNewNode(name, "widget/imagebutton", os, 28, 5, 18, 18, 100, 100)) == NULL)
 	    {
 	    mssError(0, "WGTFB", "Couldn't create imagebutton for form bar '%s'", this->Name);
 	    return -1;
@@ -183,7 +183,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 
 	/** and the connector for the 'prev' button **/
 	snprintf(name, 32, "fb%dprevcn", WGTFB.fb_cnt);
-	if ( (newcn = wgtrNewNode(name, "widget/connector", os, 0, 0, 0, 0, 0, 0, 0, 0)) == NULL)
+	if ( (newcn = wgtrNewNode(name, "widget/connector", os, 0, 0, 0, 0, 0, 0)) == NULL)
 	    {
 	    mssError(0, "WGTFB", "Couldn't create connector for form bar '%s'", this->Name);
 	    return -1;
@@ -197,7 +197,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	
 	/** And the 'next' button **/
 	snprintf(name, 32, "fb%dnext", WGTFB.fb_cnt);
-	if ( (newnode = wgtrNewNode(name, "widget/imagebutton", os, 190, 5, 18, 18, 100, 100, 100, 100)) == NULL)
+	if ( (newnode = wgtrNewNode(name, "widget/imagebutton", os, 190, 5, 18, 18, 100, 100)) == NULL)
 	    {
 	    mssError(0, "WGTFB", "Couldn't create imagebutton for form bar '%s'", this->Name);
 	    return -1;
@@ -220,7 +220,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 
 	/** and the connector for the 'next' button **/
 	snprintf(name, 32, "fb%dnextcn", WGTFB.fb_cnt);
-	if ( (newcn = wgtrNewNode(name, "widget/connector", os, 0, 0, 0, 0, 0, 0, 0, 0)) == NULL)
+	if ( (newcn = wgtrNewNode(name, "widget/connector", os, 0, 0, 0, 0, 0, 0)) == NULL)
 	    {
 	    mssError(0, "WGTFB", "Couldn't create connector for form bar '%s'", this->Name);
 	    return -1;
@@ -234,7 +234,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 	
 	/** And the 'last' button **/
 	snprintf(name, 32, "fb%dlast", WGTFB.fb_cnt);
-	if ( (newnode = wgtrNewNode(name, "widget/imagebutton", os, 210, 5, 18, 18, 100, 100, 100, 100)) == NULL)
+	if ( (newnode = wgtrNewNode(name, "widget/imagebutton", os, 210, 5, 18, 18, 100, 100)) == NULL)
 	    {
 	    mssError(0, "WGTFB", "Couldn't create imagebutton for form bar '%s'", this->Name);
 	    return -1;
@@ -257,7 +257,7 @@ int wgtfbVerify(pWgtrVerifySession s)
 
 	/** and the connector for the 'last' button **/
 	snprintf(name, 32, "fb%dlastcn", WGTFB.fb_cnt);
-	if ( (newcn = wgtrNewNode(name, "widget/connector", os, 0, 0, 0, 0, 0, 0, 0, 0)) == NULL)
+	if ( (newcn = wgtrNewNode(name, "widget/connector", os, 0, 0, 0, 0, 0, 0)) == NULL)
 	    {
 	    mssError(0, "WGTFB", "Couldn't create connector for form bar '%s'", this->Name);
 	    return -1;

@@ -286,8 +286,6 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 	if (match->r_y >= 0) tree->r_y = match->r_y;
 	if (match->r_width >= 0) tree->r_width = match->r_width;
 	if (match->r_height >= 0) tree->r_height = match->r_height;
-	if (match->fl_x >= 0) tree->fl_x = match->fl_x;
-	if (match->fl_y >= 0) tree->fl_y = match->fl_y;
 	if (match->fl_width >= 0)
 	    {
 	    tree->fl_width = match->fl_width;
@@ -367,7 +365,7 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 		}
 	    if ((new_node = wgtrNewNode(new_name, subtree->Type, subtree->ObjSession, 
 			subtree->r_x, subtree->r_y, subtree->r_width, subtree->r_height, 
-			subtree->fl_x, subtree->fl_y, subtree->fl_width, subtree->fl_height)) == NULL)
+			subtree->fl_width, subtree->fl_height)) == NULL)
 		return -1;
 
 	    if (wgtrSetupNode(new_node) < 0)
@@ -586,7 +584,7 @@ wgtr_internal_LoadAttrs(pObject obj, char* name, char* type, pWgtrNode templates
 	/*memcpy(my_templates, templates, sizeof(my_templates));*/
 
 	/** create this node **/
-	if ( (this_node = wgtrNewNode(name, type, obj->Session, -1, -1, -1, -1, 100, 100, -1, -1)) == NULL)
+	if ( (this_node = wgtrNewNode(name, type, obj->Session, -1, -1, -1, -1, -1, -1)) == NULL)
 	    {
 	    mssError(0, "WGTR", "Couldn't create node %s", name);
 	    goto error;
@@ -658,8 +656,6 @@ wgtr_internal_LoadAttrs(pObject obj, char* name, char* type, pWgtrNode templates
 		else if (!strcmp(prop_name,"y")) this_node->r_y = val.Integer;
 		else if (!strcmp(prop_name,"width")) this_node->r_width = val.Integer;
 		else if (!strcmp(prop_name,"height")) this_node->r_height = val.Integer;
-		else if (!strcmp(prop_name,"fl_x")) this_node->fl_x = val.Integer;
-		else if (!strcmp(prop_name,"fl_y")) this_node->fl_y = val.Integer;
 		else if (!strcmp(prop_name,"fl_width"))
 		    {
 		    this_node->fl_width = val.Integer;
@@ -1329,7 +1325,7 @@ wgtrGetPropertyType(pWgtrNode widget, char* name)
 	    return DATA_T_STRING;
 	else if (strcmp(name, "x") == 0 || strcmp(name, "y") == 0 || strcmp(name, "width") == 0 || strcmp(name, "height") == 0 ||
 		 strcmp(name, "r_x") == 0 || strcmp(name, "r_y") == 0 || strcmp(name, "r_width") == 0 || strcmp(name, "r_height") == 0 ||
-		 strcmp(name, "fl_x") == 0 || strcmp(name, "fl_y") == 0 || strcmp(name, "fl_width") == 0 || strcmp(name, "fl_height") == 0 ||
+		 strcmp(name, "fl_width") == 0 || strcmp(name, "fl_height") == 0 ||
 		 strcmp(name, "fl_parent_w") == 0 || strcmp(name, "fl_parent_h") == 0)
 	    return DATA_T_INTEGER;
 	else if (strcmp(name, "fl_scale_x") == 0 || strcmp(name, "fl_scale_y") == 0 ||
@@ -1372,8 +1368,6 @@ wgtrGetPropertyValue(pWgtrNode widget, char* name, int datatype, pObjData val)
 		}
 	    else if (!strncmp(name, "fl_", 3))
 		{
-		if (!strcmp(name+3, "x")) { val->Integer = widget->fl_x; return 0; }
-		if (!strcmp(name+3, "y")) { val->Integer = widget->fl_y; return 0; }
 		if (!strcmp(name+3, "width")) { val->Integer = widget->fl_width; return 0; }
 		if (!strcmp(name+3, "height")) { val->Integer = widget->fl_height; return 0; }
 		if (!strcmp(name+3, "parent_w")) { val->Integer = widget->fl_parent_w; return 0; }
@@ -1592,7 +1586,7 @@ wgtrSetProperty(pWgtrNode widget, char* name, int datatype, pObjData val)
 pWgtrNode 
 wgtrNewNode(	char* name, char* type, pObjSession s,
 		int rx, int ry, int rwidth, int rheight,
-		int flx, int fly, int flwidth, int flheight)
+		int flwidth, int flheight)
     {
     pWgtrNode node;
 
@@ -1611,8 +1605,6 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 	node->y = node->r_y = ry;
 	node->width = node->r_width = rwidth;
 	node->height = node->r_height = rheight;
-	node->fl_x = flx;
-	node->fl_y = fly;
 	node->fl_width = flwidth;
 	node->fl_height = flheight;
 	node->fl_parent_h = -1;

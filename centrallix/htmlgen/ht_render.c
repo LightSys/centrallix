@@ -1849,8 +1849,6 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "r_y") != 0)) goto err;
 	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "r_width") != 0)) goto err;
 	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "r_height") != 0)) goto err;
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_x") != 0)) goto err;
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_y") != 0)) goto err;
 	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_width") != 0)) goto err;
 	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_height") != 0)) goto err;
 	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_scale_x") != 0)) goto err;

@@ -45,22 +45,22 @@ MyPage "widget/page"
     bottom_right0 "widget/pane" { x=990; y=990; width=10; height=10; bgcolor = "#00f"; }
     
     // Advance markers.
-    top_left1     "widget/pane" { x=100; y=100; width=10; height=10; fl_x=25; fl_y=25; fl_width=25; fl_height=25; bgcolor = "#a00"; }
-    top_right1    "widget/pane" { x=890; y=100; width=10; height=10; fl_x=25; fl_y=25; fl_width=25; fl_height=25; bgcolor = "#aa0"; }
-    bottom_left1  "widget/pane" { x=100; y=890; width=10; height=10; fl_x=25; fl_y=25; fl_width=25; fl_height=25; bgcolor = "#0a0"; }
-    bottom_right1 "widget/pane" { x=890; y=890; width=10; height=10; fl_x=25; fl_y=25; fl_width=25; fl_height=25; bgcolor = "#00a"; }
+    top_left1     "widget/pane" { x=100; y=100; width=10; height=10; fl_width=25; fl_height=25; bgcolor = "#a00"; }
+    top_right1    "widget/pane" { x=890; y=100; width=10; height=10; fl_width=25; fl_height=25; bgcolor = "#aa0"; }
+    bottom_left1  "widget/pane" { x=100; y=890; width=10; height=10; fl_width=25; fl_height=25; bgcolor = "#0a0"; }
+    bottom_right1 "widget/pane" { x=890; y=890; width=10; height=10; fl_width=25; fl_height=25; bgcolor = "#00a"; }
     
     // Interior markers.
-    top_left2     "widget/pane" { x=250; y=250; width=10; height=10; fl_x=100; fl_y=100; fl_width=25; fl_height=25; bgcolor = "#700"; }
-    top_right2    "widget/pane" { x=740; y=250; width=10; height=10; fl_x=100; fl_y=100; fl_width=25; fl_height=25; bgcolor = "#770"; }
-    bottom_left2  "widget/pane" { x=250; y=740; width=10; height=10; fl_x=100; fl_y=100; fl_width=25; fl_height=25; bgcolor = "#070"; }
-    bottom_right2 "widget/pane" { x=740; y=740; width=10; height=10; fl_x=100; fl_y=100; fl_width=25; fl_height=25; bgcolor = "#007"; }
+    top_left2     "widget/pane" { x=250; y=250; width=10; height=10; fl_width=25; fl_height=25; bgcolor = "#700"; }
+    top_right2    "widget/pane" { x=740; y=250; width=10; height=10; fl_width=25; fl_height=25; bgcolor = "#770"; }
+    bottom_left2  "widget/pane" { x=250; y=740; width=10; height=10; fl_width=25; fl_height=25; bgcolor = "#070"; }
+    bottom_right2 "widget/pane" { x=740; y=740; width=10; height=10; fl_width=25; fl_height=25; bgcolor = "#007"; }
     
     // Deep interior markers.
-    top_left3     "widget/pane" { x=400; y=400; width=10; height=10; fl_x=25; fl_y=25; fl_width=100; fl_height=100; bgcolor = "#500"; }
-    top_right3    "widget/pane" { x=590; y=400; width=10; height=10; fl_x=25; fl_y=25; fl_width=100; fl_height=100; bgcolor = "#550"; }
-    bottom_left3  "widget/pane" { x=400; y=590; width=10; height=10; fl_x=25; fl_y=25; fl_width=100; fl_height=100; bgcolor = "#050"; }
-    bottom_right3 "widget/pane" { x=590; y=590; width=10; height=10; fl_x=25; fl_y=25; fl_width=100; fl_height=100; bgcolor = "#005"; }
+    top_left3     "widget/pane" { x=400; y=400; width=10; height=10; fl_width=100; fl_height=100; bgcolor = "#500"; }
+    top_right3    "widget/pane" { x=590; y=400; width=10; height=10; fl_width=100; fl_height=100; bgcolor = "#550"; }
+    bottom_left3  "widget/pane" { x=400; y=590; width=10; height=10; fl_width=100; fl_height=100; bgcolor = "#050"; }
+    bottom_right3 "widget/pane" { x=590; y=590; width=10; height=10; fl_width=100; fl_height=100; bgcolor = "#005"; }
     
     // Center marker.
     center "widget/pane"
