@@ -863,7 +863,6 @@ function dd_remove_pane(l)
 	    l.Items[i] = null;
 	    }
 	l.Items.length = 0;
-	l.Items = null;
 	}
     
     // Remove scrollbar/thumb layers if present.
@@ -875,7 +874,8 @@ function dd_remove_pane(l)
     remove_node(p);
     
     // Clear references.
-    p.ScrLayer = p.BarLayer = p.TmbLayer = p.Items = p.mainlayer = null;
+    p.ScrLayer = p.BarLayer = p.TmbLayer = p.mainlayer = null;
+    l.imgup = l.imgdn = l.imgtm = null;
     l.PaneLayer = null;
     }
 
@@ -1376,7 +1376,7 @@ function dd_init(param)
     l.init_items = false;
 
     // Setup getters for widths and heights.
-    const width_ratio = param.popup_width / param.width;
+    const width_ratio = (param.popup_width > 0 && param.width > 0) ? (param.popup_width / param.width) : 1;
     Object.defineProperties(l, {
 	w: {
 	    get() { return getRelativeW(l); },
@@ -1389,7 +1389,7 @@ function dd_init(param)
 	    enumerable: true,
 	},
 	popup_width: {
-	    get() { return l.w * width_ratio; },
+	    get() { return Math.round(l.w * width_ratio); },
 	    configurable: true,
 	    enumerable: true,
 	},
