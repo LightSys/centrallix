@@ -727,24 +727,12 @@ function dd_create_pane(l)
     //pg_debug(' x ');
     htr_init_layer(p, l, 'dd_pn');
     htr_setvisibility(p, 'hidden');
-    var c = "<BODY bgcolor="+l.bg+">";
-    c += "<TABLE border=0 cellpadding=0 cellspacing=0 width="+l.popup_width+" height="+l.h2+">";
-    c += "<TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>";
-    c += "  <TD><IMG SRC=/sys/images/white_1x1.png height=1 width="+(l.popup_width-2)+"></TD>";
-    c += "  <TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>";
-    c += "<TR><TD><IMG SRC=/sys/images/white_1x1.png height="+(l.h2-2)+" width=1></TD>";
-    c += "  <TD valign=top>";
-    c += "  </TD>";
-    c += "  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height="+(l.h2-2)+" width=1></TD></TR>";
-    c += "<TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD>";
-    c += "  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width="+(l.popup_width-2)+"></TD>";
-    c += "  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD></TR>";
-    c += "</TABLE>";
-    c += "</BODY>";
+    // Bevel border, drawn by CSS so the pane can be resized in place.
     htr_setbgcolor(p, l.bg);
-    htr_write_content(p, c);
-    //pg_serialized_write(p, c, null);
-    htutil_tag_images(p,'dt_pn',p,l);
+    pg_set_style(p, 'box-sizing', 'border-box');
+    pg_set_style(p, 'border', '1px solid');
+    pg_set_style(p, 'border-color', '#fafafa #7a7a7a #7a7a7a #fafafa');
+
     pg_stackpopup(p,l);
     setClipHeight(p, l.h2);
     setClipWidth(p, l.popup_width);
@@ -765,7 +753,7 @@ function dd_create_pane(l)
 	htr_init_layer(p.BarLayer, l, 'dd_sc');
 	moveTo(p.BarLayer, l.popup_width-20, 2);
 	htr_setvisibility(p.BarLayer, 'inherit');
-	c = '<TABLE border=0 cellpadding=0 cellspacing=0 width=18 height='+(l.h2-4)+'>';
+	var c = '<TABLE border=0 cellpadding=0 cellspacing=0 width=18 height='+(l.h2-4)+'>';
 	c += '<tr><td><img data-type="up"    alt="up"    src="/sys/images/ico13b.gif"></td></tr>';
 	c += '<tr><td><img data-type="track" alt="track" src="/sys/images/trans_1.gif" height='+(l.h2-40)+'></td></tr>';
 	c += '<tr><td><img data-type="down"  alt="down"  src="/sys/images/ico12b.gif"></td></tr>';
