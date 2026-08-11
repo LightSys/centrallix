@@ -1224,12 +1224,13 @@ int cCount = xaCount(&(L->CWidgets));
  ***
  *** @param L    The line along which to check.
  *** @param type Specifies the relevant dimension using APOS_ROW or APOS_COL.
- *** @returns    The minimum flexibility of children on the line.
+ *** @returns    The minimum flexibility of children on the line, or
+ ***             APOS_NOCHILDFLEX if the line holds no widgets at all.
  ***/
 int
 aposMinimumChildFlex(pAposLine L, int type)
 {
-int MinFlex=100, i=0, f;
+int MinFlex=APOS_NOFLEXFOUND, i=0, f;
 int sCount = xaCount(&(L->SWidgets));
 int cCount = xaCount(&(L->CWidgets));
 
@@ -1262,7 +1263,7 @@ int cCount = xaCount(&(L->CWidgets));
 	}
     
     /** Return the minimum flexibility. **/
-    return MinFlex;
+    return (MinFlex == APOS_NOFLEXFOUND) ? APOS_NOCHILDFLEX : MinFlex;
 }
 
 /*** Distributes extra/missing space among grid lines by section flexibility.

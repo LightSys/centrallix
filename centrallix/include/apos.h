@@ -31,6 +31,7 @@
 /* Description:	Applies layout logic to the widgets of an application.	*/
 /************************************************************************/
 
+#include <limits.h>
 #include <stdbool.h>
 
 #include "wgtr.h"
@@ -164,6 +165,14 @@ int aposProcessWindows(pWgtrNode, pWgtrNode);	/**Makes a pass through the tree t
  ***/
 #define APOS_EGAPFLEX 30
 #define APOS_CGAPFLEX 50
+
+/*** Sentinel for a minimum-flexibility search that has not seen a widget yet.
+ *** Flexibilities are unbounded, so this must be larger than any of them.
+ ***/
+#define APOS_NOFLEXFOUND INT_MAX
+
+/** Flexibility reported for a line that holds no widgets at all. **/
+#define APOS_NOCHILDFLEX 100
 
 /** Macros for readability and anticipation-of-change. **/
 #define isScrollpane(widget) (strcmp((widget)->Type, "widget/scrollpane") == 0)
