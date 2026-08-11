@@ -772,7 +772,7 @@ function dd_create_pane(l)
 	htr_setvisibility(p.BarLayer, 'inherit');
 	c = '<TABLE border=0 cellpadding=0 cellspacing=0 width=18 height='+(l.h2-4)+'>';
 	c += '<tr><td><img data-type="up"    alt="up"    src="/sys/images/ico13b.gif"></td></tr>';
-	c += '<tr><td><img data-type="trans" alt="trans" src="/sys/images/trans_1.gif" height='+(l.h2-40)+'></td></tr>';
+	c += '<tr><td><img data-type="track" alt="track" src="/sys/images/trans_1.gif" height='+(l.h2-40)+'></td></tr>';
 	c += '<tr><td><img data-type="down"  alt="down"  src="/sys/images/ico12b.gif"></td></tr>';
 	c += '</TABLE>';
 	htr_write_content(p.BarLayer, c);
@@ -788,7 +788,7 @@ function dd_create_pane(l)
 	moveTo(p.TmbLayer, l.popup_width-20, 20);
 	htr_setvisibility(p.TmbLayer, 'inherit');
 	p.TmbLayer.mainlayer = l;
-	htr_write_content(p.TmbLayer,'<IMG src=/sys/images/ico14b.gif NAME=t draggable="false">');
+	htr_write_content(p.TmbLayer,'<img data-type="thumb" alt="thumb" src="/sys/images/ico14b.gif" draggable="false">');
 	//pg_serialized_write(p.TmbLayer,'<IMG src=/sys/images/ico14b.gif NAME=t>', null);
 	imgs = pg_images(p.TmbLayer);
 	imgs[0].mainlayer = l;
@@ -943,14 +943,14 @@ function dd_add_items(l,ary)
 function dd_mouseout(e)
     {
     var ti=dd_target_img;
-    if (ti && ti.dataset.type === 'trans' && dd_current)
+    if (ti && ti.dataset.type === 'thumb' && dd_current)
         return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
     }
 
 function dd_mousemove(e)
     {
     var ti=dd_target_img;
-    if (ti != null && ti.dataset.type === 'trans' && dd_current && dd_current.enabled !== 'disabled')
+    if (ti != null && ti.dataset.type === 'thumb' && dd_current && dd_current.enabled !== 'disabled')
         {
         var pl=ti.mainlayer.PaneLayer;
         var v=getClipHeight(pl)-(3*18)-4;
@@ -1075,11 +1075,16 @@ function dd_mousedown(e)
                 dd_scroll();
                 dd_timeout = setTimeout(dd_scroll_tm,300);
                 break;
-            case 'thumb':
+            case 'track':
                 dd_incr = dd_target_img.height+36;
                 if (e.pageY > getPageY(dd_target_img.thum)+9) dd_incr = -dd_incr;
                 dd_scroll();
                 dd_timeout = setTimeout(dd_scroll_tm,300);
+                break;
+            case 'thumb':
+                dd_click_x = e.pageX;
+                dd_click_y = e.pageY;
+                dd_thum_y = getPageY(dd_target_img.thum);
                 break;
             }
         }
