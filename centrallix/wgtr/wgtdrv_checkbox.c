@@ -61,8 +61,10 @@ wgtcbNew(pWgtrNode node)
 	/*** 13px, not 12px: the 12x12 gif has a 1px border on its top and left
 	 *** but not its bottom and right, so a 13px box centers the glyph.
 	 ***/
-	if(node->r_width < 0) node->r_width = 13;
-	if(node->r_height < 0) node->r_height = 13;
+	if(node->r_width < 0)
+	    node->r_width = node->pre_width = node->width = 13;
+	if(node->r_height < 0)
+	    node->r_height = node->pre_height = node->height = 13;
 	if(node->fl_width < 0) node->fl_width = 0;
 	if(node->fl_height < 0) node->fl_height = 0;
     return 0;
