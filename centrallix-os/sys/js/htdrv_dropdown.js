@@ -429,31 +429,38 @@ function dd_reposition(l)
     if (htr_getvisibility(l.PaneLayer) == 'inherit') dd_position(l);
     }
 
-/*** Rebuild the pane of an open dropdown after the widget has been resized.
- *** The pane scales with the widget, so it has to be rebuilt, but the
- *** highlighted item and any in progress type ahead search are preserved.
+/*** Resize the pane of an open dropdown after the widget was resized.  Only
+ *** the width scales with the widget: the height comes from the item count,
+ *** so the pane never changes shape and can be adjusted in place.
  ***/
 function dd_resize(l)
     {
-    /** Save the state that dd_collapse() and dd_expand() would discard. **/
-    var highlighted_item = l.SelectedItem;
-    var keystring = l.keystring;
-    var match = l.match;
-    var lastmatch = l.lastmatch;
-    var time_start = l.time_start;
-    var time_stop = l.time_stop;
+    const p = l.PaneLayer;
+    if (!p) return;
 
-    /** Rebuild the pane at the new size. **/
-    dd_collapse(l);
-    dd_expand(l);
+    /** Widen or narrow the pane itself. **/
+    const w = l.popup_width;
+    setClipWidth(p, w);
+    resizeTo(p, w, l.h2);
 
-    /** Restore the saved state. **/
-    l.keystring = keystring;
-    l.match = match;
-    l.lastmatch = lastmatch;
-    l.time_start = time_start;
-    l.time_stop = time_stop;
-    if (highlighted_item != null) dd_highlight_item(l, highlighted_item);
+    /** Keep the scrollbar against the right edge. **/
+    if (p.BarLayer)
+	{
+	setRelativeX(p.BarLayer, w - 20);
+	setRelativeX(p.TmbLayer, w - 20);
+	}
+
+    /** Resize the items to the remaining space. **/
+    const item_w = w - (p.BarLayer ? 22 : 4);
+    setClipWidth(p.ScrLayer, item_w);
+    for (let i = 0; i < l.Items.length; i++)
+	{
+	if (!l.Items[i]) continue;
+	setClipWidth(l.Items[i], item_w);
+	resizeTo(l.Items[i], item_w, (pg_parah));
+	}
+
+    dd_position(l);
     }
 
 function dd_expand(l)
