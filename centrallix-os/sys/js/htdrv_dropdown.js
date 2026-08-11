@@ -164,7 +164,7 @@ function dd_keyhandler(l,e,k)
 		    this.Values[i].label.substring(0, 1) == 
 			String.fromCharCode(k_lower))
 		    {
-		    dd_hilight_item(this,i);
+		    dd_highlight_item(this,i);
 			this.lastmatch = i;
 		    i=this.Values.length;
 		    }
@@ -176,7 +176,7 @@ function dd_keyhandler(l,e,k)
 		    if (this.Values[i].label == '(none selected)' || this.Values[i].hide) continue;
 		    if (this.Values[i].label.toUpperCase().indexOf(String.fromCharCode(k_upper)) >= 0)
 			{
-			dd_hilight_item(this,i);
+			dd_highlight_item(this,i);
 			    this.lastmatch = i;
 			i=this.Values.length;
 			break;
@@ -194,7 +194,7 @@ function dd_keyhandler(l,e,k)
 		this.lastmatch = null;
 		this.time_start = null;
 		this.time_stop = null;
-		dd_hilight_item(this, 0);
+		dd_highlight_item(this, 0);
 		}
 	    }
 	
@@ -212,7 +212,7 @@ function dd_keyhandler(l,e,k)
 			this.keystring.length).toLowerCase())
 			== this.keystring && !this.match)
 		    {
-		    dd_hilight_item(this,i);
+		    dd_highlight_item(this,i);
 		    //found a good match
 		    this.match = true;
 		    this.lastmatch = i;
@@ -225,7 +225,7 @@ function dd_keyhandler(l,e,k)
 		    if (this.Values[i].label == '(none selected)' || this.Values[i].hide) continue;
 		    if (this.Values[i].label.toUpperCase().indexOf(this.keystring.toUpperCase()) >= 0)
 			{
-			dd_hilight_item(this,i);
+			dd_highlight_item(this,i);
 			this.match = true;
 			this.lastmatch = i;
 			break;
@@ -236,7 +236,7 @@ function dd_keyhandler(l,e,k)
 		{
 		this.keystring = this.keystring.substring(0, 
 			(this.keystring.length - 1));
-		dd_hilight_item(this, this.lastmatch);
+		dd_highlight_item(this, this.lastmatch);
 	    	this.match = true;
 		}
 	    }
@@ -293,7 +293,7 @@ function dd_keyhandler(l,e,k)
 	    dd_select_item(this,this.SelectedItem, 'keyboard');
 	    dd_datachange(this);
 	    dd_collapse(this);
-	    dd_unhilight_item(this,this.SelectedItem);
+	    dd_unhighlight_item(this,this.SelectedItem);
 	    }
 	}
     else if (k == 9)
@@ -306,7 +306,7 @@ function dd_keyhandler(l,e,k)
 		dd_select_item(this,this.SelectedItem, 'keyboard');
 		dd_datachange(this);
 		dd_collapse(this);
-		dd_unhilight_item(this,this.SelectedItem);
+		dd_unhighlight_item(this,this.SelectedItem);
 		}
 	    if (e.shiftKey)
 		this.form.ShiftTabNotify(this);
@@ -330,7 +330,7 @@ function dd_keyhandler(l,e,k)
 	for(var i=0;i<this.Values.length;i++)
 	    if ((this.SelectedItem == null || i > this.SelectedItem) && !this.Values[i].hide)
 		{
-		dd_hilight_item(this, i);
+		dd_highlight_item(this, i);
 		break;
 		}
 	}
@@ -341,7 +341,7 @@ function dd_keyhandler(l,e,k)
 	for(var i=this.Values.length-1;i>=0;i--)
 	    if ((this.SelectedItem == null || i < this.SelectedItem) && !this.Values[i].hide)
 		{
-		dd_hilight_item(this, i);
+		dd_highlight_item(this, i);
 		break;
 		}
 	}
@@ -358,7 +358,7 @@ function dd_notmember(val,list)
     return true;
     }
 
-function dd_hilight_item(l,i)
+function dd_highlight_item(l,i)
     {
     if (i == null)
 	{
@@ -368,7 +368,7 @@ function dd_hilight_item(l,i)
 	    return;
 	}
     if (l.SelectedItem != null && dd_notmember(l.SelectedItem, l.selectedItems))
-	dd_unhilight_item(l,l.SelectedItem);
+	dd_unhighlight_item(l,l.SelectedItem);
     l.SelectedItem = i;
     if (l.Items[i])
 	{
@@ -377,7 +377,7 @@ function dd_hilight_item(l,i)
 	}
     }
 
-function dd_unhilight_item(l,i)
+function dd_unhighlight_item(l,i)
     {
     if (i == null)
 	{
@@ -436,7 +436,7 @@ function dd_reposition(l)
 function dd_resize(l)
     {
     /** Save the state that dd_collapse() and dd_expand() would discard. **/
-    var hilighted = l.SelectedItem;
+    var highlighted_item = l.SelectedItem;
     var keystring = l.keystring;
     var match = l.match;
     var lastmatch = l.lastmatch;
@@ -453,7 +453,7 @@ function dd_resize(l)
     l.lastmatch = lastmatch;
     l.time_start = time_start;
     l.time_stop = time_stop;
-    if (hilighted != null) dd_hilight_item(l, hilighted);
+    if (highlighted_item != null) dd_highlight_item(l, highlighted_item);
     }
 
 function dd_expand(l)
@@ -495,7 +495,7 @@ function dd_expand(l)
 		l.VisLayer.index = i;
 		break;
 		}
-	dd_hilight_item(l,l.VisLayer.index);
+	dd_highlight_item(l,l.VisLayer.index);
 	}
     }
 
@@ -980,7 +980,7 @@ function dd_mouseover(e)
     if (e.kind == 'dd_itm' && dd_current && dd_current.enabled=='full')
         {
         dd_lastkey = null;
-        dd_hilight_item(dd_current, e.layer.index);
+        dd_highlight_item(dd_current, e.layer.index);
         }
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
@@ -1051,7 +1051,7 @@ function dd_mousedown(e)
 	else 
 	    if (dd_current.Items[e.layer.index])
 		htr_setbgcolor(dd_current.Items[e.layer.index], dd_current.hl);
-	    //dd_hilight_item(dd_current, e.layer.index);
+
 	// Re-select the dropdown
 	pg_setkbdfocus(cur, null, null, null);
         }

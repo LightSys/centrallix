@@ -60,7 +60,7 @@ static struct {
 int htddRender(pHtSession s, pWgtrNode tree, int z) {
    char bgstr[HT_SBUF_SIZE];
    char textcolor[HT_SBUF_SIZE];
-   char hilight[HT_SBUF_SIZE];
+   char highlight[HT_SBUF_SIZE];
    char string[HT_SBUF_SIZE];
    char fieldname[30];
    char form[64];
@@ -94,6 +94,9 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	goto end;
 	}
 
+    /** Backwards compat: 'hilight' was corrected to 'highlight'. **/
+    wgtrRenameProperty(tree, "hilight", "highlight");
+
    /** Get x,y of this object **/
    if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
    if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
@@ -114,10 +117,10 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 
    if (wgtrGetPropertyValue(tree,"numdisplay",DATA_T_INTEGER,POD(&num_disp)) != 0) num_disp=3;
 
-   if (wgtrGetPropertyValue(tree,"hilight",DATA_T_STRING,POD(&ptr)) == 0) {
-	strtcpy(hilight,ptr,sizeof(hilight));
+   if (wgtrGetPropertyValue(tree,"highlight",DATA_T_STRING,POD(&ptr)) == 0) {
+	strtcpy(highlight,ptr,sizeof(highlight));
    } else {
-	mssError(1,"HTDD","Drop Down widget must have a 'hilight' property");
+	mssError(1,"HTDD","Drop Down widget must have a 'highlight' property");
 	goto end;
    }
 
@@ -292,7 +295,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	    "popup_width:%INT, "
 	"}); }\n",
 	name, id, id,
-	bgstr, hilight,
+	bgstr, highlight,
 	fieldname, num_disp, mode,
 	(sql != NULL) ? sql : "",
 	form, osrc, query_multiselect,

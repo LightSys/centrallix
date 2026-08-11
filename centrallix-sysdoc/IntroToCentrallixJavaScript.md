@@ -85,7 +85,7 @@ Each module will have different and specific abbreviations to it's own module an
 - fg - foreground
 - fn - fieldname
 - fs - fontsize
-- hl - hilight
+- hl - highlight
 - ll - left layer
 - ly - layer
 - ml - mainlayer

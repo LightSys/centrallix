@@ -1185,7 +1185,7 @@ cn1 "widget/connector"
 			
 			<property name="height" type="integer">Height, in pixels, of the dropdown.</property>
 			
-			<property name="hilight" type="integer">The color of the highlighted option when the mouse goes over the item.</property>
+			<property name="highlight" type="integer">The color of the highlighted option when the mouse goes over the item.</property>
 
 			<property name="invalid_select_default" type="integer">The default widget that has focus when the dropdown is first activated.</property>
 			
