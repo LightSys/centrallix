@@ -201,14 +201,15 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	"\t\t.dd%POScon { "
 	    "position:absolute; "
 	    "overflow:hidden; "
-	    "left:1px; "
+	    "display:flex; "
+	    "align-items:center; "
+	    "left:2px; "
 	    "top:1px; "
-	    "width:1024px; "
-	    "height:%POSpx; "
+	    "width:calc(100%% - 21px); "
+	    "height:calc(100%% - 2px); "
 	    "z-index:%POS; "
 	"}\n",
 	id,
-	h - 2,
 	z + 1
     ) != 0)
 	{

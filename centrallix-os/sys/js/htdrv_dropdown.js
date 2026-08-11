@@ -573,11 +573,8 @@ function dd_select_item(l,i,from)
     htr_write_content(l.HidLayer, c);
     //pg_serialized_write(l.HidLayer, c, null);
     l.HidLayer.index = i;
-    moveTo(l.HidLayer, 2, ((l.h-2) - pg_parah)/2);
-    resizeTo(l.HidLayer, l.w, l.h);
     
     htr_setvisibility(l.HidLayer, 'inherit');
-    setClipWidth(l.HidLayer, l.w-21);
     htr_setvisibility(l.VisLayer, 'hidden');
     var t=l.VisLayer;
     l.VisLayer = l.HidLayer;
@@ -751,6 +748,8 @@ function dd_create_pane(l)
     pg_stackpopup(p,l);
     setClipHeight(p, l.h2);
     setClipWidth(p, l.popup_width);
+    resizeTo(p, l.popup_width, l.h2);
+    pg_set_style(p, 'overflow', 'hidden');
 
     /**  Create scroll background layer  **/
     p.ScrLayer = htr_new_layer(null, p);
@@ -817,6 +816,8 @@ function dd_create_pane(l)
 	    setClipWidth(l.Items[i], w);
 	    setClipHeight(l.Items[i], (pg_parah));
 	    resizeTo(l.Items[i], w, (pg_parah));
+	    pg_set_style(l.Items[i], 'overflow', 'hidden');
+	    pg_set_style(l.Items[i], 'white-space', 'nowrap');
 	    if (i==0 && l.Values[i].value == null)
 		htr_write_content(l.Items[i], '<i>' + htutil_encode(l.Values[i].label) + '</i>');
 		//pg_serialized_write(l.Items[i], '<i>' + l.Values[i].label + '</i>',null);
