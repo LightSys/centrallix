@@ -436,7 +436,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	    {
 	    if (wgtrGetPropertyValue(subtree,"label",DATA_T_STRING,POD(&ptr)) != 0) 
 		{
-		mssError(1,"HTDD","Drop Down widget must have a 'width' property");
+		mssError(1,"HTDD","Drop Down Item widget must have a 'label' property");
 		goto end;
 		}
 	    strtcpy(string, ptr, sizeof(string));
@@ -460,7 +460,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 
 	    if (wgtrGetPropertyValue(subtree,"value",DATA_T_STRING,POD(&ptr)) != 0) 
 		{
-		mssError(1,"HTDD","Drop Down widget must have a 'value' property");
+		mssError(1,"HTDD","Drop Down Item widget must have a 'value' property");
 		goto end;
 		}
 	    strtcpy(string,ptr, sizeof(string));
