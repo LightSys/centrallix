@@ -108,11 +108,7 @@ function dd_readonly()
 
 function dd_disable()
     {
-    if (dd_current)
-	{
-	htr_setvisibility(dd_current.PaneLayer, 'hidden');
-	dd_current = null;
-	}
+    if (dd_current) dd_collapse(dd_current);
     pg_images(this)[0].src = '/sys/images/ico15a.gif';
     htr_setbgcolor(this, "#e0e0e0");
     this.keyhandler = null;
@@ -1110,6 +1106,7 @@ function dd_mousedown(e)
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
+/** Typically called when the underlying OSRC data is updated. **/
 function dd_update(p1)
     {
     var osrc = this.osrc;
@@ -1133,7 +1130,7 @@ function dd_update(p1)
     l.additems(l,vals);
     dd_select_item(l,targetval, 'osrc'); //select the correct index
     dd_collapse(this);
-    l.PaneLayer = null;
+    dd_remove_pane(l);
     }
 
 function dd_action_set_group(aparam)
@@ -1144,7 +1141,7 @@ function dd_action_set_group(aparam)
     this.currentMin = aparam.Min;
     this.currentMax = aparam.Max;
     dd_collapse(this);
-    this.PaneLayer = null;
+    dd_remove_pane(this);
     this.Values = [];
 
     // Only show entries matching the specified group
@@ -1219,7 +1216,7 @@ function dd_sql_loaded()
 	}
     dd.additems(dd,items);
     dd_collapse(dd);
-    dd.PaneLayer = null;
+    dd_remove_pane(dd);
     dd.ifcProbe(ifAction).Invoke("SetGroup", {Group:dd.currentGroup, Min:dd.currentMin, Max:dd.currentMax});
     }
 
@@ -1289,6 +1286,7 @@ function dd_cb_reveal(e)
 function dd_deinit()
     {
     dd_collapse(this);
+    dd_remove_pane(this);
     dd_resize_observer.unobserve(this);
     var i = dd_list.indexOf(this);
     if (i >= 0) dd_list.splice(i, 1);
