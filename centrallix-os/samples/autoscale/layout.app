@@ -114,23 +114,23 @@ layout "widget/page"
 	x=502; y=78; width=490; height=202;
 	style=lowered; bgcolor="#909090";
 
-	fl_l0   "widget/label" { x=24;  y=8; width=48; height=16; text="0";   font_size=11; align=center; valign=middle; fl_width=0; }
-	fl_l1   "widget/label" { x=80;  y=8; width=48; height=16; text="1";   font_size=11; align=center; valign=middle; fl_width=1; }
-	fl_l5   "widget/label" { x=136; y=8; width=48; height=16; text="5";   font_size=11; align=center; valign=middle; fl_width=5; }
-	fl_l10  "widget/label" { x=192; y=8; width=48; height=16; text="10";  font_size=11; align=center; valign=middle; fl_width=10; }
-	fl_l25  "widget/label" { x=248; y=8; width=48; height=16; text="25";  font_size=11; align=center; valign=middle; fl_width=25; }
-	fl_l50  "widget/label" { x=304; y=8; width=48; height=16; text="50";  font_size=11; align=center; valign=middle; fl_width=50; }
-	fl_l100 "widget/label" { x=360; y=8; width=48; height=16; text="100"; font_size=11; align=center; valign=middle; fl_width=100; }
-	fl_l200 "widget/label" { x=416; y=8; width=48; height=16; text="200"; font_size=11; align=center; valign=middle; fl_width=200; }
+	fl_l0   "widget/label" { x=24;  y=8; width=48; height=16; text="0";    font_size=11; align=center; valign=middle; fl_width=0; }
+	fl_l1   "widget/label" { x=80;  y=8; width=48; height=16; text="1";    font_size=11; align=center; valign=middle; fl_width=1; }
+	fl_l2   "widget/label" { x=136; y=8; width=48; height=16; text="2";    font_size=11; align=center; valign=middle; fl_width=2; }
+	fl_l5   "widget/label" { x=192; y=8; width=48; height=16; text="5";    font_size=11; align=center; valign=middle; fl_width=5; }
+	fl_l10  "widget/label" { x=248; y=8; width=48; height=16; text="10";   font_size=11; align=center; valign=middle; fl_width=10; }
+	fl_l25  "widget/label" { x=304; y=8; width=48; height=16; text="25";   font_size=11; align=center; valign=middle; fl_width=25; }
+	fl_l50  "widget/label" { x=360; y=8; width=48; height=16; text="50";   font_size=11; align=center; valign=middle; fl_width=50; }
+	fl_l100 "widget/label" { x=416; y=8; width=48; height=16; text="100";  font_size=11; align=center; valign=middle; fl_width=100; }
 
 	fl_b0   "widget/pane" { x=24;  y=34; width=48; height=152; style=flat; bgcolor="#803030"; fl_width=0;   fl_height=100; }
 	fl_b1   "widget/pane" { x=80;  y=34; width=48; height=152; style=flat; bgcolor="#904040"; fl_width=1;   fl_height=100; }
-	fl_b5   "widget/pane" { x=136; y=34; width=48; height=152; style=flat; bgcolor="#a05040"; fl_width=5;   fl_height=100; }
-	fl_b10  "widget/pane" { x=192; y=34; width=48; height=152; style=flat; bgcolor="#b06040"; fl_width=10;  fl_height=100; }
-	fl_b25  "widget/pane" { x=248; y=34; width=48; height=152; style=flat; bgcolor="#c07840"; fl_width=25;  fl_height=100; }
-	fl_b50  "widget/pane" { x=304; y=34; width=48; height=152; style=flat; bgcolor="#d09040"; fl_width=50;  fl_height=100; }
-	fl_b100 "widget/pane" { x=360; y=34; width=48; height=152; style=flat; bgcolor="#e0a840"; fl_width=100; fl_height=100; }
-	fl_b200 "widget/pane" { x=416; y=34; width=48; height=152; style=flat; bgcolor="#f0c040"; fl_width=200; fl_height=100; }
+	fl_b2   "widget/pane" { x=136; y=34; width=48; height=152; style=flat; bgcolor="#a05040"; fl_width=2;   fl_height=100; }
+	fl_b5   "widget/pane" { x=192; y=34; width=48; height=152; style=flat; bgcolor="#b06040"; fl_width=5;   fl_height=100; }
+	fl_b10  "widget/pane" { x=248; y=34; width=48; height=152; style=flat; bgcolor="#c07840"; fl_width=10;  fl_height=100; }
+	fl_b25  "widget/pane" { x=304; y=34; width=48; height=152; style=flat; bgcolor="#d09040"; fl_width=25;  fl_height=100; }
+	fl_b50  "widget/pane" { x=360; y=34; width=48; height=152; style=flat; bgcolor="#e0a840"; fl_width=50;  fl_height=100; }
+	fl_b100 "widget/pane" { x=416; y=34; width=48; height=152; style=flat; bgcolor="#f0c040"; fl_width=100; fl_height=100; }
 	}
 
     // ---------------------------------------------------------------
@@ -153,12 +153,12 @@ layout "widget/page"
 	x=8; y=308; width=486; height=152;
 	style=lowered; bgcolor="#909090";
 
-	sp_t10 "widget/label" { x=8;   y=8; width=58; height=16; text="10"; font_size=11; align=center; valign=middle; }
-	sp_t19 "widget/label" { x=74;  y=8; width=67; height=16; text="19"; font_size=11; align=center; valign=middle; }
-	sp_t20 "widget/label" { x=149; y=8; width=68; height=16; text="20"; font_size=11; align=center; valign=middle; }
-	sp_t21 "widget/label" { x=225; y=8; width=69; height=16; text="21"; font_size=11; align=center; valign=middle; }
-	sp_t30 "widget/label" { x=302; y=8; width=78; height=16; text="30"; font_size=11; align=center; valign=middle; }
-	sp_t40 "widget/label" { x=388; y=8; width=88; height=16; text="40"; font_size=11; align=center; valign=middle; }
+	sp_t10 "widget/label" { x=8;   y=8; width=58; height=16; text="10"; font_size=11; align=center; valign=middle; fl_width=100; }
+	sp_t19 "widget/label" { x=74;  y=8; width=67; height=16; text="19"; font_size=11; align=center; valign=middle; fl_width=100; }
+	sp_t20 "widget/label" { x=149; y=8; width=68; height=16; text="20"; font_size=11; align=center; valign=middle; fl_width=100; }
+	sp_t21 "widget/label" { x=225; y=8; width=69; height=16; text="21"; font_size=11; align=center; valign=middle; fl_width=100; }
+	sp_t30 "widget/label" { x=302; y=8; width=78; height=16; text="30"; font_size=11; align=center; valign=middle; fl_width=100; }
+	sp_t40 "widget/label" { x=388; y=8; width=88; height=16; text="40"; font_size=11; align=center; valign=middle; fl_width=100; }
 
 	// gap 10
 	sp_a10 "widget/pane" { x=8;   y=32; width=24; height=88; style=flat; bgcolor="#3060a0"; }
@@ -183,6 +183,7 @@ layout "widget/page"
 	    {
 	    x=8; y=126; width=468; height=18;
 	    text="blue = must stay put, red = may spread"; font_size=11; align=left; valign=middle;
+	    fl_width=100;
 	    }
 	}
 
@@ -194,7 +195,7 @@ layout "widget/page"
     minw_title "widget/label"
 	{
 	x=502; y=288; width=490; height=18;
-	text="Minimum width: shrink the window; none should vanish or overlap";
+	text="Minimum width (should never vanish or overlap)";
 	font_size=12; align=left; valign=middle;
 	}
     minw "widget/pane"
@@ -202,12 +203,12 @@ layout "widget/page"
 	x=502; y=308; width=490; height=152;
 	style=lowered; bgcolor="#909090";
 
-	mw_t24 "widget/label" { x=62;  y=8; width=24; height=16; text="24"; font_size=11; align=center; valign=middle; }
-	mw_t28 "widget/label" { x=116; y=8; width=28; height=16; text="28"; font_size=11; align=center; valign=middle; }
-	mw_t30 "widget/label" { x=174; y=8; width=30; height=16; text="30"; font_size=11; align=center; valign=middle; }
-	mw_t32 "widget/label" { x=234; y=8; width=32; height=16; text="32"; font_size=11; align=center; valign=middle; }
-	mw_t40 "widget/label" { x=296; y=8; width=40; height=16; text="40"; font_size=11; align=center; valign=middle; }
-	mw_t60 "widget/label" { x=366; y=8; width=60; height=16; text="60"; font_size=11; align=center; valign=middle; }
+	mw_t24 "widget/label" { x=62;  y=8; width=24; height=16; text="24"; font_size=11; align=center; valign=middle; fl_width=100; }
+	mw_t28 "widget/label" { x=116; y=8; width=28; height=16; text="28"; font_size=11; align=center; valign=middle; fl_width=100; }
+	mw_t30 "widget/label" { x=174; y=8; width=30; height=16; text="30"; font_size=11; align=center; valign=middle; fl_width=100; }
+	mw_t32 "widget/label" { x=234; y=8; width=32; height=16; text="32"; font_size=11; align=center; valign=middle; fl_width=100; }
+	mw_t40 "widget/label" { x=296; y=8; width=40; height=16; text="40"; font_size=11; align=center; valign=middle; fl_width=100; }
+	mw_t60 "widget/label" { x=366; y=8; width=60; height=16; text="60"; font_size=11; align=center; valign=middle; fl_width=100; }
 
 	mw_24 "widget/pane" { x=62;  y=32; width=24; height=88; style=flat; bgcolor="#7040a0"; }
 	mw_28 "widget/pane" { x=116; y=32; width=28; height=88; style=flat; bgcolor="#7040a0"; }
@@ -220,6 +221,7 @@ layout "widget/page"
 	    {
 	    x=8; y=126; width=474; height=18;
 	    text="purple = narrower than the 30px floor"; font_size=11; align=left; valign=middle;
+	    fl_width=100;
 	    }
 	}
 
@@ -317,22 +319,22 @@ layout "widget/page"
 	st_raised "widget/pane"
 	    {
 	    x=8; y=8; width=202; height=40; style=raised; bgcolor="#b0b0b0";
-	    st_raised_l "widget/label" { x=4; y=4; width=194; height=16; text="raised"; font_size=11; align=left; valign=middle; }
+	    st_raised_l "widget/label" { x=4; y=4; width=194; height=16; text="raised"; font_size=11; align=left; valign=middle; fl_width=100; fl_height=100; }
 	    }
 	st_lowered "widget/pane"
 	    {
 	    x=8; y=54; width=202; height=40; style=lowered; bgcolor="#b0b0b0";
-	    st_lowered_l "widget/label" { x=4; y=4; width=194; height=16; text="lowered"; font_size=11; align=left; valign=middle; }
+	    st_lowered_l "widget/label" { x=4; y=4; width=194; height=16; text="lowered"; font_size=11; align=left; valign=middle; fl_width=100; fl_height=100; }
 	    }
 	st_bordered "widget/pane"
 	    {
 	    x=8; y=100; width=202; height=40; style=bordered; bgcolor="#b0b0b0";
-	    st_bordered_l "widget/label" { x=4; y=4; width=194; height=16; text="bordered"; font_size=11; align=left; valign=middle; }
+	    st_bordered_l "widget/label" { x=4; y=4; width=194; height=16; text="bordered"; font_size=11; align=left; valign=middle; fl_width=100; fl_height=100; }
 	    }
 	st_flat "widget/pane"
 	    {
 	    x=8; y=146; width=202; height=40; style=flat; bgcolor="#b0b0b0";
-	    st_flat_l "widget/label" { x=4; y=4; width=194; height=16; text="flat (no inset)"; font_size=11; align=left; valign=middle; }
+	    st_flat_l "widget/label" { x=4; y=4; width=194; height=16; text="flat (no inset)"; font_size=11; align=left; valign=middle; fl_width=100; fl_height=100; }
 	    }
 	}
     }
