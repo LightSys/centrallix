@@ -409,8 +409,9 @@ int delta_w, delta_h;
 }
 
 /*** Calculates and sets the flexibility for a container by taking weighted
- *** averages in each direction.
- *** 
+ *** averages in each direction.  Skips values explicitly specified by the
+ *** designer to avoid clobbering their design choices.
+ ***
  *** @param W The container to be set.
  ***/
 void
@@ -426,26 +427,32 @@ int i=0, sectCount=0, TotalWidth=0, ProductSum=0;
      *** Note: Section height is called width here because rows
      ***       are one dimensional and the feild is reused.
      ***/
-    sectCount = xaCount(&(theGrid->Rows));
-    for(i=0; i<sectCount; ++i)
-        {
-	    Sect = (pAposSection)xaGetItem(&(theGrid->Rows), i);
-	    TotalWidth += Sect->Width;
-	    ProductSum += Sect->Flex * Sect->Width;
-        }
-    if (TotalWidth) W->fl_height = APOS_FUDGEFACTOR + (float)ProductSum / (float)TotalWidth;
-    
+    if (!(W->Flags & WGTR_F_FLHEIGHTSET))
+	{
+	sectCount = xaCount(&(theGrid->Rows));
+	for(i=0; i<sectCount; ++i)
+	    {
+		Sect = (pAposSection)xaGetItem(&(theGrid->Rows), i);
+		TotalWidth += Sect->Width;
+		ProductSum += Sect->Flex * Sect->Width;
+	    }
+	if (TotalWidth) W->fl_height = APOS_FUDGEFACTOR + (float)ProductSum / (float)TotalWidth;
+	}
+
     TotalWidth = ProductSum = 0;
     
     /** Calculate average column flexibility, weighted by width. **/
-    sectCount = xaCount(&(theGrid->Cols));
-    for(i=0; i<sectCount; ++i)
-        {
-	    Sect = (pAposSection)xaGetItem(&(theGrid->Cols), i);
-	    TotalWidth += Sect->Width;
-	    ProductSum += Sect->Flex * Sect->Width;
-        }
-    if (TotalWidth) W->fl_width = APOS_FUDGEFACTOR + (float)ProductSum / (float)TotalWidth;
+    if (!(W->Flags & WGTR_F_FLWIDTHSET))
+	{
+	sectCount = xaCount(&(theGrid->Cols));
+	for(i=0; i<sectCount; ++i)
+	    {
+		Sect = (pAposSection)xaGetItem(&(theGrid->Cols), i);
+		TotalWidth += Sect->Width;
+		ProductSum += Sect->Flex * Sect->Width;
+	    }
+	if (TotalWidth) W->fl_width = APOS_FUDGEFACTOR + (float)ProductSum / (float)TotalWidth;
+	}
 }
 
 /*** Builds the layout grid for recursively for this container and all of its

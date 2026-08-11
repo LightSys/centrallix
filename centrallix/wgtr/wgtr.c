@@ -288,8 +288,16 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 	if (match->r_height >= 0) tree->r_height = match->r_height;
 	if (match->fl_x >= 0) tree->fl_x = match->fl_x;
 	if (match->fl_y >= 0) tree->fl_y = match->fl_y;
-	if (match->fl_width >= 0) tree->fl_width = match->fl_width;
-	if (match->fl_height >= 0) tree->fl_height = match->fl_height;
+	if (match->fl_width >= 0)
+	    {
+	    tree->fl_width = match->fl_width;
+	    tree->Flags |= (match->Flags & WGTR_F_FLWIDTHSET);
+	    }
+	if (match->fl_height >= 0)
+	    {
+	    tree->fl_height = match->fl_height;
+	    tree->Flags |= (match->Flags & WGTR_F_FLHEIGHTSET);
+	    }
 
 	/** Check for substitutions **/
 	for(prop=objGetFirstAttr(tree_obj);prop;prop=objGetNextAttr(tree_obj))
@@ -652,8 +660,16 @@ wgtr_internal_LoadAttrs(pObject obj, char* name, char* type, pWgtrNode templates
 		else if (!strcmp(prop_name,"height")) this_node->r_height = val.Integer;
 		else if (!strcmp(prop_name,"fl_x")) this_node->fl_x = val.Integer;
 		else if (!strcmp(prop_name,"fl_y")) this_node->fl_y = val.Integer;
-		else if (!strcmp(prop_name,"fl_width")) this_node->fl_width = val.Integer;
-		else if (!strcmp(prop_name,"fl_height")) this_node->fl_height = val.Integer;
+		else if (!strcmp(prop_name,"fl_width"))
+		    {
+		    this_node->fl_width = val.Integer;
+		    this_node->Flags |= WGTR_F_FLWIDTHSET;
+		    }
+		else if (!strcmp(prop_name,"fl_height"))
+		    {
+		    this_node->fl_height = val.Integer;
+		    this_node->Flags |= WGTR_F_FLHEIGHTSET;
+		    }
 		else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
 		}
 	    else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
