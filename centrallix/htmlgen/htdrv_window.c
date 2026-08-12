@@ -86,7 +86,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	/** Verify browser capabilities. **/
 	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1, "HTTERM", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    mssError(1, "HTWIN", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
 	    goto err;
 	    }
 
@@ -258,7 +258,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** inner structure depends on dialog vs. window style **/
-	int main_width, main_height, clip_height, dialogue_width;
+	int main_width, main_height, clip_height, dialogue_width, main_top_width;
 	char* border_color_str;
 	if (is_dialog_style)
 	    {
@@ -267,15 +267,17 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    main_height = h - title_bar_height - 1;
 	    clip_height = h - title_bar_height + 1;
 	    dialogue_width = 0;
+	    main_top_width = (has_titlebar) ? 1 : 0;
 	    border_color_str = "white";
 	    }
 	else
 	    {
 	    /** window inner container -- window **/
 	    main_width = w - 2;
-	    main_height = h - title_bar_height - 1 * ((has_titlebar) ? 1 : 2);
+	    main_height = h - title_bar_height - ((has_titlebar) ? 1 : 2);
 	    clip_height = h - title_bar_height + ((has_titlebar) ? 1 : 0);
 	    dialogue_width = 1;
+	    main_top_width = (has_titlebar) ? 0 : 1;
 	    border_color_str = "gray white white gray";
 	    }
 	if (htrAddStylesheetItem_va(s,
@@ -300,7 +302,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    main_height,
 	    w, clip_height,
 	    border_color_str,
-	    (has_titlebar) ? 1 : 0, dialogue_width, dialogue_width, dialogue_width,
+	    main_top_width, dialogue_width, dialogue_width, dialogue_width,
 	    z + 1,
 	    background_style
 	) != 0)
@@ -316,8 +318,8 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	if (htrAddScriptGlobal(s, "wn_moved",   "0",     0) != 0) goto err;
 	if (htrAddScriptGlobal(s, "wn_msx",     "null",  0) != 0) goto err;
 	if (htrAddScriptGlobal(s, "wn_msy",     "null",  0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "wn_newx",    "null",  0) != 0) goto err;
-	if (htrAddScriptGlobal(s, "wn_newy",    "null",  0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "wn_new_x",   "null",  0) != 0) goto err;
+	if (htrAddScriptGlobal(s, "wn_new_y",   "null",  0) != 0) goto err;
 	if (htrAddScriptGlobal(s, "wn_top_z",   "10000", 0) != 0) goto err;
 	if (htrAddScriptGlobal(s, "wn_topwin",  "null",  0) != 0) goto err;
 	if (htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0) != 0) goto err;
@@ -375,7 +377,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 		    "position:absolute; "
 		    "visibility:inherit; "
 		    "overflow:hidden; "
-		    "cursor:grab;"
+		    "cursor:grab; "
 		    "left:0px; "
 		    "top:0px; "
 		    "height:%POSpx; "
