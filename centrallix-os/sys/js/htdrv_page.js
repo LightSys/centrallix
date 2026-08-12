@@ -644,7 +644,7 @@ function pg_togglecursor()
     }
 
 /** Keyboard input handling **/
-function pg_addkey(s,e,mod,modmask,mlayer,klayer,tgt,action,aparam) //SETH: ??
+function pg_addkey(s,e,mod,modmask,mlayer,klayer,tgt,action,aparam) //SETH: ?? Lightning: Something to do with key press events?
     {
     var kd = {};
     kd.startcode = s;
@@ -793,6 +793,9 @@ function pg_appwindowprop()
 	}
     }
 
+// Lightning: Looks like this is called on the root page widget to initialize the
+// page when it loads for the first time, similar to the init function on any
+// other widget.
 function pg_init(l,a,gs,ct) //SETH: ??
     {
     window.windowlist = {};
@@ -941,6 +944,7 @@ function pg_close_bh()
     window.close();
     }
 
+// Lightning: Appears to be for loading new webpages?
 function pg_load_page(aparam) //SETH: ??
     {
     var newurl = '';
@@ -1333,6 +1337,8 @@ function pg_reclaim_objects()
     }
 
 //SETH: this function seems to implement the 'blur' event.
+// Lightning: I've never heard of this 'blur' event.  This this function is for
+// selection areas, such as the highlight on a dropdown widget. 
 function pg_removemousefocus()
     {
     // The box can outline an area the pointer has already left, so tear down
