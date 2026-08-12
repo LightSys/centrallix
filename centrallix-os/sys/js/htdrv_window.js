@@ -667,55 +667,64 @@ function wn_setvisibility(aparam)
 	}
     }
 
+/** Width of a scrollbar, subtracted from the viewport when one is present. **/
+const WN_SCROLLBAR_SIZE = 15;
+
+/** How much of a window must stay visible when it is dragged past an edge. **/
+const WN_MIN_VISIBLE_LEFT = 24;
+const WN_MIN_VISIBLE_RIGHT = 32;
+const WN_MIN_VISIBLE_BOTTOM = 24;
+
 /*** This function does movement without worrying about global variables,
  *** resize observers, etc. It just takes params and does movement.
  *** 
  *** This function does handle snapping to edges and preventing windows from
  *** being moved too far outside the viewport.
  ***
- *** @param wn_current The window to affect.
- *** @param pg_attract The number of pixels from the edge of the viewport at
- *** which windows snap to the edge. (Seems to always be 0.)
- *** @param wn_new_x The new x coordinate for moving the window.
- *** @param wn_new_y The new y coordinate for moving the window.
+ *** @param wn The window to affect.
+ *** @param attract The number of pixels from the edge of the viewport at
+ *** which windows snap to the edge.
+ *** @param x The new x coordinate for moving the window.
+ *** @param y The new y coordinate for moving the window.
  ***/
-function wn_do_move_internal(wn_current, pg_attract, wn_new_x, wn_new_y) 
+function wn_do_move_internal(wn, attract, x, y)
     {
     /** Get useful values. **/
     const { innerWidth, innerHeight } = window;
-    const window_width = getClipWidth(wn_current);
-    const window_height = getClipHeight(wn_current);
+    const wn_width = getClipWidth(wn);
+    const wn_height = getClipHeight(wn);
 
     /** Calculate available width and height, taking the sizes of scrollbars into account. **/
-    const available_width = innerWidth - ((document.height - innerHeight - 2 >= 0) ? 15 : 0);
-    const available_height = innerHeight - ((document.width - innerWidth - 2 >= 0) ? 15 : 0);
+    const available_width = innerWidth - ((document.height - innerHeight - 2 >= 0) ? WN_SCROLLBAR_SIZE : 0);
+    const available_height = innerHeight - ((document.width - innerWidth - 2 >= 0) ? WN_SCROLLBAR_SIZE : 0);
     let new_x, new_y;
 
     /** X: Handle snapping to edges. **/
-    if (Math.isBetween(-pg_attract, wn_new_x, pg_attract)) new_x = 0;
-    else if (Math.isBetween(available_width - pg_attract, wn_new_x + window_width, available_width + pg_attract))
-	new_x = available_width - window_width;
+    if (!attract) attract = 0;
+    if (Math.isBetween(-attract, x, attract)) new_x = 0;
+    else if (Math.isBetween(available_width - attract, x + wn_width, available_width + attract))
+	new_x = available_width - wn_width;
 
     /** X: Prevent windows getting lost off the left side of the page. **/
-    else if (wn_new_x + window_width < 24) new_x = 24 - window_width;
-    else if (wn_new_x > available_width - 32) new_x = available_width - 32;
-    
+    else if (x + wn_width < WN_MIN_VISIBLE_LEFT) new_x = WN_MIN_VISIBLE_LEFT - wn_width;
+    else if (x > available_width - WN_MIN_VISIBLE_RIGHT) new_x = available_width - WN_MIN_VISIBLE_RIGHT;
+
     /** X: Default case, no movement needed. **/
-    else new_x = wn_new_x;
+    else new_x = x;
 
     /** Y: Handle snapping to edges. **/
-    if (Math.isBetween(-pg_attract, wn_new_y, pg_attract)) new_y = 0;
-    else if (Math.isBetween(available_height - pg_attract, wn_new_y + window_height, available_height + pg_attract))
-	new_y = available_height - window_height;
+    if (Math.isBetween(-attract, y, attract)) new_y = 0;
+    else if (Math.isBetween(available_height - attract, y + wn_height, available_height + attract))
+	new_y = available_height - wn_height;
 
     /** Y: Prevent windows from going too far off the screen. **/
-    else new_y = Math.clamp(0, wn_new_y, available_height - 24);
+    else new_y = Math.clamp(0, y, available_height - WN_MIN_VISIBLE_BOTTOM);
 
     /** Move the window to the new location. **/
-    moveToAbsolute(wn_current, new_x, new_y);
-    
+    moveToAbsolute(wn, new_x, new_y);
+
     /** Clicking and dragging a window is not a click. **/
-    wn_current.clicked = 0;
+    wn.clicked = 0;
     }
 
 function wn_do_move()
