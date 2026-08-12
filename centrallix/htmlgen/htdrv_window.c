@@ -402,7 +402,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    if (htrAddBodyItem_va(s,
 		"<div id='wn%POStitlebar' class='wntitlebar'>"
 		    "<img style='position:absolute; top:2px; left:4px; width:18px; height:18px;' name='icon' src='%STR&HTE'>"
-		    "<div style='position:absolute; top:4px; left:30px; color:%STR&HTE; font-weight:bold;'>%STR&HTE</div>"
+		    "<div style='position:absolute; top:4px; left:30px; right:24px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:%STR&HTE; font-weight:bold;'>%STR&HTE</div>"
 		    "<img style='position:relative; margin-top:3px; margin-right:3px; float:right; cursor:pointer;' name='close' src='/sys/images/01bigclose.gif'>"
 		"</div>\n",
 		id,

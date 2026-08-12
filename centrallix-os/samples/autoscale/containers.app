@@ -287,7 +287,7 @@ containers "widget/page"
 	win_dlg "widget/childwindow"
 	    {
 	    x=336; y=12; width=300; height=124;
-	    style=dialog; titlebar=yes; title="style=dialog";
+	    style=dialog; titlebar=yes; title="style=dialog but the title on the window is really long to test clipping";
 	    bgcolor="#c0c0c0"; hdr_bgcolor="#a04040"; textcolor="white";
 
 	    wd_tl "widget/pane" { x=0;   y=0;  width=12; height=12; style=flat; bgcolor="#e00000"; fl_width=0; fl_height=0; }
