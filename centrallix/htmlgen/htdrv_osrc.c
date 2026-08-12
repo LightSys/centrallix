@@ -139,7 +139,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    int use_having;
    int qy_reveal_only;
    char key_objname[32];
-   char* empty_string = "";
+   char* no_string = "";
 
     /** Get an id for this. **/
     const int id = (HTOSRC.idcnt++);
@@ -219,23 +219,30 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    send_updates = htrGetBoolean(tree, "send_updates", 1);
    if (send_updates < 0) goto end;
 
-   /** Get osrc strings. **/
-   if (wgtrGetPropertyValue(tree,"sql",DATA_T_STRING,POD(&ptr)) == 0)
-      {
-      sql = check_ptr(nmSysStrdup(ptr));
-      }
-   else
-      {
-      if (wgtrGetPropertyType(tree,"sql") != DATA_T_CODE)
-         {
-         mssError(1, "HTOSRC", "'sql' parameter required for object source: \"%s\"", name);
-         return -1;
-	 }
-      else
-         sql = empty_string;
-      }
-    baseobj = (wgtrGetPropertyValue(tree, "baseobj", DATA_T_STRING, POD(&ptr)) == 0) ? check_ptr(nmSysStrdup(ptr)) : empty_string;
-    filter  = (wgtrGetPropertyValue(tree, "filter",  DATA_T_STRING, POD(&ptr)) == 0) ? check_ptr(nmSysStrdup(ptr)) : empty_string;
+    /** Get osrc strings. **/
+    const int sql_datatype = wgtrGetPropertyType(tree, "sql");
+    switch (sql_datatype)
+    {
+    case DATA_T_CODE: sql = no_string; break;
+    case DATA_T_STRING:
+	{
+	if (wgtrGetPropertyValue(tree, "sql", DATA_T_STRING, POD(&ptr)) == 0)
+	    {
+	    sql = check_ptr(nmSysStrdup(ptr));
+	    break;
+	    }
+	/** Fallthrough **/
+	}
+    default: 
+	mssError(1, "HTOSRC",
+	    "'sql' parameter of type string or code required for object source: \"%s\", but type code was %d",
+	    name, sql_datatype
+	);
+	return -1;
+    }
+
+    baseobj = (wgtrGetPropertyValue(tree, "baseobj", DATA_T_STRING, POD(&ptr)) == 0) ? check_ptr(nmSysStrdup(ptr)) : no_string;
+    filter  = (wgtrGetPropertyValue(tree, "filter",  DATA_T_STRING, POD(&ptr)) == 0) ? check_ptr(nmSysStrdup(ptr)) : no_string;
     if (sql == NULL || baseobj == NULL || filter == NULL) goto end;
 
     /** Link the widget and container to their DOM nodes. **/
@@ -330,9 +337,9 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
 	}
 
     /** Clean up. **/
-    if (filter != NULL && filter != empty_string) nmSysFree(filter);
-    if (baseobj != NULL && baseobj != empty_string) nmSysFree(baseobj);
-    if (sql != NULL && sql != empty_string) nmSysFree(sql);
+    if (filter != NULL && filter != no_string) nmSysFree(filter);
+    if (baseobj != NULL && baseobj != no_string) nmSysFree(baseobj);
+    if (sql != NULL && sql != no_string) nmSysFree(sql);
 
     return rval;
     }
