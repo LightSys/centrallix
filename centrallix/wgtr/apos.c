@@ -669,7 +669,6 @@ aposAddLinesToGrid(pWgtrNode Parent, pXArray HLines, pXArray VLines)
 {
 int i=0, count=0, height_adj=0, width_adj=0;
 pAposLine CurrLine, PrevLine;
-// pXArray FirstCross, LastCross;
 
     /** Does this widget need more room than it was given? **/
     if (Parent->pre_width < Parent->min_width && Parent->min_width != 0)
@@ -726,28 +725,6 @@ pAposLine CurrLine, PrevLine;
 		UNLIKELY(aposFillInCWidget(&(PrevLine->CWidgets), &(CurrLine->EWidgets), &(CurrLine->CWidgets)) < 0))
 		goto error;
 	}
-	
-    /** Sanity check to make sure no widgets cross the border lines. **/
-//     if (xaCount(HLines))	// Only check borderlines if they exist.
-// 	{
-	//     FirstCross = &(((pAposLine)xaGetItem(HLines, 0))->CWidgets);
-	//     LastCross  = &(((pAposLine)xaGetItem(HLines, (xaCount(HLines)-1)))->CWidgets);
-	    /*if (xaCount(FirstCross))
-		mssError(1, "APOS", "%d widget(s) crossed the top borderline, including %s '%s'", xaCount(FirstCross),
-		    ((pWgtrNode)xaGetItem(FirstCross, 0))->Type, ((pWgtrNode)xaGetItem(FirstCross, 0))->Name);
-	    if (xaCount(LastCross))
-		mssError(1, "APOS", "%d widget(s) crossed the bottom borderline, including %s '%s'", xaCount(LastCross),
-		    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);*/
-	// }
-	
-//     FirstCross = &(((pAposLine)xaGetItem(VLines, 0))->CWidgets);
-//     LastCross  = &(((pAposLine)xaGetItem(VLines, (xaCount(VLines)-1)))->CWidgets);
-    /*if (xaCount(FirstCross))
-	mssError(1, "APOS", "%d widget(s) crossed the left borderline, including %s '%s'", xaCount(FirstCross), 
-	    ((pWgtrNode)xaGetItem(FirstCross, 0))->Type, ((pWgtrNode)xaGetItem(FirstCross, 0))->Name);
-    if (xaCount(LastCross))
-	mssError(1, "APOS", "%d widget(s) crossed the right borderline, including %s '%s'", xaCount(LastCross), 
-	    ((pWgtrNode)xaGetItem(LastCross, 0))->Type, ((pWgtrNode)xaGetItem(LastCross, 0))->Name);*/
 
     return 0;
     
