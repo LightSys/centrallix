@@ -3,8 +3,7 @@ $Version=2$
 // Autoscale visual test harness -- form widgets page.
 //
 // The bound half of this page runs against rows.csv through an osrc, so the
-// form navigation actually works: step through records with the formbar and
-// watch the fields refill.  The ruler and filler fields are long on purpose
+// form navigation works.  The ruler and filler fields are long on purpose
 // so you can count characters to see exactly where an edit box clips.
 //
 // The unbound half holds the widgets that need no data source at all.
@@ -66,7 +65,7 @@ forms "widget/page"
     bound_title "widget/label"
 	{
 	x=8; y=58; width=600; height=18;
-	text="Bound form over rows.csv (formbar steps through 48 records)";
+	text="Bound form over rows.csv";
 	font_size=12; align=left; valign=middle;
 	}
     bound_frame "widget/pane"
@@ -106,10 +105,6 @@ forms "widget/page"
 
 		// Current mode of the form.
 		f_status "widget/formstatus" { x=290; y=8; style=large; form=the_form; }
-
-		// Record navigation.  This widget is hardcoded to 240x30 in
-		// its driver, so it must NOT change size when the window does.
-		f_bar "widget/formbar" { x=290; y=40; target=the_form; }
 
 		// Bound dropdown fed by the same objectsource.
 		f_band_dd "widget/dropdown"

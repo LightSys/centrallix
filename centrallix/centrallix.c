@@ -574,7 +574,6 @@ cxHtInit()
 	htcaInitialize();			/* calendar module */
 	htsbInitialize();			/* scrollbar module */
 	htimgInitialize();			/* image widget */
-	htfbInitialize();			/* form bar composite widget test */
 	htocInitialize();			/* object canvas widget */
 	htmapInitialize();			/* object canvas widget */
 	htfuInitialize();			/* file upload widget */

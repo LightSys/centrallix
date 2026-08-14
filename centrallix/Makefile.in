@@ -159,7 +159,6 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_dropdown.o \
 	wgtdrv_editbox.o \
 	wgtdrv_execmethod.o \
-	wgtdrv_formbar.o \
 	wgtdrv_form.o \
 	wgtdrv_formstatus.o \
 	wgtdrv_frameset.o \
@@ -241,7 +240,6 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_component.o \
 	   htdrv_image.o \
 	   htdrv_hints.o \
-	   htdrv_formbar.o \
 	   htdrv_objcanvas.o \
 	   htdrv_map.o \
 	   htdrv_parameter.o \

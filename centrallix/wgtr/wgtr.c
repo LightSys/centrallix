@@ -2152,7 +2152,6 @@ wgtrInitialize()
 	wgtddInitialize();
 	wgtebInitialize();
 	wgtexInitialize();
-	wgtfbInitialize();
 	wgtformInitialize();
 	wgtfsInitialize();
 	wgtfuInitialize();
