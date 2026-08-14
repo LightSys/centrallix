@@ -25,6 +25,7 @@ This document specifies the way in which the auto-positioning module resizes and
   - [Existing Difficulties and Proposed Fixes](#existing-difficulties-and-proposed-fixes)
   - [Future Functionality](#future-functionality)
     - [Resizeable Windows](#resizeable-windows)
+    - [Positional Flex Attributes](#positional-flex-attributes)
   - [Note to Application Authors](#note-to-application-authors)
   - [Function Call Hierarchy](#function-call-hierarchy)
   - [Function Specifications](#function-specifications)
@@ -136,6 +137,13 @@ If the auto-positioning module is thought to be suspect for problems encountered
 
 ### Resizeable Windows
 The auto-positioning module can allow for resizable window widgets. If the window widget were modified to allow the user to request a new size, the auto-positioning module can provide a resized version of the window content at the new size.
+
+### Positional Flex Attributes
+A pair of positional flexibility attributes, `fl_x` and `fl_y`, could be added, complementing `fl_width` and `fl_height`.  The existing attributes describe only how willing a widget is to change size, not how willing it is to move (typically designated by the widgets around it).  A widget with an `fl_x` of zero would hold its design x coordinate in its container's coordinate space, no matter how much its container grew or shrank.  A fully flexible `fl_x` would let it slide freely, and the values in between would scale its displacement the way `fl_width` scales its resizing.
+
+A widget that stays put also changes how the space around it is distributed.  Consider two widgets side by side in a container that grows wider.  The grid currently hands part of the extra space to the column between them and part to the columns the widgets themselves occupy, so both widgets tend to drift right and grow.  If the right hand widget declared an `fl_x=0`, it would stay anchored at its original position instead.  All of the container's extra width would need to be absorbed by the empty space to the right of the widget.
+
+Note that this functionality could cause issues when widgets are forced to become inflexible because a different widget to their right or below them refuses to move.  A single property on a widget could block off flexibility in its container for every column to its left or for every row above it.  This issue would likely need to be resolved in some way so that app designers aren't left in the dark as to why their entire widget suddenly became as rigid as an inflexible spacer.
 
 ## Note to Application Authors
 It's important to pick dimensions for the top level page of an application that accurately represent the application's shape and size, otherwise it may not display correctly.
