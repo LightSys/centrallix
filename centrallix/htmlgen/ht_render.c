@@ -2587,7 +2587,6 @@ htrAllocDriver()
 	memset(drv, 0, sizeof(HtDriver));
 
 	/** Init some of the basic array structures **/
-	if (check(xaInit(&(drv->PosParams), 16)) != 0) goto err;
 	if (check(xaInit(&(drv->Properties), 16)) != 0) goto err;
 	if (check(xaInit(&(drv->PseudoTypes), 4)) != 0) goto err;
 

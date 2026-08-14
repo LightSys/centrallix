@@ -88,22 +88,10 @@ typedef struct
     char	WidgetName[64];		/* Name of widget. */
     int		(*Setup)();
     int		(*Render)();		/* Function to render the page */
-    XArray	PosParams;		/* Positioning parameter listing. */
     XArray	Properties;		/* Properties this thing will have. */
     XArray	PseudoTypes;		/* Pseudo-types this widget driver will handle */
     }
     HtDriver, *pHtDriver;
-
-
-/** Widget parameterized tree structure for pre-rendering **/
-typedef struct _HT
-    {
-    pHtDriver	Driver;			/* Driver to handle this object. */
-    XArray	Values;			/* Parameters for widget construction */
-    XArray	LocValues;		/* Positioning params for this widget */
-    XArray	Children;
-    }
-    HtTree, *pHtTree;
 
 
 /** Structure for holding string-string-value data. **/
@@ -219,7 +207,6 @@ typedef struct
 typedef struct
     {
     HtPage	Page;			/* the generated page... */
-    pHtTree	Tree;			/* tree page metainfo structure */
     int		DisableBody;
     char*	Tmpbuf;			/* temp buffer used in _va() functions */
     size_t	TmpbufSize;
@@ -230,7 +217,6 @@ typedef struct
     int		Width;			/* target container (browser) width in pixels */
     int		Height;			/* target container height in pixels */
     char*	GraftPoint;		/* name of target container */
-    pWgtrVerifySession VerifySession;	/* name of the current verification session */
     pWgtrClientInfo ClientInfo;
     pHtNamespace Namespace;		/* current namespace */
     int		IsDynamic;
