@@ -1,1 +1,130 @@
-##NAME MySQL encoding convert function
+##NAME convert() function - Encodings
+
+query DELETE FROM /tests/Test_DB/typeTests/rows
+
+
+# generate a full set of valid bytes for single byte encodings, and a representative sample for multibyte.
+# use to/from hex to convert to binary datatype
+query DECLARE OBJECT data SCOPE APPLICATION
+# full hex set: '0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff'
+query SELECT :data:utf8   = 'AaBbCc010203,!"¡¢¥ÆÃぁあぃいぅうぇえぉ🨀🨁🨂🨃🨄🨅'
+query SELECT :data:ascii  = convert('string', from_hex('0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f'))
+# With the latin1 dataset, A0 (special space) and AD (special dash) worked fine in the object system and Database, but were troublesome to test, and are thus excluded.
+query SELECT :data:latin1 = convert('string', from_hex('202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7ea1a2a3a4a5a6a7a8a9aaabacaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf' + 'c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff'))
+query SELECT :data:cp1252 = convert('string', from_hex('0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f' + '8082838485868788898a8b8c8e9192939495969798999a9b9c9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff'))
+query SELECT :data:vanco  = convert('string', from_hex('c280c282c283c284c285c286c287c289c289c28ac28bc28cc28ec28ec291c292c293c294c295c296c297c298c299c29ac29bc29cc29ec29f')) + :data:ascii + "¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"
+
+# insert values into the table
+query INSERT INTO /tests/Test_DB/typeTests/rows SELECT strings="ascii",  blobs = :data:ascii,  dates='2000-01-01', monies = $0, ints=0
+query INSERT INTO /tests/Test_DB/typeTests/rows SELECT strings="latin1", blobs = :data:latin1, dates='2000-01-01', monies = $0, ints=0
+query INSERT INTO /tests/Test_DB/typeTests/rows SELECT strings="cp1252", blobs = :data:cp1252, dates='2000-01-01', monies = $0, ints=0
+query INSERT INTO /tests/Test_DB/typeTests/rows SELECT strings="vanco",  blobs = :data:vanco,  dates='2000-01-01', monies = $0, ints=0
+query INSERT INTO /tests/Test_DB/typeTests/rows SELECT strings="utf8",   blobs = :data:utf8,   dates='2000-01-01', monies = $0, ints=0
+
+
+# generate an expected value and then check that the DB conversion matches **/
+
+
+# Convert from ASCII
+# ASCII covers 0x01-0x7F; no substitution characters needed within this range
+
+# ascii to ascii: full range round-trip, result should be identical to input
+query SELECT :data:expected = convert('string', from_hex('0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f')) + ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~' + convert('string', from_hex('7f'))
+csv SELECT convert_ascii_01 = "ascii to ascii"  FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'ascii' AND convert(:blobs, 'ascii',  'ascii') = :data:expected
+
+# ascii to latin1: ASCII is a subset of latin1, result should be identical to input
+# expected data is the same - no change needed 
+csv SELECT convert_ascii_02 = "ascii to latin1" FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'ascii' AND convert(:blobs, 'latin1', 'AsCiI') = :data:expected
+
+# ascii to cp1252: ASCII is a subset of cp1252, result should be identical to input
+# expected data is the same - no change needed 
+csv SELECT convert_ascii_03 = "ascii to cp1252" FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'ascii' AND convert(:blobs, 'cp1252', 'aScIi') = :data:expected
+
+# ascii to utf8: ASCII is a subset of utf8, result should be identical to input
+# expected data is the same - no change needed 
+csv SELECT convert_ascii_04 = "ascii to utf8"   FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'ascii' AND convert(:blobs, 'utf8',   'ASCII') = :data:expected
+
+
+# Convert from Latin-1
+# This test is based on ISO/IEC 8859-1, also called Latin-1, but the current MariaDB's Latin1 is cp1252 West European, shared with our cp1252.
+
+# latin1 to ascii:Anyout outside standard ascii (0x80-0xFF) is replaced with ?
+query SELECT :data:expected = ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~' + '??????????????????????????????????????????????????????????????????????????????????????????????'
+csv SELECT convert_latin_01 = "latin1 to ascii"   FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'latin1' AND convert(:blobs, 'ascii',  'latin1')         = :data:expected
+
+# latin1 to latin1: full range round-trip, result should be identical to input
+query SELECT :data:expected =' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~' +  convert('string', from_hex('a1a2a3a4a5a6a7a8a9aaabacaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff'))
+csv SELECT convert_latin_02 = "latin1 to latin1"  FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'latin1' AND convert(:blobs, 'latin1', 'LATIN-1')        = :data:expected
+
+# latin1 to cp1252: 0xA0-0xFF map directly; C1 controls (0x80-0x9F) pass through since DB uses Latin1 collation for both
+# for now, latin1 and cp1252 both map to the same MySQL collation
+csv SELECT convert_latin_03 = "latin1 to cp1252"  FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'latin1' AND convert(:blobs, 'cp1252', 'ISO-8859-1')     = :data:expected
+
+# latin1 to utf8: 0xA0-0xFF expand to 2-byte UTF-8 sequences; printable ASCII range unchanged
+query SELECT :data:expected = ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~'+'¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ'
+csv SELECT convert_latin_04 = "latin1 to utf8"    FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'latin1' AND to_hex(convert(:blobs, 'utf8',   'ISO/IEC 8859-1')) = to_hex(:data:expected)
+
+csv SELECT convert_latin_05 = "latin1 names test" FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'latin1' AND convert(convert(:blobs, 'EIC-8859-1', 'iso/iec 8859-1'), 'ISO 8859-1', 'EIC 8859-1') = :data:latin1
+
+# Convert from UTF-8
+# UTF-8 sample contains ASCII, Latin-1 supplement, Japanese hiragana, and emoji codepoints
+
+# utf8 to ascii: non-ASCII characters replaced with single ? per character
+query SELECT :data:expected = 'AaBbCc010203,!"????????????????????'
+csv SELECT convert_utf8_01 = "utf8 to ascii"  FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'utf8' AND convert(:blobs, 'ascii',  'utf8')    = :data:expected
+
+# utf8 to latin1: characters outside latin1 range replaced with ?; latin1 supplement chars map directly
+query SELECT :data:expected = 'AaBbCc010203,!"'+convert(string, from_hex('A1A2A5C6C3'))+'???????????????'
+csv SELECT convert_utf8_02 = "utf8 to latin1" FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'utf8' AND convert(:blobs, 'latin1', 'UTF-8')   = :data:expected
+
+# utf8 to cp1252: characters outside cp1252 range replaced with ?; cp1252 chars map directly
+#same value as above
+csv SELECT convert_utf8_03 = "utf8 to cp1252" FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'utf8' AND convert(:blobs, 'cp1252', 'Unicode') = :data:expected
+
+# utf8 to utf8: full round-trip, result should be identical to input
+query SELECT :data:expected = 'AaBbCc010203,!"¡¢¥ÆÃぁあぃいぅうぇえぉ🨀🨁🨂🨃🨄🨅'
+# The connection uses latin1, so compare as hex to avoid needing to cast the expected value as well
+csv SELECT convert_utf8_04 = "utf8 to utf8"   FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'utf8' AND to_hex(convert(:blobs, 'utf8',   'uniCode')) = to_hex(:data:expected)
+
+# Convert from CP1252
+# CP1252 printable ASCII range (0x20-0x7E) plus CP1252-specific chars (0x80-0x9F, excluding undefined bytes)
+# CP1252-specific bytes: €‚ƒ„…†‡ˆ‰Š‹ŒŽ''""•–—˜™š›œžŸ (0x80,0x82-0x8C,0x8E,0x91-0x9F)
+
+# cp1252 to ascii: non-ASCII bytes replaced with substitution characters; printable ASCII range preserved
+query SELECT :data:expected = convert('string', from_hex('0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f')) + ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~' + convert('string', from_hex('7f')) + '???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????'
+csv SELECT convert_cp1252_01 = "cp1252 to ascii" FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'cp1252' AND convert(:blobs, 'ascii', 'cp1252') = :data:expected
+
+# cp1252 to latin1: CP1252-specific bytes (0x80-0x9F) map to latin1 equivalents or substitution chars where undefined
+query SELECT :data:expected = convert('string', from_hex('0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f' + '8082838485868788898a8b8c8e9192939495969798999a9b9c9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff'))
+csv SELECT convert_cp1252_02 = "cp1252 to latin1" FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'cp1252' AND convert(:blobs, 'latin1', 'CP1252') = :data:expected
+
+# cp1252 to cp1252: round-trip, result should be identical to input
+query SELECT :data:expected = convert('string', from_hex('0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f' + '8082838485868788898a8b8c8e9192939495969798999a9b9c9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff'))
+csv SELECT convert_cp1252_03 = "cp1252 to cp1252" FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'cp1252' AND convert(:blobs, 'cp1252', 'windows-1252') = :data:expected
+
+# cp1252 to utf8: CP1252-specific chars expand to multi-byte UTF-8 sequences; printable ASCII range unchanged
+query SELECT :data:expected = convert('string', from_hex('0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f')) + ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~' + convert(string, from_hex('7f')) + '€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ' + convert(string, from_hex('c2a0')) + '¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ'
+csv SELECT convert_cp1252_04 = "cp1252 to utf8" FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'cp1252' AND to_hex(convert(:blobs, 'utf8', 'Windows1252')) = to_hex(:data:expected)
+
+# Convert from Vanco
+# Vanco uses a custom encoding that wraps CP-1252 code points above 0x7F in UTF-8 encodings. For 0x80-0x9F, it will read incorrectly as UTF-8
+
+# vanco to ascii: Make sure printable stays, and correct number of substitutions
+query SELECT :data:expected = '????????????????????????????' + convert(string, from_hex('0102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F')) + ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~' + convert(string, from_hex('7f')) + '??????????????????????????????????????????????????????????????????????????????????????????????'
+csv SELECT convert_vanco_01 = "vanco to ascii"  FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'vanco' AND convert(:blobs, 'ascii', 'vanco') = :data:expected
+
+# vanco to latin1: this should essentially unwrap the vanco/utf8 encoding
+query SELECT :data:expected = convert(string, from_hex('8082838485868789898a8b8c8e8e9192939495969798999a9b9c9e9f0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f')) + ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~' + convert(string, from_hex('7fa1a2a3a4a5a6a7a8a9aaabacaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff'))
+csv SELECT convert_vanco_02 = "vanco to latin1" FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'vanco' AND convert(:blobs, 'latin1', 'VANCO') = :data:expected
+
+# vanco to cp-1252: the database treats this the same as the above case
+# data is the same
+csv SELECT convert_vanco_03 = "vanco to cp1252" FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'vanco' AND convert(:blobs, 'CP1252', 'vanco') = :data:expected
+
+# vanco to utf8: Despite starting out close, this still needs to be unwrapped and then converted
+query SELECT :data:expected = '€‚ƒ„…†‡‰‰Š‹ŒŽŽ‘’“”•–—˜™š›œžŸ' + convert(string, from_hex('0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f')) + ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~' + convert(string, from_hex('7f')) + '¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ'
+csv SELECT convert_vanco_04 = "vanco to utf8" FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'vanco' AND to_hex(convert(:blobs, 'utf8', 'vanco')) = to_hex(:data:expected)
+
+--csv SELECT convert_vanco_04 = "vanco to utf8"   FROM /tests/Test_DB/typeTests/rows WHERE :strings = 'vanco' AND convert(:data:vanco, 'utf8',   'vAnCo') = convert(:blobs, 'utf8',   'vAnCo')
+
+############query DELETE FROM /tests/Test_DB/typeTests/rows
