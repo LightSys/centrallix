@@ -33,7 +33,6 @@ License: Copyright (C) 2001 LightSys Technology Services.  See LICENSE.txt.
       - [htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags) returns int](#htraddscriptglobalphtsession-s-char-var_name-char-initialization-int-flags-returns-int)
       - [htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags) returns int](#htraddscriptfunctionphtsession-s-char-fn_name-char-fn_text-int-flags-returns-int)
       - [htrAddScriptInit(pHtSession s, char* init_text) returns int](#htraddscriptinitphtsession-s-char-init_text-returns-int)
-      - [htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, char* handler_code) returns int](#htraddeventhandlerphtsession-s-char-event_src-char-event-char-drvname-char-handler_code-returns-int)
       - [htrDisableBody(pHtSession s) returns int](#htrdisablebodyphtsession-s-returns-int)
       - [htrRenderWidget(pHtSession s, pObject widget_obj, int z, char* parentname, char* parentobj) returns int](#htrrenderwidgetphtsession-s-pobject-widget_obj-int-z-char-parentname-char-parentobj-returns-int)
       - [htrRenderSubwidgets(pHtSession s, pObject widget_obj, char* docname, char* layername, int z) returns int](#htrrendersubwidgetsphtsession-s-pobject-widget_obj-char-docname-char-layername-int-z-returns-int)
@@ -255,30 +254,6 @@ Example:
 
 `htrAddScriptInit(s, "    lb_init(document.layers.lb0base);\n");`
 
-#### htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, char* handler_code) returns int
-This function adds an event handler script segment (not a complete function declaration).  The event handler will manage an event of a given type, for a given type of widget.
-
-The 'event_src' parameter is always "document" for the time being.
-
-The 'event' parameter is the type of event.  Allowed types are events such as "MOUSEMOVE", "MOUSEOVER", "MOUSEOUT", "MOUSEDOWN", "MOUSEUP", "KEYPRESS", and so forth.
-
-The 'drvname' parameter is the two-to-four letter abbreviation of the widget driver, such as 'eb' for the 'editbox' widget.  This parameter is used by the subsystem to keep event scripts for the different widgets distinct from one another.
-
-Finally, the 'handler_code' parameter is the text of the script segment.
-
-All of the string values here are *copied* by the subsystem into internal session structures.
-
-IMPORTANT NOTE:  Calling this function twice for the same event and the same widget driver will not have the expected result.  Because the script segments are keyed internally by driver, event source, and event type, such subsequent calls will be completely ignored by the HTML generation subsystem.  Widget drivers should group all code for a given event type together in one call to this function.
-
-Example:
-
-```
-htrAddEventHandler(s, "document", "MOUSEOVER", "lb",
-    "    if (e.target && e.target.kind == 'lb')\n"
-    "        {\n"
-    "        e.target.bgcolor = '#ff0000';\n"
-    "        }\n" );
-```
 
 #### htrDisableBody(pHtSession s) returns int
 This function is used to disable the output of the `<BODY>` and `</BODY>` tags, including any body parameters added with the API function htrAddBodyParam().  This is primarly used by the frameset widget driver to suppress the output of the body in favor of the frameset declarations.  Note that it probably does not make sense to call htrRenderSubwidgets() when the body has been disabled :)

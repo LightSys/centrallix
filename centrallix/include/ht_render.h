@@ -264,7 +264,6 @@ int htrAddBodyItem_va(pHtSession s, char* fmt, ... );
 int htrAddBodyParam(pHtSession s, char* html_param);
 /*int htrAddBodyParam_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));*/
 int htrAddBodyParam_va(pHtSession s, char* fmt, ... );
-int htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, char* handler_code);
 int htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drvname, char* function);
 int htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags);
 int htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags);
