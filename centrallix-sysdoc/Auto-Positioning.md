@@ -24,6 +24,7 @@ This document specifies the way in which the auto-positioning module resizes and
     - [Miscellaneous Changes](#miscellaneous-changes)
   - [Existing Difficulties and Proposed Fixes](#existing-difficulties-and-proposed-fixes)
   - [Future Functionality](#future-functionality)
+    - [Resizeable Windows](#resizeable-windows)
   - [Note to Application Authors](#note-to-application-authors)
   - [Function Call Hierarchy](#function-call-hierarchy)
   - [Function Specifications](#function-specifications)
@@ -132,6 +133,8 @@ Applications like duelform.app that are composed of windows tend not to resize v
 If the auto-positioning module is thought to be suspect for problems encountered while testing other parts of Centrallix, it can be entirely turned off for debugging purposes by commenting out the call to aposAutoPositionWidgetTree near the end of the wgtrVerify function in wgtr.c.
 
 ## Future Functionality
+
+### Resizeable Windows
 The auto-positioning module can allow for resizable window widgets. If the window widget were modified to allow the user to request a new size, the auto-positioning module can provide a resized version of the window content at the new size.
 
 ## Note to Application Authors
