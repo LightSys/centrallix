@@ -1719,6 +1719,241 @@ mysd_internal_process_params(pExpression tree, pMysdTable *tdata, MYSQL * conn, 
 
 #define get_arg_string(arg_strings, index) ( ((pXString)arg_strings->Items[index])->String )
 
+/*** mysd_internal_convert_datatype - handles converts for datatypes
+ *** into a MySQL convert
+ *** @param tree The node structure to convert. MUST point to the convert function
+ *** @param tdata Information about the table being queried
+ *** @param where_clause The string to append the converted query to
+ *** @param conn The active connection to the database 
+ *** @returns the datatype converted to on success or -1 on error
+ ***/
+int
+mysd_internal_convert_datatype(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
+    {
+    pXArray arg_strings = NULL;
+    XString type_str;
+    XString data_str;
+
+	/** initialize strings **/
+	xsInit(&type_str);
+	xsInit(&data_str);
+
+	int types [] = { /** datatype **/ DATA_T_STRING, DATA_T_INVALID,
+			/** value **/ DATA_T_ANY, DATA_T_INVALID};
+	arg_strings = mysd_internal_process_params(tree, tdata, conn, types, 2, 2);
+	if(arg_strings == NULL)
+	    {
+	    mssError(0,"MYSD","convert usage: convert(datatype, value) or convert(from_encoding, to_encoding, string|data)");
+	    goto error;
+	    }
+	    
+	/** check for a valid type to convert to **/
+	pExpression type_exp = (pExpression)(tree->Children.Items[0]);
+	if(type_exp->String == NULL)
+	    {
+	    mssError(1,"MYSD","Error: convert data type must be string literals.");
+	    goto error;
+	    }
+
+	pExpression data_exp = (pExpression)(tree->Children.Items[1]);
+
+	if (!strcmp(type_exp->String,"integer"))
+	    {
+	    /** NOTE: datetimes can be converted as is, but do not match how the object system converts them **/
+	    /** double and money do not convert properly, use floor **/
+	    if(data_exp->DataType == DATA_T_DOUBLE || data_exp->DataType == DATA_T_MONEY)
+	        xsConcatPrintf(&data_str, "floor(%s)", get_arg_string(arg_strings, 1));
+	    else 
+	        xsConcatPrintf(&data_str, "%s", get_arg_string(arg_strings, 1));
+	    
+	    xsConcatenate(&type_str, "integer", 7);
+	    tree->DataType = DATA_T_INTEGER;
+	    } 
+	else if (!strcmp(type_exp->String,"string"))
+	    {
+	    /*** NOTE: money prints as double. Handling "$" vs "-$", 
+	     *** as well as when to print 2-4 decimal places, presents a problem 
+	     ***/
+	    xsConcatenate(&data_str, get_arg_string(arg_strings, 1), -1);
+	    xsConcatenate(&type_str, "char", 4);
+	    tree->DataType = DATA_T_STRING;
+	    }
+	else if (!strcmp(type_exp->String,"double"))
+		{
+	    /** no logical way to convert from datetime **/
+	    if(data_exp->DataType == DATA_T_DATETIME)
+	        {
+	        mssError(1, "MYSD", "Error: driver cannot convert from datetime to double");
+	        goto error;
+	        }
+	    
+	    xsConcatenate(&data_str, get_arg_string(arg_strings, 1), -1);
+	    xsConcatenate(&type_str, "double", 6);
+	    tree->DataType = DATA_T_DOUBLE;
+	    }
+	else if (!strcmp(type_exp->String,"money"))
+	    {
+	    /** no logical way to convert from datetime **/
+	    if(data_exp->DataType == DATA_T_DATETIME)
+	        {
+	        mssError(1, "MYSD", "Error: driver cannot convert from datetime to money");
+	        goto error;
+	        }
+	    /** FIXME: need to use replace to remove any $ in a string (maybe TRIM leading? but need -$ to work too... **/
+	    xsConcatenate(&data_str, get_arg_string(arg_strings, 1), -1);
+	    xsConcatenate(&type_str, "decimal(14,4)", 13);
+	    tree->DataType = DATA_T_MONEY;
+	    }
+	else if (!strcmp(type_exp->String,"datetime"))
+	    {
+	    xsConcatenate(&data_str, get_arg_string(arg_strings, 1), -1);
+	    xsConcatenate(&type_str, "datetime", 8);
+	    tree->DataType = DATA_T_DATETIME;
+	    }
+	else 
+	    {
+	    mssError(1,"MYSD","Error: data type \"%s\" not supported.", type_exp->String);
+	    goto error;
+	    }
+
+	/** MySQL convert() params are reversed to what CX, Sybase, and MS SQL expect: convert(<VALUE>, <TYPE>) **/
+	xsConcatPrintf(where_clause, " convert(%s, %s) ", data_str.String, type_str.String); 
+	
+	mysd_internal_free_processed_args(arg_strings);
+	arg_strings = NULL;
+	
+	xsDeInit(&type_str);
+	xsDeInit(&data_str);
+	return 0;
+
+    error:
+	xsDeInit(&type_str);
+	xsDeInit(&data_str);
+	mysd_internal_free_processed_args(arg_strings);
+
+    return -1;
+    }
+
+/*** mysd_internal_convert_encoding - handles converts for encodings
+ *** into a MySQL convert
+ *** @param tree The node structure to convert. MUST point to the convert function
+ *** @param tdata Information about the table being queried
+ *** @param where_clause The string to append the converted query to
+ *** @param conn The active connection to the database 
+ *** @returns the datatype converted to on success or -1 on error
+ *** @warning This varies from the object system in that fewer characters
+ *** can be replaced by a similar one (i.e. more '?' characters are likely)
+ ***/
+int
+mysd_internal_convert_encoding(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
+    {
+    pXArray arg_strings = NULL;
+    XString data_buf;
+
+	/** initialize strings **/
+	xsInit(&data_buf);
+
+	/** object system call is convert(data, to_encoding, from_encoding) */
+	int types [] = { /** data **/ DATA_T_STRING, DATA_T_BINARY, DATA_T_INVALID,
+			/** to code **/ DATA_T_STRING, DATA_T_INVALID,
+			/** from code **/ DATA_T_STRING, DATA_T_INVALID};
+	arg_strings = mysd_internal_process_params(tree, tdata, conn, types, 3, 3);
+	if(arg_strings == NULL)
+	    {
+	    mssError(0,"MYSD","convert usage: convert(datatype, value) or convert(from_encoding, to_encoding, string|data)");
+	    goto error;
+	    }
+	    
+	/** check for a valid type to convert to **/
+	pExpression to_code_exp = (pExpression)(tree->Children.Items[1]);
+	pExpression from_code_exp = (pExpression)(tree->Children.Items[2]);
+	if(to_code_exp->String == NULL || from_code_exp->String == NULL)
+	    {
+	    mssError(1,"MYSD","Error: convert encoding types must be string literals.");
+	    goto error;
+	    }
+
+	pExpression data_exp = (pExpression)(tree->Children.Items[0]);
+
+	/** Assign the encoding to translate from **/
+	char* from_code_str;
+	char* data_str = get_arg_string(arg_strings, 0);
+	switch(objStringToEncoding(from_code_exp->String))
+	    {
+	    case ENCODING_ASCII:
+		from_code_str = "ascii";
+		break;
+	    case ENCODING_VANCO_UTF8:
+		/*** Vanco encoding incorrectly treats all CP-1252 bytes as 
+		 *** unicode Copde Points, using UTF-8. To undo this, we will
+		 *** treat it as UTF-8, convert to UTF-16 (since all code points
+		 *** are <= 0xFF, this becomes 0x00XX for each char), remove 
+		 *** the 0x00 bytes. From there, it can be treated as latin1 (CP-1252)
+		 ***/
+		/** NOTE: this will strip and excess NULL bytes from the data **/
+		xsConcatPrintf(&data_buf,
+		    "replace("
+			"cast("
+			    "convert("
+				"convert(binary (%s) using utf8) "
+				"using utf16"
+				") as binary"
+			    "),"
+			"0x00, ''"
+			")",
+		    get_arg_string(arg_strings, 0)
+		    );
+		data_str = data_buf.String;
+
+		/** fall through and continue as ENCODING_CP_1252 **/
+	    case ENCODING_CP_1252: /* fallthough; DB treats latin1 as CP-1252 */
+	    case ENCODING_LATIN_1:
+		from_code_str = "latin1";
+		break;
+	    case ENCODING_UTF_8:
+		from_code_str = "utf8mb4";
+		break;
+	    default:
+		mssError(1,"MYSD","convert(): Cannot convert from character encoding '%s'", from_code_exp->String);
+		goto error;
+	    }
+	
+	/** Assign the encoding to translate to **/
+	char* to_code_str;
+	switch(objStringToEncoding(to_code_exp->String))
+	    {
+	    case ENCODING_ASCII:
+		to_code_str = "ascii";
+		break;
+	    case ENCODING_CP_1252: /* fallthough; DB treats latin1 as CP-1252 */
+	    case ENCODING_LATIN_1:
+		to_code_str = "latin1";
+		break;
+	    case ENCODING_UTF_8:
+		to_code_str = "utf8mb4";
+		break;
+	    default:
+		mssError(1,"MYSD","convert(): Cannot convert to character encoding '%s'", to_code_exp->String);
+		goto error;
+	    }
+	
+	/** set up final conversion, converting to binary first to enusre the expected conversion occurs **/
+	xsConcatPrintf(where_clause, " convert(convert(binary (%s) using %s) using %s) ", data_str, from_code_str, to_code_str); 
+	
+	mysd_internal_free_processed_args(arg_strings);
+	arg_strings = NULL;
+	xsDeInit(&data_buf);
+
+	tree->DataType = DATA_T_STRING;
+	return 0;
+
+    error:
+	xsDeInit(&data_buf);
+	mysd_internal_free_processed_args(arg_strings);
+
+    return -1;
+    }
+
 
 /*** mysd_internal_function_Convert - handles transforming a cxSQL convert 
  *** into a MySQL convert
@@ -1731,79 +1966,16 @@ mysd_internal_process_params(pExpression tree, pMysdTable *tdata, MYSQL * conn, 
 int
 mysd_internal_function_Convert(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
     {
-    pXArray arg_strings = NULL;
 	/** check whether convert the type (2), encoding (3), or else error **/
 	if (tree->Children.nItems == 2)
 	    {
-	    /** params line up differently for the 2 and 3 arg versions, so handle separately */
-	    int types [] = { /** datatype **/ DATA_T_STRING, DATA_T_INVALID,
-			     /** value **/ DATA_T_ANY, DATA_T_INVALID};
-	    arg_strings = mysd_internal_process_params(tree, tdata, conn, types, 2, 2);
-	    if(arg_strings == NULL)
-		{
-		mssError(0,"MYSD","convert usage: convert(datatype, value) or convert(from_encoding, to_encoding, string|data)");
+	    if(mysd_internal_convert_datatype(tree, tdata, where_clause, conn) < 0)
 		goto error;
-		}
-
-	    /** MySQL convert() params are reversed to what CX, Sybase, and MS SQL expect; convert(<VALUE>, <TYPE>) **/
-	    xsConcatenate(where_clause, " convert(", -1);
-	    xsConcatenate(where_clause, ((pXString)arg_strings->Items[1])->String, -1);
-	    xsConcatenate(where_clause, " , ", 3);
-	    
-	    /** check for a valid type to convert to **/
-	    pExpression type_exp = (pExpression)(tree->Children.Items[0]);
-	    if(type_exp->String == NULL)
-		{
-		mssError(1,"MYSD","Error: convert data type must not be NULL.");
-		goto error;
-		}
-
-	    if (!strcmp(type_exp->String,"integer"))
-		{
-		/// FIXME: change to handle doubles and datetimes the way the object system does it (truncate and custom representation, respectively)
-		/** Note that datetimes can be converted as is, but do not match how the object system converts them **/
-		xsConcatenate(where_clause," signed integer ",-1);
-		tree->DataType = DATA_T_INTEGER;
-		} 
-	    else if (!strcmp(type_exp->String,"string"))
-		{
-		/// FIXME: if its a money data type, need to append a $
-		xsConcatenate(where_clause," char ",-1);
-		tree->DataType = DATA_T_STRING;
-		}
-	    else if (!strcmp(type_exp->String,"double"))
-		{
-		/// FIXME: don't allow conversion from datetime
-		xsConcatenate(where_clause," double ",-1);
-		tree->DataType = DATA_T_DOUBLE;
-		}
-	    else if (!strcmp(type_exp->String,"money"))
-		{
-		/// FIXME: don't allow conversion from datetime
-		/** FIXME: need to use replace to remove any $ in a string (maybe TRIM leading? but need -$ to work too... **/
-		xsConcatenate(where_clause," decimal(14,4) ",-1);
-		tree->DataType = DATA_T_MONEY;
-		}
-	    else if (!strcmp(type_exp->String,"datetime"))
-		{
-		xsConcatenate(where_clause," datetime ",-1);
-		tree->DataType = DATA_T_DATETIME;
-		}
-	    else 
-		{
-		mssError(1,"MYSD","Error: data type \"%s\" not supported.", type_exp->String);
-		goto error;
-		}
-	    xsConcatenate(where_clause, ") ", 2);
-
-	    mysd_internal_free_processed_args(arg_strings);
-	    arg_strings = NULL;
 	    }
 	else if (tree->Children.nItems == 3)
 	    {
-	    /** TODO: encoding convert plz **/
-	    ///TODO: if from vanco, cast as UTF-8, convert to UTF-16, and cast that to CP-1252, remove the NULL bytes from ascii characters...? then convert as desired.
-	    //TODO: if to vanco, 
+	    if(mysd_internal_convert_encoding(tree, tdata, where_clause, conn) < 0)
+		goto error;
 	    }
 	else 
 	    {
@@ -1814,7 +1986,6 @@ mysd_internal_function_Convert(pExpression tree, pMysdTable *tdata, pXString whe
 	return 0;
 
     error:
-	mysd_internal_free_processed_args(arg_strings);
     return -1;
     }
 
@@ -2027,7 +2198,6 @@ mysd_internal_function_dateadd(pExpression tree, pMysdTable *tdata, pXString whe
     return -1;
     }
 
-///TODO: circle back and see if validate params can simplify any of the checks afterall
 /*** mysd_internal_function_Datepart - handles the datepart function from cxSQL 
  *** into a MySQL datepart
  *** @param tree The node structure to convert. MUST point to the datpart function
@@ -2333,7 +2503,7 @@ mysd_internal_opperator_plus(pExpression tree, pMysdTable *tdata, pXString where
 	    {
 	    /** Had a string type, use CONCAT **/
 	    xsConcatenate(where_clause, " CONCAT( ", 9);
-
+///FIXME: this can make $-123.1200 a thing, so watch for that
 	    if(opp1_exp->DataType == DATA_T_MONEY) xsConcatenate(where_clause, "'$', ", 5);
 	    xsConcatenate(where_clause, opp1_str.String, -1);
 	    xsConcatenate(where_clause, ", ", 2);
@@ -2406,6 +2576,15 @@ mysd_internal_opperator_math(pExpression tree, pMysdTable *tdata, pXString where
 	
 	xsConcatPrintf(where_clause, " (%s %s %s) ", left_str, opperator, right_str);
 
+	/** determine the tree type. Use left hand side, but promote integer to double/money **/
+	pExpression left_exp = tree->Children.Items[0];
+	pExpression right_exp = tree->Children.Items[1];
+	if(left_exp->DataType == DATA_T_INTEGER 
+		&& (right_exp->DataType == DATA_T_DOUBLE || right_exp->DataType == DATA_T_MONEY))
+	    tree->DataType = right_exp->DataType;
+	else 
+	    tree->DataType = left_exp->DataType;
+
 	mysd_internal_free_processed_args(arg_strings);
 	arg_strings = NULL;
 
@@ -2428,7 +2607,6 @@ mysd_internal_opperator_math(pExpression tree, pMysdTable *tdata, pXString where
 /// FIXME: all of the calls to children need to do bound checking
 /// FIXME: maybe check return values on recurrsive calls?
 /// FIXME: lengths declared with concat strings dont always match 
-/// FIXME: set the DataType on each node before returning (if that breaks, do in return type)
 /// FIXME: the caller still passes query on error, which means sometimes you send just "... WHERE ;" to the db...
 int
 mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
@@ -2610,7 +2788,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 			int column_type = DATA_T_INVALID;
 			for(i = 0 ; i < tdata[id]->nCols ; i++)
 			    {
-			    if(strcmp(tree->Name, tdata[id]->Cols[i]))
+			    if(strcmp(tree->Name, tdata[id]->Cols[i]) == 0)
 				{
 				column_type = tdata[id]->ColCxTypes[i];
 				break;
@@ -3103,7 +3281,9 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     }
                 xsConcatenate(where_clause, ") ) ", 4);
                 break;
-	/// FIXME: default case for switch?
+	    default:
+		mssError(1, "MYSD", "ERROR: invalid expression node type %d, cannot parse query.", tree->NodeType);
+		goto error;
             }
 
         if (tree->Flags & EXPR_F_DESC) xsConcatenate(where_clause, " DESC ", 6);
@@ -3415,7 +3595,8 @@ mysdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
                 if (query->Tree)
                     {
                     xsConcatenate(&qy->Clause, " WHERE ", 7);
-                    mysd_internal_TreeToClause((pExpression)(query->Tree),&(qy->Data->TData),&qy->Clause,&escape_conn->Handle);
+                    if(mysd_internal_TreeToClause((pExpression)(query->Tree),&(qy->Data->TData),&qy->Clause,&escape_conn->Handle) < 0)
+			goto error;
                     }
                 if (query->SortBy[0])
                     {
@@ -3423,7 +3604,8 @@ mysdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
                     for(i=0;query->SortBy[i] && i < (sizeof(query->SortBy)/sizeof(void*));i++)
                         {
                         if (i != 0) xsConcatenate(&qy->Clause, ", ", 2);
-                        mysd_internal_TreeToClause((pExpression)(query->SortBy[i]),&(qy->Data->TData),&qy->Clause,&escape_conn->Handle);
+                        if(mysd_internal_TreeToClause((pExpression)(query->SortBy[i]),&(qy->Data->TData),&qy->Clause,&escape_conn->Handle) < 0 )
+			    goto error;
                         }
                     }
 		if (query->Flags & OBJ_QY_F_ONEROW)
