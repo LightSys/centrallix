@@ -77,25 +77,6 @@ typedef struct _HTN
     HtNamespace, *pHtNamespace;
 
 
-/** Widget parameter structure, also used for positioning params **/
-typedef struct
-    {
-    char	ParamName[32];		/* Name of parameter */
-    int		DataType;		/* DATA_T_xxx, from obj.h */
-    XArray	EnumValues;		/* If enumerated, values listing */
-    }
-    HtParam, *pHtParam;
-
-
-/** Widget event or action structure, used for handling connectors **/
-typedef struct
-    {
-    char	Name[32];		/* Name of event or action */
-    XArray	Parameters;		/* Listing of parameters */
-    }
-    HtEventAction, *pHtEventAction;
-
-
 /** WGTR RenderFlag defines **/
 #define HT_WGTF_NOOBJECT 1		/* wgt node does not have a corresponding DHTML object */
 #define HT_WGTF_NORENDER 2		/* do not deploy this node to the client. */
@@ -109,24 +90,9 @@ typedef struct
     int		(*Render)();		/* Function to render the page */
     XArray	PosParams;		/* Positioning parameter listing. */
     XArray	Properties;		/* Properties this thing will have. */
-    XArray	Events;			/* Events for this widget type */
-    XArray	Actions;		/* Actions on this widget type */
     XArray	PseudoTypes;		/* Pseudo-types this widget driver will handle */
     }
     HtDriver, *pHtDriver;
-
-
-/** Widget parameter value structure. **/
-typedef struct
-    {
-    pHtParam	Parameter;		/* Param that this value is for. */
-    int		IntVal;			/* if DATA_T_INTEGER, the int value */
-    char*	StringVal;		/* if DATA_T_STRING, the string value */
-    int		StringAlloc;		/* set if string was malloc()'d. */
-    DateTime	DateVal;		/* if DATA_T_DATETIME, the date value */
-    int		EnumVal;		/* if DATA_T_ENUM, the enumerated id */
-    }
-    HtValue, *pHtValue;
 
 
 /** Widget parameterized tree structure for pre-rendering **/
@@ -351,9 +317,6 @@ char* htrGetErrorHTML(char* title);
 int htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSession s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info);
 int htrWrite(pHtSession s, char* buf, int len);
 int htrQPrintf(pHtSession s, char* fmt, ...);
-int htrAddAction(pHtDriver drv, char* action_name);
-int htrAddEvent(pHtDriver drv, char* event_name);
-int htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype);
 pHtDriver htrAllocDriver();
 int htrAddSupport(pHtDriver drv, char* className);
 char* htrParamValue(pHtSession s, char* paramname);

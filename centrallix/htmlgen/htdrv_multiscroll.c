@@ -305,13 +305,6 @@ htmsInitialize()
 	strcpy(drv->WidgetName,"multiscroll");
 	drv->Render = htmsRender;
 
-	htrAddEvent(drv,"Click");
-	htrAddEvent(drv,"MouseUp");
-	htrAddEvent(drv,"MouseDown");
-	htrAddEvent(drv,"MouseOver");
-	htrAddEvent(drv,"MouseOut");
-	htrAddEvent(drv,"MouseMove");
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

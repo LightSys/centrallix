@@ -23,9 +23,6 @@ License: Copyright (C) 2001 LightSys Technology Services.  See LICENSE.txt.
     - [A.	Initialization](#ainitialization)
       - [Function: htrAllocDriver() returns pHtDriver](#function-htrallocdriver-returns-phtdriver)
       - [Function: htrRegisterDriver(pHtDriver drv) returns int](#function-htrregisterdriverphtdriver-drv-returns-int)
-      - [Function: htrAddAction(pHtDriver drv, char* action_name) returns int](#function-htraddactionphtdriver-drv-char-action_name-returns-int)
-      - [Function: htrAddEvent(pHtDriver drv, char* event_name) returns int](#function-htraddeventphtdriver-drv-char-event_name-returns-int)
-      - [Function: htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype) returns int](#function-htraddparamphtdriver-drv-char-eventaction-char-param_name-int-datatype-returns-int)
       - [Structure: HtDriver (pHtDriver is the pointer typedef)](#structure-htdriver-phtdriver-is-the-pointer-typedef)
     - [B.  Callback Methods](#b--callback-methods)
     - [C.	Page Generation API Methods](#cpage-generation-api-methods)
@@ -134,7 +131,7 @@ Modules should #include the following files: "ht_render.h", "obj.h", "mtask.h", 
 
 Module initialization is performed in the xxxInitialize() function for the module, where 'xxx' is the module's chosen prefix.  Most widget drivers have prefixes of the form 'htxx' where 'xx' is a two-to-four letter abbreviation of the module, such as 'eb' for the editbox widget.
 
-The initialization process mainly consists of 1) allocating a new driver structure, 2) filling out the appropriate fields in the structure, 3) adding events and/or actions to the driver structure, 4) initializing any module globals, and finally, 5) registering the driver structure with the HTML generation subsystem.  The module's Initialize() function should return 0 on success.
+The initialization process mainly consists of 1) allocating a new driver structure, 2) filling out the appropriate fields in the structure, 3) initializing any module globals, and finally, 4) registering the driver structure with the HTML generation subsystem.  The module's Initialize() function should return 0 on success.
 
 #### Function: htrAllocDriver() returns pHtDriver
 
@@ -144,18 +141,6 @@ This function allocates a new initialized HtDriver structure. After calling this
 
 This function registers a new widget driver with the DHTML generation subsystem.  On success, it returns 0; on failure it returns -1.
 
-#### Function: htrAddAction(pHtDriver drv, char* action_name) returns int
-
-Adds an Action to the catalog of actions associated with this widget driver.
-
-#### Function: htrAddEvent(pHtDriver drv, char* event_name) returns int
-
-Adds an Event to the catalog of events associated with this widget driver.
-
-#### Function: htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype) returns int
-
-Adds a parameter (with a given data type) to an event or action.
-
 #### Structure: HtDriver (pHtDriver is the pointer typedef)
 
 | Attribute    | Type          | Description
@@ -164,8 +149,6 @@ Adds a parameter (with a given data type) to an event or action.
 | WidgetName   | char[64]      | A one-word name of the widget.  This name will be used in the structure file type name when declaring an instance of the widget, as in "widget/widgetname" where "widgetname" is this property.
 | Render       | function ptr. | The module's Initialize() function should set this function pointer to the module's Render() function.  See below for more information on Render().
 | Verify       | function ptr. | This function pointer should be set to the module's Verify() function, which is not yet used.  Verify() should simply return 0.
-
-All other elements of this structure are "private" and should not be modified or accessed directly by the widget driver.  Instead, there are API functions which are used to set up these values.  If you look at the already-implemented drivers in the Centrallix distribution, many of them *do* access these directly, but only because the additional API functions were not written at that time. The additional API functions make the initialization process considerably simpler, so please do use them :)
 
 ### B.  Callback Methods
 

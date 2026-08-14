@@ -242,27 +242,6 @@ httxInitialize()
 	strcpy(drv->WidgetName,"textarea");
 	drv->Render = httxRender;
 
-	/** Add a 'set value' action **/
-	htrAddAction(drv,"SetValue");
-	htrAddParam(drv,"SetValue","Value",DATA_T_STRING);	/* value to set it to */
-	htrAddParam(drv,"SetValue","Trigger",DATA_T_INTEGER);	/* whether to trigger the Modified event */
-
-	/** Value-modified event **/
-	htrAddEvent(drv,"Modified");
-	htrAddParam(drv,"Modified","NewValue",DATA_T_STRING);
-	htrAddParam(drv,"Modified","OldValue",DATA_T_STRING);
-
-	/** Events **/ 
-	htrAddEvent(drv,"Click");
-	htrAddEvent(drv,"MouseUp");
-	htrAddEvent(drv,"MouseDown");
-	htrAddEvent(drv,"MouseOver");
-	htrAddEvent(drv,"MouseOut");
-	htrAddEvent(drv,"MouseMove");
-	htrAddEvent(drv,"DataChange");
-	htrAddEvent(drv,"GetFocus");
-	htrAddEvent(drv,"LoseFocus");
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

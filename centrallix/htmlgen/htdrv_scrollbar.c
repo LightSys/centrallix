@@ -296,17 +296,6 @@ htsbInitialize()
 	strcpy(drv->WidgetName,"scrollbar");
 	drv->Render = htsbRender;
 
-	/** Events **/ 
-	htrAddEvent(drv,"Click");
-	htrAddEvent(drv,"MouseUp");
-	htrAddEvent(drv,"MouseDown");
-	htrAddEvent(drv,"MouseOver");
-	htrAddEvent(drv,"MouseOut");
-	htrAddEvent(drv,"MouseMove");
-
-	htrAddAction(drv,"MoveTo");
-	htrAddParam(drv,"MoveTo","Value",DATA_T_INTEGER);
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

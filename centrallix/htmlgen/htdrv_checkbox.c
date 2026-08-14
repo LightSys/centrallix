@@ -205,15 +205,6 @@ int htcbInitialize() {
    strcpy(drv->WidgetName,"checkbox");
    drv->Render = htcbRender;
 
-   /** Events **/
-   htrAddEvent(drv,"Click");
-   htrAddEvent(drv,"MouseUp");
-   htrAddEvent(drv,"MouseDown");
-   htrAddEvent(drv,"MouseOver");
-   htrAddEvent(drv,"MouseOut");
-   htrAddEvent(drv,"MouseMove");
-   htrAddEvent(drv,"DataChange");
-
    /** Register. **/
    htrRegisterDriver(drv);
 

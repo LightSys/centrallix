@@ -174,19 +174,6 @@ htfuInitialize()
 	strcpy(drv->Name,"DHTML File Upload Driver");
 	strcpy(drv->WidgetName,"fileupload");
 	drv->Render = htfuRender;
-	
-	/** Add actions **/
-	htrAddAction(drv,"Reset");
-	htrAddAction(drv,"Prompt");
-	htrAddAction(drv,"Submit");
-	
-	/** Add event **/
-	htrAddEvent(drv,"DataChange");
-	htrAddParam(drv,"DataChange","NewValue",DATA_T_STRING);
-	htrAddParam(drv,"DataChange","OldValue",DATA_T_STRING);
-    
-	htrAddEvent(drv,"Success");
-	htrAddParam(drv,"Success","data",DATA_T_ARRAY);
 
 	/** Register. **/
 	htrRegisterDriver(drv);

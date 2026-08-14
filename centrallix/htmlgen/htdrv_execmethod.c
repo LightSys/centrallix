@@ -119,12 +119,6 @@ htexInitialize()
 	strcpy(drv->WidgetName,"execmethod");
 	drv->Render = htexRender;
 
-	/** Add a 'executemethod' action **/
-	htrAddAction(drv,"ExecuteMethod");
-	htrAddParam(drv,"ExecuteMethod","Objname",DATA_T_STRING);
-	htrAddParam(drv,"ExecuteMethod","Method",DATA_T_STRING);
-	htrAddParam(drv,"ExecuteMethod","Parameter",DATA_T_STRING);
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

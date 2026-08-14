@@ -255,15 +255,6 @@ httermInitialize()
 	strcpy(drv->WidgetName,"terminal");
 	drv->Render = httermRender;
 
-
-	/** Add our actions **/
-	htrAddAction(drv,"Disconnect");
-	htrAddAction(drv,"Connect");
-
-	/** Add our Events **/
-	htrAddEvent(drv,"ConnectionOpen");
-	htrAddEvent(drv,"ConnectionClose");
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

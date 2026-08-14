@@ -125,17 +125,6 @@ httmInitialize()
 	strcpy(drv->WidgetName,"timer");
 	drv->Render = httmRender;
 
-	/** Add an 'expired' event **/
-	htrAddEvent(drv,"Expire");
-
-	/** Add a 'set timer' action **/
-	htrAddAction(drv,"SetTimer");
-	htrAddParam(drv,"SetTimer","Time",DATA_T_INTEGER);
-	htrAddParam(drv,"SetTimer","AutoReset",DATA_T_INTEGER);
-
-	/** Add a 'cancel timer' action **/
-	htrAddAction(drv,"CancelTimer");
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

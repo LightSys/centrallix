@@ -301,13 +301,6 @@ htpnInitialize()
 	strcpy(drv->WidgetName,"pane");
 	drv->Render = htpnRender;
 
-	htrAddEvent(drv,"Click");
-	htrAddEvent(drv,"MouseUp");
-	htrAddEvent(drv,"MouseDown");
-	htrAddEvent(drv,"MouseOver");
-	htrAddEvent(drv,"MouseOut");
-	htrAddEvent(drv,"MouseMove");
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

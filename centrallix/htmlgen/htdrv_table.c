@@ -817,10 +817,6 @@ httblInitialize()
 	xaAddItem(&(drv->PseudoTypes), "table-column");
 	xaAddItem(&(drv->PseudoTypes), "table-row-detail");
 
-	/** Add driver events. **/
-	htrAddEvent(drv,"Click");
-	htrAddEvent(drv,"DblClick");
-
 	/** Register the driver, with dhtml support. **/
 	htrRegisterDriver(drv);
 	htrAddSupport(drv, "dhtml");

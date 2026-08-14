@@ -96,14 +96,6 @@ htalrtInitialize()
 	strcpy(drv->WidgetName,"alerter");
 	drv->Render = htalrtRender;
 
-	/** Add actions **/
-	htrAddAction(drv,"Alert");
-	htrAddParam(drv,"Alert","Parameter",DATA_T_STRING);
-	htrAddAction(drv,"Confirm");
-	htrAddParam(drv,"Confirm","Parameter",DATA_T_STRING);
-	//htrAddAction(drv,"ViewDOM");
-	//htrAddParam(drv,"ViewDOM","Paramater",DATA_T_STRING);
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

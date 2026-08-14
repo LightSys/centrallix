@@ -353,13 +353,6 @@ htcmpdInitialize()
 	strcpy(drv->WidgetName,"component-decl");
 	drv->Render = htcmpdRender;
 
-	htrAddEvent(drv,"Click");
-	htrAddEvent(drv,"MouseUp");
-	htrAddEvent(drv,"MouseDown");
-	htrAddEvent(drv,"MouseOver");
-	htrAddEvent(drv,"MouseOut");
-	htrAddEvent(drv,"MouseMove");
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

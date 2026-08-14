@@ -354,17 +354,6 @@ htdtInitialize()
 	strcpy(drv->WidgetName,"datetime");
 	drv->Render = htdtRender;
 
-	/** Register events **/
-	htrAddEvent(drv,"Click");
-	htrAddEvent(drv,"MouseUp");
-	htrAddEvent(drv,"MouseDown");
-	htrAddEvent(drv,"MouseOver");
-	htrAddEvent(drv,"MouseOut");
-	htrAddEvent(drv,"MouseMove");
-	htrAddEvent(drv,"DataChange");
-	htrAddEvent(drv,"GetFocus");
-	htrAddEvent(drv,"LoseFocus");
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

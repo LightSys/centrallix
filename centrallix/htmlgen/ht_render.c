@@ -1194,122 +1194,6 @@ htrDisableBody(pHtSession s)
     }
 
 
-/*** htrAddEvent - adds an event to a driver.
- ***/
-int
-htrAddEvent(pHtDriver drv, char* event_name)
-    {
-    pHtEventAction event = NULL;
-
-	/** Allocate the event struct. **/
-	event = (pHtEventAction)check_ptr(nmSysMalloc(sizeof(HtEventAction)));
-	if (event == NULL) goto err;
-	
-	/** Write the event name with a null terminator. **/
-	memccpy(event->Name, event_name, 0, sizeof(event->Name) - 1lu);
-	event->Name[sizeof(event->Name) - 1lu] = '\0';
-	
-	/** Register the event. **/
-	if (check(xaInit(&(event->Parameters), 16)) != 0) goto err;
-	if (check_neg(xaAddItem(&drv->Events, (void*)event)) < 0) goto err;
-
-	/** Success. **/
-	return 0;
-
-	err:
-	mssError(1, "HTR", "Failed to add event: \"%s\".", event_name);
-	
-	/** Clean up. **/
-	if (LIKELY(event != NULL)) nmSysFree(event);
-	
-	return -1;
-    }
-
-
-/*** htrAddAction - adds an action to a widget.
- ***/
-int
-htrAddAction(pHtDriver drv, char* action_name)
-    {
-    pHtEventAction action = NULL;
-
-	/** Allocate the action struct. **/
-	action = (pHtEventAction)check_ptr(nmSysMalloc(sizeof(HtEventAction)));
-	if (action == NULL) goto err;
-	
-	/** Write the action name with a null terminator. **/
-	memccpy(action->Name, action_name, 0, sizeof(action->Name) - 1lu);
-	action->Name[sizeof(action->Name) - 1lu] = '\0';
-	
-	/** Register the action. **/
-	if (check(xaInit(&(action->Parameters), 16)) != 0) goto err;
-	if (check_neg(xaAddItem(&drv->Actions, (void*)action)) < 0) goto err;
-
-	/** Success. **/
-	return 0;
-
-	err:
-	mssError(1, "HTR", "Failed to add action: \"%s\".", action_name);
-	
-	/** Clean up. **/
-	if (LIKELY(action != NULL)) nmSysFree(action);
-	
-	return -1;
-    }
-
-
-/*** htrAddParam - adds a parameter to a widget's action or event
- ***/
-int
-htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype)
-    {
-    pHtEventAction ea = NULL;
-    pHtParam p = NULL;
-
-	/** Look for a matching event/action **/
-	for (unsigned int i = 0u; i < drv->Actions.nItems; i++)
-	    {
-	    if (!strcmp(((pHtEventAction)(drv->Actions.Items[i]))->Name, eventaction))
-	        {
-		ea = (pHtEventAction)(drv->Actions.Items[i]);
-		break;
-		}
-	    }
-	if (ea == NULL) for (unsigned int i = 0u; i < drv->Events.nItems; i++)
-	    {
-	    if (!strcmp(((pHtEventAction)(drv->Events.Items[i]))->Name, eventaction))
-	        {
-		ea = (pHtEventAction)(drv->Events.Items[i]);
-		break;
-		}
-	    }
-	if (UNLIKELY(ea == NULL)) goto err;
-
-	/** Allocate the parameter struct. **/
-	p = check_ptr(nmSysMalloc(sizeof(HtParam)));
-	if (p == NULL) goto err;
-	
-	/** Initialize the parameter struct. **/
-	memccpy(p->ParamName, param_name, 0, sizeof(p->ParamName) - 1lu);
-	p->ParamName[sizeof(p->ParamName) - 1lu] = '\0';
-	p->DataType = datatype;
-	
-	/** Register the parameter. **/
-	if (check_neg(xaAddItem(&(ea->Parameters), (void*)p)) < 0) goto err;
-
-	/** Success. **/
-	return 0;
-
-	err:
-	mssError(1, "HTR", "Failed to add parameter: \"%s\" of type %d.", param_name, datatype);
-	
-	/** Clean up. **/
-	if (LIKELY(p != NULL)) nmSysFree(p);
-	
-	return -1;
-    }
-
-
 /*** htrAddBodyItemLayer_va - adds an entire "layer" to the document.  A layer
  *** in the traditional netscape-4 sense of a layer, which might be implemented
  *** in a number of different ways in the actual user agent itself.
@@ -2705,8 +2589,6 @@ htrAllocDriver()
 	/** Init some of the basic array structures **/
 	if (check(xaInit(&(drv->PosParams), 16)) != 0) goto err;
 	if (check(xaInit(&(drv->Properties), 16)) != 0) goto err;
-	if (check(xaInit(&(drv->Events), 16)) != 0) goto err;
-	if (check(xaInit(&(drv->Actions), 16)) != 0) goto err;
 	if (check(xaInit(&(drv->PseudoTypes), 4)) != 0) goto err;
 
 	/** Success. **/

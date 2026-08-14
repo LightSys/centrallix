@@ -296,30 +296,6 @@ htformInitialize()
 	strcpy(drv->WidgetName,"form");
 	drv->Render = htformRender;
 
-	/** Add our actions **/
-	htrAddAction(drv,"Clear");
-	htrAddAction(drv,"Delete");
-	htrAddAction(drv,"Discard");
-	htrAddAction(drv,"Edit");
-	htrAddAction(drv,"First");
-	htrAddAction(drv,"Last");
-	htrAddAction(drv,"New");
-	htrAddAction(drv,"Next");
-	htrAddAction(drv,"Prev");
-	htrAddAction(drv,"Query");
-	htrAddAction(drv,"QueryExec");
-	htrAddAction(drv,"QueryToggle");
-	htrAddAction(drv,"Save");
-
-	/* these don't really do much, since the form doesn't have a layer, so nothing can find it... */
-	htrAddEvent(drv,"StatusChange");
-	htrAddEvent(drv,"DataChange");
-	htrAddEvent(drv,"NoData");
-	htrAddEvent(drv,"View");
-	htrAddEvent(drv,"Modify");
-	htrAddEvent(drv,"Query");
-	htrAddEvent(drv,"QueryExec");
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

@@ -208,13 +208,6 @@ htocInitialize()
 	strcpy(drv->WidgetName,"objcanvas");
 	drv->Render = htocRender;
 
-	htrAddEvent(drv,"Click");
-	htrAddEvent(drv,"MouseUp");
-	htrAddEvent(drv,"MouseDown");
-	htrAddEvent(drv,"MouseOver");
-	htrAddEvent(drv,"MouseOut");
-	htrAddEvent(drv,"MouseMove");
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

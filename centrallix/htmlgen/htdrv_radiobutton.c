@@ -505,15 +505,6 @@ int htrbInitialize() {
    strcpy(drv->WidgetName,"radiobuttonpanel");
    drv->Render = htrbRender;
 
-   /** Events **/ 
-   htrAddEvent(drv,"Click");
-   htrAddEvent(drv,"MouseUp");
-   htrAddEvent(drv,"MouseDown");
-   htrAddEvent(drv,"MouseOver");
-   htrAddEvent(drv,"MouseOut");
-   htrAddEvent(drv,"MouseMove");
-   htrAddEvent(drv,"DataChange");
-
    /** Register with dhtml support. **/
    htrRegisterDriver(drv);
    htrAddSupport(drv, "dhtml");

@@ -272,8 +272,6 @@ int
 htconnInitialize()
     {
     pHtDriver drv;
-    /*pHtEventAction action;
-    pHtParam param;*/
 
     	/** Allocate the driver **/
 	drv = htrAllocDriver();

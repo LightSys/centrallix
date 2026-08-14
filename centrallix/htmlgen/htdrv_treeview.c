@@ -333,20 +333,6 @@ httreeInitialize()
 	strcpy(drv->WidgetName,"treeview");
 	drv->Render = httreeRender;
 
-	/** Add the 'click item' event **/
-	htrAddEvent(drv,"ClickItem");
-	htrAddParam(drv,"ClickItem","Pathname",DATA_T_STRING);
-	htrAddEvent(drv,"Click");
-	htrAddEvent(drv,"MouseUp");
-	htrAddEvent(drv,"MouseDown");
-	htrAddEvent(drv,"MouseOver");
-	htrAddEvent(drv,"MouseOut");
-	htrAddEvent(drv,"MouseMove");
-
-	/** Add the 'rightclick item' event **/
-	htrAddEvent(drv,"RightClickItem");
-	htrAddParam(drv,"RightClickItem","Pathname",DATA_T_STRING);
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

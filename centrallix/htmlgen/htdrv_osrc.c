@@ -360,16 +360,6 @@ int htosrcInitialize() {
    strcpy(drv->WidgetName,"osrc");
    drv->Render = htosrcRender;
 
-   /** Add actions **/
-   htrAddAction(drv,"Clear");
-   htrAddAction(drv,"Query");
-   htrAddAction(drv,"Delete");
-   htrAddAction(drv,"Create");
-   htrAddAction(drv,"Modify");
-
-   htrAddAction(drv,"Sync");
-   htrAddAction(drv,"ReverseSync");
-
    /** Register. **/
    htrRegisterDriver(drv);
 

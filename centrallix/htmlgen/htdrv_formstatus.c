@@ -170,8 +170,6 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
 */
 int htfsInitialize() {
    pHtDriver drv;
-   /*pHtEventAction action;
-   pHtParam param;*/
 
    /** Allocate the driver **/
    drv = htrAllocDriver();
@@ -181,13 +179,6 @@ int htfsInitialize() {
    strcpy(drv->Name,"DHTML Form Status Driver");
    strcpy(drv->WidgetName,"formstatus");
    drv->Render = htfsRender;
-
-   htrAddEvent(drv,"Click");
-   htrAddEvent(drv,"MouseUp");
-   htrAddEvent(drv,"MouseDown");
-   htrAddEvent(drv,"MouseOver");
-   htrAddEvent(drv,"MouseOut");
-   htrAddEvent(drv,"MouseMove");
 
    /** Register. **/
    htrRegisterDriver(drv);

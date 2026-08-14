@@ -202,12 +202,6 @@ int htmapInitialize()
 	strcpy(drv->WidgetName, "map");
 	drv->Render = htmapRender;
 
-	htrAddEvent(drv, "MouseUp");
-	htrAddEvent(drv, "MouseDown");
-	htrAddEvent(drv, "MouseOver");
-	htrAddEvent(drv, "MouseOut");
-	htrAddEvent(drv, "MouseMove");
-	htrAddEvent(drv, "Click");
 	/** Register. **/
 	htrRegisterDriver(drv);
 

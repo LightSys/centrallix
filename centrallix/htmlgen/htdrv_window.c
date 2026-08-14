@@ -456,22 +456,6 @@ htwinInitialize()
 	strcpy(drv->WidgetName,"childwindow");
 	drv->Render = htwinRender;
 
-	/** Add the 'click' event **/
-	htrAddEvent(drv, "MouseUp");
-	htrAddEvent(drv, "MouseDown");
-	htrAddEvent(drv, "MouseOver");
-	htrAddEvent(drv, "MouseOut");
-	htrAddEvent(drv, "MouseMove");
-
-	/** Add the 'set visibility' action **/
-	htrAddAction(drv,"ToggleVisibility");
-	htrAddAction(drv,"SetVisibility");
-	htrAddParam(drv,"SetVisibility","IsVisible",DATA_T_INTEGER);
-	htrAddParam(drv,"SetVisibility","NoInit",DATA_T_INTEGER);
-
-	/** Add the 'window closed' event **/
-	htrAddEvent(drv,"Close");
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

@@ -674,14 +674,6 @@ htpageInitialize()
 	strcpy(drv->Name,"HTML Page Driver");
 	strcpy(drv->WidgetName,"page");
 	drv->Render = htpageRender;
-	/** Actions **/
-	htrAddAction(drv, "LoadPage");
-	htrAddParam(drv, "LoadPage", "Source", DATA_T_STRING);
-	htrAddAction(drv, "Launch");
-	htrAddParam(drv, "Launch", "Source", DATA_T_STRING);
-	htrAddParam(drv, "Launch", "Width", DATA_T_INTEGER);
-	htrAddParam(drv, "Launch", "Height", DATA_T_INTEGER);
-	htrAddParam(drv, "Launch", "Name", DATA_T_STRING);
 
 	/** Register. **/
 	htrRegisterDriver(drv);

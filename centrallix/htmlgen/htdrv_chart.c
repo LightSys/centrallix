@@ -438,9 +438,6 @@ htchtInitialize()
         xaAddItem(&(drv->PseudoTypes), "chart-axis");
         xaAddItem(&(drv->PseudoTypes), "chart-series");
 
-        htrAddEvent(drv, "Click");
-        htrAddEvent(drv, "DblClick");
-
         /** Register. **/
         htrRegisterDriver(drv);
 

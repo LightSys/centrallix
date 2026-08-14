@@ -261,17 +261,6 @@ htibtnInitialize()
 	strcpy(drv->WidgetName,"imagebutton");
 	drv->Render = htibtnRender;
 
-	htrAddAction(drv,"Enable");
-	htrAddAction(drv,"Disable");
-	
-	/** Add the 'click' event **/
-	htrAddEvent(drv,"Click");
-	htrAddEvent(drv,"MouseUp");
-	htrAddEvent(drv,"MouseDown");
-	htrAddEvent(drv,"MouseOver");
-	htrAddEvent(drv,"MouseOut");
-	htrAddEvent(drv,"MouseMove");
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

@@ -278,13 +278,6 @@ htclInitialize()
 	strcpy(drv->WidgetName,"clock");
 	drv->Render = htclRender;
 
-	/** Events **/ 
-	htrAddEvent(drv,"MouseUp");
-	htrAddEvent(drv,"MouseDown");
-	htrAddEvent(drv,"MouseOver");
-	htrAddEvent(drv,"MouseOut");
-	htrAddEvent(drv,"MouseMove");
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

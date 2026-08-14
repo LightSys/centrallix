@@ -618,16 +618,6 @@ htmenuInitialize()
 	strcpy(drv->WidgetName,"menu");
 	drv->Render = htmenuRender;
 
-	/** Register events **/
-	htrAddEvent(drv,"MouseUp");
-	htrAddEvent(drv,"MouseDown");
-	htrAddEvent(drv,"MouseOver");
-	htrAddEvent(drv,"MouseOut");
-	htrAddEvent(drv,"MouseMove");
-	htrAddEvent(drv,"DataChange");
-	htrAddEvent(drv,"GetFocus");
-	htrAddEvent(drv,"LoseFocus");
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 

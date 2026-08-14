@@ -345,16 +345,6 @@ htspaneInitialize()
 	strcpy(drv->WidgetName,"scrollpane");
 	drv->Render = htspaneRender;
 	
-	/** Events **/ 
-	htrAddEvent(drv, "Scroll");
-	htrAddEvent(drv, "Click");
-	htrAddEvent(drv, "Wheel");
-	htrAddEvent(drv, "MouseUp");
-	htrAddEvent(drv, "MouseDown");
-	htrAddEvent(drv, "MouseOver");
-	htrAddEvent(drv, "MouseOut");
-	htrAddEvent(drv, "MouseMove");
-	
 	/** Register. **/
 	htrRegisterDriver(drv);
 	

@@ -378,18 +378,6 @@ hthtmlInitialize()
         strcpy(drv->WidgetName,"html");
         drv->Render = hthtmlRender;
 
-	htrAddEvent(drv, "MouseUp");
-	htrAddEvent(drv, "MouseDown");
-	htrAddEvent(drv, "MouseOver");
-	htrAddEvent(drv, "MouseOut");
-	htrAddEvent(drv, "MouseMove");
-
-        /** Add the 'load page' action **/
-	htrAddAction(drv,"LoadPage");
-	htrAddParam(drv,"LoadPage","Mode",DATA_T_STRING);
-	htrAddParam(drv,"LoadPage","Source",DATA_T_STRING);
-	htrAddParam(drv,"LoadPage","Transition",DATA_T_STRING);
-
         /** Register. **/
         htrRegisterDriver(drv);
 
