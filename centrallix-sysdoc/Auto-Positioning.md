@@ -132,8 +132,6 @@ Applications like duelform.app that are composed of windows tend not to resize v
 If the auto-positioning module is thought to be suspect for problems encountered while testing other parts of Centrallix, it can be entirely turned off for debugging purposes by commenting out the call to aposAutoPositionWidgetTree near the end of the wgtrVerify function in wgtr.c.
 
 ## Future Functionality
-At present the auto-positioning module only resizes an application once, right before the first time it renders. However, it would't be hard to coerce it to run every time the application window changes size, and dynamically resize the application. This would require making some browser specific modifications outside the apos module.
-
 Another possibility that the auto-positioning module opens up is resizable window widgets. Once the windows have been modified to allow the user to request a new size, auto-positioning the contents would simply involve passing a pointer to the window to the toplevel function of the apos module. 
 
 ## Note to Application Authors
