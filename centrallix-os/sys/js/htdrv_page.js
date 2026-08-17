@@ -603,7 +603,9 @@ function pg_stackpopup(p,l)
  *** Vertically: below the widget it belongs to, or above it if no room below.
  *** Horizontally: left edges aligned, or right edges aligned when the popup
  *** would overhang the screen.
- *** A popup that won't fit is pushed against the bottom/right viewport edge.
+ *** A popup that won't fit is pushed against the bottom/right viewport edge, but
+ *** never past the top/left one: a popup too big for the viewport runs off the
+ *** far edge rather than losing the near edge, where its first items are.
  ***
  *** The position is returned, not applied: a hidden popup has no position to
  *** move from. Calling this function allows computing where a window should go
@@ -626,7 +628,7 @@ function pg_computepopup(p, x, y, h, w)
     else if (y - getClipHeight(p) >= 0)
 	posy = y - getClipHeight(p);
     else
-	posy = getInnerHeight() - getClipHeight(p);
+	posy = Math.max(getInnerHeight() - getClipHeight(p), 0);
 
     // Now determine horizontal (X) position...
     if (x + getClipWidth(p) <= getInnerWidth())
@@ -634,7 +636,7 @@ function pg_computepopup(p, x, y, h, w)
     else if (x + w - getClipWidth(p) >= 0)
 	posx = x + w - getClipWidth(p);
     else
-	posx = getInnerWidth() - getClipWidth(p);
+	posx = Math.max(getInnerWidth() - getClipWidth(p), 0);
 
     return { x:posx, y:posy };
     }
