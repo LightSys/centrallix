@@ -1612,9 +1612,13 @@ function osrc_prune_replica(most_recent_id)
 		}
 	    if (found) break;
 
-	    // clean up replica
-	    this.oldoids.push(this.replica[this.FirstRecord].oid);
-	    delete this.replica[this.FirstRecord];
+	    // clean up replica.  A tail fetch skips records, so the window
+	    // is not always contiguous.
+	    if (this.replica[this.FirstRecord])
+		{
+		this.oldoids.push(this.replica[this.FirstRecord].oid);
+		delete this.replica[this.FirstRecord];
+		}
 	    this.FirstRecord++;
 	    }
 	}
