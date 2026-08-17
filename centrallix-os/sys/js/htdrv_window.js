@@ -109,19 +109,22 @@ function wn_init(param)
 	    }
 	}
     
-    /*** Save where the server placed this window (see wn_place() for modes).
-     *** Set before the window joins the wn_list, which is used for resize
-     *** re-placements.  centeredx/centeredy specify that server-side layout
-     *** centered, rather than placing it at a fixed spot (see apos.c for
-     *** detection details), so that it remains centered on resize.
+    /*** Save how the server placed this window (see wn_place() for modes).  Set
+     *** before the window joins the wn_list, which is used for resize
+     *** re-placements.  centeredx/centeredy say the server-side layout centered
+     *** the window rather than placing it at a fixed spot (see apos.c for the
+     *** detection), so it gets centered again on resize.  Any other window was
+     *** given a fixed spot that CSS already holds, recorded as "wherever it is".
      ***/
-    l.placement = {
-	mode: 'server',
-	x: null,
-	y: null,
-	centered_x: (param.centeredx === 1),
-	centered_y: (param.centeredy === 1),
-	};
+    if (param.centeredx === 1 || param.centeredy === 1)
+	l.placement = {
+	    mode: 'center',
+	    centered_x: (param.centeredx === 1),
+	    centered_y: (param.centeredy === 1),
+	    in_container: !l.is_toplevel,
+	    };
+    else
+	l.placement = { mode:'absolute', x:null, y:null, attract:0 };
 
     wn_list.push(l);
     wn_bring_top(l);
@@ -166,16 +169,7 @@ function wn_init(param)
 
     // force on page...
     if (getPageY(l) + l.orig_height > getInnerHeight())
-	{
-	// We've moved the window, so now we own the placement location.
-	l.placement = {
-	    mode: 'absolute',
-	    x: getPageX(l),
-	    y: getInnerHeight() - l.orig_height - 2,
-	    attract: 0,
-	};
-	moveToAbsolute(l, l.placement.x, l.placement.y);
-	}
+	moveToAbsolute(l, getPageX(l), getInnerHeight() - l.orig_height - 2);
 
     // Show container API
     l.showcontainer = wn_showcontainer;
@@ -364,18 +358,20 @@ function wn_setvisibility_bh(v)
 	wn_place(this);
 
 	/*** Nudge a window clear if it landed exactly on the one below it.  Only
-	 *** a window placed at a plain spot cascades: a centered, pointed, or
-	 *** popped-up one sits where it does for a reason.  The nudge goes into
-	 *** the placement too, so a resize does not undo it.
+	 *** a window at a plain spot cascades: a centered, pointed, or popped-up
+	 *** one sits where it does for a reason.
 	 ***/
-	const can_cascade = (this.placement.mode === 'server' || this.placement.mode === 'absolute');
-	if (this.do_cascade && can_cascade && prev_topwin && prev_topwin !== this
+	if (this.do_cascade && this.placement.mode === 'absolute' && prev_topwin && prev_topwin !== this
 	    && getPageX(this) === getPageX(prev_topwin)
 	    && getPageY(this) === getPageY(prev_topwin))
 	    {
 	    moveBy(this, 16, 16);
-	    this.placement.x += 16;
-	    this.placement.y += 16;
+
+	    /*** A remembered spot has to be nudged too, or a resize undoes it.  A
+	     *** null spot is read live, so it already reads the nudged position.
+	     ***/
+	    if (this.placement.x != null) this.placement.x += 16;
+	    if (this.placement.y != null) this.placement.y += 16;
 	    }
 	}
     }
@@ -561,7 +557,8 @@ function wn_openwin(aparam)
 	    attract: 0,
 	};
     else if (aparam.Center && aparam.Center != 'no')
-	this.placement = { mode:'center' };
+	/** Asking for centered means centered in the viewport, on both axes. **/
+	this.placement = { mode:'center', centered_x:true, centered_y:true, in_container:false };
     else if (this.placement.from_action)
 	/** The Popup action placed this window and is opening it now. **/
 	delete this.placement.from_action;
@@ -727,13 +724,42 @@ function wn_do_move()
  *** A window remembers how it was placed, not just where it landed, so a resize
  *** can correctly recalculate the position.  This supports the following modes:
  ***
- ***   server    Where the server put it, moving only to stay on screen, or
- ***             centered again if the layout centered it.
- ***   absolute  A spot it was put at, by a drag or by Open with X and Y.
- ***   center    Centered in the viewport, recentered as the viewport changes.
+ ***   absolute  A spot it was put at, by a drag or by Open with X and Y, or
+ ***             null for "wherever it is", which is how the server places one.
+ ***   center    Centered, per axis, in the viewport or in its own container,
+ ***             recentered as that space changes.
  ***   point     Pointing at a widget, with an arrow between the two.
  ***   popup     Popped up against a widget, the way a menu appears.
+ ***
+ *** Every mode is kept on screen, and none of them stores a coordinate the
+ *** server generated -- a window the server placed sits where its CSS puts it,
+ *** relative to its container, and the browser already keeps it there when the
+ *** container moves.  Storing that spot would only fight the browser for it.
  ***/
+
+/*** The space a centered window is centered in, in page coordinates: the
+ *** viewport, or its own container for a window the server-side layout centered
+ *** inside one.  apos.c centers against the nearest visual container up the tree
+ *** (its VisualRef), which is what parentNode gives us here, because a
+ *** non-visual widget emits no container of its own for the window to sit in.
+ ***
+ *** @param wn The window being centered.
+ *** @param viewport The usable viewport, from wn_get_viewport().
+ *** @returns The {x, y, width, height} to center within.
+ ***/
+function wn_center_space(wn, viewport)
+    {
+    if (!wn.placement.in_container)
+	return { x:0, y:0, width:viewport.width, height:viewport.height };
+
+    const rect = wn.parentNode.getBoundingClientRect();
+    return {
+	x: rect.left + window.scrollX,
+	y: rect.top + window.scrollY,
+	width: rect.width,
+	height: rect.height,
+	};
+    }
 
 /*** Works out where a window should sit.  This only measures: nothing is moved,
  *** so a batch of windows can be measured before any of them are moved, which
@@ -748,50 +774,21 @@ function wn_compute_placement(wn, viewport)
     {
     switch (wn.placement.mode)
 	{
-	case 'server':
+	case 'absolute':
 	    {
-	    /*** Still where the server put it, moving only to stay on screen --
-	     *** the same rule a dragged window follows.  A window the layout
-	     *** centered is centered again instead: in the viewport if it is
-	     *** toplevel, in its own container otherwise.
+	    /*** A spot the window was put at, or null for "wherever it is now".
+	     *** A null spot is read live every time and never remembered: the
+	     *** server places these with CSS, relative to their container, so the
+	     *** browser keeps them with a container that moves and there is
+	     *** nothing stored here to go stale.  Either way it stays on screen.
 	     ***/
 	    const p = wn.placement;
-
-	    /** Read the spot lazily: a window in an unrevealed container has none yet. **/
-	    if (p.x == null) p.x = getPageX(wn);
-	    if (p.y == null) p.y = getPageY(wn);
-
-	    let x = p.x, y = p.y;
-	    if (p.centered_x || p.centered_y)
-		{
-		const rect = wn.getBoundingClientRect();
-
-		/** The space to center in, in page coordinates. **/
-		let space = { x:0, y:0, width:viewport.width, height:viewport.height };
-		if (!wn.is_toplevel)
-		    {
-		    const pr = wn.parentNode.getBoundingClientRect();
-		    space = {
-			x: pr.left + window.scrollX,
-			y: pr.top + window.scrollY,
-			width: pr.width,
-			height: pr.height,
-			};
-		    }
-
-		if (p.centered_x) x = space.x + Math.max(0, (space.width - rect.width) / 2);
-		if (p.centered_y) y = space.y + Math.max(0, (space.height - rect.height) / 2);
-		}
-	    return wn_clamp_position(wn, 0, x, y, viewport);
+	    return wn_clamp_position(wn, p.attract,
+		(p.x != null) ? p.x : getPageX(wn),
+		(p.y != null) ? p.y : getPageY(wn),
+		viewport
+	    );
 	    }
-
-	case 'absolute':
-	    /*** A null coordinate means "wherever it is now", which can only be
-	     *** read on visible windows, so read it as soon as we can.
-	     ***/
-	    if (wn.placement.x == null) wn.placement.x = getPageX(wn);
-	    if (wn.placement.y == null) wn.placement.y = getPageY(wn);
-	    return wn_clamp_position(wn, wn.placement.attract, wn.placement.x, wn.placement.y, viewport);
 
 	case 'popup':
 	    {
@@ -812,11 +809,17 @@ function wn_compute_placement(wn, viewport)
 
 	case 'center':
 	    {
-	    /** Clamped like the rest: a window too big to center still has to be reachable. **/
+	    /*** Centered in the viewport, or in its own container for a window the
+	     *** server-side layout centered inside one.  An axis that is not
+	     *** centered keeps the spot it has.  Clamped like the rest: a window
+	     *** too big to center still has to be reachable.
+	     ***/
+	    const p = wn.placement;
 	    const rect = wn.getBoundingClientRect();
+	    const space = wn_center_space(wn, viewport);
 	    return wn_clamp_position(wn, 0,
-		(viewport.width - rect.width) / 2,
-		(viewport.height - rect.height) / 2,
+		(p.centered_x) ? space.x + Math.max(0, (space.width - rect.width) / 2) : getPageX(wn),
+		(p.centered_y) ? space.y + Math.max(0, (space.height - rect.height) / 2) : getPageY(wn),
 		viewport
 	    );
 	    }
