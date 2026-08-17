@@ -134,72 +134,61 @@ function getClipItem(l, side)
     return l.clip[side];
     }
 
+/*** Page coordinates are document coordinates: they include the scroll offset,
+ *** so they compare directly against a mouse event's pageX/pageY.
+ ***/
+
 // Page X
-function getPageX(l) 
-    { 
-    var pn = l;
-    var left;
-    var rval = 0;
-    while(pn.tagName != "BODY")
-	{
-	if (pn.__pg_left == null)
-	    {
-	    left = pg_get_style(pn,'left');
-	    left = parseInt(left);
-	    if(isNaN(left))
-		pn.__pg_left = 0;
-	    else
-		pn.__pg_left = left;
-	    }
-	rval += pn.__pg_left;
-	do  {
-	    pn = pn.parentNode;
-	    }
-	    while(pn.tagName != "DIV" && pn.tagName != "IMG" && pn.tagName != "BODY")
-	}
-    return rval;
+function getPageX(l)
+    {
+    if (!l || !l.getBoundingClientRect) return null;
+    return l.getBoundingClientRect().left + window.scrollX;
     }
 
-function setPageX(l, value) 
-    { 
-    if(l.nodeName == "BODY")
-	return;
-    var pval = getPageX(l.parentNode);
-    setRelativeX(l, value - pval);
+function setPageX(l, value)
+    {
+    setPageXY(l, value, null);
     }
     
 // Page Y
-function getPageY(l) 
-    { 
-    var pn = l;
-    var top;
-    var rval = 0;
-    while(pn.tagName != "BODY")
-	{
-	if (pn.__pg_top == null)
-	    {
-	    top = pg_get_style(pn,'top');
-	    top = parseInt(top);
-	    if(isNaN(top))
-		pn.__pg_top = 0;
-	    else
-		pn.__pg_top = top;
-	    }
-	rval += pn.__pg_top;
-	do  {
-	    pn = pn.parentNode;
-	    }
-	    while(pn.tagName != "DIV" && pn.tagName != "IMG" && pn.tagName != "BODY")
-	}
-    return rval;
+function getPageY(l)
+    {
+    if (!l || !l.getBoundingClientRect) return null;
+    return l.getBoundingClientRect().top + window.scrollY;
     }
 
-function setPageY(l, value) 
-    { 
-    if(l.nodeName == "BODY")
-	return;
-    var pval = getPageY(l.parentNode);
-    setRelativeY(l, value - pval);
+function setPageY(l, value)
+    {
+    setPageXY(l, null, value);
+    }
+
+/*** Moves a DOM node to the specified page coordinates.  The move is a delta
+ *** from where the node actually sits, so it and its ancestors positions do
+ *** not matter.
+ ***
+ *** One call to this function is faster than calling setPageX() & setPageY().
+ ***
+ *** @param l The DOM node being moved.
+ *** @param x The new page x coordinate, or null to leave x unchanged.
+ *** @param y The new page y coordinate, or null to leave y unchanged.
+ ***/
+function setPageXY(l, x, y)
+    {
+    if (!l || !l.getBoundingClientRect || l.tagName === "BODY") return;
+    const rect = l.getBoundingClientRect();
+
+    if (x != null)
+	{
+	const dx = x - (rect.left + window.scrollX);
+	if (dx) setRelativeX(l, Math.round(getRelativeX(l) + dx));
+	}
+    if (y != null)
+	{
+	const dy = y - (rect.top + window.scrollY);
+	if (dy) setRelativeY(l, Math.round(getRelativeY(l) + dy));
+	}
+
+    return;
     }
 
 function getInnerHeight()
@@ -414,8 +403,7 @@ function setResponsiveH(l, value) { return setResponsive(l, value, 'height'); }
 /** Moves a DOM node to a location within the window. **/
 function moveToAbsolute(l, x, y)
     {
-    setPageX(l,x);
-    setPageY(l,y);
+    setPageXY(l, x, y);
     }
 
 /*** Moves a DOM node to a location inside it's parent container.
