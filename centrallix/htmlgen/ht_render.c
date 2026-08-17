@@ -3359,9 +3359,13 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
 	    shadow_angle = strtod(strval, NULL);
 
-	/** Generate the style CSS **/
+	/*** Generate the style CSS.  border-box keeps any border and padding
+	 *** below inside the width and height the layout allotted, rather than
+	 *** growing the element past it.
+	 ***/
 	const int tmp = htrAddStylesheetItem_va(s,
 	    "\t\t%STR { "
+		"box-sizing:border-box; "
 		"left:"ht_flex_format"; "
 		"top:"ht_flex_format"; "
 		"%[width:"ht_flex_format"; %]"

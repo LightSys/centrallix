@@ -186,12 +186,18 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	    }
 
-	/** Write the main CSS for the pane DOM node. **/
+	/*** Write the main CSS for the pane DOM node.
+	 ***
+	 *** border-box keeps the border inside the width and height, which is
+	 *** what wgtdrv_pane.c promises the layout when it declares the border
+	 *** as an inset.
+	 ***/
 	if (htrAddStylesheetItem_va(s,
 	    "\t\t#pn%POSmain {"
 		"position:absolute; "
 		"visibility:inherit; "
 		"overflow:hidden; "
+		"box-sizing:border-box; "
 		"left:"ht_flex_format"; "
 		"top:"ht_flex_format"; "
 		"width:"ht_flex_format"; "

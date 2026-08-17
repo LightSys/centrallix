@@ -60,8 +60,8 @@ wgtwinVerify(pWgtrVerifySession s)
 int
 wgtwinNew(pWgtrNode node)
     {
-    int has_titlebar = 1, is_dialog_style = 0;
-    int title_bar_height, inset_left;
+    int has_titlebar = 1, is_dialog_style = 0, border_width = 1;
+    int title_bar_height, main_top_width, main_side_width;
     char* ptr;
 
 	node->Flags |= WGTR_F_CONTAINER | WGTR_F_FLOATING;
@@ -76,23 +76,36 @@ wgtwinNew(pWgtrNode node)
         if (wgtrGetPropertyValue(node,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"dialog"))
             is_dialog_style = 1;
 
+	/** A borderless window draws no outer edge. **/
+	if (wgtrGetPropertyValue(node,"border_style",DATA_T_STRING,POD(&ptr)) == 0
+	    && (!strcmp(ptr,"none") || !strcmp(ptr,"hidden")))
+	    border_width = 0;
+
 	/*** Declare the insets around our client area (#wnNmain) that holds
 	 *** child widgets in the window.  These values must match the geometry
 	 *** that htdrv_window.c gives this layer.
 	 ***
-	 *** Vertically, the layer starts just below the titlebar and stops one
-	 *** or two pixels short of the bottom edge.  Horizontally it is always
-	 *** two pixels narrower than the window. (For window style: it is inset
-	 *** by its own 1px border on each side. For dialog style: it has no
-	 *** side borders and sits flush against the left edge.)
+	 *** Both layers are border-box, so every edge is drawn inside the width
+	 *** and height the window was given.  The client area is therefore inset
+	 *** by the window's own outer edge, by the titlebar above it, and by
+	 *** whichever edges htdrv_window.c draws on the client layer itself.
 	 ***/
-	title_bar_height = (has_titlebar) ? ((is_dialog_style) ? 24 : 23) : 0;
-	inset_left = (is_dialog_style) ? 0 : 1;
+	title_bar_height = (has_titlebar) ? 24 : 0;
+	if (is_dialog_style)
+	    {
+	    main_side_width = 0;
+	    main_top_width = (has_titlebar) ? 1 : 0;
+	    }
+	else
+	    {
+	    main_side_width = 1;
+	    main_top_width = (has_titlebar) ? 0 : 1;
+	    }
 	wgtrSetInsets(node,
-	    title_bar_height,				/* top */
-	    (is_dialog_style || has_titlebar) ? 1 : 2,	/* bottom */
-	    inset_left,					/* left */
-	    2 - inset_left				/* right */
+	    border_width + title_bar_height + main_top_width,	/* top */
+	    border_width + main_side_width,			/* bottom */
+	    border_width + main_side_width,			/* left */
+	    border_width + main_side_width			/* right */
 	);
 
     return 0;

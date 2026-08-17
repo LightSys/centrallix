@@ -158,6 +158,8 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 		"position:absolute; "
 		"visibility:inherit; "
 		"overflow:hidden; "
+		/** border-box: the border below is drawn inside the width/height. **/
+		"box-sizing:border-box; "
 		"left:"ht_flex_format"; "
 		"top:"ht_flex_format"; "
 		"width:"ht_flex_format"; "
