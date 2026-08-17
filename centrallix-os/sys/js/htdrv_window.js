@@ -11,7 +11,7 @@
 
 
 // A resize may move the widget a window is placed against, so every window is
-// placed again from its descriptor.  We deffer a frame to let the page settle,
+// placed again from its descriptor.  We defer a frame to let the page settle,
 // and collapse events to one pass per frame for performance.
 let wn_place_pending = false;
 window.addEventListener('resize', () => {
@@ -225,12 +225,12 @@ function wn_popup(aparam)
 	}
     if (aparam.X) pop_to_x = parseInt(aparam.X);
     if (aparam.Y) pop_to_y = parseInt(aparam.Y);
-    if (aparam.Height) pop_to_height = parseInt(aparam.Height);
-    if (aparam.Width) pop_to_width = parseInt(aparam.Width);
 
     /** A size given by the action wins over the widget's own, every time. **/
     var width_override = (aparam.Width) ? parseInt(aparam.Width) : null;
     var height_override = (aparam.Height) ? parseInt(aparam.Height) : null;
+    if (width_override !== null) pop_to_width = width_override;
+    if (height_override !== null) pop_to_height = height_override;
 
     if (aparam.OffsetX) pop_to_x += parseInt(aparam.OffsetX);
     if (aparam.OffsetY) pop_to_y += parseInt(aparam.OffsetY);
@@ -363,16 +363,19 @@ function wn_setvisibility_bh(v)
 	// measured, and it cannot be measured while it is hidden.
 	wn_place(this);
 
-	/*** Nudge a window clear if it landed exactly on the one below it.  The
-	 *** nudge goes into the placement too, so a resize does not undo it.
+	/*** Nudge a window clear if it landed exactly on the one below it.  Only
+	 *** a window placed at a plain spot cascades: a centered, pointed, or
+	 *** popped-up one sits where it does for a reason.  The nudge goes into
+	 *** the placement too, so a resize does not undo it.
 	 ***/
-	if (this.do_cascade && prev_topwin && prev_topwin !== this
+	const can_cascade = (this.placement.mode === 'server' || this.placement.mode === 'absolute');
+	if (this.do_cascade && can_cascade && prev_topwin && prev_topwin !== this
 	    && getPageX(this) === getPageX(prev_topwin)
 	    && getPageY(this) === getPageY(prev_topwin))
 	    {
 	    moveBy(this, 16, 16);
-	    if (this.placement.x != null) this.placement.x += 16;
-	    if (this.placement.y != null) this.placement.y += 16;
+	    this.placement.x += 16;
+	    this.placement.y += 16;
 	    }
 	}
     }
@@ -414,20 +417,26 @@ function wn_windowshade(l)
     // for IE we use the dbl click event, for NS and Moz we use two mousedown's
     var duration = 200;
     var speed = 30;
-//  st = new Date();
-    var boxoffset = cx__capabilities.CSSBox?2:0;
+
+    /** A shaded window shows nothing but its titlebar. **/
+    var shade_height = (l.titlebar !== l) ? $(l.titlebar).outerHeight() : 24;
+
     if (!l.shaded && !l.working)
 	{
 	if (l.gshade)
 	    {
-	    var size = Math.ceil((getClipHeight(l)-24)*speed/duration);
+	    var size = Math.ceil((getClipHeight(l)-shade_height)*speed/duration);
 	    l.working = true;
-	    wn_graphical_shade(l,24,speed,size);
+	    wn_graphical_shade(l,shade_height,speed,size);
 	    }
 	else
 	    {
-	    setClipHeight(l, 24);
-	    resizeTo(l, getClipWidth(l)-boxoffset, 24);
+	    /*** Shading changes the height only, and remembers the height it had
+	     *** so unshading restores that height.
+	     ***/
+	    l.unshaded_height = $(l).outerHeight();
+	    setClipHeight(l, shade_height);
+	    pg_set_style(l, 'height', shade_height);
 	    }
 	l.shaded = true;
 	}
@@ -435,16 +444,14 @@ function wn_windowshade(l)
 	{
 	if (l.gshade)
 	    {
-	    var size = Math.ceil((l.orig_height-24)*speed/duration);
+	    const size = Math.ceil((l.orig_height-shade_height)*speed/duration);
 	    l.working = true;
 	    wn_graphical_shade(l,l.orig_height,speed,size);
 	    }
 	else
 	    {
 	    setClipHeight(l, l.orig_height);
-	//	resizeTo(l, getClipWidth(l)+2, l.orig_height+2);
-	//    else
-		resizeTo(l, getClipWidth(l)-boxoffset, l.orig_height-boxoffset);
+	    pg_set_style(l, 'height', l.unshaded_height);
 	    }
 	l.shaded = false;
 	}
@@ -503,49 +510,11 @@ function wn_close(l)
 	{
 	wn_close(l.has_popup);
 	}
-    if (l.closetype == 0)
-	{
-	htr_setvisibility(l,'hidden');
-	$(l).css({display:"none"});
-	if (l.point1) htr_setvisibility(l.point1,'hidden');
-	if (l.point2) htr_setvisibility(l.point2,'hidden');
-	l.is_visible = 0;
-	}
-    else
-	{
-	alert("close type " + l.closetype + " is not implemented for this browser");
-	}
-    }
 
-function wn_graphical_close(l,speed,sizeX,sizeY)
-    {
-    if (sizeX > 0)
-    	{
-	setClipRight(l, getClipRight(l) - sizeX);
-	setClipLeft(l, getClipLeft(l) + sizeX);
-	if (getClipWidth(l) <= 0) var reset = true;
-	}
-    if (sizeY > 0)
-    	{
-	setClipBottom(l, getClipBottom(l) - sizeY);
-	setClipTop(l, getClipTop(l) + sizeY);
-	if (getClipHeight(l)<= 0) var reset = true;
-	}
-    if (reset)
-    	{
-	    l.visibility = 'hidden';
-	    l.is_visible = 0;
-	    setClipWidth(l, l.orig_width);
-	    setClipRight(l, l.orig_right);
-	    setClipLeft(l, l.orig_left);
-	    setClipHeight(l, l.orig_height);
-	    setClipBottom(l, l.orig_bottom);
-	    setClipTop(l, l.orig_top);
-	    ft = new Date();
-	    if (l.shaded) wn_manual_unshade(l);
-	    return;
-	}
-    setTimeout(wn_graphical_close,speed,l,speed,sizeX,sizeY);
+    htr_setvisibility(l,'hidden');
+    $(l).css({display:"none"});
+    wn_hide_point(l);
+    l.is_visible = 0;
     }
 
 function wn_togglevisibility(aparam)

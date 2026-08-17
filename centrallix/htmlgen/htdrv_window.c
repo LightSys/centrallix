@@ -6,7 +6,6 @@
 
 #include "ht_render.h"
 #include "obj.h"
-#include "cxlib/util.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
@@ -201,17 +200,22 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Compute titlebar width & height - includes edge below titlebar. **/
-	int title_bar_height = (has_titlebar) ? ((is_dialog_style) ? 24 : 23) : 0;
+	int title_bar_height = (has_titlebar) ? 24 : 0;
 
 	/** Draw the main window layer and outer edge. **/
-	/*** We don't even bother making these styles flex responsively because
-	 *** they will be overwritten by the JS anyway.
+	/*** We don't even bother making the position flex responsively because
+	 *** the JS re-places the window on resize anyway.  The size is not
+	 *** responsive: a window keeps the size it was given.
+	 ***
+	 *** border-box means width/height are the size the app asked for, with
+	 *** the border drawn inside them, so no border arithmetic is needed here.
 	 ***/
 	if (htrAddStylesheetItem_va(s,
 	    "\t\t#wn%POSbase { "
 		"position:absolute; "
 		"visibility:%STR; "
 		"overflow:hidden; "
+		"box-sizing:border-box; "
 		"left:%INTpx; "
 		"top:%INTpx; "
 		"width:%POSpx; "
@@ -257,26 +261,25 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	    }
 
-	/** inner structure depends on dialog vs. window style **/
-	int main_width, main_height, clip_height, dialogue_width, main_top_width;
+	/*** The inner container fills what is left of the base below the titlebar.
+	 *** The base is border-box, so its content box is the size it was given
+	 *** less its border.
+	 ***/
+	int main_width = w - 2*border_width;
+	int main_height = h - 2*border_width - title_bar_height;
+
+	/** Only the edges around the inner container depend on dialog vs. window style **/
+	int main_side_width, main_top_width;
 	char* border_color_str;
 	if (is_dialog_style)
 	    {
-	    /** window inner container -- dialog **/
-	    main_width = w - 2;
-	    main_height = h - title_bar_height - 1;
-	    clip_height = h - title_bar_height + 1;
-	    dialogue_width = 0;
+	    main_side_width = 0;
 	    main_top_width = (has_titlebar) ? 1 : 0;
 	    border_color_str = "white";
 	    }
 	else
 	    {
-	    /** window inner container -- window **/
-	    main_width = w - 2;
-	    main_height = h - title_bar_height - ((has_titlebar) ? 1 : 2);
-	    clip_height = h - title_bar_height + ((has_titlebar) ? 1 : 0);
-	    dialogue_width = 1;
+	    main_side_width = 1;
 	    main_top_width = (has_titlebar) ? 0 : 1;
 	    border_color_str = "gray white white gray";
 	    }
@@ -285,6 +288,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 		"position:absolute; "
 		"visibility:inherit; "
 		"overflow:hidden; "
+		"box-sizing:border-box; "
 		"left:0px; "
 		"top:%INTpx; "
 		"width:%POSpx; "
@@ -297,12 +301,12 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 		"%STR"
 	    "}\n",
 	    id,
-	    max(title_bar_height - 1, 0),
+	    title_bar_height,
 	    main_width,
 	    main_height,
-	    w, clip_height,
+	    main_width, main_height,
 	    border_color_str,
-	    main_top_width, dialogue_width, dialogue_width, dialogue_width,
+	    main_top_width, main_side_width, main_side_width, main_side_width,
 	    z + 1,
 	    background_style
 	) != 0)
@@ -368,7 +372,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Write HTML for the child window. **/
-	if (htrAddBodyItem_va(s, "<div id='wn%POSbase' class='wnbase'>\n", id) != 0) 
+	if (htrAddBodyItem_va(s, "<div id='wn%POSbase' class='wnbase'>\n", id) != 0)
 	    {
 	    mssError(0, "HTWIN", "Failed to write HTML for window container.");
 	    goto err;
@@ -381,6 +385,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 		    "position:absolute; "
 		    "visibility:inherit; "
 		    "overflow:hidden; "
+		    "box-sizing:border-box; "
 		    "cursor:grab; "
 		    "left:0px; "
 		    "top:0px; "
@@ -394,7 +399,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 		    "%STR"
 		"}\n",
 		id,
-		title_bar_height - 1,
+		title_bar_height,
 		z + 1,
 		text_color,
 		header_background_style
