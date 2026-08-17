@@ -1527,8 +1527,12 @@ int rw, rh, rpw, rph;
 		    /** Top level or local reference for container? **/
 		    if (htrGetBoolean(Child, "toplevel", 0) == 1)
 			{
-			rpw = rw = Parent->Root->ClientInfo->AppMaxWidth;
-			rph = rh = Parent->Root->ClientInfo->AppMaxHeight;
+			rw = Parent->Root->ClientInfo->AppMaxWidth;
+			rh = Parent->Root->ClientInfo->AppMaxHeight;
+
+			/** Get the design widths and heights for the test below. **/
+			rpw = (Parent->Root->pre_width > 0) ? Parent->Root->pre_width : rw;
+			rph = (Parent->Root->pre_height > 0) ? Parent->Root->pre_height : rh;
 			}
 		    else
 			{
@@ -1538,7 +1542,7 @@ int rw, rh, rpw, rph;
 			rph = VisualRef->pre_height;
 			}
 
-		    /** auto-detect centered floating objects **/
+		    /** Detect centered windows with design values. **/
 		    if (abs(Child->pre_x - (rpw - (Child->pre_x + Child->pre_width))) < 10)
 			{
 			    Child->x = (rw - Child->width)/2;
