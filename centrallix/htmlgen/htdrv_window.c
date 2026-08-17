@@ -349,14 +349,18 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 		"closetype:%INT, "
 		"toplevel:%INT, "
 		"modal:%INT, "
-	    "});\n", 
+		"centeredx:%INT, "
+		"centeredy:%INT, "
+	    "});\n",
 	    name,
 	    name,
 	    has_titlebar, name, id, !has_titlebar,
 	    gshade,
 	    closetype,
 	    is_toplevel,
-	    is_modal
+	    is_modal,
+	    !!(tree->Flags & WGTR_F_CENTEREDX),
+	    !!(tree->Flags & WGTR_F_CENTEREDY)
 	) != 0)
 	    {
 	    mssError(0, "HTWIN", "Failed to write JS init call.");

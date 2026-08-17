@@ -1547,11 +1547,13 @@ int rw, rh, rpw, rph;
 			{
 			    Child->x = (rw - Child->width)/2;
 			    if (Child->x < 0) Child->x = 0;
+			    Child->Flags |= WGTR_F_CENTEREDX;
 			}
 		    if (abs(Child->pre_y - (rph - (Child->pre_y + Child->pre_height))) < 10)
 			{
 			    Child->y = (rh - Child->height)/2;
 			    if (Child->y < 0) Child->y = 0;
+			    Child->Flags |= WGTR_F_CENTEREDY;
 			}
 		    
 		    /*** Compute the container's client height and width, aka.
