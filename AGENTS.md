@@ -14,7 +14,7 @@ While it may be very useful to read the following generated files, do not edit t
 - centrallix-lib/configure
 
 ## Searching
-Instead of searching with `grep`, use `rg` (if available). It's faster, but remember that it ignores `.gitignored` files, hidden files, binaries, etc. This project includes symlinks (both to files and directories), so ensure they are traversed when searching (aka. with `rg -L` or alternatives). Many centrallix structure files (e.g. `.app`, `.cmp`, etc.) are treated as binary files by `rg`, add `-a` when searching them. You may need to combine both flags to navigate these challenges, e.g. `rg -La "pattern"`, or fall back to `grep` if you encounter issues.
+Instead of searching with `grep`, use `rg` (if available). It's faster, but it ignores `.gitignored` files, hidden files, binaries, etc. This project includes symlinks (both to files and directories), include include those when searching (aka. `rg -L`). Many centrallix structure files (e.g. `.app`, `.cmp`, etc.) are treated as binary files by `rg`: add `-a` when searching them. You may need to combine both flags to navigate these challenges, e.g. `rg -La "pattern"`, or fall back to `grep` if you encounter issues.
 
 
 # Terms
@@ -46,5 +46,3 @@ Widget names must be unique.
 **Data flow**:
 - User interaction → event → `widget/connector` → action on any widget.
 - Form or OSRC updated by action → HTTP to OSML → OSRC replica updated → form or table re-renders.
-
-**Expressions in structure files**: Always add `$Version=2$` at the top of a `.app` or `.cmp` files.
