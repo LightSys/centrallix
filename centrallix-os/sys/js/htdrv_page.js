@@ -282,20 +282,21 @@ function pg_setmodal(l, is_modal)
 	}
     if (!window.pg_masklayer)
         {
-	pg_masklayer = htr_new_layer(pg_width, null);
-	setClipWidth(pg_masklayer, pg_width);
-	setClipHeight(pg_masklayer, pg_height);
-	resizeTo(pg_masklayer, pg_width, pg_height);
+	pg_masklayer = htr_new_layer(0, null);
 	htr_setbgimage(pg_masklayer, "/sys/images/black_trans_50.png");
+
+	/*** Fixed, with all four sides pinned, so the browser keeps the mask over
+	 *** the whole viewport as it resizes.  Sizing it in JS instead leaves a
+	 *** strip of the page uncovered -- and clickable -- for a few frames.
+	 ***/
+	pg_set_style_string(pg_masklayer, 'position', 'fixed');
+	pg_set_style_string(pg_masklayer, 'inset', '0');
 	}
     if (pg_modallayer)
 	{
 	var l = pg_modallayer;
 	if (l.mainlayer) l = l.mainlayer;
 	moveBelow(pg_masklayer, l);
-	moveTo(pg_masklayer, 0, 0);
-	setClipWidth(pg_masklayer, pg_width);
-	setClipHeight(pg_masklayer, pg_height);
 	htr_setvisibility(pg_masklayer, 'inherit');
 	}
     else
