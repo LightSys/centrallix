@@ -36,7 +36,7 @@ print_err_internal(const int error_code, const char* c_str, const char* file_nam
 	
 	/** Print it with as much info as we can reasonably find. **/
 	if (errno != 0) perror(error_buf);
-	else if (error_code != 0) fprintf(stderr, "%s (error code %d).\n", error_buf, error_code);
+	else if (error_code != -1) fprintf(stderr, "%s (error code %d).\n", error_buf, error_code);
 	else fprintf(stderr, "%s.\n", error_buf);
     
     return;

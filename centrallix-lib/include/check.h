@@ -78,7 +78,7 @@ void print_err_internal(const int error_code, const char* c_str, const char* fil
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
 	double _r = (result); \
-	if (UNLIKELY(isnan(_r))) print_err(0, #result" failed"); \
+	if (UNLIKELY(isnan(_r))) print_err(-1, #result" failed"); \
 	_r; \
     })
 
@@ -93,7 +93,7 @@ void print_err_internal(const int error_code, const char* c_str, const char* fil
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
 	void* _r = (result); \
-	if (UNLIKELY(_r == NULL)) print_err(0, #result" failed"); \
+	if (UNLIKELY(_r == NULL)) print_err(-1, #result" failed"); \
 	_r; \
     })
 
