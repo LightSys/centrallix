@@ -599,11 +599,24 @@ function pg_stackpopup(p,l)
 	}
     }
 
-/// This function handles the positioning of a popup such that it will 
-/// always appear fully on the screen.  Pass the layer being popped up
-/// as well as the coordinates and height of the layer it is being
-/// popped to, in page-absolute coordinates.
-function pg_positionpopup(p, x, y, h, w)
+/*** Find a place for a popup where it is fully on screen, using these rules:
+ *** Vertically: below the widget it belongs to, or above it if no room below.
+ *** Horizontally: left edges aligned, or right edges aligned when the popup
+ *** would overhang the screen.
+ *** A popup that won't fit is pushed against the bottom/right viewport edge.
+ ***
+ *** The position is returned, not applied: a hidden popup has no position to
+ *** move from. Calling this function allows computing where a window should go
+ *** before showing it.
+ ***
+ *** @param p The popup layer being placed.
+ *** @param x Page x coordinate of the widget the popup belongs to.
+ *** @param y Page y coordinate of that widget.
+ *** @param h Height of that widget.
+ *** @param w Width of that widget.
+ *** @returns The page {x, y} to put the popup at.
+ ***/
+function pg_computepopup(p, x, y, h, w)
     {
     var posx, posy;
 
@@ -623,8 +636,18 @@ function pg_positionpopup(p, x, y, h, w)
     else
 	posx = getInnerWidth() - getClipWidth(p);
 
+    return { x:posx, y:posy };
+    }
+
+/*** Position a popup so that it appears fully on the screen.  Takes the same
+ *** arguments as pg_computepopup(), and moves the popup there.
+ ***/
+function pg_positionpopup(p, x, y, h, w)
+    {
+    const pos = pg_computepopup(p, x, y, h, w);
+
     // Set the position
-    moveToAbsolute(p, posx, posy);
+    moveToAbsolute(p, pos.x, pos.y);
 
     return;
     }
