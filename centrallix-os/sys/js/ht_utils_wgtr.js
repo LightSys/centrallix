@@ -1126,8 +1126,23 @@ function wgtrGetGeom(node)
 	}
     else
 	{
-	//return {x:getPageX(node),y:getPageY(node),width:getClipWidth(node),height:getClipHeight(node)};
-	return {x:$(node).offset().left,y:$(node).offset().top,width:getClipWidth(node),height:getClipHeight(node)};
+	/*** One rect, measured live.  Take the size from it too, not from the clip
+	 *** values: a clip object caches its first read, so it reports the size the
+	 *** widget had before the page was last resized.
+	 ***/
+	const rect = node.getBoundingClientRect();
+
+	/*** No layout box (a closed tab, a hidden pane) means no geometry to
+	 *** report, so callers leave whatever they were placing where it is.
+	 ***/
+	if (!node.getClientRects().length) return null;
+
+	return {
+	    x: rect.left + window.scrollX,
+	    y: rect.top + window.scrollY,
+	    width: rect.width,
+	    height: rect.height,
+	    };
 	}
     }
 
