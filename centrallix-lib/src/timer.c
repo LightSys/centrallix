@@ -29,7 +29,7 @@
  *** @returns The current monotonic time as a fractional number of seconds.
  ***/
 static double
-get_time(void)
+getTime(void)
     {
     struct timespec ts;
     
@@ -46,7 +46,7 @@ get_time(void)
  *** @returns `timer`, for chaining.
  ***/
 pTimer
-timer_init(pTimer timer)
+timerInit(pTimer timer)
     {
 	if (UNLIKELY(timer == NULL)) return NULL;
 	
@@ -61,9 +61,9 @@ timer_init(pTimer timer)
  *** @returns A newly allocated timer, or NULL if allocation fails.
  ***/
 pTimer
-timer_new(void)
+timerNew(void)
     {
-    return timer_init(check_ptr(nmMalloc(sizeof(Timer))));
+    return timerInit(checkPtr(nmMalloc(sizeof(Timer))));
     }
 
 /*** Start timing.  If the timer was already timing, does nothing.
@@ -72,10 +72,10 @@ timer_new(void)
  *** @returns `timer`, for chaining.
  ***/
 pTimer
-timer_start(pTimer timer)
+timerStart(pTimer timer)
     {
 	if (UNLIKELY(timer == NULL)) return NULL;
-	if (isnan(timer->start)) timer->start = get_time();
+	if (isnan(timer->start)) timer->start = getTime();
     
     return timer;
     }
@@ -87,11 +87,11 @@ timer_start(pTimer timer)
  *** @returns `timer`, for chaining.
  ***/
 pTimer
-timer_stop(pTimer timer)
+timerStop(pTimer timer)
     {
 	if (UNLIKELY(timer == NULL)) return NULL;
 	if (isnan(timer->start)) return timer;
-	timer->total += get_time() - timer->start;
+	timer->total += getTime() - timer->start;
 	timer->start = NAN;
     
     return timer;
@@ -103,11 +103,11 @@ timer_stop(pTimer timer)
  *** @returns The total time in seconds, or NAN if `timer` is NULL.
  ***/
 double
-timer_get(pTimer timer)
+timerGet(pTimer timer)
     {
 	if (UNLIKELY(timer == NULL)) return NAN;
-	
-	const double current_time = (isnan(timer->start)) ? 0.0 : (get_time() - timer->start);
+
+	const double current_time = (isnan(timer->start)) ? 0.0 : (getTime() - timer->start);
     
     return current_time + timer->total;
     }
@@ -119,28 +119,28 @@ timer_get(pTimer timer)
  *** @returns `timer`, for chaining.
  ***/
 pTimer
-timer_reset(pTimer timer)
+timerReset(pTimer timer)
     {
-    return timer_init(timer);
+    return timerInit(timer);
     }
 
-/*** De-initialize a timer allocated by timer_init().
+/*** De-initialize a timer allocated by timerInit().
  *** 
  *** @param timer The timer to de-initialize.
  ***/
 void
-timer_de_init(pTimer timer) {}
+timerDeInit(pTimer timer) {}
 
-/*** De-initialize and free a timer allocated by timer_new().
+/*** De-initialize and free a timer allocated by timerNew().
  *** 
  *** @param timer The timer to free.
  ***/
 void
-timer_free(pTimer timer)
+timerFree(pTimer timer)
     {
 	if (UNLIKELY(timer == NULL)) return;
 	
-	timer_de_init(timer);
+	timerDeInit(timer);
 	nmFree(timer, sizeof(Timer));
     
     return;

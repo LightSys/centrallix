@@ -24,24 +24,24 @@ typedef struct
     }
     Timer, *pTimer;
 
-pTimer timer_init(pTimer timer);
-pTimer timer_new(void);
-pTimer timer_start(pTimer timer);
-pTimer timer_stop(pTimer timer);
-double timer_get(pTimer timer);
-pTimer timer_reset(pTimer timer);
-void timer_de_init(pTimer timer);
-void timer_free(pTimer timer);
+pTimer timerInit(pTimer timer);
+pTimer timerNew(void);
+pTimer timerStart(pTimer timer);
+pTimer timerStop(pTimer timer);
+double timerGet(pTimer timer);
+pTimer timerReset(pTimer timer);
+void timerDeInit(pTimer timer);
+void timerFree(pTimer timer);
 
 /*** Debug function for quickly benchmarking the speed of C code. Do not use
  *** this function in production code.
  ***/
-#define timer_benchmark(timer, c_code) \
+#define timerBenchmark(timer, c_code) \
     { \
     pTimer _timer = (timer); \
-    timer_start(_timer); \
+    timerStart(_timer); \
     { c_code }; \
-    timer_stop(_timer); \
+    timerStop(_timer); \
     }
 
 #endif /* TIMER_H */

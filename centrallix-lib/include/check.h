@@ -32,10 +32,10 @@
     })
 
 /** Internal error printer (forward declaration). **/
-void print_err_internal(const int error_code, const char* c_str, const char* file_name, const int line_number);
+void printErrInternal(const int error_code, const char* c_str, const char* file_name, const int line_number);
 
-#define print_err(error_code, c_str) print_err_internal(error_code, (c_str), __FILE__, __LINE__)
-#define print_fail(c_str) { errno = 0; print_err(-1, (c_str)); }
+#define printErr(error_code, c_str) printErrInternal(error_code, (c_str), __FILE__, __LINE__)
+#define printFail(c_str) { errno = 0; printErr(-1, (c_str)); }
 
 /*** Ensures that developer diagnostics are printed if the result of the
  *** passed function call is not zero.  Not intended for user errors.
@@ -48,7 +48,7 @@ void print_err_internal(const int error_code, const char* c_str, const char* fil
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
 	int _r = (result); \
-	if (UNLIKELY(_r != 0)) print_err(_r, #result" failed"); \
+	if (UNLIKELY(_r != 0)) printErr(_r, #result" failed"); \
 	_r; \
     })
 
@@ -59,11 +59,11 @@ void print_err_internal(const int error_code, const char* c_str, const char* fil
  *** 	included in the error message if an error occurs.
  *** @returns The result of the checked expression.
  ***/
-#define check_neg(result) \
+#define checkNeg(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
 	int _r = (result); \
-	if (UNLIKELY(_r < 0)) print_err(_r, #result" failed"); \
+	if (UNLIKELY(_r < 0)) printErr(_r, #result" failed"); \
 	_r; \
     })
 
@@ -74,11 +74,11 @@ void print_err_internal(const int error_code, const char* c_str, const char* fil
  *** 	included in the error message if an error occurs.
  *** @returns The result of the checked expression.
  ***/
-#define check_double(result) \
+#define checkDouble(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
 	double _r = (result); \
-	if (UNLIKELY(isnan(_r))) print_err(-1, #result" failed"); \
+	if (UNLIKELY(isnan(_r))) printErr(-1, #result" failed"); \
 	_r; \
     })
 
@@ -89,11 +89,11 @@ void print_err_internal(const int error_code, const char* c_str, const char* fil
  *** 	included in the error message if an error occurs.
  *** @returns The result of the checked expression.
  ***/
-#define check_ptr(result) \
+#define checkPtr(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
 	void* _r = (result); \
-	if (UNLIKELY(_r == NULL)) print_err(-1, #result" failed"); \
+	if (UNLIKELY(_r == NULL)) printErr(-1, #result" failed"); \
 	_r; \
     })
 

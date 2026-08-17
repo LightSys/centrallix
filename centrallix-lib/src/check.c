@@ -28,7 +28,7 @@
  *** @param line_number The line number in the file at which the error occurred.
  ***/
 void
-print_err_internal(const int error_code, const char* c_str, const char* file_name, const int line_number)
+printErrInternal(const int error_code, const char* c_str, const char* file_name, const int line_number)
     {
 	/** Create a clear, concise, and descriptive error message. **/
 	char error_buf[BUFSIZ];

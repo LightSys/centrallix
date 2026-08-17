@@ -16,9 +16,9 @@
 /* Date:	May 26, 2011 and October 13, 2025 (respectively)	*/
 /* Description:	Collection of utilities including:			*/
 /* 		- Utilities for parsing numbers.			*/
-/* 		- snprint_bytes() for formatting a byte count.		*/
-/* 		- snprint_commas_llu() for formatting large numbers.	*/
-/* 		- fprint_mem() for printing memory stats.		*/
+/* 		- snprintBytes() for formatting a byte count.		*/
+/* 		- snprintCommasLlu() for formatting large numbers.	*/
+/* 		- fprintMem() for printing memory stats.		*/
 /************************************************************************/
 
 #include <stdio.h>
@@ -30,9 +30,9 @@ extern "C" {
     int strtoi(const char *nptr, char **endptr, int base);
     unsigned int strtoui(const char *nptr, char **endptr, int base);
 
-    char* snprint_bytes(char* buf, const size_t buf_size, unsigned long bytes);
-    char* snprint_commas_llu(char* buf, size_t buf_size, unsigned long long value);
-    void fprint_mem(FILE* out);
+    char* snprintBytes(char* buf, const size_t buf_size, unsigned long bytes);
+    char* snprintCommasLlu(char* buf, size_t buf_size, unsigned long long value);
+    void fprintMem(FILE* out);
 
 #ifdef	__cplusplus
 }
