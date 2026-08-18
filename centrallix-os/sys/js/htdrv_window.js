@@ -409,8 +409,11 @@ function wn_windowshade(l)
     var duration = 200;
     var speed = 30;
 
-    /** A shaded window shows nothing but its titlebar. **/
-    var shade_height = (l.titlebar !== l) ? $(l.titlebar).outerHeight() : 24;
+    /*** A shaded window shows nothing but its titlebar.  The window is
+     *** border-box, so its height has to cover its own border as well.
+     ***/
+    var shade_height = ((l.titlebar !== l) ? $(l.titlebar).outerHeight() : 24)
+		       + (l.offsetHeight - l.clientHeight);
 
     if (!l.shaded && !l.working)
 	{

@@ -303,7 +303,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 		"height:%POSpx; "
 		"clip:rect(0px, %INTpx, %INTpx, 0px); "
 		"border-style:solid; "
-		"border-color:%STR; "
+		"border-color:%STR&CSSVAL; "
 		"border-width:%POSpx %POSpx %POSpx %POSpx; "
 		"z-index:%POS; "
 		"%STR"
