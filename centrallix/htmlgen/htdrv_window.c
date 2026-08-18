@@ -193,6 +193,23 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	/** Compute titlebar width & height - includes edge below titlebar. **/
 	int title_bar_height = (has_titlebar) ? 24 : 0;
 
+	/*** A window has to be big enough for its own borders and titlebar,
+	 *** otherwise the container below would be given a negative size.
+	 ***/
+	int min_width = 2*border_width;
+	int min_height = 2*border_width + title_bar_height;
+	if (w < min_width || h < min_height)
+	    {
+	    mssError(1, "HTWIN",
+		"Window \"%s\" is %dx%d, too small to draw: a window with %s "
+		"and a %dpx border must be at least %dx%d.",
+		tree->Name, w, h,
+		(has_titlebar) ? "a titlebar" : "no titlebar",
+		border_width, min_width, min_height
+	    );
+	    goto err;
+	    }
+
 	/** Draw the main window layer and outer edge. **/
 	/*** We don't even bother making the position flex responsively because
 	 *** the JS re-places the window on resize anyway.  The size is not
