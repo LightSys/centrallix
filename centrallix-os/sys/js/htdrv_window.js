@@ -1023,18 +1023,33 @@ function wn_bring_top(l)
 	wn_bring_top(l.has_popup);
     }
 
+/** Whether a page coordinate falls inside a rectangle. **/
+function wn_in_rect(x, y, rect_x, rect_y, width, height)
+    {
+    return (x >= rect_x && x < rect_x + width && y >= rect_y && y < rect_y + height);
+    }
+
 // FIXME: does this MOUSEDOWN work if for NS4 if there is no title?
 function wn_mousedown(e)
     {
+    /** A popped window closes when a click lands outside of it. **/
     for (var w in wn_popped)
 	{
-	var wn = wn_popped[w];
-	var pgx = getPageX(wn);
-	var pgy = getPageY(wn);
-	if ((!(e.pageX >= pgx && e.pageX < pgx + $(wn).outerWidth() && e.pageY >= pgy && e.pageY < pgy + $(wn).outerHeight())) && (!wn.extended_region || (!(e.pageX >= wn.extended_region.x && e.pageX < wn.extended_region.x + wn.extended_region.width && e.pageY >= wn.extended_region.y && e.pageY < wn.extended_region.y + wn.extended_region.width))))
-	    {
-	    wn.ifcProbe(ifAction).Invoke('SetVisibility',{IsVisible:0});
-	    }
+	const wn = wn_popped[w];
+	if (wn_in_rect(e.pageX, e.pageY,
+	    getPageX(wn), getPageY(wn), $(wn).outerWidth(), $(wn).outerHeight()))
+	    continue;
+
+	/*** An extended region counts as part of the window.
+	 *** NOTE: the last argument is the region's width, not its height.  That
+	 *** looks wrong, but it is what this test has always done.
+	 ***/
+	const region = wn.extended_region;
+	if (region && wn_in_rect(e.pageX, e.pageY,
+	    region.x, region.y, region.width, region.width))
+	    continue;
+
+	wn.ifcProbe(ifAction).Invoke('SetVisibility',{IsVisible:0});
 	}
     if (e.kind == 'wn')
         {
