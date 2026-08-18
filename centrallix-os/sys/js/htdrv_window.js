@@ -1040,13 +1040,10 @@ function wn_mousedown(e)
 	    getPageX(wn), getPageY(wn), $(wn).outerWidth(), $(wn).outerHeight()))
 	    continue;
 
-	/*** An extended region counts as part of the window.
-	 *** NOTE: the last argument is the region's width, not its height.  That
-	 *** looks wrong, but it is what this test has always done.
-	 ***/
+	/** An extended region counts as part of the window. **/
 	const region = wn.extended_region;
 	if (region && wn_in_rect(e.pageX, e.pageY,
-	    region.x, region.y, region.width, region.width))
+	    region.x, region.y, region.width, region.height))
 	    continue;
 
 	wn.ifcProbe(ifAction).Invoke('SetVisibility',{IsVisible:0});
