@@ -637,9 +637,9 @@ function wn_get_viewport()
  ***/
 function wn_clamp_position(wn, attract, x, y, viewport)
     {
-    /** Get useful values. **/
-    const wn_width = getClipWidth(wn);
-    const wn_height = getClipHeight(wn);
+    /** Get useful values.  Border box, as wn_compute_placement() uses. **/
+    const wn_width = $(wn).outerWidth();
+    const wn_height = $(wn).outerHeight();
     const available_width = viewport.width;
     const available_height = viewport.height;
     let new_x, new_y;
@@ -1031,7 +1031,7 @@ function wn_mousedown(e)
 	var wn = wn_popped[w];
 	var pgx = getPageX(wn);
 	var pgy = getPageY(wn);
-	if ((!(e.pageX >= pgx && e.pageX < pgx + getClipWidth(wn) && e.pageY >= pgy && e.pageY < pgy + getClipHeight(wn))) && (!wn.extended_region || (!(e.pageX >= wn.extended_region.x && e.pageX < wn.extended_region.x + wn.extended_region.width && e.pageY >= wn.extended_region.y && e.pageY < wn.extended_region.y + wn.extended_region.width))))
+	if ((!(e.pageX >= pgx && e.pageX < pgx + $(wn).outerWidth() && e.pageY >= pgy && e.pageY < pgy + $(wn).outerHeight())) && (!wn.extended_region || (!(e.pageX >= wn.extended_region.x && e.pageX < wn.extended_region.x + wn.extended_region.width && e.pageY >= wn.extended_region.y && e.pageY < wn.extended_region.y + wn.extended_region.width))))
 	    {
 	    wn.ifcProbe(ifAction).Invoke('SetVisibility',{IsVisible:0});
 	    }
