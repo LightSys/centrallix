@@ -346,7 +346,6 @@ function wn_setvisibility_bh(v)
 	htr_setvisibility(this,'inherit');
 	this.is_visible = 1;
 	if (this.is_modal) pg_setmodal(this, true);
-	this.ifcProbe(ifEvent).Activate("Open", this.open_params);
 
 	// Place the window now that it is visible: a pointed window has to be
 	// measured, and it cannot be measured while it is hidden.
@@ -368,6 +367,9 @@ function wn_setvisibility_bh(v)
 	    if (this.placement.x != null) this.placement.x += 16;
 	    if (this.placement.y != null) this.placement.y += 16;
 	    }
+
+	/** Fire the open event on the now-open window. **/
+	this.ifcProbe(ifEvent).Activate("Open", this.open_params);
 	}
     }
 
