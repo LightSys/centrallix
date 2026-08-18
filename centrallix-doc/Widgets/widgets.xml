@@ -581,8 +581,6 @@ checkbox_test "widget/page"
 
 			<property name="border_style" type="string">Determines the look of the outline.</property>
 			
-			<property name="closetype" type="string">Decides wither the screen closes widthwise (1) or heightwise (2).</property>
-			
 			<property name="gshade" type="string">Acts as a boolean to declare if the window is shaded or not (all but title bar minimized).</property>
 
 		    <property name="hdr_background" type="string" subtype="color">A background image for the titlebar of the window.</property>

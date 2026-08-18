@@ -70,13 +70,8 @@ function wn_init(param)
 
     l.orig_width = pg_get_style(l,'clip.width');
     l.orig_height = pg_get_style(l,'clip.height');
-    l.orig_right = pg_get_style(l,'clip.right');
-    l.orig_left = pg_get_style(l,'clip.left');
-    l.orig_bottom = pg_get_style(l,'clip.bottom');
-    l.orig_top = pg_get_style(l,'clip.top');
 
     l.gshade = param.gshade;
-    l.closetype = param.closetype;
     l.is_modal = param.modal;
     l.working = false;
     l.shaded = false;
@@ -451,12 +446,6 @@ function wn_windowshade(l)
 	    }
 	l.shaded = false;
 	}
-    }
-
-function wn_manual_unshade(l)
-    {
-    moveBy(l.ContentLayer, 0, getClipTop(l.ContentLayer));
-    setClipTop(l.ContentLayer, 0);
     }
 
 function wn_graphical_shade(l,to,speed,size)

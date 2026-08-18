@@ -68,7 +68,6 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
     char title[128];
     int is_dialog_style = 0;
     int gshade = 0;
-    int closetype = 0;
     int is_toplevel = 0;
     int is_modal = 0;
     char icon[128];
@@ -180,14 +179,6 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	/** Graphical window shading? **/
 	if (wgtrGetPropertyValue(tree,"gshade",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"true"))
 	    gshade = 1;
-
-	/** Graphical window close? **/
-	if (wgtrGetPropertyValue(tree,"closetype",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
-	    if (!strcmp(ptr,"shrink1")) closetype = 1;
-	    else if (!strcmp(ptr,"shrink2")) closetype = 2;
-	    else if (!strcmp(ptr,"shrink3")) closetype = 1 | 2;
-	    }
 
 	/** Window icon? **/
 	if (wgtrGetPropertyValue(tree, "icon", DATA_T_STRING, POD(&ptr)) == 0)
@@ -350,7 +341,6 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 		"clayer:wgtrGetContainer(wgtrGetNodeRef(ns, '%STR&SYM')), "
 		"titlebar:%[htr_subel(wgtrGetNodeRef(ns, '%STR&SYM'), 'wn%POStitlebar')%]%[null%], "
 		"gshade:%INT, "
-		"closetype:%INT, "
 		"toplevel:%INT, "
 		"modal:%INT, "
 		"centeredx:%INT, "
@@ -360,7 +350,6 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    name,
 	    has_titlebar, name, id, !has_titlebar,
 	    gshade,
-	    closetype,
 	    is_toplevel,
 	    is_modal,
 	    !!(tree->Flags & WGTR_F_CENTEREDX),
