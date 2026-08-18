@@ -922,6 +922,14 @@ function htr_stylize_element(element, widget, prefix, defaults)
 const htr_point_targets = [];
 window.addEventListener('resize', (e) => htr_point_targets.forEach(htr_update_point));
 
+/** Hides the point belonging to a target, if it has one. **/
+function htr_hide_point(point_target)
+    {
+    const { point1, point2 } = point_target;
+    if (point1) htr_setvisibility(point1, 'hidden');
+    if (point2) htr_setvisibility(point2, 'hidden');
+    }
+
 /*** Updates a point when the page has been resized. Fails if the target does
  *** not have a point element. (Call htr_action_point() to create a point,
  *** this function is only intended to update existing points.)
@@ -939,6 +947,13 @@ function htr_update_point(point_target)
 	return;
 	}
     
+    /** Hide the point if the target is hidden. **/
+    if (!point_target.getClientRects().length)
+	{
+	htr_hide_point(point_target);
+	return;
+	}
+
     /** Update the point with data from the resize object. **/
     const { X, Y, AtWidget, BorderColor, FillColor } = resize_param;
     const { p1, p2 } = htutil_point(point_target,

@@ -193,9 +193,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	/** Compute titlebar width & height - includes edge below titlebar. **/
 	int title_bar_height = (has_titlebar) ? 24 : 0;
 
-	/*** A window has to be big enough for its own borders and titlebar,
-	 *** otherwise the container below would be given a negative size.
-	 ***/
+	/** Error if the specified size is too small to draw. **/
 	int min_width = 2*border_width;
 	int min_height = 2*border_width + title_bar_height;
 	if (w < min_width || h < min_height)

@@ -409,9 +409,9 @@ function wn_windowshade(l)
     var duration = 200;
     var speed = 30;
 
-    /*** A shaded window shows nothing but its titlebar.  The window is
-     *** border-box, so its height has to cover its own border as well.
-     ***/
+    /** A shaded window shows nothing but its titlebar.  It is border-box, so
+     ** the height has to cover its own border too.
+     **/
     var shade_height = ((l.titlebar !== l) ? $(l.titlebar).outerHeight() : 24)
 		       + (l.offsetHeight - l.clientHeight);
 
@@ -501,7 +501,7 @@ function wn_close(l)
 
     htr_setvisibility(l,'hidden');
     $(l).css({display:"none"});
-    wn_hide_point(l);
+    htr_hide_point(l);
     l.is_visible = 0;
     }
 
@@ -952,22 +952,14 @@ function wn_update_point(wn, geom)
 	}
     }
 
-/** Hides the point belonging to a window, if it has one. **/
-function wn_hide_point(wn)
-    {
-    const { point1, point2 } = wn;
-    if (point1) htr_setvisibility(point1, 'hidden');
-    if (point2) htr_setvisibility(point2, 'hidden');
-    }
-
 /** Places a single window (and its point) from its placement descriptor. **/
 function wn_place(wn)
     {
     const geom = wn_compute_placement(wn, wn_get_viewport());
     if (!geom)
 	{
-	/** Nowhere to point at any more, so stop pointing. **/
-	if (wn.placement.mode === 'point') wn_hide_point(wn);
+	/** Nowhere to point at anymore, so stop pointing. **/
+	if (wn.placement.mode === 'point') htr_hide_point(wn);
 	return;
 	}
 
@@ -1000,7 +992,7 @@ function wn_place_all()
     for (const { wn, geom } of work)
 	{
 	if (geom) wn_update_point(wn, geom);
-	else if (wn.placement.mode === 'point') wn_hide_point(wn);
+	else if (wn.placement.mode === 'point') htr_hide_point(wn);
 	}
     }
 
