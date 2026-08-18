@@ -31,13 +31,31 @@ void
 printErrInternal(const int error_code, const char* c_str, const char* file_name, const int line_number)
     {
 	/** Create a clear, concise, and descriptive error message. **/
+	unsigned int i = 0u;
 	char error_buf[BUFSIZ];
-	snprintf(error_buf, sizeof(error_buf), "%s:%d: %s", file_name, line_number, c_str);
+	i += snprintf(
+	    error_buf + i, sizeof(error_buf) - i * sizeof(char),
+	    "%s:%d: %s", file_name, line_number, c_str
+	);
 	
 	/** Print it with as much info as we can reasonably find. **/
-	if (errno != 0) perror(error_buf);
-	else if (error_code != -1) fprintf(stderr, "%s (error code %d).\n", error_buf, error_code);
-	else fprintf(stderr, "%s.\n", error_buf);
+	if (error_code != -1)
+	    {
+	    i += snprintf(
+		error_buf + i, sizeof(error_buf) - i * sizeof(char),
+		" (error code %d)", error_code
+	    );
+	    }
+	if (errno != 0)
+	    {
+	    i += snprintf(
+		error_buf + i, sizeof(error_buf) - i * sizeof(char),
+		": %s", strerror(errno)
+	    );
+	    }
+	
+	/** Print the error message. **/
+	fprintf(stderr, "%s.\n", error_buf);
     
     return;
     }
