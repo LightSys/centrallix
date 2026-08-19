@@ -652,6 +652,7 @@ nht_i_LogoutUser(char* username)
     {
     pNhtSessionData search_s;
     pNhtUser usr;
+    int cnt;
 
 	usr = (pNhtUser)xhLookup(&(NHT.UsersByName), username);
 	if (!usr)
@@ -660,10 +661,15 @@ nht_i_LogoutUser(char* username)
 	/*** Retiring a session delists it from usr->Sessions, so simply
 	 *** retire the first session repeatedly until the list is empty.
 	 ***/
-	while (xaCount(&usr->Sessions) > 0)
+	while ((cnt = xaCount(&usr->Sessions)) > 0)
 	    {
 	    search_s = xaGetItem(&usr->Sessions, 0);
 	    nht_i_RetireSess(search_s);
+	    if (xaCount(&usr->Sessions) >= cnt)
+		{
+		mssError(1,"NHT","Bark!  Session %s would not delist during logout of user [%s]", search_s->Cookie, username);
+		return -1;
+		}
 	    }
 
     return 0;
