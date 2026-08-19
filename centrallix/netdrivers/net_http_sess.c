@@ -152,6 +152,7 @@ nht_i_AllocSession(char* usrname, int using_tls)
 	xhnInitContext(&(nsess->Hctx));
 	nsess->CachedApps = (pXHashTable)nmMalloc(sizeof(XHashTable));
 	xhInit(nsess->CachedApps, 127, 4);
+	nsess->LastAccess = NHT.AccCnt++;
 	nsess->S_ID = NHT.S_ID_Count++;
 	snprintf(nsess->S_ID_Text, sizeof(nsess->S_ID_Text), "%lld", nsess->S_ID);
 	objCurrentDate(&(nsess->FirstActivity));
