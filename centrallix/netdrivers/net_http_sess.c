@@ -184,7 +184,7 @@ nht_i_AllocSession(char* usrname, int using_tls)
 /*** nht_i_DelistSess() - remove a session from the session lists and stop
  *** its timers, so that no new request can find it, no timer can fire on it,
  *** and it cannot be selected for discard again.  Does not touch the link
- *** count.  Unlinking a session multiple times is safe.
+ *** count.  Calling DelistSess multiple times on the same session is safe.
  ***/
 int
 nht_i_DelistSess(pNhtSessionData sess)
