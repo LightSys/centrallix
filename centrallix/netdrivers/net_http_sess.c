@@ -627,7 +627,6 @@ nht_i_ITimeoutAppGroup(void* group_v)
 int
 nht_i_LogoutUser(char* username)
     {
-    int i;
     pNhtSessionData search_s;
     pNhtUser usr;
 
@@ -635,9 +634,10 @@ nht_i_LogoutUser(char* username)
 	if (!usr)
 	    return -1;
 
-	for(i=0;i<xaCount(&usr->Sessions);i++)
+	/** Retiring a session delists it, so always take the first one. **/
+	while (xaCount(&usr->Sessions) > 0)
 	    {
-	    search_s = xaGetItem(&usr->Sessions, i);
+	    search_s = xaGetItem(&usr->Sessions, 0);
 	    nht_i_RetireSess(search_s);
 	    }
 
