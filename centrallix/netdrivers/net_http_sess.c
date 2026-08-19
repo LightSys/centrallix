@@ -237,6 +237,15 @@ nht_i_UnlinkSess(pNhtSessionData sess)
     int i;
     pNhtQuery nht_query;
 
+	/*** More unlinks than links?  Somebody released a reference they did
+	 *** not own, so a session was probably freed while still in use!
+	 ***/
+	if (sess->LinkCnt <= 0)
+	    {
+	    mssError(1,"NHT","Bark!  Unlink of session %s with link count %d", sess->Cookie, sess->LinkCnt);
+	    return -1;
+	    }
+
 	/** Bump the link cnt down **/
 	sess->LinkCnt--;
 
