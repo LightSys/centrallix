@@ -312,7 +312,7 @@ nht_i_UnlinkSess(pNhtSessionData sess)
 		}*/
 
 	    /** Clear control msg list **/
-	    while(sess->ErrorList.nItems)
+	    while(sess->ControlMsgsList.nItems)
 		{
 		cm = (pNhtControlMsg)(sess->ControlMsgsList.Items[0]);
 		xaRemoveItem(&sess->ControlMsgsList, 0);
