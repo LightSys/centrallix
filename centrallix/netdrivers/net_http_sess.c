@@ -110,9 +110,24 @@ nht_i_AllocSession(char* usrname, int using_tls)
 	    nht_i_DiscardASession(usr);
 	    }
 
-	/** Create the session. **/
+	/** Create the session.  The master OSML session is opened before the
+	 ** session is published, so that a failure here needs no unwinding.
+	 **/
 	nsess = (pNhtSessionData)nmMalloc(sizeof(NhtSessionData));
+	if (!nsess)
+	    {
+	    usr->SessionCnt--;
+	    return NULL;
+	    }
 	memset(nsess, 0, sizeof(NhtSessionData));
+	nsess->ObjSess = objOpenSession("/");
+	if (!nsess->ObjSess)
+	    {
+	    mssError(0,"NHT","Could not open OSML session for user [%s]", usrname);
+	    nmFree(nsess, sizeof(NhtSessionData));
+	    usr->SessionCnt--;
+	    return NULL;
+	    }
 	strtcpy(nsess->Username, mssUserName(), sizeof(nsess->Username));
 	strtcpy(nsess->Password, mssPassword(), sizeof(nsess->Password));
 	thGetSecContext(NULL, &(nsess->SecurityContext));
@@ -121,7 +136,6 @@ nht_i_AllocSession(char* usrname, int using_tls)
 	nsess->Session = thGetParam(NULL,"mss");
 	mssLinkSession(nsess->Session);
 	nsess->IsNewCookie = 1;
-	nsess->ObjSess = objOpenSession("/");
 	nsess->Errors = syCreateSem(0,0);
 	nsess->ControlMsgs = syCreateSem(0,0);
 
@@ -269,7 +283,8 @@ nht_i_UnlinkSess(pNhtSessionData sess)
 	    xhnClearHandles(&(sess->Hctx), nht_i_UnlinkSess_r);
 
 	    /** Close the master session. **/
-	    objCloseSession(sess->ObjSess);
+	    if (sess->ObjSess)
+		objCloseSession(sess->ObjSess);
 
 	    /** Destroy the errors semaphore **/
 	    syDestroySem(sess->Errors, SEM_U_HARDCLOSE);
