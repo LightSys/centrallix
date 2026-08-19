@@ -184,7 +184,7 @@ nht_i_AllocSession(char* usrname, int using_tls)
 /*** nht_i_DelistSess() - remove a session from the session lists and stop
  *** its timers, so that no new request can find it, no timer can fire on it,
  *** and it cannot be selected for discard again.  Does not touch the link
- *** count.  Idempotent.
+ *** count.  Unlinking a session multiple times is safe.
  ***/
 int
 nht_i_DelistSess(pNhtSessionData sess)
@@ -216,14 +216,12 @@ nht_i_DelistSess(pNhtSessionData sess)
 
 /*** nht_i_RetireSess() - take a session out of service.  The session is
  *** delisted and session persistence's reference is released.  A connection
- *** still using the session keeps it alive until that connection exits, at
- *** which point the last unlink destroys it.
+ *** still using the session keeps it alive until that connection exits.
  ***
- *** This is the only way a session is taken out of service.  Callers that
- *** decide a session should go away (discard, timeout, logout) call this,
- *** and never nht_i_UnlinkSess(), which releases only the caller's own
- *** reference.  Idempotent, since more than one timer or request can decide
- *** to close the same session.
+ *** This is the only way a session is taken out of service.  Code that decides
+ *** a session should go away (discard, timeout, logout) must call this, never
+ *** nht_i_UnlinkSess(), which releases only the caller's own reference.
+ *** Retiring a retired session is safe.
  ***/
 int
 nht_i_RetireSess(pNhtSessionData sess)
@@ -269,9 +267,9 @@ nht_i_UnlinkSess(pNhtSessionData sess)
 	    {
 	    printf("NHT: releasing session for username [%s], cookie [%s]\n", sess->Username, sess->Cookie);
 
-	    /** Delist the session, in case it somehow reached zero references
-	     ** without being retired first.  Normally a no-op.
-	     **/
+	    /*** Delist the session, in case a nonretired session somehow got
+	     *** to zero references.  Normally a no-op.
+	     ***/
 	    nht_i_DelistSess(sess);
 
 	    /** Destroy any active app groups. **/
@@ -659,7 +657,9 @@ nht_i_LogoutUser(char* username)
 	if (!usr)
 	    return -1;
 
-	/** Retiring a session delists it, so always take the first one. **/
+	/*** Retiring a session delists it from usr->Sessions, so simply
+	 *** retire the first session repeatedly until the list is empty.
+	 ***/
 	while (xaCount(&usr->Sessions) > 0)
 	    {
 	    search_s = xaGetItem(&usr->Sessions, 0);
