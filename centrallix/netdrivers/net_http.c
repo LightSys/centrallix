@@ -1223,8 +1223,7 @@ nht_i_Logout(pNhtConn conn, pNhtAppGroup group, pNhtApp app, int do_all)
 		}
 	    else
 		{
-		nsess->Closed = 1;
-		nht_i_UnlinkSess(nsess);
+		nht_i_RetireSess(nsess);
 		}
 	    }
 
