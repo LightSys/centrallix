@@ -308,14 +308,12 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		"top:"ht_flex_format"; "
 		"width:"ht_flex_format"; "
 		"height:"ht_flex_format"; "
-		"z-index:%POS; "
 	    "}\n",
 	    id,
 	    ht_flex_x(x, tree),
 	    ht_flex_y(y, tree),
 	    ht_flex_w(w, tree),
-	    ht_flex_h(h, tree),
-	    z
+	    ht_flex_h(h, tree)
 	) != 0)
 	    {
 	    mssError(0, "HTCMP", "Failed to write base CSS.");
