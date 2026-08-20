@@ -318,6 +318,8 @@ int htruleRegister(char* ruletype, ...);
  ***/
 #define htrWriteConst(s, str) htrWrite(s, (str), sizeof(str) - 1)
 
+
+
 /** ===================================================== **/
 /** Define macros for implementing responsive dimensions. **/
 /** ===================================================== **/
@@ -352,14 +354,13 @@ int htruleRegister(char* ruletype, ...);
  ***/
 #define ht_flex(size, total, flex) (size), (total), (flex)
 
-/** ====[ Macros for getting total container size ]==== **/
+
+/** ====[ Macros for getting flex-related values ]==== **/
 int ht_get_parent_w__INTERNAL(pWgtrNode widget);
 int ht_get_parent_h__INTERNAL(pWgtrNode widget);
 
 #define ht_get_parent_w(widget) ht_get_parent_w__INTERNAL(widget)
 #define ht_get_parent_h(widget) ht_get_parent_h__INTERNAL(widget)
-
-/** ====[ Macros for getting total flexibilities ]==== **/
 
 /*** @param widget The widget to be queried.
  *** @returns The flexibility of the widget in the x direction.
@@ -381,7 +382,8 @@ int ht_get_parent_h__INTERNAL(pWgtrNode widget);
  ***/
 #define ht_get_fl_h(widget) ((widget)->fl_scale_h)
 
-/** ====[ Macros for being lazy ]==== **/
+
+/** ====[ Macros for simple flex cases ]==== **/
 
 #define ht_flex_x(x, widget) ht_flex(x, ht_get_parent_w(widget), ht_get_fl_x(widget))
 #define ht_flex_y(y, widget) ht_flex(y, ht_get_parent_h(widget), ht_get_fl_y(widget))
