@@ -2464,37 +2464,6 @@ wgtrGetTemplatePath(pWgtrNode tree, int n)
     }
 
 
-/*** wgtrMoveChildren() - given a widget tree node, adjust the positioning
- *** of all children by the given amount.  If some children are nonvisual,
- *** then this function adjusts the children in those nonvisual containers,
- *** as well.
- ***/
-int
-wgtrMoveChildren(pWgtrNode tree, int x_offset, int y_offset)
-    {
-    int cnt = xaCount(&tree->Children);
-    int i;
-    pWgtrNode child;
-
-	for(i=0;i<cnt;i++)
-	    {
-	    child = xaGetItem(&tree->Children, i);
-	    if (child->Flags & WGTR_F_NONVISUAL)
-		{
-		wgtrMoveChildren(child, x_offset, y_offset);
-		}
-	    else
-		{
-		child->x += x_offset;
-		child->pre_x += x_offset;
-		child->y += y_offset;
-		child->pre_y += y_offset;
-		}
-	    }
-
-    return 0;
-    }
-
 /*** wgtrRenderObject() - does a wgtrParseOpenObject, wgtrVerify, and
  *** wgtrRender, as well as handling any application defined parameters
  *** and expressions.
