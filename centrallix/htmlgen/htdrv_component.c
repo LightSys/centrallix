@@ -205,6 +205,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Is this a toplevel component? **/
 	is_toplevel = htrGetBoolean(tree, "toplevel", 0);
+	if (is_toplevel < 0) goto end_free;
 
         /** Get x,y,w,h of this object **/
 	/** w & h default to the entire container, if unspecified. **/
@@ -302,6 +303,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		"position:absolute; "
 		"visibility:inherit; "
 		"overflow:visible; "
+		"pointer-events:none; "
 		"left:"ht_flex_format"; "
 		"top:"ht_flex_format"; "
 		"width:"ht_flex_format"; "
@@ -322,16 +324,13 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	
 	/** Write enclosing div event CSS. **/
 	if (htrAddStylesheetItem_va(s,
-	    "\t\t#cmp%POSbase { "
-		"pointer-events:none; "
-	    "}\n"
 	    "\t\t#cmp%POSbase > * { "
 		"pointer-events:auto; "
 	    "}\n",
-	    id, id
+	    id
 	) != 0)
 	    {
-	    mssError(0, "HTCMP", "Failed to write pointer CSS.");
+	    mssError(0, "HTCMP", "Failed to write direct descendant CSS.");
 	    goto end_free;
 	    }
 	
@@ -341,7 +340,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(0, "HTCMP", "Failed to add object linkage.");
 	    goto end_free;
 	    }
-	if (htrAddBodyItem_va(s, "<div id=\"cmp%POSbase\">\n", id) != 0)
+	if (htrAddBodyItem_va(s, "<div id='cmp%POSbase'>\n", id) != 0)
 	    {
 	    mssError(0, "HTCMP", "Failed to write container HTML.");
 	    goto end_free;
@@ -609,7 +608,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto end_free;
 	
 	/** End the enclosing div. **/
-	if (htrAddBodyItem(s, "</div>") != 0)
+	if (htrAddBodyItem(s, "</div>\n") != 0)
 	    {
 	    mssError(0, "HTCMP", "Failed to write HTML closing tag.");
 	    goto end_free;

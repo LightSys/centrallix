@@ -91,9 +91,6 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
     int is_visual = 1;
     char gbuf[256] = "";
     char* gname;
-    char* xptr;
-    char* yptr;
-    int xoffs, yoffs;
 
 	/** Get an id for this. **/
 	const unsigned int id = (HTCMPD.id_count++);
@@ -116,17 +113,6 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    mssError(1,"HTCMPD","Invalid name '%s' for component", name);
 	    goto err;
-	    }
-
-	/** Need to relocate the widgets via xoffset/yoffset? **/
-	xptr = htrParamValue(s, "cx__xoffset");
-	yptr = htrParamValue(s, "cx__yoffset");
-	if (xptr || yptr)
-	    {
-	    xoffs = yoffs = 0;
-	    if (xptr) xoffs = strtoi(xptr, NULL, 10);
-	    if (yptr) yoffs = strtoi(yptr, NULL, 10);
-	    wgtrMoveChildren(tree, xoffs, yoffs);
 	    }
 
 	/** Expose all events on a subwidget? **/
