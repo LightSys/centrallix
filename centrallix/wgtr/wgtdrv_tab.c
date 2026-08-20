@@ -133,7 +133,7 @@ wgttabNew(pWgtrNode node)
     int border_width = 1;
     int strip_top = 0, strip_bottom = 0, strip_left = 0, strip_right = 0;
 
-	node->Flags |= WGTR_F_CONTAINER;
+	node->Flags |= WGTR_F_CONTAINER | WGTR_F_HTML_CONTAINER;
 	if(node->fl_width < 0) node->fl_width = 100;
 	if(node->fl_height < 0) node->fl_height = 100;
 

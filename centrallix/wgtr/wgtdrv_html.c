@@ -58,6 +58,9 @@ wgthtmlVerify(pWgtrVerifySession s)
     int Static;
     wgtrGetPropertyValue(s->CurrWidget, "mode", DATA_T_STRING, &val);
     Static = ((val.String == NULL) || !strcmp(val.String, "static"));
+
+    /** Only a dynamic html widget wraps its children (in #htNpane). **/
+    if (!Static) s->CurrWidget->Flags |= WGTR_F_HTML_CONTAINER;
     
     if(s->CurrWidget->fl_width < 0)
         {

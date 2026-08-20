@@ -58,6 +58,7 @@ wgtocVerify(pWgtrVerifySession s)
 int
 wgtocNew(pWgtrNode node)
     {   
+	node->Flags |= WGTR_F_HTML_CONTAINER;
 	if(node->fl_width < 0) node->fl_width = 10;
 	if(node->fl_height < 0) node->fl_height = 10;
 	

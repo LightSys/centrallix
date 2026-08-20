@@ -76,6 +76,7 @@ wgtsbVerify(pWgtrVerifySession s)
 int
 wgtsbNew(pWgtrNode node)
     {
+        node->Flags |= WGTR_F_HTML_CONTAINER;
         if(node->fl_width < 0) node->fl_width = 100;
         if(node->fl_height < 0) node->fl_height = 100;
     
