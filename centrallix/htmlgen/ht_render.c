@@ -2825,57 +2825,68 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
     }
 
 
-/*** htrGetBoolean() - a convenience routine to retrieve a boolean value
- *** from the structure file.  Boolean values can be specified as yes/no,
- *** true/false, on/off, y/n, or 1/0.  This routine checks for those.
- *** Return value = 1 if true, 0 if false, -1 if error, and default_value
- *** if not found.  default_value can be set to -1 to indicate an error
- *** on a nonexistent attribute.
+/*** htrGetBoolean() - Get a widget attribute as a boolean value.
  ***/
 int
 htrGetBoolean(pWgtrNode wgt, char* attrname, int default_value)
     {
-    int t;
-    int rval = default_value;
-    char* ptr;
-    int n;
+    int result = default_value;
 
 	/** type of attr (need to check number if 1/0) **/
-	t = wgtrGetPropertyType(wgt,attrname);
-	if (t < 0) goto end;
+	const int type = wgtrGetPropertyType(wgt, attrname);
+	if (type < 0) goto end; /* Value not specified. */
 
-	/** integer? **/
-	if (t == DATA_T_INTEGER)
+	switch (type)
 	    {
-	    if (wgtrGetPropertyValue(wgt,attrname,t,POD(&n)) == 0)
+	    case DATA_T_INTEGER:
 		{
-		rval = (n != 0);
+		int n;
+		if (wgtrGetPropertyValue(wgt, attrname, type, POD(&n)) != 0) break;
+		
+		/** Any nonzero int is true. **/
+		result = (n != 0);
+
+		goto end; /* Value found. */
 		}
-	    }
-	else if (t == DATA_T_STRING)
-	    {
-	    /** string? **/
-	    if (wgtrGetPropertyValue(wgt,attrname,t,POD(&ptr)) == 0)
+
+	    case DATA_T_STRING:
 		{
-		if (!strcasecmp(ptr,"yes") || !strcasecmp(ptr,"true") || !strcasecmp(ptr,"on") || !strcasecmp(ptr,"y"))
-		    {
-		    rval = 1;
+		char* ptr;
+		if (wgtrGetPropertyValue(wgt, attrname, type, POD(&ptr)) != 0) break;
+		
+		/** Check truthy strings. **/
+		if (strcasecmp(ptr, "yes") == 0
+		    || strcasecmp(ptr, "true") == 0
+		    || strcasecmp(ptr, "y") == 0
+		    || strcasecmp(ptr, "on") == 0
+		)   {
+		    result = 1;
+		    goto end; /* Value found. */
 		    }
-		else if (!strcasecmp(ptr,"no") || !strcasecmp(ptr,"false") || !strcasecmp(ptr,"off") || !strcasecmp(ptr,"n"))
-		    {
-		    rval = 0;
+
+		/** Check falsy strings. **/
+		if (strcasecmp(ptr, "no") == 0
+		    || strcasecmp(ptr, "false") == 0
+		    || strcasecmp(ptr, "n") == 0
+		    || strcasecmp(ptr, "off") == 0
+		)   {
+		    result = 0;
+		    goto end; /* Value found. */
 		    }
 		}
+
+		break;
 	    }
-	else
-	    {
-	    mssError(1,"HTR","Invalid datatype %d for attribute '%s'", t, attrname);
-	    rval = -1;
-	    goto end;
-	    }
+
+	/** Unrecognized boolean value: Warn and use the default. **/
+	fprintf(stderr,
+	    "Ignored unrecognized value for boolean attribute "
+	    "'%s' of \"%s\":\"%s\" (defaulting to %d)",
+	    attrname, wgt->Name, wgt->Type, result
+	);
 
     end:
-    return rval;
+    return result;
     }
 
 
