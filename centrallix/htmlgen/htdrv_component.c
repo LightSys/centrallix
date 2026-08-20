@@ -553,13 +553,18 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		for (int i = 0; i < params->nSubInf; i++)
 		    {
 		    pStruct param = params->SubInf[i];
-		    const int is_empty_str = (param->StrVal == NULL || param->StrVal[0] == '\0');
+		    if (param->StrVal == NULL) continue;
+
+		    /** Write param. **/
 		    if (htrAddScriptInit_va(s,
-			"\t\tnode.AddParam('%STR&SYM', %[null%]%['%STR&HEX'%]);\n",
-			param->Name, (is_empty_str), (!is_empty_str), param->StrVal
+			"\t\tnode.AddParam('%STR&SYM', '%STR&HEX');\n",
+			param->Name, param->StrVal
 		    ) != 0)
 			{
-			mssError(0, "HTCMP", "Failed to write JS.");
+			mssError(0, "HTCMP",
+			    "Failed to write JS to add param #%d/%d.",
+			    i + 1, params->nSubInf
+			);
 			goto end_free;
 			}
 		    }
