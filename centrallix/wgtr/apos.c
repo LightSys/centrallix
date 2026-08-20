@@ -1139,16 +1139,16 @@ int eCount=xaCount(&(StartL->EWidgets));
 		        {
 			    EW = (pWgtrNode)(xaGetItem(&(StartL->EWidgets), j));
 			    
-			    /** If a corner of the widget on one side falls
-			    *** between the two corners of a widget on the
-			    *** other side, this is a spacer.
-			    ***/
-			    if ((type == APOS_ROW) && (((EW->x >= SW->x) && (EW->x < (SW->x + SW->width))) || 
-				(((EW->x + EW->width) > SW->x) && ((EW->x + EW->width) <= (SW->x + SW->width)))))
+			    /*** If the widgets on either side of the section
+			     *** overlap each other along it, they are adjacent
+			     *** and this is a spacer.  The test has to run both
+			     *** ways round: either widget may be the wider one,
+			     *** and either may contain the other outright.
+			     ***/
+			    if ((type == APOS_ROW) && (EW->x < (SW->x + SW->width)) && (SW->x < (EW->x + EW->width)))
 				return true;
 			    
-			    else if ((type == APOS_COL) && (((EW->y >= SW->y) && (EW->y < (SW->y + SW->height))) || 
-				(((EW->y + EW->height) > SW->y) && ((EW->y + EW->height) <= (SW->y + SW->height)))))
+			    else if ((type == APOS_COL) && (EW->y < (SW->y + SW->height)) && (SW->y < (EW->y + EW->height)))
 				return true;
 			}
 		}
