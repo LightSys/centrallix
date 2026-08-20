@@ -455,7 +455,6 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		}
 
 	    /** Render the component-decl widget. **/
-	    if (htrAddWgtrCtrLinkage(s, tree, "_parentctr") != 0) goto end_free;
 	    if (htrRenderWidget(s, cmp_tree, z + 10) != 0)
 		{
 		mssError(0, "HTCMP", "Failed to render component tree.");
@@ -577,11 +576,6 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		}
 
 	    /** Dynamic mode -- load from client **/
-	    if (htrAddWgtrCtrLinkage(s, tree, "_parentctr") != 0)
-		{
-		mssError(0, "HTCMP", "Failed to add dynamic component container linkage.");
-		goto end_free;
-		}
 	    if (htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "cmp%POS", id, NULL, "") != 0)
 		{
 		mssError(0, "HTCMP", "Failed to write dynamic component HTML container.");
