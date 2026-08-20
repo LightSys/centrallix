@@ -207,6 +207,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	is_toplevel = htrGetBoolean(tree, "toplevel", 0);
 
         /** Get x,y,w,h of this object **/
+	/** w & h default to the entire container, if unspecified. **/
         if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x = 0;
         if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0) y = 0;
 	if (is_toplevel)
@@ -219,25 +220,41 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    {
 	    if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0)
-		w = wgtrGetContainerWidth(tree) - x;
+		{
+		const int container_width = wgtrGetContainerWidth(tree);
+		if (container_width < 0)
+		    {
+		    mssError(1, "HTCMP", "Failed to get container width for component width.");
+		    goto end_free;
+		    }
+		w = container_width - x;
+		}
 	    if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) 
-		h = wgtrGetContainerHeight(tree) - y;
+		{
+		const int container_height = wgtrGetContainerHeight(tree);
+		if (container_height < 0)
+		    {
+		    mssError(1, "HTCMP", "Failed to get container height for component height.");
+		    goto end_free;
+		    }
+		h = container_height - y;
+		}
 	    }
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto end_free;
 	strtcpy(name,ptr,sizeof(name));
 	if (cxsecVerifySymbol(name) < 0)
 	    {
 	    mssError(1,"HTCMP","Invalid name '%s' for component", name);
-	    return -1;
+	    goto end_free;
 	    }
 
 	/** OSML path to component declaration **/
 	if (wgtrGetPropertyValue(tree, "path", DATA_T_STRING, POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTCMP","Component must specify declaration location with 'path' attribute");
-	    return -1;
+	    goto end_free;
 	    }
 	if (ptr[0] != '/')
 	    {
@@ -257,11 +274,11 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** multiple-instantiation? **/
 	allow_multi = htrGetBoolean(tree, "multiple_instantiation", 0);
-	if (allow_multi < 0) return -1;
+	if (allow_multi < 0) goto end_free;
 
 	/** multiple-instantiation? **/
 	auto_destroy = htrGetBoolean(tree, "auto_destroy", 1);
-	if (auto_destroy < 0) return -1;
+	if (auto_destroy < 0) goto end_free;
 
 	/** Include the js module **/
 	htrAddScriptInclude(s, "/sys/js/htdrv_component.js", 0);
