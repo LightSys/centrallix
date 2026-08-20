@@ -2368,39 +2368,88 @@ wgtrRenameProperty(pWgtrNode tree, char* oldname, char* newname)
     }
 
 
-/*** wgtrGetContainerHeight() - returns the height of the (visual) container
- *** of a widget.
+/*** wgtrGetHtmlContainer() - returns the nearest ancestor that emits an HTML
+ *** container for its children, or the root if none of them do.  Returns NULL
+ *** only if the widget has no parent.
  ***/
-int
-wgtrGetContainerHeight(pWgtrNode tree)
+pWgtrNode
+wgtrGetHtmlContainer(pWgtrNode widget)
     {
-    int c_height;
-    do  {
-	tree = tree->Parent;
-	} while(tree->Parent && (tree->Flags & WGTR_F_NONVISUAL));
-    c_height = tree->height - 2;
-    if (!strcmp(tree->Type, "widget/childwindow"))
-	c_height -= 24;
-    else if (!strcmp(tree->Type, "widget/scrollpane"))
-	c_height += 2;
-    return c_height;
+	if (UNLIKELY(widget == NULL)) return NULL;
+    
+	pWgtrNode parent = widget->Parent;
+	while (parent != NULL && parent->Parent != NULL && !(parent->Flags & WGTR_F_HTML_CONTAINER))
+	    parent = parent->Parent;
+
+    return parent;
     }
 
 
-/*** wgtrGetContainerWidth() - returns the width of the (visual) container
- *** of a widget.
- ***/
+/** wgtrGetContainerWidth() - returns the width of the widget's HTML container. **/
 int
 wgtrGetContainerWidth(pWgtrNode tree)
     {
-    int c_width;
-    do  {
-	tree = tree->Parent;
-	} while(tree->Parent && (tree->Flags & WGTR_F_NONVISUAL));
-    c_width = tree->width - 2;
-    if (!strcmp(tree->Type, "widget/scrollpane"))
-	c_width = c_width + 2 - 18;
-    return c_width;
+	if (UNLIKELY(tree == NULL))
+	    {
+	    fprintf(stderr, "Warning: Call to wgtrGetContainerWidth(null) with null widget tree node?!\n");
+	    return -1;
+	    }
+
+	/** Find container. **/
+	pWgtrNode container = tree;
+	do container = wgtrGetHtmlContainer(container);
+	while (container != NULL && container->width < 0);
+
+	/** Check for getter failure. **/
+	if (UNLIKELY(container == NULL))
+	    {
+	    /*** We can't use mssError() here because, when the return value
+	     *** is passed to qprintf(), it reports a bad value and our error
+	     *** is cleared.
+	     ***/
+	    fprintf(stderr,
+		"Warning: No HTML container with a known width for \"%s\":\"%s\".\n",
+		tree->Name, tree->Type
+	    );
+	    return -1;
+	    }
+
+    /** Return parent width. **/
+    return tree->fl_parent_w = container->width - (container->inset_left + container->inset_right);
+    }
+
+
+/** wgtrGetContainerHeight() - returns the height of the widget's HTML container. **/
+int
+wgtrGetContainerHeight(pWgtrNode tree)
+    {
+	if (UNLIKELY(tree == NULL))
+	    {
+	    fprintf(stderr, "Warning: Call to wgtrGetContainerHeight(null) with null widget tree node?!\n");
+	    return -1;
+	    }
+
+	/** Find container. **/
+	pWgtrNode container = tree;
+	do container = wgtrGetHtmlContainer(container);
+	while (container != NULL && container->height < 0);
+
+	/** Check for getter failure. **/
+	if (UNLIKELY(container == NULL))
+	    {
+	    /*** We can't use mssError() here because, when the return value
+	     *** is passed to qprintf(), it reports a bad value and our error
+	     *** is cleared.
+	     ***/
+	    fprintf(stderr,
+		"Warning: No HTML container with a known height for \"%s\":\"%s\".\n",
+		tree->Name, tree->Type
+	    );
+	    return -1;
+	    }
+
+    /** Return parent height. **/
+    return tree->fl_parent_h = container->height - (container->inset_top + container->inset_bottom);
     }
 
 

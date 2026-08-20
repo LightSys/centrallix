@@ -222,8 +222,9 @@ pWgtrNode wgtrFirstChild(pWgtrNode tree);	/** return the first child **/
 int wgtrImplementsInterface(pWgtrNode this, char* iface_ref);	    /** state that a wgt implements an interface **/
 int wgtrSetDMPrivateData(pWgtrNode tree, void* data);
 void* wgtrGetDMPrivateData(pWgtrNode tree);
-int wgtrGetContainerHeight(pWgtrNode tree);
+pWgtrNode wgtrGetHtmlContainer(pWgtrNode tree);
 int wgtrGetContainerWidth(pWgtrNode tree);
+int wgtrGetContainerHeight(pWgtrNode tree);
 int wgtrMoveChildren(pWgtrNode tree, int x_offset, int y_offset);
 
 /** misc. functions **/

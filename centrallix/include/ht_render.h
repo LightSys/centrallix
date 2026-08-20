@@ -341,7 +341,7 @@ int htruleRegister(char* ruletype, ...);
  ***/
 
 /** @brief The qprintf format to specify a responsive dimension. **/
-#define ht_flex_format "calc(%INTpx + (100%% - %INTpx) * %DBL)"
+#define ht_flex_format "calc(%INTpx + (100%% - %POSpx) * %DBL)"
 
 /*** @brief The function which generates the values that should be passed to
  *** qprintf in order to satisfy an ht_flex_format.
@@ -356,11 +356,8 @@ int htruleRegister(char* ruletype, ...);
 
 
 /** ====[ Macros for getting flex-related values ]==== **/
-int ht_get_parent_w__INTERNAL(pWgtrNode widget);
-int ht_get_parent_h__INTERNAL(pWgtrNode widget);
-
-#define ht_get_parent_w(widget) ht_get_parent_w__INTERNAL(widget)
-#define ht_get_parent_h(widget) ht_get_parent_h__INTERNAL(widget)
+#define ht_get_parent_w(widget) wgtrGetContainerWidth(widget)
+#define ht_get_parent_h(widget) wgtrGetContainerHeight(widget)
 
 /*** @param widget The widget to be queried.
  *** @returns The flexibility of the widget in the x direction.
