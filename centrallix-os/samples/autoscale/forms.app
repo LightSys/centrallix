@@ -3,10 +3,9 @@ $Version=2$
 // Autoscale visual test harness -- form widgets page.
 //
 // The bound half of this page runs against rows.csv through an osrc, so the
-// form navigation works.  The ruler and filler fields are long on purpose
-// so you can count characters to see exactly where an edit box clips.
-//
-// The unbound half holds the widgets that need no data source at all.
+// form navigation works.  The ruler and filler fields are long on purpose so
+// you can count characters to see where an edit box clips.  The unbound half
+// holds the widgets that need no data source.
 forms "widget/page"
     {
     title = "Autoscale Harness -- Forms";
@@ -14,11 +13,9 @@ forms "widget/page"
     bgcolor = "#c8c8c8";
     textcolor = "black";
 
-    // The geometry the server was told to lay this page out at.  This
-    // comes from the URL rather than from the page widget, because
-    // runserver() expressions are evaluated while the widget tree is
-    // still being parsed -- before wgtrVerify() runs the layout -- and
-    // they cannot reference another widget in any case.
+    // The geometry the server was told to lay this page out at, read from
+    // the URL: runserver() expressions are evaluated as the widget tree is
+    // parsed, before the layout runs, and cannot reference another widget.
     cx__geom "widget/parameter" { type=string; }
 
     navbar "widget/component"
@@ -29,15 +26,9 @@ forms "widget/page"
 	page_file="forms.app";
 	}
 
-    // Server render geometry.  Every page carries this same note in the
-    // same place: the strip to the right of the nav component.
-    //
-    // ':forms:width' and ':forms:height' are the page's COMPUTED
-    // size, which is the geometry the server actually laid this page out
-    // at.  cx__geom is stripped from the address bar once the page loads,
-    // so this note is the only way to see which size a page was rendered
-    // at after the fact.  It does NOT track window resizing -- that is the
-    // point: compare it against the current window size.
+    // Server render geometry: the page's computed size, which is what the
+    // server laid this page out at.  It does not track window resizing, so
+    // compare it against the current window size.
     geom_note "widget/label"
 	{
 	x=700; y=6; width=280; height=18;
@@ -103,7 +94,6 @@ forms "widget/page"
 		f_fil_l "widget/label"   { x=8; y=150; width=70; height=20; text="filler"; font_size=12; align=left; valign=middle; }
 		f_fil "widget/editbox"   { x=82; y=148; width=500; height=22; fieldname="filler"; style=lowered; bgcolor="white"; }
 
-		// Current mode of the form.
 		f_status "widget/formstatus" { x=290; y=8; style=large; form=the_form; }
 
 		// Bound dropdown fed by the same objectsource.
@@ -158,9 +148,8 @@ forms "widget/page"
 	font_size=12; align=left; valign=middle;
 	}
     // The captions below carry fl_height=1.  widget/label defaults to 0, and
-    // a rigid widget pins every row it crosses, which left this pane with too
-    // little flexible height to grow at all -- freezing bound_frame too, since
-    // they share a page row.  The checkboxes and datetime stay rigid.
+    // one rigid widget pins every row it crosses, which would freeze this
+    // pane and bound_frame with it.  The checkboxes and datetime stay rigid.
     unbound_frame "widget/pane"
 	{
 	x=616; y=78; width=376; height=250;
@@ -179,8 +168,8 @@ forms "widget/page"
 	    u_dd5 "widget/dropdownitem" { label="ECHO"; value="5"; }
 	    }
 
-	// Checkboxes are a fixed 13x13 image in the driver, so these must
-	// stay exactly the same size however the window is resized.
+	// Checkboxes are a fixed 13x13 image in the driver, so these must stay
+	// the same size however the window is resized.
 	u_cb_l "widget/label" { x=8; y=64; width=200; height=20; text="checkboxes (fixed 13x13)"; font_size=12; align=left; valign=middle; fl_height=1; }
 	u_cb_on "widget/checkbox"    { x=10; y=88; checked=yes; }
 	u_cb_on_l "widget/label"     { x=30; y=86; width=90; height=18; text="checked"; font_size=11; align=left; valign=middle; }
@@ -292,9 +281,9 @@ LINE 08 LAST LINE -- END OF TEXTAREA";
 	}
 
     // ---------------------------------------------------------------
-    // File upload.  Its driver reads no geometry at all, so it lands
-    // wherever the browser puts it -- that is expected, not a bug.
-    // Uploads are written into the ObjectSystem's own tmp directory.
+    // File upload.  Its driver reads no geometry, so it lands wherever the
+    // browser puts it, which is expected.  Uploads are written into the
+    // ObjectSystem's own tmp directory.
     // ---------------------------------------------------------------
     upload_title "widget/label"
 	{
@@ -320,7 +309,7 @@ LINE 08 LAST LINE -- END OF TEXTAREA";
 	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
 
 	    // The client dispatches "Clear"; the server-registered "Reset"
-	    // name is vestigial and does nothing.
+	    // name does nothing.
 	    up_reset_c "widget/connector" { event=Click; target=up_input; action=Clear; }
 	    }
 	up_submit "widget/textbutton"

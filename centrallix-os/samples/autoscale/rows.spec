@@ -9,7 +9,7 @@ autoscale_rows "application/filespec"
     key_is_rowid = yes;
 
     // Deliberately long, so treeview labels truncate and can be checked
-    // against the tooltip and against the widget's right edge.
+    // against the tooltip and the widget's right edge.
     row_annot_exp = ":tag + ' ' + :filler";
 
     // Column specifications.

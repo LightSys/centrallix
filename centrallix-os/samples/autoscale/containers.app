@@ -2,16 +2,16 @@ $Version=2$
 
 // Autoscale visual test harness -- container widgets page.
 //
-// Each container here reserves some edge space for parts it draws itself
-// (a tab strip, a titlebar, a scrollbar gutter) and lays its children out
-// inside what is left.  Those reserved amounts are declared in the widget
-// drivers under centrallix/wgtr/ and must stay in step with what the
-// matching centrallix/htmlgen/ driver actually draws.
+// Each container here reserves edge space for parts it draws itself (a tab
+// strip, a titlebar, a scrollbar gutter) and lays its children out inside
+// what is left.  Those reserved amounts are declared in the widget drivers
+// under centrallix/wgtr/ and must stay in step with what the matching
+// centrallix/htmlgen/ driver draws.
 //
-// Every container below holds four corner markers of a fixed 12x12 size.
-// The markers show exactly where the container thinks its client area is:
-// if a marker is clipped, floating away from its corner, or changing size,
-// the reserved edge space and the drawn geometry disagree.
+// Every container below holds four fixed 12x12 corner markers, which show
+// where the container thinks its client area is.  A marker that is clipped,
+// floating away from its corner, or changing size means the reserved edge
+// space and the drawn geometry disagree.
 containers "widget/page"
     {
     title = "Autoscale Harness -- Containers";
@@ -19,11 +19,9 @@ containers "widget/page"
     bgcolor = "#c8c8c8";
     textcolor = "black";
 
-    // The geometry the server was told to lay this page out at.  This
-    // comes from the URL rather than from the page widget, because
-    // runserver() expressions are evaluated while the widget tree is
-    // still being parsed -- before wgtrVerify() runs the layout -- and
-    // they cannot reference another widget in any case.
+    // The geometry the server was told to lay this page out at, read from
+    // the URL: runserver() expressions are evaluated as the widget tree is
+    // parsed, before the layout runs, and cannot reference another widget.
     cx__geom "widget/parameter" { type=string; }
 
     navbar "widget/component"
@@ -34,15 +32,9 @@ containers "widget/page"
 	page_file="containers.app";
 	}
 
-    // Server render geometry.  Every page carries this same note in the
-    // same place: the strip to the right of the nav component.
-    //
-    // ':containers:width' and ':containers:height' are the page's COMPUTED
-    // size, which is the geometry the server actually laid this page out
-    // at.  cx__geom is stripped from the address bar once the page loads,
-    // so this note is the only way to see which size a page was rendered
-    // at after the fact.  It does NOT track window resizing -- that is the
-    // point: compare it against the current window size.
+    // Server render geometry: the page's computed size, which is what the
+    // server laid this page out at.  It does not track window resizing, so
+    // compare it against the current window size.
     geom_note "widget/label"
 	{
 	x=700; y=6; width=280; height=18;
@@ -65,10 +57,9 @@ containers "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // Tab controls.  A tab control's width/height in the structure file
-    // describe its CONTENT area; the strip of tabs is added outside of
-    // that.  Three strip positions are shown because each one reserves a
-    // different edge.
+    // Tab controls.  A tab control's width/height describe its CONTENT
+    // area; the strip of tabs is added outside that.  Three strip positions
+    // are shown because each one reserves a different edge.
     // ---------------------------------------------------------------
     tab_top_title "widget/label"
 	{
@@ -159,11 +150,10 @@ containers "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // Scrollpane.  It reserves 18px on the right for its scrollbar, and
-    // its contents are deliberately taller than the visible area.  The
-    // layout engine does not vertically auto-scale content inside a
-    // scrollpane, so the rows below should keep their height and simply
-    // become more or less visible as the window changes.
+    // Scrollpane.  It reserves 18px on the right for its scrollbar, and its
+    // contents are deliberately taller than the visible area.  The layout
+    // engine does not vertically auto-scale content inside a scrollpane, so
+    // the rows below keep their height and just become more or less visible.
     // ---------------------------------------------------------------
     sp_title "widget/label"
 	{
@@ -200,10 +190,10 @@ containers "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // Standalone scrollbars.  A scrollbar is fixed at 18px across its
-    // short axis and refuses to render shorter than 54px along its long
-    // axis, so the vertical one must keep its width and the horizontal
-    // one must keep its height no matter how the window changes.
+    // Standalone scrollbars.  A scrollbar is fixed at 18px across its short
+    // axis and refuses to render shorter than 54px along its long axis, so
+    // the vertical one must keep its width and the horizontal one its
+    // height however the window changes.
     // ---------------------------------------------------------------
     sb_title "widget/label"
 	{
@@ -229,9 +219,9 @@ containers "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // Component instance.  A component is laid out on the server as part
-    // of this page, so it should scale exactly like an inline subtree.
-    // The nav strip at the top of every page is the same mechanism.
+    // Component instance.  A component is laid out on the server as part of
+    // this page, so it should scale like an inline subtree.  The nav strip
+    // at the top of every page is the same mechanism.
     // ---------------------------------------------------------------
     cmp_title "widget/label"
 	{
@@ -255,10 +245,10 @@ containers "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // Child windows.  These float: the layout engine skips them in the
-    // main pass and only clamps them inside their container at the end.
-    // The three variants reserve different amounts of edge space, so
-    // their corner markers sit in visibly different places.
+    // Child windows.  These float: the layout engine skips them in the main
+    // pass and only clamps them inside their container at the end.  The
+    // three variants reserve different edge space, so their corner markers
+    // sit in visibly different places.
     // ---------------------------------------------------------------
     win_title "widget/label"
 	{

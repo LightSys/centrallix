@@ -2,23 +2,20 @@ $Version=2$
 
 // Autoscale visual test harness -- display widgets page.
 //
-// These are the everyday non-container, non-form widgets.  Most of them
-// size themselves from their own content (text metrics, image dimensions)
-// rather than purely from the layout engine, so they are where a resize
-// tends to produce wrong wrapping, wrong clipping or a wrong aspect ratio
-// rather than a wrong rectangle.
+// These are the everyday non-container, non-form widgets.  Most size
+// themselves from their own content (text metrics, image dimensions), so a
+// resize here tends to produce wrong wrapping, wrong clipping or a wrong
+// aspect ratio rather than a wrong rectangle.
 //
-// Several of those drivers default to fl_width=0 (widget/image,
-// widget/button, widget/imagebutton and widget/clock), and one rigid widget
-// pins the whole layout column it sits in or crosses.  The panes below are
-// packed edge to edge so they can easily become completely inflexible.
-//
-// widget/label defaults to fl_height=0, so the same thing happens row by row.
-// The fl_height=10 properties below mark the widgets that are meant to stretch.
-// fl_* is an unbounded int ratio that the drivers scale over roughly 0-100
-// (label 1, textbutton 5, dropdown 10, editbox 40, dynamic html 100), so a 1
-// here would barely register against the html widget in the middle row.
-// ib_first and img_tiny stay rigid because their images are a fixed size.
+// widget/image, widget/button, widget/imagebutton and widget/clock default to
+// fl_width=0, and widget/label to fl_height=0.  One rigid widget pins every
+// layout column or row it crosses, and the panes below are packed edge to
+// edge, so they can easily become completely inflexible.  The fl_height=10
+// properties mark the widgets meant to stretch: fl_* is an unbounded int ratio
+// that the drivers scale over roughly 0-100 (label 1, textbutton 5, dropdown
+// 10, editbox 40, dynamic html 100), so a 1 here would barely register against
+// the html widget in the middle row.  ib_first and img_tiny stay rigid because
+// their images are a fixed size.
 misc "widget/page"
     {
     title = "Autoscale Harness -- Misc";
@@ -26,11 +23,9 @@ misc "widget/page"
     bgcolor = "#c8c8c8";
     textcolor = "black";
 
-    // The geometry the server was told to lay this page out at.  This
-    // comes from the URL rather than from the page widget, because
-    // runserver() expressions are evaluated while the widget tree is
-    // still being parsed -- before wgtrVerify() runs the layout -- and
-    // they cannot reference another widget in any case.
+    // The geometry the server was told to lay this page out at, read from
+    // the URL: runserver() expressions are evaluated as the widget tree is
+    // parsed, before the layout runs, and cannot reference another widget.
     cx__geom "widget/parameter" { type=string; }
 
     navbar "widget/component"
@@ -61,8 +56,8 @@ misc "widget/page"
 
     // ---------------------------------------------------------------
     // Label variants.  Alignment, wrapping and clipping all depend on the
-    // label's final width, so these are a direct readout of whether the
-    // label got the width the layout engine intended.
+    // label's final width, so these read out whether the label got the
+    // width the layout engine intended.
     // ---------------------------------------------------------------
     lbl_title "widget/label"
 	{
@@ -108,8 +103,8 @@ misc "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // Buttons.  Note that the textbutton driver never reads font_size, so
-    // its label is always the default size no matter what is set here.
+    // Buttons.  The textbutton driver never reads font_size, so its label is
+    // always the default size no matter what is set here.
     // ---------------------------------------------------------------
     btn_title "widget/label"
 	{
@@ -189,8 +184,8 @@ misc "widget/page"
 
     // ---------------------------------------------------------------
     // Images.  aspect=stretch fills the box; anything else preserves the
-    // ratio.  Both boxes are the same size, so after a resize the
-    // stretched one should distort and the preserved one should not.
+    // ratio.  Both boxes are the same size, so after a resize the stretched
+    // one should distort and the preserved one should not.
     // ---------------------------------------------------------------
     img_title "widget/label"
 	{
@@ -241,8 +236,8 @@ misc "widget/page"
 
     // ---------------------------------------------------------------
     // HTML widget with inline content.  Its 'content' property is written
-    // straight into the body, so no external file is needed.  The lines
-    // are rulers: watch where they wrap as the window changes.
+    // straight into the body, so no external file is needed.  The lines are
+    // rulers: watch where they wrap as the window changes.
     // ---------------------------------------------------------------
     html_title "widget/label"
 	{
@@ -312,10 +307,8 @@ misc "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // Clocks, alerter and timer.
-    //
-    // The clock repaints itself every second and the timer fires every two
-    // seconds, so both keep running while you drag the window edge.  If a
+    // Clocks, alerter and timer.  The clock and the timer both fire once a
+    // second, so both keep running while you drag the window edge.  If a
     // resize breaks their redraw, they freeze or misplace their text.
     // ---------------------------------------------------------------
     live_title "widget/label"
@@ -347,7 +340,7 @@ misc "widget/page"
 	    fl_width=1; fl_height=10;
 	    }
 
-	// Fires every two seconds and stamps the time onto the button.
+	// Fires once a second and stamps the time onto the button.
 	the_timer "widget/timer"
 	    {
 	    msec=1000; auto_start=1; auto_reset=1;
@@ -362,7 +355,6 @@ misc "widget/page"
 	    fl_height=10;
 	    }
 
-	// Nonvisual; driven entirely by the two buttons below.
 	the_alerter "widget/alerter" { }
 
 	alert_l "widget/label" { x=762; y=6; width=216; height=16; text="alerter"; font_size=11; align=left; valign=middle; fl_height=10; }

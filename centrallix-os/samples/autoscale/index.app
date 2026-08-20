@@ -2,10 +2,9 @@ $Version=2$
 
 // Autoscale visual test harness -- overview page.
 //
-// See README.md in this directory for what the harness is for and how to
-// drive it.  This page holds the two pure-geometry references: if anything
-// here looks wrong, the problem is in the layout engine itself rather than
-// in any particular widget, so check this page before trusting the others.
+// This page holds the two pure-geometry references.  If anything here looks
+// wrong the problem is in the layout engine itself, so check this page
+// before trusting the others.
 index "widget/page"
     {
     title = "Autoscale Harness -- Overview";
@@ -13,11 +12,9 @@ index "widget/page"
     bgcolor = "#c8c8c8";
     textcolor = "black";
 
-    // The geometry the server was told to lay this page out at.  This
-    // comes from the URL rather than from the page widget, because
-    // runserver() expressions are evaluated while the widget tree is
-    // still being parsed -- before wgtrVerify() runs the layout -- and
-    // they cannot reference another widget in any case.
+    // The geometry the server was told to lay this page out at, read from
+    // the URL: runserver() expressions are evaluated as the widget tree is
+    // parsed, before the layout runs, and cannot reference another widget.
     cx__geom "widget/parameter" { type=string; }
 
     navbar "widget/component"
@@ -29,20 +26,11 @@ index "widget/page"
 	}
 
     // Server render geometry.  Every page carries this same note in the
-    // same place: the strip to the right of the nav component.
-    //
-    // The value is decoded out of the cx__geom URL parameter, which is
-    // the geometry the server was handed for this render.  cx__geom is
-    // stripped from the address bar once the page loads, so this note is
-    // the only way to see which size a page was rendered at after the
-    // fact.  It does NOT track window resizing -- that is the point:
-    // compare it against the current window size.
-    //
-    // A page's own ':index:width' will NOT work here: runserver()
-    // expressions are evaluated as the widget tree is parsed, before
-    // wgtrVerify() runs the layout, and the server-side evaluation
-    // context holds only 'this' (the widget/parameter list), so a
-    // reference to another widget silently binds to NULL.
+    // strip to the right of the nav component.  It is decoded from the
+    // cx__geom URL parameter, which is stripped from the address bar once
+    // the page loads, so this note is the only record of the size the page
+    // was rendered at.  It does not track window resizing: compare it
+    // against the current window size.
     geom_note "widget/label"
 	{
 	x=700; y=6; width=280; height=18;
@@ -65,13 +53,11 @@ index "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // Concentric rings.  Every ring is inset exactly 16px from its
-    // parent on all four sides, and every ring is style=flat so it
-    // reserves no border of its own and the nesting math stays exact.
-    //
-    // Correct scaling keeps all four margins of every ring equal to
-    // each other.  A ring that goes lopsided, or whose margin collapses
-    // to nothing, localizes the bug to a specific nesting depth.
+    // Concentric rings.  Every ring is inset 16px from its parent on all
+    // four sides and is style=flat, so it reserves no border and the
+    // nesting math stays exact.  Correct scaling keeps all four margins of
+    // every ring equal.  A lopsided or collapsed margin localizes the bug
+    // to a specific nesting depth.
     // ---------------------------------------------------------------
     rings_title "widget/label"
 	{
@@ -111,13 +97,11 @@ index "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // Fixed-size markers and a centering cross.
-    //
-    // The corner and edge markers have fl_width=0 and fl_height=0, so
-    // they must stay exactly the same pixel size at every window size
-    // while staying pinned to their corner or edge.  The two bars must
-    // stay centered.  A marker that grows, drifts inward, or gets
-    // clipped is a scaling bug.
+    // Fixed-size markers and a centering cross.  The corner and edge
+    // markers have fl_width=0 and fl_height=0, so they must keep their
+    // pixel size at every window size while staying pinned to their corner
+    // or edge, and the two bars must stay centered.  A marker that grows,
+    // drifts inward, or gets clipped is a scaling bug.
     // ---------------------------------------------------------------
     markers_title "widget/label"
 	{
@@ -130,8 +114,7 @@ index "widget/page"
 	x=346; y=78; width=330; height=610;
 	style=lowered; bgcolor="#909090";
 
-	// Centering cross.  Each bar keeps its thickness (flex 0 across)
-	// but spans the full width or height (flex 100 along).
+	// Centering cross.
 	h_bar "widget/pane"
 	    { x=0; y=302; width=328; height=4; style=flat; bgcolor="#303030"; fl_width=100; fl_height=0; }
 	v_bar "widget/pane"
@@ -163,9 +146,9 @@ index "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // Links to existing sample apps that are worth eyeballing.  These
-    // open in a separate window so the harness itself is never lost.
-    // All of them run without a database.
+    // Links to other sample apps worth eyeballing.  These open in a
+    // separate window so the harness is never lost, and all of them run
+    // without a database.
     // ---------------------------------------------------------------
     links_title "widget/label"
 	{

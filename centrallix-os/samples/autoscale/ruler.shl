@@ -2,18 +2,17 @@ $Version=2$
 
 // Backend for the terminal widget on the misc page of the autoscale harness.
 //
-// Prints a numbered character ruler and exits.  The terminal widget is a
-// fixed grid of rows x cols, so a ruler makes it immediately obvious how
-// many columns are actually visible and whether the grid still lines up
-// after the window is resized.  Unlike /samples/top.shl this exits right
-// away instead of leaving a process running for the life of the page.
+// Prints a numbered character ruler and exits right away, leaving no process
+// running for the life of the page.  The terminal widget is a fixed grid of
+// rows x cols, so a ruler makes it obvious how many columns are actually
+// visible and whether the grid still lines up after a resize.
 autoscale_ruler "system/shell"
     {
     program = "/bin/bash";
 
     // No quotes or backslashes inside the command: the ruler contains no
-    // shell metacharacters, so unquoted echo arguments are safe, and this
-    // avoids depending on how the structure file lexer unescapes strings.
+    // shell metacharacters, so unquoted echo arguments are safe and nothing
+    // depends on how the structure file lexer unescapes strings.
     arg = "bash", "-c", "for i in $(seq -w 1 20); do echo $i 0....5...10...15...20...25...30...35...40...45...50...55...60...65...70; done; echo END OF RULER";
     changeable = "TERM";
     TERM = "vt100";

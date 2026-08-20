@@ -4,12 +4,12 @@ $Version=2$
 //
 // Three branches, each testing something different:
 //
-//   Bands  - a real two-level query tree built from the CSV files, whose
-//            leaf labels come from rows.spec's row_annot_exp and are long
-//            enough to truncate.  Tests label clipping and tooltips.
-//   Depth  - static nodes nested eight deep.  Each level indents further,
-//            so the usable label width shrinks as you descend.  Tests the
-//            right-edge clip calculation at every indent level at once.
+//   Bands  - a two-level query tree built from the CSV files, whose leaf
+//            labels come from rows.spec's row_annot_exp and are long enough
+//            to truncate.  Tests label clipping and tooltips.
+//   Depth  - static nodes nested eight deep, each level indenting further,
+//            so one screen tests the right-edge clip calculation at every
+//            indent level.
 //   Short  - labels far shorter than the widget, which must NOT truncate
 //            and must NOT show a tooltip.
 autoscale_tree "system/querytree"
@@ -18,8 +18,8 @@ autoscale_tree "system/querytree"
 	{
 	// Kept short and free of spaces: a node's 'text' becomes its name in the
 	// ObjectSystem path, so a wordy label here makes the branch awkward to
-	// address from test_obj or a URL.  The long labels that exercise
-	// truncation live on the leaves below and in the Depth branch.
+	// address from test_obj or a URL.  The long labels live on the leaves
+	// below and in the Depth branch.
 	text = "Bands";
 	content = "<h1>Bands</h1>Two-level tree: each band, then the rows in it.";
 	content_type = "text/html";

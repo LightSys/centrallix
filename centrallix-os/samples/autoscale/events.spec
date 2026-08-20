@@ -9,11 +9,9 @@ autoscale_events "application/filespec"
     row_annot_exp = ":title";
     key_is_rowid = yes;
 
-    // 'offset' is a number of days relative to today rather than a real
-    // date.  A checked-in file cannot know when it will be opened, and a
-    // calendar showing the current month would be empty if these were
-    // hard-coded dates, so the osrc turns the offset into a date with
-    // dateadd('day', :offset, getdate()).
+    // 'offset' is a number of days relative to today, so that a calendar
+    // showing the current month always has something in it.  The osrc turns
+    // it into a date with dateadd('day', :offset, getdate()).
     offset "filespec/column" { type=integer; id=1; }
     title  "filespec/column" { type=string;  id=2; }
     descr  "filespec/column" { type=string;  id=3; }

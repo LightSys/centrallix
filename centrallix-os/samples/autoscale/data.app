@@ -2,11 +2,10 @@ $Version=2$
 
 // Autoscale visual test harness -- data-driven widgets page.
 //
-// Everything here is fed from the CSV files in this directory, so no
-// database is needed.  These widgets redraw their own contents in response
-// to a resize rather than just being repositioned, which makes them the
-// most likely place for a scaling bug to show up as wrong content instead
-// of wrong geometry.
+// Everything here is fed from the CSV files in this directory, so no database
+// is needed.  These widgets redraw their own contents on a resize, which makes
+// them the most likely place for a scaling bug to show up as wrong content
+// instead of wrong geometry.
 data "widget/page"
     {
     title = "Autoscale Harness -- Data";
@@ -14,11 +13,9 @@ data "widget/page"
     bgcolor = "#c8c8c8";
     textcolor = "black";
 
-    // The geometry the server was told to lay this page out at.  This
-    // comes from the URL rather than from the page widget, because
-    // runserver() expressions are evaluated while the widget tree is
-    // still being parsed -- before wgtrVerify() runs the layout -- and
-    // they cannot reference another widget in any case.
+    // The geometry the server was told to lay this page out at, read from
+    // the URL: runserver() expressions are evaluated as the widget tree is
+    // parsed, before the layout runs, and cannot reference another widget.
     cx__geom "widget/parameter" { type=string; }
 
     navbar "widget/component"
@@ -49,9 +46,9 @@ data "widget/page"
 
     // ---------------------------------------------------------------
     // Table.  Column widths sum to a little under the visible width so the
-    // rightmost column sits against the scrollbar gutter, which is where
-    // column clipping shows up first.  The ruler and filler columns are
-    // wider than their content box on purpose.
+    // rightmost column sits against the scrollbar gutter, where column
+    // clipping shows up first.  The ruler and filler columns are wider than
+    // their content box on purpose.
     // ---------------------------------------------------------------
     table_title "widget/label"
 	{
@@ -102,9 +99,8 @@ data "widget/page"
     // ---------------------------------------------------------------
     // Treeview.  Its labels come from rows.spec's row_annot_exp and are
     // deliberately too long, so they must truncate at the widget's right
-    // edge and show a tooltip only when actually truncated.  The Depth
-    // branch nests eight levels, shrinking the usable label width at each
-    // level, so one screen exercises the clip maths at every indent.
+    // edge and show a tooltip only when truncated.  The Depth branch nests
+    // eight levels, exercising the clip maths at every indent at once.
     // ---------------------------------------------------------------
     tree_title "widget/label"
 	{
@@ -135,10 +131,10 @@ data "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // Charts.  The three series have deliberately simple shapes -- a
-    // straight rise, a straight fall and a single triangular bump -- so a
-    // chart that redraws wrongly after a resize stops looking like those
-    // shapes.  Both charts read the same objectsource.
+    // Charts.  The three series have deliberately simple shapes -- a straight
+    // rise, a straight fall and a single triangular bump -- so a chart that
+    // redraws wrongly after a resize stops looking like them.  Both charts
+    // read the same objectsource.
     // ---------------------------------------------------------------
     chart_title "widget/label"
 	{
@@ -188,10 +184,10 @@ data "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // Repeat.  This one is expanded on the SERVER while the widget tree
-    // is being built, so its copies are ordinary widgets by the time the
-    // layout engine runs and should scale like any hand-written set.
-    // Field values therefore use runserver(), not runclient().
+    // Repeat.  This is expanded on the SERVER while the widget tree is being
+    // built, so its copies are ordinary widgets by the time the layout engine
+    // runs and should scale like any hand-written set.  Field values
+    // therefore use runserver().
     // ---------------------------------------------------------------
     repeat_title "widget/label"
 	{

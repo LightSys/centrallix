@@ -2,25 +2,18 @@ $Version=2$
 
 // Autoscale visual test harness -- legacy / low-use widgets.
 //
-// These widgets are barely used outside the test tree and some of them are
-// already suspect.  They live on their own page ON PURPOSE: if one of them
-// renders badly or fails outright, it does so here, where it cannot make a
-// problem in a widely-used widget harder to spot.
+// These widgets are barely used outside the test tree and some are already
+// suspect.  They are quarantined here ON PURPOSE: a bad render or an outright
+// failure happens where it cannot make a problem in a widely-used widget
+// harder to spot.  Treat a failure on this page as low priority unless it is
+// a regression against master.
 //
-// Treat a failure on this page as low priority unless it is a regression
-// against master.  Nothing here is worth blocking on.
-//
-// This page is designed at 1000x900 rather than the 1000x700 the other
-// pages use, because it has more to fit in.  That is deliberate and is a
+// This page is designed at 1000x900 because it has more to fit in, which is a
 // mild extra test in itself: a design taller than the browser window
 // exercises the scale-down path the other pages never reach.
 //
-// This is also where the harness records what it does NOT cover:
-//
-//   - Legacy and low-use widgets are quarantined here so their failures
-//     cannot mask a real one on the pages that matter.
-//   - The "Deliberately not included" pane below lists the widgets that
-//     were left out entirely, and why.
+// The "Deliberately not included" pane below lists the widgets the harness
+// leaves out entirely, and why.
 legacy "widget/page"
     {
     title = "Autoscale Harness -- Legacy";
@@ -28,11 +21,9 @@ legacy "widget/page"
     bgcolor = "#c8c8c8";
     textcolor = "black";
 
-    // The geometry the server was told to lay this page out at.  This
-    // comes from the URL rather than from the page widget, because
-    // runserver() expressions are evaluated while the widget tree is
-    // still being parsed -- before wgtrVerify() runs the layout -- and
-    // they cannot reference another widget in any case.
+    // The geometry the server was told to lay this page out at, read from
+    // the URL: runserver() expressions are evaluated as the widget tree is
+    // parsed, before the layout runs, and cannot reference another widget.
     cx__geom "widget/parameter" { type=string; }
 
     navbar "widget/component"
@@ -75,9 +66,9 @@ legacy "widget/page"
 
     // ---------------------------------------------------------------
     // Multiscroll.  Parts that declare a height pin to the top or the
-    // bottom; the single part with no height becomes the scrolling
-    // middle.  So the header and footer should keep their exact heights
-    // while only the middle grows and shrinks.
+    // bottom; the single part with no height becomes the scrolling middle.
+    // The header and footer should keep their exact heights while only the
+    // middle grows and shrinks.
     // ---------------------------------------------------------------
     ms_title "widget/label"
 	{
@@ -133,13 +124,11 @@ legacy "widget/page"
 
     // ---------------------------------------------------------------
     // Terminal.  Backed by ruler.shl in this directory, which prints a
-    // numbered character ruler and exits immediately.  The widget is a
-    // fixed grid of rows x cols, so the ruler shows at a glance how many
-    // columns are really visible and whether the grid still lines up.
-    //
-    // This spawns a short-lived process on the server when the page
-    // loads.  If the system/shell driver is unavailable the widget will
-    // render an empty grid, which is expected rather than a scaling bug.
+    // numbered character ruler and exits immediately.  The widget is a fixed
+    // grid of rows x cols, so the ruler shows at a glance how many columns
+    // are really visible and whether the grid still lines up.  Loading the
+    // page spawns a short-lived process on the server; with the system/shell
+    // driver unavailable the widget renders an empty grid, which is expected.
     // ---------------------------------------------------------------
     term_title "widget/label"
 	{
@@ -202,10 +191,10 @@ legacy "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // Map and objcanvas.  Both plot their contents from data rows rather
-    // than from child widgets, reading x/y/width/height/color/image off
-    // each record.  They reuse the existing CanvasObjects sample data.
-    // The map additionally needs the OpenLayers bundle under /sys/js.
+    // Map and objcanvas.  Both plot their contents from data rows, reading
+    // x/y/width/height/color/image off each record, and reuse the existing
+    // CanvasObjects sample data.  The map also needs the OpenLayers bundle
+    // under /sys/js.
     // ---------------------------------------------------------------
     canvas_osrc "widget/osrc"
 	{
@@ -259,16 +248,15 @@ legacy "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // Calendar.  Nothing in the entire repository uses this widget, and
-    // it carries a core bug of its own that predates this branch by two
-    // decades: htdrv_calendar.c reads the "displaymode" STRING into the
-    // integer 'minpriority' variable, so minpriority never works and the
-    // read writes a pointer-sized value into an int.  That is not a
-    // scaling problem, and it is why the calendar sits here.
+    // Calendar.  Nothing in the repository uses this widget, and it carries
+    // a core bug two decades older than this branch: htdrv_calendar.c reads
+    // the "displaymode" STRING into the integer 'minpriority', so
+    // minpriority never works and the read writes a pointer-sized value into
+    // an int.  That is why the calendar sits here.
     //
-    // events.csv stores day offsets rather than real dates; the query
-    // turns them into dates around today with dateadd(), so there is
-    // always something visible in the current month.
+    // events.csv stores day offsets; the query turns them into dates around
+    // today with dateadd(), so something is always visible in the current
+    // month.
     // ---------------------------------------------------------------
     cal_title "widget/label"
 	{

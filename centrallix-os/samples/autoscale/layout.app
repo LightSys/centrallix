@@ -2,15 +2,14 @@ $Version=2$
 
 // Autoscale visual test harness -- layout engine page.
 //
-// Everything here is built from plain panes, so nothing on this page depends
-// on any individual widget driver.  If a test here fails, the bug is in
-// apos.c or in the responsive CSS that ht_render.c emits, not in a widget.
+// Everything here is built from plain panes, so nothing depends on an
+// individual widget driver.  A failure here is a bug in apos.c or in the
+// responsive CSS that ht_render.c emits.
 //
 // The thresholds probed below come from centrallix/include/apos.h:
-//   APOS_MINSPACE 20  -- a gap of 20px or less between two widgets is a
-//                        "spacer" and is pinned at flex 0, so it must NOT
-//                        grow when the window grows.
-//   APOS_MINWIDTH 30  -- the smallest width a widget is allowed to shrink to.
+//   APOS_MINSPACE 20  -- a gap of 20px or less is a "spacer", pinned at
+//                        flex 0, so it must NOT grow with the window.
+//   APOS_MINWIDTH 30  -- the smallest width a widget may shrink to.
 layout "widget/page"
     {
     title = "Autoscale Harness -- Layout";
@@ -18,11 +17,9 @@ layout "widget/page"
     bgcolor = "#c8c8c8";
     textcolor = "black";
 
-    // The geometry the server was told to lay this page out at.  This
-    // comes from the URL rather than from the page widget, because
-    // runserver() expressions are evaluated while the widget tree is
-    // still being parsed -- before wgtrVerify() runs the layout -- and
-    // they cannot reference another widget in any case.
+    // The geometry the server was told to lay this page out at, read from
+    // the URL: runserver() expressions are evaluated as the widget tree is
+    // parsed, before the layout runs, and cannot reference another widget.
     cx__geom "widget/parameter" { type=string; }
 
     navbar "widget/component"
@@ -33,15 +30,9 @@ layout "widget/page"
 	page_file="layout.app";
 	}
 
-    // Server render geometry.  Every page carries this same note in the
-    // same place: the strip to the right of the nav component.
-    //
-    // ':layout:width' and ':layout:height' are the page's COMPUTED
-    // size, which is the geometry the server actually laid this page out
-    // at.  cx__geom is stripped from the address bar once the page loads,
-    // so this note is the only way to see which size a page was rendered
-    // at after the fact.  It does NOT track window resizing -- that is the
-    // point: compare it against the current window size.
+    // Server render geometry: the page's computed size, which is what the
+    // server laid this page out at.  It does not track window resizing, so
+    // compare it against the current window size.
     geom_note "widget/label"
 	{
 	x=700; y=6; width=280; height=18;
@@ -64,10 +55,9 @@ layout "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // Equal grid.  Twelve identical cells with identical gaps.  Under
-    // correct scaling every cell stays the same size as every other
-    // cell and every gap stays equal.  Uneven cells are the single
-    // clearest symptom of a distribution bug in aposSpaceOutLines().
+    // Equal grid.  Twelve identical cells with identical gaps.  Every cell
+    // and every gap should stay equal; uneven cells are the clearest
+    // symptom of a distribution bug in aposSpaceOutLines().
     // ---------------------------------------------------------------
     grid_title "widget/label"
 	{
@@ -96,12 +86,11 @@ layout "widget/page"
 
     // ---------------------------------------------------------------
     // Flex ladder.  Eight bars, identical at the design size, differing
-    // only in fl_width.  The gaps between them are 8px, which is under
-    // APOS_MINSPACE, so the gaps stay fixed and all the extra width goes
-    // into the bars themselves.
+    // only in fl_width.  The 8px gaps are under APOS_MINSPACE, so they stay
+    // fixed and all the extra width goes into the bars.
     //
-    // Widen the window: growth must increase strictly left to right.
-    // The leftmost bar (fl_width=0) must never change width at all.
+    // Widen the window: growth must increase strictly left to right, and
+    // the leftmost bar (fl_width=0) must never change width.
     // ---------------------------------------------------------------
     ladder_title "widget/label"
 	{
@@ -134,13 +123,11 @@ layout "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // Spacer threshold.  Six pairs of identical blocks whose only
-    // difference is the gap between them: 10, 19, 20, 21, 30 and 40px.
-    //
-    // Gaps of 20 or less are spacers and must stay exactly the same
-    // width forever.  The 21px gap is the first one allowed to grow.
-    // Watch the 20 and 21 pairs side by side as you widen the window:
-    // they should visibly diverge, and nothing at or below 20 should move.
+    // Spacer threshold.  Six pairs of identical blocks differing only in
+    // the gap between them: 10, 19, 20, 21, 30 and 40px.  Gaps of 20 or
+    // less are spacers and must never change width; 21px is the first gap
+    // allowed to grow.  Widen the window and the 20 and 21 pairs should
+    // visibly diverge, with nothing at or below 20 moving.
     // ---------------------------------------------------------------
     spacer_title "widget/label"
 	{
@@ -166,10 +153,10 @@ layout "widget/page"
 	// gap 19
 	sp_a19 "widget/pane" { x=74;  y=32; width=24; height=88; style=flat; bgcolor="#3060a0"; }
 	sp_b19 "widget/pane" { x=117; y=32; width=24; height=88; style=flat; bgcolor="#3060a0"; }
-	// gap 20 -- last non-growing gap
+	// gap 20
 	sp_a20 "widget/pane" { x=149; y=32; width=24; height=88; style=flat; bgcolor="#3060a0"; }
 	sp_b20 "widget/pane" { x=193; y=32; width=24; height=88; style=flat; bgcolor="#3060a0"; }
-	// gap 21 -- first growing gap
+	// gap 21
 	sp_a21 "widget/pane" { x=225; y=32; width=24; height=88; style=flat; bgcolor="#a03030"; }
 	sp_b21 "widget/pane" { x=270; y=32; width=24; height=88; style=flat; bgcolor="#a03030"; }
 	// gap 30
@@ -189,8 +176,8 @@ layout "widget/page"
 
     // ---------------------------------------------------------------
     // Minimum width.  Blocks narrower than, at, and above APOS_MINWIDTH
-    // (30px).  Shrink the window as far as it will go: nothing here
-    // should collapse to zero width or overlap its neighbour.
+    // (30px).  Shrink the window as far as it goes: nothing should
+    // collapse to zero width or overlap its neighbour.
     // ---------------------------------------------------------------
     minw_title "widget/label"
 	{
@@ -226,9 +213,8 @@ layout "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // The automatic layout containers.  These position their own
-    // children instead of using x/y, so they scale by a different code
-    // path than everything above.
+    // The automatic layout containers.  These position their own children,
+    // so they scale by a different code path than everything above.
     // ---------------------------------------------------------------
     hbox_title "widget/label"
 	{
@@ -295,8 +281,8 @@ layout "widget/page"
 	    al1 "widget/pane" { height=32; style=flat; bgcolor="#5090c0"; }
 	    al2 "widget/pane" { height=32; style=flat; bgcolor="#5090c0"; }
 
-	    // Reserves empty space; never rendered itself.  The visible
-	    // gap here should stay proportional to the others.
+	    // Reserves empty space; the gap should stay proportional to the
+	    // others.
 	    al_gap "widget/autolayoutspacer" { height=28; }
 
 	    al3 "widget/pane" { height=32; style=flat; bgcolor="#8060c0"; }
