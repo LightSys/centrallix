@@ -153,9 +153,9 @@ index "widget/page"
 	e_bot "widget/pane"
 	    { x=157; y=598; width=14; height=10; style=flat; bgcolor="#ffffff"; fl_width=0; fl_height=0; }
 	e_lft "widget/pane"
-	    { x=0;   y=299; width=10; height=14; style=flat; bgcolor="#ffffff"; fl_width=0; fl_height=0; }
+	    { x=0;   y=297; width=10; height=14; style=flat; bgcolor="#ffffff"; fl_width=0; fl_height=0; }
 	e_rgt "widget/pane"
-	    { x=318; y=299; width=10; height=14; style=flat; bgcolor="#ffffff"; fl_width=0; fl_height=0; }
+	    { x=318; y=297; width=10; height=14; style=flat; bgcolor="#ffffff"; fl_width=0; fl_height=0; }
 
 	// Dead centre, on top of the cross.
 	centre "widget/pane"
