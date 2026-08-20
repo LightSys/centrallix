@@ -2378,7 +2378,7 @@ wgtrGetHtmlContainer(pWgtrNode widget)
 	if (UNLIKELY(widget == NULL)) return NULL;
     
 	pWgtrNode parent = widget->Parent;
-	while (parent != NULL && parent->Parent != NULL && !(parent->Flags & WGTR_F_HTML_CONTAINER))
+	while (parent != NULL && parent->Parent != NULL && !(parent->Flags & WGTR_F_VISUAL_CONTAINER))
 	    parent = parent->Parent;
 
     return parent;

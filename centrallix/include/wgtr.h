@@ -54,7 +54,7 @@
 #define	WGTR_F_FLHEIGHTSET         (1 <<  8) /** fl_height came from the structure file; do not recompute it **/
 #define	WGTR_F_CENTEREDX           (1 <<  9) /** a floating widget the layout centered horizontally **/
 #define	WGTR_F_CENTEREDY           (1 << 10) /** a floating widget the layout centered vertically **/
-#define	WGTR_F_HTML_CONTAINER      (1 << 11) /** the widget will emit an html container **/
+#define	WGTR_F_VISUAL_CONTAINER    (1 << 11) /** the widget will emit an visual container **/
 
 #define WGTR_PF_NONE               (0 <<  0) /** value for no flags. **/
 #define WGTR_PF_NOTEMPLATE         (1 <<  0) /** Don't handle templates on this wgtr Parse operation **/

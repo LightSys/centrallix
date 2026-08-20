@@ -64,7 +64,7 @@ wgtwinNew(pWgtrNode node)
     int title_bar_height, main_top_width, main_side_width;
     char* ptr;
 
-	node->Flags |= WGTR_F_CONTAINER | WGTR_F_FLOATING | WGTR_F_HTML_CONTAINER;
+	node->Flags |= WGTR_F_CONTAINER | WGTR_F_FLOATING | WGTR_F_VISUAL_CONTAINER;
 	if(node->fl_width < 0) node->fl_width = 100;
 	if(node->fl_height < 0) node->fl_height = 100;
 	

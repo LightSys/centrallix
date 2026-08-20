@@ -60,7 +60,7 @@ wgthtmlVerify(pWgtrVerifySession s)
     Static = ((val.String == NULL) || !strcmp(val.String, "static"));
 
     /** Only a dynamic html widget wraps its children (in #htNpane). **/
-    if (!Static) s->CurrWidget->Flags |= WGTR_F_HTML_CONTAINER;
+    if (!Static) s->CurrWidget->Flags |= WGTR_F_VISUAL_CONTAINER;
     
     if(s->CurrWidget->fl_width < 0)
         {

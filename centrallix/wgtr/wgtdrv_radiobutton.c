@@ -59,7 +59,7 @@ int
 wgtrbNew(pWgtrNode node)
     {   
 	if (!strcmp(node->Type, "widget/radiobuttonpanel"))
-	    node->Flags |= WGTR_F_HTML_CONTAINER;
+	    node->Flags |= WGTR_F_VISUAL_CONTAINER;
 	if(node->fl_width < 0) node->fl_width = 1;
 	if(node->fl_height < 0) node->fl_height = 1;
 	

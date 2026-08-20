@@ -469,7 +469,7 @@ wgtalNew(pWgtrNode node)
 	    }
 	else
 	    {
-	    node->Flags |= WGTR_F_CONTAINER | WGTR_F_HTML_CONTAINER;
+	    node->Flags |= WGTR_F_CONTAINER | WGTR_F_VISUAL_CONTAINER;
 	    if(node->fl_width < 0) node->fl_width = 100;
 	    if(node->fl_height < 0) node->fl_height = 100;
 	    }
