@@ -1117,44 +1117,45 @@ pAposSection NewSect;
 bool
 aposIsSpacer(pAposLine StartL, pAposLine EndL, int type, int isBorder)
 {
-pWgtrNode SW, EW;
-int i=0, j=0;
-/** @brief The number of widgets starting at the end of this section. **/
-int sCount=xaCount(&(EndL->SWidgets)); 
-/** @brief The number of widgets ending at the start of this section. **/
-int eCount=xaCount(&(StartL->EWidgets));
+	/** Check for a section that's too wide to be a spacer. **/
+	if ((EndL->Loc - StartL->Loc) > APOS_MINSPACE) return false;
 
-    if ((EndL->Loc - StartL->Loc) <= APOS_MINSPACE)	// If section is sufficiently narrow.
-	{
-	    /** Gaps between the border and any widget(s) are spacers. **/
-	    if (isBorder && (sCount || eCount)) return true;
-	    
-	    /** Checks every widget ending on one side to see if a widget
-	    *** starts directly across from it on the other side.
-	    ***/
-	    for(i=0; i<sCount; ++i)
-	        {
-		    SW = (pWgtrNode)(xaGetItem(&(EndL->SWidgets), i));
-		    for(j=0; j<eCount; ++j)
-		        {
-			    EW = (pWgtrNode)(xaGetItem(&(StartL->EWidgets), j));
-			    
-			    /*** If the widgets on either side of the section
-			     *** overlap each other along it, they are adjacent
-			     *** and this is a spacer.  The test has to run both
-			     *** ways round: either widget may be the wider one,
-			     *** and either may contain the other outright.
-			     ***/
-			    if ((type == APOS_ROW) && (EW->x < (SW->x + SW->width)) && (SW->x < (EW->x + EW->width)))
-				return true;
-			    
-			    else if ((type == APOS_COL) && (EW->y < (SW->y + SW->height)) && (SW->y < (EW->y + EW->height)))
-				return true;
-			}
+	/*** Get the number of widgets at the start of the ending line
+	 *** and at the end of the starting line.
+	 ***/
+	const int sCount = xaCount(&(EndL->SWidgets));
+	const int eCount = xaCount(&(StartL->EWidgets));
+
+	/** Gaps between the border and any widget(s) are spacers. **/
+	if (isBorder && (sCount > 0 || eCount > 0)) return true;
+
+	/*** Checks every widget ending on one side to see if a widget
+	 *** starts directly across from it on the other side.
+	 ***/
+	for (int i = 0; i < sCount; i++)
+	    {
+	    const pWgtrNode SW = (pWgtrNode)(xaGetItem(&(EndL->SWidgets), i));
+	    for (int j = 0; j < eCount; j++)
+		{
+		const pWgtrNode EW = (pWgtrNode)(xaGetItem(&(StartL->EWidgets), j));
+
+		/*** If the widgets on either side of the section overlap each
+		 *** other along it, they are adjacent and this is a spacer.
+		 *** The test has to run both ways round: either widget may be
+		 *** the wider one, and either may contain the other outright.
+		 ***/
+		if ((type == APOS_ROW)
+		    && (EW->x < (SW->x + SW->width))
+		    && (SW->x < (EW->x + EW->width)))
+		    return true;
+		if ((type == APOS_COL)
+		    && (EW->y < (SW->y + SW->height))
+		    && (SW->y < (EW->y + EW->height)))
+		    return true;
 		}
-	}
-	
-    return 0;
+	    }
+
+    return false;
 }
 
 /*** Checks for any widgets starting on or crossing a line that are non-flexible
