@@ -41,6 +41,9 @@ nav "widget/component-decl"
     // bakes into a literal string when the connector is written out.
     page_file "widget/parameter" { type=string; default="index.app"; }
 
+    // Get the directory the apps live in, with a trailing slash.
+    dir "widget/parameter" { type=string; default="/samples/autoscale/"; }
+
     bar "widget/pane"
 	{
 	x=0; y=0; width=692; height=52;
@@ -61,7 +64,7 @@ nav "widget/component-decl"
 	    background=runserver(condition(:this:page_file == "index.app", "/sys/images/dkgrey_1x1.png", "/sys/images/grey_gradient.png"));
 	    enabled=runserver(condition(:this:page_file == "index.app", "no", "yes"));
 	    fgcolor1=black; fgcolor2=white; disable_color=white;
-	    go_index_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="index.app"; }
+	    go_index_c "widget/connector" { event=Click; target=page; action=LoadPage; Source=runserver(:this:dir + "index.app"); }
 	    }
 	go_layout "widget/textbutton"
 	    {
@@ -70,7 +73,7 @@ nav "widget/component-decl"
 	    background=runserver(condition(:this:page_file == "layout.app", "/sys/images/dkgrey_1x1.png", "/sys/images/grey_gradient.png"));
 	    enabled=runserver(condition(:this:page_file == "layout.app", "no", "yes"));
 	    fgcolor1=black; fgcolor2=white; disable_color=white;
-	    go_layout_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="layout.app"; }
+	    go_layout_c "widget/connector" { event=Click; target=page; action=LoadPage; Source=runserver(:this:dir + "layout.app"); }
 	    }
 	go_containers "widget/textbutton"
 	    {
@@ -79,7 +82,7 @@ nav "widget/component-decl"
 	    background=runserver(condition(:this:page_file == "containers.app", "/sys/images/dkgrey_1x1.png", "/sys/images/grey_gradient.png"));
 	    enabled=runserver(condition(:this:page_file == "containers.app", "no", "yes"));
 	    fgcolor1=black; fgcolor2=white; disable_color=white;
-	    go_containers_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="containers.app"; }
+	    go_containers_c "widget/connector" { event=Click; target=page; action=LoadPage; Source=runserver(:this:dir + "containers.app"); }
 	    }
 	go_forms "widget/textbutton"
 	    {
@@ -88,7 +91,7 @@ nav "widget/component-decl"
 	    background=runserver(condition(:this:page_file == "forms.app", "/sys/images/dkgrey_1x1.png", "/sys/images/grey_gradient.png"));
 	    enabled=runserver(condition(:this:page_file == "forms.app", "no", "yes"));
 	    fgcolor1=black; fgcolor2=white; disable_color=white;
-	    go_forms_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="forms.app"; }
+	    go_forms_c "widget/connector" { event=Click; target=page; action=LoadPage; Source=runserver(:this:dir + "forms.app"); }
 	    }
 	go_data "widget/textbutton"
 	    {
@@ -97,7 +100,7 @@ nav "widget/component-decl"
 	    background=runserver(condition(:this:page_file == "data.app", "/sys/images/dkgrey_1x1.png", "/sys/images/grey_gradient.png"));
 	    enabled=runserver(condition(:this:page_file == "data.app", "no", "yes"));
 	    fgcolor1=black; fgcolor2=white; disable_color=white;
-	    go_data_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="data.app"; }
+	    go_data_c "widget/connector" { event=Click; target=page; action=LoadPage; Source=runserver(:this:dir + "data.app"); }
 	    }
 	go_misc "widget/textbutton"
 	    {
@@ -106,7 +109,7 @@ nav "widget/component-decl"
 	    background=runserver(condition(:this:page_file == "misc.app", "/sys/images/dkgrey_1x1.png", "/sys/images/grey_gradient.png"));
 	    enabled=runserver(condition(:this:page_file == "misc.app", "no", "yes"));
 	    fgcolor1=black; fgcolor2=white; disable_color=white;
-	    go_misc_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="misc.app"; }
+	    go_misc_c "widget/connector" { event=Click; target=page; action=LoadPage; Source=runserver(:this:dir + "misc.app"); }
 	    }
 
 	// Legacy / low-use widgets are quarantined on their own page so a
@@ -118,7 +121,7 @@ nav "widget/component-decl"
 	    background=runserver(condition(:this:page_file == "legacy.app", "/sys/images/dkgrey_1x1.png", "/sys/images/grey_gradient.png"));
 	    enabled=runserver(condition(:this:page_file == "legacy.app", "no", "yes"));
 	    fgcolor1=black; fgcolor2=white; disable_color=white;
-	    go_legacy_c "widget/connector" { event=Click; target=page; action=LoadPage; Source="legacy.app"; }
+	    go_legacy_c "widget/connector" { event=Click; target=page; action=LoadPage; Source=runserver(:this:dir + "legacy.app"); }
 	    }
 
 	// ---- row 2: server-side render geometry ----
@@ -137,7 +140,7 @@ nav "widget/component-decl"
 	    geom_browser_c "widget/connector"
 		{
 		event=Click; target=page; action=LoadPage;
-		Source=runserver(:this:page_file);
+		Source=runserver(:this:dir + :this:page_file);
 		}
 	    }
 	geom_design "widget/textbutton"
@@ -148,7 +151,7 @@ nav "widget/component-decl"
 	    geom_design_c "widget/connector"
 		{
 		event=Click; target=page; action=LoadPage;
-		Source=runserver(:this:page_file + "?cx__geom=design");
+		Source=runserver(:this:dir + :this:page_file + "?cx__geom=design");
 		}
 	    }
 	geom_640 "widget/textbutton"
@@ -159,7 +162,7 @@ nav "widget/component-decl"
 	    geom_640_c "widget/connector"
 		{
 		event=Click; target=page; action=LoadPage;
-		Source=runserver(:this:page_file + "?cx__geom=028001e0000700100010");
+		Source=runserver(:this:dir + :this:page_file + "?cx__geom=028001e0000700100010");
 		}
 	    }
 	geom_800 "widget/textbutton"
@@ -170,7 +173,7 @@ nav "widget/component-decl"
 	    geom_800_c "widget/connector"
 		{
 		event=Click; target=page; action=LoadPage;
-		Source=runserver(:this:page_file + "?cx__geom=03200258000700100010");
+		Source=runserver(:this:dir + :this:page_file + "?cx__geom=03200258000700100010");
 		}
 	    }
 	geom_1024 "widget/textbutton"
@@ -181,7 +184,7 @@ nav "widget/component-decl"
 	    geom_1024_c "widget/connector"
 		{
 		event=Click; target=page; action=LoadPage;
-		Source=runserver(:this:page_file + "?cx__geom=04000300000700100010");
+		Source=runserver(:this:dir + :this:page_file + "?cx__geom=04000300000700100010");
 		}
 	    }
 	geom_1280 "widget/textbutton"
@@ -192,7 +195,7 @@ nav "widget/component-decl"
 	    geom_1280_c "widget/connector"
 		{
 		event=Click; target=page; action=LoadPage;
-		Source=runserver(:this:page_file + "?cx__geom=05000400000700100010");
+		Source=runserver(:this:dir + :this:page_file + "?cx__geom=05000400000700100010");
 		}
 	    }
 	geom_1920 "widget/textbutton"
@@ -203,7 +206,7 @@ nav "widget/component-decl"
 	    geom_1920_c "widget/connector"
 		{
 		event=Click; target=page; action=LoadPage;
-		Source=runserver(:this:page_file + "?cx__geom=07800438000700100010");
+		Source=runserver(:this:dir + :this:page_file + "?cx__geom=07800438000700100010");
 		}
 	    }
 
