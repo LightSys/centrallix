@@ -381,20 +381,6 @@ int ht_get_parent_h__INTERNAL(pWgtrNode widget);
  ***/
 #define ht_get_fl_h(widget) ((widget)->fl_scale_h)
 
-/*** @brief A shortcut function to get the flexibility when writing the
- ***        LEFT CSS attribute.
- *** @param widget The widget to be queried.
- *** @returns The flexibility of the widget in the left direction.
- ***/
-#define ht_get_fl_l ht_get_fl_x
-
-/*** @brief A shortcut function to get the flexibility when writing the
- ***        TOP CSS attribute.
- *** @param widget The widget to be queried.
- *** @returns The flexibility of the widget in the top direction.
- ***/
-#define ht_get_fl_t ht_get_fl_y
-
 /** ====[ Macros for being lazy ]==== **/
 
 #define ht_flex_x(x, widget) ht_flex(x, ht_get_parent_w(widget), ht_get_fl_x(widget))
