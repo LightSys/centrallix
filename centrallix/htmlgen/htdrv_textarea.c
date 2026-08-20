@@ -196,11 +196,11 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 		"outline:none; "
 		"font-family:inherit; "
 		"font-size:inherit; "
-	    "'>\n",
+	    "'></textarea>\n",
 	    (max_chars > 0), max_chars
 	) != 0)
 	    {
-	    mssError(0, "HTTX", "Failed to write HTML text area opening tag.");
+	    mssError(0, "HTTX", "Failed to write HTML textarea tags.");
 	    goto err;
 	    }
 
@@ -208,9 +208,9 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto err;
 
 	/** Write HTML to close containers. **/
-	if (htrAddBodyItem(s, "</textarea></div>\n") != 0)
+	if (htrAddBodyItem(s, "</div>") != 0)
 	    {
-	    mssError(0, "HTTX", "Failed to write HTML closing tags.");
+	    mssError(0, "HTTX", "Failed to write HTML container closing tags.");
 	    goto err;
 	    }
 
