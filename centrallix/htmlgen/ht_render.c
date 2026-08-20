@@ -3077,7 +3077,7 @@ htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
     {
     va_list va;
     char buf[256];
-    int rval = -1, tmp;
+    int rval = -1;
     pQPSession error_session = NULL;
     
 	/** Create a pQPSession to track errors from qpfPrintf. **/
@@ -3086,19 +3086,18 @@ htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
 	
 	/** Process the provided format. **/
 	va_start(va, fmt);
-	tmp = qpfPrintf_va(error_session, buf, sizeof(buf), fmt, va);
+	const int print_rval = qpfPrintf_va(error_session, buf, sizeof(buf), fmt, va);
 	va_end(va);
-	if (UNLIKELY(tmp < 0))
+	if (UNLIKELY(print_rval < 0))
 	    {
 	    mssError(1, "HTR", "qpfPrintf_va() failed to format: \"%s\"", fmt);
 	    qpfLogErrors(error_session);
-	    rval = tmp;
+	    rval = print_rval;
 	    goto end;
 	    }
 	
 	/** Add the linkage. **/
-	rval = htrAddWgtrCtrLinkage(s, widget, buf);
-	if (tmp < 0) goto end;
+	if (UNLIKELY(htrAddWgtrCtrLinkage(s, widget, buf) < 0)) goto end;
 	
 	/** Success. **/
 	rval = 0;
