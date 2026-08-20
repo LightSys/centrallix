@@ -104,9 +104,9 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	    miltime = 1;
 	    showampm = 0;
 	    }
-	else if (wgtrGetPropertyValue(tree,"ampm",DATA_T_STRING,POD(&ptr)) == 0 && (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")))
+	else
 	    {
-	    showampm = 0;
+	    showampm = htrGetBoolean(tree, "ampm", 1);
 	    }
 
 	/** Get text color **/
@@ -116,7 +116,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	   strcpy(fgcolor1,"black");
 
 	/* Shadowed text? */
-	if (wgtrGetPropertyValue(tree,"shadowed",DATA_T_STRING,POD(&ptr)) == 0 && (!strcasecmp(ptr,"true") || !strcasecmp(ptr,"yes")))
+	if (htrGetBoolean(tree, "shadowed", 0))
 	    {
 	    shadowed = 1;
 	    if (wgtrGetPropertyValue(tree,"fgcolor2",DATA_T_STRING,POD(&ptr)) == 0)
@@ -134,16 +134,14 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Bold text? **/
-	if (wgtrGetPropertyValue(tree,"bold",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"true"))
-	    bold = 1;
+	bold = htrGetBoolean(tree, "bold", 0);
 
 	/** Get text size **/
 	if (wgtrGetPropertyValue(tree,"size",DATA_T_INTEGER,POD(&ptr)) == 0)
 	    size = (intptr_t)ptr;
 
 	/** Show Seconds **/
-	if (wgtrGetPropertyValue(tree,"seconds",DATA_T_STRING,POD(&ptr)) == 0 && (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")))
-	    showsecs = 0;
+	showsecs = htrGetBoolean(tree, "seconds", 1);
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;

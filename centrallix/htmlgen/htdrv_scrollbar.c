@@ -162,10 +162,7 @@ htsbRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Marked not visible? **/
-	if (wgtrGetPropertyValue(tree,"visible",DATA_T_STRING,POD(&ptr)) == 0)
-	    {
-	    if (!strcmp(ptr,"false")) visible = 0;
-	    }
+	visible = htrGetBoolean(tree, "visible", 1);
 
 	/** Ok, write the style header items. **/
 	if (htrAddStylesheetItem_va(s,

@@ -129,10 +129,9 @@ htibtnRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    tooltip=nmSysStrdup("");
 
-	if (wgtrGetPropertyType(tree,"enabled") == DATA_T_STRING && wgtrGetPropertyValue(tree,"enabled",DATA_T_STRING,POD(&ptr)) == 0 && ptr)
-	    {
-	    if (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")) is_enabled = 0;
-	    }
+	/** Enabled?  An expression is handled further down. **/
+	if (wgtrGetPropertyType(tree,"enabled") != DATA_T_CODE)
+	    is_enabled = htrGetBoolean(tree, "enabled", 1);
 
 	button_repeat = htrGetBoolean(tree, "repeat", 0);
 

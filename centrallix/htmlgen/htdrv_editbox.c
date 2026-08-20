@@ -97,7 +97,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"max_chars",DATA_T_INTEGER,POD(&max_chars)) != 0) max_chars = -1;
 
 	/** Readonly flag **/
-	if (wgtrGetPropertyValue(tree,"readonly",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"yes")) is_readonly = 1;
+	is_readonly = htrGetBoolean(tree, "readonly", 0);
 
 	/** Background color/image **/
 	strcpy(main_bg,"");

@@ -106,10 +106,9 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h = -1;
 	if (tree->Flags & WGTR_F_AUTOHEIGHT) h = -1; /* let htdrv_textbutton.js fit the text */
-	if (wgtrGetPropertyType(tree,"enabled") == DATA_T_STRING && wgtrGetPropertyValue(tree,"enabled",DATA_T_STRING,POD(&ptr)) == 0 && ptr)
-	    {
-	    if (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")) is_enabled = 0;
-	    }
+	/** Enabled?  An expression is handled further down. **/
+	if (wgtrGetPropertyType(tree,"enabled") != DATA_T_CODE)
+	    is_enabled = htrGetBoolean(tree, "enabled", 1);
 
 	/** Border radius, color, and style.  For style, we only support outset,
 	 ** solid, and none here.
@@ -177,7 +176,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Threestate button or twostate? **/
-	if (wgtrGetPropertyValue(tree,"tristate",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"no")) is_ts = 0;
+	is_ts = htrGetBoolean(tree, "tristate", 1);
 
 	/** Get normal, point, and click images **/
 	ptr = "-";

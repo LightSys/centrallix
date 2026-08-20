@@ -102,10 +102,9 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h = -1;
 
-	if (wgtrGetPropertyType(tree,"enabled") == DATA_T_STRING && wgtrGetPropertyValue(tree,"enabled",DATA_T_STRING,POD(&ptr)) == 0 && ptr)
-	    {
-	    if (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")) is_enabled = 0;
-	    }
+	/** Enabled?  An expression is handled further down. **/
+	if (wgtrGetPropertyType(tree,"enabled") != DATA_T_CODE)
+	    is_enabled = htrGetBoolean(tree, "enabled", 1);
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto err;
@@ -137,7 +136,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
             strcpy(d_img, n_img);
 	
 		/** Threestate button or twostate? **/
-		if (wgtrGetPropertyValue(tree,"tristate",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"no")) is_ts = 0;
+		is_ts = htrGetBoolean(tree, "tristate", 1);
 
 		if(strcmp(type,"image"))
 		    if (wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) != 0)

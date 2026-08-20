@@ -169,16 +169,14 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	visible = htrGetBoolean(tree, "visible", 1);
 
 	/** No titlebar? **/
-	if (wgtrGetPropertyValue(tree,"titlebar",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"no"))
-	    has_titlebar = 0;
+	has_titlebar = htrGetBoolean(tree, "titlebar", 1);
 
 	/** Dialog or window style? **/
 	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"dialog"))
 	    is_dialog_style = 1;
 
 	/** Graphical window shading? **/
-	if (wgtrGetPropertyValue(tree,"gshade",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"true"))
-	    gshade = 1;
+	gshade = htrGetBoolean(tree, "gshade", 0);
 
 	/** Window icon? **/
 	if (wgtrGetPropertyValue(tree, "icon", DATA_T_STRING, POD(&ptr)) == 0)
