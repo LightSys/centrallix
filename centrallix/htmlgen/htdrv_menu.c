@@ -95,7 +95,7 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	/** checkbox **/
 	if ( (rval=htrGetBoolean(menu_item, "checked", -1)) >= 0)
 	    {
-	    if (htrAddBodyItem_va(s, "<td valign=\"middle\"><img id=\"cb_%POS\" src=\"/sys/images/checkbox_%STR&HTE.gif\"></td>", mcnt, rval?"checked":"unchecked") != 0) goto error;
+	    if (htrAddBodyItem_va(s, "<td valign=\"middle\"><img id=\"cb_%STR&SYM%POS\" src=\"/sys/images/checkbox_%STR&HTE.gif\"></td>", nptr, mcnt, rval?"checked":"unchecked") != 0) goto error;
 	    xsConcatQPrintf(xs, ", check:%STR", rval?"true":"false");
 	    }
 	else

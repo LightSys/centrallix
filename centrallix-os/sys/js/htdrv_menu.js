@@ -416,6 +416,7 @@ function mn_init(param)
     // Store data to determine cell sizes
     var imgs = pg_images(menu.clayer);
     var nmstr = 'xy_' + param.name;
+    var cbstr = 'cb_' + param.name;
     menu.coords = new Array();
     menu.ckboxs = new Array();
     var search;
@@ -431,9 +432,9 @@ function mn_init(param)
 	    menu.coords[index].x = left;
 	    menu.coords[index].y = top;
 	    }
-	else if (id.slice(0, 3) === "cb_")
+	else if (id.slice(0, cbstr.length) === cbstr)
 	    {
-	    menu.ckboxs[parseInt(id.slice(3, 3 + 255))] = img;
+	    menu.ckboxs[parseInt(id.slice(cbstr.length))] = img;
 	    }
 	}
     menu.items = new Array();
