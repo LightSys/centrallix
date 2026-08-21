@@ -45,13 +45,13 @@ function mn_additem(param)
 	item.width = Math.abs(this.coords[id].x - this.coords[id+1].x)+1;
 	item.height = this.act_h - 6;
 	item.x = Math.min(this.coords[id].x, this.coords[id+1].x);
-	item.y = cx__capabilities.Dom0NS?3:2;
+	item.y = 2;
 	}
     else
 	{
-	item.width = this.act_w - 6 + (cx__capabilities.Dom0NS?0:2);
+	item.width = this.act_w - 6 + 2;
 	item.height = Math.abs(this.coords[id].y - this.coords[id+1].y)+1;
-	item.x = cx__capabilities.Dom0NS?3:2;
+	item.x = 2;
 	item.y = this.coords[id].y - 1;
 	}
     this.items.push(item);
@@ -396,20 +396,16 @@ function mn_init(param)
     menu.cur_highlight = null;
 
     // Set up sizing.
-    if (cx__capabilities.CSS2)
+    if (menu.scrollHeight == 0)
 	{
-	if (menu.scrollHeight == 0)
-	    {
-	    if (param.h === -1) pg_set_style(menu, 'height', menu.childNodes[0].scrollHeight);
-	    if (param.w === -1) pg_set_style(menu, 'width', menu.childNodes[0].scrollWidth);
-	    }
-	else
-	    {
-	    if (param.h === -1) pg_set_style(menu, 'height', menu.scrollHeight);
-	    if (param.w === -1) pg_set_style(menu, 'width', menu.scrollWidth);
-	    }
+	if (param.h === -1) pg_set_style(menu, 'height', menu.childNodes[0].scrollHeight);
+	if (param.w === -1) pg_set_style(menu, 'width', menu.childNodes[0].scrollWidth);
 	}
-    disableClippingCSS(menu);
+    else
+	{
+	if (param.h === -1) pg_set_style(menu, 'height', menu.scrollHeight);
+	if (param.w === -1) pg_set_style(menu, 'width', menu.scrollWidth);
+	}
     menu.act_w = getClipWidth(menu.clayer);
     menu.act_h = getClipHeight(menu.clayer);
     if ($(menu).css('visibility') == 'hidden' && (!menu.__WgtrParent.style || $(menu.__WgtrParent).css('visibility') == 'inherit'))

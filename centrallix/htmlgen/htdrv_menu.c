@@ -349,8 +349,8 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		"cursor:default; "
 		"left:0px; "
 		"top:0px; "
-		"height:100%%;"
-		"width:100%%;"
+		"height:100%%; "
+		"width:100%%; "
 		"z-index:%POS; "
 	    "}\n",
 	    id,
@@ -455,7 +455,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	xs = checkPtr(xsNew());
 	if (xs == NULL) goto end;
 	mcnt=0;
-	htrAddBodyItem(s,"<table cellspacing=\"1\" cellpadding=\"0\" border=\"0\" width=\"100%%\"><tr><td align=\"left\" valign=\"middle\">\n");
+	htrAddBodyItem(s,"<table cellspacing=\"1\" cellpadding=\"0\" border=\"0\" width=\"100%\"><tr><td align=\"left\" valign=\"middle\">\n");
 	htrAddBodyItem_va(s,"<table cellspacing=\"2\" cellpadding=\"0\" border=\"0\">%[<tr>%]\n", is_horizontal);
 	cnt = xaCount(&(menu->Children));
 	for (i=0;i<cnt;i++)
