@@ -94,7 +94,6 @@ nht_i_AllocSession(char* usrname, int using_tls)
 	if (!usr)
 	    {
 	    usr = (pNhtUser)nmMalloc(sizeof(NhtUser));
-	    usr->SessionCnt = 0;
 	    xaInit(&usr->Sessions, 16);
 	    objCurrentDate(&(usr->FirstActivity));
 	    objCurrentDate(&(usr->LastActivity));
@@ -102,10 +101,10 @@ nht_i_AllocSession(char* usrname, int using_tls)
 	    xhAdd(&(NHT.UsersByName), usr->Username, (void*)(usr));
 	    xaAddItem(&NHT.UsersList, (void*)usr);
 	    }
-	usr->SessionCnt++;
-
-	/** Too many sessions already for this user? **/
-	if (usr->SessionCnt >= NHT.UserSessionLimit)
+	/** Too many sessions already for this user?  The new session is not
+	 ** yet in the list, so account for it here.
+	 **/
+	if (xaCount(&(usr->Sessions)) + 1 >= NHT.UserSessionLimit)
 	    {
 	    nht_i_DiscardASession(usr);
 	    }
@@ -114,18 +113,13 @@ nht_i_AllocSession(char* usrname, int using_tls)
 	 ** session is published, so that a failure here needs no unwinding.
 	 **/
 	nsess = (pNhtSessionData)nmMalloc(sizeof(NhtSessionData));
-	if (!nsess)
-	    {
-	    usr->SessionCnt--;
-	    return NULL;
-	    }
+	if (!nsess) return NULL;
 	memset(nsess, 0, sizeof(NhtSessionData));
 	nsess->ObjSess = objOpenSession("/");
 	if (!nsess->ObjSess)
 	    {
 	    mssError(0,"NHT","Could not open OSML session for user [%s]", usrname);
 	    nmFree(nsess, sizeof(NhtSessionData));
-	    usr->SessionCnt--;
 	    return NULL;
 	    }
 	strtcpy(nsess->Username, mssUserName(), sizeof(nsess->Username));
@@ -195,8 +189,7 @@ nht_i_DelistSess(pNhtSessionData sess)
 	    return 0;
 	sess->Closed = 1;
 
-	/** Decrement user session count **/
-	sess->User->SessionCnt--;
+	/** Remove the session from the user's session list. **/
 	xaRemoveItem(&(sess->User->Sessions), xaFindItem(&(sess->User->Sessions), (void*)sess));
 
 	/** Remove the session from the global session lists. **/

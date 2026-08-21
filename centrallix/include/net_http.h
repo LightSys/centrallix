@@ -141,7 +141,6 @@ typedef struct _NCM
 typedef struct
     {
     char		Username[32];
-    int			SessionCnt;
     DateTime		FirstActivity;
     DateTime		LastActivity;
     XArray		Sessions;

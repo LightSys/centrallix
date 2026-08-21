@@ -128,7 +128,7 @@ nht_i_UsersObjList(void* ctx)
 	for(i=0;i<xaCount(&NHT.UsersList);i++) 
 	    {
 	    usr = (pNhtUser)xaGetItem(&NHT.UsersList, i);
-	    if (usr->SessionCnt > 0)
+	    if (xaCount(&(usr->Sessions)) > 0)
 		xaAddItem(xa, usr->Username);
 	    }
 
@@ -160,9 +160,9 @@ nht_i_UsersAttrValue(void* ctx, char* objname, char* attrname, void* val_v)
 
 	if (!objname || !attrname) return -1;
 	usr = (pNhtUser)xhLookup(&(NHT.UsersByName), objname);
-	if (!usr || usr->SessionCnt == 0) return -1;
+	if (!usr || xaCount(&(usr->Sessions)) == 0) return -1;
 	if (!strcmp(attrname, "session_cnt"))
-	    val->Integer = usr->SessionCnt;
+	    val->Integer = xaCount(&(usr->Sessions));
 	else if (!strcmp(attrname, "name"))
 	    val->String = usr->Username;
 	else if (!strcmp(attrname, "last_activity"))
