@@ -53,7 +53,12 @@ static struct
 int
 htmenu_internal_AddDot(pHtSession s, int mcnt, char* nptr, int is_horizontal, int row_height)
     {
-    htrAddBodyItem_va(s,"<td valign=\"%STR&HTE\"><img align=\"%STR&HTE\" id=\"xy_%STR&SYM%POS\" width=\"1\" height=\"%POS\" src=\"/sys/images/trans_1.gif\"></td>", ((mcnt&1) || !is_horizontal)?"top":"bottom", ((mcnt&1) || !is_horizontal)?"top":"bottom", nptr, mcnt, ((mcnt&1) || !is_horizontal)?(row_height?row_height:1):1);
+	if (htrAddBodyItem_va(s,"<td valign=\"%STR&HTE\"><img align=\"%STR&HTE\" id=\"xy_%STR&SYM%POS\" width=\"1\" height=\"%POS\" src=\"/sys/images/trans_1.gif\"></td>", ((mcnt&1) || !is_horizontal)?"top":"bottom", ((mcnt&1) || !is_horizontal)?"top":"bottom", nptr, mcnt, ((mcnt&1) || !is_horizontal)?(row_height?row_height:1):1) != 0)
+	    {
+	    mssError(0, "HTMENU", "Failed to write position tracking image for item %d.", mcnt);
+	    return -1;
+	    }
+
     return 0;
     }
 
@@ -67,39 +72,47 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	xsPrintf(xs, "enabled:1, onright:%d", is_onright);
 
 	if (!is_horizontal)
-	    htrAddBodyItem(s, "<tr>");
+	    {
+	    if (htrAddBodyItem(s, "<tr>") != 0) goto error;
+	    }
 
 	/** image used to track position **/
-	htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h);
+	if (htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h) != 0) goto error;
 
 	strtcpy(name, wgtrGetName(menu_item), sizeof(name));
 
 	/** icon **/
 	if (wgtrGetPropertyValue(menu_item,"icon",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    htrAddBodyItem_va(s, "<td valign=\"middle\"><img src=\"%STR&HTE\"></td>", ptr);
+	    if (htrAddBodyItem_va(s, "<td valign=\"middle\"><img src=\"%STR&HTE\"></td>", ptr) != 0) goto error;
 	    xsConcatQPrintf(xs, ", icon:'%STR&JSSTR'", ptr);
 	    }
 	else
-	    htrAddBodyItem(s, "<td>&nbsp;</td>");
+	    {
+	    if (htrAddBodyItem(s, "<td>&nbsp;</td>") != 0) goto error;
+	    }
 
 	/** checkbox **/
 	if ( (rval=htrGetBoolean(menu_item, "checked", -1)) >= 0)
 	    {
-	    htrAddBodyItem_va(s, "<td valign=\"middle\"><img id=\"cb_%POS\" src=\"/sys/images/checkbox_%STR&HTE.gif\"></td>", mcnt, rval?"checked":"unchecked");
+	    if (htrAddBodyItem_va(s, "<td valign=\"middle\"><img id=\"cb_%POS\" src=\"/sys/images/checkbox_%STR&HTE.gif\"></td>", mcnt, rval?"checked":"unchecked") != 0) goto error;
 	    xsConcatQPrintf(xs, ", check:%STR", rval?"true":"false");
 	    }
 	else
-	    htrAddBodyItem(s, "<td></td>");
+	    {
+	    if (htrAddBodyItem(s, "<td></td>") != 0) goto error;
+	    }
 
 	/** Text **/
 	if (wgtrGetPropertyValue(menu_item,"label",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    htrAddBodyItem_va(s, "<td nowrap valign=\"middle\">%STR&HTE</td>", ptr);
+	    if (htrAddBodyItem_va(s, "<td nowrap valign=\"middle\">%STR&HTE</td>", ptr) != 0) goto error;
 	    xsConcatQPrintf(xs, ", label:'%STR&JSSTR'", ptr);
 	    }
 	else
-	    htrAddBodyItem(s, "<td></td>");
+	    {
+	    if (htrAddBodyItem(s, "<td></td>") != 0) goto error;
+	    }
 	if (wgtrGetPropertyValue(menu_item, "value", DATA_T_STRING, POD(&ptr)) == 0)
 	    xsConcatQPrintf(xs, ", value:'%STR&JSSTR'", ptr);
 	else if (wgtrGetPropertyValue(menu_item, "value", DATA_T_INTEGER, POD(&n)) == 0)
@@ -108,13 +121,17 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	/** Submenu arrow **/
 	if (is_submenu && !is_horizontal)
 	    {
-	    htrAddBodyItem(s, "<td valign=\"middle\"><img src=\"/sys/images/menu_arrow.gif\"></td>");
+	    if (htrAddBodyItem(s, "<td valign=\"middle\"><img src=\"/sys/images/menu_arrow.gif\"></td>") != 0) goto error;
 	    }
 	else
-	    htrAddBodyItem(s, "<td>&nbsp;</td>");
+	    {
+	    if (htrAddBodyItem(s, "<td>&nbsp;</td>") != 0) goto error;
+	    }
 
 	if (!is_horizontal)
-	    htrAddBodyItem(s, "</tr>");
+	    {
+	    if (htrAddBodyItem(s, "</tr>") != 0) goto error;
+	    }
 
 	if (is_submenu)
 	    {
@@ -123,20 +140,27 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 
 	if (is_submenu) 
 	    {
-	    htrAddScriptInit_va(s,
+	    if (htrAddScriptInit_va(s,
 		"\twgtrGetNodeRef(ns, '%STR&SYM').AddItem({ %STR });\n",
 		nptr, xs->String
-	    );
+	    ) != 0)
+		goto error;
 	    }
 	else
 	    {
-	    htrAddScriptInit_va(s,
+	    if (htrAddScriptInit_va(s,
 		"\twgtrReplaceNode(wgtrGetNodeRef('%STR&SYM', '%STR&SYM'), wgtrGetNodeRef(ns, '%STR&SYM').AddItem({ %STR }));\n",
 		wgtrGetNamespace(menu_item), name, nptr, xs->String
-	    );
+	    ) != 0)
+		goto error;
 	    }
 
     return 0;
+
+    error:
+	mssError(0, "HTMENU", "Failed to write menu item %d.", mcnt);
+
+    return -1;
     }
 
 
@@ -145,22 +169,29 @@ htmenu_internal_AddSep(pHtSession s, int is_horizontal, int row_h, int mcnt, cha
     {
 
 	if (!is_horizontal)
-	    htrAddBodyItem(s, "<tr>");
+	    {
+	    if (htrAddBodyItem(s, "<tr>") != 0) goto error;
+	    }
 
-	htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h);
+	if (htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h) != 0) goto error;
 
 	/** If vertical, add a separating line.  If horiz, just add some space **/
-	if (is_horizontal)  
+	if (is_horizontal)
 	    {
-	    htrAddBodyItem(s, "<td>&nbsp;&nbsp;&nbsp;</td>");
+	    if (htrAddBodyItem(s, "<td>&nbsp;&nbsp;&nbsp;</td>") != 0) goto error;
 	    }
 	else
 	    {
-	    htrAddBodyItem(s, "<td colspan=\"4\" height=\"4\" background=\"/sys/images/menu_sep.gif\"><img src=\"/sys/images/trans_1.gif\" height=\"4\" width=\"1\"></td></tr>");
+	    if (htrAddBodyItem(s, "<td colspan=\"4\" height=\"4\" background=\"/sys/images/menu_sep.gif\"><img src=\"/sys/images/trans_1.gif\" height=\"4\" width=\"1\"></td></tr>") != 0) goto error;
 	    }
-	htrAddScriptInit_va(s, "\twgtrGetNodeRef(ns, '%STR&SYM').AddItem({ sep:true });\n", nptr);
+	if (htrAddScriptInit_va(s, "\twgtrGetNodeRef(ns, '%STR&SYM').AddItem({ sep:true });\n", nptr) != 0) goto error;
 
     return 0;
+
+    error:
+	mssError(0, "HTMENU", "Failed to write menu separator %d.", mcnt);
+
+    return -1;
     }
 
 
@@ -170,17 +201,24 @@ htmenu_internal_AddTitle(pHtSession s, pWgtrNode menu_title, int is_horizontal, 
     char* ptr;
 
 	if (!is_horizontal)
-	    htrAddBodyItem(s, "<tr>");
+	    {
+	    if (htrAddBodyItem(s, "<tr>") != 0) goto error;
+	    }
 
-	htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h);
+	if (htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h) != 0) goto error;
 
 	if (wgtrGetPropertyValue(menu_title,"label",DATA_T_STRING,POD(&ptr)) != 0)
 	    ptr = "";
 
-	htrAddBodyItem_va(s, "<td colspan=\"4\" align=\"center\"><b>%STR&HTE</b></td></tr>", ptr);
-	htrAddScriptInit_va(s, "\twgtrGetNodeRef(ns, '%STR&SYM').AddItem({ sep:true });\n", nptr);
+	if (htrAddBodyItem_va(s, "<td colspan=\"4\" align=\"center\"><b>%STR&HTE</b></td></tr>", ptr) != 0) goto error;
+	if (htrAddScriptInit_va(s, "\twgtrGetNodeRef(ns, '%STR&SYM').AddItem({ sep:true });\n", nptr) != 0) goto error;
 
     return 0;
+
+    error:
+	mssError(0, "HTMENU", "Failed to write menu title %d.", mcnt);
+
+    return -1;
     }
 
 
@@ -196,19 +234,20 @@ htmenu_internal_CheckAddItem(pHtSession s, pWgtrNode sub_tree, int is_horizontal
 	    is_submenu = !strcmp(ptr,"widget/menu");
 	    if (is_onright ^ !(is_horizontal && htrGetBoolean(sub_tree, "onright", 0) == 1))
 		{
-		htmenu_internal_AddItem(s, sub_tree, is_horizontal, is_popup, is_submenu, 
-			is_onright, row_h, *mcnt, name, xs);
+		if (htmenu_internal_AddItem(s, sub_tree, is_horizontal, is_popup, is_submenu,
+			is_onright, row_h, *mcnt, name, xs) != 0)
+		    return -1;
 		(*mcnt)++;
 		}
 	    }
 	else if (!strcmp(ptr,"widget/menusep"))
 	    {
-	    htmenu_internal_AddSep(s, is_horizontal, row_h, *mcnt, name);
+	    if (htmenu_internal_AddSep(s, is_horizontal, row_h, *mcnt, name) != 0) return -1;
 	    (*mcnt)++;
 	    }
 	else if (!strcmp(ptr,"widget/menutitle"))
 	    {
-	    htmenu_internal_AddTitle(s, sub_tree, is_horizontal, row_h, *mcnt, name);
+	    if (htmenu_internal_AddTitle(s, sub_tree, is_horizontal, row_h, *mcnt, name) != 0) return -1;
 	    (*mcnt)++;
 	    }
 
@@ -455,8 +494,8 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	xs = checkPtr(xsNew());
 	if (xs == NULL) goto end;
 	mcnt=0;
-	htrAddBodyItem(s,"<table cellspacing=\"1\" cellpadding=\"0\" border=\"0\" width=\"100%\"><tr><td align=\"left\" valign=\"middle\">\n");
-	htrAddBodyItem_va(s,"<table cellspacing=\"2\" cellpadding=\"0\" border=\"0\">%[<tr>%]\n", is_horizontal);
+	if (htrAddBodyItem(s,"<table cellspacing=\"1\" cellpadding=\"0\" border=\"0\" width=\"100%\"><tr><td align=\"left\" valign=\"middle\">\n") != 0) goto end;
+	if (htrAddBodyItem_va(s,"<table cellspacing=\"2\" cellpadding=\"0\" border=\"0\">%[<tr>%]\n", is_horizontal) != 0) goto end;
 	cnt = xaCount(&(menu->Children));
 	for (i=0;i<cnt;i++)
 	    {
@@ -467,12 +506,12 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		for(j=0;j<cntj;j++)
 		    {
 		    sub_tree_child = xaGetItem(&(sub_tree->Children), j);
-		    htmenu_internal_CheckAddItem(s, sub_tree_child, is_horizontal, is_popup, 0, row_h, &mcnt, name, xs);
+		    if (htmenu_internal_CheckAddItem(s, sub_tree_child, is_horizontal, is_popup, 0, row_h, &mcnt, name, xs) != 0) goto end;
 		    }
 		}
 	    else
 		{
-		htmenu_internal_CheckAddItem(s, sub_tree, is_horizontal, is_popup, 0, row_h, &mcnt, name, xs);
+		if (htmenu_internal_CheckAddItem(s, sub_tree, is_horizontal, is_popup, 0, row_h, &mcnt, name, xs) != 0) goto end;
 		}
 	    /*wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
 	    if (!strcmp(ptr,"widget/menuitem") || !strcmp(ptr,"widget/menu")) 
@@ -491,19 +530,21 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		}*/
 	    }
 	if (is_horizontal)
-	    htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1);
+	    {
+	    if (htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1) != 0) goto end;
+	    }
 	else
 	    {
-	    htrAddBodyItem(s, "<tr>");
-	    htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1);
-	    htrAddBodyItem(s, "<td colspan=\"4\"></td></tr>");
+	    if (htrAddBodyItem(s, "<tr>") != 0) goto end;
+	    if (htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1) != 0) goto end;
+	    if (htrAddBodyItem(s, "<td colspan=\"4\"></td></tr>") != 0) goto end;
 	    }
 	mcnt++;
-	htrAddBodyItem_va(s,"%[</tr>%]</table></td>", is_horizontal);
+	if (htrAddBodyItem_va(s,"%[</tr>%]</table></td>", is_horizontal) != 0) goto end;
 	if (is_horizontal)
 	    {
-	    htrAddBodyItem(s,"<td align=\"right\" valign=\"middle\">\n");
-	    htrAddBodyItem(s,"<table cellspacing=\"2\" cellpadding=\"0\" border=\"0\"><tr>\n");
+	    if (htrAddBodyItem(s,"<td align=\"right\" valign=\"middle\">\n") != 0) goto end;
+	    if (htrAddBodyItem(s,"<table cellspacing=\"2\" cellpadding=\"0\" border=\"0\"><tr>\n") != 0) goto end;
 	    for (i=0;i<cnt;i++)
 		{
 		sub_tree = xaGetItem(&(menu->Children), i);
@@ -513,12 +554,12 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		    for(j=0;j<cntj;j++)
 			{
 			sub_tree_child = xaGetItem(&(sub_tree->Children), j);
-			htmenu_internal_CheckAddItem(s, sub_tree_child, is_horizontal, is_popup, 1, row_h, &mcnt, name, xs);
+			if (htmenu_internal_CheckAddItem(s, sub_tree_child, is_horizontal, is_popup, 1, row_h, &mcnt, name, xs) != 0) goto end;
 			}
 		    }
 		else
 		    {
-		    htmenu_internal_CheckAddItem(s, sub_tree, is_horizontal, is_popup, 1, row_h, &mcnt, name, xs);
+		    if (htmenu_internal_CheckAddItem(s, sub_tree, is_horizontal, is_popup, 1, row_h, &mcnt, name, xs) != 0) goto end;
 		    }
 		/*wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
 		if (!strcmp(ptr,"widget/menuitem") || !strcmp(ptr,"widget/menu")) 
@@ -536,12 +577,12 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		    mcnt++;
 		    }*/
 		}
-	    htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1);
+	    if (htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1) != 0) goto end;
 	    mcnt++;
-	    htrAddBodyItem(s,"</tr></table></td>\n");
+	    if (htrAddBodyItem(s,"</tr></table></td>\n") != 0) goto end;
 	    }
-	htrAddBodyItem(s,"</tr></table>\n</td></tr>");
-	htrAddBodyItem_va(s,"</table></div><div id=\"mn%POShigh\"></div></div>\n", id);
+	if (htrAddBodyItem(s,"</tr></table>\n</td></tr>") != 0) goto end;
+	if (htrAddBodyItem_va(s,"</table></div><div id=\"mn%POShigh\"></div></div>\n", id) != 0) goto end;
 
 	/** Render children. **/
 	if (htrRenderSubwidgets(s, menu, z + 1) != 0) goto end;
