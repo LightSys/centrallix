@@ -9,6 +9,31 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
+// The menu caches pixel sizes, so it has to re-measure when one changes.
+const mn_resize_observer = new ResizeObserver(e => e.forEach(({ target }) => mn_measure(target)));
+
+// Set the location and size of one item's highlight box.
+function mn_place_item(menu, item)
+    {
+    const start = menu.coords[item.id];
+    const end = menu.coords[item.id + 1];
+
+    if (menu.horiz)
+	{
+	item.x      = Math.min(start.x, end.x);
+	item.y      = 2;
+	item.width  = Math.abs(start.x - end.x) + 1;
+	item.height = menu.act_h - 6;
+	}
+    else
+	{
+	item.x      = 2;
+	item.y      = start.y - 1;
+	item.width  = menu.act_w - 6;
+	item.height = Math.abs(start.y - end.y) + 1;
+	}
+    }
+
 // define a value for a cell in the menu.  This does not physically add
 // the item, just lets us know what its value is.
 function mn_additem(param)
@@ -40,20 +65,10 @@ function mn_additem(param)
 	item.ckbox = this.ckboxs[id];
 	item.value = item.check?1:0;
 	}
-    if (this.horiz)
-	{
-	item.width = Math.abs(this.coords[id].x - this.coords[id+1].x)+1;
-	item.height = this.act_h - 6;
-	item.x = Math.min(this.coords[id].x, this.coords[id+1].x);
-	item.y = 2;
-	}
-    else
-	{
-	item.width = this.act_w - 6 + 2;
-	item.height = Math.abs(this.coords[id].y - this.coords[id+1].y)+1;
-	item.x = 2;
-	item.y = this.coords[id].y - 1;
-	}
+    item.id = id;
+
+    mn_place_item(this, item);
+
     this.items.push(item);
 
     // Events for menu items
@@ -370,6 +385,55 @@ function mn_mousedown(e)
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
+// Read the position of every cell in the menu from its tracking images.  The
+// index in each id is the row htdrv_menu.c drew, so coords is indexed by it
+// rather than filled in the order the images happen to appear.
+function mn_scan_images(menu)
+    {
+    const nmstr = 'xy_' + menu.objname + '_';
+    const cbstr = 'cb_' + menu.objname + '_';
+    const imgs = pg_images(menu.clayer);
+
+    menu.coords = [];
+    menu.ckboxs = [];
+    for (let i = 0; i < imgs.length; i++)
+	{
+	const img = imgs[i], { id } = img;
+	// Number() rejects a tail that is not all digits, so a name that
+	// itself contains the delimiter cannot match the wrong menu.
+	const index = Number(id.slice(nmstr.length));
+	if (id.startsWith(nmstr) && Number.isInteger(index))
+	    {
+	    const { left, top } = $(img).position();
+	    menu.coords[index] = { x: left, y: top };
+	    }
+	else if (id.startsWith(cbstr))
+	    {
+	    menu.ckboxs[Number(id.slice(cbstr.length))] = img;
+	    }
+	}
+    }
+
+// Re-read every size and position the menu caches.  Called at load, and again
+// whenever the menu's flexible geometry resizes it.
+function mn_measure(menu)
+    {
+    // Read the element size (not clip values, they might be stale).
+    menu.act_w = menu.offsetWidth;
+    menu.act_h = menu.offsetHeight;
+    mn_scan_images(menu);
+    for (const item of menu.items) mn_place_item(menu, item);
+
+    // Put an open highlight bar back over its item.  Highlight() is not used
+    // here because it also schedules a submenu popup.
+    const item = menu.cur_highlight;
+    if (item)
+	{
+	resizeTo(menu.hlayer, item.width, item.height);
+	moveTo(menu.hlayer, item.x, item.y);
+	}
+    }
+
 // initialization
 function mn_init(param)
     {
@@ -392,6 +456,7 @@ function mn_init(param)
     menu.spec_h = param.h;
     menu.horiz = param.horiz;
     menu.popup = param.pop;
+    menu.bw = param.bw;
     menu.objname = param.name;
     menu.cur_highlight = null;
 
@@ -407,41 +472,18 @@ function mn_init(param)
 	if (param.h === -1) pg_set_style(menu, 'height', menu.scrollHeight + border);
 	if (param.w === -1) pg_set_style(menu, 'width', menu.scrollWidth + border);
 	}
-    menu.act_w = getClipWidth(menu.clayer);
-    menu.act_h = getClipHeight(menu.clayer);
-    if ($(menu).css('visibility') == 'hidden' && (!menu.__WgtrParent.style || $(menu.__WgtrParent).css('visibility') == 'inherit'))
-	moveTo(menu, 0, -menu.act_h);
-    if (cx__capabilities.CSSBox) menu.act_h += 2;
     htutil_tag_images(menu.clayer, "mn", menu.clayer, menu);
-
-    // Store data to determine cell sizes
-    var imgs = pg_images(menu.clayer);
-    var nmstr = 'xy_' + param.name + '_';
-    var cbstr = 'cb_' + param.name + '_';
-    menu.coords = new Array();
-    menu.ckboxs = new Array();
-    var search;
-    for(var i=0; i<imgs.length; i++)
-	{
-	const img = imgs[i], { id } = img;
-	// Number() rejects a tail that is not all digits, so a name that
-	// itself contains the delimiter cannot match the wrong menu.
-	const index = Number(id.slice(nmstr.length));
-	if (id.startsWith(nmstr) && Number.isInteger(index))
-	    {
-	    const { left, top } = $(img).position();
-	    menu.coords.push({});
-	    menu.coords[index].x = left;
-	    menu.coords[index].y = top;
-	    }
-	else if (id.startsWith(cbstr))
-	    {
-	    menu.ckboxs[Number(id.slice(cbstr.length))] = img;
-	    }
-	}
     menu.items = new Array();
     menu.n_first = 0;
     menu.n_last = 0;
+
+    // Measure the menu, and keep measuring it as its flexible geometry resizes.
+    mn_measure(menu);
+    mn_resize_observer.observe(menu);
+    if ($(menu).css('visibility') == 'hidden'
+	&& (!menu.__WgtrParent.style || $(menu.__WgtrParent).css('visibility') == 'inherit')
+    )
+	moveTo(menu, 0, -menu.act_h);
 
     // Methods
     menu.AddItem = mn_additem;
