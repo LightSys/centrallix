@@ -10,7 +10,7 @@
 #define GUARD	4
 #define AREA	24
 #define RAW	(GUARD + AREA + GUARD)
-#define MAXAPP	3
+#define MAXAPP	8
 
 /*** One append in a chain.  Every format consumes StrArg then IntArg, in
  *** that order, so that the table can drive them all through one call site.
@@ -27,40 +27,66 @@ typedef struct
     }
     Append;
 
+/*** A chain of appends run end to end into one buffer.  DstLen is the size
+ *** handed to strtcatf(), which is deliberately smaller than AREA in places
+ *** so that a chain can overrun early rather than only at the far end.
+ ***/
 typedef struct
     {
+    const char*	    Prefix;	/* seeded into dst before the chain runs */
+    size_t	    DstLen;
     Append	    Appends[MAXAPP];
-    const char*	    ExpFinal;	/* buffer contents once the chain is done */
+    const char*	    ExpFinal;
     }
     Chain;
 
 static Chain chains[] =
     {
-    /** Each append is { Fmt, StrArg, IntArg, ExpRval, ExpPos }, then ExpFinal. **/
+    /** Prefix, DstLen, then { Fmt, StrArg, IntArg, ExpRval, ExpPos } each. **/
 
-    /** Plain text accumulated one piece at a time. **/
-	{ { {"%s","ab",0, 3,2}, {"%s","cd",0, 3,4}, {"%s","ef",0, 3,6} },
-	  "abcdef" },
+    /** A single append, the shortest chain there is. **/
+	{ "", AREA,
+	  { {"%s","solo",0, 5,4} },
+	  "solo" },
 
-    /** Mixed conversions, including appends with no text of their own. **/
-	{ { {"%s:","key",0, 5,4}, {"%s%d","",42, 3,6}, {"%s","!",0, 2,7} },
-	  "key:42!" },
-	{ { {"%s[%d]","",-7, 5,4}, {"%s=%d","n",99, 5,8}, {NULL,NULL,0, 0,0} },
-	  "[-7]n=99" },
+    /** Two appends, the second contributing no text of its own. **/
+	{ "", AREA,
+	  { {"%s:","key",0, 5,4}, {"%s%d","",42, 3,6} },
+	  "key:42" },
 
-    /** An empty append returns 1 for the null and leaves *pos alone. **/
-	{ { {"%s","x",0, 2,1}, {"%s","",0, 1,1}, {"%s","y",0, 2,2} },
-	  "xy" },
+    /** Three, mixing conversions that do and do not take a string. **/
+	{ "", AREA,
+	  { {"%s[%d]","",-7, 5,4}, {"%s=%d","n",99, 5,8}, {"%s","!",0, 2,9} },
+	  "[-7]n=99!" },
 
-    /** First append overruns; the rest must be no-ops. **/
-	{ { {"%s","ABCDEFGHIJKLMNOPQRSTUVWXYZ01234",0, -24,23},
-	    {"%s","tail",0, 0,23}, {"%s%d","",1, 0,23} },
-	  "ABCDEFGHIJKLMNOPQRSTUVW" },
+    /** Five appends of growing length, threading *pos the whole way. **/
+	{ "", AREA,
+	  { {"%s","a",0, 2,1}, {"%s","bb",0, 3,3}, {"%s","ccc",0, 4,6},
+	    {"%s","dddd",0, 5,10}, {"%s","eeeee",0, 6,15} },
+	  "abbcccddddeeeee" },
 
-    /** Overrun happens partway through the chain instead. **/
-	{ { {"%s","01234567890",0, 12,11},
-	    {"%s","abcdefghijklm",0, -13,23}, {"%s","z",0, 0,23} },
-	  "01234567890abcdefghijkl" },
+    /** Eight appends: fills the buffer exactly, then the last one overruns. **/
+	{ "", AREA,
+	  { {"%s","abc",0, 4,3}, {"%s","abc",0, 4,6}, {"%s","abc",0, 4,9},
+	    {"%s","abc",0, 4,12}, {"%s","abc",0, 4,15}, {"%s","abc",0, 4,18},
+	    {"%s","abc",0, 4,21}, {"%s","abc",0, -3,23} },
+	  "abcabcabcabcabcabcabcab" },
+
+    /** A tiny buffer, so the very first append overruns and the rest are no-ops. **/
+	{ "", 4,
+	  { {"%s","hello",0, -4,3}, {"%s","x",0, 0,3}, {"%s","y",0, 0,3} },
+	  "hel" },
+
+    /** Resuming onto text already in dst, the way an error message is built. **/
+	{ "start:", 16,
+	  { {"%s","ab",0, 3,8}, {"%s%d","",1234, 5,12}, {"%s","xyz",0, 4,15},
+	    {"%s","Q",0, 0,15} },
+	  "start:ab1234xyz" },
+
+    /** Empty appends at the front and the back return 1 and do not move *pos. **/
+	{ "", AREA,
+	  { {"%s","",0, 1,0}, {"%s","mid",0, 4,3}, {"%s","",0, 1,3} },
+	  "mid" },
     };
 
 /** Caller-side varargs wrapper, the way strtcatf_va() is meant to be used. **/
@@ -84,6 +110,7 @@ test(char** tname)
     int iter;
     int nchains = sizeof(chains) / sizeof(Chain);
     int nops;
+    size_t prefixlen;
     unsigned char raw_direct[RAW];
     unsigned char raw_va[RAW];
     char* direct = (char*)raw_direct + GUARD;
@@ -97,9 +124,11 @@ test(char** tname)
 	 *** Chains of appends run through both entry points, and each append
 	 *** is checked against its own expected return value and position as
 	 *** well as against the other entry point, so that a fault common to
-	 *** both cannot hide.  The chains also cover threading *pos across
-	 *** calls, formats contributing no text, empty appends, and appending
-	 *** onto a buffer that has already overrun.
+	 *** both cannot hide.  Chain lengths run from one append to eight, and
+	 *** DstLen varies per chain, so that a buffer can fill up early in a
+	 *** chain, exactly at its end, or not at all.  The chains also cover
+	 *** resuming onto text already in dst, formats contributing no text,
+	 *** and empty appends at the front and back of a chain.
 	 ***/
 
 	*tname = "strtcpy-12 strtcatf_va() parity and chained appends";
@@ -109,19 +138,21 @@ test(char** tname)
 	    {
 	    for(c=0;c<nchains;c++)
 		{
+		/** Seed both buffers with the chain's starting text. **/
+		prefixlen = strlen(chains[c].Prefix);
 		memset(raw_direct, 0xAA, RAW);
 		memset(raw_va, 0xAA, RAW);
-		direct[0] = '\0';
-		through_va[0] = '\0';
-		pos_direct = 0;
-		pos_va = 0;
+		memcpy(direct, chains[c].Prefix, prefixlen + 1);
+		memcpy(through_va, chains[c].Prefix, prefixlen + 1);
+		pos_direct = prefixlen;
+		pos_va = prefixlen;
 
 		for(a=0;a<MAXAPP && chains[c].Appends[a].Fmt;a++)
 		    {
-		    rval_direct = strtcatf(direct, AREA, &pos_direct,
+		    rval_direct = strtcatf(direct, chains[c].DstLen, &pos_direct,
 			chains[c].Appends[a].Fmt, chains[c].Appends[a].StrArg,
 			chains[c].Appends[a].IntArg);
-		    rval_va = wrapper(through_va, AREA, &pos_va,
+		    rval_va = wrapper(through_va, chains[c].DstLen, &pos_va,
 			chains[c].Appends[a].Fmt, chains[c].Appends[a].StrArg,
 			chains[c].Appends[a].IntArg);
 
@@ -143,13 +174,13 @@ test(char** tname)
 		/** The chain as a whole produced the expected string. **/
 		assert(!strcmp(through_va, chains[c].ExpFinal));
 
-		/** Neither call wrote outside the AREA it was given. **/
+		/** Neither call wrote outside the DstLen it was given. **/
 		for(n=0;n<GUARD;n++)
 		    {
 		    assert(raw_direct[n] == 0xAA);
 		    assert(raw_va[n] == 0xAA);
 		    }
-		for(n=GUARD+AREA;n<RAW;n++)
+		for(n=GUARD+chains[c].DstLen;n<RAW;n++)
 		    {
 		    assert(raw_direct[n] == 0xAA);
 		    assert(raw_va[n] == 0xAA);
