@@ -407,7 +407,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	XArray contexts_buf;
 	if (check(xaInit(&contexts_buf, 16)) != 0) goto end;
 	contexts = &contexts_buf;
-	if (check_neg(cxssGetEndorsementList(endorsements, contexts)) < 0) goto end;
+	if (checkNeg(cxssGetEndorsementList(endorsements, contexts)) < 0) goto end;
 
 	/** Write endorsements. **/
 	bool error = false;

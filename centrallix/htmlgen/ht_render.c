@@ -378,7 +378,7 @@ htr_internal_AddTextToArray(pXArray arr, char* txt)
 	    if (ptr == NULL) goto err;
 	    *(int*)ptr = 0;
 	    l = 0;
-	    if (check_neg(xaAddItem(arr, ptr)) < 0)
+	    if (checkNeg(xaAddItem(arr, ptr)) < 0)
 		{
 		nmFree(ptr, block_size);
 		goto err;
@@ -407,7 +407,7 @@ htr_internal_AddTextToArray(pXArray arr, char* txt)
 		if (ptr == NULL) goto err;
 		*(int*)ptr = 0;
 		l = 0;
-		if (check_neg(xaAddItem(arr, ptr)) < 0)
+		if (checkNeg(xaAddItem(arr, ptr)) < 0)
 		    {
 		    nmFree(ptr, block_size);
 		    goto err;
@@ -478,8 +478,8 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 	/** Has this driver been used this session yet? **/
 	if (xhLookup(&session->UsedDrivers, drv->WidgetName) == NULL)
 	    {
-	    if (check_neg(xhAdd(&session->UsedDrivers, drv->WidgetName, (void*)drv)) != 0) goto end;
-	    if (drv->Setup != NULL && check_neg(drv->Setup(session)) < 0) goto end;
+	    if (checkNeg(xhAdd(&session->UsedDrivers, drv->WidgetName, (void*)drv)) != 0) goto end;
+	    if (drv->Setup != NULL && checkNeg(drv->Setup(session)) < 0) goto end;
 	    }
 
 	/** Crossing a namespace boundary? **/
@@ -770,7 +770,7 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 
     retry:
 	/** Attempt to print the thing to the tmpbuf. **/
-	tmp = check_neg(vsnprintf(s->Tmpbuf, s->TmpbufSize, fmt, va));
+	tmp = checkNeg(vsnprintf(s->Tmpbuf, s->TmpbufSize, fmt, va));
 	if (tmp < 0) goto err;
 	if (UNLIKELY(tmp > s->TmpbufSize - 1))
 	    {
@@ -994,7 +994,7 @@ htrAddScriptInclude(pHtSession s, char* filename, int flags)
 
 	/** Add to the hash table and array **/
 	if (check(xhAdd(&(s->Page.NameIncludes), filename, (char*)sv)) != 0) goto err;
-	if (check_neg(xaAddItem(&(s->Page.Includes), (char*)sv)) < 0) goto err;
+	if (checkNeg(xaAddItem(&(s->Page.Includes), (char*)sv)) < 0) goto err;
 
 	/** Success. **/
 	return 0;
@@ -1026,7 +1026,7 @@ htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags)
 
 	/** Add to the hash table and array **/
 	if (check(xhAdd(&(s->Page.NameFunctions), fn_name, (char*)sv)) != 0) goto err;
-	if (check_neg(xaAddItem(&(s->Page.Functions), (char*)sv)) < 0) goto err;
+	if (checkNeg(xaAddItem(&(s->Page.Functions), (char*)sv)) < 0) goto err;
 
 	/** Success. **/
 	return 0;
@@ -1059,7 +1059,7 @@ htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags
 
 	/** Add to the hash table and array **/
 	if (check(xhAdd(&(s->Page.NameGlobals), var_name, (char*)sv)) != 0) goto err;
-	if (check_neg(xaAddItem(&(s->Page.Globals), (char*)sv)) < 0) goto err;
+	if (checkNeg(xaAddItem(&(s->Page.Globals), (char*)sv)) < 0) goto err;
 
 	/** Success. **/
 	return 0;
@@ -1157,7 +1157,7 @@ htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv
 	    if (e == NULL) goto err;
 	    strtcpy(e->DomEvent, event, sizeof(e->DomEvent));
 	    if (check(xaInit(&e->Handlers,64)) != 0) goto err;
-	    if (check_neg(xaAddItem(&s->Page.EventHandlers, e)) < 0) goto err;
+	    if (checkNeg(xaAddItem(&s->Page.EventHandlers, e)) < 0) goto err;
 	    }
 
 	/** Add our handler **/
@@ -1169,7 +1169,7 @@ htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv
 	    if (strcmp(function, handler) == 0)
 		return 0;
 	    }
-	if (check_neg(xaAddItem(&e->Handlers, function)) < 0) goto err;
+	if (checkNeg(xaAddItem(&e->Handlers, function)) < 0) goto err;
 
 	/** Success. **/
 	return 0;
@@ -1312,7 +1312,7 @@ htrGetExpParams(pExpression exp, pXString xs)
 	if (check(xaInit(&props, 16)) != 0) goto end;
 
 	/** Find the properties accessed by the expression **/
-	if (check_neg(expGetPropList(exp, &objs, &props) < 0)) goto end;
+	if (checkNeg(expGetPropList(exp, &objs, &props) < 0)) goto end;
 
 	/** Build the list **/
 	if (check(xsCopy(xs, "[", 1)) != 0) goto end;
@@ -1325,14 +1325,14 @@ htrGetExpParams(pExpression exp, pXString xs)
 		obj  != NULL && obj[0]  != '\0' &&
 		prop != NULL && prop[0] != '\0'
 	    ))	{
-		if (check_neg(xsConcatQPrintf(xs,
+		if (checkNeg(xsConcatQPrintf(xs,
 		    "%[,%]{obj:'%STR&JSSTR',attr:'%STR&JSSTR'}",
 		    (!first), obj, prop
 		)) < 0) goto end;
 		first = false;
 		}
 	    }
-	if (check_neg(xsConcatenate(xs, "]", 1)) < 0) goto end;
+	if (checkNeg(xsConcatenate(xs, "]", 1)) < 0) goto end;
 	
 	/** Success. **/
 	rval = 0;
@@ -1373,10 +1373,10 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 	if (check(xaInit(&props, 16)) != 0) goto end;
 	if (check(xsInit(&xs)) != 0) goto end;
 	if (check(xsInit(&exptxt)) != 0) goto end;
-	if (check_neg(expGetPropList(exp, &objs, &props) < 0)) goto end;
+	if (checkNeg(expGetPropList(exp, &objs, &props) < 0)) goto end;
 
 	/** Copy expression data. 8*/
-	if (check_neg(xsCopy(&xs, "[", 1)) < 0) goto end;
+	if (checkNeg(xsCopy(&xs, "[", 1)) < 0) goto end;
 	bool first = true;
 	for (unsigned int i = 0u; i < objs.nItems; i++)
 	    {
@@ -1386,14 +1386,14 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 		obj  != NULL && obj[0]  != '\0' &&
 		prop != NULL && prop[0] != '\0'
 	    ))	{
-		if (check_neg(xsConcatQPrintf(&xs,
+		if (checkNeg(xsConcatQPrintf(&xs,
 		    "%[,%]['%STR&JSSTR','%STR&JSSTR']",
 		    (!first), obj, prop
 		)) < 0) goto end;
 		first = false;
 		}
 	    }
-	if (check_neg(xsConcatenate(&xs, "]", 1)) < 0) goto end;
+	if (checkNeg(xsConcatenate(&xs, "]", 1)) < 0) goto end;
 	if (UNLIKELY(expGenerateText(exp, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT) != 0))
 	    {
 	    mssError(0, "HTR", "Failed to generate expression text.");
@@ -1649,8 +1649,8 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 		break;
 		
     err_free:   /** Clean up. **/
-		if (proptxt.AllocLen != 0) check_neg(xsDeInit(&proptxt)); /* Failure ignored. */
-		if (exptxt.AllocLen != 0) check_neg(xsDeInit(&exptxt)); /* Failure ignored. */
+		if (proptxt.AllocLen != 0) checkNeg(xsDeInit(&proptxt)); /* Failure ignored. */
+		if (exptxt.AllocLen != 0) checkNeg(xsDeInit(&exptxt)); /* Failure ignored. */
 		goto err;
 		}
 	    
@@ -2040,7 +2040,7 @@ htrGetErrorHTML(char* title)
 	/** Write an error HTML for the user. **/
 	error_session = checkPtr(qpfOpenSession()); /* Failure ignored. */
 	// nmSysFree(checkPtr(nmSysMalloc(8)));
-	if (check_neg(qpfPrintf_g(
+	if (checkNeg(qpfPrintf_g(
 	    error_session, &page_buf, &page_buf_size, &qpfSysMallocGrow, NULL, page_format,
 	    n_lines, title, err_str
 	)) < 0)
@@ -2256,7 +2256,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    char* error_title = "An error occurred while rendering the page.";
 	    char* error_html = checkPtr(htrGetErrorHTML(error_title));
 	    if (UNLIKELY(error_html == NULL)) error_html = error_title;
-	    check_neg(htrQPrintf(s, "%STR", error_html)); /* Failure ignored. */
+	    checkNeg(htrQPrintf(s, "%STR", error_html)); /* Failure ignored. */
 	    if (LIKELY(error_html != error_title)) nmSysFree(error_html);
 	    check(mssClearError()); /* Failure ignored. */
 	    goto end_free;

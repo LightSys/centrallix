@@ -290,7 +290,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	wgtrGetPropertyValue(child, "outer_type", DATA_T_STRING, POD(&ptr));
 	if (strcmp(ptr, "widget/radiobutton") == 0)
 	    {
-	    if (check_neg(xaAddItem(&radio_buttons, child)) < 0) goto end_free;
+	    if (checkNeg(xaAddItem(&radio_buttons, child)) < 0) goto end_free;
 	    }
 	else if (htrRenderWidget(s, child, z + 1) != 0) goto end_free;
 	}

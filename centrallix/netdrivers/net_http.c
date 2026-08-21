@@ -777,7 +777,7 @@ nht_i_ErrorExit(pNhtConn conn, int code, char* text)
 	char* error_title = "Error!";
 	char* error_html = checkPtr(htrGetErrorHTML(error_title));
 	if (UNLIKELY(error_html == NULL)) error_html = error_title;
-	check_neg(nht_i_WriteConn(conn, error_html, -1, 0)); /* Failure ignored. */
+	checkNeg(nht_i_WriteConn(conn, error_html, -1, 0)); /* Failure ignored. */
 	check(mssClearError()); /* Failure ignored. */
 
 	/** Shutdown the connection and free memory **/
@@ -2220,7 +2220,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    char* error_title = "An error occurred while constructing the application.";
 		    char* error_html = checkPtr(htrGetErrorHTML(error_title));
 		    if (UNLIKELY(error_html == NULL)) error_html = error_title;
-		    check_neg(nht_i_WriteConn(conn, error_html, -1, 0)); /* Failure ignored. */
+		    checkNeg(nht_i_WriteConn(conn, error_html, -1, 0)); /* Failure ignored. */
 		    check(mssClearError()); /* Failure ignored. */
 
 		    /** Clean up. **/
