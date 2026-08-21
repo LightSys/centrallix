@@ -1,4 +1,7 @@
+#include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
+
 #include "strtcpy.h"
 #include "expect.h"
 
@@ -16,9 +19,8 @@
 /* Author:	Greg Beeley (GRB)                                       */
 /* Date:	April 14th, 2006                                        */
 /*									*/
-/* Description:	Provides strtcpy(), a Truncating strcpy(), which	*/
-/*		both respects the bounds of the destination and makes	*/
-/*		sure the result is null-terminated.			*/
+/* Description:	Provides truncating string functions, which respect the	*/
+/*		bounds of the destination and ensure null-termination.	*/
 /************************************************************************/
 
 
@@ -76,4 +78,52 @@ strtcpy(char* dst, const char* src, size_t dstlen)
             return -origlen;
     return origlen - dstlen;
 #endif
+    }
+
+
+/*** strtcatf() - truncating formatted string concatenation
+ ***
+ *** Appends a printf-style message onto the end of dst, being sure to not
+ *** overflow the given dstlen size.  The result is always null-terminated
+ *** and *pos is advanced to it, so a series of calls needs no error checking
+ *** in between; appending onto a full buffer simply does nothing.
+ *** Returns number of bytes actually appended, including null terminator.
+ *** If truncated, returns -(bytes appended).
+ ***
+ *** @param dst The buffer to append onto, already null-terminated at *pos.
+ *** @param dstlen The total size of dst, in bytes.
+ *** @param pos In/out offset of the terminating null within dst.
+ *** @param fmt A printf-style format string, followed by its arguments.
+ ***/
+int
+strtcatf(char* dst, size_t dstlen, size_t* pos, const char* fmt, ...)
+    {
+    va_list ap;
+    size_t start = *pos;
+    int ret;
+
+    /** Leave dst alone if only the terminating null would fit. **/
+    if (UNLIKELY((start + 1 >= dstlen))) 
+	return 0;
+
+    va_start(ap, fmt);
+    ret = vsnprintf(dst + start, dstlen - start, fmt, ap);
+    va_end(ap);
+
+    /** A negative return means nothing usable was appended. **/
+    if (UNLIKELY((ret < 0))) 
+	{
+	dst[start] = '\0';
+	return 0;
+	}
+
+    /** A too-large return means the message was truncated to fill dst. **/
+    if (UNLIKELY((start + (size_t)ret >= dstlen))) 
+	{
+	*pos = dstlen - 1;
+	return -(int)(dstlen - start);
+	}
+
+    *pos = start + (size_t)ret;
+    return ret + 1;
     }

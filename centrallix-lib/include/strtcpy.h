@@ -8,7 +8,7 @@
 /* Centrallix Application Server System                                 */
 /* Centrallix Base Library                                              */
 /*                                                                      */
-/* Copyright (C) 1998-2006 LightSys Technology Services, Inc.           */
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.           */
 /*                                                                      */
 /* You may use these files and this library under the terms of the      */
 /* GNU Lesser General Public License, Version 2.1, contained in the     */
@@ -18,13 +18,13 @@
 /* Author:	Greg Beeley (GRB)                                       */
 /* Date:	April 14th, 2006                                        */
 /*									*/
-/* Description:	Provides strtcpy(), a Truncating strcpy(), which	*/
-/*		both respects the bounds of the destination and makes	*/
-/*		sure the result is null-terminated.			*/
+/* Description:	Provides truncating string functions, which respect the	*/
+/*		bounds of the destination and ensure null-termination.	*/
 /************************************************************************/
 
 
 int strtcpy(char* dst, const char* src, size_t dstlen);
 int strtcat(char* dst, const char* src, size_t dstlen);
+int strtcatf(char* dst, size_t dstlen, size_t* pos, const char* fmt, ...);
 
 #endif /* not defined _STRTCPY_H */
