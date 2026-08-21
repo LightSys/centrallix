@@ -50,8 +50,6 @@ int xaCount(pXArray this);
 int xaSetItem(pXArray this, int index, void* item);
 int xaInsertBefore(pXArray this, int index, void* item);
 int xaInsertAfter(pXArray this, int index, void* item);
-int xaTrim(pXArray this);
-void** xaToArray(pXArray this);
 
 #define CLD(x,y,z) ((x)((y)->Children.Items[(z)]))
 

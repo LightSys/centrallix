@@ -4,7 +4,6 @@
 |---------|---------------------------------------------------------------------
 | aud     | OSDriver - Linux OSS /dev/dsp audio (plays WAV files on ExecMethod)
 | bar     | BarCode generator module (for prt mgmt)
-| cluster | OSDriver - Cluster & search file
 | dat     | OSDriver - Flat data file (CSV/etc)
 | ev      | MTASK internal - event handling
 | exp     | Expression compiler/parser/evaluator

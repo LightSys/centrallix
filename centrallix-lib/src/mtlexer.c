@@ -7,7 +7,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
-
 #include "newmalloc.h"
 #include "mtask.h"
 #include "mtlexer.h"
@@ -905,7 +904,7 @@ mlxNextToken(pLxSession this)
 		}
 	    else
 		{
-		mssError(1, "MLX", "Unexpected character encountered: '%c'", ch);
+		mssError(1,"MLX","Unexpected character encountered");
 		this->TokType = MLX_TOK_ERROR;
 		break;
 		}

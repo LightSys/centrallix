@@ -3,7 +3,6 @@
 #include "cxlibconfig-internal.h"
 #endif
 #include <stdio.h>
-#include <stdbool.h>
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -24,7 +23,6 @@
 #include "xstring.h"
 #include "xhash.h"
 #include "strtcpy.h"
-#include "util.h"
 #include "cxsec.h"
 
 /************************************************************************/
@@ -455,87 +453,99 @@ mssEndSession(pMtSession s)
     }
 
 
-/*** Displays error text to the user (but no stack trace).  Does not exit the
- *** program, allowing the calling function to fail, generating a cascade of
- *** error messages which may provide useful info.
- *** 
- *** @param clr Whether to clear the current error stack.  As a rule of thumb,
- *** 	if you are the first one to detect the error, clear the stack so that
- *** 	other unrelated messages are not shown.  If you are detecting an error
- *** 	from another function that may also call an mssError() function, do
- *** 	not clear the stack.
- *** @param module The name or abbreviation of the module in which this 
- *** 	function is being called, to help developers narrow down the location
- *** 	of the error.
- *** @param format The format text for the error, which accepts any format
- *** 	specifier that would be accepted by printf().
- *** @param ... Variables matching format specifiers in the format.
+/*** mssError - Add an error message to the error stack, optionally 
+ *** clearing the existing contents thereof.
  ***/
-void 
+int 
 mssError(int clr, char* module, char* message, ...)
     {
-    char err_msg[BUFSIZ];
-    unsigned int i = 0u;
-    
-	/** Prevent issues from interlacing this function with prints to stdout. **/
-	check(fflush(stdout)); /* Failure ignored. */
-	
-	/** Write the module to the start of the error message. */
-	i += snprintf(err_msg + i, sizeof(err_msg) - i, "%s: ", module);
-	
-	/** Process the message format with all the same rules as printf(). **/
-	va_list args;
-	va_start(args, message);
-	i += vsnprintf(err_msg + i, sizeof(err_msg) - i, message, args);
-	va_end(args);
-	
+    va_list vl;
+    char* msg;
+    pMtSession s;
+    XString xs;
+    char* ptr;
+    char* cur_pos;
+    char* str;
+    int i;
+    char nbuf[16];
+    char ch;
+
+    	/** Build the real error msg. **/
+	xsInit(&xs);
+	cur_pos = message;
+	va_start(vl, message);
+	while((ptr = strchr(cur_pos, '%')))
+	    {
+	    xsConcatenate(&xs, cur_pos, ptr - cur_pos);
+	    switch(ptr[1])
+	        {
+		case '\0':
+		    xsConcatenate(&xs, "%", 1);
+		    cur_pos = ptr+1;
+		    break;
+		case '%':
+		    xsConcatenate(&xs, "%", 1);
+		    cur_pos = ptr+2;
+		    break;
+		case 's':
+		    str = va_arg(vl, char*);
+		    xsConcatenate(&xs, str?str:"(NULL)", -1);
+		    cur_pos = ptr + 2;
+		    break;
+		case 'c':
+		    ch = va_arg(vl, int);
+		    xsConcatenate(&xs, &ch, 1);
+		    cur_pos = ptr + 2;
+		    break;
+		case 'd':
+		    i = va_arg(vl, int);
+		    sprintf(nbuf,"%d",i);
+		    xsConcatenate(&xs, nbuf, -1);
+		    cur_pos = ptr + 2;
+		    break;
+		default:
+		    cur_pos = ptr + 2;
+		    break;
+		}
+	    }
+	va_end(vl);
+	if (*cur_pos) xsConcatenate(&xs, cur_pos, -1);
+
 	/** Get current session **/
-	pMtSession s = thGetParam(NULL, "mss");
-	const bool log_error = (s == NULL || MSS.LogAllErrors);
-	
-	/** Use standard logging without a session context, if needed. **/
-	if (log_error) 
+	s = (pMtSession)thGetParam(NULL,"mss");
+	if (!s || MSS.LogAllErrors) 
 	    {
-	    /** Start new error stacks with a newline to make them distinct. **/
-	    if (clr && MSS.LogMethod[0] != '\0') fprintf(stderr, "\n");
-	    
-	    /** Use the requested logging method. **/
-	    if (strcmp(MSS.LogMethod, "syslog") == 0)
+	    /*printf("mssError: Error occurred outside of session context.\n");*/
+	    if (!strcmp(MSS.LogMethod,"syslog"))
 		{
-		if (s == NULL)
-		    syslog(LOG_ERR, "System: %.256s\n", err_msg);
+		if (!s)
+		    syslog(LOG_ERR, "System: %s: %.256s\n", module, xs.String);
 		else
-		    syslog(LOG_WARNING, "User '%s': %.256s\n", s->UserName, err_msg);
+		    syslog(LOG_WARNING, "User '%s': %s: %.256s\n", s->UserName, module, xs.String);
 		}
-	    else if (strcmp(MSS.LogMethod, "stdout") == 0)
+	    else if (!strcmp(MSS.LogMethod, "stdout"))
 		{
-		printf("%s: %s\n", (MSS.AppName[0]) ? MSS.AppName : "error", err_msg);
+		printf("%s: %s: %s\n",MSS.AppName[0]?MSS.AppName:"error",module,xs.String);
 		}
+	    if (!s) return -1;
 	    }
-	    
-	/** If a session is available, try to add the error to the error list. **/
-	if (s != NULL)
+
+	/** Need to clear? **/
+	if (clr) mssClearError();
+
+	/** Allocate space and construct the error text. **/
+	msg = (char*)nmSysMalloc(strlen(module)+strlen(xs.String)+3);
+	if (!msg)
 	    {
-	    /** Clear the error context, if requested. **/
-	    if (clr) check(mssClearError()); /* Failure ignored. */
-	    
-	    /** Allocate space and construct the error text. **/
-	    const char* allocated_err_msg = check_ptr(nmSysStrdup(err_msg));
-	    if (allocated_err_msg == NULL)
-		{
-		fprintf(stderr, "Failed to store error message: %s\n", err_msg);
-		return; /* Give up. */
-		}
-	    
-	    /** Store the error. **/
-	    if (check_neg(xaAddItem(&(s->ErrList), (void*)allocated_err_msg)) < 0)
-		{
-		fprintf(stderr, "Failed to add error message to session error list: %s\n", err_msg);
-		return; /* Give up. */
-		}
+	    perror("mssError: Could not allocate error");
+	    printf("mssError: %s: %s\n",module,xs.String);
+	    return -1;
 	    }
-	
-	return;
+	sprintf(msg,"%s: %s",module,xs.String);
+	xaAddItem(&(s->ErrList),(void*)msg);
+	xsDeInit(&xs);
+
+    return 0;
     }
 
 
