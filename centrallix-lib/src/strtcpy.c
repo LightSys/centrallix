@@ -90,20 +90,20 @@ strtcatf_va(char* dst, size_t dstlen, size_t* pos, const char* fmt, va_list ap)
     size_t start = *pos;
     int ret;
 
-    /** Leave dst alone if only the terminating null would fit. **/
+    /** No room for even one character. **/
     if (UNLIKELY((start + 1 >= dstlen))) 
 	return 0;
 
     ret = vsnprintf(dst + start, dstlen - start, fmt, ap);
 
-    /** A negative return means nothing usable was appended. **/
+    /** vsnprintf() failed, so discard whatever it left behind. **/
     if (UNLIKELY((ret < 0))) 
 	{
 	dst[start] = '\0';
 	return 0;
 	}
 
-    /** A too-large return means the message was truncated to fill dst. **/
+    /** Output overran dst, so it was truncated and dst is now full. **/
     if (UNLIKELY((start + (size_t)ret >= dstlen))) 
 	{
 	*pos = dstlen - 1;
@@ -117,17 +117,12 @@ strtcatf_va(char* dst, size_t dstlen, size_t* pos, const char* fmt, va_list ap)
 
 /*** strtcatf() - truncating formatted string concatenation
  ***
- *** Appends a printf-style message onto the end of dst, being sure to not
- *** overflow the given dstlen size.  The result is always null-terminated
- *** and *pos is advanced to it, so a series of calls needs no error checking
- *** in between; appending onto a full buffer simply does nothing.
+ *** Appends a printf-style message to dst, being sure to not overflow the
+ *** given dstlen size.  *pos is the offset of dst's terminating null, and
+ *** advances past the appended text, so chained calls need no checks in
+ *** between.  A full dst, or a *pos outside it, appends nothing.
  *** Returns number of bytes actually appended, including null terminator.
  *** If truncated, returns -(bytes appended).
- ***
- *** @param dst The buffer to append onto, already null-terminated at *pos.
- *** @param dstlen The total size of dst, in bytes.
- *** @param pos In/out offset of the terminating null within dst.
- *** @param fmt A printf-style format string, followed by its arguments.
  ***/
 int
 strtcatf(char* dst, size_t dstlen, size_t* pos, const char* fmt, ...)
