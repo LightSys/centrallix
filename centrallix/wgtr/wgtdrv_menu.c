@@ -72,7 +72,8 @@ wgtmenu_internal_RowHeight(pWgtrNode child, int row_h)
 
 /*** wgtmenu_internal_EstimateRows() - sum and count the rows htdrv_menu.c will
  *** draw for a vertical menu.  Mirrors htmenuRender(), which looks through a
- *** control structure (e.g. widget/repeat) exactly one level.
+ *** control structure (e.g. widget/repeat) exactly one level, and gives every
+ *** row it draws one call to htmenu_internal_AddDot().
  ***
  *** @param menu    The menu whose children are to be measured.
  *** @param row_h   Height of one menu row.

@@ -50,6 +50,14 @@ static struct
     HTMN;
 
 
+/*** htmenu_internal_AddDot() - write the image that marks where a menu row was
+ *** drawn, so htdrv_menu.js can find that row at runtime.
+ ***
+ *** Every mcnt gets exactly one of these, and one row.  mn_scan_images() in
+ *** htdrv_menu.js indexes its coords array by mcnt, and wgtmenuVerify() in
+ *** wgtdrv_menu.c counts rows the same way, so a new kind of row has to call
+ *** this too.
+ ***/
 int
 htmenu_internal_AddDot(pHtSession s, int mcnt, char* nptr, int is_horizontal, int row_height)
     {
