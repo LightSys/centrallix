@@ -2,6 +2,7 @@
 #define _STRTCPY_H
 
 #include <unistd.h>
+#include <stdarg.h>
 #include <stdlib.h>
 
 /************************************************************************/
@@ -26,5 +27,6 @@
 int strtcpy(char* dst, const char* src, size_t dstlen);
 int strtcat(char* dst, const char* src, size_t dstlen);
 int strtcatf(char* dst, size_t dstlen, size_t* pos, const char* fmt, ...);
+int strtcatf_va(char* dst, size_t dstlen, size_t* pos, const char* fmt, va_list ap);
 
 #endif /* not defined _STRTCPY_H */

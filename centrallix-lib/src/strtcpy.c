@@ -81,6 +81,40 @@ strtcpy(char* dst, const char* src, size_t dstlen)
     }
 
 
+/*** strtcatf_va() - same as strtcatf(), but takes a va_list instead of
+ *** a variable argument list.
+ ***/
+int
+strtcatf_va(char* dst, size_t dstlen, size_t* pos, const char* fmt, va_list ap)
+    {
+    size_t start = *pos;
+    int ret;
+
+    /** Leave dst alone if only the terminating null would fit. **/
+    if (UNLIKELY((start + 1 >= dstlen))) 
+	return 0;
+
+    ret = vsnprintf(dst + start, dstlen - start, fmt, ap);
+
+    /** A negative return means nothing usable was appended. **/
+    if (UNLIKELY((ret < 0))) 
+	{
+	dst[start] = '\0';
+	return 0;
+	}
+
+    /** A too-large return means the message was truncated to fill dst. **/
+    if (UNLIKELY((start + (size_t)ret >= dstlen))) 
+	{
+	*pos = dstlen - 1;
+	return -(int)(dstlen - start);
+	}
+
+    *pos = start + (size_t)ret;
+    return ret + 1;
+    }
+
+
 /*** strtcatf() - truncating formatted string concatenation
  ***
  *** Appends a printf-style message onto the end of dst, being sure to not
@@ -99,31 +133,11 @@ int
 strtcatf(char* dst, size_t dstlen, size_t* pos, const char* fmt, ...)
     {
     va_list ap;
-    size_t start = *pos;
     int ret;
 
-    /** Leave dst alone if only the terminating null would fit. **/
-    if (UNLIKELY((start + 1 >= dstlen))) 
-	return 0;
-
     va_start(ap, fmt);
-    ret = vsnprintf(dst + start, dstlen - start, fmt, ap);
+    ret = strtcatf_va(dst, dstlen, pos, fmt, ap);
     va_end(ap);
 
-    /** A negative return means nothing usable was appended. **/
-    if (UNLIKELY((ret < 0))) 
-	{
-	dst[start] = '\0';
-	return 0;
-	}
-
-    /** A too-large return means the message was truncated to fill dst. **/
-    if (UNLIKELY((start + (size_t)ret >= dstlen))) 
-	{
-	*pos = dstlen - 1;
-	return -(int)(dstlen - start);
-	}
-
-    *pos = start + (size_t)ret;
-    return ret + 1;
+    return ret;
     }
