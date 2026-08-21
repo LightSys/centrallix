@@ -100,6 +100,12 @@ wgtmenuNew(pWgtrNode node)
 	if(node->fl_width < 0) node->fl_width = 25;
 	if(node->fl_height < 0) node->fl_height = 1;
 	
+	/*** Declare a 1px inset for the border that htdrv_menu.c draws around
+	 *** the menu itself.  The other types render no box of their own.
+	 ***/
+	if (!strcmp(node->Type, "widget/menu"))
+	    wgtrSetInsets(node, 1, 1, 1, 1);
+
     return 0;
     }
 

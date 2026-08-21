@@ -341,6 +341,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		"position:absolute; "
 		"visibility:%STR; "
 		"overflow:hidden; "
+		"box-sizing:border-box; "
 		"left:"ht_flex_format"; "
 		"top:"ht_flex_format"; "
 		"%[height:"ht_flex_format"; %]"
@@ -355,8 +356,8 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	    (is_popup) ? "hidden" : "inherit",
 	    ht_flex_x(x, menu),
 	    ht_flex_y(y, menu),
-	    (h != -1), ht_flex_h(h - 2, menu),
-	    (w != -1), ht_flex_w(w - 2, menu),
+	    (h != -1), ht_flex_h(h, menu),
+	    (w != -1), ht_flex_w(w, menu),
 	    textcolor, bgstr,
 	    z
 	) != 0)
