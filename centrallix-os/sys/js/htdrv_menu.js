@@ -395,16 +395,17 @@ function mn_init(param)
     menu.objname = param.name;
     menu.cur_highlight = null;
 
-    // Set up sizing.
+    // Set up sizing.  A scroll size excludes the border, but menu is border-box.
+    const border = 2 * param.bw;
     if (menu.scrollHeight == 0)
 	{
-	if (param.h === -1) pg_set_style(menu, 'height', menu.childNodes[0].scrollHeight);
-	if (param.w === -1) pg_set_style(menu, 'width', menu.childNodes[0].scrollWidth);
+	if (param.h === -1) pg_set_style(menu, 'height', menu.childNodes[0].scrollHeight + border);
+	if (param.w === -1) pg_set_style(menu, 'width', menu.childNodes[0].scrollWidth + border);
 	}
     else
 	{
-	if (param.h === -1) pg_set_style(menu, 'height', menu.scrollHeight);
-	if (param.w === -1) pg_set_style(menu, 'width', menu.scrollWidth);
+	if (param.h === -1) pg_set_style(menu, 'height', menu.scrollHeight + border);
+	if (param.w === -1) pg_set_style(menu, 'width', menu.scrollWidth + border);
 	}
     menu.act_w = getClipWidth(menu.clayer);
     menu.act_h = getClipHeight(menu.clayer);
@@ -415,26 +416,27 @@ function mn_init(param)
 
     // Store data to determine cell sizes
     var imgs = pg_images(menu.clayer);
-    var nmstr = 'xy_' + param.name;
-    var cbstr = 'cb_' + param.name;
+    var nmstr = 'xy_' + param.name + '_';
+    var cbstr = 'cb_' + param.name + '_';
     menu.coords = new Array();
     menu.ckboxs = new Array();
     var search;
     for(var i=0; i<imgs.length; i++)
 	{
 	const img = imgs[i], { id } = img;
-	const len = nmstr.length;
-	if (id.slice(0, len) === nmstr)
+	// Number() rejects a tail that is not all digits, so a name that
+	// itself contains the delimiter cannot match the wrong menu.
+	const index = Number(id.slice(nmstr.length));
+	if (id.startsWith(nmstr) && Number.isInteger(index))
 	    {
 	    const { left, top } = $(img).position();
-	    const index = parseInt(id.slice(len, len + 255));
 	    menu.coords.push({});
 	    menu.coords[index].x = left;
 	    menu.coords[index].y = top;
 	    }
-	else if (id.slice(0, cbstr.length) === cbstr)
+	else if (id.startsWith(cbstr))
 	    {
-	    menu.ckboxs[parseInt(id.slice(cbstr.length))] = img;
+	    menu.ckboxs[Number(id.slice(cbstr.length))] = img;
 	    }
 	}
     menu.items = new Array();

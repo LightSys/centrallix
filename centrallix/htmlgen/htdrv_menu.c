@@ -53,7 +53,7 @@ static struct
 int
 htmenu_internal_AddDot(pHtSession s, int mcnt, char* nptr, int is_horizontal, int row_height)
     {
-	if (htrAddBodyItem_va(s,"<td valign=\"%STR&HTE\"><img align=\"%STR&HTE\" id=\"xy_%STR&SYM%POS\" width=\"1\" height=\"%POS\" src=\"/sys/images/trans_1.gif\"></td>", ((mcnt&1) || !is_horizontal)?"top":"bottom", ((mcnt&1) || !is_horizontal)?"top":"bottom", nptr, mcnt, ((mcnt&1) || !is_horizontal)?(row_height?row_height:1):1) != 0)
+	if (htrAddBodyItem_va(s,"<td valign=\"%STR&HTE\"><img align=\"%STR&HTE\" id=\"xy_%STR&SYM_%POS\" width=\"1\" height=\"%POS\" src=\"/sys/images/trans_1.gif\"></td>", ((mcnt&1) || !is_horizontal)?"top":"bottom", ((mcnt&1) || !is_horizontal)?"top":"bottom", nptr, mcnt, ((mcnt&1) || !is_horizontal)?(row_height?row_height:1):1) != 0)
 	    {
 	    mssError(0, "HTMENU", "Failed to write position tracking image for item %d.", mcnt);
 	    return -1;
@@ -95,7 +95,7 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	/** checkbox **/
 	if ( (rval=htrGetBoolean(menu_item, "checked", -1)) >= 0)
 	    {
-	    if (htrAddBodyItem_va(s, "<td valign=\"middle\"><img id=\"cb_%STR&SYM%POS\" src=\"/sys/images/checkbox_%STR&HTE.gif\"></td>", nptr, mcnt, rval?"checked":"unchecked") != 0) goto error;
+	    if (htrAddBodyItem_va(s, "<td valign=\"middle\"><img id=\"cb_%STR&SYM_%POS\" src=\"/sys/images/checkbox_%STR&HTE.gif\"></td>", nptr, mcnt, rval?"checked":"unchecked") != 0) goto error;
 	    xsConcatQPrintf(xs, ", check:%STR", rval?"true":"false");
 	    }
 	else
@@ -278,6 +278,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
     int rval = -1;
     int shadow_offset, shadow_radius;
     char shadow_color[128];
+    const int border_w = 1;	/** wgtdrv_menu.c declares this as an inset **/
 
 	/** Get an id for this. **/
 	const int id = (HTMN.idcnt++);
@@ -348,7 +349,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		"%[width:"ht_flex_format"; %]"
 		"color:%STR; %STR"
 		"border-style:solid; "
-		"border-width:1px; "
+		"border-width:%POSpx; "
 		"border-color:white gray gray white; "
 		"z-index:%POS; "
 	    "}\n",
@@ -359,6 +360,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	    (h != -1), ht_flex_h(h, menu),
 	    (w != -1), ht_flex_w(w, menu),
 	    textcolor, bgstr,
+	    border_w,
 	    z
 	) != 0)
 	    {
@@ -465,12 +467,13 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		"txt:'%STR&JSSTR', "
 		"w:%INT, "
 		"h:%INT, "
+		"bw:%POS, "
 		"horiz:%INT, "
 		"pop:%INT, "
 	    "}); }\n", 
 	    name, id, name, 
 	    bgstr, highlight, active, textcolor, 
-	    w, h,
+	    w, h, border_w,
 	    is_horizontal, is_popup
 	) != 0)
 	    {
