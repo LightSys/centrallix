@@ -19,7 +19,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
-#include "cxlib/util.h"
+#include "cxlib/check.h"
 #include "centrallix.h"
 #include "expression.h"
 #include "cxlib/qprintf.h"

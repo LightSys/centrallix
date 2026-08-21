@@ -4,7 +4,7 @@
 #include <fcntl.h>
 #include "ht_render.h"
 #include "obj.h"
-#include "cxlib/util.h"
+#include "cxlib/check.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"

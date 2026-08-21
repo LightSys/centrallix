@@ -4,6 +4,7 @@
 #include "cxlib/strtcpy.h"
 #include "json/json.h"
 #include "ht_render.h"
+#include "cxlib/check.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/

@@ -10,7 +10,7 @@
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
-#include "cxlib/util.h"
+#include "cxlib/check.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
