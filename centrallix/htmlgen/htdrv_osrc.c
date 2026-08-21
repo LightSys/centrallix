@@ -228,7 +228,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
 	{
 	if (wgtrGetPropertyValue(tree, "sql", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
-	    sql = check_ptr(nmSysStrdup(ptr));
+	    sql = checkPtr(nmSysStrdup(ptr));
 	    break;
 	    }
 	/** Fallthrough **/
@@ -241,8 +241,8 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
 	return -1;
     }
 
-    baseobj = (wgtrGetPropertyValue(tree, "baseobj", DATA_T_STRING, POD(&ptr)) == 0) ? check_ptr(nmSysStrdup(ptr)) : no_string;
-    filter  = (wgtrGetPropertyValue(tree, "filter",  DATA_T_STRING, POD(&ptr)) == 0) ? check_ptr(nmSysStrdup(ptr)) : no_string;
+    baseobj = (wgtrGetPropertyValue(tree, "baseobj", DATA_T_STRING, POD(&ptr)) == 0) ? checkPtr(nmSysStrdup(ptr)) : no_string;
+    filter  = (wgtrGetPropertyValue(tree, "filter",  DATA_T_STRING, POD(&ptr)) == 0) ? checkPtr(nmSysStrdup(ptr)) : no_string;
     if (sql == NULL || baseobj == NULL || filter == NULL) goto end;
 
     /** Link the widget and container to their DOM nodes. **/

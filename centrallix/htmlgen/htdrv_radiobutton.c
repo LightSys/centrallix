@@ -276,7 +276,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
     if (check(xaInit(&radio_buttons, tree->Children.nItems)) != 0) goto end_free;
     for (int i = 0; i < tree->Children.nItems; i++)
 	{
-	pWgtrNode child = check_ptr(tree->Children.Items[i]);
+	pWgtrNode child = checkPtr(tree->Children.Items[i]);
 	if (child == NULL)
 	    {
 	    mssError(1, "HTRB", "Child widget #%d/%d is NULL.", i + 1, tree->Children.nItems);

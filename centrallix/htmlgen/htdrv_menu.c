@@ -452,7 +452,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	    }
 
 	/** Add menu items and dropdowns. **/
-	xs = check_ptr(xsNew());
+	xs = checkPtr(xsNew());
 	if (xs == NULL) goto end;
 	mcnt=0;
 	htrAddBodyItem(s,"<table cellspacing=\"1\" cellpadding=\"0\" border=\"0\" width=\"100%%\"><tr><td align=\"left\" valign=\"middle\">\n");

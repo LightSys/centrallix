@@ -775,7 +775,7 @@ nht_i_ErrorExit(pNhtConn conn, int code, char* text)
 	/** Display error info **/
 	mssError(0, "NHT", "Net HTTP driver failed (error code: %d): %s", code, text);
 	char* error_title = "Error!";
-	char* error_html = check_ptr(htrGetErrorHTML(error_title));
+	char* error_html = checkPtr(htrGetErrorHTML(error_title));
 	if (UNLIKELY(error_html == NULL)) error_html = error_title;
 	check_neg(nht_i_WriteConn(conn, error_html, -1, 0)); /* Failure ignored. */
 	check(mssClearError()); /* Failure ignored. */
@@ -2218,7 +2218,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 
 		    /** Render an error page to gracefully recover from the error. **/
 		    char* error_title = "An error occurred while constructing the application.";
-		    char* error_html = check_ptr(htrGetErrorHTML(error_title));
+		    char* error_html = checkPtr(htrGetErrorHTML(error_title));
 		    if (UNLIKELY(error_html == NULL)) error_html = error_title;
 		    check_neg(nht_i_WriteConn(conn, error_html, -1, 0)); /* Failure ignored. */
 		    check(mssClearError()); /* Failure ignored. */

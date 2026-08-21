@@ -374,7 +374,7 @@ htr_internal_AddTextToArray(pXArray arr, char* txt)
     	/** Need new block? **/
 	if (arr->nItems == 0)
 	    {
-	    ptr = (char*)check_ptr(nmMalloc(block_size));
+	    ptr = (char*)checkPtr(nmMalloc(block_size));
 	    if (ptr == NULL) goto err;
 	    *(int*)ptr = 0;
 	    l = 0;
@@ -403,7 +403,7 @@ htr_internal_AddTextToArray(pXArray arr, char* txt)
 	    *(int*)ptr = l;
 	    if (n)
 	        {
-		ptr = (char*)check_ptr(nmMalloc(block_size));
+		ptr = (char*)checkPtr(nmMalloc(block_size));
 		if (ptr == NULL) goto err;
 		*(int*)ptr = 0;
 		l = 0;
@@ -674,7 +674,7 @@ htr_internal_GrowFn(char** str, size_t* size, size_t offs, void* arg, size_t req
 	assert(*size == s->TmpbufSize);
 	new_buf_size = s->TmpbufSize * 2;
 	while(new_buf_size < req_size) new_buf_size *= 2;
-	new_buf = check_ptr(nmSysRealloc(s->Tmpbuf, new_buf_size));
+	new_buf = checkPtr(nmSysRealloc(s->Tmpbuf, new_buf_size));
 	if (new_buf == NULL) return false; /* Grow failed. */
 	*str = s->Tmpbuf = new_buf;
 	*size = s->TmpbufSize = new_buf_size;
@@ -705,7 +705,7 @@ htr_internal_QPAddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 #endif
 
 	/** Create a pQPSession to track errors from qpfPrintf. **/
-	error_session = check_ptr(qpfOpenSession());
+	error_session = checkPtr(qpfOpenSession());
 	if (error_session == NULL) goto end;
 
 	/** Print text using qpfPrintf(). **/
@@ -779,7 +779,7 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 	    while (new_buf_size < tmp) new_buf_size *= 2lu;
 	    
 	    /** Allocate the new buffer. **/
-	    void* new_buf = check_ptr(nmSysMalloc(new_buf_size));
+	    void* new_buf = checkPtr(nmSysMalloc(new_buf_size));
 	    if (new_buf == NULL)
 		{
 		/** Start a new error chain. **/
@@ -985,7 +985,7 @@ htrAddScriptInclude(pHtSession s, char* filename, int flags)
 	if (xhLookup(&(s->Page.NameIncludes), filename) != NULL) return 0;
 
     	/** Alloc the string val. **/
-	sv = (pStrValue)check_ptr(nmMalloc(sizeof(StrValue)));
+	sv = (pStrValue)checkPtr(nmMalloc(sizeof(StrValue)));
 	if (sv == NULL) goto err;
 	sv->Name = filename;
 	if (flags & HTR_F_NAMEALLOC) sv->NameSize = strlen(filename)+1;
@@ -1016,7 +1016,7 @@ htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags)
 
     	/** Alloc the string val. **/
 	if (xhLookup(&(s->Page.NameFunctions), fn_name)) return 0;
-	sv = (pStrValue)check_ptr(nmMalloc(sizeof(StrValue)));
+	sv = (pStrValue)checkPtr(nmMalloc(sizeof(StrValue)));
 	if (sv == NULL) goto err;
 	sv->Name = fn_name;
 	if (flags & HTR_F_NAMEALLOC) sv->NameSize = strlen(fn_name)+1;
@@ -1049,7 +1049,7 @@ htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags
 	if (xhLookup(&(s->Page.NameGlobals), var_name) != NULL) return 0;
 	
 	/** Alloc a new string val. **/
-	sv = (pStrValue)check_ptr(nmMalloc(sizeof(StrValue)));
+	sv = (pStrValue)checkPtr(nmMalloc(sizeof(StrValue)));
 	if (sv == NULL) goto err;
 	sv->Name = var_name;
 	sv->NameSize = strlen(var_name)+1;
@@ -1141,7 +1141,7 @@ htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv
 	const int n_event_handlers = xaCount(&s->Page.EventHandlers);
 	for (unsigned int i = 0u; i < n_event_handlers; i++)
 	    {
-	    pHtDomEvent event_handler = check_ptr(xaGetItem(&s->Page.EventHandlers, i));
+	    pHtDomEvent event_handler = checkPtr(xaGetItem(&s->Page.EventHandlers, i));
 	    if (event_handler == NULL) goto err;
 	    if (strcmp(event, event_handler->DomEvent) == 0)
 		{
@@ -1153,7 +1153,7 @@ htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv
 	/** Make a new event handler, if needed. **/
 	if (e == NULL)
 	    {
-	    e = (pHtDomEvent)check_ptr(nmMalloc(sizeof(HtDomEvent)));
+	    e = (pHtDomEvent)checkPtr(nmMalloc(sizeof(HtDomEvent)));
 	    if (e == NULL) goto err;
 	    strtcpy(e->DomEvent, event, sizeof(e->DomEvent));
 	    if (check(xaInit(&e->Handlers,64)) != 0) goto err;
@@ -1164,7 +1164,7 @@ htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv
 	const int n_handlers = xaCount(&e->Handlers);
 	for (unsigned int i = 0u; i < n_handlers; i++)
 	    {
-	    char* handler = check_ptr(xaGetItem(&e->Handlers, i));
+	    char* handler = checkPtr(xaGetItem(&e->Handlers, i));
 	    if (handler == NULL) goto err;
 	    if (strcmp(function, handler) == 0)
 		return 0;
@@ -1239,7 +1239,7 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* class
     pQPSession error_session = NULL;
 	
 	/** Create a pQPSession to track errors from qpfPrintf. **/
-	error_session = check_ptr(qpfOpenSession());
+	error_session = checkPtr(qpfOpenSession());
 	if (error_session == NULL) goto end;
 
 	/** Pick a starting tag. **/
@@ -1931,11 +1931,11 @@ htrGetErrorHTML(char* title)
 	if (title == NULL) title = "An error occurred!";
 
 	/** Get the error string. **/
-	err_xs = check_ptr(xsNew());
+	err_xs = checkPtr(xsNew());
 	if (err_xs == NULL) goto write_err;
 	if (check(mssStringError(err_xs)) != 0) goto write_err;
 	if (check(xsTrim(err_xs)) != 0) goto write_err;
-	char* tmp_err_str = check_ptr(xsString(err_xs));
+	char* tmp_err_str = checkPtr(xsString(err_xs));
 	if (tmp_err_str == NULL) goto write_err;
 	err_str = tmp_err_str;
 
@@ -2034,12 +2034,12 @@ htrGetErrorHTML(char* title)
 	    + strlen(title)
 	    + strlen(err_str)
 	    + 1lu; /* Null terminator. */
-	page_buf = check_ptr(nmSysMalloc(page_buf_size));
+	page_buf = checkPtr(nmSysMalloc(page_buf_size));
 	if (page_buf == NULL) goto clean_up;
 
 	/** Write an error HTML for the user. **/
-	error_session = check_ptr(qpfOpenSession()); /* Failure ignored. */
-	// nmSysFree(check_ptr(nmSysMalloc(8)));
+	error_session = checkPtr(qpfOpenSession()); /* Failure ignored. */
+	// nmSysFree(checkPtr(nmSysMalloc(8)));
 	if (check_neg(qpfPrintf_g(
 	    error_session, &page_buf, &page_buf_size, &qpfSysMallocGrow, NULL, page_format,
 	    n_lines, title, err_str
@@ -2048,7 +2048,7 @@ htrGetErrorHTML(char* title)
 	    if (LIKELY(error_session != NULL)) qpfLogErrors(error_session);
 	    goto fail;
 	    }
-	// nmSysFree(check_ptr(nmSysMalloc(8)));
+	// nmSysFree(checkPtr(nmSysMalloc(8)));
 
 	/** Success. **/
 	goto clean_up;
@@ -2064,9 +2064,9 @@ htrGetErrorHTML(char* title)
 	if (LIKELY(error_session != NULL)) check(qpfCloseSession(error_session)); /* Failure ignored. */
 	
 	/** Final fallback chain if we STILL couldn't create an error page. **/
-	if (UNLIKELY(page_buf == NULL)) page_buf = check_ptr(nmSysStrdup("See server logs"));
-	if (UNLIKELY(page_buf == NULL)) page_buf = check_ptr(nmSysStrdup("err"));
-	if (UNLIKELY(page_buf == NULL)) page_buf = check_ptr(nmSysStrdup("!"));
+	if (UNLIKELY(page_buf == NULL)) page_buf = checkPtr(nmSysStrdup("See server logs"));
+	if (UNLIKELY(page_buf == NULL)) page_buf = checkPtr(nmSysStrdup("err"));
+	if (UNLIKELY(page_buf == NULL)) page_buf = checkPtr(nmSysStrdup("!"));
 	
 	return page_buf;
     }
@@ -2104,7 +2104,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    }
 
     	/** Initialize the session **/
-	s = (pHtSession)check_ptr(nmMalloc(sizeof(HtSession)));
+	s = (pHtSession)checkPtr(nmMalloc(sizeof(HtSession)));
 	if (s == NULL) return -1;
 	memset(s,0,sizeof(HtSession));
 	s->Params = params;
@@ -2254,7 +2254,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    {
 	    /** Render an error page to gracefully recover from the error. **/
 	    char* error_title = "An error occurred while rendering the page.";
-	    char* error_html = check_ptr(htrGetErrorHTML(error_title));
+	    char* error_html = checkPtr(htrGetErrorHTML(error_title));
 	    if (UNLIKELY(error_html == NULL)) error_html = error_title;
 	    check_neg(htrQPrintf(s, "%STR", error_html)); /* Failure ignored. */
 	    if (LIKELY(error_html != error_title)) nmSysFree(error_html);
@@ -2582,7 +2582,7 @@ htrAllocDriver()
     pHtDriver drv;
 
 	/** Allocate the driver structure **/
-	drv = (pHtDriver)check_ptr(nmMalloc(sizeof(HtDriver)));
+	drv = (pHtDriver)checkPtr(nmMalloc(sizeof(HtDriver)));
 	if (drv == NULL) goto err;
 	memset(drv, 0, sizeof(HtDriver));
 
@@ -2712,7 +2712,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	buf[0] = '\0';
 	
 	/** Create a pQPSession to track errors from qpfPrintf. **/
-	error_session = check_ptr(qpfOpenSession());
+	error_session = checkPtr(qpfOpenSession());
 	if (error_session == NULL) goto end;
 	
 	/** Allocate space for attribute names. **/
@@ -2919,7 +2919,7 @@ htr_internal_CheckDMPrivateData(pWgtrNode widget)
     
 	if (!inf)
 	    {
-	    inf = (pHtDMPrivateData)check_ptr(nmMalloc(sizeof(HtDMPrivateData)));
+	    inf = (pHtDMPrivateData)checkPtr(nmMalloc(sizeof(HtDMPrivateData)));
 	    if (inf == NULL) return NULL;
 	    memset(inf, 0, sizeof(HtDMPrivateData));
 	    wgtrSetDMPrivateData(widget, inf);
@@ -2963,15 +2963,15 @@ int
 htrAddWgtrObjLinkage(pHtSession s, pWgtrNode widget, char* linkage)
     {
 	/** Get private data. **/
-	pHtDMPrivateData inf = check_ptr(htr_internal_CheckDMPrivateData(widget));
+	pHtDMPrivateData inf = checkPtr(htr_internal_CheckDMPrivateData(widget));
 	if (inf == NULL) goto err;
 	
 	/** Get temporary string data. **/
-	char* str_tmp = check_ptr(objDataToStringTmp(DATA_T_STRING, linkage, DATA_F_QUOTED));
+	char* str_tmp = checkPtr(objDataToStringTmp(DATA_T_STRING, linkage, DATA_F_QUOTED));
 	if (str_tmp == NULL) goto err;
 	
 	/** Dup string data. **/
-	char* str = check_ptr(nmSysStrdup(str_tmp));
+	char* str = checkPtr(nmSysStrdup(str_tmp));
 	if (str == NULL) goto err;
 	
 	/** Set string data. **/
@@ -2999,7 +2999,7 @@ htrAddWgtrObjLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
     pQPSession error_session = NULL;
 
 	/** Create a pQPSession to track errors from qpfPrintf. **/
-	error_session = check_ptr(qpfOpenSession());
+	error_session = checkPtr(qpfOpenSession());
 	if (error_session == NULL) goto end;
 
 	/** Process the provided format. **/
@@ -3045,15 +3045,15 @@ int
 htrAddWgtrCtrLinkage(pHtSession s, pWgtrNode widget, char* linkage)
     {
 	/** Get private data. **/
-	pHtDMPrivateData inf = check_ptr(htr_internal_CheckDMPrivateData(widget));
+	pHtDMPrivateData inf = checkPtr(htr_internal_CheckDMPrivateData(widget));
 	if (inf == NULL) goto err;
 	
 	/** Get temporary string data. **/
-	char* str_tmp = check_ptr(objDataToStringTmp(DATA_T_STRING, linkage, DATA_F_QUOTED));
+	char* str_tmp = checkPtr(objDataToStringTmp(DATA_T_STRING, linkage, DATA_F_QUOTED));
 	if (str_tmp == NULL) goto err;
 	
 	/** Dup string data. **/
-	char* str = check_ptr(nmSysStrdup(str_tmp));
+	char* str = checkPtr(nmSysStrdup(str_tmp));
 	if (str == NULL) goto err;
 	
 	/** Set string data. **/
@@ -3081,7 +3081,7 @@ htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
     pQPSession error_session = NULL;
     
 	/** Create a pQPSession to track errors from qpfPrintf. **/
-	error_session = check_ptr(qpfOpenSession());
+	error_session = checkPtr(qpfOpenSession());
 	if (error_session == NULL) goto end;
 	
 	/** Process the provided format. **/
@@ -3126,7 +3126,7 @@ htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...)
     va_list va;
     char buf[256];
     
-	pHtDMPrivateData inf = check_ptr(htr_internal_CheckDMPrivateData(widget));
+	pHtDMPrivateData inf = checkPtr(htr_internal_CheckDMPrivateData(widget));
 	if (UNLIKELY(inf == NULL)) goto err;
 
 	/** Process format. **/
@@ -3136,9 +3136,9 @@ htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...)
 	va_end(va);
 	
 	/** Process string data. **/
-	char* str_tmp = check_ptr(objDataToStringTmp(DATA_T_STRING, buf, DATA_F_QUOTED));
+	char* str_tmp = checkPtr(objDataToStringTmp(DATA_T_STRING, buf, DATA_F_QUOTED));
 	if (str_tmp == NULL) goto err;
-	char* str = check_ptr(nmSysStrdup(str_tmp));
+	char* str = checkPtr(nmSysStrdup(str_tmp));
 	if (str == NULL) goto err;
 	inf->Param = str;
 	
@@ -3163,7 +3163,7 @@ htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace, int is_subns)
     char* ptr;
 
 	/** Allocate a new namespace **/
-	new_ns = (pHtNamespace)check_ptr(nmMalloc(sizeof(HtNamespace)));
+	new_ns = (pHtNamespace)checkPtr(nmMalloc(sizeof(HtNamespace)));
 	if (UNLIKELY(new_ns == NULL)) goto err;
 	new_ns->Parent = s->Namespace;
 	strtcpy(new_ns->DName, nspace, sizeof(new_ns->DName));
