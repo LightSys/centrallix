@@ -33,8 +33,9 @@ pTimer timerReset(pTimer timer);
 void timerDeInit(pTimer timer);
 void timerFree(pTimer timer);
 
-/*** Debug function for quickly benchmarking the speed of C code. Do not use
- *** this function in production code.
+/*** Debug function for quickly benchmarking the speed of C code.  Do not use
+ *** this function in production code:  It breaks compiler and mssError() line
+ *** numbers and is generally bad style.
  ***/
 #define timerBenchmark(timer, c_code) \
     { \
