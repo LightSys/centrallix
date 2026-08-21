@@ -21,6 +21,8 @@
 #include "check.h"
 #include "strtcpy.h"
 
+#define ERR_BUF_SIZE 1024
+
 /*** Function for printing an error when code fails.
  *** 
  *** @param error_code The error code number returned by a failing C function (or -1 if not applicable).
@@ -34,7 +36,7 @@ printErrInternal(const int error_code, const char* c_str, const char* file_name,
 	/** Grab errno before any library call of ours can overwrite it. **/
 	const int saved_errno = errno;
 	size_t i = 0;
-	char error_buf[BUFSIZ];
+	char error_buf[ERR_BUF_SIZE];
 
 	/** Initialize buffer. **/
 	error_buf[0] = '\0';
