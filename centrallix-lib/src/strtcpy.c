@@ -91,7 +91,7 @@ strtcatf_va(char* dst, size_t dstlen, size_t* pos, const char* fmt, va_list ap)
     int ret;
 
     /** No room for even one character. **/
-    if (UNLIKELY((start + 1 >= dstlen))) 
+    if (UNLIKELY((dstlen == 0 || start >= dstlen - 1))) 
 	return 0;
 
     ret = vsnprintf(dst + start, dstlen - start, fmt, ap);
