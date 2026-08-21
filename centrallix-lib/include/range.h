@@ -48,6 +48,7 @@
     })
 #endif
 
+#ifndef clamp
 /*** Clamps the value between a minimum and maximum bound.
  *** 
  *** If minimum > maximum, always returns maximum.
@@ -59,5 +60,6 @@
  ***/
 #define clamp(minimum, value, maximum) \
     max(minimum, min(value, maximum))
+#endif
 
 #endif	/* RANGE_H */
