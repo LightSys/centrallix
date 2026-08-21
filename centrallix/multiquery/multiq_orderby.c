@@ -553,7 +553,6 @@ mqobFinish(pQueryElement qe, pQueryStatement stmt)
     {
     pMQOData context = (pMQOData)(qe->PrivateData);
     pMqobOrderable item;
-    pParamObjects objlist;
     pQueryElement cld;
     int i;
 
