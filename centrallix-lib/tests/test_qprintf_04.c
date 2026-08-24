@@ -27,11 +27,11 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 36, "");
-	    qpfPrintf(NULL, buf+4, 36, "");
-	    qpfPrintf(NULL, buf+4, 36, "");
-	    qpfPrintf(NULL, buf+4, 36, "");
-	    assert(!strcmp(buf+4,""));
+	    qpfPrintf(NULL, (char*)buf+4, 36, "");
+	    qpfPrintf(NULL, (char*)buf+4, 36, "");
+	    qpfPrintf(NULL, (char*)buf+4, 36, "");
+	    qpfPrintf(NULL, (char*)buf+4, 36, "");
+	    assert(!strcmp((char*)buf+4,""));
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
 	    assert(buf[41] == 0xff);
@@ -46,4 +46,3 @@ test(char** tname)
 
     return iter*4;
     }
-

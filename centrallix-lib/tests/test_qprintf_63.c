@@ -25,9 +25,9 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "dGVzdCBkYXRh");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "%STR&DB64", "dGVzdCBkYXRh");
 	    assert(rval == 9);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5eg");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "%STR&DB64", "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5eg");
 	    assert(rval < 0);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
@@ -41,4 +41,3 @@ test(char** tname)
 
     return iter*2;
     }
-
