@@ -81,7 +81,7 @@ timerStart(pTimer timer)
     }
 
 /*** Stop timing and add the elapsed time to the timer total.  If the timer
- *** isn't running, does nothing.
+ *** isn't running, or if the clock can't be read, does nothing.
  *** 
  *** @param timer The timer to stop.
  *** @returns `timer`, for chaining.
@@ -91,7 +91,12 @@ timerStop(pTimer timer)
     {
 	if (UNLIKELY(timer == NULL)) return NULL;
 	if (isnan(timer->start)) return timer;
-	timer->total += getTime() - timer->start;
+
+	/** Keep the timer running rather than poisoning the total with NAN. **/
+	const double stop_time = getTime();
+	if (isnan(stop_time)) return timer;
+
+	timer->total += stop_time - timer->start;
 	timer->start = NAN;
     
     return timer;
