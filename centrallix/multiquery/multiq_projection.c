@@ -242,20 +242,32 @@ mqp_internal_FinalizeSbt(pObjSession s, pObject obj, char* attrname, void* ctx_v
 
 
 /*** mqp_internal_OrderByToExpArray() - copy a query element's order by list
- *** into a NULL terminated array for objOpenQuery().  Returns NULL if the
- *** query element has no ordering to request.
+ *** into a newly allocated NULL terminated array for objOpenQuery().  The
+ *** caller must nmSysFree() the array.  *buf is set to NULL if the query
+ *** element has no ordering to request.  Returns 0 on success, -1 on error.
  ***/
-pExpression*
-mqp_internal_OrderByToExpArray(pQueryElement qe, pExpression* buf, int buf_items)
+int
+mqp_internal_OrderByToExpArray(pQueryElement qe, pExpression** buf)
     {
+    pExpression* exp_array;
     int i;
 
-	if (qe->OrderBy.nItems <= 0) return NULL;
-	for(i=0; i<qe->OrderBy.nItems && i<(buf_items-1); i++)
-	    buf[i] = (pExpression)(qe->OrderBy.Items[i]);
-	buf[i] = NULL;
+	*buf = NULL;
+	if (qe->OrderBy.nItems <= 0) return 0;
 
-    return buf;
+	exp_array = (pExpression*)nmSysMalloc(sizeof(pExpression) * (qe->OrderBy.nItems + 1));
+	if (!exp_array)
+	    {
+	    mssError(1, "MQP", "Could not allocate memory for sort by items.");
+	    return -1;
+	    }
+	for(i=0; i<qe->OrderBy.nItems; i++)
+	    exp_array[i] = (pExpression)(qe->OrderBy.Items[i]);
+	exp_array[i] = NULL;
+
+	*buf = exp_array;
+
+    return 0;
     }
 
 
@@ -271,7 +283,7 @@ mqp_internal_Recurse(pQueryElement qe, pQueryStatement stmt, pObject obj)
     pObject newobj;
     pMqpInf mi = (pMqpInf)qe->PrivateData;
     pMqpSubtrees ms = mi->Subtrees;
-    pExpression sortby[OBJSYS_SORT_MAX + 1];
+    pExpression* sortby;
 
 	/** Too many levels of recursion? **/
 	if (ms->nStacked >= MQP_MAX_SUBTREE) return NULL;
@@ -281,14 +293,16 @@ mqp_internal_Recurse(pQueryElement qe, pQueryStatement stmt, pObject obj)
 	if (oi && (oi->Flags & OBJ_INFO_F_NO_SUBOBJ)) return NULL;
 
 	/** Try running the query. **/
+	if (mqp_internal_OrderByToExpArray(qe, &sortby) < 0) return NULL;
 	newqy = objOpenQuery(
 		    obj,
 		    NULL,
 		    NULL, 
 		    (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, 
-		    (void**)mqp_internal_OrderByToExpArray(qe, sortby, sizeof(sortby)/sizeof(sortby[0])),
+		    (void**)sortby,
 		    (mi->Flags & MQP_MI_F_ONEROW)?OBJ_QY_F_ONEROW:0
 		    );
+	if (sortby) nmSysFree(sortby);
 	if (!newqy) return NULL;
 	objUnmanageQuery(stmt->Query->SessionID, newqy);
 	newobj = objQueryFetch(newqy, ((pMqpInf)(qe->PrivateData))->ObjMode);
@@ -1187,7 +1201,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
     char* src;
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
     handle_t collection;
-    pExpression sortby[OBJSYS_SORT_MAX + 1];
+    pExpression* sortby;
 
 	mi->Flags &= ~MQP_MI_F_USINGCACHE;
 
@@ -1286,14 +1300,21 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    }
 	else if (!(mi->Flags & MQP_MI_F_USINGCACHE))
 	    {
+	    if (mqp_internal_OrderByToExpArray(qe, &sortby) < 0)
+		{
+		mqpFinish(qe,stmt);
+		mssError(0,"MQP","Could not query source object for SQL projection");
+		return -1;
+		}
 	    qe->LLQuery = objOpenQuery(
 				qe->LLSource, 
 				NULL, 
 				NULL, 
 				(qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, 
-				(void**)mqp_internal_OrderByToExpArray(qe, sortby, sizeof(sortby)/sizeof(sortby[0])), 
+				(void**)sortby, 
 				(mi->Flags & MQP_MI_F_ONEROW)?OBJ_QY_F_ONEROW:0
 				);
+	    if (sortby) nmSysFree(sortby);
 	    if (!qe->LLQuery) 
 		{
 		mqpFinish(qe,stmt);
