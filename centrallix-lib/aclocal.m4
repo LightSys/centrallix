@@ -47,7 +47,78 @@ AC_DEFUN(CHECK_BUILTIN_EXPECT,
 		AC_DEFINE([HAVE_BUILTIN_EXPECT], [1], [Define if __builtin_expect is available])
 		AC_MSG_RESULT([yes])
 	    ],
-	    [AC_MSG_RESULT([no])],
+	    [AC_MSG_RESULT([no])]
+	)
+    ]
+)
+
+dnl check if memset_explicit(), memset_s(), explicit_bzero() are available.
+AC_DEFUN(CHECK_MEMSET,
+    [
+	AC_MSG_CHECKING(if memset_explicit is available)
+	AC_RUN_IFELSE(
+	    [AC_LANG_PROGRAM(
+		[#include <string.h>],
+		[
+		    char buf[[16]];
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			buf[[i]] = i;
+		    memset_explicit(buf, 0, sizeof(buf));
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			if (buf[[i]] != 0)
+			    return -1;
+		]
+	    )],
+	    [
+		AC_DEFINE([HAVE_MEMSET_EXPLICIT], [1], [Define if memset_explicit is available])
+		AC_MSG_RESULT([yes])
+	    ],
+	    [AC_MSG_RESULT([no])]
+	)
+	
+	AC_MSG_CHECKING(if memset_s is available)
+	AC_RUN_IFELSE(
+	    [AC_LANG_PROGRAM(
+		[
+		    #define __STDC_WANT_LIB_EXT1__ 1
+		    #include <string.h>
+		],
+		[
+		    char buf[[16]];
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			buf[[i]] = i;
+		    memset_s(buf, sizeof(buf), 0, sizeof(buf));
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			if (buf[[i]] != 0)
+			    return -1;
+		]
+	    )],
+	    [
+		AC_DEFINE([HAVE_MEMSET_S], [1], [Define if memset_s is available])
+		AC_MSG_RESULT([yes])
+	    ],
+	    [AC_MSG_RESULT([no])]
+	)
+	
+	AC_MSG_CHECKING(if explicit_bzero is available)
+	AC_RUN_IFELSE(
+	    [AC_LANG_PROGRAM(
+		[#include <string.h>],
+		[
+		    char buf[[16]];
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			buf[[i]] = i;
+		    explicit_bzero(buf, sizeof(buf));
+		    for (size_t i = 0; i < sizeof(buf); i++)
+			if (buf[[i]] != 0)
+			    return -1;
+		]
+	    )],
+	    [
+		AC_DEFINE([HAVE_EXPLICIT_BZERO], [1], [Define if explicit_bzero is available])
+		AC_MSG_RESULT([yes])
+	    ],
+	    [AC_MSG_RESULT([no])]
 	)
     ]
 )
@@ -227,6 +298,7 @@ AC_DEFUN(CHECK_VALGRIND,
 	WITH_VALGRIND="$enableval",
 	WITH_VALGRIND="no"
     )
+    AC_MSG_RESULT($WITH_VALGRIND)
     if test "$WITH_VALGRIND" = "yes"; then
 	if test "$WITH_OPTIMIZATION" = "yes"; then
 	    AC_MSG_ERROR([Valgrind integration and Optimization are mutually exclusive; please at most specify one or the other but not both])

@@ -19,7 +19,6 @@ test(char** tname)
     int flagtypes[5] = { MLX_F_CPPCOMM, MLX_F_POUNDCOMM, MLX_F_SEMICOMM, MLX_F_DASHCOMM, MLX_F_CCOMM };
     int n_flagtypes = 5;
     int flags;
-    char* commnames[5] = { "cppcomm", "poundcomm", "semicomm", "dashcomm", "ccomm" };
     pLxSession lxs;
     pFile fd;
 
@@ -54,4 +53,3 @@ test(char** tname)
 
     return iter * 10;
     }
-
