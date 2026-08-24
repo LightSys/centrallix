@@ -48,6 +48,12 @@
 /*** maximum # of specifiers in a series in the format string ***/
 #define QPF_MAX_SPECS		(8)
 
+/*** maximum # of characters of an unrecognized filter to quote in a warning
+ *** This limit exists to prevent a malicious, unbounded write into logs from
+ *** untrusted format data.
+ ***/
+#define QPF_MAX_WARN_LEN	(64)
+
 /*** translation matrix size ***/
 #define QPF_MATRIX_SIZE		(256)
 
@@ -1415,8 +1421,21 @@ qpfPrintf_va_internal(
 			goto error;
 			}
 		    
-		    /** Invalid spec: Skip to printing. **/
+		    /** Invalid specifier: Unconsume the &. **/
 		    format--;
+		    
+		    /** Measure the name of the unrecognized specifier and print a warning. **/
+		    int len = 1;
+		    while (len < QPF_MAX_WARN_LEN &&
+			    (('A' <= format[len] && format[len] <= 'Z') ||
+			     ('a' <= format[len] && format[len] <= 'z') ||
+			     ('0' <= format[len] && format[len] <= '9')))
+			len++;
+		    fprintf(stderr,
+			"Warning: qprintf: unrecognized filter \"%.*s\" (copied as literal text). "
+			"Use \"%%&\" to print a literal '&'.\n",
+			len, format
+		    );
 		    break;
 		    }
 		
