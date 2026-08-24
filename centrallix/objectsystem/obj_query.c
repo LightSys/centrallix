@@ -99,6 +99,11 @@ objMultiQuery(pObjSession session, char* query, void* objlist_v, int flags)
 	this = (pObjQuery)nmMalloc(sizeof(ObjQuery));
 	if (!this) return NULL;
 	memset(this,0,sizeof(ObjQuery));
+	if (xaInit(&this->SortBy, OBJSYS_SORTBY_XASIZE) < 0)
+	    {
+	    nmFree(this,sizeof(ObjQuery));
+	    return NULL;
+	    }
 	this->QyText = query;
 	this->Drv = OSYS.MultiQueryLayer;
 	this->QySession = session;
@@ -115,6 +120,7 @@ objMultiQuery(pObjSession session, char* query, void* objlist_v, int flags)
 	this->Data = this->Drv->OpenQuery(session, query, objlist, flags);
 	if (!this->Data)
 	    {
+	    xaDeInit(&this->SortBy);
 	    nmFree(this,sizeof(ObjQuery));
 	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE," null\n");
 	    return NULL;
@@ -164,8 +170,8 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
     pObjQuery this = NULL;
     pExpression tree = (pExpression)tree_v;
     pExpression *orderbyexp = (pExpression*)orderby_exp_v;
+    pExpression sort_exp;
     int i,len,t;
-    int n_sortby;
     pLxSession lxs = NULL;
     pObject tmp_obj;
     char* ptr;
@@ -183,6 +189,12 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	if (!this) 
 	    goto error;
 	memset(this, 0, sizeof(ObjQuery));
+	if (xaInit(&this->SortBy, OBJSYS_SORTBY_XASIZE) < 0)
+	    {
+	    nmFree(this, sizeof(ObjQuery));
+	    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "null\n");
+	    return NULL;
+	    }
 	this->QyText = query;
 	this->Magic = MGK_OBJQUERY;
 	linked_obj = objLinkTo(obj);
@@ -200,30 +212,32 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	    }
 
 	/** Now, parse the order-by clause **/
-	n_sortby = 0;
 	if (orderbyexp)
 	    {
-	    /** A list of expressions is provided **/
-	    for(i=0; i < OBJSYS_SORT_MAX; i++)
+	    /** A NULL terminated list of expressions is provided **/
+	    for(i=0; orderbyexp[i]; i++)
 	        {
-		this->SortBy[i] = orderbyexp[i];
-		if (!orderbyexp[i]) break;
-		n_sortby++;
+		if (xaAddItem(&this->SortBy, (void*)orderbyexp[i]) < 0)
+		    goto error;
 		}
 	    }
 	else if (order_by && order_by[0])
 	    {
 	    /** A list of text strings is provided **/
 	    lxs = mlxStringSession(order_by, MLX_F_EOF | MLX_F_FILENAMES | MLX_F_ICASER);
-	    for(i=0; i < OBJSYS_SORT_MAX; i++)
+	    while(1)
 	        {
-		this->SortBy[i] = exp_internal_CompileExpression_r(lxs, 0, this->ObjList, EXPR_CMP_ASCDESC);
-		if (!this->SortBy[i])
+		sort_exp = exp_internal_CompileExpression_r(lxs, 0, this->ObjList, EXPR_CMP_ASCDESC);
+		if (!sort_exp)
 		    {
 		    mssError(0, "OSML", "Invalid sort criteria '%s'", order_by);
 		    goto error;
 		    }
-		n_sortby++;
+		if (xaAddItem(&this->SortBy, (void*)sort_exp) < 0)
+		    {
+		    expFreeExpression(sort_exp);
+		    goto error;
+		    }
 		t = mlxNextToken(lxs);
 		if (t == MLX_TOK_EOF)
 		    {
@@ -252,7 +266,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	xaAddItem(&(linked_obj->Session->OpenQueries),(void*)this);
 	
 	/** If sort requested and driver no support, set from sort flag and start the sort **/
-	if (this->SortBy[0] && !(this->Flags & OBJ_QY_F_FULLSORT))
+	if (this->SortBy.nItems > 0 && !(this->Flags & OBJ_QY_F_FULLSORT))
 	    {
 	    /** Ok, first item of business is to read entire result set.  Init the sort structure **/
 	    this->SortInf = (pObjQuerySort)nmMalloc(sizeof(ObjQuerySort));
@@ -312,7 +326,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 		/** Build the sortable binary string representing the sort criteria values **/
 		expModifyParam(this->ObjList, NULL, tmp_obj);
 		sort_item->SortDataOffset = xsLength(&this->SortInf->SortDataBuf);
-		len = objBuildBinaryImageXString(&this->SortInf->SortDataBuf, this->SortBy, n_sortby, this->ObjList, 0);
+		len = objBuildBinaryImageXString(&this->SortInf->SortDataBuf, this->SortBy.Items, this->SortBy.nItems, this->ObjList, 0);
 		if (len < 0)
 		    {
 		    mssError(1, "OSML", "objOpenQuery: could build binary comparison image for sort");
@@ -341,11 +355,9 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	/** Order by expressions? **/
 	if (this && order_by && !orderbyexp)
 	    {
-	    for(i=0; this->SortBy[i] && i < OBJSYS_SORT_MAX; i++)
-		{
-		expFreeExpression(this->SortBy[i]);
-		this->SortBy[i] = NULL;
-		}
+	    for(i=0; i < this->SortBy.nItems; i++)
+		expFreeExpression((pExpression)(this->SortBy.Items[i]));
+	    xaClear(&this->SortBy, NULL, NULL);
 	    }
 
 	return this;
@@ -361,11 +373,9 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	/** Order by expressions? **/
 	if (this && order_by && !orderbyexp)
 	    {
-	    for(i=0; this->SortBy[i] && i < OBJSYS_SORT_MAX; i++)
-		{
-		expFreeExpression(this->SortBy[i]);
-		this->SortBy[i] = NULL;
-		}
+	    for(i=0; i < this->SortBy.nItems; i++)
+		expFreeExpression((pExpression)(this->SortBy.Items[i]));
+	    xaClear(&this->SortBy, NULL, NULL);
 	    }
 
 	/** Clean up the query structure **/
@@ -734,6 +744,7 @@ objQueryClose(pObjQuery this)
 	/** Free up the expression tree and the qy object itself **/
 	if (this->Flags & OBJ_QY_F_ALLOCTREE) expFreeExpression((pExpression)(this->Tree));
 	if (this->ObjList) expFreeParamList((pParamObjects)(this->ObjList));
+	xaDeInit(&this->SortBy);
 	nmFree(this,sizeof(ObjQuery));
 
     return 0;
@@ -785,4 +796,3 @@ objGetQueryIdentityPath(pObjQuery this, char* pathbuf, int maxlen)
 
     return 0;
     }
-

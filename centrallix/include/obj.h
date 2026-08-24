@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -57,7 +57,7 @@
 
 #define	OBJSYS_SORT_XASIZE	4096	/* initial size of query sort xarray */
 #define	OBJSYS_SORT_REOPEN	0	/* whether to enable reopen functionality in sorts */
-#define	OBJSYS_SORT_MAX		16	/* maximum sort-by items */
+#define	OBJSYS_SORTBY_XASIZE	16	/* initial size of query sort-by xarray */
 
 #ifndef MAX
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -420,7 +420,7 @@ typedef struct _OQ
     pObject	Obj;
     char*	QyText;
     void*	Tree;		/* pExpression */
-    void*	SortBy[OBJSYS_SORT_MAX];	/* pExpression [] */
+    XArray	SortBy;		/* pExpression ptrs for each sort-by item */
     void*	ObjList;	/* pParamObjects */
     void*	Data;		/* returned from driver xyzOpenQuery() */
     int		Flags;		/* OBJ_QY_F_xxx */

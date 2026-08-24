@@ -37,7 +37,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -3763,13 +3763,13 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		    sybd_internal_TreeToClause(exp, inf->Node, qy->SessionID, &(qy->TableInf), 1, &sql);
 		    expFreeExpression(exp);
 		    }
-		if (query->SortBy[0])
+		if (query->SortBy.nItems > 0)
 		    {
 		    xsConcatenate(&sql," ORDER BY ", 10);
-		    for(i=0;query->SortBy[i] && i < (sizeof(query->SortBy)/sizeof(void*));i++)
+		    for(i=0;i<query->SortBy.nItems;i++)
 			{
 			if (i != 0) xsConcatenate(&sql, ", ", 2);
-			sybd_internal_TreeToClause((pExpression)(query->SortBy[i]),inf->Node, qy->SessionID,&(qy->TableInf),1,&sql);
+			sybd_internal_TreeToClause((pExpression)(query->SortBy.Items[i]),inf->Node, qy->SessionID,&(qy->TableInf),1,&sql);
 			}
 	  	    }
 		/*if (SYBD_USE_CURSORS && (inf->TData->RowCount < 0 || inf->TData->RowCount > SYBD_CURSOR_ROWCOUNT))

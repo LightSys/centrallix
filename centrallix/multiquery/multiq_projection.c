@@ -16,7 +16,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -542,16 +542,6 @@ mqpAnalyze(pQueryStatement stmt)
 		    item = (pQueryStructure)(groupby_qs->Children.Items[i]);
 		    if (item->ObjCnt == 1 && (item->ObjFlags[src_idx] & EXPR_O_REFERENCED))
 		        {
-			/** The objectsystem can only sort on OBJSYS_SORT_MAX items **/
-			if (qe->OrderBy.nItems >= OBJSYS_SORT_MAX)
-			    {
-			    fprintf(stderr,
-				"Cannot sort source on more than %d GROUP BY items; "
-				"grouping may produce duplicate rows.",
-				OBJSYS_SORT_MAX
-			    );
-			    break;
-			    }
 			new_exp = exp_internal_CopyTree(item->Expr);
 			if (mq_internal_AddOrderBy(qe, new_exp) < 0) break;
 			if (qe->OrderPrio == 999 || qe->OrderPrio > i) qe->OrderPrio = i;
@@ -597,19 +587,7 @@ mqpAnalyze(pQueryStatement stmt)
 			    continue;
 			    }
 
-			/** Add it, if the objectsystem can still sort on it **/
-			if (qe->OrderBy.nItems >= OBJSYS_SORT_MAX)
-			    {
-			    expFreeExpression(new_exp);
-			    has_unhandled_orderby = 1;
-			    fprintf(stderr,
-				"Warning: Cannot sort source on more than %d "
-				"ORDER BY items.  Query results might be "
-				"ordered incorrectly.",
-				OBJSYS_SORT_MAX
-			    );
-			    break;
-			    }
+			/** Add it to the list of sort criteria **/
 			if (mq_internal_AddOrderBy(qe, new_exp) < 0)
 			    {
 			    mssClearError(); /* Failure handled. */
@@ -1303,7 +1281,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    if (mqp_internal_OrderByToExpArray(qe, &sortby) < 0)
 		{
 		mqpFinish(qe,stmt);
-		mssError(0,"MQP","Could not query source object for SQL projection");
+		mssError(0,"MQP","Could not build sort criteria for SQL projection");
 		return -1;
 		}
 	    qe->LLQuery = objOpenQuery(
