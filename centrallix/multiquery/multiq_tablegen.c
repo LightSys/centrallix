@@ -101,58 +101,6 @@ mqt_internal_CheckGroupBy(pQueryElement qe, pQueryStatement stmt, pMQTData md, u
 	    new_buf = md->GroupByBuf[1];
 	    }
 
-	/** Build the binary image of the group by expression results **/
-#if 00
-	ptr = new_buf;
-	for(i=0;i<md->nGroupByItems;i++)
-	    {
-	    /** Evaluate the item **/
-	    exp = md->GroupByItems[i];
-	    if (expEvalTree(exp, stmt->Query->ObjList) < 0)
-	        {
-		mssError(0,"MQT","Error evaluating group-by item #%d",i+1);
-		return -1;
-		}
-
-	    /** Pick the data type and copy the stinkin thing **/
-	    if (exp->Flags & EXPR_F_NULL)
-	        {
-		*(ptr++) = '0';
-		}
-	    else
-	        {
-		*(ptr++) = '1';
-		switch(exp->DataType)
-		    {
-		    case DATA_T_INTEGER:
-		        memcpy(ptr, &(exp->Integer), 4);
-			ptr += 4;
-			break;
-
-		    case DATA_T_STRING:
-		        memcpy(ptr, exp->String, strlen(exp->String)+1);
-			ptr += (strlen(exp->String)+1);
-			break;
-
-		    case DATA_T_DATETIME:
-		        memcpy(ptr, &(exp->Types.Date), sizeof(DateTime));
-			ptr += sizeof(DateTime);
-			break;
-
-		    case DATA_T_MONEY:
-		        memcpy(ptr, &(exp->Types.Money), sizeof(MoneyType));
-			ptr += sizeof(MoneyType);
-			break;
-
-		    case DATA_T_DOUBLE:
-		        memcpy(ptr, &(exp->Types.Double), sizeof(double));
-			ptr += sizeof(double);
-			break;
-		    }
-		}
-	    }
-#endif /** 00 **/
-
 	/** Ok, figure out if the group by columns changed **/
 	oldlen = md->GroupByLen;
 	/*md->GroupByLen = (ptr - new_buf);*/
