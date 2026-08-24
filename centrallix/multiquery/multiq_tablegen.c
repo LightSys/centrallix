@@ -17,7 +17,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -52,11 +52,9 @@
 /** Private data structure for doing groupby, etc **/
 typedef struct
     {
-    unsigned char	GroupByBuf[2][2048];
-    unsigned char*	GroupByPtr;
-    int			GroupByLen;
-    pExpression		GroupByItems[MQT_MAX_OBJECTS];
-    int			nGroupByItems;
+    XString		GroupByBuf[2];
+    pXString		GroupByPtr;
+    XArray		GroupByItems;		/* pExpression ptrs for each group-by item */
     pObject		SavedObjList[MQT_MAX_OBJECTS];
     int			nObjects;
     int			IsLastRow;
@@ -77,40 +75,55 @@ struct
     MQTINF;
 
 
-/*** mqt_internal_CheckGroupBy -- build a binary image of the group-by 
- *** columns and compare with the last row.  If different (or first row),
- *** return 1 else return 0.  The new binary image for the row will be
- *** in the alternate binary row buffer.  Returns -1 on error.
+/*** mqt_internal_CheckGroupBy -- check for changes to group by columns.
+ *** Builds a binary image XString with every column value in the group-by
+ *** clause and compares it against the previous row.  Returns 1 if they
+ *** are different (or there is no previous row), otherwise returns 0.
+ *** Returns -1 if an error occurs.
+ ***
+ *** The new binary image XString for the row is written to the alternate
+ *** binary row buffer, returned in *new_ptr on success.
  ***/
 int
-mqt_internal_CheckGroupBy(pQueryElement qe, pQueryStatement stmt, pMQTData md, unsigned char** new_ptr)
+mqt_internal_CheckGroupBy(pQueryElement qe, pQueryStatement stmt, pMQTData md, pXString* new_ptr)
     {
-    unsigned char* cur_buf;
-    unsigned char* new_buf;
-    int oldlen;
+    pXString cur_buf;
+    pXString new_buf;
 
-    	/** Figure out which buffer is which. **/
-	if (!md->GroupByPtr || md->GroupByPtr == md->GroupByBuf[1])
+    	/** Pick XString buffers to use from the struct. **/
+	if (!md->GroupByPtr || md->GroupByPtr == &(md->GroupByBuf[1]))
 	    {
-	    cur_buf = md->GroupByBuf[1];
-	    new_buf = md->GroupByBuf[0];
+	    cur_buf = &(md->GroupByBuf[1]);
+	    new_buf = &(md->GroupByBuf[0]);
 	    }
 	else
 	    {
-	    cur_buf = md->GroupByBuf[0];
-	    new_buf = md->GroupByBuf[1];
+	    cur_buf = &(md->GroupByBuf[0]);
+	    new_buf = &(md->GroupByBuf[1]);
 	    }
 
-	/** Ok, figure out if the group by columns changed **/
-	oldlen = md->GroupByLen;
-	/*md->GroupByLen = (ptr - new_buf);*/
-	md->GroupByLen = objBuildBinaryImage((char*)new_buf, sizeof(md->GroupByBuf[0]), md->GroupByItems, md->nGroupByItems, stmt->Query->ObjList, 0);
-	if (md->GroupByLen < 0) return -1;
+	/** Get an XString with every GROUP BY value. **/
+	xsCopy(new_buf, "", 0);
+	if (objBuildBinaryImageXString(
+	    new_buf,
+	    md->GroupByItems.Items,
+	    md->GroupByItems.nItems,
+	    stmt->Query->ObjList,
+	    0
+	) < 0)
+	    {
+	    mssError(0, "MQT", "Could not build binary comparison image for GROUP BY.");
+	    return -1;
+	    }
 	*new_ptr = new_buf;
-	if (md->GroupByPtr == NULL) return 1;
-	if (md->GroupByLen != oldlen || memcmp(cur_buf, new_buf, md->GroupByLen) != 0) return 1;
 
-    return 0;
+	/** Detect changes in GROUP BY columns. **/
+	if (!md->GroupByPtr) return 1;
+	if (new_buf->Length != cur_buf->Length) return 1;
+	if (memcmp(cur_buf->String, new_buf->String, new_buf->Length) != 0) return 1;
+
+	/** No changes detected. **/
+	return 0;
     }
 
 
@@ -144,6 +157,16 @@ mqtAnalyze(pQueryStatement stmt)
 	    md = (pMQTData)(qe->PrivateData);
 	    md->nListItems = 0;
 	    md->AggLevel = 0;
+
+	    /** Set up the group-by comparison buffers **/
+	    xsInit(&(md->GroupByBuf[0]));
+	    xsInit(&(md->GroupByBuf[1]));
+	    if (xaInit(&(md->GroupByItems), 16) < 0)
+		{
+		mq_internal_FreeQE(qe);
+		mssError(1,"MQT","Could not allocate the GROUP BY item list");
+		return -1;
+		}
 
 	    /** Need to link in with each of the select-items.  This operates both
 	     ** on SELECT items and on the RHS of SET items in an UPDATE clause.
@@ -269,14 +292,20 @@ mqtAnalyze(pQueryStatement stmt)
 		item->Expr = NULL;
 		}
 #endif
-	    /** Look for a group-by clause as well **/
+
+	    /** Pick up the group-by items, if any **/
 	    item = mq_internal_FindItem(qs->Parent, MQ_T_GROUPBYCLAUSE, NULL);
 	    if (item)
 	        {
 		for(i=0;i<item->Children.nItems;i++)
 		    {
 		    subitem = (pQueryStructure)(item->Children.Items[i]);
-		    md->GroupByItems[md->nGroupByItems++] = subitem->Expr;
+		    if (xaAddItem(&(md->GroupByItems), (void*)(subitem->Expr)) < 0)
+			{
+			mq_internal_FreeQE(qe);
+			mssError(1,"MQT","Could not add a GROUP BY item to the item list");
+			return -1;
+			}
 		    }
 		}
 
@@ -523,7 +552,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
     int ck;
     int i;
     pMQTData md = (pMQTData)(qe->PrivateData);
-    unsigned char* bptr;
+    pXString bptr;
 
     	/** Check the setrowcount... **/
 	if (qe->SlaveIterCnt > 0 && qe->IterCnt >= qe->SlaveIterCnt) return 0;
@@ -533,7 +562,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 	qe->IterCnt++;
 
 	/** Check to see if we're doing group-by **/
-	if (md->nGroupByItems == 0 && md->AggLevel == 0)
+	if (md->GroupByItems.nItems == 0 && md->AggLevel == 0)
 	    {
 	    /** Next, retrieve until end or until end of group **/
 	    if (qe->Children.nItems > 0 && cld)
@@ -608,7 +637,7 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 			return 0;
 			}
 		    }
-		mqt_internal_CheckGroupBy(qe, stmt, md, &(md->GroupByPtr));
+		if (mqt_internal_CheckGroupBy(qe, stmt, md, &(md->GroupByPtr)) < 0) return -1;
 		}
 
 	    /** This is the loop for a query with group-by and two-level aggregates **/
@@ -666,7 +695,9 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 			}
 
 		    /** Is this a group-end?  Return now if so. **/
-		    if (mqt_internal_CheckGroupBy(qe, stmt, md, &bptr) == 1 || qe->Children.nItems == 0 || !cld)
+		    ck = mqt_internal_CheckGroupBy(qe, stmt, md, &bptr);
+		    if (ck < 0) return ck;
+		    if (ck == 1 || qe->Children.nItems == 0 || !cld)
 			{
 			/** Restore saved objects **/
 			mqt_internal_SwapObjList(md, stmt, 0 /* no close */);
@@ -774,9 +805,16 @@ mqtFinish(pQueryElement qe, pQueryStatement stmt)
 int
 mqtRelease(pQueryElement qe, pQueryStatement stmt)
     {
-    	
+    pMQTData md = (pMQTData)(qe->PrivateData);
+
+	/** No private data to release? **/
+	if (!md) return 0;
+
 	/** Free the group by structure **/
-	nmFree(qe->PrivateData, sizeof(MQTData));
+	xsDeInit(&(md->GroupByBuf[0]));
+	xsDeInit(&(md->GroupByBuf[1]));
+	if (md->GroupByItems.Items) xaDeInit(&(md->GroupByItems));
+	nmFree(md, sizeof(MQTData));
 
     return 0;
     }
