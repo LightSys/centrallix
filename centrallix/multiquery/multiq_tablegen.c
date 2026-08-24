@@ -7,6 +7,7 @@
 #include "cxlib/mtlexer.h"
 #include "expression.h"
 #include "cxlib/xstring.h"
+#include "cxlib/xarray.h"
 #include "multiquery.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
@@ -222,8 +223,7 @@ mqtAnalyze(pQueryStatement stmt)
 		    /** No linkage but we can't handle it??? **/
 		    if (!(item->Flags & MQ_SF_ASTERISK) && item->ObjCnt > 0 && !(item->Expr->ObjCoverageMask & EXPR_MASK_INDETERMINATE))
 			{
-			nmFree(qe->PrivateData,sizeof(MQTData));
-			nmFree(qe,sizeof(QueryElement));
+			mq_internal_FreeQE(qe);
 			mssError(1,"MQT","Bark! Unhandled SELECT item in query - aborting");
 			return -1;
 			}
@@ -231,8 +231,7 @@ mqtAnalyze(pQueryStatement stmt)
 		    /** Is it a list?  If so, make a note of it. **/
 		    if (md->nListItems >= MQT_MAX_OBJECTS)
 			{
-			nmFree(qe->PrivateData,sizeof(MQTData));
-			nmFree(qe,sizeof(QueryElement));
+			mq_internal_FreeQE(qe);
 			mssError(1,"MQT","Bark! Too many lists in select query");
 			return -1;
 			}
@@ -358,11 +357,11 @@ mqt_internal_ResetAggregates(pQueryStatement stmt, pQueryElement qe, int level)
 	/** Reset any ORDER BY expressions in the parent **/
 	if (qe->Parent)
 	    {
-	    for(i=0;i<24;i++)
-		if (qe->Parent->OrderBy[i])
-		    expResetAggregates(qe->Parent->OrderBy[i], -1, level);
-		else
-		    break;
+	    for(i=0;i<qe->Parent->OrderBy.nItems;i++)
+		{
+		exp = (pExpression)(qe->Parent->OrderBy.Items[i]);
+		if (exp) expResetAggregates(exp, -1, level);
+		}
 	    }
     
 	/** Reset HAVING clause **/
@@ -400,18 +399,17 @@ mqt_internal_UpdateAggregates(pQueryStatement stmt, pQueryElement qe, int level,
 	/** Update any ORDER BY expressions in the parent **/
 	if (qe->Parent)
 	    {
-	    for(i=0;i<24;i++)
-		if (qe->Parent->OrderBy[i])
+	    for(i=0;i<qe->Parent->OrderBy.nItems;i++)
+		{
+		exp = (pExpression)(qe->Parent->OrderBy.Items[i]);
+		if (!exp) continue;
+		expUnlockAggregates(exp, level);
+		if (expEvalTree(exp, objlist) < 0)
 		    {
-		    expUnlockAggregates(qe->Parent->OrderBy[i], level);
-		    if (expEvalTree(qe->Parent->OrderBy[i], objlist) < 0)
-			{
-			mssError(1, "MQT", "Could not evaluate parent aggregate item");
-			return -1;
-			}
+		    mssError(1, "MQT", "Could not evaluate parent aggregate item");
+		    return -1;
 		    }
-		else
-		    break;
+		}
 	    }
 
 	/** Update HAVING clause **/

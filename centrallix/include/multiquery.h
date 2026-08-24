@@ -38,11 +38,10 @@
 #include "cxlib/mtlexer.h"
 #include "expression.h"
 #include "cxlib/xstring.h"
+#include "cxlib/xarray.h"
 #include "stparse.h"
 #include "cxlib/xhandle.h"
 
-
-#define MQ_MAX_ORDERBY		(24)
 
 #define MQ_MAX_SOURCELEN	(OBJSYS_MAX_PATH+1+16384)
 
@@ -88,7 +87,7 @@ typedef struct _QE
     pObjQuery		LLQuery;
     void*		QSLinkage;
     pExpression		Constraint;
-    pExpression		OrderBy[MQ_MAX_ORDERBY + 1];
+    XArray		OrderBy;		/* pExpression ptrs for each order-by item */
     int			OrderPrio;		/* priority of ordering */
     void*		PrivateData;		/* q-driver specific data structure */
     }
@@ -304,6 +303,8 @@ pQueryStructure mq_internal_AllocQS(int type);
 pQueryStructure mq_internal_FindItem(pQueryStructure tree, int type, pQueryStructure next);
 pQueryElement mq_internal_AllocQE();
 int mq_internal_FreeQE(pQueryElement qe);
+int mq_internal_AddOrderBy(pQueryElement qe, pExpression exp);
+int mq_internal_ClearOrderBy(pQueryElement qe);
 pPseudoObject mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj);
 int mq_internal_FreePseudoObject(pPseudoObject p);
 int mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p);

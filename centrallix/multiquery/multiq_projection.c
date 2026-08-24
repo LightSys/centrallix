@@ -7,6 +7,7 @@
 #include "cxlib/mtlexer.h"
 #include "expression.h"
 #include "cxlib/xstring.h"
+#include "cxlib/xarray.h"
 #include "multiquery.h"
 #include "cxlib/mtsession.h"
 
@@ -240,6 +241,24 @@ mqp_internal_FinalizeSbt(pObjSession s, pObject obj, char* attrname, void* ctx_v
     }
 
 
+/*** mqp_internal_OrderByToExpArray() - copy a query element's order by list
+ *** into a NULL terminated array for objOpenQuery().  Returns NULL if the
+ *** query element has no ordering to request.
+ ***/
+pExpression*
+mqp_internal_OrderByToExpArray(pQueryElement qe, pExpression* buf, int buf_items)
+    {
+    int i;
+
+	if (qe->OrderBy.nItems <= 0) return NULL;
+	for(i=0; i<qe->OrderBy.nItems && i<(buf_items-1); i++)
+	    buf[i] = (pExpression)(qe->OrderBy.Items[i]);
+	buf[i] = NULL;
+
+    return buf;
+    }
+
+
 /*** mqp_internal_Recurse() - attempt to recurse down into subobjects for a
  *** subtree type projection.  Returns a subobject if one is found, NULL
  *** otherwise.
@@ -252,6 +271,7 @@ mqp_internal_Recurse(pQueryElement qe, pQueryStatement stmt, pObject obj)
     pObject newobj;
     pMqpInf mi = (pMqpInf)qe->PrivateData;
     pMqpSubtrees ms = mi->Subtrees;
+    pExpression sortby[OBJSYS_SORT_MAX + 1];
 
 	/** Too many levels of recursion? **/
 	if (ms->nStacked >= MQP_MAX_SUBTREE) return NULL;
@@ -266,7 +286,7 @@ mqp_internal_Recurse(pQueryElement qe, pQueryStatement stmt, pObject obj)
 		    NULL,
 		    NULL, 
 		    (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, 
-		    (void**)(qe->OrderBy[0]?qe->OrderBy:NULL),
+		    (void**)mqp_internal_OrderByToExpArray(qe, sortby, sizeof(sortby)/sizeof(sortby[0])),
 		    (mi->Flags & MQP_MI_F_ONEROW)?OBJ_QY_F_ONEROW:0
 		    );
 	if (!newqy) return NULL;
@@ -499,7 +519,7 @@ mqpAnalyze(pQueryStatement stmt)
 		}
 
 	    /** Add any group by to the order-by list first. **/
-	    qe->OrderBy[0] = NULL;
+	    mq_internal_ClearOrderBy(qe);
 	    groupby_qs = mq_internal_FindItem(from_qs->Parent->Parent, MQ_T_GROUPBYCLAUSE, NULL);
 	    if (groupby_qs)
 	        {
@@ -508,13 +528,20 @@ mqpAnalyze(pQueryStatement stmt)
 		    item = (pQueryStructure)(groupby_qs->Children.Items[i]);
 		    if (item->ObjCnt == 1 && (item->ObjFlags[src_idx] & EXPR_O_REFERENCED))
 		        {
-			j=0;
-			while(qe->OrderBy[j]) j++;
-			if ((j+1) >= sizeof(qe->OrderBy) / sizeof(*(qe->OrderBy))) break;
+			/** The objectsystem can only sort on OBJSYS_SORT_MAX items **/
+			if (qe->OrderBy.nItems >= OBJSYS_SORT_MAX)
+			    {
+			    fprintf(stderr,
+				"Cannot sort source on more than %d GROUP BY items; "
+				"grouping may produce duplicate rows.",
+				OBJSYS_SORT_MAX
+			    );
+			    break;
+			    }
+			new_exp = exp_internal_CopyTree(item->Expr);
+			if (mq_internal_AddOrderBy(qe, new_exp) < 0) break;
 			if (qe->OrderPrio == 999 || qe->OrderPrio > i) qe->OrderPrio = i;
-			qe->OrderBy[j] = exp_internal_CopyTree(item->Expr);
-			qe->OrderBy[j+1] = NULL;
-			expRemapID(qe->OrderBy[j], src_idx, 0);
+			expRemapID(new_exp, src_idx, 0);
 			}
 		    }
 		}
@@ -531,13 +558,19 @@ mqpAnalyze(pQueryStatement stmt)
 		    if (item->ObjCnt == 1 && (item->ObjFlags[src_idx] & EXPR_O_REFERENCED) && item->Expr && item->Expr->AggLevel == 0)
 		        {
 			new_exp = exp_internal_CopyTree(item->Expr);
+			if (!new_exp)
+			    {
+			    mssClearError(); /* Failure handled. */
+			    has_unhandled_orderby = 1;
+			    continue;
+			    }
 			expRemapID(new_exp, src_idx, 0);
 
 			/** Check to see if it is already in the list **/
 			found = 0;
-			for(j=0;qe->OrderBy[j];j++)
+			for(j=0;j<qe->OrderBy.nItems;j++)
 			    {
-			    if (expCompareExpressions(new_exp, qe->OrderBy[j]))
+			    if (expCompareExpressions(new_exp, (pExpression)(qe->OrderBy.Items[j])))
 				{
 				found = 1;
 				break;
@@ -550,18 +583,27 @@ mqpAnalyze(pQueryStatement stmt)
 			    continue;
 			    }
 
-			/** Add it **/
-			j=0;
-			while(qe->OrderBy[j]) j++;
-			if ((j+1) >= sizeof(qe->OrderBy) / sizeof(*(qe->OrderBy)))
+			/** Add it, if the objectsystem can still sort on it **/
+			if (qe->OrderBy.nItems >= OBJSYS_SORT_MAX)
 			    {
 			    expFreeExpression(new_exp);
 			    has_unhandled_orderby = 1;
+			    fprintf(stderr,
+				"Warning: Cannot sort source on more than %d "
+				"ORDER BY items.  Query results might be "
+				"ordered incorrectly.",
+				OBJSYS_SORT_MAX
+			    );
 			    break;
 			    }
+			if (mq_internal_AddOrderBy(qe, new_exp) < 0)
+			    {
+			    mssClearError(); /* Failure handled. */
+			    has_unhandled_orderby = 1;
+			    break;
+			    }
+
 			if (qe->OrderPrio == 999 || qe->OrderPrio > i) qe->OrderPrio = i;
-			qe->OrderBy[j] = new_exp;
-			qe->OrderBy[j+1] = NULL;
 			}
 		    else
 			{
@@ -1145,6 +1187,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
     char* src;
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
     handle_t collection;
+    pExpression sortby[OBJSYS_SORT_MAX + 1];
 
 	mi->Flags &= ~MQP_MI_F_USINGCACHE;
 
@@ -1248,7 +1291,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 				NULL, 
 				NULL, 
 				(qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, 
-				(void**)(qe->OrderBy[0]?qe->OrderBy:NULL), 
+				(void**)mqp_internal_OrderByToExpArray(qe, sortby, sizeof(sortby)/sizeof(sortby[0])), 
 				(mi->Flags & MQP_MI_F_ONEROW)?OBJ_QY_F_ONEROW:0
 				);
 	    if (!qe->LLQuery) 
@@ -1550,12 +1593,8 @@ mqpRelease(pQueryElement qe, pQueryStatement stmt)
     pMqpOneRow row;
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
 
-    	/** Release the order-by expressions **/
-	for(i=0;qe->OrderBy[i];i++)
-	    {
-	    expFreeExpression(qe->OrderBy[i]);
-	    qe->OrderBy[i] = NULL;
-	    }
+	/** Analyze can free a query element before its private data exists **/
+	if (!mi) return 0;
 
 	/** Clean up the list of sources **/
 	for (i=0; i<mi->SourceList.nItems; i++)

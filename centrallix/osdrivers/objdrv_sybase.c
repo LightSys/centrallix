@@ -4744,7 +4744,7 @@ mqsybAnalyze(pQueryStatement stmt)
     pSybdNode unique_from_nodes[16];
     int srcs_per_unique_node[16];
     int id_remapping[16];
-    int i,j,k,mask,n_items;
+    int i,j,k,mask;
     pSybdNode node;
     char* pathpart;
     pQueryElement qe;
@@ -4885,8 +4885,7 @@ mqsybAnalyze(pQueryStatement stmt)
 			}
 
 		    /** Now find order-by stuff that is relevant to this query. **/
-		    n_items = 0;
-		    memset(qe->OrderBy,0,sizeof(pExpression)*17);
+		    mq_internal_ClearOrderBy(qe);
 		    orderby_qs = mq_internal_FindItem(select_qs->Parent, MQ_T_ORDERBYCLAUSE, NULL);
 		    if (orderby_qs) for(j=0;j<orderby_qs->Children.nItems;j++)
 		        {
@@ -4894,9 +4893,10 @@ mqsybAnalyze(pQueryStatement stmt)
 			if (item->Expr && (item->Expr->ObjCoverageMask & mask) &&
                             !(item->Expr->ObjCoverageMask & ~mask))
 			    {
-			    qe->OrderBy[n_items++] = item->Expr;
+			    new_exp = item->Expr;
 			    item->Expr = NULL;
-			    for(k=0;k<srcs_per_unique_node[i];k++) expRemapID(qe->OrderBy[n_items-1], id_remapping[k], k);
+			    if (mq_internal_AddOrderBy(qe, new_exp) < 0) continue;
+			    for(k=0;k<srcs_per_unique_node[i];k++) expRemapID(new_exp, id_remapping[k], k);
 			    }
 			}
 		    groupby_qs = mq_internal_FindItem(select_qs->Parent, MQ_T_ORDERBYCLAUSE, NULL);
@@ -4906,11 +4906,11 @@ mqsybAnalyze(pQueryStatement stmt)
 			if (item->Expr && (item->Expr->ObjCoverageMask & mask) &&
                             !(item->Expr->ObjCoverageMask & ~mask))
 			    {
-			    qe->OrderBy[n_items++] = exp_internal_CopyTree(item->Expr);
-			    for(k=0;k<srcs_per_unique_node[i];k++) expRemapID(qe->OrderBy[n_items-1], id_remapping[k], k);
+			    new_exp = exp_internal_CopyTree(item->Expr);
+			    if (mq_internal_AddOrderBy(qe, new_exp) < 0) continue;
+			    for(k=0;k<srcs_per_unique_node[i];k++) expRemapID(new_exp, id_remapping[k], k);
 			    }
 			}
-		    qe->OrderBy[n_items] = NULL;
 		    }
 		}
 	    }

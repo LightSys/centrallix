@@ -10,6 +10,7 @@
 #include "cxlib/mtlexer.h"
 #include "expression.h"
 #include "cxlib/xstring.h"
+#include "cxlib/xarray.h"
 #include "multiquery.h"
 #include "cxlib/mtsession.h"
 #include "application.h"
@@ -131,7 +132,11 @@ mq_internal_FreeQE(pQueryElement qetree)
 	/** Tell the driver to release this **/
 	qetree->Driver->Release(qetree, NULL);
 
+	/** Release the order-by expressions **/
+	mq_internal_ClearOrderBy(qetree);
+
 	/** Release memory held by the arrays, etc **/
+	xaDeInit(&qetree->OrderBy);
 	xaDeInit(&qetree->Children);
 	xaDeInit(&qetree->AttrNames);
 	xaDeInit(&qetree->AttrDeriv);
@@ -166,6 +171,7 @@ mq_internal_AllocQE()
 	xaInit(&qe->AttrExprPtr,16);
 	xaInit(&qe->AttrCompiledExpr,16);
 	xaInit(&qe->AttrAssignExpr,16);
+	xaInit(&qe->OrderBy,16);
 	qe->Parent = NULL;
 	qe->Constraint = NULL;
 	qe->Flags = 0;
@@ -173,6 +179,49 @@ mq_internal_AllocQE()
 	qe->QSLinkage = NULL;
 
     return qe;
+    }
+
+
+/*** mq_internal_AddOrderBy - append an expression to a query element's order
+ *** by list.  Takes ownership of exp and promises to consume it, even if an
+ *** error occurs.
+ ***/
+int
+mq_internal_AddOrderBy(pQueryElement qe, pExpression exp)
+    {
+
+	if (!exp)
+	    {
+	    mssError(1,"MQ","Could not add NULL ORDER BY expression.");
+	    return -1;
+	    }
+	if (xaAddItem(&qe->OrderBy, (void*)exp) < 0)
+	    {
+	    expFreeExpression(exp);
+	    mssError(1,"MQ","Failed to add ORDER BY expression item to xarray.");
+	    return -1;
+	    }
+
+    return 0;
+    }
+
+
+/*** mq_internal_ClearOrderBy - release all of the expressions in a query
+ *** element's order by list, leaving the list empty.
+ ***/
+int
+mq_internal_ClearOrderBy(pQueryElement qe)
+    {
+    int i;
+
+	for(i=0;i<qe->OrderBy.nItems;i++)
+	    {
+	    if (qe->OrderBy.Items[i])
+		expFreeExpression((pExpression)(qe->OrderBy.Items[i]));
+	    }
+	xaClear(&qe->OrderBy, NULL, NULL);
+
+    return 0;
     }
 
 
@@ -4787,5 +4836,3 @@ mqInitialize()
 
     return 0;
     }
-
-
