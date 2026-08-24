@@ -1424,7 +1424,7 @@ qpfPrintf_va_internal(
 		startspec = QPF_SPEC_T_STARTFILT;
 		endspec = QPF_SPEC_T_ENDFILT;
 		}
-	    while (format[0] == '&' && format++); /* Loop as long as there are '&' chars to consume. */
+	    while (format[0] == '&' && format++); /* do-loop while there are '&'s to consume. */
 	    
 	    /** Get the data using the source spec. **/
 	    char tmp_buf[318]; /* 318 characters are needed to print DBL_MAX. */
