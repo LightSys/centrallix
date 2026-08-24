@@ -1069,11 +1069,17 @@ qpfPrintf_gva(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, voi
 
 
 /*** Copy characters to the new buffer, translating each character using the
- *** given pQPConvTable.  Respects a soft and hard limit.
- *** 
- *** I'm not sure what this stuff about the "soft and hard limit" means, but
- *** I think it has something do do with the `limit` parameter.  I'm also not
- *** sure why that parameter is necessary. (Israel, 2026)
+ *** given pQPConvTable.
+ ***
+ *** This function respects both a "soft limit" and a "hard limit" on the
+ *** number of characters written.
+ *** Soft limit: `dstsize`, used to prevent writing past the end of `dstbuf`.
+ *** The limit is "soft" because the function calls `grow_fn` (if provided)
+ *** to attempt to increase the limit, if needed.
+ *** Hard limit: `limit`, used by spec chain elements like `nLen` or `*LEN`.
+ *** The function will not write more characters than this and causes an
+ *** `QPF_ERR_T_INSOVERFLOW` error, even if space is available or `grow_fn`
+ *** could be called.
  ***
  *** @param s The qprintf session in use.
  *** @param srcbuf The source string representation to translate and copy.
@@ -1083,9 +1089,7 @@ qpfPrintf_gva(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, voi
  *** @param dstoffs The number of bytes to skip at the start of `dstbuf`
  *** 	before writing the result.
  *** @param dstsize The size of the currently allocated string at `dstbuf`.
- *** @param limit The maximum amount that the destination string can grow past
- *** 	the size of the source string.  Causes an `QPF_ERR_T_INSOVERFLOW`
- *** 	error if this limit is exceeded.
+ *** @param limit A hard limit on the number of characters added to `dstbuf`.
  *** @param table The translation table to apply when copying each character.
  *** @param grow_fn An optional grow function, used to grow the dst string if
  *** 	more space is needed.
