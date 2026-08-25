@@ -140,26 +140,26 @@ typedef struct _PH
     ObjPresentationHints, *pObjPresentationHints;
 
 /*** Hints style info - keep in sync with ht_utils_hints.js in centrallix-os ***/
-#define OBJ_PH_STYLE_BITMASK	1	/* items from EnumQuery or EnumList are bitmasked */
-#define OBJ_PH_STYLE_LIST	2	/* use a list style presentation for enum types */
-#define OBJ_PH_STYLE_BUTTONS	4	/* use radio button or checkboxes for enum types */
-#define OBJ_PH_STYLE_NOTNULL	8	/* field does not allow nulls */
-#define OBJ_PH_STYLE_STRNULL	16	/* empty string == null */
-#define OBJ_PH_STYLE_GROUPED	32	/* check GroupID for grouping fields together */
-#define OBJ_PH_STYLE_READONLY	64	/* user can't modify */
-#define OBJ_PH_STYLE_HIDDEN	128	/* don't present this field to the user */
-#define OBJ_PH_STYLE_PASSWORD	256	/* hide string as user types */
-#define OBJ_PH_STYLE_MULTILINE	512	/* string value allows multiline editing */
-#define OBJ_PH_STYLE_HIGHLIGHT	1024	/* highlight this attribute */
-#define OBJ_PH_STYLE_LOWERCASE	2048	/* This attribute is lowercase-only */
-#define OBJ_PH_STYLE_UPPERCASE	4096	/* This attribute is uppercase-only */
-#define OBJ_PH_STYLE_TABPAGE	8192	/* Prefer tabpage layout for grouped fields */
-#define OBJ_PH_STYLE_SEPWINDOW	16384	/* Prefer separate windows for grouped fields */
-#define OBJ_PH_STYLE_ALWAYSDEF	32768	/* Always reset default value on any modify */
-#define OBJ_PH_STYLE_CREATEONLY	65536	/* Writable only during record creation */
-#define OBJ_PH_STYLE_MULTISEL	131072	/* Multiple select */
-#define OBJ_PH_STYLE_KEY	262144	/* Field is a primary key */
-#define OBJ_PH_STYLE_APPLYCHG	524288	/* Apply hints on DataChange, not on DataModify */
+#define OBJ_PH_STYLE_BITMASK       (1 <<  0) /* items from EnumQuery or EnumList are bitmasked */
+#define OBJ_PH_STYLE_LIST          (1 <<  1) /* use a list style presentation for enum types */
+#define OBJ_PH_STYLE_BUTTONS       (1 <<  2) /* use radio button or checkboxes for enum types */
+#define OBJ_PH_STYLE_NOTNULL       (1 <<  3) /* field does not allow nulls */
+#define OBJ_PH_STYLE_STRNULL       (1 <<  4) /* empty string == null */
+#define OBJ_PH_STYLE_GROUPED       (1 <<  5) /* check GroupID for grouping fields together */
+#define OBJ_PH_STYLE_READONLY      (1 <<  6) /* user can't modify */
+#define OBJ_PH_STYLE_HIDDEN        (1 <<  7) /* don't present this field to the user */
+#define OBJ_PH_STYLE_PASSWORD      (1 <<  8) /* hide string as user types */
+#define OBJ_PH_STYLE_MULTILINE     (1 <<  9) /* string value allows multiline editing */
+#define OBJ_PH_STYLE_HIGHLIGHT     (1 << 10) /* highlight this attribute */
+#define OBJ_PH_STYLE_LOWERCASE     (1 << 11) /* This attribute is lowercase-only */
+#define OBJ_PH_STYLE_UPPERCASE     (1 << 12) /* This attribute is uppercase-only */
+#define OBJ_PH_STYLE_TABPAGE       (1 << 13) /* Prefer tabpage layout for grouped fields */
+#define OBJ_PH_STYLE_SEPWINDOW     (1 << 14) /* Prefer separate windows for grouped fields */
+#define OBJ_PH_STYLE_ALWAYSDEF     (1 << 15) /* Always reset default value on any modify */
+#define OBJ_PH_STYLE_CREATEONLY    (1 << 16) /* Writable only during record creation */
+#define OBJ_PH_STYLE_MULTISEL      (1 << 17) /* Multiple select */
+#define OBJ_PH_STYLE_KEY           (1 << 18) /* Field is a primary key */
+#define OBJ_PH_STYLE_APPLYCHG      (1 << 19) /* Apply hints on DataChange, not on DataModify */
 
 
 /** objectsystem driver **/
