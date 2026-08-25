@@ -1795,15 +1795,15 @@ qpfPrintf_va_internal(
 	    /** Copy the data into the buffer. **/
 	    if (UNLIKELY(copy_len == 0)) continue;
 	    copied += copy_len;
-	    const size_t space_needed = dest_offset + copy_len + 1lu;
-	    if (UNLIKELY(space_needed > SIZE_MAX/2))
+	    if (UNLIKELY(dest_offset + copy_len + 1lu > SIZE_MAX/2))
 		{
 		QPERR(QPF_ERR_T_BUFOVERFLOW);
 		rval = -EINVAL;
 		goto error;
 		}
 	    if (UNLIKELY(no_grow)) copy_len = 0;
-	    if (UNLIKELY(no_grow || (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed))))
+	    const size_t space_needed = dest_offset + copy_len + 1lu;
+	    if (UNLIKELY(space_needed > *dest_size) && (no_grow || !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed)))
 		{
 		QPERR(QPF_ERR_T_BUFOVERFLOW);
 		copy_len = *dest_size - dest_offset - 1;
