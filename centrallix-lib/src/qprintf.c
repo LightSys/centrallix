@@ -421,7 +421,9 @@ qpfInitialize(void)
 	    if (!QPF.jsstr_matrix.Matrix[i])
 		{
 		QPF.jsstr_matrix.Matrix[i] = nmSysMalloc(7);
-		snprintf(QPF.jsstr_matrix.Matrix[i], 7, "\\u%4.4X", i);
+		/** The escape is always six characters, so anything else is a failure. **/
+		if (snprintf(QPF.jsstr_matrix.Matrix[i], 7, "\\u%4.4X", i) != 6)
+		    return -1;
 		}
 	    }
 	qpf_internal_SetupTable(&QPF.jsstr_matrix);
@@ -440,7 +442,9 @@ qpfInitialize(void)
 	    if (!QPF.jsonstr_matrix.Matrix[i])
 		{
 		QPF.jsonstr_matrix.Matrix[i] = nmSysMalloc(7);
-		snprintf(QPF.jsonstr_matrix.Matrix[i], 7, "\\u%4.4X", i);
+		/** The escape is always six characters, so anything else is a failure. **/
+		if (snprintf(QPF.jsonstr_matrix.Matrix[i], 7, "\\u%4.4X", i) != 6)
+		    return -1;
 		}
 	    }
 	qpf_internal_SetupTable(&QPF.jsonstr_matrix);
@@ -1490,7 +1494,14 @@ qpfPrintf_va_internal(
 		case QPF_SPEC_T_LL:
 		    {
 		    const long long ll_val = va_arg(ap, long long);
-		    copy_len = (size_t)snprintf(tmp_buf, sizeof(tmp_buf), "%lld", ll_val);
+		    const int len = snprintf(tmp_buf, sizeof(tmp_buf), "%lld", ll_val);
+		    if (UNLIKELY(len < 0 || (size_t)len >= sizeof(tmp_buf)))
+			{
+			rval = -EINVAL;
+			QPERR(QPF_ERR_T_INTERNAL);
+			goto error;
+			}
+		    copy_len = len;
 		    strval = tmp_buf;
 		    break;
 		    }
@@ -1498,7 +1509,14 @@ qpfPrintf_va_internal(
 		case QPF_SPEC_T_DBL:
 		    {
 		    const double double_val = va_arg(ap, double);
-		    copy_len = (size_t)snprintf(tmp_buf, sizeof(tmp_buf), "%lf", double_val);
+		    const int len = snprintf(tmp_buf, sizeof(tmp_buf), "%lf", double_val);
+		    if (UNLIKELY(len < 0 || (size_t)len >= sizeof(tmp_buf)))
+			{
+			rval = -EINVAL;
+			QPERR(QPF_ERR_T_INTERNAL);
+			goto error;
+			}
+		    copy_len = len;
 		    strval = tmp_buf;
 		    break;
 		    }
