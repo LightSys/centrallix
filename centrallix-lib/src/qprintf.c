@@ -1741,6 +1741,7 @@ qpfPrintf_va_internal(
 			}
 		    
 		    /** Translate the string content using the table selected above. **/
+		    const size_t old_dest_offset = dest_offset;
 		    const qpf_grow_fn_t gf = (no_grow) ? NULL : grow_fn;
 		    const int n_chars = qpf_internal_Translate(s, strval, copy_len, dest, &dest_offset, dest_size, maxdst, table, gf, grow_arg, min_room);
 		    if (UNLIKELY(n_chars < 0))
@@ -1750,7 +1751,12 @@ qpfPrintf_va_internal(
 			rval = n_chars;
 			goto error;
 			}
-		    if (UNLIKELY(s->Errors & QPF_ERR_T_BUFOVERFLOW)) no_grow = true;
+		    
+		    /*** Detect failed grow call.  Translate() returns the
+		     *** number of characters it needed to write.  If that's
+		     *** less than what it wrote, we know a grow call failed.
+		     ***/
+		    if (UNLIKELY(n_chars != dest_offset - old_dest_offset)) no_grow = true;
 		    
 		    /** Add closing quote (if requested). **/
 		    if (quote)
