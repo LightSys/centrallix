@@ -703,7 +703,7 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
     const unsigned char* srcptr = (const unsigned char*)src;
     const unsigned char* origsrc = (const unsigned char*)src;
     char* dstptr;
-    int req_size = ((src_size+2) / 3) * 4 + *dst_offset;
+    int req_size = ((src_size+2) / 3) * 4 + *dst_offset + 1; /** +1 leaves room for the null terminator **/
 
 	/** Grow dstbuf if necessary and possible, otherwise return error **/
 	if (req_size > *dst_size)
@@ -754,9 +754,10 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
 	    srcptr += 3;
 	    }
 
-	*dst_offset = *dst_offset + (dstptr - *dst);
+	const size_t bytes_written = (dstptr - *dst) - *dst_offset;
+	*dst_offset = dstptr - *dst;
 
-    return dstptr - *dst;
+    return bytes_written;
     }
 
 
@@ -863,9 +864,10 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 	    cursor += 3;
 	    }
 
-	*dst_offset = *dst_offset + cursor - *dst;
+	const size_t bytes_written = (cursor - *dst) - *dst_offset;
+	*dst_offset = cursor - *dst;
 
-    return cursor - *dst;
+    return bytes_written;
     }
 
 
@@ -896,13 +898,13 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
     int req_size;
     const char* orig_src = src;
 
-	/** Required size **/
+	/** Required size, counting the offset and the null terminator **/
 	if (UNLIKELY(src_size%2 == 1))
 	    {
 	    QPERR(QPF_ERR_T_BADLENGTH);
 	    return -1;
 	    }
-	req_size = src_size/2;
+	req_size = src_size/2 + *dst_offset + 1;
 
 	/** Grow dstbuf if necessary and possible, otherwise return error **/
 	if (req_size > *dst_size)
@@ -943,9 +945,10 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
 	    cursor += 1;
 	    }
 
-	*dst_offset = *dst_offset + cursor - *dst;
+	const size_t bytes_written = (cursor - *dst) - *dst_offset;
+	*dst_offset = cursor - *dst;
 
-    return cursor - *dst;
+    return bytes_written;
     }
 
 
