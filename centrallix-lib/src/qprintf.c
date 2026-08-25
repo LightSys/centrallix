@@ -636,14 +636,17 @@ qpfCloseSession(pQPSession s)
     }
 
 
-/*** Convert an integer into a string representation.  Seems to perform better
+/*** Convert an integer into a string representation.  The string is always
+ *** null-terminated, even if it has to be truncated.  Seems to perform better
  *** than `snprintf("%d")`, even without optimization enabled.
  *** 
  *** @param dst The destination string buffer.
  *** @param dstlen The allocated length of the string buffer, used to avoid
  *** 	buffer overflows.
  *** @param i The value to be written.
- *** @returns The number of characters written to the buffer.
+ *** @returns The number of characters the representation requires, following
+ *** 	the same convention as `snprintf()`.  If `dstlen` or more is returned,
+ *** 	the string did not fit so the buffer holds a truncated result.
  ***/
 static inline size_t
 qpf_internal_itoa(char* dst, size_t dstlen, int i)
