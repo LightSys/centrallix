@@ -111,11 +111,20 @@ function cx_AND(v1, v2)
     return v1 && v2;
     }
 
-// cx_FIRST() - return the first value that is set.
-function cx_FIRST(v1, v2)
+// cx_MIN() - returns the lower of the two values, or whichever one is set.
+function cx_MIN(v1, v2)
     {
     if (v1 == null) return v2;
-    return v1;
+    if (v2 == null) return v1;
+    return (v1 < v2)?v1:v2;
+    }
+
+// cx_MAX() - returns the higher of the two values, or whichever one is set.
+function cx_MAX(v1, v2)
+    {
+    if (v1 == null) return v2;
+    if (v2 == null) return v1;
+    return (v1 > v2)?v1:v2;
     }
 
 // Compiled expressions, keyed by expression text.  Created without any
@@ -187,15 +196,16 @@ function cx_scope_hint_expr(expr, scope)
     }
 
 // cx_merge_hint_expr() - merges two expressions into one, combining them by
-// using the given function.  ctx1 and ctx2 are the scopes of e1 and e2.  A
-// single expression is returned as is.
+// using the given function, which is called by name in the merged expression.
+// ctx1 and ctx2 are the scopes of e1 and e2.  A single expression is returned
+// as is.
 function cx_merge_hint_expr(e1, ctx1, e2, ctx2, fn)
     {
     if (!e2) return e1;
     if (!e1) return e2;
     e1 = cx_scope_hint_expr(e1, ctx1);
     e2 = cx_scope_hint_expr(e2, ctx2);
-    return fn + '((' + e1 + '),(' + e2 + '))';
+    return fn.name + '((' + e1 + '),(' + e2 + '))';
     }
 
 // cx_merge_hint_expr_first() - merges two expressions into one yielding the
@@ -243,9 +253,9 @@ function cx_merge_two_hints(h1,h2)
 	if (!h1) return h2;
 	if (!h2) return h1;
 
-	nh.Constraint = cx_merge_hint_expr(h1.Constraint, h1.Context, h2.Constraint, h2.Context, 'cx_AND');
-	nh.MinValue = cx_merge_hint_expr(h1.MinValue, h1.Context, h2.MinValue, h2.Context, 'min');
-	nh.MaxValue = cx_merge_hint_expr(h1.MaxValue, h1.Context, h2.MaxValue, h2.Context, 'max');
+	nh.Constraint = cx_merge_hint_expr(h1.Constraint, h1.Context, h2.Constraint, h2.Context, cx_AND);
+	nh.MinValue = cx_merge_hint_expr(h1.MinValue, h1.Context, h2.MinValue, h2.Context, cx_MIN);
+	nh.MaxValue = cx_merge_hint_expr(h1.MaxValue, h1.Context, h2.MaxValue, h2.Context, cx_MAX);
 	nh.EnumList = cx_merge_hint_array(h1.EnumList, h2.EnumList);
 	nh.EnumQuery = cx_merge_hint_string(h1.EnumQuery, h2.EnumQuery);
 	nh.Format = cx_merge_hint_string(h1.Format, h2.Format);
