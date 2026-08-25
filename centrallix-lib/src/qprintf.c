@@ -1538,7 +1538,7 @@ qpfPrintf_va_internal(
 	    /** Handle filters. **/
 	    for (unsigned int i = 1; i < n_specs; i++)
 		{
-		pQPConvTable table;
+		pQPConvTable table = NULL;
 		size_t min_room = 1;
 		char quote = 0;
 		
@@ -1647,114 +1647,115 @@ qpfPrintf_va_internal(
 			break;
 			}
 		    
-		    case QPF_SPEC_T_QUOT:    table = &QPF.quote_matrix;    min_room = 2; quote = '\''; goto use_table;
-		    case QPF_SPEC_T_DQUOT:   table = &QPF.quote_matrix;    min_room = 2; quote = '"';  goto use_table;
-		    case QPF_SPEC_T_ESCQ:    table = &QPF.quote_matrix;    goto use_table;
-		    case QPF_SPEC_T_ESCQWS:  table = &QPF.quote_ws_matrix; goto use_table;
-		    case QPF_SPEC_T_JSSTR:   table = &QPF.jsstr_matrix;    goto use_table;
-		    case QPF_SPEC_T_JSONSTR: table = &QPF.jsonstr_matrix;  goto use_table;
-		    case QPF_SPEC_T_DSYB:    table = &QPF.dsyb_matrix;     goto use_table;
-		    case QPF_SPEC_T_SSYB:    table = &QPF.ssyb_matrix;     goto use_table;
-		    case QPF_SPEC_T_CSSVAL:  table = &QPF.cssval_matrix;   goto use_table;
-		    case QPF_SPEC_T_CSSURL:  table = &QPF.cssurl_matrix;   goto use_table;
-		    case QPF_SPEC_T_ESCWS:   table = &QPF.ws_matrix;       goto use_table;
-		    case QPF_SPEC_T_HTE:     table = &QPF.hte_matrix;      goto use_table;
-		    case QPF_SPEC_T_HTENLBR: table = &QPF.htenlbr_matrix;  goto use_table;
-		    case QPF_SPEC_T_HEX:     table = &QPF.hex_matrix;      goto use_table;
-		    case QPF_SPEC_T_URL:     table = &QPF.url_matrix;      goto use_table;
-    use_table:		{
-			/** Skip this spec if the case doesn't meet any of the requirements to use it. **/
-			const int is_final_spec = (n_specs - i == 1);
-			const int is_only_followed_by_nlen = (n_specs - i == 2 && specchain[i + 1] == QPF_SPEC_T_NLEN);
-			if (!is_final_spec && !is_only_followed_by_nlen)
-			    {
-			    QPERR(QPF_ERR_T_NOTIMPL);
-			    rval = -ENOSYS;
-			    goto error;
-			    }
-			
-			/** Determine the max amount of characters that we can write. **/
-			size_t maxdst = (is_only_followed_by_nlen) ? specchain_n[i + 1] : INT_MAX;
-			
-			/** Skip quoting non-strings. **/
-			if (quote && specchain[0] != QPF_SPEC_T_STR)
-			    {
-			    if (UNLIKELY(copy_len > maxdst))
-				{
-				QPERR(QPF_ERR_T_INSOVERFLOW);
-				copy_len = maxdst;
-				}
-			    break;
-			    }
-			
-			/** Add opening quote (if requested). **/
-			if (quote)
-			    {
-			    if (UNLIKELY(maxdst < 2))
-				{
-				QPERR(QPF_ERR_T_BADFORMAT);
-				rval = -EINVAL;
-				goto error;
-				}
-			    maxdst -= 2;
-			    
-			    const size_t space_needed = dest_offset + 2lu;
-			    if (UNLIKELY(no_grow || (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed))))
-				{
-				QPERR(QPF_ERR_T_BUFOVERFLOW);
-				no_grow = true;
-				}
-			    else (*dest)[dest_offset++] = quote;
-			    copied++;
-			    }
-			
-			/** Translate the string content using the table selected above. **/
-			const qpf_grow_fn_t gf = (no_grow) ? NULL : grow_fn;
-			const int n_chars = qpf_internal_Translate(s, strval, copy_len, dest, &dest_offset, dest_size, maxdst, table, gf, grow_arg, min_room);
-			if (UNLIKELY(n_chars < 0))
-			    {
-			    /** Probably unreachable. **/
-			    QPERR(QPF_ERR_T_INTERNAL);
-			    rval = n_chars;
-			    goto error;
-			    }
-			if (UNLIKELY(s->Errors & QPF_ERR_T_BUFOVERFLOW)) no_grow = true;
-			
-			/** Add closing quote (if requested). **/
-			if (quote)
-			    {
-			    const size_t space_needed = dest_offset + 2lu;
-			    if (UNLIKELY(no_grow || (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed))))
-				{
-				QPERR(QPF_ERR_T_BUFOVERFLOW);
-				no_grow = true;
-				}
-			     
-			    /*** Write the closing quote with space for the
-			     *** null-terminator if at all possible, even if
-			     *** a buffer overflow has already occurred, by
-			     *** moving the offset back and overwriting some
-			     *** of the end of the provided string, if needed.
-			     ***/
-			    if (LIKELY(*dest_size >= 2))
-				{
-				if (UNLIKELY(space_needed > *dest_size))
-				    dest_offset = *dest_size - 2;
-				(*dest)[dest_offset++] = quote;
-				}
-			    copied++;
-			    }
-			copied += n_chars;
-			copy_len = 0;
-			
-			break;
-			}
+		    case QPF_SPEC_T_QUOT:    table = &QPF.quote_matrix;    min_room = 2; quote = '\''; break;
+		    case QPF_SPEC_T_DQUOT:   table = &QPF.quote_matrix;    min_room = 2; quote = '"';  break;
+		    case QPF_SPEC_T_ESCQ:    table = &QPF.quote_matrix;    break;
+		    case QPF_SPEC_T_ESCQWS:  table = &QPF.quote_ws_matrix; break;
+		    case QPF_SPEC_T_JSSTR:   table = &QPF.jsstr_matrix;    break;
+		    case QPF_SPEC_T_JSONSTR: table = &QPF.jsonstr_matrix;  break;
+		    case QPF_SPEC_T_DSYB:    table = &QPF.dsyb_matrix;     break;
+		    case QPF_SPEC_T_SSYB:    table = &QPF.ssyb_matrix;     break;
+		    case QPF_SPEC_T_CSSVAL:  table = &QPF.cssval_matrix;   break;
+		    case QPF_SPEC_T_CSSURL:  table = &QPF.cssurl_matrix;   break;
+		    case QPF_SPEC_T_ESCWS:   table = &QPF.ws_matrix;       break;
+		    case QPF_SPEC_T_HTE:     table = &QPF.hte_matrix;      break;
+		    case QPF_SPEC_T_HTENLBR: table = &QPF.htenlbr_matrix;  break;
+		    case QPF_SPEC_T_HEX:     table = &QPF.hex_matrix;      break;
+		    case QPF_SPEC_T_URL:     table = &QPF.url_matrix;      break;
 		    
 		    default:
 			/** Unimplemented filter **/
 			QPERR(QPF_ERR_T_NOTIMPL);
 			rval = -ENOSYS;
 			goto error;
+		    }
+		
+		/** Apply format specifier table (if needed). **/
+		if (table != NULL)
+		    {
+		    /** Skip this spec if the case doesn't meet any of the requirements to use it. **/
+		    const int is_final_spec = (n_specs - i == 1);
+		    const int is_only_followed_by_nlen = (n_specs - i == 2 && specchain[i + 1] == QPF_SPEC_T_NLEN);
+		    if (!is_final_spec && !is_only_followed_by_nlen)
+			{
+			QPERR(QPF_ERR_T_NOTIMPL);
+			rval = -ENOSYS;
+			goto error;
+			}
+		    
+		    /** Determine the max amount of characters that we can write. **/
+		    size_t maxdst = (is_only_followed_by_nlen) ? specchain_n[i + 1] : INT_MAX;
+		    
+		    /** Skip quoting non-strings. **/
+		    if (quote && specchain[0] != QPF_SPEC_T_STR)
+			{
+			if (UNLIKELY(copy_len > maxdst))
+			    {
+			    QPERR(QPF_ERR_T_INSOVERFLOW);
+			    copy_len = maxdst;
+			    }
+			break;
+			}
+		    
+		    /** Add opening quote (if requested). **/
+		    if (quote)
+			{
+			if (UNLIKELY(maxdst < 2))
+			    {
+			    QPERR(QPF_ERR_T_BADFORMAT);
+			    rval = -EINVAL;
+			    goto error;
+			    }
+			maxdst -= 2;
+			
+			const size_t space_needed = dest_offset + 2lu;
+			if (UNLIKELY(no_grow || (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed))))
+			    {
+			    QPERR(QPF_ERR_T_BUFOVERFLOW);
+			    no_grow = true;
+			    }
+			else (*dest)[dest_offset++] = quote;
+			copied++;
+			}
+		    
+		    /** Translate the string content using the table selected above. **/
+		    const qpf_grow_fn_t gf = (no_grow) ? NULL : grow_fn;
+		    const int n_chars = qpf_internal_Translate(s, strval, copy_len, dest, &dest_offset, dest_size, maxdst, table, gf, grow_arg, min_room);
+		    if (UNLIKELY(n_chars < 0))
+			{
+			/** Probably unreachable. **/
+			QPERR(QPF_ERR_T_INTERNAL);
+			rval = n_chars;
+			goto error;
+			}
+		    if (UNLIKELY(s->Errors & QPF_ERR_T_BUFOVERFLOW)) no_grow = true;
+		    
+		    /** Add closing quote (if requested). **/
+		    if (quote)
+			{
+			const size_t space_needed = dest_offset + 2lu;
+			if (UNLIKELY(no_grow || (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed))))
+			    {
+			    QPERR(QPF_ERR_T_BUFOVERFLOW);
+			    no_grow = true;
+			    }
+			 
+			/*** Write the closing quote with space for the
+			 *** null-terminator if at all possible, even if
+			 *** a buffer overflow has already occurred, by
+			 *** moving the offset back and overwriting some
+			 *** of the end of the provided string, if needed.
+			 ***/
+			if (LIKELY(*dest_size >= 2))
+			    {
+			    if (UNLIKELY(space_needed > *dest_size))
+				dest_offset = *dest_size - 2;
+			    (*dest)[dest_offset++] = quote;
+			    }
+			copied++;
+			}
+		    copied += n_chars;
+		    copy_len = 0;
 		    }
 		}
 	    
