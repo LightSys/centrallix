@@ -1088,11 +1088,12 @@ qpfPrintf_gva(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, voi
  *** number of characters written.
  *** Soft limit: `dstsize`, used to prevent writing past the end of `dstbuf`.
  *** The limit is "soft" because the function calls `grow_fn` (if provided)
- *** to attempt to increase the limit, if needed.
+ *** to attempt to increase the limit, if needed.  The soft limit does NOT
+ *** reduce the return value.
  *** Hard limit: `limit`, used by spec chain elements like `nLen` or `*LEN`.
  *** The function will not write more characters than this and causes an
  *** `QPF_ERR_T_INSOVERFLOW` error, even if space is available or `grow_fn`
- *** could be called.
+ *** could be called.  The hard limit DOES reduce the return value.
  ***
  *** @param s The qprintf session in use.
  *** @param srcbuf The source string representation to translate and copy.
@@ -1108,11 +1109,11 @@ qpfPrintf_gva(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, voi
  *** 	more space is needed.
  *** @param grow_arg An argument, passed to`grow_fn`() when it is called.
  *** @param min_room A required amount of space that must be available at the
- *** end of the destination buffer when the function completes.  Often this is
- *** `1`, to leave room for a null terminator, or `2` to leave room for a
- *** closing quote mark followed by a null terminator.
+ *** 	end of the destination buffer when the function completes.  Often this
+ *** 	is `1`, to leave room for a null terminator, or `2` to leave room for
+ *** 	a closing quote mark followed by a null terminator.
  *** @returns The number of chars placed in dstbuf (or the number that would
- *** have been placed if there was enough room), or -1 if an error occurs.
+ *** 	have been placed if there was enough room), or -1 if an error occurs.
  *** Note: Does NOT return the number of chars pulled from the srcbuf!!!
  ***/
 static inline int
@@ -1691,7 +1692,7 @@ qpfPrintf_va_internal(
 			goto error;
 		    }
 		
-		/** Apply format specifier table (if needed). **/
+		/** Apply a conversion table from the format specifier table, if provided. **/
 		if (table != NULL)
 		    {
 		    /** Skip this spec if the case doesn't meet any of the requirements to use it. **/
