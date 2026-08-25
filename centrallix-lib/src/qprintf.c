@@ -1214,7 +1214,6 @@ qpf_internal_Translate(
  *** @param s Optional session struct.
  *** @param dest A pointer to a string buffer where data will be written.
  *** @param dest_size A pointer to the current size of the string buffer.
- *** @param grow_fn A function to grow the string buffer.
  *** @param grow_fn An optional grow function, used to grow `dest` if more
  *** 	space is needed.
  *** @param grow_arg An argument, passed to`grow_fn`() when it is called.
