@@ -14,27 +14,29 @@
 
 // cx_hints_style - style information for hints
 // Keep in sync with obj.h in main distribution.
-var cx_hints_style = new Object();
-cx_hints_style.bitmask = 1;
-cx_hints_style.list = 2;
-cx_hints_style.buttons = 4;
-cx_hints_style.notnull = 8;
-cx_hints_style.strnull = 16;
-cx_hints_style.grouped = 32;
-cx_hints_style.readonly = 64;
-cx_hints_style.hidden = 128;
-cx_hints_style.password = 256;
-cx_hints_style.multiline = 512;
-cx_hints_style.highlight = 1024;
-cx_hints_style.lowercase = 2048;
-cx_hints_style.uppercase = 4096;
-cx_hints_style.tabpage = 8192;
-cx_hints_style.sepwindow = 16384;
-cx_hints_style.alwaysdef = 32768;
-cx_hints_style.createonly = 65536;
-cx_hints_style.multiselect = 131072;
-cx_hints_style.key = 262144;
-cx_hints_style.applyonchange = 524288;
+const cx_hints_style =
+    {
+    bitmask:       1 <<  0,
+    list:          1 <<  1,
+    buttons:       1 <<  2,
+    notnull:       1 <<  3,
+    strnull:       1 <<  4,
+    grouped:       1 <<  5,
+    readonly:      1 <<  6,
+    hidden:        1 <<  7,
+    password:      1 <<  8,
+    multiline:     1 <<  9,
+    highlight:     1 << 10,
+    lowercase:     1 << 11,
+    uppercase:     1 << 12,
+    tabpage:       1 << 13,
+    sepwindow:     1 << 14,
+    alwaysdef:     1 << 15,
+    createonly:    1 << 16,
+    multiselect:   1 << 17,
+    key:           1 << 18,
+    applyonchange: 1 << 19,
+    };
 
 // cx_set_hints() - initializes hints information for a given
 // form field.
