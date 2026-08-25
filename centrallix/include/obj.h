@@ -140,6 +140,7 @@ typedef struct _PH
     ObjPresentationHints, *pObjPresentationHints;
 
 /*** Hints style info - keep in sync with ht_utils_hints.js in centrallix-os ***/
+#define OBJ_PH_STYLE_NONE           0        /* no style bits set */
 #define OBJ_PH_STYLE_BITMASK       (1 <<  0) /* items from EnumQuery or EnumList are bitmasked */
 #define OBJ_PH_STYLE_LIST          (1 <<  1) /* use a list style presentation for enum types */
 #define OBJ_PH_STYLE_BUTTONS       (1 <<  2) /* use radio button or checkboxes for enum types */

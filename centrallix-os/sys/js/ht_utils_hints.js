@@ -16,6 +16,7 @@
 // Keep in sync with obj.h in main distribution.
 const cx_hints_style =
     {
+    none:          0,
     bitmask:       1 <<  0,
     list:          1 <<  1,
     buttons:       1 <<  2,
