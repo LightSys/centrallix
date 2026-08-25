@@ -997,7 +997,8 @@ qpfSysMallocGrow(char** str, size_t* size, size_t offset, void* args, size_t req
  *** @param strsize The length of `str` in bytes.
  *** @param format The qprintf format to follow when printing data.
  *** @param ... A variable arguments list used to populate the format.
- *** @returns The number of chars written.
+ *** @returns The number of chars the output requires (matching `snprintf()`).
+ *** 	Returns `size` or more when truncating the output.  Negative on error.
  ***/
 int 
 qpfPrintf(pQPSession s, char* str, size_t size, const char* format, ...)
@@ -1019,10 +1020,11 @@ qpfPrintf(pQPSession s, char* str, size_t size, const char* format, ...)
  *** 
  *** @param s The qprintf session in use.
  *** @param str The destination string buffer for printed data.
- *** @param strsize The length of `str` in bytes.
+ *** @param size The length of `str` in bytes.
  *** @param format The qprintf format to follow when printing data.
  *** @param ap A variable arguments list used to populate the format.
- *** @returns The number of chars written.
+ *** @returns The number of chars the output requires (matching `snprintf()`).
+ *** 	Returns `size` or more when truncating the output.  Negative on error.
  ***/
 int 
 qpfPrintf_va(pQPSession s, char* str, size_t size, const char* format, va_list ap)
@@ -1032,18 +1034,20 @@ qpfPrintf_va(pQPSession s, char* str, size_t size, const char* format, va_list a
 
 
 /*** Print formatted text using the qprintf formatting, using provided the
- *** grow function to reallocate the provided string as needed.
+ *** grow function to reallocate the provided string as needed.  The output
+ *** is only truncated if the grow function failed to supply enough space.
  *** 
  *** @param s The qprintf session in use.
  *** @param str A pointer to the destination string buffer for printed data,
  *** 	which might be reallocated by `grow_fn`, if it is called.
- *** @param strsize A pointer to the length value of `str` in bytes, which
+ *** @param size A pointer to the length value of `str` in bytes, which
  *** 	might be updated by `grow_fn` if it reallocates `str` to a new size.
  *** @param grow_fn The grow function called if `str` is not large enough.
  *** @param grow_arg The void* argument passed to `grow_fn`.
  *** @param format The qprintf format to follow when printing data.
  *** @param ... A variable arguments list used to populate the format.
- *** @returns The number of chars written.
+ *** @returns The number of chars the output requires (matching `snprintf()`).
+ *** 	Returns `*size` or more when truncating the output.  Negative on error.
  ***/
 int
 qpfPrintf_g(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, void* grow_arg, const char* format, ...)
@@ -1061,18 +1065,20 @@ qpfPrintf_g(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, void*
 
 
 /*** Print formatted text using the qprintf formatting, using provided the
- *** grow function to reallocate the provided string as needed.
+ *** grow function to reallocate the provided string as needed.  The output
+ *** is only truncated if the grow function failed to supply enough space.
  *** 
  *** @param s The qprintf session in use.
  *** @param str A pointer to the destination string buffer for printed data,
  *** 	which might be reallocated by `grow_fn`, if it is called.
- *** @param strsize A pointer to the length value of `str` in bytes, which
+ *** @param size A pointer to the length value of `str` in bytes, which
  *** 	might be updated by `grow_fn` if it reallocates `str` to a new size.
  *** @param grow_fn The grow function called if `str` is not large enough.
  *** @param grow_arg The void* argument passed to `grow_fn`.
  *** @param format The qprintf format to follow when printing data.
  *** @param ap A variable arguments list used to populate the format.
- *** @returns The number of chars written.
+ *** @returns The number of chars the output requires (matching `snprintf()`).
+ *** 	Returns `*size` or more when truncating the output.  Negative on error.
  ***/
 int
 qpfPrintf_gva(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, void* grow_arg, const char* format, va_list ap)
@@ -1205,7 +1211,8 @@ qpf_internal_Translate(
 
 
 /*** Parse the provided format, apply all of the qprintf() format specifier
- *** rules, and write the result to a string buffer.
+ *** rules, and write the result to a string buffer.  The output is only
+ *** truncated if the grow function failed to supply enough space.
  *** 
  *** Warning:  The 'dest' parameter may change during the execution of this
  *** function if `grow_fn` reallocates it.  Do not store pointers to 'dest'!
@@ -1219,8 +1226,8 @@ qpf_internal_Translate(
  *** @param grow_arg An argument, passed to`grow_fn`() when it is called.
  *** @param format The format of data which should be written.
  *** @param ap The arguments list to fulfill the provided format.
- *** @returns The number of characters copied, or a negative number if an
- *** 	error occurs. 
+ *** @returns The number of chars the output requires (matching `snprintf()`).
+ *** 	Returns `*size` or more when truncating the output.  Negative on error.
  ***/
 int
 qpfPrintf_va_internal(
