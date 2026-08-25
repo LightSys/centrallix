@@ -1722,6 +1722,7 @@ qpfPrintf_va_internal(
 			}
 		    
 		    /** Add opening quote (if requested). **/
+		    const size_t quote_start_offset = dest_offset;
 		    if (quote)
 			{
 			if (UNLIKELY(maxdst < 2))
@@ -1775,16 +1776,19 @@ qpfPrintf_va_internal(
 			    no_grow = true;
 			    }
 			 
-			/*** Write the closing quote with space for the
-			 *** null-terminator if at all possible, even if
-			 *** a buffer overflow has already occurred, by
-			 *** moving the offset back and overwriting some
-			 *** of the end of the provided string, if needed.
+			/*** Write the closing quote with space for the null-
+			 *** terminator, even if the buffer is overflowing, by
+			 *** moving the offset back to replace the end of the
+			 *** quoted string, if needed.  Ensures we don't write
+			 *** before the quoted string and remove previous text.
 			 ***/
-			if (LIKELY(*dest_size >= 2))
+			size_t quote_offset = dest_offset;
+			if (UNLIKELY(space_needed > *dest_size && *dest_size >= 2))
+			    quote_offset = *dest_size - 2;
+			if (LIKELY(quote_offset >= quote_start_offset && quote_offset + 1lu < *dest_size))
 			    {
-			    if (UNLIKELY(space_needed > *dest_size))
-				dest_offset = *dest_size - 2;
+			    /** Write closing quote. **/
+			    dest_offset = quote_offset;
 			    (*dest)[dest_offset++] = quote;
 			    }
 			copied++;
