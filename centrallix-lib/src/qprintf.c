@@ -1247,6 +1247,9 @@ qpfPrintf_va_internal(
 	    s = &null_session;
 	    }
 	
+	/** Use qpfNoGrow() if no grow function is provided. **/
+	if (grow_fn == NULL) grow_fn = qpfNoGrow;
+	
 	/** Ensure that there is at least enough room for the a null terminator. **/
 	if (UNLIKELY((!*dest || *dest_size < 1) && !grow_fn(dest, dest_size, dest_offset, grow_arg, 1))) 
 	    {
