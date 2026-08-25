@@ -213,6 +213,24 @@ All identifiers should be spelled correctly and avoid using non-obvious abbrevia
 - In C, function macros are treated as functions, following those styles.
 - In a structure file, the name of a group, such as a widget, uses snake_case.
 
+### Types
+For: `.c`, `.h`
+
+- C code should work for C99, so it cannot assume the compiler uses any later standards.
+	- Note: This means `<stdbool.h>` and variable declarations inside a `for` statement are always available.
+- Use `NULL` as the value for null pointers, never `0`.
+- Use `bool` with `true` and `false` for boolean values, never an `int` holding `0` or `1`.
+- `int` and `unsigned int` are the default integer types.  Use the fixed-width types in `<stdint.h>` (e.g. `uint32_t`) only where the exact width matters, such as data written to a file, a database, or the network.
+- A struct must be fully zeroed/initialized when allocated.  Memory a function receives may hold stale data that still looks valid, such as an old `Magic` value or a pointer into live memory.  In C, use `memset()` when the padding of the struct matters, such as when it is written to a file or the network, or compared with `memcmp()`.
+
+For example:
+```c
+bool auto_seed = false;    /* Not an int holding 0. */
+char* name = NULL;         /* Not 0. */
+unsigned int n_items = 0;  /* Default integer type. */
+uint32_t wire_value;       /* Width matters on the wire. */
+```
+
 ### Struct & Union Declarations
 For: `.c`, `.h`
 
@@ -290,24 +308,6 @@ A set type is a named type that represents [one](#enums) or [multiple](#flags) o
 	#define CA_CLU_DIRTY     ((ClusterFlags)0b00001000)
 	#define CA_CLU_READONLY  ((ClusterFlags)0b00010000)
 	```
-
-### Types
-For: `.c`, `.h`
-
-- C code should work for C99, so it cannot assume the compiler uses any later standards.
-	- Note: This means `<stdbool.h>` and variable declarations inside a `for` statement are always available.
-- Use `NULL` as the value for null pointers, never `0`.
-- Use `bool` with `true` and `false` for boolean values, never an `int` holding `0` or `1`.
-- `int` and `unsigned int` are the default integer types.  Use the fixed-width types in `<stdint.h>` (e.g. `uint32_t`) only where the exact width matters, such as data written to a file, a database, or the network.
-- A struct must be fully zeroed/initialized when allocated.  Memory a function receives may hold stale data that still looks valid, such as an old `Magic` value or a pointer into live memory.  In C, use `memset()` when the padding of the struct matters, such as when it is written to a file or the network, or compared with `memcmp()`.
-
-For example:
-```c
-bool auto_seed = false;    /* Not an int holding 0. */
-char* name = NULL;         /* Not 0. */
-unsigned int n_items = 0;  /* Default integer type. */
-uint32_t wire_value;       /* Width matters on the wire. */
-```
 
 ### Line Length
 - There's no hard line length limit, but it is recommended to wrap lines at 80 characters.
