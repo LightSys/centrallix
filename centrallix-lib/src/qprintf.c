@@ -1536,11 +1536,12 @@ qpfPrintf_va_internal(
 	    if (UNLIKELY(ignore)) continue;
 	    
 	    /** Handle filters. **/
-	    pQPConvTable table;
-	    size_t min_room = 1;
-	    char quote = 0;
 	    for (unsigned int i = 1; i < n_specs; i++)
 		{
+		pQPConvTable table;
+		size_t min_room = 1;
+		char quote = 0;
+		
 		const char filter_specifier = specchain[i];
 		switch (filter_specifier)
 		    {
