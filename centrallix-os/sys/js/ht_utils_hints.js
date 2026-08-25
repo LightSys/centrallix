@@ -242,7 +242,7 @@ function cx_merge_two_hints(h1,h2)
 	if (!h1 && !h2) return null;
 	if (!h1) return h2;
 	if (!h2) return h1;
-	
+
 	nh.Constraint = cx_merge_hint_expr(h1.Constraint, h1.Context, h2.Constraint, h2.Context, 'cx_AND');
 	nh.MinValue = cx_merge_hint_expr(h1.MinValue, h1.Context, h2.MinValue, h2.Context, 'min');
 	nh.MaxValue = cx_merge_hint_expr(h1.MaxValue, h1.Context, h2.MaxValue, h2.Context, 'max');
@@ -261,7 +261,7 @@ function cx_merge_two_hints(h1,h2)
 	nh.OrderID = cx_merge_hint_integer_min(h1.OrderID, h2.OrderID);
 	nh.GroupName = cx_merge_hint_string(h1.GroupNAme, h2.GroupName);
 	nh.FriendlyName = cx_merge_hint_string(h1.FriendlyName, h2.FriendlyName);
-	
+
 	// A single expression still needs the scope it was written in.
 	nh.DefaultExpr = cx_merge_hint_expr_first(h1.DefaultExpr, h1.Context, h2.DefaultExpr, h2.Context);
 	nh.Context = h1.DefaultExpr ? h1.Context : (h2.DefaultExpr ? h2.Context : null);
