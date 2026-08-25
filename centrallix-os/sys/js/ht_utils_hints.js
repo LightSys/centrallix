@@ -118,13 +118,96 @@ function cx_FIRST(v1, v2)
     return v1;
     }
 
-// cx_merge_hint_expr() - merges two expressions into one, combining them
-// with the given function.
-function cx_merge_hint_expr(e1, e2, fn)
+// Compiled expressions, keyed by expression text.  Created without any
+// prototype (unlike {}) so keys like "toString" cannot match an inherited
+// property.
+let cx_hints_compiled = Object.create(null);
+let cx_hints_compiled_cnt = 0;
+const cx_hints_compiled_max = 256;
+
+// cx_hints_compile() - build a function that evaluates expression text.  It
+// takes the scope widget names resolve in (_context) and the object property
+// names belong to (_this).  The cache is emptied when full.
+function cx_hints_compile(expr)
+    {
+	// Check for cache entry.
+	if (!cx_hints_compiled[expr])
+	    { // Cache miss.
+	    if (cx_hints_compiled_cnt >= cx_hints_compiled_max)
+		{
+		// Cache too large, drop it first.
+		cx_hints_compiled = Object.create(null);
+		cx_hints_compiled_cnt = 0;
+		}
+
+	    // Compile and cache the expression.
+	    cx_hints_compiled[expr] = new Function('_context', '_this', 'return (' + expr + ');');
+	    cx_hints_compiled_cnt++;
+	    }
+
+    return cx_hints_compiled[expr];
+    }
+
+// cx_eval_in_scope() - evaluate expression text with 'new_scope' (a namespace,
+// its identifier, or a widget node) as its scope and 'new_this' as the object
+// to which property names belong.
+// Can be written into expressions to give specific parts their own scope.
+function cx_eval_in_scope(new_scope, new_this, expr)
+    {
+    if (!expr) return null;
+    return cx_hints_compile(expr)(new_scope, new_this);
+    }
+
+// cx_hints_scope_id() - get the namespace identifier for a scope given as an
+// identifier, a namespace, or a widget node.  Null if there is none.
+function cx_hints_scope_id(scope)
+    {
+    if (!scope) return null;
+    if (typeof scope == 'string') return scope;
+    if (scope.NamespaceID) return scope.NamespaceID;
+    if (scope.__WgtrNamespace) return scope.__WgtrNamespace.NamespaceID;
+    return null;
+    }
+
+// cx_hints_quote() - quote a string so that it can be written into an
+// expression as a string literal.
+function cx_hints_quote(s)
+    {
+    return "'" + String(s).replace(/([\\'])/g, '\\$1').replace(/\r/g, '\\r').replace(/\n/g, '\\n') + "'";
+    }
+
+// cx_scope_hint_expr() - wrap an expression in a cx_eval_in_scope() call, so
+// that it still evaluates in 'scope' after being merged with expressions from
+// other scopes.  Unchanged if 'scope' has no identifier.
+function cx_scope_hint_expr(expr, scope)
+    {
+    const scope_id = cx_hints_scope_id(scope);
+    if (!expr || !scope_id) return expr;
+    return 'cx_eval_in_scope(' + cx_hints_quote(scope_id) + ',_this,' + cx_hints_quote(expr) + ')';
+    }
+
+// cx_merge_hint_expr() - merges two expressions into one, combining them by
+// using the given function.  ctx1 and ctx2 are the scopes of e1 and e2.  A
+// single expression is returned as is.
+function cx_merge_hint_expr(e1, ctx1, e2, ctx2, fn)
     {
     if (!e2) return e1;
     if (!e1) return e2;
+    e1 = cx_scope_hint_expr(e1, ctx1);
+    e2 = cx_scope_hint_expr(e2, ctx2);
     return fn + '((' + e1 + '),(' + e2 + '))';
+    }
+
+// cx_merge_hint_expr_first() - merges two expressions into one yielding the
+// first value that is not null.  e2 is only evaluated if e1 yields null.
+// ctx1 and ctx2 are the scopes of e1 and e2.
+function cx_merge_hint_expr_first(e1, ctx1, e2, ctx2)
+    {
+    if (!e2) return e1;
+    if (!e1) return e2;
+    e1 = cx_scope_hint_expr(e1, ctx1);
+    e2 = cx_scope_hint_expr(e2, ctx2);
+    return '(function(){const _v1=(' + e1 + '); return (_v1==null)?(' + e2 + '):_v1;})()';
     }
 
 // cx_merge_hint_array() - merges two array lists of strings by picking
@@ -160,9 +243,9 @@ function cx_merge_two_hints(h1,h2)
 	if (!h1) return h2;
 	if (!h2) return h1;
 	
-	nh.Constraint = cx_merge_hint_expr(h1.Constraint, h2.Constraint, 'cx_AND');
-	nh.MinValue = cx_merge_hint_expr(h1.MinValue, h2.MinValue, 'min');
-	nh.MaxValue = cx_merge_hint_expr(h1.MaxValue, h2.MaxValue, 'max');
+	nh.Constraint = cx_merge_hint_expr(h1.Constraint, h1.Context, h2.Constraint, h2.Context, 'cx_AND');
+	nh.MinValue = cx_merge_hint_expr(h1.MinValue, h1.Context, h2.MinValue, h2.Context, 'min');
+	nh.MaxValue = cx_merge_hint_expr(h1.MaxValue, h1.Context, h2.MaxValue, h2.Context, 'max');
 	nh.EnumList = cx_merge_hint_array(h1.EnumList, h2.EnumList);
 	nh.EnumQuery = cx_merge_hint_string(h1.EnumQuery, h2.EnumQuery);
 	nh.Format = cx_merge_hint_string(h1.Format, h2.Format);
@@ -179,19 +262,9 @@ function cx_merge_two_hints(h1,h2)
 	nh.GroupName = cx_merge_hint_string(h1.GroupNAme, h2.GroupName);
 	nh.FriendlyName = cx_merge_hint_string(h1.FriendlyName, h2.FriendlyName);
 	
-	// Note: If both layers carry a DefaultExpr from different namespaces,
-	// we can't safely combine them with cx_FIRST.  Thus, we keep h1
-	// (which already wins under cx_FIRST priority) and drop h2's default.
-	if (h1.DefaultExpr && h2.DefaultExpr && h1.Context !== h2.Context)
-	    {
-	    nh.DefaultExpr = h1.DefaultExpr;
-	    nh.Context = h1.Context;
-	    }
-	else
-	    {
-	    nh.DefaultExpr = cx_merge_hint_expr(h1.DefaultExpr, h2.DefaultExpr, 'cx_FIRST');
-	    nh.Context = h1.DefaultExpr ? h1.Context : (h2.DefaultExpr ? h2.Context : null);
-	    }
+	// A single expression still needs the scope it was written in.
+	nh.DefaultExpr = cx_merge_hint_expr_first(h1.DefaultExpr, h1.Context, h2.DefaultExpr, h2.Context);
+	nh.Context = h1.DefaultExpr ? h1.Context : (h2.DefaultExpr ? h2.Context : null);
 
     return nh;
     }
@@ -391,9 +464,8 @@ function cx_hints_startnew(e)
 function cx_hints_setdefault(e)
     {
 
-	var _context = (e.cx_hints && e.cx_hints['all'] && e.cx_hints['all'].Context) || wgtrGetRoot(e);
-	var _this = e;
-	e.setvalue(eval(e.cx_hints['all'].DefaultExpr));
+	const scope = (e.cx_hints && e.cx_hints['all'] && e.cx_hints['all'].Context) || wgtrGetRoot(e);
+	e.setvalue(cx_eval_in_scope(scope, e, e.cx_hints['all'].DefaultExpr));
 	if (e.form) e.form.DataNotify(e);
     
     return;
