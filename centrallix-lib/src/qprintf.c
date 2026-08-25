@@ -1317,6 +1317,9 @@ qpfPrintf_va_internal(
 		    format++;
 		    if (ignore) continue;
 		    
+		    /** Count the character, whether or not it fits. **/
+		    copied++;
+		    
 		    /** Ensure that we have enough space. **/
 		    const size_t space_needed = dest_offset + 2lu;
 		    if (no_grow || (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed)))
@@ -1328,7 +1331,6 @@ qpfPrintf_va_internal(
 		    
 		    /** Add the character to the output string. **/
 		    (*dest)[dest_offset++] = '%';
-		    copied++;
 		    continue;
 		    }
 		case '&':
@@ -1336,6 +1338,9 @@ qpfPrintf_va_internal(
 		    /** Consume this character. **/
 		    format++;
 		    if (ignore) continue;
+		    
+		    /** Count the character, whether or not it fits. **/
+		    copied++;
 		    
 		    /** Ensure that we have enough space. **/
 		    const size_t space_needed = dest_offset + 2lu;
@@ -1348,7 +1353,6 @@ qpfPrintf_va_internal(
 		    
 		    /** Add the character to the output string. **/
 		    (*dest)[dest_offset++] = '&';
-		    copied++;
 		    continue;
 		    }
 		case '[':
