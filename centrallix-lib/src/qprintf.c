@@ -703,7 +703,7 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
     const unsigned char* srcptr = (const unsigned char*)src;
     const unsigned char* origsrc = (const unsigned char*)src;
     char* dstptr;
-    int req_size = ((src_size+2) / 3) * 4 + *dst_offset + 1; /** +1 leaves room for the null terminator **/
+    int req_size = ((src_size+2) / 3) * 4 + *dst_offset + 1; /** +1 leaves room for the null-terminator. **/
 
 	/** Grow dstbuf if necessary and possible, otherwise return error **/
 	if (req_size > *dst_size)
@@ -898,7 +898,7 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
     int req_size;
     const char* orig_src = src;
 
-	/** Required size, counting the offset and the null terminator **/
+	/** Required size, counting the offset and the null-terminator **/
 	if (UNLIKELY(src_size%2 == 1))
 	    {
 	    QPERR(QPF_ERR_T_BADLENGTH);
@@ -1119,8 +1119,8 @@ qpfPrintf_gva(pQPSession s, char** str, size_t* str_size, qpf_grow_fn_t grow_fn,
  *** @param grow_arg An argument, passed to`grow_fn`() when it is called.
  *** @param min_room A required amount of space that must be available at the
  *** 	end of the destination buffer when the function completes.  Often this
- *** 	is `1`, to leave room for a null terminator, or `2` to leave room for
- *** 	a closing quote mark followed by a null terminator.
+ *** 	is `1`, to leave room for a null-terminator, or `2` to leave room for
+ *** 	a closing quote mark followed by a null-terminator.
  *** @returns The number of chars placed in dstbuf (or the number that would
  *** 	have been placed if there was enough room), or -1 if an error occurs.
  *** Note: Does NOT return the number of chars pulled from the srcbuf!!!
@@ -1261,7 +1261,7 @@ qpfPrintf_va_internal(
 	/** Use qpfNoGrow() if no grow function is provided. **/
 	if (grow_fn == NULL) grow_fn = qpfNoGrow;
 	
-	/** Ensure that there is at least enough room for the a null terminator. **/
+	/** Ensure that there is at least enough room for the a null-terminator. **/
 	if (UNLIKELY((!*dest || *dest_size < 1) && !grow_fn(dest, dest_size, dest_offset, grow_arg, 1))) 
 	    {
 	    rval = -EINVAL;
@@ -1840,7 +1840,7 @@ qpfPrintf_va_internal(
 	rval = copied;
 	
     error:
-	/** Null terminate.  Only case where this does not happen is
+	/** Null-terminate.  Only case where this does not happen is
 	 ** if dest_size == 0 on the initial call.  Terminator is not counted
 	 ** in the return value.
 	 **/
