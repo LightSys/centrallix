@@ -213,6 +213,15 @@ All identifiers should be spelled correctly and avoid using non-obvious abbrevia
 - In C, function macros are treated as functions, following those styles.
 - In a structure file, the name of a group, such as a widget, uses snake_case.
 
+### Magic Numbers
+For: `.c`, `.h`, `.js`
+
+A magic number is any number defined in code who's purpose is not immediately self-explanatory to the reader.  Carefully consider any hard-coded number other than `-1`, `0`, or `1` to decide if it is a magic number.
+
+- Magic numbers in code should be replaced with `#define`s in `.c` or `.h` and global constants in `.js`.
+- Magic numbers should be defined near the code that is responsible for their values.  For example, if you write code that needs to know a function will output up to `318` characters, that magic value should be defined near the function in question, not near the code that needs the value.
+- See [set types](#set-types) for selecting a value from a predefined set of options while avoiding magic numbers.
+
 ### Types
 For: `.c`, `.h`
 
