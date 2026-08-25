@@ -1743,7 +1743,12 @@ qpfPrintf_va_internal(
 		    /** Translate the string content using the table selected above. **/
 		    const size_t old_dest_offset = dest_offset;
 		    const qpf_grow_fn_t gf = (no_grow) ? NULL : grow_fn;
-		    const int n_chars = qpf_internal_Translate(s, strval, copy_len, dest, &dest_offset, dest_size, maxdst, table, gf, grow_arg, min_room);
+		    const int n_chars = qpf_internal_Translate(s,
+			strval, copy_len,
+			dest, &dest_offset, dest_size,
+			maxdst, table,
+			gf, grow_arg, min_room
+		    );
 		    if (UNLIKELY(n_chars < 0))
 			{
 			/** Probably unreachable. **/
