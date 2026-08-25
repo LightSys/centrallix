@@ -191,6 +191,14 @@ function cx_hints_quote(s)
 function cx_scope_hint_expr(expr, scope)
     {
     const scope_id = cx_hints_scope_id(scope);
+    if (expr && scope && !scope_id)
+	{
+	pg_debug(""
+	    + "cx_scope_hint_expr - Skipping scope change to scope with "
+	    + "no namespace identifier. The expression keeps the merged scope!\n"
+	);
+	}
+
     if (!expr || !scope_id) return expr;
     return 'cx_eval_in_scope(' + cx_hints_quote(scope_id) + ',_this,' + cx_hints_quote(expr) + ')';
     }
