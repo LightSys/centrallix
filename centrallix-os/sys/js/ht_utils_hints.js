@@ -207,7 +207,7 @@ function cx_merge_hint_expr_first(e1, ctx1, e2, ctx2)
     if (!e1) return e2;
     e1 = cx_scope_hint_expr(e1, ctx1);
     e2 = cx_scope_hint_expr(e2, ctx2);
-    return '(function(){const _v1=(' + e1 + '); return (_v1==null)?(' + e2 + '):_v1;})()';
+    return '((' + e1 + ') ?? (' + e2 + '))';
     }
 
 // cx_merge_hint_array() - merges two array lists of strings by picking
