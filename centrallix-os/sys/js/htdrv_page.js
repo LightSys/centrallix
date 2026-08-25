@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -2752,8 +2752,12 @@ function pg_mousemove(e)
 	pg_tipinfo.x = e.pageX;
 	pg_tipinfo.y = e.pageY;
 	}
-    // A window drag must keep tracking the cursor when it moves off the modal.
-    if (pg_checkmodal(ly) && !window.wn_current) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+    if (pg_checkmodal(ly))
+	{
+	// A window drag must keep tracking the cursor when it moves off the modal.
+	if (window.wn_current) wn_drag_watch(e);
+	return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
     /*if (pg_modallayer)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
@@ -2881,8 +2885,12 @@ function pg_mouseup(e)
     {
     var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
-    // A window drag must be able to terminate when released off the modal.
-    if (pg_checkmodal(ly) && !window.wn_current) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+    if (pg_checkmodal(ly))
+	{
+	// A window drag must be able to terminate when released off the modal.
+	if (window.wn_current) wn_drag_end();
+	return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
     /*if (pg_modallayer)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;
