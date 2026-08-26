@@ -491,7 +491,7 @@ cxssRetrieveUserAuthLL(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
     sqlite3_reset(dbcontext->retrieve_user_auths_stmt);
     const int bind_status = sqlite3_bind_text(dbcontext->retrieve_user_auths_stmt, 1, cxss_userid, -1, NULL);
     if (UNLIKELY(bind_status != SQLITE_OK)) {
-	mssError(0, "CXSS",
+	mssError(1, "CXSS",
 	    "Failed to bind value with SQLite statement: %s",
 	    sqlite3_errmsg(dbcontext->db)
 	);
