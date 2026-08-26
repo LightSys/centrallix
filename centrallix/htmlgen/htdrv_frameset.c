@@ -110,6 +110,7 @@ htsetRender(pHtSession s, pWgtrNode tree, int z)
 	/** Check for more sub-widgets within the page. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
+	    sub_tree = xaGetItem(&(tree->Children), i);
 	    wgtrGetPropertyValue(sub_tree,"name",DATA_T_STRING,POD(&ptr));
 	    if (wgtrGetPropertyValue(sub_tree,"marginwidth",DATA_T_INTEGER,POD(&n)) != 0)
 		htrAddBodyItem_va(s,"    <FRAME SRC=\"./%STR&HTE\">\n",ptr);
