@@ -7,24 +7,25 @@
 		children?, events?, actions?, sample?
 	)>
 
-	<!-- Define widget elements. -->
+	<!-- Define widget elements.  A description (property, event, action, etc.)
+	     holds text, the not-implemented tag, and simple markup. -->
 	<!ELEMENT overview (#PCDATA | p | b | i | ul | ol)*>
 	<!ELEMENT usage (#PCDATA | p | b | i | ul | ol)*>
 	<!ELEMENT properties (property | note)*>
-	<!ELEMENT property (#PCDATA | ni)*>
+	<!ELEMENT property (#PCDATA | ni | p | b | i | ul | ol)*>
 	<!ELEMENT clientprops (clientprop | note)*>
-	<!ELEMENT clientprop (#PCDATA | ni)*>
+	<!ELEMENT clientprop (#PCDATA | ni | p | b | i | ul | ol)*>
 	<!ELEMENT children (child | note)*>
 	<!ELEMENT child (childproperty | note)*>
-	<!ELEMENT childproperty (#PCDATA | ni)*>
+	<!ELEMENT childproperty (#PCDATA | ni | p | b | i | ul | ol)*>
 	<!ELEMENT events ((event | note)*)>
-	<!ELEMENT event (#PCDATA | ni)*>
+	<!ELEMENT event (#PCDATA | ni | p | b | i | ul | ol)*>
 	<!ELEMENT actions (action | note)*>
-	<!ELEMENT action (#PCDATA | ni)*>
+	<!ELEMENT action (#PCDATA | ni | p | b | i | ul | ol)*>
 	<!ELEMENT sample (#PCDATA)>
 
 	<!-- Adds context for all properties/events/action/etc. -->
-	<!ELEMENT note (#PCDATA | ni)*>
+	<!ELEMENT note (#PCDATA | ni | p | b | i | ul | ol)*>
 
 	<!-- Define HTML elements -->
 	<!ELEMENT p (#PCDATA | b | i | ul | ol)*>
