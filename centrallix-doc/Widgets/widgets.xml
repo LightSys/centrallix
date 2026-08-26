@@ -1970,7 +1970,32 @@ BigFrameset "widget/frameset"
 
 			<property name="readonlybits" type="object">If the field is a bitmask, determines which ones are read only.</property>
 
-			<property name="style" type="string">Optional:  Can contain a combination of one or more items (separated by comas).  Can also contain negating item(s) that negates another item, if it is specified (e.g. "allownull" negates "notnull").  The valid items (with negating items listed after a slash) are: { bitmask/nobitmask, list/nolist, buttons/nobuttons, notnull/allownull, strnull/nostrnull, grouped/nogrouped, readonly/modifiable, hidden/visible, password/nopassword, multiline/singleline, highlight/nohighlight, uppercase/mixedcase, lowercase/mixedcase, tabpage/notabpage, sepwindow/nosepwindow, alwaysdef/noalwaysdef, createonly/nocreateonly, multiselect/singleselect, key/notkey, applyonchange/applyonmodify }.  Although the parser implements all of these, only the following items (and, by extension, their negations) appear to have any implemented effects: { notnull, strnull, readonly, uppercase, lowercase, key }.</property>
+			<property name="style" type="string">
+				<p>Optional.  Contains one or more style hint items, separated by commas.  Most items have a negating counterpart which prevents the item's effect, even if it is specified elsewhere (e.g. "allownull" explicitly restores the default behavior of allowing null values, even if "notnull" is specified elsewhere).</p>
+				<p>The valid items are listed below, each with its negating item.  Although the parser accepts all of them, only the items shown in <b>bold</b> appear to have any implemented effect.</p>
+				<ul>
+					<li>bitmask / nobitmask</li>
+					<li>list / nolist</li>
+					<li>buttons / nobuttons</li>
+					<li><b>notnull / allownull</b></li>
+					<li><b>strnull / nostrnull</b></li>
+					<li>grouped / nogrouped</li>
+					<li><b>readonly / modifiable</b></li>
+					<li>hidden / visible</li>
+					<li>password / nopassword</li>
+					<li>multiline / singleline</li>
+					<li>highlight / nohighlight</li>
+					<li><b>uppercase / mixedcase</b></li>
+					<li><b>lowercase / mixedcase</b></li>
+					<li>tabpage / notabpage</li>
+					<li>sepwindow / nosepwindow</li>
+					<li>alwaysdef / noalwaysdef</li>
+					<li>createonly / nocreateonly</li>
+					<li>multiselect / singleselect</li>
+					<li><b>key / notkey</b></li>
+					<li>applyonchange / applyonmodify</li>
+				</ul>
+			</property>
 
 			<property name="width" type="integer">Number of characters in the field shown to the user at once.</property>
 
