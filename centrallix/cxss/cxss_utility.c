@@ -8,6 +8,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/mtlexer.h"
+#include "cxlib/cxsec.h"
 #include "cxss/cxss.h"
 
 /************************************************************************/
@@ -128,16 +129,25 @@ cxssGenerateHexKey(char* hexkey, size_t len)
     }
 
 
-/*** cxssShred - erase the given data so that it is no longer readable
- *** even in raw memory.  At this point, basically the same as memset().
- *** But using this function signifies the intent and makes the code
- *** more readable.
+
+/*** cxssShred() - Erase the given data so that it is no longer readable
+ *** even in raw memory.  This is the same as calling memset_explicit(),
+ *** except that this function works before C23, when memset_explicit()
+ *** was added.
+ *** 
+ *** Also, using this function signifies the intent to scrub possibly
+ *** sensitive data, which makes code more readable.
+ *** 
+ *** @param data A pointer to the data buffer to be erased.
+ *** @param n_bytes The number of bytes allocated to the data buffer.
+ *** 	Causes undefined behavior if incorrect.
  ***/
-int
-cxssShred(unsigned char* data, size_t n_bytes)
+void
+cxssShred(void* data, size_t n_bytes)
     {
-    memset(data, '\0', n_bytes);
-    return 0;
+	cxsecShred(data, n_bytes);
+
+    return;
     }
 
 
@@ -155,4 +165,3 @@ cxssAddEntropy(unsigned char* data, size_t n_bytes, int entropy_bits_estimate)
 	
     return rval;
     }
-

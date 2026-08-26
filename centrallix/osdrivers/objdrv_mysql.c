@@ -15,6 +15,7 @@
 #include "cxlib/strtcpy.h"
 #include "cxlib/qprintf.h"
 #include "cxlib/util.h"
+#include "cxss/cxss.h"
 #include <assert.h>
 #include <mysql.h>
 
@@ -248,7 +249,7 @@ mysd_internal_GetConn(pMysdNode node)
 		    {
 		    /** Got disconnected.  Discard the connection. **/
 		    mysql_close(&conn->Handle);
-		    memset(conn->Password, 0, sizeof(conn->Password));
+		    cxssShred(conn->Password, sizeof(conn->Password));
 		    xaRemoveItem(&node->Conns, i);
 		    nmFree(conn, sizeof(MysdConn));
 		    i--;
@@ -297,7 +298,7 @@ mysd_internal_GetConn(pMysdNode node)
                     }
 		conn = (pMysdConn)xaGetItem(&node->Conns, found);
                 mysql_close(&conn->Handle);
-                memset(conn->Password, 0, sizeof(conn->Password));
+                cxssShred(conn->Password, sizeof(conn->Password));
                 xaRemoveItem(&node->Conns, found);
                 nmFree(conn, sizeof(MysdConn));
                 }
