@@ -89,11 +89,14 @@ The widget errors section lists all widgets that appear to be documented incorre
 - **Stale events/actions**: An event or action was detected in the docs, but no implementation was detected in the code.
 - **Incorrect action parameter docs**: Heuristics detected action parameters being used in the code that were not documented, or failed to detect documented action parameters being accessed in the code.
 
+**Exception**: An event or action doc in `widgets.xml` marked with the `<ni />` (not implemented) tag is never considered stale and its parameters are not checked.  These exceptions are counted by the `ignored_errors` stat.
+
 
 ## Script Design
 The original script was written by Cursor across 4 commits, although every line of code in `generate.py` has been edited since then, as the code benefited from extensive clean up and refactoring.  The current design generally follows these steps to create a report:
 - **Step 1**: Parse `widgets.xml` (using regexes & `ElementTree`).
   - Parse XML content using Python's builtin `ElementTree` library.
+  - Record which events and actions carry the `<ni />` tag, so they can be exempted from stale doc checks.
   - Extract line numbers using manual regex parsing.
     - I wish ElementTree provided line numbers, but it doesn't, and this is simpler than adding a dependency for a library that does support line numbers.
 - **Step 2**: Parse Implementations (using regexes).
@@ -111,6 +114,9 @@ The original script was written by Cursor across 4 commits, although every line 
       - Supports functions that take a param variable with a name (e.g. `function action(aparam)`) and access properties on it (e.g. `aparam.Value`).
       - Supports functions that deconstruct params immediately (e.g. `function action({ Value })`).
       - Searches in comments to allow graceful handling when param variable are passed to other functions.
+      - Only params named in CamelCase are collected; other names (e.g. `_Origin` or `from_internal`) are internal to the implementation, and the same rule is applied to the params named in the docs.
+    - Search for legacy `<var>.Action<Name> = <function>` assignments to capture actions that predate the `ifAction` interface, and parse their params the same way.
+      - Names ending in `CB` are callbacks (e.g. `form.ActionSaveSuccessCB`), not actions, so they are skipped.
   - Expand child coverage to handle any-type children.
 - **Step 3**: Generate report (JSON).
   - Analyze collected lists of documented and implemented widgets, properties, events, actions, and children to detect differences.
@@ -124,3 +130,5 @@ The original script was written by Cursor across 4 commits, although every line 
 - Implement a better way document action params.
   - Currently, the script guesses by looking for quoted identifiers in action descriptions.
 - Detect event param issues the same way action param issues are detected.
+- Improve the ignore system for special cases, such as the numbered param families of the osrc widget's Sync and DoubleSync actions (`ParentKey1` through `ParentKey9` in the docs, built as `ParentKey` plus an index in the code).
+- Report an error when an internal param name is documented, or when a documented param name is used as an internal one.
