@@ -1332,7 +1332,7 @@ myDropDown2 "widget/dropdown"
 
 			<property name="height" type="integer">Height, in pixels, of the editbox.</property>
 
-			<property name="maxchars" type="integer">Number of characters to accept from the user.</property>
+			<property name="max_chars" type="integer">The maximum number of characters the editbox should accept from the user.  Defaults to -1 (no limit).</property>
 
 			<property name="readonly" type="yes/no">Set to 'yes' if the user cannot modify the value of the edit box (default 'no').</property>
 
@@ -1967,7 +1967,7 @@ BigFrameset "widget/frameset"
 
 			<property name="readonlybits" type="object">If the field is a bitmask, determines which ones are read only.</property>
 
-			<property name="style" type="string">Optional: contains a combination of 1 or more items following set {readonly, alwaysdef} separated by a comma if multiple items are chosen.</property>
+			<property name="style" type="string">Optional:  Can contain a combination of one or more items (separated by comas).  Can also contain negating item(s) that negates another item, if it is specified (e.g. "allownull" negates "notnull").  The valid items (with negating items listed after a slash) are: { bitmask/nobitmask, list/nolist, buttons/nobuttons, notnull/allownull, strnull/nostrnull, grouped/nogrouped, readonly/modifiable, hidden/visible, password/nopassword, multiline/singleline, highlight/nohighlight, uppercase/mixedcase, lowercase/mixedcase, tabpage/notabpage, sepwindow/nosepwindow, alwaysdef/noalwaysdef, createonly/nocreateonly, multiselect/singleselect, key/notkey, applyonchange/applyonmodify }.  Although the parser implements all of these, only the following items (and, by extension, their negations) appear to have any implemented effects: { notnull, strnull, readonly, uppercase, lowercase, key }.</property>
 
 			<property name="width" type="integer">Number of characters in the field shown to the user at once.</property>
 
@@ -3611,7 +3611,7 @@ MyScrollPane "widget/scrollpane"
 
 			<p>The tab pages are containers, and as such, controls of various kinds, including other tab controls, can be placed inside the tab pages.</p>
 
-			<p>Tab pages are added to a tab control by including widgets of type "widget/tabpage" within the "widget/tab" widget in the structure file that defines the application.  Any controls to appear inside a particular tab page should be placed inside their respective "widget/tabpage" widgets in the structure file.Only widgets of type "widget/tabpage" should be placed inside a "widget/tab", except nonvisuals such as connectors.</p>
+			<p>Tab pages are added to a tab control by including widgets of type "widget/tabpage" within the "widget/tab" widget in the structure file that defines the application.  Any controls to appear inside a particular tab page should be placed inside their respective "widget/tabpage" widgets in the structure file.  Only widgets of type "widget/tabpage" should be placed inside a "widget/tab", except for nonvisual widgets such as connectors.</p>
 
 			<p>Tab pages also have a 'visible' property which allows them to be hidden and revealed.  This is used if the type is set to dynamic, but can be used manually as well.</p>
 
@@ -3779,7 +3779,7 @@ myTabControl "widget/tab"
 			<property name="cellvspacing" type="integer">The vertical spacing between cells in the table, in pixels.  Default is 1.</property>
 
 			<property name="colsep" type="integer">The width of the column separation lines in pixels.  Default is 1.</property>
-			
+
 			<property name="colsep_mode" type="string">Either 'full' or 'header'. Default is 'full'.</property>
 
 			<property name="colsep_mode" type="string">Either 'full' or 'header'.  Default is 'full'.</property>
