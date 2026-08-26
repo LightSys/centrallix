@@ -147,6 +147,13 @@ js_add_call_re = re.compile(
 	r"([A-Za-z_]\w*)\.Add\(\s*[\"']([^\"']+)[\"']\s*(?:,\s*([A-Za-z_]\w*))?"
 )
 
+# Regex to find legacy JS action implementations, which are assigned onto the
+# widget as "Action<Name>" instead of being registered through ifAction, and
+# capture the action name (1) and the implementation function name (2).
+js_legacy_action_re = re.compile(
+	r"[A-Za-z_]\w*\.Action([A-Z]\w*)\s*=\s*([A-Za-z_]\w*)\s*;"
+)
+
 # Regex to find a JS function (fn_name) that implements an action and capture
 # the first variable argument (1), even if it is an object deconstruction, and
 # then ignore all other parameters.
@@ -656,6 +663,21 @@ def parse_js_action_params(js: str, js_line_map: LineMap, fn_name: str) -> tuple
 	return params, decl_line
 
 
+# Record the params that an action implementation function reads.
+def add_js_action_params(
+	action: ActionImpl, js: str, line_map: LineMap, fn_name: str, rel: str
+) -> None:
+	params, decl_line = parse_js_action_params(js, line_map, fn_name)
+	if decl_line == -1:
+		return
+	action.definition_refs.append(make_ref(rel, decl_line, "JS action implementation"))
+	for param_name, param_line in params:
+		# Ignore private params.
+		if (param_name.startswith('_')):
+			continue
+		action.add_param(param_name, make_ref(rel, param_line, "action param use in JS"))
+
+
 # Parse JS drivers for event and action registrations (and heuristic param usage).
 def parse_js(path: Path) -> dict[str, WidgetImpl]:
 	widget_impls: dict[str, WidgetImpl] = {}
@@ -719,22 +741,25 @@ def parse_js(path: Path) -> dict[str, WidgetImpl]:
 					continue
 				
 				# Get action params.
-				params, decl_line = parse_js_action_params(js, line_map, fn_name)
-				if decl_line == -1:
-					continue
-				action.definition_refs.append(make_ref(rel, decl_line, "JS action implementation"))
-				
-				# Handle action params.
-				for param_name, param_line in params:
-					# Ignore private params.
-					if (param_name.startswith('_')):
-						continue
-					
-					# Add param.
-					action.add_param(param_name,
-						make_ref(rel, param_line, "action param use in JS")
-					)
+				add_js_action_params(action, js, line_map, fn_name, rel)
 			else: continue
+		
+		# Search for legacy action implementations.
+		for legacy_m in js_legacy_action_re.finditer(js):
+			signal_name = normalize_name(legacy_m.group(1))
+			fn_name = legacy_m.group(2)
+			
+			# Callbacks are assigned with the same naming pattern, but they are
+			# not actions (e.g. "form.ActionSaveSuccessCB").
+			if not signal_name or signal_name.endswith("CB"):
+				continue
+			
+			# Store the action and its params.
+			action = widget_impl.action(signal_name)
+			action.found(Confidence.STRONG,
+				make_ref(rel, line_map.line_number(legacy_m.start()), "legacy Action assignment")
+			)
+			add_js_action_params(action, js, line_map, fn_name, rel)
 	return widget_impls
 
 
