@@ -2056,7 +2056,7 @@ objDataToWords(int data_type, void* data_ptr)
 		}
 	    else
 	        {
-	        sprintf(nbuf, "And %2.2d/100 ", (int)(fraction_part/100) % 100);
+	        sprintf(nbuf, "And %2.2d/100 ", (int)((fraction_part/100) % 100));
 		xsConcatenate(&tmpbuf, nbuf, -1);
 		}
 	    }
