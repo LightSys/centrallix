@@ -203,6 +203,8 @@ class WidgetDoc:
 	events: set[str] = field(default_factory=set[str])
 	actions: set[str] = field(default_factory=set[str])
 	action_params: dict[str, set[str]] = field(default_factory=dict[str, set[str]])
+	ni_events: set[str] = field(default_factory=set[str]) # Documented as not implemented.
+	ni_actions: set[str] = field(default_factory=set[str]) # Documented as not implemented.
 	any_child: bool = False
 	
 	# Ref fields.
@@ -415,8 +417,11 @@ def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 		# Parse events.
 		for event in widget.findall("./events/event"):
 			event_name = normalize_name(event.get("name"))
-			if event_name:
-				doc.events.add(event_name)
+			if not event_name:
+				continue
+			doc.events.add(event_name)
+			if event.find("ni") is not None:
+				doc.ni_events.add(event_name)
 		
 		# Parse actions.
 		for action in widget.findall("./actions/action"):
@@ -424,6 +429,8 @@ def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 			if not action_name:
 				continue
 			doc.actions.add(action_name)
+			if action.find("ni") is not None:
+				doc.ni_actions.add(action_name)
 			
 			# widgets.xml does not currently encode structured params, so use
 			# quoted text as a heuristic for detecting parameter names.
@@ -874,6 +881,12 @@ def compute_report(
 		event_doc_names = set(doc.events)
 		action_doc_names = set(doc.actions)
 		
+		# Events and actions documented with <ni /> are known to be missing from
+		# the code, so they are not reported as stale docs.
+		ni_event_names = doc.ni_events - event_impl_names
+		ni_action_names = doc.ni_actions - action_impl_names
+		stats["ignored_errors"] += len(ni_event_names) + len(ni_action_names)
+		
 		# Compile top-level per-widget findings.
 		findings: PerWidgetFinding = {
 			"widget": widget,
@@ -887,7 +900,7 @@ def compute_report(
 				"name": name,
 				"confidence": Confidence.CONFIRMED,
 				"refs": [doc.event_refs[name]] if name in doc.event_refs else [],
-			} for name in sorted_list(event_doc_names - event_impl_names)],
+			} for name in sorted_list(event_doc_names - event_impl_names - ni_event_names)],
 			"missing_actions": [{
 				"name": name,
 				"confidence": impl.actions[name].confidence,
@@ -897,7 +910,7 @@ def compute_report(
 				"name": name,
 				"confidence": Confidence.CONFIRMED,
 				"refs": [doc.action_refs[name]] if name in doc.action_refs else [],
-			} for name in sorted_list(action_doc_names - action_impl_names)],
+			} for name in sorted_list(action_doc_names - action_impl_names - ni_action_names)],
 			"incorrect_action_params": [],
 		}
 		
@@ -912,6 +925,10 @@ def compute_report(
 			
 			# Skip param issues for actions that already have known issues.
 			if action_impl.name in issue_action_names:
+				continue
+			
+			# Skip param issues for actions documented as not implemented.
+			if action_name in doc.ni_actions:
 				continue
 			
 			# Determine missing/extra action_impl parameters.
