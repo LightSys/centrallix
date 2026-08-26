@@ -151,7 +151,8 @@ js_add_call_re = re.compile(
 # the first variable argument (1), even if it is an object deconstruction, and
 # then ignore all other parameters.
 js_action_impl_re: Callable[[str], Pattern[str]] = lambda fn_name: re.compile(
-	rf"function\s+{re.escape(fn_name)}\s*\(\s*(\{{[^{{}}]*\}}|[A-Za-z_]\w*)(?=\s*[,)])[^)]*\)\s*\{{",
+	rf"function\s+{re.escape(fn_name)}\s*\(\s*(\{{[^{{}}]*\}}|[A-Za-z_]\w*)(?=\s*[,)])[^)]*\)"
+	rf"\s*(?://[^\n]*\n\s*)*\{{",
 	re.MULTILINE
 )
 
