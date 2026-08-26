@@ -780,8 +780,8 @@ nht_i_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
     char* msg;
     int code;
     nhtResType_t res_type = ResTypeElement;
-    nhtResFormat_t res_format = -1;
-    nhtResAttrs_t res_attrs = -1;
+    nhtResFormat_t res_format = ResFormatAttrs;
+    nhtResAttrs_t res_attrs = ResAttrsBasic;
     struct json_object_iter iter;
     struct json_object* j_attr_obj;
     char* attrname;
