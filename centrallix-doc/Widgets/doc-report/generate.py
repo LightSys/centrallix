@@ -167,6 +167,14 @@ class Confidence(StrEnum):
 	STRONG = "strong"
 	HEURISTIC = "heuristic"
 
+# Declare the priority of confidence enums.
+# Higher number = more confident.
+CONFIDENCE_PRIORITY = {
+	Confidence.CONFIRMED: 3,
+	Confidence.STRONG: 2,
+	Confidence.HEURISTIC: 1
+}
+
 # Reference a code location with a description of what is there.
 class Ref(TypedDict):
 	path: str
@@ -324,12 +332,7 @@ def normalize_child_name(child_type: str) -> str:
 
 # Keep the strongest confidence when combining multiple sources.
 def merge_confidence(a: Confidence, b: Confidence) -> Confidence:
-	order = {
-		Confidence.CONFIRMED: 3,
-		Confidence.STRONG: 2,
-		Confidence.HEURISTIC: 1
-	}
-	return a if (order.get(a, 0) >= order.get(b, 0)) else b
+	return a if (CONFIDENCE_PRIORITY.get(a, 0) >= CONFIDENCE_PRIORITY.get(b, 0)) else b
 
 
 # Render compact origin tags used in reports.
