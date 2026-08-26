@@ -531,14 +531,12 @@ function wn_togglevisibility(aparam)
 
 function wn_closewin(aparam)
     {
-    aparam.IsVisible = 0;
-    return this.ifcProbe(ifAction).Invoke('SetVisibility',aparam);
+    return this.ifcProbe(ifAction).Invoke('SetVisibility', ({ ...aparam, IsVisible: 0}) );
     }
 
 function wn_openwin(aparam)
     {
     this.open_params = aparam;
-    aparam.IsVisible = 1;
 
     /** Record the intent, not just the location, so we can recalculate on resize. **/
     let point_at = aparam.PointAt;
@@ -580,7 +578,9 @@ function wn_openwin(aparam)
      ***/
     if (this.is_visible) wn_place(this);
 
-    return this.ifcProbe(ifAction).Invoke('SetVisibility',aparam);
+
+    // Passes aparam.IsModal, aparam.NoClose, and aparam.Cascade on to the SetVisibility action.
+    return this.ifcProbe(ifAction).Invoke('SetVisibility', ({ ...aparam, IsVisible: 1}));
     }
 
 function wn_setvisibility(aparam)
