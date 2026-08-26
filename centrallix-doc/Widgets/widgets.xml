@@ -4110,6 +4110,85 @@ objcanvas_test "widget/template"
 	</widget>
 
 
+	<widget name="terminal" type="widget/terminal" visual="yes" formelement="no" container="no" description="A visual widget which emulates a VT100 text terminal attached to an ObjectSystem object.">
+
+		<overview>
+
+			<p>The terminal widget displays a fixed-size grid of characters (rows by cols) and emulates a subset of the VT100 terminal.  It opens the ObjectSystem object named by the 'source' property through the OSML, polls it for data, and interprets the escape sequences in that data stream to position and erase text on the display.</p>
+
+			<p>The widget is experimental and largely incomplete.  Only cursor positioning, carriage return, line feed, tab, and erase-to-end-of-line are honored; character attributes (colors, bold, reverse), erase-to-end-of-page, scrolling, keyboard input, sending data back to the source, and disconnecting are not implemented.  Because keyboard input is not delivered to the widget, the terminal is read-only in practice, and is best suited to viewing the output of a program such as "top".</p>
+
+		</overview>
+
+		<usage>
+
+			<p>The terminal widget can be used inside any container capable of having visual subwidgets.  It may contain no widgets other than any applicable connectors.</p>
+
+			<p>The 'source' property must reference an ObjectSystem object which can be opened and read repeatedly, such as a shell script object (a ".shl" file).  The object is read in blocks of 2048 bytes and re-polled every two seconds when no data is available.  The path is resolved relative to the directory containing the application, since cross-directory reads are blocked by the browser's cross-site scripting protections.</p>
+
+			<p>The widget requires a browser with W3C DOM1 HTML and DOM2 CSS support, and it renders only on the "dhtml" output driver.</p>
+
+		</usage>
+
+		<properties>
+
+			<property name="cols" type="integer">Required.  The width of the terminal, in characters.  The widget's width in pixels is 'cols' multiplied by 'fontsize'.</property>
+
+			<property name="color0" type="string"><ni />A color, either named or numeric, to use for VT100 color 0.  Default is "black".</property>
+
+			<property name="color1" type="string"><ni />A color, either named or numeric, to use for VT100 color 1.  Default is "red".</property>
+
+			<property name="color2" type="string"><ni />A color, either named or numeric, to use for VT100 color 2.  Default is "green".</property>
+
+			<property name="color3" type="string"><ni />A color, either named or numeric, to use for VT100 color 3.  Default is "yellow".</property>
+
+			<property name="color4" type="string"><ni />A color, either named or numeric, to use for VT100 color 4.  Default is "blue".</property>
+
+			<property name="color5" type="string"><ni />A color, either named or numeric, to use for VT100 color 5.  Default is "purple".</property>
+
+			<property name="color6" type="string"><ni />A color, either named or numeric, to use for VT100 color 6.  Default is "aqua".</property>
+
+			<property name="color7" type="string"><ni />A color, either named or numeric, to use for VT100 color 7.  Default is "white".</property>
+
+			<property name="fontsize" type="integer">The size, in pixels, of one character cell.  Default is 12.  It is used only to compute the size of the widget; the characters themselves are displayed in the browser's "fixed" font at its normal size.</property>
+
+			<property name="rows" type="integer">Required.  The height of the terminal, in character rows.</property>
+
+			<property name="source" type="string">Required.  The ObjectSystem path of the object supplying the terminal's data stream.</property>
+
+			<property name="x" type="integer">Required.  The X location of the left edge of the widget, relative to its container.</property>
+
+			<property name="y" type="integer">Required.  The Y location of the top edge of the widget, relative to its container.</property>
+
+			<note>The terminal widget has no 'width' or 'height' properties; its size is determined by 'rows', 'cols', and 'fontsize'.</note>
+
+		</properties>
+
+		<actions>
+
+			<action name="Connect">Opens an OSML session on the 'source' object and begins reading from it.  Does nothing if the terminal is already connected.  The terminal connects automatically when the page loads, so this action is only needed after a disconnect.</action>
+
+			<action name="Disconnect"><ni />Closes the connection to the 'source' object.</action>
+
+		</actions>
+
+		<sample>
+
+			<![CDATA[
+
+term1 "widget/terminal"
+    {
+    x=0; y=100; rows=24; cols=80;
+    source = "/samples/top.shl";
+    }
+
+			]]>
+
+		</sample>
+
+	</widget>
+
+
 	<widget name="textarea" type="widget/textarea" description="Visual multi-line text data entry widget." visual="yes" formelement="yes" container="no">
 
 		<overview>
