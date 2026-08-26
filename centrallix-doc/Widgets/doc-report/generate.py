@@ -105,6 +105,12 @@ WIDGET_XML_PATH: str = "centrallix-doc/Widgets/widgets.xml"
 identifier_re = r"^[A-Za-z0-9][A-Za-z0-9_-]*$"
 quoted_identifier_re = r"[\"'`]([A-Za-z_]\w*)[\"'`]"
 
+# Action params that applications can pass are named in CamelCase by convention
+# (e.g. "Value" or "ParentOSRC").  Names that do not match are internal to the
+# implementation (e.g. "_Origin", "client", or "from_internal") and are not
+# documented, so they are excluded from param checks on both sides.
+action_param_re = re.compile(r"[A-Z]\w*")
+
 
 # Regexes for parsing line numbers in docs.
 doc_widget_re = re.compile(r"<widget\b([^>]*)>", re.IGNORECASE)
@@ -422,7 +428,11 @@ def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 			# widgets.xml does not currently encode structured params, so use
 			# quoted text as a heuristic for detecting parameter names.
 			raw_text = "".join(action.itertext())
-			quoted = re.findall(quoted_identifier_re, raw_text)
+			quoted = [
+				q for q
+				in re.findall(quoted_identifier_re, raw_text)
+				if action_param_re.fullmatch(q)
+			]
 			if len(quoted) > 0:
 				doc.action_params[action_name] = set(quoted)
 		
@@ -672,8 +682,8 @@ def add_js_action_params(
 		return
 	action.definition_refs.append(make_ref(rel, decl_line, "JS action implementation"))
 	for param_name, param_line in params:
-		# Ignore private params.
-		if (param_name.startswith('_')):
+		# Ignore params that are internal to the implementation.
+		if not action_param_re.fullmatch(param_name):
 			continue
 		action.add_param(param_name, make_ref(rel, param_line, "action param use in JS"))
 
