@@ -1958,24 +1958,26 @@ objDataToWords(int data_type, void* data_ptr)
 		    m->WholePart, m->FractionPart
 		);
 		}
+
+	    /** Clamp the cents to the low four digits **/
+	    fraction_part = m->FractionPart % 10000;
+
 	    if (m->WholePart < 0)
 	        {
-		if (m->FractionPart == 0)
+		if (fraction_part == 0)
 		    {
 		    integer_part = -m->WholePart;
-		    fraction_part = 0;
 		    }
 		else
 		    {
 		    integer_part = (-m->WholePart) - 1;
-		    fraction_part = 10000 - m->FractionPart;
+		    fraction_part = 10000 - fraction_part;
 		    }
 		xsConcatenate(&tmpbuf, "Negative ", -1);
 		}
 	    else
 	        {
 		integer_part = m->WholePart;
-		fraction_part = m->FractionPart;
 		}
 	    }
 	else
@@ -2056,7 +2058,7 @@ objDataToWords(int data_type, void* data_ptr)
 		}
 	    else
 	        {
-	        sprintf(nbuf, "And %2.2d/100 ", (int)((fraction_part/100) % 100));
+	        sprintf(nbuf, "And %2.2d/100 ", (int)(fraction_part/100));
 		xsConcatenate(&tmpbuf, nbuf, -1);
 		}
 	    }
