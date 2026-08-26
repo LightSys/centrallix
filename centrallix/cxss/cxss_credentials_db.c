@@ -504,6 +504,7 @@ cxssRetrieveUserAuthLL(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
     if (UNLIKELY(head == NULL))
 	{
 	mssError(1, "CXSS", "Failed to allocate UserAuth Linked List Node (head node).");
+	rval = CXSS_DB_MEMORY_ERROR;
 	goto end;
 	}
     head->next = NULL;
@@ -517,6 +518,7 @@ cxssRetrieveUserAuthLL(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
 	if (UNLIKELY(current == NULL))
 	    {
 	    mssError(1, "CXSS", "Failed to allocate UserAuth Linked List Node.");
+	    rval = CXSS_DB_MEMORY_ERROR;
 	    goto end;
 	    }
         current->next = NULL;
