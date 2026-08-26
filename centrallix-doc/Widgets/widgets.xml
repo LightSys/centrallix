@@ -33,6 +33,8 @@
 	<!ELEMENT ul (li)*>
 	<!ELEMENT ol (li)*>
 	<!ELEMENT li (#PCDATA | b | i)*>
+	
+	<!-- Define not implemented tag. -->
 	<!ELEMENT ni (#PCDATA)>
 
 	<!-- Define attribute lists for widget elements. -->
