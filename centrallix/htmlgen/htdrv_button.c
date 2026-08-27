@@ -307,18 +307,23 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	else /* other types of buttons - based on textbutton */
 	    {
-	    /** Write common CSS for all three panes. **/
+	    /** Write common CSS for all four panes. **/
+	    /** Note: pane1 is left in normal flow so that it gives the button **/
+	    /** its height when no height was specified. **/
 	    if (htrAddStylesheetItem_va(s,
 		"\t\t#gb%POSpane, #gb%POSpane1, #gb%POSpane2, #gb%POSpane3 { "
-		    "position:absolute; "
 		    "%[cursor:pointer; %]"
 		    "text-align:center; "
 		    "display:flex; "
 		    "justify-content:center; "
 		    "font-weight:700; "
+		"}\n"
+		"\t\t#gb%POSpane, #gb%POSpane2, #gb%POSpane3 { "
+		    "position:absolute; "
 		"}\n",
 		id, id, id, id,
-		is_enabled
+		is_enabled,
+		id, id, id
 	    ) != 0)
 		{
 		mssError(0, "HTBTN", "Failed to write CSS.");
@@ -352,8 +357,6 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	    if (htrAddStylesheetItem_va(s,
 		"\t\t#gb%POSpane1 { "
-		    "left:0px; "
-		    "top:0px; "
 		    "width:100%%; "
 		    "color:%STR&HTE; "
 		"}\n",
