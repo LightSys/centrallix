@@ -199,15 +199,19 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    goto err;
 	    }
 	
-	/** Button click animation. **/
+	/** Cursor and click animation (all button types). **/
 	if (htrAddStylesheetItem_va(s,
+	    "\t\t#gb%POSpane:not(.gb_disabled) { "
+		"cursor:pointer; "
+	    "}\n"
 	    "\t\t#gb%POSpane:not(.gb_disabled):active { "
 		"transform:translate(1px, 1px); "
 	    "}\n",
+	    id,
 	    id
 	) != 0)
 	    {
-	    mssError(0, "HTBTN", "Failed to write CSS click animation.");
+	    mssError(0, "HTBTN", "Failed to write CSS cursor and click animation.");
 	    goto err;
 	    }
 	
@@ -329,13 +333,9 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		"}\n"
 		"\t\t#gb%POSpane, #gb%POSpane2, #gb%POSpane3 { "
 		    "position:absolute; "
-		"}\n"
-		"\t\t#gb%POSpane:not(.gb_disabled) { "
-		    "cursor:pointer; "
 		"}\n",
 		id, id, id, id,
-		id, id, id,
-		id
+		id, id, id
 	    ) != 0)
 		{
 		mssError(0, "HTBTN", "Failed to write CSS.");
