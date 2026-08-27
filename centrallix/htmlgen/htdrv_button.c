@@ -118,6 +118,10 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    if (wgtrGetPropertyValue(tree,"image",DATA_T_STRING,POD(&ptr)) != 0) goto err;
 	    strtcpy(n_img,ptr,sizeof(n_img));
 	    }
+	else
+	    {
+	    n_img[0] = '\0';
+	    }
 
         if (wgtrGetPropertyValue(tree,"pointimage",DATA_T_STRING,POD(&ptr)) == 0)
             strtcpy(p_img,ptr,sizeof(p_img));
@@ -138,12 +142,18 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		is_ts = htrGetBoolean(tree, "tristate", 1);
 
 		if(strcmp(type,"image"))
+		    {
 		    if (wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) != 0)
 			{
 			mssError(1,"HTBTN","Button widget must have a 'text' property");
 			goto err;
 			}
-		strtcpy(text,ptr,sizeof(text));
+		    strtcpy(text,ptr,sizeof(text));
+		    }
+		else
+		    {
+		    text[0] = '\0';
+		    }
 
 		/** Get fgnd colors 1,2, and background color **/
 		htrGetBackground(tree, NULL, 1, bgstyle, sizeof(bgstyle));
