@@ -189,6 +189,18 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    goto err;
 	    }
 	
+	/** Button click animation. **/
+	if (is_enabled && htrAddStylesheetItem_va(s,
+	    "\t\t#gb%POSpane:active { "
+		"transform:translate(1px, 1px); "
+	    "}\n",
+	    id
+	) != 0)
+	    {
+	    mssError(0, "HTBTN", "Failed to write CSS click animation.");
+	    goto err;
+	    }
+	
 	/** Write the button container. **/
 	if (htrAddBodyItem_va(s, "<div id='gb%POSpane'>\n", id) != 0)
 	    {
@@ -218,21 +230,6 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		{
 		mssError(0, "HTBTN", "Failed to write CSS.");
 		goto err;
-		}
-	    
-	    /** Button click animation. **/
-	    if (is_enabled)
-		{
-		if (htrAddStylesheetItem_va(s,
-		    "\t\t#gb%POSpane:active { "
-			"transform:translate(1px, 1px); "
-		    "}\n",
-		    id
-		) != 0)
-		    {
-		    mssError(0, "HTBTN", "Failed to write CSS click animation.");
-		    goto err;
-		    }
 		}
 	    
 	    /** HTML body <div> elements for the layers. **/
