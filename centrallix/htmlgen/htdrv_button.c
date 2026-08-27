@@ -61,7 +61,6 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
     char text[64];
     char fgcolor1[64];
     char fgcolor2[64];
-    char bgcolor[128];
     char bgstyle[128];
     char disable_color[64];
     char n_img[128];
@@ -147,7 +146,6 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		strtcpy(text,ptr,sizeof(text));
 
 		/** Get fgnd colors 1,2, and background color **/
-		htrGetBackground(tree, NULL, 0, bgcolor, sizeof(bgcolor));
 		htrGetBackground(tree, NULL, 1, bgstyle, sizeof(bgstyle));
 
 		if (wgtrGetPropertyValue(tree,"fgcolor1",DATA_T_STRING,POD(&ptr)) == 0)
