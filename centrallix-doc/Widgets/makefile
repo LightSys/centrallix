@@ -1,4 +1,4 @@
-.PHONY: multipage clean all doc-report
+.PHONY: multipage clean all
 
 HTML := ${subst index.html,,${wildcard *.html}}
 
@@ -12,9 +12,6 @@ website.sql: widgets.xml widgets-website.xsl
 	xsltproc widgets-website.xsl widgets.xml > website.sql
 
 all: multipage website.sql
-
-doc-report:
-	python3 ./doc-report/generate.py --repo-root ../..
 
 clean:
 	rm -f ${HTML}
