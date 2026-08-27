@@ -435,9 +435,9 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    else if (strcmp(type, "topimage") == 0)
 		{
 		if (htrAddBodyItem_va(s,
-		    "<div id='gb%POSpane1' style='align-items:center; flex-direction:column; gap:0.25rem;'><img src='%STR&HTE' alt='top img'>%STR&HTE</div>\n"
-		    "<div id='gb%POSpane2' style='align-items:center; flex-direction:column; gap:0.25rem;'><img src='%STR&HTE' alt='top img'>%STR&HTE</div>\n"
-		    "<div id='gb%POSpane3' style='align-items:center; flex-direction:column; gap:0.25rem;'><img src='%STR&HTE' alt='top img'>%STR&HTE</div>\n",
+		    "<div id='gb%POSpane1' style='align-items:center; flex-direction:column; gap:0.25rem;'><img src='%STR&HTE' alt=''>%STR&HTE</div>\n"
+		    "<div id='gb%POSpane2' style='align-items:center; flex-direction:column; gap:0.25rem;'><img src='%STR&HTE' alt=''>%STR&HTE</div>\n"
+		    "<div id='gb%POSpane3' style='align-items:center; flex-direction:column; gap:0.25rem;'><img src='%STR&HTE' alt=''>%STR&HTE</div>\n",
 		    id, n_img, text,
 		    id, n_img, text,
 		    id, n_img, text
@@ -450,9 +450,9 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    else if (strcmp(type, "bottomimage") == 0)
 		{
 		if (htrAddBodyItem_va(s,
-		    "<div id='gb%POSpane1' style='align-items:center; flex-direction:column; gap:0.25rem;'>%STR&HTE<img src='%STR&HTE' alt='bottom img'></div>\n"
-		    "<div id='gb%POSpane2' style='align-items:center; flex-direction:column; gap:0.25rem;'>%STR&HTE<img src='%STR&HTE' alt='bottom img'></div>\n"
-		    "<div id='gb%POSpane3' style='align-items:center; flex-direction:column; gap:0.25rem;'>%STR&HTE<img src='%STR&HTE' alt='bottom img'></div>\n",
+		    "<div id='gb%POSpane1' style='align-items:center; flex-direction:column; gap:0.25rem;'>%STR&HTE<img src='%STR&HTE' alt=''></div>\n"
+		    "<div id='gb%POSpane2' style='align-items:center; flex-direction:column; gap:0.25rem;'>%STR&HTE<img src='%STR&HTE' alt=''></div>\n"
+		    "<div id='gb%POSpane3' style='align-items:center; flex-direction:column; gap:0.25rem;'>%STR&HTE<img src='%STR&HTE' alt=''></div>\n",
 		    id, text, n_img,
 		    id, text, n_img,
 		    id, text, n_img
@@ -465,9 +465,9 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    else if (strcmp(type, "leftimage") == 0)
 		{
 		if (htrAddBodyItem_va(s,
-		    "<div id='gb%POSpane1' style='align-items:center; flex-direction:row; gap:%POSpx;'><img src='%STR&HTE' alt='top img'>%STR&HTE</div>\n"
-		    "<div id='gb%POSpane2' style='align-items:center; flex-direction:row; gap:%POSpx;'><img src='%STR&HTE' alt='top img'>%STR&HTE</div>\n"
-		    "<div id='gb%POSpane3' style='align-items:center; flex-direction:row; gap:%POSpx;'><img src='%STR&HTE' alt='top img'>%STR&HTE</div>\n",
+		    "<div id='gb%POSpane1' style='align-items:center; flex-direction:row; gap:%POSpx;'><img src='%STR&HTE' alt=''>%STR&HTE</div>\n"
+		    "<div id='gb%POSpane2' style='align-items:center; flex-direction:row; gap:%POSpx;'><img src='%STR&HTE' alt=''>%STR&HTE</div>\n"
+		    "<div id='gb%POSpane3' style='align-items:center; flex-direction:row; gap:%POSpx;'><img src='%STR&HTE' alt=''>%STR&HTE</div>\n",
 		    id, spacing, n_img, text,
 		    id, spacing, n_img, text,
 		    id, spacing, n_img, text
@@ -480,9 +480,9 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    else if (strcmp(type, "rightimage") == 0)
 		{
 		if (htrAddBodyItem_va(s,
-		    "<div id='gb%POSpane1' style='align-items:center; flex-direction:row; gap:%POSpx;'>%STR&HTE<img src='%STR&HTE' alt='bottom img'></div>\n"
-		    "<div id='gb%POSpane2' style='align-items:center; flex-direction:row; gap:%POSpx;'>%STR&HTE<img src='%STR&HTE' alt='bottom img'></div>\n"
-		    "<div id='gb%POSpane3' style='align-items:center; flex-direction:row; gap:%POSpx;'>%STR&HTE<img src='%STR&HTE' alt='bottom img'></div>\n",
+		    "<div id='gb%POSpane1' style='align-items:center; flex-direction:row; gap:%POSpx;'>%STR&HTE<img src='%STR&HTE' alt=''></div>\n"
+		    "<div id='gb%POSpane2' style='align-items:center; flex-direction:row; gap:%POSpx;'>%STR&HTE<img src='%STR&HTE' alt=''></div>\n"
+		    "<div id='gb%POSpane3' style='align-items:center; flex-direction:row; gap:%POSpx;'>%STR&HTE<img src='%STR&HTE' alt=''></div>\n",
 		    id, spacing, text, n_img,
 		    id, spacing, text, n_img,
 		    id, spacing, text, n_img
