@@ -33,6 +33,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdbool.h>
 #include "ht_render.h"
 #include "obj.h"
 #include "cxlib/mtask.h"
@@ -68,9 +69,14 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
     char c_img[128];
     char d_img[128];
     int x,y,w,h,spacing;
-    int is_ts = 1;
+    int i;
+    char* direction;
+    char gap[32];
+    bool has_img;
+    bool img_first;
+    bool is_ts = true;
     char* dptr;
-    int is_enabled = 1;
+    bool is_enabled = true;
     pExpression code;
 
 	/** Get an id for this. **/
@@ -103,7 +109,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Enabled?  An expression is handled further down. **/
 	if (wgtrGetPropertyType(tree,"enabled") != DATA_T_CODE)
-	    is_enabled = htrGetBoolean(tree, "enabled", 1);
+	    is_enabled = htrGetBoolean(tree, "enabled", true);
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto err;
@@ -139,7 +145,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
             strcpy(d_img, n_img);
 	
 		/** Threestate button or twostate? **/
-		is_ts = htrGetBoolean(tree, "tristate", 1);
+		is_ts = htrGetBoolean(tree, "tristate", true);
 
 		if(strcmp(type,"image"))
 		    {
@@ -178,7 +184,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		if (wgtrGetPropertyType(tree,"enabled") == DATA_T_CODE)
 		    {
 		    wgtrGetPropertyValue(tree,"enabled",DATA_T_CODE,POD(&code));
-		    is_enabled = 0;
+		    is_enabled = false;
 		    htrAddExpression(s, name, "enabled", code);
 		    }
 	
@@ -343,7 +349,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		goto err;
 		}
 	    
-	    /** Write unique CSS each pane individually. **/
+	    /** Write the CSS for each pane. **/
 	    if (htrAddStylesheetItem_va(s,
 		"\t\t#gb%POSpane { "
 		    "visibility:inherit; "
@@ -356,31 +362,11 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    "border-style:solid; "
 		    "border-color:white gray gray white; "
 		    "%STR "
-		"}\n",
-		id,
-		ht_flex_x(x, tree),
-		ht_flex_y(y, tree),
-		ht_flex_w(w - 3, tree),
-		z,
-		bgstyle
-	    ) != 0)
-		{
-		mssError(0, "HTBTN", "Failed to write CSS.");
-		goto err;
-		}
-	    if (htrAddStylesheetItem_va(s,
+		"}\n"
 		"\t\t#gb%POSpane1 { "
 		    "width:100%%; "
 		    "color:%STR&HTE; "
-		"}\n",
-		id,
-		fgcolor2
-	    ) != 0)
-		{
-		mssError(0, "HTBTN", "Failed to write CSS.");
-		goto err;
-		}
-	    if (htrAddStylesheetItem_va(s,
+		"}\n"
 		"\t\t#gb%POSpane2 { "
 		    "visibility:%STR; "
 		    "left:-1px; "
@@ -388,17 +374,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    "width:100%%; "
 		    "color:%STR&HTE; "
 		    "z-index:%INT; "
-		"}\n",
-		id,
-		(is_enabled) ? "inherit" : "hidden",
-		fgcolor1,
-		z + 1
-	    ) != 0)
-		{
-		mssError(0, "HTBTN", "Failed to write CSS.");
-		goto err;
-		}
-	    if (htrAddStylesheetItem_va(s,
+		"}\n"
 		"\t\t#gb%POSpane3 { "
 		    "visibility:%STR; "
 		    "left:0px; "
@@ -407,6 +383,18 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    "color:%STR&HTE; "
 		    "z-index:%INT; "
 		"}\n",
+		id,
+		ht_flex_x(x, tree),
+		ht_flex_y(y, tree),
+		ht_flex_w(w - 3, tree),
+		z,
+		bgstyle,
+		id,
+		fgcolor2,
+		id,
+		(is_enabled) ? "inherit" : "hidden",
+		fgcolor1,
+		z + 1,
 		id,
 		(is_enabled) ? "hidden" : "inherit",
 		disable_color,
@@ -430,85 +418,61 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		goto err;
 		}
 	    
-	    if (strcmp(type, "text") == 0)
+	    /** Work out how each pane arranges its image and text. **/
+	    has_img = true;
+	    img_first = false;
+	    direction = "";
+	    strtcpy(gap, "0.25rem", sizeof(gap));
+	    if (strcmp(type, "topimage") == 0)
 		{
-		if (htrAddBodyItem_va(s,
-		    "<div id='gb%POSpane1' style='align-items:center;'>%STR&HTE</div>\n"
-		    "<div id='gb%POSpane2' style='align-items:center;'>%STR&HTE</div>\n"
-		    "<div id='gb%POSpane3' style='align-items:center;'>%STR&HTE</div>\n",
-		    id, text,
-		    id, text,
-		    id, text
-		) != 0)
-		    {
-		    mssError(0, "HTBTN", "Failed to write pane HTML.");
-		    goto err;
-		    }
-		}
-	    else if (strcmp(type, "topimage") == 0)
-		{
-		if (htrAddBodyItem_va(s,
-		    "<div id='gb%POSpane1' style='align-items:center; flex-direction:column; gap:0.25rem;'><img src='%STR&HTE' alt=''>%STR&HTE</div>\n"
-		    "<div id='gb%POSpane2' style='align-items:center; flex-direction:column; gap:0.25rem;'><img src='%STR&HTE' alt=''>%STR&HTE</div>\n"
-		    "<div id='gb%POSpane3' style='align-items:center; flex-direction:column; gap:0.25rem;'><img src='%STR&HTE' alt=''>%STR&HTE</div>\n",
-		    id, n_img, text,
-		    id, n_img, text,
-		    id, n_img, text
-		) != 0)
-		    {
-		    mssError(0, "HTBTN", "Failed to write pane HTML.");
-		    goto err;
-		    }
+		direction = "column";
+		img_first = true;
 		}
 	    else if (strcmp(type, "bottomimage") == 0)
 		{
-		if (htrAddBodyItem_va(s,
-		    "<div id='gb%POSpane1' style='align-items:center; flex-direction:column; gap:0.25rem;'>%STR&HTE<img src='%STR&HTE' alt=''></div>\n"
-		    "<div id='gb%POSpane2' style='align-items:center; flex-direction:column; gap:0.25rem;'>%STR&HTE<img src='%STR&HTE' alt=''></div>\n"
-		    "<div id='gb%POSpane3' style='align-items:center; flex-direction:column; gap:0.25rem;'>%STR&HTE<img src='%STR&HTE' alt=''></div>\n",
-		    id, text, n_img,
-		    id, text, n_img,
-		    id, text, n_img
-		) != 0)
-		    {
-		    mssError(0, "HTBTN", "Failed to write pane HTML.");
-		    goto err;
-		    }
+		direction = "column";
 		}
 	    else if (strcmp(type, "leftimage") == 0)
 		{
-		if (htrAddBodyItem_va(s,
-		    "<div id='gb%POSpane1' style='align-items:center; flex-direction:row; gap:%POSpx;'><img src='%STR&HTE' alt=''>%STR&HTE</div>\n"
-		    "<div id='gb%POSpane2' style='align-items:center; flex-direction:row; gap:%POSpx;'><img src='%STR&HTE' alt=''>%STR&HTE</div>\n"
-		    "<div id='gb%POSpane3' style='align-items:center; flex-direction:row; gap:%POSpx;'><img src='%STR&HTE' alt=''>%STR&HTE</div>\n",
-		    id, spacing, n_img, text,
-		    id, spacing, n_img, text,
-		    id, spacing, n_img, text
-		) != 0)
-		    {
-		    mssError(0, "HTBTN", "Failed to write pane HTML.");
-		    goto err;
-		    }
+		direction = "row";
+		img_first = true;
+		snprintf(gap, sizeof(gap), "%dpx", spacing);
 		}
 	    else if (strcmp(type, "rightimage") == 0)
 		{
-		if (htrAddBodyItem_va(s,
-		    "<div id='gb%POSpane1' style='align-items:center; flex-direction:row; gap:%POSpx;'>%STR&HTE<img src='%STR&HTE' alt=''></div>\n"
-		    "<div id='gb%POSpane2' style='align-items:center; flex-direction:row; gap:%POSpx;'>%STR&HTE<img src='%STR&HTE' alt=''></div>\n"
-		    "<div id='gb%POSpane3' style='align-items:center; flex-direction:row; gap:%POSpx;'>%STR&HTE<img src='%STR&HTE' alt=''></div>\n",
-		    id, spacing, text, n_img,
-		    id, spacing, text, n_img,
-		    id, spacing, text, n_img
-		) != 0)
-		    {
-		    mssError(0, "HTBTN", "Failed to write pane HTML.");
-		    goto err;
-		    }
+		direction = "row";
+		snprintf(gap, sizeof(gap), "%dpx", spacing);
+		}
+	    else if (strcmp(type, "text") == 0)
+		{
+		has_img = false;
 		}
 	    else
 		{
 		mssError(1, "HTBTN", "Unknown button type \"%s\".", type);
 		goto err;
+		}
+	    
+	    /** Write the panes.  They differ only in id; the colors that **/
+	    /** distinguish them come from the stylesheet above.          **/
+	    for (i = 1; i <= 3; i++)
+		{
+		if (htrAddBodyItem_va(s,
+		    "<div id='gb%POSpane%POS' style='align-items:center;%[ flex-direction:%STR; gap:%STR;%]'>"
+			"%[<img src='%STR&HTE' alt=''>%]"
+			"%STR&HTE"
+			"%[<img src='%STR&HTE' alt=''>%]"
+		    "</div>\n",
+		    id, i,
+		    (has_img), direction, gap,
+		    (has_img && img_first), n_img,
+		    text,
+		    (has_img && !img_first), n_img
+		) != 0)
+		    {
+		    mssError(0, "HTBTN", "Failed to write pane HTML.");
+		    goto err;
+		    }
 		}
 	    
 	    /** Script initialization call. **/
