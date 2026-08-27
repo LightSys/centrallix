@@ -219,12 +219,14 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    "left:"ht_flex_format"; "
 		    "top:"ht_flex_format"; "
 		    "width:"ht_flex_format"; "
+		    "%[height:"ht_flex_format"; %]"
 		    "z-index:%POS; "
 		"}\n",
 		id,
 		ht_flex_x(x, tree),
 		ht_flex_y(y, tree),
 		ht_flex_w(w, tree),
+		(h >= 0), ht_flex_h(h, tree),
 		z
 	    ) != 0)
 		{
@@ -234,8 +236,8 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    
 	    /** HTML body <div> elements for the layers. **/
 	    if (htrAddBodyItem_va(s,
-		"<img src='%STR&HTE' border='0' %[width='%POS' height='%POS'%]>\n",
-		(is_enabled) ? n_img : d_img, (h >= 0), w, h
+		"<img src='%STR&HTE' border='0'%[ style='display:block; width:100%%; height:100%%;'%]>\n",
+		(is_enabled) ? n_img : d_img, (h >= 0)
 	    ) != 0)
 		{
 		mssError(0, "HTBTN",
@@ -254,12 +256,11 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 			"visibility:inherit; "
 			"left:0px; "
 			"top:0px; "
-			"width:"ht_flex_format"; "
+			"width:100%%; "
 			"height:100%%; "
 			"z-index:%POS; "
 		    "}\n",
 		    id,
-		    ht_flex_w(w, tree),
 		    z + 1
 		) != 0)
 		    {
@@ -353,11 +354,10 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		"\t\t#gb%POSpane1 { "
 		    "left:0px; "
 		    "top:0px; "
-		    "width:"ht_flex_format"; "
+		    "width:100%%; "
 		    "color:%STR&HTE; "
 		"}\n",
 		id,
-		ht_flex_w(w - 3, tree),
 		fgcolor2
 	    ) != 0)
 		{
@@ -369,13 +369,12 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    "visibility:%STR; "
 		    "left:-1px; "
 		    "top:-1px; "
-		    "width:"ht_flex_format"; "
+		    "width:100%%; "
 		    "color:%STR&HTE; "
 		    "z-index:%INT; "
 		"}\n",
 		id,
 		(is_enabled) ? "inherit" : "hidden",
-		ht_flex_w(w - 3, tree),
 		fgcolor1,
 		z + 1
 	    ) != 0)
@@ -388,13 +387,12 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    "visibility:%STR; "
 		    "left:0px; "
 		    "top:0px; "
-		    "width:"ht_flex_format"; "
+		    "width:100%%; "
 		    "color:%STR&HTE; "
 		    "z-index:%INT; "
 		"}\n",
 		id,
 		(is_enabled) ? "hidden" : "inherit",
-		ht_flex_w(w - 3, tree),
 		disable_color,
 		z + 1
 	    ) != 0)
@@ -405,9 +403,11 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    
 	    /** Write CSS heights, if specified. **/
 	    if (h >= 0 && htrAddStylesheetItem_va(s,
-		"\t\t#gb%POSpane, #gb%POSpane1, #gb%POSpane2, #gb%POSpane3 { height: "ht_flex_format"; }\n",
-		id, id, id, id,
-		ht_flex_h(h - 3, tree)
+		"\t\t#gb%POSpane { height: "ht_flex_format"; }\n"
+		"\t\t#gb%POSpane1, #gb%POSpane2, #gb%POSpane3 { height: 100%%; }\n",
+		id,
+		ht_flex_h(h - 3, tree),
+		id, id, id
 	    ) != 0)
 		{
 		mssError(0, "HTBTN", "Failed to write CSS.");
