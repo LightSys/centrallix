@@ -130,3 +130,4 @@ The original script was written by Cursor across 4 commits, although every line 
   - Currently, the script guesses by looking for quoted identifiers in action descriptions.
 - Detect event param issues the same way action param issues are detected.
 - Improve the ignore system for special cases, such as the numbered param families of the osrc widget's Sync and DoubleSync actions (`ParentKey1` through `ParentKey9` in the docs, built as `ParentKey` plus an index in the code).
+- Attribute each event and action to the widget that registers it, instead of to the widget that the `htdrv_*.js` file is named after.  For example, the table widget's `Open` and `Close` events are registered on its `table-row-detail` children.
