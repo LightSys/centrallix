@@ -228,8 +228,8 @@ function gb_setmode(layer,mode)
 		    {
 		    layer.cursrc = newsrc;
 		    pg_set(layer.img, 'src', newsrc);
-		    if(type=='image' || type=='textoverimage') return;
 		    }
+		if(type=='image' || type=='textoverimage') return;
 		if(cx__capabilities.Dom2CSS)
 		    {
 		    layer.style.setProperty('border-width','0px',null);
@@ -244,8 +244,8 @@ function gb_setmode(layer,mode)
 		    {
 		    layer.cursrc = newsrc;
 		    pg_set(layer.img, 'src', newsrc);
-		    if(type=='image' || type=='textoverimage' ) return;
 		    }
+		if(type=='image' || type=='textoverimage') return;
 		if(cx__capabilities.Dom2CSS)
 		    {
 		    layer.style.setProperty('border-width','1px',null);
@@ -263,8 +263,8 @@ function gb_setmode(layer,mode)
 		    {
 		    layer.cursrc = newsrc;
 		    pg_set(layer.img, 'src', newsrc);
-		    if(type=='image' || type=='textoverimage') return;
 		    }
+		if(type=='image' || type=='textoverimage') return;
 		if(cx__capabilities.Dom2CSS)
 		    {
 		    layer.style.setProperty('border-width','1px',null);
