@@ -97,7 +97,7 @@
 
 			<property name="column_width" type="integer">This specifies the width of columns for a vbox -- should the first column of widgets fill up, a second column will be started at this offset from the start of the first column.</property>
 
-			<property name="height" type="integer">Height, in pixels, of the autolayout area.  If omitted, it defaults to the maximum available height for the given width, without overlapping other visible widgets.  If both width and height are unspecified, Centrallix will chose a width and height that maximize the available autolayout area.</property>
+			<property name="height" type="integer">Height, in pixels, of the autolayout area.  If omitted, it defaults to the maximum available height for the given width, without overlapping other visible widgets.  If both width and height are unspecified, Centrallix will choose a width and height that maximize the available autolayout area.</property>
 
 			<property name="justify" type="string">Makes the text fill page (justifies text - google it if you need).</property>
 
@@ -370,7 +370,7 @@ vbox1 "widget/vbox"
 
 			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
-			<event name="DblClick">This event occurs when the user double-clicks the mouse pointer (equivalent to two Click events occuring on the widget within a required time period) while it is over this widget.</event>
+			<event name="DblClick">This event occurs when the user double-clicks the mouse pointer (equivalent to two Click events occurring on the widget within a required time period) while it is over this widget.</event>
 
 		</events>
 
@@ -728,7 +728,7 @@ MyWindow "widget/childwindow"
 
 			<p>A component can be either visual or non-visual, and can be placed at almost any point in the application.</p>
 
-			<p>At the time of writing, only connectors may be placed inside a widget/component.  It is planned that it be possible to place widgets inside a widget/component which then appear inside specially designated containers within the component itself.  However that capability is not available at present.</p>
+			<p>At the time of writing, only connectors may be placed inside a widget/component.  It is planned that it be possible to place widgets inside a widget/component which then appear inside specially designated containers within the component itself.  However, that capability is not available at present.</p>
 
 		</usage>
 
@@ -1682,7 +1682,7 @@ mySoundPlayer "widget/execmethod"
 
 		<actions>
 
-			<action name="Clear"><ni />Clears the form to a 'no data' -state. Specify 1 for the 'force' parameter to clear data even if it is has not been saved.</action>
+			<action name="Clear"><ni />Clears the form to a 'no data' -state. Specify 1 for the 'force' parameter to clear data even if it has not been saved.</action>
 
 			<action name="Delete"><ni />Deletes the current object displayed.</action>
 
@@ -2454,7 +2454,7 @@ f_trx_mod_l "widget/label" { width=86; text="User Edit?"; align=right; font_size
 
 			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
-			<event name="DblClick">This event occurs when the user double-clicks the mouse pointer (equivalent to two Click events occuring on the widget within a required time period) while it is over this widget.</event>
+			<event name="DblClick">This event occurs when the user double-clicks the mouse pointer (equivalent to two Click events occurring on the widget within a required time period) while it is over this widget.</event>
 
 			<event name="RightClick">The RightClick event occurs when a user clicks on the widget with the relevant button on their mouse or mouse pad.</event>
 
@@ -2513,7 +2513,7 @@ f_trx_mod_l "widget/label" { width=86; text="User Edit?"; align=right; font_size
 
 			<property name="highlight_bgcolor" type="string">A color, RGB or named, to be used as a highlighted (pointed-at) item's background.  If neither highlight_bgcolor nor highlight_background are specified, the standard color or background is used instead.</property>
 
-			<property name="popup" type="yes/no">Default "no".  Popup menus disappear after an item on them is selected, whereas fixed menus remain visible (such as for menubars).</property>
+			<property name="popup" type="yes/no">Default "no".  Popup menus disappear after an item on them is selected, whereas fixed menus remain visible (such as for menu bars).</property>
 
 			<property name="row_height" type="integer">Height, in pixels, of the menu items in a menu.</property>
 
@@ -2539,7 +2539,7 @@ f_trx_mod_l "widget/label" { width=86; text="User Edit?"; align=right; font_size
 
 				<childproperty name="label" type="string">The text to appear on the menu item.</childproperty>
 
-				<childproperty name="onright" type="yes/no">If set to "yes", then the menu item will be displayed on the righthand side of a horizontal menu bar (e.g., for having "File" "Edit" "Tools" on the left, and "Help" on the far right).</childproperty>
+				<childproperty name="onright" type="yes/no">If set to "yes", then the menu item will be displayed on the right hand side of a horizontal menu bar (e.g., for having "File" "Edit" "Tools" on the left, and "Help" on the far right).</childproperty>
 
 				<childproperty name="value" type="string">The 'value' of the menu item, passed to the Selected event, below.  If not specified, it defaults to the name of the widget (not its label).</childproperty>
 
@@ -2577,7 +2577,7 @@ f_trx_mod_l "widget/label" { width=86; text="User Edit?"; align=right; font_size
 
 			<event name="SelectItem">This event occurs when an item in the menu is selected.  It provides the same parameters as the Select event.</event>
 
-			<event name="Activate">This event occurs when the dropdown appears.  It provides two parameters, "X" and "Y", which are the the (integer) positions (in pixels) on the page for the menu has appeared.</event>
+			<event name="Activate">This event occurs when the dropdown appears.  It provides two parameters, "X" and "Y", which are the (integer) positions (in pixels) on the page for the menu has appeared.</event>
 
 			<event name="Deactivate">This event occurs when the dropdown disappears, and it provides no parameters.</event>
 
@@ -2717,9 +2717,9 @@ myMenu "widget/menu"
 
 			<property name="replicasize" type="integer">Represents the number of records to store in its replica.  This value should be larger than the maximum number of records that will be displayed at any one time.  At times, Centrallix may increase the number of records cached on the client beyond this number.</property>
 
-			<property name="revealed_only" type="string">Acts as a boolean and delays query until the osrc is visable (if "true").</property>
+			<property name="revealed_only" type="string">Acts as a boolean and delays query until the osrc is visible (if "true").</property>
 
-			<property name="scrollahead" type="integer">Similar to readahead, but relates to how many records should be fetched when more records are needed from the server to fulfill a request to display more data, such as a table widget scrolling without changing the current record.  By default this is set to the value of 'readahead'.</property>
+			<property name="scrollahead" type="integer">Similar to readahead, but relates to how many records should be fetched when more records are needed from the server to fulfill a request to display more data, such as a table widget scrolling without changing the current record.  Defaults to the value of 'readahead'.</property>
 
 			<property name="send_updates" type="yes/no">Default "yes".  If set to "no", the objectsource will not relay any updates (modifications, etc.) that the user makes to the server.</property>
 
@@ -2799,7 +2799,7 @@ myMenu "widget/menu"
 
 			<action name="DoubleSync">DEPRECATED: Performs a double synchronization with two other object sources, known as the Parent and the Child, in two steps.  The first step is like Sync (see below), with a ParentOSRC and ParentKey1-ParentKey9] / ParentSelfKey1-ParentSelfKey9.  Next, a Sync is performed between the current objectsource and the ChildOSRC in the same way the first step performed a sync between the ParentOSRC and the current objectsource, respectively, using SelfChildKey1-SelfChildKey9 / ChildKey1-ChildKey9.</action>
 
-			<action name="FindObject">Searches for a certain object in the replica (retrieved records), and makes it the current object.  Parameters: To search by record number, set ID equal to the integer (1 = first record).  To search by object name (primary key), set Name equal to a string containing the primary key (note that concatenated keys use | as a separator).  To search by other abitrary field values, set those values in the parameters to this action.</action>
+			<action name="FindObject">Searches for a certain object in the replica (retrieved records), and makes it the current object.  Parameters: To search by record number, set ID equal to the integer (1 = first record).  To search by object name (primary key), set Name equal to a string containing the primary key (note that concatenated keys use | as a separator).  To search by other arbitrary field values, set those values in the parameters to this action.</action>
 
 			<action name="First"><ni/>Returns first record in the replica.</action>
 
@@ -2819,7 +2819,7 @@ myMenu "widget/menu"
 
 			<action name="QueryParam">Refreshes the query, and allows new parameter values to be passed in.  Previous comment: Re-runs the SQL query, but adds more constraints.  The additional constraints are provided as parameters to the connector which invokes this action.</action>
 
-			<action name="QueryText">Runs the query, searching for objects whose attributes *contain* a combination of string values.  'query' contains a space-separated list of strings that must be present in each returned record (typically the 'query' is typed by the user).  'field_list' is a comma-separated list of field names to search in.  Each field name (attribute) can be preceded by a * or followed by a *; the presence of these asterisks controls whether the matching is done on the entire attribute value or just as a substring match.  Examples: 'my_key,*my_description*' for field_list means to match exact values for my_key, and match anywhere in my_description.  cx__case_insensitive can be set to 1 to make the search case insensitive.</action>
+			<action name="QueryText">Runs the query, searching for objects whose attributes *contain* a combination of string values.  'query' contains a space-separated list of strings that must be present in each returned record (typically the 'query' is typed by the user).  'field_list' is a comma-separated list of field names to search in.  Each field name (attribute) can be preceded by a * or followed by a *; the presence of these asterisks controls whether the matching is done on the entire attribute value or just as a substring match.  Examples: 'my_key,*my_description*' for field_list means to match exact values for my_key, and match anywhere in my_description.  cx__case_insensitive can be set to 1 to make the search case-insensitive.</action>
 
 			<action name="Refresh">Re-runs the SQL query using the previously stored parameter values (if any).  This is used when the data on the server is believed to have changed, and the new data is desired to be displayed in the application.  This action does not change the current row.</action>
 
@@ -2827,7 +2827,7 @@ myMenu "widget/menu"
 
 			<action name="Sync">DEPRECATED: Performs a synchronization operation with another objectsource by re-running the query for this objectsource based on another objectsource's data.  Used for implementing relationships between objectsources.  The ParentOSRC (string) parameter specifies the name of the objectsource to sync with.  Up to nine synchronization keys can be specified, as ParentKey1 and ChildKey1 through ParentKey9 and ChildKey9.  The ParentKey indicates the name of the field in the ParentOSRC to sync with (probably a primary key), and ChildKey indicates the name of the field (the foreign key) in the current objectsource to match with the parent objectsource.</action>
 
-			<action name="SaveClients">Save the clients that connect and lets clients of clients know that orsc is conected to them.</action>
+			<action name="SaveClients">Save the clients that connect and lets clients of clients know that orsc is connected to them.</action>
 
 			<action name="SeqBackward">Moves the current row backwards.</action>
 
@@ -3459,7 +3459,7 @@ $Version=2$
 
 		<overview>
 
-			<p>The scrollbar is used to allow the uesr to control a numeric value; typically the scrollbar is tied to the scrolling behavior of another widget.</p>
+			<p>The scrollbar is used to allow the user to control a numeric value; typically the scrollbar is tied to the scrolling behavior of another widget.</p>
 
 			<p>Currently, both table and scrollpane widgets have their own scrollbars, so this widget is not used for either of those.</p>
 
@@ -3788,7 +3788,7 @@ myTabControl "widget/tab"
 
 		<usage>
 
-			<p>Table widgets are normally placed inside of a scrollpane so that any rows which don't fit int the container can still be viewed.  Table columns are created via "widget/table-column" child widgets within the table widget.</p>
+			<p>Table widgets are normally placed inside a scrollpane so that any rows which don't fit int the container can still be viewed.  Table columns are created via "widget/table-column" child widgets within the table widget.</p>
 
 		</usage>
 
@@ -4643,7 +4643,7 @@ my_pane "widget/pane"
 
 			<property name="fieldname" type="string">The field with which to link / connect to the variable.</property>
 
-			<property name="form" type="string">The form (e.g. it's osrc) with which to associate the variable and fieldname (if different than the form in which variable is currently nested).</property>
+			<property name="form" type="string">The form (e.g. it's osrc) with which to associate the variable and fieldname.  Defaults to the form in which variable is nested.</property>
 
 			<property name="value" type="string">Can be accessed as :var_name:value.</property>
 
