@@ -258,6 +258,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 			"left:0px; "
 			"top:0px; "
 			"width:"ht_flex_format"; "
+			"height:100%%; "
 			"z-index:%POS; "
 		    "}\n",
 		    id,
@@ -270,7 +271,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    }
 		
 		if (htrAddBodyItem_va(s,
-		    "<div id='gb%POSpane2' style='color:%STR&HTE; text-align:center; display:flex; justify-content:center; font-weight:700;align-items:flex-start; padding-top:1px;'>%STR&HTE</div>\n",
+		    "<div id='gb%POSpane2' style='color:%STR&HTE; text-align:center; display:flex; justify-content:center; font-weight:700; align-items:center;'>%STR&HTE</div>\n",
 		    id, fgcolor1, text
 		) != 0)
 		    {
@@ -419,9 +420,9 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    if (strcmp(type, "text") == 0)
 		{
 		if (htrAddBodyItem_va(s,
-		    "<div id='gb%POSpane1' style='align-items:flex-start; padding-top:1px;'>%STR&HTE</div>\n"
-		    "<div id='gb%POSpane2' style='align-items:flex-start; padding-top:1px;'>%STR&HTE</div>\n"
-		    "<div id='gb%POSpane3' style='align-items:flex-start; padding-top:1px;'>%STR&HTE</div>\n",
+		    "<div id='gb%POSpane1' style='align-items:center;'>%STR&HTE</div>\n"
+		    "<div id='gb%POSpane2' style='align-items:center;'>%STR&HTE</div>\n"
+		    "<div id='gb%POSpane3' style='align-items:center;'>%STR&HTE</div>\n",
 		    id, text,
 		    id, text,
 		    id, text
