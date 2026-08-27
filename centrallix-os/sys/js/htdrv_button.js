@@ -279,18 +279,6 @@ function gb_setmode(layer,mode)
 	}
     }
 
-function gb_dblclick(e)
-    {
-    var ly = e.layer;
-    if (ly.mainlayer) ly = ly.mainlayer;
-    if (ly.kind == 'gb' && cx__capabilities.Dom0IE)
-	{
-	gb_mousedown(e);
-	gb_mouseup(e);
-	}
-    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
-    }
-
 function gb_mousedown(e)
     {
     var ly = e.layer;
