@@ -123,10 +123,6 @@ function gb_init(param)
     l.btm = param.bottom;
     l.lft = param.left;
     l.rgt = param.right;
-    l.orig_ct = parseInt(getClipTop(l));
-    l.orig_cb = parseInt(getClipTop(l)) + parseInt(getClipHeight(l));
-    l.orig_cr = parseInt(getClipRight(l));
-    l.orig_cl = parseInt(getClipLeft(l));
     l.lightBorderColor = '#FFFFFF';
     l.darkBorderColor = '#7A7A7A';
     /* set images */
