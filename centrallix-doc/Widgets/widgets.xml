@@ -794,9 +794,9 @@ MyWindow "widget/childwindow"
 
 		<actions>
 
-			<action name="Destroy">Destroys the component.  If multiple instances exist, then all instances are destroyed.</action>
+			<action name="Destroy">Destroys the component.  If the 'Name' or 'Namespace' parameter is given, only the instances matching it are destroyed; otherwise all instances are destroyed.</action>
 
-			<action name="Instantiate">Instantiates the component.</action>
+			<action name="Instantiate">Instantiates the component.  The optional 'Path' parameter is an absolute path to the component to load, which overrides the path property.  The optional 'Name' parameter names the new instance, so that Destroy can select it later.</action>
 
 		</actions>
 
@@ -911,7 +911,7 @@ formctl "widget/component"
 
 			<action name="ModifyProperty">Sets a client property that the component exposes, so that the change is visible outside the component.  The "PropertyName" parameter names the property and the "NewValue" parameter holds its new value.  Set "TriggerEvent" to a true value to also fire the component's event for that property change.</action>
 
-			<action name="TriggerEvent">Allows events to happen.</action>
+			<action name="TriggerEvent">Fires the event named by the 'EventName' parameter inside the component, as though it had been invoked from outside the component.  The remaining parameters are passed along to that event.</action>
 
 		</actions>
 
@@ -1403,9 +1403,9 @@ myDropDown2 "widget/dropdown"
 
 			<action name="Disable">The Disable action prevents an edit box from being written in. This action takes no parameters.</action>
 
-			<action name="SetFocus">The SetFocus action selects and gives control to an edit box at the specified "X" and "Y" coordinates (even if its not the target?).</action>
+			<action name="SetFocus">The SetFocus action selects and gives control to an edit box at the specified "X" and "Y" coordinates (even if it is not the target?).</action>
 
-			<action name="SetValue">The SetValue action modifies the contents of an editbox, and takes three parameters.  The 'Value' (string) parameter represents the new value of the edit box.  The 'Trigger' (int) parameter is supposed to control whether to trigger the Modified event, however, this event is always triggered regardless of the Trigger value.  The 'Description' parameter is identical to that of the SetValueDescription event.</action>
+			<action name="SetValue">The SetValue action modifies the contents of an editbox, and takes three parameters.  The 'Value' (string) parameter represents the new value of the edit box.  Older documentation described a Trigger (int) parameter for controlling whether the Modified event fires, but no such parameter is implemented, and the event always fires.  The 'Description' parameter is identical to that of the SetValueDescription event.</action>
 
 			<action name="SetValueDescription">This action modifies the "value description" of the editbox, and takes a single parameter, 'Description' (string).</action>
 
@@ -2807,7 +2807,7 @@ myMenu "widget/menu"
 
 			<action name="CancelCreateObject">If it is called while an object is being created it stops the creation and cleans up the mess.</action>
 
-			<action name="ChangeSource">Changes the data item that the object source points to in the server.</action>
+			<action name="ChangeSource">Changes the data item that the object source points to in the server.  The 'Source' parameter is the new object path, which replaces the old path everywhere it occurs in the query.  The query is then re-run, unless the 'Refresh' parameter is given a false value.</action>
 
 			<action name="Clear"><ni/>Clears the replica of data.</action>
 
@@ -2821,7 +2821,7 @@ myMenu "widget/menu"
 
 			<action name="DoSQL">Runs the SQL statement given in the 'SQL' parameter once for each distinct value of the field named by the 'GroupingField' parameter in the retrieved records.  Any other parameters are passed to the statement as query parameters.</action>
 
-			<action name="DoubleSync">DEPRECATED: Performs a double synchronization with two other object sources, known as the Parent and the Child, in two steps.  The first step is like Sync (see below), with a ParentOSRC and ParentKey1-ParentKey9] / ParentSelfKey1-ParentSelfKey9.  Next, a Sync is performed between the current objectsource and the ChildOSRC in the same way the first step performed a sync between the ParentOSRC and the current objectsource, respectively, using SelfChildKey1-SelfChildKey9 / ChildKey1-ChildKey9.</action>
+			<action name="DoubleSync">DEPRECATED: Performs a double synchronization with two other object sources, known as the Parent and the Child, in two steps.  The first step is like Sync (see below), with a ParentOSRC and ParentKey1-ParentKey9 / ParentSelfKey1-ParentSelfKey9.  Next, a Sync is performed between the current objectsource and the ChildOSRC in the same way the first step performed a sync between the ParentOSRC and the current objectsource, respectively, using SelfChildKey1-SelfChildKey9 / ChildKey1-ChildKey9.</action>
 
 			<action name="FindObject">Searches for a certain object in the replica (retrieved records), and makes it the current object.  Parameters: To search by record number, set ID equal to the integer (1 = first record).  To search by object name (primary key), set Name equal to a string containing the primary key (note that concatenated keys use | as a separator).  To search by other arbitrary field values, set those values in the parameters to this action.</action>
 
@@ -2983,11 +2983,11 @@ osrc1 "widget/osrc"
 
 			<action name="Close">Closes the page.</action>
 
-			<action name="Launch">Loads the app at the specified "Source" in a new window of the specified "Width" and "Height".  Specify 1 or yes for "LinkApp" to link the new app into the same group as the current page for permissions.  Specify any value other than no for the "UseragentMenu", "UseragentResize", or "UseragentScroll" parameters to allow the user to see the menu bar, resize the window, or scroll it (respectively).</action>
+			<action name="Launch">Loads the app at the specified "Source" in a new window of the specified "Width" and "Height".  Specify 1 or yes for "LinkApp" to link the new app into the same group as the current page for permissions.  Specify any value other than no for the "UseragentMenu", "UseragentResize", or "UseragentScroll" parameters to allow the user to see the menu bar, resize the window, or scroll it (respectively).  The "Name" parameter names the new window (the default name is new_window); specify 1 or true for "Multi" to open an additional numbered window instead of reusing the window with that name.</action>
 			
 			<action name="Log">Logs data to the console (using console.log()), for testing and debugging. Set the 'Message' to specify a text string that should appear in the log. Might be useful for logging Easter Egg #8.</action>
 			
-			<action name="LoadPage">Loads the page at the specified "Source".</action>
+			<action name="LoadPage">Loads the page at the specified "Source", or reloads the current page if no source is given.  Any other parameters are appended to the URL as query parameters.  Specify 1 or yes for "LinkApp" to link the loaded page into the same group as the current page for permissions.</action>
 			
 			<action name="ReloadPage">Reloads the page in the user's browser. Note: This event forces a reload, even if the original content could be loaded without one.</action>
 
@@ -4309,7 +4309,7 @@ term1 "widget/terminal"
 
 			<action name="SetFocus">Sets the focus on a selected widget.  Specify the optional "X" or "Y" parameters to move the focus box that appears on the textarea.</action>
 
-			<action name="SetValue">Sets the content to the specified "Value" parameter.  You should be able to specify 0 for the "Trigger" parameter to prevent a DataChange event from being triggered, however, this parameter is ignored and the event is always triggered.</action>
+			<action name="SetValue">Sets the content to the specified "Value" parameter.  Older documentation described a Trigger parameter for preventing the DataChange event from being triggered, but no such parameter is implemented, and the event always fires.</action>
 
 		</actions>
 
@@ -4610,13 +4610,13 @@ my_timer2 "widget/timer"
 
 		<actions>
 
-			<action name="Search">Searches for a specific element.</action>
+			<action name="Search">Searches the tree for the text given in the 'Value' parameter, then expands and selects the first matching element.</action>
 
 			<action name="SearchNext">Returns the next element in the treeview.</action>
 
 			<action name="SetFocus">Transfers focus to the selected element.</action>
 
-			<action name="SetRoot">Sets the selected element as the root.</action>
+			<action name="SetRoot">Collapses the tree and re-roots it.  The 'NewRoot' parameter is the pathname of the new root object (javascript:window is used if it is omitted), and the 'NewRootObj' parameter optionally supplies an already-retrieved object to use as that root.  Set the 'Expand' parameter to yes to expand the new root immediately.</action>
 
 		</actions>
 
