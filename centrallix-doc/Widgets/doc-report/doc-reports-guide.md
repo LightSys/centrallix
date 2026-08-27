@@ -88,6 +88,7 @@ The widget errors section lists all widgets that appear to be documented incorre
 - **Undocumented events/actions**: An event or action implementation is detected in the code, but not in the docs.
 - **Stale events/actions**: An event or action was detected in the docs, but no implementation was detected in the code.
 - **Incorrect action parameter docs**: Heuristics detected action parameters being used in the code that were not documented, or failed to detect documented action parameters being accessed in the code.
+- **Internally named action params**: An action's docs name a parameter that does not follow the CamelCase convention, which usually means the docs name an internal variable or a value instead of a parameter.
 
 **Exception**: An event or action doc in `widgets.xml` marked with the `<ni />` (not implemented) tag is never considered stale and its parameters are not checked.  These exceptions are counted by the `ignored_errors` stat.
 
@@ -131,4 +132,3 @@ The original script was written by Cursor across 4 commits, although every line 
   - Currently, the script guesses by looking for quoted identifiers in action descriptions.
 - Detect event param issues the same way action param issues are detected.
 - Improve the ignore system for special cases, such as the numbered param families of the osrc widget's Sync and DoubleSync actions (`ParentKey1` through `ParentKey9` in the docs, built as `ParentKey` plus an index in the code).
-- Report an error when an internal param name is documented, or when a documented param name is used as an internal one.
