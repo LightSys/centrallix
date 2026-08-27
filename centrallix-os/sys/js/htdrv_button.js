@@ -106,23 +106,11 @@ function gb_init(param)
     //l.img.mainlayer = l
     //l.img.kind = 'gb';
     //l.cursrc = param.n;
-
-    if(!cx__capabilities.Dom2CSS && !cx__capabilities.Dom0IE)
-	{
-	param.top.nofocus = true;
-	param.right.nofocus = true;
-	param.bottom.nofocus = true;
-	param.left.nofocus = true;
-	}
     l.buttonName = param.name;
     l.buttonText = param.text;
 
     l.l2 = l2;
     l.l3 = l3;
-    l.tp = param.top;
-    l.btm = param.bottom;
-    l.lft = param.left;
-    l.rgt = param.right;
     l.lightBorderColor = '#FFFFFF';
     l.darkBorderColor = '#7A7A7A';
     /* set images */
@@ -138,20 +126,6 @@ function gb_init(param)
     if (h == -1) l.dImage = new Image();
     else l.dImage = new Image(w,h);
     pg_set(l.dImage,'src',param.d);
-
-    if(cx__capabilities.Dom0NS)
-	{
-	setClipWidth(l, param.width);
-	if (param.height != -1) setClipHeight(l, param.height);
-	pg_set_style(param.top,'bgColor',l.lightBorderColor);
-	pg_set_style(param.left,'bgColor',l.lightBorderColor);
-	pg_set_style(param.bottom,'bgColor',l.darkBorderColor);
-	pg_set_style(param.right,'bgColor',l.darkBorderColor);
-	setClipHeight(param.left, getClipHeight(l));
-	setClipHeight(param.right, getClipHeight(l));
-	setPageX(param.right,getPageX(l)+getClipWidth(l)-2);
-	setPageY(param.bottom,getPageY(l)+getClipHeight(l)-2);
-	}
     l.tristate = param.tristate;
     l.mode = -1;
     gb_setmode(l,0);
@@ -261,13 +235,6 @@ function gb_setmode(layer,mode)
 		    layer.style.setProperty('border-width','0px',null);
 		    layer.style.setProperty('margin','1px',null);
 		    }
-		else if(!cx__capabilities.Dom0IE)
-		    {
-		    layer.rgt.visibility = 'hidden';
-		    layer.lft.visibility = 'hidden';
-		    layer.tp.visibility = 'hidden';
-		    layer.btm.visibility = 'hidden';
-		    }
 		break;
 
 	    case 1: /* point, but no click */
@@ -288,17 +255,6 @@ function gb_setmode(layer,mode)
 		    layer.style.setProperty('border-bottom-color',layer.darkBorderColor,null);
 		    layer.style.setProperty('border-right-color',layer.darkBorderColor,null);
 		    }
-		else if(!cx__capabilities.Dom0IE)
-		    {
-		    layer.rgt.visibility = 'inherit';
-		    layer.lft.visibility = 'inherit';
-		    layer.tp.visibility = 'inherit';
-		    layer.btm.visibility = 'inherit';
-		    layer.tp.bgColor = layer.lightBorderColor;
-		    layer.lft.bgColor = layer.lightBorderColor;
-		    layer.btm.bgColor = layer.darkBorderColor;
-		    layer.rgt.bgColor = layer.darkBorderColor;
-		    }
 		break;
 
 	    case 2: /* point and click */
@@ -317,17 +273,6 @@ function gb_setmode(layer,mode)
 		    layer.style.setProperty('border-left-color',layer.darkBorderColor,null);
 		    layer.style.setProperty('border-bottom-color',layer.lightBorderColor,null);
 		    layer.style.setProperty('border-right-color',layer.lightBorderColor,null);
-		    }
-		else if(!cx__capabilities.Dom0IE)
-		    {
-		    layer.rgt.visibility = 'inherit';
-		    layer.lft.visibility = 'inherit';
-		    layer.tp.visibility = 'inherit';
-		    layer.btm.visibility = 'inherit';
-		    layer.tp.bgColor = layer.darkBorderColor;
-		    layer.lft.bgColor = layer.darkBorderColor;
-		    layer.btm.bgColor = layer.lightBorderColor;
-		    layer.rgt.bgColor = layer.lightBorderColor;
 		    }
 		break;
 	    }
