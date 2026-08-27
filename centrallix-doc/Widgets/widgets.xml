@@ -368,9 +368,9 @@ vbox1 "widget/vbox"
 
 		<events>
 
-			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
+			<event name="Click"><ni />This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
-			<event name="DblClick">This event occurs when the user double-clicks the mouse pointer (equivalent to two Click events occurring on the widget within a required time period) while it is over this widget.</event>
+			<event name="DblClick"><ni />This event occurs when the user double-clicks the mouse pointer (equivalent to two Click events occurring on the widget within a required time period) while it is over this widget.</event>
 
 		</events>
 
@@ -441,7 +441,7 @@ chart "widget/chart"
 
 		<events>
 
-			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
+			<event name="Click"><ni />This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
 			<event name="DataChange">This event occurs when the user has modified the data value of the checkbox (clicked or unclicked it).</event>
 
@@ -1204,7 +1204,7 @@ cn1 "widget/connector"
 
 			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
 
-			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
+			<event name="MouseOut"><ni />This event occurs when the user moves the mouse pointer off of the widget.</event>
 
 			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
 
@@ -1773,7 +1773,7 @@ form1 "widget/form"
 
 		<events>
 
-			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
+			<event name="Click"><ni />This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
 			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
@@ -2458,15 +2458,15 @@ f_trx_mod_l "widget/label" { width=86; text="User Edit?"; align=right; font_size
 
 			<event name="RightClick">The RightClick event occurs when a user clicks on the widget with the relevant button on their mouse or mouse pad.</event>
 
-			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseDown"><ni />This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
-			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="MouseMove"><ni />This event occurs when the user moves the mouse pointer while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.</event>
 
-			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
+			<event name="MouseOut"><ni />This event occurs when the user moves the mouse pointer off of the widget.</event>
 
-			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
+			<event name="MouseOver"><ni />This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
 
-			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
+			<event name="MouseUp"><ni />This event occurs when the user releases the mouse button on the widget.</event>
 
 		</events>
 
@@ -2559,19 +2559,19 @@ f_trx_mod_l "widget/label" { width=86; text="User Edit?"; align=right; font_size
 
 			<event name="DataChange">This event occurs when an item in the menu which is not a submenu is changed.</event>
 
-			<event name="GetFocus">This event occurs when the menu which previously was not clicked is clicked.</event>
+			<event name="GetFocus"><ni />This event occurs when the menu which previously was not clicked is clicked.</event>
 
-			<event name="LoseFocus">This event occurs when the menu which previously was clicked is unselected.</event>
+			<event name="LoseFocus"><ni />This event occurs when the menu which previously was clicked is unselected.</event>
 
-			<event name="MouseDown">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseDown"><ni />This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
-			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="MouseMove"><ni />This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</event>
 
-			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the checkbox.</event>
+			<event name="MouseOut"><ni />This event occurs when the user moves the mouse pointer off of the checkbox.</event>
 
-			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</event>
+			<event name="MouseOver"><ni />This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</event>
 
-			<event name="MouseUp">This event occurs when the user releases the mouse button on the checkbox.</event>
+			<event name="MouseUp"><ni />This event occurs when the user releases the mouse button on the checkbox.</event>
 
 			<event name="Select">This event fires when a menu item is selected.  It can be placed in the menu itself, or inside the menu item widget.  When on a menu item, it only fires when that item is selected.  When on a menu, it passes the selected item's value as a parameter named 'Item' (string).  This event also provides the "Value" and "Label" parameters to represent what was selected.</event>
 
@@ -2658,17 +2658,17 @@ myMenu "widget/menu"
 
 		<events>
 
-			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
+			<event name="Click"><ni />This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
-			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseDown"><ni />This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
-			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="MouseMove"><ni />This event occurs when the user moves the mouse pointer while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.</event>
 
-			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
+			<event name="MouseOut"><ni />This event occurs when the user moves the mouse pointer off of the widget.</event>
 
-			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
+			<event name="MouseOver"><ni />This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
 
-			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
+			<event name="MouseUp"><ni />This event occurs when the user releases the mouse button on the widget.</event>
 
 		</events>
 
@@ -3495,7 +3495,7 @@ $Version=2$
 
 		<events>
 
-			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
+			<event name="Click"><ni />This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
 			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
@@ -4247,7 +4247,7 @@ term1 "widget/terminal"
 
 			<event name="LoseFocus">This event occurs when the editbox loses keyboard focus (if the user tabs off of it, for instance).</event>
 
-			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
+			<event name="Click"><ni />This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
 			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
