@@ -891,6 +891,14 @@ formctl "widget/component"
 
 		<events>
 
+			<event name="BeforeKeyPress">This event occurs before the key press event is fired and can stop the key press event.  Passes the key's "Code" and "Name", and "Ctrl" which is 1 if the control key was held down.</event>
+
+			<event name="KeyDown">This event occurs when the user presses any key down.  Passes the same values as BeforeKeyPress.</event>
+
+			<event name="KeyPress">This event occurs when the user presses any key.  Passes the same values as BeforeKeyPress.</event>
+
+			<event name="KeyUp">This event occurs when the user releases any key.  Passes the same values as BeforeKeyPress.</event>
+
 			<event name="LoadComplete">Occurs when the widget has finished launching.</event>
 
 		</events>
@@ -900,6 +908,8 @@ formctl "widget/component"
 			<action name="Alert">Sends an alert to the screen.</action>
 
 			<action name="Launch">Loads the widget.</action>
+
+			<action name="ModifyProperty">Sets a client property that the component exposes, so that the change is visible outside the component.  The "PropertyName" parameter names the property and the "NewValue" parameter holds its new value.  Set "TriggerEvent" to a true value to also fire the component's event for that property change.</action>
 
 			<action name="TriggerEvent">Allows events to happen.</action>
 
