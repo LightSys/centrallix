@@ -184,12 +184,13 @@ function gb_setenable(prop, oldv, newv)
     if (newv == true)
 	{
 	// make enabled
-	this.mainlayer.classList.remove('gb_disabled');
-	pg_set_style_string(this.l2,'visibility','inherit');
-	pg_set_style_string(this.l3,'visibility','hidden');
 	var layer = this.mainlayer;
+	layer.classList.remove('gb_disabled');
+	/* Image buttons have no text panes to show or hide. */
+	if (this.l2) pg_set_style_string(this.l2,'visibility','inherit');
+	if (this.l3) pg_set_style_string(this.l3,'visibility','hidden');
 	var newsrc = layer.nImage.src;
-	if(type != 'text' && newsrc != layer.cursrc)
+	if(layer.type != 'text' && newsrc != layer.cursrc)
 	    {
 	    layer.cursrc = newsrc;
 	    pg_set(layer.img, 'src', newsrc);
@@ -198,12 +199,13 @@ function gb_setenable(prop, oldv, newv)
     else
 	{
 	// make disabled
-	this.mainlayer.classList.add('gb_disabled');
-	pg_set_style_string(this.l2,'visibility','hidden');
-	pg_set_style_string(this.l3,'visibility','inherit');
 	var layer = this.mainlayer;
+	layer.classList.add('gb_disabled');
+	/* Image buttons have no text panes to show or hide. */
+	if (this.l2) pg_set_style_string(this.l2,'visibility','hidden');
+	if (this.l3) pg_set_style_string(this.l3,'visibility','inherit');
 	var newsrc = layer.dImage.src;
-	if(type != 'text' && newsrc != layer.cursrc)
+	if(layer.type != 'text' && newsrc != layer.cursrc)
 	    {
 	    layer.cursrc = newsrc;
 	    pg_set(layer.img, 'src', newsrc);
