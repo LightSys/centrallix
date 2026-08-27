@@ -35,6 +35,7 @@ IGNORE_MISSING_ACTION_DOCS = get_id()
 IGNORE_STALE_ACTION_DOCS = get_id()
 IGNORE_MISSING_ACTION_PARAM_DOCS = get_id()
 IGNORE_STALE_ACTION_PARAM_DOCS = get_id()
+IGNORE_INTERNAL_ACTION_PARAM_DOCS = get_id()
 
 
 # =============
@@ -80,6 +81,7 @@ IGNORED_ERRORS: set[int] = {0, # Empty set marker.
 	# IGNORE_STALE_ACTION_DOCS,         # Ignore actions with no implementation.
 	# IGNORE_MISSING_ACTION_PARAM_DOCS, # Ignore action parameter with no docs.
 	# IGNORE_STALE_ACTION_PARAM_DOCS,   # Ignore action parameter with no implementations.
+	# IGNORE_INTERNAL_ACTION_PARAM_DOCS,# Ignore documented action params that are named like internal params.
 }
 
 # Whether to write unminified, human-readable JSON.  Minified JSON is typically
@@ -203,6 +205,7 @@ class WidgetDoc:
 	events: set[str] = field(default_factory=set[str])
 	actions: set[str] = field(default_factory=set[str])
 	action_params: dict[str, set[str]] = field(default_factory=dict[str, set[str]])
+	internal_action_params: dict[str, set[str]] = field(default_factory=dict[str, set[str]])
 	ni_events: set[str] = field(default_factory=set[str]) # Documented as not implemented.
 	ni_actions: set[str] = field(default_factory=set[str]) # Documented as not implemented.
 	any_child: bool = False
@@ -242,6 +245,8 @@ class SignalImpl:
 	definition_refs: list[Ref] = field(default_factory=list[Ref])
 	params: set[str] = field(default_factory=set[str])
 	params_refs: dict[str, list[Ref]] = field(default_factory=dict[str, list[Ref]])
+	internal_params: set[str] = field(default_factory=set[str])
+	internal_params_refs: dict[str, list[Ref]] = field(default_factory=dict[str, list[Ref]])
 	
 	# Merge two implementations into one.
 	def merge(self, other: SignalImpl) -> None:
@@ -250,6 +255,9 @@ class SignalImpl:
 		self.params.update(other.params)
 		for param_name, refs in other.params_refs.items():
 			self.params_refs.setdefault(param_name, []).extend(refs)
+		self.internal_params.update(other.internal_params)
+		for param_name, refs in other.internal_params_refs.items():
+			self.internal_params_refs.setdefault(param_name, []).extend(refs)
 	
 	# Call when a new origin is found.
 	def found(self, confidence : Confidence, ref: Ref) -> None:
@@ -260,9 +268,11 @@ class SignalImpl:
 	def update_confidence(self, confidence: Confidence) -> None:
 		self.confidence = merge_confidence(self.confidence, confidence)
 	
-	def add_param(self, param_name: str, ref: Ref) -> None:
-		self.params.add(param_name)
-		self.params_refs.setdefault(param_name, []).append(ref)
+	def add_param(self, param_name: str, ref: Ref, internal: bool = False) -> None:
+		params = self.internal_params if internal else self.params
+		params_refs = self.internal_params_refs if internal else self.params_refs
+		params.add(param_name)
+		params_refs.setdefault(param_name, []).append(ref)
 
 @dataclass
 class EventImpl(SignalImpl):
@@ -293,6 +303,7 @@ class SignalIssuesEntry(TypedDict):
 	confidence: Confidence
 	missing_param_refs: dict[str, Ref] # Named diffs.
 	extra_param_refs: dict[str, Ref] # Named diffs.
+	internal_param_refs: dict[str, Ref] # Named diffs.
 
 # Report: Stores all findings for each widget in the report.
 class PerWidgetFinding(TypedDict):
@@ -435,13 +446,12 @@ def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 			# widgets.xml does not currently encode structured params, so use
 			# quoted text as a heuristic for detecting parameter names.
 			raw_text = "".join(action.itertext())
-			quoted = [
-				q for q
-				in re.findall(quoted_identifier_re, raw_text)
-				if action_param_re.fullmatch(q)
-			]
-			if len(quoted) > 0:
-				doc.action_params[action_name] = set(quoted)
+			quoted = set(re.findall(quoted_identifier_re, raw_text))
+			params = {q for q in quoted if action_param_re.fullmatch(q)}
+			if len(params) > 0:
+				doc.action_params[action_name] = params
+			if len(quoted) > len(params):
+				doc.internal_action_params[action_name] = quoted - params
 		
 		# Parse children.
 		for child in widget.findall("./children/child"):
@@ -689,10 +699,10 @@ def add_js_action_params(
 		return
 	action.definition_refs.append(make_ref(rel, decl_line, "JS action implementation"))
 	for param_name, param_line in params:
-		# Ignore params that are internal to the implementation.
-		if not action_param_re.fullmatch(param_name):
-			continue
-		action.add_param(param_name, make_ref(rel, param_line, "action param use in JS"))
+		internal = not action_param_re.fullmatch(param_name)
+		action.add_param(param_name,
+			make_ref(rel, param_line, "action param use in JS"), internal
+		)
 
 
 # Parse JS drivers for event and action registrations (and heuristic param usage).
@@ -936,9 +946,10 @@ def compute_report(
 			doc_param_names = set(doc.action_params.get(action_name, []))
 			missing_param_names = sorted_list(impl_param_names - doc_param_names)
 			extra_param_names = sorted_list(doc_param_names - impl_param_names)
+			internal_param_names = sorted_list(doc.internal_action_params.get(action_name, []))
 			
 			# Skip if no errors.
-			if not missing_param_names and not extra_param_names:
+			if not missing_param_names and not extra_param_names and not internal_param_names:
 				continue
 			
 			# Collect relevant sources.
@@ -961,6 +972,12 @@ def compute_report(
 				for extra_param_name in extra_param_names:
 					extra_param_refs[extra_param_name] = action_doc_ref
 			
+			# Check for params named like internal params.
+			internal_param_refs: dict[str, Ref] = {}
+			if action_doc_ref:
+				for internal_param_name in internal_param_names:
+					internal_param_refs[internal_param_name] = action_doc_ref
+			
 			# Handle ignored errors.
 			if IGNORE_MISSING_ACTION_PARAM_DOCS in IGNORED_ERRORS:
 				stats["ignored_errors"] += len(missing_param_refs)
@@ -968,18 +985,23 @@ def compute_report(
 			if IGNORE_STALE_ACTION_PARAM_DOCS in IGNORED_ERRORS:
 				stats["ignored_errors"] += len(extra_param_refs)
 				extra_param_refs.clear()
-			if not missing_param_refs and not extra_param_refs:
+			if IGNORE_INTERNAL_ACTION_PARAM_DOCS in IGNORED_ERRORS:
+				stats["ignored_errors"] += len(internal_param_refs)
+				internal_param_refs.clear()
+			if not missing_param_refs and not extra_param_refs and not internal_param_refs:
 				continue
 			
 			# Add errors.
 			stats["widget_errors"] += len(missing_param_refs)
 			stats["widget_errors"] += len(extra_param_refs)
+			stats["widget_errors"] += len(internal_param_refs)
 			findings["incorrect_action_params"].append({
 				"signal_name": action_name,
 				"signal_refs": signal_refs,
 				"confidence": Confidence.HEURISTIC,
 				"missing_param_refs": missing_param_refs,
 				"extra_param_refs": extra_param_refs,
+				"internal_param_refs": internal_param_refs,
 			})
 		
 		# Handle ignored errors.
@@ -1147,6 +1169,7 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 				for title, refs in [
 					("Undocumented params", incorrect_action_params["missing_param_refs"]),
 					("Stale param docs",  incorrect_action_params["extra_param_refs"]),
+					("Internally named params", incorrect_action_params["internal_param_refs"]),
 				]:
 					if not refs:
 						continue
