@@ -106,8 +106,6 @@ The original script was written by Cursor across 4 commits, although every line 
   - Parse C HTML generation in `htdrv_*.c` files.
     - Search for `strcpy(<symbol>->WidgetName, <name>)` calls to capture registered widget names.
       - The first widget is assumed to be the parent, following widgets are assumed to be children.
-    - Search for `htrAddEvent(<symbol>, <name>)` calls to capture registered event names.
-    - Search for `htrAddAction(<symbol>, <name>)` calls to capture registered action names.
   - Parse JS implementations in `htdrv_*.js` files.
     - Search for `ifcProbAdd()` calls using `ifEvent` or `ifAction` and capture the probe variable name.
     - Search for `.Add()` calls on probe variables to capture event and action names (and action implementation function names).

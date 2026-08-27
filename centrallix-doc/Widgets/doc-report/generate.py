@@ -132,17 +132,6 @@ c_register_re = re.compile(r'wgtrAddType\(\s*[^,]+,\s*"([^"]+)"\s*\)')
 # Regex to find C strcpy() calls and capture the widget driver name (1).
 c_name_re = re.compile(r'strcpy\(\s*(?:[A-Za-z_]\w*)\s*->\s*WidgetName\s*,\s*"([^"]+)"\s*\)')
 
-# Regex to find C htrAddEvent() calls and capture the event name (1).
-c_event_re = re.compile(r'htrAddEvent\(\s*(?:[A-Za-z_]\w*)\s*,\s*"([^"]+)"\s*\)')
-
-# Regex to find C htrAddAction() calls and capture the action name (1).
-c_action_re = re.compile(r'htrAddAction\(\s*(?:[A-Za-z_]\w*)\s*,\s*"([^"]+)"\s*\)')
-
-# Regex to find C htrAddParam() calls and capture the action name (1) and param name (2).
-c_param_re = re.compile(
-	r'htrAddParam\(\s*(?:[A-Za-z_]\w*)\s*,\s*"([A-Za-z_]\w*)"\s*,\s*"([A-Za-z_]\w*)"\s*,\s*[^)]+\)'
-)
-
 # Regex to find JS ifcProbeAdd() calls and capture the returned variable name (1)
 # and list (ifEvent or ifAction) (2).
 js_add_iface_re = re.compile(
@@ -569,11 +558,11 @@ def expand_any_child_coverage(
 	return expanded_doc_types
 
 
-# Parse C htmlgen drivers for events, actions, and params.
+# Parse C htmlgen drivers for the widgets that they render.
 def parse_c(path: Path) -> dict[str, WidgetImpl]:
 	widget_impls: dict[str, WidgetImpl] = {}
 
-	# Parse each C driver and attach signal-level evidence.
+	# Parse each C driver for its widget names.
 	for c_file in sorted(path.glob("htdrv_*.c")):
 		# Check if the file name indicates that we should skip it.
 		file_name = c_file.name
@@ -604,44 +593,11 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
 			if not parent_widget_impl:
 				parent_widget_impl = widget_impl
 		
-		# Proceed with the parent widget.
-		if not parent_widget_impl:
-			continue
-		widget_impl = parent_widget_impl
-		widget_name = widget_impl.widget_name
-		
 		# Handle warning.
-		if widget_name != eager_widget_name:
+		if parent_widget_impl and parent_widget_impl.widget_name != eager_widget_name:
+			widget_name = parent_widget_impl.widget_name
 			print(f"Warning: File {file_name} used to declare widget parent {widget_name}.")
 			print(f"  Should `\"{eager_widget_name}\": \"{widget_name}\",` be added to WIDGETS_ALIASES?")
-		
-		# Parse events.
-		for event_match in c_event_re.finditer(content):
-			event_name = normalize_name(event_match.group(1))
-			event = widget_impl.event(event_name)
-			event.found(Confidence.STRONG,
-				make_ref(relative_path, line_map.line_number(event_match.start()), "htrAddEvent")
-			)
-		
-		# Parse actions.
-		for action_match in c_action_re.finditer(content):
-			action_name = normalize_name(action_match.group(1))
-			action = widget_impl.action(action_name)
-			action.found(Confidence.STRONG,
-				make_ref(relative_path, line_map.line_number(action_match.start()), "htrAddAction")
-			)
-		
-		# Parse event/action params.
-		for param_match in c_param_re.finditer(content):
-			signal_name = normalize_name(param_match.group(1))
-			param_name = normalize_name(param_match.group(2))
-			signal: Optional[SignalImpl] = widget_impl.events.get(signal_name) or widget_impl.actions.get(signal_name)
-			if not signal or not param_name:
-				continue
-			signal.update_confidence(Confidence.STRONG)
-			signal.add_param(param_name,
-				make_ref(relative_path, line_map.line_number(param_match.start()), "htrAddParam")
-			)
 	return widget_impls
 
 
