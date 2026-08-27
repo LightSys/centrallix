@@ -353,9 +353,13 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	    if (htrAddStylesheetItem_va(s,
 		"\t\t#gb%POSpane1 { "
+		    "left:0px; "
+		    "top:0px; "
+		    "width:"ht_flex_format"; "
 		    "color:%STR&HTE; "
 		"}\n",
 		id,
+		ht_flex_w(w - 3, tree),
 		fgcolor2
 	    ) != 0)
 		{
