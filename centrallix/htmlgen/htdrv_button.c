@@ -251,7 +251,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    /** HTML body <div> elements for the layers. **/
 	    if (htrAddBodyItem_va(s,
 		"<img src='%STR&HTE' border='0'%[ style='display:block; width:100%%; height:100%%;'%]>\n",
-		(is_enabled) ? n_img : d_img, (h >= 0)
+		(is_enabled) ? ((is_ts) ? n_img : p_img) : d_img, (h >= 0)
 	    ) != 0)
 		{
 		mssError(0, "HTBTN",
@@ -304,6 +304,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    "d:'%STR&JSSTR', "
 		    "width:%INT, "
 		    "height:%INT, "
+		    "tristate:%INT, "
 		    "name:'%STR&SYM', "
 		    "enable:%INT, "
 		    "type:'%STR&JSSTR', "
@@ -312,7 +313,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		dptr,
 		(strcmp(type, "image") != 0), dptr, id,
 		n_img, p_img, c_img, d_img,
-		w, h, name, is_enabled, type, text
+		w, h, is_ts, name, is_enabled, type, text
 	    ) != 0)
 		{
 		mssError(0, "HTBTN", "Failed to write JS init call.");

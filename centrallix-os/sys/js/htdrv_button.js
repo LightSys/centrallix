@@ -45,6 +45,7 @@ function gb_init(param)
 	    //l.img.mainlayer = l;
 	    //l.img.kind = 'gb';
 	    l.cursrc = param.n;
+	    l.tristate = param.tristate;
 	    setClipWidth(l, w);
 
 	    l.buttonName = param.name;
