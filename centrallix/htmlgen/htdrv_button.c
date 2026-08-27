@@ -226,7 +226,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    if (is_enabled)
 		{
 		if (htrAddStylesheetItem_va(s,
-		    "\t\t#tb%POSpane:active { "
+		    "\t\t#gb%POSpane:active { "
 			"transform:translate(1px, 1px); "
 		    "}\n",
 		    id
@@ -405,7 +405,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    
 	    /** Write CSS heights, if specified. **/
 	    if (h >= 0 && htrAddStylesheetItem_va(s,
-		"\t\t#gb%POSpane #gb%POSpane1, #gb%POSpane2, #gb%POSpane3 { height: "ht_flex_format"; }\n",
+		"\t\t#gb%POSpane, #gb%POSpane1, #gb%POSpane2, #gb%POSpane3 { height: "ht_flex_format"; }\n",
 		id, id, id, id,
 		ht_flex_h(h - 3, tree)
 	    ) != 0)
