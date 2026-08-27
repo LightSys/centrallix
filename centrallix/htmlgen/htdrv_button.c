@@ -312,14 +312,14 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		    "height:%INT, "
 		    "tristate:%INT, "
 		    "name:'%STR&SYM', "
-		    "enable:%INT, "
+		    "enable:%[true%]%[false%], "
 		    "type:'%STR&JSSTR', "
 		    "text:'%STR&JSSTR', "
 		"});\n",
 		dptr,
 		(strcmp(type, "image") != 0), dptr, id,
 		n_img, p_img, c_img, d_img,
-		w, h, is_ts, name, is_enabled, type, text
+		w, h, is_ts, name, (is_enabled), (!is_enabled), type, text
 	    ) != 0)
 		{
 		mssError(0, "HTBTN", "Failed to write JS init call.");
