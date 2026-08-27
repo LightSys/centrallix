@@ -2777,13 +2777,25 @@ myMenu "widget/menu"
 
 			<event name="BeginQuery">This event occurs when a query is opened and the query ID is not null.</event>
 
+			<event name="ClientsSaved">This event occurs once the SaveClients action has saved every client widget of this objectsource, and of those clients' own clients.</event>
+
 			<event name="Created">This event occurs when data is created in the object source.</event>
 
 			<event name="DataFocusChanged">This event is invoked whenever the current record changes to a different record.</event>
 
+			<event name="DataSaved">This event occurs when a modification made through this objectsource has been saved on the server.  It is invoked alongside Modified, but only when the save was not requested by a client widget.</event>
+
+			<event name="Deleted">This event occurs once an object has been deleted through this objectsource.</event>
+
 			<event name="EndQuery">This event is invoked when a query is completed and the last row(s) retrieved.</event>
 
+			<event name="Found">This event occurs when a FindObject search locates a record and makes it the current record.  It passes 'ID', 'Name', 'Column', and 'Value'; only the one that the search matched on is set, and the rest are null.</event>
+
 			<event name="Modified">This event occurs when data is modified in the object source.</event>
+
+			<event name="NotFound">This event occurs when a FindObject search does not locate a matching record.  It passes the values that were given to FindObject.</event>
+
+			<event name="Results">This event occurs each time a batch of query results has been retrieved.  It passes 'FirstRecord', 'LastRecord', and 'CurrentRecord', which are record numbers within the replica, and 'FinalRecord', which is the record number of the last record in the query once the end of the query has been reached.</event>
 
 			<event name="Sequenced">This event occurs when replicant entries are swapped.</event>
 
@@ -2807,11 +2819,17 @@ myMenu "widget/menu"
 
 			<action name="DiscardClients">Discards the unsaved changes in all client widgets of this objectsource, then passes the request on to the clients of those clients.</action>
 
+			<action name="DoSQL">Runs the SQL statement given in the 'SQL' parameter once for each distinct value of the field named by the 'GroupingField' parameter in the retrieved records.  Any other parameters are passed to the statement as query parameters.</action>
+
 			<action name="DoubleSync">DEPRECATED: Performs a double synchronization with two other object sources, known as the Parent and the Child, in two steps.  The first step is like Sync (see below), with a ParentOSRC and ParentKey1-ParentKey9] / ParentSelfKey1-ParentSelfKey9.  Next, a Sync is performed between the current objectsource and the ChildOSRC in the same way the first step performed a sync between the ParentOSRC and the current objectsource, respectively, using SelfChildKey1-SelfChildKey9 / ChildKey1-ChildKey9.</action>
 
 			<action name="FindObject">Searches for a certain object in the replica (retrieved records), and makes it the current object.  Parameters: To search by record number, set ID equal to the integer (1 = first record).  To search by object name (primary key), set Name equal to a string containing the primary key (note that concatenated keys use | as a separator).  To search by other arbitrary field values, set those values in the parameters to this action.</action>
 
 			<action name="First"><ni/>Returns first record in the replica.</action>
+
+			<action name="ForEach"><ni/>Intended to invoke the action named by 'ForEachAction' on the widget named by 'ForEachTarget' once for each row in the replica.  The current implementation reads its parameters but does nothing with them.</action>
+
+			<action name="Invalidate">Discards the record of this objectsource's last synchronization, so that the next Sync re-runs the query even when the synchronization key values have not changed.</action>
 
 			<action name="Last"><ni/>Returns last record in the replica.</action>
 
