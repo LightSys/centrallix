@@ -2795,7 +2795,7 @@ myMenu "widget/menu"
 
 			<action name="Delete"><ni/>Deletes an object through OSML.</action>
 
-			<action name="DeleteClients">Stops relations with all clients and forces them to resync.</action>
+			<action name="DiscardClients">Discards the unsaved changes in all client widgets of this objectsource, then passes the request on to the clients of those clients.</action>
 
 			<action name="DoubleSync">DEPRECATED: Performs a double synchronization with two other object sources, known as the Parent and the Child, in two steps.  The first step is like Sync (see below), with a ParentOSRC and ParentKey1-ParentKey9] / ParentSelfKey1-ParentSelfKey9.  Next, a Sync is performed between the current objectsource and the ChildOSRC in the same way the first step performed a sync between the ParentOSRC and the current objectsource, respectively, using SelfChildKey1-SelfChildKey9 / ChildKey1-ChildKey9.</action>
 
