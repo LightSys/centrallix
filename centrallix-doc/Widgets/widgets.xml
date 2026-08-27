@@ -2789,7 +2789,7 @@ myMenu "widget/menu"
 
 			<event name="EndQuery">This event is invoked when a query is completed and the last row(s) retrieved.</event>
 
-			<event name="Found">This event occurs when a FindObject search locates a record and makes it the current record.  It passes 'ID', 'Name', 'Column', and 'Value'; only the one that the search matched on is set, and the rest are null.</event>
+			<event name="Found">This event occurs when a FindObject search locates a record and makes it the current record.  A search by record number passes 'ID', and a search by object name passes 'Name'.  A search by other field values passes the name and value of each field that matched.</event>
 
 			<event name="Modified">This event occurs when data is modified in the object source.</event>
 
@@ -2827,7 +2827,7 @@ myMenu "widget/menu"
 
 			<action name="First"><ni/>Returns first record in the replica.</action>
 
-			<action name="ForEach"><ni/>Intended to invoke the action named by 'ForEachAction' on the widget named by 'ForEachTarget' once for each row in the replica.  The current implementation reads its parameters but does nothing with them.</action>
+			<action name="ForEach"><ni/>Invokes the action named by 'ForEachAction' on the widget named by 'ForEachTarget' once for each row in the replica.</action>
 
 			<action name="Invalidate">Discards the record of this objectsource's last synchronization, so that the next Sync re-runs the query even when the synchronization key values have not changed.</action>
 
@@ -4309,7 +4309,7 @@ term1 "widget/terminal"
 
 			<action name="SetFocus">Sets the focus on a selected widget.  Specify the optional "X" or "Y" parameters to move the focus box that appears on the textarea.</action>
 
-			<action name="SetValue">Sets the content to the specified "Value" parameter.  Older documentation described a Trigger parameter for preventing the DataChange event from being triggered, but no such parameter is implemented, and the event always fires.</action>
+			<action name="SetValue">Sets the content to the specified "Value" parameter.</action>
 
 		</actions>
 
