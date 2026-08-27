@@ -909,7 +909,7 @@ formctl "widget/component"
 
 			<action name="Launch">Loads the widget.</action>
 
-			<action name="ModifyProperty">Sets a client property that the component exposes, so that the change is visible outside the component.  The "PropertyName" parameter names the property and the "NewValue" parameter holds its new value.  Set "TriggerEvent" to a true value to also fire the component's event for that property change.</action>
+			<action name="ModifyProperty">Sets a client property that the component exposes, so that the change is visible outside the component.  The "PropertyName" parameter names the property and the "NewValue" parameter holds its new value.  The component's event for that property change fires unless the "TriggerEvent" parameter is set to a true value, which suppresses it.</action>
 
 			<action name="TriggerEvent">Fires the event named by the 'EventName' parameter inside the component, as though it had been invoked from outside the component.  The remaining parameters are passed along to that event.</action>
 
@@ -1405,7 +1405,7 @@ myDropDown2 "widget/dropdown"
 
 			<action name="SetFocus">The SetFocus action selects and gives control to an edit box at the specified "X" and "Y" coordinates (even if it is not the target?).</action>
 
-			<action name="SetValue">The SetValue action modifies the contents of an editbox, and takes three parameters.  The 'Value' (string) parameter represents the new value of the edit box.  Older documentation described a Trigger (int) parameter for controlling whether the Modified event fires, but no such parameter is implemented, and the event always fires.  The 'Description' parameter is identical to that of the SetValueDescription event.</action>
+			<action name="SetValue">The SetValue action modifies the contents of an editbox, and takes two parameters.  The 'Value' (string) parameter represents the new value of the edit box.  The 'Description' parameter is identical to that of the SetValueDescription event.</action>
 
 			<action name="SetValueDescription">This action modifies the "value description" of the editbox, and takes a single parameter, 'Description' (string).</action>
 
@@ -1720,7 +1720,7 @@ mySoundPlayer "widget/execmethod"
 
 			<action name="QueryToggle">Either executes a query or allows one to be made depending on the previous state.</action>
 
-			<action name="Save">Saves the form's contents.  Use the 'completion' parameter to specify a JavaScript function that will run after the action completes. (I don't understand how this works, I just guessed from the JS implementation because I've never seen an app specify this parameter.)</action>
+			<action name="Save">Saves the form's contents.</action>
 
 			<action name="SetValue">Modifies the specified 'Field' to the specified 'Value', then puts the form into a new modify or search mode, if appropriate.</action>
 
@@ -2783,7 +2783,7 @@ myMenu "widget/menu"
 
 			<event name="DataFocusChanged">This event is invoked whenever the current record changes to a different record.</event>
 
-			<event name="DataSaved">This event occurs when a modification made through this objectsource has been saved on the server.  It is invoked alongside Modified, but only when the save was not requested by a client widget.</event>
+			<event name="DataSaved">This event occurs when a record created or modified through this objectsource has been saved on the server.  It is invoked alongside Created or Modified, but only when the save was not requested by a client widget.</event>
 
 			<event name="Deleted">This event occurs once an object has been deleted through this objectsource.</event>
 
