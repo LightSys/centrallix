@@ -460,12 +460,12 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    else if (strcmp(type, "leftimage") == 0)
 		{
 		if (htrAddBodyItem_va(s,
-		    "<div id='gb%POSpane1' style='align-items:center; flex-direction:row;'><img src='%STR&HTE' alt='top img'>%STR&HTE</div>\n"
-		    "<div id='gb%POSpane2' style='align-items:center; flex-direction:row;'><img src='%STR&HTE' alt='top img'>%STR&HTE</div>\n"
-		    "<div id='gb%POSpane3' style='align-items:center; flex-direction:row;'><img src='%STR&HTE' alt='top img'>%STR&HTE</div>\n",
-		    id, n_img, text,
-		    id, n_img, text,
-		    id, n_img, text
+		    "<div id='gb%POSpane1' style='align-items:center; flex-direction:row; gap:%POSpx;'><img src='%STR&HTE' alt='top img'>%STR&HTE</div>\n"
+		    "<div id='gb%POSpane2' style='align-items:center; flex-direction:row; gap:%POSpx;'><img src='%STR&HTE' alt='top img'>%STR&HTE</div>\n"
+		    "<div id='gb%POSpane3' style='align-items:center; flex-direction:row; gap:%POSpx;'><img src='%STR&HTE' alt='top img'>%STR&HTE</div>\n",
+		    id, spacing, n_img, text,
+		    id, spacing, n_img, text,
+		    id, spacing, n_img, text
 		) != 0)
 		    {
 		    mssError(0, "HTBTN", "Failed to write pane HTML.");
@@ -475,12 +475,12 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    else if (strcmp(type, "rightimage") == 0)
 		{
 		if (htrAddBodyItem_va(s,
-		    "<div id='gb%POSpane1' style='align-items:center; flex-direction:row;'>%STR&HTE<img src='%STR&HTE' alt='bottom img'></div>\n"
-		    "<div id='gb%POSpane2' style='align-items:center; flex-direction:row;'>%STR&HTE<img src='%STR&HTE' alt='bottom img'></div>\n"
-		    "<div id='gb%POSpane3' style='align-items:center; flex-direction:row;'>%STR&HTE<img src='%STR&HTE' alt='bottom img'></div>\n",
-		    id, text, n_img,
-		    id, text, n_img,
-		    id, text, n_img
+		    "<div id='gb%POSpane1' style='align-items:center; flex-direction:row; gap:%POSpx;'>%STR&HTE<img src='%STR&HTE' alt='bottom img'></div>\n"
+		    "<div id='gb%POSpane2' style='align-items:center; flex-direction:row; gap:%POSpx;'>%STR&HTE<img src='%STR&HTE' alt='bottom img'></div>\n"
+		    "<div id='gb%POSpane3' style='align-items:center; flex-direction:row; gap:%POSpx;'>%STR&HTE<img src='%STR&HTE' alt='bottom img'></div>\n",
+		    id, spacing, text, n_img,
+		    id, spacing, text, n_img,
+		    id, spacing, text, n_img
 		) != 0)
 		    {
 		    mssError(0, "HTBTN", "Failed to write pane HTML.");
