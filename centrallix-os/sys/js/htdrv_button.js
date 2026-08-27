@@ -184,6 +184,7 @@ function gb_setenable(prop, oldv, newv)
     if (newv == true)
 	{
 	// make enabled
+	this.mainlayer.classList.remove('gb_disabled');
 	pg_set_style_string(this.l2,'visibility','inherit');
 	pg_set_style_string(this.l3,'visibility','hidden');
 	var layer = this.mainlayer;
@@ -197,6 +198,7 @@ function gb_setenable(prop, oldv, newv)
     else
 	{
 	// make disabled
+	this.mainlayer.classList.add('gb_disabled');
 	pg_set_style_string(this.l2,'visibility','hidden');
 	pg_set_style_string(this.l3,'visibility','inherit');
 	var layer = this.mainlayer;

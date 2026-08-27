@@ -200,8 +200,8 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	
 	/** Button click animation. **/
-	if (is_enabled && htrAddStylesheetItem_va(s,
-	    "\t\t#gb%POSpane:active { "
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#gb%POSpane:not(.gb_disabled):active { "
 		"transform:translate(1px, 1px); "
 	    "}\n",
 	    id
@@ -212,7 +212,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	
 	/** Write the button container. **/
-	if (htrAddBodyItem_va(s, "<div id='gb%POSpane'>\n", id) != 0)
+	if (htrAddBodyItem_va(s, "<div id='gb%POSpane'%[ class='gb_disabled'%]>\n", id, (!is_enabled)) != 0)
 	    {
 	    mssError(0, "HTBTN", "Failed to write HTML to open button pane.");
 	    goto err;
@@ -322,7 +322,6 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    /** its height when no height was specified. **/
 	    if (htrAddStylesheetItem_va(s,
 		"\t\t#gb%POSpane, #gb%POSpane1, #gb%POSpane2, #gb%POSpane3 { "
-		    "%[cursor:pointer; %]"
 		    "text-align:center; "
 		    "display:flex; "
 		    "justify-content:center; "
@@ -330,10 +329,13 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 		"}\n"
 		"\t\t#gb%POSpane, #gb%POSpane2, #gb%POSpane3 { "
 		    "position:absolute; "
+		"}\n"
+		"\t\t#gb%POSpane:not(.gb_disabled) { "
+		    "cursor:pointer; "
 		"}\n",
 		id, id, id, id,
-		is_enabled,
-		id, id, id
+		id, id, id,
+		id
 	    ) != 0)
 		{
 		mssError(0, "HTBTN", "Failed to write CSS.");
