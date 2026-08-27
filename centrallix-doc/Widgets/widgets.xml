@@ -174,7 +174,17 @@ vbox1 "widget/vbox"
 
 			<property name="bgcolor" type="string">A color, RGB or named, to be used as the button's background.If neither bgcolor nor background are specified, the button is transparent.</property>
 
-			<property name="clickimage" type="string">The ObjectSystem pathname of the image to be shown when the user clicks the imagebutton.  Defaults to 'image' if not specified.</property>
+			<property name="align" type="string">Sets the alignment of text in the button, can have left right or center (default).</property>
+
+			<property name="background" type="string">A background image for the button.</property>
+
+			<property name="border_color" type="string">A color that outlines the button.</property>
+
+			<property name="border_radius" type="integer">A radius that describes the sharpness of the corners of the button (smaller means sharper).</property>
+
+			<property name="border_style" type="string">Determines the look of the outline.  One of 'outset' (default), 'solid', or 'none'.  An image-only button defaults to 'none', and one that draws no border also draws no padding, so it hugs its image; a button with text always reserves room for its frame whatever the style.</property>
+
+			<property name="clickimage" type="string">The ObjectSystem pathname of the image to be shown when the user clicks the button.  Defaults to 'pointimage' if not specified, which in turn defaults to 'image'.</property>
 
 			<property name="disable_color" type="string">A color, RGB or named, to be used for the button's text when it is disabled.</property>
 
@@ -190,11 +200,23 @@ vbox1 "widget/vbox"
 
 			<property name="image" type="string">The pathname of the image to be shown when the button is "idle".</property>
 
+			<property name="image_height" type="integer">Defines the height of image.  Defaults to the button's own height for an image-only button.</property>
+
+			<property name="image_margin" type="integer">Deprecated spelling of 'spacing'.</property>
+
+			<property name="image_position" type="string">Describes where an image sits relative to the text (top, right, bottom, left).  Deprecated: use the matching 'type' value instead.  Only consulted when 'type' is absent.</property>
+
+			<property name="image_width" type="integer">Defines the width of image.  Defaults to the button's own width for an image-only button.</property>
+
 			<property name="pointimage" type="string">The pathname of the image to be shown when the button is pointed-to.  Defaults to the 'image' if not specified.</property>
 
-			<property name="spacing" type="integer">The distance between the image and text if applicable.</property>
+			<property name="spacing" type="integer">The margin around the image, in pixels, which separates it from the text.  Defaults to 0.  Spelled 'image_margin' on the deprecated widget/textbutton.</property>
+
+			<property name="repeat" type="yes/no">Whether to keep firing the MouseDown event while the user holds the button down.  The Click event still fires once, on release.</property>
 
 			<property name="text" type="string">The text to appear on the button.</property>
+
+			<property name="tooltip" type="string">The text that appears when the cursor hovers over the button.</property>
 
 			<property name="tristate" type="yes/no">Whether or not the button is tri-state (does not display a raised border until the user points at it).  Default is yes.</property>
 
@@ -227,6 +249,26 @@ vbox1 "widget/vbox"
 			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
 
 		</events>
+
+		<actions>
+
+			<action name="SetText">Called from a connector, this action sets the button's text to the value passed in through connector's "Text" parameter.</action>
+
+			<action name="Click">Triggers a Click event on the button with the "from_action" parameter set to 1.</action>
+
+			<action name="Disable">This action causes the button to enter its disabled state, displaying the disable_color, if specified.</action>
+
+			<action name="Enable">This action causes the button to enter its enabled state, possibly changing its normal colors.</action>
+
+		</actions>
+
+		<clientprops>
+
+			<clientprop name="enabled" type="yes/no">Whether the button is enabled.  Can be read and set at runtime.</clientprop>
+
+			<clientprop name="text" type="string">Write-only.  Setting it is equivalent to invoking the SetText action; reading it always yields an empty string.</clientprop>
+
+		</clientprops>
 
 	</widget>
 
@@ -2227,6 +2269,8 @@ HTMLArea "widget/html"
 			<p>The images are automatically swapped out when the appropriate mouse events occur on the button.</p>
 
 			<p>ImageButtons can also be disabled, and a "disabled" image is displayed at that time.</p>
+
+			<p>Deprecated.  This widget name is now rendered by widget/button with type=image, and is kept only so that existing applications keep working.  New applications should use widget/button.</p>
 
 			<p>Unlike the textbutton, there is no 'tristate' property for an imagebutton; to make an imagebutton tri-state (different image when idle vs.  when pointed to), use a 'pointimage', otherwise do not specify 'pointimage'.</p>
 
@@ -4319,6 +4363,8 @@ term1 "widget/terminal"
 	<widget name="textbutton" type="widget/textbutton" visual="yes" container="no" formelement="no" description="A simple visual button widget built not from images but from a simple text string.">
 
 		<overview>
+
+			<p>Deprecated.  This widget name is now rendered by widget/button, which infers its type from 'image_position' and the presence of 'image'.  It is kept only so that existing applications keep working.  New applications should use widget/button.</p>
 
 			<p>A textbutton provides similar functionality to the imagebutton.  However, the programmer need not create two or three graphics images in order to use a textbutton; rather simply specifying the text to appear on the button is sufficient.</p>
 

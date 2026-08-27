@@ -2158,7 +2158,6 @@ wgtrInitialize()
 	wgtsetInitialize();
 	wgthintInitialize();
 	wgthtmlInitialize();
-	wgtibtnInitialize();
 	wgtimgInitialize();
 	wgtlblInitialize();
 	wgtmenuInitialize();
@@ -2176,7 +2175,6 @@ wgtrInitialize()
 	wgttblInitialize();
 	wgttermInitialize();
 	wgttxInitialize();
-	wgttbtnInitialize();
 	wgttmInitialize();
 	wgttreeInitialize();
 	wgtvblInitialize();

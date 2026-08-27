@@ -549,8 +549,6 @@ cxHtInit()
 	hthtmlInitialize();			/* html pane module */
 	htconnInitialize();			/* connector nonvisual module */
 	htbtnInitialize();			/* generic button module */
-	htibtnInitialize();			/* image button module */
-	httbtnInitialize();			/* text button module */
 	htmenuInitialize();			/* dropdown/popup menu module */
 	htsetInitialize();			/* frameset module */
 	htvblInitialize();			/* variable nonvisual module */
