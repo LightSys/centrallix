@@ -123,8 +123,6 @@ function gb_init(param)
     l.btm = param.bottom;
     l.lft = param.left;
     l.rgt = param.right;
-    l.orig_x = getRelativeX(l);
-    l.orig_y = getRelativeY(l);
     l.orig_ct = parseInt(getClipTop(l));
     l.orig_cb = parseInt(getClipTop(l)) + parseInt(getClipHeight(l));
     l.orig_cr = parseInt(getClipRight(l));
