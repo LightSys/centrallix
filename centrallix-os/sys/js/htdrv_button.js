@@ -268,14 +268,6 @@ function gb_setmode(layer,mode)
 		    layer.tp.visibility = 'hidden';
 		    layer.btm.visibility = 'hidden';
 		    }
-		else if(cx__capabilities.Dom0IE)
-		    {		    
-		    /*layer.style.borderStyle = 'solid';
-		    layer.style.borderWidth = '0px';
-		    layer.style.margin = '1px';		    	
-		    layer.style.padding = '1px';*/
-		    setClip(layer, layer.orig_ct+1, layer.orig_cr-1, layer.orig_cb-1, layer.orig_cl+1);
-		    }		    
 		break;
 
 	    case 1: /* point, but no click */
@@ -307,18 +299,6 @@ function gb_setmode(layer,mode)
 		    layer.btm.bgColor = layer.darkBorderColor;
 		    layer.rgt.bgColor = layer.darkBorderColor;
 		    }
-		else if(cx__capabilities.Dom0IE)
-		    {
-		    /*layer.style.borderStyle = 'solid';
-		    layer.style.borderWidth = '1px';
-		    layer.style.margin = '0px';		    
-		    layer.style.padding = '0px';*/
-		    if (layer.tristate) setClip(layer, layer.orig_ct, layer.orig_cr, layer.orig_cb, layer.orig_cl);
-		    layer.style.borderTopColor = layer.lightBorderColor;
-		    layer.style.borderLeftColor = layer.lightBorderColor;
-		    layer.style.borderBottomColor = layer.darkBorderColor;
-		    layer.style.borderRightColor = layer.darkBorderColor;
-		    }
 		break;
 
 	    case 2: /* point and click */
@@ -348,18 +328,6 @@ function gb_setmode(layer,mode)
 		    layer.lft.bgColor = layer.darkBorderColor;
 		    layer.btm.bgColor = layer.lightBorderColor;
 		    layer.rgt.bgColor = layer.lightBorderColor;
-		    }
-		else if(cx__capabilities.Dom0IE)
-		    {
-		    if (layer.tristate) setClip(layer, layer.orig_ct, layer.orig_cr, layer.orig_cb, layer.orig_cl);
-		    /*layer.style.borderStyle = 'solid';
-		    layer.style.borderWidth = '1px';
-		    layer.style.margin = '0px';*/
-		    /*layer.style.borderTopColor = layer.darkBorderColor;
-		    layer.style.borderLeftColor = layer.darkBorderColor;
-		    layer.style.borderBottomColor = layer.lightBorderColor;
-		    layer.style.borderRightColor = layer.lightBorderColor;*/
-		    layer.style.borderColor = 'gray white white gray';
 		    }
 		break;
 	    }
