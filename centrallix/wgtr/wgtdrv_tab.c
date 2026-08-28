@@ -1,11 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/mtsession.h"
-#include "wgtr.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -36,6 +28,13 @@
 /* Description:								*/
 /************************************************************************/
 
+#include <string.h>
+#include <strings.h>
+
+#include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/xarray.h"
+#include "wgtr.h"
 
 
 /*** wgttab_internal_ClientSize - shrinks one of a tab control's geometry

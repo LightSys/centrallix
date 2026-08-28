@@ -1,17 +1,3 @@
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/check.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -42,6 +28,20 @@
 /* Description:	HTML Widget driver for HTML text, either given as an	*/
 /*		immediate string or pulled from an ObjectSystem source	*/
 /************************************************************************/
+
+#include <fcntl.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "cxlib/check.h"
+#include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/newmalloc.h"
+#include "cxlib/strtcpy.h"
+#include "ht_render.h"
+#include "obj.h"
+#include "wgtr.h"
 
 
 /** globals **/

@@ -1,15 +1,3 @@
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "cxlib/xarray.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-#include "cxlib/cxsec.h"
-#include "cxlib/util.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -43,6 +31,18 @@
 /*		widget (htdrv_component.c) to insert a component into	*/
 /*		an application.						*/
 /************************************************************************/
+
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "cxlib/cxsec.h"
+#include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
+#include "cxlib/xarray.h"
+#include "ht_render.h"
+#include "wgtr.h"
 
 
 /** globals **/

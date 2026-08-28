@@ -1,16 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "stparse.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -57,6 +44,18 @@
 /*		tables are generally best when the data will be read-	*/
 /*		only.  Dynamicrow tables use the most client resources.	*/
 /************************************************************************/
+
+#include <string.h>
+#include <strings.h>
+
+#include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/newmalloc.h"
+#include "cxlib/strtcpy.h"
+#include "cxlib/xarray.h"
+#include "ht_render.h"
+#include "wgtr.h"
+
 
 /*** This file uses the optional Comment Anchors VSCode extension, documented
  *** with CommentAnchorsExtension.md in centrallix-sysdoc.

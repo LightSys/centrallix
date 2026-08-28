@@ -1,11 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/mtsession.h"
-#include "wgtr.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -35,6 +27,8 @@
 /* Creation:	June 30, 2004						*/
 /* Description:								*/
 /************************************************************************/
+
+#include "wgtr.h"
 
 
 #define WGTTREE_AUTO_HEIGHT	(100)	/** height to lay out a treeview with when none is given, in px **/

@@ -1,11 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/mtsession.h"
-#include "wgtr.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -36,6 +28,10 @@
 /* Description:								*/
 /************************************************************************/
 
+#include <string.h>
+
+#include "cxlib/datatypes.h"
+#include "wgtr.h"
 
 
 /*** wgtpnVerify - allows the driver to check elsewhere in the tree

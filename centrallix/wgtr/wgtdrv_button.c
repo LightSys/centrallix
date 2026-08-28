@@ -1,9 +1,8 @@
 #include <string.h>
-#include <unistd.h>
 
-#include "iface.h"
-#include "obj.h"
+#include "cxlib/datatypes.h"
 #include "wgtr.h"
+
 
 /*** wgtbtnVerify - allows the driver to check elsewhere in the tree
  *** to make sure that the conditions it requires for proper functioning

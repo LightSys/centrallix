@@ -31,12 +31,13 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 
+#include "cxlib/datatypes.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
-#include "cxlib/util.h"
 #include "ht_render.h"
-#include "obj.h"
+#include "wgtr.h"
 
 
 /** globals **/

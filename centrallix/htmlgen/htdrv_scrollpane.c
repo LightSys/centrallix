@@ -30,18 +30,13 @@
 /*		layer.  Can contain most objects, except for framesets.	*/
 /************************************************************************/
 
-#include <fcntl.h>
-#include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 
-#include "cxlib/mtask.h"
+#include "cxlib/datatypes.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
 #include "ht_render.h"
-#include "obj.h"
+#include "wgtr.h"
 
 
 /** globals **/

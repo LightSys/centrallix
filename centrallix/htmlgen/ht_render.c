@@ -1,29 +1,3 @@
-#include <assert.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-#include <fcntl.h>
-#include <ctype.h>
-#include <regex.h>
-#include <stdarg.h>
-#include <math.h>
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/expect.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/check.h"
-#include "centrallix.h"
-#include "expression.h"
-#include "cxlib/qprintf.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -55,6 +29,40 @@
 /*		various widget drivers to produce a dynamic HTML page.	*/
 /************************************************************************/
 
+#include <assert.h>
+#include <ctype.h>
+#include <fcntl.h>
+#include <math.h>
+#include <regex.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include "centrallix.h"
+#include "cxlib/check.h"
+#include "cxlib/datatypes.h"
+#include "cxlib/expect.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/newmalloc.h"
+#include "cxlib/qprintf.h"
+#include "cxlib/strtcpy.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/xstring.h"
+#include "expression.h"
+#include "ht_render.h"
+#include "obj.h"
+#include "stparse.h"
+#include "stparse_ne.h"
+#include "wgtr.h"
 
 
 /*** GLOBALS ***/

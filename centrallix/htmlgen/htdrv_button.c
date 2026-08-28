@@ -29,16 +29,16 @@
 /* 		off of the imagebutton and textbutton widgets button.	*/
 /************************************************************************/
 
-#include <fcntl.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 
+#include "cxlib/datatypes.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
+#include "expression.h"
 #include "ht_render.h"
 #include "obj.h"
+#include "wgtr.h"
 
 
 /*** Where an image sits relative to the button's text.  'image_position' and

@@ -1,16 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-#include "cxlib/qprintf.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -41,6 +28,16 @@
 /* Description:	This is visual widget that emulates a vt100 terminal 	*/
 /*									*/
 /************************************************************************/
+
+#include <string.h>
+
+#include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/qprintf.h"
+#include "cxlib/strtcpy.h"
+#include "cxlib/xstring.h"
+#include "ht_render.h"
+#include "wgtr.h"
 
 
 /** globals **/

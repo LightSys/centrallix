@@ -1,11 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/mtsession.h"
-#include "wgtr.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -35,6 +27,10 @@
 /* Creation:	June 30, 2004						*/
 /* Description:								*/
 /************************************************************************/
+
+#include <string.h>
+
+#include "wgtr.h"
 
 
 #define WGTTBL_DEFAULT_HEIGHT	(100)	/** height to give a table when none is specified, in px **/

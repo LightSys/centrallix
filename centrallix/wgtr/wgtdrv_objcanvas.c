@@ -1,16 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/mtsession.h"
-#include "wgtr.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2004 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2004-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -36,6 +28,7 @@
 /* Description:								*/
 /************************************************************************/
 
+#include "wgtr.h"
 
 
 /*** wgtocVerify - allows the driver to check elsewhere in the tree

@@ -1,12 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/range.h"
-#include "wgtr.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -36,6 +27,14 @@
 /* Creation:	June 30, 2004						*/
 /* Description:								*/
 /************************************************************************/
+
+#include <string.h>
+#include <strings.h>
+
+#include "cxlib/datatypes.h"
+#include "cxlib/range.h"
+#include "cxlib/xarray.h"
+#include "wgtr.h"
 
 
 /*** Estimated heights of the insets htdrv_menu.c draws around a menu's rows.

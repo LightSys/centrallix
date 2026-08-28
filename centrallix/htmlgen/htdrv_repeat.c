@@ -1,21 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-#include "cxlib/qprintf.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -41,6 +28,12 @@
 /* Description:	Simple Driver for the repeat widget.  All it does is	*/
 /*		render its subwidgets.					*/
 /************************************************************************/
+
+#include <string.h>
+
+#include "cxlib/mtsession.h"
+#include "ht_render.h"
+#include "wgtr.h"
 
 
 int

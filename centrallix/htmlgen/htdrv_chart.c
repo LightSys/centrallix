@@ -1,17 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/xstring.h"
-#include "stparse.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-
 /************************************************************************/
 /* Centrallix Application Server System                                 */
 /* Centrallix Core                                                      */
@@ -41,6 +27,16 @@
 /* Creation:    March 19, 2019                                          */
 /* Description:                                                         */
 /************************************************************************/
+
+#include <stdio.h>
+#include <string.h>
+
+#include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
+#include "cxlib/xarray.h"
+#include "ht_render.h"
+#include "wgtr.h"
 
 
 #define HTTBL_MAX_COLS (32)

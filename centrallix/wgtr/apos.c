@@ -96,10 +96,13 @@
 #include <string.h>
 
 #include "apos.h"
-#include "ht_render.h"
 #include "cxlib/expect.h"
-#include "cxlib/xarray.h"
+#include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/newmalloc.h"
+#include "cxlib/xarray.h"
+#include "ht_render.h"
+#include "wgtr.h"
 
 /*** Allocate space for a grid, section, and line using the custom allocation
  *** system. Note that register is similar to creating a new heap-allocated
