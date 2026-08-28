@@ -31,6 +31,7 @@
 #include <string.h>
 
 #include "wgtr.h"
+#include "ht_render.h"
 
 
 #define WGTTBL_DEFAULT_HEIGHT	(100)	/** height to give a table when none is specified, in px **/
@@ -76,6 +77,10 @@ wgttblNew(pWgtrNode node)
 	    if(node->fl_width < 0) node->fl_width = 100;
 	    if(node->fl_height < 0) node->fl_height = 100;
 	    node->Flags |= (WGTR_F_CONTAINER | WGTR_F_VSCROLLABLE | WGTR_F_VISUAL_CONTAINER);
+
+	    /** Declare an 18px right inset for the scrollbar (see content_width in htdrv_table.c). **/
+	    if (!htrGetBoolean(node, "overlap_scrollbar", 0))
+		wgtrSetInsets(node, 0, 0, 0, 18);
 	    }
 	else if (!strcmp(node->Type, "widget/table-row-detail"))
 	    {
