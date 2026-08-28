@@ -1120,19 +1120,19 @@ function wn_drag_watch(e)
     wn_current.tid = null;
 
     // Accumulate the cursor movement into the pending window position.
-    if (wn_newx == null)
+    if (wn_new_x == null)
 	{
-	wn_newx = getPageX(wn_current) + e.pageX-wn_msx;
-	wn_newy = getPageY(wn_current) + e.pageY-wn_msy;
+	wn_new_x = getPageX(wn_current) + e.pageX-wn_msx;
+	wn_new_y = getPageY(wn_current) + e.pageY-wn_msy;
 	}
     else
 	{
-	wn_newx += (e.pageX - wn_msx);
-	wn_newy += (e.pageY - wn_msy);
+	wn_new_x += (e.pageX - wn_msx);
+	wn_new_y += (e.pageY - wn_msy);
 	}
 
-    // Move the window on a delay, so moves are batched.
-    setTimeout(wn_domove,60);
+    // Update the window possition.
+    wn_do_move();
     wn_moved = 1;
     wn_msx = e.pageX;
     wn_msy = e.pageY;
@@ -1142,7 +1142,7 @@ function wn_drag_watch(e)
 function wn_drag_end()
     {
     if (wn_moved == 0) wn_bring_top(wn_current);
-        wn_current.titlebar.style.cursor = 'grab';
+    wn_current.titlebar.style.cursor = 'grab';
     wn_current = null;
     }
 
