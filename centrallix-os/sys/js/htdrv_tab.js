@@ -163,9 +163,11 @@ function tc_add_tab(param)
 	else // Top
 	    y = getRelativeY(tabctl) - tab_h;
 
-	/** Apply the same tab offsets used on the server. **/
-	x += tabctl.xtoffset;
-	y += tabctl.ytoffset;
+	/*** Apply the same tab offsets used on the server.  Along the strip a
+	 *** previous tab's position already contains them.
+	 ***/
+	if (tabs.length === 0 || tloc === 'Left' || tloc === 'Right') x += tabctl.xtoffset;
+	if (tabs.length === 0 || tloc === 'Top'  || tloc === 'Bottom') y += tabctl.ytoffset;
 	
 	// Space out tab away from previous tab to account for borders.
 	if (tabs.length > 0)
