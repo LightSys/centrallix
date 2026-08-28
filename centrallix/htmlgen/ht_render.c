@@ -1636,30 +1636,37 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 		pExpression code;
 		XString exptxt = { AllocLen: 0 };
 		XString proptxt = { AllocLen: 0 };
-		
+		bool successful = false;
+
+		/** Get the code data. **/
 		if (UNLIKELY(wgtrGetPropertyValue(tree, propname, DATA_T_CODE, POD(&code)) < 0))
 		    {
 		    mssError(1, "HTR", "Failed to get value for property '%s'", propname);
-		    goto err_free;
+		    goto end;
 		    }
-		if (check(xsInit(&exptxt)) != 0) goto err_free;
-		if (check(xsInit(&proptxt)) != 0) goto err_free;
-		if (UNLIKELY(htrGetExpParams(code, &proptxt) != 0)) goto err_free;
+		if (check(xsInit(&exptxt)) != 0) goto end;
+		if (check(xsInit(&proptxt)) != 0) goto end;
+		if (UNLIKELY(htrGetExpParams(code, &proptxt) != 0)) goto end;
 		if (UNLIKELY(expGenerateText(code, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT) != 0))
 		    {
 		    mssError(0, "HTR", "Failed to generate expression text.");
-		    goto err_free;
+		    goto end;
 		    }
+
+		/** Write a script to execute the code. **/
 		if (UNLIKELY(htrAddScriptWgtr_va(s,
 		    "%STR&SYM:{ val:null, exp:(_this, _context) => { return ( %STR ); }, props:%STR, revexp:null }, ",
 		    propname, exptxt.String, proptxt.String
-		) != 0)) goto err_free;
-		break;
+		) != 0)) goto end;
 		
-    err_free:   /** Clean up. **/
+		/** Success. **/
+		successful = true;
+
+    end:	/** Clean up. **/
 		if (proptxt.AllocLen != 0) checkNeg(xsDeInit(&proptxt)); /* Failure ignored. */
 		if (exptxt.AllocLen != 0) checkNeg(xsDeInit(&exptxt)); /* Failure ignored. */
-		goto err;
+		if (!successful) goto err;
+		break;
 		}
 	    
 	    default:
