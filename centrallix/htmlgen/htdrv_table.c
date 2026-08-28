@@ -526,15 +526,15 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	/** Write HTML for the scrollbar. **/
 	if (htrAddBodyItem_va(s,
 	    "<div id='tbld%POSscroll'>\n"
-		"<table border='0' cellspacing='0' cellpadding='0' width='18'>\n"
+		"<table border='0' cellspacing='0' cellpadding='0' width='18' style='height:100%%;'>\n"
 		    "<tr><td><img src='/sys/images/ico13b.gif' name='u'></td></tr>\n"
-		    "<tr><td id='tbld%POSscrarea' style='height:"ht_flex_format"'></td></tr>\n"
+		    "<tr><td id='tbld%POSscrarea' style='height:100%%;'></td></tr>\n"
 		    "<tr><td><img src='/sys/images/ico12b.gif' name='d'></td></tr>\n"
 		"</table>\n"
 		"<div id='tbld%POSthumb'></div>\n"
 	    "</div>\n",
 	    t->id,
-	    t->id, ht_flex_h(t->h - row_start_y - 2*18, tree),
+	    t->id,
 	    t->id
 	) != 0)
 	    {
