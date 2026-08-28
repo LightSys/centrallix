@@ -1145,7 +1145,11 @@ nht_i_ErrorHandler(pNhtConn net_conn)
 	/** Format the error and print it as HTML. **/
 	net_conn->NoCache = 1;
 	nht_i_WriteResponse(net_conn, 200, "OK", NULL);
-	nht_i_QPrintfConn(net_conn, 0, "<HTML><BODY><PRE><A NAME=\"Message\">%STR&HTE</A></PRE></BODY></HTML>\r\n", errmsg->String);
+	char* error_title = "An error occurred!";
+	char* error_html = checkPtr(htrGetErrorHTMLMsg(error_title, errmsg->String));
+	if (UNLIKELY(error_html == NULL)) error_html = error_title; /* Plaintext fallback. */
+	checkNeg(nht_i_WriteConn(net_conn, error_html, -1, 0)); /* Failure ignored. */
+	if (LIKELY(error_html != error_title)) nmSysFree(error_html);
 
 	/** Discard the string **/
 	xsDeInit(errmsg);

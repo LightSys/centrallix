@@ -1925,34 +1925,26 @@ htrQPrintf(pHtSession s, char* fmt, ...)
     return rval;
     }
 
-/*** Generates HTML for an error page.  Used as a fallback if an error occurs
- *** during normal rendering.
- *** 
+/*** Generates HTML for an error page displaying a caller-supplied message.
+ *** Use htrGetErrorHTML() instead if the message should come from the
+ *** calling thread's error stack.
+ ***
  *** @param title The title of the error page. e.g. "An error occurred!"
+ *** @param err_str The error message to display, or NULL if unavailable.
  *** @returns A pointer to a new string buffer allocated with nmSysMalloc(),
  *** 	containing data that can be sent to a browser as HTML, or NULL in the
  *** 	rare case that an error page absolutely could not be generated.
  ***/
 char*
-htrGetErrorHTML(char* title)
+htrGetErrorHTMLMsg(char* title, char* err_str)
     {
-    char* err_str = "Failed to fetch error.";
     char* page_buf = NULL;
-    pXString err_xs = NULL;
     unsigned int n_lines = 1u;
     pQPSession error_session = NULL;
-	    
-	/** Default title. **/
-	if (title == NULL) title = "An error occurred!";
 
-	/** Get the error string. **/
-	err_xs = checkPtr(xsNew());
-	if (err_xs == NULL) goto write_err;
-	if (check(mssStringError(err_xs)) != 0) goto write_err;
-	if (check(xsTrim(err_xs)) != 0) goto write_err;
-	char* tmp_err_str = checkPtr(xsString(err_xs));
-	if (tmp_err_str == NULL) goto write_err;
-	err_str = tmp_err_str;
+	/** Defaults. **/
+	if (title == NULL) title = "An error occurred!";
+	if (err_str == NULL) err_str = "Failed to fetch error.";
 
 	/** Count the number of lines in the error message. **/
 	for (unsigned int i = 0u; err_str[i] != '\0'; i++)
@@ -1960,7 +1952,6 @@ htrGetErrorHTML(char* title)
 	    if (err_str[i] == '\n') n_lines++;
 	    }
 
-    write_err:;
 	const char* page_format = "<!DOCTYPE html>"
 	    "<html lang='en'>"
 	    "<head>"
@@ -2075,7 +2066,6 @@ htrGetErrorHTML(char* title)
 
     clean_up:
 	/** Clean up. **/
-	if (LIKELY(err_xs != NULL)) xsFree(err_xs);
 	if (LIKELY(error_session != NULL)) check(qpfCloseSession(error_session)); /* Failure ignored. */
 	
 	/** Final fallback chain if we STILL couldn't create an error page. **/
@@ -2084,6 +2074,34 @@ htrGetErrorHTML(char* title)
 	if (UNLIKELY(page_buf == NULL)) page_buf = checkPtr(nmSysStrdup("!"));
 	
 	return page_buf;
+    }
+
+
+/*** Generates HTML for an error page from the calling thread's error stack.
+ *** Used as a fallback if an error occurs during normal rendering.
+ ***
+ *** @param title The title of the error page. e.g. "An error occurred!"
+ *** @returns A pointer to a new string buffer allocated with nmSysMalloc(),
+ *** 	containing data that can be sent to a browser as HTML, or NULL in the
+ *** 	rare case that an error page absolutely could not be generated.
+ ***/
+char*
+htrGetErrorHTML(char* title)
+    {
+    char* page_buf;
+    char* err_str = NULL;
+    pXString err_xs;
+
+	/** Get the error string. **/
+	err_xs = checkPtr(xsNew());
+	if (err_xs != NULL && check(mssStringError(err_xs)) == 0 && check(xsTrim(err_xs)) == 0)
+	    err_str = checkPtr(xsString(err_xs));
+
+	page_buf = htrGetErrorHTMLMsg(title, err_str);
+
+	if (LIKELY(err_xs != NULL)) xsFree(err_xs);
+
+    return page_buf;
     }
 
 
