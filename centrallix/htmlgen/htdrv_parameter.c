@@ -77,7 +77,7 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	const int datatype = objTypeID(type);
 	if (datatype < 0 && strcmp(type, "object") != 0)
 	    {
-	    mssError(1, "HTPARAM", "Invalid datatype %d.", datatype);
+	    mssError(1, "HTPARAM", "Invalid datatype: \"%s\".", type);
 	    goto err;
 	    }
 

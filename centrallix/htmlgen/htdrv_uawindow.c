@@ -98,7 +98,7 @@ htuawinRender(pHtSession s, pWgtrNode tree, int z)
 	    name, is_shared, is_multi, action_routing, path, width, height
 	) != 0)
 	    {
-	    mssError(1, "HTUAWIN", "Failed to write JS init call.");
+	    mssError(0, "HTUAWIN", "Failed to write JS init call.");
 	    goto err;
 	    }
 

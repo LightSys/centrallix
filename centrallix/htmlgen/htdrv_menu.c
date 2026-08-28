@@ -432,7 +432,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	/** Get name **/
 	if (wgtrGetPropertyValue(menu, "name", DATA_T_STRING, POD(&ptr)) != 0)
 	    {
-	    mssError(0, "HTMENU", "Failed to get name!?.");
+	    mssError(1, "HTMENU", "Failed to get name!?.");
 	    goto end;
 	    }
 	strtcpy(name,ptr,sizeof(name));

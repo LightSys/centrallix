@@ -53,7 +53,7 @@ httmRender(pHtSession s, pWgtrNode tree, int z)
 	/** Verify browser capabilities. **/
 	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1, "HTTERM", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    mssError(1, "HTTM", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
 	    goto err;
 	    }
 

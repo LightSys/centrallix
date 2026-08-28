@@ -280,7 +280,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    main_bg
 	) != 0)
 	    {
-	    mssError(0, "HTEB", "Failed to write base CSS.");
+	    mssError(0, "HTEB", "Failed to write base border CSS.");
 	    goto end;
 	    }
 
@@ -292,7 +292,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    (max_chars > 0), max_chars
 	) != 0)
 	    {
-	    mssError(0, "HTEB", "Failed to render child widgets.");
+	    mssError(0, "HTEB", "Failed to write edge and input HTML.");
 	    goto end;
 	    }
 

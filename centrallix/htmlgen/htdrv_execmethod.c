@@ -78,7 +78,7 @@ htexRender(pHtSession s, pWgtrNode tree, int z)
 	    name, objname, methodname, methodparam
 	) != 0)
 	    {
-	    mssError(1, "HTTEX", "Failed to allocate tooltip.");
+	    mssError(1, "HTEX", "Failed to write JS init call.");
 	    goto err;
 	    }
 
@@ -91,7 +91,7 @@ htexRender(pHtSession s, pWgtrNode tree, int z)
 	return 0;
 
     err:
-	mssError(0, "HTTEX",
+	mssError(0, "HTEX",
 	    "Failed to render \"%s\":\"%s\".",
 	    tree->Name, tree->Type
 	);

@@ -462,7 +462,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		name, tab_fl_x, tab_fl_y
 	    ) != 0)
 		{
-		mssError(0, "HTTAB", "Failed to write JS script call.");
+		mssError(0, "HTTAB", "Failed to write JS to set tab flex values.");
 		goto err;
 		}
 	    
@@ -568,7 +568,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		    (tloc != Right), tabname
 		) != 0)
 		    {
-		    mssError(0, "HTTAB", "Failed to write HTML sheet for tab.");
+		    mssError(0, "HTTAB", "Failed to write HTML for tab.");
 		    goto err_tab;
 		    }
 		
@@ -683,7 +683,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    /** Get name. **/
 	    if (wgtrGetPropertyValue(tab_page_tree, "name", DATA_T_STRING, POD(&ptr)) != 0)
 		{
-		mssError(0, "HTTAB", "Failed to get attribute 'name'");
+		mssError(1, "HTTAB", "Failed to get attribute 'name'");
 		goto tab_page_err;
 		}
 	    

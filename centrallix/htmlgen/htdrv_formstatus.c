@@ -83,7 +83,7 @@ int htfsRender(pHtSession s, pWgtrNode tree, int z) {
     /** Link the widget to the DOM node. **/
     if (htrAddWgtrObjLinkage_va(s, tree, "fs%POSmain", id) != 0)
 	{
-	mssError(0, "HTFS", "Failed to render object linkage.");
+	mssError(0, "HTFS", "Failed to add object linkage.");
 	goto err;
 	}
 

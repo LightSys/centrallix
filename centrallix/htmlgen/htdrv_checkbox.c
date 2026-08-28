@@ -156,7 +156,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z)
 	case  0: state_name = "unchecked"; break;
 	case -1: state_name = "null"; break;
 	default: /* Should be unreachable. */
-	    mssError(0, "HTCB", "Unexpected value %d for 'checked'.", checked);
+	    mssError(1, "HTCB", "Unexpected value %d for 'checked'.", checked);
 	    goto err;
 	}
     char src_path[48];

@@ -1003,7 +1003,7 @@ int count=0, i=0;
 	if (UNLIKELY(aposCreateSection(&(theGrid->Rows), ((pAposLine)xaGetItem(&(theGrid->HLines),(i-1))),
 	    ((pAposLine)xaGetItem(&(theGrid->HLines),(i))), VDiff, APOS_ROW) < 0))
 	    {
-		mssError(1, "APOS", "Failed to create a new row or column.");
+		mssError(0, "APOS", "Failed to create a new row.");
 		return -1;
 	    }
     
@@ -1013,7 +1013,7 @@ int count=0, i=0;
 	if (UNLIKELY(aposCreateSection(&(theGrid->Cols), ((pAposLine)xaGetItem(&(theGrid->VLines),(i-1))),  
 	    ((pAposLine)xaGetItem(&(theGrid->VLines),(i))), HDiff, APOS_COL) < 0))
 	    {
-		mssError(1, "APOS", "Failed to create a new row or column.");
+		mssError(0, "APOS", "Failed to create a new column.");
 		return -1;
 	    }
 

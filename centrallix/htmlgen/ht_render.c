@@ -1297,7 +1297,7 @@ htrAddBodyItemLayerEnd(pHtSession s, int flags)
 	/** Add it. **/
 	if (UNLIKELY(htrAddBodyItem_va(s, "</%STR>", end_tag) != 0))
 	    {
-	    mssError(0, "HTR", "Failed to write HTML tag to start body item.");
+	    mssError(0, "HTR", "Failed to write HTML tag to end body item.");
 	    return -1;
 	    }
 
@@ -2609,7 +2609,7 @@ htrAllocDriver()
 	return drv;
 
 	err:
-	mssError(0, "HTR", "Failed to allocate driver.");
+	mssError(1, "HTR", "Failed to allocate driver.");
 	return NULL;
     }
 
@@ -3096,8 +3096,7 @@ htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
     pQPSession error_session = NULL;
     
 	/** Create a pQPSession to track errors from qpfPrintf. **/
-	error_session = checkPtr(qpfOpenSession());
-	if (error_session == NULL) goto end;
+	error_session = checkPtr(qpfOpenSession()); /* Failure ignored. */
 	
 	/** Process the provided format. **/
 	va_start(va, fmt);
@@ -3120,8 +3119,8 @@ htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
     end:
 	if (rval != 0)
 	    {
-	    mssError(1, "HTR",
-		"Failed to add object linkage of format \"%s\" to widget \"%s\":\"%s\".",
+	    mssError(0, "HTR",
+		"Failed to add container linkage of format \"%s\" to widget \"%s\":\"%s\".",
 		fmt, widget->Name, widget->Type
 	    );
 	    }

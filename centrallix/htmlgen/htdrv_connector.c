@@ -160,7 +160,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 		    wgtrGetPropertyValue(tree, ptr, DATA_T_DOUBLE,POD(&vdbl));
 		    if (xsConcatQPrintf(&xs, "%STR&SYM:{type:'dbl', value:%DBL}", ptr, vdbl) < 0)
 			{
-			mssError(1, "HTCONN", "Failed to write int JSON.");
+			mssError(1, "HTCONN", "Failed to write double JSON.");
 			goto err_param;
 			}
 		    break;

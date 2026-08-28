@@ -258,7 +258,7 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	    interlock_with
 	) != 0) 
 	    {
-	    mssError(0, "HTFORM", "Failed to render child widgets.");
+	    mssError(0, "HTFORM", "Failed to write JS init call.");
 	    goto err;
 	    }
 

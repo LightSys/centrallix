@@ -108,7 +108,7 @@ htvblRender(pHtSession s, pWgtrNode tree, int z)
 	    fieldname, form
 	) != 0)
 	    {
-	    mssError(1, "HTVBL", "Failed to write JS init call.");
+	    mssError(0, "HTVBL", "Failed to write JS init call.");
 	    goto end;
 	    }
 

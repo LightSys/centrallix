@@ -225,7 +225,7 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 	    if (htrAddWgtrObjLinkage_va(s, child, "ms%POSpart%POS", id, i) != 0) goto err_part;
 	    if (htrAddBodyItem_va(s, "<div id='ms%POSpart%POS'>\n", id, i) != 0)
 		{
-		mssError(0, "HTMS", "Failed to write HTML closing tag.");
+		mssError(0, "HTMS", "Failed to write HTML opening tag.");
 		goto err_part;
 		}
 	    

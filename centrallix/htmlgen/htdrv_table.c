@@ -484,7 +484,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		}
 	    if (htrAddBodyItem(s, "</div>\n") != 0)
 		{
-		mssError(0, "HTTBL", "Failed to write HTML closing tag for table container.");
+		mssError(0, "HTTBL", "Failed to write HTML closing tag for table row detail.");
 		goto err_detail;
 		}
 	    
@@ -685,7 +685,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	    else if (strcasecmp(ptr, "properties") == 0) t->data_mode = 1;
 	    else
 		{
-		mssError(1, "TBL", "Invalid value for attribute 'data_mode': %s", ptr);
+		mssError(1, "HTTBL", "Invalid value for attribute 'data_mode': %s", ptr);
 		return -1;
 		}
 	    }
@@ -705,7 +705,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	    else if (strcasecmp(ptr, "header") == 0) t->colsep_mode = 1;
 	    else
 		{
-		mssError(1, "TBL", "Invalid value for attribute 'colsep_mode': %s", ptr);
+		mssError(1, "HTTBL", "Invalid value for attribute 'colsep_mode': %s", ptr);
 		return -1;
 		}
 	    }
