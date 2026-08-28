@@ -190,10 +190,11 @@ function tc_add_tab(param)
 	    y = getRelativeY(tabctl) - tab_h;
 
 	/*** Apply the same tab offsets used on the server.  Along the strip a
-	 *** previous tab's position already contains them.
+	 *** previous tab's position already contains them.  An undefined
+	 *** coordinate means the tab keeps its stylesheet position.
 	 ***/
-	if (tabs.length === 0 || tloc === 'Left' || tloc === 'Right') x += tabctl.xtoffset;
-	if (tabs.length === 0 || tloc === 'Top'  || tloc === 'Bottom') y += tabctl.ytoffset;
+	if (x !== undefined && (tabs.length === 0 || tloc === 'Left' || tloc === 'Right')) x += tabctl.xtoffset;
+	if (y !== undefined && (tabs.length === 0 || tloc === 'Top'  || tloc === 'Bottom')) y += tabctl.ytoffset;
 	
 	// Space out tab away from previous tab to account for borders.
 	if (tabs.length > 0)
@@ -250,8 +251,8 @@ function tc_add_tab(param)
 	const style    = (is_top_level) ? undefined          : getComputedStyle(l_tab.parentElement);
 	const parent_w = (is_top_level) ? innerWidth  + 'px' : style.width;
 	const parent_h = (is_top_level) ? innerHeight + 'px' : style.height;
-	if (x) setRelativeX(l_tab, `calc(${x}px + (100% - ${parent_w}) * ${tabctl.tab_fl_x})`);
-	if (y) setRelativeY(l_tab, `calc(${y}px + (100% - ${parent_h}) * ${tabctl.tab_fl_y})`);
+	if (x !== undefined) setRelativeX(l_tab, `calc(${x}px + (100% - ${parent_w}) * ${tabctl.tab_fl_x})`);
+	if (y !== undefined) setRelativeY(l_tab, `calc(${y}px + (100% - ${parent_h}) * ${tabctl.tab_fl_y})`);
 
 	// Anchor the background to the tab's final location.
 	tc_anchor_bg(l_tab);
