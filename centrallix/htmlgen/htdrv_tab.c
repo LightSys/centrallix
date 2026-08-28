@@ -376,21 +376,23 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    "\ttc_init({"
 		"layer:wgtrGetNodeRef(ns,'%STR&SYM'), "
 		"tloc:'%STR', "
-		"mainBackground:'%STR&JSSTR', "
-		"inactiveBackground:'%STR&JSSTR', "
+		"tab_class:'tc%POS_tab', "
 		"select_x_offset:%INT, "
 		"select_y_offset:%INT, "
 		"xtoffset:%INT, "
 		"ytoffset:%INT, "
+		"xoffset:%INT, "
+		"yoffset:%INT, "
 		"tab_spacing:%INT, "
 		"tab_w:%INT, "
 		"tab_h:%INT, "
 		"do_client_rendering:%STR, "
 	    "});\n",
 	    name, tloc_name,
-	    main_bg, inactive_bg,
+	    id,
 	    select_x_offset, select_y_offset,
 	    xtoffset, ytoffset,
+	    xoffset, yoffset,
 	    tab_spacing,
 	    (is_auto_tab_w) ? 0 : tab_w, /* 0 tells the front end that it should recalculate tab_w. */
 	    tab_h,
@@ -477,6 +479,17 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		const int is_selected = (i == sel_idx - 1);
 		const int tab_x = (x + xtoffset) + (i_offset_x * i);
 		const int tab_y = (y + ytoffset) + (i_offset_y * i);
+
+		/*** Anchor the background tile grid to the widget box edge each
+		 *** axis flexes with, so the pattern stays continuous with the
+		 *** tab pages at any viewport size.  Offsets are measured from
+		 *** the padding box to that edge.  tc_anchor_bg() in
+		 *** htdrv_tab.js mirrors this math for tabs it repositions.
+		 ***/
+		const char* bg_edge_x = (tloc == Right)  ? "right"  : "left";
+		const char* bg_edge_y = (tloc == Bottom) ? "bottom" : "top";
+		const int bg_x = (tloc == Right)  ? (tab_x + tab_w - border_right)  - (x + w) : -(tab_x - x + border_left);
+		const int bg_y = (tloc == Bottom) ? (tab_y + tab_h - border_bottom) - (y + h) : -(tab_y - y + border_top);
 		if (htrAddStylesheetItem_va(s,
 		    "\t\t#tc%POStab%POS { "
 			"position:absolute; "
@@ -498,8 +511,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			"color:%STR&CSSVAL; "
 			"font-weight:bold; /*"
 			"easter-egg-6:value;*/ "
-			"background-position: %INTpx %INTpx; "
-			"%STR "
+			"background-position:%STR %INTpx %STR %INTpx; "
 		    "}\n",
 		    id, i + 1,
 		    ht_flex(tab_x, parent_w, tab_fl_x),
@@ -515,8 +527,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		    shadow_x, shadow_y, shadow_radius, shadow_color,
 		    (tloc != Right) ? "left" : "right",
 		    text_color,
-		    tab_x + 1, tab_y,
-		    (is_selected) ? main_bg : inactive_bg
+		    bg_edge_x, bg_x, bg_edge_y, bg_y
 		) != 0)
 		    {
 		    mssError(0, "HTTAB", "Failed to write CSS for tab.");
@@ -526,9 +537,12 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		if (htrAddStylesheetItem_va(s,
 		    "\t\t#tc%POStab%POS.tab_selected { "
 			"transform:translate(%INTpx, %INTpx); "
+			"background-position:%STR %INTpx %STR %INTpx; "
 		    "}\n",
 		    id, i + 1,
-		    select_x_offset, select_y_offset
+		    select_x_offset, select_y_offset,
+		    bg_edge_x, bg_x + ((tloc == Right)  ? select_x_offset : -select_x_offset),
+		    bg_edge_y, bg_y + ((tloc == Bottom) ? select_y_offset : -select_y_offset)
 		) != 0)
 		    {
 		    mssError(0, "HTTAB", "Failed to write CSS for selected tab.");
@@ -537,7 +551,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		
 		/** Write tab HTML content. **/
 		if (htrAddBodyItem_va(s,
-		    "<div id='tc%POStab%POS' %[class='tab_selected'%]>"
+		    "<div id='tc%POStab%POS' class='tc%POS_tab%[ tab_selected%]'>"
 		        "<p style='"
 			    "white-space:nowrap; "
 			    "margin:0px; "
@@ -548,7 +562,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			    "%[<span>&nbsp;%STR&HTE&nbsp;</span>%]"
 			"</p>"
 		    "</div>\n",
-		    id, i + 1, (is_selected),
+		    id, i + 1, id, (is_selected),
 		    (tloc == Right), tabname,
 		    (is_selected) ? 2 : 3, tab_h,
 		    (tloc != Right), tabname
@@ -586,7 +600,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		    "%POSpx "
 		    "%POSpx; "
 		"box-shadow:%DBLpx %DBLpx %POSpx %STR&CSSVAL; "
-		"background-position:%INTpx %INTpx; "
+		"background-position:%STR %INTpx %STR %INTpx; "
 		"%STR "
 	    "}\n",
 	    id,
@@ -602,11 +616,24 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    border_radius,
 	    (tloc==Bottom) ? 0 : border_radius,
 	    shadow_x, shadow_y, shadow_radius, shadow_color,
-	    x + xoffset, y + yoffset,
+	    (tloc == Right)  ? "right"  : "left", (tloc == Right)  ? -(strip_w + 1) : -(xoffset + 1),
+	    (tloc == Bottom) ? "bottom" : "top",  (tloc == Bottom) ? -(strip_h + 1) : -(yoffset + 1),
 	    main_bg
 	) != 0)
 	    {
 	    mssError(0, "HTTAB", "Failed to write CSS for tab control.");
+	    goto err;
+	    }
+
+	/** Tab backgrounds, switched by selection state via the tab_selected class. **/
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t.tc%POS_tab { %STR }\n"
+	    "\t\t.tc%POS_tab.tab_selected { %STR }\n",
+	    id, inactive_bg,
+	    id, main_bg
+	) != 0)
+	    {
+	    mssError(0, "HTTAB", "Failed to write tab background CSS.");
 	    goto err;
 	    }
 	if (htrAddBodyItem_va(s, "<div id='tc%POSctrl'>\n", id) != 0)

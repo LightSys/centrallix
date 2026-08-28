@@ -23,6 +23,35 @@ function tc_set_tab_unwatched()
     }
 
 
+/*** Anchor a tab's background tile grid to the widget box, from the tab's
+ *** current position, so the pattern continues into the tab pages.  Mirrors
+ *** the stylesheet math in htdrv_tab.c and takes over whenever JS moves a
+ *** tab or changes its selection state.
+ ***
+ *** @param tab The tab DOM node to anchor.
+ ***/
+function tc_anchor_bg(tab)
+    {
+    const t = tab.tabctl, { tloc } = t;
+
+    /** Offsets from the padding box to the widget box edge each axis flexes with. **/
+    const border_left = (tloc !== 'Right')  ? 1 : 0;
+    const border_top  = (tloc !== 'Bottom') ? 1 : 0;
+    let bg_x = (tloc === 'Right')  ? (-2 - t.select_x_offset) : -(getRelativeX(tab) + border_left - (getRelativeX(t) - t.xoffset));
+    let bg_y = (tloc === 'Bottom') ? (-2 - t.select_y_offset) : -(getRelativeY(tab) + border_top  - (getRelativeY(t) - t.yoffset));
+
+    /** The selection translate moves the tile grid; hold it still. **/
+    if (tab.classList.contains('tab_selected'))
+	{
+	bg_x += (tloc === 'Right')  ? t.select_x_offset : -t.select_x_offset;
+	bg_y += (tloc === 'Bottom') ? t.select_y_offset : -t.select_y_offset;
+	}
+
+    tab.style.backgroundPosition =
+	((tloc === 'Right')  ? 'right '  : 'left ') + bg_x + 'px ' +
+	((tloc === 'Bottom') ? 'bottom ' : 'top ')  + bg_y + 'px';
+    }
+
 // Makes the given tab current.
 function tc_makecurrent()
     {
@@ -42,8 +71,7 @@ function tc_makecurrent()
 		htr_setzindex(cur.tab, htr_getzindex(t) - 1);
 		cur.tab.marker_image.src = '/sys/images/tab_lft3.gif';
 		cur.tab.classList.remove('tab_selected');
-		if (t.inactive_bgColor) htr_setbgcolor(cur.tab, t.inactive_bgColor);
-		if (t.inactive_bgnd) htr_setbgimage(cur.tab, t.inactive_bgnd);
+		tc_anchor_bg(cur.tab);
 		}
 	    }
 	}
@@ -51,11 +79,10 @@ function tc_makecurrent()
     htr_setvisibility(this,'inherit');
     if (tloc !== 'None')
 	{
-	if (t.main_bgColor) htr_setbgcolor(tab, t.main_bgColor);
-	if (t.main_bgnd) htr_setbgimage(tab, t.main_bgnd);
 	htr_setzindex(tab, htr_getzindex(t) + 1);
 	tab.marker_image.src = '/sys/images/tab_lft2.gif';
 	tab.classList.add('tab_selected');
+	tc_anchor_bg(tab);
 	}
     this.setTabUnwatched();
     
@@ -78,8 +105,7 @@ function tc_makenotcurrent(page)
 	htr_setzindex(page.tab,htr_getzindex(page.tabctl) - 1);
 	tab.marker_image.src = '/sys/images/tab_lft3.gif';
 	tab.classList.remove('tab_selected');
-	if (tabctl.inactive_bgColor) htr_setbgcolor(tab, tabctl.inactive_bgColor);
-	if (tabctl.inactive_bgnd) htr_setbgimage(tab, tabctl.inactive_bgnd);
+	tc_anchor_bg(tab);
 	}
     }
     
@@ -191,11 +217,7 @@ function tc_add_tab(param)
 	pg_addsched_fn(window, "pg_reveal_event", [l_page, l_page, 'Reveal'], 0);
 	htr_watch(tabctl, "selected", "tc_selection_changed");
 	htr_watch(tabctl, "selected_index", "tc_selection_changed");
-	if (tloc !== 'None')
-	    {
-	    if (tabctl.main_bgColor) htr_setbgcolor(l_tab, tabctl.main_bgColor);
-	    if (tabctl.main_bgnd) htr_setbgimage(l_tab, tabctl.main_bgnd);
-	    }
+	if (tloc !== 'None') l_tab.classList.add('tab_selected');
 	}
     
     // Handle images.
@@ -230,6 +252,9 @@ function tc_add_tab(param)
 	const parent_h = (is_top_level) ? innerHeight + 'px' : style.height;
 	if (x) setRelativeX(l_tab, `calc(${x}px + (100% - ${parent_w}) * ${tabctl.tab_fl_x})`);
 	if (y) setRelativeY(l_tab, `calc(${y}px + (100% - ${parent_h}) * ${tabctl.tab_fl_y})`);
+
+	// Anchor the background to the tab's final location.
+	tc_anchor_bg(l_tab);
 	}
 
     // Indicate that we generate reveal/obscure notifications
@@ -387,6 +412,7 @@ function tc_updated(p1)
 	    newpage = htr_new_layer(null,pageparent);
 	    newtab.marker_image = cur_tab.marker_image;
 	    newtab.marker_image.src = '/sys/images/tab_lft3.gif';
+	    newtab.classList.add(this.tab_class);
 	    $(newtab).find('span').text('&nbsp;' + htutil_encode(vals[j]) + '&nbsp;');
 	    //htr_write_content(newtab,content);
 	    htr_setvisibility(newtab,'inherit');
@@ -424,17 +450,14 @@ function tc_init(param)
     l.select_y_offset = param.select_y_offset;
     l.xtoffset = param.xtoffset;
     l.ytoffset = param.ytoffset;
+    l.xoffset = param.xoffset;
+    l.yoffset = param.yoffset;
+    l.tab_class = param.tab_class;
     l.tab_spacing = param.tab_spacing;
     l.tab_h = param.tab_h;
     if (tc_tabs == null) tc_tabs = [];
     tc_tabs[tc_tabs.length++] = l;
     l.tloc = param.tloc;
-
-    // Background color/image selection...
-    l.main_bgColor = htr_extract_bgcolor(param.mainBackground);
-    l.main_bgnd = htr_extract_bgimage(param.mainBackground);
-    l.inactive_bgColor = htr_extract_bgcolor(param.inactiveBackground);
-    l.inactive_bgnd = htr_extract_bgimage(param.inactiveBackground);
 
     // Properties available to other widgets, that can be used to
     // change current tab index as well.
@@ -564,6 +587,7 @@ function tc_visible_changed(prop, o, n)
 	/** Update tab location. **/
 	if (tloc === 'Top') moveToAbsolute(cur_tab, cur_x, cur_y); // idk why Top needs special treatment..
 	else moveTo(cur_tab, cur_x, cur_y);
+	tc_anchor_bg(cur_tab);
 
 	/** Update cur_x or cur_y. **/
 	if(tloc === 'Top' || tloc === 'Bottom')
