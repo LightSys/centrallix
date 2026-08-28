@@ -165,15 +165,6 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	strtcpy(src,ptr,sizeof(src));
 
-	/** Width of the treeview's parent container. **/
-	const int parent_w = ht_get_parent_w(tree);
-
-	/** The gap from the treeview's right edge to the container's right edge. **/
-	const int right = parent_w - x - w;
-
-	/** How much of the parent container's flexibility that right gap absorbs. **/
-	const double fl_right = 1.0 - ht_get_fl_x(tree) - ht_get_fl_w(tree);
-
 	/** Write CSS. **/
 	if (htrAddStylesheetItem_va(s,
 	    "\t\t#tv%POSload { "
@@ -193,9 +184,8 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	    goto err;
 	    }
 
-	/*** htdrv_treeview.js gives each row its indentation (left edge), so
-	 *** we set the right edge here and the browser derives the width.
-	 *** The right rule is ignored by .tv%POS because it has a width.
+	/*** htdrv_treeview.js appends the row layers inside the root layer,
+	 *** giving each row its indentation (left edge).
 	 ***/
 	if (htrAddStylesheetItem_va(s,
 	    "\t\tdiv.tv%POS  a { %[color:%STR&CSSVAL;%] }\n"
@@ -204,11 +194,12 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 		"cursor:pointer; "
 		"overflow:hidden; "
 		"white-space:nowrap; "
-		"right:"ht_flex_format"; "
-	    "}\n",
+	    "}\n"
+	    "\t\t#tv%POSroot { cursor:default; }\n"
+	    "\t\t#tv%POSroot > span, #tv%POSroot > nobr { cursor:pointer; }\n",
 	    id, (*fgcolor),  fgcolor,
 	    id, (*hfgcolor), hfgcolor,
-	    id, id, ht_flex(right, parent_w, fl_right)
+	    id, id, id, id, id
 	) != 0)
 	    {
 	    mssError(0, "HTTREE", "Failed to write treeview entry CSS.");
@@ -249,13 +240,14 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 		"newroot:null, "
 		"branches:%INT, "
 		"use3d:%INT, "
+		"showroot:%INT, "
 		"showrb:%INT, "
 		"icon:'%STR&JSSTR', "
 		"sbg:'%STR&JSSTR', "
 		"desc:%INT, "
 	    "}); }\n",
 	    name, id, id, src,
-	    show_branches, use_3d_lines, show_root_branch,
+	    show_branches, use_3d_lines, show_root, show_root_branch,
 	    icon, selected_bg, order_desc
 	) != 0)
 	    {
@@ -263,30 +255,34 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	    goto err;
 	    }
 
-	/** Write HTML. **/
+	/*** Write HTML.  The root layer holds the row layers, so it always
+	 *** stays visible; a hidden root only hides its own row content.
+	 ***/
 	if (htrAddBodyItem_va(s,
 	    "<div "
 		"class='tv%POS' "
 		"id='tv%POSroot' "
 		"style='"
 		    "position:absolute; "
-		    "visibility:%STR; "
+		    "visibility:inherit; "
 		    "left:"ht_flex_format"; "
 		    "top:"ht_flex_format"; "
 		    "width:"ht_flex_format"; "
 		    "z-index:%POS; "
 		"'"
 	    ">"
-		"<img src='%STR&HTE' alt='folder' style='float:left;'>"
-		"&nbsp;%STR&HTE"
+		"<span style='visibility:%STR;'>"
+		    "<img src='%STR&HTE' alt='folder' style='float:left;'>"
+		    "&nbsp;%STR&HTE"
+		"</span>"
 	    "</div>\n",
 	    id, /* class */
 	    id, /* id */
-	    (show_root) ? "inherit" : "hidden",
 	    ht_flex_x(x, tree),
 	    ht_flex_y(y, tree),
 	    ht_flex_w(w, tree),
 	    z,
+	    (show_root) ? "inherit" : "hidden",
 	    (*icon) ? icon : "/sys/images/ico02b.gif", src
 	) != 0)
 	    {
