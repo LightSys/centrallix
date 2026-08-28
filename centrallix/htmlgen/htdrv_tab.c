@@ -330,16 +330,16 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		goto err;
 		}
 	    }
-	if (!do_client_rendering && tab_w == 0 && (tloc == Top || tloc == Bottom))
+	if (!do_client_rendering && is_auto_tab_w && (tloc == Top || tloc == Bottom))
 	    {
 	    /*** The widget specifies server-side rendering for Top/Bottom tabs
 	     *** with dynamic width. This will probably look broken.
 	     ***/
 	    fprintf(stderr, "WARNING: "
 		"'rendering' value of \"server-side\" will break on tabs with "
-		"dynamic widths because they cannot be calculated server-side!"
+		"dynamic widths because they cannot be calculated server-side!\n"
 	    );
-	    fprintf(stderr, "HINT: Specify the 'tab_width' attribute or use \"client-side\" rendering.");
+	    fprintf(stderr, "HINT: Specify the 'tab_width' attribute or use \"client-side\" rendering.\n");
 	    }
 	
  	/** Link the widget to the DOM node. **/

@@ -46,6 +46,11 @@ const sp_inverted_scroll_mod = -1.00;
  ***/
 let sp_drag_img = undefined;
 
+/*** Offset, in px, from the top of the scroll thumb to the point where the
+ *** user grabbed it. Only meaningful while a drag is in progress.
+ ***/
+let sp_drag_offset = 0;
+
 /*** If a button is pressed, stores the target image for the button so that it
  *** can be reset when it is no longer pressed. Equals undefined if no button
  *** is currently being pressed.
@@ -307,8 +312,8 @@ function sp_scroll_to(pane, scroll_height)
     pane.UpdateThumb();
     
     /** Construct the param for the centrallix 'Scroll' event. **/
-    const percent_old = (scroll_height_old / nonvisible_height) * 100;
-    const percent_new = (scroll_height_new / nonvisible_height) * 100;
+    const percent_old = (nonvisible_height > 0) ? (scroll_height_old / nonvisible_height) * 100 : 0;
+    const percent_new = (nonvisible_height > 0) ? (scroll_height_new / nonvisible_height) * 100 : 0;
     const param = { Percent: percent_new, Change: percent_new - percent_old };
     
     /** Schedule the scroll event to allow the page to repaint first. **/
@@ -482,8 +487,9 @@ function sp_mousedown(e)
 	    /** Scroll thumb was clicked. **/
 	    case 'thumb':
 		{
-		/** Start a drag. **/
+		/** Start a drag, keeping the point on the thumb that was grabbed. **/
 		sp_drag_img = target_img;
+		sp_drag_offset = e.pageY - getPageY(target_img.thumb);
 		
 		/** Event handled. **/
 		return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
@@ -534,7 +540,7 @@ function sp_mousemove(e)
 	
 	/** Get drag_dist: the distance that the scroll bar should move. **/
 	const page_y = getPageY(target_img.thumb);
-	const drag_dist = e.pageY - page_y;
+	const drag_dist = e.pageY - page_y - sp_drag_offset;
 	
 	/** Scale drag_dist to the distance that the content should move. **/
 	const scrollbar_height = sp_get_scrollbar_height(pane);

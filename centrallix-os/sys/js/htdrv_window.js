@@ -177,10 +177,10 @@ function wn_init(param)
 function wn_action_point(aparam)
     {
     // The point placement of a window opened with PointAt would be clobbered
-    if (this.point_at)
+    if (this.placement.mode === 'point')
 	{
 	console.warn('Window "' + wgtrGetName(this) + '" was opened pointing at "'
-	    + wgtrGetName(this.point_at) + '"; pointing it again is not allowed.');
+	    + wgtrGetName(this.placement.at) + '"; pointing it again is not allowed.');
 	return;
 	}
 

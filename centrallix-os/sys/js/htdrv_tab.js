@@ -172,7 +172,6 @@ function tc_add_tab(param)
 	    {
 	    switch (tloc)
 		{
-		case 'Top': case 'Bottom': x += 2; break;
 		case 'Left': case 'Right': y += 2; break;
 		}
 	    }
@@ -391,7 +390,7 @@ function tc_updated(p1)
 	    htr_setvisibility(newtab,'inherit');
 	    htr_setvisibility(newpage,'inherit');
 	    htr_setzindex(newtab,14);
-	    this.addTab(newtab,newpage,this,vals[j],'generated','');
+	    this.addTab({tab:newtab, page:newpage, name:vals[j], type:'generated', fieldname:''});
 	    
 	    newpage.osrcdata = vals[j];
 	    newpage.recordnumber = j;

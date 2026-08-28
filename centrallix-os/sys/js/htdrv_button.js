@@ -86,6 +86,7 @@ function gb_init(param)
     l.do_repeat = param.repeat;
     l.repeat_sched_id = null;
     l.tooltip = param.tooltip;
+    l.tooltip_id = null;
     l.trigger = gb_trigger;
 
     // DOM wiring

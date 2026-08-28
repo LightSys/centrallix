@@ -240,6 +240,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 		"\t\t#lbl%POS:hover { "
 		    "%[color:%STR&CSSVAL; %]"
 		    "text-decoration:underline; "
+		    "cursor:pointer; "
 		"}\n",
 		id,
 		(*pfgcolor), pfgcolor

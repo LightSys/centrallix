@@ -107,7 +107,7 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	    find_inf = NULL;
 
 	/** Parameter has presentation-hints components to it.  Set those. **/
-	const int has_find_inf = (find_inf != NULL && find_inf->StrVal != NULL && find_inf->StrVal[0] != '\0');
+	const int has_find_inf = (find_inf != NULL && find_inf->StrVal != NULL);
 	if (deploy_to_client)
 	    {
 	    bool successful = false;
@@ -166,7 +166,7 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
     err_deploy:
 	    /** Clean up. **/
 	    if (check(xsDeInit(&xs)) != 0) goto err_deploy;
-	    if (objFreeHints(hints) != 0)
+	    if (hints != NULL && objFreeHints(hints) != 0)
 		{
 		mssError(0, "HTPARAM", "Failed to free presentation hints.");
 		goto err_deploy;

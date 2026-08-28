@@ -458,17 +458,16 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		    "visibility:hidden; "
 		    "left:0px; "
 		    "top:0px; "
-		    "width:"ht_flex_format"; "
+		    "width:100%%; "
 		    "height:%POSpx; "
 		    "z-index:%POS; "
 		"}\n",
 		t->id, detail_id,
-		ht_flex_w(t->w - (t->demand_scrollbar ? 0 : 18), tree),
 		h,
 		z + 1
 	    ) != 0)
 		{
-		mssError(0, "HTTBL", "Failed to write HTML opening tag for table container.");
+		mssError(0, "HTTBL", "Failed to write CSS styleseet item for table row detail.");
 		goto err_detail;
 		}
 	    
@@ -507,7 +506,10 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    continue;
 	    
     err_detail:
-	    mssError(0, "HTTBL", "Failed to write HTML opening tag for table container.");
+	    mssError(0, "HTTBL",
+		"Failed to render \"%s\":\"%s\" (#%d/%d).",
+		row_detail->Name, row_detail->Type, i + 1, detail_count
+	    );
 	    goto err;
 	    }
 	
@@ -596,6 +598,14 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Get an id. **/
 	t->id = (HTTBL.idcnt++);
+
+	/** Backwards compat for deprecated property names. **/
+	wgtrRenameProperty(tree, "row_bgcolor1", "row1_bgcolor");
+	wgtrRenameProperty(tree, "row_background1", "row1_background");
+	wgtrRenameProperty(tree, "row_bgcolor2", "row2_bgcolor");
+	wgtrRenameProperty(tree, "row_background2", "row2_background");
+	wgtrRenameProperty(tree, "row_bgcolorhighlight", "rowhighlight_bgcolor");
+	wgtrRenameProperty(tree, "row_backgroundhighlight", "rowhighlight_background");
 
 	/** Get name. **/
 	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&ptr)) != 0) 

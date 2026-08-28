@@ -230,7 +230,7 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	    
 	    /** Write subwidgets. **/
-	    if (htrRenderSubwidgets(s, tree, z + 2) != 0)
+	    if (htrRenderSubwidgets(s, child, z + 2) != 0)
 		{
 		mssError(0, "HTMS", "Failed to render child widgets of MultiScroll part.");
 		goto err_part;

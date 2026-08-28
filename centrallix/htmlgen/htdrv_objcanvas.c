@@ -136,11 +136,11 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 	if (htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0) != 0) goto err;
 
 	/** Add event handlers. **/
-	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "oc", "ms_mousedown") != 0) goto err;
-	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "oc", "ms_mousemove") != 0) goto err;
-	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "oc", "ms_mouseout")  != 0) goto err;
-	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "oc", "ms_mouseover") != 0) goto err;
-	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "oc", "ms_mouseup")   != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "oc", "oc_mousedown") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "oc", "oc_mousemove") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "oc", "oc_mouseout")  != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "oc", "oc_mouseover") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "oc", "oc_mouseup")   != 0) goto err;
 
 	/** Script initialization call. **/
 	if (htrAddScriptInit_va(s,

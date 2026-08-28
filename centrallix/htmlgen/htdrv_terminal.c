@@ -155,7 +155,7 @@ httermRender(pHtSession s, pWgtrNode tree, int z)
 		"left:%INTpx; "
 		"top:%INTpx; "
 		"width:%POSpx; "
-		"height:%POS; "
+		"height:%POSpx; "
 		"z-index:%POS; "
 	    "}\n",
 	    id, x, y,
@@ -174,10 +174,10 @@ httermRender(pHtSession s, pWgtrNode tree, int z)
 		"left:0px; "
 		"top:0px; "
 		"width:1px; "
-		"height:1; "
+		"height:1px; "
 		"z-index:-20; "
 	    "}\n",
-	    id
+	    id, id
 	) != 0)
 	    {
 	    mssError(0, "HTTERM", "Failed to write reader/writer CSS.");

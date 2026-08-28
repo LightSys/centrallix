@@ -1184,7 +1184,7 @@ htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv
 	
 	err:
 	mssError(1, "HTR",
-	    "Failed to add %s event handler function \'%s()\' to %d for driver %s.",
+	    "Failed to add %s event handler function \'%s()\' to %s for driver %s.",
 	    event, function, event_src, drv_name
 	);
 	return -1;
@@ -1274,7 +1274,7 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* class
 	rval = 0;
 
 	end:
-	if (UNLIKELY(rval != 0)) mssError(0, "HTR", "Failed to add starting body item with id: %d.", id);
+	if (UNLIKELY(rval != 0)) mssError(0, "HTR", "Failed to add starting body item with id: %s.", id);
 	
 	/** Clean up. **/
 	if (LIKELY(error_session != NULL)) check(qpfCloseSession(error_session)); /* Failure ignored. */
@@ -1670,8 +1670,8 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 		}
 	    
 	    default:
-		mssError(1, "HTR", "Unknown datatype %d.\n", type);
-		goto err;
+		fprintf(stderr, "Warning: skipping property '%s' with unhandled datatype %d.\n", propname, type);
+		break;
 	    }
 	
 	/** Success. **/
@@ -1918,8 +1918,8 @@ htrQPrintf(pHtSession s, char* fmt, ...)
 	va_start(va, fmt);
 	rval = xsQPrintf_va(xs, fmt, va);
 	va_end(va);
-	if (rval < 0) return rval;
-	rval = htrWrite(s, xsString(xs), -1);
+	if (rval >= 0)
+	    rval = htrWrite(s, xsString(xs), -1);
 	xsFree(xs);
 
     return rval;
@@ -3207,7 +3207,7 @@ htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace, int is_subns)
 	return 0;
 
     err:;
-	char context[152];
+	char context[152] = "";
 	if (container != NULL)
 	    snprintf(context, sizeof(context),
 	    "to container widget \"%s\":\"%s\"",

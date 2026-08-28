@@ -462,16 +462,8 @@ function mn_init(param)
 
     // Set up sizing.  A scroll size excludes the border, but menu is border-box.
     const border = 2 * param.bw;
-    if (menu.scrollHeight == 0)
-	{
-	if (param.h === -1) pg_set_style(menu, 'height', menu.childNodes[0].scrollHeight + border);
-	if (param.w === -1) pg_set_style(menu, 'width', menu.childNodes[0].scrollWidth + border);
-	}
-    else
-	{
-	if (param.h === -1) pg_set_style(menu, 'height', menu.scrollHeight + border);
-	if (param.w === -1) pg_set_style(menu, 'width', menu.scrollWidth + border);
-	}
+    if (param.h === -1) pg_set_style(menu, 'height', menu.childNodes[0].scrollHeight + border);
+    if (param.w === -1) pg_set_style(menu, 'width', menu.childNodes[0].scrollWidth + border);
     htutil_tag_images(menu.clayer, "mn", menu.clayer, menu);
     menu.items = new Array();
     menu.n_first = 0;

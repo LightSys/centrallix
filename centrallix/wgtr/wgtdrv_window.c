@@ -32,6 +32,7 @@
 
 #include "cxlib/datatypes.h"
 #include "wgtr.h"
+#include "ht_render.h"
 
 
 /*** wgtwinVerify - allows the driver to check elsewhere in the tree
@@ -64,9 +65,8 @@ wgtwinNew(pWgtrNode node)
 	if(node->fl_width < 0) node->fl_width = 100;
 	if(node->fl_height < 0) node->fl_height = 100;
 	
-        /** No titlebar? **/
-        if (wgtrGetPropertyValue(node,"titlebar",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"no"))
-            has_titlebar = 0;
+	/** No titlebar? **/
+	has_titlebar = htrGetBoolean(node, "titlebar", 1);
 
         /** Dialog or node style? **/
         if (wgtrGetPropertyValue(node,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"dialog"))
