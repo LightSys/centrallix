@@ -20,7 +20,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 2005 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2005-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -695,16 +695,19 @@ smMalloc(pSmRegion rgn, size_t size)
 	if (sm_internal_UnFree(blk) < 0)
 	    goto error;
 
+	/** Set up allocated block info.  This has to happen under the lock:
+	 ** until LinkCnt says the block is allocated, another process freeing
+	 ** a block will mistake this one for a free block.
+	 **/
+	blk->LinkCnt = 1;
+	blk->Finalize = NULL;
+	CXSEC_UPDATE(*blk);
+
 	/** Update region statistics **/
 	rgn->nAllocBlocks++;
 	rgn->AllocSize += blk->Size;
 	CXSEC_UPDATE(*rgn);
 	sm_internal_Unlock(rgn);
-	
-	/** Set up allocated block info... **/
-	blk->LinkCnt = 1;
-	blk->Finalize = NULL;
-	CXSEC_UPDATE(*blk);
 
 	/** Compute ptr to data area of blk **/
 	ptr = ((char*)blk) + sizeof(SmBlock);

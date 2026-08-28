@@ -1,7 +1,9 @@
 #ifndef _CXSS_POLICY_H
 #define _CXSS_POLICY_H
 
-#include "cxss/cxss.h"
+#include "cxlib/datatypes.h"
+#include "cxlib/xarray.h"
+#include "obj.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -89,4 +91,3 @@ typedef struct _CXSSPOL
     CxssPolicy, *pCxssPolicy;
 
 #endif /* defined _CXSS_POLICY_H */
-

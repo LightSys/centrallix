@@ -9,6 +9,9 @@
 /* Define to 1 if you have the `endservent' function. */
 #undef HAVE_ENDSERVENT
 
+/* Define if explicit_bzero is available */
+#undef HAVE_EXPLICIT_BZERO
+
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
 
@@ -23,6 +26,12 @@
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
+
+/* Define if memset_explicit is available */
+#undef HAVE_MEMSET_EXPLICIT
+
+/* Define if memset_s is available */
+#undef HAVE_MEMSET_S
 
 /* Define to 1 if you have the `select' function. */
 #undef HAVE_SELECT

@@ -4,6 +4,7 @@
 #include <string.h>
 #include "cxlib/datatypes.h"
 #include "cxlib/newmalloc.h"
+#include "cxlib/mtsession.h"
 #include "ptod.h"
 #include "obj.h"
 
@@ -303,4 +304,3 @@ ptodTypeOf(pTObjData ptod)
     {
     return ptod->DataType;
     }
-
