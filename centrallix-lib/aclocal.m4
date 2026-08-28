@@ -237,6 +237,33 @@ AC_DEFUN(CHECK_VALGRIND,
 	    )
 	    AC_DEFINE(USING_VALGRIND,1,[defined to 1 if valgrind integration is enabled])
 	fi
+    else
+	AC_MSG_RESULT(no)
+    fi
+    ]
+)
+	    
+	   
+dnl Check for POSIX Threads (pthreads) use for MTASK threads.
+AC_DEFUN(CHECK_PTHREADS,
+    [
+    AC_MSG_CHECKING(if pthreads use is desired)
+    AC_ARG_ENABLE(pthreads,
+	AC_HELP_STRING([--enable-pthreads],
+	    [POSIX Threads integration for MTASK uses pthreads instead of older primitives for MTASK cooperative threading]
+	),
+	WITH_PTHREADS="$enableval",
+	WITH_PTHREADS="no"
+    )
+    if test "$WITH_PTHREADS" = "yes"; then
+	AC_CHECK_HEADER([pthread.h],
+	    [], 
+	    AC_MSG_ERROR([Header file pthread.h not found; verify that your OS supports it.  Cannot enable POSIX Threads for MTASK.])
+	)
+	AC_DEFINE(MTASK_USEPTHREADS,1,[defined to 1 if using pthreads for MTASK])
+	LIBS="$LIBS -lpthread"
+    else
+	AC_MSG_RESULT(no)
     fi
     ]
 )
@@ -247,8 +274,12 @@ AC_DEFUN(CHECK_SIOCOUTQ,
     [
     AC_MSG_CHECKING(if SIOCOUTQ ioctl is usable)
 	AC_CHECK_HEADER([linux/sockios.h],
-	    AC_DEFINE(HAVE_SIOCOUTQ,1,[defined to 1 if SIOCOUTQ is available]),
+	    [
+	    AC_DEFINE(HAVE_SIOCOUTQ,1,[defined to 1 if SIOCOUTQ is available])
+	    ],
+	    [
 	    AC_DEFINE(HAVE_SIOCOUTQ,0,[defined to 1 if SIOCOUTQ is available])
+	    ]
 	)
     ]
 )

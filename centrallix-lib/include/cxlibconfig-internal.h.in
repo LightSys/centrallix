@@ -28,6 +28,9 @@
 /* defined to 1 if valgrind integration is enabled */
 #undef USING_VALGRIND
 
+/* defined to 1 if using pthreads for MTASK */
+#undef MTASK_USEPTHREADS
+
 #undef NMMALLOC_DEBUG
 
 #undef NMMALLOC_PROFILING
