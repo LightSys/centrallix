@@ -242,7 +242,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(0, "HTDT", "Failed to write datetime con CSS.");
 	    goto err;
 	    }
-	if (id == 0 && htrAddStylesheetItem(s, /* Only written once. */
+	if (htrAddStylesheetItem(s,
 	    "\t\t.dt_dropdown { "
 		"cursor:default; "
 	    "}\n"
