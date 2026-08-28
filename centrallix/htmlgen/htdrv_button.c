@@ -23,10 +23,10 @@
 /* distribution in the file "COPYING".					*/
 /* 									*/
 /* Module: 	htdrv_button.c						*/
-/* Author:	dkasper							*/
+/* Author:	D. Kasper			 			*/
 /* Creation:	June 21, 2007						*/
-/* Description:	HTML Widget driver for a 'generic' button widget based	*/
-/* 		off of the imagebutton and textbutton widgets button.	*/
+/* Description:	HTML widget driver for a 'generic' button widget to	*/
+/* 		replace the imagebutton/textbutton widgets.		*/
 /************************************************************************/
 
 #include <stdbool.h>
