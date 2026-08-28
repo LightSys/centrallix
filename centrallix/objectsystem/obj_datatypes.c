@@ -1951,15 +1951,15 @@ objDataToWords(int data_type, void* data_ptr)
 	    m = (pMoneyType)data_ptr;
 	    if (UNLIKELY(m->FractionPart > 9999))
 	        {
-		fprintf(stderr,
-		    "Warning: Attempted to convert money value %d.%04u, "
-		    "with fractional part exceeding 9999, to words. "
-		    "Cents will be truncated to the low two digits.\n",
+		mssError(1, "OBJ",
+		    "Attempted to convert malformed money value %d.%04u to "
+		    "words but fractional part exceeds 9999.",
 		    m->WholePart, m->FractionPart
 		);
+		return "";
 		}
 
-	    /** Clamp the cents to the low four digits **/
+	    /** Clamp the cents to the low four digits. **/
 	    fraction_part = m->FractionPart % 10000;
 
 	    if (m->WholePart < 0)
