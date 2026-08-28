@@ -203,10 +203,8 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    "height:100%; "
 	    : /* "preserve" */
 	    "width:100%; "
-	    "height:auto; "
-	    "max-width:fit-content; "
-	    "max-height:fit-content; "
-	    "display:inline; ";
+	    "height:100%; "
+	    "object-fit:contain; ";
 	
 	/** Write image HTML, including the containing div. **/
 	if (htrAddBodyItemLayer_va(s, 0,
