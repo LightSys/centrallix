@@ -1789,9 +1789,9 @@ function pg_loadqueue_check_spinner()
 	    {
 	    pg_spinner = htr_new_layer(96);
 	    htr_write_content(pg_spinner, "<center><img src=\"/sys/images/wait_spinner.gif\"</img></center>");
-	    moveToAbsolute(pg_spinner, (pg_width-100)/2, (pg_height-24)/2);
 	    htr_setzindex(pg_spinner, 99999);
 	    }
+	moveToAbsolute(pg_spinner, (getInnerWidth()-100)/2, (getInnerHeight()-24)/2);
 	if (pg_spinner_id) pg_delsched(pg_spinner_id);
 	pg_spinner_id = null;
 	pg_spinner.vis = true;
@@ -2177,8 +2177,8 @@ function pg_msg_received()
 function pg_tooltip(msg, x, y)
     {
     if (!pg_tiplayer)
-	pg_tiplayer = htr_new_layer(pg_width);
-    pg_set_style(pg_tiplayer, "width", pg_width + "px");
+	pg_tiplayer = htr_new_layer(getInnerWidth());
+    pg_set_style(pg_tiplayer, "width", getInnerWidth() + "px");
     htr_setvisibility(pg_tiplayer, "hidden");
     pg_tipindex++;
     pg_tipinfo = {msg:msg, x:x, y:y};
@@ -2210,13 +2210,14 @@ function pg_dotip()
 
 function pg_dotip_complete()
     {
+    var pgw = getInnerWidth();
     var tipw = $(pg_tiplayer.firstChild).width();
-    if (tipw > pg_width / 2)
-	tipw = pg_width / 2;
+    if (tipw > pgw / 2)
+	tipw = pgw / 2;
     tipw += 5;
     var pgx = pg_tipinfo.x;
     var pgy = pg_tipinfo.y + 20;
-    if (pgx + tipw > pg_width) pgx = pg_width - tipw;
+    if (pgx + tipw > pgw) pgx = pgw - tipw;
     if (pgx < 0) pgx = 0;
     pg_set_style(pg_tiplayer, "width", tipw + "px");
     moveToAbsolute(pg_tiplayer, pgx, pgy);
