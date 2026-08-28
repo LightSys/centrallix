@@ -37,6 +37,14 @@ const sp_fast_scroll_mod = 8.00;
  ***/
 const sp_inverted_scroll_mod = -1.00;
 
+/*** How long, in ms, a scroll button must be held before it starts to
+ *** auto-repeat.
+ ***/
+const sp_repeat_delay = 300;
+
+/** The time, in ms, between scroll actions while auto-repeating. **/
+const sp_repeat_interval = 50;
+
 
 
 /** ===== Globals ===== **/
@@ -68,6 +76,28 @@ let sp_target_mainlayer = undefined;
  *** event in succession that are both on the scrollpane widget.
  ***/
 let sp_click_in_progress = false;
+
+/** Timer id for a press-and-hold auto-repeat (undefined if none is active). **/
+let sp_repeat_timer = undefined;
+
+
+/*** Run a scroll action now, then auto-repeat it while the mouse button is
+ *** held: after the hold delay, once per interval until sp_stop_repeat().
+ ***
+ *** @param action The function to run on each repeat.
+ ***/
+function sp_start_repeat(action)
+    {
+    action();
+    sp_repeat_timer = setTimeout(() => sp_repeat_timer = setInterval(action, sp_repeat_interval), sp_repeat_delay);
+    }
+
+/** Stop the auto-repeat, if one is active. **/
+function sp_stop_repeat()
+    {
+    clearTimeout(sp_repeat_timer);
+    sp_repeat_timer = undefined;
+    }
 
 
 /** A resize observer to update the scroll thumb when the scrollpane is resized. **/
@@ -462,7 +492,7 @@ function sp_mousedown(e)
 	    case 'down':
 		{
 		const scroll_amount = (target_type === 'down') ? 16 : -16;
-		sp_scroll(target_img.pane, scroll_amount);
+		sp_start_repeat(() => sp_scroll(target_img.pane, scroll_amount));
 		
 		/** Update the button to appear pressed. **/
 		pg_set(target_img, 'src', htutil_subst_last(target_img.src, "c.gif"));
@@ -475,10 +505,15 @@ function sp_mousedown(e)
 	    /** Scroll bar was clicked. **/
 	    case 'bar':
 		{
-		/** Move one page in the direction of the mouse pointer. **/
-		const up = (e.pageY < getPageY(target_img.thumb) + 9);
-		const amount = (target_img.height + 36) * ((up) ? -1 : 1);
-		sp_scroll(target_img.pane, amount);
+		/** Page toward the pointer, stopping when the thumb reaches it. **/
+		const { pane, thumb } = target_img;
+		const page_y = e.pageY;
+		const up = (page_y < getPageY(thumb) + 9);
+		sp_start_repeat(() =>
+		    {
+		    if ((page_y < getPageY(thumb) + 9) !== up) sp_stop_repeat();
+		    else sp_scroll(pane, (target_img.height + 36) * ((up) ? -1 : 1));
+		    });
 		
 		/** Event handled. **/
 		return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
@@ -576,6 +611,9 @@ function sp_mouseup(e)
     
     /** A click is no longer in progress. **/
     sp_click_in_progress = false;
+
+    /** End any press-and-hold auto-repeat. **/
+    sp_stop_repeat();
     
     /** Check for an active drag. **/
     if (sp_drag_img)
