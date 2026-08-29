@@ -35,6 +35,7 @@
 
 
 
+#include "prtmgmt_v3/prtmgmt_v3.h"
 #define PRT_TABLM_MAXCOLS               256     /* maximum columns in a table */
 
 #define PRT_TABLM_F_ISHEADER            1       /* row is a header that repeats */
