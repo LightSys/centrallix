@@ -228,6 +228,7 @@ jutilGetMoneyObject(struct json_object* jobj, pMoneyType m)
 
 	/** Search the object's properties **/
 	memset(m, 0, sizeof(MoneyType));
+	m->Value = 0;
 	json_object_object_foreachC(jobj, iter)
 	    {
 	    if (json_object_is_type(iter.val, json_type_int))
@@ -235,12 +236,12 @@ jutilGetMoneyObject(struct json_object* jobj, pMoneyType m)
 		if (!strcmp(iter.key, "wholepart"))
 		    {
 		    has_whole = 1;
-		    m->WholePart = json_object_get_int(iter.val);
+		    m->Value += json_object_get_int(iter.val) * 10000ll;
 		    }
 		else if (!strcmp(iter.key, "fractionpart"))
 		    {
 		    has_fraction = 1;
-		    m->FractionPart = json_object_get_int(iter.val);
+		    m->Value += json_object_get_int(iter.val);
 		    }
 		else
 		    {

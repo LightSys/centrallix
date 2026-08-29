@@ -1,0 +1,7 @@
+Attribute [truncate($1.225, 2)]:    money   $1.22 
+Attribute [truncate($1.224, 2)]:    money   $1.22 
+Attribute [truncate($1.50, 0)]:    money   $1.00 
+Attribute [truncate($1.40, 0)]:    money   $1.00 
+Attribute [truncate($16.25, -1)]:    money   $10.00 
+Attribute [truncate($12.25, -1)]:    money   $10.00 
+Attribute [truncate($12.25)]:    money   $12.00 
