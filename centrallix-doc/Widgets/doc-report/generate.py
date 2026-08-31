@@ -153,9 +153,10 @@ js_legacy_action_re = re.compile(
 
 # Regex to find a JS function (fn_name) that implements an action and capture
 # the first variable argument (1), even if it is an object deconstruction, and
-# then ignore all other parameters.
+# then ignore all other parameters.  The first argument is optional so that
+# parameterless implementations still match.
 js_action_impl_re: Callable[[str], Pattern[str]] = lambda fn_name: re.compile(
-	rf"function\s+{re.escape(fn_name)}\s*\(\s*(\{{[^{{}}]*\}}|[A-Za-z_]\w*)(?=\s*[,)])[^)]*\)"
+	rf"function\s+{re.escape(fn_name)}\s*\(\s*((?:\{{[^{{}}]*\}}|[A-Za-z_]\w*)(?=\s*[,)]))?[^)]*\)"
 	rf"\s*(?://[^\n]*\n\s*)*\{{",
 	re.MULTILINE
 )
@@ -612,9 +613,13 @@ def parse_js_action_params(js: str, js_line_map: LineMap, fn_name: str) -> tuple
 	js_fn_decl = js_action_impl_re(fn_name).search(js)
 	if not js_fn_decl:
 		return params, decl_line
-	param1 = js_fn_decl.group(1).strip()
+	param1 = (js_fn_decl.group(1) or "").strip()
 	body_start = js_fn_decl.end()
 	decl_line = js_line_map.line_number(js_fn_decl.start())
+	
+	# Handle parameterless implementation, which still has a location.
+	if param1 == "":
+		return params, decl_line
 	
 	# Basic check for parameter deconstruction.
 	if (param1.startswith("{") and param1.endswith("}")):
