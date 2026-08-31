@@ -321,8 +321,9 @@ function cxjs_nullif(a, b)
     {
     // Note: This code uses == because the C code checks MLX_CMP_EQUALS,
     // which allows type coercion.
-    if (a == null || b == null || a == b) return null;
-    return a;
+    if (a == null) return null;
+    if (b == null) return a;
+    return (a == b) ? null : a;
     }
 function cxjs_ltrim(s)
     {
