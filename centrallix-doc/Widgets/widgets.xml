@@ -3717,7 +3717,7 @@ MyScrollPane "widget/scrollpane"
 
 		<children>
 
-			<child type="any">
+			<child type="widget/tabpage">
 
 				<childproperty name="fieldname" type="string">This is the fieldname from the objectsource that the tabpage will use for its title.</childproperty>
 
@@ -3968,7 +3968,7 @@ myTabControl "widget/tab"
 
 			</child>
 
-			<child type="table-row-detail">
+			<child type="widget/table-row-detail">
 
 				<childproperty name="width" type="integer">Not documented.</childproperty>
 
