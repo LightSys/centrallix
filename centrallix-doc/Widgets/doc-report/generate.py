@@ -221,7 +221,7 @@ class WidgetImpl:
 		return event
 	
 	# Register a unique action.
-	def action(self, action_name: str)  -> ActionImpl:
+	def action(self, action_name: str) -> ActionImpl:
 		action = self.actions.get(action_name) or ActionImpl(name=action_name)
 		self.actions[action_name] = action
 		return action
@@ -249,7 +249,7 @@ class SignalImpl:
 			self.internal_params_refs.setdefault(param_name, []).extend(refs)
 	
 	# Call when a new origin is found.
-	def found(self, confidence : Confidence, ref: Ref) -> None:
+	def found(self, confidence: Confidence, ref: Ref) -> None:
 		self.update_confidence(confidence)
 		self.definition_refs.append(ref)
 	
@@ -624,7 +624,7 @@ def parse_js_action_params(js: str, js_line_map: LineMap, fn_name: str) -> tuple
 	
 	# Count braces to isolate the function body without a full JS parser.
 	# Note: Comments are parsed as code to let programmers use them to patch
-	# edge cases manually.  For example, see cases the editbox widget's
+	# edge cases manually.  For example, see the editbox widget's
 	# SetValue action, which accesses the Description parameter outside the
 	# body of the function that implements that action.
 	idx = body_start
@@ -638,7 +638,7 @@ def parse_js_action_params(js: str, js_line_map: LineMap, fn_name: str) -> tuple
 		idx += 1
 	body = js[body_start : max(body_start, idx - 1)]
 	
-	# Search the function body to locate all properties that are read. 
+	# Search the function body to locate all properties that are read.
 	for pm in re.finditer(js_property_re(param1), body):
 		param_name = pm.group(1)
 		param_line = js_line_map.line_number(body_start + pm.start())
@@ -681,7 +681,7 @@ def parse_js(path: Path) -> dict[str, WidgetImpl]:
 		widget_name = normalize_widget_name(js_file.stem.replace("htdrv_", "", 1))
 		if widget_name != eager_widget_name:
 			print(f"Warning: File {file_name} used to declare widget {widget_name}.")
-			print(f"  Should `\"{eager_widget_name}\": \"{widget_name}\",` be added to WIDGETS_ALIASES?") 
+			print(f"  Should `\"{eager_widget_name}\": \"{widget_name}\",` be added to WIDGETS_ALIASES?")
 		if widget_name == "":
 			continue
 		
@@ -783,7 +783,7 @@ def compute_report(
 	widget_type_refs: dict[str, list[Ref]],
 	widgets: dict[str, WidgetImpl],
 ) -> Report:
-	stats : ReportStats = {
+	stats: ReportStats = {
 		"documented_widgets": 0,
 		"implemented_widgets": 0,
 		"missing_widget_docs": 0,
@@ -920,7 +920,7 @@ def compute_report(
 					print(f"Warning: Dropped missing param \"{missing_param_name}\""
 						f" on action \"{action_impl.name}\" due to missing ref.")
 					continue
-				missing_param_refs[missing_param_name] = refs[0]		
+				missing_param_refs[missing_param_name] = refs[0]
 			
 			# Check for extra params.
 			extra_param_refs: dict[str, Ref] = {}
@@ -1051,7 +1051,7 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 	# Write global findings (aka. missing & stale widget docs).
 	for title, entries in [
 		("Missing Widget Docs", report["missing_widget_docs"]),
-		("Stale Widgets Docs",  report["stale_widget_docs"]),
+		("Stale Widget Docs",   report["stale_widget_docs"]),
 	]:
 		if len(entries) == 0:
 			continue

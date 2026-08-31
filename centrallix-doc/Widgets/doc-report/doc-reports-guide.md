@@ -18,7 +18,7 @@ License: Copyright (C) 2026 LightSys Technology Services.  See LICENSE.txt.
   - [Reading Doc Reports](#reading-doc-reports)
     - [Widget Stats](#widget-stats)
     - [Missing Widget Docs](#missing-widget-docs)
-    - [Stale Widgets Docs](#stale-widgets-docs)
+    - [Stale Widget Docs](#stale-widget-docs)
     - [Widget Errors](#widget-errors)
   - [Script Design](#script-design)
 
@@ -64,7 +64,7 @@ strcpy(drv->WidgetName, "tabpage");
 drv->Render = httabRender_page;
 htrRegisterDriver(drv);
 ```
-Due to this ambiguity, the doc report **assumes the first widget in an `htdrv_*.c` file is the parent** and all widget declared afterword are children.  As of the time of this writing (May 12th, 2026), this assumption is true for all the implemented widgets.
+Due to this ambiguity, the doc report **assumes the first widget in an `htdrv_*.c` file is the parent** and all widgets declared afterward are children.  As of the time of this writing (May 12th, 2026), this assumption is true for all the implemented widgets.
 
 
 ## Reading Doc Reports
@@ -80,7 +80,7 @@ The widget stats section of `report.md` gives general statistics about the detec
 ### Missing Widget Docs
 The missing widget docs section lists all widgets that are implemented in some way, but are completely missing from the docs. This may include child widgets, so remember to check the source links to understand what was detected.
 
-### Stale Widgets Docs
+### Stale Widget Docs
 The stale widget docs section lists all widgets that are documented in some way, but that do not appear to be implemented. This may include child widgets (especially if a widget in `widgets.xml` specifies an unexpected child widget type), so remember to check the source links to understand what was detected.
 
 ### Widget Errors
@@ -107,12 +107,12 @@ The original script was written by Cursor across 4 commits, although every line 
     - Search for `strcpy(<symbol>->WidgetName, <name>)` calls to capture registered widget names.
       - The first widget is assumed to be the parent, following widgets are assumed to be children.
   - Parse JS implementations in `htdrv_*.js` files.
-    - Search for `ifcProbAdd()` calls using `ifEvent` or `ifAction` and capture the probe variable name.
+    - Search for `ifcProbeAdd()` calls using `ifEvent` or `ifAction` and capture the probe variable name.
     - Search for `.Add()` calls on probe variables to capture event and action names (and action implementation function names).
     - Parse action implementation functions (from `.Add()` calls) to find accesses for the param variable (the first variable).
       - Supports functions that take a param variable with a name (e.g. `function action(aparam)`) and access properties on it (e.g. `aparam.Value`).
       - Supports functions that deconstruct params immediately (e.g. `function action({ Value })`).
-      - Searches in comments to allow graceful handling when param variable are passed to other functions.
+      - Searches in comments to allow graceful handling when param variables are passed to other functions.
       - Only params named in CamelCase are collected; other names (e.g. `_Origin` or `from_internal`) are internal to the implementation, and the same rule is applied to the params named in the docs.
     - Search for legacy `<var>.Action<Name> = <function>` assignments to capture actions that predate the `ifAction` interface, and parse their params the same way.
       - Names ending in `CB` are callbacks (e.g. `form.ActionSaveSuccessCB`), not actions, so they are skipped.
