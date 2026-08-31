@@ -1189,6 +1189,21 @@ def main() -> int:
 	doc_xml, wgtr_dir, c_driver_dir, js_driver_dir, output_dir = resolve_paths(
 		repo_root, args.out_dir
 	)
+	# Check the inputs before doing any work.  Path.glob() finds nothing in a
+	# missing directory, so a wrong repo root would otherwise write a plausible
+	# report with whole sources silently absent.
+	missing_paths = [path for path, found in (
+		(doc_xml, doc_xml.is_file()),
+		(wgtr_dir, wgtr_dir.is_dir()),
+		(c_driver_dir, c_driver_dir.is_dir()),
+		(js_driver_dir, js_driver_dir.is_dir()),
+	) if not found]
+	if missing_paths:
+		print(f"Error: Could not find these inputs under repo root {repo_root}:")
+		for path in missing_paths:
+			print(f"  {path}")
+		return 1
+	
 	json_path = output_dir / "report.json"
 	md_path = output_dir / "report.md"
 	output_dir.mkdir(parents=True, exist_ok=True)
