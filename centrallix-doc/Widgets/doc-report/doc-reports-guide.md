@@ -116,7 +116,6 @@ The original script was written by Cursor across 4 commits, although every line 
       - Only params named in CamelCase are collected; other names (e.g. `_Origin` or `from_internal`) are internal to the implementation, and the same rule is applied to the params named in the docs.
     - Search for legacy `<var>.Action<Name> = <function>` assignments to capture actions that predate the `ifAction` interface, and parse their params the same way.
       - Names ending in `CB` are callbacks (e.g. `form.ActionSaveSuccessCB`), not actions, so they are skipped.
-  - Expand child coverage to handle any-type children.
 - **Step 3**: Generate report (JSON).
   - Analyze collected lists of documented and implemented widgets, properties, events, actions, and children to detect differences.
   - Stores differences in a Report data type, containing various JSON-like subtypes (using `TypedDict`).

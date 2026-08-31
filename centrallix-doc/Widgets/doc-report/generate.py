@@ -204,7 +204,6 @@ class WidgetDoc:
 	internal_action_params: dict[str, set[str]] = field(default_factory=dict[str, set[str]])
 	ni_events: set[str] = field(default_factory=set[str]) # Documented as not implemented.
 	ni_actions: set[str] = field(default_factory=set[str]) # Documented as not implemented.
-	any_child: bool = False
 	
 	# Ref fields.
 	ref: Optional[Ref] = None
@@ -457,11 +456,7 @@ def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 		
 		# Parse children.
 		for child in widget.findall("./children/child"):
-			raw_child_type = normalize_name(child.get("type")).lower()
-			if raw_child_type == "any":
-				doc.any_child = True
-				continue
-			child_type = normalize_child_name(raw_child_type)
+			child_type = normalize_child_name(normalize_name(child.get("type")))
 			if child_type == "":
 				continue
 			widget_types.add(child_type)
@@ -524,12 +519,11 @@ def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 	return docs, widget_types
 
 
-# Scan `wgtdrv_*.c` for widget type registrations and type-family groupings.
+# Scan `wgtdrv_*.c` for widget type registrations.
 def parse_widgets_in_wgtr(
 	path: Path,
-) -> tuple[set[str], dict[str, set[str]], dict[str, list[Ref]]]:
+) -> tuple[set[str], dict[str, list[Ref]]]:
 	widget_types: set[str] = set()
-	widget_families: dict[str, set[str]] = {}
 	refs: dict[str, list[Ref]] = {}
 	
 	# Search every driver file for registrations.
@@ -543,7 +537,6 @@ def parse_widgets_in_wgtr(
 		
 		content = c_file.read_text(encoding="utf-8", errors="ignore")
 		rel = "centrallix/wgtr/%s" % file_name
-		widget_names: set[str] = set()
 		
 		# Search for matching widget registrations.
 		line_map = LineMap(content)
@@ -553,29 +546,12 @@ def parse_widgets_in_wgtr(
 				continue
 			
 			# Add data.
-			widget_names.add(widget_name)
+			widget_types.add(widget_name)
 			refs.setdefault(widget_name, []).append(
 				make_ref(rel, line_map.line_number(match.start()), "wgtrAddType")
 			)
-		
-		for name in widget_names:
-			widget_types.add(name)
-			widget_families[name] = set(widget_names)
 	
-	return widget_types, widget_families, refs
-
-
-# Expand docs coverage when a documented widget allows `child type="any"`.
-def expand_any_child_coverage(
-	docs: dict[str, WidgetDoc],
-	doc_types: set[str],
-	widget_families: dict[str, set[str]],
-) -> set[str]:
-	expanded_doc_types = set(doc_types)
-	for widget_name, node in docs.items():
-		if node.any_child:
-			expanded_doc_types.update(widget_families.get(widget_name, set()))
-	return expanded_doc_types
+	return widget_types, refs
 
 
 # Parse C htmlgen drivers for the widgets that they render.
@@ -1210,8 +1186,7 @@ def main() -> int:
 	
 	# Build documented + implemented widget lists.
 	docs, doc_types = parse_docs(doc_xml)
-	widget_types, widget_families, widget_type_refs = parse_widgets_in_wgtr(wgtr_dir)
-	doc_types = expand_any_child_coverage(docs, doc_types, widget_families)
+	widget_types, widget_type_refs = parse_widgets_in_wgtr(wgtr_dir)
 	c_widgets = parse_c(c_driver_dir)
 	js_widgets = parse_js(js_driver_dir)
 	widgets = merge_widget_lists(c_widgets, js_widgets)
