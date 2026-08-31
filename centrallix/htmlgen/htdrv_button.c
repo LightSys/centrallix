@@ -519,6 +519,10 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 /*** htbtnRegisterName - register the button renderer under one widget name.
  *** The deprecated textbutton and imagebutton names share this renderer and
  *** differ only in the defaults htbtnRender() picks for them.
+ ***
+ *** Note: This function should be inlined for simplicity once imagebutton and
+ *** textbutton are removed.  The inlining will also fix the doc reports
+ *** script failing to detect this file as an origin for the button widget.
  ***/
 int
 htbtnRegisterName(char* drv_name, char* widget_name)
