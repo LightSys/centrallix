@@ -9,7 +9,7 @@ long long
 test(char** tname)
     {
     int iter;
-    int array[2];
+    int array[2] = {0};
 
 	*tname = "BASELINE sigsegv (11) caused - should crash";
 	iter = 1000*1000*1000;
@@ -17,4 +17,3 @@ test(char** tname)
 
     return iter;
     }
-
