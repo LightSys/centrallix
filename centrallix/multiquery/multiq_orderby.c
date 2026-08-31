@@ -81,7 +81,6 @@ typedef struct
     {
     XArray		Objects;
     int			IterCnt;
-    int			nOrderBy;
     XArray		AggregateFieldIDs;
     }
     MQOData, *pMQOData;
@@ -412,7 +411,6 @@ mqob_internal_InitSort(pQueryElement qe, pQueryStatement stmt)
 	qe->PrivateData = context;
 	xaInit(&context->Objects, 16);
 	xaInit(&context->AggregateFieldIDs, 16);
-	context->nOrderBy = qe->OrderBy.nItems;
 	context->IterCnt = 0;
 
 	/** Determine SELECTed aggregate fields we need to save/restore **/
@@ -442,7 +440,7 @@ mqob_internal_InitSort(pQueryElement qe, pQueryStatement stmt)
 	    objlist = NULL;
 	    expLinkParams(item->ObjList, stmt->Query->nProvidedObjects, -1);
 	    xsInit(&item->OrderBuf);
-	    if (objBuildBinaryImageXString(&item->OrderBuf, qe->OrderBy.Items, context->nOrderBy, item->ObjList, 0) < 0)
+	    if (objBuildBinaryImageXString(&item->OrderBuf, qe->OrderBy.Items, qe->OrderBy.nItems, item->ObjList, 0) < 0)
 		goto error;
 	    item->SavedValues = (Expression *)nmMalloc(sizeof(Expression) * context->AggregateFieldIDs.nItems);
 	    if (!item->SavedValues)
