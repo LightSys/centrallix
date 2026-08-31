@@ -3990,6 +3990,8 @@ myTabControl "widget/tab"
 
 			<event name="ClickItem">The ClickItem event fires when the user clicks an item in an 'itemlist' column.  Passes 'Item' which is the item text, 'ItemKey' and 'ItemIndex' which identify the item, 'Row' which is the row number, and 'Column' and 'ColumnName' which are the field name and the column name.</event>
 
+			<event name="Close">The Close event fires on a "widget/table-row-detail" child widget when it stops being shown for a row, either because another row was selected, because its "display_for" value was set to 0, or because the row was scrolled out of the table.  Passes no values.</event>
+
 			<event name="DblClick">The DblClick event fires when the user double-clicks the mouse on a row.  Passes three values, 'Caller' which is the table's name, 'recnum' which is the sequential number of the record in the table, and 'data' which is an array of the data in the selected record.</event>
 
 			<event name="DragCancelItem">The DragCancelItem event fires when the user drops a dragged item somewhere other than an 'itemlist' column, cancelling the drag.  Passes the same values as ClickItem, describing where the drag started.</event>
@@ -3997,6 +3999,8 @@ myTabControl "widget/tab"
 			<event name="DragDropItem">The DragDropItem event fires when the user drops a dragged item on an 'itemlist' column.  Passes 'Item', 'ItemKey', and 'ItemIndex' which identify the dragged item, 'SourceRow', 'SourceColumn', and 'SourceColumnName' which describe where the drag started, 'TargetRow', 'TargetColumn', and 'TargetColumnName' which describe where it was dropped, and 'BeforeItem' which is the item it was dropped in front of (or null).</event>
 
 			<event name="DragStartItem">The DragStartItem event fires when the user begins dragging an item in an 'itemlist' column.  Passes the same values as ClickItem, plus 'OffsetX' and 'OffsetY' which are the distance the pointer has moved.</event>
+
+			<event name="Open">The Open event fires on a "widget/table-row-detail" child widget when it is shown for a row, which happens when the row is selected (or when a new row is added, if "show_on_new" is set).  Passes no values.</event>
 
 			<event name="RightClick">The RightClick event occurs when a user clicks on the widget with the relevant button on their mouse or mouse pad.</event>
 
