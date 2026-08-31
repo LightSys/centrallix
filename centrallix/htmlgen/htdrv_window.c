@@ -61,7 +61,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
     char name[64];
     pWgtrNode sub_tree;
     int x,y,w,h;
-    int tbw,tbh,bx,by,bw,bh;
+    int tbw,tbh;//bx,by,bw,bh;
     int id, i;
     int visible = 1;
     char bgnd_style[128] = "";
@@ -223,28 +223,28 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Compute window body geometry **/
-	if (is_dialog_style)
-	    {
-	    bx = 1;
-	    by = 1+tbh;
-	    bw = w-2;
-	    bh = h-tbh-2;
-	    }
-	else
-	    {
-	    bx = 2;
-	    bw = w-4;
-	    if (has_titlebar)
-		{
-		by = 1+tbh;
-		bh = h-tbh-3;
-		}
-	    else
-		{
-		by = 2;
-		bh = h-4;
-		}
-	    }
+	// if (is_dialog_style)
+	//     {
+	//     bx = 1;
+	//     by = 1+tbh;
+	//     bw = w-2;
+	//     bh = h-tbh-2;
+	//     }
+	// else
+	//     {
+	//     bx = 2;
+	//     bw = w-4;
+	//     if (has_titlebar)
+	// 	{
+	// 	by = 1+tbh;
+	// 	bh = h-tbh-3;
+	// 	}
+	//     else
+	// 	{
+	// 	by = 2;
+	// 	bh = h-4;
+	// 	}
+	//     }
 
 	/** Draw the main window layer and outer edge. **/
 	/*htrAddStylesheetItem_va(s,"\t#wn%POSbase { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; overflow: hidden; clip:rect(0px, %INTpx, %INTpx, 0px); Z-INDEX:%POS;}\n",
