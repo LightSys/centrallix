@@ -79,6 +79,8 @@
 
 			<p>A "hbox" widget stacks its children horizontally one after the other, while a "vbox" widget stacks its children vertically from the top down.  The spacing between children can be set, and the size of each child can be either independently set per-child, or it can be set by virtue of the geometry of the autolayout widget.</p>
 
+			<p>Blank space can be placed between the children of an autolayout widget by adding an "autolayoutspacer" child.  A spacer draws nothing of its own, but it takes part in the layout just like any other child.</p>
+
 			<p>The autolayout widget supports having multiple rows or columns of widgets.  That is, if a "vbox" widget fills up vertically, it can resume adding children to a second vertical column should there be space to the right of the original column of widgets.  For this to work, the width of the columns (for a vbox) or the height of the rows (for an hbox) must be specified.</p>
 
 		</overview>
@@ -117,6 +119,20 @@
 
 		<children>
 
+			<child type="widget/autolayoutspacer">
+
+				<childproperty name="autolayout_order" type="integer">An optional property, this controls where the spacer falls in the layout sequence, just as it does for any other child.</childproperty>
+
+				<childproperty name="fl_height" type="integer">The vertical flexibility of the spacer, as a weight relative to that of the sibling widgets.  Defaults to 5, rather than to the 100 used by most widgets, so a spacer takes a smaller share of the space added or removed when the autolayout widget is resized.  Set this to 0 to keep the space at a fixed size.</childproperty>
+
+				<childproperty name="fl_width" type="integer">The horizontal flexibility of the spacer, as a weight relative to that of the sibling widgets.  Defaults to 5, rather than to the 100 used by most widgets, so a spacer takes a smaller share of the space added or removed when the autolayout widget is resized.  Set this to 0 to keep the space at a fixed size.</childproperty>
+
+				<childproperty name="height" type="integer">Height, in pixels, of the space.  This is the size of the gap in a vbox.  If omitted, the "cellsize" property of the autolayout widget is used.</childproperty>
+
+				<childproperty name="width" type="integer">Width, in pixels, of the space.  This is the size of the gap in an hbox.  If omitted, the "cellsize" property of the autolayout widget is used.</childproperty>
+
+			</child>
+
 			<child type="any">
 
 				<childproperty name="autolayout_order" type="integer">An optional property, this allows the layout sequence of child widgets to be controlled, and the children are placed in ascending order.  If unspecified, this defaults to a value of 100 for the first child encountered, or to N+1 where N is the autolayout sequence of the most recent child widget encountered.</childproperty>
@@ -146,6 +162,16 @@ vbox1 "widget/vbox"
 	x=0; y=0; width=600; height=200;
 
 	spacing=5; column_width=200;
+
+	}
+
+// A fixed 8 pixel gap between the children of an hbox.
+
+gap1 "widget/autolayoutspacer"
+
+	{
+
+	width=8; fl_width=0;
 
 	}
 
