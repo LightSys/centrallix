@@ -469,9 +469,9 @@ def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 	# Walk through xml text to get widget references.
 	content = path.read_text(encoding="utf-8", errors="ignore")
 	line_map = LineMap(content)
-	for match in doc_widget_re.finditer(content):
+	for widget_match in doc_widget_re.finditer(content):
 		# Get the doc for the current widget
-		attrs = {m.group(1): m.group(3) for m in doc_attr_re.finditer(match.group(1))}
+		attrs = {m.group(1): m.group(3) for m in doc_attr_re.finditer(widget_match.group(1))}
 		widget_name = normalize_widget_name(attrs.get("name") or attrs.get("type"))
 		if widget_name == "":
 			continue
@@ -480,9 +480,9 @@ def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 			continue
 		
 		# Manually isolate this xml widget block.
-		start = match.start()
-		match = doc_widget_end_re.search(content, start)
-		end = match.end() if match else len(content)
+		start = widget_match.start()
+		end_match = doc_widget_end_re.search(content, start)
+		end = end_match.end() if end_match else len(content)
 		block = content[start:end]
 		base_line = line_map.line_number(start)
 		
@@ -512,9 +512,9 @@ def parse_docs(path: Path) -> tuple[dict[str, WidgetDoc], set[str]]:
 			widget_doc.action_refs[name] = make_ref(
 				WIDGET_XML_PATH, line, "documented action"
 			)
-		for cm in doc_child_re.finditer(block):
-			line = line_map.line_number(start + cm.start())
-			child_name = normalize_child_name(cm.group(2))
+		for child_match in doc_child_re.finditer(block):
+			line = line_map.line_number(start + child_match.start())
+			child_name = normalize_child_name(child_match.group(2))
 			if child_name == "":
 				continue
 			widget_doc.child_refs[child_name] = make_ref(
