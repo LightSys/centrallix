@@ -41,15 +41,21 @@ IGNORE_INTERNAL_ACTION_PARAM_DOCS = get_id()
 # =============
 # Configs
 
-# Widgets that use other names in the code.  This dictionary maps normalized
-# widget alias(es) (e.g. "page_js15") to canonical widget names (e.g. "page").
-WIDGETS_ALIASES: dict[str, str] = {
+# Driver files that are named after something other than the widget that they
+# implement.  This dictionary maps a driver file base name (e.g. "page_js15")
+# to the canonical widget name (e.g. "page").
+#
+# These aliases apply to file names only.  A name written in the code or in the
+# docs is always taken literally, so a widget that shares a file with the widget
+# it is named after (e.g. "radiobutton", a child of "radiobuttonpanel" declared
+# in wgtdrv_radiobutton.c) still gets checked on its own.
+FILENAME_ALIASES: dict[str, str] = {
 	"componentdecl": "component-decl",
 	"sys_osml": "sys-osml",
 	"page_js15": "page",
 	"checkbox_moz": "checkbox",
-	"radiobutton": "radiobuttonpanel", # May cause issues with the radiobutton widget (child of radiobuttonpanel).
-	"window": "childwindow", # May cause issues with window widgets implemented in uawindow files.
+	"radiobutton": "radiobuttonpanel",
+	"window": "childwindow",
 }
 
 # The normalized names of widgets that should be completely ignored if they
@@ -335,8 +341,14 @@ def normalize_widget_name(name: Optional[str]) -> str:
 	text = normalize_name(name).lower()
 	if text.startswith("widget/"):
 		text = text.split("/", 1)[1]
-	canonical_name = WIDGETS_ALIASES.get(text, text)
-	return canonical_name if canonical_name not in IGNORED_WIDGETS else ""
+	return text if text not in IGNORED_WIDGETS else ""
+
+
+# Normalize a driver file base name (e.g. "page_js15") to the widget that the
+# file implements, applying the file name aliases.
+def normalize_file_name(file_base: str) -> str:
+	text = normalize_name(file_base).lower()
+	return normalize_widget_name(FILENAME_ALIASES.get(text, text))
 
 
 # Validate/normalize child type declarations into concrete widget keys.
@@ -522,8 +534,15 @@ def parse_widgets_in_wgtr(
 	
 	# Search every driver file for registrations.
 	for c_file in sorted(path.glob("wgtdrv_*.c")):
+		# Check if the file name indicates that we should skip it.  Obsolete
+		# drivers can register a name that a current driver also uses, so the
+		# file name has to be checked as well as each registered name.
+		file_name = c_file.name
+		if normalize_file_name(file_name[7:-2]) == "":
+			continue
+		
 		content = c_file.read_text(encoding="utf-8", errors="ignore")
-		rel = "centrallix/wgtr/%s" % c_file.name
+		rel = "centrallix/wgtr/%s" % file_name
 		widget_names: set[str] = set()
 		
 		# Search for matching widget registrations.
@@ -567,7 +586,7 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
 	for c_file in sorted(path.glob("htdrv_*.c")):
 		# Check if the file name indicates that we should skip it.
 		file_name = c_file.name
-		eager_widget_name = normalize_widget_name(file_name[6:-2])
+		eager_widget_name = normalize_file_name(file_name[6:-2])
 		if eager_widget_name == "":
 			continue
 		relative_path = "centrallix/htmlgen/%s" % file_name
@@ -598,7 +617,7 @@ def parse_c(path: Path) -> dict[str, WidgetImpl]:
 		if parent_widget_impl and parent_widget_impl.widget_name != eager_widget_name:
 			widget_name = parent_widget_impl.widget_name
 			print(f"Warning: File {file_name} used to declare widget parent {widget_name}.")
-			print(f"  Should `\"{eager_widget_name}\": \"{widget_name}\",` be added to WIDGETS_ALIASES?")
+			print(f"  Should `\"{eager_widget_name}\": \"{widget_name}\",` be added to FILENAME_ALIASES?")
 	return widget_impls
 
 
@@ -674,7 +693,7 @@ def parse_js(path: Path) -> dict[str, WidgetImpl]:
 	for js_file in sorted(path.glob("htdrv_*.js")):
 		# Get the widget name from the file name, skipping ignored widgets.
 		file_name = js_file.name
-		widget_name = normalize_widget_name(file_name[6:-3])
+		widget_name = normalize_file_name(file_name[6:-3])
 		if widget_name == "":
 			continue
 		
