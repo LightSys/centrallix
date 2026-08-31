@@ -8,7 +8,7 @@
 	)>
 
 	<!-- Define widget elements.  A description (property, event, action, etc.)
-	     holds text, the not-implemented tag, and simple markup. -->
+			holds text, the not-implemented tag, and simple markup. -->
 	<!ELEMENT overview (#PCDATA | p | b | i | ul | ol)*>
 	<!ELEMENT usage (#PCDATA | p | b | i | ul | ol)*>
 	<!ELEMENT properties (property | note)*>
@@ -470,6 +470,7 @@ chart "widget/chart"
 			]]>
 
 		</sample>
+
 	</widget>
 
 
@@ -662,7 +663,7 @@ checkbox_test "widget/page"
 
 			<action name="Open">Opens the window.  Set the "X" and "Y" parameters to the coordinates of the upper-left corner of the window to open it at that location.  If the parameter "Center" is set to any value other than no (the default), the window is centered on the specified coordinates instead.  Set the "PointAt" parameter with a widget name to make the new window point at that widget.  Set the "PointSide" parameter with a value of top, bottom, left, or right to force the window to point from that side.  Set the "PointOffset" parameter to the distance in pixels that the window should be from the widget it points at.  This action also takes the "IsModal","NoClose", and "Cascade" parameters, described in the SetVisibility action.</action>
 
-            <action name="Point">Creates a triangular pointer on the edge of the window to point at a given (X,Y) coordinate.</action>
+						<action name="Point">Creates a triangular pointer on the edge of the window to point at a given (X,Y) coordinate.</action>
 
 			<action name="Popup">Opens a window like a pop-up at the specified "X" and "Y" with the specified "Width" and "Height" (in pixels).  Or, set the "PopTo" parameter with a widget name to copy those properties from it.  In either case, the "OffsetX" and "OffsetY" parameters move the popup right and down respectively.  Finally, specify the "ExtendTo" parameter with a widget name to ensure that the popup extends to that parameter.</action>
 
@@ -1183,17 +1184,17 @@ cn1 "widget/connector"
 
 	dda "widget/datetime" {
 
-	    x=15;y=15;
+			x=15;y=15;
 
-	    width=200;
+			width=200;
 
-	    height=20;
+			height=20;
 
-	    fgcolor="#000000";
+			fgcolor="#000000";
 
-	    bgcolor="#cfcfcf";
+			bgcolor="#cfcfcf";
 
-	    //initialdate="12:34:56 May 3, 2002";
+			//initialdate="12:34:56 May 3, 2002";
 
 	}
 
@@ -1869,13 +1870,13 @@ $Version=2$
 
 formstatus "widget/formstatus" 
 
-    {
+		{
 
-    x=5; y=450;
+		x=5; y=450;
 
-    style="largeflat";
+		style="largeflat";
 
-    }
+		}
 
 			]]>
 
@@ -2986,17 +2987,17 @@ osrc1 "widget/osrc"
 		</events>
 
 		<actions>
-		
+
 			<action name="Alert">Sends an alert widget. Set the 'Message' to specify a text string that should appear in the alert.</action>
 
 			<action name="Close">Closes the page.</action>
 
 			<action name="Launch">Loads the app at the specified "Source" in a new window of the specified "Width" and "Height".  Specify 1 or yes for "LinkApp" to link the new app into the same group as the current page for permissions.  Specify any value other than no for the "UseragentMenu", "UseragentResize", or "UseragentScroll" parameters to allow the user to see the menu bar, resize the window, or scroll it (respectively).  The "Name" parameter names the new window (the default name is new_window); specify 1 or true for "Multi" to open an additional numbered window instead of reusing the window with that name.</action>
-			
+
 			<action name="Log">Logs data to the console (using console.log()), for testing and debugging. Set the 'Message' to specify a text string that should appear in the log. Might be useful for logging Easter Egg #8.</action>
-			
+
 			<action name="LoadPage">Loads the page at the specified "Source", or reloads the current page if no source is given.  Any other parameters are appended to the URL as query parameters.  Specify 1 or yes for "LinkApp" to link the loaded page into the same group as the current page for permissions.</action>
-			
+
 			<action name="ReloadPage">Reloads the page in the user's browser. Note: This event forces a reload, even if the original content could be loaded without one.</action>
 
 			<action name="ReloadPage">Reloads the page in the user's browser.  Note: This event forces a reload, even if the original content could be loaded without one.</action>
@@ -3260,11 +3261,11 @@ my_cmp "widget/component-decl"
 
 			<property name="bgcolor" type="string" subtype="color">A color, RGB or named, for the panel background.  If neither bgcolor nor background transparent.</property>
 
-		    <property name="height" type="integer">Height, in pixels, of the panel.</property>
+				<property name="height" type="integer">Height, in pixels, of the panel.</property>
 
-		    <property name="spacing" type="integer">The maximum height (in pixels) of space allowed between radio buttons on the panel (default: 10px).</property>
+				<property name="spacing" type="integer">The maximum height (in pixels) of space allowed between radio buttons on the panel (default: 10px).</property>
 
-		    <property name="outline_background" type="string" subtype="color">An image to be used for the rectangular border drawn around the radio buttons.</property>
+				<property name="outline_background" type="string" subtype="color">An image to be used for the rectangular border drawn around the radio buttons.</property>
 
 			<property name="textcolor" type="string" subtype="color">The color, RGB or named, of the text within the panel.  Default: "black".</property>
 
@@ -3435,11 +3436,11 @@ $Version=2$
 
 	vbox "widget/vbox"
 
-	    {
+			{
 
-	    x=10; y=10; cellsize=20; spacing=0;
+			x=10; y=10; cellsize=20; spacing=0;
 
-	    rpt "widget/repeat"
+			rpt "widget/repeat"
 
 		{
 
@@ -3447,23 +3448,23 @@ $Version=2$
 
 		button "widget/button"
 
-		    {
+				{
 
-		    type="text";
+				type="text";
 
-		    width=100; height=20;
+				width=100; height=20;
 
-		    text=runserver(:rpt:name);
+				text=runserver(:rpt:name);
 
-		    }
+				}
 
 		}
 
-	    }
+			}
 
 			]]>
 
-	    </sample>
+			</sample>
 
 	</widget>
 
@@ -3709,9 +3710,9 @@ MyScrollPane "widget/scrollpane"
 
 			<property name="tab_location" type="string">The location of the tabs: "top" (default), "bottom", "left", "right", or "none".</property>
 
-		    <property name="tab_width" type="integer">The width of the tabs in pixels.  This is optional for tab_locations of "top", "bottom", and "none".</property>
-		    
-		    <property name="tab_height" type="integer">The height of the tabs in pixels.  This is optional for all tab_locations. Defaults to 24px.</property>
+			<property name="tab_width" type="integer">The width of the tabs in pixels.  This is optional for tab_locations of "top", "bottom", and "none".</property>
+
+			<property name="tab_height" type="integer">The height of the tabs in pixels.  This is optional for all tab_locations. Defaults to 24px.</property>
 
 			<property name="textcolor" type="string" subtype="color">The color of the text to be used on the tabs to identify them.</property>
 
@@ -3723,13 +3724,13 @@ MyScrollPane "widget/scrollpane"
 
 			<property name="rendering" type="string">'client-side' or 'server-side'. This property is intended for developers (although it can give a very small performance boost). A value of "server-side" turns off JS rendering on the client. This does not work for dynamic width tabs (aka. top or bottom tabs with no 'tab_width' property). Defaults to "client-side". </property>
 
-		    <property name="select_translate_along" type="integer">The amount to translate a selected tab along the side of the tab control. Defaults to 0px.</property>
+			<property name="select_translate_along" type="integer">The amount to translate a selected tab along the side of the tab control. Defaults to 0px.</property>
 
-		    <property name="select_translate_out" type="integer">The amount to translate a selected tab out and away from the side of the tab control. Defaults to 2px.</property>
+			<property name="select_translate_out" type="integer">The amount to translate a selected tab out and away from the side of the tab control. Defaults to 2px.</property>
 
-		    <property name="select_translate_x" type="integer">The amount to translate a selected tab in the x direction. If set, overrides the value derived from select_translate_along and/or select_translate_out.</property>
+			<property name="select_translate_x" type="integer">The amount to translate a selected tab in the x direction. If set, overrides the value derived from select_translate_along and/or select_translate_out.</property>
 
-		    <property name="select_translate_y" type="integer">The amount to translate a selected tab in the y direction. If set, overrides the value derived from select_translate_along and/or select_translate_out.</property>
+			<property name="select_translate_y" type="integer">The amount to translate a selected tab in the y direction. If set, overrides the value derived from select_translate_along and/or select_translate_out.</property>
 
 		</properties>
 
@@ -3969,9 +3970,9 @@ myTabControl "widget/tab"
 				<childproperty name="allow_sorting" type="yes/no">Whether clicking this column's header sorts the table by this column.  Defaults to the table's "allow_sorting" value (which defaults to "yes").</childproperty>
 
 				<childproperty name="caption_fieldname" type="string">It is a pseudonym for the fieldname.</childproperty>
-				
+
 				<childproperty name="caption_textcolor" type="string">The color of the caption_fieldname.</childproperty>
-				
+
 				<childproperty name="group_by" type="string">Acts as a boolean to determine if items are group able.</childproperty>
 
 				<childproperty name="height" type="integer">The height in pixels of the column.</childproperty>
@@ -4125,9 +4126,9 @@ tblFileList "widget/table"
 
 objcanvas_test "widget/template"
 
-    {
+		{
 
-    btnFirst "widget/imagebutton"
+		btnFirst "widget/imagebutton"
 
 	{
 
@@ -4153,7 +4154,7 @@ objcanvas_test "widget/template"
 
 	}
 
-    }
+		}
 
 			]]>
 
@@ -4229,10 +4230,10 @@ objcanvas_test "widget/template"
 			<![CDATA[
 
 term1 "widget/terminal"
-    {
-    x=0; y=100; rows=24; cols=80;
-    source = "/samples/top.shl";
-    }
+		{
+		x=0; y=100; rows=24; cols=80;
+		source = "/samples/top.shl";
+		}
 
 			]]>
 
@@ -4695,35 +4696,35 @@ counter "widget/variable"
 
 		<properties>
 
-		  <property name="" type=""></property>
+			<property name="" type=""></property>
 
 		</properties>
 
 		<children>
 
-		  <child type="">
+			<child type="">
 
-		    <childproperty name="" type=""></childproperty>
+				<childproperty name="" type=""></childproperty>
 
-		  </child>
+			</child>
 
 		</children>
 
 		<events>
 
-		  <event name=""></event>
+			<event name=""></event>
 
 		</events>
 
 		<actions>
 
-		  <action name=""></action>
+			<action name=""></action>
 
 		</actions>
 
 		<clientprops>
 
-		  <clientprop name="" type=""></clientprop>
+			<clientprop name="" type=""></clientprop>
 
 		</clientprops>
 
