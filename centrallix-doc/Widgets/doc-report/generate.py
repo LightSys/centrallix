@@ -352,7 +352,7 @@ def merge_confidence(a: Confidence, b: Confidence) -> Confidence:
 
 
 # Render compact origin tags used in reports.
-def get_origins(refs: Iterable[Ref]) -> str:
+def get_origin(refs: Iterable[Ref]) -> str:
 	return "+".join(sorted({
 		r["path"].rsplit(".", 1)[-1]
 		for r in refs
@@ -667,23 +667,15 @@ def parse_js(path: Path) -> dict[str, WidgetImpl]:
 	
 	# Parse each driver file and map interface variables to Add() calls.
 	for js_file in sorted(path.glob("htdrv_*.js")):
-		# Check if the file name indicates that we should skip it.
+		# Get the widget name from the file name, skipping ignored widgets.
 		file_name = js_file.name
-		eager_widget_name = normalize_widget_name(file_name[6:-3])
-		if eager_widget_name == "":
+		widget_name = normalize_widget_name(file_name[6:-3])
+		if widget_name == "":
 			continue
 		
 		# Read file content.
 		js = js_file.read_text(encoding="utf-8", errors="ignore")
 		line_map = LineMap(js)
-		
-		# Get the widget name (from the file name).
-		widget_name = normalize_widget_name(js_file.stem.replace("htdrv_", "", 1))
-		if widget_name != eager_widget_name:
-			print(f"Warning: File {file_name} used to declare widget {widget_name}.")
-			print(f"  Should `\"{eager_widget_name}\": \"{widget_name}\",` be added to WIDGETS_ALIASES?")
-		if widget_name == "":
-			continue
 		
 		# Store the widget.
 		rel = "centrallix-os/sys/js/%s" % file_name
@@ -915,12 +907,7 @@ def compute_report(
 			# Check for missing params.
 			missing_param_refs: dict[str, Ref] = {}
 			for missing_param_name in missing_param_names:
-				refs = action_impl.params_refs.get(missing_param_name, [])
-				if not refs:
-					print(f"Warning: Dropped missing param \"{missing_param_name}\""
-						f" on action \"{action_impl.name}\" due to missing ref.")
-					continue
-				missing_param_refs[missing_param_name] = refs[0]
+				missing_param_refs[missing_param_name] = action_impl.params_refs[missing_param_name][0]
 			
 			# Check for extra params.
 			extra_param_refs: dict[str, Ref] = {}
@@ -1044,7 +1031,7 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 		f"- **Stale widget docs**: {s['stale_widget_docs']}\n"
 		f"- **Ignored widgets**: {len(IGNORED_WIDGETS)}\n"
 		f"- **Widget docs with errors**: {s['widgets_with_errors']} ({error_percent:.0%})\n"
-		f"- **Widget doc errors**: {s['widget_errors']} (~{error_rate:.2}/widget)\n"
+		f"- **Widget doc errors**: {s['widget_errors']} (~{error_rate:.2f}/widget)\n"
 		f"- **Ignored errors**: {s['ignored_errors']}\n"
 	)
 
@@ -1055,11 +1042,10 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 	]:
 		if len(entries) == 0:
 			continue
-		if title:
-			lines.append(f"## {title}")
+		lines.append(f"## {title}")
 		for entry in entries:
 			refs = entry.get("refs", [])
-			lines.append(f"- `{entry['name']}` (origins: `{get_origins(refs)}`)")
+			lines.append(f"- `{entry['name']}` (origin: `{get_origin(refs)}`)")
 			lines.extend(f"  - {ref_to_markdown_link(report_dir, repo_root, r)}" for r in refs)
 			if not refs:
 				lines.append("  - source: unknown")
@@ -1072,7 +1058,7 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 		lines.append(f"### `{item['widget']}`")
 		
 		# Write sources.
-		lines.append(f"- **Sources** (origin: `{get_origins(refs)}`)")
+		lines.append(f"- **Sources** (origin: `{get_origin(refs)}`)")
 		lines.extend(f"  - {ref_to_markdown_link(report_dir, repo_root, r)}" for r in refs)
 		
 		# Write event issues.
@@ -1080,7 +1066,7 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 			lines.append("- **Undocumented events**")
 			for event in item["missing_events"]:
 				lines.append(f"  - `{event['name']}` ("
-					f"origin: `{get_origins(event['refs'])}`, "
+					f"origin: `{get_origin(event['refs'])}`, "
 					f"confidence: `{event['confidence']}`"
 				")")
 				for ref in event.get("refs", []):
@@ -1097,7 +1083,7 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 			lines.append("- **Undocumented actions**")
 			for action in item["missing_actions"]:
 				lines.append(f"  - `{action['name']}` ("
-					f"origin: `{get_origins(action['refs'])}`, "
+					f"origin: `{get_origin(action['refs'])}`, "
 					f"confidence: `{action['confidence']}`"
 				")")
 				for ref in action.get("refs", []):
@@ -1117,7 +1103,7 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 				
 				# Write signal sources.
 				signal_refs = incorrect_action_params["signal_refs"]
-				lines.append(f"    - **Sources** (origin: `{get_origins(signal_refs)}`)")
+				lines.append(f"    - **Sources** (origin: `{get_origin(signal_refs)}`)")
 				for signal_ref in signal_refs:
 					lines.append(f"      - {ref_to_markdown_link(report_dir, repo_root, signal_ref)}")
 				
