@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -21,7 +22,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -450,6 +451,7 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
     int i,j,cnt,n_assign,exists;
     pQueryStructure subtree;
     pQueryStructure having;
+    pQueryStructure orderby_item, last_orderby;
     char* ptr;
     int has_identity;
     pQueryDeclaredObject qdo;
@@ -687,6 +689,64 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		mssError(0,"MQ","Error in ON DUPLICATE expression <%s>", subtree->RawData.String);
 		return -1;
 		}
+	    }
+
+	/*** Merge the ORDER BY clauses if there is more than one.  An ORDER BY
+	 *** marked DEFAULT is replaced by later ORDER BYs.  An ORDER BY without
+	 *** DEFAULT is always kept and later clauses append their keys to it.
+	 ***/
+	last_orderby = NULL;
+	cnt = xaCount(&qs->Children);
+	for(i=0;i<cnt;i++) /* Find last ORDER BY */
+	    {
+	    subtree = (pQueryStructure)xaGetItem(&qs->Children, i);
+	    if (subtree->NodeType == MQ_T_ORDERBYCLAUSE)
+		last_orderby = subtree;
+	    }
+	ob = NULL;
+	for(i=0;i<cnt;)
+	    {
+	    subtree = (pQueryStructure)xaGetItem(&qs->Children, i);
+	    const bool is_last = (subtree == last_orderby);
+
+	    /** Skip non ORDER BY clauses. **/
+	    if (subtree->NodeType != MQ_T_ORDERBYCLAUSE)
+		{
+		i++;
+		continue;
+		}
+
+	    /** Drop a DEFAULT clause that isn't the last one. **/
+	    if ((subtree->Flags & MQ_SF_DEFAULTORDER) && !is_last)
+		{
+		/** Remove ORDER BY element. **/
+		xaRemoveItem(&qs->Children, i);
+		mq_internal_FreeQS(subtree);
+		cnt = xaCount(&qs->Children);
+		continue;
+		}
+
+	    /** Keep the first surviving clause. **/
+	    if (ob == NULL)
+		{
+		ob = subtree;
+		i++;
+		continue;
+		}
+
+	    /** Fold later clauses into the first one. **/
+	    for(j=0;j<subtree->Children.nItems;j++)
+		{
+		orderby_item = (pQueryStructure)xaGetItem(&subtree->Children, j);
+		orderby_item->Parent = ob;
+		xaAddItem(&ob->Children, (void*)orderby_item);
+		}
+	    xaClear(&subtree->Children, NULL, NULL);
+
+	    /** Remove ORDER BY element. **/
+	    xaRemoveItem(&qs->Children, i);
+	    mq_internal_FreeQS(subtree);
+	    cnt = xaCount(&qs->Children);
 	    }
 
 	/** Compile the order by expressions **/
@@ -1391,7 +1451,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
     pXString xs, param;
     pTObjData ptod;
     char sourcetype[64];
-    static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
+    static char* reserved_wds[] = {"where","select","from","order","by","default","set","rowcount","group",
     				   "crosstab","as","having","into","update","delete","insert",
 				   "values","with","limit","for","on","duplicate", "declare",
 				   "showplan", "multistatement", "if", "modified", "exec", 
@@ -1490,6 +1550,18 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 				orderby_cls = mq_internal_AllocQS(MQ_T_ORDERBYCLAUSE);
 				xaAddItem(&qs->Children, (void*)orderby_cls);
 				orderby_cls->Parent = qs;
+				
+				/*** Optional DEFAULT keyword: Marks this ORDER BY
+				 *** to be replaced by later ORDER BYs, instead of
+				 *** appended to. (see mq_internal_PostProcess()).
+				 ***/
+				if ((t = mlxNextToken(lxs)) == MLX_TOK_RESERVEDWD &&
+				    (ptr = mlxStringVal(lxs, NULL)) != NULL && 
+				    strcmp(ptr, "default") == 0)
+				    orderby_cls->Flags |= MQ_SF_DEFAULTORDER;
+				else
+				    mlxHoldToken(lxs);
+				
 			        next_state = OrderByItem;
 				}
 			    }

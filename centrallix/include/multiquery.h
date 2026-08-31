@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -145,6 +145,7 @@ typedef struct _QS
 #define MQ_SF_COLLECTION	8192		/* DECLARE COLLECTION ... */
 #define MQ_SF_NONEMPTY		16384		/* SELECT ... FROM NONEMPTY ... */
 #define MQ_SF_PAGED		32768		/* SELECT ... FROM PAGED ... */
+#define MQ_SF_DEFAULTORDER	65536		/* ORDER BY DEFAULT (dropped/overridden by a following ORDER BY) */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1
