@@ -40,8 +40,9 @@ const cx_hints_style =
     };
 
 // cx_set_hints() - initializes hints information for a given
-// form field.
-function cx_set_hints(element, hstr, hinttype, applydef)
+// form field.  'context' preserves the namespace where hints
+// expressions were authored when hints are applied in components.
+function cx_set_hints(element, hstr, hinttype, applydef, context)
     {
     if (!element.cx_hints) element.cx_hints = {};
     if (element.cx_hints.hstr == hstr) 
@@ -50,13 +51,15 @@ function cx_set_hints(element, hstr, hinttype, applydef)
 	    element.cx_hints['all'] = cx_parse_hints('');
 	return;
 	}
+    if (!context) context = wgtrGetRoot(element);
     element.cx_hints[hinttype] = cx_parse_hints(hstr);
+    element.cx_hints[hinttype].Context = context;
     var old_default = null;
     if (element.cx_hints && element.cx_hints['all']) old_default = element.cx_hints['all'].DefaultExpr;
     cx_merge_hints(element);
     if (element.hintschanged) element.hintschanged(hinttype);
     if (element.cx_hints_applyto)
-	cx_set_hints(element.cx_hints_applyto, hstr, hinttype, applydef);
+	cx_set_hints(element.cx_hints_applyto, hstr, hinttype, applydef, context);
     if (element.form && element.form.mode == 'New' && applydef && old_default != element.cx_hints['all'].DefaultExpr)
 	cx_hints_startnew(element);
     }
@@ -71,7 +74,7 @@ function cx_copy_hints(src, dst)
 	for(var h in src.cx_hints)
 	    {
 	    if ((h == 'app' || h == 'data' || h == 'widget') && src.cx_hints[h].hstr)
-		cx_set_hints(dst, src.cx_hints[h].hstr, h, true);
+		cx_set_hints(dst, src.cx_hints[h].hstr, h, true, src.cx_hints[h].Context);
 	    }
 	}
     }
@@ -111,20 +114,121 @@ function cx_AND(v1, v2)
     return v1 && v2;
     }
 
-// cx_FIRST() - return the first value that is set.
-function cx_FIRST(v1, v2)
+// cx_MIN() - returns the lower of the two values, or whichever one is set.
+function cx_MIN(v1, v2)
     {
     if (v1 == null) return v2;
-    return v1;
+    if (v2 == null) return v1;
+    return (v1 < v2)?v1:v2;
     }
 
-// cx_merge_hint_expr() - merges two expressions into one, combining them
-// with the given function.
-function cx_merge_hint_expr(e1, e2, fn)
+// cx_MAX() - returns the higher of the two values, or whichever one is set.
+function cx_MAX(v1, v2)
+    {
+    if (v1 == null) return v2;
+    if (v2 == null) return v1;
+    return (v1 > v2)?v1:v2;
+    }
+
+// Compiled expressions, keyed by expression text.  Created without any
+// prototype (unlike {}) so keys like "toString" cannot match an inherited
+// property.
+let cx_hints_compiled = Object.create(null);
+let cx_hints_compiled_cnt = 0;
+const cx_hints_compiled_max = 256;
+
+// cx_hints_compile() - build a function that evaluates expression text.  It
+// takes the scope widget names resolve in (_context) and the object property
+// names belong to (_this).  The cache is emptied when full.
+function cx_hints_compile(expr)
+    {
+	// Check for cache entry.
+	if (!cx_hints_compiled[expr])
+	    { // Cache miss.
+	    if (cx_hints_compiled_cnt >= cx_hints_compiled_max)
+		{
+		// Cache too large, drop it first.
+		cx_hints_compiled = Object.create(null);
+		cx_hints_compiled_cnt = 0;
+		}
+
+	    // Compile and cache the expression.
+	    cx_hints_compiled[expr] = new Function('_context', '_this', 'return (' + expr + ');');
+	    cx_hints_compiled_cnt++;
+	    }
+
+    return cx_hints_compiled[expr];
+    }
+
+// cx_eval_in_scope() - evaluate expression text with 'new_scope' (a namespace,
+// its identifier, or a widget node) as its scope and 'new_this' as the object
+// to which property names belong.
+// Can be written into expressions to give specific parts their own scope.
+function cx_eval_in_scope(new_scope, new_this, expr)
+    {
+    if (!expr) return null;
+    return cx_hints_compile(expr)(new_scope, new_this);
+    }
+
+// cx_hints_scope_id() - get the namespace identifier for a scope given as an
+// identifier, a namespace, or a widget node.  Null if there is none.
+function cx_hints_scope_id(scope)
+    {
+    if (!scope) return null;
+    if (typeof scope == 'string') return scope;
+    if (scope.NamespaceID) return scope.NamespaceID;
+    if (scope.__WgtrNamespace) return scope.__WgtrNamespace.NamespaceID;
+    return null;
+    }
+
+// cx_hints_quote() - quote a string so that it can be written into an
+// expression as a string literal.
+function cx_hints_quote(s)
+    {
+    return "'" + String(s).replace(/([\\'])/g, '\\$1').replace(/\r/g, '\\r').replace(/\n/g, '\\n') + "'";
+    }
+
+// cx_scope_hint_expr() - wrap an expression in a cx_eval_in_scope() call, so
+// that it still evaluates in 'scope' after being merged with expressions from
+// other scopes.  Unchanged if 'scope' has no identifier.
+function cx_scope_hint_expr(expr, scope)
+    {
+    const scope_id = cx_hints_scope_id(scope);
+    if (expr && scope && !scope_id)
+	{
+	pg_debug(""
+	    + "cx_scope_hint_expr - Skipping scope change to scope with "
+	    + "no namespace identifier. The expression keeps the merged scope!\n"
+	);
+	}
+
+    if (!expr || !scope_id) return expr;
+    return 'cx_eval_in_scope(' + cx_hints_quote(scope_id) + ',_this,' + cx_hints_quote(expr) + ')';
+    }
+
+// cx_merge_hint_expr() - merges two expressions into one, combining them by
+// using the given function, which is called by name in the merged expression.
+// ctx1 and ctx2 are the scopes of e1 and e2.  A single expression is returned
+// as is.
+function cx_merge_hint_expr(e1, ctx1, e2, ctx2, fn)
     {
     if (!e2) return e1;
     if (!e1) return e2;
-    return fn + '((' + e1 + '),(' + e2 + '))';
+    e1 = cx_scope_hint_expr(e1, ctx1);
+    e2 = cx_scope_hint_expr(e2, ctx2);
+    return fn.name + '((' + e1 + '),(' + e2 + '))';
+    }
+
+// cx_merge_hint_expr_first() - merges two expressions into one yielding the
+// first value that is not null.  e2 is only evaluated if e1 yields null.
+// ctx1 and ctx2 are the scopes of e1 and e2.
+function cx_merge_hint_expr_first(e1, ctx1, e2, ctx2)
+    {
+    if (!e2) return e1;
+    if (!e1) return e2;
+    e1 = cx_scope_hint_expr(e1, ctx1);
+    e2 = cx_scope_hint_expr(e2, ctx2);
+    return '((' + e1 + ') ?? (' + e2 + '))';
     }
 
 // cx_merge_hint_array() - merges two array lists of strings by picking
@@ -159,10 +263,10 @@ function cx_merge_two_hints(h1,h2)
 	if (!h1 && !h2) return null;
 	if (!h1) return h2;
 	if (!h2) return h1;
-	nh.Constraint = cx_merge_hint_expr(h1.Constraint, h2.Constraint, 'cx_AND');
-	nh.DefaultExpr = cx_merge_hint_expr(h1.DefaultExpr, h2.DefaultExpr, 'cx_FIRST');
-	nh.MinValue = cx_merge_hint_expr(h1.MinValue, h2.MinValue, 'min');
-	nh.MaxValue = cx_merge_hint_expr(h1.MaxValue, h2.MaxValue, 'max');
+
+	nh.Constraint = cx_merge_hint_expr(h1.Constraint, h1.Context, h2.Constraint, h2.Context, cx_AND);
+	nh.MinValue = cx_merge_hint_expr(h1.MinValue, h1.Context, h2.MinValue, h2.Context, cx_MIN);
+	nh.MaxValue = cx_merge_hint_expr(h1.MaxValue, h1.Context, h2.MaxValue, h2.Context, cx_MAX);
 	nh.EnumList = cx_merge_hint_array(h1.EnumList, h2.EnumList);
 	nh.EnumQuery = cx_merge_hint_string(h1.EnumQuery, h2.EnumQuery);
 	nh.Format = cx_merge_hint_string(h1.Format, h2.Format);
@@ -178,6 +282,10 @@ function cx_merge_two_hints(h1,h2)
 	nh.OrderID = cx_merge_hint_integer_min(h1.OrderID, h2.OrderID);
 	nh.GroupName = cx_merge_hint_string(h1.GroupNAme, h2.GroupName);
 	nh.FriendlyName = cx_merge_hint_string(h1.FriendlyName, h2.FriendlyName);
+
+	// A single expression still needs the scope it was written in.
+	nh.DefaultExpr = cx_merge_hint_expr_first(h1.DefaultExpr, h1.Context, h2.DefaultExpr, h2.Context);
+	nh.Context = h1.DefaultExpr ? h1.Context : (h2.DefaultExpr ? h2.Context : null);
 
     return nh;
     }
@@ -230,6 +338,7 @@ function cx_parse_hints(hstr)
 	ph.MaxValue = null;
 	ph.Constraint = null;
 	ph.DefaultExpr = null;
+	ph.Context = null;
 
 	// get the information array first.
 	if (!hstr || !hstr.charAt) return ph;
@@ -376,9 +485,8 @@ function cx_hints_startnew(e)
 function cx_hints_setdefault(e)
     {
 
-	var _context = wgtrGetRoot(e);
-	var _this = e;
-	e.setvalue(eval(e.cx_hints['all'].DefaultExpr));
+	const scope = (e.cx_hints && e.cx_hints['all'] && e.cx_hints['all'].Context) || wgtrGetRoot(e);
+	e.setvalue(cx_eval_in_scope(scope, e, e.cx_hints['all'].DefaultExpr));
 	if (e.form) e.form.DataNotify(e);
     
     return;
