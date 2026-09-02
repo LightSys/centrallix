@@ -1,20 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -42,6 +30,14 @@
 /*		other actions on the page to occur.			*/
 /************************************************************************/
 
+#include <string.h>
+
+#include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
+#include "ht_render.h"
+#include "wgtr.h"
+
 
 /*** httmRender - generate the HTML code for the timer nonvisual widget.
  ***/
@@ -54,17 +50,18 @@ httmRender(pHtSession s, pWgtrNode tree, int z)
     int auto_reset = 0;
     int auto_start = 1;
 
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1,"HTTM","Netscape 4.x or W3C DOM support required");
-	    return -1;
+	    mssError(1, "HTTM", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
 	    }
 
 	/** Get msec for timer countdown **/
 	if (wgtrGetPropertyValue(tree,"msec",DATA_T_INTEGER,POD(&msec)) != 0)
 	    {
 	    mssError(1,"HTTM","Timer widget must have 'msec' time specified");
-	    return -1;
+	    goto err;
 	    }
 
 	/** Get auto reset and auto start settings **/
@@ -72,18 +69,39 @@ httmRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"auto_start",DATA_T_INTEGER,POD(&auto_start)) != 0) auto_start = 1;
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto err;
 	strtcpy(name,ptr,sizeof(name));
 
-	htrAddScriptInclude(s, "/sys/js/htdrv_timer.js", 0);
+	/** Write JS include. **/
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_timer.js", 0) != 0) goto err;
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    tm_init({node:wgtrGetNodeRef(ns,\"%STR&SYM\"), time:%INT, autoreset:%INT, autostart:%INT});\n", name, msec, auto_reset, auto_start);
+	if (htrAddScriptInit_va(s,
+	    "\ttm_init({ "
+		"node:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"time:%INT, "
+		"autoreset:%INT, "
+		"autostart:%INT, "
+	    "});\n",
+	    name, msec, auto_reset, auto_start
+	) != 0)
+	    {
+	    mssError(0, "HTTM", "Failed to write JS init call.");
+	    goto err;
+	    }
 
-	/** Check for objects within the timer. **/
-	htrRenderSubwidgets(s, tree, z+2);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 2) != 0) goto err;
 
-    return 0;
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTTM",
+	    "Failed to render \"%s\":\"%s\".",
+	    tree->Name, tree->Type
+	);
+	return -1;
     }
 
 
@@ -102,17 +120,6 @@ httmInitialize()
 	strcpy(drv->Name,"DHTML Nonvisual Timer Widget");
 	strcpy(drv->WidgetName,"timer");
 	drv->Render = httmRender;
-
-	/** Add an 'expired' event **/
-	htrAddEvent(drv,"Expire");
-
-	/** Add a 'set timer' action **/
-	htrAddAction(drv,"SetTimer");
-	htrAddParam(drv,"SetTimer","Time",DATA_T_INTEGER);
-	htrAddParam(drv,"SetTimer","AutoReset",DATA_T_INTEGER);
-
-	/** Add a 'cancel timer' action **/
-	htrAddAction(drv,"CancelTimer");
 
 	/** Register. **/
 	htrRegisterDriver(drv);

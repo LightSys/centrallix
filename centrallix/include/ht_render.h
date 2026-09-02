@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -77,25 +77,6 @@ typedef struct _HTN
     HtNamespace, *pHtNamespace;
 
 
-/** Widget parameter structure, also used for positioning params **/
-typedef struct
-    {
-    char	ParamName[32];		/* Name of parameter */
-    int		DataType;		/* DATA_T_xxx, from obj.h */
-    XArray	EnumValues;		/* If enumerated, values listing */
-    }
-    HtParam, *pHtParam;
-
-
-/** Widget event or action structure, used for handling connectors **/
-typedef struct
-    {
-    char	Name[32];		/* Name of event or action */
-    XArray	Parameters;		/* Listing of parameters */
-    }
-    HtEventAction, *pHtEventAction;
-
-
 /** WGTR RenderFlag defines **/
 #define HT_WGTF_NOOBJECT 1		/* wgt node does not have a corresponding DHTML object */
 #define HT_WGTF_NORENDER 2		/* do not deploy this node to the client. */
@@ -107,37 +88,10 @@ typedef struct
     char	WidgetName[64];		/* Name of widget. */
     int		(*Setup)();
     int		(*Render)();		/* Function to render the page */
-    XArray	PosParams;		/* Positioning parameter listing. */
     XArray	Properties;		/* Properties this thing will have. */
-    XArray	Events;			/* Events for this widget type */
-    XArray	Actions;		/* Actions on this widget type */
     XArray	PseudoTypes;		/* Pseudo-types this widget driver will handle */
     }
     HtDriver, *pHtDriver;
-
-
-/** Widget parameter value structure. **/
-typedef struct
-    {
-    pHtParam	Parameter;		/* Param that this value is for. */
-    int		IntVal;			/* if DATA_T_INTEGER, the int value */
-    char*	StringVal;		/* if DATA_T_STRING, the string value */
-    int		StringAlloc;		/* set if string was malloc()'d. */
-    DateTime	DateVal;		/* if DATA_T_DATETIME, the date value */
-    int		EnumVal;		/* if DATA_T_ENUM, the enumerated id */
-    }
-    HtValue, *pHtValue;
-
-
-/** Widget parameterized tree structure for pre-rendering **/
-typedef struct _HT
-    {
-    pHtDriver	Driver;			/* Driver to handle this object. */
-    XArray	Values;			/* Parameters for widget construction */
-    XArray	LocValues;		/* Positioning params for this widget */
-    XArray	Children;
-    }
-    HtTree, *pHtTree;
 
 
 /** Structure for holding string-string-value data. **/
@@ -253,7 +207,6 @@ typedef struct
 typedef struct
     {
     HtPage	Page;			/* the generated page... */
-    pHtTree	Tree;			/* tree page metainfo structure */
     int		DisableBody;
     char*	Tmpbuf;			/* temp buffer used in _va() functions */
     size_t	TmpbufSize;
@@ -264,7 +217,6 @@ typedef struct
     int		Width;			/* target container (browser) width in pixels */
     int		Height;			/* target container height in pixels */
     char*	GraftPoint;		/* name of target container */
-    pWgtrVerifySession VerifySession;	/* name of the current verification session */
     pWgtrClientInfo ClientInfo;
     pHtNamespace Namespace;		/* current namespace */
     int		IsDynamic;
@@ -298,7 +250,6 @@ int htrAddBodyItem_va(pHtSession s, char* fmt, ... );
 int htrAddBodyParam(pHtSession s, char* html_param);
 /*int htrAddBodyParam_va(pHtSession s, char* fmt, ... ) __attribute__((format(printf, 2, 3)));*/
 int htrAddBodyParam_va(pHtSession s, char* fmt, ... );
-int htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, char* handler_code);
 int htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drvname, char* function);
 int htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags);
 int htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags);
@@ -347,12 +298,11 @@ int htrAddBodyItemLayerEnd(pHtSession s, int flags);
 /** Administrative functions **/
 int htrRegisterDriver(pHtDriver drv);
 int htrInitialize();
+char* htrGetErrorHTMLMsg(char* title, char* err_str);
+char* htrGetErrorHTML(char* title);
 int htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSession s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info);
 int htrWrite(pHtSession s, char* buf, int len);
 int htrQPrintf(pHtSession s, char* fmt, ...);
-int htrAddAction(pHtDriver drv, char* action_name);
-int htrAddEvent(pHtDriver drv, char* event_name);
-int htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype);
 pHtDriver htrAllocDriver();
 int htrAddSupport(pHtDriver drv, char* className);
 char* htrParamValue(pHtSession s, char* paramname);
@@ -362,5 +312,80 @@ int htrBuildClientWgtr(pHtSession s, pWgtrNode tree);
 /** For the rule module... **/
 int htruleRegister(char* ruletype, ...);
 
-#endif /* _HT_RENDER_H */
+/*** Write strings known at compile time slightly more efficiently.
+ *** 
+ *** @param str A string literal known at compile time.  This must be a
+ *** 	literal value and it may be applied multiple times.
+ ***/
+#define htrWriteConst(s, str) htrWrite(s, (str), sizeof(str) - 1)
 
+
+
+/** ===================================================== **/
+/** Define macros for implementing responsive dimensions. **/
+/** ===================================================== **/
+
+/*** Brief explanation of the responsiveness formula.
+ ***
+ *** Responsive dimensions in widgets use the following formula:
+ ***    Original px + (100% - Total px) * Flex
+ *** Where "Original" is the original size of the object in an adaptive layout,
+ ***       "Total" is the total size of the widget's parent container, and
+ ***       "Flex" is the widget flexibility (where all flexibilities add to 1).
+ *** All, with respect to the given dimension.
+ ***
+ *** The intuition behind this formula is that (100% - Total px) is 0px
+ *** if the parent container is the size intended by the adaptive design.
+ *** However, if the user resizes the window, (100% - Total px) is the
+ *** difference between the size in the adaptive design and the current
+ *** size, so the widget changes size with respect to that difference.
+ ***/
+
+/** @brief The qprintf format to specify a responsive dimension. **/
+#define ht_flex_format "calc(%INTpx + (100%% - %POSpx) * %DBL)"
+
+/*** @brief The function which generates the values that should be passed to
+ *** qprintf in order to satisfy an ht_flex_format.
+ ***
+ *** @param size The original size of the ui element.
+ *** @param total The total size of the ui element's container.
+ *** @param flex The flexibility of the ui element. It is strongly recommended
+ ***             to generate this with an ht_get_fl function call.
+ *** @returns Several values to serve as parameters for a qprintf call.
+ ***/
+#define ht_flex(size, total, flex) (size), (total), (flex)
+
+
+/** ====[ Macros for getting flex-related values ]==== **/
+#define ht_get_parent_w(widget) wgtrGetContainerWidth(widget)
+#define ht_get_parent_h(widget) wgtrGetContainerHeight(widget)
+
+/*** @param widget The widget to be queried.
+ *** @returns The flexibility of the widget in the x direction.
+ ***/
+#define ht_get_fl_x(widget) ((widget)->fl_scale_x)
+
+/*** @param widget The widget to be queried.
+ *** @returns The flexibility of the widget in the y direction.
+ ***/
+#define ht_get_fl_y(widget) ((widget)->fl_scale_y)
+
+/*** @param widget The widget to be queried.
+ *** @returns The flexibility of the widget in the width direction.
+ ***/
+#define ht_get_fl_w(widget) ((widget)->fl_scale_w)
+
+/*** @param widget The widget to be queried.
+ *** @returns The flexibility of the widget in the height direction.
+ ***/
+#define ht_get_fl_h(widget) ((widget)->fl_scale_h)
+
+
+/** ====[ Macros for simple flex cases ]==== **/
+
+#define ht_flex_x(x, widget) ht_flex(x, ht_get_parent_w(widget), ht_get_fl_x(widget))
+#define ht_flex_y(y, widget) ht_flex(y, ht_get_parent_h(widget), ht_get_fl_y(widget))
+#define ht_flex_w(w, widget) ht_flex(w, ht_get_parent_w(widget), ht_get_fl_w(widget))
+#define ht_flex_h(h, widget) ht_flex(h, ht_get_parent_h(widget), ht_get_fl_h(widget))
+
+#endif /* _HT_RENDER_H */

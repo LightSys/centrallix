@@ -1,20 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2000-2005 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2000-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -41,6 +29,19 @@
 /*		vertical, or horizontal.				*/
 /************************************************************************/
 
+#include <string.h>
+
+#include "cxlib/check.h"
+#include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xstring.h"
+#include "expression.h"
+#include "ht_render.h"
+#include "wgtr.h"
+
+
 /** globals **/
 static struct 
     {
@@ -49,10 +50,23 @@ static struct
     HTMN;
 
 
+/*** htmenu_internal_AddDot() - write the image that marks where a menu row was
+ *** drawn, so htdrv_menu.js can find that row at runtime.
+ ***
+ *** Every mcnt gets exactly one of these, and one row.  mn_scan_images() in
+ *** htdrv_menu.js indexes its coords array by mcnt, and wgtmenuVerify() in
+ *** wgtdrv_menu.c counts rows the same way, so a new kind of row has to call
+ *** this too.
+ ***/
 int
 htmenu_internal_AddDot(pHtSession s, int mcnt, char* nptr, int is_horizontal, int row_height)
     {
-    htrAddBodyItem_va(s,"<td valign=\"%STR&HTE\"><img align=\"%STR&HTE\" name=\"xy_%STR&SYM%POS\" width=\"1\" height=\"%POS\" src=\"/sys/images/trans_1.gif\"></td>", ((mcnt&1) || !is_horizontal)?"top":"bottom", ((mcnt&1) || !is_horizontal)?"top":"bottom", nptr, mcnt, ((mcnt&1) || !is_horizontal)?(row_height?row_height:1):1);
+	if (htrAddBodyItem_va(s,"<td valign=\"%STR&HTE\"><img align=\"%STR&HTE\" id=\"xy_%STR&SYM_%POS\" width=\"1\" height=\"%POS\" src=\"/sys/images/trans_1.gif\"></td>", ((mcnt&1) || !is_horizontal)?"top":"bottom", ((mcnt&1) || !is_horizontal)?"top":"bottom", nptr, mcnt, ((mcnt&1) || !is_horizontal)?(row_height?row_height:1):1) != 0)
+	    {
+	    mssError(0, "HTMENU", "Failed to write position tracking image for item %d.", mcnt);
+	    return -1;
+	    }
+
     return 0;
     }
 
@@ -66,39 +80,47 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	xsPrintf(xs, "enabled:1, onright:%d", is_onright);
 
 	if (!is_horizontal)
-	    htrAddBodyItem(s, "<tr>");
+	    {
+	    if (htrAddBodyItem(s, "<tr>") != 0) goto error;
+	    }
 
 	/** image used to track position **/
-	htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h);
+	if (htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h) != 0) goto error;
 
 	strtcpy(name, wgtrGetName(menu_item), sizeof(name));
 
 	/** icon **/
 	if (wgtrGetPropertyValue(menu_item,"icon",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    htrAddBodyItem_va(s, "<td valign=\"middle\"><img src=\"%STR&HTE\"></td>", ptr);
+	    if (htrAddBodyItem_va(s, "<td valign=\"middle\"><img src=\"%STR&HTE\"></td>", ptr) != 0) goto error;
 	    xsConcatQPrintf(xs, ", icon:'%STR&JSSTR'", ptr);
 	    }
 	else
-	    htrAddBodyItem(s, "<td>&nbsp;</td>");
+	    {
+	    if (htrAddBodyItem(s, "<td>&nbsp;</td>") != 0) goto error;
+	    }
 
 	/** checkbox **/
 	if ( (rval=htrGetBoolean(menu_item, "checked", -1)) >= 0)
 	    {
-	    htrAddBodyItem_va(s, "<td valign=\"middle\"><img name=\"cb_%POS\" src=\"/sys/images/checkbox_%STR&HTE.gif\"></td>", mcnt, rval?"checked":"unchecked");
+	    if (htrAddBodyItem_va(s, "<td valign=\"middle\"><img id=\"cb_%STR&SYM_%POS\" src=\"/sys/images/checkbox_%STR&HTE.gif\"></td>", nptr, mcnt, rval?"checked":"unchecked") != 0) goto error;
 	    xsConcatQPrintf(xs, ", check:%STR", rval?"true":"false");
 	    }
 	else
-	    htrAddBodyItem(s, "<td></td>");
+	    {
+	    if (htrAddBodyItem(s, "<td></td>") != 0) goto error;
+	    }
 
 	/** Text **/
 	if (wgtrGetPropertyValue(menu_item,"label",DATA_T_STRING,POD(&ptr)) == 0)
 	    {
-	    htrAddBodyItem_va(s, "<td nowrap valign=\"middle\">%STR&HTE</td>", ptr);
+	    if (htrAddBodyItem_va(s, "<td nowrap valign=\"middle\">%STR&HTE</td>", ptr) != 0) goto error;
 	    xsConcatQPrintf(xs, ", label:'%STR&JSSTR'", ptr);
 	    }
 	else
-	    htrAddBodyItem(s, "<td></td>");
+	    {
+	    if (htrAddBodyItem(s, "<td></td>") != 0) goto error;
+	    }
 	if (wgtrGetPropertyValue(menu_item, "value", DATA_T_STRING, POD(&ptr)) == 0)
 	    xsConcatQPrintf(xs, ", value:'%STR&JSSTR'", ptr);
 	else if (wgtrGetPropertyValue(menu_item, "value", DATA_T_INTEGER, POD(&n)) == 0)
@@ -107,13 +129,17 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	/** Submenu arrow **/
 	if (is_submenu && !is_horizontal)
 	    {
-	    htrAddBodyItem(s, "<td valign=\"middle\"><img src=\"/sys/images/menu_arrow.gif\"></td>");
+	    if (htrAddBodyItem(s, "<td valign=\"middle\"><img src=\"/sys/images/menu_arrow.gif\"></td>") != 0) goto error;
 	    }
 	else
-	    htrAddBodyItem(s, "<td>&nbsp;</td>");
+	    {
+	    if (htrAddBodyItem(s, "<td>&nbsp;</td>") != 0) goto error;
+	    }
 
 	if (!is_horizontal)
-	    htrAddBodyItem(s, "</tr>");
+	    {
+	    if (htrAddBodyItem(s, "</tr>") != 0) goto error;
+	    }
 
 	if (is_submenu)
 	    {
@@ -121,11 +147,28 @@ htmenu_internal_AddItem(pHtSession s, pWgtrNode menu_item, int is_horizontal, in
 	    }
 
 	if (is_submenu) 
-	    htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").AddItem({%STR});\n", nptr, xs->String);
+	    {
+	    if (htrAddScriptInit_va(s,
+		"\twgtrGetNodeRef(ns, '%STR&SYM').AddItem({ %STR });\n",
+		nptr, xs->String
+	    ) != 0)
+		goto error;
+	    }
 	else
-	    htrAddScriptInit_va(s, "    wgtrReplaceNode(wgtrGetNodeRef(\"%STR&SYM\",\"%STR&SYM\"), wgtrGetNodeRef(ns,\"%STR&SYM\").AddItem({%STR}));\n", wgtrGetNamespace(menu_item), name, nptr, xs->String);
+	    {
+	    if (htrAddScriptInit_va(s,
+		"\twgtrReplaceNode(wgtrGetNodeRef('%STR&SYM', '%STR&SYM'), wgtrGetNodeRef(ns, '%STR&SYM').AddItem({ %STR }));\n",
+		wgtrGetNamespace(menu_item), name, nptr, xs->String
+	    ) != 0)
+		goto error;
+	    }
 
     return 0;
+
+    error:
+	mssError(0, "HTMENU", "Failed to write menu item %d.", mcnt);
+
+    return -1;
     }
 
 
@@ -134,22 +177,29 @@ htmenu_internal_AddSep(pHtSession s, int is_horizontal, int row_h, int mcnt, cha
     {
 
 	if (!is_horizontal)
-	    htrAddBodyItem(s, "<tr>");
+	    {
+	    if (htrAddBodyItem(s, "<tr>") != 0) goto error;
+	    }
 
-	htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h);
+	if (htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h) != 0) goto error;
 
 	/** If vertical, add a separating line.  If horiz, just add some space **/
-	if (is_horizontal)  
+	if (is_horizontal)
 	    {
-	    htrAddBodyItem(s, "<td>&nbsp;&nbsp;&nbsp;</td>");
+	    if (htrAddBodyItem(s, "<td>&nbsp;&nbsp;&nbsp;</td>") != 0) goto error;
 	    }
 	else
 	    {
-	    htrAddBodyItem(s, "<td colspan=\"4\" height=\"4\" background=\"/sys/images/menu_sep.gif\"><img src=\"/sys/images/trans_1.gif\" height=\"4\" width=\"1\"></td></tr>");
+	    if (htrAddBodyItem(s, "<td colspan=\"4\" height=\"4\" background=\"/sys/images/menu_sep.gif\"><img src=\"/sys/images/trans_1.gif\" height=\"4\" width=\"1\"></td></tr>") != 0) goto error;
 	    }
-	htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").AddItem({sep:true});\n", nptr);
+	if (htrAddScriptInit_va(s, "\twgtrGetNodeRef(ns, '%STR&SYM').AddItem({ sep:true });\n", nptr) != 0) goto error;
 
     return 0;
+
+    error:
+	mssError(0, "HTMENU", "Failed to write menu separator %d.", mcnt);
+
+    return -1;
     }
 
 
@@ -159,17 +209,24 @@ htmenu_internal_AddTitle(pHtSession s, pWgtrNode menu_title, int is_horizontal, 
     char* ptr;
 
 	if (!is_horizontal)
-	    htrAddBodyItem(s, "<tr>");
+	    {
+	    if (htrAddBodyItem(s, "<tr>") != 0) goto error;
+	    }
 
-	htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h);
+	if (htmenu_internal_AddDot(s, mcnt, nptr, is_horizontal, row_h) != 0) goto error;
 
 	if (wgtrGetPropertyValue(menu_title,"label",DATA_T_STRING,POD(&ptr)) != 0)
 	    ptr = "";
 
-	htrAddBodyItem_va(s, "<td colspan=\"4\" align=\"center\"><b>%STR&HTE</b></td></tr>", ptr);
-	htrAddScriptInit_va(s, "    wgtrGetNodeRef(ns,\"%STR&SYM\").AddItem({sep:true});\n", nptr);
+	if (htrAddBodyItem_va(s, "<td colspan=\"4\" align=\"center\"><b>%STR&HTE</b></td></tr>", ptr) != 0) goto error;
+	if (htrAddScriptInit_va(s, "\twgtrGetNodeRef(ns, '%STR&SYM').AddItem({ sep:true });\n", nptr) != 0) goto error;
 
     return 0;
+
+    error:
+	mssError(0, "HTMENU", "Failed to write menu title %d.", mcnt);
+
+    return -1;
     }
 
 
@@ -185,19 +242,20 @@ htmenu_internal_CheckAddItem(pHtSession s, pWgtrNode sub_tree, int is_horizontal
 	    is_submenu = !strcmp(ptr,"widget/menu");
 	    if (is_onright ^ !(is_horizontal && htrGetBoolean(sub_tree, "onright", 0) == 1))
 		{
-		htmenu_internal_AddItem(s, sub_tree, is_horizontal, is_popup, is_submenu, 
-			is_onright, row_h, *mcnt, name, xs);
+		if (htmenu_internal_AddItem(s, sub_tree, is_horizontal, is_popup, is_submenu,
+			is_onright, row_h, *mcnt, name, xs) != 0)
+		    return -1;
 		(*mcnt)++;
 		}
 	    }
 	else if (!strcmp(ptr,"widget/menusep"))
 	    {
-	    htmenu_internal_AddSep(s, is_horizontal, row_h, *mcnt, name);
+	    if (htmenu_internal_AddSep(s, is_horizontal, row_h, *mcnt, name) != 0) return -1;
 	    (*mcnt)++;
 	    }
 	else if (!strcmp(ptr,"widget/menutitle"))
 	    {
-	    htmenu_internal_AddTitle(s, sub_tree, is_horizontal, row_h, *mcnt, name);
+	    if (htmenu_internal_AddTitle(s, sub_tree, is_horizontal, row_h, *mcnt, name) != 0) return -1;
 	    (*mcnt)++;
 	    }
 
@@ -218,31 +276,33 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
     char *ptr;
     int x,y,w,h;
     int col_w, row_h;
-    int id, i, j, cnt, cntj, mcnt;
+    int i, j, cnt, cntj, mcnt;
     int is_horizontal;
     int is_popup;
     /*int is_submenu;*/
     pWgtrNode sub_tree;
     pWgtrNode sub_tree_child;
-    pXString xs;
-    int bx = 0;
+    pXString xs = NULL;
+    int rval = -1;
     int shadow_offset, shadow_radius;
     char shadow_color[128];
-
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.CSS2)
-	    {
-	    mssError(1,"HTMENU","Netscape 4 DOM or W3C CSS2 support required");
-	    return -1;
-	    }
-	if (s->Capabilities.CSS2) bx = 1;
+    const int border_w = 1;	/** wgtdrv_menu.c declares this as an inset **/
 
 	/** Get an id for this. **/
-	id = (HTMN.idcnt++);
+	const int id = (HTMN.idcnt++);
+
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	    {
+	    mssError(1, "HTMENU", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto end;
+	    }
 
 	/** Get x,y,height,& width of this object **/
 	if (wgtrGetPropertyValue(menu,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
 	if (wgtrGetPropertyValue(menu,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
 	if (wgtrGetPropertyValue(menu,"height",DATA_T_INTEGER,POD(&h)) != 0) h = -1;
+	if (menu->Flags & WGTR_F_AUTOHEIGHT) h = -1;	/** let htdrv_menu.js fit the rows **/
 	if (wgtrGetPropertyValue(menu,"width",DATA_T_INTEGER,POD(&w)) != 0) w = -1;
 	if (wgtrGetPropertyValue(menu,"column_width",DATA_T_INTEGER,POD(&col_w)) != 0) col_w = 0;
 	if (wgtrGetPropertyValue(menu,"row_height",DATA_T_INTEGER,POD(&row_h)) != 0) row_h = 0;
@@ -263,11 +323,11 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	    }
 
 	/** Colors/Backgrounds **/
-	if (htrGetBackground(menu, NULL, s->Capabilities.CSS2, bgstr, sizeof(bgstr)) < 0)
+	if (htrGetBackground(menu, NULL, s->Capabilities.CSS2, bgstr, sizeof(bgstr)) != 0)
 	    strcpy(bgstr, "");
-	if (htrGetBackground(menu, "highlight", s->Capabilities.CSS2, highlight, sizeof(highlight)) < 0)
+	if (htrGetBackground(menu, "highlight", s->Capabilities.CSS2, highlight, sizeof(highlight)) != 0)
 	    strcpy(highlight, bgstr);
-	if (htrGetBackground(menu, "active", s->Capabilities.CSS2, active, sizeof(highlight)) < 0)
+	if (htrGetBackground(menu, "active", s->Capabilities.CSS2, active, sizeof(highlight)) != 0)
 	    strcpy(active, highlight);
 	if (wgtrGetPropertyValue(menu, "fgcolor", DATA_T_STRING, POD(&ptr)) != 0)
 	    strcpy(textcolor, "black");
@@ -284,86 +344,170 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	is_popup = htrGetBoolean(menu, "popup", 0);
 	if (is_popup < 0) is_popup = 0;
 
-	/** Write the main style header item. **/
-	htrAddStylesheetItem_va(s,"\t#mn%POSmain { POSITION:absolute; VISIBILITY:%STR; LEFT:%INTpx; TOP:%INTpx; %[HEIGHT:%POSpx; %]%[WIDTH:%POSpx; %]Z-INDEX:%POS; }\n", id,is_popup?"hidden":"inherit", x, y, h != -1, h-2*bx, w != -1, w-2*bx, z);
+	/** Write styles for the main DOM element. **/
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#mn%POSmain { "
+		"position:absolute; "
+		"visibility:%STR; "
+		"overflow:hidden; "
+		"box-sizing:border-box; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"%[height:"ht_flex_format"; %]"
+		"%[width:"ht_flex_format"; %]"
+		"color:%STR; %STR"
+		"border-style:solid; "
+		"border-width:%POSpx; "
+		"border-color:white gray gray white; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    (is_popup) ? "hidden" : "inherit",
+	    ht_flex_x(x, menu),
+	    ht_flex_y(y, menu),
+	    (h != -1), ht_flex_h(h, menu),
+	    (w != -1), ht_flex_w(w, menu),
+	    textcolor, bgstr,
+	    border_w,
+	    z
+	) != 0)
+	    {
+	    mssError(0, "HTMENU", "Failed to write main CSS.");
+	    goto end;
+	    }
 	if (shadow_radius > 0)
 	    {
-	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; }\n", id, shadow_offset, shadow_offset, shadow_radius, shadow_color);
+	    if (htrAddStylesheetItem_va(s,
+		"\t\t#mn%POSmain { "
+		    "box-shadow: %POSpx %POSpx %POSpx %STR&CSSVAL; "
+		"}\n",
+		id,
+		shadow_offset, shadow_offset, shadow_radius, shadow_color
+	    ) != 0)
+		{
+		mssError(0, "HTMENU", "Failed to write shadow CSS.");
+		goto end;
+		}
 	    }
-	htrAddStylesheetItem_va(s,"\t#mn%POScontent { POSITION:absolute; VISIBILITY: inherit; LEFT:0px; TOP:0px; %[HEIGHT:%POSpx; %]%[WIDTH:%POSpx; %]Z-INDEX:%POS; }\n", id, h != -1, h-2*bx, w != -1, w-2*bx, z+1);
-	if (s->Capabilities.CSS2)
-	    htrAddStylesheetItem_va(s,"\t#mn%POSmain { overflow:hidden; border-style: solid; border-width: 1px; border-color: white gray gray white; color:%STR; %STR }\n", id, textcolor, bgstr);
+	
+	/** Write styles for the content container. **/
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#mn%POScontent { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"overflow:hidden; "
+		"cursor:default; "
+		"left:0px; "
+		"top:0px; "
+		"height:100%%; "
+		"width:100%%; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    z + 1
+	) != 0)
+	    {
+	    mssError(0, "HTMENU", "Failed to write content CSS.");
+	    goto end;
+	    }
 
-	/** content layer **/
-	if (s->Capabilities.CSS2)
-	    htrAddStylesheetItem_va(s,"\t#mn%POScontent { overflow:hidden; cursor:default; }\n", id );
-
-	/** highlight bar **/
-	htrAddStylesheetItem_va(s, "\t#mn%POShigh { POSITION:absolute; VISIBILITY: hidden; LEFT:0px; TOP:0px; Z-INDEX:%POS; }\n", id, z);
-	if (s->Capabilities.CSS2)
-	    htrAddStylesheetItem_va(s,"\t#mn%POShigh { overflow:hidden; }\n", id );
+	/** Write styles for the highlight bar. **/
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#mn%POShigh { "
+		"position:absolute; "
+		"visibility:hidden; "
+		"overflow:hidden; "
+		"left:0px; "
+		"top:0px; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    z
+	) != 0)
+	    {
+	    mssError(0, "HTMENU", "Failed to write highlight CSS.");
+	    goto end;
+	    }
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(menu,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(menu, "name", DATA_T_STRING, POD(&ptr)) != 0)
+	    {
+	    mssError(1, "HTMENU", "Failed to get name!?.");
+	    goto end;
+	    }
 	strtcpy(name,ptr,sizeof(name));
+	
+	/** Write widget object and container linkage. **/
+	if (htrAddWgtrObjLinkage_va(s, menu, "mn%POSmain", id) != 0) goto end;
+	if (htrAddWgtrCtrLinkage_va(s, menu, "htr_subel(_obj, 'mn%POScontent')", id) != 0) goto end;
 
-	/** Globals **/
-	htrAddScriptGlobal(s, "mn_active", "new Array()", 0);
-	htrAddScriptGlobal(s, "mn_current", "null", 0);
-	htrAddScriptGlobal(s, "mn_deactivate_tmout", "null", 0);
-	htrAddScriptGlobal(s, "mn_submenu_tmout", "null", 0);
-	htrAddScriptGlobal(s, "mn_pop_x", "0", 0);
-	htrAddScriptGlobal(s, "mn_pop_y", "0", 0);
-	htrAddScriptGlobal(s, "mn_mouseangle", "0", 0);
-	htrAddWgtrObjLinkage_va(s, menu, "mn%POSmain",id);
-	htrAddWgtrCtrLinkage_va(s, menu, "htr_subel(_obj, \"mn%POScontent\")",id);
+	/** Write JS globals. **/
+	if (htrAddScriptGlobal(s, "mn_active",           "[]",   0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "mn_current",          "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "mn_deactivate_tmout", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "mn_mouseangle",       "0",    0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "mn_pop_x",            "0",    0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "mn_pop_y",            "0",    0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "mn_submenu_tmout",    "null", 0) != 0) goto end;
 
-	/** Scripts **/
-	htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
-	htrAddScriptInclude(s, "/sys/js/htdrv_menu.js", 0);
+	/** Write script includes. **/
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0) != 0) goto end;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0) != 0) goto end;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_menu.js",      0) != 0) goto end;
 
-	/** Initialization **/
-	htrAddScriptInit_va(s,"    mn_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), clayer:wgtrGetContainer(wgtrGetNodeRef(ns,\"%STR&SYM\")), hlayer:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"mn%POShigh\"), bgnd:\"%STR&JSSTR\", high:\"%STR&JSSTR\", actv:\"%STR&JSSTR\", txt:\"%STR&JSSTR\", w:%INT, h:%INT, horiz:%INT, pop:%INT, name:\"%STR&SYM\"});\n", 
-		name, name, name, id, 
-		bgstr, highlight, active, textcolor, 
-		w, h, is_horizontal, is_popup, name);
+	/** Event handlers. **/
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "mn", "mn_mousedown") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "mn", "mn_mousemove") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "mn", "mn_mouseout")  != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "mn", "mn_mouseover") != 0) goto end;
 
-	/** Event handlers **/
-	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "mn", "mn_mousemove");
-	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "mn", "mn_mouseout");
-	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "mn", "mn_mouseover");
-	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "mn", "mn_mousedown");
+	/** Write script initialization. **/
+	if (htrAddScriptInit_va(s, "\t{ "
+	    "const layer = wgtrGetNodeRef(ns, '%STR&SYM'); "
+	    "mn_init({ "
+	        "layer, "
+		"clayer:wgtrGetContainer(layer), "
+		"hlayer:htr_subel(layer, 'mn%POShigh'), "
+		"name:'%STR&SYM', "
+		"bgnd:'%STR&JSSTR', "
+		"high:'%STR&JSSTR', "
+		"actv:'%STR&JSSTR', "
+		"txt:'%STR&JSSTR', "
+		"w:%INT, "
+		"h:%INT, "
+		"bw:%POS, "
+		"horiz:%INT, "
+		"pop:%INT, "
+	    "}); }\n", 
+	    name, id, name, 
+	    bgstr, highlight, active, textcolor, 
+	    w, h, border_w,
+	    is_horizontal, is_popup
+	) != 0)
+	    {
+	    mssError(0, "HTMENU", "Failed to write JS init code.");
+	    goto end;
+	    }
 
 	/** Beginning of code for menu **/
-	htrAddBodyItem_va(s,"<div id=\"mn%POSmain\">", id);
-	if (s->Capabilities.Dom0NS)
-	    htrAddBodyItem_va(s,"<body %STR>",bgstr);
-	htrAddBodyItem_va(s,"<div id=\"mn%POScontent\"><table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" %STR>\n", id, s->Capabilities.Dom0NS?"":"width=\"100%\" height=\"100%\"");
-
-	/** Only draw border if it is NS4 **/
-	if (s->Capabilities.Dom0NS)
+	if (htrAddBodyItem_va(s,
+	    "<div id='mn%POSmain'>"
+		"<div id='mn%POScontent'>"
+		    "<table cellspacing='0' cellpadding='0' border='0' width='100%%' height='100%%'>\n"
+			"<tr><td valign='middle'>",
+	    id, id
+	) != 0)
 	    {
-	    htrAddBodyItem(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
-	    if (w != -1)
-		htrAddBodyItem_va(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"%POS\"></td>", w-2);
-	    else
-		htrAddBodyItem(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
-	    htrAddBodyItem(s,"<td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
-	    if (h != -1)
-		htrAddBodyItem_va(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"%POS\" width=\"1\"></td><td>", h-2);
-	    else
-		htrAddBodyItem(s,"<tr><td background=\"/sys/images/white_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td><td>");
+	    mssError(0, "HTMENU", "Failed to write HTML for menu.");
+	    goto end;
 	    }
-	else
-	    htrAddBodyItem(s,"<tr><td valign=\"middle\">");
 
-	/** Add 'meat' of menu... **/
-	xs = (pXString)nmMalloc(sizeof(XString));
-	xsInit(xs);
+	/** Add menu items and dropdowns. **/
+	xs = checkPtr(xsNew());
+	if (xs == NULL) goto end;
 	mcnt=0;
-	htrAddBodyItem(s,"<table cellspacing=\"1\" cellpadding=\"0\" border=\"0\" width=\"100%%\"><tr><td align=\"left\" valign=\"middle\">\n");
-	htrAddBodyItem_va(s,"<table cellspacing=\"2\" cellpadding=\"0\" border=\"0\">%[<tr>%]\n", is_horizontal);
+	if (htrAddBodyItem(s,"<table cellspacing=\"1\" cellpadding=\"0\" border=\"0\" width=\"100%\"><tr><td align=\"left\" valign=\"middle\">\n") != 0) goto end;
+	if (htrAddBodyItem_va(s,"<table cellspacing=\"2\" cellpadding=\"0\" border=\"0\">%[<tr>%]\n", is_horizontal) != 0) goto end;
 	cnt = xaCount(&(menu->Children));
 	for (i=0;i<cnt;i++)
 	    {
@@ -374,12 +518,12 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		for(j=0;j<cntj;j++)
 		    {
 		    sub_tree_child = xaGetItem(&(sub_tree->Children), j);
-		    htmenu_internal_CheckAddItem(s, sub_tree_child, is_horizontal, is_popup, 0, row_h, &mcnt, name, xs);
+		    if (htmenu_internal_CheckAddItem(s, sub_tree_child, is_horizontal, is_popup, 0, row_h, &mcnt, name, xs) != 0) goto end;
 		    }
 		}
 	    else
 		{
-		htmenu_internal_CheckAddItem(s, sub_tree, is_horizontal, is_popup, 0, row_h, &mcnt, name, xs);
+		if (htmenu_internal_CheckAddItem(s, sub_tree, is_horizontal, is_popup, 0, row_h, &mcnt, name, xs) != 0) goto end;
 		}
 	    /*wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
 	    if (!strcmp(ptr,"widget/menuitem") || !strcmp(ptr,"widget/menu")) 
@@ -398,19 +542,21 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		}*/
 	    }
 	if (is_horizontal)
-	    htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1);
+	    {
+	    if (htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1) != 0) goto end;
+	    }
 	else
 	    {
-	    htrAddBodyItem(s, "<tr>");
-	    htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1);
-	    htrAddBodyItem(s, "<td colspan=\"4\"></td></tr>");
+	    if (htrAddBodyItem(s, "<tr>") != 0) goto end;
+	    if (htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1) != 0) goto end;
+	    if (htrAddBodyItem(s, "<td colspan=\"4\"></td></tr>") != 0) goto end;
 	    }
 	mcnt++;
-	htrAddBodyItem_va(s,"%[</tr>%]</table></td>", is_horizontal);
+	if (htrAddBodyItem_va(s,"%[</tr>%]</table></td>", is_horizontal) != 0) goto end;
 	if (is_horizontal)
 	    {
-	    htrAddBodyItem(s,"<td align=\"right\" valign=\"middle\">\n");
-	    htrAddBodyItem(s,"<table cellspacing=\"2\" cellpadding=\"0\" border=\"0\"><tr>\n");
+	    if (htrAddBodyItem(s,"<td align=\"right\" valign=\"middle\">\n") != 0) goto end;
+	    if (htrAddBodyItem(s,"<table cellspacing=\"2\" cellpadding=\"0\" border=\"0\"><tr>\n") != 0) goto end;
 	    for (i=0;i<cnt;i++)
 		{
 		sub_tree = xaGetItem(&(menu->Children), i);
@@ -420,12 +566,12 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		    for(j=0;j<cntj;j++)
 			{
 			sub_tree_child = xaGetItem(&(sub_tree->Children), j);
-			htmenu_internal_CheckAddItem(s, sub_tree_child, is_horizontal, is_popup, 1, row_h, &mcnt, name, xs);
+			if (htmenu_internal_CheckAddItem(s, sub_tree_child, is_horizontal, is_popup, 1, row_h, &mcnt, name, xs) != 0) goto end;
 			}
 		    }
 		else
 		    {
-		    htmenu_internal_CheckAddItem(s, sub_tree, is_horizontal, is_popup, 1, row_h, &mcnt, name, xs);
+		    if (htmenu_internal_CheckAddItem(s, sub_tree, is_horizontal, is_popup, 1, row_h, &mcnt, name, xs) != 0) goto end;
 		    }
 		/*wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
 		if (!strcmp(ptr,"widget/menuitem") || !strcmp(ptr,"widget/menu")) 
@@ -443,60 +589,32 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		    mcnt++;
 		    }*/
 		}
-	    htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1);
+	    if (htmenu_internal_AddDot(s, mcnt, name, is_horizontal, 1) != 0) goto end;
 	    mcnt++;
-	    htrAddBodyItem(s,"</tr></table></td>\n");
+	    if (htrAddBodyItem(s,"</tr></table></td>\n") != 0) goto end;
 	    }
-	htrAddBodyItem(s,"</tr></table>\n");
+	if (htrAddBodyItem(s,"</tr></table>\n</td></tr>") != 0) goto end;
+	if (htrAddBodyItem_va(s,"</table></div><div id=\"mn%POShigh\"></div></div>\n", id) != 0) goto end;
 
-	/** closing border for NS4 **/
-	if (s->Capabilities.Dom0NS)
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, menu, z + 1) != 0) goto end;
+
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (rval != 0)
 	    {
-	    if (h != -1)
-		htrAddBodyItem_va(s,"</td><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"%POS\" width=\"1\"></td></tr>\n", h-2);
-	    else
-		htrAddBodyItem(s,"</td><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
-	    htrAddBodyItem(s,"<tr><td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
-	    if (w != -1)
-		htrAddBodyItem_va(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"%POS\"></td>", w-2);
-	    else
-		htrAddBodyItem(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td>");
-	    htrAddBodyItem(s,"<td background=\"/sys/images/dkgrey_1x1.png\"><img src=\"/sys/images/trans_1.gif\" height=\"1\" width=\"1\"></td></tr>\n");
+	    mssError(0, "HTMENU",
+		"Failed to render \"%s\":\"%s\" (id: %d).",
+		menu->Name, menu->Type, id
+	    );
 	    }
-	else
-	    htrAddBodyItem(s,"</td></tr>");
-
-	/** Ending of layer **/
-	if (s->Capabilities.Dom0NS)
-	    htrAddBodyItem_va(s,"</table></div><div id=\"mn%POShigh\"></div></body></div>", id);
-	else
-	    htrAddBodyItem_va(s,"</table></div><div id=\"mn%POShigh\"></div></div>\n", id);
-
-	xsDeInit(xs);
-	nmFree(xs, sizeof(XString));
-
-	/* Read and initialize the menu items */
-	/*cnt = xaCount(&(menu->Children));
-	for (i=0;i<cnt;i++)
-	    {
-	    sub_tree = xaGetItem(&(menu->Children), i);
-	    wgtrGetPropertyValue(sub_tree,"outer_type",DATA_T_STRING,POD(&ptr));
-	    if (!strcmp(ptr,"widget/menuitem")) 
-		{
-		htrRenderSubwidgets(s, sub_tree, z+1);
-		} 
-	    else if (!strcmp(ptr,"widget/menusep"))
-		{
-		sub_tree->RenderFlags |= HT_WGTF_NOOBJECT;
-		}
-	    else 
-		{
-		htrRenderWidget(s, sub_tree, z+1);
-		}
-	    }*/
-	htrRenderSubwidgets(s, menu, z+1);
-
-    return 0;
+	
+	/** Clean up. **/
+	if (xs != NULL) xsFree(xs);
+	
+	return rval;
     }
 
 int 
@@ -553,16 +671,6 @@ htmenuInitialize()
 	strcpy(drv->WidgetName,"menu");
 	drv->Render = htmenuRender;
 
-	/** Register events **/
-	htrAddEvent(drv,"MouseUp");
-	htrAddEvent(drv,"MouseDown");
-	htrAddEvent(drv,"MouseOver");
-	htrAddEvent(drv,"MouseOut");
-	htrAddEvent(drv,"MouseMove");
-	htrAddEvent(drv,"DataChange");
-	htrAddEvent(drv,"GetFocus");
-	htrAddEvent(drv,"LoseFocus");
-
 	/** Register. **/
 	htrRegisterDriver(drv);
 
@@ -596,5 +704,3 @@ htmenuInitialize()
 
     return 0;
     }
-
-

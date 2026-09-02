@@ -1,0 +1,15 @@
+##NAME Levenshtein String Comparison
+
+query select sw1 = 1 where fuzzy_compare('hello', 'hello!', 20) >= 0 and fuzzy_compare("hello","hello!", 20) <= 1
+query select sw1 = 1 where fuzzy_compare('hello', 'asdfkh', 20) >= 0 and fuzzy_compare("hello","asdfkh", 20) <= 1
+query select sw1 = 1 where fuzzy_compare('hello', 'aaaaaaaaaaaaaaaaa', 20) >= 0 and fuzzy_compare("hello","aaaaaaaaaaaaaaaaa", 20) <= 1
+query select sw1 = 1 where fuzzy_compare('hello', 'nope', 20) >= 0 and fuzzy_compare("hello","nope", 20) <= 1
+query select sw1 = 1 where fuzzy_compare('below', 'hello!', 20) >= 0 and fuzzy_compare("below","hello!", 20) <= 1
+query select sw1 = 1 where fuzzy_compare('kitten', 'smitten', 20) >= 0 and fuzzy_compare("kitten","smitten", 20) <= 1
+query select sw1 = 1 where fuzzy_compare('hello', 'bobbobbobbob', 20) >= 0 and fuzzy_compare("hello","bobbobbobbob", 20) <= 1
+query select sw1 = 1 where fuzzy_compare('hello', '', 20) >= 0 and fuzzy_compare("hello","", 20) <= 1
+query select sw1 = 1 where fuzzy_compare('', '', 20) >= 0 and fuzzy_compare("","", 20) <= 1
+query select sw1 = 1 where fuzzy_compare('blooooop', 'blob', 20) >= 0 and fuzzy_compare("blooooop","blob", 20) <= 1
+query select sw1 = 1 where fuzzy_compare('', '!', 20) >= 0 and fuzzy_compare("","!", 20) <= 1
+query select sw1 = 1 where fuzzy_compare('h', 'h', 20) >= 0 and fuzzy_compare("h","h", 20) <= 1
+query select sw1 = 1 where fuzzy_compare('hi', 'hi', 20) >= 0 and fuzzy_compare("hi","hi", 20) <= 1

@@ -1,6 +1,6 @@
 ####  Centrallix Makefile
 ####
-####  Copyright (C) 1998-2026 by LightSys Technology Services, Inc.
+####  Copyright (C) 1998-2014 by LightSys Technology Services, Inc.
 ####
 ####  FREE SOFTWARE, NO WARRANTY: This program is Free Software, licensed
 ####  under version 2 of the GNU General Public License, or any later
@@ -80,7 +80,6 @@ XSUPPORT=stparse.o \
 	 endorsement_utils.o \
 	 obfuscate.o \
 	 json_util.o \
-	 double_metaphone.o \
 	 double.o
 
 SUPPORT=$(patsubst %,utility/%,$(XSUPPORT))
@@ -116,7 +115,6 @@ XOBJDRIVERS=objdrv_ux.o \
 	    objdrv_uxprint.o \
 	    objdrv_qytree.o \
 	    objdrv_qypivot.o \
-	    objdrv_cluster.o \
 	    objdrv_datafile.o \
 	    objdrv_audio.o \
 	    objdrv_link.o \
@@ -135,7 +133,6 @@ XV3OBJDRIVERS= \
 	      objdrv_uxprint_v3.o \
 	      objdrv_qytree.o \
 	      objdrv_qypivot.o \
-	      objdrv_cluster.o \
 	      objdrv_query.o \
 	      objdrv_datafile.o \
 	      objdrv_audio.o \
@@ -159,14 +156,12 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_dropdown.o \
 	wgtdrv_editbox.o \
 	wgtdrv_execmethod.o \
-	wgtdrv_formbar.o \
 	wgtdrv_form.o \
 	wgtdrv_formstatus.o \
 	wgtdrv_frameset.o \
 	wgtdrv_fileupload.o \
 	wgtdrv_hints.o \
 	wgtdrv_html.o \
-	wgtdrv_imagebutton.o \
 	wgtdrv_image.o \
 	wgtdrv_label.o \
 	wgtdrv_map.o \
@@ -188,7 +183,6 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_template.o \
 	wgtdrv_terminal.o \
 	wgtdrv_textarea.o \
-	wgtdrv_textbutton.o \
 	wgtdrv_timer.o \
 	wgtdrv_treeview.o \
 	wgtdrv_variable.o \
@@ -206,8 +200,6 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_html.o \
 	   htdrv_connector.o \
 	   htdrv_button.o \
-	   htdrv_imagebutton.o \
-	   htdrv_textbutton.o \
 	   htdrv_menu.o \
 	   htdrv_frameset.o \
 	   ht_render.o \
@@ -241,7 +233,6 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_component.o \
 	   htdrv_image.o \
 	   htdrv_hints.o \
-	   htdrv_formbar.o \
 	   htdrv_objcanvas.o \
 	   htdrv_map.o \
 	   htdrv_parameter.o \

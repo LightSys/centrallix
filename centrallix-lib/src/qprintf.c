@@ -1231,7 +1231,14 @@ qpf_internal_Translate(
  *** @param ap The arguments list to fulfill the provided format.
  *** @returns The number of chars the output requires (matching `snprintf()`).
  *** 	Returns `*dest_size` or more when truncating the output.
- *** 	Negative on error.
+ *** 	Negative on error.*** 
+ *** NULL, &(s->Tmpbuf), &(s->TmpbufSize), htr_internal_GrowFn, (void*)s, fmt, va
+ *** @param s Optional session struct.
+ *** @param str Pointer to a string buffer where data will be written.
+ *** @param size Pointer to the current size of the string buffer.
+ *** @param grow_fn A function to grow the string buffer.
+ *** @param format The format of data which should be written.
+ *** @param ap The arguments list to fulfill the provided format.
  ***/
 int
 qpfPrintf_va_internal(
