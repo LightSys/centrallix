@@ -357,9 +357,9 @@ The first main function for handling queries is OpenQuery.  This function is pas
 
     query->Tree: the compiled expression tree, which evaluates to nonzero for true or zero for false as the WHERE clause condition.
 
-    query->SortBy: an xarray of expressions (query->SortBy.Items[0] through query->SortBy.Items[query->SortBy.nItems - 1]) giving the various components of the sorting criteria.
+    query->SortBy[]: an array of expressions giving the various components of the sorting criteria.
 
-    query->Flags: the driver should set and/or clear the flags OBJ_QY_F_FULLQUERY and OBJ_QY_F_FULLSORT if need be.  The former indicates that the driver is willing to handle the full WHERE clause (the query->Tree).  The latter indicates that the driver is willing to handle the sorting of the data as well (in query->SortBy).  If the driver can easily have the sorting/selection done (as when querying an RDBMS), it should set these flags. Otherwise, it should let the OSML take care of the ORDER BY and WHERE conditions.
+    query->Flags: the driver should set and/or clear the flags OBJ_QY_F_FULLQUERY and OBJ_QY_F_FULLSORT if need be.  The former indicates that the driver is willing to handle the full WHERE clause (the query->Tree).  The latter indicates that the driver is willing to handle the sorting of the data as well (in query->SortBy[]).  If the driver can easily have the sorting/selection done (as when querying an RDBMS), it should set these flags. Otherwise, it should let the OSML take care of the ORDER BY and WHERE conditions.
 
 - oxt (pObjTrxTree*)	The transaction tree pointer.
 

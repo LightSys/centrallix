@@ -7,7 +7,6 @@
 #include "cxlib/mtlexer.h"
 #include "expression.h"
 #include "cxlib/xstring.h"
-#include "cxlib/xarray.h"
 #include "multiquery.h"
 #include "cxlib/mtsession.h"
 
@@ -241,36 +240,6 @@ mqp_internal_FinalizeSbt(pObjSession s, pObject obj, char* attrname, void* ctx_v
     }
 
 
-/*** mqp_internal_OrderByToExpArray() - copy a query element's order by list
- *** into a newly allocated NULL terminated array for objOpenQuery().  The
- *** caller must nmSysFree() the array.  *buf is set to NULL if the query
- *** element has no ordering to request.  Returns 0 on success, -1 on error.
- ***/
-int
-mqp_internal_OrderByToExpArray(pQueryElement qe, pExpression** buf)
-    {
-    pExpression* exp_array;
-    int i;
-
-	*buf = NULL;
-	if (qe->OrderBy.nItems <= 0) return 0;
-
-	exp_array = (pExpression*)nmSysMalloc(sizeof(pExpression) * (qe->OrderBy.nItems + 1));
-	if (!exp_array)
-	    {
-	    mssError(1, "MQP", "Could not allocate memory for sort by items.");
-	    return -1;
-	    }
-	for(i=0; i<qe->OrderBy.nItems; i++)
-	    exp_array[i] = (pExpression)(qe->OrderBy.Items[i]);
-	exp_array[i] = NULL;
-
-	*buf = exp_array;
-
-    return 0;
-    }
-
-
 /*** mqp_internal_Recurse() - attempt to recurse down into subobjects for a
  *** subtree type projection.  Returns a subobject if one is found, NULL
  *** otherwise.
@@ -283,7 +252,6 @@ mqp_internal_Recurse(pQueryElement qe, pQueryStatement stmt, pObject obj)
     pObject newobj;
     pMqpInf mi = (pMqpInf)qe->PrivateData;
     pMqpSubtrees ms = mi->Subtrees;
-    pExpression* sortby;
 
 	/** Too many levels of recursion? **/
 	if (ms->nStacked >= MQP_MAX_SUBTREE) return NULL;
@@ -293,16 +261,14 @@ mqp_internal_Recurse(pQueryElement qe, pQueryStatement stmt, pObject obj)
 	if (oi && (oi->Flags & OBJ_INFO_F_NO_SUBOBJ)) return NULL;
 
 	/** Try running the query. **/
-	if (mqp_internal_OrderByToExpArray(qe, &sortby) < 0) return NULL;
 	newqy = objOpenQuery(
 		    obj,
 		    NULL,
 		    NULL, 
 		    (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, 
-		    (void**)sortby,
+		    (void**)(qe->OrderBy[0]?qe->OrderBy:NULL),
 		    (mi->Flags & MQP_MI_F_ONEROW)?OBJ_QY_F_ONEROW:0
 		    );
-	if (sortby) nmSysFree(sortby);
 	if (!newqy) return NULL;
 	objUnmanageQuery(stmt->Query->SessionID, newqy);
 	newobj = objQueryFetch(newqy, ((pMqpInf)(qe->PrivateData))->ObjMode);
@@ -542,6 +508,12 @@ mqpAnalyze(pQueryStatement stmt)
 		    item = (pQueryStructure)(groupby_qs->Children.Items[i]);
 		    if (item->ObjCnt == 1 && (item->ObjFlags[src_idx] & EXPR_O_REFERENCED))
 		        {
+			/** The objectsystem can only sort on OBJSYS_SORT_MAX items **/
+			if (mq_internal_nOrderBy(qe) >= OBJSYS_SORT_MAX)
+			    {
+			    fprintf(stderr, "Warning: Cannot sort source on more than %d GROUP BY items; grouping may produce duplicate rows.\n", OBJSYS_SORT_MAX);
+			    break;
+			    }
 			new_exp = exp_internal_CopyTree(item->Expr);
 			if (mq_internal_AddOrderBy(qe, new_exp) < 0) break;
 			if (qe->OrderPrio == 999 || qe->OrderPrio > i) qe->OrderPrio = i;
@@ -572,9 +544,9 @@ mqpAnalyze(pQueryStatement stmt)
 
 			/** Check to see if it is already in the list **/
 			found = 0;
-			for(j=0;j<qe->OrderBy.nItems;j++)
+			for(j=0;qe->OrderBy[j];j++)
 			    {
-			    if (expCompareExpressions(new_exp, (pExpression)(qe->OrderBy.Items[j])))
+			    if (expCompareExpressions(new_exp, qe->OrderBy[j]))
 				{
 				found = 1;
 				break;
@@ -587,7 +559,14 @@ mqpAnalyze(pQueryStatement stmt)
 			    continue;
 			    }
 
-			/** Add it to the list of sort criteria **/
+			/** Add it, if the objectsystem can still sort on it **/
+			if (mq_internal_nOrderBy(qe) >= OBJSYS_SORT_MAX)
+			    {
+			    expFreeExpression(new_exp);
+			    has_unhandled_orderby = 1;
+			    fprintf(stderr, "Warning: Cannot sort source on more than %d ORDER BY items.\n", OBJSYS_SORT_MAX);
+			    break;
+			    }
 			if (mq_internal_AddOrderBy(qe, new_exp) < 0)
 			    {
 			    mssClearError(); /* Failure handled. */
@@ -1179,7 +1158,6 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
     char* src;
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
     handle_t collection;
-    pExpression* sortby;
 
 	mi->Flags &= ~MQP_MI_F_USINGCACHE;
 
@@ -1278,21 +1256,14 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    }
 	else if (!(mi->Flags & MQP_MI_F_USINGCACHE))
 	    {
-	    if (mqp_internal_OrderByToExpArray(qe, &sortby) < 0)
-		{
-		mqpFinish(qe,stmt);
-		mssError(0,"MQP","Could not build sort criteria for SQL projection");
-		return -1;
-		}
 	    qe->LLQuery = objOpenQuery(
 				qe->LLSource, 
 				NULL, 
 				NULL, 
 				(qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, 
-				(void**)sortby, 
+				(void**)(qe->OrderBy[0]?qe->OrderBy:NULL), 
 				(mi->Flags & MQP_MI_F_ONEROW)?OBJ_QY_F_ONEROW:0
 				);
-	    if (sortby) nmSysFree(sortby);
 	    if (!qe->LLQuery) 
 		{
 		mqpFinish(qe,stmt);

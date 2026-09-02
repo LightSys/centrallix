@@ -11,7 +11,6 @@
 #include "cxlib/mtlexer.h"
 #include "expression.h"
 #include "cxlib/xstring.h"
-#include "cxlib/xarray.h"
 #include "multiquery.h"
 #include "cxlib/mtsession.h"
 #include "application.h"
@@ -137,7 +136,6 @@ mq_internal_FreeQE(pQueryElement qetree)
 	mq_internal_ClearOrderBy(qetree);
 
 	/** Release memory held by the arrays, etc **/
-	xaDeInit(&qetree->OrderBy);
 	xaDeInit(&qetree->Children);
 	xaDeInit(&qetree->AttrNames);
 	xaDeInit(&qetree->AttrDeriv);
@@ -172,7 +170,6 @@ mq_internal_AllocQE()
 	xaInit(&qe->AttrExprPtr,16);
 	xaInit(&qe->AttrCompiledExpr,16);
 	xaInit(&qe->AttrAssignExpr,16);
-	xaInit(&qe->OrderBy,16);
 	qe->Parent = NULL;
 	qe->Constraint = NULL;
 	qe->Flags = 0;
@@ -190,18 +187,22 @@ mq_internal_AllocQE()
 int
 mq_internal_AddOrderBy(pQueryElement qe, pExpression exp)
     {
+    int n;
 
 	if (!exp)
 	    {
 	    mssError(1,"MQ","Could not add NULL ORDER BY expression.");
 	    return -1;
 	    }
-	if (xaAddItem(&qe->OrderBy, (void*)exp) < 0)
+	n = mq_internal_nOrderBy(qe);
+	if (n >= MQ_MAX_ORDERBY)
 	    {
 	    expFreeExpression(exp);
-	    mssError(1,"MQ","Failed to add ORDER BY expression item to xarray.");
+	    mssError(1,"MQ","Too many ORDER BY expressions (max %d)", MQ_MAX_ORDERBY);
 	    return -1;
 	    }
+	qe->OrderBy[n] = exp;
+	qe->OrderBy[n+1] = NULL;
 
     return 0;
     }
@@ -215,14 +216,27 @@ mq_internal_ClearOrderBy(pQueryElement qe)
     {
     int i;
 
-	for(i=0;i<qe->OrderBy.nItems;i++)
+	for(i=0;i<MQ_MAX_ORDERBY && qe->OrderBy[i];i++)
 	    {
-	    if (qe->OrderBy.Items[i])
-		expFreeExpression((pExpression)(qe->OrderBy.Items[i]));
+	    expFreeExpression(qe->OrderBy[i]);
+	    qe->OrderBy[i] = NULL;
 	    }
-	xaClear(&qe->OrderBy, NULL, NULL);
 
     return 0;
+    }
+
+
+/*** mq_internal_nOrderBy - count the expressions in a query element's order
+ *** by list.
+ ***/
+int
+mq_internal_nOrderBy(pQueryElement qe)
+    {
+    int n;
+
+	for(n=0;n<MQ_MAX_ORDERBY && qe->OrderBy[n];n++);
+
+    return n;
     }
 
 

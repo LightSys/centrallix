@@ -37,7 +37,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -3763,13 +3763,13 @@ sybdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		    sybd_internal_TreeToClause(exp, inf->Node, qy->SessionID, &(qy->TableInf), 1, &sql);
 		    expFreeExpression(exp);
 		    }
-		if (query->SortBy.nItems > 0)
+		if (query->SortBy[0])
 		    {
 		    xsConcatenate(&sql," ORDER BY ", 10);
-		    for(i=0;i<query->SortBy.nItems;i++)
+		    for(i=0;query->SortBy[i] && i < (sizeof(query->SortBy)/sizeof(void*));i++)
 			{
 			if (i != 0) xsConcatenate(&sql, ", ", 2);
-			sybd_internal_TreeToClause((pExpression)(query->SortBy.Items[i]),inf->Node, qy->SessionID,&(qy->TableInf),1,&sql);
+			sybd_internal_TreeToClause((pExpression)(query->SortBy[i]),inf->Node, qy->SessionID,&(qy->TableInf),1,&sql);
 			}
 	  	    }
 		/*if (SYBD_USE_CURSORS && (inf->TData->RowCount < 0 || inf->TData->RowCount > SYBD_CURSOR_ROWCOUNT))
@@ -4744,7 +4744,7 @@ mqsybAnalyze(pQueryStatement stmt)
     pSybdNode unique_from_nodes[16];
     int srcs_per_unique_node[16];
     int id_remapping[16];
-    int i,j,k,mask;
+    int i,j,k,mask,n_items;
     pSybdNode node;
     char* pathpart;
     pQueryElement qe;
@@ -4885,7 +4885,8 @@ mqsybAnalyze(pQueryStatement stmt)
 			}
 
 		    /** Now find order-by stuff that is relevant to this query. **/
-		    mq_internal_ClearOrderBy(qe);
+		    n_items = 0;
+		    memset(qe->OrderBy,0,sizeof(pExpression)*17);
 		    orderby_qs = mq_internal_FindItem(select_qs->Parent, MQ_T_ORDERBYCLAUSE, NULL);
 		    if (orderby_qs) for(j=0;j<orderby_qs->Children.nItems;j++)
 		        {
@@ -4893,10 +4894,9 @@ mqsybAnalyze(pQueryStatement stmt)
 			if (item->Expr && (item->Expr->ObjCoverageMask & mask) &&
                             !(item->Expr->ObjCoverageMask & ~mask))
 			    {
-			    new_exp = item->Expr;
+			    qe->OrderBy[n_items++] = item->Expr;
 			    item->Expr = NULL;
-			    if (mq_internal_AddOrderBy(qe, new_exp) < 0) continue;
-			    for(k=0;k<srcs_per_unique_node[i];k++) expRemapID(new_exp, id_remapping[k], k);
+			    for(k=0;k<srcs_per_unique_node[i];k++) expRemapID(qe->OrderBy[n_items-1], id_remapping[k], k);
 			    }
 			}
 		    groupby_qs = mq_internal_FindItem(select_qs->Parent, MQ_T_ORDERBYCLAUSE, NULL);
@@ -4906,11 +4906,11 @@ mqsybAnalyze(pQueryStatement stmt)
 			if (item->Expr && (item->Expr->ObjCoverageMask & mask) &&
                             !(item->Expr->ObjCoverageMask & ~mask))
 			    {
-			    new_exp = exp_internal_CopyTree(item->Expr);
-			    if (mq_internal_AddOrderBy(qe, new_exp) < 0) continue;
-			    for(k=0;k<srcs_per_unique_node[i];k++) expRemapID(new_exp, id_remapping[k], k);
+			    qe->OrderBy[n_items++] = exp_internal_CopyTree(item->Expr);
+			    for(k=0;k<srcs_per_unique_node[i];k++) expRemapID(qe->OrderBy[n_items-1], id_remapping[k], k);
 			    }
 			}
+		    qe->OrderBy[n_items] = NULL;
 		    }
 		}
 	    }

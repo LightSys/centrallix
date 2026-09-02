@@ -23,7 +23,7 @@
 /* Centrallix Application Server System                                 */
 /* Centrallix Core                                                      */
 /*                                                                      */
-/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.           */
+/* Copyright (C) 1998-2008 LightSys Technology Services, Inc.           */
 /*                                                                      */
 /* This program is free software; you can redistribute it and/or modify */
 /* it under the terms of the GNU General Public License as published by */
@@ -2507,7 +2507,7 @@ mysdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
             {
             query->Flags |= OBJ_QY_F_FULLQUERY;
             query->Flags |= OBJ_QY_F_FULLSORT;
-            if(query->Tree || query->SortBy.nItems > 0) 
+            if(query->Tree || query->SortBy[0]) 
                 {
                 escape_conn = mysd_internal_GetConn(qy->Data->Node);
 		if (!escape_conn)
@@ -2517,13 +2517,13 @@ mysdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
                     xsConcatenate(&qy->Clause, " WHERE ", 7);
                     mysd_internal_TreeToClause((pExpression)(query->Tree),&(qy->Data->TData),&qy->Clause,&escape_conn->Handle);
                     }
-                if (query->SortBy.nItems > 0)
+                if (query->SortBy[0])
                     {
                     xsConcatenate(&qy->Clause," ORDER BY ", 10);
-                    for(i=0;i<query->SortBy.nItems;i++)
+                    for(i=0;query->SortBy[i] && i < (sizeof(query->SortBy)/sizeof(void*));i++)
                         {
                         if (i != 0) xsConcatenate(&qy->Clause, ", ", 2);
-                        mysd_internal_TreeToClause((pExpression)(query->SortBy.Items[i]),&(qy->Data->TData),&qy->Clause,&escape_conn->Handle);
+                        mysd_internal_TreeToClause((pExpression)(query->SortBy[i]),&(qy->Data->TData),&qy->Clause,&escape_conn->Handle);
                         }
                     }
 		if (query->Flags & OBJ_QY_F_ONEROW)

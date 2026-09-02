@@ -57,7 +57,7 @@
 
 #define	OBJSYS_SORT_XASIZE	4096	/* initial size of query sort xarray */
 #define	OBJSYS_SORT_REOPEN	0	/* whether to enable reopen functionality in sorts */
-#define	OBJSYS_SORTBY_XASIZE	16	/* initial size of query sort-by xarray */
+#define	OBJSYS_SORT_MAX		16	/* maximum sort-by items */
 
 #ifndef MAX
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -421,7 +421,7 @@ typedef struct _OQ
     pObject	Obj;
     char*	QyText;
     void*	Tree;		/* pExpression */
-    XArray	SortBy;		/* pExpression ptrs for each sort-by item */
+    void*	SortBy[OBJSYS_SORT_MAX];	/* pExpression [] */
     void*	ObjList;	/* pParamObjects */
     void*	Data;		/* returned from driver xyzOpenQuery() */
     int		Flags;		/* OBJ_QY_F_xxx */

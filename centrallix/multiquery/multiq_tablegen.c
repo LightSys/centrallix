@@ -334,10 +334,9 @@ mqt_internal_ResetAggregates(pQueryStatement stmt, pQueryElement qe, int level)
 	/** Reset any ORDER BY expressions in the parent **/
 	if (qe->Parent)
 	    {
-	    for(i=0;i<qe->Parent->OrderBy.nItems;i++)
+	    for(i=0;i<MQ_MAX_ORDERBY && qe->Parent->OrderBy[i];i++)
 		{
-		exp = (pExpression)(qe->Parent->OrderBy.Items[i]);
-		if (exp) expResetAggregates(exp, -1, level);
+		expResetAggregates(qe->Parent->OrderBy[i], -1, level);
 		}
 	    }
     
@@ -376,10 +375,9 @@ mqt_internal_UpdateAggregates(pQueryStatement stmt, pQueryElement qe, int level,
 	/** Update any ORDER BY expressions in the parent **/
 	if (qe->Parent)
 	    {
-	    for(i=0;i<qe->Parent->OrderBy.nItems;i++)
+	    for(i=0;i<MQ_MAX_ORDERBY && qe->Parent->OrderBy[i];i++)
 		{
-		exp = (pExpression)(qe->Parent->OrderBy.Items[i]);
-		if (!exp) continue;
+		exp = qe->Parent->OrderBy[i];
 		expUnlockAggregates(exp, level);
 		if (expEvalTree(exp, objlist) < 0)
 		    {

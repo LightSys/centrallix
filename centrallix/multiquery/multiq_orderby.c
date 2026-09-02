@@ -7,7 +7,6 @@
 #include "cxlib/mtlexer.h"
 #include "expression.h"
 #include "cxlib/xstring.h"
-#include "cxlib/xarray.h"
 #include "multiquery.h"
 #include "cxlib/mtsession.h"
 #include "mergesort.h"
@@ -195,7 +194,7 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 	    }
 
 	/** Did we find any orderby items? **/
-	if (qe->OrderBy.nItems)
+	if (mq_internal_nOrderBy(qe))
 	    {
 	    //printf("using MQ orderby module.\n");
 
@@ -283,7 +282,7 @@ mqobAnalyzeAfterGroup(pQueryStatement stmt)
 	    }
 
 	/** Did we find any orderby items? **/
-	if (qe->OrderBy.nItems)
+	if (mq_internal_nOrderBy(qe))
 	    {
 	    //printf("using MQ after-grouping orderby module.\n");
 
@@ -440,7 +439,7 @@ mqob_internal_InitSort(pQueryElement qe, pQueryStatement stmt)
 	    objlist = NULL;
 	    expLinkParams(item->ObjList, stmt->Query->nProvidedObjects, -1);
 	    xsInit(&item->OrderBuf);
-	    if (objBuildBinaryImageXString(&item->OrderBuf, qe->OrderBy.Items, qe->OrderBy.nItems, item->ObjList, 0) < 0)
+	    if (objBuildBinaryImageXString(&item->OrderBuf, qe->OrderBy, mq_internal_nOrderBy(qe), item->ObjList, 0) < 0)
 		goto error;
 	    item->SavedValues = (Expression *)nmMalloc(sizeof(Expression) * context->AggregateFieldIDs.nItems);
 	    if (!item->SavedValues)
