@@ -82,7 +82,7 @@ The xstring (xs) module is used for managing growable strings.  It is based on a
 ```c
 pXString xsNew()
 ```
-This function allocates a new XString structure to contain a new, empty string.  It uses [`nmMalloc()`](#nmmalloc) because the XString struct is always a consistent size.  This function returns a pointer to the new string if successful, or `NULL` if an error occurs.
+This function allocates a new XString structure to contain a new, empty string.  It uses [`nmMalloc()`](newmalloc.md#nmmalloc) because the XString struct is always a consistent size.  This function returns a pointer to the new string if successful, or `NULL` if an error occurs.
 
 
 ## xsFree()

@@ -690,7 +690,7 @@ This function should return 0 on success, 1 if the value is `NULL` or undefined 
     printf("Object name: \"%s\"\n", name);
     ```
 
-- 📖 **Note**: In legacy code, a type cast `void*` was used instead of a `pObjData` pointer used today.  This method was binary compatible the current solution because of the union struct implementation (See [`datatypes.h`](../centrallix/include/datatypes.h) for more information).
+- 📖 **Note**: In legacy code, a type cast `void*` was used instead of a `pObjData` pointer used today.  This method was binary compatible the current solution because of the union struct implementation (See [`datatypes.h`](../centrallix-lib/include/datatypes.h) for more information).
 
 
 ### Function: SetAttrValue()
@@ -799,7 +799,7 @@ The return value, `hints : ObjPresentationHints`, contains the following useful 
 - `hints->GroupID : int`: Used to assign attributes to groups. Use -1 if the attribute is not in a group.
 - `hints->GroupName : char*`: The name of the group to which this attribute belongs, or NULL if it is ungrouped or if the group is named elsewhere.
 - `hints->OrderID : int`: Used to specify an attribute order.
-- `hints->FriendlyName : char*`: Used to specify a "display name" for an attribute (e.g. `n_rows` might have a friendly name of `"Number of Rows"`). Should be [`nmSysMalloc()`](#nmsysmalloc)ed, often using [`nmSysStrdup()`](#nmsysstrdup).
+- `hints->FriendlyName : char*`: Used to specify a "display name" for an attribute (e.g. `n_rows` might have a friendly name of `"Number of Rows"`). Should be [`nmSysMalloc()`](Libraries/newmalloc.md#nmsysmalloc)ed, often using [`nmSysStrdup()`](Libraries/newmalloc.md#nmsysstrdup).
 
 - ⚠️ **Warning**: Behavior is undefined if:
   - The data is longer than length.

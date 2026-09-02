@@ -43,7 +43,7 @@
 
 
 ## Table of Contents
-- [Handling Network Connection](#the-mtsession-library)
+- [Handling Network Connection](#handling-network-connection)
   - [Introduction](#introduction)
   - [netConnectTCP()](#netconnecttcp)
   - [netCloseTCP()](#netclosetcp)
