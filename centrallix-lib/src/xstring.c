@@ -18,7 +18,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -161,6 +161,7 @@ xsCheckAlloc(pXString this, int addl_needed)
 /*** xsConcatenate - adds text data to the end of the existing string, and
  *** allocs more memory as needed.  If 'len' is -1, then the length is 
  *** calculated using strlen(), otherwise the given length is enforced.
+ *** Concatenating 0 characters is fine.
  ***/
 int 
 xsConcatenate(pXString this, char* text, int len)
@@ -172,6 +173,9 @@ xsConcatenate(pXString this, char* text, int len)
 
     	/** Determine length. **/
 	if (len == -1) len = strlen(text);
+
+	/** Performance shortcut. **/
+	if (len == 0) goto end;
 
     	/** Check memory **/
 	if (xsCheckAlloc(this,len) < 0) 
@@ -187,6 +191,7 @@ xsConcatenate(pXString this, char* text, int len)
 	this->String[this->Length] = '\0';
 	CXSEC_UPDATE(*this);
 
+    end:
     CXSEC_EXIT(XS_FN_KEY);
     return 0;
     }
@@ -907,11 +912,17 @@ xs_internal_QPrintf(pXString this, char* fmt, va_list vl)
 	CXSEC_VERIFY(*this);
 	str = this->String + this->Length;
 	len = this->AllocLen - this->Length;
-	rval = qpfPrintf_va_internal(NULL, &str, &len, xs_internal_Grow, this, fmt, vl);
+	pQPSession error_session = qpfOpenSession(); /* Failure ignored. */
+	rval = qpfPrintf_va_internal(error_session, &str, &len, xs_internal_Grow, this, fmt, vl);
 	if (rval < 0)
-	    printf("WARN:  qpfPrintf returned < 0 for format '%s'\n", fmt);
+	    {
+	    fprintf(stderr, "Warning: qpfPrintf failed (error code %d) on format: \"%s\"\n", rval, fmt);
+	    if (error_session != NULL) qpfLogErrors(error_session);
+	    else fprintf(stderr, "Detailed error info is not available.\n");
+	    }
 	else if (rval + this->Length + 1 <= this->AllocLen)
 	    this->Length += rval;
+	if (error_session != NULL) qpfCloseSession(error_session);
 	CXSEC_UPDATE(*this);
 
     CXSEC_EXIT(XS_FN_KEY);
@@ -950,7 +961,6 @@ xsQPrintf(pXString this, char* fmt, ...)
     return rval;
     }
 
-
 /*** xsConcatQPrintf - append a quoting printf to the xstring
  ***/
 int
@@ -970,4 +980,3 @@ xsConcatQPrintf(pXString this, char* fmt, ...)
     CXSEC_EXIT(XS_FN_KEY);
     return rval;
     }
-
