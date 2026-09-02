@@ -1,0 +1,19 @@
+##NAME  trim() function
+
+query select  'trim("White space on the left or right side.")' =  trim("No white space on the left or right side.")
+
+query select  'trim("     White space on the left side.")' =  trim("     White space on the left side.")
+
+query select  'trim("White space on the right side.     ")' =  trim("White space on the right side.     ")
+
+query select  'trim("     White space on the right and the left side.     ")' =  trim("     White space on the right and the left side.     ")
+
+query select  'trim("With tab character\t")' =  trim("With tab character\t")
+
+query select  'trim("With newline character\n")' =  trim("With newline character\n")
+
+# query select  'trim("\r With carriage return character.")' =  trim("\r With carriage return character")
+
+query select  'trim("")' =  trim("")
+
+query select  'trim(null)' =  trim(null)
