@@ -457,7 +457,7 @@ exp_internal_GenerateText_js(pExpression exp, pExpGen eg)
 		    return -1;
 		    }
 		exp_internal_WriteText(eg, eg->TmpBuf);
-		if (!strcmp(exp->Name, "substitute"))
+		if (!strcmp(exp->Name, "substitute") || !strcmp(exp->Name, "eval"))
 		    {
 		    /** This function requires awareness of its object/property scope **/
 		    exp_internal_WriteText(eg, "_context,_this,");
