@@ -44,9 +44,54 @@
 #define PRT_HTMLFM_XPIXEL               (7)
 #define PRT_HTMLFM_YPIXEL               (12)
 
+/** Session flags **/
+typedef unsigned char SessionFlags; /* A type holding 0 or more session flags. */
+#define PRT_HTMLFM_F_NO_FLAGS		((SessionFlags)0b00000000u)
+#define PRT_HTMLFM_F_PAGINATED          ((SessionFlags)0b00000001u)
+#define PRT_HTMLFM_F_EMAIL              ((SessionFlags)0b00000010u)
 
-/** incomplete struct def'n - don't need whole thing here **/
-typedef struct _PSFI PrtHTMLfmInf, *pPrtHTMLfmInf;
+/** Style Flags **/
+typedef unsigned char StyleFlags; /* A type holding 0 or more style flags. */
+#define PRT_HTMLFM_SF_NO_FLAGS		((StyleFlags)0b00000000u)
+#define PRT_HTMLFM_SF_KEEPSPACES	((StyleFlags)0b00000001u) /** Set after newlines to keep space-padding. **/
+#define PRT_HTMLFM_SF_FONTDIRTY		((StyleFlags)0b00000010u)
+#define PRT_HTMLFM_SF_UNDERLINEDIRTY	((StyleFlags)0b00000100u)
+#define PRT_HTMLFM_SF_ITALICDIRTY	((StyleFlags)0b00001000u)
+#define PRT_HTMLFM_SF_BOLDDIRTY		((StyleFlags)0b00010000u)
+
+/*** MIME media types ***/
+typedef struct
+    {
+    char*		MimeType;
+    char*		OutputMimeType;
+    int			SessionFlags;
+    }
+    PrtHTMLfmSubtype, *pPrtHTMLfmSubtype;
+
+/** HTML Report Inf **/
+typedef struct _PSFI
+    {
+    pPrtSession		Session;
+    pPrtResolution	SelectedRes;
+    PrtTextStyle	CurStyle;
+    int			InitStyle;
+    int			ExitStyle;
+    pPrtHTMLfmSubtype	Subtype;
+    SessionFlags	Flags;
+    StyleFlags		StyleFlags;
+    int			BGColor;	/* The current background color showing through. */
+    pXArray		Attachments;
+    }
+    PrtHTMLfmInf, *pPrtHTMLfmInf;
+
+
+/** Snapshot of the style rendering state, including the text style and dirty flags. **/
+typedef struct
+    {
+    PrtTextStyle	Style;
+    StyleFlags		Flags;
+    }
+    PrtHTMLfmSavedStyle, *pPrtHTMLfmSavedStyle;
 
 
 /** Component generator support functions **/
@@ -56,13 +101,17 @@ int prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len);
 
 int prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj);
 
-int prt_htmlfm_SaveStyle(pPrtHTMLfmInf context, pPrtTextStyle origstyle);
-int prt_htmlfm_ResetStyle(pPrtHTMLfmInf context, pPrtTextStyle origstyle);
+int prt_htmlfm_SaveStyle(pPrtHTMLfmInf context, pPrtHTMLfmSavedStyle saved);
+int prt_htmlfm_ResetStyle(pPrtHTMLfmInf context, pPrtHTMLfmSavedStyle saved);
+void prt_htmlfm_SetKeepSpaces(pPrtHTMLfmInf context);
 
+const char * prt_htmlfm_GetFont(pPrtTextStyle style);
 int prt_htmlfm_InitStyle(pPrtHTMLfmInf context, pPrtTextStyle initial_style);
 int prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle newstyle);
+int prt_htmlfm_WriteStyle(pPrtHTMLfmInf context);
 int prt_htmlfm_EndStyle(pPrtHTMLfmInf context);
 
+int prt_htmlfm_OutputBGColor(pPrtHTMLfmInf context, int bgcolor);
 int prt_htmlfm_Border(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj);
 int prt_htmlfm_EndBorder(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj);
 
@@ -73,5 +122,16 @@ int prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table);
 int prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section);
 
 
-#endif /* not defined _PRTMGMT_V3_FM_HTML_H */
+/*** prt_htmlfm_OutputStrLiteral() - Helper function to output a statically
+ *** defined string literal into an HTML document.
+ *** 
+ *** For str literals, the length is known at compile time, so we have the
+ *** compiler output the length (-1 to skip the null character), saving a
+ *** strlen() call at runtime.  Also, we don't have to worry about multi-eval
+ *** of str_literal because the caller promises it is a string literal.
+ ***/
+#define prt_htmlfm_OutputStrLiteral(context, str_literal) \
+    prt_htmlfm_Output((context), (str_literal), sizeof(str_literal) - 1)
 
+
+#endif /* not defined _PRTMGMT_V3_FM_HTML_H */

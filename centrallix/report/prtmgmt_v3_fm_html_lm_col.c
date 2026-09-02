@@ -20,7 +20,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2003 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -57,12 +57,12 @@ int
 prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
     {
     pPrtObjStream column, subobj;
-    PrtTextStyle oldstyle;
+    PrtHTMLfmSavedStyle oldstyle;
     double end_y = 0.0;
 
 	/** Write the section prologue **/
 	prt_htmlfm_SaveStyle(context, &oldstyle);
-	prt_htmlfm_Output(context,"<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\"><tr>\n", -1);
+	prt_htmlfm_OutputStrLiteral(context, "<table role=\"presentation\" cellpadding=\"0\"><tr>\n");
 
 	/** Loop through the column objects **/
 	for(column = section->ContentHead; column; column = column->Next)
@@ -72,7 +72,7 @@ prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
 		{
 		prt_htmlfm_OutputPrintf(context, "<td width=\"%d\">&nbsp;</td>", (int)(column->Y - end_y + 0.001));
 		}
-	    prt_htmlfm_OutputPrintf(context, "<td valign=\"top\" align=\"left\" width=\"%d\">", (int)(column->Width*PRT_HTMLFM_XPIXEL + 0.001));
+	    prt_htmlfm_OutputPrintf(context, "<td width=\"%d\">", (int)(column->Width*PRT_HTMLFM_XPIXEL + 0.001));
 	    prt_htmlfm_InitStyle(context, &(column->TextStyle));
 	    subobj = column->ContentHead;
 	    while(subobj)
@@ -81,14 +81,13 @@ prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
 		subobj = subobj->Next;
 		}
 	    prt_htmlfm_EndStyle(context);
-	    prt_htmlfm_Output(context, "</td>",5);
+	    prt_htmlfm_OutputStrLiteral(context, "</td>");
 	    end_y = column->Y + column->Width;
 	    }
 
 	/** Output the section epilogue **/
-	prt_htmlfm_Output(context,"</tr></table>\n", -1);
+	prt_htmlfm_OutputStrLiteral(context, "</tr></table>\n");
 	prt_htmlfm_ResetStyle(context, &oldstyle);
 
     return 0;
     }
-
