@@ -3,7 +3,7 @@ Author: Greg Beeley
 
 Date: 27-June-2001
 
-License: Copyright (C) 2001 LightSys Technology Services.  See LICENSE.txt.
+License: Copyright (C) 2001-2026 LightSys Technology Services.  See `LICENSE`.
 
 ## Overview
 This document describes the community coding standards and expectations for the Centrallix project.  The goal of this document is to provide helpful guidelines to help make the project more maintainable in the long haul and to facilitate set some standards for this project to help all developers involved.  This is not meant to be a final document by any means - comments and suggestions are welcome, and since this document itself is in CVS... :)
@@ -27,11 +27,13 @@ This document describes the community coding standards and expectations for the 
   - [MTASK Development Issues](#mtask-development-issues)
 
 ## Coding Style Guidelines
+**Note**: Coding style is no longer optional.  [CentrallixCodingStyle.md](CentrallixCodingStyle.md) is the source of truth for coding style in Centrallix, and all new changes must follow it.  The guidance in the rest of this section predates that document and is kept for context; where the two disagree, follow [CentrallixCodingStyle.md](CentrallixCodingStyle.md).
+
 The core of Centrallix uses my (Greg's) coding style, which is similar, but not identical to, the "whitesmith" style that GNU Emacs recognizes. That style is designed primarily with readability in mind.
 
 Coding style is as much an art form as writing the code itself.  If you add a new module or file to Centrallix, don't feel you must follow the core coding style, although choosing to use the core coding style is a good thing :).  In any case, be sure to use a style that is clear and consistent.  I'd recommend that we all use no fewer than four spaces when indenting - using two can make the code too difficult to read, although the '%' function in VI does help :)....  
 
-You can find more information on my coding style in the additional sysdoc documentation file "BeeleyCodingStyle.txt" that is included in this distribution.  I chose to separate that document from this one.
+You can find more information on my coding style in the additional sysdoc documentation file [BeeleyCodingStyle.md](BeeleyCodingStyle.md) that is included in this distribution.  I chose to separate that document from this one.  That document has since been superseded by [CentrallixCodingStyle.md](CentrallixCodingStyle.md).
 
 No matter what style you choose to use, please do not use "indent" (or any other tool for that matter) to reformat any existing code (unless you wrote the code AND no one else is going to be modifying it in CVS; and even then I would strongly discourage reformatting the code with indent).  It is one thing to be sending out patches that have tons of "false diffs" in them from reformatted files.  I'm not worried about that.  What does concern me is the possibility of each developer reformatting files when he/she works on them, thus severely impairing CVS's ability to merge conflicts in an intelligent way.  It will also become quite nontrivial to determine what changes need to be merged when manually merging such files.  And that would be a headache for all of us :)
 
@@ -72,7 +74,7 @@ Second, if a procedural function normally returns a non-negative integer value o
 Third, if a procedural function does not naturally return a value at all, it should return 0 on success and a negative value on failure (as in the above case) for consistency.  Boolean values indicating failure/success status should be avoided - they are to be used for the result of boolean computations in pure functions.
 
 ## Module Prefixes
-Each Centrallix module must have a prefix.  The prefix is a two-to-four letter abbreviation for the module.  Some registry functions require a prefix to be given, and the MSS module's error logging routines require a prefix as a function parameter.  A list of prefixes can be found in this documentation package.  For more information on using module prefixes, consult the "Beeley's coding style" document.
+Each Centrallix module must have a prefix.  The prefix is a two-to-four letter abbreviation for the module.  Some registry functions require a prefix to be given, and the MSS module's error logging routines require a prefix as a function parameter.  A list of prefixes can be found in [Prefixes.md](Prefixes.md).  For more information on using module prefixes, consult [CentrallixCodingStyle.md](CentrallixCodingStyle.md).
 
 ## Secure Coding Recommendations
 Here are a few tips for improving the security of Centrallix by taking care during development.
