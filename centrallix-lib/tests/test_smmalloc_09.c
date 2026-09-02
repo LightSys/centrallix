@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <sys/wait.h>
 
 long long
 test(char** tname)
@@ -83,4 +84,3 @@ test(char** tname)
 
     return iter;
     }
-
