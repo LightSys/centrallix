@@ -73,13 +73,13 @@
 
 /** Enum type representing a clustering algorithm. **/
 typedef unsigned char ClusterAlgorithm;
-#define ALGORITHM_NULL             (ClusterAlgorithm)0u
-#define ALGORITHM_NONE             (ClusterAlgorithm)1u
-#define ALGORITHM_SLIDING_WINDOW   (ClusterAlgorithm)2u
-#define ALGORITHM_KMEANS           (ClusterAlgorithm)3u
-#define ALGORITHM_KMEANS_PLUS_PLUS (ClusterAlgorithm)4u
-#define ALGORITHM_KMEDOIDS         (ClusterAlgorithm)5u
-#define ALGORITHM_DB_SCAN          (ClusterAlgorithm)6u
+#define ALGORITHM_NULL                 ((ClusterAlgorithm)0u)
+#define ALGORITHM_NONE                 ((ClusterAlgorithm)1u)
+#define ALGORITHM_SLIDING_WINDOW       ((ClusterAlgorithm)2u)
+#define ALGORITHM_KMEANS               ((ClusterAlgorithm)3u)
+#define ALGORITHM_KMEANS_PLUS_PLUS     ((ClusterAlgorithm)4u)
+#define ALGORITHM_KMEDOIDS             ((ClusterAlgorithm)5u)
+#define ALGORITHM_DB_SCAN              ((ClusterAlgorithm)6u)
 
 ClusterAlgorithm ALL_CLUSTERING_ALGORITHMS[] =
     {
@@ -114,9 +114,9 @@ ci_ClusteringAlgorithmToString(ClusterAlgorithm clustering_algorithm)
 
 /** Enum type representing a similarity measurement algorithm. **/
 typedef unsigned char SimilarityMeasure;
-#define SIMILARITY_NULL            (SimilarityMeasure)0u
-#define SIMILARITY_COSINE          (SimilarityMeasure)1u
-#define SIMILARITY_LEVENSHTEIN     (SimilarityMeasure)2u
+#define SIMILARITY_NULL                ((SimilarityMeasure)0u)
+#define SIMILARITY_COSINE              ((SimilarityMeasure)1u)
+#define SIMILARITY_LEVENSHTEIN         ((SimilarityMeasure)2u)
 
 SimilarityMeasure ALL_SIMILARITY_MEASURES[] =
     {
@@ -179,11 +179,11 @@ double (*ci_SimilarityMeasureToFunction(SimilarityMeasure similarity_measure))(v
  *** values for TargetType are not currently allowed.
  ***/
 typedef unsigned char TargetType;
-#define TARGET_NODE          (TargetType)1u
-#define TARGET_CLUSTER       (TargetType)2u
-#define TARGET_SEARCH        (TargetType)3u
-#define TARGET_CLUSTER_ENTRY (TargetType)4u
-#define TARGET_SEARCH_ENTRY  (TargetType)5u
+#define TARGET_NODE                    ((TargetType)1u)
+#define TARGET_CLUSTER                 ((TargetType)2u)
+#define TARGET_SEARCH                  ((TargetType)3u)
+#define TARGET_CLUSTER_ENTRY           ((TargetType)4u)
+#define TARGET_SEARCH_ENTRY            ((TargetType)5u)
 
 TargetType ALL_TARGET_TYPES[] =
     {

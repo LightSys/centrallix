@@ -108,15 +108,15 @@ typedef struct
     }
     ArgExpect, *pArgExpect;
 
-#define EXP_ARG_END        (ArgExpect){NULL, -1}
-#define EXP_ARG_NO_FLAGS   (0)
-#define EXP_ARG_OPTIONAL   (1 << 0)
-#define EXP_ARG_NOT_NULL   (1 << 1)
-#define EXP_ARG_FORCE_TYPE (1 << 2)
-#define EXP_ARG_NON_EMPTY  (1 << 3)
-#define EXP_ARG_NEGATIVE   (1 << 4)
-#define EXP_ARG_POSITIVE   (1 << 5)
-#define EXP_ARG_NON_NAN    (1 << 6)
+#define EXP_ARG_END            ((ArgExpect){NULL, -1})
+#define EXP_ARG_NO_FLAGS       (0)
+#define EXP_ARG_OPTIONAL       (1 << 0)
+#define EXP_ARG_NOT_NULL       (1 << 1)
+#define EXP_ARG_FORCE_TYPE     (1 << 2)
+#define EXP_ARG_NON_EMPTY      (1 << 3)
+#define EXP_ARG_NEGATIVE       (1 << 4)
+#define EXP_ARG_POSITIVE       (1 << 5)
+#define EXP_ARG_NON_NAN        (1 << 6)
 
 /*** An internal function used by the schema verifier (below) to verify each
  *** argument of the provided schema.
