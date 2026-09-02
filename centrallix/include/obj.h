@@ -462,8 +462,6 @@ typedef struct _OE
 #define OBJ_EV_F_NOSAVE		1	/* internal - don't rewrite events file */
 
 
-extern int obj_internal_DiscardDC(pXHashQueue hq, pXHQElement xe, int locked);
-
 /** directory entry caching data **/
 typedef struct _DC
     {
@@ -713,29 +711,6 @@ int objParamsLookupInt(pXArray params, char* name);
 char* objParamsLookupString(pXArray params, char* name);
 int objParamsSet(pXArray params, char* name, char* stringval, int intval);
 int objParamsFree(pXArray params);
-int obj_internal_FreePath(pPathname this);
-int obj_internal_FreePathStruct(pPathname this);
-pPathname obj_internal_NormalizePath(char* cwd, char* name);
-int obj_internal_AddChildTree(pObjTrxTree parent_oxt, pObjTrxTree child_oxt);
-pObject obj_internal_AllocObj();
-int obj_internal_FreeObj(pObject);
-int obj_internal_TrxLog(pObject this, char* op, char* fmt, ...);
-
-/** objectsystem transaction functions **/
-int obj_internal_FreeTree(pObjTrxTree oxt);
-pObjTrxTree obj_internal_AllocTree();
-pObjTrxTree obj_internal_FindTree(pObjTrxTree oxt, char* path);
-int obj_internal_SetTreeAttr(pObjTrxTree oxt, int type, pObjData val);
-pObjTrxTree obj_internal_FindAttrOxt(pObjTrxTree oxt, char* attrname);
-
-/** objectsystem path manipulation **/
-char* obj_internal_PathPart(pPathname path, int start_element, int length);
-int obj_internal_PathPrefixCnt(pPathname full_path, pPathname prefix);
-int obj_internal_CopyPath(pPathname dest, pPathname src);
-int obj_internal_AddToPath(pPathname path, char* new_element);
-int obj_internal_RenamePath(pPathname path, int element_id, char* new_element);
-void obj_internal_OpenCtlToString(pPathname pathinfo, int pathstart, int pathend, pXString str);
-int obj_internal_PathToText(pPathname pathinfo, int pathend, pXString str);
 
 /** objectsystem datatype functions **/
 int objDataToString(pXString dest, int data_type, void* data_ptr, int flags);
@@ -761,8 +736,6 @@ int objDateAdd(pDateTime dt, int diff_sec, int diff_min, int diff_hr, int diff_d
 
 /** objectsystem replication services - open object notification (Rn) system **/
 int objRequestNotify(pObject this, int (*callback_fn)(), void* context, int what);
-int obj_internal_RnDelete(pObjReqNotifyItem item);
-int obj_internal_RnNotifyAttrib(pObject this, char* attrname, pTObjData newvalue, int send_this);
 int objDriverAttrEvent(pObject this, char* attr_name, pTObjData newvalue, int send_this);
 
 
