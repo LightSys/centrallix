@@ -3,6 +3,8 @@ Date:		January 31, 2006
 
 Author:		Greg Beeley (GRB)
 
+License:	Copyright (C) 2001-2026 LightSys Technology Services. See LICENSE.txt for more information.
+
 ## Overview
 Centrallix is a modern application server environment that must work with a lot of untrusted and semi-trusted data, frequently building commands and structures which contain data encapsulated within control structures, such as SQL, HTML, JavaScript, and more.
 
@@ -11,82 +13,87 @@ The goal of this module is to provide an easy, seamless way to safely format suc
 ## Functions
 Two functions will initially be available:
 
-- qpfPrintf() - quoted formatted printing into a fixed-length buffer.
+- `qpfPrintf()` - quoted formatted printing into a fixed-length buffer.
+- `qpfPrintf_va()` - quoted formatted printing into a fixed-length buffer, where the vararg pointer is explicitly provided in lieu of passing the arguments directly to the function.
 
-- qpfPrintf_va() - quoted formatted printing into a fixed-length buffer, where the vararg pointer is explicitly provided in lieu of passing the arguments directly to the function.
+The calling syntax of these functions is similar to that of the `snprintf()` and `vsnprintf()` respectively.  However, the formatting specifiers are different, and an initial "session" parameter can be provided to track any errors that occur (this can be left NULL if cumulative error handling is not needed).
 
-The calling syntax of these functions is similar to that of the corresponding snprintf() and vsnprintf() calls, but the formatting specifiers are different, and an initial "session" parameter can be provided - but can be left NULL in most cases where cumulative error handling is not needed.
+The following functions for handling error sessions are also provided:
+
+- `qpfOpenSession()` - Open a new error session.
+- `qpfCloseSession()` - Close an error session, freeing all allocated resources.
+- `qpfClearErrors()` - Clear errors on an error session so that it can be reused.
+- `qpfErrors()` - Get the error mask for the errors that have occurred in an error session.
+- `qpfLogErrors()` - Log a helpful message to the console that errors that have occurred in an error session.
 
 ## Formatting
-Formatting specifiers will begin with a % sign, as in normal printf(). However, the specifiers will be very different and can be combined together to obtain the desired result.  Formatting specifiers can affect a parameter's length, position, padding, content, quoting, and more.
+Format specifiers begin with the percent character (`%`), similarly to the `printf()` functions. However, the `qprintf()` module uses a new set of format specifers.  The module includes several source format specifiers (e.g. `%STR`, `%INT`, etc.) which indicate what type of data the function should expect so that it can format that data into the output string.  Filter format specifiers (e.g. `%QUOT`, `%PATH`, etc.) can be appended to source format specifiers with the ampersand (`&`) to modify or process the string data, granting control over properties such as its length, position, padding, quoting, and more.  Multiple format specifiers may be added and their effects will be applied in order from left to right.  The module also provides control format specifiers which control the formatted data in other ways.
 
-To combine specifiers, simply chain them with the ampersand &.  The first one will be applied first to the parameter, and then the second, and so forth.
+Some specifiers begin with an `n`, which should be replaced with a number or a wildcard (`*`), in which case the function will expect an int to be provided.  This number usually controlls the behavior of the format specifier in some way.  For example, when using `%nSTR`, the developer may use `%4STR` to indicate a string exactly 4 characters long.
 
-For non-string values, once the INT, POS, DBL, etc., conversion has been performed, further specifiers can be added to further process the string.
+**Warning**: Not all format specifiers below have been implemented yet!  Please check the end of this document for information on which specifiers are implemented so far.
 
-Please check the end of this document for information on which of these specifiers are currently implemented.
-
-### Simple specifiers:
+### Control Format Specifiers
 
 | Specifier | Description
 | --------- | ------------
-| %%        | A percent sign.
-| %&        | An ampersand sign.
-| %[        | Beginning of conditional printing (an integer argument is expected, 0 = noprint, nonzero = print)
-| %]        | End of conditional printing
+| `%%`      | A percent sign.
+| `%&`      | An ampersand sign.
+| `%[`      | Beginning of conditional printing (expects an integer: 0 = noprint, nonzero = print).
+| `%]`      | End of conditional printing.
 
-### Source data specifiers:
+### Source Format Specifiers
 
 | Specifier | Description
 | --------- | ------------
-| %INT      | An integer value, with range of the normal 'int' value in the C language.  Can be positive, negative, or zero.   
-| %LL       | A 64-bit integer value, with range of 'long long' value in the C language.  Can be positive, negative, or zero.
-| %POS      | A non-negative integer value (zero allowed).
-| %DBL      | Double-precision floating point value.
-| %STR      | A normal zero-terminated string.
-| %nSTR     | A string of exactly N length (binary safe), where N is an integer supplied in the format string, or if `*`, supplied as an argument immediately preceding the string pointer. Warning:  this does *not* honor null terminators.  Be careful.
-| %CHR      | A single character.
-| %XSTR     | An XString.
-| %EXP      | An Expression tree node.
-| %POD      | A Pointer-to-object-data.  The type of the POD is specified as an argument immediately preceding the string pointer.
-| %PTOD     | A typed pointer-to-object-data.
+| `%INT`    | An integer value, with range of the normal 'int' value in the C language.  Can be positive, negative, or zero.   
+| `%LL`     | A 64-bit integer value, with range of 'long long' value in the C language.  Can be positive, negative, or zero.
+| `%POS`    | A non-negative integer value (zero allowed).  Expects a positive int, and the function errors if the int is negative.
+| `%DBL`    | A double-precision floating point value.
+| `%STR`    | A normal null-terminated string.
+| `%nSTR`   | A string of exactly `n` length (binary safe), where `n` is the integer supplied in the format string, or if `*`, supplied as an argument immediately preceding the string pointer. Warning:  This does *not* honor null-terminators.  Be careful.
+| `%CHR`    | A single character.
+| `%XSTR`   | An XString.
+| `%EXP`    | An Expression tree node.
+| `%POD`    | A Pointer-to-object-data.  The type of the POD is specified as an argument immediately preceding the string pointer.
+| `%PTOD`   | A typed pointer-to-object-data.
 
-### Specifiers used for filtering or processing the data:
+### Filter Format Specifiers:
 
 | Specifier         | Description
 | ----------------- | ------------
-| &QUOT             | Adds single quotes around the string value if its source type was a string or date/time value (esp. useful for expressions and pods).
-| &DQUOT            | Adds double quotes around the string value if its source type was a string or date/time value.
-| &ESCQ             | Causes quotes in the string to be escaped, with single quotes, double quotes, and backslashes quoted with a leading backslash.
-| &WS               | Causes whitespace in the string to be processed into its native values (\n -> newline, \r -> carriage return, and \t -> horizontal tab).
-| &ESCWS            | Causes newlines, carriage returns, and tab characters to be processed back into escaped representations \n, \r, and \t.
-| &ESCSP            | Causes spaces to be escaped with a backslash.
-| &UNESC            | Causes string to be unescaped (backslashes removed and escaped values converted to their normal characters).
-| &SSYB             | Causes single quotes in the string to be doubled, sybase quote style ' -> ''
-| &DSYB             | Causes double quotes in the string to be doubled " -> ""
-| &FILE             | Presumes that the string is a filename, and thus results in an error if the string contains '/' or if the string is solely '.' or '..'.
-| &PATH             | Presumes that the string is a pathname, and so cannot contain '..' at the beginning, end, or between two '/' characters.
-| &SYM              | Treats the string as a 'symbol', beginning with [_a-zA-Z] and then containing [_a-zA-Z0-9].  Results in an error if the string does not match.
-| &HEX              | Hex-encodes the entire string.
-| &DHEX             | Hex-decodes the entire string.
-| &B64              | Base64-encodes the entire string.
-| &DB64             | Base64-decodes the entire string.
-| &RF/reg/          | Filters string value through regular expression, and if it does not match in its entirety, causes an error.
-| &RR/reg/rep/      | Filters string value through regular expression and replaces occurrences of 'reg' with 'rep'.  It is not an error if the regular expression does not match at all.
-| &HTE              | Converts special HTML characters to HTML entities (includes &, <, >, ', and ".
-| &DHTE             | Converts the above HTML entities back to normal characters.
-| &URL              | Converts any special characters other than [A-Za-z0-9] into %nn where nn is the hex value of the character.
-| &DURL             | Converts any %nn back to normal characters.
-| &nLSET            | Space-pads the string on the right (left-align) until there are at least n characters in the string.
-| &nRSET            | Space-pads the string on the left (right-align) until there are at least n characters in the string.
-| &nZRSET           | Zero-pads the string on the left (right-align) until there are at least n characters in the string.
-| &nLEN             | Truncates the string to at most n characters.
-| &SQLARG           | Makes the argument safe for inclusion in a SQL command as a data value.
-| &SQLSYM           | Makes the argument safe for inclusion in a SQL command as a symbol (for example, table or column name).
-| &HTDATA           | Makes the argument safe for inclusion in an HTML document as data, for example between tags or as an attribute of a tag.
+| `&QUOT`           | Adds single quotes around the string value if its source type was a string or DateTime value (esp. useful for expressions and pods).
+| `&DQUOT`          | Adds double quotes around the string value if its source type was a string or DateTime value.
+| `&ESCQ`           | Escapes quotes (`'"`) and backslashes (`\`) with a leading backslash.
+| `&WS`             | Processes whitespace notations into the actual characters (\n -> newline, \r -> carriage return, and \t -> horizontal tab).
+| `&ESCWS`          | Escapes newlines, carriage returns, and tab characters into their notations: `\n`, `\r`, and `\t`.
+| `&ESCSP`          | Escapes spaces with a leading backslash.
+| `&UNESC`          | Unescapes whitespace (backslashes removed and escaped values converted to their normal characters).
+| `&SSYB`           | Doubles single quotes, sybase quote style `'` -> `''`
+| `&DSYB`           | Doubles double quotes, sybase quote style `"` -> `""`
+| `&FILE`           | Ensures the string is a valid filename, giving an error if it contains `'/'` or is only `"."` or `".."`.
+| `&PATH`           | Ensures the string is a pathname, giving an error if it has `'..'` at the start, end, or between two `'/'` characters.
+| `&SYM`            | Ensures the string is a symbol (starts with `[_a-zA-Z]`, followed by `[_a-zA-Z0-9]`), giving an error if is does not.
+| `&HEX`            | **Hex-Encode**s the string (e.g. `"Example"` -> `"4578616d706c65"`).
+| `&DHEX`           | **Hex-Decode**s the string (e.g. `"4578616d706c65"` -> `"Example"`).
+| `&B64`            | **Base64-Encode**s the entire string (e.g. `"Example"` -> `"RXhhbXBsZQ=="`).
+| `&DB64`           | **Base64-Decode**s the entire string (e.g. `"RXhhbXBsZQ=="` -> `"Example"`).
+| `&HTE`            | **HTML-Encode**: Escapes special HTML characters into HTML entities (including &, <, >, ', and ") to prevent script injection.
+| `&DHTE`           | **HTML-Dencode**: Unescapes HTML entities back to normal characters.
+| `&URL`            | **URL-Encode**: Escapes any special characters other than `[A-Za-z0-9]` into `%nn` where `nn` is the character's hex value.
+| `&DURL`           | **URL-Decode**: Converts any `%nn` encodings back to normal characters.
+| `&RF/reg/`        | Ensures the string matches a regular expression, giving an error if it does not.
+| `&RR/reg/rep/`    | Replaces occurrences of the `reg` regular expression with `"rep"`.  Does not give an error if no matches occur.
+| `&nLSET`          | Right-pads the string (left-align) with spaces until it has at least `n` characters.
+| `&nRSET`          | Left-pads the string (right-align) with spaces until it has at least `n` characters.
+| `&nZRSET`         | Left-pads the string (right-align) with zeros until it has at least `n` characters.
+| `&nLEN`           | Truncates the string to at most `n` characters.
+| `&SQLARG`         | Ensures the string is safe as an SQL data value.
+| `&SQLSYM`         | Ensures the string is safe as an SQL symbol (for example, table or column name).
+| `&HTDATA`         | Ensures the string is safe as an HTML document as data, for example between tags or as an attribute of a tag.
 
 ## Implemented
-Here are the currently implemented specifier chains:
+Below is a list of all implemented specifier chains:
 
 - %INT
 - %LL
@@ -111,4 +118,4 @@ Here are the currently implemented specifier chains:
 - %STR&PATH
 - %STR&PATH&nLEN
 
-All others are unimplemented and will result in a return value of -ENOSYS.
+All others are unimplemented and may result in a return value of `-ENOSYS` with the `QPF_ERR_T_NOTIMPL` error set.
