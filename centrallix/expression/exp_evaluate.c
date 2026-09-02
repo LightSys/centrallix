@@ -97,7 +97,7 @@ expEvalSubquery(pExpression tree, pParamObjects objlist)
 	    }
 
 	/** Run the query **/
-	qy = objMultiQuery(objlist->Session, tree->Name, objlist, OBJ_MQ_F_ONESTATEMENT | OBJ_MQ_F_NOUPDATE);
+	qy = objMultiQuery(objlist->Session, tree->Name, objlist, OBJ_MQ_F_ONESTATEMENT | OBJ_MQ_F_NOUPDATE | OBJ_MQ_F_ONEROW);
 	if (!qy)
 	    {
 	    mssError(1,"EXP","Failed to run subselect query");

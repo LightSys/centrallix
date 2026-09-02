@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -54,6 +54,10 @@
 #define OBJSYS_MAX_PATH		256
 #define OBJSYS_MAX_ELEMENTS	32
 #define OBJSYS_MAX_ATTR		64
+
+#define	OBJSYS_SORT_XASIZE	4096	/* initial size of query sort xarray */
+#define	OBJSYS_SORT_REOPEN	0	/* whether to enable reopen functionality in sorts */
+#define	OBJSYS_SORT_MAX		16	/* maximum sort-by items */
 
 #ifndef MAX
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -136,26 +140,27 @@ typedef struct _PH
     ObjPresentationHints, *pObjPresentationHints;
 
 /*** Hints style info - keep in sync with ht_utils_hints.js in centrallix-os ***/
-#define OBJ_PH_STYLE_BITMASK	1	/* items from EnumQuery or EnumList are bitmasked */
-#define OBJ_PH_STYLE_LIST	2	/* use a list style presentation for enum types */
-#define OBJ_PH_STYLE_BUTTONS	4	/* use radio button or checkboxes for enum types */
-#define OBJ_PH_STYLE_NOTNULL	8	/* field does not allow nulls */
-#define OBJ_PH_STYLE_STRNULL	16	/* empty string == null */
-#define OBJ_PH_STYLE_GROUPED	32	/* check GroupID for grouping fields together */
-#define OBJ_PH_STYLE_READONLY	64	/* user can't modify */
-#define OBJ_PH_STYLE_HIDDEN	128	/* don't present this field to the user */
-#define OBJ_PH_STYLE_PASSWORD	256	/* hide string as user types */
-#define OBJ_PH_STYLE_MULTILINE	512	/* string value allows multiline editing */
-#define OBJ_PH_STYLE_HIGHLIGHT	1024	/* highlight this attribute */
-#define OBJ_PH_STYLE_LOWERCASE	2048	/* This attribute is lowercase-only */
-#define OBJ_PH_STYLE_UPPERCASE	4096	/* This attribute is uppercase-only */
-#define OBJ_PH_STYLE_TABPAGE	8192	/* Prefer tabpage layout for grouped fields */
-#define OBJ_PH_STYLE_SEPWINDOW	16384	/* Prefer separate windows for grouped fields */
-#define OBJ_PH_STYLE_ALWAYSDEF	32768	/* Always reset default value on any modify */
-#define OBJ_PH_STYLE_CREATEONLY	65536	/* Writable only during record creation */
-#define OBJ_PH_STYLE_MULTISEL	131072	/* Multiple select */
-#define OBJ_PH_STYLE_KEY	262144	/* Field is a primary key */
-#define OBJ_PH_STYLE_APPLYCHG	524288	/* Apply hints on DataChange, not on DataModify */
+#define OBJ_PH_STYLE_NONE           0        /* no style bits set */
+#define OBJ_PH_STYLE_BITMASK       (1 <<  0) /* items from EnumQuery or EnumList are bitmasked */
+#define OBJ_PH_STYLE_LIST          (1 <<  1) /* use a list style presentation for enum types */
+#define OBJ_PH_STYLE_BUTTONS       (1 <<  2) /* use radio button or checkboxes for enum types */
+#define OBJ_PH_STYLE_NOTNULL       (1 <<  3) /* field does not allow nulls */
+#define OBJ_PH_STYLE_STRNULL       (1 <<  4) /* empty string == null */
+#define OBJ_PH_STYLE_GROUPED       (1 <<  5) /* check GroupID for grouping fields together */
+#define OBJ_PH_STYLE_READONLY      (1 <<  6) /* user can't modify */
+#define OBJ_PH_STYLE_HIDDEN        (1 <<  7) /* don't present this field to the user */
+#define OBJ_PH_STYLE_PASSWORD      (1 <<  8) /* hide string as user types */
+#define OBJ_PH_STYLE_MULTILINE     (1 <<  9) /* string value allows multiline editing */
+#define OBJ_PH_STYLE_HIGHLIGHT     (1 << 10) /* highlight this attribute */
+#define OBJ_PH_STYLE_LOWERCASE     (1 << 11) /* This attribute is lowercase-only */
+#define OBJ_PH_STYLE_UPPERCASE     (1 << 12) /* This attribute is uppercase-only */
+#define OBJ_PH_STYLE_TABPAGE       (1 << 13) /* Prefer tabpage layout for grouped fields */
+#define OBJ_PH_STYLE_SEPWINDOW     (1 << 14) /* Prefer separate windows for grouped fields */
+#define OBJ_PH_STYLE_ALWAYSDEF     (1 << 15) /* Always reset default value on any modify */
+#define OBJ_PH_STYLE_CREATEONLY    (1 << 16) /* Writable only during record creation */
+#define OBJ_PH_STYLE_MULTISEL      (1 << 17) /* Multiple select */
+#define OBJ_PH_STYLE_KEY           (1 << 18) /* Field is a primary key */
+#define OBJ_PH_STYLE_APPLYCHG      (1 << 19) /* Apply hints on DataChange, not on DataModify */
 
 
 /** objectsystem driver **/
@@ -389,17 +394,25 @@ typedef struct _TO
     ObjTemp, *pObjTemp;
 
 
-/** structure used for sorting a query result set. **/
+/** structures used for sorting a query result set. **/
 typedef struct _SRT
     {
-    XArray	SortPtr[2];	/* ptrs to sort key data */
-    XArray	SortPtrLen[2];	/* lengths of sort key data */
-    XArray	SortNames[2];	/* names of objects */
+    XArray	SortItems;	/* of ObjQuerySortItem */
     XString	SortDataBuf;	/* buffer for sort key data */
-    XString	SortNamesBuf;	/* buffer for object names */
     int		Reopen;
+    char	ReopenPath[OBJSYS_MAX_PATH];	/* path of parent object with open ctl added */
     }
     ObjQuerySort, *pObjQuerySort;
+
+typedef struct _SRTI
+    {
+    pObject	Obj;		/* the open object */
+    char*	Name;		/* object name */
+    size_t	SortDataOffset;	/* the BuildBinaryImage data offset in SortDataBuf */
+    size_t	SortDataLen;	/* length of the sort key data in SortDataBuf */
+    pObjQuerySort	SortInf;
+    }
+    ObjQuerySortItem, *pObjQuerySortItem;
 
 
 /** object query information **/
@@ -408,11 +421,11 @@ typedef struct _OQ
     int		Magic;
     pObject	Obj;
     char*	QyText;
-    void*	Tree;	/* pExpression */
-    void*	SortBy[16];	/* pExpression [] */
-    void*	ObjList; /* pParamObjects */
-    void*	Data;
-    int		Flags;
+    void*	Tree;		/* pExpression */
+    void*	SortBy[OBJSYS_SORT_MAX];	/* pExpression [] */
+    void*	ObjList;	/* pParamObjects */
+    void*	Data;		/* returned from driver xyzOpenQuery() */
+    int		Flags;		/* OBJ_QY_F_xxx */
     int		RowID;
     pObjQuerySort SortInf;
     pObjDriver	Drv;		/* used for multiquery only */
@@ -420,11 +433,12 @@ typedef struct _OQ
     }
     ObjQuery, *pObjQuery;
 
-#define OBJ_QY_F_ALLOCTREE	1
-#define OBJ_QY_F_FULLQUERY	2
-#define OBJ_QY_F_FULLSORT	4
-#define OBJ_QY_F_FROMSORT	8
-#define OBJ_QY_F_NOREOPEN	16
+#define OBJ_QY_F_ALLOCTREE	1	/* internal: OSML allocated WHERE expression tree */
+#define OBJ_QY_F_FULLQUERY	2	/* driver can handle the WHERE criteria entirely */
+#define OBJ_QY_F_FULLSORT	4	/* driver can handle the ORDER BY entirely */
+#define OBJ_QY_F_FROMSORT	8	/* internal: OSML is sorting results */
+#define OBJ_QY_F_NOREOPEN	16	/* internal: OSML is NOT doing re-opens on results */
+#define OBJ_QY_F_ONEROW		32	/* only the first row of results is needed */
 
 
 /*** Event and EventHandler structures ***/
@@ -617,6 +631,7 @@ typedef struct
 /*** Flags for objMultiQuery() ***/
 #define OBJ_MQ_F_ONESTATEMENT	(1<<0)		/* only permit one statement to run */
 #define OBJ_MQ_F_NOUPDATE	(1<<1)		/* disallow any updates in this query */
+#define	OBJ_MQ_F_ONEROW		(1<<2)		/* only need first row from results */
 
 
 /** objectsystem main functions **/
@@ -722,6 +737,8 @@ int obj_internal_PathPrefixCnt(pPathname full_path, pPathname prefix);
 int obj_internal_CopyPath(pPathname dest, pPathname src);
 int obj_internal_AddToPath(pPathname path, char* new_element);
 int obj_internal_RenamePath(pPathname path, int element_id, char* new_element);
+void obj_internal_OpenCtlToString(pPathname pathinfo, int pathstart, int pathend, pXString str);
+int obj_internal_PathToText(pPathname pathinfo, int pathend, pXString str);
 
 /** objectsystem datatype functions **/
 int objDataToString(pXString dest, int data_type, void* data_ptr, int flags);

@@ -34,6 +34,7 @@ centrallix/test_obj
 centrallix/test_prt
 centrallix-os/apps/kardia
 centrallix-lib/include/cxlib
+centrallix-lib/autom4te.cache
 */nbproject/
 centrallix-lib/tests/test_*.bin
 centrallix/tests/*.out
@@ -52,6 +53,8 @@ centrallix/depcomp
 centrallix/missing
 centrallix/ltmain.sh
 centrallix/test-driver
+centrallix-ui-test/tests/config.toml
+centrallix-ui-test/tests/__pycache__
 .gdb_history
 *.gcno
 *.gcov

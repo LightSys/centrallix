@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>ClaudCode — Quick Bird Brief</title>
+	<meta name="description"
+		content="A compact page in a red-blue scheme presenting a short bird summary, styled like a ClaudCode snippet output." />
+	<style>
+		:root {
+			--bg: #071022;
+			--card: #081627;
+			--red: #ff4d6d;
+			--blue: #4da6ff;
+			--muted: #9fb7cf;
+			--glass: rgba(255, 255, 255, 0.03);
+			--radius: 10px;
+			--mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono",
+				"Courier New", monospace;
+		}
+
+		html,
+		body {
+			height: 100%;
+			margin: 0;
+			font-family: Inter, system-ui, Segoe UI, Arial;
+		}
+
+		body {
+			background: linear-gradient(180deg, var(--bg), #04111b 70%);
+			color: #eaf6ff;
+			-webkit-font-smoothing: antialiased;
+			padding: 30px;
+		}
+
+		.container {
+			max-width: 900px;
+			margin: 0 auto;
+			display: grid;
+			grid-template-columns: 1fr 320px;
+			gap: 18px;
+		}
+
+		header {
+			grid-column: 1/-1;
+			display: flex;
+			align-items: center;
+			gap: 14px;
+			margin-bottom: 6px;
+		}
+
+		.brand {
+			width: 56px;
+			height: 56px;
+			border-radius: 12px;
+			background: linear-gradient(135deg, var(--red), var(--blue));
+			display: grid;
+			place-items: center;
+			font-weight: 700;
+			color: #051424;
+			font-size: 18px;
+			box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+		}
+
+		h1 {
+			margin: 0;
+			font-size: 18px;
+		}
+
+		.subtitle {
+			color: var(--muted);
+			font-size: 13px;
+			margin-top: 4px
+		}
+
+		main.article {
+			background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.04));
+			padding: 16px;
+			border-radius: var(--radius);
+			box-shadow: 0 10px 40px rgba(2, 6, 14, 0.6);
+		}
+
+		.meta {
+			display: flex;
+			gap: 10px;
+			align-items: center;
+			margin-bottom: 12px;
+		}
+
+		.badge {
+			font-family: var(--mono);
+			background: rgba(255, 255, 255, 0.02);
+			padding: 6px 8px;
+			border-radius: 8px;
+			color: var(--muted);
+			font-size: 12px;
+		}
+
+		.lead {
+			color: var(--muted);
+			font-size: 13px;
+			margin: 0 0 12px 0
+		}
+
+		.codeish {
+			background: linear-gradient(90deg, #061528 20%, rgba(255, 255, 255, 0.01));
+			border: 1px solid rgba(255, 255, 255, 0.03);
+			padding: 12px;
+			border-radius: 8px;
+			font-family: var(--mono);
+			font-size: 13px;
+			color: #dff3ff;
+			white-space: pre-wrap;
+		}
+
+		aside.card {
+			background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.04));
+			padding: 16px;
+			border-radius: var(--radius);
+			box-shadow: 0 10px 40px rgba(2, 6, 14, 0.6);
+			height: fit-content;
+		}
+
+		.accent {
+			color: var(--blue);
+			font-weight: 600;
+		}
+
+		.pill {
+			display: inline-block;
+			padding: 6px 8px;
+			border-radius: 999px;
+			background: rgba(255, 255, 255, 0.02);
+			font-size: 12px;
+			color: var(--muted);
+		}
+
+		footer {
+			grid-column: 1/-1;
+			text-align: center;
+			color: var(--muted);
+			margin-top: 18px;
+			font-size: 12px;
+		}
+
+		@media (max-width:880px) {
+			.container {
+				grid-template-columns: 1fr;
+				padding: 10px
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div class="container" role="document">
+		<header role="banner">
+			<div class="brand" aria-hidden="true">CC</div>
+			<div>
+				<h1>ClaudCode — Bird Brief</h1>
+				<div class="subtitle">A compact, code-like summary about a bird in a red-blue theme.
+				</div>
+			</div>
+		</header>
+
+		<main class="article" role="main" aria-labelledby="bird-title">
+			<div class="meta">
+				<div class="badge">type: summary</div>
+				<div class="pill">species: <span style="margin-left:6px" class="accent">Common
+						Kingfisher</span></div>
+			</div>
+
+			<h2 id="bird-title" style="margin-top:0">Common Kingfisher (Alcedo atthis)</h2>
+			<p class="lead">A small, vivid river bird known for rapid dives, bright plumage, and precise
+				hunting.</p>
+
+			<div class="codeish" aria-hidden="false">
+Name: Common Kingfisher
+Size: 16–17 cm
+Habitat: Slow rivers, streams, ponds with perches
+Diet: Small fish and aquatic insects
+Behavior: Perches above water, hovers, and dives feet-first to catch prey
+Breeding: Nest burrow in banks; clutches ~6 eggs
+Notice: Iridescent blue upperparts, orange underparts, long bill
+			</div>
+
+			<section style="margin-top:12px">
+				<h3 style="margin:0 0 8px 0">Quick notes</h3>
+				<ul style="color:var(--muted);margin-top:6px">
+					<li>Territorial; often returns to regular perches.</li>
+					<li>Flight is rapid with short, direct wingbeats.</li>
+					<li>Indicator of healthy freshwater ecosystems.</li>
+				</ul>
+			</section>
+		</main>
+
+		<aside class="card" role="complementary" aria-labelledby="tips">
+			<h3 id="tips" style="margin-top:0">Observation tips</h3>
+			<p style="color:var(--muted);font-size:13px">
+				Look for flashes of blue along slow streams near low branches.
+			</p>
+
+			<div style="margin-top:10px">
+				<div class="pill" style="margin-bottom:8px">best time: <span class="accent"
+						style="margin-left:6px">early morning</span></div>
+				<div class="pill">range: <span class="accent" style="margin-left:6px">Europe, Asia, N.
+						Africa</span></div>
+			</div>
+
+			<div style="margin-top:12px">
+				<button style="background:linear-gradient(90deg,var(--red),var(--blue));border:none;padding:8px 12px;border-radius:8px;font-weight:600;color:#02121b;cursor:pointer"
+					id="moreBtn">
+					More facts
+				</button>
+			</div>
+		</aside>
+
+		<footer role="contentinfo">Generated in a ClaudCode-like style • © Example</footer>
+	</div>
+
+	<script>
+		(function () {
+			var btn = document.getElementById("moreBtn");
+			btn.addEventListener("click", function () {
+				alert("Kingfishers often swallow fish head-first; they beat larger prey before swallowing.");
+			});
+		})();
+	</script>
+</body>
+
+</html>

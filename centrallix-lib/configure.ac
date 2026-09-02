@@ -40,6 +40,12 @@ FINAL_TARGETS="libCentrallix.a libStParse.a"
 dnl Check for makedepend
 CHECK_MAKEDEPEND
 
+dnl Check for __builtin_expect()
+CHECK_BUILTIN_EXPECT
+
+dnl Check for memset_explicit(), memset_s(), and explicit_bzero().
+CHECK_MEMSET
+
 dnl Check if -pg is allowed with -fPIC
 AH_TEMPLATE([USE_PROFILE], [Define for profiling])
 CHECK_PROFILE

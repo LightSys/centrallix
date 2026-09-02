@@ -119,6 +119,7 @@ typedef struct _MPI
 #define MQP_MI_F_SOURCEOPEN	4	/* source has been opened */
 #define MQP_MI_F_LASTMATCHED	8	/* last item returned matched (for pruning) */
 #define MQP_MI_F_PAGED		16	/* paged (multi-part) source */
+#define	MQP_MI_F_ONEROW		32	/* only need first row of results */
 
 
 int mqp_internal_SetupSubtreeAttrs(pQueryElement qe, pObject obj);
@@ -249,7 +250,8 @@ mqp_internal_Recurse(pQueryElement qe, pQueryStatement stmt, pObject obj)
     pObjectInfo oi;
     pObjQuery newqy;
     pObject newobj;
-    pMqpSubtrees ms = ((pMqpInf)(qe->PrivateData))->Subtrees;
+    pMqpInf mi = (pMqpInf)qe->PrivateData;
+    pMqpSubtrees ms = mi->Subtrees;
 
 	/** Too many levels of recursion? **/
 	if (ms->nStacked >= MQP_MAX_SUBTREE) return NULL;
@@ -259,7 +261,14 @@ mqp_internal_Recurse(pQueryElement qe, pQueryStatement stmt, pObject obj)
 	if (oi && (oi->Flags & OBJ_INFO_F_NO_SUBOBJ)) return NULL;
 
 	/** Try running the query. **/
-	newqy = objOpenQuery(obj, NULL, NULL, (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL), 0);
+	newqy = objOpenQuery(
+		    obj,
+		    NULL,
+		    NULL, 
+		    (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, 
+		    (void**)(qe->OrderBy[0]?qe->OrderBy:NULL),
+		    (mi->Flags & MQP_MI_F_ONEROW)?OBJ_QY_F_ONEROW:0
+		    );
 	if (!newqy) return NULL;
 	objUnmanageQuery(stmt->Query->SessionID, newqy);
 	newobj = objQueryFetch(newqy, ((pMqpInf)(qe->PrivateData))->ObjMode);
@@ -367,15 +376,33 @@ mqpAnalyze(pQueryStatement stmt)
     pQueryStructure item;
     pQueryStructure select_item;
     pQueryStructure where_item;
+    pQueryStructure having_qs;
     int src_idx,i,j;
     pExpression new_exp;
     pMqpInf mi;
     int found;
+    int has_unhandled_orderby;
+    int has_unhandled_where;
+    int has_aggregates;
+    int has_assignments;
+    int num_sources = 0;
+
+	/** Tally up our source count **/
+	while((from_qs = mq_internal_FindItem(stmt->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
+	    {
+	    num_sources++;
+	    }
 
     	/** Search for FROM clauses for this driver... **/
+	from_qs = NULL;
 	while((from_qs = mq_internal_FindItem(stmt->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
 	    {
 	    if (from_qs->Flags & MQ_SF_USED) continue;
+
+	    has_unhandled_orderby = 0;
+	    has_unhandled_where = 0;
+	    has_aggregates = 0;
+	    has_assignments = 0;
 
 	    /** allocate one query element for each from clause. **/
 	    qe = mq_internal_AllocQE();
@@ -402,7 +429,12 @@ mqpAnalyze(pQueryStatement stmt)
 		for(i=0;i<select_qs->Children.nItems;i++)
 		    {
 		    select_item = (pQueryStructure)(select_qs->Children.Items[i]);
-		    if (select_item->QELinkage != NULL) continue;
+		    if (select_item->Expr && select_item->Expr->AggLevel > 0)
+			has_aggregates = 1;
+		    if (select_item->Flags & MQ_SF_ASSIGNMENT)
+			has_assignments = 1;
+		    if (select_item->QELinkage != NULL)
+			continue;
 		    if (select_item->ObjCnt == 1 && (select_item->ObjFlags[src_idx] & EXPR_O_REFERENCED))
 			{
 			if (select_item->Flags & MQ_SF_ASTERISK)
@@ -459,6 +491,10 @@ mqpAnalyze(pQueryStatement stmt)
 			i--;
 			continue;
 			}
+		    else if (((where_item->Expr->ObjCoverageMask & ~EXPR_MASK_EXTREF) & (~stmt->Query->ProvidedObjMask)) != 0)
+			{
+			has_unhandled_where = 1;
+			}
 		    }
 		}
 
@@ -490,6 +526,8 @@ mqpAnalyze(pQueryStatement stmt)
 		for(i=0;i<orderby_qs->Children.nItems;i++)
 		    {
 		    item = (pQueryStructure)(orderby_qs->Children.Items[i]);
+		    if (item->Expr && item->Expr->AggLevel > 0)
+			has_aggregates = 1;
 		    if (item->ObjCnt == 1 && (item->ObjFlags[src_idx] & EXPR_O_REFERENCED) && item->Expr && item->Expr->AggLevel == 0)
 		        {
 			new_exp = exp_internal_CopyTree(item->Expr);
@@ -508,6 +546,7 @@ mqpAnalyze(pQueryStatement stmt)
 			if (found)
 			    {
 			    expFreeExpression(new_exp);
+			    has_unhandled_orderby = 1;
 			    continue;
 			    }
 
@@ -517,11 +556,16 @@ mqpAnalyze(pQueryStatement stmt)
 			if ((j+1) >= sizeof(qe->OrderBy) / sizeof(*(qe->OrderBy)))
 			    {
 			    expFreeExpression(new_exp);
+			    has_unhandled_orderby = 1;
 			    break;
 			    }
 			if (qe->OrderPrio == 999 || qe->OrderPrio > i) qe->OrderPrio = i;
 			qe->OrderBy[j] = new_exp;
 			qe->OrderBy[j+1] = NULL;
+			}
+		    else
+			{
+			has_unhandled_orderby = 1;
 			}
 		    }
 		}
@@ -564,6 +608,19 @@ mqpAnalyze(pQueryStatement stmt)
 		mi->ObjMode = O_RDWR;
 	    else
 		mi->ObjMode = O_RDONLY;
+
+	    /** Only need first row? **/
+	    if (stmt->Query->Flags & MQ_F_ONEROW || (stmt->LimitStart == 0 && stmt->LimitCnt == 1))
+		{
+		having_qs = mq_internal_FindItem(stmt->QTree, MQ_T_HAVINGCLAUSE, NULL);
+
+		/** We can only pass through ONEROW in very limited circumstances **/
+		if (!having_qs && !groupby_qs && num_sources == 1 && !has_unhandled_where && !has_unhandled_orderby && !has_aggregates && !has_assignments)
+		    {
+		    cxTestOutput(1, "MQP: Applying single row limit to source '%s'.\n", from_qs->Source);
+		    mi->Flags |= MQP_MI_F_ONEROW;
+		    }
+		}
 	    }
 
     return 0;
@@ -1186,7 +1243,14 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    }
 	else if (!(mi->Flags & MQP_MI_F_USINGCACHE))
 	    {
-	    qe->LLQuery = objOpenQuery(qe->LLSource, NULL, NULL, (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, (void**)(qe->OrderBy[0]?qe->OrderBy:NULL), 0);
+	    qe->LLQuery = objOpenQuery(
+				qe->LLSource, 
+				NULL, 
+				NULL, 
+				(qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, 
+				(void**)(qe->OrderBy[0]?qe->OrderBy:NULL), 
+				(mi->Flags & MQP_MI_F_ONEROW)?OBJ_QY_F_ONEROW:0
+				);
 	    if (!qe->LLQuery) 
 		{
 		mqpFinish(qe,stmt);

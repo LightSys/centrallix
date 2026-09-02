@@ -63,6 +63,7 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
     int alloc;
     pXString subqy;
     int idx;
+    int ate_negative = 0;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -133,6 +134,11 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
                         etmp->NodeType = EXPR_N_INTEGER;
                         etmp->Integer = mlxIntVal(lxs);
 			etmp->DataType = DATA_T_INTEGER;
+			if (ate_negative)
+			    {
+			    ate_negative = 0;
+			    etmp->Integer = -etmp->Integer;
+			    }
                         break;
 
 		    case MLX_TOK_DOLLAR:
@@ -166,6 +172,11 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 		        etmp->NodeType = EXPR_N_DOUBLE;
 			etmp->Types.Double = mlxDoubleVal(lxs);
 			etmp->DataType = DATA_T_DOUBLE;
+			if (ate_negative)
+			    {
+			    ate_negative = 0;
+			    etmp->Types.Double = -etmp->Types.Double;
+			    }
 			break;
     		    
 		    case MLX_TOK_KEYWORD:
@@ -582,6 +593,7 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 	    etmp = expAllocExpression();
 	    if (cmpflags & EXPR_CMP_RUNSERVER) etmp->Flags |= EXPR_F_RUNSERVER;
 	    if (cmpflags & EXPR_CMP_RUNCLIENT) etmp->Flags |= EXPR_F_RUNCLIENT;
+	    ate_negative = 0;
 	    switch(t)
 		{
 		case MLX_TOK_KEYWORD:
@@ -744,6 +756,15 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 		    break;
 
 		default:
+		    /** Check for a negative integer or double **/
+		    if ((t == MLX_TOK_INTEGER && mlxIntVal(lxs) < 0) || (t == MLX_TOK_DOUBLE && mlxDoubleVal(lxs) < 0))
+			{
+			etmp->NodeType = EXPR_N_MINUS;
+			ate_negative = 1;
+			mlxHoldToken(lxs);
+			break;
+			}
+
 		    expFreeExpression(etmp);
 		    if (expr) expFreeExpression(expr);
 		    mssError(1,"EXP","Unexpected token in expression string");

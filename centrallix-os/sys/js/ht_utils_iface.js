@@ -454,7 +454,7 @@ function ifAction()
 	}
     function ifevent_connect_exec(ep)
 	{
-	var t = wgtrGetNode(this.to, this.target)
+	var t = wgtrGetNode(this.ns, this.target)
 	// var t = eval(this.target);
 	if (!t || !t.ifcProbe) 
 	    {
@@ -492,11 +492,11 @@ function ifAction()
 		    if (p.namespace)
 			ap[pn] = wgtrGetNode(p.namespace, p.value);
 		    else
-			ap[pn] = wgtrGetNode(this.to, p.value);
+			ap[pn] = wgtrGetNode(this.ns, p.value);
 		    }
 		else if (p.type == 'exp')
 		    {
-		    var _context = this.to;
+		    var _context = this.ns;
 		    var _this = ep;
 		    ap[pn] = p.value(_context,_this,ep);
 		    //if (pn == 'Source') htr_alert(this, 1);
@@ -579,7 +579,7 @@ function ifAction()
 	    rval = new Cancel();
 	return rval;
 	}
-    function ifevent_connect(e,t,a,pl)
+    function ifevent_connect(e,t,a,pl,ns)
 	{
 	if (this.late_binding && !this.Events[e])
 	    {
@@ -589,7 +589,7 @@ function ifAction()
 	    }
 	if (this.Events[e])
 	    {
-	    var eo = {to:this.obj, fn:ifevent_connect_exec, target:t, action:a, paramlist:pl, name:e};
+	    var eo = {to:this.obj, fn:ifevent_connect_exec, ns:(ns?ns:this.obj), target:t, action:a, paramlist:pl, name:e};
 	    eo.eo = eo;
 	    this.Events[e].push(eo);
 	    }

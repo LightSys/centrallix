@@ -1,0 +1,5 @@
+$Version=2$
+csv_files "system/query"
+    {
+    sql = "select * from /samples where right(:name, 4) = '.csv'";
+    }

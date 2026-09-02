@@ -1173,7 +1173,6 @@ AC_DEFUN(CHECK_COVERAGE,
     ]
 )
 
-
 dnl check if gcc allows -fPIC and -pg at the same time
 AC_DEFUN(CHECK_PROFILE,
     [

@@ -1,0 +1,7 @@
+##NAME Order by of a .qy result set
+
+csv select * from /tests/testquery.qy
+csv select * from /tests/testquery.qy order by :rowid
+csv select * from /tests/testquery.qy order by :rowid desc
+csv select * from /tests/testquery.qy order by :color
+csv select * from /tests/testquery.qy order by :color desc

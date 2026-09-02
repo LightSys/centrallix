@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -42,7 +42,7 @@
 #include "cxlib/xhandle.h"
 
 
-#define MQ_MAX_ORDERBY		(25)
+#define MQ_MAX_ORDERBY		(24)
 
 #define MQ_MAX_SOURCELEN	(OBJSYS_MAX_PATH+1+16384)
 
@@ -88,7 +88,7 @@ typedef struct _QE
     pObjQuery		LLQuery;
     void*		QSLinkage;
     pExpression		Constraint;
-    pExpression		OrderBy[MQ_MAX_ORDERBY];
+    pExpression		OrderBy[MQ_MAX_ORDERBY + 1];
     int			OrderPrio;		/* priority of ordering */
     void*		PrivateData;		/* q-driver specific data structure */
     }
@@ -146,6 +146,7 @@ typedef struct _QS
 #define MQ_SF_COLLECTION	8192		/* DECLARE COLLECTION ... */
 #define MQ_SF_NONEMPTY		16384		/* SELECT ... FROM NONEMPTY ... */
 #define MQ_SF_PAGED		32768		/* SELECT ... FROM PAGED ... */
+#define MQ_SF_DEFAULTORDER	65536		/* ORDER BY DEFAULT (dropped/overridden by a following ORDER BY) */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1
@@ -270,6 +271,7 @@ struct _MQ /* MultiQuery */
 #define MQ_F_NOINSERTED		16		/* did not create __inserted object. **/
 #define MQ_F_SHOWPLAN		32		/* print diagnostics for SQL statement **/
 #define MQ_F_FIRSTSTATEMENT	64		/* parsing the first statement in the query */
+#define MQ_F_ONEROW		128		/* only the first row of the results is needed */
 
 
 /*** Pseudo-object structure. ***/

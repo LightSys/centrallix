@@ -307,7 +307,8 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 
 	    /** Look for text and source items in the querytree definition. **/
 	    next_inf = find_inf = NULL;
-	    for(i=0;i<dptr->nSubInf;)
+	    i = 0;
+	    while(1)
 	        {
 		/** Limiter, for example to prevent infinite-recursing .qyt files **/
 		iter_cnt++;
@@ -320,6 +321,8 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 		/** "Eat" a querytree element if we're not already trying a different one **/
 		if (!find_inf)
 		    {
+		    if (i >= dptr->nSubInf)
+			break;
 		    find_inf = dptr->SubInf[i];
 		    i++;
 		    }
@@ -1322,8 +1325,6 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     pQytQuery qy = ((pQytQuery)(qy_v));
     pQytData inf;
     pObject llobj = NULL;
-    pStructInf find_inf;
-    char* ptr;
     char* objname = NULL;
     int cur_id = -1;
 
@@ -1880,4 +1881,3 @@ qytInitialize()
 
     return 0;
     }
-

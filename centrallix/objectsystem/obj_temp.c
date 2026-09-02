@@ -1244,7 +1244,12 @@ tmpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		mssError(1,"OSML","Type mismatch setting attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    strcpy(inf->Data->Name, val->String);
+	    if (strlen(val->String) >= ST_NAME_STRLEN)
+		{
+		mssError(1,"OSML","Name too long (%d chars) for temp object, max %d", strlen(val->String), ST_NAME_STRLEN);
+		return -1;
+		}
+	    strtcpy(inf->Data->Name, val->String, ST_NAME_STRLEN);
 	    return 0;
 	    }
 
@@ -1256,7 +1261,12 @@ tmpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		mssError(1,"OSML","Type mismatch setting attribute '%s' (should be string)", attrname);
 		return -1;
 		}
-	    strcpy(inf->Data->UsrType, val->String);
+	    if (strlen(val->String) >= ST_USRTYPE_STRLEN)
+		{
+		mssError(1,"OSML","Content type too long (%d chars) for temp object, max %d", strlen(val->String), ST_USRTYPE_STRLEN);
+		return -1;
+		}
+	    strtcpy(inf->Data->UsrType, val->String, ST_USRTYPE_STRLEN);
 	    return 0;
 	    }
 
@@ -1286,7 +1296,7 @@ tmpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	t = stGetAttrType(find_inf, 0);
 	if (!val && t > 0)
 	    datatype = t;
-	if (t > 0 && datatype != t)
+	if (t > 0 && datatype != t && !stAttrIsNull(find_inf))
 	    {
 	    mssError(1,"OSML","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
 		    attrname, obj_type_names[datatype], obj_type_names[t]);

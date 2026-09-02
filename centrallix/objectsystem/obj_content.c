@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include "obj.h"
 #include "cxlib/mtask.h"
+#include "cxlib/mtsession.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/magic.h"
@@ -144,5 +145,3 @@ objSeek(pObject this, int offset)
     char buffer[1];
     return objRead(this, buffer, 0, offset, OBJ_U_SEEK);
     }
-
-

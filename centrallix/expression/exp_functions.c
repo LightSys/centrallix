@@ -336,11 +336,6 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
 	{
 	return -1;
 	}
-    if (i0->DataType != DATA_T_INTEGER)
-        {
-	mssError(1,"EXP","condition() first parameter must evaluate to boolean");
-	return -1;
-	}
     if (i0->Flags & EXPR_F_NULL) 
         {
 	tree->DataType = DATA_T_INTEGER;
@@ -351,6 +346,11 @@ int exp_fn_condition(pExpression tree, pParamObjects objlist, pExpression i0, pE
 	    i2->ObjDelayChangeMask |= (objlist->ModCoverageMask & i2->ObjCoverageMask);
 	    }
 	return 0;
+	}
+    if (i0->DataType != DATA_T_INTEGER)
+        {
+	mssError(1,"EXP","condition() first parameter must evaluate to boolean");
+	return -1;
 	}
     if (i0->Integer != 0)
         {
@@ -905,10 +905,15 @@ int exp_fn_nullif(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
 	return -1;
 	}
     tree->DataType = i0->DataType;
-    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+    if (i0->Flags & EXPR_F_NULL)
 	{
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
+	}
+    if (i1->Flags & EXPR_F_NULL)
+	{
+	/** A value is never equal to null, so the first parameter stands. **/
+	return expCopyValue(i0, tree, 0);
 	}
     tree->CompareType = MLX_CMP_EQUALS;
     if (expEvalCompare(tree, objlist) < 0)

@@ -1,0 +1,7 @@
+##NAME Order by, multiple fields
+
+csv select :id, :abbrev, :full_name from /tests/States.csv/rows order by char_length(:full_name), :id
+csv select :id, :abbrev, :full_name from /tests/States.csv/rows order by char_length(:full_name) asc, 100 - :id asc
+csv select :id, :abbrev, :full_name from /tests/States.csv/rows order by char_length(:full_name) asc, 100 - :id desc
+csv select :id, :abbrev, :full_name from /tests/States.csv/rows order by char_length(:full_name) desc, 100 - :id desc
+csv select :id, :abbrev, :full_name from /tests/States.csv/rows order by char_length(:full_name) desc, 100 - :id asc
