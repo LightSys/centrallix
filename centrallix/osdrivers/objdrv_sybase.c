@@ -24,6 +24,7 @@
 #include "st_node.h"
 #include "cxlib/xhashqueue.h"
 #include "multiquery.h"
+#include "multiquery_private.h"
 #include "cxlib/magic.h"
 #ifdef HAVE_CONFIG_H
 #include "config.h"
