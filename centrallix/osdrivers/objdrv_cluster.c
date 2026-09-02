@@ -2782,7 +2782,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	if (check(objCurrentDate(&search_data->DateComputed)) != 0) goto err_free;
 	
 	/** Get the comparison function based on the similarity measure. **/
-	const double (*similarity_function)(void *, void *) = check_ptr(ci_SimilarityMeasureToFunction(search_data->SimilarityMeasure));
+	double (*similarity_function)(void *, void *) = check_ptr(ci_SimilarityMeasureToFunction(search_data->SimilarityMeasure));
 	if (UNLIKELY(similarity_function == NULL)) goto err_free;
 	
 	/** Execute the search using the specified algorithm. **/
@@ -4184,7 +4184,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    /** Enum values. **/
 		    check(xaInit(&(hints->EnumList), N_CLUSTERING_ALGORITHMS)); /* Failure ignored. */
 		    for (unsigned int i = 0u; i < N_CLUSTERING_ALGORITHMS; i++)
-			check_neg(xaAddItem(&(hints->EnumList), &ALL_CLUSTERING_ALGORITHMS[i])); /* Failure ignored. */
+			check_neg(xaAddItem(&(hints->EnumList), nmSysStrdup(ci_ClusteringAlgorithmToString(ALL_CLUSTERING_ALGORITHMS[i])))); /* Failure ignored. */
 		    
 		    /** Min and max values. **/
 		    hints->MinValue = expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
@@ -4210,7 +4210,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    /** Enum values. **/
 		    check(xaInit(&(hints->EnumList), N_SIMILARITY_MEASURES)); /* Failure ignored. */
 		    for (unsigned int i = 0u; i < N_SIMILARITY_MEASURES; i++)
-			check_neg(xaAddItem(&(hints->EnumList), &ALL_SIMILARITY_MEASURES[i])); /* Failure ignored. */
+			check_neg(xaAddItem(&(hints->EnumList), nmSysStrdup(ci_SimilarityMeasureToString(ALL_SIMILARITY_MEASURES[i])))); /* Failure ignored. */
 			
 		    /** Display flags. **/
 		    hints->Style     |= OBJ_PH_STYLE_BUTTONS;

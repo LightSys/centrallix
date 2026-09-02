@@ -120,7 +120,7 @@ arr.nAlloc = 0;
 ```c
 int xaAddItem(pXArray this, void* item);
 ```
-This function adds an item to the end of the xarray.  The item is assumed to be a `void*`, but this function will _not_ follow pointeres stored in the array.  Thus, other types can be typecast and stored into that location (such as an `int`).
+This function adds an item to the end of the xarray.  The item is assumed to be a `void*`, but this function will _not_ follow pointers stored in the array.  Thus, other types can be typecast and stored into that location (such as an `int`).
 
 This function returns 0 on success, or -1 if an error occurs.
 

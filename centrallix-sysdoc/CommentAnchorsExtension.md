@@ -79,7 +79,7 @@ The comment anchors extension is a little less robust than I would like. Sometim
 
 
 ## Informing other developers
-When using the comment anchors extension, include something closely resembling the following snippet at the top of the file, just below the copywrite notice and include statements:
+When using the comment anchors extension, include something closely resembling the following snippet at the top of the file, just below the copyright notice and include statements:
 
 **.c or .h file**
 ```c

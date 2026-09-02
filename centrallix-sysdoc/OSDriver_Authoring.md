@@ -674,7 +674,7 @@ The value pointer points to a union struct which can hold one of several types o
 | `IntVec`    | `DATA_T_INTVEC`    | Store a `pIntVec`* in the `val->IntVec` field.
 | `StringVec` | `DATA_T_STRINGVEC` | Store a `pStringVec`* in the `val->StringVec` field.
 | `Money`     | `DATA_T_MONEY`     | Store a `pMoneyType`* in the `val->Money` field.
-| `Generic`   | ?                  | Store a `void*` in the `val->Generic` field (target data is usually implementation dependant).
+| `Generic`   | ?                  | Store a `void*` in the `val->Generic` field (target data is usually implementation dependent).
 
 \*_See [`datatypes.h`](../centrallix-lib/include/datatypes.h) for more info about this datatype._
 
@@ -1126,7 +1126,7 @@ The `cmpflags` parameter is a bitmask that provides flags which will be passed t
 ```c
 pExpression expCompileExpressionFromLxs(pLxSession s, pParamObjects objlist, int cmpflags);
 ```
-This function is similar to [`expCompileExpression()`](#expcompileexpression), excpet that it compiles from a provided lexer session instead of from a string. 
+This function is similar to [`expCompileExpression()`](#expcompileexpression), except that it compiles from a provided lexer session instead of from a string. 
 
 ### expPodToExpression()
 ```c
@@ -1307,7 +1307,7 @@ The mtlexer (MLX) module is a lexical analyzer library provided by Centrallix fo
 ```c
 pLxSession mlxOpenSession(pFile fd, int flags);
 ```
-This function opens a lexer session, using a file descripter as its source.  Some of the more useful values for `flags` include:
+This function opens a lexer session, using a file descriptor as its source.  Some of the more useful values for `flags` include:
 
 | Value             | Description
 | ----------------- | ------------
@@ -1325,7 +1325,7 @@ This function opens a lexer session, using a file descripter as its source.  Som
 | `MLX_F_IFSONLY`   | Only return string values separated by tabs, spaces, newlines, and carriage returns.  For example, normally the brace in `"this{brace"` is a token and that string will result in three tokens, but in `IFSONLY` mode it is just one token.
 | `MLX_F_DASHKW`    | Keywords can include the dash (`-`).  Otherwise, the keyword is treated as two keywords with a minus sign between them.
 | `MLX_F_FILENAMES` | Treat a non-quoted string beginning with a slash (`/`) or dot-slash (`./`) as a filename, and allow slashes and dots in the string without requiring quotes.
-| `MLX_F_NODISCARD` | Attempt to unread unused buffered data rather than discarding it, allowing the calling function to continue reading with `fdRead()` or another lexer session after the last token is read and the session is closed.  The lexer `fdRead()`s in 2k or so chunks for performance, and normally discards this data when done, causing future file decriptors to start at an undefined file location.
+| `MLX_F_NODISCARD` | Attempt to unread unused buffered data rather than discarding it, allowing the calling function to continue reading with `fdRead()` or another lexer session after the last token is read and the session is closed.  The lexer `fdRead()`s in 2k or so chunks for performance, and normally discards this data when done, causing future file descriptors to start at an undefined file location.
 | `MLX_F_DBLBRACE`  | Treat `{{` and `}}` as double brace tokens, not two single brace tokens.
 | `MLX_F_NOUNESC`   | Do not remove escapes in strings.
 | `MLX_F_SSTRING`   | Differentiate between strings values using `""` and `''`.
