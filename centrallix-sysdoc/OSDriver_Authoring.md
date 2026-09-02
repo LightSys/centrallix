@@ -455,7 +455,7 @@ The `Create()` function is used to create a new object, and uses the same parame
 
 ### Function: Delete()
 ```c
-int clusterDelete(pObject obj, pObjTrxTree* oxt);
+int xxxDelete(pObject obj, pObjTrxTree* oxt);
 ```
 The `Delete()` function is used to delete an object, which often means removing a file from the file system.  The Delete routine is passed the following parameters:
 
@@ -717,14 +717,14 @@ These functions should only return the names of significant values, so `name`, `
 
 ### Function: AddAttr()
 ```c
-int clusterAddAttr(void* inf_v, char* attr_name, int type, pObjData val, pObjTrxTree* oxt);
+int xxxAddAttr(void* inf_v, char* attr_name, int type, pObjData val, pObjTrxTree* oxt);
 ```
 The `AddAttr()` function adds a new attribute to an existing object.  Not all objects support this, and many will refuse the operation.  The parameters are the same as those of `GetAttrValue()` and `SetAttrValue()`, documented in detail above.
 
 
 ### Function: OpenAttr()
 ```c
-void* clusterOpenAttr(void* inf_v, char* attr_name, int mode, pObjTrxTree* oxt);
+void* xxxOpenAttr(void* inf_v, char* attr_name, int mode, pObjTrxTree* oxt);
 ```
 The `OpenAttr()` function is used to open an attribute for `objRead()`/`objWrite()` as if it were an object with content.  Not all object drivers will support this, and many will refuse the operation.
 
@@ -733,7 +733,7 @@ This function takes 4 parameters. `inf_v`, `attr_name`, and `oxt` are the same a
 
 ### Function: ExecuteMethod()
 ```c
-int clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree* oxt);
+int xxxExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree* oxt);
 ```
 The `ExecuteMethod()` function is used to execute a method on an object.  This feature is rarely used, but some drivers have created methods for actions like dropping their cache or printing debug information.  Each method has a unique name within that object, and can take a single string parameter.
 

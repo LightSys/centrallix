@@ -4189,7 +4189,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    /** Min and max values. **/
 		    hints->MinValue = expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		    char buf[8];
-		    snprintf(buf, sizeof(buf), "%d", N_CLUSTERING_ALGORITHMS);
+		    snprintf(buf, sizeof(buf), "%u", N_CLUSTERING_ALGORITHMS - 1u);
 		    hints->MaxValue = expCompileExpression(buf, tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		    
 		    /** Display flags. **/
@@ -4219,7 +4219,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    /** Min and max values. **/
 		    hints->MinValue = expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		    char buf[8];
-		    snprintf(buf, sizeof(buf), "%d", N_SIMILARITY_MEASURES);
+		    snprintf(buf, sizeof(buf), "%u", N_SIMILARITY_MEASURES - 1u);
 		    hints->MaxValue = expCompileExpression(buf, tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		    
 		    /** Other hints. **/
@@ -4537,6 +4537,8 @@ clusterGetNextMethod(void* inf_v, pObjTrxTree* oxt)
 	if (UNLIKELY(driver_data == NULL)) return NULL;
 	ASSERTMAGIC(driver_data, MGK_CL_DRIVER_DATA);
     
+    if (driver_data->TargetMethodIndex >= METHOD_NAMES_COUNT) return NULL;
+    
     return METHOD_NAMES[driver_data->TargetMethodIndex++];
     }
 
@@ -4558,7 +4560,7 @@ ci_PrintEntry(pXHashEntry entry, void* arg)
 	char* path = (char*)args[3];
 	
 	/** If a path is provided, check that it matches the start of the key. **/
-	if (path != NULL && strncmp(key, (char*)path, strlen((char*)path)) != 0) return 0;
+	if (path != NULL && strncmp(key, path, strlen(path)) != 0) return 0;
 	
 	/** Handle type. **/
 	char* type;
@@ -4833,9 +4835,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 	mssError(1, "Cluster", "Unknown command: \"%s\"", method_name);
 	
 	/** Attempt to give hint. **/
-	unsigned int n_methods = 0;
-	while (METHOD_NAMES[n_methods] != NULL) n_methods++;
-	ci_TryHint(method_name, METHOD_NAMES, n_methods);
+	ci_TryHint(method_name, METHOD_NAMES, METHOD_NAMES_COUNT);
 	
     err:
 	mssError(0, "Cluster", "Failed execute command.");
