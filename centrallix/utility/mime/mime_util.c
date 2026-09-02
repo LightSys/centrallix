@@ -466,6 +466,5 @@ libmime_internal_MakeARandomFilename(char* name, int len)
 int
 libmime_DumpMessage(pMimeHeader msg)
     {
+    return 0;
     }
-
-
