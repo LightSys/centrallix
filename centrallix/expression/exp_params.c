@@ -9,6 +9,7 @@
 #include "cxlib/xhash.h"
 #include "cxlib/mtlexer.h"
 #include "expression.h"
+#include "expression_private.h"
 #include "cxlib/mtsession.h"
 #include <openssl/sha.h>
 #include <openssl/md5.h>

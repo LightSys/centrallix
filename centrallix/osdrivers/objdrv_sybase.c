@@ -18,6 +18,7 @@
 #include "cxlib/xhash.h"
 #include "cxlib/mtsession.h"
 #include "expression.h"
+#include "expression_private.h"
 #include "cxlib/xstring.h"
 #include "stparse.h"
 #include "st_node.h"
