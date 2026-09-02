@@ -121,15 +121,9 @@
 
 			<child type="widget/autolayoutspacer">
 
-				<childproperty name="autolayout_order" type="integer">An optional property, this controls where the spacer falls in the layout sequence, just as it does for any other child.</childproperty>
-
 				<childproperty name="fl_height" type="integer">The vertical flexibility of the spacer, as a weight relative to that of the sibling widgets.  Defaults to 5, rather than to the 100 used by most widgets, so a spacer takes a smaller share of the space added or removed when the autolayout widget is resized.  Set this to 0 to keep the space at a fixed size.</childproperty>
 
 				<childproperty name="fl_width" type="integer">The horizontal flexibility of the spacer, as a weight relative to that of the sibling widgets.  Defaults to 5, rather than to the 100 used by most widgets, so a spacer takes a smaller share of the space added or removed when the autolayout widget is resized.  Set this to 0 to keep the space at a fixed size.</childproperty>
-
-				<childproperty name="height" type="integer">Height, in pixels, of the space.  This is the size of the gap in a vbox.  If omitted, the "cellsize" property of the autolayout widget is used.</childproperty>
-
-				<childproperty name="width" type="integer">Width, in pixels, of the space.  This is the size of the gap in an hbox.  If omitted, the "cellsize" property of the autolayout widget is used.</childproperty>
 
 			</child>
 
