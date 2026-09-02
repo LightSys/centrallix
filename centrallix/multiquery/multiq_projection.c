@@ -15,7 +15,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -1052,7 +1052,7 @@ mqp_internal_EvaluateSource(pQueryElement qe, pQueryStatement stmt, pMqpInf mi)
     {
     pExpression source_exp;
     int rval;
-    pObject oldobj;
+    pObject oldobj = NULL;
 
 	/** Evaluate source expression? **/
 	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION)
