@@ -1,4 +1,7 @@
+#include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
+
 #include "strtcpy.h"
 #include "expect.h"
 
@@ -16,9 +19,8 @@
 /* Author:	Greg Beeley (GRB)                                       */
 /* Date:	April 14th, 2006                                        */
 /*									*/
-/* Description:	Provides strtcpy(), a Truncating strcpy(), which	*/
-/*		both respects the bounds of the destination and makes	*/
-/*		sure the result is null-terminated.			*/
+/* Description:	Provides truncating string functions, which respect the	*/
+/*		bounds of the destination and ensure null-termination.	*/
 /************************************************************************/
 
 
@@ -76,4 +78,61 @@ strtcpy(char* dst, const char* src, size_t dstlen)
             return -origlen;
     return origlen - dstlen;
 #endif
+    }
+
+
+/*** strtcatf_va() - same as strtcatf(), but takes a va_list instead of
+ *** a variable argument list.
+ ***/
+int
+strtcatf_va(char* dst, size_t dstlen, size_t* pos, const char* fmt, va_list ap)
+    {
+    size_t start = *pos;
+    int ret;
+
+    /** No room for even one character. **/
+    if (UNLIKELY((dstlen == 0 || start >= dstlen - 1))) 
+	return 0;
+
+    ret = vsnprintf(dst + start, dstlen - start, fmt, ap);
+
+    /** vsnprintf() failed, so discard whatever it left behind. **/
+    if (UNLIKELY((ret < 0))) 
+	{
+	dst[start] = '\0';
+	return 0;
+	}
+
+    /** Output overran dst, so it was truncated and dst is now full. **/
+    if (UNLIKELY((start + (size_t)ret >= dstlen))) 
+	{
+	*pos = dstlen - 1;
+	return -(int)(dstlen - start);
+	}
+
+    *pos = start + (size_t)ret;
+    return ret + 1;
+    }
+
+
+/*** strtcatf() - truncating formatted string concatenation
+ ***
+ *** Appends a printf-style message to dst, being sure to not overflow the
+ *** given dstlen size.  *pos is the offset of dst's terminating null, and
+ *** advances past the appended text, so chained calls need no checks in
+ *** between.  A full dst, or a *pos outside it, appends nothing.
+ *** Returns number of bytes actually appended, including null terminator.
+ *** If truncated, returns -(bytes appended).
+ ***/
+int
+strtcatf(char* dst, size_t dstlen, size_t* pos, const char* fmt, ...)
+    {
+    va_list ap;
+    int ret;
+
+    va_start(ap, fmt);
+    ret = strtcatf_va(dst, dstlen, pos, fmt, ap);
+    va_end(ap);
+
+    return ret;
     }
