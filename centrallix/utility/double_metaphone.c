@@ -104,9 +104,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "cxlib/check.h"
 #include "cxlib/newmalloc.h"
 #include "cxlib/strtcpy.h"
-#include "cxlib/util.h"
 #include "cxlib/expect.h"
 
 typedef struct
@@ -129,7 +129,7 @@ meta_new_string(const char* init_str)
     pMetaString s;
     char empty_string[] = "";
     
-	s = (pMetaString)check_ptr(nmSysMalloc(sizeof(MetaString)));
+	s = (pMetaString)checkPtr(nmSysMalloc(sizeof(MetaString)));
 	if (UNLIKELY(s == NULL)) goto err_free;
 	
 	if (init_str == NULL)
@@ -139,7 +139,7 @@ meta_new_string(const char* init_str)
 	/** Preallocate a bit more for potential growth. **/
 	s->bufsize = s->length + 7u;
 	
-	s->str = (char*)check_ptr(nmSysMalloc(s->bufsize * sizeof(char)));
+	s->str = (char*)checkPtr(nmSysMalloc(s->bufsize * sizeof(char)));
 	if (UNLIKELY(s->str == NULL)) goto err_free;
 	
 	strtcpy(s->str, init_str, s->bufsize);
@@ -185,7 +185,7 @@ int
 meta_increase_buffer(pMetaString s, const size_t chars_needed)
     {
 	s->bufsize += chars_needed + 8u;
-	s->str = check_ptr(nmSysRealloc(s->str, s->bufsize * sizeof(char)));
+	s->str = checkPtr(nmSysRealloc(s->str, s->bufsize * sizeof(char)));
 	if (UNLIKELY(s->str == NULL)) return -1;
     
     return 0;
@@ -373,14 +373,14 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 	const unsigned int last = (unsigned int)(length - 1);
 	
 	/** Pad original so we can index beyond end. **/
-	pMetaString original = check_ptr(meta_new_string(str));
+	pMetaString original = checkPtr(meta_new_string(str));
 	if (UNLIKELY(original == NULL)) goto end_free;
 	meta_make_upper(original);
 	if (check(meta_add_str(original, "     ")) != 0) goto end_free;
 	
 	/** Allocate the primary and secondary output strings. **/
-	pMetaString primary = check_ptr(meta_new_string(""));
-	pMetaString secondary = check_ptr(meta_new_string(""));
+	pMetaString primary = checkPtr(meta_new_string(""));
+	pMetaString secondary = checkPtr(meta_new_string(""));
 	if (UNLIKELY(primary == NULL || secondary == NULL)) goto end_free;
 	
 	/** Skip these if they are at start of a word. **/
