@@ -934,6 +934,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		{
 		ImageBuffer imgBuf = { NULL, 0, MAX_IMAGE_SIZE };
 		char* base64Image = NULL;
+		size_t base64Size = 0;
 
 		/** Compute image properties. **/
 		const bool has_url = (obj->URL != NULL && strchr(obj->URL, '"') == NULL);
@@ -980,6 +981,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		/** Encode the image to base64. **/
 		base64Image = check_ptr(base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size));
 		if (UNLIKELY(base64Image == NULL)) goto error_image;
+		base64Size = strlen(base64Image) + 1;
 
 		/** Clean up unused buffer. **/
 		nmFree(imgBuf.buffer, MAX_IMAGE_SIZE);
@@ -1048,7 +1050,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    }
 
 		// Clean up.
-		nmFree(base64Image, strlen(base64Image));
+		nmFree(base64Image, base64Size);
 		base64Image = NULL;
 
 		/** Success. **/
@@ -1057,7 +1059,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
     error_image:
 		mssError(1, "PRT", "Failed to write %s.", (is_img) ? "image" : "svg");
 		if (imgBuf.buffer != NULL) nmFree(imgBuf.buffer, MAX_IMAGE_SIZE);
-		if (base64Image != NULL) nmFree(base64Image, strlen(base64Image));
+		if (base64Image != NULL) nmFree(base64Image, base64Size);
 		return -1;
 		}
 
