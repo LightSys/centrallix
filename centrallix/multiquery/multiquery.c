@@ -3412,7 +3412,7 @@ mq_internal_FinalizeAppData(void* appdata_v)
 void*
 mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int flags)
     {
-    pMultiQuery this;
+    pMultiQuery this = NULL;
     pQueryAppData appdata;
     int i;
 
@@ -4043,6 +4043,8 @@ mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
     int i, id;
     pQueryDeclaredObject qdo;
     pQueryDeclaredCollection qdc;
+
+	if (qy == NULL) return 0;
 
     	/** Check the link cnt **/
 	if ((--qy->LinkCnt) > 0) return 0;

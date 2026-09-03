@@ -8,7 +8,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2004 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -988,7 +988,7 @@ nht_i_CacheHandler(pNhtConn conn)
 int
 nht_i_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
     {
-    pNhtControlMsg cm, usr_cm;
+    pNhtControlMsg cm = NULL, usr_cm;
     pNhtControlMsgParam cmp;
     pNhtSessionData sess = conn->NhtSession;
     int i;
@@ -1009,7 +1009,6 @@ nht_i_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
 	    /** Get control message id **/
 	    stAttrValue_ne(stLookup_ne(url_inf, "cx_cm_id"), &cm_ptr);
 	    usr_cm = (pNhtControlMsg)strtoul(cm_ptr, NULL, 16);
-	    cm = NULL;
 	    for(i=0;i<sess->ControlMsgsList.nItems;i++)
 		{
 		if ((pNhtControlMsg)(sess->ControlMsgsList.Items[i]) == usr_cm)
