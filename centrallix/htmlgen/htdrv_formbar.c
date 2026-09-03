@@ -85,12 +85,6 @@ int htfbInitialize() {
    drv->Render = htfbRender;
 
 /*
-   htrAddEvent(drv,"Click");
-   htrAddEvent(drv,"MouseUp");
-   htrAddEvent(drv,"MouseDown");
-   htrAddEvent(drv,"MouseOver");
-   htrAddEvent(drv,"MouseOut");
-   htrAddEvent(drv,"MouseMove");
 */
    /** Register. **/
    htrRegisterDriver(drv);

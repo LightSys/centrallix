@@ -29,7 +29,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2002 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2002-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -461,6 +461,7 @@ cxDriverInit()
 	stxInitialize();			/* Structure file driver */
 	qytInitialize();			/* Query Tree driver */
 	qypInitialize();			/* Query Pivot driver */
+	clusterInitialize();			/* Cluster driver */
 	qyInitialize();				/* stored query (aka view) driver */
 	rptInitialize();			/* report writer driver */
 	uxpInitialize();			/* UNIX printer access driver */
@@ -549,6 +550,8 @@ cxHtInit()
 	hthtmlInitialize();			/* html pane module */
 	htconnInitialize();			/* connector nonvisual module */
 	htbtnInitialize();			/* generic button module */
+	htibtnInitialize();			/* image button module */
+	httbtnInitialize();			/* text button module */
 	htmenuInitialize();			/* dropdown/popup menu module */
 	htsetInitialize();			/* frameset module */
 	htvblInitialize();			/* variable nonvisual module */
@@ -571,6 +574,7 @@ cxHtInit()
 	htcaInitialize();			/* calendar module */
 	htsbInitialize();			/* scrollbar module */
 	htimgInitialize();			/* image widget */
+	htfbInitialize();			/* form bar composite widget test */
 	htocInitialize();			/* object canvas widget */
 	htmapInitialize();			/* object canvas widget */
 	htfuInitialize();			/* file upload widget */
@@ -781,4 +785,3 @@ cxLinkSigningSetup(pStructInf my_config)
 
     return 0;
     }
-

@@ -1,12 +1,11 @@
 #ifndef _XHASH_H
 #define _XHASH_H
 
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -55,6 +54,7 @@ int xhAdd(pXHashTable this, char* key, char* data);
 int xhRemove(pXHashTable this, char* key);
 char* xhLookup(pXHashTable this, char* key);
 int xhClear(pXHashTable this, int (*free_fn)(), void* free_arg);
+int xhForEach(pXHashTable this, int (*callback_fn)(pXHashEntry, void*), void* each_arg);
+int xhClearKeySafe(pXHashTable this, void (*free_fn)(pXHashEntry, void*), void* free_arg);
 
 #endif /* _XHASH_H */
-
