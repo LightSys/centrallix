@@ -124,6 +124,10 @@ typedef struct _THR
 #ifdef USING_VALGRIND
     unsigned int    ValgrindStackID;
 #endif
+#ifdef MTASK_USEPTHREADS
+    pthread_t	PThread;			/* OS thread backing this MTASK thread */
+    pthread_cond_t CondGo;			/* signaled when it is this thread's turn to hold the GIL */
+#endif
     }
     Thread, *pThread;
 

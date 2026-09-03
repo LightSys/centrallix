@@ -694,6 +694,7 @@ with_hardening
 enable_optimization
 enable_coverage
 enable_valgrind_integration
+enable_pthreads
 enable_shared_libCentrallix
 '
       ac_precious_vars='build_alias
@@ -1323,6 +1324,9 @@ Optional Features:
                           Valgrind integration allows libCentrallix programs
                           to be debugged using the Valgrind tool; incompatible
                           with optimization
+  --enable-pthreads       POSIX Threads integration for MTASK uses pthreads
+                          instead of older primitives for MTASK cooperative
+                          threading
   --disable-shared-libCentrallix
                           disable building a shared libCentrallix
 
@@ -4104,6 +4108,7 @@ $as_echo "yes" >&6; }
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
+
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
@@ -4473,6 +4478,8 @@ else
 
 fi
 
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $WITH_VALGRIND" >&5
+$as_echo "$WITH_VALGRIND" >&6; }
     if test "$WITH_VALGRIND" = "yes"; then
 	if test "$WITH_OPTIMIZATION" = "yes"; then
 	    as_fn_error $? "Valgrind integration and Optimization are mutually exclusive; please at most specify one or the other but not both" "$LINENO" 5
@@ -4490,6 +4497,41 @@ fi
 $as_echo "#define USING_VALGRIND 1" >>confdefs.h
 
 	fi
+    else
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+    fi
+
+
+
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking if pthreads use is desired" >&5
+$as_echo_n "checking if pthreads use is desired... " >&6; }
+    # Check whether --enable-pthreads was given.
+if test "${enable_pthreads+set}" = set; then :
+  enableval=$enable_pthreads; WITH_PTHREADS="$enableval"
+else
+  WITH_PTHREADS="no"
+
+fi
+
+    if test "$WITH_PTHREADS" = "yes"; then
+	ac_fn_c_check_header_mongrel "$LINENO" "pthread.h" "ac_cv_header_pthread_h" "$ac_includes_default"
+if test "x$ac_cv_header_pthread_h" = xyes; then :
+
+else
+  as_fn_error $? "Header file pthread.h not found; verify that your OS supports it.  Cannot enable POSIX Threads for MTASK." "$LINENO" 5
+
+fi
+
+
+
+$as_echo "#define MTASK_USEPTHREADS 1" >>confdefs.h
+
+	LIBS="$LIBS -lpthread"
+    else
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
     fi
 
 
@@ -4500,11 +4542,15 @@ $as_echo_n "checking if SIOCOUTQ ioctl is usable... " >&6; }
 	ac_fn_c_check_header_mongrel "$LINENO" "linux/sockios.h" "ac_cv_header_linux_sockios_h" "$ac_includes_default"
 if test "x$ac_cv_header_linux_sockios_h" = xyes; then :
 
+
 $as_echo "#define HAVE_SIOCOUTQ 1" >>confdefs.h
+
 
 else
 
+
 $as_echo "#define HAVE_SIOCOUTQ 0" >>confdefs.h
+
 
 
 fi
