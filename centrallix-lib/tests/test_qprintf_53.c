@@ -15,6 +15,10 @@ test(char** tname)
 
 	*tname = "qprintf-53 Bugtest: &nbsp; following %STR&HTE";
 	iter = 200000;
+
+	/* this format string intentionally warns; keep the log quiet */
+	freopen("/dev/null", "w", stderr);
+
 	for(i=0;i<iter;i++)
 	    {
 	    buf[41] = '\n';
@@ -25,11 +29,11 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 35, "Here is the str: %STR&HTE&nbsp;", "<tag>");
-	    qpfPrintf(NULL, buf+4, 35, "Here is the str: %STR&HTE&nbsp;", "<tag>");
-	    qpfPrintf(NULL, buf+4, 35, "Here is the str: %STR&HTE&nbsp;", "<tag>");
-	    rval = qpfPrintf(NULL, buf+4, 35, "Here is the str: %STR&HTE&nbsp;", "<tag>");
-	    assert(!strcmp(buf+4, "Here is the str: &lt;tag&gt;&nbsp;"));
+	    qpfPrintf(NULL, (char*)buf+4, 35, "Here is the str: %STR&HTE&nbsp;", "<tag>");
+	    qpfPrintf(NULL, (char*)buf+4, 35, "Here is the str: %STR&HTE&nbsp;", "<tag>");
+	    qpfPrintf(NULL, (char*)buf+4, 35, "Here is the str: %STR&HTE&nbsp;", "<tag>");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 35, "Here is the str: %STR&HTE&nbsp;", "<tag>");
+	    assert(!strcmp((char*)buf+4, "Here is the str: &lt;tag&gt;&nbsp;"));
 	    assert(rval == 34);
 	    assert(buf[41] == '\n');
 	    assert(buf[40] == '\0');
@@ -43,4 +47,3 @@ test(char** tname)
 
     return iter*4;
     }
-
