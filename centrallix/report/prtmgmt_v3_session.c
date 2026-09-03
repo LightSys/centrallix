@@ -158,7 +158,8 @@ prtCloseSession(pPrtSession s)
 		}
 	    }
 
-	s->Formatter->Close(s->FormatterData);
+	if (s->Formatter->Close(s->FormatterData) < 0)
+	    s->Flags |= PRT_SESSION_F_ERROR;
 	rval = (s->Flags & PRT_SESSION_F_ERROR) ? -1 : 0;
 
 	/** Release the memory used by the pages **/

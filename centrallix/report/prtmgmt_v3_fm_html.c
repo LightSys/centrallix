@@ -488,13 +488,16 @@ prt_htmlfm_Close(void* context_v)
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
 	    {
 	    if (UNLIKELY(context->Attachments == NULL))
+		{
 		printFail("Warning: Attachments array missing for email.");
+		goto end;
+		}
 
 	    for (int i = 0; i < xaCount(context->Attachments); i++)
 		{
 		char* attachment_str = checkPtr(xsString(xaGetItem(context->Attachments, i)));
 		if (attachment_str == NULL) goto end;
-		prt_htmlfm_Output(context, attachment_str, -1);
+		if (prt_htmlfm_Output(context, attachment_str, -1) < 0) goto end;
 		}
 	    }
 
