@@ -313,7 +313,6 @@ function cxjs_right(s,l)
 
 function cxjs_eval(_context, _this, expr, permflags, cur_obj_name, par_obj_name)
     {
-    console.log(_context, _this, expr, permflags, cur_obj_name, par_obj_name);
     if (expr === null || expr === undefined) return null;
     const expr_str = String(expr).trim();
     if (expr_str === '') return null;
