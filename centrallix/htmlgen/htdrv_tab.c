@@ -557,9 +557,9 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 			    "margin:0px; "
 			    "padding:0px; "
 			"'>"
-			    "%[<span>&nbsp;%STR&HTE&nbsp;</span>%]"
+			    "%[<span>%&nbsp;%STR&HTE%&nbsp;</span>%]"
 			    "<img src='/sys/images/tab_lft%POS.gif' style='width:5px; height:%POSpx; vertical-align:middle;'>"
-			    "%[<span>&nbsp;%STR&HTE&nbsp;</span>%]"
+			    "%[<span>%&nbsp;%STR&HTE%&nbsp;</span>%]"
 			"</p>"
 		    "</div>\n",
 		    id, i + 1, id, (is_selected),

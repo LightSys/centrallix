@@ -48,6 +48,12 @@
 /*** maximum # of specifiers in a series in the format string ***/
 #define QPF_MAX_SPECS		(8)
 
+/*** maximum # of characters of an unrecognized filter to quote in a warning
+ *** This limit exists to prevent a malicious, unbounded write into logs from
+ *** untrusted format data.
+ ***/
+#define QPF_MAX_WARN_LEN	(64)
+
 /*** translation matrix size ***/
 #define QPF_MATRIX_SIZE		(256)
 
@@ -60,100 +66,103 @@
 #define QPF_SPEC_T_NSTR		(5)
 #define QPF_SPEC_T_CHR		(6)
 #define QPF_SPEC_T_LL		(7)
-#define QPF_SPEC_T_ENDSRC	(7)
+#define QPF_SPEC_T_ULL		(8)
+#define QPF_SPEC_T_BOOL		(9)
+#define QPF_SPEC_T_ENDSRC	(9)
 
 /*** builtin filtering specifiers ***/
-#define QPF_SPEC_T_STARTFILT	(8)
-#define QPF_SPEC_T_QUOT		(8)
-#define QPF_SPEC_T_DQUOT	(9)
-#define QPF_SPEC_T_SYM		(10)
-#define QPF_SPEC_T_JSSTR	(11)
-#define QPF_SPEC_T_NLEN		(12)
-#define QPF_SPEC_T_WS		(13)
-#define QPF_SPEC_T_ESCWS	(14)
-#define QPF_SPEC_T_ESCSP	(15)
-#define QPF_SPEC_T_UNESC	(16)
-#define QPF_SPEC_T_SSYB		(17)
-#define QPF_SPEC_T_DSYB		(18)
-#define QPF_SPEC_T_FILE		(19)
-#define QPF_SPEC_T_PATH		(20)
-#define QPF_SPEC_T_HEX		(21)
-#define QPF_SPEC_T_DHEX		(22)
-#define QPF_SPEC_T_B64		(23)
-#define QPF_SPEC_T_DB64		(24)
-#define QPF_SPEC_T_RF		(25)
-#define QPF_SPEC_T_RR		(26)
-#define	QPF_SPEC_T_HTENLBR	(27)
-#define QPF_SPEC_T_DHTE		(28)
-#define QPF_SPEC_T_URL		(29)
-#define QPF_SPEC_T_DURL		(30)
-#define QPF_SPEC_T_NLSET	(31)
-#define QPF_SPEC_T_NRSET	(32)
-#define QPF_SPEC_T_NZRSET	(33)
-#define QPF_SPEC_T_SQLARG	(34)
-#define QPF_SPEC_T_SQLSYM	(35)
-#define QPF_SPEC_T_HTDATA	(36)
-#define QPF_SPEC_T_HTE		(37)
-#define QPF_SPEC_T_ESCQWS	(38)
-#define QPF_SPEC_T_ESCQ		(39)
-#define QPF_SPEC_T_CSSVAL	(40)
-#define QPF_SPEC_T_CSSURL	(41)
-#define QPF_SPEC_T_JSONSTR	(42)
-#define QPF_SPEC_T_ENDFILT	(42)
-#define QPF_SPEC_T_MAXSPEC	(42)
+#define QPF_SPEC_T_STARTFILT	(32)
+#define QPF_SPEC_T_QUOT		(32)
+#define QPF_SPEC_T_DQUOT	(33)
+#define QPF_SPEC_T_SYM		(34)
+#define QPF_SPEC_T_JSSTR	(35)
+#define QPF_SPEC_T_NLEN		(36)
+#define QPF_SPEC_T_WS		(37)
+#define QPF_SPEC_T_ESCWS	(38)
+#define QPF_SPEC_T_ESCSP	(39)
+#define QPF_SPEC_T_UNESC	(40)
+#define QPF_SPEC_T_SSYB		(41)
+#define QPF_SPEC_T_DSYB		(42)
+#define QPF_SPEC_T_FILE		(43)
+#define QPF_SPEC_T_PATH		(44)
+#define QPF_SPEC_T_HEX		(45)
+#define QPF_SPEC_T_DHEX		(46)
+#define QPF_SPEC_T_B64		(47)
+#define QPF_SPEC_T_DB64		(48)
+#define QPF_SPEC_T_RF		(49)
+#define QPF_SPEC_T_RR		(50)
+#define	QPF_SPEC_T_HTENLBR	(51)
+#define QPF_SPEC_T_DHTE		(52)
+#define QPF_SPEC_T_URL		(53)
+#define QPF_SPEC_T_DURL		(54)
+#define QPF_SPEC_T_NLSET	(55)
+#define QPF_SPEC_T_NRSET	(56)
+#define QPF_SPEC_T_NZRSET	(57)
+#define QPF_SPEC_T_SQLARG	(58)
+#define QPF_SPEC_T_SQLSYM	(59)
+#define QPF_SPEC_T_HTDATA	(60)
+#define QPF_SPEC_T_HTE		(61)
+#define QPF_SPEC_T_ESCQWS	(62)
+#define QPF_SPEC_T_ESCQ		(63)
+#define QPF_SPEC_T_CSSVAL	(64)
+#define QPF_SPEC_T_CSSURL	(65)
+#define QPF_SPEC_T_JSONSTR	(66)
+#define QPF_SPEC_T_ENDFILT	(66)
+#define QPF_SPEC_T_MAXSPEC	(66)
 
-/** Names for specifiers as used in format string - must match the above. **/
-const char*
-qpf_spec_names[] = 
+/*** Names for specifiers as used in the format string.  Indices not
+ *** listed here are reserved for future specifiers and stay NULL; the
+ *** lookup only scans the STARTSRC..ENDSRC and STARTFILT..ENDFILT ranges.
+ ***/
+const char* qpf_spec_names[QPF_SPEC_T_MAXSPEC+1] =
     {
-    NULL,	/* 0 */
-    
     /** Source specifiers. **/
-    "INT",	/* 1 */
-    "STR",	/* 2 */
-    "POS",	/* 3 */
-    "DBL",	/* 4 */
-    "nSTR",	/* 5 */
-    "CHR",	/* 6 */
-    "LL",	/* 7 */
+    [QPF_SPEC_T_INT]     = "INT",
+    [QPF_SPEC_T_STR]     = "STR",
+    [QPF_SPEC_T_POS]     = "POS",
+    [QPF_SPEC_T_DBL]     = "DBL",
+    [QPF_SPEC_T_NSTR]    = "nSTR",
+    [QPF_SPEC_T_CHR]     = "CHR",
+    [QPF_SPEC_T_LL]      = "LL",
+    [QPF_SPEC_T_ULL]     = "ULL",
+    [QPF_SPEC_T_BOOL]    = "BOOL",
     
     /** Filter specifiers. **/
-    "QUOT",	/* 8 */
-    "DQUOT",	/* 9 */
-    "SYM",	/* 10 */
-    "JSSTR",	/* 11 */
-    "nLEN",	/* 12 */
-    "WS",	/* 13 */
-    "ESCWS",	/* 14 */
-    "ESCSP",	/* 15 */
-    "UNESC",	/* 16 */
-    "SSYB",	/* 17 */
-    "DSYB",	/* 18 */
-    "FILE",	/* 19 */
-    "PATH",	/* 20 */
-    "HEX",	/* 21 */
-    "DHEX",	/* 22 */
-    "B64",	/* 23 */
-    "DB64",	/* 24 */
-    "RF",	/* 25 */
-    "RR",	/* 26 */
-    "HTENLBR",	/* 27 */
-    "DHTE",	/* 28 */
-    "URL",	/* 29 */
-    "DURL",	/* 30 */
-    "nLSET",	/* 31 */
-    "nRSET",	/* 32 */
-    "nZRSET",	/* 33 */
-    "SQLARG",	/* 34 */
-    "SQLSYM",	/* 35 */
-    "HTDATA",	/* 36 */
-    "HTE",	/* 37 */
-    "ESCQWS",	/* 38 */
-    "ESCQ",	/* 39 */
-    "CSSVAL",	/* 40 */
-    "CSSURL",	/* 41 */
-    "JSONSTR",	/* 42 */
-    NULL
+    [QPF_SPEC_T_QUOT]    = "QUOT",
+    [QPF_SPEC_T_DQUOT]   = "DQUOT",
+    [QPF_SPEC_T_SYM]     = "SYM",
+    [QPF_SPEC_T_JSSTR]   = "JSSTR",
+    [QPF_SPEC_T_NLEN]    = "nLEN",
+    [QPF_SPEC_T_WS]      = "WS",
+    [QPF_SPEC_T_ESCWS]   = "ESCWS",
+    [QPF_SPEC_T_ESCSP]   = "ESCSP",
+    [QPF_SPEC_T_UNESC]   = "UNESC",
+    [QPF_SPEC_T_SSYB]    = "SSYB",
+    [QPF_SPEC_T_DSYB]    = "DSYB",
+    [QPF_SPEC_T_FILE]    = "FILE",
+    [QPF_SPEC_T_PATH]    = "PATH",
+    [QPF_SPEC_T_HEX]     = "HEX",
+    [QPF_SPEC_T_DHEX]    = "DHEX",
+    [QPF_SPEC_T_B64]     = "B64",
+    [QPF_SPEC_T_DB64]    = "DB64",
+    [QPF_SPEC_T_RF]      = "RF",
+    [QPF_SPEC_T_RR]      = "RR",
+    [QPF_SPEC_T_HTENLBR] = "HTENLBR",
+    [QPF_SPEC_T_DHTE]    = "DHTE",
+    [QPF_SPEC_T_URL]     = "URL",
+    [QPF_SPEC_T_DURL]    = "DURL",
+    [QPF_SPEC_T_NLSET]   = "nLSET",
+    [QPF_SPEC_T_NRSET]   = "nRSET",
+    [QPF_SPEC_T_NZRSET]  = "nZRSET",
+    [QPF_SPEC_T_SQLARG]  = "SQLARG",
+    [QPF_SPEC_T_SQLSYM]  = "SQLSYM",
+    [QPF_SPEC_T_HTDATA]  = "HTDATA",
+    [QPF_SPEC_T_HTE]     = "HTE",
+    [QPF_SPEC_T_ESCQWS]  = "ESCQWS",
+    [QPF_SPEC_T_ESCQ]    = "ESCQ",
+    [QPF_SPEC_T_CSSVAL]  = "CSSVAL",
+    [QPF_SPEC_T_CSSURL]  = "CSSURL",
+    [QPF_SPEC_T_JSONSTR] = "JSONSTR",
     };
 
 int qpf_spec_len[QPF_SPEC_T_MAXSPEC+1];
@@ -415,7 +424,9 @@ qpfInitialize(void)
 	    if (!QPF.jsstr_matrix.Matrix[i])
 		{
 		QPF.jsstr_matrix.Matrix[i] = nmSysMalloc(7);
-		snprintf(QPF.jsstr_matrix.Matrix[i], 7, "\\u%4.4X", i);
+		/** The escape is always six characters, so anything else is a failure. **/
+		if (snprintf(QPF.jsstr_matrix.Matrix[i], 7, "\\u%4.4X", i) != 6)
+		    return -1;
 		}
 	    }
 	qpf_internal_SetupTable(&QPF.jsstr_matrix);
@@ -434,7 +445,9 @@ qpfInitialize(void)
 	    if (!QPF.jsonstr_matrix.Matrix[i])
 		{
 		QPF.jsonstr_matrix.Matrix[i] = nmSysMalloc(7);
-		snprintf(QPF.jsonstr_matrix.Matrix[i], 7, "\\u%4.4X", i);
+		/** The escape is always six characters, so anything else is a failure. **/
+		if (snprintf(QPF.jsonstr_matrix.Matrix[i], 7, "\\u%4.4X", i) != 6)
+		    return -1;
 		}
 	    }
 	qpf_internal_SetupTable(&QPF.jsonstr_matrix);
@@ -626,14 +639,17 @@ qpfCloseSession(pQPSession s)
     }
 
 
-/*** Convert an integer into a string representation.  Seems to perform better
+/*** Convert an integer into a string representation.  The string is always
+ *** null-terminated, even if it has to be truncated.  Seems to perform better
  *** than `snprintf("%d")`, even without optimization enabled.
  *** 
  *** @param dst The destination string buffer.
  *** @param dstlen The allocated length of the string buffer, used to avoid
  *** 	buffer overflows.
  *** @param i The value to be written.
- *** @returns The number of characters written to the buffer.
+ *** @returns The number of characters the representation requires, following
+ *** 	the same convention as `snprintf()`.  If `dstlen` or more is returned,
+ *** 	the string did not fit so the buffer holds a truncated result.
  ***/
 static inline size_t
 qpf_internal_itoa(char* dst, size_t dstlen, int i)
@@ -690,7 +706,7 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
     const unsigned char* srcptr = (const unsigned char*)src;
     const unsigned char* origsrc = (const unsigned char*)src;
     char* dstptr;
-    int req_size = ((src_size+2) / 3) * 4 + *dst_offset;
+    int req_size = ((src_size+2) / 3) * 4 + *dst_offset + 1; /** +1 leaves room for the null-terminator. **/
 
 	/** Grow dstbuf if necessary and possible, otherwise return error **/
 	if (req_size > *dst_size)
@@ -741,9 +757,10 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
 	    srcptr += 3;
 	    }
 
-	*dst_offset = *dst_offset + (dstptr - *dst);
+	const size_t bytes_written = (dstptr - *dst) - *dst_offset;
+	*dst_offset = dstptr - *dst;
 
-    return dstptr - *dst;
+    return bytes_written;
     }
 
 
@@ -850,9 +867,10 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 	    cursor += 3;
 	    }
 
-	*dst_offset = *dst_offset + cursor - *dst;
+	const size_t bytes_written = (cursor - *dst) - *dst_offset;
+	*dst_offset = cursor - *dst;
 
-    return cursor - *dst;
+    return bytes_written;
     }
 
 
@@ -883,13 +901,13 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
     int req_size;
     const char* orig_src = src;
 
-	/** Required size **/
+	/** Required size, counting the offset and the null-terminator **/
 	if (UNLIKELY(src_size%2 == 1))
 	    {
 	    QPERR(QPF_ERR_T_BADLENGTH);
 	    return -1;
 	    }
-	req_size = src_size/2;
+	req_size = src_size/2 + *dst_offset + 1;
 
 	/** Grow dstbuf if necessary and possible, otherwise return error **/
 	if (req_size > *dst_size)
@@ -930,9 +948,10 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
 	    cursor += 1;
 	    }
 
-	*dst_offset = *dst_offset + cursor - *dst;
+	const size_t bytes_written = (cursor - *dst) - *dst_offset;
+	*dst_offset = cursor - *dst;
 
-    return cursor - *dst;
+    return bytes_written;
     }
 
 
@@ -981,20 +1000,21 @@ qpfSysMallocGrow(char** str, size_t* size, size_t offset, void* args, size_t req
  *** 
  *** @param s The qprintf session in use.
  *** @param str The destination string buffer for printed data.
- *** @param strsize The length of `str` in bytes.
+ *** @param str_size The length of `str` in bytes.
  *** @param format The qprintf format to follow when printing data.
  *** @param ... A variable arguments list used to populate the format.
- *** @returns The number of chars written.
+ *** @returns The number of chars the output requires (matching `snprintf()`).
+ *** 	Returns `str_size` or more when truncating the output.  Negative on error.
  ***/
 int 
-qpfPrintf(pQPSession s, char* str, size_t size, const char* format, ...)
+qpfPrintf(pQPSession s, char* str, size_t str_size, const char* format, ...)
     {
     va_list va;
     int rval;
 
 	/** Grab the va ptr and call the _va version **/
 	va_start(va, format);
-	rval = qpfPrintf_va(s, str, size, format, va);
+	rval = qpfPrintf_va(s, str, str_size, format, va);
 	va_end(va);
 
     return rval;
@@ -1006,41 +1026,44 @@ qpfPrintf(pQPSession s, char* str, size_t size, const char* format, ...)
  *** 
  *** @param s The qprintf session in use.
  *** @param str The destination string buffer for printed data.
- *** @param strsize The length of `str` in bytes.
+ *** @param str_size The length of `str` in bytes.
  *** @param format The qprintf format to follow when printing data.
  *** @param ap A variable arguments list used to populate the format.
- *** @returns The number of chars written.
+ *** @returns The number of chars the output requires (matching `snprintf()`).
+ *** 	Returns `str_size` or more when truncating the output.  Negative on error.
  ***/
 int 
-qpfPrintf_va(pQPSession s, char* str, size_t size, const char* format, va_list ap)
+qpfPrintf_va(pQPSession s, char* str, size_t str_size, const char* format, va_list ap)
     {
-    return qpfPrintf_gva(s, &str, &size, qpfNoGrow, NULL, format, ap);
+    return qpfPrintf_gva(s, &str, &str_size, qpfNoGrow, NULL, format, ap);
     }
 
 
 /*** Print formatted text using the qprintf formatting, using provided the
- *** grow function to reallocate the provided string as needed.
+ *** grow function to reallocate the provided string as needed.  The output
+ *** is only truncated if the grow function failed to supply enough space.
  *** 
  *** @param s The qprintf session in use.
  *** @param str A pointer to the destination string buffer for printed data,
  *** 	which might be reallocated by `grow_fn`, if it is called.
- *** @param strsize A pointer to the length value of `str` in bytes, which
+ *** @param str_size A pointer to the length value of `str` in bytes, which
  *** 	might be updated by `grow_fn` if it reallocates `str` to a new size.
  *** @param grow_fn The grow function called if `str` is not large enough.
  *** @param grow_arg The void* argument passed to `grow_fn`.
  *** @param format The qprintf format to follow when printing data.
  *** @param ... A variable arguments list used to populate the format.
- *** @returns The number of chars written.
+ *** @returns The number of chars the output requires (matching `snprintf()`).
+ *** 	Returns `*str_size` or more when truncating the output.  Negative on error.
  ***/
 int
-qpfPrintf_g(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, void* grow_arg, const char* format, ...)
+qpfPrintf_g(pQPSession s, char** str, size_t* str_size, qpf_grow_fn_t grow_fn, void* grow_arg, const char* format, ...)
     {
     va_list va;
     int rval;
 
 	/** Grab the va ptr and call the _va version **/
 	va_start(va, format);
-	rval = qpfPrintf_gva(s, str, size, grow_fn, grow_arg, format, va);
+	rval = qpfPrintf_gva(s, str, str_size, grow_fn, grow_arg, format, va);
 	va_end(va);
 
     return rval;
@@ -1048,32 +1071,41 @@ qpfPrintf_g(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, void*
 
 
 /*** Print formatted text using the qprintf formatting, using provided the
- *** grow function to reallocate the provided string as needed.
+ *** grow function to reallocate the provided string as needed.  The output
+ *** is only truncated if the grow function failed to supply enough space.
  *** 
  *** @param s The qprintf session in use.
  *** @param str A pointer to the destination string buffer for printed data,
  *** 	which might be reallocated by `grow_fn`, if it is called.
- *** @param strsize A pointer to the length value of `str` in bytes, which
+ *** @param str_size A pointer to the length value of `str` in bytes, which
  *** 	might be updated by `grow_fn` if it reallocates `str` to a new size.
  *** @param grow_fn The grow function called if `str` is not large enough.
  *** @param grow_arg The void* argument passed to `grow_fn`.
  *** @param format The qprintf format to follow when printing data.
  *** @param ap A variable arguments list used to populate the format.
- *** @returns The number of chars written.
+ *** @returns The number of chars the output requires (matching `snprintf()`).
+ *** 	Returns `*str_size` or more when truncating the output.  Negative on error.
  ***/
 int
-qpfPrintf_gva(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, void* grow_arg, const char* format, va_list ap)
+qpfPrintf_gva(pQPSession s, char** str, size_t* str_size, qpf_grow_fn_t grow_fn, void* grow_arg, const char* format, va_list ap)
     {
-    return qpfPrintf_va_internal(s, str, size, grow_fn, grow_arg, format, ap);
+    return qpfPrintf_va_internal(s, str, str_size, grow_fn, grow_arg, format, ap);
     }
 
 
 /*** Copy characters to the new buffer, translating each character using the
- *** given pQPConvTable.  Respects a soft and hard limit.
- *** 
- *** I'm not sure what this stuff about the "soft and hard limit" means, but
- *** I think it has something do do with the `limit` parameter.  I'm also not
- *** sure why that parameter is necessary. (Israel, 2026)
+ *** given pQPConvTable.
+ ***
+ *** This function respects both a "soft limit" and a "hard limit" on the
+ *** number of characters written.
+ *** Soft limit: `dstsize`, used to prevent writing past the end of `dstbuf`.
+ *** The limit is "soft" because the function calls `grow_fn` (if provided)
+ *** to attempt to increase the limit, if needed.  The soft limit does NOT
+ *** reduce the return value.
+ *** Hard limit: `limit`, used by spec chain elements like `nLen` or `*LEN`.
+ *** The function will not write more characters than this and causes an
+ *** `QPF_ERR_T_INSOVERFLOW` error, even if space is available or `grow_fn`
+ *** could be called.  The hard limit DOES reduce the return value.
  ***
  *** @param s The qprintf session in use.
  *** @param srcbuf The source string representation to translate and copy.
@@ -1083,19 +1115,17 @@ qpfPrintf_gva(pQPSession s, char** str, size_t* size, qpf_grow_fn_t grow_fn, voi
  *** @param dstoffs The number of bytes to skip at the start of `dstbuf`
  *** 	before writing the result.
  *** @param dstsize The size of the currently allocated string at `dstbuf`.
- *** @param limit The maximum amount that the destination string can grow past
- *** 	the size of the source string.  Causes an `QPF_ERR_T_INSOVERFLOW`
- *** 	error if this limit is exceeded.
+ *** @param limit A hard limit on the number of characters added to `dstbuf`.
  *** @param table The translation table to apply when copying each character.
  *** @param grow_fn An optional grow function, used to grow the dst string if
  *** 	more space is needed.
  *** @param grow_arg An argument, passed to`grow_fn`() when it is called.
  *** @param min_room A required amount of space that must be available at the
- *** end of the destination buffer when the function completes.  Often this is
- *** `1`, to leave room for a null terminator, or `2` to leave room for a
- *** closing quote mark followed by a null terminator.
+ *** 	end of the destination buffer when the function completes.  Often this
+ *** 	is `1`, to leave room for a null-terminator, or `2` to leave room for
+ *** 	a closing quote mark followed by a null-terminator.
  *** @returns The number of chars placed in dstbuf (or the number that would
- *** have been placed if there was enough room), or -1 if an error occurs.
+ *** 	have been placed if there was enough room), or -1 if an error occurs.
  *** Note: Does NOT return the number of chars pulled from the srcbuf!!!
  ***/
 static inline int
@@ -1187,7 +1217,8 @@ qpf_internal_Translate(
 
 
 /*** Parse the provided format, apply all of the qprintf() format specifier
- *** rules, and write the result to a string buffer.
+ *** rules, and write the result to a string buffer.  The output is only
+ *** truncated if the grow function failed to supply enough space.
  *** 
  *** Warning:  The 'dest' parameter may change during the execution of this
  *** function if `grow_fn` reallocates it.  Do not store pointers to 'dest'!
@@ -1196,14 +1227,14 @@ qpf_internal_Translate(
  *** @param s Optional session struct.
  *** @param dest A pointer to a string buffer where data will be written.
  *** @param dest_size A pointer to the current size of the string buffer.
- *** @param grow_fn A function to grow the string buffer.
  *** @param grow_fn An optional grow function, used to grow `dest` if more
  *** 	space is needed.
  *** @param grow_arg An argument, passed to`grow_fn`() when it is called.
  *** @param format The format of data which should be written.
  *** @param ap The arguments list to fulfill the provided format.
- *** @returns The number of characters copied, or a negative number if an
- *** 	error occurs.
+ *** @returns The number of chars the output requires (matching `snprintf()`).
+ *** 	Returns `*dest_size` or more when truncating the output.
+ *** 	Negative on error.
  *** 
  *** NULL, &(s->Tmpbuf), &(s->TmpbufSize), htr_internal_GrowFn, (void*)s, fmt, va
  *** @param s Optional session struct.
@@ -1238,7 +1269,10 @@ qpfPrintf_va_internal(
 	    s = &null_session;
 	    }
 	
-	/** Ensure that there is at least enough room for the a null terminator. **/
+	/** Use qpfNoGrow() if no grow function is provided. **/
+	if (grow_fn == NULL) grow_fn = qpfNoGrow;
+	
+	/** Ensure that there is at least enough room for the a null-terminator. **/
 	if (UNLIKELY((!*dest || *dest_size < 1) && !grow_fn(dest, dest_size, dest_offset, grow_arg, 1))) 
 	    {
 	    rval = -EINVAL;
@@ -1305,6 +1339,9 @@ qpfPrintf_va_internal(
 		    format++;
 		    if (ignore) continue;
 		    
+		    /** Count the character, whether or not it fits. **/
+		    copied++;
+		    
 		    /** Ensure that we have enough space. **/
 		    const size_t space_needed = dest_offset + 2lu;
 		    if (no_grow || (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed)))
@@ -1316,7 +1353,6 @@ qpfPrintf_va_internal(
 		    
 		    /** Add the character to the output string. **/
 		    (*dest)[dest_offset++] = '%';
-		    copied++;
 		    continue;
 		    }
 		case '&':
@@ -1324,6 +1360,9 @@ qpfPrintf_va_internal(
 		    /** Consume this character. **/
 		    format++;
 		    if (ignore) continue;
+		    
+		    /** Count the character, whether or not it fits. **/
+		    copied++;
 		    
 		    /** Ensure that we have enough space. **/
 		    const size_t space_needed = dest_offset + 2lu;
@@ -1336,7 +1375,6 @@ qpfPrintf_va_internal(
 		    
 		    /** Add the character to the output string. **/
 		    (*dest)[dest_offset++] = '&';
-		    copied++;
 		    continue;
 		    }
 		case '[':
@@ -1419,8 +1457,21 @@ qpfPrintf_va_internal(
 			goto error;
 			}
 		    
-		    /** Invalid spec: Skip to printing. **/
+		    /** Invalid specifier: Unconsume the &. **/
 		    format--;
+		    
+		    /** Measure the name of the unrecognized specifier and print a warning. **/
+		    int len = 1;
+		    while (len < QPF_MAX_WARN_LEN &&
+			    (('A' <= format[len] && format[len] <= 'Z') ||
+			     ('a' <= format[len] && format[len] <= 'z') ||
+			     ('0' <= format[len] && format[len] <= '9')))
+			len++;
+		    fprintf(stderr,
+			"Warning: qprintf: unrecognized filter \"%.*s\" (copied as literal text). "
+			"Use \"%%&\" to print a literal '&'.\n",
+			len, format
+		    );
 		    break;
 		    }
 		
@@ -1428,7 +1479,7 @@ qpfPrintf_va_internal(
 		startspec = QPF_SPEC_T_STARTFILT;
 		endspec = QPF_SPEC_T_ENDFILT;
 		}
-	    while (format[0] == '&' && format++); /* Loop as long as there are '&' chars to consume. */
+	    while (format[0] == '&' && format++); /* do-loop while there are '&'s to consume. */
 	    
 	    /** Get the data using the source spec. **/
 	    char tmp_buf[318]; /* 318 characters are needed to print DBL_MAX. */
@@ -1475,7 +1526,29 @@ qpfPrintf_va_internal(
 		case QPF_SPEC_T_LL:
 		    {
 		    const long long ll_val = va_arg(ap, long long);
-		    copy_len = (size_t)snprintf(tmp_buf, sizeof(tmp_buf), "%lld", ll_val);
+		    const int len = snprintf(tmp_buf, sizeof(tmp_buf), "%lld", ll_val);
+		    if (UNLIKELY(len < 0 || (size_t)len >= sizeof(tmp_buf)))
+			{
+			rval = -EINVAL;
+			QPERR(QPF_ERR_T_INTERNAL);
+			goto error;
+			}
+		    copy_len = len;
+		    strval = tmp_buf;
+		    break;
+		    }
+		
+		case QPF_SPEC_T_ULL:
+		    {
+		    const unsigned long long ull_val = va_arg(ap, unsigned long long);
+		    const int len = snprintf(tmp_buf, sizeof(tmp_buf), "%llu", ull_val);
+		    if (UNLIKELY(len < 0 || (size_t)len >= sizeof(tmp_buf)))
+			{
+			rval = -EINVAL;
+			QPERR(QPF_ERR_T_INTERNAL);
+			goto error;
+			}
+		    copy_len = len;
 		    strval = tmp_buf;
 		    break;
 		    }
@@ -1483,7 +1556,14 @@ qpfPrintf_va_internal(
 		case QPF_SPEC_T_DBL:
 		    {
 		    const double double_val = va_arg(ap, double);
-		    copy_len = (size_t)snprintf(tmp_buf, sizeof(tmp_buf), "%lf", double_val);
+		    const int len = snprintf(tmp_buf, sizeof(tmp_buf), "%lf", double_val);
+		    if (UNLIKELY(len < 0 || (size_t)len >= sizeof(tmp_buf)))
+			{
+			rval = -EINVAL;
+			QPERR(QPF_ERR_T_INTERNAL);
+			goto error;
+			}
+		    copy_len = len;
 		    strval = tmp_buf;
 		    break;
 		    }
@@ -1509,6 +1589,14 @@ qpfPrintf_va_internal(
 		    break;
 		    }
 		
+		case QPF_SPEC_T_BOOL:
+		    {
+		    const int bool_val = va_arg(ap, int);
+		    strval = (bool_val) ? "true" : "false";
+		    copy_len = (bool_val) ? 4lu : 5lu;
+		    break;
+		    }
+		
 		default:
 		    {
 		    rval = -EINVAL;
@@ -1521,11 +1609,12 @@ qpfPrintf_va_internal(
 	    if (UNLIKELY(ignore)) continue;
 	    
 	    /** Handle filters. **/
-	    pQPConvTable table;
-	    size_t min_room = 1;
-	    char quote = 0;
 	    for (unsigned int i = 1; i < n_specs; i++)
 		{
+		pQPConvTable table = NULL;
+		size_t min_room = 1;
+		char quote = 0;
+		
 		const char filter_specifier = specchain[i];
 		switch (filter_specifier)
 		    {
@@ -1631,108 +1720,21 @@ qpfPrintf_va_internal(
 			break;
 			}
 		    
-		    case QPF_SPEC_T_QUOT:    table = &QPF.quote_matrix;    min_room = 2; quote = '\''; goto use_table;
-		    case QPF_SPEC_T_DQUOT:   table = &QPF.quote_matrix;    min_room = 2; quote = '"';  goto use_table;
-		    case QPF_SPEC_T_ESCQ:    table = &QPF.quote_matrix;    goto use_table;
-		    case QPF_SPEC_T_ESCQWS:  table = &QPF.quote_ws_matrix; goto use_table;
-		    case QPF_SPEC_T_JSSTR:   table = &QPF.jsstr_matrix;    goto use_table;
-		    case QPF_SPEC_T_JSONSTR: table = &QPF.jsonstr_matrix;  goto use_table;
-		    case QPF_SPEC_T_DSYB:    table = &QPF.dsyb_matrix;     goto use_table;
-		    case QPF_SPEC_T_SSYB:    table = &QPF.ssyb_matrix;     goto use_table;
-		    case QPF_SPEC_T_CSSVAL:  table = &QPF.cssval_matrix;   goto use_table;
-		    case QPF_SPEC_T_CSSURL:  table = &QPF.cssurl_matrix;   goto use_table;
-		    case QPF_SPEC_T_ESCWS:   table = &QPF.ws_matrix;       goto use_table;
-		    case QPF_SPEC_T_HTE:     table = &QPF.hte_matrix;      goto use_table;
-		    case QPF_SPEC_T_HTENLBR: table = &QPF.htenlbr_matrix;  goto use_table;
-		    case QPF_SPEC_T_HEX:     table = &QPF.hex_matrix;      goto use_table;
-		    case QPF_SPEC_T_URL:     table = &QPF.url_matrix;      goto use_table;
-    use_table:		{
-			/** Skip this spec if the case doesn't meet any of the requirements to use it. **/
-			const int is_final_spec = (n_specs - i == 1);
-			const int is_only_followed_by_nlen = (n_specs - i == 2 && specchain[i + 1] == QPF_SPEC_T_NLEN);
-			if (!is_final_spec && !is_only_followed_by_nlen)
-			    {
-			    QPERR(QPF_ERR_T_NOTIMPL);
-			    rval = -ENOSYS;
-			    goto error;
-			    }
-			
-			/** Determine the max amount of characters that we can write. **/
-			size_t maxdst = (is_only_followed_by_nlen) ? specchain_n[i + 1] : INT_MAX;
-			
-			/** Skip quoting non-strings. **/
-			if (quote && specchain[0] != QPF_SPEC_T_STR)
-			    {
-			    if (UNLIKELY(copy_len > maxdst))
-				{
-				QPERR(QPF_ERR_T_INSOVERFLOW);
-				copy_len = maxdst;
-				}
-			    break;
-			    }
-			
-			/** Add opening quote (if requested). **/
-			if (quote)
-			    {
-			    if (UNLIKELY(maxdst < 2))
-				{
-				QPERR(QPF_ERR_T_BADFORMAT);
-				rval = -EINVAL;
-				goto error;
-				}
-			    maxdst -= 2;
-			    
-			    const size_t space_needed = dest_offset + 2lu;
-			    if (UNLIKELY(no_grow || (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed))))
-				{
-				QPERR(QPF_ERR_T_BUFOVERFLOW);
-				no_grow = true;
-				}
-			    else (*dest)[dest_offset++] = quote;
-			    copied++;
-			    }
-			
-			/** Translate the string content using the table selected above. **/
-			const qpf_grow_fn_t gf = (no_grow) ? NULL : grow_fn;
-			const int n_chars = qpf_internal_Translate(s, strval, copy_len, dest, &dest_offset, dest_size, maxdst, table, gf, grow_arg, min_room);
-			if (UNLIKELY(n_chars < 0))
-			    {
-			    /** Probably unreachable. **/
-			    QPERR(QPF_ERR_T_INTERNAL);
-			    rval = n_chars;
-			    goto error;
-			    }
-			if (UNLIKELY(s->Errors & QPF_ERR_T_BUFOVERFLOW)) no_grow = true;
-			
-			/** Add closing quote (if requested). **/
-			if (quote)
-			    {
-			    const size_t space_needed = dest_offset + 2lu;
-			    if (UNLIKELY(no_grow || (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed))))
-				{
-				QPERR(QPF_ERR_T_BUFOVERFLOW);
-				no_grow = true;
-				}
-			     
-			    /*** Write the closing quote with space for the
-			     *** null-terminator if at all possible, even if
-			     *** a buffer overflow has already occurred, by
-			     *** moving the offset back and overwriting some
-			     *** of the end of the provided string, if needed.
-			     ***/
-			    if (LIKELY(*dest_size >= 2))
-				{
-				if (UNLIKELY(space_needed > *dest_size))
-				    dest_offset = *dest_size - 2;
-				(*dest)[dest_offset++] = quote;
-				}
-			    copied++;
-			    }
-			copied += n_chars;
-			copy_len = 0;
-			
-			break;
-			}
+		    case QPF_SPEC_T_QUOT:    table = &QPF.quote_matrix;    min_room = 2; quote = '\''; break;
+		    case QPF_SPEC_T_DQUOT:   table = &QPF.quote_matrix;    min_room = 2; quote = '"';  break;
+		    case QPF_SPEC_T_ESCQ:    table = &QPF.quote_matrix;    break;
+		    case QPF_SPEC_T_ESCQWS:  table = &QPF.quote_ws_matrix; break;
+		    case QPF_SPEC_T_JSSTR:   table = &QPF.jsstr_matrix;    break;
+		    case QPF_SPEC_T_JSONSTR: table = &QPF.jsonstr_matrix;  break;
+		    case QPF_SPEC_T_DSYB:    table = &QPF.dsyb_matrix;     break;
+		    case QPF_SPEC_T_SSYB:    table = &QPF.ssyb_matrix;     break;
+		    case QPF_SPEC_T_CSSVAL:  table = &QPF.cssval_matrix;   break;
+		    case QPF_SPEC_T_CSSURL:  table = &QPF.cssurl_matrix;   break;
+		    case QPF_SPEC_T_ESCWS:   table = &QPF.ws_matrix;       break;
+		    case QPF_SPEC_T_HTE:     table = &QPF.hte_matrix;      break;
+		    case QPF_SPEC_T_HTENLBR: table = &QPF.htenlbr_matrix;  break;
+		    case QPF_SPEC_T_HEX:     table = &QPF.hex_matrix;      break;
+		    case QPF_SPEC_T_URL:     table = &QPF.url_matrix;      break;
 		    
 		    default:
 			/** Unimplemented filter **/
@@ -1740,20 +1742,123 @@ qpfPrintf_va_internal(
 			rval = -ENOSYS;
 			goto error;
 		    }
+		
+		/** Apply a conversion table from the format specifier table, if provided. **/
+		if (table != NULL)
+		    {
+		    /** Skip this spec if the case doesn't meet any of the requirements to use it. **/
+		    const int is_final_spec = (n_specs - i == 1);
+		    const int is_only_followed_by_nlen = (n_specs - i == 2 && specchain[i + 1] == QPF_SPEC_T_NLEN);
+		    if (!is_final_spec && !is_only_followed_by_nlen)
+			{
+			QPERR(QPF_ERR_T_NOTIMPL);
+			rval = -ENOSYS;
+			goto error;
+			}
+		    
+		    /** Determine the max amount of characters that we can write. **/
+		    size_t maxdst = (is_only_followed_by_nlen) ? specchain_n[i + 1] : INT_MAX;
+		    
+		    /** Skip quoting non-strings. **/
+		    if (quote && specchain[0] != QPF_SPEC_T_STR)
+			{
+			if (UNLIKELY(copy_len > maxdst))
+			    {
+			    QPERR(QPF_ERR_T_INSOVERFLOW);
+			    copy_len = maxdst;
+			    }
+			break;
+			}
+		    
+		    /** Add opening quote (if requested). **/
+		    const size_t quote_start_offset = dest_offset;
+		    if (quote)
+			{
+			if (UNLIKELY(maxdst < 2))
+			    {
+			    QPERR(QPF_ERR_T_BADFORMAT);
+			    rval = -EINVAL;
+			    goto error;
+			    }
+			maxdst -= 2;
+			
+			const size_t space_needed = dest_offset + 2lu;
+			if (UNLIKELY(no_grow || (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed))))
+			    {
+			    QPERR(QPF_ERR_T_BUFOVERFLOW);
+			    no_grow = true;
+			    }
+			else (*dest)[dest_offset++] = quote;
+			copied++;
+			}
+		    
+		    /** Translate the string content using the table selected above. **/
+		    const size_t old_dest_offset = dest_offset;
+		    const qpf_grow_fn_t gf = (no_grow) ? NULL : grow_fn;
+		    const int n_chars = qpf_internal_Translate(s,
+			strval, copy_len,
+			dest, &dest_offset, dest_size,
+			maxdst, table,
+			gf, grow_arg, min_room
+		    );
+		    if (UNLIKELY(n_chars < 0))
+			{
+			/** Probably unreachable. **/
+			QPERR(QPF_ERR_T_INTERNAL);
+			rval = n_chars;
+			goto error;
+			}
+		    
+		    /*** Detect failed grow call.  Translate() returns the
+		     *** number of characters it needed to write.  If that's
+		     *** less than what it wrote, we know a grow call failed.
+		     ***/
+		    if (UNLIKELY(n_chars != dest_offset - old_dest_offset)) no_grow = true;
+		    
+		    /** Add closing quote (if requested). **/
+		    if (quote)
+			{
+			const size_t space_needed = dest_offset + 2lu;
+			if (UNLIKELY(no_grow || (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed))))
+			    {
+			    QPERR(QPF_ERR_T_BUFOVERFLOW);
+			    no_grow = true;
+			    }
+			 
+			/*** Write the closing quote with space for the null-
+			 *** terminator, even if the buffer is overflowing, by
+			 *** moving the offset back to replace the end of the
+			 *** quoted string, if needed.  Ensures we don't write
+			 *** before the quoted string and remove previous text.
+			 ***/
+			size_t quote_offset = dest_offset;
+			if (UNLIKELY(space_needed > *dest_size && *dest_size >= 2))
+			    quote_offset = *dest_size - 2;
+			if (LIKELY(quote_offset >= quote_start_offset && quote_offset + 1lu < *dest_size))
+			    {
+			    /** Write closing quote. **/
+			    dest_offset = quote_offset;
+			    (*dest)[dest_offset++] = quote;
+			    }
+			copied++;
+			}
+		    copied += n_chars;
+		    copy_len = 0;
+		    }
 		}
 	    
 	    /** Copy the data into the buffer. **/
 	    if (UNLIKELY(copy_len == 0)) continue;
 	    copied += copy_len;
-	    const size_t space_needed = dest_offset + copy_len + 1lu;
-	    if (UNLIKELY(space_needed > SIZE_MAX/2))
+	    if (UNLIKELY(dest_offset + copy_len + 1lu > SIZE_MAX/2))
 		{
 		QPERR(QPF_ERR_T_BUFOVERFLOW);
 		rval = -EINVAL;
 		goto error;
 		}
 	    if (UNLIKELY(no_grow)) copy_len = 0;
-	    if (UNLIKELY(no_grow || (space_needed > *dest_size && !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed))))
+	    const size_t space_needed = dest_offset + copy_len + 1lu;
+	    if (UNLIKELY(space_needed > *dest_size) && (no_grow || !grow_fn(dest, dest_size, dest_offset, grow_arg, space_needed)))
 		{
 		QPERR(QPF_ERR_T_BUFOVERFLOW);
 		copy_len = *dest_size - dest_offset - 1;
@@ -1769,7 +1874,7 @@ qpfPrintf_va_internal(
 	rval = copied;
 	
     error:
-	/** Null terminate.  Only case where this does not happen is
+	/** Null-terminate.  Only case where this does not happen is
 	 ** if dest_size == 0 on the initial call.  Terminator is not counted
 	 ** in the return value.
 	 **/
