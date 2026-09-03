@@ -69,97 +69,96 @@
 #define QPF_SPEC_T_ENDSRC	(7)
 
 /*** builtin filtering specifiers ***/
-#define QPF_SPEC_T_STARTFILT	(8)
-#define QPF_SPEC_T_QUOT		(8)
-#define QPF_SPEC_T_DQUOT	(9)
-#define QPF_SPEC_T_SYM		(10)
-#define QPF_SPEC_T_JSSTR	(11)
-#define QPF_SPEC_T_NLEN		(12)
-#define QPF_SPEC_T_WS		(13)
-#define QPF_SPEC_T_ESCWS	(14)
-#define QPF_SPEC_T_ESCSP	(15)
-#define QPF_SPEC_T_UNESC	(16)
-#define QPF_SPEC_T_SSYB		(17)
-#define QPF_SPEC_T_DSYB		(18)
-#define QPF_SPEC_T_FILE		(19)
-#define QPF_SPEC_T_PATH		(20)
-#define QPF_SPEC_T_HEX		(21)
-#define QPF_SPEC_T_DHEX		(22)
-#define QPF_SPEC_T_B64		(23)
-#define QPF_SPEC_T_DB64		(24)
-#define QPF_SPEC_T_RF		(25)
-#define QPF_SPEC_T_RR		(26)
-#define	QPF_SPEC_T_HTENLBR	(27)
-#define QPF_SPEC_T_DHTE		(28)
-#define QPF_SPEC_T_URL		(29)
-#define QPF_SPEC_T_DURL		(30)
-#define QPF_SPEC_T_NLSET	(31)
-#define QPF_SPEC_T_NRSET	(32)
-#define QPF_SPEC_T_NZRSET	(33)
-#define QPF_SPEC_T_SQLARG	(34)
-#define QPF_SPEC_T_SQLSYM	(35)
-#define QPF_SPEC_T_HTDATA	(36)
-#define QPF_SPEC_T_HTE		(37)
-#define QPF_SPEC_T_ESCQWS	(38)
-#define QPF_SPEC_T_ESCQ		(39)
-#define QPF_SPEC_T_CSSVAL	(40)
-#define QPF_SPEC_T_CSSURL	(41)
-#define QPF_SPEC_T_JSONSTR	(42)
-#define QPF_SPEC_T_ENDFILT	(42)
-#define QPF_SPEC_T_MAXSPEC	(42)
+#define QPF_SPEC_T_STARTFILT	(32)
+#define QPF_SPEC_T_QUOT		(32)
+#define QPF_SPEC_T_DQUOT	(33)
+#define QPF_SPEC_T_SYM		(34)
+#define QPF_SPEC_T_JSSTR	(35)
+#define QPF_SPEC_T_NLEN		(36)
+#define QPF_SPEC_T_WS		(37)
+#define QPF_SPEC_T_ESCWS	(38)
+#define QPF_SPEC_T_ESCSP	(39)
+#define QPF_SPEC_T_UNESC	(40)
+#define QPF_SPEC_T_SSYB		(41)
+#define QPF_SPEC_T_DSYB		(42)
+#define QPF_SPEC_T_FILE		(43)
+#define QPF_SPEC_T_PATH		(44)
+#define QPF_SPEC_T_HEX		(45)
+#define QPF_SPEC_T_DHEX		(46)
+#define QPF_SPEC_T_B64		(47)
+#define QPF_SPEC_T_DB64		(48)
+#define QPF_SPEC_T_RF		(49)
+#define QPF_SPEC_T_RR		(50)
+#define	QPF_SPEC_T_HTENLBR	(51)
+#define QPF_SPEC_T_DHTE		(52)
+#define QPF_SPEC_T_URL		(53)
+#define QPF_SPEC_T_DURL		(54)
+#define QPF_SPEC_T_NLSET	(55)
+#define QPF_SPEC_T_NRSET	(56)
+#define QPF_SPEC_T_NZRSET	(57)
+#define QPF_SPEC_T_SQLARG	(58)
+#define QPF_SPEC_T_SQLSYM	(59)
+#define QPF_SPEC_T_HTDATA	(60)
+#define QPF_SPEC_T_HTE		(61)
+#define QPF_SPEC_T_ESCQWS	(62)
+#define QPF_SPEC_T_ESCQ		(63)
+#define QPF_SPEC_T_CSSVAL	(64)
+#define QPF_SPEC_T_CSSURL	(65)
+#define QPF_SPEC_T_JSONSTR	(66)
+#define QPF_SPEC_T_ENDFILT	(66)
+#define QPF_SPEC_T_MAXSPEC	(66)
 
-/** Names for specifiers as used in format string - must match the above. **/
-const char*
-qpf_spec_names[] = 
+/*** Names for specifiers as used in the format string.  Indices not
+ *** listed here are reserved for future specifiers and stay NULL; the
+ *** lookup only scans the STARTSRC..ENDSRC and STARTFILT..ENDFILT ranges.
+ ***/
+const char* qpf_spec_names[QPF_SPEC_T_MAXSPEC+1] =
     {
-    NULL,	/* 0 */
-    
     /** Source specifiers. **/
-    "INT",	/* 1 */
-    "STR",	/* 2 */
-    "POS",	/* 3 */
-    "DBL",	/* 4 */
-    "nSTR",	/* 5 */
-    "CHR",	/* 6 */
-    "LL",	/* 7 */
+    [QPF_SPEC_T_INT]     = "INT",
+    [QPF_SPEC_T_STR]     = "STR",
+    [QPF_SPEC_T_POS]     = "POS",
+    [QPF_SPEC_T_DBL]     = "DBL",
+    [QPF_SPEC_T_NSTR]    = "nSTR",
+    [QPF_SPEC_T_CHR]     = "CHR",
+    [QPF_SPEC_T_LL]      = "LL",
     
     /** Filter specifiers. **/
-    "QUOT",	/* 8 */
-    "DQUOT",	/* 9 */
-    "SYM",	/* 10 */
-    "JSSTR",	/* 11 */
-    "nLEN",	/* 12 */
-    "WS",	/* 13 */
-    "ESCWS",	/* 14 */
-    "ESCSP",	/* 15 */
-    "UNESC",	/* 16 */
-    "SSYB",	/* 17 */
-    "DSYB",	/* 18 */
-    "FILE",	/* 19 */
-    "PATH",	/* 20 */
-    "HEX",	/* 21 */
-    "DHEX",	/* 22 */
-    "B64",	/* 23 */
-    "DB64",	/* 24 */
-    "RF",	/* 25 */
-    "RR",	/* 26 */
-    "HTENLBR",	/* 27 */
-    "DHTE",	/* 28 */
-    "URL",	/* 29 */
-    "DURL",	/* 30 */
-    "nLSET",	/* 31 */
-    "nRSET",	/* 32 */
-    "nZRSET",	/* 33 */
-    "SQLARG",	/* 34 */
-    "SQLSYM",	/* 35 */
-    "HTDATA",	/* 36 */
-    "HTE",	/* 37 */
-    "ESCQWS",	/* 38 */
-    "ESCQ",	/* 39 */
-    "CSSVAL",	/* 40 */
-    "CSSURL",	/* 41 */
-    "JSONSTR",	/* 42 */
-    NULL
+    [QPF_SPEC_T_QUOT]    = "QUOT",
+    [QPF_SPEC_T_DQUOT]   = "DQUOT",
+    [QPF_SPEC_T_SYM]     = "SYM",
+    [QPF_SPEC_T_JSSTR]   = "JSSTR",
+    [QPF_SPEC_T_NLEN]    = "nLEN",
+    [QPF_SPEC_T_WS]      = "WS",
+    [QPF_SPEC_T_ESCWS]   = "ESCWS",
+    [QPF_SPEC_T_ESCSP]   = "ESCSP",
+    [QPF_SPEC_T_UNESC]   = "UNESC",
+    [QPF_SPEC_T_SSYB]    = "SSYB",
+    [QPF_SPEC_T_DSYB]    = "DSYB",
+    [QPF_SPEC_T_FILE]    = "FILE",
+    [QPF_SPEC_T_PATH]    = "PATH",
+    [QPF_SPEC_T_HEX]     = "HEX",
+    [QPF_SPEC_T_DHEX]    = "DHEX",
+    [QPF_SPEC_T_B64]     = "B64",
+    [QPF_SPEC_T_DB64]    = "DB64",
+    [QPF_SPEC_T_RF]      = "RF",
+    [QPF_SPEC_T_RR]      = "RR",
+    [QPF_SPEC_T_HTENLBR] = "HTENLBR",
+    [QPF_SPEC_T_DHTE]    = "DHTE",
+    [QPF_SPEC_T_URL]     = "URL",
+    [QPF_SPEC_T_DURL]    = "DURL",
+    [QPF_SPEC_T_NLSET]   = "nLSET",
+    [QPF_SPEC_T_NRSET]   = "nRSET",
+    [QPF_SPEC_T_NZRSET]  = "nZRSET",
+    [QPF_SPEC_T_SQLARG]  = "SQLARG",
+    [QPF_SPEC_T_SQLSYM]  = "SQLSYM",
+    [QPF_SPEC_T_HTDATA]  = "HTDATA",
+    [QPF_SPEC_T_HTE]     = "HTE",
+    [QPF_SPEC_T_ESCQWS]  = "ESCQWS",
+    [QPF_SPEC_T_ESCQ]    = "ESCQ",
+    [QPF_SPEC_T_CSSVAL]  = "CSSVAL",
+    [QPF_SPEC_T_CSSURL]  = "CSSURL",
+    [QPF_SPEC_T_JSONSTR] = "JSONSTR",
     };
 
 int qpf_spec_len[QPF_SPEC_T_MAXSPEC+1];
