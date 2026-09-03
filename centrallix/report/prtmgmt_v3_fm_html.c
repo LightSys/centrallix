@@ -1013,10 +1013,14 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    /** Allocate a new attachment and write the headers. **/
 		    pXString attachment = checkPtr(xsNew());
 		    if (UNLIKELY(attachment == NULL)) goto error_image;
-		    xsConcatPrintf(attachment,
+		    if (checkNeg(xsConcatPrintf(attachment,
 			PRT_HTMLFM_IMG_HEADER_FORMAT,
 			PRT_HTMLFM_IMG_HEADER_VALUES(context->Boundary, id, mime_type, extension)
-		    );
+		    )) < 0)
+			{
+			xsFree(attachment);
+			goto error_image;
+			}
 		    
 		    /** Write the base64 image with line wrap. **/
 		    size_t b64_len = strlen(base64Image);
