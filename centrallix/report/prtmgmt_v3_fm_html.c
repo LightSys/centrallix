@@ -50,6 +50,7 @@
 #include "cxlib/range.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
+#include "cxss/cxss.h"
 #include "double.h"
 #include "htmlparse.h"
 #include "prtmgmt_v3/ht_font_metrics.h"
@@ -74,36 +75,34 @@
  *** different content than the email) as junk. HTML-only avoids this trap.
  ***/
 
-/** HTML email headers. **/
-#define PRT_HTMLFM_EMAIL_BOUNDARY "cx-email-boundary"
-
-#define PRT_HTMLFM_EMAIL_HEADER \
+/** HTML email headers.  The "%s" in each is the message's MIME boundary. **/
+#define PRT_HTMLFM_EMAIL_HEADER_FORMAT \
     /** Email file header. **/ \
     "MIME-Version: 1.0\n" \
     /** multipart/related allows HTML to use "cid:" for inline images. **/ \
-    "Content-Type: multipart/related; type=\"text/html\"; boundary="PRT_HTMLFM_EMAIL_BOUNDARY"\n"
+    "Content-Type: multipart/related; type=\"text/html\"; boundary=%s\n"
 
-#define PRT_HTMLFM_EMAIL_CONTENT_HEADER "\n" \
-    "--"PRT_HTMLFM_EMAIL_BOUNDARY"\n" \
+#define PRT_HTMLFM_EMAIL_CONTENT_HEADER_FORMAT "\n" \
+    "--%s\n" \
     /** Report data (e.g. donor names) may contain raw UTF-8 octets >127. **/ \
     "Content-Type: text/html; charset=utf-8\n" \
     "Content-Transfer-Encoding: 8bit\n" \
     "\n"
 
-/*** The HTML part is closed by the next --cx-email-boundary delimiter (in an
- *** inline image part, or the email footer), so no explicit footer is needed.
+/*** The HTML part is closed by the next boundary delimiter (in an inline image
+ *** part, or the email footer), so no explicit footer is needed.
  ***/
 #define PRT_HTMLFM_EMAIL_CONTENT_FOOTER ""
 
 #define PRT_HTMLFM_IMG_HEADER_FORMAT "\n" \
-    "--"PRT_HTMLFM_EMAIL_BOUNDARY"\n" \
+    "--%s\n" \
     "Content-Type: %s\n" \
     "Content-Transfer-Encoding: base64\n" \
     "Content-Disposition: inline; filename=image_%d.%s\n" \
     "Content-ID: <image_%d>\n" \
     "\n"
 
-#define PRT_HTMLFM_IMG_HEADER_VALUES(id, mime_type, ext) mime_type, id, ext, id
+#define PRT_HTMLFM_IMG_HEADER_VALUES(boundary, id, mime_type, ext) boundary, mime_type, id, ext, id
 
 #define PRT_HTMLFM_IMG_FOOTER ""
 
@@ -112,8 +111,7 @@
  **/
 #define PRT_HTMLFM_B64_LINE_LEN 76
 
-#define PRT_HTMLFM_EMAIL_FOOTER \
-    "--"PRT_HTMLFM_EMAIL_BOUNDARY"--\n"
+#define PRT_HTMLFM_EMAIL_FOOTER_FORMAT "--%s--\n"
 
 
 /** HTML document headers. **/
@@ -351,11 +349,20 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	context->Attachments = check_ptr(xaNew(10));
 	if (context->Attachments == NULL) goto reject;
 
-	/** Write email headers. **/
+	/** Generate the MIME boundary and write the email headers. **/
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
 	    {
-	    prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_EMAIL_HEADER);
-	    prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_EMAIL_CONTENT_HEADER);
+	    /** Generate boundary. **/
+	    memcpy(context->Boundary, PRT_HTMLFM_EMAIL_BOUNDARY_PREFIX, sizeof(PRT_HTMLFM_EMAIL_BOUNDARY_PREFIX) - 1);
+	    if (cxssGenerateHexKey(context->Boundary + sizeof(PRT_HTMLFM_EMAIL_BOUNDARY_PREFIX) - 1, PRT_HTMLFM_EMAIL_BOUNDARY_RANDLEN) < 0)
+		{
+		mssError(1, "PRT", "Could not generate a MIME boundary for the email report.");
+		goto reject;
+		}
+
+	    /** Write headers. **/
+	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_EMAIL_HEADER_FORMAT, context->Boundary);
+	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_EMAIL_CONTENT_HEADER_FORMAT, context->Boundary);
 	    }
 
 	/*** Write HTML header.  Report content always sits on a white page area
@@ -493,7 +500,7 @@ prt_htmlfm_Close(void* context_v)
 
 	/** Write email footer. **/
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
-	    prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_EMAIL_FOOTER);
+	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_EMAIL_FOOTER_FORMAT, context->Boundary);
 
 	/** Success. **/
 	rval = 0;
@@ -997,7 +1004,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    pXString attachment = xsNew();
 		    xsConcatPrintf(attachment,
 			PRT_HTMLFM_IMG_HEADER_FORMAT,
-			PRT_HTMLFM_IMG_HEADER_VALUES(id, mime_type, extension)
+			PRT_HTMLFM_IMG_HEADER_VALUES(context->Boundary, id, mime_type, extension)
 		    );
 		    
 		    /** Write the base64 image with line wrap. **/

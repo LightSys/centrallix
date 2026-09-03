@@ -7,7 +7,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2001-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -39,6 +39,15 @@
 
 #define PRT_HTMLFM_FONTSIZE_OFFSET      (+1)
 #define PRT_HTMLFM_FONTSIZE_DEFAULT     (12)
+
+/*** MIME boundary for email reports: a fixed prefix plus random hex chars
+ *** generated per message.  The random part keeps report data (which is not
+ *** transfer-encoded) from being able to contain a delimiter line and thereby
+ *** truncate the message or inject MIME parts of its own.
+ ***/
+#define PRT_HTMLFM_EMAIL_BOUNDARY_PREFIX "cx-email-boundary-"
+#define PRT_HTMLFM_EMAIL_BOUNDARY_RANDLEN (32)
+#define PRT_HTMLFM_EMAIL_BOUNDARY_SIZE  (sizeof(PRT_HTMLFM_EMAIL_BOUNDARY_PREFIX) + PRT_HTMLFM_EMAIL_BOUNDARY_RANDLEN)
 
 #define PRT_HTMLFM_MAX_TABSTOP          (32)
 #define PRT_HTMLFM_XPIXEL               (7)
@@ -81,6 +90,7 @@ typedef struct _PSFI
     StyleFlags		StyleFlags;
     int			BGColor;	/* The current background color showing through. */
     pXArray		Attachments;
+    char		Boundary[PRT_HTMLFM_EMAIL_BOUNDARY_SIZE];
     }
     PrtHTMLfmInf, *pPrtHTMLfmInf;
 
