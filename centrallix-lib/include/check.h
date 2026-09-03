@@ -35,7 +35,7 @@
 void printErrInternal(const int error_code, const char* c_str, const char* file_name, const int line_number);
 
 #define printErr(error_code, c_str) printErrInternal(error_code, (c_str), __FILE__, __LINE__)
-#define printFail(c_str) { errno = 0; printErr(-1, (c_str)); }
+#define printFail(c_str) do { errno = 0; printErr(-1, (c_str)); } while (0)
 
 /*** Ensures that developer diagnostics are printed if the result of the
  *** passed function call is not zero.  Not intended for user errors.
