@@ -3351,6 +3351,45 @@ _ACEOF
 
 fi
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for main in -lm" >&5
+$as_echo_n "checking for main in -lm... " >&6; }
+if ${ac_cv_lib_m_main+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lm  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+int
+main ()
+{
+return main ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_m_main=yes
+else
+  ac_cv_lib_m_main=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_m_main" >&5
+$as_echo "$ac_cv_lib_m_main" >&6; }
+if test "x$ac_cv_lib_m_main" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBM 1
+_ACEOF
+
+  LIBS="-lm $LIBS"
+
+fi
+
 
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -4104,6 +4143,7 @@ $as_echo "yes" >&6; }
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
+
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
@@ -4473,6 +4513,8 @@ else
 
 fi
 
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $WITH_VALGRIND" >&5
+$as_echo "$WITH_VALGRIND" >&6; }
     if test "$WITH_VALGRIND" = "yes"; then
 	if test "$WITH_OPTIMIZATION" = "yes"; then
 	    as_fn_error $? "Valgrind integration and Optimization are mutually exclusive; please at most specify one or the other but not both" "$LINENO" 5

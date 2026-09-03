@@ -184,7 +184,7 @@ cxsecVerifySymbol_n(const char* sym, size_t n)
     }
 
 
-/*** cxssShred() - Erase the given data so that it is no longer readable
+/*** cxsecShred() - Erase the given data so that it is no longer readable
  *** even in raw memory.  This is the same as calling memset_explicit(),
  *** except that this function works before C23, when memset_explicit()
  *** was added.
