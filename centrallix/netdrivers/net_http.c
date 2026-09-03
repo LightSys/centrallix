@@ -1712,7 +1712,7 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 		    nht_i_WriteErrResponse(conn, 500, "Internal Server Error", NULL);
 		    goto error;
 		    }
-		snprintf(buffer, sizeof buffer, "%s/%s", find_inf->StrVal, payload->newname);
+		snprintf(buffer, sizeof buffer, "%s/%s?ls__type=application%%2foctet-stream", find_inf->StrVal, payload->newname);
 		xsConcatQPrintf(json, ",{\"fn\":\"%STR&JSONSTR\",\"up\":\"%STR&JSONSTR\"}", payload->filename, buffer);
 		obj = objOpen(nsess->ObjSess, buffer, O_CREAT | O_RDWR | O_EXCL, 0660, "application/file");
 		if (!obj)

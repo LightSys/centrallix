@@ -499,7 +499,7 @@ mqpAnalyze(pQueryStatement stmt)
 		}
 
 	    /** Add any group by to the order-by list first. **/
-	    qe->OrderBy[0] = NULL;
+	    mq_internal_ClearOrderBy(qe);
 	    groupby_qs = mq_internal_FindItem(from_qs->Parent->Parent, MQ_T_GROUPBYCLAUSE, NULL);
 	    if (groupby_qs)
 	        {
@@ -508,13 +508,16 @@ mqpAnalyze(pQueryStatement stmt)
 		    item = (pQueryStructure)(groupby_qs->Children.Items[i]);
 		    if (item->ObjCnt == 1 && (item->ObjFlags[src_idx] & EXPR_O_REFERENCED))
 		        {
-			j=0;
-			while(qe->OrderBy[j]) j++;
-			if ((j+1) >= sizeof(qe->OrderBy) / sizeof(*(qe->OrderBy))) break;
+			/** The objectsystem can only sort on OBJSYS_SORT_MAX items **/
+			if (mq_internal_nOrderBy(qe) >= OBJSYS_SORT_MAX)
+			    {
+			    fprintf(stderr, "Warning: Cannot sort source on more than %d GROUP BY items; grouping may produce duplicate rows.\n", OBJSYS_SORT_MAX);
+			    break;
+			    }
+			new_exp = exp_internal_CopyTree(item->Expr);
+			if (mq_internal_AddOrderBy(qe, new_exp) < 0) break;
 			if (qe->OrderPrio == 999 || qe->OrderPrio > i) qe->OrderPrio = i;
-			qe->OrderBy[j] = exp_internal_CopyTree(item->Expr);
-			qe->OrderBy[j+1] = NULL;
-			expRemapID(qe->OrderBy[j], src_idx, 0);
+			expRemapID(new_exp, src_idx, 0);
 			}
 		    }
 		}
@@ -531,6 +534,12 @@ mqpAnalyze(pQueryStatement stmt)
 		    if (item->ObjCnt == 1 && (item->ObjFlags[src_idx] & EXPR_O_REFERENCED) && item->Expr && item->Expr->AggLevel == 0)
 		        {
 			new_exp = exp_internal_CopyTree(item->Expr);
+			if (!new_exp)
+			    {
+			    mssClearError(); /* Failure handled. */
+			    has_unhandled_orderby = 1;
+			    continue;
+			    }
 			expRemapID(new_exp, src_idx, 0);
 
 			/** Check to see if it is already in the list **/
@@ -550,18 +559,22 @@ mqpAnalyze(pQueryStatement stmt)
 			    continue;
 			    }
 
-			/** Add it **/
-			j=0;
-			while(qe->OrderBy[j]) j++;
-			if ((j+1) >= sizeof(qe->OrderBy) / sizeof(*(qe->OrderBy)))
+			/** Add it, if the objectsystem can still sort on it **/
+			if (mq_internal_nOrderBy(qe) >= OBJSYS_SORT_MAX)
 			    {
 			    expFreeExpression(new_exp);
 			    has_unhandled_orderby = 1;
+			    fprintf(stderr, "Warning: Cannot sort source on more than %d ORDER BY items.\n", OBJSYS_SORT_MAX);
 			    break;
 			    }
+			if (mq_internal_AddOrderBy(qe, new_exp) < 0)
+			    {
+			    mssClearError(); /* Failure handled. */
+			    has_unhandled_orderby = 1;
+			    break;
+			    }
+
 			if (qe->OrderPrio == 999 || qe->OrderPrio > i) qe->OrderPrio = i;
-			qe->OrderBy[j] = new_exp;
-			qe->OrderBy[j+1] = NULL;
 			}
 		    else
 			{
@@ -1550,12 +1563,8 @@ mqpRelease(pQueryElement qe, pQueryStatement stmt)
     pMqpOneRow row;
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
 
-    	/** Release the order-by expressions **/
-	for(i=0;qe->OrderBy[i];i++)
-	    {
-	    expFreeExpression(qe->OrderBy[i]);
-	    qe->OrderBy[i] = NULL;
-	    }
+	/** Analyze can free a query element before its private data exists **/
+	if (!mi) return 0;
 
 	/** Clean up the list of sources **/
 	for (i=0; i<mi->SourceList.nItems; i++)

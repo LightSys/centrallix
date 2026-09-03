@@ -132,6 +132,9 @@ mq_internal_FreeQE(pQueryElement qetree)
 	/** Tell the driver to release this **/
 	qetree->Driver->Release(qetree, NULL);
 
+	/** Release the order-by expressions **/
+	mq_internal_ClearOrderBy(qetree);
+
 	/** Release memory held by the arrays, etc **/
 	xaDeInit(&qetree->Children);
 	xaDeInit(&qetree->AttrNames);
@@ -174,6 +177,66 @@ mq_internal_AllocQE()
 	qe->QSLinkage = NULL;
 
     return qe;
+    }
+
+
+/*** mq_internal_AddOrderBy - append an expression to a query element's order
+ *** by list.  Takes ownership of exp and promises to consume it, even if an
+ *** error occurs.
+ ***/
+int
+mq_internal_AddOrderBy(pQueryElement qe, pExpression exp)
+    {
+    int n;
+
+	if (!exp)
+	    {
+	    mssError(1,"MQ","Could not add NULL ORDER BY expression.");
+	    return -1;
+	    }
+	n = mq_internal_nOrderBy(qe);
+	if (n >= MQ_MAX_ORDERBY)
+	    {
+	    expFreeExpression(exp);
+	    mssError(1,"MQ","Too many ORDER BY expressions (max %d)", MQ_MAX_ORDERBY);
+	    return -1;
+	    }
+	qe->OrderBy[n] = exp;
+	qe->OrderBy[n+1] = NULL;
+
+    return 0;
+    }
+
+
+/*** mq_internal_ClearOrderBy - release all of the expressions in a query
+ *** element's order by list, leaving the list empty.
+ ***/
+int
+mq_internal_ClearOrderBy(pQueryElement qe)
+    {
+    int i;
+
+	for(i=0;i<MQ_MAX_ORDERBY && qe->OrderBy[i];i++)
+	    {
+	    expFreeExpression(qe->OrderBy[i]);
+	    qe->OrderBy[i] = NULL;
+	    }
+
+    return 0;
+    }
+
+
+/*** mq_internal_nOrderBy - count the expressions in a query element's order
+ *** by list.
+ ***/
+int
+mq_internal_nOrderBy(pQueryElement qe)
+    {
+    int n;
+
+	for(n=0;n<MQ_MAX_ORDERBY && qe->OrderBy[n];n++);
+
+    return n;
     }
 
 
