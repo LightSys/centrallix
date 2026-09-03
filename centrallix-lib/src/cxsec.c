@@ -11,6 +11,8 @@
 #include <stddef.h>
 #include <string.h>
 #include <ctype.h>
+#include <limits.h>
+#include "range.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -179,7 +181,11 @@ cxsecVerifySymbol_n(const char* sym, size_t n)
 	return 0;
 
 	err:
-	fprintf(stderr, "WARNING: '%.*s' is not a valid symbol!\n", (int)original_n, original_symbol);
+	fprintf(stderr,
+	    "WARNING: '%.*s'%s is not a valid symbol!\n",
+	    (int)min(original_n, (size_t)INT_MAX), original_symbol,
+	    (original_n > INT_MAX) ? " (truncated)" : ""
+	);
 	return -1;
     }
 
