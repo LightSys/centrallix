@@ -248,7 +248,7 @@ prt_htmlfm_Output(pPrtHTMLfmInf context, char* str, int len)
 	/** Check length **/
 	if (len < 0) len = strlen(str);
 
-    return context->Session->WriteFn(context->Session->WriteArg, str, len, 0, FD_U_PACKET);
+    return check_neg(context->Session->WriteFn(context->Session->WriteArg, str, len, 0, FD_U_PACKET));
     }
 
 
@@ -262,7 +262,7 @@ prt_htmlfm_OutputPrintf(pPrtHTMLfmInf context, char* fmt, ...)
     int rval;
 
 	va_start(va, fmt);
-	rval = xsGenPrintf_va(context->Session->WriteFn, context->Session->WriteArg, NULL, NULL, fmt, va);
+	rval = check_neg(xsGenPrintf_va(context->Session->WriteFn, context->Session->WriteArg, NULL, NULL, fmt, va));
 	va_end(va);
 
     return rval;
@@ -969,8 +969,10 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		/** Capture the image into the image buffer. **/
 		//TODO we weren't supposed to replace context->Session->ImageWriteFn with ImageWriteFn,
 		// except the former references the image store I think which we don't want anymore...
-		if (is_img) prt_internal_WriteImageToPNG(ImageWriteFn, &imgBuf, (pPrtImage)(obj->Content), w, h);
-		else        prt_internal_WriteSvgToFile(ImageWriteFn, &imgBuf, (pPrtSvg)(obj->Content), w, h);
+		const int write_rval = (is_img)
+		    ? prt_internal_WriteImageToPNG(ImageWriteFn, &imgBuf, (pPrtImage)(obj->Content), w, h)
+		    : prt_internal_WriteSvgToFile(ImageWriteFn, &imgBuf, (pPrtSvg)(obj->Content), w, h);
+		if (write_rval < 0) goto error_image;
 
 		/** Encode the image to base64. **/
 		base64Image = check_ptr(base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size));
@@ -1001,7 +1003,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    prt_htmlfm_OutputPrintf(context, "cid:image_%d", id);
 
 		    /** Allocate a new attachment and write the headers. **/
-		    pXString attachment = xsNew();
+		    pXString attachment = check_ptr(xsNew());
+		    if (UNLIKELY(attachment == NULL)) goto error_image;
 		    xsConcatPrintf(attachment,
 			PRT_HTMLFM_IMG_HEADER_FORMAT,
 			PRT_HTMLFM_IMG_HEADER_VALUES(context->Boundary, id, mime_type, extension)
