@@ -264,14 +264,14 @@ xs_internal_Printf(pXString this, char* fmt, va_list vl)
 	if (ptr)
 	    {
 	    n = ptr - cur_pos;
-	    xsConcatenate(this, cur_pos, n);
+	    if (xsConcatenate(this, cur_pos, n) < 0) goto error;
 	    }
 	while(ptr)
 	    {
 	    switch(ptr[1])
 	        {
 		case '\0':
-		    xsCheckAlloc(this,1);
+		    if (xsCheckAlloc(this,1) < 0) goto error;
 		    CXSEC_VERIFY(*this);
 		    this->String[this->Length++] = '%';
 		    CXSEC_UPDATE(*this);
@@ -313,7 +313,7 @@ xs_internal_Printf(pXString this, char* fmt, va_list vl)
 		    ptr = nptr-1;
 		    continue;
 		case '%':
-		    xsCheckAlloc(this,1);
+		    if (xsCheckAlloc(this,1) < 0) goto error;
 		    CXSEC_VERIFY(*this);
 		    this->String[this->Length++] = '%';
 		    CXSEC_UPDATE(*this);
@@ -332,7 +332,7 @@ xs_internal_Printf(pXString this, char* fmt, va_list vl)
 			field_width = precision;
 		    if (field_width > 0 && field_width > n)
 			{
-			xsCheckAlloc(this,field_width-n);
+			if (xsCheckAlloc(this,field_width-n) < 0) goto error;
 			CXSEC_VERIFY(*this);
 			memset(this->String+this->Length,' ',field_width-n);
 			this->Length += (field_width-n);
@@ -342,13 +342,13 @@ xs_internal_Printf(pXString this, char* fmt, va_list vl)
 		    /** Add the string.  Need to make it less than given length? **/
 		    if (n > precision && precision >= 0)
 			n = precision;
-		    xsConcatenate(this, str, n);
+		    if (xsConcatenate(this, str, n) < 0) goto error;
 
 		    /** Add trailing blanks? **/
 		    if (field_width < 0 && field_width != -999 && (-field_width) > n)
 			{
 			CXSEC_VERIFY(*this);
-			xsCheckAlloc(this,(-field_width)-n);
+			if (xsCheckAlloc(this,(-field_width)-n) < 0) goto error;
 			memset(this->String+this->Length,' ',(-field_width)-n);
 			this->Length += ((-field_width)-n);
 			CXSEC_UPDATE(*this);
@@ -434,16 +434,20 @@ xs_internal_Printf(pXString this, char* fmt, va_list vl)
 	    if (ptr)
 		{
 		n = ptr - cur_pos;
-		xsConcatenate(this, cur_pos, n);
+		if (xsConcatenate(this, cur_pos, n) < 0) goto error;
 		}
 	    }
-	if (*cur_pos) xsConcatenate(this, cur_pos, -1);
+	if (*cur_pos && xsConcatenate(this, cur_pos, -1) < 0) goto error;
 	CXSEC_VERIFY(*this);
 	this->String[this->Length] = '\0';
 	CXSEC_UPDATE(*this);
 
     CXSEC_EXIT(XS_FN_KEY);
     return 0;
+
+    error:
+	CXSEC_EXIT(XS_FN_KEY);
+	return -1;
     }
 
 
@@ -456,16 +460,17 @@ xsConcatPrintf(pXString this, char* fmt, ...)
     {
     CXSEC_ENTRY(XS_FN_KEY);
     va_list vl;
+    int rval;
 
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
 
 	va_start(vl, fmt);
-	xs_internal_Printf(this, fmt, vl);
+	rval = xs_internal_Printf(this, fmt, vl);
 	va_end(vl);
 
     CXSEC_EXIT(XS_FN_KEY);
-    return 0;
+    return rval;
     }
 
 
@@ -478,6 +483,7 @@ xsPrintf(pXString this, char* fmt, ...)
     {
     CXSEC_ENTRY(XS_FN_KEY);
     va_list vl;
+    int rval;
 
 	ASSERTMAGIC(this, MGK_XSTRING);
 	CXSEC_VERIFY(*this);
@@ -485,11 +491,11 @@ xsPrintf(pXString this, char* fmt, ...)
 	va_start(vl, fmt);
 	this->Length = 0;
 	CXSEC_UPDATE(*this);
-	xs_internal_Printf(this, fmt, vl);
+	rval = xs_internal_Printf(this, fmt, vl);
 	va_end(vl);
 
     CXSEC_EXIT(XS_FN_KEY);
-    return 0;
+    return rval;
     }
 
 
@@ -511,14 +517,22 @@ xsWrite(pXString this, char* buf, int len, int offset, int flags)
 	/** If offset not specified, just a simple concat. **/
 	if (!(flags & XS_U_SEEK))
 	    {
-	    xsConcatenate(this, buf, len);
+	    if (xsConcatenate(this, buf, len) < 0)
+		{
+		CXSEC_EXIT(XS_FN_KEY);
+		return -1;
+		}
 	    }
 	else
 	    {
 	    /** Check to see if end is overflowed. **/
 	    if (offset+len > this->Length)
 		{
-		xsCheckAlloc(this, (offset+len) - this->Length);
+		if (xsCheckAlloc(this, (offset+len) - this->Length) < 0)
+		    {
+		    CXSEC_EXIT(XS_FN_KEY);
+		    return -1;
+		    }
 		this->Length = offset+len;
 		this->String[this->Length] = '\0';
 		}
@@ -687,7 +701,11 @@ xsSubst(pXString this, int offset, int len, char* rep, int replen)
 	if (replen == -1) replen = strlen(rep);
 
 	/** Make sure we have enough room **/
-	if (len < replen) xsCheckAlloc(this, replen - len);
+	if (len < replen && xsCheckAlloc(this, replen - len) < 0)
+	    {
+	    CXSEC_EXIT(XS_FN_KEY);
+	    return -1;
+	    }
 
 	/** Move the tail of the string, and plop the replacement in there **/
 	memmove(this->String+offset+replen, this->String+offset+len, this->Length + 1 - (offset+len));
@@ -729,7 +747,11 @@ xsReplace(pXString this, char* find, int findlen, int offset, char* rep, int rep
     else
 	{
 	/** warning: untested code :) **/
-	xsCheckAlloc(this,replen-findlen);
+	if(xsCheckAlloc(this,replen-findlen) < 0)
+	    {
+	    CXSEC_EXIT(XS_FN_KEY);
+	    return -1;
+	    }
 	memmove(this->String+offset+replen,this->String+offset+findlen,this->Length-offset-findlen+1);
 	memcpy(&(this->String[offset]),rep,replen);
 	this->Length+=replen-findlen;
