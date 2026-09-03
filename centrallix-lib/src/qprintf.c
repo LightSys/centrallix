@@ -66,7 +66,8 @@
 #define QPF_SPEC_T_NSTR		(5)
 #define QPF_SPEC_T_CHR		(6)
 #define QPF_SPEC_T_LL		(7)
-#define QPF_SPEC_T_ENDSRC	(7)
+#define QPF_SPEC_T_ULL		(8)
+#define QPF_SPEC_T_ENDSRC	(8)
 
 /*** builtin filtering specifiers ***/
 #define QPF_SPEC_T_STARTFILT	(32)
@@ -122,6 +123,7 @@ const char* qpf_spec_names[QPF_SPEC_T_MAXSPEC+1] =
     [QPF_SPEC_T_NSTR]    = "nSTR",
     [QPF_SPEC_T_CHR]     = "CHR",
     [QPF_SPEC_T_LL]      = "LL",
+    [QPF_SPEC_T_ULL]     = "ULL",
     
     /** Filter specifiers. **/
     [QPF_SPEC_T_QUOT]    = "QUOT",
@@ -1515,6 +1517,21 @@ qpfPrintf_va_internal(
 		    {
 		    const long long ll_val = va_arg(ap, long long);
 		    const int len = snprintf(tmp_buf, sizeof(tmp_buf), "%lld", ll_val);
+		    if (UNLIKELY(len < 0 || (size_t)len >= sizeof(tmp_buf)))
+			{
+			rval = -EINVAL;
+			QPERR(QPF_ERR_T_INTERNAL);
+			goto error;
+			}
+		    copy_len = len;
+		    strval = tmp_buf;
+		    break;
+		    }
+		
+		case QPF_SPEC_T_ULL:
+		    {
+		    const unsigned long long ull_val = va_arg(ap, unsigned long long);
+		    const int len = snprintf(tmp_buf, sizeof(tmp_buf), "%llu", ull_val);
 		    if (UNLIKELY(len < 0 || (size_t)len >= sizeof(tmp_buf)))
 			{
 			rval = -EINVAL;

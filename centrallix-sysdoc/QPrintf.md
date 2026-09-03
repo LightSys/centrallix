@@ -48,6 +48,7 @@ Some specifiers begin with an `n`, which should be replaced with a number or a w
 | --------- | ------------
 | `%INT`    | An integer value, with range of the normal 'int' value in the C language.  Can be positive, negative, or zero.   
 | `%LL`     | A 64-bit integer value, with range of 'long long' value in the C language.  Can be positive, negative, or zero.
+| `%ULL`    | A 64-bit unsigned integer value, with range of 'unsigned long long' value in the C language.  Can be positive or zero.
 | `%POS`    | A non-negative integer value (zero allowed).  Expects a positive int, and the function errors if the int is negative.
 | `%DBL`    | A double-precision floating point value.
 | `%STR`    | A normal null-terminated string.
@@ -97,6 +98,7 @@ Below is a list of all implemented specifier chains:
 
 - %INT
 - %LL
+- %ULL
 - %POS
 - %STR
 - %nSTR
