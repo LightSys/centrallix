@@ -48,6 +48,7 @@
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/range.h"
+#include "cxlib/strtcpy.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 #include "cxss/cxss.h"
@@ -612,21 +613,22 @@ prt_htmlfm_WriteStyle(pPrtHTMLfmInf context)
 	 *** layout; family and color appear only when they differ from the
 	 *** default, to reduce HTML size.
 	 ***/
-	int len = 0;
+	size_t len = 0;
+	bool truncated = false;
 	char stylebuf[128];
 	const char* face = prt_htmlfm_GetFont(style);
-	len += snprintf(stylebuf + len, sizeof(stylebuf) - len, "<span style=\"font-size:%.4gpx", style->FontSize);
+	truncated |= (strtcatf(stylebuf, sizeof(stylebuf), &len, "<span style=\"font-size:%.4gpx", style->FontSize) < 0);
 	if (strcmp(face, prt_htmlfm_fontstyles[PRT_HTMLFM_DEFAULT_FONTSTYLE]) != 0)
-	    len += snprintf(stylebuf + len, sizeof(stylebuf) - len, ";font-family:%s", face);
+	    truncated |= (strtcatf(stylebuf, sizeof(stylebuf), &len, ";font-family:%s", face) < 0);
 	if (style->Color != 0)
-	    len += snprintf(stylebuf + len, sizeof(stylebuf) - len, ";color:#%6.6X", style->Color);
-	len += snprintf(stylebuf + len, sizeof(stylebuf) - len, "\">");
+	    truncated |= (strtcatf(stylebuf, sizeof(stylebuf), &len, ";color:#%6.6X", style->Color) < 0);
+	truncated |= (strtcatf(stylebuf, sizeof(stylebuf), &len, "\">") < 0);
 
 	/** Detect content clipping. **/
-	if (len >= (int)sizeof(stylebuf))
+	if (UNLIKELY(truncated))
 	    {
-	    len = sizeof(stylebuf) - 1;
 	    mssError(1, "PRT", "Font style tag overflowed %zu-byte buffer.", sizeof(stylebuf));
+	    return -1;
 	    }
 
 	/** Write the completed font tag. **/
@@ -872,7 +874,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 
 		/** Write style, if needed. **/
 		prt_htmlfm_SetStyle(context, &(obj->TextStyle));
-		if (has_content) prt_htmlfm_WriteStyle(context);
+		if (has_content && prt_htmlfm_WriteStyle(context) < 0) return -1;
 
 		/** Write opening URL tag. **/
 		if (has_url)
