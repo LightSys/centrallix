@@ -19,6 +19,9 @@
 #include <stdio.h>
 
 #include "check.h"
+#include "strtcpy.h"
+
+#define ERR_BUF_SIZE 1024
 
 /*** Function for printing an error when code fails.
  *** 
@@ -28,16 +31,34 @@
  *** @param line_number The line number in the file at which the error occurred.
  ***/
 void
-print_err_internal(const int error_code, const char* c_str, const char* file_name, const int line_number)
+printErrInternal(const int error_code, const char* c_str, const char* file_name, const int line_number)
     {
+	/** Grab errno before any library call of ours can overwrite it. **/
+	const int saved_errno = errno;
+	size_t i = 0;
+	char error_buf[ERR_BUF_SIZE];
+
+	/** Initialize buffer. **/
+	error_buf[0] = '\0';
+
 	/** Create a clear, concise, and descriptive error message. **/
-	char error_buf[BUFSIZ];
-	snprintf(error_buf, sizeof(error_buf), "%s:%d: %s", file_name, line_number, c_str);
-	
-	/** Print it with as much info as we can reasonably find. **/
-	if (errno != 0) perror(error_buf);
-	else if (error_code != 0) fprintf(stderr, "%s (error code %d).\n", error_buf, error_code);
-	else fprintf(stderr, "%s.\n", error_buf);
-    
+	strtcatf(error_buf, sizeof(error_buf), &i, "%s:%d: %s", file_name, line_number, c_str);
+
+	/** Fill it out with as much info as we can reasonably find. **/
+	if (error_code != -1)
+	    strtcatf(error_buf, sizeof(error_buf), &i, " (error code %d)", error_code);
+	if (saved_errno != 0)
+	    strtcatf(error_buf, sizeof(error_buf), &i, ": %s", strerror(saved_errno));
+
+	/** Print the error message. **/
+	if (i == 0)
+	    /** Failed to make error message. Fallback to a more basic error. **/
+	    fprintf(stderr,
+		"%s:%d: %s. (Failed to build full error message.)\n",
+		file_name, line_number, c_str
+	    );
+	else
+	    fprintf(stderr, "%s.\n", error_buf);
+
     return;
     }

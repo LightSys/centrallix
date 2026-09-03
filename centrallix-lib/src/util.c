@@ -13,9 +13,9 @@
 /* Date:	May 26, 2011 and October 13, 2025 (respectively)	*/
 /* Description:	Collection of utilities including:			*/
 /* 		- Utilities for parsing numbers.			*/
-/* 		- snprint_bytes() for formatting a byte count.		*/
-/* 		- snprint_commas_llu() for formatting large numbers.	*/
-/* 		- fprint_mem() for printing memory stats.		*/
+/* 		- snprintBytes() for formatting a byte count.		*/
+/* 		- snprintCommasLlu() for formatting large numbers.	*/
+/* 		- fprintMem() for printing memory stats.		*/
 /************************************************************************/
 
 #include <errno.h>
@@ -89,7 +89,7 @@ unsigned int strtoui(const char *nptr, char **endptr, int base){
     return (unsigned int)tmp;
 }
 
-/*** snprint_bytes() allows one to pick between CS units, where the kibibyte
+/*** snprintBytes() allows one to pick between CS units, where the kibibyte
  *** (KiB) is 1024 bytes, and metric units where the kilobyte (KB) is 1000 bytes.
  *** Fun Fact: Windows uses kibibytes, but displays them as KB.
  ***/
@@ -113,7 +113,7 @@ static char* units_metric[] = {"bytes", "KB", "MB", "GB", "TB", "PB", "EB"};
  *** @returns buf, for chaining.
  ***/
 char*
-snprint_bytes(char* buf, const size_t buf_size, unsigned long bytes)
+snprintBytes(char* buf, const size_t buf_size, unsigned long bytes)
     {
 	char** units = (USE_METRIC) ? units_metric : units_cs;
 	const double unit_size = (USE_METRIC) ? 1000.0 : 1024.0;
@@ -151,7 +151,7 @@ snprint_bytes(char* buf, const size_t buf_size, unsigned long bytes)
  *** @returns `buf`, or NULL if `buf_size` is 0.
  */
 char*
-snprint_commas_llu(char* buf, size_t buf_size, unsigned long long value)
+snprintCommasLlu(char* buf, size_t buf_size, unsigned long long value)
     {
 	if (buf_size == 0) return NULL;
 	if (value == 0)
@@ -183,7 +183,7 @@ snprint_commas_llu(char* buf, size_t buf_size, unsigned long long value)
 
 /** Print summary the current memory in use to the file pointer. **/
 void
-fprint_mem(FILE* out)
+fprintMem(FILE* out)
     {
 	FILE* fp = fopen("/proc/self/statm", "r");
 	if (fp == NULL) { perror("fopen()"); return; }
@@ -204,7 +204,7 @@ fprint_mem(FILE* out)
 	    if (resident != -1)
 		fprintf(stderr, "Unexpected value for resident page count: %ld.\n", resident);
 	    
-	    print_fail("Failed to get resident page count");
+	    printFail("Failed to get resident page count");
 	    return;
 	    }
 	
@@ -215,14 +215,14 @@ fprint_mem(FILE* out)
 	    if (page_size != -1)
 		fprintf(stderr, "Unexpected value for page size: %ld.\n", page_size);
 	    
-	    print_fail("Failed to get page size");
+	    printFail("Failed to get page size");
 	    return;
 	    }
 	
 	/** Get the number of resident bytes used. **/
 	const unsigned long resident_bytes = (unsigned long)resident * (unsigned long)page_size;
 	char buf[16];
-	snprint_bytes(buf, sizeof(buf), resident_bytes);
+	snprintBytes(buf, sizeof(buf), resident_bytes);
 	
 	/** fprintf() out data. **/
 	fprintf(out, "Memory used: %lu bytes (%s)\n", resident_bytes, buf);
