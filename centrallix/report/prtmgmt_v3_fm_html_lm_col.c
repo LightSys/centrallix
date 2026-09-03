@@ -77,7 +77,7 @@ prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
 	    subobj = column->ContentHead;
 	    while(subobj)
 		{
-		prt_htmlfm_Generate_r(context, subobj);
+		if (prt_htmlfm_Generate_r(context, subobj) < 0) return -1;
 		subobj = subobj->Next;
 		}
 	    prt_htmlfm_EndStyle(context);

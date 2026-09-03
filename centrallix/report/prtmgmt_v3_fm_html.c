@@ -898,11 +898,11 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		}
 
 	    case PRT_OBJ_T_AREA:
-		prt_htmlfm_GenerateArea(context, obj);
+		if (prt_htmlfm_GenerateArea(context, obj) < 0) return -1;
 		break;
 
 	    case PRT_OBJ_T_SECTION:
-		prt_htmlfm_GenerateMultiCol(context, obj);
+		if (prt_htmlfm_GenerateMultiCol(context, obj) < 0) return -1;
 		break;
 
 	    case PRT_OBJ_T_RECT:
@@ -1020,15 +1020,21 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    for (size_t off = 0; off < b64_len; off += PRT_HTMLFM_B64_LINE_LEN)
 			{
 			const size_t line_len = min(b64_len - off, PRT_HTMLFM_B64_LINE_LEN);
-			xsConcatenate(attachment, base64Image + off, line_len);
-			xsConcatenate(attachment, "\n", 1);
+			if (checkNeg(xsConcatenate(attachment, base64Image + off, line_len)) < 0 ||
+			    checkNeg(xsConcatenate(attachment, "\n", 1)) < 0)
+			    {
+			    xsFree(attachment);
+			    goto error_image;
+			    }
 			}
 
-		    /** Write the attachment footer. **/
-		    xsConcatenate(attachment, PRT_HTMLFM_IMG_FOOTER, sizeof(PRT_HTMLFM_IMG_FOOTER) - 1);
-
-		    /** Add the attachment to the context. **/
-		    xaAddItem(context->Attachments, attachment);
+		    /** Write the attachment footer and add it to the context. **/
+		    if (checkNeg(xsConcatenate(attachment, PRT_HTMLFM_IMG_FOOTER, sizeof(PRT_HTMLFM_IMG_FOOTER) - 1)) < 0 ||
+			checkNeg(xaAddItem(context->Attachments, attachment)) < 0)
+			{
+			xsFree(attachment);
+			goto error_image;
+			}
 		    }
 		else
 		    { /* Non-email: Use inline source. */
@@ -1064,7 +1070,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		}
 
 	    case PRT_OBJ_T_TABLE:
-		prt_htmlfm_GenerateTable(context, obj);
+		if (prt_htmlfm_GenerateTable(context, obj) < 0) return -1;
 		break;
 	    }
 
@@ -1271,7 +1277,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		prt_htmlfm_OutputStrLiteral(context, ">");
 		
 		/** Write child content. **/
-		prt_htmlfm_Generate_r(context, subobj);
+		if (prt_htmlfm_Generate_r(context, subobj) < 0) return -1;
 		
 		/** Close container. **/
 		prt_htmlfm_OutputStrLiteral(context, "</td>");

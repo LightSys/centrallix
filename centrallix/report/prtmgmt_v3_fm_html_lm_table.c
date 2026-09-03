@@ -177,7 +177,7 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 			prt_htmlfm_InitStyle(context, &(cell->TextStyle));
 			for(subobj=cell->ContentHead;subobj;subobj=subobj->Next)
 			    {
-			    prt_htmlfm_Generate_r(context, subobj);
+			    if (prt_htmlfm_Generate_r(context, subobj) < 0) return -1;
 			    }
 			prt_htmlfm_EndStyle(context);
 			prt_htmlfm_OutputStrLiteral(context, "</td>");
@@ -201,7 +201,7 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 		/** Write child content. **/
 		for(subobj=row->ContentHead;subobj;subobj=subobj->Next)
 		    {
-		    prt_htmlfm_Generate_r(context, subobj);
+		    if (prt_htmlfm_Generate_r(context, subobj) < 0) return -1;
 		    }
 		
 		/** Write row container closing tags. */

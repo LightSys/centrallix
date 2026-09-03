@@ -232,6 +232,10 @@ typedef struct _PE
     PrtEvent, *pPrtEvent;
 
 
+/*** Session flags ***/
+#define PRT_SESSION_F_ERROR	    1		/* generation failed; the output is incomplete */
+
+
 /*** Print Session structure ***/
 typedef struct _PS
     {

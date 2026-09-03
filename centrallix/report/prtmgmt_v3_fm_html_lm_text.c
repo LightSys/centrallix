@@ -262,7 +262,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		prt_htmlfm_SetKeepSpaces(context);
 		while((!next_xset_obj || scan != next_xset_obj) && scan != linetail->Next)
 		    {
-		    prt_htmlfm_Generate_r(context, scan);
+		    if (prt_htmlfm_Generate_r(context, scan) < 0) return -1;
 		    w += scan->Width;
 		    scan = scan->Next;
 		    }
