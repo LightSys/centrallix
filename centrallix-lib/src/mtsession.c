@@ -475,21 +475,22 @@ void
 mssError_internal(int clr, char* module, char* file, int line, char* message, ...)
     {
     char err_msg[BUFSIZ];
-    unsigned int i = 0u;
+    size_t i = 0;
     
 	/** Prevent issues from interlacing this function with prints to stdout. **/
 	check(fflush(stdout)); /* Failure ignored. */
 	
 	/** Add line number to error message. **/
-	i += snprintf(err_msg + i, sizeof(err_msg) - i, "%s:%d: ", file, line);
+	err_msg[0] = '\0';
+	strtcatf(err_msg, sizeof(err_msg), &i, "%s:%d: ", file, line);
 	
 	/** Write the module to the start of the error message. */
-	i += snprintf(err_msg + i, sizeof(err_msg) - i, "%s: ", module);
+	strtcatf(err_msg, sizeof(err_msg), &i, "%s: ", module);
 	
 	/** Process the message format with all the same rules as printf(). **/
 	va_list args;
 	va_start(args, message);
-	i += vsnprintf(err_msg + i, sizeof(err_msg) - i, message, args);
+	strtcatf_va(err_msg, sizeof(err_msg), &i, message, args);
 	va_end(args);
 	
 	/** Get current session **/

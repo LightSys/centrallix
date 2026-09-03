@@ -70,6 +70,7 @@
 #include "cxlib/mtsession.h"
 #include "cxlib/newmalloc.h"
 #include "cxlib/range.h"
+#include "cxlib/strtcpy.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxss/cxss.h"
@@ -190,14 +191,15 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 	    {
 	    /** Accumulate additional valid types. **/
 	    char buf[256] = {'\0'};
-	    int cur = 0, j = 1;
+	    size_t cur = 0;
+	    int j = 1;
 	    while (true)
 		{
 		int datatype = arg_expect->Datatypes[j++];
 		if (datatype == -1) break;
 		
-		cur += snprintf(
-		    buf + cur, 256 - cur,
+		strtcatf(
+		    buf, sizeof(buf), &cur,
 		    " or %s (%d)",
 		    objTypeToStr(datatype), datatype
 		);
