@@ -802,12 +802,15 @@ prt_htmlfm_EndBorder(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj
     }
 
 //TODO CSMITH put in .h
-/** Gets size of image file */
+/*** ImageWriteFn() - appends image data to an ImageBuffer.  Uses the standard
+ *** Centrallix write function signature so that it can be passed to the
+ *** prtmgmt image serializers.
+ ***/
 int
-ImageWriteFn(void *arg, const void *data, size_t len)
+ImageWriteFn(void* arg, char* data, int len, int offset, int flags)
     {
 	ImageBuffer *imgBuf = (ImageBuffer *)arg;
-	if (imgBuf->size + len > imgBuf->capacity)
+	if (len < 0 || (size_t)len > imgBuf->capacity - imgBuf->size)
 	    {
 	    return -1;  // Buffer overflow
 	    }
