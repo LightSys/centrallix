@@ -248,7 +248,7 @@ prt_htmlfm_Output(pPrtHTMLfmInf context, char* str, int len)
 	/** Check length **/
 	if (len < 0) len = strlen(str);
 
-    return check_neg(context->Session->WriteFn(context->Session->WriteArg, str, len, 0, FD_U_PACKET));
+    return checkNeg(context->Session->WriteFn(context->Session->WriteArg, str, len, 0, FD_U_PACKET));
     }
 
 
@@ -262,7 +262,7 @@ prt_htmlfm_OutputPrintf(pPrtHTMLfmInf context, char* fmt, ...)
     int rval;
 
 	va_start(va, fmt);
-	rval = check_neg(xsGenPrintf_va(context->Session->WriteFn, context->Session->WriteArg, NULL, NULL, fmt, va));
+	rval = checkNeg(xsGenPrintf_va(context->Session->WriteFn, context->Session->WriteArg, NULL, NULL, fmt, va));
 	va_end(va);
 
     return rval;
@@ -327,7 +327,7 @@ void*
 prt_htmlfm_Probe(pPrtSession s, char* output_type)
     {
 	/** Allocate our context inf structure **/
-	pPrtHTMLfmInf context = check_ptr(nmMalloc(sizeof(PrtHTMLfmInf)));
+	pPrtHTMLfmInf context = checkPtr(nmMalloc(sizeof(PrtHTMLfmInf)));
 	if (context == NULL) goto reject;
 	memset(context, 0, sizeof(PrtHTMLfmInf));
 	context->Session = s;
@@ -346,7 +346,7 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	    goto reject;
 
 	/** Allocate attachments. */
-	context->Attachments = check_ptr(xaNew(10));
+	context->Attachments = checkPtr(xaNew(10));
 	if (context->Attachments == NULL) goto reject;
 
 	/** Generate the MIME boundary and write the email headers. **/
@@ -488,11 +488,11 @@ prt_htmlfm_Close(void* context_v)
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
 	    {
 	    if (UNLIKELY(context->Attachments == NULL))
-		print_fail("Warning: Attachments array missing for email.");
+		printFail("Warning: Attachments array missing for email.");
 
 	    for (int i = 0; i < xaCount(context->Attachments); i++)
 		{
-		char* attachment_str = check_ptr(xsString(xaGetItem(context->Attachments, i)));
+		char* attachment_str = checkPtr(xsString(xaGetItem(context->Attachments, i)));
 		if (attachment_str == NULL) goto end;
 		prt_htmlfm_Output(context, attachment_str, -1);
 		}
@@ -967,7 +967,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		const int h = max(obj->Height * PRT_HTMLFM_YPIXEL, 1);
 
 		// Allocate image buffer.
-		imgBuf.buffer = (char*)check_ptr(nmMalloc(MAX_IMAGE_SIZE));
+		imgBuf.buffer = (char*)checkPtr(nmMalloc(MAX_IMAGE_SIZE));
 		if (imgBuf.buffer == NULL) goto error_image;
 
 		/** Capture the image into the image buffer. **/
@@ -979,7 +979,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		if (write_rval < 0) goto error_image;
 
 		/** Encode the image to base64. **/
-		base64Image = check_ptr(base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size));
+		base64Image = checkPtr(base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size));
 		if (UNLIKELY(base64Image == NULL)) goto error_image;
 		base64Size = strlen(base64Image) + 1;
 
@@ -1008,7 +1008,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    prt_htmlfm_OutputPrintf(context, "cid:image_%d", id);
 
 		    /** Allocate a new attachment and write the headers. **/
-		    pXString attachment = check_ptr(xsNew());
+		    pXString attachment = checkPtr(xsNew());
 		    if (UNLIKELY(attachment == NULL)) goto error_image;
 		    xsConcatPrintf(attachment,
 			PRT_HTMLFM_IMG_HEADER_FORMAT,
@@ -1327,7 +1327,7 @@ prt_htmlfm_Initialize()
 	PRT_HTMLFM.ImageID = rand();
 
 	/** Allocate the formatter structure, and init it **/
-	pPrtFormatter fmtdrv = check_ptr(prtAllocFormatter());
+	pPrtFormatter fmtdrv = checkPtr(prtAllocFormatter());
 	if (fmtdrv == NULL)
 	    {
 	    mssError(0, "RPT", "Failed to allocate formatter struct.");
@@ -1353,13 +1353,13 @@ prt_htmlfm_Initialize()
 	/** Register with the cx.sysinfo /prtmgmt/output_types dir **/
 	for (int i = 0; i < PRT_HTMLFM_N_SUBTYPES; i++)
 	    {
-	    char* subtype = check_ptr(strchr(prt_htmlfm_subtypes[i].MimeType, '/'));
+	    char* subtype = checkPtr(strchr(prt_htmlfm_subtypes[i].MimeType, '/'));
 	    if (subtype == NULL) goto err_type;
 
 	    /** Allocate subtype data. **/
 	    char path_buf[256];
 	    snprintf(path_buf, sizeof(path_buf), "/prtmgmt/output_types/%s", subtype + 1);
-	    pSysInfoData si = check_ptr(sysAllocData(path_buf, NULL, NULL, NULL, NULL, prt_htmlfm_GetType, NULL, 0));
+	    pSysInfoData si = checkPtr(sysAllocData(path_buf, NULL, NULL, NULL, NULL, prt_htmlfm_GetType, NULL, 0));
 	    if (si == NULL) goto err_type;
 
 	    /** Register subtype. */
