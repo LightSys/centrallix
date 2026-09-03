@@ -13,6 +13,7 @@
 #endif
 #include "obj.h"
 #include "expression.h"
+#include "cxlib/expect.h"
 #include "cxlib/xstring.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
@@ -23,7 +24,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -1977,24 +1978,35 @@ objDataToWords(int data_type, void* data_ptr)
 	else if (data_type == DATA_T_MONEY)
 	    {
 	    m = (pMoneyType)data_ptr;
+	    if (UNLIKELY(m->FractionPart > 9999))
+	        {
+		mssError(1, "OBJ",
+		    "Attempted to convert malformed money value %d.%04u to "
+		    "words but fractional part exceeds 9999.",
+		    m->WholePart, m->FractionPart
+		);
+		return "";
+		}
+
+	    /** Clamp the cents to the low four digits. **/
+	    fraction_part = m->FractionPart % 10000;
+
 	    if (m->WholePart < 0)
 	        {
-		if (m->FractionPart == 0)
+		if (fraction_part == 0)
 		    {
 		    integer_part = -m->WholePart;
-		    fraction_part = 0;
 		    }
 		else
 		    {
 		    integer_part = (-m->WholePart) - 1;
-		    fraction_part = 10000 - m->FractionPart;
+		    fraction_part = 10000 - fraction_part;
 		    }
 		xsConcatenate(&tmpbuf, "Negative ", -1);
 		}
 	    else
 	        {
 		integer_part = m->WholePart;
-		fraction_part = m->FractionPart;
 		}
 	    }
 	else
@@ -2075,7 +2087,7 @@ objDataToWords(int data_type, void* data_ptr)
 		}
 	    else
 	        {
-	        sprintf(nbuf, "And %2.2ld/100 ", fraction_part/100);
+	        sprintf(nbuf, "And %2.2d/100 ", (int)(fraction_part/100));
 		xsConcatenate(&tmpbuf, nbuf, -1);
 		}
 	    }

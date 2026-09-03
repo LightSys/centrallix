@@ -80,7 +80,6 @@ typedef struct
     {
     XArray		Objects;
     int			IterCnt;
-    int			nOrderBy;
     XArray		AggregateFieldIDs;
     }
     MQOData, *pMQOData;
@@ -98,7 +97,6 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
     int i,j,k;
     int src_idx;
     unsigned int mask;
-    int n_orderby = 0;
     unsigned int total_mask = 0;
     int n_sources;
     int n_sources_total;
@@ -187,12 +185,8 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 			if (n_sources > 1 || non_primary || non_simple || n_sources_total > 1)
 			    {
 			    /** Grab this one **/
-			    if (n_orderby >= MQ_MAX_ORDERBY)
-				{
-				mssError(1, "MQOB", "Too many ORDER BY expressions (max %d)", MQ_MAX_ORDERBY);
+			    if (mq_internal_AddOrderBy(qe, exp_internal_CopyTree(item->Expr)) < 0)
 				goto error;
-				}
-			    qe->OrderBy[n_orderby++] = exp_internal_CopyTree(item->Expr);
 			    }
 			}
 		    }
@@ -200,12 +194,11 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
 	    }
 
 	/** Did we find any orderby items? **/
-	if (n_orderby)
+	if (mq_internal_nOrderBy(qe))
 	    {
 	    //printf("using MQ orderby module.\n");
 
 	    /** Link the qe into the multiquery **/
-	    qe->OrderBy[n_orderby] = NULL;
 	    xaAddItem(&stmt->Trees, qe);
 	    xaAddItem(&qe->Children, stmt->Tree);
 	    stmt->Tree->Parent = qe;
@@ -235,7 +228,7 @@ mqobAnalyzeAfterGroup(pQueryStatement stmt)
     {
     pQueryStructure order_qs, group_qs;
     pQueryElement qe = NULL, child;
-    int i, n_orderby = 0;
+    int i;
     int sep_groupby = 0;
 
 	/** Allocate a new query-element **/
@@ -282,20 +275,15 @@ mqobAnalyzeAfterGroup(pQueryStatement stmt)
 		if (sep_groupby || order_item->Expr->AggLevel == 1)
 		    {
 		    /** Found one.  Squirrel it away in our order-by list. **/
-		    if (n_orderby >= MQ_MAX_ORDERBY)
-			{
-			mssError(1, "MQOB", "Too many ORDER BY expressions (max %d)", MQ_MAX_ORDERBY);
+		    if (mq_internal_AddOrderBy(qe, exp_internal_CopyTree(order_item->Expr)) < 0)
 			goto error;
-			}
-		    qe->OrderBy[n_orderby++] = exp_internal_CopyTree(order_item->Expr);
 		    }
 		}
 	    }
 
 	/** Did we find any orderby items? **/
-	if (n_orderby)
+	if (mq_internal_nOrderBy(qe))
 	    {
-	    qe->OrderBy[n_orderby] = NULL;
 	    //printf("using MQ after-grouping orderby module.\n");
 
 	    /** Set up the attribute list, since we may be the top-level node
@@ -422,14 +410,6 @@ mqob_internal_InitSort(pQueryElement qe, pQueryStatement stmt)
 	qe->PrivateData = context;
 	xaInit(&context->Objects, 16);
 	xaInit(&context->AggregateFieldIDs, 16);
-	for(n=0;n<MQ_MAX_ORDERBY;n++)
-	    {
-	    if (!qe->OrderBy[n])
-		{
-		context->nOrderBy = n;
-		break;
-		}
-	    }
 	context->IterCnt = 0;
 
 	/** Determine SELECTed aggregate fields we need to save/restore **/
@@ -459,7 +439,7 @@ mqob_internal_InitSort(pQueryElement qe, pQueryStatement stmt)
 	    objlist = NULL;
 	    expLinkParams(item->ObjList, stmt->Query->nProvidedObjects, -1);
 	    xsInit(&item->OrderBuf);
-	    if (objBuildBinaryImageXString(&item->OrderBuf, qe->OrderBy, context->nOrderBy, item->ObjList, 0) < 0)
+	    if (objBuildBinaryImageXString(&item->OrderBuf, qe->OrderBy, mq_internal_nOrderBy(qe), item->ObjList, 0) < 0)
 		goto error;
 	    item->SavedValues = (Expression *)nmMalloc(sizeof(Expression) * context->AggregateFieldIDs.nItems);
 	    if (!item->SavedValues)

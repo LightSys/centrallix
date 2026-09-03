@@ -27,7 +27,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -1100,10 +1100,15 @@ int exp_fn_nullif(pExpression tree, pParamObjects objlist, pExpression i0, pExpr
 	return -1;
 	}
     tree->DataType = i0->DataType;
-    if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
+    if (i0->Flags & EXPR_F_NULL)
 	{
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
+	}
+    if (i1->Flags & EXPR_F_NULL)
+	{
+	/** A value is never equal to null, so the first parameter stands. **/
+	return expCopyValue(i0, tree, 0);
 	}
     tree->CompareType = MLX_CMP_EQUALS;
     if (expEvalCompare(tree, objlist) < 0)
@@ -3163,6 +3168,15 @@ int exp_fn_hash(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
 	    SHA512((unsigned char*)i1->String, strlen(i1->String), hashvalue);
 	    hashlen = 64;
 	    }
+	else
+	    {
+	    mssError(1, "EXP",
+		"%s(): Unsupported hashing algorithm \"%s\".",
+		tree->Name, i0->String
+	    );
+	    goto error;
+	    }
+
 	if (tree->Alloc && tree->String) nmSysFree(tree->String);
 	tree->String = nmSysMalloc(hashlen * 2 + 1);
 	tree->Alloc = 1;
@@ -4183,7 +4197,7 @@ int exp_fn_min(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 
 int exp_fn_first(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
-    int rval;
+    int rval = 0;
 
     if (!i0)
 	{
