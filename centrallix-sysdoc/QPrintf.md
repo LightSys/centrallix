@@ -54,6 +54,7 @@ Some specifiers begin with an `n`, which should be replaced with a number or a w
 | `%STR`    | A normal null-terminated string.
 | `%nSTR`   | A string of exactly `n` length (binary safe), where `n` is the integer supplied in the format string, or if `*`, supplied as an argument immediately preceding the string pointer. Warning:  This does *not* honor null-terminators.  Be careful.
 | `%CHR`    | A single character.
+| `%BOOL`   | A boolean value, printed as `true` or `false`.  Expects an int, or a `bool` from `<stdbool.h>`: zero is false, nonzero is true.
 | `%XSTR`   | An XString.
 | `%EXP`    | An Expression tree node.
 | `%POD`    | A Pointer-to-object-data.  The type of the POD is specified as an argument immediately preceding the string pointer.
@@ -104,6 +105,7 @@ Below is a list of all implemented specifier chains:
 - %nSTR
 - %DBL
 - %CHR
+- %BOOL
 - %STR&nLEN
 - %STR&SYM
 - %STR&SYM&nLEN

@@ -67,7 +67,8 @@
 #define QPF_SPEC_T_CHR		(6)
 #define QPF_SPEC_T_LL		(7)
 #define QPF_SPEC_T_ULL		(8)
-#define QPF_SPEC_T_ENDSRC	(8)
+#define QPF_SPEC_T_BOOL		(9)
+#define QPF_SPEC_T_ENDSRC	(9)
 
 /*** builtin filtering specifiers ***/
 #define QPF_SPEC_T_STARTFILT	(32)
@@ -124,6 +125,7 @@ const char* qpf_spec_names[QPF_SPEC_T_MAXSPEC+1] =
     [QPF_SPEC_T_CHR]     = "CHR",
     [QPF_SPEC_T_LL]      = "LL",
     [QPF_SPEC_T_ULL]     = "ULL",
+    [QPF_SPEC_T_BOOL]    = "BOOL",
     
     /** Filter specifiers. **/
     [QPF_SPEC_T_QUOT]    = "QUOT",
@@ -1576,6 +1578,14 @@ qpfPrintf_va_internal(
 		    tmp_buf[0] = va_arg(ap, int);
 		    copy_len = 1;
 		    strval = &tmp_buf[0];
+		    break;
+		    }
+		
+		case QPF_SPEC_T_BOOL:
+		    {
+		    const int bool_val = va_arg(ap, int);
+		    strval = (bool_val) ? "true" : "false";
+		    copy_len = (bool_val) ? 4lu : 5lu;
 		    break;
 		    }
 		
