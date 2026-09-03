@@ -1718,7 +1718,7 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	const char* objinit = (inf != NULL) ? (inf->ObjectLinkage) : NULL;
 	const char* ctrinit = (inf != NULL) ? (inf->ContainerLinkage) : NULL;
 	const int result = htrAddScriptWgtr_va(s, 
-		"        %STR&*LEN{name:'%STR&SYM'%[, obj:%STR%]%[, cobj:%STR%]%[, scope:'%STR&JSSTR'%]%[, sn:'%STR&JSSTR'%], type:'%STR&JSSTR', vis:%STR, ctl:%STR%[, namespace:'%STR&SYM'%]", 
+		"        %STR&*LEN{name:'%STR&SYM'%[, obj:%STR%]%[, cobj:%STR%]%[, scope:'%STR&JSSTR'%]%[, sn:'%STR&JSSTR'%], type:'%STR&JSSTR', vis:%BOOL, ctl:%BOOL%[, namespace:'%STR&SYM'%]", 
 		indent*4, "                                        ",
 		tree->Name,
 		objinit, objinit,
@@ -1726,8 +1726,8 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 		scope, scope,
 		scopename, scopename,
 		tree->Type, 
-		(tree->Flags & WGTR_F_NONVISUAL)?"false":"true",
-		(tree->Flags & WGTR_F_CONTROL)?"true":"false",
+		!(tree->Flags & WGTR_F_NONVISUAL),
+		(tree->Flags & WGTR_F_CONTROL),
 		(!tree->Parent || strcmp(tree->Parent->Namespace, tree->Namespace)),
 		tree->Namespace);
 	if (UNLIKELY(result != 0))

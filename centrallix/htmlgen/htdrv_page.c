@@ -370,8 +370,8 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	/** Write obscore_data. **/
 	pStruct c_param = stLookup_ne(s->Params, "cx__obscure");
 	if (htrAddScriptInit_va(s,
-	    "\tobscure_data = %STR;\n",
-	    (c_param != NULL && strcasecmp(c_param->StrVal, "yes") == 0) ? "true" : "false"
+	    "\tobscure_data = %BOOL;\n",
+	    c_param != NULL && strcasecmp(c_param->StrVal, "yes") == 0
 	) != 0)
 	    {
 	    mssError(0, "HTPAGE", "Failed to write obscure_data variable in JS.");

@@ -386,7 +386,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		"tab_spacing:%INT, "
 		"tab_w:%INT, "
 		"tab_h:%INT, "
-		"do_client_rendering:%STR, "
+		"do_client_rendering:%BOOL, "
 	    "});\n",
 	    name, tloc_name,
 	    id,
@@ -396,7 +396,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    tab_spacing,
 	    (is_auto_tab_w) ? 0 : tab_w, /* 0 tells the front end that it should recalculate tab_w. */
 	    tab_h,
-	    (do_client_rendering) ? "true" : "false"
+	    do_client_rendering
 	) != 0)
 	    {
 	    mssError(0, "HTTAB", "Failed to write JS script call.");
