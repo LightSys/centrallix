@@ -13,16 +13,16 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 2005 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2005-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
 /* included file "COPYING".						*/
 /* 									*/
-/* Module: 	test_00baseline.c     					*/
+/* Module: 	test_00baseline.c					*/
 /* Author:	Greg Beeley (GRB)					*/
-/* Creation:	March 11th, 2005 					*/
-/* Description: Test suite entry to generate a baseline comparison value*/
+/* Creation:	March 11th, 2005					*/
+/* Description: Test suite driver for centrallix-lib tests.		*/
 /************************************************************************/
 
 
