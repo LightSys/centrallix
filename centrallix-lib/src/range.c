@@ -17,3 +17,9 @@
 /************************************************************************/
 
 #include "range.h"
+
+double roundTo(double value, int decimals)
+    {
+    const double mul = pow(10, decimals);
+    return round(value * mul) / mul;
+    }
