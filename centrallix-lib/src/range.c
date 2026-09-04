@@ -16,6 +16,8 @@
 /*              clamp(), etc.                                           */
 /************************************************************************/
 
+#include <math.h>
+
 #include "range.h"
 
 double roundTo(double value, int decimals)
