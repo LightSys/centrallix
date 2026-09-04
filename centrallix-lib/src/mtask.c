@@ -73,6 +73,10 @@ int mtRunStartFn(pThread new_thr, int idx);
 int r_mtRunStartFn();
 int mtSched();
 
+#ifdef MTASK_USEPTHREADS
+static void* mt_internal_ThreadTrampoline(void* arg);
+#endif
+
 #define MT_MAX_THREADS		256
 #define MT_MAX_EVENTS		(MT_MAX_THREADS * 4)
 #define MT_MAX_STACK		(31 * 2048)
@@ -81,6 +85,10 @@ int mtSched();
 #define MT_STACK_HIGHWATER	(24 * 1024)*/
 #define MT_TASKSEP		256
 #define MT_TICK_MAX		1
+
+#ifdef MTASK_USEPTHREADS
+#define MT_PTHREAD_STACKSIZE	(512 * 1024)	/* per-thread stack; replaces the carved MT_MAX_STACK regions (tunable) */
+#endif
 
 //#define dbg_write(x,y,z) write(x,y,z)
 #define dbg_write(x,y,z)
@@ -107,6 +115,11 @@ typedef struct _MTS
     unsigned int DebugLevel;
     XRingQueue	PendingSignals;
     XHashTable	SignalHandlers;
+#ifdef MTASK_USEPTHREADS
+    pthread_mutex_t GIL;	/* the "big lock": only its holder may run MTASK code */
+    pThread	RunningThread;	/* MTASK thread that currently holds the GIL */
+    int		WakeupPipe[2];	/* self-pipe to interrupt select() in the scheduler */
+#endif
     }
     MTSystem, *pMTSystem;
 
@@ -537,14 +550,19 @@ pThread
 mtInitialize(int flags, void (*start_fn)())
     {
     register int i;
+#ifndef MTASK_USEPTHREADS
     struct rlimit stacklimit;
     int room_for_threads;
+#endif
 
 	memset(&MTASK, 0, sizeof(MTASK));
 
     	/** Initialize the thread table. **/
 	MTASK.nThreads = 0;
 	MTASK.MaxThreads = MT_MAX_THREADS;
+
+#ifndef MTASK_USEPTHREADS
+	/** Verify how many threads we can handle in the given stack size **/
 	if (getrlimit(RLIMIT_STACK, &stacklimit) == 0 && stacklimit.rlim_cur > 0)
 	    {
 	    room_for_threads = stacklimit.rlim_cur / (MT_MAX_STACK + MT_TASKSEP) - 1;
@@ -561,6 +579,8 @@ mtInitialize(int flags, void (*start_fn)())
 		MTASK.MaxThreads = room_for_threads;
 		}
 	    }
+#endif
+
 	for(i=0;i<MTASK.MaxThreads;i++) MTASK.ThreadTable[i] = NULL;
 
 	/** Initialize the system-event-wait table **/
@@ -572,6 +592,29 @@ mtInitialize(int flags, void (*start_fn)())
 	
 	/** initialize the hash table for signal handlers **/
 	xhInit(&MTASK.SignalHandlers,16,4);
+
+#ifdef MTASK_USEPTHREADS
+	/** Initialize the global lock ("GIL") and the scheduler wakeup
+	 ** self-pipe.  In this phase these are set up but not yet used; the
+	 ** setjmp/longjmp scheduler below remains the active context-switch
+	 ** mechanism.
+	 **/
+	pthread_mutex_init(&MTASK.GIL, NULL);
+	if (pipe(MTASK.WakeupPipe) == 0)
+	    {
+	    int arg = 1;
+	    if (ioctl(MTASK.WakeupPipe[0], FIONBIO, &arg) < 0 || ioctl(MTASK.WakeupPipe[1], FIONBIO, &arg) < 0)
+		{
+		close(MTASK.WakeupPipe[0]);
+		close(MTASK.WakeupPipe[1]);
+		MTASK.WakeupPipe[0] = MTASK.WakeupPipe[1] = -1;
+		}
+	    }
+	else
+	    {
+	    MTASK.WakeupPipe[0] = MTASK.WakeupPipe[1] = -1;
+	    }
+#endif
 
 	/** If we are running as root, clear the supplementary groups
 	 ** list.  This isn't optimal, but solves the security issue for
@@ -614,6 +657,12 @@ mtInitialize(int flags, void (*start_fn)())
 #ifdef USING_VALGRIND
 	MTASK.CurrentThread->ValgrindStackID = 0;
 #endif
+#ifdef MTASK_USEPTHREADS
+	/** The initial thread runs on the calling (main) OS thread. **/
+	MTASK.CurrentThread->PThread = pthread_self();
+	pthread_cond_init(&MTASK.CurrentThread->CondGo, NULL);
+	MTASK.RunningThread = MTASK.CurrentThread;
+#endif
 	MTASK.StartUserID = geteuid();
 	MTASK.CurUserID = geteuid();
 	MTASK.CurGroupID = getegid();
@@ -646,9 +695,25 @@ mtInitialize(int flags, void (*start_fn)())
 	signal(SIGSEGV, mtSigSegv);
 
 	/** Now start the real start function. **/
+#ifdef MTASK_USEPTHREADS
+	/** The initial thread runs on this (the main) OS thread.  Acquire the
+	 ** GIL, become the running thread, and invoke the start function
+	 ** directly.  Control returns here only if start_fn returns, in which
+	 ** case thExit() tears this thread down (and exits the process if it
+	 ** is the last thread).
+	 **/
+	MTASK.LockedThread = NULL;
+	pthread_mutex_lock(&MTASK.GIL);
+	MTASK.RunningThread = MTASK.CurrentThread;
+	MTASK.CurrentThread->Flags &= ~THR_F_STARTING;
+	MTASK.CurrentThread->Status = THR_S_EXECUTING;
+	MTASK.CurrentThread->StartFn(MTASK.CurrentThread->StartParam);
+	thExit();
+#else
 	MTASK.CurrentThread = NULL;
 	MTASK.LockedThread = NULL;
 	mtSched();
+#endif
 
     return OK;
     }
@@ -855,12 +920,18 @@ mtSched()
     int arg;
     socklen_t len;
     int x[1];
+#ifdef MTASK_USEPTHREADS
+    pThread caller;
+#endif
 
     	dbg_write(0,"x",1);
 
     	/** If the current thread is valid, do processing for it **/
 	ticks_used = (t=mtTicks()) - MTASK.TickCnt;
 	tx=mtRealTicks();
+#ifdef MTASK_USEPTHREADS
+	caller = MTASK.CurrentThread;
+#endif
 	if (MTASK.CurrentThread != NULL)
 	    {
 	    MTASK.CurrentThread->StackBottom = (unsigned char*)x;
@@ -880,12 +951,15 @@ mtSched()
 		MTASK.CurrentThread->CntDown += ticks_used*(MTASK.CurrentThread->CurPrio)/MT_TICK_MAX;
 		}
 
+#ifndef MTASK_USEPTHREADS
 	    /** Do a setjmp() so we can return to caller after scheduling. **/
 	    if (setjmp(MTASK.CurrentThread->SavedEnv) != 0) 
 	        {
 		dbg_write(0,"s",1);
 		return 1;
 		}
+#endif
+
 	    if (MTASK.CurrentThread->Status == THR_S_EXECUTING) MTASK.CurrentThread->Status = THR_S_RUNNABLE;
 	    MTASK.CurrentThread = NULL;
 	    }
@@ -978,7 +1052,11 @@ mtSched()
           REISSUE_SELECT:
 	    if(mtProcessSignals()>0)
 		{
+#ifdef MTASK_USEPTHREADS
+		goto RETRY_SELECT;
+#else
 		return mtSched();
+#endif
 		}
 #ifdef MTASK_DEBUG
 	    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_IO_SELECT)
@@ -1009,7 +1087,11 @@ mtSched()
 	      REISSUE_SELECT2:
 		if(mtProcessSignals()>0)
 		    {
+#ifdef MTASK_USEPTHREADS
+		    goto RETRY_SELECT;
+#else
 		    return mtSched();
+#endif
 		    }
 	        tmout.tv_sec = highest_cntdn/(64*MTASK.TicksPerSec);
 	        tmout.tv_usec = ((long long) (highest_cntdn - tmout.tv_sec*64*MTASK.TicksPerSec)) * 1000000/(64*MTASK.TicksPerSec);
@@ -1252,6 +1334,28 @@ mtSched()
 	/** Switch to that thread's UID if different from current. **/
 	mt_internal_SwitchToContext(&(lowest_run_thr->SecContext));
 
+#ifdef MTASK_USEPTHREADS
+	/** A "starting" thread is already parked in its trampoline waiting for
+	 ** its first turn, so starting and resuming are the same hand-off. **/
+	lowest_run_thr->Flags &= ~THR_F_STARTING;
+
+	/** If we picked ourselves, just keep running; we still hold the GIL. **/
+	if (lowest_run_thr == caller)
+	    return 1;
+
+	/** Hand the GIL to the chosen thread. **/
+	MTASK.RunningThread = lowest_run_thr;
+	pthread_cond_signal(&lowest_run_thr->CondGo);
+
+	/** A living caller blocks until handed the GIL again, then resumes.
+	 ** A NULL caller is an exiting thread (thExit), which must not park.
+	 **/
+	if (caller)
+	    {
+	    while (MTASK.RunningThread != caller)
+		pthread_cond_wait(&caller->CondGo, &MTASK.GIL);
+	    }
+#else
 	/** Jump into the thread... **/
 	if (lowest_run_thr->Flags & THR_F_STARTING)
 	    {
@@ -1264,9 +1368,39 @@ mtSched()
 	    dbg_write(0,"l",1);
 	    longjmp(lowest_run_thr->SavedEnv,1);
 	    }
+#endif
 
     return 1;
     }
+
+
+#ifdef MTASK_USEPTHREADS
+/*** MT_INTERNAL_THREADTRAMPOLINE is the entry point for the OS thread that
+ *** backs an MTASK thread created via thCreate().  It waits until the
+ *** scheduler hands it the GIL for the first time, runs the thread's start
+ *** function, and then exits the thread.
+ ***/
+static void*
+mt_internal_ThreadTrampoline(void* arg)
+    {
+    pThread self = (pThread)arg;
+
+	/** Block until the scheduler selects us and hands over the GIL. **/
+	pthread_mutex_lock(&MTASK.GIL);
+	while (MTASK.RunningThread != self)
+	    pthread_cond_wait(&self->CondGo, &MTASK.GIL);
+
+	/** We now hold the GIL and are the current/running thread; the
+	 ** scheduler set CurrentThread, our status, and credentials before
+	 ** signaling us.  Run the start function.
+	 **/
+	self->StartFn(self->StartParam);
+
+	/** Start function returned normally; exit the thread. **/
+	thExit();
+	return NULL; /* not reached (thExit() does not return) */
+    }
+#endif
 
 
 /*** THCREATE creates a new thread and starts it on a given start function with
@@ -1307,6 +1441,10 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	thr->StackBottom = NULL;
 #ifdef USING_VALGRIND
 	thr->ValgrindStackID = 0;
+#endif
+#ifdef MTASK_USEPTHREADS
+	memset(&thr->PThread, 0, sizeof(thr->PThread));
+	pthread_cond_init(&thr->CondGo, NULL);
 #endif
 	/** copy the thread param from the current thread, if there is one
 	      this allows the signal handler, which will sometimes get called while
@@ -1356,8 +1494,42 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	    }
 	MTASK.nThreads++;
 
+#ifdef MTASK_USEPTHREADS
+	/** Spawn the detached backing OS thread.  It blocks in its trampoline
+	 ** until the scheduler hands it the GIL.
+	 **/
+	pthread_attr_t attr;
+	int cr;
+
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	pthread_attr_setstacksize(&attr, MT_PTHREAD_STACKSIZE);
+	cr = pthread_create(&thr->PThread, &attr, mt_internal_ThreadTrampoline, thr);
+	pthread_attr_destroy(&attr);
+	if (cr != 0)
+	    {
+	    for(i=0;i<MTASK.MaxThreads;i++) if (MTASK.ThreadTable[i] == thr)
+		{
+		MTASK.ThreadTable[i] = NULL;
+		MTASK.nThreads--;
+		break;
+		}
+	    pthread_cond_destroy(&thr->CondGo);
+	    nmFree(thr, sizeof(Thread));
+	    return NULL;
+	    }
+
+	/** Start the thread via the scheduler.  When called from signal
+	 ** processing there is no current thread; in that case the in-progress
+	 ** scheduler round will pick up the new (runnable) thread, so we must
+	 ** not re-enter the scheduler here.
+	 **/
+	if (MTASK.CurrentThread)
+	    mtSched();
+#else
 	/** Call the scheduler to start the thread. **/
 	mtSched();
+#endif
 
     return thr;
     }
@@ -1430,6 +1602,9 @@ thExit()
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(MTASK.CurrentThread->ValgrindStackID);
 #endif
+#ifdef MTASK_USEPTHREADS
+	pthread_cond_destroy(&MTASK.CurrentThread->CondGo);
+#endif
 
 	/** Destroy the thread's descriptor **/
 	nmFree(MTASK.CurrentThread,sizeof(Thread));
@@ -1453,8 +1628,19 @@ thExit()
 	    exit(0);
 	    }
 
+#ifdef MTASK_USEPTHREADS
+	/** Hand the GIL to the next runnable thread, then terminate this OS
+	 ** thread.  CurrentThread is NULL here, so mtSched() activates the
+	 ** next thread and returns without parking us; we then release the
+	 ** GIL so that thread can run.
+	 **/
+	mtSched();
+	pthread_mutex_unlock(&MTASK.GIL);
+	pthread_exit(NULL);
+#else
 	/** Call scheduler - scheduler will never return. **/
 	mtSched();
+#endif
 
     abort(); /* this suppresses the 'noreturn function does return' warning */
     }
@@ -1515,6 +1701,9 @@ thKill(pThread thr)
 
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(thr->ValgrindStackID);
+#endif
+#ifdef MTASK_USEPTHREADS
+	pthread_cond_destroy(&thr->CondGo);
 #endif
 
 	/** Free the structure. **/
