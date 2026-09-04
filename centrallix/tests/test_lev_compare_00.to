@@ -1,0 +1,28 @@
+##NAME Levenshtein String Comparison
+
+# Legacy tests.
+query select case1  = condition(lev_compare('hello', 'hello!') >= 0 and lev_compare('hello','hello!') <= 1, 'pass', 'fail')
+query select case2  = condition(lev_compare('hello', 'asdfkh') >= 0 and lev_compare('hello','asdfkh') <= 1, 'pass', 'fail')
+query select case3  = condition(lev_compare('hello', 'aaaaaaaaaaaaaaaaa') >= 0 and lev_compare('hello','aaaaaaaaaaaaaaaaa') <= 1, 'pass', 'fail')
+query select case4  = condition(lev_compare('hello', 'nope') >= 0 and lev_compare('hello', 'nope') <= 1, 'pass', 'fail')
+query select case5  = condition(lev_compare('below', 'hello!') >= 0 and lev_compare('below', 'hello!') <= 1, 'pass', 'fail')
+query select case6  = condition(lev_compare('kitten', 'smitten') >= 0 and lev_compare('kitten', 'smitten') <= 1, 'pass', 'fail')
+query select case7  = condition(lev_compare('hello', 'bobbobbobbob') >= 0 and lev_compare('hello', 'bobbobbobbob') <= 1, 'pass', 'fail')
+query select case8  = condition(lev_compare('hello', '') >= 0 and lev_compare('hello', '') <= 1, 'pass', 'fail')
+query select case9  = condition(lev_compare('', '') >= 0 and lev_compare('', '') <= 1, 'pass', 'fail')
+query select case10 = condition(lev_compare('blooooop', 'blob') >= 0 and lev_compare('blooooop', 'blob') <= 1, 'pass', 'fail')
+query select case11 = condition(lev_compare('', '!') >= 0 and lev_compare('','!') <= 1, 'pass', 'fail')
+query select case12 = condition(lev_compare('h', 'h') >= 0 and lev_compare('h','h') <= 1, 'pass', 'fail')
+query select case13 = condition(lev_compare('hi', 'hi') >= 0 and lev_compare('hi','hi') <= 1, 'pass', 'fail')
+
+# Kitten tests.
+query select case14 = condition(lev_compare('kitten', 'kitten')  >= 0.99 and lev_compare('kitten', 'kitten')  <= 1.0, 'pass', 'fail') -- 0 edits
+query select case15 = condition(lev_compare('kitten', 'skitten') >= 0.8  and lev_compare('kitten', 'skitten') <= 0.9, 'pass', 'fail') -- 1 insert
+query select case16 = condition(lev_compare('kitten', 'itten')   >= 0.8  and lev_compare('kitten', 'itten')   <= 0.9, 'pass', 'fail') -- 1 delete
+query select case17 = condition(lev_compare('kitten', 'mitten')  >= 0.8  and lev_compare('kitten', 'mitten')  <= 0.9, 'pass', 'fail') -- 1 replace
+query select case18 = condition(lev_compare('kitten', 'smitten') >= 0.7  and lev_compare('kitten', 'smitten') <= 0.8, 'pass', 'fail') -- 1 insert and one replace
+query select case19 = condition(lev_compare('kitten', 'iktten')  >= 0.8  and lev_compare('kitten', 'iktten')  <= 0.9, 'pass', 'fail') -- 1 transpose
+query select case20 = condition(lev_compare('kitten', 'kittens') >= 0.8  and lev_compare('kitten', 'kittens') <= 0.9, 'pass', 'fail') -- 1 insert (end)
+query select case21 = condition(lev_compare('kitten', 'kitte')   >= 0.8  and lev_compare('kitten', 'kitte')   <= 0.9, 'pass', 'fail') -- 1 delete (end)
+query select case22 = condition(lev_compare('kitten', 'kittem')  >= 0.8  and lev_compare('kitten', 'kittem')  <= 0.9, 'pass', 'fail') -- 1 replace (end)
+query select case23 = condition(lev_compare('kitten', 'kittne')  >= 0.8  and lev_compare('kitten', 'kittne')  <= 0.9, 'pass', 'fail') -- 1 transpose (end)
