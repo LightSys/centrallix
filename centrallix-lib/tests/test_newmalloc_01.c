@@ -19,6 +19,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 /** Test dependencies. **/
 #include "test_utils.h"
@@ -140,9 +141,27 @@ static bool do_tests(void)
 	/** Clear cache. **/
 	nmClear();
 
-	/** Debug info. **/
-	printf("\n");
-	nmStats();
+	/*** Debug info, captured to verify that nmStats() prints something.
+	 *** nmStats() prints via the library's own stdout, so capturing it
+	 *** requires us to redirect that file descriptor into a pipe that
+	 *** we flush into a buffer.  This deadlocks if stats prints over
+	 *** 64kb of data and fills the pipe, but that shouldn't happen.
+	 ***/
+	char stats_buf[2048];
+	int stats_pipe[2];
+	success &= EXPECT_EQL(pipe(stats_pipe), 0, "%d");
+	fflush(stdout);
+	int saved_stdout = dup(STDOUT_FILENO);
+	dup2(stats_pipe[1], STDOUT_FILENO);
+	close(stats_pipe[1]);
+	nmStats(); /** Run target code. **/
+	fflush(stdout);
+	dup2(saved_stdout, STDOUT_FILENO);
+	close(saved_stdout);
+	ssize_t stats_len = read(stats_pipe[0], stats_buf, sizeof(stats_buf) - 1lu);
+	close(stats_pipe[0]);
+	stats_buf[(stats_len > 0) ? stats_len : 0] = '\0';
+	success &= EXPECT_RANGE(strlen(stats_buf), (size_t)32, sizeof(stats_buf) - 1lu, "%zu");
 
 	/** Expect no captured errors. **/
 	success &= EXPECT_STR_EQL(err_buf, "");
