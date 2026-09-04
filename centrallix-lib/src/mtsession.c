@@ -24,7 +24,7 @@
 #include "xstring.h"
 #include "xhash.h"
 #include "strtcpy.h"
-#include "util.h"
+#include "check.h"
 #include "cxsec.h"
 
 /************************************************************************/
@@ -472,21 +472,25 @@ mssEndSession(pMtSession s)
  *** @param ... Variables matching format specifiers in the format.
  ***/
 void 
-mssError(int clr, char* module, char* message, ...)
+mssError_internal(int clr, char* module, char* file, int line, char* message, ...)
     {
     char err_msg[BUFSIZ];
-    unsigned int i = 0u;
+    size_t i = 0;
     
 	/** Prevent issues from interlacing this function with prints to stdout. **/
 	check(fflush(stdout)); /* Failure ignored. */
 	
+	/** Add line number to error message. **/
+	err_msg[0] = '\0';
+	strtcatf(err_msg, sizeof(err_msg), &i, "%s:%d: ", file, line);
+	
 	/** Write the module to the start of the error message. */
-	i += snprintf(err_msg + i, sizeof(err_msg) - i, "%s: ", module);
+	strtcatf(err_msg, sizeof(err_msg), &i, "%s: ", module);
 	
 	/** Process the message format with all the same rules as printf(). **/
 	va_list args;
 	va_start(args, message);
-	i += vsnprintf(err_msg + i, sizeof(err_msg) - i, message, args);
+	strtcatf_va(err_msg, sizeof(err_msg), &i, message, args);
 	va_end(args);
 	
 	/** Get current session **/
@@ -496,9 +500,6 @@ mssError(int clr, char* module, char* message, ...)
 	/** Use standard logging without a session context, if needed. **/
 	if (log_error) 
 	    {
-	    /** Start new error stacks with a newline to make them distinct. **/
-	    if (clr && MSS.LogMethod[0] != '\0') fprintf(stderr, "\n");
-	    
 	    /** Use the requested logging method. **/
 	    if (strcmp(MSS.LogMethod, "syslog") == 0)
 		{
@@ -520,7 +521,7 @@ mssError(int clr, char* module, char* message, ...)
 	    if (clr) check(mssClearError()); /* Failure ignored. */
 	    
 	    /** Allocate space and construct the error text. **/
-	    const char* allocated_err_msg = check_ptr(nmSysStrdup(err_msg));
+	    const char* allocated_err_msg = checkPtr(nmSysStrdup(err_msg));
 	    if (allocated_err_msg == NULL)
 		{
 		fprintf(stderr, "Failed to store error message: %s\n", err_msg);
@@ -528,7 +529,7 @@ mssError(int clr, char* module, char* message, ...)
 		}
 	    
 	    /** Store the error. **/
-	    if (check_neg(xaAddItem(&(s->ErrList), (void*)allocated_err_msg)) < 0)
+	    if (checkNeg(xaAddItem(&(s->ErrList), (void*)allocated_err_msg)) < 0)
 		{
 		fprintf(stderr, "Failed to add error message to session error list: %s\n", err_msg);
 		return; /* Give up. */

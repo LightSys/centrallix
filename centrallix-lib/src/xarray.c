@@ -6,7 +6,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include "xarray.h"
-#include "util.h"
+#include "check.h"
 #include "newmalloc.h"
 
 /************************************************************************/
@@ -420,7 +420,7 @@ xaTrim(pXArray this)
     {
 	/** Allocate the new internal items array. **/
 	const size_t new_size = this->nItems * sizeof(void*);
-	void* new_items = check_ptr(nmSysRealloc(this->Items, new_size));
+	void* new_items = checkPtr(nmSysRealloc(this->Items, new_size));
 	if (new_items == NULL) return -1;
 	
 	/** Update the struct. **/
@@ -441,7 +441,7 @@ void**
 xaToArray(pXArray this)
     {
 	const size_t size = this->nItems * sizeof(void*);
-	void** result = check_ptr(nmSysMalloc(size));
+	void** result = checkPtr(nmSysMalloc(size));
 	if (result == NULL) return NULL;
 	memcpy(result, this->Items, size);
     

@@ -455,7 +455,7 @@ The `Create()` function is used to create a new object, and uses the same parame
 
 ### Function: Delete()
 ```c
-int clusterDelete(pObject obj, pObjTrxTree* oxt);
+int xxxDelete(pObject obj, pObjTrxTree* oxt);
 ```
 The `Delete()` function is used to delete an object, which often means removing a file from the file system.  The Delete routine is passed the following parameters:
 
@@ -674,7 +674,7 @@ The value pointer points to a union struct which can hold one of several types o
 | `IntVec`    | `DATA_T_INTVEC`    | Store a `pIntVec`* in the `val->IntVec` field.
 | `StringVec` | `DATA_T_STRINGVEC` | Store a `pStringVec`* in the `val->StringVec` field.
 | `Money`     | `DATA_T_MONEY`     | Store a `pMoneyType`* in the `val->Money` field.
-| `Generic`   | ?                  | Store a `void*` in the `val->Generic` field (target data is usually implementation dependant).
+| `Generic`   | ?                  | Store a `void*` in the `val->Generic` field (target data is usually implementation dependent).
 
 \*_See [`datatypes.h`](../centrallix-lib/include/datatypes.h) for more info about this datatype._
 
@@ -690,7 +690,7 @@ This function should return 0 on success, 1 if the value is `NULL` or undefined 
     printf("Object name: \"%s\"\n", name);
     ```
 
-- 📖 **Note**: In legacy code, a type cast `void*` was used instead of a `pObjData` pointer used today.  This method was binary compatible the current solution because of the union struct implementation (See [`datatypes.h`](../centrallix/include/datatypes.h) for more information).
+- 📖 **Note**: In legacy code, a type cast `void*` was used instead of a `pObjData` pointer used today.  This method was binary compatible the current solution because of the union struct implementation (See [`datatypes.h`](../centrallix-lib/include/datatypes.h) for more information).
 
 
 ### Function: SetAttrValue()
@@ -717,14 +717,14 @@ These functions should only return the names of significant values, so `name`, `
 
 ### Function: AddAttr()
 ```c
-int clusterAddAttr(void* inf_v, char* attr_name, int type, pObjData val, pObjTrxTree* oxt);
+int xxxAddAttr(void* inf_v, char* attr_name, int type, pObjData val, pObjTrxTree* oxt);
 ```
 The `AddAttr()` function adds a new attribute to an existing object.  Not all objects support this, and many will refuse the operation.  The parameters are the same as those of `GetAttrValue()` and `SetAttrValue()`, documented in detail above.
 
 
 ### Function: OpenAttr()
 ```c
-void* clusterOpenAttr(void* inf_v, char* attr_name, int mode, pObjTrxTree* oxt);
+void* xxxOpenAttr(void* inf_v, char* attr_name, int mode, pObjTrxTree* oxt);
 ```
 The `OpenAttr()` function is used to open an attribute for `objRead()`/`objWrite()` as if it were an object with content.  Not all object drivers will support this, and many will refuse the operation.
 
@@ -733,7 +733,7 @@ This function takes 4 parameters. `inf_v`, `attr_name`, and `oxt` are the same a
 
 ### Function: ExecuteMethod()
 ```c
-int clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree* oxt);
+int xxxExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree* oxt);
 ```
 The `ExecuteMethod()` function is used to execute a method on an object.  This feature is rarely used, but some drivers have created methods for actions like dropping their cache or printing debug information.  Each method has a unique name within that object, and can take a single string parameter.
 
@@ -799,7 +799,7 @@ The return value, `hints : ObjPresentationHints`, contains the following useful 
 - `hints->GroupID : int`: Used to assign attributes to groups. Use -1 if the attribute is not in a group.
 - `hints->GroupName : char*`: The name of the group to which this attribute belongs, or NULL if it is ungrouped or if the group is named elsewhere.
 - `hints->OrderID : int`: Used to specify an attribute order.
-- `hints->FriendlyName : char*`: Used to specify a "display name" for an attribute (e.g. `n_rows` might have a friendly name of `"Number of Rows"`). Should be [`nmSysMalloc()`](#nmsysmalloc)ed, often using [`nmSysStrdup()`](#nmsysstrdup).
+- `hints->FriendlyName : char*`: Used to specify a "display name" for an attribute (e.g. `n_rows` might have a friendly name of `"Number of Rows"`). Should be [`nmSysMalloc()`](Libraries/newmalloc.md#nmsysmalloc)ed, often using [`nmSysStrdup()`](Libraries/newmalloc.md#nmsysstrdup).
 
 - ⚠️ **Warning**: Behavior is undefined if:
   - The data is longer than length.
@@ -1126,7 +1126,7 @@ The `cmpflags` parameter is a bitmask that provides flags which will be passed t
 ```c
 pExpression expCompileExpressionFromLxs(pLxSession s, pParamObjects objlist, int cmpflags);
 ```
-This function is similar to [`expCompileExpression()`](#expcompileexpression), excpet that it compiles from a provided lexer session instead of from a string. 
+This function is similar to [`expCompileExpression()`](#expcompileexpression), except that it compiles from a provided lexer session instead of from a string. 
 
 ### expPodToExpression()
 ```c
@@ -1307,7 +1307,7 @@ The mtlexer (MLX) module is a lexical analyzer library provided by Centrallix fo
 ```c
 pLxSession mlxOpenSession(pFile fd, int flags);
 ```
-This function opens a lexer session, using a file descripter as its source.  Some of the more useful values for `flags` include:
+This function opens a lexer session, using a file descriptor as its source.  Some of the more useful values for `flags` include:
 
 | Value             | Description
 | ----------------- | ------------
@@ -1325,7 +1325,7 @@ This function opens a lexer session, using a file descripter as its source.  Som
 | `MLX_F_IFSONLY`   | Only return string values separated by tabs, spaces, newlines, and carriage returns.  For example, normally the brace in `"this{brace"` is a token and that string will result in three tokens, but in `IFSONLY` mode it is just one token.
 | `MLX_F_DASHKW`    | Keywords can include the dash (`-`).  Otherwise, the keyword is treated as two keywords with a minus sign between them.
 | `MLX_F_FILENAMES` | Treat a non-quoted string beginning with a slash (`/`) or dot-slash (`./`) as a filename, and allow slashes and dots in the string without requiring quotes.
-| `MLX_F_NODISCARD` | Attempt to unread unused buffered data rather than discarding it, allowing the calling function to continue reading with `fdRead()` or another lexer session after the last token is read and the session is closed.  The lexer `fdRead()`s in 2k or so chunks for performance, and normally discards this data when done, causing future file decriptors to start at an undefined file location.
+| `MLX_F_NODISCARD` | Attempt to unread unused buffered data rather than discarding it, allowing the calling function to continue reading with `fdRead()` or another lexer session after the last token is read and the session is closed.  The lexer `fdRead()`s in 2k or so chunks for performance, and normally discards this data when done, causing future file descriptors to start at an undefined file location.
 | `MLX_F_DBLBRACE`  | Treat `{{` and `}}` as double brace tokens, not two single brace tokens.
 | `MLX_F_NOUNESC`   | Do not remove escapes in strings.
 | `MLX_F_SSTRING`   | Differentiate between strings values using `""` and `''`.

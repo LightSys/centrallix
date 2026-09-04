@@ -77,7 +77,7 @@ The xarray (xa) module is intended to manage sized growable arrays, similar to a
 ```c
 pXArray xaNew(int init_size);
 ```
-Allocates a new `XArray` struct on the heap (using [`nmMalloc()`](#nmmalloc) for caching) and returns a pointer to it, or returns `NULL` if an error occurs.
+Allocates a new `XArray` struct on the heap (using [`nmMalloc()`](newmalloc.md#nmmalloc) for caching) and returns a pointer to it, or returns `NULL` if an error occurs.
 
 
 ## xaFree()
@@ -120,7 +120,7 @@ arr.nAlloc = 0;
 ```c
 int xaAddItem(pXArray this, void* item);
 ```
-This function adds an item to the end of the xarray.  The item is assumed to be a `void*`, but this function will _not_ follow pointeres stored in the array.  Thus, other types can be typecast and stored into that location (such as an `int`).
+This function adds an item to the end of the xarray.  The item is assumed to be a `void*`, but this function will _not_ follow pointers stored in the array.  Thus, other types can be typecast and stored into that location (such as an `int`).
 
 This function returns 0 on success, or -1 if an error occurs.
 

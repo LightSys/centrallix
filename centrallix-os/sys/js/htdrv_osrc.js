@@ -102,6 +102,10 @@ function osrc_action_refresh(aparam)
     if (!tr || tr < 1) tr = 1;
     this.doing_refresh = true;
 
+    // Carry the current sort over to the new query
+    if (!this.pendingorderobject && this.orderobject)
+	this.pendingorderobject = this.orderobject;
+
     // Keep track of current object by name
     if (aparam.find_object)
 	{
@@ -1608,9 +1612,13 @@ function osrc_prune_replica(most_recent_id)
 		}
 	    if (found) break;
 
-	    // clean up replica
-	    this.oldoids.push(this.replica[this.FirstRecord].oid);
-	    delete this.replica[this.FirstRecord];
+	    // clean up replica.  A tail fetch skips records, so the window
+	    // is not always contiguous.
+	    if (this.replica[this.FirstRecord])
+		{
+		this.oldoids.push(this.replica[this.FirstRecord].oid);
+		delete this.replica[this.FirstRecord];
+		}
 	    this.FirstRecord++;
 	    }
 	}

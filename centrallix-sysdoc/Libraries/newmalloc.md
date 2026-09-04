@@ -44,7 +44,7 @@
 
 
 ## Table of Contents
-- [Memory Management in Centrallix](#objectsystem-driver-interface)
+- [Memory Management in Centrallix](#memory-management-in-centrallix)
   - [Introduction](#introduction)
   - [nmMalloc()](#nmmalloc)
   - [nmFree()](#nmfree)

@@ -139,19 +139,19 @@ void* ca_most_similar(
     void* target,
     void** data,
     const unsigned int num_data,
-    const double (*similarity)(void*, void*),
+    double (*similarity)(void*, void*),
     const double threshold);
 pXArray ca_sliding_search(
     void** data,
     const unsigned int num_data,
     const unsigned int window_size,
-    const double (*similarity)(void*, void*),
+    double (*similarity)(void*, void*),
     const double threshold,
     pXArray maybe_pairs);
 pXArray ca_complete_search(
     void** data,
     const unsigned int num_data,
-    const double (*similarity)(void*, void*),
+    double (*similarity)(void*, void*),
     const double threshold,
     pXArray maybe_pairs);
 

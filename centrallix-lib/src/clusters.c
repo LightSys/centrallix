@@ -42,10 +42,11 @@
 #include <string.h>
 #include <time.h>
 
+#include "check.h"
 #include "clusters.h"
 #include "expect.h"
 #include "newmalloc.h"
-#include "util.h"
+#include "range.h"
 #include "xarray.h"
 
 /** This file has additional documentation in string_similarity.md. **/
@@ -155,7 +156,7 @@ ca_build_vector(const char* str)
     
 	/** Allocate memory to store the characters. **/
 	unsigned int num_chars = 0u;
-	chars = check_ptr(nmSysMalloc((strlen(str) + 2u) * sizeof(unsigned char)));
+	chars = checkPtr(nmSysMalloc((strlen(str) + 2u) * sizeof(unsigned char)));
 	if (UNLIKELY(chars == NULL)) goto err_free;
 	
 	/** Store characters. **/
@@ -181,7 +182,7 @@ ca_build_vector(const char* str)
 	
 	
 	/** Compute character pair hashes. **/
-	char_pairs = check_ptr(nmSysMalloc(num_chars * sizeof(CharPair)));
+	char_pairs = checkPtr(nmSysMalloc(num_chars * sizeof(CharPair)));
 	if (UNLIKELY(char_pairs == NULL)) goto err_free;
 	const unsigned int num_pairs = num_chars - 1u;
 	for (unsigned int i = 0u; i < num_pairs; i++)
@@ -205,7 +206,7 @@ ca_build_vector(const char* str)
 	
 	
 	/** Allocate space for the sparse vector. **/
-	sparse_vector = check_ptr(nmSysMalloc((num_pairs * 2u + 1u) * sizeof(int)));
+	sparse_vector = checkPtr(nmSysMalloc((num_pairs * 2u + 1u) * sizeof(int)));
 	if (sparse_vector == NULL) goto err_free;
 	
 	/** Build the sparse vector from the character pairs. **/
@@ -243,7 +244,7 @@ ca_build_vector(const char* str)
 	
 	
 	/** Trim extra space wasted by identical hashes. **/
-	trimmed_sparse_vector = check_ptr(nmSysRealloc(sparse_vector, cur * sizeof(int)));
+	trimmed_sparse_vector = checkPtr(nmSysRealloc(sparse_vector, cur * sizeof(int)));
 	if (trimmed_sparse_vector == NULL) goto err_free;
 	sparse_vector = NULL; /* Mark memory freed by nmSysRealloc() no longer valid. */
 	
@@ -515,11 +516,11 @@ ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const
 	 ***/
 	const size_t str1_len = (str1_length == 0u) ? strlen(str1) : str1_length;
 	const size_t str2_len = (str2_length == 0u) ? strlen(str2) : str2_length;
-	lev_matrix = check_ptr(nmSysMalloc((str1_len + 1) * sizeof(unsigned int*)));
+	lev_matrix = checkPtr(nmSysMalloc((str1_len + 1) * sizeof(unsigned int*)));
 	if (lev_matrix == NULL) goto end;
 	for (unsigned int i = 0u; i < str1_len + 1u; i++)
 	    {
-	    lev_matrix[i] = check_ptr(nmSysMalloc((str2_len + 1) * sizeof(unsigned int)));
+	    lev_matrix[i] = checkPtr(nmSysMalloc((str2_len + 1) * sizeof(unsigned int)));
 	    if (lev_matrix[i] == NULL) goto end;
 	    }
 	
@@ -671,7 +672,7 @@ ca_lev_compare(void* str1, void* str2)
 	if (len1 == 0lu && len2 != 0lu) return 0.0;
 	
 	/** Compute levenshtein edit distance. **/
-	const int edit_dist = check_neg(ca_edit_dist((const char*)str1, (const char*)str2, len1, len2));
+	const int edit_dist = checkNeg(ca_edit_dist((const char*)str1, (const char*)str2, len1, len2));
 	if (edit_dist < 0) return NAN;
 	
 	/** Normalize edit distance into a similarity measure. **/
@@ -732,8 +733,8 @@ get_cluster_size(
 	 *** loop in ca_kmeans().  Also, ca_kmeans() may be called multiple
 	 *** times with the same k value, increasing this benefit.
 	 ***/
-	cluster_sums = check_ptr(nmMalloc(num_clusters * sizeof(double)));
-	cluster_counts = check_ptr(nmMalloc(num_clusters * sizeof(unsigned int)));
+	cluster_sums = checkPtr(nmMalloc(num_clusters * sizeof(double)));
+	cluster_counts = checkPtr(nmMalloc(num_clusters * sizeof(unsigned int)));
 	if (cluster_sums == NULL || cluster_counts == NULL) goto end;
 	for (unsigned int i = 0u; i < num_clusters; i++)
 	    {
@@ -826,15 +827,15 @@ ca_kmeans(
 	/** Allocate space to store centroids and new_centroids. **/
 	/** Dynamic allocation is required because these densely allocated arrays might be up to 500KB! **/
 	const size_t centroids_size = num_clusters * sizeof(pCentroid);
-	centroids = check_ptr(nmMalloc(centroids_size));
-	new_centroids = check_ptr(nmMalloc(centroids_size));
+	centroids = checkPtr(nmMalloc(centroids_size));
+	new_centroids = checkPtr(nmMalloc(centroids_size));
 	if (centroids == NULL || new_centroids == NULL) goto end;
 	memset(centroids, 0, centroids_size);
 	memset(new_centroids, 0, centroids_size);
 	for (unsigned int i = 0u; i < num_clusters; i++)
 	    {
-	    centroids[i] = check_ptr(nmMalloc(CENTROID_SIZE));
-	    new_centroids[i] = check_ptr(nmMalloc(CENTROID_SIZE));
+	    centroids[i] = checkPtr(nmMalloc(CENTROID_SIZE));
+	    new_centroids[i] = checkPtr(nmMalloc(CENTROID_SIZE));
 	    if (centroids[i] == NULL || new_centroids[i] == NULL) goto end;
 	    memset(centroids[i], 0, CENTROID_SIZE);
 	    memset(new_centroids[i], 0, CENTROID_SIZE);
@@ -923,7 +924,7 @@ ca_kmeans(
 	    
 	    /** Is there enough improvement? **/
 	    if (min_improvement <= -1.0) continue; /** Skip check if it will never end the loop. **/
-	    const double average_cluster_size = check_double(get_cluster_size(vectors, num_vectors, labels, centroids, num_clusters));
+	    const double average_cluster_size = checkDouble(get_cluster_size(vectors, num_vectors, labels, centroids, num_clusters));
 	    if (isnan(average_cluster_size)) goto end;
 	    const double improvement = old_average_cluster_size - average_cluster_size;
 	    if (improvement < min_improvement) break;
@@ -984,7 +985,7 @@ ca_most_similar(
     void* target,
     void** data,
     const unsigned int num_data,
-    const double (*similarity)(void*, void*),
+    double (*similarity)(void*, void*),
     const double threshold)
     {
     void* most_similar = NULL;
@@ -993,7 +994,7 @@ ca_most_similar(
 	/** Iterate over all data options to find the one with the highest similarity. **/
 	for (unsigned int i = 0u; (num_data == 0u && data[i] != NULL) || (i < num_data); i++)
 	    {
-	    const double sim = check_double(similarity(target, data[i]));
+	    const double sim = checkDouble(similarity(target, data[i]));
 	    if (isnan(sim)) continue; /* Skip failed comparison. */
 	    if (sim > best_sim && sim > threshold)
 		{
@@ -1026,7 +1027,7 @@ ca_sliding_search(
     void** data,
     const unsigned int num_data,
     const unsigned int window_size,
-    const double (*similarity)(void*, void*),
+    double (*similarity)(void*, void*),
     const double threshold,
     pXArray maybe_pairs)
     {
@@ -1037,7 +1038,7 @@ ca_sliding_search(
 	    {
 	    /** Guess that we will need space for two pairs per data point. **/
 	    const int guess_size = num_data * 2;
-	    pairs = check_ptr(xaNew(guess_size));
+	    pairs = checkPtr(xaNew(guess_size));
 	    if (pairs == NULL) goto err;
 	    }
 	const int num_starting_pairs = pairs->nItems;
@@ -1049,7 +1050,7 @@ ca_sliding_search(
 	    const unsigned int window_end = min(i + window_size, num_data);
 	    for (unsigned int j = window_start; j < window_end; j++)
 		{
-		const double sim = check_double(similarity(data[i], data[j]));
+		const double sim = checkDouble(similarity(data[i], data[j]));
 		if (isnan(sim) || sim < 0.0 || 1.0 < sim)
 		    {
 		    fprintf(stderr, "Invalid similarity %g %lf.\n", sim, sim);
@@ -1057,12 +1058,12 @@ ca_sliding_search(
 		    }
 		if (sim > threshold) /* Pair found! */
 		    {
-		    pPair pair = (pPair)check_ptr(nmMalloc(sizeof(Pair)));
+		    pPair pair = (pPair)checkPtr(nmMalloc(sizeof(Pair)));
 		    if (pair == NULL) goto err_free;
 		    pair->i = i;
 		    pair->j = j;
 		    pair->similarity = sim;
-		    if (check_neg(xaAddItem(pairs, (void*)pair)) < 0) goto err_free;
+		    if (checkNeg(xaAddItem(pairs, (void*)pair)) < 0) goto err_free;
 		    }
 		}
 	    }
@@ -1098,7 +1099,7 @@ pXArray
 ca_complete_search(
     void** data,
     const unsigned int num_data,
-    const double (*similarity)(void*, void*),
+    double (*similarity)(void*, void*),
     const double threshold,
     pXArray maybe_pairs)
     {

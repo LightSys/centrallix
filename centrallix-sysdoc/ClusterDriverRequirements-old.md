@@ -64,7 +64,7 @@ void* clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 `clusterQueryFetch()` shall...
 - If the driver struct targets the root node, this function shall produce an error.
 - If the driver struct targets an entry, this function shall produce a different error.
-- If the driver targets a cluster or search, this function shall return a driver struct targetting the cluster or search *entry* (respectively) indicated by the query struct's row pointer, and increment the pointer.
+- If the driver targets a cluster or search, this function shall return a driver struct targeting the cluster or search *entry* (respectively) indicated by the query struct's row pointer, and increment the pointer.
   - Exception: If no data remains, this function shall return `NULL` instead.
   - This request shall cause clustering / searching to execute, if it has not executed already.
 
@@ -153,11 +153,11 @@ char* clusterGetNextAttr(void* inf_v, pObjTrxTree oxt);
 - Return `NULL` if the end of the list has been reached.
 - Increase the attribute index on the driver struct by 1.
 
-- The attribute name list for a targetting root shall include "source" and "attr_name".
-- The attribute name list for a targetting a cluster shall include "algorithm", "similarity_measure", "num_clusters", "improvement_threshold", and "max_iterations".
-- The attribute name list for a targetting a search shall include "source", "threshold", and "similarity_measure".
-- The attribute name list for a targetting a cluster entry shall include "val" and "sim".
-- The attribute name list for a targetting a search entry shall include "val1", "val2", and "sim".
+- The attribute name list for a targeting root shall include "source" and "attr_name".
+- The attribute name list for a targeting cluster shall include "algorithm", "similarity_measure", "num_clusters", "improvement_threshold", and "max_iterations".
+- The attribute name list for a targeting search shall include "source", "threshold", and "similarity_measure".
+- The attribute name list for a targeting cluster entry shall include "val" and "sim".
+- The attribute name list for a targeting search entry shall include "val1", "val2", and "sim".
 
 ### Cluster Get Next Attribute
 ```c

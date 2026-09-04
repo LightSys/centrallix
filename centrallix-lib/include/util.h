@@ -13,16 +13,15 @@
 /* 									*/
 /* Module:	util.c, util.h						*/
 /* Author:	Micah Shennum and Israel Fuller				*/
-/* Date:	May 26, 2011						*/
+/* Date:	May 26, 2011 and October 13, 2025 (respectively)	*/
 /* Description:	Collection of utilities including:			*/
 /* 		- Utilities for parsing numbers.			*/
-/* 		- The timer utility for benchmarking code.		*/
-/* 		- snprint_bytes() for formatting a byte count.		*/
-/* 		- snprint_commas_llu() for formatting large numbers.	*/
-/* 		- fprint_mem() for printing memory stats.		*/
-/* 		- min() and max() for handling numbers.			*/
-/* 		- The check functions for reliably printing debug data.	*/
+/* 		- snprintBytes() for formatting a byte count.		*/
+/* 		- snprintCommasLlu() for formatting large numbers.	*/
+/* 		- fprintMem() for printing memory stats.		*/
 /************************************************************************/
+
+#include <stdio.h>
 
 #ifdef	__cplusplus
 extern "C" {
@@ -31,134 +30,12 @@ extern "C" {
     int strtoi(const char *nptr, char **endptr, int base);
     unsigned int strtoui(const char *nptr, char **endptr, int base);
 
-    char* snprint_bytes(char* buf, const size_t buf_size, unsigned int bytes);
-    char* snprint_commas_llu(char* buf, size_t buf_size, unsigned long long value);
-    void fprint_mem(FILE* out);
-    
-    typedef struct
-	{
-	double start, total;
-	}
-	Timer, *pTimer;
-    
-    pTimer timer_init(pTimer timer);
-    pTimer timer_new(void);
-    pTimer timer_start(pTimer timer);
-    pTimer timer_stop(pTimer timer);
-    double timer_get(pTimer timer);
-    pTimer timer_reset(pTimer timer);
-    void timer_de_init(pTimer timer);
-    void timer_free(pTimer timer);
+    char* snprintBytes(char* buf, const size_t buf_size, unsigned long bytes);
+    char* snprintCommasLlu(char* buf, size_t buf_size, unsigned long long value);
+    void fprintMem(FILE* out);
 
 #ifdef	__cplusplus
 }
 #endif
-
-#ifndef __cplusplus
-#include <errno.h>
-
-#include "expect.h"
-
-/*** @brief Returns the smaller of two values.
- *** 
- *** @param a The first value.
- *** @param b The second value.
- *** @return The smaller of the two values.
- *** 
- *** @note This macro uses GCC extensions to ensure type safety.
- ***/
-#define min(a, b) \
-    ({ \
-    __typeof__ (a) _a = (a); \
-    __typeof__ (b) _b = (b); \
-    (_a < _b) ? _a : _b; \
-    })
-
-/*** @brief Returns the larger of two values.
- *** 
- *** @param a The first value.
- *** @param b The second value.
- *** @return The larger of the two values.
- *** 
- *** @note This macro uses GCC extensions to ensure type safety.
- ***/
-#define max(a, b) \
-    ({ \
-    __typeof__ (a) _a = (a); \
-    __typeof__ (b) _b = (b); \
-    (_a > _b) ? _a : _b; \
-    })
-
-/** File name macro, expanding functionality like __FILE__ and __LINE__. **/
-#define __FILENAME__ \
-    ({ \
-    const char* last_directory = strrchr(__FILE__, '/'); \
-    ((last_directory != NULL) ? last_directory + 1 : __FILE__); \
-    })
-
-/** Error Handling. **/
-void print_err(int code, const char* function_name, const char* file_name, const int line_number);
-
-/*** Ensures that developer diagnostics are printed if the result of the
- *** passed function call is not zero.  Not intended for user errors.
- *** 
- *** @param result The expression to check.  The text of this expression is
- *** 	included in the error message if an error occurs.
- *** @returns The result of the checked expression.
- ***/
-#define check(result) \
-    ({ \
-	errno = 0; /* Reset errno to prevent confusion. */ \
-	int _r = (result); \
-	if (UNLIKELY(_r != 0)) print_err(_r, #result, __FILE__, __LINE__); \
-	_r; \
-    })
-
-/*** Ensures that developer diagnostics are printed if the result of the
- *** passed function call is negative. Not intended for user errors.
- ***
- *** @param result The expression to check.  The text of this expression is
- *** 	included in the error message if an error occurs.
- *** @returns The result of the checked expression.
- ***/
-#define check_neg(result) \
-    ({ \
-	errno = 0; /* Reset errno to prevent confusion. */ \
-	int _r = (result); \
-	if (UNLIKELY(_r < 0)) print_err(_r, #result, __FILE__, __LINE__); \
-	_r; \
-    })
-
-/*** Ensures that developer diagnostics are printed if the result of the
- *** passed function call is a NAN double. Not intended for user errors.
- ***
- *** @param result The expression to check.  The text of this expression is
- *** 	included in the error message if an error occurs.
- *** @returns The result of the checked expression.
- ***/
-#define check_double(result) \
-    ({ \
-	errno = 0; /* Reset errno to prevent confusion. */ \
-	double _r = (result); \
-	if (UNLIKELY(isnan(_r))) print_err(0, #result, __FILE__, __LINE__); \
-	_r; \
-    })
-
-/*** Ensures that developer diagnostics are printed if the result of the
- *** passed function call is a NULL pointer. Not intended for user errors.
- ***
- *** @param result The expression to check.  The text of this expression is
- *** 	included in the error message if an error occurs.
- *** @returns The result of the checked expression.
- ***/
-#define check_ptr(result) \
-    ({ \
-	errno = 0; /* Reset errno to prevent confusion. */ \
-	void* _r = (result); \
-	if (UNLIKELY(_r == NULL)) print_err(0, #result, __FILE__, __LINE__); \
-	_r; \
-    })
-
-#endif  /* __cplusplus */
 
 #endif	/* UTILITY_H */

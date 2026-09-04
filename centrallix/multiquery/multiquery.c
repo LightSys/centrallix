@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -131,6 +132,9 @@ mq_internal_FreeQE(pQueryElement qetree)
 	/** Tell the driver to release this **/
 	qetree->Driver->Release(qetree, NULL);
 
+	/** Release the order-by expressions **/
+	mq_internal_ClearOrderBy(qetree);
+
 	/** Release memory held by the arrays, etc **/
 	xaDeInit(&qetree->Children);
 	xaDeInit(&qetree->AttrNames);
@@ -173,6 +177,66 @@ mq_internal_AllocQE()
 	qe->QSLinkage = NULL;
 
     return qe;
+    }
+
+
+/*** mq_internal_AddOrderBy - append an expression to a query element's order
+ *** by list.  Takes ownership of exp and promises to consume it, even if an
+ *** error occurs.
+ ***/
+int
+mq_internal_AddOrderBy(pQueryElement qe, pExpression exp)
+    {
+    int n;
+
+	if (!exp)
+	    {
+	    mssError(1,"MQ","Could not add NULL ORDER BY expression.");
+	    return -1;
+	    }
+	n = mq_internal_nOrderBy(qe);
+	if (n >= MQ_MAX_ORDERBY)
+	    {
+	    expFreeExpression(exp);
+	    mssError(1,"MQ","Too many ORDER BY expressions (max %d)", MQ_MAX_ORDERBY);
+	    return -1;
+	    }
+	qe->OrderBy[n] = exp;
+	qe->OrderBy[n+1] = NULL;
+
+    return 0;
+    }
+
+
+/*** mq_internal_ClearOrderBy - release all of the expressions in a query
+ *** element's order by list, leaving the list empty.
+ ***/
+int
+mq_internal_ClearOrderBy(pQueryElement qe)
+    {
+    int i;
+
+	for(i=0;i<MQ_MAX_ORDERBY && qe->OrderBy[i];i++)
+	    {
+	    expFreeExpression(qe->OrderBy[i]);
+	    qe->OrderBy[i] = NULL;
+	    }
+
+    return 0;
+    }
+
+
+/*** mq_internal_nOrderBy - count the expressions in a query element's order
+ *** by list.
+ ***/
+int
+mq_internal_nOrderBy(pQueryElement qe)
+    {
+    int n;
+
+	for(n=0;n<MQ_MAX_ORDERBY && qe->OrderBy[n];n++);
+
+    return n;
     }
 
 
@@ -401,6 +465,7 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
     int i,j,cnt,n_assign,exists;
     pQueryStructure subtree;
     pQueryStructure having;
+    pQueryStructure orderby_item, last_orderby;
     char* ptr;
     int has_identity;
     pQueryDeclaredObject qdo;
@@ -638,6 +703,64 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		mssError(0,"MQ","Error in ON DUPLICATE expression <%s>", subtree->RawData.String);
 		return -1;
 		}
+	    }
+
+	/*** Merge the ORDER BY clauses if there is more than one.  An ORDER BY
+	 *** marked DEFAULT is replaced by later ORDER BYs.  An ORDER BY without
+	 *** DEFAULT is always kept and later clauses append their keys to it.
+	 ***/
+	last_orderby = NULL;
+	cnt = xaCount(&qs->Children);
+	for(i=0;i<cnt;i++) /* Find last ORDER BY */
+	    {
+	    subtree = (pQueryStructure)xaGetItem(&qs->Children, i);
+	    if (subtree->NodeType == MQ_T_ORDERBYCLAUSE)
+		last_orderby = subtree;
+	    }
+	ob = NULL;
+	for(i=0;i<cnt;)
+	    {
+	    subtree = (pQueryStructure)xaGetItem(&qs->Children, i);
+	    const bool is_last = (subtree == last_orderby);
+
+	    /** Skip non ORDER BY clauses. **/
+	    if (subtree->NodeType != MQ_T_ORDERBYCLAUSE)
+		{
+		i++;
+		continue;
+		}
+
+	    /** Drop a DEFAULT clause that isn't the last one. **/
+	    if ((subtree->Flags & MQ_SF_DEFAULTORDER) && !is_last)
+		{
+		/** Remove ORDER BY element. **/
+		xaRemoveItem(&qs->Children, i);
+		mq_internal_FreeQS(subtree);
+		cnt = xaCount(&qs->Children);
+		continue;
+		}
+
+	    /** Keep the first surviving clause. **/
+	    if (ob == NULL)
+		{
+		ob = subtree;
+		i++;
+		continue;
+		}
+
+	    /** Fold later clauses into the first one. **/
+	    for(j=0;j<subtree->Children.nItems;j++)
+		{
+		orderby_item = (pQueryStructure)xaGetItem(&subtree->Children, j);
+		orderby_item->Parent = ob;
+		xaAddItem(&ob->Children, (void*)orderby_item);
+		}
+	    xaClear(&subtree->Children, NULL, NULL);
+
+	    /** Remove ORDER BY element. **/
+	    xaRemoveItem(&qs->Children, i);
+	    mq_internal_FreeQS(subtree);
+	    cnt = xaCount(&qs->Children);
 	    }
 
 	/** Compile the order by expressions **/
@@ -1355,7 +1478,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
     pXString xs, param;
     pTObjData ptod;
     char sourcetype[64];
-    static char* reserved_wds[] = {"where","select","from","order","by","set","rowcount","group",
+    static char* reserved_wds[] = {"where","select","from","order","by","default","set","rowcount","group",
     				   "crosstab","as","having","into","update","delete","insert",
 				   "values","with","limit","for","on","duplicate", "declare",
 				   "showplan", "multistatement", "if", "modified", "exec", 
@@ -1454,6 +1577,18 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 				orderby_cls = mq_internal_AllocQS(MQ_T_ORDERBYCLAUSE);
 				xaAddItem(&qs->Children, (void*)orderby_cls);
 				orderby_cls->Parent = qs;
+				
+				/*** Optional DEFAULT keyword: Marks this ORDER BY
+				 *** to be replaced by later ORDER BYs, instead of
+				 *** appended to. (see mq_internal_PostProcess()).
+				 ***/
+				if ((t = mlxNextToken(lxs)) == MLX_TOK_RESERVEDWD &&
+				    (ptr = mlxStringVal(lxs, NULL)) != NULL && 
+				    strcmp(ptr, "default") == 0)
+				    orderby_cls->Flags |= MQ_SF_DEFAULTORDER;
+				else
+				    mlxHoldToken(lxs);
+				
 			        next_state = OrderByItem;
 				}
 			    }
@@ -3296,7 +3431,7 @@ mq_internal_FinalizeAppData(void* appdata_v)
 void*
 mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int flags)
     {
-    pMultiQuery this;
+    pMultiQuery this = NULL;
     pQueryAppData appdata;
     int i;
 
@@ -3927,6 +4062,8 @@ mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
     int i, id;
     pQueryDeclaredObject qdo;
     pQueryDeclaredCollection qdc;
+
+	if (qy == NULL) return 0;
 
     	/** Check the link cnt **/
 	if ((--qy->LinkCnt) > 0) return 0;

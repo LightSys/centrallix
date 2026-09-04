@@ -21,6 +21,9 @@
 /* Define to 1 if you have the `crypt' library (-lcrypt). */
 #undef HAVE_LIBCRYPT
 
+/* Define to 1 if you have the `m' library (-lm). */
+#undef HAVE_LIBM
+
 /* Define to 1 if you have the `z' library (-lz). */
 #undef HAVE_LIBZ
 
@@ -95,6 +98,9 @@
 
 /* enable mTask debugging */
 #undef MTASK_DEBUG
+
+/* defined to 1 if using pthreads for MTASK */
+#undef MTASK_USEPTHREADS
 
 /* enable newmalloc subsystem debugging */
 #undef NMMALLOC_DEBUG

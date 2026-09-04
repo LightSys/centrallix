@@ -82,7 +82,7 @@ The xstring (xs) module is used for managing growable strings.  It is based on a
 ```c
 pXString xsNew()
 ```
-This function allocates a new XString structure to contain a new, empty string.  It uses [`nmMalloc()`](#nmmalloc) because the XString struct is always a consistant size.  This function returns a pointer to the new string if successful, or `NULL` if an error occurs.
+This function allocates a new XString structure to contain a new, empty string.  It uses [`nmMalloc()`](newmalloc.md#nmmalloc) because the XString struct is always a consistent size.  This function returns a pointer to the new string if successful, or `NULL` if an error occurs.
 
 
 ## xsFree()
@@ -117,7 +117,7 @@ This function will optionally allocate more memory, if needed, given the current
 ```c
 int xsConcatenate(pXString this, char* text, int len);
 ```
-This function concatenates the `text` string onto the end of the XString's value.  If `len` is set, that number of characters are copied, including possible null characters (`'\0'`).  If `len` is -1, all data up to the null-terminater is copied.  This function returns 0 if successful, or -1 if an error occurs.
+This function concatenates the `text` string onto the end of the XString's value.  If `len` is set, that number of characters are copied, including possible null characters (`'\0'`).  If `len` is -1, all data up to the null-terminator is copied.  This function returns 0 if successful, or -1 if an error occurs.
 
 - ⚠️ **Warning**: Do not store pointers to values within the string while adding text to the end of the string.  The string may be reallocated to increase space, causing such pointers to break.  Instead, use offset indexes into the string and calculate pointers on demand with `xs->String + offset`.
     
@@ -226,7 +226,7 @@ int xsFind(pXString this, char* find, int findlen, int offset)
 This function searches for a specific string (`find`) in the xstring, starting at the provided `offset`.  `findlen` is the length of the provided string, allowing it to include null characters (pass -1 to have the length calculated using `strlen(find)`).  This function returns the index where the string was found if successful, or -1 if an error occurs (including the string not being found).
 
 
-## xsFind()
+## xsFindRev()
 ```c
 int xsFindRev(pXString this, char* find, int findlen, int offset)
 ```
@@ -237,7 +237,7 @@ This function works the same as [`xsFind()`](#xsfind) except that it searches fr
 ```c
 int xsSubst(pXString this, int offset, int len, char* rep, int replen)
 ```
-This function substitutes a string into a given position in an xstring.  This does not search for matches as with [`xsReplace()`](#xsrepalce), instead the position (`offset`) and length (`len`) must be specified.  Additionally, the length of the replacement string (`replen`) can be specified handle null characters.  Both `len` and `replen` can be left blank to generate them using `strlen()`.  This function returns 0 if successful, or -1 if an error occurs.
+This function substitutes a string into a given position in an xstring.  This does not search for matches as with [`xsReplace()`](#xsreplace), instead the position (`offset`) and length (`len`) must be specified.  Additionally, the length of the replacement string (`replen`) can be specified handle null characters.  Both `len` and `replen` can be left blank to generate them using `strlen()`.  This function returns 0 if successful, or -1 if an error occurs.
 
 
 ## xsReplace()
