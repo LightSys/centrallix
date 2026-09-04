@@ -506,6 +506,9 @@ ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const
     {
     int result = -1;
     unsigned int** lev_matrix = NULL;
+
+	/** Optimization: Identical string pointers. **/
+	if (str1 == str2) return 0;
     
 	/*** lev_matrix:
 	 *** For all i and j, d[i][j] will hold the Levenshtein distance between
