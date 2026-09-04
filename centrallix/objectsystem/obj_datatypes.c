@@ -1238,7 +1238,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		        {
 			/** For year in '1/1/1999' or day in '1/1' or '1/1 12pm 1999' **/
 			if (got_day == -1) got_day = last_num-1;
-			if (got_yr == -1) got_yr = last_num;
+			else if (got_yr == -1) got_yr = last_num;
 			}
 		    else if (!strncasecmp(endptr,"AM",2) || !strncasecmp(endptr," AM",3) ||
 		             !strncasecmp(endptr,"PM",2) || !strncasecmp(endptr," PM",3))
