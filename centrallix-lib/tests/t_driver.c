@@ -57,7 +57,17 @@ start(void* v)
 	signal(SIGSEGV, segv_handler);
 	signal(SIGABRT, abort_handler);
 	signal(SIGALRM, alarm_handler);
-	alarm(10);
+	
+	/*** Set a timer before Lockup is triggered, using a significantly
+	 *** larger value if Valgrind appears to be enabled.
+	 ***/
+	#ifdef USING_VALGRIND
+	alarm(90); /* Valgrind detected. */
+	#else
+	alarm(5); /* Normal timeout. */
+	#endif
+	
+	
 	times(&t);
 	start = t.tms_utime + t.tms_stime + t.tms_cutime + t.tms_cstime;
 	rval = test(&tname);
