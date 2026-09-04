@@ -1,14 +1,3 @@
-#include "cxlibconfig-internal.h"
-#include "mtask.h"
-#include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <signal.h>
-#include <sys/times.h>
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
@@ -24,6 +13,18 @@
 /* Creation:	March 11th, 2005					*/
 /* Description: Test suite driver for centrallix-lib tests.		*/
 /************************************************************************/
+
+#include <fcntl.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/times.h>
+#include <unistd.h>
+
+#include "cxlibconfig-internal.h"
+#include "mtask.h"
 
 
 long long test(char**);
