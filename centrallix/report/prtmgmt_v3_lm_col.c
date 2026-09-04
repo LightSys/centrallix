@@ -315,6 +315,7 @@ prt_collm_Resize(pPrtObjStream this, double new_width, double new_height)
 	    {
 	    rval = 0;
 	    ow = this->Width;
+	    oh = this->Height;
 	    npw = new_width - this->Width + this->Parent->Width;
 	    nph = new_height + this->Y + this->Parent->MarginTop + this->Parent->MarginBottom;
 	    if (nph < this->Parent->Height) nph = this->Parent->Height;
@@ -332,11 +333,11 @@ prt_collm_Resize(pPrtObjStream this, double new_width, double new_height)
 		    col_obj->X += (new_width - ow);
 		    }
 		}
-            // TODO Initialize oh and ow before use
 	    if (rval >= 0 && new_height != oh)
 		{
 		this->Height = new_height;
 		}
+
 	    return rval;
 	    }
 
@@ -688,5 +689,3 @@ prt_collm_Initialize()
 
     return 0;
     }
-
-

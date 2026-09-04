@@ -143,6 +143,7 @@ prtCloseSession(pPrtSession s)
     pPrtObjStream obj;
     int i;
     char* p;
+    int rval;
 
 	ASSERTMAGIC(s, MGK_PRTOBJSSN);
 
@@ -157,7 +158,9 @@ prtCloseSession(pPrtSession s)
 		}
 	    }
 
-	s->Formatter->Close(s->FormatterData);
+	if (s->Formatter->Close(s->FormatterData) < 0)
+	    s->Flags |= PRT_SESSION_F_ERROR;
+	rval = (s->Flags & PRT_SESSION_F_ERROR) ? -1 : 0;
 
 	/** Release the memory used by the pages **/
 	if (s->StreamHead) prt_internal_FreeTree(s->StreamHead);
@@ -173,7 +176,7 @@ prtCloseSession(pPrtSession s)
 	/** Free the session structure and exit. **/
 	nmFree(s,sizeof(PrtSession));
 
-    return 0;
+    return rval;
     }
 
 
@@ -362,4 +365,3 @@ prtGetOutputType(pPrtSession s)
     {
     return s->Formatter->GetOutputType(s->FormatterData);
     }
-
