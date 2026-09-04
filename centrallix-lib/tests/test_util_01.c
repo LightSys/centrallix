@@ -8,7 +8,7 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
 /* included file "COPYING".						*/
 /* 									*/
-/* Module: 	test_util_00.c     					*/
+/* Module: 	test_util_01.c     					*/
 /* Author:	Micah Shennum 					        */
 /* Creation:	May 26th, 2011 					        */
 /* Description: Test strtoi                                             */
