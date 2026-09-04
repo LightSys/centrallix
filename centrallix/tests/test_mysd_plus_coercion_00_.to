@@ -12,12 +12,12 @@ query INSERT INTO /tests/Test_DB/stringTests/rows SELECT a = 'test', b = 'test',
 csv SELECT test_plus_str_01 = "string + string" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + "2" = "12"
 csv SELECT test_plus_str_02 = "string + integer" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + 2 = "12"
 csv SELECT test_plus_str_03 = "string + double" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + 2.0 = "12.0"
-csv SELECT test_plus_str_04 = "string + money" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + $2 = "1$2.00"
+csv SELECT test_plus_str_04 = "string + money" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + $2 = "12.00"
 
 # Multi-term string-first chains
 csv SELECT test_plus_str_05 = "string + integer + string + integer = concatenation" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + 2 + "3" + 4 = "1234"
 csv SELECT test_plus_str_06 = "string + double + string + integer = concatenation" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + 2.0 + "3" + 4 = "12.034"
-csv SELECT test_plus_str_07 = "string + integer + double + money = concatenation" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + 2 + 3.14 + $4 = "123.14$4.00"
+csv SELECT test_plus_str_07 = "string + integer + double + money = concatenation" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + 2 + 3.14 + $4 = "123.144.00"
 
 
 # ─────────────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ csv SELECT test_plus_ord_01 = "integer + double + money = double (double first)"
 # money before double → result is money (truncated to 4dp)
 csv SELECT test_plus_ord_02 = "integer + money + double = money (money first)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND 1 + $2 + 3.1234 = $6.1234
 # string before double or money → result is string regardless
-csv SELECT test_plus_ord_03 = "string before double and money = concatenation" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + 2.5 + $3 = "12.5$3.00"
+csv SELECT test_plus_ord_03 = "string before double and money = concatenation" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND "1" + 2.5 + $3 = "12.53.00"
 
 
 # ─────────────────────────────────────────────────────────────

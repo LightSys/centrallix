@@ -14,7 +14,7 @@ csv SELECT datepart_datetime_04 = "datepart: hour" FROM /tests/Test_DB/stringTes
 csv SELECT datepart_datetime_05 = "datepart: minute" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(minute, convert(datetime, "2026-03-15 10:30:45")) = 30
 csv SELECT datepart_datetime_06 = "datepart: second" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(second, convert(datetime, "2026-03-15 10:30:45")) = 45
 # 2026-03-15 is a Sunday; MySQL dayofweek() returns 1=Sunday
-csv SELECT datepart_07 = "datepart: weekday (Sunday = 1 in MySQL)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(weekday, convert(datetime, "2026-03-15 10:30:45")) = 1
+csv SELECT datepart_datetime_07 = "datepart: weekday (Sunday = 1 in MySQL)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(weekday, convert(datetime, "2026-03-15 10:30:45")) = 1
 # 2026-03-16 is a Monday
 csv SELECT test_datepart_datetime_08 = "datepart: weekday (Monday = 2 in MySQL)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(weekday, convert(datetime, "2026-03-16 00:00:00")) = 2
 csv SELECT test_datepart_datetime_09 = "datepart: boundary — midnight" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(hour, convert(datetime, "2026-01-01 00:00:00")) = 0 AND datepart(minute, convert(datetime, "2026-01-01 00:00:00")) = 0 AND datepart(second, convert(datetime, "2026-01-01 00:00:00")) = 0
@@ -27,7 +27,7 @@ csv SELECT datepart_string_04 = "datepart: hour" FROM /tests/Test_DB/stringTests
 csv SELECT datepart_string_05 = "datepart: minute" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(minute, "2026-03-15 10:30:45") = 30
 csv SELECT datepart_string_06 = "datepart: second" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(second, "2026-03-15 10:30:45") = 45
 # 2026-03-15 is a Sunday; MySQL dayofweek() returns 1=Sunday
-csv SELECT datepart_07 = "datepart: weekday (Sunday = 1 in MySQL)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(weekday, "2026-03-15 10:30:45") = 1
+csv SELECT datepart_string_07 = "datepart: weekday (Sunday = 1 in MySQL)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(weekday, "2026-03-15 10:30:45") = 1
 # 2026-03-16 is a Monday
 csv SELECT test_datepart_string_08 = "datepart: weekday (Monday = 2 in MySQL)" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(weekday, "2026-03-16 00:00:00") = 2
 csv SELECT test_datepart_string_09 = "datepart: boundary — midnight" FROM /tests/Test_DB/stringTests/rows WHERE :a = 'test' AND datepart(hour, "2026-01-01 00:00:00") = 0 AND datepart(minute, convert(datetime, "2026-01-01 00:00:00")) = 0 AND datepart(second, convert(datetime, "2026-01-01 00:00:00")) = 0

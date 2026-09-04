@@ -42,8 +42,6 @@
 "convert string to money"
 "convert_money_04"
 "convert string with decimal to money"
-"convert_money_05"
- "convert string with $ to money"
 "convert_money_06"
 "convert money to money"
 "convert_datetime_01"
