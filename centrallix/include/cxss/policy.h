@@ -1,6 +1,7 @@
 #ifndef _CXSS_POLICY_H
 #define _CXSS_POLICY_H
 
+#include "cxss/cxss.h"
 #include "cxlib/datatypes.h"
 #include "cxlib/xarray.h"
 #include "obj.h"
@@ -9,7 +10,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2007 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
