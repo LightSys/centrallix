@@ -46,14 +46,23 @@ To run only a subset of tests, set the `TONLY` environment variable to the desir
 
 ```sh
 export TONLY=objdrv
-make test
+sudo -E make test
 ```
 
 ```sh
-make test TONLY=objdrv
+sudo -E make test TONLY=objdrv
 ```
 
 The `00baseline` tests are special sanity checks for the test system itself.  They are intended to demonstrate and validate the suite's ability to correctly report test results.
+
+- ⚠️ **Warning**:  Tests should be run as `root` using `sudo` to prevent some permission issues, such as when accessing debug logs.  However, Centrallix does not give root bypass (this is called `CAP_DAC_OVERRIDE`), so it treats root like "just another user".  Thus, run the commands below to give root the permissions it needs to run tests:
+	```sh
+	sudo usermod -aG kardia_src root
+	sudo usermod -aG devel root
+	```
+
+- 📖 **Note**:  Remember to pass `-E` to `sudo` when specifying the `TONLY` environment variable, otherwise the variable isn't coppied into the root environment created by sudo, so the tests will not see it. 
+
 
 ### Test Case Format: Standard
 Each test is composed of two or more files in the `centrallix/tests` directory, and each test has a category name (e.g. `objdrv_cluster` for testing the cluster driver) and a test case number (incrementing from `00`), which are used for naming test files.  The first test file is the `test_{category}_NN.to` script file which specifies a list of commands to be run in test-obj, each on their own line.  Lines starting with a `#` are treated as comments.  By convention, the first line of this file should be `##NAME <Test Name>`.  The second file is `test_{category}_NN.cmp`, which lists the expected output from running the specified commands.  Additional files used by the test (e.g. file accessed by the `.to` script file) should be placed in `centrallix-os/tests` so that they will be accessible to the object system from the script.  These files should follow the same naming convention as the test that uses them to avoid confusion.
