@@ -2,7 +2,7 @@
 /* Centrallix Application Server System					*/
 /* Centrallix Base Library						*/
 /*									*/
-/* Copyright (C) 2005 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2025-2026 LightSys Technology Services, Inc.		*/
 /*									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
