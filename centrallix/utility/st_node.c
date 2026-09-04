@@ -69,6 +69,7 @@ snReadNode(pObject obj)
     pStructInf inf;
     char* path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr + obj->SubCnt - 1);
     ObjData pod;
+    char buf[1];
 
     	/** Check in the node cache first. **/
 	node = (pSnNode)xhLookup(&(SN_INF.NodeCache),path);
@@ -81,11 +82,15 @@ snReadNode(pObject obj)
 	        {
 		if (memcmp(pod.DateTime, &(node->LastModification), sizeof(DateTime)) != 0)
 		    {
+		    /** Discard the node cache entry **/
 		    xhRemove(&(SN_INF.NodeCache),path);
 		    xaDeInit(&(node->Opens));
 		    stFreeInf(node->Data);
 		    nmFree(node, sizeof(SnNode));
 		    node = NULL;
+
+		    /** Try to rewind the object so we can re-read its content **/
+		    objRead(obj, buf, 0, 0, OBJ_U_SEEK);
 		    }
 		}
 	    }
