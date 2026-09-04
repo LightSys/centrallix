@@ -451,13 +451,13 @@ ca_sparse_similarity(const pVector v1, const pVector v2)
  *** allocated centroid by taking their dot product.
  *** 
  *** @param v1 Sparse vector #1.
- *** @param c1 Dense centroid #2.
+ *** @param c1 Dense centroid #1.
  *** @returns Similarity between 0 and 1 where
  ***     1 indicates identical and
  ***     0 indicates completely different.
  ***/
 static double
-ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c2)
+ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c1)
     {
     double dot_product = 0.0;
     
@@ -468,14 +468,14 @@ ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c2)
 	    ca_parse_vector_token(v1[i++], &dims_consumed, &val);
 	    
 	    /** Increase dot product (skipped for zero-values). **/
-	    if (val > 0u) dot_product += (double)val * c2[dim];
+	    if (val > 0u) dot_product += (double)val * c1[dim];
 	    
 	    /** Move ahead the requested number of dimensions. **/
 	    dim += dims_consumed;
 	    }
     
     /** Return the difference score. **/
-    return dot_product / (ca_magnitude_sparse(v1) * ca_magnitude_dense(c2));
+    return dot_product / (ca_magnitude_sparse(v1) * ca_magnitude_dense(c1));
     }
 
 /*** Calculate the difference between a sparsely allocated vector and a densely
@@ -487,7 +487,7 @@ ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c2)
  ***     1 indicates completely different and
  ***     0 indicates identical.
  ***/
-#define ca_sparse_dif_to_centroid(v1, c2) (1.0 - ca_sparse_similarity_to_centroid(v1, c2))
+#define ca_sparse_dif_to_centroid(v1, c1) (1.0 - ca_sparse_similarity_to_centroid(v1, c1))
 
 /*** Computes Levenshtein distance between two strings.
  *** 
