@@ -994,6 +994,15 @@ ca_most_similar(
     void* most_similar = NULL;
     double best_sim = -INFINITY;
     
+	/** Error cases. **/
+	if (target == NULL
+	    || data == NULL
+	    || similarity == NULL
+	    || num_data == 0u
+	    || (threshold < 0.0 || 1.0 < threshold)
+	    || isnan(threshold)
+	) return NULL;
+    
 	/** Iterate over all data options to find the one with the highest similarity. **/
 	for (unsigned int i = 0u; (num_data == 0u && data[i] != NULL) || (i < num_data); i++)
 	    {
@@ -1036,6 +1045,15 @@ ca_sliding_search(
     {
     pXArray pairs = maybe_pairs;
     
+	/** Error cases. **/
+	if (data == NULL
+	    || num_data == 0
+	    || window_size == 0
+	    || similarity == NULL 
+	    || (threshold < 0.0 || 1.0 < threshold)
+	    || isnan(threshold)
+	) goto err;
+	
 	/** Allocate space for pairs (if it is not provided). **/
 	if (pairs == NULL)
 	    {
