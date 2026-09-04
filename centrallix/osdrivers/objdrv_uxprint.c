@@ -13,6 +13,7 @@
 #include <signal.h>
 #include <errno.h>
 #include "obj.h"
+#include "obj_private.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"

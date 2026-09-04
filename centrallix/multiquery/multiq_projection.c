@@ -4,10 +4,13 @@
 #include <fcntl.h>
 #include <assert.h>
 #include "obj.h"
+#include "obj_private.h"
 #include "cxlib/mtlexer.h"
 #include "expression.h"
+#include "expression_private.h"
 #include "cxlib/xstring.h"
 #include "multiquery.h"
+#include "multiquery_private.h"
 #include "cxlib/mtsession.h"
 
 
