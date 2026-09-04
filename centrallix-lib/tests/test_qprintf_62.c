@@ -25,16 +25,16 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "dGVzdC#BkYXRh");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "%STR&DB64", "dGVzdC#BkYXRh");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "#dGVzdCBkYXRh");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "%STR&DB64", "#dGVzdCBkYXRh");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "dGVzdCBkYXRh#");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "%STR&DB64", "dGVzdCBkYXRh#");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "dGVzdCBkY#XRh");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "%STR&DB64", "dGVzdCBkY#XRh");
 	    assert(rval < 0);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DB64", "dGVzdCBkYXRh");
-	    assert(strcmp(buf+4,"test data") == 0);
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "%STR&DB64", "dGVzdCBkYXRh");
+	    assert(strcmp((char*)buf+4,"test data") == 0);
 	    assert(rval == 9);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
@@ -48,4 +48,3 @@ test(char** tname)
 
     return iter*6;
     }
-

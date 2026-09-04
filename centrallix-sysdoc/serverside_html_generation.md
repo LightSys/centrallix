@@ -1,22 +1,40 @@
 # Serverside HTML Generation
-Author: Seth Bird (Thr4wn)
 
-Date: August 2008
+**Author**: Seth Bird (Thr4wn)
 
-This file was created by Seth Bird (Thr4wn) to introduce people to
+**Date**: August 2008
+
+*With slight modification for clarity by Israel Fuller (Lightning) during June, 2025.*
+
+This file was created by Seth Bird (Thr4wn) to introduce developers to
 nuances of how centrallix handles javascript.
 
 Please edit this file if there are any mistakes.
 
-Also, online documentation can be found at http://www.centrallix.net/docs/docs.php
+Also, online documentation can be found at http://www.centrallix.net/docs/docs.php.
 
-See javascript.txt for more information on how the javascript side of things work.
+See `javascript.txt` for more information about the generated javascript that is generated.
+
+## Table of Contents
+- [Serverside HTML Generation](#Serverside-HTML-Generation)
+  - [Note about Unique Endings](#note-about-unique-endings)
+  - [Server-side App handling](#server-side-app-handling)
+    - [1) Conversion of App file to internal machine data](#1-conversion-of-app-file-to-internal-machine-data)
+    - [2) Auto Positioning](#2-auto-positioning)
+    - [3) HTML generation](#3-html-generation)
+    - [Conversion to Internal Machine Data](#conversion-to-internal-machine-data)
+    - [Apos Unit (Auto Positioning)](#apos-unit-auto-positioning)
+    - [HTML generation](#html-generation)
+    - [Logical Division of html page](#logical-division-of-html-page)
+    - [Flow of server-side html generation](#flow-of-server-side-html-generation)
+  - [Misc information](#misc-information)
+    - [Server-side "Classes"](#server-side-classes)
 
 ## Note about Unique Endings
 
 You'll see the following notation:
 
-       startup_*, build_wgtr_*, expinit_*, *Render, etc
+       startup_*, build_wgtr_*, expinit_*, *Render, etc.
 
 Where * represents some unique set of letters/numbers. (explanation given below)
 
