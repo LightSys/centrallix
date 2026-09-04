@@ -105,7 +105,7 @@ timerStop(pTimer timer)
 /*** Get the total time that elapsed while the timer was running.
  *** 
  *** @param timer The timer to read.
- *** @returns The total time in seconds, or NAN if `timer` is NULL.
+ *** @returns The total time in seconds, or NAN if an error occurs.
  ***/
 double
 timerGet(pTimer timer)
