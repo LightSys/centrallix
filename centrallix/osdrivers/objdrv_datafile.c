@@ -29,7 +29,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -2012,6 +2012,10 @@ dat_csv_GenerateRow(pDatData inf, int update_colid, pObjData update_val, pObjTrx
 			case DATA_T_STRING:
 			    s = 1;
 			    break;
+			default:
+			    mssError(1, "DAT", "Unknown data type: %d", inf->TData->ColTypes[i]);
+			    nmFree(buf,maxlen+1);
+			    return NULL;
 			}
 		    if (inf->RowBufSize + s <= maxlen)
 			{

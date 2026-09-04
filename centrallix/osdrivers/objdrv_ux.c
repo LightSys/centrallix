@@ -27,7 +27,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -86,7 +86,7 @@ typedef struct
     char	Buffer[OBJSYS_MAX_PATH];
     int		Flags;
     pObject	Obj;
-    struct stat	Fileinfo;
+    struct stat	Fileinfo;	/* file attributes at open or reopen time */
     DIR*	Direc;
     int		Mask;
     int		CurAttr;
@@ -95,13 +95,15 @@ typedef struct
     DateTime	ATime;
     DateTime	MTime;
     DateTime	CTime;
+    ino_t	Inode;
     pUxdNode	Node;
     int		Mode;		/* the mode we actually use for this file */
     }
     UxdData, *pUxdData;
 
-#define UXD_F_ISDIR	1
-#define UXD_F_ISOPEN	2
+#define UXD_F_ISDIR	1	/* is a directory */
+#define UXD_F_ISOPEN	2	/* underlying file is open */
+#define UXD_F_STAT	4	/* Fileinfo stat() information is valid */
 
 #define UXD(x) ((pUxdData)(x))
 
@@ -612,7 +614,12 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 			inf->Flags |= UXD_F_ISOPEN;
 			}
 		    obj->Flags |= OBJ_F_CREATED;
-		    stat(path,&(inf->Fileinfo));
+		    if (stat(path,&(inf->Fileinfo)) == 0)
+			inf->Flags |= UXD_F_STAT;
+		    }
+		else
+		    {
+		    inf->Flags |= UXD_F_STAT;
 		    }
 
 		/** Was it a file?  Or final element?  That ends the UXD's part of the path **/
@@ -663,6 +670,39 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     }
 
 
+/*** uxd_internal_CheckReopen - do we need to reopen the underlying file?
+ ***/
+void
+uxd_internal_CheckReopen(pUxdData inf)
+    {
+    struct stat fileinfo;
+
+	/** Has the file's inode, ctime, or mtime changed? **/
+	if ((inf->Flags & UXD_F_ISOPEN) && (inf->Flags & UXD_F_STAT))
+	    {
+	    if (stat(inf->RealPathname, &fileinfo) < 0)
+		{
+		/** File may have been deleted or renamed - just close it. **/
+		fdClose(inf->fd, 0);
+		inf->Flags &= ~(UXD_F_ISOPEN | UXD_F_STAT);
+		}
+	    else
+		{
+		/** Check inode, ctime, mtime **/
+		if (fileinfo.st_ino != inf->Fileinfo.st_ino || fileinfo.st_mtime != inf->Fileinfo.st_mtime || fileinfo.st_ctime != inf->Fileinfo.st_ctime)
+		    {
+		    /** Close it and update the stat info **/
+		    fdClose(inf->fd, 0);
+		    inf->Flags &= ~UXD_F_ISOPEN;
+		    memcpy(&inf->Fileinfo, &fileinfo, sizeof(struct stat));
+		    }
+		}
+	    }
+
+    return;
+    }
+
+
 /*** uxd_internal_CheckOpen - see if we need to open the file or directory
  ***/
 int
@@ -685,10 +725,15 @@ uxd_internal_CheckOpen(pUxdData inf)
 	    inf->fd = fdOpen(inf->RealPathname, inf->Mode & ~OBJ_O_CXOPTS, inf->Mask);
 	    if (!(inf->fd)) 
 	        {
-		mssErrorErrno(1,"UXD","Could not open file");
+		mssErrorErrno(1,"UXD","Could not open file %s", inf->RealPathname);
 		return -1;
 		}
-	    inf->Flags |= UXD_F_ISOPEN;
+	    if (stat(inf->RealPathname, &(inf->Fileinfo)) < 0)
+		{
+		mssErrorErrno(1,"UXD","Could not stat() file %s", inf->RealPathname);
+		return -1;
+		}
+	    inf->Flags |= (UXD_F_ISOPEN | UXD_F_STAT);
 	    }
 
     return 0;
@@ -808,6 +853,15 @@ uxdRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 	    return -1;
 	    }
 
+	/** Recheck our file when rewinding the file descriptor.  We don't do
+	 ** this check if not rewinding all the way; in that case there's still
+	 ** an implied dependency on previous file content, so it's better to
+	 ** keep reading data from a potentially deleted file, for consistency
+	 ** purposes.
+	 **/
+	if ((flags & OBJ_U_SEEK) && offset == 0)
+	    uxd_internal_CheckReopen(inf);
+
 	/** Need to open it? */
 	if (uxd_internal_CheckOpen(inf) < 0)
 	    return -1;
@@ -897,7 +951,7 @@ void*
 uxdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
     pUxdQuery qy = ((pUxdQuery)(qy_v));
-    pUxdData inf;
+    pUxdData inf = NULL;
     struct dirent *d;
     int rval;
 
@@ -924,7 +978,7 @@ uxdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	if (obj_internal_AddToPath(obj->Pathname, d->d_name) < 0)
 	    {
 	    mssError(1,"UXD","Query result pathname exceeds internal limits");
-	    return NULL;
+	    goto error;
 	    }
 	inf = (pUxdData)nmMalloc(sizeof(UxdData));
 	memset(inf,0,sizeof(UxdData));
@@ -932,16 +986,26 @@ uxdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	if (rval < 0 || rval >= OBJSYS_MAX_PATH)
 	    {
 	    mssError(1,"UXD","Query result pathname exceeds internal limits");
-	    return NULL;
+	    goto error;
 	    }
-	stat(inf->RealPathname, &(inf->Fileinfo));
+	if (stat(inf->RealPathname, &(inf->Fileinfo)) < 0)
+	    {
+	    mssErrorErrno(1,"UXD","Could not access directory query result %s", inf->RealPathname);
+	    goto error;
+	    }
+	inf->Flags |= UXD_F_STAT;
 	if (S_ISDIR(inf->Fileinfo.st_mode)) inf->Flags |= UXD_F_ISDIR;
 	inf->Node = qy->File->Node;
 	inf->Node->SnNode->OpenCnt++;
 	inf->Obj = obj;
 	inf->Mode = mode & ~(O_CREAT | O_TRUNC | O_EXCL);
 
-    return (void*)inf;
+	return (void*)inf;
+
+    error:
+	if (inf)
+	    nmFree(inf, sizeof(UxdData));
+	return NULL;
     }
 
 
@@ -1000,6 +1064,7 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     struct tm *t;
     char* ptr;
     pUxdAnnotation ua;
+    struct stat fileinfo;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -1075,10 +1140,14 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		}
 	    if (!(inf->UsrName[0]))
 		{
-		stat(inf->RealPathname, &(inf->Fileinfo));
-		pw = getpwuid(inf->Fileinfo.st_uid);
-		if (!pw) snprintf(inf->UsrName,16,"%d",inf->Fileinfo.st_uid);
-		else snprintf(inf->UsrName,16,"%s",pw->pw_name);
+		if (stat(inf->RealPathname, &fileinfo) == 0)
+		    {
+		    pw = getpwuid(fileinfo.st_uid);
+		    if (!pw) snprintf(inf->UsrName,16,"%d",fileinfo.st_uid);
+		    else snprintf(inf->UsrName,16,"%s",pw->pw_name);
+		    }
+		else
+		    return 1;
 		}
 	    val->String = inf->UsrName;
 	    }
@@ -1091,10 +1160,14 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		}
 	    if (!(inf->GrpName[0]))
 		{
-		stat(inf->RealPathname, &(inf->Fileinfo));
-		gr = getgrgid(inf->Fileinfo.st_gid);
-		if (!gr) snprintf(inf->GrpName,16,"%d",inf->Fileinfo.st_gid);
-		else snprintf(inf->GrpName,16,"%s",gr->gr_name);
+		if (stat(inf->RealPathname, &fileinfo) == 0)
+		    {
+		    gr = getgrgid(fileinfo.st_gid);
+		    if (!gr) snprintf(inf->GrpName,16,"%d",fileinfo.st_gid);
+		    else snprintf(inf->GrpName,16,"%s",gr->gr_name);
+		    }
+		else
+		    return 1;
 		}
 	    val->String = inf->GrpName;
 	    }
@@ -1105,8 +1178,10 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		mssError(1,"UXD","Type mismatch accessing attribute '%s' (should be integer)", attrname);
 		return -1;
 		}
-	    stat(inf->RealPathname, &(inf->Fileinfo));
-	    val->Integer = inf->Fileinfo.st_size;
+	    if (stat(inf->RealPathname, &fileinfo) == 0)
+		val->Integer = fileinfo.st_size;
+	    else
+		return 1;
 	    }
 	else if (!strcmp(attrname,"permissions"))
 	    {
@@ -1115,8 +1190,10 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		mssError(1,"UXD","Type mismatch accessing attribute '%s' (should be integer)", attrname);
 		return -1;
 		}
-	    stat(inf->RealPathname, &(inf->Fileinfo));
-	    val->Integer = inf->Fileinfo.st_mode;
+	    if (stat(inf->RealPathname, &fileinfo) == 0)
+		val->Integer = fileinfo.st_mode;
+	    else
+		return 1;
 	    }
 	else if (!strcmp(attrname,"last_modification"))
 	    {
@@ -1125,17 +1202,18 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		mssError(1,"UXD","Type mismatch accessing attribute '%s' (should be datetime)", attrname);
 		return -1;
 		}
-	    /*if (inf->MTime.Value == 0)
-		{*/
-		stat(inf->RealPathname, &(inf->Fileinfo));
-		t = localtime(&(inf->Fileinfo.st_mtime));
+	    if (stat(inf->RealPathname, &fileinfo) == 0)
+		{
+		t = localtime(&fileinfo.st_mtime);
 		inf->MTime.Part.Second = t->tm_sec;
 		inf->MTime.Part.Minute = t->tm_min;
 		inf->MTime.Part.Hour = t->tm_hour;
 		inf->MTime.Part.Day = t->tm_mday - 1;
 		inf->MTime.Part.Month = t->tm_mon;
 		inf->MTime.Part.Year = t->tm_year;
-		/*}*/
+		}
+	    else
+		return 1;
 	    val->DateTime = &(inf->MTime);
 	    }
 	else if (!strcmp(attrname,"last_change"))
@@ -1145,17 +1223,18 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		mssError(1,"UXD","Type mismatch accessing attribute '%s' (should be datetime)", attrname);
 		return -1;
 		}
-	    /*if (inf->CTime.Value == 0)
-		{*/
-		stat(inf->RealPathname, &(inf->Fileinfo));
-		t = localtime(&(inf->Fileinfo.st_ctime));
+	    if (stat(inf->RealPathname, &fileinfo) == 0)
+		{
+		t = localtime(&fileinfo.st_ctime);
 		inf->CTime.Part.Second = t->tm_sec;
 		inf->CTime.Part.Minute = t->tm_min;
 		inf->CTime.Part.Hour = t->tm_hour;
 		inf->CTime.Part.Day = t->tm_mday - 1;
 		inf->CTime.Part.Month = t->tm_mon;
 		inf->CTime.Part.Year = t->tm_year;
-		/*}*/
+		}
+	    else
+		return 1;
 	    val->DateTime = &(inf->CTime);
 	    }
 	else if (!strcmp(attrname,"last_access"))
@@ -1165,17 +1244,18 @@ uxdGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		mssError(1,"UXD","Type mismatch accessing attribute '%s' (should be datetime)", attrname);
 		return -1;
 		}
-	    /*if (inf->ATime.Value == 0)
-		{*/
-		stat(inf->RealPathname, &(inf->Fileinfo));
-		t = localtime(&(inf->Fileinfo.st_atime));
+	    if (stat(inf->RealPathname, &fileinfo) == 0)
+		{
+		t = localtime(&fileinfo.st_atime);
 		inf->ATime.Part.Second = t->tm_sec;
 		inf->ATime.Part.Minute = t->tm_min;
 		inf->ATime.Part.Hour = t->tm_hour;
 		inf->ATime.Part.Day = t->tm_mday - 1;
 		inf->ATime.Part.Month = t->tm_mon;
 		inf->ATime.Part.Year = t->tm_year;
-		/*}*/
+		}
+	    else
+		return 1;
 	    val->DateTime = &(inf->ATime);
 	    }
 	else

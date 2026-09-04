@@ -19,7 +19,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -1527,7 +1527,7 @@ obj_internal_DumpSession(pObjSession session)
 int
 objImportFile(pObjSession sess, char* source_filename, char* dest_osml_dir, char* new_osml_name, int new_osml_name_len)
     {
-    pFile source_fd;
+    pFile source_fd = NULL;
     pObject dest_obj;
     /*char buf[256];
     int rcnt;

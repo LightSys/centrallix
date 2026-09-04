@@ -68,6 +68,9 @@ CHECK_COVERAGE
 dnl Check for Valgrind integration
 CHECK_VALGRIND
 
+dnl Check for pthreads use for MTASK
+CHECK_PTHREADS
+
 dnl Check for Linux SIOCOUTQ
 CHECK_SIOCOUTQ
 

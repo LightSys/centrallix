@@ -1,3 +1,33 @@
+/************************************************************************/
+/* Centrallix Application Server System 				*/
+/* Centrallix Core							*/
+/* 									*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
+/* 									*/
+/* This program is free software; you can redistribute it and/or modify	*/
+/* it under the terms of the GNU General Public License as published by	*/
+/* the Free Software Foundation; either version 2 of the License, or	*/
+/* (at your option) any later version.					*/
+/* 									*/
+/* This program is distributed in the hope that it will be useful,	*/
+/* but WITHOUT ANY WARRANTY; without even the implied warranty of	*/
+/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the	*/
+/* GNU General Public License for more details.				*/
+/* 									*/
+/* You should have received a copy of the GNU General Public License	*/
+/* along with this program; if not, write to the Free Software		*/
+/* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  		*/
+/* 02111-1307  USA							*/
+/*									*/
+/* A copy of the GNU General Public License has been included in this	*/
+/* distribution in the file "COPYING".					*/
+/* 									*/
+/* Module: 	Credentials Database					*/
+/* Author:	Matthew B						*/
+/* Creation:	April 30, 2019						*/
+/* Description:	Manage database credentials.				*/
+/************************************************************************/
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,6 +36,7 @@
 #include <sqlite3.h>
 #include "cxss/credentials_db.h"
 #include "cxss/util.h"
+#include "cxlib/expect.h"
 #include "cxlib/mtsession.h"
 
 /* Private functions (credentials_db) */
@@ -477,20 +508,36 @@ int
 cxssRetrieveUserAuthLL(CXSS_DB_Context_t dbcontext, const char *cxss_userid, 
                        CXSS_UserAuth_LLNode **node)
 {
-    CXSS_UserAuth_LLNode *head, *prev, *current;
+    CXSS_UserAuth_LLNode* head = NULL;
+    CXSS_UserAuth_LLNode* prev;
+    CXSS_UserAuth_LLNode* current;
     const char *privatekey, *salt, *iv;
     const char *date_created, *date_last_updated;
     size_t keylength, salt_length, iv_length;
     bool removal_flag;
+    int rval = CXSS_DB_QUERY_ERROR;
 
     /* Bind data with sqlite3 stmt */
     sqlite3_reset(dbcontext->retrieve_user_auths_stmt);
-    if (sqlite3_bind_text(dbcontext->retrieve_user_auths_stmt, 1, cxss_userid, -1, NULL) != SQLITE_OK) {
-        goto bind_error;
+    const int bind_status = sqlite3_bind_text(dbcontext->retrieve_user_auths_stmt, 1, cxss_userid, -1, NULL);
+    if (UNLIKELY(bind_status != SQLITE_OK)) {
+	mssError(1, "CXSS",
+	    "Failed to bind value with SQLite statement: %s",
+	    sqlite3_errmsg(dbcontext->db)
+	);
+	rval = CXSS_DB_BIND_ERROR;
+        goto end;
     }
 
     /* Allocate head (dummy node) */
     head = malloc(sizeof(CXSS_UserAuth_LLNode));
+    if (UNLIKELY(head == NULL))
+	{
+	mssError(1, "CXSS", "Failed to allocate UserAuth Linked List Node (head node).");
+	rval = CXSS_DB_MEMORY_ERROR;
+	goto end;
+	}
+    head->next = NULL;
     prev = head;
 
     /* Execute query */
@@ -498,6 +545,13 @@ cxssRetrieveUserAuthLL(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
         
         /* Allocate and chain new node */
         current = malloc(sizeof(CXSS_UserAuth_LLNode));       
+	if (UNLIKELY(current == NULL))
+	    {
+	    mssError(1, "CXSS", "Failed to allocate UserAuth Linked List Node.");
+	    rval = CXSS_DB_MEMORY_ERROR;
+	    goto end;
+	    }
+        current->next = NULL;
         prev->next = current;
         
         /* Retrieve results */
@@ -527,13 +581,20 @@ cxssRetrieveUserAuthLL(CXSS_DB_Context_t dbcontext, const char *cxss_userid,
         prev = current;
     }
 
-    current->next = NULL;
+    /* Success. */
     *(node) = head;
-    return CXSS_DB_SUCCESS;
+    rval = CXSS_DB_SUCCESS;
 
-bind_error:
-    mssError(0, "CXSS", "Failed to bind value with SQLite statement: %s\n", sqlite3_errmsg(dbcontext->db));
-    return CXSS_DB_BIND_ERROR;
+end:
+    if (rval != CXSS_DB_SUCCESS) {
+	mssError(0, "CXSS", "Failed to retrieve user auth.");
+
+	/* Clean up the partially built list, if any. */
+	if (head) cxssFreeUserAuthLL(head);
+	*(node) = NULL;
+    }
+
+    return rval;
 }
 
 /** @brief Retrieve user resource

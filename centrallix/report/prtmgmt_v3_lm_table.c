@@ -21,7 +21,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2001-2003 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2001-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -63,7 +63,7 @@
 int
 prt_tablm_Break(pPrtObjStream this, pPrtObjStream *new_this)
     {
-    pPrtObjStream new_parent, cur_parent, new_obj, search_obj;
+    pPrtObjStream new_parent, cur_parent, new_obj = NULL, search_obj;
     pPrtTabLMData lm_inf = (pPrtTabLMData)(this->LMData);
     pPrtTabLMData new_lm_inf;
     pPrtObjStream new_cells[PRT_TABLM_MAXCOLS];
@@ -1462,5 +1462,3 @@ prt_tablm_Initialize()
 
     return 0;
     }
-
-
