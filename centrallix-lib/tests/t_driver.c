@@ -34,12 +34,14 @@ segv_handler(int v)
     printf("%-62.62s  CRASH\n", tname);
     exit(0);
     }
+
 void
 abort_handler(int v)
     {
     printf("%-62.62s  ABORT\n", tname);
     exit(0);
     }
+
 void
 alarm_handler(int v)
     {
@@ -54,10 +56,11 @@ start(void* v)
     clock_t start,end;
     long long rval;
 
+	/** Register handlers for signals that may occur during a test. **/
 	signal(SIGSEGV, segv_handler);
 	signal(SIGABRT, abort_handler);
 	signal(SIGALRM, alarm_handler);
-	
+
 	/*** Set a timer before Lockup is triggered, using a significantly
 	 *** larger value if Valgrind appears to be enabled.
 	 ***/
@@ -66,13 +69,15 @@ start(void* v)
 	#else
 	alarm(5); /* Normal timeout. */
 	#endif
-	
-	
+
+	/** Run the test while tracking CPU time. **/
 	times(&t);
 	start = t.tms_utime + t.tms_stime + t.tms_cutime + t.tms_cstime;
 	rval = test(&tname);
 	times(&t);
 	end = t.tms_utime + t.tms_stime + t.tms_cutime + t.tms_cstime;
+
+	/** Print test results. **/
 	if (rval < 0)
 	    printf("%-62.62s  FAIL\n", tname);
 	else
@@ -98,4 +103,3 @@ main(int argc, char* argv[])
     mtInitialize(0, start);
     return 0;
     }
-
