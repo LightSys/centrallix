@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -8,6 +8,25 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
+
+
+// A list of every dropdown widget on the page.
+const dd_list = [];
+
+// A resize observer to rebuild dropdown panes when their widget is resized,
+// which is needed because the pane scales with the widget.
+const dd_resize_observer = new ResizeObserver(e => e.forEach(({ target }) => {
+    // Ignore widgets that don't have a visible panelayer in need of updating.
+    if (htr_getvisibility(target.PaneLayer) !== 'inherit') return;
+
+    // Rebuild the dropdown at its new size.
+    dd_resize(target);
+}));
+
+// Resizing the page may move the widget without resizing it, detected here.
+// Updates are deferred to the next frame to wait for other widgets to settle.
+window.addEventListener('resize', () => requestAnimationFrame(() => dd_list.forEach(dd_reposition)));
+
 
 // Form manipulation
 
@@ -89,11 +108,7 @@ function dd_readonly()
 
 function dd_disable()
     {
-    if (dd_current)
-	{
-	htr_setvisibility(dd_current.PaneLayer, 'hidden');
-	dd_current = null;
-	}
+    if (dd_current) dd_collapse(dd_current);
     pg_images(this)[0].src = '/sys/images/ico15a.gif';
     htr_setbgcolor(this, "#e0e0e0");
     this.keyhandler = null;
@@ -149,7 +164,7 @@ function dd_keyhandler(l,e,k)
 		    this.Values[i].label.substring(0, 1) == 
 			String.fromCharCode(k_lower))
 		    {
-		    dd_hilight_item(this,i);
+		    dd_highlight_item(this,i);
 			this.lastmatch = i;
 		    i=this.Values.length;
 		    }
@@ -161,7 +176,7 @@ function dd_keyhandler(l,e,k)
 		    if (this.Values[i].label == '(none selected)' || this.Values[i].hide) continue;
 		    if (this.Values[i].label.toUpperCase().indexOf(String.fromCharCode(k_upper)) >= 0)
 			{
-			dd_hilight_item(this,i);
+			dd_highlight_item(this,i);
 			    this.lastmatch = i;
 			i=this.Values.length;
 			break;
@@ -179,7 +194,7 @@ function dd_keyhandler(l,e,k)
 		this.lastmatch = null;
 		this.time_start = null;
 		this.time_stop = null;
-		dd_hilight_item(this, 0);
+		dd_highlight_item(this, 0);
 		}
 	    }
 	
@@ -197,7 +212,7 @@ function dd_keyhandler(l,e,k)
 			this.keystring.length).toLowerCase())
 			== this.keystring && !this.match)
 		    {
-		    dd_hilight_item(this,i);
+		    dd_highlight_item(this,i);
 		    //found a good match
 		    this.match = true;
 		    this.lastmatch = i;
@@ -210,7 +225,7 @@ function dd_keyhandler(l,e,k)
 		    if (this.Values[i].label == '(none selected)' || this.Values[i].hide) continue;
 		    if (this.Values[i].label.toUpperCase().indexOf(this.keystring.toUpperCase()) >= 0)
 			{
-			dd_hilight_item(this,i);
+			dd_highlight_item(this,i);
 			this.match = true;
 			this.lastmatch = i;
 			break;
@@ -221,7 +236,7 @@ function dd_keyhandler(l,e,k)
 		{
 		this.keystring = this.keystring.substring(0, 
 			(this.keystring.length - 1));
-		dd_hilight_item(this, this.lastmatch);
+		dd_highlight_item(this, this.lastmatch);
 	    	this.match = true;
 		}
 	    }
@@ -278,7 +293,7 @@ function dd_keyhandler(l,e,k)
 	    dd_select_item(this,this.SelectedItem, 'keyboard');
 	    dd_datachange(this);
 	    dd_collapse(this);
-	    dd_unhilight_item(this,this.SelectedItem);
+	    dd_unhighlight_item(this,this.SelectedItem);
 	    }
 	}
     else if (k == 9)
@@ -291,7 +306,7 @@ function dd_keyhandler(l,e,k)
 		dd_select_item(this,this.SelectedItem, 'keyboard');
 		dd_datachange(this);
 		dd_collapse(this);
-		dd_unhilight_item(this,this.SelectedItem);
+		dd_unhighlight_item(this,this.SelectedItem);
 		}
 	    if (e.shiftKey)
 		this.form.ShiftTabNotify(this);
@@ -315,7 +330,7 @@ function dd_keyhandler(l,e,k)
 	for(var i=0;i<this.Values.length;i++)
 	    if ((this.SelectedItem == null || i > this.SelectedItem) && !this.Values[i].hide)
 		{
-		dd_hilight_item(this, i);
+		dd_highlight_item(this, i);
 		break;
 		}
 	}
@@ -326,7 +341,7 @@ function dd_keyhandler(l,e,k)
 	for(var i=this.Values.length-1;i>=0;i--)
 	    if ((this.SelectedItem == null || i < this.SelectedItem) && !this.Values[i].hide)
 		{
-		dd_hilight_item(this, i);
+		dd_highlight_item(this, i);
 		break;
 		}
 	}
@@ -343,7 +358,7 @@ function dd_notmember(val,list)
     return true;
     }
 
-function dd_hilight_item(l,i)
+function dd_highlight_item(l,i)
     {
     if (i == null)
 	{
@@ -353,7 +368,7 @@ function dd_hilight_item(l,i)
 	    return;
 	}
     if (l.SelectedItem != null && dd_notmember(l.SelectedItem, l.selectedItems))
-	dd_unhilight_item(l,l.SelectedItem);
+	dd_unhighlight_item(l,l.SelectedItem);
     l.SelectedItem = i;
     if (l.Items[i])
 	{
@@ -362,7 +377,7 @@ function dd_hilight_item(l,i)
 	}
     }
 
-function dd_unhilight_item(l,i)
+function dd_unhighlight_item(l,i)
     {
     if (i == null)
 	{
@@ -390,7 +405,62 @@ function dd_collapse(l)
 	//pg_resize_area(l.area,getClipWidth(l)+1,getClipHeight(l)+1, -1, -1);
 	htr_setvisibility(l.PaneLayer, 'hidden');
 	dd_current = null;
+	
+	/** Remove the pane to avoid leaking DOM nodes. **/
+	dd_remove_pane(l);
 	}
+    }
+
+/*** Position the pane of a dropdown next to the widget itself.  This is done
+ *** when the dropdown is opened and whenever the widget moves.
+ ***/
+function dd_position(l)
+    {
+    if (!l || !l.PaneLayer) return;
+    var offset = $(l).offset();
+    pg_positionpopup(l.PaneLayer, offset.left, offset.top, l.h, getClipWidth(l));
+    }
+
+/*** Move the pane of an open dropdown to follow its widget, ignoring dropdowns
+ *** that are closed.
+ ***/
+function dd_reposition(l)
+    {
+    if (htr_getvisibility(l.PaneLayer) == 'inherit') dd_position(l);
+    }
+
+/*** Resize the pane of an open dropdown after the widget was resized.  Only
+ *** the width scales with the widget: the height comes from the item count,
+ *** so the pane never changes shape and can be adjusted in place.
+ ***/
+function dd_resize(l)
+    {
+    const p = l.PaneLayer;
+    if (!p) return;
+
+    /** Widen or narrow the pane itself. **/
+    const w = l.popup_width;
+    setClipWidth(p, w);
+    resizeTo(p, w, l.h2);
+
+    /** Keep the scrollbar against the right edge. **/
+    if (p.BarLayer)
+	{
+	setRelativeX(p.BarLayer, w - 20);
+	setRelativeX(p.TmbLayer, w - 20);
+	}
+
+    /** Resize the items to the remaining space. **/
+    const item_w = w - (p.BarLayer ? 22 : 4);
+    setClipWidth(p.ScrLayer, item_w);
+    for (let i = 0; i < l.Items.length; i++)
+	{
+	if (!l.Items[i]) continue;
+	setClipWidth(l.Items[i], item_w);
+	resizeTo(l.Items[i], item_w, (pg_parah));
+	}
+
+    dd_position(l);
     }
 
 function dd_expand(l)
@@ -407,12 +477,14 @@ function dd_expand(l)
 	l.Values.splice(0,0,nullitem);
 	}
     if (l && !l.PaneLayer) 
+	{
 	l.PaneLayer = dd_create_pane(l);
+	l.PaneLayer.style.cursor = 'pointer';
+	}
     if (l && htr_getvisibility(l.PaneLayer) != 'inherit')
 	{
 	pg_stackpopup(l.PaneLayer, l);
-	pg_positionpopup(l.PaneLayer, $(l).offset().left, $(l).offset().top, l.h, 
-		getClipWidth(l));
+	dd_position(l);
 	htr_setvisibility(l.PaneLayer, 'inherit');
 	dd_current = l;
 	if (getPageY(l.PaneLayer) < getPageY(l))
@@ -430,7 +502,7 @@ function dd_expand(l)
 		l.VisLayer.index = i;
 		break;
 		}
-	dd_hilight_item(l,l.VisLayer.index);
+	dd_highlight_item(l,l.VisLayer.index);
 	}
     }
 
@@ -508,11 +580,8 @@ function dd_select_item(l,i,from)
     htr_write_content(l.HidLayer, c);
     //pg_serialized_write(l.HidLayer, c, null);
     l.HidLayer.index = i;
-    moveTo(l.HidLayer, 2, ((l.h-2) - pg_parah)/2);
-    resizeTo(l.HidLayer, l.w, l.h);
     
     htr_setvisibility(l.HidLayer, 'inherit');
-    setClipWidth(l.HidLayer, l.w-21);
     htr_setvisibility(l.VisLayer, 'hidden');
     var t=l.VisLayer;
     l.VisLayer = l.HidLayer;
@@ -665,27 +734,17 @@ function dd_create_pane(l)
     //pg_debug(' x ');
     htr_init_layer(p, l, 'dd_pn');
     htr_setvisibility(p, 'hidden');
-    var c = "<BODY bgcolor="+l.bg+">";
-    c += "<TABLE border=0 cellpadding=0 cellspacing=0 width="+l.popup_width+" height="+l.h2+">";
-    c += "<TR><TD><IMG SRC=/sys/images/white_1x1.png height=1></TD>";
-    c += "  <TD><IMG SRC=/sys/images/white_1x1.png height=1 width="+(l.popup_width-2)+"></TD>";
-    c += "  <TD><IMG SRC=/sys/images/white_1x1.png height=1></TD></TR>";
-    c += "<TR><TD><IMG SRC=/sys/images/white_1x1.png height="+(l.h2-2)+" width=1></TD>";
-    c += "  <TD valign=top>";
-    c += "  </TD>";
-    c += "  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height="+(l.h2-2)+" width=1></TD></TR>";
-    c += "<TR><TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD>";
-    c += "  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1 width="+(l.popup_width-2)+"></TD>";
-    c += "  <TD><IMG SRC=/sys/images/dkgrey_1x1.png height=1></TD></TR>";
-    c += "</TABLE>";
-    c += "</BODY>";
+    // Bevel border, drawn by CSS so the pane can be resized in place.
     htr_setbgcolor(p, l.bg);
-    htr_write_content(p, c);
-    //pg_serialized_write(p, c, null);
-    htutil_tag_images(p,'dt_pn',p,l);
+    pg_set_style(p, 'box-sizing', 'border-box');
+    pg_set_style(p, 'border', '1px solid');
+    pg_set_style(p, 'border-color', '#fafafa #7a7a7a #7a7a7a #fafafa');
+
     pg_stackpopup(p,l);
     setClipHeight(p, l.h2);
     setClipWidth(p, l.popup_width);
+    resizeTo(p, l.popup_width, l.h2);
+    pg_set_style(p, 'overflow', 'hidden');
 
     /**  Create scroll background layer  **/
     p.ScrLayer = htr_new_layer(null, p);
@@ -701,10 +760,10 @@ function dd_create_pane(l)
 	htr_init_layer(p.BarLayer, l, 'dd_sc');
 	moveTo(p.BarLayer, l.popup_width-20, 2);
 	htr_setvisibility(p.BarLayer, 'inherit');
-	c = '<TABLE border=0 cellpadding=0 cellspacing=0 width=18 height='+(l.h2-4)+'>';
-	c += '<TR><TD><IMG name=u src=/sys/images/ico13b.gif></TD></TR>';
-	c += '<TR><TD><IMG name=b src=/sys/images/trans_1.gif height='+(l.h2-40)+'></TD></TR>';
-	c += '<TR><TD><IMG name=d src=/sys/images/ico12b.gif></TD></TR>';
+	var c = '<TABLE border=0 cellpadding=0 cellspacing=0 width=18 height='+(l.h2-4)+'>';
+	c += '<tr><td><img data-type="up"    alt="up"    src="/sys/images/ico13b.gif"></td></tr>';
+	c += '<tr><td><img data-type="track" alt="track" src="/sys/images/trans_1.gif" height='+(l.h2-40)+'></td></tr>';
+	c += '<tr><td><img data-type="down"  alt="down"  src="/sys/images/ico12b.gif"></td></tr>';
 	c += '</TABLE>';
 	htr_write_content(p.BarLayer, c);
 	//pg_serialized_write(p.BarLayer, c, null);
@@ -719,7 +778,7 @@ function dd_create_pane(l)
 	moveTo(p.TmbLayer, l.popup_width-20, 20);
 	htr_setvisibility(p.TmbLayer, 'inherit');
 	p.TmbLayer.mainlayer = l;
-	htr_write_content(p.TmbLayer,'<IMG src=/sys/images/ico14b.gif NAME=t draggable="false">');
+	htr_write_content(p.TmbLayer,'<img data-type="thumb" alt="thumb" src="/sys/images/ico14b.gif" draggable="false">');
 	//pg_serialized_write(p.TmbLayer,'<IMG src=/sys/images/ico14b.gif NAME=t>', null);
 	imgs = pg_images(p.TmbLayer);
 	imgs[0].mainlayer = l;
@@ -752,6 +811,8 @@ function dd_create_pane(l)
 	    setClipWidth(l.Items[i], w);
 	    setClipHeight(l.Items[i], (pg_parah));
 	    resizeTo(l.Items[i], w, (pg_parah));
+	    pg_set_style(l.Items[i], 'overflow', 'hidden');
+	    pg_set_style(l.Items[i], 'white-space', 'nowrap');
 	    if (i==0 && l.Values[i].value == null)
 		htr_write_content(l.Items[i], '<i>' + htutil_encode(l.Values[i].label) + '</i>');
 		//pg_serialized_write(l.Items[i], '<i>' + l.Values[i].label + '</i>',null);
@@ -773,6 +834,41 @@ function dd_create_pane(l)
     p.mainlayer = l;
 
     return p;
+    }
+
+/** Quick and dirty function to remove panes without leaking DOM nodes. **/
+function dd_remove_pane(l)
+    {
+    if (!l || !l.PaneLayer) return;
+    
+    const p = l.PaneLayer;
+    
+    // Function for removing elements.
+    const remove_node = (n) => { if (n && n.parentNode) n.parentNode.removeChild(n); }
+    
+    // Remove item DOM nodes if present.
+    if (l.Items && l.Items.length)
+	{
+	for (let i = 0; i < l.Items.length; i++)
+	    {
+	    remove_node(l.Items[i]);
+	    l.Items[i] = null;
+	    }
+	l.Items.length = 0;
+	}
+    
+    // Remove scrollbar/thumb layers if present.
+    remove_node(p.ScrLayer);
+    remove_node(p.BarLayer);
+    remove_node(p.TmbLayer);
+    
+    // Remove the pane root.
+    remove_node(p);
+    
+    // Clear references.
+    p.ScrLayer = p.BarLayer = p.TmbLayer = p.mainlayer = null;
+    l.imgup = l.imgdn = l.imgtm = null;
+    l.PaneLayer = null;
     }
 
 
@@ -839,14 +935,14 @@ function dd_add_items(l,ary)
 function dd_mouseout(e)
     {
     var ti=dd_target_img;
-    if (ti && ti.name == 't' && dd_current)
+    if (ti && ti.dataset.type === 'thumb' && dd_current)
         return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
     }
 
 function dd_mousemove(e)
     {
     var ti=dd_target_img;
-    if (ti != null && ti.name == 't' && dd_current && dd_current.enabled!='disabled')
+    if (ti != null && ti.dataset.type === 'thumb' && dd_current && dd_current.enabled !== 'disabled')
         {
         var pl=ti.mainlayer.PaneLayer;
         var v=getClipHeight(pl)-(3*18)-4;
@@ -880,7 +976,7 @@ function dd_mouseover(e)
     if (e.kind == 'dd_itm' && dd_current && dd_current.enabled=='full')
         {
         dd_lastkey = null;
-        dd_hilight_item(dd_current, e.layer.index);
+        dd_highlight_item(dd_current, e.layer.index);
         }
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
@@ -899,8 +995,11 @@ function dd_mouseup(e)
         }
     if (dd_target_img != null)
         {
-        if (dd_target_img.kind && dd_target_img.kind.substr(0,2) == 'dd' && (dd_target_img.name == 'u' || dd_target_img.name == 'd'))
-            pg_set(dd_target_img,'src',htutil_subst_last(dd_target_img.src,"b.gif"));
+        if (dd_target_img.kind && dd_target_img.kind.slice(0, 2) === 'dd'
+	    && (dd_target_img.dataset.type === 'up' || dd_target_img.dataset.type === 'down'))
+            {
+            pg_set(dd_target_img, 'src', htutil_subst_last(dd_target_img.src, "b.gif"));
+            }
         dd_target_img = null;
         }
     if ((e.kind == 'dd' || e.kind == 'ddtxt') && e.mainlayer.enabled != 'disabled')
@@ -948,33 +1047,33 @@ function dd_mousedown(e)
 	else 
 	    if (dd_current.Items[e.layer.index])
 		htr_setbgcolor(dd_current.Items[e.layer.index], dd_current.hl);
-	    //dd_hilight_item(dd_current, e.layer.index);
+
 	// Re-select the dropdown
 	pg_setkbdfocus(cur, null, null, null);
         }
     else if (e.kind == 'dd_sc')
         {
-        switch(e.layer.name)
+        switch(e.layer.dataset.type)
             {
-            case 'u':
+            case 'up':
                 pg_set(e.layer,'src','/sys/images/ico13c.gif');
                 dd_incr = 8;
                 dd_scroll();
                 dd_timeout = setTimeout(dd_scroll_tm,300);
                 break;
-            case 'd':
+            case 'down':
                 pg_set(e.layer, 'src', '/sys/images/ico12c.gif');
                 dd_incr = -8;
                 dd_scroll();
                 dd_timeout = setTimeout(dd_scroll_tm,300);
                 break;
-            case 'b':
+            case 'track':
                 dd_incr = dd_target_img.height+36;
                 if (e.pageY > getPageY(dd_target_img.thum)+9) dd_incr = -dd_incr;
                 dd_scroll();
                 dd_timeout = setTimeout(dd_scroll_tm,300);
                 break;
-            case 't':
+            case 'thumb':
                 dd_click_x = e.pageX;
                 dd_click_y = e.pageY;
                 dd_thum_y = getPageY(dd_target_img.thum);
@@ -1003,6 +1102,7 @@ function dd_mousedown(e)
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
+/** Typically called when the underlying OSRC data is updated. **/
 function dd_update(p1)
     {
     var osrc = this.osrc;
@@ -1026,7 +1126,7 @@ function dd_update(p1)
     l.additems(l,vals);
     dd_select_item(l,targetval, 'osrc'); //select the correct index
     dd_collapse(this);
-    l.PaneLayer = null;
+    dd_remove_pane(l);
     }
 
 function dd_action_set_group(aparam)
@@ -1037,7 +1137,7 @@ function dd_action_set_group(aparam)
     this.currentMin = aparam.Min;
     this.currentMax = aparam.Max;
     dd_collapse(this);
-    this.PaneLayer = null;
+    dd_remove_pane(this);
     this.Values = [];
 
     // Only show entries matching the specified group
@@ -1112,7 +1212,7 @@ function dd_sql_loaded()
 	}
     dd.additems(dd,items);
     dd_collapse(dd);
-    dd.PaneLayer = null;
+    dd_remove_pane(dd);
     dd.ifcProbe(ifAction).Invoke("SetGroup", {Group:dd.currentGroup, Min:dd.currentMin, Max:dd.currentMax});
     }
 
@@ -1182,6 +1282,11 @@ function dd_cb_reveal(e)
 function dd_deinit()
     {
     dd_collapse(this);
+    dd_remove_pane(this);
+    dd_resize_observer.unobserve(this);
+    var i = dd_list.indexOf(this);
+    if (i >= 0) dd_list.splice(i, 1);
+    pg_removearea(this.area);
     if (this.form)
 	this.form.DeRegister(this);
     if (dd_current == this)
@@ -1194,7 +1299,6 @@ function dd_init(param)
     l.NumDisplay = param.numDisplay;
     l.Mode = param.mode;
     l.SQL = param.sql;
-    l.popup_width = param.popup_width?param.popup_width:param.width;
     l.VisLayer = param.c1;
     l.HidLayer = param.c2;
     htr_init_layer(l.VisLayer, l, 'ddtxt');
@@ -1244,7 +1348,6 @@ function dd_init(param)
     l.getfocushandler = dd_getfocus;
     l.bg = param.background;
     l.hl = param.highlight;
-    l.w = param.width; l.h = param.height;
     l.fieldname = param.fieldname;
     l.enabled = 'full';
     if (l.Mode != 3)
@@ -1268,10 +1371,35 @@ function dd_init(param)
 	else if (imgs[i].src.substr(-13,5) == 'white')
 	    imgs[i].upimg = true;
 	}
-    l.area = pg_addarea(l, -1, -1, getClipWidth(l)+3, 
-	    getClipHeight(l)+3, 'dd', 'dd', 3);
     if (l.form) l.form.Register(l);
     l.init_items = false;
+
+    // Setup getters for widths and heights.
+    const width_ratio = (param.popup_width > 0 && param.width > 0) ? (param.popup_width / param.width) : 1;
+    Object.defineProperties(l, {
+	w: {
+	    get() { return getRelativeW(l); },
+	    configurable: true,
+	    enumerable: true,
+	},
+	h: {
+	    get() { return getRelativeH(l); },
+	    configurable: true,
+	    enumerable: true,
+	},
+	popup_width: {
+	    get() { return Math.round(l.w * width_ratio); },
+	    configurable: true,
+	    enumerable: true,
+	},
+    });
+    
+    // Setup the hover area.
+    l.area = pg_addarea(l, -1, -1, () => l.w + 3, () => l.h + 3, 'dd', 'dd', 3);
+    
+    // Set up responsive resizing.
+    dd_resize_observer.observe(l);
+    dd_list.push(l);
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);

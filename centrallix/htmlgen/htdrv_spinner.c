@@ -1,20 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -39,6 +27,15 @@
 /* Creation:	October 22, 2001 					*/
 /* Description:	HTML Widget driver for a single-line editbox.		*/
 /************************************************************************/
+
+#include <string.h>
+
+#include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
+#include "ht_render.h"
+#include "wgtr.h"
+
 
 /*This file was based on the edit box file revision 1.2*/
 
@@ -65,7 +62,6 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
     int is_raised = 1;
     char* c1;
     char* c2;
-    int maxchars;
 
 	if(!s->Capabilities.Dom0NS)
 	    {
@@ -89,9 +85,6 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTSPNR","Spinner widget must have a 'height' property");
 	    return -1;
 	    }
-	
-	/** Maximum characters to accept from the user **/
-	if (wgtrGetPropertyValue(tree,"maxchars",DATA_T_INTEGER,POD(&maxchars)) != 0) maxchars=255;
 
 	/** Background color/image? **/
 	htrGetBackground(tree,NULL,!s->Capabilities.Dom0NS, main_bg, sizeof(main_bg));
@@ -114,12 +107,12 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#spnr%POSmain { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,x,y,w,z);
-	htrAddStylesheetItem_va(s,"\t#spnr%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,1,1,w-12,z);
-	htrAddStylesheetItem_va(s,"\t#spnr%POScon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,1,1,w-2-12,z+1);
-	htrAddStylesheetItem_va(s,"\t#spnr%POScon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,1,1,w-2-12,z+1);
-	htrAddStylesheetItem_va(s,"\t#spnr_button_up { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",1+w-12,1,w,z);
-	htrAddStylesheetItem_va(s,"\t#spnr_button_down { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",1+w-12,1+9,w,z);
+	htrAddStylesheetItem_va(s, "\t\t#spnr%POSmain     { position:absolute; visibility:inherit; left:%INT; top:%INT; width:%POS; z-index:%POS; }\n", id,  x, y,  w,      z);
+	htrAddStylesheetItem_va(s, "\t\t#spnr%POSbase     { position:absolute; visibility:inherit; left:%INT; top:%INT; width:%POS; z-index:%POS; }\n", id,  1, 1,  w-12,   z);
+	htrAddStylesheetItem_va(s, "\t\t#spnr%POScon1     { position:absolute; visibility:inherit; left:%INT; top:%INT; width:%POS; z-index:%POS; }\n", id,  1, 1,  w-2-12, z+1);
+	htrAddStylesheetItem_va(s, "\t\t#spnr%POScon2     { position:absolute; visibility:hidden;  left:%INT; top:%INT; width:%POS; z-index:%POS; }\n", id,  1, 1,  w-2-12, z+1);
+	htrAddStylesheetItem_va(s, "\t\t#spnr_button_up   { position:absolute; visibility:inherit; left:%INT; top:%INT; width:%POS; z-index:%POS; }\n", 1+w-12, 1,  w,      z);
+	htrAddStylesheetItem_va(s, "\t\t#spnr_button_down { position:absolute; visibility:inherit; left:%INT; top:%INT; width:%POS; z-index:%POS; }\n", 1+w-12, 1+9,w,      z);
 
 	/** DOM Linkage **/
 	htrAddWgtrObjLinkage_va(s, tree, "spnr%POSmain",id);
@@ -134,13 +127,16 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "spnr", "spnr_mousedown");
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s,
-		"    var spnr = wgtrGetNodeRef(ns, \"%STR&SYM\");\n"
-		"    spnr_init({main:spnr, layer:htr_subel(spnr,\"spnr%POSbase\"), c1:htr_subel(htr_subel(spnr,\"spnr%POSbase\"),\"spnr%POScon1\"), c2:htr_subel(htr_subel(spnr,\"spnr%POSbase\"),\"spnr%POScon2\")});\n",
-		name,
-                id,
-		id, id, 
-		id, id);
+	htrAddScriptInit_va(s, "\t{ "
+	    "const main = wgtrGetNodeRef(ns, '%STR&SYM'); "
+	    "const layer = htr_subel(main, 'spnr%POSbase'); "
+	    "spnr_init({ "
+		"main, layer, "
+		"c1:htr_subel(layer,'spnr%POScon1'), "
+		"c2:htr_subel(layer,'spnr%POScon2'), "
+	    "}); }\n",
+	    name, id, id, id
+	);
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"spnr%POSmain\">\n",id);
@@ -182,17 +178,6 @@ htspnrInitialize()
 	strcpy(drv->Name,"DHTML Spinner Box Driver");
 	strcpy(drv->WidgetName,"spinner");
 	drv->Render = htspnrRender;
-
-
-	/** Add a 'set value' action **/
-	htrAddAction(drv,"SetValue");
-	htrAddParam(drv,"SetValue","Value",DATA_T_STRING);	/* value to set it to */
-	htrAddParam(drv,"SetValue","Trigger",DATA_T_INTEGER);	/* whether to trigger the Modified event */
-
-	/** Value-modified event **/
-	htrAddEvent(drv,"Modified");
-	htrAddParam(drv,"Modified","NewValue",DATA_T_STRING);
-	htrAddParam(drv,"Modified","OldValue",DATA_T_STRING);
 	
 	/** Register. **/
 	htrRegisterDriver(drv);

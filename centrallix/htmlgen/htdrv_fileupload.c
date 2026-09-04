@@ -1,21 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-#include "wgtr.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -41,6 +28,15 @@
 /* Description:	HTML Widget driver for a file uploader.		*/
 /************************************************************************/
 
+#include <string.h>
+
+#include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
+#include "ht_render.h"
+#include "wgtr.h"
+
+
 /** globals **/
 static struct
 	{
@@ -55,20 +51,27 @@ htfuRender(pHtSession s, pWgtrNode tree, int z)
 	{
 	char* ptr;
 	char name[64];
-    int id, i;
 	int multiselect;
 	char target[512];
 	char fieldname[HT_FIELDNAME_SIZE];
 	char form[64];
 
 	/** Get an id for this. **/
-	id = (HTFU.idcnt++);
+	const int id = (HTFU.idcnt++);
 	
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-		strtcpy(name,ptr,sizeof(name));
-		
-	if (wgtrGetPropertyValue(tree,"target",DATA_T_STRING,POD(&ptr)) == 0)
-		strtcpy(target,ptr,sizeof(target));
+	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&ptr)) != 0)
+	    {
+	    mssError(1, "HTFU", "Fileupload widget must have a 'name' property.");
+	    goto err;
+	    }
+	strtcpy(name, ptr, sizeof(name));
+	
+	if (wgtrGetPropertyValue(tree, "target", DATA_T_STRING, POD(&ptr)) != 0)
+	    {
+	    mssError(1, "HTFU", "Fileupload widget must have a 'target' property.");
+	    goto err;
+	    }
+	strtcpy(target, ptr, sizeof(target));
 	
 	multiselect = htrGetBoolean(tree, "multiselect", 0); //default = 0;
 	
@@ -82,26 +85,72 @@ htfuRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    fieldname[0]='\0';
 	
-	/** Write named global **/
-	htrAddWgtrObjLinkage_va(s, tree, "fu%POSbase",id);
+	/** Link the widget to the DOM node. **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "fu%POSbase", id) != 0)
+	    {
+	    mssError(0, "HTFU", "Failed to add object linkage.");
+	    goto err;
+	    }
 	
-	htrAddEventHandlerFunction(s, "document","CHANGE", "fu", "fu_change");
+	if (htrAddEventHandlerFunction(s, "document", "CHANGE", "fu", "fu_change") != 0) goto err;
 	
 	/** Include the javascript code for the file uploader **/
-	htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
-	htrAddScriptInclude(s, "/sys/js/htdrv_fileupload.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_fileupload.js", 0) != 0) goto err;
 	
-	htrAddScriptInit_va(s, "    fu_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), pane:document.getElementById(\"fu%POSform\"), input:document.getElementById(\"fu%POSinput\"), iframe:document.getElementById(\"fu%POSiframe\"), target:\"%STR&JSSTR\"});\n", name, id, id, id, target);
+	if (htrAddScriptInit_va(s,
+	    "\tfu_init({ "
+		"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"pane:document.getElementById('fu%POSform'), "
+		"input:document.getElementById('fu%POSinput'), "
+		"iframe:document.getElementById('fu%POSiframe'), "
+		"target:'%STR&JSSTR', "
+	    "});\n",
+	    name, id, id, id, target
+	) != 0)
+	    {
+	    mssError(0, "HTFU", "Failed to write JS init call.");
+	    goto err;
+	    }
 	
 	/** style header items **/
-	htrAddStylesheetItem_va(s,"#fu%POSbase { POSITION:absolute; VISIBILITY:hidden; }\n", id);
-	htrAddBodyItem_va(s,"<DIV ID=\"fu%POSbase\"><FORM ID=\"fu%POSform\" METHOD=\"post\" ENCTYPE=\"multipart/form-data\" TARGET=\"fu%POSiframe\"><iframe ID=\"fu%POSiframe\" NAME=\"fu%POSiframe\"></iframe><INPUT ID=\"fu%POSinput\" TYPE=\"file\" NAME=\"fu%POSinput\" %STR/></FORM></DIV>", id, id, id, id, id, id, id, multiselect?"MULTIPLE":"");
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#fu%POSbase { "
+		"position:absolute; "
+		"visibility:hidden; "
+	    "}\n",
+	    id
+	) != 0)
+	    {
+	    mssError(0, "HTFU", "Failed to write base CSS.");
+	    goto err;
+	    }
+	if (htrAddBodyItem_va(s,
+	    "<div id='fu%POSbase'><form id='fu%POSform' method='post' enctype='multipart/form-data' target='fu%POSiframe'>"
+		"<iframe id='fu%POSiframe' name='fu%POSiframe'></iframe>"
+		"<input id='fu%POSinput' type='file' name='fu%POSinput' %[MULTIPLE%]/>"
+	    "</form></div>",
+	    id, id, id,
+	    id, id,
+	    id, id,
+	    (multiselect)
+	) != 0)
+	    {
+	    mssError(0, "HTFU", "Failed to write base HTML.");
+	    goto err;
+	    }
 	
 	/** Check for more sub-widgets **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z);
+	if (htrRenderSubwidgets(s, tree, z) != 0) goto err;
 
 	return 0;
+
+    err:
+	mssError(0, "HTFU",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
+	);
+	return -1;
 	}//end htfuRender
 	
 	
@@ -121,19 +170,6 @@ htfuInitialize()
 	strcpy(drv->Name,"DHTML File Upload Driver");
 	strcpy(drv->WidgetName,"fileupload");
 	drv->Render = htfuRender;
-	
-	/** Add actions **/
-	htrAddAction(drv,"Reset");
-	htrAddAction(drv,"Prompt");
-	htrAddAction(drv,"Submit");
-	
-	/** Add event **/
-	htrAddEvent(drv,"DataChange");
-	htrAddParam(drv,"DataChange","NewValue",DATA_T_STRING);
-	htrAddParam(drv,"DataChange","OldValue",DATA_T_STRING);
-    
-	htrAddEvent(drv,"Success");
-	htrAddParam(drv,"Success","data",DATA_T_ARRAY);
 
 	/** Register. **/
 	htrRegisterDriver(drv);

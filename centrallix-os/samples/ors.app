@@ -85,10 +85,61 @@ ors "widget/page"
 	    form1 "widget/form"
 		{
 		_3bconfirmwindow = "ConfirmWindow";
-		formctl "widget/formbar"
+
+		// Record navigation bar.
+		formctl "widget/pane"
 		    {
-		    x=100; y=10;
-		    target=form1;
+		    x=100; y=10; width=240; height=30;
+		    style=raised;
+		    background="/sys/images/grey_gradient3.png";
+
+		    formctl_status "widget/formstatus"
+			{
+			x=72; y=4;
+			style=largeflat;
+			form=form1;
+			}
+
+		    formctl_first "widget/imagebutton"
+			{
+			x=8; y=5; width=18; height=18;
+			image="/sys/images/ico16aa.gif";
+			pointimage="/sys/images/ico16ab.gif";
+			clickimage="/sys/images/ico16ac.gif";
+			disabledimage="/sys/images/ico16ad.gif";
+			enabled=runclient(:form1:recid > 1);
+			formctl_firstcn "widget/connector" { event="Click"; target="form1"; action="First"; }
+			}
+		    formctl_prev "widget/imagebutton"
+			{
+			x=28; y=5; width=18; height=18;
+			image="/sys/images/ico16ba.gif";
+			pointimage="/sys/images/ico16bb.gif";
+			clickimage="/sys/images/ico16bc.gif";
+			disabledimage="/sys/images/ico16bd.gif";
+			enabled=runclient(:form1:recid > 1);
+			formctl_prevcn "widget/connector" { event="Click"; target="form1"; action="Prev"; }
+			}
+		    formctl_next "widget/imagebutton"
+			{
+			x=190; y=5; width=18; height=18;
+			image="/sys/images/ico16ca.gif";
+			pointimage="/sys/images/ico16cb.gif";
+			clickimage="/sys/images/ico16cc.gif";
+			disabledimage="/sys/images/ico16cd.gif";
+			enabled=runclient(not (:form1:recid == :form1:lastrecid));
+			formctl_nextcn "widget/connector" { event="Click"; target="form1"; action="Next"; }
+			}
+		    formctl_last "widget/imagebutton"
+			{
+			x=210; y=5; width=18; height=18;
+			image="/sys/images/ico16da.gif";
+			pointimage="/sys/images/ico16db.gif";
+			clickimage="/sys/images/ico16dc.gif";
+			disabledimage="/sys/images/ico16dd.gif";
+			enabled=runclient(not (:form1:recid == :form1:lastrecid));
+			formctl_lastcn "widget/connector" { event="Click"; target="form1"; action="Last"; }
+			}
 		    }
 
 		searchbtn "widget/textbutton"

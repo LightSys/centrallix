@@ -26,7 +26,7 @@ syn keyword cxKeywords show_branches show_diagnostics show_root show_root_branch
 syn keyword cxKeywords tab_revealed_only tab_width target target_key_1 target_key_2 target_key_3 target_key_4 target_key_5 text textcolor textcolorhighlight
 syn keyword cxKeywords textcolornew title titlebar titlecolor tooltip toplevel tristate type use_having_clause use_3d_lines valign value visible widget_template
 syn keyword cxKeywords widget_class width windowsize x y
-syn keyword cxKeywords param_name fl_height fl_y fl_x display_for min_rowheight max_rowheight initial_selection demand_scrollbar overlap_scrollbar
+syn keyword cxKeywords param_name fl_height display_for min_rowheight max_rowheight initial_selection demand_scrollbar overlap_scrollbar
 syn keyword cxKeywords row_border_radius border_radius
 
 

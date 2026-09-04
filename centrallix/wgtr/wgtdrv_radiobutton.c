@@ -1,16 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/mtsession.h"
-#include "wgtr.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -36,6 +28,9 @@
 /* Description:								*/
 /************************************************************************/
 
+#include <string.h>
+
+#include "wgtr.h"
 
 
 /*** wgtrbVerify - allows the driver to check elsewhere in the tree
@@ -58,6 +53,8 @@ wgtrbVerify(pWgtrVerifySession s)
 int
 wgtrbNew(pWgtrNode node)
     {   
+	if (!strcmp(node->Type, "widget/radiobuttonpanel"))
+	    node->Flags |= WGTR_F_VISUAL_CONTAINER;
 	if(node->fl_width < 0) node->fl_width = 1;
 	if(node->fl_height < 0) node->fl_height = 1;
 	
