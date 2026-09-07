@@ -141,6 +141,12 @@ ON ERROR {error-id} LIMIT 3 RETRY;
 ON ERROR {error-id} LIMIT 3 EXEC /path/to/script [ parameters... ] AND RETRY;
 ```
 
+8.	Including a delay (in seconds) when retrying.
+
+```sql
+ON ERROR {error-id} LIMIT 3 DELAY 10 EXEC /path/to/script [ parameters... ] AND RETRY;
+```
+
 ## OSML API Method to Retrieve Error Data: objQueryError()
 
 One "hole" in the OSML API is that errors that occur during query execution (not just in starting the query) are not passed to the caller through the call level interface semantics and are only made available on the error stack.  The call level interface can only return NULL from objQueryFetch().  Thus, an OSML API caller cannot currently recognize the occurrence of an error in query execution in a predictable manner.
