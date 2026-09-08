@@ -27,7 +27,7 @@
  *** time than this might not use enough cpu cycles, confusing the test suite
  *** performance tracking.
  ***/
-#define MIN_TEST_SECONDS 0.02
+#define MIN_TEST_SECONDS 0.1
 
 /*** Expect two values to be equal.
  *** 
