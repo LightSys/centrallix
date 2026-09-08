@@ -1664,7 +1664,7 @@ mysd_internal_process_params(pExpression tree, pMysdTable *tdata, MYSQL * conn, 
 
 	if((arg_strings = xaNew(tree->Children.nItems)) == NULL)
 	    {
-	    mssError(1,"MYSD","Error: validate out of memory", tree->Name);
+	    mssError(1,"MYSD","Error: validate out of memory");
 	    goto error;
 	    }
 
@@ -1674,7 +1674,7 @@ mysd_internal_process_params(pExpression tree, pMysdTable *tdata, MYSQL * conn, 
 	    /** evaluate the child to make sure the data type is accurate **/
 	    if((cur_string = xsNew()) == NULL)
 		{
-		mssError(1,"MYSD","Error: validate out of memory", tree->Name);
+		mssError(1,"MYSD","Error: validate out of memory");
 		goto error;
 		}
 	
@@ -2014,7 +2014,7 @@ mysd_internal_function_Case(pExpression tree, pMysdTable *tdata, pXString where_
 	/** need to change collation to guarantee the result is case sensitive (in case it is used in compares) **/
 	xsConcatPrintf(where_clause, " (%s(", tree->Name);
 	xsConcatenate(where_clause, get_arg_string(arg_strings, 0), -1);
-	if (strlen(get_arg_string(arg_strings, 0)) == 6 && !strcmp(get_arg_string(arg_strings, 0), " NULL "))
+	if (tree->Flags & EXPR_F_PERMNULL || tree->Flags & EXPR_F_NULL)
 	    {
 	    /** upper()/lower() param evaluated to NULL, don't use collation. **/
 	    xsConcatenate(where_clause, ")) ", 3);
@@ -2067,7 +2067,7 @@ mysd_internal_function_Charindex(pExpression tree, pMysdTable *tdata, pXString w
 	xsConcatPrintf(where_clause, " ( locate(%s, %s", needle, haystack);
 	
 	/** check if we can make the collation case sensitive */
-	if (strcmp(haystack, " NULL ") != 0 && tempTdata->Node->DatabaseCollation[0] != '\0')
+	if (tempTdata->Node->DatabaseCollation[0] != '\0' && !(tree->Flags & EXPR_F_PERMNULL || tree->Flags & EXPR_F_NULL))
 	    {
 	    xsConcatenate(where_clause, " collate ", 9);
 	    mysd_internal_SafeAppend(conn, where_clause, tempTdata->Node->DatabaseCollation);
@@ -2103,13 +2103,18 @@ mysd_internal_function_Datediff(pExpression tree, pMysdTable *tdata, pXString wh
 
 	/* verify args. First arg musrt be a string literal */
 	arg_strings = mysd_internal_process_params(tree, tdata, conn, types, 3, 3);
-	pExpression subtree = (pExpression)(tree->Children.Items[0]);
-	if(arg_strings == NULL || subtree->NodeType != EXPR_N_STRING || subtree->Flags & EXPR_F_NULL)
+	if(arg_strings == NULL)
 	    {
 	    mssError(0,"MYSD","Datediff usage: datediff(PART, START_DATE, END_DATE)");
 	    goto error;
 	    }
-	
+	pExpression subtree = (pExpression)(tree->Children.Items[0]);
+	if(subtree->NodeType != EXPR_N_STRING || subtree->Flags & EXPR_F_NULL || subtree->String == NULL)
+	    {
+	    mssError(0,"MYSD","Datediff: datepart must be a string literal");
+	    goto error;
+	    }
+
 	/** MySQL uses timestampdiff() **/
 	char* date1_str = get_arg_string(arg_strings, 1);
 	char* date2_str = get_arg_string(arg_strings, 2);
@@ -2162,7 +2167,7 @@ mysd_internal_function_dateadd(pExpression tree, pMysdTable *tdata, pXString whe
 	
 	/** First arg must be a string literal **/
 	pExpression subtree = (pExpression)(tree->Children.Items[0]);
-	if(subtree->NodeType != EXPR_N_STRING || subtree->Flags & EXPR_F_NULL)
+	if(subtree->NodeType != EXPR_N_STRING || subtree->Flags & EXPR_F_NULL || subtree->String == NULL)
 	    {
 	    mssError(0,"MYSD","Datediff: datepart must be a string literal");
 	    goto error;
@@ -2220,7 +2225,7 @@ mysd_internal_function_Datepart(pExpression tree, pMysdTable *tdata, pXString wh
 	    }
 	
 	pExpression part_exp = (pExpression)(tree->Children.Items[0]);
-	if(part_exp->NodeType != EXPR_N_STRING || part_exp->String == NULL)
+	if(part_exp->NodeType != EXPR_N_STRING || part_exp->Flags & EXPR_F_NULL || part_exp->String == NULL)
 	    {
 	    mssError(1,"MYSD","datepart part must be a string literal");
 	    goto error;
@@ -2247,11 +2252,6 @@ mysd_internal_function_Datepart(pExpression tree, pMysdTable *tdata, pXString wh
 	pExpression date_exp = tree->Children.Items[1];
 	if(date_exp->NodeType == EXPR_N_STRING && date_exp->String != NULL)
 	    {
-	    if(date_exp->String == NULL)
-		{
-		mssError(1,"MYSD","date expression cannot be a NULL string");
-		goto error;
-		}
 	    if (strpbrk(date_exp->String,"\"'\t\r\n") != 0)
 		{
 		mssError(1,"MYSD","cannot parse string \"%s\" as a date", date_exp->String);
@@ -2382,7 +2382,7 @@ mysd_internal_function_hash(pExpression tree, pMysdTable *tdata, pXString where_
 	arg_strings = mysd_internal_process_params(tree, tdata, conn, types, 2, 2);
 	if(arg_strings == NULL)
 	    {
-	    mssError(0,"MYSD","hash usage: replace(algorithm, string|binary)");
+	    mssError(0,"MYSD","hash usage: hash(algorithm, string|binary)");
 	    goto error;
 	    }
 	
@@ -2595,7 +2595,7 @@ mysd_internal_opperator_math(pExpression tree, pMysdTable *tdata, pXString where
  *** NOTE: that this function updates the `DataType` of nodes to better parse it
  *** NOTE: the following limitations with regards to CxSQL
  ***   - Unsupported functions: hmac, pbkdf2, argon2id, first, last, nth, lztrim, constrain, 
- ***       lev_compare, levenshtein, cos_compare, square, wordify
+ ***       lev_compare, levenshtein, cos_compare, square, wordify, and escape
  ***   - aggregate functions are not properly split off into a having clause
  ***
  ***/
@@ -2643,6 +2643,11 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
           mysd_DO_DOUBLE:
 		/** Trim any trailing zeroes to format as "0.0" **/
                 objDataToString(&tmp, DATA_T_DOUBLE, &(tree->Types.Double), DATA_F_QUOTED);
+		if(tmp.Length < 1)
+		    {
+		    mssError(1, "MYSD", "Cannot append an empty string as a double");
+		    goto error;
+		    }
 		/** string is formated as " 0.000000 " **/
 		ptr = tmp.String + tmp.Length - 1; /* start pointing at the trailing ' ' */
 		while(ptr > tmp.String && ptr[-1] == '0') ptr--;
@@ -2651,6 +2656,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		/** ptr points to the last '0' it found, or the ' '. At worst, this is redundant **/
 		ptr[0] = ' ';
 		ptr[1] = '\0';
+		tmp.Length = strlen(tmp.String);
 
 		xsConcatenate(where_clause, tmp.String, -1);
 		xsDeInit(&tmp);
@@ -2738,7 +2744,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     else if (tree->DataType == DATA_T_STRING)
                         {
 			/** Append string safely **/
-			objDataToString(&tmp, DATA_T_STRING, &(tree->String), DATA_F_QUOTED | DATA_F_SYBQUOTE);
+			objDataToString(&tmp, DATA_T_STRING, tree->String, DATA_F_QUOTED | DATA_F_SYBQUOTE);
 			mysd_internal_SafeAppend(conn,where_clause,tmp.String);
 			xsDeInit(&tmp);
 			xsInit(&tmp);
@@ -2926,7 +2932,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 
 		    /** If the types match, change it to that. Otherwise, we cannot predict **/
 		    pExpression true_exp = tree->Children.Items[1];
-		    pExpression false_exp = tree->Children.Items[1];
+		    pExpression false_exp = tree->Children.Items[2];
 		    if(true_exp->DataType == false_exp->DataType)
 			tree->DataType = true_exp->DataType;
                     }
@@ -2940,7 +2946,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 
 		    /** If the types match, change it to that. Otherwise, we cannot predict **/
 		    pExpression value_exp = tree->Children.Items[0];
-		    pExpression default_exp = tree->Children.Items[0];
+		    pExpression default_exp = tree->Children.Items[1];
 		    if(value_exp->DataType == default_exp->DataType)
 			tree->DataType = value_exp->DataType;
 		    }
@@ -3067,13 +3073,6 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    use_stock_fn_call = 1;
 		    tree->DataType = DATA_T_STRING;
 		    }
-		else if (!strcmp(tree->Name, "escape"))
-		    {
-		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 2);
-		    if (arg_strings == NULL) goto error;
-		    use_stock_fn_call = 1;
-		    tree->DataType = DATA_T_STRING;
-		    }
 		else if (!strcmp(tree->Name, "to_hex"))
 		    {
 		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 1);
@@ -3118,7 +3117,9 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    arg_strings = mysd_internal_process_params(tree, tdata, conn, NULL, 1, 2);
 		    if (arg_strings == NULL) goto error;
 		    use_stock_fn_call = 1;
-		    tree->DataType = DATA_T_INTEGER;
+		    /** If called with one argument, then it will produce an integer. Otherwise, we can only assume double. **/
+		    if(tree->Children.nItems == 1) tree->DataType = DATA_T_INTEGER;
+		    else tree->DataType = DATA_T_DOUBLE;
 		    }
 		else if (!strcmp(tree->Name, "truncate"))
 		    {
