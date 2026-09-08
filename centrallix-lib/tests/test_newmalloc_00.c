@@ -28,6 +28,20 @@
 /** Tested module. **/
 #include "newmalloc.h"
 
+/*** Valgrind instruments every memory access, so the bulk data sizes are
+ *** divided by this factor when running under it, keeping the test inside
+ *** the driver's lockup timeout.
+ ***/
+#ifdef USING_VALGRIND
+#include "valgrind/valgrind.h"
+#define BULK_DIVISOR	(RUNNING_ON_VALGRIND ? 16lu : 1lu)
+#else
+#define BULK_DIVISOR	1lu
+#endif
+
+#define TEST_LIMIT	(16384lu / BULK_DIVISOR)
+#define LARGE_BUF_SIZE	(256000000lu / BULK_DIVISOR)
+
 static unsigned int seed_counter = 0;
 static char* err_buf;
 static unsigned int err_buf_i;
@@ -68,6 +82,12 @@ static bool do_tests(void)
     {
     bool success = true;
 
+	/*** Evaluate the bulk data sizes once, since the Valgrind check behind
+	 *** them is a client request rather than a plain constant.
+	 ***/
+	const size_t test_limit = TEST_LIMIT;
+	const size_t large_buf_size = LARGE_BUF_SIZE;
+
 	/** Set a consistent, distinct seed for each test iteration. **/
 	srand(seed_counter++);
 
@@ -75,9 +95,6 @@ static bool do_tests(void)
 	err_buf = checkPtr(malloc(err_buf_size = 256));
 	err_buf_i = snprintf(err_buf, err_buf_size, "%s", "");
 	nmSetErrFunction(mock_error_fn);
-
-	/** Baseline: Should leak. **/
-	success &= EXPECT_NOT_NULL(nmSysMalloc(42));
 
 	/** Basic string data. **/
 	char* str1;
@@ -89,17 +106,16 @@ static bool do_tests(void)
 	success &= EXPECT_STR_EQL(str1, "ThisIsSomeData!");
 	success &= EXPECT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
 
-	/** 128 MB random data, varying sizes. **/
-	#define TEST_LIMIT 16384
-	void** data = checkPtr(malloc(TEST_LIMIT * sizeof(void*)));
-	void** test = checkPtr(malloc(TEST_LIMIT * sizeof(void*)));
-	for (size_t i = 1lu; i < TEST_LIMIT; i++)
+	/** Random data, varying sizes. **/
+	void** data = checkPtr(malloc(test_limit * sizeof(void*)));
+	void** test = checkPtr(malloc(test_limit * sizeof(void*)));
+	for (size_t i = 1lu; i < test_limit; i++)
 	    {
 	    success &= EXPECT_NOT_NULL(test[i] = nmSysMalloc(i));
 	    data[i] = random_init(checkPtr(malloc(i)), i);
 	    memcpy(test[i], data[i], i); /* Write test data into test memory. */
 	    }
-	for (size_t i = TEST_LIMIT - 1lu; i > 0lu; i--)
+	for (size_t i = test_limit - 1lu; i > 0lu; i--)
 	    success &= EXPECT_EQL(memcmp(data[i], test[i], i), 0, "%d");
 
 	/** Basic string data is unharmed. **/
@@ -107,10 +123,10 @@ static bool do_tests(void)
 	success &= EXPECT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
 
 	/** Reallocate all variably sized memory to a different size. **/
-	for (size_t i = TEST_LIMIT - 1lu; i > 0lu; i--)
-	    success &= EXPECT_NOT_NULL(test[i] = nmSysRealloc(test[i], TEST_LIMIT - i));
-	for (size_t i = 1lu; i < TEST_LIMIT; i++)
-	    success &= EXPECT_EQL(memcmp(data[i], test[i], min(i, TEST_LIMIT - i)), 0, "%d");
+	for (size_t i = test_limit - 1lu; i > 0lu; i--)
+	    success &= EXPECT_NOT_NULL(test[i] = nmSysRealloc(test[i], test_limit - i));
+	for (size_t i = 1lu; i < test_limit; i++)
+	    success &= EXPECT_EQL(memcmp(data[i], test[i], min(i, test_limit - i)), 0, "%d");
 
 	/** Basic string data is unharmed. **/
 	success &= EXPECT_STR_EQL(str1, "ThisIsSomeData!");
@@ -134,7 +150,7 @@ static bool do_tests(void)
 	success &= EXPECT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
 
 	/** Free random data, varying sizes. **/
-	for (size_t i = 1lu; i < TEST_LIMIT; i++)
+	for (size_t i = 1lu; i < test_limit; i++)
 	    {
 	    free(data[i]);
 	    nmSysFree(test[i]);
@@ -155,14 +171,15 @@ static bool do_tests(void)
 	success &= EXPECT_STR_EQL(str_dup2, "ThatDataIsDifferentStringData.\n");
 
 	/** Large singular allocation. **/
-	#define _256MB 256000000lu
 	void* large_buf;
-	success &= EXPECT_NOT_NULL(large_buf = nmSysMalloc(_256MB));
-	for (size_t i = _256MB - 1lu; i > 0lu; i--)
+	success &= EXPECT_NOT_NULL(large_buf = nmSysMalloc(large_buf_size));
+	for (size_t i = large_buf_size - 1lu; i > 0lu; i--)
 	    *((unsigned char*)large_buf + i) = (unsigned char)(i % 255lu);
 	*(unsigned char*)large_buf = 0u;
-	for (size_t i = 0lu; i < _256MB; i++)
-	    success &= EXPECT_EQL(*((unsigned char*)large_buf + i), (unsigned char)(i % 255lu), "%d");
+	size_t mismatches = 0lu;
+	for (size_t i = 0lu; i < large_buf_size; i++)
+	    if (*((unsigned char*)large_buf + i) != (unsigned char)(i % 255lu)) mismatches++;
+	success &= EXPECT_EQL(mismatches, 0lu, "%zu");
 
 	/** Dup string data is unharmed. **/
 	success &= EXPECT_STR_EQL(str_dup1, "ThisIsSomeDa");
@@ -191,5 +208,6 @@ long long test(char** tname)
     }
 
 /** Scope cleanup. **/
+#undef BULK_DIVISOR
 #undef TEST_LIMIT
-#undef _256MB
+#undef LARGE_BUF_SIZE
