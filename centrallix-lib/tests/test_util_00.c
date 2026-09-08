@@ -31,11 +31,7 @@
 /** Values from the sweep converted per call to doTests(). **/
 #define CHUNK	 10000
 
-/*** Next value in the sweep, advanced by CHUNK on each pass and wrapped once
- *** the whole range has been covered.  A native run walks the range many times
- *** over; a slower run, such as one under Valgrind, covers a part of it rather
- *** than taking proportionally longer.
- ***/
+/** Next value in the sweep, advanced by CHUNK and wrapped at the end. **/
 static int sweep = -RANGE;
 
 static bool

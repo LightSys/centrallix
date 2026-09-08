@@ -6,10 +6,7 @@
 #include <stdbool.h>
 #include "test_utils.h"
 
-/*** Number of no-op operations performed per call to doTests().  This is large
- *** enough that the loop, rather than loopTests()'s own timer check, dominates
- *** the measurement.
- ***/
+/** No-op operations per pass, enough that the loop dominates the timing. **/
 #define OPS_PER_PASS	(1000*1000)
 
 static bool

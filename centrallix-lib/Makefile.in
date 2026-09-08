@@ -83,12 +83,10 @@ VALGRIND?=valgrind
 VALGRINDFLAGS?=-q
 VALGRINDLOG?=
 
-## How many tests "make test" and "make valtest" run at once.  Each test is a
-## single-threaded process of its own, so this scales with the core count.
-## Set TESTJOBS=1 to run them one at a time; the results are printed in the
-## same order either way.  Note that the driver's lockup timeout is wall clock,
-## so a job count well above the core count risks reporting LOCKUP for a test
-## that was merely waiting for a core.
+## How many tests "make test" and "make valtest" run at once (1 for one at a
+## time).  Each test is a single-threaded process, so this scales with the core
+## count; the driver's lockup timeout is wall clock, so going well past the
+## core count risks reporting LOCKUP for a test that was only waiting for one.
 TESTJOBS?=$(shell nproc 2>/dev/null || echo 1)
 
 .SUFFIXES:	.c .o .lo

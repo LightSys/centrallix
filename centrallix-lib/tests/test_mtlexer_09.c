@@ -19,11 +19,7 @@ static char str[65536] = "";
 static int toktype[N_TOK] = {MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_EOF };
 static char* tokstr[6];
 
-/*** Line length under test, advanced by one on each pass and wrapped once the
- *** longest case has been reached.  A native run walks the whole sweep many
- *** times over; a slower run, such as one under Valgrind, covers a prefix of
- *** it rather than taking proportionally longer.
- ***/
+/** Line length under test, advanced each pass and wrapped at the longest case. **/
 static int sweep = 0;
 
 static bool

@@ -15,11 +15,7 @@
 
 static char str[65536] = "";
 
-/*** Length under test, advanced by one on each pass and wrapped once the
- *** longest case has been reached.  A native run walks the whole sweep many
- *** times over; a slower run, such as one under Valgrind, covers a prefix of
- *** it rather than taking proportionally longer.
- ***/
+/** Length under test, advanced each pass and wrapped at the longest case. **/
 static int sweep = 0;
 
 static bool
