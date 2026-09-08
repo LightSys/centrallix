@@ -27,8 +27,8 @@
 /*** Define lockup times.  Valgrind instruments every memory access, so tests
  *** may need longer to finish when running under valgrind.
  ***/
-#define VALGRIND_LOCKUP_SECONDS 10u
-#define NORMAL_LOCKUP_SECONDS 5u
+#define NORMAL_LOCKUP_SECONDS 4u
+#define VALGRIND_LOCKUP_SECONDS NORMAL_LOCKUP_SECONDS
 
 /** Detect valgrind. **/
 #ifdef USING_VALGRIND
