@@ -2014,7 +2014,8 @@ mysd_internal_function_Case(pExpression tree, pMysdTable *tdata, pXString where_
 	/** need to change collation to guarantee the result is case sensitive (in case it is used in compares) **/
 	xsConcatPrintf(where_clause, " (%s(", tree->Name);
 	xsConcatenate(where_clause, get_arg_string(arg_strings, 0), -1);
-	if (tree->Flags & EXPR_F_PERMNULL || tree->Flags & EXPR_F_NULL)
+	pExpression str_exp = tree->Children.Items[0];
+	if (str_exp->Flags & EXPR_F_PERMNULL || str_exp->Flags & EXPR_F_NULL)
 	    {
 	    /** upper()/lower() param evaluated to NULL, don't use collation. **/
 	    xsConcatenate(where_clause, ")) ", 3);
@@ -2067,7 +2068,8 @@ mysd_internal_function_Charindex(pExpression tree, pMysdTable *tdata, pXString w
 	xsConcatPrintf(where_clause, " ( locate(%s, %s", needle, haystack);
 	
 	/** check if we can make the collation case sensitive */
-	if (tempTdata->Node->DatabaseCollation[0] != '\0' && !(tree->Flags & EXPR_F_PERMNULL || tree->Flags & EXPR_F_NULL))
+	pExpression haystack_exp = tree->Children.Items[1];
+	if (tempTdata->Node->DatabaseCollation[0] != '\0' && !(haystack_exp->Flags & EXPR_F_PERMNULL || haystack_exp->Flags & EXPR_F_NULL))
 	    {
 	    xsConcatenate(where_clause, " collate ", 9);
 	    mysd_internal_SafeAppend(conn, where_clause, tempTdata->Node->DatabaseCollation);
