@@ -109,7 +109,7 @@ long long test(char** tname)
 	 *** CPU cycles so that the test runner doesn't crash because the
 	 *** CPU clock time was too low.
 	 ***/
-	long long i = loop_tests(doNothing);
+	long long i = loopTests(doNothing);
 	
 	/** Return success. **/
 	return i;

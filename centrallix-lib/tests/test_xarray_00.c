@@ -43,7 +43,7 @@ static int test_free(void* p, void* arg)
 
 static unsigned int seed_counter = 0;
 
-static bool do_tests(void)
+static bool doTests(void)
     {
     bool success = true;
 
@@ -157,5 +157,5 @@ static bool do_tests(void)
 long long test(char** tname)
     {
     *tname = "xarray-00 Full Test";
-    return loop_tests(do_tests);
+    return loopTests(doTests);
     }

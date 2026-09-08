@@ -36,7 +36,7 @@
 	EXPECT_STR_EQL(snprintBytes(buf, buf_size, value), expect) && \
 	EXPECT_EQL(snprintBytes(buf, buf_size, value), &buf[0], "%p")
 
-static bool do_tests(void)
+static bool doTests(void)
     {
     bool success = true;
 
@@ -121,5 +121,5 @@ static bool do_tests(void)
 long long test(char** tname)
     {
     *tname = "util-02 Printing";
-    return loop_tests(do_tests);
+    return loopTests(doTests);
     }

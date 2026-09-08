@@ -87,7 +87,7 @@ start(void* v)
 	    if (duration == 0)
 		{
 		printf("%-62.62s  PASS ???\n", tname);
-		printf("Warning: Test ran too fast! Ops/sec could not be measured. Please run tests in a loop or use loop_tests() from test_utils.h.\n");
+		printf("Warning: Test ran too fast! Ops/sec could not be measured. Please run tests in a loop or use loopTests() from test_utils.h.\n");
 		return;
 		}
 	    double ops_per_second = rval * (100.0 / duration);

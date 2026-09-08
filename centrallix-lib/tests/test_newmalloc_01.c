@@ -78,7 +78,7 @@ static void* random_init(void* ptr, size_t size)
 	return ptr;
     }
 
-static bool do_tests(void)
+static bool doTests(void)
     {
     bool success = true;
 
@@ -194,7 +194,7 @@ static bool do_tests(void)
 long long test(char** tname)
     {
     *tname = "newmalloc-01 nmMalloc(), nmFree(), & nmClear()";
-    return loop_tests(do_tests);
+    return loopTests(doTests);
     }
 
 /** Scope cleanup. **/
