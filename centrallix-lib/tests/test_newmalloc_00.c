@@ -139,6 +139,8 @@ static bool do_tests(void)
 	    free(data[i]);
 	    nmSysFree(test[i]);
 	    }
+	free(data);
+	free(test);
 
 	/** Basic string data is unharmed. **/
 	success &= EXPECT_STR_EQL(str1, "ThisIsSomeData!");
@@ -175,6 +177,9 @@ static bool do_tests(void)
 
 	/** Expect no captured errors. **/
 	success &= EXPECT_STR_EQL(err_buf, "");
+
+	/** Clean up. **/
+	free(err_buf);
 
     return success;
     }
