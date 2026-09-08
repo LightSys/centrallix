@@ -24,6 +24,16 @@
 #include "mtask.h"
 #include "util.h"
 
+/*** Valgrind instruments every memory access, so a test needs a good deal
+ *** longer to finish under it before it can fairly be called locked up.
+ ***/
+#ifdef USING_VALGRIND
+#include "valgrind/valgrind.h"
+#define LOCKUP_SECONDS	(RUNNING_ON_VALGRIND ? 10u : 5u)
+#else
+#define LOCKUP_SECONDS	5u
+#endif
+
 
 long long test(char**);
 
@@ -62,14 +72,8 @@ start(void* v)
 	signal(SIGABRT, abort_handler);
 	signal(SIGALRM, alarm_handler);
 
-	/*** Set a timer before Lockup is triggered, using a significantly
-	 *** larger value if Valgrind appears to be enabled.
-	 ***/
-	#ifdef USING_VALGRIND
-	alarm(10); /* Valgrind detected. */
-	#else
-	alarm(5); /* Normal timeout. */
-	#endif
+	/** Set a timer before Lockup is triggered. **/
+	alarm(LOCKUP_SECONDS);
 
 	/** Run the test while tracking CPU time. **/
 	times(&t);
