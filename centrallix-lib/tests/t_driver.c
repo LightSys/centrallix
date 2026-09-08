@@ -24,14 +24,18 @@
 #include "mtask.h"
 #include "util.h"
 
-/*** Valgrind instruments every memory access, so a test needs a good deal
- *** longer to finish under it before it can fairly be called locked up.
+/*** Define lockup times.  Valgrind instruments every memory access, so tests
+ *** may need longer to finish when running under valgrind.
  ***/
+#define VALGRIND_LOCKUP_SECONDS 10u
+#define NORMAL_LOCKUP_SECONDS 5u
+
+/** Detect valgrind. **/
 #ifdef USING_VALGRIND
 #include "valgrind/valgrind.h"
-#define LOCKUP_SECONDS	(RUNNING_ON_VALGRIND ? 10u : 5u)
+#define LOCKUP_SECONDS	((RUNNING_ON_VALGRIND) ? VALGRIND_LOCKUP_SECONDS : NORMAL_LOCKUP_SECONDS)
 #else
-#define LOCKUP_SECONDS	5u
+#define LOCKUP_SECONDS	NORMAL_LOCKUP_SECONDS
 #endif
 
 
@@ -67,12 +71,10 @@ start(void* v)
     clock_t start,end;
     long long rval;
 
-	/** Register handlers for signals that may occur during a test. **/
+	/** Setup handlers for signals that may occur during a test. **/
 	signal(SIGSEGV, segv_handler);
 	signal(SIGABRT, abort_handler);
 	signal(SIGALRM, alarm_handler);
-
-	/** Set a timer before Lockup is triggered. **/
 	alarm(LOCKUP_SECONDS);
 
 	/** Run the test while tracking CPU time. **/
