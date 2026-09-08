@@ -134,6 +134,7 @@ static bool do_tests(void)
 	/** Remove an item and ensure that it is gone. **/
 	success &= EXPECT_EQL(xaRemoveItem(xa, 2), 0, "%d"); /* Remove original index 2. */
 	success &= EXPECT_EQL(xaCount(xa), 5, "%d");
+	nmFree(v2, sizeof(int)); v2 = NULL; /* v2 is removed so it isn't freed with xaClear(). */
 
 	/** Count non-NULL items prior to clearing. **/
 	int count_before = xaCount(xa);
