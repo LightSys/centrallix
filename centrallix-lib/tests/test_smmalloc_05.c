@@ -6,53 +6,67 @@
 #include <time.h>
 #include "smmalloc.h"
 #include "smmalloc_private.h"
+#include <stdbool.h>
+#include "test_utils.h"
 
-long long
-test(char** tname)
+/** Region shared by every pass; created and destroyed by test(). **/
+static pSmRegion region = NULL;
+
+/** Blocks allocated by the most recent pass, used for the op count. **/
+static int blocks = 0;
+
+static bool
+doTests(void)
     {
-    int i;
-    pSmRegion r;
-    int iter;
     int j,k,l;
     void* alloc[1024];
     int min_blocks;
 
-	smInitialize();
-
-	*tname = "smmalloc-05 malloc/free 1MB, free order = random, size=1K";
-	srand(time(NULL));
-	iter = 300;
 	/** Each allocation consumes a block header too, so how many 1K blocks
 	 ** fit in a 1MB region depends on the header size, not just on the
 	 ** region size.  Leave slack for the region's own overhead.
 	 **/
 	min_blocks = ((1024*1024 - sizeof(SmRegion)) / (1024 + sizeof(SmBlock))) * 9 / 10;
 
-	r = smCreate(1024*1024);
-	for(i=0;i<iter;i++)
-	    {
-	    j=0;
-	    while((alloc[j] = smMalloc(r,1024)) != NULL && j < 1023) j++;
-	    if (j < min_blocks)
-		{
-		smDestroy(r);
-		return -1;
-		}
-	    for(k=0;k<j*4/5;k++)
-		{
-		while (alloc[(l = rand()%j)] == NULL)
-		    ;
-		smFree(alloc[l]);
-		alloc[l] = NULL;
-		}
-	    for(k=0;k<j;k++)
-		{
-		if (alloc[k]) smFree(alloc[k]);
-		alloc[k] = NULL;
-		}
-	    }
-	smDestroy(r);
+	j=0;
+	while((alloc[j] = smMalloc(region,1024)) != NULL && j < 1023) j++;
+	if (j < min_blocks) return false;
+	blocks = j;
 
-    return iter*j;
+	for(k=0;k<j*4/5;k++)
+	    {
+	    while (alloc[(l = rand()%j)] == NULL)
+		;
+	    smFree(alloc[l]);
+	    alloc[l] = NULL;
+	    }
+	for(k=0;k<j;k++)
+	    {
+	    if (alloc[k]) smFree(alloc[k]);
+	    alloc[k] = NULL;
+	    }
+
+    return true;
     }
 
+long long
+test(char** tname)
+    {
+    long long rval;
+
+	*tname = "smmalloc-05 malloc/free 1MB, free order = random, size=1K";
+
+	smInitialize();
+	srand(time(NULL));
+	region = smCreate(1024*1024);
+	if (!region) return -1;
+
+	rval = loopTests(doTests);
+
+	if (rval > 0) rval *= blocks;
+
+	smDestroy(region);
+	region = NULL;
+
+    return rval;
+    }

@@ -66,7 +66,7 @@ start(void* v)
 	 *** larger value if Valgrind appears to be enabled.
 	 ***/
 	#ifdef USING_VALGRIND
-	alarm(90); /* Valgrind detected. */
+	alarm(10); /* Valgrind detected. */
 	#else
 	alarm(5); /* Normal timeout. */
 	#endif

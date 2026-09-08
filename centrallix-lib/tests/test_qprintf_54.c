@@ -5,41 +5,44 @@
 #include <stdlib.h>
 #include "qprintf.h"
 #include <assert.h>
+#include <stdbool.h>
+#include "test_utils.h"
+
+static bool
+doTests(void)
+    {
+    int rval;
+    unsigned char buf[44];
+
+	buf[38] = '\n';
+	buf[37] = '\0';
+	buf[36] = 0xff;
+	buf[35] = '\0';
+	buf[3] = '\n';
+	buf[2] = '\0';
+	buf[1] = 0xff;
+	buf[0] = '\0';
+	qpfPrintf(NULL, (char*)buf+4, 31, "Conditional: yes=%[yes%STR%] no=%[no%STR%]%STR", 1, "!YES!", 0, "!NO!", ".");
+	qpfPrintf(NULL, (char*)buf+4, 31, "Conditional: yes=%[yes%STR%] no=%[no%STR%]%STR", 1, "!YES!", 0, "!NO!", ".");
+	qpfPrintf(NULL, (char*)buf+4, 31, "Conditional: yes=%[yes%STR%] no=%[no%STR%]%STR", 1, "!YES!", 0, "!NO!", ".");
+	rval = qpfPrintf(NULL, (char*)buf+4, 31, "Conditional: yes=%[yes%STR%] no=%[no%STR%]%STR", 1, "!YES!", 0, "!NO!", ".");
+	assert(!strcmp((char*)buf+4, "Conditional: yes=yes!YES! no=."));
+	assert(rval == 30);
+	assert(buf[38] == '\n');
+	assert(buf[37] == '\0');
+	assert(buf[36] == 0xff);
+	assert(buf[35] == '\0');
+	assert(buf[3] == '\n');
+	assert(buf[2] == '\0');
+	assert(buf[1] == 0xff);
+	assert(buf[0] == '\0');
+
+    return true;
+    }
 
 long long
 test(char** tname)
     {
-    int i, rval;
-    int iter;
-    unsigned char buf[44];
-
-	*tname = "qprintf-54 Bugtest: %[ %] with static data";
-	iter = 200000;
-	for(i=0;i<iter;i++)
-	    {
-	    buf[38] = '\n';
-	    buf[37] = '\0';
-	    buf[36] = 0xff;
-	    buf[35] = '\0';
-	    buf[3] = '\n';
-	    buf[2] = '\0';
-	    buf[1] = 0xff;
-	    buf[0] = '\0';
-	    qpfPrintf(NULL, (char*)buf+4, 31, "Conditional: yes=%[yes%STR%] no=%[no%STR%]%STR", 1, "!YES!", 0, "!NO!", ".");
-	    qpfPrintf(NULL, (char*)buf+4, 31, "Conditional: yes=%[yes%STR%] no=%[no%STR%]%STR", 1, "!YES!", 0, "!NO!", ".");
-	    qpfPrintf(NULL, (char*)buf+4, 31, "Conditional: yes=%[yes%STR%] no=%[no%STR%]%STR", 1, "!YES!", 0, "!NO!", ".");
-	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "Conditional: yes=%[yes%STR%] no=%[no%STR%]%STR", 1, "!YES!", 0, "!NO!", ".");
-	    assert(!strcmp((char*)buf+4, "Conditional: yes=yes!YES! no=."));
-	    assert(rval == 30);
-	    assert(buf[38] == '\n');
-	    assert(buf[37] == '\0');
-	    assert(buf[36] == 0xff);
-	    assert(buf[35] == '\0');
-	    assert(buf[3] == '\n');
-	    assert(buf[2] == '\0');
-	    assert(buf[1] == 0xff);
-	    assert(buf[0] == '\0');
-	    }
-
-    return iter*4;
+    *tname = "qprintf-54 Bugtest: %[ %] with static data";
+    return loopTests(doTests) * 4;
     }

@@ -7,49 +7,54 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
+#include <stdbool.h>
+#include "test_utils.h"
 
-long long
-test(char** tname)
+/** Integers in the data file, and so the ops performed by one pass. **/
+#define N_INTS		12
+
+static int flagtypes[5] = { MLX_F_CPPCOMM, MLX_F_POUNDCOMM, MLX_F_SEMICOMM, MLX_F_DASHCOMM, MLX_F_CCOMM };
+
+#define N_FLAGTYPES	((int)(sizeof(flagtypes)/sizeof(flagtypes[0])))
+
+static bool
+doTests(void)
     {
     int i;
     int j;
     int t;
     int n;
-    int iter;
-    int flagtypes[5] = { MLX_F_CPPCOMM, MLX_F_POUNDCOMM, MLX_F_SEMICOMM, MLX_F_DASHCOMM, MLX_F_CCOMM };
-    int n_flagtypes = 5;
     int flags;
     pLxSession lxs;
     pFile fd;
 
-	*tname = "mtlexer-16 comments // # ; -- /**/ short only";
-
-	mssInitialize("system", "", "none", 0, "test");
-
-	iter = 6000;
-
 	flags = 0;
-	for(i=0;i<n_flagtypes;i++)
+	for(i=0;i<N_FLAGTYPES;i++)
 	    flags |= flagtypes[i];
 
-	for(i=0;i<iter;i++)
+	fd = fdOpen("tests/test_mtlexer_16.txt", O_RDONLY, 0600);
+	assert(fd != NULL);
+	lxs = mlxOpenSession(fd, flags | MLX_F_EOF);
+	assert(lxs != NULL);
+	for(j=1;j<=N_INTS;j++)
 	    {
-	    fd = fdOpen("tests/test_mtlexer_16.txt", O_RDONLY, 0600);
-	    assert(fd != NULL);
-	    lxs = mlxOpenSession(fd, flags | MLX_F_EOF);
-	    assert(lxs != NULL);
-	    for(j=1;j<=12;j++)
-		{
-		t = mlxNextToken(lxs);
-		assert(t == MLX_TOK_INTEGER);
-		n = mlxIntVal(lxs);
-		assert(n == j);
-		}
 	    t = mlxNextToken(lxs);
-	    assert(t == MLX_TOK_EOF);
-	    mlxCloseSession(lxs);
-	    fdClose(fd, 0);
+	    assert(t == MLX_TOK_INTEGER);
+	    n = mlxIntVal(lxs);
+	    assert(n == j);
 	    }
+	t = mlxNextToken(lxs);
+	assert(t == MLX_TOK_EOF);
+	mlxCloseSession(lxs);
+	fdClose(fd, 0);
 
-    return iter * 10;
+    return true;
+    }
+
+long long
+test(char** tname)
+    {
+    *tname = "mtlexer-16 comments // # ; -- /**/ short only";
+    mssInitialize("system", "", "none", 0, "test");
+    return loopTests(doTests) * 10;
     }

@@ -4,31 +4,39 @@
 #include <string.h>
 #include <stdlib.h>
 #include "smmalloc.h"
+#include <stdbool.h>
+#include "test_utils.h"
+
+/** Region shared by every pass; created and destroyed by test(). **/
+static pSmRegion region = NULL;
+
+static bool
+doTests(void)
+    {
+    void* ptr;
+
+	ptr = smMalloc(region, 1024);
+	if (!ptr) return false;
+	smFree(ptr);
+
+    return true;
+    }
 
 long long
 test(char** tname)
     {
-    int i;
-    pSmRegion r;
-    void* ptr;
-    int iter;
-
-	smInitialize();
+    long long rval;
 
 	*tname = "smmalloc-02 malloc/free 1024 bytes";
-	iter = 100000;
-	r = smCreate(1024*1024);
-	for(i=0;i<iter;i++)
-	    {
-	    ptr = smMalloc(r, 1024);
-	    if (!ptr) 
-		{
-		smDestroy(r);
-		return -1;
-		}
-	    smFree(ptr);
-	    }
-	smDestroy(r);
 
-    return iter;
+	smInitialize();
+	region = smCreate(1024*1024);
+	if (!region) return -1;
+
+	rval = loopTests(doTests);
+
+	smDestroy(region);
+	region = NULL;
+
+    return rval;
     }

@@ -4,25 +4,25 @@
 #include <string.h>
 #include <stdlib.h>
 #include "smmalloc.h"
+#include <stdbool.h>
+#include "test_utils.h"
+
+static bool
+doTests(void)
+    {
+    pSmRegion r;
+
+	r = smCreate(1024*1024);
+	if (!r) return false;
+	smDestroy(r);
+
+    return true;
+    }
 
 long long
 test(char** tname)
     {
-    int i;
-    pSmRegion r;
-    int iter;
-
-	smInitialize();
-
-	*tname = "smmalloc-01 create/destroy region";
-	iter = 30000;
-	for(i=0;i<iter;i++)
-	    {
-	    r = smCreate(1024*1024);
-	    if (!r) return -1;
-	    smDestroy(r);
-	    }
-
-    return iter;
+    *tname = "smmalloc-01 create/destroy region";
+    smInitialize();
+    return loopTests(doTests);
     }
-
