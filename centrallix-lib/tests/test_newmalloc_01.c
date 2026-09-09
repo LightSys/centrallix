@@ -82,12 +82,6 @@ static bool doTests(void)
     {
     bool success = true;
 
-	/*** Evaluate the bulk data sizes once, since the Valgrind check behind
-	 *** them is a client request rather than a plain constant.
-	 ***/
-	const size_t test_limit = TEST_LIMIT;
-	const size_t large_buf_size = LARGE_BUF_SIZE;
-
 	/** Set a consistent, distinct seed for each test iteration. **/
 	srand(seed_counter++);
 
@@ -107,15 +101,15 @@ static bool doTests(void)
 	success &= EXPECT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
 
 	/** Random data, varying sizes. **/
-	void** data = checkPtr(malloc(test_limit * sizeof(void*)));
-	void** test = checkPtr(malloc(test_limit * sizeof(void*)));
-	for (size_t i = 1lu; i < test_limit; i++)
+	void** data = checkPtr(malloc(TEST_LIMIT * sizeof(void*)));
+	void** test = checkPtr(malloc(TEST_LIMIT * sizeof(void*)));
+	for (size_t i = 1lu; i < TEST_LIMIT; i++)
 	    {
 	    success &= EXPECT_NOT_NULL(test[i] = nmMalloc(i));
 	    data[i] = random_init(checkPtr(malloc(i)), i);
 	    memcpy(test[i], data[i], i);
 	    }
-	for (size_t i = test_limit - 1lu; i > 0lu; i--)
+	for (size_t i = TEST_LIMIT - 1lu; i > 0lu; i--)
 	    success &= EXPECT_EQL(memcmp(data[i], test[i], i), 0, "%d");
 
 	/** Basic string data is unharmed. **/
@@ -124,12 +118,12 @@ static bool doTests(void)
 
 	/** Large singular allocation. **/
 	void* large_buf;
-	success &= EXPECT_NOT_NULL(large_buf = nmMalloc(large_buf_size));
-	for (size_t i = large_buf_size - 1lu; i > 0lu; i--)
+	success &= EXPECT_NOT_NULL(large_buf = nmMalloc(LARGE_BUF_SIZE));
+	for (size_t i = LARGE_BUF_SIZE - 1lu; i > 0lu; i--)
 	    *((unsigned char*)large_buf + i) = (unsigned char)(i % 255lu);
 	*(unsigned char*)large_buf = 0u;
 	size_t mismatches = 0lu;
-	for (size_t i = 0lu; i < large_buf_size; i++)
+	for (size_t i = 0lu; i < LARGE_BUF_SIZE; i++)
 	    if (*((unsigned char*)large_buf + i) != (unsigned char)(i % 255lu)) mismatches++;
 	success &= EXPECT_EQL(mismatches, 0lu, "%zu");
 
@@ -138,7 +132,7 @@ static bool doTests(void)
 	success &= EXPECT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
 
 	/** Free random data, varying sizes. **/
-	for (size_t i = 1lu; i < test_limit; i++)
+	for (size_t i = 1lu; i < TEST_LIMIT; i++)
 	    {
 	    free(data[i]);
 	    nmFree(test[i], i);
@@ -155,7 +149,7 @@ static bool doTests(void)
 	nmFree(str2, 32);
 
 	/** Free large allocation. **/
-	nmFree(large_buf, large_buf_size);
+	nmFree(large_buf, LARGE_BUF_SIZE);
 
 	/** Clear cache. **/
 	nmClear();
