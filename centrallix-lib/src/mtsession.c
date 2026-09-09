@@ -782,16 +782,20 @@ mssSetParamPtr(char* paramname, void* ptr)
     pMtSession s;
     pMtParam p;
     int is_new = 0;
+    char name[MSS_PARAMNAME_SIZE];
 
 	s = (pMtSession)thGetParam(NULL,"mss");
 	if (!s) return -1;
 
+	/** The name has to fit the field it is kept in **/
+	if (strtcpy(name, paramname, sizeof(name)) < 0) return -1;
+
     	/** Need to delete first? **/
-	if (!(p = (pMtParam)xhLookup(&s->Params, paramname)))
+	if (!(p = (pMtParam)xhLookup(&s->Params, name)))
 	    {
 	    p = (pMtParam)nmMalloc(sizeof(MtParam));
 	    if (!p) return -1;
-	    strtcpy(p->Name, paramname, sizeof(p->Name));
+	    strcpy(p->Name, name);
 	    is_new = 1;
 	    }
 	else if (p->Value == ptr)
@@ -821,16 +825,20 @@ mssSetParam(char* paramname, void* value)
     pMtParam p;
     char* new_value;
     int is_new = 0;
+    char name[MSS_PARAMNAME_SIZE];
 
 	s = (pMtSession)thGetParam(NULL,"mss");
 	if (!s) return -1;
 
+	/** The name has to fit the field it is kept in **/
+	if (strtcpy(name, paramname, sizeof(name)) < 0) return -1;
+
     	/** Need to delete first? **/
-	if (!(p = (pMtParam)xhLookup(&s->Params, paramname)))
+	if (!(p = (pMtParam)xhLookup(&s->Params, name)))
 	    {
 	    p = (pMtParam)nmMalloc(sizeof(MtParam));
 	    if (!p) return -1;
-	    strtcpy(p->Name, paramname, sizeof(p->Name));
+	    strcpy(p->Name, name);
 	    p->IsAlloc = 0;
 	    is_new = 1;
 	    }
@@ -866,12 +874,16 @@ mssGetParam(char* paramname)
     {
     pMtSession s;
     pMtParam p;
+    char name[MSS_PARAMNAME_SIZE];
 
 	/** Get session. **/
 	s = (pMtSession)thGetParam(NULL,"mss");
 	if (!s) return NULL;
 
-    	p = (pMtParam) xhLookup(&s->Params, paramname);
+	/** The name has to fit the field it is kept in **/
+	if (strtcpy(name, paramname, sizeof(name)) < 0) return NULL;
+
+    	p = (pMtParam) xhLookup(&s->Params, name);
 	if (!p) return NULL;
 
     return p->Value;
