@@ -13,6 +13,7 @@
 #include "cxlib/xstring.h"
 #include "cxlib/mtlexer.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
+#include "prtmgmt_v3/prtmgmt_v3_private.h"
 #include "stparse.h"
 #include "centrallix.h"
 #include "htmlparse.h"

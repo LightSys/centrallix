@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -290,22 +290,12 @@ int expGetPropList(pExpression exp, pXArray objs_xa, pXArray props_xa);
 pXArray expGetPropsForObject(pExpression exp, int obj_id, pXArray proplist); /* call with proplist = NULL */
 void expFreeProps(pXArray proplist);
 
-/*** Internal Functions ***/
-pExpression exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlist, int cmpflags);
+/*** Expression tree functions ***/
 int expObjID(pExpression exp, pParamObjects objlist);
-int exp_internal_CopyNode(pExpression src, pExpression dst);
-pExpression exp_internal_CopyTree(pExpression orig_exp);
 int expSplitTree(pExpression src_tree, pExpression split_point, pExpression result_trees[]);
-int exp_internal_EvalTree(pExpression tree, pParamObjects objlist);
-int exp_internal_EvalAggregates(pExpression tree, pParamObjects objlist);
-int exp_internal_DefineFunctions();
-int exp_internal_DefineNodeEvals();
 int expCopyValue(pExpression src, pExpression dst, int make_independent);
 int expAddNode(pExpression parent, pExpression child);
 int expDataTypeToNodeType(int data_type);
-int exp_internal_SetupControl(pExpression exp);
-pExpControl exp_internal_LinkControl(pExpControl ctl);
-int exp_internal_UnlinkControl(pExpControl ctl);
 
 
 /*** Evaluator functions ***/
@@ -346,7 +336,6 @@ int expFreezeEval(pExpression tree, pParamObjects objlist, int freeze_id);
 int expFreezeOne(pExpression tree, pParamObjects objlist, int freeze_id);
 int expReplaceVariableID(pExpression tree, int newid);
 int expResetAggregates(pExpression tree, int reset_id, int level);
-int exp_internal_ResetAggregates(pExpression tree, int reset_id, int level);
 int expUnlockAggregates(pExpression tree, int level);
 int expRemoveParamFromList(pParamObjects this, char* name);
 int expRemoveParamFromListById(pParamObjects this, int i);

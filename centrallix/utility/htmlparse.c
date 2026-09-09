@@ -6,6 +6,7 @@
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
 #include "obj.h"
+#include "obj_private.h"
 #include "htmlparse.h"
 #include "stparse_ne.h"
 #include "cxlib/cxsec.h"
