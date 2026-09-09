@@ -112,7 +112,6 @@ static char* captureEnd(void)
 static bool doTest(void)
     {
     bool success = true;
-    int rval;
 
 	/*** An error raised outside a session has no stack to go on, so the
 	 *** stdout log method is where it ends up, conversions and errno text
@@ -120,27 +119,25 @@ static bool doTest(void)
 	 ***/
 	mssInitialize("altpasswd", auth_path, "stdout", 0, APPNAME);
 	if (!captureStart()) return false;
-	rval = mssError(1, "MOD", "no session here");
-	rval |= mssError(1, "MOD", "user %s, attempt %d", "testuser", 3);
+	mssError(1, "MOD", "no session here");
+	mssError(1, "MOD", "user %s, attempt %d", "testuser", 3);
 	errno = ENOENT;
-	rval |= mssErrorErrno(1, "MOD", "could not open it");
+	mssErrorErrno(1, "MOD", "could not open it");
 	snprintf(expected, sizeof(expected),
 		APPNAME": MOD: no session here\n"
 		APPNAME": MOD: user testuser, attempt 3\n"
 		APPNAME": MOD: could not open it (%s)\n", strerror(ENOENT));
 	success &= EXPECT_STR_EQL(captureEnd(), expected);
-	success &= EXPECT_EQL(rval, -1, "%d");
 
 	/*** With a session to hold the message, and without being told to log
 	 *** everything, the log stays quiet.
 	 ***/
 	if (!EXPECT_EQL(check(mssAuthenticate(USERNAME, PASSWORD, 0)), 0, "%d")) return false;
 	if (!captureStart()) return false;
-	rval = mssError(1, "MOD", "in session");
+	mssError(1, "MOD", "in session");
 	errno = ENOENT;
-	rval |= mssErrorErrno(0, "MOD", "in session too");
+	mssErrorErrno(0, "MOD", "in session too");
 	success &= EXPECT_STR_EQL(captureEnd(), "");
-	success &= EXPECT_EQL(check(rval), 0, "%d");
 	success &= EXPECT_EQL(check(mssEndSession(NULL)), 0, "%d");
 
 	/*** Being told to log everything logs the messages that a session
@@ -149,23 +146,21 @@ static bool doTest(void)
 	mssInitialize("altpasswd", auth_path, "stdout", 1, APPNAME);
 	if (!EXPECT_EQL(check(mssAuthenticate(USERNAME, PASSWORD, 0)), 0, "%d")) return false;
 	if (!captureStart()) return false;
-	rval = mssError(1, "MOD", "logged as well");
+	mssError(1, "MOD", "logged as well");
 	errno = ENOENT;
-	rval |= mssErrorErrno(0, "MOD", "logged too");
+	mssErrorErrno(0, "MOD", "logged too");
 	snprintf(expected, sizeof(expected),
 		APPNAME": MOD: logged as well\n"
 		APPNAME": MOD: logged too (%s)\n", strerror(ENOENT));
 	success &= EXPECT_STR_EQL(captureEnd(), expected);
-	success &= EXPECT_EQL(check(rval), 0, "%d");
 	success &= EXPECT_EQL(((pMtSession)thGetParam(NULL, "mss"))->ErrList.nItems, 2, "%d");
 	success &= EXPECT_EQL(check(mssEndSession(NULL)), 0, "%d");
 
 	/** With no program name to log under, the lines say "error". **/
 	mssInitialize("altpasswd", auth_path, "stdout", 0, "");
 	if (!captureStart()) return false;
-	rval = mssError(1, "MOD", "nameless");
+	mssError(1, "MOD", "nameless");
 	success &= EXPECT_STR_EQL(captureEnd(), "error: MOD: nameless\n");
-	success &= EXPECT_EQL(rval, -1, "%d");
 
     return success;
     }

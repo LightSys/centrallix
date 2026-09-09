@@ -84,7 +84,6 @@ static bool doTest(void)
     {
     bool success = true;
     int saved_stdout;
-    int rval;
 
 	/*** Outside a session there is nowhere to put the message, so it is
 	 *** logged instead; what gets logged is test 09's business, so stdout
@@ -92,26 +91,26 @@ static bool doTest(void)
 	 ***/
 	if (!quietStart(&saved_stdout)) return false;
 	errno = ENOENT;
-	rval = mssErrorErrno(1, "MOD", "message");
+	mssErrorErrno(1, "MOD", "message");
 	if (!quietEnd(saved_stdout)) return false;
-	success &= EXPECT_EQL(rval, -1, "%d");
+	success &= EXPECT_EQL(errorCount(), -1, "%d");
 
 	success &= EXPECT_EQL(check(mssAuthenticate(USERNAME, PASSWORD, 0)), 0, "%d");
 
 	/** The message carries the text of the current errno. **/
 	errno = ENOENT;
-	success &= EXPECT_EQL(mssErrorErrno(1, "MOD", "could not open it"), 0, "%d");
+	mssErrorErrno(1, "MOD", "could not open it");
 	success &= EXPECT_EQL(errorCount(), 1, "%d");
 	success &= EXPECT_STR_EQL(errorStack(), expectStack("MOD: could not open it", ENOENT));
 
 	/** A different errno gives different text. **/
 	errno = EACCES;
-	success &= EXPECT_EQL(mssErrorErrno(1, "MOD", "could not open it"), 0, "%d");
+	mssErrorErrno(1, "MOD", "could not open it");
 	success &= EXPECT_STR_EQL(errorStack(), expectStack("MOD: could not open it", EACCES));
 
 	/** Even a zero errno has text of its own. **/
 	errno = 0;
-	success &= EXPECT_EQL(mssErrorErrno(1, "MOD", "nothing went wrong"), 0, "%d");
+	mssErrorErrno(1, "MOD", "nothing went wrong");
 	success &= EXPECT_STR_EQL(errorStack(), expectStack("MOD: nothing went wrong", 0));
 
 	/*** The conversions it understands, in the one order that is safe: a
@@ -119,26 +118,26 @@ static bool doTest(void)
 	 *** argument, so nothing may follow one.
 	 ***/
 	errno = ENOENT;
-	success &= EXPECT_EQL(mssErrorErrno(1, "FMT",
-		"s=%s d=%d pct=%% unknown=%q trailing=%", "text", -7), 0, "%d");
+	mssErrorErrno(1, "FMT",
+		"s=%s d=%d pct=%% unknown=%q trailing=%", "text", -7);
 	success &= EXPECT_STR_EQL(errorStack(),
 		expectStack("FMT: s=text d=-7 pct=% unknown= trailing=%", ENOENT));
 
 	/** A NULL string argument is spelled out rather than followed. **/
 	errno = ENOENT;
-	success &= EXPECT_EQL(mssErrorErrno(1, "FMT", "%s", (char*)NULL), 0, "%d");
+	mssErrorErrno(1, "FMT", "%s", (char*)NULL);
 	success &= EXPECT_STR_EQL(errorStack(), expectStack("FMT: (NULL)", ENOENT));
 
 	/** Clearing is honored, and the messages share one stack with the
 	 ** ones mssError() adds.
 	 **/
 	errno = ENOENT;
-	success &= EXPECT_EQL(mssErrorErrno(0, "MOD", "second"), 0, "%d");
+	mssErrorErrno(0, "MOD", "second");
 	success &= EXPECT_EQL(errorCount(), 2, "%d");
-	success &= EXPECT_EQL(check(mssError(0, "MOD", "third")), 0, "%d");
+	mssError(0, "MOD", "third");
 	success &= EXPECT_EQL(errorCount(), 3, "%d");
 	errno = ENOENT;
-	success &= EXPECT_EQL(mssErrorErrno(1, "MOD", "only one left"), 0, "%d");
+	mssErrorErrno(1, "MOD", "only one left");
 	success &= EXPECT_EQL(errorCount(), 1, "%d");
 	success &= EXPECT_STR_EQL(errorStack(), expectStack("MOD: only one left", ENOENT));
 

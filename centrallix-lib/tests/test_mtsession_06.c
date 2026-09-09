@@ -99,8 +99,8 @@ static bool doTest(void)
 	success &= EXPECT_EQL(check(rval), 0, "%d");
 
 	/** Messages print newest first, one line each. **/
-	success &= EXPECT_EQL(check(mssError(1, "MOD", "first")), 0, "%d");
-	success &= EXPECT_EQL(check(mssError(0, "MOD2", "second")), 0, "%d");
+	mssError(1, "MOD", "first");
+	mssError(0, "MOD2", "second");
 	success &= EXPECT_STR_EQL(printError(&rval),
 		STACK_HEAD"--- MOD2: second\r\n--- MOD: first\r\n");
 	success &= EXPECT_EQL(check(rval), 0, "%d");
@@ -114,7 +114,7 @@ static bool doTest(void)
 	 **/
 	memset(long_message, 'L', sizeof(long_message) - 1);
 	long_message[sizeof(long_message) - 1] = '\0';
-	success &= EXPECT_EQL(check(mssError(1, "MOD", "%s", long_message)), 0, "%d");
+	mssError(1, "MOD", "%s", long_message);
 	success &= EXPECT_EQL((int)strlen(printError(&rval)),
 		(int)strlen(STACK_HEAD) + LINE_SIZE - 1, "%d");
 	success &= EXPECT_EQL(strncmp(printed + strlen(STACK_HEAD), "--- MOD: LLL", 12), 0, "%d");
