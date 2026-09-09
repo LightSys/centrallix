@@ -95,7 +95,9 @@ int exp_fn_user_name(pExpression tree, pParamObjects objlist, pExpression i0, pE
     }
 
 
-/*** exp_fn_internal_encoding_convert - Convert a string from one encoding to another
+/*** exp_fn_internal_encoding_convert - Convert a string from one encoding to another. 
+ *** If a character in the provided data is unsupported in the target encoding, it 
+ *** attempts to transliterate the data. If this fails, the character is dropped.
  ***   @param tree The expression tree node to store the results in
  ***   @param data_exp The expression with the data to be converted
  ***   @param to_code_exp A string expression of the encoding to convert to
@@ -106,12 +108,12 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
     {
     char* ret_buf = NULL;
     char* pre_buf = NULL;
-    iconv_t conv_desc = NULL;
+    iconv_t conv_desc = (iconv_t)0;
 
 	/** check the params are valid **/
 	if ( from_code_exp == NULL || (from_code_exp->Flags & EXPR_F_NULL) != 0 || from_code_exp->DataType != DATA_T_STRING
 	    || to_code_exp == NULL || (to_code_exp->Flags   & EXPR_F_NULL) != 0 || to_code_exp->DataType   != DATA_T_STRING
-	    || (data_exp->DataType != DATA_T_STRING && data_exp->DataType != DATA_T_BINARY) )
+	    || (data_exp != NULL && data_exp->DataType != DATA_T_STRING && data_exp->DataType != DATA_T_BINARY) )
 	    {
 	    mssError(1, "EXP", "convert(): conversion to character encoding requires (STRING|BINARY, STRING, STRING)");
 	    goto error;
@@ -187,7 +189,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 	if(conv_desc == (iconv_t)-1)
 	    {
 	    mssError(1,"EXP","convert(): Cannot start conversion session from '%s' to '%s'. Errno %d", from_code, to_code, errno);
-	    conv_desc = NULL;
+	    conv_desc = (iconv_t)0;
 	    goto error;
 	    }
 	
@@ -195,7 +197,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 	size_t in_len = data_len;
 	size_t out_len = in_len;
 	size_t ret_len = in_len; /* We will return the data as binary, so we do not need a null terminator */
-	if((ret_buf = nmSysMalloc(ret_len)) == NULL)
+	if((ret_buf = nmSysMalloc(ret_len)) == NULL && ret_len != 0)
 	    {
 	    mssError(1,"EXP","convert(): Out of memory");
 	    goto error;
@@ -211,11 +213,19 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 		switch (errno)
 		    {
 		    case EILSEQ:
-			mssError(1,"EXP","convert(): Invalid multibyte sequnece or character in string '%s' from encoding '%s'", 
+			if(data_exp->DataType == DATA_T_BINARY) 
+			    mssError(1,"EXP","convert(): Invalid multibyte sequnece or character in binary data from encoding '%s'",
+				from_code);
+			else
+			    mssError(1,"EXP","convert(): Invalid multibyte sequnece or character in string '%s' from encoding '%s'", 
 				data_exp->String, from_code);
 			break;
 		    case EINVAL: 
-			mssError(1,"EXP","convert(): String '%s' ends with an incomplete multibyte sequence from encoding '%s'", 
+			if(data_exp->DataType == DATA_T_BINARY) 
+			    mssError(1,"EXP","convert(): Binary data ends with an incomplete multibyte sequence from encoding '%s'",
+				from_code);
+			else
+			    mssError(1,"EXP","convert(): String '%s' ends with an incomplete multibyte sequence from encoding '%s'", 
 				data_exp->String, from_code);
 			break;
 		    case E2BIG:
@@ -234,7 +244,11 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 			}
 			continue;
 		    default:
-			mssError(1,"EXP","convert(): Unknown error converting string '%s' from '%s' to '%s'. errno = %d", 
+			if(data_exp->DataType == DATA_T_BINARY) 
+			    mssError(1,"EXP","convert(): Unknown error converting binary data from '%s' to '%s'. errno = %d", 
+				from_code, to_code, errno);
+			else
+			    mssError(1,"EXP","convert(): Unknown error converting string '%s' from '%s' to '%s'. errno = %d", 
 				data_exp->String, from_code, to_code, errno);
 		    }
 		goto error;
@@ -243,7 +257,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 	errno = 0;
 	/** close the session **/
 	iconv_close(conv_desc);
-	conv_desc = NULL;
+	conv_desc = (iconv_t)0;
 	
 	/** if the encoding required preprocessing, need to free the buffer */
 	if(pre_buf != NULL) nmSysFree(pre_buf);
@@ -251,21 +265,33 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 	/** if there was space leftover, shrink it back */
 	if(out_len > 0)
 	    {
-	    ret_buf = nmSysRealloc(ret_buf, ret_len - out_len);
+	    char* realloc_buf = nmSysRealloc(ret_buf, ret_len - out_len);
+	    if(realloc_buf == NULL)
+		{
+		mssError(1,"EXP","convert(): Out of memory for reallocation");
+		goto error;
+		}
+	    ret_buf = realloc_buf;
 	    ret_len -= out_len;
 	    }
 
 	/** set up the tree **/
 	tree->DataType = DATA_T_BINARY;
-	tree->String = ret_buf;
-	tree->Alloc = 1;
+	if (tree->Alloc && tree->String)
+	    {
+	    nmSysFree(tree->String);
+	    }
+
+	/** If the data was empty, could have NULL here **/
+	tree->String = (ret_buf != NULL)? ret_buf : tree->Types.StringBuf;
+	tree->Alloc = (ret_buf != NULL);
 	tree->Size = ret_len;
 
 	return 0;
 
     error:
 	if(ret_buf != NULL) nmSysFree(ret_buf);
-	if(conv_desc != NULL) iconv_close(conv_desc);
+	if(conv_desc != (iconv_t)0) iconv_close(conv_desc);
 	if(pre_buf != NULL) nmSysFree(pre_buf);
 	errno = 0;
     return -1;

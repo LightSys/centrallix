@@ -6,6 +6,9 @@
 "	   !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 "ascii to utf8"
 "	   !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+"ascii: empty str"
+""
+Attribute [ascii: NULL]:   binary  NULL
 "latin1 to ascii"
 " !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~ !cGBP?JPY|??(C)a<<!-(R)??+-23'u?.,1o>> 1/4  1/2  3/4 ?AAAAAAAECEEEEIIIIDNOOOOOxOUUUUYTHssaaaaaaaeceeeeiiiidnooooo/ouuuuythy"
 "latin1 to latin1"
@@ -14,8 +17,9 @@
 " !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~ ΅Ά£¤¥¦§¨©ª«¬­®―°±²³΄µ¶·ΈΉΊ»Ό½ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡÒΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώÿ"
 "latin1 to utf8"
 " !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~Β Β΅ΒΆΒ£Β¤Β¥Β¦Β§Β¨Β©ΒªΒ«Β¬Β­Β®Β―Β°Β±Β²Β³Β΄ΒµΒ¶Β·ΒΈΒΉΒΊΒ»ΒΌΒ½ΒΎΒΏΓ€ΓΓ‚ΓƒΓ„Γ…Γ†Γ‡ΓΓ‰ΓΓ‹ΓΓΓΓΓΓ‘Γ’Γ“Γ”Γ•Γ–Γ—ΓΓ™ΓΓ›ΓΓΓΓΓ Γ΅ΓΆΓ£Γ¤Γ¥Γ¦Γ§Γ¨Γ©ΓªΓ«Γ¬Γ­Γ®Γ―Γ°Γ±Γ²Γ³Γ΄ΓµΓ¶Γ·ΓΈΓΉΓΊΓ»ΓΌΓ½ΓΎΓΏ"
-"latin1 names test"
-"Test"
+"latin1: empty str"
+""
+Attribute [latin1: NULL]:   binary  NULL
 "utf8 to ascii"
 "AaBbCc010203,!""!cJPYAEA???????????????"
 "utf8 to latin1"
@@ -24,6 +28,9 @@
 "AaBbCc010203,!""΅Ά¥ΖΓ???????????????"
 "utf8 to utf8"
 "AaBbCc010203,!""Β΅ΒΆΒ¥Γ†Γƒγγ‚γƒγ„γ…γ†γ‡γγ‰π¨€π¨π¨‚π¨ƒπ¨„π¨…"
+"utf8: empty str"
+""
+Attribute [utf8: NULL]:   binary  NULL
 "cp1252 to ascii"
 "	   !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~EUR,f,,...+?^?S<OEZ''""""o---~(TM)s>oezY !cGBP?JPY|??(C)a<<!-(R)??+-23'u?.,1o>> 1/4  1/2  3/4 ?AAAAAAAECEEEEIIIIDNOOOOOxOUUUUYTHssaaaaaaaeceeeeiiiidnooooo/ouuuuythy"
 "cp1252 to latin1"
@@ -32,6 +39,9 @@
 "	   !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~€‚ƒ„…†‡‰‹‘’“”•–—™› ΅Ά£¤¥¦§¨©ª«¬­®―°±²³΄µ¶·ΈΉΊ»Ό½ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡÒΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώÿ"
 "cp1252 to utf8"
 "	   !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~β‚¬β€Ζ’β€β€¦β€ β€΅Λ†β€°Ε β€ΉΕ’Ε½β€β€™β€β€β€Άβ€“β€”Λβ„ΆΕ΅β€ΊΕ“ΕΎΕΈΒ Β΅ΒΆΒ£Β¤Β¥Β¦Β§Β¨Β©ΒªΒ«Β¬Β­Β®Β―Β°Β±Β²Β³Β΄ΒµΒ¶Β·ΒΈΒΉΒΊΒ»ΒΌΒ½ΒΎΒΏΓ€ΓΓ‚ΓƒΓ„Γ…Γ†Γ‡ΓΓ‰ΓΓ‹ΓΓΓΓΓΓ‘Γ’Γ“Γ”Γ•Γ–Γ—ΓΓ™ΓΓ›ΓΓΓΓΓ Γ΅ΓΆΓ£Γ¤Γ¥Γ¦Γ§Γ¨Γ©ΓªΓ«Γ¬Γ­Γ®Γ―Γ°Γ±Γ²Γ³Γ΄ΓµΓ¶Γ·ΓΈΓΉΓΊΓ»ΓΌΓ½ΓΎΓΏ"
+"cp1252: empty str"
+""
+Attribute [cp1252: NULL]:   binary  NULL
 "vanco to ascii"
 "EUR,f,,...+???S<OEZZ''""""o---~(TM)s>oezY	   !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~!cGBP?JPY|??(C)a<<!(R)??+-23'u?.,1o>> 1/4  1/2  3/4 ?AAAAAAAECEEEEIIIIDNOOOOOxOUUUUYTHssaaaaaaaeceeeeiiiidnooooo/ouuuuythy"
 "vanco to latin1"
@@ -40,9 +50,10 @@
 "€‚ƒ„…†‡‰‰‹‘’“”•–—™›	   !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~΅Ά£¤¥¦§¨©ª«¬®―°±²³΄µ¶·ΈΉΊ»Ό½ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡÒΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώÿ"
 "vanco to utf8"
 "β‚¬β€Ζ’β€β€¦β€ β€΅β€°β€°Ε β€ΉΕ’Ε½Ε½β€β€™β€β€β€Άβ€“β€”Λβ„ΆΕ΅β€ΊΕ“ΕΎΕΈ	   !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~Β΅ΒΆΒ£Β¤Β¥Β¦Β§Β¨Β©ΒªΒ«Β¬Β®Β―Β°Β±Β²Β³Β΄ΒµΒ¶Β·ΒΈΒΉΒΊΒ»ΒΌΒ½ΒΎΒΏΓ€ΓΓ‚ΓƒΓ„Γ…Γ†Γ‡ΓΓ‰ΓΓ‹ΓΓΓΓΓΓ‘Γ’Γ“Γ”Γ•Γ–Γ—ΓΓ™ΓΓ›ΓΓΓΓΓ Γ΅ΓΆΓ£Γ¤Γ¥Γ¦Γ§Γ¨Γ©ΓªΓ«Γ¬Γ­Γ®Γ―Γ°Γ±Γ²Γ³Γ΄ΓµΓ¶Γ·ΓΈΓΉΓΊΓ»ΓΌΓ½ΓΎΓΏ"
+"vanco: empty str"
+""
+Attribute [vanco: NULL]:   binary  NULL
 "one byte to multi"
 "e28099"
 "multi to one byte"
 "92"
-"NULL value"
-
