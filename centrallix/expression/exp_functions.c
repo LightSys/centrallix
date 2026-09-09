@@ -260,19 +260,35 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 	conv_desc = (iconv_t)0;
 	
 	/** if the encoding required preprocessing, need to free the buffer */
-	if(pre_buf != NULL) nmSysFree(pre_buf);
+	if(pre_buf != NULL)
+	    {
+	    nmSysFree(pre_buf);
+	    pre_buf = NULL;
+	    }
+	/** whether freed or not, should not need in_buf anymore **/
+	in_buf = NULL;
 
 	/** if there was space leftover, shrink it back */
 	if(out_len > 0)
 	    {
-	    char* realloc_buf = nmSysRealloc(ret_buf, ret_len - out_len);
-	    if(realloc_buf == NULL)
+	    size_t final_len = ret_len - out_len;
+	    if(final_len == 0)
 		{
-		mssError(1,"EXP","convert(): Out of memory for reallocation");
-		goto error;
+		/** none of the data could be converted; everything dropped **/
+		nmSysFree(ret_buf);
+		ret_buf = NULL;
 		}
-	    ret_buf = realloc_buf;
-	    ret_len -= out_len;
+	    else
+		{
+		char* realloc_buf = nmSysRealloc(ret_buf, ret_len - out_len);
+		if(realloc_buf == NULL)
+		    {
+		    mssError(1,"EXP","convert(): Out of memory for reallocation");
+		    goto error;
+		    }
+		ret_buf = realloc_buf;
+		}
+	    ret_len = final_len;
 	    }
 
 	/** set up the tree **/
