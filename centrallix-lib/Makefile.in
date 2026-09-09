@@ -178,13 +178,12 @@ install: all
 ## as each test finishes, so parallel tests cannot interleave.
 ##
 ## TESTCMD runs once per test with the binary as "$$1" and its capture file as
-## "$$2".  It writes to "$$2.part" and renames that to "$$2" when done, since
-## the rename is what marks the test finished, and it exits with the test's own
+## "$$2".  It writes to "$$2.part" and renames that to "$$2" when done so that
+## the rename is what marks the test as finished, then it exits with the test's
 ## status.  The driver exits 0 even when reporting FAIL or CRASH (see
 ## tests/t_driver.c), so a nonzero status means the test did not complete
 ## normally and must fail the target; only valgrind's --error-exitcode is
-## swallowed.  A test whose output never appears is reported in its place and
-## fails the target too.
+## dropped.  A test whose output never appears is reported and also fails.
 RUN_TESTS = \
     RESULTS=$$(mktemp -d) || exit 1; \
     trap 'rm -rf "$$RESULTS"' EXIT INT TERM; \
