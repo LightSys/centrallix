@@ -1,7 +1,10 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "test_utils.h"
 
 #include "qprintf.h"
 
@@ -43,44 +46,46 @@ static Case cases[] =
 	{ "100%% %STR",	"done",	"",	10,	9,	"100% done" },
     };
 
-long long
-test(char** tname)
+/** Number of cases run per call to doTest(). **/
+#define NCASES	((int)(sizeof(cases) / sizeof(Case)))
+
+/*** An escaped '%' or '&' that does not fit still counts toward the return
+ *** value, like every other truncated part of the output does.  Callers
+ *** such as htr_internal_QPAddText() compare the return value against the
+ *** buffer size to detect truncation.
+ ***/
+static bool
+doTest(void)
     {
-    int i, c, rval;
-    int iter;
-    int ncases = sizeof(cases) / sizeof(Case);
+    int c, rval;
     unsigned char raw[RAW];
     char* dst = (char*)raw + GUARD;
     size_t n;
 
-	/*** An escaped '%' or '&' that does not fit still counts toward the
-	 *** return value, like every other truncated part of the output does.
-	 *** Callers such as htr_internal_QPAddText() compare the return value
-	 *** against the buffer size to detect truncation.
-	 ***/
-
-	*tname = "qprintf-73 %% and %& count toward the return value";
-	iter = 10000;
-	for(i=0;i<iter;i++)
+	for(c=0;c<NCASES;c++)
 	    {
-	    for(c=0;c<ncases;c++)
-		{
-		memset(raw, 0xAA, RAW);
-		rval = qpfPrintf(NULL, dst, cases[c].Size, cases[c].Fmt, cases[c].Arg1, cases[c].Arg2);
+	    memset(raw, 0xAA, RAW);
+	    rval = qpfPrintf(NULL, dst, cases[c].Size, cases[c].Fmt, cases[c].Arg1, cases[c].Arg2);
 
-		/** The full length is reported whether or not it all fit. **/
-		assert(rval == cases[c].ExpRval);
+	    /** The full length is reported whether or not it all fit. **/
+	    assert(rval == cases[c].ExpRval);
 
-		/** Contents are as expected, and null-terminated. **/
-		assert(!strcmp(dst, cases[c].ExpDst));
+	    /** Contents are as expected, and null-terminated. **/
+	    assert(!strcmp(dst, cases[c].ExpDst));
 
-		/** Guard bytes and anything past the size are untouched. **/
-		for(n=0;n<GUARD;n++)
-		    assert(raw[n] == 0xAA);
-		for(n=GUARD+cases[c].Size;n<RAW;n++)
-		    assert(raw[n] == 0xAA);
-		}
+	    /** Guard bytes and anything past the size are untouched. **/
+	    for(n=0;n<GUARD;n++)
+		assert(raw[n] == 0xAA);
+	    for(n=GUARD+cases[c].Size;n<RAW;n++)
+		assert(raw[n] == 0xAA);
 	    }
 
-    return (long long)iter * ncases;
+    return true;
+    }
+
+long long
+test(char** tname)
+    {
+    *tname = "qprintf-73 %% and %& count toward the return value";
+    return loopTest(doTest) * NCASES;
     }
