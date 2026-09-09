@@ -478,27 +478,27 @@ mssError_internal(int clr, char* module, char* file, int line, char* message, ..
     {
     char err_msg[BUFSIZ];
     size_t i = 0;
-    
+
 	/** Prevent issues from interlacing this function with prints to stdout. **/
 	check(fflush(stdout)); /* Failure ignored. */
-	
+
 	/** Add line number to error message. **/
 	err_msg[0] = '\0';
 	strtcatf(err_msg, sizeof(err_msg), &i, "%s:%d: ", file, line);
-	
+
 	/** Write the module to the start of the error message. */
 	strtcatf(err_msg, sizeof(err_msg), &i, "%s: ", module);
-	
+
 	/** Process the message format with all the same rules as printf(). **/
 	va_list args;
 	va_start(args, message);
 	strtcatf_va(err_msg, sizeof(err_msg), &i, message, args);
 	va_end(args);
-	
+
 	/** Get current session **/
 	pMtSession s = thGetParam(NULL, "mss");
 	const bool log_error = (s == NULL || MSS.LogAllErrors);
-	
+
 	/** Use standard logging without a session context, if needed. **/
 	if (log_error) 
 	    {
@@ -515,13 +515,13 @@ mssError_internal(int clr, char* module, char* file, int line, char* message, ..
 		printf("%s: %s\n", (MSS.AppName[0]) ? MSS.AppName : "error", err_msg);
 		}
 	    }
-	    
+
 	/** If a session is available, try to add the error to the error list. **/
 	if (s != NULL)
 	    {
 	    /** Clear the error context, if requested. **/
 	    if (clr) check(mssClearError()); /* Failure ignored. */
-	    
+
 	    /** Allocate space and construct the error text. **/
 	    const char* allocated_err_msg = checkPtr(nmSysStrdup(err_msg));
 	    if (allocated_err_msg == NULL)
@@ -529,7 +529,7 @@ mssError_internal(int clr, char* module, char* file, int line, char* message, ..
 		fprintf(stderr, "Failed to store error message: %s\n", err_msg);
 		return; /* Give up. */
 		}
-	    
+
 	    /** Store the error. **/
 	    if (checkNeg(xaAddItem(&(s->ErrList), (void*)allocated_err_msg)) < 0)
 		{
@@ -537,7 +537,7 @@ mssError_internal(int clr, char* module, char* file, int line, char* message, ..
 		return; /* Give up. */
 		}
 	    }
-	
+
 	return;
     }
 
