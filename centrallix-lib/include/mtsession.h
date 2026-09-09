@@ -32,6 +32,9 @@
 #include "cxlib/xhash.h"
 #endif
 
+#include <errno.h>
+#include <string.h>
+
 
 /** optimum salt size for mssGenCred() **/
 #define	MSS_SALT_SIZE	4
@@ -85,8 +88,11 @@ void* mssGetParam(char* paramname);
 
 /** Error handling functions **/
 int mssLog(int level, char* msg);
-int mssError(int clr, char* module, char* message, ...);
-int mssErrorErrno(int clr, char* module, char* message, ...);
+void mssError_internal(int clr, char* module, char* file, int line, char* message, ...);
+#define mssError(clear, module, message, ...) \
+    mssError_internal(clear, module, __FILE__, __LINE__, message, ##__VA_ARGS__)
+#define mssErrorErrno(clear, module, message, ...) \
+    mssError_internal(clear, module, __FILE__, __LINE__, message " (%s)", ##__VA_ARGS__, strerror(errno))
 int mssClearError();
 int mssPrintError(pFile fd);
 int mssStringError(pXString str);
