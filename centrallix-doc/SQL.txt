@@ -1,7 +1,7 @@
 Document:  Centrallix SQL Language Specification
 Author:    Greg Beeley (GRB)
 Date:      July 3, 2001
-License:   Copyright (C) 2001 LightSys Technology Services.  See "LICENSE".
+License:   Copyright (C) 2001-2026 LightSys Technology Services.  See "LICENSE".
 -------------------------------------------------------------------------------
 
 I   OVERVIEW....
@@ -117,6 +117,22 @@ V   SORTING....
 
         SELECT :d:name, :d:size from /mydirectory d ORDER BY :d:size ASC
         SELECT :d:name, :d:size from /mydirectory d ORDER BY :d:size DESC
+
+    A query may contain more than one ORDER BY clause.  Later ORDER BY clauses
+    append their columns the first ORDER BY.  However, ORDER BY marked with the
+    DEFAULT keyword is overwritten by any later ORDER BY, even if that ORDER BY
+    also uses the DEFAULT keyword.  An ORDER BY is only appended if it is the
+    last ORDER BY in its SQL query.
+    This allows a query to offer a default ordering which can be discarded if
+    a more relevant order is appended to the query.
+
+        SELECT :d:name, :d:size, :d:type from /mydirectory d
+            ORDER BY :d:name
+            ORDER BY DEFAULT :d:size
+            ORDER BY :d:type
+
+    The result is sorted by :d:name and then by :d:type.  The :d:size clause is
+    marked DEFAULT, so the following ORDER BY overwrites it.
 
 
 VI  AGGREGATES AND GROUPING....

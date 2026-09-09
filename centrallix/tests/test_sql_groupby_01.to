@@ -1,0 +1,7 @@
+##NAME GROUP BY on a key too wide for the old fixed buffer
+
+# The Monochrome group's key image is 2552 bytes.  The comparison buffer held
+# 2048, so the group boundary check failed and every row fell into one group.
+
+csv SELECT n = count(:Color) FROM /tests/TestLevel1.csv/rows GROUP BY replicate(:ColorGroup, 255)
+csv SELECT n = count(:Color) FROM /tests/TestLevel1.csv/rows GROUP BY replicate(:ColorGroup, 255), :Color

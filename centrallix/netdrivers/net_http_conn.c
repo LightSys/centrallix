@@ -719,6 +719,12 @@ nht_i_ConnHandler(void* conn_v)
 
 	    /** Authentication succeeded - start a new session **/
 	    conn->NhtSession = nht_i_AllocSession(usrname, conn->UsingTLS);
+	    if (!conn->NhtSession)
+		{
+		mssError(0,"NHT","Could not create session for user [%s]", usrname);
+		nht_i_WriteErrResponse(conn, 500, "Internal Server Error", "<h1>Internal Server Error</h1>\r\n");
+		goto out;
+		}
 	    printf("NHT: new session for username [%s], cookie [%s]\n", conn->NhtSession->Username, conn->NhtSession->Cookie);
 	    }
 

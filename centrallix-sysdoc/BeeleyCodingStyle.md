@@ -19,7 +19,7 @@ For reference, here is some documentation on the core coding style used in Centr
 
 6.  Local variable declarations are indented the same as the brace that begins the function body.  The return statement at the end is done the same way.  The code body of the function itself, however, is indented four *more* spaces for clarity.  This is the only instance (that I know of) where a single block of code requires two indentation steps.  There should be a blank line after the local declarations as well as before the return statement.
 
-7.  Single line comments that are not to the right of a block of code use double asterisks, as in `/** this is a comment **/`.  Single line comments to the right of code or declarations use single asterisks as in `/* this is to the right of code */`.  Multiline comments for function declarations use three asterisks that continue on each line, as in
+7.  Single line comments that are not to the right of a block of code use double asterisks, as in `/** this is a comment **/`.  Single line comments to the right of code or declarations use single asterisks as in `/* this is to the right of code */`.  Multiline comments, such as for function declarations, use three asterisks that continue on each line, as in
 
 ```
 /*** myFunFunction - this is a function

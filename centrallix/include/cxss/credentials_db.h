@@ -71,6 +71,7 @@ typedef struct _CXSS_LLNode {
 } CXSS_UserAuth_LLNode;
 
 typedef enum {
+    CXSS_DB_MEMORY_ERROR = -4,
     CXSS_DB_SETUP_ERROR = -3,
     CXSS_DB_BIND_ERROR = -2,
     CXSS_DB_QUERY_ERROR = -1,

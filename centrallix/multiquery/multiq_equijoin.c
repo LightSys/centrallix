@@ -618,7 +618,6 @@ mqjAnalyze(pQueryStatement stmt)
 		if (!source)
 		    {
 		    mssError(1,"MQJ","Bark!  Could not locate join source component!");
-		    nmFree(qe->PrivateData, sizeof(MqjJoinData));
 		    mq_internal_FreeQE(qe);
 		    goto error;
 		    }

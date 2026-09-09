@@ -6,7 +6,7 @@
 ## This library is made available under the GNU Lesser General Public
 ## License, version 2.1.
 ##
-## Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+## Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 ##
 
 @SET_MAKE@
@@ -51,7 +51,7 @@ LIBSTNAME = libStParse.so.$(CXLIBVER)
 LIBCXSONAME = libCentrallix.so.$(CXLIBVER_GEN)
 LIBSTSONAME = libStParse.so.$(CXLIBVER_GEN)
 
-LIBS = @LIBS@
+LIBS = @LIBS@ -lm
 
 ## CFLAGS.  "MTCFLAGS" is used exclusively by the MTASK module
 ## compilation.  DO NOT OPTIMIZE MTASK!!!!  It will cause it to
@@ -63,10 +63,10 @@ CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall $(PRO
 MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall $(PROFILE) $(COVERAGE) -g -O0
 TCFLAGS=$(patsubst -DNDEBUG,,$(CFLAGS))
 
-XSTATICFILES=mtask.o mtlexer.o memstr.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o xhandle.o xringqueue.o cxsec.o smmalloc.o qprintf.o strtcpy.o util.o
+XSTATICFILES=mtask.o mtlexer.o memstr.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o xhandle.o xringqueue.o cxsec.o smmalloc.o qprintf.o strtcpy.o util.o timer.o check.o range.o
 STATICFILES=$(patsubst %,src/%,$(XSTATICFILES))
 
-XDYNAMICFILES=mtask.lo mtlexer.lo memstr.lo xarray.lo xhash.lo xstring.lo mtsession.lo newmalloc.lo xhashqueue.lo bdqs_transport.lo xhandle.lo xringqueue.lo cxsec.lo smmalloc.lo qprintf.lo strtcpy.lo util.lo
+XDYNAMICFILES=mtask.lo mtlexer.lo memstr.lo xarray.lo xhash.lo xstring.lo mtsession.lo newmalloc.lo xhashqueue.lo bdqs_transport.lo xhandle.lo xringqueue.lo cxsec.lo smmalloc.lo qprintf.lo strtcpy.lo util.lo timer.lo check.lo range.lo
 DYNAMICFILES=$(patsubst %,src/%,$(XDYNAMICFILES))
 
 INCLUDEFILES:=$(wildcard include/*.h)
@@ -75,6 +75,19 @@ INCLUDEFILES:=$(patsubst include/cxlibconfig-all.h,,$(INCLUDEFILES))
 
 TESTFILES:=$(wildcard tests/test_$(TONLY)*.c)
 TESTPROGS:=$(patsubst %.c,%.bin,$(TESTFILES))
+
+## Valgrind setup for "make valtest".  Override VALGRINDFLAGS to change the
+## checks performed, and set VALGRINDLOG to a directory to get one valgrind
+## log per test instead of the errors being printed with the test results.
+VALGRIND?=valgrind
+VALGRINDFLAGS?=-q
+VALGRINDLOG?=
+
+## How many tests "make test" and "make valtest" run at once (1 for one at a
+## time).  Each test is a single-threaded process, so this scales with the core
+## count; the driver's lockup timeout is wall clock, so going well past the
+## core count risks reporting LOCKUP for a test that was only waiting for one.
+TESTJOBS?=$(shell nproc 2>/dev/null || echo 1)
 
 .SUFFIXES:	.c .o .lo
 
@@ -160,26 +173,86 @@ install: all
 %.bin:	%.c tests/t_driver.c libCentrallix.a
 	$(CC) $(TCFLAGS) tests/t_driver.c $< libCentrallix.a -o $@ ${LIBS}
 
+## Runs the selected tests $(TESTJOBS) at a time.  Output is captured per test
+## rather than written straight to the terminal, then printed in listing order
+## as each test finishes, so parallel tests cannot interleave.
+##
+## TESTCMD runs once per test with the binary as "$$1" and its capture file as
+## "$$2".  It writes to "$$2.part" and renames that to "$$2" when done so that
+## the rename is what marks the test as finished, then it exits with the test's
+## status.  The driver exits 0 even when reporting FAIL or CRASH (see
+## tests/t_driver.c), so a nonzero status means the test did not complete
+## normally and must fail the target; only valgrind's --error-exitcode is
+## dropped.  A test whose output never appears is reported and also fails.
+RUN_TESTS = \
+    RESULTS=$$(mktemp -d) || exit 1; \
+    trap 'rm -rf "$$RESULTS"' EXIT INT TERM; \
+    N=0; \
+    for PROG in $$( ls $(TESTPROGS) ); do \
+	case "$$PROG" in tests/test_$$TONLY*) \
+	    N=$$((N+1)); \
+	    printf '%s\n%s/%04d.out\n' "$$PROG" "$$RESULTS" "$$N";; \
+	esac; \
+    done > "$$RESULTS/list"; \
+    if [ "$$N" -eq 0 ]; then exit 0; fi; \
+    xargs -r -n 2 -P $(TESTJOBS) sh -c "$$TESTCMD" sh \
+	< "$$RESULTS/list" 2> "$$RESULTS/stderr" & \
+    XARGS=$$!; \
+    RC=0; \
+    I=0; \
+    while [ "$$I" -lt "$$N" ]; do \
+	I=$$((I+1)); \
+	OUT=$$(printf '%s/%04d.out' "$$RESULTS" "$$I"); \
+	while [ ! -e "$$OUT" ]; do \
+	    kill -0 "$$XARGS" 2>/dev/null || break; \
+	    sleep 0.05; \
+	done; \
+	if [ -e "$$OUT" ]; then \
+	    cat "$$OUT"; \
+	else \
+	    printf '%-62.62s  FAIL (produced no result)\n' \
+		"$$(sed -n "$$((2 * I - 1))p" "$$RESULTS/list")"; \
+	    RC=1; \
+	fi; \
+    done; \
+    wait "$$XARGS" || RC=$$?; \
+    cat "$$RESULTS/stderr" >&2; \
+    exit "$$RC"
+
 .PHONY: test
 test:	$(TESTPROGS)
 	@printf "%-62.62s  %s\n" "Test Name" "Stat Ops/sec"
 	@printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"
-	@for PROG in $$( ls $(TESTPROGS) ); do \
-	    if [ "$$TONLY" = "" -o "$${PROG#tests/test_$$TONLY}" != "$$PROG" ]; then \
-		$$PROG; \
-	    fi \
-	done 
+	@TESTCMD='"$$1" > "$$2.part" 2>&1; \
+		S=$$?; \
+		mv "$$2.part" "$$2"; \
+		exit $$S'; \
+	$(RUN_TESTS)
 
 .PHONY:	valtest
 valtest:	$(TESTPROGS)
 	@printf "Running Regression Tests Under Valgrind...\n"
 	@printf "%-62.62s  %s\n" "Test Name" "Stat Ops/sec"
 	@printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"
-	@for PROG in $$( ls $(TESTPROGS) ); do \
-	    if [ "$$TONLY" = "" -o "$${PROG#tests/test_$$TONLY}" != "$$PROG" ]; then \
-		valgrind -q $$PROG; \
-	    fi \
-	done 
+	@if [ "$(VALGRINDLOG)" != "" ]; then mkdir -p "$(VALGRINDLOG)"; fi
+	@if [ "$(VALGRINDLOG)" = "" ]; then \
+	    TESTCMD='$(VALGRIND) $(VALGRINDFLAGS) "$$1" > "$$2.part" 2>&1; \
+		S=$$?; \
+		mv "$$2.part" "$$2"; \
+		exit $$S'; \
+	else \
+	    TESTCMD='NAME=$${1##*/}; \
+		LOG="$(VALGRINDLOG)/$${NAME%.bin}.log"; \
+		$(VALGRIND) $(VALGRINDFLAGS) --error-exitcode=125 --log-file="$$LOG" "$$1" > "$$2.part" 2>&1; \
+		S=$$?; \
+		if [ "$$S" = "125" ]; then \
+		    printf "  valgrind: errors reported -- %s\n" "$$LOG" >> "$$2.part"; \
+		    S=0; \
+		fi; \
+		mv "$$2.part" "$$2"; \
+		exit $$S'; \
+	fi; \
+	$(RUN_TESTS)
 
 .PHONY: cov-clean
 cov-clean:
