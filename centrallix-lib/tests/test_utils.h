@@ -23,6 +23,20 @@
 
 #include "timer.h"
 
+/*** Define lockup times.  Valgrind instruments every memory access, so tests
+ *** may need longer to finish when running under valgrind.
+ ***/
+#define NORMAL_LOCKUP_SECONDS 5u
+#define VALGRIND_LOCKUP_SECONDS 10u
+
+/** Detect valgrind. **/
+#ifdef USING_VALGRIND
+#include "valgrind/valgrind.h"
+#define LOCKUP_SECONDS	((RUNNING_ON_VALGRIND) ? VALGRIND_LOCKUP_SECONDS : NORMAL_LOCKUP_SECONDS)
+#else
+#define LOCKUP_SECONDS	NORMAL_LOCKUP_SECONDS
+#endif
+
 /*** The minimum number of seconds that a test can take.  Tests that take less
  *** time than this might not use enough cpu cycles, confusing the test suite
  *** performance tracking.
