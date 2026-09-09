@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -31,6 +31,9 @@
 #include "cxlib/xstring.h"
 #include "cxlib/xhash.h"
 #endif
+
+#include <errno.h>
+#include <string.h>
 
 
 /** optimum salt size for mssGenCred() **/
@@ -84,7 +87,8 @@ int mssLog(int level, char* msg);
 void mssError_internal(int clr, char* module, char* file, int line, char* message, ...);
 #define mssError(clear, module, message, ...) \
     mssError_internal(clear, module, __FILE__, __LINE__, message, ##__VA_ARGS__)
-int mssErrorErrno(int clr, char* module, char* message, ...);
+#define mssErrorErrno(clear, module, message, ...) \
+    mssError_internal(clear, module, __FILE__, __LINE__, message " (%s)", ##__VA_ARGS__, strerror(errno))
 int mssClearError();
 int mssPrintError(pFile fd);
 int mssStringError(pXString str);

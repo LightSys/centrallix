@@ -31,7 +31,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -539,102 +539,6 @@ mssError_internal(int clr, char* module, char* file, int line, char* message, ..
 	    }
 
 	return;
-    }
-
-
-/*** mssErrorErrno - Adds an error to the error stack, but in this
- *** case it takes the error information from the current errno.
- ***/
-int 
-mssErrorErrno(int clr, char* module, char* message, ...)
-    {
-    va_list vl;
-    char* msg;
-    char* err;
-    pMtSession s;
-    int en;
-    char* str;
-    int i;
-    XString xs;
-    char nbuf[16];
-    char* cur_pos;
-    char* ptr;
-
-    	/** Build the real error msg. **/
-	xsInit(&xs);
-	cur_pos = message;
-	va_start(vl, message);
-	while((ptr = strchr(cur_pos, '%')))
-	    {
-	    xsConcatenate(&xs, cur_pos, ptr - cur_pos);
-	    switch(ptr[1])
-	        {
-		case '\0':
-		    xsConcatenate(&xs, "%", 1);
-		    cur_pos = ptr+1;
-		    break;
-		case '%':
-		    xsConcatenate(&xs, "%", 1);
-		    cur_pos = ptr+2;
-		    break;
-		case 's':
-		    str = va_arg(vl, char*);
-		    xsConcatenate(&xs, str?str:"(NULL)", -1);
-		    cur_pos = ptr + 2;
-		    break;
-		case 'd':
-		    i = va_arg(vl, int);
-		    sprintf(nbuf,"%d",i);
-		    xsConcatenate(&xs, nbuf, -1);
-		    cur_pos = ptr + 2;
-		    break;
-		default:
-		    cur_pos = ptr + 2;
-		    break;
-		}
-	    }
-	va_end(vl);
-	if (*cur_pos) xsConcatenate(&xs, cur_pos, -1);
-
-	/** Get current errno. **/
-	en = errno;
-	err = strerror(en);
-
-	/** Get session. **/
-	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s || MSS.LogAllErrors) 
-	    {
-	    /*printf("mssErrorErrno: Error occurred outside of session context.\n");*/
-	    if (!strcmp(MSS.LogMethod,"syslog"))
-		{
-		if (!s)
-		    syslog(LOG_ERR, "System: %s: %.256s (%s)\n", module, xs.String, err);
-		else
-		    syslog(LOG_WARNING, "User '%s': %s: %.256s (%s)\n", s->UserName, module, xs.String, err);
-		}
-	    else
-		{
-		printf("%s: %s: %s (%s)\n",MSS.AppName[0]?MSS.AppName:"error",module,xs.String,err);
-		}
-	    if (!s) return -1;
-	    }
-
-	/** Need to clear? **/
-	if (clr) mssClearError();
-
-	/** Allocate space and construct the error text. **/
-	msg = (char*)nmSysMalloc(strlen(module)+strlen(xs.String)+6 + strlen(err));
-	if (!msg)
-	    {
-	    perror("mssErrorErrno: Could not allocate error");
-	    printf("mssErrorErrno: %s: %s (%s)\n",module,xs.String,err);
-	    return -1;
-	    }
-	sprintf(msg,"%s: %s (%s)",module,xs.String,err);
-	xaAddItem(&(s->ErrList),(void*)msg);
-	xsDeInit(&xs);
-
-    return 0;
     }
 
 
