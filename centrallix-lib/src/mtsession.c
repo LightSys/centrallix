@@ -70,6 +70,21 @@ mssMemoryErr(char* message)
     }
 
 
+/*** mssFreeParam - release a session parameter and any value allocated
+ *** for it.
+ ***/
+static int
+mssFreeParam(void* param, void* arg)
+    {
+    pMtParam p = (pMtParam)param;
+
+	if (p->IsAlloc) nmSysFree(p->Value);
+	nmFree(p, sizeof(MtParam));
+
+    return 0;
+    }
+
+
 /*** mssLog - write to syslog
  ***/
 int
@@ -447,7 +462,7 @@ mssEndSession(pMtSession s)
 
 	/** Free the session info and error list **/
 	for(i=0;i<s->ErrList.nItems;i++) nmSysFree(s->ErrList.Items[i]);
-	xhClear(&s->Params, NULL, NULL);
+	xhClear(&s->Params, mssFreeParam, NULL);
 	xhDeInit(&s->Params);
 	xaDeInit(&(s->ErrList));
 	xaRemoveItem(&(MSS.Sessions),xaFindItem(&(MSS.Sessions),(void*)s));
