@@ -785,7 +785,7 @@ mssSetParamPtr(char* paramname, void* ptr)
     char name[MSS_PARAMNAME_SIZE];
 
 	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s) return -1;
+	if (!s || !paramname) return -1;
 
 	/** The name has to fit the field it is kept in **/
 	if (strtcpy(name, paramname, sizeof(name)) < 0) return -1;
@@ -828,7 +828,7 @@ mssSetParam(char* paramname, void* value)
     char name[MSS_PARAMNAME_SIZE];
 
 	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s) return -1;
+	if (!s || !paramname || !value) return -1;
 
 	/** The name has to fit the field it is kept in **/
 	if (strtcpy(name, paramname, sizeof(name)) < 0) return -1;
@@ -878,7 +878,7 @@ mssGetParam(char* paramname)
 
 	/** Get session. **/
 	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s) return NULL;
+	if (!s || !paramname) return NULL;
 
 	/** The name has to fit the field it is kept in **/
 	if (strtcpy(name, paramname, sizeof(name)) < 0) return NULL;
