@@ -383,6 +383,8 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 	else
 	    {
 	    mssError(1, "MSS", "Invalid auth method '%s'", MSS.AuthMethod);
+	    cxsecShred(s, sizeof(MtSession));
+	    nmFree(s,sizeof(MtSession));
 	    return -1;
 	    }
 
