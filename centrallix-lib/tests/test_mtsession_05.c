@@ -113,20 +113,21 @@ static bool doTest(void)
 	mssErrorErrno(1, "MOD", "nothing went wrong");
 	success &= EXPECT_STR_EQL(errorStack(), expectStack("MOD: nothing went wrong", 0));
 
-	/*** The conversions it understands, in the one order that is safe: a
-	 *** conversion it does not know is dropped without taking its
-	 *** argument, so nothing may follow one.
+	/*** The message is a printf() format string, so the conversions are
+	 *** whatever the C library provides.  An unknown conversion and a
+	 *** trailing percent sign are undefined; glibc keeps the percent sign
+	 *** and drops the letter after it.
 	 ***/
 	errno = ENOENT;
 	mssErrorErrno(1, "FMT",
 		"s=%s d=%d pct=%% unknown=%q trailing=%", "text", -7);
 	success &= EXPECT_STR_EQL(errorStack(),
-		expectStack("FMT: s=text d=-7 pct=% unknown= trailing=%", ENOENT));
+		expectStack("FMT: s=text d=-7 pct=% unknown=% trailing=%", ENOENT));
 
-	/** A NULL string argument is spelled out rather than followed. **/
+	/** A NULL string argument is spelled out by glibc rather than followed. **/
 	errno = ENOENT;
 	mssErrorErrno(1, "FMT", "%s", (char*)NULL);
-	success &= EXPECT_STR_EQL(errorStack(), expectStack("FMT: (NULL)", ENOENT));
+	success &= EXPECT_STR_EQL(errorStack(), expectStack("FMT: (null)", ENOENT));
 
 	/** Clearing is honored, and the messages share one stack with the
 	 ** ones mssError() adds.

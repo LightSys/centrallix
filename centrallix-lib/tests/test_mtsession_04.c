@@ -123,19 +123,19 @@ static bool doTest(void)
 	success &= EXPECT_EQL(errorCount(), 1, "%d");
 	success &= EXPECT_STR_EQL(errorStack(), STACK_HEAD"--- MOD: fresh\r\n");
 
-	/** The conversions the module understands: a string, an integer, a
-	 ** character, and a literal percent sign.  A conversion it does not
-	 ** know is dropped along with its letter, and a trailing percent sign
-	 ** stands for itself.
-	 **/
+	/*** The message is a printf() format string, so the conversions are
+	 *** whatever the C library provides.  An unknown conversion and a
+	 *** trailing percent sign are undefined; glibc keeps the percent sign
+	 *** and drops the letter after it.
+	 ***/
 	mssError(1, "FMT",
 		"s=%s d=%d c=%c pct=%% unknown=%q trailing=%", "text", -7, 'X');
 	success &= EXPECT_STR_EQL(errorStack(),
-		STACK_HEAD"--- FMT: s=text d=-7 c=X pct=% unknown= trailing=%\r\n");
+		STACK_HEAD"--- FMT: s=text d=-7 c=X pct=% unknown=% trailing=%\r\n");
 
-	/** A NULL string argument is spelled out rather than followed. **/
+	/** A NULL string argument is spelled out by glibc rather than followed. **/
 	mssError(1, "FMT", "%s", (char*)NULL);
-	success &= EXPECT_STR_EQL(errorStack(), STACK_HEAD"--- FMT: (NULL)\r\n");
+	success &= EXPECT_STR_EQL(errorStack(), STACK_HEAD"--- FMT: (null)\r\n");
 
 	/** A message with nothing in it, from a module with no name. **/
 	mssError(1, "", "");
