@@ -436,10 +436,12 @@ mssEndSession(pMtSession s)
 	    if (!s) return -1;
 	    }
 
-	/** Unlink from thread if this is the current thread's session **/
+	/** Unlink from thread with the unlink function off; it re-enters here **/
 	if (s == cur_s)
 	    {
+	    thSetParamFunctions(NULL, mssLinkSession, NULL);
 	    thSetParam(NULL,"mss",NULL);
+	    thSetParamFunctions(NULL, mssLinkSession, mssUnlinkSession);
 	    thSetUserID(NULL,0);
 	    }
 
