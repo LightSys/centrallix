@@ -19,7 +19,13 @@ static char str[65536] = "";
 static int toktype[N_TOK] = {MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_EOF };
 static char* tokstr[6];
 
-/** Line length under test, advanced each pass and wrapped at the longest case. **/
+/*** Number of passes needed to cover every string length.  Each pass tests the
+ *** lengths congruent to it, spread across the whole sweep, so even a single
+ *** pass exercises the longest strings.
+ ***/
+#define N_PASS	250
+
+/** Pass under test, advanced each time and wrapped once all passes are done. **/
 static int sweep = 0;
 
 static bool
@@ -33,44 +39,45 @@ doTests(void)
     char* strval;
     pLxSession lxs;
 
-	if (sweep >= MAX_LEN-20) sweep = 0;
-	i = sweep++;
-
-	/** Put the line breaks in place for this pass. **/
-	str[i+1] = '\r';
-	str[i+2] = '\n';
-	tokstr[0][i] = '\r';
-	tokstr[0][i+1] = '\n';
-	str[i+20] = '\n';
-	tokstr[0][i+19] = '\n';
-
-	lxs = mlxStringSession(str, MLX_F_EOL | MLX_F_EOF);
-	assert(lxs != NULL);
-	strcnt = 0;
-	for(j=0;j<N_TOK;j++)
+	if (sweep >= N_PASS) sweep = 0;
+	for(i=sweep++;i<MAX_LEN-20;i+=N_PASS)
 	    {
-	    t = mlxNextToken(lxs);
-	    if (t != toktype[j]) printf("Error at string length %d\n", i+1);
-	    assert(t == toktype[j]);
-	    if (t == MLX_TOK_STRING || t == MLX_TOK_KEYWORD)
-		{
-		alloc = 0;
-		strval = mlxStringVal(lxs, &alloc);
-		assert(strval != NULL);
-		assert(strcnt < 1);
-		assert(strcmp(strval,tokstr[strcnt++]) == 0);
-		if (alloc) nmSysFree(strval);
-		}
-	    }
-	mlxCloseSession(lxs);
+	    /** Put the line breaks in place for this pass. **/
+	    str[i+1] = '\r';
+	    str[i+2] = '\n';
+	    tokstr[0][i] = '\r';
+	    tokstr[0][i+1] = '\n';
+	    str[i+20] = '\n';
+	    tokstr[0][i+19] = '\n';
 
-	/** Put the line breaks back, ready for the next pass. **/
-	str[i+1] = 'a';
-	str[i+2] = 'a';
-	tokstr[0][i] = 'a';
-	tokstr[0][i+1] = 'a';
-	str[i+20] = 'a';
-	tokstr[0][i+19] = 'a';
+	    lxs = mlxStringSession(str, MLX_F_EOL | MLX_F_EOF);
+	    assert(lxs != NULL);
+	    strcnt = 0;
+	    for(j=0;j<N_TOK;j++)
+		{
+		t = mlxNextToken(lxs);
+		if (t != toktype[j]) printf("Error at string length %d\n", i+1);
+		assert(t == toktype[j]);
+		if (t == MLX_TOK_STRING || t == MLX_TOK_KEYWORD)
+		    {
+		    alloc = 0;
+		    strval = mlxStringVal(lxs, &alloc);
+		    assert(strval != NULL);
+		    assert(strcnt < 1);
+		    assert(strcmp(strval,tokstr[strcnt++]) == 0);
+		    if (alloc) nmSysFree(strval);
+		    }
+		}
+	    mlxCloseSession(lxs);
+
+	    /** Put the line breaks back, ready for the next pass. **/
+	    str[i+1] = 'a';
+	    str[i+2] = 'a';
+	    tokstr[0][i] = 'a';
+	    tokstr[0][i+1] = 'a';
+	    str[i+20] = 'a';
+	    tokstr[0][i+19] = 'a';
+	    }
 
     return true;
     }
