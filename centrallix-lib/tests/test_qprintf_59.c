@@ -9,7 +9,7 @@
 #include "test_utils.h"
 
 static bool
-doTests(void)
+doTest(void)
     {
     int rval;
     unsigned char buf[44];
@@ -52,5 +52,5 @@ long long
 test(char** tname)
     {
     *tname = "qprintf-59 %STR&PATH various invalid pathnames";
-    return loopTests(doTests) * 7;
+    return loopTest(doTest) * 7;
     }

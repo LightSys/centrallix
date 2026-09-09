@@ -19,7 +19,7 @@ static double doubles[] = {.0, .1, .10, .01, 0.0, 0.1, 0.10, 0.01, 1.0, 1.1, 1.1
 #define N_DOUBLES	(sizeof(doubles)/sizeof(doubles[0]))
 
 static bool
-doTests(void)
+doTest(void)
     {
     unsigned int j;
     int n;
@@ -51,5 +51,5 @@ test(char** tname)
     {
     *tname = "mtlexer-10 integer and double parsing";
     mssInitialize("system", "", "", 0, "test");
-    return loopTests(doTests) * (N_INTEGERS + N_DOUBLES);
+    return loopTest(doTest) * (N_INTEGERS + N_DOUBLES);
     }

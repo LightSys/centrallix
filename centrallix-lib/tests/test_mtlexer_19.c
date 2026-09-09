@@ -18,7 +18,7 @@ static int setflags[N_TOK] =   {0, 0, MLX_F_IFSONLY, 0, 0, 0,             0, 0, 
 static int unsetflags[N_TOK] = {0, 0, 0,             0, 0, MLX_F_IFSONLY, 0, 0, 0,              MLX_F_LINEONLY, 0, 0, 0, 0, 0, 0 };
 
 static bool
-doTests(void)
+doTest(void)
     {
     int j;
     int t;
@@ -53,5 +53,5 @@ test(char** tname)
     {
     *tname = "mtlexer-19 enabling/disabling LINEONLY/IFSONLY during parsing";
     mssInitialize("system", "", "", 0, "test");
-    return loopTests(doTests) * 9;
+    return loopTest(doTest) * 9;
     }

@@ -14,7 +14,7 @@
  *** offsets).
  ***/
 static bool
-doTests(void)
+doTest(void)
     {
     int rval;
     unsigned char buf[44];
@@ -56,5 +56,5 @@ long long
 test(char** tname)
     {
     *tname = "strtcpy-08 strtcpy() copy to 2 char buffer";
-    return loopTests(doTests) * 4;
+    return loopTest(doTest) * 4;
     }

@@ -19,7 +19,7 @@ static char str[65536] = "";
 static int sweep = 0;
 
 static bool
-doTests(void)
+doTest(void)
     {
     int i;
     double d;
@@ -61,5 +61,5 @@ test(char** tname)
     {
     *tname = "mtlexer-14 normal/oversized double floating point";
     mssInitialize("system", "", "", 0, "test");
-    return loopTests(doTests);
+    return loopTest(doTest);
     }

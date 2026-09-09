@@ -26,7 +26,7 @@
 /** Tested module. **/
 #include "range.h"
 
-static bool doTests(void)
+static bool doTest(void)
     {
     bool success = true;
     
@@ -68,5 +68,5 @@ static bool doTests(void)
 long long test(char** tname)
     {
     *tname = "range-01 roundTo()";
-    return loopTests(doTests);
+    return loopTest(doTest);
     }

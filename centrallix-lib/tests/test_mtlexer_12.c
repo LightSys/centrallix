@@ -19,7 +19,7 @@ static char str[65536] = "";
 static int sweep = 0;
 
 static bool
-doTests(void)
+doTest(void)
     {
     int i;
     pLxSession lxs;
@@ -63,5 +63,5 @@ test(char** tname)
     {
     *tname = "mtlexer-12 normal/oversized keywords";
     mssInitialize("system", "", "", 0, "test");
-    return loopTests(doTests);
+    return loopTest(doTest);
     }

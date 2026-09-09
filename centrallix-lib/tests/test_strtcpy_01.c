@@ -9,7 +9,7 @@
 #include "test_utils.h"
 
 static bool
-doTests(void)
+doTest(void)
     {
     unsigned char buf[44];
 
@@ -48,5 +48,5 @@ long long
 test(char** tname)
     {
     *tname = "strtcpy-01 compare to memccpy() and arr[n-1] = '\\0'";
-    return loopTests(doTests) * 4;
+    return loopTest(doTest) * 4;
     }

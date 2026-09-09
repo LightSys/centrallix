@@ -47,7 +47,7 @@ static char* err_buf;
 static unsigned int err_buf_i;
 static unsigned int err_buf_size;
 
-static int mock_error_fn(char* error_msg)
+static int mockErrorFn(char* error_msg)
     {
     const size_t len = strlen(error_msg) + 1lu;
 
@@ -68,7 +68,7 @@ static int mock_error_fn(char* error_msg)
     }
 
 /** Initialize memory of a given size with random data. **/
-static void* random_init(void* ptr, size_t size)
+static void* randomInit(void* ptr, size_t size)
     {
 	if (ptr == NULL) return NULL;
 	unsigned char* p = (unsigned char*)ptr;
@@ -78,7 +78,7 @@ static void* random_init(void* ptr, size_t size)
 	return ptr;
     }
 
-static bool doTests(void)
+static bool doTest(void)
     {
     bool success = true;
 
@@ -88,7 +88,7 @@ static bool doTests(void)
 	/** Initialize the mock error function. **/
 	err_buf = checkPtr(malloc(err_buf_size = 256));
 	err_buf_i = snprintf(err_buf, err_buf_size, "%s", "");
-	nmSetErrFunction(mock_error_fn);
+	nmSetErrFunction(mockErrorFn);
 
 	/** Basic string data. **/
 	char* str1;
@@ -106,7 +106,7 @@ static bool doTests(void)
 	for (size_t i = 1lu; i < TEST_LIMIT; i++)
 	    {
 	    success &= EXPECT_NOT_NULL(test[i] = nmSysMalloc(i));
-	    data[i] = random_init(checkPtr(malloc(i)), i);
+	    data[i] = randomInit(checkPtr(malloc(i)), i);
 	    memcpy(test[i], data[i], i); /* Write test data into test memory. */
 	    }
 	for (size_t i = TEST_LIMIT - 1lu; i > 0lu; i--)
@@ -198,7 +198,7 @@ static bool doTests(void)
 long long test(char** tname)
     {
     *tname = "newmalloc-00 nmSysMalloc(), nmSysFree(), nmSysRealloc(), & nmSysStrdup()";
-    return loopTests(doTests);
+    return loopTest(doTest);
     }
 
 /** Scope cleanup. **/

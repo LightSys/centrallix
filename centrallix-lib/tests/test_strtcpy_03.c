@@ -9,7 +9,7 @@
 #include "test_utils.h"
 
 static bool
-doTests(void)
+doTest(void)
     {
     int rval;
     unsigned char buf[44];
@@ -46,5 +46,5 @@ long long
 test(char** tname)
     {
     *tname = "strtcpy-03 strtcpy() full-size non-overflow";
-    return loopTests(doTests) * 4;
+    return loopTest(doTest) * 4;
     }

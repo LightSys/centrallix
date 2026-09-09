@@ -29,7 +29,7 @@ static char* tokstr[6];
 static int sweep = 0;
 
 static bool
-doTests(void)
+doTest(void)
     {
     int i;
     int j;
@@ -100,7 +100,7 @@ test(char** tname)
 	memset(tokstr[0], 'a', MAX_LEN+1);
 	tokstr[0][MAX_LEN+1] = '\0';
 
-	rval = loopTests(doTests);
+	rval = loopTest(doTest);
 
 	nmSysFree(tokstr[0]);
 	tokstr[0] = NULL;

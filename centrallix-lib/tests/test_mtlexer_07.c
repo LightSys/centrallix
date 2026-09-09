@@ -17,7 +17,7 @@ static int n_tokens = 0;
 static int n_iter = 0;
 
 static bool
-doTests(void)
+doTest(void)
     {
     int j;
     int k;
@@ -66,7 +66,7 @@ test(char** tname)
 
 	mssInitialize("system", "", "", 0, "test");
 
-	rval = loopTests(doTests);
+	rval = loopTest(doTest);
 	if (rval > 0) rval *= (long long)n_tokens * n_iter;
 
     return rval;

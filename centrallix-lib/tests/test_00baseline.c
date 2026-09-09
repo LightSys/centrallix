@@ -10,7 +10,7 @@
 #define OPS_PER_PASS	(1000*1000)
 
 static bool
-doTests(void)
+doTest(void)
     {
     int i;
     int array[2] = {0};
@@ -24,5 +24,5 @@ long long
 test(char** tname)
     {
     *tname = "BASELINE - should pass";
-    return loopTests(doTests) * OPS_PER_PASS;
+    return loopTest(doTest) * OPS_PER_PASS;
     }

@@ -15,7 +15,7 @@ static pSmRegion region = NULL;
 static int blocks = 0;
 
 static bool
-doTests(void)
+doTest(void)
     {
     int j,k,l;
     void* alloc[1024];
@@ -53,7 +53,7 @@ test(char** tname)
 	region = smCreate(1024*1024);
 	if (!region) return -1;
 
-	rval = loopTests(doTests);
+	rval = loopTest(doTest);
 
 	if (rval > 0) rval *= blocks;
 

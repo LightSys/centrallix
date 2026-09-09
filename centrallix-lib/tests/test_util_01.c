@@ -28,14 +28,14 @@
 #define TXT_SIZE 1024
 #define RANGE    500000
 
-/** Values from the sweep converted per call to doTests(). **/
+/** Values from the sweep converted per call to doTest(). **/
 #define CHUNK	 10000
 
 /** Next value in the sweep, advanced by CHUNK and wrapped at the end. **/
 static int sweep = -RANGE;
 
 static bool
-doTests(void)
+doTest(void)
     {
     int i;
     int end;
@@ -66,5 +66,5 @@ long long
 test(char** tname)
     {
     *tname = "util-01 convertion from strings to unsigned integers";
-    return loopTests(doTests) * (CHUNK+2);
+    return loopTest(doTest) * (CHUNK+2);
     }

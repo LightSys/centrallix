@@ -9,7 +9,7 @@
 #include "test_utils.h"
 
 static bool
-doTests(void)
+doTest(void)
     {
     unsigned char buf[44];
 
@@ -46,5 +46,5 @@ long long
 test(char** tname)
     {
     *tname = "qprintf-04 empty string using qpfPrintf()";
-    return loopTests(doTests) * 4;
+    return loopTest(doTest) * 4;
     }

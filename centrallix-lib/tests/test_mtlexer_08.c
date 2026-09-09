@@ -14,7 +14,7 @@ static char* teststr = "'string' 'test string' \"string\" \"test string\" 'strin
 static char* strs[] = {"string", "test string", "string", "test string", "string's", "\"string\"", "string\\string", "string\"string", "string'string", NULL};
 
 static bool
-doTests(void)
+doTest(void)
     {
     int cnt;
     int t;
@@ -43,5 +43,5 @@ test(char** tname)
     {
     *tname = "mtlexer-08 string quoting";
     mssInitialize("system", "", "", 0, "test");
-    return loopTests(doTests) * 9;
+    return loopTest(doTest) * 9;
     }

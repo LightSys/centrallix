@@ -29,7 +29,7 @@ static char* tokstr[6];
 static int sweep = 0;
 
 static bool
-doTests(void)
+doTest(void)
     {
     int i;
     int j;
@@ -93,7 +93,7 @@ test(char** tname)
 	tokstr[1] = "nextline";
 	tokstr[2] = "thirdline";
 
-	rval = loopTests(doTests);
+	rval = loopTest(doTest);
 
 	nmSysFree(tokstr[0]);
 	tokstr[0] = NULL;

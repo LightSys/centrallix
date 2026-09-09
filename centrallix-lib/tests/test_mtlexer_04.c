@@ -13,7 +13,7 @@
 static char str[65536] = "";
 
 static bool
-doTests(void)
+doTest(void)
     {
     pLxSession lxs;
 
@@ -29,5 +29,5 @@ test(char** tname)
     {
     *tname = "mtlexer-04 open/close session";
     mssInitialize("system", "", "", 0, "test");
-    return loopTests(doTests);
+    return loopTest(doTest);
     }

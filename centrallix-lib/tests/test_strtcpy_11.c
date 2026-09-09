@@ -65,7 +65,7 @@ static Case cases[] =
 	{ "",		"ab",		2,	-2,	"a",		1 },
     };
 
-/** Number of cases run per call to doTests(). **/
+/** Number of cases run per call to doTest(). **/
 #define NCASES	((int)(sizeof(cases) / sizeof(Case)))
 
 /*** This test verifies strtcatf() over a table of buffer sizes and append
@@ -76,7 +76,7 @@ static Case cases[] =
  *** outside the caller's declared DstLen is ever touched.
  ***/
 static bool
-doTests(void)
+doTest(void)
     {
     int c, rval;
     unsigned char raw[RAW];
@@ -122,5 +122,5 @@ long long
 test(char** tname)
     {
     *tname = "strtcpy-11 strtcatf() return values and buffer bounds";
-    return loopTests(doTests) * NCASES;
+    return loopTest(doTest) * NCASES;
     }

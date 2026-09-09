@@ -144,7 +144,7 @@
     })
 
 /** Repeat the test as many times as possible within a set time window. **/
-#define loopTests(test_fn) \
+#define loopTest(test_fn) \
     ({ \
     long long result = 0ll; \
     Timer iter_timer_buf, *iter_timer = timerStart(timerInit(&iter_timer_buf)); \

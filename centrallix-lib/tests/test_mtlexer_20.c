@@ -11,7 +11,7 @@
 #include "test_utils.h"
 
 static bool
-doTests(void)
+doTest(void)
     {
     int j;
     int t;
@@ -52,5 +52,5 @@ test(char** tname)
     {
     *tname = "mtlexer-20 NODISCARD flag test";
     mssInitialize("system", "", "", 0, "test");
-    return loopTests(doTests);
+    return loopTest(doTest);
     }

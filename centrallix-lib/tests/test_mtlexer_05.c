@@ -14,7 +14,7 @@
 #define N_INTS	60000
 
 static bool
-doTests(void)
+doTest(void)
     {
     int j;
     int t;
@@ -48,5 +48,5 @@ test(char** tname)
     {
     *tname = "mtlexer-05 integer data, one per line with eol/eof";
     mssInitialize("system", "", "", 0, "test");
-    return loopTests(doTests) * N_INTS;
+    return loopTest(doTest) * N_INTS;
     }

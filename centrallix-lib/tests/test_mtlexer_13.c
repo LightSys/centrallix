@@ -22,7 +22,7 @@ static int sweep = 0;
 static int iv = 0;
 
 static bool
-doTests(void)
+doTest(void)
     {
     int i;
     int n;
@@ -66,5 +66,5 @@ test(char** tname)
     {
     *tname = "mtlexer-13 normal/oversized integers";
     mssInitialize("system", "", "", 0, "test");
-    return loopTests(doTests);
+    return loopTest(doTest);
     }

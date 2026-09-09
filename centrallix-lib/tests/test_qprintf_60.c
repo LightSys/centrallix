@@ -9,7 +9,7 @@
 #include "test_utils.h"
 
 static bool
-doTests(void)
+doTest(void)
     {
     int rval;
     unsigned char buf[44];
@@ -49,5 +49,5 @@ long long
 test(char** tname)
     {
     *tname = "qprintf-60 %nSTR&PATH fixed-length insert tests";
-    return loopTests(doTests) * 5;
+    return loopTest(doTest) * 5;
     }

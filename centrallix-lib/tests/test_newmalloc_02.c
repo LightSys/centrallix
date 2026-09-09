@@ -29,7 +29,7 @@
 #define BLOCK_COUNT	64lu
 #define BLOCK_SIZE	128
 
-static bool doTests(void)
+static bool doTest(void)
     {
     bool success = true;
 
@@ -80,7 +80,7 @@ static bool doTests(void)
 long long test(char** tname)
     {
     *tname = "newmalloc-02 nmStats()";
-    return loopTests(doTests);
+    return loopTest(doTest);
     }
 
 /** Scope cleanup. **/

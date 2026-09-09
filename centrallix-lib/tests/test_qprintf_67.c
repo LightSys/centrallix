@@ -9,7 +9,7 @@
 #include "test_utils.h"
 
 static bool
-doTests(void)
+doTest(void)
     {
     int rval;
     unsigned char buf[44];
@@ -54,5 +54,5 @@ long long
 test(char** tname)
     {
     *tname = "qprintf-67 %STR&DHEX integrity test";
-    return loopTests(doTests) * 7;
+    return loopTest(doTest) * 7;
     }

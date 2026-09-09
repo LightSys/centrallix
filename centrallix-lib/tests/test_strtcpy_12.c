@@ -106,7 +106,7 @@ wrapper(char* dst, size_t dstlen, size_t* pos, const char* fmt, ...)
     return rval;
     }
 
-/** Number of chains run per call to doTests(). **/
+/** Number of chains run per call to doTest(). **/
 #define NCHAINS	((int)(sizeof(chains) / sizeof(Chain)))
 
 /*** This test verifies strtcatf_va() reached through a caller's own varargs
@@ -120,7 +120,7 @@ wrapper(char* dst, size_t dstlen, size_t* pos, const char* fmt, ...)
  *** contributing no text, and empty appends at the front and back of a chain.
  ***/
 static bool
-doTests(void)
+doTest(void)
     {
     int c, a;
     size_t prefixlen;
@@ -192,10 +192,10 @@ test(char** tname)
 
 	*tname = "strtcpy-12 strtcatf_va() parity and chained appends";
 
-	/** Count the appends one pass of doTests() performs. **/
+	/** Count the appends one pass of doTest() performs. **/
 	for(c=0;c<NCHAINS;c++)
 	    for(a=0;a<MAXAPP && chains[c].Appends[a].Fmt;a++)
 		nops++;
 
-    return loopTests(doTests) * nops * 2;
+    return loopTest(doTest) * nops * 2;
     }

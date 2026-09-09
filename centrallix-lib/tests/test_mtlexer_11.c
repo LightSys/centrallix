@@ -29,7 +29,7 @@ static char* tokstr[N_FLAGTYPE][N_TOK] = {
 			};
 
 static bool
-doTests(void)
+doTest(void)
     {
     int f;
     int j;
@@ -67,5 +67,5 @@ test(char** tname)
     {
     *tname = "mtlexer-11 case (in)sensitive keywords and reserved words";
     mssInitialize("system", "", "", 0, "test");
-    return loopTests(doTests) * N_FLAGTYPE * N_TOK;
+    return loopTest(doTest) * N_FLAGTYPE * N_TOK;
     }

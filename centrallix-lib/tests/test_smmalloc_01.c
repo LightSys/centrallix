@@ -8,7 +8,7 @@
 #include "test_utils.h"
 
 static bool
-doTests(void)
+doTest(void)
     {
     pSmRegion r;
 
@@ -24,5 +24,5 @@ test(char** tname)
     {
     *tname = "smmalloc-01 create/destroy region";
     smInitialize();
-    return loopTests(doTests);
+    return loopTest(doTest);
     }

@@ -25,7 +25,7 @@
 #include "test_utils.h"
 
 static bool
-doTests(void)
+doTest(void)
     {
     char buffer1[40];
     char buffer2[20];
@@ -57,5 +57,5 @@ long long
 test(char** tname)
     {
     *tname = "memstr-00 correct null ptr";
-    return loopTests(doTests) * 5;
+    return loopTest(doTest) * 5;
     }

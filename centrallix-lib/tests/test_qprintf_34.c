@@ -9,7 +9,7 @@
 #include "test_utils.h"
 
 static bool
-doTests(void)
+doTest(void)
     {
     int rval;
     unsigned char buf[44];
@@ -44,5 +44,5 @@ long long
 test(char** tname)
     {
     *tname = "qprintf-34 %STR&ESCQ&NLEN in middle 2 greater than LEN";
-    return loopTests(doTests) * 4;
+    return loopTest(doTest) * 4;
     }

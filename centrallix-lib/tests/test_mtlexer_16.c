@@ -18,7 +18,7 @@ static int flagtypes[5] = { MLX_F_CPPCOMM, MLX_F_POUNDCOMM, MLX_F_SEMICOMM, MLX_
 #define N_FLAGTYPES	((int)(sizeof(flagtypes)/sizeof(flagtypes[0])))
 
 static bool
-doTests(void)
+doTest(void)
     {
     int i;
     int j;
@@ -56,5 +56,5 @@ test(char** tname)
     {
     *tname = "mtlexer-16 comments // # ; -- /**/ short only";
     mssInitialize("system", "", "none", 0, "test");
-    return loopTests(doTests) * 10;
+    return loopTest(doTest) * 10;
     }

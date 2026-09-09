@@ -54,7 +54,7 @@ static size_t bad_positions[] =
     (size_t)-1,
     };
 
-/** Sizes of the case tables run per call to doTests(). **/
+/** Sizes of the case tables run per call to doTest(). **/
 #define NFMTS	((int)(sizeof(failing_fmts) / sizeof(failing_fmts[0])))
 #define NPFX	((int)(sizeof(prefixes) / sizeof(const char*)))
 #define NBAD	((int)(sizeof(bad_positions) / sizeof(size_t)))
@@ -71,7 +71,7 @@ static bool can_fail = false;
  *** write nothing outside the caller's dstlen.
  ***/
 static bool
-doTests(void)
+doTest(void)
     {
     int c, f, rval;
     unsigned char raw[RAW];
@@ -141,5 +141,5 @@ test(char** tname)
 	    printf("(vsnprintf() converts %%ls here, skipping those cases) ");
 	ncases = NBAD + (can_fail ? NFMTS * NPFX : 0);
 
-    return loopTests(doTests) * ncases;
+    return loopTest(doTest) * ncases;
     }

@@ -23,7 +23,7 @@ static int toktype[N_FLAGTYPE][N_TOK] = {
 static char* tokstr[8] = { "\n", "\n", "'string one' 'string two'\n", "'string three' 'string four'\r\n", "'string five'\r\n", "\r\n", "String Six", NULL };
 
 static bool
-doTests(void)
+doTest(void)
     {
     int f;
     int j;
@@ -60,5 +60,5 @@ test(char** tname)
     {
     *tname = "mtlexer-17 LINEONLY mode test";
     mssInitialize("system", "", "", 0, "test");
-    return loopTests(doTests) * N_FLAGTYPE * 7;
+    return loopTest(doTest) * N_FLAGTYPE * 7;
     }
