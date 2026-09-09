@@ -29,8 +29,9 @@ static bool doTest(void)
 	
 	/** Reset structs for 2nd test case. **/
 	memset(buf, 'X', sizeof(buf));
+	buf[buf_len - 1] = '\0';
 	char original_buf[buf_len];
-	strcpy(original_buf, buf);
+	memcpy(original_buf, buf, buf_len);
 	
 	/** Test ignored. **/
 	rval = qpfPrintf(s, buf, ALL_SPECS_RESULT_LEN + 2, "%["ALL_SPECS"%]", false, ALL_SPECS_VALUES);
