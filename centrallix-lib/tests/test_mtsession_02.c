@@ -11,8 +11,9 @@
 /* Module:	test_mtsession_02.c					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	September 9th, 2026					*/
-/* Description:	Test how the altpasswd method reads its auth file:	*/
-/* 		which entries match a user, and which are refused.	*/
+/* Description:	Test how the altpasswd method reads its auth file,	*/
+/* 		covering which entries match a user, and which entries	*/
+/* 		are refused.						*/
 /************************************************************************/
 
 #include <stdbool.h>
@@ -29,6 +30,7 @@
 /** Tested module. **/
 #include "mtsession.h"
 
+/** Define the correct credentials. **/
 #define USERNAME	"testuser"
 #define PASSWORD	"testpassword"
 
@@ -43,56 +45,57 @@ typedef struct
     }
     AuthCase;
 
-/** No entry may ask for more than three credentials. **/
 static AuthCase cases[] =
     {
+	/** Entries,                    UserName,    Password,        Bypass, Expected **/
+
 	/** The user's own entry, with the password it was built from. **/
-	{"testuser:%s\n", USERNAME, PASSWORD, 0, 0},
+	{"testuser:%s\n",               USERNAME,    PASSWORD,        0,      0},
 
 	/** Any other password is refused, unless the caller says the
 	 ** credentials were already checked elsewhere.
 	 **/
-	{"testuser:%s\n", USERNAME, "wrongpassword", 0, -1},
-	{"testuser:%s\n", USERNAME, "", 0, -1},
-	{"testuser:%s\n", USERNAME, "wrongpassword", 1, 0},
+	{"testuser:%s\n",               USERNAME,    "wrongpassword", 0,     -1},
+	{"testuser:%s\n",               USERNAME,    "",              0,     -1},
+	{"testuser:%s\n",               USERNAME,    "wrongpassword", 1,      0},
 
 	/** A user with no entry in the file cannot get in either way. **/
-	{"testuser:%s\n", "otheruser", PASSWORD, 0, -1},
-	{"testuser:%s\n", "otheruser", PASSWORD, 1, -1},
-	{"", USERNAME, PASSWORD, 0, -1},
+	{"testuser:%s\n",               "otheruser", PASSWORD,        0,     -1},
+	{"testuser:%s\n",               "otheruser", PASSWORD,        1,     -1},
+	{"",                            USERNAME,    PASSWORD,        0,     -1},
 
 	/*** An entry with no credential is refused rather than crashing, and
 	 *** so is one whose credential crypt() cannot make sense of.  These
 	 *** are the entries for which crypt() hands back nothing at all.
 	 ***/
-	{"testuser:\n", USERNAME, PASSWORD, 0, -1},
-	{"testuser:x\n", USERNAME, PASSWORD, 0, -1},
-	{"testuser:not a credential\n", USERNAME, PASSWORD, 0, -1},
+	{"testuser:\n",                 USERNAME,    PASSWORD,        0,     -1},
+	{"testuser:x\n",                USERNAME,    PASSWORD,        0,     -1},
+	{"testuser:not a credential\n", USERNAME,    PASSWORD,        0,     -1},
 
 	/** The last line needs no newline of its own. **/
-	{"testuser:%s", USERNAME, PASSWORD, 0, 0},
+	{"testuser:%s",                 USERNAME,    PASSWORD,        0,      0},
 
 	/** A name that merely starts with the name being looked up is not a
 	 ** match, and neither is one that differs in case or in spacing.
 	 **/
-	{"testuserx:%s\ntestuser:%s\n", USERNAME, PASSWORD, 0, 0},
-	{"testuserx:%s\n", USERNAME, PASSWORD, 0, -1},
-	{"TestUser:%s\n", USERNAME, PASSWORD, 0, -1},
-	{" testuser:%s\n", USERNAME, PASSWORD, 0, -1},
+	{"testuserx:%s\ntestuser:%s\n", USERNAME,    PASSWORD,        0,      0},
+	{"testuserx:%s\n",              USERNAME,    PASSWORD,        0,     -1},
+	{"TestUser:%s\n",               USERNAME,    PASSWORD,        0,     -1},
+	{" testuser:%s\n",              USERNAME,    PASSWORD,        0,     -1},
 
 	/** The first matching entry is the one that counts. **/
-	{"testuser:%s\ntestuser:x\n", USERNAME, PASSWORD, 0, 0},
-	{"testuser:x\ntestuser:%s\n", USERNAME, PASSWORD, 0, -1},
-
-	/** Lines without a name and separator are passed over. **/
-	{"nonsense\ntestuser\n:justacolon\ntestuser:%s\n", USERNAME, PASSWORD, 0, 0},
+	{"testuser:%s\ntestuser:x\n",   USERNAME,    PASSWORD,        0,      0},
+	{"testuser:x\ntestuser:%s\n",   USERNAME,    PASSWORD,        0,     -1},
 
 	/** An empty user name matches an entry whose name field is empty,
 	 ** and still has to have the password right.
 	 **/
-	{":%s\n", "", PASSWORD, 0, 0},
-	{":%s\n", "", "wrongpassword", 0, -1},
-	{"testuser:%s\n", "", PASSWORD, 0, -1},
+	{":%s\n",                       "",          PASSWORD,        0,      0},
+	{":%s\n",                       "",          "wrongpassword", 0,     -1},
+	{"testuser:%s\n",               "",          PASSWORD,        0,     -1},
+
+	/** Lines without a name and separator are passed over. **/
+	{"nonsense\ntestuser\n:justacolon\ntestuser:%s\n", USERNAME, PASSWORD, 0, 0},
     };
 
 #define CASE_COUNT	((int)(sizeof(cases) / sizeof(AuthCase)))

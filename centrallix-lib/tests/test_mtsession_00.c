@@ -12,8 +12,7 @@
 /* Author:	Israel Fuller						*/
 /* Creation:	September 9th, 2026					*/
 /* Description:	Test the session lifecycle: authenticating with the	*/
-/* 		altpasswd method, reading the session back, and		*/
-/* 		ending it.						*/
+/* 		altpasswd method, reading the session, and ending it.	*/
 /************************************************************************/
 
 #include <stdbool.h>
@@ -45,15 +44,15 @@ static bool doTest(void)
 	success &= EXPECT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
 	success &= EXPECT_EQL(mssEndSession(NULL), -1, "%d");
 
-	/** A wrong password, an unknown user, and a user name holding the
-	 ** field separator are all refused, and none of them starts a session.
+	/** A wrong password, an unknown user, and a user name with the
+	 ** field separator are all refused.  None of them starts a session.
 	 **/
 	success &= EXPECT_EQL(mssAuthenticate(USERNAME, "wrongpassword", 0), -1, "%d");
 	success &= EXPECT_EQL(mssAuthenticate("nosuchuser", PASSWORD, 0), -1, "%d");
 	success &= EXPECT_EQL(mssAuthenticate("bad:user", PASSWORD, 0), -1, "%d");
 	success &= EXPECT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
 
-	/** The right password starts one. **/
+	/** The right password starts a session. **/
 	success &= EXPECT_EQL(check(mssAuthenticate(USERNAME, PASSWORD, 0)), 0, "%d");
 	success &= EXPECT_STR_EQL(mssUserName(), USERNAME);
 	success &= EXPECT_STR_EQL(mssPassword(), PASSWORD);
@@ -71,8 +70,8 @@ static bool doTest(void)
 	success &= EXPECT_STR_EQL(s->UserName, USERNAME);
 	success &= EXPECT_STR_EQL(s->Password, PASSWORD);
 
-	/** Authenticating again replaces the session, and bypass_crypt takes
-	 ** any password at all.
+	/** Authenticating again replaces the session, and bypass_crypt accepts
+	 ** any password.
 	 **/
 	success &= EXPECT_EQL(check(mssAuthenticate(USERNAME, "anything", 1)), 0, "%d");
 	success &= EXPECT_NOT_NULL(thGetParam(NULL, "mss"));

@@ -136,8 +136,7 @@ static inline int tmpFileRead(char* path, char* buf, int buf_size)
     }
 
 
-/*** Put stdout out of the way, for calls that log where the test is not
- *** looking at what they logged.
+/*** Save stdout, then ignore all data written to it.
  ***
  *** @returns true if successful, false otherwise.
  ***/
@@ -172,7 +171,7 @@ static inline bool quietStart(int* saved_stdout)
     }
 
 
-/*** Give stdout back after quietStart().
+/*** Restore stdout after quietStart().
  ***
  *** @returns true if successful, false otherwise.
  ***/

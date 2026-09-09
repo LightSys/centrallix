@@ -12,8 +12,8 @@
 /* Author:	Israel Fuller						*/
 /* Creation:	September 9th, 2026					*/
 /* Description:	Test the system auth method, which authenticates	*/
-/* 		against the passwd and shadow files, and the		*/
-/* 		handling of an auth method the module does not know.	*/
+/* 		against the passwd and shadow files, and test handling	*/
+/* 		an unknown auth method.					*/
 /************************************************************************/
 
 #include <pwd.h>
