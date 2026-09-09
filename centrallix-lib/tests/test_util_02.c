@@ -121,5 +121,5 @@ static bool doTest(void)
 long long test(char** tname)
     {
     *tname = "util-02 Printing";
-    return loopTest(doTest);
+    return loopTest(doTest) * (17 + 43);
     }

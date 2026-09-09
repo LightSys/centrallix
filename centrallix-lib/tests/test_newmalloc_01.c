@@ -165,7 +165,7 @@ static bool doTest(void)
 long long test(char** tname)
     {
     *tname = "newmalloc-01 nmMalloc(), nmFree(), & nmClear()";
-    return loopTest(doTest);
+    return loopTest(doTest) * ((long long)TEST_LIMIT + 3ll);
     }
 
 /** Scope cleanup. **/

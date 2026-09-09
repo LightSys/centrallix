@@ -157,5 +157,5 @@ static bool doTest(void)
 long long test(char** tname)
     {
     *tname = "xarray-00 Full Test";
-    return loopTest(doTest);
+    return loopTest(doTest) * 34;
     }

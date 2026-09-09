@@ -75,5 +75,5 @@ static bool doTest(void)
 long long test(char** tname)
     {
     *tname = "range-00 min() & max()";
-    return loopTest(doTest);
+    return loopTest(doTest) * (15 * 2);
     }

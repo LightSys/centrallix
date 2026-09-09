@@ -68,5 +68,5 @@ static bool doTest(void)
 long long test(char** tname)
     {
     *tname = "range-01 roundTo()";
-    return loopTest(doTest);
+    return loopTest(doTest) * 22;
     }

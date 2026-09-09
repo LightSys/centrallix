@@ -198,7 +198,7 @@ static bool doTest(void)
 long long test(char** tname)
     {
     *tname = "newmalloc-00 nmSysMalloc(), nmSysFree(), nmSysRealloc(), & nmSysStrdup()";
-    return loopTest(doTest);
+    return loopTest(doTest) * ((long long)TEST_LIMIT + 3ll);
     }
 
 /** Scope cleanup. **/
