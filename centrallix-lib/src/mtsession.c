@@ -775,11 +775,22 @@ mssSetParamPtr(char* paramname, void* ptr)
 	if (!(p = (pMtParam)xhLookup(&s->Params, paramname)))
 	    {
 	    p = (pMtParam)nmMalloc(sizeof(MtParam));
+	    if (!p) return -1;
 	    strtcpy(p->Name, paramname, sizeof(p->Name));
 	    is_new = 1;
 	    }
+	else if (p->Value == ptr)
+	    {
+	    /** Nothing changes, and the value stays whosever it was **/
+	    return 0;
+	    }
+	else if (p->IsAlloc)
+	    {
+	    nmSysFree(p->Value);
+	    }
 
 	p->Value = ptr;
+	p->IsAlloc = 0;
 	if (is_new) xhAdd(&s->Params, p->Name, (void*)p);
 
     return 0;
@@ -793,6 +804,7 @@ mssSetParam(char* paramname, void* value)
     {
     pMtSession s;
     pMtParam p;
+    char* new_value;
     int is_new = 0;
 
 	s = (pMtSession)thGetParam(NULL,"mss");
@@ -802,23 +814,30 @@ mssSetParam(char* paramname, void* value)
 	if (!(p = (pMtParam)xhLookup(&s->Params, paramname)))
 	    {
 	    p = (pMtParam)nmMalloc(sizeof(MtParam));
+	    if (!p) return -1;
 	    strtcpy(p->Name, paramname, sizeof(p->Name));
+	    p->IsAlloc = 0;
 	    is_new = 1;
 	    }
-	else
-	    {
-	    if (p->Value != p->ValueBuf && p->Value) nmSysFree(p->Value);
-	    }
 
+	/** Take the new value in before letting go of the old one **/
 	if (strlen(value) < sizeof(p->ValueBuf))
 	    {
-	    p->Value = p->ValueBuf;
+	    new_value = p->ValueBuf;
 	    }
 	else
 	    {
-	    p->Value = (char*)nmSysMalloc(strlen(value)+1);
+	    new_value = (char*)nmSysMalloc(strlen(value)+1);
+	    if (!new_value)
+		{
+		if (is_new) nmFree(p, sizeof(MtParam));
+		return -1;
+		}
 	    }
-	strcpy(p->Value, value);
+	memmove(new_value, value, strlen(value)+1);
+	if (p->IsAlloc && p->Value != new_value) nmSysFree(p->Value);
+	p->Value = new_value;
+	p->IsAlloc = (new_value != p->ValueBuf);
 	if (is_new) xhAdd(&s->Params, p->Name, (void*)p);
 
     return 0;
