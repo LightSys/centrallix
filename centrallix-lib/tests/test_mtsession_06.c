@@ -47,6 +47,7 @@
 static char auth_path[256];
 static char print_path[256];
 static char printed[PRINT_SIZE];
+static char expected[PRINT_SIZE];
 
 /*** The file printed to stays open for the whole test, so that printing costs
  *** a write and a read rather than a pair of opens.  It only grows, so each
@@ -86,6 +87,7 @@ static bool doTest(void)
     {
     bool success = true;
     char long_message[LINE_SIZE * 2];
+    int first_line, second_line;
     int rval = 0;
 
 	/** Outside a session there is no stack to print. **/
@@ -98,16 +100,23 @@ static bool doTest(void)
 	success &= EXPECT_STR_EQL(printError(&rval), STACK_HEAD);
 	success &= EXPECT_EQL(check(rval), 0, "%d");
 
-	/** Messages print newest first, one line each. **/
+	/*** Messages print newest first, one line each, each carrying the
+	 *** source location of the call that raised it.  This is the only
+	 *** check on the whole printed layout; the other tests look for their
+	 *** messages within it instead.
+	 ***/
+	first_line = __LINE__ + 1;
 	mssError(1, "MOD", "first");
+	second_line = __LINE__ + 1;
 	mssError(0, "MOD2", "second");
-	success &= EXPECT_STR_EQL(printError(&rval),
-		STACK_HEAD"--- MOD2: second\r\n--- MOD: first\r\n");
+	snprintf(expected, sizeof(expected),
+		STACK_HEAD"--- %s:%d: MOD2: second\r\n--- %s:%d: MOD: first\r\n",
+		__FILE__, second_line, __FILE__, first_line);
+	success &= EXPECT_STR_EQL(printError(&rval), expected);
 	success &= EXPECT_EQL(check(rval), 0, "%d");
 
 	/** Printing leaves the stack as it was, so the same print repeats. **/
-	success &= EXPECT_STR_EQL(printError(&rval),
-		STACK_HEAD"--- MOD2: second\r\n--- MOD: first\r\n");
+	success &= EXPECT_STR_EQL(printError(&rval), expected);
 
 	/** A message too long for one printed line is cut to fit the line
 	 ** buffer, which takes the line ending with it.
@@ -117,7 +126,7 @@ static bool doTest(void)
 	mssError(1, "MOD", "%s", long_message);
 	success &= EXPECT_EQL((int)strlen(printError(&rval)),
 		(int)strlen(STACK_HEAD) + LINE_SIZE - 1, "%d");
-	success &= EXPECT_EQL(strncmp(printed + strlen(STACK_HEAD), "--- MOD: LLL", 12), 0, "%d");
+	success &= EXPECT_STR_HAS(printed, "MOD: LLL");
 	success &= EXPECT_EQL(check(rval), 0, "%d");
 
 	/** The stack empties and prints as its heading again. **/

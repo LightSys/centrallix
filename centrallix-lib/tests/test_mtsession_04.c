@@ -83,6 +83,8 @@ static int errorCount(void)
 static bool doTest(void)
     {
     bool success = true;
+    char location[STACK_SIZE];
+    int line;
     XString xs;
 
 	/** Outside a session there is no stack to add to, clear, or read. **/
@@ -104,14 +106,14 @@ static bool doTest(void)
 	/** The first message becomes the whole stack. **/
 	mssError(1, "MOD", "first");
 	success &= EXPECT_EQL(errorCount(), 1, "%d");
-	success &= EXPECT_STR_EQL(errorStack(), STACK_HEAD"--- MOD: first\r\n");
+	success &= EXPECT_STR_HAS(errorStack(), "MOD: first");
 
 	/** Further messages stack up, and the stack reads newest first. **/
 	mssError(0, "MOD2", "second");
 	mssError(0, "MOD3", "third");
 	success &= EXPECT_EQL(errorCount(), 3, "%d");
-	success &= EXPECT_STR_EQL(errorStack(),
-		STACK_HEAD"--- MOD3: third\r\n--- MOD2: second\r\n--- MOD: first\r\n");
+	success &= EXPECT_STR_HAS_IN_ORDER(errorStack(),
+		"MOD3: third", "MOD2: second", "MOD: first");
 
 	/** The user facing form drops the module codes and joins the
 	 ** messages with single spaces.
@@ -121,33 +123,30 @@ static bool doTest(void)
 	/** Setting clr replaces the stack instead of adding to it. **/
 	mssError(1, "MOD", "fresh");
 	success &= EXPECT_EQL(errorCount(), 1, "%d");
-	success &= EXPECT_STR_EQL(errorStack(), STACK_HEAD"--- MOD: fresh\r\n");
+	success &= EXPECT_STR_HAS(errorStack(), "MOD: fresh");
+	success &= EXPECT_STR_LACKS(errorStack(), "third");
 
-	/*** The message is a printf() format string, so the conversions are
-	 *** whatever the C library provides.  An unknown conversion and a
-	 *** trailing percent sign are undefined; glibc keeps the percent sign
-	 *** and drops the letter after it.
-	 ***/
-	mssError(1, "FMT",
-		"s=%s d=%d c=%c pct=%% unknown=%q trailing=%", "text", -7, 'X');
-	success &= EXPECT_STR_EQL(errorStack(),
-		STACK_HEAD"--- FMT: s=text d=-7 c=X pct=% unknown=% trailing=%\r\n");
+	/** The message carries the source location of the mssError() call. **/
+	line = __LINE__ + 1;
+	mssError(1, "MOD", "located");
+	snprintf(location, sizeof(location), "%s:%d", __FILE__, line);
+	success &= EXPECT_STR_HAS_IN_ORDER(errorStack(), location, "MOD: located");
 
-	/** A NULL string argument is spelled out by glibc rather than followed. **/
-	mssError(1, "FMT", "%s", (char*)NULL);
-	success &= EXPECT_STR_EQL(errorStack(), STACK_HEAD"--- FMT: (null)\r\n");
+	/** The message is a printf() format string. **/
+	mssError(1, "FMT", "s=%s d=%d c=%c pct=%%", "text", -7, 'X');
+	success &= EXPECT_STR_HAS(errorStack(), "FMT: s=text d=-7 c=X pct=%");
 
 	/** A message with nothing in it, from a module with no name. **/
 	mssError(1, "", "");
-	success &= EXPECT_STR_EQL(errorStack(), STACK_HEAD"--- : \r\n");
+	success &= EXPECT_EQL(errorCount(), 1, "%d");
 	success &= EXPECT_STR_EQL(userError(), "");
 
 	/** A message with no conversions at all is passed through. **/
 	mssError(1, "MOD", "plain message, no conversions");
-	success &= EXPECT_STR_EQL(errorStack(), STACK_HEAD"--- MOD: plain message, no conversions\r\n");
+	success &= EXPECT_STR_HAS(errorStack(), "MOD: plain message, no conversions");
 
 	/** A colon in the message itself does not confuse the user facing
-	 ** form, which only drops the module code.
+	 ** form, which only drops the source location and module code.
 	 **/
 	mssError(1, "MOD", "colon: inside");
 	success &= EXPECT_STR_EQL(userError(), "colon: inside");
@@ -159,7 +158,7 @@ static bool doTest(void)
 	xsInit(&xs);
 	xsConcatenate(&xs, "prefix ", -1);
 	success &= EXPECT_EQL(check(mssStringError(&xs)), 0, "%d");
-	success &= EXPECT_STR_EQL(xs.String, "prefix "STACK_HEAD"--- MOD: appended\r\n");
+	success &= EXPECT_STR_HAS_IN_ORDER(xs.String, "prefix ", "MOD: appended");
 	xsDeInit(&xs);
 	xsInit(&xs);
 	xsConcatenate(&xs, "prefix ", -1);

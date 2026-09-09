@@ -123,11 +123,11 @@ static bool doTest(void)
 	mssError(1, "MOD", "user %s, attempt %d", "testuser", 3);
 	errno = ENOENT;
 	mssErrorErrno(1, "MOD", "could not open it");
-	snprintf(expected, sizeof(expected),
-		APPNAME": MOD: no session here\n"
-		APPNAME": MOD: user testuser, attempt 3\n"
-		APPNAME": MOD: could not open it (%s)\n", strerror(ENOENT));
-	success &= EXPECT_STR_EQL(captureEnd(), expected);
+	snprintf(expected, sizeof(expected), "MOD: could not open it (%s)", strerror(ENOENT));
+	success &= EXPECT_STR_HAS_IN_ORDER(captureEnd(),
+		APPNAME": ", "MOD: no session here",
+		APPNAME": ", "MOD: user testuser, attempt 3",
+		APPNAME": ", expected);
 
 	/*** With a session to hold the message, and without being told to log
 	 *** everything, the log stays quiet.
@@ -149,10 +149,10 @@ static bool doTest(void)
 	mssError(1, "MOD", "logged as well");
 	errno = ENOENT;
 	mssErrorErrno(0, "MOD", "logged too");
-	snprintf(expected, sizeof(expected),
-		APPNAME": MOD: logged as well\n"
-		APPNAME": MOD: logged too (%s)\n", strerror(ENOENT));
-	success &= EXPECT_STR_EQL(captureEnd(), expected);
+	snprintf(expected, sizeof(expected), "MOD: logged too (%s)", strerror(ENOENT));
+	success &= EXPECT_STR_HAS_IN_ORDER(captureEnd(),
+		APPNAME": ", "MOD: logged as well",
+		APPNAME": ", expected);
 	success &= EXPECT_EQL(((pMtSession)thGetParam(NULL, "mss"))->ErrList.nItems, 2, "%d");
 	success &= EXPECT_EQL(check(mssEndSession(NULL)), 0, "%d");
 
@@ -160,7 +160,7 @@ static bool doTest(void)
 	mssInitialize("altpasswd", auth_path, "stdout", 0, "");
 	if (!captureStart()) return false;
 	mssError(1, "MOD", "nameless");
-	success &= EXPECT_STR_EQL(captureEnd(), "error: MOD: nameless\n");
+	success &= EXPECT_STR_HAS_IN_ORDER(captureEnd(), "error: ", "MOD: nameless");
 
     return success;
     }
