@@ -56,6 +56,7 @@ static struct
     char	LogMethod[32];
     int		LogAllErrors;
     char	AppName[32];
+    int		IsInitialized;
     }
     MSS;
 
@@ -115,10 +116,14 @@ mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, cha
 	    syslog(LOG_INFO, "%s initializing...", MSS.AppName);
 	    }
    
-	/** Setup the sessions list **/
-	xaInit(&(MSS.Sessions),16);
-	nmRegister(sizeof(MtSession),"MtSession");
-	nmSetErrFunction(mssMemoryErr);
+	/** Setup the session list and the allocator hooks, once **/
+	if (!MSS.IsInitialized)
+	    {
+	    xaInit(&(MSS.Sessions),16);
+	    nmRegister(sizeof(MtSession),"MtSession");
+	    nmSetErrFunction(mssMemoryErr);
+	    MSS.IsInitialized = 1;
+	    }
 
     return 0;
     }
