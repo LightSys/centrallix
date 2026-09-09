@@ -455,20 +455,20 @@ mssEndSession(pMtSession s)
     }
 
 
-/*** Displays error text to the user (but no stack trace).  Does not exit the
- *** program, allowing the calling function to fail, generating a cascade of
- *** error messages which may provide useful info.
- *** 
+/*** mssError_internal - Displays error text to the user (but no stack trace).
+ *** Does not exit the program, allowing the calling function to fail, creating
+ *** a cascade of error messages which provides useful info.
+ ***
  *** @param clr Whether to clear the current error stack.  As a rule of thumb,
- *** 	if you are the first one to detect the error, clear the stack so that
- *** 	other unrelated messages are not shown.  If you are detecting an error
- *** 	from another function that may also call an mssError() function, do
- *** 	not clear the stack.
+ ***	if you are the first one to detect the error, clear the stack so that
+ ***	other unrelated messages are not shown.  If you are detecting an error
+ ***	from another function that may also call an mssError() function, do
+ ***	not clear the stack.
  *** @param module The name or abbreviation of the module in which this 
- *** 	function is being called, to help developers narrow down the location
- *** 	of the error.
+ ***	function is being called, to help developers narrow down the location
+ ***	of the error.
  *** @param format The format text for the error, which accepts any format
- *** 	specifier that would be accepted by printf().
+ ***	specifier that would be accepted by printf().
  *** @param ... Variables matching format specifiers in the format.
  ***/
 void
