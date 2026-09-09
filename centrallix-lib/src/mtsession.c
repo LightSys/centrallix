@@ -625,21 +625,26 @@ mssUserError(pXString str)
     int i;
     pMtSession s;
     char* item;
-    char* colon;
+    char* sep;
 
 	/** Get session. **/
 	s = (pMtSession)thGetParam(NULL,"mss");
 	if (!s) return -1;
 
-	/** Create a space-separated string of the messages, without module codes **/
+	/*** Create a space-separated string of the messages, without the source
+	 *** location and module code that mssError_internal() writes in front
+	 *** of each one.  Both end in ": ", which the message itself may also
+	 *** contain, so only the first two are skipped.
+	 ***/
 	for(i=s->ErrList.nItems-1;i>=0;i--)
 	    {
 	    item = (char*)(s->ErrList.Items[i]);
 	    if (item)
 		{
-		colon = strchr(item, ':');
-		if (colon)
-		    item = colon + 2;
+		sep = strstr(item, ": ");
+		if (sep) sep = strstr(sep + 2, ": ");
+		if (sep)
+		    item = sep + 2;
 		xsConcatenate(str, item, -1);
 		if (i > 0)
 		    xsConcatenate(str, " ", 1);
