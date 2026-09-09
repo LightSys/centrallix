@@ -2631,19 +2631,28 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
     size_t buf_len = 0; /* keep track of what the final buffer length should be */
     int state = 0;
     unsigned char buf_char = 0; /* used to store code point from multi-byte characters */
-    char* buf = nmSysMalloc(src_len);
-	if(buf == NULL && src_len > 0)
+    char* buf = NULL;
+	/** shortcut if the data is empty **/
+	if(src_len == 0)
+	    {
+	    *dest = nmSysMalloc(0);
+	    *dest_len = 0;
+	    return 0;
+	    }
+	
+	buf = nmSysMalloc(src_len);
+	if(buf == NULL)
 	    {
 	    mssError(1, "OBJ", "Out of memory");
 	    goto error;
 	    }
 
 	/** unwraping UTF-8 always makes the result the same length or shorter **/
-	for(int i = 0 ; i < src_len ; i++ )
+	for(size_t i = 0 ; i < src_len ; i++ )
 	    {
 	    unsigned char cur = src[i];
 	    /** get a lookahead so headers can check for overlong code **/
-	    unsigned char peek = (i+1 < src_len)? src[i+1] : -1; 
+	    unsigned char peek = (i+1 < src_len)? src[i+1] : 0xFFu; /** 0xFF is not a valid UTF-8 byte **/
 	    switch(state)
 		{
 		case 0: /* Start a new character. Identify first byte */
@@ -2653,9 +2662,9 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			 *** The bits are taken as is. For consistency with other
 			 *** comments, I have numbered it backwards. Think of a1 
 			 *** as bit a sub 1, and a lone 1 or 0 as always being that value
-			 ***      0 a6 a5 a4 a3 a2 a1 a0
-			 ***
-			 *** -->  0 a6 a5 a4 a3 a2 a1 a0
+			 ***  0 a6 a5 a4 a3 a2 a1 a0
+			 *** -->
+			 ***  0 a6 a5 a4 a3 a2 a1 a0
 			 ***
 			 *** range: 00 - 7F
 			 ***/
@@ -2667,7 +2676,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			}
 		    else if (UNLIKELY(cur <= 0xBFu)) /* continuation byte - error */
 			{
-			mssError(1, "OBJ", "Error: continuation byte %d found without corresponding header at index %d.", (int)cur, i);
+			mssError(1, "OBJ", "Error: continuation byte %02hhX found without corresponding header at index %zu.", cur, i);
 			goto error;
 			}
 		    else if (cur <= 0xDFu) /* header for a 2 byte character */
@@ -2686,7 +2695,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			/** check for overlong form **/
 			if(cur < 0xC2u)
 			    {
-			    mssError(1, "OBJ", "Error: overlong encoding found at 2 bit header %d at index %d.", (int)cur, i);
+			    mssError(1, "OBJ", "Error: overlong encoding found at 2 bit header %02hhX at index %zu.", cur, i);
 			    goto error;
 			    }
 
@@ -2717,13 +2726,13 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			/** check for overlong form **/
 			if(cur == 0xE0u && peek < 0xA0u)
 			    {
-			    mssError(1, "OBJ", "Error: overlong encoding found for 3 byte character starting with %d %d at index %d.", (int)cur, (int) peek, i);
+			    mssError(1, "OBJ", "Error: Invalid 3 byte character. Possible overlong encoding starting with %02hhX %02hhX at index %zu.", cur, peek, i);
 			    goto error;
 			    }
 			/** check for surogate bytes */
-			if(cur == 0xEDu && peek >= 0xA0U && peek != (unsigned char) -1)
+			if(cur == 0xEDu && peek >= 0xA0U)
 			    {
-			    mssError(1, "OBJ", "Error: surrogate encoding found for 3 byte character starting with %d %d at index %d.", (int)cur, (int) peek, i);
+			    mssError(1, "OBJ", "Error: Invalid 3 byte character. Possible surrogate starting with %02hhX %02hhX at index %zu.", cur, peek, i);
 			    goto error;
 			    }
 			
@@ -2752,13 +2761,13 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			/** check for overlong form **/
 			if(cur == 0xF0u && peek < 0x90u)
 			    {
-			    mssError(1, "OBJ", "Error: overlong encoding found for 4 byte character starting with %d %d at index %d.", (int)cur, (int) peek, i);
+			    mssError(1, "OBJ", "Error: Invalid 4 byte character. Possible overlong encoding starting with %02hhX %02hhX at index %zu.", cur, peek, i);
 			    goto error;
 			    }
 			/** check for an oversied value **/
-			if(cur == 0xF4 && peek >= 0x90 && peek != (unsigned char)-1)
+			if(cur == 0xF4 && peek >= 0x90 && peek != 0xFFu)
 			    {
-			    mssError(1, "OBJ", "Error: Encoding outside range found in 4 byte character starting with %d %d at index %d.", (int)cur, (int) peek, i);
+			    mssError(1, "OBJ", "Error: Invalid 4 byte character. Possible out of range encoding starting with %02hhX %02hhX at index %zu.", cur, peek, i);
 			    goto error;
 			    }
 
@@ -2770,7 +2779,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			}
 		    else /* too large for a valid header - error */
 			{
-			mssError(1, "OBJ", "Error: byte %d too large to be a UTF-8 header at index %d.", (int)cur, i);
+			mssError(1, "OBJ", "Error: byte %02hhX too large to be a UTF-8 header at index %zu.", cur, i);
 			goto error;
 			}
 		    break;
@@ -2779,7 +2788,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 		    /** continuation 3:  1  0 c5 c4 c3 c2 c1 c0 **/
 		    if((cur & 0b11000000u) != 0b10000000u)
 			{
-			mssError(1, "OBJ", "Error: expected continuation byte, found %d instead at index %d.", (int)cur, i);
+			mssError(1, "OBJ", "Error: expected continuation byte, found %02hhX instead at index %zu.", cur, i);
 			goto error;
 			}
 		    /** write first 2 bits alongside stored bits **/
@@ -2796,7 +2805,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 		    /** continuation 2:  1  0 b5 b4 b3 b2 b1 b0 **/
 		    if((cur & 0b11000000u) != 0b10000000u)
 			{
-			mssError(1, "OBJ", "Error: expected continuation byte, found %d instead at index %d.", (int)cur, i);
+			mssError(1, "OBJ", "Error: expected continuation byte, found %02hhX instead at index %zu.", cur, i);
 			goto error;
 			}
 
@@ -2814,7 +2823,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 		    /** continuation 1:  1  0 a5 a4 a3 a2 a1 a0 **/
 		    if((cur & 0b11000000u) != 0b10000000u)
 			{
-			mssError(1, "OBJ", "Error: expected continuation byte, found %d instead at index %d.", (int)cur, i);
+			mssError(1, "OBJ", "Error: expected continuation byte, found %02hhX instead at index %zu.", cur, i);
 			goto error;
 			}
 		    
