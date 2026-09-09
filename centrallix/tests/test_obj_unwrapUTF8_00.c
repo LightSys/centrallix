@@ -47,7 +47,7 @@ test_unwrap_fail(char* in_buf, size_t in_len)
 long long
 test(char** name)
     {
-    *name = "ctest_obj_unwrapUTF8_00 Unwrap UTF-8 Strings";
+    *name = "obj_unwrapUTF8_00 Unwrap UTF-8 Strings";
     char* in_buf;
     char* expect_buf;
 
