@@ -43,6 +43,22 @@
  ***/
 #define MIN_TEST_SECONDS 0.1
 
+/*** Expect a value to be true.
+ *** 
+ *** @param v1 The value.
+ *** @param v2 The second value.
+ *** @returns true if successful, false otherwise.
+ ***/
+#define EXPECT_TRUE(v) \
+    ({ \
+    const int success = !!(v); \
+    if (!success) fprintf(stderr, \
+	"  > Expected %s to be true at %s:%d\n", \
+	#v, __FILE__, __LINE__ \
+    ); \
+    success; \
+    })
+
 /*** Expect two values to be equal.
  *** 
  *** @param v1 The first value.
@@ -81,7 +97,33 @@
     ); \
     success; \
     })
-    
+
+/*** Expect two strings to be equal, including null characters.
+ *** Warning: Can read off the end of strings.
+ *** 
+ *** @param str1 The first string.
+ *** @param str2 The second string.
+ *** @param len The length of strings to check (aka. N).
+ *** @returns true if successful, false otherwise.
+ ***/
+#define EXPECT_STR_EQL_N(str1, str2, len) \
+    ({ \
+    const char* _str1 = (str1); \
+    const char* _str2 = (str2); \
+    const size_t _len = (size_t)(len); \
+    const int success = (_str1 == _str2) || (_str1 != NULL && _str2 != NULL && memcmp(_str1, _str2, _len) == 0); \
+    if (!success)\
+	{ \
+	char _tmp1[_len + 1]; STR_COPY_REPLACE_NULLS(_tmp1, _str1, _len); \
+	char _tmp2[_len + 1]; STR_COPY_REPLACE_NULLS(_tmp2, _str2, _len); \
+	fprintf(stderr, \
+	    "  > Expected %s (\"%s\") to equal %s (\"%s\") where '_' is a null-terminator, at %s:%d\n", \
+	    #str1, _tmp1, #str2, _tmp2, __FILE__, __LINE__ \
+	); \
+	} \
+    success; \
+    })
+
 /*** Expect two cosine vectors from `cluster.c` to be equal.
  *** 
  *** @param v1 The first vector.
@@ -142,6 +184,24 @@
     ); \
     success; \
     })
+
+/*** Copy n characters from src to dest, including null-terminators, which are
+ *** replaced with the '_' character.
+ *** 
+ *** @param dest The destination string buffer (must be at least `n+1` bytes).
+ *** @param src The source string (must be at least `n+1` bytes), which can
+ *** 	include null-terminator characters ('\0').
+ *** @param n The number of characters to copy.
+ ***/
+#define STR_COPY_REPLACE_NULLS(dest, src, n) \
+    { \
+    char* _dest = (dest); \
+    const char* _src = (src); \
+    const size_t _n = (size_t)(n); \
+    for (size_t i = 0lu; i < _n; i++) \
+	_dest[i] = (_src[i] == '\0') ? '_' : _src[i]; \
+    _dest[_n] = '\0'; \
+    }
 
 /** Repeat the test as many times as possible within a set time window. **/
 #define loopTest(test_fn) \
