@@ -157,7 +157,7 @@ int
 mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_maxlen)
     {
     char salt_chars[] = "0123456789abcdef";
-    char salt_buf[9];
+    char salt_buf[MSS_SALT_SIZE * 2 + 1];
     char *ptr;
     char *dstptr;
 	
@@ -165,9 +165,10 @@ mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_
 	if (salt_len < 1) return -1;
 
 	/** Expand the salt to (up to) 8 bytes **/
+	if (salt_len > MSS_SALT_SIZE) salt_len = MSS_SALT_SIZE;
 	ptr = salt;
 	dstptr = salt_buf;
-	while (*ptr)
+	while (ptr < salt + salt_len)
 	    {
 	    *(dstptr++) = salt_chars[ptr[0] & 0xF];
 	    *(dstptr++) = salt_chars[(ptr[0]>>4) & 0xF];
