@@ -467,6 +467,8 @@ mssEndSession(pMtSession s)
  *** @param module The name or abbreviation of the module in which this 
  ***	function is being called, to help developers narrow down the location
  ***	of the error.
+ *** @param file The name of the file where the error was detected.
+ *** @param line The line number where the error was detected.
  *** @param format The format text for the error, which accepts any format
  ***	specifier that would be accepted by printf().
  *** @param ... Variables matching format specifiers in the format.
