@@ -35,7 +35,6 @@ static bool doTest(void)
     XHashTable hash;
     char keys[KEY_COUNT][KEY_SIZE];
     int used_rows = 0;
-    int i;
 
 	success &= EXPECT_EQL(check(xhInit(&hash, HASH_ROWS, 0)), 0, "%d");
 
