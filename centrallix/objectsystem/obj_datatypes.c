@@ -2599,11 +2599,12 @@ int
 objStringToEncoding(char* code_str)
     {
     int num_lists = sizeof(obj_encoding_names)/sizeof(EncodingNames);
-
-	for(int i = 0 ; i < num_lists ; i++)
+	int i;
+	for(i = 0 ; i < num_lists ; i++)
 	    {
 	    int list_len = obj_encoding_names[i].Size;
-	    for(int j = 0 ; j < list_len ; j++)
+	    int j;
+	    for(j = 0 ; j < list_len ; j++)
 		{
 		if(strcasecmp(obj_encoding_names[i].Names[j], code_str) == 0)
 		    {
@@ -2648,7 +2649,8 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 	    }
 
 	/** unwraping UTF-8 always makes the result the same length or shorter **/
-	for(size_t i = 0 ; i < src_len ; i++ )
+	size_t i;
+	for(i = 0 ; i < src_len ; i++ )
 	    {
 	    unsigned char cur = src[i];
 	    /** get a lookahead so headers can check for overlong code **/
