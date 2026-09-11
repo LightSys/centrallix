@@ -496,13 +496,11 @@ ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c1)
  *** 
  *** @param str1 The first string.
  *** @param str2 The second string.
- *** @param str1_length The length of the first string.
- *** @param str2_length The length of the second string.
+ *** @param str1_length The length of the first string, or 0 to detect from
+ *** 	the length from the null-terminator.
+ *** @param str2_length The length of the second string, or 0 to detect from
+ *** 	the length from the null-terminator.
  *** @returns The edit distance between the two strings, or a negative value on error.
- *** 
- *** @attention - `Tip`: Pass 0 for the length of either string to infer it
- *** 	using the null terminating character.  Conversely, character arrays
- *** 	with no null terminator are allowed if an explicit length is passed.
  ***/
 int
 ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length)
