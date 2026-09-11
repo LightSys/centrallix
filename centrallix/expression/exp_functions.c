@@ -4732,7 +4732,7 @@ exp_fn_levenshtein(pExpression tree)
 	
 	/** Compute edit distance. **/
 	/** Length 0 is provided for both strings so that the function will compute it for us. **/
-	const int edit_dist = checkNeg(ca_edit_dist(str1, str2, 0lu, 0lu));
+	const int edit_dist = checkPos(ca_edit_dist(str1, str2, 0lu, 0lu));
 	if (UNLIKELY(edit_dist < 0))
 	    {
 	    mssError(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute edit distance.", tree->Name, str1, str2);

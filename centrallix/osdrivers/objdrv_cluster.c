@@ -1175,7 +1175,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    char* name = sub_inf->Name;
 	    
 	    /** Handle various struct types. **/
-	    const int struct_type = checkNeg(stStructType(sub_inf));
+	    const int struct_type = checkPos(stStructType(sub_inf));
 	    switch (struct_type)
 		{
 		case ST_T_ATTRIB:
@@ -1220,7 +1220,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 		    pClusterData sub_cluster = ci_ParseClusterData(sub_inf, param_list, source_data);
 		    if (sub_cluster == NULL) goto err_free;
 		    sub_cluster->Parent = cluster_data;
-		    if (checkNeg(xaAddItem(&sub_clusters, sub_cluster)) < 0) goto err_free;
+		    if (checkPos(xaAddItem(&sub_clusters, sub_cluster)) < 0) goto err_free;
 		    
 		    break;
 		    }
@@ -1427,7 +1427,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	    if (UNLIKELY(name == NULL)) goto err_free;
 	    
 	    /** Handle various struct types. **/
-	    const int struct_type = checkNeg(stStructType(sub_inf));
+	    const int struct_type = checkPos(stStructType(sub_inf));
 	    switch (struct_type)
 		{
 		case ST_T_ATTRIB:
@@ -1597,7 +1597,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 	    char* name = sub_inf->Name;
 	    
 	    /** Handle various struct types. **/
-	    const int struct_type = checkNeg(stStructType(sub_inf));
+	    const int struct_type = checkPos(stStructType(sub_inf));
 	    switch (struct_type)
 		{
 		case ST_T_ATTRIB:
@@ -1627,17 +1627,17 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 		    if (UNLIKELY(group_type == NULL)) goto err_free;
 		    if (strcmp(group_type, "cluster/parameter") == 0)
 			{
-			if (checkNeg(xaAddItem(&param_infs, sub_inf) < 0))
+			if (checkPos(xaAddItem(&param_infs, sub_inf) < 0))
 			    goto err_free;
 			}
 		    else if (strcmp(group_type, "cluster/cluster") == 0)
 			{
-			if (checkNeg(xaAddItem(&cluster_infs, sub_inf) < 0))
+			if (checkPos(xaAddItem(&cluster_infs, sub_inf) < 0))
 			    goto err_free;
 			}
 		    else if (strcmp(group_type, "cluster/search") == 0)
 			{
-			if (checkNeg(xaAddItem(&search_infs, sub_inf) < 0))
+			if (checkPos(xaAddItem(&search_infs, sub_inf) < 0))
 			    goto err_free;
 			}
 		    else
@@ -2409,9 +2409,9 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
 	    if (key_dup == NULL) goto end_free;
 	    char* data_dup = checkPtr(nmSysStrdup(data));
 	    if (data_dup == NULL) goto end_free;
-	    if (checkNeg(xaAddItem(&key_xarray, (void*)key_dup) < 0)) goto end_free;
-	    if (checkNeg(xaAddItem(&data_xarray, (void*)data_dup) < 0)) goto end_free;
-	    if (checkNeg(xaAddItem(&vector_xarray, (void*)vector) < 0)) goto end_free;
+	    if (checkPos(xaAddItem(&key_xarray, (void*)key_dup) < 0)) goto end_free;
+	    if (checkPos(xaAddItem(&data_xarray, (void*)data_dup) < 0)) goto end_free;
+	    if (checkPos(xaAddItem(&vector_xarray, (void*)vector) < 0)) goto end_free;
 	    
 	    /** Clean up. **/
 	    check(objClose(entry)); /* Failure ignored. */
@@ -2646,7 +2646,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		
 		/** Iterate through each label and add the index of the specified cluster to the xArray. **/
 		for (unsigned long long i = 0llu; i < source_data->nDatas; i++)
-		    if (checkNeg(xaAddItem(&indexes_in_cluster[labels[i]], (void*)i)) < 0) goto err_free;
+		    if (checkPos(xaAddItem(&indexes_in_cluster[labels[i]], (void*)i)) < 0) goto err_free;
 		nmSysFree(labels); /* Free unused data. */
 		
 		/** Store the indices for each cluster and free the temporary xArray. **/
@@ -2892,7 +2892,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		    const pPair pair = (pPair)cluster_pairs->Items[i];
 		    pair->i = cluster->Indexes[pair->i];
 		    pair->j = cluster->Indexes[pair->j];
-		    if (checkNeg(xaAddItem(pairs, pair)) < 0) goto err_free;
+		    if (checkPos(xaAddItem(pairs, pair)) < 0) goto err_free;
 		    }
 		check(xaFree(cluster_pairs)); /* Failure ignored. */
 		}
@@ -4084,11 +4084,11 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	if (strcmp(attr_name, "internal_type") == 0)
 	    {
 	    check(xaInit(&(hints->EnumList), 5)); /* Failure ignored. */
-	    checkNeg(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("system/cluster")))); /* Failure ignored. */
-	    checkNeg(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("cluster/cluster")))); /* Failure ignored. */
-	    checkNeg(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("cluster/entry")))); /* Failure ignored. */
-	    checkNeg(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("cluster/search")))); /* Failure ignored. */
-	    checkNeg(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("search/entry")))); /* Failure ignored. */
+	    checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("system/cluster")))); /* Failure ignored. */
+	    checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("cluster/cluster")))); /* Failure ignored. */
+	    checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("cluster/entry")))); /* Failure ignored. */
+	    checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("cluster/search")))); /* Failure ignored. */
+	    checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("search/entry")))); /* Failure ignored. */
 	    hints->Length = 16;
 	    hints->VisualLength = 16;
 	    hints->FriendlyName = checkPtr(nmSysStrdup("Internal Type")); /* Failure ignored. */
@@ -4185,7 +4185,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    /** Enum values. **/
 		    check(xaInit(&(hints->EnumList), N_CLUSTERING_ALGORITHMS)); /* Failure ignored. */
 		    for (unsigned int i = 0u; i < N_CLUSTERING_ALGORITHMS; i++)
-			checkNeg(xaAddItem(&(hints->EnumList), nmSysStrdup(ci_ClusteringAlgorithmToString(ALL_CLUSTERING_ALGORITHMS[i])))); /* Failure ignored. */
+			checkPos(xaAddItem(&(hints->EnumList), nmSysStrdup(ci_ClusteringAlgorithmToString(ALL_CLUSTERING_ALGORITHMS[i])))); /* Failure ignored. */
 		    
 		    /** Min and max values. **/
 		    hints->MinValue = expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
@@ -4211,7 +4211,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    /** Enum values. **/
 		    check(xaInit(&(hints->EnumList), N_SIMILARITY_MEASURES)); /* Failure ignored. */
 		    for (unsigned int i = 0u; i < N_SIMILARITY_MEASURES; i++)
-			checkNeg(xaAddItem(&(hints->EnumList), nmSysStrdup(ci_SimilarityMeasureToString(ALL_SIMILARITY_MEASURES[i])))); /* Failure ignored. */
+			checkPos(xaAddItem(&(hints->EnumList), nmSysStrdup(ci_SimilarityMeasureToString(ALL_SIMILARITY_MEASURES[i])))); /* Failure ignored. */
 			
 		    /** Display flags. **/
 		    hints->Style     |= OBJ_PH_STYLE_BUTTONS;
@@ -4958,7 +4958,7 @@ clusterInitialize(void)
 	/** Setup the structure. **/
 	if (checkPtr(strcpy(drv->Name, "cluster - Clustering Driver")) == NULL) goto err_free;
 	if (check(xaInit(&drv->RootContentTypes, 1)) != 0) goto err_free;
-	if (checkNeg(xaAddItem(&drv->RootContentTypes, "system/cluster")) < 0) goto err_free;
+	if (checkPos(xaAddItem(&drv->RootContentTypes, "system/cluster")) < 0) goto err_free;
 	
 	drv->Capabilities = 0; /* TODO: Greg - Should I indicate any capabilities? */
 	
