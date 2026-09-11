@@ -1391,7 +1391,7 @@ Returns the type of the next token in the token stream.  Valid token types are:
 ```c
 char* mlxStringVal(pLxSession this, int* alloc);
 ```
-This function gets the string value of the current token.  If `alloc` is `NULL`, an internal buffer is returned (which the caller _should not free_).  This may also cause an error if such a buffer is not available.  If `alloc` is non-null and set to 0, the routine will set `alloc` to 1 if it needed to allocate memory for a very long string, otherwise leave it as 0.  If `alloc` is non-null and set to 1, this routine will _always_ allocate memory for the string, whether long or short.
+This function gets the string value of the current token.  If `alloc` is `NULL`, an internal buffer is returned, which the caller _should not free_.  Fails and returns null if the A token longer than 255 characters (`MLX_STRVAL`) does not fit that buffer, so the call fails and returns `NULL`.  If `alloc` is non-null and set to 0, the routine will set `alloc` to 1 if it needed to allocate memory for a very long string, otherwise leave it as 0.  If `alloc` is non-null and set to 1, this routine will _always_ allocate memory for the string, whether long or short.
 
 This routine works no matter what the token type, and returns a string representation of the token if not `MLX_TOK_STRING`.
 
