@@ -833,7 +833,11 @@ prt_internal_GeneratePage(pPrtSession s, pPrtObjStream page)
 	    return -1;
 
 	/** Now, send it to the formatter **/
-	s->Formatter->Generate(s->FormatterData, page);
+	if (s->Formatter->Generate(s->FormatterData, page) < 0)
+	    {
+	    s->Flags |= PRT_SESSION_F_ERROR;
+	    return -1;
+	    }
 
     return 0;
     }
