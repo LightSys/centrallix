@@ -13,7 +13,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -418,6 +418,10 @@ int xaInsertAfter(pXArray this, int index, void* item)
 int
 xaTrim(pXArray this)
     {
+	/** Reallocating to size 0 is undefined behavior, so skip. **/
+	if (this->nItems == 0)
+	    return 0;
+
 	/** Allocate the new internal items array. **/
 	const size_t new_size = this->nItems * sizeof(void*);
 	void* new_items = checkPtr(nmSysRealloc(this->Items, new_size));

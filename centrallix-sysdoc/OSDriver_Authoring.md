@@ -66,6 +66,7 @@
     - [Function: QueryFetch()](#function-queryfetch)
     - [Function: QueryCreate()](#function-querycreate)
     - [Function: QueryClose()](#function-queryclose)
+    - [Object Attributes](#object-attributes)
     - [Function: GetAttrType()](#function-getattrtype)
     - [Function: GetAttrValue()](#function-getattrvalue)
     - [Function: GetFirstAttr()](#function-getfirstattr--getnextattr)
@@ -101,7 +102,7 @@
     - [stparse: stFreeInf()](#stparse-stfreeinf)
     - [stparse: Using Fields Directly](#stparse-using-fields-directly)
   - [IV Module: Expression](#iv-module-expression)
-    - [expAllocExpression())](#expallocexpression)
+    - [expAllocExpression()](#expallocexpression)
     - [expFreeExpression()](#expfreeexpression)
     - [expCompileExpression()](#expcompileexpression)
     - [expCompileExpressionFromLxs()](#expcompileexpressionfromlxs)
@@ -120,7 +121,7 @@
   - [V Path Handling Functions](#v-path-handling-functions)
     - [obj_internal_PathPart()](#obj_internal_pathpart)
     - [obj_internal_AddToPath()](#obj_internal_addtopath)
-    - [obj_internal_CopyPath](#obj_internal_copypath)
+    - [obj_internal_CopyPath()](#obj_internal_copypath)
     - [obj_internal_FreePathStruct()](#obj_internal_freepathstruct)
   - [VI Parsing Data](#vi-parsing-data)
     - [mlxOpenSession()](#mlxopensession)
@@ -258,7 +259,7 @@ Each OS Driver will have an abbreviation prefix, such as `qy` for the query driv
 
 This document uses `xxx` to refer to an unspecified abbreviation prefix.
 
-- 📖 **Note**: Once an abbreviation prefix has been selected, the driver author should add it to the [Prefixes.md](Prefixes.md) file.  It is advised never to pick a prefix longer than 7 characters, as doing so will this file's table style.
+- 📖 **Note**: Once an abbreviation prefix has been selected, the driver author should add it to the [Prefixes.md](Prefixes.md) file.
 
 
 ### Internal Functions
@@ -489,7 +490,7 @@ The parameters passed are intentionally similar to the `fdRead()` function in `m
 | buffer    | char*        | The buffer where read data should be stored.                                                                                 |
 | max_cnt   | int          | The maximum number of bytes to read into the buffer.                                                                         |
 | offset    | int          | An optional seek offset.                                                                                                     |
-| flags     | int          | Either `0` or `FD_U_SEEK`. If `FD_U_SEEK` is specified, the caller should specify a seek offset in the 4th argument (`arg`). |
+| flags     | int          | Either `0` or `FD_U_SEEK`. If `FD_U_SEEK` is specified, the caller should specify a seek offset in the 4th argument (`offset`). |
 | oxt       | pObjTrxTree* | The transaction tree pointer for the `OBJDRV_C_TRANS` capability.                                                            |
 
 - 📖 **Note**: Not all objects can be seekable and some of the objects handled by the driver may have limited seek functionality, even if others do not.
@@ -1390,7 +1391,7 @@ Returns the type of the next token in the token stream.  Valid token types are:
 ```c
 char* mlxStringVal(pLxSession this, int* alloc);
 ```
-This function gets the string value of the current token.  If `alloc` is `NULL`, an internal buffer is returned (which the caller _should not free_).  This may also cause an error if such a buffer is not available.  If `alloc` is non-null and set to 0, the routine will set `alloc` to 1 if it needed to allocate memory for a very long string, otherwise leave it as 0.  If `alloc` is non-null and set to 1, this routine will _always_ allocate memory for the string, whether long or short.
+This function gets the string value of the current token.  If `alloc` is `NULL`, an internal buffer is returned, which the caller _should not free_.  Fails and returns null if the A token longer than 255 characters (`MLX_STRVAL`) does not fit that buffer, so the call fails and returns `NULL`.  If `alloc` is non-null and set to 0, the routine will set `alloc` to 1 if it needed to allocate memory for a very long string, otherwise leave it as 0.  If `alloc` is non-null and set to 1, this routine will _always_ allocate memory for the string, whether long or short.
 
 This routine works no matter what the token type, and returns a string representation of the token if not `MLX_TOK_STRING`.
 

@@ -25,14 +25,14 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module:	lib_cluster.c, lib_cluster.h				*/
+/* Module:	clusters.c, clusters.h					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	September 29, 2025					*/
 /* Description	Clustering library used to cluster and search data with	*/
 /*		cosine or Levenshtein (aka. edit distance) similarity 	*/
 /*		measures. Used by the "clustering driver".		*/
 /*		For more information on how to use this library, see	*/
-/*		string-similarity.md in the centrallix-sysdoc folder.	*/
+/*		string_similarity.md in the centrallix-sysdoc folder.	*/
 /************************************************************************/
 
 #include <stdlib.h>
@@ -60,7 +60,7 @@
  *** Unfortunately, we can't use a number this large yet because
  *** kmeans algorithm creates densely allocated centroids with
  *** `CA_NUM_DIMS` dimensions, so a large number causes it to fail.
- *** This, we use 251 as the largest prime number less than 256,
+ *** Thus, we use 251 as the largest prime number less than 256,
  *** giving us a decent balance between collision reduction and
  *** kmeans centroid performance/memory overhead.
  ***/

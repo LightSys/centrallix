@@ -329,7 +329,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
 		if (arg_expect->Flags & EXP_ARG_NON_EMPTY && int_vec->nIntegers == 0)
 		    {
 		    mssError(1, "EXP",
-			"%s(...): Expects IntVec to contain strings, but got [].",
+			"%s(...): Expects IntVec to contain integers, but got [].",
 			fn_name
 		    );
 		    return -1;
@@ -346,10 +346,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
  *** @param arg_expects A pointer to an array of ArgExpect structs, each
  *** 	representing expectations for a single argument, in the order they
  *** 	are passed to the function.
- *** @param num_args The number of arguments to expect to be passed to the
- *** 	function (and the length of arg_expects).
  *** @param tree The tree containing the actual arguments passed.
- *** @param obj_list The object list scope which was passed to the function.
  *** @returns 0 if verification passes, or
  ***         -1 if an error occurs or arguments are incorrect.
  *** 
@@ -1733,21 +1730,21 @@ int
 exp_fn_trim(pExpression tree)
     {
 	/** Left trim the expression. **/
-	exp_fn_ltrim(tree);
+	if (exp_fn_ltrim(tree) != 0) return -1;
 	
 	/** Temporarily override the arg0 str pointer with the result from ltrim(). **/
 	pExpression arg0 = tree->Children.Items[0];
-	char* arg1_str = arg0->String;
+	char* arg0_str = arg0->String;
 	arg0->String = tree->String;
 	tree->Alloc = 0;
 	
 	/** Right trim the expression, which will use the overridden string above. **/
-	exp_fn_rtrim(tree);
+	const int rval = exp_fn_rtrim(tree);
 	
 	/** Restore the arg0 tree. **/
-	arg0->String = arg1_str;
+	arg0->String = arg0_str;
     
-    return 0;
+    return rval;
     }
 
 
@@ -2887,6 +2884,13 @@ int exp_fn_truncate(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 /*** constrain(value, min, max) ***/
 int exp_fn_constrain(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
+    /** Verify parameters. **/
+    if (i0 == NULL || i1 == NULL || i2 == NULL)
+	{
+	mssError(1, "EXP", "constrain() expects three parameters.");
+	return -1;
+	}
+    
     /** Skip null value. **/
     tree->DataType = i0->DataType;
     if ((i0->Flags & EXPR_F_NULL))
@@ -2894,20 +2898,12 @@ int exp_fn_constrain(pExpression tree, pParamObjects objlist, pExpression i0, pE
 	tree->Flags |= EXPR_F_NULL;
 	return 0;
 	}
-    
-    /** Verify parameters. **/
-    if (i0 == NULL || i1 == NULL || i2 == NULL)
-	{
-	mssError(1, "EXP", "constrain() expects three parameters.");
-	return -1;
-	}
     if (i0->DataType != DATA_T_INTEGER && i0->DataType != DATA_T_DOUBLE && i0->DataType != DATA_T_MONEY)
 	{
 	mssError(1, "EXP",
 	    "constrain() expects three numeric parameters: %s is not numeric.",
 	    objTypeToStr(i0->DataType)
 	);
-	if (i0->DataType == DATA_T_STRING) printf("Value: '%s'\n", i0->String);
 	return -1;
 	}
     if (i0->DataType != i1->DataType || i1->DataType != i2->DataType)
@@ -4556,6 +4552,8 @@ exp_fn_metaphone(pExpression tree)
     {
     int ret = -1;
     bool free_strs = true;
+    char* primary = NULL;
+    char* secondary = NULL;
     
 	/** Verify function schema. **/
 	if (UNLIKELY(exp_fn_i_verify_schema((ArgExpect[]){
@@ -4566,10 +4564,6 @@ exp_fn_metaphone(pExpression tree)
 	    mssError(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
 	    goto end_free;
 	    }
-	
-	/** Allocate space to store metaphone pointers. **/
-	char* primary = NULL;
-	char* secondary = NULL;
 	
 	/** Extract string param. **/
 	pExpression maybe_str = checkPtr(tree->Children.Items[0]);
@@ -4704,7 +4698,7 @@ exp_fn_compare(pExpression tree)
 	    }
 	
 	err:
-	mssError(0, "EXP", "%s(): Failed to compute Levenshtein edit distance.", tree->Name);
+	mssError(0, "EXP", "%s(): Failed to compute the similarity.", tree->Name);
 	return -1;
     }
 
@@ -4738,10 +4732,10 @@ exp_fn_levenshtein(pExpression tree)
 	
 	/** Compute edit distance. **/
 	/** Length 0 is provided for both strings so that the function will compute it for us. **/
-	const int edit_dist = checkNeg(ca_edit_dist(str1, str2, 0lu, 0lu));
+	const int edit_dist = checkPos(ca_edit_dist(str1, str2, 0lu, 0lu));
 	if (UNLIKELY(edit_dist < 0))
 	    {
-	    mssError(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute edit distance.\n", tree->Name, str1, str2);
+	    mssError(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute edit distance.", tree->Name, str1, str2);
 	    return -1;
 	    }
 	

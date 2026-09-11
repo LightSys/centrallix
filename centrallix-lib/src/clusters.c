@@ -22,14 +22,14 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module:	lib_cluster.c, lib_cluster.h				*/
+/* Module:	clusters.c, clusters.h					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	September 29, 2025					*/
 /* Description	Clustering library used to cluster and search data with	*/
 /*		cosine or Levenshtein (aka. edit distance) similarity 	*/
 /*		measures. Used by the "clustering driver".		*/
 /*		For more information on how to use this library, see	*/
-/*		string-similarity.md in the centrallix-sysdoc folder.	*/
+/*		string_similarity.md in the centrallix-sysdoc folder.	*/
 /************************************************************************/
 
 #include <ctype.h>
@@ -154,6 +154,9 @@ ca_build_vector(const char* str)
     pVector sparse_vector = NULL;
     pVector trimmed_sparse_vector = NULL;
     
+	/** Guard null. **/
+	if (str == NULL) return NULL;
+	
 	/** Allocate memory to store the characters. **/
 	unsigned int num_chars = 0u;
 	chars = checkPtr(nmSysMalloc((strlen(str) + 2u) * sizeof(unsigned char)));
@@ -451,13 +454,13 @@ ca_sparse_similarity(const pVector v1, const pVector v2)
  *** allocated centroid by taking their dot product.
  *** 
  *** @param v1 Sparse vector #1.
- *** @param c1 Dense centroid #2.
+ *** @param c1 Dense centroid #1.
  *** @returns Similarity between 0 and 1 where
  ***     1 indicates identical and
  ***     0 indicates completely different.
  ***/
 static double
-ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c2)
+ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c1)
     {
     double dot_product = 0.0;
     
@@ -468,14 +471,14 @@ ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c2)
 	    ca_parse_vector_token(v1[i++], &dims_consumed, &val);
 	    
 	    /** Increase dot product (skipped for zero-values). **/
-	    if (val > 0u) dot_product += (double)val * c2[dim];
+	    if (val > 0u) dot_product += (double)val * c1[dim];
 	    
 	    /** Move ahead the requested number of dimensions. **/
 	    dim += dims_consumed;
 	    }
     
     /** Return the difference score. **/
-    return dot_product / (ca_magnitude_sparse(v1) * ca_magnitude_dense(c2));
+    return dot_product / (ca_magnitude_sparse(v1) * ca_magnitude_dense(c1));
     }
 
 /*** Calculate the difference between a sparsely allocated vector and a densely
@@ -487,26 +490,24 @@ ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c2)
  ***     1 indicates completely different and
  ***     0 indicates identical.
  ***/
-#define ca_sparse_dif_to_centroid(v1, c2) (1.0 - ca_sparse_similarity_to_centroid(v1, c2))
+#define ca_sparse_dif_to_centroid(v1, c1) (1.0 - ca_sparse_similarity_to_centroid(v1, c1))
 
 /*** Computes Levenshtein distance between two strings.
  *** 
  *** @param str1 The first string.
  *** @param str2 The second string.
- *** @param str1_length The length of the first string.
- *** @param str2_length The length of the second string.
+ *** @param str1_length The length of the first string, or 0 to detect from
+ *** 	the length from the null-terminator.
+ *** @param str2_length The length of the second string, or 0 to detect from
+ *** 	the length from the null-terminator.
  *** @returns The edit distance between the two strings, or a negative value on error.
- *** 
- *** @attention - `Tip`: Pass 0 for the length of either string to infer it
- *** 	using the null terminating character.  Conversely, character arrays
- *** 	with no null terminator are allowed if an explicit length is passed.
  ***/
 int
 ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length)
     {
     int result = -1;
     unsigned int** lev_matrix = NULL;
-    
+
 	/*** lev_matrix:
 	 *** For all i and j, d[i][j] will hold the Levenshtein distance between
 	 *** the first i characters of s and the first j characters of t.
@@ -612,7 +613,7 @@ ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const
  *** @attention - This function takes `void*` instead of `pVector` so that it
  *** 	can be used as the similarity function in the ca_search() function
  *** 	family without needing a messy typecast to avoid the compiler warning.
- *** 	However, behavior is undefined if `v1` and `v2` do are not `pVector`s.
+ *** 	However, behavior is undefined if `v1` and `v2` are not `pVector`s.
  *** 
  *** @param v1 A `pVector` to the first string to compare.
  *** @param v2 A `pVector` to the second string to compare.
@@ -650,7 +651,7 @@ ca_cos_compare(void* v1, void* v2)
  *** @attention - This function takes `void*` instead of `char*` so that it
  *** 	can be used as the similarity function in the ca_search() function
  *** 	family without needing a messy typecast to avoid the compiler warning.
- *** 	However, behavior is undefined if `v1` and `v2` do are not `char*`s.
+ *** 	However, behavior is undefined if `v1` and `v2` are not `char*`s.
  *** 
  *** @param str1 A `char*` to the first string to compare.
  *** @param str2 A `char*` to the second string to compare.
@@ -672,7 +673,7 @@ ca_lev_compare(void* str1, void* str2)
 	if (len1 == 0lu && len2 != 0lu) return 0.0;
 	
 	/** Compute levenshtein edit distance. **/
-	const int edit_dist = checkNeg(ca_edit_dist((const char*)str1, (const char*)str2, len1, len2));
+	const int edit_dist = checkPos(ca_edit_dist((const char*)str1, (const char*)str2, len1, len2));
 	if (edit_dist < 0) return NAN;
 	
 	/** Normalize edit distance into a similarity measure. **/
@@ -716,7 +717,7 @@ ca_eql(pVector v1, pVector v2)
  *** @returns The average cluster size.
  ***/
 static double
-get_cluster_size(
+ca_i_get_cluster_size(
     pVector* vectors,
     const unsigned int num_vectors,
     unsigned int* labels,
@@ -775,14 +776,13 @@ get_cluster_size(
 
 /*** Executes the k-means clustering algorithm.  Selects `num_clusters` random
  *** vectors as initial centroids, using `rand()` (to set a seed, call srand()
- *** pass false for `auto_seed`).  Each iteration, points are assigned to the
+ *** and pass false for `auto_seed`).  Each iteration, points are assigned to the
  *** nearest centroid using cosine similarity on the provided sparse vectors.
  *** After this, centroids are moved to the center of their points.  This
  *** process repeats until the `min_improvement` threshold is not met, or
  *** `max_iter` is reached (whichever happens first).
  *** 
- *** @attention - `num_vectors` must be the length of `vectors`.
- *** @attention - `num_clusters` must be the length of `labels`.
+ *** @attention - `num_vectors` must be the length of both `vectors` and `labels`.
  *** 
  *** @param vectors The sparse cosine similarity vectors representing the data
  *** 	to cluster.
@@ -924,7 +924,7 @@ ca_kmeans(
 	    
 	    /** Is there enough improvement? **/
 	    if (min_improvement <= -1.0) continue; /** Skip check if it will never end the loop. **/
-	    const double average_cluster_size = checkDouble(get_cluster_size(vectors, num_vectors, labels, centroids, num_clusters));
+	    const double average_cluster_size = checkDouble(ca_i_get_cluster_size(vectors, num_vectors, labels, centroids, num_clusters));
 	    if (isnan(average_cluster_size)) goto end;
 	    const double improvement = old_average_cluster_size - average_cluster_size;
 	    if (improvement < min_improvement) break;
@@ -991,12 +991,20 @@ ca_most_similar(
     void* most_similar = NULL;
     double best_sim = -INFINITY;
     
+	/** Error cases. **/
+	if (target == NULL
+	    || data == NULL
+	    || similarity == NULL
+	    || (threshold < 0.0 || 1.0 < threshold)
+	    || isnan(threshold)
+	) return NULL;
+    
 	/** Iterate over all data options to find the one with the highest similarity. **/
 	for (unsigned int i = 0u; (num_data == 0u && data[i] != NULL) || (i < num_data); i++)
 	    {
-	    const double sim = checkDouble(similarity(target, data[i]));
+	    const double sim = similarity(target, data[i]);
 	    if (isnan(sim)) continue; /* Skip failed comparison. */
-	    if (sim > best_sim && sim > threshold)
+	    if (sim > best_sim && sim >= threshold)
 		{
 		most_similar = data[i];
 		best_sim = sim;
@@ -1033,6 +1041,15 @@ ca_sliding_search(
     {
     pXArray pairs = maybe_pairs;
     
+	/** Error cases. **/
+	if (data == NULL
+	    || num_data == 0
+	    || window_size == 0
+	    || similarity == NULL 
+	    || (threshold < 0.0 || 1.0 < threshold)
+	    || isnan(threshold)
+	) goto err;
+	
 	/** Allocate space for pairs (if it is not provided). **/
 	if (pairs == NULL)
 	    {
@@ -1053,7 +1070,7 @@ ca_sliding_search(
 		const double sim = checkDouble(similarity(data[i], data[j]));
 		if (isnan(sim) || sim < 0.0 || 1.0 < sim)
 		    {
-		    fprintf(stderr, "Invalid similarity %g %lf.\n", sim, sim);
+		    fprintf(stderr, "Invalid similarity %g.\n", sim);
 		    goto err_free;
 		    }
 		if (sim > threshold) /* Pair found! */
@@ -1063,7 +1080,7 @@ ca_sliding_search(
 		    pair->i = i;
 		    pair->j = j;
 		    pair->similarity = sim;
-		    if (checkNeg(xaAddItem(pairs, (void*)pair)) < 0) goto err_free;
+		    if (checkPos(xaAddItem(pairs, (void*)pair)) < 0) goto err_free;
 		    }
 		}
 	    }
@@ -1075,7 +1092,7 @@ ca_sliding_search(
 	/** Error cleanup: Free the pairs that we added to the XArray. **/
 	while (pairs->nItems > num_starting_pairs)
 	    nmFree(pairs->Items[--pairs->nItems], sizeof(Pair));
-	if (maybe_pairs == NULL) check(xaDeInit(pairs)); /* Failure ignored. */
+	if (maybe_pairs == NULL) check(xaFree(pairs)); /* Failure ignored. */
     
     err:
 	return NULL;
@@ -1110,8 +1127,6 @@ ca_complete_search(
 void
 ca_init(void)
     {
-	nmRegister(sizeof(pVector), "pVector");
-	nmRegister(sizeof(pCentroid), "pCentroid");
 	nmRegister(CENTROID_SIZE, "Centroid");
 	nmRegister(sizeof(Pair), "Pair");
     

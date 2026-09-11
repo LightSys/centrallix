@@ -25,20 +25,24 @@
 /************************************************************************/
 
 
-
 #ifdef 	DBMAGIC
+#include <stdio.h>
 #include <stdlib.h>
+
 #include "expect.h"
+
+/** Define the value used as a placeholder to mark null data. **/
+#define MGK_NULL_MARK 0xEE1EE100
 
 #define ASSERTMAGIC(data, expect) \
     ({ \
     const pMagicHdr _data = (pMagicHdr)(data); \
     const Magic_t _expect = (expect); \
-    const Magic_t _actual = (_data == NULL) ? 0xEE1EE100 : _data->Magic; \
+    const Magic_t _actual = (_data == NULL) ? MGK_NULL_MARK : _data->Magic; \
     if (UNLIKELY(_data != NULL && _actual != _expect)) \
 	{ \
 	fprintf(stderr, \
-	    "%s:%d: Magic assertion failed, unexpected %u != %d for %8.8lX.\n", \
+	    "%s:%d: Magic assertion failed, unexpected %X != %X for %8.8lX.\n", \
 	    __FILE__, __LINE__, _actual, _expect, (long)_data \
 	); \
 	abort(); \
@@ -50,11 +54,11 @@
     ({ \
     const pMagicHdr _data = (pMagicHdr)(data); \
     const Magic_t _expect = (expect); \
-    const Magic_t _actual = (_data == NULL) ? 0xEE1EE100 : _data->Magic; \
+    const Magic_t _actual = (_data == NULL) ? MGK_NULL_MARK : _data->Magic; \
     if (UNLIKELY(_data != NULL && _actual == _expect)) \
 	{ \
 	fprintf(stderr, \
-	    "%s:%d: Magic assertion failed, unexpected %d.\n", \
+	    "%s:%d: Magic assertion failed, unexpected %X.\n", \
 	    __FILE__, __LINE__, _expect \
 	); \
 	abort(); \
@@ -80,7 +84,7 @@ typedef struct
     Magic_t	Magic;
     }
     MagicHdr, *pMagicHdr;
-
+    
 #define	MGK_FILE	0x12340001	/* mtask.h::File */
 #define MGK_OBJECT	0x12340102	/* obj.h::Object */
 #define MGK_OBJQUERY	0x1234015a	/* obj.h::ObjQuery */
