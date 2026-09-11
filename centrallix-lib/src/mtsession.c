@@ -3,6 +3,7 @@
 #include "cxlibconfig-internal.h"
 #endif
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -23,13 +24,14 @@
 #include "xstring.h"
 #include "xhash.h"
 #include "strtcpy.h"
+#include "check.h"
 #include "cxsec.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -56,6 +58,7 @@ static struct
     char	LogMethod[32];
     int		LogAllErrors;
     char	AppName[32];
+    int		IsInitialized;
     }
     MSS;
 
@@ -66,6 +69,21 @@ int
 mssMemoryErr(char* message)
     {
     mssError(1,"NM",message);
+    return 0;
+    }
+
+
+/*** mssFreeParam - release a session parameter and any value allocated
+ *** for it.
+ ***/
+static int
+mssFreeParam(void* param, void* arg)
+    {
+    pMtParam p = (pMtParam)param;
+
+	if (p->IsAlloc) nmSysFree(p->Value);
+	nmFree(p, sizeof(MtParam));
+
     return 0;
     }
 
@@ -100,10 +118,14 @@ mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, cha
 	    syslog(LOG_INFO, "%s initializing...", MSS.AppName);
 	    }
    
-	/** Setup the sessions list **/
-	xaInit(&(MSS.Sessions),16);
-	nmRegister(sizeof(MtSession),"MtSession");
-	nmSetErrFunction(mssMemoryErr);
+	/** Setup the session list and the allocator hooks, once **/
+	if (!MSS.IsInitialized)
+	    {
+	    xaInit(&(MSS.Sessions),16);
+	    nmRegister(sizeof(MtSession),"MtSession");
+	    nmSetErrFunction(mssMemoryErr);
+	    MSS.IsInitialized = 1;
+	    }
 
     return 0;
     }
@@ -157,7 +179,7 @@ int
 mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_maxlen)
     {
     char salt_chars[] = "0123456789abcdef";
-    char salt_buf[9];
+    char salt_buf[MSS_SALT_SIZE * 2 + 1];
     char *ptr;
     char *dstptr;
 	
@@ -165,9 +187,10 @@ mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_
 	if (salt_len < 1) return -1;
 
 	/** Expand the salt to (up to) 8 bytes **/
+	if (salt_len > MSS_SALT_SIZE) salt_len = MSS_SALT_SIZE;
 	ptr = salt;
 	dstptr = salt_buf;
-	while (*ptr)
+	while (ptr < salt + salt_len)
 	    {
 	    *(dstptr++) = salt_chars[ptr[0] & 0xF];
 	    *(dstptr++) = salt_chars[(ptr[0]>>4) & 0xF];
@@ -364,7 +387,7 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 		if (!bypass_crypt)
 		    {
 		    encrypted_pwd = (char*)crypt(s->Password,pwd);
-		    if (strcmp(encrypted_pwd,pwd))
+		    if (!encrypted_pwd || strcmp(encrypted_pwd,pwd))
 			{
 			cxsecShred(s, sizeof(MtSession));
 			nmFree(s,sizeof(MtSession));
@@ -382,6 +405,8 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 	else
 	    {
 	    mssError(1, "MSS", "Invalid auth method '%s'", MSS.AuthMethod);
+	    cxsecShred(s, sizeof(MtSession));
+	    nmFree(s,sizeof(MtSession));
 	    return -1;
 	    }
 
@@ -433,16 +458,18 @@ mssEndSession(pMtSession s)
 	    if (!s) return -1;
 	    }
 
-	/** Unlink from thread if this is the current thread's session **/
+	/** Unlink from thread with the unlink function off; it re-enters here **/
 	if (s == cur_s)
 	    {
+	    thSetParamFunctions(NULL, mssLinkSession, NULL);
 	    thSetParam(NULL,"mss",NULL);
+	    thSetParamFunctions(NULL, mssLinkSession, mssUnlinkSession);
 	    thSetUserID(NULL,0);
 	    }
 
 	/** Free the session info and error list **/
 	for(i=0;i<s->ErrList.nItems;i++) nmSysFree(s->ErrList.Items[i]);
-	xhClear(&s->Params, NULL, NULL);
+	xhClear(&s->Params, mssFreeParam, NULL);
 	xhDeInit(&s->Params);
 	xaDeInit(&(s->ErrList));
 	xaRemoveItem(&(MSS.Sessions),xaFindItem(&(MSS.Sessions),(void*)s));
@@ -453,195 +480,91 @@ mssEndSession(pMtSession s)
     }
 
 
-/*** mssError - Add an error message to the error stack, optionally 
- *** clearing the existing contents thereof.
+/*** mssError_internal - Displays error text to the user (but no stack trace).
+ *** Does not exit the program, allowing the calling function to fail, creating
+ *** a cascade of error messages which provides useful info.
+ ***
+ *** @param clr Whether to clear the current error stack.  As a rule of thumb,
+ ***	if you are the first one to detect the error, clear the stack so that
+ ***	other unrelated messages are not shown.  If you are detecting an error
+ ***	from another function that may also call an mssError() function, do
+ ***	not clear the stack.
+ *** @param module The name or abbreviation of the module in which this 
+ ***	function is being called, to help developers narrow down the location
+ ***	of the error.
+ *** @param file The name of the file where the error was detected.
+ *** @param line The line number where the error was detected.
+ *** @param format The format text for the error, which accepts any format
+ ***	specifier that would be accepted by printf().
+ *** @param ... Variables matching format specifiers in the format.
  ***/
-int 
-mssError(int clr, char* module, char* message, ...)
+void
+mssError_internal(int clr, char* module, char* file, int line, char* message, ...)
     {
-    va_list vl;
-    char* msg;
-    pMtSession s;
-    XString xs;
-    char* ptr;
-    char* cur_pos;
-    char* str;
-    int i;
-    char nbuf[16];
-    char ch;
+    char err_msg[BUFSIZ];
+    size_t i = 0;
 
-    	/** Build the real error msg. **/
-	xsInit(&xs);
-	cur_pos = message;
-	va_start(vl, message);
-	while((ptr = strchr(cur_pos, '%')))
-	    {
-	    xsConcatenate(&xs, cur_pos, ptr - cur_pos);
-	    switch(ptr[1])
-	        {
-		case '\0':
-		    xsConcatenate(&xs, "%", 1);
-		    cur_pos = ptr+1;
-		    break;
-		case '%':
-		    xsConcatenate(&xs, "%", 1);
-		    cur_pos = ptr+2;
-		    break;
-		case 's':
-		    str = va_arg(vl, char*);
-		    xsConcatenate(&xs, str?str:"(NULL)", -1);
-		    cur_pos = ptr + 2;
-		    break;
-		case 'c':
-		    ch = va_arg(vl, int);
-		    xsConcatenate(&xs, &ch, 1);
-		    cur_pos = ptr + 2;
-		    break;
-		case 'd':
-		    i = va_arg(vl, int);
-		    sprintf(nbuf,"%d",i);
-		    xsConcatenate(&xs, nbuf, -1);
-		    cur_pos = ptr + 2;
-		    break;
-		default:
-		    cur_pos = ptr + 2;
-		    break;
-		}
-	    }
-	va_end(vl);
-	if (*cur_pos) xsConcatenate(&xs, cur_pos, -1);
+	/** Prevent issues from interlacing this function with prints to stdout. **/
+	check(fflush(stdout)); /* Failure ignored. */
+
+	/** Add line number to error message. **/
+	err_msg[0] = '\0';
+	strtcatf(err_msg, sizeof(err_msg), &i, "%s:%d: ", file, line);
+
+	/** Write the module to the start of the error message. */
+	strtcatf(err_msg, sizeof(err_msg), &i, "%s: ", module);
+
+	/** Process the message format with all the same rules as printf(). **/
+	va_list args;
+	va_start(args, message);
+	strtcatf_va(err_msg, sizeof(err_msg), &i, message, args);
+	va_end(args);
 
 	/** Get current session **/
-	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s || MSS.LogAllErrors) 
+	pMtSession s = thGetParam(NULL, "mss");
+	const bool log_error = (s == NULL || MSS.LogAllErrors);
+
+	/** Use standard logging without a session context, if needed. **/
+	if (log_error) 
 	    {
-	    /*printf("mssError: Error occurred outside of session context.\n");*/
-	    if (!strcmp(MSS.LogMethod,"syslog"))
+	    /** Use the requested logging method. **/
+	    if (strcmp(MSS.LogMethod, "syslog") == 0)
 		{
-		if (!s)
-		    syslog(LOG_ERR, "System: %s: %.256s\n", module, xs.String);
+		if (s == NULL)
+		    syslog(LOG_ERR, "System: %.256s\n", err_msg);
 		else
-		    syslog(LOG_WARNING, "User '%s': %s: %.256s\n", s->UserName, module, xs.String);
+		    syslog(LOG_WARNING, "User '%s': %.256s\n", s->UserName, err_msg);
 		}
-	    else if (!strcmp(MSS.LogMethod, "stdout"))
+	    else if (strcmp(MSS.LogMethod, "stdout") == 0)
 		{
-		printf("%s: %s: %s\n",MSS.AppName[0]?MSS.AppName:"error",module,xs.String);
-		}
-	    if (!s) return -1;
-	    }
-
-	/** Need to clear? **/
-	if (clr) mssClearError();
-
-	/** Allocate space and construct the error text. **/
-	msg = (char*)nmSysMalloc(strlen(module)+strlen(xs.String)+3);
-	if (!msg)
-	    {
-	    perror("mssError: Could not allocate error");
-	    printf("mssError: %s: %s\n",module,xs.String);
-	    return -1;
-	    }
-	sprintf(msg,"%s: %s",module,xs.String);
-	xaAddItem(&(s->ErrList),(void*)msg);
-	xsDeInit(&xs);
-
-    return 0;
-    }
-
-
-/*** mssErrorErrno - Adds an error to the error stack, but in this
- *** case it takes the error information from the current errno.
- ***/
-int 
-mssErrorErrno(int clr, char* module, char* message, ...)
-    {
-    va_list vl;
-    char* msg;
-    char* err;
-    pMtSession s;
-    int en;
-    char* str;
-    int i;
-    XString xs;
-    char nbuf[16];
-    char* cur_pos;
-    char* ptr;
-
-    	/** Build the real error msg. **/
-	xsInit(&xs);
-	cur_pos = message;
-	va_start(vl, message);
-	while((ptr = strchr(cur_pos, '%')))
-	    {
-	    xsConcatenate(&xs, cur_pos, ptr - cur_pos);
-	    switch(ptr[1])
-	        {
-		case '\0':
-		    xsConcatenate(&xs, "%", 1);
-		    cur_pos = ptr+1;
-		    break;
-		case '%':
-		    xsConcatenate(&xs, "%", 1);
-		    cur_pos = ptr+2;
-		    break;
-		case 's':
-		    str = va_arg(vl, char*);
-		    xsConcatenate(&xs, str?str:"(NULL)", -1);
-		    cur_pos = ptr + 2;
-		    break;
-		case 'd':
-		    i = va_arg(vl, int);
-		    sprintf(nbuf,"%d",i);
-		    xsConcatenate(&xs, nbuf, -1);
-		    cur_pos = ptr + 2;
-		    break;
-		default:
-		    cur_pos = ptr + 2;
-		    break;
+		printf("%s: %s\n", (MSS.AppName[0]) ? MSS.AppName : "error", err_msg);
 		}
 	    }
-	va_end(vl);
-	if (*cur_pos) xsConcatenate(&xs, cur_pos, -1);
 
-	/** Get current errno. **/
-	en = errno;
-	err = strerror(en);
-
-	/** Get session. **/
-	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s || MSS.LogAllErrors) 
+	/** If a session is available, try to add the error to the error list. **/
+	if (s != NULL)
 	    {
-	    /*printf("mssErrorErrno: Error occurred outside of session context.\n");*/
-	    if (!strcmp(MSS.LogMethod,"syslog"))
+	    /** Clear the error context, if requested. **/
+	    if (clr) check(mssClearError()); /* Failure ignored. */
+
+	    /** Allocate space and construct the error text. **/
+	    char* allocated_err_msg = checkPtr(nmSysStrdup(err_msg));
+	    if (allocated_err_msg == NULL)
 		{
-		if (!s)
-		    syslog(LOG_ERR, "System: %s: %.256s (%s)\n", module, xs.String, err);
-		else
-		    syslog(LOG_WARNING, "User '%s': %s: %.256s (%s)\n", s->UserName, module, xs.String, err);
+		fprintf(stderr, "Failed to store error message: %s\n", err_msg);
+		return; /* Give up. */
 		}
-	    else
+
+	    /** Store the error. **/
+	    if (checkPos(xaAddItem(&(s->ErrList), (void*)allocated_err_msg)) < 0)
 		{
-		printf("%s: %s: %s (%s)\n",MSS.AppName[0]?MSS.AppName:"error",module,xs.String,err);
+		fprintf(stderr, "Failed to add error message to session error list: %s\n", err_msg);
+		nmSysFree(allocated_err_msg);
+		return; /* Give up. */
 		}
-	    if (!s) return -1;
 	    }
 
-	/** Need to clear? **/
-	if (clr) mssClearError();
-
-	/** Allocate space and construct the error text. **/
-	msg = (char*)nmSysMalloc(strlen(module)+strlen(xs.String)+6 + strlen(err));
-	if (!msg)
-	    {
-	    perror("mssErrorErrno: Could not allocate error");
-	    printf("mssErrorErrno: %s: %s (%s)\n",module,xs.String,err);
-	    return -1;
-	    }
-	sprintf(msg,"%s: %s (%s)",module,xs.String,err);
-	xaAddItem(&(s->ErrList),(void*)msg);
-	xsDeInit(&xs);
-
-    return 0;
+	return;
     }
 
 
@@ -728,21 +651,26 @@ mssUserError(pXString str)
     int i;
     pMtSession s;
     char* item;
-    char* colon;
+    char* sep;
 
 	/** Get session. **/
 	s = (pMtSession)thGetParam(NULL,"mss");
 	if (!s) return -1;
 
-	/** Create a space-separated string of the messages, without module codes **/
+	/*** Create a space-separated string of the messages, without the source
+	 *** location and module code that mssError_internal() writes in front
+	 *** of each one.  Both end in ": ", which the message itself may also
+	 *** contain, so only the first two are skipped.
+	 ***/
 	for(i=s->ErrList.nItems-1;i>=0;i--)
 	    {
 	    item = (char*)(s->ErrList.Items[i]);
 	    if (item)
 		{
-		colon = strchr(item, ':');
-		if (colon)
-		    item = colon + 2;
+		sep = strstr(item, ": ");
+		if (sep) sep = strstr(sep + 2, ": ");
+		if (sep)
+		    item = sep + 2;
 		xsConcatenate(str, item, -1);
 		if (i > 0)
 		    xsConcatenate(str, " ", 1);
@@ -762,22 +690,44 @@ mssSetParamPtr(char* paramname, void* ptr)
     pMtSession s;
     pMtParam p;
     int is_new = 0;
+    char name[MSS_PARAMNAME_SIZE];
 
 	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s) return -1;
+	if (checkPtr(s) == NULL || checkPtr(paramname) == NULL)
+	    goto error;
+
+	/** The name has to fit the field it is kept in **/
+	if (checkPos(strtcpy(name, paramname, sizeof(name))) < 0)
+	    goto error;
 
     	/** Need to delete first? **/
-	if (!(p = (pMtParam)xhLookup(&s->Params, paramname)))
+	if (!(p = (pMtParam)xhLookup(&s->Params, name)))
 	    {
-	    p = (pMtParam)nmMalloc(sizeof(MtParam));
-	    strtcpy(p->Name, paramname, sizeof(p->Name));
+	    p = (pMtParam)checkPtr(nmMalloc(sizeof(MtParam)));
+	    if (p == NULL) goto error;
+	    strcpy(p->Name, name);
 	    is_new = 1;
+	    }
+	else if (p->Value == ptr)
+	    {
+	    /** Nothing changes, and the value stays whosever it was **/
+	    return 0;
+	    }
+	else if (p->IsAlloc)
+	    {
+	    nmSysFree(p->Value);
 	    }
 
 	p->Value = ptr;
-	if (is_new) xhAdd(&s->Params, p->Name, (void*)p);
+	p->IsAlloc = 0;
+	if (is_new && check(xhAdd(&s->Params, p->Name, (void*)p)) != 0)
+	    goto error;
 
-    return 0;
+	return 0;
+
+    error:
+	mssError(1, "MSS", "Failed to add session parameter pointer.");
+	return -1;
     }
 
 
@@ -788,32 +738,44 @@ mssSetParam(char* paramname, void* value)
     {
     pMtSession s;
     pMtParam p;
+    char* new_value;
     int is_new = 0;
+    char name[MSS_PARAMNAME_SIZE];
 
 	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s) return -1;
+	if (!s || !paramname || !value) return -1;
+
+	/** The name has to fit the field it is kept in **/
+	if (strtcpy(name, paramname, sizeof(name)) < 0) return -1;
 
     	/** Need to delete first? **/
-	if (!(p = (pMtParam)xhLookup(&s->Params, paramname)))
+	if (!(p = (pMtParam)xhLookup(&s->Params, name)))
 	    {
 	    p = (pMtParam)nmMalloc(sizeof(MtParam));
-	    strtcpy(p->Name, paramname, sizeof(p->Name));
+	    if (!p) return -1;
+	    strcpy(p->Name, name);
+	    p->IsAlloc = 0;
 	    is_new = 1;
 	    }
-	else
-	    {
-	    if (p->Value != p->ValueBuf && p->Value) nmSysFree(p->Value);
-	    }
 
+	/** Take the new value in before letting go of the old one **/
 	if (strlen(value) < sizeof(p->ValueBuf))
 	    {
-	    p->Value = p->ValueBuf;
+	    new_value = p->ValueBuf;
 	    }
 	else
 	    {
-	    p->Value = (char*)nmSysMalloc(strlen(value)+1);
+	    new_value = (char*)nmSysMalloc(strlen(value)+1);
+	    if (!new_value)
+		{
+		if (is_new) nmFree(p, sizeof(MtParam));
+		return -1;
+		}
 	    }
-	strcpy(p->Value, value);
+	memmove(new_value, value, strlen(value)+1);
+	if (p->IsAlloc && p->Value != new_value) nmSysFree(p->Value);
+	p->Value = new_value;
+	p->IsAlloc = (new_value != p->ValueBuf);
 	if (is_new) xhAdd(&s->Params, p->Name, (void*)p);
 
     return 0;
@@ -827,12 +789,16 @@ mssGetParam(char* paramname)
     {
     pMtSession s;
     pMtParam p;
+    char name[MSS_PARAMNAME_SIZE];
 
 	/** Get session. **/
 	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s) return NULL;
+	if (!s || !paramname) return NULL;
 
-    	p = (pMtParam) xhLookup(&s->Params, paramname);
+	/** The name has to fit the field it is kept in **/
+	if (strtcpy(name, paramname, sizeof(name)) < 0) return NULL;
+
+    	p = (pMtParam) xhLookup(&s->Params, name);
 	if (!p) return NULL;
 
     return p->Value;
