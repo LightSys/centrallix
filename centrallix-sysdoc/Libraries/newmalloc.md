@@ -40,8 +40,6 @@
 
 **Updated**: December 11, 2025
 
-**License**: Copyright (C) 2001-2025 LightSys Technology Services. See LICENSE.txt for more information.
-
 
 ## Table of Contents
 - [Memory Management in Centrallix](#memory-management-in-centrallix)
