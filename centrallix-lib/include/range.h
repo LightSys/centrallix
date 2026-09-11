@@ -18,6 +18,9 @@
 /*              C does not provide by default.                          */
 /************************************************************************/
 
+/** Rounds a double value to the given number of decimal places. **/
+double roundTo(double value, int decimals);
+
 #ifndef min
 /*** Returns the smaller of two values.
  *** 
