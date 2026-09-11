@@ -1730,7 +1730,7 @@ int
 exp_fn_trim(pExpression tree)
     {
 	/** Left trim the expression. **/
-	exp_fn_ltrim(tree);
+	if (exp_fn_ltrim(tree) != 0) return -1;
 	
 	/** Temporarily override the arg0 str pointer with the result from ltrim(). **/
 	pExpression arg0 = tree->Children.Items[0];
@@ -1739,12 +1739,12 @@ exp_fn_trim(pExpression tree)
 	tree->Alloc = 0;
 	
 	/** Right trim the expression, which will use the overridden string above. **/
-	exp_fn_rtrim(tree);
+	const int rval = exp_fn_rtrim(tree);
 	
 	/** Restore the arg0 tree. **/
 	arg0->String = arg0_str;
     
-    return 0;
+    return rval;
     }
 
 
