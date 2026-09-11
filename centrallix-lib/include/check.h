@@ -53,13 +53,13 @@ void printErrInternal(const int error_code, const char* c_str, const char* file_
     })
 
 /*** Ensures that developer diagnostics are printed if the result of the
- *** passed function call is negative. Not intended for user errors.
+ *** passed function call is negative.  Not intended for user errors.
  *** 
  *** @param result The expression to check.  The text of this expression is
  *** 	included in the error message if an error occurs.
  *** @returns The result of the checked expression.
  ***/
-#define checkNeg(result) \
+#define checkPos(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
 	int _r = (result); \
