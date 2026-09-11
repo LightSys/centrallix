@@ -9,6 +9,7 @@ Date: Descember 4, 2025
   - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
   - [List of Dependencies](#list-of-dependencies)
+  - [Notes](#notes)
 
 ## Introduction
 This document tracks dependencies on the GCC toolchain in the centrallix codebase.  As code is added which relies on GCC specific behavior, such additions should be noted here to make possible use of a different toolchain (e.g. LLVM) in the future less painful.

@@ -42,6 +42,7 @@
 ## Table of Contents
 - [The MTSession Library](#the-mtsession-library)
   - [Introduction](#introduction)
+  - [mssInitialize()](#mssinitialize)
   - [mssUserName()](#mssusername)
   - [mssPassword()](#msspassword)
   - [mssSetParam()](#msssetparam)
@@ -136,4 +137,4 @@ The `mssError()` function is not required to be called at every function nesting
 ```c
 int mssErrorErrno(int clr, char* module, char* message, ...);
 ```
-This function works the same way as [`mssError`](#mssError), except checks the current value of `errno` and includes a description of any error stored there.  This is useful if a system call or other library function is responsible for this error.
+This function works the same way as [`mssError`](#msserror), except checks the current value of `errno` and includes a description of any error stored there.  This is useful if a system call or other library function is responsible for this error.
