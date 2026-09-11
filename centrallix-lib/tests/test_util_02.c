@@ -42,8 +42,8 @@ static bool doTest(void)
 
 	/** Detect if metric or CS units are intended. **/
 	bool cs = true;
-	#ifdef UTIL_USE_METRIC
-	if (UTIL_USE_METRIC) cs = false;
+	#ifdef USE_METRIC
+	if (USE_METRIC) cs = false;
 	#endif
 
 	/** Allocate space for the string buffer. **/
