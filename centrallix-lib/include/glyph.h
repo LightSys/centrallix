@@ -42,21 +42,21 @@
 // #define ENABLE_GLYPHS
 
 #ifdef ENABLE_GLYPHS
-#define glyph_print(s) printf("%s", s);
+#define glyphPrint(s) printf("%s", s);
 
 /*** Initialize a simple debug visualizer to make pretty patterns in the
  *** developer's terminal. Great for when you need to run a long task and
  *** want a super simple way to make sure it's still working.
  *** 
  *** @attention - Relies on storing data in variables in scope, so calling
- ***    glyph() requires a call to glyph_init() previously in the same scope.
+ ***    glyph() requires a call to glyphInit() previously in the same scope.
  *** 
  *** @param name The symbol name of the visualizer.
  *** @param str The string printed for the visualization.
  *** @param interval The number of invocations of glyph() required to print.
  *** @param flush Whether to flush on output.
  ***/
-#define glyph_init(name, str, interval, flush) \
+#define glyphInit(name, str, interval, flush) \
 	const char* vis_##name##_str = str; \
 	const unsigned int vis_##name##_interval = interval; \
 	const bool vis_##name##_flush = flush; \
@@ -69,12 +69,12 @@
 #define glyph(name) \
 	if (++vis_##name##_i % vis_##name##_interval == 0) \
 	    { \
-	    glyph_print(vis_##name##_str); \
+	    glyphPrint(vis_##name##_str); \
 	    if (vis_##name##_flush) fflush(stdout); \
 	    }
 #else
-#define glyph_print(str)
-#define glyph_init(name, str, interval, flush)
+#define glyphPrint(str)
+#define glyphInit(name, str, interval, flush)
 #define glyph(name)
 #endif
 
