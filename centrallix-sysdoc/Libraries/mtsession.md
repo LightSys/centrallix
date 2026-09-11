@@ -98,7 +98,7 @@ Returns the value of a session parameter of the provided name (`paramname`), or 
 
 ## mssError()
 ```c
-int mssError(int clr, char* module, char* message, ...);
+void mssError(int clr, char* module, char* message, ...);
 ```
 Formats and caches an error message for return to the user.  This function returns 0 if successful, or -1 if an error occurred.
 
@@ -111,30 +111,13 @@ Formats and caches an error message for return to the user.  This function retur
 
 Errors that occur inside a session context are normally stored up and not printed until other MSS module routines are called to fetch the errors.  Errors occurring outside a session context (such as in Centrallix's network listener) are printed to Centrallix's standard output immediately.
 
-The `mssError()` function is not required to be called at every function nesting level when an error occurs.  For example, if the expression compiler returns -1 indicating that a compilation error occurred, it has probably already added one or more error messages to the error list.  The calling function should only call `mssError()` if doing so would provide additional context or other useful information (e.g. _What_ expression failed compilation? _Why_ as an expression being compiled? etc.).  However, it is far easier to give too little information that too much, so it can often be best to air on the side of calling `mssError()` with information that might be irrelevant, rather than skipping it and leaving the developer confused.
+The `mssError()` function is not required to be called at every function nesting level when an error occurs.  For example, if the expression compiler returns -1 indicating that a compilation error occurred, it has probably already added one or more error messages to the error list.  The calling function should only call `mssError()` if doing so would provide additional context or other useful information (e.g. _What_ expression failed compilation? _Why_ as an expression being compiled? etc.).  However, it is far easier to give too little information that too much, so it can often be best to err on the side of calling `mssError()` with information that might be irrelevant, rather than skipping it and leaving the developer confused.
 
 - 📖 **Note**: The `mssError()` routines do not cause the calling function to return or exit.  The function must still clean up after itself and return an appropriate value (such as `-1` or `NULL`) to indicate failure.
-
-- ⚠️ **Warning**: Even if `-1` is returned, the error message may still be sent to the user in some scenarios.  This is not guaranteed, though.
-
-- ⚠️ **Warning**: `%d` and `%s` are the ONLY supported format specifier for this function.  **DO NOT** use any other format specifiers like `%lf`, `%u`, `%lu`, `%c` etc.  **DO NOT** attempt to include `%%` for a percent symbol in your error message, as misplaced percent symbols often break this function. If you wish to use these features of printf, it is recommended to print the error message to a buffer and pass that buffer to `mssError()`, as follows:
-    ```c
-    char err_buf[256];
-    snprintf(err_buf, sizeof(err_buf),
-	"Incorrect values detected: %u, %g (%lf), '%c'",
-	unsigned_int_value, double_value, char_value
-    );
-    if (mssError(1, "EXMPL", "%s", err_buf) != 0)
-	{
-	fprintf(stderr, "ERROR! %s\n", err_buf);
-	}
-    return -1;
-    ```
-
 
 
 ## mssErrorErrno()
 ```c
-int mssErrorErrno(int clr, char* module, char* message, ...);
+void mssErrorErrno(int clr, char* module, char* message, ...);
 ```
-This function works the same way as [`mssError`](#msserror), except checks the current value of `errno` and includes a description of any error stored there.  This is useful if a system call or other library function is responsible for this error.
+This function works the same way as [`mssError`](#msserror), except checks the current value of `errno` and postpends that error message to the end of the provided error.  This is useful if a system call or other library function is responsible for this error.
