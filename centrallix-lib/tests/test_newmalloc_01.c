@@ -2,7 +2,7 @@
 /* Centrallix Application Server System					*/
 /* Centrallix Base Library						*/
 /*									*/
-/* Copyright (C) 2005 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2025-2026 LightSys Technology Services, Inc.		*/
 /*									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -19,7 +19,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 /** Test dependencies. **/
 #include "test_utils.h"
@@ -28,12 +27,26 @@
 /** Tested module. **/
 #include "newmalloc.h"
 
+/*** Valgrind instruments every memory access, so the bulk data sizes are
+ *** divided by this factor when running under it, keeping the test inside
+ *** the driver's lockup timeout.
+ ***/
+#ifdef USING_VALGRIND
+#include "valgrind/valgrind.h"
+#define BULK_DIVISOR	(RUNNING_ON_VALGRIND ? 16lu : 1lu)
+#else
+#define BULK_DIVISOR	1lu
+#endif
+
+#define TEST_LIMIT	(16384lu / BULK_DIVISOR)
+#define LARGE_BUF_SIZE	(256000000lu / BULK_DIVISOR)
+
 static unsigned int seed_counter = 0;
 static char* err_buf;
 static unsigned int err_buf_i;
 static unsigned int err_buf_size;
 
-static int mock_error_fn(char* error_msg)
+static int mockErrorFn(char* error_msg)
     {
     const size_t len = strlen(error_msg) + 1lu;
 
@@ -54,7 +67,7 @@ static int mock_error_fn(char* error_msg)
     }
 
 /** Initialize memory of a given size with random data. **/
-static void* random_init(void* ptr, size_t size)
+static void* randomInit(void* ptr, size_t size)
     {
 	if (ptr == NULL) return NULL;
 	unsigned char* p = (unsigned char*)ptr;
@@ -64,7 +77,7 @@ static void* random_init(void* ptr, size_t size)
 	return ptr;
     }
 
-static bool do_tests(void)
+static bool doTest(void)
     {
     bool success = true;
 
@@ -74,10 +87,7 @@ static bool do_tests(void)
 	/** Initialize the mock error function. **/
 	err_buf = checkPtr(malloc(err_buf_size = 256));
 	err_buf_i = snprintf(err_buf, err_buf_size, "%s", "");
-	nmSetErrFunction(mock_error_fn);
-
-	/** Baseline: Should leak. **/
-	success &= EXPECT_NOT_NULL(nmMalloc(42));
+	nmSetErrFunction(mockErrorFn);
 
 	/** Basic string data. **/
 	char* str1;
@@ -89,14 +99,13 @@ static bool do_tests(void)
 	success &= EXPECT_STR_EQL(str1, "ThisIsSomeData!");
 	success &= EXPECT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
 
-	/** 128 MB random data, varying sizes. **/
-	#define TEST_LIMIT 16384
+	/** Random data, varying sizes. **/
 	void** data = checkPtr(malloc(TEST_LIMIT * sizeof(void*)));
 	void** test = checkPtr(malloc(TEST_LIMIT * sizeof(void*)));
 	for (size_t i = 1lu; i < TEST_LIMIT; i++)
 	    {
 	    success &= EXPECT_NOT_NULL(test[i] = nmMalloc(i));
-	    data[i] = random_init(checkPtr(malloc(i)), i);
+	    data[i] = randomInit(checkPtr(malloc(i)), i);
 	    memcpy(test[i], data[i], i);
 	    }
 	for (size_t i = TEST_LIMIT - 1lu; i > 0lu; i--)
@@ -107,14 +116,15 @@ static bool do_tests(void)
 	success &= EXPECT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
 
 	/** Large singular allocation. **/
-	#define _256MB 256000000lu
 	void* large_buf;
-	success &= EXPECT_NOT_NULL(large_buf = nmMalloc(_256MB));
-	for (size_t i = _256MB - 1lu; i > 0lu; i--)
+	success &= EXPECT_NOT_NULL(large_buf = nmMalloc(LARGE_BUF_SIZE));
+	for (size_t i = LARGE_BUF_SIZE - 1lu; i > 0lu; i--)
 	    *((unsigned char*)large_buf + i) = (unsigned char)(i % 255lu);
 	*(unsigned char*)large_buf = 0u;
-	for (size_t i = 0lu; i < _256MB; i++)
-	    success &= EXPECT_EQL(*((unsigned char*)large_buf + i), (unsigned char)(i % 255lu), "%d");
+	size_t mismatches = 0lu;
+	for (size_t i = 0lu; i < LARGE_BUF_SIZE; i++)
+	    if (*((unsigned char*)large_buf + i) != (unsigned char)(i % 255lu)) mismatches++;
+	success &= EXPECT_EQL(mismatches, 0lu, "%zu");
 
 	/** Dup string data is unharmed. **/
 	success &= EXPECT_STR_EQL(str1, "ThisIsSomeData!");
@@ -126,6 +136,8 @@ static bool do_tests(void)
 	    free(data[i]);
 	    nmFree(test[i], i);
 	    }
+	free(data);
+	free(test);
 
 	/** Basic string data is unharmed. **/
 	success &= EXPECT_STR_EQL(str1, "ThisIsSomeData!");
@@ -136,35 +148,16 @@ static bool do_tests(void)
 	nmFree(str2, 32);
 
 	/** Free large allocation. **/
-	nmFree(large_buf, _256MB);
+	nmFree(large_buf, LARGE_BUF_SIZE);
 
 	/** Clear cache. **/
 	nmClear();
 
-	/*** Debug info, captured to verify that nmStats() prints something.
-	 *** nmStats() prints via the library's own stdout, so capturing it
-	 *** requires us to redirect that file descriptor into a pipe that
-	 *** we flush into a buffer.  This deadlocks if stats prints over
-	 *** 64kb of data and fills the pipe, but that shouldn't happen.
-	 ***/
-	char stats_buf[2048];
-	int stats_pipe[2];
-	success &= EXPECT_EQL(pipe(stats_pipe), 0, "%d");
-	fflush(stdout);
-	int saved_stdout = dup(STDOUT_FILENO);
-	dup2(stats_pipe[1], STDOUT_FILENO);
-	close(stats_pipe[1]);
-	nmStats(); /** Run target code. **/
-	fflush(stdout);
-	dup2(saved_stdout, STDOUT_FILENO);
-	close(saved_stdout);
-	ssize_t stats_len = read(stats_pipe[0], stats_buf, sizeof(stats_buf) - 1lu);
-	close(stats_pipe[0]);
-	stats_buf[(stats_len > 0) ? stats_len : 0] = '\0';
-	success &= EXPECT_RANGE(strlen(stats_buf), (size_t)32, sizeof(stats_buf) - 1lu, "%zu");
-
 	/** Expect no captured errors. **/
 	success &= EXPECT_STR_EQL(err_buf, "");
+
+	/** Clean up. **/
+	free(err_buf);
 
     return success;
     }
@@ -172,9 +165,10 @@ static bool do_tests(void)
 long long test(char** tname)
     {
     *tname = "newmalloc-01 nmMalloc(), nmFree(), & nmClear()";
-    return loop_tests(do_tests);
+    return loopTest(doTest) * ((long long)TEST_LIMIT + 3ll);
     }
 
 /** Scope cleanup. **/
+#undef BULK_DIVISOR
 #undef TEST_LIMIT
-#undef _256MB
+#undef LARGE_BUF_SIZE

@@ -5,20 +5,17 @@
 #include <stdlib.h>
 #include "qprintf.h"
 #include <assert.h>
+#include <stdbool.h>
+#include "test_utils.h"
 
-long long
-test(char** tname)
+static bool
+doTest(void)
     {
-    int i, rval;
-    int iter;
+    int rval;
     unsigned char buf[44];
 
 	*tname = "qprintf-53 Bugtest: &nbsp; following %STR&HTE";
 	iter = 200000;
-
-	/* this format string intentionally warns; keep the log quiet */
-	freopen("/dev/null", "w", stderr);
-
 	for(i=0;i<iter;i++)
 	    {
 	    buf[41] = '\n';
@@ -45,5 +42,13 @@ test(char** tname)
 	    assert(buf[0] == '\0');
 	    }
 
-    return iter*4;
+long long
+test(char** tname)
+    {
+    *tname = "qprintf-53 Bugtest: &nbsp; following %STR&HTE";
+
+    /* this format string intentionally warns; keep the log quiet */
+    freopen("/dev/null", "w", stderr);
+
+    return loopTest(doTest) * 4;
     }
