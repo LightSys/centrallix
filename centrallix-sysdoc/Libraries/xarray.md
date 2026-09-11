@@ -134,7 +134,9 @@ This function adds an item to a sorted XArray while maintaining the sorted prope
 ```c
 int xaAddItemSortedInt32(pXArray this, void* item, int keyoffset)
 ```
-<!-- TODO: Greg - How does this work? Does it assume that the item pointers are typecasted 32-bit ints or that they point to 32-bit ints? -->
+This function works the same as [`xaAddItemSorted()`](#xaadditemsorted), except that the sort key is a signed 32-bit integer (an `int` on supported platforms) located `keyoffset` bytes into the structure, rather than a byte string of a given length.  This function _will_ follow the pointers stored in the array, so casting other types to store them is not allowed (as it is with [`xaAddItem()`](#xaadditem)).  Because the comparison is numeric rather than bytewise, the ordering is correct for negative values and is unaffected by the host byte order.
+
+This function returns the index of the last item in the array (not the index the item was inserted at), or -1 if an error occurs.
 
 
 ## xaGetItem()
