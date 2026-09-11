@@ -154,6 +154,9 @@ ca_build_vector(const char* str)
     pVector sparse_vector = NULL;
     pVector trimmed_sparse_vector = NULL;
     
+	/** Guard null. **/
+	if (str == NULL) return NULL;
+	
 	/** Allocate memory to store the characters. **/
 	unsigned int num_chars = 0u;
 	chars = checkPtr(nmSysMalloc((strlen(str) + 2u) * sizeof(unsigned char)));
@@ -507,9 +510,6 @@ ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const
     int result = -1;
     unsigned int** lev_matrix = NULL;
 
-	/** Optimization: Identical string pointers. **/
-	if (str1 == str2) return 0;
-    
 	/*** lev_matrix:
 	 *** For all i and j, d[i][j] will hold the Levenshtein distance between
 	 *** the first i characters of s and the first j characters of t.
@@ -1006,9 +1006,9 @@ ca_most_similar(
 	/** Iterate over all data options to find the one with the highest similarity. **/
 	for (unsigned int i = 0u; (num_data == 0u && data[i] != NULL) || (i < num_data); i++)
 	    {
-	    const double sim = checkDouble(similarity(target, data[i]));
+	    const double sim = similarity(target, data[i]);
 	    if (isnan(sim)) continue; /* Skip failed comparison. */
-	    if (sim > best_sim && sim > threshold)
+	    if (sim > best_sim && sim >= threshold)
 		{
 		most_similar = data[i];
 		best_sim = sim;
