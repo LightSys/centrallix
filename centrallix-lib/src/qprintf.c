@@ -706,7 +706,18 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
     const unsigned char* srcptr = (const unsigned char*)src;
     const unsigned char* origsrc = (const unsigned char*)src;
     char* dstptr;
-    int req_size = ((src_size+2) / 3) * 4 + *dst_offset + 1; /** +1 leaves room for the null-terminator. **/
+
+	/*** Refuse if the function would write more bytes than INT_MAX, taking
+	 *** into account that Base 64 turns each 3 source bytes into 4.
+	 ***/
+	if (UNLIKELY(*dst_offset >= (size_t)INT_MAX || src_size > (((size_t)INT_MAX - *dst_offset - 1) / 4) * 3))
+	    {
+	    QPERR(QPF_ERR_T_RESOURCE);
+	    return -1;
+	    }
+
+	/** +1 leaves room for the null-terminator. **/
+	const size_t req_size = ((src_size+2) / 3) * 4 + *dst_offset + 1;
 
 	/** Grow dstbuf if necessary and possible, otherwise return error **/
 	if (req_size > *dst_size)
@@ -788,7 +799,6 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
     char* ptr;
     char* cursor;
     int ix;
-    int req_size = (.75 * src_size) + *dst_offset + 1; /** fmul could truncate when cast to int hence +1 **/
 
 	/** Verify source data is correct length for base 64 **/
 	if (UNLIKELY(src_size % 4 != 0))
@@ -796,6 +806,18 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 	    QPERR(QPF_ERR_T_BADCHAR);
 	    return -1;
 	    }
+
+	/*** Refuse if the function would write more bytes than INT_MAX, taking
+	 *** into account that Base 64 turns each 4 source bytes back into 3.
+	 ***/
+	if (UNLIKELY(*dst_offset >= (size_t)INT_MAX || (src_size / 4) * 3 > (size_t)INT_MAX - *dst_offset - 1))
+	    {
+	    QPERR(QPF_ERR_T_RESOURCE);
+	    return -1;
+	    }
+
+	/** +1 leaves room for the null-terminator. **/
+	const size_t req_size = (src_size / 4) * 3 + *dst_offset + 1;
 
 	/** Grow dstbuf if necessary and possible, otherwise return error **/
 	if (req_size > *dst_size)
@@ -898,16 +920,25 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
     char* ptr;
     char* cursor;
     int ix;
-    int req_size;
     const char* orig_src = src;
 
-	/** Required size, counting the offset and the null-terminator **/
 	if (UNLIKELY(src_size%2 == 1))
 	    {
 	    QPERR(QPF_ERR_T_BADLENGTH);
 	    return -1;
 	    }
-	req_size = src_size/2 + *dst_offset + 1;
+
+	/*** Refuse if the function would write more bytes than INT_MAX, taking
+	 *** into account that hex turns each 2 source bytes back into 1.
+	 ***/
+	if (UNLIKELY(*dst_offset >= (size_t)INT_MAX || src_size / 2 > (size_t)INT_MAX - *dst_offset - 1))
+	    {
+	    QPERR(QPF_ERR_T_RESOURCE);
+	    return -1;
+	    }
+
+	/** Required size, counting the offset and the null-terminator **/
+	const size_t req_size = src_size/2 + *dst_offset + 1;
 
 	/** Grow dstbuf if necessary and possible, otherwise return error **/
 	if (req_size > *dst_size)
