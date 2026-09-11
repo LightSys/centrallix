@@ -489,7 +489,7 @@ The parameters passed are intentionally similar to the `fdRead()` function in `m
 | buffer    | char*        | The buffer where read data should be stored.                                                                                 |
 | max_cnt   | int          | The maximum number of bytes to read into the buffer.                                                                         |
 | offset    | int          | An optional seek offset.                                                                                                     |
-| flags     | int          | Either `0` or `FD_U_SEEK`. If `FD_U_SEEK` is specified, the caller should specify a seek offset in the 4th argument (`arg`). |
+| flags     | int          | Either `0` or `FD_U_SEEK`. If `FD_U_SEEK` is specified, the caller should specify a seek offset in the 4th argument (`offset`). |
 | oxt       | pObjTrxTree* | The transaction tree pointer for the `OBJDRV_C_TRANS` capability.                                                            |
 
 - 📖 **Note**: Not all objects can be seekable and some of the objects handled by the driver may have limited seek functionality, even if others do not.
