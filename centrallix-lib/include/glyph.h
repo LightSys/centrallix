@@ -33,6 +33,8 @@
 /*              for debugging algorithms.                               */
 /************************************************************************/
 
+#include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 /** Uncomment to activate glyphs. **/
