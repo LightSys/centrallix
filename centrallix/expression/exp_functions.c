@@ -4550,7 +4550,7 @@ int exp_fn_nth(pExpression tree, pParamObjects objlist, pExpression i0, pExpress
 int
 exp_fn_metaphone(pExpression tree)
     {
-    int ret = -1;
+    int ret = -1, tmp;
     bool free_strs = true;
     char* primary = NULL;
     char* secondary = NULL;
@@ -4587,10 +4587,11 @@ exp_fn_metaphone(pExpression tree)
 	    }
 	
 	/** Compute Double Metaphone. **/
-	ret = meta_double_metaphone(str, &primary, &secondary);
-	if (UNLIKELY(ret != 0))
+	tmp = meta_double_metaphone(str, &primary, &secondary);
+	if (UNLIKELY(tmp != 0))
 	    {
-	    mssError(1, "EXP", "Double metaphone computation failed (error code %d).", ret);
+	    mssError(1, "EXP", "Double metaphone computation failed (error code %d).", tmp);
+	    ret = tmp;
 	    goto end_free;
 	    }
 	
