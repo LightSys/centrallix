@@ -29,7 +29,7 @@
  *** @returns The current monotonic time as a fractional number of seconds.
  ***/
 static double
-getTime(void)
+timer_i_getTime(void)
     {
     struct timespec ts;
     
@@ -75,7 +75,7 @@ pTimer
 timerStart(pTimer timer)
     {
 	if (UNLIKELY(timer == NULL)) return NULL;
-	if (isnan(timer->start)) timer->start = getTime();
+	if (isnan(timer->start)) timer->start = timer_i_getTime();
     
     return timer;
     }
@@ -93,7 +93,7 @@ timerStop(pTimer timer)
 	if (isnan(timer->start)) return timer;
 
 	/** Keep the timer running rather than poisoning the total with NAN. **/
-	const double stop_time = getTime();
+	const double stop_time = timer_i_getTime();
 	if (isnan(stop_time)) return timer;
 
 	timer->total += stop_time - timer->start;
@@ -112,7 +112,7 @@ timerGet(pTimer timer)
     {
 	if (UNLIKELY(timer == NULL)) return NAN;
 
-	const double current_time = (isnan(timer->start)) ? 0.0 : (getTime() - timer->start);
+	const double current_time = (isnan(timer->start)) ? 0.0 : (timer_i_getTime() - timer->start);
     
     return current_time + timer->total;
     }

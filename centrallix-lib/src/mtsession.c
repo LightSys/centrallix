@@ -455,7 +455,7 @@ mssEndSession(pMtSession s)
     }
 
 
-/*** mssError_internal - Displays error text to the user (but no stack trace).
+/*** mss_i_error - Displays error text to the user (but no stack trace).
  *** Does not exit the program, allowing the calling function to fail, creating
  *** a cascade of error messages which provides useful info.
  ***
@@ -474,7 +474,7 @@ mssEndSession(pMtSession s)
  *** @param ... Variables matching format specifiers in the format.
  ***/
 void
-mssError_internal(int clr, char* module, char* file, int line, char* message, ...)
+mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
     {
     char err_msg[BUFSIZ];
     size_t i = 0;
@@ -633,7 +633,7 @@ mssUserError(pXString str)
 	if (!s) return -1;
 
 	/*** Create a space-separated string of the messages, without the source
-	 *** location and module code that mssError_internal() writes in front
+	 *** location and module code that mss_i_error() writes in front
 	 *** of each one.  Both end in ": ", which the message itself may also
 	 *** contain, so only the first two are skipped.
 	 ***/
