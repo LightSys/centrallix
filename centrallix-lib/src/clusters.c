@@ -995,7 +995,6 @@ ca_most_similar(
 	if (target == NULL
 	    || data == NULL
 	    || similarity == NULL
-	    || num_data == 0u
 	    || (threshold < 0.0 || 1.0 < threshold)
 	    || isnan(threshold)
 	) return NULL;
