@@ -692,16 +692,18 @@ mssSetParamPtr(char* paramname, void* ptr)
     char name[MSS_PARAMNAME_SIZE];
 
 	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s || !paramname) return -1;
+	if (checkPtr(s) == NULL || checkPtr(paramname) == NULL)
+	    goto error;
 
 	/** The name has to fit the field it is kept in **/
-	if (strtcpy(name, paramname, sizeof(name)) < 0) return -1;
+	if (checkNeg(strtcpy(name, paramname, sizeof(name))) < 0)
+	    goto error;
 
     	/** Need to delete first? **/
 	if (!(p = (pMtParam)xhLookup(&s->Params, name)))
 	    {
-	    p = (pMtParam)nmMalloc(sizeof(MtParam));
-	    if (!p) return -1;
+	    p = (pMtParam)checkPtr(nmMalloc(sizeof(MtParam)));
+	    if (p == NULL) goto error;
 	    strcpy(p->Name, name);
 	    is_new = 1;
 	    }
@@ -717,9 +719,14 @@ mssSetParamPtr(char* paramname, void* ptr)
 
 	p->Value = ptr;
 	p->IsAlloc = 0;
-	if (is_new) xhAdd(&s->Params, p->Name, (void*)p);
+	if (is_new && check(xhAdd(&s->Params, p->Name, (void*)p)) != 0)
+	    goto error;
 
-    return 0;
+	return 0;
+
+    error:
+	mssError(1, "MSS", "Failed to add session parameter pointer.");
+	return -1;
     }
 
 
