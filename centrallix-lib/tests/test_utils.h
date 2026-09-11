@@ -114,8 +114,14 @@
     const int success = (_str1 == _str2) || (_str1 != NULL && _str2 != NULL && memcmp(_str1, _str2, _len) == 0); \
     if (!success)\
 	{ \
-	char _tmp1[_len + 1]; STR_COPY_REPLACE_NULLS(_tmp1, _str1, _len); \
-	char _tmp2[_len + 1]; STR_COPY_REPLACE_NULLS(_tmp2, _str2, _len); \
+	char _tmp1[_len + 1]; \
+	if (str1 == NULL) strcpy(_tmp1, "(null)"); \
+	else STR_COPY_REPLACE_NULLS(_tmp1, _str1, _len); \
+	\
+	char _tmp2[_len + 1]; \
+	if (str2 == NULL) strcpy(_tmp2, "(null)"); \
+	else STR_COPY_REPLACE_NULLS(_tmp2, _str2, _len); \
+	\
 	fprintf(stderr, \
 	    "  > Expected %s (\"%s\") to equal %s (\"%s\") where '_' is a null-terminator, at %s:%d\n", \
 	    #str1, _tmp1, #str2, _tmp2, __FILE__, __LINE__ \
