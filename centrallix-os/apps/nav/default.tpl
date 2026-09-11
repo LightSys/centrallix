@@ -5,7 +5,7 @@ default "widget/template"
 	{
 	bgcolor="#e0e0e0";
 	linkcolor="#0000ff";
-	font_name = "Arial";
+	font_name = "Arial, Helvetica, sans-serif";
 	font_size = 12;
 	icon = "/favicon.ico";
 	}

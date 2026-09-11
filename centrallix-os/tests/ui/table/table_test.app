@@ -48,28 +48,6 @@ checkbox_test "widget/page"
           rowheight = 20;
           windowsize = 17;
 
-          // row_detail "widget/table-row-detail"
-          // {
-          //   height=68; width=340;
-
-          //   row_form "widget/form"
-          //   {
-          //     row_vbox "widget/vbox"
-          //     {
-          //       x = 1100; y = 30; height = 50; width = 300;
-                
-          //       row_irstname_txt "widget/editbox"
-          //       {
-          //         x = 20; y = 40; width = 200; height = 30;
-          //         maxchars = 30;
-          //         fieldname = "Firstname";
-          //         bgcolor = "#ffffff";
-          //         form = row_form;
-          //       }
-          //     }
-          //   }
-          // }
-
           col_rpt "widget/repeat"
           {
             sql = runserver("SELECT :name FROM /tests/ui/table/pay.csv/columns");
@@ -111,7 +89,7 @@ checkbox_test "widget/page"
         firstname_txt "widget/editbox"
         {
           x = 20; y = 40; width = 200; height = 30;
-          maxchars = 30;
+          max_chars = 30;
           fieldname = "Firstname";
           bgcolor = "#ffffff";
           form = form;
@@ -126,7 +104,7 @@ checkbox_test "widget/page"
         lastname_txt "widget/editbox"
         {
           x = 250; y = 40; width = 200; height = 30;
-          maxchars = 30;
+          max_chars = 30;
           bgcolor = "#ffffff";
           fieldname = "Lastname";
         }
@@ -161,7 +139,7 @@ checkbox_test "widget/page"
         {
           x = 20; y = 120; width = 200; height = 30;
           bgcolor = "#ffffff";
-          maxchars = 60;
+          max_chars = 60;
           fieldname = "Pay";
         }
 

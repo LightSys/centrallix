@@ -283,7 +283,7 @@ Tab Test PASS
 - Verifies that down arrow key and enter key correctly moves and select
 - Verifies that up arrow key and enter key correctly moves and select
 #### Note
-- Property `hilight` is stated as `highlight` on the web document but only `hilight` works.
+- Property `hilight` is stated as `highlight` on the web document.
 
 ----------
 

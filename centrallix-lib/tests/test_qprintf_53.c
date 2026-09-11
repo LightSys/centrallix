@@ -15,6 +15,10 @@ test(char** tname)
 
 	*tname = "qprintf-53 Bugtest: &nbsp; following %STR&HTE";
 	iter = 200000;
+
+	/* this format string intentionally warns; keep the log quiet */
+	freopen("/dev/null", "w", stderr);
+
 	for(i=0;i<iter;i++)
 	    {
 	    buf[41] = '\n';

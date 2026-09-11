@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2006 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -39,20 +39,28 @@
 #include "cxlib/xarray.h"
 #include "iface.h"
 
-#define WGTR_MAX_TEMPLATE	8	/** Maximum templates concurrently applying to page **/
-#define WGTR_MAX_OVERLAY	16	/** Maximum overlays in an app **/
+#define WGTR_MAX_TEMPLATE            8       /** Maximum templates concurrently applying to page **/
+#define WGTR_MAX_OVERLAY            16       /** Maximum overlays in an app **/
 
-#define WGTR_F_NONVISUAL    1		/** a widget is visual by default, non-visual if this is set **/
-#define WGTR_F_CONTAINER    2		/** set for container widgets **/
-#define WGTR_F_FLOATING	    4		/** widgets that 'float' - childwindows and popup menus **/
-#define WGTR_F_CONTROL	    8		/** control structure (i.e. repeat) that should be 'looked through' to its subobjects **/
-#define	WGTR_F_VSCROLLABLE  16		/** contents are vertically scrollable.  Do not resize Y/height **/
-#define	WGTR_F_HSCROLLABLE  32		/** contents are horiz scrollable.  Do not resize X/width **/
+#define WGTR_F_NONE                (0 <<  0) /** value for a widget with no flags. **/
+#define WGTR_F_NONVISUAL           (1 <<  0) /** a widget is visual by default, non-visual if this is set **/
+#define WGTR_F_CONTAINER           (1 <<  1) /** set for container widgets **/
+#define WGTR_F_FLOATING            (1 <<  2) /** widgets that 'float' - childwindows and popup menus **/
+#define WGTR_F_CONTROL             (1 <<  3) /** control structure (i.e. repeat) that should be 'looked through' to its subobjects **/
+#define	WGTR_F_VSCROLLABLE         (1 <<  4) /** contents are vertically scrollable.  Do not resize Y/height **/
+#define	WGTR_F_HSCROLLABLE         (1 <<  5) /** contents are horiz scrollable.  Do not resize X/width **/
+#define	WGTR_F_AUTOHEIGHT          (1 <<  6) /** height was unspecified; the widget sizes itself to its content **/
+#define	WGTR_F_FLWIDTHSET          (1 <<  7) /** fl_width came from the structure file; do not recompute it **/
+#define	WGTR_F_FLHEIGHTSET         (1 <<  8) /** fl_height came from the structure file; do not recompute it **/
+#define	WGTR_F_CENTEREDX           (1 <<  9) /** a floating widget the layout centered horizontally **/
+#define	WGTR_F_CENTEREDY           (1 << 10) /** a floating widget the layout centered vertically **/
+#define	WGTR_F_VISUAL_CONTAINER    (1 << 11) /** the widget will emit an visual container **/
 
-#define WGTR_PF_NOTEMPLATE  1		/** Don't handle templates on this wgtr Parse operation **/
-#define WGTR_PF_NOSECURITY  2		/** Don't handle security settings on this wgtr Parse operation **/
+#define WGTR_PF_NONE               (0 <<  0) /** value for no flags. **/
+#define WGTR_PF_NOTEMPLATE         (1 <<  0) /** Don't handle templates on this wgtr Parse operation **/
+#define WGTR_PF_NOSECURITY         (1 <<  1) /** Don't handle security settings on this wgtr Parse operation **/
 
-#define WGTR_DEFAULT_SPACING (10)	/** default spacing between widgets **/
+#define WGTR_DEFAULT_SPACING       (10)      /** default spacing between widgets **/
 
 #define WGTR_REPEAT_PREFIX  "__rpt_"
 
@@ -69,6 +77,7 @@ typedef struct
     int		CharWidth;
     int		CharHeight;
     int		ParagraphHeight;	/* total height of one line of text */
+    int         IsDesign;               /* 1 if the page is rendered with cx__geom=design, 0 otherwise. */
     char	AKey[256];
     char*	Templates[WGTR_MAX_TEMPLATE];
     char*	Overlays[WGTR_MAX_OVERLAY];
@@ -100,14 +109,22 @@ typedef struct _WN
     char	Namespace[64];			/** Namespace this widget and subwidgets are in **/
     int		r_x, r_y, r_width, r_height;	/** Requested geometry **/
     int		pre_x, pre_y, pre_width, pre_height;  /** pre-layout geom. **/
-    int		fl_x, fl_y, fl_width, fl_height;/** Flexibility **/
-    double  	fx, fy, fw, fh;			/** internal flexibility calculations **/
+    int		fl_width, fl_height;		/** Flexibilities as specified by the designer **/
+    double	fx, fy, fw, fh;			/** internal flexibility calculations **/
+    double	fl_scale_x, fl_scale_y;		/** Scaled x and y flexibilities calculated for this layout. */
+    double	fl_scale_w, fl_scale_h;		/** Scaled w and h flexibilities calculated for this layout. */
+    int		fl_parent_w, fl_parent_h;	/** The expected size of the parent container, used when it flexes. */
     int		min_width, min_height;		/** absolute minimums **/
-    int		x, y, width, height;		/** actual geometry **/
-    int		top, bottom, left, right;	/** container offsets **/
+    int		x, y, width, height;		/** actual geometry (outer box) **/
+    /*** The space that a widget needs in its outer box (x/y/width/height) for
+     *** its UI (e.g. title bars, tabs, or scrollbars).  The remaining space is
+     *** the widget's client area where children are laid out.
+     *** @see wgtrSetInsets()
+     ***/
+    int		inset_top, inset_bottom, inset_left, inset_right;
     XArray	Properties;			/** Array of widget properties **/
     XArray	Children;			/** Array of child widgets **/
-    struct _WN* Parent;
+    struct _WN*	Parent;
     struct _WN*	Root;
     int		CurrProperty;			/** Property to return on next call to wgtNextProperty **/
     int		CurrChild;			/** Child to return on next call to wgtrNextChild **/
@@ -170,8 +187,9 @@ pWgtrNode wgtrParseOpenObject(pObject obj, pStruct app_params, pWgtrClientInfo c
 void wgtrFree(pWgtrNode tree);	/** frees memory associated with a widget tree **/
 pWgtrNode wgtrNewNode(	char* name, char* type, pObjSession s,
 			int rx, int ry, int rwidth, int rheight,
-			int flx, int fly, int flwidth, int flheight);   /** create a new widget node **/
+			int flwidth, int flheight);   /** create a new widget node **/
 int wgtrSetupNode(pWgtrNode node);
+void wgtrSetInsets(pWgtrNode node, int top, int bottom, int left, int right);	/** declare the widget's own reserved space **/
 int wgtrMergeOverlays(pWgtrNode node, char* objpath, char* app_path, char* overlays[], char* templates[]);
 
 /** wgtr iterator functions **/
@@ -204,8 +222,9 @@ pWgtrNode wgtrFirstChild(pWgtrNode tree);	/** return the first child **/
 int wgtrImplementsInterface(pWgtrNode this, char* iface_ref);	    /** state that a wgt implements an interface **/
 int wgtrSetDMPrivateData(pWgtrNode tree, void* data);
 void* wgtrGetDMPrivateData(pWgtrNode tree);
-int wgtrGetContainerHeight(pWgtrNode tree);
+pWgtrNode wgtrGetHtmlContainer(pWgtrNode tree);
 int wgtrGetContainerWidth(pWgtrNode tree);
+int wgtrGetContainerHeight(pWgtrNode tree);
 int wgtrMoveChildren(pWgtrNode tree, int x_offset, int y_offset);
 
 /** misc. functions **/

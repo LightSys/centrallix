@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2014 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -20,6 +20,7 @@ function cht_object_available(dataobj, force_datafetch, why) {
     if(this.update_soon) {
         this.columns = this.GetColumns();
         this.chart.data = this.GetChartData();
+        this.chart.options.scales = this.GetScales();
         this.update_soon = false;
     }
     this.Highlight(this.osrc.CurrentRecord - 1, this.osrc.CurrentRecord - 1);
@@ -33,9 +34,24 @@ function cht_object_deleted(recnum) {this.update_soon = true;}
 function cht_object_created(recnum) {this.update_soon = true;}
 function cht_object_modified(current, dataobj) {this.update_soon = true;}
 
-function cht_linear_x_axis() {
-    // fancier logic in future
+// Returns true if the chart type plots x/y pairs rather than one value per category.
+function cht_wants_linear_x_axis() {
     return this.params.chart_type === "line" || this.params.chart_type === "scatter";
+}
+
+// A linear x-axis is only usable when the chart type plots x/y pairs AND every
+// series has a numeric x column.
+function cht_linear_x_axis() {
+    if (!this.WantsLinearXAxis()) return false;
+
+    // Stop: no data has arrived yet.
+    if (!this.columns) return false;
+
+    // Check for non-numeric data.
+    for (let series_idx in this.params.series) {
+        if (this.GetColType(this.GetXColName(series_idx)) !== "number") return false;
+    }
+    return true;
 }
 
 function cht_is_number_type(type) {
@@ -77,6 +93,11 @@ function cht_find_col_with_type(type) {
     return a_col?(a_col.name):null;
 }
 
+function cht_get_col_type(col_name) {
+    let a_col = this.columns.filter(function (column) {return column.name === col_name})[0];
+    return a_col?(a_col.type):null;
+}
+
 function cht_get_linear_data(series_idx) {
     if (!this.LinearXAxis()){
         return this.GetColValues(this.GetYColName(series_idx));
@@ -93,7 +114,6 @@ function cht_get_linear_data(series_idx) {
 }
 
 function cht_get_x_col_name(series_idx) {
-    let type = this.LinearXAxis() ? "number" : "string";
     let name = this.params.series[series_idx].x_column;
 
     if (this.columns.filter(function (col) {return col.name === name}).length){
@@ -101,7 +121,13 @@ function cht_get_x_col_name(series_idx) {
     } else {
         if (name)
             console.warn(name + " is not a valid column");
-        return this.FindColWithType(type);
+
+        // Point-plotting charts prefer a numeric X column with a string
+	// fallback.  Note: We can't use LinearXAxis() here because this
+	// depends on the column we're picking.
+        if (this.WantsLinearXAxis())
+            return this.FindColWithType("number") || this.FindColWithType("string");
+        return this.FindColWithType("string");
     }
 
 }
@@ -127,7 +153,7 @@ function cht_get_categories(series_idx) {
 }
 
 function cht_highlight(index) {
-    if (this.chart.data.datasets[0]) {
+    if (this.chart.data.datasets[0] && Array.isArray(this.chart.data.datasets[0].backgroundColor)) {
 	let colorArray = this.chart.data.datasets[0].backgroundColor;
 
 	// Reset all bar colors
@@ -163,19 +189,29 @@ function cht_choose_rgba(series_idx, alpha) {
     else return this.GenerateRgba(Number.parseInt(series_idx), alpha);
 }
 
+// A series may override the chart's type.  The outer type still applies to
+// any series that does not do this.
+function cht_get_series_type(series_idx) {
+    return this.params.series[series_idx].chart_type || this.params.chart_type;
+}
+
 function cht_get_datasets(){
     let datasets = [];
     for (let series_idx in this.params.series){
+	let series_type = this.GetSeriesType(series_idx);
 	let background_color = [];
 	let border_color = [];
         let data = this.GetLinearData(series_idx);
-	if (this.params.chart_type === "pie" || this.params.chart_type === "doughnut") {
+	if (series_type === "pie" || series_type === "doughnut") {
 	    for(let i=0; i<data.length; i++)
 		background_color[i] = this.ChooseRgba(i, 0.5);
 	    for(let i=0; i<data.length; i++)
 		border_color[i] = this.ChooseRgba(i);
+	} else if (series_type === "line") {
+	    background_color = this.ChooseRgba(series_idx, 1);
+	    border_color = this.ChooseRgba(series_idx);
 	} else {
-	    background_color = this.ChooseRgba(series_idx, (this.params.chart_type === "line") ? 1 : 0.5);
+	    background_color = this.ChooseRgba(series_idx, 0.5);
 	    border_color = this.ChooseRgba(series_idx);
 	    background_color = new Array(data.length).fill(background_color);
 	    border_color = new Array(data.length).fill(border_color);
@@ -187,7 +223,8 @@ function cht_get_datasets(){
             borderColor: border_color,
             backgroundColor: background_color,
             borderWidth: 2,
-            fill: this.params.series[series_idx].fill
+            // Fill must be a real boolean!
+            fill: !!this.params.series[series_idx].fill
         });
     }
     return datasets;
@@ -235,6 +272,8 @@ function cht_chartjs_init() {
         type: this.params.chart_type,
         data: {},
         options: {
+            responsive: true,
+            maintainAspectRatio: false,
             scales: this.GetScales(),
             title: {
                 display: this.params.title?true:false,
@@ -350,13 +389,16 @@ function cht_register_helper_functions(chart_wgt){
     chart_wgt.GetOsrc = cht_get_osrc;
     chart_wgt.ChartJsInit = cht_chartjs_init;
     chart_wgt.GetChartData = cht_get_chart_data;
+    chart_wgt.WantsLinearXAxis = cht_wants_linear_x_axis;
     chart_wgt.LinearXAxis = cht_linear_x_axis;
     chart_wgt.GetLinearData = cht_get_linear_data;
     chart_wgt.GetCategories = cht_get_categories;
     chart_wgt.GetSeriesLabel = cht_get_series_label;
+    chart_wgt.GetSeriesType = cht_get_series_type;
     chart_wgt.GetColumns = cht_get_columns;
     chart_wgt.GetColValues = cht_get_col_values;
     chart_wgt.FindColWithType = cht_find_col_with_type;
+    chart_wgt.GetColType = cht_get_col_type;
     chart_wgt.GetXColName = cht_get_x_col_name;
     chart_wgt.GetYColName = cht_get_y_col_name;
     chart_wgt.IsNumberType = cht_is_number_type;
