@@ -249,7 +249,7 @@ prt_htmlfm_Output(pPrtHTMLfmInf context, char* str, int len)
 	/** Check length **/
 	if (len < 0) len = strlen(str);
 
-    return checkNeg(context->Session->WriteFn(context->Session->WriteArg, str, len, 0, FD_U_PACKET));
+    return checkPos(context->Session->WriteFn(context->Session->WriteArg, str, len, 0, FD_U_PACKET));
     }
 
 
@@ -263,7 +263,7 @@ prt_htmlfm_OutputPrintf(pPrtHTMLfmInf context, char* fmt, ...)
     int rval;
 
 	va_start(va, fmt);
-	rval = checkNeg(xsGenPrintf_va(context->Session->WriteFn, context->Session->WriteArg, NULL, NULL, fmt, va));
+	rval = checkPos(xsGenPrintf_va(context->Session->WriteFn, context->Session->WriteArg, NULL, NULL, fmt, va));
 	va_end(va);
 
     return rval;
@@ -1015,7 +1015,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    /** Allocate a new attachment and write the headers. **/
 		    pXString attachment = checkPtr(xsNew());
 		    if (UNLIKELY(attachment == NULL)) goto error_image;
-		    if (checkNeg(xsConcatPrintf(attachment,
+		    if (checkPos(xsConcatPrintf(attachment,
 			PRT_HTMLFM_IMG_HEADER_FORMAT,
 			PRT_HTMLFM_IMG_HEADER_VALUES(context->Boundary, id, mime_type, extension)
 		    )) < 0)
@@ -1029,8 +1029,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    for (size_t off = 0; off < b64_len; off += PRT_HTMLFM_B64_LINE_LEN)
 			{
 			const size_t line_len = min(b64_len - off, PRT_HTMLFM_B64_LINE_LEN);
-			if (checkNeg(xsConcatenate(attachment, base64Image + off, line_len)) < 0 ||
-			    checkNeg(xsConcatenate(attachment, "\n", 1)) < 0)
+			if (checkPos(xsConcatenate(attachment, base64Image + off, line_len)) < 0 ||
+			    checkPos(xsConcatenate(attachment, "\n", 1)) < 0)
 			    {
 			    xsFree(attachment);
 			    goto error_image;
@@ -1038,8 +1038,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 			}
 
 		    /** Write the attachment footer and add it to the context. **/
-		    if (checkNeg(xsConcatenate(attachment, PRT_HTMLFM_IMG_FOOTER, sizeof(PRT_HTMLFM_IMG_FOOTER) - 1)) < 0 ||
-			checkNeg(xaAddItem(context->Attachments, attachment)) < 0)
+		    if (checkPos(xsConcatenate(attachment, PRT_HTMLFM_IMG_FOOTER, sizeof(PRT_HTMLFM_IMG_FOOTER) - 1)) < 0 ||
+			checkPos(xaAddItem(context->Attachments, attachment)) < 0)
 			{
 			xsFree(attachment);
 			goto error_image;
